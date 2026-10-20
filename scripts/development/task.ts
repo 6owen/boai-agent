@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 冻结任务、原仓库Git公共目录和实际进程身份。
- * [OUTPUT]: 唯一领取及冻结任务；保存流程/期限及回执原字节锚点，不复用变化的输入。
+ * [OUTPUT]: 唯一领取及冻结任务；固定报告格式/必需测试与流程/期限/回执锚点，不复用变化输入。
  * [POS]: 开发控制器持久合同；不接BOAI产品任务/员工状态。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -18,7 +18,7 @@ export const relativePath = z.string().min(1).refine(value => {
   const path = value.endsWith('/') ? value.slice(0, -1) : value
   return !path.includes('\\') && !path.includes('\0') && path.split('/').every(part => part && !['..', '.', '.git', '.local'].includes(part.toLowerCase()))
 }, '必须为仓库内规范明确路径，不允许空路径段或保留目录')
-const checkSchema = z.object({ id: z.string().regex(/^[a-z0-9-]+$/), command: z.string().min(1), args: z.array(z.string()), timeoutMs: z.number().int().min(1000).max(900_000), report: z.object({ path: relativePath, requiredTests: z.array(z.string().min(1)).min(1) }).strict().optional() }).strict()
+const checkSchema = z.object({ id: z.string().regex(/^[a-z0-9-]+$/), command: z.string().min(1), args: z.array(z.string()), timeoutMs: z.number().int().min(1000).max(900_000), report: z.object({ path: relativePath, requiredTests: z.array(z.string().min(1)).min(1), format: z.enum(['vitest', 'playwright']).optional() }).strict().optional() }).strict()
 export const taskSchema = z.object({
   version: z.literal(1), taskId: z.string().regex(/^[a-z][a-z0-9-]{2,63}$/),
   goal: z.string().min(10), acceptance: z.array(z.string().min(5)).min(1), source: z.string().min(1),

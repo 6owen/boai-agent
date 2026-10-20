@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 冻结开发任务、独立Git worktree、原进程工具和Codex结构化建议/审查。
- * [OUTPUT]: 固定检查/独立审查/返工；回执原字节锚定与中断补写、历史/索引核验，不续期或重放未知操作。
+ * [OUTPUT]: 补丁预检失败有界返工、未完整执行的报告停止；回执/历史/索引核验，不续期或重放未知操作。
  * [POS]: 开发侧控制器；原产品员工/会话/模型运行逻辑保持。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -11,6 +11,7 @@ import { dirname, join, resolve } from 'node:path'
 import { repairProcess, saveProcess, type ProcessReceipt } from '../../tests/evaluation/repair-process'
 import { claimTask, digest, git, relativePath, type Task, type TaskState } from './task'
 import { acceptController, applyJournal, checkpoint, drainPendingProcesses, recoverCheckpoint, verifyCheckpointReceipts, WORKFLOW_VERSION, writeEvidence, type Cursor, type FileChange } from './recovery'
+import { inspectRequiredTests } from './checks'
 
 export const editsSchema = z.object({ summary: z.string().min(1), edits: z.array(z.object({ path: relativePath, beforeSha256: z.string().regex(/^[a-f0-9]{64}$/).nullable(), content: z.string().max(512_000).nullable(), replacements: z.array(z.object({ oldText: z.string().min(1), newText: z.string().max(256_000) }).strict()).min(1).max(30).nullable().default(null) }).strict()).min(1).max(40) }).strict()
 export const reviewSchema = z.object({ approved: z.boolean(), findings: z.array(z.string().min(1)), summary: z.string().min(1) }).strict().refine(value => !value.approved || !value.findings.length, '有待处理问题不能批准')
@@ -25,10 +26,7 @@ interface Dependencies {
 const json = async (file: string) => JSON.parse(await readFile(file, 'utf8'))
 const save = (file: string, value: unknown) => writeFile(file, JSON.stringify(value, null, 2) + '\n', { flag: 'wx' })
 const optional = (file: string) => readFile(file).catch(error => { if (error.code === 'ENOENT') return null; throw error })
-export function validateRequiredTests(report: { testResults: { assertionResults: { fullName: string; status: string }[] }[] }, required: string[]) {
-  const tests = report.testResults.flatMap(file => file.assertionResults)
-  return required.every(name => { const found = tests.filter(test => test.fullName === name); return found.length === 1 && found[0].status === 'passed' })
-}
+class ProposalError extends Error {}
 export function allowedPath(task: Pick<Task, 'paths'>, path: string) {
   const lower = path.toLowerCase()
   return relativePath.safeParse(path).success && !path.endsWith('/') && lower !== 'tests/e2e/baselines' && !lower.startsWith('tests/e2e/baselines/') && task.paths.some(scope => scope.endsWith('/') ? path.startsWith(scope) : path === scope)
@@ -52,11 +50,11 @@ async function prepareDevelopmentEdits(worktree: string, task: Pick<Task, 'paths
     executable.set(edit.path, bytes ? Boolean((await lstat(join(worktree, edit.path))).mode & 0o111) : false)
     if ((bytes ? digest(bytes) : null) !== edit.beforeSha256) throw new Error(`文件已变化，拒绝过期修改：${edit.path}`)
     if (edit.replacements) {
-      if (!bytes || edit.content !== null) throw new Error(`局部替换仅适用于现有文件，content必须为null：${edit.path}`)
+      if (!bytes || edit.content !== null) throw new ProposalError(`局部替换仅适用于现有文件，content必须为null：${edit.path}`)
       let text = bytes.toString('utf8')
       if (!Buffer.from(text).equals(bytes)) throw new Error(`局部替换只处理UTF-8文本：${edit.path}`)
       for (const replacement of edit.replacements) {
-        if (replacement.oldText === replacement.newText || text.indexOf(replacement.oldText) < 0 || text.indexOf(replacement.oldText) !== text.lastIndexOf(replacement.oldText)) throw new Error(`替换必须唯一且有实际变化：${edit.path}`)
+        if (replacement.oldText === replacement.newText || text.indexOf(replacement.oldText) < 0 || text.indexOf(replacement.oldText) !== text.lastIndexOf(replacement.oldText)) throw new ProposalError(`替换必须唯一且有实际变化：${edit.path}`)
         text = text.replace(replacement.oldText, () => replacement.newText)
       }
       prepared.set(edit.path, text)
@@ -104,18 +102,20 @@ export async function runDevelopmentTask(repository: string, raw: unknown, signa
       const receipt = await repairProcess({ ...check, cwd: state.worktree, signal, timeoutMs: Math.min(check.timeoutMs, remaining()), managed: { guard, ledger: join(output, `${check.id}-processes`) }, capture: { directory: output, prefix: check.id } })
       await saveProcess(output, check.id, receipt)
       let error = receipt.failure ?? (receipt.exitCode === 0 ? undefined : `退出${receipt.exitCode}`)
-      let reportEvidence: { file: string; sha256: string } | undefined
+      let reportEvidence: { file: string; sha256: string } | undefined, available = !receipt.failure
       if (check.report) {
         try {
           const bytes = await readFile(join(state.worktree, check.report.path)), file = join(output, `${check.id}.report.json`)
           await writeFile(file, bytes, { flag: 'wx' }); reportEvidence = { file, sha256: digest(bytes) }
-          if (!validateRequiredTests(JSON.parse(bytes.toString('utf8')), check.report.requiredTests)) error = [error, '必需测试缺失、跳过、重复或未通过'].filter(Boolean).join('；')
-        } catch (failure) { error = [error, `缺少完整原始报告：${failure}`].filter(Boolean).join('；') }
+          const result = inspectRequiredTests(JSON.parse(bytes.toString('utf8')), check.report.requiredTests, check.report.format)
+          available &&= result.available && !(result.passed && receipt.exitCode !== 0)
+          if (!result.passed) error = [error, '必需测试缺失、跳过、重复或未通过'].filter(Boolean).join('；')
+        } catch (failure) { available = false; error = [error, `缺少完整原始报告：${failure}`].filter(Boolean).join('；') }
       }
-      results.push({ id: check.id, passed: !error, error, exitCode: receipt.exitCode, report: reportEvidence })
+      results.push({ id: check.id, passed: !error, available, error, exitCode: receipt.exitCode, report: reportEvidence })
     }
     if (git(state.worktree, 'rev-parse', 'HEAD') !== head || git(state.worktree, 'status', '--porcelain')) throw new Error('检查期间提交或源码变化，结论无效')
-    const result = { head, passed: results.every(check => check.passed), checks: results }
+    const result = { head, passed: results.every(check => check.passed), available: results.every(check => check.available), checks: results }
     await save(join(output, 'result.json'), result); return result
   }
   const agent = async (kind: 'develop' | 'review', output: string, prompt: string): Promise<AgentOutput> => {
@@ -203,12 +203,15 @@ export async function runDevelopmentTask(repository: string, raw: unknown, signa
           break
         }
         case 'baseline': {
-          update('baseline'); state.baseline = await executeChecks('baseline'); state.attempt = 1; await finish('develop'); break
+          update('baseline'); const result = await executeChecks('baseline'); state.baseline = result; state.attempt = 1
+          await finish(result.available ? 'develop' : 'done')
+          if (!result.available) update('stopped', '基线必需测试未完整执行或报告不可用；保留环境失败，未调用模型')
+          break
         }
         case 'develop': {
           update('developing')
           const output = await begin('develop', `attempt-${state.attempt}-develop`)
-          const prompt = `你是BOAI开发者。在当前专属worktree只读核对代码，返回小而精确的结构化补丁。现有文件优先content=null及replacements中的唯一oldText/newText，避免输出整个大文件；新文件使用content与replacements=null，删除使用二者null。beforeSha256是当前原字节hash，新文件为null。可新增/删除范围内文件，不得提交、写文件或改验收/基线。遵守AGENTS及目录地图。不要分派子代理或自行执行独立审查，控制器会另开独立审查会话。\n冻结任务：${JSON.stringify(task)}\n上轮真实结果：${JSON.stringify({ baseline: state.baseline, checks: state.checks, review: state.review })}\n完整检查原件在${directory}，自行读取，不仅依赖摘要。`
+          const prompt = `你是BOAI开发者。在当前专属worktree只读核对代码，返回小而精确的结构化补丁。现有文件优先content=null及replacements中的唯一oldText/newText，避免输出整个大文件；新文件使用content与replacements=null，删除使用二者null。beforeSha256是当前原字节hash，新文件为null。输出前必须用只读脚本逐项核对旧hash和oldText唯一匹配，不能猜测目录Header。可新增/删除范围内文件，不得提交、写文件或改验收/基线。遵守AGENTS及目录地图；长历史进度只读相关合同及最新实际批次，避免重复输出无关历史。不要分派子代理或自行执行独立审查，控制器会另开独立审查会话。\n冻结任务：${JSON.stringify(task)}\n上轮真实结果：${JSON.stringify({ baseline: state.baseline, checks: state.checks, review: state.review })}\n完整检查原件在${directory}，自行读取，不仅依赖摘要。`
           await agent('develop', output, prompt)
           remaining()
           if (git(worktree, 'rev-parse', 'HEAD') !== state.head || git(worktree, 'status', '--porcelain')) throw new Error('开发会话改写了受控worktree，需核对')
@@ -226,7 +229,14 @@ export async function runDevelopmentTask(repository: string, raw: unknown, signa
             journal = JSON.parse(bytes.toString('utf8'))
           } else {
             if (git(worktree, 'rev-parse', 'HEAD') !== state.head || git(worktree, 'status', '--porcelain')) throw new Error('应用补丁前工作树或HEAD变化')
-            const { changes } = await prepareDevelopmentEdits(worktree, task, (await json(state.proposal.path)).value, signal)
+            let changes: FileChange[]
+            try { ({ changes } = await prepareDevelopmentEdits(worktree, task, (await json(state.proposal.path)).value, signal)) }
+            catch (error) {
+              if (!(error instanceof ProposalError) || git(worktree, 'rev-parse', 'HEAD') !== state.head || git(worktree, 'status', '--porcelain')) throw error
+              state.pending!.kind = 'proposal-rejected'; state.pending!.started = true
+              state.checks = { head: state.head, passed: false, available: true, error: String(error), proposal: state.proposal }; delete state.review
+              claim.save(); await save(join(output, 'result.json'), state.checks); await finish('decide'); break
+            }
             journal = { beforeHead: state.head!, changes }; await writeEvidence(journalPath, journal)
             state.pending!.journalHash = digest(await readFile(journalPath)); claim.save()
           }
@@ -252,7 +262,10 @@ export async function runDevelopmentTask(repository: string, raw: unknown, signa
           break
         }
         case 'candidate-checks': {
-          update('checking'); state.checks = await executeChecks(`attempt-${state.attempt}-checks`); await finish((state.checks as { passed: boolean }).passed ? 'review' : 'decide'); break
+          update('checking'); const result = await executeChecks(`attempt-${state.attempt}-checks`); state.checks = result
+          await finish(!result.available ? 'done' : result.passed ? 'review' : 'decide')
+          if (!result.available) update('stopped', '候选必需测试未完整执行或报告不可用；不启动审查或模型返工')
+          break
         }
         case 'review': {
           update('reviewing')

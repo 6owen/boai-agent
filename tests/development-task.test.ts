@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 真实隔离Git仓库、固定进程检查及明确标为协议fixture的开发/审查回执。
- * [OUTPUT]: 互斥/返工/PR及文件/回执锚定窗口真实SIGKILL；重命名源路径与回执/历史/预算/索引外改拒绝。
+ * [OUTPUT]: 补丁预检拒绝后的有界返工及不完整报告零模型；互斥/返工/PR/SIGKILL与回执/历史/预算/索引边界。
  * [POS]: 控制器确定性验收；真实Codex、PR与产品功能另行验收。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -9,7 +9,8 @@ import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promis
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { claimTask, digest, git, taskStatus } from '../scripts/development/task'
-import { applyDevelopmentEdits, runDevelopmentTask, validateRequiredTests } from '../scripts/development/controller'
+import { applyDevelopmentEdits, runDevelopmentTask } from '../scripts/development/controller'
+import { inspectRequiredTests } from '../scripts/development/checks'
 import { deliverDevelopmentTask } from '../scripts/development/pull-request'
 
 let root: string, repository: string, base: string
@@ -24,8 +25,71 @@ beforeEach(async () => {
 afterEach(async () => { await rm(root, { recursive: true, force: true }) })
 const task = (id = 'repair-fixture') => ({ version: 1, taskId: id, goal: '修复真实测试中的旧值并保留原仓库。', acceptance: ['读取结果应为fixed，原仓库保持old。'], source: 'deterministic-controller-fixture', base, targetBranch: 'main', paths: ['answer.txt', 'feature.txt'], checks: [{ id: 'actual-value', command: process.execPath, args: ['-e', "if(require('node:fs').readFileSync('answer.txt','utf8')!=='fixed')process.exit(1)"], timeoutMs: 5000 }], maxAttempts: 2, maxCodexCalls: 4, timeoutMs: 30_000 })
 it('必需测试必须唯一且实际成功，重复的失败不能被一个成功掩盖', () => {
-  expect(validateRequiredTests({ testResults: [{ assertionResults: [{ fullName: 'required', status: 'passed' }, { fullName: 'required', status: 'failed' }] }] }, ['required'])).toBe(false)
-  expect(validateRequiredTests({ testResults: [{ assertionResults: [{ fullName: 'required', status: 'skipped' }] }] }, ['required'])).toBe(false)
+  expect(inspectRequiredTests({ testResults: [{ assertionResults: [{ fullName: 'required', status: 'passed' }, { fullName: 'required', status: 'failed' }] }] }, ['required']).passed).toBe(false)
+  expect(inspectRequiredTests({ testResults: [{ assertionResults: [{ fullName: 'required', status: 'skipped' }] }] }, ['required']).passed).toBe(false)
+})
+it.each(['passed', 'failed', 'timedOut', 'skipped', 'interrupted'])('Playwright必需场景的%s与环境未运行分开', status => {
+  const report = { suites: [{ specs: [{ title: 'required', tests: [{ expectedStatus: 'passed', status: status === 'passed' ? 'expected' : 'unexpected', results: [{ status }] }] }] }], errors: [] }
+  expect(inspectRequiredTests(report, ['required'], 'playwright')).toEqual({ available: ['passed', 'failed', 'timedOut'].includes(status), passed: status === 'passed' })
+})
+it('Playwright全局错误、缺失、重复与重试不成为可用基线', () => {
+  const item = { title: 'required', tests: [{ expectedStatus: 'passed', status: 'expected', results: [{ status: 'passed' }] }] }
+  for (const report of [null, {}, { suites: [], errors: [{ message: 'UI resource locked' }] }, { suites: [{ specs: [item, item] }] }, { suites: [{ specs: [{ ...item, tests: [{ ...item.tests[0], results: [{ status: 'failed' }, { status: 'passed' }] }] }] }] }]) {
+    expect(inspectRequiredTests(report, ['required'], 'playwright')).toEqual({ available: false, passed: false })
+  }
+})
+it.each([false, true])('缺失旧片段整批拒绝后返工（拒绝回执中断=%s），不重复调用或误当成已写入', async interrupted => {
+  const input = task('invalid-patch-rework'), calls: string[] = []
+  const agent = async (kind: 'develop' | 'review', { state }: { state: { worktree: string; attempt: number; checks?: unknown } }) => {
+    calls.push(kind)
+    if (kind === 'review') return { value: { approved: true, findings: [], summary: 'fresh review' }, usage: { totalTokens: 10 } }
+    if (state.attempt === 2) {
+      expect(await readFile(join(state.worktree, 'answer.txt'), 'utf8')).toBe('old')
+      await expect(readFile(join(state.worktree, 'feature.txt'))).rejects.toMatchObject({ code: 'ENOENT' })
+      expect(JSON.stringify(state.checks)).toContain('替换必须唯一')
+    }
+    return { value: { summary: 'precise patch', edits: [{ path: 'feature.txt', beforeSha256: null, content: 'new feature' }, { path: 'answer.txt', beforeSha256: digest('old'), content: null, replacements: [{ oldText: state.attempt === 1 ? 'absent old header' : 'old', newText: 'fixed' }] }] }, usage: { totalTokens: 10 } }
+  }
+  let result = await runDevelopmentTask(repository, input, undefined, { guard, agent, checkpointFault: async (kind, point) => { if (interrupted && kind === 'proposal-rejected' && point === 'receipt') throw new Error('rejection receipt interrupted') } })
+  if (interrupted) {
+    expect(result.state.phase).toBe('needs-reconciliation'); expect(calls).toEqual(['develop'])
+    const deadline = result.state.deadline
+    result = await runDevelopmentTask(repository, input, undefined, { guard, agent, resume: true })
+    expect(result.state.deadline).toBe(deadline)
+  }
+  expect(result.state.phase, result.state.reason).toBe('reviewed'); expect(calls).toEqual(['develop', 'develop', 'review'])
+  expect(result.state.knownTokens).toBe(30); expect(result.state.codexCalls).toBe(3)
+  expect(git(result.state.worktree, 'rev-list', '--count', `${base}..HEAD`)).toBe('1')
+  expect(await readFile(join(result.directory, 'attempt-1-apply/result.json'), 'utf8')).toContain('替换必须唯一')
+  expect(await readFile(join(result.directory, 'attempt-1-develop/result.json'), 'utf8')).toContain('absent old header')
+})
+it.each(['calls', 'tokens'])('补丁预检返工不重置%s上限', async limit => {
+  const input = { ...task('invalid-patch-budget'), ...(limit === 'calls' ? { maxCodexCalls: 1 } : { maxTokens: 1000 }) }; let calls = 0
+  const result = await runDevelopmentTask(repository, input, undefined, { guard, agent: async () => { calls++; return { value: { summary: 'invalid patch', edits: [{ path: 'answer.txt', beforeSha256: digest('old'), content: null, replacements: [{ oldText: 'absent', newText: 'fixed' }] }] }, usage: { totalTokens: limit === 'tokens' ? 1000 : 10 } } } })
+  expect(result.state.phase).toBe('stopped'); expect(result.state.reason).toContain('到限'); expect(calls).toBe(1)
+  expect(result.state.knownTokens).toBe(limit === 'tokens' ? 1000 : 10); expect(result.state.codexCalls).toBe(1)
+  expect(git(result.state.worktree, 'status', '--porcelain')).toBe('')
+})
+it.each(['scope', 'hash'])('补丁%s边界失败仍停止核对，不当成文字替换错误返工', async fault => {
+  let calls = 0
+  const result = await runDevelopmentTask(repository, task('unsafe-patch-boundary'), undefined, { guard, agent: async () => { calls++; return { value: { summary: 'unsafe patch', edits: [{ path: fault === 'scope' ? '.gitignore' : 'answer.txt', beforeSha256: 'f'.repeat(64), content: 'fixed' }] }, usage: { totalTokens: 10 } } } })
+  expect(result.state.phase).toBe('stopped'); expect(result.state.reason).toMatch(/冻结范围|过期修改/); expect(calls).toBe(1)
+  expect(git(result.state.worktree, 'status', '--porcelain')).toBe(''); expect(git(result.state.worktree, 'rev-parse', 'HEAD')).toBe(base)
+})
+it('无效补丁到尝试上限后保留原提案及已知用量，不再请求或写文件', async () => {
+  const input = { ...task('invalid-patch-limit'), maxAttempts: 1 }; let calls = 0
+  const result = await runDevelopmentTask(repository, input, undefined, { guard, agent: async () => { calls++; return { value: { summary: 'invalid replacement', edits: [{ path: 'answer.txt', beforeSha256: digest('old'), content: null, replacements: [{ oldText: 'absent', newText: 'fixed' }] }] }, usage: { totalTokens: 10 } } } })
+  expect(result.state.phase).toBe('stopped'); expect(result.state.reason).toContain('尝试到限'); expect(calls).toBe(1)
+  expect(result.state.knownTokens).toBe(10); expect(result.state.usageComplete).toBe(true)
+  expect(git(result.state.worktree, 'status', '--porcelain')).toBe(''); expect(git(result.state.worktree, 'rev-parse', 'HEAD')).toBe(base)
+})
+it.each(['baseline', 'candidate'])('%s的零场景/资源错误停止，不用于开发、审查或返工', async stage => {
+  const input = { ...task('unavailable-tests'), checks: [{ id: 'bdd', command: process.execPath, args: ['-e', `const fs=require('node:fs'),candidate=fs.readFileSync('answer.txt','utf8')==='fixed',missing=${JSON.stringify(stage)}===(candidate?'candidate':'baseline');fs.mkdirSync('test-results',{recursive:true});fs.writeFileSync('test-results/report.json',JSON.stringify(missing?{suites:[],errors:[{message:'UI resource locked'}]}:{suites:[{specs:[{title:'required',tests:[{expectedStatus:'passed',status:'unexpected',results:[{status:'failed'}]}]}]}],errors:[]}));process.exit(1)`], timeoutMs: 5000, report: { path: 'test-results/report.json', requiredTests: ['required'], format: 'playwright' } }] }
+  let calls = 0
+  const result = await runDevelopmentTask(repository, input, undefined, { guard, agent: async () => { calls++; return { value: { summary: 'valid patch', edits: [{ path: 'answer.txt', beforeSha256: digest('old'), content: 'fixed' }] }, usage: { totalTokens: 10 } } } })
+  expect(result.state.phase, result.state.reason).toBe('stopped'); expect(result.state.reason).toContain('未完整执行')
+  expect(calls).toBe(stage === 'baseline' ? 0 : 1)
+  expect((stage === 'baseline' ? result.state.baseline : result.state.checks) as { available: boolean }).toMatchObject({ available: false, passed: false })
 })
 it('两个关联worktree不能同时领取同一个任务，另一任务不共用状态', async () => {
   const alternate = join(root, 'alternate'); git(repository, 'worktree', 'add', '--detach', alternate, base)
