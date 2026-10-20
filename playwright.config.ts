@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 中文业务场景、类型化步骤和 Electron fixture。
- * [OUTPUT]: BDD串行桌面、只读视觉基线及隔离候选/JSON/HTML报告；CI禁止更新期望图。
+ * [OUTPUT]: BDD串行桌面/只读视觉基线与候选报告；CI逐项即时打印错误，禁止自动更新期望图。
  * [POS]: 桌面端到端测试唯一配置。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -35,5 +35,5 @@ export default defineConfig({
   expect: { timeout: 15_000 },
   // Electron contexts are created outside the browser fixture; Desktop records their traces.
   // Playwright clears its own report directory; Cucumber needs a separate destination.
-  reporter: [['list'], ['html', { open: 'never', ...(uiRun ? { outputFolder: resolve(uiRun, 'html') } : {}) }], cucumberReporter('html', { outputFile: uiRun ? resolve(uiRun, 'cucumber/index.html') : 'cucumber-report/index.html' }), ...(uiRun ? [['json', { outputFile: resolve(uiRun, 'playwright.json') }] as const] : [])],
+  reporter: [[process.env.CI ? 'line' : 'list'], ['html', { open: 'never', ...(uiRun ? { outputFolder: resolve(uiRun, 'html') } : {}) }], cucumberReporter('html', { outputFile: uiRun ? resolve(uiRun, 'cucumber/index.html') : 'cucumber-report/index.html' }), ...(uiRun ? [['json', { outputFile: resolve(uiRun, 'playwright.json') }] as const] : [])],
 })

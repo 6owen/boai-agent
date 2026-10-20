@@ -1,5 +1,5 @@
 # [INPUT]: 仓库变更、锁定依赖、离线协议服务。
-# [OUTPUT]: 同SHA离线/视觉门槛；安装实证、完整BDD时间预算和原生崩溃栈留证，失败不放行。
+# [OUTPUT]: 同SHA离线/视觉门槛；桌面取消/失败也保留证据，即时错误日志，缺结果不放行。
 # [POS]: .github/workflows/tests.yml。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 name: Offline tests
@@ -72,7 +72,7 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
-        if: failure()
+        if: always() && steps.bdd.outcome != 'success'
         with:
           name: desktop-failure-evidence
           path: |
