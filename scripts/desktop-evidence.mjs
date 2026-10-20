@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 本批原始报告/冻结选择、完整留证目录及原执行目录身份。
- * [OUTPUT]: 唯一对应清单、零缺口/错误和每次启动trace逐字节核验；支持原件完整搬移后复核。
+ * [OUTPUT]: 唯一清单/零缺口/逐启动trace字节核验；报告起点与worker计时槽分开，原件限本次串行时段。
  * [POS]: 桌面runner及本地/远程CI汇总共用原件门槛，不启动GUI。
  * [PROTOCOL]: 修改同步Header与scripts/.folder.md。
  */
@@ -32,12 +32,22 @@ export async function verifyDesktopEvidence(directory, report, selected, origina
     const bytes = await readFile(path); return { path, bytes, value: JSON.parse(bytes.toString()) }
   }))
   const rows = desktopReportRows(report), proof = []
+  const runStart = Date.parse(report.stats?.startTime), runDuration = report.stats?.duration
+  if (!Number.isFinite(runStart) || !Number.isFinite(runDuration) || runDuration <= 0) throw new Error('原报告缺少实际运行时段')
+  const runEnd = runStart + runDuration
+  const timeline = rows.map(row => ({ id: row.playwrightId, start: Date.parse(row.tests[0].results[0].startTime) })).sort((a, b) => a.start - b.start)
+  if (timeline.some(row => !Number.isFinite(row.start) || row.start < runStart || row.start > runEnd)) throw new Error('实际场景调度时间越出本次运行')
   for (const expected of selected) {
     const matches = manifests.filter(entry => entry.value.testId === expected.playwrightId)
     if (matches.length !== 1) throw new Error(`缺少唯一对应原件清单：${expected.id}`)
     const { path, bytes, value: manifest } = matches[0], row = rows.find(row => row.playwrightId === expected.playwrightId), test = row.tests[0], result = test.results[0]
     const started = Date.parse(manifest.startedAt), completed = Date.parse(manifest.completedAt), actualStart = Date.parse(result.startTime)
-    if (manifest.schemaVersion !== 1 || manifest.project !== test.projectName || manifest.title !== expected.titles.at(-1) || JSON.stringify(manifest.titlePath) !== JSON.stringify([expected.file + '.spec.js', ...expected.titles]) || basename(manifest.location?.file ?? '') !== expected.file + '.spec.js' || manifest.location.line !== expected.line || manifest.retry !== 0 || manifest.repeatEachIndex !== 0 || manifest.status !== 'passed' || manifest.expectedStatus !== 'passed' || manifest.modelMode !== 'offline-protocol-or-fixture' || ![started, completed, actualStart].every(Number.isFinite) || started < actualStart || completed < started || completed > actualStart + result.duration + 1) throw new Error(`原件清单身份、时间或来源不对应：${expected.id}`)
+    // Reported startTime is TestInfo's early wall-clock start; result.duration
+    // sums timeout slots, excluding separate preparation slots. The fixture's own
+    // interval must fit the elapsed duration and end before the next serial case
+    // (or this report's actual end), without admitting another run's originals.
+    const next = timeline[timeline.findIndex(row => row.id === expected.playwrightId) + 1]?.start ?? runEnd
+    if (manifest.schemaVersion !== 1 || manifest.project !== test.projectName || manifest.title !== expected.titles.at(-1) || JSON.stringify(manifest.titlePath) !== JSON.stringify([expected.file + '.spec.js', ...expected.titles]) || basename(manifest.location?.file ?? '') !== expected.file + '.spec.js' || manifest.location.line !== expected.line || manifest.retry !== 0 || manifest.repeatEachIndex !== 0 || manifest.status !== 'passed' || manifest.expectedStatus !== 'passed' || manifest.modelMode !== 'offline-protocol-or-fixture' || ![started, completed, actualStart].every(Number.isFinite) || started < actualStart || completed < started || completed - started > result.duration + 1 || completed > Math.min(next, runEnd) + 1) throw new Error(`原件清单身份、时间或来源不对应：${expected.id}`)
     if (!['gaps', 'cleanupErrors', 'testErrors'].every(key => Array.isArray(manifest[key]) && !manifest[key].length) || !Number.isInteger(manifest.launchCount) || manifest.launchCount < 1 || !Array.isArray(manifest.evidence) || !manifest.evidence.some(item => item.kind === 'screenshot') || !Array.isArray(manifest.traces) || manifest.traces.length !== manifest.launchCount || new Set(manifest.traces.map(item => item.launch)).size !== manifest.launchCount || manifest.traces.some(item => !Number.isInteger(item.launch) || item.launch < 1 || item.launch > manifest.launchCount)) throw new Error(`原件有缺口、清理错误或缺少启动回放：${expected.id}`)
     const resources = []
     for (const item of [...manifest.evidence, ...manifest.traces]) {

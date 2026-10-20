@@ -1,20 +1,28 @@
 /*
  * [INPUT]: 临时原件树及真实子进程gh协议夹具；不访问GitHub、不运行GUI。
- * [OUTPUT]: 原件改动可检出，精确SHA/最新尝试/并发终态/未知写入不得回传假成功；只证明本地CI边界。
+ * [OUTPUT]: 原件/精确SHA/并发终态与未知写入核验；假gh使用隔离的真实SQLite锁，不领取生产回传锁。
  * [POS]: 本地CI封存和GitHub状态适配合同测试。
  * [PROTOCOL]: 修改同步Header与tests/.folder.md。
  */
-import { afterEach, expect, it } from 'vitest'
+import { afterEach, expect, it, vi } from 'vitest'
 import { mkdtemp, mkdir, writeFile, readFile, rm, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+const publicationLock = vi.hoisted(() => ({ file: '' }))
+vi.mock('../scripts/resource-lock.mjs', async importOriginal => {
+  const actual = await importOriginal<{ acquireResourceLock(path: string): () => void }>()
+  return { ...actual, acquireResourceLock: () => {
+    if (!publicationLock.file) throw new Error('协议夹具必须先分配自己的SQLite锁')
+    return actual.acquireResourceLock(publicationLock.file)
+  } }
+})
 // @ts-expect-error Node CLI helper has no declarations.
 import { localCiFiles, verifyLocalCiSeal } from '../scripts/local-ci.mjs'
 // @ts-expect-error Node CLI helper has no declarations.
 import { beginLocalCiPublication } from '../scripts/local-ci-github.mjs'
 
 const directories: string[] = [], originalPath = process.env.PATH
-afterEach(async () => { process.env.PATH = originalPath; delete process.env.BOAI_CI_STATUS_TEST_CONFIG; for (const path of directories.splice(0)) await rm(path, { force: true, recursive: true }) })
+afterEach(async () => { publicationLock.file = ''; process.env.PATH = originalPath; delete process.env.BOAI_CI_STATUS_TEST_CONFIG; for (const path of directories.splice(0)) await rm(path, { force: true, recursive: true }) })
 async function directory() { const path = await mkdtemp(join(tmpdir(), 'boai-ci-contract-')); directories.push(path); return path }
 it('本批全部原件参与封存，变动/额外文件/符号链接不能隐去', async () => {
   const root = await directory(); await mkdir(join(root, 'nested')); await writeFile(join(root, 'nested/original'), 'first')
@@ -35,6 +43,7 @@ it('公开摘要锚定已核验的原清单字节，核验期间只改清单也�
 const sha = 'a'.repeat(40), runId = '11111111-1111-1111-1111-111111111111'
 async function fakeGithub(mode: string) {
   const root = await directory(), bin = join(root, 'bin'), config = join(root, 'config.json'); await mkdir(bin)
+  publicationLock.file = join(root, 'publication.sqlite')
   await writeFile(config, JSON.stringify({ mode, sha, calls: [], statuses: [] }))
   await writeFile(join(bin, 'gh'), `#!/usr/bin/env node
 import fs from 'node:fs';

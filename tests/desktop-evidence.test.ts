@@ -1,5 +1,5 @@
 /*
- * [INPUT]: 临时普通原件/Playwright协议报告，包含缺失、改字节、越界和伪造清单反例。
+ * [INPUT]: 临时原件/Playwright报告；覆盖调度/worker时钟、过期/越时段、缺失、改字节、越界和伪造清单。
  * [OUTPUT]: 执行后及CI汇总同一核验入口拒绝不完整原件；完整搬移保持可核对，不是GUI成功。
  * [POS]: T1截图/trace交付门槛的文件系统合同测试。
  * [PROTOCOL]: 修改同步Header与tests/.folder.md。
@@ -28,7 +28,7 @@ async function fixture() {
   const save = () => writeFile(join(scene, 'manifest.json'), JSON.stringify(manifest))
   await save()
   const selected = [{ id: 'core-case', file: 'core.feature', titles: ['Core', 'Case'], playwrightId: 'pw-one', line: 6 }]
-  const report = { suites: [{ title: 'core.feature.spec.js', suites: [{ title: 'Core', specs: [{ title: 'Case', file: 'core.feature.spec.js', id: 'pw-one', line: 6, tests: [{ projectName: '', expectedStatus: 'passed', status: 'expected', results: [{ status: 'passed', retry: 0, duration: 12, startTime: '2026-10-21T00:00:00.000Z' }] }] }] }] }], errors: [], stats: { expected: 1, skipped: 0, unexpected: 0, flaky: 0 } }
+  const report = { suites: [{ title: 'core.feature.spec.js', suites: [{ title: 'Core', specs: [{ title: 'Case', file: 'core.feature.spec.js', id: 'pw-one', line: 6, tests: [{ projectName: '', expectedStatus: 'passed', status: 'expected', results: [{ status: 'passed', retry: 0, duration: 12, startTime: '2026-10-21T00:00:00.000Z' }] }] }] }] }], errors: [], stats: { expected: 1, skipped: 0, unexpected: 0, flaky: 0, startTime: '2026-10-21T00:00:00.000Z', duration: 20 } }
   const identity = desktopPlanIdentity(Buffer.from(JSON.stringify({ version: 1, t1: { mode: 'offline-protocol-or-fixture', ui: 'all-registered-cases', cases: [{ ...selected[0], family: 'chat' }] } })))
   return { directory, scene, trace, manifest, save, selected, report, identity }
 }
@@ -40,6 +40,32 @@ it('完整场景原件在runner及CI汇总均核对，整体搬移后保持原�
   await expect(verifyDesktopGate(moved, summary, f.report, f.identity)).resolves.toEqual(proof)
   await rm(join(moved, 'results/trace.zip'))
   await expect(verifyDesktopGate(moved, summary, f.report, f.identity)).rejects.toThrow()
+})
+it('调度到worker启动有延迟仍核对本次真实时段，不混用两个起点', async () => {
+  const f = await fixture()
+  f.manifest.startedAt = '2026-10-21T00:00:01.000Z'
+  f.manifest.completedAt = '2026-10-21T00:00:01.012Z'
+  f.report.stats.duration = 1020
+  await f.save()
+  await expect(verifyDesktopEvidence(f.directory, f.report, f.selected)).resolves.toHaveLength(1)
+})
+it.each(['missing-run-time', 'outside-run', 'longer-than-worker', 'overlaps-next-case'] as const)('%s原件不能取得资格', async kind => {
+  const f = await fixture()
+  if (kind === 'missing-run-time') f.report.stats.startTime = ''
+  if (kind === 'outside-run') { f.manifest.startedAt = '2026-10-21T00:00:00.021Z'; f.manifest.completedAt = '2026-10-21T00:00:00.022Z' }
+  if (kind === 'longer-than-worker') f.manifest.completedAt = '2026-10-21T00:00:00.015Z'
+  if (kind === 'overlaps-next-case') {
+    const next = structuredClone(f.report.suites[0]!.suites[0]!.specs[0]!)
+    next.id = 'pw-next'; next.title = 'Next'; next.line = 7
+    next.tests[0]!.results[0]!.startTime = '2026-10-21T00:00:00.005Z'
+    f.report.suites[0]!.suites[0]!.specs.push(next); f.report.stats.expected = 2
+    f.selected.push({ ...f.selected[0]!, id: 'next-case', playwrightId: 'pw-next', line: 7, titles: ['Core', 'Next'] })
+    const scene = join(f.directory, 'review/scenarios/two'); await mkdir(scene)
+    await writeFile(join(scene, 'image.png'), 'original-image')
+    await writeFile(join(scene, 'manifest.json'), JSON.stringify({ ...f.manifest, testId: 'pw-next', title: 'Next', titlePath: ['core.feature.spec.js', 'Core', 'Next'], location: { ...f.manifest.location, line: 7 }, startedAt: '2026-10-21T00:00:00.005Z', completedAt: '2026-10-21T00:00:00.012Z' }))
+  }
+  await f.save()
+  await expect(verifyDesktopEvidence(f.directory, f.report, f.selected)).rejects.toThrow(kind === 'missing-run-time' ? '原报告缺少实际运行时段' : '原件清单身份、时间或来源不对应：core-case')
 })
 it.each(['missing-manifest', 'missing-trace', 'changed-image', 'symlink-image', 'extra-manifest', 'wrong-id', 'gap', 'cleanup', 'test-error', 'missing-errors', 'duplicate-trace', 'outside-path', 'wrong-title', 'wrong-project', 'wrong-time', 'real-provider'] as const)('%s不能靠测试成功取得原件资格', async kind => {
   const f = await fixture()
