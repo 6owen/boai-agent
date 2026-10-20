@@ -1,0 +1,70 @@
+# [INPUT]: 固定macOS runner及旧BOAI截图基准。
+# [OUTPUT]: 仅诊断Apple字体来源/按需下载后的旧基准比较；不替换PNG、不提供发布资格。
+# [POS]: 独立诊断分支手动工作流，不合入产品分支。
+# [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
+name: Font source probe
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  font:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.16.0'
+          cache: pnpm
+      - env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: ''
+        run: |
+          pnpm install --frozen-lockfile
+          node node_modules/electron/install.js
+          pnpm exec electron --version
+      - run: pnpm build
+      - run: defaults write -g AppleLanguages -array zh-Hans-CN
+      - name: Enumerate and request system-managed font
+        run: |
+          cat > /tmp/boai-font-source.swift <<'SWIFT'
+          import Foundation
+          import CoreText
+          import CryptoKit
+          func inventory(_ phase: String) {
+            let collection = CTFontCollectionCreateFromAvailableFonts(nil)
+            let descriptors = CTFontCollectionCreateMatchingFontDescriptors(collection) as? [CTFontDescriptor] ?? []
+            var records: [[String: Any]] = []
+            for descriptor in descriptors {
+              let name = CTFontDescriptorCopyAttribute(descriptor, kCTFontNameAttribute) as? String ?? ""
+              if !["PingFangSC-Regular", "PingFangSC-Medium", "PingFangSC-Semibold"].contains(name) { continue }
+              let font = CTFontCreateWithFontDescriptor(descriptor, 13, nil)
+              let url = CTFontCopyAttribute(font, kCTFontURLAttribute) as? URL
+              let bytes = url.flatMap { try? Data(contentsOf: $0) }
+              records.append(["name": name, "family": CTFontCopyFamilyName(font) as String, "path": url?.path ?? "unknown", "version": CTFontCopyName(font, kCTFontVersionNameKey) as String? ?? "unknown", "sha256": bytes.map { SHA256.hash(data: $0).map { String(format: "%02x", $0) }.joined() } ?? "unknown", "downloadable": CTFontDescriptorCopyAttribute(descriptor, kCTFontDownloadableAttribute) as? Bool ?? false, "downloaded": CTFontDescriptorCopyAttribute(descriptor, kCTFontDownloadedAttribute) as? Bool ?? false])
+            }
+            let data = try! JSONSerialization.data(withJSONObject: ["phase": phase, "fonts": records], options: [.sortedKeys])
+            print("FONT_SOURCE " + String(data: data, encoding: .utf8)!)
+          }
+          inventory("before")
+          let names = ["PingFangSC-Regular", "PingFangSC-Medium", "PingFangSC-Semibold"]
+          let descriptors = names.map { CTFontDescriptorCreateWithAttributes([kCTFontNameAttribute: $0, kCTFontDownloadableAttribute: true] as CFDictionary) }
+          let finished = DispatchSemaphore(value: 0)
+          let started = CTFontDescriptorMatchFontDescriptorsWithProgressHandler(descriptors as CFArray, nil) { state, info in
+            print("FONT_DOWNLOAD_STATE " + String(state.rawValue))
+            if state == .didFinish || state == .didFail { finished.signal() }
+            return true
+          }
+          if !started || finished.wait(timeout: .now() + 60) == .timedOut { print("FONT_DOWNLOAD_INCOMPLETE"); exit(1) }
+          inventory("after")
+          SWIFT
+          swift /tmp/boai-font-source.swift
+      - run: node scripts/ui-regression.mjs check --output .local/ui-font-source
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: font-source-ui
+          path: .local/ui-font-source/
+          include-hidden-files: true
+          if-no-files-found: ignore
