@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 切换到长单聊后先等待原消息控件可编辑，再核对非零阅读位置，避免把加载占位当富文本。
  * [INPUT]: 冻结快捷键合同、原Desktop/群聊夹具和真实键盘/导航控件。
  * [OUTPUT]: 精确四组合、三页实际显隐/阅读位置/焦点、非编辑弹层及已消费事件边界，固定零模型断言。
  * [POS]: 第22组真实新功能验收；开发任务不可改本文件或期望截图。
@@ -38,6 +39,7 @@ Then('设置列出搜索侧边栏后退和前进的实际组合', async ({ runti
 When('用户通过快捷键打开原搜索并切换当前侧边栏', async ({ runtime, shortcuts }) => {
   const page = runtime.page, input = page.getByRole('textbox', { name: '消息内容', exact: true })
   await page.getByRole('navigation', { name: '会话列表', exact: true }).getByRole('button', { name: /^与研究员对话/ }).click()
+  await expect(input).toBeEditable()
   await input.fill(draft)
   const messages = page.locator('.messages'), search = page.getByRole('button', { name: '搜索会话内容', exact: true })
   await messages.hover(); await page.mouse.wheel(0, 100_000)
