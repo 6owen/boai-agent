@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: c5个人候选DMG/ZIP已built，ZIP8/DMG2分批资产验证通过；Actions停用、本地新完整CI待复验，尚无正式发布或安装升级。
 [OUTPUT]: 候选版本统一0.2.4、旧进程和链式链接边界已补；09f完整CI因原件时钟误拒failed，修复待复验，未发布或安装。
 [OUTPUT]: 个人候选release:build已接隔离ad-hoc arm64 DMG/ZIP及身份/hash；实际打包和升级仍待验，当前CI由本机执行。
 [OUTPUT]: 789已自动PR完整通过3935模块/T128/UI18并回传；本机发布前检改main原件/最新状态候选，Tag/安装待实施，详22组03。
