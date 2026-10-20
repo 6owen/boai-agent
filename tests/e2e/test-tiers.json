@@ -1,0 +1,285 @@
+{
+  "version": 1,
+  "decision": "2026-10-21 user confirmed T1 fixed core and ALL UI baselines; retain historical failures and migrate old special cases in T2/T3",
+  "t1": {
+    "mode": "offline-protocol-or-fixture",
+    "ui": "all-registered-cases",
+    "cases": [
+      {
+        "id": "employee-create",
+        "family": "employee",
+        "file": "creation.feature",
+        "titles": [
+          "创建员工与群聊并保持手动列表状态",
+          "创建员工与群聊并保持手动列表状态"
+        ]
+      },
+      {
+        "id": "employee-chat-identity",
+        "family": "employee",
+        "file": "contacts.feature",
+        "titles": [
+          "通讯录配置与会话复用",
+          "通讯录配置与会话复用"
+        ]
+      },
+      {
+        "id": "chat-cancel-restart",
+        "family": "chat-lifecycle",
+        "file": "desktop.feature",
+        "titles": [
+          "自主群聊隔离取消与重启",
+          "自主群聊隔离取消与重启"
+        ]
+      },
+      {
+        "id": "api-chat-file-restart",
+        "family": "api",
+        "file": "mastra-mainline.feature",
+        "titles": [
+          "Mastra员工完成同一私聊中的聊天和文件交付",
+          "新员工连续私聊交付修订并在重启后保留原件"
+        ]
+      },
+      {
+        "id": "command-approval",
+        "family": "permissions",
+        "file": "command-permissions.feature",
+        "titles": [
+          "员工命令永久授权",
+          "明确记住命令授权并可在通讯录撤销"
+        ]
+      },
+      {
+        "id": "group-reading",
+        "family": "group",
+        "file": "group-chat.feature",
+        "titles": [
+          "群聊消息与任务有清楚的阅读层级",
+          "群聊在不同窗口中保持消息和交付关系"
+        ]
+      },
+      {
+        "id": "group-approval",
+        "family": "group",
+        "file": "group-chat.feature",
+        "titles": [
+          "群聊消息与任务有清楚的阅读层级",
+          "群聊审批保留实际命令与单次授权边界"
+        ]
+      },
+      {
+        "id": "materials-preview",
+        "family": "materials",
+        "file": "materials.feature",
+        "titles": [
+          "用户材料按原件和明确共享范围进入已有聊天",
+          "聊天文件直接打开安全的文档与代码预览"
+        ]
+      },
+      {
+        "id": "materials-source",
+        "family": "materials",
+        "file": "materials.feature",
+        "titles": [
+          "用户材料按原件和明确共享范围进入已有聊天",
+          "同名材料保持各自原文并随当前群成员发送"
+        ]
+      },
+      {
+        "id": "materials-failure",
+        "family": "materials",
+        "file": "materials.feature",
+        "titles": [
+          "用户材料按原件和明确共享范围进入已有聊天",
+          "失败材料阻止发送但保留其他草稿"
+        ]
+      },
+      {
+        "id": "model-save-restart",
+        "family": "settings",
+        "file": "composer.feature",
+        "titles": [
+          "会话轻量模型与命令菜单",
+          "模型只在当前连接内切换且保留草稿与权限"
+        ]
+      },
+      {
+        "id": "model-save-refusal",
+        "family": "settings",
+        "file": "composer.feature",
+        "titles": [
+          "会话轻量模型与命令菜单",
+          "模型保存失败不显示成功或自动重试"
+        ]
+      },
+      {
+        "id": "appearance-restart",
+        "family": "appearance",
+        "file": "appearance.feature",
+        "titles": [
+          "外观即时生效与原生窗口持久化",
+          "外观即时生效与原生窗口持久化"
+        ]
+      },
+      {
+        "id": "appearance-typography-icon",
+        "family": "appearance",
+        "file": "appearance.feature",
+        "titles": [
+          "外观即时生效与原生窗口持久化",
+          "三组字体字号与开发版 Dock 图标独立保存"
+        ]
+      },
+      {
+        "id": "appearance-background",
+        "family": "appearance",
+        "file": "appearance.feature",
+        "titles": [
+          "外观即时生效与原生窗口持久化",
+          "Craft图片换肤与原主题恢复"
+        ]
+      },
+      {
+        "id": "plugins-restart",
+        "family": "plugins",
+        "file": "application-plugins.feature",
+        "titles": [
+          "用户管理内置预览和主题插件",
+          "插件管理筛选启停并跨重启保持"
+        ]
+      },
+      {
+        "id": "plugins-theme-fallback",
+        "family": "plugins",
+        "file": "application-plugins.feature",
+        "titles": [
+          "用户管理内置预览和主题插件",
+          "主题插件停用回退并恢复原选择"
+        ]
+      },
+      {
+        "id": "plugins-bad-config",
+        "family": "plugins",
+        "file": "application-plugins.feature",
+        "titles": [
+          "用户管理内置预览和主题插件",
+          "无法读取的插件配置保留原件且管理只读"
+        ]
+      },
+      {
+        "id": "shortcuts-settings",
+        "family": "shortcuts",
+        "file": "keyboard-shortcuts.feature",
+        "titles": [
+          "设置中的快捷键复用原界面动作",
+          "设置可查阅四种实际快捷键"
+        ]
+      },
+      {
+        "id": "shortcuts-search-sidebar",
+        "family": "shortcuts",
+        "file": "keyboard-shortcuts.feature",
+        "titles": [
+          "设置中的快捷键复用原界面动作",
+          "搜索及侧边栏按键与原按钮等价并保留草稿"
+        ]
+      },
+      {
+        "id": "shortcuts-history",
+        "family": "shortcuts",
+        "file": "keyboard-shortcuts.feature",
+        "titles": [
+          "设置中的快捷键复用原界面动作",
+          "后退前进沿原导航历史和可用边界"
+        ]
+      },
+      {
+        "id": "shortcuts-editing",
+        "family": "shortcuts",
+        "file": "keyboard-shortcuts.feature",
+        "titles": [
+          "设置中的快捷键复用原界面动作",
+          "编辑组合输入和弹层保留自己的按键"
+        ]
+      },
+      {
+        "id": "shortcuts-select",
+        "family": "shortcuts",
+        "file": "keyboard-shortcuts.feature",
+        "titles": [
+          "设置中的快捷键复用原界面动作",
+          "关闭的自定义选择框保留自己的按键"
+        ]
+      },
+      {
+        "id": "codex-chat-restart",
+        "family": "native",
+        "file": "codex-employee.feature",
+        "titles": [
+          "本机 Codex 独立员工聊天",
+          "使用<运行时>从设置接入本机运行时并在原 IM 中创建员工连续对话",
+          "使用离线协议从设置接入本机运行时并在原 IM 中创建员工连续对话"
+        ]
+      },
+      {
+        "id": "native-file-chat-example-1",
+        "family": "native",
+        "file": "native-execution.feature",
+        "titles": [
+          "原生员工执行过程纠偏",
+          "本机员工通过普通聊天交付修订并重启续聊",
+          "例子: #1"
+        ]
+      },
+      {
+        "id": "native-file-chat-example-2",
+        "family": "native",
+        "file": "native-execution.feature",
+        "titles": [
+          "原生员工执行过程纠偏",
+          "本机员工通过普通聊天交付修订并重启续聊",
+          "例子: #2"
+        ]
+      },
+      {
+        "id": "directory-data-source-approval",
+        "family": "permissions",
+        "file": "directory-permissions.feature",
+        "titles": [
+          "员工命令和目录一起审批",
+          "已绑定数据源读取外部目录仍需批准"
+        ]
+      },
+      {
+        "id": "directory-restart",
+        "family": "permissions",
+        "file": "directory-permissions.feature",
+        "titles": [
+          "员工命令和目录一起审批",
+          "API授权目录独立保存且取消移除保留原件"
+        ]
+      }
+    ]
+  },
+  "t2": {
+    "status": "not-configured",
+    "scope": "Explicitly configured real providers, repeated business/performance tasks and long-running checks; no automatic paid calls",
+    "entry": "Existing per-feature real-provider commands require their original explicit configuration and budgets"
+  },
+  "t3": {
+    "mode": "full-legacy-desktop",
+    "entry": "pnpm test:electron remains unchanged; manual strict runner reports incomplete/skip/failure as failed",
+    "historical": {
+      "runId": "39433831836",
+      "source": "6000ea83",
+      "observedFailures": 83,
+      "observedProgress": 252,
+      "registeredAtThatRun": 556,
+      "status": "failed-and-cancelled",
+      "currentInventoryCount": 558,
+      "currentInventoryStatus": "listed-not-run",
+      "evidence": "ai-docs/spec/22.开发自动化与持续测试/03-实施步骤与验收.md"
+    }
+  }
+}

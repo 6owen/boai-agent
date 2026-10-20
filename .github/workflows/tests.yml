@@ -1,5 +1,5 @@
 # [INPUT]: 仓库变更、锁定依赖、离线协议服务。
-# [OUTPUT]: 同SHA离线/视觉门槛；CI显式独立环境档案且只读，桌面取消/失败也保留证据。
+# [OUTPUT]: 同SHA工程/T1固定核心及全部UI门槛；T3旧失败独立保留，缺场/跳过/重试不放行。
 # [POS]: .github/workflows/tests.yml。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 name: Offline tests
@@ -17,8 +17,8 @@ jobs:
   desktop:
     name: Engineering and desktop
     runs-on: macos-15
-    # 552串行BDD另加约11分钟模块；仅扩大整个job预算，单测试超时不变。
-    timeout-minutes: 90
+    # T1固定28核心；原90秒单测试不变，预留模块与完整失败证据收集。
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -57,7 +57,7 @@ jobs:
       - id: dataset
         run: pnpm eval:dataset
       - id: bdd
-        run: pnpm test:electron
+        run: node scripts/test-desktop.mjs t1 --output .local/t1
       - if: always()
         env:
           CI_STEP_RESULTS: ${{ toJSON(steps) }}
@@ -69,6 +69,13 @@ jobs:
         with:
           name: engineering
           path: .local/ci/engineering.json
+          include-hidden-files: true
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: t1
+          path: .local/t1/
           include-hidden-files: true
           if-no-files-found: error
       - uses: actions/upload-artifact@v4

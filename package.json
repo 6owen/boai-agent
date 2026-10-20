@@ -39,7 +39,9 @@
     "dev:task": "node scripts/dev-task.mjs",
     "design:prepare": "node scripts/design.mjs prepare",
     "design:serve": "node scripts/design.mjs serve",
-    "release:check": "node scripts/release-check.mjs"
+    "release:check": "node scripts/release-check.mjs",
+    "test:t1": "pnpm build && node scripts/test-desktop.mjs t1",
+    "test:t3": "pnpm build && node scripts/test-desktop.mjs t3"
   },
   "dependencies": {
     "@agentclientprotocol/sdk": "1.5.0",
