@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 现行分角色字体沿界面字体控件核对；富文本消息使用原messageDraft，保留字体/换肤/重启断言。
  * [INPUT]: 外观即时生效与原生窗口持久化的中文场景、Electron fixture 与现有产品 API。
  * [OUTPUT]: Craft Scenic选图保持浅色并可切换深色、跨页交互/重启与移除恢复验收；重置先确认，仅替换一次文件选择。
  * [OUTPUT]: 本人菜单进入设置并保留外观/原生窗口完整断言； 使用现有 Base UI 下拉选项验证；外观即时生效与原生窗口持久化的真实桌面业务步骤与断言。
@@ -12,6 +13,7 @@ import { nextMaterialDialog } from '../support/materials'
 import { createBdd } from 'playwright-bdd'
 import { test as base } from '../support/test'
 import type { Desktop } from '../support/desktop'
+import { messageDraft } from '../support/editor-controls'
 
 type Scenario = {
   scenicAsset?: string
@@ -113,7 +115,7 @@ async function customizeAppearance(previous: Awaited<ReturnType<typeof resizeAnd
   await page!.getByLabel('搜索设置').fill('')
   await page!.getByRole('button', { name: '浅色', exact: true }).click()
   await selectAppearance(page!, '浅色配色', 'VS Code Plus')
-  await selectAppearance(page!, '字体', '系统默认')
+  await selectAppearance(page!, '界面字体', '系统默认')
   await page!.getByLabel('强调色', { exact: true }).fill('#007acc')
   await page!.getByLabel('背景色', { exact: true }).fill('#f8fafc')
   await page!.getByLabel('前景色', { exact: true }).fill('#101010')
@@ -137,7 +139,7 @@ async function verifyAppearanceRestart(previous: Awaited<ReturnType<typeof custo
   await expect.poll(zoom).toBeCloseTo(0.9)
   await expectWindowFilled()
   await expect(page!.getByLabel('界面缩放', { exact: true })).toContainText('90%')
-  await expect(page!.getByLabel('字体', { exact: true })).toContainText('系统默认')
+  await expect(page!.getByLabel('界面字体', { exact: true })).toContainText('系统默认')
   await expect(page!.getByLabel('背景色', { exact: true })).toHaveValue('#f8fafc')
   await page!.getByRole('button', { name: '深色', exact: true }).click()
   await expect(page!.getByLabel('背景色', { exact: true })).toHaveValue('#212121')
@@ -155,7 +157,7 @@ async function verifyAppearanceRestart(previous: Awaited<ReturnType<typeof custo
   await expect(page!.getByRole('button', { name: '恢复默认外观' })).toBeEnabled()
   await page!.getByRole('button', { name: '恢复默认外观' }).click()
   await page!.getByRole('button', { name: '确认重置', exact: true }).click()
-  await expect(page!.getByLabel('字体', { exact: true })).toContainText('Geist')
+  await expect(page!.getByLabel('界面字体', { exact: true })).toContainText('Geist')
   await page!.evaluate(() => document.fonts.ready)
   expect(await page!.evaluate(() => [...document.fonts].some((font) => font.family === 'Geist' && font.status === 'loaded'))).toBe(true)
   await expect
@@ -254,7 +256,7 @@ Then('背景覆盖窗口且聊天与设置保持可操作', async ({ runtime, sc
   await page.getByRole('button', { name: '与 bobo 新建会话', exact: true }).click()
   await expect(page.locator('.chat-composer')).toBeVisible()
   await page.getByRole('textbox', { name: '消息内容', exact: true }).fill('背景换肤验收：输入框仍可编辑。')
-  await expect(page.getByRole('textbox', { name: '消息内容', exact: true })).toHaveValue('背景换肤验收：输入框仍可编辑。')
+  await expect.poll(() => messageDraft(page.getByRole('textbox', { name: '消息内容', exact: true }))).toBe('背景换肤验收：输入框仍可编辑。')
   await runtime.reviewNativeCheckpoint('图片玻璃聊天与全局导航')
 })
 Then('重启仍显示托管背景且移除恢复原主题', async ({ runtime, scenario }) => {
