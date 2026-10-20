@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 本人仓库main/同仓库PR快照、专用worktree与本机登录会话。
- * [OUTPUT]: 每个目标SHA一次受管本地CI；旧进程未排空不切源码，失败/未知不自动重试。
+ * [OUTPUT]: 每个目标SHA一次受管本地CI；核对Git顶层/登记，旧进程未排空不切源码，失败/未知不自动重试。
  * [POS]: 本地CI轮询及可选LaunchAgent；不启动Actions、不合并或发布。
  * [PROTOCOL]: 修改同步Header与scripts/.folder.md。
  */
@@ -9,7 +9,7 @@ import { mkdir, readFile, writeFile, readdir, lstat, realpath } from 'node:fs/pr
 import { join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { homedir, tmpdir, userInfo } from 'node:os'
-import { randomUUID } from 'node:crypto'
+import { createHash } from 'node:crypto'
 import { build } from 'esbuild'
 import buildProcessGuard from './build-process-guard.mjs'
 import { acquireResourceLock } from './resource-lock.mjs'
@@ -37,9 +37,18 @@ export function localCiTargets(mainSha, pages) {
 export function assertCiWorkerOwner(owner, expected) {
   if (owner?.version !== 1 || owner.repository !== localCiRepository || owner.worker !== expected.worker || owner.common !== expected.common) throw new Error('专用worktree所有权不匹配，拒绝使用已有目录')
 }
+export async function assertCiWorkerGit(source, directory) {
+  const common = resolve(source, git(source, 'rev-parse', '--git-common-dir'))
+  if ((await lstat(directory)).isSymbolicLink() || await realpath(directory) !== directory || resolve(directory, git(directory, 'rev-parse', '--git-common-dir')) !== common) throw new Error('专用worktree目录或Git归属已变化')
+  const entries = git(source, 'worktree', 'list', '--porcelain', '-z').split('\0\0').map(entry => entry.split('\0'))
+  const registered = entries.filter(entry => entry[0] === `worktree ${directory}`)
+  if (git(directory, 'rev-parse', '--show-toplevel') !== directory || registered.length !== 1 || !registered[0].includes('detached')) throw new Error('专用worktree顶层或登记身份不匹配')
+}
 async function tools(directory) {
-  const file = join(directory, `tools-${randomUUID()}.mjs`)
-  await build({ stdin: { contents: "export {repairProcess,saveProcess} from './tests/evaluation/repair-process.ts';export {drainPendingProcesses} from './scripts/development/recovery.ts'", resolveDir: root }, outfile: file, bundle: true, platform: 'node', format: 'esm', packages: 'external', target: 'node24' })
+  const output = await build({ stdin: { contents: "export {repairProcess,saveProcess} from './tests/evaluation/repair-process.ts';export {drainPendingProcesses} from './scripts/development/recovery.ts'", resolveDir: root }, write: false, bundle: true, platform: 'node', format: 'esm', packages: 'external', target: 'node24' })
+  const bytes = Buffer.from(output.outputFiles[0].contents), file = join(directory, `tools-${createHash('sha256').update(bytes).digest('hex')}.mjs`)
+  if (await exists(file)) { if (!(await readFile(file)).equals(bytes)) throw new Error('已有调度工具原件hash不匹配') }
+  else await writeFile(file, bytes, { flag: 'wx' })
   return import(pathToFileURL(file).href)
 }
 async function recover(directory, guard, helpers) {
@@ -58,7 +67,7 @@ async function prepareWorker(target, helpers, guard) {
   git(root, 'fetch', '--no-tags', 'origin', `+refs/heads/${target.branch}:refs/remotes/origin/${target.branch}`)
   if (git(root, 'rev-parse', `refs/remotes/origin/${target.branch}`) !== target.sha) throw new Error('排队后远程分支已更新，本次不运行旧SHA')
   if (!await exists(worker)) git(root, 'worktree', 'add', '--detach', worker, target.sha)
-  if ((await lstat(worker)).isSymbolicLink() || await realpath(worker) !== worker || resolve(worker, git(worker, 'rev-parse', '--git-common-dir')) !== common) throw new Error('专用worktree目录或Git归属已变化')
+  await assertCiWorkerGit(root, worker)
   await drainCiWorker(worker, helpers, guard)
   if (git(worker, 'status', '--porcelain')) throw new Error('CI专用worktree有未知修改，保留现场，不重置')
   git(worker, 'checkout', '--detach', target.sha)
