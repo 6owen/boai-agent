@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [INPUT]: shadcn/typeset官方样式 https://ui.shadcn.com/typeset.css（2026-10-11）。
  * [OUTPUT]: 原始Typeset规则及文末BOAI compact预设；仅影响显式Typeset容器，兼容现有Shiki。
  * [POS]: 全局可复用正文排版，由global.css加载；旧.markdown阅读样式保持。
@@ -11,10 +12,10 @@
 
 @layer components {
   .typeset {
-    --typeset-font-body: inherit;
-    --typeset-font-heading: var(--font-heading);
-    --typeset-font-mono: var(--font-mono);
-    --typeset-size: 1em;
+    --typeset-font-body: var(--font-content-family);
+    --typeset-font-heading: var(--font-content-family);
+    --typeset-font-mono: var(--font-code-family);
+    --typeset-size: var(--text-content-body);
     --typeset-leading: 1.75;
     --typeset-flow: 1.25em;
   }
@@ -23,7 +24,7 @@
 @layer components {
   .typeset {
     font-family: var(--typeset-font-body);
-    font-size: calc(var(--typeset-size) * 1.125);
+    font-size: var(--typeset-size);
     line-height: var(--typeset-leading);
     color: var(--color-foreground, currentColor);
     overflow-wrap: break-word;
@@ -66,34 +67,34 @@
       margin-block-end: 0;
     }
     &:where(h1) {
-      font-size: 1.75em;
+      font-size: var(--text-content-heading1);
       line-height: 1.3;
       margin-block-start: var(--typeset-flow);
     }
     &:where(h2) {
-      font-size: 1.25em;
+      font-size: var(--text-content-heading2);
       line-height: 1.4;
       margin-block-start: calc(var(--typeset-flow) * 1.4);
     }
     &:where(h3) {
-      font-size: 1.125em;
+      font-size: var(--text-content-heading3);
       line-height: 1.45;
       margin-block-start: var(--typeset-flow);
     }
     &:where(h4) {
-      font-size: 1em;
+      font-size: var(--text-content-heading4);
       line-height: 1.5;
       margin-block-start: var(--typeset-flow);
     }
     &:where(h5) {
-      font-size: 0.875em;
+      font-size: var(--text-content-secondary);
       line-height: 1.5;
       font-weight: 500;
       color: var(--typeset-muted);
       margin-block-start: calc(var(--typeset-flow) / 0.875);
     }
     &:where(h6) {
-      font-size: 0.8125em;
+      font-size: var(--text-content-caption);
       line-height: 1.5;
       font-weight: 500;
       letter-spacing: 0.08em;
@@ -111,7 +112,7 @@
       margin-block-start: 1em;
     }
     &:where(:is(h1, h2, h3, h4) :is(code)) {
-      font-size: 0.9em;
+      font-size: var(--text-code-body);
     }
 
     /* Links. */
@@ -161,7 +162,7 @@
       text-decoration-line: line-through;
     }
     &:where(sup, sub) {
-      font-size: 0.75em;
+      font-size: var(--text-content-caption);
       line-height: 0;
       position: relative;
       vertical-align: baseline;
@@ -248,7 +249,7 @@
     /* Keyboard keys. */
     &:where(kbd) {
       font-family: inherit;
-      font-size: 0.85em;
+      font-size: var(--text-content-caption);
       font-weight: 500;
       border: 1px solid var(--typeset-rule);
       border-block-end-width: 2px;
@@ -282,7 +283,7 @@
         color-mix(in oklab, currentColor 8%, transparent)
       );
       font-family: var(--typeset-font-mono);
-      font-size: 0.85em;
+      font-size: var(--text-code-body);
       border-radius: min(calc(var(--radius, 0.5em) * 0.6), 0.35em);
       padding: 0.125em 0.3em;
     }
@@ -294,7 +295,7 @@
         color-mix(in oklab, currentColor 8%, transparent)
       );
       font-family: var(--typeset-font-mono);
-      font-size: 0.875em;
+      font-size: var(--text-code-body);
       line-height: 1.5;
       tab-size: 2;
       direction: ltr;
@@ -337,7 +338,7 @@
       margin-block-start: calc(var(--typeset-flow) * 2);
       border-block-start: 1px solid var(--typeset-rule);
       padding-block-start: var(--typeset-flow);
-      font-size: 0.875em;
+      font-size: var(--text-content-secondary);
       color: var(--typeset-muted);
     }
 
@@ -368,7 +369,7 @@
     }
     &:where(figcaption, caption) {
       color: var(--typeset-muted);
-      font-size: 0.875em;
+      font-size: var(--text-content-secondary);
       text-align: center;
       margin-block-start: calc(0.75em / 0.875);
     }
@@ -380,7 +381,7 @@
        Bare tables stay real tables (keep their semantics) and wrap to fit. */
     &:where(table) {
       max-width: 100%;
-      font-size: 1em;
+      font-size: var(--text-content-body);
       line-height: 1.5;
       font-variant-numeric: tabular-nums;
       border-collapse: separate;
@@ -499,20 +500,20 @@
 @layer components {
   .typeset {
     --typeset-font-heading: inherit;
-    --typeset-font-mono: "SFMono-Regular", Consolas, monospace;
+    --typeset-font-mono: var(--font-code-family);
   }
 
   .typeset-compact {
-    --typeset-size: 13px;
+    --typeset-size: var(--text-content-body);
     --typeset-leading: 1.65;
     --typeset-flow: 0.65em;
     font-size: var(--typeset-size);
     overflow-wrap: anywhere;
   }
 
-  .typeset-compact :where(h1) { font-size: 1.23em; }
-  .typeset-compact :where(h2) { font-size: 1.077em; }
-  .typeset-compact :where(h3, h4, h5, h6) { font-size: 1em; }
+  .typeset-compact :where(h1) { font-size: var(--text-content-heading2); }
+  .typeset-compact :where(h2) { font-size: var(--text-content-heading3); }
+  .typeset-compact :where(h3, h4, h5, h6) { font-size: var(--text-content-body); }
   .typeset-compact :where(h1, h2, h3, h4, h5, h6) {
     line-height: 1.5;
     letter-spacing: normal;
@@ -525,7 +526,7 @@
 
   /* Retain Shiki tokens and horizontal scrolling, while sharing prose rhythm. */
   .typeset pre.shiki-code-block {
-    font-size: 0.923em;
+    font-size: var(--text-code-body);
     line-height: 1.6;
     margin-block: calc(var(--typeset-flow) / 0.923) 0;
     padding: 0.75em 1em;

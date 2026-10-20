@@ -26,9 +26,9 @@ export const buttonVariants = cva(
       },
       size: {
         /* compact toolbar pill — fixed height, lighter weight */
-        xs: "h-[24px] rounded-full px-2.5 text-[12px] font-normal leading-none gap-1",
+        xs: "h-[24px] rounded-full px-2.5 text-[length:var(--text-ui-secondary)] font-normal leading-none gap-1",
         /* canonical action pill — 27px tall, roomy sides */
-        sm: "h-[27px] px-3 text-[13px] leading-none rounded-full gap-1.5",
+        sm: "h-[27px] px-3 text-[length:var(--text-ui-body)] leading-none rounded-full gap-1.5",
         md: "px-4 py-[9px] text-sm leading-none rounded-full gap-2",
       },
     },

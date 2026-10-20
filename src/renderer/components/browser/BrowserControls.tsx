@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [INPUT]: 原 BrowserControls 布局与当前图标/主题 token。
  * [OUTPUT]: 保留 48px 原地址栏、导航、加载反馈；只替换依赖与中文文案。
  * [POS]: src/renderer/components/browser/BrowserControls.tsx。
@@ -259,7 +260,7 @@ export function BrowserControls({
           onKeyDown={handleKeyDown}
           placeholder={t('browser.urlPlaceholder')}
           className={cn(
-            'w-full rounded-[8px] bg-transparent px-3 pl-8 text-[13px] text-foreground/70 outline-none transition-all',
+            'w-full rounded-[8px] bg-transparent px-3 pl-8 text-[length:var(--text-ui-body)] text-foreground/70 outline-none transition-all',
             compact ? 'h-[28px]' : 'h-[30px]',
             !safeThemeColor && (isFocused
               ? 'bg-background border border-transparent shadow-minimal'
@@ -279,7 +280,7 @@ export function BrowserControls({
         <span className="absolute inset-y-0 left-3 flex items-center justify-center">
           {loading ? (
             <span className="flex items-center justify-center h-3.5 w-3.5" style={safeThemeColor ? { color: isFocused ? 'var(--tb-fg)' : 'var(--tb-fg-muted)' } : undefined}>
-              <Spinner className="text-[11px] text-foreground/40" />
+              <Spinner className="text-[length:var(--text-ui-caption)] text-foreground/40" />
             </span>
           ) : (
             <Globe className="h-3.5 w-3.5 text-foreground/30" style={safeThemeColor ? { color: isFocused ? 'var(--tb-fg)' : 'var(--tb-fg-muted)' } : undefined} />

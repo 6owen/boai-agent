@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [INPUT]: 原居中空态卡片布局。
  * [OUTPUT]: 保留普通浏览器说明/示例布局，无接管/交还控制权提示；示例不自动新建或发送会话。
  * [POS]: src/renderer/components/browser/BrowserEmptyStateCard.tsx。
@@ -32,7 +33,7 @@ export function BrowserEmptyStateCard({
     <div className="w-full h-full flex items-center justify-center p-8">
       <div className="w-full max-w-[700px] bg-background shadow-minimal rounded-[8px] overflow-hidden border border-border/30">
         <div className="px-4 py-3 border-b border-border/30 flex items-center bg-muted/20 select-none">
-          <h3 className="text-[13px] font-medium text-foreground tracking-tight">
+          <h3 className="text-[length:var(--text-ui-body)] font-medium text-foreground tracking-tight">
             {title}
           </h3>
         </div>
@@ -52,8 +53,8 @@ export function BrowserEmptyStateCard({
                   onClick={() => onPromptSelect?.(sample)}
                   className="w-fit max-w-full flex items-center gap-1 h-8 px-2.5 rounded-[6px] bg-background shadow-minimal hover:bg-foreground/[0.03] transition-colors text-left cursor-pointer"
                 >
-                  <span className="w-4 shrink-0 text-[11px] text-foreground/40 tabular-nums">{index + 1}.</span>
-                  <span className="truncate text-[12px] text-foreground/70">{sample.short}</span>
+                  <span className="w-4 shrink-0 text-[length:var(--text-ui-caption)] text-foreground/40 tabular-nums">{index + 1}.</span>
+                  <span className="truncate text-[length:var(--text-ui-secondary)] text-foreground/70">{sample.short}</span>
                 </button>
               ))}
             </div>

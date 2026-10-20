@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [OUTPUT]: 右侧任务/文件列表填满详情可用高度，文件筛选常驻、列表内部滚动，不影响主聊天布局。
  * [OUTPUT]: composer顶部留白收紧为2px，让消息底部scroll fade更贴近输入框。
  * [OUTPUT]: 侧栏及右侧面板分界线复用 Card 的垂直细线/高光，保留悬停提示、1px布局与扩展拖拽区域。
@@ -42,7 +43,7 @@ input:focus-visible,textarea:focus-visible,select:focus-visible {
 }
 .app-icon {
   display:inline-block;
-  font-size:16px;
+  font-size:var(--text-ui-heading);
   flex-shrink:0;
   vertical-align:middle
 }
@@ -232,7 +233,7 @@ fieldset {
   flex-shrink:0
 }
 .list-heading h2 {
-  font-size:16px;
+  font-size:var(--text-ui-heading);
   font-weight:600;
   margin:0
 }
@@ -248,7 +249,7 @@ fieldset {
   justify-content:space-between;
   gap:12px;
   margin-bottom:9px;
-  font-size:13px
+  font-size:var(--text-ui-body)
 }
 .employee-picker-list {
   max-height:min(50dvh,360px);
@@ -292,7 +293,7 @@ fieldset {
   display:flex;
   gap:8px;
   align-items:center;
-  font-size:12px;
+  font-size:var(--text-ui-secondary);
   font-weight:500;
   line-height:1.4;
   white-space:nowrap;
@@ -302,12 +303,12 @@ fieldset {
 .conversation-title time {
   margin-left:auto;
   flex-shrink:0;
-  font-size:11px;
+  font-size:var(--text-ui-caption);
   color:var(--muted-foreground);
   font-weight:400
 }
 .conversation-preview {
-  font-size:11px;
+  font-size:var(--text-ui-caption);
   color:var(--muted-foreground);
   white-space:nowrap;
   overflow:hidden;
@@ -335,7 +336,7 @@ fieldset {
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  font-size:15px;
+  font-size:var(--text-ui-subheading);
   font-weight:600;
   color:var(--avatar-color,var(--foreground));
   border-radius:11px;
@@ -347,19 +348,19 @@ fieldset {
 .avatar.small {
   width:28px;
   height:28px;
-  font-size:13px;
+  font-size:var(--text-ui-body);
   border-radius:8px
 }
 .conversation-item .avatar,.conversation-item .group-avatar,.message-avatar .avatar {
   width:30px;
   height:30px;
-  font-size:13px;
+  font-size:var(--text-ui-body);
   border-radius:9px
 }
 .user-avatar {
   background:var(--accent);
   color:var(--muted-foreground);
-  font-size:13px
+  font-size:var(--text-ui-body)
 }
 .contact-row {
   display:flex;
@@ -380,7 +381,7 @@ fieldset {
   padding:11px 7px
 }
 .list-empty {
-  font-size:13px;
+  font-size:var(--text-ui-body);
   color:var(--muted-foreground);
   padding:24px 10px;
   line-height:1.8
@@ -410,12 +411,12 @@ fieldset {
   color:var(--muted-foreground);
 }
 .starter-cards strong {
-  font-size:13px;
+  font-size:var(--text-ui-body);
   font-weight:500;
   color:var(--foreground)
 }
 .starter-cards small {
-  font-size:12px;
+  font-size:var(--text-ui-secondary);
   line-height:1.7;
   color:var(--muted-foreground)
 }
@@ -468,7 +469,7 @@ fieldset {
   pointer-events:auto;
   margin:0;
   min-width:0;
-  font-size:14px;
+  font-size:var(--text-ui-emphasis);
   font-weight:500;
   white-space:nowrap;
   overflow:hidden;
@@ -502,14 +503,14 @@ fieldset {
   color:var(--muted-foreground)
 }
 .chat-empty h2 {
-  font-size:20px;
+  font-size:var(--text-ui-sectionTitle);
   font-weight:500;
   color:var(--foreground);
   margin-bottom:8px;
   letter-spacing:-.02em
 }
 .chat-empty p {
-  font-size:12px;
+  font-size:var(--text-ui-secondary);
   line-height:1.6;
   margin-bottom:0;
   max-width:380px
@@ -526,7 +527,7 @@ fieldset {
   border:2px solid var(--surface-content);
   box-sizing:content-box;
   border-radius:10px;
-  font-size:13px
+  font-size:var(--text-ui-body)
 }
 .message-row {
   display:flex;
@@ -550,12 +551,12 @@ fieldset {
   margin-bottom:4px
 }
 .message-meta strong {
-  font-size:13px;
+  font-size:var(--text-ui-body);
   font-weight:600;
   color:var(--foreground)
 }
 .message-meta time {
-  font-size:11px;
+  font-size:var(--text-ui-caption);
   color:var(--muted-foreground)
 }
 .message-meta .reply-action {
@@ -567,7 +568,8 @@ fieldset {
   opacity:1
 }
 .message-bubble {
-  font-size:14px;
+  font-family:var(--font-content-family);
+  font-size:var(--text-content-lead);
   line-height:1.7;
   color:var(--foreground);
   overflow-wrap:anywhere
@@ -584,12 +586,12 @@ fieldset {
   padding:10px 14px
 }
 .message-row.system .message-bubble {
-  font-size:13px;
+  font-size:var(--text-ui-body);
   color:var(--muted-foreground)
 }
 .message-status {
   display:block;
-  font-size:11px;
+  font-size:var(--text-ui-caption);
   color:var(--muted-foreground);
   margin-top:9px;
   line-height:1.6
@@ -601,7 +603,7 @@ fieldset {
   background:var(--muted);
   border-left:2px solid var(--border);
   color:var(--muted-foreground);
-  font-size:12px;
+  font-size:var(--text-ui-secondary);
   padding:7px 10px;
   margin-bottom:10px;
   overflow:hidden;
@@ -643,7 +645,7 @@ fieldset {
   padding:0 2px 9px
 }
 .mention-bar>span {
-  font-size:11px;
+  font-size:var(--text-ui-caption);
   color:var(--muted-foreground);
   margin-right:4px
 }
@@ -651,7 +653,7 @@ fieldset {
   border:1px solid var(--border);
   background:var(--card);
   color:var(--muted-foreground);
-  font-size:12px;
+  font-size:var(--text-ui-secondary);
   padding:6px 10px;
   border-radius:var(--radius-pill)
 }
@@ -664,7 +666,7 @@ fieldset {
   display:flex;
   align-items:center;
   gap:7px;
-  font-size:12px;
+  font-size:var(--text-ui-secondary);
   color:var(--muted-foreground);
   background:var(--muted);
   padding:7px 9px;
@@ -697,7 +699,7 @@ fieldset {
   flex:1
 }
 .dirty-label {
-  font-size:11px;
+  font-size:var(--text-ui-caption);
   color:var(--warning)
 }
 .detail-content {
@@ -720,23 +722,23 @@ fieldset {
 .detail-content:has(> .detail-session > .conversation-panel-content):not([hidden]), .detail-session:has(> .conversation-panel-content), .conversation-panel-content { display:flex;flex-direction:column;flex:1;min-width:0;min-height:0;overflow:hidden }
 .file-preview-detail>header,.file-preview-detail>details { flex-shrink:0 }
 .detail-section h2 {
-  font-size:20px;
+  font-size:var(--text-ui-sectionTitle);
   margin:15px 0;
   font-weight:550
 }
 .detail-section h3 {
-  font-size:15px;
+  font-size:var(--text-ui-subheading);
   font-weight:550;
   margin:8px 0 13px
 }
 .detail-section h4 {
-  font-size:13px;
+  font-size:var(--text-ui-body);
   font-weight:550;
   margin:27px 0 13px;
   color:var(--foreground)
 }
 .detail-section>p {
-  font-size:13px;
+  font-size:var(--text-ui-body);
   color:var(--muted-foreground);
   line-height:1.8
 }
@@ -754,11 +756,11 @@ fieldset {
   min-width:0
 }
 .employee-identity strong {
-  font-size:13px;
+  font-size:var(--text-ui-body);
   font-weight:550
 }
 .employee-identity small {
-  font-size:12px;
+  font-size:var(--text-ui-secondary);
   color:var(--muted-foreground);
   line-height:1.5
 }
@@ -783,12 +785,12 @@ fieldset {
   padding:21px 20px 0
 }
 .editor-intro h3 {
-  font-size:16px;
+  font-size:var(--text-ui-heading);
   font-weight:550;
   margin-bottom:9px
 }
 .editor-intro p {
-  font-size:13px;
+  font-size:var(--text-ui-body);
   color:var(--muted-foreground);
   line-height:1.8;
   margin-bottom:0
@@ -824,12 +826,12 @@ fieldset {
   min-width:0
 }
 .field-label {
-  font-size:13px;
+  font-size:var(--text-ui-body);
   color:var(--foreground);
   font-weight:500
 }
 .field-hint {
-  font-size:12px;
+  font-size:var(--text-ui-secondary);
   color:var(--muted-foreground);
   line-height:1.7;
   margin:0
@@ -885,12 +887,12 @@ fieldset {
   min-width:0
 }
 .resource-option strong {
-  font-size:13px;
+  font-size:var(--text-ui-body);
   font-weight:500;
   color:var(--foreground)
 }
 .resource-option small,.resource-option-meta>span {
-  font-size:11px;
+  font-size:var(--text-ui-caption);
   color:var(--muted-foreground);
   white-space:nowrap;
   overflow:hidden;
@@ -911,12 +913,12 @@ fieldset {
   gap:5px
 }
 .toggle-row strong {
-  font-size:13px;
+  font-size:var(--text-ui-body);
   font-weight:500;
   color:var(--foreground)
 }
 .toggle-row small {
-  font-size:12px;
+  font-size:var(--text-ui-secondary);
   color:var(--muted-foreground);
   line-height:1.7
 }
@@ -937,26 +939,26 @@ fieldset {
   min-width:0
 }
 .file-row strong {
-  font-size:13px;
+  font-size:var(--text-ui-body);
   color:var(--foreground);
   font-weight:550
 }
 .file-row small {
-  font-size:12px;
+  font-size:var(--text-ui-secondary);
   color:var(--muted-foreground);
   line-height:1.6
 }
 .file-row em {
   font-style:normal;
-  font-size:11px;
+  font-size:var(--text-ui-caption);
   color:var(--muted-foreground)
 }
 .file-editor {
   margin:15px 0
 }
 .file-editor textarea {
-  font-family:"SFMono-Regular",Consolas,monospace;
-  font-size:12px;
+  font-family:var(--font-code-family);
+  font-size:var(--text-ui-secondary);
   min-height:260px;
   white-space:pre-wrap;
   overflow-wrap:anywhere
@@ -965,7 +967,7 @@ fieldset {
   background:var(--card)
 }
 .scope-note {
-  font-size:12px;
+  font-size:var(--text-ui-secondary);
   color:var(--muted-foreground);
   line-height:1.8;
   padding:13px 0
@@ -975,7 +977,7 @@ fieldset {
   margin-bottom:10px;
 }
 .memory-card>p {
-  font-size:13px;
+  font-size:var(--text-ui-body);
   line-height:1.9;
   white-space:pre-wrap;
   overflow-wrap:anywhere;
@@ -983,11 +985,11 @@ fieldset {
   margin-bottom:9px
 }
 .memory-card small {
-  font-size:11px;
+  font-size:var(--text-ui-caption);
   color:var(--muted-foreground)
 }
 .memory-card details {
-  font-size:11px;
+  font-size:var(--text-ui-caption);
   color:var(--muted-foreground);
   margin:9px 0
 }
@@ -1010,7 +1012,7 @@ fieldset {
   background:var(--card);
   border-radius:8px;
   margin:14px 0;
-  font-size:12px;
+  font-size:var(--text-ui-secondary);
   color:var(--warning);
   line-height:1.8
 }
@@ -1027,13 +1029,13 @@ fieldset {
   align-items:center;
   gap:8px;
   flex-wrap:wrap;
-  font-size:13px;
+  font-size:var(--text-ui-body);
   padding:9px 0;
   border-bottom:1px solid var(--border)
 }
 .delivery-row>small {
   margin-left:auto;
-  font-size:11px;
+  font-size:var(--text-ui-caption);
   color:var(--muted-foreground)
 }
 .delivery-row>p {
@@ -1047,16 +1049,16 @@ fieldset {
   display:flex;
   align-items:center;
   gap:6px;
-  font-size:12px
+  font-size:var(--text-ui-secondary)
 }
 .run-topline strong {
-  font-size:13px;
+  font-size:var(--text-ui-body);
   font-weight:550
 }
 .run-topline>span:last-child {
   margin-left:auto;
   color:var(--muted-foreground);
-  font-size:11px
+  font-size:var(--text-ui-caption)
 }
 .run-card>.field-hint {
   margin:8px 0
@@ -1083,7 +1085,7 @@ fieldset {
   background:var(--warning)
 }
 .tool-row {
-  font-size:11px;
+  font-size:var(--text-ui-caption);
   color:var(--muted-foreground);
   padding:8px 0 3px
 }
@@ -1101,7 +1103,7 @@ fieldset {
   white-space:nowrap
 }
 .tool-row pre {
-  font-size:11px;
+  font-size:var(--text-ui-caption);
   line-height:1.7;
   white-space:pre-wrap;
   overflow-wrap:anywhere;
@@ -1129,13 +1131,13 @@ fieldset {
   min-width:0
 }
 .artifact-item strong {
-  font-size:13px;
+  font-size:var(--text-ui-body);
   color:var(--foreground);
   font-weight:500;
   overflow-wrap:anywhere
 }
 .artifact-item small {
-  font-size:11px;
+  font-size:var(--text-ui-caption);
   color:var(--muted-foreground)
 }
 .approval-card {
@@ -1148,11 +1150,11 @@ fieldset {
   align-items:center;
   gap:8px;
   color:var(--warning);
-  font-size:13px
+  font-size:var(--text-ui-body)
 }
 .approval-card pre {
-  font-family:monospace;
-  font-size:12px;
+  font-family:var(--font-code-family);
+  font-size:var(--text-ui-secondary);
   white-space:pre-wrap;
   overflow-wrap:anywhere;
   line-height:1.8;
@@ -1185,13 +1187,13 @@ fieldset {
   margin-bottom:32px
 }
 .page-heading h2 {
-  font-size:24px;
+  font-size:var(--text-ui-display);
   font-weight:600;
   margin:0 0 8px;
   letter-spacing:-.025em
 }
 .page-heading p {
-  font-size:13px;
+  font-size:var(--text-ui-body);
   color:var(--muted-foreground);
   line-height:1.8;
   margin:0
@@ -1211,7 +1213,7 @@ fieldset {
   padding:28px 12px
 }
 .page-subnav h2 {
-  font-size:18px;
+  font-size:var(--text-ui-title);
   margin:0 12px 24px;
   font-weight:600
 }
@@ -1223,7 +1225,7 @@ fieldset {
   border:0;
   width:100%;
   padding:10px 12px;
-  font-size:13px;
+  font-size:var(--text-ui-body);
   color:var(--muted-foreground);
   margin-bottom:4px;
   text-align:left;
@@ -1266,20 +1268,20 @@ fieldset {
   gap:8px
 }
 .connection-card-top strong {
-  font-size:13px;
+  font-size:var(--text-ui-body);
   font-weight:550
 }
 .connection-card-top .pill {
   margin-left:auto
 }
 .connection-card p {
-  font-size:13px;
+  font-size:var(--text-ui-body);
   color:var(--muted-foreground);
   line-height:1.8;
   margin:13px 0
 }
 .connection-card h3 {
-  font-size:16px;
+  font-size:var(--text-ui-heading);
   font-weight:550;
   margin-bottom:15px
 }
@@ -1319,7 +1321,7 @@ fieldset {
   width:auto;
   max-width:220px;
   min-width:120px;
-  font-size:13px
+  font-size:var(--text-ui-body)
 }
 .library-grid {
   display:grid;
@@ -1353,13 +1355,13 @@ fieldset {
   min-width:0
 }
 .library-card strong {
-  font-size:13px;
+  font-size:var(--text-ui-body);
   font-weight:550;
   overflow-wrap:anywhere
 }
 .library-card small {
   color:var(--muted-foreground);
-  font-size:12px;
+  font-size:var(--text-ui-secondary);
   line-height:1.7;
   display:-webkit-box;
   -webkit-line-clamp:2;
@@ -1374,12 +1376,12 @@ fieldset {
   width:100%;
   margin-top:16px;
   text-align:left;
-  font-size:13px
+  font-size:var(--text-ui-body)
 }
 .agent-binding span:last-child {
   margin-left:auto;
   color:var(--muted-foreground);
-  font-size:12px
+  font-size:var(--text-ui-secondary)
 }
 .entity-row {
   display:flex;
@@ -1387,7 +1389,7 @@ fieldset {
   gap:9px;
   border:0;
   background:var(--muted);
-  font-size:13px;
+  font-size:var(--text-ui-body);
   width:100%;
   text-align:left;
   padding:10px;
@@ -1396,10 +1398,10 @@ fieldset {
 .entity-row>span:last-child:not(.avatar) {
   margin-left:auto;
   color:var(--muted-foreground);
-  font-size:11px
+  font-size:var(--text-ui-caption)
 }
 .list-label {
-  font-size:13px!important;
+  font-size:var(--text-ui-body)!important;
   background:var(--muted);
   padding:10px;
   border-radius:6px
@@ -1416,7 +1418,7 @@ fieldset {
   display:flex;
   flex-direction:column;
   gap:8px;
-  font-size:13px;
+  font-size:var(--text-ui-body);
   color:var(--muted-foreground)
 }
 .schedule-preview input,.schedule-preview textarea {
@@ -1425,7 +1427,7 @@ fieldset {
   padding:9px;
   background:var(--card);
   color:var(--muted-foreground);
-  font-size:13px
+  font-size:var(--text-ui-body)
 }
 .help-page {
   padding:39px 46px;
@@ -1436,12 +1438,12 @@ fieldset {
   border-bottom:1px solid var(--border)
 }
 .help-page article h3 {
-  font-size:15px;
+  font-size:var(--text-ui-subheading);
   font-weight:550;
   margin-bottom:10px
 }
 .help-page article p {
-  font-size:13px;
+  font-size:var(--text-ui-body);
   line-height:1.9;
   color:var(--muted-foreground);
   margin:0
@@ -1463,19 +1465,19 @@ fieldset {
   margin-bottom:24px
 }
 .empty-state h2 {
-  font-size:23px;
+  font-size:var(--text-ui-displaySmall);
   font-weight:450;
   color:var(--foreground);
   margin-bottom:15px
 }
 .empty-state h3 {
-  font-size:16px;
+  font-size:var(--text-ui-heading);
   font-weight:500;
   color:var(--muted-foreground);
   margin:0 0 13px
 }
 .empty-state p {
-  font-size:13px;
+  font-size:var(--text-ui-body);
   line-height:1.9;
   max-width:450px;
   color:var(--muted-foreground);
@@ -1486,7 +1488,7 @@ fieldset {
   padding:26px 12px
 }
 .empty-note {
-  font-size:12px;
+  font-size:var(--text-ui-secondary);
   color:var(--muted-foreground);
   line-height:1.8;
   border:1px dashed var(--border);
@@ -1523,7 +1525,7 @@ fieldset {
   border:1px solid var(--border);
   border-radius:var(--radius-control);
   padding:12px 14px;
-  font-size:13px;
+  font-size:var(--text-ui-body);
   line-height:1.7;
   margin-bottom:12px;
   overflow-wrap:anywhere
@@ -1547,7 +1549,7 @@ fieldset {
   gap:8px;
   padding:25px;
   color:var(--muted-foreground);
-  font-size:13px;
+  font-size:var(--text-ui-body);
   line-height:1.7
 }
 .conversation-stage>.inline-loading {
@@ -1562,14 +1564,14 @@ fieldset {
   width:fit-content;
   background:var(--muted);
   color:var(--muted-foreground);
-  font-size:11px;
+  font-size:var(--text-ui-caption);
   padding:4px 8px;
   border-radius:var(--radius-pill);
   line-height:1.5
 }
 .resource-path {
-  font-size:12px!important;
-  font-family:"SFMono-Regular",Consolas,monospace;
+  font-size:var(--text-ui-secondary)!important;
+  font-family:var(--font-code-family);
   color:var(--muted-foreground)!important;
   line-height:1.8;
   overflow-wrap:anywhere;
@@ -1583,19 +1585,19 @@ fieldset {
   margin:22px 0 15px
 }
 .subsection-heading h3 {
-  font-size:13px;
+  font-size:var(--text-ui-body);
   margin:0;
   font-weight:550
 }
 .error-copy {
   color:var(--destructive);
-  font-size:12px;
+  font-size:var(--text-ui-secondary);
   line-height:1.7;
   overflow-wrap:anywhere;
   margin:9px 0
 }
 .muted {
-  font-size:13px;
+  font-size:var(--text-ui-body);
   color:var(--muted-foreground)
 }
 .unavailable-page {
@@ -1609,13 +1611,13 @@ fieldset {
   color:var(--muted-foreground)
 }
 .unavailable-page h1 {
-  font-size:24px;
+  font-size:var(--text-ui-display);
   font-weight:500;
   color:var(--foreground);
   margin:25px 0 15px
 }
 .unavailable-page p {
-  font-size:13px;
+  font-size:var(--text-ui-body);
   line-height:1.8
 }
 @keyframes spin {
@@ -1655,7 +1657,7 @@ fieldset {
     padding:16px 11px
   }
   .starter-cards small {
-    font-size:11px
+    font-size:var(--text-ui-caption)
   }
 }
 @media(max-width:1099px) {
@@ -1737,19 +1739,19 @@ fieldset {
     padding:26px
   }
   .page-heading h2 {
-    font-size:22px
+    font-size:var(--text-ui-pageTitle)
   }
   .schedule-page .empty-state {
     padding:23px
   }
   .schedule-page .empty-state h2 {
-    font-size:20px
+    font-size:var(--text-ui-sectionTitle)
   }
   .global-toolbar {
     padding-right:11px
   }
   .toolbar-title {
-    font-size:13px
+    font-size:var(--text-ui-body)
   }
   .help-page {
     padding:30px
@@ -1781,7 +1783,7 @@ fieldset {
     gap:6px
   }
   .page-heading [data-slot=button] {
-    font-size:12px;
+    font-size:var(--text-ui-secondary);
     padding-left:10px;
     padding-right:10px
   }
@@ -1800,7 +1802,7 @@ fieldset {
   }
 }
 .list-activity {
-  font-size:10px;
+  font-size:var(--text-ui-tiny);
   font-weight:400;
   color:var(--link);
   margin-left:auto;
@@ -1818,7 +1820,7 @@ fieldset {
 
 .error-details {
   color:var(--legacy-secondary);
-  font-size:12px;
+  font-size:var(--text-ui-secondary);
   margin:9px 0
 }
 .error-details summary {
@@ -1832,7 +1834,7 @@ fieldset {
   padding:9px;
   border-radius:6px;
   background:var(--muted);
-  font-size:11px;
+  font-size:var(--text-ui-caption);
   line-height:1.6
 }
 
@@ -1842,7 +1844,7 @@ fieldset {
   flex-wrap:wrap;
   gap:7px;
   color:var(--legacy-secondary);
-  font-size:11px;
+  font-size:var(--text-ui-caption);
   margin-bottom:10px
 }
 .run-context {
@@ -1857,12 +1859,12 @@ fieldset {
   padding:4px 0 4px 10px;
   margin:14px 0 18px;
   line-height:1.7;
-  font-size:13px;
+  font-size:var(--text-ui-body);
   overflow-wrap:anywhere
 }
 .round-trigger strong {
   color:var(--legacy-secondary);
-  font-size:11px;
+  font-size:var(--text-ui-caption);
   font-weight:500
 }
 .round-trigger>span {
@@ -1878,7 +1880,7 @@ fieldset {
 }
 .round-history>summary {
   cursor:pointer;
-  font-size:13px;
+  font-size:var(--text-ui-body);
   font-weight:550
 }
 .round-history>.field-hint {
@@ -1893,7 +1895,7 @@ fieldset {
 .history-round>summary {
   padding:12px;
   cursor:pointer;
-  font-size:12px;
+  font-size:var(--text-ui-secondary);
   line-height:1.6
 }
 .history-round>summary>time {
@@ -1906,14 +1908,14 @@ fieldset {
 }
 .history-round>summary>small {
   color:var(--legacy-secondary);
-  font-size:11px
+  font-size:var(--text-ui-caption)
 }
 .activity-round.is-history {
   border-top:1px solid var(--legacy-border);
   padding:13px 11px
 }
 .historical-note {
-  font-size:11px;
+  font-size:var(--text-ui-caption);
   color:var(--legacy-secondary);
   line-height:1.7;
   margin:9px 0

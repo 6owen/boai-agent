@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [INPUT]: 通讯录同款settings-page-transition/t-panel-slide与消息messages/message-row布局。
  * [OUTPUT]: 消息沿共享Panel reveal位移/淡入，不为整个滚动区创建模糊滤镜；骨架复用真实消息内边距、最大宽度、头像和容器断点，分页提示不占消息高度。
  * [POS]: conversations消息局部布局，由global.css在共享Panel reveal与消息样式之后加载。
@@ -19,4 +20,4 @@
 .chat-history-skeleton-line:last-child { width:64% }
 .chat-history-retry { display:flex;flex:1;align-items:center;justify-content:center }
 .chat-history-page-loading { position:sticky;top:0;z-index:1;height:0;text-align:center;pointer-events:none }
-.chat-history-page-loading>span { display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:var(--radius-control);background:var(--list);color:var(--muted-foreground);font-size:11px }
+.chat-history-page-loading>span { display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:var(--radius-control);background:var(--list);color:var(--muted-foreground);font-size:var(--text-ui-caption) }

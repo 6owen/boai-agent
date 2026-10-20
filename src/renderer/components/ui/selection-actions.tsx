@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [INPUT]: Beautiful UI SelectionActions原版操作条、Button/iconoir/foundation；宿主真实选区和请求。
  * [OUTPUT]: 保留原版横向展开/输入切换与动效；24px按钮；员工Select作为同排动作，无位置/员工下方表单。
  * [POS]: 直接迁用registry源（原件与差异见reviews/2026-10-15-file-selection-popover/upstream）；仅移除演示与模拟执行，接入Base UI定位/真实状态并隔离token。
@@ -128,9 +129,9 @@ function SelectionActionsBar({ prompt, onPromptChange, onAction, disabled, pendi
     className="flex h-[32px] w-fit max-w-[calc(100vw-48px)] items-center justify-center gap-0.5 overflow-hidden rounded-full bg-bui-surface p-[4px] font-sans font-normal text-bui-ink shadow-bui-overlay"
     style={{ width: mode === "idle" && hasPrompt && typingWidth ? typingWidth : undefined, animation: "bui-pop-in 220ms cubic-bezier(0.23,1,0.32,1) both" }}>
     <div ref={contentRef} className="flex w-fit shrink-0 items-center justify-center gap-0.5" style={{ width: mode === "idle" && hasPrompt && typingWidth ? typingWidth - 8 : undefined }}>
-      {mode === "thinking" && <span role="status" className="inline-flex h-[24px] items-center gap-1.5 whitespace-nowrap px-2.5 text-[12.5px] font-normal text-bui-ink-2">
+      {mode === "thinking" && <span role="status" className="inline-flex h-[24px] items-center gap-1.5 whitespace-nowrap px-2.5 text-[length:var(--text-ui-control)] font-normal text-bui-ink-2">
         <span className="size-3 shrink-0 rounded-full border-[1.5px] border-bui-line-strong border-t-bui-ink-2" style={{ animation: "spin 700ms linear infinite" }} />
-        <Shimmer className="text-[12.5px] font-normal">{pending ? "核对修改状态…" : "员工正在处理…"}</Shimmer>
+        <Shimmer className="text-[length:var(--text-ui-control)] font-normal">{pending ? "核对修改状态…" : "员工正在处理…"}</Shimmer>
       </span>}
             {mode === "idle" && (
               <>
@@ -182,7 +183,7 @@ function SelectionActionsBar({ prompt, onPromptChange, onAction, disabled, pendi
                       }}
                       aria-label="文件修改要求"
                       placeholder="描述修改…"
-                      className="h-[24px] w-full bg-transparent pr-2.5 pl-3 text-[12.5px] text-bui-ink placeholder:text-bui-ink-3"
+                      className="h-[24px] w-full bg-transparent pr-2.5 pl-3 text-[length:var(--text-ui-control)] text-bui-ink placeholder:text-bui-ink-3"
                     />
                   </form>
                 </div>

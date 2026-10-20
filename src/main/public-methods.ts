@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-20全局字体与应用图标设置接入原外观持久化和宿主协议。
  * [OUTPUT]: 桌面原始采集仅私有宿主调用，公共 renderer/CLI 方法显式拒绝。
  * [OUTPUT]: 提示词目录列表与版本化保存/删除进入原主窗口IPC准入。
  * [OUTPUT]: 2026-10-19应用业务协议：公共准入增加应用目录、调用与回执三个入口，不开放任意内部方法。
@@ -96,6 +97,7 @@ const methods = {
   generateTeamPlan: true,
   getAgentHome: true,
   getAppearance: true,
+  getAppIconStatus: true,
   getApplicationCatalog: true,
   executeApplicationOperation: true,
   getApplicationReceipt: true,
@@ -228,6 +230,7 @@ const methods = {
   replyInboxQuestion: true,
   requestArtifactAcceptance: true,
   resetAppearance: true,
+  retryAppIcon: true,
   resolveConversationFileTarget: true,
   resolveConversationSearchTarget: true,
   resolveWorkViewTarget: true,

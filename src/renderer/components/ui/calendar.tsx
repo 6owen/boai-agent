@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
  * [OUTPUT]: calendar 基础组件及其可组合的样式/变体。
  * [POS]: components/ui 的 calendar 源码；由 shadcn base-nova 安装，样式在此定制，不读取业务或外观 store。
@@ -96,7 +97,7 @@ function Calendar({
         month_grid: cn("w-full border-collapse", defaultClassNames.month_grid),
         weekdays: cn("flex", defaultClassNames.weekdays),
         weekday: cn(
-          "flex-1 rounded-(--cell-radius) text-[0.8rem] font-normal text-muted-foreground select-none",
+          "flex-1 rounded-(--cell-radius) text-[length:var(--text-ui-caption)] font-normal text-muted-foreground select-none",
           defaultClassNames.weekday
         ),
         week: cn("mt-2 flex w-full", defaultClassNames.week),
@@ -105,7 +106,7 @@ function Calendar({
           defaultClassNames.week_number_header
         ),
         week_number: cn(
-          "text-[0.8rem] text-muted-foreground select-none",
+          "text-[length:var(--text-ui-caption)] text-muted-foreground select-none",
           defaultClassNames.week_number
         ),
         day: cn(

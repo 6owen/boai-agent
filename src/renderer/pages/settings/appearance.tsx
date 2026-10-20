@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [OUTPUT]: 主题选项仅列可用插件配色，停用回退值与保留的原选择分开显示。
  * [OUTPUT]: 图片下方内嵌卡片展示玻璃/遮罩百分比与0–32px模糊三行Slider，独立预览/保存；重置浮层仅标题与确认/取消。
@@ -8,28 +9,54 @@
  * [POS]: 设置页外观分区；使用统一预览和持久化流程。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { SelectField } from '@/components/ui/select-field'
 import { Slider } from '@/components/ui/slider'
 import { Field, FieldContent, FieldGroup, FieldTitle } from '@/components/ui/field'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
 import { InfoIcon, RefreshCw } from '@/components/icons'
-import { appearanceDefaults, availableThemes, defaultGlassOpacity, maxBackgroundBlur, resolveTheme, resolveAppearanceTheme, zoomFactors, type InterfaceFont, type ThemeOverrides } from '@shared/appearance'
+import { appearanceDefaults, appIconPresets, availableThemes, defaultAppIconId, defaultGlassOpacity, maxBackgroundBlur, resolveTheme, resolveAppearanceTheme, typographyControls, typographyDefaults, zoomFactors, type AppIconStatus, type TypographyGroup, type ThemeOverrides } from '@shared/appearance'
 import { usePlugins } from '@/stores/plugins'
 import { useAppearance, previewAppearance, flushAppearance, appearanceAction } from '@/stores/appearance'
-import { Banner } from '@/components/common'
 import lightPreview from '@/assets/mode-light.webp'
 import darkPreview from '@/assets/mode-dark.webp'
 import systemPreview from '@/assets/mode-system.webp'
+import { getDesktopClient } from '@/services/request/desktop-client'
+import { toast } from 'sonner'
+
+const appIconImages = import.meta.glob('../../../../resources/app-icons/*.png', { eager: true, query: '?url', import: 'default' }) as Record<string, string>
 
 const modes = [
   { value: 'system', label: '跟随系统', image: systemPreview },
   { value: 'light', label: '浅色', image: lightPreview },
   { value: 'dark', label: '深色', image: darkPreview },
 ] as const
+const typographyGroups = [
+  { id: 'ui', title: '界面', options: [{ value: 'geist', label: 'Geist' }, { value: 'system', label: '系统默认' }], sample: '会话名称 · 按钮 · 辅助文字' },
+  { id: 'content', title: '内容', options: [{ value: 'ui', label: '跟随界面字体' }, { value: 'geist', label: 'Geist' }, { value: 'system', label: '系统默认' }, { value: 'serif', label: '系统衬线' }], sample: '今天也来写点什么，看看标题与正文。' },
+  { id: 'code', title: '代码', options: [{ value: 'system', label: '系统等宽' }, { value: 'menlo', label: 'Menlo' }], sample: 'const bobo = "你好"' },
+] as const
+
+function FontSizeInput({ group, value }: { group: TypographyGroup; value: number }) {
+  const [draft, setDraft] = useState<string | null>(null)
+  const control = typographyControls[group]
+  const change = (next: number) => {
+    if (!Number.isInteger(next) || next < control.min || next > control.max) return
+    setDraft(null)
+    previewAppearance({ typography: { [group]: { sizePx: next } } })
+  }
+  return <div className="flex items-center gap-1">
+    <Button type="button" size="icon-xs" variant="secondary" aria-label={`减小${group === 'ui' ? '界面' : group === 'content' ? '内容' : '代码'}字号`} onClick={() => change(value - control.step)} disabled={value <= control.min}>−</Button>
+    <Input className="w-16 text-center tabular-nums" type="number" inputMode="numeric" min={control.min} max={control.max} step={control.step} aria-label={`${group === 'ui' ? '界面' : group === 'content' ? '内容' : '代码'}字号（像素）`}
+      value={draft ?? value} onChange={event => { setDraft(event.target.value); if (event.target.value) change(Number(event.target.value)) }}
+      onBlur={() => setDraft(null)} />
+    <Button type="button" size="icon-xs" variant="secondary" aria-label={`增大${group === 'ui' ? '界面' : group === 'content' ? '内容' : '代码'}字号`} onClick={() => change(value + control.step)} disabled={value >= control.max}>+</Button>
+  </div>
+}
 
 function ColorControl({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   return <label className="appearance-color" title={`选择${label}`}>
@@ -41,7 +68,18 @@ function ColorControl({ label, value, onChange }: { label: string; value: string
 
 export function AppearanceSettings() {
   const [resetOpen, setResetOpen] = useState(false)
+  const [iconStatus, setIconStatus] = useState<AppIconStatus | null>(null)
+  useEffect(() => {
+    const api = getDesktopClient()
+    if (!api) return
+    let live = true
+    void api.request('getAppIconStatus', undefined).then(value => { if (live) setIconStatus(value) }).catch(error => toast.error(String(error)))
+    const dispose = api.subscribe(event => { if (event.type === 'app-icon:changed' && live) setIconStatus(event.status) })
+    return () => { live = false; dispose() }
+  }, [])
   const { preview, status, error } = useAppearance()
+  useEffect(() => { if (error) toast.error(error) }, [error])
+  useEffect(() => { if (preview.diagnostic) toast.warning(preview.diagnostic) }, [preview.diagnostic])
   const disabledIds = usePlugins(state => state.settings.disabledIds)
   const themes = availableThemes(disabledIds)
   const p = preview.preferences, mode = preview.resolvedMode
@@ -65,7 +103,7 @@ export function AppearanceSettings() {
         </PopoverContent>
       </Popover>
     </header>
-    {(error || preview.diagnostic) && <><Banner>{error || preview.diagnostic}</Banner>{error && status === 'error' && <Button variant="secondary" size="sm" onClick={() => void flushAppearance()}>重试保存</Button>}</>}
+    {error && status === 'error' && <Button variant="secondary" size="sm" onClick={() => void flushAppearance()}>重试保存</Button>}
     <fieldset disabled={preview.readOnly}>
       <legend className="settings-section-title">视觉风格</legend>
       <Card className="mb-4 gap-0 p-0"><CardContent className="appearance-mode-row mb-0">
@@ -91,14 +129,42 @@ export function AppearanceSettings() {
         </div>
         {!scenic && <><div className="appearance-row"><span>背景</span><ColorControl label="背景色" value={theme.surface} onChange={value => setColor('background', value)} /></div>
         <div className="appearance-row"><span>前景</span><ColorControl label="前景色" value={theme.foreground} onChange={value => setColor('foreground', value)} /></div></>}
-        <div className="appearance-row"><label htmlFor="appearance-font">字体</label>
-          <SelectField id="appearance-font" value={p.fontFamily} onValueChange={selectedValue => previewAppearance({ fontFamily: selectedValue as InterfaceFont })} options={[{ value: 'geist', label: 'Geist' }, { value: 'system', label: '系统默认' }]} />
-        </div>
         <div className="appearance-row"><label htmlFor="appearance-zoom" title="同步调整文字、图标与布局大小">界面缩放</label>
           <SelectField id="appearance-zoom" value={p.zoomFactor} onValueChange={selectedValue => previewAppearance({ zoomFactor: Number(selectedValue) })} options={zoomFactors.map(value => ({ value: value, label: `${Math.round(value * 100)}%${value === 1 ? '（默认）' : ''}` }))} />
         </div>
       </CardContent></Card>
       {preview.resolvedThemeId !== p.themeIds[mode] && <p className="field-hint mt-2">原主题插件已停用，暂用 BoAI 配色。重新启用插件后恢复原选择。</p>}
+      <section className="appearance-advanced" aria-labelledby="appearance-typography-heading">
+        <div className="flex items-center justify-between gap-2"><h3 id="appearance-typography-heading" className="settings-section-title">字体</h3>
+          <Button type="button" variant="ghost" size="sm" onClick={() => previewAppearance({ typography: typographyDefaults })}>重置字体</Button></div>
+        <Card className="gap-0 p-0"><CardContent className="appearance-options soft-divide-y">
+          {typographyGroups.map(group => <div className="py-3" key={group.id}>
+            <div className="appearance-row"><label htmlFor={`appearance-${group.id}-family`}>{group.title}字体</label>
+              <SelectField id={`appearance-${group.id}-family`} value={p.typography[group.id].family} options={[...group.options]} onValueChange={family => previewAppearance({ typography: { [group.id]: { family } } })} />
+            </div>
+            <div className="appearance-row"><span>{group.title}字号</span><FontSizeInput group={group.id} value={p.typography[group.id].sizePx} /></div>
+            <p className="m-0 text-muted-foreground" style={{ fontFamily: `var(--font-${group.id}-family)`, fontSize: `var(--text-${group.id}-body)` }}>{group.sample}</p>
+          </div>)}
+        </CardContent></Card>
+      </section>
+      {iconStatus?.platform === 'macos' && <section className="appearance-advanced" aria-labelledby="appearance-icon-heading">
+        <div className="flex items-center justify-between gap-2"><h3 id="appearance-icon-heading" className="settings-section-title">应用图标</h3>
+          <Button type="button" variant="ghost" size="sm" disabled={p.appIconId === defaultAppIconId} onClick={() => previewAppearance({ appIconId: defaultAppIconId })}>恢复默认图标</Button></div>
+        <Card className="gap-0 p-0"><CardContent className="py-4">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(4.5rem,1fr))] gap-2" role="group" aria-label="选择应用图标">
+            {appIconPresets.map(icon => <Button type="button" key={icon.id} variant="ghost" size="content" aria-label={icon.name} aria-pressed={p.appIconId === icon.id}
+              className="flex min-w-0 flex-col items-center gap-1.5 rounded-lg px-1 py-2 aria-pressed:bg-accent aria-pressed:shadow-sm" onClick={() => previewAppearance({ appIconId: icon.id })}>
+              <img src={appIconImages[`../../../../resources/app-icons/${icon.id}.png`]} width="44" height="44" alt="" />
+              <span className="w-full truncate text-center text-xs">{icon.name}</span>
+            </Button>)}
+          </div>
+          {iconStatus.environment === 'development' ? <p className="field-hint mt-3">开发模式：仅更改当前进程的 Dock 图标。</p> :
+            <p className="field-hint mt-3">{iconStatus.pending ? '正在应用图标…' : iconStatus.dock.error || iconStatus.installed.error
+              ? `Dock：${iconStatus.dock.error ? '未更新' : '已更新'}；安装图标：${iconStatus.installed.error ? '未更新' : '已更新'}`
+              : 'Dock 与当前安装应用图标已更新。'}</p>}
+          {!iconStatus.pending && (iconStatus.dock.error || iconStatus.installed.error) && <Button type="button" variant="secondary" size="sm" onClick={() => void getDesktopClient()?.request('retryAppIcon', undefined).then(setIconStatus).catch(error => toast.error(String(error)))}>重试应用</Button>}
+        </CardContent></Card>
+      </section>}
       <section className="appearance-advanced" aria-labelledby="appearance-advanced-heading">
         <h3 id="appearance-advanced-heading" className="settings-section-title">背景图片</h3>
         <Card className="gap-0 p-0"><CardContent><FieldGroup className="gap-0">

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [OUTPUT]: 主题按插件启停即时解析，保留原偏好并释放/取得实际主题使用引用。
  * [INPUT]: 桌面外观快照、局部预览及共享偏好合并规则。
  * [OUTPUT]: Scenic玻璃/遮罩/模糊独立预览；外壳/侧栏/详情/输入框底色与卡片高光随玻璃归零，0px关闭滤镜，移除图片清理变量。
@@ -8,7 +9,7 @@
  */
 import { errorText } from '@/components/common'
 import { create } from 'zustand'
-import { appearanceDefaults, defaultGlassOpacity, applyAppearancePatch, mergeAppearancePatch as merge, resolveAppearanceMode, resolveAppearanceTheme, interfaceFonts, resolveTheme, themeTokens, type AppearanceSnapshot, type AppearancePatch } from '@shared/appearance'
+import { appearanceDefaults, defaultGlassOpacity, applyAppearancePatch, mergeAppearancePatch as merge, resolveAppearanceMode, resolveAppearanceTheme, resolveTypography, resolveTheme, themeTokens, type AppearanceSnapshot, type AppearancePatch } from '@shared/appearance'
 import { getDesktopClient } from '@/services/request/desktop-client'
 import { themePluginId } from '@shared/plugins/catalog'
 import { pluginUsage, usePlugins } from './plugins'
@@ -29,7 +30,15 @@ function render() {
   root.dataset.theme = mode
   root.dataset.themeId = preview.resolvedThemeId
   root.style.colorScheme = mode
-  root.style.setProperty('--font-ui-family', interfaceFonts[preferences.fontFamily])
+  const typography = resolveTypography(preferences.typography)
+  for (const [group, family] of Object.entries(typography.families)) root.style.setProperty(`--font-${group}-family`, family)
+  root.style.setProperty('--font-mono', typography.families.code)
+  for (const [name, size] of Object.entries(typography.sizes)) root.style.setProperty(name, size)
+  for (const [name, lineHeight] of Object.entries(typography.lineHeights)) root.style.setProperty(name, lineHeight)
+  root.style.setProperty('--font-ui-size', `${preferences.typography.ui.sizePx}px`)
+  root.style.setProperty('--font-content-size', `${preferences.typography.content.sizePx}px`)
+  root.style.setProperty('--font-code-size', `${preferences.typography.code.sizePx}px`)
+  root.dispatchEvent(new CustomEvent('boai:typography-changed', { detail: typography }))
   const owner = themePluginId(preview.resolvedThemeId)
   if (owner !== activeThemePlugin) { releaseTheme?.(); activeThemePlugin = owner; releaseTheme = owner ? pluginUsage.acquire(owner) : undefined }
   const tokens = themeTokens(resolveAppearanceTheme(preferences, mode, disabledIds))

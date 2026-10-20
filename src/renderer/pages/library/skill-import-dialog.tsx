@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [OUTPUT]: 剩余异步失败文案统一Sonner，原状态和操作保持。
  * [OUTPUT]: 错误反馈统一Sonner，不渲染内联报错；现有动作和来源校验保持。
  * [INPUT]: 本地/远程来源、扫描预览/当前操作 IPC、技能刷新/导出回调与共享 DropdownMenu/Popover。
@@ -148,13 +149,13 @@ function SkillImportContent({ api, initialSource, operationId, onClose, onInstal
         {urlMode ? <div className="skill-install-source">
           <label htmlFor="skill-install-source">{kind === 'github' ? 'GitHub 仓库地址' : kind === 'marketplace' ? '商城技能' : '链接'}</label>
           <div className="skill-install-source-row">
-            <Input className="text-[13px]" id="skill-install-source" ref={sourceInput} value={source} readOnly={kind === 'marketplace'} disabled={busy} onChange={event => { setSource(event.target.value); clearPreview() }} onKeyDown={event => { if (event.key === 'Enter' && source.trim() && !busy) void selectSource() }} placeholder={kind === 'github' ? 'https://github.com/user/repo' : 'https://…/skills.zip'} />
+            <Input className="text-[length:var(--text-ui-body)]" id="skill-install-source" ref={sourceInput} value={source} readOnly={kind === 'marketplace'} disabled={busy} onChange={event => { setSource(event.target.value); clearPreview() }} onKeyDown={event => { if (event.key === 'Enter' && source.trim() && !busy) void selectSource() }} placeholder={kind === 'github' ? 'https://github.com/user/repo' : 'https://…/skills.zip'} />
             <Button size="sm" className="h-(--control-height)" variant="secondary" disabled={!source.trim() || busy} onClick={() => { void selectSource() }}>{preparing ? <LoaderCircle className="animate-spin" /> : <Search />}扫描</Button>
           </div>
           {kind === 'github' && <details className="skill-install-git-options">
             <summary><i className="app-icon i-carbon-chevron-right" aria-hidden="true" />分支与子目录（可选）</summary>
-            <Input className="text-[13px]" aria-label="分支或 commit" placeholder="默认分支" value={ref} disabled={busy} onChange={event => { setRef(event.target.value); clearPreview() }} />
-            <Input className="text-[13px]" aria-label="仓库内子目录" placeholder="skills/example" value={subpath} disabled={busy} onChange={event => { setSubpath(event.target.value); clearPreview() }} />
+            <Input className="text-[length:var(--text-ui-body)]" aria-label="分支或 commit" placeholder="默认分支" value={ref} disabled={busy} onChange={event => { setRef(event.target.value); clearPreview() }} />
+            <Input className="text-[length:var(--text-ui-body)]" aria-label="仓库内子目录" placeholder="skills/example" value={subpath} disabled={busy} onChange={event => { setSubpath(event.target.value); clearPreview() }} />
           </details>}
         </div> : <div className={`skill-install-picker${scan ? ' has-scan' : ''}`}><Button variant="ghost" size="content" className="skill-install-dropzone" disabled={busy} onClick={() => { void selectSource() }} onDragOver={event => { event.preventDefault(); event.dataTransfer.dropEffect = busy ? 'none' : 'copy' }} onDrop={event => { event.preventDefault(); const file = event.dataTransfer.files[0]; if (!busy && file) void selectSource(file) }}>{preparing ? <LoaderCircle className="size-[24px] animate-spin" /> : kind === 'folder' ? <FolderOpen className="size-[24px]" /> : <i className="app-icon i-carbon-zip size-[24px]" aria-hidden="true" />}<span>{source || (libraryImport ? kind === 'folder' ? '选择或拖入包含 boai.json 的技能库目录' : '选择或拖入 BoAI 技能库 ZIP' : kind === 'folder' ? '点击或将 skill 文件夹拖拽到此处' : '点击或将 ZIP 文件拖拽到此处')}</span></Button></div>}
         {urlMode && !scan && <div className="skill-install-empty"><div className="skill-install-empty-icon"><Search size={20} /></div><strong>可安装的技能</strong><p>输入来源并扫描，选择要安装的技能。</p></div>}

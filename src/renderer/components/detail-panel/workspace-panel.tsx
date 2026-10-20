@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [INPUT]: Conversation scope, shared application protocol and real PTY cursor stream.
  * [OUTPUT]: Persistent xterm view and sandboxed loopback preview in the existing sidebar.
  * [POS]: Detail panel content; tab visibility pauses reads without killing shell/server.
@@ -16,13 +17,16 @@ import { Input } from '@/components/ui/input'
 import { SelectField } from '@/components/ui/select-field'
 import { RefreshCw, Plus, Trash2 } from '@/components/icons'
 import { toast } from 'sonner'
+import { resolveTypography } from '@shared/appearance'
+import { useAppearance } from '@/stores/appearance'
 
 function TerminalView({ api, id, active }: { api: DesktopApi; id: string; active: boolean }) {
   const container = useRef<HTMLDivElement>(null), terminal = useRef<Terminal | null>(null), fit = useRef<FitAddon | null>(null), cursor = useRef(0)
   useEffect(() => {
     if (!container.current) return
     const colors = getComputedStyle(container.current)
-    const term = new Terminal({ fontSize: 12, scrollback: 3000, cursorBlink: true, allowProposedApi: false, theme: { background: colors.backgroundColor, foreground: colors.color } })
+    const typography = resolveTypography(useAppearance.getState().preview.preferences.typography)
+    const term = new Terminal({ fontSize: typography.terminalSizePx, fontFamily: typography.families.code, scrollback: 3000, cursorBlink: true, allowProposedApi: false, theme: { background: colors.backgroundColor, foreground: colors.color } })
     const addon = new FitAddon(); term.loadAddon(addon); term.open(container.current)
     terminal.current = term; fit.current = addon; cursor.current = 0
     let input = '', timer: ReturnType<typeof setTimeout> | undefined, queue = Promise.resolve()
@@ -52,8 +56,16 @@ function TerminalView({ api, id, active }: { api: DesktopApi; id: string; active
         if (term) void applicationCall(api, 'terminal.resize', { id, cols: Math.max(10, Math.min(500, term.cols)), rows: Math.max(2, Math.min(300, term.rows)) }, true).catch(error => toast.error(String(error)))
       }, 100)
     }
-    const observer = new ResizeObserver(resize); observer.observe(container.current); resize(); void read()
-    return () => { live = false; if (timer) clearTimeout(timer); if (resizeTimer) clearTimeout(resizeTimer); observer.disconnect() }
+    const typographyChanged = () => {
+      const term = terminal.current
+      if (!term) return
+      const next = resolveTypography(useAppearance.getState().preview.preferences.typography)
+      term.options.fontFamily = next.families.code
+      term.options.fontSize = next.terminalSizePx
+      resize()
+    }
+    const observer = new ResizeObserver(resize); observer.observe(container.current); window.addEventListener('boai:typography-changed', typographyChanged); resize(); void read()
+    return () => { live = false; if (timer) clearTimeout(timer); if (resizeTimer) clearTimeout(resizeTimer); observer.disconnect(); window.removeEventListener('boai:typography-changed', typographyChanged) }
   }, [api, id, active])
   return <div ref={container} className="min-h-0 flex-1 overflow-hidden rounded-lg bg-background text-foreground p-2" aria-label="会话终端" />
 }

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [INPUT]: Lody固定源码 packages/components/src/ui/diff-viewer/diff-viewer.tsx @ 52e6eebe908641ea53d5a9aa3530499932f3064f 与BOAI局部接口适配。
  * [OUTPUT]: 保留上游实现；导入/控件/主题/声明样式接BOAI，来源差异见迁入清单。
  * [POS]: common/lody/diff-viewer.tsx；Apache-2.0，保留上游注释。
@@ -1101,7 +1102,7 @@ function DiffViewerImpl({
   // No header mode - just render the diff content
   if (!showHeader && !renderHeader) {
     return (
-      <div ref={containerRef} className={cn('text-[0.8rem] w-full min-h-8', className)}>
+      <div ref={containerRef} className={cn('text-[length:var(--text-code-compact)] w-full min-h-8', className)}>
         {diffContentContainer}
       </div>
     );
@@ -1112,7 +1113,7 @@ function DiffViewerImpl({
   // Always overflow-hidden so full-bleed addition rows clip to rounded corners
   // without painting over the border.
   const diffCardChromeClass = cn(
-    'relative flex min-h-8 w-full flex-col overflow-hidden rounded-xl bg-background text-[0.8rem]',
+    'relative flex min-h-8 w-full flex-col overflow-hidden rounded-xl bg-background text-[length:var(--text-code-compact)]',
     'border border-foreground/[0.12] dark:border-border',
     'shadow-[0_1px_2px_hsl(0_0%_0%/0.04)]'
   );

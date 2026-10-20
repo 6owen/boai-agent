@@ -12,6 +12,8 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "build": "node scripts/build.mjs",
+    "icons:generate": "node scripts/generate-app-icons.mjs",
+    "lint:typography": "node scripts/check-typography.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:collaboration": "node scripts/test-group-collaboration.mjs",
@@ -115,10 +117,12 @@
       "node_modules/@mastra/**/*",
       "node_modules/@parcel/watcher/**/*",
       "dist/native/**/*",
+      "dist/main/app-icons/**/*",
       "dist/runtime/plugins/**/*"
     ],
     "mac": {
       "category": "public.app-category.productivity",
+      "icon": "resources/app-icons/default.icns",
       "target": [
         "dmg"
       ]

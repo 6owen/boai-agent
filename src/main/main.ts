@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-20全局字体与应用图标设置接入原外观持久化和宿主协议。
  * [OUTPUT]: 已授权桌面活动经私有宿主调用固定本地 OCR 程序，不向渲染器开放原始采集接口。
  * [OUTPUT]: 内置技能源允许查看位置，拒绝通过系统编辑器改写随包默认文件。
  * [OUTPUT]: 2026-10-19应用业务协议：应用外观/插件协议复用原桌面设置服务，经私有宿主白名单转发。
@@ -68,6 +69,7 @@ import { mkdir, realpath, stat, rm, readFile, writeFile } from 'node:fs/promises
 import { extname, isAbsolute, join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { AppearanceStore } from './appearance'
+import { AppIconController } from './app-icon'
 import { resolveTheme, zoomFactors } from '../shared/appearance'
 import { unsupportedRequestMessage, type Methods } from '../shared/ipc'
 import { CredentialVault } from './vault'
@@ -144,7 +146,9 @@ const appearance = new AppearanceStore(join(dataPath, 'appearance'), () => nativ
   nativeTheme.themeSource = value.preferences.mode
   if (window && !window.isDestroyed()) window.webContents.setZoomFactor(value.preferences.zoomFactor)
   sendEvent({ type: 'appearance:changed', appearance: appearance.snapshot() })
+  void appIconController.apply(value.preferences.appIconId).catch(error => sendEvent({ type: 'runtime-error', error: String(error) }))
 }, decodeImage, () => pluginSettings.snapshot().disabledIds)
+const appIconController = new AppIconController(join(__dirname, 'app-icons').replace('app.asar/', 'app.asar.unpacked/'), join(__dirname, '../native/app-icon-helper').replace('app.asar/', 'app.asar.unpacked/'), status => sendEvent({ type: 'app-icon:changed', status }))
 const pluginSettings = new PluginSettingsStore(join(legacyDataPath, 'application-plugins.json'), settings => {
   sendEvent({ type: 'plugins:changed', settings })
   appearance.systemChanged()
@@ -409,6 +413,8 @@ function registerIpc() {
     if (method === 'discoverModelGateway') { z.undefined().parse(input); return discoverLocalMagpie(baseUrl => requestRuntime('probeModelGateway', { baseUrl }) as Promise<Methods['probeModelGateway']['output']>) }
     if (method === 'installRuntimePlugin') { const value = z.object({expectedRevision:z.number().int().nonnegative()}).strict().parse(input); const chosen = await dialog.showOpenDialog(window, { title: '安装受信任的运行时插件包', properties: ['openDirectory'] }); if (chosen.canceled || !chosen.filePaths[0]) return null; return requestRuntime('__installRuntimePlugin', {directory:await realpath(chosen.filePaths[0]),expectedRevision:value.expectedRevision}) }
     if (isApplicationHostMethod(method)) return applicationHostRequest(method, input)
+    if (method === 'getAppIconStatus') { z.undefined().parse(input); return appIconController.snapshot() }
+    if (method === 'retryAppIcon') { z.undefined().parse(input); return appIconController.retry() }
     if (method === 'getDesktopSettings') { z.undefined().parse(input); return desktopSettings.snapshot() }
     if (method === 'getCliInstallation') { z.undefined().parse(input); return cliInstallationStatus() }
     if (method === 'installCli' || method === 'uninstallCli') {
@@ -650,6 +656,7 @@ else {
     await prepareV2DataRoot(legacyDataPath)
     await pluginSettings.init()
     await appearance.init()
+    await appIconController.apply(appearance.snapshot().preferences.appIconId)
     await desktopSettings.init()
     nativeTheme.themeSource=appearance.snapshot().preferences.mode
     nativeTheme.on('updated',()=>appearance.systemChanged())
