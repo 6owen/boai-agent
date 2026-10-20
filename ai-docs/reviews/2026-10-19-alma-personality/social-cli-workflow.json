@@ -1,0 +1,404 @@
+{
+  "version": 1,
+  "phase": "11.56",
+  "evidenceDirectory": ".local/personality-evaluation/social-cli-runtime-1792476128797",
+  "newRemoteModelRequests": 17,
+  "cumulativeRemoteModelRequests": 1517,
+  "quality": "runtime-help-verified; account-workflows-and-personality-not-certified",
+  "verification": {
+    "checkedAt": "2026-10-20T06:09:41.062761+00:00",
+    "sourceFrozenFiles": 396,
+    "sourceUnchanged": true,
+    "boundSkillCount": 34,
+    "configVersion": 75,
+    "profileRevision": 16,
+    "previous32BindingsAndConfigurationPreserved": true,
+    "sourceFiles": [
+      {
+        "name": "AGENTS.md",
+        "hash": "3f2d25cde8ca8d26a4b795c4487cbeb753566bc3203acd5340b0b47146b1fbfd"
+      },
+      {
+        "name": "SOUL.md",
+        "hash": "497cd543a723210536be713f7131f58fbca29448fad3d5b3eef346feef5e6214"
+      },
+      {
+        "name": "prompts/direct.md",
+        "hash": "e54480bd941d31259a2c0a5d26dd2277de8f3dfc9127d157c9a32bc238e13111"
+      },
+      {
+        "name": "prompts/group.md",
+        "hash": "805ca43adbbccbc5606d5e9f2c41faf74f56759e3c60df9001b46febde40a789"
+      },
+      {
+        "name": "prompts/channel.md",
+        "hash": "b0927c985a64e47e3807432d1b75131f35cb7116258bc8997e64d55ae7952040"
+      },
+      {
+        "name": "prompts/task.md",
+        "hash": "3a07da0d46e55cd77bbb883f1adfed4e8c41421478042e609dc1f42b0dd29171"
+      },
+      {
+        "name": "prompts/emotion.md",
+        "hash": "cd6cce8a2407ace87b3220362e6e9f1b7a4feac24f79533c212d9fed7f4891bc"
+      },
+      {
+        "name": "prompts/reflection.md",
+        "hash": "e8312fb5a01632330b7fcce909437a0533fffdb9448532fb29c00b6ed6091d02"
+      },
+      {
+        "name": "prompts/greeting.md",
+        "hash": "a83ba9d908e7da88b307c6a9b817cc0052615542915843144a52531689e27d94"
+      },
+      {
+        "name": "prompts/travel.md",
+        "hash": "907b5af24cb6c1f101eb52f284193eec45e2c0b544968b5804f8e796f2a6aae6"
+      }
+    ],
+    "bindings": [
+      {
+        "name": "boai-twitter-cli",
+        "resourceId": "acc33b27-0948-4fc7-b134-4d1fbb096178",
+        "path": "/Users/wangwenbo/Library/Application Support/BoAI Agent/v2/skills/acc33b27-0948-4fc7-b134-4d1fbb096178/boai-twitter-cli",
+        "requestId": "alma-bind-bobo-22e70fad2220608a-73",
+        "status": "completed",
+        "files": {
+          "SKILL.md": "22e70fad2220608aef4443746246b692227c79662eaa6da21f18fac28e97d6ca",
+          "scripts/twitter": "64fbfdb1d421af4bc7f158e9e8ab194dcdd5bb3a79e0b20f002aea1e20e13822",
+          "source-manifest.json": "553eb49574d1d28c2babe50c3baa6350a8950edb646437ccc7139fcd9ee4f165"
+        }
+      },
+      {
+        "name": "boai-xiaohongshu-cli",
+        "resourceId": "a46fccd2-6ef2-4ffe-bf89-ebc328830a70",
+        "path": "/Users/wangwenbo/Library/Application Support/BoAI Agent/v2/skills/a46fccd2-6ef2-4ffe-bf89-ebc328830a70/boai-xiaohongshu-cli",
+        "requestId": "alma-bind-bobo-f71b7bcf6554ceeb-74",
+        "status": "completed",
+        "files": {
+          "SKILL.md": "f71b7bcf6554ceebb0c6ab7c6b872f90f7af91aee5fce49337a50031942fa054",
+          "scripts/xhs": "f4ba142558e2043ad878ce26edd90d7ac75dfbf6fdc67cbcc6dc277f759276a3",
+          "source-manifest.json": "e536cdce05b1e985ccb714bd0320d8aaa2e6a6c7ade255c1be78e94281fdffa6"
+        }
+      }
+    ],
+    "original40SkillHashesPreserved": true,
+    "originalTwoWrapperHashesPreserved": true,
+    "cases": [
+      {
+        "id": "skill-twitter-cli-runtime:1",
+        "requests": 8,
+        "runStatuses": [
+          "completed",
+          "completed",
+          "completed"
+        ],
+        "workStatuses": [
+          "delivered"
+        ],
+        "commands": [
+          {
+            "status": "failed",
+            "input": {
+              "command": "BOAI_SKILL_DIR='/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/e8744279-83fb-4b0d-ab09-7f7f5bac7453/boai-twitter-cli'; ls -l \"$BOAI_SKILL_DIR/scripts/twitter\"; echo \"---VERSION---\"; bash \"$BOAI_SKILL_DIR/scripts/twitter\" --version; echo \"EXIT:$?\"",
+              "directories": [
+                {
+                  "path": "/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/e8744279-83fb-4b0d-ab09-7f7f5bac7453/boai-twitter-cli",
+                  "access": "read-only"
+                }
+              ]
+            },
+            "result": "BOAI受管文件请使用原材料、知识或当前会话文件入口，目录授权不扩大这些来源的权限"
+          },
+          {
+            "status": "completed",
+            "input": {
+              "command": "BOAI_SKILL_DIR='/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/e8744279-83fb-4b0d-ab09-7f7f5bac7453/boai-twitter-cli'; ls -l \"$BOAI_SKILL_DIR/scripts/twitter\" && bash \"$BOAI_SKILL_DIR/scripts/twitter\" --version; echo \"EXIT:$?\"",
+              "directories": []
+            },
+            "result": "{\"approved\":true,\"exitCode\":0,\"stdout\":\"-rw-r--r--@ 1 wangwenbo  staff  1826 Oct 20 14:02 /Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/e8744279-83fb-4b0d-ab09-7f7f5bac7453/boai-twitter-cli/scripts/twitter\\ntwitter, version 0.8.5\\nEXIT:0\\n\",\"stderr\":\"\",\"truncated\":false}"
+          },
+          {
+            "status": "completed",
+            "input": {
+              "command": "BOAI_SKILL_DIR='/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/e8744279-83fb-4b0d-ab09-7f7f5bac7453/boai-twitter-cli'; bash \"$BOAI_SKILL_DIR/scripts/twitter\" --help; echo \"EXIT:$?\"",
+              "directories": []
+            },
+            "result": "{\"approved\":true,\"exitCode\":0,\"stdout\":\"Usage: twitter [OPTIONS] COMMAND [ARGS]...\\n\\n  twitter — Twitter/X CLI tool 🐦\\n\\nOptions:\\n  -v, --verbose  Enable debug logging.\\n  -c, --compact  Compact output (minimal fields, LLM-friendly).\\n  --version      Show the version and exit.\\n  --help         Show this message and exit.\\n\\nCommands:\\n  article     Fetch a Twitter Article.\\n  bookmark    Bookmark a tweet.\\n  bookmarks   Fetch bookmarked tweets, or manage bookmark folders.\\n  delete      Delete a tweet.\\n  favorite    Bookmark (favorite) a tweet.\\n  favorites   Fetch bookmarked (favorite) tweets.\\n  feed        Fetch home timeline with optional filtering.\\n  follow      Follow a user.\\n  followers   List followers of a user.\\n  following   List accounts a user is following.\\n  like        Like a tweet.\\n  likes       Show tweets liked by a user.\\n  list        Fetch tweets from a Twitter List.\\n  post        Post a new tweet.\\n  quote       Quote-tweet a tweet.\\n  reply       Reply to a tweet.\\n  retweet     Retweet a tweet.\\n  search      Search tweets by QUERY string with optional advanced filters.\\n  show        View tweet #INDEX from the last feed/search results.\\n  status      Check whether the current Twitter/X session is authenticated.\\n  tweet       View a tweet and its replies.\\n  unbookmark  Remove a tweet from bookmarks.\\n  unfavorite  Remove a tweet from bookmarks (unfavorite).\\n  unfollow    Unfollow a user.\\n  unlike      Unlike a tweet.\\n  unretweet   Undo a retweet.\\n  user        View a user's profile.\\n  user-posts  List a user's tweets.\\n  whoami      Show the currently authenticated user's profile.\\nEXIT:0\\n\",\"stderr\":\"\",\"truncated\":false}"
+          }
+        ],
+        "replies": [
+          "跑完了，只执行了 `--version` 和 `--help`，没碰 status、cookie、账号，也没发任何东西。\n\n版本是 `twitter, version 0.8.5`（脚本在，退出码 0，没报错）。\n\n两个能力都有：\n\n查看帖子这块，命令列表里有 `tweet`（View a tweet and its replies，看单条帖子和回复）、`show`（View tweet #INDEX from the last feed/search results，看上一次结果里的第几条）、还有 `search`、`user`、`user-posts`、`feed`、`bookmarks`、`article`。\n\n发帖也有，`post`（Post a new tweet，发新推）、`reply`（回复）、`quote`（引用转发）。\n\n顺带说一句，这些写操作都作用在真账号上，所以除了你明确说要发，我是不会自己去点的。"
+        ]
+      },
+      {
+        "id": "skill-xiaohongshu-cli-runtime:1",
+        "requests": 9,
+        "runStatuses": [
+          "completed",
+          "completed",
+          "completed"
+        ],
+        "workStatuses": [
+          "delivered"
+        ],
+        "commands": [
+          {
+            "status": "completed",
+            "input": {
+              "command": "BOAI_SKILL_DIR='/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/ca03a55f-b848-47b7-b986-1242cd651826/boai-xiaohongshu-cli'; bash \"$BOAI_SKILL_DIR/scripts/xhs\" --version; echo \"EXIT:$?\"",
+              "directories": null
+            },
+            "result": "{\"approved\":true,\"exitCode\":0,\"stdout\":\"xhs, version 0.5.0\\nEXIT:0\\n\",\"stderr\":\"\",\"truncated\":false}"
+          },
+          {
+            "status": "completed",
+            "input": {
+              "command": "BOAI_SKILL_DIR='/Users/wangwenbo/Desktop/demo/boai/boai-agent/.local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/ca03a55f-b848-47b7-b986-1242cd651826/boai-xiaohongshu-cli'; bash \"$BOAI_SKILL_DIR/scripts/xhs\" --help; echo \"EXIT:$?\"",
+              "directories": null
+            },
+            "result": "{\"approved\":true,\"exitCode\":0,\"stdout\":\"Usage: xhs [OPTIONS] COMMAND [ARGS]...\\n\\n  xhs — Xiaohongshu CLI via reverse-engineered API 📕\\n\\nOptions:\\n  --version             Show the version and exit.\\n  -v, --verbose         Enable debug logging\\n  --cookie-source TEXT  Browser to read cookies from (auto = try all installed\\n                        browsers)  [default: auto]\\n  --help                Show this message and exit.\\n\\nCommands:\\n  comment         Post a comment on a note.\\n  comments        View comments on a note.\\n  delete          Delete a note.\\n  delete-comment  Delete a comment you posted.\\n  favorite        Favorite (bookmark) a note.\\n  favorites       List favorited (bookmarked) notes.\\n  feed            Browse the recommendation feed.\\n  follow          Follow a user.\\n  hot             Browse hot/trending notes by category.\\n  like            Like or unlike a note.\\n  login           Log in by extracting cookies from browser, or via QR code.\\n  logout          Clear saved cookies and log out.\\n  my-notes        List your own published notes.\\n  notifications   View notifications (mentions, likes, connections).\\n  post            Publish an image note.\\n  read            Read a note by ID or URL.\\n  reply           Reply to a specific comment.\\n  search          Search notes by keyword.\\n  search-user     Search for users by keyword.\\n  status          Check current login status and user info.\\n  sub-comments    View replies to a specific comment.\\n  topics          Search for topics/hashtags.\\n  unfavorite      Unfavorite (unbookmark) a note.\\n  unfollow        Unfollow a user.\\n  unread          Show unread notification counts.\\n  user            View user profile info.\\n  user-posts      List a user's published notes.\\n  whoami          Show detailed profile of current user (level, fans,...\\nEXIT:0\\n\",\"stderr\":\"\",\"truncated\":false}"
+          }
+        ],
+        "replies": [
+          "跑完了，只做了 `--version` 和 `--help`，两次都是退出码 0，没碰 status、cookie、登录，也没动账号。\n\n版本：`xhs, version 0.5.0`\n\n读评论的两条命令：\n- `comments` — 看某条笔记下的评论\n- `sub-comments` — 看某条评论下的回复\n\n发图文也有：`post` — Publish an image note，官方描述就是图片笔记，配上 `--title`、`--body`、`--images` 三个参数，跟技能里写的图文流程对得上。\n\n顺带列出其余命令，方便你判断覆盖面：comment、reply、like、favorite、unfavorite、follow、unfollow、delete、delete-comment、read、search、search-user、feed、hot、topics、user、user-posts、favorites、my-notes、notifications、unread、login、logout、status、whoami。\n\n值得注意的是 `post` 只讲图片笔记，视频笔记不在它的说明里；发布类操作都作用在真账号上，所以除了你明确说要发，我不会自己去点。"
+        ]
+      }
+    ],
+    "newRequests": 17,
+    "cumulativeRequests": 1517,
+    "health": {
+      "service": "ready",
+      "storage": "ready",
+      "browserAvailable": true,
+      "credentialProvider": "desktop-vault"
+    },
+    "devProcesses": "90804 90777 node scripts/dev.mjs\n90815 90804 /Users/wangwenbo/Desktop/demo/boai/boai-agent/node_modules/.pnpm/electron@39.2.7/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron .\n",
+    "probeProcessExited": true,
+    "requestCount": 17
+  },
+  "checks": {
+    "distinctPassed": 24,
+    "firstBatch": {
+      "passed": 21,
+      "failed": 3
+    },
+    "recheck": {
+      "passed": 7
+    },
+    "typecheck": "passed after fixture correction",
+    "hostBuild": "passed; pnpm dev reloaded"
+  },
+  "failures": [
+    "Fake node test CLI consumed --from; fixed fixture separator and env type, 7 targeted checks passed.",
+    "First Twitter model command requested the managed skill path as a business-directory grant; rejected before execution. A subsequent command without additional grants ran via existing full command access.",
+    "Installer initially ignored builtin qualified slug; no bind/create occurred. Fixed discovery then original binding receipts completed.",
+    "Restart preflight initially requested sessions limit100 and was rejected before any process change; limit50 read all13 idle sessions."
+  ],
+  "limitations": [
+    "Only help/version commands run; no account status, cookie access, login, reads or writes.",
+    "No Windows, native CLI or limited-permission actual execution certification.",
+    "Public replies remain too long; no personality quality gain established.",
+    "PPT visual provider is unconfigured; six remaining original skills and full prompt audit still open."
+  ],
+  "evidenceSha256": {
+    ".local/alma-social-cli/bobo-after.json": "043489504010c6faa108f010698b6d2762c30a00acde43ad92612c9be297256c",
+    ".local/alma-social-cli/bobo-before.json": "e11eb30b7886bce40159c5d7b284c909a902ac2a50101b17abffb5dd0070ac58",
+    ".local/alma-social-cli/build-host.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".local/alma-social-cli/install-twitter-recheck.log": "f5aa4612a41dc372c22dc452439fd8946d5f89adcb0e41338a40bc0e7f0cda07",
+    ".local/alma-social-cli/install-twitter.log": "69e2f53e09c1943411a0fe8a4d3861d94f8df520fc1660fa1fcceebd20607cbb",
+    ".local/alma-social-cli/install-xhs.log": "2b237331ec43ec08edc1ebf79066c0be459d7903b457245399f35b2fbde8cb82",
+    ".local/alma-social-cli/live-behaviors-before.json": "d82210e838e8a503e26ab22b2e8facd18997aab6ce6f41b9bbb2b4d5a0ad0508",
+    ".local/alma-social-cli/live-sessions-before.json": "3ce8fc6d9b23ac813328e59325dc97924372eebdc601663d32ba11e31b70b3f5",
+    ".local/alma-social-cli/live-skill-catalog.json": "af66c6558c515a7b4280884c526bc5d0e8b2d9a258205d04a348270c687b2ebf",
+    ".local/alma-social-cli/model.log": "bbe2e77a2e2a1e0f71da74c0e56016bf5e5f8a12b746330807a6511e3904a012",
+    ".local/alma-social-cli/plan.json": "78674bff53271c7a8baa7bc9c2e23e39eb293417bef2ae7b73f4d3028f6bc485",
+    ".local/alma-social-cli/profile-after.json": "25d90d8cd4ed7484a4617d5e35fe8626075da72a702e74f6b2d69bf20ebfb558",
+    ".local/alma-social-cli/profile-before.json": "25d90d8cd4ed7484a4617d5e35fe8626075da72a702e74f6b2d69bf20ebfb558",
+    ".local/alma-social-cli/restart-before.json": "cccb996953c1d8a55d5814be6ce79743d71920320567b360070c3d2abad59d86",
+    ".local/alma-social-cli/restart-exit.json": "44e2106c2f58d12a7e332348e5f7df1d11696c30cdb7aef169247c9b4db1f072",
+    ".local/alma-social-cli/tests-recheck.log": "e30806958f5bc434b00b028b33b8a956c2b44ea45b1d5a5152da7c350da8509c",
+    ".local/alma-social-cli/tests.log": "139691293aee021041b7c04dccf45dab91e68b9010d37447daf89a897bbaaeb2",
+    ".local/alma-social-cli/twitter-help.log": "b9f91ab8f610112d073b50a50442dcf0e06300a96eb198e3656f1e962fae070d",
+    ".local/alma-social-cli/twitter-receipt.json": "52bae2e6e37502789dba63b604ae585f38fbf52812347f0193313d080b5e260f",
+    ".local/alma-social-cli/twitter-version.log": "14c3d5cf43fe873265ec9572d0a8f4029c717a56a4a1273524e609d0da4d9fee",
+    ".local/alma-social-cli/typecheck-recheck.log": "6213778e0814a7eb573e023075ed4c70fd0e8b5495d881b3551dfbbc6e87b9d5",
+    ".local/alma-social-cli/typecheck.log": "613dd5d5bef119ff8134018e2c6483252f0fc137874a9550ec1d9765090f0257",
+    ".local/alma-social-cli/verification.json": "04ee75c7b73e264ff539301c06e0155ca1e4dead9483127994714695911f4487",
+    ".local/alma-social-cli/xhs-help.log": "488903cb9cb533c3a0b790330a4fc5b260081cdbb20555c60de62a53d9fe729d",
+    ".local/alma-social-cli/xhs-receipt.json": "97ba92a28c0d269e80307dc2f49f0a4644becd839cf322988004171b788a941a",
+    ".local/alma-social-cli/xhs-version.log": "7485debec512742d3119d6a35fb8bf9876223853b5b2172a216b1bb70f345d46",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-alchemy/SKILL.md": "3f34edabbb33563d6beec0b04373c02e85dec20a8a7a505ece14d7d3fb960ce5",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-browser/SKILL.md": "621ad9b6ccc0fa9451b57ee3cf593c3d81cfa2ddc85026b23fe6254784a2608d",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-computer-use/SKILL.md": "8efeba34db5c76bd541f9c7f45ea3c5e417bb7d33dedbaec3bb7360cf5405f8e",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-file-manager/SKILL.md": "50a66e6d71df2b0d4a511f3b39070d033e100bfb4520e5ac92aeb51bb756aa18",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-image-gen/SKILL.md": "93c7f004ac4d2329bc75d774a5c2d938a79ad030171825502fd2433b15c70d3e",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-memory-management/SKILL.md": "a9b9c210e30d805a1e6eb5c0d3241a15a7199bfb3c789d9d88b12035c5133f24",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-music-listener/SKILL.md": "10b2bed9c5fc7c3bc1836f73a68579bf47e6c964c8a4d55e377818aa01438114",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-notebook/SKILL.md": "692f994c0d737a5e284aef9a4995864cd063be00956a0d9c4eb65b6aec3bc396",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-plan-mode/SKILL.md": "ce6fabd1671e5ab06e1ecdc11a8a1251c99cedcb06e2b087691dda7db113ad33",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-plan-weave/SKILL.md": "bccd64a08ae97abcc304c7e89ce5f6ea7597d5e9a9f99bb18cc608a856195945",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-presentations/SKILL.md": "12dddf3e07b42cf9dceb01a1feb71aa0d5806939c7f59c1229f87cfd908875f7",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-programmatic-tools/SKILL.md": "e4f95db7122b30b340c30a547565c651a34b5da7befef974ef07cfd4036ec869",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-reactions/SKILL.md": "70326b60e1818357c646f7d1065d151391f3d10c842daa8611e9754458e43545",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-references/SKILL.md": "6a8e318f2b8f1ac6a9fc6e58026e0d226063d0f86f5e5fab775e6702b47eaff2",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-scheduler/SKILL.md": "28bb7a066c5d054a0b1ed9b35156baaa8f6814ebe56731c4491b0dfea81d6204",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-screenshot/SKILL.md": "00ffac2b5a5ed4afaa7ca8e41d4f96f9d2b35b63d26a5b02d95efdfef8877cab",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-self-management/SKILL.md": "1358001f8a427c35d9db1f41f1db8f6b7736f94ea424121a83fc40dbb22e2920",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-self-reflection/SKILL.md": "03bb1efac8c057ba31e26614147349118e2dea406ee6cfaa19ff1b6831afbb7e",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-selfie/SKILL.md": "5e368c84b93a5e4509d1abb323c88b7202e2c52a6fbd9cefb758ea10899c73e5",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-send-file/SKILL.md": "022cbfeffeca3e39091ea6397499fcb99bb17bf19d4ede6e40542594a58e5dd5",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-skill-hub/SKILL.md": "a7501be43c50b55be0924d757ba333fc49175f006b4cd2c9e8e1f478792d34a6",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-skill-search/SKILL.md": "171ac79ff3146a43255d082421cf8a7c5ef44e98f061aaabef94be5d284bfc6a",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-system-info/SKILL.md": "0ade29341707369dbf940112ab911e9542348e599c2a6099328e347240abdc8b",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-tasks/SKILL.md": "5ee259f3fda637d86e4c0935e9b388cb18230bbf63089d8109337313f1a81cb1",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-thread-management/SKILL.md": "e91def9ba80562e67cf3137ad479780e9b5704411a1141a15564845529e116d8",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-todo/SKILL.md": "0e0013ddd6517fb8cb578afbf6f9e2d14392d44fa28629e37463cebcde4c708e",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-travel/SKILL.md": "ca2f3f3172fee3ede6f1fa670c1dc90f725226a2ff6328306ee75f691f4b5792",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-twitter-cli/SKILL.md": "22e70fad2220608aef4443746246b692227c79662eaa6da21f18fac28e97d6ca",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-twitter-cli/scripts/twitter": "64fbfdb1d421af4bc7f158e9e8ab194dcdd5bb3a79e0b20f002aea1e20e13822",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-twitter-cli/source-manifest.json": "553eb49574d1d28c2babe50c3baa6350a8950edb646437ccc7139fcd9ee4f165",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-twitter-media/SKILL.md": "1724ad9a89bad1ae778c16abd3afe8cfa77f5e95cbb42b5ea56d9f9eb9c8360c",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-video-reader/SKILL.md": "74ff7ceb1de045cc9611cbfc71c1d77645c587f0697b7c5c95c2722ba0487a03",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-voice/SKILL.md": "086235992fd932187bab1bf12582c754f5e73794b212506899cdc162a34d8b65",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-web-fetch/SKILL.md": "aff66a77bfef7cb6d12c928749ff859b96a494ffccfb21d54bfee1fdfc7e0b79",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-web-search/SKILL.md": "247901018fc4a6005a5c68d61da986b9ee27a42ad91efda6e35cf7408ecceb1f",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-xiaohongshu-cli/SKILL.md": "f71b7bcf6554ceebb0c6ab7c6b872f90f7af91aee5fce49337a50031942fa054",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-xiaohongshu-cli/scripts/xhs": "f4ba142558e2043ad878ce26edd90d7ac75dfbf6fdc67cbcc6dc277f759276a3",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/bundled-skills/boai-xiaohongshu-cli/source-manifest.json": "e536cdce05b1e985ccb714bd0320d8aaa2e6a6c7ade255c1be78e94281fdffa6",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/bobo/state/bootstrap-manifest.json": "773df8b62b4fc0936d3058d29c01fda6758b365edf4ddbbce5acf52966723cab",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/bobo/workspace/AGENTS.md": "3f2d25cde8ca8d26a4b795c4487cbeb753566bc3203acd5340b0b47146b1fbfd",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/bobo/workspace/IDENTITY.md": "c93421292cc3dbfbd48511f84929a5328bc52a55e1ab7cc966b26fb170f48b24",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/bobo/workspace/SOUL.md": "497cd543a723210536be713f7131f58fbca29448fad3d5b3eef346feef5e6214",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/bobo/workspace/prompts/channel.md": "b0927c985a64e47e3807432d1b75131f35cb7116258bc8997e64d55ae7952040",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/bobo/workspace/prompts/direct.md": "e54480bd941d31259a2c0a5d26dd2277de8f3dfc9127d157c9a32bc238e13111",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/bobo/workspace/prompts/emotion.md": "cd6cce8a2407ace87b3220362e6e9f1b7a4feac24f79533c212d9fed7f4891bc",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/bobo/workspace/prompts/greeting.md": "a83ba9d908e7da88b307c6a9b817cc0052615542915843144a52531689e27d94",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/bobo/workspace/prompts/group.md": "805ca43adbbccbc5606d5e9f2c41faf74f56759e3c60df9001b46febde40a789",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/bobo/workspace/prompts/reflection.md": "e8312fb5a01632330b7fcce909437a0533fffdb9448532fb29c00b6ed6091d02",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/bobo/workspace/prompts/task.md": "3a07da0d46e55cd77bbb883f1adfed4e8c41421478042e609dc1f42b0dd29171",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/bobo/workspace/prompts/travel.md": "907b5af24cb6c1f101eb52f284193eec45e2c0b544968b5804f8e796f2a6aae6",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/bobo/workspace/sessions/42a12f85-32db-438c-be16-9d60a4eec269/MEMORY.md": "e2ad7448b4e1d0f9a9d9681992a5567466214d71b215f66d045bbe425b62bb4c",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/bobo/workspace/sessions/42a12f85-32db-438c-be16-9d60a4eec269/USER.md": "cb0895993514d8d892520a5e24c7f6259c8eba0f0a09bc97efee531d94f599c2",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/bobo/workspace/sessions/42a12f85-32db-438c-be16-9d60a4eec269/memory/2026-10-20.md": "4671177482e00b027fc189723e0888042f19121ecb98aab9a7ef3f51899bd9d6",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/researcher/state/bootstrap-manifest.json": "5bf86599fca9555b70c7a0f89d462327525640fd974509d6279c621ca740b60b",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/researcher/workspace/AGENTS.md": "2c92c000a67d5be28029c3a3eab24274c8ea6a7c09487327067c0bd5730cb9bd",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/researcher/workspace/IDENTITY.md": "94c91053f9067af5ba66543ea2b05283992d09dbe85bd9e129dcd4e96fc613e2",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/researcher/workspace/SOUL.md": "14789d55d301bf897840a4d8cc4358c3f0e583ea09074793d84976fc4e6ef522",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/researcher/workspace/prompts/channel.md": "b0927c985a64e47e3807432d1b75131f35cb7116258bc8997e64d55ae7952040",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/researcher/workspace/prompts/direct.md": "e54480bd941d31259a2c0a5d26dd2277de8f3dfc9127d157c9a32bc238e13111",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/researcher/workspace/prompts/emotion.md": "cd6cce8a2407ace87b3220362e6e9f1b7a4feac24f79533c212d9fed7f4891bc",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/researcher/workspace/prompts/greeting.md": "a83ba9d908e7da88b307c6a9b817cc0052615542915843144a52531689e27d94",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/researcher/workspace/prompts/group.md": "805ca43adbbccbc5606d5e9f2c41faf74f56759e3c60df9001b46febde40a789",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/researcher/workspace/prompts/reflection.md": "e8312fb5a01632330b7fcce909437a0533fffdb9448532fb29c00b6ed6091d02",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/researcher/workspace/prompts/task.md": "3a07da0d46e55cd77bbb883f1adfed4e8c41421478042e609dc1f42b0dd29171",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/researcher/workspace/prompts/travel.md": "907b5af24cb6c1f101eb52f284193eec45e2c0b544968b5804f8e796f2a6aae6",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/reviewer/state/bootstrap-manifest.json": "30022e10c8c7704e74783b34c1682972b5dae5d1163c7fea336583e104786973",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/reviewer/workspace/AGENTS.md": "ce3872acc9ace68f2062ae81054890dea6f54d8e72db218d2cb9e3b3869cdbe6",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/reviewer/workspace/IDENTITY.md": "0c153bee8e22e41336b402c7a1e34a4c97e567ce1370f75d41fcb85794d9b360",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/reviewer/workspace/SOUL.md": "14789d55d301bf897840a4d8cc4358c3f0e583ea09074793d84976fc4e6ef522",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/reviewer/workspace/prompts/channel.md": "b0927c985a64e47e3807432d1b75131f35cb7116258bc8997e64d55ae7952040",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/reviewer/workspace/prompts/direct.md": "e54480bd941d31259a2c0a5d26dd2277de8f3dfc9127d157c9a32bc238e13111",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/reviewer/workspace/prompts/emotion.md": "cd6cce8a2407ace87b3220362e6e9f1b7a4feac24f79533c212d9fed7f4891bc",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/reviewer/workspace/prompts/greeting.md": "a83ba9d908e7da88b307c6a9b817cc0052615542915843144a52531689e27d94",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/reviewer/workspace/prompts/group.md": "805ca43adbbccbc5606d5e9f2c41faf74f56759e3c60df9001b46febde40a789",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/reviewer/workspace/prompts/reflection.md": "e8312fb5a01632330b7fcce909437a0533fffdb9448532fb29c00b6ed6091d02",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/reviewer/workspace/prompts/task.md": "3a07da0d46e55cd77bbb883f1adfed4e8c41421478042e609dc1f42b0dd29171",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/reviewer/workspace/prompts/travel.md": "907b5af24cb6c1f101eb52f284193eec45e2c0b544968b5804f8e796f2a6aae6",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/writer/state/bootstrap-manifest.json": "af97f5a473760d32712001e8b8362c16c39f21bce56444d2c7c15ed8941bda85",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/writer/workspace/AGENTS.md": "7643f1872f425ac2f073843541988c83345699a0f917beb8088cdeda62e8b697",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/writer/workspace/IDENTITY.md": "4663560f57739380663e8e51f2ec014bde8e689a0f058d5a368b5c95fa833b1c",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/writer/workspace/SOUL.md": "14789d55d301bf897840a4d8cc4358c3f0e583ea09074793d84976fc4e6ef522",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/writer/workspace/prompts/channel.md": "b0927c985a64e47e3807432d1b75131f35cb7116258bc8997e64d55ae7952040",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/writer/workspace/prompts/direct.md": "e54480bd941d31259a2c0a5d26dd2277de8f3dfc9127d157c9a32bc238e13111",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/writer/workspace/prompts/emotion.md": "cd6cce8a2407ace87b3220362e6e9f1b7a4feac24f79533c212d9fed7f4891bc",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/writer/workspace/prompts/greeting.md": "a83ba9d908e7da88b307c6a9b817cc0052615542915843144a52531689e27d94",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/writer/workspace/prompts/group.md": "805ca43adbbccbc5606d5e9f2c41faf74f56759e3c60df9001b46febde40a789",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/writer/workspace/prompts/reflection.md": "e8312fb5a01632330b7fcce909437a0533fffdb9448532fb29c00b6ed6091d02",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/writer/workspace/prompts/task.md": "3a07da0d46e55cd77bbb883f1adfed4e8c41421478042e609dc1f42b0dd29171",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/agents/writer/workspace/prompts/travel.md": "907b5af24cb6c1f101eb52f284193eec45e2c0b544968b5804f8e796f2a6aae6",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/automation-mastra.sqlite": "624dee7096996d894e715f86f885363821971093e20b950310dbcf8307293371",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/boai.sqlite": "cb344c4a8e970def37b7dc615c0ba00b6bc72083cfa37ab36a53d21fb8ac9a33",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/boai.sqlite-shm": "c9b8a33c7badd198eae315b6c19b9ff597d580d5df7e7d68f145bc4c3d81f442",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/boai.sqlite-wal": "4cbba3a6badc2048bbc1727d36cf8ab655bff8e92694af076988f12cadcd33aa",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/05081a7f-530f-4ee0-bf27-0688994f4332/.boai-binding-owner": "ab2c24f1cdd746b91925c3628d1769ca84155af1f060f1bcb107fb98f22a6843",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/05081a7f-530f-4ee0-bf27-0688994f4332/boai-browser/SKILL.md": "621ad9b6ccc0fa9451b57ee3cf593c3d81cfa2ddc85026b23fe6254784a2608d",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/06c63bb4-993a-482c-92f0-4024e31f613d/.boai-binding-owner": "2046841897619ae2c897bd71b0f14542d475ff01282f4e6daef1ee4ab873808c",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/06c63bb4-993a-482c-92f0-4024e31f613d/boai-reactions/SKILL.md": "70326b60e1818357c646f7d1065d151391f3d10c842daa8611e9754458e43545",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/1f6dacec-a3e4-451c-baa3-086b3315317f/.boai-binding-owner": "1f86f40ca134e1031685b407e5d149b5f86ba2fd142e1cc5d18a58b1eb0211e2",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/1f6dacec-a3e4-451c-baa3-086b3315317f/boai-computer-use/SKILL.md": "8efeba34db5c76bd541f9c7f45ea3c5e417bb7d33dedbaec3bb7360cf5405f8e",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/228bcdf4-0ba6-491e-b6d0-225605d3e5c9/.boai-binding-owner": "503e13376accc48dcbbee317795aac873e6b1e287f0272c8b17d47ee95f23e04",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/228bcdf4-0ba6-491e-b6d0-225605d3e5c9/boai-thread-management/SKILL.md": "e91def9ba80562e67cf3137ad479780e9b5704411a1141a15564845529e116d8",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/2e9fd3d0-d945-4d1c-a92c-eef1b9c52331/.boai-binding-owner": "f768e48c17bc0062ee488f23cb7b5edb1fb99ccee919810b388da2750ec4a497",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/2e9fd3d0-d945-4d1c-a92c-eef1b9c52331/boai-system-info/SKILL.md": "0ade29341707369dbf940112ab911e9542348e599c2a6099328e347240abdc8b",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/334260ca-50cb-4ea2-b552-faf9a200f261/.boai-binding-owner": "10a36c94c3d4e8c100dc2f238084d0a32d8ca92800c7f3a396374e60354f854f",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/334260ca-50cb-4ea2-b552-faf9a200f261/boai-selfie/SKILL.md": "5e368c84b93a5e4509d1abb323c88b7202e2c52a6fbd9cefb758ea10899c73e5",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/351463c4-3889-4bdc-b215-e596ef3cf5f5/.boai-binding-owner": "dda4e2538f9693acd464112f96dc857c21e3eb230445b935d758be646ff98335",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/351463c4-3889-4bdc-b215-e596ef3cf5f5/boai-tasks/SKILL.md": "5ee259f3fda637d86e4c0935e9b388cb18230bbf63089d8109337313f1a81cb1",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/40e590ca-1952-402d-9795-4ca5f516f092/.boai-binding-owner": "eb9b4e4e7507c808e1dc19d90d9409e7a2d37e6e1354fe01c997fab00dee043b",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/40e590ca-1952-402d-9795-4ca5f516f092/boai-presentations/SKILL.md": "12dddf3e07b42cf9dceb01a1feb71aa0d5806939c7f59c1229f87cfd908875f7",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/653c2c30-87a0-4ac1-aeb3-fcf5b6d7da72/.boai-binding-owner": "ac282fbc17071e2e7c2196cfa9d00c07248ad97e8d4caf87c999457c456ee310",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/653c2c30-87a0-4ac1-aeb3-fcf5b6d7da72/boai-references/SKILL.md": "6a8e318f2b8f1ac6a9fc6e58026e0d226063d0f86f5e5fab775e6702b47eaff2",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/666b2e54-2e36-436d-a722-0e6041f33c2c/.boai-binding-owner": "70b6fe2e3d95d18efb0a4a548b9ee1598398e35dbdc58e443296ddcd258f08b3",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/666b2e54-2e36-436d-a722-0e6041f33c2c/boai-memory-management/SKILL.md": "a9b9c210e30d805a1e6eb5c0d3241a15a7199bfb3c789d9d88b12035c5133f24",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/6a25a27b-ac51-4441-a4b6-55c8081158e7/.boai-binding-owner": "6abd510f75d4b332d30f0286b39f179f6b16f16d4d31cfb35d301de63b9c2aa3",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/6a25a27b-ac51-4441-a4b6-55c8081158e7/boai-self-management/SKILL.md": "1358001f8a427c35d9db1f41f1db8f6b7736f94ea424121a83fc40dbb22e2920",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/74071189-a9c0-493c-85fd-0c11c55abeb5/.boai-binding-owner": "1cb530645ea4b3ecc082b7c8d1574bde56142cc047f76ceab3421cb86862c3c0",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/74071189-a9c0-493c-85fd-0c11c55abeb5/boai-image-gen/SKILL.md": "93c7f004ac4d2329bc75d774a5c2d938a79ad030171825502fd2433b15c70d3e",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/75d4bde9-bae4-450d-84b7-622e32159ab8/.boai-binding-owner": "769ba656d53cb0ea716c28f165dcefb8a825513e3a65a75ee322f441e7aea771",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/75d4bde9-bae4-450d-84b7-622e32159ab8/boai-travel/SKILL.md": "ca2f3f3172fee3ede6f1fa670c1dc90f725226a2ff6328306ee75f691f4b5792",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/7f0089fa-7d2f-40aa-bc67-b13f8dcb7a2c/.boai-binding-owner": "32e58ba8d90d53009ea3cc97c3d9e683f50032e082ec23b1c49318d1a722bb53",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/7f0089fa-7d2f-40aa-bc67-b13f8dcb7a2c/boai-screenshot/SKILL.md": "00ffac2b5a5ed4afaa7ca8e41d4f96f9d2b35b63d26a5b02d95efdfef8877cab",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/874e5fe1-2f5d-4133-838d-639ef5a31109/.boai-binding-owner": "c274dc7fc84fb4ec76f8d2992c2198d1c3f5ef75c2718f5f55c91527e5580e01",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/874e5fe1-2f5d-4133-838d-639ef5a31109/boai-programmatic-tools/SKILL.md": "e4f95db7122b30b340c30a547565c651a34b5da7befef974ef07cfd4036ec869",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/8cd1bd4f-1629-4b26-8a7c-fdeeb3b7f912/.boai-binding-owner": "f5d6bbf9f0c1d3146b3b1fd6b577391d82cd9dd0bfc3e7c22046548bd5a17982",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/8cd1bd4f-1629-4b26-8a7c-fdeeb3b7f912/boai-todo/SKILL.md": "0e0013ddd6517fb8cb578afbf6f9e2d14392d44fa28629e37463cebcde4c708e",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/8d994bbe-5e14-4400-a4ba-5f4380dfb4b2/.boai-binding-owner": "117f7df1402ced94d9a3dfc161609b70b4085a5c431631dfd98a6977050f5a6f",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/8d994bbe-5e14-4400-a4ba-5f4380dfb4b2/boai-web-search/SKILL.md": "247901018fc4a6005a5c68d61da986b9ee27a42ad91efda6e35cf7408ecceb1f",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/8eae382c-babd-446d-b219-9700f62e9010/.boai-binding-owner": "8006ff0c60aa02950d5182ebb89bd2142686a48158b65c43fe6c5322e47fb204",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/8eae382c-babd-446d-b219-9700f62e9010/boai-alchemy/SKILL.md": "3f34edabbb33563d6beec0b04373c02e85dec20a8a7a505ece14d7d3fb960ce5",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/98a42fba-5b53-4aa5-b793-c16b74edd14b/.boai-binding-owner": "dd8ae2789b907b222adf47b742ca5d407c496e4c79dd74629c2b973af5a7cba0",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/98a42fba-5b53-4aa5-b793-c16b74edd14b/boai-self-reflection/SKILL.md": "03bb1efac8c057ba31e26614147349118e2dea406ee6cfaa19ff1b6831afbb7e",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/9bd8e29b-ce6b-46aa-863c-aebee11f0d09/.boai-binding-owner": "7df65ef7845d681479c85054a12cc43ebc1a4275df4bcf15660c4a7f3e4e5378",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/9bd8e29b-ce6b-46aa-863c-aebee11f0d09/boai-plan-mode/SKILL.md": "ce6fabd1671e5ab06e1ecdc11a8a1251c99cedcb06e2b087691dda7db113ad33",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/9fafe30d-fc5b-400a-b2e9-790961f5c368/.boai-binding-owner": "4a319ed86f97ed5044b49783c03ab85d7efeef01a7137430bf56feb1b9acddcd",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/9fafe30d-fc5b-400a-b2e9-790961f5c368/boai-plan-weave/SKILL.md": "bccd64a08ae97abcc304c7e89ce5f6ea7597d5e9a9f99bb18cc608a856195945",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/a7c06c2c-31f1-41ec-9b10-352a1d08e59a/.boai-binding-owner": "90aa876176439249ba826b84d978758055e68d03ecd02232452501b32bfe9c2c",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/a7c06c2c-31f1-41ec-9b10-352a1d08e59a/boai-music-listener/SKILL.md": "10b2bed9c5fc7c3bc1836f73a68579bf47e6c964c8a4d55e377818aa01438114",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/b14a6eac-3c99-4091-95dd-94ed3e903abe/.boai-binding-owner": "2a4205afa505a8aac146fb369d6bc26f52080c5646439e7c57ea734e8e74934c",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/b14a6eac-3c99-4091-95dd-94ed3e903abe/boai-skill-search/SKILL.md": "171ac79ff3146a43255d082421cf8a7c5ef44e98f061aaabef94be5d284bfc6a",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/b5fddc28-90d9-49f7-9b8f-9fdb5240d35e/.boai-binding-owner": "1bd71be10dbc53c8ee6c7dbfab7f11c4e528de74a8a155954fe4f3c4769e322c",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/b5fddc28-90d9-49f7-9b8f-9fdb5240d35e/boai-skill-hub/SKILL.md": "a7501be43c50b55be0924d757ba333fc49175f006b4cd2c9e8e1f478792d34a6",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/b89119da-81f8-494e-bc30-73205e93abf7/.boai-binding-owner": "e4c25ca6ec228cd3110668486fda73f017d4d314eb1943a4374b888f11feb30a",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/b89119da-81f8-494e-bc30-73205e93abf7/boai-video-reader/SKILL.md": "74ff7ceb1de045cc9611cbfc71c1d77645c587f0697b7c5c95c2722ba0487a03",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/b8d18e3a-a3d2-432c-8773-58f6935e5f73/.boai-binding-owner": "36b061c23bd02e87d1615c190c2e8c97878b1d2ff310073a751d8bb9ad6c7b86",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/b8d18e3a-a3d2-432c-8773-58f6935e5f73/boai-web-fetch/SKILL.md": "aff66a77bfef7cb6d12c928749ff859b96a494ffccfb21d54bfee1fdfc7e0b79",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/bb9d31dd-67a6-4e41-891e-c57f3e2d7f6a/.boai-binding-owner": "a640085acda0855dbbc34cf80152816988b8458c08666be892ae383f2e406b1b",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/bb9d31dd-67a6-4e41-891e-c57f3e2d7f6a/boai-twitter-media/SKILL.md": "1724ad9a89bad1ae778c16abd3afe8cfa77f5e95cbb42b5ea56d9f9eb9c8360c",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/bd03ba81-73e9-4331-822f-ed765db1e84d/.boai-binding-owner": "d4c3ac4d477211d0e94faa9bf715afaf08e3b163e26d64c937295e615a88dacf",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/bd03ba81-73e9-4331-822f-ed765db1e84d/boai-scheduler/SKILL.md": "28bb7a066c5d054a0b1ed9b35156baaa8f6814ebe56731c4491b0dfea81d6204",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/bf5cb562-ff27-4a36-b9ab-b7a40f8fe15c/.boai-binding-owner": "d2e507cf83a975a0f9126524b165974529a425f3bab0381da1a34f7a73276005",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/bf5cb562-ff27-4a36-b9ab-b7a40f8fe15c/boai-file-manager/SKILL.md": "50a66e6d71df2b0d4a511f3b39070d033e100bfb4520e5ac92aeb51bb756aa18",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/c2617346-14a4-4d60-991c-dccb039e5b54/.boai-binding-owner": "9e513f24525d4f010a45e22b3ac4c28d8a7be2d6b2ed084a1e9d338cf55afe21",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/c2617346-14a4-4d60-991c-dccb039e5b54/boai-send-file/SKILL.md": "022cbfeffeca3e39091ea6397499fcb99bb17bf19d4ede6e40542594a58e5dd5",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/ca03a55f-b848-47b7-b986-1242cd651826/.boai-binding-owner": "e674b3539d7a5abfe7fece4ac9e75d5dbe21a490f2ebe05735f5b90d721f368d",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/ca03a55f-b848-47b7-b986-1242cd651826/boai-xiaohongshu-cli/SKILL.md": "f71b7bcf6554ceebb0c6ab7c6b872f90f7af91aee5fce49337a50031942fa054",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/ca03a55f-b848-47b7-b986-1242cd651826/boai-xiaohongshu-cli/scripts/xhs": "f4ba142558e2043ad878ce26edd90d7ac75dfbf6fdc67cbcc6dc277f759276a3",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/ca03a55f-b848-47b7-b986-1242cd651826/boai-xiaohongshu-cli/source-manifest.json": "e536cdce05b1e985ccb714bd0320d8aaa2e6a6c7ade255c1be78e94281fdffa6",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/d047254d-fc7d-4b5c-b22f-0f2f8e91c140/.boai-binding-owner": "a3d53be3d532a8360be9d44d5df90588152fde0cb6ec840f2da29d58117faeef",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/d047254d-fc7d-4b5c-b22f-0f2f8e91c140/boai-notebook/SKILL.md": "692f994c0d737a5e284aef9a4995864cd063be00956a0d9c4eb65b6aec3bc396",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/e8744279-83fb-4b0d-ab09-7f7f5bac7453/.boai-binding-owner": "0fef80ac287f82d79e1c8429a38a6fa5c3b9eebd8f739c3eabb7f580c3bccc2d",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/e8744279-83fb-4b0d-ab09-7f7f5bac7453/boai-twitter-cli/SKILL.md": "22e70fad2220608aef4443746246b692227c79662eaa6da21f18fac28e97d6ca",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/e8744279-83fb-4b0d-ab09-7f7f5bac7453/boai-twitter-cli/scripts/twitter": "64fbfdb1d421af4bc7f158e9e8ab194dcdd5bb3a79e0b20f002aea1e20e13822",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/e8744279-83fb-4b0d-ab09-7f7f5bac7453/boai-twitter-cli/source-manifest.json": "553eb49574d1d28c2babe50c3baa6350a8950edb646437ccc7139fcd9ee4f165",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/f9724289-344e-456a-88f4-684677863c05/.boai-binding-owner": "dd6f23af97977f39247943abc23b35b29f5eee83d5b89cfc8ae67cd6453c2b71",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/data/skills/f9724289-344e-456a-88f4-684677863c05/boai-voice/SKILL.md": "086235992fd932187bab1bf12582c754f5e73794b212506899cdc162a34d8b65",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/host.cjs": "efbbd26c05cb41b9e7d0ac926cfbbc624f37e51a36a3bd098bfeb1d6febba328",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/model.json": "5977c38ee91711adb1dab5677395968d616f2271954ecf359f8d97a7092c08aa",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/request-budget.json": "2734fe1e70c5a10dd4cba8f94925131b0ed1c559c8167780bd3f1752c9dc627f",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/result.json": "0ecf27b91ddeef5d9c8e2dc7c8d6dea2d5d1bca0e0bfcd485d3be5d1c9120c2e",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/settings.json": "cf65648207b77c7632567dd6f90205a39532468fc1c902f994b3ed0769730fc5",
+    ".local/personality-evaluation/social-cli-runtime-1792476128797/worker.mjs": "e10d9f0e1c49642143103a5bf3de9b9c347b7c418841cea008d2bdac43ddf424",
+    ".local/personality-evaluation/skill-install-1792476457575.json": "5c7c703e269ee5ef913a31cee5c6c8b9c24f7152e18575029f62e4cbf4ee8225",
+    ".local/personality-evaluation/skill-install-1792476480459.json": "f6dfad9986ac628862a0041a27cf138cd94e81b113db46ddb25ac523f5c5a2e7"
+  }
+}

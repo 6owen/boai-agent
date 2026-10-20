@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "upstream": {
+    "repository": "https://github.com/jackwener/xiaohongshu-cli",
+    "commit": "95b21d2062c72357fde4fd760c40f250de2d1551",
+    "package": "xiaohongshu-cli",
+    "packageVersion": "0.5.0"
+  },
+  "almaSource": {
+    "skill": "ai-docs/alma-研究/技能/xiaohongshu-cli/SKILL.md",
+    "skillSha256": "0e066c0603190b3c72fe5d7a39fd27c0ea7cc247c18b83be309010492e48a348",
+    "wrapper": "ai-docs/alma-研究/技能/xiaohongshu-cli/scripts/xhs.source.txt",
+    "wrapperSha256": "18138594ce1c200054b19171ad310f7a31ed2d880031c10684d1be67ee9f3cdf"
+  },
+  "adaptation": [
+    "BOAI bound directory and command permissions",
+    "Pinned fallback and matching local version",
+    "Explicit account actions and unknown-result handling",
+    "No account access on integration inspection"
+  ]
+}

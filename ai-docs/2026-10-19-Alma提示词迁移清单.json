@@ -16201,10 +16201,14 @@
       "name": "artifact-sidebar",
       "originalRef": "alma-研究/技能/artifact-sidebar/SKILL.md",
       "researchCopySha256": "80d9b2fa4e3e0108d84e13d111650bf42a79ce4e8754c86cec55237eef4c777e",
-      "dependencyReviewStatus": "pending",
-      "targetSkill": null,
-      "implementationStatus": "not-started",
-      "verification": []
+      "dependencyReviewStatus": "reviewed-runtime-adapted",
+      "targetSkill": "../resources/agent-skills/boai-artifact-sidebar/SKILL.md",
+      "implementationStatus": "partial-adaptation-bound",
+      "verification": [
+        "reviews/2026-10-19-alma-personality/2026-10-20-侧栏终端预览与桌面活动日报.md",
+        "reviews/2026-10-19-alma-personality/workspace-activity-workflow.json"
+      ],
+      "implementationNote": "§11.57共用协议接真实PTY/静态与开发服务；真实bobo复测完成，侧栏UI未运行E2E，未迁Git/PIP/远程主机面板。"
     },
     {
       "name": "browser",
@@ -16234,12 +16238,15 @@
       "name": "daily-report",
       "originalRef": "alma-研究/技能/daily-report/SKILL.md",
       "researchCopySha256": "eedba98094725213d3623be8d62f2c96fbd3809b5933013a427ac5fb29b39ec9",
-      "dependencyReviewStatus": "reviewed-missing-screen-activity-pipeline",
-      "targetSkill": null,
-      "implementationStatus": "not-started",
+      "dependencyReviewStatus": "reviewed-runtime-adapted",
+      "targetSkill": "../resources/agent-skills/boai-daily-report/SKILL.md",
+      "implementationStatus": "partial-adaptation-bound",
       "verification": [
-        "2026-10-20复核原文：依赖用户屏幕活动/OCR与activity report/digest/sessions，不用BOAI聊天摘要冒充，当前未接入。"
-      ]
+        "2026-10-20复核原文：依赖用户屏幕活动/OCR与activity report/digest/sessions，不用BOAI聊天摘要冒充，当前未接入。",
+        "reviews/2026-10-19-alma-personality/2026-10-20-侧栏终端预览与桌面活动日报.md",
+        "reviews/2026-10-19-alma-personality/workspace-activity-workflow.json"
+      ],
+      "implementationNote": "§11.57前台窗口本地OCR/来源日报/缓存和清理已接，默认关闭；受控非空来源与真实模型空记录通过，实际屏幕OCR及非空模型日报质量未认证。"
     },
     {
       "name": "discord",
@@ -16247,8 +16254,9 @@
       "researchCopySha256": "9afbc074ff2f6364f9514423b0279148fb167e765cee8c52114b7db1d7efb264",
       "dependencyReviewStatus": "pending",
       "targetSkill": null,
-      "implementationStatus": "not-started",
-      "verification": []
+      "implementationStatus": "excluded-by-user",
+      "verification": [],
+      "implementationNote": "2026-10-20用户明确只做侧栏终端与预览、桌面活动日报，其余不用做；保留研究原件，不再排入实施。"
     },
     {
       "name": "file-manager",
@@ -16295,8 +16303,9 @@
       "researchCopySha256": "a05909df94e57f25a8d544c4e857cdeb1bb5d567386b36d30d346b8f9c72f2b0",
       "dependencyReviewStatus": "pending",
       "targetSkill": null,
-      "implementationStatus": "not-started",
-      "verification": []
+      "implementationStatus": "excluded-by-user",
+      "verification": [],
+      "implementationNote": "2026-10-20用户明确只做侧栏终端与预览、桌面活动日报，其余不用做；保留研究原件，不再排入实施。"
     },
     {
       "name": "music-listener",
@@ -16536,8 +16545,9 @@
       "researchCopySha256": "8caadb954bd4f72274f3bf4c397f2ddfc50a0c97ff2a44cc5477f7a91d73322b",
       "dependencyReviewStatus": "pending",
       "targetSkill": null,
-      "implementationStatus": "not-started",
-      "verification": []
+      "implementationStatus": "excluded-by-user",
+      "verification": [],
+      "implementationNote": "2026-10-20用户明确只做侧栏终端与预览、桌面活动日报，其余不用做；保留研究原件，不再排入实施。"
     },
     {
       "name": "telegram",
@@ -16545,8 +16555,9 @@
       "researchCopySha256": "79fde0b80b629497f096d60ef54c2b67c4a06cf7ce16d0083acef163d34718fb",
       "dependencyReviewStatus": "pending",
       "targetSkill": null,
-      "implementationStatus": "not-started",
-      "verification": []
+      "implementationStatus": "excluded-by-user",
+      "verification": [],
+      "implementationNote": "2026-10-20用户明确只做侧栏终端与预览、桌面活动日报，其余不用做；保留研究原件，不再排入实施。"
     },
     {
       "name": "thread-management",
@@ -16587,10 +16598,12 @@
       "name": "twitter-cli",
       "originalRef": "alma-研究/技能/twitter-cli/SKILL.md",
       "researchCopySha256": "a0ec17ed5aebe042b95e4bd4ccf019d72e857c68611a37d11285b9beab566fe6",
-      "dependencyReviewStatus": "pending",
-      "targetSkill": null,
-      "implementationStatus": "not-started",
-      "verification": []
+      "dependencyReviewStatus": "reviewed-partial",
+      "targetSkill": "resources/agent-skills/boai-twitter-cli/SKILL.md",
+      "implementationStatus": "partial-adaptation-bound",
+      "verification": [
+        "§11.56: full skill/script/source manifest, pinned package version, actual bound-directory read and --version/--help via AppService. 17 model requests; initial directory refusal retained. 24 distinct engineering checks/typecheck/build; live Bobo75/profile16/34. Account operations and native/permission matrix unverified; verbose replies remain."
+      ]
     },
     {
       "name": "twitter-media",
@@ -16661,21 +16674,38 @@
       "name": "xiaohongshu-cli",
       "originalRef": "alma-研究/技能/xiaohongshu-cli/SKILL.md",
       "researchCopySha256": "0e066c0603190b3c72fe5d7a39fd27c0ea7cc247c18b83be309010492e48a348",
-      "dependencyReviewStatus": "pending",
-      "targetSkill": null,
-      "implementationStatus": "not-started",
-      "verification": []
+      "dependencyReviewStatus": "reviewed-partial",
+      "targetSkill": "resources/agent-skills/boai-xiaohongshu-cli/SKILL.md",
+      "implementationStatus": "partial-adaptation-bound",
+      "verification": [
+        "§11.56: full skill/script/source manifest, pinned package version, actual bound-directory read and --version/--help via AppService. 17 model requests; initial directory refusal retained. 24 distinct engineering checks/typecheck/build; live Bobo75/profile16/34. Account operations and native/permission matrix unverified; verbose replies remain."
+      ]
     }
   ],
-  "implementationProgressRef": "2026-10-19-BOAI独立Agent配置与行为运行架构.md#1149-ppt-渲染素材与审阅核心2026-10-20继续中",
+  "implementationProgressRef": "2026-10-19-BOAI独立Agent配置与行为运行架构.md#1157-侧栏终端预览与桌面活动日报2026-10-20范围收口",
   "defaultSkillDistribution": {
     "version": 1,
     "manifest": "../resources/agent-skills/manifest.json",
-    "count": 31,
+    "count": 36,
     "policy": "fresh-bobo-only; existing copies and removals preserved; explicit updates",
     "verification": "reviews/2026-10-19-alma-personality/default-skills-distribution.json",
     "newModelRequests": 0,
-    "currentVerification": "reviews/2026-10-19-alma-personality/twitter-media-workflow.json",
-    "currentNote": "§11.46新增twitter-media；新Bobo默认31项，既有员工沿显式版本更新；外部账号能力不随技能授权。"
+    "currentVerification": "reviews/2026-10-19-alma-personality/workspace-activity-workflow.json",
+    "currentNote": "§11.57新增artifact-sidebar/daily-report，新bobo默认36项，当前bobo显式绑定36项；默认关闭屏幕记录、原自定义/解绑策略保持。剩余四技能按用户要求不做，不以绑定数认证全部人格质量。"
+  },
+  "currentScope": {
+    "asOf": "2026-10-20",
+    "userInstruction": "侧栏终端与预览、桌面活动日报 这两项做一下，剩下的不用做了",
+    "implementedThisTurn": [
+      "artifact-sidebar",
+      "daily-report"
+    ],
+    "excludedSkills": [
+      "discord",
+      "music-gen",
+      "team",
+      "telegram"
+    ],
+    "otherMigrationWork": "stopped-by-user; previous failures and unverified scope preserved, not certified complete"
   }
 }

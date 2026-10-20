@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 真实绑定脚本目录/相对文件清单与伴随文件变化、撤权检查，读取不执行脚本。
  * [OUTPUT]: 自我新增技能不中断回复，当前轮保持冻结能力、次轮加载；后续撤销或其他配置变更仍终止旧运行。
  * [OUTPUT]: 员工表情实际消息身份、去重、跨会话/清理拒绝与本机目录回归。
  * [OUTPUT]: 会话改名/检索保留原消息与运行，不显示隐藏来源，不重放写入。
@@ -145,12 +146,18 @@ it('renames and searches the original core chat without sending messages, and ke
 it('ordinary skill reading remains bound, detects changed bytes and rechecks live access', async () => {
   const root = await temporary(), path = join(root, 'skill'); await mkdir(path)
   await writeFile(join(path, 'SKILL.md'), '---\nname: sample\ndescription: a sample\n---\nActual skill')
+  await mkdir(join(path, 'scripts'))
+  await writeFile(join(path, 'scripts', 'probe.sh'), 'exit 17\n')
   let permitted = true
   const ctx = { agent: { id: 'bobo', skillIds: ['s'], knowledgeIds: [] }, conversation: { id: 'c', kind: 'direct' }, resources: [{ id: 's', name: 'sample', kind: 'skill', path }], signal: new AbortController().signal, assertSkillAccess: async () => { if (!permitted) throw new Error('revoked') } } as unknown as EngineContext
   const tools = createBoundSkillOperations(ctx), list = tools.find(t => t.name === 'list_skills')!, read = tools.find(t => t.name === 'read_skill')!
   expect(await list.execute({})).toMatchObject({ skills: [{ resourceId: 's', description: 'a sample' }] })
   await expect(read.execute({ resourceId: 'foreign' })).rejects.toThrow('未绑定')
-  expect(await read.execute({ resourceId: 's' })).toMatchObject({ content: expect.stringContaining('Actual skill') })
+  expect(await read.execute({ resourceId: 's' })).toMatchObject({ content: expect.stringContaining('Actual skill'), directory: path,
+    files: expect.arrayContaining([expect.objectContaining({ path: 'scripts/probe.sh', size: 8 })]) })
+  await writeFile(join(path, 'scripts', 'probe.sh'), 'exit 18\n')
+  await expect(read.execute({ resourceId: 's' })).rejects.toThrow('变更')
+  await writeFile(join(path, 'scripts', 'probe.sh'), 'exit 17\n')
   await writeFile(join(path, 'SKILL.md'), 'changed')
   await expect(read.execute({ resourceId: 's' })).rejects.toThrow('变更')
   permitted = false; await expect(list.execute({})).rejects.toThrow('revoked')
@@ -161,7 +168,8 @@ it('native ordinary conversations expose the same bound skill loader without cre
   const ctx = { agent: { id: 'bobo', systemRole: 'core', skillIds: ['s'], knowledgeIds: [] }, conversation: { id: 'c', kind: 'direct' }, resources: [{ id: 's', name: 'sample', kind: 'skill', path: skill }], messages: [], signal: new AbortController().signal, onTool: async () => {}, recallMemory: async () => ({ entries: [], epoch: 1, namespace: 'employee:bobo' }) } as unknown as EngineContext
   const product = createNativeProducts(ctx)
   expect(product.tools.map(t => t.name)).toEqual(expect.arrayContaining(['list_skills', 'read_skill', 'search_memory']))
-  expect(await product.tools.find(t => t.name === 'read_skill')!.execute({ resourceId: 's' }, 'read-bound')).toMatchObject({ content: expect.stringContaining('Read before acting') })
+  expect(await product.tools.find(t => t.name === 'read_skill')!.execute({ resourceId: 's' }, 'read-bound')).toMatchObject({ content: expect.stringContaining('Read before acting'), directory: skill,
+    files: [expect.objectContaining({ path: 'SKILL.md' })] })
   await product.dispose()
 })
 it('retains only a real current-user quote and recalls it through the actual host', async () => {

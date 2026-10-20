@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# [INPUT]: CLI arguments, installed twitter or uv/uvx, existing account environment.
+# [OUTPUT]: Pinned twitter-cli 0.8.5 invocation; never performs implicit login.
+# [POS]: Companion launcher for boai-twitter-cli; adapted from the recorded Alma source.
+# [PROTOCOL]: Update Header and owning .folder.md when changed.
+set -euo pipefail
+
+# X is unreachable without a proxy in some regions, and the agent shell does not
+# inherit GUI proxy settings. Fall back to env proxies, then the macOS system proxy.
+if [ -z "${TWITTER_PROXY:-}" ]; then
+  for v in "${HTTPS_PROXY:-}" "${https_proxy:-}" "${ALL_PROXY:-}" "${all_proxy:-}" "${HTTP_PROXY:-}" "${http_proxy:-}"; do
+    if [ -n "$v" ]; then
+      export TWITTER_PROXY="$v"
+      break
+    fi
+  done
+fi
+if [ -z "${TWITTER_PROXY:-}" ] && command -v scutil >/dev/null 2>&1; then
+  sys_proxy=$(scutil --proxy 2>/dev/null | awk '
+    /HTTPSEnable : 1/ { hs = 1 } /HTTPSProxy :/ { hh = $3 } /HTTPSPort :/ { hp = $3 }
+    /SOCKSEnable : 1/ { ss = 1 } /SOCKSProxy :/ { sh = $3 } /SOCKSPort :/ { sp = $3 }
+    END {
+      if (hs && hh != "" && hp != "") print "http://" hh ":" hp
+      else if (ss && sh != "" && sp != "") print "socks5://" sh ":" sp
+    }' || true)
+  if [ -n "$sys_proxy" ]; then
+    export TWITTER_PROXY="$sys_proxy"
+  fi
+fi
+
+if command -v twitter >/dev/null 2>&1 && [ "$(twitter --version 2>/dev/null)" = "twitter, version 0.8.5" ]; then
+  exec twitter "$@"
+fi
+
+if command -v uvx >/dev/null 2>&1; then
+  exec uvx --from twitter-cli==0.8.5 twitter "$@"
+fi
+
+if command -v uv >/dev/null 2>&1; then
+  exec uv tool run --from twitter-cli==0.8.5 twitter "$@"
+fi
+
+cat >&2 <<'MSG'
+twitter-cli is not installed and uv/uvx is unavailable.
+
+Install twitter-cli with one of:
+  uv tool install twitter-cli==0.8.5
+  pipx install twitter-cli==0.8.5
+MSG
+
+exit 127

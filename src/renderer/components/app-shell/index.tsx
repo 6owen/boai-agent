@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 主聊天按选中会话元信息立即保留ChatView外框，不再以会话ID重建整个聊天；首屏40条、刷新保留已加载窗口且最多80条，原请求代次/锚点/清理隔离保持。
+ * [OUTPUT]: 同会话终端/预览侧栏与桌面活动日报的真实 bobo 首发入口。
  * [OUTPUT]: 保留挂载的主会话与渠道聊天各提供浮层可见作用域，切页/隐藏详情立即撤下Portal，不清理正文、草稿和阅读位置。
  * [OUTPUT]: 会话消息与群标题头像的配置入口统一跳转通讯录并选中对应员工，bobo与创建的员工共用原导航守卫。
  * [OUTPUT]: 2026-10-19 员工配置检索服务入口导航到独立设置页，沿原未保存守卫。
@@ -69,6 +71,7 @@
  * [POS]: src/renderer/components/app-shell/index.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { WorkspacePanel } from '../detail-panel/workspace-panel'
 import { draftResourceReferences } from '@/pages/conversations/inline-mentions'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
@@ -116,7 +119,7 @@ import { KnowledgePreviewPane } from '@/components/work-views/employee-knowledge
 import { KnowledgeCitationPane } from '@/components/work-views/knowledge-citation'
 import { TasksPage, TasksPlaceholder } from '@/pages/tasks'
 import type { ConversationFileItem, ConversationFileTarget } from '@shared/domain/work-views'
-import { ChatView } from '@/pages/conversations/-components/chat-view'
+import { ChatView, type ChatViewProps } from '@/pages/conversations/-components/chat-view'
 import { useChatQuestionReplies } from '@/pages/conversations/question-reply'
 import { CoreChatStart } from '@/pages/conversations/-components/core-chat-start'
 import type { ComposerAgentPatch, ComposerAgentSaveResult } from '@/pages/conversations/-components/composer-toolbar'
@@ -318,9 +321,11 @@ export function AppShell() {
       viewLocations.current.set(id, location)
       // Refresh the loaded range around its center, not around the visible row:
       // recentering on the scroll anchor would evict the page the user just loaded.
-      const aroundMessageId = location.messageId && window?.conversationId === id && window.items.some(item => item.messageId === location.messageId)
-        ? window.items[Math.floor((window.items.length - 1) / 2)]?.messageId : location.messageId
-      const result = await api.request('getConversationView', { conversationId: id, limit: READING_LIMITS.maxPage, aroundMessageId })
+      const loadedWindow = window ?? (detailRef.current?.conversation.id === id ? detailRef.current.messagePage : undefined)
+      const aroundMessageId = location.messageId && loadedWindow?.conversationId === id && loadedWindow.items.some(item => item.messageId === location.messageId)
+        ? loadedWindow.items[Math.floor((loadedWindow.items.length - 1) / 2)]?.messageId : location.messageId
+      const limit = Math.min(READING_LIMITS.maxPage, Math.max(READING_LIMITS.page, loadedWindow?.items.length ?? 0))
+      const result = await api.request('getConversationView', { conversationId: id, limit, aroundMessageId })
       if (!current()) return
       let messagePage = result.messagePage
       for (const message of capture.messages.values()) messagePage = updateLiveMessage(messagePage, message, !location.messageId)
@@ -379,12 +384,14 @@ export function AppShell() {
       })
     }).catch(report) }
     const unsubscribe = api.subscribe((event: AppEvent) => {
+      if (event.type === 'workspace:show') { dispatchDetails({ type: 'open', target: { type: 'workspace', id: event.conversationId, employeeId: event.employeeId, view: event.view } }, 'conversations'); return }
       if (event.type === 'automation:history-deleted') { dispatchWorkspace({ type: 'remove-automation-occurrence', id: event.occurrenceId }); schedule(); return }
       if (event.type === 'automation:navigate') { openAutomationNotice(); return }
       if(event.type==='focus-conversation'){navigate(()=>applyRoute({page:'conversations',conversationId:event.conversationId,focusMessage:event.messageId?{id:event.messageId,requestId:crypto.randomUUID()}:undefined}));return}
       if (event.type === 'runtime-error') { toast.error(event.error); return }
       if (event.type === 'conversation:cleared' || event.type === 'conversation:deleted') {
         const id = event.conversationId
+        dispatchWorkspace({ type: 'remove-workspace', id })
         clearArtifactPending(id)
         materialDrafts.invalidate(id)
         liveMessages.current.clear(id)
@@ -442,7 +449,7 @@ export function AppShell() {
     const next = requested
     if (addHistory && (next.page !== route.page || next.conversationId !== route.conversationId || next.coreDraft !== route.coreDraft)) { history.current = history.current.slice(0, historyIndex.current + 1); history.current.push(next); historyIndex.current++ }
     if (next.conversationId !== selectedRef.current || next.page !== routeRef.current.page || next.focusMessage?.requestId !== routeRef.current.focusMessage?.requestId || next.focusApproval?.requestId !== routeRef.current.focusApproval?.requestId) detailRequest.current++
-    if (next.conversationId !== selectedRef.current) { selectedRef.current = next.conversationId; setDetail(null) }
+    if (next.conversationId !== selectedRef.current) { selectedRef.current = next.conversationId; setDetail(null); setDetailLoading(Boolean(next.conversationId && next.page === 'conversations')) }
     routeRef.current = next
     if (next.page !== 'skills') { setFocusedSkill(undefined); setFocusedSource(undefined) }
     if (next.page !== 'settings') setLocalAgentTarget(undefined)
@@ -548,6 +555,15 @@ export function AppShell() {
     setSnapshot(previous => ({ ...previous, conversations: previous.conversations.some(item => item.id === result.id) ? previous.conversations : [...previous.conversations, result] }))
     navigate(() => { applyRoute({ page: 'conversations', conversationId: result.id }) })
     void refreshSnapshot().catch(failure => toast.error(errorText(failure)))
+  }
+  const activityReportRequests = useRef(new Map<string, string>())
+  const startActivityReport = async (from: string, to: string) => {
+    const key = `${from}:${to}`, previous = activityReportRequests.current.get(key), requestId = previous ?? crypto.randomUUID()
+    activityReportRequests.current.set(key, requestId)
+    const known = previous ? await api!.request('getCoreConversationStart', { requestId }) : null
+    const result = known ?? await api!.request('startCoreConversation', { requestId, content: `请使用 boai-daily-report 技能，根据 ${from} 至 ${to} 的真实桌面活动生成主题日报，并保存日报。不要使用聊天历史补造活动；没有记录就如实说明。` })
+    activityReportRequests.current.delete(key)
+    await refreshSnapshot(); selectConversation(result.id, true)
   }
   const createCoreConversation = () => navigate(() => {
     applyRoute({ page: 'conversations', conversationId: null, coreDraft: true })
@@ -846,7 +862,7 @@ export function AppShell() {
   }
   const title = route.page === 'conversations' ? conversation?.title ?? '会话' : labels[route.page]
   const describePanel = (item: Panel) => {
-    const title = item.type === 'files' ? '文件' : item.type === 'tasks' ? '任务' : item.type === 'channel-discussion' ? '历史会话' : item.type === 'channel-publish' ? '发送到渠道' : item.type === 'channel-files' ? '渠道文件' : item.type === 'channels' ? '渠道会话' : item.type === 'artifact' ? '成果预览' : item.type === 'material' ? '材料原文' : item.type === 'skill-updates' ? '技能更新' : item.type === 'automation-editor' ? (item.id ? '编辑定时任务' : '新建定时任务') : item.type === 'agent' ? '数字员工' : item.type === 'group' ? (snapshot.conversations.some(room => room.id === item.id && isChannelConversation(room)) ? '渠道信息' : '群聊详情') : item.type === 'trace' || item.type === 'activity' || item.type === 'automation-occurrence' ? '执行过程' : item.type === 'source' ? '数据源详情' : item.type === 'local-skill' ? '技能详情' : item.type === 'resource' ? '资源详情' : item.type === 'marketplace' ? '商店详情' : '任务详情'
+    const title = item.type === 'workspace' ? '终端与预览' : item.type === 'files' ? '文件' : item.type === 'tasks' ? '任务' : item.type === 'channel-discussion' ? '历史会话' : item.type === 'channel-publish' ? '发送到渠道' : item.type === 'channel-files' ? '渠道文件' : item.type === 'channels' ? '渠道会话' : item.type === 'artifact' ? '成果预览' : item.type === 'material' ? '材料原文' : item.type === 'skill-updates' ? '技能更新' : item.type === 'automation-editor' ? (item.id ? '编辑定时任务' : '新建定时任务') : item.type === 'agent' ? '数字员工' : item.type === 'group' ? (snapshot.conversations.some(room => room.id === item.id && isChannelConversation(room)) ? '渠道信息' : '群聊详情') : item.type === 'trace' || item.type === 'activity' || item.type === 'automation-occurrence' ? '执行过程' : item.type === 'source' ? '数据源详情' : item.type === 'local-skill' ? '技能详情' : item.type === 'resource' ? '资源详情' : item.type === 'marketplace' ? '商店详情' : '任务详情'
     const name = item.type === 'files' || item.type === 'tasks' ? `${item.owner === 'employee' ? snapshot.agents.find(agent => agent.id === item.id)?.name ?? '员工' : snapshot.conversations.find(room => room.id === item.id)?.title ?? '会话'} · ${title}` : item.type === 'channels' ? `${snapshot.agents.find(a => a.id === item.id)?.name ?? '员工'}的渠道` : item.type === 'artifact' || item.type === 'material' ? item.name : item.type === 'automation-editor' ? item.name : item.type === 'marketplace' || item.type === 'local-skill' || item.type === 'source' ? item.name : item.type === 'trace' ? '执行' : item.type === 'agent' ? snapshot.agents.find(a => a.id === item.id)?.name : item.type === 'group' ? snapshot.conversations.find(c => c.id === item.id)?.title : item.type === 'resource' ? snapshot.resources.find(r => r.id === item.id)?.name : undefined
     const context = item.type === 'agent' || item.type === 'artifact' || item.type === 'material' ? snapshot.conversations.find(c => c.id === item.conversationId)?.title : (item.type === 'activity' || item.type === 'trace') ? snapshot.conversations.find(c => c.id === item.id)?.title : undefined
     const sameType = detailTabs.tabs.filter(tab => tab.target.type === item.type && (item.type !== 'agent' || (tab.target.type === 'agent' && tab.target.id === item.id))).length > 1
@@ -876,13 +892,15 @@ export function AppShell() {
     else if (route.page === 'schedules') openPanel({ type: 'schedule' })
   }
   const listResizer = <div className="resize-handle list-resizer" role="separator" tabIndex={0} aria-label={`调整${labels[route.page]}${route.page === 'settings' ? '分类' : '列表'}宽度`} aria-orientation="vertical" aria-valuemin={232} aria-valuemax={360} aria-valuenow={listWidth} onPointerDown={startListResize} onDoubleClick={() => setListWidth(DEFAULT_LIST_WIDTH)} onKeyDown={resizeListKey} />
-  const renderChat = (window: ChannelChatWindow, scope = 'conversations', withinKey?: string, headerActions?: ReactNode) => {
-    const room = snapshot.conversations.find(room => room.id === window.detail.conversation.id) ?? window.detail.conversation
+  const renderChat = (window: Omit<ChannelChatWindow, 'detail'> & Pick<ChatViewProps, 'detail' | 'conversation' | 'loading' | 'onRetry'>, scope = 'conversations', withinKey?: string, headerActions?: ReactNode) => {
+    const source = window.conversation ?? window.detail?.conversation
+    if (!source) return null
+    const room = snapshot.conversations.find(room => room.id === source.id) ?? source
     const showPanel = (target: Panel) => openPanel(target, scope, undefined, undefined, withinKey)
     const id = room.id, channel = isChannelConversation(room), internal = room.purpose === 'channel-internal'
     const owner = room.kind === 'group' || !room.agentIds[0] ? 'conversation' as const : 'employee' as const
     const ownerId = owner === 'employee' ? room.agentIds[0]! : id
-    return <FloatingLayerScope active={window.pageActive}><ChatView {...window} headerActions={headerActions} key={id} api={api!} snapshot={snapshot}
+    return <FloatingLayerScope active={window.pageActive}><ChatView {...window} headerActions={headerActions} api={api!} snapshot={snapshot}
       onPublish={channel ? message => {
         if (!message) return
         void action(async () => {
@@ -892,6 +910,7 @@ export function AppShell() {
           await refreshSnapshot()
         })
       } : undefined} onFiles={() => showPanel(channel || internal ? { type: 'channel-files', id } : { type: 'files', owner, id: ownerId })}
+      onWorkspace={!channel && !internal && room.agentIds[0] ? () => showPanel({ type: 'workspace', id, employeeId: room.agentIds[0]!, view: 'terminal' }) : undefined}
       onTasks={!channel && !internal ? () => showPanel({ type: 'tasks', owner, id: ownerId }) : undefined}
       onChannels={room.kind === 'direct' && !channel && !internal ? () => { const agent = snapshot.agents.find(agent => agent.id === room.agentIds[0]); if (agent) openChannels(agent) } : undefined}
       questionReplies={questionReplies} artifactActions={artifactActions}
@@ -945,17 +964,17 @@ export function AppShell() {
     <div className={`content-frame${panel?' detail-open':''}${effectiveList?' list-open':''}`}>
       <div className="content-main">{messageStorageError && <Banner>{messageStorageError}</Banner>}{artifactStorageError&&<Banner onClose={()=>setArtifactStorageError('')}>{artifactStorageError}</Banner>}
       {<FloatingLayerScope active={route.page === 'conversations'}><div className="conversation-layout" style={{ display: route.page === 'conversations' ? undefined : 'none' }}><PanelResize open={effectiveList} side="left" divider={listResizer}><aside className="conversation-list-container"><ConversationList onOpenChannels={openChannels} snapshot={snapshot} selectedId={selectedId} previews={previews} messageTimes={messageTimes} drafts={drafts.current} onCreateCore={createCoreConversation} onConfigureCore={() => { const core = snapshot.agents.find(isCoreAgent); if (core) openContact({ kind: 'agent', id: core.id }) }} onSelect={selectConversation} onChange={changeConversationList} onEditTitle={setEditingTitle} onClear={clearConversationHistory} busy={busy} onCreate={type=>openCreation({type})}/></aside></PanelResize>
-        <div className="conversation-stage">{route.coreDraft?<CoreChatStart api={api} snapshot={snapshot} draft={draft} setDraft={setDraft} busy={busy} onSend={send} onSettings={openModelSettings} onConfigureAgent={agent => openContact({ kind: 'agent', id: agent.id })} onChangeAgent={changeComposerAgent} configurationLocked={anyDirty}/>:currentDetail?renderChat({ detail: currentDetail, pageActive: route.page === 'conversations' && !conversationSearchOpen,
-          onReading: updateReading, onLocation: (messageId, following, offset) => { const id = currentDetail.conversation.id; viewLocations.current.set(id, { initialized: true, messageId: following ? undefined : messageId, offset, focusRequestId: viewLocations.current.get(id)?.focusRequestId }) },
-          onPage: direction => void loadMessagePage(direction), paging, pageEdges, restoreAnchor: viewLocations.current.get(currentDetail.conversation.id)?.messageId ? { messageId: viewLocations.current.get(currentDetail.conversation.id)!.messageId!, offset: viewLocations.current.get(currentDetail.conversation.id)?.offset } : undefined,
-          focusMessage: route.focusMessage, focusApproval: route.focusApproval, scrollPosition: scrollPositions.current.get(currentDetail.conversation.id), onScrollPosition: position => scrollPositions.current.set(currentDetail.conversation.id, position),
+        <div className="conversation-stage">{route.coreDraft?<CoreChatStart api={api} snapshot={snapshot} draft={draft} setDraft={setDraft} busy={busy} onSend={send} onSettings={openModelSettings} onConfigureAgent={agent => openContact({ kind: 'agent', id: agent.id })} onChangeAgent={changeComposerAgent} configurationLocked={anyDirty}/>:conversation?renderChat({ detail: currentDetail, conversation, loading: !currentDetail && (loading || detailLoading), onRetry: () => { setDetailLoading(true); void refreshDetail(conversation.id) }, pageActive: route.page === 'conversations' && !conversationSearchOpen,
+          onReading: updateReading, onLocation: (messageId, following, offset) => { const id = conversation.id; viewLocations.current.set(id, { initialized: true, messageId: following ? undefined : messageId, offset, focusRequestId: viewLocations.current.get(id)?.focusRequestId }) },
+          onPage: direction => void loadMessagePage(direction), paging, pageEdges, restoreAnchor: viewLocations.current.get(conversation.id)?.messageId ? { messageId: viewLocations.current.get(conversation.id)!.messageId!, offset: viewLocations.current.get(conversation.id)?.offset } : undefined,
+          focusMessage: route.focusMessage, focusApproval: route.focusApproval, scrollPosition: scrollPositions.current.get(conversation.id), onScrollPosition: position => scrollPositions.current.set(conversation.id, position),
          }):loading||detailLoading?<Loading>正在载入工作空间…</Loading>:<IllustratedEmpty kind="conversations" />}</div>
       </div></FloatingLayerScope>}
       <TasksPage active={route.page === 'tasks'} />
       {route.page==='contacts'&&<ContactsPage onConversation={(id, messageId) => selectConversation(id, true, messageId)} active={route.page === 'contacts'} onCreateTeam={() => openCreation({ type: 'team' })} api={api} snapshot={snapshot} selected={contactSelection} onSelect={setContactSelection} onMessage={messageContact} onCreate={type=>openCreation({type})} refresh={refreshSnapshot} onAgentSaved={updateAgentSnapshot} onGroupSaved={updateGroupSnapshot} sidebarShown={effectiveList} divider={listResizer} generation={panelGeneration} busy={busy}/>}
       {route.page==='skills'&&<CustomizationWorkspace onRemoveSource={id => { for (const tab of detailTabs.tabs) if (tab.target.type === 'source' && tab.target.id === id) dispatchDetails({ type: 'close', key: tab.key }) }} focusSource={focusedSource} selectedSource={panel?.type === 'source' ? panel.id : undefined} onOpenSource={source => openPanel({ type: 'source', id: source.id, name: source.name, requestId: crypto.randomUUID() })} onManage={openCatalogManagement} onOpenSkill={skill => openPanel({ type: 'local-skill', id: skill.id, name: skill.name, requestId: crypto.randomUUID() })} onOpenMarketplace={item => openPanel({ type: 'marketplace', provider: item.provider, id: item.id, name: item.name })} api={api} section={skillsSection} onSection={setSkillsSection} provider={skillProvider} onProvider={setSkillProvider} divider={listResizer} onCheckUpdates={()=>openPanel({type:'skill-updates'})} focusSkill={focusedSkill} revision={skillsRevision} />}
       <SchedulePage api={api} snapshot={snapshot} active={route.page==='schedules'} sidebarShown={effectiveList} divider={listResizer} location={scheduleLocation} onLocation={setScheduleLocation} onInfo={()=>openPanel({type:'schedule'})} selectedOccurrenceId={panel?.type === 'automation-occurrence' ? panel.id : undefined} onOccurrence={id => openPanel({ type: 'automation-occurrence', id }, 'schedules')}/>
-      {settingsMounted.current && <div style={{ display: route.page === 'settings' ? 'contents' : 'none' }}><SettingsPage key={panelGeneration} divider={listResizer} tab={settingsSection} setTab={tab => { setLocalAgentTarget(undefined); setSettingsSection(tab) }} localAgentTarget={localAgentTarget} active={route.page === 'settings'} onSkill={id => openPanel({ type: 'resource', id }, 'settings')} api={api} snapshot={snapshot} refresh={refreshSnapshot}/></div>}
+      {settingsMounted.current && <div style={{ display: route.page === 'settings' ? 'contents' : 'none' }}><SettingsPage onActivityReport={startActivityReport} key={panelGeneration} divider={listResizer} tab={settingsSection} setTab={tab => { setLocalAgentTarget(undefined); setSettingsSection(tab) }} localAgentTarget={localAgentTarget} active={route.page === 'settings'} onSkill={id => openPanel({ type: 'resource', id }, 'settings')} api={api} snapshot={snapshot} refresh={refreshSnapshot}/></div>}
       {route.page==='help'&&<HelpPage/>}
       </div>
       <DetailPanel title={panelTitle} hidden={!panel} layout={detailLayout}>
@@ -969,6 +988,7 @@ export function AppShell() {
           const fileChannelId = fileRoom?.channel ? fileRoom.id : fileRoom?.channelDiscussion?.conversationId
           const targetRoom = target.type === 'group' ? snapshot.conversations.find(room => room.id === target.id) : undefined
           const content = <>
+            {target.type === 'workspace' && <WorkspacePanel api={api} active={active} scope={{ employeeId: target.employeeId, conversationId: target.id }} view={target.view} />}
             {target.type === 'channel-publish' && <ChannelPublishPanel key={target.requestId} api={api} snapshot={snapshot} target={target} active={active} onBack={() => closeView()} />}
             {(target.type === 'files' || target.type === 'tasks') && <div className="conversation-panel-content">
               {target.type === 'tasks' ? <TasksPlaceholder /> : <ConversationFiles api={api} snapshot={snapshot} active={active} {...(target.owner === 'employee' ? { ownerAgentId: target.id, viewRequest: target.requestId ? { view: target.view ?? 'files', id: target.requestId } : undefined } : { conversationId: target.id })} onKnowledgePreview={resource => showPanel({ type: 'resource', id: resource.id, agentId: target.owner === 'employee' ? target.id : undefined })} onPreview={(row, current) => previewConversationFile(row, current, withinKey)} onNavigate={(source, current) => openFileSource(source, current, withinKey)} />}

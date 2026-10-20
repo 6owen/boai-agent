@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 历史预取边缘240px与跟随/已到边缘80px分别定义，分页保持有界窗口，不把预取范围当作最新跟随。
  * [INPUT]: 有界个人历史页、已捕获完成身份、当前阅读/锚点 CAS 与明确搜索目标。
  * [OUTPUT]: 流式更新不继承旧完成快照、可见完成去重、有界历史合并与独立版本合并；统一历史滚动边界距离；会话/消息/文件导航固定身份不漂移；搜索分页保持索引代际与最新覆盖回执，关键词摘录按多个原词有界高亮。
  * [POS]: D6 Renderer 的纯状态边界；不生成完成身份、不推测旧历史已读。
@@ -7,7 +8,7 @@
 import type { Message } from '@shared/domain'
 import { READING_LIMITS, type ConversationCompletionIdentity, type ConversationMessageItem, type ConversationMessagePage, type ConversationReadingState, type ConversationSearchPage, type ConversationSearchQuery, type ConversationSearchResult, type ConversationSearchTarget } from '@shared/domain/reading'
 
-export const READING_UI_LIMITS = { searchPages: 10, debounce: 200, observeDelay: 250, anchorDelay: 500, historyEdgeDistance: 80 } as const
+export const READING_UI_LIMITS = { searchPages: 10, debounce: 200, observeDelay: 250, anchorDelay: 500, historyEdgeDistance: 80, historyPrefetchDistance: 240 } as const
 const sameContent = (a: Message, b: Message) => a.id === b.id && a.conversationId === b.conversationId && a.senderType === b.senderType && a.senderId === b.senderId && a.content === b.content && JSON.stringify(a.materialIds ?? []) === JSON.stringify(b.materialIds ?? []) && JSON.stringify(a.materialSources ?? []) === JSON.stringify(b.materialSources ?? [])
 export function visibleCompletions(page: ConversationMessagePage, reading: ConversationReadingState, visibleIds: ReadonlySet<string>, active: boolean, visible: boolean, focused: boolean): ConversationCompletionIdentity[] {
   if (!active || !visible || !focused || page.conversationId !== reading.conversationId) return []

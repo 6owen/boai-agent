@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 私有桌面活动采集合同与侧栏终端/预览定位事件。
  * [OUTPUT]: 全局提示词目录列表与版本化保存/删除，沿现有桌面IPC。
  * [OUTPUT]: 员工源文件保存扩展到已登记的八个场景模块，沿原hash及configVersion核验。
  * [OUTPUT]: 2026-10-19应用业务协议：类型化应用目录/调用/回执接口，调用者身份由宿主构造。
@@ -88,6 +89,7 @@ export const CLIPBOARD_MATERIAL_FILE_FORMATS = ['Files', 'text/uri-list', 'x-spe
 export type MaterialFileSourceInput = { path: string } | { name: string; bytes: Uint8Array }
 
 export type AppEvent =
+  | { type: 'workspace:show'; employeeId: string; conversationId: string; view: 'terminal' | 'preview' }
   | { type: 'gateway-imports:changed' }
   | { type: 'automation:history-deleted'; occurrenceId: string }
   | { type: 'plugins:changed'; settings: PluginSettingsSnapshot }
@@ -106,6 +108,7 @@ export type AppEvent =
   | { type: 'runtime-error'; error: string }
 
 export interface Methods {
+  captureDesktopActivity: { input: { action: 'status' | 'request' | 'sample'; excludedApps?: string[] }; output: import('../domain/desktop-activity').ActivityCaptureResult }
   getApplicationCatalog: { input: import('../domain/application-protocol').ApplicationCatalogQuery; output: import('../domain/application-protocol').ApplicationCatalog }
   executeApplicationOperation: { input: import('../domain/application-protocol').ApplicationRequest; output: import('../domain/application-protocol').ApplicationResult }
   getApplicationReceipt: { input: import('../domain/application-protocol').ApplicationReceiptQuery; output: import('../domain/application-protocol').ApplicationResult | null }

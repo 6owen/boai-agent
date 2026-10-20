@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 发现持久终端、预览与桌面活动域；原应用回执与命令权限保持。
  * [OUTPUT]: PPT指南列出真实员工制作/专用审阅/导出工具；配置不请求模型，不代替实际制作与质量验证。
  * [OUTPUT]: refs域提供真实对象解析与双向关联，不新增访问或执行权限。
  * [OUTPUT]: plans公开依赖图/领取/审核返工域；恢复沿同一员工会话和持久回执。
@@ -23,7 +24,7 @@ export function createApplicationTools(context: EngineContext) {
   if (!context.application) return []
   const access = context.application
   return [
-    { name: 'boai_catalog', description: 'Discover concise BOAI operation metadata by domain (employees/groups/connections/runtimes/sources/automations/sessions/tasks/planning/plans/refs/skills/appearance/plugins/knowledge/channels/webSearch/runtimePlugins/images/selfies/presentations/application). Pass an exact operation for its schemas; includeSchemas explicitly expands a list.', schema: applicationCatalogQuerySchema, execute: (input: unknown) => access.catalog(applicationCatalogQuerySchema.parse(input)) },
+    { name: 'boai_catalog', description: 'Discover concise BOAI operation metadata by domain (employees/groups/connections/runtimes/sources/automations/sessions/tasks/planning/plans/refs/skills/appearance/plugins/knowledge/channels/webSearch/runtimePlugins/images/selfies/presentations/terminal/preview/workspace/activity/application). Pass an exact operation for its schemas; includeSchemas explicitly expands a list.', schema: applicationCatalogQuerySchema, execute: (input: unknown) => access.catalog(applicationCatalogQuerySchema.parse(input)) },
     { name: 'boai_call', description: 'Call a discovered BOAI business operation. Writes require one stable requestId per intended change; current versions are required where specified. Returns succeeded/rejected/running/unknown. Configuration creates no model Work. Query an unknown original receipt instead of creating a new request.', schema: applicationRequestSchema, execute: (input: unknown) => access.call(applicationRequestSchema.parse(input)) },
     { name: 'boai_receipt', description: 'Read the original durable business-operation result by requestId in this user message, or the returned receiptId from an earlier turn in this same conversation; never executes or retries the action.', schema: applicationReceiptQuerySchema, execute: (input: unknown) => access.receipt(applicationReceiptQuerySchema.parse(input)) },
   ]

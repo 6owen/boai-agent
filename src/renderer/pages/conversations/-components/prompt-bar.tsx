@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 会话切换保留输入布局，按scope重置候选/光标/IME状态并将编辑器撤销历史隔离到当前会话。
  * [OUTPUT]: @仅列当前会话员工，$列技能/文件/全局提示词；提示词复制所选正文快照，发送时由原草稿投影展开。
  * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [INPUT]: 草稿、已绑定技能、当前会话文件、全局提示词、成员和共享原子编辑器。
@@ -54,6 +55,12 @@ export function PromptBar({ ref, api, resources = [], conversationId, draft, set
   const [active, setActive] = useState(0), [files, setFiles] = useState<ConversationFileItem[]>([]), [loading, setLoading] = useState(false), [picking, setPicking] = useState(false), [error, setError] = useState('')
   const [nextCursor, setNextCursor] = useState<string>(), [cursor, setCursor] = useState<string>()
   const [prompts, setPrompts] = useState<PromptTemplate[]>([]), [loadingPrompts, setLoadingPrompts] = useState(false)
+  const previousScope = useRef(scope)
+  useLayoutEffect(() => {
+    if (previousScope.current === scope) return
+    previousScope.current = scope
+    setManual(null); setDismissed(false); setComposing(false); setActive(0); setSelection({ start: draft.text.length, end: draft.text.length })
+  }, [scope])
   let searchable = draft.text
   for (const mention of [...mentions].reverse()) searchable = searchable.slice(0, mention.start) + ' '.repeat(mention.end - mention.start) + searchable.slice(mention.end)
   const token = !dismissed && !composing ? tokenAt(searchable, selection.start, selection.end) : null
@@ -160,7 +167,7 @@ export function PromptBar({ ref, api, resources = [], conversationId, draft, set
   }
   return <Popover open={Boolean(menu)} modal={false} onOpenChange={value => { if (!value) close() }}>
     <ChatComposer ref={anchor}>{attachments}
-      <MentionInput ref={richInput} disabled={disabled} draft={draft} placeholder={placeholder} listId={menu ? listId : undefined} activeId={menu && rows.length ? `${listId}-${selected}` : undefined} onChange={value => { setDraft(value); setManual(null); setDismissed(false) }} onSelection={setSelection} onKeyDown={keyDown} onPaste={paste} onComposing={setComposing} />
+      <MentionInput scope={scope} ref={richInput} disabled={disabled} draft={draft} placeholder={placeholder} listId={menu ? listId : undefined} activeId={menu && rows.length ? `${listId}-${selected}` : undefined} onChange={value => { setDraft(value); setManual(null); setDismissed(false) }} onSelection={setSelection} onKeyDown={keyDown} onPaste={paste} onComposing={setComposing} />
       {children(openMenu, menu, reference => {
         if (disabled || !mentionsAllowed || external || !primary || reference.agentId !== primary.id) return
         richInput.current?.replace(richInput.current.selection(), '', { id: `${reference.kind}:${reference.id}`, name: reference.name, resource: reference })

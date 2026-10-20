@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "baseCommit": "70ea4bab",
+  "phase": "11.55",
+  "productionChanged": false,
+  "newRemoteModelRequests": 4,
+  "cumulativeRemoteModelRequests": 1500,
+  "audit": {
+    "correctedBaselineIds": [
+      "observation:804b89d0-845d-4c0f-b511-210eebb328ef:67d30940-626f-45e5-8c68-1669ced0de37",
+      "observation:72ecdfce-ab4c-46ae-8957-6f45a4b5c700:bea8d32a-df69-4add-8fca-65c7d2ebfd37",
+      "observation:72ecdfce-ab4c-46ae-8957-6f45a4b5c700:d14d2cf5-e51f-4947-aa74-5ba93fd64b13",
+      "c0e7485f-28a5-4c5d-80bc-3f15096d2f75"
+    ],
+    "baselineMatchesActualBootstrap": true,
+    "originalHash": "595877ebb88c4b284817ad35ef4d860cb080417ed9557822f0549499496ea928",
+    "fixturePath": ".local/memory-recall-priority-candidate/.local/actual-recall.json",
+    "cutoff": "2026-10-20T05:09:41.791Z",
+    "originalObservationCount": 6,
+    "repositoryObservationCount": 4,
+    "filteredObservationIds": [
+      "2ecf6a34-3393-4f50-a8cb-730b140bc099",
+      "b8754229-8623-4c57-9a95-4e768e4d3d00"
+    ],
+    "oldReconstruction": [
+      {
+        "id": "c0e7485f-28a5-4c5d-80bc-3f15096d2f75",
+        "content": "读技术资料的习惯：先读中文版，有疑问时再对照英文原文。"
+      },
+      {
+        "id": "abecfb6a-95f6-46dc-b85e-5a652c09cc94",
+        "content": "学习习惯：喜欢先自己动手试，再回头看解释；只听讲解容易走神。"
+      },
+      {
+        "id": "observation:804b89d0-845d-4c0f-b511-210eebb328ef:67d30940-626f-45e5-8c68-1669ced0de37",
+        "content": "我现在习惯什么样的周报？简单说你记得的。"
+      },
+      {
+        "id": "observation:72ecdfce-ab4c-46ae-8957-6f45a4b5c700:bea8d32a-df69-4add-8fca-65c7d2ebfd37",
+        "content": "我平时写东西是不是一律不用列表、不署名？只说你有依据的。"
+      },
+      {
+        "id": "observation:b8754229-8623-4c57-9a95-4e768e4d3d00:f312278b-ccaa-4a81-882d-682c612140ea",
+        "content": "懂了，以后周报就给你写成连贯的段落，不拆要点，一读到底那种。今天不用写，我记着这个习惯了。"
+      }
+    ],
+    "repositorySelection": [
+      {
+        "id": "c0e7485f-28a5-4c5d-80bc-3f15096d2f75",
+        "content": "读技术资料的习惯：先读中文版，有疑问时再对照英文原文。"
+      },
+      {
+        "id": "abecfb6a-95f6-46dc-b85e-5a652c09cc94",
+        "content": "学习习惯：喜欢先自己动手试，再回头看解释；只听讲解容易走神。"
+      },
+      {
+        "id": "observation:804b89d0-845d-4c0f-b511-210eebb328ef:67d30940-626f-45e5-8c68-1669ced0de37",
+        "content": "我现在习惯什么样的周报？简单说你记得的。"
+      },
+      {
+        "id": "observation:72ecdfce-ab4c-46ae-8957-6f45a4b5c700:bea8d32a-df69-4add-8fca-65c7d2ebfd37",
+        "content": "我平时写东西是不是一律不用列表、不署名？只说你有依据的。"
+      },
+      {
+        "id": "b289a6c5-d1aa-45b3-b0dc-492f202e1b26",
+        "content": "写周报时偏好先给三条关键结论，再补必要细节，不再用连贯段落铺开。"
+      }
+    ],
+    "repositorySelectionValid": true,
+    "oldReconstructionValid": false,
+    "tokenEstimate": 2120
+  },
+  "candidate": "not adopted; four requests, no benefit; missing URL stopped remaining planned requests",
+  "sha256": {
+    ".local/memory-observation-audit/result.json": "bec685ee5e706dc4a76c6ef69008f58293cf2db7e907e167daaae5cea0455ca9",
+    ".local/memory-observation-audit/run.ts": "5a352ced8a67372054f2569bbf6a3ae76bb2e7a4ea4662a10381041663a97063",
+    ".local/factual-instruction-probe/plan.json": "eb02084e7824cd1824cc7a4d55d4f93ba0dc82e055a78fec87913b7678824b8c",
+    ".local/factual-instruction-probe/fixtures.json": "40f7310891fa297cd41f6b3626192ded2840cdb49bdaf54fd8f333cb58674731",
+    ".local/factual-instruction-probe/run/result.json": "96c41b90f5e28d8fb6295e7a960ff25cd9e9b86514c88256264e3df26c73ba84",
+    ".local/factual-instruction-probe/run/failure.json": "604e57785fde2e5bce29c22ee918699d900344e7b8db67d06f45fbf49ab481d6",
+    ".local/factual-instruction-probe/run/request-budget.json": "ad555d2d1da1e0b94494ab454160c409e0e2e211e33ad462e05eb8538e078110",
+    ".local/factual-instruction-probe/run/settings.json": "622907e5100da642a38ec2677ef316b4f17d5afe17572385893946fd2c18cc68",
+    ".local/factual-instruction-candidate/src/runtime/modules/employees/context-compiler.ts": "4564934d1a7dc4d00191e71f4d8d2eb22fc118091f0331a136449b3c1f094f86"
+  }
+}

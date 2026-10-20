@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 同会话 PTY/真实预览接原应用协议和退出清理；默认关闭的本机 OCR、活动查询及有来源日报。
 [OUTPUT]: 员工PPT工具共用当前执行资格、独立渲染/审阅租约及原模型用量接线。
  * [OUTPUT]: PPT 审阅租约接当前执行资格、原追加预算和实际连接路由；独立用量与主模型合并，本机原生计数/预算保持。
  * [OUTPUT]: PPT 独立渲染器与视觉模型设置接原应用协议；实际审阅调用适配已提供，员工工具尚待接线。
@@ -183,6 +184,10 @@ import { referenceOperations, referenceScope, referenceInstructions, type LoadRe
 import { collectReferenceSources } from './modules/application/reference-sources'
 import { applicationOperations } from './modules/application/operations'
 import { ImageService } from './modules/media/image-service'
+import { TerminalService } from './modules/workspace-tools/terminal-service'
+import { PreviewService } from './modules/workspace-tools/preview-service'
+import { workspaceOperations } from './modules/workspace-tools/operations'
+import { DesktopActivityService } from './modules/desktop-activity/activity-service'
 import { PresentationService } from './modules/presentations/presentation-service'
 import { RunModelUsage } from './modules/profile/run-model-usage'
 import { generatePresentationReview } from './adapters/mastra/presentation-review-model'
@@ -417,6 +422,9 @@ export class AppService {
   private readonly agentStates: AgentStateService
   private readonly applicationAuthority = new AsyncLocalStorage<{ validate(): Promise<void>; signal: AbortSignal; directories?: EngineContext['directoryAccess'] }>()
   private readonly application: ApplicationService
+  private readonly terminals: TerminalService
+  private readonly previews: PreviewService
+  private readonly desktopActivity: DesktopActivityService
   private readonly presentations: PresentationService
   private readonly images: ImageService
   private readonly selfies: SelfieService
@@ -502,7 +510,25 @@ export class AppService {
     this.agentProfiles = new AgentProfileService(this.store)
     this.agentStates = new AgentStateService(this.store)
     this.agentBehaviors = new AgentBehaviorService(this.store, { available: (agentId, conversationId) => !this.closing && !this.backingUp && this.initialized && !!this.employees.find(agentId)?.active && !!this.conversations.get(conversationId)?.agentIds.includes(agentId) && !this.conversationBusy(conversationId), execute: (run, behavior, signal) => this.runAgentBehavior(run, behavior, signal), changed: () => this.changed(), error: error => this.emit({ type: 'runtime-error', error: this.errorMessage(error) }) })
-    this.application = new ApplicationService(this.store, [...this.presentations.operations(), ...this.images.operations(), ...this.selfies.operations(), ...taskOperations(this.store), ...planningOperations(this.store), ...planOperations(this.store), ...referenceOperations(this.store, (...args) => this.serialize(() => this.referenceObjects(...args))), ...applicationOperations({ request: async (method, input) => await this.handle(method, input) as never, personality: (action, input) => this.agentPersonality(action, input) }, { connection: connectionSchema, conversation: conversationSchema, search: searchSchema }, options.applicationHost)], async (actor, operation) => {
+    this.terminals = new TerminalService(this.dataPath)
+    this.previews = new PreviewService(this.terminals)
+    this.desktopActivity = new DesktopActivityService(this.store, {
+      capture: async (action, excludedApps) => options.applicationHost?.available ? options.applicationHost.request('captureDesktopActivity', { action, excludedApps }) : { supported: false, permission: false },
+      available: () => !this.backingUp && !this.closing && !!options.applicationHost?.available,
+      changed: () => this.changed(),
+    })
+    this.application = new ApplicationService(this.store, [...this.desktopActivity.operations(), ...workspaceOperations(this.terminals, this.previews, async (scope, actor, write, directory) => {
+      await this.applicationAuthority.getStore()?.validate()
+      if (this.closing || this.backingUp || this.clearingConversations.has(scope.conversationId)) fail('会话正在清理或服务不可用')
+      const room = this.getConversation(scope.conversationId), agent = this.getAgent(scope.employeeId)
+      if (!room.agentIds.includes(agent.id) || room.channel || !agent.active) fail('员工不属于当前本机会话')
+      if (actor.kind !== 'owner' && (actor.employeeId !== agent.id || actor.conversationId !== room.id)) fail('终端仅限当前员工会话')
+      if (actor.kind !== 'owner' && (!agent.allowCommands || agent.executionPermission !== 'full-access')) fail('持久终端需要当前员工启用命令和完全访问；不会绕过审批配置')
+      const path = directory ? resolve(directory) : room.workspacePath
+      if (!isAbsolute(path)) fail('终端目录必须是绝对路径')
+      if (!directory && !write) return path
+      return realpath(path)
+    }, scope => this.emit({ type: 'workspace:show', ...scope }), () => !!options.applicationHost?.available), ...this.presentations.operations(), ...this.images.operations(), ...this.selfies.operations(), ...taskOperations(this.store), ...planningOperations(this.store), ...planOperations(this.store), ...referenceOperations(this.store, (...args) => this.serialize(() => this.referenceObjects(...args))), ...applicationOperations({ request: async (method, input) => await this.handle(method, input) as never, personality: (action, input) => this.agentPersonality(action, input) }, { connection: connectionSchema, conversation: conversationSchema, search: searchSchema }, options.applicationHost)], async (actor, operation) => {
       if (actor.kind === 'owner') return
       if (actor.kind === 'behavior') {
         const { run, behavior } = await this.agentBehaviors.assertActive(actor.behaviorRunId)
@@ -750,6 +776,8 @@ export class AppService {
   async init() {
     if (this.initialized) return
     await this.store.init()
+    if (['darwin', 'linux'].includes(process.platform)) await this.terminals.recover()
+    await this.desktopActivity.init()
     await this.selfies.recover()
     // These operations have no Run to recover. Retain their request identity and
     // observed route; a process exit cannot establish the model's final result.
@@ -1256,6 +1284,10 @@ export class AppService {
             if (works.some(work => work.ownerAgentId === previous.id && (work.requiresReview || !['delivered', 'cancelled'].includes(work.status)))) fail('员工仍有未结束或待核对工作，请先处理原工作再切换运行方式')
           }
           const saved = await this.employees.save(value)
+          if (!saved.active || !saved.allowCommands || saved.executionPermission !== 'full-access') {
+            for (const room of this.conversations.values()) if (room.agentIds.includes(saved.id)) await this.previews.clearConversation(room.id)
+            await this.terminals.stopEmployee(saved.id)
+          }
           const removed = (previous?.sourceIds ?? []).filter(id => !saved.sourceIds?.includes(id))
           if (removed.length) {
             const invalid = new Set<string>(), updates: StoredRecord[] = []
@@ -2071,7 +2103,7 @@ export class AppService {
     for (const resourceId of ownedResourceIds) await this.assertSkillUnused(resourceId)
     await this.channels.detachEmployees(agentIds)
     await this.automations.detachContacts(agentIds, affected.map(conversation => conversation.id))
-    for (const agentId of agentIds) await this.cancelEmployee(agentId, '员工已删除')
+    for (const agentId of agentIds) { await this.terminals.stopEmployee(agentId); await this.cancelEmployee(agentId, '员工已删除') }
     await this.clearBrowserTaskRecords(scope => agentIds.includes(scope.agentId))
     if (ownedResourceIds.length) {
       await this.memory.invalidateResources(ownedResourceIds)
@@ -2098,6 +2130,8 @@ export class AppService {
     await this.agentBehaviors.cancelScope({ conversationId: id })
     const conversation = this.conversations.get(id) ?? fail('会话不存在')
     this.assertConversationIdle(id)
+    await this.previews.clearConversation(id)
+    await this.terminals.clearConversation(id)
     const discussions = [...this.conversations.values()].filter(room => room.channelDiscussion?.conversationId === id)
     for (const room of discussions) this.assertConversationIdle(room.id)
     if (sessionReceipt) {
@@ -5312,6 +5346,7 @@ export class AppService {
     if (isWithin(this.dataPath, destination) || isWithin(destination, this.dataPath)) fail('备份目录不能与应用数据目录相互包含')
     if (this.closing || this.backingUp) fail('服务正在退出或备份')
     if (this.application.busy || this.agentBehaviors.busy) fail('应用业务操作或员工行为仍在进行，请完成后备份')
+    if (this.terminals.list().some(session => session.status !== 'exited')) fail('请先停止侧栏终端和预览，再备份')
     this.backingUp = true
     try {
       await this.mutations
@@ -5386,6 +5421,9 @@ export class AppService {
   close() { return this.closeTask ??= this.drain() }
   private async drain() {
     this.closing = true
+    await this.desktopActivity.close()
+    await this.previews.close()
+    await this.terminals.close()
     await this.agentBehaviors.close()
     await this.channels.close()
     if (this.memoryTimer) clearInterval(this.memoryTimer)

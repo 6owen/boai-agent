@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 技能读取返回获准副本目录/完整文件版本，伴随脚本变更也拒绝旧读取；不执行脚本或授予命令权限。
  * [OUTPUT]: 绑定twitter-media时提供只读公共推文工具；调用前后沿原版本/绑定核权，无命令权限扩张。
  * [INPUT]: Explicit employee skill bindings, frozen resource versions and live host authorization.
  * [OUTPUT]: Ordinary chat and native agents can discover/read bound skills without creating Work.
@@ -7,7 +8,7 @@
  */
 import { z } from 'zod'
 import { readTwitterPost, twitterPostSchema } from '../media/twitter-post'
-import { join } from 'node:path'
+import { join, relative, sep } from 'node:path'
 import type { EngineContext } from '../../contracts'
 import { authorizedResources, resourceVersion, readVersionedText, type ResourceVersion } from '../workspaces/environment-plan'
 
@@ -36,13 +37,15 @@ export function createBoundSkillOperations(context: EngineContext) {
       await context.assertSkillAccess?.(resources.map(item => item.id)); context.signal.throwIfAborted()
       return { skills }
     } },
-    { name: 'read_skill', description: 'Read the complete SKILL.md of an explicitly bound skill, using resourceId from list_skills. The host rechecks binding and unchanged file bytes. Only currently supplied tools are executable.', schema: z.object({ resourceId: z.string().min(1) }).strict(), execute: async (input: unknown) => {
+    { name: 'read_skill', description: 'Read the complete SKILL.md of an explicitly bound skill, using resourceId from list_skills. Returns its actual directory and relative file manifest for companion scripts/references. The host rechecks binding and complete file version. Reading does not execute scripts or grant command permission.', schema: z.object({ resourceId: z.string().min(1) }).strict(), execute: async (input: unknown) => {
       const { resourceId } = z.object({ resourceId: z.string() }).parse(input)
       const version = (await versions()).find(item => item.resource.id === resourceId)
       if (!version) throw new Error('此技能未绑定给当前员工')
+      if ((await resourceVersion(version.resource, context.signal)).hash !== version.hash) throw new Error('技能文件已变更，请重新执行以使用新版本')
       const content = await readVersionedText(join(version.resource.path, 'SKILL.md'), [version])
       await context.assertSkillAccess?.([resourceId]); context.signal.throwIfAborted()
-      return { resourceId, name: version.resource.name, content, contentHash: version.hash }
+      return { resourceId, name: version.resource.name, content, contentHash: version.hash, directory: version.resource.path,
+        files: version.files.map(file => ({ path: relative(version.resource.path, file.path).split(sep).join('/'), hash: file.hash, size: file.size })) }
     } },
   ]
 }

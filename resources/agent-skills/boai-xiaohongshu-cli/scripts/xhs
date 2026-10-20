@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# [INPUT]: CLI arguments, installed xhs or uv/uvx, existing account environment.
+# [OUTPUT]: Pinned xiaohongshu-cli 0.5.0 invocation; never performs implicit login.
+# [POS]: Companion launcher for boai-xiaohongshu-cli; adapted from the recorded Alma source.
+# [PROTOCOL]: Update Header and owning .folder.md when changed.
+set -euo pipefail
+
+if command -v xhs >/dev/null 2>&1 && [ "$(xhs --version 2>/dev/null)" = "xhs, version 0.5.0" ]; then
+  exec xhs "$@"
+fi
+
+if command -v uvx >/dev/null 2>&1; then
+  exec uvx --from xiaohongshu-cli==0.5.0 xhs "$@"
+fi
+
+if command -v uv >/dev/null 2>&1; then
+  exec uv tool run --from xiaohongshu-cli==0.5.0 xhs "$@"
+fi
+
+cat >&2 <<'EOF'
+xhs is not installed and uv/uvx is unavailable.
+
+Install xiaohongshu-cli with one of:
+  uv tool install xiaohongshu-cli==0.5.0
+  pipx install xiaohongshu-cli==0.5.0
+EOF
+
+exit 127

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 桌面原始采集仅私有宿主调用，公共 renderer/CLI 方法显式拒绝。
  * [OUTPUT]: 提示词目录列表与版本化保存/删除进入原主窗口IPC准入。
  * [OUTPUT]: 2026-10-19应用业务协议：公共准入增加应用目录、调用与回执三个入口，不开放任意内部方法。
  * [OUTPUT]: 2026-10-19 独立网页检索设置、默认、凭据编辑、测试与移除接入原公共 IPC 准入。
@@ -30,6 +31,7 @@ import type { Method } from '../shared/ipc'
 
 // Record makes a newly declared public method require an explicit host entry.
 const methods = {
+  captureDesktopActivity: false,
   transferMaterial: true,
   prepareUploadedMaterial: true,
   sendEmployeeMessage: true,
@@ -280,8 +282,8 @@ const methods = {
   updateSkill: true,
   updateSkillCollections: true,
   updateUserProfile: true,
-} satisfies Record<Method, true>
+} satisfies Record<Method, boolean>
 
 export function isPublicMethod(value: string): value is Method {
-  return Object.hasOwn(methods, value)
+  return Object.hasOwn(methods, value) && methods[value as Method]
 }

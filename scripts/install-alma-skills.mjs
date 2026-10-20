@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 显式迁移核对完整伴随文件；已有共享源优先，无共享源时识别内置命名空间，不降级为纯正文。
  * [OUTPUT]: 显式迁移与默认分发共用技能源清单，原请求留证及自定义保护保持。
  * [OUTPUT]: programmatic-tools接入原员工脚本工具协议，共24份适配源。
  * [OUTPUT]: video-reader进入原单项安装流程，共23份适配源；原生视频提供方仍按实际能力。
@@ -13,8 +14,8 @@
  */
 import { execFileSync } from 'node:child_process'
 import { createHash, randomUUID } from 'node:crypto'
-import { readFile, mkdir, writeFile } from 'node:fs/promises'
-import { resolve } from 'node:path'
+import { lstat, readFile, readdir, mkdir, writeFile } from 'node:fs/promises'
+import { dirname, join, resolve } from 'node:path'
 
 const employeeId = process.argv[2] ?? 'bobo'
 if (process.argv.length > 4 || !/^[a-zA-Z0-9_-]+$/.test(employeeId)) throw new Error('Usage: node scripts/install-alma-skills.mjs [EMPLOYEE_ID] [SKILL_NAME]')
@@ -30,19 +31,32 @@ function call(operation, input, requestId) {
   if (result.status !== 'succeeded') throw new Error(`${operation}: ${JSON.stringify(result)}`)
   return result.data
 }
+async function skillFiles(root) {
+  const files = []
+  for (const path of (await readdir(root, { recursive: true })).filter(path => !path.split(/[\\/]/).includes('.folder.md')).sort()) {
+    const info = await lstat(join(root, path))
+    if (info.isSymbolicLink() || !info.isFile() && !info.isDirectory()) throw new Error('Skill contains a non-regular file')
+    if (info.isFile()) files.push({ path, hash: createHash('sha256').update(await readFile(join(root, path))).digest('hex') })
+  }
+  return files
+}
 try {
   for (const name of selectedName ? [selectedName] : names) {
     const content = await readFile(resolve(`resources/agent-skills/${name}/SKILL.md`), 'utf8')
+    const files = await skillFiles(resolve('resources/agent-skills', name))
     const hash = createHash('sha256').update(content).digest('hex')
     const record = { name, hash, status: 'preparing' }; records.push(record); await save()
     const catalog = call('skills.list', { refresh: true })
-    const found = catalog.skills.filter(skill => skill.slug === name)
+    const shared = catalog.skills.filter(skill => skill.slug === name)
+    const found = shared.length ? shared : catalog.skills.filter(skill => skill.source === 'builtin' && skill.slug === `boai-bundled:${name}`)
     if (found.length > 1) throw new Error(`Ambiguous existing skill: ${name}`)
     let detail
     if (found.length) {
       detail = call('skills.get', { id: found[0].id })
       if (detail.content !== content) throw new Error(`Existing custom content preserved: ${name}`)
+      if (files.length > 1 && JSON.stringify(await skillFiles(dirname(detail.filePath))) !== JSON.stringify(files)) throw new Error(`Skill companions differ; preserve current source and rebuild/distribute the complete reviewed skill: ${name}`)
     } else {
+      if (files.length > 1) throw new Error(`Complete bundled source not discovered; build/reload before binding script skill: ${name}`)
       record.createRequestId = `alma-skill-source-${name}-${hash.slice(0, 20)}`; await save()
       detail = call('skills.save', { name, content, expectedHash: null }, record.createRequestId)
     }

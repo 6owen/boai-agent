@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 加载消息骨架局部布局，正文复用通讯录共享Panel reveal；header/composer保持固定，减少动态效果沿原片段。
  * [OUTPUT]: 加载 transitions-dev Card resize 原版与左右分栏/标题区布局适配。
  * [OUTPUT]: 加载 Craft Scenic 原版背景/遮罩/玻璃/边框及 BOAI 选择器适配。
  * [OUTPUT]: 加载共享 Tabs 的 transitions-dev 原版滑动片段后由 skin.css 适配 BOAI；加载个人资料分享点阵生成原版样式和 Typeset。
@@ -23,6 +24,7 @@
 @import '../components/ui/skin.css' layer(components);
 @import '../components/common/panel-resize.css' layer(components);
 @import './group-chat.css' layer(components);
+@import '../pages/conversations/chat-transitions.css' layer(components);
 @import './prompt-bar.css' layer(components);
 @import '../pages/settings/generation/ui-generation.css' layer(components);
 @import './profile.css' layer(components);

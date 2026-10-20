@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 共享ChatView允许主列表历史加载中保持固定布局，渠道ChatWindow仍显式要求真实ConversationView。
  * [OUTPUT]: 渠道列表Popover省略重复标题，清除外层padding/gap以统一紧凑8px内边距。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: 同一有界阅读生命周期用于渠道镜像与独立内部讨论，后者不显示渠道列表或嵌套入口。
@@ -27,7 +28,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { List } from '@/components/icons'
 
 type ChatProps = ComponentProps<typeof ChatView>
-export type ChannelChatWindow = Pick<ChatProps, 'detail' | 'onReading' | 'onLocation' | 'onPage' | 'paging' | 'pageEdges' | 'restoreAnchor' | 'scrollPosition' | 'onScrollPosition' | 'pageActive' | 'focusMessage' | 'focusApproval'>
+export type ChannelChatWindow = Pick<ChatProps, 'detail' | 'onReading' | 'onLocation' | 'onPage' | 'paging' | 'pageEdges' | 'restoreAnchor' | 'scrollPosition' | 'onScrollPosition' | 'pageActive' | 'focusMessage' | 'focusApproval'> & { detail: ConversationView }
 type Location = { initialized: boolean; messageId?: string; offset?: number; focusRequestId?: string; scrollPosition?: number }
 export function ChannelsTab({ api, agent, target, active, chatActive, listProps, renderChat, onMaterials, internal = false }: {
   internal?: boolean

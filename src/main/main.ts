@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 已授权桌面活动经私有宿主调用固定本地 OCR 程序，不向渲染器开放原始采集接口。
  * [OUTPUT]: 内置技能源允许查看位置，拒绝通过系统编辑器改写随包默认文件。
  * [OUTPUT]: 2026-10-19应用业务协议：应用外观/插件协议复用原桌面设置服务，经私有宿主白名单转发。
  * [OUTPUT]: 同时启动丢失owner时先等自己的worker退出，再有界认证附着胜出服务；原业务请求只在ready后提交。
@@ -48,6 +49,7 @@
  * [POS]: src/main/main.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { desktopActivityCapture } from './desktop-activity'
 import { saveEmployeeKnowledgeSchema } from '../shared/domain/knowledge'
 import { GatewayImportInbox } from './gateway-import-inbox'
 import { MODEL_ID_MAX_LENGTH, validModelId } from '../shared/domain/model-id'
@@ -109,6 +111,7 @@ let ready: Promise<void> | null = null
 let cli: Awaited<ReturnType<typeof openDesktopCli>> | undefined
 async function applicationHostRequest(method: ApplicationHostMethod, input: unknown): Promise<unknown> {
   if (quitting) throw new Error('应用正在退出')
+  if (method === 'captureDesktopActivity') return desktopActivityCapture(input)
   if (method === 'getAppearance') { z.undefined().parse(input); return appearance.snapshot() }
   if (method === 'updateAppearance') { const value = z.object({ patch: appearancePatchSchema, expectedRevision: z.number().int().nonnegative() }).strict().parse(input); return appearance.update(value.patch, value.expectedRevision) }
   if (method === 'getPluginSettings') { z.undefined().parse(input); return pluginSettings.snapshot() }

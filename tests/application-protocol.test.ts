@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 应用目录包含 terminal/preview/workspace/activity 四个新增能力域。
  * [OUTPUT]: PPT 专用配置域纳入实际目录和 schema；配置保存与模型执行分开。
  * [OUTPUT]: 独立selfies相册元信息/删除纳入公共目录，原图保持任务私聊权限。
  * [OUTPUT]: 独立生图设置域纳入公共目录；生成仍由原任务工具执行。
@@ -546,7 +547,7 @@ it('rejects absent identity, forged core ownership and unknown input before invo
   expect(described.operations).toHaveLength(1)
   expect(described.operations[0].inputSchema).toMatchObject({ type: 'object' })
   const complete = await f.owned.service.handle('getApplicationCatalog', { includeSchemas: true }) as { operations: { name: string; inputSchema: unknown; available: boolean }[] }
-  expect(new Set(complete.operations.map(operation => operation.name.split('.')[0])).size).toBe(22)
+  expect(new Set(complete.operations.map(operation => operation.name.split('.')[0])).size).toBe(26)
   expect(complete.operations.find(operation => operation.name === 'plans.set')?.inputSchema).toMatchObject({ type: 'object' })
   expect(complete.operations.find(operation => operation.name === 'presentations.configure')?.inputSchema).toMatchObject({ type: 'object' })
   expect(complete.operations.every(operation => !!operation.inputSchema)).toBe(true)

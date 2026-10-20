@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 已载入执行流夹具显式限定非空ConversationView，保留共享ChatView新增加载态的类型边界。
  * [OUTPUT]: 自动化头像沿真实默认个人资料夹具，原任务执行镜像与定时角标共存。
  * [OUTPUT]: 定时任务聊天镜像沿原Run读取思考/工具，固定消息定位仍展示，完成后仅保留公开答复。
  * [OUTPUT]: 任务/文件迁入右侧后移除旧互斥view夹具，保留主聊天页面隐藏/恢复时执行读取生命周期检查。
@@ -28,7 +29,8 @@ vi.mock('../src/renderer/components/detail-panel/useExecutionWindow', () => ({
 }))
 
 const run: AgentRun = { id: 'run', agentId: 'employee', agentName: '员工', phase: 'execution', responseKind: 'task', conversationId: 'chat', triggerMessageId: 'question', messageId: 'answer', status: 'running', createdAt: '2026-10-16T00:00:00Z', toolEvents: [] }
-let host: HTMLDivElement, root: Root, props: ComponentProps<typeof ChatView>
+type LoadedChatProps = ComponentProps<typeof ChatView> & { detail: NonNullable<ComponentProps<typeof ChatView>['detail']> }
+let host: HTMLDivElement, root: Root, props: LoadedChatProps
 beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
   vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
@@ -41,7 +43,7 @@ beforeEach(() => {
     snapshot: { conversations: [], resources: [], agents: [{ id: 'employee', name: '员工', skillIds: [], knowledgeIds: [] }], approvals: [], connections: [], userProfile: defaultUserProfile },
     draft: { text: '', mentionIds: [] }, questionReplies: { values: {} }, artifactActions: { values: {} },
     pageEdges: { before: true, after: true }, onReading: noop, onLocation: noop, onScrollPosition: noop,
-  } as unknown as ComponentProps<typeof ChatView>
+  } as unknown as LoadedChatProps
   host = document.createElement('div'); document.body.append(host); root = createRoot(host)
 })
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals() })

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 宿主冻结的 ZIP 文件清单、导出错误、保存状态与返回/保存回调、共享 Card/ScrollFade。
- * [OUTPUT]: 导出向导第二步以全局 Card 皮肤展示无列表标记的真实文件目录与总量；移除导出说明，仅保留阻塞错误；页脚最左侧为带左箭头的 ghost 返回选择按钮、右侧总量与保存 ZIP，保存加载仅显示在按钮内；进入时聚焦标题，不创建额外弹窗或遮罩。
+ * [OUTPUT]: 导出向导第二步以全局 Card 皮肤展示无列表标记的真实文件目录与总量，目录箭头沿全局样式收起向右、展开向下；移除导出说明，仅保留阻塞错误；页脚最左侧为带左箭头的 ghost 返回选择按钮、右侧总量与保存 ZIP，保存加载仅显示在按钮内；进入时聚焦标题，不创建额外弹窗或遮罩。
  * [POS]: library 的导出目录预览内容，Dialog/Popup 由选择向导统一持有；不猜测目录、不读取本机绝对路径、不执行包内代码。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -36,8 +36,8 @@ function fileTree(files: SkillLibraryExportPlan['files']) {
 function FileTree({ nodes, depth = 0 }: { nodes: Map<string, FileNode>; depth?: number }) {
   const sorted = [...nodes.values()].sort((a, b) => Number(b.directory) - Number(a.directory) || a.name.localeCompare(b.name))
   return <ul data-slot="skill-export-tree" className={`m-0 list-none ${depth ? 'ml-3 border-l border-border py-0 pr-0 pl-3' : 'p-0'}`}>{sorted.map(node => <li key={node.path}>
-    {node.directory ? <details open={depth === 0} className="[&[open]>summary>.directory-chevron]:rotate-90">
-      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted [&::-webkit-details-marker]:hidden"><ChevronRight className="directory-chevron size-3 shrink-0 transition-transform" /><FolderOpen className="size-4 shrink-0 text-muted-foreground" /><span className="min-w-0 truncate" title={node.path}>{node.name}</span></summary>
+    {node.directory ? <details open={depth === 0}>
+      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted [&::-webkit-details-marker]:hidden"><ChevronRight className="size-3 shrink-0" /><FolderOpen className="size-4 shrink-0 text-muted-foreground" /><span className="min-w-0 truncate" title={node.path}>{node.name}</span></summary>
       <FileTree nodes={node.children} depth={depth + 1} />
     </details> : <div className="flex items-center gap-2 px-2 py-1.5 pl-7"><FileText className="size-4 shrink-0 text-muted-foreground" /><span className="min-w-0 flex-1 truncate" title={node.path}>{node.name}</span><span className="shrink-0 text-xs text-muted-foreground">{sizeText(node.size)}</span></div>}
   </li>)}</ul>

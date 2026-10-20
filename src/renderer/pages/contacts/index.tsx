@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 原Panel reveal生命周期提至共用usePanelReveal，消息与通讯录复用同一重置/显现/真实结束清理；通讯录现有布局/动效保持。
  * [OUTPUT]: 群聊基础配置与员工一致就地编辑，名称局部保存、头像配置成员；高级配置继续保留基础分类。
  * [OUTPUT]: 员工身份保存回执直接局部更新Shell快照，不触发整页刷新或资料入场过渡。
  * [OUTPUT]: 员工基础配置直接在资料页分区编辑，原配置按钮改为高级配置；群聊沿同样的资料编辑与高级配置入口，页面导航继续保护草稿。
@@ -16,7 +17,7 @@
  * [POS]: 通讯录页面；浏览资料不创建会话、不挂载聊天内容。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { useContext, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useContext, useState, type ReactNode } from 'react'
 import type { Conversation, DigitalAgent, Snapshot } from '@shared/domain'
 import type { DesktopApi } from '@shared/ipc'
 import { GuardContext } from '@/components/common'
@@ -27,6 +28,7 @@ import { ContactList, type ContactSelection } from './contact-list'
 import { GroupProfile } from './group-profile'
 import { EmployeeProfile } from './employee-profile'
 import { PanelResize } from '@/components/common/panel-resize'
+import { usePanelReveal } from '@/components/common/use-panel-reveal'
 
 export type { ContactSelection } from './contact-list'
 interface ContactsPageProps {
@@ -53,17 +55,7 @@ export function ContactsPage({ api, snapshot, selected, onSelect, onMessage, onC
   const hasDetail = selected?.kind === 'agent' ? snapshot.agents.some(item => item.id === selected.id) : selected?.kind === 'group' && snapshot.conversations.some(item => item.id === selected.id && item.kind === 'group')
   const [detail, setDetail] = useState({ key: selectionKey, editing: false })
   if (detail.key !== selectionKey) setDetail({ key: selectionKey, editing: false })
-  const content = useRef<HTMLDivElement>(null)
-  useLayoutEffect(() => {
-    const element = content.current
-    if (!active || !hasDetail || !element || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    element.style.transition = 'none'; element.dataset.settled = 'false'; element.dataset.open = 'false'
-    void element.offsetWidth
-    element.style.transition = ''; element.dataset.open = 'true'
-    const settle = (event: TransitionEvent) => { if (event.target === element && event.propertyName === 'opacity') element.dataset.settled = 'true' }
-    element.addEventListener('transitionend', settle)
-    return () => { element.removeEventListener('transitionend', settle); element.dataset.settled = 'true' }
-  }, [selectionKey, active, hasDetail])
+  const content = usePanelReveal(selectionKey, active && Boolean(hasDetail))
   const guard = useContext(GuardContext)
   const select = (next: ContactSelection, editing = false) => {
     if (next.kind !== selected?.kind || next.id !== selected.id || editing !== detail.editing) guard.navigate(() => {

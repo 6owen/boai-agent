@@ -32,6 +32,10 @@
     "boai-image-gen",
     "boai-selfie",
     "boai-twitter-media",
-    "boai-presentations"
+    "boai-presentations",
+    "boai-twitter-cli",
+    "boai-xiaohongshu-cli",
+    "boai-artifact-sidebar",
+    "boai-daily-report"
   ]
 }

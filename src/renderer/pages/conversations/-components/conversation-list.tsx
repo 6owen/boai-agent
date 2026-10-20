@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 核心助手整行右键提供新增会话/助手设置/清空所有记录/删除所有会话；批量固定全部可见核心会话且不受名称搜索影响，确认后沿原清理回调执行，无渠道入口。
+ * [OUTPUT]: 核心助手折叠按钮直接复用通讯录conversation-item的行高、内边距、头像与名称/角色两行排版，整行占满列表且无悬停底色；箭头固定最右，新会话按钮位于其左，各操作与原折叠独立。
  * [OUTPUT]: 渠道列表不显示置顶标记或右键置顶入口，普通会话保持。
  * [OUTPUT]: showHeading允许Popover省略列表标题，普通主列表默认保持。
  * [OUTPUT]: 渠道列表可嵌入Popover；仅传入onBack时显示返回按钮，搜索/label折叠沿原状态。
@@ -6,7 +8,7 @@
  * [OUTPUT]: 2026-10-14现行分离合同：主列表按员工/BOAI群显示，员工渠道页私聊/群筛选及真实新回复提示；渠道分组一次读取，避免逐员工重复排序。
  * [INPUT]: 会话/员工快照、草稿、列表更新回调与统一 UI 组件与共用清理确认弹窗。
  * [OUTPUT]: 渠道会话单列、显示接入员工身份，拖拽和置顶不影响普通/核心分类。
- * [OUTPUT]: 常驻会话名称输入与核心助手真实头像/名称的唯一折叠分组，右侧设置/新会话图标；核心历史紧凑小缩进、单一背景，默认标题占满行宽，更多/编辑随悬停、聚焦或菜单打开覆盖末尾且不改变标题宽度，行内图标/右键/更多共用编辑标题，普通会话保持头像和预览及置顶；标题右侧加号只保留员工/群聊，名称筛选临时展开分组并禁用拖拽，清除后保留原折叠；全局检索入口与 Dialog 由 Shell 承载。
+ * [OUTPUT]: 常驻会话名称输入与核心助手真实头像/名称的唯一折叠分组，右键管理与右侧新会话图标；核心历史紧凑小缩进、单一背景，默认标题占满行宽，更多/编辑随悬停、聚焦或菜单打开覆盖末尾且不改变标题宽度，行内图标/右键/更多共用编辑标题，普通会话保持头像和预览及置顶；标题右侧加号只保留员工/群聊，名称筛选临时展开分组并禁用拖拽，清除后保留原折叠；全局检索入口与 Dialog 由 Shell 承载。
  * [POS]: 会话列表交互；持久化通过 Shell 的类型化请求完成。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -29,7 +31,7 @@ import { Avatar, timeText } from '@/components/common'
 import { AddContactMenu } from '@/components/common/add-contact-menu'
 import { GroupAvatar } from '@/components/common/group-avatar'
 import { type ChatDraft } from '../presentation'
-import { ConversationHistoryDialog } from './conversation-history-dialog'
+import { ConversationHistoryDialog, type ConversationHistoryTarget } from './conversation-history-dialog'
 
 interface Props {
   snapshot: Snapshot; selectedId: string | null
@@ -63,7 +65,7 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
     setChannelOpen(value => ({ ...value, [room.kind]: true }))
     setQuery(value => room.title.toLocaleLowerCase().includes(value.trim().toLocaleLowerCase()) ? value : '')
   }, [selectedId, selection, channelAgent, snapshot.conversations])
-  const [confirmation, setConfirmation] = useState<{ conversation: Conversation; hide: boolean } | null>(null)
+  const [confirmation, setConfirmation] = useState<ConversationHistoryTarget | null>(null)
   const confirm = (conversation: Conversation, hide: boolean) => setConfirmation({ conversation, hide })
   const channelsByAgent = new Map<string, Conversation[]>()
   for (const room of sortedConversations(snapshot.conversations, messageTimes)) if (isChannelConversation(room)) for (const id of room.agentIds) { const rooms = channelsByAgent.get(id) ?? []; rooms.push(room); channelsByAgent.set(id, rooms) }
@@ -72,6 +74,8 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
   const title = (item: Conversation) => item.title
   const conversations = visibleConversations.filter(item => title(item).toLocaleLowerCase().includes(search))
   const coreAgent = snapshot.agents.find(isCoreAgent), coreName = coreAgent?.name ?? CORE_AGENT_DEFAULT_NAME
+  const allCore = visibleConversations.filter(isCoreConversation)
+  const confirmAllCore = (hide: boolean) => setConfirmation({ conversations: allCore, agentName: coreName, hide })
   const renderConversation = (conversation: Conversation) => {
         const coreConversation = isCoreConversation(conversation)
         const pin = () => onChange({ id: conversation.id, action: 'pin', pinned: !conversation.list?.pinned })
@@ -121,13 +125,16 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
     {showHeading && <div className="list-heading"><h2>{channelAgent ? `${channelAgent.name}的渠道` : '会话'}</h2><div className="list-heading-actions">{channelAgent ? onBack && <Button variant="ghost" size="icon-sm" aria-label="返回员工主聊天" onClick={onBack}><ChevronLeft /></Button> : <AddContactMenu onCreate={onCreate} />}</div></div>}
     <InputGroup><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput aria-label="搜索会话" placeholder="搜索会话名称" value={query} onChange={event => setQuery(event.target.value)} /></InputGroup>
     <Collapsible className="flex min-h-0 flex-1 flex-col" open={Boolean(search) || coreOpen} onOpenChange={open => { if (!search) setCoreOpen(open) }}>
-      {!channelAgent && <div className="conversation-section-row conversation-core-section-row" data-menu-open={coreMenuOpen || undefined}>
-        <CollapsibleTrigger render={<Button variant="ghost" size="content" className="conversation-section-heading conversation-core-heading" aria-label={`${coreName} 的会话分组`} />}><Avatar small name={coreName} seed={coreAgent?.id} avatar={coreAgent?.avatar} color={coreAgent?.color} /><span className="min-w-0 truncate">{coreName}</span><ChevronRight /></CollapsibleTrigger>
-        <DropdownMenu open={coreMenuOpen} onOpenChange={setCoreMenuOpen}><DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" className="conversation-section-action" aria-label={`${coreName} 的更多操作`} title="更多操作" />}><MoreHorizontal /></DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-40"><DropdownMenuGroup><DropdownMenuItem onClick={onConfigureCore}><Settings />助手设置</DropdownMenuItem>{coreAgent && <DropdownMenuItem onClick={() => onOpenChannels?.(coreAgent)}>渠道会话</DropdownMenuItem>}</DropdownMenuGroup></DropdownMenuContent>
-        </DropdownMenu>
+      {!channelAgent && <ContextMenu onOpenChange={setCoreMenuOpen}><ContextMenuTrigger render={<div className="conversation-section-row conversation-core-section-row" data-menu-open={coreMenuOpen || undefined} />}>
+        <CollapsibleTrigger render={<Button variant="ghost" size="content" className="conversation-item conversation-core-heading" aria-label={`${coreName} 的会话分组`} />}><Avatar name={coreName} seed={coreAgent?.id} avatar={coreAgent?.avatar} color={coreAgent?.color} /><span className="conversation-copy"><span className="conversation-title">{coreName}</span><span className="conversation-preview">{coreAgent?.role || '数字员工'}</span></span><ChevronRight className="shrink-0 text-muted-foreground" /></CollapsibleTrigger>
         <Button variant="ghost" size="icon-sm" className="conversation-section-action" disabled={busy} aria-label={`与 ${coreName} 新建会话`} title="新建会话" onClick={onCreateCore}><SquarePen /></Button>
-      </div>}
+      </ContextMenuTrigger><ContextMenuContent className="w-40"><ContextMenuGroup>
+        <ContextMenuItem disabled={busy} onClick={onCreateCore}><SquarePen />新增会话</ContextMenuItem>
+        <ContextMenuItem onClick={onConfigureCore}><Settings />助手设置</ContextMenuItem>
+      </ContextMenuGroup><ContextMenuSeparator /><ContextMenuGroup>
+        <ContextMenuItem disabled={busy || !allCore.length} onClick={() => confirmAllCore(false)}><Trash2 />清空所有记录</ContextMenuItem>
+        <ContextMenuItem variant="destructive" disabled={busy || !allCore.length} onClick={() => confirmAllCore(true)}><Trash2 />删除所有会话</ContextMenuItem>
+      </ContextMenuGroup></ContextMenuContent></ContextMenu>}
     <div className="conversation-list" role="navigation" aria-label="会话列表">
       <DragList ids={conversations.map(item => item.id)} disabled={busy || Boolean(search)} canMove={(id, targetId) => {
         const source = conversations.find(item => item.id === id), target = conversations.find(item => item.id === targetId)

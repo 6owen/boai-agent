@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 会话/员工清理同步擦除终端、预览回执正文，仅保留写入去重身份。
  * [OUTPUT]: 员工/会话清理同步移除手动引用关系与回执结果；关系回执不保存对象正文。
  * [OUTPUT]: Plan Weave状态/报告随来源清理；已知事务前置拒绝保留稳定rejected回执，未知副作用仍不重放。
  * [OUTPUT]: 规划状态与回执随员工/源会话原清理事务清除，保留请求去重。
@@ -23,7 +24,7 @@ export interface ApplicationOperation {
   resultType: string
   available?(): boolean
   unavailableReason?: string
-  validate?(input: any): Promise<void>
+  validate?(input: any, actor: ApplicationActor): Promise<void>
   execute(input: any, requestId: string | undefined, actor: ApplicationActor): Promise<unknown>
 }
 interface OperationReceipt { ownerAgentId?: string; runtimeId?: string; id: string; actor: ApplicationActor; fingerprint: string; result: ApplicationResult }
@@ -96,7 +97,7 @@ export class ApplicationService {
       if (previous) return previous.fingerprint === fingerprint ? (await this.receipt(request.requestId!, actor))! : reject(request.operation, { code: 'REQUEST_CONFLICT', message: '同一 requestId 已用于不同参数或操作，请核对原回执。' }, request.requestId)
     }
     if (operation.available && !operation.available()) return reject(request.operation, { code: 'CAPABILITY_UNAVAILABLE', message: operation.unavailableReason ?? '当前宿主不提供此能力。' }, request.requestId)
-    try { await operation.validate?.(input.data) } catch (error) {
+    try { await operation.validate?.(input.data, actor) } catch (error) {
       if (error instanceof ApplicationValidationError) return reject(request.operation, { code: error.code, message: error.message }, request.requestId)
       return reject(request.operation, { code: 'INVALID_INPUT', message: '操作前核对未通过，未开始写入。' }, request.requestId)
     }
@@ -162,7 +163,8 @@ export async function clearApplicationReceipts(tx: RecordTransaction, scope: { e
     const clearedTask = receipt.result.operation.startsWith('planning.') && (clearedPlanning.has((receipt.result.data as { id?: string } | undefined)?.id ?? '') || !!scope.conversationId && (receipt.result.data as { conversationId?: string } | undefined)?.conversationId === scope.conversationId) || receipt.result.operation.startsWith('tasks.') && clearedTasks.has((receipt.result.data as { id?: string } | undefined)?.id ?? '')
     const clearedPlan = receipt.result.operation.startsWith('plans.') && !!scope.conversationId && (receipt.result.data as { conversationId?: string } | undefined)?.conversationId === scope.conversationId
     const clearedReference = receipt.result.operation.startsWith('refs.') && !!scope.conversationId && (receipt.result.data as { conversationId?: string } | undefined)?.conversationId === scope.conversationId
-    if (!clearedReference && !clearedPlan && !clearedTask && !(receipt.ownerAgentId && scope.employeeIds?.has(receipt.ownerAgentId)) && !(receipt.actor.kind !== 'owner' && (scope.employeeIds?.has(receipt.actor.employeeId) || scope.conversationId === receipt.actor.conversationId))) continue
+    const clearedWorkspace = /^(terminal|preview|workspace)\./.test(receipt.result.operation) && (!!scope.conversationId && (receipt.result.data as { conversationId?: string } | undefined)?.conversationId === scope.conversationId || !!scope.employeeIds?.has((receipt.result.data as { employeeId?: string } | undefined)?.employeeId ?? ''))
+    if (!clearedWorkspace && !clearedReference && !clearedPlan && !clearedTask && !(receipt.ownerAgentId && scope.employeeIds?.has(receipt.ownerAgentId)) && !(receipt.actor.kind !== 'owner' && (scope.employeeIds?.has(receipt.actor.employeeId) || scope.conversationId === receipt.actor.conversationId))) continue
     const { data: _data, error: _error, ...result } = receipt.result
     await tx.put({ collection, id: receipt.id, value: { ...receipt, result: { ...result, status: 'cleared' } } satisfies OperationReceipt })
   }

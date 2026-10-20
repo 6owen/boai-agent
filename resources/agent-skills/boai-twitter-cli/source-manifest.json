@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "upstream": {
+    "repository": "https://github.com/jackwener/twitter-cli",
+    "commit": "7c634e0d396b1e7af9f63315b414925fe4f29ae7",
+    "package": "twitter-cli",
+    "packageVersion": "0.8.5"
+  },
+  "almaSource": {
+    "skill": "ai-docs/alma-研究/技能/twitter-cli/SKILL.md",
+    "skillSha256": "a0ec17ed5aebe042b95e4bd4ccf019d72e857c68611a37d11285b9beab566fe6",
+    "wrapper": "ai-docs/alma-研究/技能/twitter-cli/scripts/twitter.source.txt",
+    "wrapperSha256": "7aa85e1cf4a7eaad2916c519176b2f0ae68b7253f1c7e509fc13b8e330efdf0e"
+  },
+  "adaptation": [
+    "BOAI bound directory and command permissions",
+    "Pinned fallback and matching local version",
+    "Explicit account actions and unknown-result handling",
+    "No account access on integration inspection"
+  ]
+}

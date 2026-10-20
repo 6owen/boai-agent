@@ -1,5 +1,6 @@
 <!doctype html>
 <!--
+[OUTPUT]: 侧栏真实预览仅允许回环 HTTP frame，原脚本/连接策略保持。
 [INPUT]: Electron渲染入口、BOAI IPC与Lody本地worker/WASM资源。
 [OUTPUT]: 保留原隔离CSP；允许本地WASM编译、blob worker及预览图片，不开放任意脚本执行。
 [POS]: renderer的HTML构建入口。
@@ -8,7 +9,7 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: boai-asset:; connect-src 'self' http://127.0.0.1:5187 ws://127.0.0.1:5187" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; frame-src http://127.0.0.1:*; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: boai-asset:; connect-src 'self' http://127.0.0.1:5187 ws://127.0.0.1:5187" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
     <title>BoAI Agent</title>

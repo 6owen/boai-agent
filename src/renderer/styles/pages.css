@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 新建员工的名称/职责输入始终沿全局Input表面和边缘显示，不应用身份编辑的未聚焦透明规则。
+ * [OUTPUT]: 会话核心助手按钮直接沿通讯录conversation-item的行高/内边距/头像/两行排版，搜索下方留白同为10px；整行背景透明，箭头固定最右，新会话按钮在其左且与下方编辑图标共用muted-foreground，文字仅预留单按钮空间，管理沿整行右键菜单。
  * [OUTPUT]: 活动详情图标复用删除图标的行悬停/键盘聚焦显现规则；Popover打开及触屏时保留入口。
  * [OUTPUT]: 群资料复用原64px拼图头像及文字排版，头像按钮无额外内边距，名称自动保存保持成员入口外观。
  * [OUTPUT]: 身份自动保存不改变资料页操作按钮透明度或悬停外观；分区编辑的可见性优先于全局disabled样式，避免批量闪现。
@@ -323,9 +325,12 @@
 .empty-illustration { display:block;width:200px;max-width:100%;height:auto;flex-shrink:0 }
 .conversation-list-empty { min-height:240px;user-select:none }
 .conversation-list-empty img { display:block;max-width:100%;height:auto }
-.conversation-section-row.conversation-core-section-row { flex-shrink:0;margin:4px 0 0 }
-.conversation-core-section-row>.conversation-core-heading { gap:6px;min-height:36px;font-size:13px;color:var(--foreground) }
-.conversation-section-row.conversation-core-section-row>.conversation-section-action { color:var(--foreground) }
+.conversation-section-row.conversation-core-section-row { position:relative;flex-shrink:0;margin:10px 0 3px }
+.conversation-core-section-row:is(:hover,:focus-within,[data-menu-open=true]) { background:transparent }
+.conversation-core-section-row>.conversation-core-heading { flex:1;min-width:0;width:auto;margin:0 }
+.conversation-core-heading>.conversation-copy { margin-right:34px }
+.conversation-core-section-row>.conversation-core-heading.soft-button-ghost:not(:disabled):not([aria-disabled=true]) { background:transparent }
+.conversation-section-row.conversation-core-section-row>.conversation-section-action { position:absolute;inset-block:0;right:28px;margin-block:auto;color:var(--muted-foreground) }
 .conversation-list-panel .conversation-list { margin-top:0 }
 .conversation-list .conversation-section-heading { margin-top:4px }
 .conversation-core-history { padding-left:12px }
@@ -505,7 +510,7 @@
 .employee-identity-fields { display:grid;gap:2px;flex:1;min-width:0 }
 .employee-identity-fields .employee-identity-name { height:44px;font-size:20px;font-weight:550 }
 .employee-identity-fields .employee-identity-role { height:36px;font-size:14px;color:var(--muted-foreground) }
-.employee-identity-fields [data-slot=input]:not(:hover):not(:focus-visible):not([aria-invalid=true]) { background:transparent;border-color:transparent;box-shadow:none }
+.employee-identity-fields [data-slot=input]:not(#create-agent-form input):not(:hover):not(:focus-visible):not([aria-invalid=true]) { background:transparent;border-color:transparent;box-shadow:none }
 .employee-identity-editor .avatar-edit-badge,.contact-profile-heading .avatar-edit-badge { opacity:0;transition:opacity .15s }
 .employee-identity-editor .avatar-picker-trigger:is(:hover,:focus-visible,[data-popup-open]) .avatar-edit-badge,.contact-profile-heading .avatar-picker-trigger:is(:hover,:focus-visible,[data-popup-open]) .avatar-edit-badge { opacity:1 }
 .employee-detail>[data-slot=tabs-content][hidden] { display:none }

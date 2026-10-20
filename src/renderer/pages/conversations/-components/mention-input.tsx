@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: scope变化保留编辑器DOM并重建ProseMirror文档/插件状态，撤销不跨会话；同scope草稿仍保留原历史。
  * [OUTPUT]: @员工与$资源/提示词共用原子插入，提示词正文快照随撤销/草稿保留。
  * [OUTPUT]: 单聊/群聊统一原子编辑器，资源标签保持来源和整体删除；外部选择标签独立成撤销步骤，快速删除后撤销不连带清除原草稿。
  * [INPUT]: 受控草稿、候选键盘回调与共享 Button 皮肤/class 合并、Tiptap 编辑模型。
@@ -10,6 +11,7 @@
 import { useImperativeHandle, useLayoutEffect, useRef, type Ref } from 'react'
 import { Editor } from '@tiptap/core'
 import { closeHistory } from '@tiptap/pm/history'
+import { EditorState } from '@tiptap/pm/state'
 import { cn } from 'cn'
 import { buttonVariants } from '@/components/ui/button'
 import type { ComposerReference } from '@shared/domain/composer-references'
@@ -24,6 +26,7 @@ export interface MentionInputHandle {
   replace(range: TextRange, text: string, member?: { id: string; name: string; resource?: ComposerReference; prompt?: PromptTemplateReference }): void
 }
 interface Props {
+  scope?: string
   ref?: Ref<MentionInputHandle>; draft: ChatDraft; onChange(draft: ChatDraft): void; placeholder: string
   onSelection(range: TextRange): void; onKeyDown(event: KeyboardEvent): void; onComposing(value: boolean): void
   onPaste?(event: ClipboardEvent): boolean
@@ -32,6 +35,7 @@ interface Props {
 
 export function MentionInput(props: Props) {
   const host = useRef<HTMLDivElement>(null), editor = useRef<Editor | null>(null), latest = useRef(props)
+  const scope = useRef(props.scope)
   latest.current = props
   const selection = (): TextRange => {
     const instance = editor.current
@@ -87,6 +91,11 @@ export function MentionInput(props: Props) {
   useLayoutEffect(() => {
     const instance = editor.current
     if (!instance) return
+    if (scope.current !== props.scope) {
+      scope.current = props.scope
+      instance.view.updateState(EditorState.create({ schema: instance.schema, doc: instance.schema.nodeFromJSON(mentionDocument(props.draft)), plugins: instance.state.plugins }))
+      instance.commands.setTextSelection(instance.state.doc.content.size - 1)
+    }
     if (instance.isEditable !== !props.disabled) instance.setEditable(!props.disabled, false)
     const current = documentDraft(instance.state.doc, props.draft)
     if (current.text !== props.draft.text || JSON.stringify(current.mentions) !== JSON.stringify(props.draft.mentions ?? [])) instance.commands.setContent(mentionDocument(props.draft), { emitUpdate: false })
@@ -97,6 +106,6 @@ export function MentionInput(props: Props) {
       if (value) dom.setAttribute(key!, value)
       else dom.removeAttribute(key!)
     }
-  }, [props.draft, props.placeholder, props.listId, props.activeId, props.disabled])
+  }, [props.scope, props.draft, props.placeholder, props.listId, props.activeId, props.disabled])
   return <div ref={host} className="mention-editor" />
 }

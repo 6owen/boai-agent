@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "almaSource": {
+    "skill": "ai-docs/alma-研究/技能/daily-report/SKILL.md",
+    "skillSha256": "eedba98094725213d3623be8d62f2c96fbd3809b5933013a427ac5fb29b39ec9"
+  },
+  "adaptation": [
+    "Existing BOAI application protocol and actor authorization",
+    "Real local capability and shared product UI",
+    "Stable write receipts; unknown effects are not replayed"
+  ]
+}

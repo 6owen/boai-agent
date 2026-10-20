@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 真实探路允许显式缩小请求上限，复测沿原批次剩余额度。
+ * [OUTPUT]: 真实评估冻结完整随包技能目录并沿内置绑定加载脚本/参考文件，不再只复制正文。
  * [OUTPUT]: PPT真实技能评估冻结原模型/编译/素材worker与hash，实际草稿可运行原版编译；不注入视觉配置。
  * [OUTPUT]: 可显式冻结当前检索服务与偏好，独立凭据只经内存桥传递；搜索请求与模型请求分账。
  * [OUTPUT]: 脚本技能评估冻结实际员工工具库并在隔离AppService开放原员工RPC，不读取本人CLI配置。
@@ -13,16 +15,18 @@
  */
 import { build } from 'esbuild'
 import { spawn, execFileSync } from 'node:child_process'
-import { cp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
+import { cp, lstat, mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { createHash } from 'node:crypto'
 import electron from 'electron'
 const [connectionId, dataPath, label, ...options] = process.argv.slice(2)
+const requestLimit = options.find(value => value.startsWith('--max-requests='))?.slice('--max-requests='.length)
+if (requestLimit && (!/^\d+$/.test(requestLimit) || Number(requestLimit) < 1 || Number(requestLimit) > 40)) throw new Error('max-requests must be 1..40')
 const reflectionFile = options.find(value => value.startsWith('--reflection-file='))?.slice('--reflection-file='.length)
 const includeSkills = options.includes('--skills'), includeWebSearch = options.includes('--web-search'), currentProfile = options.includes('--current-profile'), candidateReflection = options.includes('--candidate-reflection'), caseSelection = options.find(value => !value.startsWith('--'))
-if (!connectionId || !dataPath || !/^[a-z0-9-]+$/.test(label ?? '') || options.length > 5 || options.filter(value => !value.startsWith('--')).length > 1 || options.some(value => value.startsWith('--') && !['--current-profile', '--skills', '--web-search', '--candidate-reflection'].includes(value) && !value.startsWith('--reflection-file=')) || (candidateReflection || reflectionFile || includeWebSearch) && !currentProfile || candidateReflection && reflectionFile) throw new Error('Usage: node scripts/evaluate-personality.mjs CONNECTION_ID DATA_PATH LABEL [CASE_IDS] [--current-profile] [--skills] [--web-search] [--candidate-reflection | --reflection-file=PATH]')
+if (!connectionId || !dataPath || !/^[a-z0-9-]+$/.test(label ?? '') || options.length > 5 || options.filter(value => !value.startsWith('--')).length > 1 || options.some(value => value.startsWith('--') && !['--current-profile', '--skills', '--web-search', '--candidate-reflection'].includes(value) && !value.startsWith('--reflection-file=') && !value.startsWith('--max-requests=')) || (candidateReflection || reflectionFile || includeWebSearch) && !currentProfile || candidateReflection && reflectionFile) throw new Error('Usage: node scripts/evaluate-personality.mjs CONNECTION_ID DATA_PATH LABEL [CASE_IDS] [--current-profile] [--skills] [--web-search] [--candidate-reflection | --reflection-file=PATH]')
 const output = resolve(`.local/personality-evaluation/${label}-${Date.now()}`); await mkdir(output, { recursive: true })
-const settings = { output, connectionId, dataPath: resolve(dataPath), label, caseIds: caseSelection?.split(','), candidateReflection, maxRequests: 40, deadlineMs: 720000, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, hashes: {} }
+const settings = { output, connectionId, dataPath: resolve(dataPath), label, caseIds: caseSelection?.split(','), candidateReflection, maxRequests: requestLimit ? Number(requestLimit) : 40, deadlineMs: 720000, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, hashes: {} }
 if (reflectionFile) {
   settings.candidateReflectionText = await readFile(resolve(reflectionFile), 'utf8')
   if (!settings.candidateReflectionText.trim()) throw new Error('Empty reflection candidate')
@@ -54,9 +58,26 @@ if (currentProfile) {
   }
 }
 if (includeSkills) {
+  settings.skillSourceRoot = join(output, 'bundled-skills')
+  await mkdir(settings.skillSourceRoot, { recursive: true })
+  const manifest = JSON.parse(await readFile('resources/agent-skills/manifest.json', 'utf8'))
   settings.skills = []
-  for (const name of (await readdir('resources/agent-skills')).filter(name => name.startsWith('boai-')).sort()) {
-    const content = await readFile(join('resources/agent-skills', name, 'SKILL.md'), 'utf8')
+  for (const name of manifest.skills) {
+    const source = join('resources/agent-skills', name), destination = join(settings.skillSourceRoot, name)
+    const members = (await readdir(source, { recursive: true })).filter(file => !file.split(/[\\/]/).includes('.folder.md')).sort()
+    const files = []
+    for (const file of members) {
+      const info = await lstat(join(source, file))
+      if (info.isSymbolicLink() || !info.isDirectory() && !info.isFile()) throw new Error('Skill source contains a non-regular file')
+      if (info.isFile()) files.push(file)
+    }
+    await cp(source, destination, { recursive: true, filter: path => !path.endsWith('/.folder.md') })
+    for (const file of files) {
+      const path = join(source, file), bytes = await readFile(path)
+      settings.hashes[path] = createHash('sha256').update(bytes).digest('hex')
+      if (!bytes.equals(await readFile(join(destination, file)))) throw new Error('Frozen skill companion differs from source')
+    }
+    const content = await readFile(join(destination, 'SKILL.md'), 'utf8')
     settings.skills.push({ name, content, hash: createHash('sha256').update(content).digest('hex') })
   }
   const response = JSON.parse(execFileSync(process.execPath, ['dist/cli/index.mjs', 'app', 'call', 'sources.list', '{}', '--json'], { encoding: 'utf8' }))

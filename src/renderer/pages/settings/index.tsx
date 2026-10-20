@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 运行选项桌面活动日报入口交给原 bobo 首发流程。
  * [OUTPUT]: 2026-10-19 配置分类新增网页检索独立页，沿原活跃读取和页面切换。
  * [OUTPUT]: 设置增加内置插件管理，沿原分类/文档布局与启停真源。
  * [OUTPUT]: 运行选项入口接后台常驻与真实系统登录项状态。
@@ -25,7 +26,7 @@ import { Banner, GuardContext, useMutation } from '@/components/common/index'
 import { ConnectionSettings } from './connections'
 import type { LocalAgentTarget } from './local-agents'
 export type SettingsTab = 'profile' | 'connections' | 'data' | 'appearance' | 'desktop' | 'plugins' | 'web-search'
-export function SettingsPage({ api, snapshot, refresh, divider, tab, setTab, active, onSkill, localAgentTarget }: { api: DesktopApi; snapshot: Snapshot; refresh: () => Promise<void>; divider: ReactNode; tab: SettingsTab; setTab: (tab: SettingsTab) => void; active: boolean; onSkill: (id: string) => void; localAgentTarget?: LocalAgentTarget }) {
+export function SettingsPage({ api, snapshot, refresh, divider, tab, setTab, active, onSkill, localAgentTarget, onActivityReport }: { onActivityReport(from: string, to: string): Promise<void>; api: DesktopApi; snapshot: Snapshot; refresh: () => Promise<void>; divider: ReactNode; tab: SettingsTab; setTab: (tab: SettingsTab) => void; active: boolean; onSkill: (id: string) => void; localAgentTarget?: LocalAgentTarget }) {
   const [search, setSearch] = useState('')
   const [notice, setNotice] = useState('')
   const guard = useContext(GuardContext)
@@ -71,7 +72,7 @@ export function SettingsPage({ api, snapshot, refresh, divider, tab, setTab, act
     {tab === 'profile' && <ProfileSettings api={api} profile={snapshot.userProfile} active={active} refresh={refresh} onSkill={onSkill} />}
     {tab === 'connections' && <ConnectionSettings connections={snapshot.connections} api={api} refresh={refresh} active={active} localAgentTarget={localAgentTarget} />}
     {tab === 'appearance' && <AppearanceSettings />}
-    {tab === 'desktop' && <DesktopSettingsPage api={api} active={active} />}
+    {tab === 'desktop' && <DesktopSettingsPage onActivityReport={onActivityReport} api={api} active={active} />}
     {tab === 'web-search' && <WebSearchSettingsPage api={api} active={active} />}
     {tab === 'plugins' && <PluginSettingsPage />}
     {tab === 'data' && <DataSettings api={api} snapshot={snapshot} busy={busy} run={run} onNotice={setNotice} />}
