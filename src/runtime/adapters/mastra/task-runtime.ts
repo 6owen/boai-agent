@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: PPT工具接当前员工会话、授权字节/原文件队列与审批；专用审阅通过后才导出至原成果流程。
  * [OUTPUT]: 自拍保存/新肖像/私聊原图导出复用实际任务字节、独占文件写入和原发布；私人相册由宿主核权。
  * [OUTPUT]: 生图/编辑用独立模型端口，引用逐项核权，新文件独占写入并沿原成果发布；同运行同路径不重放生成。
  * [OUTPUT]: 原命令租约的脚本工具库作为精确只读内部输入；批量工具调用保持原运行/目录许可与退出回收。
@@ -48,6 +49,7 @@ import { createKnowledgeTools } from './knowledge-tools'
 import { createDirectoryRequestOperation } from '../../modules/workspaces/directory-tool'
 import { knowledgeInstructions } from '../../modules/resources/knowledge-tools'
 import { BoundSkillSource } from './bound-skill-source'
+import { createPresentationTools } from './presentation-tools'
 import { abortable, executeCommand } from './host-command'
 import { authorizeExecution } from '../../modules/employees/execution-permissions'
 import { employeeCommandScope } from '../../modules/workspaces/directory-command'
@@ -169,6 +171,27 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
       if (new Set(names).size !== names.length) throw new Error('员工绑定了同名 Skill，请明确选择一个来源')
     }
     const tools = {
+      ...createPresentationTools(ctx, {
+        root: scope.root, serial: fileOperation,
+        source: async file => {
+          const location = await locationFor(file), target = path.resolve(location.root, location.relative)
+          const read = async () => {
+            await verifyLocation(location, 'read')
+            const actual = await ctx.readTaskBytes?.(target) ?? await readMaterialSource(await workspaceTarget(await realpath(location.root), location.relative), signal, ctx.runId)
+            await verifyLocation(location, 'read'); return Buffer.from(actual.bytes)
+          }
+          const bytes = await read(), hash = fileContentHash(bytes)
+          return { name: workingFilePath(ctx.workingDirectory, file), bytes, verify: async () => { if (fileContentHash(await read()) !== hash) throw new Error('PPT source changed during use') } }
+        },
+        effect: async description => { await authorizeExecution(ctx, { kind: 'file', description }); await ctx.beforeEffect?.(); check(signal) },
+        output: async (file, bytes, verify) => {
+          const location = await locationFor(file, true)
+          await verifyLocation(location, 'write'); await verify()
+          await authorizeExecution(ctx, { kind: 'file', description: `导出演示文稿 ${file}` }); await ctx.beforeEffect?.(); check(signal)
+          await writeWorkspaceFile(location.root, location.relative, bytes, null, signal, async () => { await verifyLocation(location, 'write'); await verify() })
+          await ctx.afterEffect?.(); return { path: file, bytes: bytes.byteLength }
+        },
+      }),
       ...(ctx.selfies ? {
         save_selfie: createTool({ id: 'save_selfie', description: 'Save an ACTUAL user-approved image as your persistent appearance reference. Owner private chat only; do not auto-save a new image or treat your own approval as the user\'s. The host records the current owner message as approval provenance. path is an authorized existing PNG/JPEG/WebP, max 8 MiB. Duplicate bytes are not added again. No external send.', inputSchema: z.object({ path: z.string().min(1), label: z.string().trim().max(100).default('') }).strict(), execute: input => fileOperation(async () => {
           const image = await readSelfieInput(input.path)

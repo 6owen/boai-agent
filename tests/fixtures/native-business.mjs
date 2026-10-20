@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: NATIVE_PPT通过真实产品工具创建、审阅和发布PPT，供原生调用数与无BOAI预算核对。
  * [OUTPUT]: NATIVE_CWD回报实际子进程cwd，供同目录续用/不同目录新会话验证。
  * [OUTPUT]: 原生子进程使用实际CLI查询原消息、发布及重复核对，身份/owner拒绝和工具回执均不保存token。
  * [OUTPUT]: 知识查询经实际动态工具/MCP读取与引用，无文件Work；模型正文为确定性协议夹具。
@@ -30,6 +31,15 @@ export async function consumeNativeMaterials(content) {
  return reads
 }
 export async function business(prompt,tool){
+ if(prompt.messages.at(-1)?.content==='NATIVE_PPT'){
+  const project=await tool('presentation_create',{title:'原生PPT',theme:{name:'Proof',headFontFace:'Arial',bodyFontFace:'Arial'},story:{audience:'项目成员',purpose:'核对原生工具',coreMessage:'保留真实文件',narrative:['证据']},design:{visualDirection:'Simple typography',imageDirection:'Native data',density:'balanced'}})
+  await tool('presentation_upsert_slide',{presentationId:project.id,expectedRevision:0,slide:{id:'s1',role:'supporting',layoutKey:'proof',elements:[{id:'title',type:'text',text:'原生文件 7 和 11',x:1,y:1,w:10,h:1,fontSize:36}]}})
+  const reviewed=await tool('presentation_review',{presentationId:project.id})
+  if(!reviewed.passed)throw Error('controlled review must approve this fixture')
+  const exported=await tool('presentation_export',{presentationId:project.id,path:'self:/work/native-approved.pptx'})
+  const published=await tool('publish_artifact',{path:exported.path})
+  return 'NATIVE_PPT_RESULT '+JSON.stringify({artifactId:published.artifact.id,fileHash:reviewed.fileHash,requests:reviewed.requests})
+ }
  if(prompt.messages.at(-1)?.content==='NATIVE_CWD') return 'NATIVE_CWD_RESULT '+JSON.stringify({cwd:process.cwd()})
  const work=prompt.currentWork,text=prompt.messages.map(m=>m.content).join('\n')+'\n'+(work?.scope??'')
  const cliOrganization=prompt.messages.at(-1)?.content.match(/^NATIVE_CLI_ORGANIZATION (.+)$/m)

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: PPT复用同一工具schema和惰性任务运行时；纯目录/配置不创建Work，渲染审阅沿原执行与独立模型。
  * [OUTPUT]: 私聊相册元信息/删除使用员工固定身份工具；读取无需文件Work。
  * [OUTPUT]: 普通本机会话显式发现独立生图端口；检查零Work，生成沿原惰性认领和任务文件/交付。
  * [OUTPUT]: 本机工具目录接入同一员工表情端口。
@@ -43,6 +44,9 @@ import { realpath } from 'node:fs/promises'
 import type { EngineContext } from '../contracts'
 import type { NativeTool } from './native-task'
 import { createTaskRuntime } from './mastra/task-runtime'
+import { describePresentationTools } from './mastra/presentation-tools'
+import { listDesigns } from '../modules/presentations/alma/designs.mjs'
+import { f as presentationLayouts, c as presentationIcons } from '../modules/presentations/alma/model.mjs'
 import { modelWorkOutcomeSchema, workDelegationSchema, workWaitSchema } from '../modules/collaboration/work-protocol'
 import { boboCollaborationPlanSchema, employeeCandidateQuerySchema } from '../../shared/domain/bobo-collaboration'
 import { isCoreAgent } from '../../shared/domain/core-agent'
@@ -74,6 +78,7 @@ export function createNativeProducts(context: EngineContext) {
     { name: 'report_work', description: 'Optionally record the disposition of a real BOAI work item. Unnecessary for ordinary chat, clarification, or after publishing a file. For answer evidence, reference MUST be a short exact substring of your final public reply: include that same text verbatim in the reply. Do not place separate prose, URLs or timestamps in reference unless they also appear verbatim in the reply. A receipt only records your declaration; delivery is checked after the final reply. After wait_for_work, finish the turn without another report. Ask users as ordinary chat messages; there is no userQuestion workflow.', schema: z.object(reportShape).strict() },
   ]
   const applicationTools = [...createApplicationTools(context), ...createStateTools(context), ...createBoundSkillOperations(context), ...createMemoryOperations(context), ...createReactionOperations(context), ...createSelfieOperations(context)]
+  definitions.push(...describePresentationTools(context))
   if (context.selfies) definitions.push(
     { name: 'save_selfie', description: 'Save an actual owner-approved image as your private persistent appearance reference. Owner private chat only; never auto-save or invent approval. path is an existing self:/ or authorized shared:/ PNG/JPEG/WebP, max 8 MiB. The host records the current owner message; native external inputs must first be copied into this employee workspace.', schema: z.object({ path: z.string().min(1), label: z.string().trim().max(100).default('') }).strict() },
     { name: 'export_selfie', description: 'Copy an actual album original into a NEW self:/runs/<actual-run-id>/ file. Only the owner private chat may export; group/channel requests are denied. Use list_selfies for ID/type; publish_artifact delivers the copied file.', schema: z.object({ id: z.string().regex(/^[a-f0-9]{64}$/), path: z.string().min(1) }).strict() },
@@ -120,6 +125,12 @@ export function createNativeProducts(context: EngineContext) {
       }
       await emit(false)
       try {
+        if (name === 'presentation_settings') { const result = await context.presentations!.settings(); await emit(true, result); return result }
+        if (name === 'presentation_list_designs' || name === 'presentation_list_layouts' || name === 'presentation_list_icons') {
+          await context.presentations!.verify()
+          const result = name === 'presentation_list_designs' ? listDesigns(parsed.query as string | undefined, parsed.limit as number) : name === 'presentation_list_icons' ? presentationIcons(parsed.query as string, parsed.limit as number) : presentationLayouts(parsed)
+          await context.presentations!.verify(); await emit(true, result); return result
+        }
         if (name === 'inspect_image_generation') { context.signal.throwIfAborted(); const result = await context.images!.settings(); await emit(true, result); return result }
         const applicationTool = applicationTools.find(operation => operation.name === name)
         if (applicationTool) { const result = await applicationTool.execute(parsed); await emit(true, result); return result }

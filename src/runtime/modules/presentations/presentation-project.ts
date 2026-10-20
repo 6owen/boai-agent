@@ -3,7 +3,7 @@
  * [OUTPUT]: Immutable revision directories and one atomic current pointer; failed compilation preserves the prior deck.
  * [OUTPUT]: Actual renderer preflight and revision-bound dedicated visual review; approved-byte export rejects changed or unreviewed files.
  * [OUTPUT]: Explicit authorized image-byte import; compilation accepts only matching private content-addressed assets.
- * [POS]: Presentation kernel only. Not registered with employees, CLI or application protocol yet.
+ * [POS]: Revision kernel used by shared employee tools; the adapter supplies original source/scope authorization.
  * [PROTOCOL]: Update Header and owning .folder.md when changed.
  */
 import { createHash, randomUUID } from 'node:crypto'

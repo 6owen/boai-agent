@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Original settings store, selected connection/vault, explicit renderer and host request accounting.
- * [OUTPUT]: Revisioned presentation settings and a revocable dedicated vision lease; no implicit chat-model fallback.
+ * [OUTPUT]: Revisioned presentation settings and revocable renderer/vision leases; no implicit chat-model fallback.
  * [POS]: Presentation capability service; employee tools must supply their own live authorization and request ledger.
  * [PROTOCOL]: Update Header and presentations/.folder.md when changed.
  */
@@ -33,7 +33,9 @@ export interface PresentationModelInput {
   route(value: GatewayRouteEvidence): Promise<void>
 }
 export interface PresentationCapability {
+  verify(): Promise<void>
   settings(): ReturnType<PresentationService['settings']>
+  renderer(): ReturnType<PresentationService['rendererLease']>
   lease(): ReturnType<PresentationService['lease']>
 }
 const collection = 'presentationSettings', key = 'default'
@@ -100,6 +102,16 @@ export class PresentationService {
     ]
   }
   cancelConnection(id: string) { for (const [controller, connectionId] of this.pending) if (connectionId === id) controller.abort(new Error('PPT 视觉连接已改变')) }
+  async rendererLease(signal: AbortSignal, validate: () => Promise<void>) {
+    signal.throwIfAborted(); await validate()
+    const settings = await this.read(), path = await this.renderer(settings)
+    const verify = async () => {
+      signal.throwIfAborted(); await validate()
+      if ((await this.read()).revision !== settings.revision) throw new Error('PPT 设置已改变，原渲染租约失效')
+      await this.renderer(settings)
+    }
+    await verify(); return { path, verify }
+  }
   async lease(signal: AbortSignal, validate: () => Promise<void>, observer: PresentationReviewObserver) {
     signal.throwIfAborted(); await validate()
     const settings = await this.read(), rendererPath = await this.renderer(settings), connection = await this.connection(settings), selected = settings.vision!

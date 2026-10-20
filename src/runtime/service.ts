@@ -1,4 +1,5 @@
 /*
+[OUTPUT]: 员工PPT工具共用当前执行资格、独立渲染/审阅租约及原模型用量接线。
  * [OUTPUT]: PPT 审阅租约接当前执行资格、原追加预算和实际连接路由；独立用量与主模型合并，本机原生计数/预算保持。
  * [OUTPUT]: PPT 独立渲染器与视觉模型设置接原应用协议；实际审阅调用适配已提供，员工工具尚待接线。
  * [OUTPUT]: 员工持久形象相册接原身份/私聊管理与任务生图；原图不进入群/渠道工具结果，删除员工沿原根目录清理。
@@ -3816,7 +3817,9 @@ export class AppService {
     })
     const context: EngineContext = { permissionExpectation, modelSource,
       presentations: {
+        verify: () => this.serialize(async () => { await this.assertExecutionAccess(context) }),
         settings: async () => { await this.serialize(() => this.assertExecutionAccess(context)); return this.presentations.settings() },
+        renderer: () => this.presentations.rendererLease(signal, async () => { await this.serialize(() => this.assertExecutionAccess(context)) }),
         lease: () => this.presentations.lease(signal, async () => { await this.serialize(() => this.assertExecutionAccess(context)) }, {
           begin: async source => {
             const callId = await context.onAdditionalModelCall!('report')

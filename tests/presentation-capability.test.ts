@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Actual employee Run verifies dedicated-source receipts, cumulative usage, cancellation and expired leases.
  * [INPUT]: Actual SQLite/application settings, Mastra SDK and local three-protocol provider fixtures.
  * [OUTPUT]: Explicit source/renderer selection, native PNG transport, receipts, revocation and no replay on restart/failure.
  * [POS]: Controlled capability integration; no remote model or real slide-quality certification.
@@ -6,11 +7,13 @@
  */
 import { createHash } from 'node:crypto'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
-import { chmod, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
+import { chmod, mkdtemp, realpath, rm, writeFile, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, expect, test } from 'vitest'
-import type { Connection, ModelUsage } from '../src/shared/domain'
+import type { Connection, ModelUsage, Conversation, ConversationDetail, DigitalAgent } from '../src/shared/domain'
+import type { ProfileModelCall } from '../src/runtime/modules/profile/profile-activity'
+import type { AgentEngine, EngineContext } from '../src/runtime/contracts'
 import type { ApplicationResult } from '../src/shared/domain/application-protocol'
 import type { GatewayRouteEvidence, ModelProtocol } from '../src/shared/domain/model-gateway'
 import { AppService } from '../src/runtime/service'
@@ -20,12 +23,26 @@ import { PresentationService, type PresentationReviewObserver, type Presentation
 import { generatePresentationReview } from '../src/runtime/adapters/mastra/presentation-review-model'
 import { streamText } from './fixtures/gateway-stream'
 import { gatewayVisionImage } from './fixtures/gateway-vision-image'
+import { createTaskRuntime } from '../src/runtime/adapters/mastra/task-runtime'
+import { mastraCliTools } from '../src/runtime/adapters/mastra/cli-tools'
+import { nativeFixture } from './fixtures/native-product'
+import { RunModelUsage } from '../src/runtime/modules/profile/run-model-usage'
 
 const clean: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const action of clean.splice(0).reverse()) await action() })
 async function directory() { const root = await realpath(await mkdtemp(join(tmpdir(), 'boai-presentation-capability-'))); clean.push(() => rm(root, { recursive: true, force: true })); return root }
 const png = gatewayVisionImage(), images = [{ slideId: 's1', bytes: png, sha256: createHash('sha256').update(png).digest('hex') }]
 const answer = JSON.stringify({ slides: [{ slideId: 's1', score: 90, issues: [] }], deckIssues: [] })
+
+test('serializes late main totals and supplemental receipts without duplicate tokens or invented unknown values', async () => {
+  const writes: ModelUsage[] = []; let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  const usage = new RunModelUsage(async value => { if (!writes.length) await gate; writes.push(value) })
+  const pending = [usage.supplement('review-one', { outputTokens: 2 }), usage.main({ inputTokens: 10, outputTokens: 3 }), usage.supplement('review-one', { outputTokens: 2 }), usage.supplement('review-two', {}), usage.main({ inputTokens: 15, outputTokens: 5 })]
+  expect(writes).toEqual([]); release(); await Promise.all(pending)
+  expect(writes).toEqual([{ outputTokens: 2 }, { inputTokens: 10, outputTokens: 5 }, { inputTokens: 10, outputTokens: 5 }, { inputTokens: 10, outputTokens: 5 }, { inputTokens: 15, outputTokens: 7 }])
+  expect(() => usage.supplement('', { totalTokens: 0 })).toThrow('request ID')
+})
 async function fixture(protocol: ModelProtocol = 'chat') {
   const root = await directory(), renderer = join(root, 'renderer')
   await writeFile(renderer, '#!/bin/sh\nexit 9\n'); await chmod(renderer, 0o700)
@@ -167,3 +184,149 @@ test('exposes the settings through the actual application protocol and restores 
   const store = await ProductStore.openReadOnly(join(root, 'boai.sqlite'))
   try { for (const collection of ['runs', 'messages', 'workItems']) expect(await store.load(collection)).toEqual([]) } finally { await store.close() }
 })
+
+async function employeeFixture(protocol: ModelProtocol, handler: (context: EngineContext) => Promise<void>) {
+  const f = await fixture(protocol), dataPath = join(f.root, 'employee')
+  const engine: AgentEngine = {
+    test: async () => 'fixture', run: handler,
+    decide: async context => ({ action: 'reply', responseKind: 'task', work: { key: 'review', scope: '审阅当前幻灯片', deliverable: '审阅结果' }, observedThroughSequence: Math.max(0, ...context.messages.map(message => message.sequence)) }),
+    report: async (_, draft) => ({ action: 'publish', text: draft.text }),
+  }
+  const service = new AppService({ dataPath, engine, secrets: { get: async () => 'fixture-private-credential', set: async () => {}, delete: async () => {} }, emit: () => {} })
+  clean.push(() => service.close()); await service.init()
+  const main = await service.handle('saveConnection', { name: 'Chat source', provider: 'openai-compatible', baseUrl: 'http://127.0.0.1:1', gateway: { kind: 'magpie', protocol: 'responses', auth: 'key' }, defaultModel: 'chat-only', apiKey: 'fixture-private-credential' }) as Connection
+  const vision = await service.handle('saveConnection', { name: 'Vision source', provider: 'openai-compatible', baseUrl: f.connection!.baseUrl, gateway: f.connection!.gateway, defaultModel: 'wrong-default', apiKey: 'fixture-private-credential' }) as Connection
+  expect(await service.handle('executeApplicationOperation', { operation: 'presentations.configure', requestId: 'vision', input: { expectedRevision: 0, rendererPath: f.renderer, vision: { connectionId: vision.id, connectionRevision: vision.revision!, model: 'selected/vision' } } })).toMatchObject({ status: 'succeeded' })
+  const agent = await service.handle('saveAgent', { name: 'PPT employee', role: '制作演示文稿', instructions: '按原任务执行', color: '#0077BB', connectionId: main.id, modelId: 'chat-only', skillIds: [], knowledgeIds: [], allowCommands: false, active: true, executionBackend: { kind: 'mastra-model' } }) as DigitalAgent
+  const conversation = await service.handle('createConversation', { kind: 'direct', title: 'PPT review', agentIds: [agent.id] }) as Conversation
+  const detail = () => service.handle('getConversation', { id: conversation.id }) as Promise<ConversationDetail>
+  const send = () => service.handle('sendMessage', { conversationId: conversation.id, content: '审阅幻灯片', mentionIds: [], requestId: 'review' })
+  const idle = async () => { await expect.poll(async () => { const d = await detail(); return d.runs.some(run => run.phase === 'execution') && d.runs.every(run => ['completed', 'failed', 'cancelled', 'interrupted'].includes(run.status)) }, { timeout: 10000 }).toBe(true); return detail() }
+  const calls = async () => { const store = await ProductStore.openReadOnly(join(dataPath, 'boai.sqlite')); try { return await store.load<ProfileModelCall>('profileModelCalls') } finally { await store.close() } }
+  return { ...f, service, main, vision, conversation, agent, send, detail, idle, calls }
+}
+
+test.each(['responses', 'chat'] as const)('keeps the dedicated %s request in the original employee ledger without overwriting chat source or cumulative usage', async protocol => {
+  let current: EngineContext, requestId: string
+  const finalMain = { inputTokens: 16, outputTokens: 24, totalTokens: 40 }
+  const f = await employeeFixture(protocol, async context => {
+    current = context
+    await context.onModelCallStarted!(context.modelCallId!, 'task')
+    await context.onUsage!({ inputTokens: 10, outputTokens: 20, totalTokens: 30 })
+    const lease = await context.presentations!.lease()
+    requestId = (await lease.reviewer.generate({ prompt: 'Review', images })).requestId
+    await context.onModelCallUsage!(context.modelCallId!, finalMain, true)
+    await context.onUsage!(finalMain); await context.onUsage!(finalMain)
+    await context.onDelta('审阅结束')
+    await context.onWorkOutcome!({ disposition: 'delivered', summary: '审阅结束', evidence: [{ kind: 'answer', reference: '审阅结束' }] })
+  })
+  await f.send(); const detail = await f.idle(), run = detail.runs.find(run => run.id === current!.runId)!
+  expect(run.status).toBe('completed')
+  expect(run.usage).toEqual(protocol === 'responses' ? { inputTokens: 17, outputTokens: 25, totalTokens: 42 } : finalMain)
+  expect(run.modelCalls).toEqual(expect.arrayContaining([
+    expect.objectContaining({ callId: current!.modelCallId, connectionId: f.main.id, selectedModelId: 'chat-only' }),
+    expect.objectContaining({ callId: requestId!, connectionId: f.vision.id, connectionRevision: f.vision.revision, selectedModelId: 'selected/vision', protocol, capability: 'presentation-review', route: expect.objectContaining({ reportedModelId: 'provider/actual' }) }),
+  ]))
+  const calls = await f.calls(), visionCalls = calls.filter(call => call.id === requestId!)
+  expect(visionCalls).toHaveLength(1)
+  expect(visionCalls[0]).toMatchObject({ runId: run.id, phase: 'report', usage: protocol === 'responses' ? { inputTokens: 1, outputTokens: 1, totalTokens: 2 } : {}, finishedAt: expect.any(String) })
+  expect(detail.workBudgets!.find(budget => budget.id === current!.workBudget!.id)).toMatchObject({ modelCalls: 2, usage: run.usage })
+  expect(f.requests).toHaveLength(1)
+  const sent = JSON.stringify(f.requests[0].body)
+  expect(sent).toContain('selected/vision'); expect(sent).not.toContain('chat-only')
+  await expect(current!.presentations!.lease()).rejects.toThrow()
+  expect(f.requests).toHaveLength(1)
+})
+
+test.each(['settings', 'stop'] as const)('retains one incomplete employee receipt after %s cancels an actual vision request', async change => {
+  let current: EngineContext
+  const f = await employeeFixture('responses', async context => {
+    current = context
+    const lease = await context.presentations!.lease()
+    await lease.reviewer.generate({ prompt: 'Review', images })
+    throw new Error('Cancellation must prevent accepting the review')
+  })
+  f.respond(response => streamText(response, 'responses', answer, 'hold'))
+  await f.send(); await expect.poll(() => f.requests.length).toBe(1)
+  if (change === 'settings') expect(await f.service.handle('executeApplicationOperation', { operation: 'presentations.configure', requestId: 'cancel-vision', input: { expectedRevision: 1, vision: null } })).toMatchObject({ status: 'succeeded' })
+  else await f.service.handle('cancelRun', { conversationId: f.conversation.id, workId: current!.work!.id })
+  const detail = await f.idle(), run = detail.runs.find(run => run.id === current!.runId)!
+  expect(['failed', 'cancelled']).toContain(run.status)
+  await expect.poll(() => f.requests[0].closed).toBe(true)
+  const callId = run.modelCalls!.find(call => call.capability === 'presentation-review')!.callId
+  expect((await f.calls()).filter(call => call.id === callId)).toMatchObject([{ phase: 'report', finishedAt: expect.any(String), usage: {} }])
+  expect(f.requests).toHaveLength(1)
+  await expect(current!.presentations!.lease()).rejects.toThrow()
+  expect(f.requests).toHaveLength(1)
+})
+
+test.skipIf(!process.env.BOAI_PPT_RENDERER)('actual employee tools render, review through the selected SDK, export and publish the exact approved editable PPTX', async () => {
+  let reviewed: any, exported: any, artifact: any, current: EngineContext
+  const f = await employeeFixture('responses', async context => {
+    current = context
+    await context.onModelCallStarted!(context.modelCallId!, 'task')
+    const runtime = await createTaskRuntime(context), cli = mastraCliTools(context, runtime.tools)
+    let sequence = 0
+    const call = async (name: string, input: Record<string, unknown>): Promise<any> => cli.find(tool => tool.name === name)!.execute(input, `tool-${++sequence}`)
+    try {
+      await call('write_file', { path: `self:/runs/${context.runId}/facts.md`, content: '原始记录：甲 7，乙 11。' })
+      await call('presentation_extract_material', { path: `self:/runs/${context.runId}/facts.md` })
+      const created = await call('presentation_create', { title: '实际员工工具验证', theme: { name: 'Proof', headFontFace: 'Arial', bodyFontFace: 'Arial' }, story: { audience: '项目成员', purpose: '验证完整文件流程', coreMessage: '保留原始数字', narrative: ['证据'] }, design: { visualDirection: 'Simple typography', imageDirection: 'Native data', density: 'balanced' } })
+      const slide = { id: 's1', role: 'supporting', layoutKey: 'proof', speakerNotes: '受控事实：甲 7，乙 11。', elements: [{ id: 'title', type: 'text', text: '原始记录：甲 7，乙 11', x: 1, y: 1, w: 10, h: 1, fontSize: 36 }] }
+      await call('presentation_upsert_slide', { presentationId: created.id, expectedRevision: 0, slide })
+      expect(await call('presentation_validate', { presentationId: created.id })).toMatchObject({ valid: true })
+      await expect(call('presentation_export', { presentationId: created.id, path: `self:/runs/${context.runId}/unreviewed.pptx` })).rejects.toThrow()
+      reviewed = await call('presentation_review', { presentationId: created.id }); expect(reviewed.passed).toBe(true)
+      const preview = await call('presentation_render', { presentationId: created.id, outputDirectory: `self:/runs/${context.runId}/previews` })
+      expect(preview.reviewed).toBe(false); expect(preview.images).toHaveLength(1)
+      expect(createHash('sha256').update(await readFile(join(context.workspace!.runPath, 'previews/slide-01.png'))).digest('hex')).toBe(preview.images[0].sha256)
+      exported = await call('presentation_export', { presentationId: created.id, path: `self:/runs/${context.runId}/approved.pptx` })
+      artifact = (await call('publish_artifact', { path: exported.path })).artifact
+      expect(createHash('sha256').update(await readFile(artifact.path)).digest('hex')).toBe(reviewed.fileHash)
+      // A valid later edit invalidates the previous approval; it cannot authorize another export.
+      await call('presentation_upsert_slide', { presentationId: created.id, expectedRevision: 1, slide: { ...slide, speakerNotes: '后续修订仍需重新审阅' } })
+      await expect(call('presentation_export', { presentationId: created.id, path: `self:/runs/${context.runId}/stale.pptx` })).rejects.toThrow('has not passed')
+      await context.onUsage!({ inputTokens: 3, outputTokens: 4, totalTokens: 7 })
+      await context.onDelta('已交付审阅通过的文件。')
+      await context.onWorkOutcome!({ disposition: 'delivered', summary: '已交付审阅通过的文件。', evidence: [{ kind: 'artifact', reference: artifact.id }] })
+    } finally { await runtime.dispose() }
+  })
+  expect(await f.service.handle('executeApplicationOperation', { operation: 'presentations.configure', requestId: 'actual-renderer', input: { expectedRevision: 1, rendererPath: process.env.BOAI_PPT_RENDERER! } })).toMatchObject({ status: 'succeeded' })
+  await f.send()
+  await expect.poll(async () => (await f.detail()).runs.some(run => run.phase === 'execution' && ['completed', 'failed', 'cancelled'].includes(run.status)), { timeout: 90000 }).toBe(true)
+  const detail = await f.detail(), run = detail.runs.find(run => run.id === current!.runId)!
+  expect(run.status, run.error).toBe('completed'); expect(run.usage).toEqual({ inputTokens: 4, outputTokens: 5, totalTokens: 9 })
+  expect(f.requests).toHaveLength(1); expect(reviewed.requests).toEqual([run.modelCalls!.find(call => call.capability === 'presentation-review')!.callId])
+  expect(exported).toMatchObject({ passed: true, published: false, fileHash: reviewed.fileHash })
+  expect(detail.artifacts.some(value => value.id === artifact.id)).toBe(true)
+  const cache = join(current!.workspace!.root, '.presentations')
+  expect(await realpath(cache)).toBe(cache)
+  await f.service.handle('clearConversationHistory', { id: f.conversation.id, hide: false })
+  await expect(realpath(cache)).rejects.toMatchObject({ code: 'ENOENT' })
+  expect(f.requests).toHaveLength(1)
+}, 120000)
+
+test.skipIf(!process.env.BOAI_PPT_RENDERER).each(['codex', 'claude'] as const)('actual %s protocol tools keep vision calls separate from native invocations and BOAI budgets', async backend => {
+  const provider = await fixture('responses'), disposals: (() => Promise<void>)[] = []
+  clean.push(async () => { for (const action of disposals.reverse()) await action() })
+  const native = await nativeFixture(backend, disposals)
+  const connection = await native.service.handle('saveConnection', { name: 'Dedicated vision', provider: 'openai-compatible', baseUrl: provider.connection!.baseUrl, gateway: { kind: 'magpie', protocol: 'responses', auth: 'local' }, defaultModel: 'wrong-default' }) as Connection
+  expect(await native.service.handle('executeApplicationOperation', { operation: 'presentations.configure', requestId: 'native-ppt', input: { expectedRevision: 0, rendererPath: process.env.BOAI_PPT_RENDERER!, vision: { connectionId: connection.id, connectionRevision: connection.revision!, model: 'selected/vision' } } })).toMatchObject({ status: 'succeeded' })
+  const message = await native.send('NATIVE_PPT')
+  await expect.poll(async () => (await native.detail()).runs.some(run => run.triggerMessageId === message.id && ['completed', 'failed', 'cancelled'].includes(run.status)), { timeout: 90000 }).toBe(true)
+  const detail = await native.detail(), run = detail.runs.find(run => run.triggerMessageId === message.id && run.phase === 'execution')!
+  expect(run.status, run.error).toBe('completed'); expect(run.backend).toMatchObject({ externalInvocations: 1 })
+  expect(run.usage).toBeUndefined(); expect(provider.requests).toHaveLength(1)
+  const vision = run.modelCalls!.filter(call => call.capability === 'presentation-review')
+  expect(vision).toHaveLength(1); expect(vision[0]).toMatchObject({ connectionId: connection.id, selectedModelId: 'selected/vision', route: { actualModelId: 'provider/actual' } })
+  const reply = detail.messages.find(value => value.runId === run.id && value.senderType === 'agent')!
+  const result = JSON.parse(reply.content.split('NATIVE_PPT_RESULT ')[1])
+  const artifact = detail.artifacts.find(value => value.id === result.artifactId)!
+  expect(createHash('sha256').update(await readFile(artifact.path)).digest('hex')).toBe(result.fileHash)
+  expect(result.requests).toEqual([vision[0].callId])
+  const store = await ProductStore.openReadOnly(join(native.root, 'boai.sqlite'))
+  try {
+    expect(await store.load('budgetModelCalls')).toEqual([]); expect(await store.load('profileModelCalls')).toEqual([])
+    expect((await store.load<{ modelCalls: number; usage: ModelUsage }>('workBudgets')).every(budget => budget.modelCalls === 0 && !Object.keys(budget.usage).length)).toBe(true)
+  } finally { await store.close() }
+}, 120000)
