@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-20按用户要求清理测试产物/独立记录及其附件链接；历史文字结果不代表原件仍然保留。
 [OUTPUT]: 普通native通用截断已修及真实同run材料回答/四轮结果见06 §145；下方原分析留存，Work独立预算仍有限，不认证全长任务。
 [OUTPUT]: 2026-10-13用户授权普通本机通用16000截断移除，实际实施/复测归06 §145；API及显式业务预算保持，较早仅分析按原日期阅读。
 [INPUT]: 用户询问Codex能否完成长任务/其他指令，要求对照Rovai、Lody的Claude实现。
@@ -30,7 +31,7 @@
 node .local/native-runtime-comparison-20261013/replay-output-cap.cjs --expect-native-continues
 ```
 
-以真实GroupScheduler和隔离SQLite重放计数、安装诊断活动状态，得到15999继续、16000中断、29653以原原因中断；“native继续”断言退出1，保留原红结果。是调度器边界复现，不是新的Codex/Claude实际任务。源码和回放登记见[comparison-registration.json](../../../.local/native-runtime-comparison-20261013/comparison-registration.json)，实际值见[output-cap-replay.json](../../../.local/native-runtime-comparison-20261013/output-cap-replay.json)。
+以真实GroupScheduler和隔离SQLite重放计数、安装诊断活动状态，得到15999继续、16000中断、29653以原原因中断；“native继续”断言退出1，保留原红结果。是调度器边界复现，不是新的Codex/Claude实际任务。源码和回放登记见comparison-registration.json（测试记录已清理），实际值见output-cap-replay.json（测试记录已清理）。
 
 已检视三条假设：
 

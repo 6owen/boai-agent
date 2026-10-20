@@ -1,9 +1,0 @@
-证据范围：上一轮 Electron 定向回归日志节选；本轮没有重跑。
-来源：/tmp/boai-im-preview-electron-final.log
-以下为原日志中测试名称、状态及最终汇总的原文行：
-
-Running 3 tests using 1 worker
-  ✓  1 .features-gen/artifacts.feature.spec.js:6:3 › 用户按所见原件修订和采用明确成果版本 › 员工交付的代码文件从消息直接打开高亮预览 @electron @artifacts (2.8s)
-  ✓  2 .features-gen/materials.feature.spec.js:6:3 › 用户材料按原件和明确共享范围进入已有聊天 › 聊天文件直接打开安全的文档与代码预览 @electron @materials (4.1s)
-  ✓  3 .features-gen/materials.feature.spec.js:12:3 › 用户材料按原件和明确共享范围进入已有聊天 › 同名材料保持各自原文并随当前群成员发送 @electron @materials (7.4s)
-  3 passed (16.7s)
