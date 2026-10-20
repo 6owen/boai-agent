@@ -41,6 +41,7 @@
     "design:serve": "node scripts/design.mjs serve",
     "release:check": "node scripts/release-check.mjs",
     "release:build": "node scripts/release-build.mjs",
+    "release:smoke": "node scripts/release-smoke.mjs",
     "test:t1": "pnpm build && node scripts/test-desktop.mjs t1",
     "test:t3": "pnpm build && node scripts/test-desktop.mjs t3",
     "ci:local": "node scripts/local-ci.mjs run",

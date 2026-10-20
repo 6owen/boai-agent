@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 新增release:smoke正式候选/verify入口合同：固定ZIP8/DMG2、长寿命受管挂载、逐启动实际包身份及原件；真实新包/故障演练待验。
 [OUTPUT]: ZIP目录核验逐层统一显式/隐式父路径拼写，并以全部唯一节点共用5万上限，避免实际解包树合并/放大。
 [OUTPUT]: 新增共用ZIP目录/CRC/模式/链接/空间阶段，真实c5全展开和深层签名通过；正式编排、main与升级仍未完成。
 [OUTPUT]: c5实际ad-hoc arm64 DMG/ZIP候选及ZIP8/DMG2独立资产流程已验；完整main/正式发布/个人升级仍未通过，实际归03。
@@ -194,3 +195,11 @@ CI不配置`CSC_LINK`、`CSC_KEY_PASSWORD`或Apple公证凭据，使用上述显
 终态`built`只表示候选构建，不签发Tag、Release、安装、main CI或产物冒烟资格；59项合同/类型通过后，c5已实际built并分别验证ZIP8场/DMG2场及签名/全部bundle字节，实际和旧失败归03。DMG需配对持有挂载生命周期，不能把会留后台挂载服务的attach当成普通短命进程、返回后立即排空其子树；正式封存/中断恢复入口仍待接。发布还需同SHA main资格、完整升级/回滚等条款。失败/取消保留日志，不覆盖日常应用或个人数据。
 
 共用ZIP阶段位于`release-archive.mjs`：`inspectPersonalArchive`只检查中央目录/元数据，不授文件或链接实际资格；`unpackPersonalArchive`必须使用不存在的隔离输出目录，压缩/展开大小双上限和可取消hash/空间预检后先流式写普通文件、校验CRC/长度/SHA，再创建内部链接并核实际解析边界，保留模式，拒绝路径/归一化别名、特殊文件/权限、链接作为祖先、外逃/环/悬空或输入字节变化。每层显式或隐式父路径必须保持同一原始拼写，不能在默认macOS卷上静默合并大小写/Unicode别名；全部唯一节点（含递归创建的隐式父目录）共用50000上限，不仅限制中央目录行数。完整展开后仍须另核plist/架构/签名及实际应用行为。当前26 ZIP合同与修复后WIP对真实c5资产展开/签名通过，属于RL04的共用步骤，尚无正式发布/升级事务入口；不是通用安装命令。
+
+## 11. 正式产物冒烟候选入口
+
+`pnpm release:smoke --candidate .local/release-candidates/<id>`要求当前干净源码对应的built候选；在CI/轮询排他锁内核资产、builder完整清单、原源码/构建。新原件位于`.local/release-asset-runs`，与旧一次性探路目录分开。使用本批不可变监督器运行长寿命worker，DMG只读attach、全部验证/BDD、配对detach均在该worker生命周期内，不再用短命attach guard。新批启动前核旧监督器身份并依次排空controller/根/ZIP/DMG账本，活跃或未知拒绝；仅核本批确切镜像及唯一挂载点后才能退挂，不操作其他镜像/卷。失败保留现场，不自动重放未知任务。
+
+ZIP固定8场：创建、API连续文件/重启、两个本机文件/重启、两个目录授权场景、外观和图片背景；DMG固定创建及CLI安装/无系统Node/独立服务/移动更新/卸载2场。沿完整标题和实际ID选择原BDD，开发版Dock场景仍在源码固定28内，不进入包清单。两种实际.app均核完整builder清单、plist/arm64/ad-hoc签名、三个原生助手、asar源码SHA和构建；每次窗口启动核实际execPath/isPackaged/隔离userData并存原件，CLI场景允许其明示副本路径。报告须完整一次通过，原截图/trace/逐启动身份/生成文件字节均重核。
+
+`pnpm release:smoke --verify .local/release-asset-runs/<id>`只读重核同源码候选、完整原件/hash、两资产选择/原报告和启动身份；成功封存不代替main资格、发布/个人安装或升级回滚。当前仅9项清单/挂载所有权协议及真实CLI旧guard拒绝检查通过，真实新候选和实际挂载故障恢复仍待执行；旧c5两个独立探路成绩不套用此入口。

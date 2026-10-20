@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 明确包入口每次启动核真实execPath/isPackaged/独立userData并留原始进程身份，不以宿主pnpm退出0代替包启动。
  * [OUTPUT]: 明确crash入口先留原trace/画面，再SIGKILL当前隔离Electron并等真实exit；不把关闭回执当进程死亡。
  * [OUTPUT]: 默认系统分发单列验收；先核对真实默认包路径，再不指定应用启动/热投递，保留旧副本。
  * [OUTPUT]: 显式launchUrl通过macOS LaunchServices冷启动实际应用包；同一隔离目录、调试/trace和关闭路径保持，普通重启不重发链接。
@@ -12,7 +13,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { _electron as electron, type ElectronApplication, type JSHandle, type Page, type TestInfo } from '@playwright/test'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile, realpath } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import type { Server } from 'node:http'
@@ -124,6 +125,13 @@ export class Desktop {
     this.window = await this.application.firstWindow()
     this.window.on('pageerror', (error) => this.errors.push(error.message))
     await this.window.waitForFunction(() => Boolean(window.boai))
+    if (packaged) {
+      const observed = await this.application.evaluate(({ app }) => ({ pid: process.pid, executable: process.execPath, applicationPath: app.getAppPath(), dataDir: app.getPath('userData'), version: app.getVersion(), packaged: app.isPackaged }))
+      const expected = { executable: await realpath(packaged), dataDir: await realpath(options.dataDir ?? this.root) }
+      const actual = { executable: await realpath(observed.executable), dataDir: await realpath(observed.dataDir) }
+      if (!observed.packaged || JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error('实际应用包、可执行文件或隔离数据目录不对应')
+      await this.reviewData(`第 ${this.launchCount} 次实际应用包启动`, { launch: this.launchCount, expected, actual, observed })
+    }
     if (osLaunch) {
       const observed = await this.application.evaluate(({ app }) => ({ pid: process.pid, executable: process.execPath, dataDir: app.getPath('userData'), argv: process.argv, version: app.getVersion(), packaged: app.isPackaged }))
       if (observed.executable !== osLaunch.binary || observed.dataDir !== resolve(options.dataDir ?? this.root) || !observed.argv.includes(osLaunch.marker) || !observed.packaged) throw new Error('系统冷启动未进入预期应用包或隔离目录')
