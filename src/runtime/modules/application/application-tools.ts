@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: PPT 专用配置纳入发现与按需指南；配置不请求模型，不代替实际制作能力。
  * [OUTPUT]: refs域提供真实对象解析与双向关联，不新增访问或执行权限。
  * [OUTPUT]: plans公开依赖图/领取/审核返工域；恢复沿同一员工会话和持久回执。
  * [OUTPUT]: 技能更新指南区分共享源与员工副本，按实际映射/内容/hash检查并显式更新，保留本地改动。
@@ -22,7 +23,7 @@ export function createApplicationTools(context: EngineContext) {
   if (!context.application) return []
   const access = context.application
   return [
-    { name: 'boai_catalog', description: 'Discover concise BOAI operation metadata by domain (employees/groups/connections/runtimes/sources/automations/sessions/tasks/planning/plans/refs/skills/appearance/plugins/knowledge/channels/webSearch/runtimePlugins/application). Pass an exact operation for its schemas; includeSchemas explicitly expands a list.', schema: applicationCatalogQuerySchema, execute: (input: unknown) => access.catalog(applicationCatalogQuerySchema.parse(input)) },
+    { name: 'boai_catalog', description: 'Discover concise BOAI operation metadata by domain (employees/groups/connections/runtimes/sources/automations/sessions/tasks/planning/plans/refs/skills/appearance/plugins/knowledge/channels/webSearch/runtimePlugins/images/selfies/presentations/application). Pass an exact operation for its schemas; includeSchemas explicitly expands a list.', schema: applicationCatalogQuerySchema, execute: (input: unknown) => access.catalog(applicationCatalogQuerySchema.parse(input)) },
     { name: 'boai_call', description: 'Call a discovered BOAI business operation. Writes require one stable requestId per intended change; current versions are required where specified. Returns succeeded/rejected/running/unknown. Configuration creates no model Work. Query an unknown original receipt instead of creating a new request.', schema: applicationRequestSchema, execute: (input: unknown) => access.call(applicationRequestSchema.parse(input)) },
     { name: 'boai_receipt', description: 'Read the original durable business-operation result by requestId in this user message, or the returned receiptId from an earlier turn in this same conversation; never executes or retries the action.', schema: applicationReceiptQuerySchema, execute: (input: unknown) => access.receipt(applicationReceiptQuerySchema.parse(input)) },
   ]
@@ -35,6 +36,7 @@ export function applicationObservation(input: unknown) {
 }
 
 export const applicationGuides = {
+  presentations: '先读 presentations.settings。配置渲染器和专用视觉模型分别使用 rendererPath、vision，传当前 expectedRevision；省略保持，null 清除。连接版本来自 connections.list，模型必须由用户明确选择，不自动借用聊天模型。configured 只说明配置来源匹配；真正的渲染和视觉质量必须执行后判断。制作 PPT 使用当前员工实际提供的制作/审阅工具；缺少工具时不能用配置成功宣称已生成。',
   overview: '先查询所需域和对象。创建、编辑、测试、执行为独立操作。写入保留 requestId；更新传当前版本。结果 unknown/running 时查询原回执和对象，不更换 ID 重复创建。普通员工是独立身份，bobo 的私人记忆和核心权限不复制给新员工。',
   employees: '读取 employees.presets 和 connections.list。简单创建只需 name，可填写 role；默认采用 bobo 当前 API 模型或唯一可用连接，多个候选且未选择时要明确询问。高级字段沿 employees.create/update 的准确 schema。人格使用 employees.readFile/writeFile 的 SOUL.md，工作规则使用 AGENTS.md，场景模块使用 prompts/*.md；保存需要文件 hash 和员工 configVersion。employees.profile/configure 管理独立人格版本、状态开关与行为计划；employees.state/updateState 管理持久状态；behaviorHistory/runBehavior/stopBehavior 管理真实行为记录和启停。配置启用行为会注册原时钟；立即执行需要独立 runBehavior 调用。',
   groups: '先 employees.list 取得真实成员 ID，再 groups.create。简单群只需要 title 和 agentIds；高级项包括 mode、teamSetup、sharedKnowledgeIds、memoryScope。员工人格独立；创建群不开始工作。创建团队并执行目标沿既有组织工具办理。',

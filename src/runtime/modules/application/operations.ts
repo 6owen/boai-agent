@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: application.guide 增加 PPT 独立配置说明，保留原执行与配置分离。
  * [OUTPUT]: 技能安装映射与独立副本详情提供只读协议，更新前可精确核对原员工绑定和内容，复用原服务。
  * [OUTPUT]: 会话搜索/核心会话改名接原搜索schema和列表服务，稳定回执与本人发送边界保持。
  * [OUTPUT]: 登记的源文件与生成记忆/日期视图共用readFile；生成视图不可writeFile。
@@ -50,7 +51,7 @@ export function applicationOperations(port: ApplicationPort, schemas: { connecti
   function method<K extends Method>(name: string, method: K, description: string, effect: ApplicationOperation['effect'], input: z.ZodType, resultType: string, adapt: (input: any, requestId?: string) => Methods[K]['input'] = value => value) {
     operation(name, description, effect, input, resultType, (value, requestId) => port.request(method, adapt(value, requestId)))
   }
-  operation('application.guide', '按需读取 BOAI 内置产品操作技能。', 'read', z.object({ topic: z.enum(['overview', 'employees', 'groups', 'sources', 'automations', 'connections', 'skills']).default('overview') }).strict(), '{ topic: string; instructions: string }', async input => ({ topic: input.topic, instructions: applicationGuides[input.topic as keyof typeof applicationGuides] }))
+  operation('application.guide', '按需读取 BOAI 内置产品操作技能。', 'read', z.object({ topic: z.enum(['overview', 'employees', 'groups', 'sources', 'automations', 'connections', 'skills', 'presentations']).default('overview') }).strict(), '{ topic: string; instructions: string }', async input => ({ topic: input.topic, instructions: applicationGuides[input.topic as keyof typeof applicationGuides] }))
   const snapshot = () => port.request('snapshot', undefined)
   operation('employees.list', '列出持久员工及当前配置版本，包括系统预置 bobo。', 'read', empty, 'DigitalAgent[]', async () => (await snapshot()).agents)
   operation('employees.get', '读取一个员工的实际配置。', 'read', lookup, 'DigitalAgent', async input => {

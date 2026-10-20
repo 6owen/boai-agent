@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: PPT 专用审阅端口固定当前员工执行与原请求账本，不冒用聊天模型来源。
  * [OUTPUT]: 员工形象相册端口固定本人身份/私聊管理，群内新肖像可用私有参考但不导出原图。
  * [OUTPUT]: 员工生图端口沿独立已选连接和原任务字节权限；配置与模型凭据不进入工具参数。
  * [OUTPUT]: 任务图片可读取宿主同次核源的成果字节快照，沿原来源权限，不重开松散路径。
@@ -67,6 +68,7 @@ export interface SecretStore {
   delete(connectionId: string): Promise<void>
 }
 export interface EngineContext {
+  presentations?: import('./modules/presentations/presentation-service').PresentationCapability
   images?: import('./modules/media/image-service').ImageCapability
   selfies?: import('./modules/media/selfie-service').SelfieCapability
   /** Self-identity only; host fixes visible messages and external destination from the current trigger. */

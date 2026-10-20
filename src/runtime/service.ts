@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: PPT 审阅租约接当前执行资格、原追加预算和实际连接路由；独立用量与主模型合并，本机原生计数/预算保持。
+ * [OUTPUT]: PPT 独立渲染器与视觉模型设置接原应用协议；实际审阅调用适配已提供，员工工具尚待接线。
  * [OUTPUT]: 员工持久形象相册接原身份/私聊管理与任务生图；原图不进入群/渠道工具结果，删除员工沿原根目录清理。
  * [OUTPUT]: 独立生图配置接统一应用协议；员工实际生成沿原执行权限/取消和文件交付，不回退聊天模型。
  * [OUTPUT]: refs接原消息/材料/记忆/绑定技能授权与源正文；当前轮引用仅短卡片，按需解析且不扩权。
@@ -180,6 +182,9 @@ import { referenceOperations, referenceScope, referenceInstructions, type LoadRe
 import { collectReferenceSources } from './modules/application/reference-sources'
 import { applicationOperations } from './modules/application/operations'
 import { ImageService } from './modules/media/image-service'
+import { PresentationService } from './modules/presentations/presentation-service'
+import { RunModelUsage } from './modules/profile/run-model-usage'
+import { generatePresentationReview } from './adapters/mastra/presentation-review-model'
 import { SelfieService } from './modules/media/selfie-service'
 import { MODEL_ID_MAX_LENGTH, validModelId } from '../shared/domain/model-id'
 import { composerReferencesSchema, currentSourceReferences, type ComposerReference } from '../shared/domain/composer-references'
@@ -411,6 +416,7 @@ export class AppService {
   private readonly agentStates: AgentStateService
   private readonly applicationAuthority = new AsyncLocalStorage<{ validate(): Promise<void>; signal: AbortSignal; directories?: EngineContext['directoryAccess'] }>()
   private readonly application: ApplicationService
+  private readonly presentations: PresentationService
   private readonly images: ImageService
   private readonly selfies: SelfieService
   private readonly automations: AutomationService
@@ -479,6 +485,15 @@ export class AppService {
       critical: action => this.serialize(async () => { if (this.closing || this.backingUp) fail('服务正在退出或备份'); await this.applicationAuthority.getStore()?.validate(); return action() }),
       changed: () => this.changed(),
     })
+    this.presentations = new PresentationService(this.store, {
+      connection: async id => this.connections.get(id),
+      credential: connection => this.serialize(async () => {
+        if (this.closing || this.backingUp || this.connections.get(connection.id)?.revision !== connection.revision) fail('PPT 视觉连接已改变或服务正在退出')
+        return this.apiKey(connection)
+      }),
+      critical: action => this.serialize(async () => { if (this.closing || this.backingUp) fail('服务正在退出或备份'); await this.applicationAuthority.getStore()?.validate(); return action() }),
+      changed: () => this.changed(), generate: generatePresentationReview,
+    })
     this.selfies = new SelfieService(this.store, this.dataPath, this.images, {
       critical: action => this.serialize(async () => { if (this.closing || this.backingUp) fail('服务正在退出或备份'); await this.applicationAuthority.getStore()?.validate(); return action() }),
       changed: () => this.changed(),
@@ -486,7 +501,7 @@ export class AppService {
     this.agentProfiles = new AgentProfileService(this.store)
     this.agentStates = new AgentStateService(this.store)
     this.agentBehaviors = new AgentBehaviorService(this.store, { available: (agentId, conversationId) => !this.closing && !this.backingUp && this.initialized && !!this.employees.find(agentId)?.active && !!this.conversations.get(conversationId)?.agentIds.includes(agentId) && !this.conversationBusy(conversationId), execute: (run, behavior, signal) => this.runAgentBehavior(run, behavior, signal), changed: () => this.changed(), error: error => this.emit({ type: 'runtime-error', error: this.errorMessage(error) }) })
-    this.application = new ApplicationService(this.store, [...this.images.operations(), ...this.selfies.operations(), ...taskOperations(this.store), ...planningOperations(this.store), ...planOperations(this.store), ...referenceOperations(this.store, (...args) => this.serialize(() => this.referenceObjects(...args))), ...applicationOperations({ request: async (method, input) => await this.handle(method, input) as never, personality: (action, input) => this.agentPersonality(action, input) }, { connection: connectionSchema, conversation: conversationSchema, search: searchSchema }, options.applicationHost)], async (actor, operation) => {
+    this.application = new ApplicationService(this.store, [...this.presentations.operations(), ...this.images.operations(), ...this.selfies.operations(), ...taskOperations(this.store), ...planningOperations(this.store), ...planOperations(this.store), ...referenceOperations(this.store, (...args) => this.serialize(() => this.referenceObjects(...args))), ...applicationOperations({ request: async (method, input) => await this.handle(method, input) as never, personality: (action, input) => this.agentPersonality(action, input) }, { connection: connectionSchema, conversation: conversationSchema, search: searchSchema }, options.applicationHost)], async (actor, operation) => {
       if (actor.kind === 'owner') return
       if (actor.kind === 'behavior') {
         const { run, behavior } = await this.agentBehaviors.assertActive(actor.behaviorRunId)
@@ -2917,6 +2932,7 @@ export class AppService {
     controller.signal.throwIfAborted()
   }
   private async cancelConnectionCalls(connectionId: string) {
+    this.presentations.cancelConnection(connectionId)
     this.images.cancelConnection(connectionId)
     const calls = [...this.connectionCalls].filter(([, call]) => call.connectionId === connectionId)
     for (const [controller] of calls) controller.abort(new Error('模型连接已变更或删除，请重新核对'))
@@ -3788,7 +3804,41 @@ export class AppService {
     const selfieActor = { kind: 'employee' as const, employeeId: agent.id, conversationId: conversation.id, messageId: turn.triggerMessageId }
     // Validation called inside a media critical section must not recursively acquire serialize().
     const validateSelfie = async () => { await this.assertExecutionAccess(context) }
+    const runUsage = new RunModelUsage(async clean => {
+      if (signal.aborted || terminal.has(run.status) || this.closing || isNativeBackend(run.backend)) return
+      const delta = clean.outputTokens === undefined ? undefined : clean.outputTokens - (run.usage?.outputTokens ?? 0)
+      run.usage = runtimeProfile ? clean : { ...run.usage, ...clean }; await this.store.write([record('runs', run)])
+      if (run.workId && !run.origin && !(context.workBudget?.accounting && run.phase === 'memory')) {
+        const budget = await this.works.usage(run.id, clean)
+        if (context.workBudget?.sourceMessageId && budget && (budget.usage.outputTokens ?? 0) >= budget.maxOutputTokens) this.runControllers.get(run.id)?.abort(new Error('达到原始工作的输出用量上限'))
+      }
+      if (delta !== undefined) await this.scheduler.recordOutputUsage(turn.id, delta, isNativeBackend(run.backend) ? 'native' : 'api')
+    })
     const context: EngineContext = { permissionExpectation, modelSource,
+      presentations: {
+        settings: async () => { await this.serialize(() => this.assertExecutionAccess(context)); return this.presentations.settings() },
+        lease: () => this.presentations.lease(signal, async () => { await this.serialize(() => this.assertExecutionAccess(context)) }, {
+          begin: async source => {
+            const callId = await context.onAdditionalModelCall!('report')
+            if (!callId) fail('PPT 审阅未取得原执行的调用身份')
+            await this.serialize(async () => {
+              await this.assertExecutionAccess(context)
+              const connection = this.connections.get(source.connectionId)
+              if (!connection || (connection.revision ?? 1) !== source.connectionRevision) fail('PPT 视觉连接已改变')
+              const modelCalls = [...(run.modelCalls ?? []), { callId: callId!, connectionId: source.connectionId, connectionRevision: source.connectionRevision, phase: 'report' as const, capability: 'presentation-review' as const, protocol: source.protocol, selectedModelId: source.model, startedAt: now() }]
+              await this.store.write([{ collection: 'runs', id: run.id, value: { ...run, modelCalls } }]); run.modelCalls = modelCalls
+              // A dedicated API request is not another native CLI invocation.
+              if (!isNativeBackend(run.backend)) await this.observeActivity(run, () => this.userProfile.start({ id: callId!, runId: run.id, conversationId: run.conversationId, phase: 'report', startedAt: now(), budgetOwned: Boolean(run.origin || run.collaborationRequestId || context.workBudget?.sourceMessageId && run.workId) }))
+            })
+            return callId!
+          },
+          settle: async (callId, usage, complete) => {
+            await context.onModelCallUsage!(callId, usage, complete)
+            if (!isNativeBackend(run.backend)) await runUsage.supplement(callId, usage)
+          },
+          route: (callId, evidence) => context.onModelCallRoute!(callId, evidence),
+        }),
+      },
       selfies: {
         list: async () => { await validateSelfie(); const value = await this.selfies.list(agent.id, selfieActor); await validateSelfie(); return value },
         save: (image, label) => this.selfies.save(agent.id, selfieActor, image, label, signal, validateSelfie),
@@ -3938,7 +3988,7 @@ export class AppService {
         await this.observeActivity(run, () => this.userProfile.start({ ...(runtimeProfile ? { callUnit: 'external-turn' as const } : {}), id: callId, runId: run.id, conversationId: run.conversationId, phase, startedAt: now(), budgetOwned: Boolean(run.origin || run.collaborationRequestId || context.workBudget?.sourceMessageId && run.workId), thinking }))
       }),
       onModelCallRoute: (callId, evidence) => this.serialize(async () => {
-        if (this.closing || !context.connection?.gateway || isNativeBackend(run.backend)) return
+        if (this.closing || !this.runs.has(run.id)) return
         await this.observeActivity(run, async () => {
           const index = run.modelCalls?.findIndex(call => call.callId === callId) ?? -1
           if (index < 0 || run.modelCalls![index].route) return
@@ -3966,17 +4016,7 @@ export class AppService {
           await this.automations.stop(run.origin!.occurrenceId, '达到本次自动化的输出用量上限', 'budget')
         }
       },
-      onUsage: async usage => {
-        if (signal.aborted || terminal.has(run.status) || this.closing || isNativeBackend(run.backend)) return
-        const clean = z.object({ inputTokens: z.number().nonnegative().optional(), outputTokens: z.number().nonnegative().optional(), totalTokens: z.number().nonnegative().optional() }).strict().parse(usage)
-        const delta = clean.outputTokens === undefined ? undefined : clean.outputTokens - (run.usage?.outputTokens ?? 0)
-        run.usage = runtimeProfile ? clean : { ...run.usage, ...clean }; await this.store.write([record('runs', run)])
-        if (run.workId && !run.origin && !(context.workBudget?.accounting && run.phase === 'memory')) {
-          const budget = await this.works.usage(run.id, clean)
-          if (context.workBudget?.sourceMessageId && budget && (budget.usage.outputTokens ?? 0) >= budget.maxOutputTokens) this.runControllers.get(run.id)?.abort(new Error('达到原始工作的输出用量上限'))
-        }
-        if (delta !== undefined) await this.scheduler.recordOutputUsage(turn.id, delta, isNativeBackend(run.backend) ? 'native' : 'api')
-      },
+      onUsage: usage => runUsage.main(usage),
     }
     if (workView) {
       context.work = currentWork

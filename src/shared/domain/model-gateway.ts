@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 模型调用可标识专用PPT审阅；真实来源仍归同一Run，原生调用数不冒充API审阅数。
  * [OUTPUT]: 无Run的连接测试/团队规划/自动化草稿沿原操作身份保存逐请求网关路由；不制造Work或更改原预算。
  * [INPUT]: Explicit gateway root, protocol and authentication mode; ordinary provider connections retain their API-root convention.
  * [OUTPUT]: Shared gateway/catalog contracts and per-request route evidence; credential readiness and deterministic endpoint/authentication resolution.
@@ -29,6 +30,7 @@ export interface GatewayRouteEvidence {
   observedAt: string
 }
 export interface GatewayModelCall {
+  capability?: 'presentation-review'
   callId: string
   connectionId: string
   connectionRevision: number

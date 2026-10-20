@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 分发 PPT 原版 worker 与相对依赖至 runtime/alma，桌面/独立服务共用。
  * [OUTPUT]: 分发可选本地Qwen语音安装器/固定清单；模型与venv不随包分发。
  * [OUTPUT]: 清单中的完整技能源随 dist 分发供桌面/独立服务首次绑定，排除开发目录地图。
  * [OUTPUT]: 分发员工脚本工具库，复用原CLI客户端；不包含owner发现或独立执行服务。
@@ -32,6 +33,7 @@ export async function buildHost() {
     build({ entryPoints: ['src/runtime/worker.ts'], outfile: 'dist/runtime/worker.mjs', bundle: true, platform: 'node', format: 'esm', target: 'node22', packages: 'external', sourcemap: true }),
     build({ entryPoints: ['src/runtime/serve.ts'], outfile: 'dist/runtime/serve.mjs', bundle: true, platform: 'node', format: 'esm', target: 'node22', packages: 'external', sourcemap: true }),
   ])
+  await cp('src/runtime/modules/presentations/alma', 'dist/runtime/alma', { recursive: true, filter: path => basename(path) !== '.folder.md' })
   const skillManifest = JSON.parse(await readFile('resources/agent-skills/manifest.json', 'utf8'))
   await Promise.all(skillManifest.skills.map(name => readFile(`resources/agent-skills/${name}/SKILL.md`, 'utf8')))
   await rm('dist/agent-skills', { recursive: true, force: true })
