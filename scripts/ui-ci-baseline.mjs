@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 明确GitHub手动采集run、官方artifact摘要、当前干净源码及逐项审阅后的接受命令。
- * [OUTPUT]: 官方原件重新下载核验；接受与UI比较共锁，再只写CI档案，不替换本机截图。
+ * [OUTPUT]: 官方原件重新下载核验；共锁接受仅选中CI条目并保留其他来源，初始/环境迁移须全量。
  * [POS]: 开发侧CI基线进口；无远程写入、无自动晋升或Required checks资格。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url'
 import { sourceIdentity, baselineContractHash, validateReport } from './ui-regression.mjs'
 import { buildInputHash } from './build-identity.mjs'
 import { verifyBaselineReview } from './ui-baseline-review.mjs'
-import { CI_PROFILE, uiProfile } from './ui-profiles.mjs'
+import { CI_PROFILE, uiProfile, readUiBaseline } from './ui-profiles.mjs'
 import { acquireResourceLock } from './resource-lock.mjs'
 
 const repository = '6owen/boai-agent'
@@ -33,6 +33,18 @@ export function verifyCandidateIdentity(candidate, run, current, ids, inputHash)
   if (candidate.profile !== CI_PROFILE || candidate.source?.commit !== current.commit || candidate.source?.sourceHash !== current.sourceHash || candidate.source?.dirty !== false || candidate.ci?.repository !== repository || candidate.ci?.runId !== String(run.id) || candidate.ci?.attempt !== String(run.run_attempt) || candidate.ci?.sha !== run.head_sha || candidate.ci?.workflow !== `${repository}/.github/workflows/ui-baseline-candidate.yml@refs/heads/${run.head_branch}`) throw new Error('候选身份与官方run/源码不匹配')
   if (candidate.environment?.version !== 2 || candidate.environment.platform !== 'darwin' || candidate.environment.arch !== 'arm64' || candidate.environment.osVersion?.split('.')[0] !== '15' || candidate.built?.version !== 1 || candidate.built.inputHash !== inputHash || !/^[a-f0-9]{64}$/.test(candidate.built.outputHash ?? '')) throw new Error('候选构建或环境不完整')
   if (JSON.stringify(candidate.selected) !== JSON.stringify(ids) || Object.keys(candidate.cases ?? {}).sort().join() !== [...ids].sort().join()) throw new Error('候选没有覆盖全部登记UI场景')
+}
+export function planCiBaselineManifest(candidate, ids, selected, previous, provenance, reason) {
+  if (!selected.length || new Set(selected).size !== selected.length || selected.some(id => !ids.includes(id))) throw new Error('接受场景为空、重复或未登记')
+  if (previous && (previous.version !== 1 || previous.profile !== CI_PROFILE)) throw new Error('原CI档案身份不合法')
+  const migration = !previous || JSON.stringify(previous.environment) !== JSON.stringify(candidate.environment)
+  if (migration && selected.length !== ids.length) throw new Error('初始CI基线或环境迁移必须接受全部登记场景')
+  for (const id of ids.filter(id => !selected.includes(id))) {
+    if (!previous.cases?.[id] || previous.cases[id].contract !== candidate.cases[id].contract) throw new Error(`未接受的场景缺基线或合同变化：${id}`)
+  }
+  const manifest = migration ? { version: 1, profile: CI_PROFILE, environment: candidate.environment, provenance, cases: {} } : { ...previous, cases: { ...previous.cases } }
+  for (const id of selected) manifest.cases[id] = { ...candidate.cases[id], source: candidate.source, built: candidate.built, provenance, reason, candidate: candidate.id, acceptedAt: new Date().toISOString() }
+  return manifest
 }
 async function tree(directory, base = directory) {
   const rows = []
@@ -84,7 +96,7 @@ async function main() {
   if (process.env.CI) throw new Error('CI不允许进口/接受基线')
   const root = resolve(fileURLToPath(new URL('..', import.meta.url))), [command, ...args] = process.argv.slice(2), options = {}
   for (let i = 0; i < args.length; i += 2) { if (!['--run', '--output', '--candidate', '--cases', '--reason'].includes(args[i]) || !args[i + 1] || options[args[i]]) throw new Error('参数缺失/重复/未知'); options[args[i]] = args[i + 1] }
-  if (!['import', 'accept'].includes(command) || !/^\d+$/.test(options['--run'] ?? '')) throw new Error('用法：ui-ci-baseline.mjs import --run ID --output 新目录 | accept --run ID --candidate 已审阅目录 --cases 全部ID --reason 原因')
+  if (!['import', 'accept'].includes(command) || !/^\d+$/.test(options['--run'] ?? '')) throw new Error('用法：ui-ci-baseline.mjs import --run ID --output 新目录 | accept --run ID --candidate 已审阅目录 --cases 明确ID --reason 原因')
   if (command === 'import') { if (!options['--output']) throw new Error('缺少output'); const result = await download(root, options['--run'], resolve(options['--output'])); console.log(JSON.stringify(result.provenance)); return }
   if (!options['--candidate'] || !options['--cases'] || !options['--reason']) throw new Error('接受需明确已审阅候选、逐项ID及原因')
   await mkdir(join(root, '.local'), { recursive: true })
@@ -96,13 +108,14 @@ async function main() {
   const result = await download(root, options['--run'], fresh), { candidate, ids } = result
   if (JSON.stringify(await json(join(reviewed, 'github-provenance.json'))) !== JSON.stringify(result.provenance) || JSON.stringify(await tree(reviewed)) !== JSON.stringify(await tree(fresh))) throw new Error('已审阅原件与重新下载的官方artifact不符')
   const selected = options['--cases'].split(',')
-  if (selected.length !== ids.length || new Set(selected).size !== ids.length || selected.some(id => !ids.includes(id))) throw new Error('CI环境基线必须逐项审阅并接受全部登记场景')
   const baseline = uiProfile(root, CI_PROFILE, {}).directory
-  await verifyBaselineReview(fresh, ids, baseline, candidate)
+  const previous = await json(join(baseline, 'manifest.json')).catch(error => { if (error.code === 'ENOENT') return null; throw error })
+  const manifest = planCiBaselineManifest(candidate, ids, selected, previous, result.provenance, options['--reason'])
+  for (const id of ids.filter(id => !selected.includes(id))) await readUiBaseline({ id: CI_PROFILE, directory: baseline }, candidate.environment, id, candidate.cases[id].contract)
+  await verifyBaselineReview(fresh, selected, baseline, candidate)
   if (JSON.stringify(await sourceIdentity(root)) !== JSON.stringify(result.source)) throw new Error('接受期间源码变化')
-  const manifest = { version: 1, profile: CI_PROFILE, environment: candidate.environment, provenance: result.provenance, cases: {} }
   await mkdir(baseline, { recursive: true })
-  for (const id of ids) { await copyFile(join(fresh, 'snapshots', `${id}.png`), join(baseline, `${id}.png`)); manifest.cases[id] = { ...candidate.cases[id], source: candidate.source, built: candidate.built, reason: options['--reason'], candidate: candidate.id, acceptedAt: new Date().toISOString() } }
+  for (const id of selected) await copyFile(join(fresh, 'snapshots', `${id}.png`), join(baseline, `${id}.png`))
   await writeFile(join(baseline, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n')
   console.log('已接受明确审阅的CI候选；仍需提交后再次只读比较，Required checks未由此通过。')
   } finally { release() }

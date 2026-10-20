@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 实际独立目录/冻结PNG字节及GitHub运行上下文负例。
- * [OUTPUT]: 本地CLI不能写CI档案；缺来源记录/场景/字节拒绝，普通CI或PR不能生成候选。
+ * [OUTPUT]: 本地CLI不能写CI档案；逐case/旧整体官方来源绑定和字节核验，普通CI或PR不能生成候选。
  * [POS]: 环境档案门槛验收；不启动GUI、不证明实际像素通过。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -51,6 +51,16 @@ it.each(['profile', 'environment', 'case', 'contract', 'bytes'])('%s错误不能
 })
 it('只返回本档案的已核验字节', async () => {
   const profile = await baseline(CI_PROFILE); expect(await readUiBaseline(profile, environment, 'case', 'fixed-contract')).toEqual(bytes)
+})
+it('逐case来源覆盖旧整体来源且绑定本case提交，其他旧case仍可沿原来源读取', async () => {
+  const original = { sha256, contract: 'fixed-contract', source: { commit: 'a'.repeat(40) } }
+  const row = { ...original, source: { commit: 'c'.repeat(40) }, provenance: { version: 1, runId: '2', attempt: 1, artifactId: 3, commit: 'c'.repeat(40), digest: 'sha256:' + 'd'.repeat(64) } }
+  const profile = await baseline(CI_PROFILE, { cases: { case: original, updated: row } })
+  await writeFile(join(profile.directory, 'updated.png'), bytes)
+  expect(await readUiBaseline(profile, environment, 'case', 'fixed-contract')).toEqual(bytes)
+  expect(await readUiBaseline(profile, environment, 'updated', 'fixed-contract')).toEqual(bytes)
+  await baseline(CI_PROFILE, { cases: { case: { ...row, provenance: { ...row.provenance, commit: 'f'.repeat(40) } } } })
+  await expect(readUiBaseline(profile, environment, 'case', 'fixed-contract')).rejects.toThrow('官方artifact记录')
 })
 it.each([undefined, { version: 1 }, { version: 1, runId: '1', attempt: 1, artifactId: 2, commit: 'f'.repeat(40), digest: 'sha256:' + 'b'.repeat(64) }])('CI档案缺失/不完整/错来源的provenance不能作为期望图', async provenance => {
   const profile = await baseline(CI_PROFILE, { provenance })

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 明确UI环境档案、GitHub运行上下文和本地命令。
- * [OUTPUT]: 限定采集/接受入口与CI来源记录；固定档案只读，无本地候选旁路或跨环境回退。
+ * [OUTPUT]: 限定采集/接受入口；CI逐case绑定官方来源并兼容旧整体来源，无本地旁路或跨环境回退。
  * [POS]: 开发侧UI环境合同；不改产品字体或比较阈值。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -34,7 +34,7 @@ export async function readUiBaseline(profile, environment, caseId, contractHash)
   const manifest = JSON.parse(await readFile(join(profile.directory, 'manifest.json'), 'utf8'))
   if (manifest.profile !== profile.id) throw new Error('UI基线档案不匹配')
   if (profile.id === CI_PROFILE) {
-    const p = manifest.provenance
+    const p = manifest.cases?.[caseId]?.provenance ?? manifest.provenance
     if (p?.version !== 1 || !/^\d+$/.test(p.runId ?? '') || !Number.isInteger(p.attempt) || p.attempt < 1 || !Number.isInteger(p.artifactId) || p.artifactId < 1 || !/^sha256:[a-f0-9]{64}$/.test(p.digest ?? '') || !/^[a-f0-9]{40}$/.test(p.commit ?? '') || manifest.cases?.[caseId]?.source?.commit !== p.commit) throw new Error('CI基线缺少绑定来源的官方artifact记录')
   }
   if (JSON.stringify(manifest.environment) !== JSON.stringify(environment)) throw new Error('UI基线环境不匹配；需独立审阅环境迁移')

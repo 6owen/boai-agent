@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: CI完整捕获后同环境仅接受相关case，逐case绑定官方来源，未选择项保留并核验；初始/环境迁移仍须全量。
 [OUTPUT]: 本地candidate/accept仅操作本机档案；CI读取需绑定来源，官方进口接受与原检查共用基线锁。
 [OUTPUT]: 本机/CI分别固定环境档案；独立受信采集只产候选，官方run/artifact核验后显式接受，普通CI仍只读。
 [INPUT]: 用户明确参考Magpie建立UI基线，后续PR合并持续比较，新增功能扩充基准，破坏原有UI时报错。
@@ -141,11 +142,13 @@ flowchart TD
 
 ```bash
 node scripts/ui-ci-baseline.mjs import --run RUN_ID --output .local/新候选目录
-node scripts/ui-ci-baseline.mjs accept --run 同一RUN_ID --candidate .local/已审阅目录 --cases 全部登记ID逗号列表 --reason '逐项审阅结论与具体环境原因'
+node scripts/ui-ci-baseline.mjs accept --run 同一RUN_ID --candidate .local/已审阅目录 --cases 明确接受ID逗号列表 --reason '逐项审阅结论与需求原因'
 ```
 
 进口只接受同仓库/同干净源码SHA的成功独立采集，核对官方artifact唯一身份、来源、未过期状态及SHA256。实际archive先验路径/重复/链接/体积，再解压，核对全部case合同/PNG/hash、实际一次通过报告和构建输入。接受时重新向GitHub核对并下载同一原artifact，与已审阅目录全部字节对照，检查现有CI基线未移动后才复制CI档案；不以本机构建产物冒充CI产物，也不改本机PNG。审阅笔记应放候选目录之外，保持原件。接受、提交后还需再次只读CI比较，完整Required checks及合并SHA验证独立成立；任何候选成功不提供发布资格。
 
-上述入口代码正在独立分支验证；实际下载、逐图接受、重复比较和main合并尚未完成，以03为准。
+同环境需求内改版可只接受已审阅的相关case；仍须官方完整捕获全部登记场景。未选择项保留原PNG、合同、源码、时间与官方来源，且接受前逐项核对它们的旧PNG/hash/来源/当前合同；有缺失或合同变化必须明确纳入接受列表，不能由未选择掩盖。初始档案或环境指纹变化必须接受全部登记case。新增case可在同环境单独接受，旧项继续受保护。每个被接受case绑定自己的官方provenance；旧manifest整体provenance作为原条目兼容来源，不能用新run替旧条目改写来源。
 
-本地`candidate/accept`入口只允许本机档案；明确传CI档案也会在采集前拒绝，CI晋升统一经官方进口。CI读取还要求完整provenance且各case源码commit与其一致。CI进口接受与原UI检查/本地接受持同一路径锁，覆盖重新下载、旧基线核验、PNG及manifest写入，避免一轮检查读到旧hash却比较新PNG，或多个接受交错。
+首次官方下载、逐图接受及本机/CI16项只读复验已在独立分支完成，实际记录归03；main合并、完整门禁和新增功能视觉验收仍未完成。
+
+本地`candidate/accept`入口只允许本机档案；明确传CI档案也会在采集前拒绝，CI晋升统一经官方进口。CI读取要求case自己的完整provenance（旧条目可沿整体记录），其源码commit必须一致。CI进口接受与原UI检查/本地接受持同一路径锁，覆盖重新下载、旧基线核验、PNG及manifest写入，避免一轮检查读到旧hash却比较新PNG，或多个接受交错。
