@@ -1,12 +1,12 @@
 /*
  * [INPUT]: 实际SQLite共享/独占事务、隔离profile及Node/Electron子进程。
- * [OUTPUT]: 多应用/维护互斥、本卷缺目录别名/悬空链接/保留名称、裸v2权限及真实GC/死亡释放证据。
+ * [OUTPUT]: 多应用/维护互斥、缺目录别名/悬空链接/整条控制路径/文件系统根、裸v2及真实GC/死亡释放。
  * [POS]: 个人升级准入合同；不是应用升级或完整数据回滚验收。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
 import { afterAll, afterEach, beforeAll, expect, test } from 'vitest'
 import { chmod, lstat, mkdtemp, mkdir, readFile, readdir, realpath, rename, rm, symlink, writeFile } from 'node:fs/promises'
-import { join, resolve } from 'node:path'
+import { dirname, join, parse, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { once } from 'node:events'
@@ -109,12 +109,21 @@ test('a dangling profile symlink or child cannot acquire a different authority d
   maintenance.assertHeld()
 })
 
-test.each([false, true])('control namespace cannot itself become a profile (uppercase=%s)', async uppercase => {
+test.each([{ uppercase: false, child: '' }, { uppercase: true, child: '' }, { uppercase: false, child: 'nested' }, { uppercase: true, child: 'nested' }])('control namespace cannot contain a profile ($uppercase/$child)', async ({ uppercase, child }) => {
   if (!process.getuid) return
-  const { root } = await fixture(), name = `.boai-profile-locks-${process.getuid()}`, profile = join(root, uppercase ? name.toUpperCase() : name)
+  const { root } = await fixture(), name = `.boai-profile-locks-${process.getuid()}`, profile = join(root, uppercase ? name.toUpperCase() : name, child)
   expect(() => access(profile, 'maintenance')).toThrow('保留')
   await expect(lstat(profile)).rejects.toMatchObject({ code: 'ENOENT' })
   expect(await readdir(root)).toEqual([])
+})
+
+test('an already published control scope cannot be maintained as a product profile', async () => {
+  const { profile } = await fixture(), original = access(profile, 'maintenance'), scope = dirname(original.file)
+  const before = await readdir(scope), bytes = await readFile(original.file)
+  expect(() => access(scope, 'maintenance')).toThrow('保留')
+  expect(await readdir(scope)).toEqual(before)
+  expect(await readFile(original.file)).toEqual(bytes)
+  original.assertHeld()
 })
 
 test('unrelated profiles do not block each other; runtime v2 aliases cover both desktop and bare profiles', async () => {
@@ -192,6 +201,7 @@ test('non-private authority is rejected and its bytes remain unchanged', async (
 test('empty and relative maintenance targets are refused without resolving to the working directory', () => {
   expect(() => acquireProfileAccess('')).toThrow('绝对profile路径')
   expect(() => acquireProfileAccess('relative')).toThrow('绝对profile路径')
+  expect(() => acquireProfileAccess(parse(resolve('/')).root)).toThrow('根目录')
 })
 
 for (const [name, executable] of [['Node', process.execPath], ['Electron Node', require('electron') as string]]) {

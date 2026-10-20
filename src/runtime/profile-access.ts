@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 明确profile根目录、应用共享访问或升级维护模式，以及Node内置SQLite。
- * [OUTPUT]: profile外持久锁及本卷别名身份；拒绝悬空链接/保留名称，应用并用、维护独占、进程死亡释放。
+ * [OUTPUT]: profile外持久锁及本卷别名身份；拒绝悬空链接/整条控制路径/文件系统根，应用并用、维护独占。
  * [POS]: 桌面/独立服务/个人升级的写入准入；不替代runtime owner或实际进程退出证明。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -72,7 +72,10 @@ export function acquireProfileAccess(input: string, mode: ProfileAccessMode = 'a
   if (!['application', 'maintenance'].includes(mode)) throw Error('数据维护模式无效')
   // Do not create userData before admission: it may be temporarily absent during a restore.
   const profileRoot = canonicalPath(input), directory = controlDirectory(profileRoot)
-  if (basename(profileRoot).normalize('NFKC').replace(/\p{Default_Ignorable_Code_Point}/gu, '').toUpperCase().startsWith('.BOAI-PROFILE-LOCKS-')) throw Error('数据配置不能使用保留的维护锁目录名称')
+  if (profileRoot === dirname(profileRoot)) throw Error('数据配置不能使用文件系统根目录')
+  for (let path = profileRoot; path !== dirname(path); path = dirname(path)) {
+    if (basename(path).normalize('NFKC').replace(/\p{Default_Ignorable_Code_Point}/gu, '').toUpperCase().startsWith('.BOAI-PROFILE-LOCKS-')) throw Error('数据配置不能位于保留的维护锁目录内')
+  }
   mkdirSync(directory, { recursive: true, mode: 0o700 }); const parent = privatePath(directory, true)
   // Let this same parent filesystem resolve case/Unicode aliases even while userData is absent.
   // A directory preserves the full legal leaf length; adding a suffix to a 255-byte name would not.
