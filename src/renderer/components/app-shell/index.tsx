@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 四组默认应用快捷键与工具栏共用搜索、三页列表和原历史动作；输入、组合键与浮层保留自身按键。
  * [OUTPUT]: 主聊天按选中会话元信息立即保留ChatView外框，不再以会话ID重建整个聊天；首屏40条、刷新保留已加载窗口且最多80条，原请求代次/锚点/清理隔离保持。
  * [OUTPUT]: 同会话终端/预览侧栏与桌面活动日报的真实 bobo 首发入口。
  * [OUTPUT]: 保留挂载的主会话与渠道聊天各提供浮层可见作用域，切页/隐藏详情立即撤下Portal，不清理正文、草稿和阅读位置。
@@ -891,6 +892,27 @@ export function AppShell() {
     else if (conversation && route.page === 'conversations') openPanel(conversation.kind === 'group' || isChannelConversation(conversation) ? { type: 'group', id: conversation.id } : { type: 'agent', id: conversation.agentIds[0]!, conversationId: conversation.id })
     else if (route.page === 'schedules') openPanel({ type: 'schedule' })
   }
+  const openSearch = () => { setSearchRequest({ requestId: crypto.randomUUID() }); setConversationSearchOpen(true) }
+  const goBack = () => navigate(() => { if (historyIndex.current <= 0) return; historyIndex.current--; applyRoute(history.current[historyIndex.current]!, false) })
+  const goForward = () => navigate(() => { if (historyIndex.current >= history.current.length - 1) return; historyIndex.current++; applyRoute(history.current[historyIndex.current]!, false) })
+  const toggleList = () => setListShown(shown => !shown)
+  useEffect(() => {
+    const onShortcut = (event: globalThis.KeyboardEvent) => {
+      if (!api || event.defaultPrevented || event.isComposing || event.repeat || event.altKey || event.shiftKey || menu || sharingProfile || leaving || creation) return
+      const mac = navigator.platform.toLowerCase().includes('mac')
+      if (mac ? !event.metaKey || event.ctrlKey : !event.ctrlKey || event.metaKey) return
+      if (event.composedPath().some(node => node instanceof HTMLElement && (node.matches('input, textarea, select, [role="textbox"]') || node.isContentEditable))) return
+      const overlay = '[role="dialog"], [role="alertdialog"], [role="menu"], [data-slot="popover-content"], [data-slot="dropdown-menu-content"], [data-slot="select-content"], [data-slot="context-menu-content"]'
+      if ([...document.querySelectorAll(overlay)].some(node => node.getClientRects().length > 0)) return
+      const key = event.key.toLowerCase()
+      if (key === 'k') { event.preventDefault(); openSearch() }
+      else if (key === 'b' && (route.page === 'conversations' || route.page === 'contacts' || route.page === 'schedules')) { event.preventDefault(); toggleList() }
+      else if (key === '[' && historyIndex.current > 0) { event.preventDefault(); goBack() }
+      else if (key === ']' && historyIndex.current < history.current.length - 1) { event.preventDefault(); goForward() }
+    }
+    document.addEventListener('keydown', onShortcut)
+    return () => document.removeEventListener('keydown', onShortcut)
+  })
   const listResizer = <div className="resize-handle list-resizer" role="separator" tabIndex={0} aria-label={`调整${labels[route.page]}${route.page === 'settings' ? '分类' : '列表'}宽度`} aria-orientation="vertical" aria-valuemin={232} aria-valuemax={360} aria-valuenow={listWidth} onPointerDown={startListResize} onDoubleClick={() => setListWidth(DEFAULT_LIST_WIDTH)} onKeyDown={resizeListKey} />
   const renderChat = (window: Omit<ChannelChatWindow, 'detail'> & Pick<ChatViewProps, 'detail' | 'conversation' | 'loading' | 'onRetry'>, scope = 'conversations', withinKey?: string, headerActions?: ReactNode) => {
     const source = window.conversation ?? window.detail?.conversation
@@ -938,11 +960,11 @@ export function AppShell() {
   }
   if (!api) return <div className="unavailable-page"><MessageCircle size={34}/><h1>请在桌面应用打开</h1><p>当前浏览器没有本地运行接口，无法访问员工、文件或模型。</p></div>
   const headerActions = <><HeaderBrowser api={api} /><Dialog open={conversationSearchOpen} onOpenChange={setConversationSearchOpen}>
-    <DialogTrigger render={<Button className="titlebar-no-drag" variant="ghost" size="icon-sm" aria-label="搜索会话内容" title="搜索" />} onClick={() => setSearchRequest({ requestId: crypto.randomUUID() })}><Search /></DialogTrigger>
+    <DialogTrigger render={<Button className="titlebar-no-drag" variant="ghost" size="icon-sm" aria-label="搜索会话内容" title="搜索" />} onClick={openSearch}><Search /></DialogTrigger>
     <ConversationSearch api={api} active={conversationSearchOpen} snapshot={snapshot} selectedId={selectedId} request={searchRequest} onOpen={(result, current) => openSearchResult(result, current, () => setConversationSearchOpen(false))} onUnavailable={searchSourceUnavailable} />
   </Dialog></>
   return <GuardContext.Provider value={guard}><ScheduleNavigationContext.Provider value={id => { setScheduleLocation({ kind: 'definition', id }); applyRoute({ ...routeRef.current, page: 'schedules' }) }}><EmployeeResourceNavigation.Provider value={target => target.kind === 'web-search-settings' ? (() => { setSettingsSection('web-search'); applyRoute({ ...routeRef.current, page: 'settings' }) })() : target.kind === 'knowledge-files' ? openPanel({ type: 'files', owner: 'employee', id: target.id, view: 'knowledge', requestId: crypto.randomUUID() }) : openCatalogResult(target.kind, target.id, target.name)}><EmployeeExecutionNavigation.Provider value={target => openPanel({ type: 'trace', id: target.conversationId, agentId: target.agentId, runId: target.runId, title: target.title })}><Tabs value={detailTabs.activeKey} onValueChange={value => { if (typeof value === 'string') dispatchDetails({ type: 'select', key: value }) }} className={`app-shell gap-0${effectiveList ? ' list-open' : ''}${skillsNavigation ? ' skills-navigation' : ''}`} data-page={route.page} data-panel-resizing={listResizing || detailLayout.resizing} style={{'--list-width':`${listWidth}px`,'--detail-width':`${detailLayout.width}px`} as CSSProperties}>
-    <DesktopToolbar title={title} browserAction={headerActions} detailHeader={panel && <DetailPanelHeader focusOnMount={!route.focusMessage && !route.focusApproval} tabs={detailTabs.tabs.map(tab => ({ key: tab.key, ...describePanel(tab.target), dirty: Boolean(tabDirty[tab.key]) }))} activeKey={detailTabs.activeKey} onClose={requestCloseTab} onMove={(key, targetKey, placement) => dispatchDetails({ type: 'move', key, targetKey, placement })} />} showListToggle={route.page === 'conversations' || route.page === 'contacts' || route.page === 'schedules'} listLabel={route.page === 'conversations' ? '显示或隐藏会话列表' : route.page === 'contacts' ? '显示或隐藏通讯录列表' : '显示或隐藏任务列表'} listShown={listShown} detailOpen={Boolean(panel)} canBack={historyIndex.current > 0} canForward={historyIndex.current < history.current.length - 1} detailDisabled={!detailTabs.tabs.length && !(conversation && route.page === 'conversations') && route.page !== 'schedules'} onBack={() => navigate(() => { historyIndex.current--; applyRoute(history.current[historyIndex.current]!, false) })} onForward={() => navigate(() => { historyIndex.current++; applyRoute(history.current[historyIndex.current]!, false) })} onToggleList={() => setListShown(shown => !shown)} onToggleDetails={toggleDetails} />
+    <DesktopToolbar title={title} browserAction={headerActions} detailHeader={panel && <DetailPanelHeader focusOnMount={!route.focusMessage && !route.focusApproval} tabs={detailTabs.tabs.map(tab => ({ key: tab.key, ...describePanel(tab.target), dirty: Boolean(tabDirty[tab.key]) }))} activeKey={detailTabs.activeKey} onClose={requestCloseTab} onMove={(key, targetKey, placement) => dispatchDetails({ type: 'move', key, targetKey, placement })} />} showListToggle={route.page === 'conversations' || route.page === 'contacts' || route.page === 'schedules'} listLabel={route.page === 'conversations' ? '显示或隐藏会话列表' : route.page === 'contacts' ? '显示或隐藏通讯录列表' : '显示或隐藏任务列表'} listShown={listShown} detailOpen={Boolean(panel)} canBack={historyIndex.current > 0} canForward={historyIndex.current < history.current.length - 1} detailDisabled={!detailTabs.tabs.length && !(conversation && route.page === 'conversations') && route.page !== 'schedules'} onBack={goBack} onForward={goForward} onToggleList={toggleList} onToggleDetails={toggleDetails} />
     <div className="app-body"><nav className="navigation-rail" aria-label="主导航"><div className="rail-top">{([
       {page:'conversations',icon:Home,label:'会话'},
       {page:'contacts',icon:Contact,label:'通讯录'},
