@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 当前核心合同18项（原16及快捷键明暗两项）；只更新相关四项后本机18只读通过，CI增量待同SHA官方候选。
 [OUTPUT]: CI完整捕获后同环境仅接受相关case，逐case绑定官方来源，未选择项保留并核验；初始/环境迁移仍须全量。
 [OUTPUT]: 本地candidate/accept仅操作本机档案；CI读取需绑定来源，官方进口接受与原检查共用基线锁。
 [OUTPUT]: 本机/CI分别固定环境档案；独立受信采集只产候选，官方run/artifact核验后显式接受，普通CI仍只读。
@@ -118,7 +119,7 @@ flowchart TD
 
 ## 7. 当前开发入口（2026-10-20实施中）
 
-- `pnpm test:ui`：构建当前工作树，运行全部16项UI BDD；基线只读，输出独立`.local/ui-runs/<runId>`报告。
+- `pnpm test:ui`：构建当前工作树，运行全部登记18项UI BDD（原16项及快捷键明暗两项）；基线只读，输出独立`.local/ui-runs/<runId>`报告。
 - `pnpm test:ui:candidate --cases CASE_ID --output NEW_DIR`：先保留旧比较报告，再采集独立候选；已有基线不变。首次没有基线时旧比较为`not-run`，不能称比较通过。
 - `pnpm test:ui:accept --candidate DIR --cases CASE_ID --reason '具体理由'`：核对候选完整通过、源码/环境及图片hash，只复制明确选中的条目。这是本地开发操作，不代表独立审阅完成；CI禁止候选/接受入口。
 - 本地故障演练：`node scripts/ui-regression.mjs check --cases chat-light --fault layout`，或`--cases settings-light --fault behavior`；预期非零，报告记录故障，不修改生产源码。`--fault environment`验证环境错配拒绝。

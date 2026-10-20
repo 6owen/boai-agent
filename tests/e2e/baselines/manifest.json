@@ -171,28 +171,28 @@
       "acceptedAt": "2026-10-20T15:32:44.698Z"
     },
     "settings-light": {
-      "sha256": "37d1efae4171bfa45a39a494c4b6f5737b43c0a188d72fa195317231af03d3f1",
+      "sha256": "a131abca65262c53fa3b613cc073b05c9cbbbb758dcb4119f21310ffd2d9f01c",
       "contract": "7e5255cd1d6ad9466a69854f08942fa9a02ad84b369f2b941a50a1787ed41c6f",
       "source": {
-        "commit": "d261a82af958662909f56cfb9e1e27cd8c76c424",
-        "sourceHash": "2ac7ace9723ead5605bc38aa13014030bf4b00dcb94285aa424f53a1b813d7fc",
+        "commit": "3389a75d4c9245c0cad612c39332a5e6e000cc2a",
+        "sourceHash": "005d252d5e364e0d14d5d8295b7a1060263da22196645abb4ba039bb563d2957",
         "dirty": false
       },
-      "reason": "本机强指纹与档案记录迁移；16张PNG逐字节与旧图相同，独立Standards及Spec审阅通过；旧档案缺profile比较失败，接受后的只读复验待执行。",
-      "candidate": "17147e18-c014-4f65-b48a-d1f47948d23f",
-      "acceptedAt": "2026-10-20T15:32:44.699Z"
+      "reason": "KS05新增只读快捷键明暗页及设置导航；四项旧新差异和新图经独立Standards/Spec逐图审阅，原14无关图不变。",
+      "candidate": "1b7d9a79-b799-4134-bd2e-475ad2fec1b2",
+      "acceptedAt": "2026-10-20T16:06:34.599Z"
     },
     "settings-dark": {
-      "sha256": "c5d9ad99cc604a4b82f0c146e83a11c1ad773043a81921c5c73b8d3aed7adfda",
+      "sha256": "570c7681b73e24c6d9e50f0725aee202f0dec706fbfcb95f31766bc88e51fbcf",
       "contract": "ea3f1f153ee06336a9361e4d5755f3d8d3810e87859b90e767610799dfaeeed1",
       "source": {
-        "commit": "d261a82af958662909f56cfb9e1e27cd8c76c424",
-        "sourceHash": "2ac7ace9723ead5605bc38aa13014030bf4b00dcb94285aa424f53a1b813d7fc",
+        "commit": "3389a75d4c9245c0cad612c39332a5e6e000cc2a",
+        "sourceHash": "005d252d5e364e0d14d5d8295b7a1060263da22196645abb4ba039bb563d2957",
         "dirty": false
       },
-      "reason": "本机强指纹与档案记录迁移；16张PNG逐字节与旧图相同，独立Standards及Spec审阅通过；旧档案缺profile比较失败，接受后的只读复验待执行。",
-      "candidate": "17147e18-c014-4f65-b48a-d1f47948d23f",
-      "acceptedAt": "2026-10-20T15:32:44.700Z"
+      "reason": "KS05新增只读快捷键明暗页及设置导航；四项旧新差异和新图经独立Standards/Spec逐图审阅，原14无关图不变。",
+      "candidate": "1b7d9a79-b799-4134-bd2e-475ad2fec1b2",
+      "acceptedAt": "2026-10-20T16:06:34.600Z"
     },
     "resources-light": {
       "sha256": "9fd394fd971ba096cb61ee597f4723f6d49980290e5ad4ca9594a01f7441e3eb",
@@ -265,6 +265,30 @@
       "reason": "本机强指纹与档案记录迁移；16张PNG逐字节与旧图相同，独立Standards及Spec审阅通过；旧档案缺profile比较失败，接受后的只读复验待执行。",
       "candidate": "17147e18-c014-4f65-b48a-d1f47948d23f",
       "acceptedAt": "2026-10-20T15:32:44.703Z"
+    },
+    "shortcuts-light": {
+      "sha256": "49849a398bb026e67b41a9663e91cc38feb9e600c2ace02d84bbb08e189fe9c7",
+      "contract": "171bb96072a7e80051c7c1c511516129c00e103c4058d3e70e25c8186a56c49a",
+      "source": {
+        "commit": "3389a75d4c9245c0cad612c39332a5e6e000cc2a",
+        "sourceHash": "005d252d5e364e0d14d5d8295b7a1060263da22196645abb4ba039bb563d2957",
+        "dirty": false
+      },
+      "reason": "KS05新增只读快捷键明暗页及设置导航；四项旧新差异和新图经独立Standards/Spec逐图审阅，原14无关图不变。",
+      "candidate": "1b7d9a79-b799-4134-bd2e-475ad2fec1b2",
+      "acceptedAt": "2026-10-20T16:06:34.600Z"
+    },
+    "shortcuts-dark": {
+      "sha256": "fcccb26b9b56c72b4b25a7cff18e5cac7a2c3b933fe2084684d2f2d8ce512552",
+      "contract": "470a05b4fc32829a5cef4c13044deac140431e51162eb3527e7763896f3e82d9",
+      "source": {
+        "commit": "3389a75d4c9245c0cad612c39332a5e6e000cc2a",
+        "sourceHash": "005d252d5e364e0d14d5d8295b7a1060263da22196645abb4ba039bb563d2957",
+        "dirty": false
+      },
+      "reason": "KS05新增只读快捷键明暗页及设置导航；四项旧新差异和新图经独立Standards/Spec逐图审阅，原14无关图不变。",
+      "candidate": "1b7d9a79-b799-4134-bd2e-475ad2fec1b2",
+      "acceptedAt": "2026-10-20T16:06:34.601Z"
     }
   },
   "profile": "local-macos-arm64"
