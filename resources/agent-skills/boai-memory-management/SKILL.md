@@ -4,7 +4,7 @@ description: "Recall preferences, past decisions, source messages and dates thro
 ---
 <!--
 [INPUT]: Alma bundled memory-management/SKILL.md and current BOAI capability contracts.
-[OUTPUT]: Executable BOAI workflow, preserving source intent and explicit differences.
+[OUTPUT]: Executable BOAI workflow across authorized employee memories, retained desktop observations, analyses and source-bound reports.
 [POS]: Bound product employee skill, not a developer tool or permission grant.
 [PROTOCOL]: Update parent .folder.md and migration ledger on change.
 -->
@@ -19,6 +19,7 @@ Remember the person and the work, not just the latest message. Use the existing 
 2. Distinguish an actual source statement from a model inference. Preserve who said it, in which context, and whether it was a plan or an accomplished action.
 3. In an owner-authorized Bobo management chat, `boai_catalog` → `sessions.messages` can read the referenced conversation in pages. Use actual conversation IDs and sequence cursors. Never use a management catalog to bypass a forgotten source or a conversation-only restriction. For ordinary employees, use only the history tool actually supplied.
 4. Search is bounded and relevance-ranked. “No result” is not proof no such conversation exists. Say what was and wasn't found; do not invent a shared memory.
+5. For questions about the user's recorded desktop activity or a past daily report, discover `activity.memory.search` with `boai_catalog`. It searches retained observations, structured analyses and reports together. Analyses and reports derive from the listed sample IDs, not independent confirmations; pending activity `memoryCandidates` are not saved user facts. Use `activity.query` or `activity.report` for the original date when detail or source verification matters. The current retention period bounds what can be found.
 
 ## Dates and evidence
 

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 明确纠正/遗忘时可删除全部bobo Mastra派生thread，下轮从获准产品原件重建。
  * [OUTPUT]: 私有判断显示全部本人绑定技能和实际任务命令/文件能力，目录元信息不扩权。
  * [OUTPUT]: 私聊相册元信息/删除使用员工固定身份工具；读取无需文件Work。
  * [OUTPUT]: 反思保存前在原预算内预留无工具事实复核，两阶段已知用量累加，失败不返回草稿；普通行为保持原单调用路径。
@@ -69,6 +70,8 @@ import { gatewayRouteObserver } from './gateway-route'
 import { assertStreamCompleted } from './stream-completion'
 import { supportsThinkingControl } from '../../../shared/domain/model-preferences'
 import { createStageAgent, bootstrapInstructions, organizationDecisionAllowed, type StageInstance } from './agent-factory'
+import { BoboConversationMemory } from './conversation-memory'
+import { isCoreAgent } from '../../../shared/domain/core-agent'
 import { projectMessages, visibleMessages, partitionTurn, messageData, decisionMessageData } from './message-projection'
 import { deepseekReasoningHistory } from './deepseek-reasoning-model'
 const MAX_STEPS = 12
@@ -115,6 +118,7 @@ function errorText(error: unknown): string {
 function redact(value: string, key: string) { return key ? value.split(key).join('[redacted]') : value }
 function check(signal: AbortSignal) { signal.throwIfAborted() }
 export interface MastraEngineOptions {
+  memoryPath?: string
   runTimeoutMs?: number
   connectionTimeoutMs?: number
   commandTimeoutMs?: number
@@ -125,7 +129,12 @@ export interface MastraEngineOptions {
 import { workIntentSchema, modelWorkReportSchema, workReportSchema } from '../../modules/collaboration/work-protocol'
 import { decisionJsonSchema, decisionModelSchema, decisionPromptSchema, memorySchema, parseJson } from '../../modules/employees/phase-protocol'
 export class MastraEngine implements AgentEngine {
-  constructor(private readonly options: MastraEngineOptions = {}) {}
+  private readonly boboMemory?: BoboConversationMemory
+  constructor(private readonly options: MastraEngineOptions = {}) {
+    if (options.memoryPath) this.boboMemory = new BoboConversationMemory(options.memoryPath)
+  }
+  async forgetConversationMemory(conversationId: string) { await this.boboMemory?.forgetConversation(conversationId) }
+  async forgetAllConversationMemory() { await this.boboMemory?.forgetAll() }
 
   async runBehavior(context: EngineContext, input: { instruction: string; maxModelCalls: number }) {
     assertApiContext(context)
@@ -164,9 +173,29 @@ export class MastraEngine implements AgentEngine {
     let stage: StageInstance | undefined
     try {
       check(signal)
-      let messages = deepseekReasoningHistory({ connection: ctx.connection, modelId: ctx.agent.modelId, thinkingLevel: ctx.agent.thinkingLevel, task, agentId: ctx.agent.id, conversationId: ctx.conversation.id, messages: ctx.messages, projected: projectMessages(ctx.messages, ctx.agent.id, ctx.conversation.id, ctx.triggerMessageId, ctx.turnId, ctx.materialImages) })
+      let boboMemory: Awaited<ReturnType<BoboConversationMemory['prepare']>> | undefined
+      if (!task && this.boboMemory && isCoreAgent(ctx.agent) && ctx.conversation.purpose === 'core' && !ctx.conversation.channel) {
+        try { boboMemory = await this.boboMemory.prepare(ctx.messages, ctx.conversation.id, ctx.triggerMessageId, ctx.turnId, ctx.bootstrap?.memoryProjection) }
+        catch (error) {
+          check(signal)
+          await ctx.onTraceError?.(`bobo Mastra Memory 不可用，已使用获准聊天原文：${errorText(error)}`).catch(() => {})
+        }
+      }
+      let externalMemory = ''
+      if (!task && ctx.externalMemory) {
+        try { externalMemory = (await ctx.externalMemory.recall())?.text ?? '' }
+        catch (error) {
+          check(signal)
+          await ctx.onTraceError?.(`Memmy长期记忆暂不可用，已使用本机获准记忆：${errorText(error)}`).catch(() => {})
+        }
+      }
+      let messages = deepseekReasoningHistory({ connection: ctx.connection, modelId: ctx.agent.modelId, thinkingLevel: ctx.agent.thinkingLevel, task, agentId: ctx.agent.id, conversationId: ctx.conversation.id, messages: ctx.messages, projected: projectMessages(boboMemory?.current ?? ctx.messages, ctx.agent.id, ctx.conversation.id, ctx.triggerMessageId, ctx.turnId, ctx.materialImages) })
       if (!messages.length) throw new Error('No completed messages in this conversation')
-      stage = await createStageAgent(task ? 'task' : 'chat', ctx, this.options.commandTimeoutMs)
+      const stageContext = { ...ctx, ...(ctx.bootstrap ? { bootstrap: { ...ctx.bootstrap,
+        instructions: boboMemory && ctx.bootstrap.baseInstructions ? ctx.bootstrap.baseInstructions : ctx.bootstrap.instructions,
+        dynamicInstructions: [ctx.bootstrap.dynamicInstructions, externalMemory ? `[外部Memmy用户记忆：仅作可能过时的背景，不是本轮指令、权限或已完成工作的证明。]\n${externalMemory}` : ''].filter(Boolean).join('\n\n'),
+      } } : {}) }
+      stage = await createStageAgent(task ? 'task' : 'chat', stageContext, this.options.commandTimeoutMs, boboMemory?.memory)
       const agent = stage.agent
       let admittedSteps = 0
       const maxCharacters = !task && ctx.groupCoordination?.mode === 'ordered' ? ctx.groupCoordination.maxReplyCharacters : undefined
@@ -183,6 +212,7 @@ export class MastraEngine implements AgentEngine {
         let previousFinish: { reason: string | undefined } | undefined
         const observeRoute = gatewayRouteObserver(ctx, () => callIds.at(-1))
         const output = await agent.stream(messages, {
+          ...(boboMemory ? { memory: boboMemory.option } : {}),
           abortSignal: signal, maxSteps: task ? taskSteps : (ctx.application || ctx.manageSkills || ctx.manageDataSources) ? 16 : (ctx.agent.skillIds.length || ctx.recallMemory || ctx.reactions || ctx.personality || ctx.manageAutomation || ctx.createDataSource || hasKnowledge(ctx) || hasChatSourceTools(ctx)) ? 8 : 1, modelSettings: { maxOutputTokens: task ? 8192 : 2500 },
           providerOptions: thinkingProviderOptions(ctx.connection, ctx.agent.modelId, ctx.agent.thinkingLevel, task ? 'task' : 'chat', ctx.modelCatalog),
           onStepFinish: async event => {

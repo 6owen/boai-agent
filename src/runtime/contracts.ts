@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 引擎可删除单个或全部bobo会话Memory投影，明确遗忘不留其他thread中的旧Working Memory。
  * [OUTPUT]: PPT 专用审阅端口固定当前员工执行与原请求账本，不冒用聊天模型来源。
  * [OUTPUT]: 员工形象相册端口固定本人身份/私聊管理，群内新肖像可用私有参考但不导出原图。
  * [OUTPUT]: 员工生图端口沿独立已选连接和原任务字节权限；配置与模型凭据不进入工具参数。
@@ -68,6 +69,8 @@ export interface SecretStore {
   delete(connectionId: string): Promise<void>
 }
 export interface EngineContext {
+  /** Owner-selected external user memory; the host fixes identity and request, and checks revision before publication. */
+  externalMemory?: { revision: number; sourceMemoryIds: string[]; recall(): Promise<{ text: string; sourceMemoryIds: string[]; revision: number } | undefined> }
   presentations?: import('./modules/presentations/presentation-service').PresentationCapability
   images?: import('./modules/media/image-service').ImageCapability
   selfies?: import('./modules/media/selfie-service').SelfieCapability
@@ -234,6 +237,10 @@ export interface AutomationDraftContext extends ModelCallObservation {
   onUsage(usage: ModelUsage): Promise<void>
 }
 export interface AgentEngine {
+  /** Discard a derived chat projection after the authoritative ProductStore clears it. */
+  forgetConversationMemory?(conversationId: string): Promise<void>
+  /** Drop every derived bobo thread after explicit memory correction/forget or source-chat clear. */
+  forgetAllConversationMemory?(): Promise<void>
   /** Explicit employee behavior invocation, separate from a user message or a Work declaration. */
   runBehavior?(context: EngineContext, input: { instruction: string; maxModelCalls: number }): Promise<import('../shared/domain/agent-profile').AgentBehaviorResult>
   interpretGroup?(context: EngineContext): Promise<import('../shared/domain/group-coordination').GroupInterpretation>
