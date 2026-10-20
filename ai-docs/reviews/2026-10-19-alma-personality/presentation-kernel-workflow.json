@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "phase": "presentation-kernel-in-progress-not-bound",
+  "baseCommit": "d81e0383",
+  "newModelRequests": 0,
+  "cumulativeModelRequests": 1338,
+  "defaultSkillCount": 31,
+  "realRendering": {
+    "evidenceDirectory": ".local/presentation-kernel-1792467374404",
+    "revision": 3,
+    "pptxHash": "0781b67eab569648aa91cc28c68b78652655c048d64819e13a7c7b6b1294ad69",
+    "renderer": "LibreOffice 26.2.6.3 8221e31b3ac356a1623c672912a3d2b492f7e3d1",
+    "images": [
+      {
+        "file": ".local/presentation-kernel-1792467374404/projects/f265da2d-cb0d-4562-99c3-9dc60faddb87/render-3-df993ae6-3850-4eef-aedd-3cfe77165362/001-intro.png",
+        "sha256": "7149a00b50a93dfcbd6f046dd6cea00644f83ffea582dad54f553fbe701e5267",
+        "bytes": 63697,
+        "width": 1600,
+        "height": 900,
+        "sameAsVisuallyInspectedBatch": true
+      },
+      {
+        "file": ".local/presentation-kernel-1792467374404/projects/f265da2d-cb0d-4562-99c3-9dc60faddb87/render-3-df993ae6-3850-4eef-aedd-3cfe77165362/002-evidence.png",
+        "sha256": "39cc53fe4d719f08186d4d0e0b70e837261799546e08f0c24a6e5aa365227f73",
+        "bytes": 43359,
+        "width": 1600,
+        "height": 900,
+        "sameAsVisuallyInspectedBatch": true
+      },
+      {
+        "file": ".local/presentation-kernel-1792467374404/projects/f265da2d-cb0d-4562-99c3-9dc60faddb87/render-3-df993ae6-3850-4eef-aedd-3cfe77165362/003-closing.png",
+        "sha256": "b6b61cfa18933fe761daee4111e03eb1b2fba3cfad67ae8eb59d03c10ff36ca9",
+        "bytes": 81400,
+        "width": 1600,
+        "height": 900,
+        "sameAsVisuallyInspectedBatch": true
+      }
+    ],
+    "chartValues": [
+      7,
+      11
+    ],
+    "embeddedEditableWorkbook": true,
+    "sourceNotesVerified": true,
+    "materialPages": 3,
+    "quality": "not-reviewed-by-dedicated-vision-model"
+  },
+  "checks": {
+    "typecheck": "passed",
+    "vitestFiles": 2,
+    "vitestPassed": 17,
+    "testLog": ".local/presentation-review-tests-complete.log",
+    "rendererProcessesRemaining": [],
+    "fixedSourceAndTargetHashesMatch": true,
+    "research40SkillsUnchanged": true,
+    "executedSourceHashesMatch": true
+  },
+  "failedAttempts": [
+    {
+      "evidence": ".local/presentation-kernel-probe-cp.log",
+      "reason": "Existing Homebrew launcher points to missing LibreOffice; exit 127"
+    },
+    {
+      "evidence": ".local/presentation-kernel-probe-render.log",
+      "reason": "Alma PDF.js 5 document.destroy incompatible with BOAI PDF.js 6; fixed loading-task lifecycle"
+    },
+    {
+      "evidence": ".local/presentation-kernel-probe-pdf6.log",
+      "reason": "Different native Canvas/Path2D implementations; aligned direct dependency with PDF.js 6"
+    },
+    {
+      "evidence": ".local/presentation-review-tests.log",
+      "reason": "Process test observation file missing before child startup; always create observation file and drain cancellation"
+    },
+    {
+      "evidence": ".local/presentation-review-tests-formats.log",
+      "reason": "Tests passed with missing standard font asset warning; local font/CMap/WASM paths added and rerun cleanly"
+    }
+  ],
+  "pending": [
+    "employee identity and source revocation/cleanup wiring",
+    "actual tool API/native/CLI binding and skill installation",
+    "dedicated vision configuration, provider call accounting and real quality review",
+    "build/renderer distribution and readiness UI",
+    "full slide element/source-format/long-lived resource matrix",
+    "personality quality and remaining full 371/206/40 migration"
+  ]
+}

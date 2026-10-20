@@ -16351,11 +16351,12 @@
       "name": "presentations",
       "originalRef": "alma-研究/技能/presentations/SKILL.md",
       "researchCopySha256": "e3cfac408c24e63d27fbf317fe39f8d766753f730df4eb0dd36b3b40d8315862",
-      "dependencyReviewStatus": "kernel-sources-reviewed-integration-pending",
+      "dependencyReviewStatus": "kernel-rendering-and-review-ported-employee-integration-pending",
       "targetSkill": null,
       "implementationStatus": "in-progress-kernel",
       "verification": [
-        "§11.48: typecheck and 3 kernel tests passed; real PPTX revision 3 generated; renderer startup exited 127; employee tools and visual review pending"
+        "§11.48: typecheck and 3 kernel tests passed; real PPTX revision 3 generated; renderer startup exited 127; employee tools and visual review pending",
+        "§11.49: 17 checks/typecheck and real 3-page LibreOffice rendering passed; templates/designs/materials/image imports and dedicated review core ported; actual vision/provider and employee tools pending"
       ]
     },
     {
@@ -16663,7 +16664,7 @@
       "verification": []
     }
   ],
-  "implementationProgressRef": "2026-10-19-BOAI独立Agent配置与行为运行架构.md#1148-ppt-内部核心阶段保存2026-10-20未接员工工具",
+  "implementationProgressRef": "2026-10-19-BOAI独立Agent配置与行为运行架构.md#1149-ppt-渲染素材与审阅核心2026-10-20继续中",
   "defaultSkillDistribution": {
     "version": 1,
     "manifest": "../resources/agent-skills/manifest.json",

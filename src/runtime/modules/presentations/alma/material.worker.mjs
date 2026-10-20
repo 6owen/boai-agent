@@ -1,6 +1,8 @@
 /*
  * [INPUT]: Fixed Alma 0.4.196 presentationMaterialExtractor.worker.js.
  * [OUTPUT]: Migrated presentation kernel; formatting and local import adaptation, release telemetry preamble removed.
+ * [OUTPUT]: Template inspection shares the bounded worker with material extraction.
+ * [OUTPUT]: PDF.js 6 loading task owns destruction; font/CMap/WASM assets resolve from the installed package.
  * [POS]: Internal host worker/model; not an employee-facing tool or permission boundary.
  * [PROTOCOL]: Update source-manifest.json and owning .folder.md when changed.
  */
@@ -8,7 +10,10 @@ import { parentPort as a } from "node:worker_threads";
 import n from "node:fs/promises";
 import o from "node:path";
 import { createHash as s, randomUUID as i } from "node:crypto";
+import { fileURLToPath } from "node:url";
 import r from "jszip";
+import { inspectTemplate } from "./template.mjs";
+const pdfAssets = o.dirname(fileURLToPath(import.meta.resolve("pdfjs-dist/package.json")));
 const c = 83886080, f = /* @__PURE__ */ new Set([".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".emf", ".wmf"]), l = /* @__PURE__ */ new Set([".pptx", ".docx", ".xlsx", ".pdf", ".txt", ".md", ".csv", ".json"]);
 function u(t) {
   return t.replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
@@ -100,6 +105,10 @@ a.on("message", (t) => {
         if (!l.has(e2)) throw new Error(`Presentation material extraction does not support ${e2 || "files without an extension"}`);
         const a2 = await n.readFile(t2.filePath);
         if (a2.byteLength > 262144e3) throw new Error("Source exceeds 250 MB");
+        if (t2.operation === "inspect") {
+          if (e2 !== ".pptx") throw new Error("Template inspection requires a PPTX file");
+          return inspectTemplate(a2);
+        }
         const i2 = s("sha256").update(a2).digest("hex"), h2 = o.join(t2.outputRoot, i2), v2 = o.join(h2, "material.json"), j = await (async function(t3, e3) {
           try {
             const a3 = JSON.parse(await n.readFile(t3, "utf8"));
@@ -111,14 +120,15 @@ a.on("message", (t) => {
         if (".pptx" !== e2) {
           let n2;
           if (".pdf" === e2) n2 = await (async function(t3) {
-            const { getDocument: e3 } = await import("pdfjs-dist/legacy/build/pdf.mjs"), a3 = await e3({ data: new Uint8Array(t3), isEvalSupported: false, useWorkerFetch: false }).promise, n3 = [];
+            const { getDocument: e3 } = await import("pdfjs-dist/legacy/build/pdf.mjs"), loading = e3({ data: new Uint8Array(t3), isEvalSupported: false, useWorkerFetch: false, standardFontDataUrl: o.join(pdfAssets, "standard_fonts") + o.sep, cMapUrl: o.join(pdfAssets, "cmaps") + o.sep, cMapPacked: true, wasmUrl: o.join(pdfAssets, "wasm") + o.sep }), n3 = [];
             try {
+              const a3 = await loading.promise;
               for (let t4 = 1; t4 <= a3.numPages; t4 += 1) {
                 const e4 = await a3.getPage(t4), o3 = (await e4.getTextContent()).items.map((t5) => "str" in t5 ? t5.str : "").join(" ").replace(/\s+/g, " ").trim();
                 n3.push({ number: t4, text: o3 ? [o3] : [], speakerNotes: [], images: [], tables: [], charts: [] }), e4.cleanup();
               }
             } finally {
-              await a3.destroy();
+              await loading.destroy();
             }
             return n3;
           })(a2);

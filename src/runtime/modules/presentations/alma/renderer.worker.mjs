@@ -1,6 +1,7 @@
 /*
  * [INPUT]: Fixed Alma 0.4.196 presentationRenderer.worker.js.
- * [OUTPUT]: Cancellation and shutdown wait for owned child exit; no speculative renderer restart.
+ * [OUTPUT]: Cancellation and shutdown wait for owned child close, including startup failure; no speculative renderer restart.
+ * [OUTPUT]: PDF.js 6 uses loading-task destruction, explicit canvas and installed local font/CMap/WASM assets.
  * [OUTPUT]: Migrated presentation kernel; formatting and local import adaptation, release telemetry preamble removed.
  * [POS]: Internal host worker/model; not an employee-facing tool or permission boundary.
  * [PROTOCOL]: Update source-manifest.json and owning .folder.md when changed.
@@ -10,10 +11,11 @@ import r from "node:fs/promises";
 import o from "node:os";
 import i from "node:path";
 import { randomUUID as a } from "node:crypto";
-import { pathToFileURL as s } from "node:url";
+import { pathToFileURL as s, fileURLToPath } from "node:url";
 import { spawn as d } from "node:child_process";
 import { createCanvas as l } from "@napi-rs/canvas";
 import { getDocument as c } from "pdfjs-dist/legacy/build/pdf.mjs";
+const pdfAssets = i.dirname(fileURLToPath(import.meta.resolve("pdfjs-dist/package.json")));
 let f, w = null;
 function u() {
   f && clearTimeout(f), f = void 0;
@@ -23,7 +25,7 @@ async function p() {
   const active = w;
   w = null;
   if (!active) return;
-  if (active.child.exitCode === null && active.child.signalCode === null) {
+  if (active.child.pid && !active.closed) {
     await new Promise((resolve) => {
       const timer = setTimeout(() => active.child.kill("SIGKILL"), 500);
       active.child.once("close", () => { clearTimeout(timer); resolve(); });
@@ -45,7 +47,9 @@ async function g(e) {
   if (w?.rendererPath === e && null === w.child.exitCode && null === w.child.signalCode) return m(), await y(w), w;
   await p();
   const t = await r.mkdtemp(i.join(o.tmpdir(), "alma-presentation-renderer-")), n2 = `alma-presentation-${process.pid}-${a()}`, l2 = d(e, ["--headless", "--nologo", "--nodefault", "--nolockcheck", "--nofirststartwizard", `--accept=pipe,name=${n2};urp;StarOffice.ComponentContext`, `-env:UserInstallation=${s(t).href}`], { stdio: "ignore", windowsHide: true });
-  return w = { rendererPath: e, profileDir: t, pipeName: n2, readyAt: Date.now() + 1e3, child: l2 }, await new Promise((e2, t2) => {
+  const resident = { rendererPath: e, profileDir: t, pipeName: n2, readyAt: Date.now() + 1e3, child: l2, closed: false };
+  l2.once("close", () => { resident.closed = true; });
+  return w = resident, await new Promise((e2, t2) => {
     const n3 = setTimeout(() => {
       i2(), e2();
     }, 1e3), r2 = (e3) => {
@@ -63,7 +67,7 @@ function h() {
 async function b(e) {
   const t = e.page.getViewport({ scale: 1 }), n2 = Math.min(e.width / t.width, e.height / t.height), o2 = e.page.getViewport({ scale: n2 }), i2 = l(e.width, e.height), s2 = i2.getContext("2d");
   s2.fillStyle = "#ffffff", s2.fillRect(0, 0, e.width, e.height);
-  const d2 = e.page.render({ canvasContext: s2, viewport: o2, transform: [1, 0, 0, 1, (e.width - o2.width) / 2, (e.height - o2.height) / 2] });
+  const d2 = e.page.render({ canvas: i2, viewport: o2, transform: [1, 0, 0, 1, (e.width - o2.width) / 2, (e.height - o2.height) / 2] });
   let c2, f2;
   const w2 = () => {
     d2.cancel(), f2?.(h());
@@ -138,8 +142,9 @@ n.on("message", (e) => {
           }
           const y2 = new Uint8Array(await r.readFile(u2));
           return await (async function(e3) {
-            const t3 = e3.startedAt ?? Date.now(), n3 = await c({ data: e3.pdfData, useSystemFonts: true }).promise, r2 = [];
+            const t3 = e3.startedAt ?? Date.now(), loading = c({ data: e3.pdfData, useSystemFonts: true, standardFontDataUrl: i.join(pdfAssets, "standard_fonts") + i.sep, cMapUrl: i.join(pdfAssets, "cmaps") + i.sep, cMapPacked: true, wasmUrl: i.join(pdfAssets, "wasm") + i.sep }), r2 = [];
             try {
+              const n3 = await loading.promise;
               if (n3.numPages !== e3.slideIds.length) throw new Error(`Rendered PDF contains ${n3.numPages} page(s), but presentation state contains ${e3.slideIds.length} slide(s)`);
               const o4 = e3.pageIndexes ?? e3.slideIds.map((e4, t4) => t4);
               if (o4.some((t4) => !Number.isInteger(t4) || t4 < 0 || t4 >= e3.slideIds.length)) throw new Error("Presentation page selection contains an invalid slide index");
@@ -152,7 +157,7 @@ n.on("message", (e) => {
               }
               return r2;
             } finally {
-              await n3.destroy();
+              await loading.destroy();
             }
           })({ pdfData: y2, outputDir: e2.outputDir, slideIds: e2.slideIds, pageIndexes: e2.pageIndexes, width: t2, height: n2, timeoutMs: o3, startedAt: l2, signal: e2.signal });
         } finally {

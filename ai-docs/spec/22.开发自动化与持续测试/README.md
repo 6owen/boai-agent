@@ -1,6 +1,6 @@
 <!--
 [INPUT]: 用户要求参考Magpie开发/Actions、采用ZCode UI Plugin与Excalidraw，并先落实文档。
-[OUTPUT]: 六步后续实施总入口；固定参考版本、现有基础、职责与实施边界明确。
+[OUTPUT]: 六步后续实施及macOS个人发布升级总入口；固定参考、现有基础、无Developer ID路线与实施边界明确。
 [POS]: 第22组开发自动化与持续测试总览。
 [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
 -->
@@ -17,6 +17,7 @@
 - 画板编辑器随插件嵌入BOAI，无需另装Excalidraw桌面App。已有tldraw文件的自动转换没有得到验证，不作为本次完成条件或既有能力。
 - 开发自动化独立于BOAI员工运行时；产品内的员工定时任务仍归第5组，不拿产品自动化替代仓库开发控制器。
 - 原生员工沿自身配置和能力，不因开发测试计划增加BOAI产品用量/时长限制。开发实验的登记和限额只约束开发侧运行。
+- 用户补充macOS无Apple开发者签名、本机开发自用；Tag/Release与桌面升级先按[04](./04-macOS本机发布与升级方案.md)落实文档。推荐自动发布产物加本机独立升级入口，`pnpm dev`沿源码更新；尚未启用签名/公证或标准自动更新。
 
 ## 2. 阅读入口与职责
 
@@ -25,6 +26,7 @@
 | [01 Magpie参考与开发自动化设计](./01-Magpie参考与开发自动化设计.md) | 需求到PR、独立开发、审查与返工 |
 | [02 持续测试与基准设计](./02-持续测试与基准设计.md) | PR、定期、交付前测试及版本比较 |
 | [03 实施步骤与验收](./03-实施步骤与验收.md) | 六阶段、逐项完成条件和整体唯一进度 |
+| [04 macOS本机发布与升级方案](./04-macOS本机发布与升级方案.md) | 无Developer ID构建、Tag/Release门槛、本机升级、数据与回滚 |
 | [第19组10 UI Plugin与Excalidraw](../19.应用插件架构/10-ZCode-UIPlugin与Excalidraw接入设计.md) | UI宿主、页面/工具/文档协议、迁入映射及功能唯一进度 |
 | [第15组11 业务评估主线](../15.Agent评估与持续优化/11-业务评估与Codex优化主线.md) | 真实runner、评分校准、开发/验证集及候选选优 |
 
@@ -40,6 +42,7 @@
 | 数据集命令 | `eval:dataset`实际为`score-collaboration.mjs --list` | 该命令只列题目，不执行真实业务任务 |
 | 桌面测试 | `playwright.config.ts`、`tests/e2e/`，已有串行Electron BDD | 适合各CI层的明确选择、运行环境与完整报告判定 |
 | UI Plugin | 本地ZCode有`plugin-ui`、`plugin-ui-bridge`、`pluginSandbox`及共享MCP Apps协议 | 尚未迁入BOAI；示例插件需从独立仓库准备 |
+| 发布升级 | electron-builder v26已有DMG构建；本机arm64、无Developer ID证书 | 无Tag发布workflow、ZIP升级入口或桌面更新器；04仅文档 |
 
 以上是源码/配置存在性核对，不是本轮运行通过结论。
 

@@ -6,7 +6,12 @@
     "Remove Sentry/release global preamble",
     "Format JavaScript preserving functional statements",
     "Use local model.mjs import",
-    "Renderer cancellation/shutdown waits for owned child exit; remove speculative renderer restart"
+    "Renderer cancellation/shutdown waits for owned child exit; remove speculative renderer restart",
+    "Select original design catalogue, template inspector and review prompt from index.js; explicit helper exports and authorized byte input",
+    "Use PDF.js 6 loading-task destruction, explicit canvas and local font/CMap/WASM assets",
+    "Pin @napi-rs/canvas to 1.0.10 matching PDF.js 6 native Path2D implementation",
+    "Run template inspection in the material worker; host owns authorized source bytes and cache validation",
+    "Use official SheetJS 0.20.3 tarball for original XLSX extraction APIs"
   ],
   "files": [
     {
@@ -25,13 +30,34 @@
       "source": "presentationRenderer.worker.js",
       "sourceSha256": "1ec6f87aa694b5f8a1a6925abd2341f2d1c542747b77449aa1a8eb08fdd98fd8",
       "target": "renderer.worker.mjs",
-      "targetSha256": "9af765994fba02a311515de135e2535cf5c6fa90e8cb42074ced4796ca6f6054"
+      "targetSha256": "d5cd75fcbac2ef56b8c92c98cce8aed5cf887fb6d53bbd5a618530ffa7950f4f"
     },
     {
       "source": "presentationMaterialExtractor.worker.js",
       "sourceSha256": "c8be35fa023d2173c5cee55cfd1187fc315beda0a45f2d08408c76ff8a006303",
       "target": "material.worker.mjs",
-      "targetSha256": "a8c449b4df73277c7deb415ee609a448910226e829a27d2105f7869f8b27e8d5"
+      "targetSha256": "e1dc65dc366a43e77b0236084e92e42aeaff3dd0395c4199a7879c8e1553f93b"
+    },
+    {
+      "source": "index.js",
+      "sourceSha256": "f23d7ad014271e55b4edf36719849b2e1406153cdc3ecabab06c6f3edbba9da3",
+      "selector": "lD/dD/uD: eight design profiles and scoring",
+      "target": "designs.mjs",
+      "targetSha256": "6e700e5946c0567fec58e507070314734875b4072669115362e73bc510934a0c"
+    },
+    {
+      "source": "index.js",
+      "sourceSha256": "f23d7ad014271e55b4edf36719849b2e1406153cdc3ecabab06c6f3edbba9da3",
+      "selector": "oD/sD/iD/aD/cD: template dimensions/fonts/colors/layouts; input adapted from file path to bytes",
+      "target": "template.mjs",
+      "targetSha256": "735c413eb0e940c7cc848b448889d9f5aba0151585ed4a51f953e624f76b8d43"
+    },
+    {
+      "source": "index.js",
+      "sourceSha256": "f23d7ad014271e55b4edf36719849b2e1406153cdc3ecabab06c6f3edbba9da3",
+      "selector": "_D/SD: original slide metadata and visual production review prompt",
+      "target": "review-prompt.mjs",
+      "targetSha256": "8904650c7362f2bf05f845ddf2a2b37843385068c138cccbadcaed7f08c05a1f"
     }
   ]
 }
