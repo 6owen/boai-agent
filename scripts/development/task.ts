@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 冻结任务、原仓库Git公共目录和实际进程身份。
- * [OUTPUT]: 规范相对路径、跨worktree唯一领取、租约及原始任务hash；不同输入不能冒用同一任务。
+ * [OUTPUT]: 唯一领取及冻结任务；保存流程版本/游标、绝对期限和恢复原件身份，不复用变化的输入。
  * [POS]: 开发控制器持久合同；不接BOAI产品任务/员工状态。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -32,11 +32,13 @@ export type Task = z.infer<typeof taskSchema>
 export interface TaskState {
   version: 1; taskHash: string; phase: string; base: string; worktree: string; branch: string;
   attempt: number; codexCalls: number; knownTokens: number; usageComplete: boolean;
-  head?: string; pending?: { id: string; kind: string; directory: string; started: boolean }; reason?: string;
+  head?: string; pending?: { id: string; kind: string; directory: string; started: boolean; journalHash?: string }; reason?: string;
   lease?: { owner: string; pid: number; hostname: string; expiresAt: string };
   baseline?: unknown; checks?: unknown; review?: unknown;
   delivery?: { head: string; base: string; url?: string; number?: number };
   controllerHash?: string; controllerArtifact?: string; environment?: { node: string; platform: string; arch: string; codex?: string };
+  workflowVersion?: number; cursor?: string; deadline?: number; proposal?: { path: string; sha256: string };
+  controllerHistory?: { from: string; to: string; at: string }[];
 }
 export const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }).trim()
 export function taskDirectory(repository: string, taskId: string) {

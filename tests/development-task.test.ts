@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 真实隔离Git仓库、固定进程检查及明确标为协议fixture的开发/审查回执。
- * [OUTPUT]: 同任务互斥、路径别名拒绝、新增文件、真实旧失败/新通过及未知操作不重放。
+ * [OUTPUT]: 互斥/路径/新增文件/返工及PR；完成步骤/部分补丁接续、外改与未知回执拒绝，调用计数和原件保持。
  * [POS]: 控制器确定性验收；真实Codex、PR与产品功能另行验收。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -184,4 +184,153 @@ it('PR创建期间base推进后保持待核对，不能签发交付成功', asyn
     return JSON.stringify(created ? [{ number: 1, url: 'https://github.com/fixture/repo/pull/1', headRefOid: state.head, baseRefName: 'main', state: 'OPEN' }] : [])
   })
   expect(result.state.phase).toBe('pr-pending'); expect(result.state.reason).toContain('交付期间base已变化')
+})
+
+it.each(['worktree', 'checks', 'develop', 'review'])('%s完整回执保存后中断，显式接续不重复已完成模型或检查', async interruptedKind => {
+  const input = task('checkpoint-fixture'), calls: string[] = []
+  input.checks[0].args = ['-e', "const fs=require('node:fs');fs.mkdirSync('test-results',{recursive:true});fs.appendFileSync('test-results/count','check\\n');if(fs.readFileSync('answer.txt','utf8')!=='fixed')process.exit(1)"]
+  const agent = async (kind: 'develop' | 'review') => {
+    calls.push(kind)
+    return { value: kind === 'develop' ? { summary: 'known patch', edits: [{ path: 'answer.txt', beforeSha256: digest('old'), content: 'fixed' }] } : { approved: true, findings: [], summary: 'known review' }, usage: { totalTokens: 10 } }
+  }
+  let interrupted = false
+  const first = await runDevelopmentTask(repository, input, undefined, { guard, agent, checkpointFault: async (kind, point) => {
+    if (!interrupted && kind === interruptedKind && point === 'receipt') { interrupted = true; throw new Error('模拟owner在完成回执后退出') }
+  } })
+  expect(first.state.phase).toBe('needs-reconciliation')
+  const result = await runDevelopmentTask(repository, input, undefined, { guard, agent, resume: true })
+  expect(result.state.phase, result.state.reason).toBe('reviewed')
+  expect(calls).toEqual(['develop', 'review'])
+  expect(result.state.codexCalls).toBe(2); expect(result.state.knownTokens).toBe(20)
+  expect(await readFile(join(result.state.worktree, 'test-results/count'), 'utf8')).toBe('check\ncheck\n')
+  expect(await readFile(join(repository, 'answer.txt'), 'utf8')).toBe('old')
+})
+it.each(['file', 'commit'] as const)('补丁在%s后中断，核对现有字节/提交再继续，不重复模型或已提交修改', async point => {
+  const input = task('partial-patch-fixture'), calls: string[] = []
+  const agent = async (kind: 'develop' | 'review') => {
+    calls.push(kind)
+    return { value: kind === 'develop' ? { summary: 'two files', edits: [{ path: 'answer.txt', beforeSha256: digest('old'), content: 'fixed' }, { path: 'feature.txt', beforeSha256: null, content: 'new feature' }] } : { approved: true, findings: [], summary: 'review' }, usage: { totalTokens: 10 } }
+  }
+  const first = await runDevelopmentTask(repository, input, undefined, { guard, agent, checkpointFault: async (kind, current) => { if (kind === 'apply' && current === point) throw new Error('模拟应用中断') } })
+  expect(first.state.phase).toBe('needs-reconciliation')
+  expect(calls).toEqual(['develop'])
+  expect(await readFile(join(first.state.worktree, 'answer.txt'), 'utf8')).toBe('fixed')
+  if (point === 'file') await expect(readFile(join(first.state.worktree, 'feature.txt'))).rejects.toMatchObject({ code: 'ENOENT' })
+  const previousHead = git(first.state.worktree, 'rev-parse', 'HEAD')
+  const result = await runDevelopmentTask(repository, input, undefined, { guard, agent, resume: true })
+  expect(result.state.phase, result.state.reason).toBe('reviewed')
+  expect(calls).toEqual(['develop', 'review'])
+  expect(await readFile(join(result.state.worktree, 'feature.txt'), 'utf8')).toBe('new feature')
+  expect(git(result.state.worktree, 'rev-list', '--count', `${base}..HEAD`)).toBe('1')
+  if (point === 'commit') expect(result.state.head).toBe(previousHead)
+})
+it('恢复发现第三种文件内容时不覆盖外改，也不重新请求模型', async () => {
+  const input = task('changed-partial-fixture'); let calls = 0
+  const agent = async () => { calls++; return { value: { summary: 'patch', edits: [{ path: 'answer.txt', beforeSha256: digest('old'), content: 'fixed' }, { path: 'feature.txt', beforeSha256: null, content: 'new feature' }] }, usage: { totalTokens: 10 } } }
+  const first = await runDevelopmentTask(repository, input, undefined, { guard, agent, checkpointFault: async (_kind, point) => { if (point === 'file') throw new Error('interrupted') } })
+  await writeFile(join(first.state.worktree, 'feature.txt'), 'external edit')
+  const result = await runDevelopmentTask(repository, input, undefined, { guard, agent, resume: true })
+  expect(result.state.phase).toBe('needs-reconciliation'); expect(result.state.reason).toContain('未知文件内容')
+  expect(await readFile(join(first.state.worktree, 'feature.txt'), 'utf8')).toBe('external edit')
+  expect(calls).toBe(1)
+})
+it('检查点原始回执被改写后拒绝接续，不把旧通过结论用于新内容', async () => {
+  const input = task('changed-receipt-fixture'); let calls = 0
+  const agent = async () => { calls++; return { value: { summary: 'patch', edits: [{ path: 'answer.txt', beforeSha256: digest('old'), content: 'fixed' }] }, usage: { totalTokens: 10 } } }
+  const first = await runDevelopmentTask(repository, input, undefined, { guard, agent, checkpointFault: async (kind) => { if (kind === 'develop') throw new Error('interrupted after receipt') } })
+  await writeFile(join(first.state.pending!.directory, 'result.json'), '{}')
+  const result = await runDevelopmentTask(repository, input, undefined, { guard, agent, resume: true })
+  expect(result.state.phase).toBe('needs-reconciliation'); expect(result.state.reason).toContain('原始文件/日志已变化'); expect(calls).toBe(1)
+})
+it('缺少完整模型回执时显式resume仍然不重放，恢复也不能续期', async () => {
+  const input = task('unknown-resume-fixture'); let calls = 0
+  const agent = async () => { calls++; throw new Error('unknown model result') }
+  const first = await runDevelopmentTask(repository, input, undefined, { guard, agent })
+  const deadline = first.state.deadline
+  const result = await runDevelopmentTask(repository, input, undefined, { guard, agent, resume: true })
+  expect(result.state.phase).toBe('needs-reconciliation'); expect(result.state.reason).toContain('不重放未知模型')
+  expect(calls).toBe(1); expect(result.state.deadline).toBe(deadline); expect(result.state.usageComplete).toBe(false)
+})
+
+it('真实owner被SIGKILL后从部分文件继续，原模型回执和唯一候选提交保持', async () => {
+  const { build } = await import('esbuild')
+  const { spawn } = await import('node:child_process')
+  const { once } = await import('node:events')
+  const local = resolve('.local'); await mkdir(local, { recursive: true })
+  const tools = await mkdtemp(join(local, 'development-kill-proof-'))
+  const config = join(root, 'task.json'), calls = join(root, 'calls.txt'), marker = join(root, 'killed.txt')
+  const input = task('actual-kill-fixture')
+  await writeFile(config, JSON.stringify(input))
+  const entry = join(tools, 'owner.mjs')
+  const code = `
+    import { readFile, appendFile, writeFile } from 'node:fs/promises';
+    import { runDevelopmentTask } from './scripts/development/controller.ts';
+    import { digest } from './scripts/development/task.ts';
+    const [repository, config, guard, calls, marker] = process.argv.slice(2);
+    const task = JSON.parse(await readFile(config, 'utf8'));
+    await runDevelopmentTask(repository, task, undefined, { guard,
+      agent: async kind => { await appendFile(calls, kind+'\\n'); return {value:kind==='develop'?{summary:'kill proof',edits:[{path:'answer.txt',beforeSha256:digest('old'),content:'fixed'},{path:'feature.txt',beforeSha256:null,content:'new feature'}]}:{approved:true,findings:[],summary:'review'},usage:{totalTokens:10}} },
+      checkpointFault: async (kind, point) => { if(kind==='apply'&&point==='file'){await writeFile(marker,'partial-file');process.kill(process.pid,'SIGKILL')} }
+    });
+  `
+  try {
+    await build({ stdin: { contents: code, resolveDir: process.cwd() }, outfile: entry, bundle: true, platform: 'node', format: 'esm', packages: 'external', target: 'node24' })
+    const child = spawn(process.execPath, [entry, repository, config, guard, calls, marker], { stdio: 'ignore' })
+    const [exitCode, signal] = await once(child, 'exit')
+    expect(exitCode).toBeNull(); expect(signal).toBe('SIGKILL')
+    expect(await readFile(marker, 'utf8')).toBe('partial-file')
+    const state = taskStatus(repository, input.taskId).state as { worktree: string }
+    expect(await readFile(join(state.worktree, 'answer.txt'), 'utf8')).toBe('fixed')
+    await expect(readFile(join(state.worktree, 'feature.txt'))).rejects.toMatchObject({ code: 'ENOENT' })
+    const result = await runDevelopmentTask(repository, input, undefined, { guard, resume: true, agent: async kind => {
+      const { appendFile } = await import('node:fs/promises'); await appendFile(calls, kind + '\n')
+      return { value: { approved: true, findings: [], summary: 'fresh fixture reviewer' }, usage: { totalTokens: 10 } }
+    } })
+    expect(result.state.phase, result.state.reason).toBe('reviewed')
+    expect(await readFile(calls, 'utf8')).toBe('develop\nreview\n')
+    expect(git(result.state.worktree, 'rev-list', '--count', `${base}..HEAD`)).toBe('1')
+    expect(await readFile(join(repository, 'answer.txt'), 'utf8')).toBe('old')
+  } finally { await rm(tools, { recursive: true, force: true }) }
+})
+it('兼容控制器迁移必须明确原hash并核对原字节，保留迁移记录', async () => {
+  const { acceptController, WORKFLOW_VERSION } = await import('../scripts/development/recovery')
+  const claim = claimTask(repository, task('controller-migration-fixture'))
+  const first = join(root, 'old-controller.mjs'), second = join(root, 'new-controller.mjs')
+  await writeFile(first, 'original controller'); await writeFile(second, 'compatible controller')
+  const before = digest(await readFile(first)), after = digest(await readFile(second))
+  claim.state.workflowVersion = WORKFLOW_VERSION
+  try {
+    await acceptController(claim, before, first)
+    await expect(acceptController(claim, after, second)).rejects.toThrow('明确原hash')
+    await expect(acceptController(claim, after, second, 'f'.repeat(64))).rejects.toThrow('明确原hash')
+    await acceptController(claim, after, second, before)
+    expect(claim.state.controllerHash).toBe(after)
+    expect(claim.state.controllerHistory).toEqual([{ from: before, to: after, at: expect.any(String) }])
+    expect(await readFile(join(claim.directory, `controller-${before}.mjs`), 'utf8')).toBe('original controller')
+  } finally { claim.release() }
+})
+it('补丁中断后执行位外改不能随恢复提交', async () => {
+  const { chmod } = await import('node:fs/promises')
+  const input = task('mode-change-fixture'); let calls = 0
+  const agent = async () => { calls++; return { value: { summary: 'patch', edits: [{ path: 'answer.txt', beforeSha256: digest('old'), content: 'fixed' }, { path: 'feature.txt', beforeSha256: null, content: 'new feature' }] }, usage: { totalTokens: 10 } } }
+  const first = await runDevelopmentTask(repository, input, undefined, { guard, agent, checkpointFault: async (_kind, point) => { if (point === 'file') throw new Error('interrupted') } })
+  await chmod(join(first.state.worktree, 'answer.txt'), 0o755)
+  const result = await runDevelopmentTask(repository, input, undefined, { guard, agent, resume: true })
+  expect(result.state.phase).toBe('needs-reconciliation'); expect(result.state.reason).toContain('未知执行权限'); expect(calls).toBe(1)
+  expect(git(first.state.worktree, 'rev-parse', 'HEAD')).toBe(base)
+})
+it('完整回执可只读恢复，但已过最初绝对期限不能继续请求或提交', async () => {
+  const { vi } = await import('vitest')
+  const input = task('deadline-resume-fixture'); let calls = 0
+  const agent = async () => { calls++; return { value: { summary: 'patch', edits: [{ path: 'answer.txt', beforeSha256: digest('old'), content: 'fixed' }] }, usage: { totalTokens: 10 } } }
+  const first = await runDevelopmentTask(repository, input, undefined, { guard, agent, checkpointFault: async kind => { if (kind === 'develop') throw new Error('receipt completed') } })
+  const deadline = first.state.deadline!
+  const now = vi.spyOn(Date, 'now').mockReturnValue(deadline + 1)
+  try {
+    const result = await runDevelopmentTask(repository, input, undefined, { guard, agent, resume: true })
+    expect(result.state.phase).toBe('stopped'); expect(result.state.reason).toContain('绝对总期限')
+    expect(result.state.deadline).toBe(deadline); expect(calls).toBe(1)
+    expect(await readFile(join(first.state.worktree, 'answer.txt'), 'utf8')).toBe('old')
+    expect(git(first.state.worktree, 'rev-parse', 'HEAD')).toBe(base)
+  } finally { now.mockRestore() }
 })
