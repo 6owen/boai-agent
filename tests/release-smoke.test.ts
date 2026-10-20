@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 明确的目录/报告协议夹具及真实Node/native guard；无实际应用包或DMG资格。
- * [OUTPUT]: 固定8/2场景身份、精确挂载所有权和真实CLI旧活跃账本拒绝；不运行GUI、模型或挂载。
+ * [OUTPUT]: 固定8/2、完整逐启动profile负例、真实bundle被改拒绝及实际CLI旧活跃账本拒绝；不运行GUI/模型/挂载。
  * [POS]: 个人产物冒烟编排合同；实际包/挂载故障演练另留原件。
  * [PROTOCOL]: 修改同步Header与tests/.folder.md。
  */
@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os'
 import { spawn } from 'node:child_process'
 import { once } from 'node:events'
 // @ts-expect-error Shared Node release module has no declaration.
-import { ownedSmokeMount, selectSmokeCases } from '../scripts/release-smoke.mjs'
+import { ownedSmokeMount, selectSmokeCases, assertSmokeLaunch, verifySmokeBundle } from '../scripts/release-smoke.mjs'
 // @ts-expect-error Shared Node release module has no declaration.
 import { releaseFile, bundleInventory } from '../scripts/release-build.mjs'
 
@@ -28,6 +28,37 @@ it.each([
   { images: [{ ...image, 'system-entities': [...image['system-entities'], { 'mount-point': '/private/another-partition' }] }] },
   { images: undefined },
 ])('挂载身份冲突或不完整时拒绝退挂：%j', info => expect(() => ownedSmokeMount(info, intent)).toThrow())
+
+const launchOptions = { binary: '/fixture/BoAI Agent.app/Contents/MacOS/BoAI Agent', version: '0.2.4', cli: false, temporaryRoot: '/private/protocol-tmp' }
+const launch = () => {
+  const profileRoot = '/private/protocol-tmp/boai-bdd-profile1', expected = { executable: launchOptions.binary, dataDir: profileRoot }
+  return { profileRoot, expected, actual: { ...expected }, observed: { executable: expected.executable, applicationPath: '/fixture/BoAI Agent.app/Contents/Resources/app.asar', dataDir: profileRoot, packaged: true, pid: 1234, version: launchOptions.version } }
+}
+it('完整实际启动字段绑定本场临时profile、实际程序/asar及版本', () => expect(assertSmokeLaunch(launch(), launchOptions)).toBe(launch().profileRoot))
+it.each([
+  { name: 'missing-both-dataDir', change: value => { Reflect.deleteProperty(value.expected, 'dataDir'); Reflect.deleteProperty(value.actual, 'dataDir') } },
+  { name: 'wrong-observed-dataDir', change: value => { value.observed.dataDir = '/personal/boai' } },
+  { name: 'outside-profile', change: value => { value.profileRoot = value.expected.dataDir = value.actual.dataDir = value.observed.dataDir = '/personal/boai' } },
+  { name: 'nonstring-dataDir', change: value => { Reflect.set(value.expected, 'dataDir', 123); Reflect.set(value.actual, 'dataDir', 123) } },
+  { name: 'wrong-actual-dataDir', change: value => { value.actual.dataDir = '/personal/boai' } },
+  { name: 'wrong-asar', change: value => { value.observed.applicationPath = '/other/app.asar' } },
+  { name: 'not-packaged', change: value => { value.observed.packaged = false } },
+  { name: 'wrong-version', change: value => { value.observed.version = '0.2.3' } },
+  { name: 'wrong-observed-executable', change: value => { value.observed.executable = '/other/BoAI Agent' } },
+] satisfies { name: string; change(value: ReturnType<typeof launch>): void }[])('$name不能因两侧相等或宿主退出0通过', ({ change }) => {
+  const value = launch(); change(value); expect(() => assertSmokeLaunch(value, launchOptions)).toThrow()
+})
+it('已检查的实际解包bundle文件被修改后，清理前重核拒绝且保留修改现场', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'boai-smoke-bundle-'))
+  try {
+    await mkdir(join(directory, 'Contents')); const file = join(directory, 'Contents/actual-file')
+    await writeFile(file, 'verified-before'); const expected = await bundleInventory(directory)
+    expect(await verifySmokeBundle(directory, expected)).toEqual(expected)
+    await writeFile(file, 'changed-during-test')
+    await expect(verifySmokeBundle(directory, expected)).rejects.toThrow('实际产物bundle字节')
+    expect(await readFile(file, 'utf8')).toBe('changed-during-test')
+  } finally { await rm(directory, { recursive: true, force: true }) }
+})
 
 async function inventory() {
   const bytes = await readFile('tests/e2e/test-tiers.json'), plan = JSON.parse(bytes.toString())

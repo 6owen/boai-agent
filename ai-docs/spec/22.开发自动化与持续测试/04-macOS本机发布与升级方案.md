@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 冒烟逐启动完整字段绑定本场唯一临时profile和实际userData/asar，实际解包bundle清理前须再次与builder全清单相同。
 [OUTPUT]: 新增release:smoke正式候选/verify入口合同：固定ZIP8/DMG2、长寿命受管挂载、逐启动实际包身份及原件；真实新包/故障演练待验。
 [OUTPUT]: ZIP目录核验逐层统一显式/隐式父路径拼写，并以全部唯一节点共用5万上限，避免实际解包树合并/放大。
 [OUTPUT]: 新增共用ZIP目录/CRC/模式/链接/空间阶段，真实c5全展开和深层签名通过；正式编排、main与升级仍未完成。
@@ -202,4 +203,6 @@ CI不配置`CSC_LINK`、`CSC_KEY_PASSWORD`或Apple公证凭据，使用上述显
 
 ZIP固定8场：创建、API连续文件/重启、两个本机文件/重启、两个目录授权场景、外观和图片背景；DMG固定创建及CLI安装/无系统Node/独立服务/移动更新/卸载2场。沿完整标题和实际ID选择原BDD，开发版Dock场景仍在源码固定28内，不进入包清单。两种实际.app均核完整builder清单、plist/arm64/ad-hoc签名、三个原生助手、asar源码SHA和构建；每次窗口启动核实际execPath/isPackaged/隔离userData并存原件，CLI场景允许其明示副本路径。报告须完整一次通过，原截图/trace/逐启动身份/生成文件字节均重核。
 
-`pnpm release:smoke --verify .local/release-asset-runs/<id>`只读重核同源码候选、完整原件/hash、两资产选择/原报告和启动身份；成功封存不代替main资格、发布/个人安装或升级回滚。当前仅9项清单/挂载所有权协议及真实CLI旧guard拒绝检查通过，真实新候选和实际挂载故障恢复仍待执行；旧c5两个独立探路成绩不套用此入口。
+逐启动字段必须完整：本场profileRoot为系统临时目录下独立boai-bdd目录，expected/actual的程序及dataDir分别存在并相等，observed实际程序、asar及userData经已知系统路径别名规范后对应；同场各次保持该profile，各场不得复用。两种实际bundle在BDD后、删除ZIP解包或退挂DMG之前，再次核全部文件字节/执行模式及链接与builder清单相同，保存before/after原件；变化失败并保留现场，不能只重核未运行的原builder包。
+
+`pnpm release:smoke --verify .local/release-asset-runs/<id>`只读重核同源码候选、完整原件/hash、两资产选择/原报告和启动身份；成功封存不代替main资格、发布/个人安装或升级回滚。当前20项冒烟合同（清单/挂载所有权/完整profile协议、实际bundle修改和真实CLI旧guard拒绝）通过，真实新候选和实际挂载故障恢复仍待执行；旧c5两个独立探路成绩不套用此入口。

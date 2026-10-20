@@ -130,7 +130,7 @@ export class Desktop {
       const expected = { executable: await realpath(packaged), dataDir: await realpath(options.dataDir ?? this.root) }
       const actual = { executable: await realpath(observed.executable), dataDir: await realpath(observed.dataDir) }
       if (!observed.packaged || JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error('实际应用包、可执行文件或隔离数据目录不对应')
-      await this.reviewData(`第 ${this.launchCount} 次实际应用包启动`, { launch: this.launchCount, expected, actual, observed })
+      await this.reviewData(`第 ${this.launchCount} 次实际应用包启动`, { launch: this.launchCount, profileRoot: await realpath(this.root), expected, actual, observed })
     }
     if (osLaunch) {
       const observed = await this.application.evaluate(({ app }) => ({ pid: process.pid, executable: process.execPath, dataDir: app.getPath('userData'), argv: process.argv, version: app.getVersion(), packaged: app.isPackaged }))
