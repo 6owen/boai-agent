@@ -1,94 +1,14 @@
-# [INPUT]: 仓库变更、锁定依赖、离线协议服务。
-# [OUTPUT]: 同SHA离线/视觉门槛；安装实证、完整BDD时间预算和原生崩溃栈留证，失败不放行。
-# [POS]: .github/workflows/tests.yml。
-# [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
-name: Offline tests
+# [INPUT]: 固定macOS runner及旧BOAI截图基准。
+# [OUTPUT]: 仅诊断Apple字体来源/按需下载后的旧基准比较；不替换PNG、不提供发布资格。
+# [POS]: 独立诊断分支手动工作流，不合入产品分支。
+# [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
+name: Font source probe
 on:
-  pull_request:
-  push:
-    branches: [main, master]
   workflow_dispatch:
 permissions:
   contents: read
-concurrency:
-  group: offline-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
 jobs:
-  desktop:
-    name: Engineering and desktop
-    runs-on: macos-15
-    # 552串行BDD另加约11分钟模块；仅扩大整个job预算，单测试超时不变。
-    timeout-minutes: 90
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24.16.0'
-          cache: pnpm
-      - id: install
-        env:
-          ELECTRON_SKIP_BINARY_DOWNLOAD: ''
-        run: |
-          pnpm install --frozen-lockfile
-          node node_modules/electron/install.js
-          pnpm exec electron --version
-      - id: types
-        run: pnpm typecheck
-      - id: lint
-        run: pnpm lint:ui
-      - id: build
-        run: pnpm build
-      - id: unit
-        run: pnpm test --maxWorkers=2
-      - name: Preserve native crash stacks
-        if: failure() && steps.unit.outcome == 'failure'
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          from shutil import copyfile
-          output = Path('.local/ci/native-crashes')
-          output.mkdir(parents=True, exist_ok=True)
-          reports = sorted((Path.home() / 'Library/Logs/DiagnosticReports').glob('node*.ips'), key=lambda path: path.stat().st_mtime, reverse=True)
-          for path in reports[:5]:
-              copyfile(path, output / path.name)
-          print('Native crash stack reports:', min(len(reports), 5))
-          PY
-      - id: dataset
-        run: pnpm eval:dataset
-      - id: bdd
-        run: pnpm test:electron
-      - if: always()
-        env:
-          CI_STEP_RESULTS: ${{ toJSON(steps) }}
-          CI_PR_HEAD: ${{ github.event.pull_request.head.sha }}
-          CI_PR_BASE: ${{ github.event.pull_request.base.sha }}
-        run: node scripts/ci-result.mjs record .local/ci/engineering.json
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: engineering
-          path: .local/ci/engineering.json
-          include-hidden-files: true
-          if-no-files-found: error
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: desktop-failure-evidence
-          path: |
-            playwright-report/
-            test-results/
-            cucumber-report/
-          if-no-files-found: ignore
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: native-crash-stacks
-          path: .local/ci/native-crashes/
-          include-hidden-files: true
-          if-no-files-found: ignore
-  ui:
-    name: UI regression
+  font:
     runs-on: macos-15
     timeout-minutes: 20
     steps:
@@ -105,29 +25,46 @@ jobs:
           node node_modules/electron/install.js
           pnpm exec electron --version
       - run: pnpm build
-      - name: Match baseline system language
-        run: defaults write -g AppleLanguages -array zh-Hans-CN
-      - run: node scripts/ui-regression.mjs check --output .local/ui-ci
+      - run: defaults write -g AppleLanguages -array zh-Hans-CN
+      - name: Enumerate and request system-managed font
+        run: |
+          cat > /tmp/boai-font-source.swift <<'SWIFT'
+          import Foundation
+          import CoreText
+          import CryptoKit
+          func inventory(_ phase: String) {
+            let collection = CTFontCollectionCreateFromAvailableFonts(nil)
+            let descriptors = CTFontCollectionCreateMatchingFontDescriptors(collection) as? [CTFontDescriptor] ?? []
+            var records: [[String: Any]] = []
+            for descriptor in descriptors {
+              let name = CTFontDescriptorCopyAttribute(descriptor, kCTFontNameAttribute) as? String ?? ""
+              if !["PingFangSC-Regular", "PingFangSC-Medium", "PingFangSC-Semibold"].contains(name) { continue }
+              let font = CTFontCreateWithFontDescriptor(descriptor, 13, nil)
+              let url = CTFontCopyAttribute(font, kCTFontURLAttribute) as? URL
+              let bytes = url.flatMap { try? Data(contentsOf: $0) }
+              records.append(["name": name, "family": CTFontCopyFamilyName(font) as String, "path": url?.path ?? "unknown", "version": CTFontCopyName(font, kCTFontVersionNameKey) as String? ?? "unknown", "sha256": bytes.map { SHA256.hash(data: $0).map { String(format: "%02x", $0) }.joined() } ?? "unknown", "downloadable": CTFontDescriptorCopyAttribute(descriptor, kCTFontDownloadableAttribute) as? Bool ?? false, "downloaded": CTFontDescriptorCopyAttribute(descriptor, kCTFontDownloadedAttribute) as? Bool ?? false])
+            }
+            let data = try! JSONSerialization.data(withJSONObject: ["phase": phase, "fonts": records], options: [.sortedKeys])
+            print("FONT_SOURCE " + String(data: data, encoding: .utf8)!)
+          }
+          inventory("before")
+          let names = ["PingFangSC-Regular", "PingFangSC-Medium", "PingFangSC-Semibold"]
+          let descriptors = names.map { CTFontDescriptorCreateWithAttributes([kCTFontNameAttribute: $0, kCTFontDownloadableAttribute: true] as CFDictionary) }
+          let finished = DispatchSemaphore(value: 0)
+          let started = CTFontDescriptorMatchFontDescriptorsWithProgressHandler(descriptors as CFArray, nil) { state, info in
+            print("FONT_DOWNLOAD_STATE " + String(state.rawValue))
+            if state == .didFinish || state == .didFail { finished.signal() }
+            return true
+          }
+          if !started || finished.wait(timeout: .now() + 60) == .timedOut { print("FONT_DOWNLOAD_INCOMPLETE"); exit(1) }
+          inventory("after")
+          SWIFT
+          swift /tmp/boai-font-source.swift
+      - run: node scripts/ui-regression.mjs check --output .local/ui-font-source
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ui
-          path: .local/ui-ci/
+          name: font-source-ui
+          path: .local/ui-font-source/
           include-hidden-files: true
-          if-no-files-found: error
-  required:
-    name: Required checks
-    if: always()
-    needs: [desktop, ui]
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24.16.0'
-      - uses: actions/download-artifact@v4
-        with:
-          path: .local/ci-artifacts
-      - env:
-          CI_JOB_RESULTS: ${{ toJSON(needs) }}
-        run: node scripts/ci-result.mjs gate
+          if-no-files-found: ignore
