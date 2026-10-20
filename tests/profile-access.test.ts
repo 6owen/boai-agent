@@ -1,11 +1,11 @@
 /*
  * [INPUT]: 实际SQLite共享/独占事务、隔离profile及Node/Electron子进程。
- * [OUTPUT]: 多应用/维护互斥、本卷缺目录别名、裸v2权限边界、未知格式保留及真实GC/死亡释放证据。
+ * [OUTPUT]: 多应用/维护互斥、本卷缺目录别名/悬空链接/保留名称、裸v2权限及真实GC/死亡释放证据。
  * [POS]: 个人升级准入合同；不是应用升级或完整数据回滚验收。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
 import { afterAll, afterEach, beforeAll, expect, test } from 'vitest'
-import { chmod, lstat, mkdtemp, mkdir, readFile, realpath, rename, rm, symlink, writeFile } from 'node:fs/promises'
+import { chmod, lstat, mkdtemp, mkdir, readFile, readdir, realpath, rename, rm, symlink, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { spawn, type ChildProcess } from 'node:child_process'
@@ -96,6 +96,25 @@ test.each([['profile', 'PROFILE'], ['prófile', 'pro\u0301file'], ['µprofile', 
   if (aliases) expect(() => access(alternate)).toThrow(ProfileAccessBusyError)
   else access(alternate).assertHeld() // Distinct names on a sensitive volume remain independent.
   maintenance.assertHeld()
+})
+
+test('a dangling profile symlink or child cannot acquire a different authority during restore', async () => {
+  const { root, profile } = await fixture(); await mkdir(profile)
+  const alias = join(root, 'alias'); await symlink(profile, alias)
+  const maintenance = access(profile, 'maintenance'); await rename(profile, join(root, 'backup'))
+  const before = await readdir(root)
+  expect(() => access(alias)).toThrow('符号链接')
+  expect(() => acquireRuntimeProfileAccess(join(alias, 'v2'))).toThrow('符号链接')
+  expect(await readdir(root)).toEqual(before)
+  maintenance.assertHeld()
+})
+
+test.each([false, true])('control namespace cannot itself become a profile (uppercase=%s)', async uppercase => {
+  if (!process.getuid) return
+  const { root } = await fixture(), name = `.boai-profile-locks-${process.getuid()}`, profile = join(root, uppercase ? name.toUpperCase() : name)
+  expect(() => access(profile, 'maintenance')).toThrow('保留')
+  await expect(lstat(profile)).rejects.toMatchObject({ code: 'ENOENT' })
+  expect(await readdir(root)).toEqual([])
 })
 
 test('unrelated profiles do not block each other; runtime v2 aliases cover both desktop and bare profiles', async () => {

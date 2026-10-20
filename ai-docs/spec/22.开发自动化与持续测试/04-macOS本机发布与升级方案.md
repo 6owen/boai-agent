@@ -1,5 +1,5 @@
 <!--
-[OUTPUT]: profile访问准入以同卷叶目录保留实际大小写/Unicode别名身份；裸v2仅在外层准入不存在且无权创建时回退，实际进度归03。
+[OUTPUT]: profile准入拒绝恢复时悬空链接及保留控制名称；最低Node22.13兼容，同卷别名/裸v2边界与原生命周期保持，实际归03。
 [OUTPUT]: 本场userData可为profileRoot内原合法product子目录，仍要求完整字段、同场实际dataDir固定和跨场隔离。
 [OUTPUT]: 冒烟逐启动完整字段绑定本场唯一临时profile和实际userData/asar，实际解包bundle清理前须再次与builder全清单相同。
 [OUTPUT]: 新增release:smoke正式候选/verify入口合同：固定ZIP8/DMG2、长寿命受管挂载、逐启动实际包身份及原件；真实新包/故障演练待验。
@@ -152,6 +152,8 @@ CI不配置`CSC_LINK`、`CSC_KEY_PASSWORD`或Apple公证凭据，使用上述显
 `src/runtime/profile-access.ts`使用Node内置SQLite：正常应用持有共享读事务，维护工具取得独占事务后才能开始离线快照/恢复；控制文件为profile父目录下私有`.boai-profile-locks-<uid>/<profile叶名>/access.sqlite`，记录规范profile及版本。叶名交给同一父文件系统解析大小写/Unicode别名，不对路径字符串hash后另建别名锁；即使恢复期间profile暂时移走，别名仍对应同一准入。控制目录/文件仅当前用户可访问，已发布文件不删除或覆盖。首次初始化通过完整临时数据库原子发布，维护期间新程序不能先创建profile。桌面在single-instance/迁移前准入并持有至真实主进程退出；bootstrap覆盖迁移/服务排空，独立服务额外覆盖宿主、RPC和发现文件的最终清理。标准`userData/v2`同时持有外层userData和本身的准入。裸headless目录恰好名为v2且外层控制目录不存在、因父权限无法创建时，仅使用自身准入；已有外层锁、未知格式或无法核对控制目录时均不能回退。已有路径别名先规范化。
 
 未知关闭不因GC丢掉访问锁，实际进程死亡由OS释放；失败/未来格式/非私有路径保留原件并拒绝，不靠PID或锁文件存在判断存活。维护准入不是实际进程退出证明，也不是旧版本协议的补丁：安装器仍须识别目标版本/实际进程和原runtime owner，当前旧开发进程不持有新协议时不能凭准入成功就认为它已退出。本候选不授完整一致性快照、安装/回滚或个人数据权限认证；实际结果只归03。
+
+恢复期间目标缺失的符号链接及其子目录拒绝准入，不将其当作新的字面profile；`.boai-profile-locks-`保留名称及规范化别名不能作为profile叶名，须在任何目录创建前拒绝，避免控制文件落入被维护目标。Node最低版本继续为原22.13，不依赖其未提供的`isTransaction`属性；事务本身由真实BEGIN/读操作取得，busy等待通过SQLite PRAGMA设置，较新运行时仍核对实际事务状态。[Node22.13 SQLite API](https://nodejs.org/download/release/v22.13.0/docs/api/sqlite.html)
 
 ## 7. 未来标准自动更新路线
 

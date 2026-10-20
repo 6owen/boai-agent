@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 明确profile根目录、应用共享访问或升级维护模式，以及Node内置SQLite。
- * [OUTPUT]: profile之外的持久锁文件及本卷别名身份；应用可并用，维护排斥访问，实际进程死亡释放。
+ * [OUTPUT]: profile外持久锁及本卷别名身份；拒绝悬空链接/保留名称，应用并用、维护独占、进程死亡释放。
  * [POS]: 桌面/独立服务/个人升级的写入准入；不替代runtime owner或实际进程退出证明。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -28,6 +28,9 @@ function canonicalPath(path: string): string {
   try { return realpathSync(path) }
   catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+    // A temporarily missing symlink target is not a new literal profile authority.
+    try { if (lstatSync(path).isSymbolicLink()) throw Error('数据配置包含目标暂不可用的符号链接，请等待恢复完成') }
+    catch (inspection) { if ((inspection as NodeJS.ErrnoException).code !== 'ENOENT') throw inspection }
     return join(canonicalPath(dirname(path)), basename(path))
   }
 }
@@ -69,6 +72,7 @@ export function acquireProfileAccess(input: string, mode: ProfileAccessMode = 'a
   if (!['application', 'maintenance'].includes(mode)) throw Error('数据维护模式无效')
   // Do not create userData before admission: it may be temporarily absent during a restore.
   const profileRoot = canonicalPath(input), directory = controlDirectory(profileRoot)
+  if (basename(profileRoot).normalize('NFKC').replace(/\p{Default_Ignorable_Code_Point}/gu, '').toUpperCase().startsWith('.BOAI-PROFILE-LOCKS-')) throw Error('数据配置不能使用保留的维护锁目录名称')
   mkdirSync(directory, { recursive: true, mode: 0o700 }); const parent = privatePath(directory, true)
   // Let this same parent filesystem resolve case/Unicode aliases even while userData is absent.
   // A directory preserves the full legal leaf length; adding a suffix to a 255-byte name would not.
@@ -78,14 +82,16 @@ export function acquireProfileAccess(input: string, mode: ProfileAccessMode = 'a
   publishControl(file, profileRoot)
   const original = privatePath(file, false)
   if (original.size > 1024 * 1024) throw Error('数据维护锁内容过大，原文件保持')
-  const database = new DatabaseSync(file, { readOnly: mode === 'application', timeout: 0 })
+  const database = new DatabaseSync(file, { readOnly: mode === 'application' })
   let released = false
   const assertHeld = () => {
-    if (released || !database.isTransaction) throw Error('数据维护访问已结束')
+    // Node 22.13 has no isTransaction getter; BEGIN/read below still establish the real lock.
+    if (released || database.isTransaction === false) throw Error('数据维护访问已结束')
     const currentParent = privatePath(directory, true), currentScope = privatePath(scopeDirectory, true), current = privatePath(file, false)
     if (currentParent.dev !== parent.dev || currentParent.ino !== parent.ino || currentScope.dev !== scope.dev || currentScope.ino !== scope.ino || current.dev !== original.dev || current.ino !== original.ino) throw Error('数据维护锁路径身份已改变，不能继续写入')
   }
   try {
+    database.exec('PRAGMA busy_timeout=0')
     if (database.prepare('PRAGMA journal_mode').get()?.journal_mode !== 'delete') throw Error('数据维护锁格式不受支持，原文件保持')
     database.exec(mode === 'maintenance' ? 'BEGIN EXCLUSIVE' : 'BEGIN')
     const rows = database.prepare('SELECT id,version,profile FROM identity').all()
