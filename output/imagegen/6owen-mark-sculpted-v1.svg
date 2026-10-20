@@ -1,0 +1,49 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">6owen sculpted mark</title>
+  <desc id="desc">Original continuous spiral mark in soft charcoal, on a white rounded app tile.</desc>
+  <defs>
+    <linearGradient id="backdrop" x1="100" y1="0" x2="924" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FAFAFB"/>
+      <stop offset="1" stop-color="#EEEEF0"/>
+    </linearGradient>
+    <linearGradient id="tile" x1="230" y1="90" x2="830" y2="950" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="0.7" stop-color="#FEFEFE"/>
+      <stop offset="1" stop-color="#F5F5F6"/>
+    </linearGradient>
+    <linearGradient id="charcoal" x1="18.5" y1="2" x2="6" y2="23" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#444445"/>
+      <stop offset="0.26" stop-color="#29292A"/>
+      <stop offset="0.6" stop-color="#121213"/>
+      <stop offset="0.84" stop-color="#09090A"/>
+      <stop offset="1" stop-color="#242425"/>
+    </linearGradient>
+    <filter id="tileShadow" x="0" y="0" width="1024" height="1024" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="22" stdDeviation="22" flood-color="#191921" flood-opacity="0.13"/>
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#34343B" flood-opacity="0.035"/>
+    </filter>
+    <filter id="sculpt" x="0" y="0" width="24" height="25" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feOffset in="SourceAlpha" dx="0.08" dy="0.12" result="lowerAlpha"/>
+      <feComposite in="SourceAlpha" in2="lowerAlpha" operator="out" result="upperRim"/>
+      <feGaussianBlur in="upperRim" stdDeviation="0.065" result="softUpperRim"/>
+      <feFlood flood-color="#FFFFFF" flood-opacity="0.24" result="rimColor"/>
+      <feComposite in="rimColor" in2="softUpperRim" operator="in" result="highlight"/>
+      <feOffset in="SourceAlpha" dx="-0.1" dy="-0.14" result="upperAlpha"/>
+      <feComposite in="SourceAlpha" in2="upperAlpha" operator="out" result="lowerRim"/>
+      <feGaussianBlur in="lowerRim" stdDeviation="0.1" result="softLowerRim"/>
+      <feFlood flood-color="#000000" flood-opacity="0.52" result="shadeColor"/>
+      <feComposite in="shadeColor" in2="softLowerRim" operator="in" result="shade"/>
+      <feMerge>
+        <feMergeNode in="SourceGraphic"/>
+        <feMergeNode in="shade"/>
+        <feMergeNode in="highlight"/>
+      </feMerge>
+      <feComposite in2="SourceAlpha" operator="in"/>
+    </filter>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#backdrop)"/>
+  <rect x="72" y="72" width="880" height="880" rx="210" fill="url(#tile)" stroke="#FFFFFF" stroke-width="2" filter="url(#tileShadow)"/>
+  <g transform="translate(128 128) scale(32)">
+    <path d="M16.5 3.5H10A5.5 5.5 0 0 0 4.5 9v6a5.5 5.5 0 0 0 5.5 5.5h4a5.5 5.5 0 0 0 0-11h-4.5v6a1.5 1.5 0 0 0 1.5 1.5h2a1.5 1.5 0 0 0 0-3h-2" stroke="url(#charcoal)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#sculpt)"/>
+  </g>
+</svg>
