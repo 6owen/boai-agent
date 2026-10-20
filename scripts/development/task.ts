@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 冻结任务、原仓库Git公共目录和实际进程身份。
- * [OUTPUT]: 跨worktree唯一领取、租约、原子状态及原始任务hash；不同输入不能冒用同一任务。
+ * [OUTPUT]: 规范相对路径、跨worktree唯一领取、租约及原始任务hash；不同输入不能冒用同一任务。
  * [POS]: 开发控制器持久合同；不接BOAI产品任务/员工状态。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -14,7 +14,10 @@ import { join, resolve } from 'node:path'
 import { acquireResourceLock } from '../resource-lock.mjs'
 
 export const digest = (value: string | Buffer) => createHash('sha256').update(value).digest('hex')
-export const relativePath = z.string().min(1).refine(value => !value.startsWith('/') && !value.includes('\\') && !value.split('/').some(part => part === '..' || part === '.' || part === '.git' || part === '.local'), '必须为仓库内明确路径')
+export const relativePath = z.string().min(1).refine(value => {
+  const path = value.endsWith('/') ? value.slice(0, -1) : value
+  return !path.includes('\\') && !path.includes('\0') && path.split('/').every(part => part && !['..', '.', '.git', '.local'].includes(part.toLowerCase()))
+}, '必须为仓库内规范明确路径，不允许空路径段或保留目录')
 const checkSchema = z.object({ id: z.string().regex(/^[a-z0-9-]+$/), command: z.string().min(1), args: z.array(z.string()), timeoutMs: z.number().int().min(1000).max(900_000), report: z.object({ path: relativePath, requiredTests: z.array(z.string().min(1)).min(1) }).strict().optional() }).strict()
 export const taskSchema = z.object({
   version: z.literal(1), taskId: z.string().regex(/^[a-z][a-z0-9-]{2,63}$/),

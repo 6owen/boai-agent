@@ -1,6 +1,6 @@
 /*
- * [INPUT]: 固定程序/参数、隔离目录、超时/取消和有界stdin；本机Codex登录。
- * [OUTPUT]: 开发修复/业务hillclimb共用的有界进程与Codex结构化补丁；模型建议不承担业务评分。
+ * [INPUT]: 固定程序/参数、隔离目录、超时/取消、有界stdin及可选实时capture；本机Codex登录。
+ * [OUTPUT]: 有界进程、退出前原始日志及Codex结构化补丁；保存回执核对实时原字节，模型建议不承担业务评分。
  * [POS]: tests/evaluation/repair-process.ts，开发自动化专用；不接产品本机员工运行时。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */

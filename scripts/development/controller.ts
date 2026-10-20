@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 冻结开发任务、独立Git worktree、原进程工具和Codex结构化建议/审查。
- * [OUTPUT]: 固定提交检查、独立审查及有界返工；未知中断不重放，基线不由开发循环更新。
+ * [OUTPUT]: 固定提交检查、独立审查及有界返工；规范路径拒绝基线别名，未知中断不重放。
  * [POS]: 开发侧控制器；原产品员工/会话/模型运行逻辑保持。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -26,9 +26,11 @@ export function validateRequiredTests(report: { testResults: { assertionResults:
   return required.every(name => { const found = tests.filter(test => test.fullName === name); return found.length === 1 && found[0].status === 'passed' })
 }
 export function allowedPath(task: Pick<Task, 'paths'>, path: string) {
-  return !path.startsWith('tests/e2e/baselines/') && task.paths.some(scope => scope.endsWith('/') ? path.startsWith(scope) : path === scope)
+  const lower = path.toLowerCase()
+  return relativePath.safeParse(path).success && !path.endsWith('/') && lower !== 'tests/e2e/baselines' && !lower.startsWith('tests/e2e/baselines/') && task.paths.some(scope => scope.endsWith('/') ? path.startsWith(scope) : path === scope)
 }
-export async function applyDevelopmentEdits(worktree: string, task: Pick<Task, 'paths'>, raw: unknown) {
+export async function applyDevelopmentEdits(worktree: string, task: Pick<Task, 'paths'>, raw: unknown, signal?: AbortSignal) {
+  signal?.throwIfAborted()
   const proposal = editsSchema.parse(raw), paths = new Set<string>()
   const prepared = new Map<string, string | null>()
   for (const edit of proposal.edits) {
@@ -58,9 +60,10 @@ export async function applyDevelopmentEdits(worktree: string, task: Pick<Task, '
   // All inputs are checked before the first write. A crash partway through an
   // apply remains pending and requires reconciliation; it is never replayed.
   for (const [name, content] of prepared) {
+    signal?.throwIfAborted()
     const path = join(worktree, name)
     if (content === null) await rm(path)
-    else { await mkdir(dirname(path), { recursive: true }); await writeFile(path, content) }
+    else { await mkdir(dirname(path), { recursive: true }); signal?.throwIfAborted(); await writeFile(path, content) }
   }
   return proposal
 }
@@ -162,8 +165,10 @@ export async function runDevelopmentTask(repository: string, raw: unknown, signa
       const output = await begin('develop', `attempt-${attempt}-develop`)
       const prompt = `你是BOAI开发者。在当前专属worktree只读核对代码，返回小而精确的结构化补丁。现有文件优先content=null及replacements中的唯一oldText/newText，避免输出整个大文件；新文件使用content与replacements=null，删除使用二者null。beforeSha256是当前原字节hash，新文件为null。可新增/删除范围内文件，不得提交、写文件或改验收/基线。遵守AGENTS及目录地图。不要分派子代理或自行执行独立审查，控制器会另开独立审查会话。\n冻结任务：${JSON.stringify(task)}\n上轮真实结果：${JSON.stringify({ baseline: state.baseline, checks: state.checks, review: state.review })}\n完整检查原件在${directory}，自行读取，不仅依赖摘要。`
       const proposal = await agent('develop', output, prompt)
+      remaining()
       if (git(state.worktree, 'rev-parse', 'HEAD') !== state.head || git(state.worktree, 'status', '--porcelain')) throw new Error('开发会话改写了受控worktree，需核对')
-      await applyDevelopmentEdits(state.worktree, task, proposal.value)
+      await applyDevelopmentEdits(state.worktree, task, proposal.value, signal)
+      remaining()
       if (!git(state.worktree, 'status', '--porcelain')) throw new Error('开发未产生实际修改')
       git(state.worktree, 'add', '--all'); git(state.worktree, 'commit', '-m', `${task.taskId}: attempt ${attempt}`)
       state.head = git(state.worktree, 'rev-parse', 'HEAD'); finish()
@@ -175,10 +180,12 @@ export async function runDevelopmentTask(repository: string, raw: unknown, signa
       const reviewOutput = await begin('review', `attempt-${attempt}-review`)
       const reviewedHead = state.head
       const review = await agent('review', reviewOutput, `你是独立审查者，新的无历史会话。读取完整diff、源码、任务和实际检查原件；按仓库标准/需求给出是否批准及可定位问题，不因开发者摘要批准。禁止改写任何文件或执行合并。\n任务：${JSON.stringify(task)}\n固定base ${task.base}，head ${reviewedHead}；完整原件${directory}。\n必须实际读取git diff ${task.base}...${reviewedHead}，检查变更范围、测试强度、目录地图及UI基线保护。`)
+      remaining()
       state.review = { ...reviewSchema.parse(review.value), head: reviewedHead, base: task.base, directory: reviewOutput, model: task.model ?? 'codex-default', checksHash: digest(JSON.stringify(state.checks)) }
       if (git(state.worktree, 'rev-parse', 'HEAD') !== reviewedHead || git(state.worktree, 'status', '--porcelain')) throw new Error('审查期间提交或文件变化，结论失效')
       finish()
       if (git(repository, 'rev-parse', task.targetBranch) !== task.base) throw new Error('目标基础分支已变化，旧检查和审查不能交付')
+      remaining()
       if ((state.review as { approved: boolean }).approved && state.usageComplete && state.knownTokens <= task.maxTokens) { update('reviewed'); return { directory, state } }
     }
     update('stopped', '尝试到限；保留原失败、提交与worktree')

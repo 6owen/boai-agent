@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 真实隔离Git仓库、固定进程检查及明确标为协议fixture的开发/审查回执。
- * [OUTPUT]: 同任务互斥、新增文件、真实旧失败/新通过、驳回返工及未知操作不重放。
+ * [OUTPUT]: 同任务互斥、路径别名拒绝、新增文件、真实旧失败/新通过及未知操作不重放。
  * [POS]: 控制器确定性验收；真实Codex、PR与产品功能另行验收。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -59,6 +59,25 @@ it('模型异常后重新运行只核对现场，不重复调用', async () => {
   expect(first.state.usageComplete).toBe(false)
   await runDevelopmentTask(repository, task(), undefined, { guard, agent }); expect(calls).toBe(1)
 })
+it.each(['develop', 'review'] as const)('%s回执返回时已取消，不再应用补丁或签发可交付状态', async cancelledKind => {
+  const controller = new AbortController(), calls: string[] = []
+  const agent = async (kind: 'develop' | 'review') => {
+    calls.push(kind)
+    if (kind === cancelledKind) controller.abort()
+    return { value: kind === 'develop' ? { summary: 'fixture', edits: [{ path: 'answer.txt', beforeSha256: digest('old'), content: 'fixed' }] } : { approved: true, findings: [], summary: 'fixture review' }, usage: { totalTokens: 10 } }
+  }
+  const result = await runDevelopmentTask(repository, task(), controller.signal, { guard, agent })
+  expect(result.state.phase).toBe('cancelled'); expect(result.state.usageComplete).toBe(true)
+  expect(calls).toEqual(cancelledKind === 'develop' ? ['develop'] : ['develop', 'review'])
+  if (cancelledKind === 'develop') {
+    expect(git(result.state.worktree, 'rev-parse', 'HEAD')).toBe(base)
+    expect(await readFile(join(result.state.worktree, 'answer.txt'), 'utf8')).toBe('old')
+  }
+  let remoteCalls = 0
+  await deliverDevelopmentTask(repository, task(), async () => { remoteCalls++; return '' })
+  expect(remoteCalls).toBe(0)
+  const count = calls.length; await runDevelopmentTask(repository, task(), undefined, { guard, agent }); expect(calls).toHaveLength(count)
+})
 it('修改输入不能复用同一taskId，且领取锁会释放', () => {
   const claim = claimTask(repository, task()); claim.release()
   expect(() => claimTask(repository, { ...task(), goal: '任务输入被偷偷修改，必须拒绝。' })).toThrow(/冻结输入/)
@@ -96,6 +115,15 @@ it('循环禁止修改UI基线及通过符号链接越界', async () => {
   await expect(applyDevelopmentEdits(repository, { paths: ['tests/'] }, { summary: 'fixture', edits: [{ path: 'tests/e2e/baselines/chat.png', beforeSha256: null, content: 'fake' }] })).rejects.toThrow(/UI期望基线/)
   await symlink(root, join(repository, 'outside'))
   await expect(applyDevelopmentEdits(repository, { paths: ['outside/'] }, { summary: 'fixture', edits: [{ path: 'outside/new.txt', beforeSha256: null, content: 'write' }] })).rejects.toThrow(/符号链接/)
+})
+it('重复分隔符和大小写别名不能改写受保护基线，非规范任务范围拒绝登记', async () => {
+  const directory = join(repository, 'tests/e2e/baselines'); await mkdir(directory, { recursive: true })
+  const file = join(directory, 'chat.png'); await writeFile(file, 'accepted baseline')
+  for (const path of ['tests//e2e/baselines/chat.png', 'tests/e2e//baselines/chat.png', 'tests/e2e/BASELINES/chat.png', 'tests/e2e/baselines/chat.png/']) {
+    await expect(applyDevelopmentEdits(repository, { paths: ['tests/'] }, { summary: '别名绕过负例', edits: [{ path, beforeSha256: digest('accepted baseline'), content: 'overwritten' }] })).rejects.toThrow(/规范明确路径|UI期望基线/)
+    expect(await readFile(file, 'utf8')).toBe('accepted baseline')
+  }
+  for (const path of ['tests//', '.GIT/config', '.LOCAL/data', '/absolute', 'tests/../answer.txt', 'tests/./answer.txt']) expect(() => claimTask(repository, { ...task(), paths: [path] })).toThrow(/规范明确路径/)
 })
 async function reviewedTask() {
   const claim = claimTask(repository, task()), worktree = join(root, 'candidate')
