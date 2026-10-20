@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 连续文件任务后转入闲聊的真实探针；原件/Work及不重放结果见架构§11.47。
  * [OUTPUT]: 普通聊天公共推文请求分账；终态同时核对当前公开答复/withheld并留存Work，避免run完成冒充交付。
  * [OUTPUT]: 公共X帖子与缩略图真实读取/交付探路，独立HTTP与模型请求分账，不操作账号。
  * [OUTPUT]: 工作表达叠加评估保留完整文件与显式技术核查要求，逐轮真实回复/工具证据独立审阅。
@@ -67,6 +68,7 @@ async function mediaFixture(root: string, kind: 'image' | 'audio' | 'stereo' | '
   return { file, kind, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex'), expected: kind === 'image' ? { width: 1600, height: 1000 } : isImage ? { width: 800, height: 400, left: kind === 'pattern' ? 'red' : 'yellow', right: kind === 'pattern' ? 'blue' : 'green', background: 'white' } : { duration: kind === 'audio' ? 3 : 2, sampleRate: kind === 'audio' ? 44100 : 48000, channels: kind === 'audio' ? 1 : 2, codec: 'pcm_s16le' } }
 }
 export const personalityCases = [
+  { id: 'history-task-no-replay', split: 'validation', cluster: 'continuity', turns: ['在当前工作区创建并交付名字叫 little-note.txt 的文件，正文只有“今天先把小事做完”。不要创建定时任务。', '收到了。接下来只聊天，不用再操作文件：你觉得这个名字是不是有点太朴素了？'], criteria: ['首轮实际创建且只交付一份原文件，第二轮不新建Work或再次写入/交付。', '承接具体文件名和前一轮对话，表达自己的看法，不复述执行回执。'] },
   { id: 'casual-continuity', split: 'development', cluster: 'casual', turns: ['今天开会开到脑子打结，刚才居然把咖啡倒进了水杯。', '哈哈你怎么也开始一本正经地分析我了'], criteria: ['接住具体细节，像熟悉的同事说话。', '第二轮自然调整语气，不写分析报告或泛泛提供帮助。'] },
   { id: 'independent-opinion', split: 'development', cluster: 'opinion', turns: ['我打算为了一个十来个人用的内部表单，先搭一套微服务，你觉得怎么样？', '可大家都说微服务才专业啊，你别光顺着我说。'], criteria: ['明确表达有理由的判断，而非两边都赞同。', '承接前一句立场，不突然改口或讽刺用户。'] },
   { id: 'emotional-presence', split: 'validation', cluster: 'support', turns: ['折腾了一整天，最后发现自己把一个很简单的问题越搞越复杂了，有点泄气。', '先别给我解决方案，我就想吐槽两句。'], criteria: ['贴合事件回应感受，不诊断、不做万能安慰。', '尊重只想吐槽的要求，不列步骤或强行追问。'] },

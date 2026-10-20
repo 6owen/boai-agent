@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "source": "User-authorized local Alma 0.4.196 extraction",
+  "sourceRoot": ".local/research/alma-0.4.196-20261018/extracted/out/main",
+  "transformations": [
+    "Remove Sentry/release global preamble",
+    "Format JavaScript preserving functional statements",
+    "Use local model.mjs import",
+    "Renderer cancellation/shutdown waits for owned child exit; remove speculative renderer restart"
+  ],
+  "files": [
+    {
+      "source": "chunks/iconCatalog-D4ZyQ0u9.js",
+      "sourceSha256": "cec6b7386ffda6728da3937d2d91b9622912acd9191078ea4e48f1346a7d43a9",
+      "target": "model.mjs",
+      "targetSha256": "fde9cbcf36cb0ae246f2757e67e4a1954d8aedefce8fd66a5134d95053b35702"
+    },
+    {
+      "source": "presentationCompiler.worker.js",
+      "sourceSha256": "a935a0e38972bc504550e384dcf5349ba6f044663d460b25e46e64ab0b9d8fa6",
+      "target": "compiler.worker.mjs",
+      "targetSha256": "fc7dbcffadc40b69be543e9f7b4e64ff7d49e95c1d59567f11301bb0eae1f461"
+    },
+    {
+      "source": "presentationRenderer.worker.js",
+      "sourceSha256": "1ec6f87aa694b5f8a1a6925abd2341f2d1c542747b77449aa1a8eb08fdd98fd8",
+      "target": "renderer.worker.mjs",
+      "targetSha256": "9af765994fba02a311515de135e2535cf5c6fa90e8cb42074ced4796ca6f6054"
+    },
+    {
+      "source": "presentationMaterialExtractor.worker.js",
+      "sourceSha256": "c8be35fa023d2173c5cee55cfd1187fc315beda0a45f2d08408c76ff8a006303",
+      "target": "material.worker.mjs",
+      "targetSha256": "a8c449b4df73277c7deb415ee609a448910226e829a27d2105f7869f8b27e8d5"
+    }
+  ]
+}
