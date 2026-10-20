@@ -1,6 +1,6 @@
 <!--
 [INPUT]: 用户明确参考Magpie建立UI基线，后续PR合并持续比较，新增功能扩充基准，破坏原有UI时报错。
-[OUTPUT]: BOAI实际UI的行为/布局/视觉基线、PR前后检查、预期变更审阅与基线晋升规则；本地BDD/候选/只读比较及CI汇总已接线，实际完成范围归03 §5.1。
+[OUTPUT]: 行为/布局/视觉与受控晋升；Public后main强制Required checks及最新base，完整CI/发布仍待验，进度归03 §5.1。
 [POS]: 第22组UI回归专项合同；与05开发画板分工，唯一实际进度归03。
 [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
 -->
@@ -124,6 +124,6 @@ flowchart TD
 
 环境登记macOS major、arm64、Electron/Playwright、实际中文/Geist字体hash、中文locale、时区及CSS视口。固定历史与资源不访问个人配置；按字体/有限动画完成及真实编辑器/发送按钮状态取图。初始校准对settings-light和resources-dark记录0.005颜色阈值（分别为渐变控件5像素、搜索框区域的1/255通道舍入差），所有case最大异常像素0、无mask；其余14项颜色阈值0。合同变化会拒绝旧基线，不能静默放宽。
 
-本地报告含真实结果、源码hash、环境及Playwright旧/新/diff；运行中源码变化、缺报告/场景、skip、重试或中断不能通过。Actions已配置PR和main/master push、固定`Required checks`汇总，但远程运行、基线独立审阅和仓库合并规则尚未验收；不能据此宣称已阻止远程合并/发布。
+本地报告含真实结果、源码hash、环境及Playwright旧/新/diff；运行中源码变化、缺报告/场景、skip、重试或中断不能通过。Actions已配置PR和main/master push、固定`Required checks`汇总。Public后已通过GitHub API设置并回读main保护：要求GitHub Actions的`Required checks`成功、分支跟上最新main，管理员同样受约束，禁止强推和删除。远程完整通过、实际合并及发布闭环仍未验收；配置成功不冒充完整CI成功。
 
 完整`pnpm build`登记输入及产物字节身份；只读UI检查开始和结束均核对，源码、技能源或dist字节变化会使结论失效。UI资源由SQLite事务互斥，持有进程死亡后由操作系统释放，不根据过期锁文件或PID猜测抢占。

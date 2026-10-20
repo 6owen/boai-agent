@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 经验证的真实Excalidraw stdio服务、独立数据目录及SDK HTTP MCP。
- * [OUTPUT]: 外部开发编辑器/明确选区/模型局部修改；限定新文件导出，关闭失败独立收尾并核对进程退出。
+ * [OUTPUT]: 外部开发编辑器/明确选区/模型局部修改；关闭后拒绝迟到更新，排空调用/落盘并核对启动PID退出。
  * [POS]: 第22组Codex开发宿主；不进入BOAI软件或员工工具。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -9,14 +9,13 @@ import { randomUUID, createHash } from 'node:crypto'
 import { lstat, mkdir, readFile, realpath, rename, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { CallToolRequestSchema, ListToolsRequestSchema, ListResourcesRequestSchema, ListResourceTemplatesRequestSchema, ReadResourceRequestSchema } from '@modelcontextprotocol/sdk/types.js'
 import { acquireResourceLock } from '../resource-lock.mjs'
 import { verifyUpstream } from './upstream.mjs'
 import { adaptResource, editorHTML, panelHTML } from './browser.mjs'
-import { closeDesignResources } from './lifecycle.mjs'
+import { closeDesignResources, createDesignActivity, DesignStdioTransport } from './lifecycle.mjs'
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex')
 const contextTool = { name: 'get_editor_context', description: 'Read the explicit selection/diagram reference sent from the external editor. Check editorConnected, document identity and revision; a disconnected or stale reference is not the current selection. Does not inject text into Codex chat.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } }
 const result = value => ({ content: [{ type: 'text', text: JSON.stringify(value) }], structuredContent: value })
@@ -42,7 +41,8 @@ export async function startDesignServer(options) {
   const directory = join(root, '.local/design'); await mkdir(directory, { recursive: true })
   const release = acquireResourceLock(join(directory, 'server-lock.sqlite'))
   const owner = randomUUID(), prefix = '/session/' + randomUUID(), events = new Set(), sessions = new Set()
-  let client, transport, http, nativePid, closePromise, stopping = false, origin, html, persistQueue = Promise.resolve()
+  let client, transport, http, closePromise, stopping = false, origin, html, persistQueue = Promise.resolve()
+  const activity = createDesignActivity()
   const sessionClosures = new Map()
   const closeSession = server => {
     if (!sessionClosures.has(server)) {
@@ -54,6 +54,7 @@ export async function startDesignServer(options) {
   let state = { bootstrap: { toolInput: null, toolOutput: null, widgetState: null }, active: null, reference: null, sequence: 0 }
   const statePath = join(directory, 'editor-state.json'), infoPath = join(directory, 'server.json')
   const persist = () => {
+    activity.assertOpen()
     const snapshot = structuredClone(state)
     const pending = persistQueue.then(() => jsonFile(statePath, snapshot)); persistQueue = pending.catch(() => {})
     return pending
@@ -61,8 +62,10 @@ export async function startDesignServer(options) {
   const close = () => {
     if (closePromise) return closePromise
     stopping = true
+    activity.stop()
     closePromise = closeDesignResources({
-      events, sessions: [...sessions].map(server => ({ close: () => closeSession(server) })), http, client, transport, pid: nativePid, persist: persistQueue,
+      events, sessions: [...sessions].map(server => ({ close: () => closeSession(server) })), http, client, transport, pid: transport?.startedPid,
+      drainOperations: activity.drain, drainPersistence: () => persistQueue,
       removeInfo: async () => {
         const info = JSON.parse(await readFile(infoPath, 'utf8').catch(error => { if (error.code === 'ENOENT') return '{}'; throw error }))
         if (info.owner === owner) await rm(infoPath, { force: true })
@@ -72,10 +75,10 @@ export async function startDesignServer(options) {
   }
   try {
     try { state = JSON.parse(await readFile(statePath, 'utf8')) } catch (error) { if (error.code !== 'ENOENT') throw error }
-    transport = new StdioClientTransport({ command: process.execPath, args: [join(receipt.plugin, 'dist/server.mjs')], cwd: root, env: { ...process.env, ZCODE_WORKSPACE_ROOT: root, ZCODE_WORKSPACE_IDENTITY: root, ZCODE_PLUGIN_DATA: join(directory, 'data') }, stderr: 'pipe' })
+    transport = new DesignStdioTransport({ command: process.execPath, args: [join(receipt.plugin, 'dist/server.mjs')], cwd: root, env: { ...process.env, ZCODE_WORKSPACE_ROOT: root, ZCODE_WORKSPACE_IDENTITY: root, ZCODE_PLUGIN_DATA: join(directory, 'data') }, stderr: 'pipe' })
     transport.stderr?.on('data', chunk => process.stderr.write(chunk))
     client = new Client({ name: 'boai-developer-editor', version: '1' })
-    try { await client.connect(transport) } finally { nativePid = transport.pid }
+    await client.connect(transport)
     html = await readFile(join(receipt.plugin, 'dist/ui/panel.html'), 'utf8')
     const nativeTools = (await client.listTools()).tools
     const nativeByName = new Map(nativeTools.map(tool => [tool.name, tool]))
@@ -85,7 +88,7 @@ export async function startDesignServer(options) {
       return definition
     })
     const modelNames = new Set(modelTools.map(tool => tool.name))
-    const call = async (input, fromEditor, signal) => {
+    const call = (input, fromEditor, signal) => activity.run(async () => {
       const { name, arguments: args = {} } = input
       if (!nativeByName.has(name) || (!fromEditor && !modelNames.has(name))) throw new Error('此工具不在当前开发端能力范围')
       if (name === 'open_diagram' && args.path) await designPath(root, args.path)
@@ -93,32 +96,37 @@ export async function startDesignServer(options) {
         if (args.overwrite === true) throw new Error('保留已有设计文件，请导出新修订文件；宿主不会覆盖仓库外改或已有设计')
         await designPath(root, args.path, true)
       }
+      activity.assertOpen()
       const output = await client.callTool(input, undefined, { signal })
+      activity.assertOpen()
       if (output.isError) return output
       if (output.structuredContent?.path) {
         const path = await designPath(root, args.path)
         output.structuredContent.fileSha256 = sha256(await readFile(path))
         output.content = [{ type: 'text', text: JSON.stringify(output.structuredContent) }]
       }
+      activity.assertOpen()
       if (output.structuredContent?.document && !fromEditor) {
         state.bootstrap.toolInput = args; state.bootstrap.toolOutput = output.structuredContent
         await persist()
+        activity.assertOpen()
         const event = 'data: ' + JSON.stringify({ input: args, output: output.structuredContent }) + '\n\n'
         for (const stream of events) stream.write(event)
       }
       return output
-    }
-    const context = async () => {
+    })
+    const context = () => activity.run(async () => {
       const reference = state.reference?.structuredContent ?? null, active = state.active?.structuredContent ?? null
       let scene = null, stale = false
       if (reference?.documentId) {
         const read = await client.callTool({ name: 'read_scene', arguments: { id: reference.documentId, elementIds: reference.elementIds } })
+        activity.assertOpen()
         if (read.isError) return read
         scene = read.structuredContent
         stale = reference.documentId !== active?.documentId || reference.revision !== scene.document.revision
       }
       return result({ editorConnected: events.size > 0, active, reference, stale, scene, sequence: state.sequence })
-    }
+    })
     const createMCP = () => {
       const server = new Server({ name: 'boai-excalidraw-developer', version: '1' }, { capabilities: { tools: {}, resources: {} }, instructions: 'External developer editor only. Click Reference in the editor, then explicitly call get_editor_context. Native Codex MCP Apps rendering and automatic prompt injection are not provided. Export saved revisions to NEW ai-docs/design files before implementing code.' })
       server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [...modelTools, contextTool] }))
@@ -145,6 +153,7 @@ export async function startDesignServer(options) {
           for await (const chunk of request) { size += chunk.length; if (size > 24 * 1024 * 1024) throw new Error('请求超过开发桥大小限制'); chunks.push(chunk) }
           body = JSON.parse(Buffer.concat(chunks).toString('utf8'))
         }
+        activity.assertOpen()
         if (path === prefix + '/mcp') {
           if (request.method !== 'POST') { response.writeHead(405).end(); return }
           const server = createMCP(), bridge = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true })
