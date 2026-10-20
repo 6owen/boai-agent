@@ -1,13 +1,13 @@
 <!--
 [INPUT]: 用户明确使用Codex开发BOAI，画板用于仓库开发设计；本地ZCode UI_PLUGIN.md提供流程参考。
-[OUTPUT]: 开发侧画板、仓库文件、Codex协作及ZCode兼容边界；实现后的实际UI按06回归，设计图不充当像素基线，当前仅文档。
+[OUTPUT]: 开发侧原插件/外部页面/HTTP MCP及明确选区桥已接首版；文件往返与当前Codex客户端兼容分别验收，设计图不是产品截图基准。
 [POS]: 第22组开发画板现行合同，替代第19组10的产品内嵌误解；唯一实际进度归03。
 [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
 -->
 
 # Codex与Excalidraw开发设计流程
 
-日期：2026-10-20。用户明确：日常使用Codex开发BOAI Agent，画板用于开发过程，文件放在BOAI仓库。**前版把这个需求写成“BOAI软件内集成UI Plugin与画板”属于范围误解，现已撤销该实施目标。** 本轮只纠正文档。
+日期：2026-10-20。用户明确：日常使用Codex开发BOAI Agent，画板用于开发过程，文件放在BOAI仓库。**前版把这个需求写成“BOAI软件内集成UI Plugin与画板”属于范围误解，现已撤销该实施目标。** 最初批次只纠正文档；当前实际实现和验收归03 §5.1。
 
 ## 1. 三个对象的职责
 
@@ -50,7 +50,7 @@ ai-docs/design/employee-settings/
   employee-settings.png
 ```
 
-这只是拟定路径，本轮未创建画板目录或文件。`.excalidraw`是可编辑交付，PNG/SVG按需要导出便于审阅；说明文件记录关联需求、设计决定、源码位置及设计版本。沿已有`ai-docs/spec`引用对应产品合同，不复制第二套业务要求。
+当前已创建`ai-docs/design/keyboard-shortcuts/`，保存真实编辑器导出的初稿；其他路径仍按实际任务建立。`.excalidraw`是可编辑交付，PNG/SVG按需要导出便于审阅；说明文件记录关联需求、设计决定、源码位置及设计版本。沿已有`ai-docs/spec`引用对应产品合同，不复制第二套业务要求。
 
 文件往返阶段以明确路径的已保存文件为交接依据。浏览器内未导出的草稿不能当作仓库最新版；普通网页不会因为打开了文件就被假定能自动覆盖本地文件。每次交给Codex前核对保存路径、修改内容及文件hash。
 
@@ -82,6 +82,37 @@ ai-docs/design/employee-settings/
 | DG07 | 开发画板配置与资料留在开发侧；BOAI生产包不因本任务增加画板宿主、编辑器或员工画图工具 |
 | DG08 | 采用MCP/插件时，实际启动、保存、断开重连、版本冲突及源码来源可追溯；未支持能力明确列出 |
 
-来源清单按实际复用补全：本地ZCode宿主源码是研究材料，独立`zcode-plugins`参考commit已记录，但尚未下载、构建或核对与当前Codex环境的兼容性。本轮没有安装插件、修改Codex配置、启动画板服务、生成设计文件或修改BOAI产品代码。
+来源清单按实际复用补全：本地ZCode宿主源码保持研究材料；独立`zcode-plugins`已按清单固定commit构建和smoke。首版外部开发宿主已实际启动，文件/编辑器往返与SDK MCP已验；当前Codex原生客户端联动仍须单列证明。没有把编辑器放入BOAI产品，也没有改全局Codex配置。
 
 实际阶段与验收结果只登记[03](./03-实施步骤与验收.md#5-唯一实际进度)。旧第19组10的UP/EX产品矩阵已撤销，不作为此次开发工具目标的必需项。
+
+
+## 6. 当前开发工具的运行方法
+
+上游固定commit为`4acdd7ffc325fbdd9c8d934dc3ce03c7c62cb7f6`，插件路径为`ui-plugins/excalidraw`，原版0.3.4/Excalidraw0.18.1。当前工作树的构建缓存位于`.local/references/zcode-plugins`。全新checkout需先准备原版：
+
+```sh
+git clone --filter=blob:none https://github.com/zai-org/zcode-plugins .local/references/zcode-plugins
+git -C .local/references/zcode-plugins checkout --detach 4acdd7ffc325fbdd9c8d934dc3ce03c7c62cb7f6
+npx --yes pnpm@10.33.2 --dir .local/references/zcode-plugins install --frozen-lockfile --filter @zcode/plugin-excalidraw...
+npx --yes pnpm@10.33.2 --dir .local/references/zcode-plugins --filter @zcode/plugin-excalidraw build
+pnpm design:prepare --upstream .local/references/zcode-plugins
+pnpm design:serve
+```
+
+`prepare`核对干净上游commit/源文件，并登记完整dist字节；`serve`启动前重核。缓存和SQLite在`.local/design`，不提交仓库。服务打印外部编辑器地址及MCP地址，只监听127.0.0.1；Ctrl+C等待原插件退出。同一worktree只允许一个宿主。重启会换端口/会话地址，继续使用时读本轮输出或`.local/design/server.json`。
+
+MCP客户端使用本轮打印的URL，例如临时Codex调用配置：
+
+```toml
+[mcp_servers.boai_design]
+url = "http://127.0.0.1:本轮端口/session/本轮会话/mcp"
+```
+
+此配置示例不等于当前Codex会话已加载。实际CLI试验通过单次`-c mcp_servers.boai_design.url=...`传入，没有修改全局配置；因模型端连接超时被120秒上限终止，未获得用量/完成回执，不能计为原生Codex联动通过。SDK客户端已通过真实HTTP MCP读取编辑器选区和原版版本保护。
+
+编辑器里的保存沿原插件SQLite；需`export_diagram`或编辑器导出，文件才进入仓库。首版宿主只允许`ai-docs/design/`内的新文件，拒绝覆盖已有文件和路径符号链接。后续修订使用明确新文件名，并在功能README指向当前交接文件；已有文件受到外改时不会被静默覆盖。原生工具`expectedRevision/operationId`保护插件文档的局部修改。
+
+选区通过编辑器“引用选区/整图”明确提交；Codex调用`get_editor_context`读取`editorConnected/reference/stale/scene/sequence`。断开或版本过期的引用不能称为当前选区。此桥不自动注入聊天输入框，也不承诺Codex原生MCP Apps页面；原宿主的成功提示由开发桥改成准确提示。局部修改结果通过本机事件流返回原编辑器，未保存草稿处理仍沿原插件控制器并另验。
+
+现有画板只是第22组08的初步布局，不代表快捷键产品功能已实现或用户已批准设计。

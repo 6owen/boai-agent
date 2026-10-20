@@ -69,7 +69,7 @@
       {
         "path": "ui-plugins/excalidraw/scripts/browser-fixture.mjs",
         "sha256": "a30551a5a2bb174d59a609adb8e2baca36f5c38f766d58bb89c061b9ffdfab5a",
-        "use": "reference-only; not copied into product"
+        "use": "host bridge approach adapted in scripts/design; full MIT notice in scripts/design/NOTICE.md; editor bundle not distributed in BOAI"
       },
       {
         "path": "external_plugins/excalidraw/LICENSE",
@@ -80,6 +80,21 @@
         "path": "pnpm-lock.yaml",
         "sha256": "1347cae7e0500531f34086c461f4dc0c109804548752a3b53de9eb79fcf93f06",
         "use": "reference-only; not copied into product"
+      },
+      {
+        "path": "external_plugins/excalidraw/licenses/font-Excalifont.txt",
+        "sha256": "79cd6993ee716c85826376972d919d254e6a7b1f0e830a9ab13f807a73a9b24e",
+        "use": "font notice retained with native exported design SVG in ai-docs/design/keyboard-shortcuts/FONT-LICENSES.md"
+      },
+      {
+        "path": "external_plugins/excalidraw/licenses/font-Xiaolai.txt",
+        "sha256": "6f058052653637156ed04d6627fa518748402d460c1ea649ac6328e50bd18706",
+        "use": "font notice retained with native exported design SVG in ai-docs/design/keyboard-shortcuts/FONT-LICENSES.md"
+      },
+      {
+        "path": "external_plugins/excalidraw/licenses/font-Xiaolai-LICENSE.txt",
+        "sha256": "11e0778790abacef274e0d71454ddcd9583a286930ebd409ba3d121ede1ab4b0",
+        "use": "font notice retained with native exported design SVG in ai-docs/design/keyboard-shortcuts/FONT-LICENSES.md"
       }
     ],
     "packageManager": "pnpm@10.33.2 (upstream pin)",
@@ -98,10 +113,10 @@
     "scope": "Codex developer workflow only; no BOAI embedded canvas"
   },
   "codexCompatibility": {
-    "fileRoundTrip": "not-run",
-    "mcpTools": "not-run",
-    "mcpAppsPage": "not-run",
-    "selectionContext": "not-run",
+    "fileRoundTrip": "actual native editor edit / explicit selection / native export to ai-docs passed; local keyboard draft revision4",
+    "mcpTools": "SDK Streamable HTTP -> native stdio passed; actual Codex CLI attempt timed out at model connection, not certified",
+    "mcpAppsPage": "not certified; developer host uses an external native plugin page",
+    "selectionContext": "actual editor reference read through SDK MCP passed; explicit get_editor_context bridge, no automatic prompt injection",
     "inspectedCli": "codex-cli 0.163.0; local exec/help inspected; current conversation UI bridge not yet verified"
   },
   "magpie": {

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 固定UI场景、真实Electron版本、期望图hash与runner环境身份。
- * [OUTPUT]: 缺基线/错环境拒绝及实际像素比较；显式本地布局故障演练，候选仅写独立目录。
+ * [OUTPUT]: 缺基线/错环境拒绝及实际像素比较；登记真实渲染字体以诊断跨Mac差异，不放宽断言。
  * [POS]: UI回归截图支撑；只读比较不修改产品页面或现有基线。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -52,6 +52,28 @@ export async function compareUiBaseline(runtime: Desktop, caseId: string, info: 
     await runtime.page.mouse.move(0, 0)
   }
   await info.attach('UI环境与页面', { body: JSON.stringify({ caseId, environment, actual, browser }), contentType: 'application/json' })
+  if (caseId === 'chat-dark') {
+    const session = await runtime.page.context().newCDPSession(runtime.page)
+    try {
+      await session.send('DOM.enable'); await session.send('CSS.enable')
+      const { root } = await session.send('DOM.getDocument')
+      const { nodeIds } = await session.send('DOM.querySelectorAll', { nodeId: root.nodeId, selector: '.messages p, .messages strong, .chat-header span' })
+      const fonts = []
+      for (const nodeId of nodeIds.slice(0, 16)) {
+        const used = await session.send('CSS.getPlatformFontsForNode', { nodeId })
+        if (used.fonts.length) fonts.push({ html: (await session.send('DOM.getOuterHTML', { nodeId })).outerHTML.slice(0, 400), ...used })
+      }
+      const styles = await runtime.page.evaluate(() => ({
+        body: { family: getComputedStyle(document.body).fontFamily, size: getComputedStyle(document.body).fontSize },
+        language: document.documentElement.lang,
+        fontFaces: [...document.fonts].map(font => ({ family: font.family, status: font.status, weight: font.weight })),
+      }))
+      const system = await runtime.app.evaluate(({ app }) => ({ languages: app.getPreferredSystemLanguages(), gpu: app.getGPUFeatureStatus() }))
+      const diagnostic = { caseId, fonts, styles, system }
+      await info.attach('UI实际字体', { body: JSON.stringify(diagnostic), contentType: 'application/json' })
+      console.log('UI_FONT_DIAGNOSTICS ' + JSON.stringify(diagnostic))
+    } finally { await session.detach() }
+  }
   if (process.env.BOAI_UI_FAULT === 'layout') await runtime.page.addStyleTag({ content: '.chat-header { padding-left: 80px !important; }' })
   const selected = contract.cases.find(item => item.id === caseId) as { threshold?: number } | undefined
   await expect(runtime.page).toHaveScreenshot(`${caseId}.png`, { animations: 'disabled', caret: 'hide', scale: 'css', threshold: selected?.threshold ?? contract.threshold, maxDiffPixels: contract.maxDiffPixels })

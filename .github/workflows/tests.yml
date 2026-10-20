@@ -1,5 +1,5 @@
 # [INPUT]: 仓库变更、锁定依赖、离线协议服务。
-# [OUTPUT]: PR及主分支同SHA离线/视觉验证；显式安装并验证Electron二进制，缺报告不放行。
+# [OUTPUT]: 同SHA离线/视觉门槛；安装实证、完整BDD时间预算和原生崩溃栈留证，失败不放行。
 # [POS]: .github/workflows/tests.yml。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 name: Offline tests
@@ -17,7 +17,8 @@ jobs:
   desktop:
     name: Engineering and desktop
     runs-on: macos-15
-    timeout-minutes: 25
+    # 552串行BDD另加约11分钟模块；仅扩大整个job预算，单测试超时不变。
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -40,6 +41,19 @@ jobs:
         run: pnpm build
       - id: unit
         run: pnpm test --maxWorkers=2
+      - name: Preserve native crash stacks
+        if: failure() && steps.unit.outcome == 'failure'
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from shutil import copyfile
+          output = Path('.local/ci/native-crashes')
+          output.mkdir(parents=True, exist_ok=True)
+          reports = sorted((Path.home() / 'Library/Logs/DiagnosticReports').glob('node*.ips'), key=lambda path: path.stat().st_mtime, reverse=True)
+          for path in reports[:5]:
+              copyfile(path, output / path.name)
+          print('Native crash stack reports:', min(len(reports), 5))
+          PY
       - id: dataset
         run: pnpm eval:dataset
       - id: bdd
@@ -65,6 +79,13 @@ jobs:
             playwright-report/
             test-results/
             cucumber-report/
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: native-crash-stacks
+          path: .local/ci/native-crashes/
+          include-hidden-files: true
           if-no-files-found: ignore
   ui:
     name: UI regression
