@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 临时原件树及真实子进程gh协议夹具；不访问GitHub、不运行GUI。
- * [OUTPUT]: 原件改动可检出，精确SHA/最新尝试/未知写入不得回传假成功；只证明本地CI边界。
+ * [OUTPUT]: 原件改动可检出，精确SHA/最新尝试/并发终态/未知写入不得回传假成功；只证明本地CI边界。
  * [POS]: 本地CI封存和GitHub状态适配合同测试。
  * [PROTOCOL]: 修改同步Header与tests/.folder.md。
  */
@@ -73,6 +73,23 @@ it('本机发布所有权覆盖读/POST窗口，新尝试零API拒绝且旧闭�
   await expect(finish({ passed: true, manifestSha256: 'c'.repeat(64) })).rejects.toThrow('所有权已结束')
   expect((await f.state()).calls).toHaveLength(pending)
   await newer({ passed: false })
+})
+it('同一终态闭包并发拒绝不释放在途调用的锁', async () => {
+  const f = await fakeGithub('success'), finish = await beginLocalCiPublication({ branch: 'infra/test', sha, runId, journal: f.journal })
+  // The first call has reached its asynchronous intent write; do not await it
+  // before making both competing calls.
+  const first = finish({ passed: true, manifestSha256: 'c'.repeat(64) })
+  const duplicate = finish({ passed: false })
+  const competing = beginLocalCiPublication({ branch: 'infra/test', sha, runId: '22222222-2222-2222-2222-222222222222', journal: join(f.root, 'blocked-concurrent') })
+  await expect(duplicate).rejects.toThrow('不能并发调用')
+  await expect(competing).rejects.toThrow('资源锁')
+  expect((await first).state).toBe('success')
+  const posts = (await f.state()).calls.filter((call: { post: boolean }) => call.post)
+  expect(posts).toHaveLength(2)
+  await expect(finish({ passed: false })).rejects.toThrow('所有权已结束')
+  const next = await beginLocalCiPublication({ branch: 'infra/test', sha, runId: '22222222-2222-2222-2222-222222222222', journal: join(f.root, 'after-concurrent') })
+  await next({ passed: false })
+  expect((await f.state()).calls.filter((call: { post: boolean }) => call.post)).toHaveLength(4)
 })
 it.each(['new-head', 'new-attempt', 'wrong-sha'])('%s发生后不能覆盖或回传成功', async mode => {
   const f = await fakeGithub(mode)

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 明确同仓库分支、干净提交与完整本地CI核验；当前本人gh授权。
- * [OUTPUT]: 当前Mac独占回传，持锁到最终完成；新提交/已结束闭包拒绝，未知写入待核对，不支持跨主机并发。
+ * [OUTPUT]: 当前Mac独占回传，终态闭包同步消费且持锁到最终完成；并发/旧调用拒绝，未知写入待核对。
  * [POS]: 本地CI可选GitHub状态回传；不启动Actions、不发评论或合并PR。
  * [PROTOCOL]: 修改同步Header与scripts/.folder.md。
  */
@@ -22,7 +22,7 @@ export async function beginLocalCiPublication({ branch, sha, runId, journal }) {
   // All supported publishers run on this one Mac. Ownership covers the entire
   // pending -> final interval, including the last read/POST window.
   const release = acquireResourceLock(join(tmpdir(), `boai-ci-publish-${userInfo().uid}.sqlite`))
-  let owned = true
+  let owned = true, finishing = false
   const close = () => { if (owned) { owned = false; release() } }
   try {
   const ref = `git/ref/heads/${branch}`, remote = api(ref)
@@ -42,6 +42,10 @@ export async function beginLocalCiPublication({ branch, sha, runId, journal }) {
   const pending = await post('pending', { state: 'pending', context: localCiContext, description: pendingDescription })
   return async ({ passed, manifestSha256 }) => {
     if (!owned) throw new Error('本次回传所有权已结束，旧闭包不能发布')
+    if (finishing) throw new Error('本次终态回传已在执行，不能并发调用')
+    // Consume synchronously, before any await. A rejected duplicate must never
+    // enter finally and release the lock owned by the in-flight call.
+    finishing = true
     try {
     if (passed && !/^[a-f0-9]{64}$/.test(manifestSha256 ?? '')) throw new Error('成功状态缺少已核验原件hash')
     const combined = api(`commits/${sha}/status?per_page=100`)
