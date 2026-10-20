@@ -13,7 +13,7 @@
  * [PROTOCOL]: 变化同步Header与所属.folder.md。
  */
 import { randomBytes } from 'node:crypto'
-import { basename } from 'node:path'
+import { basename, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { z } from 'zod'
 import type { ServerOptions } from 'node:https'
@@ -54,7 +54,7 @@ export async function startHeadlessServer(options: HeadlessOptions) {
   let state: 'ready' | 'stopping' | 'stopped' = 'ready'
   let stopped!: () => void
   const finished = new Promise<void>(resolve => { stopped = resolve })
-  const owned = await startOwnedRuntime({ dataPath: options.dataPath, toolClientPath: options.toolClientPath ?? fileURLToPath(new URL('../cli/employee-tools.mjs', import.meta.url)), secrets, browserHost: desktop, applicationHost: { get available() { return desktop.available }, request: async (method, input) => await desktop.application(method, input) as never }, engine: options.engine ?? new MastraEngine(), skillDiscovery: { homeDir: options.skillHome, bundledRoot: options.bundledSkillRoot ?? fileURLToPath(new URL('../agent-skills/', import.meta.url)) }, emit(event) {
+  const owned = await startOwnedRuntime({ dataPath: options.dataPath, toolClientPath: options.toolClientPath ?? fileURLToPath(new URL('../cli/employee-tools.mjs', import.meta.url)), secrets, browserHost: desktop, applicationHost: { get available() { return desktop.available }, request: async (method, input) => await desktop.application(method, input) as never }, engine: options.engine ?? new MastraEngine({ memoryPath: join(options.dataPath, 'memory', 'bobo-mastra.db') }), skillDiscovery: { homeDir: options.skillHome, bundledRoot: options.bundledSkillRoot ?? fileURLToPath(new URL('../agent-skills/', import.meta.url)) }, emit(event) {
     if (server) publishAppEvent(server, event)
     desktop.publish(event)
   } }, () => secrets.init()).catch(error => { if (error instanceof RuntimeOwnedError) throw new CliError('SERVER_BUSY', error.message); throw error })

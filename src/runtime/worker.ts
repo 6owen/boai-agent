@@ -14,6 +14,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { startOwnedRuntime } from './bootstrap'
 import { RuntimeOwnedError } from './owner'
@@ -95,7 +96,7 @@ port.on('message', async ({ data }) => {
     port.postMessage({ type: 'response', response: { id: request.id, error: error instanceof Error ? error.message : '操作失败' } })
   }
 })
-starting = startOwnedRuntime({ dataPath, skillDiscovery: { bundledRoot: fileURLToPath(new URL('../agent-skills/', import.meta.url)) }, secrets, browserHost, applicationHost, toolClientPath: fileURLToPath(new URL('../cli/employee-tools.mjs', import.meta.url)), engine: new MastraEngine(), emit: (event) => port.postMessage({ type: 'event', event }) })
+starting = startOwnedRuntime({ dataPath, skillDiscovery: { bundledRoot: fileURLToPath(new URL('../agent-skills/', import.meta.url)) }, secrets, browserHost, applicationHost, toolClientPath: fileURLToPath(new URL('../cli/employee-tools.mjs', import.meta.url)), engine: new MastraEngine({ memoryPath: join(dataPath, 'memory', 'bobo-mastra.db') }), emit: (event) => port.postMessage({ type: 'event', event }) })
 try {
   const owned = await starting; service = owned.service
   if (!shuttingDown) port.postMessage({ type: 'ready', owner: owned.owner })

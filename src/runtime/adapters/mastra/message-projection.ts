@@ -3,7 +3,7 @@
  * [OUTPUT]: 模型接收用户明确的技能/文件引用，原始可见正文不增加技术字段。
  * [OUTPUT]: 2026-10-14员工浏览器共用宿主；原生只读不认领Work，实际写入惰性认领，引用核源且模型图片与持久摘要分离。
  * [INPUT]: 宿主授权后的公开消息、当前轮次与员工身份。
- * [OUTPUT]: 有界历史/当前轮次投影，以及只省略空值的判断消息表示；当前获准图片以原生媒体部件传输，不进入持久正文。
+ * [OUTPUT]: 有界历史/当前轮次投影，以及只省略空值的判断消息表示；当前获准图片以原生媒体部件传输，不进入持久正文；bobo有Memory时只投影当前轮次。
  * [POS]: Mastra 消息装配；不通过压缩正文丢弃用户输入。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -49,7 +49,7 @@ export function decisionMessageData(message: Message, rootId?: string) {
   return { ...data, ...(turnId ? { turnId } : {}), ...(mentionIds.length ? { mentionIds } : {}), ...(isRootRequest ? { isRootRequest: true } : {}) }
 }
 
-/** The app transcript is canonical: no Mastra Memory is enabled or replayed a second time. */
+/** The app transcript is canonical; callers with Mastra Memory pass only the current turn here. */
 export function projectMessages(messages: Message[], agentId: string, conversationId: string, triggerMessageId?: string, turnId?: string, images: EngineContext['materialImages'] = []) {
   const window = contextWindow(messages, conversationId, triggerMessageId)
   const turn = partitionTurn(window, triggerMessageId, turnId)

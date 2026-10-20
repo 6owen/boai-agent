@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: bobo公开聊天实际Mastra SDK读取已提交历史与Working Memory，来源失效后原文不再进入请求。
  * [OUTPUT]: 实际SDK判断携带第31项技能及命令权限，私有阶段零工具且其他员工/未绑定技能不泄入。
  * [OUTPUT]: 反思真实SDK两阶段/原预算/原来源与复核失败不返回草稿；行为普通路径保持。
  * [OUTPUT]: 批量图片真实SDK顺序/摘要、总大小与返回前撤权检查，保持单图兼容。
@@ -145,6 +146,32 @@ function redirectDeepSeekTo(url: string) {
 }
 
 describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => {
+  it('projects host-authorized bobo history into the actual Mastra request and prunes stale sources', async () => {
+    const model = await endpoint(['第一轮答复。', '第二轮答复。'])
+    const f = await context(model.url, { responseKind: 'chat', agent: employee({ id: 'bobo', systemRole: 'core' }),
+      conversation: { id: 'conversation', kind: 'direct', purpose: 'core', title: 'bobo', agentIds: ['bobo'], mode: 'mention', workspacePath: '/tmp', sharedKnowledgeIds: [], createdAt: '', updatedAt: '' },
+      messages: [message('历史偏好：简短回复', 1, { id: 'old-user', turnId: 'old-turn' }), message('我会简短回答', 2, { id: 'old-answer', turnId: 'old-turn', senderType: 'agent', senderId: 'bobo' }), message('今天讨论什么？', 3, { id: 'current-user', turnId: 'current-turn' })],
+      triggerMessageId: 'current-user', turnId: 'current-turn',
+      bootstrap: { instructions: '原指令及记忆', baseInstructions: '只用获准记忆', memoryProjection: '长期偏好：简短回复；来源 old-user', hashes: {}, configVersion: 1, memoryVersion: 1, policyVersion: 2, sources: [] },
+    })
+    const engine = new MastraEngine({ memoryPath: path.join(f.directory, 'memory', 'bobo.db') })
+    await engine.run(f.ctx)
+    const first = allMessageText(model.requests[0]!)
+    expect(first).toContain('历史偏好：简短回复')
+    expect(first).toContain('我会简短回答')
+    expect(first).toContain('今天讨论什么？')
+    expect(first.match(/今天讨论什么？/g)).toHaveLength(1)
+    expect(first).toContain('长期偏好：简短回复；来源 old-user')
+    f.ctx.messages = [f.ctx.messages[2]!]
+    f.ctx.bootstrap = { ...f.ctx.bootstrap!, memoryProjection: '尚无相关记忆。' }
+    await engine.run(f.ctx)
+    const second = allMessageText(model.requests[1]!)
+    expect(second).not.toContain('历史偏好：简短回复')
+    expect(second).not.toContain('我会简短回答')
+    expect(second).not.toContain('old-user')
+    expect(second).toContain('今天讨论什么？')
+    expect(second).toContain('尚无相关记忆。')
+  })
   it('runs a configured behavior through the real SDK tool loop with bounded calls and no public deltas', async () => {
     const result = { decision: 'apply', reason: '已核对真实回执', message: '计划已保存。', sourceMessageIds: ['message-1'] }
     const server = await endpoint([{ name: 'boai_call', args: { operation: 'automations.create', input: {}, requestId: 'schedule' } }, JSON.stringify(result)])

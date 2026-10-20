@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Actual local recorder status, source records and saved thematic reports.
- * [OUTPUT]: Immediate opt-in settings, shared calendar range/report entry and confirmed deletion.
+ * [INPUT]: Actual local recorder status, source records, structured themes and saved thematic reports.
+ * [OUTPUT]: Immediate opt-in settings, source-bound theme/candidate review, shared calendar range/report entry and confirmed deletion.
  * [POS]: Desktop settings card, independent of employee automation/personality logs.
  * [PROTOCOL]: Update Header and settings/.folder.md when changed.
  */
@@ -9,7 +9,7 @@ import { format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import type { DateRange } from 'react-day-picker'
 import type { DesktopApi } from '@shared/ipc'
-import type { ActivityStatus, ActivitySample, ActivityReport, ActivitySettings } from '@shared/domain/desktop-activity'
+import type { ActivityStatus, ActivitySample, ActivityReport, ActivitySettings, ActivityAnalysis } from '@shared/domain/desktop-activity'
 import { applicationCall } from '@/components/common/application-client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -23,21 +23,30 @@ import { CalendarClock, InfoIcon, Trash2, RefreshCw } from '@/components/icons'
 import { toast } from 'sonner'
 
 export function DesktopActivityCard({ api, active, onReport }: { api: DesktopApi; active: boolean; onReport(from: string, to: string): Promise<void> }) {
-  const [status, setStatus] = useState<ActivityStatus>(), [busy, setBusy] = useState(false), [dates, setDates] = useState<DateRange>(() => ({ from: new Date(), to: new Date() })), [samples, setSamples] = useState<ActivitySample[]>([]), [total, setTotal] = useState(0), [reports, setReports] = useState<ActivityReport[]>([]), [excluded, setExcluded] = useState(''), [clearOpen, setClearOpen] = useState(false)
+  const [status, setStatus] = useState<ActivityStatus>(), [busy, setBusy] = useState(false), [dates, setDates] = useState<DateRange>(() => ({ from: new Date(), to: new Date() })), [samples, setSamples] = useState<ActivitySample[]>([]), [total, setTotal] = useState(0), [reports, setReports] = useState<ActivityReport[]>([]), [analysisView, setAnalysisView] = useState<{ total: number; analyses: ActivityAnalysis[]; nextOffset: number | null }>({ total: 0, analyses: [], nextOffset: null }), [excluded, setExcluded] = useState(''), [clearOpen, setClearOpen] = useState(false)
   const from = format(dates.from!, 'yyyy-MM-dd'), to = format(dates.to ?? dates.from!, 'yyyy-MM-dd')
   const refresh = async () => {
-    const [next, rows, saved] = await Promise.all([applicationCall<ActivityStatus>(api, 'activity.status'), applicationCall<{ samples: ActivitySample[]; total: number }>(api, 'activity.query', { from, to, limit: 20 }), applicationCall<ActivityReport[]>(api, 'activity.reports')])
-    setStatus(next); setSamples(rows.samples); setTotal(rows.total); setReports(saved); setExcluded(next.settings.excludedApps.join('\n'))
+    const [next, rows, saved, analyzed] = await Promise.all([applicationCall<ActivityStatus>(api, 'activity.status'), applicationCall<{ samples: ActivitySample[]; total: number }>(api, 'activity.query', { from, to, limit: 20 }), applicationCall<ActivityReport[]>(api, 'activity.reports'), applicationCall<{ total: number; analyses: ActivityAnalysis[]; nextOffset: number | null }>(api, 'activity.analyses', { from, to, limit: 20 })])
+    setStatus(next); setSamples(rows.samples); setTotal(rows.total); setReports(saved); setAnalysisView(analyzed); setExcluded(next.settings.excludedApps.join('\n'))
   }
   useEffect(() => {
     if (!active) return
     let live = true
-    void Promise.all([applicationCall<ActivityStatus>(api, 'activity.status'), applicationCall<{ samples: ActivitySample[]; total: number }>(api, 'activity.query', { from, to, limit: 20 }), applicationCall<ActivityReport[]>(api, 'activity.reports')]).then(([next, rows, saved]) => { if (live) { setStatus(next); setSamples(rows.samples); setTotal(rows.total); setReports(saved); setExcluded(next.settings.excludedApps.join('\n')) } }, error => { if (live) toast.error(String(error)) })
+    void Promise.all([applicationCall<ActivityStatus>(api, 'activity.status'), applicationCall<{ samples: ActivitySample[]; total: number }>(api, 'activity.query', { from, to, limit: 20 }), applicationCall<ActivityReport[]>(api, 'activity.reports'), applicationCall<{ total: number; analyses: ActivityAnalysis[]; nextOffset: number | null }>(api, 'activity.analyses', { from, to, limit: 20 })]).then(([next, rows, saved, analyzed]) => { if (live) { setStatus(next); setSamples(rows.samples); setTotal(rows.total); setReports(saved); setAnalysisView(analyzed); setExcluded(next.settings.excludedApps.join('\n')) } }, error => { if (live) toast.error(String(error)) })
     return () => { live = false }
   }, [api, active, from, to])
   const action = async (run: () => Promise<unknown>) => { if (busy) return; setBusy(true); try { await run() } catch (error) { toast.error(String(error)) } finally { await refresh().catch(error => toast.error(String(error))); setBusy(false) } }
   useEffect(() => { if (status?.lastError) toast.error(status.lastError) }, [status?.lastError])
   const update = (patch: Partial<ActivitySettings>) => void action(() => applicationCall(api, 'activity.configure', { expectedRevision: status!.settings.revision, ...patch }, true))
+  const loadMoreAnalyses = async () => {
+    if (busy || analysisView.nextOffset === null) return
+    setBusy(true)
+    try {
+      const page = await applicationCall<{ total: number; analyses: ActivityAnalysis[]; nextOffset: number | null }>(api, 'activity.analyses', { from, to, offset: analysisView.nextOffset, limit: 20 })
+      if (page.total !== analysisView.total) { await refresh(); toast.info('活动分析已变化，已刷新列表。') }
+      else setAnalysisView(previous => ({ total: page.total, analyses: [...previous.analyses, ...page.analyses], nextOffset: page.nextOffset }))
+    } catch (error) { toast.error(String(error)) } finally { setBusy(false) }
+  }
   return <section className="mt-6 space-y-4">
     <div className="flex items-center justify-between"><h3 className="flex items-center gap-2 font-medium">桌面活动与日报<Tooltip><TooltipTrigger render={<Button size="icon-xs" variant="ghost" aria-label="桌面活动说明" />}><InfoIcon /></TooltipTrigger><TooltipContent className="max-w-80">开启后按频率读取前台窗口，以本机 OCR 保存文字、应用名称和窗口标题，不保存截图。日报由 bobo 读取这些记录生成，会将所选记录发送给 bobo 使用的模型；不使用聊天历史补造活动。</TooltipContent></Tooltip></h3>
       <Button size="icon-sm" variant="ghost" disabled={busy} aria-label="刷新桌面活动" onClick={() => void action(async () => {})}><RefreshCw /></Button></div>
@@ -49,10 +58,36 @@ export function DesktopActivityCard({ api, active, onReport }: { api: DesktopApi
     </CardContent></Card>
     <div className="flex flex-wrap items-center gap-2"><Popover><PopoverTrigger render={<Button variant="secondary" size="sm" data-slot="date-range-trigger" aria-label="日报日期范围" />}><CalendarClock />{from === to ? from : `${from} 至 ${to}`}</PopoverTrigger><PopoverContent align="start" className="w-auto max-w-[calc(100vw-2rem)] max-h-(--available-height) overflow-auto p-0"><Calendar mode="range" selected={dates} defaultMonth={dates.from} numberOfMonths={2} locale={zhCN} max={30} aria-label="日报日期范围" onSelect={next => { if (next?.from) setDates(next) }} /></PopoverContent></Popover>
       <Button variant="outline" size="sm" disabled={busy || !total} onClick={() => void action(() => onReport(from, to))}>交给 bobo 生成日报</Button>
-      <Popover open={clearOpen} onOpenChange={setClearOpen}><PopoverTrigger render={<Button variant="ghost" size="icon-sm" disabled={busy || !status?.count} aria-label="删除桌面活动" />}><Trash2 /></PopoverTrigger><PopoverContent align="end" className="w-72 space-y-3"><p className="text-sm">删除活动文字和关联日报。</p><div className="flex gap-2"><Button size="sm" variant="outline" disabled={busy} onClick={() => void action(async () => { await applicationCall(api, 'activity.clear', { from, to }, true); setClearOpen(false) })}>删除所选日期</Button><Button size="sm" variant="destructive" disabled={busy} onClick={() => void action(async () => { await applicationCall(api, 'activity.clear', {}, true); setClearOpen(false) })}>全部清空</Button></div></PopoverContent></Popover>
+      <Popover open={clearOpen} onOpenChange={setClearOpen}><PopoverTrigger render={<Button variant="ghost" size="icon-sm" disabled={busy || !status?.count} aria-label="删除桌面活动" />}><Trash2 /></PopoverTrigger><PopoverContent align="end" className="w-72 space-y-3"><p className="text-sm">删除活动文字、提炼主题和关联日报。</p><div className="flex gap-2"><Button size="sm" variant="outline" disabled={busy} onClick={() => void action(async () => { await applicationCall(api, 'activity.clear', { from, to }, true); setClearOpen(false) })}>删除所选日期</Button><Button size="sm" variant="destructive" disabled={busy} onClick={() => void action(async () => { await applicationCall(api, 'activity.clear', {}, true); setClearOpen(false) })}>全部清空</Button></div></PopoverContent></Popover>
     </div>
     <p className="text-muted-foreground text-sm">{total ? `所选日期有 ${total} 条观察，显示前 ${samples.length} 条。` : '所选日期暂无桌面活动记录。'}</p>
     {samples.length > 0 && <Card className="gap-0 p-0"><CardContent className="soft-divide-y px-4">{samples.map(sample => <div key={sample.id} className="flex items-center justify-between gap-3 py-3"><div className="min-w-0"><p className="truncate text-sm font-medium">{sample.app} · {sample.title || '无窗口标题'}</p><p className="text-muted-foreground text-xs">{new Date(sample.capturedAt).toLocaleString()}</p></div><Popover><PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label="查看活动文字" />}><InfoIcon /></PopoverTrigger><PopoverContent align="end" className="max-h-96 w-96 overflow-auto"><pre className="whitespace-pre-wrap text-xs">{sample.text || '该窗口未识别到文字。'}</pre></PopoverContent></Popover></div>)}</CardContent></Card>}
+    {analysisView.total > 0 && <Card className="gap-0 p-0"><CardContent className="space-y-3 p-4"><div><h4 className="text-sm font-medium">活动主题</h4><p className="text-muted-foreground text-xs">根据屏幕文字提炼，需以原记录核对。共 {analysisView.total} 条分析，已显示 {analysisView.analyses.length} 条。</p></div>{analysisView.analyses.map(item => <div key={item.id} className="space-y-1 border-t pt-3"><p className="text-sm font-medium">{item.project || item.title || '未命名主题'}</p><p className="text-muted-foreground text-xs">{item.sampleIds.length} 条原记录{item.highlights.length ? ` · ${item.highlights.slice(0, 2).join('；')}` : ''}</p><ActivityAnalysisDetail api={api} analysis={item} /></div>)}{analysisView.nextOffset !== null && <Button variant="secondary" size="sm" disabled={busy} onClick={() => void loadMoreAnalyses()}>加载更多分析</Button>}{analysisView.analyses.some(item => item.memoryCandidates.length > 0) && <p className="text-muted-foreground text-xs">长期记忆建议只供核对，尚未加入 Bobo 的长期记忆。</p>}</CardContent></Card>}
     {reports.length > 0 && <div className="space-y-2"><h4 className="text-sm font-medium">已生成日报</h4>{reports.map(report => <Popover key={report.id}><PopoverTrigger render={<Button className="mr-2" variant="outline" size="sm" />}>{report.from === report.to ? report.from : `${report.from} 至 ${report.to}`}</PopoverTrigger><PopoverContent align="start" className="max-h-[65vh] w-[min(36rem,80vw)] overflow-auto"><div className="whitespace-pre-wrap text-sm">{report.content}</div></PopoverContent></Popover>)}</div>}
   </section>
+}
+
+function ActivityAnalysisDetail({ api, analysis }: { api: DesktopApi; analysis: ActivityAnalysis }) {
+  const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [sources, setSources] = useState<ActivitySample[]>([])
+  const [nextOffset, setNextOffset] = useState<number | null>(0)
+  const load = async (offset: number) => {
+    setLoading(true)
+    try {
+      const page = await applicationCall<{ sourceHash: string; samples: ActivitySample[]; nextOffset: number | null }>(api, 'activity.analysis.sources', { id: analysis.id, offset, limit: 10 })
+      if (page.sourceHash !== analysis.sourceHash) throw new Error('活动分析来源已改变，请刷新后重试')
+      setSources(previous => offset ? [...previous, ...page.samples] : page.samples)
+      setNextOffset(page.nextOffset)
+    } catch (error) { setSources([]); setNextOffset(null); toast.error(String(error)) }
+    finally { setLoading(false) }
+  }
+  return <Popover open={open} onOpenChange={value => { setOpen(value); if (value) { setSources([]); setNextOffset(0); void load(0) } }}>
+    <PopoverTrigger render={<Button variant="outline" size="sm" />}>{analysis.title || '查看分析'}</PopoverTrigger>
+    <PopoverContent align="start" className="max-h-[70vh] w-[min(42rem,85vw)] space-y-3 overflow-auto">
+      <p className="text-sm whitespace-pre-wrap">{analysis.description}</p>
+      {analysis.memoryCandidates.length > 0 && <div className="space-y-2 border-t pt-3"><p className="text-sm font-medium">长期记忆建议 · 尚未保存</p>{analysis.memoryCandidates.map((candidate, index) => <div key={index} className="space-y-1 text-sm"><p>{candidate.content}</p><p className="text-muted-foreground text-xs">{candidate.why}</p></div>)}</div>}
+      <div className="space-y-2 border-t pt-3"><p className="text-sm font-medium">原始桌面记录</p>{sources.map(sample => <div key={sample.id} className="space-y-1 border-t pt-2"><p className="text-xs font-medium">{sample.app} · {sample.title || '无窗口标题'} · {new Date(sample.capturedAt).toLocaleString()}</p><pre className="whitespace-pre-wrap break-words text-xs">{sample.text || '该窗口未识别到文字。'}</pre></div>)}{nextOffset !== null && <Button variant="secondary" size="sm" disabled={loading} onClick={() => void load(nextOffset)}>{loading ? '读取中…' : sources.length ? '加载更多原文' : '读取原文'}</Button>}</div>
+    </PopoverContent>
+  </Popover>
 }
