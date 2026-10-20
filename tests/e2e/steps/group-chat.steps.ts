@@ -1,10 +1,11 @@
 /*
+ * [OUTPUT]: 定位前消息未获焦点，点击后固定message-target/实际焦点与原审批身份均须成立；关闭预览回原文件标签。
  * [OUTPUT]: 前两核心场景迁到现行文件标签/执行过程与原审批；父子Work/文件/单次授权核验保持，旧任务看板不计覆盖。
  * [OUTPUT]: 等待实际布局达到原16px严格关系后核对；审批沿当前运行命令名称，原父子工作/文件断言保持。
  * [OUTPUT]: 文件预览正文采用统一名称，不展示版本标记。
  * [OUTPUT]: 文件外开通过header操作菜单进入，原真实宿主路径核对保持。
- * [OUTPUT]: 会话和全局任务按真实Work/run/approval身份回到原员工审批卡，原拒绝/双击允许/单次执行和零伪交付断言保持。
- * [OUTPUT]: 原工作记录经会话菜单任务与产物进入，父子/审批/文件/关闭焦点断言保留；/files进入主区域文件视图，回聊天后草稿与工作身份不变。
+ * [OUTPUT]: 核心审批经执行过程定位原消息；精确Work/run/approval、拒绝/双击允许/单次执行和零伪交付保持。
+ * [OUTPUT]: 前两核心迁现行文件标签/执行过程；其余历史专项仍含退役任务与产物等入口，保留失败待T3逐项迁移，不冒称已验。
  * [OUTPUT]: 可选功能审阅留存原消息批准前后、真实命令原件与单次执行/未冒充交付事实。
  * [INPUT]: 单聊/群聊中文场景、单行群名与可点击成员入口、只读文件预览的折叠来源记录、真实 Electron 与隔离历史/离线模型支撑。
  * [OUTPUT]: 用浏览器原生Range建立待替换文字选区，避免操作系统导航键差异；实际姓名点击仍断言原选区替换与光标连续输入； 单聊/群聊头像真实资料无启用标签，按展开状态区分当前资料浮层与退出动画；资料底部直接进入对应员工可编辑配置并关闭浮层、复用记忆页的同一标签切回配置、关闭后头像恢复焦点且可再打开；群消息和标题指定不同成员不误开首人或群配置；同卡片与消息工具条、表情持久回执/引用草稿/复制/真实 Trace 和主题窄窗交互；长历史新消息不抢滚动且无旧式新消息悬浮返回按钮；D6提供显式阅读导航；Markdown真实应用内预览后显式外开并保留原路径/任务标签；本人头像靠右与当前个人资料名称；composer 姓名提及恢复实际 DOM 选区/连续点名/续写和选中替换，行内节点/草稿、提及/IME/空结果防误发；用户整组镜像且正文左对齐、员工靠左、渐隐标题、文件/工作、跨会话草稿、键盘及真实命令审批断言。
@@ -20,7 +21,7 @@ import { prepareGroupChat, resizeGroupWindow } from '../support/group-chat'
 
 const inputText = (input: Locator) => input.evaluate(element => element instanceof HTMLTextAreaElement ? element.value : Array.from(element.querySelector('p')?.childNodes ?? []).map(node => node instanceof HTMLBRElement ? node.classList.contains('ProseMirror-trailingBreak') ? '' : '\n' : node instanceof HTMLElement && node.matches('[data-mention-id]') ? node.querySelector('.composer-mention-tag')?.textContent ?? '' : node.textContent ?? '').join(''))
 const openFiles = async (page: Page) => { await page.locator('.chat-header').getByRole('button', { name: '会话操作', exact: true }).click(); await page.getByRole('menuitem', { name: '文件', exact: true }).click(); await expect(page.getByRole('region', { name: '会话文件', exact: true })).toBeVisible() }
-const openExecution = async (page: Page, runId: string) => { await page.locator('.chat-header').getByRole('button', { name: '会话操作', exact: true }).click(); await page.getByRole('menuitem', { name: '执行过程', exact: true }).click(); const run = page.locator(`[data-execution-run-id="${runId}"]`); await run.getByRole('button', { name: /^展开执行：/ }).click(); await expect(run).toContainText('等待批准'); return run }
+const openExecution = async (page: Page, runId: string) => { await page.locator('.chat-header').getByRole('button', { name: '会话操作', exact: true }).click(); await page.getByRole('menuitem', { name: '执行过程', exact: true }).click(); const run = page.locator(`[data-execution-run-id="${runId}"]`); const heading = run.getByRole('button', { name: /^(展开|收起)执行：/ }); await expect(heading).toBeVisible(); if (await heading.getAttribute('aria-expanded') === 'false') await heading.click(); await expect(run).toContainText('等待批准'); return run }
 const openWorkRecords = async (page: Page) => { await page.locator('.chat-header').getByRole('button', { name: '会话操作', exact: true }).click(); await page.getByRole('menuitem', { name: '任务与产物', exact: true }).click() }
 
 type State = { fixture?: Awaited<ReturnType<typeof prepareGroupChat>>; approvalCwd?: string; directReplyId?: string; directTurnId?: string }
@@ -77,7 +78,7 @@ Then('父子工作记录与原消息文件保持对应', async ({ runtime, group
   await page.getByRole('menuitem', { name: '外部打开', exact: true }).click()
   await expect.poll(() => runtime.app.evaluate(() => (globalThis as unknown as { groupOpened: string }).groupOpened)).toBe(await realpath(groupDesign.fixture!.artifacts[1].path))
   await page.getByRole('button', { name: '关闭详情', exact: true }).click()
-  await expect(page.locator('.detail-panel')).toBeHidden()
+  await expect(page.getByRole('region', { name: '会话文件', exact: true })).toBeVisible()
   await openFiles(page)
   await page.locator('.messages').evaluate(element => { element.scrollTop = 0 })
   await page.screenshot({ path: 'test-results/group-chat-light.png', scale: 'css', animations: 'disabled' })
@@ -170,7 +171,14 @@ Then('审批显示命令目录且拒绝后没有执行文件', async ({ runtime,
   expect(awaitingWork).toMatchObject({ ownerAgentId: 'reviewer', activeRunId: awaiting.runId, status: 'running' })
   const execution = await openExecution(page, awaiting.runId)
   await expect(execution.getByRole('button', { name: '允许这次执行', exact: true })).toHaveCount(0)
+  const target = await page.evaluate(input => window.boai.request('resolveExecutionMessage', input), { conversationId: groupDesign.fixture!.group.id, runId: awaiting.runId })
+  expect(target.conversationId).toBe(groupDesign.fixture!.group.id)
+  const message = page.locator(`#message-${target.messageId}`)
+  await expect(message).not.toBeFocused()
   await execution.getByRole('button', { name: '定位聊天记录', exact: true }).click()
+  await expect(message).toBeFocused()
+  await expect(message).toHaveClass(/message-target/)
+  await expect(message).toBeInViewport()
   await expect(page.locator(`[data-approval-id="${awaiting.id}"]`)).toBeVisible()
   expect(groupDesign.fixture!.state.calls).toBe(calls)
   await runtime.reviewData('执行过程定位保持原审批身份', { workId: awaitingWork.id, runId: awaiting.runId, approvalId: awaiting.id, providerRequests: calls, retired: '会话/全局任务看板已退役' })
@@ -196,7 +204,14 @@ When('用户再次点名设计师并允许这次执行', async ({ runtime, group
   const work = detail.workItems!.find(work => work.activeRunId === awaiting.runId)!
   expect(work).toMatchObject({ ownerAgentId: 'reviewer', activeRunId: awaiting.runId, status: 'running' })
   const execution = await openExecution(page, awaiting.runId)
+  const target = await page.evaluate(input => window.boai.request('resolveExecutionMessage', input), { conversationId: groupDesign.fixture!.group.id, runId: awaiting.runId })
+  expect(target.conversationId).toBe(groupDesign.fixture!.group.id)
+  const message = page.locator(`#message-${target.messageId}`)
+  await expect(message).not.toBeFocused()
   await execution.getByRole('button', { name: '定位聊天记录', exact: true }).click()
+  await expect(message).toBeFocused()
+  await expect(message).toHaveClass(/message-target/)
+  await expect(message).toBeInViewport()
   await expect(page.locator(`[data-approval-id="${awaiting.id}"]`)).toBeVisible()
   await page.getByRole('button', { name: '关闭详情', exact: true }).click()
   await expect(approval).toBeInViewport()

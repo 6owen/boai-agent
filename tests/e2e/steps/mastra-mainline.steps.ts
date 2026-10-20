@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 同一run的write_file和publish_artifact分别批准，固定路径/不同审批身份并保留原件；不隐式扩大权限。
  * [OUTPUT]: 真实文件写入逐次允许；固定V1选文修改提交V2，精确标注/原身份/hash/新根与重启零重放保持；旧要求修改入口退役。
  * [OUTPUT]: 创建员工使用当前工作方式字段；原API上下文/文件/重启断言保持。
  * [OUTPUT]: 文件预览正文采用统一名称，不展示版本标记。
@@ -44,12 +45,20 @@ async function openArtifact(runtime: Desktop, artifact: ArtifactVersion) {
   await expect(panel(runtime.page, artifact).getByRole('region', { name: '文件正文', exact: true })).toBeVisible()
 }
 async function approveReportWrite(runtime: Desktop) {
-  const approval = runtime.page.getByRole('region', { name: `${MAINLINE_EMPLOYEE} 的修改或发布文件审批`, exact: true })
-  await expect(approval).toBeVisible()
-  await expect(approval).toContainText('写入文件 self:/runs/')
-  await expect(approval).toContainText('/report.md')
-  await approval.getByRole('button', { name: '允许这次执行', exact: true }).click()
-  await expect(approval).toHaveCount(0)
+  let runId: string | undefined
+  for (const operation of ['写入', '发布']) {
+    const approval = runtime.page.getByRole('region', { name: `${MAINLINE_EMPLOYEE} 的修改或发布文件审批`, exact: true })
+    await expect(approval).toBeVisible()
+    const pending = (await runtime.page.evaluate(() => window.boai.request('snapshot', undefined))).approvals
+    expect(pending).toHaveLength(1)
+    runId ??= pending[0].runId
+    expect(pending[0].runId).toBe(runId)
+    await expect(approval).toContainText(`${operation}文件 self:/runs/${runId}/report.md`)
+    const original = runtime.page.locator(`[data-approval-id="${pending[0].id}"]`)
+    await expect(original).toBeVisible()
+    await original.getByRole('button', { name: '允许这次执行', exact: true }).click()
+    await expect(original).toHaveCount(0)
+  }
 }
 async function reviewArtifact(runtime: Desktop, artifact: ArtifactVersion) {
   await runtime.reviewFile(`${artifact.name} · 第 ${artifact.contentVersion} 版`, artifact.path, { required: true, expectedSha256: artifact.contentHash })
