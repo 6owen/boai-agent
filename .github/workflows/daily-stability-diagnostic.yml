@@ -1,8 +1,8 @@
-# [INPUT]: Fixed product source, original 18 accepted UI baselines and explicit conversation readiness candidate.
-# [OUTPUT]: Full original zero-pixel UI comparison; no masks, snapshot acceptance, deadline changes or retries.
-# [POS]: Isolated UI preparation verification after original 376 chat-light failure, not formal Required checks.
-# [PROTOCOL]: Changes update Header; native group diagnostic retained separately.
-name: Conversation readiness original UI comparison
+# [INPUT]: Fixed natural-minute automation tests and unchanged product source.
+# [OUTPUT]: Four real Electron same-group native question/approval cases; actual stdio, scoped UI cancellation, independent peers and two reopens, no providers or retries.
+# [POS]: Isolated DS11 diagnostic; not formal Required checks or real-provider quality qualification.
+# [PROTOCOL]: Changes update Header; original CPU diagnostic retained outside tracked workflow.
+name: Same-group native pending UI diagnostic
 on:
   push:
     branches: [infra/daily-source-identity]
@@ -10,7 +10,7 @@ on:
 permissions:
   contents: read
 jobs:
-  ui_readiness:
+  native_group:
     runs-on: macos-15
     timeout-minutes: 25
     steps:
@@ -26,26 +26,41 @@ jobs:
           node node_modules/electron/install.js
       - name: Check current types
         run: pnpm typecheck
-      - name: Bind fixed source and original comparison contract
+      - name: Bind exact product and scenario candidate
         run: |
           node --input-type=module - <<'JS'
           import { buildInputHash } from './scripts/build-identity.mjs';
-          import { mkdir, writeFile, readFile } from 'node:fs/promises';
-          const inputHash = await buildInputHash(), contract = JSON.parse(await readFile('tests/e2e/baselines/contract.json', 'utf8'));
+          import { mkdir, writeFile } from 'node:fs/promises';
+          const inputHash = await buildInputHash();
           if (inputHash !== 'f2b4fc421bdf39dd4011365a6b400c57da0d5d14f7397fd01780b76388a1bbb4') throw Error('Product inputs differ');
-          if (contract.cases.length !== 18 || contract.threshold !== 0 || contract.maxDiffPixels !== 0 || contract.masks.length) throw Error('Original UI comparison contract differs');
-          await mkdir('.local/daily-ui-readiness', { recursive: true });
-          await writeFile('.local/daily-ui-readiness/source.json', JSON.stringify({ testCandidate: '4db5f22c1c25fa0636107e6b3433fc3c05ddfc06', originalFailureRun: 39690280925, inputHash, cases: contract.cases.map(c => c.id), realProviders: false, baselineChanged: false, threshold: 0, maxDiffPixels: 0, masks: [], retries: 0, oldDeadlinesUnchanged: true }, null, 2));
+          await mkdir('.local/daily-native-group', { recursive: true });
+          await writeFile('.local/daily-native-group/source.json', JSON.stringify({ productCandidate: '376a4d710e873064d8e8e28758ec0dd7ab312772', testCandidate: '72d1973e2b52d3eaaa716d9f97f4b299b59306be', inputHash, backends: ['codex', 'claude'], modes: ['input', 'approval'], realProviderCalls: false, actualStdio: true, rawNativeArgvNotArchived: true, cases: 4, retries: 0, originalDeadlinesAndAssertionsUnchanged: true }, null, 2));
           JS
-      - name: Build unchanged product
-        run: pnpm build
-      - name: Compare all original accepted UI cases
-        run: node scripts/ui-regression.mjs check --profile github-macos15-arm64 --output .local/daily-ui-readiness/ui
+      - name: Build current candidate and original BDD framework
+        run: |
+          pnpm build
+          pnpm test:bddgen
+      - name: Freeze four same-group cases and run without retries
+        env:
+          BOAI_TEST_DEV_SERVER: '1'
+        run: |
+          node --input-type=module - <<'JS'
+          import { execFileSync } from 'node:child_process';
+          import { readFileSync } from 'node:fs';
+          const directory = '.local/daily-native-group', base = ['exec', 'playwright', 'test', '.features-gen/native-group-pending.feature.spec.js', '--retries', '0'];
+          execFileSync('pnpm', [...base, '--list', '--reporter=json'], { stdio: 'inherit', env: { ...process.env, PLAYWRIGHT_JSON_OUTPUT_NAME: `${directory}/list.json` } });
+          const listed = JSON.parse(readFileSync(`${directory}/list.json`, 'utf8'));
+          const count = suite => (suite.specs ?? []).reduce((sum, spec) => sum + (spec.tests ?? []).length, 0) + (suite.suites ?? []).reduce((sum, child) => sum + count(child), 0);
+          if (count(listed) !== 4) throw Error('Expected exactly four same-group native pending cases');
+          execFileSync('pnpm', [...base, '--reporter=list,json'], { stdio: 'inherit', env: { ...process.env, BOAI_REVIEW_RUN_DIR: `${directory}/review`, PLAYWRIGHT_JSON_OUTPUT_NAME: `${directory}/playwright-results.json` } });
+          JS
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: daily-ui-readiness
-          path: .local/daily-ui-readiness/
+          name: daily-native-group
+          path: |
+            .local/daily-native-group/
+            test-results/
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 3
