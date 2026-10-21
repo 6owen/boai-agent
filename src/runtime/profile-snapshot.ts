@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 已持久登记原ID的维护租约、明确新备份目录、macOS清单工具及受管执行器。
- * [OUTPUT]: 离线userData候选快照与独立重核；保留凭据/登录态/原生元数据，控制文件不进快照。
+ * [OUTPUT]: 离线userData快照及沿原authority完成凭据的独立重核；取消/失败不凭文件标记晋升。
  * [POS]: 独立个人升级备份阶段；调用方仍须确认旧程序实际退出，不代替安装/回滚事务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查src/runtime/.folder.md。
  */
@@ -22,7 +22,7 @@ const equal = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b
 const reserved = (name: string) => name.normalize('NFKC').replace(/\p{Default_Ignorable_Code_Point}/gu, '').toUpperCase().startsWith('.BOAI-PROFILE-LOCKS-')
 const within = (root: string, path: string) => { const part = relative(root, path); return !part || !part.startsWith('..' + sep) && part !== '..' && !isAbsolute(part) }
 const snapshotManifest = z.object({
-  format: z.literal('boai-offline-profile'), version: z.literal(1),
+  format: z.literal('boai-offline-profile'), version: z.literal(2),
   transactionId: z.string().regex(/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/),
   source: z.string().refine(path => isAbsolute(path) && path === resolve(path) && path !== dirname(path)),
   createdAt: z.string().refine(value => Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value),
@@ -92,7 +92,14 @@ async function childAuthorities(source: string) {
       for (const leaf of await readdir(directory)) {
         const file = join(directory, leaf, 'access.sqlite'), info = await lstat(file)
         if (!info.isFile() || info.isSymbolicLink()) throw Error('嵌套维护身份缺失或不是普通文件')
-        children.push(acquireProfileAccess(join(dirname(directory), leaf)))
+        const profile = join(dirname(directory), leaf)
+        // A moved profile may be absent, but cannot redirect an existing authority elsewhere.
+        try { if ((await lstat(profile)).isSymbolicLink()) throw Error('嵌套数据路径已被符号链接替换') }
+        catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error }
+        const child = acquireProfileAccess(profile); children.push(child)
+        const held = await lstat(child.file)
+        if (held.dev !== info.dev || held.ino !== info.ino || await realpath(child.file) !== await realpath(file)) throw Error('嵌套维护租约与已发布身份不符')
+        child.assertHeld()
       }
     }
     return { controls: controls.sort(), release() { for (const child of children.reverse()) child.release() } }
@@ -106,20 +113,19 @@ export async function createProfileSnapshot(access: ReturnType<typeof acquirePro
   const source = access.profileRoot, info = await lstat(source)
   if (!info.isDirectory() || info.isSymbolicLink() || await realpath(source) !== source) throw Error('快照来源必须为实际维护目录')
   const output = await newDestination(destination, tools, source), payload = join(output, 'profile'), createdAt = new Date().toISOString()
-  let authorities: Awaited<ReturnType<typeof childAuthorities>> | undefined
+  let authorities: Awaited<ReturnType<typeof childAuthorities>> | undefined, committing = false
   try {
+    if (access.snapshotReceipt(transactionId)) throw Error('原事务已有完成快照，请先核对原凭据')
     await durable(join(output, 'intent.json'), { version: 1, transactionId, source, createdAt, status: 'building' }); await sync(output, true)
     authorities = await childAuthorities(source); assertAccess()
     const before = await inventory(tools, 'profile-before', source, join(output, 'source-before.json'))
     if (!equal(before.value.controls, authorities.controls)) throw Error('原数据维护目录在准备期间变化')
-    // ditto --clone may fall back to a full copy; never depend on CoW to fit.
-    const bytes = before.value.entries.reduce<number>((total, value) => {
-      const row = value as { type: string; bytes: number }
-      if (row.type !== 'file') return total
-      if (!Number.isSafeInteger(row.bytes) || row.bytes < 0 || !Number.isSafeInteger(total + row.bytes)) throw Error('快照文件大小不受支持')
-      return total + row.bytes
-    }, 0), space = await statfs(output)
-    if (space.bavail * space.bsize < bytes + 256 * 1024 ** 2) throw Error('快照空间不足，原数据和维护事务保持')
+    // CoW may fall back to a full copy, including forks and temporary control files.
+    const capacityFile = join(output, 'capacity.json')
+    await run(tools, 'profile-capacity', tools.inventoryTool, ['capacity', source, capacityFile])
+    const capacity = z.object({ version: z.literal(1), totalBytes: z.number().int().nonnegative().safe() }).strict().parse(JSON.parse((await regular(capacityFile, 1024 * 1024)).toString()))
+    const space = await statfs(output)
+    if (space.bavail * space.bsize < capacity.totalBytes + 256 * 1024 ** 2) throw Error('快照空间不足，原数据和维护事务保持')
     await run(tools, 'profile-copy', '/usr/bin/env', ['DITTOABORT=1', '/usr/bin/ditto', '--clone', '--rsrc', '--extattr', '--acl', '--qtn', source, payload])
     for (const control of authorities.controls) {
       const copied = join(payload, control)
@@ -131,16 +137,22 @@ export async function createProfileSnapshot(access: ReturnType<typeof acquirePro
     const after = await inventory(tools, 'profile-after', source, join(output, 'source-after.json')); assertAccess()
     if (!equal(before.value, after.value) || !equal(before.value.entries, copied.value.entries) || !equal(before.value.hardlinks, copied.value.hardlinks) || copied.value.controls.length) throw Error('快照与原数据字节、元数据或硬链接不一致')
     await syncTree(payload); tools.signal?.throwIfAborted(); assertAccess()
-    const manifest = { format: 'boai-offline-profile', version: 1, transactionId, source, createdAt, catalogSha256: hash(copied.bytes), excludedControls: authorities.controls }
+    const manifest = { format: 'boai-offline-profile', version: 2, transactionId, source, createdAt, catalogSha256: hash(copied.bytes), excludedControls: authorities.controls }
     await durable(join(output, 'snapshot.json'), manifest); await sync(output, true); await sync(dirname(output), true)
-    return { directory: output, manifestSha256: hash(await regular(join(output, 'snapshot.json'), 1024 * 1024)), ...manifest }
+    const result = { directory: output, manifestSha256: hash(await regular(join(output, 'snapshot.json'), 1024 * 1024)), ...manifest }
+    // Release can fail too. No awaits or fallible cleanup after the FULL completion commit.
+    const children = authorities; authorities = undefined; children.release()
+    tools.signal?.throwIfAborted(); assertAccess(); committing = true
+    access.recordSnapshot({ version: 1, transactionId, directory: output, manifestSha256: result.manifestSha256 })
+    return result
   } catch (error) {
-    await writeFile(join(output, 'failure.json'), JSON.stringify({ status: 'failed', transactionId, error: String(error) }, null, 2), { flag: 'wx', mode: 0o600 }).catch(() => {})
+    try { await writeFile(join(output, 'failure.json'), JSON.stringify({ status: committing ? 'unknown' : 'failed', transactionId, error: String(error) }, null, 2), { flag: 'wx', mode: 0o600 }) }
+    catch (recordingError) { throw new AggregateError([error, recordingError], '快照未返回完成，失败记录也未写入；核对原事务凭据') }
     throw error
   } finally { authorities?.release() }
 }
 
-export async function verifyProfileSnapshot(directory: string, proofDirectory: string, tools: ProfileSnapshotTools) {
+export async function verifyProfileSnapshot(access: ReturnType<typeof acquireProfileAccess>, directory: string, proofDirectory: string, tools: ProfileSnapshotTools) {
   tools.signal?.throwIfAborted()
   const input = resolve(directory), info = await lstat(input), root = await realpath(input)
   if (!info.isDirectory() || info.isSymbolicLink() || info.uid !== process.getuid?.() || info.mode & 0o077) throw Error('快照根必须为本人私有真实目录')
@@ -148,10 +160,16 @@ export async function verifyProfileSnapshot(directory: string, proofDirectory: s
   try { await lstat(join(root, 'failure.json')); throw Error('原快照有失败结果，不能提供恢复资格') }
   catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error }
   const manifestBytes = await regular(join(root, 'snapshot.json'), 1024 * 1024), manifest = snapshotManifest.parse(JSON.parse(manifestBytes.toString()))
+  const assertReceipt = () => {
+    const receipt = access.snapshotReceipt(manifest.transactionId)
+    if (access.profileRoot !== manifest.source || !receipt || receipt.directory !== root || receipt.manifestSha256 !== hash(manifestBytes)) throw Error('快照缺少同一原维护身份的完成凭据')
+  }
+  assertReceipt()
   const catalogBytes = await regular(join(root, 'catalog.json')), catalog = JSON.parse(catalogBytes.toString()) as Catalog
   if (hash(catalogBytes) !== manifest.catalogSha256 || catalog.version !== 1 || !equal(catalog.controls, [])) throw Error('快照身份、版本或清单hash不符')
   const proof = await newDestination(proofDirectory, tools, root)
   const observed = await inventory(tools, 'profile-verify', join(root, 'profile'), join(proof, 'catalog.json'))
   if (!equal(catalog, observed.value) || !(await regular(join(root, 'snapshot.json'), 1024 * 1024)).equals(manifestBytes) || !(await regular(join(root, 'catalog.json'))).equals(catalogBytes)) throw Error('快照内容或核验期间身份变化')
+  tools.signal?.throwIfAborted(); assertReceipt()
   return { directory: root, proof, manifestSha256: hash(manifestBytes), transactionId: manifest.transactionId, source: manifest.source }
 }

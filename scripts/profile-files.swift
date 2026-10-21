@@ -1,6 +1,6 @@
 /*
  [INPUT]: 明确隔离根目录及新清单路径；macOS文件元数据、ACL和xattr。
- [OUTPUT]: 私有目录验证及不跟随链接/不读控制文件的数据清单；副本恢复各节点mtime/创建时间。
+ [OUTPUT]: 私有目录/数据清单/副本时间恢复；独立容量统计包含临时控制副本和xattr，均不跟随链接。
  [POS]: 个人升级离线快照工具；调用方负责维护准入、实际退出及受管进程生命周期。
  [PROTOCOL]: 一旦本文件变化，必须同步更新Header并检查scripts/.folder.md。
  */
@@ -14,21 +14,26 @@ func digest(_ bytes: Data) -> String { SHA256.hash(data: bytes).map { String(for
 func reserved(_ name: String) -> Bool {
     name.precomposedStringWithCompatibilityMapping.unicodeScalars.filter { !$0.properties.isDefaultIgnorableCodePoint }.map(String.init).joined().uppercased().hasPrefix(".BOAI-PROFILE-LOCKS-")
 }
-func attributes(_ path: String) throws -> [[String: Any]] {
+func attributeNames(_ path: String) throws -> [String] {
     let count = listxattr(path, nil, 0, XATTR_NOFOLLOW)
     try check(count >= 0, "listxattr")
     var names = [UInt8](repeating: 0, count: count)
     let actual = names.withUnsafeMutableBytes { listxattr(path, $0.baseAddress?.assumingMemoryBound(to: CChar.self), count, XATTR_NOFOLLOW) }
     try check(actual == count, "xattr list changed")
-    return try names.split(separator: 0).map { raw -> [String: Any] in
+    return try names.split(separator: 0).map { raw -> String in
         guard let name = String(bytes: raw, encoding: .utf8) else { throw Failure("xattr name is not UTF8") }
+        return name
+    }.sorted { $0.utf8.lexicographicallyPrecedes($1.utf8) }
+}
+func attributes(_ path: String) throws -> [[String: Any]] {
+    return try attributeNames(path).map { name -> [String: Any] in
         let length = getxattr(path, name, nil, 0, 0, XATTR_NOFOLLOW)
         try check(length >= 0, "getxattr size")
         var value = Data(count: length)
         let read = value.withUnsafeMutableBytes { getxattr(path, name, $0.baseAddress, length, 0, XATTR_NOFOLLOW) }
         try check(read == length, "xattr changed")
         return ["name": name, "bytes": length, "sha256": digest(value)]
-    }.sorted { ($0["name"] as! String).utf8.lexicographicallyPrecedes(($1["name"] as! String).utf8) }
+    }
 }
 func acl(_ path: String) throws -> String {
     // acl_get_link_np also returns nil/ENOENT when FILESEC_ACL is absent.
@@ -92,6 +97,28 @@ func inventory(_ root: String) throws -> [String: Any] {
     let links = groups.values.filter { $0.count > 1 }.map { $0.sorted() }.sorted { $0[0].utf8.lexicographicallyPrecedes($1[0].utf8) }
     return ["version": 1, "entries": entries, "controls": controls.sorted(), "hardlinks": links]
 }
+func capacity(_ root: String) throws -> [String: Any] {
+    guard (try info(root)).st_mode & S_IFMT == S_IFDIR else { throw Failure("root must be a real directory") }
+    var total: Int64 = 0
+    func add(_ value: Int64) throws {
+        guard value >= 0, value <= 9_007_199_254_740_991 - total else { throw Failure("snapshot capacity exceeds supported size") }
+        total += value
+    }
+    func walk(_ path: String) throws {
+        let item = try info(path), kind = item.st_mode & S_IFMT
+        guard kind == S_IFDIR || kind == S_IFREG || kind == S_IFLNK else { throw Failure("special file cannot be copied") }
+        if kind != S_IFDIR { try add(item.st_size) }
+        for name in try attributeNames(path) {
+            let length = getxattr(path, name, nil, 0, 0, XATTR_NOFOLLOW)
+            try check(length >= 0, "capacity xattr size"); try add(Int64(length))
+        }
+        // ditto temporarily copies these too. Run out of process so the lock holder
+        // never opens/closes a second descriptor for an authority database inode.
+        if kind == S_IFDIR { for name in try FileManager.default.contentsOfDirectory(atPath: path) { try walk(path + "/" + name) } }
+    }
+    try walk(root)
+    return ["version": 1, "totalBytes": total]
+}
 func restoreTimes(_ root: String, _ catalog: String) throws {
     guard (try info(root)).st_mode & S_IFMT == S_IFDIR else { throw Failure("root must be a real directory") }
     guard let data = try JSONSerialization.jsonObject(with: Data(contentsOf: URL(fileURLWithPath: catalog))) as? [String: Any], data["version"] as? Int == 1, let rows = data["entries"] as? [[String: Any]] else { throw Failure("invalid catalog") }
@@ -116,12 +143,13 @@ func restoreTimes(_ root: String, _ catalog: String) throws {
 }
 do {
     let args = CommandLine.arguments
-    guard args.count == 4, args[2].hasPrefix("/"), args[3].hasPrefix("/") else { throw Failure("usage: profile-files inventory|restore-times|private-root absolute-root absolute-catalog") }
+    guard args.count == 4, args[2].hasPrefix("/"), args[3].hasPrefix("/") else { throw Failure("usage: profile-files inventory|capacity|restore-times|private-root absolute-root absolute-output") }
     if args[1] == "private-root" {
         let metadata = try info(args[2])
         guard metadata.st_mode & S_IFMT == S_IFDIR, metadata.st_uid == getuid(), metadata.st_mode & 0o077 == 0, try acl(args[2]).isEmpty else { throw Failure("snapshot directory must be private, owned and without ACL grants") }
-    } else if args[1] == "inventory" {
-        let data = try JSONSerialization.data(withJSONObject: inventory(args[2]), options: [.sortedKeys])
+    } else if args[1] == "inventory" || args[1] == "capacity" {
+        let value = args[1] == "inventory" ? try inventory(args[2]) : try capacity(args[2])
+        let data = try JSONSerialization.data(withJSONObject: value, options: [.sortedKeys])
         let fd = open(args[3], O_WRONLY | O_CREAT | O_EXCL, 0o600)
         try check(fd >= 0, "create inventory"); defer { close(fd) }
         try data.withUnsafeBytes { bytes in var offset = 0; while offset < bytes.count { let count = write(fd, bytes.baseAddress!.advanced(by: offset), bytes.count - offset); try check(count > 0, "write inventory"); offset += count } }

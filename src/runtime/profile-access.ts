@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 明确profile根目录、应用共享访问或升级维护模式，以及Node内置SQLite。
- * [OUTPUT]: profile外共享/维护准入及持久升级意图；提交不释放维护连接锁，中断后拒绝新旧协议应用初始化。
+ * [OUTPUT]: profile外共享/维护准入、持久升级意图及快照完成凭据；提交后连接锁保持。
  * [POS]: 桌面/独立服务/个人升级的写入准入；不替代runtime owner或实际进程退出证明。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -25,7 +25,25 @@ export class ProfileMaintenancePendingError extends ProfileAccessBusyError {
   }
 }
 export interface ProfileMaintenanceIntent { version: 1; id: string; startedAt: string }
+export interface ProfileSnapshotReceipt { version: 1; transactionId: string; directory: string; manifestSha256: string }
 const validMaintenanceId = (id: unknown): id is string => typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id)
+function snapshotReceipt(value: unknown): ProfileSnapshotReceipt {
+  const record = value as ProfileSnapshotReceipt | undefined
+  if (!record || Object.keys(record).sort().join(',') !== 'directory,manifestSha256,transactionId,version' || record.version !== 1 || !validMaintenanceId(record.transactionId) || typeof record.directory !== 'string' || !isAbsolute(record.directory) || resolve(record.directory) !== record.directory || dirname(record.directory) === record.directory || typeof record.manifestSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(record.manifestSha256)) throw Error('快照完成凭据格式不受支持')
+  return { version: 1, transactionId: record.transactionId, directory: record.directory, manifestSha256: record.manifestSha256 }
+}
+function readSnapshot(database: DatabaseSync, id: string): ProfileSnapshotReceipt | undefined {
+  if (!validMaintenanceId(id)) throw Error('快照事务ID必须为小写UUID')
+  const table = database.prepare("SELECT type FROM sqlite_schema WHERE name='profile_snapshots'").get()
+  if (!table) return
+  if (table.type !== 'table') throw Error('快照完成凭据表格式不受支持')
+  const rows = database.prepare('SELECT receipt FROM profile_snapshots WHERE id=? LIMIT 2').all(id)
+  if (!rows.length) return
+  if (rows.length !== 1 || typeof rows[0].receipt !== 'string' || rows[0].receipt.length > 16384) throw Error('快照完成凭据记录不受支持')
+  const receipt = snapshotReceipt(JSON.parse(rows[0].receipt))
+  if (receipt.transactionId !== id) throw Error('快照完成凭据事务身份不符')
+  return receipt
+}
 function readMaintenance(database: DatabaseSync, version: number): ProfileMaintenanceIntent | undefined {
   const table = database.prepare("SELECT type FROM sqlite_schema WHERE name='maintenance'").get()
   if (!table) { if (version === 2) throw Error('升级事务记录缺失，不能初始化数据'); return }
@@ -153,6 +171,23 @@ export function acquireProfileAccess(input: string, mode: ProfileAccessMode = 'a
   }
   return { profileRoot, file, assertHeld, release,
     maintenanceIntent() { assertHeld(); return readMaintenance(database, accessVersion) },
+    snapshotReceipt(id: string) { assertHeld(); return readSnapshot(database, id) },
+    // The caller finishes all asynchronous work and cancellation checks before this commit.
+    recordSnapshot(value: ProfileSnapshotReceipt) {
+      requireMaintenance()
+      const receipt = snapshotReceipt(value)
+      if (readMaintenance(database, accessVersion)?.id !== receipt.transactionId) throw Error('快照完成凭据必须沿原维护事务')
+      const previous = readSnapshot(database, receipt.transactionId)
+      if (previous) {
+        if (JSON.stringify(previous) !== JSON.stringify(receipt)) throw Error('原事务已有不同快照完成凭据，不能覆盖')
+        return previous
+      }
+      commitMaintenance(() => {
+        database.exec('CREATE TABLE IF NOT EXISTS profile_snapshots (id TEXT PRIMARY KEY, receipt TEXT NOT NULL)')
+        database.prepare('INSERT INTO profile_snapshots VALUES (?,?)').run(receipt.transactionId, JSON.stringify(receipt))
+      })
+      return receipt
+    },
     beginMaintenance(id: string) {
       requireMaintenance()
       if (!validMaintenanceId(id)) throw Error('升级事务ID必须为小写UUID')

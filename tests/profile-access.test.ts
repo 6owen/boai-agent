@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 实际SQLite共享/独占事务、隔离profile及Node/Electron子进程。
- * [OUTPUT]: 多应用/维护互斥、持久升级意图与恢复、缺目录别名/控制路径边界及真实GC/死亡释放。
+ * [OUTPUT]: 多应用/维护互斥、原ID快照凭据持久/冲突拒绝、缺目录边界及真实GC/死亡释放。
  * [POS]: 个人升级准入合同；不是应用升级或完整数据回滚验收。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -301,3 +301,42 @@ for (const [name, executable] of [['Node', process.execPath], ['Electron Node', 
     expect(await readFile(join(profile, 'original'), 'utf8')).toBe('original-private-fixture')
   })
 }
+
+test('a snapshot receipt is durable under its original maintenance id and remains readable after explicit completion', async () => {
+  const { root, profile } = await fixture(), lease = access(profile, 'maintenance'), id = randomUUID()
+  const receipt = { version: 1 as const, transactionId: id, directory: join(root, 'snapshot'), manifestSha256: 'a'.repeat(64) }
+  expect(() => lease.recordSnapshot(receipt)).toThrow('原维护事务')
+  lease.beginMaintenance(id); expect(lease.snapshotReceipt(id)).toBeUndefined()
+  expect(lease.recordSnapshot(receipt)).toEqual(receipt)
+  expect(lease.recordSnapshot(receipt)).toEqual(receipt)
+  expect(() => access(profile)).toThrow(ProfileAccessBusyError)
+  lease.release()
+  expect(() => access(profile)).toThrow('尚未恢复')
+  const recovered = access(profile, 'maintenance')
+  expect(recovered.maintenanceIntent()?.id).toBe(id)
+  expect(recovered.snapshotReceipt(id)).toEqual(receipt)
+  recovered.finishMaintenance(id)
+  const application = access(profile)
+  expect(application.snapshotReceipt(id)).toEqual(receipt)
+  expect(() => application.recordSnapshot(receipt)).toThrow('仅维护模式')
+})
+test.each(['directory', 'manifestSha256', 'transactionId'])('a conflicting snapshot %s cannot replace the original completed receipt', async field => {
+  const { root, profile } = await fixture(), lease = access(profile, 'maintenance'), id = randomUUID()
+  lease.beginMaintenance(id)
+  const receipt = { version: 1 as const, transactionId: id, directory: join(root, 'snapshot'), manifestSha256: 'a'.repeat(64) }
+  lease.recordSnapshot(receipt)
+  const conflict = { ...receipt, [field]: field === 'directory' ? join(root, 'other') : field === 'transactionId' ? randomUUID() : 'b'.repeat(64) }
+  expect(() => lease.recordSnapshot(conflict)).toThrow()
+  expect(lease.snapshotReceipt(id)).toEqual(receipt)
+  expect(lease.maintenanceIntent()?.id).toBe(id); lease.assertHeld()
+})
+test('unknown receipt content is refused without modifying the existing authority', async () => {
+  const { root, profile } = await fixture(), lease = access(profile, 'maintenance'), id = randomUUID()
+  lease.beginMaintenance(id)
+  lease.recordSnapshot({ version: 1, transactionId: id, directory: join(root, 'snapshot'), manifestSha256: 'a'.repeat(64) }); lease.release()
+  const database = new DatabaseSync(lease.file)
+  database.prepare('UPDATE profile_snapshots SET receipt=? WHERE id=?').run(JSON.stringify({ version: 99 }), id); database.close()
+  const recovery = access(profile, 'maintenance')
+  expect(() => recovery.snapshotReceipt(id)).toThrow('不受支持')
+  expect(recovery.maintenanceIntent()?.id).toBe(id); recovery.assertHeld()
+})
