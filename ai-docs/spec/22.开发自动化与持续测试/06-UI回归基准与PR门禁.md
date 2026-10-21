@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 纯开发Markdown允许02 §10文档资格，始终运行Required checks独立重算；任何产品/UI/基准/配置变更仍全18及原件门禁，不授文档分项产品资格。
 [OUTPUT]: UI原件沿监督入口实际执行墙钟窗口核末场，窗口及原目录/proof字节绑定；原1ms余量、像素/环境/18身份保持，旧缺窗口不授新资格。
 [OUTPUT]: 无窗口云端实证ready后484ms才更新workArea，预检须采样/事件连续稳定并有界失败；共享桌面锁覆盖guard退出，像素/主屏条件保持。
 [OUTPUT]: 主屏681/684跨API失败后改Electron同API独立预检，截图仍核实际page窗口；Required checks独立重核全18原报告/原件，待云端实测。
@@ -176,3 +177,10 @@ node scripts/ui-ci-baseline.mjs accept --run 同一RUN_ID --candidate .local/已
 UI job通过后由record-ui登记summary、compare/summary、原始Playwright报告SHA及全部逐场景原件proof。Required checks必须重新读取全18个正常一次通过的原始结果、唯一实际环境附件及FeatureReview的截图/逐启动trace，沿既有verifyDesktopEvidence核对场景/时段/路径/字节。全运行墙钟结束必须来自监督入口实际记录的execution-window.json，不能用report.stats.startTime加单调duration推导；核原目录/起止/本场至下一场边界，窗口字节SHA纳入原件proof。缺失/不完整窗口及后改拒绝，不增加时间容差，也不影响已接受PNG/像素合同。缺失、跳过、重试、环境不符、清理错误或改字节均失败；UI job本身也必须成功。汇总成功或候选成功均不能替代此门槛。
 
 预检在默认共享桌面锁内运行，screen的display-metrics-changed事件及每100ms采样任一变化均重置稳定窗口，连续1秒稳定才登记；总计10秒仍变化即失败，外层guard期限30秒。无窗口诊断已实证ready后的异步workArea更新，不用固定684、容差或单纯固定sleep代替就绪。预检实际退出后释放锁；Playwright再沿原globalSetup取同一锁。截图阶段仍精确核当前page窗口/主屏/显示配置，预检稳定不免除后续核验。
+
+
+## 10. 非产品开发文档范围
+
+02 §10定义的完整Markdown白名单差异只执行Ubuntu文档检查，不启动macOS产品或上传大体积截图/trace。Required checks仍必需且always运行，重新计算真实Git范围和提交身份，要求范围job成功且两个产品job明确skipped；输出必须写明product tests were not run。整workflow不能用paths-ignore或提交消息跳过，否则可能留下Pending必需检查。
+
+混入一项代码/测试/基准PNG或JSON/依赖/CI配置/未知路径就恢复原完整范围，手动执行也始终完整。文档轻量不改变全18合同、阈值/mask、基准接受或UI原件协议；不冒充历史完整失败的修复，也不授发布/安装资格。当前实现及实际云端结果唯一归03。
