@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: DS02在原万条历史场景核最新侧栏摘要；定位旧页及真实重启不得用旧阅读页尾替换最新消息，保持原分页/锚点/清空与期限。
  * [OUTPUT]: 流式阅读核对真实占位消息与执行卡；分页等待期间追加并完成API正文，再核对公开消息不被旧快照覆盖及80条窗口。
  * [OUTPUT]: 文件预览正文采用统一名称，不展示版本标记。
  * [OUTPUT]: 成果修订沿原员工文件卡和同一composer； 标题栏无阅读状态/说明/跳转按钮；新回复经正常滚动补页及实际可见观察登记，保留完成次序、独立锚点、重启与零新增业务断言。本次合同同步未执行测试。
@@ -442,6 +443,7 @@ Then('删除名称与清空的正文文件不再检索且恢复空会话也不�
 Then('个人浏览只载入有界历史并明确旧阅读未知', async ({ runtime, readingState }) => {
   const fixture = readingState.history!; await openConversation(runtime, fixture.group.title)
   await expect(message(runtime, historyId(10_000))).toBeVisible()
+  await expect(runtime.page.getByRole('navigation', { name: '会话列表', exact: true }).getByRole('button', { name: new RegExp(`^${fixture.group.title}`) }).locator('.conversation-preview')).toContainText('第 10000 条完整旧历史。')
   const current = await view(runtime, fixture.group.id)
   expect(current.messages.length).toBeLessThanOrEqual(80); expect(current.messagePage.items.length).toBeLessThanOrEqual(80)
   expect(current.messagePage.beforeCursor).toBeDefined(); expect(current.reading).toMatchObject({ legacyCompletedUnknown: true, unreadCount: 0, completionCount: 0, boundary: 0, sparseSeen: [] })
@@ -508,6 +510,7 @@ When('用户搜索旧正文并打开第一条原消息', async ({ runtime, readi
   expect(await runtime.page.locator('.chat-panel:visible [data-reading-message-id]').count()).toBeLessThanOrEqual(80)
   await expect.poll(async () => Number((await readState(runtime, fixture.group.id)).anchor?.messageId.split('-').at(-1) ?? 10_000)).toBeLessThan(100)
   readingState.anchor = await savedAnchor(runtime, fixture.group.id)
+  await expect(runtime.page.getByRole('navigation', { name: '会话列表', exact: true }).getByRole('button', { name: new RegExp(`^${fixture.group.title}`) }).locator('.conversation-preview')).toContainText('第 10000 条完整旧历史。')
 })
 Then('原消息定位和历史锚点重启准确且没有业务执行', async ({ runtime, readingState }) => {
   const fixture = readingState.history!, previous = readingState.anchor!
@@ -515,6 +518,7 @@ Then('原消息定位和历史锚点重启准确且没有业务执行', async ({
   expect(await readingRecords(fixture.dataPath)).toMatchObject({ completions: [], works: [], runs: [], acceptances: [] })
   await runtime.restart(); await openConversation(runtime, fixture.group.title)
   await expect(message(runtime, previous.anchor!.messageId)).toBeVisible()
+  await expect(runtime.page.getByRole('navigation', { name: '会话列表', exact: true }).getByRole('button', { name: new RegExp(`^${fixture.group.title}`) }).locator('.conversation-preview')).toContainText('第 10000 条完整旧历史。')
   const current = await readState(runtime, fixture.group.id); expect(current).toMatchObject({ epoch: previous.epoch, legacyCompletedUnknown: true, boundary: 0, sparseSeen: [], unreadCount: 0 })
   expect(current.anchor?.messageId).toBe(previous.anchor!.messageId)
   expect(await readingRecords(fixture.dataPath)).toMatchObject({ completions: [], works: [], runs: [], acceptances: [] })
