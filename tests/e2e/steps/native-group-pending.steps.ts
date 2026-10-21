@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 第二轮均已到真实处理/PID终态，失败在读取已自动折叠卡片正文；现显式展开原卡再核原状态，全部断言/期限保持。
  * [OUTPUT]: 首轮4失败为未放弃已核未受理请求及误用region定位普通Card；沿原放弃入口/aria-label修正，180秒与原业务断言保持。
  * [INPUT]: 原stdio双后端/同群双员工、普通composer和原执行面板。
  * [OUTPUT]: 实际无目标拒绝/草稿、逐员工输入/审批/停止、真实文件/PID结束及双次重启原请求不重放。
@@ -21,6 +22,13 @@ type State = { group?: NativeGroup; runs?: AgentRun[]; actions?: NativeAction[];
 export const test = base.extend<{ nativeGroup: State }>({ nativeGroup: async ({}, use) => use({}) })
 const { Given, When, Then } = createBdd(test)
 const panel = (runtime: Desktop, run: AgentRun) => runtime.page.locator(`#agent-execution-drawer [data-execution-run-id="${run.id}"]`)
+async function expandedExecution(runtime: Desktop, run: AgentRun) {
+  const card = panel(runtime, run), toggle = card.getByRole('button', { name: /^(展开|收起)执行：/ })
+  await expect(toggle).toBeVisible()
+  if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  return card
+}
 async function composer(runtime: Desktop, group: NativeGroup) {
   const chat = runtime.page.locator(`[data-conversation-view="chat"][data-conversation-id="${group.chat.id}"]`)
   await expect(chat.locator('.chat-messages-transition')).toHaveAttribute('aria-busy', 'false')
@@ -136,7 +144,7 @@ Then('原生问题只消费各自回答且两次重启不增加执行', async ({
     expect(reply).toBeTruthy(); expect(reply.content).not.toContain(`NATIVE_UI_REPLY_${2 - index}`)
   }
   await openExecution(runtime)
-  for (const run of state.runs!) await expect(panel(runtime, run)).toContainText('已完成')
+  for (const run of state.runs!) await expect(await expandedExecution(runtime, run)).toContainText('已完成')
   await runtime.reviewNativeCheckpoint(`${group.kind}同群两问题分别回答后实际终态`)
   await reopenTwice(runtime, state, view)
 })
@@ -151,7 +159,7 @@ When('我从第一名员工的执行记录停止并批准第二名员工', async
   await expect.poll(async () => (await nativeGroupDetail(runtime, group)).runs.find(run => run.id === first.id)?.status).toBe('cancelled')
   const pending = (await nativeGroupActions(runtime, group, state.runs!)).find(action => action.agentId === group.agents[1].id)!
   expect(pending).toMatchObject({ id: state.actions!.find(action => action.agentId === group.agents[1].id)!.id, status: 'pending' })
-  await expect(firstCard).toContainText('已停止')
+  await expect(await expandedExecution(runtime, first)).toContainText('已停止')
   await expect(firstCard.getByRole('button', { name: '停止本次执行', exact: true })).toHaveCount(0)
   await expect(secondCard.locator('[aria-label="原生执行请求"]')).toBeVisible()
   const option = pending.options.find(option => /^(accept|allow|approve)(_|$)/.test(option.id))!
@@ -165,8 +173,8 @@ Then('只有第二名员工产生批准文件且两次重启保持结果', async
   const marker = join(nativeGroupWork(group, group.agents[1]), 'permission-marker')
   expect(await stat(join(nativeGroupWork(group, group.agents[0]), 'permission-marker')).then(() => 'exists', error => (error as NodeJS.ErrnoException).code)).toBe('ENOENT')
   expect(await readFile(marker, 'utf8')).toBe('approved')
-  await expect(panel(runtime, state.runs![0])).toContainText('已停止')
-  await expect(panel(runtime, state.runs![1])).toContainText('已完成')
+  await expect(await expandedExecution(runtime, state.runs![0])).toContainText('已停止')
+  await expect(await expandedExecution(runtime, state.runs![1])).toContainText('已完成')
   await expect(runtime.page.locator('[aria-label="原生执行请求"]')).toHaveCount(0)
   await runtime.reviewFile(`${group.kind}仅第二员工实际批准文件`, marker, { required: true })
   await runtime.reviewNativeCheckpoint(`${group.kind}同群单人停止同事批准后实际终态`)
