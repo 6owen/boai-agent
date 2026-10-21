@@ -34,7 +34,7 @@ jobs:
           const inputHash = await buildInputHash();
           if (inputHash !== 'f2b4fc421bdf39dd4011365a6b400c57da0d5d14f7397fd01780b76388a1bbb4') throw Error('Product inputs differ');
           await mkdir('.local/daily-native-group', { recursive: true });
-          await writeFile('.local/daily-native-group/source.json', JSON.stringify({ productCandidate: '376a4d710e873064d8e8e28758ec0dd7ab312772', testCandidate: '72d1973e2b52d3eaaa716d9f97f4b299b59306be', inputHash, backends: ['codex', 'claude'], modes: ['input', 'approval'], realProviderCalls: false, actualStdio: true, rawNativeArgvNotArchived: true, cases: 4, retries: 0, originalDeadlinesAndAssertionsUnchanged: true }, null, 2));
+          await writeFile('.local/daily-native-group/source.json', JSON.stringify({ productCandidate: '376a4d710e873064d8e8e28758ec0dd7ab312772', testCandidate: '94c518fd55fa0d017e8fc0362f22b7c0db506491', inputHash, backends: ['codex', 'claude'], modes: ['input', 'approval'], realProviderCalls: false, actualStdio: true, rawNativeArgvNotArchived: true, cases: 4, retries: 0, originalDeadlinesAndAssertionsUnchanged: true }, null, 2));
           JS
       - name: Build current candidate and original BDD framework
         run: |
