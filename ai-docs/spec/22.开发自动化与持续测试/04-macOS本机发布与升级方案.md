@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-21用户将自动CI迁回GitHub Actions；现行release-check仍只认本机main原件，云端发布资格适配尚待实施，当前禁止据云端探测或旧本机成功发布。
 [OUTPUT]: 快照恢复缺目录时仍按原控制父目录/scope/文件的实际身份绑定，兼容同卷大小写/Unicode别名，不折叠路径字符串。
 [OUTPUT]: 快照清单v2沿原维护SQLite完成凭据；最终取消/子scope身份及含资源叉和控制副本的容量合同补齐。
 [OUTPUT]: 新增6.3完整离线快照候选：凭据/登录态/SQLite WAL及macOS元数据保持、独立重核/失败保留；不复用排除密钥的产品便携备份，不授安装恢复资格。
@@ -246,3 +247,5 @@ ZIP固定8场：创建、API连续文件/重启、两个本机文件/重启、�
 逐启动字段必须完整：本场profileRoot为系统临时目录下独立boai-bdd目录，dataDir可以是该根或其合法子目录（原目录审批场景为root/product），expected/actual的程序及dataDir分别存在并相等，observed实际程序、asar及userData经已知系统路径别名规范后对应；同场各次同时保持profileRoot与实际dataDir，各场不得复用或指向邻场。两种实际bundle在BDD后、删除ZIP解包或退挂DMG之前，再次核全部文件字节/执行模式及链接与builder清单相同，保存before/after原件；变化失败并保留现场，不能只重核未运行的原builder包。
 
 `pnpm release:smoke --verify .local/release-asset-runs/<id>`只读重核同源码候选、完整原件/hash、两资产选择/原报告和启动身份；成功封存不代替main资格、发布/个人安装或升级回滚。当前22项冒烟合同（清单/挂载所有权/完整profile协议、实际bundle修改和真实CLI旧guard拒绝）通过；小型真实DMG实际验证活跃guard不被恢复、owner SIGKILL后worker及挂载实际退出，仅为机制证据，正式新应用包入口/中断恢复仍待执行；旧c5两批探路不套用此入口。
+
+> 当前执行端更新：2026-10-21用户将自动CI迁回GitHub Actions；现行release-check仍只认本机main原件，云端发布资格适配尚待实施，当前禁止据云端探测或旧本机成功发布。

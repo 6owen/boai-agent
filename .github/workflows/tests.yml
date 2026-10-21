@@ -1,9 +1,13 @@
 # [INPUT]: 仓库变更、锁定依赖、离线协议服务。
-# [OUTPUT]: 仅明确手动启用的云端备用；当前用户额度耗尽，自动验证由本地CI执行。
+# [OUTPUT]: PR/main自动云端工程、32核心及全18UI只读门禁；逐步日志与失败原件，不启动本机。
 # [POS]: .github/workflows/tests.yml。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 name: Offline tests
 on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
@@ -14,7 +18,7 @@ jobs:
   desktop:
     name: Engineering and desktop
     runs-on: macos-15
-    # T1固定28核心；原90秒单测试不变，预留模块与完整失败证据收集。
+    # T1固定32核心；原单测试期限不变，预留模块与完整失败证据收集。
     timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
@@ -67,6 +71,7 @@ jobs:
           name: engineering
           path: .local/ci/engineering.json
           include-hidden-files: true
+          retention-days: 3
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: always()
@@ -74,6 +79,7 @@ jobs:
           name: t1
           path: .local/t1/
           include-hidden-files: true
+          retention-days: 3
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: always() && steps.bdd.outcome != 'success'
@@ -84,12 +90,14 @@ jobs:
             test-results/
             cucumber-report/
           if-no-files-found: ignore
+          retention-days: 3
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: native-crash-stacks
           path: .local/ci/native-crashes/
           include-hidden-files: true
+          retention-days: 3
           if-no-files-found: ignore
   ui:
     name: UI regression
@@ -116,6 +124,7 @@ jobs:
           name: ui
           path: .local/ui-ci/
           include-hidden-files: true
+          retention-days: 3
           if-no-files-found: error
   required:
     name: Required checks

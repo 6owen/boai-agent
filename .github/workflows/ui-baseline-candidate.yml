@@ -1,9 +1,11 @@
 # [INPUT]: 明确手动触发的受信仓库分支及固定macOS构建。
-# [OUTPUT]: 仅手动云端候选；额度耗尽后移除开发分支引导push，原CI档案/失败保持。
+# [OUTPUT]: 手动或固定开发分支的独立云端候选；官方原件审阅，不提供合并资格或自动接受。
 # [POS]: 开发侧环境基线采集；无发布/仓库写权限。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
 name: UI baseline candidate
 on:
+  push:
+    branches: [infra/ui-environment-profiles]
   workflow_dispatch:
 permissions:
   contents: read
@@ -34,6 +36,7 @@ jobs:
           name: ui-candidate-github-macos15-arm64
           path: .local/ui-candidate/
           include-hidden-files: true
+          retention-days: 3
           if-no-files-found: error
 
       - uses: actions/upload-artifact@v4
@@ -42,4 +45,5 @@ jobs:
           name: ui-candidate-failure-evidence
           path: .local/ui-candidate/
           include-hidden-files: true
+          retention-days: 3
           if-no-files-found: ignore

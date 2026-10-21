@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 固定UI场景、真实Electron版本、期望图hash与runner环境身份。
- * [OUTPUT]: 每次截图核实际显示器/工作区和主屏归属；缺基线/错环境拒绝，普通CI禁止候选与跨环境回退。
+ * [OUTPUT]: 绑定实际截图page的原生窗口并核主屏工作区/全部显示器缩放；缺基线/错环境拒绝，CI禁止写基线。
  * [POS]: UI回归截图支撑；只读比较不修改产品页面或现有基线。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -20,13 +20,15 @@ export async function compareUiBaseline(runtime: Desktop, caseId: string, info: 
   const actual = await runtime.app.evaluate(({ app }) => ({ electron: process.versions.electron, chrome: process.versions.chrome, packaged: app.isPackaged }))
   expect(actual.electron).toBe(environment.electron)
   expect(actual.packaged).toBe(false)
-  const display = await runtime.app.evaluate(({ screen, BrowserWindow }) => {
-    const primary = screen.getPrimaryDisplay(), window = BrowserWindow.getAllWindows()[0]
+  const targetWindow = await runtime.app.browserWindow(runtime.page)
+  const display = await runtime.app.evaluate(({ screen }, window) => {
+    const primary = screen.getPrimaryDisplay()
     return {
+      windowId: window.id, webContentsId: window.webContents.id,
       onPrimary: screen.getDisplayMatching(window.getBounds()).id === primary.id,
-      displays: screen.getAllDisplays().map(item => ({ width: item.bounds.width, height: item.bounds.height, workWidth: item.workArea.width, workHeight: item.workArea.height, scaleFactor: item.scaleFactor, primary: item.id === primary.id })),
+      displays: screen.getAllDisplays().map(item => ({ width: item.bounds.width, height: item.bounds.height, ...(item.id === primary.id ? { workWidth: item.workArea.width, workHeight: item.workArea.height } : {}), scaleFactor: item.scaleFactor, primary: item.id === primary.id })),
     }
-  })
+  }, targetWindow).finally(() => targetWindow.dispose())
   expect(display.onPrimary).toBe(true)
   const displayRows = (items: unknown[]) => items.map(item => JSON.stringify(Object.entries(item as Record<string, unknown>).sort())).sort()
   expect(displayRows(display.displays)).toEqual(displayRows(environment.displays))
@@ -56,7 +58,7 @@ export async function compareUiBaseline(runtime: Desktop, caseId: string, info: 
     await expect.poll(() => runtime.page.locator('.messages').evaluate(element => element.scrollHeight - element.clientHeight - element.scrollTop)).toBeLessThanOrEqual(1)
     await runtime.page.mouse.move(0, 0)
   }
-  await info.attach('UI环境与页面', { body: JSON.stringify({ caseId, environment, actual, browser }), contentType: 'application/json' })
+  await info.attach('UI环境与页面', { body: JSON.stringify({ caseId, environment, actual, browser, display }), contentType: 'application/json' })
   if (caseId === 'chat-dark') {
     const session = await runtime.page.context().newCDPSession(runtime.page)
     try {

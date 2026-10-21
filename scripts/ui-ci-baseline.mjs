@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 明确GitHub手动采集run、官方artifact摘要、当前干净源码及逐项审阅后的接受命令。
- * [OUTPUT]: 官方原件重新下载核验；共锁接受仅选中CI条目并保留其他来源，初始/环境迁移须全量。
+ * [OUTPUT]: 官方v3显示环境原件重下载核验；共锁逐项接受，初始/环境迁移全量，旧v2不能晋升。
  * [POS]: 开发侧CI基线进口；无远程写入、无自动晋升或Required checks资格。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -31,7 +31,10 @@ export function verifyCandidateRun(run, artifacts, current, runId) {
 }
 export function verifyCandidateIdentity(candidate, run, current, ids, inputHash) {
   if (candidate.profile !== CI_PROFILE || candidate.source?.commit !== current.commit || candidate.source?.sourceHash !== current.sourceHash || candidate.source?.dirty !== false || candidate.ci?.repository !== repository || candidate.ci?.runId !== String(run.id) || candidate.ci?.attempt !== String(run.run_attempt) || candidate.ci?.sha !== run.head_sha || candidate.ci?.workflow !== `${repository}/.github/workflows/ui-baseline-candidate.yml@refs/heads/${run.head_branch}`) throw new Error('候选身份与官方run/源码不匹配')
-  if (candidate.environment?.version !== 2 || candidate.environment.platform !== 'darwin' || candidate.environment.arch !== 'arm64' || candidate.environment.osVersion?.split('.')[0] !== '15' || candidate.built?.version !== 1 || candidate.built.inputHash !== inputHash || !/^[a-f0-9]{64}$/.test(candidate.built.outputHash ?? '')) throw new Error('候选构建或环境不完整')
+  if (candidate.environment?.version !== 3 || candidate.environment.platform !== 'darwin' || candidate.environment.arch !== 'arm64' || candidate.environment.osVersion?.split('.')[0] !== '15' || candidate.built?.version !== 1 || candidate.built.inputHash !== inputHash || !/^[a-f0-9]{64}$/.test(candidate.built.outputHash ?? '')) throw new Error('候选构建或环境不完整')
+  const displays = candidate.environment.displays
+  const positive = value => Number.isFinite(value) && value > 0
+  if (!Array.isArray(displays) || !displays.length || displays.filter(item => item?.primary === true).length !== 1 || displays.some(item => !item || typeof item.primary !== 'boolean' || !positive(item.width) || !positive(item.height) || !positive(item.scaleFactor) || item.primary && (!positive(item.workWidth) || !positive(item.workHeight) || item.workWidth > item.width || item.workHeight > item.height))) throw new Error('候选缺少有效显示器/主屏工作区身份')
   if (JSON.stringify(candidate.selected) !== JSON.stringify(ids) || Object.keys(candidate.cases ?? {}).sort().join() !== [...ids].sort().join()) throw new Error('候选没有覆盖全部登记UI场景')
 }
 export function planCiBaselineManifest(candidate, ids, selected, previous, provenance, reason) {

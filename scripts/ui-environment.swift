@@ -1,5 +1,5 @@
 // [INPUT]: 当前macOS CoreText固定中文字体及AppKit实际显示器。
-// [OUTPUT]: 字体来源和显示器逻辑/工作区尺寸、缩放及主屏身份；不含设备ID或序列号，不修改系统。
+// [OUTPUT]: 字体/全部显示器逻辑尺寸和缩放、主屏工作区；副屏工作区跨API不一致故不登记，不含设备ID。
 // [POS]: UI环境预检；与Chromium实际字体诊断配合，不替代像素比较。
 // [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
 import Foundation
@@ -21,9 +21,13 @@ for name in ["PingFangSC-Regular", "PingFangSC-Medium", "PingFangSC-Semibold"] {
 }
 record("PingFang SC", "default-family", CTFontCreateWithName("PingFang SC" as CFString, 14, nil))
 let displays: [[String: Any]] = NSScreen.screens.enumerated().map { index, screen in
-    ["width": Int(screen.frame.width), "height": Int(screen.frame.height),
-     "workWidth": Int(screen.visibleFrame.width), "workHeight": Int(screen.visibleFrame.height),
-     "scaleFactor": screen.backingScaleFactor, "primary": index == 0]
+    var row: [String: Any] = ["width": Int(screen.frame.width), "height": Int(screen.frame.height),
+                            "scaleFactor": screen.backingScaleFactor, "primary": index == 0]
+    if index == 0 {
+        row["workWidth"] = Int(screen.visibleFrame.width)
+        row["workHeight"] = Int(screen.visibleFrame.height)
+    }
+    return row
 }
 guard !displays.isEmpty else { fatalError("UI environment requires a connected display") }
 let bytes = try JSONSerialization.data(withJSONObject: ["fonts": rows, "displays": displays], options: [.sortedKeys])
