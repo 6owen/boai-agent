@@ -1,8 +1,8 @@
-# [INPUT]: 第23组当前候选与原统一记忆管理BDD，真实开发版Electron/隔离数据。
-# [OUTPUT]: 原添加/固定/忘记/冲突草稿/来源限制/升级/重启场景原件；不提供Required checks。
-# [POS]: 独立诊断分支，配置/完整备份模块专项通过后补实际记忆管理UI。
+# [INPUT]: 当前备份说明/最终记忆BDD候选和固定旧源码fbe95154，隔离真实存储/桌面。
+# [OUTPUT]: 类型/备份暂停合同、旧源码异路径恢复与原编译版记忆管理BDD；保留原失败，不提供Required checks。
+# [POS]: 独立诊断分支，实际开发版边界probe通过后验证最终候选和已知回退范围。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
-name: Daily memory management
+name: Daily restore and memory
 on:
   push:
     branches: [infra/daily-source-identity]
@@ -10,7 +10,7 @@ on:
 permissions:
   contents: read
 jobs:
-  memory-ui:
+  restore-and-memory:
     runs-on: macos-15
     timeout-minutes: 20
     steps:
@@ -24,22 +24,64 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           node node_modules/electron/install.js
+      - name: Check original types
+        run: pnpm typecheck
+      - name: Verify complete backup and paused profile policy
+        run: |
+          mkdir -p .local/daily-restore-memory
+          pnpm exec vitest run tests/service.test.ts --maxWorkers=2 -t 'exports a consistent credential-free backup that opens from a different data directory' --reporter=default --reporter=json --outputFile=.local/daily-restore-memory/current-restore.json
+      - name: Build the fixed previous runtime
+        if: ${{ !cancelled() }}
+        run: |
+          git worktree add --detach .local/daily-rollback/source fbe95154edfeaf304b06258e539c162f9c6fa018
+          node --input-type=module - <<'JS'
+          import { build } from 'esbuild';
+          import { writeFile } from 'node:fs/promises';
+          import { execFileSync } from 'node:child_process';
+          const old = execFileSync('git',['-C','.local/daily-rollback/source','rev-parse','HEAD'],{encoding:'utf8'}).trim();
+          if (old !== 'fbe95154edfeaf304b06258e539c162f9c6fa018') throw Error('Unexpected rollback source');
+          await build({stdin:{contents:"export { AppService } from './.local/daily-rollback/source/src/runtime/service.ts'",resolveDir:process.cwd()},outfile:'.local/daily-rollback/previous-app.mjs',bundle:true,platform:'node',format:'esm',packages:'external',target:'node24'});
+          await writeFile('.local/daily-restore-memory/rollback-source.json',JSON.stringify({previous:old,candidate:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),scope:'candidate export, previous runtime restore and second reopen; original backup assertions retained'},null,2));
+          JS
+      - name: Restore the candidate backup using the fixed previous runtime
+        if: ${{ !cancelled() }}
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          p = Path('tests/service.test.ts')
+          original = p.read_text()
+          needle = 'new AppService({ dataPath: restorePath'
+          if original.count(needle) != 2:
+              raise SystemExit('Original restore seam changed')
+          patched = "import { AppService as PreviousAppService } from '../.local/daily-rollback/previous-app.mjs'\n" + original.replace(needle, 'new PreviousAppService({ dataPath: restorePath')
+          try:
+              p.write_text(patched)
+              diff = subprocess.run(['git', 'diff', '--', 'tests/service.test.ts'], capture_output=True, text=True, check=True).stdout
+              Path('.local/daily-restore-memory/rollback-harness.patch').write_text(diff)
+              outcome = subprocess.run(['pnpm','exec','vitest','run','tests/service.test.ts','--maxWorkers=2','-t','exports a consistent credential-free backup that opens from a different data directory','--reporter=default','--reporter=json','--outputFile=.local/daily-restore-memory/previous-restore.json'])
+          finally:
+              p.write_text(original)
+          raise SystemExit(outcome.returncode)
+          PY
       - name: Build original candidate
+        if: ${{ !cancelled() }}
         run: pnpm build
       - name: Generate original BDD
+        if: ${{ !cancelled() }}
         run: pnpm test:bddgen
-      - name: Original unified memory management
+      - name: Original compiled memory management
+        if: ${{ !cancelled() }}
         env:
-          BOAI_TEST_DEV_SERVER: '1'
-          BOAI_REVIEW_RUN_DIR: .local/daily-memory-ui
-          PLAYWRIGHT_JSON_OUTPUT_NAME: .local/daily-memory-ui/playwright-results.json
+          BOAI_REVIEW_RUN_DIR: .local/daily-restore-memory/memory-ui
+          PLAYWRIGHT_JSON_OUTPUT_NAME: .local/daily-restore-memory/playwright-results.json
         run: pnpm exec playwright test --grep '统一管理保留来源范围并持久化' --retries 0 --reporter=list,json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: daily-memory-ui
+          name: daily-restore-memory
           path: |
-            .local/daily-memory-ui/
+            .local/daily-restore-memory/
             test-results/
           include-hidden-files: true
           if-no-files-found: error

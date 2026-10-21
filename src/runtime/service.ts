@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 备份清单和RESTORE明确标记定时/人格自动行为暂停策略及连接停用，避免恢复后配置状态误读；原恢复语义保持。
  * [OUTPUT]: bobo明确记忆修改/忘记或来源会话清理后，清除所有可重建的Mastra派生thread。
  * [OUTPUT]: 同会话 PTY/真实预览接原应用协议和退出清理；默认关闭的本机 OCR、活动查询及有来源日报。
 [OUTPUT]: 员工PPT工具共用当前执行资格、独立渲染/审阅租约及原模型用量接线。
@@ -5425,9 +5426,9 @@ export class AppService {
         if (native) { nativeRuntimeHomes.add(join(this.dataPath, ...native.split('/'))); return false }
         return !legacyBrowserRuns.has(source) && !nativeRuntimeHomes.has(source)
       } })
-      await writeFile(join(destination, 'backup.json'), JSON.stringify({ format: 'boai-agent-local-backup', version: 2, createdAt: now(), sourceDataPath: this.dataPath, credentialsIncluded: false, externalUserMemoryIncluded: false, nativeAgentRestorePolicy: 'fresh-session', excludedNativeRuntimeHomes: [...nativeRuntimeHomes].map(directory => relative(this.dataPath, directory)), excludedLegacyBrowserRuns: [...legacyBrowserRuns].map(directory => relative(this.dataPath,directory)) }, null, 2))
+      await writeFile(join(destination, 'backup.json'), JSON.stringify({ format: 'boai-agent-local-backup', version: 2, createdAt: now(), sourceDataPath: this.dataPath, credentialsIncluded: false, externalUserMemoryIncluded: false, automationRestorePolicy: 'paused', agentBehaviorRestorePolicy: 'paused', nativeAgentRestorePolicy: 'fresh-session', excludedNativeRuntimeHomes: [...nativeRuntimeHomes].map(directory => relative(this.dataPath, directory)), excludedLegacyBrowserRuns: [...legacyBrowserRuns].map(directory => relative(this.dataPath,directory)) }, null, 2))
       await writeFile(join(destination, 'data-version.json'), JSON.stringify({ schemaVersion: 2, restoredBackup: true, createdAt: now() }, null, 2))
-      await writeFile(join(destination, 'RESTORE.txt'), '退出 BoAI Agent 后，先备份目标应用现有数据，再将 boai.sqlite、data-version.json、skills、knowledge、workspaces、agents、external-workspaces、materials、appearance 和 automation-mastra.sqlite（如存在）复制到目标应用 userData/v2 目录；不要与现有数据库混用。保留 v2 中的 data-version.json 版本标记后再启动新版应用。启动时会自动重定位受管资源、员工目录与产物路径。materials 仅包含已发送的聊天材料；草稿不恢复，也不重新读取外部来源。恢复后定时任务默认暂停，请检查配置后启用。旧备份没有 materials 或 appearance 时，请先移走目标目录对应旧文件夹，避免混入旧数据。API Key 与外部登录态未包含在备份中，需重新配置。Memmy 外部服务数据不包含在备份中，恢复后记忆提供方默认关闭；未确认的同步不会自动重发。Mastra bobo 会话投影在下次聊天时从仍有效的产品历史重建。本机 Agent 私有运行目录不包含在备份中，外部程序自己的历史也不由本备份恢复或删除；原会话引用只供核对，下一次发送消息时从获准聊天内容建立新会话，启动不会自动续行。未完成浏览器下载不包含在备份中；旧版浏览器运行目录缺少可信完成状态，原件保留在来源设备但不导出，具体目录见 backup.json。已发布的受管成果仍正常备份。\n')
+      await writeFile(join(destination, 'RESTORE.txt'), '退出 BoAI Agent 后，先备份目标应用现有数据，再将 boai.sqlite、data-version.json、skills、knowledge、workspaces、agents、external-workspaces、materials、appearance 和 automation-mastra.sqlite（如存在）复制到目标应用 userData/v2 目录；不要与现有数据库混用。保留 v2 中的 data-version.json 版本标记后再启动新版应用。启动时会自动重定位受管资源、员工目录与产物路径。materials 仅包含已发送的聊天材料；草稿不恢复，也不重新读取外部来源。恢复后定时任务、主动交流及情绪/成长/旅行自动行为默认暂停，员工提示词与疲劳设置保留；请在确认连接、授权和配置后逐项启用。渠道绑定与资料/检索连接也默认停用。旧备份没有 materials 或 appearance 时，请先移走目标目录对应旧文件夹，避免混入旧数据。API Key 与外部登录态未包含在备份中，需重新配置。Memmy 外部服务数据不包含在备份中，恢复后记忆提供方默认关闭；未确认的同步不会自动重发。Mastra bobo 会话投影在下次聊天时从仍有效的产品历史重建。本机 Agent 私有运行目录不包含在备份中，外部程序自己的历史也不由本备份恢复或删除；原会话引用只供核对，下一次发送消息时从获准聊天内容建立新会话，启动不会自动续行。未完成浏览器下载不包含在备份中；旧版浏览器运行目录缺少可信完成状态，原件保留在来源设备但不导出，具体目录见 backup.json。已发布的受管成果仍正常备份。\n')
     } finally {
       try { await this.automations.afterBackup() } finally { this.backingUp = false; for (const id of this.conversations.keys()) this.scheduleWork(id) }
       // A send acknowledged just before backup acquired the gate may have queued a job.
