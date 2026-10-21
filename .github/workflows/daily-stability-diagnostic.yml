@@ -1,8 +1,8 @@
 # [INPUT]: Fixed natural-minute automation tests and unchanged product source.
-# [OUTPUT]: Four real Electron approval/refusal/UI-stop/disconnection cases without retries, fake clocks or manual triggers.
+# [OUTPUT]: Two real Electron waiting-approval cancellation and explicit post-disconnection recovery cases, no fake clock or retries; old four cases retained.
 # [POS]: Isolated DS11 diagnostic; not formal Required checks or real-provider quality qualification.
 # [PROTOCOL]: Changes update Header; original CPU diagnostic retained outside tracked workflow.
-name: Natural automation stability diagnostic
+name: Natural approval cancellation and recovery diagnostic
 on:
   push:
     branches: [infra/daily-source-identity]
@@ -33,33 +33,33 @@ jobs:
           import { mkdir, writeFile } from 'node:fs/promises';
           const inputHash = await buildInputHash();
           if (inputHash !== 'f2b4fc421bdf39dd4011365a6b400c57da0d5d14f7397fd01780b76388a1bbb4') throw Error('Product inputs differ');
-          await mkdir('.local/daily-natural', { recursive: true });
-          await writeFile('.local/daily-natural/source.json', JSON.stringify({ productCandidate: 'db3aac7c97a03b1bf63e6fe03a395387f54c4c82', testCandidate: '64db4e8ab3ee25910ed706bc5fcf50780c7666f1', inputHash, actualMinuteBoundary: true, realProviderCalls: false, manualTrigger: false, fakeClock: false, cases: 4, retries: 0, originalDeadlinesAndAssertionsUnchanged: true }, null, 2));
+          await mkdir('.local/daily-natural-recovery', { recursive: true });
+          await writeFile('.local/daily-natural-recovery/source.json', JSON.stringify({ productCandidate: 'db3aac7c97a03b1bf63e6fe03a395387f54c4c82', testCandidate: '62fdc1e34c30501fe64191df4eed182e3af9128a', inputHash, actualMinuteBoundary: true, realProviderCalls: false, initialTrigger: 'natural schedule', recoveryTrigger: 'explicit UI manual once after failed occurrence and passive restart', fakeClock: false, cases: 2, retries: 0, originalDeadlinesAndAssertionsUnchanged: true }, null, 2));
           JS
       - name: Build current candidate and original BDD framework
         run: |
           pnpm build
           pnpm test:bddgen
-      - name: Freeze four cases and run without retries
+      - name: Freeze two additional cases and run without retries
         env:
           BOAI_TEST_DEV_SERVER: '1'
         run: |
           node --input-type=module - <<'JS'
           import { execFileSync } from 'node:child_process';
           import { readFileSync } from 'node:fs';
-          const directory = '.local/daily-natural', base = ['exec', 'playwright', 'test', '.features-gen/natural-automation.feature.spec.js', '--retries', '0'];
+          const directory = '.local/daily-natural-recovery', base = ['exec', 'playwright', 'test', '.features-gen/natural-automation.feature.spec.js', '--grep', '自然到期等待审批时停止并拒绝迟到批准|自然断流后恢复连接只执行明确发起的新运行', '--retries', '0'];
           execFileSync('pnpm', [...base, '--list', '--reporter=json'], { stdio: 'inherit', env: { ...process.env, PLAYWRIGHT_JSON_OUTPUT_NAME: `${directory}/list.json` } });
           const listed = JSON.parse(readFileSync(`${directory}/list.json`, 'utf8'));
           const count = suite => (suite.specs ?? []).reduce((sum, spec) => sum + (spec.tests ?? []).length, 0) + (suite.suites ?? []).reduce((sum, child) => sum + count(child), 0);
-          if (count(listed) !== 4) throw Error('Expected exactly four natural cases');
+          if (count(listed) !== 2) throw Error('Expected exactly two additional natural recovery cases');
           execFileSync('pnpm', [...base, '--reporter=list,json'], { stdio: 'inherit', env: { ...process.env, BOAI_REVIEW_RUN_DIR: `${directory}/review`, PLAYWRIGHT_JSON_OUTPUT_NAME: `${directory}/playwright-results.json` } });
           JS
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: daily-natural-automation
+          name: daily-natural-recovery
           path: |
-            .local/daily-natural/
+            .local/daily-natural-recovery/
             test-results/
           include-hidden-files: true
           if-no-files-found: error
