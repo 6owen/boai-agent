@@ -1,4 +1,4 @@
-# [INPUT]: Fixed candidate 9fb016ac and all six original directory permission BDD cases.
+# [INPUT]: Same 9fb product inputs and d8c3b8df explicit command capability fixture; original six directory BDD cases.
 # [OUTPUT]: Current dev-mode directory approval/refusal/temp grants/native configuration/restart evidence; original assertions and deadlines unchanged.
 # [POS]: DS08 targeted cloud evidence, not Required checks or real provider certification.
 # [PROTOCOL]: Changes update Header and workflow directory map.
@@ -34,7 +34,7 @@ jobs:
           const inputHash = await buildInputHash();
           if (inputHash !== '5a82db0e4d0010e4946714c47b406eb7f4fc711a9c50bb6f42adb0ec949e0951') throw Error('Product inputs differ');
           await mkdir('.local/daily-permissions', { recursive: true });
-          await writeFile('.local/daily-permissions/source.json', JSON.stringify({ reference: '9fb016acab51cdb6a393fd66699846dd0630d195', inputHash, cases: 6, originalFeature: 'directory-permissions.feature', realProviderCalls: false }, null, 2));
+          await writeFile('.local/daily-permissions/source.json', JSON.stringify({ reference: '9fb016acab51cdb6a393fd66699846dd0630d195', inputHash, testCandidate: 'd8c3b8df2563238e6dc38bf05e7ff0ce739b3554', cases: 6, originalFeature: 'directory-permissions.feature', realProviderCalls: false }, null, 2));
           JS
       - name: Build current candidate and original BDD
         run: |
