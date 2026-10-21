@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 阅读历史锚点的有界页不再改写侧栏最新摘要/时间；仅尾页读取与原实时消息更新列表，历史定位/分页/草稿保持。
  * [OUTPUT]: 四组默认应用快捷键与工具栏共用搜索、三页列表和原历史动作；输入、自定义选择控件、组合键与浮层保留自身按键。
  * [OUTPUT]: 主聊天按选中会话元信息立即保留ChatView外框，不再以会话ID重建整个聊天；首屏40条、刷新保留已加载窗口且最多80条，原请求代次/锚点/清理隔离保持。
  * [OUTPUT]: 同会话终端/预览侧栏与桌面活动日报的真实 bobo 首发入口。
@@ -336,7 +337,9 @@ export function AppShell() {
       materialDrafts.reconcile(id, result.materials ?? [])
       setDetail(updated); setDetailLoading(false); setPageEdges({ before: true, after: true })
       const last = updated.messages.at(-1)
-      if (last) {
+      // An anchored reading window is not the conversation tail. Preserve the
+      // latest list summary from the snapshot or live messages while browsing it.
+      if (last && !aroundMessageId) {
         setPreviews(previous => ({ ...previous, [id]: `${last.senderName}：${last.content.slice(0,90)}` }))
         setMessageTimes(previous => ({ ...previous, [id]: previous[id] && previous[id] > last.createdAt ? previous[id] : last.createdAt }))
       }
