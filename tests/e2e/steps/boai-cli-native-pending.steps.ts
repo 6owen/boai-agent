@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 窗口出现后先等原Main的真实snapshot回执，再核同serverId/PID与desktopAttached；原业务断言/总期限保持。
  * [INPUT]: Real isolated Electron, built CLI and copied original native stdio programs.
  * [OUTPUT]: Pending handoff and simultaneous desktop/two-terminal startup, independent cancellation/response and restart without replay.
  * [POS]: Codex/Claude controlled protocol BDD; no installed native CLI or real supplier claims.
@@ -77,6 +78,8 @@ When('原生CLI退出并由桌面附着同一待决运行', async ({ runtime, na
   expect(state.pending.nativeActions).toHaveLength(1)
   state.processes = await processes(state.executable); expect(state.processes.length).toBeGreaterThan(0)
   await runtime.start()
+  const snapshot = await runtime.page.evaluate(() => window.boai.request('snapshot', undefined))
+  expect(snapshot.agents.map(agent => agent.id)).toContain(state.agent.id)
   expect(await state.client.invoke('server:status')).toMatchObject({ serverId: state.metadata.serverId, desktopAttached: true, owner: { pid: state.metadata.pid } })
   await runtime.page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '通讯录', exact: true }).click()
   await runtime.page.getByRole('complementary', { name: '通讯录列表' }).getByRole('button', { name: state.agent.name, exact: true }).click()

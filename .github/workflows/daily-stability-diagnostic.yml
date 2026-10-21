@@ -1,8 +1,8 @@
-# [INPUT]: 第23组9d7d4deb同产品指纹候选及原CLI/中断/交付/后台BDD，隔离协议与数据。
-# [OUTPUT]: 原缺口场景和210/70/28/120秒资源合同；保留失败/跳过与原件，不提供Required checks或真实供应商成绩。
+# [INPUT]: 第23组同9d7产品指纹与生命周期候选，原CLI7场/现行任务管理1场及原资源1场。
+# [OUTPUT]: 维护原入口/就绪并在资源原断言失败后抓堆/DOM，原210/70/28/120秒与阈值不变；不提供正式资格。
 # [POS]: 独立诊断分支，正式CI外的日常稳定性补验，不放宽原断言/期限。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
-name: Daily lifecycle coverage
+name: Daily lifecycle follow-up
 on:
   push:
     branches: [infra/daily-source-identity]
@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        probe: [cli-recovery, delivery-receipts, background-resources]
+        probe: [cli-recovery, background-resources]
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -39,6 +39,8 @@ jobs:
           await mkdir('.local/daily-lifecycle',{recursive:true});
           await writeFile('.local/daily-lifecycle/source.json',JSON.stringify({reference:'9d7d4deb64504eb1dad94f6b43a360d91de67f02',inputHash},null,2));
           JS
+      - name: Check original types
+        run: pnpm typecheck
       - name: Build candidate and generate original BDD
         run: |
           pnpm build
@@ -52,9 +54,9 @@ jobs:
           from pathlib import Path
           probe=os.environ['STABILITY_PROBE']
           groups={
-            'cli-recovery': (['.features-gen/boai-cli.feature.spec.js','.features-gen/automation-recovery.feature.spec.js','.features-gen/boai-cli-pending.feature.spec.js','.features-gen/boai-cli-native-pending.feature.spec.js'],'CLI精确停止一名员工并保留群聊同事回复和重启记录|工具已经执行后运行进程退出不会重做任务|CLI自启动待问题后桌面附着并由终端接续同一个工作|终端留下的',7),
+            'cli-recovery': (['.features-gen/boai-cli.feature.spec.js','.features-gen/automation-recovery.feature.spec.js','.features-gen/boai-cli-pending.feature.spec.js','.features-gen/boai-cli-native-pending.feature.spec.js','.features-gen/schedule-simplification.feature.spec.js'],'CLI精确停止一名员工并保留群聊同事回复和重启记录|工具已经执行后运行进程退出不会重做任务|CLI自启动待问题后桌面附着并由终端接续同一个工作|终端留下的|两行任务列表与详情直接管理定时任务',8),
             'delivery-receipts': (['.features-gen/materials.feature.spec.js','.features-gen/artifacts.feature.spec.js'],'材料消息发送回复失联只核对原消息|文件侧边修改提交失联后关闭重开与重启只核对原请求',2),
-            'background-resources': (['.features-gen/background-runtime.feature.spec.js'],None,3),
+            'background-resources': (['.features-gen/background-runtime.feature.spec.js'],'后台反复重开和处理消息后资源保持有界',1),
           }
           files,pattern,expected=groups[probe]
           output=Path('.local/daily-lifecycle')/probe
@@ -74,7 +76,7 @@ jobs:
           (output/'selection.json').write_text(json.dumps({'probe':probe,'expected':expected,'actual':len(selected),'titles':[title for title,_ in selected]},ensure_ascii=False,indent=2))
           if len(selected)!=expected: raise SystemExit('Original scenario selection changed')
           environment={**os.environ,'BOAI_REVIEW_RUN_DIR':str(output/'review'),'PLAYWRIGHT_JSON_OUTPUT_NAME':str(output/'playwright-results.json')}
-          if probe=='background-resources': environment['BOAI_TEST_DEV_SERVER']='1'
+          if probe=='background-resources': environment.update({'BOAI_TEST_DEV_SERVER':'1','BOAI_RESOURCE_DIAGNOSTICS':'1'})
           outcome=subprocess.run([*args,'--retries','0','--reporter=list,json'],env=environment)
           if outcome.returncode: raise SystemExit(outcome.returncode)
           report=json.loads((output/'playwright-results.json').read_text())
@@ -82,12 +84,27 @@ jobs:
           stats=report['stats']
           if len(observed)!=expected or stats.get('expected')!=expected or any(stats.get(k,0) for k in ['unexpected','skipped','flaky']): raise SystemExit('Missing, skipped, retried or failed original lifecycle scenario')
           PY
+      - name: Preserve fresh native crash reports
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import shutil
+          output=Path('.local/daily-lifecycle/native-crashes')
+          output.mkdir(parents=True,exist_ok=True)
+          marker=Path('.local/daily-lifecycle/source.json')
+          since=marker.stat().st_mtime if marker.exists() else 0
+          for report in (Path.home()/'Library/Logs/DiagnosticReports').glob('*.ips'):
+              if report.name.lower().startswith(('node','electron','boai')) and report.stat().st_mtime>=since:
+                  shutil.copy2(report,output/report.name)
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: daily-lifecycle-${{ matrix.probe }}
           path: |
             .local/daily-lifecycle/
+            .local/background-resource-failures/
             test-results/
           include-hidden-files: true
           if-no-files-found: error

@@ -1,7 +1,7 @@
 /*
  * [OUTPUT]: 新员工计划通过明确归属选择；已有聊天/监控沿原目标设置。
  * [INPUT]: 定时任务生产页面与 Base UI 选择/浮层控件。
- * [OUTPUT]: 复用的语义选择、总览导航、详情直接操作按钮与时间预览入口。
+ * [OUTPUT]: 计划从现行定时任务列表按精确名称打开并核对选中/标题；其余原语义选择与操作保持。
  * [POS]: 桌面自动化回归支撑，不改变产品状态或绕过 UI 业务操作。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -11,8 +11,15 @@ export async function selectScheduleOption(page: Page, label: string, option: st
   await page.getByRole('option', { name: option, exact: true }).click()
 }
 export async function openSchedule(page: Page, name: string) {
-  await page.getByRole('button', { name: '查看全部任务', exact: true }).click()
-  await page.locator('.schedule-overview-plan:visible').filter({ hasText: name }).click()
+  const toggle = page.getByRole('button', { name: '显示或隐藏任务列表', exact: true })
+  if (await toggle.getAttribute('aria-pressed') === 'false') await toggle.click()
+  const list = page.getByRole('complementary', { name: '定时任务列表', exact: true })
+  const expand = list.getByRole('button', { name: '全部定时任务', exact: true })
+  if (await expand.getAttribute('aria-expanded') === 'false') await expand.click()
+  const item = list.getByRole('group', { name: '全部定时任务', exact: true }).getByRole('button').filter({ has: page.getByText(name, { exact: true }) })
+  await item.click()
+  await expect(item).toHaveAttribute('aria-current', 'page')
+  await expect(page.getByRole('main').getByRole('heading', { name, exact: true })).toBeVisible()
 }
 export async function scheduleAction(page: Page, action: string) {
   const names: Record<string, string> = { 暂停计划: '暂停', 恢复计划: '恢复', 删除计划: '删除' }
