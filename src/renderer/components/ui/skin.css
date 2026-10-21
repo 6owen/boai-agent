@@ -7,7 +7,7 @@
  * [INPUT]: colors.css 的主题、Soft 表面/分割线 token 与基础组件的 data-slot、Sonner 通知、soft-table 和语义变体。
  * [OUTPUT]: Tabs 共用选中滑动层承载原 Soft/线形/窗口/技能样式并沿用系统 squircle 方圆角（窗口原 round 保持），文字与关闭按钮保持上层；不改变布局、焦点或业务选择。
  * [OUTPUT]: Sonner 中性卡片与 Button secondary 共用 shadow-control 的内侧细边缘/高光/小阴影；32px圆形状态图标/弹性正文/20px中性纯 X；12px正文/11px说明、长内容和折叠后层保持，明暗主题复用现有 token。
- * [OUTPUT]: Input/Textarea/组合输入/Select/NumberField/日期范围触发器与 Button secondary 共用内侧细边缘、高光及圆角，输入外层/OTP/composer 不带底部外侧阴影，Button/Card 仍保留控制阴影；聚焦/展开保持中性细边缘，错误只画单层内侧错误色边缘；日期未选文字及日历图标复用 Select 占位/箭头弱化色，已选文字使用正文色；复合内层无框、禁用/只读无悬停；聊天框在文本聚焦时保持中性，保留大圆角/背景/布局；菜单内部例外保留。
+ * [OUTPUT]: Input/Textarea/组合输入/Select/NumberField/日期范围触发器共用输入细边缘和圆角；NumberField 平面输入底色与紧凑透明步进器保持在同一外框内，悬停不外溢；输入外层/OTP/composer 不带底部外侧阴影，Button/Card 仍保留控制阴影；聚焦/展开保持中性细边缘，错误只画单层内侧错误色边缘；日期未选文字及日历图标复用 Select 占位/箭头弱化色，已选文字使用正文色；复合内层无框、禁用/只读无悬停；聊天框在文本聚焦时保持中性，保留大圆角/背景/布局；菜单内部例外保留。
  * [OUTPUT]: 折叠标题整行可点击、12px 箭头旋转与统一高度展开，适配减少动态效果；分组标题右侧图标仅整行悬停/聚焦/菜单打开时显现、保留占位且与标题共用弱化色；全局 DragList 落点/拖动态、覆盖内部选中行背景的归组边框及会话与通讯录共用无底色折叠标题和小箭头；6owen Soft 共用皮肤；soft-card 统一 Card、卡片按钮和表单容器的细描边/高光/阴影；soft-divide-y、soft-divider-top、Separator 与 Table 单元格统一细线/高光分割，Table 固定表头保留底线且末行无额外尾线。颜色按钮共用 Button 基线；紧凑标签页、头像、composer 及完全访问选项的语义警示色、创建弹窗和成员列表；保留窗口拖动空白、悬停状态和排序指示。
  * [OUTPUT]: 执行历史外层卡片使用180ms高度/120ms透明度过渡，内容限高和内部滚动保持，减少动态效果时关闭动画；群成员和执行总览的组合头像共用40px尺寸及圆角；执行折叠trigger及其内部标签始终透明，展开后的代码/详情保留原表面。
  * [POS]: UI 样式入口，由 global.css 在 components 层导入；不定义另一套主题色。
@@ -69,8 +69,10 @@
 :is([data-slot=command-input-wrapper],[data-slot=combobox-content])>[data-slot=input-group] { background-image:none }
 /* Composite controls never draw a second frame when their text input receives focus. */
 [data-slot=input-group] > [data-slot=input-group-control] { border:0; border-radius:0; background:transparent; box-shadow:none }
+[data-slot=number-field] [data-slot=number-field-group] { background-color:var(--card);background-image:none }
 [data-slot=number-field-input] { border:0;border-radius:0;background:transparent;color:var(--foreground);font-size:var(--text-ui-body);box-shadow:none }
-[data-slot=number-field-stepper] { border-radius:0;box-shadow:var(--shadow-divider-vertical) }
+[data-slot=number-field-stepper] { border-left:1px solid var(--border);border-radius:0;background:transparent;color:var(--muted-foreground);box-shadow:none }
+[data-slot=number-field] [data-slot=number-field-stepper]:is(:hover,:focus-visible):not([data-disabled]) { background:var(--soft-hover);color:var(--foreground) }
 [data-slot=number-field-stepper][data-disabled] { cursor:not-allowed;opacity:.5 }
 [data-slot=number-field][data-disabled] [data-slot=number-field-group] { opacity:.5 }
 [data-slot=input-otp-slot] { background-color:var(--card);box-shadow:none;corner-shape:squircle }
