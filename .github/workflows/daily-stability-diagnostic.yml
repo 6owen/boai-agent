@@ -34,7 +34,7 @@ jobs:
           const inputHash = await buildInputHash();
           if (inputHash !== 'f2b4fc421bdf39dd4011365a6b400c57da0d5d14f7397fd01780b76388a1bbb4') throw Error('Product inputs differ');
           await mkdir('.local/daily-natural-recovery', { recursive: true });
-          await writeFile('.local/daily-natural-recovery/source.json', JSON.stringify({ productCandidate: 'db3aac7c97a03b1bf63e6fe03a395387f54c4c82', testCandidate: '62fdc1e34c30501fe64191df4eed182e3af9128a', inputHash, actualMinuteBoundary: true, realProviderCalls: false, initialTrigger: 'natural schedule', recoveryTrigger: 'explicit UI manual once after failed occurrence and passive restart', fakeClock: false, cases: 2, retries: 0, originalDeadlinesAndAssertionsUnchanged: true }, null, 2));
+          await writeFile('.local/daily-natural-recovery/source.json', JSON.stringify({ productCandidate: 'db3aac7c97a03b1bf63e6fe03a395387f54c4c82', testCandidate: '7e57ba940246c539d6e84f76670cbe3f7aacf32f', inputHash, actualMinuteBoundary: true, realProviderCalls: false, initialTrigger: 'natural schedule', recoveryTrigger: 'explicit UI manual once after failed occurrence and passive restart', fakeClock: false, cases: 2, retries: 0, originalDeadlinesAndAssertionsUnchanged: true }, null, 2));
           JS
       - name: Build current candidate and original BDD framework
         run: |
