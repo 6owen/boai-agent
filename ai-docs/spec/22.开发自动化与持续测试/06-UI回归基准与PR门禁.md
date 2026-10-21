@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 主屏681/684跨API失败后改Electron同API独立预检，截图仍核实际page窗口；Required checks独立重核全18原报告/原件，待云端实测。
 [OUTPUT]: 2026-10-21自动CI迁回GitHub Actions；截图核实际page的原生窗口、主屏工作区及所有屏尺寸/缩放；独立云端v3完整候选仍需审阅后只读复验。
 [OUTPUT]: 环境v3补实际显示器逻辑/工作区尺寸、缩放和主屏身份，逐次截图核窗口归属；屏幕变化沿完整独立迁移，不改阈值。
 [OUTPUT]: 用户改本地CI后保持全部18本机UI只读及原像素合同；本地状态门禁见02 §9，实际保护仍待切换。
@@ -166,6 +167,8 @@ node scripts/ui-ci-baseline.mjs accept --run 同一RUN_ID --candidate .local/已
 
 2026-10-21实际环境变化显示：系统/字体/GPU指纹相同不足以证明像素条件相同。原b06原生capture记录为1920x1080、workArea1920x971、scaleFactor1；当前为1512x982、workArea1512x859、scaleFactor2。旧b06与新f9的聊天明暗实际截图在当前环境逐字节一致，但均不匹配旧基准；不能将此作为新产品回归，也不能自动补绿。
 
-环境v3由只读AppKit/CoreText预检记录全部显示器逻辑尺寸、backingScale及主屏标志，并记录主屏工作区尺寸，不存设备ID/序列号。副屏工作区在AppKit/Electron间存在菜单栏口径差异，不作为条件；实际截图page通过原生窗口handle固定，必须位于主屏并核当前显示器配置和主屏工作区。显示器或工作区变化须完整采集/独立审阅全部case，旧图、新图和原始差异保留，比较阈值、异常像素和mask不变。环境v2缺少显示器字段不自动升级。云端旧档案仍为历史来源，Actions保持停用，未重新采集前不能假定可用于v3。
+环境v3由锁定Electron可执行文件的独立无窗口入口在app.whenReady后读取screen，记录全部显示器逻辑尺寸、scaleFactor及主屏标志，并记录主屏工作区尺寸，不存设备ID/序列号。入口使用独立临时userData/sessionData、原生guard和有限期限，不加载产品；核实际Electron版本/路径及完整退出。CoreText继续只读核字体。AppKit与Electron在主/副屏工作区存在差异，显示字段统一用与截图相同的Electron API；副屏仍只核尺寸/缩放。实际截图page通过原生窗口handle固定，必须位于主屏并核当前显示器配置和主屏工作区。显示器或工作区变化须完整采集/独立审阅全部case，旧图、新图和原始差异保留，比较阈值、异常像素和mask不变。环境v2缺少显示器字段不自动升级。云端旧档案仍为历史来源；Actions已按用户最新要求启用，未重新采集并审阅前不能假定旧档案可用于v3。
 
 > 当前执行端更新：2026-10-21自动CI迁回GitHub Actions；截图核实际page的原生窗口、主屏工作区及所有屏尺寸/缩放；独立云端v3完整候选仍需审阅后只读复验。
+
+UI job通过后由record-ui登记summary、compare/summary、原始Playwright报告SHA及全部逐场景原件proof。Required checks必须重新读取全18个正常一次通过的原始结果、唯一实际环境附件及FeatureReview的截图/逐启动trace，沿既有verifyDesktopEvidence核对场景/时段/路径/字节。缺失、跳过、重试、环境不符、清理错误或改字节均失败；UI job本身也必须成功。汇总成功或候选成功均不能替代此门槛。

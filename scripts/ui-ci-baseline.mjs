@@ -1,5 +1,5 @@
 /*
- * [INPUT]: 明确GitHub手动采集run、官方artifact摘要、当前干净源码及逐项审阅后的接受命令。
+ * [INPUT]: 明确GitHub独立采集run、官方artifact摘要、当前干净源码及逐项审阅后的接受命令。
  * [OUTPUT]: 官方v3显示环境原件重下载核验；共锁逐项接受，初始/环境迁移全量，旧v2不能晋升。
  * [POS]: 开发侧CI基线进口；无远程写入、无自动晋升或Required checks资格。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。

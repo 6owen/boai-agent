@@ -1,5 +1,5 @@
 # [INPUT]: 仓库变更、锁定依赖、离线协议服务。
-# [OUTPUT]: PR/main自动云端工程、32核心及全18UI只读门禁；逐步日志与失败原件，不启动本机。
+# [OUTPUT]: PR/main自动云端工程、32核心及全18UI只读门禁；逐步日志、UI原始报告与原件凭据独立核验，不启动本机。
 # [POS]: .github/workflows/tests.yml。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 name: Offline tests
@@ -118,6 +118,7 @@ jobs:
           pnpm exec electron --version
       - run: pnpm build
       - run: node scripts/ui-regression.mjs check --profile github-macos15-arm64 --output .local/ui-ci
+      - run: node scripts/ci-result.mjs record-ui .local/ui-ci
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 同仓库/外部PR分页、真实Git/guard和明确假gh/失败CI协议夹具。
- * [OUTPUT]: 身份/去重/未知归属拒绝，Git向上发现/活跃账本阻止换版；实际CLI取消/死亡后不重放。
+ * [OUTPUT]: 身份/去重/未知归属拒绝，Git向上发现/活跃账本阻止换版；隔离夹具清除云端调度守卫环境，实际CLI取消/死亡后不重放。
  * [POS]: 本地轮询边界测试；不访问GitHub、不运行GUI或注册服务。
  * [PROTOCOL]: 修改同步Header与tests/.folder.md。
  */
@@ -90,7 +90,7 @@ async function cliFixture() {
   await writeFile(join(bin, 'git'), `#!${process.execPath}\nconst{execFileSync}=require('node:child_process');const a=process.argv.slice(2);if(a[0]==='fetch')a[2]=${JSON.stringify(root)};process.stdout.write(execFileSync(${JSON.stringify(realGit)},a,{cwd:process.cwd(),encoding:'utf8'}));\n`, { mode: 0o700 })
   await writeFile(join(bin, 'gh'), `#!${process.execPath}\nconst{execFileSync}=require('node:child_process'),fs=require('node:fs');const p=process.argv[3];fs.appendFileSync(${JSON.stringify(join(root, '.local/gh-calls'))},p+'\\n');if(p.endsWith('git/ref/heads/main'))process.stdout.write(JSON.stringify({object:{sha:execFileSync(${JSON.stringify(realGit)},['rev-parse','HEAD'],{cwd:${JSON.stringify(root)},encoding:'utf8'}).trim()}}));else if(p.endsWith('pulls?state=open&base=main&per_page=100'))process.stdout.write('[[]]');else process.exit(93);\n`, { mode: 0o700 })
   const start = () => {
-    const child = spawn(process.execPath, ['scripts/local-ci-watch.mjs', 'once'], { cwd: root, env: { ...process.env, PATH: `${bin}:${process.env.PATH}` }, stdio: ['ignore', 'pipe', 'pipe'] })
+    const child = spawn(process.execPath, ['scripts/local-ci-watch.mjs', 'once'], { cwd: root, env: { ...process.env, GITHUB_ACTIONS: '', PATH: `${bin}:${process.env.PATH}` }, stdio: ['ignore', 'pipe', 'pipe'] })
     let stdout = '', stderr = ''; child.stdout.on('data', bytes => { stdout += bytes }); child.stderr.on('data', bytes => { stderr += bytes })
     const timer = setTimeout(() => child.kill('SIGKILL'), 15_000)
     const ended = once(child, 'close').then(([code]) => ({ code, stdout, stderr })).finally(() => clearTimeout(timer))

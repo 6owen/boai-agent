@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 版本化BDD/截图合同、实际源码/字体/平台及显式候选接受命令。
- * [OUTPUT]: 环境v3包含实际显示器/工作区及缩放；本机/CI独立档案，只读比较不回退或放宽像素条件。
+ * [OUTPUT]: 环境v3用实际Electron同API核显示器/工作区及缩放；本机/CI独立档案，只读比较不回退或放宽像素条件。
  * [POS]: 开发侧UI门槛CLI；不调用供应商、不提交或推送、不改产品数据。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -61,10 +61,20 @@ export async function sourceIdentity(workspace = root) {
 
 export async function renderEnvironment() {
   if (platform() !== 'darwin' || arch() !== 'arm64') throw new Error('当前UI基线仅适用于macOS arm64；其他平台需独立采集')
-  const { fonts: matches, displays } = JSON.parse(execFileSync('swift', [join(root, 'scripts/ui-environment.swift')], { encoding: 'utf8', timeout: 60_000 }))
+  const { fonts: matches } = JSON.parse(execFileSync('swift', [join(root, 'scripts/ui-environment.swift')], { encoding: 'utf8', timeout: 60_000 }))
   if (!['PingFangSC-Regular', 'PingFangSC-Medium', 'PingFangSC-Semibold'].every(name => matches.some(font => font.requested === name && font.postscript === name && font.path))) throw new Error('CoreText缺少固定中文字体，不能比较UI基线')
   const fonts = []
   for (const font of matches) { const { path, ...description } = font; fonts.push({ ...description, sha256: hash(await readFile(path)) }) }
+  const displayRoot = join(root, '.local/ui-environment', randomUUID())
+  await mkdir(join(displayRoot, 'profile'), { recursive: true })
+  const probeEnv = { ...process.env }; delete probeEnv.ELECTRON_RUN_AS_NODE
+  const displayOutput = execFileSync(join(root, 'dist/native/boai-process-guard'), ['--ledger', join(displayRoot, 'processes'), require('electron'), join(root, 'scripts/ui-environment-electron.cjs'), join(displayRoot, 'profile')], { encoding: 'utf8', timeout: 30_000, env: probeEnv })
+  const records = displayOutput.split('\n').filter(line => line.startsWith('BOAI_UI_DISPLAYS '))
+  if (records.length !== 1) throw new Error('缺少唯一实际Electron显示器预检')
+  const probe = JSON.parse(records[0].slice('BOAI_UI_DISPLAYS '.length))
+  if (probe.electron !== require('electron/package.json').version || probe.execPath !== require('electron')) throw new Error('显示器预检不是锁定Electron实际可执行文件')
+  const displays = probe.displays
+  if (!Array.isArray(displays) || !displays.length || displays.filter(item => item.primary).length !== 1) throw new Error('Electron预检没有唯一主屏')
   const inventory = [...new Map(fonts.map(font => [JSON.stringify(font), font])).values()].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)))
   const preference = name => { try { return execFileSync('defaults', ['read', '-g', name], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim() } catch { return '<unset>' } }
   const bundled = await readFile(join(root, 'src/renderer/assets/fonts/Geist.woff2')).catch(async () => {
@@ -88,7 +98,7 @@ async function runCommand(command, args, env) {
 
 async function execute(directory, ids, environment, profile, candidate, remoteCapture = false) {
   await mkdir(directory, { recursive: true })
-  const env = { ...process.env, TZ: environment.timezone, LANG: 'en_US.UTF-8', BOAI_UI_ENVIRONMENT: JSON.stringify(environment), BOAI_UI_RUN_DIR: directory, BOAI_UI_PROFILE: profile.id }
+  const env = { ...process.env, TZ: environment.timezone, LANG: 'en_US.UTF-8', BOAI_UI_ENVIRONMENT: JSON.stringify(environment), BOAI_UI_RUN_DIR: directory, BOAI_UI_PROFILE: profile.id, BOAI_REVIEW_RUN_DIR: join(directory, 'review') }
   delete env.BOAI_UI_CANDIDATE_DIR
   delete env.BOAI_UI_CAPTURE_MODE
   if (candidate) env.BOAI_UI_CANDIDATE_DIR = candidate
