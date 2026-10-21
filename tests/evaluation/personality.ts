@@ -29,7 +29,7 @@
  * [OUTPUT]: 反思较早漏日/当日笔记与来源失效、十技能绑定；实际与撤回候选归架构§11.22。
  * [OUTPUT]: 2026-10-20 Alma技能接线：普通聊天按需读绑定技能/有来源记忆，独立任务协议与MCP媒体保持实际授权；本轮证据归独立Agent架构§11.21。
  * [OUTPUT]: Real whole-day reflection with source dates/rooms and excluded-chat sentinel; state/growth receipts and subjective quality remain separate.
- * [INPUT]: Explicit API connection, optionally current Bobo sources/features, real AppService/Mastra and isolated data.
+ * [INPUT]: Explicit API connection, optionally frozen Bobo sources/features; zero-call design preparation precedes isolated runs.
  * [OUTPUT]: Actual replies, prompt/request evidence, self-state and background emotion/reflection receipts; no fabricated human grades.
  * [POS]: Alma migration personality probe using the existing evaluation credential host, not an Electron E2E.
  * [PROTOCOL]: Update Header and owning .folder.md when changed.
@@ -154,7 +154,21 @@ export const personalitySkillCases = [
 ] as const
 
 interface Settings { webSearch?: { service: WebSearchServiceConfig; preference: WebSearchPreference; default: WebSearchSettings['default']; revision: number }; toolClientPath?: string; candidateReflectionText?: string; candidateReflection?: boolean; skillSourceRoot?: string; skills?: { name: string; content: string; hash: string }[]; computerSource?: import('../../src/shared/domain/sources').DataSource; output: string; maxRequests: number; deadlineMs: number; label: string; caseIds?: string[]; currentConfiguration?: { agent: { modelId: string; configVersion: number }; profile: AgentProfile; files: { name: string; hash: string; content: string }[] } }
+function selectPersonalityCases(caseIds?: string[]) {
+  const allCases = [...personalityCases, ...personalityGroundingCases, ...personalityStateCases, ...personalitySkillCases]
+  if (caseIds?.some(id => !allCases.some(example => example.id === id)) || caseIds && new Set(caseIds).size !== caseIds.length) throw new Error('Unknown or duplicate personality case')
+  return caseIds?.length ? allCases.filter(example => caseIds.includes(example.id)) : personalityCases
+}
+export async function preparePersonalityEvaluation(settings: Settings) {
+  const cases = selectPersonalityCases(settings.caseIds)
+  const design = { version: personalityVersion, label: settings.label, status: 'needs_review', providerRequests: 0, maxRequests: settings.maxRequests, deadlineMs: settings.deadlineMs, configuration: settings.currentConfiguration ? { agent: settings.currentConfiguration.agent, profileRevision: settings.currentConfiguration.profile.revision, sourceHashes: settings.currentConfiguration.files.map(({ name, hash }) => ({ name, hash })) } : 'default', cases }
+  await mkdir(settings.output, { recursive: true })
+  await writeFile(join(settings.output, 'design.json'), JSON.stringify(design, null, 2))
+  const text = [`# ${settings.label}`, '', '仅准备实际题目与标准；尚无模型调用或人工评分。已有题只能称独立验证，不能称最终未见题。', '', `请求上限：${settings.maxRequests}；绝对期限：${settings.deadlineMs / 1000}秒。`, ...cases.flatMap(example => ['', `## ${example.id} (${example.split})`, '', ...example.turns.flatMap((turn, index) => [`第${index + 1}轮：`, '', turn, '']), '验收标准：', '', ...example.criteria.map(criterion => `- ${criterion}`)]), ''].join('\n')
+  await writeFile(join(settings.output, 'design-review.md'), text)
+}
 export async function runPersonalityEvaluation({ settings, connection, apiKey, searchCredential = '' }: { settings: Settings; connection: Connection; apiKey: string; searchCredential?: string }) {
+  const selected = selectPersonalityCases(settings.caseIds)
   const started = Date.now(), rows: unknown[] = [], contexts: unknown[] = [], behaviorResults: unknown[] = [], memoryResults: unknown[] = [], calls: { id: string; runId: string; phase: string; caseId: string; usage?: ModelUsage }[] = []
   const requests: { caseId: string; at: string; kind: 'model' | 'web-search' | 'public-post'; url: string; input?: unknown; status?: number; response?: string; error?: string }[] = []
   const redact = (value: string) => [apiKey, searchCredential].filter(Boolean).reduce((text, secret) => text.replaceAll(secret, '[REDACTED]'), value)
@@ -239,9 +253,6 @@ export async function runPersonalityEvaluation({ settings, connection, apiKey, s
       const source = await call('sources.create', { config }, 'computer-source')
       if (source.status !== 'succeeded') throw new Error('隔离电脑操作连接未保存')
     }
-    const allCases = [...personalityCases, ...personalityGroundingCases, ...personalityStateCases, ...personalitySkillCases]
-    if (settings.caseIds?.some(id => !allCases.some(example => example.id === id))) throw new Error('Unknown personality case')
-    const selected = settings.caseIds?.length ? allCases.filter(example => settings.caseIds!.includes(example.id)) : personalityCases
     for (const example of selected) {
       const stateCase = personalityStateCases.some(item => item.id === example.id)
       const currentProfile = (await call('employees.profile', { agentId: 'bobo' })).data as AgentProfile

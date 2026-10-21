@@ -10,7 +10,8 @@
  * [OUTPUT]: 第14组API群请求解释与持久顺序接续；保留独立并行、原Work和本机旧路径，实际验收归第14组05。
  * [OUTPUT]: 独立长短任务以长任务实际进入屏障后发布短结果，原并行/草稿/次序/零重放断言保持；不以短结果可见猜测另一适配器已开始。
  * [OUTPUT]: 原群新消息后的三种汇报退出沿实际AppService保留等待，子工作仅唤醒原负责人，共原预算/期限且已确认工具只执行一次。
- * [INPUT]: AppService、产品存储、领域类型与内部执行合同。
+ * [INPUT]: AppService、产品存储、领域类型与内部执行合同；隔离完整备份与异路径恢复。
+ * [OUTPUT]: 完整备份同时核对已保存员工源文件/配置、带来源记忆、原消息/Run/成果和双次启动零重放。
  * [OUTPUT]: 核心会话仅标题及更新时间的严格保存、非法输入零写/隐藏与普通会话拒绝、写失败内存不污染和重启保留原配置/历史/工作/记忆且零模型；用明确 writer 开始屏障验证流式起始/完成乱序与只汇报补判；真实不可覆盖发布/内容 hash 随备份搬迁的验证；清空后旧发送请求拒绝重放、新请求仍可从序号一开始；核心预置身份与普通员工场景隔离，保留原业务断言；显式仅此聊天兼容隔离与员工统一范围；活动观测落库失败不重放运行或阻止消息发布；发布故障精准注入消息事件事务，允许独立活动观测先提交；表情回应幂等/失败回滚/重启/清理与不触发模型；员工思考强度校验/隔离/重启与旧表单保留；Trace 跨会话/轮次隔离、重试归属、重启和清理；独立聊天并行流式/完成顺序/容量与判断时限、认领/预算、独立子工作、私有草稿/证据/等待修复、实际调用容量及永久会话清理回归。
  * [POS]: tests/service.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -2063,6 +2064,16 @@ describe('local product service', () => {
       await context.onDelta('done')
     }
     await send(service, direct, 'preserve me', 'backup-msg'); await idle(service, direct, 1)
+    const original = await detail(service, direct), query = { agentId: 'researcher', scope: 'employee' as const }
+    const memory = await service.handle('getMemory', query) as MemoryView
+    await service.handle('saveMemory', { ...query, expectedEpoch: memory.epoch, content: '备份恢复后保留的明确偏好', sourceMessageIds: [original.messages[0].id], origin: 'user' })
+    const memoryBefore = await service.handle('getMemory', query) as MemoryView
+    const employee = (await snapshot(service)).agents.find(agent => agent.id === 'researcher')!
+    const sourceFile = await service.handle('readAgentFile', { agentId: employee.id, name: 'SOUL.md' }) as AgentFileContent
+    await service.handle('saveAgentFile', { agentId: employee.id, name: 'SOUL.md', content: '只根据实际材料回答，未知时直说。', expectedHash: sourceFile.hash, expectedConfigVersion: employee.configVersion })
+    const savedEmployee = (await snapshot(service)).agents.find(agent => agent.id === employee.id)!
+    const savedSource = await service.handle('readAgentFile', { agentId: employee.id, name: 'SOUL.md' }) as AgentFileContent
+    const calls = { decisions: engine.decisions.length, executions: engine.contexts.length }
     await writeFile(join(direct.workspacePath, 'output.md'), 'saved output')
     const destination = join(root, 'backup'); await service.backup(destination)
     expect(await readdir(destination)).toEqual(expect.arrayContaining(['boai.sqlite', 'skills', 'knowledge', 'workspaces', 'agents', 'data-version.json', 'backup.json']))
@@ -2084,6 +2095,20 @@ describe('local product service', () => {
     const restoredRoot = await realpath(restorePath)
     expect((await realpath(published.path)).startsWith(restoredRoot)).toBe(true); expect((await realpath(published.sourcePath!)).startsWith(restoredRoot)).toBe(true)
     expect(published.ownerAgentId).toBe('researcher')
+    const verifyRetainedState = async (current: AppService) => {
+      const conversation = await detail(current, restoredConversation)
+      expect(conversation.messages).toEqual(original.messages)
+      expect(conversation.runs.map(run => [run.id, run.status])).toEqual(original.runs.map(run => [run.id, run.status]))
+      expect((await snapshot(current)).agents.find(agent => agent.id === employee.id)).toEqual(savedEmployee)
+      const source = await current.handle('readAgentFile', { agentId: employee.id, name: 'SOUL.md' }) as AgentFileContent
+      expect([source.content, source.hash, source.status]).toEqual([savedSource.content, savedSource.hash, savedSource.status])
+      expect((await current.handle('getMemory', query) as MemoryView).entries).toEqual(memoryBefore.entries)
+      expect({ decisions: engine.decisions.length, executions: engine.contexts.length }).toEqual(calls)
+    }
+    await verifyRetainedState(restored)
+    await restored.close()
+    const restarted = new AppService({ dataPath: restorePath, engine, secrets: new MemorySecrets(), emit: () => {} }); services.push(restarted); await restarted.init()
+    await verifyRetainedState(restarted)
   })
 })
 
