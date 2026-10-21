@@ -1,5 +1,5 @@
 # [INPUT]: BOAI pnpm workspace与Lody固定diff依赖及补丁。
-# [OUTPUT]: 单应用工作区、原生构建白名单及局部依赖锁定；Electron解压使用兼容Node24的yauzl。
+# [OUTPUT]: 单应用工作区与原构建白名单/锁定；React Aria定点补丁保留多属性取消监听直到清空，Electron解压沿yauzl3.4.0。
 # [POS]: 仓库依赖配置。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
 packages:
@@ -10,6 +10,7 @@ onlyBuiltDependencies:
 
 patchedDependencies:
   '@pierre/diffs@1.0.10': src/renderer/components/common/lody/pierre-diffs-host.patch
+  'react-aria@3.53.1': src/renderer/components/ui/react-aria@3.53.1.patch
 
 overrides:
   'extract-zip>yauzl': 3.4.0
