@@ -1,8 +1,8 @@
-# [INPUT]: Same fixed product inputs, original manual recovery and new real-minute scheduled recovery.
-# [OUTPUT]: Two dev-mode BDD cases with real native scheduler/stdio/file effects; no clock injection or manual run for the new natural case.
-# [POS]: DS11 targeted evidence, original manual assertions/deadlines remain; not Required checks.
+# [INPUT]: Same fixed product inputs and the two original browser resource/hung-page closure cases.
+# [OUTPUT]: Original seven browser cycles/five idle samples and actual hung renderer toolbar closure/reopen; original assertions, deadlines and thresholds unchanged.
+# [POS]: DS05/DS13 browser lifecycle evidence, offline supplier protocol; not Required checks or all-day certification.
 # [PROTOCOL]: Changes update Header and workflow directory map.
-name: Daily real clock recovery
+name: Daily browser lifecycle and resources
 on:
   push:
     branches: [infra/daily-source-identity]
@@ -10,7 +10,7 @@ on:
 permissions:
   contents: read
 jobs:
-  natural-clock:
+  browser-lifecycle:
     runs-on: macos-15
     timeout-minutes: 15
     steps:
@@ -33,26 +33,26 @@ jobs:
           import { mkdir, writeFile } from 'node:fs/promises';
           const inputHash = await buildInputHash();
           if (inputHash !== '5a82db0e4d0010e4946714c47b406eb7f4fc711a9c50bb6f42adb0ec949e0951') throw Error('Product inputs differ');
-          await mkdir('.local/daily-natural-clock', { recursive: true });
-          await writeFile('.local/daily-natural-clock/source.json', JSON.stringify({ reference: '9fb016acab51cdb6a393fd66699846dd0630d195', testCandidate: 'cbdb909415cb9f2b595b3038d2481c4b4410899e', inputHash, cases: 2, feature: 'automation-recovery.feature', realProviderCalls: false, newCaseClockModified: false, newCaseManualRun: false }, null, 2));
+          await mkdir('.local/daily-browser-lifecycle', { recursive: true });
+          await writeFile('.local/daily-browser-lifecycle/source.json', JSON.stringify({ reference: '9fb016acab51cdb6a393fd66699846dd0630d195', testCandidate: '018ec1954791657b09d9cd5b36d018e7eef5e4a2', inputHash, cases: 2, feature: 'browser-migration.feature', realProviderCalls: false, originalBrowserCycles: 7, originalIdleSamples: 5, resourceContractUnchanged: true }, null, 2));
           JS
       - name: Build current candidate and original BDD
         run: |
           pnpm build
           pnpm test:bddgen
-      - name: Run manual and real natural clock recovery
+      - name: Run original browser resources and hung renderer closure
         env:
           BOAI_TEST_DEV_SERVER: '1'
-          BOAI_REVIEW_RUN_DIR: .local/daily-natural-clock/review
-          PLAYWRIGHT_JSON_OUTPUT_NAME: .local/daily-natural-clock/playwright-results.json
-        run: pnpm exec playwright test .features-gen/automation-recovery.feature.spec.js --retries 0 --reporter=list,json
+          BOAI_REVIEW_RUN_DIR: .local/daily-browser-lifecycle/review
+          PLAYWRIGHT_JSON_OUTPUT_NAME: .local/daily-browser-lifecycle/playwright-results.json
+        run: pnpm exec playwright test .features-gen/browser-migration.feature.spec.js --grep '重复截图切页关闭后的短期资源有界|网页脚本卡住后仍可关闭浏览器并重新打开' --retries 0 --reporter=list,json
       - name: Preserve native crash reports on failure
         if: failure()
         run: |
           python3 - <<'PY'
           from pathlib import Path
           from shutil import copyfile
-          output = Path('.local/daily-natural-clock/native-crashes')
+          output = Path('.local/daily-browser-lifecycle/native-crashes')
           output.mkdir(parents=True, exist_ok=True)
           reports = sorted((Path.home() / 'Library/Logs/DiagnosticReports').glob('*.ips'), key=lambda path: path.stat().st_mtime, reverse=True)
           for path in reports[:5]:
@@ -62,9 +62,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: daily-natural-clock
+          name: daily-browser-lifecycle
           path: |
-            .local/daily-natural-clock/
+            .local/daily-browser-lifecycle/
             test-results/
           include-hidden-files: true
           if-no-files-found: error
