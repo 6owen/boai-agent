@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 草稿往返后以真实全选/Backspace清空原子编辑器，原点名清空断言保留并核空正文/引用已移除；不以fill返回替代用户编辑结果。
  * [OUTPUT]: 命令完成不冒充交付同时核对原Work状态及该真实完成Run Card，旧任务卡不计当前覆盖。
  * [OUTPUT]: 共用定位辅助核对固定身份/焦点；运行定位限定右侧真实Card，避免虚拟容器同run属性重复；窄窗保持原严格不重叠关系，等待实际布局完成。
  * [OUTPUT]: 定位前消息未获焦点，点击后固定message-target/实际焦点与原审批身份均须成立；关闭预览回原文件标签。
@@ -124,7 +125,11 @@ Then('引用点名草稿在切换会话后保留', async ({ runtime }) => {
   await expect(page.locator('.reply-preview')).toContainText('回复 研究员')
   await expect(page.locator('.chat-composer .composer-mention-tag')).toHaveText('@写手')
   await page.getByRole('button', { name: '取消引用', exact: true }).click()
-  await input.fill('')
+  await expect(page.locator('.reply-preview')).toHaveCount(0)
+  await input.press('ControlOrMeta+A')
+  await expect(input).toBeFocused()
+  await input.press('Backspace')
+  await expect.poll(() => inputText(input)).toBe('')
   await expect(page.locator('.composer-mention-tag')).toHaveCount(0)
 })
 Then('明暗与窄窗群聊均可阅读和操作', async ({ runtime, groupDesign }) => {

@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 0b云端4122模块/18UI通过、T1群草稿清理31/32失败；改真实全选删除且不减原断言，当前22组03，本地未push7提交已整合、尚未合并。
 [OUTPUT]: 2551固定审查发现现行画板入口仍专属Codex的P3，已同步外部开发Agent共用及各客户端待验边界；原报告分轴归22组07，新完整云端资格仍查当前Checks。
 [OUTPUT]: 2026-10-21用户改回GitHub Actions，标准macOS/Linux探测成功、严格Required checks已绑定Actions，本机CI disabled；c974官方18/v3基准受控接受，新完整资格与原失败归22组03，未授发布升级。
 [OUTPUT]: 436完整CI两项failed/18UI过，SQLite临时sidecar重核和菜单正准备候选已验；真实ZIP共用展开通过，最新22组03，未放行完整目标。
