@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 实际Swift/ditto与隔离数据；完成阶段取消及明确局部文件系统故障注入。
- * [OUTPUT]: 成套数据保持、子scope身份互斥；末阶段取消/失败不能获得快照完成资格。
+ * [OUTPUT]: 成套数据/缺目录别名恢复、子scope身份互斥；末阶段取消/失败不能获得完成资格。
  * [POS]: 升级备份模块合同；不运行Electron或模型，不代替安装/回滚/个人权限验收。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查tests/.folder.md。
  */
@@ -24,8 +24,8 @@ beforeAll(async () => {
 })
 afterAll(async () => { await rm(helper, { recursive: true, force: true }) })
 afterEach(async () => { vi.doUnmock('node:fs/promises'); vi.resetModules(); for (const dispose of cleanup.splice(0).reverse()) await dispose() })
-async function fixture() {
-  const root = await realpath(await mkdtemp(join(tmpdir(), 'boai-profile-snapshot-'))), profile = join(root, 'profile'), output = join(root, 'snapshot')
+async function fixture(name = 'profile') {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'boai-profile-snapshot-'))), profile = join(root, name), output = join(root, 'snapshot')
   cleanup.push(() => rm(root, { recursive: true, force: true }))
   await mkdir(join(profile, 'v2'), { recursive: true }); await mkdir(join(profile, 'browser')); await mkdir(join(profile, '空目录'))
   await writeFile(join(profile, 'v2/credentials.enc.json'), '{"fixture":"opaque-encrypted-original"}', { mode: 0o600 })
@@ -239,4 +239,19 @@ test('capacity includes resource forks and the control files temporarily copied 
   expect(catalog.entries.find((row: { path: string }) => row.path === 'resource-fork-only').xattrs).toContainEqual(expect.objectContaining({ name: 'com.apple.ResourceFork', bytes: value.length / 2 }))
   expect(observed).toMatchObject({ version: 1 }); expect(observed.totalBytes).toBeGreaterThanOrEqual(dataBytes + control.size)
   f.maintenance.assertHeld(); expect(() => acquireProfileAccess(f.profile)).toThrow(ProfileAccessBusyError)
+})
+test.each([
+  { name: 'case', leaf: 'CaseProfile', alias: 'CASEPROFILE' },
+  { name: 'Unicode', leaf: 'Café', alias: 'Cafe\u0301' },
+])('$name alias of a temporarily missing profile still verifies through its original authority', async ({ leaf, alias }) => {
+  const f = await fixture(leaf), created = await createProfileSnapshot(f.maintenance, f.output, f.id, f.tools)
+  f.maintenance.release(); await rename(f.profile, join(f.root, 'offline-original'))
+  const recovered = acquireProfileAccess(join(f.root, alias), 'maintenance'); cleanup.push(() => recovered.release())
+  expect(await realpath(recovered.file)).toBe(await realpath(f.maintenance.file))
+  expect(recovered.snapshotReceipt(f.id)?.manifestSha256).toBe(created.manifestSha256)
+  await expect(lstat(f.profile)).rejects.toMatchObject({ code: 'ENOENT' })
+  expect((await verifyProfileSnapshot(recovered, f.output, join(f.root, 'alias-verification'), f.tools)).manifestSha256).toBe(created.manifestSha256)
+  await expect(lstat(f.profile)).rejects.toMatchObject({ code: 'ENOENT' })
+  expect(recovered.maintenanceIntent()?.id).toBe(f.id)
+  await rename(join(f.root, 'offline-original'), f.profile)
 })

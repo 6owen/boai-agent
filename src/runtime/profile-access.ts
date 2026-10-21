@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 明确profile根目录、应用共享访问或升级维护模式，以及Node内置SQLite。
- * [OUTPUT]: profile外共享/维护准入、持久升级意图及快照完成凭据；提交后连接锁保持。
+ * [OUTPUT]: profile外准入、原authority身份核对、持久意图及快照完成凭据；提交后连接锁保持。
  * [POS]: 桌面/独立服务/个人升级的写入准入；不替代runtime owner或实际进程退出证明。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -170,6 +170,13 @@ export function acquireProfileAccess(input: string, mode: ProfileAccessMode = 'a
     } catch (error) { faulted = true; throw error }
   }
   return { profileRoot, file, assertHeld, release,
+    assertProfileIdentity(profile: string) {
+      assertHeld()
+      if (typeof profile !== 'string' || !isAbsolute(profile)) throw Error('快照来源必须为明确绝对路径')
+      const root = canonicalPath(profile), otherDirectory = controlDirectory(root), otherScope = join(otherDirectory, basename(root))
+      const identities = [[privatePath(otherDirectory, true), parent], [privatePath(otherScope, true), scope], [privatePath(join(otherScope, 'access.sqlite'), false), original]]
+      if (identities.some(([actual, expected]) => actual.dev !== expected.dev || actual.ino !== expected.ino)) throw Error('快照不属于同一原维护身份')
+    },
     maintenanceIntent() { assertHeld(); return readMaintenance(database, accessVersion) },
     snapshotReceipt(id: string) { assertHeld(); return readSnapshot(database, id) },
     // The caller finishes all asynchronous work and cancellation checks before this commit.

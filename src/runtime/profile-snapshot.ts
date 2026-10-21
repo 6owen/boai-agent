@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 已持久登记原ID的维护租约、明确新备份目录、macOS清单工具及受管执行器。
- * [OUTPUT]: 离线userData快照及沿原authority完成凭据的独立重核；取消/失败不凭文件标记晋升。
+ * [OUTPUT]: 离线userData快照及原authority凭据重核；缺目录别名绑定控制inode，取消/失败不晋升。
  * [POS]: 独立个人升级备份阶段；调用方仍须确认旧程序实际退出，不代替安装/回滚事务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查src/runtime/.folder.md。
  */
@@ -161,8 +161,9 @@ export async function verifyProfileSnapshot(access: ReturnType<typeof acquirePro
   catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error }
   const manifestBytes = await regular(join(root, 'snapshot.json'), 1024 * 1024), manifest = snapshotManifest.parse(JSON.parse(manifestBytes.toString()))
   const assertReceipt = () => {
+    access.assertProfileIdentity(manifest.source)
     const receipt = access.snapshotReceipt(manifest.transactionId)
-    if (access.profileRoot !== manifest.source || !receipt || receipt.directory !== root || receipt.manifestSha256 !== hash(manifestBytes)) throw Error('快照缺少同一原维护身份的完成凭据')
+    if (!receipt || receipt.directory !== root || receipt.manifestSha256 !== hash(manifestBytes)) throw Error('快照缺少同一原维护身份的完成凭据')
   }
   assertReceipt()
   const catalogBytes = await regular(join(root, 'catalog.json')), catalog = JSON.parse(catalogBytes.toString()) as Catalog
