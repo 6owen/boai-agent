@@ -1,5 +1,5 @@
 # [INPUT]: Original bounded history-reading scenario and unchanged product source.
-# [OUTPUT]: One original real Electron 10000-message history scenario with latest-sidebar assertions; no providers, retries or deadline changes.
+# [OUTPUT]: Original compiled-default Electron 10000-message history case, all cleanup steps and 90-second deadline preserved; prior dev failure retained.
 # [POS]: Isolated DS02 diagnostic; not formal Required checks or real-provider quality qualification.
 # [PROTOCOL]: Changes update Header; original CPU diagnostic retained outside tracked workflow.
 name: History sidebar preview diagnostic
@@ -31,18 +31,17 @@ jobs:
           node --input-type=module - <<'JS'
           import { buildInputHash } from './scripts/build-identity.mjs';
           import { mkdir, writeFile } from 'node:fs/promises';
+          if (process.env.BOAI_TEST_DEV_SERVER) throw Error('Expected original compiled desktop mode');
           const inputHash = await buildInputHash();
           if (inputHash !== '98be19b5e50f47cbab30c0b159aaeee2ab9733fc710c8bdca768394ffa40ec04') throw Error('Product inputs differ');
           await mkdir('.local/daily-reading-preview', { recursive: true });
-          await writeFile('.local/daily-reading-preview/source.json', JSON.stringify({ productCandidate: '2c949947bf1d22e67cc99485aee00092563d8dcf', testCandidate: '3ba1521b074adaf4e50dc2cfcd7f9c6a32c9c0c0', inputHash, realProviderCalls: false, originalHistoryCount: 10000, latestSidebarAfterOldLocationAndRestart: true, cases: 1, retries: 0, originalDeadlinesAndAssertionsUnchanged: true }, null, 2));
+          await writeFile('.local/daily-reading-preview/source.json', JSON.stringify({ productCandidate: '2c949947bf1d22e67cc99485aee00092563d8dcf', testCandidate: '3ba1521b074adaf4e50dc2cfcd7f9c6a32c9c0c0', inputHash, realProviderCalls: false, desktopMode: 'compiled-original-default', originalHistoryCount: 10000, latestSidebarAfterOldLocationAndRestart: true, cases: 1, retries: 0, originalDeadlinesAndAssertionsUnchanged: true }, null, 2));
           JS
       - name: Build current candidate and original BDD framework
         run: |
           pnpm build
           pnpm test:bddgen
       - name: Freeze original history case and run without retries
-        env:
-          BOAI_TEST_DEV_SERVER: '1'
         run: |
           node --input-type=module - <<'JS'
           import { execFileSync } from 'node:child_process';
