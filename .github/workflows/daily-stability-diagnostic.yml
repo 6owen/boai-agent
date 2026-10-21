@@ -1,8 +1,8 @@
-# [INPUT]: Same current product inputs, new PDF Office resource case corrected for the existing single-tab close contract.
-# [OUTPUT]: Independent natural/forced-GC CPU phases and renderer CPU profile; original failing resource contract is unchanged and not qualified by this probe.
-# [POS]: DS13 bounded PDF/Office desktop evidence; not Required checks or all-day stability certification.
-# [PROTOCOL]: Changes update Header and workflow directory map.
-name: Daily preview CPU attribution only
+# [INPUT]: Exact current product, native cumulative CPU boundary candidate and original resource scenarios.
+# [OUTPUT]: Unit counter/identity guards and real Main/Renderer CPU rejection first; original PDF/browser/terminal/background scenarios only after calibration succeeds.
+# [POS]: DS13 measurement calibration and bounded resource evidence; no changed thresholds, GC counts, case deadlines, retries or real providers.
+# [PROTOCOL]: Changes update Header and workflow map; temporary attribution probe removed.
+name: Daily resource CPU window calibration
 on:
   push:
     branches: [infra/daily-source-identity]
@@ -10,9 +10,11 @@ on:
 permissions:
   contents: read
 jobs:
-  preview-resources:
+  calibration:
     runs-on: macos-15
     timeout-minutes: 15
+    env:
+      CASE_GROUP: calibration
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -26,32 +28,129 @@ jobs:
           node node_modules/electron/install.js
       - name: Check current types
         run: pnpm typecheck
-      - name: Bind exact product and new desktop inputs
+      - name: Bind exact product and CPU window inputs
         run: |
           node --input-type=module - <<'JS'
           import { buildInputHash } from './scripts/build-identity.mjs';
           import { mkdir, writeFile } from 'node:fs/promises';
-          const inputHash = await buildInputHash();
+          const inputHash = await buildInputHash(), group = process.env.CASE_GROUP;
           if (inputHash !== 'bbdd926c21c351c4745cec2eeaf0124240907e5c83df40d9fe007f4860a0cad3') throw Error('Product inputs differ');
-          await mkdir('.local/daily-preview-cpu', { recursive: true });
-          await writeFile('.local/daily-preview-cpu/source.json', JSON.stringify({ reference: 'e8f90e745d5aa48074dc9779dbd9d52b87ade3d5', testCandidate: '32acab4a155b95b214044d85abfd4fcf3976ec2e', inputHash, cases: 1, feature: 'preview-cpu-diagnostic.feature', realProviderCalls: false, diagnosticCycles: 3, naturalCpuSamples: 10, forcedGcSamples: 5, cpuProfileSeconds: 5, diagnosticOnly: true, originalCaseBudgetsUnchanged: true, resourceContract: 'existing verifyResources unchanged', oldLatePreviewCasesPassedRun: 39674867840 }, null, 2));
+          const directory = `.local/daily-resource-window/${group}`;
+          await mkdir(directory, { recursive: true });
+          await writeFile(`${directory}/source.json`, JSON.stringify({ reference: '23c73d016f8a5086b77728b20d54e76987ddc22c', testCandidate: '9b5faa74f7f9986c5c73f2de84eb079df4c7d280', inputHash, group, realProviderCalls: false, cpu: 'native cumulative seconds and monotonic interval after previous observation / before next GC', originalGcCountThresholdsDeadlinesRetriesUnchanged: true, temporaryAttributionProbeRemoved: true }, null, 2));
           JS
+      - name: Check cumulative CPU units identity and unavailable counters
+        if: env.CASE_GROUP == 'calibration'
+        run: pnpm exec vitest run tests/resource-cpu.test.ts --maxWorkers=2 --reporter=json --outputFile .local/daily-resource-window/calibration/unit.json
       - name: Build current candidate and original BDD framework
         run: |
           pnpm build
           pnpm test:bddgen
-      - name: Attribute CPU after real preview closure without changing original resource verdict
+      - name: Freeze selected case count and run without retries
         env:
           BOAI_TEST_DEV_SERVER: '1'
-          BOAI_REVIEW_RUN_DIR: .local/daily-preview-cpu/review
-          PLAYWRIGHT_JSON_OUTPUT_NAME: .local/daily-preview-cpu/playwright-results.json
-        run: pnpm exec playwright test .features-gen/preview-cpu-diagnostic.feature.spec.js --retries 0 --reporter=list,json
+        run: |
+          node --input-type=module - <<'JS'
+          import { execFileSync } from 'node:child_process';
+          import { readFileSync, writeFileSync } from 'node:fs';
+          const group = process.env.CASE_GROUP, directory = `.local/daily-resource-window/${group}`;
+          const selections = {
+            calibration: { files: ['.features-gen/resource-cpu.feature.spec.js'], grep: '实际Renderer和Main高CPU均被原门槛拒绝而自然空闲通过', cases: 1 },
+            background: { files: ['.features-gen/background-runtime.feature.spec.js'], grep: '后台反复重开和处理消息后资源保持有界', cases: 1 },
+            interactive: { files: ['.features-gen/materials.feature.spec.js', '.features-gen/terminal-lifecycle.feature.spec.js', '.features-gen/browser-migration.feature.spec.js'], grep: 'PDF和Office反复切换关闭后的短期资源有界|定向结束终端和反复使用后真正退出再重启不重放|重复截图切页关闭后的短期资源有界', cases: 3 },
+          };
+          const selection = selections[group];
+          if (!selection) throw Error('Unknown fixed resource group');
+          const base = ['exec', 'playwright', 'test', ...selection.files, '--grep', selection.grep, '--retries', '0'];
+          execFileSync('pnpm', [...base, '--list', '--reporter=json'], { stdio: 'inherit', env: { ...process.env, PLAYWRIGHT_JSON_OUTPUT_NAME: `${directory}/list.json` } });
+          const listed = JSON.parse(readFileSync(`${directory}/list.json`, 'utf8'));
+          const count = suite => (suite.specs ?? []).reduce((sum, spec) => sum + (spec.tests ?? []).length, 0) + (suite.suites ?? []).reduce((sum, child) => sum + count(child), 0);
+          const actual = count(listed);
+          if (actual !== selection.cases) throw Error(`Expected ${selection.cases} original cases, listed ${actual}`);
+          writeFileSync(`${directory}/selection.json`, JSON.stringify({ ...selection, actual }, null, 2));
+          execFileSync('pnpm', [...base, '--reporter=list,json'], { stdio: 'inherit', env: { ...process.env, BOAI_REVIEW_RUN_DIR: `${directory}/review`, PLAYWRIGHT_JSON_OUTPUT_NAME: `${directory}/playwright-results.json` } });
+          JS
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: daily-preview-cpu
+          name: daily-resource-window-${{ env.CASE_GROUP }}
           path: |
-            .local/daily-preview-cpu/
+            .local/daily-resource-window/
+            test-results/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 3
+  resources:
+    needs: calibration
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [background, interactive]
+    runs-on: macos-15
+    timeout-minutes: 25
+    env:
+      CASE_GROUP: ${{ matrix.group }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.16.0'
+          cache: pnpm
+      - name: Install locked dependencies and Electron
+        run: |
+          pnpm install --frozen-lockfile
+          node node_modules/electron/install.js
+      - name: Check current types
+        run: pnpm typecheck
+      - name: Bind exact product and CPU window inputs
+        run: |
+          node --input-type=module - <<'JS'
+          import { buildInputHash } from './scripts/build-identity.mjs';
+          import { mkdir, writeFile } from 'node:fs/promises';
+          const inputHash = await buildInputHash(), group = process.env.CASE_GROUP;
+          if (inputHash !== 'bbdd926c21c351c4745cec2eeaf0124240907e5c83df40d9fe007f4860a0cad3') throw Error('Product inputs differ');
+          const directory = `.local/daily-resource-window/${group}`;
+          await mkdir(directory, { recursive: true });
+          await writeFile(`${directory}/source.json`, JSON.stringify({ reference: '23c73d016f8a5086b77728b20d54e76987ddc22c', testCandidate: '9b5faa74f7f9986c5c73f2de84eb079df4c7d280', inputHash, group, realProviderCalls: false, cpu: 'native cumulative seconds and monotonic interval after previous observation / before next GC', originalGcCountThresholdsDeadlinesRetriesUnchanged: true, temporaryAttributionProbeRemoved: true }, null, 2));
+          JS
+      - name: Check cumulative CPU units identity and unavailable counters
+        if: env.CASE_GROUP == 'calibration'
+        run: pnpm exec vitest run tests/resource-cpu.test.ts --maxWorkers=2 --reporter=json --outputFile .local/daily-resource-window/calibration/unit.json
+      - name: Build current candidate and original BDD framework
+        run: |
+          pnpm build
+          pnpm test:bddgen
+      - name: Freeze selected case count and run without retries
+        env:
+          BOAI_TEST_DEV_SERVER: '1'
+        run: |
+          node --input-type=module - <<'JS'
+          import { execFileSync } from 'node:child_process';
+          import { readFileSync, writeFileSync } from 'node:fs';
+          const group = process.env.CASE_GROUP, directory = `.local/daily-resource-window/${group}`;
+          const selections = {
+            calibration: { files: ['.features-gen/resource-cpu.feature.spec.js'], grep: '实际Renderer和Main高CPU均被原门槛拒绝而自然空闲通过', cases: 1 },
+            background: { files: ['.features-gen/background-runtime.feature.spec.js'], grep: '后台反复重开和处理消息后资源保持有界', cases: 1 },
+            interactive: { files: ['.features-gen/materials.feature.spec.js', '.features-gen/terminal-lifecycle.feature.spec.js', '.features-gen/browser-migration.feature.spec.js'], grep: 'PDF和Office反复切换关闭后的短期资源有界|定向结束终端和反复使用后真正退出再重启不重放|重复截图切页关闭后的短期资源有界', cases: 3 },
+          };
+          const selection = selections[group];
+          if (!selection) throw Error('Unknown fixed resource group');
+          const base = ['exec', 'playwright', 'test', ...selection.files, '--grep', selection.grep, '--retries', '0'];
+          execFileSync('pnpm', [...base, '--list', '--reporter=json'], { stdio: 'inherit', env: { ...process.env, PLAYWRIGHT_JSON_OUTPUT_NAME: `${directory}/list.json` } });
+          const listed = JSON.parse(readFileSync(`${directory}/list.json`, 'utf8'));
+          const count = suite => (suite.specs ?? []).reduce((sum, spec) => sum + (spec.tests ?? []).length, 0) + (suite.suites ?? []).reduce((sum, child) => sum + count(child), 0);
+          const actual = count(listed);
+          if (actual !== selection.cases) throw Error(`Expected ${selection.cases} original cases, listed ${actual}`);
+          writeFileSync(`${directory}/selection.json`, JSON.stringify({ ...selection, actual }, null, 2));
+          execFileSync('pnpm', [...base, '--reporter=list,json'], { stdio: 'inherit', env: { ...process.env, BOAI_REVIEW_RUN_DIR: `${directory}/review`, PLAYWRIGHT_JSON_OUTPUT_NAME: `${directory}/playwright-results.json` } });
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: daily-resource-window-${{ env.CASE_GROUP }}
+          path: |
+            .local/daily-resource-window/
             test-results/
           include-hidden-files: true
           if-no-files-found: error
