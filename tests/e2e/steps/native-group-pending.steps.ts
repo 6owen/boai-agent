@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 94c同群3过/1失败是原生停止后UI旧live帧早于终态刷新；先核原停止按钮移除再展开，避免默认收起，原断言/期限保持。
  * [OUTPUT]: 第二轮均已到真实处理/PID终态，失败在读取已自动折叠卡片正文；现显式展开原卡再核原状态，全部断言/期限保持。
  * [OUTPUT]: 首轮4失败为未放弃已核未受理请求及误用region定位普通Card；沿原放弃入口/aria-label修正，180秒与原业务断言保持。
  * [INPUT]: 原stdio双后端/同群双员工、普通composer和原执行面板。
@@ -159,8 +160,8 @@ When('我从第一名员工的执行记录停止并批准第二名员工', async
   await expect.poll(async () => (await nativeGroupDetail(runtime, group)).runs.find(run => run.id === first.id)?.status).toBe('cancelled')
   const pending = (await nativeGroupActions(runtime, group, state.runs!)).find(action => action.agentId === group.agents[1].id)!
   expect(pending).toMatchObject({ id: state.actions!.find(action => action.agentId === group.agents[1].id)!.id, status: 'pending' })
-  await expect(await expandedExecution(runtime, first)).toContainText('已停止')
   await expect(firstCard.getByRole('button', { name: '停止本次执行', exact: true })).toHaveCount(0)
+  await expect(await expandedExecution(runtime, first)).toContainText('已停止')
   await expect(secondCard.locator('[aria-label="原生执行请求"]')).toBeVisible()
   const option = pending.options.find(option => /^(accept|allow|approve)(_|$)/.test(option.id))!
   expect(option).toBeTruthy()
