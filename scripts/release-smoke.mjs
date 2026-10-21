@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 当前干净源码对应的个人built候选、锁定BDD及隔离输出；已登录macOS arm64/Node24。
- * [OUTPUT]: ZIP8/DMG2原场景、逐启动完整独立profile/包身份与实际bundle前后字节；受管worker配对挂载/封存，未知先恢复。
+ * [OUTPUT]: ZIP8/DMG2原场景、逐启动完整独立profile/包身份、实际执行墙钟窗口与bundle前后字节；受管worker配对挂载/封存，未知先恢复。
  * [POS]: 个人候选产物冒烟入口；不修改基线、创建Tag/Release或替换个人应用/数据。
  * [PROTOCOL]: 修改同步Header及scripts/.folder.md。
  */
@@ -19,7 +19,7 @@ import { assertPersonalBundle, bundleInventory, releaseFile } from './release-bu
 import { verifyReleaseSource } from './release-check.mjs'
 import { unpackPersonalArchive } from './release-archive.mjs'
 import { desktopPlanIdentity, desktopReportRows, selectDesktopCases, assertDesktopReport } from './desktop-plan.mjs'
-import { verifyDesktopEvidence } from './desktop-evidence.mjs'
+import { recordDesktopExecution, verifyDesktopEvidence } from './desktop-evidence.mjs'
 import { localCiFiles } from './local-ci.mjs'
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url))), runs = join(root, '.local/release-asset-runs')
@@ -231,7 +231,7 @@ async function worker(directory) {
       if (!equal(listReport.errors, []) || listed.length !== selected.length || listed.some(row => row.tests?.length !== 1 || row.tests[0].expectedStatus !== 'passed') || selected.some(row => !listed.some(actual => actual.playwrightId === row.playwrightId && equal(actual.titles, row.titles) && actual.file === row.file && actual.line === row.line))) throw Error('实际选择与固定产物场景不同')
       const generated = await Promise.all([...new Set(selected.map(row => row.file))].map(async file => ({ file, ...await releaseFile(join(root, '.features-gen', file + '.spec.js')) })))
       await save(join(stage, 'generated-files.json'), generated)
-      await step(stage, 'execute', '/usr/bin/env', [...env, `PLAYWRIGHT_JSON_OUTPUT_FILE=${join(stage, 'playwright.json')}`, `BOAI_REVIEW_RUN_DIR=${join(stage, 'review')}`, 'pnpm', 'exec', 'playwright', 'test', ...selectors, '--output', join(stage, 'results'), '--reporter=line,json'], 10 * 60_000)
+      await recordDesktopExecution(stage, () => step(stage, 'execute', '/usr/bin/env', [...env, `PLAYWRIGHT_JSON_OUTPUT_FILE=${join(stage, 'playwright.json')}`, `BOAI_REVIEW_RUN_DIR=${join(stage, 'review')}`, 'pnpm', 'exec', 'playwright', 'test', ...selectors, '--output', join(stage, 'results'), '--reporter=line,json'], 10 * 60_000))
       assertDesktopReport(await json(join(stage, 'playwright.json')), selected)
       const evidence = await smokeEvidence(stage, selected, candidate, binary); await save(join(stage, 'evidence.json'), evidence)
       for (const row of generated) if (!equal(await releaseFile(join(root, '.features-gen', row.file + '.spec.js')), { bytes: row.bytes, sha256: row.sha256 })) throw Error('执行期间BDD生成文件变化')
