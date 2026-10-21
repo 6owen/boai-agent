@@ -32,9 +32,9 @@ jobs:
           import { buildInputHash } from './scripts/build-identity.mjs';
           import { mkdir, writeFile } from 'node:fs/promises';
           const inputHash = await buildInputHash();
-          if (inputHash !== 'f2b4fc421bdf39dd4011365a6b400c57da0d5d14f7397fd01780b76388a1bbb4') throw Error('Product inputs differ');
+          if (inputHash !== '98be19b5e50f47cbab30c0b159aaeee2ab9733fc710c8bdca768394ffa40ec04') throw Error('Product inputs differ');
           await mkdir('.local/daily-reading-preview', { recursive: true });
-          await writeFile('.local/daily-reading-preview/source.json', JSON.stringify({ productCandidate: '376a4d710e873064d8e8e28758ec0dd7ab312772', testCandidate: '3ba1521b', inputHash, realProviderCalls: false, originalHistoryCount: 10000, latestSidebarAfterOldLocationAndRestart: true, cases: 1, retries: 0, originalDeadlinesAndAssertionsUnchanged: true }, null, 2));
+          await writeFile('.local/daily-reading-preview/source.json', JSON.stringify({ productCandidate: '2c949947bf1d22e67cc99485aee00092563d8dcf', testCandidate: '3ba1521b074adaf4e50dc2cfcd7f9c6a32c9c0c0', inputHash, realProviderCalls: false, originalHistoryCount: 10000, latestSidebarAfterOldLocationAndRestart: true, cases: 1, retries: 0, originalDeadlinesAndAssertionsUnchanged: true }, null, 2));
           JS
       - name: Build current candidate and original BDD framework
         run: |
