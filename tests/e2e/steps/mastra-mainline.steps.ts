@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 写入/发布各用实际审批按钮的聚焦与Enter确认，精确身份/消失/单次许可断言保持；避免补页期间指针坐标漂移，不走IPC代批。
  * [OUTPUT]: 同一run的write_file和publish_artifact分别批准，固定路径/不同审批身份并保留原件；不隐式扩大权限。
  * [OUTPUT]: 真实文件写入逐次允许；固定V1选文修改提交V2，精确标注/原身份/hash/新根与重启零重放保持；旧要求修改入口退役。
  * [OUTPUT]: 创建员工使用当前工作方式字段；原API上下文/文件/重启断言保持。
@@ -56,7 +57,11 @@ async function approveReportWrite(runtime: Desktop) {
     await expect(approval).toContainText(`${operation}文件 self:/runs/${runId}/report.md`)
     const original = runtime.page.locator(`[data-approval-id="${pending[0].id}"]`)
     await expect(original).toBeVisible()
-    await original.getByRole('button', { name: '允许这次执行', exact: true }).click()
+    const allow = original.getByRole('button', { name: '允许这次执行', exact: true })
+    await expect(allow).toBeEnabled()
+    await allow.focus()
+    await expect(allow).toBeFocused()
+    await allow.press('Enter')
     await expect(original).toHaveCount(0)
   }
 }

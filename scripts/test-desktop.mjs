@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 明确T1核心或T3完整旧清单、当前构建、原BDD和隔离新输出目录。
- * [OUTPUT]: 先核对实际清单再执行原场景；源码/构建前后核验、同目录截图/trace/原始日志和严格报告，不跳过旧失败。
+ * [OUTPUT]: 先核实际清单并记录监督入口执行墙钟；源码/构建前后、截图/trace/日志严格核验，不跳过旧失败。
  * [POS]: T1必需检查与手动T3执行入口；真实供应商T2另按原明确配置。
  * [PROTOCOL]: 修改同步Header与scripts/.folder.md。
  */
@@ -12,7 +12,7 @@ import { build } from 'esbuild'
 import { sourceIdentity } from './ui-regression.mjs'
 import { verifyBuildIdentity } from './build-identity.mjs'
 import { desktopPlanIdentity, desktopReportRows, selectDesktopCases, assertDesktopReport } from './desktop-plan.mjs'
-import { verifyDesktopEvidence } from './desktop-evidence.mjs'
+import { recordDesktopExecution, verifyDesktopEvidence } from './desktop-evidence.mjs'
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const save = (path, value) => writeFile(path, JSON.stringify(value, null, 2) + '\n')
@@ -37,7 +37,8 @@ async function main() {
     const run = async (label, parameters, output) => {
       const remaining = deadline - Date.now()
       if (remaining <= 0) throw new Error('桌面层级执行期限已到，不启动后续步骤')
-      const receipt = await repairProcess({ command: '/usr/bin/env', args: [...(output ? [`PLAYWRIGHT_JSON_OUTPUT_FILE=${output}`] : []), ...(label === 'execute' ? [`BOAI_REVIEW_RUN_DIR=${join(directory, 'review')}`] : []), 'pnpm', ...parameters], cwd: root, timeoutMs: remaining, signal: controller.signal, managed: { guard: join(root, 'dist/native/boai-process-guard'), ledger: join(directory, 'processes') }, capture: { directory, prefix: label } })
+      const execute = () => repairProcess({ command: '/usr/bin/env', args: [...(output ? [`PLAYWRIGHT_JSON_OUTPUT_FILE=${output}`] : []), ...(label === 'execute' ? [`BOAI_REVIEW_RUN_DIR=${join(directory, 'review')}`] : []), 'pnpm', ...parameters], cwd: root, timeoutMs: remaining, signal: controller.signal, managed: { guard: join(root, 'dist/native/boai-process-guard'), ledger: join(directory, 'processes') }, capture: { directory, prefix: label } })
+      const receipt = label === 'execute' ? await recordDesktopExecution(directory, execute) : await execute()
       await saveProcess(directory, label, receipt)
       if (receipt.exitCode !== 0 || receipt.failure) throw new Error(`${label}未完成：${receipt.failure ?? receipt.exitCode}`)
     }

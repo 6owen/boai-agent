@@ -1,16 +1,17 @@
 /*
+ * [OUTPUT]: 真实监督墙钟窗口约束末场并绑定proof；44ms跨时钟偏差正例及缺失/错来源/越界/后改负例不放宽相邻场景。
  * [INPUT]: 临时原件/Playwright报告；覆盖调度/分段时钟、过期/跨串行时段、缺失、改字节及伪造清单。
  * [OUTPUT]: 执行后及CI汇总同一核验入口拒绝不完整原件；完整搬移保持可核对，不是GUI成功。
  * [POS]: T1截图/trace交付门槛的文件系统合同测试。
  * [PROTOCOL]: 修改同步Header与tests/.folder.md。
  */
-import { afterEach, expect, it } from 'vitest'
+import { afterEach, expect, it, vi } from 'vitest'
 import { mkdtemp, mkdir, readFile, writeFile, rm, cp, symlink } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { createHash } from 'node:crypto'
 // @ts-expect-error Shared Node contract has no declaration.
-import { verifyDesktopEvidence } from '../scripts/desktop-evidence.mjs'
+import { recordDesktopExecution, verifyDesktopEvidence } from '../scripts/desktop-evidence.mjs'
 // @ts-expect-error Shared Node contract has no declaration.
 import { verifyDesktopGate } from '../scripts/ci-result.mjs'
 // @ts-expect-error Shared Node contract has no declaration.
@@ -27,10 +28,13 @@ async function fixture() {
   const manifest = { schemaVersion: 1, testId: 'pw-one', title: 'Case', titlePath: ['core.feature.spec.js', 'Core', 'Case'], location: { file: '/source/.features-gen/core.feature.spec.js', line: 6 }, project: '', retry: 0, repeatEachIndex: 0, status: 'passed', expectedStatus: 'passed', modelMode: 'offline-protocol-or-fixture', startedAt: '2026-10-21T00:00:00.001Z', completedAt: '2026-10-21T00:00:00.010Z', launchCount: 1, gaps: [], cleanupErrors: [], testErrors: [], evidence: [{ path: 'image.png', bytes: 14, sha256: hash('original-image'), kind: 'screenshot' }], traces: [{ path: trace, bytes: 14, sha256: hash('original-trace'), launch: 1 }] }
   const save = () => writeFile(join(scene, 'manifest.json'), JSON.stringify(manifest))
   await save()
+  const window = { version: 1, directory, startedAt: '2026-10-21T00:00:00.000Z', completedAt: '2026-10-21T00:00:00.020Z' }
+  const saveWindow = () => writeFile(join(directory, 'execution-window.json'), JSON.stringify(window))
+  await saveWindow()
   const selected = [{ id: 'core-case', file: 'core.feature', titles: ['Core', 'Case'], playwrightId: 'pw-one', line: 6 }]
   const report = { suites: [{ title: 'core.feature.spec.js', suites: [{ title: 'Core', specs: [{ title: 'Case', file: 'core.feature.spec.js', id: 'pw-one', line: 6, tests: [{ projectName: '', expectedStatus: 'passed', status: 'expected', results: [{ status: 'passed', retry: 0, duration: 12, startTime: '2026-10-21T00:00:00.000Z' }] }] }] }] }], errors: [], stats: { expected: 1, skipped: 0, unexpected: 0, flaky: 0, startTime: '2026-10-21T00:00:00.000Z', duration: 20 } }
   const identity = desktopPlanIdentity(Buffer.from(JSON.stringify({ version: 1, t1: { mode: 'offline-protocol-or-fixture', ui: 'all-registered-cases', cases: [{ ...selected[0], family: 'chat' }] } })))
-  return { directory, scene, trace, manifest, save, selected, report, identity }
+  return { directory, scene, trace, manifest, save, selected, report, identity, window, saveWindow }
 }
 it('完整场景原件在runner及CI汇总均核对，整体搬移后保持原身份', async () => {
   const f = await fixture(), proof = await verifyDesktopEvidence(f.directory, f.report, f.selected)
@@ -46,6 +50,8 @@ it('调度到worker启动有延迟仍核对本次真实时段，不混用两个�
   f.manifest.startedAt = '2026-10-21T00:00:01.000Z'
   f.manifest.completedAt = '2026-10-21T00:00:01.012Z'
   f.report.stats.duration = 1020
+  f.window.completedAt = '2026-10-21T00:00:01.020Z'
+  await f.saveWindow()
   await f.save()
   await expect(verifyDesktopEvidence(f.directory, f.report, f.selected)).resolves.toHaveLength(1)
 })
@@ -101,4 +107,47 @@ it('汇总后再修改清单说明也不能复用旧核验hash', async () => {
   const bytes = JSON.parse(await readFile(join(f.scene, 'manifest.json'), 'utf8')); bytes.humanReview = 'approved'
   await writeFile(join(f.scene, 'manifest.json'), JSON.stringify(bytes))
   await expect(verifyDesktopGate(f.directory, { outputDirectory: f.directory, evidenceSha256: hash(JSON.stringify(proof)) }, f.report, f.identity)).rejects.toThrow('原件集合')
+})
+
+it('last case uses observed wall end instead of adding monotonic duration to wall start', async () => {
+  const f = await fixture()
+  f.manifest.completedAt = '2026-10-21T00:00:00.064Z'
+  f.window.completedAt = '2026-10-21T00:00:00.100Z'
+  await f.saveWindow(); await f.save()
+  await expect(verifyDesktopEvidence(f.directory, f.report, f.selected)).resolves.toHaveLength(1)
+})
+it.each(['missing', 'source', 'reversed', 'before-start', 'after-end'] as const)('%s actual execution window cannot qualify originals', async kind => {
+  const f = await fixture()
+  if (kind === 'missing') await rm(join(f.directory, 'execution-window.json'))
+  else {
+    if (kind === 'source') f.window.directory += '-other'
+    if (kind === 'reversed') f.window.completedAt = '2026-10-20T00:00:00.000Z'
+    if (kind === 'before-start') f.window.startedAt = '2026-10-21T00:00:00.002Z'
+    if (kind === 'after-end') { f.window.completedAt = '2026-10-21T00:00:00.008Z'; f.report.stats.duration = 1000 }
+    await f.saveWindow()
+  }
+  await expect(verifyDesktopEvidence(f.directory, f.report, f.selected)).rejects.toThrow()
+})
+it('valid window bytes changed after sealing cannot reuse the original proof', async () => {
+  const f = await fixture(), proof = await verifyDesktopEvidence(f.directory, f.report, f.selected)
+  f.window.completedAt = '2026-10-21T00:00:00.021Z'; await f.saveWindow()
+  await expect(verifyDesktopGate(f.directory, { outputDirectory: f.directory, evidenceSha256: hash(JSON.stringify(proof)) }, f.report, f.identity)).rejects.toThrow('原件集合')
+})
+it.each([false, true])('records observed start/end for successful or failed supervised execution: %s', async failed => {
+  const f = await fixture(); await rm(join(f.directory, 'execution-window.json'))
+  vi.useFakeTimers({ toFake: ['Date'] })
+  try {
+    vi.setSystemTime(new Date('2026-10-21T00:00:00.000Z'))
+    const work = recordDesktopExecution(f.directory, async () => {
+      vi.setSystemTime(new Date('2026-10-21T00:00:00.064Z'))
+      if (failed) throw new Error('observed child failure')
+      return 42
+    })
+    if (failed) await expect(work).rejects.toThrow('observed child failure')
+    else await expect(work).resolves.toBe(42)
+    expect(JSON.parse(await readFile(join(f.directory, 'execution-window.json'), 'utf8'))).toEqual({ version: 1, directory: f.directory, startedAt: '2026-10-21T00:00:00.000Z', completedAt: '2026-10-21T00:00:00.064Z' })
+    const duplicate = vi.fn(async () => 0)
+    await expect(recordDesktopExecution(f.directory, duplicate)).rejects.toThrow()
+    expect(duplicate).not.toHaveBeenCalled()
+  } finally { vi.useRealTimers() }
 })

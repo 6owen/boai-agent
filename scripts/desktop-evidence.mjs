@@ -1,12 +1,12 @@
 /*
  * [INPUT]: 本批原始报告/冻结选择、完整留证目录及原执行目录身份。
- * [OUTPUT]: 唯一清单/零缺口/逐启动trace字节核验；原件绑定本次串行墙钟时段，不混比分段累计时长。
+ * [OUTPUT]: 监督入口记录实际执行墙钟窗口并绑定原件proof；唯一清单/零缺口/逐启动trace核验不混用单调累计时长。
  * [POS]: 桌面runner及本地/远程CI汇总共用原件门槛，不启动GUI。
  * [PROTOCOL]: 修改同步Header与scripts/.folder.md。
  */
 import { createHash } from 'node:crypto'
 import { createReadStream } from 'node:fs'
-import { lstat, readFile, readdir } from 'node:fs/promises'
+import { lstat, open, readFile, readdir } from 'node:fs/promises'
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { assertDesktopReport, desktopReportRows } from './desktop-plan.mjs'
 
@@ -21,6 +21,15 @@ async function regular(root, file, limit) {
   return info
 }
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex')
+export async function recordDesktopExecution(directory, execute) {
+  const record = await open(join(directory, 'execution-window.json'), 'wx', 0o600)
+  const startedAt = new Date().toISOString()
+  try { return await execute() }
+  finally {
+    try { await record.writeFile(JSON.stringify({ version: 1, directory: resolve(directory), startedAt, completedAt: new Date().toISOString() }) + '\n') }
+    finally { await record.close() }
+  }
+}
 export async function verifyDesktopEvidence(directory, report, selected, originalDirectory = directory) {
   directory = resolve(directory)
   if (!isAbsolute(originalDirectory)) throw new Error('缺少原执行目录身份')
@@ -34,7 +43,11 @@ export async function verifyDesktopEvidence(directory, report, selected, origina
   const rows = desktopReportRows(report), proof = []
   const runStart = Date.parse(report.stats?.startTime), runDuration = report.stats?.duration
   if (!Number.isFinite(runStart) || !Number.isFinite(runDuration) || runDuration <= 0) throw new Error('原报告缺少实际运行时段')
-  const runEnd = runStart + runDuration
+  const windowPath = join(directory, 'execution-window.json')
+  await regular(directory, windowPath, 16 * 1024)
+  const windowBytes = await readFile(windowPath), window = JSON.parse(windowBytes.toString())
+  const observedStart = Date.parse(window.startedAt), runEnd = Date.parse(window.completedAt)
+  if (window.version !== 1 || window.directory !== originalDirectory || ![observedStart, runEnd].every(Number.isFinite) || runEnd <= observedStart || runStart < observedStart || runStart > runEnd) throw new Error('缺少对应本批的实际执行墙钟窗口')
   const timeline = rows.map(row => ({ id: row.playwrightId, start: Date.parse(row.tests[0].results[0].startTime) })).sort((a, b) => a.start - b.start)
   if (timeline.some(row => !Number.isFinite(row.start) || row.start < runStart || row.start > runEnd)) throw new Error('实际场景调度时间越出本次运行')
   for (const expected of selected) {
@@ -45,7 +58,8 @@ export async function verifyDesktopEvidence(directory, report, selected, origina
     // startTime, manifest timestamps and the next case are wall-clock times.
     // result.duration sums active monotonic timeout slots; it excludes gaps
     // between slots and cannot bound the fixture's whole wall-clock interval.
-    // Bind originals to this case's actual serial slot and the enclosing run.
+    // The full-run duration is monotonic as well. Bind the final case to the
+    // supervisor-observed wall end, never wall start + monotonic duration.
     const next = timeline[timeline.findIndex(row => row.id === expected.playwrightId) + 1]?.start ?? runEnd
     if (manifest.schemaVersion !== 1 || manifest.project !== test.projectName || manifest.title !== expected.titles.at(-1) || JSON.stringify(manifest.titlePath) !== JSON.stringify([expected.file + '.spec.js', ...expected.titles]) || basename(manifest.location?.file ?? '') !== expected.file + '.spec.js' || manifest.location.line !== expected.line || manifest.retry !== 0 || manifest.repeatEachIndex !== 0 || manifest.status !== 'passed' || manifest.expectedStatus !== 'passed' || manifest.modelMode !== 'offline-protocol-or-fixture' || ![started, completed, actualStart].every(Number.isFinite) || started < actualStart || completed < started || completed > Math.min(next, runEnd) + 1) throw new Error(`原件清单身份、时间或来源不对应：${expected.id}`)
     if (!['gaps', 'cleanupErrors', 'testErrors'].every(key => Array.isArray(manifest[key]) && !manifest[key].length) || !Number.isInteger(manifest.launchCount) || manifest.launchCount < 1 || !Array.isArray(manifest.evidence) || !manifest.evidence.some(item => item.kind === 'screenshot') || !Array.isArray(manifest.traces) || manifest.traces.length !== manifest.launchCount || new Set(manifest.traces.map(item => item.launch)).size !== manifest.launchCount || manifest.traces.some(item => !Number.isInteger(item.launch) || item.launch < 1 || item.launch > manifest.launchCount)) throw new Error(`原件有缺口、清理错误或缺少启动回放：${expected.id}`)
@@ -60,7 +74,7 @@ export async function verifyDesktopEvidence(directory, report, selected, origina
       if (info.size !== item.bytes || hash.digest('hex') !== item.sha256) throw new Error(`原件大小或hash不一致：${item.path}`)
       resources.push({ path: relative(directory, file), bytes: item.bytes, sha256: item.sha256 })
     }
-    proof.push({ id: expected.id, manifest: relative(directory, path), sha256: sha256(bytes), resources })
+    proof.push({ id: expected.id, executionWindowSha256: sha256(windowBytes), manifest: relative(directory, path), sha256: sha256(bytes), resources })
   }
   return proof
 }
