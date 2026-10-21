@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 实际Swift/ditto与隔离数据；完成阶段取消及明确局部文件系统故障注入。
- * [OUTPUT]: 成套数据/缺目录别名恢复、子scope身份互斥；末阶段取消/失败不能获得完成资格。
+ * [OUTPUT]: 缺目录按实际同卷身份恢复或拒绝异scope；成套数据/子scope互斥，取消/失败不完成。
  * [POS]: 升级备份模块合同；不运行Electron或模型，不代替安装/回滚/个人权限验收。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查tests/.folder.md。
  */
@@ -243,14 +243,28 @@ test('capacity includes resource forks and the control files temporarily copied 
 test.each([
   { name: 'case', leaf: 'CaseProfile', alias: 'CASEPROFILE' },
   { name: 'Unicode', leaf: 'Café', alias: 'Cafe\u0301' },
-])('$name alias of a temporarily missing profile still verifies through its original authority', async ({ leaf, alias }) => {
-  const f = await fixture(leaf), created = await createProfileSnapshot(f.maintenance, f.output, f.id, f.tools)
+  { name: 'distinct scope', leaf: 'OriginalProfile', alias: 'IndependentProfile' },
+])('$name path during a missing profile uses its actual filesystem authority identity', async ({ leaf, alias }) => {
+  const f = await fixture(leaf), alternate = join(f.root, alias), info = await lstat(f.profile)
+  const other = await lstat(alternate).catch(error => { if (error.code !== 'ENOENT') throw error; return undefined })
+  const aliases = other?.dev === info.dev && other?.ino === info.ino
+  const created = await createProfileSnapshot(f.maintenance, f.output, f.id, f.tools)
   f.maintenance.release(); await rename(f.profile, join(f.root, 'offline-original'))
-  const recovered = acquireProfileAccess(join(f.root, alias), 'maintenance'); cleanup.push(() => recovered.release())
-  expect(await realpath(recovered.file)).toBe(await realpath(f.maintenance.file))
-  expect(recovered.snapshotReceipt(f.id)?.manifestSha256).toBe(created.manifestSha256)
+  const recovered = acquireProfileAccess(alternate, 'maintenance'); cleanup.push(() => recovered.release())
   await expect(lstat(f.profile)).rejects.toMatchObject({ code: 'ENOENT' })
-  expect((await verifyProfileSnapshot(recovered, f.output, join(f.root, 'alias-verification'), f.tools)).manifestSha256).toBe(created.manifestSha256)
+  if (aliases) {
+    expect(await realpath(recovered.file)).toBe(await realpath(f.maintenance.file))
+    expect(recovered.snapshotReceipt(f.id)?.manifestSha256).toBe(created.manifestSha256)
+    expect((await verifyProfileSnapshot(recovered, f.output, join(f.root, 'alias-verification'), f.tools)).manifestSha256).toBe(created.manifestSha256)
+  } else {
+    const original = acquireProfileAccess(f.profile, 'maintenance'); cleanup.push(() => original.release())
+    expect((await lstat(recovered.file)).ino).not.toBe((await lstat(original.file)).ino)
+    const receipt = original.snapshotReceipt(f.id)!
+    recovered.beginMaintenance(f.id); recovered.recordSnapshot(receipt)
+    await expect(verifyProfileSnapshot(recovered, f.output, join(f.root, 'distinct-verification'), f.tools)).rejects.toThrow('原维护身份')
+    expect(original.snapshotReceipt(f.id)).toEqual(receipt)
+    expect(original.maintenanceIntent()?.id).toBe(f.id); original.assertHeld()
+  }
   await expect(lstat(f.profile)).rejects.toMatchObject({ code: 'ENOENT' })
   expect(recovered.maintenanceIntent()?.id).toBe(f.id)
   await rename(join(f.root, 'offline-original'), f.profile)
