@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 独立云端诊断：原累计时长比墙钟完成早44ms时，必须按真实执行窗口核对；旧实现应红，非合并资格。
  * [INPUT]: 临时原件/Playwright报告；覆盖调度/分段时钟、过期/跨串行时段、缺失、改字节及伪造清单。
  * [OUTPUT]: 执行后及CI汇总同一核验入口拒绝不完整原件；完整搬移保持可核对，不是GUI成功。
  * [POS]: T1截图/trace交付门槛的文件系统合同测试。
@@ -101,4 +102,12 @@ it('汇总后再修改清单说明也不能复用旧核验hash', async () => {
   const bytes = JSON.parse(await readFile(join(f.scene, 'manifest.json'), 'utf8')); bytes.humanReview = 'approved'
   await writeFile(join(f.scene, 'manifest.json'), JSON.stringify(bytes))
   await expect(verifyDesktopGate(f.directory, { outputDirectory: f.directory, evidenceSha256: hash(JSON.stringify(proof)) }, f.report, f.identity)).rejects.toThrow('原件集合')
+})
+
+it('last case uses observed wall end instead of adding monotonic duration to wall start', async () => {
+  const f = await fixture()
+  f.manifest.completedAt = '2026-10-21T00:00:00.064Z'
+  await writeFile(join(f.directory, 'execution-window.json'), JSON.stringify({ version: 1, startedAt: '2026-10-21T00:00:00.000Z', completedAt: '2026-10-21T00:00:00.100Z' }))
+  await f.save()
+  await expect(verifyDesktopEvidence(f.directory, f.report, f.selected)).resolves.toHaveLength(1)
 })

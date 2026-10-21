@@ -1,0 +1,58 @@
+# [INPUT]: 独立固定265源码、真实44ms原件协议及原Mastra单场景。
+# [OUTPUT]: 只诊断红例及真实指针事件，三个独立场景不替代T1/Required checks。
+# [POS]: 仅infra/ci-failure-diagnostic-20261021临时诊断分支，不合入main。
+# [PROTOCOL]: 修改同步workflow目录地图。
+name: CI failure diagnostic
+on:
+  push:
+    branches: [infra/ci-failure-diagnostic-20261021]
+permissions:
+  contents: read
+jobs:
+  clock:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.16.0'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: |
+          mkdir -p .local/diagnostic
+          pnpm exec vitest run tests/desktop-evidence.test.ts --maxWorkers=2 2>&1 | tee .local/diagnostic/clock.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: clock-diagnostic
+          path: .local/diagnostic
+          include-hidden-files: true
+          retention-days: 3
+  approval:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.16.0'
+          cache: pnpm
+      - run: |
+          pnpm install --frozen-lockfile
+          node node_modules/electron/install.js
+      - run: pnpm build
+      - run: pnpm test:bddgen
+      - env:
+          PLAYWRIGHT_JSON_OUTPUT_FILE: .local/diagnostic/playwright.json
+          BOAI_REVIEW_RUN_DIR: .local/diagnostic/review
+        run: pnpm exec playwright test .features-gen/mastra-mainline.feature.spec.js:6 --repeat-each=3 --retries=0 --output .local/diagnostic/results --reporter=line,json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: approval-diagnostic
+          path: .local/diagnostic
+          include-hidden-files: true
+          retention-days: 3

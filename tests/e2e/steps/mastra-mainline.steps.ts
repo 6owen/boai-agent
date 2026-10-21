@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: [DEBUG-approval-265]独立诊断记录真实pointer目标/矩形/补页状态，原批准和消失断言不改；本分支不授完整CI资格。
  * [OUTPUT]: 同一run的write_file和publish_artifact分别批准，固定路径/不同审批身份并保留原件；不隐式扩大权限。
  * [OUTPUT]: 真实文件写入逐次允许；固定V1选文修改提交V2，精确标注/原身份/hash/新根与重启零重放保持；旧要求修改入口退役。
  * [OUTPUT]: 创建员工使用当前工作方式字段；原API上下文/文件/重启断言保持。
@@ -45,6 +46,16 @@ async function openArtifact(runtime: Desktop, artifact: ArtifactVersion) {
   await expect(panel(runtime.page, artifact).getByRole('region', { name: '文件正文', exact: true })).toBeVisible()
 }
 async function approveReportWrite(runtime: Desktop) {
+  await runtime.page.evaluate(() => {
+    const target = window as unknown as { approvalProbe?: unknown[] }
+    if (target.approvalProbe) return
+    target.approvalProbe = []
+    for (const name of ['pointerdown', 'pointerup', 'click']) document.addEventListener(name, event => {
+      const element = event.target instanceof Element ? event.target : null
+      const button = element?.closest('button'), approval = element?.closest('[data-approval-id]')
+      target.approvalProbe!.push({ type: name, at: new Date().toISOString(), x: (event as PointerEvent).clientX, y: (event as PointerEvent).clientY, text: button?.textContent, approvalId: approval?.getAttribute('data-approval-id'), rect: button?.getBoundingClientRect().toJSON(), paging: document.querySelector('.messages')?.getAttribute('aria-busy') })
+    }, true)
+  })
   let runId: string | undefined
   for (const operation of ['写入', '发布']) {
     const approval = runtime.page.getByRole('region', { name: `${MAINLINE_EMPLOYEE} 的修改或发布文件审批`, exact: true })
@@ -57,7 +68,10 @@ async function approveReportWrite(runtime: Desktop) {
     const original = runtime.page.locator(`[data-approval-id="${pending[0].id}"]`)
     await expect(original).toBeVisible()
     await original.getByRole('button', { name: '允许这次执行', exact: true }).click()
-    await expect(original).toHaveCount(0)
+    try { await expect(original).toHaveCount(0) }
+    finally {
+      await runtime.reviewData('[DEBUG-approval-265] ' + operation, await runtime.page.evaluate(async () => ({ events: (window as unknown as { approvalProbe?: unknown[] }).approvalProbe, approvals: (await window.boai.request('snapshot', undefined)).approvals, paging: document.querySelector('.messages')?.getAttribute('aria-busy') })))
+    }
   }
 }
 async function reviewArtifact(runtime: Desktop, artifact: ArtifactVersion) {
