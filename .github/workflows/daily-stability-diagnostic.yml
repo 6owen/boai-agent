@@ -1,4 +1,4 @@
-# [INPUT]: 17b1994f固定React Aria补丁、原依赖回归及原后台桌面/资源合同。
+# [INPUT]: 9fb016ac固定React Aria补丁、原依赖回归及原后台桌面/资源合同。
 # [OUTPUT]: 实际依赖8项、最小设置循环和原210/70/28/120秒资源复验；不改原门槛/期限/重试。
 # [POS]: 第23组资源失败最小化，原完整红例和所有原门槛保持。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
@@ -34,7 +34,7 @@ jobs:
           import { buildInputHash } from './scripts/build-identity.mjs';
           import { mkdir, writeFile, appendFile } from 'node:fs/promises';
           const inputHash=await buildInputHash();
-          if(inputHash!=='9efa7a67a13e6d89fb835ea7b438e07fce3d88053d92fc029883d8eef27412e5') throw Error('Product input differs');
+          if(inputHash!=='5a82db0e4d0010e4946714c47b406eb7f4fc711a9c50bb6f42adb0ec949e0951') throw Error('Product input differs');
           await mkdir('.local/resource-minimal-evidence',{recursive:true});
           const feature=['# language: zh-CN','# [INPUT]: 原后台隔离桌面及设置循环。','# [OUTPUT]: 仅用于最小复现，不授予原后台资源资格。','# [POS]: 临时诊断BDD，产品与原场景不改。','# [PROTOCOL]: 仅保留于本诊断run原件。','功能: 仅诊断运行选项的卸载引用','  场景: 仅诊断运行选项反复卸载后的节点保留','    假如 已启动隔离的后台员工桌面','    当 仅诊断运行选项的反复卸载保留'].join(String.fromCharCode(10))+String.fromCharCode(10);
           const step=String.raw`
@@ -68,7 +68,7 @@ jobs:
           await appendFile('tests/e2e/steps/background-runtime.steps.ts',step);
           await writeFile('.local/resource-minimal-evidence/case.feature',feature);
           await writeFile('.local/resource-minimal-evidence/step.ts',step);
-          await writeFile('.local/resource-minimal-evidence/source.json',JSON.stringify({reference:'17b1994f473a9586bb524d3b0bdf291ac30f0b09',inputHash,diagnosticOnly:true,purpose:'settings-only retention without message or window cycling; not original resource qualification'},null,2));
+          await writeFile('.local/resource-minimal-evidence/source.json',JSON.stringify({reference:'9fb016acab51cdb6a393fd66699846dd0630d195',inputHash,diagnosticOnly:true,purpose:'settings-only retention without message or window cycling; not original resource qualification'},null,2));
           JS
       - name: Build candidate and generate diagnostic BDD
         run: |
