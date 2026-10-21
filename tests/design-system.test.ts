@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 公共tokens、原应用兼容入口及公开设计目录。
- * [OUTPUT]: 纯Node消费、同一实现、完整变量闭包与公开内容白名单回归。
+ * [OUTPUT]: 普通/开发条件Node消费、同一实现、完整变量闭包与公开内容白名单回归。
  * [POS]: 设计系统模块合同，CI执行；不替代桌面或浏览器验收。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -15,8 +15,8 @@ import { searchPages } from '../apps/design-docs/src/search'
 // @ts-expect-error Shared Node public-content generator has no declaration file.
 import { readDesignContent, designPublicFiles } from '../scripts/design-content.mjs'
 
-it('tokens can load in Node with no DOM, React or Electron', () => {
-  const output = execFileSync(process.execPath, ['--input-type=module', '-e', "const t = await import('@boai/tokens'); if (typeof window !== 'undefined') throw Error('unexpected DOM'); console.log(t.foundationVariables('dark')['--background'])"], { encoding: 'utf8' })
+it.each([[], ['--conditions=development']])('tokens can load in Node with conditions %j and no DOM, React or Electron', conditions => {
+  const output = execFileSync(process.execPath, [...conditions, '--input-type=module', '-e', "const t = await import('@boai/tokens'); if (typeof window !== 'undefined') throw Error('unexpected DOM'); console.log(t.foundationVariables('dark')['--background'])"], { encoding: 'utf8' })
   expect(output.trim()).toBe(baseThemes.dark.background)
 })
 

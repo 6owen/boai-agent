@@ -16,51 +16,61 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "node": "./dist/index.js",
       "development": "./src/index.ts",
       "default": "./dist/index.js"
     },
     "./badge": {
       "types": "./dist/components/badge.d.ts",
+      "node": "./dist/badge.js",
       "development": "./src/components/badge.tsx",
       "default": "./dist/badge.js"
     },
     "./button": {
       "types": "./dist/components/button.d.ts",
+      "node": "./dist/button.js",
       "development": "./src/components/button.tsx",
       "default": "./dist/button.js"
     },
     "./card": {
       "types": "./dist/components/card.d.ts",
+      "node": "./dist/card.js",
       "development": "./src/components/card.tsx",
       "default": "./dist/card.js"
     },
     "./field": {
       "types": "./dist/components/field.d.ts",
+      "node": "./dist/field.js",
       "development": "./src/components/field.tsx",
       "default": "./dist/field.js"
     },
     "./input": {
       "types": "./dist/components/input.d.ts",
+      "node": "./dist/input.js",
       "development": "./src/components/input.tsx",
       "default": "./dist/input.js"
     },
     "./label": {
       "types": "./dist/components/label.d.ts",
+      "node": "./dist/label.js",
       "development": "./src/components/label.tsx",
       "default": "./dist/label.js"
     },
     "./separator": {
       "types": "./dist/components/separator.d.ts",
+      "node": "./dist/separator.js",
       "development": "./src/components/separator.tsx",
       "default": "./dist/separator.js"
     },
     "./skeleton": {
       "types": "./dist/components/skeleton.d.ts",
+      "node": "./dist/skeleton.js",
       "development": "./src/components/skeleton.tsx",
       "default": "./dist/skeleton.js"
     },
     "./textarea": {
       "types": "./dist/components/textarea.d.ts",
+      "node": "./dist/textarea.js",
       "development": "./src/components/textarea.tsx",
       "default": "./dist/textarea.js"
     },
@@ -79,6 +89,7 @@
     "./package.json": "./package.json",
     "./sonner": {
       "types": "./dist/components/sonner.d.ts",
+      "node": "./dist/sonner.js",
       "development": "./src/components/sonner.tsx",
       "default": "./dist/sonner.js"
     }

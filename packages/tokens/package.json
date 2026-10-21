@@ -14,11 +14,13 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "node": "./dist/index.js",
       "development": "./src/index.ts",
       "default": "./dist/index.js"
     },
     "./typography": {
       "types": "./dist/typography.d.ts",
+      "node": "./dist/typography.js",
       "development": "./src/typography.ts",
       "default": "./dist/typography.js"
     },
