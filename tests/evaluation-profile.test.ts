@@ -84,7 +84,7 @@ it('prepares the original multi-chat memory sample and criteria with zero provid
   expect(await readFile(join(f.root, 'boai.sqlite'))).toEqual(before)
 })
 
-it('rejects unknown or duplicate cases before execution, credentials or request reservation', async () => {
+it('rejects unknown or duplicate cases before service execution or request reservation', async () => {
   const fetch = vi.spyOn(globalThis, 'fetch')
   for (const caseIds of [['missing-case'], ['memory-output-only', 'memory-output-only']]) {
     await expect(runPersonalityEvaluation({ settings: { output: '/must-not-be-written', label: 'invalid', maxRequests: 20, deadlineMs: 720000, caseIds }, connection: {} as never, apiKey: '' })).rejects.toThrow('Unknown or duplicate personality case')
