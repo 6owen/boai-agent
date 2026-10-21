@@ -1,6 +1,7 @@
 /*
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [OUTPUT]: 三组字号改用全局 React Aria NumberField，统一边界、步长、键盘与步进按钮交互，沿原外观预览保存。
+ * [OUTPUT]: 字体设置拆为字号与字体样式两张逐行分隔的 Card；示例收进标签旁 Tooltip，界面字号同步内容字号，开发模式不显示 Dock 说明。
  * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [OUTPUT]: 主题选项仅列可用插件配色，停用回退值与保留的原选择分开显示。
  * [OUTPUT]: 图片下方内嵌卡片展示玻璃/遮罩百分比与0–32px模糊三行Slider，独立预览/保存；重置浮层仅标题与确认/取消。
@@ -20,7 +21,7 @@ import { Field, FieldContent, FieldGroup, FieldTitle } from '@/components/ui/fie
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
 import { InfoIcon, RefreshCw } from '@/components/icons'
-import { appearanceDefaults, appIconPresets, availableThemes, defaultAppIconId, defaultGlassOpacity, maxBackgroundBlur, resolveTheme, resolveAppearanceTheme, typographyControls, typographyDefaults, zoomFactors, type AppIconStatus, type TypographyGroup, type ThemeOverrides } from '@shared/appearance'
+import { appearanceDefaults, appIconPresets, availableThemes, defaultAppIconId, defaultGlassOpacity, maxBackgroundBlur, resolveTheme, resolveAppearanceTheme, typographyControls, typographyDefaults, zoomFactors, type AppIconStatus, type ThemeOverrides } from '@shared/appearance'
 import { usePlugins } from '@/stores/plugins'
 import { useAppearance, previewAppearance, flushAppearance, appearanceAction } from '@/stores/appearance'
 import lightPreview from '@/assets/mode-light.webp'
@@ -37,18 +38,18 @@ const modes = [
   { value: 'dark', label: '深色', image: darkPreview },
 ] as const
 const typographyGroups = [
-  { id: 'ui', title: '界面', options: [{ value: 'geist', label: 'Geist' }, { value: 'system', label: '系统默认' }], sample: '会话名称 · 按钮 · 辅助文字' },
-  { id: 'content', title: '内容', options: [{ value: 'ui', label: '跟随界面字体' }, { value: 'geist', label: 'Geist' }, { value: 'system', label: '系统默认' }, { value: 'serif', label: '系统衬线' }], sample: '今天也来写点什么，看看标题与正文。' },
-  { id: 'code', title: '代码', options: [{ value: 'system', label: '系统等宽' }, { value: 'menlo', label: 'Menlo' }], sample: 'const bobo = "你好"' },
+  { id: 'ui', label: '界面字体样式', options: [{ value: 'geist', label: 'Geist' }, { value: 'system', label: '系统默认' }], sample: '会话名称 · 按钮 · 辅助文字' },
+  { id: 'content', label: '内容字体', options: [{ value: 'ui', label: '跟随界面字体' }, { value: 'geist', label: 'Geist' }, { value: 'system', label: '系统默认' }, { value: 'serif', label: '系统衬线' }], sample: '今天也来写点什么，看看标题与正文。' },
+  { id: 'code', label: '代码字体', options: [{ value: 'system', label: '系统等宽' }, { value: 'menlo', label: 'Menlo' }], sample: 'const bobo = "你好"' },
 ] as const
 
-function FontSizeInput({ group, value }: { group: TypographyGroup; value: number }) {
+function FontSizeInput({ group, value }: { group: 'ui' | 'code'; value: number }) {
   const control = typographyControls[group]
-  const title = group === 'ui' ? '界面' : group === 'content' ? '内容' : '代码'
-  return <NumberField className="w-32" inputId={`appearance-${group}-size`} aria-label={`${title}字号（像素）`}
-    decrementAriaLabel={`减小${title}字号`} incrementAriaLabel={`增大${title}字号`}
+  const title = group === 'ui' ? '界面字号' : '代码字体大小'
+  return <NumberField className="w-32" inputId={`appearance-${group}-size`} aria-label={`${title}（像素）`}
+    decrementAriaLabel={`减小${title}`} incrementAriaLabel={`增大${title}`}
     value={value} minValue={control.min} maxValue={control.max} step={control.step}
-    onChange={next => { if (Number.isInteger(next) && next >= control.min && next <= control.max) previewAppearance({ typography: { [group]: { sizePx: next } } }) }} />
+    onChange={next => { if (Number.isInteger(next) && next >= control.min && next <= control.max) previewAppearance({ typography: group === 'ui' ? { ui: { sizePx: next }, content: { sizePx: next } } : { [group]: { sizePx: next } } }) }} />
 }
 
 function ColorControl({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
@@ -130,13 +131,21 @@ export function AppearanceSettings() {
       <section className="appearance-advanced" aria-labelledby="appearance-typography-heading">
         <div className="flex items-center justify-between gap-2"><h3 id="appearance-typography-heading" className="settings-section-title">字体</h3>
           <Button type="button" variant="ghost" size="sm" onClick={() => previewAppearance({ typography: typographyDefaults })}>重置字体</Button></div>
+        <Card className="mb-4 gap-0 p-0"><CardContent className="appearance-options soft-divide-y">
+          {(['ui', 'code'] as const).map(group => <div className="appearance-row" key={group}>
+            <label htmlFor={`appearance-${group}-size`}>{group === 'ui' ? '界面字号' : '代码字体大小'}</label>
+            <FontSizeInput group={group} value={p.typography[group].sizePx} />
+          </div>)}
+        </CardContent></Card>
         <Card className="gap-0 p-0"><CardContent className="appearance-options soft-divide-y">
-          {typographyGroups.map(group => <div className="py-3" key={group.id}>
-            <div className="appearance-row"><label htmlFor={`appearance-${group.id}-family`}>{group.title}字体</label>
-              <SelectField id={`appearance-${group.id}-family`} value={p.typography[group.id].family} options={[...group.options]} onValueChange={family => previewAppearance({ typography: { [group.id]: { family } } })} />
+          {typographyGroups.map(group => <div className="appearance-row" key={group.id}>
+            <div className="flex items-center gap-1 font-medium">
+              <label htmlFor={`appearance-${group.id}-family`}>{group.label}</label>
+              <Tooltip><TooltipTrigger render={<Button type="button" variant="ghost" size="icon-xs" aria-label={`${group.label}示例`} />}><InfoIcon /></TooltipTrigger>
+                <TooltipContent align="start"><span style={{ fontFamily: `var(--font-${group.id}-family)`, fontSize: `var(--text-${group.id}-body)` }}>{group.sample}</span></TooltipContent>
+              </Tooltip>
             </div>
-            <div className="appearance-row"><label htmlFor={`appearance-${group.id}-size`}>{group.title}字号</label><FontSizeInput group={group.id} value={p.typography[group.id].sizePx} /></div>
-            <p className="m-0 text-muted-foreground" style={{ fontFamily: `var(--font-${group.id}-family)`, fontSize: `var(--text-${group.id}-body)` }}>{group.sample}</p>
+            <SelectField id={`appearance-${group.id}-family`} value={p.typography[group.id].family} options={[...group.options]} onValueChange={family => previewAppearance({ typography: { [group.id]: { family } } })} />
           </div>)}
         </CardContent></Card>
       </section>
@@ -151,7 +160,7 @@ export function AppearanceSettings() {
               <span className="w-full truncate text-center text-xs">{icon.name}</span>
             </Button>)}
           </div>
-          {iconStatus.environment === 'development' ? <p className="field-hint mt-3">开发模式：仅更改当前进程的 Dock 图标。</p> :
+          {iconStatus.environment !== 'development' &&
             <p className="field-hint mt-3">{iconStatus.pending ? '正在应用图标…' : iconStatus.dock.error || iconStatus.installed.error
               ? `Dock：${iconStatus.dock.error ? '未更新' : '已更新'}；安装图标：${iconStatus.installed.error ? '未更新' : '已更新'}`
               : 'Dock 与当前安装应用图标已更新。'}</p>}

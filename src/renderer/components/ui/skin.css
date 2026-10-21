@@ -1,5 +1,6 @@
 /*
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
+ * [OUTPUT]: NumberField 步进按钮间的竖线复用全局细分割线 token。
  * [OUTPUT]: 群成员头像区取消底部分割线，与后续群聊设置独立分区保持一致。
  * [OUTPUT]: 员工头像选择按钮及头像使用全局md圆角，取消全圆裁切，新建/编辑共用。
  * [OUTPUT]: Composer 模型按钮悬停和菜单展开使用主题 selection 背景，增强触发器反馈，禁用时不生效。
@@ -71,7 +72,7 @@
 [data-slot=input-group] > [data-slot=input-group-control] { border:0; border-radius:0; background:transparent; box-shadow:none }
 [data-slot=number-field] [data-slot=number-field-group] { background-color:var(--card);background-image:none }
 [data-slot=number-field-input] { border:0;border-radius:0;background:transparent;color:var(--foreground);font-size:var(--text-ui-body);box-shadow:none }
-[data-slot=number-field-stepper] { border-left:1px solid var(--border);border-radius:0;background:transparent;color:var(--muted-foreground);box-shadow:none }
+[data-slot=number-field-stepper] { border-left:0;border-radius:0;background:transparent;color:var(--muted-foreground);box-shadow:var(--shadow-divider-vertical) }
 [data-slot=number-field] [data-slot=number-field-stepper]:is(:hover,:focus-visible):not([data-disabled]) { background:var(--soft-hover);color:var(--foreground) }
 [data-slot=number-field-stepper][data-disabled] { cursor:not-allowed;opacity:.5 }
 [data-slot=number-field][data-disabled] [data-slot=number-field-group] { opacity:.5 }
