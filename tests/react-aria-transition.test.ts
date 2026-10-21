@@ -5,7 +5,7 @@
  * [POS]: Regression for the actual global transition map retaining unloaded settings DOM; Electron resource thresholds remain separately authoritative.
  * [PROTOCOL]: Changes update Header and tests/.folder.md.
  */
-import { build } from 'esbuild'
+import { execFileSync } from 'node:child_process'
 import { createRequire } from 'node:module'
 import { dirname } from 'node:path'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
@@ -14,18 +14,22 @@ type TransitionUtility = { runAfterTransition(callback: (transitioned: boolean) 
 const require = createRequire(import.meta.url)
 const bundles = new Map<string, string>()
 const windows: HTMLIFrameElement[] = []
-beforeAll(async () => {
+beforeAll(() => {
+  // Bundle in Node's native realm: jsdom's Uint8Array differs from TextEncoder's output.
   for (const format of ['esm', 'cjs']) {
-    const result = await build({
-      stdin: {
-        contents: format === 'esm'
+    const source = execFileSync(process.execPath, ['--input-type=module', '-e', `
+      import { build } from 'esbuild';
+      import { readFileSync } from 'node:fs';
+      const { format, resolveDir } = JSON.parse(readFileSync(0, 'utf8'));
+      const result = await build({
+        stdin: { contents: format === 'esm'
           ? "export { runAfterTransition } from 'react-aria/private/utils/runAfterTransition'"
-          : "exports.runAfterTransition = require('react-aria/private/utils/runAfterTransition').runAfterTransition",
-        resolveDir: dirname(require.resolve('react-aria-components')),
-      },
-      bundle: true, write: false, platform: 'browser', format: 'iife', globalName: 'TransitionUtility',
-    })
-    bundles.set(format, result.outputFiles[0].text)
+          : "exports.runAfterTransition = require('react-aria/private/utils/runAfterTransition').runAfterTransition", resolveDir },
+        bundle: true, write: false, platform: 'browser', format: 'iife', globalName: 'TransitionUtility',
+      });
+      process.stdout.write(result.outputFiles[0].text);
+    `], { encoding: 'utf8', input: JSON.stringify({ format, resolveDir: dirname(require.resolve('react-aria-components')) }) })
+    bundles.set(format, source)
   }
 })
 afterEach(() => { for (const frame of windows.splice(0)) { frame.contentWindow?.close(); frame.remove() }; vi.restoreAllMocks() })
