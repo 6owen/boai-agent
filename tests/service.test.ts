@@ -23,6 +23,7 @@ import { join } from 'node:path'
 import type { AgentEngine, EngineContext, SecretStore } from '../src/runtime/contracts'
 import type { AgentInput, AgentRun, Connection, Conversation, ConversationDetail, DigitalAgent, Message, Resource, Snapshot, ParticipationDecision, MemoryView, AgentFileContent } from '../src/shared/domain'
 import type { StoredTraceSpan } from '../src/shared/domain/traces'
+import type { AgentProfile } from '../src/shared/domain/agent-profile'
 import { AppService } from '../src/runtime/service'
 import { ProductStore } from '../src/runtime/adapters/storage/product-store'
 import { createTaskRuntime } from '../src/runtime/adapters/mastra/task-runtime'
@@ -2073,12 +2074,19 @@ describe('local product service', () => {
     await service.handle('saveAgentFile', { agentId: employee.id, name: 'SOUL.md', content: '只根据实际材料回答，未知时直说。', expectedHash: sourceFile.hash, expectedConfigVersion: employee.configVersion })
     const savedEmployee = (await snapshot(service)).agents.find(agent => agent.id === employee.id)!
     const savedSource = await service.handle('readAgentFile', { agentId: employee.id, name: 'SOUL.md' }) as AgentFileContent
+    const profile = async (current: AppService) => {
+      const result = await current.handle('executeApplicationOperation', { operation: 'employees.profile', input: { agentId: 'bobo' } }) as { status: string; data: AgentProfile }
+      expect(result.status).toBe('succeeded'); return result.data
+    }
+    const originalProfile = await profile(service)
+    expect(originalProfile.features.emotions).toBe(true)
     const calls = { decisions: engine.decisions.length, executions: engine.contexts.length }
     await writeFile(join(direct.workspacePath, 'output.md'), 'saved output')
     const destination = join(root, 'backup'); await service.backup(destination)
     expect(await readdir(destination)).toEqual(expect.arrayContaining(['boai.sqlite', 'skills', 'knowledge', 'workspaces', 'agents', 'data-version.json', 'backup.json']))
     expect(await readdir(destination)).not.toContain('credentials.json')
-    expect(JSON.parse(await readFile(join(destination, 'backup.json'), 'utf8')).credentialsIncluded).toBe(false)
+    expect(JSON.parse(await readFile(join(destination, 'backup.json'), 'utf8'))).toMatchObject({ credentialsIncluded: false, automationRestorePolicy: 'paused', agentBehaviorRestorePolicy: 'paused' })
+    expect(await readFile(join(destination, 'RESTORE.txt'), 'utf8')).toContain('情绪/成长/旅行自动行为默认暂停')
     expect(JSON.parse(await readFile(join(destination, 'data-version.json'), 'utf8')).schemaVersion).toBe(2)
     const restorePath = join(root, 'restored'); await cp(destination, restorePath, { recursive: true })
     const restored = new AppService({ dataPath: restorePath, engine, secrets: new MemorySecrets(), emit: () => {} }); services.push(restored); await restored.init()
@@ -2103,6 +2111,7 @@ describe('local product service', () => {
       const source = await current.handle('readAgentFile', { agentId: employee.id, name: 'SOUL.md' }) as AgentFileContent
       expect([source.content, source.hash, source.status]).toEqual([savedSource.content, savedSource.hash, savedSource.status])
       expect((await current.handle('getMemory', query) as MemoryView).entries).toEqual(memoryBefore.entries)
+      expect(await profile(current)).toEqual({ ...originalProfile, revision: originalProfile.revision + 1, proactive: { ...originalProfile.proactive, enabled: false }, features: { ...originalProfile.features, emotions: false, growth: false, travel: false }, behaviors: originalProfile.behaviors.map(item => ({ ...item, enabled: false })) })
       expect({ decisions: engine.decisions.length, executions: engine.contexts.length }).toEqual(calls)
     }
     await verifyRetainedState(restored)
