@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 新增BOAI设计系统规划入口，明确packages/apps为待实施方案，当前桌面目录与运行方式保持。
 [OUTPUT]: 用户改回GitHub Actions，标准双runner已实证；PR/main云端工程/32核心/18UI与严格Required checks，本机服务禁用；v3基准已接受，新完整资格查当前Checks。
 [OUTPUT]: 5f自动本地CI的28核心/18UI通过，但模块原生SIGSEGV导致正式failure；4013模块诊断未复现不补绿，当前状态唯一归22组03。
 [OUTPUT]: 436完整本地CI因扫描/菜单准备两项failed，18UI全过；候选修正与ZIP共用阶段实际验证通过，待固定审查/新CI，22组03。
@@ -238,6 +239,8 @@
 [POS]: 仓库说明入口，规约真源为 AGENTS.md。
 [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 -->
+
+设计系统后续规划见[第23组BOAI设计系统](ai-docs/spec/23.BOAI设计系统/README.md)：共享token与组件建议放`packages`，展示网站建议放`apps/design-docs`，逐步形成可独立发布和开源维护的项目。当前仅完成分析与文档，现有`src/`和`pnpm dev`保持，尚未迁移或发布。
 
 个人发布与开发CI：[第22组04](ai-docs/spec/22.开发自动化与持续测试/04-macOS本机发布与升级方案.md)约定无Apple开发者证书、本机源码开发自用的Tag/Release、ad-hoc安装包及独立升级路线。后续已获授权实施，PR/main自动CI已按最新要求迁回GitHub Actions，本机轮询停止并禁用；候选构建及正式产物冒烟入口已接入；实际成功、原失败和未完成范围统一见[22组03](ai-docs/spec/22.开发自动化与持续测试/03-实施步骤与验收.md#5-唯一实际进度)。本轮未创建Tag/Release或替换本机应用；合并与当前CI资格查看[PR1 Checks](https://github.com/6owen/boai-agent/pull/1/checks)，`pnpm dev`不执行安装升级。
 
