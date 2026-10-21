@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 隔离UI汇总、真实格式Playwright原报告与具名截图/trace文件协议夹具。
- * [OUTPUT]: 同批完整原件可搬移核验；缺报告/场景/附件、跳过/重试、环境不符或改字节拒绝。
+ * [OUTPUT]: 同批完整原件可搬移核验；无效原报告/原件首次不可封存，封存后身份或字节变化也拒绝。
  * [POS]: 云端Required checks原件合同；不运行GUI或连接GitHub。
  * [PROTOCOL]: 修改同步Header与tests/.folder.md。
  */
@@ -66,5 +66,6 @@ it.each(['raw-missing', 'case-missing', 'skipped', 'retry', 'env-missing', 'env-
     if (kind === 'comparison-failed') f.comparison.exit.code = 1
     await f.save()
   }
+  if (!['seal-missing', 'summary-changed'].includes(kind)) await expect(uiEvidence(f.root, ids)).rejects.toThrow()
   await expect(verifyUiGate(f.root, ids)).rejects.toThrow()
 })
