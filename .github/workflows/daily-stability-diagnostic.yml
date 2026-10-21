@@ -34,9 +34,7 @@ jobs:
           const inputHash=await buildInputHash();
           if(inputHash!=='4514b566ecf0e0969ccb50011fb28ba452f8e76ac2c0c4b2ed51eac47399424c') throw Error('Product input differs');
           await mkdir('.local/resource-minimal-evidence',{recursive:true});
-          const feature=['# language: zh-CN','# [INPUT]: 原后台隔离桌面及设置循环。','# [OUTPUT]: 仅用于最小复现，不授予原后台资源资格。','# [POS]: 临时诊断BDD，产品与原场景不改。','# [PROTOCOL]: 仅保留于本诊断run原件。','功能: 仅诊断运行选项的卸载引用','  场景: 仅诊断运行选项反复卸载后的节点保留','    假如 已启动隔离的后台员工桌面','    当 仅诊断运行选项的反复卸载保留'].join('
-')+'
-';
+          const feature=['# language: zh-CN','# [INPUT]: 原后台隔离桌面及设置循环。','# [OUTPUT]: 仅用于最小复现，不授予原后台资源资格。','# [POS]: 临时诊断BDD，产品与原场景不改。','# [PROTOCOL]: 仅保留于本诊断run原件。','功能: 仅诊断运行选项的卸载引用','  场景: 仅诊断运行选项反复卸载后的节点保留','    假如 已启动隔离的后台员工桌面','    当 仅诊断运行选项的反复卸载保留'].join(String.fromCharCode(10))+String.fromCharCode(10);
           const step=String.raw`
           When('仅诊断运行选项的反复卸载保留', async ({ runtime }) => {
             const page=runtime.page;
