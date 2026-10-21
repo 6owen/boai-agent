@@ -1,0 +1,79 @@
+# [INPUT]: 第23组DU0的原生待决输入及渠道原生崩溃场景，固定源码与离线协议夹具。
+# [OUTPUT]: macOS云端各三次独立定向结果和原生栈；不提供Required checks或真实模型资格。
+# [POS]: 第23组实施分支的有界诊断入口，生产门禁仍归tests.yml。
+# [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
+name: Daily stability diagnostics
+on:
+  push:
+    branches: [feat/personal-daily-stability]
+    paths:
+      - .github/workflows/daily-stability-diagnostic.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native:
+    name: Native ${{ matrix.probe }}
+    runs-on: macos-15
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        probe: [input, channels]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.16.0'
+          cache: pnpm
+      - name: Install locked dependencies
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+        run: pnpm install --frozen-lockfile
+      - name: Run three independent original scenarios
+        env:
+          STABILITY_PROBE: ${{ matrix.probe }}
+        run: |
+          python3 - <<'PY'
+          import json, os, subprocess, time
+          from pathlib import Path
+          probe = os.environ['STABILITY_PROBE']
+          output = Path('.local/daily-stability') / probe
+          output.mkdir(parents=True)
+          results = []
+          for iteration in range(1, 4):
+              command = ['pnpm', 'exec', 'vitest', 'run', 'tests/native-conversation.test.ts' if probe == 'input' else 'tests/channels-native.test.ts', '--maxWorkers=2', '--reporter=json', f'--outputFile={output}/{iteration}.json']
+              if probe == 'input':
+                  command += ['-t', 'requires a target when multiple employees are awaiting native input']
+              started = time.time()
+              with (output / f'{iteration}.log').open('w') as log:
+                  result = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT)
+              item = {'iteration': iteration, 'command': command, 'exitCode': result.returncode, 'startedAt': started, 'finishedAt': time.time()}
+              results.append(item)
+              (output / 'summary.json').write_text(json.dumps({'sha': os.environ['GITHUB_SHA'], 'results': results}, indent=2))
+              print(json.dumps(item), flush=True)
+              if result.returncode:
+                  print((output / f'{iteration}.log').read_text()[-12000:], flush=True)
+          raise SystemExit(1 if any(item['exitCode'] for item in results) else 0)
+          PY
+      - name: Collect native crash reports
+        if: always()
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from shutil import copyfile
+          output = Path('.local/daily-stability/crashes')
+          output.mkdir(parents=True, exist_ok=True)
+          reports = sorted((Path.home() / 'Library/Logs/DiagnosticReports').glob('node*.ips'), key=lambda path: path.stat().st_mtime, reverse=True)
+          for path in reports[:5]:
+              copyfile(path, output / path.name)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: daily-stability-${{ matrix.probe }}
+          path: .local/daily-stability/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 3
