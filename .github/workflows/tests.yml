@@ -30,7 +30,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24.16.0'
+      - name: Prepare locked YAML metadata validator
+        run: |
+          ci_yaml_version=$(node -e 'const v=require("./package.json").dependencies.yaml;if(!/^\d+\.\d+\.\d+$/.test(v))throw Error("YAML version must be pinned");process.stdout.write(v)')
+          npm install --prefix "$RUNNER_TEMP/boai-ci-docs" --no-save --package-lock=false --ignore-scripts --no-audit --no-fund "yaml@$ci_yaml_version"
       - id: scope
+        env:
+          BOAI_CI_YAML_PACKAGE: ${{ runner.temp }}/boai-ci-docs/package.json
         run: node scripts/ci-scope.mjs detect
   desktop:
     name: Engineering and desktop
@@ -160,8 +166,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24.16.0'
+      - name: Prepare locked YAML metadata validator
+        run: |
+          ci_yaml_version=$(node -e 'const v=require("./package.json").dependencies.yaml;if(!/^\d+\.\d+\.\d+$/.test(v))throw Error("YAML version must be pinned");process.stdout.write(v)')
+          npm install --prefix "$RUNNER_TEMP/boai-ci-docs" --no-save --package-lock=false --ignore-scripts --no-audit --no-fund "yaml@$ci_yaml_version"
       - id: scope
         env:
+          BOAI_CI_YAML_PACKAGE: ${{ runner.temp }}/boai-ci-docs/package.json
           CI_JOB_RESULTS: ${{ toJSON(needs) }}
         run: node scripts/ci-scope.mjs gate
       - uses: actions/download-artifact@v4

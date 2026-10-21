@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 真实临时Git提交/事件、开发Markdown白名单及job结果协议。
- * [OUTPUT]: 混入产品/配置、重命名、超过300文件、范围失败/旧SHA/错误跳过均不授轻量资格；有效文档基本合同单列。
+ * [OUTPUT]: 混入产品/配置、重命名、超过300文件、范围失败/旧SHA/错误跳过均不授轻量资格；真实YAML空值/集合/布尔描述直接拒绝。
  * [POS]: CI范围与严格汇总的回归合同；只在授权云端执行，不开产品窗口。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -47,6 +47,11 @@ const skillPath = '.agents/skills/shared/SKILL.md'
 it('Skill基本元数据接受标准及引用名称，拒绝空描述、错误名及漏Header', () => {
   for (const name of ['shared', '"shared"', "'shared'"]) expect(() => validateDevelopmentMarkdown(skillPath, `---\nname: ${name}\ndescription: shared development\n---\n${header}`)).not.toThrow()
   for (const text of [`---\nname: other\ndescription: development\n---\n${header}`, `---\nname: shared\ndescription:\nlicense: MIT\n---\n${header}`, `---\nname: shared\ndescription: ''\n---\n${header}`, '---\nname: shared\ndescription: development\n---\n']) expect(() => validateDevelopmentMarkdown(skillPath, text)).toThrow()
+})
+it.each(['null', '~', '# comment', '[]', '{}', 'true', '12', '"   "'])('Skill实际描述必须是非空字符串而不是YAML值：%s', description => expect(() => validateDevelopmentMarkdown(skillPath, `---\nname: shared\ndescription: ${description}\n---\n${header}`)).toThrow('Skill基础'))
+it('实际字符串允许引用保留字和YAML折叠描述，重复key或非法YAML拒绝', () => {
+  for (const description of ['"null"', "'[]'", '>\n  shared\n  workflow']) expect(() => validateDevelopmentMarkdown(skillPath, `---\nname: shared\ndescription: ${description}\n---\n${header}`)).not.toThrow()
+  for (const front of ['name: shared\ndescription: one\ndescription: two', 'name: shared\ndescription: [']) expect(() => validateDevelopmentMarkdown(skillPath, `---\n${front}\n---\n${header}`)).toThrow()
 })
 
 async function repository() {

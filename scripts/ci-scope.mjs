@@ -1,11 +1,12 @@
 /*
  * [INPUT]: GitHub真实事件/提交及完整Git差异、各job结果；仅开发Markdown白名单可轻量。
- * [OUTPUT]: detect和Required checks各自重算范围/核文档；未知路径/手动执行走完整产品门禁，失败或错误SHA不放行。
+ * [OUTPUT]: detect和Required checks各自重算范围/核文档，锁定yaml解析Skill实际字符串；未知/手动走完整门禁，失败或错SHA不放行。
  * [POS]: 云端CI范围与开发文档合同，不执行产品、安装依赖或修改基线。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
 import { execFileSync } from 'node:child_process'
 import { appendFile, readFile } from 'node:fs/promises'
+import { createRequire } from 'node:module'
 import { basename, dirname, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
@@ -38,9 +39,9 @@ export function validateDevelopmentMarkdown(path, content) {
   if (!['[INPUT]:', '[OUTPUT]:', '[POS]:', '[PROTOCOL]:'].every(field => content.includes(field))) throw Error(`开发文档缺少Header字段：${path}`)
   if (basename(path) !== 'SKILL.md') return
   const front = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/)?.[1]
-  const name = front?.match(/^name:[ \t]*(['"]?)([a-z0-9]+(?:-[a-z0-9]+)*)\1[ \t]*\r?$/m)?.[2]
-  const description = front?.match(/^description:[ \t]*(\S[^\r\n]*)$/m)?.[1]?.trim()
-  if (!name || name.length > 64 || name !== basename(dirname(path)) || !description || ["''", '""'].includes(description) || /^[|>][-+\d\s]*$/.test(description) && !/^description:[^\r\n]*\r?\n[ \t]+\S/m.test(front)) throw Error(`Skill基础name/description或目录名不合格：${path}`)
+  const require = createRequire(process.env.BOAI_CI_YAML_PACKAGE || new URL('../package.json', import.meta.url))
+  const metadata = front && require('yaml').parse(front)
+  if (!metadata || Array.isArray(metadata) || typeof metadata !== 'object' || typeof metadata.name !== 'string' || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(metadata.name) || metadata.name.length > 64 || metadata.name !== basename(dirname(path)) || typeof metadata.description !== 'string' || !metadata.description.trim()) throw Error(`Skill基础name/description或目录名不合格：${path}`)
 }
 export async function validateDocumentation(root, scope) {
   if (scope.mode !== 'documentation' || !scope.range || !scope.paths.length || !scope.paths.every(developmentMarkdown)) throw Error('不是完整开发文档差异')
