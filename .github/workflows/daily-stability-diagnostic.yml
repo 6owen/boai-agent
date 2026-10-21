@@ -1,8 +1,8 @@
-# [INPUT]: 同9d7产品输入与原后台桌面/采样支撑；只隔离设置卸载，不改产品。
-# [OUTPUT]: 10次预热+15次设置切换的最小保留节点诊断；非原210/70/28/120秒资格，失败后先抓原生堆再查DOM。
-# [POS]: 第23组资源失败最小化，原完整红例和所有原门槛保持。
-# [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
-name: Daily settings retention isolation
+# [INPUT]: Same product dependencies and the actual React Aria ESM/CJS transition utility.
+# [OUTPUT]: Red-capable cancellation regression on macOS, no dependency or product patch yet.
+# [POS]: Temporary daily stability root-cause diagnostic; not Required checks.
+# [PROTOCOL]: Changes update Header and workflow directory map.
+name: Daily transition cancellation regression
 on:
   push:
     branches: [infra/daily-source-identity]
@@ -10,9 +10,9 @@ on:
 permissions:
   contents: read
 jobs:
-  settings-retention:
+  transition-regression:
     runs-on: macos-15
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -20,73 +20,17 @@ jobs:
         with:
           node-version: '24.16.0'
           cache: pnpm
-      - name: Install locked dependencies and Electron
-        run: |
-          pnpm install --frozen-lockfile
-          node node_modules/electron/install.js
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
       - name: Check original types
         run: pnpm typecheck
-      - name: Generate an explicitly isolated diagnostic BDD
-        run: |
-          node --input-type=module - <<'JS'
-          import { buildInputHash } from './scripts/build-identity.mjs';
-          import { mkdir, writeFile, appendFile } from 'node:fs/promises';
-          const inputHash=await buildInputHash();
-          if(inputHash!=='4514b566ecf0e0969ccb50011fb28ba452f8e76ac2c0c4b2ed51eac47399424c') throw Error('Product input differs');
-          await mkdir('.local/resource-minimal-evidence',{recursive:true});
-          const feature=['# language: zh-CN','# [INPUT]: 原后台隔离桌面及设置循环。','# [OUTPUT]: 仅用于最小复现，不授予原后台资源资格。','# [POS]: 临时诊断BDD，产品与原场景不改。','# [PROTOCOL]: 仅保留于本诊断run原件。','功能: 仅诊断运行选项的卸载引用','  场景: 仅诊断运行选项反复卸载后的节点保留','    假如 已启动隔离的后台员工桌面','    当 仅诊断运行选项的反复卸载保留'].join(String.fromCharCode(10))+String.fromCharCode(10);
-          const step=String.raw`
-          When('仅诊断运行选项的反复卸载保留', async ({ runtime }) => {
-            const page=runtime.page;
-            await page.getByRole('button',{name:'我的菜单',exact:true}).click();
-            await page.getByRole('menuitem',{name:'设置',exact:true}).click();
-            const cycle=async()=>{
-              await page.getByRole('button',{name:'运行选项',exact:true}).click();
-              await expect(page.getByRole('switch',{name:'关闭窗口后继续运行'})).toBeChecked();
-              await page.getByRole('button',{name:'模型连接',exact:true}).click();
-            };
-            for(let i=0;i<10;i++)await cycle();
-            const cdp=await page.context().newCDPSession(page);
-            try{
-              const baseline=await resourceSample(runtime,cdp);
-              for(let i=0;i<15;i++)await cycle();
-              const last=await resourceSample(runtime,cdp);
-              await runtime.reviewData('设置卸载最小诊断数据',{diagnosticOnly:true,warmupSettingsCycles:10,measuredSettingsCycles:15,windowCycles:0,submittedMessages:0,idleSeconds:0,baseline,last});
-              try{
-                expect(last.dom.nodes-baseline.dom.nodes).toBeLessThan(1500);
-                expect(last.dom.jsEventListeners-baseline.dom.jsEventListeners).toBeLessThan(150);
-              }catch(error){
-                try{await recordResourceFailure(runtime,cdp);}catch(diagnosticError){await runtime.reviewData('最小诊断采集失败',{error:String(diagnosticError)});}
-                throw error;
-              }
-            }finally{await cdp.detach();}
-          });
-          `;
-          await writeFile('tests/e2e/features/__daily_resource_min.feature',feature);
-          await appendFile('tests/e2e/steps/background-runtime.steps.ts',step);
-          await writeFile('.local/resource-minimal-evidence/case.feature',feature);
-          await writeFile('.local/resource-minimal-evidence/step.ts',step);
-          await writeFile('.local/resource-minimal-evidence/source.json',JSON.stringify({reference:'9d7d4deb64504eb1dad94f6b43a360d91de67f02',inputHash,diagnosticOnly:true,purpose:'settings-only retention without message or window cycling; not original resource qualification'},null,2));
-          JS
-      - name: Build candidate and generate diagnostic BDD
-        run: |
-          pnpm build
-          pnpm test:bddgen
-      - name: Run only the settings retention isolation
-        env:
-          BOAI_TEST_DEV_SERVER: '1'
-          BOAI_RESOURCE_DIAGNOSTICS: '1'
-          BOAI_REVIEW_RUN_DIR: .local/resource-minimal-evidence/review
-          PLAYWRIGHT_JSON_OUTPUT_NAME: .local/resource-minimal-evidence/playwright-results.json
-        run: pnpm exec playwright test --grep '仅诊断运行选项反复卸载后的节点保留' --retries 0 --reporter=list,json
+      - name: Exercise actual dependency transition cancellation
+        run: pnpm exec vitest run --maxWorkers=2 tests/react-aria-transition.test.ts --reporter=default --reporter=json --outputFile=.local/transition-unit.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: daily-settings-retention
-          path: |
-            .local/resource-minimal-evidence/
-            .local/background-resource-failures/
-            test-results/
+          name: daily-transition-regression
+          path: .local/transition-unit.json
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 3
