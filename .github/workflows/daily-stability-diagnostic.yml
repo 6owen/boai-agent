@@ -1,8 +1,8 @@
-# [INPUT]: Same 9fb product inputs and d8c3b8df explicit command capability fixture; original six directory BDD cases.
-# [OUTPUT]: Current dev-mode directory approval/refusal/temp grants/native configuration/restart evidence; original assertions and deadlines unchanged.
-# [POS]: DS08 targeted cloud evidence, not Required checks or real provider certification.
+# [INPUT]: Same fixed product inputs, original manual recovery and new real-minute scheduled recovery.
+# [OUTPUT]: Two dev-mode BDD cases with real native scheduler/stdio/file effects; no clock injection or manual run for the new natural case.
+# [POS]: DS11 targeted evidence, original manual assertions/deadlines remain; not Required checks.
 # [PROTOCOL]: Changes update Header and workflow directory map.
-name: Daily directory permission lifecycle
+name: Daily real clock recovery
 on:
   push:
     branches: [infra/daily-source-identity]
@@ -10,9 +10,9 @@ on:
 permissions:
   contents: read
 jobs:
-  directory-permissions:
+  natural-clock:
     runs-on: macos-15
-    timeout-minutes: 20
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -26,32 +26,45 @@ jobs:
           node node_modules/electron/install.js
       - name: Check original types
         run: pnpm typecheck
-      - name: Bind exact product inputs
+      - name: Bind exact product and test inputs
         run: |
           node --input-type=module - <<'JS'
           import { buildInputHash } from './scripts/build-identity.mjs';
           import { mkdir, writeFile } from 'node:fs/promises';
           const inputHash = await buildInputHash();
           if (inputHash !== '5a82db0e4d0010e4946714c47b406eb7f4fc711a9c50bb6f42adb0ec949e0951') throw Error('Product inputs differ');
-          await mkdir('.local/daily-permissions', { recursive: true });
-          await writeFile('.local/daily-permissions/source.json', JSON.stringify({ reference: '9fb016acab51cdb6a393fd66699846dd0630d195', inputHash, testCandidate: 'd8c3b8df2563238e6dc38bf05e7ff0ce739b3554', cases: 6, originalFeature: 'directory-permissions.feature', realProviderCalls: false }, null, 2));
+          await mkdir('.local/daily-natural-clock', { recursive: true });
+          await writeFile('.local/daily-natural-clock/source.json', JSON.stringify({ reference: '9fb016acab51cdb6a393fd66699846dd0630d195', testCandidate: 'cbdb909415cb9f2b595b3038d2481c4b4410899e', inputHash, cases: 2, feature: 'automation-recovery.feature', realProviderCalls: false, newCaseClockModified: false, newCaseManualRun: false }, null, 2));
           JS
       - name: Build current candidate and original BDD
         run: |
           pnpm build
           pnpm test:bddgen
-      - name: Run original directory permission cases
+      - name: Run manual and real natural clock recovery
         env:
           BOAI_TEST_DEV_SERVER: '1'
-          BOAI_REVIEW_RUN_DIR: .local/daily-permissions/review
-          PLAYWRIGHT_JSON_OUTPUT_NAME: .local/daily-permissions/playwright-results.json
-        run: pnpm exec playwright test .features-gen/directory-permissions.feature.spec.js --retries 0 --reporter=list,json
+          BOAI_REVIEW_RUN_DIR: .local/daily-natural-clock/review
+          PLAYWRIGHT_JSON_OUTPUT_NAME: .local/daily-natural-clock/playwright-results.json
+        run: pnpm exec playwright test .features-gen/automation-recovery.feature.spec.js --retries 0 --reporter=list,json
+      - name: Preserve native crash reports on failure
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from shutil import copyfile
+          output = Path('.local/daily-natural-clock/native-crashes')
+          output.mkdir(parents=True, exist_ok=True)
+          reports = sorted((Path.home() / 'Library/Logs/DiagnosticReports').glob('*.ips'), key=lambda path: path.stat().st_mtime, reverse=True)
+          for path in reports[:5]:
+              copyfile(path, output / path.name)
+          print('Native crash reports:', min(len(reports), 5))
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: daily-directory-permissions
+          name: daily-natural-clock
           path: |
-            .local/daily-permissions/
+            .local/daily-natural-clock/
             test-results/
           include-hidden-files: true
           if-no-files-found: error
