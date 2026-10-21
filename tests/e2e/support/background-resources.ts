@@ -1,6 +1,7 @@
 /*
  * [INPUT]: 隔离Electron、DevTools GC/堆/DOM、官方进程内存/CPU指标。
- * [OUTPUT]: 原有界门槛保持；显式诊断时只在失败后采集连接DOM/脱离树/压缩堆；先取原生内部堆再查询脱离树，原失败继续抛出。
+ * [OUTPUT]: 原GC次数/有界门槛保持；CPU用上次观测结束至本次GC前的真实累计计数窗口，显式保留原观测CPU和边界，缺失计数不补零。
+ * [OUTPUT]: 显式诊断时只在失败后采集连接DOM/脱离树/压缩堆；先取原生内部堆再查询脱离树，原失败继续抛出。
  * [POS]: 第17组性能/内存BDD支撑；KB与字节分开，RSS不单独证明泄漏。
  * [PROTOCOL]: 变化同步Header与所属.folder.md。
  */
@@ -11,6 +12,9 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { randomUUID, createHash } from 'node:crypto'
 import { gzipSync } from 'node:zlib'
+import { resourceCpuWindow, type ResourceCpuPoint } from './resource-cpu'
+
+const cpuObservationEnds = new WeakMap<Desktop, ResourceCpuPoint>()
 
 /** Collect only after the original assertion failed; it cannot change the measured verdict. */
 export async function recordResourceFailure(runtime: Desktop, cdp: CDPSession) {
@@ -41,6 +45,11 @@ export async function recordResourceFailure(runtime: Desktop, cdp: CDPSession) {
 }
 
 export async function resourceSample(runtime: Desktop, cdp: CDPSession) {
+  const cpuBeforeObservation = await runtime.app.evaluate(({ app }) => {
+    const metrics = app.getAppMetrics()
+    return { capturedAtMs: performance.now(), processes: metrics.map(metric => ({ pid: metric.pid, createdAt: metric.creationTime, type: metric.type, name: metric.name, cpuSeconds: metric.cpu.cumulativeCPUUsage })) }
+  })
+  const cpuWindow = resourceCpuWindow(cpuObservationEnds.get(runtime), cpuBeforeObservation)
   await cdp.send('HeapProfiler.collectGarbage')
   const rendererHeap = await cdp.send('Runtime.getHeapUsage')
   const dom = await cdp.send('Memory.getDOMCounters')
@@ -50,14 +59,19 @@ export async function resourceSample(runtime: Desktop, cdp: CDPSession) {
     try { vm.runInNewContext('gc')() } finally { v8.setFlagsFromString('--no-expose_gc') }
     const listeners = (object: NodeJS.EventEmitter) => Object.fromEntries(object.eventNames().map(event => [String(event), object.listenerCount(event)]))
     const window = BrowserWindow.getAllWindows()[0]
-    return {
+    const observed = {
       mainHeapBytes: process.memoryUsage().heapUsed,
       listeners: { app: listeners(app), ipc: listeners(ipcMain), window: listeners(window), webContents: listeners(window.webContents) },
       windows: BrowserWindow.getAllWindows().map(window => window.id),
-      processes: app.getAppMetrics().map(metric => ({ pid: metric.pid, createdAt: metric.creationTime, type: metric.type, name: metric.name, workingSetKb: metric.memory.workingSetSize, cpuPercent: metric.cpu.percentCPUUsage })),
+    }
+    const metrics = app.getAppMetrics()
+    return { ...observed,
+      processes: metrics.map(metric => ({ pid: metric.pid, createdAt: metric.creationTime, type: metric.type, name: metric.name, workingSetKb: metric.memory.workingSetSize, cpuPercent: metric.cpu.percentCPUUsage })),
+      cpuObservationEnd: { capturedAtMs: performance.now(), processes: metrics.map(metric => ({ pid: metric.pid, createdAt: metric.creationTime, type: metric.type, name: metric.name, cpuSeconds: metric.cpu.cumulativeCPUUsage })) },
     }
   })
-  return { at: new Date().toISOString(), rendererHeapBytes: rendererHeap.usedSize, dom, ...host }
+  cpuObservationEnds.set(runtime, host.cpuObservationEnd)
+  return { at: new Date().toISOString(), rendererHeapBytes: rendererHeap.usedSize, dom, ...host, cpuBeforeObservation, cpuWindow }
 }
 export type ResourceSample = Awaited<ReturnType<typeof resourceSample>>
 export function verifyResources(samples: ResourceSample[]) {
@@ -75,7 +89,9 @@ export function verifyResources(samples: ResourceSample[]) {
   expect(last.dom.nodes - baseline.dom.nodes).toBeLessThan(1500)
   expect(last.dom.jsEventListeners - baseline.dom.jsEventListeners).toBeLessThan(150)
   const idle = samples.slice(-5)
-  const cpu = idle.map(sample => sample.processes.filter(process => process.type === 'Browser' || process.type === 'Tab' || process.name === 'BoAI Agent Runtime').reduce((sum, process) => sum + process.cpuPercent, 0))
+  expect(idle).toHaveLength(5)
+  for (const sample of idle) expect(sample.cpuWindow.complete, sample.cpuWindow.errors.join('; ')).toBe(true)
+  const cpu = idle.map(sample => sample.cpuWindow.processes.reduce((sum, process) => sum + process.cpuPercent, 0))
   expect([...cpu].sort((a, b) => a - b)[Math.floor(cpu.length / 2)]).toBeLessThan(5)
   for (const process of baseline.processes.filter(process => process.type === 'Browser' || process.type === 'Tab' || process.name === 'BoAI Agent Runtime')) {
     const final = last.processes.find(value => value.pid === process.pid)
