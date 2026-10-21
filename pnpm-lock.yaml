@@ -29,7 +29,7 @@ patchedDependencies:
     hash: 389aac33b5e4b5b8ac36ffa7cfa8ed3ba894c8daccc2fc587f6dae5337a56e6c
     path: src/renderer/components/common/lody/pierre-diffs-host.patch
   react-aria@3.53.1:
-    hash: ed184572272d201c922ab574a8649a21121ebcb9244cf2cae88ad076a7a7fcd4
+    hash: 83c459db55839595f6215d24b8f5757cbd5726450a4446c8a634464f9611547a
     path: src/renderer/components/ui/react-aria@3.53.1.patch
 
 importers:
@@ -10228,12 +10228,12 @@ snapshots:
       '@swc/helpers': 0.5.23
       client-only: 0.0.1
       react: 19.3.0
-      react-aria: 3.53.1(patch_hash=ed184572272d201c922ab574a8649a21121ebcb9244cf2cae88ad076a7a7fcd4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react-aria: 3.53.1(patch_hash=83c459db55839595f6215d24b8f5757cbd5726450a4446c8a634464f9611547a)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       react-dom: 19.3.0(react@19.3.0)
       react-stately: 3.51.0(react@19.3.0)
       use-sync-external-store: 1.7.0(react@19.3.0)
 
-  react-aria@3.53.1(patch_hash=ed184572272d201c922ab574a8649a21121ebcb9244cf2cae88ad076a7a7fcd4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0):
+  react-aria@3.53.1(patch_hash=83c459db55839595f6215d24b8f5757cbd5726450a4446c8a634464f9611547a)(react-dom@19.3.0(react@19.3.0))(react@19.3.0):
     dependencies:
       '@internationalized/date': 3.12.4
       '@internationalized/number': 3.6.9

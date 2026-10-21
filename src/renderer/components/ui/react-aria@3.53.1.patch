@@ -30,3 +30,19 @@ diff --git a/dist/private/utils/runAfterTransition.mjs b/dist/private/utils/runA
      }
      transitions.add(e.propertyName);
  }
+diff --git a/dist/private/utils/runAfterTransition.cjs b/dist/private/utils/runAfterTransition.cjs
+--- a/dist/private/utils/runAfterTransition.cjs
++++ b/dist/private/utils/runAfterTransition.cjs
+@@ -41,9 +41,9 @@
+         // The transitioncancel event must be registered on the element itself, rather than as a global
+         // event. This enables us to handle when the node is deleted from the document while it is transitioning.
+         // In that case, the cancel event would have nowhere to bubble to so we need to handle it directly.
+-        eventTarget.addEventListener('transitioncancel', $f09fbd1748f346a7$var$onTransitionEnd, {
+-            once: true
+-        });
++        // Keep listening for every property, including after a child's bubbling cancellation.
++        // onTransitionEnd removes this listener when the element's property set is empty.
++        eventTarget.addEventListener('transitioncancel', $f09fbd1748f346a7$var$onTransitionEnd);
+     }
+     transitions.add(e.propertyName);
+ }
