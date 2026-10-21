@@ -1,10 +1,10 @@
 /*
  * [INPUT]: 随程序分发的固定技能清单、新 Bobo 初始化标记与原绑定服务。
- * [OUTPUT]: 首次创建的独立技能副本；重启核对原回执，不覆盖自定义或恢复用户解绑，旧员工不自动加技能。
+ * [OUTPUT]: 首次创建的独立技能副本；重启核对原回执，不覆盖自定义或恢复用户解绑，旧员工不自动加技能；原生测试加载显式标注 JSON 类型。
  * [POS]: 默认配置装配，复用本机目录、SkillManagement 和 ProductStore，无第二安装器。
  * [PROTOCOL]: 修改同步 Header 与所属 .folder.md。
  */
-import manifest from '../../../../resources/agent-skills/manifest.json'
+import manifest from '../../../../resources/agent-skills/manifest.json' with { type: 'json' }
 import type { DigitalAgent, Resource } from '../../../shared/domain'
 import { CORE_AGENT_ID } from '../../../shared/domain/core-agent'
 import type { ProductStore, StoredRecord } from '../../adapters/storage/product-store'

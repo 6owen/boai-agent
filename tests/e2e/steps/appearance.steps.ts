@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 外观即时生效与原生窗口持久化的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: Craft Scenic选图保持浅色并可切换深色、跨页交互/重启与移除恢复验收；重置先确认，仅替换一次文件选择。
+ * [OUTPUT]: NumberField 三组字号文本输入/键盘/步进/边界与重启持久化；Craft Scenic 选图保持浅色并可切换深色、跨页交互/重启与移除恢复验收。
  * [OUTPUT]: 本人菜单进入设置并保留外观/原生窗口完整断言； 使用现有 Base UI 下拉选项验证；外观即时生效与原生窗口持久化的真实桌面业务步骤与断言。
  * [POS]: tests/e2e/steps/appearance.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -12,6 +12,13 @@ import { nextMaterialDialog } from '../support/materials'
 import { createBdd } from 'playwright-bdd'
 import { test as base } from '../support/test'
 import type { Desktop } from '../support/desktop'
+import { typographyControls } from '../../../src/shared/appearance/typography'
+
+const fontSizes = {
+  ui: typographyControls.ui.defaultSize + 4,
+  content: typographyControls.content.defaultSize + 6,
+  code: typographyControls.code.defaultSize + 3,
+}
 
 type Scenario = {
   scenicAsset?: string
@@ -178,6 +185,51 @@ Then('字体和自定义配色立即生效', async ({ scenario }) => {
 
 Then('重启恢复外观且原生菜单缩放与重置保持同步', async ({ scenario }) => {
   await verifyAppearanceRestart(scenario.customizeAppearance!)
+})
+
+When('使用 NumberField 修改三组字号并检查步进边界', async ({ runtime, scenario }) => {
+  await scenario.prepareAppearance!.open()
+  const page = runtime.page
+  for (const [title, value] of [['界面', fontSizes.ui], ['内容', fontSizes.content], ['代码', fontSizes.code]] as const) {
+    const field = page.getByRole('textbox', { name: `${title}字号（像素）` })
+    await field.fill(String(value))
+    await field.press('Tab')
+    await expect(field).toHaveValue(String(value))
+  }
+  const ui = page.getByRole('textbox', { name: '界面字号（像素）' })
+  await ui.press('ArrowUp')
+  await expect(ui).toHaveValue(String(fontSizes.ui + typographyControls.ui.step))
+  await page.getByRole('button', { name: '减小界面字号' }).click()
+  await expect(ui).toHaveValue(String(fontSizes.ui))
+  await ui.fill(String(typographyControls.ui.max))
+  await ui.press('Tab')
+  await expect(page.getByRole('button', { name: '增大界面字号' })).toBeDisabled()
+  await ui.fill(String(fontSizes.ui))
+  await ui.press('Tab')
+})
+
+Then('三组字号立即生效并在重启后保持', async ({ runtime, scenario }) => {
+  const verify = async () => {
+    const page = runtime.page
+    await expect.poll(() => page.evaluate(() => window.boai.request('getAppearance', undefined)))
+      .toMatchObject({ preferences: { typography: {
+        ui: { sizePx: fontSizes.ui }, content: { sizePx: fontSizes.content }, code: { sizePx: fontSizes.code },
+      } } })
+    for (const [group, title] of [['ui', '界面'], ['content', '内容'], ['code', '代码']] as const) {
+      await expect(page.locator('html')).toHaveCSS(`--text-${group}-body`, `${fontSizes[group]}px`)
+      await expect(page.getByRole('textbox', { name: `${title}字号（像素）` })).toHaveValue(String(fontSizes[group]))
+    }
+  }
+  await verify()
+  await runtime.close()
+  await scenario.prepareAppearance!.launch()
+  await scenario.prepareAppearance!.open()
+  await verify()
+  await runtime.page.getByRole('button', { name: '重置字体' }).click()
+  for (const [title, value] of [['界面', typographyControls.ui.defaultSize], ['内容', typographyControls.content.defaultSize], ['代码', typographyControls.code.defaultSize]] as const) {
+    await expect(runtime.page.getByRole('textbox', { name: `${title}字号（像素）` })).toHaveValue(String(value))
+  }
+  expect(runtime.errors).toEqual([])
 })
 
 When('选择本地背景图片启用玻璃换肤', async ({ runtime, scenario }) => {

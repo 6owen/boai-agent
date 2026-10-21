@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Native Playwright step loading imports package metadata with an explicit JSON type.
  * Copyright 2026 Craft Docs Ltd. Licensed under Apache-2.0; see ../shared/cli/LICENSE.txt and NOTICE.txt.
  * Modified for BOAI: Node foreground entry, private token discovery and reference-only credentials.
  * [INPUT]: Craft packages/server/src/index.ts @ 22c9f0414ab63e0a22814c9a2ada740206e09091 and explicit serve flags/environment.
@@ -11,7 +12,9 @@ import { fileURLToPath } from 'node:url'
 import { resolve } from 'node:path'
 import { startHeadlessServer } from './headless'
 import { CliError } from '../shared/cli/protocol'
-import { version } from '../../package.json'
+import appPackage from '../../package.json' with { type: 'json' }
+
+const { version } = appPackage
 
 export async function serve(options: { dataPath: string; host?: string; port?: string }) {
   const host = options.host ?? process.env.BOAI_RPC_HOST ?? '127.0.0.1', rawPort = options.port ?? process.env.BOAI_RPC_PORT ?? '0'

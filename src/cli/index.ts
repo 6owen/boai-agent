@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Native Playwright step loading imports package metadata with an explicit JSON type.
  * [OUTPUT]: 2026-10-19应用业务协议：增加app catalog/describe/call/receipt/receipt-id，写操作显式稳定请求ID及真实结果退出状态。
  * [OUTPUT]: run监听覆盖服务启动至原执行结束；ready前中断保留恢复身份，退出130且不提交业务。
  * [OUTPUT]: 完整validate-server区分现有服务只读诊断与新隔离profile业务验证，输出步骤/耗时/错误和实际退出。
@@ -30,7 +31,7 @@ import { join, resolve } from 'node:path'
 import { CliRpcClient } from './client'
 import { readLocalConnection } from './discovery'
 import { CliError, PROTOCOL_VERSION } from '../shared/cli/protocol'
-import { version } from '../../package.json'
+import appPackage from '../../package.json' with { type: 'json' }
 import { randomUUID } from 'node:crypto'
 import { executeMessage, executionWriter, readPrompt } from './execution'
 import type { MessageExecution } from '../shared/domain/message-execution'
@@ -46,6 +47,7 @@ import { selectAttachments, uploadEmployeeAttachments } from './attachments'
 import { MATERIAL_LIMITS } from '../shared/domain/materials'
 import { selectSources } from './sources'
 
+const { version } = appPackage
 const help = `BOAI CLI ${version}
 Usage: boai <command> [options]
 

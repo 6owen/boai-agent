@@ -1,6 +1,6 @@
 # language: zh-CN
 # [INPUT]: 外观即时生效与原生窗口持久化与隔离的 Electron 环境。
-# [OUTPUT]: 原外观回归与 Craft 图片换肤、重启/取消/失败/移除恢复的真实桌面验收。
+# [OUTPUT]: NumberField 三组字号输入/步进/边界/重启验收，以及原外观与 Craft 图片换肤回归。
 # [POS]: tests/e2e/features/appearance.feature。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 @electron @appearance
@@ -11,6 +11,11 @@
     当 调整原生窗口大小和界面缩放
     那么 字体和自定义配色立即生效
     那么 重启恢复外观且原生菜单缩放与重置保持同步
+
+  场景: NumberField 字号输入与步进在重启后保持
+    假如 外观场景在独立桌面启动
+    当 使用 NumberField 修改三组字号并检查步进边界
+    那么 三组字号立即生效并在重启后保持
 
   场景: Craft图片换肤与原主题恢复
     假如 外观场景在独立桌面启动
