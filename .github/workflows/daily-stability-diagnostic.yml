@@ -1,5 +1,5 @@
 # [INPUT]: 第23组DU0的原生待决输入及渠道原生崩溃场景，固定源码与离线协议夹具。
-# [OUTPUT]: macOS云端各三次独立定向结果和原生栈；不提供Required checks或真实模型资格。
+# [OUTPUT]: 继原场景基线后，用单员工受控延迟与强制GC各三次区分时序/回收原因；保留全部结果，不提供正式资格。
 # [POS]: 第23组实施分支的有界诊断入口，生产门禁仍归tests.yml。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
 name: Daily stability diagnostics
@@ -19,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        probe: [input, channels]
+        probe: [delayed-input, gc-channels]
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -41,11 +41,25 @@ jobs:
           probe = os.environ['STABILITY_PROBE']
           output = Path('.local/daily-stability') / probe
           output.mkdir(parents=True)
+          if probe == 'delayed-input':
+              source = Path('tests/fixtures/native-claude-conversation.mjs')
+              original = source.read_text()
+              needle = "  const answer=await ask('AskUserQuestion'"
+              replacement = "  if(prompt.members?.find(member=>member.id===prompt.employeeId)?.name==='第二位提问员工')await new Promise(resolve=>setTimeout(resolve,1200))\n" + needle
+              if original.count(needle) != 1:
+                  raise ValueError('Unexpected fixture; no diagnostic mutation applied')
+              source.write_text(original.replace(needle, replacement))
+              (output / 'fixture-change.json').write_text(json.dumps({'file': str(source), 'change': 'Delay only the second employee question by 1200ms; original product and assertions unchanged'}, indent=2))
+          else:
+              Path('.local/stability-gc.setup.ts').write_text("import { afterEach, afterAll } from 'vitest'; const collect=async()=>{ if(typeof global.gc!=='function')throw Error('GC probe unavailable'); global.gc(); await new Promise(resolve=>setImmediate(resolve)); global.gc() }; afterEach(collect); afterAll(collect);\n")
+              Path('.local/stability-gc.config.mjs').write_text("import { mergeConfig } from 'vitest/config'; import base from '../vitest.config.ts'; export default mergeConfig(base,{test:{setupFiles:['.local/stability-gc.setup.ts'],execArgv:['--expose-gc']}});\n")
           results = []
           for iteration in range(1, 4):
-              command = ['pnpm', 'exec', 'vitest', 'run', 'tests/native-conversation.test.ts' if probe == 'input' else 'tests/channels-native.test.ts', '--maxWorkers=2', '--reporter=json', f'--outputFile={output}/{iteration}.json']
-              if probe == 'input':
+              command = ['pnpm', 'exec', 'vitest', 'run', 'tests/native-conversation.test.ts' if probe == 'delayed-input' else 'tests/channels-native.test.ts', '--maxWorkers=2', '--reporter=json', f'--outputFile={output}/{iteration}.json']
+              if probe == 'delayed-input':
                   command += ['-t', 'requires a target when multiple employees are awaiting native input']
+              else:
+                  command += ['--config', '.local/stability-gc.config.mjs']
               started = time.time()
               with (output / f'{iteration}.log').open('w') as log:
                   result = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT)
