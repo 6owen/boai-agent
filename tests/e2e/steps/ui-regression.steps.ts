@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 草稿切换先核对应会话数据/编辑器真实就绪，避免空草稿早于消息加载导致侧栏前缀缺失；原18基线/零像素门槛保持。
  * [INPUT]: 版本化UI合同、真实Electron、固定历史与隔离本机技能。
  * [OUTPUT]: 每员工唯一主单聊及明暗/窄窗页面；快捷键页排除输入/按钮/选择等编辑入口并核对原搜索，既有16场保持。
  * [POS]: UI回归BDD步骤；沿原Desktop生命周期，不修改产品DOM/CSS。
@@ -16,10 +17,17 @@ import { compareUiBaseline } from '../support/ui-baseline'
 import contract from '../baselines/contract.json' with { type: 'json' }
 
 type Case = typeof contract.cases[number]
-type State = { fixture?: Awaited<ReturnType<typeof prepareGroupChat>>; selected?: Case; emptyTitle?: string }
+type State = { fixture?: Awaited<ReturnType<typeof prepareGroupChat>>; selected?: Case; emptyTitle?: string; emptyId?: string }
 export const test = base.extend<{ uiRegression: State }>({ uiRegression: async ({}, use) => use({}) })
 const { Given, When, Then } = createBdd(test)
 const fixedNow = new Date('2026-10-20T01:00:00Z').getTime()
+
+async function readyConversation(runtime: import('../support/desktop').Desktop, id: string) {
+  const chat = runtime.page.locator(`[data-conversation-view="chat"][data-conversation-id="${id}"]`)
+  await expect(chat.locator('.chat-messages-transition')).toHaveAttribute('aria-busy', 'false')
+  const input = chat.getByRole('textbox', { name: '消息内容', exact: true }).and(runtime.page.locator('[contenteditable="true"]'))
+  await expect(input).toBeEditable()
+}
 
 Given('UI回归已准备隔离的固定历史和资源', async ({ runtime, uiRegression }) => {
   const skill = join(runtime.root, 'local-user/.agents/skills/ui-baseline')
@@ -67,6 +75,7 @@ When('用户打开UI基准场景 {string}', async ({ runtime, uiRegression }, ca
     // A personal employee has ONE main private chat. Use a different employee for the empty state.
     const chat = await page.evaluate(() => window.boai.request('createConversation', { kind: 'direct', title: '空白基准会话', agentIds: ['writer'] }))
     uiRegression.emptyTitle = chat.title
+    uiRegression.emptyId = chat.id
     await page.getByRole('navigation', { name: '会话列表', exact: true }).getByRole('button', { name: new RegExp(`^${chat.title}`) }).click()
   } else if (scene === 'detail') {
     await page.locator('.chat-header').getByRole('button', { name: '会话操作', exact: true }).click()
@@ -77,6 +86,8 @@ When('用户打开UI基准场景 {string}', async ({ runtime, uiRegression }, ca
 Then('当前场景的真实交互和布局满足原约定', async ({ runtime, uiRegression }) => {
   const page = runtime.page, selected = uiRegression.selected!
   if (selected.scene === 'chat' || selected.scene === 'empty-chat') {
+    const chatId = selected.scene === 'chat' ? uiRegression.fixture!.group.id : uiRegression.emptyId!
+    await readyConversation(runtime, chatId)
     const input = page.getByRole('textbox', { name: '消息内容', exact: true })
     await expect(input).toBeVisible()
     await expect(input).toBeInViewport()
@@ -86,8 +97,11 @@ Then('当前场景的真实交互和布局满足原约定', async ({ runtime, ui
     await expect(page.getByRole('button', { name: '发送消息', exact: true })).toBeEnabled()
     const groupName = selected.scene === 'chat' ? '产品讨论组' : uiRegression.emptyTitle!
     await page.getByRole('button', { name: /^与研究员对话/ }).click()
+    await readyConversation(runtime, uiRegression.fixture!.direct.id)
+    await expect(page.locator('#message-history-direct-13')).toBeVisible()
     await expect.poll(() => messageDraft(input)).toBe('')
     await page.getByRole('navigation', { name: '会话列表', exact: true }).getByRole('button', { name: new RegExp(`^${groupName}`) }).click()
+    await readyConversation(runtime, chatId)
     await expect.poll(() => messageDraft(input)).toBe('UI回归草稿：切换后仍保留。')
     await input.click()
     await input.press('ControlOrMeta+A')
