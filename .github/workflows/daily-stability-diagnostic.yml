@@ -1,8 +1,8 @@
 # [INPUT]: Same current product inputs, new PDF Office resource case corrected for the existing single-tab close contract.
-# [OUTPUT]: Seven measured cycles, one warmup, five idle samples and original resource limits; close current DOCX then its previous PDF tab, not the whole sidebar.
+# [OUTPUT]: Independent natural/forced-GC CPU phases and renderer CPU profile; original failing resource contract is unchanged and not qualified by this probe.
 # [POS]: DS13 bounded PDF/Office desktop evidence; not Required checks or all-day stability certification.
 # [PROTOCOL]: Changes update Header and workflow directory map.
-name: Daily PDF Office resource tab correction
+name: Daily preview CPU attribution only
 on:
   push:
     branches: [infra/daily-source-identity]
@@ -33,25 +33,25 @@ jobs:
           import { mkdir, writeFile } from 'node:fs/promises';
           const inputHash = await buildInputHash();
           if (inputHash !== 'bbdd926c21c351c4745cec2eeaf0124240907e5c83df40d9fe007f4860a0cad3') throw Error('Product inputs differ');
-          await mkdir('.local/daily-preview-resources', { recursive: true });
-          await writeFile('.local/daily-preview-resources/source.json', JSON.stringify({ reference: 'e8f90e745d5aa48074dc9779dbd9d52b87ade3d5', testCandidate: '32acab4a155b95b214044d85abfd4fcf3976ec2e', inputHash, cases: 1, feature: 'materials.feature', realProviderCalls: false, measuredCycles: 7, warmupCycles: 1, idleSamples: 5, originalCaseBudgetsUnchanged: true, resourceContract: 'existing verifyResources unchanged', oldLatePreviewCasesPassedRun: 39674867840 }, null, 2));
+          await mkdir('.local/daily-preview-cpu', { recursive: true });
+          await writeFile('.local/daily-preview-cpu/source.json', JSON.stringify({ reference: 'e8f90e745d5aa48074dc9779dbd9d52b87ade3d5', testCandidate: '32acab4a155b95b214044d85abfd4fcf3976ec2e', inputHash, cases: 1, feature: 'preview-cpu-diagnostic.feature', realProviderCalls: false, diagnosticCycles: 3, naturalCpuSamples: 10, forcedGcSamples: 5, cpuProfileSeconds: 5, diagnosticOnly: true, originalCaseBudgetsUnchanged: true, resourceContract: 'existing verifyResources unchanged', oldLatePreviewCasesPassedRun: 39674867840 }, null, 2));
           JS
       - name: Build current candidate and original BDD framework
         run: |
           pnpm build
           pnpm test:bddgen
-      - name: Run original resource limits after closing both real preview tabs
+      - name: Attribute CPU after real preview closure without changing original resource verdict
         env:
           BOAI_TEST_DEV_SERVER: '1'
-          BOAI_REVIEW_RUN_DIR: .local/daily-preview-resources/review
-          PLAYWRIGHT_JSON_OUTPUT_NAME: .local/daily-preview-resources/playwright-results.json
-        run: pnpm exec playwright test .features-gen/materials.feature.spec.js --grep 'PDF和Office反复切换关闭后的短期资源有界' --retries 0 --reporter=list,json
+          BOAI_REVIEW_RUN_DIR: .local/daily-preview-cpu/review
+          PLAYWRIGHT_JSON_OUTPUT_NAME: .local/daily-preview-cpu/playwright-results.json
+        run: pnpm exec playwright test .features-gen/preview-cpu-diagnostic.feature.spec.js --retries 0 --reporter=list,json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: daily-preview-resources
+          name: daily-preview-cpu
           path: |
-            .local/daily-preview-resources/
+            .local/daily-preview-cpu/
             test-results/
           include-hidden-files: true
           if-no-files-found: error

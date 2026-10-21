@@ -635,3 +635,40 @@ Then('PDF翻页和Office切换反复关闭后短期资源有界且旧任务不�
     await runtime.reviewCheckpoint('PDF和Office反复预览关闭后原记录保持')
   } finally { await cdp.detach() }
 })
+
+
+// [DEBUG-preview-cpu] Infra-only attribution; original resource assertion/case stays unchanged.
+Then('关闭二进制后对照GC与自然空闲CPU', async ({ runtime, materialsState: state }) => {
+  test.setTimeout(180_000)
+  const page = runtime.page, cdp = await runtime.app.context().newCDPSession(page)
+  const raw = () => runtime.app.evaluate(({ app }) => ({ at: new Date().toISOString(), processes: app.getAppMetrics().map(metric => ({ pid: metric.pid, type: metric.type, name: metric.name, cpuPercent: metric.cpu.percentCPUUsage })) }))
+  const phases: Record<string, unknown[]> = { naturalBefore: [], forcedGC: [], naturalAfter: [] }, gcMeasurementDurationMs: number[] = []
+  try {
+    for (let index = 0; index < 3; index++) {
+      await page.getByRole('button', { name: '预览材料 Lody切换.pdf', exact: true }).click()
+      const pdf = page.locator('[data-binary-viewer="pdf"]:visible')
+      await expect(pdf.locator('.textLayer').getByText('Overview', { exact: true })).toBeVisible()
+      await pdf.getByRole('button', { name: '下一页', exact: true }).click()
+      await expect(pdf.getByRole('spinbutton', { name: '页码', exact: true })).toHaveValue('2')
+      await page.getByRole('button', { name: '预览材料 Lody切换.docx', exact: true }).click()
+      await expect(page.locator('[data-binary-viewer="docx"]:visible').getByText('Quarterly report', { exact: true })).toBeVisible()
+      await page.getByRole('button', { name: '关闭详情', exact: true }).click()
+      await expect(page.locator('[data-binary-viewer="docx"]')).toHaveCount(0)
+      await page.getByRole('button', { name: '关闭详情', exact: true }).click()
+      await expect(page.locator('[data-binary-viewer]')).toHaveCount(0)
+    }
+    await raw()
+    for (let index = 0; index < 5; index++) { await page.waitForTimeout(1000); phases.naturalBefore.push(await raw()) }
+    for (let index = 0; index < 5; index++) { await page.waitForTimeout(1000); const started = performance.now(); const sample = await resourceSample(runtime, cdp); gcMeasurementDurationMs.push(performance.now() - started); phases.forcedGC.push(sample) }
+    for (let index = 0; index < 5; index++) { await page.waitForTimeout(1000); phases.naturalAfter.push(await raw()) }
+    const targets = await cdp.send('Target.getTargets').catch(error => ({ unavailable: String(error) }))
+    await cdp.send('Profiler.enable'); await cdp.send('Profiler.start')
+    await page.waitForTimeout(5000)
+    const profile = await cdp.send('Profiler.stop')
+    await writeFile(join('.local/daily-preview-cpu', 'renderer.cpuprofile.json'), JSON.stringify(profile))
+    await runtime.reviewData('自然空闲与强制GC原始CPU对照', { phases, gcMeasurementDurationMs, targets, measuredCycles: 3, originalResourceVerdict: 'not assessed by this diagnostic' })
+    const cpu = (sample: any) => sample.processes.filter((process: any) => process.type === 'Browser' || process.type === 'Tab' || process.name === 'BoAI Agent Runtime').reduce((sum: number, process: any) => sum + process.cpuPercent, 0)
+    console.log('[DEBUG-preview-cpu]', JSON.stringify({ phases: Object.fromEntries(Object.entries(phases).map(([key, values]) => [key, values.map(cpu)])), gcMeasurementDurationMs, targets }))
+    expect(state.fixture!.endpoint.requests).toHaveLength(state.modelCalls!)
+  } finally { await cdp.detach() }
+})
