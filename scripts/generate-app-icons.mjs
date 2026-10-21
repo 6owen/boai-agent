@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Checked-in transparent avatar WebP files and resources/app-icons/manifest.json.
- * [OUTPUT]: 21 PNG app icons with a centered mascot on a full-size rounded color tile and the matching default macOS .icns.
+ * [OUTPUT]: 21 PNG app icons with a centered mascot on a pure-white macOS-size rounded tile and the matching default macOS .icns; no baked gradient or shadow.
  * [POS]: Explicit offline asset generation; build copies the generated results.
  * [PROTOCOL]: Update this Header and scripts/.folder.md when this file changes.
  */
@@ -17,10 +17,11 @@ const root = resolve(import.meta.dirname, '..')
 const target = join(root, 'resources/app-icons')
 const source = join(root, 'src/renderer/assets/avatars')
 const manifest = JSON.parse(await readFile(join(target, 'manifest.json'), 'utf8'))
-const { canvasSize, artworkMaxSize, tileSize, tileCornerRadius } = manifest
+const { canvasSize, artworkMaxSize, tileSize, tileCornerRadius, background } = manifest
 if (canvasSize !== 1024 || !Number.isInteger(artworkMaxSize) || artworkMaxSize < 512 || artworkMaxSize > 900 ||
   !Number.isInteger(tileSize) || tileSize <= artworkMaxSize || tileSize > canvasSize ||
-  !Number.isInteger(tileCornerRadius) || tileCornerRadius < 0 || tileCornerRadius > tileSize / 2) {
+  !Number.isInteger(tileCornerRadius) || tileCornerRadius < 0 || tileCornerRadius > tileSize / 2 ||
+  !/^#[0-9A-Fa-f]{6}$/.test(background)) {
   throw new Error('Icon manifest needs a 1024px canvas, bounded mascot, and valid background tile.')
 }
 
@@ -67,24 +68,9 @@ function renderIcon(image, bounds, pixels, background) {
   const tile = pixels * tileSize / canvasSize
   const inset = (pixels - tile) / 2
   const radius = pixels * tileCornerRadius / canvasSize
-  context.save()
   roundedTile(context, inset, inset, tile, radius)
-  context.shadowColor = 'rgba(20, 25, 40, 0.18)'
-  context.shadowBlur = pixels * 0.018
-  context.shadowOffsetY = pixels * 0.012
   context.fillStyle = background
   context.fill()
-  context.restore()
-  roundedTile(context, inset, inset, tile, radius)
-  const light = context.createLinearGradient(0, inset, 0, inset + tile)
-  light.addColorStop(0, 'rgba(255, 255, 255, 0.24)')
-  light.addColorStop(0.58, 'rgba(255, 255, 255, 0)')
-  light.addColorStop(1, 'rgba(20, 25, 40, 0.05)')
-  context.fillStyle = light
-  context.fill()
-  context.strokeStyle = 'rgba(255, 255, 255, 0.45)'
-  context.lineWidth = Math.max(1, pixels / 512)
-  context.stroke()
   const maximum = pixels * artworkMaxSize / canvasSize
   const scale = Math.min(maximum / bounds.width, maximum / bounds.height)
   const width = bounds.width * scale, height = bounds.height * scale
@@ -99,15 +85,14 @@ try {
   const ids = new Set()
   let defaultMaster
   for (const icon of manifest.icons) {
-    if (!/^avatar-[a-z-]+$/.test(icon.id) || !/^[a-z-]+\.webp$/.test(icon.file) ||
-      !/^#[0-9A-Fa-f]{6}$/.test(icon.background) || ids.has(icon.id)) throw new Error(`Invalid icon entry: ${icon.id}`)
+    if (!/^avatar-[a-z-]+$/.test(icon.id) || !/^[a-z-]+\.webp$/.test(icon.file) || ids.has(icon.id)) throw new Error(`Invalid icon entry: ${icon.id}`)
     ids.add(icon.id)
     const input = join(source, icon.file)
     const output = join(target, `${icon.id}.png`)
     const image = await loadImage(input)
     const bounds = visibleBounds(image)
-    await writeFile(output, renderIcon(image, bounds, 512, icon.background))
-    if (icon.id === manifest.defaultId) defaultMaster = renderIcon(image, bounds, canvasSize, icon.background)
+    await writeFile(output, renderIcon(image, bounds, 512, background))
+    if (icon.id === manifest.defaultId) defaultMaster = renderIcon(image, bounds, canvasSize, background)
   }
   if (ids.size !== 21 || !ids.has(manifest.defaultId)) throw new Error('Icon manifest must contain all 21 avatar choices and its default.')
   const iconset = join(temporary, 'default.iconset')
