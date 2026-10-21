@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 新资源循环按现行多标签合同逐个关闭DOCX/PDF，保留7轮/5空闲、全部卸载与原资源断言；不改变产品关闭语义。
  * [OUTPUT]: 新增PDF/Office预览7轮切换/翻页/关闭和5次空闲的真实资源采样，沿原共享门槛，业务记录与模型请求不变。
  * [OUTPUT]: 失败原因沿当前Sonner唯一提示核验，材料失败/禁发/原件及其他草稿保持。
  * [OUTPUT]: 材料预览保留来源身份，解析与材料版号不显示。
@@ -612,6 +613,10 @@ Then('PDF翻页和Office切换反复关闭后短期资源有界且旧任务不�
     await page.getByRole('button', { name: '预览材料 Lody切换.docx', exact: true }).click()
     await expect(page.locator('[data-binary-viewer="docx"]:visible').getByText('Quarterly report', { exact: true })).toBeVisible()
     await expect(page.locator('[data-binary-viewer="pdf"]')).toHaveCount(0)
+    // The established close action closes ONE tab and selects its previous neighbor.
+    await page.getByRole('button', { name: '关闭详情', exact: true }).click()
+    await expect(page.locator('[data-binary-viewer="docx"]')).toHaveCount(0)
+    await expect(page.locator('[data-binary-viewer="pdf"]:visible')).toBeVisible()
     await page.getByRole('button', { name: '关闭详情', exact: true }).click()
     await expect(page.locator('[data-binary-viewer]')).toHaveCount(0)
     return Date.now() - started
