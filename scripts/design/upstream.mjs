@@ -1,7 +1,7 @@
 /*
  * [INPUT]: 已构建的固定ZCode插件checkout及第22组来源清单。
  * [OUTPUT]: 验证真实来源/完整构建字节；启动拒绝漂移，不安装全局插件。
- * [POS]: Codex开发画板准备与可复现来源，不进入产品构建。
+ * [POS]: 开发Agent共用画板准备与可复现来源，不进入产品构建。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
 import { execFileSync } from 'node:child_process'

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 开发画板路径边界、实际宿主HTML生成器与MCP资源适配。
- * [OUTPUT]: 路径/HTML及准确提示；真实初始化失败保留PID，迟到操作不落盘、在途/最终写队列结束后解锁。
+ * [OUTPUT]: 路径/HTML和Agent通用提示；真实初始化失败保留PID，在途调用/最终写队列排空才解锁。
  * [POS]: 第22组开发侧回归；实际插件/编辑器通过另行记录。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -26,7 +26,7 @@ it('仓库导出路径拒绝越界别名及符号链接', async () => {
     await expect(designPath(root, 'ai-docs/design/feature/output.excalidraw', true)).resolves.toBe(join(root, 'ai-docs/design/feature/output.excalidraw'))
   } finally { await rm(root, { recursive: true, force: true }) }
 })
-it('设计内容不能结束注入脚本；不承诺写入Codex输入框', () => {
+it('设计内容不能结束注入脚本；引用由开发Agent显式读取', () => {
   const html = panelHTML('<html><script>nativeBoot()</script></html>', '/session/test', { toolOutput: { title: '</script><script>untrusted()</script>' } })
   expect(html).not.toContain('<script>untrusted()')
   expect(html).toContain('\\u003c/script>')
@@ -34,7 +34,7 @@ it('设计内容不能结束注入脚本；不承诺写入Codex输入框', () =>
   const escaped = [...message].map(character => '\\u' + character.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')).join('')
   const resource = adaptResource({ contents: [{ uri: 'ui://excalidraw/assets/bundle-6.txt', text: escaped + ' Added to the chat input. Describe your changes there.' }, { uri: 'excalidraw://document/example', text: message }] })
   expect(resource.contents[0].text).not.toContain(escaped)
-  expect(resource.contents[0].text).toContain('Ask Codex to read the selection.')
+  expect(resource.contents[0].text).toContain('Ask your development agent to read the selection.')
   expect(resource.contents[1].text).toBe(message)
 })
 

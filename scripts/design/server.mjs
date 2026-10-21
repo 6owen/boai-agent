@@ -1,7 +1,7 @@
 /*
  * [INPUT]: 经验证的真实Excalidraw stdio服务、独立数据目录及SDK HTTP MCP。
  * [OUTPUT]: 外部开发编辑器/明确选区/模型局部修改；关闭后拒绝迟到更新，排空调用/落盘并核对启动PID退出。
- * [POS]: 第22组Codex开发宿主；不进入BOAI软件或员工工具。
+ * [POS]: 第22组Agent通用开发宿主；客户端经MCP接入，不进入BOAI产品。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
 import { createServer } from 'node:http'
@@ -17,7 +17,7 @@ import { verifyUpstream } from './upstream.mjs'
 import { adaptResource, editorHTML, panelHTML } from './browser.mjs'
 import { closeDesignResources, createDesignActivity, DesignStdioTransport } from './lifecycle.mjs'
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex')
-const contextTool = { name: 'get_editor_context', description: 'Read the explicit selection/diagram reference sent from the external editor. Check editorConnected, document identity and revision; a disconnected or stale reference is not the current selection. Does not inject text into Codex chat.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } }
+const contextTool = { name: 'get_editor_context', description: 'Read the explicit selection/diagram reference sent from the external editor. Check editorConnected, document identity and revision; a disconnected or stale reference is not the current selection. Does not inject text into an agent chat.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } }
 const result = value => ({ content: [{ type: 'text', text: JSON.stringify(value) }], structuredContent: value })
 const failure = error => ({ ...result({ error: String(error.message ?? error) }), isError: true })
 async function jsonFile(path, value) {
@@ -128,7 +128,7 @@ export async function startDesignServer(options) {
       return result({ editorConnected: events.size > 0, active, reference, stale, scene, sequence: state.sequence })
     })
     const createMCP = () => {
-      const server = new Server({ name: 'boai-excalidraw-developer', version: '1' }, { capabilities: { tools: {}, resources: {} }, instructions: 'External developer editor only. Click Reference in the editor, then explicitly call get_editor_context. Native Codex MCP Apps rendering and automatic prompt injection are not provided. Export saved revisions to NEW ai-docs/design files before implementing code.' })
+      const server = new Server({ name: 'boai-excalidraw-developer', version: '1' }, { capabilities: { tools: {}, resources: {} }, instructions: 'External developer editor only. Click Reference in the editor, then explicitly call get_editor_context. Native client MCP Apps rendering and automatic prompt injection are not provided. Export saved revisions to NEW ai-docs/design files before implementing code.' })
       server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [...modelTools, contextTool] }))
       server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
         try { return request.params.name === contextTool.name ? await context() : await call(request.params, false, extra.signal) } catch (error) { return failure(error) }
