@@ -1,8 +1,8 @@
-# [INPUT]: 第23组当前配置快照/零调用准备及原完整备份候选，隔离固定数据。
-# [OUTPUT]: 类型与原模块定向验收，保留JSON/日志；不提供Required checks或真实模型成绩。
-# [POS]: 独立诊断分支，原源码身份专项已完成后接续记忆/恢复验证。
+# [INPUT]: 第23组当前候选与原统一记忆管理BDD，真实开发版Electron/隔离数据。
+# [OUTPUT]: 原添加/固定/忘记/冲突草稿/来源限制/升级/重启场景原件；不提供Required checks。
+# [POS]: 独立诊断分支，配置/完整备份模块专项通过后补实际记忆管理UI。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
-name: Daily stability follow-up
+name: Daily memory management
 on:
   push:
     branches: [infra/daily-source-identity]
@@ -10,9 +10,9 @@ on:
 permissions:
   contents: read
 jobs:
-  preparation-and-restore:
+  memory-ui:
     runs-on: macos-15
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -20,24 +20,27 @@ jobs:
         with:
           node-version: '24.16.0'
           cache: pnpm
-      - name: Install locked dependencies
-        env:
-          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
-        run: pnpm install --frozen-lockfile
-      - name: Check original types
-        run: pnpm typecheck
-      - name: Read-only profile and zero-call review regression
+      - name: Install locked dependencies and Electron
         run: |
-          mkdir -p .local/daily-stability-followup
-          pnpm exec vitest run tests/evaluation-profile.test.ts --maxWorkers=2 --reporter=default --reporter=json --outputFile=.local/daily-stability-followup/profile.json
-      - name: Original complete backup with configuration and memory
-        if: ${{ !cancelled() }}
-        run: pnpm exec vitest run tests/service.test.ts --maxWorkers=2 -t 'exports a consistent credential-free backup that opens from a different data directory' --reporter=default --reporter=json --outputFile=.local/daily-stability-followup/restore.json
+          pnpm install --frozen-lockfile
+          node node_modules/electron/install.js
+      - name: Build original candidate
+        run: pnpm build
+      - name: Generate original BDD
+        run: pnpm test:bddgen
+      - name: Original unified memory management
+        env:
+          BOAI_TEST_DEV_SERVER: '1'
+          BOAI_REVIEW_RUN_DIR: .local/daily-memory-ui
+          PLAYWRIGHT_JSON_OUTPUT_NAME: .local/daily-memory-ui/playwright-results.json
+        run: pnpm exec playwright test --grep '统一管理保留来源范围并持久化' --retries 0 --reporter=list,json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: daily-stability-followup
-          path: .local/daily-stability-followup/
+          name: daily-memory-ui
+          path: |
+            .local/daily-memory-ui/
+            test-results/
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 3
