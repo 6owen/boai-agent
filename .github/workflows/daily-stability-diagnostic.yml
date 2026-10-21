@@ -1,8 +1,8 @@
 # [INPUT]: Fixed natural-minute automation tests and unchanged product source.
-# [OUTPUT]: Two real Electron waiting-approval cancellation and explicit post-disconnection recovery cases, no fake clock or retries; old four cases retained.
+# [OUTPUT]: Four real Electron same-group native question/approval cases; actual stdio, scoped UI cancellation, independent peers and two reopens, no providers or retries.
 # [POS]: Isolated DS11 diagnostic; not formal Required checks or real-provider quality qualification.
 # [PROTOCOL]: Changes update Header; original CPU diagnostic retained outside tracked workflow.
-name: Natural approval cancellation and recovery diagnostic
+name: Same-group native pending UI diagnostic
 on:
   push:
     branches: [infra/daily-source-identity]
@@ -10,7 +10,7 @@ on:
 permissions:
   contents: read
 jobs:
-  natural:
+  native_group:
     runs-on: macos-15
     timeout-minutes: 25
     steps:
@@ -33,33 +33,33 @@ jobs:
           import { mkdir, writeFile } from 'node:fs/promises';
           const inputHash = await buildInputHash();
           if (inputHash !== 'f2b4fc421bdf39dd4011365a6b400c57da0d5d14f7397fd01780b76388a1bbb4') throw Error('Product inputs differ');
-          await mkdir('.local/daily-natural-recovery', { recursive: true });
-          await writeFile('.local/daily-natural-recovery/source.json', JSON.stringify({ productCandidate: 'db3aac7c97a03b1bf63e6fe03a395387f54c4c82', testCandidate: '7e57ba940246c539d6e84f76670cbe3f7aacf32f', inputHash, actualMinuteBoundary: true, realProviderCalls: false, initialTrigger: 'natural schedule', recoveryTrigger: 'explicit UI manual once after failed occurrence and passive restart', fakeClock: false, cases: 2, retries: 0, originalDeadlinesAndAssertionsUnchanged: true }, null, 2));
+          await mkdir('.local/daily-native-group', { recursive: true });
+          await writeFile('.local/daily-native-group/source.json', JSON.stringify({ productCandidate: '376a4d710e873064d8e8e28758ec0dd7ab312772', testCandidate: 'cd7a381ee74727a16d3f563bf5817554a42c854d', inputHash, backends: ['codex', 'claude'], modes: ['input', 'approval'], realProviderCalls: false, actualStdio: true, rawNativeArgvNotArchived: true, cases: 4, retries: 0, originalDeadlinesAndAssertionsUnchanged: true }, null, 2));
           JS
       - name: Build current candidate and original BDD framework
         run: |
           pnpm build
           pnpm test:bddgen
-      - name: Freeze two additional cases and run without retries
+      - name: Freeze four same-group cases and run without retries
         env:
           BOAI_TEST_DEV_SERVER: '1'
         run: |
           node --input-type=module - <<'JS'
           import { execFileSync } from 'node:child_process';
           import { readFileSync } from 'node:fs';
-          const directory = '.local/daily-natural-recovery', base = ['exec', 'playwright', 'test', '.features-gen/natural-automation.feature.spec.js', '--grep', '自然到期等待审批时停止并拒绝迟到批准|自然断流后恢复连接只执行明确发起的新运行', '--retries', '0'];
+          const directory = '.local/daily-native-group', base = ['exec', 'playwright', 'test', '.features-gen/native-group-pending.feature.spec.js', '--retries', '0'];
           execFileSync('pnpm', [...base, '--list', '--reporter=json'], { stdio: 'inherit', env: { ...process.env, PLAYWRIGHT_JSON_OUTPUT_NAME: `${directory}/list.json` } });
           const listed = JSON.parse(readFileSync(`${directory}/list.json`, 'utf8'));
           const count = suite => (suite.specs ?? []).reduce((sum, spec) => sum + (spec.tests ?? []).length, 0) + (suite.suites ?? []).reduce((sum, child) => sum + count(child), 0);
-          if (count(listed) !== 2) throw Error('Expected exactly two additional natural recovery cases');
+          if (count(listed) !== 4) throw Error('Expected exactly four same-group native pending cases');
           execFileSync('pnpm', [...base, '--reporter=list,json'], { stdio: 'inherit', env: { ...process.env, BOAI_REVIEW_RUN_DIR: `${directory}/review`, PLAYWRIGHT_JSON_OUTPUT_NAME: `${directory}/playwright-results.json` } });
           JS
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: daily-natural-recovery
+          name: daily-native-group
           path: |
-            .local/daily-natural-recovery/
+            .local/daily-native-group/
             test-results/
           include-hidden-files: true
           if-no-files-found: error
