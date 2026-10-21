@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 日期夹具只冻结Date，轮询沿真实计时；保留历史/追补精确时间断言，避免假时钟被poll推进。
  * [OUTPUT]: 公共目录固定核对27个明确业务域，包含memory.provider；不靠数量掩盖域替换，原拒绝/回执断言保持。
  * [OUTPUT]: 应用目录包含 terminal/preview/workspace/activity 四个新增能力域。
  * [OUTPUT]: PPT 专用配置域纳入实际目录和 schema；配置保存与模型执行分开。
@@ -59,11 +60,15 @@ async function fixture(overrides: Partial<AgentEngine> = {}) {
 const connection = { name: 'API', provider: 'openai-compatible', baseUrl: 'http://127.0.0.1:1', defaultModel: 'fixture-model' }
 
 async function prepareBehavior(f: Awaited<ReturnType<typeof fixture>>) {
-  vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date(2026, 9, 19, 12))
+  const day = new Date(2026, 9, 19, 12)
+  // expect.poll advances active fake timers; freeze only the wall date here.
+  vi.setSystemTime(day)
+  expect(vi.isFakeTimers()).toBe(false)
   await f.call('connections.create', connection, 'behavior-model')
   const room = await f.owned.service.handle('startCoreConversation', { content: '保留我们关于具体例子的约定。', requestId: 'behavior-context' }) as Conversation
   await expect.poll(async () => (await f.owned.service.handle('getConversation', { id: room.id }) as import('../src/shared/domain').ConversationDetail).messages.some(message => message.senderType === 'agent'), { timeout: 10_000 }).toBe(true)
   await expect.poll(async () => (await f.owned.service.handle('snapshot', undefined) as Snapshot).conversations.find(value => value.id === room.id)?.activity).toBe('idle')
+  expect(Date.now()).toBe(day.getTime())
   const profile = (await f.call('employees.profile', { agentId: 'bobo' })).data as AgentProfile
   const { agentId: _agentId, revision, updatedAt: _time, ...config } = profile
   expect(await f.call('employees.configure', { agentId: 'bobo', expectedRevision: revision, config: { ...config, features: { emotions: true, fatigue: true, growth: true, travel: false }, proactive: { enabled: true, frequency: 'normal', quietStart: 22, quietEnd: 8 } } }, 'configure-behavior')).toMatchObject({ status: 'succeeded' })

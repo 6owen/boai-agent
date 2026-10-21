@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-21用户改回GitHub Actions，标准macOS/Linux探测成功、严格Required checks已绑定Actions，本机CI disabled；c974官方18/v3基准受控接受，新完整资格与原失败归22组03，未授发布升级。
 [OUTPUT]: 436完整CI两项failed/18UI过，SQLite临时sidecar重核和菜单正准备候选已验；真实ZIP共用展开通过，最新22组03，未放行完整目标。
 [OUTPUT]: c5个人候选arm64/ad-hoc DMG+ZIP已built，ZIP8/DMG2分别19启动/135原件通过；旧失败和新完整CI/发布剩余归22组03。
 [OUTPUT]: 09f原始28T1/18UI过，但原件分段计时误拒导致完整failed并真实回传；候选修复/版本0.2.4待复验，22组03。

@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 官方18/v3候选经双轴/重下载接受，16图不变；自动CI和main门禁已迁GitHub，本机disabled；当前完整资格看PR/main Checks，候选不授发布。
 [OUTPUT]: 云端双runner实际探测通过，用户要求Actions为自动CI；本机停止，完整检查及main合并仍待验归03。
 [INPUT]: 用户要求参考Magpie开发/测试，Excalidraw作为Codex/Claude/Pi等开发Agent共用的仓库设计能力。
 [OUTPUT]: 六步开发/测试/个人发布计划及实施入口；本机CI和外部开发画板已接，四目标实际结果与剩余统一归03。
@@ -8,7 +9,7 @@
 
 # 开发自动化与持续测试
 
-日期：2026-10-20启动，2026-10-21补多Agent复用范围。参考Magpie的开发/测试机制和ZCode画板协作流程；Excalidraw面向Codex、Claude Code、Pi等开发Agent提供共享服务/Skill与客户端接入，当前Codex仅是已验证客户端。画板属于外部开发工具，先前BOAI产品内嵌范围已撤销。后续用户已授权在独立worktree实施；此前额度问题曾改用本机CI；2026-10-21用户明确迁回GitHub Actions，标准macOS/Linux探测39577618811均成功。本机自动轮询停用，PR/main恢复云端工程/32核心/18 UI，main门禁拟切至实际云端`Required checks`；产品全量成绩仍待本轮运行。**完整四目标仍在实施，结果和剩余统一见03 §5.1。**
+日期：2026-10-20启动，2026-10-21补多Agent复用范围。参考Magpie的开发/测试机制和ZCode画板协作流程；Excalidraw面向Codex、Claude Code、Pi等开发Agent提供共享服务/Skill与客户端接入，当前Codex仅是已验证客户端。画板属于外部开发工具，先前BOAI产品内嵌范围已撤销。后续用户已授权在独立worktree实施；此前额度问题曾改用本机CI；2026-10-21用户明确迁回GitHub Actions，标准macOS/Linux探测39577618811均成功。本机自动轮询停用，PR/main恢复云端工程/32核心/18 UI，main门禁已绑定GitHub Actions应用的`Required checks`；官方v3全18候选已审阅接受，完整只读资格看[当前PR Checks](https://github.com/6owen/boai-agent/pull/1/checks)，候选不代替完整CI。**完整四目标仍在实施，结果和剩余统一见03 §5.1。**
 
 ## 1. 已确认的决定
 
