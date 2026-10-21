@@ -1,5 +1,5 @@
 <!--
-[OUTPUT]: 持久维护意图候选在控制DB内提交并保持连接独占锁；未完成时v2标记拒绝新旧v1协议客户端，明确完成才清除/释放，实际归03。
+[OUTPUT]: Main迁移前同时检查userData/v2；持久意图的身份版本2仅对同scope旧客户端有效，完整桌面事务须维护整个userData，实际归03。
 [OUTPUT]: profile准入拒绝悬空链接、任意祖先的控制命名空间与文件系统根；最低Node22.13/同卷别名/裸v2边界保持，实际归03。
 [OUTPUT]: 本场userData可为profileRoot内原合法product子目录，仍要求完整字段、同场实际dataDir固定和跨场隔离。
 [OUTPUT]: 冒烟逐启动完整字段绑定本场唯一临时profile和实际userData/asar，实际解包bundle清理前须再次与builder全清单相同。
@@ -160,7 +160,9 @@ CI不配置`CSC_LINK`、`CSC_KEY_PASSWORD`或Apple公证凭据，使用上述显
 
 只有取得维护准入后才能调用`beginMaintenance(事务UUID)`。它把最小意图（版本、原事务ID、开始时间）和控制身份版本2一起用FULL同步提交到同一控制SQLite；记录不在被替换profile内，不含模型密钥或聊天数据。维护连接设置`locking_mode=EXCLUSIVE`，提交意图后仍保持OS锁，直到明确释放/进程退出，不用跨COMMIT间隙抢回锁。[SQLite连接独占模式](https://www.sqlite.org/pragma.html#pragma_locking_mode)
 
-正常访问只接受没有未完成意图的状态。维护进程释放或崩溃后，版本2/原意图仍在，新桌面/独立服务拒绝初始化缺失profile；已经采用访问协议1的旧版也因不支持版本2而拒绝，不能忽略新表直接启动。更早完全没有该协议的旧版仍须由安装器核对实际进程及目标能力，不能据此认定所有历史版本都已受保护。
+持锁进程不得绕过SQLite直接打开/关闭控制数据库原文件来采集hash或备份；POSIX关闭同一inode的其他文件描述符可能撤销该进程的记录锁。控制命名空间不是用户数据快照内容，后续快照/恢复不得据普通文件复制改写它；所需状态应沿原SQLite连接读取。[SQLite关于直接文件读取与POSIX锁的说明](https://www.sqlite.org/howtocorrupt.html#posix_advisory_locks_are_canceled_by_a_close_system_call)
+
+正常访问只接受没有未完成意图的状态。维护进程释放或崩溃后，版本2/原意图仍在，新桌面/独立服务拒绝初始化缺失profile；对同一个控制scope采用访问协议1的旧版也因不支持版本2而拒绝，不能忽略新表直接启动。b06等旧Main在迁移前仅检查外层userData，只有v2意图时仍可能先重建v2，不能把同scope旧读端实验外推到这一布局。本机完整桌面升级事务必须选择实际整个userData作为维护目标，并核对目标版本的实际能力与进程；v2单独准入不替代这个安装合同。更早完全没有该协议的旧版同样须由安装器核对，不能认定所有历史版本都已受保护。
 
 恢复者重新取得维护连接后只读核对原ID；同ID可继续，其他ID不能覆盖，未知/未来格式或缺失记录保留并拒绝。安装器实际核对.app与数据成套一致后，才可调用`finishMaintenance(原UUID)`，原子清空意图并恢复控制身份版本1，关闭本租约；单纯`release()`、失联或GC不能清除记录。这个API只提供持久准入，不代替安装器核验数据、迁移和旧程序身份，也不证明完整备份/升级/回滚已通过。
 
