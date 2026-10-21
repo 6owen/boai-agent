@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 首轮四场因会话同名按钮严格定位失败、未到自然触发；仅限定主导航复验，原副作用/终态断言保持。
  * [INPUT]: 自然分钟计划、原审批卡/执行记录、真实工具与独立Desktop重启。
  * [OUTPUT]: 四种自然触发终态、原生身份/文件字节/mtime/模型请求与两次重启核对；UI缺口保留真实失败。
  * [POS]: DS11端到端步骤；新场景180秒容纳10–70秒真实分钟等待和三次冷启动，旧期限不变。
@@ -81,7 +82,7 @@ Given('自然分钟计划以{string}方式等待处理', async ({ runtime, natur
   }, { url: state.fixture.endpoint.url, mode: state.mode })
   state.planId = setup.plan.id; state.conversationId = setup.chat.id; state.dueAt = setup.dueAt
   expect(Date.parse(setup.savedAt)).toBeLessThan(Date.parse(setup.dueAt)); expect(setup.occurrences).toEqual([])
-  await runtime.page.getByRole('button', { name: '会话', exact: true }).click()
+  await runtime.page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).click()
   await runtime.page.getByRole('navigation', { name: '会话列表' }).getByRole('button', { name: '自然定时验收员', exact: true }).click()
   await runtime.reviewData(`自然定时${state.mode}分钟边界前`, { ...setup, manualRunUsed: false, clockModified: false, realProviderCalls: false })
   await expect.poll(async () => (await runtime.page.evaluate(async id => (await window.boai.request('listAutomations', undefined)).occurrences.filter(o => o.automationId === id), state.planId!)).length, { timeout: 85_000 }).toBe(1)
@@ -115,7 +116,7 @@ When('我在原聊天拒绝本次命令', async ({ runtime }) => {
   await (await approval(runtime)).card.getByRole('button', { name: '拒绝', exact: true }).click()
 })
 When('我从定时执行记录停止本次运行', async ({ runtime, natural: state }) => {
-  await runtime.page.getByRole('button', { name: '定时任务', exact: true }).click()
+  await runtime.page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '定时任务', exact: true }).click()
   await openSchedule(runtime.page, `自然处理-${state.mode}`)
   await runtime.page.locator(`[data-occurrence-id="${state.occurrence!.id}"]`).click()
   const panel = runtime.page.locator(`[data-occurrence-detail-id="${state.occurrence!.id}"]`)
@@ -158,6 +159,7 @@ Then('自然定时已停止且已写文件在两次重启后不重做', async ({
   expect(current).toMatchObject({ status: 'cancelled', cancellationCause: 'user', deliveryStatus: 'blocked', resultEvidence: [] })
   expect(view.runs.find(run => run.phase === 'execution')?.status).toBe('cancelled')
   expect(view.artifacts).toEqual([])
+  await expect(runtime.page.locator(`[data-occurrence-detail-id="${state.occurrence!.id}"]`).getByRole('button', { name: '停止本次执行', exact: true })).toHaveCount(0)
   await runtime.reviewNativeCheckpoint('自然定时单次执行已停止')
   await reopenTwice(runtime, state, current, view)
 })
