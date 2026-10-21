@@ -34,7 +34,7 @@ jobs:
           const inputHash = await buildInputHash();
           if (inputHash !== 'bbdd926c21c351c4745cec2eeaf0124240907e5c83df40d9fe007f4860a0cad3') throw Error('Product inputs differ');
           await mkdir('.local/daily-natural', { recursive: true });
-          await writeFile('.local/daily-natural/source.json', JSON.stringify({ testCandidate: 'e35a29143e38bd54f4583f5953d9ffdd8a4cfec5', inputHash, actualMinuteBoundary: true, realProviderCalls: false, manualTrigger: false, fakeClock: false, cases: 4, retries: 0, originalDeadlinesAndAssertionsUnchanged: true }, null, 2));
+          await writeFile('.local/daily-natural/source.json', JSON.stringify({ testCandidate: '64db4e8ab3ee25910ed706bc5fcf50780c7666f1', inputHash, actualMinuteBoundary: true, realProviderCalls: false, manualTrigger: false, fakeClock: false, cases: 4, retries: 0, originalDeadlinesAndAssertionsUnchanged: true }, null, 2));
           JS
       - name: Build current candidate and original BDD framework
         run: |
