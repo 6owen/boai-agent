@@ -1,5 +1,6 @@
 /*
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
+ * [OUTPUT]: Token 统计数值位预留同一行高，首帧占位与真实数值共用布局。
  * [OUTPUT]: 本人聊天消息头像及资料入口使用md圆角，与员工消息头像一致。
  * [INPUT]: 设置/头像菜单布局、共用连接卡片表单、全局 Soft 表面及主题控件尺寸。
  * [OUTPUT]: 分享内容准备态从首帧透明且不可点，保留真实尺寸供点阵测量；动画以 inline opacity 接管，错误解除准备态。
@@ -29,7 +30,8 @@
 .profile-metrics { margin-bottom:32px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));overflow:hidden }
 .profile-metrics>div { position:relative;min-width:0;padding:16px 10px;text-align:center;display:flex;flex-direction:column;justify-content:center;gap:6px;overflow-wrap:anywhere }
 .profile-metrics>div+div::before { content:'';position:absolute;left:0;top:16px;bottom:16px;width:1px;box-shadow:var(--shadow-divider-vertical);pointer-events:none }
-.profile-metrics strong { font-size:var(--text-ui-emphasis);font-weight:600 }
+.profile-metric-value { display:flex;align-items:center;justify-content:center;min-height:1lh;font-size:var(--text-ui-emphasis);line-height:var(--leading-ui-body) }
+.profile-metrics strong { font-weight:600 }
 .profile-metrics span { font-size:var(--text-ui-caption);color:var(--muted-foreground) }
 .profile-section-title { display:flex;align-items:center;gap:4px }
 .profile-section-title button { color:var(--muted-foreground) }

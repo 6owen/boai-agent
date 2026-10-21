@@ -1,6 +1,7 @@
 /*
  * [INPUT]: 同一时区的日聚合 DTO 与项目 Chart/Tooltip 原语。
  * [OUTPUT]: 页面/分享共用日期范围、色阶与周偏移；精简的七行年度热力图、每周柱图和区间累计曲线；日期/缺口保留在图格 tooltip 和可访问名称。
+ * [OUTPUT]: Token 活动标题、粒度操作与图格首帧挂载；真实活动到达前按当前日期范围显示占位格，数据只替换图内内容。
  * [POS]: 个人资料只读活动展示；粒度切换不重新请求模型或历史正文。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -10,6 +11,7 @@ import type { ActivityDay, ProfileActivity } from '@shared/domain/profile'
 import { Button } from '@/components/ui/button'
 import { InfoIcon } from '@/components/icons'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 export const tokenText = (value: number | null) => value === null ? '暂无记录' : value.toLocaleString('zh-CN')
 export function profileActivityRange() {
@@ -26,9 +28,14 @@ export function activityThresholds(days: ActivityDay[]) {
 }
 const dayLabel = (day: ActivityDay) => `${day.date}：${day.tokens === null ? day.unknownCalls ? '用量未记录' : '暂无记录' : `已知 ${tokenText(day.tokens)} Token`}${day.unknownCalls ? '，部分用量未记录' : ''}`
 
-export function ActivityChart({ activity }: { activity: ProfileActivity }) {
+export function ActivityChart({ activity, loading = false }: { activity?: ProfileActivity; loading?: boolean }) {
   const [mode, setMode] = useState<'daily' | 'weekly' | 'cumulative'>('daily'), scroll = useRef<HTMLDivElement>(null)
-  const days = activity.days, start = days[0]?.date
+  const placeholderDays = useMemo(() => {
+    const { from, to } = profileActivityRange()
+    const count = Math.floor((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400000) + 1
+    return Array.from({ length: count }, (_, index): ActivityDay => ({ date: dateOffset(from, index), tokens: null, unknownCalls: 0, calls: 0 }))
+  }, [])
+  const days = activity?.days ?? placeholderDays, start = days[0]?.date
   const { thresholds, weeks, cumulative } = useMemo(() => {
     const thresholds = activityThresholds(days)
     const buckets = new Map<string, { date: string; end: string; tokens: number | null; unknown: boolean }>()
@@ -41,13 +48,14 @@ export function ActivityChart({ activity }: { activity: ProfileActivity }) {
     })
     return { thresholds, weeks: [...buckets.values()].map(week => ({ ...week, label: `${week.date} 至 ${week.end}${week.unknown ? '（部分已知）' : ''}` })), cumulative }
   }, [days])
-  useEffect(() => { if (scroll.current) scroll.current.scrollLeft = scroll.current.scrollWidth }, [start, mode])
+  useEffect(() => { if (scroll.current) scroll.current.scrollLeft = scroll.current.scrollWidth }, [start, mode, activity])
   const leading = start ? mondayOffset(start) : 0, columns = Math.ceil((days.length + leading) / 7)
-  return <section className="profile-activity" aria-label="Token 活动">
-    <div className="profile-section-heading"><div className="profile-section-title"><h3>Token 活动</h3><Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-sm" aria-label="统计说明" />}><InfoIcon /></TooltipTrigger><TooltipContent className="block max-w-sm">{activity.limitations.map(line => <p key={line}>{line}</p>)}<p>{activity.range.from} — {activity.range.to} · {activity.range.timezone}</p></TooltipContent></Tooltip></div><div className="button-row" role="group" aria-label="活动粒度">{([['daily', '每日'], ['weekly', '每周'], ['cumulative', '累计']] as const).map(([value, label]) => <Button key={value} size="sm" variant={mode === value ? 'secondary' : 'ghost'} aria-pressed={mode === value} onClick={() => setMode(value)}>{label}</Button>)}</div></div>
+  return <section className="profile-activity" aria-label="Token 活动" aria-busy={loading}>
+    <div className="profile-section-heading"><div className="profile-section-title"><h3>Token 活动</h3><Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-sm" aria-label="统计说明" disabled={!activity} />}><InfoIcon /></TooltipTrigger><TooltipContent className="block max-w-sm">{activity?.limitations.map(line => <p key={line}>{line}</p>)}{activity && <p>{activity.range.from} — {activity.range.to} · {activity.range.timezone}</p>}</TooltipContent></Tooltip></div><div className="button-row" role="group" aria-label="活动粒度">{([['daily', '每日'], ['weekly', '每周'], ['cumulative', '累计']] as const).map(([value, label]) => <Button key={value} size="sm" variant={mode === value ? 'secondary' : 'ghost'} aria-pressed={mode === value} onClick={() => setMode(value)}>{label}</Button>)}</div></div>
     {mode === 'daily' ? <>
-      <div className="profile-heatmap-scroll" ref={scroll} tabIndex={0} aria-label="年度活动图，可横向滚动"><div className="profile-heatmap" style={{ '--weeks': columns } as CSSProperties}>
+      <div className="profile-heatmap-scroll" ref={scroll} tabIndex={0} aria-label="年度活动图，可横向滚动"><div className={`profile-heatmap${loading ? ' animate-pulse' : ''}`} style={{ '--weeks': columns } as CSSProperties}>
         <TooltipProvider delay={150}>{Array.from({ length: leading }, (_, i) => <span key={`empty-${i}`} />)}{days.map((day, index) => {
+          if (!activity) return <span key={day.date} className="profile-day" data-level="0" aria-hidden="true" />
           const level = day.tokens === null ? -1 : day.tokens === 0 ? 0 : thresholds.findIndex(value => day.tokens! <= value) + 1
           return <Tooltip key={day.date}><TooltipTrigger render={<Button variant="ghost" size="content" className="profile-day" data-level={level} data-partial={!!day.unknownCalls} aria-label={dayLabel(day)} onKeyDown={event => {
             const shift = ({ ArrowRight: 7, ArrowLeft: -7, ArrowUp: -1, ArrowDown: 1 } as Record<string, number>)[event.key]
@@ -55,10 +63,11 @@ export function ActivityChart({ activity }: { activity: ProfileActivity }) {
           }} />}><span aria-hidden="true">{day.unknownCalls ? '?' : day.tokens === 0 ? '·' : ''}</span></TooltipTrigger><TooltipContent>{dayLabel(day)}</TooltipContent></Tooltip>
         })}</TooltipProvider>
       </div><div className="profile-months" style={{ '--weeks': columns } as CSSProperties}>{days.flatMap((day, index) => index === 0 || day.date.endsWith('-01') ? [<span key={day.date} style={{ gridColumn: Math.floor((index + leading) / 7) + 1 }}>{Number(day.date.slice(5, 7))}月</span>] : [])}</div></div>
-    </> : <ChartContainer className="profile-chart" config={{ tokens: { label: mode === 'weekly' ? '每周已知 Token' : '区间累计 Token', color: 'var(--primary)' } }}>
+    </> : activity ? <ChartContainer className="profile-chart" config={{ tokens: { label: mode === 'weekly' ? '每周已知 Token' : '区间累计 Token', color: 'var(--primary)' } }}>
       {mode === 'weekly' ? <BarChart data={weeks} accessibilityLayer><XAxis dataKey="date" tickFormatter={value => String(value).slice(5)} minTickGap={36} /><YAxis width={55} /><ChartTooltip content={<ChartTooltipContent labelFormatter={(_, payload) => payload[0]?.payload.label} />} /><Bar dataKey="tokens" fill="var(--color-tokens)" radius={3} isAnimationActive={false} /></BarChart> : <LineChart data={cumulative} accessibilityLayer><XAxis dataKey="date" tickFormatter={value => String(value).slice(5)} minTickGap={36} /><YAxis width={55} /><ChartTooltip content={<ChartTooltipContent labelFormatter={(_, payload) => payload[0]?.payload.label} />} /><Line dataKey="tokens" stroke="var(--color-tokens)" dot={false} isAnimationActive={false} /></LineChart>}
-    </ChartContainer>}
-    {!days.some(day => day.tokens !== null) && <p className="empty-note">暂无可核对的 Token 用量记录</p>}
+    </ChartContainer> : <div className="profile-chart flex items-end gap-2 pb-5" aria-hidden="true">{[1, 2, 3, 4, 5, 6, 7, 8].map((item, index) => loading ? <Skeleton key={item} className="flex-1" style={{ height: `${25 + index % 4 * 15}%` }} /> : <span key={item} className="flex-1 rounded-md bg-muted" style={{ height: `${25 + index % 4 * 15}%` }} />)}</div>}
+    {activity && !days.some(day => day.tokens !== null) && <p className="empty-note">暂无可核对的 Token 用量记录</p>}
+    {!activity && !loading && <p className="empty-note">活动数据暂不可用</p>}
 
   </section>
 }

@@ -94,6 +94,7 @@
     "pptxgenjs": "4.0.1",
     "qrcode": "1.5.4",
     "react": "19.3.0",
+    "react-aria-components": "1.22.1",
     "react-day-picker": "10.0.1",
     "react-dom": "19.3.0",
     "react-markdown": "10.1.0",

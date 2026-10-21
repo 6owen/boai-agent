@@ -1,7 +1,7 @@
 /*
  * [OUTPUT]: 现行分角色字体沿界面字体控件核对；富文本消息使用原messageDraft，保留字体/换肤/重启断言。
  * [INPUT]: 外观即时生效与原生窗口持久化的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: 三组字体字号与开发版 Dock 图标的实际窗口切换/重启/重置；Craft Scenic 选图与原外观回归。
+ * [OUTPUT]: 两组字号与三组字体样式的 React Aria 输入/步进/键盘/边界、界面字号同步内容字号及开发版 Dock 图标的实际窗口切换/重启/重置；Craft Scenic 选图与原外观回归。
  * [OUTPUT]: 本人菜单进入设置并保留外观/原生窗口完整断言； 使用现有 Base UI 下拉选项验证；外观即时生效与原生窗口持久化的真实桌面业务步骤与断言。
  * [POS]: tests/e2e/steps/appearance.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -116,7 +116,7 @@ async function customizeAppearance(previous: Awaited<ReturnType<typeof resizeAnd
   await page!.getByLabel('搜索设置').fill('')
   await page!.getByRole('button', { name: '浅色', exact: true }).click()
   await selectAppearance(page!, '浅色配色', 'VS Code Plus')
-  await selectAppearance(page!, '界面字体', '系统默认')
+  await selectAppearance(page!, '界面字体样式', '系统默认')
   await page!.getByLabel('强调色', { exact: true }).fill('#007acc')
   await page!.getByLabel('背景色', { exact: true }).fill('#f8fafc')
   await page!.getByLabel('前景色', { exact: true }).fill('#101010')
@@ -140,7 +140,7 @@ async function verifyAppearanceRestart(previous: Awaited<ReturnType<typeof custo
   await expect.poll(zoom).toBeCloseTo(0.9)
   await expectWindowFilled()
   await expect(page!.getByLabel('界面缩放', { exact: true })).toContainText('90%')
-  await expect(page!.getByLabel('界面字体', { exact: true })).toContainText('系统默认')
+  await expect(page!.getByLabel('界面字体样式', { exact: true })).toContainText('系统默认')
   await expect(page!.getByLabel('背景色', { exact: true })).toHaveValue('#f8fafc')
   await page!.getByRole('button', { name: '深色', exact: true }).click()
   await expect(page!.getByLabel('背景色', { exact: true })).toHaveValue('#212121')
@@ -158,7 +158,7 @@ async function verifyAppearanceRestart(previous: Awaited<ReturnType<typeof custo
   await expect(page!.getByRole('button', { name: '恢复默认外观' })).toBeEnabled()
   await page!.getByRole('button', { name: '恢复默认外观' }).click()
   await page!.getByRole('button', { name: '确认重置', exact: true }).click()
-  await expect(page!.getByLabel('界面字体', { exact: true })).toContainText('Geist')
+  await expect(page!.getByLabel('界面字体样式', { exact: true })).toContainText('Geist')
   await page!.evaluate(() => document.fonts.ready)
   expect(await page!.evaluate(() => [...document.fonts].some((font) => font.family === 'Geist' && font.status === 'loaded'))).toBe(true)
   await expect
@@ -183,24 +183,34 @@ Then('重启恢复外观且原生菜单缩放与重置保持同步', async ({ sc
   await verifyAppearanceRestart(scenario.customizeAppearance!)
 })
 
-When('修改三组字体字号和应用图标', async ({ runtime, scenario }) => {
+When('修改两组字号、三组字体和应用图标', async ({ runtime, scenario }) => {
   await scenario.prepareAppearance!.open()
   const page = runtime.page
-  await selectAppearance(page, '界面字体', '系统默认')
+  await selectAppearance(page, '界面字体样式', '系统默认')
   await selectAppearance(page, '内容字体', '系统衬线')
   await selectAppearance(page, '代码字体', 'Menlo')
-  for (const [name, size] of [['界面', 17], ['内容', 19], ['代码', 16]] as const) {
-    await page.getByRole('spinbutton', { name: `${name}字号（像素）` }).fill(String(size))
+  for (const [name, size] of [['界面字号', 17], ['代码字体大小', 16]] as const) {
+    await page.getByRole('textbox', { name: `${name}（像素）` }).fill(String(size))
   }
+  const uiSize = page.getByRole('textbox', { name: '界面字号（像素）' })
+  await uiSize.press('ArrowUp')
+  await expect(uiSize).toHaveValue('18')
+  await page.getByRole('button', { name: '减小界面字号' }).click()
+  await expect(uiSize).toHaveValue('17')
+  await uiSize.fill('22')
+  await uiSize.press('Tab')
+  await expect(page.getByRole('button', { name: '增大界面字号' })).toBeDisabled()
+  await uiSize.fill('17')
+  await uiSize.press('Tab')
   await page.getByRole('group', { name: '选择应用图标' }).getByRole('button', { name: '小龙' }).click()
-  scenario.typography = { ui: 17, content: 19, code: 16 }
+  scenario.typography = { ui: 17, content: 17, code: 16 }
 })
 
-Then('三组排版独立生效且 Dock 图标切换', async ({ runtime, scenario }) => {
+Then('字号与字体样式生效且 Dock 图标切换', async ({ runtime, scenario }) => {
   const page = runtime.page
   await expect.poll(() => page.evaluate(() => window.boai.request('getAppearance', undefined)))
     .toMatchObject({ preferences: { typography: {
-      ui: { family: 'system', sizePx: 17 }, content: { family: 'serif', sizePx: 19 }, code: { family: 'menlo', sizePx: 16 },
+      ui: { family: 'system', sizePx: 17 }, content: { family: 'serif', sizePx: 17 }, code: { family: 'menlo', sizePx: 16 },
     }, appIconId: 'avatar-bear' } })
   const root = await page.locator('html').evaluate(element => {
     const style = getComputedStyle(element)
@@ -213,15 +223,16 @@ Then('三组排版独立生效且 Dock 图标切换', async ({ runtime, scenario
       codeFamily: style.getPropertyValue('--font-code-family').trim(),
     }
   })
-  expect(root).toMatchObject({ ui: '17px', content: '19px', code: '16px' })
+  expect(root).toMatchObject({ ui: '17px', content: '17px', code: '16px' })
   expect(root.uiFamily).not.toContain('Geist')
   expect(root.contentFamily).toContain('Georgia')
   expect(root.codeFamily).toContain('Menlo')
+  await page.getByRole('button', { name: '代码字体示例' }).hover()
   await expect(page.getByText('const bobo = "你好"')).toHaveCSS('font-size', '16px')
   await expect.poll(() => page.evaluate(() => window.boai.request('getAppIconStatus', undefined)))
     .toMatchObject({ environment: 'development', requestedId: 'avatar-bear', pending: false,
       dock: { appliedId: 'avatar-bear', error: null }, installed: { available: false } })
-  expect(scenario.typography).toEqual({ ui: 17, content: 19, code: 16 })
+  expect(scenario.typography).toEqual({ ui: 17, content: 17, code: 16 })
   expect(runtime.errors).toEqual([])
 })
 
@@ -232,7 +243,7 @@ Then('重启后字体字号和 Dock 图标保持且可重置', async ({ runtime,
   const page = runtime.page
   await expect.poll(() => page.evaluate(() => window.boai.request('getAppearance', undefined)))
     .toMatchObject({ preferences: { typography: {
-      ui: { family: 'system', sizePx: 17 }, content: { family: 'serif', sizePx: 19 }, code: { family: 'menlo', sizePx: 16 },
+      ui: { family: 'system', sizePx: 17 }, content: { family: 'serif', sizePx: 17 }, code: { family: 'menlo', sizePx: 16 },
     }, appIconId: 'avatar-bear' } })
   await expect.poll(() => page.evaluate(() => window.boai.request('getAppIconStatus', undefined)))
     .toMatchObject({ requestedId: 'avatar-bear', pending: false, dock: { appliedId: 'avatar-bear', error: null } })

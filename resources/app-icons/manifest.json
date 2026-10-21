@@ -1,5 +1,10 @@
 {
   "defaultId": "avatar-cat",
+  "canvasSize": 1024,
+  "artworkMaxSize": 680,
+  "tileSize": 824,
+  "tileCornerRadius": 185,
+  "background": "#FFFFFF",
   "icons": [
     { "id": "avatar-owl", "avatarId": "owl", "file": "rat.webp" },
     { "id": "avatar-fox", "avatarId": "fox", "file": "ox.webp" },
