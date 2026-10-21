@@ -1,8 +1,8 @@
-# [INPUT]: 当前候选完整备份测试和固定旧源码fbe95154，隔离数据与相同锁定依赖。
-# [OUTPUT]: 候选导出后旧版本数据入口/运行时异路径恢复与二次打开；原断言保持，原准备失败保留。
-# [POS]: 仅修正浅克隆未取得旧对象的准备问题；不重复已通过的UI或提供Required checks。
+# [INPUT]: 第23组9d7d4deb同产品指纹候选及原CLI/中断/交付/后台BDD，隔离协议与数据。
+# [OUTPUT]: 原缺口场景和210/70/28/120秒资源合同；保留失败/跳过与原件，不提供Required checks或真实供应商成绩。
+# [POS]: 独立诊断分支，正式CI外的日常稳定性补验，不放宽原断言/期限。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
-name: Daily fixed-source rollback
+name: Daily lifecycle coverage
 on:
   push:
     branches: [infra/daily-source-identity]
@@ -10,9 +10,14 @@ on:
 permissions:
   contents: read
 jobs:
-  rollback:
+  lifecycle:
+    name: Lifecycle ${{ matrix.probe }}
     runs-on: macos-15
-    timeout-minutes: 15
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        probe: [cli-recovery, delivery-receipts, background-resources]
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -20,54 +25,70 @@ jobs:
         with:
           node-version: '24.16.0'
           cache: pnpm
-      - name: Install locked dependencies
-        env:
-          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
-        run: pnpm install --frozen-lockfile
-      - name: Build the explicitly fetched previous runtime
+      - name: Install locked dependencies and Electron
         run: |
-          mkdir -p .local/daily-rollback-evidence
-          git fetch --no-tags --depth=1 origin fbe95154edfeaf304b06258e539c162f9c6fa018
-          git worktree add --detach .local/daily-rollback/source fbe95154edfeaf304b06258e539c162f9c6fa018
+          pnpm install --frozen-lockfile
+          node node_modules/electron/install.js
+      - name: Check fixed product source
+        run: |
           node --input-type=module - <<'JS'
-          import { build } from 'esbuild';
-          import { readFile, writeFile } from 'node:fs/promises';
-          import { createHash } from 'node:crypto';
-          import { execFileSync } from 'node:child_process';
-          const old = execFileSync('git',['-C','.local/daily-rollback/source','rev-parse','HEAD'],{encoding:'utf8'}).trim();
-          if (old !== 'fbe95154edfeaf304b06258e539c162f9c6fa018') throw Error('Unexpected rollback source');
-          const previousLock=await readFile('.local/daily-rollback/source/pnpm-lock.yaml'),candidateLock=await readFile('pnpm-lock.yaml');
-          if (!previousLock.equals(candidateLock)) throw Error('Rollback dependencies differ; no compatibility claim');
-          await build({stdin:{contents:"export { AppService } from './.local/daily-rollback/source/src/runtime/service.ts'; export { prepareV2DataRoot } from './.local/daily-rollback/source/src/main/migration.ts'",resolveDir:process.cwd()},outfile:'.local/daily-rollback/previous-app.mjs',bundle:true,platform:'node',format:'esm',packages:'external',target:'node24'});
-          await writeFile('.local/daily-rollback-evidence/source.json',JSON.stringify({previous:old,candidate:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),lockSha256:createHash('sha256').update(candidateLock).digest('hex'),scope:'candidate export, previous data-version entry/runtime restore and second reopen; original backup assertions retained'},null,2));
+          import { buildInputHash } from './scripts/build-identity.mjs';
+          import { mkdir, writeFile } from 'node:fs/promises';
+          const inputHash=await buildInputHash();
+          if(inputHash!=='4514b566ecf0e0969ccb50011fb28ba452f8e76ac2c0c4b2ed51eac47399424c') throw Error('Product inputs differ from the registered candidate');
+          await mkdir('.local/daily-lifecycle',{recursive:true});
+          await writeFile('.local/daily-lifecycle/source.json',JSON.stringify({reference:'9d7d4deb64504eb1dad94f6b43a360d91de67f02',inputHash},null,2));
           JS
-      - name: Restore the candidate export with the fixed previous data entry and runtime
+      - name: Build candidate and generate original BDD
+        run: |
+          pnpm build
+          pnpm test:bddgen
+      - name: Run the original missing lifecycle coverage
+        env:
+          STABILITY_PROBE: ${{ matrix.probe }}
         run: |
           python3 - <<'PY'
+          import json,os,subprocess
           from pathlib import Path
-          import subprocess
-          p=Path('tests/service.test.ts')
-          original=p.read_text()
-          constructor='new AppService({ dataPath: restorePath'
-          location="const restorePath = join(root, 'restored'); await cp(destination, restorePath, { recursive: true })"
-          if original.count(constructor)!=2 or original.count(location)!=1:
-              raise SystemExit('Original restore seam changed')
-          patched="import { AppService as PreviousAppService, prepareV2DataRoot as previousDataRoot } from '../.local/daily-rollback/previous-app.mjs'\n"+original.replace(constructor,'new PreviousAppService({ dataPath: restorePath')
-          patched=patched.replace(location,"const restoreParent = join(root, 'restored'), restorePath = join(restoreParent, 'v2'); await cp(destination, restorePath, { recursive: true }); expect(await previousDataRoot(restoreParent)).toBe(restorePath)")
-          try:
-              p.write_text(patched)
-              diff=subprocess.run(['git','diff','--','tests/service.test.ts'],capture_output=True,text=True,check=True).stdout
-              Path('.local/daily-rollback-evidence/harness.patch').write_text(diff)
-              outcome=subprocess.run(['pnpm','exec','vitest','run','tests/service.test.ts','--maxWorkers=2','-t','exports a consistent credential-free backup that opens from a different data directory','--reporter=default','--reporter=json','--outputFile=.local/daily-rollback-evidence/previous-restore.json'])
-          finally:
-              p.write_text(original)
-          raise SystemExit(outcome.returncode)
+          probe=os.environ['STABILITY_PROBE']
+          groups={
+            'cli-recovery': (['.features-gen/boai-cli.feature.spec.js','.features-gen/automation-recovery.feature.spec.js','.features-gen/boai-cli-pending.feature.spec.js','.features-gen/boai-cli-native-pending.feature.spec.js'],'CLI精确停止一名员工并保留群聊同事回复和重启记录|工具已经执行后运行进程退出不会重做任务|CLI自启动待问题后桌面附着并由终端接续同一个工作|终端留下的',7),
+            'delivery-receipts': (['.features-gen/materials.feature.spec.js','.features-gen/artifacts.feature.spec.js'],'材料消息发送回复失联只核对原消息|文件侧边修改提交失联后关闭重开与重启只核对原请求',2),
+            'background-resources': (['.features-gen/background-runtime.feature.spec.js'],None,3),
+          }
+          files,pattern,expected=groups[probe]
+          output=Path('.local/daily-lifecycle')/probe
+          output.mkdir(parents=True)
+          args=['pnpm','exec','playwright','test',*files]
+          if pattern: args+=['--grep',pattern]
+          inventory=subprocess.run([*args,'--list','--reporter=json'],capture_output=True,text=True)
+          (output/'inventory.json').write_text(inventory.stdout)
+          (output/'inventory.stderr.log').write_text(inventory.stderr)
+          if inventory.returncode: raise SystemExit(inventory.returncode)
+          def cases(node):
+              result=[]
+              for suite in node.get('suites',[]): result+=cases(suite)
+              for spec in node.get('specs',[]): result+=[(spec.get('title'),test) for test in spec.get('tests',[])]
+              return result
+          selected=cases(json.loads(inventory.stdout))
+          (output/'selection.json').write_text(json.dumps({'probe':probe,'expected':expected,'actual':len(selected),'titles':[title for title,_ in selected]},ensure_ascii=False,indent=2))
+          if len(selected)!=expected: raise SystemExit('Original scenario selection changed')
+          environment={**os.environ,'BOAI_REVIEW_RUN_DIR':str(output/'review'),'PLAYWRIGHT_JSON_OUTPUT_NAME':str(output/'playwright-results.json')}
+          if probe=='background-resources': environment['BOAI_TEST_DEV_SERVER']='1'
+          outcome=subprocess.run([*args,'--retries','0','--reporter=list,json'],env=environment)
+          if outcome.returncode: raise SystemExit(outcome.returncode)
+          report=json.loads((output/'playwright-results.json').read_text())
+          observed=cases(report)
+          stats=report['stats']
+          if len(observed)!=expected or stats.get('expected')!=expected or any(stats.get(k,0) for k in ['unexpected','skipped','flaky']): raise SystemExit('Missing, skipped, retried or failed original lifecycle scenario')
           PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: daily-fixed-rollback
-          path: .local/daily-rollback-evidence/
+          name: daily-lifecycle-${{ matrix.probe }}
+          path: |
+            .local/daily-lifecycle/
+            test-results/
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 3
