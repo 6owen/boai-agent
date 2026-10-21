@@ -1,8 +1,8 @@
-# [INPUT]: Same fixed product inputs and the two original browser resource/hung-page closure cases.
-# [OUTPUT]: Original seven browser cycles/five idle samples and actual hung renderer toolbar closure/reopen; original assertions, deadlines and thresholds unchanged.
+# [INPUT]: Same fixed product inputs and the isolated original hung-page closure case and its actual manager regression seam.
+# [OUTPUT]: Actual destroyed-page wait regression and isolated hung renderer toolbar closure/reopen; original assertions, deadlines and thresholds unchanged.
 # [POS]: DS05/DS13 browser lifecycle evidence, offline supplier protocol; not Required checks or all-day certification.
 # [PROTOCOL]: Changes update Header and workflow directory map.
-name: Daily browser lifecycle and resources
+name: Daily hung page exit red proof
 on:
   push:
     branches: [infra/daily-source-identity]
@@ -34,18 +34,22 @@ jobs:
           const inputHash = await buildInputHash();
           if (inputHash !== '5a82db0e4d0010e4946714c47b406eb7f4fc711a9c50bb6f42adb0ec949e0951') throw Error('Product inputs differ');
           await mkdir('.local/daily-browser-lifecycle', { recursive: true });
-          await writeFile('.local/daily-browser-lifecycle/source.json', JSON.stringify({ reference: '9fb016acab51cdb6a393fd66699846dd0630d195', testCandidate: '018ec1954791657b09d9cd5b36d018e7eef5e4a2', inputHash, cases: 2, feature: 'browser-migration.feature', realProviderCalls: false, originalBrowserCycles: 7, originalIdleSamples: 5, resourceContractUnchanged: true }, null, 2));
+          await writeFile('.local/daily-browser-lifecycle/source.json', JSON.stringify({ reference: '9fb016acab51cdb6a393fd66699846dd0630d195', testCandidate: '2a54701739b6512a88df8204337292c6dbeb50bd', inputHash, cases: 1, feature: 'browser-migration.feature', realProviderCalls: false, resourceContractUnchanged: true }, null, 2));
           JS
       - name: Build current candidate and original BDD
+        id: build
         run: |
           pnpm build
           pnpm test:bddgen
-      - name: Run original browser resources and hung renderer closure
+      - name: Verify actual browser wait destruction and original CDP drain contracts
+        run: pnpm exec vitest run tests/browser-pane-manager.test.ts tests/browser-cdp-input.test.ts tests/browser-host.test.ts tests/browser-runtime.test.ts --maxWorkers=2 --reporter=json --outputFile .local/daily-browser-lifecycle/module-results.json
+      - name: Run isolated original hung renderer closure
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         env:
           BOAI_TEST_DEV_SERVER: '1'
           BOAI_REVIEW_RUN_DIR: .local/daily-browser-lifecycle/review
           PLAYWRIGHT_JSON_OUTPUT_NAME: .local/daily-browser-lifecycle/playwright-results.json
-        run: pnpm exec playwright test .features-gen/browser-migration.feature.spec.js --grep '重复截图切页关闭后的短期资源有界|网页脚本卡住后仍可关闭浏览器并重新打开' --retries 0 --reporter=list,json
+        run: pnpm exec playwright test .features-gen/browser-migration.feature.spec.js --grep '网页脚本卡住后仍可关闭浏览器并重新打开' --retries 0 --reporter=list,json
       - name: Preserve native crash reports on failure
         if: failure()
         run: |

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: selector/text等待核对真实destroyed事件结束挂起JavaScript，关闭意图不释放，正常返回清理监听器。
  * [OUTPUT]: 重复关闭页面释放网络计数与时间戳，迟到回调及无归属WebContents不恢复已退出记录。
  * [OUTPUT]: 首次导航等待Craft空白页初始化；准备失败不导航，防止迟到回退覆盖用户目标页。
  * [INPUT]: 内置浏览器下载策略、真实临时目录与可控 Electron 下载事件。
@@ -148,5 +149,43 @@ describe('内置浏览器窗口重开', () => {
     expect(internals.destroyingIds.has(current.id)).toBe(true)
     internals.emitStateChange(current)
     expect(changed).toHaveBeenCalledWith(expect.objectContaining({ url: 'https://current.example', title: '当前页面' }))
+  })
+})
+
+
+describe('网页实际退出后的等待收尾', () => {
+  it.each(['selector', 'text'] as const)('%s等待不能因底层JavaScript回执永不返回而跨越实际页面销毁', async kind => {
+    const { manager } = fixture(() => null)
+    let destroyed = false, rejectScript!: (error: Error) => void
+    const wc = Object.assign(new EventEmitter(), { isDestroyed: () => destroyed,
+      executeJavaScript: vi.fn(() => new Promise<unknown>((_resolve, reject) => { rejectScript = reject })) })
+    const instance = { id: 'waiting-page', window: { isDestroyed: () => false }, pageView: { webContents: wc } }
+    const internals = manager as unknown as { instances: Map<string, unknown> }
+    internals.instances.set(instance.id, instance)
+    let result: 'pending' | 'completed' | Error = 'pending'
+    const pending = manager.waitFor(instance.id, { kind, value: kind === 'selector' ? '#never-ready' : 'NEVER_READY', timeoutMs: 30_000 })
+      .then(() => { result = 'completed' }, error => { result = error })
+    await vi.waitFor(() => expect(wc.executeJavaScript).toHaveBeenCalledOnce())
+    // A close request is not proof that the renderer can no longer execute.
+    wc.emit('close'); await Promise.resolve(); expect(result).toBe('pending')
+    destroyed = true; wc.emit('destroyed')
+    try {
+      await expect.poll(() => result instanceof Error ? result.message : result, { timeout: 500 }).toMatch(/页面已实际退出/)
+      expect(wc.listenerCount('destroyed')).toBe(0)
+      expect(wc.executeJavaScript).toHaveBeenCalledOnce()
+    } finally {
+      // Keep the controlled unresolved transport out of later cases, even on red.
+      rejectScript(new Error('controlled transport cleanup')); await pending
+    }
+  })
+  it('正常等待返回后移除实际退出监听器，不改变网页返回值', async () => {
+    const { manager } = fixture(() => null)
+    const wc = Object.assign(new EventEmitter(), { isDestroyed: () => false, executeJavaScript: vi.fn(async () => true) })
+    const instance = { id: 'normal-page', window: { isDestroyed: () => false }, pageView: { webContents: wc } }
+    const internals = manager as unknown as { instances: Map<string, unknown> }
+    internals.instances.set(instance.id, instance)
+    await expect(manager.waitFor(instance.id, { kind: 'text', value: 'READY' })).resolves.toMatchObject({ ok: true, kind: 'text' })
+    expect(wc.listenerCount('destroyed')).toBe(0)
+    expect(wc.executeJavaScript).toHaveBeenCalledOnce()
   })
 })
