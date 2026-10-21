@@ -1,5 +1,5 @@
 # [INPUT]: 第23组DU0的原生待决输入及渠道原生崩溃场景，固定源码与离线协议夹具。
-# [OUTPUT]: 继原场景基线后，用单员工受控延迟与强制GC各三次区分时序/回收原因；保留全部结果，不提供正式资格。
+# [OUTPUT]: 受控提问延迟、GC和原生/自动化并发负载各三次验证；保留完整原件，不提供正式门禁资格。
 # [POS]: 第23组实施分支的有界诊断入口，生产门禁仍归tests.yml。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
 name: Daily stability diagnostics
@@ -19,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        probe: [delayed-input, gc-channels]
+        probe: [delayed-input, gc-channels, contention]
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -50,15 +50,16 @@ jobs:
                   raise ValueError('Unexpected fixture; no diagnostic mutation applied')
               source.write_text(original.replace(needle, replacement))
               (output / 'fixture-change.json').write_text(json.dumps({'file': str(source), 'change': 'Delay only the second employee question by 1200ms; original product and assertions unchanged'}, indent=2))
-          else:
+          elif probe == 'gc-channels':
               Path('.local/stability-gc.setup.ts').write_text("import { afterEach, afterAll } from 'vitest'; const collect=async()=>{ if(typeof global.gc!=='function')throw Error('GC probe unavailable'); global.gc(); await new Promise(resolve=>setImmediate(resolve)); global.gc() }; afterEach(collect); afterAll(collect);\n")
               Path('.local/stability-gc.config.mjs').write_text("import { mergeConfig } from 'vitest/config'; import base from '../vitest.config.ts'; export default mergeConfig(base,{test:{setupFiles:['.local/stability-gc.setup.ts'],execArgv:['--expose-gc']}});\n")
           results = []
           for iteration in range(1, 4):
-              command = ['pnpm', 'exec', 'vitest', 'run', 'tests/native-conversation.test.ts' if probe == 'delayed-input' else 'tests/channels-native.test.ts', '--maxWorkers=2', '--reporter=json', f'--outputFile={output}/{iteration}.json']
+              files = ['tests/native-conversation.test.ts'] if probe == 'delayed-input' else ['tests/channels-native.test.ts'] if probe == 'gc-channels' else ['tests/native-conversation.test.ts', 'tests/channels-native.test.ts', 'tests/automation-repository.test.ts']
+              command = ['pnpm', 'exec', 'vitest', 'run', *files, '--maxWorkers=2', '--reporter=json', f'--outputFile={output}/{iteration}.json']
               if probe == 'delayed-input':
-                  command += ['-t', 'requires a target when multiple employees are awaiting native input']
-              else:
+                  command += ['-t', 'requires a target when multiple employees are awaiting native input|rejects a missing native question']
+              elif probe == 'gc-channels':
                   command += ['--config', '.local/stability-gc.config.mjs']
               started = time.time()
               with (output / f'{iteration}.log').open('w') as log:

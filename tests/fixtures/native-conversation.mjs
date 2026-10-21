@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 /*
+ * [OUTPUT]: 协议夹具支持仅第二员工提问延迟1200ms，真实提问/回答协议保持；不认证模型或生产延迟。
  * [OUTPUT]: 执行未完成时的正文/思考增量回归，最终答复与私有协议字段保持分离。
  * [OUTPUT]: 固定文件修订从宿主授权原消息取 revisionRequestId，允许独立内部会话无旧交付历史；普通同会话修订保持。
  * [OUTPUT]: 原生浏览器实际stdio/MCP媒体与只读到真实Work写入接线；协议夹具不冒充真实模型或Electron页面。
@@ -57,6 +58,7 @@ createInterface({input:process.stdin}).on('line',async line=>{
   if(answer.result.decision==='accept'){await writeFile('permission-marker','approved');reply='已批准并写入'}else reply='已拒绝，未执行'
  }
  if(prompt.messages.at(-1)?.content.includes('NATIVE_QUESTION')){
+  if(text.includes('NATIVE_DELAYED_QUESTION')&&prompt.members?.find(member=>member.id===prompt.employeeId)?.name==='第二位提问员工')await new Promise(resolve=>setTimeout(resolve,1200))
   if(text.includes('NATIVE_HIGH_USAGE'))ev('thread/tokenUsage/updated',{tokenUsage:{last:{inputTokens:10,outputTokens:29653,totalTokens:29663},total:{inputTokens:10,outputTokens:29653,totalTokens:29663}}})
   const answer=await ask('item/tool/requestUserInput',{threadId,turnId,itemId:'question',questions:[{id:'product',question:'这个文档针对什么产品？'}]})
   const content=answer.result.answers.product.answers.join(' ')
