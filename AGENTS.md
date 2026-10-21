@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2551固定审查发现现行画板入口仍专属Codex的P3，已同步外部开发Agent共用及各客户端待验边界；原报告分轴归22组07，新完整云端资格仍查当前Checks。
 [OUTPUT]: 2026-10-21用户改回GitHub Actions，标准macOS/Linux探测成功、严格Required checks已绑定Actions，本机CI disabled；c974官方18/v3基准受控接受，新完整资格与原失败归22组03，未授发布升级。
 [OUTPUT]: 436完整CI两项failed/18UI过，SQLite临时sidecar重核和菜单正准备候选已验；真实ZIP共用展开通过，最新22组03，未放行完整目标。
 [OUTPUT]: c5个人候选arm64/ad-hoc DMG+ZIP已built，ZIP8/DMG2分别19启动/135原件通过；旧失败和新完整CI/发布剩余归22组03。
@@ -852,4 +853,4 @@ L1 是 L2 的折叠，L2 是 L3 的折叠，L3 是代码逻辑的折叠。
 - bobo 发起与组织群协作的后续规格见 [第 12 组](ai-docs/spec/12.bobo发起与组织群协作/README.md)，BC0–BC5 实际进度仅由该组 05 维护。员工身份与群组织形式无关，原 bobo 会话持续保留；BC0–BC4 已接通，BC5 未实施；核心/群权限与生命周期以本文件 Bobo Collaboration Boundaries、实际代码和第 12 组合同为准。
 
 
-2026-10-20用户已授权在独立worktree实施第22组四目标。UI比较使用`pnpm test:ui`，候选采集/逐case接受使用独立入口；普通CI禁止更新基线。范围和唯一实际进度见[22组03](ai-docs/spec/22.开发自动化与持续测试/03-实施步骤与验收.md#51-独立worktree实施批次2026-10-20进行中)。业务评估继续沿原第15组；画板仅用于Codex开发，BOAI产品不嵌入编辑器。
+2026-10-20用户已授权在独立worktree实施第22组四目标。UI比较使用`pnpm test:ui`，候选采集/逐case接受使用独立入口；普通CI禁止更新基线。范围和唯一实际进度见[22组03](ai-docs/spec/22.开发自动化与持续测试/03-实施步骤与验收.md#51-独立worktree实施批次2026-10-20进行中)。业务评估继续沿原第15组；画板供Codex、Claude、Pi等外部开发Agent共用，BOAI产品不嵌入编辑器。现有MCP核心和历史Codex实测不代表共享Skill、其他真实客户端及跨Agent接续已完成，现行边界与待验项见22组05及03。
