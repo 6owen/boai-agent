@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 原 Desktop、真实窗口/Utility PID、固定离线 API 员工回复。
- * [OUTPUT]: 原生窗口/草稿与循环压力；GC后资源、监听器、空闲CPU及同进程消息去重门槛。
+ * [OUTPUT]: 原生窗口/草稿与原GC资源门槛；显式诊断只在原断言失败后收集DOM/堆，不改变通过条件。
  * [POS]: 后台常驻的 Electron BDD 步骤。
  * [PROTOCOL]: 变化同步 Header 与所属 .folder.md。
  */
@@ -11,7 +11,7 @@ import { join } from 'node:path'
 import { prepareGroupChat } from '../support/group-chat'
 import type { Desktop } from '../support/desktop'
 import type { BrowserWindow } from 'electron'
-import { resourceSample, verifyResources, type ResourceSample } from '../support/background-resources'
+import { resourceSample, verifyResources, recordResourceFailure, type ResourceSample } from '../support/background-resources'
 const { Given, When, Then } = createBdd(test)
 const fixtures = new WeakMap<Desktop, Awaited<ReturnType<typeof prepareGroupChat>>>()
 const identities = new WeakMap<Desktop, { window: number; pids: number[] }>()
@@ -134,7 +134,12 @@ Then('空闲采样的内存监听器和进程数量保持有界', async ({ runti
     while (Date.now() < deadline) { await runtime.page.waitForTimeout(Math.min(15_000, deadline - Date.now())); samples.push(await resourceSample(runtime, cdp)); await runtime.reviewData(`后台空闲第${++index}次采样`, samples.at(-1)) }
     await runtime.app.evaluate(({ app }) => app.emit('activate'))
     await runtime.reviewData('后台完整资源结果', { samples, budgets: { postGcMainAndRendererGrowthMb: 16, perProcessResidentGrowthMb: 64, idleCpuMedianPercent: 5 }, longTermCertified: false })
-    verifyResources(samples)
+    try { verifyResources(samples) }
+    catch (error) {
+      try { await recordResourceFailure(runtime, cdp) }
+      catch (diagnosticError) { await runtime.reviewData('资源失败后的诊断错误', { error: String(diagnosticError), originalFailureRetained: true }).catch(() => {}) }
+      throw error
+    }
     expect(runtime.errors).toEqual([])
   } finally { await nativeWindow.dispose(); await cdp.detach() }
 })
