@@ -1,8 +1,8 @@
-# [INPUT]: 第23组d6714911产品候选及原CLI桌面场景，独立协议与数据目录。
-# [OUTPUT]: 已加载源码身份的真实编译/模块及pnpm dev桌面-CLI-重启核验；不提供Required checks。
-# [POS]: 独立诊断分支，仅核现有源码身份及原业务场景。
+# [INPUT]: 第23组当前配置快照/零调用准备及原完整备份候选，隔离固定数据。
+# [OUTPUT]: 类型与原模块定向验收，保留JSON/日志；不提供Required checks或真实模型成绩。
+# [POS]: 独立诊断分支，原源码身份专项已完成后接续记忆/恢复验证。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
-name: Daily source identity
+name: Daily stability follow-up
 on:
   push:
     branches: [infra/daily-source-identity]
@@ -10,9 +10,9 @@ on:
 permissions:
   contents: read
 jobs:
-  identity:
+  preparation-and-restore:
     runs-on: macos-15
-    timeout-minutes: 20
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -20,29 +20,24 @@ jobs:
         with:
           node-version: '24.16.0'
           cache: pnpm
-      - name: Install dependencies
-        run: |
-          pnpm install --frozen-lockfile
-          node node_modules/electron/install.js
-      - name: Check actual compiled provenance
-        run: pnpm exec vitest run tests/runtime-versions.test.ts tests/build-identity.test.ts --maxWorkers=2
-      - name: Build candidate
-        run: pnpm build
-      - name: Generate original BDD
-        run: pnpm test:bddgen
-      - name: Actual development desktop and standalone CLI
+      - name: Install locked dependencies
         env:
-          BOAI_TEST_DEV_SERVER: '1'
-          BOAI_REVIEW_RUN_DIR: .local/source-identity-desktop
-          PLAYWRIGHT_JSON_OUTPUT_NAME: .local/source-identity-desktop/playwright-results.json
-        run: pnpm exec playwright test --grep '独立CLI构建与桌面在同一私聊交替发送并在重启后核对' --retries 0 --reporter=list,json
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+        run: pnpm install --frozen-lockfile
+      - name: Check original types
+        run: pnpm typecheck
+      - name: Read-only profile and zero-call review regression
+        run: |
+          mkdir -p .local/daily-stability-followup
+          pnpm exec vitest run tests/evaluation-profile.test.ts --maxWorkers=2 --reporter=default --reporter=json --outputFile=.local/daily-stability-followup/profile.json
+      - name: Original complete backup with configuration and memory
+        if: ${{ !cancelled() }}
+        run: pnpm exec vitest run tests/service.test.ts --maxWorkers=2 -t 'exports a consistent credential-free backup that opens from a different data directory' --reporter=default --reporter=json --outputFile=.local/daily-stability-followup/restore.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: daily-source-identity
-          path: |
-            .local/source-identity-desktop/
-            test-results/
+          name: daily-stability-followup
+          path: .local/daily-stability-followup/
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 3
