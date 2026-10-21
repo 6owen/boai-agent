@@ -1,5 +1,6 @@
 /*
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
+ * [OUTPUT]: 三组字号改用全局 React Aria NumberField，统一边界、步长、键盘与步进按钮交互，沿原外观预览保存。
  * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [OUTPUT]: 主题选项仅列可用插件配色，停用回退值与保留的原选择分开显示。
  * [OUTPUT]: 图片下方内嵌卡片展示玻璃/遮罩百分比与0–32px模糊三行Slider，独立预览/保存；重置浮层仅标题与确认/取消。
@@ -12,7 +13,7 @@
 import { useEffect, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { NumberField } from '@/components/ui/number-field'
 import { SelectField } from '@/components/ui/select-field'
 import { Slider } from '@/components/ui/slider'
 import { Field, FieldContent, FieldGroup, FieldTitle } from '@/components/ui/field'
@@ -42,20 +43,12 @@ const typographyGroups = [
 ] as const
 
 function FontSizeInput({ group, value }: { group: TypographyGroup; value: number }) {
-  const [draft, setDraft] = useState<string | null>(null)
   const control = typographyControls[group]
-  const change = (next: number) => {
-    if (!Number.isInteger(next) || next < control.min || next > control.max) return
-    setDraft(null)
-    previewAppearance({ typography: { [group]: { sizePx: next } } })
-  }
-  return <div className="flex items-center gap-1">
-    <Button type="button" size="icon-xs" variant="secondary" aria-label={`减小${group === 'ui' ? '界面' : group === 'content' ? '内容' : '代码'}字号`} onClick={() => change(value - control.step)} disabled={value <= control.min}>−</Button>
-    <Input className="w-16 text-center tabular-nums" type="number" inputMode="numeric" min={control.min} max={control.max} step={control.step} aria-label={`${group === 'ui' ? '界面' : group === 'content' ? '内容' : '代码'}字号（像素）`}
-      value={draft ?? value} onChange={event => { setDraft(event.target.value); if (event.target.value) change(Number(event.target.value)) }}
-      onBlur={() => setDraft(null)} />
-    <Button type="button" size="icon-xs" variant="secondary" aria-label={`增大${group === 'ui' ? '界面' : group === 'content' ? '内容' : '代码'}字号`} onClick={() => change(value + control.step)} disabled={value >= control.max}>+</Button>
-  </div>
+  const title = group === 'ui' ? '界面' : group === 'content' ? '内容' : '代码'
+  return <NumberField className="w-32" inputId={`appearance-${group}-size`} aria-label={`${title}字号（像素）`}
+    decrementAriaLabel={`减小${title}字号`} incrementAriaLabel={`增大${title}字号`}
+    value={value} minValue={control.min} maxValue={control.max} step={control.step}
+    onChange={next => { if (Number.isInteger(next) && next >= control.min && next <= control.max) previewAppearance({ typography: { [group]: { sizePx: next } } }) }} />
 }
 
 function ColorControl({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
@@ -142,7 +135,7 @@ export function AppearanceSettings() {
             <div className="appearance-row"><label htmlFor={`appearance-${group.id}-family`}>{group.title}字体</label>
               <SelectField id={`appearance-${group.id}-family`} value={p.typography[group.id].family} options={[...group.options]} onValueChange={family => previewAppearance({ typography: { [group.id]: { family } } })} />
             </div>
-            <div className="appearance-row"><span>{group.title}字号</span><FontSizeInput group={group.id} value={p.typography[group.id].sizePx} /></div>
+            <div className="appearance-row"><label htmlFor={`appearance-${group.id}-size`}>{group.title}字号</label><FontSizeInput group={group.id} value={p.typography[group.id].sizePx} /></div>
             <p className="m-0 text-muted-foreground" style={{ fontFamily: `var(--font-${group.id}-family)`, fontSize: `var(--text-${group.id}-body)` }}>{group.sample}</p>
           </div>)}
         </CardContent></Card>

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 外观即时生效与原生窗口持久化的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: 三组字体字号与开发版 Dock 图标的实际窗口切换/重启/重置；Craft Scenic 选图与原外观回归。
+ * [OUTPUT]: 三组字体字号的 React Aria 输入/步进/键盘/边界与开发版 Dock 图标的实际窗口切换/重启/重置；Craft Scenic 选图与原外观回归。
  * [OUTPUT]: 本人菜单进入设置并保留外观/原生窗口完整断言； 使用现有 Base UI 下拉选项验证；外观即时生效与原生窗口持久化的真实桌面业务步骤与断言。
  * [POS]: tests/e2e/steps/appearance.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -188,8 +188,18 @@ When('修改三组字体字号和应用图标', async ({ runtime, scenario }) =>
   await selectAppearance(page, '内容字体', '系统衬线')
   await selectAppearance(page, '代码字体', 'Menlo')
   for (const [name, size] of [['界面', 17], ['内容', 19], ['代码', 16]] as const) {
-    await page.getByRole('spinbutton', { name: `${name}字号（像素）` }).fill(String(size))
+    await page.getByRole('textbox', { name: `${name}字号（像素）` }).fill(String(size))
   }
+  const uiSize = page.getByRole('textbox', { name: '界面字号（像素）' })
+  await uiSize.press('ArrowUp')
+  await expect(uiSize).toHaveValue('18')
+  await page.getByRole('button', { name: '减小界面字号' }).click()
+  await expect(uiSize).toHaveValue('17')
+  await uiSize.fill('22')
+  await uiSize.press('Tab')
+  await expect(page.getByRole('button', { name: '增大界面字号' })).toBeDisabled()
+  await uiSize.fill('17')
+  await uiSize.press('Tab')
   await page.getByRole('group', { name: '选择应用图标' }).getByRole('button', { name: '小龙' }).click()
   scenario.typography = { ui: 17, content: 19, code: 16 }
 })
