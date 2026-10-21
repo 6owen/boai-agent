@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 恢复扩展只在测试明确放行后允许一个新Run；旧Run恢复后的请求拒绝，不改变原四模式行为。
  * [INPUT]: 原Desktop、真实Mastra工具及自然分钟调度；本地HTTP只控制模型输出和连接故障。
  * [OUTPUT]: 命令审批/拒绝、真实文件后挂起/断流协议；记录实际工具请求、连接及错误，不替代审批或执行。
  * [POS]: DS11自然定时任务的隔离协议支撑，不使用手动触发、假时钟或真实供应商。
@@ -27,7 +28,7 @@ function tool(response: ServerResponse, name: string, args: unknown, index: numb
 }
 export async function naturalAutomationProtocol(runtime: Desktop, mode: NaturalMode) {
   const errors: string[] = [], held = new Set<ServerResponse>(), issued: { name: string; runId: string }[] = []
-  let runId: string | undefined, disconnected = false, brokenConnections = 0
+  let runId: string | undefined, recoveredRunId: string | undefined, recoveryAllowed = false, disconnected = false, brokenConnections = 0
   const endpoint = await teamEndpoint((body, response, index) => {
     try {
       const messages = body.messages as ModelMessage[], system = messages.filter(m => m.role === 'system').map(m => text(m.content)).join('\n')
@@ -41,8 +42,11 @@ export async function naturalAutomationProtocol(runtime: Desktop, mode: NaturalM
       const tools = body.tools as ModelTool[] | undefined
       const currentRun = tools?.find(t => t.function.name === 'write_file')?.function.description?.match(/self:\/runs\/([a-zA-Z0-9_-]+)\//)?.[1]
       if (!currentRun) throw Error('自然任务缺少宿主实际run路径')
-      if (runId && runId !== currentRun) throw Error('同一自然触发不应自动重建执行run')
-      runId = currentRun
+      if (runId && runId !== currentRun) {
+        if (!recoveryAllowed || recoveredRunId && recoveredRunId !== currentRun) throw Error('没有明确新请求的任务不应自动重建执行run')
+        recoveredRunId = currentRun
+      } else if (runId && recoveryAllowed) throw Error('恢复连接后不应继续旧Run')
+      runId ??= currentRun
       const called = messages.flatMap(m => m.tool_calls ?? []).map(t => t.function.name)
       const send = (name: string, args: unknown) => {
         if (!tools!.some(t => t.function.name === name)) throw Error(`宿主未提供工具 ${name}`)
@@ -55,7 +59,7 @@ export async function naturalAutomationProtocol(runtime: Desktop, mode: NaturalM
         else send(effect, { path, content: naturalFileContent })
         return
       }
-      if (mode === 'cancel' || mode === 'disconnect') {
+      if ((mode === 'cancel' || mode === 'disconnect') && currentRun !== recoveredRunId) {
         if (disconnected) { brokenConnections++; response.destroy(); return }
         response.writeHead(200, { 'Content-Type': 'text/event-stream' }); response.flushHeaders()
         held.add(response); response.once('close', () => held.delete(response)); return
@@ -74,7 +78,11 @@ export async function naturalAutomationProtocol(runtime: Desktop, mode: NaturalM
     } catch (error) { errors.push(String(error)); if (!response.headersSent) response.writeHead(500); response.end(String(error)) }
   })
   runtime.trackServer(endpoint.server)
-  return { endpoint, errors, issued, runId: () => runId, held: () => held.size, brokenConnections: () => brokenConnections,
+  return { endpoint, errors, issued, runId: () => runId, recoveredRunId: () => recoveredRunId, held: () => held.size, brokenConnections: () => brokenConnections,
     disconnect() { disconnected = true; for (const response of held) { brokenConnections++; response.destroy() } },
+    recoverForExplicitNewRun() {
+      if (mode !== 'disconnect' || !disconnected || held.size) throw Error('只在原断流连接结束后准备明确新执行')
+      recoveryAllowed = true; disconnected = false
+    },
   }
 }

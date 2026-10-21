@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 追加待批停止/迟到审批拒绝和断流恢复后UI明确新运行；新恢复场景210秒含四次冷启动，原四场180秒保持。
  * [OUTPUT]: 首轮四场因会话同名按钮严格定位失败、未到自然触发；仅限定主导航复验，原副作用/终态断言保持。
  * [INPUT]: 自然分钟计划、原审批卡/执行记录、真实工具与独立Desktop重启。
  * [OUTPUT]: 四种自然触发终态、原生身份/文件字节/mtime/模型请求与两次重启核对；UI缺口保留真实失败。
@@ -15,7 +16,7 @@ import { test as base } from '../support/test'
 import { openSchedule } from '../support/schedule-controls'
 import { naturalAutomationProtocol, naturalFileContent, naturalFileName, type NaturalMode } from '../support/natural-automation'
 
-type State = { mode?: NaturalMode; fixture?: Awaited<ReturnType<typeof naturalAutomationProtocol>>; planId?: string; dueAt?: string; conversationId?: string; occurrence?: AutomationOccurrence; file?: string; mtime?: number; calls?: number }
+type State = { mode?: NaturalMode; fixture?: Awaited<ReturnType<typeof naturalAutomationProtocol>>; planId?: string; dueAt?: string; conversationId?: string; occurrence?: AutomationOccurrence; file?: string; mtime?: number; calls?: number; approvalId?: string; retry?: { original: AutomationOccurrence; occurrence: AutomationOccurrence; view: ConversationDetail; file: string; mtime: number } }
 export const test = base.extend<{ natural: State }>({ natural: async ({}, use) => use({}) })
 const { Given, When, Then } = createBdd(test)
 const detail = (runtime: Desktop, state: State) => runtime.page.evaluate(id => window.boai.request('getConversation', { id }), state.conversationId!)
@@ -42,7 +43,7 @@ async function approval(runtime: Desktop) {
   await expect(card).toBeVisible()
   return { value, card }
 }
-async function reopenTwice(runtime: Desktop, state: State, before: AutomationOccurrence, view: ConversationDetail) {
+async function reopenTwice(runtime: Desktop, state: State, before: AutomationOccurrence, view: ConversationDetail, expectFileMissing = state.mode === 'reject') {
   state.calls = state.fixture!.endpoint.requests.length
   const executions = view.runs.filter(run => run.phase === 'execution').map(run => ({ id: run.id, status: run.status, toolEvents: run.toolEvents }))
   for (let opening = 1; opening <= 2; opening++) {
@@ -56,7 +57,7 @@ async function reopenTwice(runtime: Desktop, state: State, before: AutomationOcc
     expect(after.runs.filter(run => run.phase === 'execution').map(run => ({ id: run.id, status: run.status, toolEvents: run.toolEvents }))).toEqual(executions)
     expect(after.artifacts).toEqual(view.artifacts)
     expect(state.fixture!.endpoint.requests).toHaveLength(state.calls)
-    if (state.mode === 'reject') expect(await stat(state.file!).then(() => 'exists', error => (error as NodeJS.ErrnoException).code)).toBe('ENOENT')
+    if (expectFileMissing) expect(await stat(state.file!).then(() => 'exists', error => (error as NodeJS.ErrnoException).code)).toBe('ENOENT')
     else { expect(await readFile(state.file!, 'utf8')).toBe(naturalFileContent); expect((await stat(state.file!)).mtimeMs).toBe(state.mtime) }
     await runtime.reviewData(`自然定时${state.mode}第${opening}次重启`, { current, runs: executions, calls: state.calls, fileMtime: state.mtime })
   }
@@ -91,6 +92,7 @@ Given('自然分钟计划以{string}方式等待处理', async ({ runtime, natur
   expect(state.occurrence.nativeRunId).toMatch(new RegExp(`^sched_schedule_boai-${state.planId}_`)); expect(state.occurrence.manualRequestId).toBeUndefined()
   if (state.mode === 'approve' || state.mode === 'reject') {
     const pending = await approval(runtime)
+    state.approvalId = pending.value.id
     expect(pending.value.kind).toBe('command')
     state.file = join(pending.value.cwd, naturalFileName)
     expect(await stat(state.file).then(() => 'exists', error => (error as NodeJS.ErrnoException).code)).toBe('ENOENT')
@@ -172,4 +174,94 @@ Then('自然定时连接失败如实保留且两次重启不重做文件', async
   expect(view.artifacts).toEqual([])
   await runtime.reviewData('自然定时文件后真实连接中断', { current, runs: view.runs, brokenConnections: state.fixture!.brokenConnections() })
   await reopenTwice(runtime, state, current, view)
+})
+
+Then('审批已经失效且两次重启和迟到批准都不执行命令', async ({ runtime, natural: state }) => {
+  const { current, view } = await awaitTerminal(runtime, state)
+  expect(current).toMatchObject({ status: 'cancelled', cancellationCause: 'user', deliveryStatus: 'blocked', resultEvidence: [] })
+  expect(view.runs.find(run => run.phase === 'execution')?.status).toBe('cancelled')
+  expect(view.artifacts).toEqual([])
+  const staleApproval = () => runtime.page.evaluate(async id => {
+    try { await window.boai.request('approve', { id, approved: true, always: true }); return 'accepted' }
+    catch (error) { return String(error) }
+  }, state.approvalId!)
+  expect(await staleApproval()).toMatch(/审批已失效|任务已经结束|任务已停止/)
+  expect(state.fixture!.issued.filter(t => t.name === 'execute_command')).toHaveLength(1)
+  expect(state.fixture!.issued.some(t => t.name === 'write_file' || t.name === 'publish_artifact')).toBe(false)
+  expect(await stat(state.file!).then(() => 'exists', error => (error as NodeJS.ErrnoException).code)).toBe('ENOENT')
+  await runtime.reviewData('自然等待审批停止与迟到批准拒绝', { approvalId: state.approvalId, current, runs: view.runs })
+  await runtime.reviewNativeCheckpoint('自然等待审批停止后的执行记录')
+  await reopenTwice(runtime, state, current, view, true)
+  expect(await staleApproval()).toMatch(/审批已失效|任务已经结束|任务已停止/)
+  const snapshot = await runtime.page.evaluate(() => window.boai.request('snapshot', undefined))
+  expect(snapshot.approvals).toEqual([]); expect(snapshot.commandPermissions ?? []).toEqual([])
+  expect(await stat(state.file!).then(() => 'exists', error => (error as NodeJS.ErrnoException).code)).toBe('ENOENT')
+  expect(state.fixture!.endpoint.requests).toHaveLength(state.calls!)
+})
+
+When('连接恢复重启后我明确运行同一计划一次', async ({ runtime, natural: state }) => {
+  // This NEW recovery case includes an extra passive reopen before the two final reopens.
+  test.setTimeout(210_000)
+  state.fixture!.disconnect()
+  const { current: original, view: before } = await awaitTerminal(runtime, state)
+  expect(original).toMatchObject({ status: 'failed', deliveryStatus: 'blocked', resultEvidence: [] })
+  const beforeCalls = state.fixture!.endpoint.requests.length
+  state.fixture!.recoverForExplicitNewRun()
+  await runtime.restart()
+  expect(await occurrence(runtime, state)).toMatchObject({ id: original.id, status: 'failed', deliveryStatus: 'blocked', nativeRunId: original.nativeRunId })
+  expect((await detail(runtime, state)).messages).toEqual(before.messages)
+  expect((await detail(runtime, state)).runs.filter(run => run.phase === 'execution').map(run => run.id)).toEqual(before.runs.filter(run => run.phase === 'execution').map(run => run.id))
+  expect(state.fixture!.endpoint.requests).toHaveLength(beforeCalls)
+  expect(await readFile(state.file!, 'utf8')).toBe(naturalFileContent); expect((await stat(state.file!)).mtimeMs).toBe(state.mtime)
+  await runtime.reviewData('真实连接恢复后被动重启未接续旧失败', { original, calls: beforeCalls, fileMtime: state.mtime })
+  await runtime.page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '定时任务', exact: true }).click()
+  await openSchedule(runtime.page, '自然处理-disconnect')
+  await runtime.page.getByRole('button', { name: '立即运行一次', exact: true }).click()
+  const occurrences = async () => runtime.page.evaluate(async id => (await window.boai.request('listAutomations', undefined)).occurrences.filter(o => o.automationId === id), state.planId!)
+  await expect.poll(async () => (await occurrences()).length).toBe(2)
+  const next = (await occurrences()).find(o => o.id !== original.id)!
+  expect(next).toMatchObject({ source: 'manual', conversationId: state.conversationId, automationId: state.planId })
+  expect(next.manualRequestId).toBeTruthy(); expect(next.budgetId).not.toBe(original.budgetId)
+  await expect.poll(async () => (await runtime.page.evaluate(id => window.boai.request('getAutomationOccurrence', { id }), next.id)).deliveryStatus, { timeout: 30_000 }).toBe('delivered')
+  const current = await runtime.page.evaluate(id => window.boai.request('getAutomationOccurrence', { id }), next.id), view = await detail(runtime, state)
+  expect(current.status).toBe('completed')
+  const runs = view.runs.filter(run => run.phase === 'execution')
+  expect(runs).toHaveLength(2)
+  expect(runs.find(run => run.origin?.occurrenceId === original.id)?.status).toBe('failed')
+  expect(runs.find(run => run.origin?.occurrenceId === current.id)?.status).toBe('completed')
+  expect(state.fixture!.recoveredRunId()).not.toBe(state.fixture!.runId())
+  expect(state.fixture!.issued.filter(t => t.name === 'write_file' && t.runId === state.fixture!.runId())).toHaveLength(1)
+  expect(state.fixture!.issued.filter(t => t.name === 'write_file' && t.runId === state.fixture!.recoveredRunId())).toHaveLength(1)
+  expect(view.artifacts).toHaveLength(1)
+  expect(await readFile(view.artifacts[0].path, 'utf8')).toBe(naturalFileContent)
+  expect(current.resultEvidence).toEqual([expect.objectContaining({ kind: 'artifact', artifactId: view.artifacts[0].id })])
+  const file = join(runtime.root, 'v2', 'agents', 'researcher', 'workspace', 'sessions', state.conversationId!, 'runs', state.fixture!.recoveredRunId()!, naturalFileName)
+  expect(file).not.toBe(state.file); expect(await readFile(file, 'utf8')).toBe(naturalFileContent)
+  state.retry = { original, occurrence: current, view, file, mtime: (await stat(file)).mtimeMs }
+  await runtime.reviewNativeCheckpoint('连接恢复后明确新运行交付')
+  await runtime.reviewFile('连接恢复后新运行真实原件', file, { required: true })
+  await runtime.reviewFile('连接恢复后新运行正式成果', view.artifacts[0].path, { required: true })
+})
+
+Then('旧失败保持而新运行真实交付且两次重启不重放', async ({ runtime, natural: state }) => {
+  const retry = state.retry!, calls = state.fixture!.endpoint.requests.length
+  const executions = retry.view.runs.filter(run => run.phase === 'execution').map(run => ({ id: run.id, status: run.status, origin: run.origin, toolEvents: run.toolEvents }))
+  for (let opening = 1; opening <= 2; opening++) {
+    await runtime.restart()
+    const records = await runtime.page.evaluate(async ({ planId, requestId }) => ({ view: await window.boai.request('listAutomations', undefined), repeated: await window.boai.request('runAutomation', { id: planId, requestId }) }), { planId: state.planId!, requestId: retry.occurrence.manualRequestId! })
+    expect(records.view.occurrences.filter(o => o.automationId === state.planId)).toHaveLength(2)
+    expect(records.repeated.id).toBe(retry.occurrence.id)
+    expect(records.view.definitions.find(d => d.id === state.planId)?.enabled).toBe(true)
+    const old = records.view.occurrences.find(o => o.id === retry.original.id)!, fresh = records.view.occurrences.find(o => o.id === retry.occurrence.id)!
+    expect(old).toMatchObject({ source: 'schedule', status: 'failed', deliveryStatus: 'blocked', nativeRunId: retry.original.nativeRunId, scheduledFor: state.dueAt, resultEvidence: [] })
+    expect(fresh).toMatchObject({ source: 'manual', status: 'completed', deliveryStatus: 'delivered', manualRequestId: retry.occurrence.manualRequestId, resultEvidence: retry.occurrence.resultEvidence })
+    const after = await detail(runtime, state)
+    expect(after.messages).toEqual(retry.view.messages); expect(after.artifacts).toEqual(retry.view.artifacts)
+    expect(after.runs.filter(run => run.phase === 'execution').map(run => ({ id: run.id, status: run.status, origin: run.origin, toolEvents: run.toolEvents }))).toEqual(executions)
+    expect(state.fixture!.endpoint.requests).toHaveLength(calls)
+    expect(await readFile(state.file!, 'utf8')).toBe(naturalFileContent); expect((await stat(state.file!)).mtimeMs).toBe(state.mtime)
+    expect(await readFile(retry.file, 'utf8')).toBe(naturalFileContent); expect((await stat(retry.file)).mtimeMs).toBe(retry.mtime)
+    await runtime.reviewData(`连接恢复明确新执行第${opening}次重启`, { old, fresh, executions, calls, originalMtime: state.mtime, newMtime: retry.mtime })
+  }
+  expect(state.fixture!.errors).toEqual([]); expect(runtime.errors).toEqual([])
 })
