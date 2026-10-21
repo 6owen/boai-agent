@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: aria-disabled与实际编辑锁同步，使加载/待核对输入向辅助技术和真实UI操作报告同一禁用状态。
  * [OUTPUT]: scope变化保留编辑器DOM并重建ProseMirror文档/插件状态，撤销不跨会话；同scope草稿仍保留原历史。
  * [OUTPUT]: @员工与$资源/提示词共用原子插入，提示词正文快照随撤销/草稿保留。
  * [OUTPUT]: 单聊/群聊统一原子编辑器，资源标签保持来源和整体删除；外部选择标签独立成撤销步骤，快速删除后撤销不连带清除原草稿。
@@ -100,6 +101,7 @@ export function MentionInput(props: Props) {
     const current = documentDraft(instance.state.doc, props.draft)
     if (current.text !== props.draft.text || JSON.stringify(current.mentions) !== JSON.stringify(props.draft.mentions ?? [])) instance.commands.setContent(mentionDocument(props.draft), { emitUpdate: false })
     const dom = instance.view.dom
+    dom.setAttribute('aria-disabled', String(Boolean(props.disabled)))
     dom.dataset.placeholder = props.placeholder
     dom.dataset.empty = String(!props.draft.text)
     for (const [key, value] of [['aria-controls', props.listId], ['aria-activedescendant', props.activeId]]) {

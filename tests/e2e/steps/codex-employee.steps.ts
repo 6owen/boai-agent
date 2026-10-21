@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 两轮/重启发送沿原可编辑等待，随后直接核contenteditable与aria-disabled均就绪，不增加第二套等待或放宽业务断言。
  * [OUTPUT]: 原生普通聊天按13组10/11核对零私有memory阶段及两轮/重启线程；重启等实际编辑器可编辑后输入，保留原终态。
  * [OUTPUT]: 新建员工沿现行工作方式/本机Agent两级选择，核对明确profile；其余业务/调用/重启断言保持。
  * [OUTPUT]: 文件修订末尾沿原记忆窗口核对六阶段终态与原账本，并独立保存关闭前页面、实际退出/退出后状态及两版固定hash原件；原错误和留证错误共同保留。
@@ -344,6 +345,8 @@ Then('员工无需模型 API 即可连续回答两轮且重启保持身份', asy
   const send = async (content: string, count: number) => {
     const input = runtime.page.getByRole('textbox', { name: '消息内容', exact: true })
     await expect(input).toBeEditable()
+    expect(await input.getAttribute('contenteditable')).toBe('true')
+    expect(await input.getAttribute('aria-disabled')).toBe('false')
     await input.fill(content)
     await runtime.page.getByRole('button', { name: '发送消息', exact: true }).click()
     try {
