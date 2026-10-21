@@ -1,6 +1,6 @@
-# [INPUT]: Fixed natural-minute automation tests and unchanged product source.
-# [OUTPUT]: Four real Electron same-group native question/approval cases; actual stdio, scoped UI cancellation, independent peers and two reopens, no providers or retries.
-# [POS]: Isolated DS11 diagnostic; not formal Required checks or real-provider quality qualification.
+# [INPUT]: Fixed same-group native pending tests and unchanged product source.
+# [OUTPUT]: Two affected real Electron same-group native approval cases; actual stdio, scoped UI cancellation, independent peers and two reopens, no providers or retries.
+# [POS]: Isolated DS03 diagnostic; not formal Required checks or real-provider quality qualification.
 # [PROTOCOL]: Changes update Header; original CPU diagnostic retained outside tracked workflow.
 name: Same-group native pending UI diagnostic
 on:
@@ -34,24 +34,24 @@ jobs:
           const inputHash = await buildInputHash();
           if (inputHash !== 'f2b4fc421bdf39dd4011365a6b400c57da0d5d14f7397fd01780b76388a1bbb4') throw Error('Product inputs differ');
           await mkdir('.local/daily-native-group', { recursive: true });
-          await writeFile('.local/daily-native-group/source.json', JSON.stringify({ productCandidate: '376a4d710e873064d8e8e28758ec0dd7ab312772', testCandidate: '94c518fd55fa0d017e8fc0362f22b7c0db506491', inputHash, backends: ['codex', 'claude'], modes: ['input', 'approval'], realProviderCalls: false, actualStdio: true, rawNativeArgvNotArchived: true, cases: 4, retries: 0, originalDeadlinesAndAssertionsUnchanged: true }, null, 2));
+          await writeFile('.local/daily-native-group/source.json', JSON.stringify({ productCandidate: '376a4d710e873064d8e8e28758ec0dd7ab312772', testCandidate: 'b6109ce5f834cfd791033e26cc0c4337ff307280', inputHash, backends: ['codex', 'claude'], modes: ['approval'], realProviderCalls: false, actualStdio: true, rawNativeArgvNotArchived: true, cases: 2, retries: 0, originalDeadlinesAndAssertionsUnchanged: true }, null, 2));
           JS
       - name: Build current candidate and original BDD framework
         run: |
           pnpm build
           pnpm test:bddgen
-      - name: Freeze four same-group cases and run without retries
+      - name: Freeze two affected approval cases and run without retries
         env:
           BOAI_TEST_DEV_SERVER: '1'
         run: |
           node --input-type=module - <<'JS'
           import { execFileSync } from 'node:child_process';
           import { readFileSync } from 'node:fs';
-          const directory = '.local/daily-native-group', base = ['exec', 'playwright', 'test', '.features-gen/native-group-pending.feature.spec.js', '--retries', '0'];
+          const directory = '.local/daily-native-group', base = ['exec', 'playwright', 'test', '.features-gen/native-group-pending.feature.spec.js', '--grep', '同群停止一名原生员工后同事仍可批准执行', '--retries', '0'];
           execFileSync('pnpm', [...base, '--list', '--reporter=json'], { stdio: 'inherit', env: { ...process.env, PLAYWRIGHT_JSON_OUTPUT_NAME: `${directory}/list.json` } });
           const listed = JSON.parse(readFileSync(`${directory}/list.json`, 'utf8'));
           const count = suite => (suite.specs ?? []).reduce((sum, spec) => sum + (spec.tests ?? []).length, 0) + (suite.suites ?? []).reduce((sum, child) => sum + count(child), 0);
-          if (count(listed) !== 4) throw Error('Expected exactly four same-group native pending cases');
+          if (count(listed) !== 2) throw Error('Expected exactly two same-group native approval cases');
           execFileSync('pnpm', [...base, '--reporter=list,json'], { stdio: 'inherit', env: { ...process.env, BOAI_REVIEW_RUN_DIR: `${directory}/review`, PLAYWRIGHT_JSON_OUTPUT_NAME: `${directory}/playwright-results.json` } });
           JS
       - uses: actions/upload-artifact@v4
