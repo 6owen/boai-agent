@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 首轮4失败为未放弃已核未受理请求及误用region定位普通Card；沿原放弃入口/aria-label修正，180秒与原业务断言保持。
  * [INPUT]: 原stdio双后端/同群双员工、普通composer和原执行面板。
  * [OUTPUT]: 实际无目标拒绝/草稿、逐员工输入/审批/停止、真实文件/PID结束及双次重启原请求不重放。
  * [POS]: DS03新的4场真实Electron场景，180秒测试期限含三次启动，不改变原用例或产品本机预算。
@@ -104,6 +105,11 @@ When('未指定员工的回答被拒绝后我分别点名回答两人', async ({
   expect((await nativeGroupActions(runtime, group, state.runs!)).filter(action => action.status === 'pending')).toHaveLength(2)
   await runtime.reviewNativeCheckpoint(`${group.kind}无目标拒绝并保留草稿`)
   await toast.getByRole('button', { name: '关闭提示', exact: true }).click()
+  const abandon = runtime.page.getByRole('button', { name: '放弃未受理发送', exact: true })
+  await expect(abandon).toBeVisible()
+  await abandon.click()
+  await expect(abandon).toHaveCount(0)
+  expect(await messageDraft(input)).toBe(rejected)
   for (const [index, agent] of group.agents.entries()) {
     const content = `NATIVE_UI_REPLY_${index + 1}`
     await (await composer(runtime, group)).fill(content)
@@ -139,18 +145,18 @@ When('我从第一名员工的执行记录停止并批准第二名员工', async
   for (const agent of group.agents) expect(await stat(join(nativeGroupWork(group, agent), 'permission-marker')).then(() => 'exists', error => (error as NodeJS.ErrnoException).code)).toBe('ENOENT')
   await openExecution(runtime)
   const firstCard = panel(runtime, first), secondCard = panel(runtime, second)
-  await expect(firstCard.getByRole('region', { name: '原生执行请求', exact: true })).toBeVisible()
-  await expect(secondCard.getByRole('region', { name: '原生执行请求', exact: true })).toBeVisible()
+  await expect(firstCard.locator('[aria-label="原生执行请求"]')).toBeVisible()
+  await expect(secondCard.locator('[aria-label="原生执行请求"]')).toBeVisible()
   await firstCard.getByRole('button', { name: '停止本次执行', exact: true }).click()
   await expect.poll(async () => (await nativeGroupDetail(runtime, group)).runs.find(run => run.id === first.id)?.status).toBe('cancelled')
   const pending = (await nativeGroupActions(runtime, group, state.runs!)).find(action => action.agentId === group.agents[1].id)!
   expect(pending).toMatchObject({ id: state.actions!.find(action => action.agentId === group.agents[1].id)!.id, status: 'pending' })
   await expect(firstCard).toContainText('已停止')
   await expect(firstCard.getByRole('button', { name: '停止本次执行', exact: true })).toHaveCount(0)
-  await expect(secondCard.getByRole('region', { name: '原生执行请求', exact: true })).toBeVisible()
+  await expect(secondCard.locator('[aria-label="原生执行请求"]')).toBeVisible()
   const option = pending.options.find(option => /^(accept|allow|approve)(_|$)/.test(option.id))!
   expect(option).toBeTruthy()
-  await secondCard.getByRole('region', { name: '原生执行请求', exact: true }).getByRole('button', { name: option.label, exact: true }).click()
+  await secondCard.locator('[aria-label="原生执行请求"]').getByRole('button', { name: option.label, exact: true }).click()
 })
 Then('只有第二名员工产生批准文件且两次重启保持结果', async ({ runtime, nativeGroup: state }) => {
   const group = state.group!, view = await endState(runtime, state, ['cancelled', 'completed'])
@@ -161,7 +167,7 @@ Then('只有第二名员工产生批准文件且两次重启保持结果', async
   expect(await readFile(marker, 'utf8')).toBe('approved')
   await expect(panel(runtime, state.runs![0])).toContainText('已停止')
   await expect(panel(runtime, state.runs![1])).toContainText('已完成')
-  await expect(runtime.page.getByRole('region', { name: '原生执行请求', exact: true })).toHaveCount(0)
+  await expect(runtime.page.locator('[aria-label="原生执行请求"]')).toHaveCount(0)
   await runtime.reviewFile(`${group.kind}仅第二员工实际批准文件`, marker, { required: true })
   await runtime.reviewNativeCheckpoint(`${group.kind}同群单人停止同事批准后实际终态`)
   await reopenTwice(runtime, state, view)
