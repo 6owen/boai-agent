@@ -1,8 +1,8 @@
-# [INPUT]: Fixed same-group native pending tests and unchanged product source.
-# [OUTPUT]: Two affected real Electron same-group native approval cases; actual stdio, scoped UI cancellation, independent peers and two reopens, no providers or retries.
-# [POS]: Isolated DS03 diagnostic; not formal Required checks or real-provider quality qualification.
+# [INPUT]: Original bounded history-reading scenario and unchanged product source.
+# [OUTPUT]: One original real Electron 10000-message history scenario with latest-sidebar assertions; no providers, retries or deadline changes.
+# [POS]: Isolated DS02 diagnostic; not formal Required checks or real-provider quality qualification.
 # [PROTOCOL]: Changes update Header; original CPU diagnostic retained outside tracked workflow.
-name: Same-group native pending UI diagnostic
+name: History sidebar preview diagnostic
 on:
   push:
     branches: [infra/daily-source-identity]
@@ -10,7 +10,7 @@ on:
 permissions:
   contents: read
 jobs:
-  native_group:
+  reading_preview:
     runs-on: macos-15
     timeout-minutes: 25
     steps:
@@ -33,33 +33,33 @@ jobs:
           import { mkdir, writeFile } from 'node:fs/promises';
           const inputHash = await buildInputHash();
           if (inputHash !== 'f2b4fc421bdf39dd4011365a6b400c57da0d5d14f7397fd01780b76388a1bbb4') throw Error('Product inputs differ');
-          await mkdir('.local/daily-native-group', { recursive: true });
-          await writeFile('.local/daily-native-group/source.json', JSON.stringify({ productCandidate: '376a4d710e873064d8e8e28758ec0dd7ab312772', testCandidate: 'b6109ce5f834cfd791033e26cc0c4337ff307280', inputHash, backends: ['codex', 'claude'], modes: ['approval'], realProviderCalls: false, actualStdio: true, rawNativeArgvNotArchived: true, cases: 2, retries: 0, originalDeadlinesAndAssertionsUnchanged: true }, null, 2));
+          await mkdir('.local/daily-reading-preview', { recursive: true });
+          await writeFile('.local/daily-reading-preview/source.json', JSON.stringify({ productCandidate: '376a4d710e873064d8e8e28758ec0dd7ab312772', testCandidate: '3ba1521b', inputHash, realProviderCalls: false, originalHistoryCount: 10000, latestSidebarAfterOldLocationAndRestart: true, cases: 1, retries: 0, originalDeadlinesAndAssertionsUnchanged: true }, null, 2));
           JS
       - name: Build current candidate and original BDD framework
         run: |
           pnpm build
           pnpm test:bddgen
-      - name: Freeze two affected approval cases and run without retries
+      - name: Freeze original history case and run without retries
         env:
           BOAI_TEST_DEV_SERVER: '1'
         run: |
           node --input-type=module - <<'JS'
           import { execFileSync } from 'node:child_process';
           import { readFileSync } from 'node:fs';
-          const directory = '.local/daily-native-group', base = ['exec', 'playwright', 'test', '.features-gen/native-group-pending.feature.spec.js', '--grep', '同群停止一名原生员工后同事仍可批准执行', '--retries', '0'];
+          const directory = '.local/daily-reading-preview', base = ['exec', 'playwright', 'test', '.features-gen/reading.feature.spec.js', '--grep', '万条旧历史同文搜索保持原身份和有界窗口', '--retries', '0'];
           execFileSync('pnpm', [...base, '--list', '--reporter=json'], { stdio: 'inherit', env: { ...process.env, PLAYWRIGHT_JSON_OUTPUT_NAME: `${directory}/list.json` } });
           const listed = JSON.parse(readFileSync(`${directory}/list.json`, 'utf8'));
           const count = suite => (suite.specs ?? []).reduce((sum, spec) => sum + (spec.tests ?? []).length, 0) + (suite.suites ?? []).reduce((sum, child) => sum + count(child), 0);
-          if (count(listed) !== 2) throw Error('Expected exactly two same-group native approval cases');
+          if (count(listed) !== 1) throw Error('Expected exactly one original bounded history case');
           execFileSync('pnpm', [...base, '--reporter=list,json'], { stdio: 'inherit', env: { ...process.env, BOAI_REVIEW_RUN_DIR: `${directory}/review`, PLAYWRIGHT_JSON_OUTPUT_NAME: `${directory}/playwright-results.json` } });
           JS
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: daily-native-group
+          name: daily-reading-preview
           path: |
-            .local/daily-native-group/
+            .local/daily-reading-preview/
             test-results/
           include-hidden-files: true
           if-no-files-found: error
