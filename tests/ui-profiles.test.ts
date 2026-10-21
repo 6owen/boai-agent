@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 本机CI须显式本机只读标记；GitHub上下文仍拒绝本机档案，采集/接受继续禁止。
+ * [OUTPUT]: 显示器尺寸/工作区/缩放变化拒绝复用旧截图；本机CI显式只读，GitHub上下文仍拒绝本机档案。
  * [INPUT]: 实际独立目录/冻结PNG字节及GitHub运行上下文负例。
  * [OUTPUT]: 本地CLI不能写CI档案；逐case/旧整体官方来源绑定和字节核验，普通CI或PR不能生成候选。
  * [POS]: 环境档案门槛验收；不启动GUI、不证明实际像素通过。
@@ -60,6 +60,13 @@ it.each(['profile', 'environment', 'case', 'contract', 'bytes'])('%s错误不能
 })
 it('只返回本档案的已核验字节', async () => {
   const profile = await baseline(CI_PROFILE); expect(await readUiBaseline(profile, environment, 'case', 'fixed-contract')).toEqual(bytes)
+})
+it.each([{ scaleFactor: 2 }, { width: 1512 }, { workHeight: 859 }])('显示器变化不能复用相同系统和字体的旧截图：%j', async change => {
+  const display = { width: 1920, height: 1080, workWidth: 1920, workHeight: 971, scaleFactor: 1, primary: true }
+  const original = { ...environment, version: 3, displays: [display] }
+  const profile = await baseline(LOCAL_PROFILE, { environment: original })
+  expect(await readUiBaseline(profile, original, 'case', 'fixed-contract')).toEqual(bytes)
+  await expect(readUiBaseline(profile, { ...original, displays: [{ ...display, ...change }] }, 'case', 'fixed-contract')).rejects.toThrow('环境不匹配')
 })
 it('逐case来源覆盖旧整体来源且绑定本case提交，其他旧case仍可沿原来源读取', async () => {
   const original = { sha256, contract: 'fixed-contract', source: { commit: 'a'.repeat(40) } }

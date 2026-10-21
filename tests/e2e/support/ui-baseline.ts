@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 固定UI场景、真实Electron版本、期望图hash与runner环境身份。
- * [OUTPUT]: 明确档案的缺基线/错环境拒绝及实际像素比较；普通CI禁止候选与跨环境回退。
+ * [OUTPUT]: 每次截图核实际显示器/工作区和主屏归属；缺基线/错环境拒绝，普通CI禁止候选与跨环境回退。
  * [POS]: UI回归截图支撑；只读比较不修改产品页面或现有基线。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -16,10 +16,20 @@ import { uiProfile, assertCaptureMode, readUiBaseline } from '../../../scripts/u
 
 export async function compareUiBaseline(runtime: Desktop, caseId: string, info: TestInfo) {
   if (!process.env.BOAI_UI_ENVIRONMENT) throw new Error('请通过pnpm test:ui运行，缺少环境核对')
-  const environment = JSON.parse(process.env.BOAI_UI_ENVIRONMENT) as { electron: string; locale: string; timezone: string }
+  const environment = JSON.parse(process.env.BOAI_UI_ENVIRONMENT) as { electron: string; locale: string; timezone: string; displays: unknown[] }
   const actual = await runtime.app.evaluate(({ app }) => ({ electron: process.versions.electron, chrome: process.versions.chrome, packaged: app.isPackaged }))
   expect(actual.electron).toBe(environment.electron)
   expect(actual.packaged).toBe(false)
+  const display = await runtime.app.evaluate(({ screen, BrowserWindow }) => {
+    const primary = screen.getPrimaryDisplay(), window = BrowserWindow.getAllWindows()[0]
+    return {
+      onPrimary: screen.getDisplayMatching(window.getBounds()).id === primary.id,
+      displays: screen.getAllDisplays().map(item => ({ width: item.bounds.width, height: item.bounds.height, workWidth: item.workArea.width, workHeight: item.workArea.height, scaleFactor: item.scaleFactor, primary: item.id === primary.id })),
+    }
+  })
+  expect(display.onPrimary).toBe(true)
+  const displayRows = (items: unknown[]) => items.map(item => JSON.stringify(Object.entries(item as Record<string, unknown>).sort())).sort()
+  expect(displayRows(display.displays)).toEqual(displayRows(environment.displays))
   const renderer = new URL(runtime.page.url()); renderer.search = ''; renderer.hash = ''
   expect(renderer.href).toBe(pathToFileURL(resolve('dist/renderer/index.html')).href)
   const candidate = process.env.BOAI_UI_CANDIDATE_DIR

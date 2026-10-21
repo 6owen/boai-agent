@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 版本化BDD/截图合同、实际源码/字体/平台及显式候选接受命令。
- * [OUTPUT]: 本地候选只写本机档案；CI候选仅独立通道，明确环境只读比较不回退或放宽像素条件。
+ * [OUTPUT]: 环境v3包含实际显示器/工作区及缩放；本机/CI独立档案，只读比较不回退或放宽像素条件。
  * [POS]: 开发侧UI门槛CLI；不调用供应商、不提交或推送、不改产品数据。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -61,7 +61,7 @@ export async function sourceIdentity(workspace = root) {
 
 export async function renderEnvironment() {
   if (platform() !== 'darwin' || arch() !== 'arm64') throw new Error('当前UI基线仅适用于macOS arm64；其他平台需独立采集')
-  const matches = JSON.parse(execFileSync('swift', [join(root, 'scripts/ui-environment.swift')], { encoding: 'utf8', timeout: 60_000 }))
+  const { fonts: matches, displays } = JSON.parse(execFileSync('swift', [join(root, 'scripts/ui-environment.swift')], { encoding: 'utf8', timeout: 60_000 }))
   if (!['PingFangSC-Regular', 'PingFangSC-Medium', 'PingFangSC-Semibold'].every(name => matches.some(font => font.requested === name && font.postscript === name && font.path))) throw new Error('CoreText缺少固定中文字体，不能比较UI基线')
   const fonts = []
   for (const font of matches) { const { path, ...description } = font; fonts.push({ ...description, sha256: hash(await readFile(path)) }) }
@@ -72,7 +72,7 @@ export async function renderEnvironment() {
     if (files.length !== 1) throw new Error('无法唯一核对Geist字体')
     return readFile(join(root, files[0]))
   })
-  return { version: 2, platform: platform(), arch: arch(), osVersion: execFileSync('sw_vers', ['-productVersion'], { encoding: 'utf8' }).trim(), osBuild: execFileSync('sw_vers', ['-buildVersion'], { encoding: 'utf8' }).trim(), electron: require('electron/package.json').version, playwright: require('@playwright/test/package.json').version, geist: hash(bundled), pingFang: inventory, systemLanguages: preference('AppleLanguages'), systemLocale: preference('AppleLocale'), timezone: 'Asia/Singapore', locale: 'zh-CN', scale: 'css' }
+  return { version: 3, platform: platform(), arch: arch(), osVersion: execFileSync('sw_vers', ['-productVersion'], { encoding: 'utf8' }).trim(), osBuild: execFileSync('sw_vers', ['-buildVersion'], { encoding: 'utf8' }).trim(), electron: require('electron/package.json').version, playwright: require('@playwright/test/package.json').version, geist: hash(bundled), pingFang: inventory, displays, systemLanguages: preference('AppleLanguages'), systemLocale: preference('AppleLocale'), timezone: 'Asia/Singapore', locale: 'zh-CN', scale: 'css' }
 }
 
 async function runCommand(command, args, env) {
