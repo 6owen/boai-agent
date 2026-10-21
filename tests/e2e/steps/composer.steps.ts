@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 真实保存暂停与目录刷新期间核对菜单高度/顺序/无冗余文案，连续切换使用新版本，管理跳转通讯录且保留草稿。
+ * [OUTPUT]: 固定真实会话/消息加载和可编辑状态后填草稿；原保存暂停、菜单高度/顺序/无冗余文案及管理跳转断言保持。
  * [INPUT]: 当前模型目录、隔离Electron真实IPC与本地技能/文件。
  * [OUTPUT]: 当前连接内保存/重启/失败、隐藏权限、斜线命令、资源精确身份与群点名真实UI验收；数据源搜索/绑定过滤/原子删除撤销/迟到目录隔离/发送与重启。
  * [POS]: Composer BDD步骤；HTTP只提供目录并保持任务等待，不调用真实供应商。
@@ -46,7 +46,11 @@ Given('输入框具备当前连接的模型目录和独立员工', async ({ runt
   }, `http://127.0.0.1:${(server.address() as { port: number }).port}/v1`)
   Object.assign(scenario, setup)
   await runtime.page.locator('.conversation-item[aria-label="研究员"]').click()
-  await runtime.page.getByRole('textbox', { name: '消息内容' }).fill('未发送的草稿')
+  const chat = runtime.page.locator(`[data-conversation-view="chat"][data-conversation-id="${setup.direct.id}"]`)
+  await expect(chat.locator('.chat-messages-transition')).toHaveAttribute('aria-busy', 'false')
+  const input = chat.getByRole('textbox', { name: '消息内容', exact: true }).and(runtime.page.locator('[contenteditable="true"]'))
+  await expect(input).toBeEditable()
+  await input.fill('未发送的草稿')
 })
 When('连续切换和刷新模型时保持菜单稳定', async ({ runtime, scenario }) => {
   const page = runtime.page, trigger = page.getByRole('button', { name: '选择模型', exact: true }), menu = page.getByRole('menu', { name: '选择模型', exact: true })

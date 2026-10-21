@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 无窗口云端实证ready后484ms才更新workArea，预检须采样/事件连续稳定并有界失败；共享桌面锁覆盖guard退出，像素/主屏条件保持。
 [OUTPUT]: 主屏681/684跨API失败后改Electron同API独立预检，截图仍核实际page窗口；Required checks独立重核全18原报告/原件，待云端实测。
 [OUTPUT]: 2026-10-21自动CI迁回GitHub Actions；截图核实际page的原生窗口、主屏工作区及所有屏尺寸/缩放；独立云端v3完整候选仍需审阅后只读复验。
 [OUTPUT]: 环境v3补实际显示器逻辑/工作区尺寸、缩放和主屏身份，逐次截图核窗口归属；屏幕变化沿完整独立迁移，不改阈值。
@@ -172,3 +173,5 @@ node scripts/ui-ci-baseline.mjs accept --run 同一RUN_ID --candidate .local/已
 > 当前执行端更新：2026-10-21自动CI迁回GitHub Actions；截图核实际page的原生窗口、主屏工作区及所有屏尺寸/缩放；独立云端v3完整候选仍需审阅后只读复验。
 
 UI job通过后由record-ui登记summary、compare/summary、原始Playwright报告SHA及全部逐场景原件proof。Required checks必须重新读取全18个正常一次通过的原始结果、唯一实际环境附件及FeatureReview的截图/逐启动trace，沿既有verifyDesktopEvidence核对场景/时段/路径/字节。缺失、跳过、重试、环境不符、清理错误或改字节均失败；UI job本身也必须成功。汇总成功或候选成功均不能替代此门槛。
+
+预检在默认共享桌面锁内运行，screen的display-metrics-changed事件及每100ms采样任一变化均重置稳定窗口，连续1秒稳定才登记；总计10秒仍变化即失败，外层guard期限30秒。无窗口诊断已实证ready后的异步workArea更新，不用固定684、容差或单纯固定sleep代替就绪。预检实际退出后释放锁；Playwright再沿原globalSetup取同一锁。截图阶段仍精确核当前page窗口/主屏/显示配置，预检稳定不免除后续核验。
