@@ -1,5 +1,6 @@
 <!--
-[OUTPUT]: 新增第23组BOAI设计系统阅读入口；Raft参考、包/网站边界与后续独立开源，当前仅文档。
+[OUTPUT]: 23组已开始共享设计包与站点实现；首发清单归04，真实验证归03。
+[OUTPUT]: 第23组Raft参考和架构保留，当前首版实现与验证归03，清单归04。
 [OUTPUT]: 2026-10-20字体与Dock图标代码已提交推送；Memory开始Mastra/可选Memmy/日报来源接线，未完成范围与验证归5组15 §10.2。
 [OUTPUT]: 2026-10-20第5组15落实Memory直接复用清单和实施交接；Mastra/Alma/Memmy/Hy固定来源与接线、M0–M4/H，当前仅文档、以后实施。
 [OUTPUT]: 2026-10-20第5组14记忆选型：Mastra原生及Memmy外部插件优先、Hy/Mem0对照；13保留现状/Alma与来源设计，未安装或迁移。
@@ -161,7 +162,7 @@
 [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 -->
 
-2026-10-22新增[第23组BOAI设计系统](23.BOAI设计系统/README.md)：先核对Raft与BOAI源码，再定义`packages/tokens`、`packages/ui`及`apps/design-docs`的边界和独立开源路径。当前仅分析与文档，未迁移源码或发布；后续实施与唯一实际进度见该组03。
+2026-10-22新增[第23组BOAI设计系统](23.BOAI设计系统/README.md)：先核对Raft与BOAI源码，再定义`packages/tokens`、`packages/ui`及`apps/design-docs`的边界和独立开源路径。用户随后已授权开始实现；共享包和设计站首版已接线，实际验证与剩余见该组03。
 
 2026-10-20个人发布补充：[第22组04](./22.开发自动化与持续测试/04-macOS本机发布与升级方案.md)定义无Developer ID的Tag/Release和本机升级路线，保留源码开发方式，标准macOS自动更新另按签名条件接入；仅文档，未构建/发布/安装，实际状态归22组03。
 

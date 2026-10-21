@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 共享设计包计入UI源码身份，拒绝组件外改复用旧比较资格。
  * [INPUT]: 版本化BDD/截图合同、实际源码/字体/平台及显式候选接受命令。
  * [OUTPUT]: 环境v3严格核实际Electron显示器，并记录监督入口执行墙钟；本机/CI档案只读比较，不回退或放宽像素。
  * [POS]: 开发侧UI门槛CLI；不调用供应商、不提交或推送、不改产品数据。
@@ -54,7 +55,7 @@ export function validateReport(report, caseIds) {
 
 export async function sourceIdentity(workspace = root) {
   const readGit = (...args) => execFileSync('git', args, { cwd: workspace, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }).trim()
-  const names = readGit('ls-files', '-z', '--cached', '--others', '--exclude-standard').split('\0').filter(Boolean).filter(path => /^(src\/|resources\/|scripts\/|tests\/|package.json$|pnpm-lock.yaml$|pnpm-workspace.yaml$|playwright.config.ts$|vite.config.ts$|tailwind.config.ts$|tsconfig.json$)/.test(path) && !/^tests\/e2e\/baselines\/(?:.*\/)?(?:manifest\.json|[^/]+\.png)$/.test(path)).sort()
+  const names = readGit('ls-files', '-z', '--cached', '--others', '--exclude-standard').split('\0').filter(Boolean).filter(path => /^(src\/|packages\/|resources\/|scripts\/|tests\/|package.json$|pnpm-lock.yaml$|pnpm-workspace.yaml$|playwright.config.ts$|vite.config.ts$|tailwind.config.ts$|tsconfig.json$)/.test(path) && !/^tests\/e2e\/baselines\/(?:.*\/)?(?:manifest\.json|[^/]+\.png)$/.test(path)).sort()
   const digest = createHash('sha256')
   for (const name of names) { digest.update(name + '\0'); try { digest.update(await readFile(join(workspace, name))) } catch (error) { if (error.code !== 'ENOENT') throw error; digest.update('<deleted>') } }
   return { commit: readGit('rev-parse', 'HEAD'), sourceHash: digest.digest('hex'), dirty: Boolean(readGit('status', '--porcelain')) }

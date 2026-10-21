@@ -1,0 +1,209 @@
+{
+  "version": "0.1.0",
+  "pages": [
+    {
+      "slug": "overview",
+      "title": "BOAI Design",
+      "section": "开始",
+      "description": "安静、紧凑，为日常工作而设计。",
+      "file": "overview.md",
+      "example": "overview"
+    },
+    {
+      "slug": "getting-started",
+      "title": "开始使用",
+      "section": "开始",
+      "description": "在当前工作区接入共享包、样式与字体。",
+      "file": "getting-started.md",
+      "example": "installation"
+    },
+    {
+      "slug": "foundations/color",
+      "title": "颜色与表面",
+      "section": "设计基础",
+      "description": "用语义表达颜色，让状态、明暗主题和Soft表面保持一致。",
+      "file": "color.md",
+      "example": "colors"
+    },
+    {
+      "slug": "foundations/typography",
+      "title": "字体与字号",
+      "section": "设计基础",
+      "description": "UI、正文和代码各有一组偏好，所有层级从同一注册表派生。",
+      "file": "typography.md",
+      "example": "typography"
+    },
+    {
+      "slug": "foundations/shape",
+      "title": "圆角与层次",
+      "section": "设计基础",
+      "description": "细边缘、高光与轻阴影构成有分寸的Soft界面。",
+      "file": "shape.md",
+      "example": "surfaces"
+    },
+    {
+      "slug": "components/button",
+      "title": "Button",
+      "section": "组件",
+      "description": "执行一个明确动作，保持相同表面、状态与尺寸规则。",
+      "file": "button.md",
+      "example": "button"
+    },
+    {
+      "slug": "components/input",
+      "title": "Input",
+      "section": "组件",
+      "description": "单行、多行和表单布局，输入控件共享中性内侧边缘。",
+      "file": "input.md",
+      "example": "input"
+    },
+    {
+      "slug": "components/card",
+      "title": "Card",
+      "section": "组件",
+      "description": "将一个主题的标题、操作、内容和页脚组织在一起。",
+      "file": "card.md",
+      "example": "card"
+    },
+    {
+      "slug": "components/skeleton",
+      "title": "Skeleton",
+      "section": "组件",
+      "description": "先呈现稳定结构，再将异步数据替换到原位。",
+      "file": "skeleton.md",
+      "example": "skeleton"
+    },
+    {
+      "slug": "components/badge",
+      "title": "Badge 与 Separator",
+      "section": "组件",
+      "description": "轻量标记与细分割线，帮助建立层级。",
+      "file": "badge.md",
+      "example": "badge"
+    },
+    {
+      "slug": "components/sonner",
+      "title": "Sonner",
+      "section": "组件",
+      "description": "操作反馈统一出现，恢复操作留在原位置。",
+      "file": "sonner.md",
+      "example": "sonner"
+    },
+    {
+      "slug": "patterns/settings",
+      "title": "设置与表单",
+      "section": "使用模式",
+      "description": "字段就近说明，状态就近呈现，明确保存并保留草稿。",
+      "file": "settings.md",
+      "example": "settings"
+    }
+  ],
+  "components": [
+    {
+      "name": "Button",
+      "slug": "components/button",
+      "status": "preview",
+      "import": "@boai/ui/button",
+      "exports": [
+        "Button",
+        "buttonVariants"
+      ]
+    },
+    {
+      "name": "Input",
+      "slug": "components/input",
+      "status": "preview",
+      "import": "@boai/ui/input",
+      "exports": [
+        "Input"
+      ]
+    },
+    {
+      "name": "Textarea",
+      "slug": "components/input",
+      "status": "preview",
+      "import": "@boai/ui/textarea",
+      "exports": [
+        "Textarea"
+      ]
+    },
+    {
+      "name": "Field",
+      "slug": "components/input",
+      "status": "preview",
+      "import": "@boai/ui/field",
+      "exports": [
+        "Field",
+        "FieldGroup",
+        "FieldLabel",
+        "FieldDescription",
+        "FieldSet",
+        "FieldLegend",
+        "FieldSeparator",
+        "FieldContent",
+        "FieldTitle"
+      ]
+    },
+    {
+      "name": "Label",
+      "slug": "components/input",
+      "status": "preview",
+      "import": "@boai/ui/label",
+      "exports": [
+        "Label"
+      ]
+    },
+    {
+      "name": "Card",
+      "slug": "components/card",
+      "status": "preview",
+      "import": "@boai/ui/card",
+      "exports": [
+        "Card",
+        "CardHeader",
+        "CardTitle",
+        "CardDescription",
+        "CardAction",
+        "CardContent",
+        "CardFooter"
+      ]
+    },
+    {
+      "name": "Skeleton",
+      "slug": "components/skeleton",
+      "status": "preview",
+      "import": "@boai/ui/skeleton",
+      "exports": [
+        "Skeleton"
+      ]
+    },
+    {
+      "name": "Badge",
+      "slug": "components/badge",
+      "status": "preview",
+      "import": "@boai/ui/badge",
+      "exports": [
+        "Badge",
+        "badgeVariants"
+      ]
+    },
+    {
+      "name": "Separator",
+      "slug": "components/badge",
+      "status": "preview",
+      "import": "@boai/ui/separator",
+      "exports": [
+        "Separator"
+      ]
+    },
+    {
+      "name": "Toaster",
+      "slug": "components/sonner",
+      "status": "preview",
+      "import": "@boai/ui/sonner",
+      "exports": [
+        "Toaster"
+      ]
+    }
+  ]
+}

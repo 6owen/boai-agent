@@ -1,0 +1,32 @@
+{
+  "name": "@boai/tokens",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "BOAI semantic design tokens and pure appearance resolvers",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "files": [
+    "dist",
+    "src"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "development": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./typography": {
+      "types": "./dist/typography.d.ts",
+      "development": "./src/typography.ts",
+      "default": "./dist/typography.js"
+    },
+    "./foundation.css": "./dist/foundation.css",
+    "./tokens.json": "./dist/tokens.json",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "node ../../scripts/build-design.mjs"
+  }
+}

@@ -1,0 +1,19 @@
+/*
+ * [INPUT]: 共享CSS变量与Tailwind v4。
+ * [OUTPUT]: 现有BOAI语义颜色、字号、圆角与阴影的Tailwind映射。
+ * [POS]: @boai/ui主题集成，不包含Preflight。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
+ */
+@theme inline {
+ --font-sans:var(--font-ui-family);
+ --font-mono:var(--font-code-family);
+ --text-xs:var(--text-ui-caption);--text-sm:var(--text-ui-body);--text-base:var(--text-ui-emphasis);
+ --text-lg:var(--text-ui-heading);--text-xl:var(--text-ui-title);--text-2xl:var(--text-ui-display);--text-3xl:var(--text-ui-hero);
+ --radius-sm:calc(var(--radius) * .5);--radius-md:calc(var(--radius) * .75);--radius-lg:var(--radius);--radius-xl:var(--radius-card);--radius-2xl:calc(var(--radius) * 1.5);--radius-3xl:calc(var(--radius) * 2);--radius-4xl:var(--radius-composer);
+ --shadow-xs:var(--shadow-small);--shadow-sm:var(--shadow-card);--shadow-md:var(--shadow-popover);--shadow-lg:var(--shadow-popover);--shadow-xl:var(--shadow-popover);
+ --color-chart-1:var(--chart-1);--color-chart-2:var(--chart-2);--color-chart-3:var(--chart-3);--color-chart-4:var(--chart-4);--color-chart-5:var(--chart-5);
+ --color-sidebar:var(--sidebar);--color-sidebar-foreground:var(--sidebar-foreground);--color-sidebar-primary:var(--sidebar-primary);--color-sidebar-primary-foreground:var(--sidebar-primary-foreground);--color-sidebar-accent:var(--sidebar-accent);--color-sidebar-accent-foreground:var(--sidebar-accent-foreground);--color-sidebar-border:var(--sidebar-border);--color-sidebar-ring:var(--sidebar-ring);
+ --color-status-background:var(--status-background);
+
+ --color-background:var(--background);--color-foreground:var(--foreground);--color-card:var(--card);--color-card-foreground:var(--card-foreground);--color-popover:var(--popover);--color-popover-foreground:var(--popover-foreground);--color-primary:var(--primary);--color-primary-foreground:var(--primary-foreground);--color-secondary:var(--secondary);--color-secondary-foreground:var(--secondary-foreground);--color-muted:var(--muted);--color-muted-foreground:var(--muted-foreground);--color-accent:var(--accent);--color-accent-foreground:var(--accent-foreground);--color-border:var(--border);--color-input:var(--input);--color-ring:var(--ring);--color-destructive:var(--destructive);
+}

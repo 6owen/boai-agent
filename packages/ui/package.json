@@ -1,0 +1,106 @@
+{
+  "name": "@boai/ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "BOAI Soft React components shared by the desktop and documentation site",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "files": [
+    "dist",
+    "src",
+    "NOTICE.txt",
+    "SHADCN-LICENSE.txt"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "development": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./badge": {
+      "types": "./dist/components/badge.d.ts",
+      "development": "./src/components/badge.tsx",
+      "default": "./dist/badge.js"
+    },
+    "./button": {
+      "types": "./dist/components/button.d.ts",
+      "development": "./src/components/button.tsx",
+      "default": "./dist/button.js"
+    },
+    "./card": {
+      "types": "./dist/components/card.d.ts",
+      "development": "./src/components/card.tsx",
+      "default": "./dist/card.js"
+    },
+    "./field": {
+      "types": "./dist/components/field.d.ts",
+      "development": "./src/components/field.tsx",
+      "default": "./dist/field.js"
+    },
+    "./input": {
+      "types": "./dist/components/input.d.ts",
+      "development": "./src/components/input.tsx",
+      "default": "./dist/input.js"
+    },
+    "./label": {
+      "types": "./dist/components/label.d.ts",
+      "development": "./src/components/label.tsx",
+      "default": "./dist/label.js"
+    },
+    "./separator": {
+      "types": "./dist/components/separator.d.ts",
+      "development": "./src/components/separator.tsx",
+      "default": "./dist/separator.js"
+    },
+    "./skeleton": {
+      "types": "./dist/components/skeleton.d.ts",
+      "development": "./src/components/skeleton.tsx",
+      "default": "./dist/skeleton.js"
+    },
+    "./textarea": {
+      "types": "./dist/components/textarea.d.ts",
+      "development": "./src/components/textarea.tsx",
+      "default": "./dist/textarea.js"
+    },
+    "./styles.css": {
+      "development": "./src/styles.css",
+      "default": "./dist/styles/styles.css"
+    },
+    "./skin.css": {
+      "development": "./src/skin.css",
+      "default": "./dist/styles/skin.css"
+    },
+    "./theme.css": {
+      "development": "./src/theme.css",
+      "default": "./dist/styles/theme.css"
+    },
+    "./package.json": "./package.json",
+    "./sonner": {
+      "types": "./dist/components/sonner.d.ts",
+      "development": "./src/components/sonner.tsx",
+      "default": "./dist/sonner.js"
+    }
+  },
+  "scripts": {
+    "build": "node ../../scripts/build-design.mjs"
+  },
+  "dependencies": {
+    "@base-ui/react": "1.8.0",
+    "@boai/tokens": "workspace:*",
+    "class-variance-authority": "0.7.1",
+    "cn": "0.4.0",
+    "sonner": "2.0.8"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0"
+  }
+}

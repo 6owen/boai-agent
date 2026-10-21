@@ -1,3 +1,4 @@
+# [OUTPUT]: 设计包/静态站/仓库外tarball与Web浏览器专项加入工程job，原T1/UI门禁保持。
 # [INPUT]: 仓库变更、锁定依赖、离线协议服务。
 # [OUTPUT]: PR/main自动云端工程、32核心及全18UI只读门禁；逐步日志、UI原始报告与原件凭据独立核验，不启动本机。
 # [POS]: .github/workflows/tests.yml。
@@ -55,6 +56,22 @@ jobs:
               copyfile(path, output / path.name)
           print('Native crash stack reports:', min(len(reports), 5))
           PY
+      - name: Build design system documentation
+        run: pnpm build:design
+      - name: Install design browser
+        run: pnpm exec playwright install chromium
+      - name: Verify design distribution and browser behavior
+        run: pnpm check:design
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: design-system-preview
+          path: |
+            .local/design-site/
+            apps/design-docs/dist/
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 3
       - id: dataset
         run: pnpm eval:dataset
       - id: bdd

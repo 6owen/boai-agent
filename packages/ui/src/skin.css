@@ -1,0 +1,122 @@
+/*
+ * [INPUT]: 共享视觉token与原BOAI基础控件选择器。
+ * [OUTPUT]: Soft按钮、输入、卡片及分割线的唯一基础皮肤。
+ * [POS]: @boai/ui基础皮肤，不包含桌面布局。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
+ */
+/* Buttons retain the same skin when used as a trigger or via buttonVariants. */
+.soft-button, .appearance-color {
+  border-radius:var(--radius-control);
+  corner-shape:squircle;
+  border:0;
+  outline:none;
+  transition:background-color .2s,box-shadow .2s,transform .2s,color .2s;
+}
+.soft-button:not(.soft-button-content), .appearance-color { font-size:var(--text-ui-body);font-weight:500 }
+.soft-button:not(:disabled):not([aria-disabled=true]) { cursor:pointer }
+.soft-button:disabled, .soft-button[aria-disabled=true] { cursor:not-allowed;opacity:.5 }
+.soft-button-primary {
+  background-color:var(--primary);
+  color:var(--primary-foreground);
+  background-image:linear-gradient(to bottom,var(--soft-emphasis-top),transparent);
+  box-shadow:var(--shadow-emphasis);
+}
+.soft-button-ink { background-color:var(--foreground);color:var(--card);background-image:linear-gradient(to bottom,var(--soft-emphasis-top),transparent);box-shadow:var(--shadow-emphasis) }
+.soft-button-secondary, .appearance-color,
+:is([data-slot=input],[data-slot=textarea],[data-slot=input-group]:not(.chat-composer),[data-slot=combobox-chips],[data-slot=number-field-group]) {
+  --soft-hover-layer:transparent;
+  background-color:var(--card);
+  color:var(--foreground);
+  border-color:transparent;
+  background-image:linear-gradient(var(--soft-hover-layer),var(--soft-hover-layer)),linear-gradient(to bottom,transparent,var(--soft-shade));
+  box-shadow:var(--shadow-control);
+}
+:is(.soft-button-secondary,.appearance-color):hover:not(:disabled):not([aria-disabled=true]) { --soft-hover-layer:var(--soft-hover);background-color:var(--card) }
+:is(.soft-button-primary,.soft-button-ink,.soft-button-destructive):hover:not(:disabled):not([aria-disabled=true]) { background-image:linear-gradient(to bottom,var(--soft-emphasis-highlight),transparent);opacity:1 }
+:is(.soft-button-primary,.soft-button-ink,.soft-button-secondary,.soft-button-destructive):active:not(:disabled):not([aria-disabled=true]) { transform:translateY(1px) scale(.98) }
+.soft-button-outline { border:1px solid var(--border);background:transparent;color:var(--foreground);box-shadow:none }
+.soft-button-outline:hover:not(:disabled):not([aria-disabled=true]) { border-color:var(--ring);color:var(--link) }
+.soft-button-ghost { background:transparent;color:var(--foreground);box-shadow:none }
+.soft-button-ghost:is(:hover,[aria-expanded=true]):not(:disabled):not([aria-disabled=true]) { background:var(--accent) }
+.soft-button-ghost:is(.selected,.active,[aria-pressed=true],[aria-current=page]) { background:var(--selection) }
+.soft-button-destructive { background-color:var(--destructive);color:var(--primary-foreground);background-image:linear-gradient(to bottom,var(--soft-emphasis-top),transparent);box-shadow:var(--shadow-emphasis) }
+.soft-button-link { background:transparent;color:var(--link);box-shadow:none;text-underline-offset:4px }
+.soft-button-link:hover:not(:disabled) { text-decoration:underline }
+.soft-button-round, .soft-button.rounded-full { border-radius:var(--radius-pill);corner-shape:round }
+
+/* Fields retain the neutral Button surface and inner edge, without its drop shadow. */
+:is([data-slot=input],[data-slot=textarea],[data-slot=input-group]:not(.chat-composer),[data-slot=combobox-chips],[data-slot=number-field-group],[data-slot=select-trigger],[data-slot=native-select],[data-slot=date-range-trigger]) {
+  border:0;
+  border-radius:var(--radius-control);
+  corner-shape:squircle;
+  box-shadow:var(--shadow-input);
+  transition:background-color .2s,box-shadow .2s;
+}
+:is([data-slot=input],[data-slot=textarea],[data-slot=input-group]:not(.chat-composer),[data-slot=combobox-chips],[data-slot=number-field-group],[data-slot=select-trigger],[data-slot=native-select],[data-slot=date-range-trigger]):hover:not(:disabled):not([aria-disabled=true]):not([data-disabled]):not([readonly]):not(:has(:disabled,[readonly])) { --soft-hover-layer:var(--soft-hover) }
+:is([data-slot=input],[data-slot=textarea],[data-slot=input-group]:not(.chat-composer),[data-slot=combobox-chips],[data-slot=number-field-group],[data-slot=select-trigger],[data-slot=native-select],[data-slot=date-range-trigger]):is([aria-invalid=true],:has([aria-invalid=true])) { box-shadow:inset 0 0 0 1px var(--destructive),var(--shadow-input) }
+:is([data-slot=select-trigger],[data-slot=native-select],[data-slot=date-range-trigger]):active:not(:disabled):not([aria-disabled=true]) { transform:none }
+:is([data-slot=date-range-trigger][data-placeholder],[data-slot=date-range-trigger] .app-icon) { color:var(--muted-foreground) }
+:is([data-slot=command-input-wrapper],[data-slot=combobox-content])>[data-slot=input-group] { background-image:none }
+/* Composite controls never draw a second frame when their text input receives focus. */
+[data-slot=input-group] > [data-slot=input-group-control] { border:0; border-radius:0; background:transparent; box-shadow:none }
+[data-slot=number-field] [data-slot=number-field-group] { background-color:var(--card);background-image:none }
+[data-slot=number-field-input] { border:0;border-radius:0;background:transparent;color:var(--foreground);font-size:var(--text-ui-body);box-shadow:none }
+[data-slot=number-field-stepper] { border-left:0;border-radius:0;background:transparent;color:var(--muted-foreground);box-shadow:var(--shadow-divider-vertical) }
+[data-slot=number-field] [data-slot=number-field-stepper]:is(:hover,:focus-visible):not([data-disabled]) { background:var(--soft-hover);color:var(--foreground) }
+[data-slot=number-field-stepper][data-disabled] { cursor:not-allowed;opacity:.5 }
+[data-slot=number-field][data-disabled] [data-slot=number-field-group] { opacity:.5 }
+[data-slot=input-otp-slot] { background-color:var(--card);box-shadow:none;corner-shape:squircle }
+:is([data-slot=checkbox],[data-slot=radio-group-item],[data-slot=switch]) { box-shadow:inset 0 1px 2px var(--soft-edge-top);background-image:linear-gradient(to bottom,var(--soft-emphasis-top),transparent) }
+[data-slot=switch-thumb] { background-color:var(--soft-thumb);box-shadow:var(--shadow-small) }
+[data-slot=slider-thumb] { box-shadow:var(--shadow-control) }
+
+/* All raised surfaces use the same light source, including body-level portals. */
+.soft-surface, .soft-card {
+  background-color:var(--card);
+  background-image:linear-gradient(to bottom,var(--soft-surface-tint),transparent);
+  border:1px solid var(--border);
+  border-radius:var(--radius-card);
+  corner-shape:squircle;
+  box-shadow:var(--shadow-card);
+}
+/* Card, surface buttons and semantic containers (for example forms) share one skin. */
+.soft-card { border-color:transparent;box-shadow:var(--shadow-control) }
+.soft-card.soft-button-secondary { background-image:linear-gradient(var(--soft-hover-layer),var(--soft-hover-layer)),linear-gradient(to bottom,var(--soft-surface-tint),transparent) }
+/* Card, row groups and table cells share the same divider skin. */
+.soft-divider-top, .soft-divide-y>:not([hidden])~:not([hidden]), .soft-table>:is(tbody,tfoot)>tr+tr>:is(th,td), .soft-table>tfoot>tr:first-child>:is(th,td) { border-top:1px solid transparent;box-shadow:var(--shadow-divider) }
+.soft-separator, .soft-table>thead>tr>:is(th,td)::after { background:transparent;box-shadow:var(--shadow-divider) }
+.soft-separator[data-orientation=vertical] { box-shadow:var(--shadow-divider-vertical) }
+.soft-table { border-collapse:separate;border-spacing:0 }
+.soft-table>thead>tr>:is(th,td) { position:relative }
+.soft-table>thead>tr>:is(th,td)::after { content:"";position:absolute;inset-inline:0;bottom:0;height:1px;pointer-events:none }
+.soft-elevated { box-shadow:var(--shadow-popover) }
+
+/* Sonner injects unlayered defaults; keep its behavior and use the shared skin. */
+.app-toaster[data-sonner-toaster] { font-family:var(--font-ui-family,inherit) !important }
+.app-toast[data-sonner-toast][data-styled=true] {
+  background-color:var(--card) !important;
+  background-image:linear-gradient(to bottom,var(--soft-surface-tint),transparent) !important;
+  color:var(--foreground) !important;
+  border:0 !important;
+  border-radius:var(--radius-card) !important;
+  box-shadow:var(--shadow-control) !important;
+  font-size:var(--text-ui-secondary) !important;
+  padding:12px 14px !important;
+  gap:12px !important;
+}
+.app-toast[data-sonner-toast] [data-content] { order:1;flex:1 1 0 !important;min-width:0;overflow-wrap:anywhere;gap:2px !important }
+.app-toast[data-sonner-toast] [data-title] { font-size:var(--text-ui-secondary) !important;font-weight:500 !important;line-height:1.4 !important }
+.app-toast[data-sonner-toast] [data-description] { color:var(--muted-foreground) !important;font-size:var(--text-ui-caption) !important;line-height:1.4 !important }
+.app-toast[data-type=error] { --toast-status-color:var(--destructive);--toast-icon-background:var(--destructive-background) }
+.app-toast[data-type=success] { --toast-status-color:var(--success);--toast-icon-background:var(--success-background) }
+.app-toast[data-type=warning] { --toast-status-color:var(--warning);--toast-icon-background:var(--warning-background) }
+.app-toast[data-type=info] { --toast-status-color:var(--foreground);--toast-icon-background:var(--selection) }
+.app-toast[data-sonner-toast] [data-icon] { order:0;flex:0 0 32px !important;width:32px !important;height:32px !important;margin:0 !important;justify-content:center !important;border-radius:var(--radius-pill);background-color:var(--toast-icon-background,var(--muted));background-image:linear-gradient(to bottom,var(--soft-surface-highlight),var(--soft-shade));box-shadow:var(--shadow-input),0 0 0 2px var(--card),0 0 0 2.5px var(--soft-hairline);color:var(--toast-status-color,var(--foreground)) }
+.app-toast[data-sonner-toast] [data-icon]>.app-icon { width:16px;height:16px }
+.app-toast[data-sonner-toast] [data-close-button] { position:static !important;inset:auto !important;transform:none !important;order:3;flex:0 0 20px !important;width:20px !important;height:20px !important;margin:0 !important;background:transparent !important;color:var(--foreground) !important;border:0 !important;border-radius:var(--radius-control) !important;box-shadow:none !important }
+.app-toast[data-sonner-toast] [data-close-button]:hover { background:var(--accent) !important }
+.app-toast[data-sonner-toast] [data-close-button]>.app-icon { width:14px;height:14px }
+.app-toast[data-sonner-toast] :is([data-close-button],[data-button]):focus-visible { box-shadow:none !important }
+.app-toast[data-sonner-toast] [data-button] { order:2;border-radius:var(--radius-control) !important;font-family:inherit }
+.app-toast[data-sonner-toast] [data-button]:not([data-cancel]) { background:var(--primary) !important;color:var(--primary-foreground) !important }
+.app-toast[data-sonner-toast] [data-cancel] { background:var(--secondary) !important;color:var(--secondary-foreground) !important }

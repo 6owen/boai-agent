@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 共享组件源码走Vite开发条件；token编辑重新生成默认CSS。
  * [INPUT]: 当前 Renderer、原版浏览器 toolbar/empty-state 独立 HTML 与本地样式。
  * [OUTPUT]: 开发与随包三入口构建，浏览器 UI 路径不依赖旧 Craft 工程。
  * [POS]: vite.config.ts。
@@ -8,12 +9,14 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { resolve } from 'node:path'
+// @ts-expect-error Shared Node build helper has no declaration file.
+import { designTokensPlugin } from './scripts/design-packages.mjs'
 
 export default defineConfig({
   root: resolve('src/renderer'),
   base: './',
   resolve: { alias: { '@': resolve('src/renderer'), '@shared': resolve('src/shared') } },
-  plugins: [react(), tailwindcss(), {
+  plugins: [react(), tailwindcss(), designTokensPlugin(), {
     name: 'development-refresh-policy',
     apply: 'serve',
     transformIndexHtml(html) {

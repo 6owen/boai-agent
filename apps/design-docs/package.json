@@ -1,0 +1,28 @@
+{
+  "name": "@boai/design-docs",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node ../../scripts/dev-design.mjs",
+    "build": "node ../../scripts/build-design.mjs --site"
+  },
+  "dependencies": {
+    "@boai/tokens": "workspace:*",
+    "@boai/ui": "workspace:*",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-markdown": "10.1.0",
+    "remark-gfm": "4.0.1",
+    "sonner": "2.0.8",
+    "cn": "0.4.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "6.1.1",
+    "@tailwindcss/vite": "4.3.3",
+    "tailwindcss": "4.3.3",
+    "vite": "8.3.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0"
+  }
+}

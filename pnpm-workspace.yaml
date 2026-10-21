@@ -1,9 +1,11 @@
 # [INPUT]: BOAI pnpm workspace与Lody固定diff依赖及补丁。
-# [OUTPUT]: 单应用工作区、原生构建白名单及局部依赖锁定；Electron解压使用兼容Node24的yauzl。
+# [OUTPUT]: 桌面/设计文档站与tokens/ui共享工作区、原生构建白名单及局部依赖锁定；Electron解压使用兼容Node24的yauzl。
 # [POS]: 仓库依赖配置。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
 packages:
   - '.'
+  - 'packages/*'
+  - 'apps/*'
 onlyBuiltDependencies:
   - electron
   - esbuild
