@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 396877两场通过但停止后原图仍为旧待批帧；补原面板终态/按钮移除后截取，不变期限或后端断言。
  * [OUTPUT]: 追加待批停止/迟到审批拒绝和断流恢复后UI明确新运行；新恢复场景210秒含四次冷启动，原四场180秒保持。
  * [OUTPUT]: 首轮四场因会话同名按钮严格定位失败、未到自然触发；仅限定主导航复验，原副作用/终态断言保持。
  * [INPUT]: 自然分钟计划、原审批卡/执行记录、真实工具与独立Desktop重启。
@@ -190,6 +191,10 @@ Then('审批已经失效且两次重启和迟到批准都不执行命令', async
   expect(state.fixture!.issued.some(t => t.name === 'write_file' || t.name === 'publish_artifact')).toBe(false)
   expect(await stat(state.file!).then(() => 'exists', error => (error as NodeJS.ErrnoException).code)).toBe('ENOENT')
   await runtime.reviewData('自然等待审批停止与迟到批准拒绝', { approvalId: state.approvalId, current, runs: view.runs })
+  const panel = runtime.page.locator(`[data-occurrence-detail-id="${current.id}"]`)
+  await expect(panel.getByRole('button', { name: '停止本次执行', exact: true })).toHaveCount(0)
+  await expect(panel).toContainText('已停止')
+  await expect(panel).not.toContainText('等待批准')
   await runtime.reviewNativeCheckpoint('自然等待审批停止后的执行记录')
   await reopenTwice(runtime, state, current, view, true)
   expect(await staleApproval()).toMatch(/审批已失效|任务已经结束|任务已停止/)
@@ -238,6 +243,10 @@ When('连接恢复重启后我明确运行同一计划一次', async ({ runtime,
   const file = join(runtime.root, 'v2', 'agents', 'researcher', 'workspace', 'sessions', state.conversationId!, 'runs', state.fixture!.recoveredRunId()!, naturalFileName)
   expect(file).not.toBe(state.file); expect(await readFile(file, 'utf8')).toBe(naturalFileContent)
   state.retry = { original, occurrence: current, view, file, mtime: (await stat(file)).mtimeMs }
+  const panel = runtime.page.locator(`[data-occurrence-detail-id="${current.id}"]`)
+  await expect(panel).toBeVisible()
+  await expect(panel.getByRole('button', { name: '停止本次执行', exact: true })).toHaveCount(0)
+  await expect(panel).toContainText('已完成')
   await runtime.reviewNativeCheckpoint('连接恢复后明确新运行交付')
   await runtime.reviewFile('连接恢复后新运行真实原件', file, { required: true })
   await runtime.reviewFile('连接恢复后新运行正式成果', view.artifacts[0].path, { required: true })
