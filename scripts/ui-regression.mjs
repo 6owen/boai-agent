@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 版本化BDD/截图合同、实际源码/字体/平台及显式候选接受命令。
- * [OUTPUT]: 环境v3在共享桌面锁内用实际Electron同API核显示器/工作区及缩放；本机/CI独立档案，只读比较不回退或放宽像素条件。
+ * [OUTPUT]: 环境v3严格核实际Electron显示器，并记录监督入口执行墙钟；本机/CI档案只读比较，不回退或放宽像素。
  * [POS]: 开发侧UI门槛CLI；不调用供应商、不提交或推送、不改产品数据。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -15,6 +15,7 @@ import { verifyBuildIdentity } from './build-identity.mjs'
 import { acquireResourceLock } from './resource-lock.mjs'
 import { createBaselineReview, verifyBaselineReview } from './ui-baseline-review.mjs'
 import { uiProfile, assertCaptureMode, assertProfileCommand } from './ui-profiles.mjs'
+import { recordDesktopExecution } from './desktop-evidence.mjs'
 
 const require = createRequire(import.meta.url)
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
@@ -109,7 +110,7 @@ async function execute(directory, ids, environment, profile, candidate, remoteCa
   const pattern = `界面 (${ids.join('|')}) `
   let exit = { code: null, signal: null }, result
   try {
-    exit = await runCommand('pnpm', ['exec', 'playwright', 'test', '--grep', pattern, '--retries=0'], env)
+    exit = await recordDesktopExecution(directory, () => runCommand('pnpm', ['exec', 'playwright', 'test', '--grep', pattern, '--retries=0'], env))
     result = validateReport(await json(join(directory, 'playwright.json')), ids)
   } catch (error) { result = { status: 'failed', cases: ids, errors: [String(error)] } }
   if (exit.code !== 0) { result.status = 'failed'; result.errors.push(`测试进程退出：${JSON.stringify(exit)}`) }

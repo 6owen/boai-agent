@@ -21,8 +21,9 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: |
+          set -o pipefail
           mkdir -p .local/diagnostic
-          pnpm exec vitest run tests/desktop-evidence.test.ts --maxWorkers=2 2>&1 | tee .local/diagnostic/clock.log
+          pnpm exec vitest run tests/desktop-evidence.test.ts tests/ui-ci-evidence.test.ts --maxWorkers=2 2>&1 | tee .local/diagnostic/clock.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:

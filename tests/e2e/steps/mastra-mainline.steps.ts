@@ -50,10 +50,10 @@ async function approveReportWrite(runtime: Desktop) {
     const target = window as unknown as { approvalProbe?: unknown[] }
     if (target.approvalProbe) return
     target.approvalProbe = []
-    for (const name of ['pointerdown', 'pointerup', 'click']) document.addEventListener(name, event => {
+    for (const name of ['pointerdown', 'pointerup', 'click', 'keydown']) document.addEventListener(name, event => {
       const element = event.target instanceof Element ? event.target : null
       const button = element?.closest('button'), approval = element?.closest('[data-approval-id]')
-      target.approvalProbe!.push({ type: name, at: new Date().toISOString(), x: (event as PointerEvent).clientX, y: (event as PointerEvent).clientY, text: button?.textContent, approvalId: approval?.getAttribute('data-approval-id'), rect: button?.getBoundingClientRect().toJSON(), paging: document.querySelector('.messages')?.getAttribute('aria-busy') })
+      target.approvalProbe!.push({ type: name, key: (event as KeyboardEvent).key, trusted: event.isTrusted, at: new Date().toISOString(), x: (event as PointerEvent).clientX, y: (event as PointerEvent).clientY, text: button?.textContent, approvalId: approval?.getAttribute('data-approval-id'), rect: button?.getBoundingClientRect().toJSON(), paging: document.querySelector('.messages')?.getAttribute('aria-busy') })
     }, true)
   })
   let runId: string | undefined
@@ -67,7 +67,11 @@ async function approveReportWrite(runtime: Desktop) {
     await expect(approval).toContainText(`${operation}文件 self:/runs/${runId}/report.md`)
     const original = runtime.page.locator(`[data-approval-id="${pending[0].id}"]`)
     await expect(original).toBeVisible()
-    await original.getByRole('button', { name: '允许这次执行', exact: true }).click()
+    const allow = original.getByRole('button', { name: '允许这次执行', exact: true })
+    await expect(allow).toBeEnabled()
+    await allow.focus()
+    await expect(allow).toBeFocused()
+    await allow.press('Enter')
     try { await expect(original).toHaveCount(0) }
     finally {
       await runtime.reviewData('[DEBUG-approval-265] ' + operation, await runtime.page.evaluate(async () => ({ events: (window as unknown as { approvalProbe?: unknown[] }).approvalProbe, approvals: (await window.boai.request('snapshot', undefined)).approvals, paging: document.querySelector('.messages')?.getAttribute('aria-busy') })))
