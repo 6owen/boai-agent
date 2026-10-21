@@ -1,25 +1,18 @@
-# [INPUT]: 第23组DU0的原生待决输入及渠道原生崩溃场景，固定源码与离线协议夹具。
-# [OUTPUT]: 受控提问延迟、GC和原生/自动化并发负载各三次验证；保留完整原件，不提供正式门禁资格。
-# [POS]: 第23组实施分支的有界诊断入口，生产门禁仍归tests.yml。
+# [INPUT]: 第23组d6714911产品候选及原CLI桌面场景，独立协议与数据目录。
+# [OUTPUT]: 已加载源码身份的真实编译/模块及pnpm dev桌面-CLI-重启核验；不提供Required checks。
+# [POS]: 独立诊断分支，仅核现有源码身份及原业务场景。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
-name: Daily stability diagnostics
+name: Daily source identity
 on:
   push:
-    branches: [feat/personal-daily-stability]
-    paths:
-      - .github/workflows/daily-stability-diagnostic.yml
+    branches: [infra/daily-source-identity]
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  native:
-    name: Native ${{ matrix.probe }}
+  identity:
     runs-on: macos-15
-    timeout-minutes: 18
-    strategy:
-      fail-fast: false
-      matrix:
-        probe: [delayed-input, gc-channels, contention]
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -27,68 +20,29 @@ jobs:
         with:
           node-version: '24.16.0'
           cache: pnpm
-      - name: Install locked dependencies
-        env:
-          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
-        run: pnpm install --frozen-lockfile
-      - name: Run three independent original scenarios
-        env:
-          STABILITY_PROBE: ${{ matrix.probe }}
+      - name: Install dependencies
         run: |
-          python3 - <<'PY'
-          import json, os, subprocess, time
-          from pathlib import Path
-          probe = os.environ['STABILITY_PROBE']
-          output = Path('.local/daily-stability') / probe
-          output.mkdir(parents=True)
-          if probe == 'delayed-input':
-              source = Path('tests/fixtures/native-claude-conversation.mjs')
-              original = source.read_text()
-              needle = "  const answer=await ask('AskUserQuestion'"
-              replacement = "  if(prompt.members?.find(member=>member.id===prompt.employeeId)?.name==='第二位提问员工')await new Promise(resolve=>setTimeout(resolve,1200))\n" + needle
-              if original.count(needle) != 1:
-                  raise ValueError('Unexpected fixture; no diagnostic mutation applied')
-              source.write_text(original.replace(needle, replacement))
-              (output / 'fixture-change.json').write_text(json.dumps({'file': str(source), 'change': 'Delay only the second employee question by 1200ms; original product and assertions unchanged'}, indent=2))
-          elif probe == 'gc-channels':
-              Path('.local/stability-gc.setup.ts').write_text("import { afterEach, afterAll } from 'vitest'; const collect=async()=>{ if(typeof global.gc!=='function')throw Error('GC probe unavailable'); global.gc(); await new Promise(resolve=>setImmediate(resolve)); global.gc() }; afterEach(collect); afterAll(collect);\n")
-              Path('.local/stability-gc.config.mjs').write_text("import { mergeConfig } from 'vitest/config'; import base from '../vitest.config.ts'; export default mergeConfig(base,{test:{setupFiles:['.local/stability-gc.setup.ts'],execArgv:['--expose-gc']}});\n")
-          results = []
-          for iteration in range(1, 4):
-              files = ['tests/native-conversation.test.ts'] if probe == 'delayed-input' else ['tests/channels-native.test.ts'] if probe == 'gc-channels' else ['tests/native-conversation.test.ts', 'tests/channels-native.test.ts', 'tests/automation-repository.test.ts']
-              command = ['pnpm', 'exec', 'vitest', 'run', *files, '--maxWorkers=2', '--reporter=json', f'--outputFile={output}/{iteration}.json']
-              if probe == 'delayed-input':
-                  command += ['-t', 'requires a target when multiple employees are awaiting native input|rejects a missing native question']
-              elif probe == 'gc-channels':
-                  command += ['--config', '.local/stability-gc.config.mjs']
-              started = time.time()
-              with (output / f'{iteration}.log').open('w') as log:
-                  result = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT)
-              item = {'iteration': iteration, 'command': command, 'exitCode': result.returncode, 'startedAt': started, 'finishedAt': time.time()}
-              results.append(item)
-              (output / 'summary.json').write_text(json.dumps({'sha': os.environ['GITHUB_SHA'], 'results': results}, indent=2))
-              print(json.dumps(item), flush=True)
-              if result.returncode:
-                  print((output / f'{iteration}.log').read_text()[-12000:], flush=True)
-          raise SystemExit(1 if any(item['exitCode'] for item in results) else 0)
-          PY
-      - name: Collect native crash reports
-        if: always()
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          from shutil import copyfile
-          output = Path('.local/daily-stability/crashes')
-          output.mkdir(parents=True, exist_ok=True)
-          reports = sorted((Path.home() / 'Library/Logs/DiagnosticReports').glob('node*.ips'), key=lambda path: path.stat().st_mtime, reverse=True)
-          for path in reports[:5]:
-              copyfile(path, output / path.name)
-          PY
+          pnpm install --frozen-lockfile
+          node node_modules/electron/install.js
+      - name: Check actual compiled provenance
+        run: pnpm exec vitest run tests/runtime-versions.test.ts tests/build-identity.test.ts --maxWorkers=2
+      - name: Build candidate
+        run: pnpm build
+      - name: Generate original BDD
+        run: pnpm test:bddgen
+      - name: Actual development desktop and standalone CLI
+        env:
+          BOAI_TEST_DEV_SERVER: '1'
+          BOAI_REVIEW_RUN_DIR: .local/source-identity-desktop
+          PLAYWRIGHT_JSON_OUTPUT_NAME: .local/source-identity-desktop/playwright-results.json
+        run: pnpm exec playwright test --grep '独立CLI构建与桌面在同一私聊交替发送并在重启后核对' --retries 0 --reporter=list,json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: daily-stability-${{ matrix.probe }}
-          path: .local/daily-stability/
+          name: daily-source-identity
+          path: |
+            .local/source-identity-desktop/
+            test-results/
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 3
