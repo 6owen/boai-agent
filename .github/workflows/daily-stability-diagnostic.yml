@@ -1,8 +1,8 @@
-# [INPUT]: 9fb016ac固定React Aria补丁、原依赖回归及原后台桌面/资源合同。
-# [OUTPUT]: 实际依赖8项、最小设置循环和原210/70/28/120秒资源复验；不改原门槛/期限/重试。
-# [POS]: 第23组资源失败最小化，原完整红例和所有原门槛保持。
-# [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
-name: Daily transition fix and original resource validation
+# [INPUT]: Fixed candidate 9fb016ac and all six original directory permission BDD cases.
+# [OUTPUT]: Current dev-mode directory approval/refusal/temp grants/native configuration/restart evidence; original assertions and deadlines unchanged.
+# [POS]: DS08 targeted cloud evidence, not Required checks or real provider certification.
+# [PROTOCOL]: Changes update Header and workflow directory map.
+name: Daily directory permission lifecycle
 on:
   push:
     branches: [infra/daily-source-identity]
@@ -10,9 +10,9 @@ on:
 permissions:
   contents: read
 jobs:
-  settings-retention:
+  directory-permissions:
     runs-on: macos-15
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -26,77 +26,32 @@ jobs:
           node node_modules/electron/install.js
       - name: Check original types
         run: pnpm typecheck
-      - name: Verify real dependency cancellation regression
-        run: pnpm exec vitest run --maxWorkers=2 tests/react-aria-transition.test.ts --reporter=default --reporter=json --outputFile=.local/transition-unit.json
-      - name: Generate an explicitly isolated diagnostic BDD
+      - name: Bind exact product inputs
         run: |
           node --input-type=module - <<'JS'
           import { buildInputHash } from './scripts/build-identity.mjs';
-          import { mkdir, writeFile, appendFile } from 'node:fs/promises';
-          const inputHash=await buildInputHash();
-          if(inputHash!=='5a82db0e4d0010e4946714c47b406eb7f4fc711a9c50bb6f42adb0ec949e0951') throw Error('Product input differs');
-          await mkdir('.local/resource-minimal-evidence',{recursive:true});
-          const feature=['# language: zh-CN','# [INPUT]: 原后台隔离桌面及设置循环。','# [OUTPUT]: 仅用于最小复现，不授予原后台资源资格。','# [POS]: 临时诊断BDD，产品与原场景不改。','# [PROTOCOL]: 仅保留于本诊断run原件。','功能: 仅诊断运行选项的卸载引用','  场景: 仅诊断运行选项反复卸载后的节点保留','    假如 已启动隔离的后台员工桌面','    当 仅诊断运行选项的反复卸载保留'].join(String.fromCharCode(10))+String.fromCharCode(10);
-          const step=String.raw`
-          When('仅诊断运行选项的反复卸载保留', async ({ runtime }) => {
-            const page=runtime.page;
-            await page.getByRole('button',{name:'我的菜单',exact:true}).click();
-            await page.getByRole('menuitem',{name:'设置',exact:true}).click();
-            const cycle=async()=>{
-              await page.getByRole('button',{name:'运行选项',exact:true}).click();
-              await expect(page.getByRole('switch',{name:'关闭窗口后继续运行'})).toBeChecked();
-              await page.getByRole('button',{name:'模型连接',exact:true}).click();
-            };
-            for(let i=0;i<10;i++)await cycle();
-            const cdp=await page.context().newCDPSession(page);
-            try{
-              const baseline=await resourceSample(runtime,cdp);
-              for(let i=0;i<15;i++)await cycle();
-              const last=await resourceSample(runtime,cdp);
-              await runtime.reviewData('设置卸载最小诊断数据',{diagnosticOnly:true,warmupSettingsCycles:10,measuredSettingsCycles:15,windowCycles:0,submittedMessages:0,idleSeconds:0,baseline,last});
-              try{
-                expect(last.dom.nodes-baseline.dom.nodes).toBeLessThan(1500);
-                expect(last.dom.jsEventListeners-baseline.dom.jsEventListeners).toBeLessThan(150);
-              }catch(error){
-                try{await recordResourceFailure(runtime,cdp);}catch(diagnosticError){await runtime.reviewData('最小诊断采集失败',{error:String(diagnosticError)});}
-                throw error;
-              }
-            }finally{await cdp.detach();}
-          });
-          `;
-          await writeFile('tests/e2e/features/__daily_resource_min.feature',feature);
-          await appendFile('tests/e2e/steps/background-runtime.steps.ts',step);
-          await writeFile('.local/resource-minimal-evidence/case.feature',feature);
-          await writeFile('.local/resource-minimal-evidence/step.ts',step);
-          await writeFile('.local/resource-minimal-evidence/source.json',JSON.stringify({reference:'9fb016acab51cdb6a393fd66699846dd0630d195',inputHash,diagnosticOnly:true,purpose:'settings-only retention without message or window cycling; not original resource qualification'},null,2));
+          import { mkdir, writeFile } from 'node:fs/promises';
+          const inputHash = await buildInputHash();
+          if (inputHash !== '5a82db0e4d0010e4946714c47b406eb7f4fc711a9c50bb6f42adb0ec949e0951') throw Error('Product inputs differ');
+          await mkdir('.local/daily-permissions', { recursive: true });
+          await writeFile('.local/daily-permissions/source.json', JSON.stringify({ reference: '9fb016acab51cdb6a393fd66699846dd0630d195', inputHash, cases: 6, originalFeature: 'directory-permissions.feature', realProviderCalls: false }, null, 2));
           JS
-      - name: Build candidate and generate diagnostic BDD
+      - name: Build current candidate and original BDD
         run: |
           pnpm build
           pnpm test:bddgen
-      - name: Run only the settings retention isolation
+      - name: Run original directory permission cases
         env:
           BOAI_TEST_DEV_SERVER: '1'
-          BOAI_RESOURCE_DIAGNOSTICS: '1'
-          BOAI_REVIEW_RUN_DIR: .local/resource-minimal-evidence/review
-          PLAYWRIGHT_JSON_OUTPUT_NAME: .local/resource-minimal-evidence/playwright-results.json
-        run: pnpm exec playwright test --grep '仅诊断运行选项反复卸载后的节点保留' --retries 0 --reporter=list,json
-      - name: Run unchanged original background resource contract
-        env:
-          BOAI_TEST_DEV_SERVER: '1'
-          BOAI_RESOURCE_DIAGNOSTICS: '1'
-          BOAI_REVIEW_RUN_DIR: .local/resource-original-evidence/review
-          PLAYWRIGHT_JSON_OUTPUT_NAME: .local/resource-original-evidence/playwright-results.json
-        run: pnpm exec playwright test --grep '后台反复重开和处理消息后资源保持有界' --retries 0 --reporter=list,json
+          BOAI_REVIEW_RUN_DIR: .local/daily-permissions/review
+          PLAYWRIGHT_JSON_OUTPUT_NAME: .local/daily-permissions/playwright-results.json
+        run: pnpm exec playwright test .features-gen/directory-permissions.feature.spec.js --retries 0 --reporter=list,json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: daily-settings-retention
+          name: daily-directory-permissions
           path: |
-            .local/resource-minimal-evidence/
-            .local/resource-original-evidence/
-            .local/transition-unit.json
-            .local/background-resource-failures/
+            .local/daily-permissions/
             test-results/
           include-hidden-files: true
           if-no-files-found: error
