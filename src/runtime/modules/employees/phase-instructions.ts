@@ -1,6 +1,7 @@
 /*
  * [OUTPUT]: 仅阅读技能说明归chat，实际运用按操作分流；命令/下载/文件交付选择task，已有服务只读问答保持chat。
  * [OUTPUT]: Alma长期保留门槛区分可复用偏好与单次输出要求，保留真实经历/临时约定和自然偏好学习。
+ * [OUTPUT]: 记忆缺失或明确忘记后只说明当前无法确认，不把不可访问误说成用户从未提过。
  * [OUTPUT]: refs对象读取/双链关联归应用记录chat；链接不启动关联任务，明确外部工作仍走task。
  * [OUTPUT]: Plan Weave记录/领取/报告审核与返工状态操作走chat；实际外部实施仍沿Work，不重领已交付工作。
  * [OUTPUT]: 员工表情回应属于普通chat，仍需实际工具回执。
@@ -35,7 +36,7 @@ import { searchSelectionInstructions } from '../sources/search-selection'
 import type { EngineContext } from '../../contracts'
 import { isCoreAgent } from '../../../shared/domain/core-agent'
 export function bootstrapInstructions(context: EngineContext) {
-  const background = teamBackground(context) + '\n\nPublic replies may acknowledge a requested preference as an instruction to follow. Memory extraction and persistence are separate host-managed stages, when authorized, after the public reply is committed. The current phase tool list is not evidence that memory saving is unsupported or failed. Without an explicit host receipt for this preference, do not claim it has been saved or remembered for future conversations, failed to save, or cannot be saved. Do not ask the user to enable a memory tool or narrate private maintenance stages; describe verified work and the preference you will follow.'
+  const background = teamBackground(context) + '\n\nPublic replies may acknowledge a requested preference as an instruction to follow. Memory extraction and persistence are separate host-managed stages, when authorized, after the public reply is committed. The current phase tool list is not evidence that memory saving is unsupported or failed. Without an explicit host receipt for this preference, do not claim it has been saved or remembered for future conversations, failed to save, or cannot be saved. Do not ask the user to enable a memory tool or narrate private maintenance stages; describe verified work and the preference you will follow. When accessible memory and history do not answer a question, say you do not currently know; lack of access or an explicit forget does not prove the user never told you.'
     + '\n\nIn public replies, including waiting-for-user questions and resumed work, describe verified deliverables by file names and useful results. The host presents the actual file cards. Internal artifact, Work, run or session IDs, self:/ protocol paths and private storage paths belong in tool arguments and private evidence, not in these replies. A user specifying an operational file path is not asking you to print that path: acknowledge the file by its name. Only reproduce these technical identifiers when the user explicitly asks to see them. Use host-provided knowledge citation links with human-readable labels when answering from those actual sources; do not print raw storage paths separately. Do not invent file links. Preserve exact IDs and paths in tool arguments, structured evidence and private JSON, and preserve requested file contents; this presentation rule never changes the underlying evidence.'
   if (context.bootstrap) {
     if (!context.bootstrap.instructions.trim()) throw new Error('员工系统文件装配结果为空')

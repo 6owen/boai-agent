@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 两轮/重启发送沿原可编辑等待，随后直接核contenteditable与aria-disabled均就绪，不增加第二套等待或放宽业务断言。
+ * [OUTPUT]: 原生普通聊天按13组10/11核对零私有memory阶段及两轮/重启线程；重启等实际编辑器可编辑后输入，保留原终态。
+ * [OUTPUT]: 新建员工沿现行工作方式/本机Agent两级选择，核对明确profile；其余业务/调用/重启断言保持。
  * [OUTPUT]: 文件修订末尾沿原记忆窗口核对六阶段终态与原账本，并独立保存关闭前页面、实际退出/退出后状态及两版固定hash原件；原错误和留证错误共同保留。
  * [OUTPUT]: Codex连接扫描/测试/保存复用原共享UI步骤，单员工与异构本机群保持相同入口与授权。
  * [OUTPUT]: 首次文件任务观察覆盖原300秒工作期限并在清理前保存实际外部Trace/请求账本；延长测试观察不追加产品预算、重放或放宽交付断言。
@@ -27,7 +30,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { expect } from '@playwright/test'
-import { addCodexConnection } from '../support/native-connection'
+import { addCodexConnection, selectNativeEmployee } from '../support/native-connection'
 import { createBdd } from 'playwright-bdd'
 import { createHash, randomUUID } from 'node:crypto'
 import { cp, mkdir, readFile, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises'
@@ -141,11 +144,8 @@ When('用户在通讯录创建本机 Codex 员工', async ({ runtime, codexEmplo
   const dialog = page.getByRole('dialog', { name: '新建数字员工', exact: true })
   await dialog.getByRole('textbox', { name: '名称', exact: true }).fill('本机 Codex 同事')
   await dialog.getByRole('textbox', { name: '角色', exact: true }).fill('使用原生 Codex 的独立聊天员工')
-  await dialog.getByRole('textbox', { name: 'Prompt', exact: true }).fill('用中文简短回答当前用户问题。普通聊天不执行工具；明确要求交付文件时使用宿主工具完成并报告实际证据。')
-  await dialog.getByRole('combobox', { name: '运行方式', exact: true }).click()
-  await page.getByRole('option', { name: '本机 Codex', exact: true }).click()
-  await expect(dialog.getByRole('combobox', { name: '本机连接', exact: true })).toContainText('本机 Codex')
-  await expect(dialog.getByRole('combobox', { name: '运行方式', exact: true })).toHaveAttribute('aria-expanded', 'false')
+  await dialog.getByRole('textbox', { name: '工作方式', exact: true }).fill('用中文简短回答当前用户问题。普通聊天不执行工具；明确要求交付文件时使用宿主工具完成并报告实际证据。')
+  await selectNativeEmployee(page, dialog, '本机 Codex')
   await expect(page.locator('[data-slot="select-content"]:visible')).toHaveCount(0)
   await runtime.reviewCheckpoint('创建本机Codex员工无API配置')
   await dialog.getByRole('button', { name: '创建员工', exact: true }).click()
@@ -344,6 +344,9 @@ Then('员工无需模型 API 即可连续回答两轮且重启保持身份', asy
   const read = () => runtime.page.evaluate(id => window.boai.request('getConversation', { id }), id)
   const send = async (content: string, count: number) => {
     const input = runtime.page.getByRole('textbox', { name: '消息内容', exact: true })
+    await expect(input).toBeEditable()
+    expect(await input.getAttribute('contenteditable')).toBe('true')
+    expect(await input.getAttribute('aria-disabled')).toBe('false')
     await input.fill(content)
     await runtime.page.getByRole('button', { name: '发送消息', exact: true }).click()
     try {
@@ -361,8 +364,9 @@ Then('员工无需模型 API 即可连续回答两轮且重启保持身份', asy
       }
     }
     await expect.poll(async () => (await read()).turns!.every(t => ['completed', 'failed', 'cancelled', 'interrupted', 'budget_exhausted'].includes(t.status)), { timeout: codexEmployee.real ? 130000 : 40000 }).toBe(true)
-    await expect.poll(async () => (await read()).runs.filter(run => run.phase === 'memory' && run.status === 'completed').length, { timeout: 130000 }).toBe(count)
     const detail = await read()
+    expect(detail.runs.filter(run => run.phase === 'memory')).toEqual([])
+    expect(detail.runs.filter(run => run.phase === 'execution' && run.status === 'completed')).toHaveLength(count)
     expect(detail.workItems ?? []).toEqual([])
     expect(detail.runs.filter(run => run.status === 'failed')).toEqual([])
     await runtime.reviewData(`第${count}轮原始消息与运行`, detail)
@@ -399,9 +403,8 @@ Then('用户创建第二位本机员工并在普通群独立聊天和交付', as
   const employee = page.getByRole('dialog', { name: '新建数字员工', exact: true })
   await employee.getByRole('textbox', { name: '名称', exact: true }).fill(names[1])
   await employee.getByRole('textbox', { name: '角色', exact: true }).fill('独立核查员工')
-  await employee.getByRole('textbox', { name: 'Prompt', exact: true }).fill('按用户请求独立回应和交付自己的工作。简短中文，只有明确文件任务才使用宿主工具。')
-  await employee.getByRole('combobox', { name: '运行方式', exact: true }).click()
-  await page.getByRole('option', { name: '本机 Codex', exact: true }).click()
+  await employee.getByRole('textbox', { name: '工作方式', exact: true }).fill('按用户请求独立回应和交付自己的工作。简短中文，只有明确文件任务才使用宿主工具。')
+  await selectNativeEmployee(page, employee, '本机 Codex')
   await employee.getByRole('button', { name: '创建员工', exact: true }).click(); await expect(employee).toBeHidden()
   await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '通讯录', exact: true }).click()
   await newContact(); await page.getByRole('menuitem', { name: '新建群聊', exact: true }).click()
@@ -892,9 +895,8 @@ Then('两位本机员工在四个上下文中续聊且切页和普通发送不�
   const editor = page.getByRole('dialog', { name: '新建数字员工', exact: true })
   await editor.getByRole('textbox', { name: '名称', exact: true }).fill(names[1])
   await editor.getByRole('textbox', { name: '角色', exact: true }).fill('独立聊天同事')
-  await editor.getByRole('textbox', { name: 'Prompt', exact: true }).fill('根据当前聊天中的明确请求独立回答；普通聊天不执行工具。各会话临时暗号只属于当前会话。')
-  await editor.getByRole('combobox', { name: '运行方式', exact: true }).click()
-  await page.getByRole('option', { name: '本机 Codex', exact: true }).click()
+  await editor.getByRole('textbox', { name: '工作方式', exact: true }).fill('根据当前聊天中的明确请求独立回答；普通聊天不执行工具。各会话临时暗号只属于当前会话。')
+  await selectNativeEmployee(page, editor, '本机 Codex')
   await editor.getByRole('button', { name: '创建员工', exact: true }).click(); await expect(editor).toBeHidden()
   const initial = await page.evaluate(() => window.boai.request('snapshot', undefined)), second = initial.agents.find(agent => agent.name === names[1])!
   const directB = initial.conversations.find(chat => chat.kind === 'direct' && chat.agentIds.includes(second.id))!

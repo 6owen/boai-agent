@@ -1,13 +1,23 @@
 <!--
+[OUTPUT]: UI原件沿监督入口实际执行墙钟窗口核末场，窗口及原目录/proof字节绑定；原1ms余量、像素/环境/18身份保持，旧缺窗口不授新资格。
+[OUTPUT]: 无窗口云端实证ready后484ms才更新workArea，预检须采样/事件连续稳定并有界失败；共享桌面锁覆盖guard退出，像素/主屏条件保持。
+[OUTPUT]: 主屏681/684跨API失败后改Electron同API独立预检，截图仍核实际page窗口；Required checks独立重核全18原报告/原件，待云端实测。
+[OUTPUT]: 2026-10-21自动CI迁回GitHub Actions；截图核实际page的原生窗口、主屏工作区及所有屏尺寸/缩放；独立云端v3完整候选仍需审阅后只读复验。
+[OUTPUT]: 环境v3补实际显示器逻辑/工作区尺寸、缩放和主屏身份，逐次截图核窗口归属；屏幕变化沿完整独立迁移，不改阈值。
+[OUTPUT]: 用户改本地CI后保持全部18本机UI只读及原像素合同；本地状态门禁见02 §9，实际保护仍待切换。
+[OUTPUT]: 当前核心合同18项（原16及快捷键明暗两项）；只更新相关四项后本机18只读通过，CI增量待同SHA官方候选。
+[OUTPUT]: CI完整捕获后同环境仅接受相关case，逐case绑定官方来源，未选择项保留并核验；初始/环境迁移仍须全量。
+[OUTPUT]: 本地candidate/accept仅操作本机档案；CI读取需绑定来源，官方进口接受与原检查共用基线锁。
+[OUTPUT]: 本机/CI分别固定环境档案；独立受信采集只产候选，官方run/artifact核验后显式接受，普通CI仍只读。
 [INPUT]: 用户明确参考Magpie建立UI基线，后续PR合并持续比较，新增功能扩充基准，破坏原有UI时报错。
-[OUTPUT]: BOAI实际UI的行为/布局/视觉基线、PR前后检查、预期变更审阅与基线晋升规则；仅文档，尚未接线。
+[OUTPUT]: 行为/布局/视觉与受控晋升；Public后main强制Required checks及最新base，完整CI/发布仍待验，进度归03 §5.1。
 [POS]: 第22组UI回归专项合同；与05开发画板分工，唯一实际进度归03。
 [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
 -->
 
 # UI回归基准与PR门禁
 
-日期：2026-10-20。用户明确：先建立UI测试基准，后续新PR持续对比；新增功能补测试并更新对应基准，意外破坏已有UI则报错。本文件落实该规则，尚未生成基线图片、运行UI测试或修改Actions。
+日期：2026-10-20。用户明确：先建立UI测试基准，后续新PR持续对比；新增功能补测试并更新对应基准，意外破坏已有UI则报错。本文件落实该规则。后续已在独立worktree接线并采集本地开发基线；实际结果及剩余门槛归03 §5.1。
 
 ## 1. 要实现的行为
 
@@ -112,3 +122,57 @@ flowchart TD
 | UR08 | 基线身份/环境不匹配、自比较、缺报告、取消及必需项未运行均不能通过 |
 
 以上均待实施，实际结果统一登记03。S2建立首批UI基线和检查门槛，S3自动开发遵守基线更新规则，后续所有功能迭代持续使用；S6补齐周期执行和发布衔接。
+
+## 7. 当前开发入口（2026-10-20实施中）
+
+- `pnpm test:ui`：构建当前工作树，运行全部登记18项UI BDD（原16项及快捷键明暗两项）；基线只读，输出独立`.local/ui-runs/<runId>`报告。
+- `pnpm test:ui:candidate --cases CASE_ID --output NEW_DIR`：先保留旧比较报告，再采集独立候选；已有基线不变。首次没有基线时旧比较为`not-run`，不能称比较通过。
+- `pnpm test:ui:accept --candidate DIR --cases CASE_ID --reason '具体理由'`：核对候选完整通过、源码/环境及图片hash，只复制明确选中的条目。这是本地开发操作，不代表独立审阅完成；CI禁止候选/接受入口。
+- 本地故障演练：`node scripts/ui-regression.mjs check --cases chat-light --fault layout`，或`--cases settings-light --fault behavior`；预期非零，报告记录故障，不修改生产源码。`--fault environment`验证环境错配拒绝。
+
+当前基线覆盖聊天/空白单聊/窄窗、通讯录行内配置、外观、资源搜索、右侧文件筛选及Markdown预览，分别有明暗主题。明确保护每位普通员工的唯一主单聊；空态使用另一员工，重复进入保留原ID/标题，不能为了测试另建同员工多单聊。
+
+环境登记macOS major、arm64、Electron/Playwright、实际中文/Geist字体hash、中文locale、时区及CSS视口。固定历史与资源不访问个人配置；按字体/有限动画完成及真实编辑器/发送按钮状态取图。初始校准对settings-light和resources-dark记录0.005颜色阈值（分别为渐变控件5像素、搜索框区域的1/255通道舍入差），所有case最大异常像素0、无mask；其余14项颜色阈值0。合同变化会拒绝旧基线，不能静默放宽。
+
+本地报告含真实结果、源码hash、环境及Playwright旧/新/diff；运行中源码变化、缺报告/场景、skip、重试或中断不能通过。Actions已配置PR和main/master push、固定`Required checks`汇总。Public后已通过GitHub API设置并回读main保护：要求GitHub Actions的`Required checks`成功、分支跟上最新main，管理员同样受约束，禁止强推和删除。远程完整通过、实际合并及发布闭环仍未验收；配置成功不冒充完整CI成功。
+
+完整`pnpm build`登记输入及产物字节身份；只读UI检查开始和结束均核对，源码、技能源或dist字节变化会使结论失效。UI资源由SQLite事务互斥，持有进程死亡后由操作系统释放，不根据过期锁文件或PID猜测抢占。
+
+
+## 8. 明确渲染环境档案与CI候选进口
+
+此前相同major/单字体hash不足以复现两台Mac的渲染；实际字体来源实验及失败保留在03。现增加`local-macos-arm64`（原根目录）和`github-macos15-arm64`（同名子目录）两份显式环境档案，原16场/行为/布局/颜色阈值/最大异常像素/无mask合同共用不变。普通CI必须明确CI档案，缺失、错环境、缺场或字节损坏均失败，无本机PNG回退。新环境指纹包括完整macOS版本/build、三个权重默认及匹配字体的文件hash/家族/版本、系统语言/locale和原Electron/Playwright/Geist等。当前旧manifest没有新profile/指纹，不能静默升级为通过，须重新完整采集审阅。
+
+`ui-baseline-candidate.yml`为独立受信采集通道，无contents写权限、不提供Required checks、不复制到已接受基线。普通PR/自动修复/测试workflow不能使用采集入口。GitHub要求workflow_dispatch定义先存在默认分支，因此首次提供仅`infra/ui-environment-profiles`明确push的引导触发；它也只产隔离artifact，不能使原PR门禁通过。[GitHub官方触发规则](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow)支持此引导原因。进入默认分支后使用手动dispatch，普通main push仍走只读门禁。
+
+采集全部登记场景，先保留旧比较结果；CI档案尚无manifest时比较明确为not-run，行为/布局必须仍逐项通过，才能输出完整候选。无旧CI图的初始采集不得冒充旧图比较通过，需对全部新图独立审阅。新强指纹的本机首次迁移也需全场审阅，不能覆盖旧失败记录。
+
+```bash
+node scripts/ui-ci-baseline.mjs import --run RUN_ID --output .local/新候选目录
+node scripts/ui-ci-baseline.mjs accept --run 同一RUN_ID --candidate .local/已审阅目录 --cases 明确接受ID逗号列表 --reason '逐项审阅结论与需求原因'
+```
+
+进口只接受同仓库/同干净源码SHA的成功独立采集，核对官方artifact唯一身份、来源、未过期状态及SHA256。实际archive先验路径/重复/链接/体积，再解压，核对全部case合同/PNG/hash、实际一次通过报告和构建输入。接受时重新向GitHub核对并下载同一原artifact，与已审阅目录全部字节对照，检查现有CI基线未移动后才复制CI档案；不以本机构建产物冒充CI产物，也不改本机PNG。审阅笔记应放候选目录之外，保持原件。接受、提交后还需再次只读CI比较，完整Required checks及合并SHA验证独立成立；任何候选成功不提供发布资格。
+
+同环境需求内改版可只接受已审阅的相关case；仍须官方完整捕获全部登记场景。未选择项保留原PNG、合同、源码、时间与官方来源，且接受前逐项核对它们的旧PNG/hash/来源/当前合同；有缺失或合同变化必须明确纳入接受列表，不能由未选择掩盖。初始档案或环境指纹变化必须接受全部登记case。新增case可在同环境单独接受，旧项继续受保护。每个被接受case绑定自己的官方provenance；旧manifest整体provenance作为原条目兼容来源，不能用新run替旧条目改写来源。
+
+首次官方下载、逐图接受及本机/CI16项只读复验已在独立分支完成，实际记录归03；main合并、完整门禁和新增功能视觉验收仍未完成。
+
+本地`candidate/accept`入口只允许本机档案；明确传CI档案也会在采集前拒绝，CI晋升统一经官方进口。CI读取要求case自己的完整provenance（旧条目可沿整体记录），其源码commit必须一致。CI进口接受与原UI检查/本地接受持同一路径锁，覆盖重新下载、旧基线核验、PNG及manifest写入，避免一轮检查读到旧hash却比较新PNG，或多个接受交错。
+
+
+## 9. 用户改用本地CI
+
+2026-10-21用户明确Actions额度耗尽，CI改在本机：全部18项继续用明确local-macos-arm64档案，云端档案/原失败保留，普通比较不更新PNG。02 §9的本地入口及原件封存替代自动云端执行；本地结果回传BOAI local CI。旧app15368 Required checks仍是历史已设置状态，实际切换和完整本地结果只能以03为准，不把接线当成功。
+
+### 实际显示器与环境v3
+
+2026-10-21实际环境变化显示：系统/字体/GPU指纹相同不足以证明像素条件相同。原b06原生capture记录为1920x1080、workArea1920x971、scaleFactor1；当前为1512x982、workArea1512x859、scaleFactor2。旧b06与新f9的聊天明暗实际截图在当前环境逐字节一致，但均不匹配旧基准；不能将此作为新产品回归，也不能自动补绿。
+
+环境v3由锁定Electron可执行文件的独立无窗口入口在app.whenReady后读取screen，记录全部显示器逻辑尺寸、scaleFactor及主屏标志，并记录主屏工作区尺寸，不存设备ID/序列号。入口使用独立临时userData/sessionData、原生guard和有限期限，不加载产品；核实际Electron版本/路径及完整退出。CoreText继续只读核字体。AppKit与Electron在主/副屏工作区存在差异，显示字段统一用与截图相同的Electron API；副屏仍只核尺寸/缩放。实际截图page通过原生窗口handle固定，必须位于主屏并核当前显示器配置和主屏工作区。显示器或工作区变化须完整采集/独立审阅全部case，旧图、新图和原始差异保留，比较阈值、异常像素和mask不变。环境v2缺少显示器字段不自动升级。云端旧档案仍为历史来源；Actions已按用户最新要求启用，未重新采集并审阅前不能假定旧档案可用于v3。
+
+> 当前执行端更新：2026-10-21自动CI迁回GitHub Actions；截图核实际page的原生窗口、主屏工作区及所有屏尺寸/缩放；独立云端v3完整候选仍需审阅后只读复验。
+
+UI job通过后由record-ui登记summary、compare/summary、原始Playwright报告SHA及全部逐场景原件proof。Required checks必须重新读取全18个正常一次通过的原始结果、唯一实际环境附件及FeatureReview的截图/逐启动trace，沿既有verifyDesktopEvidence核对场景/时段/路径/字节。全运行墙钟结束必须来自监督入口实际记录的execution-window.json，不能用report.stats.startTime加单调duration推导；核原目录/起止/本场至下一场边界，窗口字节SHA纳入原件proof。缺失/不完整窗口及后改拒绝，不增加时间容差，也不影响已接受PNG/像素合同。缺失、跳过、重试、环境不符、清理错误或改字节均失败；UI job本身也必须成功。汇总成功或候选成功均不能替代此门槛。
+
+预检在默认共享桌面锁内运行，screen的display-metrics-changed事件及每100ms采样任一变化均重置稳定窗口，连续1秒稳定才登记；总计10秒仍变化即失败，外层guard期限30秒。无窗口诊断已实证ready后的异步workArea更新，不用固定684、容差或单纯固定sleep代替就绪。预检实际退出后释放锁；Playwright再沿原globalSetup取同一锁。截图阶段仍精确核当前page窗口/主屏/显示配置，预检稳定不免除后续核验。

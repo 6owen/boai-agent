@@ -1,0 +1,162 @@
+/*
+ * [INPUT]: 版本化UI合同、真实Electron、固定历史与隔离本机技能。
+ * [OUTPUT]: 每员工唯一主单聊及明暗/窄窗页面；快捷键页排除输入/按钮/选择等编辑入口并核对原搜索，既有16场保持。
+ * [POS]: UI回归BDD步骤；沿原Desktop生命周期，不修改产品DOM/CSS。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
+ */
+import { expect } from '@playwright/test'
+import { createBdd } from 'playwright-bdd'
+import { mkdir, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { test as base } from '../support/test'
+import { localSkillsEntry } from '../support/local-skills'
+import { prepareGroupChat } from '../support/group-chat'
+import { messageDraft } from '../support/editor-controls'
+import { compareUiBaseline } from '../support/ui-baseline'
+import contract from '../baselines/contract.json' with { type: 'json' }
+
+type Case = typeof contract.cases[number]
+type State = { fixture?: Awaited<ReturnType<typeof prepareGroupChat>>; selected?: Case; emptyTitle?: string }
+export const test = base.extend<{ uiRegression: State }>({ uiRegression: async ({}, use) => use({}) })
+const { Given, When, Then } = createBdd(test)
+const fixedNow = new Date('2026-10-20T01:00:00Z').getTime()
+
+Given('UI回归已准备隔离的固定历史和资源', async ({ runtime, uiRegression }) => {
+  const skill = join(runtime.root, 'local-user/.agents/skills/ui-baseline')
+  await mkdir(skill, { recursive: true })
+  await writeFile(join(skill, 'SKILL.md'), '---\nname: ui-baseline\ndescription: 核对来源与交付结果。\n---\n# UI 基线技能\n保留明确来源，核对真实文件。\n')
+  const original = await localSkillsEntry(runtime), mainEntry = join(runtime.root, 'ui-regression-main.cjs')
+  await writeFile(mainEntry, `require('electron').app.commandLine.appendSwitch('lang', 'zh-CN');\nrequire(${JSON.stringify(original)});\n`)
+  uiRegression.fixture = await prepareGroupChat(runtime, { mainEntry, now: fixedNow })
+  await runtime.page.clock.setFixedTime(fixedNow)
+  // Explicit local fault rehearsal: the real appearance buttons still run; only persistence is lost.
+  if (process.env.BOAI_UI_FAULT === 'behavior') await runtime.app.evaluate(({ ipcMain }) => {
+    const handlers = (ipcMain as unknown as { _invokeHandlers: Map<string, (...args: any[]) => Promise<unknown>> })._invokeHandlers
+    const original = handlers.get('boai:request')!
+    ipcMain.removeHandler('boai:request')
+    ipcMain.handle('boai:request', (event, payload) => original(event, payload.method === 'updateAppearance' ? { ...payload, method: 'getAppearance', input: undefined } : payload))
+  })
+})
+
+When('用户打开UI基准场景 {string}', async ({ runtime, uiRegression }, caseId: string) => {
+  const selected = contract.cases.find(item => item.id === caseId)
+  if (!selected) throw new Error(`未登记UI场景：${caseId}`)
+  uiRegression.selected = selected
+  const page = runtime.page
+  await page.setViewportSize({ width: selected.width, height: contract.height })
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.evaluate(async mode => {
+    const current = await window.boai.request('getAppearance', undefined)
+    await window.boai.request('updateAppearance', { patch: { mode, zoomFactor: 1 }, expectedRevision: current.revision })
+  }, selected.mode as 'light' | 'dark')
+  await expect(page.locator('html')).toHaveAttribute('data-theme', selected.mode)
+  const scene = selected.scene
+  if (scene === 'employee') {
+    await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '通讯录', exact: true }).click()
+    await page.getByRole('complementary', { name: '通讯录列表', exact: true }).getByRole('button', { name: '研究员', exact: true }).click()
+  } else if (scene === 'settings' || scene === 'shortcuts') {
+    await page.getByRole('button', { name: '我的菜单', exact: true }).click()
+    await page.getByRole('menuitem', { name: '设置', exact: true }).click()
+    await page.getByRole('navigation', { name: '设置分类', exact: true }).getByRole('button', { name: scene === 'shortcuts' ? '快捷键' : '外观', exact: true }).click()
+  } else if (scene === 'resources') {
+    await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '资源库', exact: true }).click()
+    await page.getByRole('complementary', { name: '资源库导航', exact: true }).getByRole('button', { name: '技能', exact: true }).click()
+    await page.getByRole('tab', { name: '本地', exact: true }).click()
+  }
+  else if (scene === 'empty-chat') {
+    // A personal employee has ONE main private chat. Use a different employee for the empty state.
+    const chat = await page.evaluate(() => window.boai.request('createConversation', { kind: 'direct', title: '空白基准会话', agentIds: ['writer'] }))
+    uiRegression.emptyTitle = chat.title
+    await page.getByRole('navigation', { name: '会话列表', exact: true }).getByRole('button', { name: new RegExp(`^${chat.title}`) }).click()
+  } else if (scene === 'detail') {
+    await page.locator('.chat-header').getByRole('button', { name: '会话操作', exact: true }).click()
+    await page.getByRole('menuitem', { name: '文件', exact: true }).click()
+  } else if (scene === 'preview') await page.locator('[data-chat-artifact-id="report-file"]').getByRole('button', { name: '打开 竞品分析报告.md', exact: true }).click()
+})
+
+Then('当前场景的真实交互和布局满足原约定', async ({ runtime, uiRegression }) => {
+  const page = runtime.page, selected = uiRegression.selected!
+  if (selected.scene === 'chat' || selected.scene === 'empty-chat') {
+    const input = page.getByRole('textbox', { name: '消息内容', exact: true })
+    await expect(input).toBeVisible()
+    await expect(input).toBeInViewport()
+    await expect(page.getByRole('button', { name: '发送消息', exact: true })).toBeInViewport()
+    await input.fill('UI回归草稿：切换后仍保留。')
+    await expect.poll(() => messageDraft(input)).toBe('UI回归草稿：切换后仍保留。')
+    await expect(page.getByRole('button', { name: '发送消息', exact: true })).toBeEnabled()
+    const groupName = selected.scene === 'chat' ? '产品讨论组' : uiRegression.emptyTitle!
+    await page.getByRole('button', { name: /^与研究员对话/ }).click()
+    await expect.poll(() => messageDraft(input)).toBe('')
+    await page.getByRole('navigation', { name: '会话列表', exact: true }).getByRole('button', { name: new RegExp(`^${groupName}`) }).click()
+    await expect.poll(() => messageDraft(input)).toBe('UI回归草稿：切换后仍保留。')
+    await input.click()
+    await input.press('ControlOrMeta+A')
+    await input.press('Backspace')
+    await expect.poll(() => messageDraft(input)).toBe('')
+    await expect(page.getByRole('button', { name: '发送消息', exact: true })).toBeDisabled()
+    if (selected.scene === 'chat') await expect(page.locator('#message-history-writer')).toContainText('报告初稿')
+    const original = uiRegression.fixture!.direct
+    const repeated = await page.evaluate(() => window.boai.request('createConversation', { kind: 'direct', title: '重复进入不能新建另一个单聊', agentIds: ['researcher'] }))
+    expect(repeated.id).toBe(original.id)
+    expect(repeated.title).toBe(original.title)
+    const rooms = await page.evaluate(async () => (await window.boai.request('snapshot', undefined)).conversations.filter(room => room.kind === 'direct' && !room.channel && !room.mergedInto && room.agentIds[0] === 'researcher'))
+    expect(rooms.map(room => room.id)).toEqual([original.id])
+  } else if (selected.scene === 'employee') {
+    const detail = page.getByRole('region', { name: '通讯录详情', exact: true })
+    const role = detail.getByRole('textbox', { name: '员工职责', exact: true })
+    await role.fill('保留来源，核对真实交付。')
+    await role.press('Tab')
+    await expect.poll(() => page.evaluate(async () => (await window.boai.request('snapshot', undefined)).agents.find(agent => agent.id === 'researcher')!.role)).toBe('保留来源，核对真实交付。')
+    await expect(role).toHaveText('保留来源，核对真实交付。')
+  } else if (selected.scene === 'settings') {
+    await expect(page.getByRole('heading', { name: '外观', exact: true })).toBeVisible()
+    for (const mode of [selected.mode === 'light' ? 'dark' : 'light', selected.mode]) {
+      await page.getByRole('button', { name: mode === 'light' ? '浅色' : '深色', exact: true }).click()
+      await expect.poll(async () => (await page.evaluate(() => window.boai.request('getAppearance', undefined))).preferences.mode).toBe(mode)
+      await expect(page.locator('html')).toHaveAttribute('data-theme', mode)
+    }
+  } else if (selected.scene === 'shortcuts') {
+    const content = page.locator('.settings-content')
+    await expect(content.getByRole('heading', { name: '快捷键', exact: true })).toBeInViewport()
+    await expect(content.locator('.appearance-row')).toHaveCount(4)
+    for (const [label, key] of [['Open Search / 全局搜索', 'K'], ['切换侧边栏', 'B'], ['后退', '['], ['前进', ']']]) {
+      const row = content.locator('.appearance-row').filter({ hasText: label })
+      await expect(row).toBeInViewport()
+      await expect(row.locator('kbd')).toHaveText(`${process.platform === 'darwin' ? '⌘' : 'Ctrl'} ${key}`)
+    }
+    await expect(content.locator('input, textarea, select, button, [role=button], [role=combobox], [role=switch], [role=checkbox], [role=radio], [role=spinbutton], [contenteditable]:not([contenteditable=false])')).toHaveCount(0)
+    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+k' : 'Control+k')
+    await expect(page.getByRole('dialog', { name: '搜索会话内容', exact: true })).toBeVisible()
+    await expect(page.getByRole('textbox', { name: '搜索关键词', exact: true })).toBeFocused()
+    await page.getByRole('button', { name: '关闭搜索', exact: true }).click()
+    await expect(content.getByRole('heading', { name: '快捷键', exact: true })).toBeInViewport()
+  } else if (selected.scene === 'resources') {
+    await page.getByRole('button', { name: '搜索本机技能', exact: true }).click()
+    const search = page.getByRole('textbox', { name: '搜索本机技能', exact: true })
+    await search.fill('ui-baseline')
+    await expect(page.getByText('ui-baseline', { exact: true }).first()).toBeVisible()
+    await expect(page.getByRole('tab', { name: '本地', exact: true })).toHaveAttribute('aria-selected', 'true')
+  } else if (selected.scene === 'detail') {
+    const files = page.getByRole('region', { name: '会话文件', exact: true })
+    await expect(files.locator('[data-file-id]')).toHaveCount(2)
+    await files.getByRole('textbox', { name: '文件名称筛选', exact: true }).fill('竞品')
+    await expect(files.locator('[data-file-id]')).toHaveCount(1)
+    await expect(files).toContainText('竞品分析报告.md')
+    await files.getByRole('textbox', { name: '文件名称筛选', exact: true }).fill('')
+    await expect(files.locator('[data-file-id]')).toHaveCount(2)
+  } else if (selected.scene === 'preview') {
+    await expect(page.locator('[data-file-preview-kind="markdown"]')).toBeVisible()
+    await expect(page.locator('[data-file-preview-kind="markdown"]').getByRole('heading', { name: '竞品分析报告.md', level: 1, exact: true })).toBeVisible()
+    await page.getByRole('button', { name: '显示源码', exact: true }).click()
+    await expect(page.locator('[data-file-line="1"]')).toContainText('# 竞品分析报告.md')
+    await page.getByRole('button', { name: '显示预览', exact: true }).click()
+  }
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  expect(runtime.errors).toEqual([])
+  expect(uiRegression.fixture!.state.calls).toBe(0)
+  await page.mouse.move(0, 0)
+})
+
+Then('当前场景与已接受的UI截图一致', async ({ runtime, uiRegression }) => {
+  await compareUiBaseline(runtime, uiRegression.selected!.id, test.info())
+})

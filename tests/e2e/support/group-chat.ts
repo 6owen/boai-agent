@@ -3,7 +3,7 @@
  * [OUTPUT]: 原视觉夹具默认模拟视口；后台原生窗口场景可显式禁用，避免截图截断。
  * [OUTPUT]: 第14组API群请求解释与持久顺序接续；保留独立并行、原Work和本机旧路径，实际验收归第14组05。
  * [INPUT]: 每场景独立 Desktop、SQLite 历史合同与本地离线模型端点。
- * [OUTPUT]: 受管 artifacts 目录中的真实文件/已交付历史群聊、单聊长历史和真实聊天/Trace 离线回复、可控 CSS 视口与命令审批，不接触用户数据库或外部模型。
+ * [OUTPUT]: 真实历史/文件及离线协议；视觉基线可显式固定时间和隔离本机技能入口，原场景默认行为保持。
  * [POS]: 单聊/群聊共享交互验收数据和协议支撑，生产 main/IPC/renderer 保持原样。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -14,7 +14,7 @@ import type { Desktop } from './desktop'
 import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
 import type { Message, WorkItem, Artifact } from '../../../src/shared/domain'
 
-export async function prepareGroupChat(runtime: Desktop, { emulateViewport = true } = {}) {
+export async function prepareGroupChat(runtime: Desktop, { emulateViewport = true, mainEntry, now = Date.now() }: { emulateViewport?: boolean; mainEntry?: string; now?: number } = {}) {
   const state = { calls: 0, errors: [] as string[] }
   const server = createServer(async (request, response) => {
     try {
@@ -43,7 +43,7 @@ export async function prepareGroupChat(runtime: Desktop, { emulateViewport = tru
   })
   runtime.trackServer(server)
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
-  await runtime.start()
+  await runtime.start({ mainEntry })
   const setup = await runtime.page.evaluate(async port => {
     const connection = await window.boai.request('saveConnection', { name: '群聊离线验收', provider: 'openai-compatible', baseUrl: `http://127.0.0.1:${port}/v1`, defaultModel: 'fixture' })
     const names: Record<string, [string, string]> = { researcher: ['研究员', '信息研究'], writer: ['写手', '内容创作'], reviewer: ['设计师', '视觉设计'] }
@@ -59,7 +59,7 @@ export async function prepareGroupChat(runtime: Desktop, { emulateViewport = tru
   }, (server.address() as { port: number }).port)
   await runtime.close()
   const { group } = setup
-  const baseTime = Date.now() - 10 * 60_000
+  const baseTime = now - 10 * 60_000
   const makeMessage = (id: string, senderId: string, content: string, index: number, replyToMessageId?: string): Message => ({ id, conversationId: group.id, senderType: senderId === 'user' ? 'user' : 'agent', senderId, senderName: ({ user: '你', researcher: '研究员', writer: '写手' })[senderId]!, content, status: 'completed', sequence: index, turnId: 'history-turn', runId: senderId === 'user' ? undefined : `history-${senderId}`, replyToMessageId, createdAt: new Date(baseTime + index * 30_000).toISOString() })
   const messages = [
     makeMessage('history-user', 'user', '帮我做一份 AI 协作产品的竞品分析，重点看群聊体验和任务协作。', 1),

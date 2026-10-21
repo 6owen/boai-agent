@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 群检索重启前等待原轮次与实际运行终态，避免把正在变化的decision投影当持久基线。
  * [OUTPUT]: 2026-10-19 独立全局默认/员工范围与 API/本机调用、群聊、撤权和零重放；不依赖业务数据源绑定。
  * [OUTPUT]: Current-text choice, independent group bindings, active-source cancellation/revocation, immutable routing and restart without replay.
  * [INPUT]: Employee preference, current source references, production AppService and an isolated MCP server.
@@ -254,7 +255,7 @@ it('keeps two group employees on their own source bindings and private decisions
   await expect(f.app.handle('sendMessage', { conversationId: room.id, requestId: randomUUID(), content: '各自查证公开资料', mentionIds: [], composerReferences: [{ kind: 'source', id: sources[0].id, revision: sources[0].revision, agentId: 'researcher', name: sources[0].name }] })).rejects.toThrow('单员工会话')
   expect(server.calls).toEqual([])
   await f.app.handle('sendMessage', { conversationId: room.id, requestId: randomUUID(), content: '各自查证公开资料', mentionIds: [] })
-  await vi.waitFor(async () => { if (failure) throw failure; expect(completed.sort()).toEqual(['researcher', 'writer']); const detail = await f.app.handle('getConversation', { id: room.id }) as ConversationDetail; expect(detail.messages.filter(message => message.senderType === 'agent' && message.status === 'completed')).toHaveLength(2); expect(detail.workItems).toEqual([]) }, { timeout: 10000 })
+  await vi.waitFor(async () => { if (failure) throw failure; expect(completed.sort()).toEqual(['researcher', 'writer']); const detail = await f.app.handle('getConversation', { id: room.id }) as ConversationDetail; expect(detail.messages.filter(message => message.senderType === 'agent' && message.status === 'completed')).toHaveLength(2); expect(detail.workItems).toEqual([]); expect(detail.turns?.every(turn => turn.status === 'completed')).toBe(true); expect(detail.runs.every(run => run.status === 'completed')).toBe(true) }, { timeout: 10000 })
   expect(decisions.sort()).toEqual(['researcher', 'writer']); expect(server.inspections).toBe(2)
   expect(server.calls.map(call => call.arguments.query).sort()).toEqual(['researcher:' + sources[0].id, 'writer:' + sources[1].id].sort())
   const before = await f.app.handle('getConversation', { id: room.id }); await f.restart()

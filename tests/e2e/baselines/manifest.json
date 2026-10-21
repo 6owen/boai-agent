@@ -1,0 +1,295 @@
+{
+  "version": 1,
+  "environment": {
+    "version": 2,
+    "platform": "darwin",
+    "arch": "arm64",
+    "osVersion": "15.7.9",
+    "osBuild": "24G830",
+    "electron": "39.2.7",
+    "playwright": "1.63.0",
+    "geist": "2ffebe993e969069a9789d15164b7715d42491b5835516c5e3b935d5f81b05f1",
+    "pingFang": [
+      {
+        "family": "PingFang SC",
+        "postscript": "PingFangSC-Medium",
+        "requested": "PingFangSC-Medium",
+        "resolution": "default-name",
+        "version": "20.0d4e1",
+        "sha256": "6bccdb1a967b2ae7e856927eb559591b2ce05656b0d4ad2764b9c9429f12c0b7"
+      },
+      {
+        "family": "PingFang SC",
+        "postscript": "PingFangSC-Medium",
+        "requested": "PingFangSC-Medium",
+        "resolution": "matching-descriptor",
+        "version": "20.0d4e1",
+        "sha256": "6bccdb1a967b2ae7e856927eb559591b2ce05656b0d4ad2764b9c9429f12c0b7"
+      },
+      {
+        "family": "PingFang SC",
+        "postscript": "PingFangSC-Regular",
+        "requested": "PingFang SC",
+        "resolution": "default-family",
+        "version": "20.0d21e3",
+        "sha256": "ae0aeea8ce656655e84f947143eea225954845f97c110b4ef1efd83472850733"
+      },
+      {
+        "family": "PingFang SC",
+        "postscript": "PingFangSC-Regular",
+        "requested": "PingFangSC-Regular",
+        "resolution": "default-name",
+        "version": "20.0d4e1",
+        "sha256": "6bccdb1a967b2ae7e856927eb559591b2ce05656b0d4ad2764b9c9429f12c0b7"
+      },
+      {
+        "family": "PingFang SC",
+        "postscript": "PingFangSC-Regular",
+        "requested": "PingFangSC-Regular",
+        "resolution": "matching-descriptor",
+        "version": "20.0d4e1",
+        "sha256": "6bccdb1a967b2ae7e856927eb559591b2ce05656b0d4ad2764b9c9429f12c0b7"
+      },
+      {
+        "family": "PingFang SC",
+        "postscript": "PingFangSC-Semibold",
+        "requested": "PingFangSC-Semibold",
+        "resolution": "default-name",
+        "version": "20.0d4e1",
+        "sha256": "6bccdb1a967b2ae7e856927eb559591b2ce05656b0d4ad2764b9c9429f12c0b7"
+      },
+      {
+        "family": "PingFang SC",
+        "postscript": "PingFangSC-Semibold",
+        "requested": "PingFangSC-Semibold",
+        "resolution": "matching-descriptor",
+        "version": "20.0d4e1",
+        "sha256": "6bccdb1a967b2ae7e856927eb559591b2ce05656b0d4ad2764b9c9429f12c0b7"
+      }
+    ],
+    "systemLanguages": "(\n    \"zh-Hans-CN\"\n)",
+    "systemLocale": "zh_CN",
+    "timezone": "Asia/Singapore",
+    "locale": "zh-CN",
+    "scale": "css"
+  },
+  "cases": {
+    "chat-light": {
+      "sha256": "a7c3b4795d4af4ecfc92bf5d21d315337a651a048ed5b18e6700327bde7beb15",
+      "contract": "c89efcb46cb1942370b1cd9ad2d044f7bec6181d01781ab5637da12d61ea2e21",
+      "source": {
+        "commit": "d261a82af958662909f56cfb9e1e27cd8c76c424",
+        "sourceHash": "2ac7ace9723ead5605bc38aa13014030bf4b00dcb94285aa424f53a1b813d7fc",
+        "dirty": false
+      },
+      "reason": "本机强指纹与档案记录迁移；16张PNG逐字节与旧图相同，独立Standards及Spec审阅通过；旧档案缺profile比较失败，接受后的只读复验待执行。",
+      "candidate": "17147e18-c014-4f65-b48a-d1f47948d23f",
+      "acceptedAt": "2026-10-20T15:32:44.694Z"
+    },
+    "chat-dark": {
+      "sha256": "4ab8487df83725d21f66c2ed16436d43d07a388bff40d8bfd3efa0b08c1edc0e",
+      "contract": "7e8706c333be59ca1f8b8bb1b354fe4ef9bff324842980290dc58df20bcb3e8a",
+      "source": {
+        "commit": "d261a82af958662909f56cfb9e1e27cd8c76c424",
+        "sourceHash": "2ac7ace9723ead5605bc38aa13014030bf4b00dcb94285aa424f53a1b813d7fc",
+        "dirty": false
+      },
+      "reason": "本机强指纹与档案记录迁移；16张PNG逐字节与旧图相同，独立Standards及Spec审阅通过；旧档案缺profile比较失败，接受后的只读复验待执行。",
+      "candidate": "17147e18-c014-4f65-b48a-d1f47948d23f",
+      "acceptedAt": "2026-10-20T15:32:44.695Z"
+    },
+    "chat-narrow-light": {
+      "sha256": "54c7266f2050211622569ab2f5244e544ca19136e0414b25ca1c0495d44c0959",
+      "contract": "4d481acc3e3eef3012bec72e844b4b4cbaeaaf506adbc8cb3f5415ec50c7ac58",
+      "source": {
+        "commit": "d261a82af958662909f56cfb9e1e27cd8c76c424",
+        "sourceHash": "2ac7ace9723ead5605bc38aa13014030bf4b00dcb94285aa424f53a1b813d7fc",
+        "dirty": false
+      },
+      "reason": "本机强指纹与档案记录迁移；16张PNG逐字节与旧图相同，独立Standards及Spec审阅通过；旧档案缺profile比较失败，接受后的只读复验待执行。",
+      "candidate": "17147e18-c014-4f65-b48a-d1f47948d23f",
+      "acceptedAt": "2026-10-20T15:32:44.695Z"
+    },
+    "chat-narrow-dark": {
+      "sha256": "68673a831f779a20f1f0666c8742645955a93911f2451f97d349fa25c1fe4835",
+      "contract": "bd29d62d66cfa260c4f16dab0255bb70dbc152b20b21f4061b93b63faabdb4ff",
+      "source": {
+        "commit": "d261a82af958662909f56cfb9e1e27cd8c76c424",
+        "sourceHash": "2ac7ace9723ead5605bc38aa13014030bf4b00dcb94285aa424f53a1b813d7fc",
+        "dirty": false
+      },
+      "reason": "本机强指纹与档案记录迁移；16张PNG逐字节与旧图相同，独立Standards及Spec审阅通过；旧档案缺profile比较失败，接受后的只读复验待执行。",
+      "candidate": "17147e18-c014-4f65-b48a-d1f47948d23f",
+      "acceptedAt": "2026-10-20T15:32:44.696Z"
+    },
+    "empty-chat-light": {
+      "sha256": "e31f942df0cdb12522b5374c4ab7e2d369cdaa71fe83481f04d61fddba37c270",
+      "contract": "f67798d98d951bdd62d80d92b3dc15a990979d199ae7d9dc12fb23b96e6aa8b1",
+      "source": {
+        "commit": "d261a82af958662909f56cfb9e1e27cd8c76c424",
+        "sourceHash": "2ac7ace9723ead5605bc38aa13014030bf4b00dcb94285aa424f53a1b813d7fc",
+        "dirty": false
+      },
+      "reason": "本机强指纹与档案记录迁移；16张PNG逐字节与旧图相同，独立Standards及Spec审阅通过；旧档案缺profile比较失败，接受后的只读复验待执行。",
+      "candidate": "17147e18-c014-4f65-b48a-d1f47948d23f",
+      "acceptedAt": "2026-10-20T15:32:44.697Z"
+    },
+    "empty-chat-dark": {
+      "sha256": "68c7981328eea9dab4d76b71dde810f501cd25532075388b5505842201c2729b",
+      "contract": "1e107ae51b50bcc971e6a819554efb7d2a16d556d4acd98f39b181915dcec271",
+      "source": {
+        "commit": "d261a82af958662909f56cfb9e1e27cd8c76c424",
+        "sourceHash": "2ac7ace9723ead5605bc38aa13014030bf4b00dcb94285aa424f53a1b813d7fc",
+        "dirty": false
+      },
+      "reason": "本机强指纹与档案记录迁移；16张PNG逐字节与旧图相同，独立Standards及Spec审阅通过；旧档案缺profile比较失败，接受后的只读复验待执行。",
+      "candidate": "17147e18-c014-4f65-b48a-d1f47948d23f",
+      "acceptedAt": "2026-10-20T15:32:44.697Z"
+    },
+    "employee-light": {
+      "sha256": "0f0e200ec256b15bad023fc111e7afae89e2314a9f3e74ca2a138df01deaba2d",
+      "contract": "9286a4ad99bd5f3fe889741a179bbf448ad462ccbd09835fcc687d45c5398c50",
+      "source": {
+        "commit": "d261a82af958662909f56cfb9e1e27cd8c76c424",
+        "sourceHash": "2ac7ace9723ead5605bc38aa13014030bf4b00dcb94285aa424f53a1b813d7fc",
+        "dirty": false
+      },
+      "reason": "本机强指纹与档案记录迁移；16张PNG逐字节与旧图相同，独立Standards及Spec审阅通过；旧档案缺profile比较失败，接受后的只读复验待执行。",
+      "candidate": "17147e18-c014-4f65-b48a-d1f47948d23f",
+      "acceptedAt": "2026-10-20T15:32:44.697Z"
+    },
+    "employee-dark": {
+      "sha256": "0e9375ad2ba4bc808d3e7692dbd12417acdb402aeb27c97cad285a85c9760cdd",
+      "contract": "73c07b7518d80b70b225322c29dffb5f353d119f6e651eff4ed83b1e3b5837b2",
+      "source": {
+        "commit": "d261a82af958662909f56cfb9e1e27cd8c76c424",
+        "sourceHash": "2ac7ace9723ead5605bc38aa13014030bf4b00dcb94285aa424f53a1b813d7fc",
+        "dirty": false
+      },
+      "reason": "本机强指纹与档案记录迁移；16张PNG逐字节与旧图相同，独立Standards及Spec审阅通过；旧档案缺profile比较失败，接受后的只读复验待执行。",
+      "candidate": "17147e18-c014-4f65-b48a-d1f47948d23f",
+      "acceptedAt": "2026-10-20T15:32:44.698Z"
+    },
+    "settings-light": {
+      "sha256": "a131abca65262c53fa3b613cc073b05c9cbbbb758dcb4119f21310ffd2d9f01c",
+      "contract": "7e5255cd1d6ad9466a69854f08942fa9a02ad84b369f2b941a50a1787ed41c6f",
+      "source": {
+        "commit": "3389a75d4c9245c0cad612c39332a5e6e000cc2a",
+        "sourceHash": "005d252d5e364e0d14d5d8295b7a1060263da22196645abb4ba039bb563d2957",
+        "dirty": false
+      },
+      "reason": "KS05新增只读快捷键明暗页及设置导航；四项旧新差异和新图经独立Standards/Spec逐图审阅，原14无关图不变。",
+      "candidate": "1b7d9a79-b799-4134-bd2e-475ad2fec1b2",
+      "acceptedAt": "2026-10-20T16:06:34.599Z"
+    },
+    "settings-dark": {
+      "sha256": "570c7681b73e24c6d9e50f0725aee202f0dec706fbfcb95f31766bc88e51fbcf",
+      "contract": "ea3f1f153ee06336a9361e4d5755f3d8d3810e87859b90e767610799dfaeeed1",
+      "source": {
+        "commit": "3389a75d4c9245c0cad612c39332a5e6e000cc2a",
+        "sourceHash": "005d252d5e364e0d14d5d8295b7a1060263da22196645abb4ba039bb563d2957",
+        "dirty": false
+      },
+      "reason": "KS05新增只读快捷键明暗页及设置导航；四项旧新差异和新图经独立Standards/Spec逐图审阅，原14无关图不变。",
+      "candidate": "1b7d9a79-b799-4134-bd2e-475ad2fec1b2",
+      "acceptedAt": "2026-10-20T16:06:34.600Z"
+    },
+    "resources-light": {
+      "sha256": "9fd394fd971ba096cb61ee597f4723f6d49980290e5ad4ca9594a01f7441e3eb",
+      "contract": "3d946d63c31869b0926c06ba06ba98cffca6117bae1ad9fadbafc8d76c32872e",
+      "source": {
+        "commit": "d261a82af958662909f56cfb9e1e27cd8c76c424",
+        "sourceHash": "2ac7ace9723ead5605bc38aa13014030bf4b00dcb94285aa424f53a1b813d7fc",
+        "dirty": false
+      },
+      "reason": "本机强指纹与档案记录迁移；16张PNG逐字节与旧图相同，独立Standards及Spec审阅通过；旧档案缺profile比较失败，接受后的只读复验待执行。",
+      "candidate": "17147e18-c014-4f65-b48a-d1f47948d23f",
+      "acceptedAt": "2026-10-20T15:32:44.700Z"
+    },
+    "resources-dark": {
+      "sha256": "f27af385db646178d4091836ca0bfe38e599fe50acdc22ecdb7b0e113e067897",
+      "contract": "656be966f0e8297a7856528efd12bbb84e6d0f31146ba0bef049b147ca8cedc7",
+      "source": {
+        "commit": "d261a82af958662909f56cfb9e1e27cd8c76c424",
+        "sourceHash": "2ac7ace9723ead5605bc38aa13014030bf4b00dcb94285aa424f53a1b813d7fc",
+        "dirty": false
+      },
+      "reason": "本机强指纹与档案记录迁移；16张PNG逐字节与旧图相同，独立Standards及Spec审阅通过；旧档案缺profile比较失败，接受后的只读复验待执行。",
+      "candidate": "17147e18-c014-4f65-b48a-d1f47948d23f",
+      "acceptedAt": "2026-10-20T15:32:44.701Z"
+    },
+    "detail-light": {
+      "sha256": "17104121753a9101de2abe1ca58cf2f02d842f3e88c527efec68883016960baa",
+      "contract": "6be6641275a5227b7ed45e5216e887a80e49414ef933c97c8fccf47e41540478",
+      "source": {
+        "commit": "d261a82af958662909f56cfb9e1e27cd8c76c424",
+        "sourceHash": "2ac7ace9723ead5605bc38aa13014030bf4b00dcb94285aa424f53a1b813d7fc",
+        "dirty": false
+      },
+      "reason": "本机强指纹与档案记录迁移；16张PNG逐字节与旧图相同，独立Standards及Spec审阅通过；旧档案缺profile比较失败，接受后的只读复验待执行。",
+      "candidate": "17147e18-c014-4f65-b48a-d1f47948d23f",
+      "acceptedAt": "2026-10-20T15:32:44.702Z"
+    },
+    "detail-dark": {
+      "sha256": "50037c600442cf294abb30e323f6ce7ec4cff1cd1b40f766f8e4ce19b7626d96",
+      "contract": "b94c00c459787ce967bdb732c72dab242f86b0a461685263e0993bae83a1825f",
+      "source": {
+        "commit": "d261a82af958662909f56cfb9e1e27cd8c76c424",
+        "sourceHash": "2ac7ace9723ead5605bc38aa13014030bf4b00dcb94285aa424f53a1b813d7fc",
+        "dirty": false
+      },
+      "reason": "本机强指纹与档案记录迁移；16张PNG逐字节与旧图相同，独立Standards及Spec审阅通过；旧档案缺profile比较失败，接受后的只读复验待执行。",
+      "candidate": "17147e18-c014-4f65-b48a-d1f47948d23f",
+      "acceptedAt": "2026-10-20T15:32:44.702Z"
+    },
+    "preview-light": {
+      "sha256": "5c7e27af611ad709376e7d57e7810b30c5309c56a8aae47a217b97506516999c",
+      "contract": "92cf7c356cf53ace610af0abe3983a01955331e076593c2a9c4454df51e6d55c",
+      "source": {
+        "commit": "d261a82af958662909f56cfb9e1e27cd8c76c424",
+        "sourceHash": "2ac7ace9723ead5605bc38aa13014030bf4b00dcb94285aa424f53a1b813d7fc",
+        "dirty": false
+      },
+      "reason": "本机强指纹与档案记录迁移；16张PNG逐字节与旧图相同，独立Standards及Spec审阅通过；旧档案缺profile比较失败，接受后的只读复验待执行。",
+      "candidate": "17147e18-c014-4f65-b48a-d1f47948d23f",
+      "acceptedAt": "2026-10-20T15:32:44.703Z"
+    },
+    "preview-dark": {
+      "sha256": "33b0da4b98f2cca2f29954c995acac2b3e914480dc4121920ff9f3c56d4a2ba5",
+      "contract": "fb5b0028ec61dcce694beff6122b0e86a1153edd9259064b1b151d874dfdc6eb",
+      "source": {
+        "commit": "d261a82af958662909f56cfb9e1e27cd8c76c424",
+        "sourceHash": "2ac7ace9723ead5605bc38aa13014030bf4b00dcb94285aa424f53a1b813d7fc",
+        "dirty": false
+      },
+      "reason": "本机强指纹与档案记录迁移；16张PNG逐字节与旧图相同，独立Standards及Spec审阅通过；旧档案缺profile比较失败，接受后的只读复验待执行。",
+      "candidate": "17147e18-c014-4f65-b48a-d1f47948d23f",
+      "acceptedAt": "2026-10-20T15:32:44.703Z"
+    },
+    "shortcuts-light": {
+      "sha256": "49849a398bb026e67b41a9663e91cc38feb9e600c2ace02d84bbb08e189fe9c7",
+      "contract": "171bb96072a7e80051c7c1c511516129c00e103c4058d3e70e25c8186a56c49a",
+      "source": {
+        "commit": "3389a75d4c9245c0cad612c39332a5e6e000cc2a",
+        "sourceHash": "005d252d5e364e0d14d5d8295b7a1060263da22196645abb4ba039bb563d2957",
+        "dirty": false
+      },
+      "reason": "KS05新增只读快捷键明暗页及设置导航；四项旧新差异和新图经独立Standards/Spec逐图审阅，原14无关图不变。",
+      "candidate": "1b7d9a79-b799-4134-bd2e-475ad2fec1b2",
+      "acceptedAt": "2026-10-20T16:06:34.600Z"
+    },
+    "shortcuts-dark": {
+      "sha256": "fcccb26b9b56c72b4b25a7cff18e5cac7a2c3b933fe2084684d2f2d8ce512552",
+      "contract": "470a05b4fc32829a5cef4c13044deac140431e51162eb3527e7763896f3e82d9",
+      "source": {
+        "commit": "3389a75d4c9245c0cad612c39332a5e6e000cc2a",
+        "sourceHash": "005d252d5e364e0d14d5d8295b7a1060263da22196645abb4ba039bb563d2957",
+        "dirty": false
+      },
+      "reason": "KS05新增只读快捷键明暗页及设置导航；四项旧新差异和新图经独立Standards/Spec逐图审阅，原14无关图不变。",
+      "candidate": "1b7d9a79-b799-4134-bd2e-475ad2fec1b2",
+      "acceptedAt": "2026-10-20T16:06:34.601Z"
+    }
+  },
+  "profile": "local-macos-arm64"
+}

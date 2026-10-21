@@ -1,5 +1,6 @@
 /*
- * [OUTPUT]: 插件桌面沿真实标签/会话名操作，协议夹具和真实模型结果分开。
+[OUTPUT]: 配色菜单先核实际打开及回退选项，再核禁用主题缺席与Escape关闭；不把尚未显示时按键当作关闭验证。
+ * [OUTPUT]: 初始目录核对九项固定插件身份（含DeepSeek和双运行时），不从实现派生期望；原筛选/启停/重启断言保持。
  * [INPUT]: 插件平台中文场景、真实Electron与隔离固定配置文件。
  * [OUTPUT]: UI启停/同行筛选/窄窗/重启和主题真实token回退；未来配置零写入及开关动画结束后原生整幅截图。
  * [POS]: 内置插件平台BDD步骤，不调用真实模型。
@@ -34,7 +35,7 @@ async function toggle(page: Page, name: string, checked: boolean) {
 }
 Given('内置插件管理在独立桌面打开', async ({ runtime }) => {
   await start(runtime)
-  await expect(runtime.page.locator('[data-application-plugin]')).toHaveCount(8)
+  await expect.poll(() => runtime.page.locator('[data-application-plugin]').evaluateAll(elements => elements.map(element => element.getAttribute('data-application-plugin')).sort())).toEqual(['boai.preview.text', 'boai.preview.image', 'boai.preview.pdf', 'boai.preview.office', 'boai.theme.vscode-plus', 'boai.theme.base46', 'boai.search.deepseek', 'boai.runtime.pi', 'boai.runtime.opencode'].sort())
   await expect.poll(() => settings(runtime.page)).toEqual({ revision: 0, disabledIds: [] })
   const filters = runtime.page.locator('[data-plugin-filters]')
   expect(await filters.evaluate(element => {
@@ -99,6 +100,9 @@ Then('默认配色生效且重启重新启用恢复Nord', async ({ runtime }) =>
   await runtime.page.getByRole('button', { name: '外观', exact: true }).click()
   await expect(runtime.page.getByText('原主题插件已停用，暂用 BoAI 配色。重新启用插件后恢复原选择。', { exact: true })).toBeVisible()
   await runtime.page.getByRole('combobox', { name: '深色配色', exact: true }).click()
+  const menu = runtime.page.getByRole('listbox')
+  await expect(menu).toBeVisible()
+  await expect(menu.getByRole('option', { name: 'BoAI 深色', exact: true })).toBeVisible()
   await expect(runtime.page.getByRole('option', { name: 'Nord', exact: true })).toHaveCount(0)
   await runtime.page.keyboard.press('Escape')
   await expect(runtime.page.getByRole('listbox')).toBeHidden()

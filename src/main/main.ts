@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: singleton/配置迁移前同时取得userData和v2共享访问，持有至真实主进程退出；活动维护/持久意图均拒绝启动写入。
  * [OUTPUT]: 2026-10-20全局字体与应用图标设置接入原外观持久化和宿主协议。
  * [OUTPUT]: 已授权桌面活动经私有宿主调用固定本地 OCR 程序，不向渲染器开放原始采集接口。
  * [OUTPUT]: 内置技能源允许查看位置，拒绝通过系统编辑器改写随包默认文件。
@@ -83,6 +84,7 @@ import { PluginSettingsStore } from './plugin-settings'
 import { DesktopSettingsStore } from './desktop-settings'
 import { BackgroundTray, hideMainWindow, cancelWindowHide } from './background'
 import { stopRuntime } from './runtime-shutdown'
+import { acquireRuntimeProfileAccess } from '../runtime/profile-access'
 import { isPublicMethod } from './public-methods'
 import { isApplicationHostMethod, type ApplicationHostMethod } from '../shared/ipc/application-host'
 import { appearancePatchSchema } from '../shared/appearance/schema'
@@ -96,6 +98,11 @@ app.setName('BoAI Agent')
 if (process.env.BOAI_DATA_DIR) app.setPath('userData', resolve(process.env.BOAI_DATA_DIR))
 const legacyDataPath = app.getPath('userData')
 const dataPath = join(legacyDataPath, 'v2')
+let profileAccessError: Error | undefined
+try {
+  // Pinned through actual process exit, including Chromium's final profile writes.
+  acquireRuntimeProfileAccess(dataPath)
+} catch (error) { profileAccessError = error instanceof Error ? error : new Error(String(error)) }
 const cliInstaller = new CliInstaller(join(legacyDataPath, 'cli-installation'), { platform: process.platform, executable: process.execPath, entry: resolve(__dirname, '../cli/index.mjs'), dataPath, version: app.getVersion() })
 const cliInstallationStatus = async (): Promise<Methods['getCliInstallation']['output']> => {
   const installation = await cliInstaller.status()
@@ -645,7 +652,12 @@ async function confirmDiscard(continueClose: () => void) {
   } finally { confirmingClose = false }
 }
 
-if (!app.requestSingleInstanceLock()) app.quit()
+if (profileAccessError) {
+  // Refuse before single-instance/profile initialization and without starting flush-on-quit.
+  process.stderr.write(profileAccessError.message + '\n')
+  app.exit(1)
+}
+else if (!app.requestSingleInstanceLock()) app.quit()
 else {
   // Register before any asynchronous initialization so macOS cold-start URLs are retained.
   app.on('open-url', (event, url) => { event.preventDefault(); gatewayImportInbox.receive(url) })

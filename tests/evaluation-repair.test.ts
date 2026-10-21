@@ -11,9 +11,19 @@ import { tmpdir } from 'node:os'
 import { execFileSync } from 'node:child_process'
 import { applyRepairEdits, compareRepairChecks, parseRepairReport, repairConfigSchema, type RepairEvaluation, type RepairProposal } from './evaluation/repair-contract'
 import { runRepairLoop, repairStatus } from './evaluation/repair'
-import { repairProcess, type RepairAgentRequest, type RepairAgentResult } from './evaluation/repair-process'
+import { repairProcess, saveProcess, type RepairAgentRequest, type RepairAgentResult } from './evaluation/repair-process'
 
 const roots: string[] = []
+it('进程未退出前已保存原始输出，结束回执核对不覆盖实时原件', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'boai-live-process-')); roots.push(root)
+  const controller = new AbortController()
+  const pending = repairProcess({ command: process.execPath, args: ['-e', "console.log('started');setInterval(()=>{},1000)"], cwd: root, timeoutMs: 5000, signal: controller.signal, capture: { directory: root, prefix: 'actual' } })
+  try { await expect.poll(async () => readFile(join(root, 'actual.stdout.log'), 'utf8').catch(() => '')).toContain('started') }
+  finally { controller.abort() }
+  const receipt = await pending; await saveProcess(root, 'actual', receipt)
+  expect(await readFile(join(root, 'actual.stdout.log'), 'utf8')).toBe(receipt.stdout)
+  expect(receipt.failure).toContain('取消')
+})
 afterEach(async () => { vi.restoreAllMocks(); for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }) })
 const config = { goal: 'Respect Unicode and blank text in the counter', allowedFiles: ['src/counter.ts'], tests: ['tests/counter.test.ts'], maxRounds: 2, maxNoImprovement: 2, typecheck: false, codexTimeoutMs: 10_000, totalTimeoutMs: 30_000 }
 const good = "export const count = (text: string) => Array.from(text.replace(/\\s/gu, '')).length\n"

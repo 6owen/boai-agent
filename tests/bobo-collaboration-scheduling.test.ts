@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 调度夹具经公共saveAgent核对命令关闭实际保存，原权限/并发/退出/超时断言保持。
  * [OUTPUT]: 已交付员工的后续判断沿真实业务消息事件，Run仍保留原公告身份；原首轮和已分工等待的跳过合同不混为一谈。
  * [OUTPUT]: API专用夹具保留明确connection前提，兼容运行时上下文的可选API连接。
  * [INPUT]: 真实 AppService/SQLite/组织发布和工作接续，带明确开始/实际退出屏障的内部模型协议。
@@ -16,7 +17,7 @@ import { join } from 'node:path'
 import { AppService } from '../src/runtime/service'
 import { publishArtifact } from '../src/runtime/modules/workspaces/file-access'
 import type { AgentEngine, EngineContext } from '../src/runtime/contracts'
-import type { AgentDelivery, AgentRun, Connection, Conversation, ConversationDetail, ConversationEvent, DiscussionTurn, Message, ParticipationDecision, Snapshot, WorkItem } from '../src/shared/domain'
+import type { AgentDelivery, AgentRun, Connection, Conversation, ConversationDetail, ConversationEvent, DigitalAgent, DiscussionTurn, Message, ParticipationDecision, Snapshot, WorkItem } from '../src/shared/domain'
 import type { ProductStore } from '../src/runtime/adapters/storage/product-store'
 import type { BoboCollaborationReceipt } from '../src/shared/domain/bobo-collaboration'
 
@@ -114,14 +115,22 @@ async function fixture(options: { ordinary?: boolean; rootWait?: ReturnType<type
   const connection = await service.handle('saveConnection', { name: '调度协议', provider: 'openai-compatible', baseUrl: 'http://localhost:1234/v1', defaultModel: 'scheduling-fixture' }) as Connection
   for (const employee of (await service.handle('snapshot', undefined) as Snapshot).agents) {
     const { configVersion, workspaceRef, memoryNamespace, policyVersion, ...input } = employee
-    await service.handle('saveAgent', { ...input, connectionId: connection.id, modelId: 'scheduling-fixture', allowCommands: false, expectedConfigVersion: configVersion })
+    const saved = await service.handle('saveAgent', { ...input, connectionId: connection.id, modelId: 'scheduling-fixture', allowCommands: false, expectedConfigVersion: configVersion }) as DigitalAgent
+    expect(saved.allowCommands).toBe(false); expect(saved.executionPermission).toBe(employee.executionPermission)
   }
   const core = options.ordinary ? undefined : await service.handle('startCoreConversation', { requestId: 'original-scheduling-organization', content: '请组织研究员和写作员拉群完成核查与汇总。' }) as Conversation
   if (options.ordinary) {
     state.group = await service.handle('createConversation', { kind: 'group', title: '普通用户群', agentIds: ['researcher', 'writer'] }) as Conversation
     await service.handle('sendMessage', { conversationId: state.group.id, requestId: 'ordinary-root', content: '研究员先安排写作员核查，再汇总', mentionIds: ['researcher'] })
   }
-  await vi.waitFor(() => {if(options.failRootOnce) expect(state.rootFailed).toBe(true);else expect(state.children.length).toBe(options.secondChild || options.dependentWriter ? 2 : 1)}, { timeout: 5000, interval: 10 })
+  await vi.waitFor(async () => {
+    if (options.failRootOnce) expect(state.rootFailed).toBe(true)
+    else {
+      const view = await service.handle('getConversation', { id: (core ?? state.group!).id }) as ConversationDetail
+      expect(view.runs.filter(run => run.status === 'failed').map(run => run.error)).toEqual([])
+      expect(state.children.length).toBe(options.secondChild || options.dependentWriter ? 2 : 1)
+    }
+  }, { timeout: 5000, interval: 10 })
   const detail = () => service.handle('getConversation', { id: state.group!.id }) as Promise<ConversationDetail>
   const settled = () => vi.waitFor(async () => {
     const view = await detail()

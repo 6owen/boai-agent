@@ -1,9 +1,15 @@
 /*
+ * [OUTPUT]: 定时任务标题明确属于原列表侧栏，创建仍核对独立Dialog与会话草稿。
+ * [OUTPUT]: bobo固定顶部分组保持；排序断言限定真实普通会话行，仍要求最近群在普通会话首位。
+ * [OUTPUT]: 慢回复按当前ExecutionFeed实际流式正文及运行状态核验取消；不再要求过渡正文提前写成持久聊天消息。
+ * [OUTPUT]: 私有判断禁工具而普通API聊天沿当前目录，实际零工具/零Work保持；现行定时Dialog/通讯录分区及记忆Dialog替代旧右侧整页。
+ * [OUTPUT]: 离线群模型提供当前无工具群语义解释，保持原独立参与/格式修复/取消重启断言。
+ * [OUTPUT]: 隔离目录使用实际realpath核验同一目录，保留数据归属和取消重启原断言。
  * [OUTPUT]: 人格与行为直接展示配置源文件，文件编辑保持独立Dialog及局部草稿守卫；本批仅维护源码，不运行E2E。
  * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
- * [OUTPUT]: 技能一级入口随产品统一为自定义。
+ * [OUTPUT]: 资源库为当前统一入口；群设置草稿沿通讯录导航守卫。
  * [INPUT]: 自主群聊隔离取消与重启的中文场景、Electron fixture 与现有产品 API。
- * [OUTPUT]: 核心预置身份与普通员工场景隔离，保留原业务断言；T2 显式仅此聊天的统一来源查询和重启隔离，保留原断言；单聊文本框和群聊真实编辑器保持同一草稿断言；自主群聊隔离取消与重启断言，会话菜单配置入口、全局 Tabs 员工分类及会话/技能跨页面的右侧窗口草稿；本地 Solar/Carbon 图标及实际离线 mask/尺寸核对。
+ * [OUTPUT]: 核心预置身份隔离、私聊记忆与群共享边界、慢回复取消和重启零重放；会话草稿、定时Dialog、文件详情宽度、通讯录分区放弃保护及员工配置/记忆/窄窗；本地Solar/Carbon图标原断言保持。
  * [POS]: tests/e2e/steps/desktop.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -14,6 +20,7 @@ import { messageDraft } from '../support/editor-controls'
 import { test as base } from '../support/test'
 import type { Desktop } from '../support/desktop'
 import { createServer } from 'node:http'
+import { realpath } from 'node:fs/promises'
 
 import { join } from 'node:path'
 import type { ConversationDetail, Snapshot } from '../../../src/shared/domain'
@@ -49,7 +56,9 @@ async function prepareCollaboration(runtime: Desktop) {
     const lastUser = [...visible].reverse().find((m: any) => m.role === 'user' && !String(m.content).startsWith('[Conversation background'))
     const text = typeof lastUser?.content === 'string' ? lastUser.content : JSON.stringify(lastUser?.content)
     let response = ''
-    if (system.includes('Private participation decision')) {
+    if (system.includes('Private group request interpretation')) {
+      response = JSON.stringify({ mode: 'independent' })
+    } else if (system.includes('Private participation decision')) {
       const payload = JSON.parse(visible.at(-1)?.content ?? '{}')
       const conversation = payload.data.currentTurnMessages
       const trigger = conversation.find((m: any) => m.id === payload.data.currentTurn.rootMessageId)
@@ -132,7 +141,7 @@ async function prepareCollaboration(runtime: Desktop) {
   desktop = current.launched
   let page = current.page
   const initial = (await snapshot(page)) as Snapshot
-  expect(initial.dataPath).toBe(join(dataPath, 'v2'))
+  expect(await realpath(initial.dataPath)).toBe(await realpath(join(dataPath, 'v2')))
   const connection = await page.evaluate(
     (port) =>
       window.boai.request('saveConnection', {
@@ -198,7 +207,10 @@ async function verifyConversationIsolation(previous: Awaited<ReturnType<typeof p
     requests.slice(requestStart).filter((request) => request.messages.some((m: any) => m.role === 'user' && String(m.content).includes('"repair":'))),
   ).toHaveLength(1)
   expect(JSON.stringify(requests.slice(requestStart))).not.toContain('PRIVATE_SENTINEL')
-  expect(requests.slice(requestStart).every((request) => !request.tools?.length)).toBe(true)
+  const privateRequests = requests.slice(requestStart).filter(request => request.messages.some((message: any) => message.role === 'system' && /Private (participation decision|memory maintenance|group request interpretation)/.test(String(message.content))))
+  expect(privateRequests.length).toBeGreaterThan(0)
+  expect(privateRequests.every(request => !request.tools?.length)).toBe(true)
+  expect(groupDetail.workItems).toHaveLength(0)
   expect(groupDetail.runs.every((run) => run.toolEvents.length === 0)).toBe(true)
   await send(group.id, '你们好', [], 'group-1')
   expect((await detail(page, group.id)).messages.filter((m) => m.senderType === 'user')).toHaveLength(1)
@@ -218,10 +230,10 @@ async function cancelSlowReply(previous: Awaited<ReturnType<typeof verifyConvers
     expectedConfigVersion: agentNow.configVersion,
   })
   const beforeSlow = requests.length
+  await page.getByRole('navigation', { name: '会话列表', exact: true }).getByRole('button', { name: /^方案讨论群/ }).click()
   await send(group.id, 'SLOW_TASK', ['researcher'], 'slow-1')
-  await expect
-    .poll(async () => (await detail(page, group.id)).messages.some((m) => m.status === 'streaming' && m.content.includes('正在回复')))
-    .toBe(true)
+  await expect(page.getByText('正在回复。', { exact: true })).toBeVisible()
+  expect((await detail(page, group.id)).runs.some(run => run.agentId === 'researcher' && run.status === 'running')).toBe(true)
   expect(JSON.stringify(requests.slice(beforeSlow))).toContain('STYLE_MARKER_2026')
   await page.evaluate((id) => window.boai.request('cancelRun', { conversationId: id }), group.id)
   await expect.poll(() => settled(group.id)).toBe(true)
@@ -237,7 +249,7 @@ async function exerciseNavigation(previous: Awaited<ReturnType<typeof cancelSlow
     (agentIds) => window.boai.request('createConversation', { kind: 'group', title: '尚未发消息的群', agentIds }),
     initial.agents.filter(agent => !isCoreAgent(agent)).map((a) => a.id),
   )
-  await expect(page.locator('.conversation-item').first()).toContainText('方案讨论群')
+  await expect(page.getByRole('navigation', { name: '会话列表', exact: true }).locator('.conversation-row .conversation-item:not(.conversation-core-item)').first()).toContainText('方案讨论群')
   await expect.poll(() => page.locator('.app-icon').count()).toBeGreaterThan(10)
   const icons = await page.locator('.app-icon').evaluateAll((nodes) =>
     nodes
@@ -255,75 +267,89 @@ async function exerciseNavigation(previous: Awaited<ReturnType<typeof cancelSlow
   await expect(page.getByRole('textbox', { name: '消息内容' })).toBeVisible()
   await page.getByRole('textbox', { name: '消息内容' }).fill('保留在这里的草稿')
   await page.getByRole('button', { name: '定时任务', exact: true }).click()
-  await expect(page.getByRole('main').getByRole('heading', { name: '定时任务', exact: true })).toBeVisible()
-  await page.getByRole('complementary', { name: '任务列表' }).getByRole('button', { name: '新建任务', exact: true }).click()
-  await expect(page.getByRole('complementary', { name: '新建定时任务', exact: true }).getByRole('textbox', { name: '标题', exact: true })).toBeVisible()
-  await page.getByRole('tablist', { name: '详情标签' }).getByRole('button', { name: '关闭详情', exact: true }).click()
+  await expect(page.getByRole('complementary', { name: '定时任务列表', exact: true }).getByRole('heading', { name: '定时任务', exact: true })).toBeVisible()
+  await page.getByRole('complementary', { name: '定时任务列表', exact: true }).getByRole('button', { name: '新建定时任务', exact: true }).click()
+  await page.getByRole('menuitem', { name: '手动创建', exact: true }).click()
+  const schedule = page.getByRole('dialog', { name: '新建定时任务', exact: true })
+  await expect(schedule.getByRole('textbox', { name: '名称', exact: true })).toBeVisible()
+  await page.keyboard.press('Escape'); await expect(schedule).toBeHidden()
   await page.getByRole('button', { name: '会话', exact: true }).click()
   await expect.poll(() => messageDraft(page.getByRole('textbox', { name: '消息内容' }))).toBe('保留在这里的草稿')
   await page.getByRole('button', { name: '会话操作', exact: true }).click()
-  await page.getByRole('menuitem', { name: '配置', exact: true }).click()
-  const panel = page.getByRole('complementary', { name: /群聊详情|数字员工/ })
-  await expect(panel).toBeVisible()
-  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await page.getByRole('menuitem', { name: '文件', exact: true }).click()
+  await expect(page.getByRole('region', { name: '会话文件', exact: true })).toBeVisible()
   const separator = page.getByRole('separator', { name: '调整详情宽度' })
   const previousWidth = Number(await separator.getAttribute('aria-valuenow'))
-  await separator.focus()
-  await separator.press('ArrowLeft')
+  await separator.focus(); await separator.press('ArrowLeft')
   await expect(separator).toHaveAttribute('aria-valuenow', String(previousWidth + 10))
-  await panel.getByRole('textbox', { name: '群聊名称', exact: true }).fill('未保存的群名')
-  await page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '自定义', exact: true }).click()
-  await expect(page.getByRole('alertdialog')).toHaveCount(0)
-  await expect(panel).toBeHidden()
-  await page.getByRole('button', { name: '会话', exact: true }).click()
-  await expect(panel.getByRole('textbox', { name: '群聊名称', exact: true })).toHaveValue('未保存的群名')
   await page.getByRole('button', { name: '关闭详情', exact: true }).click()
-  await expect(page.getByRole('alertdialog', { name: '有未保存的修改' })).toBeVisible()
+  await page.getByRole('button', { name: '会话操作', exact: true }).click()
+  await page.getByRole('menuitem', { name: '配置', exact: true }).click()
+  const panel = page.getByRole('region', { name: '通讯录详情', exact: true })
+  await expect(panel.getByRole('textbox', { name: '群聊名称', exact: true })).toHaveText('方案讨论群')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  const original = (await detail(page, group.id)).conversation
+  await panel.getByRole('button', { name: '编辑群聊设置', exact: true }).click()
+  const scope = panel.getByRole('combobox', { name: '新交流的记忆范围', exact: true })
+  await scope.click(); await page.getByRole('option', { name: '仅在此聊天使用', exact: true }).click()
+  await page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '资源库', exact: true }).click()
+  await expect(page.getByRole('alertdialog', { name: '有未保存的修改', exact: true })).toBeVisible()
   await page.getByRole('alertdialog').getByRole('button', { name: '取消', exact: true }).click()
-  await expect(panel.getByRole('textbox', { name: '群聊名称', exact: true })).toHaveValue('未保存的群名')
-  await page.getByRole('button', { name: '关闭详情', exact: true }).click()
-  await page.getByRole('button', { name: '退出', exact: true }).click()
-  expect((await detail(page, group.id)).conversation.title).toBe('方案讨论群')
+  await expect(scope).toContainText('仅在此聊天使用')
+  expect((await detail(page, group.id)).conversation).toEqual(original)
+  await page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '资源库', exact: true }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: '退出', exact: true }).click()
+  await expect(panel).toBeHidden()
+  await page.getByRole('button', { name: '通讯录', exact: true }).click()
+  await expect(panel.getByRole('textbox', { name: '群聊名称', exact: true })).toHaveText('方案讨论群')
+  expect((await detail(page, group.id)).conversation).toEqual(original)
   return { runtime, requests, desktop, launch, snapshot, detail, current, page, direct, group, panel }
 }
 
 async function editEmployeeResources(previous: Awaited<ReturnType<typeof exerciseNavigation>>) {
   let { runtime, requests, desktop, launch, snapshot, detail, current, page, direct, group, panel } = previous
-  await page.getByRole('button', { name: '会话操作', exact: true }).click()
-  await page.getByRole('menuitem', { name: '配置', exact: true }).click()
-  await page.getByRole('button', { name: '查看 研究员', exact: true }).click()
-  await panel.getByRole('tab', { name: '人格与行为', exact: true }).click()
-  await panel.getByRole('button', { name: /SOUL.md/ }).click()
-  await page.getByRole('dialog', { name: 'SOUL.md', exact: true }).getByRole('textbox', { name: 'SOUL.md 内容', exact: true }).fill('STYLE_MARKER_2026。由界面保存的新风格。')
-  await page.getByRole('dialog', { name: 'SOUL.md', exact: true }).getByRole('button', { name: '保存文件', exact: true }).click()
-  await expect
-    .poll(async () => (await page.evaluate(() => window.boai.request('readAgentFile', { agentId: 'researcher', name: 'SOUL.md' }))).content)
-    .toContain('由界面保存')
-  await page.getByRole('button', { name: '关闭配置源文件 SOUL.md', exact: true }).click()
-  await panel.getByRole('tab', { name: '记忆', exact: true }).click()
-  await panel.getByRole('button', { name: '添加', exact: true }).click()
-  await panel.getByRole('textbox', { name: '新增记忆', exact: true }).fill('群内专属约定：所有结论需注明来源。')
-  await panel.getByRole('combobox', { name: '使用范围', exact: true }).click()
+  await panel.getByRole('button', { name: '查看 研究员 的资料', exact: true }).click()
+  await expect(panel.getByRole('textbox', { name: '员工名称', exact: true })).toHaveText('研究员')
+  await panel.getByRole('button', { name: '高级配置', exact: true }).click()
+  const advanced = page.getByRole('dialog', { name: '高级配置', exact: true })
+  await advanced.getByRole('tab', { name: '人格与行为', exact: true }).click()
+  await advanced.getByRole('button', { name: '编辑 SOUL.md', exact: true }).click()
+  const file = page.getByRole('dialog', { name: 'SOUL.md', exact: true })
+  await file.getByRole('textbox', { name: 'SOUL.md 内容', exact: true }).fill('STYLE_MARKER_2026。由界面保存的新风格。')
+  await file.getByRole('button', { name: '保存文件', exact: true }).click()
+  await expect.poll(async () => (await page.evaluate(() => window.boai.request('readAgentFile', { agentId: 'researcher', name: 'SOUL.md' }))).content).toContain('由界面保存')
+  await file.getByRole('button', { name: '关闭配置源文件 SOUL.md', exact: true }).click()
+  await advanced.getByRole('tab', { name: '记忆', exact: true }).click()
+  await advanced.getByRole('combobox', { name: '来源聊天', exact: true }).click()
+  await page.getByRole('option', { name: '方案讨论群', exact: true }).click()
+  await advanced.getByRole('button', { name: '添加记忆', exact: true }).click()
+  const memory = page.getByRole('dialog', { name: '添加记忆', exact: true })
+  await memory.getByRole('textbox', { name: '新增记忆', exact: true }).fill('群内专属约定：所有结论需注明来源。')
+  await memory.getByRole('combobox', { name: '使用范围', exact: true }).click()
   await page.getByRole('option', { name: '仅此聊天', exact: true }).click()
-  await panel.getByRole('button', { name: '保存记忆', exact: true }).click()
-  await expect(panel).toContainText('群内专属约定')
-  await panel.getByRole('button', { name: '忘记', exact: true }).click()
-  await panel.getByRole('button', { name: '确认忘记', exact: true }).click()
-  await expect(panel).toContainText('没有符合条件的记忆。')
-  await panel.getByRole('tab', { name: '工作区', exact: true }).click()
-  await expect(panel).toContainText('agents/researcher/workspace')
+  await memory.getByRole('button', { name: '保存记忆', exact: true }).click()
+  await expect(memory).toBeHidden()
+  await expect(advanced).toContainText('群内专属约定')
+  await advanced.getByRole('button', { name: '忘记', exact: true }).click()
+  await advanced.getByRole('button', { name: '确认忘记', exact: true }).click()
+  await expect(advanced).toContainText('没有符合条件的记忆。')
+  const privateMemory = await page.evaluate(id => window.boai.request('getMemory', { agentId: 'researcher', scope: 'employee', sourceConversationId: id }), direct.id)
+  expect(privateMemory.entries).toHaveLength(1)
+  expect(privateMemory.entries[0].content).toContain('PRIVATE_SENTINEL')
+  await advanced.getByRole('tab', { name: '工作区', exact: true }).click()
+  await expect(advanced).toContainText('agents/researcher/workspace')
   await page.screenshot({ path: 'test-results/v02-desktop-group.png', fullPage: true })
   for (const width of [1280, 1100, 900, 760]) {
     await desktop.evaluate(({ BrowserWindow }, width) => BrowserWindow.getAllWindows()[0].setSize(width, 900), width)
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
-    await expect(page.getByRole('button', { name: '关闭详情', exact: true })).toBeVisible()
+    await expect(advanced.getByRole('button', { name: '关闭高级配置', exact: true })).toBeVisible()
     await page.screenshot({ path: `test-results/v02-width-${width}.png`, fullPage: true })
   }
   await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.setZoomFactor(2))
-  await expect(page.getByRole('button', { name: '关闭详情', exact: true })).toBeVisible()
+  await expect(advanced.getByRole('button', { name: '关闭高级配置', exact: true })).toBeVisible()
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.setZoomFactor(1))
-  await page.getByRole('button', { name: '关闭详情', exact: true }).click()
+  await advanced.getByRole('button', { name: '关闭高级配置', exact: true }).click()
   return { runtime, requests, desktop, launch, snapshot, detail, current, page, direct, group }
 }
 

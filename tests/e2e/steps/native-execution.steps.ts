@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 执行分组先等实际加载后再展开，避免空all快照略过工具；原publish参数/结果与交付/重启断言保持。
  * [OUTPUT]: 聊天执行流沿Beautiful UI像素加载/真实计时与思考轨迹展示，验证折叠重开和原最终替换。
  * [OUTPUT]: 执行未完成时的正文/思考增量回归，最终答复与私有协议字段保持分离。
  * [INPUT]: 第13组原生纠偏规格，原Electron BDD和隔离pnpm dev。
@@ -71,6 +72,7 @@ Then('执行面板保留真实步骤而聊天没有流程卡片',async({runtime,
  await runtime.page.getByRole('menuitem',{name:'执行过程',exact:true}).click()
  const panel=runtime.page.locator('#agent-execution-drawer')
  await expect(panel.getByText('执行历史',{exact:true})).toBeVisible()
+ await expect(panel.getByRole('button',{name:/已完成 \d+ 个步骤/}).first()).toBeVisible()
  for(const group of await panel.getByRole('button',{name:/已完成 \d+ 个步骤/}).all())if(await group.getAttribute('aria-expanded')==='false')await group.click()
  await expect(panel.getByRole('button',{name:/publish_artifact/}).first()).toBeVisible()
  await panel.getByRole('button',{name:/publish_artifact/}).first().click()

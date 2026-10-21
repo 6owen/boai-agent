@@ -1,4 +1,20 @@
 <!--
+[OUTPUT]: 用户改回GitHub Actions，标准双runner已实证；PR/main云端工程/32核心/18UI与严格Required checks，本机服务禁用；v3基准已接受，新完整资格查当前Checks。
+[OUTPUT]: 5f自动本地CI的28核心/18UI通过，但模块原生SIGSEGV导致正式failure；4013模块诊断未复现不补绿，当前状态唯一归22组03。
+[OUTPUT]: 436完整本地CI因扫描/菜单准备两项failed，18UI全过；候选修正与ZIP共用阶段实际验证通过，待固定审查/新CI，22组03。
+[OUTPUT]: c5个人候选DMG/ZIP已built，ZIP8/DMG2分批资产验证通过；Actions停用、本地新完整CI待复验，尚无正式发布或安装升级。
+[OUTPUT]: 候选版本统一0.2.4、旧进程和链式链接边界已补；09f完整CI因原件时钟误拒failed，修复待复验，未发布或安装。
+[OUTPUT]: 个人候选release:build已接隔离ad-hoc arm64 DMG/ZIP及身份/hash；实际打包和升级仍待验，当前CI由本机执行。
+[OUTPUT]: 789已自动PR完整通过3935模块/T128/UI18并回传；本机发布前检改main原件/最新状态候选，Tag/安装待实施，详22组03。
+[OUTPUT]: 7257本地工程/3917模块/T128/UI18完整成功且GitHub确认；main门禁改BOAI local CI，其余保护保持；自动轮询候选与四目标剩余归22组03。
+[OUTPUT]: 本地CI 6a原始T128/UI18全过，但自测锁/时钟核验导致完整failed且已真实回传failure；修复候选待新完整复验，最新22组03。
+[OUTPUT]: 用户额度耗尽后Actions已停用读回；CI迁本机，9c本机18UI全过但T1仍失败、完整门禁未放行；最新22组03。
+[OUTPUT]: 用户Actions额度耗尽后改ci:local工程/T128/UI18、完整原件及可选GitHub状态回传；完整结果和保护切换待验。
+[OUTPUT]: 第22组按用户确认的T1/T2/T3接线：固定核心和全部UI必需、旧专项失败保留；新分层门槛待真实验证，唯一进度22组03。
+[OUTPUT]: 第22组CI18只读与同步main后隔离pnpm dev八场通过，原生Codex画板局部改图/只读发布门槛已验；完整旧验收/业务性能/发布升级及同序DG仍未完成。
+[OUTPUT]: 第22组CI四基准受控接受及原生Codex选区改图已验，31项只读发布身份前检集成本地infra；完整CI/升级未完，唯一进度22组03。
+[OUTPUT]: 第22组新增release:check同SHA只读前检入口；尚未创建Tag、打包、发布或安装，实际进度归22组03。
+[OUTPUT]: 第22组独立worktree已启动：原BDD扩展UI基线、隔离候选及固定CI汇总，当前待实际验收；四目标未完成。
 [OUTPUT]: 2026-10-20用户确认保留测试代码，仅清理本地测试产物和独立记录；历史报告附件已删除，规格/实现文字结论不等于原始证据仍可读取。
 [OUTPUT]: 2026-10-20按用户要求清理测试产物/独立记录及其附件链接；历史文字结果不代表原件仍然保留。
 [OUTPUT]: 2026-10-20用户收窄至终端/预览与桌面日报；实际能力及36项技能接入归独立Agent架构§11.57，其他四项不再迁移，既有不足不宣称完成。
@@ -223,9 +239,9 @@
 [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 -->
 
-2026-10-20个人发布补充：[第22组04 macOS本机发布与升级方案](ai-docs/spec/22.开发自动化与持续测试/04-macOS本机发布与升级方案.md)记录用户无Apple开发者证书、本机源码开发自用的条件，设计同SHA的Tag/Release、个人安装包及本机独立升级，区分`pnpm dev`与安装版、数据/回滚及标准自动更新。当前只落实文档，实际进度归22组03；未修改打包/CI、未创建Tag或Release、未替换本机应用。
+个人发布与开发CI：[第22组04](ai-docs/spec/22.开发自动化与持续测试/04-macOS本机发布与升级方案.md)约定无Apple开发者证书、本机源码开发自用的Tag/Release、ad-hoc安装包及独立升级路线。后续已获授权实施，PR/main自动CI已按最新要求迁回GitHub Actions，本机轮询停止并禁用；候选构建及正式产物冒烟入口已接入；实际成功、原失败和未完成范围统一见[22组03](ai-docs/spec/22.开发自动化与持续测试/03-实施步骤与验收.md#5-唯一实际进度)。本轮未创建Tag/Release或替换本机应用；合并与当前CI资格查看[PR1 Checks](https://github.com/6owen/boai-agent/pull/1/checks)，`pnpm dev`不执行安装升级。
 
-2026-10-20范围纠正：[第22组开发自动化与持续测试](ai-docs/spec/22.开发自动化与持续测试/README.md)保持自动开发、测试基线和个人发布计划；[05 Codex与Excalidraw开发设计流程](ai-docs/spec/22.开发自动化与持续测试/05-Codex与Excalidraw开发设计流程.md)明确画板用于Codex开发BOAI、设计文件归仓库ai-docs。原19组10的BOAI内嵌宿主/画板任务已撤销，不得据旧文档增加产品画板或员工工具。当前仅文档，全部实际进度归22组03。
+2026-10-20范围纠正：[第22组开发自动化与持续测试](ai-docs/spec/22.开发自动化与持续测试/README.md)保持自动开发、测试基线和个人发布计划；[05 Codex与Excalidraw开发设计流程](ai-docs/spec/22.开发自动化与持续测试/05-Codex与Excalidraw开发设计流程.md)明确画板供Codex、Claude/Pi等开发Agent共用、设计文件归仓库ai-docs。原19组10的BOAI内嵌宿主/画板任务已撤销，不得据旧文档增加产品画板或员工工具。共享MCP核心及Codex旧联动已接，共享Skill/其他客户端真实接入仍待验；全部实际进度归22组03。
 
 2026-10-19架构实施：[独立Agent配置与行为运行架构](ai-docs/2026-10-19-BOAI独立Agent配置与行为运行架构.md)已按“修改”授权接线：版本化员工人格、十个登记源文件、API/native共享装配、状态与主动行为、可信核心调用。§11为本轮实际进度及失败/测试/剩余的唯一入口；既有M0/M1成绩仍归原文档第9节，完整Alma迁移未完成。
 
@@ -433,6 +449,8 @@ v2/
 
 ## 验证与打包
 
+日常CI使用GitHub Actions，不占用本机屏幕焦点。以下本机命令供明确手动验证或打包时使用；本轮未运行。
+
 ```sh
 pnpm typecheck
 pnpm test
@@ -443,11 +461,13 @@ pnpm package
 
 `pnpm package` 在 `release/` 生成当前平台的应用目录；`pnpm dist:mac` 生成 macOS DMG。打包使用本项目安装的 Electron。正式分发还需要应用图标、签名、公证及目标系统验收。
 
+本机个人候选使用 `pnpm release:build --version X.Y.Z --sha 完整SHA`，要求干净源码及一致的version/buildVersion，保留原构建资源并显式使用ad-hoc arm64配置，输出独立DMG/ZIP和签名、架构、字节清单；`built`尚不具备发布或安装资格。旧发布前检 `pnpm release:check --version X.Y.Z --sha 完整SHA --local-ci 原件目录`仍仅核本机main封存；云端发布资格适配尚未完成，普通云端CI成功不授Tag/发布或安装资格。实际进度与安装边界见[第22组03](ai-docs/spec/22.开发自动化与持续测试/03-实施步骤与验收.md)。
+
 引擎测试使用真实 Mastra SDK 和本地模型协议服务，覆盖 OpenAI 兼容与 Anthropic 请求、流式输出、技能、知识、产物、命令审批和取消；服务测试使用实际 SQLite。桌面测试启动真实 Electron，验证跨进程调用、群聊、隔离、取消和重启。测试服务只用于自动化测试，应用没有模拟回复模式。
 
 桌面验收使用 `playwright-bdd`：`tests/e2e/features` 保存中文业务场景，`steps` 保存类型化操作与断言，`support` 管理独立数据、Electron 重启和资源清理。原有 13 组桌面流程全部由 BDD 执行，另有五人并行流式、慢判断隔离、委派/定向接续和停止工作树等场景；`tests/*.test.ts` 继续由 Vitest 执行。生成的 `.features-gen` 不提交、不手工编辑。Playwright 报告位于 `playwright-report/index.html`，按业务步骤展示的 Cucumber 报告位于 `cucumber-report/index.html`；二者分目录，避免报告器清理目录时互相覆盖。真实供应商评估单独使用 `pnpm eval:collaboration`，不在默认测试中调用付费模型；场景、预算和门槛见[评估协议](ai-docs/spec/6.Cumora协作重构/06-真实模型评估协议.md)。
 
-评估体系现有38题（10回归、12业务开发、16冻结留出），32项覆盖映射。`pnpm eval:dataset`检查清单与冻结合同，`pnpm eval:score --input 原始目录 --output 新目录`离线生成HTML/JSON报告；不重复调用模型。真实评估支持途中事件、完整产物hash、单人对照和跨批次共享预算；运行结束、任务通过与待评审分别显示。人工校准和正式留出实验尚未完成，见[测试体系实施状态](ai-docs/spec/6.Cumora协作重构/09-多Agent测试体系与评估集方案.md)。`.github/workflows/tests.yml`提供离线类型、UI规则、模块、冻结合同与Electron BDD工作流，真实模型仍手动执行。
+评估体系现有38题（10回归、12业务开发、16冻结留出），32项覆盖映射。`pnpm eval:dataset`检查清单与冻结合同，`pnpm eval:score --input 原始目录 --output 新目录`离线生成HTML/JSON报告；不重复调用模型。真实评估支持途中事件、完整产物hash、单人对照和跨批次共享预算；运行结束、任务通过与待评审分别显示。人工校准和正式留出实验尚未完成，见[测试体系实施状态](ai-docs/spec/6.Cumora协作重构/09-多Agent测试体系与评估集方案.md)。当前Actions已启用，PR/main自动执行完整工程、32项固定核心桌面场景和全部18项UI基准；GitHub Actions的`Required checks`独立重核同SHA原报告和截图/逐启动trace，失败、取消或缺原件均阻止main合并。本机轮询已停止并禁用；`ci:local`/`ci:watch`仅保留历史手动排查入口，本轮不在本机运行。真实模型评估仍手动、按原预算执行。进度看[Actions](https://github.com/6owen/boai-agent/actions/workflows/tests.yml)每步日志及失败artifact。
 
 协作重构当前能力：连接共享模型容量，同轮事件合并保留来源；任务已有版本化工作记录、事务认领和跨运行预算。业务结果通过独立声明和证据记录，运行成功不自动等于工作完成。员工可同时判断、流式回复与整理各自记忆；普通同伴消息不作废对原始请求的独立聊天意图。默认同连接六项模型调用、六项独立工作区任务并行；任务结果先保存为草稿，过期时仅重新汇报，命令任务和相同员工会话文件保持互斥。新增父子工作、显式结果版本依赖和负责人定向接续；子工作共享原始预算，依赖失败阻塞，支持单独停止工作树。重启中断且不重放；此前固定验收版本的真实模型样本为 44/45，达到预登记门槛，仍存在内容质量限制且整体 token 开销增加；详见[实施记录](ai-docs/spec/2.已实现功能与代码现状/20-Electron-BDD与协作重构.md)。
 
@@ -561,3 +581,6 @@ Soft 风格变量与验证记录见 [全局 Soft UI](ai-docs/spec/2.已实现功
 2026-10-16新增[Agent运行时插件设计](ai-docs/spec/19.应用插件架构/05-Agent运行时插件协议与接入架构.md)与[实施计划](ai-docs/spec/19.应用插件架构/06-Agent运行时插件实施计划与验收.md)：保留Mastra主线，通过统一provider合同、共享ACP驱动、Pi RPC插件及独立包接入新Agent；受信本地包安装/更新/启停已接入，市场与不受信代码沙箱另期。Pi RPC及共用ACP已有源码/协议验证，真实Pi登录失败、OpenCode实机未验；已有驱动和个人配置保持。
 
 2026-10-20 Alma技能接续：当前Bobo实际绑定16项适配技能；会话搜索/核心会话改名走统一应用协议，文件与系统能力沿现有工具。原研究完整371候选/40技能范围、真实失败和当前剩余归[独立Agent架构§11.23](ai-docs/2026-10-19-BOAI独立Agent配置与行为运行架构.md#1123-技能管理会话与文件能力接入2026-10-20goal继续中)。
+
+
+2026-10-20用户已授权在独立worktree实施第22组四目标。UI比较使用`pnpm test:ui`，候选采集/逐case接受使用独立入口；普通CI禁止更新基线。范围和唯一实际进度见[22组03](ai-docs/spec/22.开发自动化与持续测试/03-实施步骤与验收.md#51-独立worktree实施批次2026-10-20进行中)。业务评估继续沿原第15组；画板仅用于Codex开发，BOAI产品不嵌入编辑器。

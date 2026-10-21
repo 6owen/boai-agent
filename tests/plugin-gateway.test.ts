@@ -1,4 +1,5 @@
 /*
+[OUTPUT]: 已关闭SQLite sidecar在目录快照后消失时重核对应主库；持久化缺失/实际私密字节仍失败。
  * [OUTPUT]: 原生来源按有界配置/环境指纹隔离续聊，Runtime API v2可选inspectSource在开会话及提交前复核；不重放旧输入或改变本机预算。
  * [INPUT]: Versioned Runtime API packages, isolated host records and synthetic gateway credentials.
  * [OUTPUT]: Private v2 source, legacy compatibility, before-submit rejection, redaction and source revision isolation.
@@ -8,7 +9,7 @@
 import { afterEach, expect, test } from 'vitest'
 import { mkdtemp, mkdir, realpath, writeFile, readFile, readdir, rm, copyFile, chmod } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { basename, join, resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { AppService } from '../src/runtime/service'
 import { bundledRuntimePlugins, runtimeManifestSchema, type RuntimePluginCatalog } from '../src/shared/plugins/runtime-catalog'
@@ -18,6 +19,31 @@ import type { Connection, Conversation, ConversationDetail, DigitalAgent, Launch
 
 const cleanup: (() => Promise<void>)[] = []
 afterEach(async () => { for (const close of cleanup.splice(0).reverse()) await close() })
+async function expectNoStoredSecret(files: string[], secret: string) {
+  const databases = new Set(files.filter(path => /\.(?:sqlite|sqlite3)$/.test(path)))
+  const scan = async (path: string) => expect((await readFile(path)).includes(Buffer.from(secret)), basename(path)).toBe(false)
+  for (const path of files) {
+    try { await scan(path) }
+    catch (error) {
+      const main = path.replace(/-(?:wal|shm)$/, '')
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT' || !/\.(?:sqlite|sqlite3)-(?:wal|shm)$/.test(path) || !databases.has(main)) throw error
+      // SQLite may remove its temporary WAL/shared-memory files after the
+      // directory snapshot. Re-read the matching persistent database instead.
+      await scan(main)
+    }
+  }
+  for (const path of databases) await scan(path)
+}
+test('stored-secret scan rechecks the main DB when a closed SQLite sidecar disappears, while real leaks and missing durable files fail', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'boai-secret-scan-')); cleanup.push(() => rm(root, { recursive: true, force: true }))
+  const main = join(root, 'boai.sqlite'), sidecar = main + '-shm', durable = join(root, 'record.json'), secret = 'synthetic-private-scanner-value'
+  await writeFile(main, '[redacted]'); await writeFile(durable, '{}'); await writeFile(sidecar, secret)
+  await expect(expectNoStoredSecret([main, sidecar, durable], secret)).rejects.toThrow('boai.sqlite-shm')
+  await rm(sidecar); await expect(expectNoStoredSecret([main, sidecar, durable], secret)).resolves.toBeUndefined()
+  await writeFile(main, secret); await expect(expectNoStoredSecret([sidecar, main, durable], secret)).rejects.toThrow('boai.sqlite')
+  await writeFile(main, '[redacted]'); await rm(durable)
+  await expect(expectNoStoredSecret([main, sidecar, durable], secret)).rejects.toMatchObject({ code: 'ENOENT' })
+})
 async function setup(mode: 'normal' | 'mismatch' | 'error' | 'native-race' = 'normal', apiVersion: 1 | 2 = 2) {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'boai-plugin-source-'))), secret = `synthetic-${randomUUID()}`, credentials = new Map<string, string>()
   const options = { dataPath: join(root, 'data'), engine: { run: async () => { throw Error('No API parent') }, test: async () => '' }, secrets: { get: async (key: string) => credentials.get(key), set: async (key: string, value: string) => { credentials.set(key, value) }, delete: async (key: string) => { credentials.delete(key) } }, emit: () => {} }
@@ -62,7 +88,7 @@ test('v2 private source never enters launch, public replies/events, profile or s
   expect(third.runs.every(value => value.usage === undefined)).toBe(true)
   await f.service.close()
   const entries = await readdir(join(f.root, 'data'), { recursive: true, withFileTypes: true })
-  for (const entry of entries) if (entry.isFile()) expect((await readFile(join(entry.parentPath, entry.name))).includes(Buffer.from(f.secret)), entry.name).toBe(false)
+  await expectNoStoredSecret(entries.filter(entry => entry.isFile()).map(entry => join(entry.parentPath, entry.name)), f.secret)
 }, 60000)
 test.each(['mismatch', 'error'] as const)('v2 %s rejects before accepting user input and sanitizes private errors', async mode => {
   const f = await setup(mode), detail = await f.send(), run = detail.runs.at(-1)!

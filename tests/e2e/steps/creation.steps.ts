@@ -1,10 +1,13 @@
 /*
+ * [OUTPUT]: 创建前显式准备仅本机模型目录并从界面选择；群名按现行就地保存核对同ID，旧详情保存入口退役。
+ * [OUTPUT]: 创建表单沿当前“工作方式”字段核验原规则保存，员工/群与草稿断言保持。
  * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
  * [INPUT]: 创建员工与群聊并保持手动列表状态的中文场景、Electron fixture 与现有产品 API。
  * [OUTPUT]: 会话菜单入口、创建员工与群聊并保持手动列表状态的真实桌面业务步骤与断言。
  * [POS]: tests/e2e/steps/creation.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { createServer } from 'node:http'
 import { expect } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 import { test as base } from '../support/test'
@@ -24,11 +27,16 @@ const { Given, When, Then } = createBdd(test)
 
 async function prepareCreation(runtime: Desktop) {
   const root = runtime.root
+  const server = createServer((_request, response) => { response.writeHead(200, { 'Content-Type': 'application/json' }); response.end(JSON.stringify({ object: 'list', data: [{ id: 'creation-fixture', object: 'model' }] })) })
+  runtime.trackServer(server)
+  await new Promise<void>(done => server.listen(0, '127.0.0.1', done))
+  const modelUrl = `http://127.0.0.1:${(server.address() as { port: number }).port}/v1`
   const app = await runtime.start({ dataDir: root })
   const page = await app.firstWindow(),
     errors: string[] = runtime.errors
 
   await expect(page.locator('.app-shell')).toBeVisible()
+  await page.evaluate(baseUrl => window.boai.request('saveConnection', { name: '创建验收连接', provider: 'openai-compatible', baseUrl, defaultModel: 'creation-fixture' }), modelUrl)
   const snapshot = () => page.evaluate(() => window.boai.request('snapshot', undefined))
   const create = async (label: string) => {
     await page.getByRole('button', { name: '新建', exact: true }).click()
@@ -44,10 +52,12 @@ async function createEmployee(previous: Awaited<ReturnType<typeof prepareCreatio
   await expect(employee.getByRole('textbox')).toHaveCount(3)
   await employee.getByRole('textbox', { name: '名称', exact: true }).fill('交互设计师')
   await employee.getByRole('textbox', { name: '角色', exact: true }).fill('打磨交互与界面')
-  const prompt = employee.getByRole('textbox', { name: 'Prompt', exact: true })
+  const prompt = employee.getByRole('textbox', { name: '工作方式', exact: true })
   await prompt.fill('始终先理解用户的目标，再提出具体的设计改进。')
   await expect(prompt).toHaveCSS('outline-style', 'none')
   expect(await prompt.evaluate((el) => getComputedStyle(el).getPropertyValue('--tw-ring-shadow').trim())).toBe('0 0 transparent')
+  await employee.getByRole('combobox', { name: '模型连接', exact: true }).click()
+  await page.getByRole('option', { name: '创建验收连接 · creation-fixture', exact: true }).click()
   await employee.getByRole('button', { name: '创建员工', exact: true }).click()
   await expect(employee).toBeHidden()
   await expect(page.locator('.conversation-item').filter({ hasText: '交互设计师' })).toBeVisible()
@@ -92,12 +102,13 @@ async function createAndEditGroup(previous: Awaited<ReturnType<typeof cancelGrou
   await expect(row).toBeVisible()
   await page.getByRole('button', { name: '会话操作', exact: true }).click()
   await page.getByRole('menuitem', { name: '配置', exact: true }).click()
-  const details = page.getByRole('complementary', { name: '群聊详情', exact: true })
+  const details = page.getByRole('region', { name: '通讯录详情', exact: true })
   await expect(details).toBeVisible()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await details.getByRole('textbox', { name: '群聊名称', exact: true }).fill('设计协作群')
-  await details.getByRole('button', { name: '保存设置', exact: true }).click()
-  await expect(details).toBeHidden()
+  await details.getByRole('textbox', { name: '群聊名称', exact: true }).press('Enter')
+  await expect.poll(async () => (await snapshot()).conversations.find(item => item.id === created.id)?.title).toBe('设计协作群')
+  await details.getByRole('button', { name: '发消息', exact: true }).click()
   await expect(page.locator('.conversation-item').filter({ hasText: '设计协作群' })).toBeVisible()
   return { app, page, errors }
 }

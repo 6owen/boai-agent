@@ -1,5 +1,5 @@
 /*
- * [INPUT]: 真实 AppService/Mastra SDK/本地 HTTP、SQLite 和受管员工文件准备故障。
+ * [INPUT]: 真实AppService/Mastra SDK/本地HTTP及固定组织阶段三工具、SQLite和受管员工文件准备故障。
  * [OUTPUT]: 原组织失败后的真实文件核对/新 holder 共原预算、零模型/零伪回复续完、原公告来源/效果确认和强幂等；忘记/过期旧快照与外改原件拒绝发布。
  * [POS]: bobo 组织恢复宿主合同；本地协议不计为真实供应商或人工质量通过。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -79,7 +79,7 @@ async function fixture(options: { memory?: boolean; expiresAt?: string; checkpoi
     expect(view.runs.some(run => run.phase === 'execution')).toBe(true)
     expect(view.runs.every(run => ['completed', 'failed', 'cancelled', 'interrupted'].includes(run.status))).toBe(true)
     expect(view.turns?.every(turn => ['completed', 'failed', 'cancelled', 'interrupted', 'budget_exhausted'].includes(turn.status))).toBe(true)
-    expect((await store.load<BoboCollaborationOperation>('boboCollaborations'))[0]?.status).toBe('needs_attention')
+    expect((await store.load<BoboCollaborationOperation>('boboCollaborations'))[0]?.status, JSON.stringify(protocolErrors)).toBe('needs_attention')
   }, { timeout: 10_000, interval: 20 })
   expect(protocolErrors).toEqual([]); expect(faulted).toBe(true)
   const operation = (await store.load<BoboCollaborationOperation>('boboCollaborations'))[0]!, work = (await store.load<WorkItem>('workItems'))[0]!, budget = (await store.load<WorkBudget>('workBudgets'))[0]!

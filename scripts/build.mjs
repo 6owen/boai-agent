@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 完整构建核对输入前后一致，并登记dist输入/产物hash供UI及发布复验，避免测试旧构建。
  * [OUTPUT]: 2026-10-20构建并分发预置应用图标和macOS本机图标辅助程序。
  * [OUTPUT]: 构建真实 PTY 与 macOS 本地桌面 OCR 辅助程序；构建不采集桌面。
  * [OUTPUT]: 分发 PPT 原版 worker 与相对依赖至 runtime/alma，桌面/独立服务共用。
@@ -24,6 +25,7 @@ import { copyFile, cp, readFile, rm, mkdir } from 'node:fs/promises'
 import { basename } from 'node:path'
 import { build } from 'esbuild'
 import { build as buildRenderer } from 'vite'
+import { buildInputHash, recordBuildIdentity } from './build-identity.mjs'
 
 export async function buildHost() {
   await buildProcessGuard()
@@ -57,6 +59,7 @@ export async function buildHost() {
   await copyFile('src/runtime/modules/workspaces/hermes/source-manifest.json', 'dist/runtime/hermes-file-tools-source-manifest.json')
 }
 if (process.argv[1]?.endsWith('build.mjs')) {
+  const inputs = await buildInputHash()
   await buildHost()
   await buildRenderer()
   for (const name of ['LICENSE.txt', 'NOTICE.txt', 'source-manifest.json']) await copyFile(`src/renderer/styles/craft-scenic/${name}`, `dist/renderer/craft-scenic-${name}`)
@@ -68,4 +71,5 @@ if (process.argv[1]?.endsWith('build.mjs')) {
   await copyFile('src/main/browser/LICENSE.txt', 'dist/main/browser-LICENSE.txt')
   await copyFile('src/main/browser/NOTICE.txt', 'dist/main/browser-NOTICE.txt')
   await copyFile('src/main/browser/source-manifest.json', 'dist/main/browser-source-manifest.json')
+  await recordBuildIdentity(inputs)
 }

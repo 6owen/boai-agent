@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: bobo明确记忆修改/忘记或来源会话清理后，清除所有可重建的Mastra派生thread。
  * [OUTPUT]: 同会话 PTY/真实预览接原应用协议和退出清理；默认关闭的本机 OCR、活动查询及有来源日报。
 [OUTPUT]: 员工PPT工具共用当前执行资格、独立渲染/审阅租约及原模型用量接线。
  * [OUTPUT]: PPT 审阅租约接当前执行资格、原追加预算和实际连接路由；独立用量与主模型合并，本机原生计数/预算保持。
@@ -188,6 +189,7 @@ import { TerminalService } from './modules/workspace-tools/terminal-service'
 import { PreviewService } from './modules/workspace-tools/preview-service'
 import { workspaceOperations } from './modules/workspace-tools/operations'
 import { DesktopActivityService } from './modules/desktop-activity/activity-service'
+import { UserMemoryProvider } from './modules/memory/user-memory-provider'
 import { PresentationService } from './modules/presentations/presentation-service'
 import { RunModelUsage } from './modules/profile/run-model-usage'
 import { generatePresentationReview } from './adapters/mastra/presentation-review-model'
@@ -425,6 +427,7 @@ export class AppService {
   private readonly terminals: TerminalService
   private readonly previews: PreviewService
   private readonly desktopActivity: DesktopActivityService
+  private readonly userMemoryProvider: UserMemoryProvider
   private readonly presentations: PresentationService
   private readonly images: ImageService
   private readonly selfies: SelfieService
@@ -517,7 +520,8 @@ export class AppService {
       available: () => !this.backingUp && !this.closing && !!options.applicationHost?.available,
       changed: () => this.changed(),
     })
-    this.application = new ApplicationService(this.store, [...this.desktopActivity.operations(), ...workspaceOperations(this.terminals, this.previews, async (scope, actor, write, directory) => {
+    this.userMemoryProvider = new UserMemoryProvider(this.store, options.secrets, () => this.changed())
+    this.application = new ApplicationService(this.store, [...this.desktopActivity.operations(), ...this.userMemoryProvider.operations(), ...workspaceOperations(this.terminals, this.previews, async (scope, actor, write, directory) => {
       await this.applicationAuthority.getStore()?.validate()
       if (this.closing || this.backingUp || this.clearingConversations.has(scope.conversationId)) fail('会话正在清理或服务不可用')
       const room = this.getConversation(scope.conversationId), agent = this.getAgent(scope.employeeId)
@@ -778,6 +782,7 @@ export class AppService {
     await this.store.init()
     if (['darwin', 'linux'].includes(process.platform)) await this.terminals.recover()
     await this.desktopActivity.init()
+    await this.userMemoryProvider.init()
     await this.selfies.recover()
     // These operations have no Run to recover. Retain their request identity and
     // observed route; a process exit cannot establish the model's final result.
@@ -2000,6 +2005,9 @@ export class AppService {
     } else if (method === 'deleteMemory') result = await this.memory.delete(query, (value as typeof value & { id: string }).id, expectedEpoch, (value as typeof value & { requestId?: string }).requestId)
     else result = await this.memory.clear(query, expectedEpoch, (value as typeof value & { requestId?: string }).requestId)
     await this.memoryChanged([query.agentId])
+    if (query.agentId === CORE_AGENT_ID) await this.options.engine.forgetAllConversationMemory?.().catch(error => {
+      this.emit({ type: 'runtime-error', error: `bobo 记忆投影清理未完成：${error instanceof Error ? error.message : String(error)}` })
+    })
     this.changed(query.conversationId); return result
   }
 
@@ -2167,6 +2175,10 @@ export class AppService {
     for (const artifact of this.artifacts.values()) if (artifact.conversationId === id) this.artifacts.delete(artifact.id)
     this.scheduler.forgetHistory(result.removals)
     this.memory.forgetHistory(result.removals.filter(item => item.collection === 'memory').map(item => item.id), result.memoryEpochs)
+    if (conversation.purpose === 'core') {
+      const purge = this.options.engine.forgetAllConversationMemory?.() ?? this.options.engine.forgetConversationMemory?.(id)
+      await purge?.catch(error => { this.emit({ type: 'runtime-error', error: `bobo 对话记忆投影清理未完成：${error instanceof Error ? error.message : String(error)}` }) })
+    }
     // Raw input identities also need rechecking after the history deletion commits.
     await this.invalidateMemoryRuns()
     this.automations.replaceHistory(result.occurrences)
@@ -4582,6 +4594,15 @@ export class AppService {
       this.changed(conversation.id)
       const alive = () => !effective.aborted && !this.closing && !terminal.has(run.status)
       context.responseKind = run.responseKind; context.decision = decision
+      if (!native && run.responseKind === 'chat' && isCoreAgent(context.agent) && conversation.purpose === 'core' && !conversation.channel && source?.senderType === 'user' && source.senderId === 'user' && !source.origin && !context.materialRefs?.length && this.userMemoryProvider.mode === 'memmy') {
+        const revision = this.userMemoryProvider.revision
+        const bridge: NonNullable<EngineContext['externalMemory']> = { revision, sourceMemoryIds: [], recall: async () => {
+          const result = await this.userMemoryProvider.recall({ conversationId: conversation.id, runId: run.id, query: source.content, signal: effective })
+          bridge.sourceMemoryIds = result?.sourceMemoryIds ?? []
+          return result
+        } }
+        context.externalMemory = bridge
+      }
       if (run.responseKind !== 'chat' || native || context.resources.length) {
         context.environment = await this.homes.prepareEnvironment(context)
         effective.throwIfAborted()
@@ -4706,6 +4727,7 @@ export class AppService {
         const current = this.getConversation(conversation.id), snapshot = this.snapshots.get(run.id)!
         await this.assertMaterialRefs(context)
         if (!await this.memory.recallValid(context.memory!)) fail('记忆来源或有效期已变更，旧回复不能发布')
+        if (context.externalMemory && (this.userMemoryProvider.mode !== 'memmy' || this.userMemoryProvider.revision !== context.externalMemory.revision)) fail('全局记忆提供方已改变，请重新发起本次请求')
         if (!alive() || !current.agentIds.includes(run.agentId) || snapshot.invalidated || this.getAgent(run.agentId).configVersion !== snapshot.agent.configVersion || (current.configVersion ?? 0) !== (snapshot.conversation.configVersion ?? 0)) fail('当前运行已失去发布权限')
         const completedMessage = run.responseKind === 'task'
           ? { ...message, ...this.nextMessage(conversation.id, { id: message.id, runId: run.id, senderType: 'agent', senderId: run.agentId, senderName: run.agentName, content: run.draft!.text, status: 'completed' }) }
@@ -4716,7 +4738,8 @@ export class AppService {
         const artifacts = [...this.artifacts.values()].filter(artifact => artifact.runId === run.id).map(artifact => ({ ...artifact, sourceMessageId: completedMessage.id }))
         const actualInputs = (context.memory?.recall?.inputMessageIds ?? context.messages.map(item => item.id)).map(id => this.messages.get(id)).filter((item): item is Message => !!item && item.createdAt >= this.memoryActivatedAt)
         const observation: MemoryObservation = { id: run.id, ownerAgentId: run.agentId, conversationId: current.id, sourceMessageIds: [...new Set([...actualInputs.map(item => item.id), ...await this.materialSourceMessageIds(context), completedMessage.id, ...(context.memory?.entries.flatMap(entry => entry.sourceMessageIds) ?? [])])], sourceConversationIds: [...new Set([current.id, ...actualInputs.map(item => item.conversationId), ...(context.memory?.entries.flatMap(entry => entry.sourceConversationIds ?? (entry.conversationId ? [entry.conversationId] : [])) ?? [])])], sourceResourceIds: snapshot.resources.map(item => item.id), sourceMemoryIds: context.memory?.recall?.versions.map(entry => entry.id) ?? [], contextRef: context.materialRefs?.length ? undefined : current.memoryContextRef, disclosure: current.kind === 'direct' ? 'private' : 'public', useScope: context.materialRefs?.length ? 'conversation' : current.memoryScope ?? 'employee', createdAt: now() }
-        const records = [record('runs', completedRun), record('messages', completedMessage), this.memory.observation(observation), ...artifacts.map(artifact => record('artifacts', artifact))]
+        const records = [record('runs', completedRun), record('messages', completedMessage), this.memory.observation(observation), ...artifacts.map(artifact => record('artifacts', artifact)),
+          ...(context.externalMemory && source ? [this.userMemoryProvider.pendingTurn({ runId: run.id, turnId: turn.id, conversationId: conversation.id, userMessageId: source.id, assistantMessageId: completedMessage.id, completedAt: completedRun.finishedAt, providerRevision: context.externalMemory.revision, sourceMemoryIds: context.externalMemory.sourceMemoryIds })] : [])]
         await publish(completedMessage, records, run.workId ? async records => {
           await this.works.settle(run.id, outcome, { messageId: message.id, content: completedMessage.content, artifactIds: artifacts.map(artifact => artifact.id) }, records, tx => this.reading.recordCompletion(tx, completedMessage), native ? async (tx, work) => {
             const referenced = (outcome.evidence ?? []).filter(evidence => evidence.kind === 'artifact' && !artifacts.some(artifact => artifact.id === evidence.reference))
@@ -4735,6 +4758,7 @@ export class AppService {
         } : undefined)
         Object.assign(run, completedRun); Object.assign(message, completedMessage); this.messages.set(message.id, message)
         for (const artifact of artifacts) this.artifacts.set(artifact.id, artifact)
+        if (context.externalMemory) void this.userMemoryProvider.flushTurn(run.id).catch(error => this.emit({ type: 'runtime-error', error: `Memmy轮次同步未确认：${this.errorMessage(error)}` }))
       }
       if (run.responseKind === 'task') {
         let observedMessageIds = new Set(context.messages.map(message => message.id))
@@ -4845,6 +4869,8 @@ export class AppService {
       // API question continuations still have no post-delivery maintenance authority.
       if (!native && (workContinuation || !this.options.engine.extractMemory)) return
       if (!this.getConversation(turn.conversationId).agentIds.includes(agentId)) return
+      const memoryRoom = this.getConversation(turn.conversationId)
+      if (this.userMemoryProvider.mode === 'memmy' && memoryRoom.purpose === 'core' && isCoreAgent(this.getAgent(agentId)) && !memoryRoom.channel) return
       const taskRuns = [...this.runs.values()].filter(run => run.turnId === turn.id && run.agentId === agentId && run.phase === 'execution' && run.responseKind === 'task')
       const sourceWorkIds = [...new Set(taskRuns.flatMap(run => run.workId ? [run.workId] : []))]
       const view = sourceWorkIds.length ? await this.works.view(turn.conversationId) : undefined
@@ -5354,6 +5380,7 @@ export class AppService {
       if (this.teamGeneration.busy) fail('团队方案仍在生成，请停止后备份')
       await this.automations.beforeBackup()
       if (this.scheduler.busy || this.runControllers.size || this.activeAdapters.size || this.externalTests.size || this.skills.busy || this.skillUpdates.busy || this.skillLibrary.busy || this.materialImports.size || this.materialUploads.busy || this.materials.busy || this.dataSources.busy || this.webSearch.connections.busy) fail('有任务、材料准备或资源管理操作正在执行或等待修复，请先停止或完成后备份')
+      await this.userMemoryProvider.close()
       await mkdir(destination, { recursive: true })
       if ((await readdir(destination)).length) fail('请选择空目录保存备份')
       await this.preserveLegacyRuntimeFacts()
@@ -5381,6 +5408,8 @@ export class AppService {
           await backupClient.execute({ sql: "INSERT INTO records(collection,id,value) VALUES('agentProfiles',?,?) ON CONFLICT(collection,id) DO UPDATE SET value=excluded.value", args: [agent.id, JSON.stringify(profile)] })
         }
         await backupClient.execute("UPDATE records SET value=json_set(value,'$.status','unknown','$.detail','备份恢复后仅核对历史发送，未自动重发。') WHERE collection='channelDeliveries' AND json_extract(value,'$.status')='sending'")
+        await backupClient.execute("UPDATE records SET value=json_set(value,'$.provider','local','$.revision',COALESCE(json_extract(value,'$.revision'),0)+1) WHERE collection='userMemoryProvider'")
+        await backupClient.execute("UPDATE records SET value=json_set(value,'$.status','unknown','$.result','备份恢复后需核对原Memmy服务，未自动重发。') WHERE collection='userMemoryTurns' AND json_extract(value,'$.status') IN ('pending','sending')")
         await backupClient.execute("DELETE FROM records WHERE collection IN ('browserScopes','browserEvidence','browserCleanups')")
         await backupClient.execute("UPDATE records SET value=json_object('id',id,'argumentHash',json_extract(value,'$.argumentHash'),'conversationId',coalesce(json_extract(value,'$.lease.conversationId'),json_extract(value,'$.conversationId')),'status','cleared') WHERE collection='browserActions'")
         await backupClient.execute({ sql: 'INSERT INTO records(collection,id,value) VALUES(?,?,?) ON CONFLICT(collection,id) DO UPDATE SET value=excluded.value', args: ['automationRuntime', 'installation', JSON.stringify({ id: 'installation', root: this.dataPath, restorePending: true })] })
@@ -5396,9 +5425,9 @@ export class AppService {
         if (native) { nativeRuntimeHomes.add(join(this.dataPath, ...native.split('/'))); return false }
         return !legacyBrowserRuns.has(source) && !nativeRuntimeHomes.has(source)
       } })
-      await writeFile(join(destination, 'backup.json'), JSON.stringify({ format: 'boai-agent-local-backup', version: 2, createdAt: now(), sourceDataPath: this.dataPath, credentialsIncluded: false, nativeAgentRestorePolicy: 'fresh-session', excludedNativeRuntimeHomes: [...nativeRuntimeHomes].map(directory => relative(this.dataPath, directory)), excludedLegacyBrowserRuns: [...legacyBrowserRuns].map(directory => relative(this.dataPath,directory)) }, null, 2))
+      await writeFile(join(destination, 'backup.json'), JSON.stringify({ format: 'boai-agent-local-backup', version: 2, createdAt: now(), sourceDataPath: this.dataPath, credentialsIncluded: false, externalUserMemoryIncluded: false, nativeAgentRestorePolicy: 'fresh-session', excludedNativeRuntimeHomes: [...nativeRuntimeHomes].map(directory => relative(this.dataPath, directory)), excludedLegacyBrowserRuns: [...legacyBrowserRuns].map(directory => relative(this.dataPath,directory)) }, null, 2))
       await writeFile(join(destination, 'data-version.json'), JSON.stringify({ schemaVersion: 2, restoredBackup: true, createdAt: now() }, null, 2))
-      await writeFile(join(destination, 'RESTORE.txt'), '退出 BoAI Agent 后，先备份目标应用现有数据，再将 boai.sqlite、data-version.json、skills、knowledge、workspaces、agents、external-workspaces、materials、appearance 和 automation-mastra.sqlite（如存在）复制到目标应用 userData/v2 目录；不要与现有数据库混用。保留 v2 中的 data-version.json 版本标记后再启动新版应用。启动时会自动重定位受管资源、员工目录与产物路径。materials 仅包含已发送的聊天材料；草稿不恢复，也不重新读取外部来源。恢复后定时任务默认暂停，请检查配置后启用。旧备份没有 materials 或 appearance 时，请先移走目标目录对应旧文件夹，避免混入旧数据。API Key 与外部登录态未包含在备份中，需重新配置。本机 Agent 私有运行目录不包含在备份中，外部程序自己的历史也不由本备份恢复或删除；原会话引用只供核对，下一次发送消息时从获准聊天内容建立新会话，启动不会自动续行。未完成浏览器下载不包含在备份中；旧版浏览器运行目录缺少可信完成状态，原件保留在来源设备但不导出，具体目录见 backup.json。已发布的受管成果仍正常备份。\n')
+      await writeFile(join(destination, 'RESTORE.txt'), '退出 BoAI Agent 后，先备份目标应用现有数据，再将 boai.sqlite、data-version.json、skills、knowledge、workspaces、agents、external-workspaces、materials、appearance 和 automation-mastra.sqlite（如存在）复制到目标应用 userData/v2 目录；不要与现有数据库混用。保留 v2 中的 data-version.json 版本标记后再启动新版应用。启动时会自动重定位受管资源、员工目录与产物路径。materials 仅包含已发送的聊天材料；草稿不恢复，也不重新读取外部来源。恢复后定时任务默认暂停，请检查配置后启用。旧备份没有 materials 或 appearance 时，请先移走目标目录对应旧文件夹，避免混入旧数据。API Key 与外部登录态未包含在备份中，需重新配置。Memmy 外部服务数据不包含在备份中，恢复后记忆提供方默认关闭；未确认的同步不会自动重发。Mastra bobo 会话投影在下次聊天时从仍有效的产品历史重建。本机 Agent 私有运行目录不包含在备份中，外部程序自己的历史也不由本备份恢复或删除；原会话引用只供核对，下一次发送消息时从获准聊天内容建立新会话，启动不会自动续行。未完成浏览器下载不包含在备份中；旧版浏览器运行目录缺少可信完成状态，原件保留在来源设备但不导出，具体目录见 backup.json。已发布的受管成果仍正常备份。\n')
     } finally {
       try { await this.automations.afterBackup() } finally { this.backingUp = false; for (const id of this.conversations.keys()) this.scheduleWork(id) }
       // A send acknowledged just before backup acquired the gate may have queued a job.
@@ -5450,6 +5479,7 @@ export class AppService {
     await this.options.browserHost?.request('disconnect',{})
     this.requestModelSecrets.clear()
     await this.application.drain()
+    await this.userMemoryProvider.close()
     await this.store.close()
   }
 }

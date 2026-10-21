@@ -1,0 +1,583 @@
+{
+  "version": 1,
+  "profile": "github-macos15-arm64",
+  "environment": {
+    "version": 3,
+    "platform": "darwin",
+    "arch": "arm64",
+    "osVersion": "15.7.9",
+    "osBuild": "24G830",
+    "electron": "39.2.7",
+    "playwright": "1.63.0",
+    "geist": "2ffebe993e969069a9789d15164b7715d42491b5835516c5e3b935d5f81b05f1",
+    "pingFang": [
+      {
+        "family": "PingFang SC",
+        "postscript": "PingFangSC-Medium",
+        "requested": "PingFangSC-Medium",
+        "resolution": "default-name",
+        "version": "20.0d21e3",
+        "sha256": "ae0aeea8ce656655e84f947143eea225954845f97c110b4ef1efd83472850733"
+      },
+      {
+        "family": "PingFang SC",
+        "postscript": "PingFangSC-Medium",
+        "requested": "PingFangSC-Medium",
+        "resolution": "matching-descriptor",
+        "version": "20.0d21e3",
+        "sha256": "ae0aeea8ce656655e84f947143eea225954845f97c110b4ef1efd83472850733"
+      },
+      {
+        "family": "PingFang SC",
+        "postscript": "PingFangSC-Regular",
+        "requested": "PingFang SC",
+        "resolution": "default-family",
+        "version": "20.0d21e3",
+        "sha256": "ae0aeea8ce656655e84f947143eea225954845f97c110b4ef1efd83472850733"
+      },
+      {
+        "family": "PingFang SC",
+        "postscript": "PingFangSC-Regular",
+        "requested": "PingFangSC-Regular",
+        "resolution": "default-name",
+        "version": "20.0d21e3",
+        "sha256": "ae0aeea8ce656655e84f947143eea225954845f97c110b4ef1efd83472850733"
+      },
+      {
+        "family": "PingFang SC",
+        "postscript": "PingFangSC-Regular",
+        "requested": "PingFangSC-Regular",
+        "resolution": "matching-descriptor",
+        "version": "20.0d21e3",
+        "sha256": "ae0aeea8ce656655e84f947143eea225954845f97c110b4ef1efd83472850733"
+      },
+      {
+        "family": "PingFang SC",
+        "postscript": "PingFangSC-Semibold",
+        "requested": "PingFangSC-Semibold",
+        "resolution": "default-name",
+        "version": "20.0d21e3",
+        "sha256": "ae0aeea8ce656655e84f947143eea225954845f97c110b4ef1efd83472850733"
+      },
+      {
+        "family": "PingFang SC",
+        "postscript": "PingFangSC-Semibold",
+        "requested": "PingFangSC-Semibold",
+        "resolution": "matching-descriptor",
+        "version": "20.0d21e3",
+        "sha256": "ae0aeea8ce656655e84f947143eea225954845f97c110b4ef1efd83472850733"
+      }
+    ],
+    "displays": [
+      {
+        "width": 1024,
+        "height": 768,
+        "workWidth": 1024,
+        "workHeight": 684,
+        "scaleFactor": 1,
+        "primary": true
+      }
+    ],
+    "systemLanguages": "(\n    \"en-US\"\n)",
+    "systemLocale": "en_US",
+    "timezone": "Asia/Singapore",
+    "locale": "zh-CN",
+    "scale": "css"
+  },
+  "provenance": {
+    "version": 1,
+    "runId": "39583678813",
+    "attempt": 1,
+    "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+    "artifactId": 12339308033,
+    "digest": "sha256:7f2a4b9e13c13433888b0d8a205657da12c505ecb5286641d5590c1f501cb832"
+  },
+  "cases": {
+    "chat-light": {
+      "sha256": "164ec4d6861ab54d6129d2611ddbd3c131295df12c296afc21f8c778a4e104c2",
+      "contract": "c89efcb46cb1942370b1cd9ad2d044f7bec6181d01781ab5637da12d61ea2e21",
+      "source": {
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "sourceHash": "a08516d07992c7bca13a646853fdffc6e2c7b0ad795fba5d7f6674328946c92b",
+        "dirty": false
+      },
+      "built": {
+        "version": 1,
+        "inputHash": "afafe88230c5d9f6f4a320459006e80d1333b66b6f12e1bf0c30f890c152e91b",
+        "outputHash": "f64ceb504386f5ea68ec9c4d47459707fc2e58b5431493b385f199afe2d9b4a0",
+        "node": "v24.16.0",
+        "createdAt": "2026-10-21T10:20:54.585Z"
+      },
+      "provenance": {
+        "version": 1,
+        "runId": "39583678813",
+        "attempt": 1,
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "artifactId": 12339308033,
+        "digest": "sha256:7f2a4b9e13c13433888b0d8a205657da12c505ecb5286641d5590c1f501cb832"
+      },
+      "reason": "Reviewed v3 hosted display migration: 16 PNGs byte-identical; settings light/dark match main 6b464b31 typography groups and React Aria NumberField. Both review axes approve; pixel thresholds and masks unchanged.",
+      "candidate": "125048b1-d855-4084-b49a-a24b9436cfed",
+      "acceptedAt": "2026-10-21T10:46:56.150Z"
+    },
+    "chat-dark": {
+      "sha256": "bc3e83a98b9ee77c59913c828709a9080cd32583ba019c503a7be9ae4f13288e",
+      "contract": "7e8706c333be59ca1f8b8bb1b354fe4ef9bff324842980290dc58df20bcb3e8a",
+      "source": {
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "sourceHash": "a08516d07992c7bca13a646853fdffc6e2c7b0ad795fba5d7f6674328946c92b",
+        "dirty": false
+      },
+      "built": {
+        "version": 1,
+        "inputHash": "afafe88230c5d9f6f4a320459006e80d1333b66b6f12e1bf0c30f890c152e91b",
+        "outputHash": "f64ceb504386f5ea68ec9c4d47459707fc2e58b5431493b385f199afe2d9b4a0",
+        "node": "v24.16.0",
+        "createdAt": "2026-10-21T10:20:54.585Z"
+      },
+      "provenance": {
+        "version": 1,
+        "runId": "39583678813",
+        "attempt": 1,
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "artifactId": 12339308033,
+        "digest": "sha256:7f2a4b9e13c13433888b0d8a205657da12c505ecb5286641d5590c1f501cb832"
+      },
+      "reason": "Reviewed v3 hosted display migration: 16 PNGs byte-identical; settings light/dark match main 6b464b31 typography groups and React Aria NumberField. Both review axes approve; pixel thresholds and masks unchanged.",
+      "candidate": "125048b1-d855-4084-b49a-a24b9436cfed",
+      "acceptedAt": "2026-10-21T10:46:56.151Z"
+    },
+    "chat-narrow-light": {
+      "sha256": "feeb9b83688808bf6ebc5b0740b29622772db8e06c5a09e55874ffcc21b42552",
+      "contract": "4d481acc3e3eef3012bec72e844b4b4cbaeaaf506adbc8cb3f5415ec50c7ac58",
+      "source": {
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "sourceHash": "a08516d07992c7bca13a646853fdffc6e2c7b0ad795fba5d7f6674328946c92b",
+        "dirty": false
+      },
+      "built": {
+        "version": 1,
+        "inputHash": "afafe88230c5d9f6f4a320459006e80d1333b66b6f12e1bf0c30f890c152e91b",
+        "outputHash": "f64ceb504386f5ea68ec9c4d47459707fc2e58b5431493b385f199afe2d9b4a0",
+        "node": "v24.16.0",
+        "createdAt": "2026-10-21T10:20:54.585Z"
+      },
+      "provenance": {
+        "version": 1,
+        "runId": "39583678813",
+        "attempt": 1,
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "artifactId": 12339308033,
+        "digest": "sha256:7f2a4b9e13c13433888b0d8a205657da12c505ecb5286641d5590c1f501cb832"
+      },
+      "reason": "Reviewed v3 hosted display migration: 16 PNGs byte-identical; settings light/dark match main 6b464b31 typography groups and React Aria NumberField. Both review axes approve; pixel thresholds and masks unchanged.",
+      "candidate": "125048b1-d855-4084-b49a-a24b9436cfed",
+      "acceptedAt": "2026-10-21T10:46:56.151Z"
+    },
+    "chat-narrow-dark": {
+      "sha256": "dd758e4d67c9f2cb5bdfffba39d9c2081f82d6748aeeb6d0c65315a62873e8d1",
+      "contract": "bd29d62d66cfa260c4f16dab0255bb70dbc152b20b21f4061b93b63faabdb4ff",
+      "source": {
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "sourceHash": "a08516d07992c7bca13a646853fdffc6e2c7b0ad795fba5d7f6674328946c92b",
+        "dirty": false
+      },
+      "built": {
+        "version": 1,
+        "inputHash": "afafe88230c5d9f6f4a320459006e80d1333b66b6f12e1bf0c30f890c152e91b",
+        "outputHash": "f64ceb504386f5ea68ec9c4d47459707fc2e58b5431493b385f199afe2d9b4a0",
+        "node": "v24.16.0",
+        "createdAt": "2026-10-21T10:20:54.585Z"
+      },
+      "provenance": {
+        "version": 1,
+        "runId": "39583678813",
+        "attempt": 1,
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "artifactId": 12339308033,
+        "digest": "sha256:7f2a4b9e13c13433888b0d8a205657da12c505ecb5286641d5590c1f501cb832"
+      },
+      "reason": "Reviewed v3 hosted display migration: 16 PNGs byte-identical; settings light/dark match main 6b464b31 typography groups and React Aria NumberField. Both review axes approve; pixel thresholds and masks unchanged.",
+      "candidate": "125048b1-d855-4084-b49a-a24b9436cfed",
+      "acceptedAt": "2026-10-21T10:46:56.151Z"
+    },
+    "empty-chat-light": {
+      "sha256": "458f37de653d54c2c837e3ff2b09728cb18d09f18e8c405e02090df412ad0a2c",
+      "contract": "f67798d98d951bdd62d80d92b3dc15a990979d199ae7d9dc12fb23b96e6aa8b1",
+      "source": {
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "sourceHash": "a08516d07992c7bca13a646853fdffc6e2c7b0ad795fba5d7f6674328946c92b",
+        "dirty": false
+      },
+      "built": {
+        "version": 1,
+        "inputHash": "afafe88230c5d9f6f4a320459006e80d1333b66b6f12e1bf0c30f890c152e91b",
+        "outputHash": "f64ceb504386f5ea68ec9c4d47459707fc2e58b5431493b385f199afe2d9b4a0",
+        "node": "v24.16.0",
+        "createdAt": "2026-10-21T10:20:54.585Z"
+      },
+      "provenance": {
+        "version": 1,
+        "runId": "39583678813",
+        "attempt": 1,
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "artifactId": 12339308033,
+        "digest": "sha256:7f2a4b9e13c13433888b0d8a205657da12c505ecb5286641d5590c1f501cb832"
+      },
+      "reason": "Reviewed v3 hosted display migration: 16 PNGs byte-identical; settings light/dark match main 6b464b31 typography groups and React Aria NumberField. Both review axes approve; pixel thresholds and masks unchanged.",
+      "candidate": "125048b1-d855-4084-b49a-a24b9436cfed",
+      "acceptedAt": "2026-10-21T10:46:56.151Z"
+    },
+    "empty-chat-dark": {
+      "sha256": "dbe94618a0a4fcd9508a77b16ffce57aa372582003bf72efa472a71239e71cdc",
+      "contract": "1e107ae51b50bcc971e6a819554efb7d2a16d556d4acd98f39b181915dcec271",
+      "source": {
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "sourceHash": "a08516d07992c7bca13a646853fdffc6e2c7b0ad795fba5d7f6674328946c92b",
+        "dirty": false
+      },
+      "built": {
+        "version": 1,
+        "inputHash": "afafe88230c5d9f6f4a320459006e80d1333b66b6f12e1bf0c30f890c152e91b",
+        "outputHash": "f64ceb504386f5ea68ec9c4d47459707fc2e58b5431493b385f199afe2d9b4a0",
+        "node": "v24.16.0",
+        "createdAt": "2026-10-21T10:20:54.585Z"
+      },
+      "provenance": {
+        "version": 1,
+        "runId": "39583678813",
+        "attempt": 1,
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "artifactId": 12339308033,
+        "digest": "sha256:7f2a4b9e13c13433888b0d8a205657da12c505ecb5286641d5590c1f501cb832"
+      },
+      "reason": "Reviewed v3 hosted display migration: 16 PNGs byte-identical; settings light/dark match main 6b464b31 typography groups and React Aria NumberField. Both review axes approve; pixel thresholds and masks unchanged.",
+      "candidate": "125048b1-d855-4084-b49a-a24b9436cfed",
+      "acceptedAt": "2026-10-21T10:46:56.151Z"
+    },
+    "employee-light": {
+      "sha256": "a2fb5815935bed16019e6d878aacfac36207ce0dd312a0319a72482eee6ee42a",
+      "contract": "9286a4ad99bd5f3fe889741a179bbf448ad462ccbd09835fcc687d45c5398c50",
+      "source": {
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "sourceHash": "a08516d07992c7bca13a646853fdffc6e2c7b0ad795fba5d7f6674328946c92b",
+        "dirty": false
+      },
+      "built": {
+        "version": 1,
+        "inputHash": "afafe88230c5d9f6f4a320459006e80d1333b66b6f12e1bf0c30f890c152e91b",
+        "outputHash": "f64ceb504386f5ea68ec9c4d47459707fc2e58b5431493b385f199afe2d9b4a0",
+        "node": "v24.16.0",
+        "createdAt": "2026-10-21T10:20:54.585Z"
+      },
+      "provenance": {
+        "version": 1,
+        "runId": "39583678813",
+        "attempt": 1,
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "artifactId": 12339308033,
+        "digest": "sha256:7f2a4b9e13c13433888b0d8a205657da12c505ecb5286641d5590c1f501cb832"
+      },
+      "reason": "Reviewed v3 hosted display migration: 16 PNGs byte-identical; settings light/dark match main 6b464b31 typography groups and React Aria NumberField. Both review axes approve; pixel thresholds and masks unchanged.",
+      "candidate": "125048b1-d855-4084-b49a-a24b9436cfed",
+      "acceptedAt": "2026-10-21T10:46:56.151Z"
+    },
+    "employee-dark": {
+      "sha256": "34da05478dd2bdb4002668e517f7b001173b94131ea53052eef198c70998fcfc",
+      "contract": "73c07b7518d80b70b225322c29dffb5f353d119f6e651eff4ed83b1e3b5837b2",
+      "source": {
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "sourceHash": "a08516d07992c7bca13a646853fdffc6e2c7b0ad795fba5d7f6674328946c92b",
+        "dirty": false
+      },
+      "built": {
+        "version": 1,
+        "inputHash": "afafe88230c5d9f6f4a320459006e80d1333b66b6f12e1bf0c30f890c152e91b",
+        "outputHash": "f64ceb504386f5ea68ec9c4d47459707fc2e58b5431493b385f199afe2d9b4a0",
+        "node": "v24.16.0",
+        "createdAt": "2026-10-21T10:20:54.585Z"
+      },
+      "provenance": {
+        "version": 1,
+        "runId": "39583678813",
+        "attempt": 1,
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "artifactId": 12339308033,
+        "digest": "sha256:7f2a4b9e13c13433888b0d8a205657da12c505ecb5286641d5590c1f501cb832"
+      },
+      "reason": "Reviewed v3 hosted display migration: 16 PNGs byte-identical; settings light/dark match main 6b464b31 typography groups and React Aria NumberField. Both review axes approve; pixel thresholds and masks unchanged.",
+      "candidate": "125048b1-d855-4084-b49a-a24b9436cfed",
+      "acceptedAt": "2026-10-21T10:46:56.151Z"
+    },
+    "settings-light": {
+      "sha256": "29e1149c76cab39788b834c954249f5c055f8e12119912be592267355fdafc9a",
+      "contract": "7e5255cd1d6ad9466a69854f08942fa9a02ad84b369f2b941a50a1787ed41c6f",
+      "source": {
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "sourceHash": "a08516d07992c7bca13a646853fdffc6e2c7b0ad795fba5d7f6674328946c92b",
+        "dirty": false
+      },
+      "built": {
+        "version": 1,
+        "inputHash": "afafe88230c5d9f6f4a320459006e80d1333b66b6f12e1bf0c30f890c152e91b",
+        "outputHash": "f64ceb504386f5ea68ec9c4d47459707fc2e58b5431493b385f199afe2d9b4a0",
+        "node": "v24.16.0",
+        "createdAt": "2026-10-21T10:20:54.585Z"
+      },
+      "provenance": {
+        "version": 1,
+        "runId": "39583678813",
+        "attempt": 1,
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "artifactId": 12339308033,
+        "digest": "sha256:7f2a4b9e13c13433888b0d8a205657da12c505ecb5286641d5590c1f501cb832"
+      },
+      "reason": "Reviewed v3 hosted display migration: 16 PNGs byte-identical; settings light/dark match main 6b464b31 typography groups and React Aria NumberField. Both review axes approve; pixel thresholds and masks unchanged.",
+      "candidate": "125048b1-d855-4084-b49a-a24b9436cfed",
+      "acceptedAt": "2026-10-21T10:46:56.151Z"
+    },
+    "settings-dark": {
+      "sha256": "6c608f992a8f1f93f67d3526a8c6be6877692edd5bc12f3403be71e804b14bce",
+      "contract": "ea3f1f153ee06336a9361e4d5755f3d8d3810e87859b90e767610799dfaeeed1",
+      "source": {
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "sourceHash": "a08516d07992c7bca13a646853fdffc6e2c7b0ad795fba5d7f6674328946c92b",
+        "dirty": false
+      },
+      "built": {
+        "version": 1,
+        "inputHash": "afafe88230c5d9f6f4a320459006e80d1333b66b6f12e1bf0c30f890c152e91b",
+        "outputHash": "f64ceb504386f5ea68ec9c4d47459707fc2e58b5431493b385f199afe2d9b4a0",
+        "node": "v24.16.0",
+        "createdAt": "2026-10-21T10:20:54.585Z"
+      },
+      "provenance": {
+        "version": 1,
+        "runId": "39583678813",
+        "attempt": 1,
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "artifactId": 12339308033,
+        "digest": "sha256:7f2a4b9e13c13433888b0d8a205657da12c505ecb5286641d5590c1f501cb832"
+      },
+      "reason": "Reviewed v3 hosted display migration: 16 PNGs byte-identical; settings light/dark match main 6b464b31 typography groups and React Aria NumberField. Both review axes approve; pixel thresholds and masks unchanged.",
+      "candidate": "125048b1-d855-4084-b49a-a24b9436cfed",
+      "acceptedAt": "2026-10-21T10:46:56.151Z"
+    },
+    "resources-light": {
+      "sha256": "6734999fea542d0511b3f61fa1968f5f781a4eb134e58ffb4ee27fabf0646096",
+      "contract": "3d946d63c31869b0926c06ba06ba98cffca6117bae1ad9fadbafc8d76c32872e",
+      "source": {
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "sourceHash": "a08516d07992c7bca13a646853fdffc6e2c7b0ad795fba5d7f6674328946c92b",
+        "dirty": false
+      },
+      "built": {
+        "version": 1,
+        "inputHash": "afafe88230c5d9f6f4a320459006e80d1333b66b6f12e1bf0c30f890c152e91b",
+        "outputHash": "f64ceb504386f5ea68ec9c4d47459707fc2e58b5431493b385f199afe2d9b4a0",
+        "node": "v24.16.0",
+        "createdAt": "2026-10-21T10:20:54.585Z"
+      },
+      "provenance": {
+        "version": 1,
+        "runId": "39583678813",
+        "attempt": 1,
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "artifactId": 12339308033,
+        "digest": "sha256:7f2a4b9e13c13433888b0d8a205657da12c505ecb5286641d5590c1f501cb832"
+      },
+      "reason": "Reviewed v3 hosted display migration: 16 PNGs byte-identical; settings light/dark match main 6b464b31 typography groups and React Aria NumberField. Both review axes approve; pixel thresholds and masks unchanged.",
+      "candidate": "125048b1-d855-4084-b49a-a24b9436cfed",
+      "acceptedAt": "2026-10-21T10:46:56.151Z"
+    },
+    "resources-dark": {
+      "sha256": "da974b6f9401556628cce92e17da75ae501384d8afcd63dfbce031dd04aa92e5",
+      "contract": "656be966f0e8297a7856528efd12bbb84e6d0f31146ba0bef049b147ca8cedc7",
+      "source": {
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "sourceHash": "a08516d07992c7bca13a646853fdffc6e2c7b0ad795fba5d7f6674328946c92b",
+        "dirty": false
+      },
+      "built": {
+        "version": 1,
+        "inputHash": "afafe88230c5d9f6f4a320459006e80d1333b66b6f12e1bf0c30f890c152e91b",
+        "outputHash": "f64ceb504386f5ea68ec9c4d47459707fc2e58b5431493b385f199afe2d9b4a0",
+        "node": "v24.16.0",
+        "createdAt": "2026-10-21T10:20:54.585Z"
+      },
+      "provenance": {
+        "version": 1,
+        "runId": "39583678813",
+        "attempt": 1,
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "artifactId": 12339308033,
+        "digest": "sha256:7f2a4b9e13c13433888b0d8a205657da12c505ecb5286641d5590c1f501cb832"
+      },
+      "reason": "Reviewed v3 hosted display migration: 16 PNGs byte-identical; settings light/dark match main 6b464b31 typography groups and React Aria NumberField. Both review axes approve; pixel thresholds and masks unchanged.",
+      "candidate": "125048b1-d855-4084-b49a-a24b9436cfed",
+      "acceptedAt": "2026-10-21T10:46:56.151Z"
+    },
+    "detail-light": {
+      "sha256": "2faad76d54924952df855968c5318df4a42346c88f43532888997ae28f5c065a",
+      "contract": "6be6641275a5227b7ed45e5216e887a80e49414ef933c97c8fccf47e41540478",
+      "source": {
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "sourceHash": "a08516d07992c7bca13a646853fdffc6e2c7b0ad795fba5d7f6674328946c92b",
+        "dirty": false
+      },
+      "built": {
+        "version": 1,
+        "inputHash": "afafe88230c5d9f6f4a320459006e80d1333b66b6f12e1bf0c30f890c152e91b",
+        "outputHash": "f64ceb504386f5ea68ec9c4d47459707fc2e58b5431493b385f199afe2d9b4a0",
+        "node": "v24.16.0",
+        "createdAt": "2026-10-21T10:20:54.585Z"
+      },
+      "provenance": {
+        "version": 1,
+        "runId": "39583678813",
+        "attempt": 1,
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "artifactId": 12339308033,
+        "digest": "sha256:7f2a4b9e13c13433888b0d8a205657da12c505ecb5286641d5590c1f501cb832"
+      },
+      "reason": "Reviewed v3 hosted display migration: 16 PNGs byte-identical; settings light/dark match main 6b464b31 typography groups and React Aria NumberField. Both review axes approve; pixel thresholds and masks unchanged.",
+      "candidate": "125048b1-d855-4084-b49a-a24b9436cfed",
+      "acceptedAt": "2026-10-21T10:46:56.151Z"
+    },
+    "detail-dark": {
+      "sha256": "d6d289388a0ea9e2c465c6371fd56f8034e338905ebfd3b64ee9048aa2e55765",
+      "contract": "b94c00c459787ce967bdb732c72dab242f86b0a461685263e0993bae83a1825f",
+      "source": {
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "sourceHash": "a08516d07992c7bca13a646853fdffc6e2c7b0ad795fba5d7f6674328946c92b",
+        "dirty": false
+      },
+      "built": {
+        "version": 1,
+        "inputHash": "afafe88230c5d9f6f4a320459006e80d1333b66b6f12e1bf0c30f890c152e91b",
+        "outputHash": "f64ceb504386f5ea68ec9c4d47459707fc2e58b5431493b385f199afe2d9b4a0",
+        "node": "v24.16.0",
+        "createdAt": "2026-10-21T10:20:54.585Z"
+      },
+      "provenance": {
+        "version": 1,
+        "runId": "39583678813",
+        "attempt": 1,
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "artifactId": 12339308033,
+        "digest": "sha256:7f2a4b9e13c13433888b0d8a205657da12c505ecb5286641d5590c1f501cb832"
+      },
+      "reason": "Reviewed v3 hosted display migration: 16 PNGs byte-identical; settings light/dark match main 6b464b31 typography groups and React Aria NumberField. Both review axes approve; pixel thresholds and masks unchanged.",
+      "candidate": "125048b1-d855-4084-b49a-a24b9436cfed",
+      "acceptedAt": "2026-10-21T10:46:56.151Z"
+    },
+    "preview-light": {
+      "sha256": "2ab181e330761c5d9c56446a4f5a28f9ac159f72bb163b8c8a0e3391c006ca42",
+      "contract": "92cf7c356cf53ace610af0abe3983a01955331e076593c2a9c4454df51e6d55c",
+      "source": {
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "sourceHash": "a08516d07992c7bca13a646853fdffc6e2c7b0ad795fba5d7f6674328946c92b",
+        "dirty": false
+      },
+      "built": {
+        "version": 1,
+        "inputHash": "afafe88230c5d9f6f4a320459006e80d1333b66b6f12e1bf0c30f890c152e91b",
+        "outputHash": "f64ceb504386f5ea68ec9c4d47459707fc2e58b5431493b385f199afe2d9b4a0",
+        "node": "v24.16.0",
+        "createdAt": "2026-10-21T10:20:54.585Z"
+      },
+      "provenance": {
+        "version": 1,
+        "runId": "39583678813",
+        "attempt": 1,
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "artifactId": 12339308033,
+        "digest": "sha256:7f2a4b9e13c13433888b0d8a205657da12c505ecb5286641d5590c1f501cb832"
+      },
+      "reason": "Reviewed v3 hosted display migration: 16 PNGs byte-identical; settings light/dark match main 6b464b31 typography groups and React Aria NumberField. Both review axes approve; pixel thresholds and masks unchanged.",
+      "candidate": "125048b1-d855-4084-b49a-a24b9436cfed",
+      "acceptedAt": "2026-10-21T10:46:56.151Z"
+    },
+    "preview-dark": {
+      "sha256": "8a7e4d609d462030136019bb9683f0c385a1674f999144847894ab37c820781c",
+      "contract": "fb5b0028ec61dcce694beff6122b0e86a1153edd9259064b1b151d874dfdc6eb",
+      "source": {
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "sourceHash": "a08516d07992c7bca13a646853fdffc6e2c7b0ad795fba5d7f6674328946c92b",
+        "dirty": false
+      },
+      "built": {
+        "version": 1,
+        "inputHash": "afafe88230c5d9f6f4a320459006e80d1333b66b6f12e1bf0c30f890c152e91b",
+        "outputHash": "f64ceb504386f5ea68ec9c4d47459707fc2e58b5431493b385f199afe2d9b4a0",
+        "node": "v24.16.0",
+        "createdAt": "2026-10-21T10:20:54.585Z"
+      },
+      "provenance": {
+        "version": 1,
+        "runId": "39583678813",
+        "attempt": 1,
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "artifactId": 12339308033,
+        "digest": "sha256:7f2a4b9e13c13433888b0d8a205657da12c505ecb5286641d5590c1f501cb832"
+      },
+      "reason": "Reviewed v3 hosted display migration: 16 PNGs byte-identical; settings light/dark match main 6b464b31 typography groups and React Aria NumberField. Both review axes approve; pixel thresholds and masks unchanged.",
+      "candidate": "125048b1-d855-4084-b49a-a24b9436cfed",
+      "acceptedAt": "2026-10-21T10:46:56.151Z"
+    },
+    "shortcuts-light": {
+      "sha256": "a6ef1edfb9a667bffadd6fa0bbcf615a230c262f4cd48344de0f7a7b5cd98671",
+      "contract": "171bb96072a7e80051c7c1c511516129c00e103c4058d3e70e25c8186a56c49a",
+      "source": {
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "sourceHash": "a08516d07992c7bca13a646853fdffc6e2c7b0ad795fba5d7f6674328946c92b",
+        "dirty": false
+      },
+      "built": {
+        "version": 1,
+        "inputHash": "afafe88230c5d9f6f4a320459006e80d1333b66b6f12e1bf0c30f890c152e91b",
+        "outputHash": "f64ceb504386f5ea68ec9c4d47459707fc2e58b5431493b385f199afe2d9b4a0",
+        "node": "v24.16.0",
+        "createdAt": "2026-10-21T10:20:54.585Z"
+      },
+      "provenance": {
+        "version": 1,
+        "runId": "39583678813",
+        "attempt": 1,
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "artifactId": 12339308033,
+        "digest": "sha256:7f2a4b9e13c13433888b0d8a205657da12c505ecb5286641d5590c1f501cb832"
+      },
+      "reason": "Reviewed v3 hosted display migration: 16 PNGs byte-identical; settings light/dark match main 6b464b31 typography groups and React Aria NumberField. Both review axes approve; pixel thresholds and masks unchanged.",
+      "candidate": "125048b1-d855-4084-b49a-a24b9436cfed",
+      "acceptedAt": "2026-10-21T10:46:56.151Z"
+    },
+    "shortcuts-dark": {
+      "sha256": "83a371ebdb63c9b26f093a5fd0437e604d9e785b1a45c95f100afe8e3fec228a",
+      "contract": "470a05b4fc32829a5cef4c13044deac140431e51162eb3527e7763896f3e82d9",
+      "source": {
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "sourceHash": "a08516d07992c7bca13a646853fdffc6e2c7b0ad795fba5d7f6674328946c92b",
+        "dirty": false
+      },
+      "built": {
+        "version": 1,
+        "inputHash": "afafe88230c5d9f6f4a320459006e80d1333b66b6f12e1bf0c30f890c152e91b",
+        "outputHash": "f64ceb504386f5ea68ec9c4d47459707fc2e58b5431493b385f199afe2d9b4a0",
+        "node": "v24.16.0",
+        "createdAt": "2026-10-21T10:20:54.585Z"
+      },
+      "provenance": {
+        "version": 1,
+        "runId": "39583678813",
+        "attempt": 1,
+        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
+        "artifactId": 12339308033,
+        "digest": "sha256:7f2a4b9e13c13433888b0d8a205657da12c505ecb5286641d5590c1f501cb832"
+      },
+      "reason": "Reviewed v3 hosted display migration: 16 PNGs byte-identical; settings light/dark match main 6b464b31 typography groups and React Aria NumberField. Both review axes approve; pixel thresholds and masks unchanged.",
+      "candidate": "125048b1-d855-4084-b49a-a24b9436cfed",
+      "acceptedAt": "2026-10-21T10:46:56.151Z"
+    }
+  }
+}

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 同profile共享访问覆盖原服务排空、宿主/RPC退出与发现文件删除，维护锁不在中途释放。
  * [OUTPUT]: 独立服务与桌面共用随包技能源及首次绑定；可显式注入受信分发根。
  * [OUTPUT]: 独立服务提供同包员工脚本工具库，身份/生命周期沿原run租约。
  * [OUTPUT]: 2026-10-19应用业务协议：独立服务使用同profile实际桌面设置宿主，可用状态动态核对。
@@ -13,12 +14,13 @@
  * [PROTOCOL]: 变化同步Header与所属.folder.md。
  */
 import { randomBytes } from 'node:crypto'
-import { basename } from 'node:path'
+import { basename, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { z } from 'zod'
 import type { ServerOptions } from 'node:https'
 import { startOwnedRuntime } from './bootstrap'
 import { RuntimeOwnedError } from './owner'
+import { acquireRuntimeProfileAccess, ProfileAccessBusyError } from './profile-access'
 import { MastraEngine } from './adapters/mastra/engine'
 import { EnvironmentSecrets } from './environment-secrets'
 import { connectionSchema, conversationSchema } from './service'
@@ -39,6 +41,9 @@ export async function startHeadlessServer(options: HeadlessOptions) {
   if (!loopback && (!options.tls || !options.token)) throw new CliError('INVALID_REQUEST', '非回环服务需要明确的 TLS 和 BOAI_SERVER_TOKEN')
   const token = options.token ?? randomBytes(32).toString('base64url')
   if (token.length < 32 || token.length > 4096 || new Set(token).size < 8) throw new CliError('AUTH_FAILED', '服务 token 必须是至少32字符的独立随机凭据')
+  let access: ReturnType<typeof acquireRuntimeProfileAccess>
+  try { access = acquireRuntimeProfileAccess(options.dataPath) }
+  catch (error) { if (error instanceof ProfileAccessBusyError) throw new CliError('SERVER_BUSY', error.message); throw error }
   const desktop = new DesktopHostBridge({ request: (method, input) => {
     if (state !== 'ready') throw new CliError('SERVER_BUSY', '服务正在退出')
     return secrets.withDesktop(() => dispatchRuntime(owned.service, method, input))
@@ -54,11 +59,11 @@ export async function startHeadlessServer(options: HeadlessOptions) {
   let state: 'ready' | 'stopping' | 'stopped' = 'ready'
   let stopped!: () => void
   const finished = new Promise<void>(resolve => { stopped = resolve })
-  const owned = await startOwnedRuntime({ dataPath: options.dataPath, toolClientPath: options.toolClientPath ?? fileURLToPath(new URL('../cli/employee-tools.mjs', import.meta.url)), secrets, browserHost: desktop, applicationHost: { get available() { return desktop.available }, request: async (method, input) => await desktop.application(method, input) as never }, engine: options.engine ?? new MastraEngine(), skillDiscovery: { homeDir: options.skillHome, bundledRoot: options.bundledSkillRoot ?? fileURLToPath(new URL('../agent-skills/', import.meta.url)) }, emit(event) {
+  const owned = await startOwnedRuntime({ dataPath: options.dataPath, toolClientPath: options.toolClientPath ?? fileURLToPath(new URL('../cli/employee-tools.mjs', import.meta.url)), secrets, browserHost: desktop, applicationHost: { get available() { return desktop.available }, request: async (method, input) => await desktop.application(method, input) as never }, engine: options.engine ?? new MastraEngine({ memoryPath: join(options.dataPath, 'memory', 'bobo-mastra.db') }), skillDiscovery: { homeDir: options.skillHome, bundledRoot: options.bundledSkillRoot ?? fileURLToPath(new URL('../agent-skills/', import.meta.url)) }, emit(event) {
     if (server) publishAppEvent(server, event)
     desktop.publish(event)
-  } }, () => secrets.init()).catch(error => { if (error instanceof RuntimeOwnedError) throw new CliError('SERVER_BUSY', error.message); throw error })
-  const workspaceId = await profileIdentity(options.dataPath), serverId = owned.owner.instanceId
+  } }, () => secrets.init()).catch(error => { access.release(); if (error instanceof RuntimeOwnedError || error instanceof ProfileAccessBusyError) throw new CliError('SERVER_BUSY', error.message); throw error })
+  const serverId = owned.owner.instanceId
   const credentialChanges = new Set<Promise<unknown>>()
   let removeConnection: (() => Promise<void>) | undefined, closing: Promise<void> | undefined
   const close = () => closing ??= (async () => {
@@ -68,8 +73,11 @@ export async function startHeadlessServer(options: HeadlessOptions) {
     await owned.close()
     await desktop.close()
     await server?.close(); await removeConnection?.()
+    access.release()
     state = 'stopped'; stopped()
   })()
+  try {
+  const workspaceId = await profileIdentity(options.dataPath)
   const port = { runAccess: async (input: RunCliAccessRequest) => {
     if (state !== 'ready') throw new CliError('SERVER_BUSY', '服务正在退出')
     return owned.service.runCliAccess(input)
@@ -115,7 +123,6 @@ export async function startHeadlessServer(options: HeadlessOptions) {
     setImmediate(() => { void close().catch(() => { server?.publish('app', { type: 'runtime-error', error: '服务尚未确认退出，请保留原实例并核对' }) }) })
     return { serverId, accepted: true }
   })
-  try {
     await desktop.open(options.dataPath, serverId, options.version)
     server = await startRpcServer({ host, port: options.port, tls: options.tls, token, workspaceId, serverId, version: options.version, channels, accepting: () => state === 'ready', authenticateRun: async token => await port.runAccess({ kind: 'authenticate', token }) as RunCliPrincipal })
     await port.runAccess({ kind: 'endpoint', url: server.url })

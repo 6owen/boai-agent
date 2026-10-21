@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 /*
  * [INPUT]: 生产ChatView/PromptBar/MentionInput、真实分页消息与隔离IPC。
+ * [OUTPUT]: 同一真实编辑器在会话切换加载/就绪时，contenteditable与无障碍禁用状态必须同步，草稿与DOM保持。
  * [OUTPUT]: 切换/加载保持header/composer节点，旧会话正文立即卸下；历史游标去重，草稿撤销不跨会话，过渡按真实opacity结束事件清理、遵循减少动态效果，补页不重播入场。
  * [POS]: 会话固定布局与消息窗口组件回归，不运行Electron或模型。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查tests/.folder.md。
@@ -49,6 +50,8 @@ it('keeps header, composer and editor nodes through switching and loading withou
   await render()
   const header = host.querySelector('.chat-header'), composer = host.querySelector('.composer-wrap'), editor = host.querySelector('[role=textbox]')
   expect(host.textContent).toContain('正文A-1')
+  expect(editor?.getAttribute('contenteditable')).toBe('true')
+  expect(editor?.getAttribute('aria-disabled')).toBe('false')
   props = { ...props, detail: null, conversation: room('B'), loading: true, draft: { text: 'B的草稿', mentionIds: [] } }
   await render()
   expect(host.querySelector('.chat-header')).toBe(header)
@@ -56,6 +59,8 @@ it('keeps header, composer and editor nodes through switching and loading withou
   expect(host.querySelector('[role=textbox]')).toBe(editor)
   expect(header?.textContent).toContain('会话B')
   expect(editor?.textContent).toBe('B的草稿')
+  expect(editor?.getAttribute('contenteditable')).toBe('false')
+  expect(editor?.getAttribute('aria-disabled')).toBe('true')
   expect(host.textContent).not.toContain('正文A-1')
   expect(host.querySelector('.chat-messages-transition')?.getAttribute('aria-busy')).toBe('true')
   props = { ...props, detail: view('B'), loading: false }
@@ -64,6 +69,8 @@ it('keeps header, composer and editor nodes through switching and loading withou
   expect(host.querySelector('.composer-wrap')).toBe(composer)
   expect(host.querySelector('[role=textbox]')).toBe(editor)
   expect(host.textContent).toContain('正文B-1')
+  expect(editor?.getAttribute('contenteditable')).toBe('true')
+  expect(editor?.getAttribute('aria-disabled')).toBe('false')
   const content = host.querySelector('.chat-messages-content')!
   expect(content.classList.contains('settings-page-transition')).toBe(true)
   expect(content.classList.contains('t-panel-slide')).toBe(true)

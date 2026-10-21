@@ -1,6 +1,6 @@
 {
   "name": "boai-agent",
-  "version": "0.2.2",
+  "version": "0.2.4",
   "private": true,
   "description": "Local-first digital teammates powered by Mastra",
   "type": "module",
@@ -32,7 +32,20 @@
     "dev:repair": "node scripts/iterate-agent.mjs",
     "eval:build": "node scripts/evaluation-experiment.mjs build",
     "eval:hillclimb": "node scripts/evaluation-experiment.mjs hillclimb",
-    "cli": "node dist/cli/index.mjs"
+    "cli": "node dist/cli/index.mjs",
+    "test:ui": "pnpm build && node scripts/ui-regression.mjs check",
+    "test:ui:candidate": "pnpm build && node scripts/ui-regression.mjs candidate",
+    "test:ui:accept": "node scripts/ui-regression.mjs accept",
+    "dev:task": "node scripts/dev-task.mjs",
+    "design:prepare": "node scripts/design.mjs prepare",
+    "design:serve": "node scripts/design.mjs serve",
+    "release:check": "node scripts/release-check.mjs",
+    "release:build": "node scripts/release-build.mjs",
+    "release:smoke": "node scripts/release-smoke.mjs",
+    "test:t1": "pnpm build && node scripts/test-desktop.mjs t1",
+    "test:t3": "pnpm build && node scripts/test-desktop.mjs t3",
+    "ci:local": "node scripts/local-ci.mjs run",
+    "ci:watch": "node scripts/local-ci-watch.mjs"
   },
   "dependencies": {
     "@agentclientprotocol/sdk": "1.5.0",
@@ -81,6 +94,7 @@
     "pptxgenjs": "4.0.1",
     "qrcode": "1.5.4",
     "react": "19.3.0",
+    "react-aria-components": "1.22.1",
     "react-day-picker": "10.0.1",
     "react-dom": "19.3.0",
     "react-markdown": "10.1.0",
@@ -101,7 +115,7 @@
   },
   "build": {
     "appId": "com.boai.agent",
-    "buildVersion": "0.2.3",
+    "buildVersion": "0.2.4",
     "productName": "BoAI Agent",
     "directories": {
       "output": "release"

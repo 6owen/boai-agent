@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
 /*
  * [INPUT]: 生产PDF预览、真实pdfjs查看器和有效PDF样本；观察DOM监听器及原生observer生命周期。
- * [OUTPUT]: 正常阅读、换源、失败及关闭释放真实viewer监听器/observer，不以mock清理方法代替证明。
+ * [OUTPUT]: 正常阅读/换源/失败关闭释放真实监听器/observer；无效PDF沿Sonner报告且不生成内联错误。
  * [POS]: PDF查看器资源回归；jsdom不测实际画布或长期RSS。
  * [PROTOCOL]: 变化同步Header及tests/lody/.folder.md。
  */
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import { toast } from 'sonner'
 import { createSamplePdf } from './office-viewer-files'
 
 type Observed = { targets: Set<Node>; disconnect(): void }
@@ -19,6 +20,7 @@ const liveDocumentListeners = () => listeners.filter(value => !value.signal?.abo
 
 beforeEach(async () => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
+  toast.dismiss()
   vi.stubGlobal('DOMMatrix', class {})
   // Run pdfjs's real worker parser in its supported in-process test fallback.
   // jsdom cannot load Vite's emitted worker URL as a browser worker.
@@ -54,7 +56,7 @@ afterEach(async () => {
   // Isolate a failing regression too: the assertions above must pass before this test-only sweep.
   for (const observer of observers) observer.disconnect()
   for (const { type, listener } of listeners) document.removeEventListener(type, listener)
-  vi.restoreAllMocks(); vi.unstubAllGlobals()
+  toast.dismiss(); vi.restoreAllMocks(); vi.unstubAllGlobals()
 })
 const tick = async () => { await act(async () => { await new Promise(resolve => setTimeout(resolve, 20)) }) }
 const render = async (bytes?: Uint8Array) => {
@@ -86,8 +88,9 @@ test('real PDF reading and source replacement release document listeners and obs
 
 test('a rejected PDF and a view closed during loading do not leave observers attached', async () => {
   await render(new TextEncoder().encode('invalid PDF'))
-  for (let attempt = 0; attempt < 150 && !host.textContent?.includes('PDF 预览不可用'); attempt++) await tick()
-  expect(host.textContent).toContain('PDF 预览不可用')
+  const failed = () => toast.getToasts().some(item => 'title' in item && String(item.title).includes('PDF 预览不可用'))
+  for (let attempt = 0; attempt < 150 && !failed(); attempt++) await tick()
+  expect(failed()).toBe(true); expect(host.textContent).not.toContain('PDF 预览不可用')
   await render(); await tick()
   expect(activeObservers()).toBe(0)
   await render(createSamplePdf())

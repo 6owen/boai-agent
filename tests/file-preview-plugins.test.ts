@@ -2,13 +2,14 @@
 /*
  * [INPUT]: 生产FilePreview/插件宿主与注册表，受控只读测试provider及真实React生命周期。
  * [OUTPUT]: 注册扩展、可信格式/兼容/禁用、稳定阅读、多视图、失败与迟到加载隔离回归。
- * [OUTPUT]: 统一插件配置不替换当前provider，真实视图租约随隐藏释放且错误可观测。
+ * [OUTPUT]: 统一插件配置不替换当前provider，真实视图租约随隐藏释放；失败沿Sonner且原宿主操作保持。
  * [POS]: 内置预览插件合同验证；原文件业务链路沿Electron BDD。
  * [PROTOCOL]: 变化同步Header及tests/.folder.md。
  */
 import { act, createElement, useEffect, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import { toast } from 'sonner'
 import { FilePreview } from '../src/renderer/components/common/file-preview'
 import { createPreviewRegistry } from '../src/renderer/components/common/file-preview/plugins/registry'
 import type { PreviewPlugin, PreviewRendererProps } from '../src/renderer/components/common/file-preview/plugins/types'
@@ -19,9 +20,10 @@ const plain: PreviewPlugin = { manifest: manifest('general'), component: ({ cont
 let host: HTMLDivElement, root: Root
 beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
+  toast.dismiss()
   host = document.createElement('div'); document.body.append(host); root = createRoot(host)
 })
-afterEach(async () => { await act(async () => root.unmount()); host.remove(); usePlugins.setState({ settings: { revision: 0, disabledIds: [] } }); vi.unstubAllGlobals(); vi.restoreAllMocks() })
+afterEach(async () => { await act(async () => root.unmount()); host.remove(); toast.dismiss(); usePlugins.setState({ settings: { revision: 0, disabledIds: [] } }); vi.unstubAllGlobals(); vi.restoreAllMocks() })
 const render = async (props: Parameters<typeof FilePreview>[0]) => { await act(async () => root.render(createElement(FilePreview, props))) }
 
 test('an added suffix provider reaches the shared preview without changing either business tab', async () => {
@@ -144,7 +146,8 @@ test.each(['load', 'render'])('a %s failure keeps host actions and leaves anothe
   const good = createElement(FilePreview, { name: 'good.txt', file: { kind: 'text', text: 'healthy' }, registry: createPreviewRegistry([plain]) })
   await act(async () => root.render(createElement('div', null,
     createElement(FilePreview, { name: 'bad.txt', file: { kind: 'text', text: 'private' }, registry: createPreviewRegistry([bad]), header: () => createElement('button', null, '宿主文件操作') }), good)))
-  expect(host.querySelector('[data-preview-plugin-error]')?.textContent).toContain('文件预览暂不可用')
+  expect(toast.getToasts().some(item => 'title' in item && item.title === '文件预览暂不可用。')).toBe(true)
+  expect(host.querySelector('[data-preview-plugin-error]')?.textContent).toBe('')
   expect(host.querySelector('button')?.textContent).toBe('宿主文件操作')
   expect(host.textContent).toContain('healthy')
   expect(host.textContent).not.toContain('private')

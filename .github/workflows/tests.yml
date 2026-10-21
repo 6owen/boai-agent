@@ -1,34 +1,88 @@
 # [INPUT]: 仓库变更、锁定依赖、离线协议服务。
-# [OUTPUT]: 类型/UI规则/协议/评分器/冻结集/桌面BDD验证与失败报告，不调用真实供应商。
+# [OUTPUT]: PR/main自动云端工程、32核心及全18UI只读门禁；逐步日志、UI原始报告与原件凭据独立核验，不启动本机。
 # [POS]: .github/workflows/tests.yml。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 name: Offline tests
 on:
   pull_request:
+    branches: [main]
   push:
-    branches: [main, master]
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: offline-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   desktop:
-    runs-on: macos-latest
-    timeout-minutes: 25
+    name: Engineering and desktop
+    runs-on: macos-15
+    # T1固定32核心；原单测试期限不变，预留模块与完整失败证据收集。
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: node
+          node-version: '24.16.0'
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm typecheck
-      - run: pnpm lint:ui
-      - run: pnpm test
-      - run: pnpm eval:dataset
-      - run: pnpm test:electron
+      - id: install
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: ''
+        run: |
+          pnpm install --frozen-lockfile
+          node node_modules/electron/install.js
+          pnpm exec electron --version
+      - id: types
+        run: pnpm typecheck
+      - id: lint
+        run: pnpm lint:ui
+      - id: build
+        run: pnpm build
+      - id: unit
+        run: pnpm test --maxWorkers=2
+      - name: Preserve native crash stacks
+        if: failure() && steps.unit.outcome == 'failure'
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from shutil import copyfile
+          output = Path('.local/ci/native-crashes')
+          output.mkdir(parents=True, exist_ok=True)
+          reports = sorted((Path.home() / 'Library/Logs/DiagnosticReports').glob('node*.ips'), key=lambda path: path.stat().st_mtime, reverse=True)
+          for path in reports[:5]:
+              copyfile(path, output / path.name)
+          print('Native crash stack reports:', min(len(reports), 5))
+          PY
+      - id: dataset
+        run: pnpm eval:dataset
+      - id: bdd
+        run: node scripts/test-desktop.mjs t1 --output .local/t1
+      - if: always()
+        env:
+          CI_STEP_RESULTS: ${{ toJSON(steps) }}
+          CI_PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          CI_PR_BASE: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/ci-result.mjs record .local/ci/engineering.json
       - uses: actions/upload-artifact@v4
-        if: failure()
+        if: always()
+        with:
+          name: engineering
+          path: .local/ci/engineering.json
+          include-hidden-files: true
+          retention-days: 3
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: t1
+          path: .local/t1/
+          include-hidden-files: true
+          retention-days: 3
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.bdd.outcome != 'success'
         with:
           name: desktop-failure-evidence
           path: |
@@ -36,3 +90,56 @@ jobs:
             test-results/
             cucumber-report/
           if-no-files-found: ignore
+          retention-days: 3
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: native-crash-stacks
+          path: .local/ci/native-crashes/
+          include-hidden-files: true
+          retention-days: 3
+          if-no-files-found: ignore
+  ui:
+    name: UI regression
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.16.0'
+          cache: pnpm
+      - env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: ''
+        run: |
+          pnpm install --frozen-lockfile
+          node node_modules/electron/install.js
+          pnpm exec electron --version
+      - run: pnpm build
+      - run: node scripts/ui-regression.mjs check --profile github-macos15-arm64 --output .local/ui-ci
+      - run: node scripts/ci-result.mjs record-ui .local/ui-ci
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui
+          path: .local/ui-ci/
+          include-hidden-files: true
+          retention-days: 3
+          if-no-files-found: error
+  required:
+    name: Required checks
+    if: always()
+    needs: [desktop, ui]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.16.0'
+      - uses: actions/download-artifact@v4
+        with:
+          path: .local/ci-artifacts
+      - env:
+          CI_JOB_RESULTS: ${{ toJSON(needs) }}
+        run: node scripts/ci-result.mjs gate
