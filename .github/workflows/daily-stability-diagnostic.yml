@@ -2,7 +2,7 @@
 # [OUTPUT]: Actual destroyed-page wait regression and isolated hung renderer toolbar closure/reopen; original assertions, deadlines and thresholds unchanged.
 # [POS]: DS05/DS13 browser lifecycle evidence, offline supplier protocol; not Required checks or all-day certification.
 # [PROTOCOL]: Changes update Header and workflow directory map.
-name: Daily hung page exit red proof
+name: Daily observed hung page exit red proof
 on:
   push:
     branches: [infra/daily-source-identity]
@@ -34,7 +34,7 @@ jobs:
           const inputHash = await buildInputHash();
           if (inputHash !== '5a82db0e4d0010e4946714c47b406eb7f4fc711a9c50bb6f42adb0ec949e0951') throw Error('Product inputs differ');
           await mkdir('.local/daily-browser-lifecycle', { recursive: true });
-          await writeFile('.local/daily-browser-lifecycle/source.json', JSON.stringify({ reference: '9fb016acab51cdb6a393fd66699846dd0630d195', testCandidate: '2a54701739b6512a88df8204337292c6dbeb50bd', inputHash, cases: 1, feature: 'browser-migration.feature', realProviderCalls: false, resourceContractUnchanged: true }, null, 2));
+          await writeFile('.local/daily-browser-lifecycle/source.json', JSON.stringify({ reference: '9fb016acab51cdb6a393fd66699846dd0630d195', testCandidate: 'observed-pending-query', inputHash, cases: 1, feature: 'browser-migration.feature', realProviderCalls: false, resourceContractUnchanged: true }, null, 2));
           JS
       - name: Build current candidate and original BDD
         id: build
