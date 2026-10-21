@@ -259,6 +259,42 @@
           "员工命令和目录一起审批",
           "API授权目录独立保存且取消移除保留原件"
         ]
+      },
+      {
+        "id": "profile-outer-active",
+        "family": "upgrade-maintenance",
+        "file": "profile-maintenance.feature",
+        "titles": [
+          "升级维护期间保护原数据",
+          "外层配置活动维护时不重建数据"
+        ]
+      },
+      {
+        "id": "profile-outer-pending",
+        "family": "upgrade-maintenance",
+        "file": "profile-maintenance.feature",
+        "titles": [
+          "升级维护期间保护原数据",
+          "外层配置待恢复事务时不重建数据"
+        ]
+      },
+      {
+        "id": "profile-v2-active",
+        "family": "upgrade-maintenance",
+        "file": "profile-maintenance.feature",
+        "titles": [
+          "升级维护期间保护原数据",
+          "v2配置活动维护时不重建数据"
+        ]
+      },
+      {
+        "id": "profile-v2-pending",
+        "family": "upgrade-maintenance",
+        "file": "profile-maintenance.feature",
+        "titles": [
+          "升级维护期间保护原数据",
+          "v2配置待恢复事务时不重建数据"
+        ]
       }
     ]
   },
@@ -277,7 +313,7 @@
       "observedProgress": 252,
       "registeredAtThatRun": 556,
       "status": "failed-and-cancelled",
-      "currentInventoryCount": 558,
+      "currentInventoryCount": 562,
       "currentInventoryStatus": "listed-not-run",
       "evidence": "ai-docs/spec/22.开发自动化与持续测试/03-实施步骤与验收.md"
     }

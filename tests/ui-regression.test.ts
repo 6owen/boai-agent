@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Playwright原始结果和UI门槛CLI。
- * [OUTPUT]: 缺失/跳过/预期失败/重试/重复场景不能冒充通过，CI禁止写基线；默认桌面锁跨worktree检查归profile-main串行模块。
+ * [OUTPUT]: 缺失/跳过/预期失败/重试/重复场景不能冒充通过，CI禁止写基线。
  * [POS]: UI回归门槛负例；实际像素和业务断言由原BDD验收。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -13,10 +13,21 @@ import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 // @ts-expect-error Plain Node ESM CLI intentionally has no declaration file.
 import { acquireUiLock, assertUiExecutionMode, baselineContractHash, validateReport } from '../scripts/ui-regression.mjs'
+// @ts-expect-error Plain Node ESM CLI intentionally has no declaration file.
+import { acquireResourceLock, desktopLockPath } from '../scripts/resource-lock.mjs'
 
 const record = (patch = {}) => ({ title: '已登记界面 chat-light 保持行为布局和视觉基线', tests: [{ expectedStatus: 'passed', status: 'expected', results: [{ status: 'passed' }], ...patch }] })
 const report = (specs: unknown[]) => ({ errors: [], suites: [{ specs }] })
 describe('UI回归结果必须完整且真实成功', () => {
+  it('不同工作目录的执行器共享同一用户桌面锁', async () => {
+    const other = await mkdtemp(join(tmpdir(), 'boai-other-worktree-'))
+    const cli = pathToFileURL(resolve('scripts/resource-lock.mjs')).href
+    const release = acquireResourceLock()
+    try {
+      expect(desktopLockPath.startsWith(other)).toBe(false)
+      expect(() => execFileSync(process.execPath, ['--input-type=module', '-e', `import {acquireResourceLock} from ${JSON.stringify(cli)};globalThis.release=acquireResourceLock()`], { cwd: other, stdio: 'pipe' })).toThrow(/Command failed/)
+    } finally { release(); await rm(other, { recursive: true, force: true }) }
+  })
   it.each([{ BOAI_TEST_PACKAGED_PATH: '/Applications/BOAI.app' }, { BOAI_TEST_DEV_SERVER: '1' }, { BOAI_RENDERER_URL: 'http://localhost:5173' }])('拒绝将其他运行入口算作当前构建基线', env => expect(() => assertUiExecutionMode(env)).toThrow(/完整构建/))
   it('新增场景不使无关旧基线失效，修改旧比较条件必须重新审阅', () => {
     const contract = { version: 1, height: 900, threshold: 0, maxDiffPixels: 0, masks: [], cases: [{ id: 'chat-light', width: 1280 }] }
