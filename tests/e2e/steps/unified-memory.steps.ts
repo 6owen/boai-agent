@@ -1,7 +1,7 @@
 /*
  * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
  * [INPUT]: 统一记忆原场景、现行高级配置/独立记忆Dialog、真实 Electron/IPC 和隔离旧记录。
- * [OUTPUT]: 原添加/固定/忘记/冲突草稿/范围/旧升级/重启断言保持，错误沿Sonner；关键状态另留原件。
+ * [OUTPUT]: 原添加/固定/忘记/冲突草稿/范围/旧升级/重启断言保持，错误沿Sonner；旧格式注入前后核对实际数据路径/员工ID与运行快照并留原件。
  * [POS]: T2.5 桌面管理验收；模型质量由手动真实评估记录。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -10,6 +10,8 @@ import { createBdd } from 'playwright-bdd'
 import { test } from '../support/test'
 import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
 import { join } from 'node:path'
+import { realpath } from 'node:fs/promises'
+import { DatabaseSync } from 'node:sqlite'
 const { Given, When, Then } = createBdd(test)
 Given('在隔离桌面打开员工统一记忆', async ({ runtime }) => {
   await runtime.start(); await pageReady(runtime)
@@ -56,10 +58,30 @@ Then('记忆编辑版本冲突保留草稿并可核对', async ({ runtime }) => 
 })
 Then('来源聊天限制和旧条目升级持久化', async ({ runtime }) => {
   const conversation = await runtime.page.evaluate(() => window.boai.request('createConversation', { kind: 'direct', title: '旧来源', agentIds: ['researcher'] }))
+  const before = await runtime.page.evaluate(() => window.boai.request('snapshot', undefined))
+  const database = join(before.dataPath, 'boai.sqlite')
+  expect(await realpath(database)).toBe(await realpath(join(runtime.root, 'v2', 'boai.sqlite')))
+  const ids = () => {
+    const client = new DatabaseSync(database, { readOnly: true })
+    try { return client.prepare("SELECT id FROM records WHERE collection='agents' ORDER BY id").all().map(row => String(row.id)) }
+    finally { client.close() }
+  }
+  const expectedIds = before.agents.map(agent => agent.id).sort()
   await runtime.close()
-  const store = new ProductStore(join(runtime.root, 'v2', 'boai.sqlite')); await store.init()
-  try { await store.write([{ collection: 'memory', id: 'legacy', value: { id: 'legacy', ownerAgentId: 'researcher', scope: 'conversation', conversationId: conversation.id, content: '旧会话明确资料', origin: 'user', version: 1, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), sourceMessageIds: [], sourceResourceIds: [] } }]) } finally { await store.close() }
-  await runtime.start(); await pageReady(runtime)
+  await runtime.reviewData('旧记忆注入前关闭后的实际员工', { expectedIds, actualIds: ids() })
+  expect(ids()).toEqual(expectedIds)
+  const store = new ProductStore(database); await store.init()
+  try {
+    await runtime.reviewData('旧记忆夹具存储初始化后的实际员工', { actualIds: (await store.load<{ id: string }>('agents')).map(agent => agent.id).sort() })
+    await store.write([{ collection: 'memory', id: 'legacy', value: { id: 'legacy', ownerAgentId: 'researcher', scope: 'conversation', conversationId: conversation.id, content: '旧会话明确资料', origin: 'user', version: 1, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), sourceMessageIds: [], sourceResourceIds: [] } }])
+  } finally { await store.close() }
+  await runtime.reviewData('旧记忆写入并关闭后的实际员工', { expectedIds, actualIds: ids() })
+  expect(ids()).toEqual(expectedIds)
+  await runtime.start()
+  const reopened = await runtime.page.evaluate(() => window.boai.request('snapshot', undefined))
+  await runtime.reviewData('旧记忆写入后重启的实际运行快照', { expectedIds, actualIds: reopened.agents.map(agent => agent.id).sort(), errors: runtime.errors })
+  expect(reopened.agents.map(agent => agent.id).sort()).toEqual(expectedIds)
+  await pageReady(runtime)
   const page = runtime.page, pane = page.getByRole('tabpanel', { name: '记忆' }), card = pane.getByRole('article').filter({ hasText: '旧会话明确资料' })
   await expect(card).toContainText('仅此聊天'); await card.getByRole('button', { name: '编辑', exact: true }).click()
   const editor = page.getByRole('dialog', { name: '编辑记忆', exact: true })
