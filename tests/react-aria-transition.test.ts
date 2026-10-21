@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /*
  * [INPUT]: Installed React Aria ESM/CommonJS transition utility, bundled unchanged into isolated jsdom windows.
  * [OUTPUT]: Multiple cancelled properties and detached/bubbling targets must finish queued work and release direct listeners; normal completion/cancellation stays intact.
@@ -5,7 +6,6 @@
  * [PROTOCOL]: Changes update Header and tests/.folder.md.
  */
 import { build } from 'esbuild'
-import { JSDOM } from 'jsdom'
 import { createRequire } from 'node:module'
 import { dirname } from 'node:path'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
@@ -13,7 +13,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 type TransitionUtility = { runAfterTransition(callback: (transitioned: boolean) => void): () => void }
 const require = createRequire(import.meta.url)
 const bundles = new Map<string, string>()
-const windows: JSDOM[] = []
+const windows: HTMLIFrameElement[] = []
 beforeAll(async () => {
   for (const format of ['esm', 'cjs']) {
     const result = await build({
@@ -28,12 +28,12 @@ beforeAll(async () => {
     bundles.set(format, result.outputFiles[0].text)
   }
 })
-afterEach(() => { for (const dom of windows.splice(0)) dom.window.close(); vi.restoreAllMocks() })
+afterEach(() => { for (const frame of windows.splice(0)) { frame.contentWindow?.close(); frame.remove() }; vi.restoreAllMocks() })
 
 function setup(format: string) {
-  const dom = new JSDOM('<!doctype html><body></body>', { runScripts: 'outside-only' })
-  windows.push(dom)
-  const { window } = dom
+  const iframe = document.createElement('iframe')
+  document.body.append(iframe); windows.push(iframe)
+  const window = iframe.contentWindow! as Window & typeof globalThis
   let nextFrame = 0
   const frames = new Map<number, FrameRequestCallback>()
   window.requestAnimationFrame = callback => { frames.set(++nextFrame, callback); return nextFrame }
