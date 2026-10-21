@@ -1,4 +1,5 @@
 # language: zh-CN
+# [OUTPUT]: 新增实际PDF翻页/Office切换7轮与5次空闲的有界资源场景，沿原共享资源门槛，旧场景与期限不改。
 # [OUTPUT]: Lody PDF/Office正常/损坏原件；迟到预览文件切换、隐藏停读/清理隔离和零新增业务写入。
 # [INPUT]: 已有 API 私聊/群聊、宿主真实 TXT/Markdown 文件和离线 Mastra 协议。
 # [OUTPUT]: 聊天Markdown/代码右侧安全预览与Shiki源码；当前群成员附件、同名来源/切页重启、同字节恢复、真实File授权与未知回执不重放。
@@ -93,3 +94,10 @@
     假如 材料协作组和私聊已连接离线协议模型
     当 用户发送两份不同格式的Lody原样本
     那么 Lody迟到二进制预览在清理后不能恢复原件
+
+
+  @lody-preview @preview-resources
+  场景: PDF和Office反复切换关闭后的短期资源有界
+    假如 材料协作组和私聊已连接离线协议模型
+    当 用户发送两份不同格式的Lody原样本
+    那么 PDF翻页和Office切换反复关闭后短期资源有界且旧任务不重做
