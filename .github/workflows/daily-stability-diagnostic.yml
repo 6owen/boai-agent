@@ -1,8 +1,8 @@
-# [INPUT]: 第23组同9d7产品指纹与生命周期候选，原CLI7场/现行任务管理1场及原资源1场。
-# [OUTPUT]: 维护原入口/就绪并在资源原断言失败后抓堆/DOM，原210/70/28/120秒与阈值不变；不提供正式资格。
-# [POS]: 独立诊断分支，正式CI外的日常稳定性补验，不放宽原断言/期限。
+# [INPUT]: 同9d7产品输入与原后台桌面/采样支撑；只隔离设置卸载，不改产品。
+# [OUTPUT]: 10次预热+15次设置切换的最小保留节点诊断；非原210/70/28/120秒资格，失败后先抓原生堆再查DOM。
+# [POS]: 第23组资源失败最小化，原完整红例和所有原门槛保持。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
-name: Daily lifecycle follow-up
+name: Daily settings retention isolation
 on:
   push:
     branches: [infra/daily-source-identity]
@@ -10,14 +10,9 @@ on:
 permissions:
   contents: read
 jobs:
-  lifecycle:
-    name: Lifecycle ${{ matrix.probe }}
+  settings-retention:
     runs-on: macos-15
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        probe: [cli-recovery, background-resources]
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -29,81 +24,69 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           node node_modules/electron/install.js
-      - name: Check fixed product source
+      - name: Check original types
+        run: pnpm typecheck
+      - name: Generate an explicitly isolated diagnostic BDD
         run: |
           node --input-type=module - <<'JS'
           import { buildInputHash } from './scripts/build-identity.mjs';
-          import { mkdir, writeFile } from 'node:fs/promises';
+          import { mkdir, writeFile, appendFile } from 'node:fs/promises';
           const inputHash=await buildInputHash();
-          if(inputHash!=='4514b566ecf0e0969ccb50011fb28ba452f8e76ac2c0c4b2ed51eac47399424c') throw Error('Product inputs differ from the registered candidate');
-          await mkdir('.local/daily-lifecycle',{recursive:true});
-          await writeFile('.local/daily-lifecycle/source.json',JSON.stringify({reference:'9d7d4deb64504eb1dad94f6b43a360d91de67f02',inputHash},null,2));
+          if(inputHash!=='4514b566ecf0e0969ccb50011fb28ba452f8e76ac2c0c4b2ed51eac47399424c') throw Error('Product input differs');
+          await mkdir('.local/resource-minimal-evidence',{recursive:true});
+          const feature=['# language: zh-CN','# [INPUT]: 原后台隔离桌面及设置循环。','# [OUTPUT]: 仅用于最小复现，不授予原后台资源资格。','# [POS]: 临时诊断BDD，产品与原场景不改。','# [PROTOCOL]: 仅保留于本诊断run原件。','功能: 仅诊断运行选项的卸载引用','  场景: 仅诊断运行选项反复卸载后的节点保留','    假如 已启动隔离的后台员工桌面','    当 仅诊断运行选项的反复卸载保留'].join('
+')+'
+';
+          const step=String.raw`
+          When('仅诊断运行选项的反复卸载保留', async ({ runtime }) => {
+            const page=runtime.page;
+            await page.getByRole('button',{name:'我的菜单',exact:true}).click();
+            await page.getByRole('menuitem',{name:'设置',exact:true}).click();
+            const cycle=async()=>{
+              await page.getByRole('button',{name:'运行选项',exact:true}).click();
+              await expect(page.getByRole('switch',{name:'关闭窗口后继续运行'})).toBeChecked();
+              await page.getByRole('button',{name:'模型连接',exact:true}).click();
+            };
+            for(let i=0;i<10;i++)await cycle();
+            const cdp=await page.context().newCDPSession(page);
+            try{
+              const baseline=await resourceSample(runtime,cdp);
+              for(let i=0;i<15;i++)await cycle();
+              const last=await resourceSample(runtime,cdp);
+              await runtime.reviewData('设置卸载最小诊断数据',{diagnosticOnly:true,warmupSettingsCycles:10,measuredSettingsCycles:15,windowCycles:0,submittedMessages:0,idleSeconds:0,baseline,last});
+              try{
+                expect(last.dom.nodes-baseline.dom.nodes).toBeLessThan(1500);
+                expect(last.dom.jsEventListeners-baseline.dom.jsEventListeners).toBeLessThan(150);
+              }catch(error){
+                try{await recordResourceFailure(runtime,cdp);}catch(diagnosticError){await runtime.reviewData('最小诊断采集失败',{error:String(diagnosticError)});}
+                throw error;
+              }
+            }finally{await cdp.detach();}
+          });
+          `;
+          await writeFile('tests/e2e/features/__daily_resource_min.feature',feature);
+          await appendFile('tests/e2e/steps/background-runtime.steps.ts',step);
+          await writeFile('.local/resource-minimal-evidence/case.feature',feature);
+          await writeFile('.local/resource-minimal-evidence/step.ts',step);
+          await writeFile('.local/resource-minimal-evidence/source.json',JSON.stringify({reference:'9d7d4deb64504eb1dad94f6b43a360d91de67f02',inputHash,diagnosticOnly:true,purpose:'settings-only retention without message or window cycling; not original resource qualification'},null,2));
           JS
-      - name: Check original types
-        run: pnpm typecheck
-      - name: Build candidate and generate original BDD
+      - name: Build candidate and generate diagnostic BDD
         run: |
           pnpm build
           pnpm test:bddgen
-      - name: Run the original missing lifecycle coverage
+      - name: Run only the settings retention isolation
         env:
-          STABILITY_PROBE: ${{ matrix.probe }}
-        run: |
-          python3 - <<'PY'
-          import json,os,subprocess
-          from pathlib import Path
-          probe=os.environ['STABILITY_PROBE']
-          groups={
-            'cli-recovery': (['.features-gen/boai-cli.feature.spec.js','.features-gen/automation-recovery.feature.spec.js','.features-gen/boai-cli-pending.feature.spec.js','.features-gen/boai-cli-native-pending.feature.spec.js','.features-gen/schedule-simplification.feature.spec.js'],'CLI精确停止一名员工并保留群聊同事回复和重启记录|工具已经执行后运行进程退出不会重做任务|CLI自启动待问题后桌面附着并由终端接续同一个工作|终端留下的|两行任务列表与详情直接管理定时任务',8),
-            'delivery-receipts': (['.features-gen/materials.feature.spec.js','.features-gen/artifacts.feature.spec.js'],'材料消息发送回复失联只核对原消息|文件侧边修改提交失联后关闭重开与重启只核对原请求',2),
-            'background-resources': (['.features-gen/background-runtime.feature.spec.js'],'后台反复重开和处理消息后资源保持有界',1),
-          }
-          files,pattern,expected=groups[probe]
-          output=Path('.local/daily-lifecycle')/probe
-          output.mkdir(parents=True)
-          args=['pnpm','exec','playwright','test',*files]
-          if pattern: args+=['--grep',pattern]
-          inventory=subprocess.run([*args,'--list','--reporter=json'],capture_output=True,text=True)
-          (output/'inventory.json').write_text(inventory.stdout)
-          (output/'inventory.stderr.log').write_text(inventory.stderr)
-          if inventory.returncode: raise SystemExit(inventory.returncode)
-          def cases(node):
-              result=[]
-              for suite in node.get('suites',[]): result+=cases(suite)
-              for spec in node.get('specs',[]): result+=[(spec.get('title'),test) for test in spec.get('tests',[])]
-              return result
-          selected=cases(json.loads(inventory.stdout))
-          (output/'selection.json').write_text(json.dumps({'probe':probe,'expected':expected,'actual':len(selected),'titles':[title for title,_ in selected]},ensure_ascii=False,indent=2))
-          if len(selected)!=expected: raise SystemExit('Original scenario selection changed')
-          environment={**os.environ,'BOAI_REVIEW_RUN_DIR':str(output/'review'),'PLAYWRIGHT_JSON_OUTPUT_NAME':str(output/'playwright-results.json')}
-          if probe=='background-resources': environment.update({'BOAI_TEST_DEV_SERVER':'1','BOAI_RESOURCE_DIAGNOSTICS':'1'})
-          outcome=subprocess.run([*args,'--retries','0','--reporter=list,json'],env=environment)
-          if outcome.returncode: raise SystemExit(outcome.returncode)
-          report=json.loads((output/'playwright-results.json').read_text())
-          observed=cases(report)
-          stats=report['stats']
-          if len(observed)!=expected or stats.get('expected')!=expected or any(stats.get(k,0) for k in ['unexpected','skipped','flaky']): raise SystemExit('Missing, skipped, retried or failed original lifecycle scenario')
-          PY
-      - name: Preserve fresh native crash reports
-        if: failure()
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import shutil
-          output=Path('.local/daily-lifecycle/native-crashes')
-          output.mkdir(parents=True,exist_ok=True)
-          marker=Path('.local/daily-lifecycle/source.json')
-          since=marker.stat().st_mtime if marker.exists() else 0
-          for report in (Path.home()/'Library/Logs/DiagnosticReports').glob('*.ips'):
-              if report.name.lower().startswith(('node','electron','boai')) and report.stat().st_mtime>=since:
-                  shutil.copy2(report,output/report.name)
-          PY
+          BOAI_TEST_DEV_SERVER: '1'
+          BOAI_RESOURCE_DIAGNOSTICS: '1'
+          BOAI_REVIEW_RUN_DIR: .local/resource-minimal-evidence/review
+          PLAYWRIGHT_JSON_OUTPUT_NAME: .local/resource-minimal-evidence/playwright-results.json
+        run: pnpm exec playwright test --grep '仅诊断运行选项反复卸载后的节点保留' --retries 0 --reporter=list,json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: daily-lifecycle-${{ matrix.probe }}
+          name: daily-settings-retention
           path: |
-            .local/daily-lifecycle/
+            .local/resource-minimal-evidence/
             .local/background-resource-failures/
             test-results/
           include-hidden-files: true
