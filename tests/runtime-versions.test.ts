@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Isolated SQLite profiles, real executable/package bytes and original verification records.
- * [OUTPUT]: Current versus historical versions, explicit unknowns and zero execution or configuration changes.
+ * [OUTPUT]: Compiled identity stays bound to loaded code despite later builds; uncompiled inventory remains unknown, with zero executable launches.
  * [POS]: Runtime inventory provenance and read-only regression checks; verification versions are fixtures.
  * [PROTOCOL]: 变化同步Header与tests/.folder.md。
  */
@@ -14,6 +14,7 @@ import { LaunchProfiles } from '../src/runtime/modules/backends/profiles'
 import { RuntimePlugins } from '../src/runtime/modules/backends/runtime-plugins'
 import { runtimeVersions } from '../src/runtime/modules/backends/versions'
 import { bundledRuntimePlugins } from '../src/shared/plugins/runtime-catalog'
+import { build } from 'esbuild'
 
 const cleanup: (() => Promise<unknown> | void)[] = []
 afterEach(async () => { for (const action of cleanup.splice(0).reverse()) await action() })
@@ -26,6 +27,19 @@ async function fixture() {
   const profiles = new LaunchProfiles(store, plugins); await profiles.init()
   return { root, store, bundle, plugins, profiles }
 }
+
+it('reports the loaded application inputs rather than a later dist identity or caller mutation', async () => {
+  const f = await fixture(), compiled = { version: '0.2.4-fixture', inputHash: 'a'.repeat(64) }
+  const output = await build({ stdin: { contents: "export { runtimeVersions } from './src/runtime/modules/backends/versions'", resolveDir: process.cwd() }, bundle: true, write: false, platform: 'node', format: 'esm', define: { __BOAI_APPLICATION_BUILD__: JSON.stringify(compiled) } })
+  const loaded = await import(`data:text/javascript;base64,${Buffer.from(output.outputFiles[0].contents).toString('base64')}`)
+  await mkdir(join(f.root, 'dist'))
+  await writeFile(join(f.root, 'dist/build-identity.json'), JSON.stringify({ inputHash: 'b'.repeat(64) }))
+  const value = await loaded.runtimeVersions(f.profiles, f.plugins, [])
+  expect(value.application).toEqual({ ...compiled, source: 'compiled-inputs' })
+  expect((await runtimeVersions(f.profiles, f.plugins, [])).application).toEqual({ version: null, inputHash: null, source: 'unknown' })
+  value.application.inputHash = 'changed-by-caller'
+  expect((await loaded.runtimeVersions(f.profiles, f.plugins, [])).application.inputHash).toBe(compiled.inputHash)
+})
 
 it.each(['acp', 'codex-app-server', 'claude-cli'] as const)('%s versions stay unknown until verified, invalidate changed/missing files and never launch the program', async protocol => {
   const f = await fixture(), marker = join(f.root, 'should-never-run'), executable = join(f.root, 'private-program.cjs')

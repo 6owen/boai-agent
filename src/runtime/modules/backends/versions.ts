@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Installed Mastra metadata, original launch profiles and runtime plugin owner.
- * [OUTPUT]: Current-file-checked program/package versions; missing or changed identities stay unknown.
+ * [INPUT]: Compiled application identity, installed Mastra metadata, original launch profiles and runtime plugin owner.
+ * [OUTPUT]: Immutable compiled application identity plus current-file-checked program/package versions; absent build identity remains unknown.
  * [POS]: Read-only runtime inventory; never spawns an executable or calls a model.
  * [PROTOCOL]: 变化同步Header与所属.folder.md。
  */
@@ -10,8 +10,11 @@ import type { RuntimeVersions } from '../../../shared/domain/runtime-versions'
 import type { LaunchProfiles } from './profiles'
 import type { RuntimePlugins } from './runtime-plugins'
 
+declare const __BOAI_APPLICATION_BUILD__: { version: string; inputHash: string }
+const application = typeof __BOAI_APPLICATION_BUILD__ === 'undefined' ? null : __BOAI_APPLICATION_BUILD__
+
 export async function runtimeVersions(profiles: LaunchProfiles, plugins: RuntimePlugins, agents: Pick<DigitalAgent, 'id' | 'executionBackend'>[]): Promise<RuntimeVersions> {
-  const result: RuntimeVersions = { node: process.versions.node, mastra: { package: '@mastra/core', version: mastraPackage.version, source: 'installed-package' }, programs: [], plugins: [] }
+  const result: RuntimeVersions = { application: application ? { ...application, source: 'compiled-inputs' } : { version: null, inputHash: null, source: 'unknown' }, node: process.versions.node, mastra: { package: '@mastra/core', version: mastraPackage.version, source: 'installed-package' }, programs: [], plugins: [] }
   for (const profile of profiles.list().sort((a, b) => a.id.localeCompare(b.id))) {
     const status = await profiles.status(profile.id)
     const verified = status.profile.verified

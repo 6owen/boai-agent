@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 原桌面/CLI版本场景核对实际加载应用版本与当前产品inputHash；保持原会话/重启和权限断言。
  * [OUTPUT]: Verbose run keeps diagnostics on stderr, ignores a custom entry when reusing desktop and preserves the same original message/service.
  * [OUTPUT]: 目录审批场景显式--mode ask，原审批前零写入及重启回执保持。
  * [OUTPUT]: bobo首次附件真实CLI/桌面接线，从核心历史打开已受理会话，核心会话仅随已受理消息出现。
@@ -24,6 +25,8 @@ import { execFile } from 'node:child_process'
 import { copyFile, lstat, mkdir, readFile, realpath, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
+// @ts-expect-error Plain Node ESM build helper intentionally has no declaration file.
+import { buildInputHash } from '../../../scripts/build-identity.mjs'
 import { test as base } from '../support/test'
 import { prepareArtifactProtocol } from '../support/artifacts'
 import { settledMainline } from '../support/mastra-mainline'
@@ -71,6 +74,7 @@ Given('CLI桌面验收已准备原员工和隔离模型协议', async ({ runtime
   const versions = JSON.parse((await cli.command(['versions', '--json'])).stdout)
   const desktopVersions = await runtime.page.evaluate(() => window.boai.request('getRuntimeVersions', undefined))
   expect(versions).toMatchObject({ cli: applicationPackage.version, service: applicationPackage.version, protocol: PROTOCOL_VERSION, runtimes: desktopVersions })
+  expect(versions.runtimes.application).toEqual({ version: applicationPackage.version, inputHash: await buildInputHash(), source: 'compiled-inputs' })
   expect(versions.runtimes.plugins.every((item: { source: string }) => item.source === 'verified-package')).toBe(true)
   await runtime.reviewData('CLI与桌面共用当前运行时版本', { cli: versions, desktop: desktopVersions })
   // serve includes the runtime/dependencies; the relocated single-file client intentionally has neither.
