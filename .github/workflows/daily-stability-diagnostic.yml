@@ -1,8 +1,8 @@
-# [INPUT]: Exact current product inputs and actual GUI backup/cold restore case, original artifact offline supplier protocol.
-# [OUTPUT]: Native chooser cancellation/export, old managed/external paths unavailable, documented independent restore and second cold restart; no real provider calls.
-# [POS]: DS14 bounded desktop evidence; not Required checks, personal profile or arbitrary-version certification.
+# [INPUT]: Exact current product inputs, actual PDF Office resource scenario and two original late-preview lifecycle cases.
+# [OUTPUT]: Seven measured preview cycles after one warmup, five idle samples, original shared limits and unchanged late/clear assertions; no real provider calls.
+# [POS]: DS13 bounded PDF/Office desktop evidence; not Required checks or all-day stability certification.
 # [PROTOCOL]: Changes update Header and workflow directory map.
-name: Daily GUI backup and cold restore
+name: Daily PDF Office lifecycle and resources
 on:
   push:
     branches: [infra/daily-source-identity]
@@ -10,7 +10,7 @@ on:
 permissions:
   contents: read
 jobs:
-  gui-backup:
+  preview-resources:
     runs-on: macos-15
     timeout-minutes: 15
     steps:
@@ -33,25 +33,25 @@ jobs:
           import { mkdir, writeFile } from 'node:fs/promises';
           const inputHash = await buildInputHash();
           if (inputHash !== 'bbdd926c21c351c4745cec2eeaf0124240907e5c83df40d9fe007f4860a0cad3') throw Error('Product inputs differ');
-          await mkdir('.local/daily-gui-backup', { recursive: true });
-          await writeFile('.local/daily-gui-backup/source.json', JSON.stringify({ reference: 'e8f90e745d5aa48074dc9779dbd9d52b87ade3d5', testCandidate: '72b53b6efcaf8272ed829a5e1589125def577cbe', inputHash, cases: 1, feature: 'backup-restoration.feature', realProviderCalls: false, coldStarts: 3, newCaseTimeoutMs: 240000, originalCaseBudgetsUnchanged: true, restore: 'documented manual copy to independent userData/v2', oldManagedAndExternalPathsUnavailable: true }, null, 2));
+          await mkdir('.local/daily-preview-resources', { recursive: true });
+          await writeFile('.local/daily-preview-resources/source.json', JSON.stringify({ reference: 'e8f90e745d5aa48074dc9779dbd9d52b87ade3d5', testCandidate: '1003b053380c79dc8e276fec5cca3fb452aedaae', inputHash, cases: 3, feature: 'materials.feature', realProviderCalls: false, measuredCycles: 7, warmupCycles: 1, idleSamples: 5, originalCaseBudgetsUnchanged: true, resourceContract: 'existing verifyResources unchanged', oldLatePreviewCases: 2 }, null, 2));
           JS
       - name: Build current candidate and original BDD framework
         run: |
           pnpm build
           pnpm test:bddgen
-      - name: Run actual UI export and independent cold restoration
+      - name: Run actual PDF Office resources and original late preview lifecycle
         env:
           BOAI_TEST_DEV_SERVER: '1'
-          BOAI_REVIEW_RUN_DIR: .local/daily-gui-backup/review
-          PLAYWRIGHT_JSON_OUTPUT_NAME: .local/daily-gui-backup/playwright-results.json
-        run: pnpm exec playwright test .features-gen/backup-restoration.feature.spec.js --retries 0 --reporter=list,json
+          BOAI_REVIEW_RUN_DIR: .local/daily-preview-resources/review
+          PLAYWRIGHT_JSON_OUTPUT_NAME: .local/daily-preview-resources/playwright-results.json
+        run: pnpm exec playwright test .features-gen/materials.feature.spec.js --grep 'PDF和Office反复切换关闭后的短期资源有界|Lody迟到预览不会覆盖新文件且关闭停读|Lody二进制迟到预览不会恢复清空来源' --retries 0 --reporter=list,json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: daily-gui-backup
+          name: daily-preview-resources
           path: |
-            .local/daily-gui-backup/
+            .local/daily-preview-resources/
             test-results/
           include-hidden-files: true
           if-no-files-found: error
