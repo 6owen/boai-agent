@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 字号和默认行高使用同一工具类，宿主字号覆盖时保持原cn合并语义。
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
  * [OUTPUT]: navigation-menu 基础组件及其可组合的样式/变体。
  * [POS]: @boai/ui共享实现；原归属： components/ui 的 navigation-menu 源码；由 shadcn base-nova 安装，样式在此定制，不读取业务或外观 store。
@@ -61,7 +62,7 @@ function NavigationMenuItem({
 }
 
 const navigationMenuTriggerStyle = cva(
-  "group/navigation-menu-trigger inline-flex h-9 w-max items-center justify-center rounded-(--radius-control) px-2.5 py-1.5 text-[length:var(--text-ui-body)] font-medium transition-all outline-none hover:bg-muted focus:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-1 disabled:pointer-events-none disabled:opacity-50 data-popup-open:bg-muted/50 data-popup-open:hover:bg-muted data-open:bg-muted/50 data-open:hover:bg-muted data-open:focus:bg-muted"
+  "group/navigation-menu-trigger inline-flex h-9 w-max items-center justify-center rounded-(--radius-control) px-2.5 py-1.5 text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] font-medium transition-all outline-none hover:bg-muted focus:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-1 disabled:pointer-events-none disabled:opacity-50 data-popup-open:bg-muted/50 data-popup-open:hover:bg-muted data-open:bg-muted/50 data-open:hover:bg-muted data-open:focus:bg-muted"
 )
 
 function NavigationMenuTrigger({
@@ -134,7 +135,7 @@ function NavigationMenuLink({
     <NavigationMenuPrimitive.Link
       data-slot="navigation-menu-link"
       className={cn(
-        "flex items-center gap-2 rounded-(--radius-control) p-2 text-[length:var(--text-ui-body)] transition-all outline-none hover:bg-muted focus:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-1 in-data-[slot=navigation-menu-content]:rounded-[calc(var(--radius-control)*.75)] data-active:bg-muted/50 data-active:hover:bg-muted data-active:focus:bg-muted [&_:is(svg,.app-icon):not([class*='size-'])]:size-4",
+        "flex items-center gap-2 rounded-(--radius-control) p-2 text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] transition-all outline-none hover:bg-muted focus:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-1 in-data-[slot=navigation-menu-content]:rounded-[calc(var(--radius-control)*.75)] data-active:bg-muted/50 data-active:hover:bg-muted data-active:focus:bg-muted [&_:is(svg,.app-icon):not([class*='size-'])]:size-4",
         className
       )}
       {...props}

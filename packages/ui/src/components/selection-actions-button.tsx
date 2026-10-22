@@ -29,7 +29,7 @@ export const buttonVariants = cva(
         xs: "h-[24px] rounded-full px-2.5 text-[length:var(--text-ui-secondary)] font-normal leading-none gap-1",
         /* canonical action pill — 27px tall, roomy sides */
         sm: "h-[27px] px-3 text-[length:var(--text-ui-body)] leading-none rounded-full gap-1.5",
-        md: "px-4 py-[9px] text-[length:var(--text-ui-body)] leading-none rounded-full gap-2",
+        md: "px-4 py-[9px] text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] leading-none rounded-full gap-2",
       },
     },
     defaultVariants: { variant: "secondary", size: "md" },

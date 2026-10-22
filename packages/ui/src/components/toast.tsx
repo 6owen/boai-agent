@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 字号和默认行高使用同一工具类，宿主字号覆盖时保持原cn合并语义。
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
  * [OUTPUT]: toast 基础组件；表面共用 skin.css 的 Soft 高光与阴影。
  * [POS]: @boai/ui共享实现；原归属： components/ui 的 toast 源码；由 shadcn base-nova 安装，样式在此定制，不读取业务或外观 store。
@@ -80,7 +81,7 @@ function ToastTitle({ className, ...props }: ToastPrimitive.Title.Props) {
   return (
     <ToastPrimitive.Title
       data-slot="toast-title"
-      className={cn("text-[length:var(--text-ui-body)] font-medium", className)}
+      className={cn("text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] font-medium", className)}
       {...props}
     />
   )
@@ -93,7 +94,7 @@ function ToastDescription({
   return (
     <ToastPrimitive.Description
       data-slot="toast-description"
-      className={cn("text-[length:var(--text-ui-body)] text-muted-foreground", className)}
+      className={cn("text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] text-muted-foreground", className)}
       {...props}
     />
   )

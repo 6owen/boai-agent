@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 字号和默认行高使用同一工具类，宿主字号覆盖时保持原cn合并语义。
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
  * [OUTPUT]: context-menu 基础组件；与 dropdown-menu 统一主/子面板 6px 留白、菜单项 12px 横向/8px 纵向内边距及图标间距，标签/缩进/勾选标记/分割线同步对齐；表面共用 skin.css 的 Soft 高光、圆角与阴影。
  * [POS]: @boai/ui共享实现；原归属： components/ui 的 context-menu 源码；由 shadcn base-nova 安装，样式在此定制，不读取业务或外观 store。
@@ -83,7 +84,7 @@ function ContextMenuLabel({
       data-slot="context-menu-label"
       data-inset={inset}
       className={cn(
-        "px-3 py-1.5 text-[length:var(--text-ui-caption)] font-medium text-muted-foreground data-inset:pl-9",
+        "px-3 py-1.5 text-[length:var(--text-ui-caption)]/[var(--tw-leading,var(--text-xs--line-height))] font-medium text-muted-foreground data-inset:pl-9",
         className
       )}
       {...props}
@@ -106,7 +107,7 @@ function ContextMenuItem({
       data-inset={inset}
       data-variant={variant}
       className={cn(
-        "group/context-menu-item relative flex cursor-default items-center gap-2 rounded-[calc(var(--radius-control)*.75)] px-3 py-2 text-[length:var(--text-ui-body)] outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-inset:pl-9 data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 data-[variant=destructive]:focus:text-destructive data-disabled:pointer-events-none data-disabled:opacity-50 [&_:is(svg,.app-icon)]:pointer-events-none [&_:is(svg,.app-icon)]:shrink-0 [&_:is(svg,.app-icon):not([class*='size-'])]:size-4 focus:*:[:is(svg,.app-icon)]:text-accent-foreground data-[variant=destructive]:*:[:is(svg,.app-icon)]:text-destructive",
+        "group/context-menu-item relative flex cursor-default items-center gap-2 rounded-[calc(var(--radius-control)*.75)] px-3 py-2 text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-inset:pl-9 data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 data-[variant=destructive]:focus:text-destructive data-disabled:pointer-events-none data-disabled:opacity-50 [&_:is(svg,.app-icon)]:pointer-events-none [&_:is(svg,.app-icon)]:shrink-0 [&_:is(svg,.app-icon):not([class*='size-'])]:size-4 focus:*:[:is(svg,.app-icon)]:text-accent-foreground data-[variant=destructive]:*:[:is(svg,.app-icon)]:text-destructive",
         className
       )}
       {...props}
@@ -133,7 +134,7 @@ function ContextMenuSubTrigger({
       data-slot="context-menu-sub-trigger"
       data-inset={inset}
       className={cn(
-        "flex cursor-default items-center gap-2 rounded-[calc(var(--radius-control)*.75)] px-3 py-2 text-[length:var(--text-ui-body)] outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-inset:pl-9 data-open:bg-accent data-open:text-accent-foreground [&_:is(svg,.app-icon)]:pointer-events-none [&_:is(svg,.app-icon)]:shrink-0 [&_:is(svg,.app-icon):not([class*='size-'])]:size-4",
+        "flex cursor-default items-center gap-2 rounded-[calc(var(--radius-control)*.75)] px-3 py-2 text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-inset:pl-9 data-open:bg-accent data-open:text-accent-foreground [&_:is(svg,.app-icon)]:pointer-events-none [&_:is(svg,.app-icon)]:shrink-0 [&_:is(svg,.app-icon):not([class*='size-'])]:size-4",
         className
       )}
       {...props}
@@ -171,7 +172,7 @@ function ContextMenuCheckboxItem({
       data-slot="context-menu-checkbox-item"
       data-inset={inset}
       className={cn(
-        "relative flex cursor-default items-center gap-2 rounded-[calc(var(--radius-control)*.75)] py-2 pr-9 pl-3 text-[length:var(--text-ui-body)] outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-inset:pl-9 data-disabled:pointer-events-none data-disabled:opacity-50 [&_:is(svg,.app-icon)]:pointer-events-none [&_:is(svg,.app-icon)]:shrink-0 [&_:is(svg,.app-icon):not([class*='size-'])]:size-4",
+        "relative flex cursor-default items-center gap-2 rounded-[calc(var(--radius-control)*.75)] py-2 pr-9 pl-3 text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-inset:pl-9 data-disabled:pointer-events-none data-disabled:opacity-50 [&_:is(svg,.app-icon)]:pointer-events-none [&_:is(svg,.app-icon)]:shrink-0 [&_:is(svg,.app-icon):not([class*='size-'])]:size-4",
         className
       )}
       checked={checked}
@@ -212,7 +213,7 @@ function ContextMenuRadioItem({
       data-slot="context-menu-radio-item"
       data-inset={inset}
       className={cn(
-        "relative flex cursor-default items-center gap-2 rounded-[calc(var(--radius-control)*.75)] py-2 pr-9 pl-3 text-[length:var(--text-ui-body)] outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-inset:pl-9 data-disabled:pointer-events-none data-disabled:opacity-50 [&_:is(svg,.app-icon)]:pointer-events-none [&_:is(svg,.app-icon)]:shrink-0 [&_:is(svg,.app-icon):not([class*='size-'])]:size-4",
+        "relative flex cursor-default items-center gap-2 rounded-[calc(var(--radius-control)*.75)] py-2 pr-9 pl-3 text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-inset:pl-9 data-disabled:pointer-events-none data-disabled:opacity-50 [&_:is(svg,.app-icon)]:pointer-events-none [&_:is(svg,.app-icon)]:shrink-0 [&_:is(svg,.app-icon):not([class*='size-'])]:size-4",
         className
       )}
       {...props}
@@ -249,7 +250,7 @@ function ContextMenuShortcut({
     <span
       data-slot="context-menu-shortcut"
       className={cn(
-        "ml-auto text-[length:var(--text-ui-caption)] tracking-widest text-muted-foreground group-focus/context-menu-item:text-accent-foreground",
+        "ml-auto text-[length:var(--text-ui-caption)]/[var(--tw-leading,var(--text-xs--line-height))] tracking-widest text-muted-foreground group-focus/context-menu-item:text-accent-foreground",
         className
       )}
       {...props}

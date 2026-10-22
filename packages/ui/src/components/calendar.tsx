@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 字号和默认行高使用同一工具类，宿主字号覆盖时保持原cn合并语义。
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
  * [OUTPUT]: calendar 基础组件及其可组合的样式/变体。
@@ -76,7 +77,7 @@ function Calendar({
           defaultClassNames.month_caption
         ),
         dropdowns: cn(
-          "flex h-(--cell-size) w-full items-center justify-center gap-1.5 text-[length:var(--text-ui-body)] font-medium",
+          "flex h-(--cell-size) w-full items-center justify-center gap-1.5 text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] font-medium",
           defaultClassNames.dropdowns
         ),
         dropdown_root: cn(
@@ -90,8 +91,8 @@ function Calendar({
         caption_label: cn(
           "font-medium select-none",
           captionLayout === "label"
-            ? "text-[length:var(--text-ui-body)]"
-            : "flex items-center gap-1 rounded-(--cell-radius) text-[length:var(--text-ui-body)] [&>:is(svg,.app-icon)]:size-3.5 [&>:is(svg,.app-icon)]:text-muted-foreground",
+            ? "text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))]"
+            : "flex items-center gap-1 rounded-(--cell-radius) text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] [&>:is(svg,.app-icon)]:size-3.5 [&>:is(svg,.app-icon)]:text-muted-foreground",
           defaultClassNames.caption_label
         ),
         month_grid: cn("w-full border-collapse", defaultClassNames.month_grid),
@@ -217,7 +218,7 @@ function CalendarDayButton({
       data-range-end={modifiers.range_end}
       data-range-middle={modifiers.range_middle}
       className={cn(
-        "relative isolate z-10 flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 border-0 leading-none font-normal group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-[3px] group-data-[focused=true]/day:ring-ring/50 data-[range-end=true]:rounded-(--cell-radius) data-[range-end=true]:rounded-r-(--cell-radius) data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground data-[range-middle=true]:rounded-none data-[range-middle=true]:bg-muted data-[range-middle=true]:text-foreground data-[range-start=true]:rounded-(--cell-radius) data-[range-start=true]:rounded-l-(--cell-radius) data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground [&>span]:text-[length:var(--text-ui-caption)] [&>span]:opacity-70",
+        "relative isolate z-10 flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 border-0 leading-none font-normal group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-[3px] group-data-[focused=true]/day:ring-ring/50 data-[range-end=true]:rounded-(--cell-radius) data-[range-end=true]:rounded-r-(--cell-radius) data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground data-[range-middle=true]:rounded-none data-[range-middle=true]:bg-muted data-[range-middle=true]:text-foreground data-[range-start=true]:rounded-(--cell-radius) data-[range-start=true]:rounded-l-(--cell-radius) data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground [&>span]:text-[length:var(--text-ui-caption)]/[var(--tw-leading,var(--text-xs--line-height))] [&>span]:opacity-70",
         defaultClassNames.day,
         className
       )}

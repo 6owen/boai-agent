@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 字号和默认行高使用同一工具类，宿主字号覆盖时保持原cn合并语义。
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
  * [OUTPUT]: input-otp 基础组件及其可组合的样式/变体；保留边框与焦点/错误状态，无底部外侧阴影。
  * [POS]: @boai/ui共享实现；原归属： components/ui 的 input-otp 源码；由 shadcn base-nova 安装，样式在此定制，不读取业务或外观 store。
@@ -58,7 +59,7 @@ function InputOTPSlot({
       data-slot="input-otp-slot"
       data-active={isActive}
       className={cn(
-        "relative flex size-8 items-center justify-center border-y border-r border-input text-[length:var(--text-ui-body)] transition-all outline-none first:rounded-l-(--radius-control) first:border-l last:rounded-r-(--radius-control) aria-invalid:border-destructive data-[active=true]:z-10 data-[active=true]:border-ring data-[active=true]:ring-3 data-[active=true]:ring-ring/50 data-[active=true]:aria-invalid:border-destructive data-[active=true]:aria-invalid:ring-destructive/20 ",
+        "relative flex size-8 items-center justify-center border-y border-r border-input text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] transition-all outline-none first:rounded-l-(--radius-control) first:border-l last:rounded-r-(--radius-control) aria-invalid:border-destructive data-[active=true]:z-10 data-[active=true]:border-ring data-[active=true]:ring-3 data-[active=true]:ring-ring/50 data-[active=true]:aria-invalid:border-destructive data-[active=true]:aria-invalid:ring-destructive/20 ",
         className
       )}
       {...props}

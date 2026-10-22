@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 字号和默认行高使用同一工具类，宿主字号覆盖时保持原cn合并语义。
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
  * [OUTPUT]: breadcrumb 基础组件及其可组合的样式/变体。
  * [POS]: @boai/ui共享实现；原归属： components/ui 的 breadcrumb 源码；由 shadcn base-nova 安装，样式在此定制，不读取业务或外观 store。
@@ -26,7 +27,7 @@ function BreadcrumbList({ className, ...props }: React.ComponentProps<"ol">) {
     <ol
       data-slot="breadcrumb-list"
       className={cn(
-        "flex flex-wrap items-center gap-1.5 text-[length:var(--text-ui-body)] wrap-break-word text-muted-foreground",
+        "flex flex-wrap items-center gap-1.5 text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] wrap-break-word text-muted-foreground",
         className
       )}
       {...props}

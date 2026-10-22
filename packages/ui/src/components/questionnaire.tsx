@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 字号和默认行高使用同一工具类，宿主字号覆盖时保持原cn合并语义。
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
  * [OUTPUT]: questionnaire 基础组件及其可组合的样式/变体。
@@ -35,7 +36,7 @@ function QuestionnaireProgress({
     <QuestionnairePrimitive.Progress
       data-slot="questionnaire-progress"
       className={cn(
-        "min-h-[1lh] w-fit min-w-[14ch] text-[length:var(--text-ui-caption)] font-medium text-muted-foreground tabular-nums",
+        "min-h-[1lh] w-fit min-w-[14ch] text-[length:var(--text-ui-caption)]/[var(--tw-leading,var(--text-xs--line-height))] font-medium text-muted-foreground tabular-nums",
         className
       )}
       {...props}
@@ -67,7 +68,7 @@ function QuestionnaireTitle({
     <QuestionnairePrimitive.Title
       data-slot="questionnaire-title"
       className={cn(
-        "text-[length:var(--text-ui-emphasis)] leading-snug font-medium text-pretty [&:not(:has(~[data-slot=questionnaire-description]))]:mb-4",
+        "text-[length:var(--text-ui-emphasis)]/[var(--tw-leading,var(--text-base--line-height))] leading-snug font-medium text-pretty [&:not(:has(~[data-slot=questionnaire-description]))]:mb-4",
         className
       )}
       {...props}
@@ -82,7 +83,7 @@ function QuestionnaireDescription({
   return (
     <QuestionnairePrimitive.Description
       data-slot="questionnaire-description"
-      className={cn("text-[length:var(--text-ui-body)] text-pretty text-muted-foreground", className)}
+      className={cn("text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] text-pretty text-muted-foreground", className)}
       {...props}
     />
   )
@@ -113,7 +114,7 @@ function QuestionnaireChoice({
     <QuestionnairePrimitive.Choice
       data-slot="questionnaire-choice"
       className={cn(
-        "group/questionnaire-choice relative flex min-h-11 cursor-pointer items-start gap-2.5 rounded-(--radius-control) border border-input bg-transparent px-3 py-2.5 text-start text-[length:var(--text-ui-body)] transition-colors outline-none select-none hover:bg-muted/50 has-[>input:focus-visible]:border-ring has-[>input:focus-visible]:ring-3 has-[>input:focus-visible]:ring-ring/50 data-invalid:border-destructive data-checked:border-primary/40 data-checked:bg-muted ",
+        "group/questionnaire-choice relative flex min-h-11 cursor-pointer items-start gap-2.5 rounded-(--radius-control) border border-input bg-transparent px-3 py-2.5 text-start text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] transition-colors outline-none select-none hover:bg-muted/50 has-[>input:focus-visible]:border-ring has-[>input:focus-visible]:ring-3 has-[>input:focus-visible]:ring-ring/50 data-invalid:border-destructive data-checked:border-primary/40 data-checked:bg-muted ",
         "data-disabled:pointer-events-none data-disabled:cursor-not-allowed data-disabled:opacity-50",
         className
       )}
@@ -173,7 +174,7 @@ function QuestionnaireInput({
       <QuestionnairePrimitive.Input
         data-slot="questionnaire-input"
         className={cn(
-          "h-8 min-h-11 w-full min-w-0 rounded-(--radius-control) border border-input bg-transparent px-2.5 py-1 text-[length:var(--text-ui-emphasis)] transition-[color,box-shadow,background-color] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 sm:min-h-0 md:text-[length:var(--text-ui-body)] ",
+          "h-8 min-h-11 w-full min-w-0 rounded-(--radius-control) border border-input bg-transparent px-2.5 py-1 text-[length:var(--text-ui-emphasis)]/[var(--tw-leading,var(--text-base--line-height))] transition-[color,box-shadow,background-color] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 sm:min-h-0 md:text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] ",
           "selection:bg-primary selection:text-primary-foreground placeholder:text-muted-foreground",
           className
         )}
@@ -190,7 +191,7 @@ function QuestionnaireError({
   return (
     <QuestionnairePrimitive.Error
       data-slot="questionnaire-error"
-      className={cn("mt-2 text-[length:var(--text-ui-body)] text-destructive", className)}
+      className={cn("mt-2 text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] text-destructive", className)}
       {...props}
     />
   )

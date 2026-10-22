@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 字号和默认行高使用同一工具类，宿主字号覆盖时保持原cn合并语义。
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
  * [OUTPUT]: command 基础组件及其可组合的样式/变体。
  * [POS]: @boai/ui共享实现；原归属： components/ui 的 command 源码；由 shadcn base-nova 安装，样式在此定制，不读取业务或外观 store。
@@ -82,7 +83,7 @@ function CommandInput({
         <CommandPrimitive.Input
           data-slot="command-input"
           className={cn(
-            "w-full text-[length:var(--text-ui-body)] outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
+            "w-full text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
             className
           )}
           {...props}
@@ -118,7 +119,7 @@ function CommandEmpty({
   return (
     <CommandPrimitive.Empty
       data-slot="command-empty"
-      className={cn("py-6 text-center text-[length:var(--text-ui-body)]", className)}
+      className={cn("py-6 text-center text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))]", className)}
       {...props}
     />
   )
@@ -132,7 +133,7 @@ function CommandGroup({
     <CommandPrimitive.Group
       data-slot="command-group"
       className={cn(
-        "overflow-hidden p-1 text-foreground **:[[cmdk-group-heading]]:px-2 **:[[cmdk-group-heading]]:py-1.5 **:[[cmdk-group-heading]]:text-[length:var(--text-ui-caption)] **:[[cmdk-group-heading]]:font-medium **:[[cmdk-group-heading]]:text-muted-foreground",
+        "overflow-hidden p-1 text-foreground **:[[cmdk-group-heading]]:px-2 **:[[cmdk-group-heading]]:py-1.5 **:[[cmdk-group-heading]]:text-[length:var(--text-ui-caption)]/[var(--tw-leading,var(--text-xs--line-height))] **:[[cmdk-group-heading]]:font-medium **:[[cmdk-group-heading]]:text-muted-foreground",
         className
       )}
       {...props}
@@ -162,7 +163,7 @@ function CommandItem({
     <CommandPrimitive.Item
       data-slot="command-item"
       className={cn(
-        "group/command-item relative flex cursor-default items-center gap-2 rounded-[calc(var(--radius-control)*.5)] px-2 py-1.5 text-[length:var(--text-ui-body)] outline-hidden select-none in-data-[slot=dialog-content]:rounded-(--radius-control)! data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 data-selected:bg-muted data-selected:text-foreground [&_:is(svg,.app-icon)]:pointer-events-none [&_:is(svg,.app-icon)]:shrink-0 [&_:is(svg,.app-icon):not([class*='size-'])]:size-4 data-selected:*:[:is(svg,.app-icon)]:text-foreground",
+        "group/command-item relative flex cursor-default items-center gap-2 rounded-[calc(var(--radius-control)*.5)] px-2 py-1.5 text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] outline-hidden select-none in-data-[slot=dialog-content]:rounded-(--radius-control)! data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 data-selected:bg-muted data-selected:text-foreground [&_:is(svg,.app-icon)]:pointer-events-none [&_:is(svg,.app-icon)]:shrink-0 [&_:is(svg,.app-icon):not([class*='size-'])]:size-4 data-selected:*:[:is(svg,.app-icon)]:text-foreground",
         className
       )}
       {...props}
@@ -181,7 +182,7 @@ function CommandShortcut({
     <span
       data-slot="command-shortcut"
       className={cn(
-        "ml-auto text-[length:var(--text-ui-caption)] tracking-widest text-muted-foreground group-data-selected/command-item:text-foreground",
+        "ml-auto text-[length:var(--text-ui-caption)]/[var(--tw-leading,var(--text-xs--line-height))] tracking-widest text-muted-foreground group-data-selected/command-item:text-foreground",
         className
       )}
       {...props}

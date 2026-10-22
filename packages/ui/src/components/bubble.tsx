@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 字号和默认行高使用同一工具类，宿主字号覆盖时保持原cn合并语义。
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
  * [OUTPUT]: bubble 基础组件及其可组合的样式/变体。
  * [POS]: @boai/ui共享实现；原归属： components/ui 的 bubble 源码；由 shadcn base-nova 安装，样式在此定制，不读取业务或外观 store。
@@ -77,7 +78,7 @@ function BubbleContent({
     props: mergeProps<"div">(
       {
         className: cn(
-          "w-fit max-w-full min-w-0 overflow-hidden rounded-(--radius-card) border border-transparent px-3 py-2 text-[length:var(--text-ui-body)] leading-relaxed wrap-break-word group-data-[align=end]/bubble:self-end [button]:text-left [button,a]:transition-colors [button,a]:outline-none [button,a]:focus-visible:border-ring [button,a]:focus-visible:ring-3 [button,a]:focus-visible:ring-ring/50",
+          "w-fit max-w-full min-w-0 overflow-hidden rounded-(--radius-card) border border-transparent px-3 py-2 text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] leading-relaxed wrap-break-word group-data-[align=end]/bubble:self-end [button]:text-left [button,a]:transition-colors [button,a]:outline-none [button,a]:focus-visible:border-ring [button,a]:focus-visible:ring-3 [button,a]:focus-visible:ring-ring/50",
           className
         ),
       },
@@ -91,7 +92,7 @@ function BubbleContent({
 }
 
 const bubbleReactionsVariants = cva(
-  "absolute z-10 flex w-fit shrink-0 items-center justify-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[length:var(--text-ui-body)] ring-3 ring-card has-[button]:p-0",
+  "absolute z-10 flex w-fit shrink-0 items-center justify-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] ring-3 ring-card has-[button]:p-0",
   {
     variants: {
       side: {

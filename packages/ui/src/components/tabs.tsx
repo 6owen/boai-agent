@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 字号和默认行高使用同一工具类，宿主字号覆盖时保持原cn合并语义。
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
  * [OUTPUT]: 紧凑 Soft、线形和可独立关闭的窗口标签变体共用滑动选中层，保留 Base UI 横纵方向、受控选择和键盘语义。
  * [POS]: @boai/ui共享实现；原归属： components/ui 的 tabs 源码；由 shadcn base-nova 安装，样式在此定制，不读取业务或外观 store。
@@ -70,7 +71,7 @@ function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
       data-slot="tabs-trigger"
       className={cn(
         "t-tab",
-        "soft-tabs-trigger relative inline-flex h-full shrink-0 items-center justify-center gap-1.5 border-0 px-2.5 py-1 text-[length:var(--text-ui-body)] leading-5 font-medium whitespace-nowrap group-data-vertical/tabs:h-[28px] group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&_:is(svg,.app-icon)]:pointer-events-none [&_:is(svg,.app-icon)]:shrink-0 [&_:is(svg,.app-icon):not([class*='size-'])]:size-4",
+        "soft-tabs-trigger relative inline-flex h-full shrink-0 items-center justify-center gap-1.5 border-0 px-2.5 py-1 text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] leading-5 font-medium whitespace-nowrap group-data-vertical/tabs:h-[28px] group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&_:is(svg,.app-icon)]:pointer-events-none [&_:is(svg,.app-icon)]:shrink-0 [&_:is(svg,.app-icon):not([class*='size-'])]:size-4",
         className
       )}
       {...props}
@@ -82,7 +83,7 @@ function TabsContent({ className, ...props }: TabsPrimitive.Panel.Props) {
   return (
     <TabsPrimitive.Panel
       data-slot="tabs-content"
-      className={cn("min-w-0 flex-1 text-[length:var(--text-ui-body)] outline-none", className)}
+      className={cn("min-w-0 flex-1 text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] outline-none", className)}
       {...props}
     />
   )

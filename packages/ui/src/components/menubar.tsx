@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 字号和默认行高使用同一工具类，宿主字号覆盖时保持原cn合并语义。
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
  * [OUTPUT]: menubar 基础组件；表面共用 skin.css 的 Soft 高光、圆角与阴影。
  * [POS]: @boai/ui共享实现；原归属： components/ui 的 menubar 源码；由 shadcn base-nova 安装，样式在此定制，不读取业务或外观 store。
@@ -65,7 +66,7 @@ function MenubarTrigger({
     <DropdownMenuTrigger
       data-slot="menubar-trigger"
       className={cn(
-        "flex items-center rounded-[calc(var(--radius-control)*.5)] px-1.5 py-[2px] text-[length:var(--text-ui-body)] font-medium outline-hidden select-none hover:bg-muted aria-expanded:bg-muted",
+        "flex items-center rounded-[calc(var(--radius-control)*.5)] px-1.5 py-[2px] text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] font-medium outline-hidden select-none hover:bg-muted aria-expanded:bg-muted",
         className
       )}
       {...props}
@@ -104,7 +105,7 @@ function MenubarItem({
       data-inset={inset}
       data-variant={variant}
       className={cn(
-        "group/menubar-item gap-1.5 rounded-[calc(var(--radius-control)*.75)] px-1.5 py-1 text-[length:var(--text-ui-body)] focus:bg-accent focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground data-inset:pl-7 data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 data-[variant=destructive]:focus:text-destructive data-disabled:opacity-50 [&_:is(svg,.app-icon):not([class*='size-'])]:size-4 data-[variant=destructive]:*:[:is(svg,.app-icon)]:text-destructive!",
+        "group/menubar-item gap-1.5 rounded-[calc(var(--radius-control)*.75)] px-1.5 py-1 text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] focus:bg-accent focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground data-inset:pl-7 data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 data-[variant=destructive]:focus:text-destructive data-disabled:opacity-50 [&_:is(svg,.app-icon):not([class*='size-'])]:size-4 data-[variant=destructive]:*:[:is(svg,.app-icon)]:text-destructive!",
         className
       )}
       {...props}
@@ -126,7 +127,7 @@ function MenubarCheckboxItem({
       data-slot="menubar-checkbox-item"
       data-inset={inset}
       className={cn(
-        "relative flex cursor-default items-center gap-1.5 rounded-[calc(var(--radius-control)*.75)] py-1 pr-1.5 pl-7 text-[length:var(--text-ui-body)] outline-hidden select-none focus:bg-accent focus:text-accent-foreground focus:**:text-accent-foreground data-inset:pl-7 data-disabled:pointer-events-none data-disabled:opacity-50 [&_:is(svg,.app-icon)]:pointer-events-none [&_:is(svg,.app-icon)]:shrink-0",
+        "relative flex cursor-default items-center gap-1.5 rounded-[calc(var(--radius-control)*.75)] py-1 pr-1.5 pl-7 text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] outline-hidden select-none focus:bg-accent focus:text-accent-foreground focus:**:text-accent-foreground data-inset:pl-7 data-disabled:pointer-events-none data-disabled:opacity-50 [&_:is(svg,.app-icon)]:pointer-events-none [&_:is(svg,.app-icon)]:shrink-0",
         className
       )}
       checked={checked}
@@ -162,7 +163,7 @@ function MenubarRadioItem({
       data-slot="menubar-radio-item"
       data-inset={inset}
       className={cn(
-        "relative flex cursor-default items-center gap-1.5 rounded-[calc(var(--radius-control)*.75)] py-1 pr-1.5 pl-7 text-[length:var(--text-ui-body)] outline-hidden select-none focus:bg-accent focus:text-accent-foreground focus:**:text-accent-foreground data-inset:pl-7 data-disabled:pointer-events-none data-disabled:opacity-50 [&_:is(svg,.app-icon)]:pointer-events-none [&_:is(svg,.app-icon)]:shrink-0 [&_:is(svg,.app-icon):not([class*='size-'])]:size-4",
+        "relative flex cursor-default items-center gap-1.5 rounded-[calc(var(--radius-control)*.75)] py-1 pr-1.5 pl-7 text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] outline-hidden select-none focus:bg-accent focus:text-accent-foreground focus:**:text-accent-foreground data-inset:pl-7 data-disabled:pointer-events-none data-disabled:opacity-50 [&_:is(svg,.app-icon)]:pointer-events-none [&_:is(svg,.app-icon)]:shrink-0 [&_:is(svg,.app-icon):not([class*='size-'])]:size-4",
         className
       )}
       {...props}
@@ -190,7 +191,7 @@ function MenubarLabel({
       data-slot="menubar-label"
       data-inset={inset}
       className={cn(
-        "px-1.5 py-1 text-[length:var(--text-ui-body)] font-medium data-inset:pl-7",
+        "px-1.5 py-1 text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] font-medium data-inset:pl-7",
         className
       )}
       {...props}
@@ -219,7 +220,7 @@ function MenubarShortcut({
     <DropdownMenuShortcut
       data-slot="menubar-shortcut"
       className={cn(
-        "ml-auto text-[length:var(--text-ui-caption)] tracking-widest text-muted-foreground group-focus/menubar-item:text-accent-foreground",
+        "ml-auto text-[length:var(--text-ui-caption)]/[var(--tw-leading,var(--text-xs--line-height))] tracking-widest text-muted-foreground group-focus/menubar-item:text-accent-foreground",
         className
       )}
       {...props}
@@ -245,7 +246,7 @@ function MenubarSubTrigger({
       data-slot="menubar-sub-trigger"
       data-inset={inset}
       className={cn(
-        "gap-1.5 rounded-[calc(var(--radius-control)*.75)] px-1.5 py-1 text-[length:var(--text-ui-body)] focus:bg-accent focus:text-accent-foreground data-inset:pl-7 data-open:bg-accent data-open:text-accent-foreground [&_:is(svg,.app-icon):not([class*='size-'])]:size-4",
+        "gap-1.5 rounded-[calc(var(--radius-control)*.75)] px-1.5 py-1 text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] focus:bg-accent focus:text-accent-foreground data-inset:pl-7 data-open:bg-accent data-open:text-accent-foreground [&_:is(svg,.app-icon):not([class*='size-'])]:size-4",
         className
       )}
       {...props}

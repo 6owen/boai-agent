@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 字号和默认行高使用同一工具类，宿主字号覆盖时保持原cn合并语义。
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
  * [OUTPUT]: input-group 基础组件；默认组由全局 skin 统一 Button secondary 表面/内侧细边缘，无底部外侧阴影并保留中性聚焦/错误校验状态，内层透明无框，聊天输入框保留独立变体。
  * [POS]: @boai/ui共享实现；原归属： components/ui 的 input-group 源码；由 shadcn base-nova 安装，样式在此定制，不读取业务或外观 store。
@@ -29,7 +30,7 @@ function InputGroup({ className, variant = "default", ...props }: React.Componen
 }
 
 const inputGroupAddonVariants = cva(
-  "flex h-auto cursor-text items-center justify-center gap-2 py-1.5 text-[length:var(--text-ui-body)] font-medium text-muted-foreground select-none group-data-[disabled=true]/input-group:opacity-50 [&>kbd]:rounded-[calc(var(--radius)-5px)] [&>:is(svg,.app-icon):not([class*='size-'])]:size-4",
+  "flex h-auto cursor-text items-center justify-center gap-2 py-1.5 text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] font-medium text-muted-foreground select-none group-data-[disabled=true]/input-group:opacity-50 [&>kbd]:rounded-[calc(var(--radius)-5px)] [&>:is(svg,.app-icon):not([class*='size-'])]:size-4",
   {
     variants: {
       align: {
@@ -72,7 +73,7 @@ function InputGroupAddon({
 }
 
 const inputGroupButtonVariants = cva(
-  "flex items-center gap-2 text-[length:var(--text-ui-body)] shadow-none",
+  "flex items-center gap-2 text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] shadow-none",
   {
     variants: {
       size: {
@@ -114,7 +115,7 @@ function InputGroupText({ className, ...props }: React.ComponentProps<"span">) {
   return (
     <span
       className={cn(
-        "flex items-center gap-2 text-[length:var(--text-ui-body)] text-muted-foreground [&_:is(svg,.app-icon)]:pointer-events-none [&_:is(svg,.app-icon):not([class*='size-'])]:size-4",
+        "flex items-center gap-2 text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] text-muted-foreground [&_:is(svg,.app-icon)]:pointer-events-none [&_:is(svg,.app-icon):not([class*='size-'])]:size-4",
         className
       )}
       {...props}

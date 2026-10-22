@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 字号和默认行高使用同一工具类，宿主字号覆盖时保持原cn合并语义。
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
  * [OUTPUT]: 整行可点击的 accordion 标题、12px 旋转箭头和共用皮肤控制的顺滑高度展开。
  * [POS]: @boai/ui共享实现；原归属： components/ui 的 accordion 源码；由 shadcn base-nova 安装，样式在此定制，不读取业务或外观 store。
@@ -38,7 +39,7 @@ function AccordionTrigger({
       <AccordionPrimitive.Trigger
         data-slot="accordion-trigger"
         className={cn(
-          "group/accordion-trigger relative flex w-full flex-1 items-start justify-between rounded-(--radius-control) border border-transparent py-2.5 text-left text-[length:var(--text-ui-body)] font-medium transition-all outline-none hover:underline focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:after:border-ring aria-disabled:pointer-events-none aria-disabled:opacity-50 **:data-[slot=accordion-trigger-icon]:ml-auto **:data-[slot=accordion-trigger-icon]:size-3 **:data-[slot=accordion-trigger-icon]:text-muted-foreground",
+          "group/accordion-trigger relative flex w-full flex-1 items-start justify-between rounded-(--radius-control) border border-transparent py-2.5 text-left text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] font-medium transition-all outline-none hover:underline focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:after:border-ring aria-disabled:pointer-events-none aria-disabled:opacity-50 **:data-[slot=accordion-trigger-icon]:ml-auto **:data-[slot=accordion-trigger-icon]:size-3 **:data-[slot=accordion-trigger-icon]:text-muted-foreground",
           className
         )}
         {...props}
@@ -58,7 +59,7 @@ function AccordionContent({
   return (
     <AccordionPrimitive.Panel
       data-slot="accordion-content"
-      className="overflow-hidden text-[length:var(--text-ui-body)]"
+      className="overflow-hidden text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))]"
       {...props}
     >
       <div

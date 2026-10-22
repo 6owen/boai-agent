@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 字号和默认行高使用同一工具类，宿主字号覆盖时保持原cn合并语义。
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
  * [OUTPUT]: item 基础组件及其可组合的样式/变体。
  * [POS]: @boai/ui共享实现；原归属： components/ui 的 item 源码；由 shadcn base-nova 安装，样式在此定制，不读取业务或外观 store。
@@ -41,7 +42,7 @@ function ItemSeparator({
 }
 
 const itemVariants = cva(
-  "group/item flex w-full flex-wrap items-center rounded-(--radius-control) border text-[length:var(--text-ui-body)] transition-colors duration-100 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 [a]:transition-colors [a]:hover:bg-muted",
+  "group/item flex w-full flex-wrap items-center rounded-(--radius-control) border text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] transition-colors duration-100 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 [a]:transition-colors [a]:hover:bg-muted",
   {
     variants: {
       variant: {
@@ -136,7 +137,7 @@ function ItemTitle({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="item-title"
       className={cn(
-        "line-clamp-1 flex w-fit items-center gap-2 text-[length:var(--text-ui-body)] leading-snug font-medium underline-offset-4",
+        "line-clamp-1 flex w-fit items-center gap-2 text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] leading-snug font-medium underline-offset-4",
         className
       )}
       {...props}
@@ -149,7 +150,7 @@ function ItemDescription({ className, ...props }: React.ComponentProps<"p">) {
     <p
       data-slot="item-description"
       className={cn(
-        "line-clamp-2 text-left text-[length:var(--text-ui-body)] leading-normal font-normal text-muted-foreground group-data-[size=xs]/item:text-[length:var(--text-ui-caption)] [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary",
+        "line-clamp-2 text-left text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] leading-normal font-normal text-muted-foreground group-data-[size=xs]/item:text-[length:var(--text-ui-caption)]/[var(--tw-leading,var(--text-xs--line-height))] [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary",
         className
       )}
       {...props}

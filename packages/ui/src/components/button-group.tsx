@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 字号和默认行高使用同一工具类，宿主字号覆盖时保持原cn合并语义。
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
  * [OUTPUT]: button-group 基础组件及其可组合的样式/变体；组间分割复用全局 Separator 皮肤。
  * [POS]: @boai/ui共享实现；原归属： components/ui 的 button-group 源码；由 shadcn base-nova 安装，样式在此定制，不读取业务或外观 store。
@@ -54,7 +55,7 @@ function ButtonGroupText({
     props: mergeProps<"div">(
       {
         className: cn(
-          "flex items-center gap-2 rounded-(--radius-control) border bg-muted px-2.5 text-[length:var(--text-ui-body)] font-medium [&_:is(svg,.app-icon)]:pointer-events-none [&_:is(svg,.app-icon):not([class*='size-'])]:size-4",
+          "flex items-center gap-2 rounded-(--radius-control) border bg-muted px-2.5 text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] font-medium [&_:is(svg,.app-icon)]:pointer-events-none [&_:is(svg,.app-icon):not([class*='size-'])]:size-4",
           className
         ),
       },

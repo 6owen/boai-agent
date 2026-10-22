@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 字号和默认行高使用同一工具类，宿主字号覆盖时保持原cn合并语义。
  * [INPUT]: React、原生表格元素与全局 Soft 分割线皮肤。
  * [OUTPUT]: Table 组合组件；表头、行间和页脚通过 soft-table 与 Card 共用细线/高光 token，固定表头保留底线，末行无额外尾线。
  * [POS]: @boai/ui共享实现；原归属： components/ui 的 table 源码；由 shadcn base-nova 安装，分割线统一由 skin.css 提供，不读取业务或外观 store。
@@ -15,7 +16,7 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
     >
       <table
         data-slot="table"
-        className={cn("soft-table w-full caption-bottom text-[length:var(--text-ui-body)]", className)}
+        className={cn("soft-table w-full caption-bottom text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))]", className)}
         {...props}
       />
     </div>
@@ -101,7 +102,7 @@ function TableCaption({
   return (
     <caption
       data-slot="table-caption"
-      className={cn("mt-4 text-[length:var(--text-ui-body)] text-muted-foreground", className)}
+      className={cn("mt-4 text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] text-muted-foreground", className)}
       {...props}
     />
   )

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 字号和默认行高使用同一工具类，宿主字号覆盖时保持原cn合并语义。
  * [INPUT]: React、shadcn Base UI 原语、共享 buttonVariants 与全局语义样式。
  * [OUTPUT]: select 基础组件；触发器复用 Button secondary 表面、字体和圆角，全局 skin 提供无底部外侧阴影的内侧细边缘，聚焦/展开保持中性，保留错误校验；默认36px/小号28px及对应16px/14px图标复用 Button 尺寸，长标签省略；面板最多20rem且受可用视口高度约束，选项列表独立滚动，选项文字单行超宽省略并为勾选标记预留空间。
  * [POS]: @boai/ui共享实现；原归属： components/ui 的 select 源码；由 shadcn base-nova 安装，样式在此定制，不读取业务或外观 store。
@@ -109,7 +110,7 @@ function SelectLabel({
   return (
     <SelectPrimitive.GroupLabel
       data-slot="select-label"
-      className={cn("px-3 py-1.5 text-[length:var(--text-ui-caption)] text-muted-foreground", className)}
+      className={cn("px-3 py-1.5 text-[length:var(--text-ui-caption)]/[var(--tw-leading,var(--text-xs--line-height))] text-muted-foreground", className)}
       {...props}
     />
   )
@@ -124,7 +125,7 @@ function SelectItem({
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
-        "relative flex min-w-0 w-full cursor-default items-center gap-2 rounded-[calc(var(--radius-control)*.75)] py-2 pr-9 pl-3 text-[length:var(--text-ui-body)] outline-hidden select-none focus:bg-accent focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_:is(svg,.app-icon)]:pointer-events-none [&_:is(svg,.app-icon)]:shrink-0 [&_:is(svg,.app-icon):not([class*='size-'])]:size-4",
+        "relative flex min-w-0 w-full cursor-default items-center gap-2 rounded-[calc(var(--radius-control)*.75)] py-2 pr-9 pl-3 text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] outline-hidden select-none focus:bg-accent focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_:is(svg,.app-icon)]:pointer-events-none [&_:is(svg,.app-icon)]:shrink-0 [&_:is(svg,.app-icon):not([class*='size-'])]:size-4",
         className
       )}
       {...props}

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 字号和默认行高使用同一工具类，宿主字号覆盖时保持原cn合并语义。
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
  * [OUTPUT]: avatar 基础组件及其可组合的样式/变体；头像、图片、回退及人数默认使用md圆角。
  * [POS]: @boai/ui共享实现；原归属： components/ui 的 avatar 源码；由 shadcn base-nova 安装，样式在此定制，不读取业务或外观 store。
@@ -49,7 +50,7 @@ function AvatarFallback({
     <AvatarPrimitive.Fallback
       data-slot="avatar-fallback"
       className={cn(
-        "flex size-full items-center justify-center rounded-[calc(var(--radius-control)*.75)] bg-muted text-[length:var(--text-ui-body)] text-muted-foreground group-data-[size=sm]/avatar:text-[length:var(--text-ui-caption)]",
+        "flex size-full items-center justify-center rounded-[calc(var(--radius-control)*.75)] bg-muted text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] text-muted-foreground group-data-[size=sm]/avatar:text-[length:var(--text-ui-caption)]/[var(--tw-leading,var(--text-xs--line-height))]",
         className
       )}
       {...props}
@@ -94,7 +95,7 @@ function AvatarGroupCount({
     <div
       data-slot="avatar-group-count"
       className={cn(
-        "relative flex size-8 shrink-0 items-center justify-center rounded-[calc(var(--radius-control)*.75)] bg-muted text-[length:var(--text-ui-body)] text-muted-foreground ring-2 ring-background group-has-data-[size=lg]/avatar-group:size-10 group-has-data-[size=sm]/avatar-group:size-6 [&>:is(svg,.app-icon)]:size-4 group-has-data-[size=lg]/avatar-group:[&>:is(svg,.app-icon)]:size-5 group-has-data-[size=sm]/avatar-group:[&>:is(svg,.app-icon)]:size-3",
+        "relative flex size-8 shrink-0 items-center justify-center rounded-[calc(var(--radius-control)*.75)] bg-muted text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] text-muted-foreground ring-2 ring-background group-has-data-[size=lg]/avatar-group:size-10 group-has-data-[size=sm]/avatar-group:size-6 [&>:is(svg,.app-icon)]:size-4 group-has-data-[size=lg]/avatar-group:[&>:is(svg,.app-icon)]:size-5 group-has-data-[size=sm]/avatar-group:[&>:is(svg,.app-icon)]:size-3",
         className
       )}
       {...props}

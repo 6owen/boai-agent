@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 字号和默认行高使用同一工具类，宿主字号覆盖时保持原cn合并语义。
  * [OUTPUT]: 语义字号保留原默认行高及leading覆盖，避免共享迁移改变桌面排版。
  * [OUTPUT]: 使用BOAI语义圆角和字体角色，不依赖宿主通用刻度。
  * [INPUT]: React与BOAI既有Base UI组件合同。
@@ -12,7 +13,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "cn"
 
 const badgeVariants = cva(
-  "group/badge inline-flex h-5 w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-(--radius-composer) border border-transparent px-2 py-0.5 text-[length:var(--text-ui-caption)] [line-height:var(--tw-leading,var(--text-xs--line-height))] font-medium whitespace-nowrap transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&>:is(svg,.app-icon)]:pointer-events-none [&>:is(svg,.app-icon)]:size-3!",
+  "group/badge inline-flex h-5 w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-(--radius-composer) border border-transparent px-2 py-0.5 text-[length:var(--text-ui-caption)]/[var(--tw-leading,var(--text-xs--line-height))] font-medium whitespace-nowrap transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&>:is(svg,.app-icon)]:pointer-events-none [&>:is(svg,.app-icon)]:size-3!",
   {
     variants: {
       variant: {

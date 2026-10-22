@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 字号和默认行高使用同一工具类，宿主字号覆盖时保持原cn合并语义。
  * [OUTPUT]: 新增persistState=false支持独立示例；默认保留原cookie写入。
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
  * [OUTPUT]: sidebar 基础组件及其可组合的样式/变体。
@@ -409,7 +410,7 @@ function SidebarGroupLabel({
     props: mergeProps<"div">(
       {
         className: cn(
-          "flex h-8 shrink-0 items-center rounded-[calc(var(--radius-control)*.75)] px-2 text-[length:var(--text-ui-caption)] font-medium text-sidebar-foreground/70 ring-sidebar-ring outline-hidden transition-[margin,opacity] duration-200 ease-linear group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0 focus-visible:ring-2 [&>:is(svg,.app-icon)]:size-4 [&>:is(svg,.app-icon)]:shrink-0",
+          "flex h-8 shrink-0 items-center rounded-[calc(var(--radius-control)*.75)] px-2 text-[length:var(--text-ui-caption)]/[var(--tw-leading,var(--text-xs--line-height))] font-medium text-sidebar-foreground/70 ring-sidebar-ring outline-hidden transition-[margin,opacity] duration-200 ease-linear group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0 focus-visible:ring-2 [&>:is(svg,.app-icon)]:size-4 [&>:is(svg,.app-icon)]:shrink-0",
           className
         ),
       },
@@ -455,7 +456,7 @@ function SidebarGroupContent({
     <div
       data-slot="sidebar-group-content"
       data-sidebar="group-content"
-      className={cn("w-full text-[length:var(--text-ui-body)]", className)}
+      className={cn("w-full text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))]", className)}
       {...props}
     />
   )
@@ -484,7 +485,7 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
 }
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button group/menu-button flex w-full items-center gap-2 overflow-hidden rounded-[calc(var(--radius-control)*.75)] p-2 text-left text-[length:var(--text-ui-body)] ring-sidebar-ring outline-hidden transition-[width,height,padding] group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-open:hover:bg-sidebar-accent data-open:hover:text-sidebar-accent-foreground data-active:bg-sidebar-accent data-active:font-medium data-active:text-sidebar-accent-foreground [&_:is(svg,.app-icon)]:size-4 [&_:is(svg,.app-icon)]:shrink-0 [&>span:last-child]:truncate",
+  "peer/menu-button group/menu-button flex w-full items-center gap-2 overflow-hidden rounded-[calc(var(--radius-control)*.75)] p-2 text-left text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] ring-sidebar-ring outline-hidden transition-[width,height,padding] group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-open:hover:bg-sidebar-accent data-open:hover:text-sidebar-accent-foreground data-active:bg-sidebar-accent data-active:font-medium data-active:text-sidebar-accent-foreground [&_:is(svg,.app-icon)]:size-4 [&_:is(svg,.app-icon)]:shrink-0 [&>span:last-child]:truncate",
   {
     variants: {
       variant: {
@@ -493,9 +494,9 @@ const sidebarMenuButtonVariants = cva(
           "bg-background shadow-[0_0_0_1px_var(--sidebar-border)] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_var(--sidebar-accent)]",
       },
       size: {
-        default: "h-8 text-[length:var(--text-ui-body)]",
-        sm: "h-7 text-[length:var(--text-ui-caption)]",
-        lg: "h-12 text-[length:var(--text-ui-body)] group-data-[collapsible=icon]:p-0!",
+        default: "h-8 text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))]",
+        sm: "h-7 text-[length:var(--text-ui-caption)]/[var(--tw-leading,var(--text-xs--line-height))]",
+        lg: "h-12 text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] group-data-[collapsible=icon]:p-0!",
       },
     },
     defaultVariants: {
@@ -598,7 +599,7 @@ function SidebarMenuBadge({
       data-slot="sidebar-menu-badge"
       data-sidebar="menu-badge"
       className={cn(
-        "pointer-events-none absolute right-1 flex h-5 min-w-5 items-center justify-center rounded-[calc(var(--radius-control)*.75)] px-1 text-[length:var(--text-ui-caption)] font-medium text-sidebar-foreground tabular-nums select-none group-data-[collapsible=icon]:hidden peer-hover/menu-button:text-sidebar-accent-foreground peer-data-[size=default]/menu-button:top-1.5 peer-data-[size=lg]/menu-button:top-2.5 peer-data-[size=sm]/menu-button:top-1 peer-data-active/menu-button:text-sidebar-accent-foreground",
+        "pointer-events-none absolute right-1 flex h-5 min-w-5 items-center justify-center rounded-[calc(var(--radius-control)*.75)] px-1 text-[length:var(--text-ui-caption)]/[var(--tw-leading,var(--text-xs--line-height))] font-medium text-sidebar-foreground tabular-nums select-none group-data-[collapsible=icon]:hidden peer-hover/menu-button:text-sidebar-accent-foreground peer-data-[size=default]/menu-button:top-1.5 peer-data-[size=lg]/menu-button:top-2.5 peer-data-[size=sm]/menu-button:top-1 peer-data-active/menu-button:text-sidebar-accent-foreground",
         className
       )}
       {...props}
@@ -688,7 +689,7 @@ function SidebarMenuSubButton({
     props: mergeProps<"a">(
       {
         className: cn(
-          "flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-[calc(var(--radius-control)*.75)] px-2 text-sidebar-foreground ring-sidebar-ring outline-hidden group-data-[collapsible=icon]:hidden hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[size=md]:text-[length:var(--text-ui-body)] data-[size=sm]:text-[length:var(--text-ui-caption)] data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground [&>span:last-child]:truncate [&>:is(svg,.app-icon)]:size-4 [&>:is(svg,.app-icon)]:shrink-0 [&>:is(svg,.app-icon)]:text-sidebar-accent-foreground",
+          "flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-[calc(var(--radius-control)*.75)] px-2 text-sidebar-foreground ring-sidebar-ring outline-hidden group-data-[collapsible=icon]:hidden hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[size=md]:text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] data-[size=sm]:text-[length:var(--text-ui-caption)]/[var(--tw-leading,var(--text-xs--line-height))] data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground [&>span:last-child]:truncate [&>:is(svg,.app-icon)]:size-4 [&>:is(svg,.app-icon)]:shrink-0 [&>:is(svg,.app-icon)]:text-sidebar-accent-foreground",
           className
         ),
       },
