@@ -1,12 +1,13 @@
 # [OUTPUT]: 设计提取/原恢复合同与站点/tarball/Web专项先运行，完整模块/T1/UI门禁保持。
 # [INPUT]: 仓库变更、锁定依赖、离线协议服务。
-# [OUTPUT]: PR/main自动云端工程、32核心及全18UI只读门禁；逐步日志、UI原始报告与原件凭据独立核验，不启动本机。
+# [OUTPUT]: 文档轻量、Draft产品暂缓且不授合并、Ready/ci:full及CI配置完整32/18；PR取消旧运行，main保留已启动验证。
 # [POS]: .github/workflows/tests.yml。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 name: Offline tests
 on:
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
   push:
     branches: [main]
   workflow_dispatch:
@@ -14,10 +15,36 @@ permissions:
   contents: read
 concurrency:
   group: offline-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
+  changes:
+    name: CI scope and development docs
+    runs-on: ubuntu-24.04
+    outputs:
+      full: ${{ steps.scope.outputs.full }}
+      mode: ${{ steps.scope.outputs.mode }}
+      sha: ${{ steps.scope.outputs.sha }}
+      base: ${{ steps.scope.outputs.base }}
+      head: ${{ steps.scope.outputs.head }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.16.0'
+      - name: Prepare locked YAML metadata validator
+        run: |
+          ci_yaml_version=$(node -e 'const v=require("./package.json").dependencies.yaml;if(!/^\d+\.\d+\.\d+$/.test(v))throw Error("YAML version must be pinned");process.stdout.write(v)')
+          npm install --prefix "$RUNNER_TEMP/boai-ci-docs" --no-save --package-lock=false --ignore-scripts --no-audit --no-fund "yaml@$ci_yaml_version"
+      - id: scope
+        env:
+          BOAI_CI_YAML_PACKAGE: ${{ runner.temp }}/boai-ci-docs/package.json
+        run: node scripts/ci-scope.mjs detect
   desktop:
     name: Engineering and desktop
+    needs: changes
+    if: needs.changes.outputs.full == 'true'
     runs-on: macos-15
     # T1固定32核心；原单测试期限不变，预留模块与完整失败证据收集。
     timeout-minutes: 75
@@ -120,6 +147,8 @@ jobs:
           if-no-files-found: ignore
   ui:
     name: UI regression
+    needs: changes
+    if: needs.changes.outputs.full == 'true'
     runs-on: macos-15
     timeout-minutes: 20
     steps:
@@ -149,16 +178,29 @@ jobs:
   required:
     name: Required checks
     if: always()
-    needs: [desktop, ui]
+    needs: [changes, desktop, ui]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '24.16.0'
+      - name: Prepare locked YAML metadata validator
+        run: |
+          ci_yaml_version=$(node -e 'const v=require("./package.json").dependencies.yaml;if(!/^\d+\.\d+\.\d+$/.test(v))throw Error("YAML version must be pinned");process.stdout.write(v)')
+          npm install --prefix "$RUNNER_TEMP/boai-ci-docs" --no-save --package-lock=false --ignore-scripts --no-audit --no-fund "yaml@$ci_yaml_version"
+      - id: scope
+        env:
+          BOAI_CI_YAML_PACKAGE: ${{ runner.temp }}/boai-ci-docs/package.json
+          CI_JOB_RESULTS: ${{ toJSON(needs) }}
+        run: node scripts/ci-scope.mjs gate
       - uses: actions/download-artifact@v4
+        if: steps.scope.outputs.full == 'true'
         with:
           path: .local/ci-artifacts
       - env:
           CI_JOB_RESULTS: ${{ toJSON(needs) }}
+        if: steps.scope.outputs.full == 'true'
         run: node scripts/ci-result.mjs gate

@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 多分支整合候选合入共享开发规范及现有功能历史，保留设计专项/32T1/18UI与原业务失败；当前head须经云端检查后合main。
 [OUTPUT]: 本人要求先人工review，后续执行暂停；6083工程4202项/32T1/18UI及Required已过，Mock业务失败与未完成清单见个人日常稳定化02 §7.19。
 [OUTPUT]: 自用稳定化a44完整CI已成功；原目录6场和自然时钟/原手动恢复2场通过，新head验证及真实任务/工作日/一周和任务入口继续。
 [OUTPUT]: 自用稳定化9fb修设置页资源保留，原210/70/28/120秒复验过、DOM/监听器零增长；CLI恢复8过，新完整CI/实际工作日/一周与任务入口继续。
@@ -13,6 +14,9 @@
 
 [OUTPUT]: BOAI Design文档站改用Fumadocs UI/MDX，沿pnpm dev:design独立开发。
 [OUTPUT]: BOAI Design首版共享包与文档站已接线，新增dev:design，实际验证与剩余见第23组。
+[OUTPUT]: 开发按里程碑推送；文档轻量/Draft产品暂缓且不授合并/Ready或ci:full完整，PR取消旧运行而main已启动验证保留。
+[OUTPUT]: PR/main的开发Markdown白名单走Ubuntu轻量，代码/测试/依赖/基准/CI配置仍完整云端验证；Required checks持续严格保护。
+[OUTPUT]: 项目共享开发规范新增boai-dev-workflow技能及AGENTS/Claude入口，覆盖分支、PR云端CI、UI基准审阅和main同步；未运行本机产品测试。
 [OUTPUT]: 用户改回GitHub Actions，标准双runner已实证；PR/main云端工程/32核心/18UI与严格Required checks，本机服务禁用；v3基准已接受，新完整资格查当前Checks。
 [OUTPUT]: 5f自动本地CI的28核心/18UI通过，但模块原生SIGSEGV导致正式failure；4013模块诊断未复现不补绿，当前状态唯一归22组03。
 [OUTPUT]: 436完整本地CI因扫描/菜单准备两项failed，18UI全过；候选修正与ZIP共用阶段实际验证通过，待固定审查/新CI，22组03。
@@ -260,6 +264,8 @@
 
 
 BOAI Design首版见[第23组](ai-docs/spec/23.BOAI设计系统/README.md)：`packages/tokens`与`packages/ui`为桌面和`apps/design-docs`提供同一份基础定义与组件。安装依赖后用`pnpm dev:design`启动独立Fumadocs设计站（默认`http://127.0.0.1:5190`），`pnpm dev`继续启动桌面。当前为私有开发包，运行验收状态和剩余范围见该组03；未发布npm或正式站点。
+
+日常开发规范使用项目技能 [boai-dev-workflow](.agents/skills/boai-dev-workflow/SKILL.md)，供Codex、Claude、Pi等开发Agent共用；AGENTS维护统一读取入口。按可验证小目标集中push，开发Markdown白名单走Ubuntu轻量，Draft产品默认暂缓且不给合并资格；转Ready、带`ci:full`的新提交或手动执行时完整验证，CI机制改动及手动入口始终完整。有效PR新运行取消旧运行，main已启动验证保留；hooks不启动产品测试或派发Actions。具体矩阵与开源参考见[22组02 §11](ai-docs/spec/22.开发自动化与持续测试/02-持续测试与基准设计.md#11-开发推送与按需云端验证2026-10-22)。
 
 个人发布与开发CI：[第22组04](ai-docs/spec/22.开发自动化与持续测试/04-macOS本机发布与升级方案.md)约定无Apple开发者证书、本机源码开发自用的Tag/Release、ad-hoc安装包及独立升级路线。后续已获授权实施，PR/main自动CI已按最新要求迁回GitHub Actions，本机轮询停止并禁用；候选构建及正式产物冒烟入口已接入；实际成功、原失败和未完成范围统一见[22组03](ai-docs/spec/22.开发自动化与持续测试/03-实施步骤与验收.md#5-唯一实际进度)。本轮未创建Tag/Release或替换本机应用；合并与当前CI资格查看[PR1 Checks](https://github.com/6owen/boai-agent/pull/1/checks)，`pnpm dev`不执行安装升级。
 
