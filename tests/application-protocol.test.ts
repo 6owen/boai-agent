@@ -1,6 +1,7 @@
 /*
+ * [OUTPUT]: 新增prompts域及同UI存储/版本/持久回执回归；公共目录明确核对28个域。
  * [OUTPUT]: 日期夹具只冻结Date，轮询沿真实计时；保留历史/追补精确时间断言，避免假时钟被poll推进。
- * [OUTPUT]: 公共目录固定核对27个明确业务域，包含memory.provider；不靠数量掩盖域替换，原拒绝/回执断言保持。
+ * [OUTPUT]: 公共目录固定核对28个明确业务域，包含memory.provider和prompts；不靠数量掩盖域替换，原拒绝/回执断言保持。
  * [OUTPUT]: 应用目录包含 terminal/preview/workspace/activity 四个新增能力域。
  * [OUTPUT]: PPT 专用配置域纳入实际目录和 schema；配置保存与模型执行分开。
  * [OUTPUT]: 独立selfies相册元信息/删除纳入公共目录，原图保持任务私聊权限。
@@ -58,6 +59,26 @@ async function fixture(overrides: Partial<AgentEngine> = {}) {
   return { root, options, owned, call }
 }
 const connection = { name: 'API', provider: 'openai-compatible', baseUrl: 'http://127.0.0.1:1', defaultModel: 'fixture-model' }
+
+it('manages prompt templates through durable application receipts and the same revisioned UI store', async () => {
+  const f = await fixture()
+  const input = { name: '业务总结', description: '清晰表达', content: '先结论，再列事实。' }
+  const created = await f.call('prompts.create', input, 'prompt-create')
+  expect(created).toMatchObject({ status: 'succeeded', data: { ...input, revision: 1 } })
+  expect(await f.call('prompts.create', input, 'prompt-create')).toEqual(created)
+  const saved = created.data as import('../src/shared/domain/prompt-templates').PromptTemplate
+  expect(await f.owned.service.handle('listPromptTemplates', undefined)).toEqual([saved])
+  expect(await f.call('prompts.get', { id: saved.id })).toMatchObject({ data: saved })
+  const edited = await f.call('prompts.update', { ...input, id: saved.id, expectedRevision: 1, content: '仅保留关键事实。' }, 'prompt-edit')
+  expect(edited).toMatchObject({ status: 'succeeded', data: { id: saved.id, content: '仅保留关键事实。', revision: 2 } })
+  expect(await f.call('prompts.update', { ...input, id: saved.id, expectedRevision: 1 }, 'prompt-stale')).toMatchObject({ status: 'rejected', error: { code: 'REVISION_CONFLICT' } })
+  expect(await f.call('prompts.delete', { id: saved.id, expectedRevision: 1 }, 'prompt-stale-delete')).toMatchObject({ status: 'rejected', error: { code: 'REVISION_CONFLICT' } })
+  expect(await f.call('prompts.delete', { id: saved.id, expectedRevision: 2 }, 'prompt-delete')).toMatchObject({ status: 'succeeded' })
+  expect(await f.call('prompts.list')).toMatchObject({ data: [] })
+  expect(await f.call('prompts.get', { id: saved.id })).toMatchObject({ status: 'rejected', error: { code: 'NOT_FOUND' } })
+  expect(await f.call('prompts.create', input, 'prompt-create')).toEqual(created)
+  expect(await f.call('prompts.list')).toMatchObject({ data: [] })
+})
 
 async function prepareBehavior(f: Awaited<ReturnType<typeof fixture>>) {
   const day = new Date(2026, 9, 19, 12)
@@ -553,7 +574,7 @@ it('rejects absent identity, forged core ownership and unknown input before invo
   expect(described.operations).toHaveLength(1)
   expect(described.operations[0].inputSchema).toMatchObject({ type: 'object' })
   const complete = await f.owned.service.handle('getApplicationCatalog', { includeSchemas: true }) as { operations: { name: string; inputSchema: unknown; available: boolean }[] }
-  expect([...new Set(complete.operations.map(operation => operation.name.split('.')[0]))].sort()).toEqual(['activity', 'appearance', 'application', 'automations', 'channels', 'connections', 'employees', 'groups', 'images', 'knowledge', 'memory', 'planning', 'plans', 'plugins', 'presentations', 'preview', 'refs', 'runtimePlugins', 'runtimes', 'selfies', 'sessions', 'skills', 'sources', 'tasks', 'terminal', 'webSearch', 'workspace'])
+  expect([...new Set(complete.operations.map(operation => operation.name.split('.')[0]))].sort()).toEqual(['activity', 'appearance', 'application', 'automations', 'channels', 'connections', 'employees', 'groups', 'images', 'knowledge', 'memory', 'planning', 'plans', 'plugins', 'presentations', 'preview', 'prompts', 'refs', 'runtimePlugins', 'runtimes', 'selfies', 'sessions', 'skills', 'sources', 'tasks', 'terminal', 'webSearch', 'workspace'])
   expect(complete.operations.find(operation => operation.name === 'plans.set')?.inputSchema).toMatchObject({ type: 'object' })
   expect(complete.operations.find(operation => operation.name === 'presentations.configure')?.inputSchema).toMatchObject({ type: 'object' })
   expect(complete.operations.every(operation => !!operation.inputSchema)).toBe(true)

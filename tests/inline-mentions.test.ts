@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 管理标签保留原草稿/已有引用、按身份去重，真实编辑节点删除/撤销同步固定引用。
  * [OUTPUT]: $资源/提示词与@员工身份隔离，提示词正文快照发送展开，混排/原子删除/撤销及旧@资源草稿保持。
  * [OUTPUT]: 资源标签保留固定身份及可见名称，原子删除/撤销不产生群成员路由。
  * [INPUT]: composer 草稿/发送投影及实际 ProseMirror 编辑模型。
@@ -7,7 +8,8 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { describe, expect, it } from 'vitest'
-import { draftContent, draftMentions, draftResourceReferences, insertDraftMention, mentionRange, replaceDraftRange, updateDraftText } from '../src/renderer/pages/conversations/inline-mentions'
+import { appendDraftReference, draftContent, draftMentions, draftResourceReferences, insertDraftMention, mentionRange, replaceDraftRange, updateDraftText } from '../src/renderer/pages/conversations/inline-mentions'
+import { managementSkillReference } from '../src/renderer/pages/conversations/composer-commands'
 import type { ChatDraft } from '../src/renderer/pages/conversations/presentation'
 import { getSchema } from '@tiptap/core'
 import { EditorState, NodeSelection, TextSelection } from '@tiptap/pm/state'
@@ -17,6 +19,25 @@ import { deleteMention, documentDraft, documentPosition, draftOffset, mentionDoc
 
 const draft = (text = ''): ChatDraft => ({ text, mentionIds: [] })
 const writer = { id: 'writer', name: '写手' }
+
+it('appends a deduplicated management tag while preserving the draft and its other references; deletion and undo keep identity atomic', () => {
+  const reference = managementSkillReference('automations', 'bobo')
+  const original = appendDraftReference(draft('保留我的草稿'), managementSkillReference('skills', 'bobo'))
+  const tagged = appendDraftReference(original, reference)
+  expect(tagged.text).toBe('保留我的草稿 $管理技能 $管理定时任务 ')
+  expect(appendDraftReference(tagged, reference)).toBe(tagged)
+  expect(tagged.mentions![0]).toEqual(original.mentions![0])
+  expect(tagged.mentionIds).toEqual([])
+  expect(draftResourceReferences(tagged)).toEqual([managementSkillReference('skills', 'bobo'), reference])
+  const schema = getSchema(mentionExtensions('tag'))
+  let state = EditorState.create({ schema, doc: schema.nodeFromJSON(mentionDocument(tagged)), plugins: [history()] })
+  expect(documentDraft(state.doc, tagged)).toEqual(tagged)
+  state = state.apply(state.tr.setSelection(TextSelection.create(state.doc, documentPosition(state.doc, tagged.mentions![1].end))))
+  deleteMention('backward')(state, transaction => { state = state.apply(transaction) })
+  expect(draftResourceReferences(documentDraft(state.doc, tagged))).toEqual([managementSkillReference('skills', 'bobo')])
+  undo(state, transaction => { state = state.apply(transaction) })
+  expect(documentDraft(state.doc, tagged)).toEqual(tagged)
+})
 
 it('expands a selected prompt snapshot while routing only employee mentions and retaining fixed resource references', () => {
   const prompt = { id: 'saved-prompt', revision: 3, name: '总结', content: '先给结论。\n再列证据。' }

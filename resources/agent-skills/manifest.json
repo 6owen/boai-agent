@@ -36,6 +36,11 @@
     "boai-twitter-cli",
     "boai-xiaohongshu-cli",
     "boai-artifact-sidebar",
-    "boai-daily-report"
+    "boai-daily-report",
+    "boai-manage-automations",
+    "boai-manage-skills",
+    "boai-manage-sources",
+    "boai-manage-prompts",
+    "boai-manage-contacts"
   ]
 }

@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 普通/材料/明确回复发送通过原校验后通知当前聊天回到最新窗口；清除历史定位并使旧分页失效，核对未知回执不触发跳转。
+ * [OUTPUT]: 管理入口切到普通核心会话并追加去重的管理技能标签，保留草稿和未知首发身份；定时创建不再使用专用聊天。
  * [OUTPUT]: 阅读历史锚点的有界页不再改写侧栏最新摘要/时间；仅尾页读取与原实时消息更新列表，历史定位/分页/草稿保持。
  * [OUTPUT]: 四组默认应用快捷键与工具栏共用搜索、三页列表和原历史动作；输入、自定义选择控件、组合键与浮层保留自身按键。
  * [OUTPUT]: 主聊天按选中会话元信息立即保留ChatView外框，不再以会话ID重建整个聊天；首屏40条、刷新保留已加载窗口且最多80条，原请求代次/锚点/清理隔离保持。
@@ -74,7 +76,9 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { WorkspacePanel } from '../detail-panel/workspace-panel'
-import { draftResourceReferences } from '@/pages/conversations/inline-mentions'
+import { appendDraftReference, draftResourceReferences } from '@/pages/conversations/inline-mentions'
+import { managementSkillReference } from '@/pages/conversations/composer-commands'
+import type { ManagementSkillId } from '@shared/domain/management-skills'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 import { FloatingLayerScope } from '@/components/ui/floating-layer-scope'
@@ -307,11 +311,11 @@ export function AppShell() {
     const next = { ...routeRef.current, conversationId: removed ? null : id, focusMessage: undefined, focusApproval: undefined }
     routeRef.current = next; selectedRef.current = next.conversationId; setRoute(next)
   }, [])
-  const refreshDetail = useCallback(async (id: string, window?: ConversationView['messagePage']) => {
+  const refreshDetail = useCallback(async (id: string, window?: ConversationView['messagePage'], isCurrent: () => boolean = () => true) => {
     if (!api || !mounted.current || selectedRef.current !== id || routeRef.current.page !== 'conversations') return
     if (pagingFlight.current) { refreshAfterPaging.current = true; return }
     const token = ++detailRequest.current, capture = liveMessages.current.begin(id), focus = routeRef.current.focusMessage
-    const current = () => mounted.current && token === detailRequest.current && selectedRef.current === id && routeRef.current.page === 'conversations'
+    const current = () => mounted.current && token === detailRequest.current && selectedRef.current === id && routeRef.current.page === 'conversations' && isCurrent()
     try {
       let location = viewLocations.current.get(id) ?? { initialized: false }
       if (focus && location.focusRequestId !== focus.requestId) location = { initialized: true, messageId: focus.id, focusRequestId: focus.requestId }
@@ -329,6 +333,8 @@ export function AppShell() {
       const limit = Math.min(READING_LIMITS.maxPage, Math.max(READING_LIMITS.page, loadedWindow?.items.length ?? 0))
       const result = await api.request('getConversationView', { conversationId: id, limit, aroundMessageId })
       if (!current()) return
+      const anchor = viewLocations.current.get(id)?.messageId
+      if (anchor && anchor !== aroundMessageId && !result.messagePage.items.some(item => item.messageId === anchor)) return
       let messagePage = result.messagePage
       for (const message of capture.messages.values()) messagePage = updateLiveMessage(messagePage, message, !location.messageId)
       const updated: ConversationView = { ...result, messagePage, messages: messagePage.items.flatMap(item => item.message ? [item.message] : []) }
@@ -343,9 +349,17 @@ export function AppShell() {
         setPreviews(previous => ({ ...previous, [id]: `${last.senderName}：${last.content.slice(0,90)}` }))
         setMessageTimes(previous => ({ ...previous, [id]: previous[id] && previous[id] > last.createdAt ? previous[id] : last.createdAt }))
       }
+      return true
     } catch (failure) { if (current()) { setDetail(null); setDetailLoading(false); toast.error(errorText(failure)) } }
     finally { liveMessages.current.finish(capture) }
   }, [api, materialDrafts.reconcile])
+  const showLatestMessages = async (id: string, isCurrent: () => boolean) => {
+    if (selectedRef.current !== id || routeRef.current.page !== 'conversations' || !isCurrent()) return false
+    // A send starts a new reading window; older page responses must not restore it.
+    detailRequest.current++; pagingFlight.current = 0; refreshAfterPaging.current = false; setPaging(false)
+    viewLocations.current.set(id, { initialized: true, focusRequestId: routeRef.current.focusMessage?.requestId })
+    return Boolean(await refreshDetail(id, undefined, isCurrent))
+  }
   const questionReplies = useChatQuestionReplies(api, {
     conversationId: selectedId ?? undefined, active: route.page === 'conversations' && !conversationSearchOpen,
     conversationIds: route.page === 'conversations' && !conversationSearchOpen ? [selectedId, panel?.type === 'channels' ? panel.conversationId : undefined].filter((id): id is string => Boolean(id)) : [],
@@ -579,11 +593,15 @@ export function AppShell() {
     else { setFocusedSource(undefined); setSkillsSection('all'); setFocusedSkill({ id, requestId: crypto.randomUUID() }) }
     skillUpdated(); applyRoute({ ...routeRef.current, page: 'skills' })
   })
-  const openCatalogManagement = (_kind: 'skills' | 'sources', item?: { id: string; name: string }) => navigate(() => {
+  const openCatalogManagement = (kind: ManagementSkillId, item?: { id: string; name: string }) => navigate(() => {
+    const core = snapshot.agents.find(isCoreAgent)
+    if (!core) return
+    if (coreConversationRequest.current) { toast.error('上一条消息的发送结果尚未确认，请先在会话中核对'); return }
+    coreDraft.current = appendDraftReference(coreDraft.current, managementSkillReference(kind, core.id))
     if (item && !draftContent(coreDraft.current).includes(item.id)) {
       coreDraft.current = { ...coreDraft.current, text: [coreDraft.current.text, item.id].filter(Boolean).join('\n') }
-      setDraftVersion(value => value + 1)
     }
+    setDraftVersion(value => value + 1)
     applyRoute({ page: 'conversations', conversationId: null, coreDraft: true })
     requestAnimationFrame(() => document.querySelector<HTMLElement>('.core-chat-start [aria-label="消息内容"]')?.focus())
   })
@@ -665,7 +683,7 @@ export function AppShell() {
       if (current?.submission?.requestId === submission.requestId) { drafts.current.set(id, { ...current, submission: undefined }); persistMessageRequests(); bumpDrafts() }
     })
   }
-  const send = (conversationId = selectedId) => {
+  const send = (conversationId = selectedId, onDispatch?: () => void) => {
     const sendingDraft = conversationId ? drafts.current.get(conversationId) ?? EMPTY_DRAFT : draft
     const conversation = snapshot.conversations.find(room => room.id === conversationId)
     const text = draftContent(sendingDraft)
@@ -704,6 +722,7 @@ export function AppShell() {
       const member = snapshot.agents.find(agent => agent.id === target.targetAgentId && conversation?.agentIds.includes(agent.id))
       if (!artifactRevisionTarget(member, snapshot.connections)) { toast.error('请选择当前聊天中可执行的员工。'); return }
       if (artifactStorageError) { toast.error(artifactStorageError); return }
+      onDispatch?.()
       void artifactActions.execute({ scope: 'conversations', conversationId: id, logicalArtifactId: target.logicalArtifactId }, 'revision', { conversationId: id, artifactId: target.artifactId, contentHash: target.contentHash, targetAgentId: target.targetAgentId, content: fileEditContent(sentText, target.annotation), requestId: crypto.randomUUID() })
       return
     }
@@ -711,8 +730,9 @@ export function AppShell() {
     if (sent.questionReply) {
       if (sent.submission || sent.materials?.length || sent.mentionIds.length || draftResourceReferences(sent).length) { toast.error('回复原问题时请只发送补充正文；可取消问题关联后发送材料、提及或新的要求。'); return }
       if (!sentText) return
+      if (questionReplies.storageError) { toast.error(questionReplies.storageError); return }
       if (pendingQuestions.some(request => request.itemId !== sent.questionReply!.itemId)) { toast.error('请先核对本聊天的原补充请求，再回复其他问题。'); return }
-      void action(async () => { await questionReplies.submit(sent.questionReply!, sentText) })
+      void action(async () => { onDispatch?.(); await questionReplies.submit(sent.questionReply!, sentText) })
       return
     }
     if (pendingQuestions.length) { toast.error('本聊天有补充结果尚未确认，请先核对原补充请求。'); return }
@@ -737,6 +757,7 @@ export function AppShell() {
         }
         if (!persistMessageRequests()) return
         updateSubmission(id, request.requestId, 'pending')
+        onDispatch?.()
         try { await api.request('sendExternalTask', { conversationId: id, content: request.input.content, requestId: request.requestId }) }
         catch (failure) {
           updateSubmission(id, request.requestId, 'unknown')
@@ -777,6 +798,7 @@ export function AppShell() {
       }
       if (!persistMessageRequests()) return
       updateSubmission(id, request.requestId, 'pending')
+      onDispatch?.()
       try { await api.request('sendMessage', { conversationId: id, requestId: request.requestId, ...request.input }) }
       catch (failure) {
         updateSubmission(id, request.requestId, 'unknown')
@@ -939,7 +961,7 @@ export function AppShell() {
       onTasks={!channel && !internal ? () => showPanel({ type: 'tasks', owner, id: ownerId }) : undefined}
       onChannels={room.kind === 'direct' && !channel && !internal ? () => { const agent = snapshot.agents.find(agent => agent.id === room.agentIds[0]); if (agent) openChannels(agent) } : undefined}
       questionReplies={questionReplies} artifactActions={artifactActions}
-      onOpenCatalog={openCatalogResult} onTeamGroup={id => selectConversation(id, true)} draft={drafts.current.get(id) ?? EMPTY_DRAFT} setDraft={value => { drafts.current.set(id, value); bumpDrafts() }} busy={busy || questionReplies.busy} onSend={() => send(id)}
+      onOpenCatalog={openCatalogResult} onTeamGroup={id => selectConversation(id, true)} draft={drafts.current.get(id) ?? EMPTY_DRAFT} setDraft={value => { drafts.current.set(id, value); bumpDrafts() }} busy={busy || questionReplies.busy} onSend={onDispatch => send(id, onDispatch)}
       onDetails={() => {
         if (channel) { showPanel({ type: 'group', id }); return }
         openContact(room.kind === 'group' ? { kind: 'group', id } : { kind: 'agent', id: room.agentIds[0]! })
@@ -991,14 +1013,14 @@ export function AppShell() {
       {<FloatingLayerScope active={route.page === 'conversations'}><div className="conversation-layout" style={{ display: route.page === 'conversations' ? undefined : 'none' }}><PanelResize open={effectiveList} side="left" divider={listResizer}><aside className="conversation-list-container"><ConversationList onOpenChannels={openChannels} snapshot={snapshot} selectedId={selectedId} previews={previews} messageTimes={messageTimes} drafts={drafts.current} onCreateCore={createCoreConversation} onConfigureCore={() => { const core = snapshot.agents.find(isCoreAgent); if (core) openContact({ kind: 'agent', id: core.id }) }} onSelect={selectConversation} onChange={changeConversationList} onEditTitle={setEditingTitle} onClear={clearConversationHistory} busy={busy} onCreate={type=>openCreation({type})}/></aside></PanelResize>
         <div className="conversation-stage">{route.coreDraft?<CoreChatStart api={api} snapshot={snapshot} draft={draft} setDraft={setDraft} busy={busy} onSend={send} onSettings={openModelSettings} onConfigureAgent={agent => openContact({ kind: 'agent', id: agent.id })} onChangeAgent={changeComposerAgent} configurationLocked={anyDirty}/>:conversation?renderChat({ detail: currentDetail, conversation, loading: !currentDetail && (loading || detailLoading), onRetry: () => { setDetailLoading(true); void refreshDetail(conversation.id) }, pageActive: route.page === 'conversations' && !conversationSearchOpen,
           onReading: updateReading, onLocation: (messageId, following, offset) => { const id = conversation.id; viewLocations.current.set(id, { initialized: true, messageId: following ? undefined : messageId, offset, focusRequestId: viewLocations.current.get(id)?.focusRequestId }) },
-          onPage: direction => void loadMessagePage(direction), paging, pageEdges, restoreAnchor: viewLocations.current.get(conversation.id)?.messageId ? { messageId: viewLocations.current.get(conversation.id)!.messageId!, offset: viewLocations.current.get(conversation.id)?.offset } : undefined,
+          onPage: direction => void loadMessagePage(direction), onLatest: isCurrent => showLatestMessages(conversation.id, isCurrent), paging, pageEdges, restoreAnchor: viewLocations.current.get(conversation.id)?.messageId ? { messageId: viewLocations.current.get(conversation.id)!.messageId!, offset: viewLocations.current.get(conversation.id)?.offset } : undefined,
           focusMessage: route.focusMessage, focusApproval: route.focusApproval, scrollPosition: scrollPositions.current.get(conversation.id), onScrollPosition: position => scrollPositions.current.set(conversation.id, position),
          }):loading||detailLoading?<Loading>正在载入工作空间…</Loading>:<IllustratedEmpty kind="conversations" />}</div>
       </div></FloatingLayerScope>}
       <TasksPage active={route.page === 'tasks'} />
       {route.page==='contacts'&&<ContactsPage onConversation={(id, messageId) => selectConversation(id, true, messageId)} active={route.page === 'contacts'} onCreateTeam={() => openCreation({ type: 'team' })} api={api} snapshot={snapshot} selected={contactSelection} onSelect={setContactSelection} onMessage={messageContact} onCreate={type=>openCreation({type})} refresh={refreshSnapshot} onAgentSaved={updateAgentSnapshot} onGroupSaved={updateGroupSnapshot} sidebarShown={effectiveList} divider={listResizer} generation={panelGeneration} busy={busy}/>}
       {route.page==='skills'&&<CustomizationWorkspace onRemoveSource={id => { for (const tab of detailTabs.tabs) if (tab.target.type === 'source' && tab.target.id === id) dispatchDetails({ type: 'close', key: tab.key }) }} focusSource={focusedSource} selectedSource={panel?.type === 'source' ? panel.id : undefined} onOpenSource={source => openPanel({ type: 'source', id: source.id, name: source.name, requestId: crypto.randomUUID() })} onManage={openCatalogManagement} onOpenSkill={skill => openPanel({ type: 'local-skill', id: skill.id, name: skill.name, requestId: crypto.randomUUID() })} onOpenMarketplace={item => openPanel({ type: 'marketplace', provider: item.provider, id: item.id, name: item.name })} api={api} section={skillsSection} onSection={setSkillsSection} provider={skillProvider} onProvider={setSkillProvider} divider={listResizer} onCheckUpdates={()=>openPanel({type:'skill-updates'})} focusSkill={focusedSkill} revision={skillsRevision} />}
-      <SchedulePage api={api} snapshot={snapshot} active={route.page==='schedules'} sidebarShown={effectiveList} divider={listResizer} location={scheduleLocation} onLocation={setScheduleLocation} onInfo={()=>openPanel({type:'schedule'})} selectedOccurrenceId={panel?.type === 'automation-occurrence' ? panel.id : undefined} onOccurrence={id => openPanel({ type: 'automation-occurrence', id }, 'schedules')}/>
+      <SchedulePage api={api} snapshot={snapshot} active={route.page==='schedules'} sidebarShown={effectiveList} divider={listResizer} location={scheduleLocation} onLocation={setScheduleLocation} onCreateConversation={() => openCatalogManagement('automations')} onInfo={()=>openPanel({type:'schedule'})} selectedOccurrenceId={panel?.type === 'automation-occurrence' ? panel.id : undefined} onOccurrence={id => openPanel({ type: 'automation-occurrence', id }, 'schedules')}/>
       {settingsMounted.current && <div style={{ display: route.page === 'settings' ? 'contents' : 'none' }}><SettingsPage onActivityReport={startActivityReport} key={panelGeneration} divider={listResizer} tab={settingsSection} setTab={tab => { setLocalAgentTarget(undefined); setSettingsSection(tab) }} localAgentTarget={localAgentTarget} active={route.page === 'settings'} onSkill={id => openPanel({ type: 'resource', id }, 'settings')} api={api} snapshot={snapshot} refresh={refreshSnapshot}/></div>}
       {route.page==='help'&&<HelpPage/>}
       </div>

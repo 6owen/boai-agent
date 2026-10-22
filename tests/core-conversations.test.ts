@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 旧库无需补绑即可在普通核心首发装配所选管理文档；版本伪造/普通员工拒绝，下一轮无标签不继承。
  * [OUTPUT]: 核心首发技能引用必须已绑定，拒绝时不创建会话或请求回执。
  * [INPUT]: 真实 AppService、SQLite、工作区与可控核心助手执行。
  * [OUTPUT]: 非空首发/具名团队请求同事务与空输入零对象、权威回执只读核对、可靠回滚空目录清理/未知提交保留、清空/删除最小回执不重放；并发/重启幂等和用户名称不可被模型覆盖；文件准备阻塞时停止及时持久受理、实际退出前容量不释放且不发布；原子团队发布与跨会话分层记忆的业务不变量。
@@ -8,7 +9,7 @@
 import { afterEach, expect, test, vi } from 'vitest'
 import { mkdtemp, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { AppService } from '../src/runtime/service'
 import { ProductStore } from '../src/runtime/adapters/storage/product-store'
 import { ConversationHistory } from '../src/runtime/modules/conversations/history'
@@ -39,8 +40,8 @@ class CoreModel implements AgentEngine {
   async test() { return 'ok' }
 }
 const secrets = { get: async () => '', set: async () => {}, delete: async () => {} }
-async function open(root: string, engine = new CoreModel()) {
-  const service = new AppService({ dataPath: root, engine, secrets, emit: () => {} })
+async function open(root: string, engine = new CoreModel(), bundledRoot?: string) {
+  const service = new AppService({ dataPath: root, engine, secrets, emit: () => {}, skillDiscovery: { homeDir: root, bundledRoot } })
   await service.init(); cleanups.push(() => service.close())
   return { service, engine }
 }
@@ -284,4 +285,30 @@ test('核心首发拒绝未绑定技能且不创建会话或回执', async () =>
   expect((await snapshot(service)).conversations).toEqual(before.conversations)
   expect(await service.handle('getCoreConversationStart', { requestId: 'invalid-skill' })).toBeNull()
   expect(engine.contexts).toEqual([])
+})
+
+test('旧库普通 bobo 会话按本轮管理标签加载随包文档，下一轮不自动继承，伪造版本拒绝且不留空会话', async () => {
+  const old = await setup()
+  const oldCore = (await snapshot(old.service)).agents.find(agent => agent.id === 'bobo')!
+  await old.service.close()
+  const { service, engine } = await open(old.root, new CoreModel(), resolve('resources/agent-skills'))
+  expect((await snapshot(service)).agents.find(agent => agent.id === 'bobo')!.skillIds).toEqual(oldCore.skillIds)
+  const reference = { kind: 'builtin-skill' as const, id: 'automations' as const, name: '管理定时任务', agentId: 'bobo', version: 1 }
+  await expect(service.handle('startCoreConversation', { requestId: 'bad-management', content: '查看计划', composerReferences: [{ ...reference, version: 999 }] })).rejects.toThrow('管理技能已变化')
+  expect(await service.handle('getCoreConversationStart', { requestId: 'bad-management' })).toBeNull()
+  expect((await snapshot(service)).conversations).toHaveLength(0)
+  const conversation = await service.handle('startCoreConversation', { requestId: 'management', content: '$管理定时任务 查看现有计划', composerReferences: [reference] }) as Conversation
+  expect(conversation.automationCreation).toBeUndefined()
+  await settled(service, conversation)
+  expect(engine.contexts[0].bootstrap?.dynamicInstructions).toContain('[Selected BOAI management skills]')
+  expect(engine.contexts[0].bootstrap?.dynamicInstructions).toContain('automations.preview')
+  expect(engine.contexts[0].application).toBeDefined()
+  expect((await detail(service, conversation)).messages.find(message => message.senderType === 'user')?.composerReferences).toEqual([reference])
+  await service.handle('sendMessage', { conversationId: conversation.id, content: '下一轮普通交流', requestId: 'management-next' })
+  await settled(service, conversation)
+  expect(engine.contexts).toHaveLength(2)
+  expect(engine.contexts[1].bootstrap?.dynamicInstructions).not.toContain('[Selected BOAI management skills]')
+  const ordinary = (await snapshot(service)).agents.find(agent => agent.id !== 'bobo')!
+  const room = await service.handle('createConversation', { kind: 'direct', title: ordinary.name, agentIds: [ordinary.id] }) as Conversation
+  await expect(service.handle('sendMessage', { conversationId: room.id, content: '查看计划', requestId: 'ordinary-management', composerReferences: [{ ...reference, agentId: ordinary.id }] })).rejects.toThrow('管理技能仅用于')
 })

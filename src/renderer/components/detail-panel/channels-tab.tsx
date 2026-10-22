@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 共享聊天发送可回到渠道最新窗口，清除旧定位/分页；迟到响应不能覆盖后续手动阅读位置。
  * [OUTPUT]: 共享ChatView允许主列表历史加载中保持固定布局，渠道ChatWindow仍显式要求真实ConversationView。
  * [OUTPUT]: 渠道列表Popover省略重复标题，清除外层padding/gap以统一紧凑8px内边距。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
@@ -28,7 +29,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { List } from '@/components/icons'
 
 type ChatProps = ComponentProps<typeof ChatView>
-export type ChannelChatWindow = Pick<ChatProps, 'detail' | 'onReading' | 'onLocation' | 'onPage' | 'paging' | 'pageEdges' | 'restoreAnchor' | 'scrollPosition' | 'onScrollPosition' | 'pageActive' | 'focusMessage' | 'focusApproval'> & { detail: ConversationView }
+export type ChannelChatWindow = Pick<ChatProps, 'detail' | 'onReading' | 'onLocation' | 'onPage' | 'onLatest' | 'paging' | 'pageEdges' | 'restoreAnchor' | 'scrollPosition' | 'onScrollPosition' | 'pageActive' | 'focusMessage' | 'focusApproval'> & { detail: ConversationView }
 type Location = { initialized: boolean; messageId?: string; offset?: number; focusRequestId?: string; scrollPosition?: number }
 export function ChannelsTab({ api, agent, target, active, chatActive, listProps, renderChat, onMaterials, internal = false }: {
   internal?: boolean
@@ -48,11 +49,11 @@ export function ChannelsTab({ api, agent, target, active, chatActive, listProps,
   const state = useRef({ id, active, chatActive, available, target, onMaterials }); state.current = { id, active, chatActive, available, target, onMaterials }
   const incoming = useRef(new Map<string, { revision: number; message: Message }>()), revision = useRef(0)
   const location = () => id ? locations.current.get(id) : undefined
-  const refresh = async () => {
+  const refresh = async (isCurrent: () => boolean = () => true) => {
     const currentState = state.current, conversationId = currentState.id
     if (!conversationId || !currentState.active || !currentState.available || !currentState.chatActive && detailRef.current?.conversation.id === conversationId) return
     const token = ++request.current, started = revision.current
-    const valid = () => request.current === token && state.current.active && state.current.available && state.current.id === conversationId
+    const valid = () => request.current === token && state.current.active && state.current.available && state.current.id === conversationId && isCurrent()
     try {
       let position = locations.current.get(conversationId) ?? { initialized: false }
       const focus = currentState.target.focusMessage
@@ -65,13 +66,22 @@ export function ChannelsTab({ api, agent, target, active, chatActive, listProps,
       locations.current.set(conversationId, position)
       const result = await api.request('getConversationView', { conversationId, limit: READING_LIMITS.maxPage, aroundMessageId: position.messageId })
       if (!valid()) return
+      const anchor = locations.current.get(conversationId)?.messageId
+      if (anchor && anchor !== position.messageId && !result.messagePage.items.some(item => item.messageId === anchor)) return
       let messagePage = result.messagePage
       for (const entry of incoming.current.values()) if (entry.revision > started) messagePage = updateLiveMessage(messagePage, entry.message, !position.messageId)
       const previous = detailRef.current
       setDetail({ ...result, messagePage, messages: messagePage.items.flatMap(item => item.message ? [item.message] : []), reading: previous?.conversation.id === conversationId ? mergeReadingState(previous.reading, result.reading) : result.reading })
       state.current.onMaterials(conversationId, result.materials ?? [])
       setError(''); setPageEdges({ before: true, after: true })
+      return true
     } catch (reason) { if (valid()) { setDetail(null); setError(errorText(reason)) } }
+  }
+  const showLatest = async (isCurrent: () => boolean) => {
+    if (!id || !active || !chatActive || !available || !isCurrent()) return false
+    request.current++; flight.current = 0; setPaging(false)
+    locations.current.set(id, { initialized: true, focusRequestId: target.focusMessage?.requestId })
+    return Boolean(await refresh(isCurrent))
   }
   useEffect(() => {
     request.current++; flight.current = 0; setPaging(false); setError('')
@@ -131,7 +141,7 @@ export function ChannelsTab({ api, agent, target, active, chatActive, listProps,
       {current ? renderChat({ detail: current, pageActive: active && chatActive, focusMessage: target.focusMessage, focusApproval: target.focusApproval, paging, pageEdges,
         onReading: reading => setDetail(previous => previous?.conversation.id === reading.conversationId ? { ...previous, reading: mergeReadingState(previous.reading, reading) } : previous),
         onLocation: (messageId, following, offset) => { locations.current.set(current.conversation.id, { ...location(), initialized: true, messageId: following ? undefined : messageId, offset }) },
-        onPage: direction => { void loadPage(direction) }, restoreAnchor: location()?.messageId ? { messageId: location()!.messageId!, offset: location()?.offset } : undefined,
+        onPage: direction => { void loadPage(direction) }, onLatest: showLatest, restoreAnchor: location()?.messageId ? { messageId: location()!.messageId!, offset: location()?.offset } : undefined,
         scrollPosition: location()?.scrollPosition, onScrollPosition: scrollPosition => { locations.current.set(current.conversation.id, { ...location(), initialized: true, scrollPosition }) },
       }, picker) : <div className="chat-panel channel-empty-panel">
         <ConversationHeaderLayout title={`${agent.name}的渠道`}>{picker}</ConversationHeaderLayout>

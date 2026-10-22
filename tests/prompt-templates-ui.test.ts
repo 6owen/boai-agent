@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 普通bobo首发提供五项管理命令，选择生成真实标签且零IPC；普通员工不显示核心管理命令。
  * [INPUT]: 实际资源库提示词Dialog、PromptBar/Tiptap与隔离IPC。
  * [OUTPUT]: @员工/$技能文件提示词候选分离，标签快照展开/文件核源；提示词创建查看编辑确认删除走同一版本合同。
  * [POS]: 前端组件回归，不运行Electron或模型。
@@ -22,9 +23,9 @@ const resources = [{ id: 'skill-a', kind: 'skill', name: '检索资料', descrip
 const prompt: PromptTemplate = { id: '88c2c9dc-c012-4979-b3cc-f9e52b33cf3e', revision: 1, name: '清楚总结', description: '总结格式', content: '先给结论，再列事实。', createdAt: '', updatedAt: '' }
 const noop = () => {}
 function apiFor(request: (method: string, input: any) => unknown): DesktopApi { return { request: vi.fn(async (method, input) => request(method, input)), subscribe: () => () => {} } as unknown as DesktopApi }
-function Composer({ api, initial }: { api: DesktopApi; initial: string }) {
+function Composer({ api, initial, member = employee, ready = true }: { api: DesktopApi; initial: string; member?: DigitalAgent; ready?: boolean }) {
   const [draft, setDraft] = useState<ChatDraft>({ text: initial, mentionIds: [] }); latestDraft = draft
-  return h(PromptBar, { api, resources, conversationId: 'chat', draft, setDraft, members: [employee], group: false, external: false, placeholder: '', onSend: noop, onActivity: noop, onOpenWorkspace: noop, children: () => null })
+  return h(PromptBar, { api, resources, conversationId: ready ? 'chat' : undefined, conversationReady: ready, draft, setDraft, members: [member], group: false, external: false, placeholder: '', onSend: noop, onActivity: noop, onOpenWorkspace: noop, children: () => null })
 }
 beforeEach(() => {
   vi.useFakeTimers()
@@ -50,6 +51,25 @@ it('shows only current employees for @ and never fetches resource candidates', a
   expect(document.querySelector('[role=listbox]')?.getAttribute('aria-label')).toBe('会话员工')
   expect(Array.from(document.querySelectorAll('[role=option]')).map(item => item.textContent)).toEqual(['Alice员工'])
   expect(api.request).not.toHaveBeenCalled()
+})
+
+it('offers all five management commands before the first bobo message and inserts a skill tag without IPC or sending', async () => {
+  const api = apiFor(method => { throw new Error(`Unexpected request: ${method}`) })
+  await act(async () => root.render(h(Composer, { api, initial: '/', member: { ...employee, id: 'bobo', systemRole: 'core' }, ready: false })))
+  const rows = Array.from(document.querySelectorAll<HTMLButtonElement>('[role=option]'))
+  for (const name of ['管理定时任务', '管理技能', '管理数据源', '管理提示词', '管理通讯录']) expect(rows.some(row => row.textContent?.startsWith(name))).toBe(true)
+  await act(async () => rows.find(row => row.textContent?.startsWith('管理定时任务'))!.click())
+  expect(latestDraft.text).toBe('$管理定时任务')
+  expect(draftResourceReferences(latestDraft)).toEqual([{ kind: 'builtin-skill', id: 'automations', agentId: 'bobo', name: '管理定时任务', version: 1 }])
+  expect(document.querySelector('.composer-mention-node')?.textContent).toContain('$管理定时任务')
+  expect(api.request).not.toHaveBeenCalled()
+})
+
+it('does not offer bobo management commands to an ordinary employee', async () => {
+  const api = apiFor(() => undefined)
+  await act(async () => root.render(h(Composer, { api, initial: '/' })))
+  expect(document.querySelector('[role=listbox]')?.textContent).not.toContain('管理定时任务')
+  expect(document.querySelector('[role=listbox]')?.textContent).toContain('总结会话')
 })
 
 it('selects a $ prompt as an atomic snapshot and sends its real body independently of employee routing', async () => {

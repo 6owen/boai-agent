@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: bobo普通会话/首发的五类管理命令插入固定技能标签，选择时不发送消息或执行操作。
  * [OUTPUT]: 快捷命令目录与消息标签展示共用composer-commands，原候选/展开及即时文件/目录操作保持。
  * [OUTPUT]: 会话切换保留输入布局，按scope重置候选/光标/IME状态并将编辑器撤销历史隔离到当前会话。
  * [OUTPUT]: @仅列当前会话员工，$列技能/文件/全局提示词；提示词复制所选正文快照，发送时由原草稿投影展开。
@@ -12,6 +13,7 @@ import { ErrorToast } from '@/components/common/error-feedback'
 import { useEffect, useId, useImperativeHandle, useLayoutEffect, useRef, useState, type ReactNode, type Ref } from 'react'
 import type { DigitalAgent, Resource, ConversationFileItem } from '@shared/domain'
 import type { ComposerReference } from '@shared/domain/composer-references'
+import { isCoreAgent } from '@shared/domain/core-agent'
 import type { PromptTemplate } from '@shared/domain/prompt-templates'
 import { CLIPBOARD_MATERIAL_FILE_FORMATS, type DesktopApi } from '@shared/ipc'
 import type { ChatDraft } from '../presentation'
@@ -22,7 +24,7 @@ import { Button } from '@/components/ui/button'
 import { ChatComposer } from '@/components/ui/chat-composer'
 import { Popover, PopoverContent, PopoverTitle } from '@/components/ui/popover'
 import { MentionInput, type MentionInputHandle } from './mention-input'
-import { composerCommands as commands } from '../composer-commands'
+import { composerCommands as commands, managementSkillReference } from '../composer-commands'
 
 type Menu = 'at' | 'dollar' | 'slash'
 interface Token { kind: Menu; query: string; start: number; end: number }
@@ -97,7 +99,7 @@ export function PromptBar({ ref, api, resources = [], conversationId, draft, set
   }, [api, menu])
   const skillRows: Row[] = primary ? resources.filter(resource => resource.kind === 'skill' && primary.skillIds.includes(resource.id) && (!resource.ownerAgentId || resource.ownerAgentId === primary.id) && `${resource.name} ${resource.description}`.toLocaleLowerCase().includes(query)).map(resource => ({ id: `skill:${resource.id}`, name: resource.name, description: '技能', resource: { kind: 'skill', id: resource.id, name: resource.name, agentId: primary.id, configVersion: primary.configVersion } })) : []
   const fileRows: Row[] = primary && conversationId ? files.map(file => ({ id: `${file.kind}:${file.id}`, name: file.name, description: '文件', file, resource: file.kind === 'material' ? { kind: 'material', id: file.id, agentId: primary.id, name: file.name, conversationId, contentHash: file.contentHash!, revision: file.revision! } : { kind: 'artifact', id: file.id, agentId: primary.id, name: file.name, conversationId, contentHash: file.contentHash! } })) : []
-  const rows: Row[] = displayedMenu === 'at' ? members.filter(member => member.active && `${member.name} ${member.role}`.toLocaleLowerCase().includes(query)).map(member => ({ id: member.id, name: member.name, description: '员工', member })) : displayedMenu === 'dollar' ? [...skillRows, ...fileRows, ...prompts.filter(prompt => `${prompt.name} ${prompt.description}`.toLocaleLowerCase().includes(query)).map(prompt => ({ id: `prompt:${prompt.id}`, name: prompt.name, description: '提示词', prompt }))] : commands.filter(command => (conversationReady || command.prompt) && `${command.id} ${command.name} ${command.description}`.toLocaleLowerCase().includes(query)).map(command => ({ id: command.id, name: command.name, description: command.description, command }))
+  const rows: Row[] = displayedMenu === 'at' ? members.filter(member => member.active && `${member.name} ${member.role}`.toLocaleLowerCase().includes(query)).map(member => ({ id: member.id, name: member.name, description: '员工', member })) : displayedMenu === 'dollar' ? [...skillRows, ...fileRows, ...prompts.filter(prompt => `${prompt.name} ${prompt.description}`.toLocaleLowerCase().includes(query)).map(prompt => ({ id: `prompt:${prompt.id}`, name: prompt.name, description: '提示词', prompt }))] : commands.filter(command => (command.managementSkill ? !group && !external && primary && isCoreAgent(primary) : conversationReady || command.prompt) && `${command.id} ${command.name} ${command.description}`.toLocaleLowerCase().includes(query)).map(command => ({ id: command.id, name: command.name, description: command.description, command }))
   const selected = Math.min(active, Math.max(0, rows.length - 1))
   useLayoutEffect(() => { setActive(0) }, [menu, query])
   useLayoutEffect(() => { list.current?.querySelector('[aria-selected=true]')?.scrollIntoView({ block: 'nearest' }) }, [menu, selected])
@@ -132,7 +134,11 @@ export function PromptBar({ ref, api, resources = [], conversationId, draft, set
     else if (row.resource) richInput.current?.replace(range, '', { id: row.id, name: row.name, resource: row.resource })
     else if (row.member) richInput.current?.replace(range, '', row.member)
     else if (row.command) {
-      richInput.current?.replace(range, row.command.prompt ?? '')
+      if (row.command.managementSkill && primary) {
+        const resource = managementSkillReference(row.command.managementSkill, primary.id)
+        if (mentions.some(mention => mention.resource?.kind === resource.kind && mention.resource.id === resource.id)) richInput.current?.replace(range, '')
+        else richInput.current?.replace(range, '', { id: `${resource.kind}:${resource.id}`, name: resource.name, resource })
+      } else richInput.current?.replace(range, row.command.prompt ?? '')
       if (row.command.id === 'files') onActivity()
       if (row.command.id === 'workspace') onOpenWorkspace()
     }

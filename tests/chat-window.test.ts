@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 补发送后贴底/内容增长/手动滚动/跨会话迟到发送及渠道旧分页竞态回归；组件用例待运行，不代表Electron或E2E验证。
  * [INPUT]: 生产ChatView/PromptBar/MentionInput、真实分页消息与隔离IPC。
  * [OUTPUT]: 同一真实编辑器在会话切换加载/就绪时，contenteditable与无障碍禁用状态必须同步，草稿与DOM保持。
  * [OUTPUT]: 切换/加载保持header/composer节点，旧会话正文立即卸下；历史游标去重，草稿撤销不跨会话，过渡按真实opacity结束事件清理、遵循减少动态效果，补页不重播入场。
  * [POS]: 会话固定布局与消息窗口组件回归，不运行Electron或模型。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查tests/.folder.md。
  */
-import { act, createElement as h, createRef } from 'react'
+import { act, createElement as h, createRef, type ComponentProps } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import type { Conversation, DigitalAgent, Message } from '../src/shared/domain'
@@ -16,6 +17,7 @@ import { defaultUserProfile } from '../src/shared/domain/profile'
 import { ChatView, type ChatViewProps } from '../src/renderer/pages/conversations/-components/chat-view'
 import { MentionInput, type MentionInputHandle } from '../src/renderer/pages/conversations/-components/mention-input'
 import type { ChatDraft } from '../src/renderer/pages/conversations/presentation'
+import { ChannelsTab, type ChannelChatWindow } from '../src/renderer/components/detail-panel/channels-tab'
 
 vi.mock('../src/renderer/pages/conversations/-components/composer-toolbar', () => ({ ComposerToolbar: () => null }))
 let host: HTMLDivElement, root: Root, props: ChatViewProps
@@ -35,7 +37,7 @@ beforeEach(() => {
   Range.prototype.getClientRects = () => [] as unknown as DOMRectList
   Range.prototype.getBoundingClientRect = () => new DOMRect()
   const api = { request: vi.fn(async () => []), subscribe: () => noop } as unknown as DesktopApi
-  props = { api, detail: view('A'), conversation: room('A'), loading: false, pageActive: true, snapshot: { conversations: [room('A'), room('B'), room('C')], agents: [{ id: 'employee', name: '同事', active: true, skillIds: [], knowledgeIds: [] } as unknown as DigitalAgent], resources: [], approvals: [], connections: [], dataPath: '', userProfile: defaultUserProfile }, draft: { text: 'A的草稿', mentionIds: [] }, setDraft: noop, busy: false, questionReplies: { values: {} }, artifactActions: { values: {} }, pageEdges: { before: true, after: true }, paging: false, onReading: noop, onLocation: noop, onScrollPosition: noop, onPage: noop, onConfigureAgent: noop, onManageModels: noop, onDetails: noop, onTrace: noop, onProfile: noop, onFiles: noop, onTasks: noop, onSend: noop, onSettings: noop, onOpenPath: noop, onEditTitle: noop, onClear: async () => {}, onRetry: noop } as unknown as ChatViewProps
+  props = { api, detail: view('A'), conversation: room('A'), loading: false, pageActive: true, snapshot: { conversations: [room('A'), room('B'), room('C')], agents: [{ id: 'employee', name: '同事', active: true, skillIds: [], knowledgeIds: [] } as unknown as DigitalAgent], resources: [], approvals: [], connections: [], dataPath: '', userProfile: defaultUserProfile }, draft: { text: 'A的草稿', mentionIds: [] }, setDraft: noop, busy: false, questionReplies: { values: {} }, artifactActions: { values: {} }, pageEdges: { before: true, after: true }, paging: false, onReading: noop, onLocation: noop, onScrollPosition: noop, onPage: noop, onLatest: async () => false, onConfigureAgent: noop, onManageModels: noop, onDetails: noop, onTrace: noop, onProfile: noop, onFiles: noop, onTasks: noop, onSend: noop, onSettings: noop, onOpenPath: noop, onEditTitle: noop, onClear: async () => {}, onRetry: noop } as unknown as ChatViewProps
   host = document.createElement('div'); document.body.append(host); root = createRoot(host)
 })
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.clearAllTimers(); vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks() })
@@ -45,6 +47,135 @@ const finishReveal = (element: Element) => {
   Object.defineProperty(event, 'propertyName', { value: 'opacity' })
   element.dispatchEvent(event)
 }
+const enter = () => host.querySelector('[role=textbox]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true }))
+function viewportGeometry() {
+  const viewport = host.querySelector<HTMLElement>('.messages')!
+  let height = 1400, top = 350
+  Object.defineProperties(viewport, {
+    clientHeight: { configurable: true, get: () => 300 },
+    scrollHeight: { configurable: true, get: () => height },
+    scrollTop: { configurable: true, get: () => Math.min(top, height - 300), set: (value: number) => { top = Math.max(0, Math.min(value, height - 300)) } },
+  })
+  viewport.getBoundingClientRect = () => new DOMRect(0, 0, 600, 300)
+  const rows = () => { for (const row of viewport.querySelectorAll<HTMLElement>('[data-reading-message-id]')) row.getBoundingClientRect = () => new DOMRect(0, -viewport.scrollTop, 600, height) }
+  rows()
+  return { viewport, rows, height: (value: number) => { height = value }, scroll: () => viewport.dispatchEvent(new Event('scroll')) }
+}
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>(done => { resolve = done })
+  return { promise, resolve }
+}
+
+it('returns from restored history to the latest window on dispatch and follows growing replies until the user scrolls up', async () => {
+  const onLatest = vi.fn(async (_isCurrent: () => boolean) => true), onLocation = vi.fn()
+  props = { ...props, detail: view('A', 50), restoreAnchor: { messageId: 'A-50', offset: 350 }, onLatest, onLocation, onSend: onDispatch => onDispatch?.() }
+  await render()
+  const geometry = viewportGeometry()
+  props = { ...props, detail: view('A', 50) }; await render()
+  expect(geometry.viewport.scrollTop).toBe(350)
+  await act(async () => enter())
+  expect(onLatest).toHaveBeenCalledTimes(1)
+  expect(onLatest.mock.calls[0]![0]()).toBe(true)
+  expect(onLocation).toHaveBeenCalledWith(undefined, true)
+  expect(geometry.viewport.scrollTop).toBe(1100)
+
+  // The server returns the actual tail, not the bottom of the old history page.
+  geometry.height(1800)
+  props = { ...props, detail: view('A', 1000) }; await render(); geometry.rows()
+  expect(geometry.viewport.scrollTop).toBe(1500)
+  // A layout-induced scroll event before React/ResizeObserver must not turn following off.
+  geometry.height(2200)
+  await act(async () => geometry.scroll())
+  props = { ...props, detail: view('A', 1000) }; await render()
+  expect(geometry.viewport.scrollTop).toBe(1900)
+
+  await act(async () => {
+    geometry.viewport.dispatchEvent(new WheelEvent('wheel', { bubbles: true, deltaY: -20 }))
+    geometry.viewport.scrollTop -= 40; geometry.scroll()
+  })
+  expect(onLatest.mock.calls[0]![0]()).toBe(false)
+  geometry.height(2500)
+  props = { ...props, detail: view('A', 1000) }; await render()
+  expect(geometry.viewport.scrollTop).toBe(1860)
+  expect(onLocation.mock.calls.at(-1)?.[1]).toBe(false)
+})
+
+it('keeps history when sending is rejected locally and ignores a delayed dispatch from a different conversation', async () => {
+  let dispatch: (() => void) | undefined
+  const onLatest = vi.fn(async () => true)
+  props = { ...props, detail: view('A', 50), restoreAnchor: { messageId: 'A-50', offset: 350 }, onLatest, onSend: callback => { dispatch = callback } }
+  await render()
+  const { viewport } = viewportGeometry()
+  props = { ...props, detail: view('A', 50) }; await render()
+  await act(async () => enter())
+  expect(dispatch).toBeTypeOf('function')
+  expect(onLatest).not.toHaveBeenCalled()
+  expect(viewport.scrollTop).toBe(350)
+  props = { ...props, conversation: room('B'), detail: view('B'), restoreAnchor: undefined }; await render()
+  await act(async () => dispatch?.())
+  expect(onLatest).not.toHaveBeenCalled()
+})
+
+it('cancels a pending tail jump on manual scrolling and still allows paging forward from the old window', async () => {
+  const tail = deferred<boolean>(), onPage = vi.fn(), onLatest = vi.fn((_isCurrent: () => boolean) => tail.promise)
+  props = { ...props, detail: view('A', 50), restoreAnchor: { messageId: 'A-50', offset: 350 }, onPage, onLatest, onSend: dispatch => dispatch?.() }
+  await render()
+  const geometry = viewportGeometry()
+  props = { ...props, detail: view('A', 50) }; await render()
+  await act(async () => enter())
+  await act(async () => {
+    geometry.viewport.dispatchEvent(new WheelEvent('wheel', { bubbles: true, deltaY: -100 }))
+    geometry.viewport.scrollTop = 700; geometry.scroll()
+  })
+  expect(onLatest.mock.calls[0]![0]()).toBe(false)
+  await act(async () => tail.resolve(false))
+  await act(async () => {
+    geometry.viewport.scrollTop = 1100; geometry.scroll()
+  })
+  expect(onPage.mock.calls).toEqual([['after']])
+})
+
+it('treats an upward scrollbar movement as manual reading and leaves it in place on new content', async () => {
+  props = { ...props, onLatest: async () => true, onSend: dispatch => dispatch?.() }
+  await render()
+  const geometry = viewportGeometry()
+  await act(async () => enter())
+  await act(async () => { geometry.viewport.scrollTop = 900; geometry.scroll() })
+  geometry.height(1700)
+  props = { ...props, detail: view('A') }; await render()
+  expect(geometry.viewport.scrollTop).toBe(900)
+})
+
+it.each([false, true])('loads the channel tail without an old focus and rejects obsolete pages (manual cancellation: %s)', async cancel => {
+  const older = deferred<ConversationView>(), tail = deferred<ConversationView>()
+  const request = vi.fn(async (method: string, input: { before?: unknown; aroundMessageId?: string }) => {
+    if (method !== 'getConversationView') throw new Error(`Unexpected request: ${method}`)
+    if (input.before) return older.promise
+    if (input.aroundMessageId) return view('A', 50)
+    return tail.promise
+  })
+  let chat!: ChannelChatWindow
+  await act(async () => root.render(h(ChannelsTab, {
+    api: { request, subscribe: () => noop } as unknown as DesktopApi,
+    agent: props.snapshot.agents[0]!, active: true, chatActive: true, internal: true, onMaterials: noop,
+    target: { type: 'channels', id: 'employee', conversationId: 'A', requestId: 'panel', focusMessage: { id: 'A-50', requestId: 'focus' } },
+    listProps: { snapshot: { ...props.snapshot, conversations: [{ ...room('A'), purpose: 'channel-internal' }] } } as ComponentProps<typeof ChannelsTab>['listProps'],
+    renderChat: value => { chat = value; return h('div', null, value.detail.messages.map(message => message.content).join(',')) },
+  })))
+  expect(chat.detail.messages[0]!.id).toBe('A-50')
+  await act(async () => chat.onPage('before'))
+  expect(chat.paging).toBe(true)
+  let current = true, loading!: Promise<boolean>
+  await act(async () => { loading = chat.onLatest(() => current) })
+  expect(chat.paging).toBe(false)
+  expect(request.mock.calls.at(-1)?.[1]).toEqual({ conversationId: 'A', limit: 80, aroundMessageId: undefined })
+  if (cancel) { current = false; chat.onLocation('A-50', false, 350) }
+  await act(async () => { tail.resolve(view('A', 1000)); expect(await loading).toBe(!cancel) })
+  await act(async () => older.resolve(view('A', 10)))
+  expect(chat.detail.messages[0]!.id).toBe(cancel ? 'A-50' : 'A-1000')
+  expect(chat.paging).toBe(false)
+})
 
 it('keeps header, composer and editor nodes through switching and loading without displaying the previous conversation', async () => {
   await render()

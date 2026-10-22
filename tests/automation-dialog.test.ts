@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 /*
- * [INPUT]: 生产任务Dialog/表单/草稿守卫、React Portal与可控保存回执。
- * [OUTPUT]: 创建/编辑弹窗不替换底页；未保存确认仅取消/退出，取消保留草稿并由原表单保存、退出不提交，保存期间禁止关闭；对话草稿关闭后保留。
+ * [OUTPUT]: 对话创建仅委托普通会话导航、无弹窗/自动提交；手动创建编辑原Portal、草稿和关闭保护保持。
+ * [INPUT]: 生产任务页面/Dialog/表单/草稿守卫、React Portal与可控保存回执。
+ * [OUTPUT]: 手动创建/编辑保留弹窗/草稿/忙时保护；对话入口进入普通会话，不在定时页建立聊天。
  * [POS]: 弹窗生命周期组件回归，不运行Electron或调用模型。
  * [PROTOCOL]: 修改同步Header和tests/.folder.md。
  */
@@ -12,6 +13,7 @@ import { toast } from 'sonner'
 import type { AutomationDefinition, Snapshot } from '../src/shared/domain'
 import type { DesktopApi } from '../src/shared/ipc'
 import { AutomationDialog, type AutomationDialogTarget } from '../src/renderer/pages/schedules/automation-dialog'
+import { SchedulePage, type ScheduleLocation } from '../src/renderer/pages/schedules'
 
 const snapshot = { agents: [{ id: 'employee', name: 'DS', active: true, connectionId: 'connection', modelId: 'model' }], connections: [{ id: 'connection', defaultModel: 'model' }], conversations: [] } as unknown as Snapshot
 const plan = { id: 'plan', name: '每日天气预报', prompt: '查询南京天气', frequency: 'manual', time: '09:00', weekday: 1, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, enabled: false, notify: true, notificationPolicy: 'important_only', conversationPolicy: 'new-conversation', employeeIds: ['employee'], owner: { kind: 'employee', employeeId: 'employee' }, revision: 1 } as AutomationDefinition
@@ -44,7 +46,7 @@ async function fixture(target: AutomationDialogTarget) {
   function Page() {
     const [open, setOpen] = useState(true)
     return h('main', null, h('form', { 'data-background': true, onSubmit: backgroundSubmit }, '原任务详情'),
-      open && h(AutomationDialog, { api, snapshot, active: true, target, definitions: [], onClose() { closed(); setOpen(false) }, onSaved(value) { saved(value); setOpen(false) }, onOpen: vi.fn() }))
+      open && h(AutomationDialog, { api, snapshot, active: true, target, onClose() { closed(); setOpen(false) }, onSaved(value) { saved(value); setOpen(false) } }))
   }
   await act(async () => root.render(h(Page)))
   await act(async () => { await new Promise(resolve => setTimeout(resolve, 180)) })
@@ -103,12 +105,22 @@ test('exiting a dirty schedule discards without saving', async () => {
   expect(f.backgroundSubmit).not.toHaveBeenCalled()
 })
 
-test('conversation creation opens in a dialog and keeps its draft when closed', async () => {
-  const f = await fixture({ kind: 'assistant', key: 'assistant' })
-  expect(document.querySelector('[role=dialog]')?.textContent).toContain('对话创建定时任务')
-  await change(document.querySelector<HTMLTextAreaElement>('textarea[aria-label="定时任务创建要求"]')!, '每周推荐一篇好文章')
-  await act(async () => document.querySelector<HTMLButtonElement>('[data-slot=dialog-close]')!.click())
-  expect(f.closed).toHaveBeenCalledOnce()
-  expect(JSON.parse(localStorage.getItem('boai:schedule:assistant')!)).toMatchObject({ draft: '每周推荐一篇好文章' })
-  expect(f.request).not.toHaveBeenCalled()
+test('conversation creation delegates to the ordinary chat without creating a dialog or submitting', async () => {
+  const request = vi.fn(async (method: string) => {
+    if (method === 'listAutomations') return { definitions: [], occurrences: [], available: true }
+    throw new Error(`Unexpected request: ${method}`)
+  })
+  const api = { request, subscribe: () => () => {} } as unknown as DesktopApi
+  const openConversation = vi.fn()
+  function Page() {
+    const [location, setLocation] = useState<ScheduleLocation>({ kind: 'overview' })
+    return h(SchedulePage, { api, snapshot, active: true, sidebarShown: true, divider: null, location, onLocation: setLocation, onCreateConversation: openConversation, onInfo() {}, onOccurrence() {} })
+  }
+  await act(async () => root.render(h(Page)))
+  await act(async () => button('新建定时任务').click())
+  await act(async () => [...document.querySelectorAll<HTMLElement>('[role=menuitem]')].find(item => item.textContent === '对话创建')!.click())
+  expect(openConversation).toHaveBeenCalledOnce()
+  expect(document.querySelector('[role=dialog]')).toBeNull()
+  expect(host.querySelector('.schedule-assistant-chat')).toBeNull()
+  expect(request.mock.calls.every(([method]) => method === 'listAutomations')).toBe(true)
 })

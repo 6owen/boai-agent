@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 普通bobo会话通过boai_call调用automations.create，旧草稿模型与原保存故障注入保持。
  * [OUTPUT]: 错误通过Sonner且业务区无报错DOM；草稿、布局与明确重试/核对保持。
  * [OUTPUT]: 隔离API员工明确开启命令权限，实际主区与bobo创建必须通过原产品服务。
  * [OUTPUT]: 专用bobo真实工具协议夹具覆盖澄清→单员工计划保存；旧草稿接口夹具保持。
@@ -24,9 +25,9 @@ export async function scheduleAssistant(runtime: Desktop) {
       if (system.includes('Private memory maintenance')) { text({ candidates: [] }); return }
       if (!JSON.stringify(body.messages).includes('每月15日')) { text('请告诉我由哪位员工执行，以及任务内容和执行时间。'); return }
       if (body.messages.some((m: { role: string }) => m.role === 'tool')) { text('已创建「月度行业简报」，由研究员每月15日早上九点执行。'); return }
-      if (!body.tools?.some((t: { function: { name: string } }) => t.function.name === 'manage_automation')) { text('未取得计划管理工具。'); return }
+      if (!body.tools?.some((t: { function: { name: string } }) => t.function.name === 'boai_call')) { text('未取得计划管理工具。'); return }
       const plan = { name: '月度行业简报', description: '每月行业动态', prompt: '整理行业进展并汇总重点', frequency: 'monthly', dayOfMonth: 15, startsOn: '2027-01-01', time: '09:00', weekday: 1, timezone: 'Asia/Singapore', enabled: true, notify: false, notificationPolicy: 'muted' }
-      emit({ role: 'assistant' }); emit({ tool_calls: [{ index: 0, id: `schedule-save-${calls}`, type: 'function', function: { name: 'manage_automation', arguments: JSON.stringify({ action: 'save', key: 'monthly-briefing', employeeId: 'researcher', plan }) } }] }); emit({}, 'tool_calls'); res.end('data: [DONE]\n\n'); return
+      emit({ role: 'assistant' }); emit({ tool_calls: [{ index: 0, id: `schedule-save-${calls}`, type: 'function', function: { name: 'boai_call', arguments: JSON.stringify({ operation: 'automations.create', requestId: 'monthly-briefing', input: { ...plan, owner: { kind: 'employee', employeeId: 'researcher' } } }) } }] }); emit({}, 'tool_calls'); res.end('data: [DONE]\n\n'); return
     }
     const user = JSON.parse(body.messages.at(-1).content)
     if (user.instruction.includes('延迟')) await new Promise<void>(resolve => { release = resolve })

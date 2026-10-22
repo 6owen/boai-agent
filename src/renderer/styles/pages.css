@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 定时对话创建改用普通会话布局，移除旧专用聊天弹窗的标题占位；手动表单弹窗布局保持。
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [OUTPUT]: 新建员工的名称/职责输入始终沿全局Input表面和边缘显示，不应用身份编辑的未聚焦透明规则。
  * [OUTPUT]: 会话核心助手按钮直接沿通讯录conversation-item的行高/内边距/头像/两行排版，搜索下方留白同为10px；整行背景透明，箭头固定最右，新会话按钮在其左且与下方编辑图标共用muted-foreground，文字仅预留单按钮空间，管理沿整行右键菜单。
@@ -659,12 +660,11 @@
 .detail-content:has(> .detail-session > .channel-workspace):not([hidden]) { display:flex; overflow:hidden }
 .detail-session:has(> .channel-workspace) { display:flex; flex-direction:column; flex:1; min-width:0; min-height:0; overflow:hidden }
 
-/* Scheduled task dialogs share the original form and chat, with one scroll viewport. */
+/* Scheduled task dialogs share the original manual form, with one scroll viewport. */
 .schedule-editor-dialog .editor-frame { min-height:0;flex:none;width:100% }
 .schedule-editor-dialog .editor-scroll { overflow:visible;padding:0;flex:none }
 .schedule-editor-dialog .editor-body { padding:0 }
 .schedule-editor-dialog .editor-footer { position:static;flex:none;height:auto;padding:20px 0 0;border:0;background:transparent;justify-content:flex-end }
-.schedule-assistant-dialog .chat-header { padding-right:48px }
 .schedule-options-row { display:flex;align-items:flex-start;flex-wrap:wrap;gap:12px 16px }
 .schedule-employee-control { display:flex;align-items:center;gap:16px;flex:0 0 220px;max-width:100%;margin-left:auto }
 .schedule-employee-control>span { flex-shrink:0;font-size:var(--text-ui-body);font-weight:500 }

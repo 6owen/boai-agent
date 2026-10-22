@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 本人普通bobo消息核验内置管理技能身份，并为本轮及原生待补充回复装配随包操作文档；不改原业务权限或旧绑定副本。
  * [OUTPUT]: 备份清单和RESTORE明确标记定时/人格自动行为暂停策略及连接停用，避免恢复后配置状态误读；原恢复语义保持。
  * [OUTPUT]: bobo明确记忆修改/忘记或来源会话清理后，清除所有可重建的Mastra派生thread。
  * [OUTPUT]: 同会话 PTY/真实预览接原应用协议和退出清理；默认关闭的本机 OCR、活动查询及有来源日报。
@@ -197,6 +198,8 @@ import { generatePresentationReview } from './adapters/mastra/presentation-revie
 import { SelfieService } from './modules/media/selfie-service'
 import { MODEL_ID_MAX_LENGTH, validModelId } from '../shared/domain/model-id'
 import { composerReferencesSchema, currentSourceReferences, type ComposerReference } from '../shared/domain/composer-references'
+import { managementSkills } from '../shared/domain/management-skills'
+import { managementSkillInstructions } from './modules/resources/management-skills'
 import { RuntimePlugins } from './modules/backends/runtime-plugins'
 import { runtimeVersions } from './modules/backends/versions'
 import { PluginEmployeeEngine, runPlugin } from './adapters/plugins/host'
@@ -3293,7 +3296,11 @@ export class AppService {
     if (!agent?.active || agent.executionBackend?.kind === 'acp-local') fail('当前员工不能使用资源提及')
     for (const ref of references) {
       if (ref.agentId !== agent!.id) fail('引用不属于当前员工')
-      if (ref.kind === 'skill') {
+      if (ref.kind === 'builtin-skill') {
+        const skill = managementSkills[ref.id]
+        if (!isCoreAgent(agent) || conversation.purpose !== 'core' || conversation.kind !== 'direct' || conversation.channel) fail('管理技能仅用于与 bobo 的本人会话')
+        if (ref.version !== skill.version || ref.name !== skill.name) fail('管理技能已变化，请重新选择命令')
+      } else if (ref.kind === 'skill') {
         const resource = await tx.get<Resource>('resources', ref.id)
         if (exactVersion && ref.configVersion !== agent!.configVersion || !agent!.skillIds.includes(ref.id) || resource?.kind !== 'skill' || resource.ownerAgentId && resource.ownerAgentId !== agent!.id) fail('技能绑定已变化，请重新选择')
       } else if (ref.kind === 'source') {
@@ -3824,6 +3831,11 @@ export class AppService {
     const planning = planningInstructions(await readPlanningState(this.store, agent.id, conversation.id))
     if (planning) loaded.bootstrap.dynamicInstructions = [loaded.bootstrap.dynamicInstructions, planning].filter(Boolean).join('\n\n')
     if (isCoreAgent(agent) && !conversation.channel) {
+      const trigger = this.messages.get(turn.triggerMessageId)
+      if (conversation.purpose === 'core' && conversation.kind === 'direct' && trigger?.senderType === 'user' && !trigger.channel) {
+        const instructions = await managementSkillInstructions(trigger.composerReferences ?? [], this.options.skillDiscovery?.bundledRoot)
+        if (instructions) loaded.bootstrap.dynamicInstructions = [loaded.bootstrap.dynamicInstructions, instructions].filter(Boolean).join('\n\n')
+      }
       const references = await referenceInstructions(this.referenceObjects, this.messages.get(turn.triggerMessageId)?.content ?? '', { kind: 'employee', employeeId: agent.id, conversationId: conversation.id, messageId: turn.triggerMessageId })
       if (references) loaded.bootstrap.dynamicInstructions = [loaded.bootstrap.dynamicInstructions, references].filter(Boolean).join('\n\n')
     }
@@ -4115,6 +4127,10 @@ export class AppService {
             const projected = await this.materials.nativeMessage(tx, message, agent.id, runtime)
             try {
               signal.throwIfAborted()
+              if (isCoreAgent(agent) && conversation.purpose === 'core' && !conversation.channel && message.senderType === 'user' && !message.channel) {
+                const instructions = await managementSkillInstructions(message.composerReferences ?? [], this.options.skillDiscovery?.bundledRoot)
+                if (instructions) projected.message.content += '\n\n' + instructions
+              }
               const refs = [...new Map([...(context.materialRefs ?? []), ...projected.refs].map(ref => [`${ref.id}:${ref.revision}`, ref])).values()]
               await this.materials.validateRefsInTransaction(tx, refs, agent.id, conversation.id)
               await recordNativeInput(tx, runtime, run.id, agent.id, conversation.id, projected.message, message)

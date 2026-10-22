@@ -1,5 +1,6 @@
 /*
- * [OUTPUT]: 新建/编辑改用Dialog，步骤适配弹窗单一滚动和底页保持；本次按用户要求不运行E2E。
+ * [OUTPUT]: 对话创建转普通会话并预选管理标签，按原业务协议实际保存/编辑/重启零重放；本次未运行E2E。
+ * [OUTPUT]: 手动新建/编辑保持Dialog；bobo对话创建进入会话页，原实际保存/重启零重放断言保持；本次不运行E2E。
  * [OUTPUT]: 详情配置Card沿真实编辑/暂停持久化流程核对；核对操作行实际高度/透明背景，保留宽窗与深色窄窗原生截图。
  * [OUTPUT]: 两行列表与详情三个管理按钮；编辑、暂停/恢复、重启和UI删除后的原历史均核对持久状态。
  * [OUTPUT]: 错误通过Sonner且业务区无报错DOM；草稿、布局与明确重试/核对保持。
@@ -25,7 +26,12 @@ async function choose(page: Page, label: string, option: string) {
 async function create(page: Page, mode = '手动创建') {
   await page.getByRole('button', { name: '新建定时任务', exact: true }).click()
   await page.getByRole('menuitem', { name: mode, exact: true }).click()
-  await expect(page.getByRole('dialog', { name: mode === '手动创建' ? '新建定时任务' : '对话创建定时任务', exact: true })).toBeVisible()
+  if (mode === '手动创建') await expect(page.getByRole('dialog', { name: '新建定时任务', exact: true })).toBeVisible()
+  else {
+    await expect(page.locator('.core-chat-start')).toBeVisible()
+    await expect(page.locator('.core-chat-start .composer-mention-node')).toContainText('$管理定时任务')
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+  }
 }
 async function history(page: Page) {
   await page.getByRole('button', { name: '定时任务选项', exact: true }).click()
@@ -270,23 +276,30 @@ Then('旧计划删除后仍能定位该次结果', async ({ runtime, schedule })
 When('我与bobo澄清后创建月度任务', async ({ runtime, schedule }) => {
   const page = runtime.page
   await create(page, '对话创建')
-  await page.getByRole('textbox', { name: '定时任务创建要求', exact: true }).fill('请帮我安排一个定时任务')
-  await page.getByRole('button', { name: '发送创建要求', exact: true }).click()
-  await expect(page.locator('.schedule-assistant-chat')).toContainText('请告诉我由哪位员工执行')
+  const input = page.locator('.conversation-stage [aria-label="消息内容"]')
+  await input.press('End')
+  await input.pressSequentially('请帮我安排一个定时任务')
+  await page.getByRole('button', { name: '发送消息', exact: true }).click()
+  await expect(page.locator('.conversation-stage .messages')).toContainText('请告诉我由哪位员工执行')
+  const chats = (await page.evaluate(() => window.boai.request('snapshot', undefined))).conversations.filter(room => room.purpose === 'core')
+  expect(chats).toHaveLength(1)
+  expect(chats[0].automationCreation).toBeUndefined()
+  const firstMessage = (await page.evaluate(id => window.boai.request('getConversation', { id }), chats[0].id)).messages.find(message => message.senderType === 'user')!
+  expect(firstMessage.composerReferences).toContainEqual({ kind: 'builtin-skill', id: 'automations', name: '管理定时任务', agentId: 'bobo', version: 1 })
   expect((await page.evaluate(() => window.boai.request('listAutomations', undefined))).definitions).toHaveLength(1)
-  await page.getByRole('textbox', { name: '定时任务创建要求', exact: true }).fill('请让研究员每月15日早上九点整理行业进展，从2027年1月开始')
-  await page.getByRole('button', { name: '发送创建要求', exact: true }).click()
-  await expect(page.locator('.schedule-chat-plan')).toContainText('月度行业简报')
-  await expect(page.locator('.schedule-chat-message').last()).toContainText('已创建')
+  await input.fill('请让研究员每月15日早上九点整理行业进展，从2027年1月开始')
+  await page.getByRole('button', { name: '发送消息', exact: true }).click()
+  await expect(page.locator('.conversation-stage .messages')).toContainText('已创建「月度行业简报」')
   const plan = (await page.evaluate(() => window.boai.request('listAutomations', undefined))).definitions.find(d => d.name === '月度行业简报')!
   schedule.planId = plan.id
-  expect(plan).toMatchObject({ owner: { kind: 'employee', employeeId: 'researcher' }, employeeIds: ['researcher'], description: '每月行业动态', frequency: 'monthly', dayOfMonth: 15, startsOn: '2027-01-01', creationSource: { agentId: 'bobo' } })
+  expect(plan).toMatchObject({ owner: { kind: 'employee', employeeId: 'researcher' }, employeeIds: ['researcher'], description: '每月行业动态', frequency: 'monthly', dayOfMonth: 15, startsOn: '2027-01-01' })
   await runtime.reviewData('bobo真实计划保存回执', plan)
-  await runtime.reviewNativeCheckpoint('bobo对话创建与计划卡片')
+  await runtime.reviewNativeCheckpoint('普通bobo会话与管理定时任务标签')
 })
 Then('对话任务可在手动表单查看且重启不重复创建', async ({ runtime, schedule }) => {
   const page = runtime.page
-  await page.locator('.schedule-chat-plan').getByRole('button', { name: '打开', exact: true }).click()
+  await page.getByRole('button', { name: '定时任务', exact: true }).click()
+  await page.locator('.schedule-item').filter({ hasText: '月度行业简报' }).click()
   await page.getByRole('button', { name: '编辑', exact: true }).click()
   await expect(editor(page).getByLabel('名称', { exact: true })).toHaveValue('月度行业简报')
   await expect(editor(page).getByLabel('开始日期', { exact: true })).toHaveValue('2027-01-15')
