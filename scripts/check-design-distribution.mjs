@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 独立tarball消费者接Dialog/Composer/NumberField/图标及相同React Aria补丁。
  * [INPUT]: 已构建tokens/ui、真实npm tarball和锁定消费者依赖。
  * [OUTPUT]: 仓库外安装/Node导入/类型检查/Vite构建后的独立消费者。
  * [POS]: 设计系统分发检查；仅打npm tarball，不发布或打桌面包。
@@ -28,9 +29,19 @@ try {
   await mkdir(consumer)
   await writeFile(join(consumer, 'package.json'), JSON.stringify({ private: true, type: 'module', dependencies: {
     '@boai/tokens': archive('tokens'), '@boai/ui': archive('ui'), react: '19.3.0', 'react-dom': '19.3.0',
-  }, pnpm: { overrides: { '@boai/tokens': archive('tokens') } }, devDependencies: { vite: '8.3.1', '@vitejs/plugin-react': '6.1.1', '@tailwindcss/vite': '4.3.3', tailwindcss: '4.3.3', typescript: '7.0.2', '@types/react': '19.3.0', '@types/react-dom': '19.3.0' } }, null, 2))
+  }, pnpm: { overrides: { '@boai/tokens': archive('tokens'), 'react-aria': '3.53.1' }, patchedDependencies: { 'react-aria@3.53.1': 'patches/react-aria@3.53.1.patch' } }, devDependencies: { vite: '8.3.1', '@vitejs/plugin-react': '6.1.1', '@tailwindcss/vite': '4.3.3', tailwindcss: '4.3.3', typescript: '7.0.2', '@types/react': '19.3.0', '@types/react-dom': '19.3.0' } }, null, 2))
   await writeFile(join(consumer, 'index.html'), '<!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="root"></div><script type="module" src="/main.tsx"></script></body></html>')
-  await writeFile(join(consumer, 'main.tsx'), `import { createRoot } from 'react-dom/client';\nimport { Button, Input, Card, CardHeader, CardTitle, CardContent, Field, FieldLabel, Skeleton } from '@boai/ui';\nimport './style.css';\ncreateRoot(document.getElementById('root')!).render(<Card><CardHeader><CardTitle>External consumer</CardTitle></CardHeader><CardContent><Field><FieldLabel htmlFor="name">Project</FieldLabel><Input id="name" placeholder="Project name" /></Field><Button>Save</Button><Button disabled>Disabled</Button><Skeleton className="h-4 w-32" /></CardContent></Card>);\n`)
+  await writeFile(join(consumer, 'main.tsx'), `import { createRoot } from 'react-dom/client';
+import { Button, Input, Card, CardHeader, CardTitle, CardContent, Field, FieldLabel, Skeleton } from '@boai/ui';
+import { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogDescription } from '@boai/ui/dialog';
+import { ChatComposer, ChatComposerInput } from '@boai/ui/chat-composer';
+import { NumberField } from '@boai/ui/number-field';
+import { Plus } from '@boai/ui/icons';
+import './style.css';
+createRoot(document.getElementById('root')!).render(<Card><CardHeader><CardTitle>External consumer</CardTitle></CardHeader><CardContent><Field><FieldLabel htmlFor="name">Project</FieldLabel><Input id="name" placeholder="Project name" /></Field><Button>Save</Button><Button disabled>Disabled</Button><Skeleton className="h-4 w-32" /><Dialog><DialogTrigger render={<Button />}>Open dialog</DialogTrigger><DialogContent><DialogTitle>External dialog</DialogTitle><DialogDescription>Standalone package portal</DialogDescription><Input aria-label="Dialog draft" /></DialogContent></Dialog><ChatComposer><ChatComposerInput aria-label="Compose" placeholder="Write a message" /></ChatComposer><NumberField aria-label="Quantity" defaultValue={2} minValue={1} maxValue={5} /><Plus aria-label="Offline icon" /></CardContent></Card>);
+`)
+  await mkdir(join(consumer, 'patches'))
+  await cp(resolve(root, 'packages/ui/patches/react-aria@3.53.1.patch'), join(consumer, 'patches/react-aria@3.53.1.patch'))
   await writeFile(join(consumer, 'style.css'), "@import 'tailwindcss';\n@import '@boai/ui/styles.css';\n:root { font-family:var(--font-ui-family);font-size:var(--text-ui-body);color:var(--foreground);background:var(--background) }\nbody { padding:32px;max-width:640px;margin:auto }\n")
   await writeFile(join(consumer, 'vite.config.ts'), "import { defineConfig } from 'vite';\nimport react from '@vitejs/plugin-react';\nimport tailwindcss from '@tailwindcss/vite';\nexport default defineConfig({plugins:[react(),tailwindcss()]});\n")
   await writeFile(join(consumer, 'tsconfig.json'), JSON.stringify({ compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', jsx: 'react-jsx', strict: true, noEmit: true, skipLibCheck: true, types: ['vite/client'], lib: ['ES2022', 'DOM'] }, include: ['main.tsx'] }))

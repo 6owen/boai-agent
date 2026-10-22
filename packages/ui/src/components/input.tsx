@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 文字直接使用共享角色变量，保持宿主与文档同一字号定义。
  * [INPUT]: React与BOAI既有Base UI组件合同。
  * [OUTPUT]: input共享实现，保留原变体与data-slot。
  * [POS]: @boai/ui/input，来自原Renderer组件。
@@ -14,7 +15,7 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
       type={type}
       data-slot="input"
       className={cn(
-        "h-(--control-height) w-full min-w-0 px-2.5 py-1 text-base transition-colors outline-none file:inline-flex file:h-6 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 md:text-sm ",
+        "h-(--control-height) w-full min-w-0 px-2.5 py-1 text-[length:var(--text-ui-emphasis)] transition-colors outline-none file:inline-flex file:h-6 file:border-0 file:bg-transparent file:text-[length:var(--text-ui-body)] file:font-medium file:text-foreground placeholder:text-muted-foreground disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 md:text-[length:var(--text-ui-body)] ",
         className
       )}
       {...props}

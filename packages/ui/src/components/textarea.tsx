@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 文字直接使用共享角色变量，保持宿主与文档同一字号定义。
  * [INPUT]: React与BOAI既有Base UI组件合同。
  * [OUTPUT]: textarea共享实现，保留原变体与data-slot。
  * [POS]: @boai/ui/textarea，来自原Renderer组件。
@@ -13,7 +14,7 @@ function Textarea({ className, rows, ...props }: React.ComponentProps<"textarea"
       data-slot="textarea"
       rows={rows}
       className={cn(
-        "flex min-h-16 w-full px-2.5 py-2 text-base transition-colors outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 md:text-sm ",
+        "flex min-h-16 w-full px-2.5 py-2 text-[length:var(--text-ui-emphasis)] transition-colors outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 md:text-[length:var(--text-ui-body)] ",
         rows ? "field-sizing-fixed" : "field-sizing-content",
         className
       )}

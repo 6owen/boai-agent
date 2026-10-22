@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 使用BOAI语义圆角和字体角色，不依赖宿主通用刻度。
  * [INPUT]: React与BOAI既有Base UI组件合同。
  * [OUTPUT]: card共享实现，保留原变体与data-slot。
  * [POS]: @boai/ui/card，来自原Renderer组件。
@@ -17,7 +18,7 @@ function Card({
       data-slot="card"
       data-size={size}
       className={cn(
-        "group/card flex flex-col gap-(--card-spacing) overflow-hidden rounded-xl bg-card py-(--card-spacing) text-sm text-card-foreground soft-card [--card-spacing:--spacing(4)] has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:[--card-spacing:--spacing(3)] data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl",
+        "group/card flex flex-col gap-(--card-spacing) overflow-hidden rounded-(--radius-card) bg-card py-(--card-spacing) text-[length:var(--text-ui-body)] text-card-foreground soft-card [--card-spacing:--spacing(4)] has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:[--card-spacing:--spacing(3)] data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-(--radius-card) *:[img:last-child]:rounded-b-(--radius-card)",
         className
       )}
       {...props}
@@ -30,7 +31,7 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-header"
       className={cn(
-        "group/card-header @container/card-header grid auto-rows-min items-start gap-1 rounded-t-xl px-(--card-spacing) has-data-[slot=card-action]:grid-cols-[1fr_auto] has-data-[slot=card-description]:grid-rows-[auto_auto] [.border-b]:pb-(--card-spacing)",
+        "group/card-header @container/card-header grid auto-rows-min items-start gap-1 rounded-t-(--radius-card) px-(--card-spacing) has-data-[slot=card-action]:grid-cols-[1fr_auto] has-data-[slot=card-description]:grid-rows-[auto_auto] [.border-b]:pb-(--card-spacing)",
         className
       )}
       {...props}
@@ -43,7 +44,7 @@ function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-title"
       className={cn(
-        "text-base leading-snug font-medium group-data-[size=sm]/card:text-sm",
+        "text-[length:var(--text-ui-emphasis)] leading-snug font-medium group-data-[size=sm]/card:text-[length:var(--text-ui-body)]",
         className
       )}
       {...props}
@@ -55,7 +56,7 @@ function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-description"
-      className={cn("text-sm text-muted-foreground", className)}
+      className={cn("text-[length:var(--text-ui-body)] text-muted-foreground", className)}
       {...props}
     />
   )
@@ -89,7 +90,7 @@ function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-footer"
       className={cn(
-        "soft-divider-top flex items-center rounded-b-xl bg-muted/50 p-(--card-spacing)",
+        "soft-divider-top flex items-center rounded-b-(--radius-card) bg-muted/50 p-(--card-spacing)",
         className
       )}
       {...props}

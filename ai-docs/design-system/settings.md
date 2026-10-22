@@ -21,3 +21,7 @@
 ## 复用已有结构
 
 字段沿 [Input 与 Field](/components/input)，标题与页脚沿 [Card](/components/card)，动作沿 [Button](/components/button)。相同用途使用相同尺寸和层级，页面只组合已有部件。
+
+## 页面组件索引
+
+- [useEditorGuard](#api-use-editor-guard)：`@boai/ui/use-editor-guard`；useEditorGuard

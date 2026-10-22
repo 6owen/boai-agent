@@ -26,3 +26,7 @@ Card 用来聚合一组相关信息。完整结构由标题、说明、就近操
 ## 语义
 
 Card 本身是布局容器，不会自动赋予内容标题层级。需要文档语义时，在内容结构中使用正确的 heading。可点击卡片应有明确动作、键盘支持与可访问名称。
+
+## 页面组件索引
+
+- [Card](#api-card)：`@boai/ui/card`；Card, CardHeader, CardFooter, CardTitle, CardAction, CardDescription, CardContent

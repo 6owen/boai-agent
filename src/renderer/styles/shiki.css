@@ -1,37 +1,10 @@
 /*
- * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
- * [INPUT]: CodeBlock 输出的 Shiki 明暗 token、可选文件行号与项目全局表面/字号/圆角。
- * [OUTPUT]: 全局代码块及紧凑详情；文件源码隐藏行号栏时保留正文内边距、来源行高亮与滚动，显式行号模式保持。
- * [POS]: renderer/styles 的 Shiki 定制入口，由 global.css 加载。
- * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ * [INPUT]: 公共阅读皮肤。
+ * [OUTPUT]: 桌面兼容样式入口。
+ * [POS]: src/renderer/styles/shiki.css
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header与所属目录.folder.md。
  */
-pre.shiki-code-block {
-  max-width:100%;
-  margin:12px 0;
-  padding:14px 16px;
-  overflow-x:auto;
-  border:0;
-  border-radius:var(--radius-control);
-  background:var(--code-background);
-  box-shadow:var(--shadow-field);
-  color:var(--foreground);
-  font-family:var(--font-code-family);
-  font-size:var(--text-code-body);
-  line-height:1.65;
-  white-space:pre;
-  tab-size:2;
-}
-pre.shiki-code-block[data-density=compact] { --shiki-foreground:var(--muted-foreground);margin:0;padding:8px 10px;font-size:var(--text-code-compact);font-weight:400;line-height:1.6;color:var(--muted-foreground) }
-pre.shiki-code-block[data-density=compact] .shiki-token { font-weight:400 }
-pre.shiki-code-block>code { display:block;min-width:max-content;padding:0;border:0;background:transparent;color:inherit;font:inherit;white-space:pre }
-.shiki-token { color:var(--shiki-light,inherit);font-style:var(--shiki-light-font-style,normal);font-weight:var(--shiki-light-font-weight,normal);text-decoration:var(--shiki-light-text-decoration,none) }
-.dark .shiki-token { color:var(--shiki-dark,inherit);font-style:var(--shiki-dark-font-style,normal);font-weight:var(--shiki-dark-font-weight,normal);text-decoration:var(--shiki-dark-text-decoration,none) }
-pre.shiki-code-block.shiki-lined { margin:0;padding:8px 16px }
-pre.shiki-code-block.shiki-numbered { padding:8px 0 }
-.shiki-line { display:flex;min-width:max-content }
-.shiki-numbered .shiki-line { padding-right:16px }
-.shiki-line[data-selected] { background:var(--accent) }
-.shiki-line-number { flex:0 0 48px;min-height:0;padding:0 12px 0 4px;border-radius:0;background:transparent;color:var(--muted-foreground);font:inherit;text-align:right;user-select:none }
-.shiki-line-content { display:block;flex:1;white-space:pre }
+@import '@boai/ui/code.css';
+
 .lody-pierre-diff { --diffs-font-size:var(--text-code-body);--diffs-font-family:var(--font-code-family);--diffs-header-font-family:var(--font-ui-family);--diffs-line-height:1.6 }
 [data-diff-preview] .lody-pierre-diff { --diffs-font-size:var(--text-code-compact) }

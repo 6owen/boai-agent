@@ -22,3 +22,7 @@
 | 请求失败 | Sonner 与原位置的重试入口 |
 
 减少动态效果时骨架保留形状，停止动画。多次刷新已有内容时，优先保留已加载结构与阅读位置。
+
+## 页面组件索引
+
+- [Skeleton](#api-skeleton)：`@boai/ui/skeleton`；Skeleton

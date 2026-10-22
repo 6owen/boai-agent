@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 文字直接使用共享角色变量，保持宿主与文档同一字号定义。
  * [INPUT]: React与BOAI既有Base UI组件合同。
  * [OUTPUT]: label共享实现，保留原变体与data-slot。
  * [POS]: @boai/ui/label，来自原Renderer组件。
@@ -14,7 +15,7 @@ function Label({ className, ...props }: React.ComponentProps<"label">) {
     <label
       data-slot="label"
       className={cn(
-        "flex items-center gap-2 text-sm leading-none font-medium select-none group-data-[disabled=true]:pointer-events-none group-data-[disabled=true]:opacity-50 peer-disabled:cursor-not-allowed peer-disabled:opacity-50",
+        "flex items-center gap-2 text-[length:var(--text-ui-body)] leading-none font-medium select-none group-data-[disabled=true]:pointer-events-none group-data-[disabled=true]:opacity-50 peer-disabled:cursor-not-allowed peer-disabled:opacity-50",
         className
       )}
       {...props}
