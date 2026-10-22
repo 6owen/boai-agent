@@ -9,6 +9,9 @@
 [OUTPUT]: DU0增加已加载宿主的版本/输入指纹查询说明；旧dist重建不冒充旧进程已重载，实际验证归23组02。
 [OUTPUT]: 2026-10-22用户已启动完整自用稳定化目标；DU0核对当前基线与两项真实云端失败，阶段实际进度归23组02。
 [OUTPUT]: 2026-10-22用户确认先稳定个人日常使用；新增第23组DU0–DU3、固定验收与唯一进度。本轮仅文档，功能实施待后续授权。
+
+[OUTPUT]: BOAI Design文档站改用Fumadocs UI/MDX，沿pnpm dev:design独立开发。
+[OUTPUT]: BOAI Design首版共享包与文档站已接线，新增dev:design，实际验证与剩余见第23组。
 [OUTPUT]: 用户改回GitHub Actions，标准双runner已实证；PR/main云端工程/32核心/18UI与严格Required checks，本机服务禁用；v3基准已接受，新完整资格查当前Checks。
 [OUTPUT]: 5f自动本地CI的28核心/18UI通过，但模块原生SIGSEGV导致正式failure；4013模块诊断未复现不补绿，当前状态唯一归22组03。
 [OUTPUT]: 436完整本地CI因扫描/菜单准备两项failed，18UI全过；候选修正与ZIP共用阶段实际验证通过，待固定审查/新CI，22组03。
@@ -254,6 +257,8 @@
 
 **2026-10-22现行自用路线：** [第23组个人日常稳定化](ai-docs/spec/23.个人日常稳定化/README.md)。用户选择“先让自己日常稳定使用”，顺序为可信源码基线 → 交付/记忆/后台稳定 → 真实任务与一周自用 → 必要任务入口。完整实施目标已获用户授权，当前从DU0推进；日常保持`pnpm dev`，运行验收沿届时授权和现行仓库流程。下文较早路线与“当前”结论按原日期阅读；本组不恢复已撤销目标，也不改写原专题完成范围和历史失败。
 
+
+BOAI Design首版见[第23组](ai-docs/spec/23.BOAI设计系统/README.md)：`packages/tokens`与`packages/ui`为桌面和`apps/design-docs`提供同一份基础定义与组件。安装依赖后用`pnpm dev:design`启动独立Fumadocs设计站（默认`http://127.0.0.1:5190`），`pnpm dev`继续启动桌面。当前为私有开发包，运行验收状态和剩余范围见该组03；未发布npm或正式站点。
 
 个人发布与开发CI：[第22组04](ai-docs/spec/22.开发自动化与持续测试/04-macOS本机发布与升级方案.md)约定无Apple开发者证书、本机源码开发自用的Tag/Release、ad-hoc安装包及独立升级路线。后续已获授权实施，PR/main自动CI已按最新要求迁回GitHub Actions，本机轮询停止并禁用；候选构建及正式产物冒烟入口已接入；实际成功、原失败和未完成范围统一见[22组03](ai-docs/spec/22.开发自动化与持续测试/03-实施步骤与验收.md#5-唯一实际进度)。本轮未创建Tag/Release或替换本机应用；合并与当前CI资格查看[PR1 Checks](https://github.com/6owen/boai-agent/pull/1/checks)，`pnpm dev`不执行安装升级。
 
@@ -519,6 +524,9 @@ node dist/cli/index.mjs receipt REQUEST_ID --json
 ## 代码结构
 
 ```text
+packages/tokens/  纯配色/排版与Soft变量，共享真源
+packages/ui/      桌面与设计站共用的React组件/皮肤
+apps/design-docs/ 独立设计文档站，pnpm dev:design
 src/cli/         CLI 客户端、认证RPC和原服务公共接线（完整范围实施中）
 src/main/        Electron 窗口、受控 IPC、凭据、运行进程生命周期
 src/renderer/    React 中文桌面界面

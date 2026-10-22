@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 共享包外改同时使桌面构建和UI来源身份失效。
  * [INPUT]: 独立Git工作目录、源码/技能源和实际构建文件。
  * [OUTPUT]: 旧dist/外改拒绝；真实重复记录仅时间变化仍同字节，源码/输出/Node变化不相同。
  * [POS]: 开发/CI产物身份的真实文件负例，不启动应用。
@@ -39,6 +40,18 @@ it('技能源在构建期间变化不能登记构建完成', async () => {
   const initial = await buildInputHash(root)
   await writeFile(join(root, 'resources/skill.md'), '构建中外改的技能源')
   await expect(recordBuildIdentity(initial, root)).rejects.toThrow(/输入变化/)
+})
+it('共享设计包变化使桌面构建与UI源码身份一并失效', async () => {
+  await mkdir(join(root, 'packages/tokens/src'), { recursive: true })
+  const file = join(root, 'packages/tokens/src/theme.ts')
+  await writeFile(file, 'export const accent = "#2563eb"')
+  execFileSync('git', ['add', 'packages/tokens/src/theme.ts'], { cwd: root })
+  execFileSync('git', ['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'fixture'], { cwd: root })
+  await recordBuildIdentity(await buildInputHash(root), root)
+  const before = await sourceIdentity(root)
+  await writeFile(file, 'export const accent = "#93b8ff"')
+  expect((await sourceIdentity(root)).sourceHash).not.toBe(before.sourceHash)
+  await expect(verifyBuildIdentity(root)).rejects.toThrow(/源码/)
 })
 it('Tailwind配置是实际构建和测试输入，外改不能复用旧产物', async () => {
   await writeFile(join(root, 'tailwind.config.ts'), 'export default { theme: {} }')

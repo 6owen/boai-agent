@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 字号扫描覆盖共享UI与设计站；token定义仍是唯一数值来源。
  * [INPUT]: BOAI Renderer CSS/TS/TSX and the shared typography resolver.
  * [OUTPUT]: Fails on newly scattered literal font sizes in Renderer source.
  * [POS]: Static guard for the centralized font-size contract.
@@ -7,7 +8,7 @@
 import { readdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
-const root = 'src/renderer'
+const roots = ['src/renderer', 'packages/ui/src', 'apps/design-docs/src']
 const violations = []
 const patterns = [
   /font-size\s*:\s*-?\d+(?:\.\d+)?(?:px|rem|em)\b/gi,
@@ -32,8 +33,8 @@ async function walk(directory) {
     }
   }
 }
-await walk(root)
+for (const root of roots) await walk(root)
 if (violations.length) {
   process.stderr.write(`${violations.join('\n')}\n`)
   process.exitCode = 1
-} else process.stdout.write('Renderer font sizes use the shared typography roles.\n')
+} else process.stdout.write('Renderer, shared UI and design docs use the shared typography roles.\n')

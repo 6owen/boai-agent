@@ -1,0 +1,26 @@
+/*
+ * [INPUT]: @boai/tokens、Soft皮肤和Tailwind语义映射。
+ * [OUTPUT]: 独立消费者的样式入口，不加载Tailwind本身、字体或全局reset。
+ * [POS]: @boai/ui/styles.css；消费方先加载一次Tailwind v4。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
+ */
+@import '@boai/tokens/foundation.css';
+@import './theme.css';
+@import './skin.css' layer(components);
+@source './components';
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer components {
+  :is(.soft-button, [data-slot=input], [data-slot=textarea]):focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+  }
+  @supports not (corner-shape:squircle) {
+    .soft-button { border-radius:10px }
+    .soft-button-round { border-radius:var(--radius-pill) }
+  }
+  @media(prefers-reduced-motion:reduce) {
+    .soft-button, [data-slot=input], [data-slot=textarea] { transition:none }
+    [data-slot=skeleton] { animation:none }
+  }
+}

@@ -1,0 +1,19 @@
+<!--
+[INPUT]: 文档站React入口和响应式视口。
+[OUTPUT]: 中文设计文档的HTML入口，不引用桌面preload。
+[POS]: apps/design-docs静态壳。
+[PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
+-->
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="BOAI Design：安静、紧凑的设计语言，Soft 组件与使用规范。" />
+    <title>BOAI Design</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

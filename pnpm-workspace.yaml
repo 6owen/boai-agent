@@ -1,9 +1,11 @@
 # [INPUT]: BOAI pnpm workspace与Lody固定diff依赖及补丁。
-# [OUTPUT]: 单应用工作区与原构建白名单/锁定；React Aria定点补丁保留多属性取消监听直到清空，Electron解压沿yauzl3.4.0。
+# [OUTPUT]: 桌面/设计站与tokens/ui共享工作区；保留原构建白名单、yauzl锁定及React Aria多属性取消修复补丁。
 # [POS]: 仓库依赖配置。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
 packages:
   - '.'
+  - 'packages/*'
+  - 'apps/*'
 onlyBuiltDependencies:
   - electron
   - esbuild
