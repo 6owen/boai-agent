@@ -1,8 +1,8 @@
-# [INPUT]: Original bounded history-reading scenario and unchanged product source.
-# [OUTPUT]: Original compiled-default Electron 10000-message history case, all cleanup steps and 90-second deadline preserved; prior dev failure retained.
-# [POS]: Isolated DS02 diagnostic; not formal Required checks or real-provider quality qualification.
-# [PROTOCOL]: Changes update Header; original CPU diagnostic retained outside tracked workflow.
-name: History sidebar preview diagnostic
+# [INPUT]: Explicit task page candidate, original application protocol and fixed product inputs.
+# [OUTPUT]: Nine real SQLite task contracts and unchanged application protocol regression; no real providers or GUI.
+# [POS]: Isolated DU3 data foundation diagnostic; not formal Required checks or real-user acceptance.
+# [PROTOCOL]: Changes update Header; temporary workflow stays on the diagnostic branch.
+name: Explicit task page contract diagnostic
 on:
   push:
     branches: [infra/daily-source-identity]
@@ -10,7 +10,7 @@ on:
 permissions:
   contents: read
 jobs:
-  reading_preview:
+  task_pages:
     runs-on: macos-15
     timeout-minutes: 25
     steps:
@@ -26,40 +26,33 @@ jobs:
           node node_modules/electron/install.js
       - name: Check current types
         run: pnpm typecheck
-      - name: Bind exact product and scenario candidate
+      - name: Bind exact task query source
         run: |
           node --input-type=module - <<'JS'
           import { buildInputHash } from './scripts/build-identity.mjs';
-          import { mkdir, writeFile } from 'node:fs/promises';
-          if (process.env.BOAI_TEST_DEV_SERVER) throw Error('Expected original compiled desktop mode');
-          const inputHash = await buildInputHash();
-          if (inputHash !== '98be19b5e50f47cbab30c0b159aaeee2ab9733fc710c8bdca768394ffa40ec04') throw Error('Product inputs differ');
-          await mkdir('.local/daily-reading-preview', { recursive: true });
-          await writeFile('.local/daily-reading-preview/source.json', JSON.stringify({ productCandidate: '2c949947bf1d22e67cc99485aee00092563d8dcf', testCandidate: '3ba1521b074adaf4e50dc2cfcd7f9c6a32c9c0c0', inputHash, realProviderCalls: false, desktopMode: 'compiled-original-default', originalHistoryCount: 10000, latestSidebarAfterOldLocationAndRestart: true, cases: 1, retries: 0, originalDeadlinesAndAssertionsUnchanged: true }, null, 2));
+          import { mkdir,writeFile } from 'node:fs/promises';
+          const inputHash=await buildInputHash();
+          if(inputHash!=='3dcc9c3d69cf818452d8a9da199540a35bd505883a397d4d5b347ab34345a00a')throw Error('Task product input differs');
+          await mkdir('.local/daily-task-pages',{recursive:true});
+          await writeFile('.local/daily-task-pages/source.json',JSON.stringify({candidate:'22888ad54dd518c45e7d2457b9510abc09a41140',inputHash,newContractCases:9,realProviderCalls:false,personalData:false,gui:false,originalRegressionAssertionsUnchanged:true},null,2));
           JS
-      - name: Build current candidate and original BDD framework
+      - name: Build current candidate for original integration tests
+        run: pnpm build
+      - name: Run nine task contracts once
         run: |
-          pnpm build
-          pnpm test:bddgen
-      - name: Freeze original history case and run without retries
-        run: |
+          pnpm exec vitest run tests/task-pages.test.ts --maxWorkers=2 --reporter=json --outputFile=.local/daily-task-pages/tasks.json
           node --input-type=module - <<'JS'
-          import { execFileSync } from 'node:child_process';
-          import { readFileSync } from 'node:fs';
-          const directory = '.local/daily-reading-preview', base = ['exec', 'playwright', 'test', '.features-gen/reading.feature.spec.js', '--grep', '万条旧历史同文搜索保持原身份和有界窗口', '--retries', '0'];
-          execFileSync('pnpm', [...base, '--list', '--reporter=json'], { stdio: 'inherit', env: { ...process.env, PLAYWRIGHT_JSON_OUTPUT_NAME: `${directory}/list.json` } });
-          const listed = JSON.parse(readFileSync(`${directory}/list.json`, 'utf8'));
-          const count = suite => (suite.specs ?? []).reduce((sum, spec) => sum + (spec.tests ?? []).length, 0) + (suite.suites ?? []).reduce((sum, child) => sum + count(child), 0);
-          if (count(listed) !== 1) throw Error('Expected exactly one original bounded history case');
-          execFileSync('pnpm', [...base, '--reporter=list,json'], { stdio: 'inherit', env: { ...process.env, BOAI_REVIEW_RUN_DIR: `${directory}/review`, PLAYWRIGHT_JSON_OUTPUT_NAME: `${directory}/playwright-results.json` } });
+          import {readFile} from 'node:fs/promises';
+          const r=JSON.parse(await readFile('.local/daily-task-pages/tasks.json','utf8'));
+          if(r.numTotalTests!==9||r.numPassedTests!==9||r.success!==true)throw Error('All nine task contracts must actually pass');
           JS
+      - name: Run original application protocol regression
+        run: pnpm exec vitest run tests/application-protocol.test.ts --maxWorkers=2 --reporter=json --outputFile=.local/daily-task-pages/application.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: daily-reading-preview
-          path: |
-            .local/daily-reading-preview/
-            test-results/
+          name: daily-task-pages
+          path: .local/daily-task-pages/
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 3

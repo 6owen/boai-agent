@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Explicit task pages filter current source/viewer rights before SQL LIMIT; project bounded notes/steps without loading all task records.
  * [OUTPUT]: 事务list支持固定status过滤，调用者决定恢复语义；无需读取已终态观察记录。
  * [OUTPUT]: 定时执行历史与计划最近结果在分页/统计前排除已删除墓碑。
  * [OUTPUT]: 公开消息write/transaction共用提交钩子，记录首次插入与更新；业务可见性在原事务提交前完成，内存/通知仅在成功提交后更新。
@@ -18,6 +19,8 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { createClient, type Client } from '@libsql/client'
+import { taskPageSql, type TaskPageSqlQuery } from './task-page-sql'
+import type { TrackedTaskListItem } from '../../../shared/domain/tracked-tasks'
 import { executionWindowPage } from '../../modules/conversations/execution-window'
 import { mkdir, stat } from 'node:fs/promises'
 import { dirname } from 'node:path'
@@ -119,6 +122,8 @@ export class ProductStore {
       { sql: "CREATE INDEX IF NOT EXISTS work_view_parent ON records(json_extract(value,'$.parentWorkId'),json_extract(value,'$.conversationId')) WHERE collection='workItems'", args: [] },
       { sql: "CREATE INDEX IF NOT EXISTS work_view_parent_text ON records(CAST(json_extract(value,'$.parentWorkId') AS TEXT),json_extract(value,'$.conversationId')) WHERE collection='workItems'", args: [] },
       { sql: "CREATE INDEX IF NOT EXISTS conversation_file_scope ON records(collection,json_extract(value,'$.conversationId'),json_extract(value,'$.logicalArtifactId')) WHERE collection IN ('materials','artifacts')", args: [] },
+      { sql: "CREATE INDEX IF NOT EXISTS agent_task_page ON records(json_extract(value,'$.updatedAt') DESC,id DESC) WHERE collection='agentTasks'", args: [] },
+      { sql: "CREATE INDEX IF NOT EXISTS agent_task_owner_page ON records(json_extract(value,'$.agentId'),json_extract(value,'$.updatedAt') DESC,id DESC) WHERE collection='agentTasks'", args: [] },
       { sql: "CREATE INDEX IF NOT EXISTS employee_execution_scope ON records(json_extract(value,'$.agentId'),json_extract(value,'$.createdAt') DESC,id DESC) WHERE collection='runs'", args: [] },
     ], 'write')
     // A reopened or restored database never trusts old bytes before bounded source verification.
@@ -134,6 +139,17 @@ export class ProductStore {
     return this.enqueue(async () => {
       const result = await this.client.execute({ sql: 'SELECT value FROM records WHERE collection=? AND id=?', args: [collection, id] })
       return result.rows[0] ? JSON.parse(String(result.rows[0].value)) as T : undefined
+    })
+  }
+  queryTrackedTaskPage(query: TaskPageSqlQuery): Promise<TrackedTaskListItem[]> {
+    return this.enqueue(async () => {
+      const result = await this.client.execute(taskPageSql(query))
+      return result.rows.map(row => ({
+        id: String(row.id), agentId: String(row.agentId), ...(row.conversationId == null ? {} : { conversationId: String(row.conversationId) }),
+        title: String(row.title), status: String(row.status) as TrackedTaskListItem['status'], revision: Number(row.revision),
+        createdAt: String(row.createdAt), updatedAt: String(row.updatedAt), stepCount: Number(row.stepCount), completedStepCount: Number(row.completedStepCount),
+        ...(row.nextStepTitle == null ? {} : { nextStepTitle: String(row.nextStepTitle) }), noteExcerpt: String(row.noteExcerpt), noteTruncated: Boolean(row.noteTruncated),
+      }))
     })
   }
   queryAutomationDefinitions(query: AutomationListQuery) {

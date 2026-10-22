@@ -1,15 +1,19 @@
 /*
+ * [OUTPUT]: Adds SQL-bounded tasks.page for the future task entry; original mutations/list and receipt semantics remain compatible.
  * [INPUT]: Original ProductStore, authenticated application actor and explicit task tracking intent.
  * [OUTPUT]: Durable per-employee multi-step tracking with revision checks; no scheduler or Work execution.
  * [POS]: Application tasks domain, separate from model Work/budget and employee automation plans.
  * [PROTOCOL]: Update Header and parent .folder.md on change.
  */
 import { randomUUID } from 'node:crypto'
+import type { TrackedTask } from '../../../shared/domain/tracked-tasks'
+import { taskPageOperation } from './task-page'
 import { z } from 'zod'
 import type { DigitalAgent, Conversation } from '../../../shared/domain'
 import type { ApplicationActor } from '../../../shared/domain/application-protocol'
 import type { ProductStore, RecordTransaction } from '../../adapters/storage/product-store'
 import { ApplicationValidationError, type ApplicationOperation } from './application-service'
+export type { TrackedTask } from '../../../shared/domain/tracked-tasks'
 
 const id = z.string().min(1).max(200), status = z.enum(['pending', 'in_progress', 'blocked', 'done'])
 const step = z.object({ title: z.string().trim().min(1).max(300), done: z.boolean().default(false) }).strict()
@@ -17,7 +21,6 @@ const fields = { title: z.string().trim().min(1).max(300), steps: z.array(step).
 const owner = z.object({ agentId: id }).strict()
 const create = owner.extend({ conversationId: id.optional(), title: fields.title, steps: fields.steps.default([]), note: fields.note.default('') }).strict()
 const update = z.object({ id, expectedRevision: z.number().int().positive(), title: fields.title.optional(), steps: fields.steps.optional(), status: status.optional(), note: fields.note.optional() }).strict()
-export interface TrackedTask { id: string; agentId: string; conversationId?: string; title: string; steps: { title: string; done: boolean }[]; status: z.infer<typeof status>; note: string; revision: number; createdAt: string; updatedAt: string }
 const collection = 'agentTasks'
 
 export function taskOperations(store: ProductStore): ApplicationOperation[] {
@@ -37,6 +40,7 @@ export function taskOperations(store: ProductStore): ApplicationOperation[] {
     return task
   }
   return [
+    taskPageOperation(store),
     { name: 'tasks.list', description: '列出员工持久多步任务；默认未完成，跨会话仍核对来源。不会运行任务。', effect: 'read', input: owner.extend({ status: status.optional(), includeDone: z.boolean().default(false) }).strict(), resultType: 'TrackedTask[]', execute: (input, _, actor) => store.transaction(async tx => {
       const result: TrackedTask[] = []
       for (const task of await tx.list<TrackedTask>(collection)) if (task.agentId === input.agentId && (input.status ? task.status === input.status : input.includeDone || task.status !== 'done') && await allowed(tx, task, actor)) result.push(task)
