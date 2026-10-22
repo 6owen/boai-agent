@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 先构建共享设计包；Node产物内联纯tokens，保留独立serve和桌面运行。
  * [OUTPUT]: 完整构建核对输入前后一致，并登记dist输入/产物hash供UI及发布复验，避免测试旧构建。
  * [OUTPUT]: 2026-10-20构建并分发预置应用图标和macOS本机图标辅助程序。
  * [OUTPUT]: 构建真实 PTY 与 macOS 本地桌面 OCR 辅助程序；构建不采集桌面。
@@ -23,11 +24,19 @@ import buildProcessGuard from './build-process-guard.mjs'
 import buildAppIcon from './build-app-icon.mjs'
 import { copyFile, cp, readFile, rm, mkdir } from 'node:fs/promises'
 import { basename } from 'node:path'
-import { build } from 'esbuild'
+import { build as esbuild } from 'esbuild'
+import { resolve } from 'node:path'
+import { buildDesign } from './design-packages.mjs'
+
 import { build as buildRenderer } from 'vite'
 import { buildInputHash, recordBuildIdentity } from './build-identity.mjs'
 
+
+// Bundle workspace tokens into runtime artifacts, including packages: external builds.
+const build = options => esbuild({ ...options, alias: { '@boai/tokens': resolve('packages/tokens/src/index.ts'), '@boai/tokens/typography': resolve('packages/tokens/src/typography.ts'), ...options.alias } })
+
 export async function buildHost() {
+  await buildDesign()
   await buildProcessGuard()
   await buildDesktopActivity()
   await buildAppIcon()

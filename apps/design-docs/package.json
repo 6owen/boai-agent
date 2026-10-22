@@ -1,0 +1,32 @@
+{
+  "name": "@boai/design-docs",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node ../../scripts/dev-design.mjs",
+    "build": "node ../../scripts/build-design.mjs --site"
+  },
+  "dependencies": {
+    "@boai/tokens": "workspace:*",
+    "@boai/ui": "workspace:*",
+    "cn": "0.4.0",
+    "fumadocs-core": "16.17.7",
+    "fumadocs-mdx": "15.4.9",
+    "fumadocs-ui": "16.17.7",
+    "next-themes": "0.4.6",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-router": "8.5.0",
+    "sonner": "2.0.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.3.3",
+    "@types/mdx": "2.0.14",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.1",
+    "tailwindcss": "4.3.3",
+    "vite": "8.3.1"
+  }
+}

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 共享UI和设计站沿同一图标/Sonner规则检查。
  * [INPUT]: Renderer TypeScript/TSX 源码与本地图标约束。
  * [OUTPUT]: 本地图标导入和全局Sonner错误反馈门禁，禁止业务DOM内联alert报错。
  * [POS]: UI 基础组件及后续 shadcn 安装后的静态检查。
@@ -7,7 +8,7 @@
 import parser from '@babel/eslint-parser'
 
 export default [{
-  files: ['src/renderer/**/*.{ts,tsx}'],
+  files: ['src/renderer/**/*.{ts,tsx}', 'packages/ui/src/**/*.{ts,tsx}', 'apps/design-docs/src/**/*.{ts,tsx}'],
   languageOptions: { parser, parserOptions: { requireConfigFile: false, sourceType: 'module', babelOptions: { babelrc: false, configFile: false, plugins: [['@babel/plugin-syntax-typescript', { isTSX: true }]] } } },
   rules: {
     'no-restricted-syntax': ['error', {

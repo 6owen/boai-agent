@@ -1,0 +1,14 @@
+BOAI UI development package
+
+The React components were extracted from BOAI Agent's src/renderer/components/ui
+at commit 7beaef3973c816edada8a2deaae73e560e1efbb6. Those components identify
+their source as shadcn base-nova and include BOAI's local Soft styling changes.
+
+Upstream: https://github.com/shadcn-ui/ui (MIT; see SHADCN-LICENSE.txt).
+Base UI, Sonner, class-variance-authority and cn are dependencies with their own
+licenses. Their license files remain with the installed dependency packages.
+
+This package is private and unpublished. An independent release must settle the
+license of BOAI-owned changes and the final package/repository name. No Raft
+brand assets, fonts, Craft Scenic assets, Base46 theme collections or Lody
+preview code are included in this package.

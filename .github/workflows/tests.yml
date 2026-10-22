@@ -1,3 +1,4 @@
+# [OUTPUT]: 设计提取/原恢复合同与站点/tarball/Web专项先运行，完整模块/T1/UI门禁保持。
 # [INPUT]: 仓库变更、锁定依赖、离线协议服务。
 # [OUTPUT]: PR/main自动云端工程、32核心及全18UI只读门禁；逐步日志、UI原始报告与原件凭据独立核验，不启动本机。
 # [POS]: .github/workflows/tests.yml。
@@ -40,6 +41,24 @@ jobs:
         run: pnpm lint:ui
       - id: build
         run: pnpm build
+      - name: Verify design extraction contracts
+        run: pnpm exec vitest run tests/design-system.test.ts tests/design-system-components.test.ts tests/build-identity.test.ts tests/artifact-recovery.test.ts tests/memory-recovery.test.ts tests/team-recovery.test.ts tests/gateway-call-recovery.test.ts --maxWorkers=2
+      - name: Build design system documentation
+        run: pnpm build:design
+      - name: Install design browser
+        run: pnpm exec playwright install chromium
+      - name: Verify design distribution and browser behavior
+        run: pnpm check:design
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: design-system-preview
+          path: |
+            .local/design-site/
+            apps/design-docs/dist/
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 3
       - id: unit
         run: pnpm test --maxWorkers=2
       - name: Preserve native crash stacks
