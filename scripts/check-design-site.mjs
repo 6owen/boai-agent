@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Fumadocs静态设计站、独立tarball消费者和CI Chromium。
- * [OUTPUT]: Fumadocs渲染/目录/搜索/导航及原组件交互、外部分发与稳定截图报告。
+ * [OUTPUT]: Fumadocs/原组件浏览器验收、独立消费、稳定截图与即时运行异常原件。
  * [POS]: Web设计站专项验证，不替代原Electron BDD或UI基准。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -12,7 +12,7 @@ import { readDesignContent } from './design-content.mjs'
 
 const output = resolve('.local/design-site')
 await mkdir(output, { recursive: true })
-const report = { status: 'running', checks: [], errors: [] }
+const report = { status: 'running', checks: [], errors: [], browserErrors: [] }
 const servers = []
 let browser, page
 async function serve(directory) {
@@ -46,8 +46,11 @@ try {
   })
   browser = await chromium.launch({ headless: true })
   page = await browser.newPage({ viewport: { width: 1280, height: 900 }, colorScheme: 'light' })
-  const runtimeErrors = []
-  page.on('pageerror', error => runtimeErrors.push(error.message))
+  const runtimeErrors = report.browserErrors
+  page.on('pageerror', error => {
+    runtimeErrors.push(error.stack ?? error.message)
+    process.stderr.write(`Browser runtime error: ${error.stack ?? error.message}\n`)
+  })
   await check('Homepage mounts without desktop host and shared styles are present', async () => {
     await page.goto(url)
     await expect(page.locator('#nd-docs-layout')).toBeVisible()
