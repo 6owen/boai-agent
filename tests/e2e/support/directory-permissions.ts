@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 命令组合场景显式开启独立allowCommands，数据源场景保持关闭；模型只能请求实际提供的工具，原审批与文件断言保持。
  * [OUTPUT]: 可选本地源场景经实际Mastra调用，报告正文仅在目录批准后返回。
  * [INPUT]: 隔离Desktop、现有Chat协议夹具和实际员工/目录配置IPC。
  * [OUTPUT]: 当前员工命令申请两个业务目录，模型只提供确定工具调用，实际批准/进程/文件由产品执行。
@@ -33,6 +34,8 @@ export async function prepareDirectoryPermissions(runtime: Desktop, sourceMode =
         sendTeamOutput(response, { action: 'publish', text: JSON.parse(messages.at(-1)!.content).data.draft.text }); return
       }
       if (!messages.some(message => message.role === 'tool')) {
+        const toolName = sourceMode ? 'call_data_source' : 'execute_command'
+        if (!Array.isArray(body.tools) || !body.tools.some(tool => tool?.function?.name === toolName)) throw new Error(`目录验收未获得实际工具 ${toolName}`)
         response.writeHead(200, { 'Content-Type': 'text/event-stream' })
         for (const [delta, finish_reason] of [[{ role: 'assistant' }, null], [{ tool_calls: [{ index: 0, id: `directory-tool-${index}`, type: 'function', function: { name: 'execute_command', arguments: JSON.stringify({ command, directories }) } }] }, null], [{}, 'tool_calls']]) {
           const actualDelta = sourceMode && delta && typeof delta === 'object' && 'tool_calls' in delta ? { tool_calls: [{ index: 0, id: `source-directory-${index}`, type: 'function', function: { name: 'call_data_source', arguments: JSON.stringify({ sourceId, tool: 'files', arguments: { operation: 'read', path: 'input.txt' } }) } }] } : delta
@@ -49,14 +52,16 @@ export async function prepareDirectoryPermissions(runtime: Desktop, sourceMode =
   })
   runtime.trackServer(endpoint.server)
   await runtime.start({ dataDir: join(root, 'product') })
-  const setup = await runtime.page.evaluate(async ({ url, coding }) => {
+  const setup = await runtime.page.evaluate(async ({ url, coding, sourceMode }) => {
     const connection = await window.boai.request('saveConnection', { name: '目录审批离线协议', provider: 'openai-compatible', baseUrl: url, defaultModel: 'fixture' })
     const agent = (await window.boai.request('snapshot', undefined)).agents.find(agent => agent.id === 'researcher')!
     const { configVersion, directoryRevision, workspaceRef, memoryNamespace, policyVersion, ...input } = agent
-    const saved = await window.boai.request('saveAgent', { ...input, name: '目录同事', connectionId: connection.id, modelId: 'fixture', executionPermission: 'ask', directoryGrants: [{ path: coding, access: 'read-write' }], expectedConfigVersion: configVersion, expectedDirectoryRevision: directoryRevision })
+    const saved = await window.boai.request('saveAgent', { ...input, name: '目录同事', connectionId: connection.id, modelId: 'fixture', allowCommands: !sourceMode, executionPermission: 'ask', directoryGrants: [{ path: coding, access: 'read-write' }], expectedConfigVersion: configVersion, expectedDirectoryRevision: directoryRevision })
     const conversation = await window.boai.request('createConversation', { kind: 'direct', title: '目录同事', agentIds: [saved.id] })
     return { agent: saved, conversation }
-  }, { url: endpoint.url, coding })
+  }, { url: endpoint.url, coding, sourceMode })
+  if (setup.agent.allowCommands !== !sourceMode) throw new Error('隔离目录场景的独立命令能力未按配置保存')
+  await runtime.reviewData('隔离目录员工的实际命令能力', { employeeId: setup.agent.id, allowCommands: setup.agent.allowCommands, executionPermission: setup.agent.executionPermission, directoryGrants: setup.agent.directoryGrants, sourceMode })
   if (sourceMode) {
     sourceId = await runtime.page.evaluate(async ({ reports, employeeId }) => {
       const source = await window.boai.request('saveDataSource', { id: crypto.randomUUID(), expectedRevision: 0, config: { name: '报告源', description: '', guide: '', enabled: true, type: 'local', local: { path: reports } } })

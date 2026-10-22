@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 双待决输入先等待原请求真实消息就绪，保持原数量/目标/接续断言及总期限；追加延迟第二员工和缺问题终态负例。
  * [OUTPUT]: API状态配置进入真实Codex/Claude协议，动态情绪不重建线程，功能开关更新工具才重建。
  * [OUTPUT]: 本机配置优先：旧API目录保留、原生权限恢复、明确cwd和重启零重放。
  * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
@@ -435,18 +436,26 @@ it('cancels an active native run when newly answered material is revoked and rem
  await expect(stat(read.path)).rejects.toThrow('ENOENT');expect(await readFile(path,'utf8')).toBe('{"actual":317}')
  await f.restart();expect((await f.detail()).runs).toHaveLength(1)
 })
-it('requires a target when multiple employees are awaiting native input instead of queuing a deadlock',async()=>{
+async function multipleNativeQuestions(content:string){
  const f=await setup(),{id,configVersion,workspaceRef,memoryNamespace,policyVersion,...input}=f.agent
  const second=await f.service.handle('saveAgent',{...input,name:'第二位提问员工'}) as DigitalAgent
  const chat=await f.service.handle('createConversation',{kind:'group',title:'两个原生问题',agentIds:[f.agent.id,second.id]}) as Conversation
- await f.service.handle('sendMessage',{conversationId:chat.id,content:'NATIVE_QUESTION',mentionIds:[],requestId:crypto.randomUUID()})
+ const message=await f.service.handle('sendMessage',{conversationId:chat.id,content,mentionIds:[],requestId:crypto.randomUUID()}) as Message
  const detail=()=>f.service.handle('getConversation',{id:chat.id}) as Promise<ConversationDetail>
+ await f.waitForMessages(message,current=>current.messages.filter(item=>item.content==='这个文档针对什么产品？').length===2)
  await expect.poll(async()=>(await detail()).messages.filter(m=>m.content==='这个文档针对什么产品？').length).toBe(2)
  await expect(f.service.handle('sendMessage',{conversationId:chat.id,content:'尚未选定回答对象',mentionIds:[],requestId:crypto.randomUUID()})).rejects.toThrow('多个原生问题')
  expect((await detail()).messages.some(m=>m.content==='尚未选定回答对象')).toBe(false)
  for(const employee of [f.agent,second])await f.service.handle('sendMessage',{conversationId:chat.id,content:'回答给'+employee.name,mentionIds:[employee.id],requestId:crypto.randomUUID()})
  await expect.poll(async()=>(await detail()).runs.filter(r=>r.status==='completed').length).toBe(2)
  expect((await detail()).runs).toHaveLength(2)
+}
+it('requires a target when multiple employees are awaiting native input instead of queuing a deadlock',()=>multipleNativeQuestions('NATIVE_QUESTION'))
+it('requires a target when multiple employees are awaiting native input even when the second question arrives later',()=>multipleNativeQuestions('NATIVE_QUESTION NATIVE_DELAYED_QUESTION'))
+it('rejects a missing native question once its actual request has completed',async()=>{
+ const f=await setup(),message=await f.send('普通交流')
+ await f.wait(message)
+ await expect(f.waitForMessages(message,current=>current.messages.some(item=>item.content==='不存在的问题'))).rejects.toThrow('当前原生执行已结束')
 })
 it('excludes native input copies from backup even before a native run is registered',async()=>{
  const f=await setup(),privateRelative=join('agents',f.agent.id,'workspace','sessions',f.chat.id,runtime==='codex'?'.codex-private':'.claude-private'),privateHome=join(f.root,privateRelative)

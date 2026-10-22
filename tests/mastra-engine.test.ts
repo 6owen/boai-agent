@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Material chat output capacity, effective-model catalog ceiling, plain-chat scope and length rejection use the actual SDK/local HTTP only; no vendor calls or quality certification.
  * [OUTPUT]: bobo公开聊天实际Mastra SDK读取已提交历史与Working Memory，来源失效后原文不再进入请求。
  * [OUTPUT]: 实际SDK判断携带第31项技能及命令权限，私有阶段零工具且其他员工/未绑定技能不泄入。
  * [OUTPUT]: 反思真实SDK两阶段/原预算/原来源与复核失败不返回草稿；行为普通路径保持。
@@ -767,6 +768,47 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     expect(mock.requests).toHaveLength(2)
     expect(additionalCalls).toHaveLength(1)
     expect(deltas).toEqual([]); expect(tools).toEqual([])
+  })
+
+  it('completes a material answer above the former chat ceiling in one accounted SDK request', async () => {
+    const required = 3200, complete = '资料问答的各项结论及来源均已完整返回。'
+    const model = await endpoint((body, response, index) => {
+      const limit = body.max_tokens ?? body.max_completion_tokens ?? 0, finished = limit >= required
+      const used = Math.min(limit, required)
+      send(response, finished ? complete : '未完成的资料答复', index, { prompt_tokens: 100, completion_tokens: used, total_tokens: 100 + used }, finished ? 'stop' : 'length')
+    })
+    const run = await context(model.url, { responseKind: 'chat', materialRefs: [{ id: 'material', revision: 1, contentHash: 'hash', parseVersion: 'text-v1', conversationId: 'conversation' }], recallMemory: async () => ({ entries: [], epoch: 1, namespace: 'employee:agent-a' }) })
+    await new MastraEngine().run(run.ctx)
+    expect(run.deltas.join('')).toBe(complete)
+    expect(model.requests).toHaveLength(1); expect(run.additionalCalls).toEqual([])
+    const requested = model.requests[0].max_tokens ?? model.requests[0].max_completion_tokens
+    expect(requested).toBeGreaterThanOrEqual(required); expect(requested).toBeLessThanOrEqual(8192)
+  })
+
+  it.each([
+    { name: 'effective model ceiling', id: 'user-model-override', cap: 3000, expected: 3000 },
+    { name: 'another model is not authority', id: 'unselected-model', cap: 512, expected: 8192 },
+    { name: 'invalid ceiling is not sent', id: 'user-model-override', cap: 0, expected: 8192 },
+  ])('honors material output capacity with $name', async ({ id, cap, expected }) => {
+    const model = await endpoint(['完整答复。'])
+    const run = await context(model.url, { responseKind: 'chat', materialRefs: [{ id: 'material', revision: 1, contentHash: 'hash', parseVersion: 'text-v1', conversationId: 'conversation' }], modelCatalog: { source: 'service-declared', fetchedAt: '', models: [{ id: 'user-specified-model', maxOutputTokens: 256 }, { id, maxOutputTokens: cap }] } })
+    await new MastraEngine().run(run.ctx)
+    expect(model.requests).toHaveLength(1)
+    expect(model.requests[0].max_tokens ?? model.requests[0].max_completion_tokens).toBe(expected)
+  })
+
+  it('keeps the ordinary chat ceiling when there are no material inputs', async () => {
+    const model = await endpoint(['你好。']), run = await context(model.url, { responseKind: 'chat', materialRefs: [], materialImages: [] })
+    await new MastraEngine().run(run.ctx)
+    expect(model.requests[0].max_tokens ?? model.requests[0].max_completion_tokens).toBe(2500)
+    expect(model.requests).toHaveLength(1); expect(run.additionalCalls).toEqual([])
+  })
+
+  it('still rejects a length-truncated material answer without retrying or publishing its buffered draft', async () => {
+    const model = await endpoint((_body, response, index) => send(response, '不可发布的未完成答复', index, { prompt_tokens: 100, completion_tokens: 8192, total_tokens: 8292 }, 'length'))
+    const run = await context(model.url, { responseKind: 'chat', materialRefs: [{ id: 'material', revision: 1, contentHash: 'hash', parseVersion: 'text-v1', conversationId: 'conversation' }], recallMemory: async () => ({ entries: [], epoch: 1, namespace: 'employee:agent-a' }) })
+    await expect(new MastraEngine().run(run.ctx)).rejects.toThrow('模型回复超过输出限制')
+    expect(run.deltas).toEqual([]); expect(model.requests).toHaveLength(1); expect(run.additionalCalls).toEqual([])
   })
 
   it('sends configured model/key and yields real streaming deltas with correct conversation projection', async () => {

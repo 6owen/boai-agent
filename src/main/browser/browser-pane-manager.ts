@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 页面实际destroyed结束原JavaScript查询等待；仅请求关闭或超时不代替退出，正常/失败回执均清理监听器。
  * [OUTPUT]: 实际销毁后释放WebContents网络计数/时间戳，迟到或无所属页面事件不重新登记。
  * [OUTPUT]: 明确销毁先关闭真实页面以解除挂起CDP，再核对全部WebContents退出和命令settle；不以超时代替退出。
  * [OUTPUT]: BOAI就绪门禁等待Craft初始页面实际载入，初始化失败明确返回；移除会覆盖随后导航的迟到about:blank回退。
@@ -1506,7 +1507,7 @@ export class BrowserPaneManager {
       const selector = args.value?.trim()
       if (!selector) throw new Error('browser_wait selector requires value')
       return until(async () => {
-        const exists = await instance.pageView.webContents.executeJavaScript(
+        const exists = await this.evaluatePage(instance,
           `Boolean(document.querySelector(${JSON.stringify(selector)}))`
         )
         return Boolean(exists)
@@ -1517,7 +1518,7 @@ export class BrowserPaneManager {
       const text = args.value?.trim()
       if (!text) throw new Error('browser_wait text requires value')
       return until(async () => {
-        const found = await instance.pageView.webContents.executeJavaScript(
+        const found = await this.evaluatePage(instance,
           `document.body && document.body.innerText && document.body.innerText.includes(${JSON.stringify(text)})`
         )
         return Boolean(found)
@@ -1609,8 +1610,24 @@ export class BrowserPaneManager {
   }
 
   async evaluate(id: string, expression: string): Promise<unknown> {
-    const instance = this.requireAliveInstance(id)
-    return instance.pageView.webContents.executeJavaScript(expression)
+    return this.evaluatePage(this.requireAliveInstance(id), expression)
+  }
+
+  private async evaluatePage(instance: BrowserInstance, expression: string): Promise<unknown> {
+    const contents = instance.pageView.webContents
+    if (contents.isDestroyed()) throw new Error('浏览器页面已实际退出，原动作结果未知')
+    let rejectDestroyed!: (error: Error) => void
+    const exited = new Promise<never>((_resolve, reject) => { rejectDestroyed = reject })
+    const onDestroyed = () => rejectDestroyed(new Error('浏览器页面已实际退出，原动作结果未知'))
+    contents.once('destroyed', onDestroyed)
+    try {
+      // Electron can leave executeJavaScript pending after an unresponsive page
+      // dies. Actual WebContents destruction is an end to execution; a close
+      // request or elapsed deadline is not. Keep the original reply otherwise.
+      return await Promise.race([contents.executeJavaScript(expression), exited])
+    } finally {
+      contents.removeListener('destroyed', onDestroyed)
+    }
   }
 
   async detectSecurityChallenge(id: string): Promise<{ detected: boolean; provider: string; signals: string[] }> {

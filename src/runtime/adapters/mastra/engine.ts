@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Material replies use bounded capacity matched to the effective model; original length/EOF rejection, per-call admission and no automatic chat retry remain.
  * [OUTPUT]: 明确纠正/遗忘时可删除全部bobo Mastra派生thread，下轮从获准产品原件重建。
  * [OUTPUT]: 私有判断显示全部本人绑定技能和实际任务命令/文件能力，目录元信息不扩权。
  * [OUTPUT]: 私聊相册元信息/删除使用员工固定身份工具；读取无需文件Work。
@@ -65,7 +66,7 @@ import type { Connection, MemoryCandidate, ModelUsage, ParticipationDecision, To
 import { isBrowserCapableAgent } from '../../../shared/domain'
 import type { AgentEngine, EngineContext, AutomationDraftContext } from '../../contracts'
 import { assertApiContext, PARTICIPATION_TIMEOUT_MS } from '../../contracts'
-import { thinkingProviderOptions, decisionProviderOptions, modelConfig } from './model-config'
+import { thinkingProviderOptions, decisionProviderOptions, modelConfig, responseOutputTokens } from './model-config'
 import { gatewayRouteObserver } from './gateway-route'
 import { assertStreamCompleted } from './stream-completion'
 import { supportsThinkingControl } from '../../../shared/domain/model-preferences'
@@ -213,7 +214,7 @@ export class MastraEngine implements AgentEngine {
         const observeRoute = gatewayRouteObserver(ctx, () => callIds.at(-1))
         const output = await agent.stream(messages, {
           ...(boboMemory ? { memory: boboMemory.option } : {}),
-          abortSignal: signal, maxSteps: task ? taskSteps : (ctx.application || ctx.manageSkills || ctx.manageDataSources) ? 16 : (ctx.agent.skillIds.length || ctx.recallMemory || ctx.reactions || ctx.personality || ctx.manageAutomation || ctx.createDataSource || hasKnowledge(ctx) || hasChatSourceTools(ctx)) ? 8 : 1, modelSettings: { maxOutputTokens: task ? 8192 : 2500 },
+          abortSignal: signal, maxSteps: task ? taskSteps : (ctx.application || ctx.manageSkills || ctx.manageDataSources) ? 16 : (ctx.agent.skillIds.length || ctx.recallMemory || ctx.reactions || ctx.personality || ctx.manageAutomation || ctx.createDataSource || hasKnowledge(ctx) || hasChatSourceTools(ctx)) ? 8 : 1, modelSettings: { maxOutputTokens: responseOutputTokens(ctx, task) },
           providerOptions: thinkingProviderOptions(ctx.connection, ctx.agent.modelId, ctx.agent.thinkingLevel, task ? 'task' : 'chat', ctx.modelCatalog),
           onStepFinish: async event => {
             previousFinish = { reason: event.finishReason }

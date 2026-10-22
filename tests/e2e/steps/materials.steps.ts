@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 新资源循环按现行多标签合同逐个关闭DOCX/PDF，保留7轮/5空闲、全部卸载与原资源断言；不改变产品关闭语义。
+ * [OUTPUT]: 新增PDF/Office预览7轮切换/翻页/关闭和5次空闲的真实资源采样，沿原共享门槛，业务记录与模型请求不变。
  * [OUTPUT]: 失败原因沿当前Sonner唯一提示核验，材料失败/禁发/原件及其他草稿保持。
  * [OUTPUT]: 材料预览保留来源身份，解析与材料版号不显示。
  * [OUTPUT]: 源码隐藏行号栏，来源定位核对实际选中正文行。
@@ -18,6 +20,7 @@ import { sampleDocx, sampleXlsx, samplePptx, createSamplePdf } from '../../lody/
 import { test as base } from '../support/test'
 import type { Desktop } from '../support/desktop'
 import { observeWorkViews } from '../support/work-views'
+import { resourceSample, verifyResources, type ResourceSample } from '../support/background-resources'
 import { messageDraft } from '../support/editor-controls'
 import { dropNativeMaterialFile, forgedMaterialRequests, managedMaterialFiles, legacyMaterialGrant, materialOriginal, materialRecords, materialReplyFault, materialSendReplyFault, nextMaterialDialog, prepareMaterialsDesktop, temporarilyRemoveMaterialOriginal } from '../support/materials'
 import type { ConversationMaterial } from '../../../src/shared/domain/materials'
@@ -593,4 +596,42 @@ Then('Lody迟到二进制预览在清理后不能恢复原件', async ({ runtime
   expect(after.materials).toEqual([]); expect(after.messages).toEqual([])
   expect(fixture.endpoint.requests).toHaveLength(materialsState.modelCalls!)
   await runtime.reviewCheckpoint('真实材料清理后迟到字节不恢复文件标签')
+})
+
+
+Then('PDF翻页和Office切换反复关闭后短期资源有界且旧任务不重做', async ({ runtime, materialsState: state }) => {
+  const page = runtime.page, fixture = state.fixture!, before = await detail(runtime, fixture.direct.id)
+  const cdp = await runtime.app.context().newCDPSession(page)
+  const samples: ResourceSample[] = [], interactionMs: number[] = []
+  const cycle = async () => {
+    const started = Date.now()
+    await page.getByRole('button', { name: '预览材料 Lody切换.pdf', exact: true }).click()
+    const pdf = page.locator('[data-binary-viewer="pdf"]:visible')
+    await expect(pdf.locator('.textLayer').getByText('Overview', { exact: true })).toBeVisible()
+    await pdf.getByRole('button', { name: '下一页', exact: true }).click()
+    await expect(pdf.getByRole('spinbutton', { name: '页码', exact: true })).toHaveValue('2')
+    await page.getByRole('button', { name: '预览材料 Lody切换.docx', exact: true }).click()
+    await expect(page.locator('[data-binary-viewer="docx"]:visible').getByText('Quarterly report', { exact: true })).toBeVisible()
+    await expect(page.locator('[data-binary-viewer="pdf"]')).toHaveCount(0)
+    // The established close action closes ONE tab and selects its previous neighbor.
+    await page.getByRole('button', { name: '关闭详情', exact: true }).click()
+    await expect(page.locator('[data-binary-viewer="docx"]')).toHaveCount(0)
+    await expect(page.locator('[data-binary-viewer="pdf"]:visible')).toBeVisible()
+    await page.getByRole('button', { name: '关闭详情', exact: true }).click()
+    await expect(page.locator('[data-binary-viewer]')).toHaveCount(0)
+    return Date.now() - started
+  }
+  try {
+    // Finish the original parsers/fonts' first use before measuring repeated retention.
+    await cycle(); samples.push(await resourceSample(runtime, cdp))
+    for (let index = 0; index < 7; index++) { interactionMs.push(await cycle()); samples.push(await resourceSample(runtime, cdp)) }
+    for (let index = 0; index < 5; index++) { await page.waitForTimeout(1000); samples.push(await resourceSample(runtime, cdp)) }
+    await runtime.reviewData('PDF和Office反复预览短期资源', { samples, interactionMs, measuredCycles: 7, warmupCycles: 1, idleSamples: 5, resourceContract: 'existing verifyResources unchanged', longTermLeak: 'not assessed' })
+    verifyResources(samples)
+    const after = await detail(runtime, fixture.direct.id)
+    expect(after.messages).toEqual(before.messages); expect(after.runs).toEqual(before.runs); expect(after.workItems).toEqual(before.workItems); expect(after.materials).toEqual(before.materials)
+    expect(fixture.endpoint.requests).toHaveLength(state.modelCalls!)
+    expect(runtime.errors).toEqual([])
+    await runtime.reviewCheckpoint('PDF和Office反复预览关闭后原记录保持')
+  } finally { await cdp.detach() }
 })

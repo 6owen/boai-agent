@@ -2,6 +2,7 @@
  * [OUTPUT]: API目录Card添加/只读/取消/确认移除与重启持久，未运行模型或改动用户业务原件。
  * [OUTPUT]: 本机配置优先：旧API目录保留、原生权限恢复、明确cwd和重启零重放。
  * [INPUT]: 原Desktop/BDD、真实组合审批卡、IPC回执和隔离业务文件。
+ * [OUTPUT]: 审批指针事件及原15秒终态失败时的真实状态留证；不重试点击、不放宽断言或期限。
  * [OUTPUT]: 多目录一次批准/整组拒绝、永久仅保存目录、本次授权结束失效与重启零重放的桌面证据。
  * [POS]: 员工目录授权真实界面步骤；协议响应受控，文件及权限不由测试代执行。
  * [PROTOCOL]: 变化同步Header与所属.folder.md。
@@ -26,11 +27,19 @@ async function send(runtime: Desktop, f: Fixture, requestId: string) {
   await runtime.page.getByRole('navigation', { name: '会话列表' }).getByRole('button', { name: '目录同事', exact: true }).click()
 }
 async function idle(runtime: Desktop, f: Fixture, count: number) {
-  await expect.poll(async () => {
-    const detail = await runtime.page.evaluate(id => window.boai.request('getConversation', { id }), f.conversation.id)
-    const runs = detail.runs.filter(run => run.phase === 'execution')
-    return runs.length === count && detail.runs.every(run => ['completed', 'failed', 'cancelled', 'interrupted'].includes(run.status))
-  }).toBe(true)
+  try {
+    await expect.poll(async () => {
+      const detail = await runtime.page.evaluate(id => window.boai.request('getConversation', { id }), f.conversation.id)
+      const runs = detail.runs.filter(run => run.phase === 'execution')
+      return runs.length === count && detail.runs.every(run => ['completed', 'failed', 'cancelled', 'interrupted'].includes(run.status))
+    }).toBe(true)
+  } catch (error) {
+    try {
+      const state = await runtime.page.evaluate(async id => ({ detail: await window.boai.request('getConversation', { id }), snapshot: await window.boai.request('snapshot', undefined) }), f.conversation.id)
+      await runtime.reviewData('目录原终态等待失败的实际状态', { expectedExecutionRuns: count, ...state, requestCount: f.endpoint.requests.length, protocolErrors: f.errors, rendererErrors: runtime.errors })
+    } catch { /* Original assertion remains authoritative even if failure evidence cannot be read. */ }
+    throw error
+  }
 }
 async function successfulFiles(runtime: Desktop, f: Fixture) {
   expect(await readFile(f.marker, 'utf8')).toBe('once'); expect(await readFile(f.result, 'utf8')).toBe('DIRECTORY_REPORT_ORIGINAL')
@@ -52,7 +61,18 @@ When('在原目录审批卡允许读取本次数据源', async ({ runtime, direc
   const before = await runtime.page.evaluate(id => window.boai.request('getConversation', { id }), f.conversation.id)
   expect(before.messages.some(message => message.senderType === 'agent' && message.content.includes('DIRECTORY_REPORT_ORIGINAL'))).toBe(false)
   await runtime.reviewNativeCheckpoint('源已绑定但读取正文仍等待目录批准')
+  await runtime.page.evaluate(() => {
+    const events: unknown[] = []
+    Object.assign(globalThis, { __boaiDirectoryApprovalPointers: events })
+    for (const type of ['pointerdown', 'pointerup', 'click']) document.addEventListener(type, event => {
+      const target = event.target instanceof Element ? event.target : undefined
+      const button = target?.closest('button'), bounds = button?.getBoundingClientRect()
+      const pointer = event as MouseEvent
+      events.push({ type, target: target?.tagName, button: button?.textContent, clientX: pointer.clientX, clientY: pointer.clientY, trusted: event.isTrusted, region: target?.closest('[role="region"]')?.getAttribute('aria-label'), bounds: bounds && { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height }, at: performance.now() })
+    }, { capture: true, once: true })
+  })
   await approval.getByRole('button', { name: '允许本次运行', exact: true }).click()
+  await runtime.reviewData('目录审批真实指针事件', await runtime.page.evaluate(() => (globalThis as unknown as { __boaiDirectoryApprovalPointers: unknown[] }).__boaiDirectoryApprovalPointers))
   await idle(runtime, f, 1)
   await expect(runtime.page.getByText('实际源正文：DIRECTORY_REPORT_ORIGINAL', { exact: true })).toBeVisible()
   await runtime.reviewNativeCheckpoint('目录批准后实际数据源正文返回')

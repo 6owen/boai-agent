@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: dev/完整宿主构建将同一版本与输入hash固化进运行时；结束重核输入，不依赖可能已被后续构建覆盖的dist文件。
  * [OUTPUT]: 先构建共享设计包；Node产物内联纯tokens，保留独立serve和桌面运行。
  * [OUTPUT]: 完整构建核对输入前后一致，并登记dist输入/产物hash供UI及发布复验，避免测试旧构建。
  * [OUTPUT]: 2026-10-20构建并分发预置应用图标和macOS本机图标辅助程序。
@@ -31,24 +32,27 @@ import { buildDesign } from './design-packages.mjs'
 import { build as buildRenderer } from 'vite'
 import { buildInputHash, recordBuildIdentity } from './build-identity.mjs'
 
-
 // Bundle workspace tokens into runtime artifacts, including packages: external builds.
 const build = options => esbuild({ ...options, alias: { '@boai/tokens': resolve('packages/tokens/src/index.ts'), '@boai/tokens/typography': resolve('packages/tokens/src/typography.ts'), ...options.alias } })
 
-export async function buildHost() {
+export async function buildHost({ inputHash } = {}) {
   await buildDesign()
+  const inputs = inputHash ?? await buildInputHash()
+  const { version } = JSON.parse(await readFile('package.json', 'utf8'))
+  const define = { __BOAI_APPLICATION_BUILD__: JSON.stringify({ version, inputHash: inputs }) }
+  const compile = options => build({ ...options, define })
   await buildProcessGuard()
   await buildDesktopActivity()
   await buildAppIcon()
   await Promise.all([
     buildRuntimePlugins(),
-    build({ entryPoints: ['src/cli/employee-tools.ts'], outfile: 'dist/cli/employee-tools.mjs', bundle: true, platform: 'node', format: 'esm', target: 'node22', external: ['bufferutil', 'utf-8-validate'], banner: { js: "import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);" }, sourcemap: true }),
-    build({ entryPoints: ['src/cli/index.ts'], outfile: 'dist/cli/index.mjs', bundle: true, platform: 'node', format: 'esm', target: 'node22', external: ['bufferutil', 'utf-8-validate'], banner: { js: "#!/usr/bin/env node\nimport { createRequire as cliCreateRequire } from 'node:module'; const require = cliCreateRequire(import.meta.url);" }, sourcemap: true }),
-    build({ entryPoints: ['src/main/main.ts'], outfile: 'dist/main/main.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron', '@libsql/client'], sourcemap: true }),
-    build({ entryPoints: ['src/main/browser-toolbar-preload.ts'], outfile: 'dist/main/browser-toolbar-preload.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron'] }),
-    build({ entryPoints: ['src/main/preload.ts'], outfile: 'dist/main/preload.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron'] }),
-    build({ entryPoints: ['src/runtime/worker.ts'], outfile: 'dist/runtime/worker.mjs', bundle: true, platform: 'node', format: 'esm', target: 'node22', packages: 'external', sourcemap: true }),
-    build({ entryPoints: ['src/runtime/serve.ts'], outfile: 'dist/runtime/serve.mjs', bundle: true, platform: 'node', format: 'esm', target: 'node22', packages: 'external', sourcemap: true }),
+    compile({ entryPoints: ['src/cli/employee-tools.ts'], outfile: 'dist/cli/employee-tools.mjs', bundle: true, platform: 'node', format: 'esm', target: 'node22', external: ['bufferutil', 'utf-8-validate'], banner: { js: "import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);" }, sourcemap: true }),
+    compile({ entryPoints: ['src/cli/index.ts'], outfile: 'dist/cli/index.mjs', bundle: true, platform: 'node', format: 'esm', target: 'node22', external: ['bufferutil', 'utf-8-validate'], banner: { js: "#!/usr/bin/env node\nimport { createRequire as cliCreateRequire } from 'node:module'; const require = cliCreateRequire(import.meta.url);" }, sourcemap: true }),
+    compile({ entryPoints: ['src/main/main.ts'], outfile: 'dist/main/main.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron', '@libsql/client'], sourcemap: true }),
+    compile({ entryPoints: ['src/main/browser-toolbar-preload.ts'], outfile: 'dist/main/browser-toolbar-preload.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron'] }),
+    compile({ entryPoints: ['src/main/preload.ts'], outfile: 'dist/main/preload.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron'] }),
+    compile({ entryPoints: ['src/runtime/worker.ts'], outfile: 'dist/runtime/worker.mjs', bundle: true, platform: 'node', format: 'esm', target: 'node22', packages: 'external', sourcemap: true }),
+    compile({ entryPoints: ['src/runtime/serve.ts'], outfile: 'dist/runtime/serve.mjs', bundle: true, platform: 'node', format: 'esm', target: 'node22', packages: 'external', sourcemap: true }),
   ])
   await cp('src/runtime/modules/presentations/alma', 'dist/runtime/alma', { recursive: true, filter: path => basename(path) !== '.folder.md' })
   await mkdir('dist/main/app-icons', { recursive: true })
@@ -66,10 +70,11 @@ export async function buildHost() {
   await copyFile('src/runtime/adapters/channels/rovai/source-manifest.json', 'dist/runtime/rovai-channels-source-manifest.json')
   await copyFile('src/runtime/modules/workspaces/hermes/LICENSE.txt', 'dist/runtime/hermes-file-tools-LICENSE.txt')
   await copyFile('src/runtime/modules/workspaces/hermes/source-manifest.json', 'dist/runtime/hermes-file-tools-source-manifest.json')
+  if (await buildInputHash() !== inputs) throw new Error('宿主构建期间源码或资源变化，请重新构建后启动')
 }
 if (process.argv[1]?.endsWith('build.mjs')) {
   const inputs = await buildInputHash()
-  await buildHost()
+  await buildHost({ inputHash: inputs })
   await buildRenderer()
   for (const name of ['LICENSE.txt', 'NOTICE.txt', 'source-manifest.json']) await copyFile(`src/renderer/styles/craft-scenic/${name}`, `dist/renderer/craft-scenic-${name}`)
   await copyFile('src/shared/appearance/BASE46-LICENSE.txt', 'dist/renderer/BASE46-LICENSE.txt')

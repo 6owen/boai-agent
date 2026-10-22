@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 /*
+ * [OUTPUT]: 协议夹具支持仅第二员工提问延迟1200ms，真实提问/回答协议保持；不认证模型或生产延迟。
  * [OUTPUT]: 执行未完成时的正文/思考增量回归，最终答复与私有协议字段保持分离。
  * [OUTPUT]: 固定文件修订从宿主授权原消息取 revisionRequestId，允许独立内部会话无旧交付历史；普通同会话修订保持。
  * [OUTPUT]: 新增先错误result再非零退出协议，不代替真实供应商错误。
@@ -78,6 +79,7 @@ createInterface({input:process.stdin}).on('line',async line=>{
  let reply=await business(prompt,tool)??'普通回复'
  if(text.includes('NATIVE_APPROVAL')){const answer=await ask('Bash',{command:'write permission-marker'});if(answer.behavior==='allow'){await writeFile('permission-marker','approved');reply='已批准并写入'}else reply='已拒绝，未执行'}
  if(prompt.messages.at(-1)?.content.includes('NATIVE_QUESTION')){
+  if(text.includes('NATIVE_DELAYED_QUESTION')&&prompt.members?.find(member=>member.id===prompt.employeeId)?.name==='第二位提问员工')await new Promise(resolve=>setTimeout(resolve,1200))
   if(text.includes('NATIVE_HIGH_USAGE'))stream({type:'message_delta',usage:{output_tokens:29653}})
   const answer=await ask('AskUserQuestion',{questions:[{question:'这个文档针对什么产品？'}]})
   const content=answer.updatedInput.answers['这个文档针对什么产品？']

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Material-backed replies share the existing bounded task output capacity, capped by the selected model's valid catalog ceiling; ordinary chat retains its default.
  * [OUTPUT]: 模型ID共用1000字符/无控制符边界，完整供应商前缀及原生模型名不截断。
  * [OUTPUT]: Magpie三协议共用根地址和认证解析，SDK保留完整模型ID及已核对目录的推理档位；旧直连路径保持。
  * [INPUT]: 模型连接、API Key、可选模型覆盖、OpenAI 接口协议与员工思考强度。
@@ -12,6 +13,14 @@ import type { Connection } from '../../../shared/domain'
 import { gatewayApiKey, gatewayEndpoint, type ModelCatalog } from '../../../shared/domain/model-gateway'
 import { assertThinkingPreference, supportsThinkingControl, type ThinkingLevel } from '../../../shared/domain/model-preferences'
 import { gatewayMessagesModel } from './gateway-messages-model'
+import type { EngineContext } from '../../contracts'
+
+export function responseOutputTokens(context: Pick<EngineContext, 'agent' | 'connection' | 'modelCatalog' | 'materialRefs' | 'materialImages'>, task: boolean): number {
+  const desired = task || context.materialRefs?.length || context.materialImages?.length ? 8192 : 2500
+  const modelId = (context.agent.modelId || context.connection?.defaultModel || '').trim()
+  const maximum = context.modelCatalog?.models.find(model => model.id === modelId)?.maxOutputTokens
+  return typeof maximum === 'number' && Number.isSafeInteger(maximum) && maximum > 0 ? Math.min(desired, maximum) : desired
+}
 
 type ModelProviderOptions = { openai: { thinking?: { type: 'disabled' | 'enabled' }; reasoningEffort?: string; forceReasoning?: boolean; response_format?: { type: 'json_object' } } }
   | { magpie: { reasoningEffort: string } }
