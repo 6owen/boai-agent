@@ -1,23 +1,7 @@
-/* [INPUT]: Beautiful UI shimmer.json原件。 [OUTPUT]: 原版等待文案动效，token/keyframes隔离。 [POS]: SelectionActions依赖。 [PROTOCOL]: 同步.folder.md。 */
-/** Shimmering label — signals the agent is processing. */
-export function SelectionActionsShimmer({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <span
-      className={`inline-block bg-clip-text text-transparent ${className}`}
-      style={{
-        backgroundImage:
-          "linear-gradient(90deg, var(--bui-ink-3) 35%, var(--bui-ink) 50%, var(--bui-ink-3) 65%)",
-        backgroundSize: "200% 100%",
-        animation: "bui-shimmer-text 1.8s linear infinite",
-      }}
-    >
-      {children}
-    </span>
-  );
-}
+/*
+ * [INPUT]: BOAI公共组件。
+ * [OUTPUT]: 兼容转发，桌面与设计站使用同一实现。
+ * [POS]: src/renderer/components/ui/selection-actions-shimmer.tsx
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header与所属目录.folder.md。
+ */
+export * from '@boai/ui/selection-actions-shimmer'

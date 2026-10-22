@@ -1,41 +1,20 @@
 /*
- * [INPUT]: BOAI共享组件与局部示例状态。
- * [OUTPUT]: 交互示例目录真实示例；页面展示此文件的实际源码。
- * [POS]: 设计站公开示例，不连接BOAI业务服务。
- * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
+ * [INPUT]: 公共示例目录、BOAI组件及共享字体/主题。
+ * [OUTPUT]: 按需加载的独立文档预览与真实源码。
+ * [POS]: 设计站展示层，无业务API。
+ * [PROTOCOL]: 修改时同步Header与所属目录.folder.md。
  */
+import { lazy, Suspense, type ComponentType } from 'react'
 import { Preview } from './preview'
-import ButtonExample from './examples/button'
-import buttonSource from './examples/button.tsx?raw'
-import InputExample from './examples/input'
-import inputSource from './examples/input.tsx?raw'
-import CardExample from './examples/card'
-import cardSource from './examples/card.tsx?raw'
-import SkeletonExample from './examples/skeleton'
-import skeletonSource from './examples/skeleton.tsx?raw'
-import BadgeExample from './examples/badge'
-import badgeSource from './examples/badge.tsx?raw'
-import SonnerExample from './examples/sonner'
-import sonnerSource from './examples/sonner.tsx?raw'
-import SettingsExample from './examples/settings'
-import settingsSource from './examples/settings.tsx?raw'
-import TypographyExample from './examples/typography'
-import typographySource from './examples/typography.tsx?raw'
-
-export { SettingsExample, TypographyExample }
-export const exampleSources = {
-  button: buttonSource.replace(/^\/\*[\s\S]*?\*\/\s*/, ''),
-  input: inputSource.replace(/^\/\*[\s\S]*?\*\/\s*/, ''),
-  card: cardSource.replace(/^\/\*[\s\S]*?\*\/\s*/, ''),
-  skeleton: skeletonSource.replace(/^\/\*[\s\S]*?\*\/\s*/, ''),
-  badge: badgeSource.replace(/^\/\*[\s\S]*?\*\/\s*/, ''),
-  sonner: sonnerSource.replace(/^\/\*[\s\S]*?\*\/\s*/, ''),
-  settings: settingsSource.replace(/^\/\*[\s\S]*?\*\/\s*/, ''),
-  typography: typographySource.replace(/^\/\*[\s\S]*?\*\/\s*/, ''),
+const modules = import.meta.glob<{ default: ComponentType }>('./examples/*.tsx')
+const examples = Object.fromEntries(Object.entries(modules).map(([path, loader]) => [path.split('/').pop()!.replace('.tsx', ''), lazy(loader)]))
+const sources = import.meta.glob<string>('./examples/*.tsx', { query: '?raw', import: 'default' })
+export const hasExample = (name: string) => name in examples
+export async function exampleSource(name: string) { return (await sources[`./examples/${name}.tsx`]?.())?.replace(/^\/\*[\s\S]*?\*\/\s*/, '') ?? '' }
+export function ExampleContent({ name }: { name: string }) {
+ const Example = examples[name]
+ return Example ? <Suspense fallback={<p role="status">加载示例…</p>}><Example /></Suspense> : <p>示例不存在</p>
 }
-const examples = { button: ButtonExample, input: InputExample, card: CardExample, skeleton: SkeletonExample, badge: BadgeExample, sonner: SonnerExample, settings: SettingsExample }
 export function ComponentExample({ name, title }: { name: string; title: string }) {
-  const key = name as keyof typeof examples
-  const Example = examples[key]
-  return Example ? <Preview code={exampleSources[key]} label={title}><Example /></Preview> : null
+ return hasExample(name) ? <Preview name={name} label={title} /> : null
 }

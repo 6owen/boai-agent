@@ -6,6 +6,17 @@
  */
 @import '@boai/tokens/foundation.css';
 @import './theme.css';
+@import './utilities.css';
+@import 'tw-animate-css';
+@import './icons.css' layer(components);
+@import './tabs-motion.css' layer(components);
+@import './compositions.css' layer(components);
+@import './execution-state.css' layer(components);
+@import './selection-actions.css' layer(components);
+@import './panel-resize.css' layer(components);
+@import './code.css' layer(components);
+@import './typeset.css' layer(components);
+@import './shadcn-typeset.css' layer(components);
 @import './skin.css' layer(components);
 @source './components';
 @custom-variant dark (&:where(.dark, .dark *));
@@ -24,3 +35,14 @@
     [data-slot=skeleton] { animation:none }
   }
 }
+
+@layer components {
+  :where([data-slot]):focus-visible { outline:2px solid var(--ring);outline-offset:3px }
+  :where([data-slot=dialog-content],[data-slot=popover-content],[data-slot=sheet-content],[data-slot=toggle],[data-slot=tabs-trigger]) { corner-shape:squircle }
+}
+
+@layer base { :where([data-slot]) { border-color:var(--border) } }
+
+/* Public consumers keep keyboard focus even when a primitive resets its outline. */
+:where([data-slot]):focus-visible,
+[data-slot=number-field-group]:has(input:focus-visible) { outline:2px solid var(--ring);outline-offset:3px }

@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 快捷键偏好、回执、窗口捕获与退出保存沿原受控 IPC。
+ * [OUTPUT]: 提示词集合读取及版本化分组/排序合同，与正文版本独立。
+ * [OUTPUT]: 清理开始事件先于读取失效，完成事件携带隐藏状态，供界面停读和准确移出列表。
  * [OUTPUT]: 2026-10-20全局字体与应用图标设置接入原外观持久化和宿主协议。
  * [OUTPUT]: 私有桌面活动采集合同与侧栏终端/预览定位事件。
  * [OUTPUT]: 全局提示词目录列表与版本化保存/删除，沿现有桌面IPC。
@@ -67,6 +70,7 @@
  * [POS]: shared/ipc 的唯一方法与事件合同。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import type { ShortcutSnapshot, ShortcutUpdate, ShortcutReceipt } from '../shortcuts'
 import type { TeamCreationOperation, TeamGeneration, TeamDraft, TeamEditable, TeamDraftView, TeamRecovery } from '../domain/team-creation'
 import type { StartCoreConversationInput } from '../domain/core-agent'
 import type { BrowserControlInput, BrowserWindowState, BrowserManualOpenInput } from './browser'
@@ -95,13 +99,17 @@ export type AppEvent =
   | { type: 'automation:history-deleted'; occurrenceId: string }
   | { type: 'plugins:changed'; settings: PluginSettingsSnapshot }
   | { type: 'desktop:changed'; settings: DesktopSettings }
+  | { type: 'shortcuts:changed'; settings: ShortcutSnapshot }
+  | { type: 'shortcuts:capture-ended' }
+  | { type: 'shortcuts:flush'; requestId: string; discard?: boolean }
   | { type: 'appearance:flush' }
   | { type: 'appearance:changed'; appearance: AppearanceSnapshot }
   | { type: 'app-icon:changed'; status: AppIconStatus }
   | { type: 'automation:notice' }
   | { type: 'automation:navigate' }
   | { type: 'focus-conversation'; conversationId: string; messageId?: string }
-  | { type: 'conversation:cleared'; conversationId: string }
+  | { type: 'conversation:clearing'; conversationId: string }
+  | { type: 'conversation:cleared'; conversationId: string; hidden?: boolean }
   | { type: 'conversation:deleted'; conversationId: string }
   | { type: 'contact-list:changed' }
   | { type: 'browser:changed' }
@@ -127,6 +135,8 @@ export interface Methods {
   getGatewayImportReceipt: { input: { requestId: string }; output: import('../domain/gateway-import').GatewayImportReceipt | null }
   listCatalogResults: { input: { conversationId: string }; output: import('../domain/catalog-management').CatalogResult[] }
   listDataSources: { input: undefined; output: import('../domain/sources').DataSource[] }
+  getPromptCollections: { input: undefined; output: import('../domain/prompt-templates').PromptCollections }
+  updatePromptCollections: { input: import('../domain/prompt-templates').PromptCollectionChange; output: import('../domain/prompt-templates').PromptCollections }
   listPromptTemplates: { input: undefined; output: import('../domain/prompt-templates').PromptTemplate[] }
   savePromptTemplate: { input: import('../domain/prompt-templates').SavePromptTemplateInput; output: import('../domain/prompt-templates').PromptTemplate }
   removePromptTemplate: { input: { id: string; expectedRevision: number }; output: void }
@@ -279,6 +289,11 @@ export interface Methods {
   testLaunchProfileDraft: { input: LaunchProfileInput; output: NonNullable<LaunchProfile['verified']> }
   sendExternalTask: { input: { conversationId: string; content: string; requestId: string }; output: Message }
   getExternalTaskReceipt: { input: { conversationId: string; requestId: string }; output: Message | null }
+  getShortcutSettings: { input: undefined; output: ShortcutSnapshot }
+  updateShortcutSettings: { input: ShortcutUpdate; output: ShortcutSnapshot }
+  getShortcutReceipt: { input: Pick<ShortcutUpdate, 'requestId' | 'expectedRevision'>; output: ShortcutReceipt }
+  setShortcutCapture: { input: { token: string; active: boolean }; output: boolean }
+  completeShortcutFlush: { input: { requestId: string; clean: boolean; settled: boolean }; output: void }
   getAppearance: { input: undefined; output: AppearanceSnapshot }
   getAppIconStatus: { input: undefined; output: AppIconStatus }
   retryAppIcon: { input: undefined; output: AppIconStatus }
@@ -365,7 +380,7 @@ export interface Methods {
   choosePath: { input: { kind: 'skill' | 'knowledge' }; output: string | null }
   openPath: { input: { path: string; action?: 'open' | 'reveal' }; output: void }
   exportBackup: { input: undefined; output: string | null }
-  setUnsavedChanges: { input: { dirty: boolean; source?: 'business' | 'appearance' }; output: void }
+  setUnsavedChanges: { input: { dirty: boolean; source?: 'business' | 'appearance' | 'shortcuts' }; output: void }
 }
 export type Method = keyof Methods
 export interface DesktopApi {

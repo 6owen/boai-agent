@@ -1,6 +1,6 @@
 <!--
 [INPUT]: BOAI共享组件与现行设计约定。
-[OUTPUT]: settings公开设计指南；只包含开发者使用信息。
+[OUTPUT]: settings公开设计指南；说明共享守卫的同步/异步宿主保存与放弃回执合同。
 [POS]: ai-docs/design-system公开内容白名单。
 [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
 -->
@@ -21,3 +21,13 @@
 ## 复用已有结构
 
 字段沿 [Input 与 Field](/components/input)，标题与页脚沿 [Card](/components/card)，动作沿 [Button](/components/button)。相同用途使用相同尺寸和层级，页面只组合已有部件。
+
+## 页面组件索引
+
+- [useEditorGuard](#api-use-editor-guard)：`@boai/ui/use-editor-guard`；useEditorGuard
+
+## 宿主自动保存与离开确认
+
+`useEditorGuard`的`beforeNavigate`可以返回Promise：宿主完成自动保存后再判断是否离开。`hasPendingChanges`提供宿主未决修改状态；`beforeDiscard`可异步核对放弃，只有返回true才执行重置和导航，false或异常保留原确认框。两次导航、明确保存或卸载会使较早的回执失效，避免迟到动作打开旧页面。没有宿主回调时，继续使用原同步草稿守卫。
+
+BOAI桌面适配器通过这些回调接入快捷键自动保存和回执核对；公共包不读取快捷键、外观配置或IPC。

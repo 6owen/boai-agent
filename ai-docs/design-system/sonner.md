@@ -27,3 +27,8 @@ BOAI 的操作、请求、加载、保存与表单校验错误统一使用 Sonne
 ## 浏览器边界
 
 此版 Toaster 将浮层挂到 `document.body`，只在浏览器中渲染。整个页面主题应覆盖 body。主题隔离的局部预览不在子容器内挂第二个 Toaster；预览中的动作仍由页面根部提示。
+
+## 页面组件索引
+
+- [ErrorToast](#api-error-feedback)：`@boai/ui/error-feedback`；showErrorToast, ErrorToast
+- [Toaster](#api-sonner)：`@boai/ui/sonner`；Toaster

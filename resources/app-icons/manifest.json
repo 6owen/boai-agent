@@ -6,26 +6,224 @@
   "tileCornerRadius": 185,
   "background": "#FFFFFF",
   "icons": [
-    { "id": "avatar-owl", "avatarId": "owl", "file": "rat.webp" },
-    { "id": "avatar-fox", "avatarId": "fox", "file": "ox.webp" },
-    { "id": "avatar-cat", "avatarId": "cat", "file": "tiger.webp" },
-    { "id": "avatar-rabbit", "avatarId": "rabbit", "file": "rabbit.webp" },
-    { "id": "avatar-bear", "avatarId": "bear", "file": "dragon.webp" },
-    { "id": "avatar-panda", "avatarId": "panda", "file": "snake.webp" },
-    { "id": "avatar-koala", "avatarId": "koala", "file": "horse.webp" },
-    { "id": "avatar-frog", "avatarId": "frog", "file": "goat.webp" },
-    { "id": "avatar-penguin", "avatarId": "penguin", "file": "monkey.webp" },
-    { "id": "avatar-hamster", "avatarId": "hamster", "file": "rooster.webp" },
-    { "id": "avatar-dog", "avatarId": "dog", "file": "dog.webp" },
-    { "id": "avatar-robot", "avatarId": "robot", "file": "pig.webp" },
-    { "id": "avatar-mint-cap", "avatarId": "mint-cap", "file": "mint-cap.webp" },
-    { "id": "avatar-coral-headphones", "avatarId": "coral-headphones", "file": "coral-headphones.webp" },
-    { "id": "avatar-purple-star", "avatarId": "purple-star", "file": "purple-star.webp" },
-    { "id": "avatar-yellow-square", "avatarId": "yellow-square", "file": "yellow-square.webp" },
-    { "id": "avatar-blue-moon", "avatarId": "blue-moon", "file": "blue-moon.webp" },
-    { "id": "avatar-red-mushroom", "avatarId": "red-mushroom", "file": "red-mushroom.webp" },
-    { "id": "avatar-mint-ring", "avatarId": "mint-ring", "file": "mint-ring.webp" },
-    { "id": "avatar-pink-beret", "avatarId": "pink-beret", "file": "pink-beret.webp" },
-    { "id": "avatar-purple-scarf", "avatarId": "purple-scarf", "file": "purple-scarf.webp" }
-  ]
+    {
+      "id": "avatar-owl",
+      "avatarId": "owl",
+      "file": "rat.webp",
+      "tray": {
+        "source": "tray/avatar-owl.svg",
+        "oneX": "tray/avatar-owlTemplate.png",
+        "twoX": "tray/avatar-owlTemplate@2x.png"
+      }
+    },
+    {
+      "id": "avatar-fox",
+      "avatarId": "fox",
+      "file": "ox.webp",
+      "tray": {
+        "source": "tray/avatar-fox.svg",
+        "oneX": "tray/avatar-foxTemplate.png",
+        "twoX": "tray/avatar-foxTemplate@2x.png"
+      }
+    },
+    {
+      "id": "avatar-cat",
+      "avatarId": "cat",
+      "file": "tiger.webp",
+      "tray": {
+        "source": "tray/avatar-cat.svg",
+        "oneX": "tray/avatar-catTemplate.png",
+        "twoX": "tray/avatar-catTemplate@2x.png"
+      }
+    },
+    {
+      "id": "avatar-rabbit",
+      "avatarId": "rabbit",
+      "file": "rabbit.webp",
+      "tray": {
+        "source": "tray/avatar-rabbit.svg",
+        "oneX": "tray/avatar-rabbitTemplate.png",
+        "twoX": "tray/avatar-rabbitTemplate@2x.png"
+      }
+    },
+    {
+      "id": "avatar-bear",
+      "avatarId": "bear",
+      "file": "dragon.webp",
+      "tray": {
+        "source": "tray/avatar-bear.svg",
+        "oneX": "tray/avatar-bearTemplate.png",
+        "twoX": "tray/avatar-bearTemplate@2x.png"
+      }
+    },
+    {
+      "id": "avatar-panda",
+      "avatarId": "panda",
+      "file": "snake.webp",
+      "tray": {
+        "source": "tray/avatar-panda.svg",
+        "oneX": "tray/avatar-pandaTemplate.png",
+        "twoX": "tray/avatar-pandaTemplate@2x.png"
+      }
+    },
+    {
+      "id": "avatar-koala",
+      "avatarId": "koala",
+      "file": "horse.webp",
+      "tray": {
+        "source": "tray/avatar-koala.svg",
+        "oneX": "tray/avatar-koalaTemplate.png",
+        "twoX": "tray/avatar-koalaTemplate@2x.png"
+      }
+    },
+    {
+      "id": "avatar-frog",
+      "avatarId": "frog",
+      "file": "goat.webp",
+      "tray": {
+        "source": "tray/avatar-frog.svg",
+        "oneX": "tray/avatar-frogTemplate.png",
+        "twoX": "tray/avatar-frogTemplate@2x.png"
+      }
+    },
+    {
+      "id": "avatar-penguin",
+      "avatarId": "penguin",
+      "file": "monkey.webp",
+      "tray": {
+        "source": "tray/avatar-penguin.svg",
+        "oneX": "tray/avatar-penguinTemplate.png",
+        "twoX": "tray/avatar-penguinTemplate@2x.png"
+      }
+    },
+    {
+      "id": "avatar-hamster",
+      "avatarId": "hamster",
+      "file": "rooster.webp",
+      "tray": {
+        "source": "tray/avatar-hamster.svg",
+        "oneX": "tray/avatar-hamsterTemplate.png",
+        "twoX": "tray/avatar-hamsterTemplate@2x.png"
+      }
+    },
+    {
+      "id": "avatar-dog",
+      "avatarId": "dog",
+      "file": "dog.webp",
+      "tray": {
+        "source": "tray/avatar-dog.svg",
+        "oneX": "tray/avatar-dogTemplate.png",
+        "twoX": "tray/avatar-dogTemplate@2x.png"
+      }
+    },
+    {
+      "id": "avatar-robot",
+      "avatarId": "robot",
+      "file": "pig.webp",
+      "tray": {
+        "source": "tray/avatar-robot.svg",
+        "oneX": "tray/avatar-robotTemplate.png",
+        "twoX": "tray/avatar-robotTemplate@2x.png"
+      }
+    },
+    {
+      "id": "avatar-mint-cap",
+      "avatarId": "mint-cap",
+      "file": "mint-cap.webp",
+      "tray": {
+        "source": "tray/avatar-mint-cap.svg",
+        "oneX": "tray/avatar-mint-capTemplate.png",
+        "twoX": "tray/avatar-mint-capTemplate@2x.png"
+      }
+    },
+    {
+      "id": "avatar-coral-headphones",
+      "avatarId": "coral-headphones",
+      "file": "coral-headphones.webp",
+      "tray": {
+        "source": "tray/avatar-coral-headphones.svg",
+        "oneX": "tray/avatar-coral-headphonesTemplate.png",
+        "twoX": "tray/avatar-coral-headphonesTemplate@2x.png"
+      }
+    },
+    {
+      "id": "avatar-purple-star",
+      "avatarId": "purple-star",
+      "file": "purple-star.webp",
+      "tray": {
+        "source": "tray/avatar-purple-star.svg",
+        "oneX": "tray/avatar-purple-starTemplate.png",
+        "twoX": "tray/avatar-purple-starTemplate@2x.png"
+      }
+    },
+    {
+      "id": "avatar-yellow-square",
+      "avatarId": "yellow-square",
+      "file": "yellow-square.webp",
+      "tray": {
+        "source": "tray/avatar-yellow-square.svg",
+        "oneX": "tray/avatar-yellow-squareTemplate.png",
+        "twoX": "tray/avatar-yellow-squareTemplate@2x.png"
+      }
+    },
+    {
+      "id": "avatar-blue-moon",
+      "avatarId": "blue-moon",
+      "file": "blue-moon.webp",
+      "tray": {
+        "source": "tray/avatar-blue-moon.svg",
+        "oneX": "tray/avatar-blue-moonTemplate.png",
+        "twoX": "tray/avatar-blue-moonTemplate@2x.png"
+      }
+    },
+    {
+      "id": "avatar-red-mushroom",
+      "avatarId": "red-mushroom",
+      "file": "red-mushroom.webp",
+      "tray": {
+        "source": "tray/avatar-red-mushroom.svg",
+        "oneX": "tray/avatar-red-mushroomTemplate.png",
+        "twoX": "tray/avatar-red-mushroomTemplate@2x.png"
+      }
+    },
+    {
+      "id": "avatar-mint-ring",
+      "avatarId": "mint-ring",
+      "file": "mint-ring.webp",
+      "tray": {
+        "source": "tray/avatar-mint-ring.svg",
+        "oneX": "tray/avatar-mint-ringTemplate.png",
+        "twoX": "tray/avatar-mint-ringTemplate@2x.png"
+      }
+    },
+    {
+      "id": "avatar-pink-beret",
+      "avatarId": "pink-beret",
+      "file": "pink-beret.webp",
+      "tray": {
+        "source": "tray/avatar-pink-beret.svg",
+        "oneX": "tray/avatar-pink-beretTemplate.png",
+        "twoX": "tray/avatar-pink-beretTemplate@2x.png"
+      }
+    },
+    {
+      "id": "avatar-purple-scarf",
+      "avatarId": "purple-scarf",
+      "file": "purple-scarf.webp",
+      "tray": {
+        "source": "tray/avatar-purple-scarf.svg",
+        "oneX": "tray/avatar-purple-scarfTemplate.png",
+        "twoX": "tray/avatar-purple-scarfTemplate@2x.png"
+      }
+    }
+  ],
+  "tray": {
+    "baseSize": 22,
+    "scales": [
+      1,
+      2
+    ],
+    "template": true,
+    "style": "hand-drawn-monochrome-v1"
+  }
 }

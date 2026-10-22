@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 原提示词CRUD夹具接入独立集合快照，不削减正文/删除所见版本断言。
  * [INPUT]: 实际资源库提示词Dialog、PromptBar/Tiptap与隔离IPC。
  * [OUTPUT]: @员工/$技能文件提示词候选分离，标签快照展开/文件核源；提示词创建查看编辑确认删除走同一版本合同。
  * [POS]: 前端组件回归，不运行Electron或模型。
@@ -79,7 +80,15 @@ it('verifies a selected $ file before inserting the original fixed source refere
 })
 
 it('creates, views, edits and confirms deletion of a library prompt using the seen revision', async () => {
-  const api = apiFor((method, value) => method === 'savePromptTemplate' ? { ...value, revision: value.expectedRevision + 1, createdAt: '', updatedAt: '' } : undefined)
+  let promptIds: string[] = [], revision = 0
+  const api = apiFor((method, value) => {
+    if (method === 'getPromptCollections') return { revision, promptIds: [...promptIds], groups: [], groupByPromptId: {} }
+    if (method === 'savePromptTemplate') {
+      if (!promptIds.includes(value.id)) { promptIds.push(value.id); revision++ }
+      return { ...value, revision: value.expectedRevision + 1, createdAt: '', updatedAt: '' }
+    }
+    if (method === 'removePromptTemplate') { promptIds = promptIds.filter(id => id !== value.id); revision++ }
+  })
   function Library() {
     const [prompts, setPrompts] = useState<PromptTemplate[]>([])
     return h(PromptTemplatesView, { api, prompts, onChanged: value => setPrompts(items => [value, ...items.filter(item => item.id !== value.id)]), onRemoved: id => setPrompts(items => items.filter(item => item.id !== id)) })

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 独立preview路由使用强制主题，Fumadocs壳保持默认圆角与用户SVG。
  * [INPUT]: 公开目录、Fumadocs布局/翻译Provider和React Router。
  * [OUTPUT]: 使用指定SVG标志的中文文档导航、移动侧栏、主题和搜索，不展示预览版本说明。
  * [POS]: 设计站应用壳；组件示例仍消费BOAI共享包。
@@ -15,6 +16,7 @@ import { useTheme } from 'next-themes'
 import { Toaster } from '@boai/ui'
 import content from 'virtual:boai-design-content'
 import { DesignPage } from './page'
+import { PreviewDocument } from './preview-document'
 import { DesignSearchDialog } from './search-dialog'
 
 const tree: Root = {
@@ -59,6 +61,7 @@ function SiteContent() {
     if (!hash) window.scrollTo({ top: 0 })
   }, [pathname, hash])
 
+  if (path === '/preview') return <PreviewDocument />
   return <>
     <DocsLayout
       tree={tree}
@@ -75,8 +78,11 @@ function SiteContent() {
 }
 
 export function App() {
+  const { pathname, search } = useLocation()
+  const preview = pathname.replace(/\/+$/, '') === '/preview'
+  const mode = new URLSearchParams(search).get('mode') === 'dark' ? 'dark' : 'light'
   return <RootProvider
-    theme={{ attribute: 'class', storageKey: 'boai-design:mode', defaultTheme: 'system', enableSystem: true }}
+    theme={{ attribute: 'class', storageKey: 'boai-design:mode', defaultTheme: 'system', enableSystem: true, ...(preview ? { forcedTheme: mode } : {}) }}
     i18n={i18nProvider(translations)}
     search={{ SearchDialog: DesignSearchDialog }}
   ><SiteContent /></RootProvider>

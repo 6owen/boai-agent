@@ -1,7 +1,7 @@
 /*
  * [OUTPUT]: 草稿切换先核对应会话数据/编辑器真实就绪，避免空草稿早于消息加载导致侧栏前缀缺失；原18基线/零像素门槛保持。
  * [INPUT]: 版本化UI合同、真实Electron、固定历史与隔离本机技能。
- * [OUTPUT]: 每员工唯一主单聊及明暗/窄窗页面；快捷键页排除输入/按钮/选择等编辑入口并核对原搜索，既有16场保持。
+ * [OUTPUT]: 每员工唯一主单聊及明暗/窄窗页面；快捷键页核对四行启停/录入且无保存按钮，保留原搜索断言；既有16场与像素阈值保持。
  * [POS]: UI回归BDD步骤；沿原Desktop生命周期，不修改产品DOM/CSS。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -137,8 +137,13 @@ Then('当前场景的真实交互和布局满足原约定', async ({ runtime, ui
       const row = content.locator('.appearance-row').filter({ hasText: label })
       await expect(row).toBeInViewport()
       await expect(row.locator('kbd')).toHaveText(`${process.platform === 'darwin' ? '⌘' : 'Ctrl'} ${key}`)
+      await expect(row.getByRole('switch', { name: label, exact: true })).toBeChecked()
+      await expect(row.getByRole('button', { name: `修改${label}快捷键`, exact: true })).toBeEnabled()
     }
-    await expect(content.locator('input, textarea, select, button, [role=button], [role=combobox], [role=switch], [role=checkbox], [role=radio], [role=spinbutton], [contenteditable]:not([contenteditable=false])')).toHaveCount(0)
+    await expect(content.getByRole('switch')).toHaveCount(4)
+    await expect(content.locator('[data-shortcut-recorder]')).toHaveCount(4)
+    await expect(content.getByRole('button', { name: '恢复默认', exact: true })).toBeEnabled()
+    await expect(content.getByRole('button', { name: /^(保存|应用)$/ })).toHaveCount(0)
     await page.keyboard.press(process.platform === 'darwin' ? 'Meta+k' : 'Control+k')
     await expect(page.getByRole('dialog', { name: '搜索会话内容', exact: true })).toBeVisible()
     await expect(page.getByRole('textbox', { name: '搜索关键词', exact: true })).toBeFocused()

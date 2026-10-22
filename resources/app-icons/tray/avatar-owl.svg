@@ -1,0 +1,6 @@
+<!-- [INPUT]: 小老鼠头像的简化角色特征。[OUTPUT]: 22点单色矢量托盘模板。[POS]: 托盘源图。[PROTOCOL]: 变化同步所属.folder.md。 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="#000" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+<g transform="translate(1.5 1.5) scale(.86)">
+<path d="M4.5 8.5C.3 8 1 2.2 5 2.8Q8 3 8.2 6M14 6Q14.3 2.4 17.6 2.8C21.7 3.2 21 8.5 17.5 8.5M6 7C8 5.5 14 5.5 16 7L18.6 16.5Q19 20 11 20Q3 20 3.4 16.5ZM18 17Q21 17 20 13"/><path d="M6.8 5.6Q9 2.5 13.9 4L15.8 6.7Z" fill="#000"/><path d="M11 16L10 14.7H12Z" fill="#000" stroke-width="1"/><circle cx="7.5" cy="11" r=".9" fill="#000" stroke="none"/><circle cx="14.5" cy="11" r=".9" fill="#000" stroke="none"/>
+</g>
+</svg>

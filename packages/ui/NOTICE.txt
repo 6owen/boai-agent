@@ -1,7 +1,7 @@
 BOAI UI development package
 
 The React components were extracted from BOAI Agent's src/renderer/components/ui
-at commit 7beaef3973c816edada8a2deaae73e560e1efbb6. Those components identify
+at commits 7beaef3973c816edada8a2deaae73e560e1efbb6 and c38c629dd4ed2b2ed2ffa0e675e56d20dd9ea05c. Those components identify
 their source as shadcn base-nova and include BOAI's local Soft styling changes.
 
 Upstream: https://github.com/shadcn-ui/ui (MIT; see SHADCN-LICENSE.txt).
@@ -12,3 +12,17 @@ This package is private and unpublished. An independent release must settle the
 license of BOAI-owned changes and the final package/repository name. No Raft
 brand assets, fonts, Craft Scenic assets, Base46 theme collections or Lody
 preview code are included in this package.
+
+Offline icon masks retain the existing BOAI Carbon and Solar sources:
+- Carbon Design System icons, IBM, Apache-2.0: https://github.com/carbon-design-system/carbon/tree/main/packages/icons
+- Solar icons, 480 Design, CC-BY-4.0: https://www.figma.com/community/file/1166831539721848736
+  Source data: @iconify-json/carbon 1.2.28 and @iconify-json/solar 1.2.13.
+  SVGs are encoded as CSS masks; icon geometry is unchanged.
+
+Existing BOAI adaptations retained with their source headers:
+- Beautiful UI Selection Actions, LoadingState and ThinkingState: https://www.beautifului.dev/
+- transitions-dev Tabs sliding and Card resize snippets.
+These sources retain their original attribution. This private workspace change
+does not declare a new license for third-party assets or authorize publication.
+
+Tailwind state and scroll utilities are vendored unchanged from shadcn 4.21.0 dist/tailwind.css (MIT; SHADCN-LICENSE.txt).

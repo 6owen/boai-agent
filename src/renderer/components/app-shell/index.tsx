@@ -1,4 +1,8 @@
 /*
+ * [OUTPUT]: 清理同时隔离详情和分页请求的迟到结果与错误。
+ * [OUTPUT]: 四项应用快捷键由 Main 已保存快照匹配，录入不执行，原上下文守卫保持。
+ * [OUTPUT]: 会话侧栏只打开网页预览，忽略旧终端show事件，原员工执行路径保持。
+ * [OUTPUT]: 清理操作和宿主清理窗口暂停详情读取并失效迟到错误；隐藏完成即时退出原会话，刷新失败不重报删除失败。
  * [OUTPUT]: 阅读历史锚点的有界页不再改写侧栏最新摘要/时间；仅尾页读取与原实时消息更新列表，历史定位/分页/草稿保持。
  * [OUTPUT]: 四组默认应用快捷键与工具栏共用搜索、三页列表和原历史动作；输入、自定义选择控件、组合键与浮层保留自身按键。
  * [OUTPUT]: 主聊天按选中会话元信息立即保留ChatView外框，不再以会话ID重建整个聊天；首屏40条、刷新保留已加载窗口且最多80条，原请求代次/锚点/清理隔离保持。
@@ -73,6 +77,8 @@
  * [POS]: src/renderer/components/app-shell/index.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { shortcuts } from '@/stores/shortcuts'
+import { matchShortcut } from '@shared/shortcuts'
 import { WorkspacePanel } from '../detail-panel/workspace-panel'
 import { draftResourceReferences } from '@/pages/conversations/inline-mentions'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -184,6 +190,7 @@ export function AppShell() {
   useEffect(() => { setConversationSearchOpen(false) }, [route.page])
   const [editingTitle, setEditingTitle] = useState<Conversation | null>(null)
   const pagingFlight = useRef(0), refreshAfterPaging = useRef(false)
+  const clearingConversations = useRef(new Set<string>()), cleanupRequests = useRef(new Set<string>())
   const [sourceChecks, setSourceChecks] = useState<Record<string, number>>({})
   const [skillsSection, setSkillsSection] = useState<SkillsSection>('all')
   const [skillProvider, setSkillProvider] = useState<SkillMarketplaceProvider>(() => { try { const value = localStorage.getItem('boai.skills.provider'); return ['skills-sh','clawhub','skillhub'].includes(value ?? '') ? value as SkillMarketplaceProvider : 'skills-sh' } catch { return 'skills-sh' } })
@@ -308,10 +315,10 @@ export function AppShell() {
     routeRef.current = next; selectedRef.current = next.conversationId; setRoute(next)
   }, [])
   const refreshDetail = useCallback(async (id: string, window?: ConversationView['messagePage']) => {
-    if (!api || !mounted.current || selectedRef.current !== id || routeRef.current.page !== 'conversations') return
+    if (!api || !mounted.current || selectedRef.current !== id || routeRef.current.page !== 'conversations' || clearingConversations.current.has(id) || cleanupRequests.current.has(id)) return
     if (pagingFlight.current) { refreshAfterPaging.current = true; return }
     const token = ++detailRequest.current, capture = liveMessages.current.begin(id), focus = routeRef.current.focusMessage
-    const current = () => mounted.current && token === detailRequest.current && selectedRef.current === id && routeRef.current.page === 'conversations'
+    const current = () => mounted.current && token === detailRequest.current && selectedRef.current === id && routeRef.current.page === 'conversations' && !clearingConversations.current.has(id) && !cleanupRequests.current.has(id)
     try {
       let location = viewLocations.current.get(id) ?? { initialized: false }
       if (focus && location.focusRequestId !== focus.requestId) location = { initialized: true, messageId: focus.id, focusRequestId: focus.requestId }
@@ -388,19 +395,25 @@ export function AppShell() {
       })
     }).catch(report) }
     const unsubscribe = api.subscribe((event: AppEvent) => {
-      if (event.type === 'workspace:show') { dispatchDetails({ type: 'open', target: { type: 'workspace', id: event.conversationId, employeeId: event.employeeId, view: event.view } }, 'conversations'); return }
+      if (event.type === 'workspace:show') { if (event.view !== 'preview') return; dispatchDetails({ type: 'open', target: { type: 'workspace', id: event.conversationId, employeeId: event.employeeId, view: event.view } }, 'conversations'); return }
       if (event.type === 'automation:history-deleted') { dispatchWorkspace({ type: 'remove-automation-occurrence', id: event.occurrenceId }); schedule(); return }
       if (event.type === 'automation:navigate') { openAutomationNotice(); return }
       if(event.type==='focus-conversation'){navigate(()=>applyRoute({page:'conversations',conversationId:event.conversationId,focusMessage:event.messageId?{id:event.messageId,requestId:crypto.randomUUID()}:undefined}));return}
       if (event.type === 'runtime-error') { toast.error(event.error); return }
+      if (event.type === 'conversation:clearing') {
+        clearingConversations.current.add(event.conversationId)
+        if (selectedRef.current === event.conversationId) detailRequest.current++
+        return
+      }
       if (event.type === 'conversation:cleared' || event.type === 'conversation:deleted') {
         const id = event.conversationId
+        clearingConversations.current.delete(id)
         dispatchWorkspace({ type: 'remove-workspace', id })
         clearArtifactPending(id)
         materialDrafts.invalidate(id)
         liveMessages.current.clear(id)
         drafts.current.delete(id); persistMessageRequests()
-        clearConversationLocation(id, event.type === 'conversation:deleted')
+        clearConversationLocation(id, event.type === 'conversation:deleted' || Boolean(event.hidden))
         setPreviews(previous => ({ ...previous, [id]: '' })); setMessageTimes(previous => ({ ...previous, [id]: '' }))
         schedule(); return
       }
@@ -474,14 +487,14 @@ export function AppShell() {
   const loadMessagePage = async (direction: 'before' | 'after') => {
     if (!api || pagingFlight.current || paging || routeRef.current.page !== 'conversations') return
     const previous = detailRef.current, id = selectedRef.current
-    if (!previous || previous.conversation.id !== id) return
+    if (!previous || previous.conversation.id !== id || clearingConversations.current.has(id) || cleanupRequests.current.has(id)) return
     const cursor = direction === 'before' ? previous.messagePage.beforeCursor : previous.messagePage.afterCursor
     if (!cursor) return
     const token = ++detailRequest.current, capture = liveMessages.current.begin(id); pagingFlight.current = token; setPaging(true)
     let refreshedWindow = previous.messagePage
     try {
       const next = await api.request('getConversationView', { conversationId: previous.conversation.id, limit: READING_LIMITS.page, [direction]: cursor })
-      if (!mounted.current || token !== detailRequest.current || selectedRef.current !== id || routeRef.current.page !== 'conversations') return
+      if (!mounted.current || token !== detailRequest.current || selectedRef.current !== id || routeRef.current.page !== 'conversations' || clearingConversations.current.has(id) || cleanupRequests.current.has(id)) return
       if (!next.messagePage.items.length) { setPageEdges(value => ({ ...value, [direction]: false })); return }
       let messagePage = mergeMessagePages(previous.messagePage, next.messagePage, direction)
       for (const message of capture.messages.values()) messagePage = updateLiveMessage(messagePage, message, false)
@@ -490,7 +503,7 @@ export function AppShell() {
       const latestReading = detailRef.current?.conversation.id === id ? detailRef.current.reading : previous.reading
       refreshedWindow = messagePage
       setDetail({ ...next, reading: mergeReadingState(latestReading, next.reading), messagePage, messages: messagePage.items.flatMap(item => item.message ? [item.message] : []) }); setPageEdges({ before: true, after: true })
-    } catch (failure) { if (mounted.current && token === detailRequest.current && selectedRef.current === id && routeRef.current.page === 'conversations') toast.error(errorText(failure)) }
+    } catch (failure) { if (mounted.current && token === detailRequest.current && selectedRef.current === id && routeRef.current.page === 'conversations' && !clearingConversations.current.has(id) && !cleanupRequests.current.has(id)) toast.error(errorText(failure)) }
     finally {
       liveMessages.current.finish(capture)
       if (token === pagingFlight.current) {
@@ -519,8 +532,13 @@ export function AppShell() {
     if (change.action === 'hide') navigate(update); else update()
   }
   const clearConversationHistory = async (id: string, hide: boolean) => {
-    if (!api) return
-    await api.request('clearConversationHistory', { id, hide })
+    if (!api) throw new Error('桌面服务尚未就绪')
+    if (cleanupRequests.current.has(id)) throw new Error('此会话正在清理，请等待当前操作完成')
+    cleanupRequests.current.add(id)
+    if (selectedRef.current === id) detailRequest.current++
+    try { await api.request('clearConversationHistory', { id, hide }) }
+    finally { cleanupRequests.current.delete(id) }
+    clearingConversations.current.delete(id)
     clearConversationLocation(id, hide)
     materialDrafts.invalidate(id)
     liveMessages.current.clear(id)
@@ -533,7 +551,7 @@ export function AppShell() {
         applyRoute({ ...route, conversationId: null, focusMessage: undefined, focusApproval: undefined }, false)
       }
     } else if (selectedRef.current === id) await refreshDetail(id)
-    await refreshSnapshot()
+    await refreshSnapshot().catch(failure => toast.error(`会话清理已完成，列表刷新未完成：${errorText(failure)}`))
   }
   const openPanel = (next: Panel, scope: string = route.page, current?: () => boolean, navigated?: () => void, withinKey?: string) => {
     const trigger = document.activeElement as HTMLElement | null
@@ -866,7 +884,7 @@ export function AppShell() {
   }
   const title = route.page === 'conversations' ? conversation?.title ?? '会话' : labels[route.page]
   const describePanel = (item: Panel) => {
-    const title = item.type === 'workspace' ? '终端与预览' : item.type === 'files' ? '文件' : item.type === 'tasks' ? '任务' : item.type === 'channel-discussion' ? '历史会话' : item.type === 'channel-publish' ? '发送到渠道' : item.type === 'channel-files' ? '渠道文件' : item.type === 'channels' ? '渠道会话' : item.type === 'artifact' ? '成果预览' : item.type === 'material' ? '材料原文' : item.type === 'skill-updates' ? '技能更新' : item.type === 'automation-editor' ? (item.id ? '编辑定时任务' : '新建定时任务') : item.type === 'agent' ? '数字员工' : item.type === 'group' ? (snapshot.conversations.some(room => room.id === item.id && isChannelConversation(room)) ? '渠道信息' : '群聊详情') : item.type === 'trace' || item.type === 'activity' || item.type === 'automation-occurrence' ? '执行过程' : item.type === 'source' ? '数据源详情' : item.type === 'local-skill' ? '技能详情' : item.type === 'resource' ? '资源详情' : item.type === 'marketplace' ? '商店详情' : '任务详情'
+    const title = item.type === 'workspace' ? '网页预览' : item.type === 'files' ? '文件' : item.type === 'tasks' ? '任务' : item.type === 'channel-discussion' ? '历史会话' : item.type === 'channel-publish' ? '发送到渠道' : item.type === 'channel-files' ? '渠道文件' : item.type === 'channels' ? '渠道会话' : item.type === 'artifact' ? '成果预览' : item.type === 'material' ? '材料原文' : item.type === 'skill-updates' ? '技能更新' : item.type === 'automation-editor' ? (item.id ? '编辑定时任务' : '新建定时任务') : item.type === 'agent' ? '数字员工' : item.type === 'group' ? (snapshot.conversations.some(room => room.id === item.id && isChannelConversation(room)) ? '渠道信息' : '群聊详情') : item.type === 'trace' || item.type === 'activity' || item.type === 'automation-occurrence' ? '执行过程' : item.type === 'source' ? '数据源详情' : item.type === 'local-skill' ? '技能详情' : item.type === 'resource' ? '资源详情' : item.type === 'marketplace' ? '商店详情' : '任务详情'
     const name = item.type === 'files' || item.type === 'tasks' ? `${item.owner === 'employee' ? snapshot.agents.find(agent => agent.id === item.id)?.name ?? '员工' : snapshot.conversations.find(room => room.id === item.id)?.title ?? '会话'} · ${title}` : item.type === 'channels' ? `${snapshot.agents.find(a => a.id === item.id)?.name ?? '员工'}的渠道` : item.type === 'artifact' || item.type === 'material' ? item.name : item.type === 'automation-editor' ? item.name : item.type === 'marketplace' || item.type === 'local-skill' || item.type === 'source' ? item.name : item.type === 'trace' ? '执行' : item.type === 'agent' ? snapshot.agents.find(a => a.id === item.id)?.name : item.type === 'group' ? snapshot.conversations.find(c => c.id === item.id)?.title : item.type === 'resource' ? snapshot.resources.find(r => r.id === item.id)?.name : undefined
     const context = item.type === 'agent' || item.type === 'artifact' || item.type === 'material' ? snapshot.conversations.find(c => c.id === item.conversationId)?.title : (item.type === 'activity' || item.type === 'trace') ? snapshot.conversations.find(c => c.id === item.id)?.title : undefined
     const sameType = detailTabs.tabs.filter(tab => tab.target.type === item.type && (item.type !== 'agent' || (tab.target.type === 'agent' && tab.target.id === item.id))).length > 1
@@ -901,17 +919,18 @@ export function AppShell() {
   const toggleList = () => setListShown(shown => !shown)
   useEffect(() => {
     const onShortcut = (event: globalThis.KeyboardEvent) => {
-      if (!api || event.defaultPrevented || event.isComposing || event.repeat || event.altKey || event.shiftKey || menu || sharingProfile || leaving || creation) return
-      const mac = navigator.platform.toLowerCase().includes('mac')
-      if (mac ? !event.metaKey || event.ctrlKey : !event.ctrlKey || event.metaKey) return
+      if (!api || event.defaultPrevented || event.isComposing || event.repeat || shortcuts.store.getState().capturing || menu || sharingProfile || leaving || creation) return
+      const shortcutSnapshot = shortcuts.store.getState().snapshot
+      if (!shortcutSnapshot) return
+      const shortcut = matchShortcut(event, shortcutSnapshot)
+      if (!shortcut) return
       if (event.composedPath().some(node => node instanceof HTMLElement && (node.matches('input, textarea, select, [role="textbox"], [role="combobox"], [aria-haspopup="listbox"], [data-slot="select-trigger"], [data-slot="combobox-trigger"]') || node.isContentEditable))) return
       const overlay = '[role="dialog"], [role="alertdialog"], [role="menu"], [data-slot="popover-content"], [data-slot="dropdown-menu-content"], [data-slot="select-content"], [data-slot="context-menu-content"]'
       if ([...document.querySelectorAll(overlay)].some(node => node.getClientRects().length > 0)) return
-      const key = event.key.toLowerCase()
-      if (key === 'k') { event.preventDefault(); openSearch() }
-      else if (key === 'b' && (route.page === 'conversations' || route.page === 'contacts' || route.page === 'schedules')) { event.preventDefault(); toggleList() }
-      else if (key === '[' && historyIndex.current > 0) { event.preventDefault(); goBack() }
-      else if (key === ']' && historyIndex.current < history.current.length - 1) { event.preventDefault(); goForward() }
+      if (shortcut === 'search') { event.preventDefault(); openSearch() }
+      else if (shortcut === 'sidebar' && (route.page === 'conversations' || route.page === 'contacts' || route.page === 'schedules')) { event.preventDefault(); toggleList() }
+      else if (shortcut === 'back' && historyIndex.current > 0) { event.preventDefault(); goBack() }
+      else if (shortcut === 'forward' && historyIndex.current < history.current.length - 1) { event.preventDefault(); goForward() }
     }
     document.addEventListener('keydown', onShortcut)
     return () => document.removeEventListener('keydown', onShortcut)
@@ -935,7 +954,7 @@ export function AppShell() {
           await refreshSnapshot()
         })
       } : undefined} onFiles={() => showPanel(channel || internal ? { type: 'channel-files', id } : { type: 'files', owner, id: ownerId })}
-      onWorkspace={!channel && !internal && room.agentIds[0] ? () => showPanel({ type: 'workspace', id, employeeId: room.agentIds[0]!, view: 'terminal' }) : undefined}
+      onWorkspace={!channel && !internal && room.agentIds[0] ? () => showPanel({ type: 'workspace', id, employeeId: room.agentIds[0]!, view: 'preview' }) : undefined}
       onTasks={!channel && !internal ? () => showPanel({ type: 'tasks', owner, id: ownerId }) : undefined}
       onChannels={room.kind === 'direct' && !channel && !internal ? () => { const agent = snapshot.agents.find(agent => agent.id === room.agentIds[0]); if (agent) openChannels(agent) } : undefined}
       questionReplies={questionReplies} artifactActions={artifactActions}
@@ -1013,7 +1032,7 @@ export function AppShell() {
           const fileChannelId = fileRoom?.channel ? fileRoom.id : fileRoom?.channelDiscussion?.conversationId
           const targetRoom = target.type === 'group' ? snapshot.conversations.find(room => room.id === target.id) : undefined
           const content = <>
-            {target.type === 'workspace' && <WorkspacePanel api={api} active={active} scope={{ employeeId: target.employeeId, conversationId: target.id }} view={target.view} />}
+            {target.type === 'workspace' && target.view === 'preview' && <WorkspacePanel api={api} active={active} scope={{ employeeId: target.employeeId, conversationId: target.id }} />}
             {target.type === 'channel-publish' && <ChannelPublishPanel key={target.requestId} api={api} snapshot={snapshot} target={target} active={active} onBack={() => closeView()} />}
             {(target.type === 'files' || target.type === 'tasks') && <div className="conversation-panel-content">
               {target.type === 'tasks' ? <TasksPlaceholder /> : <ConversationFiles api={api} snapshot={snapshot} active={active} {...(target.owner === 'employee' ? { ownerAgentId: target.id, viewRequest: target.requestId ? { view: target.view ?? 'files', id: target.requestId } : undefined } : { conversationId: target.id })} onKnowledgePreview={resource => showPanel({ type: 'resource', id: resource.id, agentId: target.owner === 'employee' ? target.id : undefined })} onPreview={(row, current) => previewConversationFile(row, current, withinKey)} onNavigate={(source, current) => openFileSource(source, current, withinKey)} />}

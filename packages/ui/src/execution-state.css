@@ -1,0 +1,40 @@
+/*
+ * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
+ * [INPUT]: Beautiful UI foundation的pixel-on/shimmer-text原版关键帧与BOAI语义token。
+ * [OUTPUT]: 浅色紧凑Loading/Thinking动画与聊天工具排版；空执行列表不占间距，loading上下留白对称，过程继续下添。
+ * [POS]: 两个执行状态原语共用的样式。
+ * [PROTOCOL]: 变化同步Header和所属.folder.md。
+ */
+@keyframes execution-pixel-on {
+  0%, 100% { opacity: 0.15; }
+  18%, 42% { opacity: 1; }
+  62% { opacity: 0.15; }
+}
+@keyframes execution-shimmer-text {
+  from { background-position: 150% center; }
+  to { background-position: -50% center; }
+}
+.execution-state-label { opacity: 0.72; }
+[data-working=true] > .execution-state-label {
+  color: transparent;
+  background-image: linear-gradient(90deg, var(--muted-foreground) 35%, var(--muted-foreground) 45%, var(--foreground) 50%, var(--muted-foreground) 55%, var(--muted-foreground) 65%);
+  background-size: 200% 100%;
+  background-clip: text;
+  animation: execution-shimmer-text 1.4s linear infinite;
+}
+[data-working=false] .execution-loader-pixel { animation-play-state: paused !important; }
+[data-slot=thinking-state] > .execution-thinking-trigger { width: fit-content; }
+.execution-thinking-trigger { cursor: pointer; transition: background-color 100ms; }
+.execution-thinking-trigger:hover { background: var(--muted); }
+.execution-thinking-trigger:focus-visible { outline: 1px solid var(--ring); outline-offset: 2px; }
+[data-chat-execution-run] [data-execution-view]:empty { display: none; }
+[data-chat-execution-run] [data-slot=collapsible-trigger] { font-size: var(--text-ui-caption); font-weight: 400; color: var(--muted-foreground); }
+[data-chat-execution-run] [data-slot=collapsible-trigger].soft-button { min-height: 20px; height: auto; opacity: 0.75; }
+[data-chat-execution-run] [data-slot=collapsible-trigger] [data-slot=badge] { height: 20px; font-size: var(--text-ui-caption); }
+[data-chat-execution-run] [data-slot=collapsible-trigger] .app-icon { width: 12px; height: 12px; }
+[data-chat-execution-run] [data-slot=typeset] { --typeset-size: var(--text-content-secondary); color: var(--muted-foreground); }
+@media (prefers-reduced-motion: reduce) {
+  [data-slot=loading-state] .execution-loader-pixel { animation: none !important; }
+  [data-working=true] > .execution-state-label { color: var(--muted-foreground); background: none; animation: none; }
+  .execution-thinking-trigger { transition: none; }
+}

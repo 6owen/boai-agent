@@ -1,0 +1,6 @@
+<!-- [INPUT]: 眼镜方块头像的简化角色特征。[OUTPUT]: 22点单色矢量托盘模板。[POS]: 托盘源图。[PROTOCOL]: 变化同步所属.folder.md。 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="#000" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+<g transform="translate(1.5 1.5) scale(.86)">
+<rect x="2.7" y="2.7" width="16.6" height="16.6" rx="3.7"/><circle cx="7.5" cy="10.2" r="2.5"/><circle cx="14.5" cy="10.2" r="2.5"/><path d="M10 9.8H12M7.5 10.2H7.6M14.5 10.2H14.6"/>
+</g>
+</svg>

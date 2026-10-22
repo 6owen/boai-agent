@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 旧terminal目标不可重开，预览目标仍沿原标签身份。
  * [OUTPUT]: 同一旧知识资源按员工隔离预览标签，避免授权身份串用。
  * [OUTPUT]: 同一会话不同Run分别打开过程标签，重复点击同Run去重，普通会话历史保持独立。
  * [OUTPUT]: 删除某次执行关闭所有页面的同源过程标签，其他标签及所选项保持。
@@ -280,4 +281,13 @@ describe('artifact review identity and pending requests', () => {
     expect(restoreArtifactPending({ [key]: { ...pending, revision: undefined, adoption: { ...pending.adoption, input: { ...pending.adoption!.input, expectedAdoptionRevision: -1 } } } })).toEqual({})
     expect(restoreArtifactPending({ [key]: { ...pending, revision: undefined, adoption: { ...pending.adoption, input: { ...pending.adoption!.input, contentHash: 'old-size-only-identity' } } } })).toEqual({})
   })
+})
+
+it('rejects legacy terminal targets and keeps preview as the only public workspace tab', () => {
+  const legacy: DetailTarget = { type: 'workspace', id: 'room', employeeId: 'employee', view: 'terminal' }
+  expect(reduce(emptyDetailTabs, { type: 'open', target: legacy })).toBe(emptyDetailTabs)
+  const preview = reduce(emptyDetailTabs, { type: 'open', target: { ...legacy, view: 'preview' } })
+  expect(preview.tabs).toHaveLength(1)
+  expect(reduce(preview, { type: 'open', target: legacy })).toBe(preview)
+  expect(preview.tabs[0].target).toMatchObject({ view: 'preview' })
 })

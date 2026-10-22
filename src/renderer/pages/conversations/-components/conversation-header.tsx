@@ -1,6 +1,6 @@
 /*
  * [OUTPUT]: 标题栏随会话切换保持挂载，身份变化清理旧菜单动作与清空确认，避免把上一会话操作带入当前。
- * [OUTPUT]: 本机会话操作菜单增加终端与预览，沿原关闭后导航。
+ * [OUTPUT]: 本机会话菜单提供独立网页预览入口，已移除交互终端。
  * [OUTPUT]: 任务/文件收进标题下拉菜单，关闭菜单后打开右侧面板，与主聊天并行；无独立按钮或互斥Tabs。
  * [OUTPUT]: 删除任务与产物菜单；文件、任务和执行过程各归独立入口。
  * [OUTPUT]: 菜单动作等待真实关闭动画完成再导航或打开面板，避免原触发器隐藏后Portal退出动画失去定位；重新打开或来源隐藏取消旧动作。
@@ -21,7 +21,7 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import type { Conversation, DigitalAgent, Resource } from '@shared/domain'
 import { isChannelConversation } from '@shared/domain/conversation-list'
 import { isCoreConversation } from '@shared/domain/core-agent'
-import { Terminal, Workflow, FolderOpen, MessageCircle, MoreHorizontal, Pencil, Settings, Trash2 } from '@/components/icons'
+import { PanelRight, Workflow, FolderOpen, MessageCircle, MoreHorizontal, Pencil, Settings, Trash2 } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ConversationHistoryDialog } from './conversation-history-dialog'
@@ -80,7 +80,7 @@ export function ConversationHeader({ conversation, members, resources, busy, onD
               <DropdownMenuItem onClick={() => afterMenuClose(onDetails)}><Settings />{channel ? '渠道信息' : '配置'}</DropdownMenuItem>
               {isCoreConversation(conversation) && <DropdownMenuItem disabled={busy} onClick={() => afterMenuClose(() => onEditTitle(conversation))}><Pencil />编辑标题</DropdownMenuItem>}
               {onFiles && <DropdownMenuItem onClick={() => afterMenuClose(onFiles)}><FolderOpen />文件</DropdownMenuItem>}
-              {onWorkspace && <DropdownMenuItem onClick={() => afterMenuClose(onWorkspace)}><Terminal />终端与预览</DropdownMenuItem>}
+              {onWorkspace && <DropdownMenuItem onClick={() => afterMenuClose(onWorkspace)}><PanelRight />网页预览</DropdownMenuItem>}
               {onTasks && <DropdownMenuItem onClick={() => afterMenuClose(onTasks)}><Workflow />任务</DropdownMenuItem>}
               <DropdownMenuItem onClick={() => afterMenuClose(onTrace)}><Workflow />执行过程</DropdownMenuItem>
               {onChannels && <DropdownMenuItem onClick={() => afterMenuClose(onChannels)}><MessageCircle />渠道</DropdownMenuItem>}

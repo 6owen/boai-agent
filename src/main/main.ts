@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 仅appIconId变化触发换图；其他外观保存不重试无关图标故障。
+ * [OUTPUT]: Tray按保存ID先初始化，三目标图标统一协调；退出停止新换图并排空已开始的安装写入。
+ * [OUTPUT]: Main 快捷键配置/回执、窗口限定菜单捕获及关闭/隐藏前保存握手。
  * [OUTPUT]: singleton/配置迁移前同时取得userData和v2共享访问，持有至真实主进程退出；活动维护/持久意图均拒绝启动写入。
  * [OUTPUT]: 2026-10-20全局字体与应用图标设置接入原外观持久化和宿主协议。
  * [OUTPUT]: 已授权桌面活动经私有宿主调用固定本地 OCR 程序，不向渲染器开放原始采集接口。
@@ -81,6 +84,8 @@ import { MATERIAL_LIMITS } from '../shared/domain/materials'
 import { MaterialSources } from './material-sources'
 import { readClipboardMaterialPaths } from './clipboard-material-files'
 import { PluginSettingsStore } from './plugin-settings'
+import { ShortcutSettingsStore } from './shortcut-settings'
+import { acceleratorBinding, reservedShortcuts, type ReservedShortcut } from '../shared/shortcuts'
 import { DesktopSettingsStore } from './desktop-settings'
 import { BackgroundTray, hideMainWindow, cancelWindowHide } from './background'
 import { stopRuntime } from './runtime-shutdown'
@@ -147,15 +152,24 @@ const gatewayImportInbox = new GatewayImportInbox(async input => {
 const dirtySources = new Set<string>()
 const hasUnsavedChanges = () => dirtySources.size > 0
 let confirmingClose = false
+let shortcutCapture: { windowId: number; token: string } | undefined
+let shortcutFlush: { requestId: string; resolve: (value: { clean: boolean; settled: boolean }) => void } | undefined
+const shortcutPlatform = process.platform === 'darwin' ? 'mac' as const : 'other' as const
+const shortcutSettings = new ShortcutSettingsStore(join(legacyDataPath, 'shortcut-settings.json'), shortcutPlatform, reservedShortcuts(shortcutPlatform, !app.isPackaged), settings => sendEvent({ type: 'shortcuts:changed', settings }))
 let appearanceFlushed:(()=>void)|undefined
 const vault = new CredentialVault(join(dataPath, 'credentials.enc.json'))
 const appearance = new AppearanceStore(join(dataPath, 'appearance'), () => nativeTheme.shouldUseDarkColors, value => {
   nativeTheme.themeSource = value.preferences.mode
   if (window && !window.isDestroyed()) window.webContents.setZoomFactor(value.preferences.zoomFactor)
   sendEvent({ type: 'appearance:changed', appearance: appearance.snapshot() })
-  void appIconController.apply(value.preferences.appIconId).catch(error => sendEvent({ type: 'runtime-error', error: String(error) }))
+  if (appIconController.snapshot().requestedId !== value.preferences.appIconId) {
+    void appIconController.apply(value.preferences.appIconId).catch(error => sendEvent({ type: 'runtime-error', error: String(error) }))
+  }
 }, decodeImage, () => pluginSettings.snapshot().disabledIds)
-const appIconController = new AppIconController(join(__dirname, 'app-icons').replace('app.asar/', 'app.asar.unpacked/'), join(__dirname, '../native/app-icon-helper').replace('app.asar/', 'app.asar.unpacked/'), status => sendEvent({ type: 'app-icon:changed', status }))
+const appIconAssets = join(__dirname, 'app-icons').replace('app.asar/', 'app.asar.unpacked/')
+const appIconController = new AppIconController(appIconAssets, join(__dirname, '../native/app-icon-helper').replace('app.asar/', 'app.asar.unpacked/'), status => sendEvent({ type: 'app-icon:changed', status }), {
+  snapshot: () => background.iconStatus(), apply: id => background.applyIcon(id), retry: id => background.retryIcon(id),
+})
 const pluginSettings = new PluginSettingsStore(join(legacyDataPath, 'application-plugins.json'), settings => {
   sendEvent({ type: 'plugins:changed', settings })
   appearance.systemChanged()
@@ -165,7 +179,7 @@ const desktopSettings = new DesktopSettingsStore(join(legacyDataPath, 'desktop-s
   platform: process.platform, packaged: app.isPackaged, executable: process.execPath,
   get: options => app.getLoginItemSettings(options), set: options => app.setLoginItemSettings(options),
 }, () => { background.refresh(); sendEvent({ type: 'desktop:changed', settings: desktopSettings.snapshot() }) })
-const background = new BackgroundTray(desktopSettings, () => { void showMainWindow().catch(error => dialog.showErrorBox('无法打开主窗口', String(error))) }, () => app.quit(), message => { void (initialized ?? app.whenReady()).then(showMainWindow).then(() => dialog.showMessageBox(window!, { type: 'warning', message })).catch(() => {}) })
+const background = new BackgroundTray(desktopSettings, () => { void showMainWindow().catch(error => dialog.showErrorBox('无法打开主窗口', String(error))) }, () => app.quit(), message => { void (initialized ?? app.whenReady()).then(showMainWindow).then(() => dialog.showMessageBox(window!, { type: 'warning', message })).catch(() => {}) }, appIconAssets)
 const selectedPaths = new Set<string>()
 const materialSources = new MaterialSources(join(dataPath, 'material-sources'), error => sendEvent({ type: 'runtime-error', error: `临时附件清理失败：${String(error)}` }))
 const pending = new Map<string, { resolve: (value: unknown) => void; reject: (error: Error) => void; timer?: ReturnType<typeof setTimeout> }>()
@@ -422,6 +436,25 @@ function registerIpc() {
     if (isApplicationHostMethod(method)) return applicationHostRequest(method, input)
     if (method === 'getAppIconStatus') { z.undefined().parse(input); return appIconController.snapshot() }
     if (method === 'retryAppIcon') { z.undefined().parse(input); return appIconController.retry() }
+    if (method === 'getShortcutSettings') { z.undefined().parse(input); await shortcutSettings.flush(); return shortcutSettings.snapshot() }
+    if (method === 'updateShortcutSettings') return shortcutSettings.update(input as Methods['updateShortcutSettings']['input'])
+    if (method === 'getShortcutReceipt') return shortcutSettings.receipt(input as Methods['getShortcutReceipt']['input'])
+    if (method === 'setShortcutCapture') {
+      const value = z.object({ token: z.string().uuid(), active: z.boolean() }).strict().parse(input)
+      if (value.active) {
+        if (!window.isFocused()) return false
+        shortcutCapture = { windowId: window.id, token: value.token }
+        window.webContents.setIgnoreMenuShortcuts(true)
+      } else if (shortcutCapture?.token === value.token && shortcutCapture.windowId === window.id) {
+        shortcutCapture = undefined; window.webContents.setIgnoreMenuShortcuts(false)
+      }
+      return true
+    }
+    if (method === 'completeShortcutFlush') {
+      const value = z.object({ requestId: z.string().uuid(), clean: z.boolean(), settled: z.boolean() }).strict().parse(input)
+      if (shortcutFlush?.requestId === value.requestId) shortcutFlush.resolve(value)
+      return
+    }
     if (method === 'getDesktopSettings') { z.undefined().parse(input); return desktopSettings.snapshot() }
     if (method === 'getCliInstallation') { z.undefined().parse(input); return cliInstallationStatus() }
     if (method === 'installCli' || method === 'uninstallCli') {
@@ -507,7 +540,7 @@ function registerIpc() {
     if (method === 'importAppearanceBackground') { const result=await dialog.showOpenDialog(window,{title:'选择背景图片',properties:['openFile'],filters:[{name:'图片',extensions:['png','jpg','jpeg','webp']}]}); return result.canceled||!result.filePaths[0]?null:appearance.import(result.filePaths[0]) }
     if (method === 'setUnsavedChanges') {
       if (typeof (input as { dirty?: unknown })?.dirty !== 'boolean') throw new Error('无效编辑状态')
-      const source=(input as {source?:string}).source??'business'; if(!['business','appearance'].includes(source))throw new Error('无效编辑来源'); if((input as {dirty:boolean}).dirty)dirtySources.add(source);else{dirtySources.delete(source);if(source==='appearance')appearanceFlushed?.()}
+      const source=(input as {source?:string}).source??'business'; if(!['business','appearance','shortcuts'].includes(source))throw new Error('无效编辑来源'); if((input as {dirty:boolean}).dirty)dirtySources.add(source);else{dirtySources.delete(source);if(source==='appearance')appearanceFlushed?.()}
       return
     }
     if (method === 'openLocalSkill') {
@@ -585,7 +618,7 @@ function changeZoom(direction: -1 | 0 | 1) {
 }
 
 function installMenu() {
-  Menu.setApplicationMenu(Menu.buildFromTemplate([
+  const menu = Menu.buildFromTemplate([
     ...(process.platform === 'darwin' ? [{ role: 'appMenu' as const }] : []),
     { role: 'fileMenu' }, { role: 'editMenu' },
     { label: '视图', submenu: [
@@ -596,7 +629,15 @@ function installMenu() {
       { type: 'separator' }, { role: 'togglefullscreen' },
     ] },
     { role: 'windowMenu' },
-  ]))
+  ])
+  const reservations: ReservedShortcut[] = []
+  const visit = (items: typeof menu.items) => { for (const item of items) {
+    if (item.accelerator) { const binding = acceleratorBinding(item.accelerator, shortcutPlatform); if (binding) reservations.push({ binding, label: item.label || '应用菜单' }) }
+    if (item.submenu) visit(item.submenu.items)
+  } }
+  visit(menu.items)
+  shortcutSettings.setMenuReservations(reservations)
+  Menu.setApplicationMenu(menu)
 }
 
 async function createWindow(show = true) {
@@ -609,11 +650,21 @@ async function createWindow(show = true) {
   })
   const mainWindow = window
   importWindowReady = false
-  mainWindow.webContents.on('did-start-loading', () => { importWindowReady = false })
+  const releaseShortcutCapture = () => {
+    if (shortcutCapture?.windowId !== mainWindow.id) return
+    shortcutCapture = undefined
+    if (!mainWindow.webContents.isDestroyed()) mainWindow.webContents.setIgnoreMenuShortcuts(false)
+    sendEvent({ type: 'shortcuts:capture-ended' })
+  }
+  mainWindow.on('blur', releaseShortcutCapture)
+  mainWindow.on('hide', releaseShortcutCapture)
+  mainWindow.webContents.on('render-process-gone', releaseShortcutCapture)
+  mainWindow.webContents.on('before-input-event', () => mainWindow.webContents.setIgnoreMenuShortcuts(shortcutCapture?.windowId === mainWindow.id && mainWindow.isFocused()))
+  mainWindow.webContents.on('did-start-loading', () => { importWindowReady = false; releaseShortcutCapture() })
   mainWindow.once('ready-to-show', () => { if (show && !quitting && !mainWindow.isDestroyed()) mainWindow.show() })
-  mainWindow.on('closed', () => { if (window === mainWindow) window = null })
+  mainWindow.on('closed', () => { releaseShortcutCapture(); if (window === mainWindow) window = null })
   mainWindow.on('close', event => {
-    if (!quitting && background.shouldHide()) { event.preventDefault(); hideMainWindow(mainWindow); return }
+    if (!quitting && background.shouldHide()) { event.preventDefault(); if (dirtySources.has('shortcuts') || shortcutCapture) void confirmDiscard(() => hideMainWindow(mainWindow), true); else hideMainWindow(mainWindow); return }
     if (!quitting && hasUnsavedChanges()) { event.preventDefault(); void confirmDiscard(() => window?.close()) }
   })
   window.webContents.setWindowOpenHandler(({ url }) => {
@@ -641,14 +692,33 @@ async function showMainWindow() {
   if (window && !window.isDestroyed() && !quitting) { cancelWindowHide(window); if (window.isMinimized()) window.restore(); window.show(); window.focus() }
 }
 
-async function confirmDiscard(continueClose: () => void) {
+async function flushShortcutRenderer(discard = false): Promise<{ clean: boolean; settled: boolean }> {
+  if (!window || window.isDestroyed()) return { clean: false, settled: false }
+  const requestId = randomUUID()
+  return new Promise(resolve => {
+    const timer = setTimeout(() => { shortcutFlush = undefined; resolve({ clean: false, settled: false }) }, 25_000)
+    shortcutFlush = { requestId, resolve: value => { clearTimeout(timer); shortcutFlush = undefined; resolve(value) } }
+    sendEvent({ type: 'shortcuts:flush', requestId, discard })
+  })
+}
+
+async function confirmDiscard(continueClose: () => void, hiding = false) {
   if (confirmingClose || !window) return
   confirmingClose = true
   try {
+    if (dirtySources.has('shortcuts') || shortcutCapture) {
+      const flushed = await flushShortcutRenderer()
+      if (!flushed.settled) { await dialog.showMessageBox(window, { type: 'warning', message: '快捷键保存结果尚未确认', detail: '请保持应用打开，稍后重新核对。', buttons: ['返回'] }); return }
+    }
+    if (hiding && !dirtySources.has('shortcuts')) { continueClose(); return }
     if(dirtySources.has('appearance'))await new Promise<void>(resolve=>{const timeout=setTimeout(()=>{appearanceFlushed=undefined;resolve()},3000);appearanceFlushed=()=>{clearTimeout(timeout);appearanceFlushed=undefined;resolve()};sendEvent({type:'appearance:flush'})})
     if(!hasUnsavedChanges()){continueClose();return}
     const result = await dialog.showMessageBox(window, { type: 'question', title: '有未保存的修改', message: '仍有修改尚未保存', detail: dirtySources.has('appearance')?'外观保存尚未完成，退出将放弃未保存的外观修改。':'退出后，未保存的修改将丢失。', buttons: ['取消', '退出'], defaultId: 0, cancelId: 0, noLink: true })
-    if (result.response === 1) { dirtySources.clear(); continueClose() }
+    if (result.response === 1) {
+      if (dirtySources.has('shortcuts') && !(await flushShortcutRenderer(true)).clean) return
+      if (hiding) dirtySources.delete('shortcuts'); else dirtySources.clear()
+      continueClose()
+    }
   } finally { confirmingClose = false }
 }
 
@@ -668,15 +738,16 @@ else {
     await prepareV2DataRoot(legacyDataPath)
     await pluginSettings.init()
     await appearance.init()
-    await appIconController.apply(appearance.snapshot().preferences.appIconId)
     await desktopSettings.init()
+    installMenu()
+    await shortcutSettings.init()
     nativeTheme.themeSource=appearance.snapshot().preferences.mode
     nativeTheme.on('updated',()=>appearance.systemChanged())
     protocol.handle('boai-asset',async request=>{try{const url=new URL(request.url);if(url.hostname!=='appearance'||url.search||url.hash)throw new Error('无效路径');const asset=await appearance.asset(decodeURIComponent(url.pathname.slice(1)));return new Response(new Uint8Array(asset.bytes),{headers:{'Content-Type':asset.type,'Cache-Control':'no-store'}})}catch{return new Response('Not found',{status:404})}})
     registerIpc()
     if (app.isPackaged && !app.setAsDefaultProtocolClient('boai')) importErrors.push('无法注册模型导入链接，请在模型连接中手动添加。')
-    installMenu()
-    background.init()
+    background.init(appearance.snapshot().preferences.appIconId)
+    await appIconController.apply(appearance.snapshot().preferences.appIconId)
     creatingWindow = createWindow(!desktopSettings.hiddenAtLogin(process.argv))
     try { await creatingWindow } finally { creatingWindow = null }
     await materialSources.recover()
@@ -690,6 +761,8 @@ else {
     event.preventDefault()
     if (quitting) return
     quitting = true
+    background.stopIconUpdates()
+    const iconExit = appIconController.close()
     // Discovery/initialization may still be creating the handle. Do not snapshot null and skip its drain.
     const runtimeExit = (ready ?? Promise.resolve()).catch(() => {}).then(() => {
       const child = runtime
@@ -697,8 +770,10 @@ else {
     })
     // A timeout may terminate the worker, but never counts as Chromium action exit.
     const cliExit = (cliStarting ?? Promise.resolve()).then(async () => { await cli?.close(); cli = undefined })
-    void Promise.all([runtimeExit, cliExit, browsers.shutdown(), materialSources.close(), desktopSettings.flush(), pluginSettings.flush(), cliInstaller.flush()]).then(() => { background.destroy(); quitApproved = true; app.quit() }).catch(error => {
+    void Promise.all([runtimeExit, cliExit, iconExit, browsers.shutdown(), materialSources.close(), desktopSettings.flush(), shortcutSettings.flush(), pluginSettings.flush(), cliInstaller.flush()]).then(() => { background.destroy(); quitApproved = true; app.quit() }).catch(error => {
       quitting = false
+      background.resumeIconUpdates()
+      void appIconController.resume().catch(error => sendEvent({ type: 'runtime-error', error: String(error) }))
       void showMainWindow()
       dialog.showErrorBox('应用尚未退出', error instanceof Error ? error.message : String(error))
     })
