@@ -67,3 +67,22 @@ const style = typographyVariables(typographyDefaults)
 ## 构建
 
 `pnpm build:design` 生成共享包和静态文档站，站点产物在 `apps/design-docs/dist`。文档子路径均生成 HTML，部署到域名根路径即可直接访问和刷新。包仍标记为私有开发包，正式分发与许可证另行确定。
+
+## 全量组件子路径
+
+根入口保留原有基础组件；完整目录使用明确子路径，例如 `@boai/ui/dialog`、`@boai/ui/tabs`、`@boai/ui/chat-composer`。通过[组件总览](/components)按名称查找。图表、代码高亮等示例按页面加载，基础按钮不会主动加载 Recharts 或 Shiki。
+
+`@boai/ui/styles.css` 包括 Soft 皮肤、状态/滚动工具类、本地图标、Tabs/Composer/面板/选文样式。公共组件使用自己的语义圆角与字号，允许 Fumadocs 保留默认通用刻度。
+
+### React Aria 兼容补丁
+
+工作区已有 `react-aria@3.53.1` 多属性 transitioncancel 修复，NumberField 使用这一依赖。独立 pnpm 消费时也应保留该版本与补丁：先把包内 `patches/react-aria@3.53.1.patch` 复制到项目的 `patches/`，在消费者 `pnpm-workspace.yaml` 设置：
+
+```yaml
+overrides:
+  react-aria: 3.53.1
+patchedDependencies:
+  react-aria@3.53.1: patches/react-aria@3.53.1.patch
+```
+
+随后重新安装依赖。库不会在安装时修改宿主。分发检查使用相同补丁；其他包管理器需要自己的补丁接入，不能默认宣称行为一致。

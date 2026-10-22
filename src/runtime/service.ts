@@ -1,5 +1,7 @@
 /*
  * [OUTPUT]: 本人普通bobo消息核验内置管理技能身份，并为本轮及原生待补充回复装配随包操作文档；不改原业务权限或旧绑定副本。
+ * [OUTPUT]: 提示词集合沿原串行写入/备份门禁接入，独立版本与changed刷新。
+ * [OUTPUT]: 会话清理先广播停读状态，完成携带隐藏标记；已提交后的存储整理失败单独反馈，不重报删除失败。
  * [OUTPUT]: 备份清单和RESTORE明确标记定时/人格自动行为暂停策略及连接停用，避免恢复后配置状态误读；原恢复语义保持。
  * [OUTPUT]: bobo明确记忆修改/忘记或来源会话清理后，清除所有可重建的Mastra派生thread。
  * [OUTPUT]: 同会话 PTY/真实预览接原应用协议和退出清理；默认关闭的本机 OCR、活动查询及有来源日报。
@@ -284,6 +286,7 @@ import type { DirectoryApprovalReceipt } from '../shared/domain/directory-access
 import { basename, isAbsolute, join, relative, resolve } from 'node:path'
 import { z } from 'zod'
 import { listPromptTemplates, savePromptTemplate, removePromptTemplate } from './modules/resources/prompt-templates'
+import { readPromptCollections, updatePromptCollections } from './modules/resources/prompt-collections'
 import type { AgentInput, AgentRun, Approval, Connection, Conversation, ConversationDetail, DigitalAgent, Message, Resource, Snapshot, DiscussionTurn, ConversationEvent, AgentDelivery, DecisionRecord, WorkItem, WorkBudget, MemoryQuery, MemoryView, MemoryEntry, Artifact } from '../shared/domain'
 import { isBrowserCapableAgent } from '../shared/domain'
 import type { AppEvent, Method, Methods } from '../shared/ipc'
@@ -530,10 +533,10 @@ export class AppService {
       if (this.closing || this.backingUp || this.clearingConversations.has(scope.conversationId)) fail('会话正在清理或服务不可用')
       const room = this.getConversation(scope.conversationId), agent = this.getAgent(scope.employeeId)
       if (!room.agentIds.includes(agent.id) || room.channel || !agent.active) fail('员工不属于当前本机会话')
-      if (actor.kind !== 'owner' && (actor.employeeId !== agent.id || actor.conversationId !== room.id)) fail('终端仅限当前员工会话')
-      if (actor.kind !== 'owner' && (!agent.allowCommands || agent.executionPermission !== 'full-access')) fail('持久终端需要当前员工启用命令和完全访问；不会绕过审批配置')
+      if (actor.kind !== 'owner' && (actor.employeeId !== agent.id || actor.conversationId !== room.id)) fail('网页预览仅限当前员工会话')
+      if (actor.kind !== 'owner' && (!agent.allowCommands || agent.executionPermission !== 'full-access')) fail('网页预览需要当前员工启用命令和完全访问；不会绕过审批配置')
       const path = directory ? resolve(directory) : room.workspacePath
-      if (!isAbsolute(path)) fail('终端目录必须是绝对路径')
+      if (!isAbsolute(path)) fail('预览目录必须是绝对路径')
       if (!directory && !write) return path
       return realpath(path)
     }, scope => this.emit({ type: 'workspace:show', ...scope }), () => !!options.applicationHost?.available), ...this.presentations.operations(), ...this.images.operations(), ...this.selfies.operations(), ...taskOperations(this.store), ...planningOperations(this.store), ...planOperations(this.store), ...referenceOperations(this.store, (...args) => this.serialize(() => this.referenceObjects(...args))), ...applicationOperations({ request: async (method, input) => await this.handle(method, input) as never, personality: (action, input) => this.agentPersonality(action, input) }, { connection: connectionSchema, conversation: conversationSchema, search: searchSchema }, options.applicationHost)], async (actor, operation) => {
@@ -1058,6 +1061,12 @@ export class AppService {
     if (method === 'testWebSearchService') { if (this.closing || this.backingUp) fail('服务正在退出或备份'); return this.webSearch.test(input) }
     if (method === 'removeWebSearchService') return this.webSearch.connections.remove(input)
     if (method === 'listDataSources') { z.undefined().parse(input); return this.dataSources.list() }
+    if (method === 'getPromptCollections') { z.undefined().parse(input); return this.store.transaction(readPromptCollections) }
+    if (method === 'updatePromptCollections') return this.serialize(async () => {
+      if (this.closing || this.backingUp) fail('服务正在退出或备份')
+      const value = await updatePromptCollections(this.store, input)
+      this.changed(); return value
+    })
     if (method === 'listPromptTemplates') { z.undefined().parse(input); return listPromptTemplates(this.store) }
     if (method === 'savePromptTemplate' || method === 'removePromptTemplate') return this.serialize(async () => {
       if (this.closing || this.backingUp) fail('服务正在退出或备份')
@@ -2149,12 +2158,16 @@ export class AppService {
     if (sessionReceipt) {
       const pending = new Set((await this.store.load<{ id: string }>('conversationCleanup')).map(item => item.id))
       for (const room of [conversation, ...discussions]) if (!pending.has(room.id)) await this.conversationArtifacts(room)
-      for (const room of [conversation, ...discussions]) this.clearingConversations.add(room.id)
+      for (const room of [conversation, ...discussions]) {
+        this.clearingConversations.add(room.id)
+        this.emit({ type: 'conversation:clearing', conversationId: room.id })
+      }
       await prepareSessionDeletion(this.store, conversation, discussions, sessionReceipt)
     }
     for (const room of discussions) await this.clearConversationHistory(room.id, false, true)
     if (!(await this.store.load<{ id: string }>('conversationCleanup')).some(value => value.id === id)) await this.conversationArtifacts(conversation)
     this.clearingConversations.add(id)
+    this.emit({ type: 'conversation:clearing', conversationId: id })
     this.changed(id)
     const timer = this.workTimers.get(id)
     if (timer) clearTimeout(timer)
@@ -2188,10 +2201,11 @@ export class AppService {
     this.automations.replaceHistory(result.occurrences)
     if (!remove) this.conversations.set(id, result.conversation)
     this.clearingConversations.delete(id)
-    this.emit({ type: remove ? 'conversation:deleted' : 'conversation:cleared', conversationId: id })
+    this.emit(remove ? { type: 'conversation:deleted', conversationId: id } : { type: 'conversation:cleared', conversationId: id, hidden: hide })
     if (remove) this.changed()
     this.changed(id)
-    await this.store.compact()
+    // Cleanup has committed; maintenance failure must not invite replaying deletion.
+    await this.store.compact().catch(error => this.emit({ type: 'runtime-error', error: `聊天记录已清理，但存储整理未完成：${error instanceof Error ? error.message : String(error)}` }))
   }
 
   private async deleteAutomationOccurrence(id: string, expectedVersion: number) {
@@ -5389,7 +5403,7 @@ export class AppService {
     if (isWithin(this.dataPath, destination) || isWithin(destination, this.dataPath)) fail('备份目录不能与应用数据目录相互包含')
     if (this.closing || this.backingUp) fail('服务正在退出或备份')
     if (this.application.busy || this.agentBehaviors.busy) fail('应用业务操作或员工行为仍在进行，请完成后备份')
-    if (this.terminals.list().some(session => session.status !== 'exited')) fail('请先停止侧栏终端和预览，再备份')
+    if (this.terminals.list().some(session => session.status !== 'exited')) fail('请先停止网页预览，再备份；旧受管进程请正常退出并重新启动应用后核对')
     this.backingUp = true
     try {
       await this.mutations

@@ -1,10 +1,12 @@
 /*
+ * [OUTPUT]: 单条/批量确认全部完成后仅反馈一次对应成功；失败保留进度，不提前报全部成功。
  * [INPUT]: 待清理单个会话或已固定的核心助手会话集合、删除标记、宿主清理回调与统一 AlertDialog。
  * [OUTPUT]: 列表/标题共用清空或删除确认；批量逐项沿原清理能力执行，失败即停并保留已完成进度，显式继续不重清已完成项。
  * [POS]: 会话私有确认组件；只在确认后调用已有清理能力。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { useState } from 'react'
+import { toast } from 'sonner'
 import type { Conversation } from '@shared/domain'
 import { Banner, useMutation } from '@/components/common'
 import { Button } from '@/components/ui/button'
@@ -41,6 +43,7 @@ export function ConversationHistoryDialog({ target, busy, onClose, onClear }: Pr
             await onClear(conversations[index].id, target.hide)
             setProgress({ target, completed: index + 1 })
           }
+          toast.success(target.hide ? batch ? `已删除 ${conversations.length} 个会话` : '会话已删除' : batch ? '所有聊天记录已清空' : '聊天记录已清空')
           onClose()
         }) }}>{mutation.busy ? '正在清理…' : completed > 0 ? '继续清理剩余会话' : target?.hide ? batch ? '删除所有会话及记录' : '删除会话及记录' : '确认清空'}</Button>
       </AlertDialogFooter>

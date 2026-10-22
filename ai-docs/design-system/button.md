@@ -27,3 +27,7 @@
 `disabled` 必须真实阻止操作。异步提交时使用禁用状态、加载提示与必要的提交锁；公共 Button 不创建任务、管理审批或猜测业务进度。
 
 使用键盘时保留可见焦点。颜色与字号继承主题，调用者的 `className` 主要负责布局。
+
+## 页面组件索引
+
+- [Button](#api-button)：`@boai/ui/button`；Button, buttonVariants

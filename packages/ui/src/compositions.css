@@ -1,0 +1,112 @@
+/*
+ * [INPUT]: BOAI Tabs、Composer与拖拽列表。
+ * [OUTPUT]: 共享组合皮肤；宿主只负责业务布局。
+ * [POS]: @boai/ui组合样式。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header与所属目录.folder.md。
+ */
+/* Tabs share one compact Soft surface in both embedded pages and side panels. */
+.soft-tabs-list { border-radius:var(--radius-control);background:var(--muted);isolation:isolate;--tabs-text-muted:var(--muted-foreground);--tabs-text-active:var(--foreground);--tabs-pill-bg:var(--card) }
+.soft-tabs-trigger { border-radius:calc(var(--radius-control) - 3px);background:transparent;color:var(--muted-foreground);cursor:pointer;transition:color var(--tabs-dur) var(--tabs-ease) }
+.soft-tabs-trigger:is(:hover,:focus-visible) { background:var(--accent);color:var(--foreground) }
+.soft-tabs-list .soft-tabs-trigger[data-active] { background:transparent;box-shadow:none;color:var(--foreground) }
+.soft-tabs-list > .t-tabs-pill { top:0;corner-shape:inherit;border-radius:calc(var(--radius-control) - 3px);background-image:linear-gradient(to bottom,transparent,var(--soft-shade));box-shadow:var(--shadow-control);transition-property:transform,width,height }
+.soft-tabs-list[data-variant=line] { border-radius:0;background:transparent }
+.soft-tabs-list[data-variant=line] .soft-tabs-trigger { border-radius:0;background:none;box-shadow:none }
+.soft-tabs-list[data-variant=line] > .t-tabs-pill { background:var(--foreground);border-radius:1px;box-shadow:none }
+@media(prefers-reduced-motion:reduce) { .soft-tabs-trigger { transition:none } }
+
+/* Presentational composer: host keeps draft, IME, stop, mention and send behavior. */
+.chat-composer {
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  gap:8px;
+  width:100%;
+  height:auto;
+  min-width:0;
+  padding:12px;
+  border:0;
+  border-radius:var(--radius-composer);
+  corner-shape:squircle;
+  background-color:var(--surface-composer);
+  background-image:linear-gradient(to bottom,var(--soft-surface-tint),transparent);
+  box-shadow:var(--shadow-composer);
+}
+.chat-composer .chat-composer-input {
+  display:block;
+  width:100%;
+  flex:none;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+  color:var(--foreground);
+  resize:none;
+  outline:none;
+}
+.chat-composer-input::placeholder { color:var(--muted-foreground);opacity:1 }
+.chat-composer .chat-composer-footer { display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;width:100%;padding:0;height:auto;cursor:default }
+.chat-composer-footer>.button-row { gap:6px }
+.chat-composer-actions { display:flex;align-items:center;flex-wrap:wrap;gap:4px;min-width:0 }
+.chat-composer-actions[data-align=end] { margin-left:auto;justify-content:flex-end }
+.chat-composer-select>span { min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
+.chat-composer-select[data-kind=model]:is(:hover,[aria-expanded=true]):not(:disabled):not([aria-disabled=true]) { background:var(--selection) }
+.chat-composer-select[data-kind=permission] { background:var(--muted);border-radius:var(--radius-pill);corner-shape:round }
+.chat-composer-option { display:flex;flex-direction:column;min-width:0;gap:2px;text-align:left;font-size:var(--text-ui-body);line-height:1.4;overflow-wrap:anywhere }
+.chat-composer-option>small { font-size:var(--text-ui-caption);line-height:1.5;color:var(--muted-foreground);overflow-wrap:anywhere }
+.chat-composer-select[data-permission=full],.chat-composer-menu [data-permission=full] { --accent-foreground:var(--warning);color:var(--warning) }
+.chat-composer-menu [data-permission=full] .chat-composer-option>small { color:var(--warning) }
+@supports not (corner-shape:squircle) {
+  .soft-button { border-radius:10px }
+  .soft-button-round { border-radius:var(--radius-pill) }
+  .chat-composer { border-radius:20px }
+}
+@media(prefers-reduced-motion:reduce) {
+  .soft-button,.chat-composer { transition:none }
+}
+
+.drag-list-row { position:relative }
+.drag-list-dragging { opacity:.35 }
+.drag-list-group-target { position:relative }
+.drag-list-group-target[data-drop=inside] { border-radius:var(--radius-control);background:var(--selection) }
+.drag-list-group-target[data-drop=inside]::after { content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 0 0 1px var(--primary);pointer-events:none;z-index:2 }
+.drag-list-row[data-drop]::before { content:"";position:absolute;left:4px;right:0;height:2px;border-radius:2px;background:var(--primary);pointer-events:none;z-index:1 }
+.drag-list-row[data-drop]::after { content:"";position:absolute;left:0;width:8px;height:8px;border:2px solid var(--primary);border-radius:50%;background:var(--surface-list);pointer-events:none;z-index:1 }
+.drag-list-row[data-drop=before]::before { top:3px }
+.drag-list-row[data-drop=before]::after { top:0 }
+.drag-list-row[data-drop=after]::before { bottom:3px }
+.drag-list-row[data-drop=after]::after { bottom:0 }
+
+.avatar { overflow:hidden }
+.avatar img { display:block;width:100%;height:100%;object-fit:cover }
+.group-avatar { --avatar-grid-gap:1px;display:flex;flex-direction:column;gap:var(--avatar-grid-gap);padding:2px;overflow:hidden }
+.group-avatar-row { display:flex;justify-content:center;gap:var(--avatar-grid-gap);width:100%;height:calc((100% - (var(--avatar-grid-size) - 1) * var(--avatar-grid-gap)) / var(--avatar-grid-size));flex-shrink:0 }
+.group-avatar-tile { display:block;height:100%;aspect-ratio:1;min-width:0 }
+.group-avatar .avatar { display:flex;width:100%;height:100%;border-radius:2px;overflow:hidden }
+
+.soft-tabs-list[data-variant=window] { max-width:100%;border-radius:0;background:transparent;scrollbar-width:none;-webkit-app-region:no-drag }
+.soft-tabs-list[data-variant=window]::-webkit-scrollbar { display:none }
+.detail-tab { position:relative;display:flex;align-items:center;flex:0 0 auto;min-width:90px;max-width:180px;height:32px;padding-right:3px;border:1px solid transparent;border-radius:10px;background:transparent;color:var(--muted-foreground);-webkit-app-region:no-drag }
+.detail-tab[data-selected=true] { color:var(--foreground) }
+.detail-tab:hover,.detail-tab:has(:focus-visible) { background:var(--selection);color:var(--foreground) }
+.detail-tab[data-selected=true]:is(:hover,:has(:focus-visible)) { background:transparent }
+.soft-tabs-list[data-variant=window] > .t-tabs-pill { corner-shape:round;border:1px solid var(--frame-border);border-radius:10px;background:var(--surface-detail);box-shadow:none }
+.soft-tabs-list[data-variant=window] > .detail-tab { z-index:1 }
+.soft-tabs-list[data-variant=window] .soft-tabs-trigger { flex:1;min-width:0;justify-content:flex-start;border-radius:9px;background:none;box-shadow:none;color:inherit }
+.soft-tabs-list[data-variant=window] .soft-tabs-trigger:focus-visible { color:var(--foreground) }
+.detail-tab-title { min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--text-ui-body);font-weight:550 }
+.detail-tab .dirty-label { flex-shrink:0;font-size:var(--text-ui-title);line-height:1 }
+[data-slot=collapsible-trigger] { width:100%;text-align:left }
+[data-slot=collapsible-trigger]>.app-icon[class*=chevron],details>summary>.app-icon[class*=chevron],[data-slot=accordion-trigger-icon] { width:12px !important;height:12px !important;transition:transform .2s ease }
+[data-slot=collapsible-trigger][aria-expanded=true]>.app-icon[class*=chevron-right],details[open]>summary>.app-icon[class*=chevron-right] { transform:rotate(90deg) }
+[data-slot=collapsible-content],[data-slot=accordion-content] { overflow:hidden;opacity:1;transition:height .22s ease,opacity .18s ease }
+[data-slot=collapsible-content] { height:var(--collapsible-panel-height) }
+[data-slot=accordion-content] { height:var(--accordion-panel-height) }
+[data-slot=collapsible-content]:is([data-starting-style],[data-ending-style]),[data-slot=accordion-content]:is([data-starting-style],[data-ending-style]) { height:0;opacity:0 }
+
+:is([data-slot=dialog-content],[data-slot=alert-dialog-content],[data-slot=popover-content],[data-slot=hover-card-content],[data-slot=dropdown-menu-content],[data-slot=dropdown-menu-sub-content],[data-slot=context-menu-content],[data-slot=context-menu-sub-content],[data-slot=menubar-content],[data-slot=menubar-sub-content],[data-slot=select-content],[data-slot=combobox-content],[data-slot=toast],[data-slot=drawer-popup],[data-slot=sheet-content],[data-slot=card],[data-slot=toggle],[data-slot=tabs-list],[data-slot=tabs-trigger],[data-slot=menubar],[data-slot=sidebar-menu-button]) { corner-shape:squircle }
+[data-slot=toggle][aria-pressed=true] { box-shadow:var(--shadow-control) }
+.empty-illustration { display:block;width:200px;max-width:100%;height:auto;flex-shrink:0 }
+@media(prefers-reduced-motion:reduce) {
+ [data-slot=collapsible-trigger]>.app-icon,[data-slot=collapsible-content],[data-slot=accordion-content] { transition:none }
+}

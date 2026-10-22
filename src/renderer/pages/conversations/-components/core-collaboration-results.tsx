@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 清理开始同步失效在途组织读取并停读，隐藏/删除终态不再刷新；正常查询真实错误保持。
  * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [INPUT]: 当前 core 会话、公共组织回执、真实联系人/群快照和显式恢复 IPC。
  * [OUTPUT]: 原请求所属的独立群与已有/新员工入口；未知恢复保留原载荷跨切换/重启，显式只读核对；隐藏停读、迟到拒绝，不自动跳转或续行。
@@ -59,8 +60,9 @@ export function CoreCollaborationResults({ api, conversationId, snapshot, active
   }, [conversationId, active])
   useEffect(() => {
     if (!active) return
-    let disposed = false, request = 0, timer: ReturnType<typeof setTimeout> | undefined
+    let disposed = false, paused = false, request = 0, timer: ReturnType<typeof setTimeout> | undefined
     const load = async () => {
+      if (paused) return
       const token = ++request
       try {
         const receipts = await api.request('listBoboCollaborationOperations', { conversationId })
@@ -71,7 +73,20 @@ export function CoreCollaborationResults({ api, conversationId, snapshot, active
     }
     void load()
     const unsubscribe = api.subscribe(event => {
-      if (event.type !== 'changed') return
+      if ('conversationId' in event && event.conversationId === conversationId) {
+        if (event.type === 'conversation:clearing') {
+          paused = true; request++; clearTimeout(timer); timer = undefined
+          setView({ conversationId, receipts: [] })
+          return
+        }
+        if (event.type === 'conversation:cleared' || event.type === 'conversation:deleted') {
+          paused = event.type === 'conversation:deleted' || Boolean(event.hidden)
+          request++; clearTimeout(timer); timer = undefined
+          setView({ conversationId, receipts: [] })
+          return
+        }
+      }
+      if (event.type !== 'changed' || paused) return
       request++; timer ??= setTimeout(() => { timer = undefined; void load() }, 120)
     })
     return () => { disposed = true; request++; unsubscribe(); clearTimeout(timer) }

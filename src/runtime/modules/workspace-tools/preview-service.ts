@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Authorized workspace directory, terminal owner and explicit preview command.
- * [OUTPUT]: Real loopback static/development servers, readiness and lifecycle.
+ * [OUTPUT]: Real loopback static/development servers and lifecycle, with preview-owned bounded read-only process diagnostics.
  * [POS]: Sidebar preview service; no remote URL proxy or automatic package installation.
  * [PROTOCOL]: Update Header and owning .folder.md when changed.
  */
@@ -9,6 +9,9 @@ import { createReadStream } from 'node:fs'
 import { readFile, realpath, stat } from 'node:fs/promises'
 import { extname, join, relative, resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
+import { stripVTControlCharacters } from 'node:util'
+
+const previewOutputLimit = 16_000
 import type { PreviewInfo, TerminalScope } from '../../../shared/domain/workspace-tools'
 import type { TerminalService } from './terminal-service'
 
@@ -42,7 +45,8 @@ export class PreviewService {
     const item = this.previews.get(id)
     if (!item) throw new Error('预览不存在或服务已重启')
     if (item.info.terminalId && this.terminals.info(item.info.terminalId).status === 'exited' && item.info.status !== 'stopped') item.info.status = 'failed'
-    return { ...item.info }
+    const output = item.info.terminalId ? this.terminals.read(item.info.terminalId) : undefined
+    return { ...item.info, ...(output ? { diagnostics: { output: stripVTControlCharacters(output.text).slice(-previewOutputLimit), truncated: output.truncated || output.text.length > previewOutputLimit, exitCode: output.session.exitCode } } : {}) }
   }
   start(scope: TerminalScope, directory: string, command?: string) {
     const task = this.startServer(scope, directory, command)
@@ -81,14 +85,14 @@ export class PreviewService {
         await close(reservation)
         const terminal = await this.terminals.create(scope, root, '预览服务'); info.terminalId = terminal.id; info.url = `http://127.0.0.1:${port}/`
         const expanded = command.replaceAll('{{port}}', String(port))
-        // The caller chooses the command; PORT/HOST are explicit and visible in the terminal.
+        // The caller chooses the command; PORT/HOST are explicit; output is exposed only through this preview's diagnostics.
         await this.terminals.write(terminal.id, `export PORT=${port} HOST=127.0.0.1\n${expanded}\n`)
         const deadline = Date.now() + 20000
         while (!this.closing && info.status === 'starting' && Date.now() < deadline && this.terminals.info(terminal.id).status === 'running') {
           if (await reachable(info.url)) { info.status = 'ready'; break }
           await new Promise(done => setTimeout(done, 150))
         }
-        if (info.status !== 'ready') throw new Error('预览服务没有就绪；请检查终端输出和监听端口，命令可使用 {{port}}')
+        if (info.status !== 'ready') throw new Error('预览服务没有就绪；请检查预览输出和监听端口，命令可使用 {{port}}')
       }
     } catch (error) {
       info.status = 'failed'; info.error = error instanceof Error ? error.message : String(error)
@@ -96,14 +100,14 @@ export class PreviewService {
       if (item.server?.listening) await close(item.server)
     }
     if (this.closing || this.stopped.has(info.id)) await this.stop(info.id)
-    return { ...info }
+    return this.status(info.id)
   }
   async stop(id: string) {
     const item = this.previews.get(id); if (!item) throw new Error('预览不存在')
     this.stopped.add(id)
     if (item.info.terminalId) await this.terminals.kill(item.info.terminalId)
     if (item.server?.listening) await close(item.server)
-    item.info.status = 'stopped'; return { ...item.info }
+    item.info.status = 'stopped'; return this.status(id)
   }
   async clearConversation(id: string) {
     const keys = [...this.previews].filter(([, p]) => p.info.conversationId === id).map(([key]) => key)

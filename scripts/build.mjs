@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 按manifest分发21款22/44px托盘模板，与原Dock图分开；缺图阻止构建。
  * [OUTPUT]: dev/完整宿主构建将同一版本与输入hash固化进运行时；结束重核输入，不依赖可能已被后续构建覆盖的dist文件。
  * [OUTPUT]: 先构建共享设计包；Node产物内联纯tokens，保留独立serve和桌面运行。
  * [OUTPUT]: 完整构建核对输入前后一致，并登记dist输入/产物hash供UI及发布复验，避免测试旧构建。
@@ -57,7 +58,14 @@ export async function buildHost({ inputHash } = {}) {
   await cp('src/runtime/modules/presentations/alma', 'dist/runtime/alma', { recursive: true, filter: path => basename(path) !== '.folder.md' })
   await mkdir('dist/main/app-icons', { recursive: true })
   const appIconManifest = JSON.parse(await readFile('resources/app-icons/manifest.json', 'utf8'))
-  for (const icon of appIconManifest.icons) await copyFile(`resources/app-icons/${icon.id}.png`, `dist/main/app-icons/${icon.id}.png`)
+  await mkdir('dist/main/app-icons/tray', { recursive: true })
+  for (const icon of appIconManifest.icons) {
+    await copyFile(`resources/app-icons/${icon.id}.png`, `dist/main/app-icons/${icon.id}.png`)
+    for (const file of [icon.tray.oneX, icon.tray.twoX]) {
+      if (!/^tray\/avatar-[a-z-]+Template(?:@2x)?\.png$/.test(file)) throw new Error(`Invalid tray asset: ${icon.id}`)
+      await copyFile(`resources/app-icons/${file}`, `dist/main/app-icons/${file}`)
+    }
+  }
   const skillManifest = JSON.parse(await readFile('resources/agent-skills/manifest.json', 'utf8'))
   await Promise.all(skillManifest.skills.map(name => readFile(`resources/agent-skills/${name}/SKILL.md`, 'utf8')))
   await rm('dist/agent-skills', { recursive: true, force: true })

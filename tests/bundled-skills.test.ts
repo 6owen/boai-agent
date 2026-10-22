@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 预览技能旧受管副本沿原hash/版本/回执更新，自定义副本拒绝静默覆盖。
  * [INPUT]: 隔离 AppService/SQLite、实际随包技能、原绑定/更新/删除协议。
  * [OUTPUT]: 新 Bobo 默认清单完整独立副本、重启/升级不覆盖、旧库不补绑及中断回执核对。
  * [POS]: 默认技能源分发集成回归；不调用模型或 Electron。
@@ -141,4 +142,35 @@ test('builtin namespace cannot be shadowed by shared same-name skills and reject
   const refreshed = await catalog.list(true)
   expect(refreshed.skills.some(skill => skill.id === bundledSkillIdentity('boai-browser'))).toBe(false)
   expect(refreshed.issues.length).toBeGreaterThan(0)
+})
+
+test.each([false, true])('sidebar source upgrade uses original receipt and preserves customized copies; custom=%s', async custom => {
+  const f = await fixture(), source = join(f.bundledRoot, 'boai-artifact-sidebar', 'SKILL.md')
+  const current = await readFile(source, 'utf8')
+  const legacy = '---\nname: boai-artifact-sidebar\ndescription: Legacy sidebar fixture\n---\nUse terminal.create and terminal.exec for the interactive terminal.\n'
+  await writeFile(source, legacy)
+  const app = await f.start(), bobo = await app.bobo()
+  const resource = (await app.store.load<Resource>('resources')).find(item => item.name === 'boai-artifact-sidebar')!
+  expect(bobo.skillIds).toContain(resource.id)
+  if (custom) await writeFile(join(resource.path, 'SKILL.md'), legacy + '\nMy custom instructions.\n')
+  await app.close(); await writeFile(source, current)
+  const next = await f.start()
+  expect(await readFile(join(resource.path, 'SKILL.md'), 'utf8')).toBe(legacy + (custom ? '\nMy custom instructions.\n' : ''))
+  const check = await next.api('checkSkillUpdate', { id: resource.id })
+  expect(check).toMatchObject({ status: 'available', localModified: custom })
+  const input = { requestId: `sidebar-preview-update-${custom}`, planId: check.planId!, expectedRevision: check.expectedRevision!, expectedHash: check.expectedHash! }
+  if (custom) {
+    await expect(next.api('updateSkill', input)).rejects.toThrow('明确确认')
+    expect(await readFile(join(resource.path, 'SKILL.md'), 'utf8')).toContain('My custom instructions.')
+  } else {
+    const operation = await next.api('updateSkill', input)
+    await vi.waitFor(async () => expect((await next.api('getSkillOperation', { id: operation.id })).status).toBe('completed'))
+    const receipt = await next.api('getSkillOperation', { id: operation.id })
+    expect(receipt.items[0].status).toBe('updated')
+    expect(await readFile(join(resource.path, 'SKILL.md'), 'utf8')).toBe(current)
+    expect(current).not.toContain('terminal.create'); expect(current).toContain('preview.start')
+    expect(await next.api('updateSkill', input)).toEqual(receipt)
+  }
+  expect((await next.bobo()).skillIds).toEqual(bobo.skillIds)
+  expect(f.model).not.toHaveBeenCalled()
 })

@@ -20,3 +20,8 @@ Badge 不触发业务状态迁移，不把“运行结束”解释为“成果�
 ## Separator
 
 用于相关内容间的细分割。`orientation="vertical"` 切换为纵向；默认水平。与 Card 页脚共享细线和高光，避免页面自行画出另一套边缘。
+
+## 页面组件索引
+
+- [Badge](#api-badge)：`@boai/ui/badge`；Badge, badgeVariants
+- [Separator](#api-separator)：`@boai/ui/separator`；Separator

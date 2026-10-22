@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 清理开始先于changed且守卫持续至完成；真正失败不伪造完成，提交后的compact故障不重报删除失败。
  * [INPUT]: 真实 AppService/SQLite 发布事务、可控离线 Engine、材料原件与本机 ACP 协议夹具。
  * [OUTPUT]: 隐藏/显式恢复、真正清空与删除后的搜索/原目标门禁及重启零重放，隐藏仍允许原授权明确历史窗口但搜索 IPC 拒绝内部标记，清空保留可见配置名而旧正文不回流；名称/正文/文件统一搜索和原会话目标的真实 IPC 校验/零消息零模型零工作；历史轮次摘要80项/60字符、默认无摘要、真实来源外改失效和零全历史/零模型调用；无正文元信息的旧结果实际正文核对/材料撤权失效与零业务调用；chat/task/ACP 三条真实完成事务、开始/完成乱序与阅读缺口、来源失效无旧正文、清理同事务 epoch、独立锚点及异根备份重启零重放的宿主意图验收。
  * [POS]: D6 阅读/搜索服务集成测试；不调用商业模型，不替代 Electron 可见性验收。
@@ -11,6 +12,7 @@ import { join, resolve } from 'node:path'
 import { RequestContext } from '@mastra/core/request-context'
 import { noopObserve } from '@mastra/core/tools'
 import { AppService } from '../src/runtime/service'
+import type { AppEvent } from '../src/shared/ipc'
 import { ProductStore } from '../src/runtime/adapters/storage/product-store'
 import { createTaskRuntime } from '../src/runtime/adapters/mastra/task-runtime'
 import { materialDirectory } from '../src/runtime/modules/materials/material-files'
@@ -43,7 +45,8 @@ class FakeEngine implements AgentEngine {
   async test() { return 'ok' }
 }
 async function open(dataPath: string, engine = new FakeEngine()) {
-  const service = new AppService({ dataPath, engine, secrets, emit: () => {} }); cleanups.push(() => service.close()); await service.init(); return { service, engine }
+  const events: AppEvent[] = []
+  const service = new AppService({ dataPath, engine, secrets, emit: event => { events.push(event) } }); cleanups.push(() => service.close()); await service.init(); return { service, engine, events }
 }
 async function fixture(kind: 'direct' | 'group' = 'direct') {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'boai-service-reading-'))); cleanups.push(() => rm(root, { recursive: true, force: true }))
@@ -427,4 +430,50 @@ describe('D6 real publication and user reading integration', () => {
     await service.close(); const restored = await open(dataPath)
     expect(await reading(restored.service, conversation)).toEqual(first); expect(restored.engine.contexts).toEqual([]); expect(restored.engine.decisions).toEqual([])
   }, 15000)
+})
+
+
+describe('conversation cleanup feedback lifecycle', () => {
+  it.each([true, false])('announces cleanup before invalidation and preserves the read guard until completion; hide=%s', async hide => {
+    const { service, conversation, events } = await fixture()
+    const entered = barrier(), release = barrier()
+    const memory = (service as unknown as { memory: { invalidateConversation(agentId: string, conversationId: string): Promise<void> } }).memory
+    const original = memory.invalidateConversation.bind(memory)
+    vi.spyOn(memory, 'invalidateConversation').mockImplementationOnce(async (...args) => { entered.release(); await release.promise; await original(...args) })
+    events.length = 0
+    const operation = service.handle('clearConversationHistory', { id: conversation.id, hide })
+    await entered.promise
+    try {
+      const start = events.findIndex(event => event.type === 'conversation:clearing' && event.conversationId === conversation.id)
+      const changed = events.findIndex(event => event.type === 'changed' && event.conversationId === conversation.id)
+      expect(start).toBeGreaterThanOrEqual(0); expect(changed).toBeGreaterThan(start)
+      expect(events.some(event => event.type === 'conversation:cleared')).toBe(false)
+      // Public reads are serialized behind the in-flight mutation; inspect the same
+      // synchronous guard directly instead of deadlocking the deliberately held write.
+      expect(() => (service as unknown as { getConversation(id: string): Conversation }).getConversation(conversation.id)).toThrow('此会话清理尚未完成')
+    } finally { release.release() }
+    await operation
+    expect(events.filter(event => event.type === 'conversation:cleared')).toEqual([{ type: 'conversation:cleared', conversationId: conversation.id, hidden: hide }])
+    expect((await detail(service, conversation)).conversation.list?.hidden ?? false).toBe(hide)
+  })
+  it('does not broadcast completion or unlock reads when real cleanup fails', async () => {
+    const { service, conversation, events } = await fixture()
+    const memory = (service as unknown as { memory: { invalidateConversation(): Promise<void> } }).memory
+    vi.spyOn(memory, 'invalidateConversation').mockRejectedValueOnce(new Error('真实清理失败'))
+    events.length = 0
+    await expect(service.handle('clearConversationHistory', { id: conversation.id, hide: true })).rejects.toThrow('真实清理失败')
+    expect(events.some(event => event.type === 'conversation:cleared')).toBe(false)
+    await expect(detail(service, conversation)).rejects.toThrow('此会话清理尚未完成')
+    await service.handle('clearConversationHistory', { id: conversation.id, hide: true })
+    expect(events.filter(event => event.type === 'conversation:cleared')).toHaveLength(1)
+  })
+  it('reports post-commit maintenance failure separately without making deletion retryable', async () => {
+    const { service, conversation, events } = await fixture()
+    vi.spyOn(storeOf(service), 'compact').mockRejectedValueOnce(new Error('整理故障'))
+    events.length = 0
+    await expect(service.handle('clearConversationHistory', { id: conversation.id, hide: true })).resolves.toBeUndefined()
+    expect((await detail(service, conversation)).conversation.list?.hidden).toBe(true)
+    expect(events).toContainEqual({ type: 'conversation:cleared', conversationId: conversation.id, hidden: true })
+    expect(events).toContainEqual({ type: 'runtime-error', error: '聊天记录已清理，但存储整理未完成：整理故障' })
+  })
 })

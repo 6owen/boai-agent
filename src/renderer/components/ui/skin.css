@@ -17,6 +17,8 @@
  */
 
 @import '@boai/ui/skin.css';
+@import '@boai/ui/compositions.css';
+@import '@boai/ui/execution-state.css';
 :is(input[type=checkbox],input[type=radio],input[type=range]) { accent-color:var(--primary) }
 
 :is([data-slot=dialog-content],[data-slot=alert-dialog-content],[data-slot=popover-content],[data-slot=hover-card-content],[data-slot=dropdown-menu-content],[data-slot=dropdown-menu-sub-content],[data-slot=context-menu-content],[data-slot=context-menu-sub-content],[data-slot=menubar-content],[data-slot=menubar-sub-content],[data-slot=select-content],[data-slot=combobox-content],[data-slot=toast],[data-slot=drawer-popup],[data-slot=sheet-content],[data-slot=card]) { corner-shape:squircle }
@@ -24,86 +26,11 @@
 :is([data-slot=toggle][aria-pressed=true],.mention-chip.selected) { box-shadow:var(--shadow-control) }
 .mention-chip.selected { background-color:var(--selection) }
 
-/* Tabs share one compact Soft surface in both embedded pages and side panels. */
-.soft-tabs-list { border-radius:var(--radius-control);background:var(--muted);isolation:isolate;--tabs-text-muted:var(--muted-foreground);--tabs-text-active:var(--foreground);--tabs-pill-bg:var(--card) }
-.soft-tabs-trigger { border-radius:calc(var(--radius-control) - 3px);background:transparent;color:var(--muted-foreground);cursor:pointer;transition:color var(--tabs-dur) var(--tabs-ease) }
-.soft-tabs-trigger:is(:hover,:focus-visible) { background:var(--accent);color:var(--foreground) }
-.soft-tabs-list .soft-tabs-trigger[data-active] { background:transparent;box-shadow:none;color:var(--foreground) }
-.soft-tabs-list > .t-tabs-pill { top:0;corner-shape:inherit;border-radius:calc(var(--radius-control) - 3px);background-image:linear-gradient(to bottom,transparent,var(--soft-shade));box-shadow:var(--shadow-control);transition-property:transform,width,height }
 .skills-browser-tabs .t-tabs-pill { border-radius:10px;background:var(--muted);box-shadow:none }
-.soft-tabs-list[data-variant=line] { border-radius:0;background:transparent }
-.soft-tabs-list[data-variant=line] .soft-tabs-trigger { border-radius:0;background:none;box-shadow:none }
-.soft-tabs-list[data-variant=line] > .t-tabs-pill { background:var(--foreground);border-radius:1px;box-shadow:none }
-@media(prefers-reduced-motion:reduce) { .soft-tabs-trigger { transition:none } }
 
-/* Presentational composer: host keeps draft, IME, stop, mention and send behavior. */
-.chat-composer {
-  display:flex;
-  flex-direction:column;
-  align-items:stretch;
-  gap:8px;
-  width:100%;
-  height:auto;
-  min-width:0;
-  padding:12px;
-  border:0;
-  border-radius:var(--radius-composer);
-  corner-shape:squircle;
-  background-color:var(--surface-composer);
-  background-image:linear-gradient(to bottom,var(--soft-surface-tint),transparent);
-  box-shadow:var(--shadow-composer);
-}
-.chat-composer .chat-composer-input {
-  display:block;
-  width:100%;
-  flex:none;
-  border:0;
-  border-radius:0;
-  background:transparent;
-  box-shadow:none;
-  color:var(--foreground);
-  resize:none;
-  outline:none;
-}
-.chat-composer-input::placeholder { color:var(--muted-foreground);opacity:1 }
-.chat-composer .chat-composer-footer { display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;width:100%;padding:0;height:auto;cursor:default }
-.chat-composer-footer>.button-row { gap:6px }
-.chat-composer-actions { display:flex;align-items:center;flex-wrap:wrap;gap:4px;min-width:0 }
-.chat-composer-actions[data-align=end] { margin-left:auto;justify-content:flex-end }
-.chat-composer-select>span { min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
-.chat-composer-select[data-kind=model]:is(:hover,[aria-expanded=true]):not(:disabled):not([aria-disabled=true]) { background:var(--selection) }
-.chat-composer-select[data-kind=permission] { background:var(--muted);border-radius:var(--radius-pill);corner-shape:round }
-.chat-composer-option { display:flex;flex-direction:column;min-width:0;gap:2px;text-align:left;font-size:var(--text-ui-body);line-height:1.4;overflow-wrap:anywhere }
-.chat-composer-option>small { font-size:var(--text-ui-caption);line-height:1.5;color:var(--muted-foreground);overflow-wrap:anywhere }
-.chat-composer-select[data-permission=full],.chat-composer-menu [data-permission=full] { --accent-foreground:var(--warning);color:var(--warning) }
-.chat-composer-menu [data-permission=full] .chat-composer-option>small { color:var(--warning) }
-@supports not (corner-shape:squircle) {
-  .soft-button { border-radius:10px }
-  .soft-button-round { border-radius:var(--radius-pill) }
-  .chat-composer { border-radius:20px }
-}
-@media(prefers-reduced-motion:reduce) {
-  .soft-button,.chat-composer { transition:none }
-}
-
-/* Titlebar state is communicated by its icon, never by a pressed background. */
-.global-toolbar .soft-button-ghost[aria-pressed] { background:transparent }
-.global-toolbar .soft-button-ghost[aria-pressed]:hover { background:var(--accent) }
 .toolbar-detail { position:relative }
 .toolbar-detail::before { content:"";position:absolute;left:0;top:50%;width:1px;height:16px;background:var(--border);transform:translateY(-50%);pointer-events:none }
-.soft-tabs-list[data-variant=window] { max-width:100%;border-radius:0;background:transparent;scrollbar-width:none;-webkit-app-region:no-drag }
-.soft-tabs-list[data-variant=window]::-webkit-scrollbar { display:none }
-.detail-tab { position:relative;display:flex;align-items:center;flex:0 0 auto;min-width:90px;max-width:180px;height:32px;padding-right:3px;border:1px solid transparent;border-radius:10px;background:transparent;color:var(--muted-foreground);-webkit-app-region:no-drag }
-.detail-tab[data-selected=true] { color:var(--foreground) }
-.detail-tab:hover,.detail-tab:has(:focus-visible) { background:var(--selection);color:var(--foreground) }
-.detail-tab[data-selected=true]:is(:hover,:has(:focus-visible)) { background:transparent }
-.soft-tabs-list[data-variant=window] > .t-tabs-pill { corner-shape:round;border:1px solid var(--frame-border);border-radius:10px;background:var(--surface-detail);box-shadow:none }
-.soft-tabs-list[data-variant=window] > .detail-tab { z-index:1 }
-.soft-tabs-list[data-variant=window] .soft-tabs-trigger { flex:1;min-width:0;justify-content:flex-start;border-radius:9px;background:none;box-shadow:none;color:inherit }
-.soft-tabs-list[data-variant=window] .soft-tabs-trigger:focus-visible { color:var(--foreground) }
-.detail-tab-title { min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--text-ui-body);font-weight:550 }
 .global-toolbar .detail-tab [data-slot=button] { width:24px;height:24px;flex-shrink:0 }
-.detail-tab .dirty-label { flex-shrink:0;font-size:var(--text-ui-title);line-height:1 }
 .detail-panel[hidden],.detail-content[hidden] { display:none }
 
 /* Group selection shares the conversation list's row metrics and surface. */
@@ -112,8 +39,6 @@
 label.creation-member { cursor:pointer }
 label.creation-member:has([data-disabled]) { cursor:not-allowed;opacity:.5 }
 .conversation-item:hover,label.creation-member:hover { background:var(--accent) }
-.avatar { overflow:hidden }
-.avatar img { display:block;width:100%;height:100%;object-fit:cover }
 .creation-avatar { display:flex;justify-content:center;padding:4px 0 8px }
 .avatar-picker-trigger { position:relative;padding:0;border-radius:var(--radius-md) }
 .avatar-picker-trigger>.avatar { width:64px;height:64px;border-radius:var(--radius-md) }
@@ -128,12 +53,6 @@ label.creation-member:has([data-disabled]) { cursor:not-allowed;opacity:.5 }
 .creation-selection-empty .app-icon { width:28px;height:28px }
 
 /* Member mosaics use the same images as individual contacts at every size. */
-.group-avatar { --avatar-grid-gap:1px;display:flex;flex-direction:column;gap:var(--avatar-grid-gap);padding:2px;overflow:hidden }
-.group-avatar-row { display:flex;justify-content:center;gap:var(--avatar-grid-gap);width:100%;height:calc((100% - (var(--avatar-grid-size) - 1) * var(--avatar-grid-gap)) / var(--avatar-grid-size));flex-shrink:0 }
-.group-avatar-tile { display:block;height:100%;aspect-ratio:1;min-width:0 }
-.group-avatar .avatar { display:flex;width:100%;height:100%;border-radius:2px;overflow:hidden }
-.drag-list-row { position:relative }
-.drag-list-dragging { opacity:.35 }
 .conversation-section-heading { display:flex;align-items:center;justify-content:flex-start;gap:5px;width:100%;text-align:left;margin:8px 0 3px;padding:4px 8px;color:var(--muted-foreground);font-size:var(--text-ui-secondary) }
 .conversation-section-heading[aria-expanded]:not(:disabled):not([aria-disabled=true]) { background:transparent }
 .conversation-section-heading>.app-icon { width:12px !important;height:12px !important;opacity:.75;transition:transform .2s ease,opacity .2s ease }
@@ -143,19 +62,12 @@ label.creation-member:has([data-disabled]) { cursor:not-allowed;opacity:.5 }
 .conversation-section-row>.conversation-section-heading { flex:1;min-width:0;width:auto;margin:0 }
 .conversation-section-row>.conversation-section-action { color:var(--muted-foreground);opacity:0;pointer-events:none;transition-property:background-color,box-shadow,transform,color,opacity }
 .conversation-section-row:is(:hover,:focus-within,[data-menu-open=true])>.conversation-section-action { opacity:1;pointer-events:auto }
-[data-slot=collapsible-trigger] { width:100%;text-align:left }
 [data-execution-run-id] [data-slot=collapsible-trigger].soft-button-ghost:not(:disabled):not([aria-disabled=true]) { background:transparent }
 /* ToolChip badges are part of the disclosure trigger; detail surfaces remain unchanged. */
 [data-execution-run-id] [data-slot=collapsible-trigger] [data-slot=badge] { background:transparent !important }
-[data-slot=collapsible-trigger]>.app-icon[class*=chevron],details>summary>.app-icon[class*=chevron],[data-slot=accordion-trigger-icon] { width:12px !important;height:12px !important;transition:transform .2s ease }
-[data-slot=collapsible-trigger][aria-expanded=true]>.app-icon[class*=chevron-right],details[open]>summary>.app-icon[class*=chevron-right] { transform:rotate(90deg) }
-[data-slot=collapsible-content],[data-slot=accordion-content] { overflow:hidden;opacity:1;transition:height .22s ease,opacity .18s ease }
-[data-slot=collapsible-content] { height:var(--collapsible-panel-height) }
 @media (prefers-reduced-motion:no-preference) {
   [data-execution-run-id] > [data-slot=collapsible] > [data-slot=collapsible-content] { transition:height .18s ease,opacity .12s ease }
 }
-[data-slot=accordion-content] { height:var(--accordion-panel-height) }
-[data-slot=collapsible-content]:is([data-starting-style],[data-ending-style]),[data-slot=accordion-content]:is([data-starting-style],[data-ending-style]) { height:0;opacity:0 }
 details>summary { width:100%;cursor:pointer }
 details>summary::marker { font-size:var(--text-ui-secondary) }
 @supports (interpolate-size:allow-keywords) {
@@ -165,19 +77,10 @@ details>summary::marker { font-size:var(--text-ui-secondary) }
 @media (prefers-reduced-motion:reduce) {
   .conversation-section-heading>.app-icon,.conversation-section-action,[data-slot=collapsible-trigger]>.app-icon[class*=chevron],details>summary>.app-icon[class*=chevron],[data-slot=collapsible-content],[data-slot=accordion-content],details::details-content { transition:none }
 }
-.drag-list-group-target { position:relative }
-.drag-list-group-target[data-drop=inside] { border-radius:var(--radius-control);background:var(--selection) }
-.drag-list-group-target[data-drop=inside]::after { content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 0 0 1px var(--primary);pointer-events:none;z-index:2 }
 .detail-tab.dragging { opacity:.4 }
 .detail-tab[data-drop]::after { content:"";position:absolute;top:4px;bottom:4px;width:2px;background:var(--primary);pointer-events:none }
 .detail-tab[data-drop=before]::after { left:-3px }
 .detail-tab[data-drop=after]::after { right:-3px }
-.drag-list-row[data-drop]::before { content:"";position:absolute;left:4px;right:0;height:2px;border-radius:2px;background:var(--primary);pointer-events:none;z-index:1 }
-.drag-list-row[data-drop]::after { content:"";position:absolute;left:0;width:8px;height:8px;border:2px solid var(--primary);border-radius:50%;background:var(--surface-list);pointer-events:none;z-index:1 }
-.drag-list-row[data-drop=before]::before { top:3px }
-.drag-list-row[data-drop=before]::after { top:0 }
-.drag-list-row[data-drop=after]::before { bottom:3px }
-.drag-list-row[data-drop=after]::after { bottom:0 }
 
 /* Compact member avatars and the trailing add action share the member picker. */
 .group-members { padding:18px 16px 14px }
@@ -193,3 +96,7 @@ details>summary::marker { font-size:var(--text-ui-secondary) }
 .group-member-remove:disabled { visibility:hidden }
 .group-add-list { max-height:300px;overflow:auto }
 .contact-editor .group-members { padding-left:0;padding-right:0 }
+
+/* Titlebar state is communicated by its icon, never by a pressed background. */
+.global-toolbar .soft-button-ghost[aria-pressed] { background:transparent }
+.global-toolbar .soft-button-ghost[aria-pressed]:hover { background:var(--accent) }

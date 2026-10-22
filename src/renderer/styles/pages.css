@@ -1,5 +1,6 @@
 /*
  * [OUTPUT]: 定时对话创建改用普通会话布局，移除旧专用聊天弹窗的标题占位；手动表单弹窗布局保持。
+ * [OUTPUT]: 插画空态图片尺寸迁入公共组合样式，页面容器/过渡保持。
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [OUTPUT]: 新建员工的名称/职责输入始终沿全局Input表面和边缘显示，不应用身份编辑的未聚焦透明规则。
  * [OUTPUT]: 会话核心助手按钮直接沿通讯录conversation-item的行高/内边距/头像/两行排版，搜索下方留白同为10px；整行背景透明，箭头固定最右，新会话按钮在其左且与下方编辑图标共用muted-foreground，文字仅预留单按钮空间，管理沿整行右键菜单。
@@ -324,7 +325,6 @@
 
 /* Contacts keep the user-controlled list width at every window size. */
 
-.empty-illustration { display:block;width:200px;max-width:100%;height:auto;flex-shrink:0 }
 .conversation-list-empty { min-height:240px;user-select:none }
 .conversation-list-empty img { display:block;max-width:100%;height:auto }
 .conversation-section-row.conversation-core-section-row { position:relative;flex-shrink:0;margin:10px 0 3px }

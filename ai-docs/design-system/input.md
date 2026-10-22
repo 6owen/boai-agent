@@ -27,3 +27,10 @@ Input 接受原生 input 属性，Textarea 接受原生 textarea 属性。所有
 禁用使用 `disabled`，只读使用 `readOnly`。两者含义不同，不用仅改变透明度模拟不可用。
 
 宿主保存数据，公共控件只呈现输入与状态。BOAI 的 `FieldError` 继续是宿主错误反馈适配，不随通用 Field 布局导出。
+
+## 页面组件索引
+
+- [Field](#api-field)：`@boai/ui/field`；Field, FieldLabel, FieldDescription, FieldGroup, FieldLegend, FieldSeparator, FieldSet, FieldContent, FieldTitle
+- [Input](#api-input)：`@boai/ui/input`；Input
+- [Label](#api-label)：`@boai/ui/label`；Label
+- [Textarea](#api-textarea)：`@boai/ui/textarea`；Textarea
