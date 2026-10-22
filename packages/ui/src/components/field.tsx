@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 语义字号保留原默认行高及leading覆盖，避免共享迁移改变桌面排版。
  * [OUTPUT]: 使用BOAI语义圆角和字体角色，不依赖宿主通用刻度。
  * [INPUT]: React、共享Label/Separator和表单展示状态。
  * [OUTPUT]: 通用表单布局与标签；无业务错误反馈服务。
@@ -34,7 +35,7 @@ function FieldLegend({
       data-slot="field-legend"
       data-variant={variant}
       className={cn(
-        "mb-1.5 font-medium data-[variant=label]:text-[length:var(--text-ui-body)] data-[variant=legend]:text-[length:var(--text-ui-emphasis)]",
+        "mb-1.5 font-medium data-[variant=label]:text-[length:var(--text-ui-body)] data-[variant=label]:[line-height:var(--tw-leading,var(--text-sm--line-height))] data-[variant=legend]:text-[length:var(--text-ui-emphasis)] data-[variant=legend]:[line-height:var(--tw-leading,var(--text-base--line-height))]",
         className
       )}
       {...props}
@@ -124,7 +125,7 @@ function FieldTitle({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="field-label"
       className={cn(
-        "flex w-fit items-center gap-2 text-[length:var(--text-ui-body)] font-medium group-data-[disabled=true]/field:opacity-50",
+        "flex w-fit items-center gap-2 text-[length:var(--text-ui-body)] [line-height:var(--tw-leading,var(--text-sm--line-height))] font-medium group-data-[disabled=true]/field:opacity-50",
         className
       )}
       {...props}
@@ -137,7 +138,7 @@ function FieldDescription({ className, ...props }: React.ComponentProps<"p">) {
     <p
       data-slot="field-description"
       className={cn(
-        "text-left text-[length:var(--text-ui-body)] leading-normal font-normal text-muted-foreground group-has-data-horizontal/field:text-balance [[data-variant=legend]+&]:-mt-1.5",
+        "text-left text-[length:var(--text-ui-body)] [line-height:var(--tw-leading,var(--text-sm--line-height))] leading-normal font-normal text-muted-foreground group-has-data-horizontal/field:text-balance [[data-variant=legend]+&]:-mt-1.5",
         "last:mt-0 nth-last-2:-mt-1",
         "[&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary",
         className
@@ -159,7 +160,7 @@ function FieldSeparator({
       data-slot="field-separator"
       data-content={!!children}
       className={cn(
-        "relative -my-2 h-5 text-[length:var(--text-ui-body)] group-data-[variant=outline]/field-group:-mb-2",
+        "relative -my-2 h-5 text-[length:var(--text-ui-body)] [line-height:var(--tw-leading,var(--text-sm--line-height))] group-data-[variant=outline]/field-group:-mb-2",
         className
       )}
       {...props}

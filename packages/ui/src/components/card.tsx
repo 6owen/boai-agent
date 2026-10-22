@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 语义字号保留原默认行高及leading覆盖，避免共享迁移改变桌面排版。
  * [OUTPUT]: 使用BOAI语义圆角和字体角色，不依赖宿主通用刻度。
  * [INPUT]: React与BOAI既有Base UI组件合同。
  * [OUTPUT]: card共享实现，保留原变体与data-slot。
@@ -18,7 +19,7 @@ function Card({
       data-slot="card"
       data-size={size}
       className={cn(
-        "group/card flex flex-col gap-(--card-spacing) overflow-hidden rounded-(--radius-card) bg-card py-(--card-spacing) text-[length:var(--text-ui-body)] text-card-foreground soft-card [--card-spacing:--spacing(4)] has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:[--card-spacing:--spacing(3)] data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-(--radius-card) *:[img:last-child]:rounded-b-(--radius-card)",
+        "group/card flex flex-col gap-(--card-spacing) overflow-hidden rounded-(--radius-card) bg-card py-(--card-spacing) text-[length:var(--text-ui-body)] [line-height:var(--tw-leading,var(--text-sm--line-height))] text-card-foreground soft-card [--card-spacing:--spacing(4)] has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:[--card-spacing:--spacing(3)] data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-(--radius-card) *:[img:last-child]:rounded-b-(--radius-card)",
         className
       )}
       {...props}
@@ -44,7 +45,7 @@ function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-title"
       className={cn(
-        "text-[length:var(--text-ui-emphasis)] leading-snug font-medium group-data-[size=sm]/card:text-[length:var(--text-ui-body)]",
+        "text-[length:var(--text-ui-emphasis)] [line-height:var(--tw-leading,var(--text-base--line-height))] leading-snug font-medium group-data-[size=sm]/card:text-[length:var(--text-ui-body)] group-data-[size=sm]/card:[line-height:var(--tw-leading,var(--text-sm--line-height))]",
         className
       )}
       {...props}
@@ -56,7 +57,7 @@ function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-description"
-      className={cn("text-[length:var(--text-ui-body)] text-muted-foreground", className)}
+      className={cn("text-[length:var(--text-ui-body)] [line-height:var(--tw-leading,var(--text-sm--line-height))] text-muted-foreground", className)}
       {...props}
     />
   )

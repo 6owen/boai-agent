@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 语义字号保留原默认行高及leading覆盖，避免共享迁移改变桌面排版。
  * [OUTPUT]: 文字直接使用共享角色变量，保持宿主与文档同一字号定义。
  * [INPUT]: React与BOAI既有Base UI组件合同。
  * [OUTPUT]: button共享实现，保留原变体与data-slot。
@@ -26,8 +27,8 @@ const buttonVariants = cva(
       size: {
         content: "soft-button-content",
         default: "h-[32px] gap-2 px-4",
-        xs: "h-[24px] gap-1 px-2 text-[length:var(--text-ui-caption)] [&_:is(svg,.app-icon):not([class*='size-'])]:size-[12px]",
-        sm: "h-[28px] gap-1.5 px-3 text-[length:var(--text-ui-caption)] [&_:is(svg,.app-icon):not([class*='size-'])]:size-[14px]",
+        xs: "h-[24px] gap-1 px-2 text-[length:var(--text-ui-caption)] [line-height:var(--tw-leading,var(--text-xs--line-height))] [&_:is(svg,.app-icon):not([class*='size-'])]:size-[12px]",
+        sm: "h-[28px] gap-1.5 px-3 text-[length:var(--text-ui-caption)] [line-height:var(--tw-leading,var(--text-xs--line-height))] [&_:is(svg,.app-icon):not([class*='size-'])]:size-[14px]",
         lg: "h-[36px] gap-2 px-5",
         icon: "size-[32px] p-0",
         "icon-2xs": "size-[16px] p-0 [&_:is(svg,.app-icon):not([class*='size-'])]:size-[10px]",
