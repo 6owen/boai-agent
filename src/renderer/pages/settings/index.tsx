@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 设置分类增加只读快捷键页，复用原文档布局，不增加持久绑定。
+ * [OUTPUT]: 快捷键分类支持启停/录入与自动保存，传递活跃状态以释放捕获。
  * [OUTPUT]: 运行选项桌面活动日报入口交给原 bobo 首发流程。
  * [OUTPUT]: 2026-10-19 配置分类新增网页检索独立页，沿原活跃读取和页面切换。
  * [OUTPUT]: 设置增加内置插件管理，沿原分类/文档布局与启停真源。
@@ -74,7 +74,7 @@ export function SettingsPage({ api, snapshot, refresh, divider, tab, setTab, act
     {tab === 'profile' && <ProfileSettings api={api} profile={snapshot.userProfile} active={active} refresh={refresh} onSkill={onSkill} />}
     {tab === 'connections' && <ConnectionSettings connections={snapshot.connections} api={api} refresh={refresh} active={active} localAgentTarget={localAgentTarget} />}
     {tab === 'appearance' && <AppearanceSettings />}
-    {tab === 'shortcuts' && <ShortcutSettings />}
+    {tab === 'shortcuts' && <ShortcutSettings active={active} />}
     {tab === 'desktop' && <DesktopSettingsPage onActivityReport={onActivityReport} api={api} active={active} />}
     {tab === 'web-search' && <WebSearchSettingsPage api={api} active={active} />}
     {tab === 'plugins' && <PluginSettingsPage />}

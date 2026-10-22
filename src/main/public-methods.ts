@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 快捷键偏好、回执与受控窗口捕获仅准入主窗口。
+ * [OUTPUT]: 提示词集合读取/版本化修改沿原主窗口来源准入。
  * [OUTPUT]: 2026-10-20全局字体与应用图标设置接入原外观持久化和宿主协议。
  * [OUTPUT]: 桌面原始采集仅私有宿主调用，公共 renderer/CLI 方法显式拒绝。
  * [OUTPUT]: 提示词目录列表与版本化保存/删除进入原主窗口IPC准入。
@@ -96,6 +98,11 @@ const methods = {
   generateAutomationDraft: true,
   generateTeamPlan: true,
   getAgentHome: true,
+  getShortcutSettings: true,
+  updateShortcutSettings: true,
+  getShortcutReceipt: true,
+  setShortcutCapture: true,
+  completeShortcutFlush: true,
   getAppearance: true,
   getAppIconStatus: true,
   getApplicationCatalog: true,
@@ -174,6 +181,8 @@ const methods = {
   testWebSearchService: true,
   removeWebSearchService: true,
   listDataSources: true,
+  getPromptCollections: true,
+  updatePromptCollections: true,
   listPromptTemplates: true,
   savePromptTemplate: true,
   removePromptTemplate: true,

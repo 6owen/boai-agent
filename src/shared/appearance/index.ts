@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 统一导出TrayIconStatus与逐目标AppIconStatus，不新增托盘偏好。
  * [OUTPUT]: 保底配色与纯颜色解析迁入@boai/tokens；插件/偏好/资产协议仍归宿主。
  * [OUTPUT]: 2026-10-20全局字体与应用图标设置接入原外观持久化和宿主协议。
  * [INPUT]: 内置主题插件贡献、显示模式、启停快照与外观偏好。
@@ -17,7 +18,7 @@ import { defaultAppIconId, type AppIconId } from './app-icons'
 export { typographyControls, typographyDefaults, typographyFamilies, typographyRoles, typographyLineHeights, resolveTypography } from './typography'
 export type { InterfaceFont, ContentFont, CodeFont, TypographyPreferences, TypographyGroup } from './typography'
 export { appIconPresets, defaultAppIconId, isAppIconId } from './app-icons'
-export type { AppIconId, AppIconStatus } from './app-icons'
+export type { AppIconId, AppIconStatus, TrayIconStatus } from './app-icons'
 export type ColorMode = 'light' | 'dark'
 export interface ThemeOverrides { accent: string | null; background: string | null; foreground: string | null }
 export const zoomFactors = [0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5] as const

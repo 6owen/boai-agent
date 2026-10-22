@@ -1,0 +1,6 @@
+<!-- [INPUT]: 小兔子头像的简化角色特征。[OUTPUT]: 22点单色矢量托盘模板。[POS]: 托盘源图。[PROTOCOL]: 变化同步所属.folder.md。 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="#000" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+<g transform="translate(1.5 1.5) scale(.86)">
+<path d="M7 9C3 1 8-.5 9 8.5M13 8.5C14-.5 19 1 15 9M7 9Q11 7.5 15 9Q18.5 13 18.5 17Q18.5 20 11 20Q3.5 20 3.5 17Q3.5 13 7 9Z"/><circle cx="8" cy="12.8" r=".9" fill="#000" stroke="none"/><circle cx="14" cy="12.8" r=".9" fill="#000" stroke="none"/><path d="M10 16L11 17L12 16"/>
+</g>
+</svg>

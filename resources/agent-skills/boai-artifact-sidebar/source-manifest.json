@@ -7,6 +7,7 @@
   "adaptation": [
     "Existing BOAI application protocol and actor authorization",
     "Real local capability and shared product UI",
-    "Stable write receipts; unknown effects are not replayed"
+    "Stable write receipts; unknown effects are not replayed",
+    "2026-10-22: retire interactive terminal; preserve managed webpage previews and read-only diagnostics"
   ]
 }

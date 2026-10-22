@@ -1,0 +1,6 @@
+<!-- [INPUT]: 小猪头像的简化角色特征。[OUTPUT]: 22点单色矢量托盘模板。[POS]: 托盘源图。[PROTOCOL]: 变化同步所属.folder.md。 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="#000" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+<g transform="translate(1.5 1.5) scale(.86)">
+<path d="M5.5 7L2.8 4.3Q6.6 2.6 8.5 5.8M13.5 5.8Q15.4 2.6 19.2 4.3L16.5 7M5 7Q11 4.6 17 7Q19 11 18.4 17Q18.3 20 11 20Q3.7 20 3.6 17Q3 11 5 7ZM18.6 16Q21.5 17 20 13.5"/><ellipse cx="11" cy="13.8" rx="3.6" ry="2.5"/><circle cx="7.6" cy="9.8" r=".85" fill="#000" stroke="none"/><circle cx="14.4" cy="9.8" r=".85" fill="#000" stroke="none"/><path d="M9.4 13.7V13.9M12.6 13.7V13.9" stroke-width="1.2"/>
+</g>
+</svg>

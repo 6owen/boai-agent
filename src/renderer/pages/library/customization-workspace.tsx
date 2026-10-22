@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 提示词读取就绪与空目录分离，分组页首帧保留结构并支持失败重读。
  * [OUTPUT]: 资源库新增全局提示词分类/默认收起分组，CRUD沿原目录行与Dialog；修改广播同步Composer的$引用候选。
  * [OUTPUT]: 资源库左侧技能/MCP/API/本地文件夹分组默认全部收起，手动展开和搜索显示匹配项保持。
  * [OUTPUT]: 数据源行内操作按回执更新原行并刷新目录，删除立即移除侧栏/目录并通知Shell关闭对应详情。
@@ -31,6 +32,7 @@ export function CustomizationWorkspace(props: Props) {
   const { api, divider, focusSkill, revision } = props
   const [category, setCategory] = useState<'skills' | 'sources' | 'prompts'>('skills')
   const [prompts, setPrompts] = useState<PromptTemplate[]>([]), [promptFocus, setPromptFocus] = useState<{ id: string; requestId: string }>()
+  const [promptsReady, setPromptsReady] = useState(false)
   const sourceId = props.selectedSource
   const [skillFocus, setSkillFocus] = useState(focusSkill), [catalogKey, setCatalogKey] = useState(0)
   const [sources, setSources] = useState<DataSource[]>([]), [error, setError] = useState(''), [query, setQuery] = useState('')
@@ -42,7 +44,7 @@ export function CustomizationWorkspace(props: Props) {
     const [sourceResult, promptResult] = await Promise.allSettled([api.request('listDataSources', undefined), api.request('listPromptTemplates', undefined)])
     if (request !== generation.current) return
     if (sourceResult.status === 'fulfilled') setSources(sourceResult.value)
-    if (promptResult.status === 'fulfilled') setPrompts(promptResult.value)
+    if (promptResult.status === 'fulfilled') { setPrompts(promptResult.value); setPromptsReady(true) }
     setError([sourceResult, promptResult].flatMap(result => result.status === 'rejected' ? [errorText(result.reason)] : []).join('；'))
   }, [api])
   useEffect(() => {
@@ -75,7 +77,7 @@ export function CustomizationWorkspace(props: Props) {
         </Collapsible>
       })}</div>{!rows.length && <p className="field-hint">{query ? '没有匹配的项目' : '添加资源后，会显示在这里。'}</p>}</div>
     </aside>{divider}<main className="conversation-stage custom-content" aria-label="资源库内容">
-      {category === 'skills' ? <SkillsWorkspace {...props} key={catalogKey} divider={null} embedded focusSkill={skillFocus} onCatalogChange={setUpdatedCatalog} /> : category === 'prompts' ? <PromptTemplatesView api={api} prompts={prompts} focus={promptFocus} onChanged={value => { setPrompts(items => [value, ...items.filter(item => item.id !== value.id)]); void reload() }} onRemoved={id => { setPrompts(items => items.filter(item => item.id !== id)); if (promptFocus?.id === id) setPromptFocus(undefined); void reload() }} /> : <SourcesView api={api} onManage={() => props.onManage?.('sources')} sources={sources} selected={sourceId} onSelect={props.onOpenSource} onChanged={source => void reload(source)} onRemoved={id => { setSources(items => items.filter(item => item.id !== id)); props.onRemoveSource(id); void reload() }} />}
+      {category === 'skills' ? <SkillsWorkspace {...props} key={catalogKey} divider={null} embedded focusSkill={skillFocus} onCatalogChange={setUpdatedCatalog} /> : category === 'prompts' ? <PromptTemplatesView api={api} prompts={prompts} loaded={promptsReady} onReload={() => { void reload() }} focus={promptFocus} onChanged={value => { setPrompts(items => [value, ...items.filter(item => item.id !== value.id)]); void reload() }} onRemoved={id => { setPrompts(items => items.filter(item => item.id !== id)); if (promptFocus?.id === id) setPromptFocus(undefined); void reload() }} /> : <SourcesView api={api} onManage={() => props.onManage?.('sources')} sources={sources} selected={sourceId} onSelect={props.onOpenSource} onChanged={source => void reload(source)} onRemoved={id => { setSources(items => items.filter(item => item.id !== id)); props.onRemoveSource(id); void reload() }} />}
     </main>
   </div>
 }

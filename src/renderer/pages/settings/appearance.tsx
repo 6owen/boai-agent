@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 开发版与安装版均显示Dock/托盘逐目标状态；迟到状态不覆盖新选择，失败沿Sonner和原重试。
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [OUTPUT]: 三组字号改用全局 React Aria NumberField，统一边界、步长、键盘与步进按钮交互，沿原外观预览保存。
  * [OUTPUT]: 字体设置拆为字号与字体样式两张逐行分隔的 Card；示例收进标签旁 Tooltip，界面字号同步内容字号，开发模式不显示 Dock 说明。
@@ -11,6 +12,7 @@
  * [POS]: 设置页外观分区；使用统一预览和持久化流程。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { AppIconFeedback, acceptAppIconStatus } from './app-icon-feedback'
 import { useEffect, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -67,8 +69,8 @@ export function AppearanceSettings() {
     const api = getDesktopClient()
     if (!api) return
     let live = true
-    void api.request('getAppIconStatus', undefined).then(value => { if (live) setIconStatus(value) }).catch(error => toast.error(String(error)))
-    const dispose = api.subscribe(event => { if (event.type === 'app-icon:changed' && live) setIconStatus(event.status) })
+    void api.request('getAppIconStatus', undefined).then(value => { if (live) setIconStatus(previous => acceptAppIconStatus(previous, value)) }).catch(error => toast.error(String(error)))
+    const dispose = api.subscribe(event => { if (event.type === 'app-icon:changed' && live) setIconStatus(previous => acceptAppIconStatus(previous, event.status)) })
     return () => { live = false; dispose() }
   }, [])
   const { preview, status, error } = useAppearance()
@@ -160,11 +162,7 @@ export function AppearanceSettings() {
               <span className="w-full truncate text-center text-xs">{icon.name}</span>
             </Button>)}
           </div>
-          {iconStatus.environment !== 'development' &&
-            <p className="field-hint mt-3">{iconStatus.pending ? '正在应用图标…' : iconStatus.dock.error || iconStatus.installed.error
-              ? `Dock：${iconStatus.dock.error ? '未更新' : '已更新'}；安装图标：${iconStatus.installed.error ? '未更新' : '已更新'}`
-              : 'Dock 与当前安装应用图标已更新。'}</p>}
-          {!iconStatus.pending && (iconStatus.dock.error || iconStatus.installed.error) && <Button type="button" variant="secondary" size="sm" onClick={() => void getDesktopClient()?.request('retryAppIcon', undefined).then(setIconStatus).catch(error => toast.error(String(error)))}>重试应用</Button>}
+          <AppIconFeedback status={iconStatus} onRetry={() => { void getDesktopClient()?.request('retryAppIcon', undefined).then(value => setIconStatus(previous => acceptAppIconStatus(previous, value))).catch(error => toast.error(String(error))) }} />
         </CardContent></Card>
       </section>}
       <section className="appearance-advanced" aria-labelledby="appearance-advanced-heading">

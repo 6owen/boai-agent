@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 旧terminal目标仅保留类型兼容，拒绝重建已移除的交互终端标签。
  * [OUTPUT]: 会话终端与预览复用同一右侧标签，明确重开切换目标视图。
  * [OUTPUT]: 已发布知识引用按宿主实际读取身份打开原全局预览；明确重开更新定位，失效不跳到新内容。
  * [OUTPUT]: 员工知识预览标签保留员工身份，旧共享资源不串到其他员工的授权范围。
@@ -41,6 +42,7 @@ export function detailTargetKey(target: DetailTarget): string {
 export function detailTabsReducer(state: DetailTabsState, action: DetailTabsAction, scope?: string): DetailTabsState {
   if (action.type === 'visibility') return { ...state, shown: action.shown && state.tabs.length > 0 }
   if (action.type === 'open') {
+    if (action.target.type === 'workspace' && action.target.view === 'terminal') return state
     if (action.withinKey) {
       const owner = state.tabs.find(tab => tab.key === action.withinKey)
       if (owner?.target.type !== 'channels' || action.target.type === 'channels') return state
