@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 白名单Fumadocs编译文档、共享组件和真实交互示例。
- * [OUTPUT]: Fumadocs正文/锚点目录/代码高亮与BOAI组件预览。
+ * [OUTPUT]: 直接展示标题/说明与Fumadocs正文、目录和BOAI预览，移除重复父类别及版本标记。
  * [POS]: 设计站内容层；公开Markdown由Fumadocs MDX构建期编译。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -33,13 +33,13 @@ function Overview() {
   </>
 }
 
-export function DesignPage({ page, version }: { page: Page; version: string }) {
+export function DesignPage({ page }: { page: Page }) {
   const overview = page.slug === 'overview'
   const { default: MDX, toc } = documents[page.slug]
   return <DocsPage className="docs-page" data-overview={overview} full={overview} toc={toc}>
     <title>{page.title} · BOAI Design</title>
     <meta name="description" content={page.description} />
-    <header className="page-heading"><div className="page-eyebrow">{overview ? <>BOAI DESIGN <Badge variant="outline">{version} · Preview</Badge></> : page.section}</div><DocsTitle>{overview ? <>为专注而设计。<br /><span>让工作界面安静一点。</span></> : page.title}</DocsTitle><DocsDescription>{page.description}</DocsDescription>
+    <header className="page-heading"><DocsTitle>{overview ? <>为专注而设计。<br /><span>让工作界面安静一点。</span></> : page.title}</DocsTitle><DocsDescription>{page.description}</DocsDescription>
       {overview && <div className="page-actions"><Button render={<a href="/getting-started" />}>开始使用 <span aria-hidden="true">↗</span></Button><Button variant="secondary" render={<a href="/components/button" />}>浏览组件</Button></div>}
     </header>
     {overview && <Overview />}
