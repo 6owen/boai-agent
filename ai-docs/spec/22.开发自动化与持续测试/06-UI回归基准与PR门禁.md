@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 产品Draft可暂缓UI但Required checks明确失败；Ready/ci:full及CI机制变更保持原全18与原件门槛，无关标签不覆盖必需结果。
 [OUTPUT]: 纯开发Markdown允许02 §10文档资格，始终运行Required checks独立重算；任何产品/UI/基准/配置变更仍全18及原件门禁，不授文档分项产品资格。
 [OUTPUT]: UI原件沿监督入口实际执行墙钟窗口核末场，窗口及原目录/proof字节绑定；原1ms余量、像素/环境/18身份保持，旧缺窗口不授新资格。
 [OUTPUT]: 无窗口云端实证ready后484ms才更新workArea，预检须采样/事件连续稳定并有界失败；共享桌面锁覆盖guard退出，像素/主屏条件保持。
@@ -183,4 +184,10 @@ UI job通过后由record-ui登记summary、compare/summary、原始Playwright报
 
 02 §10定义的完整Markdown白名单差异只执行Ubuntu文档检查，不启动macOS产品或上传大体积截图/trace。Required checks仍必需且always运行，重新计算真实Git范围和提交身份，要求范围job成功且两个产品job明确skipped；输出必须写明product tests were not run。整workflow不能用paths-ignore或提交消息跳过，否则可能留下Pending必需检查。
 
-混入一项代码/测试/基准PNG或JSON/依赖/CI配置/未知路径就恢复原完整范围，手动执行也始终完整。文档轻量不改变全18合同、阈值/mask、基准接受或UI原件协议；不冒充历史完整失败的修复，也不授发布/安装资格。当前实现及实际云端结果唯一归03。
+混入一项代码/测试/基准PNG或JSON/依赖/CI配置/未知路径就保留原完整门槛，手动执行也始终完整。文档轻量不改变全18合同、阈值/mask、基准接受或UI原件协议；不冒充历史完整失败的修复，也不授发布/安装资格。当前实现及实际云端结果唯一归03。
+
+## 11. Draft开发期间的验证时机
+
+按02 §11，未改CI机制且无`ci:full`的产品草稿可以暂缓工程/T1/UI；范围检查仅验证完整差异和Git格式，Required checks必须明确失败并标记尚未执行产品测试。转Ready或加`ci:full`后自动执行当前完整UI合同和原件门禁，新的有效PR运行取消旧运行；main已启动验证保留到结束。CI机制改动即使Draft也完整验证，无关标签不能取消有效验证或以skipped覆盖必需结果。
+
+暂缓不取得合并资格，不减少一项用例、业务断言、像素标准或基准来源核验。所有产品正式合并仍要求当前源码/最新base的完整实际通过。专项诊断仅给当前问题反馈，不能替代本门槛。
