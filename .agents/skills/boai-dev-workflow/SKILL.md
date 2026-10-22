@@ -24,9 +24,9 @@ description: 在 BOAI 仓库开发功能、修复问题、提交或更新 PR、�
 
 - 按可验证的小目标集中推送：先完成这一批实现、必要测试和自查，再一次 push。中间步骤可以本地 commit；不为每次编辑、临时日志或单条断言反复 push/dispatch。用户明确要求中途同步时沿其要求执行。
 - 在任务要求提交时，仅提交本任务文件并 push 功能分支，然后创建目标为 `main` 的 PR；未准备审阅时使用 Draft，已有 PR 继续更新原分支。只 push 尚无 PR 的普通功能分支不触发普通 CI。
-- PR创建/更新、Ready与Draft切换、`ci:full`标签增删触发范围判断；无关标签不取消验证或覆盖`Required checks`。本地保存/commit和读取Actions状态、日志均不触发新测试。
+- PR创建/更新、Ready与Draft切换触发范围判断；标签增删不启动工作流，`ci:full`在下一次新提交中生效。草稿要立即完整验证可从Actions手动执行`Offline tests`并选择明确分支。本地保存/commit和读取Actions状态、日志均不触发新测试。
 - CI 先在 Ubuntu 按完整 Git 差异判断范围。仅根 `README.md`/`AGENTS.md`/`CLAUDE.md`、各级 `.folder.md`、`.agents/` 和 `ai-docs/` 内 Markdown 的改动走文档轻量检查：差异格式、Header、Skill 基本名称/描述；两个产品任务明确 skipped，始终运行的 `Required checks` 独立重算范围后核对结果，不生成桌面原件。文档资格仅说明这些文档检查通过。
-- Draft产品改动默认只做Git差异格式检查，两个产品任务暂缓；`Required checks`明确失败并说明尚未验证，不授合并资格。转为Ready后自动完整验证；需要在Draft阶段提前验证时添加`ci:full`标签，该标签保留期间每次新提交都完整执行。文档PR加此标签也强制完整。移除标签恢复按实际范围分流。
+- Draft产品改动默认只做Git差异格式检查，两个产品任务暂缓；`Required checks`明确失败并说明尚未验证，不授合并资格。转为Ready后自动完整验证；需要在Draft阶段持续验证后续提交时添加`ci:full`标签，该标签保留期间每次新提交都完整执行。文档PR加此标签后的新提交也强制完整。移除标签后下一次新提交恢复按实际范围分流。
 - Ready产品PR、main产品push、手动执行或无法确定完整范围时，走完整产品 CI：macOS 执行依赖安装、类型、UI规则、构建、模块、评估数据、固定 T1 和全部 UI 比较，Ubuntu 汇总仍独立核验原始报告与逐场景证据。`.github/`、`scripts/ci-*`、`tests/ci-*`改动即使Draft也完整执行，确保分流机制验证自身。当前 T1 为 32 项、UI 为 18 项，后续随版本化清单调整；不用`paths-ignore`或skip-ci消息绕过必需工作流。
 - 同一PR的新有效运行取消过时运行；main已启动的验证保留到结束，避免连续合并导致main长期没有完整结果。
 - 离线核心 CI 的结果不代替真实模型业务评估、尚未纳入的专项或发布/升级验收；T2/T3 沿原分层执行，旧失败逐项迁移，不通过删除用例或跳过失败降低门禁。

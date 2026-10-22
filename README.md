@@ -242,7 +242,7 @@
 [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 -->
 
-日常开发规范使用项目技能 [boai-dev-workflow](.agents/skills/boai-dev-workflow/SKILL.md)，供Codex、Claude、Pi等开发Agent共用；AGENTS维护统一读取入口。按可验证小目标集中push，开发Markdown白名单走Ubuntu轻量，Draft产品默认暂缓且不给合并资格；转Ready或添加`ci:full`后完整验证，CI机制改动及手动入口始终完整。有效PR新运行取消旧运行，main已启动验证保留；hooks不启动产品测试或派发Actions。具体矩阵与开源参考见[22组02 §11](ai-docs/spec/22.开发自动化与持续测试/02-持续测试与基准设计.md#11-开发推送与按需云端验证2026-10-22)。
+日常开发规范使用项目技能 [boai-dev-workflow](.agents/skills/boai-dev-workflow/SKILL.md)，供Codex、Claude、Pi等开发Agent共用；AGENTS维护统一读取入口。按可验证小目标集中push，开发Markdown白名单走Ubuntu轻量，Draft产品默认暂缓且不给合并资格；转Ready、带`ci:full`的新提交或手动执行时完整验证，CI机制改动及手动入口始终完整。有效PR新运行取消旧运行，main已启动验证保留；hooks不启动产品测试或派发Actions。具体矩阵与开源参考见[22组02 §11](ai-docs/spec/22.开发自动化与持续测试/02-持续测试与基准设计.md#11-开发推送与按需云端验证2026-10-22)。
 
 个人发布与开发CI：[第22组04](ai-docs/spec/22.开发自动化与持续测试/04-macOS本机发布与升级方案.md)约定无Apple开发者证书、本机源码开发自用的Tag/Release、ad-hoc安装包及独立升级路线。后续已获授权实施，PR/main自动CI已按最新要求迁回GitHub Actions，本机轮询停止并禁用；候选构建及正式产物冒烟入口已接入；实际成功、原失败和未完成范围统一见[22组03](ai-docs/spec/22.开发自动化与持续测试/03-实施步骤与验收.md#5-唯一实际进度)。本轮未创建Tag/Release或替换本机应用；合并与当前CI资格查看[PR1 Checks](https://github.com/6owen/boai-agent/pull/1/checks)，`pnpm dev`不执行安装升级。
 

@@ -527,7 +527,7 @@
 
 - 在本仓库开发功能、修复问题、提交/更新PR、处理CI或合并main时，先读取共享技能[boai-dev-workflow](.agents/skills/boai-dev-workflow/SKILL.md)。以该技能为日常执行入口，测试清单、基准合同和门禁仍以仓库版本化文件与现行工作流为准。
 - Codex、Claude、Pi等开发Agent共用该文件；客户端不自动发现项目技能时按路径直接读取。技能不扩大当前任务或既有推送/合并授权，本机自动CI保持停用。
-- 按可验证的小目标集中push，开发中使用Draft；产品草稿暂缓不授合并资格，Ready或`ci:full`标签执行完整CI，CI机制改动本身始终完整验证。专项诊断默认按需手动，hooks只做轻量提醒；具体触发/取消/失败接续以共享Skill为准，不为每次编辑派发Actions。
+- 按可验证的小目标集中push，开发中使用Draft；产品草稿暂缓不授合并资格，Ready、带`ci:full`的新提交或手动执行完整CI，CI机制改动本身始终完整验证。专项诊断默认按需手动，hooks只做轻量提醒；具体触发/取消/失败接续以共享Skill为准，不为每次编辑派发Actions。
 
 # BOAI业务评估与Codex优化
 

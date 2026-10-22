@@ -6,24 +6,18 @@ name: Offline tests
 on:
   pull_request:
     branches: [main]
-    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, labeled, unlabeled]
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
   push:
     branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  # Unrelated label events must neither cancel validation nor replace its
-  # required check with a skipped check for the same commit.
-  group: offline-${{ github.event.pull_request.number || github.ref }}${{ contains(fromJSON('["labeled", "unlabeled"]'), github.event.action) && github.event.label.name != 'ci:full' && format('-ignored-{0}', github.run_id) || '' }}
+  group: offline-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   changes:
     name: CI scope and development docs
-    if: >-
-      github.event_name != 'pull_request' ||
-      !contains(fromJSON('["labeled", "unlabeled"]'), github.event.action) ||
-      github.event.label.name == 'ci:full'
     runs-on: ubuntu-24.04
     outputs:
       full: ${{ steps.scope.outputs.full }}
@@ -163,13 +157,8 @@ jobs:
           retention-days: 3
           if-no-files-found: error
   required:
-    name: ${{ contains(fromJSON('["labeled", "unlabeled"]'), github.event.action) && github.event.label.name != 'ci:full' && 'Ignored label update' || 'Required checks' }}
-    if: >-
-      always() && (
-        github.event_name != 'pull_request' ||
-        !contains(fromJSON('["labeled", "unlabeled"]'), github.event.action) ||
-        github.event.label.name == 'ci:full'
-      )
+    name: Required checks
+    if: always()
     needs: [changes, desktop, ui]
     runs-on: ubuntu-24.04
     steps:

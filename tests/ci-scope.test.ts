@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 真实临时Git提交/事件、开发Markdown白名单及job结果协议。
- * [OUTPUT]: 文档/完整/草稿暂缓按实际事件分流，未测试草稿和伪造范围不能合并；CI变更/手动/未知及真实Git全量差异不降级。
+ * [OUTPUT]: 实际YAML禁止标签空运行并固定必需门槛；文档/草稿/完整分流、真实Git/CLI未测阻断及CI变更/手动不降级。
  * [POS]: CI范围与严格汇总的回归合同；只在授权云端执行，不开产品窗口。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -10,6 +10,7 @@ import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promise
 import { dirname, join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
+import { parse } from 'yaml'
 // @ts-expect-error Shared plain Node CI module has no declaration file.
 import { ciMode, scopeForEvent, validateDevelopmentMarkdown, validateDocumentation, validateScopeJobs } from '../scripts/ci-scope.mjs'
 
@@ -57,6 +58,15 @@ it('草稿产品改动暂缓，Ready和明确标签恢复完整；文档仍按�
 })
 it.each(['.github/workflows/tests.yml', '.github/workflows/diagnostic.yml', 'scripts/ci-scope.mjs', 'scripts/ci-result.mjs', 'tests/ci-scope.test.ts'])('草稿也不能跳过CI机制本身的完整验证：%s', path => {
   expect(ciMode('pull_request', [path], { draft: true })).toBe('full')
+})
+it('实际工作流仅在源码/就绪变化触发，普通标签不产生空运行且必需检查固定', async () => {
+  const workflow = parse(await readFile(new URL('../.github/workflows/tests.yml', import.meta.url), 'utf8'))
+  const events = workflow.on.pull_request.types
+  expect(events).not.toContain('labeled')
+  expect(events).not.toContain('unlabeled')
+  expect(events).toEqual(expect.arrayContaining(['opened', 'synchronize', 'reopened', 'ready_for_review', 'converted_to_draft']))
+  expect(Object.hasOwn(workflow.on, 'workflow_dispatch')).toBe(true)
+  expect(workflow.jobs.required).toMatchObject({ name: 'Required checks', if: 'always()' })
 })
 it('草稿暂缓即使范围成功、产品明确skipped也不给合并资格', () => {
   const deferred = { ...scope, mode: 'deferred' }
