@@ -310,58 +310,58 @@
       "acceptedAt": "2026-10-21T10:46:56.151Z"
     },
     "settings-light": {
-      "sha256": "29e1149c76cab39788b834c954249f5c055f8e12119912be592267355fdafc9a",
+      "sha256": "468d6b10bc3df7a839b383c072a7a0e4c6c85b928c8d5c0662c6054cb24cbd40",
       "contract": "7e5255cd1d6ad9466a69854f08942fa9a02ad84b369f2b941a50a1787ed41c6f",
       "source": {
-        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
-        "sourceHash": "a08516d07992c7bca13a646853fdffc6e2c7b0ad795fba5d7f6674328946c92b",
+        "commit": "44ed16b26c79a15f74a1551c12ab6e8230559885",
+        "sourceHash": "1e62f1a08aeeaca3af91b6c9a9335234e56e110599fdc380c78c9e2c78ef8120",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "afafe88230c5d9f6f4a320459006e80d1333b66b6f12e1bf0c30f890c152e91b",
-        "outputHash": "f64ceb504386f5ea68ec9c4d47459707fc2e58b5431493b385f199afe2d9b4a0",
+        "inputHash": "a0cd4eb49b4e9dfcd6e8f9afb8372fc6942a7369d1bbd0a0759627442913b0e0",
+        "outputHash": "04a1933b07223e25949eee0487a0505564f3dba4f8d6093603fa712e7a81cf4a",
         "node": "v24.16.0",
-        "createdAt": "2026-10-21T10:20:54.585Z"
+        "createdAt": "2026-10-22T13:35:41.110Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "39583678813",
+        "runId": "39787900406",
         "attempt": 1,
-        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
-        "artifactId": 12339308033,
-        "digest": "sha256:7f2a4b9e13c13433888b0d8a205657da12c505ecb5286641d5590c1f501cb832"
+        "commit": "44ed16b26c79a15f74a1551c12ab6e8230559885",
+        "artifactId": 12430826655,
+        "digest": "sha256:2a6532a61cf4136fb029687640c81a93a15140079acc4855aed2245330571f00"
       },
-      "reason": "Reviewed v3 hosted display migration: 16 PNGs byte-identical; settings light/dark match main 6b464b31 typography groups and React Aria NumberField. Both review axes approve; pixel thresholds and masks unchanged.",
-      "candidate": "125048b1-d855-4084-b49a-a24b9436cfed",
-      "acceptedAt": "2026-10-21T10:46:56.151Z"
+      "reason": "已逐项审阅官方旧图/新图/原始diff：快捷键四行新增启停、组合键编辑与恢复默认，无保存按钮；外观新增Dock/托盘状态说明使页面滚动条长度变化。快捷键比较和独立采集两次图像字节一致，其余14项零像素变化。原阈值与断言保持。",
+      "candidate": "b891d0c9-66a7-49ca-b9af-77c382aede63",
+      "acceptedAt": "2026-10-22T13:58:51.090Z"
     },
     "settings-dark": {
-      "sha256": "6c608f992a8f1f93f67d3526a8c6be6877692edd5bc12f3403be71e804b14bce",
+      "sha256": "3713b2609b3f490a1cc9e4435f998ab8347f6caafa0776b889c3ef137503c295",
       "contract": "ea3f1f153ee06336a9361e4d5755f3d8d3810e87859b90e767610799dfaeeed1",
       "source": {
-        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
-        "sourceHash": "a08516d07992c7bca13a646853fdffc6e2c7b0ad795fba5d7f6674328946c92b",
+        "commit": "44ed16b26c79a15f74a1551c12ab6e8230559885",
+        "sourceHash": "1e62f1a08aeeaca3af91b6c9a9335234e56e110599fdc380c78c9e2c78ef8120",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "afafe88230c5d9f6f4a320459006e80d1333b66b6f12e1bf0c30f890c152e91b",
-        "outputHash": "f64ceb504386f5ea68ec9c4d47459707fc2e58b5431493b385f199afe2d9b4a0",
+        "inputHash": "a0cd4eb49b4e9dfcd6e8f9afb8372fc6942a7369d1bbd0a0759627442913b0e0",
+        "outputHash": "04a1933b07223e25949eee0487a0505564f3dba4f8d6093603fa712e7a81cf4a",
         "node": "v24.16.0",
-        "createdAt": "2026-10-21T10:20:54.585Z"
+        "createdAt": "2026-10-22T13:35:41.110Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "39583678813",
+        "runId": "39787900406",
         "attempt": 1,
-        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
-        "artifactId": 12339308033,
-        "digest": "sha256:7f2a4b9e13c13433888b0d8a205657da12c505ecb5286641d5590c1f501cb832"
+        "commit": "44ed16b26c79a15f74a1551c12ab6e8230559885",
+        "artifactId": 12430826655,
+        "digest": "sha256:2a6532a61cf4136fb029687640c81a93a15140079acc4855aed2245330571f00"
       },
-      "reason": "Reviewed v3 hosted display migration: 16 PNGs byte-identical; settings light/dark match main 6b464b31 typography groups and React Aria NumberField. Both review axes approve; pixel thresholds and masks unchanged.",
-      "candidate": "125048b1-d855-4084-b49a-a24b9436cfed",
-      "acceptedAt": "2026-10-21T10:46:56.151Z"
+      "reason": "已逐项审阅官方旧图/新图/原始diff：快捷键四行新增启停、组合键编辑与恢复默认，无保存按钮；外观新增Dock/托盘状态说明使页面滚动条长度变化。快捷键比较和独立采集两次图像字节一致，其余14项零像素变化。原阈值与断言保持。",
+      "candidate": "b891d0c9-66a7-49ca-b9af-77c382aede63",
+      "acceptedAt": "2026-10-22T13:58:51.091Z"
     },
     "resources-light": {
       "sha256": "6734999fea542d0511b3f61fa1968f5f781a4eb134e58ffb4ee27fabf0646096",
@@ -526,58 +526,58 @@
       "acceptedAt": "2026-10-21T10:46:56.151Z"
     },
     "shortcuts-light": {
-      "sha256": "a6ef1edfb9a667bffadd6fa0bbcf615a230c262f4cd48344de0f7a7b5cd98671",
+      "sha256": "195b7766e8fb0451cc4f06d5466703f6bd78754de11220ff5775da2f23de66cf",
       "contract": "171bb96072a7e80051c7c1c511516129c00e103c4058d3e70e25c8186a56c49a",
       "source": {
-        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
-        "sourceHash": "a08516d07992c7bca13a646853fdffc6e2c7b0ad795fba5d7f6674328946c92b",
+        "commit": "44ed16b26c79a15f74a1551c12ab6e8230559885",
+        "sourceHash": "1e62f1a08aeeaca3af91b6c9a9335234e56e110599fdc380c78c9e2c78ef8120",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "afafe88230c5d9f6f4a320459006e80d1333b66b6f12e1bf0c30f890c152e91b",
-        "outputHash": "f64ceb504386f5ea68ec9c4d47459707fc2e58b5431493b385f199afe2d9b4a0",
+        "inputHash": "a0cd4eb49b4e9dfcd6e8f9afb8372fc6942a7369d1bbd0a0759627442913b0e0",
+        "outputHash": "04a1933b07223e25949eee0487a0505564f3dba4f8d6093603fa712e7a81cf4a",
         "node": "v24.16.0",
-        "createdAt": "2026-10-21T10:20:54.585Z"
+        "createdAt": "2026-10-22T13:35:41.110Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "39583678813",
+        "runId": "39787900406",
         "attempt": 1,
-        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
-        "artifactId": 12339308033,
-        "digest": "sha256:7f2a4b9e13c13433888b0d8a205657da12c505ecb5286641d5590c1f501cb832"
+        "commit": "44ed16b26c79a15f74a1551c12ab6e8230559885",
+        "artifactId": 12430826655,
+        "digest": "sha256:2a6532a61cf4136fb029687640c81a93a15140079acc4855aed2245330571f00"
       },
-      "reason": "Reviewed v3 hosted display migration: 16 PNGs byte-identical; settings light/dark match main 6b464b31 typography groups and React Aria NumberField. Both review axes approve; pixel thresholds and masks unchanged.",
-      "candidate": "125048b1-d855-4084-b49a-a24b9436cfed",
-      "acceptedAt": "2026-10-21T10:46:56.151Z"
+      "reason": "已逐项审阅官方旧图/新图/原始diff：快捷键四行新增启停、组合键编辑与恢复默认，无保存按钮；外观新增Dock/托盘状态说明使页面滚动条长度变化。快捷键比较和独立采集两次图像字节一致，其余14项零像素变化。原阈值与断言保持。",
+      "candidate": "b891d0c9-66a7-49ca-b9af-77c382aede63",
+      "acceptedAt": "2026-10-22T13:58:51.091Z"
     },
     "shortcuts-dark": {
-      "sha256": "83a371ebdb63c9b26f093a5fd0437e604d9e785b1a45c95f100afe8e3fec228a",
+      "sha256": "4b958fb8a3b14869f8363113138e70a765a45b8610769e48cd46e591057d218e",
       "contract": "470a05b4fc32829a5cef4c13044deac140431e51162eb3527e7763896f3e82d9",
       "source": {
-        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
-        "sourceHash": "a08516d07992c7bca13a646853fdffc6e2c7b0ad795fba5d7f6674328946c92b",
+        "commit": "44ed16b26c79a15f74a1551c12ab6e8230559885",
+        "sourceHash": "1e62f1a08aeeaca3af91b6c9a9335234e56e110599fdc380c78c9e2c78ef8120",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "afafe88230c5d9f6f4a320459006e80d1333b66b6f12e1bf0c30f890c152e91b",
-        "outputHash": "f64ceb504386f5ea68ec9c4d47459707fc2e58b5431493b385f199afe2d9b4a0",
+        "inputHash": "a0cd4eb49b4e9dfcd6e8f9afb8372fc6942a7369d1bbd0a0759627442913b0e0",
+        "outputHash": "04a1933b07223e25949eee0487a0505564f3dba4f8d6093603fa712e7a81cf4a",
         "node": "v24.16.0",
-        "createdAt": "2026-10-21T10:20:54.585Z"
+        "createdAt": "2026-10-22T13:35:41.110Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "39583678813",
+        "runId": "39787900406",
         "attempt": 1,
-        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
-        "artifactId": 12339308033,
-        "digest": "sha256:7f2a4b9e13c13433888b0d8a205657da12c505ecb5286641d5590c1f501cb832"
+        "commit": "44ed16b26c79a15f74a1551c12ab6e8230559885",
+        "artifactId": 12430826655,
+        "digest": "sha256:2a6532a61cf4136fb029687640c81a93a15140079acc4855aed2245330571f00"
       },
-      "reason": "Reviewed v3 hosted display migration: 16 PNGs byte-identical; settings light/dark match main 6b464b31 typography groups and React Aria NumberField. Both review axes approve; pixel thresholds and masks unchanged.",
-      "candidate": "125048b1-d855-4084-b49a-a24b9436cfed",
-      "acceptedAt": "2026-10-21T10:46:56.151Z"
+      "reason": "已逐项审阅官方旧图/新图/原始diff：快捷键四行新增启停、组合键编辑与恢复默认，无保存按钮；外观新增Dock/托盘状态说明使页面滚动条长度变化。快捷键比较和独立采集两次图像字节一致，其余14项零像素变化。原阈值与断言保持。",
+      "candidate": "b891d0c9-66a7-49ca-b9af-77c382aede63",
+      "acceptedAt": "2026-10-22T13:58:51.091Z"
     }
   }
 }
