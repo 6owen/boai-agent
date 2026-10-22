@@ -1,6 +1,6 @@
 /*
- * [INPUT]: 公开目录、Fumadocs布局/Provider和React Router。
- * [OUTPUT]: Fumadocs文档导航、移动端侧栏、主题和搜索入口。
+ * [INPUT]: 公开目录、Fumadocs布局/翻译Provider和React Router。
+ * [OUTPUT]: 带上游上下文翻译键的中文文档导航、移动侧栏、主题和搜索。
  * [POS]: 设计站应用壳；组件示例仍消费BOAI共享包。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -8,6 +8,8 @@ import { useLayoutEffect } from 'react'
 import { useLocation } from 'react-router'
 import { DocsLayout } from 'fumadocs-ui/layouts/docs'
 import { RootProvider } from 'fumadocs-ui/provider/react-router'
+import { i18nProvider, uiTranslations } from 'fumadocs-ui/i18n'
+import { defineTranslations } from 'fumadocs-core/i18n'
 import type { Root } from 'fumadocs-core/page-tree'
 import { useTheme } from 'next-themes'
 import { Toaster } from '@boai/ui'
@@ -22,13 +24,31 @@ const tree: Root = {
     children: content.pages.filter(page => page.section === section).map(page => ({ type: 'page' as const, name: page.title, url: page.path })),
   })),
 }
-const translations = {
-  Search: '搜索文档', 'Open Search': '搜索文档', 'Close Search': '关闭搜索',
-  'No results found': '没有匹配的文档', 'On this page': '本页目录',
-  Light: '浅色', Dark: '深色', System: '跟随系统', 'Toggle Theme': '切换外观',
-  'Open Sidebar': '打开导航', 'Close Sidebar': '关闭导航',
-  Next: '下一页', Previous: '上一页',
-}
+const translations = defineTranslations().extend(uiTranslations()).add({
+  'Search(search trigger)': '搜索文档',
+  'Open Search(search trigger)(aria-label)': '搜索文档',
+  'Search(search dialog)': '搜索文档',
+  'Close Search(search dialog)(aria-label)': '关闭搜索',
+  'No results found(search dialog)': '没有匹配的文档',
+  'On this page(table of contents)': '本页目录',
+  'No Headings(table of contents)': '暂无章节',
+  'Light(theme switcher)(aria-label)': '浅色',
+  'Dark(theme switcher)(aria-label)': '深色',
+  'System(theme switcher)(aria-label)': '跟随系统',
+  'Toggle Theme(theme switcher)(aria-label)': '切换外观',
+  'Open Sidebar(sidebar)(aria-label)': '打开导航',
+  'Close Sidebar(sidebar)(aria-label)': '关闭导航',
+  'Close Sidebar(aria-label)': '关闭导航',
+  'Collapse Sidebar(sidebar)(aria-label)': '收起导航',
+  'Show Sidebar(sidebar)': '显示导航',
+  'Hide Sidebar(sidebar)': '隐藏导航',
+  'Next Page(pagination)': '下一页',
+  'Previous Page(pagination)': '上一页',
+  'Copy Text(code block)(aria-label)': '复制代码',
+  'Copied Text(code block)(aria-label)': '已复制代码',
+  'Copy Anchor Link(heading anchor)(aria-label)': '复制章节链接',
+  'Copied Anchor Link(heading anchor)(aria-label)': '已复制章节链接',
+})
 
 function SiteContent() {
   const { pathname, hash } = useLocation()
@@ -58,7 +78,7 @@ function SiteContent() {
 export function App() {
   return <RootProvider
     theme={{ attribute: 'class', storageKey: 'boai-design:mode', defaultTheme: 'system', enableSystem: true }}
-    i18n={{ translations }}
+    i18n={i18nProvider(translations)}
     search={{ SearchDialog: DesignSearchDialog }}
   ><SiteContent /></RootProvider>
 }
