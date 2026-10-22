@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 群配置解散按标题定位Popover确认；原取消保留草稿、清理范围及终态断言保持。
  * [OUTPUT]: 原会话草稿使用共享messageDraft精确读富文本正文，兼容当前群/单聊编辑器而不降低内容断言。
  * [OUTPUT]: 所有已选详情按指定员工/群名精确核验，保留身份边界，不以通用名称控件可见代替。
  * [OUTPUT]: 身份就地保存；工作方式/群记忆分区验证草稿取消及放弃；旧整页编辑/群名放弃合同退役，单聊复用保持。
@@ -603,7 +604,7 @@ When('在群配置取消解散后再确认丢弃草稿并解散', async ({ runti
   await detail.getByRole('button', { name: '编辑配置', exact: true }).click()
   await detail.getByRole('textbox', { name: '群聊名称' }).fill('这份群配置草稿会丢弃')
   await detail.getByRole('button', { name: '解散群聊', exact: true }).click()
-  const confirmation = page.getByRole('alertdialog')
+  const confirmation = page.getByRole('dialog', { name: '解散群聊？', exact: true })
   await expect(confirmation).toContainText('群内员工及各自工作区保留')
   await confirmation.getByRole('button', { name: '取消', exact: true }).click()
   await expect(detail.getByRole('textbox', { name: '群聊名称' })).toHaveValue('这份群配置草稿会丢弃')
@@ -613,7 +614,7 @@ When('在群配置取消解散后再确认丢弃草稿并解散', async ({ runti
   await confirmation.getByRole('button', { name: '确认解散', exact: true }).click()
   await expect(removalList(runtime).getByRole('button', { name: group.title, exact: true })).toHaveCount(0)
   await expect(detail.getByRole('textbox', { name: '群聊名称' })).toHaveCount(0)
-  await expect(page.getByRole('alertdialog')).toHaveCount(0)
+  await expect(confirmation).toHaveCount(0)
 })
 
 Then('群聊和专属文件消失但员工私聊及工作区保留', async ({ runtime, scenario }) => {
