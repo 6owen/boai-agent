@@ -1,6 +1,6 @@
 <!--
 [INPUT]: BOAI共享组件与现行设计约定。
-[OUTPUT]: getting-started公开设计指南；只包含开发者使用信息。
+[OUTPUT]: Fumadocs设计站与公共包的开发入口、样式和独立构建指南。
 [POS]: ai-docs/design-system公开内容白名单。
 [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
 -->
@@ -9,6 +9,8 @@
 当前版本在 BOAI 仓库中开发。`@boai/tokens` 与 `@boai/ui` 是工作区包，尚未在 npm 发布；先在仓库根目录安装锁定依赖，再运行下方命令。
 
 `pnpm dev:design` 启动设计站，默认地址为 `http://127.0.0.1:5190`。`pnpm dev` 继续启动桌面应用。设计站使用示例数据，不需要模型或桌面配置。
+
+文档站使用 Fumadocs UI 与 MDX 渲染，提供响应式侧栏、搜索弹窗、页面目录、标题锚点和代码高亮。交互预览直接使用 BOAI 共享组件；文档框架仅属于网站应用，安装组件包不需要引入 Fumadocs。
 
 ## 工作区依赖
 

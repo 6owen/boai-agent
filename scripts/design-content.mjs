@@ -1,6 +1,6 @@
 /*
  * [INPUT]: ai-docs/design-system/catalog.json登记的公开Markdown。
- * [OUTPUT]: 同源页面、搜索数据、Markdown及Agent索引；只读取白名单内容。
+ * [OUTPUT]: 白名单Fumadocs文档导入、同源搜索数据、Markdown及Agent索引。
  * [POS]: 设计站Vite插件与公开内容生成器。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -51,7 +51,9 @@ export function designContentPlugin() {
     async load(id) {
       if (id === '\0' + virtualId) {
         await reload()
-        return `export default ${JSON.stringify(content)}`
+        const imports = content.pages.map((page, index) => `import * as document${index} from ${JSON.stringify(resolve(directory, page.file))};`)
+        const documents = content.pages.map((page, index) => `${JSON.stringify(page.slug)}: document${index}`)
+        return `${imports.join('\n')}\nexport const documents = {${documents.join(',')}};\nexport default ${JSON.stringify(content)}`
       }
     },
     configureServer(server) {

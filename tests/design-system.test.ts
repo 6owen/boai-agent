@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 公共tokens、原应用兼容入口及公开设计目录。
- * [OUTPUT]: 具名对象参数覆盖普通/开发条件Node消费、同一实现、完整变量闭包与公开内容白名单回归。
+ * [OUTPUT]: Node消费、同一实现、变量闭包及公开内容/Fumadocs编译入口白名单回归。
  * [POS]: 设计系统模块合同，CI执行；不替代桌面或浏览器验收。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -13,7 +13,7 @@ import { resolveTypography as hostTypography } from '../src/shared/appearance/ty
 import { themeTokens as hostThemeTokens } from '../src/shared/appearance'
 import { searchPages } from '../apps/design-docs/src/search'
 // @ts-expect-error Shared Node public-content generator has no declaration file.
-import { readDesignContent, designPublicFiles } from '../scripts/design-content.mjs'
+import { readDesignContent, designPublicFiles, designContentPlugin } from '../scripts/design-content.mjs'
 
 it.each([
   { label: 'default', args: [] },
@@ -74,6 +74,10 @@ it('public Markdown and component indexes only contain registered pages', async 
   expect(files['overview.md']).toContain('一套语言')
   expect(files['overview.md']).not.toContain('[PROTOCOL]')
   expect(files['llms.txt']).not.toMatch(/ai-docs\/spec|AGENTS\.md|\.folder\.md/)
+  const compiled = await designContentPlugin().load('\0virtual:boai-design-content')
+  const imports = [...compiled.matchAll(/import \* as document\d+ from "([^"]+)"/g)].map(match => match[1])
+  expect(imports.sort()).toEqual(content.pages.map((page: { file: string }) => resolve('ai-docs/design-system', page.file)).sort())
+  expect(imports.some(path => /spec|\.folder|AGENTS/.test(path))).toBe(false)
   const components = JSON.parse(files['components.json']).components
   expect(components.every((component: { markdown: string }) => files[component.markdown.slice(1)])).toBe(true)
   expect(searchPages(content.pages, 'Button')[0].slug).toBe('components/button')

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: 静态设计站、独立tarball消费者和CI Chromium。
- * [OUTPUT]: 真实浏览器交互、默认样式/焦点/窄屏核对及禁用瞬时动画的稳定截图报告。
+ * [INPUT]: Fumadocs静态设计站、独立tarball消费者和CI Chromium。
+ * [OUTPUT]: Fumadocs渲染/目录/搜索/导航及原组件交互、外部分发与稳定截图报告。
  * [POS]: Web设计站专项验证，不替代原Electron BDD或UI基准。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -50,16 +50,41 @@ try {
   page.on('pageerror', error => runtimeErrors.push(error.message))
   await check('Homepage mounts without desktop host and shared styles are present', async () => {
     await page.goto(url)
+    await expect(page.locator('#nd-docs-layout')).toBeVisible()
     await expect(page.getByRole('heading', { level: 1 })).toContainText('为专注而设计')
+    await expect(page.locator('body')).not.toContainText('[PROTOCOL]')
     expect(await page.evaluate(() => 'boai' in window)).toBe(false)
     expect(await page.getByRole('button', { name: '保存更改', exact: true }).evaluate(element => getComputedStyle(element).borderRadius)).toBe('16px')
     await page.screenshot({ path: resolve(output, 'overview-light.png'), fullPage: true, animations: 'disabled' })
   })
   await check('Search prioritizes component title and supports Enter navigation', async () => {
-    await page.getByRole('searchbox', { name: '搜索文档' }).fill('Button')
-    await page.getByRole('searchbox', { name: '搜索文档' }).press('Enter')
+    await page.locator('[data-search-full]').click()
+    await page.getByRole('combobox', { name: '搜索文档' }).fill('Button')
+    await page.getByRole('combobox', { name: '搜索文档' }).press('Enter')
     await expect(page).toHaveURL(`${url}/components/button`)
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Button')
+    await expect(page.getByRole('combobox', { name: '搜索文档' })).toBeHidden()
+    await page.keyboard.press('ControlOrMeta+k')
+    await expect(page.getByRole('combobox', { name: '搜索文档' })).toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(page.locator('[data-search-full]')).toBeFocused()
+  })
+  await check('Fumadocs renders heading anchors, TOC and highlighted Markdown with browser history', async () => {
+    const heading = page.getByRole('heading', { name: '何时使用', exact: true })
+    await expect(heading).toHaveAttribute('id', /.+/)
+    await page.locator('#nd-toc').getByRole('link', { name: '何时使用', exact: true }).click()
+    expect(new URL(page.url()).hash).not.toBe('')
+    await page.goto(`${url}/getting-started`)
+    await expect(page.locator('figure.shiki pre').first()).toBeVisible()
+    await page.locator('#nd-sidebar').getByRole('link', { name: 'Input', exact: true }).click()
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Input')
+    await page.goBack()
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('开始使用')
+    await page.goForward()
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Input')
+    await page.reload()
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Input')
+    await page.goto(`${url}/components/button`)
   })
   await check('Paired themes isolate state and typography changes resize shared controls', async () => {
     await page.getByRole('button', { name: '明暗对照', exact: true }).click()
@@ -87,14 +112,15 @@ try {
   })
   await check('Theme switch and narrow-screen navigation render without page overflow', async () => {
     await page.goto(url)
-    await page.getByRole('button', { name: '当前跟随系统，切换外观' }).click()
-    await page.getByRole('button', { name: '当前浅色，切换外观' }).click()
+    await page.getByRole('button', { name: '深色', exact: true }).click()
     await expect(page.locator('html')).toHaveClass('dark')
     await expect(page.getByRole('textbox', { name: '名称', exact: true })).toHaveCSS('background-color', 'rgb(33, 33, 33)')
     await expect(page.locator('.page-actions .soft-button-secondary')).toHaveCSS('color', 'rgb(255, 255, 255)')
     await page.screenshot({ path: resolve(output, 'overview-dark.png'), fullPage: true, animations: 'disabled' })
     await page.setViewportSize({ width: 390, height: 844 })
-    await page.getByLabel('浏览文档').selectOption('/components/input')
+    await page.getByRole('button', { name: '打开导航', exact: true }).click()
+    await page.locator('#nd-sidebar-mobile').getByRole('link', { name: 'Input', exact: true }).click()
+    await expect(page.locator('#nd-sidebar-mobile')).toBeHidden()
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Input')
     await page.getByRole('textbox', { name: '项目名称', exact: true }).fill('我的项目')
     await expect(page.getByText('当前输入：我的项目')).toBeVisible()

@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: BOAI Design文档站改用Fumadocs UI/MDX，沿pnpm dev:design独立开发。
 [OUTPUT]: BOAI Design首版共享包与文档站已接线，新增dev:design，实际验证与剩余见第23组。
 [OUTPUT]: 用户改回GitHub Actions，标准双runner已实证；PR/main云端工程/32核心/18UI与严格Required checks，本机服务禁用；v3基准已接受，新完整资格查当前Checks。
 [OUTPUT]: 5f自动本地CI的28核心/18UI通过，但模块原生SIGSEGV导致正式failure；4013模块诊断未复现不补绿，当前状态唯一归22组03。
@@ -240,7 +241,7 @@
 [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 -->
 
-BOAI Design首版见[第23组](ai-docs/spec/23.BOAI设计系统/README.md)：`packages/tokens`与`packages/ui`为桌面和`apps/design-docs`提供同一份基础定义与组件。安装依赖后用`pnpm dev:design`启动独立设计站（默认`http://127.0.0.1:5190`），`pnpm dev`继续启动桌面。当前为私有开发包，运行验收状态和剩余范围见该组03；未发布npm或正式站点。
+BOAI Design首版见[第23组](ai-docs/spec/23.BOAI设计系统/README.md)：`packages/tokens`与`packages/ui`为桌面和`apps/design-docs`提供同一份基础定义与组件。安装依赖后用`pnpm dev:design`启动独立Fumadocs设计站（默认`http://127.0.0.1:5190`），`pnpm dev`继续启动桌面。当前为私有开发包，运行验收状态和剩余范围见该组03；未发布npm或正式站点。
 
 个人发布与开发CI：[第22组04](ai-docs/spec/22.开发自动化与持续测试/04-macOS本机发布与升级方案.md)约定无Apple开发者证书、本机源码开发自用的Tag/Release、ad-hoc安装包及独立升级路线。后续已获授权实施，PR/main自动CI已按最新要求迁回GitHub Actions，本机轮询停止并禁用；候选构建及正式产物冒烟入口已接入；实际成功、原失败和未完成范围统一见[22组03](ai-docs/spec/22.开发自动化与持续测试/03-实施步骤与验收.md#5-唯一实际进度)。本轮未创建Tag/Release或替换本机应用；合并与当前CI资格查看[PR1 Checks](https://github.com/6owen/boai-agent/pull/1/checks)，`pnpm dev`不执行安装升级。
 

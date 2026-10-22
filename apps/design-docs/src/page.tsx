@@ -1,13 +1,14 @@
 /*
- * [INPUT]: 白名单公开Markdown、共享组件和真实交互示例。
- * [OUTPUT]: 设计概览、基础规范与组件文档页面。
- * [POS]: 设计站内容层；不执行Markdown内脚本。
+ * [INPUT]: 白名单Fumadocs编译文档、共享组件和真实交互示例。
+ * [OUTPUT]: Fumadocs正文/锚点目录/代码高亮与BOAI组件预览。
+ * [POS]: 设计站内容层；公开Markdown由Fumadocs MDX构建期编译。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
+import defaultMdxComponents from 'fumadocs-ui/mdx'
+import { DocsBody, DocsDescription, DocsPage, DocsTitle } from 'fumadocs-ui/layouts/docs/page'
 import { Badge, Button, Card, CardDescription, CardHeader, CardTitle, Separator } from '@boai/ui'
 import type { DesignPage as Page } from 'virtual:boai-design-content'
+import { documents } from 'virtual:boai-design-content'
 import { CodeSample, Preview } from './preview'
 import { ComponentExample, SettingsExample, TypographyExample, exampleSources } from './examples'
 
@@ -34,19 +35,19 @@ function Overview() {
 
 export function DesignPage({ page, version }: { page: Page; version: string }) {
   const overview = page.slug === 'overview'
-  return <article className="docs-page" data-overview={overview}>
-    <header className="page-heading"><div className="page-eyebrow">{overview ? <>BOAI DESIGN <Badge variant="outline">{version} · Preview</Badge></> : page.section}</div><h1>{overview ? <>为专注而设计。<br /><span>让工作界面安静一点。</span></> : page.title}</h1><p>{page.description}</p>
+  const { default: MDX, toc } = documents[page.slug]
+  return <DocsPage className="docs-page" data-overview={overview} full={overview} toc={toc}>
+    <title>{page.title} · BOAI Design</title>
+    <meta name="description" content={page.description} />
+    <header className="page-heading"><div className="page-eyebrow">{overview ? <>BOAI DESIGN <Badge variant="outline">{version} · Preview</Badge></> : page.section}</div><DocsTitle>{overview ? <>为专注而设计。<br /><span>让工作界面安静一点。</span></> : page.title}</DocsTitle><DocsDescription>{page.description}</DocsDescription>
       {overview && <div className="page-actions"><Button render={<a href="/getting-started" />}>开始使用 <span aria-hidden="true">↗</span></Button><Button variant="secondary" render={<a href="/components/button" />}>浏览组件</Button></div>}
     </header>
     {overview && <Overview />}
     <Foundations kind={page.example} />
     <ComponentExample name={page.example} title={page.title} />
-    <div className="docs-prose"><ReactMarkdown remarkPlugins={[remarkGfm]} components={{
-      pre: ({ children }) => <pre className="markdown-code">{children}</pre>,
-      table: ({ children }) => <div className="table-scroll"><table>{children}</table></div>,
-    }}>{page.body}</ReactMarkdown></div>
+    <DocsBody className="docs-prose"><MDX components={defaultMdxComponents} /></DocsBody>
     {page.example === 'installation' && <CodeSample label="终端 · 仓库根目录" code="pnpm install --frozen-lockfile\npnpm dev:design" />}
     <Separator />
     <div className="page-bottom-links"><a href={`/${page.slug}.md`}>阅读 Markdown ↗</a><a href="/llms.txt">Agent 文档索引 ↗</a></div>
-  </article>
+  </DocsPage>
 }
