@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Fumadocs静态设计站、独立tarball消费者和CI Chromium。
- * [OUTPUT]: Fumadocs/原组件浏览器验收、独立消费、稳定截图与即时运行异常原件。
+ * [OUTPUT]: Fumadocs语义标题/原组件浏览器验收、独立消费、稳定截图与即时运行异常原件。
  * [POS]: Web设计站专项验证，不替代原Electron BDD或UI基准。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -73,7 +73,7 @@ try {
     await expect(page.locator('[data-search-full]')).toBeFocused()
   })
   await check('Fumadocs renders heading anchors, TOC and highlighted Markdown with browser history', async () => {
-    const heading = page.getByRole('heading', { name: '何时使用', exact: true })
+    const heading = page.locator('.docs-prose').getByRole('heading', { level: 2 }).filter({ has: page.getByRole('link', { name: '何时使用', exact: true }) })
     await expect(heading).toHaveAttribute('id', /.+/)
     await page.locator('#nd-toc').getByRole('link', { name: '何时使用', exact: true }).click()
     expect(new URL(page.url()).hash).not.toBe('')
