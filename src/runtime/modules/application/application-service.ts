@@ -6,6 +6,7 @@
  * [OUTPUT]: 2026-10-20 Alma技能接线：普通聊天按需读绑定技能/有来源记忆，独立任务协议与MCP媒体保持实际授权；本轮证据归独立Agent架构§11.21。
  * [OUTPUT]: 行为调用使用独立宿主principal及原持久业务回执；来源清理后不返回已清除正文。
  * [INPUT]: Explicit operation registry, original ProductStore and host-authenticated actor.
+ * [OUTPUT]: Domain precondition failures include explicit FORBIDDEN for scoped read operations.
  * [OUTPUT]: Stable business request identity, discovery, validated calls and durable receipts.
  * [POS]: Application facade; no model invocation, new Work or parallel business persistence.
  * [PROTOCOL]: Changes must update this Header and the owning .folder.md.
@@ -29,7 +30,7 @@ export interface ApplicationOperation {
 }
 interface OperationReceipt { ownerAgentId?: string; runtimeId?: string; id: string; actor: ApplicationActor; fingerprint: string; result: ApplicationResult }
 /** Only throw before any effect, or from an atomic transaction that rolls back on failure. */
-export class ApplicationValidationError extends Error { constructor(readonly code: 'REVISION_CONFLICT' | 'NOT_FOUND' | 'INVALID_INPUT', message: string) { super(message) } }
+export class ApplicationValidationError extends Error { constructor(readonly code: 'REVISION_CONFLICT' | 'NOT_FOUND' | 'INVALID_INPUT' | 'FORBIDDEN', message: string) { super(message) } }
 const collection = 'applicationOperations'
 const canonical = (value: unknown): string => {
   if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`
