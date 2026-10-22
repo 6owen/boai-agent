@@ -32,9 +32,9 @@ jobs:
           import { buildInputHash } from './scripts/build-identity.mjs';
           import { mkdir,writeFile } from 'node:fs/promises';
           const inputHash=await buildInputHash();
-          if(inputHash!=='3dcc9c3d69cf818452d8a9da199540a35bd505883a397d4d5b347ab34345a00a')throw Error('Task product input differs');
+          if(inputHash!=='772c88a2147f6c459209b81fdbc8a91798866b9e45bc91fc78de1fc40ac3bc99')throw Error('Task product input differs');
           await mkdir('.local/daily-task-pages',{recursive:true});
-          await writeFile('.local/daily-task-pages/source.json',JSON.stringify({candidate:'22888ad54dd518c45e7d2457b9510abc09a41140',inputHash,newContractCases:9,realProviderCalls:false,personalData:false,gui:false,originalRegressionAssertionsUnchanged:true},null,2));
+          await writeFile('.local/daily-task-pages/source.json',JSON.stringify({candidate:'e6ec6a25b8b7905361401c451151df29de465237',inputHash,newContractCases:9,realProviderCalls:false,personalData:false,gui:false,originalRegressionAssertionsUnchanged:true},null,2));
           JS
       - name: Build current candidate for original integration tests
         run: pnpm build
