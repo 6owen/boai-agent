@@ -1,29 +1,34 @@
 /*
+ * [OUTPUT]: 展示实际共享设置Card、全量组件/API、Token目录及BOAI MDX表格/分割适配。
  * [INPUT]: 白名单Fumadocs编译文档、共享组件和真实交互示例。
  * [OUTPUT]: 直接展示标题/说明与Fumadocs正文、目录和BOAI预览，移除重复父类别及版本标记。
  * [POS]: 设计站内容层；公开Markdown由Fumadocs MDX构建期编译。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
-import defaultMdxComponents from 'fumadocs-ui/mdx'
+import { mdxComponents } from './mdx-components'
 import { DocsBody, DocsDescription, DocsPage, DocsTitle } from 'fumadocs-ui/layouts/docs/page'
 import { Badge, Button, Card, CardDescription, CardHeader, CardTitle, Separator } from '@boai/ui'
 import type { DesignPage as Page } from 'virtual:boai-design-content'
 import { documents } from 'virtual:boai-design-content'
 import { CodeSample, Preview } from './preview'
-import { ComponentExample, SettingsExample, TypographyExample, exampleSources } from './examples'
+import { ComponentExample } from './examples'
+import { TokenBrowser } from './token-browser'
+import { ComponentReference } from './component-reference'
+import { ComponentCatalog } from './component-catalog'
 
 const swatches = ['background', 'card', 'foreground', 'muted-foreground', 'primary', 'border', 'destructive', 'success']
 
 function Foundations({ kind }: { kind: string }) {
   if (kind === 'colors') return <div className="color-grid">{swatches.map(name => <Card size="sm" key={name}><div className="color-swatch" style={{ background: `var(--${name})` }} /><CardHeader><CardTitle>{name}</CardTitle><CardDescription>{`var(--${name})`}</CardDescription></CardHeader></Card>)}</div>
-  if (kind === 'typography') return <Preview label="排版" code={exampleSources.typography}><TypographyExample /></Preview>
+  if (kind === 'catalog') return <ComponentCatalog />
+  if (kind === 'tokens') return <TokenBrowser />
   if (kind === 'surfaces') return <div className="surface-grid">{['shadow-input', 'shadow-control', 'shadow-card', 'shadow-popover'].map(name => <div className="surface-sample" key={name} style={{ boxShadow: `var(--${name})` }}><span>{name}</span><small>Soft 表面</small></div>)}</div>
   return null
 }
 
 function Overview() {
   return <>
-    <div className="overview-preview"><div className="overview-mini-sidebar" aria-hidden="true"><span>我的空间</span><span className="active">项目设置</span><span>成员</span><span>资料</span><span>外观</span></div><div className="overview-mini-content"><div className="mini-header"><span>工作空间</span><Badge variant="outline">Personal</Badge></div><SettingsExample /></div></div>
+    <Preview name="settings" label="项目设置" />
     <div className="overview-principles">{[
       ['01', '熟悉的表面', '中性色、细边缘与轻高光。控件有质感，内容有呼吸。'],
       ['02', '一致的细节', '字体、圆角、阴影和状态共享定义，修改发生在同一个地方。'],
@@ -45,7 +50,8 @@ export function DesignPage({ page }: { page: Page }) {
     {overview && <Overview />}
     <Foundations kind={page.example} />
     <ComponentExample name={page.example} title={page.title} />
-    <DocsBody className="docs-prose"><MDX components={defaultMdxComponents} /></DocsBody>
+    <ComponentReference slug={page.slug} />
+    <DocsBody className="docs-prose"><MDX components={mdxComponents} /></DocsBody>
     {page.example === 'installation' && <CodeSample label="终端 · 仓库根目录" code="pnpm install --frozen-lockfile\npnpm dev:design" />}
     <Separator />
     <div className="page-bottom-links"><a href={`/${page.slug}.md`}>阅读 Markdown ↗</a><a href="/llms.txt">Agent 文档索引 ↗</a></div>

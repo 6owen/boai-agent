@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Fumadocs默认刻度与BOAI语义圆角/字体独立，预览iframe、Token表和组件索引共享表面。
  * [INPUT]: Fumadocs预设、Tailwind v4与BOAI共享语义变量。
  * [OUTPUT]: Fumadocs默认圆角、指定SVG标志与精简标题；BOAI预览保留Soft圆角和共享字号。
  * [POS]: apps/design-docs页面样式，文档布局由Fumadocs维护。
@@ -62,14 +63,6 @@ button,input,textarea,select { font-family:inherit }
 .page-heading h1>span { color:var(--muted-foreground);font-weight:400 }
 .page-heading>p { max-width:600px;margin:0;font-size:var(--text-ui-emphasis);line-height:1.75;color:var(--muted-foreground) }
 .page-actions { display:flex;flex-wrap:wrap;gap:10px;margin-top:24px }
-.overview-preview { display:grid;grid-template-columns:152px minmax(0,1fr);margin:34px 0 24px;overflow:hidden;border:1px solid var(--border);border-radius:var(--radius-card);background:var(--background);box-shadow:var(--shadow-card) }
-.overview-mini-sidebar { display:flex;flex-direction:column;gap:4px;padding:26px 12px;border-right:1px solid var(--border);background:var(--surface-list);color:var(--muted-foreground);font-size:var(--text-ui-caption) }
-.overview-mini-sidebar>span { display:block;padding:7px 10px;border-radius:calc(var(--radius-control) * .6) }
-.overview-mini-sidebar>span:first-child { margin-bottom:14px;font-weight:550;color:var(--foreground) }
-.overview-mini-sidebar>span.active { color:var(--foreground);background:var(--selection) }
-.overview-mini-content { padding:20px 28px 28px }
-.mini-header { display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:20px;font-size:var(--text-ui-caption);color:var(--muted-foreground) }
-.overview-mini-content .example-form { margin:auto }
 .overview-principles { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:24px 0 }
 .overview-principles [data-slot=card] { height:100% }
 .overview-principles [data-slot=card-description] { line-height:1.75 }
@@ -124,14 +117,9 @@ button,input,textarea,select { font-family:inherit }
 .page-bottom-links { display:flex;flex-wrap:wrap;gap:20px;padding-top:20px;font-size:var(--text-ui-caption);color:var(--muted-foreground) }
 @media(max-width:1120px) {
   .color-grid,.surface-grid { grid-template-columns:repeat(2,minmax(0,1fr)) }
-  .overview-preview { grid-template-columns:110px minmax(0,1fr) }
-  .overview-mini-content { padding:20px }
 }
 @media(max-width:800px) {
   .overview-principles { grid-template-columns:1fr }
-  .overview-preview { grid-template-columns:1fr }
-  .overview-mini-sidebar { display:none }
-  .overview-mini-content { padding:20px 16px }
   .preview-content { padding-inline:18px }
   .typography-specimen>div { grid-template-columns:78px minmax(0,1fr);gap:12px }
   .typography-specimen>div>.example-hint { display:none }
@@ -145,3 +133,45 @@ button,input,textarea,select { font-family:inherit }
 }
 .skeleton-demo [data-slot=card-title] { min-height:1.5em }
 .skeleton-demo [data-slot=card-description] { min-height:1.5em }
+
+.preview-frame { min-width:0;flex-basis:320px;padding-top:44px }
+.preview-frame iframe { display:block;width:100%;border:0;background:transparent }
+.preview-frames[data-narrow=true] .preview-frame { max-width:360px;margin-inline:auto }
+.preview-document { padding:28px;min-height:320px;display:flex;align-items:flex-start;justify-content:center;background:var(--surface-content);color:var(--foreground) }
+.preview-document>.example-stack { max-width:680px }
+.preview-document .example-row { max-width:100% }
+.example-context-target { padding:28px;border:1px dashed var(--border);border-radius:var(--radius-control) }
+.example-resizable,.example-panel-layout { min-height:190px;display:flex;border:1px solid var(--border);border-radius:var(--radius-control);overflow:hidden }
+.example-sidebar { min-height:320px!important;position:relative;isolation:isolate }
+.example-sidebar [data-slot=sidebar-container] { position:relative;height:100% }
+.example-slide { padding:48px;text-align:center;background:var(--muted);border-radius:var(--radius-card) }
+.example-drag-row { width:100%;padding:12px;display:flex;justify-content:space-between;text-align:left }
+.example-drag-row span { color:var(--muted-foreground);font-size:var(--text-ui-caption) }
+.preview-document :is(.avatar,.group-avatar) { width:42px;height:42px;border-radius:var(--radius-control) }
+.preview-document .group-avatar .avatar { width:100%;height:100%;border-radius:2px }
+.preview-document .empty-illustration { max-width:240px;height:auto }
+.component-reference { margin-block:24px }
+.component-reference>h2 { font-size:var(--text-ui-title);margin-bottom:12px }
+.component-reference details { padding:10px 0;border-bottom:1px solid var(--border) }
+.component-reference summary { cursor:pointer }
+.token-filters { display:grid;grid-template-columns:minmax(0,1fr) 180px;gap:12px;margin-bottom:12px }
+.token-browser { min-width:0 }
+.token-browser .example-row { margin-block:16px;gap:16px }
+.token-browser [data-slot=table-cell] { max-width:280px;white-space:normal;vertical-align:top;padding-block:16px }
+.token-browser [data-slot=table-cell] :is(code,small,a) { display:block;overflow-wrap:anywhere }
+.token-browser [data-slot=table-cell] small { color:var(--muted-foreground);margin-block:6px }
+.token-browser [data-slot=table-cell] p { margin-block:6px }
+.token-name { font-family:var(--font-code-family);max-width:100%;height:auto;white-space:normal;text-align:left;justify-content:flex-start;overflow-wrap:anywhere }
+.token-swatch { display:flex;align-items:center;justify-content:center;width:72px;min-height:32px;margin-bottom:10px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--card);font-size:var(--text-ui-caption) }
+.token-swatch[data-type=shadow] { border:0 }
+.token-swatch[data-type=expression] { display:none }
+.token-contrast { margin-top:24px }
+.docs-prose [data-slot=table] :is(th,td) { border:0;background:transparent }
+@media(max-width:600px) { .token-filters { grid-template-columns:1fr }.preview-document { padding:20px 14px } }
+
+.component-catalog { display:flex;flex-direction:column;gap:16px }
+.component-catalog-list { display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));column-gap:24px }
+.component-catalog-list>a { display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:16px 0;border-bottom:1px solid var(--border) }
+.component-catalog-list code { width:100%;font-size:var(--text-code-compact);color:var(--muted-foreground);overflow-wrap:anywhere }
+.component-reference details[id] { scroll-margin-top:100px }
+.component-reference details:target { background:var(--muted) }

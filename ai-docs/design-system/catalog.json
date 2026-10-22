@@ -18,6 +18,22 @@
       "example": "installation"
     },
     {
+      "slug": "design",
+      "title": "设计准则",
+      "section": "开始",
+      "description": "BOAI 的视觉、交互与实现规则。",
+      "file": "DESIGN.md",
+      "example": "none"
+    },
+    {
+      "slug": "foundations/tokens",
+      "title": "Tokens",
+      "section": "设计基础",
+      "description": "所有默认变量、明暗主题、引用关系与可下载定义。",
+      "file": "tokens.md",
+      "example": "tokens"
+    },
+    {
       "slug": "foundations/color",
       "title": "颜色与表面",
       "section": "设计基础",
@@ -40,6 +56,14 @@
       "description": "细边缘、高光与轻阴影构成有分寸的Soft界面。",
       "file": "shape.md",
       "example": "surfaces"
+    },
+    {
+      "slug": "components",
+      "title": "组件总览",
+      "section": "组件",
+      "description": "按名称查找全部共享组件、组合与兼容入口。",
+      "file": "components.md",
+      "example": "catalog"
     },
     {
       "slug": "components/button",
@@ -96,114 +120,1471 @@
       "description": "字段就近说明，状态就近呈现，明确保存并保留草稿。",
       "file": "settings.md",
       "example": "settings"
+    },
+    {
+      "slug": "components/actions",
+      "title": "ButtonGroup、Toggle",
+      "section": "组件",
+      "description": "组合动作与可切换按钮。",
+      "file": "actions.md",
+      "example": "actions"
+    },
+    {
+      "slug": "components/inputs",
+      "title": "InputGroup、OTP、NumberField",
+      "section": "组件",
+      "description": "组合输入、验证码与数字步进。",
+      "file": "inputs.md",
+      "example": "inputs"
+    },
+    {
+      "slug": "components/selectors",
+      "title": "Select、Combobox 与选择控件",
+      "section": "组件",
+      "description": "单选、检索、多选、开关与滑块。",
+      "file": "selectors.md",
+      "example": "selectors"
+    },
+    {
+      "slug": "components/calendar",
+      "title": "Calendar",
+      "section": "组件",
+      "description": "选择日期并保持日历键盘操作。",
+      "file": "calendar.md",
+      "example": "calendar"
+    },
+    {
+      "slug": "components/containers",
+      "title": "Dialog、AlertDialog、Sheet、Drawer",
+      "section": "组件",
+      "description": "模态编辑、确认和侧边详情。",
+      "file": "containers.md",
+      "example": "containers"
+    },
+    {
+      "slug": "components/overlays",
+      "title": "Popover、Tooltip、HoverCard、Popconfirm",
+      "section": "组件",
+      "description": "靠近触发点的补充信息与轻量确认。",
+      "file": "overlays.md",
+      "example": "overlays"
+    },
+    {
+      "slug": "components/menus",
+      "title": "DropdownMenu、ContextMenu、Menubar、Command",
+      "section": "组件",
+      "description": "操作菜单、快捷检索与站点导航。",
+      "file": "menus.md",
+      "example": "menus"
+    },
+    {
+      "slug": "components/navigation",
+      "title": "Tabs、Breadcrumb、Pagination",
+      "section": "组件",
+      "description": "切换视图与定位层级。",
+      "file": "navigation.md",
+      "example": "navigation"
+    },
+    {
+      "slug": "components/sidebar",
+      "title": "Sidebar",
+      "section": "组件",
+      "description": "可折叠侧栏与移动端导航。",
+      "file": "sidebar.md",
+      "example": "sidebar"
+    },
+    {
+      "slug": "components/expand",
+      "title": "Accordion、Collapsible",
+      "section": "组件",
+      "description": "渐进展开补充内容。",
+      "file": "expand.md",
+      "example": "expand"
+    },
+    {
+      "slug": "components/layout",
+      "title": "Resizable、ScrollArea、Item 与布局",
+      "section": "组件",
+      "description": "分割、滚动和内容组织。",
+      "file": "layout.md",
+      "example": "layout"
+    },
+    {
+      "slug": "components/display",
+      "title": "Avatar、Table、Carousel、Kbd",
+      "section": "组件",
+      "description": "身份、结构化数据、内容切换与快捷键。",
+      "file": "display.md",
+      "example": "display"
+    },
+    {
+      "slug": "components/chart",
+      "title": "Chart",
+      "section": "组件",
+      "description": "使用主题变量的数据图表。",
+      "file": "chart.md",
+      "example": "chart"
+    },
+    {
+      "slug": "components/loading",
+      "title": "Progress、Spinner、LoadingState、ThinkingState",
+      "section": "组件",
+      "description": "加载、进度与执行过程。",
+      "file": "loading.md",
+      "example": "loading"
+    },
+    {
+      "slug": "components/empty",
+      "title": "Empty",
+      "section": "组件",
+      "description": "在空数据时提供明确起点。",
+      "file": "empty.md",
+      "example": "empty"
+    },
+    {
+      "slug": "components/feedback",
+      "title": "Alert 与旧版 Toast",
+      "section": "组件",
+      "description": "静态提示与兼容展示。",
+      "file": "feedback.md",
+      "example": "feedback"
+    },
+    {
+      "slug": "patterns/composer",
+      "title": "Composer",
+      "section": "使用模式",
+      "description": "聊天输入、模型菜单、附件与发送动作。",
+      "file": "composer.md",
+      "example": "composer"
+    },
+    {
+      "slug": "patterns/messages",
+      "title": "Message、Bubble、Attachment、ToolChips",
+      "section": "使用模式",
+      "description": "消息、附件状态与工具过程。",
+      "file": "messages.md",
+      "example": "messages"
+    },
+    {
+      "slug": "patterns/questionnaire",
+      "title": "Questionnaire",
+      "section": "使用模式",
+      "description": "结构化澄清与选择。",
+      "file": "questionnaire.md",
+      "example": "questionnaire"
+    },
+    {
+      "slug": "patterns/reading",
+      "title": "CodeBlock 与 Typeset",
+      "section": "使用模式",
+      "description": "统一正文层级、代码和只读输出。",
+      "file": "reading.md",
+      "example": "reading"
+    },
+    {
+      "slug": "patterns/selection",
+      "title": "SelectionActions",
+      "section": "使用模式",
+      "description": "选文操作与紧凑工具条。",
+      "file": "selection.md",
+      "example": "selection"
+    },
+    {
+      "slug": "patterns/workspace",
+      "title": "面板、搜索与拖拽列表",
+      "section": "使用模式",
+      "description": "保留草稿的面板、浮层生命周期与列表排序。",
+      "file": "workspace.md",
+      "example": "workspace"
+    },
+    {
+      "slug": "patterns/identity",
+      "title": "群头像与插画空态",
+      "section": "使用模式",
+      "description": "身份展示与离线资源边界。",
+      "file": "identity.md",
+      "example": "identity"
     }
   ],
   "components": [
     {
-      "name": "Button",
-      "slug": "components/button",
+      "name": "Accordion",
+      "slug": "components/expand",
       "status": "preview",
-      "import": "@boai/ui/button",
       "exports": [
-        "Button",
-        "buttonVariants"
-      ]
+        "Accordion",
+        "AccordionItem",
+        "AccordionTrigger",
+        "AccordionContent"
+      ],
+      "source": "packages/ui/src/components/accordion.tsx",
+      "import": "@boai/ui/accordion",
+      "types": []
     },
     {
-      "name": "Input",
-      "slug": "components/input",
+      "name": "AlertDialog",
+      "slug": "components/containers",
       "status": "preview",
-      "import": "@boai/ui/input",
       "exports": [
-        "Input"
-      ]
+        "AlertDialog",
+        "AlertDialogAction",
+        "AlertDialogCancel",
+        "AlertDialogContent",
+        "AlertDialogDescription",
+        "AlertDialogFooter",
+        "AlertDialogHeader",
+        "AlertDialogMedia",
+        "AlertDialogOverlay",
+        "AlertDialogPortal",
+        "AlertDialogTitle",
+        "AlertDialogTrigger"
+      ],
+      "source": "packages/ui/src/components/alert-dialog.tsx",
+      "import": "@boai/ui/alert-dialog",
+      "types": []
     },
     {
-      "name": "Textarea",
-      "slug": "components/input",
+      "name": "Alert",
+      "slug": "components/feedback",
       "status": "preview",
-      "import": "@boai/ui/textarea",
       "exports": [
-        "Textarea"
-      ]
+        "Alert",
+        "AlertTitle",
+        "AlertDescription",
+        "AlertAction"
+      ],
+      "source": "packages/ui/src/components/alert.tsx",
+      "import": "@boai/ui/alert",
+      "types": []
     },
     {
-      "name": "Field",
-      "slug": "components/input",
+      "name": "AspectRatio",
+      "slug": "components/layout",
       "status": "preview",
-      "import": "@boai/ui/field",
       "exports": [
-        "Field",
-        "FieldGroup",
-        "FieldLabel",
-        "FieldDescription",
-        "FieldSet",
-        "FieldLegend",
-        "FieldSeparator",
-        "FieldContent",
-        "FieldTitle"
-      ]
+        "AspectRatio"
+      ],
+      "source": "packages/ui/src/components/aspect-ratio.tsx",
+      "import": "@boai/ui/aspect-ratio",
+      "types": []
     },
     {
-      "name": "Label",
-      "slug": "components/input",
+      "name": "Attachment",
+      "slug": "patterns/messages",
       "status": "preview",
-      "import": "@boai/ui/label",
       "exports": [
-        "Label"
-      ]
+        "Attachment",
+        "AttachmentGroup",
+        "AttachmentMedia",
+        "AttachmentContent",
+        "AttachmentTitle",
+        "AttachmentDescription",
+        "AttachmentActions",
+        "AttachmentAction",
+        "AttachmentTrigger"
+      ],
+      "source": "packages/ui/src/components/attachment.tsx",
+      "import": "@boai/ui/attachment",
+      "types": []
     },
     {
-      "name": "Card",
-      "slug": "components/card",
+      "name": "Avatar",
+      "slug": "components/display",
       "status": "preview",
-      "import": "@boai/ui/card",
       "exports": [
-        "Card",
-        "CardHeader",
-        "CardTitle",
-        "CardDescription",
-        "CardAction",
-        "CardContent",
-        "CardFooter"
-      ]
-    },
-    {
-      "name": "Skeleton",
-      "slug": "components/skeleton",
-      "status": "preview",
-      "import": "@boai/ui/skeleton",
-      "exports": [
-        "Skeleton"
-      ]
+        "Avatar",
+        "AvatarImage",
+        "AvatarFallback",
+        "AvatarGroup",
+        "AvatarGroupCount",
+        "AvatarBadge"
+      ],
+      "source": "packages/ui/src/components/avatar.tsx",
+      "import": "@boai/ui/avatar",
+      "types": []
     },
     {
       "name": "Badge",
       "slug": "components/badge",
       "status": "preview",
-      "import": "@boai/ui/badge",
       "exports": [
         "Badge",
         "badgeVariants"
+      ],
+      "source": "packages/ui/src/components/badge.tsx",
+      "import": "@boai/ui/badge",
+      "types": []
+    },
+    {
+      "name": "Breadcrumb",
+      "slug": "components/navigation",
+      "status": "preview",
+      "exports": [
+        "Breadcrumb",
+        "BreadcrumbList",
+        "BreadcrumbItem",
+        "BreadcrumbLink",
+        "BreadcrumbPage",
+        "BreadcrumbSeparator",
+        "BreadcrumbEllipsis"
+      ],
+      "source": "packages/ui/src/components/breadcrumb.tsx",
+      "import": "@boai/ui/breadcrumb",
+      "types": []
+    },
+    {
+      "name": "Bubble",
+      "slug": "patterns/messages",
+      "status": "preview",
+      "exports": [
+        "BubbleGroup",
+        "Bubble",
+        "BubbleContent",
+        "BubbleReactions"
+      ],
+      "source": "packages/ui/src/components/bubble.tsx",
+      "import": "@boai/ui/bubble",
+      "types": []
+    },
+    {
+      "name": "ButtonGroup",
+      "slug": "components/actions",
+      "status": "preview",
+      "exports": [
+        "ButtonGroup",
+        "ButtonGroupSeparator",
+        "ButtonGroupText",
+        "buttonGroupVariants"
+      ],
+      "source": "packages/ui/src/components/button-group.tsx",
+      "import": "@boai/ui/button-group",
+      "types": []
+    },
+    {
+      "name": "Button",
+      "slug": "components/button",
+      "status": "preview",
+      "exports": [
+        "Button",
+        "buttonVariants"
+      ],
+      "source": "packages/ui/src/components/button.tsx",
+      "import": "@boai/ui/button",
+      "types": []
+    },
+    {
+      "name": "Calendar",
+      "slug": "components/calendar",
+      "status": "preview",
+      "exports": [
+        "Calendar",
+        "CalendarDayButton"
+      ],
+      "source": "packages/ui/src/components/calendar.tsx",
+      "import": "@boai/ui/calendar",
+      "types": []
+    },
+    {
+      "name": "Card",
+      "slug": "components/card",
+      "status": "preview",
+      "exports": [
+        "Card",
+        "CardHeader",
+        "CardFooter",
+        "CardTitle",
+        "CardAction",
+        "CardDescription",
+        "CardContent"
+      ],
+      "source": "packages/ui/src/components/card.tsx",
+      "import": "@boai/ui/card",
+      "types": []
+    },
+    {
+      "name": "Carousel",
+      "slug": "components/display",
+      "status": "preview",
+      "exports": [
+        "CarouselApi",
+        "Carousel",
+        "CarouselContent",
+        "CarouselItem",
+        "CarouselPrevious",
+        "CarouselNext",
+        "useCarousel"
+      ],
+      "source": "packages/ui/src/components/carousel.tsx",
+      "import": "@boai/ui/carousel",
+      "types": [
+        "CarouselApi"
+      ]
+    },
+    {
+      "name": "CatalogSearch",
+      "slug": "patterns/workspace",
+      "status": "preview",
+      "exports": [
+        "CatalogSearch"
+      ],
+      "source": "packages/ui/src/components/catalog-search.tsx",
+      "import": "@boai/ui/catalog-search",
+      "types": []
+    },
+    {
+      "name": "ChartContainer",
+      "slug": "components/chart",
+      "status": "preview",
+      "exports": [
+        "ChartConfig",
+        "ChartContainer",
+        "ChartTooltip",
+        "ChartTooltipContent",
+        "ChartLegend",
+        "ChartLegendContent",
+        "ChartStyle"
+      ],
+      "source": "packages/ui/src/components/chart.tsx",
+      "import": "@boai/ui/chart",
+      "types": [
+        "ChartConfig"
+      ]
+    },
+    {
+      "name": "ChatComposer",
+      "slug": "patterns/composer",
+      "status": "preview",
+      "exports": [
+        "ChatComposer",
+        "ChatComposerInput",
+        "ChatComposerFooter",
+        "ChatComposerActions",
+        "ChatComposerSelect",
+        "ChatComposerOption"
+      ],
+      "source": "packages/ui/src/components/chat-composer.tsx",
+      "import": "@boai/ui/chat-composer",
+      "types": []
+    },
+    {
+      "name": "Checkbox",
+      "slug": "components/selectors",
+      "status": "preview",
+      "exports": [
+        "Checkbox"
+      ],
+      "source": "packages/ui/src/components/checkbox.tsx",
+      "import": "@boai/ui/checkbox",
+      "types": []
+    },
+    {
+      "name": "CodeBlock",
+      "slug": "patterns/reading",
+      "status": "preview",
+      "exports": [
+        "CodeBlock"
+      ],
+      "source": "packages/ui/src/components/code-block.tsx",
+      "import": "@boai/ui/code-block",
+      "types": []
+    },
+    {
+      "name": "Collapsible",
+      "slug": "components/expand",
+      "status": "preview",
+      "exports": [
+        "Collapsible",
+        "CollapsibleTrigger",
+        "CollapsibleContent"
+      ],
+      "source": "packages/ui/src/components/collapsible.tsx",
+      "import": "@boai/ui/collapsible",
+      "types": []
+    },
+    {
+      "name": "Combobox",
+      "slug": "components/selectors",
+      "status": "preview",
+      "exports": [
+        "Combobox",
+        "ComboboxInput",
+        "ComboboxContent",
+        "ComboboxList",
+        "ComboboxItem",
+        "ComboboxGroup",
+        "ComboboxLabel",
+        "ComboboxCollection",
+        "ComboboxEmpty",
+        "ComboboxSeparator",
+        "ComboboxChips",
+        "ComboboxChip",
+        "ComboboxChipsInput",
+        "ComboboxTrigger",
+        "ComboboxValue",
+        "useComboboxAnchor"
+      ],
+      "source": "packages/ui/src/components/combobox.tsx",
+      "import": "@boai/ui/combobox",
+      "types": []
+    },
+    {
+      "name": "Command",
+      "slug": "components/menus",
+      "status": "preview",
+      "exports": [
+        "Command",
+        "CommandDialog",
+        "CommandInput",
+        "CommandList",
+        "CommandEmpty",
+        "CommandGroup",
+        "CommandItem",
+        "CommandShortcut",
+        "CommandSeparator"
+      ],
+      "source": "packages/ui/src/components/command.tsx",
+      "import": "@boai/ui/command",
+      "types": []
+    },
+    {
+      "name": "ContextMenu",
+      "slug": "components/menus",
+      "status": "preview",
+      "exports": [
+        "ContextMenu",
+        "ContextMenuTrigger",
+        "ContextMenuContent",
+        "ContextMenuItem",
+        "ContextMenuCheckboxItem",
+        "ContextMenuRadioItem",
+        "ContextMenuLabel",
+        "ContextMenuSeparator",
+        "ContextMenuShortcut",
+        "ContextMenuGroup",
+        "ContextMenuPortal",
+        "ContextMenuSub",
+        "ContextMenuSubContent",
+        "ContextMenuSubTrigger",
+        "ContextMenuRadioGroup"
+      ],
+      "source": "packages/ui/src/components/context-menu.tsx",
+      "import": "@boai/ui/context-menu",
+      "types": []
+    },
+    {
+      "name": "Dialog",
+      "slug": "components/containers",
+      "status": "preview",
+      "exports": [
+        "Dialog",
+        "DialogClose",
+        "DialogContent",
+        "DialogDescription",
+        "DialogFooter",
+        "DialogHeader",
+        "DialogOverlay",
+        "DialogPortal",
+        "DialogTitle",
+        "DialogTrigger"
+      ],
+      "source": "packages/ui/src/components/dialog.tsx",
+      "import": "@boai/ui/dialog",
+      "types": []
+    },
+    {
+      "name": "DirectionProvider",
+      "slug": "components/navigation",
+      "status": "preview",
+      "exports": [
+        "DirectionProvider",
+        "useDirection"
+      ],
+      "source": "packages/ui/src/components/direction.tsx",
+      "import": "@boai/ui/direction",
+      "types": []
+    },
+    {
+      "name": "DragList",
+      "slug": "patterns/workspace",
+      "status": "preview",
+      "exports": [
+        "ListMove",
+        "DragList",
+        "DragListItem",
+        "DragListGroupTarget"
+      ],
+      "source": "packages/ui/src/components/drag-list.tsx",
+      "import": "@boai/ui/drag-list",
+      "types": [
+        "ListMove"
+      ]
+    },
+    {
+      "name": "Drawer",
+      "slug": "components/containers",
+      "status": "preview",
+      "exports": [
+        "Drawer",
+        "DrawerPortal",
+        "DrawerOverlay",
+        "DrawerSwipeHandle",
+        "DrawerTrigger",
+        "DrawerClose",
+        "DrawerContent",
+        "DrawerHeader",
+        "DrawerFooter",
+        "DrawerTitle",
+        "DrawerDescription"
+      ],
+      "source": "packages/ui/src/components/drawer.tsx",
+      "import": "@boai/ui/drawer",
+      "types": []
+    },
+    {
+      "name": "DropdownMenu",
+      "slug": "components/menus",
+      "status": "preview",
+      "exports": [
+        "DropdownMenu",
+        "DropdownMenuPortal",
+        "DropdownMenuTrigger",
+        "DropdownMenuContent",
+        "DropdownMenuGroup",
+        "DropdownMenuLabel",
+        "DropdownMenuItem",
+        "DropdownMenuCheckboxItem",
+        "DropdownMenuRadioGroup",
+        "DropdownMenuRadioItem",
+        "DropdownMenuSeparator",
+        "DropdownMenuShortcut",
+        "DropdownMenuSub",
+        "DropdownMenuSubTrigger",
+        "DropdownMenuSubContent"
+      ],
+      "source": "packages/ui/src/components/dropdown-menu.tsx",
+      "import": "@boai/ui/dropdown-menu",
+      "types": []
+    },
+    {
+      "name": "Empty",
+      "slug": "components/empty",
+      "status": "preview",
+      "exports": [
+        "Empty",
+        "EmptyHeader",
+        "EmptyTitle",
+        "EmptyDescription",
+        "EmptyContent",
+        "EmptyMedia"
+      ],
+      "source": "packages/ui/src/components/empty.tsx",
+      "import": "@boai/ui/empty",
+      "types": []
+    },
+    {
+      "name": "ErrorToast",
+      "slug": "components/sonner",
+      "status": "preview",
+      "exports": [
+        "showErrorToast",
+        "ErrorToast"
+      ],
+      "source": "packages/ui/src/components/error-feedback.tsx",
+      "import": "@boai/ui/error-feedback",
+      "types": []
+    },
+    {
+      "name": "Field",
+      "slug": "components/input",
+      "status": "preview",
+      "exports": [
+        "Field",
+        "FieldLabel",
+        "FieldDescription",
+        "FieldGroup",
+        "FieldLegend",
+        "FieldSeparator",
+        "FieldSet",
+        "FieldContent",
+        "FieldTitle"
+      ],
+      "source": "packages/ui/src/components/field.tsx",
+      "import": "@boai/ui/field",
+      "types": []
+    },
+    {
+      "name": "FloatingLayerScope",
+      "slug": "patterns/workspace",
+      "status": "preview",
+      "exports": [
+        "FloatingLayerScope",
+        "useFloatingLayerActive",
+        "useFloatingLayerActions"
+      ],
+      "source": "packages/ui/src/components/floating-layer-scope.tsx",
+      "import": "@boai/ui/floating-layer-scope",
+      "types": []
+    },
+    {
+      "name": "GroupAvatarView",
+      "slug": "patterns/identity",
+      "status": "preview",
+      "exports": [
+        "GroupAvatarView"
+      ],
+      "source": "packages/ui/src/components/group-avatar.tsx",
+      "import": "@boai/ui/group-avatar",
+      "types": []
+    },
+    {
+      "name": "HoverCard",
+      "slug": "components/overlays",
+      "status": "preview",
+      "exports": [
+        "HoverCard",
+        "HoverCardTrigger",
+        "HoverCardContent"
+      ],
+      "source": "packages/ui/src/components/hover-card.tsx",
+      "import": "@boai/ui/hover-card",
+      "types": []
+    },
+    {
+      "name": "IllustratedEmptyView",
+      "slug": "patterns/identity",
+      "status": "preview",
+      "exports": [
+        "IllustratedEmptyView"
+      ],
+      "source": "packages/ui/src/components/illustrated-empty.tsx",
+      "import": "@boai/ui/illustrated-empty",
+      "types": []
+    },
+    {
+      "name": "InputGroup",
+      "slug": "components/inputs",
+      "status": "preview",
+      "exports": [
+        "InputGroup",
+        "InputGroupAddon",
+        "InputGroupButton",
+        "InputGroupText",
+        "InputGroupInput",
+        "InputGroupTextarea"
+      ],
+      "source": "packages/ui/src/components/input-group.tsx",
+      "import": "@boai/ui/input-group",
+      "types": []
+    },
+    {
+      "name": "InputOTP",
+      "slug": "components/inputs",
+      "status": "preview",
+      "exports": [
+        "InputOTP",
+        "InputOTPGroup",
+        "InputOTPSlot",
+        "InputOTPSeparator"
+      ],
+      "source": "packages/ui/src/components/input-otp.tsx",
+      "import": "@boai/ui/input-otp",
+      "types": []
+    },
+    {
+      "name": "Input",
+      "slug": "components/input",
+      "status": "preview",
+      "exports": [
+        "Input"
+      ],
+      "source": "packages/ui/src/components/input.tsx",
+      "import": "@boai/ui/input",
+      "types": []
+    },
+    {
+      "name": "Item",
+      "slug": "components/layout",
+      "status": "preview",
+      "exports": [
+        "Item",
+        "ItemMedia",
+        "ItemContent",
+        "ItemActions",
+        "ItemGroup",
+        "ItemSeparator",
+        "ItemTitle",
+        "ItemDescription",
+        "ItemHeader",
+        "ItemFooter"
+      ],
+      "source": "packages/ui/src/components/item.tsx",
+      "import": "@boai/ui/item",
+      "types": []
+    },
+    {
+      "name": "Kbd",
+      "slug": "components/display",
+      "status": "preview",
+      "exports": [
+        "Kbd",
+        "KbdGroup"
+      ],
+      "source": "packages/ui/src/components/kbd.tsx",
+      "import": "@boai/ui/kbd",
+      "types": []
+    },
+    {
+      "name": "Label",
+      "slug": "components/input",
+      "status": "preview",
+      "exports": [
+        "Label"
+      ],
+      "source": "packages/ui/src/components/label.tsx",
+      "import": "@boai/ui/label",
+      "types": []
+    },
+    {
+      "name": "LoadingState",
+      "slug": "components/loading",
+      "status": "preview",
+      "exports": [
+        "LoadingState"
+      ],
+      "source": "packages/ui/src/components/loading-state.tsx",
+      "import": "@boai/ui/loading-state",
+      "types": []
+    },
+    {
+      "name": "Marker",
+      "slug": "components/display",
+      "status": "preview",
+      "exports": [
+        "Marker",
+        "MarkerIcon",
+        "MarkerContent",
+        "markerVariants"
+      ],
+      "source": "packages/ui/src/components/marker.tsx",
+      "import": "@boai/ui/marker",
+      "types": []
+    },
+    {
+      "name": "Menubar",
+      "slug": "components/menus",
+      "status": "preview",
+      "exports": [
+        "Menubar",
+        "MenubarPortal",
+        "MenubarMenu",
+        "MenubarTrigger",
+        "MenubarContent",
+        "MenubarGroup",
+        "MenubarSeparator",
+        "MenubarLabel",
+        "MenubarItem",
+        "MenubarShortcut",
+        "MenubarCheckboxItem",
+        "MenubarRadioGroup",
+        "MenubarRadioItem",
+        "MenubarSub",
+        "MenubarSubTrigger",
+        "MenubarSubContent"
+      ],
+      "source": "packages/ui/src/components/menubar.tsx",
+      "import": "@boai/ui/menubar",
+      "types": []
+    },
+    {
+      "name": "MessageScroller",
+      "slug": "patterns/messages",
+      "status": "preview",
+      "exports": [
+        "MessageScrollerProvider",
+        "MessageScroller",
+        "MessageScrollerViewport",
+        "MessageScrollerContent",
+        "MessageScrollerItem",
+        "MessageScrollerButton",
+        "useMessageScroller",
+        "useMessageScrollerScrollable",
+        "useMessageScrollerVisibility"
+      ],
+      "source": "packages/ui/src/components/message-scroller.tsx",
+      "import": "@boai/ui/message-scroller",
+      "types": []
+    },
+    {
+      "name": "Message",
+      "slug": "patterns/messages",
+      "status": "preview",
+      "exports": [
+        "MessageGroup",
+        "Message",
+        "MessageAvatar",
+        "MessageContent",
+        "MessageFooter",
+        "MessageHeader"
+      ],
+      "source": "packages/ui/src/components/message.tsx",
+      "import": "@boai/ui/message",
+      "types": []
+    },
+    {
+      "name": "NativeSelect",
+      "slug": "components/selectors",
+      "status": "preview",
+      "exports": [
+        "NativeSelect",
+        "NativeSelectOptGroup",
+        "NativeSelectOption"
+      ],
+      "source": "packages/ui/src/components/native-select.tsx",
+      "import": "@boai/ui/native-select",
+      "types": []
+    },
+    {
+      "name": "NavigationMenu",
+      "slug": "components/menus",
+      "status": "preview",
+      "exports": [
+        "NavigationMenu",
+        "NavigationMenuContent",
+        "NavigationMenuIndicator",
+        "NavigationMenuItem",
+        "NavigationMenuLink",
+        "NavigationMenuList",
+        "NavigationMenuTrigger",
+        "navigationMenuTriggerStyle",
+        "NavigationMenuPositioner"
+      ],
+      "source": "packages/ui/src/components/navigation-menu.tsx",
+      "import": "@boai/ui/navigation-menu",
+      "types": []
+    },
+    {
+      "name": "NumberField",
+      "slug": "components/inputs",
+      "status": "preview",
+      "exports": [
+        "NumberField",
+        "NumberFieldProps"
+      ],
+      "source": "packages/ui/src/components/number-field.tsx",
+      "import": "@boai/ui/number-field",
+      "types": [
+        "NumberFieldProps"
+      ]
+    },
+    {
+      "name": "Pagination",
+      "slug": "components/navigation",
+      "status": "preview",
+      "exports": [
+        "Pagination",
+        "PaginationContent",
+        "PaginationEllipsis",
+        "PaginationItem",
+        "PaginationLink",
+        "PaginationNext",
+        "PaginationPrevious"
+      ],
+      "source": "packages/ui/src/components/pagination.tsx",
+      "import": "@boai/ui/pagination",
+      "types": []
+    },
+    {
+      "name": "PanelResize",
+      "slug": "patterns/workspace",
+      "status": "preview",
+      "exports": [
+        "PanelResize"
+      ],
+      "source": "packages/ui/src/components/panel-resize.tsx",
+      "import": "@boai/ui/panel-resize",
+      "types": []
+    },
+    {
+      "name": "Popconfirm",
+      "slug": "components/overlays",
+      "status": "preview",
+      "exports": [
+        "PopconfirmProps",
+        "Popconfirm"
+      ],
+      "source": "packages/ui/src/components/popconfirm.tsx",
+      "import": "@boai/ui/popconfirm",
+      "types": [
+        "PopconfirmProps"
+      ]
+    },
+    {
+      "name": "Popover",
+      "slug": "components/overlays",
+      "status": "preview",
+      "exports": [
+        "Popover",
+        "PopoverContent",
+        "PopoverDescription",
+        "PopoverHeader",
+        "PopoverTitle",
+        "PopoverTrigger"
+      ],
+      "source": "packages/ui/src/components/popover.tsx",
+      "import": "@boai/ui/popover",
+      "types": []
+    },
+    {
+      "name": "Progress",
+      "slug": "components/loading",
+      "status": "preview",
+      "exports": [
+        "Progress",
+        "ProgressTrack",
+        "ProgressIndicator",
+        "ProgressLabel",
+        "ProgressValue"
+      ],
+      "source": "packages/ui/src/components/progress.tsx",
+      "import": "@boai/ui/progress",
+      "types": []
+    },
+    {
+      "name": "Questionnaire",
+      "slug": "patterns/questionnaire",
+      "status": "preview",
+      "exports": [
+        "Questionnaire",
+        "QuestionnaireActions",
+        "QuestionnaireChoice",
+        "QuestionnaireChoiceDescription",
+        "QuestionnaireChoices",
+        "QuestionnaireDescription",
+        "QuestionnaireError",
+        "QuestionnaireInput",
+        "QuestionnaireItem",
+        "QuestionnaireNext",
+        "QuestionnairePrevious",
+        "QuestionnaireProgress",
+        "QuestionnaireSkip",
+        "QuestionnaireSubmit",
+        "QuestionnaireTitle"
+      ],
+      "source": "packages/ui/src/components/questionnaire.tsx",
+      "import": "@boai/ui/questionnaire",
+      "types": []
+    },
+    {
+      "name": "RadioGroup",
+      "slug": "components/selectors",
+      "status": "preview",
+      "exports": [
+        "RadioGroup",
+        "RadioGroupItem"
+      ],
+      "source": "packages/ui/src/components/radio-group.tsx",
+      "import": "@boai/ui/radio-group",
+      "types": []
+    },
+    {
+      "name": "ResizablePanelGroup",
+      "slug": "components/layout",
+      "status": "preview",
+      "exports": [
+        "ResizableHandle",
+        "ResizablePanel",
+        "ResizablePanelGroup"
+      ],
+      "source": "packages/ui/src/components/resizable.tsx",
+      "import": "@boai/ui/resizable",
+      "types": []
+    },
+    {
+      "name": "ScrollArea",
+      "slug": "components/layout",
+      "status": "preview",
+      "exports": [
+        "ScrollArea",
+        "ScrollBar"
+      ],
+      "source": "packages/ui/src/components/scroll-area.tsx",
+      "import": "@boai/ui/scroll-area",
+      "types": []
+    },
+    {
+      "name": "ScrollFade",
+      "slug": "components/layout",
+      "status": "preview",
+      "exports": [
+        "ScrollFade"
+      ],
+      "source": "packages/ui/src/components/scroll-fade.tsx",
+      "import": "@boai/ui/scroll-fade",
+      "types": []
+    },
+    {
+      "name": "SelectField",
+      "slug": "components/selectors",
+      "status": "preview",
+      "exports": [
+        "SelectField"
+      ],
+      "source": "packages/ui/src/components/select-field.tsx",
+      "import": "@boai/ui/select-field",
+      "types": []
+    },
+    {
+      "name": "Select",
+      "slug": "components/selectors",
+      "status": "preview",
+      "exports": [
+        "Select",
+        "SelectContent",
+        "SelectGroup",
+        "SelectItem",
+        "SelectLabel",
+        "SelectScrollDownButton",
+        "SelectScrollUpButton",
+        "SelectSeparator",
+        "SelectTrigger",
+        "SelectValue"
+      ],
+      "source": "packages/ui/src/components/select.tsx",
+      "import": "@boai/ui/select",
+      "types": []
+    },
+    {
+      "name": "SelectionActionButton",
+      "slug": "patterns/selection",
+      "status": "preview",
+      "exports": [
+        "buttonVariants",
+        "ButtonVariant",
+        "SelectionActionButton"
+      ],
+      "source": "packages/ui/src/components/selection-actions-button.tsx",
+      "import": "@boai/ui/selection-actions-button",
+      "types": [
+        "ButtonVariant"
+      ]
+    },
+    {
+      "name": "SelectionActionsShimmer",
+      "slug": "patterns/selection",
+      "status": "preview",
+      "exports": [
+        "SelectionActionsShimmer"
+      ],
+      "source": "packages/ui/src/components/selection-actions-shimmer.tsx",
+      "import": "@boai/ui/selection-actions-shimmer",
+      "types": []
+    },
+    {
+      "name": "SelectionActions",
+      "slug": "patterns/selection",
+      "status": "preview",
+      "exports": [
+        "SelectionAction",
+        "SelectionActionSet",
+        "SelectionActions"
+      ],
+      "source": "packages/ui/src/components/selection-actions.tsx",
+      "import": "@boai/ui/selection-actions",
+      "types": [
+        "SelectionAction",
+        "SelectionActionSet"
       ]
     },
     {
       "name": "Separator",
       "slug": "components/badge",
       "status": "preview",
-      "import": "@boai/ui/separator",
       "exports": [
         "Separator"
-      ]
+      ],
+      "source": "packages/ui/src/components/separator.tsx",
+      "import": "@boai/ui/separator",
+      "types": []
+    },
+    {
+      "name": "Sheet",
+      "slug": "components/containers",
+      "status": "preview",
+      "exports": [
+        "Sheet",
+        "SheetTrigger",
+        "SheetClose",
+        "SheetContent",
+        "SheetHeader",
+        "SheetFooter",
+        "SheetTitle",
+        "SheetDescription"
+      ],
+      "source": "packages/ui/src/components/sheet.tsx",
+      "import": "@boai/ui/sheet",
+      "types": []
+    },
+    {
+      "name": "Sidebar",
+      "slug": "components/sidebar",
+      "status": "preview",
+      "exports": [
+        "Sidebar",
+        "SidebarContent",
+        "SidebarFooter",
+        "SidebarGroup",
+        "SidebarGroupAction",
+        "SidebarGroupContent",
+        "SidebarGroupLabel",
+        "SidebarHeader",
+        "SidebarInput",
+        "SidebarInset",
+        "SidebarMenu",
+        "SidebarMenuAction",
+        "SidebarMenuBadge",
+        "SidebarMenuButton",
+        "SidebarMenuItem",
+        "SidebarMenuSkeleton",
+        "SidebarMenuSub",
+        "SidebarMenuSubButton",
+        "SidebarMenuSubItem",
+        "SidebarProvider",
+        "SidebarRail",
+        "SidebarSeparator",
+        "SidebarTrigger",
+        "useSidebar"
+      ],
+      "source": "packages/ui/src/components/sidebar.tsx",
+      "import": "@boai/ui/sidebar",
+      "types": []
+    },
+    {
+      "name": "Skeleton",
+      "slug": "components/skeleton",
+      "status": "preview",
+      "exports": [
+        "Skeleton"
+      ],
+      "source": "packages/ui/src/components/skeleton.tsx",
+      "import": "@boai/ui/skeleton",
+      "types": []
+    },
+    {
+      "name": "Slider",
+      "slug": "components/selectors",
+      "status": "preview",
+      "exports": [
+        "Slider"
+      ],
+      "source": "packages/ui/src/components/slider.tsx",
+      "import": "@boai/ui/slider",
+      "types": []
     },
     {
       "name": "Toaster",
       "slug": "components/sonner",
       "status": "preview",
-      "import": "@boai/ui/sonner",
       "exports": [
         "Toaster"
-      ]
+      ],
+      "source": "packages/ui/src/components/sonner.tsx",
+      "import": "@boai/ui/sonner",
+      "types": []
+    },
+    {
+      "name": "Spinner",
+      "slug": "components/loading",
+      "status": "preview",
+      "exports": [
+        "Spinner"
+      ],
+      "source": "packages/ui/src/components/spinner.tsx",
+      "import": "@boai/ui/spinner",
+      "types": []
+    },
+    {
+      "name": "Switch",
+      "slug": "components/selectors",
+      "status": "preview",
+      "exports": [
+        "Switch"
+      ],
+      "source": "packages/ui/src/components/switch.tsx",
+      "import": "@boai/ui/switch",
+      "types": []
+    },
+    {
+      "name": "Table",
+      "slug": "components/display",
+      "status": "preview",
+      "exports": [
+        "Table",
+        "TableHeader",
+        "TableBody",
+        "TableFooter",
+        "TableHead",
+        "TableRow",
+        "TableCell",
+        "TableCaption"
+      ],
+      "source": "packages/ui/src/components/table.tsx",
+      "import": "@boai/ui/table",
+      "types": []
+    },
+    {
+      "name": "TabsSlidingIndicator",
+      "slug": "components/navigation",
+      "status": "preview",
+      "exports": [
+        "TabsSlidingIndicator"
+      ],
+      "source": "packages/ui/src/components/tabs-indicator.tsx",
+      "import": "@boai/ui/tabs-indicator",
+      "types": []
+    },
+    {
+      "name": "Tabs",
+      "slug": "components/navigation",
+      "status": "preview",
+      "exports": [
+        "Tabs",
+        "TabsList",
+        "TabsTrigger",
+        "TabsContent",
+        "tabsListVariants"
+      ],
+      "source": "packages/ui/src/components/tabs.tsx",
+      "import": "@boai/ui/tabs",
+      "types": []
+    },
+    {
+      "name": "Textarea",
+      "slug": "components/input",
+      "status": "preview",
+      "exports": [
+        "Textarea"
+      ],
+      "source": "packages/ui/src/components/textarea.tsx",
+      "import": "@boai/ui/textarea",
+      "types": []
+    },
+    {
+      "name": "ThinkingState",
+      "slug": "components/loading",
+      "status": "preview",
+      "exports": [
+        "ThinkingState"
+      ],
+      "source": "packages/ui/src/components/thinking-state.tsx",
+      "import": "@boai/ui/thinking-state",
+      "types": []
+    },
+    {
+      "name": "Toaster",
+      "slug": "components/feedback",
+      "status": "compatibility",
+      "exports": [
+        "Toaster",
+        "Toast",
+        "ToastAction",
+        "ToastClose",
+        "ToastContent",
+        "ToastDescription",
+        "ToastPortal",
+        "ToastProvider",
+        "ToastTitle",
+        "ToastViewport",
+        "createToastManager",
+        "toast",
+        "useToastManager"
+      ],
+      "source": "packages/ui/src/components/toast.tsx",
+      "import": "@boai/ui/toast",
+      "types": []
+    },
+    {
+      "name": "ToggleGroup",
+      "slug": "components/actions",
+      "status": "preview",
+      "exports": [
+        "ToggleGroup",
+        "ToggleGroupItem"
+      ],
+      "source": "packages/ui/src/components/toggle-group.tsx",
+      "import": "@boai/ui/toggle-group",
+      "types": []
+    },
+    {
+      "name": "Toggle",
+      "slug": "components/actions",
+      "status": "preview",
+      "exports": [
+        "Toggle",
+        "toggleVariants"
+      ],
+      "source": "packages/ui/src/components/toggle.tsx",
+      "import": "@boai/ui/toggle",
+      "types": []
+    },
+    {
+      "name": "ToolChips",
+      "slug": "patterns/messages",
+      "status": "preview",
+      "exports": [
+        "ToolChips",
+        "ToolChip"
+      ],
+      "source": "packages/ui/src/components/tool-chips.tsx",
+      "import": "@boai/ui/tool-chips",
+      "types": []
+    },
+    {
+      "name": "Tooltip",
+      "slug": "components/overlays",
+      "status": "preview",
+      "exports": [
+        "Tooltip",
+        "TooltipTrigger",
+        "TooltipContent",
+        "TooltipProvider"
+      ],
+      "source": "packages/ui/src/components/tooltip.tsx",
+      "import": "@boai/ui/tooltip",
+      "types": []
+    },
+    {
+      "name": "Typeset",
+      "slug": "patterns/reading",
+      "status": "preview",
+      "exports": [
+        "Typeset",
+        "TypesetCode"
+      ],
+      "source": "packages/ui/src/components/typeset.tsx",
+      "import": "@boai/ui/typeset",
+      "types": []
+    },
+    {
+      "name": "useEditorGuard",
+      "slug": "patterns/settings",
+      "status": "preview",
+      "exports": [
+        "useEditorGuard"
+      ],
+      "source": "packages/ui/src/components/use-editor-guard.tsx",
+      "import": "@boai/ui/use-editor-guard",
+      "types": []
+    },
+    {
+      "name": "UserAvatarView",
+      "slug": "patterns/identity",
+      "status": "preview",
+      "exports": [
+        "UserAvatarView"
+      ],
+      "source": "packages/ui/src/components/user-avatar.tsx",
+      "import": "@boai/ui/user-avatar",
+      "types": []
     }
   ]
 }

@@ -6,7 +6,8 @@
  */
 import { Button } from '@boai/ui'
 import { toast } from 'sonner'
+import { showErrorToast } from '@boai/ui/error-feedback'
 
 export default function SonnerExample() {
-  return <div className="example-row"><Button onClick={() => toast.success('已保存')}>成功提示</Button><Button variant="secondary" onClick={() => toast.error('保存失败，请在原位置重试。')}>错误提示</Button><Button variant="ghost" onClick={() => toast('资料已更新')}>普通提示</Button></div>
+  return <div className="example-row"><Button onClick={() => toast.success('已保存')}>成功提示</Button><Button variant="secondary" onClick={() => showErrorToast('保存失败，请在原位置重试。', { deduplicate: true })}>错误提示</Button><Button variant="ghost" onClick={() => toast('资料已更新')}>普通提示</Button></div>
 }

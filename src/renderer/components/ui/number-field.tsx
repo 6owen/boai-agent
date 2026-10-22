@@ -1,40 +1,7 @@
 /*
- * [INPUT]: React Aria NumberField primitives and the shared Soft Button skin.
- * [OUTPUT]: Accessible horizontal number input with a dominant text field, compact flat steppers contained by the shared input surface, and caller-owned numeric bounds.
- * [POS]: Reusable components/ui number field; no appearance or business state.
- * [PROTOCOL]: Once this file changes, update its Header and the parent .folder.md.
+ * [INPUT]: BOAI公共组件。
+ * [OUTPUT]: 兼容转发，桌面与设计站使用同一实现。
+ * [POS]: src/renderer/components/ui/number-field.tsx
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header与所属目录.folder.md。
  */
-import {
-  Button as AriaButton,
-  Group as AriaGroup,
-  Input as AriaInput,
-  NumberField as AriaNumberField,
-  type NumberFieldProps as AriaNumberFieldProps,
-} from 'react-aria-components'
-import { cn } from 'cn'
-import { MinusIcon, Plus } from '@/components/icons'
-import { buttonVariants } from './button'
-
-type NumberFieldProps = Omit<AriaNumberFieldProps, 'children' | 'className'> & {
-  className?: string
-  inputClassName?: string
-  inputId?: string
-}
-
-function NumberField({ className, inputClassName, inputId, ...props }: NumberFieldProps) {
-  const stepperClassName = cn(buttonVariants({ variant: 'ghost', size: 'content' }), 'flex h-full w-7 items-center justify-center p-0')
-  return <AriaNumberField data-slot="number-field" className={cn('inline-flex w-36 min-w-0', className)} {...props}>
-    <AriaGroup data-slot="number-field-group" className="flex h-(--control-height) w-full min-w-0 items-stretch overflow-hidden">
-      <AriaInput id={inputId} data-slot="number-field-input" className={cn('w-full min-w-0 flex-1 px-2.5 py-1 text-left tabular-nums outline-none', inputClassName)} />
-      <AriaButton slot="decrement" data-slot="number-field-stepper" className={stepperClassName}>
-        <MinusIcon />
-      </AriaButton>
-      <AriaButton slot="increment" data-slot="number-field-stepper" className={stepperClassName}>
-        <Plus />
-      </AriaButton>
-    </AriaGroup>
-  </AriaNumberField>
-}
-
-export { NumberField }
-export type { NumberFieldProps }
+export * from '@boai/ui/number-field'

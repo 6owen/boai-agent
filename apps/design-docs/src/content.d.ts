@@ -6,7 +6,7 @@
  */
 declare module 'virtual:boai-design-content' {
   export interface DesignPage { slug: string; path: string; title: string; section: string; description: string; file: string; example: string; body: string }
-  export interface DesignComponent { name: string; slug: string; status: string; import: string; exports: string[] }
+  export interface DesignComponent { name: string; slug: string; status: string; import: string; exports: string[]; types: string[]; source: string }
   export const documents: Record<string, {
     default: import('react').ComponentType<{ components?: import('mdx/types').MDXComponents }>
     toc: import('fumadocs-core/toc').TOCItemType[]
