@@ -1,0 +1,40 @@
+# [INPUT]: 第五轮CI最早的外观/插件失败及固定源码。
+# [OUTPUT]: 只读远程重现与即时错误/trace；不提供Required checks或发布资格。
+# [POS]: 临时诊断分支，禁止合并该替换工作流。
+# [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
+name: BDD failure probe
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.16.0'
+          cache: pnpm
+      - env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: ''
+        run: |
+          pnpm install --frozen-lockfile
+          node node_modules/electron/install.js
+          pnpm exec electron --version
+      - run: pnpm build
+      - run: pnpm test:bddgen
+      - env:
+          PLAYWRIGHT_JSON_OUTPUT_FILE: .local/bdd-probe/playwright.json
+        run: pnpm exec playwright test --grep '@appearance|@application-plugins' --retries=0 --reporter=line,json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bdd-probe
+          path: |
+            .local/bdd-probe/
+            test-results/
+          include-hidden-files: true
+          if-no-files-found: error
