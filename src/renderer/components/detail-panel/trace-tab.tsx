@@ -1,6 +1,6 @@
 /*
  * [OUTPUT]: 通讯录固定Run通过原员工详情查询精确读取，同一执行卡片不加载其他历史或额外摘要。
- * [OUTPUT]: 卡片工具行添加定位聊天记录按钮；原生记录切换及卡片布局保持。
+ * [OUTPUT]: 卡片工具行按停止图标、定位聊天记录、原生记录切换排列；定时任务停止由父级按本次身份提供，仅显示在最新卡片。
  * [OUTPUT]: 定时任务按occurrence限定同一次运行，仅显示执行卡片；普通会话保留历史标题和成员筛选。
  * [OUTPUT]: 通用运行时插件参与成果修订候选与真实执行停止，原来源核验保持。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
@@ -11,7 +11,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
 import { isNativeBackend } from '@shared/domain/backends'
-import { useEffect, useLayoutEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useLayoutEffect, useState, useRef, useCallback, type ReactNode } from 'react'
 import type { DesktopApi } from '@shared/ipc'
 import type { Snapshot, AgentRun, DigitalAgent } from '@shared/domain'
 import type { ExecutionHistoryPage } from '@shared/domain/execution'
@@ -22,7 +22,7 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/component
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Popover, PopoverTrigger, PopoverContent, PopoverHeader, PopoverTitle, PopoverDescription } from '@/components/ui/popover'
-import { ChevronRight, Icon, Terminal, Workflow } from '@/components/icons'
+import { ChevronRight, Icon, Square, Terminal, Workflow } from '@/components/icons'
 import { ExecutionFeed, type ExecutionView } from './execution-feed'
 import { ExecutionRunInfo } from './execution-record'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -32,9 +32,9 @@ import { ExecutionContentCache } from './execution-content-cache'
 import { ExecutionMessageButton, type ExecutionMessageNavigation } from './execution-message-button'
 
 const labels: Record<AgentRun['status'], string> = { queued: '排队中', running: '执行中', completed: '已完成', failed: '失败', cancelled: '已停止', interrupted: '已中断', waiting_approval: '等待批准' }
-export function TraceTab({ api, conversationId, messageId, agentId, active, snapshot, occurrenceId, runId, title, onNavigateMessage, emptyMessage = '发送消息后，可在这里查看员工的执行过程。' }: {
+export function TraceTab({ api, conversationId, messageId, agentId, active, snapshot, occurrenceId, runId, title, onNavigateMessage, stopAction, emptyMessage = '发送消息后，可在这里查看员工的执行过程。' }: {
   api: DesktopApi; conversationId: string; messageId?: string; agentId?: string; active: boolean; snapshot: Snapshot; busy?: boolean; onRetry?(id: string): void; onStop?(id: string): void
-  occurrenceId?: string; runId?: string; title?: string; emptyMessage?: string; onNavigateMessage?: ExecutionMessageNavigation
+  occurrenceId?: string; runId?: string; title?: string; emptyMessage?: string; onNavigateMessage?: ExecutionMessageNavigation; stopAction?: ReactNode
 }) {
   const [views, setViews] = useState<Record<string, ExecutionView>>({})
   const [employee, setEmployee] = useState(agentId ?? ''), [items, setItems] = useState<ExecutionHistoryPage['items']>([]), [next, setNext] = useState<ExecutionHistoryPage['next']>()
@@ -112,6 +112,7 @@ export function TraceTab({ api, conversationId, messageId, agentId, active, snap
           <CollapsibleContent keepMounted={opened}>
             {opened && <ExecutionRunContent api={api} run={run} active={active && expanded} cache={cache} view={view} live={live}
               onNavigateMessage={onNavigateMessage}
+              stopAction={index === 0 ? stopAction : undefined} allowNativeStop={!occurrenceId}
               onViewChange={value => setViews(previous => ({ ...previous, [run.id]: value }))} onError={setError} />}
           </CollapsibleContent>
           </Collapsible>
@@ -123,10 +124,10 @@ export function TraceTab({ api, conversationId, messageId, agentId, active, snap
   </ScrollArea></div>
 }
 
-function ExecutionRunContent({ api, run, active, cache, view, live, onViewChange, onError, onNavigateMessage }: {
+function ExecutionRunContent({ api, run, active, cache, view, live, onViewChange, onError, onNavigateMessage, stopAction, allowNativeStop }: {
   api: DesktopApi; run: AgentRun; active: boolean; cache: ExecutionContentCache; view: ExecutionView; live: boolean
   onViewChange(view: ExecutionView): void; onError(error: string): void
-  onNavigateMessage?: ExecutionMessageNavigation
+  onNavigateMessage?: ExecutionMessageNavigation; stopAction?: ReactNode; allowNativeStop: boolean
 }) {
   const [following, setFollowing] = useState(true)
   const viewport = useRef<HTMLDivElement>(null)
@@ -162,6 +163,8 @@ function ExecutionRunContent({ api, run, active, cache, view, live, onViewChange
         <span className="flex items-center gap-1"><Icon name={run.status === 'running' ? 'LoaderCircle' : run.status === 'completed' ? 'CircleCheck' : run.status === 'failed' ? 'OctagonX' : 'Clock'} className={run.status === 'running' ? 'size-3.5 animate-spin' : 'size-3.5'} />{labels[run.status]}</span>
       </div>
       <div className="flex shrink-0 items-center gap-1">
+      {stopAction}
+      {allowNativeStop && live && run.backend && ['codex-local', 'claude-local', 'runtime-plugin'].includes(run.backend.kind) && <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-xs" disabled={!active} aria-label="停止本次执行" onClick={() => void api.request('stopNativeExecution', { conversationId: run.conversationId, runId: run.id }).catch(error => onError(errorText(error)))} />}><Square /></TooltipTrigger><TooltipContent>停止本次执行</TooltipContent></Tooltip>}
       {onNavigateMessage && <ExecutionMessageButton api={api} run={run} active={active} onNavigate={onNavigateMessage} />}
       <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-xs" className="text-muted-foreground" aria-label={view === 'rendered' ? '显示原生记录' : '显示过程视图'} onClick={() => {
         previousHeight.current = transition.current?.getBoundingClientRect().height
@@ -188,7 +191,6 @@ function ExecutionRunContent({ api, run, active, cache, view, live, onViewChange
     }}>
       <div className="min-w-0 p-3">
         <ExecutionFeed api={api} run={run} active={active} cache={cache} view={view} />
-        {live && run.backend && ['codex-local', 'claude-local', 'runtime-plugin'].includes(run.backend.kind) && <Button variant="secondary" size="sm" className="mt-4" onClick={() => void api.request('stopNativeExecution', { conversationId: run.conversationId, runId: run.id }).catch(error => onError(errorText(error)))}>停止本次执行</Button>}
         {view === 'raw' && <ExecutionRunInfo run={run} />}
       </div>
     </ScrollArea>

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 群高级配置的解散操作使用按钮旁Popover确认，保留删除范围说明、取消草稿及提交期间关闭锁。
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [OUTPUT]: 工作区目录添加/按需申请与载入操作放在分区标题右侧，目录分区取消/保存使用ghost/sm；原草稿和版本检查保持。
  * [OUTPUT]: 网页检索分区仅选择员工检索方式，标题说明指向全局检索设置，不显示服务配置或授权列表。
@@ -55,7 +56,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter } from '@/components/ui/alert-dialog'
+import { Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverDescription, PopoverTrigger } from '@/components/ui/popover'
 import type { LaunchProfile } from '@shared/domain'
 import { useCallback, useContext, useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
@@ -316,18 +317,19 @@ function GroupConfiguration({ api, snapshot, conversation, onClose, onSaved, onD
   }
   const submit = (event: FormEvent) => { event.preventDefault(); void run(async () => { const result = await api.request('createConversation', { ...groupConfigurationInput(conversation, { title, ids, knowledge, teamSetup, memoryScope, memoryContextId }), expectedConfigVersion: initialVersion.current }); initialVersion.current = result.configVersion; clean(); await onSaved(result); guard.saved(actionsTarget === undefined ? onClose : undefined) }) }
   const saveAction = <Button type="submit" form={formId} disabled={busy || !title.trim() || ids.length < 1 || ids.length > 12}>{busy && <LoaderCircle size={15} className="spinner" />}{actionsTarget !== undefined ? '保存' : conversation ? '保存设置' : '创建群聊'}</Button>
-  const dissolveAction = conversation && <Button type="button" variant="destructive" disabled={busy} onClick={() => { setError(''); setDissolving(true) }}>解散群聊</Button>
+  const dissolveAction = conversation && <Popover open={dissolving} onOpenChange={open => { if (!busy) { setError(''); setDissolving(open) } }}>
+    <PopoverTrigger render={<Button type="button" variant="destructive" disabled={busy} />}>解散群聊</PopoverTrigger>
+    <PopoverContent side="top" align="start">
+      <PopoverHeader><PopoverTitle>解散群聊？</PopoverTitle><PopoverDescription>将永久删除“{conversation.title}”及其聊天记录、任务记录、会话记忆和群聊专属空间，无法恢复。群内员工及各自工作区保留，未保存的群配置将丢弃。</PopoverDescription></PopoverHeader>
+      {error && <Banner>{error}</Banner>}
+      <div className="button-row justify-end"><Button type="button" variant="secondary" size="sm" disabled={busy} onClick={closeDissolve}>取消</Button><Button type="button" variant="destructive" size="sm" disabled={busy} onClick={dissolve}>{busy ? '正在解散…' : '确认解散'}</Button></div>
+    </PopoverContent>
+  </Popover>
   return <>{actionsTarget && createPortal(saveAction, actionsTarget)}<EditorFrame leading={<GroupMembers agents={snapshot.agents.filter(agent => !isCoreAgent(agent) || conversation?.creationSource?.kind === 'bobo-collaboration' && conversation.agentIds.includes(agent.id))} ids={ids} disabled={busy} onChange={setIds} />} footer={actionsTarget === undefined ? <>{dissolveAction}<Button variant="secondary" disabled={busy} onClick={() => guard.navigate(onClose)}>取消</Button>{saveAction}</> : undefined}>
     <form data-edit-form id={formId} className="form-grid employee-form-sections" onSubmit={submit}>
       {error && <div className="full"><Banner>{error}</Banner></div>}
       <GroupConfigurationFields value={{ title, ids, knowledge, teamSetup, memoryScope, memoryContextId }} onChange={next => { setTitle(next.title); setKnowledge(next.knowledge); setTeamSetup(next.teamSetup); setMemoryScope(next.memoryScope); setMemoryContextId(next.memoryContextId) }} snapshot={snapshot} conversationId={conversation?.id} />
       {actionsTarget !== undefined && dissolveAction && <div className="full">{dissolveAction}</div>}
     </form>
-  </EditorFrame><AlertDialog open={dissolving} onOpenChange={open => { if (!open) closeDissolve() }}>
-    <AlertDialogContent>
-      <AlertDialogHeader><AlertDialogTitle>解散群聊？</AlertDialogTitle><AlertDialogDescription>将永久删除“{conversation?.title}”及其聊天记录、任务记录、会话记忆和群聊专属空间，无法恢复。群内员工及各自工作区保留，未保存的群配置将丢弃。</AlertDialogDescription></AlertDialogHeader>
-      {error && <Banner>{error}</Banner>}
-      <AlertDialogFooter><Button variant="secondary" disabled={busy} onClick={closeDissolve}>取消</Button><Button variant="destructive" disabled={busy} onClick={dissolve}>{busy ? '正在解散…' : '确认解散'}</Button></AlertDialogFooter>
-    </AlertDialogContent>
-  </AlertDialog></>
+  </EditorFrame></>
 }

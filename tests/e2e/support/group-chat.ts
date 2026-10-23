@@ -1,11 +1,8 @@
 /*
- * [OUTPUT]: 渠道引用在模型正文附带固定来源，离线参与判断按首行原测试要求识别；不改员工实际判断逻辑。
- * [OUTPUT]: 原视觉夹具默认模拟视口；后台原生窗口场景可显式禁用，避免截图截断。
- * [OUTPUT]: 第14组API群请求解释与持久顺序接续；保留独立并行、原Work和本机旧路径，实际验收归第14组05。
- * [INPUT]: 每场景独立 Desktop、SQLite 历史合同与本地离线模型端点。
- * [OUTPUT]: 真实历史/文件及离线协议；视觉基线可显式固定时间和隔离本机技能入口，原场景默认行为保持。
- * [POS]: 单聊/群聊共享交互验收数据和协议支撑，生产 main/IPC/renderer 保持原样。
- * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ * [INPUT]: 隔离 Desktop、固定聊天历史与只用于展示的员工配置。
+ * [OUTPUT]: UI 页面所需历史/文件；本地端点拒绝模型请求，不执行模型连接用例。
+ * [POS]: 18 项 UI 回归的数据夹具。
+ * [PROTOCOL]: 修改同步 Header 与所属目录 .folder.md。
  */
 import { createServer } from 'node:http'
 import { mkdir, writeFile } from 'node:fs/promises'
@@ -16,30 +13,11 @@ import type { Message, WorkItem, Artifact } from '../../../src/shared/domain'
 
 export async function prepareGroupChat(runtime: Desktop, { emulateViewport = true, mainEntry, now = Date.now() }: { emulateViewport?: boolean; mainEntry?: string; now?: number } = {}) {
   const state = { calls: 0, errors: [] as string[] }
-  const server = createServer(async (request, response) => {
-    try {
-      let body = ''; for await (const chunk of request) body += chunk
-      const input = JSON.parse(body) as { messages: { role: string; content: string }[] }
-      const system = input.messages.filter(message => message.role === 'system').map(message => message.content).join('\n')
-      let content = '', tool: { name: string; arguments: string } | undefined
-      state.calls++
-      if (system.includes('Private group request interpretation')) content = JSON.stringify({ mode: 'independent' })
-      else if (system.includes('Private participation decision')) {
-        const data = JSON.parse(input.messages.at(-1)!.content).data
-        const root = data.currentTurnMessages?.find((message: { id: string }) => message.id === data.currentTurn.rootMessageId)
-        const directChat = ['单聊统一交互验收', '单聊滚动补充消息'].includes(root?.content?.split('\n')[0])
-        content = JSON.stringify(directChat && data.currentEmployeeId === 'researcher' && !data.currentTurn.ownCompletedMessageIds.length ? { action: 'reply', responseKind: 'chat' } : data.currentEmployeeId === 'reviewer' && data.participation.isFirstDecision && input.messages.at(-1)!.content.includes('排版目录') ? { action: 'reply', responseKind: 'task', work: { key: `layout-${data.triggerMessage?.id ?? state.calls}`, scope: '检查报告排版目录', deliverable: '报告排版检查' } } : { action: 'pass' })
-      } else if (system.includes('Private memory maintenance')) content = JSON.stringify({ candidates: [] })
-      else if (JSON.stringify(input.messages).includes('单聊统一交互验收') || JSON.stringify(input.messages).includes('单聊滚动补充消息')) content = '研究员：单聊和群聊保持一致，可以查看我的资料、回应消息、引用、复制和查看执行过程。'
-      else if (!input.messages.some(message => message.role === 'tool')) tool = { name: 'execute_command', arguments: JSON.stringify({ command: 'printf group-chat-approved > approval-marker.txt' }) }
-      else content = '排版检查已结束，请查看执行过程中的命令结果。'
-      response.writeHead(200, { 'Content-Type': 'text/event-stream' })
-      const emit = (delta: unknown, finish_reason: string | null = null) => response.write(`data: ${JSON.stringify({ id: `group-${state.calls}`, object: 'chat.completion.chunk', created: 1, model: 'fixture', choices: [{ index: 0, delta, finish_reason }] })}\n\n`)
-      emit({ role: 'assistant' })
-      if (tool) { emit({ tool_calls: [{ index: 0, id: `tool-${state.calls}`, type: 'function', function: tool }] }); emit({}, 'tool_calls') }
-      else { emit({ content }); emit({}, 'stop') }
-      response.end('data: [DONE]\n\n')
-    } catch (error) { state.errors.push(String(error)); response.writeHead(500); response.end(JSON.stringify({ error: { message: String(error) } })) }
+  const server = createServer((_request, response) => {
+    state.calls++
+    state.errors.push('UI 固定历史夹具不提供模型应答')
+    response.writeHead(503, { 'Content-Type': 'application/json' })
+    response.end(JSON.stringify({ error: { message: 'UI fixture has no model endpoint' } }))
   })
   runtime.trackServer(server)
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))

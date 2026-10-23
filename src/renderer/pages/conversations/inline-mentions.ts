@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 管理入口把内置技能标签追加到现有草稿，保持正文/已有引用并按固定身份去重。
  * [OUTPUT]: @仅表示员工，$表示资源/提示词；兼容旧@资源草稿，提示词按所选正文快照展开，其他引用保持固定身份。
  * [OUTPUT]: 资源标签与成员标签共用原子编辑；资源名称进入正文，固定身份单独发送。
  * [INPUT]: 会话草稿、已确认成员身份与原生输入的文本/选区。
@@ -7,6 +8,14 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import type { ChatDraft, DraftMention } from './presentation'
+import type { ComposerReference } from '@shared/domain/composer-references'
+
+export function appendDraftReference(draft: ChatDraft, resource: ComposerReference): ChatDraft {
+  if (draftMentions(draft).some(mention => mention.resource?.kind === resource.kind && mention.resource.id === resource.id && mention.resource.agentId === resource.agentId)) return draft
+  const prefix = draft.text && !/\s$/.test(draft.text) ? ' ' : ''
+  const start = draft.text.length + prefix.length
+  return { ...draft, text: `${draft.text}${prefix}$${resource.name} `, mentions: [...draftMentions(draft), { id: `${resource.kind}:${resource.id}`, label: resource.name, start, end: start + resource.name.length + 1, resource }] }
+}
 
 export interface TextRange { start: number; end: number }
 

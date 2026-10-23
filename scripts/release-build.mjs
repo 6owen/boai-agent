@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 使用独立源码身份及开发进程工具，不依赖旧本机 CI 或模型评估目录。
  * [INPUT]: 明确版本/SHA、干净源码及完整原构建配置；本机macOS arm64，共用清单接受规范化路径。
  * [OUTPUT]: 旧进程排空后隔离ad-hoc候选、实际链接与可取消hash/身份/签名；仅built，不授发布或安装资格。
  * [POS]: 个人候选构建；不创建Tag/Release、不替换应用或个人数据，产物冒烟另行核对。
@@ -12,7 +13,7 @@ import { join, resolve, dirname, isAbsolute } from 'node:path'
 import { tmpdir, userInfo } from 'node:os'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { build } from 'esbuild'
-import { verifyReleaseSource } from './release-check.mjs'
+import { verifyReleaseSource } from './release-source.mjs'
 import { sourceIdentity } from './ui-regression.mjs'
 import { verifyBuildIdentity } from './build-identity.mjs'
 import buildProcessGuard from './build-process-guard.mjs'
@@ -89,7 +90,7 @@ async function run(version, sha) {
     controller.signal.throwIfAborted()
     if (JSON.stringify(await sourceIdentity(root)) !== JSON.stringify(source)) throw new Error('领取构建锁期间源码变化')
     await mkdir(directory, { recursive: true })
-    await build({ stdin: { contents: "export {repairProcess,saveProcess} from './tests/evaluation/repair-process.ts';export {drainPendingProcesses} from './scripts/development/recovery.ts'", resolveDir: root }, outfile: join(directory, 'process.mjs'), bundle: true, platform: 'node', format: 'esm', packages: 'external', target: 'node24' })
+    await build({ stdin: { contents: "export {repairProcess,saveProcess} from './scripts/development/process.ts';export {drainPendingProcesses} from './scripts/development/recovery.ts'", resolveDir: root }, outfile: join(directory, 'process.mjs'), bundle: true, platform: 'node', format: 'esm', packages: 'external', target: 'node24' })
     const helpers = await import(pathToFileURL(join(directory, 'process.mjs')).href)
     await drainReleaseCandidates(dirname(directory), helpers)
     controller.signal.throwIfAborted(); await buildProcessGuard()

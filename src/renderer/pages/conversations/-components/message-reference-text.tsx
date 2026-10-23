@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 消息正文文本与受理时固定的技能/数据源/文件引用。
- * [OUTPUT]: 在原位置还原$资源（兼容旧@资源）与/命令的Soft标签，复用输入框皮肤；不改正文、不推断资源身份、不执行操作。
+ * [OUTPUT]: 在原位置还原内置管理技能/$资源（兼容旧@资源）与/命令标签，复用输入框皮肤；不推断身份或执行操作。
  * [POS]: 聊天正文的纯展示标签，供可信Markdown文字节点使用。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -10,7 +10,7 @@ import { cn } from 'cn'
 import { buttonVariants } from '@/components/ui/button'
 import { composerCommands } from '../composer-commands'
 
-const kindNames = { skill: '技能', source: '数据源', artifact: '文件', material: '文件' }
+const kindNames = { 'builtin-skill': '管理技能', skill: '技能', source: '数据源', artifact: '文件', material: '文件' }
 const escapePattern = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 const tagClass = cn(buttonVariants({ variant: 'secondary', size: 'xs' }), 'inline h-auto py-1 select-text message-reference-tag')
 const commands = new Map(composerCommands.map(command => [`/${command.id}`, command]))

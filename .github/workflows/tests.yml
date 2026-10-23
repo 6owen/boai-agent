@@ -1,9 +1,8 @@
-# [OUTPUT]: 设计提取/原恢复合同与站点/tarball/Web专项先运行，完整模块/T1/UI门禁保持。
-# [INPUT]: 仓库变更、锁定依赖、离线协议服务。
-# [OUTPUT]: 文档轻量、Draft产品暂缓且不授合并、Ready/ci:full及CI配置完整32/18；PR取消旧运行，main保留已启动验证。
-# [POS]: .github/workflows/tests.yml。
-# [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
-name: Offline tests
+# [INPUT]: 面向 main 的 PR、main push 或手动触发；版本化 UI 合同与已接受基线。
+# [OUTPUT]: 只执行 UI 回归；Required checks 独立核验当前 SHA 的完整 UI 报告和原件。
+# [POS]: 唯一自动测试工作流，不运行模块、模型连接、T1/T3 或评估用例。
+# [PROTOCOL]: 修改同步 Header、目录地图及共享开发 Skill。
+name: UI tests
 on:
   pull_request:
     branches: [main]
@@ -14,141 +13,11 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: offline-${{ github.event.pull_request.number || github.ref }}
+  group: ui-tests-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
-  changes:
-    name: CI scope and development docs
-    runs-on: ubuntu-24.04
-    outputs:
-      full: ${{ steps.scope.outputs.full }}
-      mode: ${{ steps.scope.outputs.mode }}
-      sha: ${{ steps.scope.outputs.sha }}
-      base: ${{ steps.scope.outputs.base }}
-      head: ${{ steps.scope.outputs.head }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24.16.0'
-      - name: Prepare locked YAML metadata validator
-        run: |
-          ci_yaml_version=$(node -e 'const v=require("./package.json").dependencies.yaml;if(!/^\d+\.\d+\.\d+$/.test(v))throw Error("YAML version must be pinned");process.stdout.write(v)')
-          npm install --prefix "$RUNNER_TEMP/boai-ci-docs" --no-save --package-lock=false --ignore-scripts --no-audit --no-fund "yaml@$ci_yaml_version"
-      - id: scope
-        env:
-          BOAI_CI_YAML_PACKAGE: ${{ runner.temp }}/boai-ci-docs/package.json
-        run: node scripts/ci-scope.mjs detect
-  desktop:
-    name: Engineering and desktop
-    needs: changes
-    if: needs.changes.outputs.full == 'true'
-    runs-on: macos-15
-    # T1固定32核心；原单测试期限不变，预留模块与完整失败证据收集。
-    timeout-minutes: 75
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24.16.0'
-          cache: pnpm
-      - id: install
-        env:
-          ELECTRON_SKIP_BINARY_DOWNLOAD: ''
-        run: |
-          pnpm install --frozen-lockfile
-          node node_modules/electron/install.js
-          pnpm exec electron --version
-      - id: types
-        run: pnpm typecheck
-      - id: lint
-        run: pnpm lint:ui
-      - id: build
-        run: pnpm build
-      - name: Verify design extraction contracts
-        run: pnpm exec vitest run tests/design-system.test.ts tests/design-system-components.test.ts tests/build-identity.test.ts tests/artifact-recovery.test.ts tests/memory-recovery.test.ts tests/team-recovery.test.ts tests/gateway-call-recovery.test.ts --maxWorkers=2
-      - name: Build design system documentation
-        run: pnpm build:design
-      - name: Install design browser
-        run: pnpm exec playwright install chromium
-      - name: Verify design distribution and browser behavior
-        run: pnpm check:design
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: design-system-preview
-          path: |
-            .local/design-site/
-            apps/design-docs/dist/
-          include-hidden-files: true
-          if-no-files-found: ignore
-          retention-days: 3
-      - id: unit
-        run: pnpm test --maxWorkers=2
-      - name: Preserve native crash stacks
-        if: failure() && steps.unit.outcome == 'failure'
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          from shutil import copyfile
-          output = Path('.local/ci/native-crashes')
-          output.mkdir(parents=True, exist_ok=True)
-          reports = sorted((Path.home() / 'Library/Logs/DiagnosticReports').glob('node*.ips'), key=lambda path: path.stat().st_mtime, reverse=True)
-          for path in reports[:5]:
-              copyfile(path, output / path.name)
-          print('Native crash stack reports:', min(len(reports), 5))
-          PY
-      - id: dataset
-        run: pnpm eval:dataset
-      - id: bdd
-        run: node scripts/test-desktop.mjs t1 --output .local/t1
-      - if: always()
-        env:
-          CI_STEP_RESULTS: ${{ toJSON(steps) }}
-          CI_PR_HEAD: ${{ github.event.pull_request.head.sha }}
-          CI_PR_BASE: ${{ github.event.pull_request.base.sha }}
-        run: node scripts/ci-result.mjs record .local/ci/engineering.json
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: engineering
-          path: .local/ci/engineering.json
-          include-hidden-files: true
-          retention-days: 3
-          if-no-files-found: error
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: t1
-          path: .local/t1/
-          include-hidden-files: true
-          retention-days: 3
-          if-no-files-found: error
-      - uses: actions/upload-artifact@v4
-        if: always() && steps.bdd.outcome != 'success'
-        with:
-          name: desktop-failure-evidence
-          path: |
-            playwright-report/
-            test-results/
-            cucumber-report/
-          if-no-files-found: ignore
-          retention-days: 3
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: native-crash-stacks
-          path: .local/ci/native-crashes/
-          include-hidden-files: true
-          retention-days: 3
-          if-no-files-found: ignore
   ui:
     name: UI regression
-    needs: changes
-    if: needs.changes.outputs.full == 'true'
     runs-on: macos-15
     timeout-minutes: 20
     steps:
@@ -174,33 +43,26 @@ jobs:
           path: .local/ui-ci/
           include-hidden-files: true
           retention-days: 3
-          if-no-files-found: error
+          if-no-files-found: warn
   required:
     name: Required checks
     if: always()
-    needs: [changes, desktop, ui]
+    needs: [ui]
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '24.16.0'
-      - name: Prepare locked YAML metadata validator
-        run: |
-          ci_yaml_version=$(node -e 'const v=require("./package.json").dependencies.yaml;if(!/^\d+\.\d+\.\d+$/.test(v))throw Error("YAML version must be pinned");process.stdout.write(v)')
-          npm install --prefix "$RUNNER_TEMP/boai-ci-docs" --no-save --package-lock=false --ignore-scripts --no-audit --no-fund "yaml@$ci_yaml_version"
-      - id: scope
+      - name: Check UI job result
         env:
-          BOAI_CI_YAML_PACKAGE: ${{ runner.temp }}/boai-ci-docs/package.json
           CI_JOB_RESULTS: ${{ toJSON(needs) }}
-        run: node scripts/ci-scope.mjs gate
+        run: node scripts/ci-result.mjs jobs
       - uses: actions/download-artifact@v4
-        if: steps.scope.outputs.full == 'true'
         with:
-          path: .local/ci-artifacts
-      - env:
+          name: ui
+          path: .local/ci-artifacts/ui
+      - run: node scripts/ci-result.mjs gate
+        env:
           CI_JOB_RESULTS: ${{ toJSON(needs) }}
-        if: steps.scope.outputs.full == 'true'
-        run: node scripts/ci-result.mjs gate

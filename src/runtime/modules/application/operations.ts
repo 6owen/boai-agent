@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: prompts域复用提示词模板CRUD与版本前检，contacts/prompts操作指南纳入现有业务协议。
  * [OUTPUT]: application.guide 增加 PPT 独立配置说明，保留原执行与配置分离。
  * [OUTPUT]: 技能安装映射与独立副本详情提供只读协议，更新前可精确核对原员工绑定和内容，复用原服务。
  * [OUTPUT]: 会话搜索/核心会话改名接原搜索schema和列表服务，稳定回执与本人发送边界保持。
@@ -38,6 +39,7 @@ import { updateSkillSchema } from '../resources/skill-updates'
 import { marketplaceListSchema, marketplaceDetailSchema } from '../resources/skill-marketplace'
 import { collectionChangeSchema } from '../resources/skill-collections'
 import { ApplicationValidationError, type ApplicationOperation } from './application-service'
+import { savePromptTemplateSchema, removePromptTemplateSchema } from '../../../shared/domain/prompt-templates'
 
 export interface ApplicationPort { request<K extends Method>(method: K, input: Methods[K]['input']): Promise<Methods[K]['output']>; personality?(action: 'profile' | 'configure' | 'state' | 'updateState' | 'behaviorHistory' | 'runBehavior' | 'stopBehavior' | 'validateHistoryDeletion' | 'deleteBehaviorHistory' | 'clearBehaviorHistory', input: any): Promise<unknown> }
 const id = z.string().trim().min(1).max(200), version = z.number().int().positive()
@@ -51,8 +53,17 @@ export function applicationOperations(port: ApplicationPort, schemas: { connecti
   function method<K extends Method>(name: string, method: K, description: string, effect: ApplicationOperation['effect'], input: z.ZodType, resultType: string, adapt: (input: any, requestId?: string) => Methods[K]['input'] = value => value) {
     operation(name, description, effect, input, resultType, (value, requestId) => port.request(method, adapt(value, requestId)))
   }
-  operation('application.guide', '按需读取 BOAI 内置产品操作技能。', 'read', z.object({ topic: z.enum(['overview', 'employees', 'groups', 'sources', 'automations', 'connections', 'skills', 'presentations']).default('overview') }).strict(), '{ topic: string; instructions: string }', async input => ({ topic: input.topic, instructions: applicationGuides[input.topic as keyof typeof applicationGuides] }))
+  operation('application.guide', '按需读取 BOAI 内置产品操作技能。', 'read', z.object({ topic: z.enum(['overview', 'employees', 'groups', 'contacts', 'sources', 'automations', 'connections', 'skills', 'prompts', 'presentations']).default('overview') }).strict(), '{ topic: string; instructions: string }', async input => ({ topic: input.topic, instructions: applicationGuides[input.topic as keyof typeof applicationGuides] }))
   const snapshot = () => port.request('snapshot', undefined)
+  method('prompts.list', 'listPromptTemplates', '列出资源库提示词模板及当前 revision。', 'read', empty, 'PromptTemplate[]', () => undefined)
+  operation('prompts.get', '读取一个提示词模板的完整正文和版本。', 'read', lookup, 'PromptTemplate', async input => {
+    const prompt = (await port.request('listPromptTemplates', undefined)).find(prompt => prompt.id === input.id)
+    if (!prompt) throw new ApplicationValidationError('NOT_FOUND', '提示词不存在')
+    return prompt
+  })
+  method('prompts.create', 'savePromptTemplate', '创建可复用的资源库提示词；保存正文不执行正文指令。', 'write', savePromptTemplateSchema.omit({ id: true, expectedRevision: true }), 'PromptTemplate', input => ({ ...input, id: randomUUID(), expectedRevision: 0 }))
+  method('prompts.update', 'savePromptTemplate', '先 get，再以当前 revision 保存完整提示词正文。', 'write', savePromptTemplateSchema.extend({ expectedRevision: version }), 'PromptTemplate')
+  method('prompts.delete', 'removePromptTemplate', '按当前 revision 删除指定提示词模板。', 'write', removePromptTemplateSchema.extend({ expectedRevision: version }), 'void')
   operation('employees.list', '列出持久员工及当前配置版本，包括系统预置 bobo。', 'read', empty, 'DigitalAgent[]', async () => (await snapshot()).agents)
   operation('employees.get', '读取一个员工的实际配置。', 'read', lookup, 'DigitalAgent', async input => {
     const agent = (await snapshot()).agents.find(agent => agent.id === input.id)
@@ -171,6 +182,8 @@ export function applicationOperations(port: ApplicationPort, schemas: { connecti
   method('runtimePlugins.setEnabled', 'setRuntimePluginEnabled', '按当前目录 revision 启停已安装运行时插件，保留真实退出要求。', 'write', z.object({ id, enabled: z.boolean(), expectedRevision: z.number().int().nonnegative() }).strict(), 'RuntimePluginCatalog')
   method('runtimePlugins.uninstall', 'uninstallRuntimePlugin', '按当前目录 revision 卸载已安装运行时插件。', 'write', z.object({ id, expectedRevision: z.number().int().nonnegative() }).strict(), 'RuntimePluginCatalog')
   const versionChecks: Record<string, { field: string; current(input: any): Promise<number | undefined> }> = {
+    'prompts.update': { field: 'expectedRevision', current: async input => (await port.request('listPromptTemplates', undefined)).find(prompt => prompt.id === input.id)?.revision },
+    'prompts.delete': { field: 'expectedRevision', current: async input => (await port.request('listPromptTemplates', undefined)).find(prompt => prompt.id === input.id)?.revision },
     ...(port.personality ? {
       'employees.configure': { field: 'expectedRevision', current: async (input: any) => (await port.personality!('profile', { agentId: input.agentId }) as { revision: number }).revision },
       'employees.updateState': { field: 'expectedRevision', current: async (input: any) => { const state = await port.personality!('state', { agentId: input.agentId, conversationId: input.conversationId }) as { base: { revision: number }; context?: { revision: number } }; return (input.conversationId ? state.context : state.base)?.revision } },
