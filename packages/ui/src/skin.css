@@ -1,9 +1,11 @@
 /*
  * [INPUT]: 共享视觉token与原BOAI基础控件选择器。
- * [OUTPUT]: Soft按钮、输入、卡片及分割线的唯一基础皮肤。
+ * [OUTPUT]: Soft按钮、输入、卡片及分割线的唯一基础皮肤，加载共享Dialog动效。
  * [POS]: @boai/ui基础皮肤，不包含桌面布局。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
+@import './modal-motion.css';
+
 /* Buttons retain the same skin when used as a trigger or via buttonVariants. */
 .soft-button, .appearance-color {
   border-radius:var(--radius-control);

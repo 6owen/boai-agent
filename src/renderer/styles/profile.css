@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 最常用技能仅维护列表容器，行与占位结构统一复用共享ListRow排版。
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [OUTPUT]: Token 统计数值位预留同一行高，首帧占位与真实数值共用布局。
  * [OUTPUT]: 本人聊天消息头像及资料入口使用md圆角，与员工消息头像一致。
@@ -63,9 +64,6 @@
 .profile-insights dt { color:var(--muted-foreground) }
 .profile-insights dd { margin:0;text-align:right }
 .profile-skills { list-style:none;padding:0;margin:0 }
-.profile-skills button { display:flex;align-items:center;gap:12px;padding:10px 0;width:100%;text-align:left }
-.profile-skills button>span { min-width:0;overflow-wrap:anywhere }
-.profile-skills small { display:block;color:var(--muted-foreground);margin-top:4px }
 .profile-editor { max-height:calc(100dvh - 32px);overflow-y:auto }
 .profile-editor .connection-fields [data-slot=input] { min-height:var(--control-height) }
 .profile-editor .connection-fields .connection-setting-row { padding-block:10px }

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 技能行主体迁入共享ListRow，本页只保留操作按钮让位与来源标签样式。
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [OUTPUT]: 数据源编辑卡片仅本地收紧控件/标签/图标/行留白，保留模型连接其他使用者的原尺寸和外层贴边滚动。
  * [OUTPUT]: 数据源名称后显示紧凑状态，右侧常驻测试/更多图标；行操作与详情选择分离，窄行名称省略而状态/操作保留。
@@ -42,7 +43,7 @@
 .skill-list-row { position:relative;min-width:0 }
 .skill-list-select[data-slot=button] { font-weight:400 }
 .skill-list-icon { width:30px;height:30px;display:grid;place-items:center;flex-shrink:0;border-radius:var(--radius-control);background:var(--muted);color:var(--muted-foreground) }
-.skill-list-select .conversation-title { padding-right:16px;display:block }
+.skill-list-select :is(.conversation-title,.soft-list-row-title) { padding-right:16px;display:block }
 .skill-source-badge { font-size:var(--text-ui-tiny);margin-right:5px }
 .skill-row-menu { position:absolute;right:2px;top:8px;opacity:0;background:var(--list) }
 .skill-list-row:hover .skill-row-menu,.skill-list-row:focus-within .skill-row-menu { opacity:1 }
