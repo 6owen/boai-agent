@@ -1,7 +1,7 @@
 /*
  * [INPUT]: 真实临时Git提交/事件、开发Markdown白名单及job结果协议。
  * [OUTPUT]: 实际 YAML 仅 UI，保留本地 Vitest；旧范围工具的独立本地合同仍可验证。
- * [POS]: CI范围与严格汇总的回归合同；只在授权云端执行，不开产品窗口。
+ * [POS]: 历史范围工具与当前云端配置的本地 Vitest 合同；不开产品窗口。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
 import { expect, it } from 'vitest'
