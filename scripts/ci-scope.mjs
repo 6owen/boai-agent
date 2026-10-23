@@ -1,6 +1,6 @@
 /*
  * [INPUT]: GitHub真实事件/提交、完整Git差异、PR草稿/ci:full标签及各job结果。
- * [OUTPUT]: 文档轻量、草稿暂缓和完整验证分流；独立核身份/范围，草稿未测明确拒绝合并，CI配置/手动保持完整门禁。
+ * [OUTPUT]: 文档轻量、草稿暂缓和完整验证分流；独立核身份/范围并列明异常任务及预期/实际状态，草稿未测拒绝合并，CI配置/手动保持完整门禁。
  * [POS]: 云端CI范围与开发文档合同，不执行产品、安装依赖或修改基线。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -65,7 +65,10 @@ export function validateScopeJobs(scope, jobs) {
   const expected = { full: String(scope.mode === 'full'), mode: scope.mode, sha: scope.sha, base: scope.base ?? '', head: scope.head }
   if (jobs.changes?.result !== 'success' || Object.entries(expected).some(([key, value]) => (jobs.changes.outputs?.[key] ?? '') !== value)) throw Error('范围任务失败或提交/范围输出不匹配')
   const status = scope.mode === 'full' ? 'success' : 'skipped'
-  if (!['desktop', 'ui'].every(id => jobs[id]?.result === status)) throw Error('产品任务结果与实际CI范围不匹配')
+  const mismatches = Object.entries({ desktop: 'Engineering and desktop', ui: 'UI regression' })
+    .filter(([id]) => jobs[id]?.result !== status)
+    .map(([id, name]) => `${name} (${id})=${jobs[id]?.result ?? 'missing'}，预期 ${status}`)
+  if (mismatches.length) throw Error(`产品任务未满足 CI 范围 ${scope.mode}：${mismatches.join('；')}。请查看对应任务日志中的首个失败步骤或未执行原因。`)
   if (scope.mode === 'deferred') throw Error('Draft产品改动尚未验证，不能合并。转为Ready for review或添加ci:full标签以执行完整CI。')
 }
 async function main() {

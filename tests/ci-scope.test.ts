@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 真实临时Git提交/事件、开发Markdown白名单及job结果协议。
- * [OUTPUT]: 实际YAML禁止标签空运行并固定必需门槛；文档/草稿/完整分流、真实Git/CLI未测阻断及CI变更/手动不降级。
+ * [OUTPUT]: 实际YAML核T1未启动不上传/执行后缺报告仍失败；异常任务逐项诊断，文档/草稿/完整分流及原身份/门禁不降级。
  * [POS]: CI范围与严格汇总的回归合同；只在授权云端执行，不开产品窗口。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -10,6 +10,7 @@ import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promise
 import { dirname, join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
+import { runInNewContext } from 'node:vm'
 import { parse } from 'yaml'
 // @ts-expect-error Shared plain Node CI module has no declaration file.
 import { ciMode, scopeForEvent, validateDevelopmentMarkdown, validateDocumentation, validateScopeJobs } from '../scripts/ci-scope.mjs'
@@ -44,6 +45,18 @@ it('源码范围不能凭产品任务skipped放行，仍要求两路success', ()
   expect(() => validateScopeJobs(full, { ...jobs, changes: changed })).toThrow('产品任务')
   expect(() => validateScopeJobs(full, { changes: changed, desktop: { result: 'success' }, ui: { result: 'success' } })).not.toThrow()
 })
+it.each(['failure', 'cancelled', 'skipped', undefined])('完整范围明确列出未通过任务及实际状态：%s', result => {
+  const full = { ...scope, mode: 'full' }
+  const changes = { ...jobs.changes, outputs: { ...jobs.changes.outputs, full: 'true', mode: 'full' } }
+  const validate = () => validateScopeJobs(full, { changes, desktop: result ? { result } : undefined, ui: { result: 'success' } })
+  expect(validate).toThrow(`Engineering and desktop (desktop)=${result ?? 'missing'}，预期 success`)
+  try { validate() } catch (error) { expect((error as Error).message).not.toContain('UI regression') }
+})
+it('同时报告两路异常，文档范围仍要求产品任务明确跳过', () => {
+  const validate = () => validateScopeJobs(scope, { ...jobs, desktop: { result: 'success' }, ui: { result: 'failure' } })
+  expect(validate).toThrow('Engineering and desktop (desktop)=success，预期 skipped')
+  expect(validate).toThrow('UI regression (ui)=failure，预期 skipped')
+})
 
 it('草稿产品改动暂缓，Ready和明确标签恢复完整；文档仍按实际范围检查', () => {
   const paths = ['src/main/main.ts']
@@ -67,6 +80,15 @@ it('实际工作流仅在源码/就绪变化触发，普通标签不产生空运
   expect(events).toEqual(expect.arrayContaining(['opened', 'synchronize', 'reopened', 'ready_for_review', 'converted_to_draft']))
   expect(Object.hasOwn(workflow.on, 'workflow_dispatch')).toBe(true)
   expect(workflow.jobs.required).toMatchObject({ name: 'Required checks', if: 'always()' })
+})
+it('T1未启动不上传报告，执行失败或取消仍收集证据且缺失报告继续报错', async () => {
+  const workflow = parse(await readFile(new URL('../.github/workflows/tests.yml', import.meta.url), 'utf8'))
+  const upload = workflow.jobs.desktop.steps.find((step: { with?: { name?: string } }) => step.with?.name === 't1')
+  expect(upload).toMatchObject({ uses: 'actions/upload-artifact@v4', with: { path: '.local/t1/', 'if-no-files-found': 'error' } })
+  // This workflow condition uses the boolean/string subset shared with JavaScript.
+  const shouldUpload = (outcome?: string) => runInNewContext(upload.if, { always: () => true, steps: { bdd: { outcome } } })
+  for (const outcome of [undefined, '', 'skipped']) expect(shouldUpload(outcome), `T1=${outcome}`).toBe(false)
+  for (const outcome of ['success', 'failure', 'cancelled']) expect(shouldUpload(outcome), `T1=${outcome}`).toBe(true)
 })
 it('草稿暂缓即使范围成功、产品明确skipped也不给合并资格', () => {
   const deferred = { ...scope, mode: 'deferred' }

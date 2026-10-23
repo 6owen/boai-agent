@@ -1,4 +1,4 @@
-# [OUTPUT]: 设计提取/原恢复合同与站点/tarball/Web专项先运行，完整模块/T1/UI门禁保持。
+# [OUTPUT]: T1未启动时跳过报告上传，已执行但缺报告仍失败；设计专项、完整模块/T1/UI门禁保持。
 # [INPUT]: 仓库变更、锁定依赖、离线协议服务。
 # [OUTPUT]: 文档轻量、Draft产品暂缓且不授合并、Ready/ci:full及CI配置完整32/18；PR取消旧运行，main保留已启动验证。
 # [POS]: .github/workflows/tests.yml。
@@ -120,7 +120,7 @@ jobs:
           retention-days: 3
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && (steps.bdd.outcome == 'success' || steps.bdd.outcome == 'failure' || steps.bdd.outcome == 'cancelled')
         with:
           name: t1
           path: .local/t1/

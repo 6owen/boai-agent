@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 旧库夹具移除新版初始化标记，核对技能绑定及配置版本保持；普通核心首发装配所选管理文档，版本伪造/普通员工拒绝，下一轮无标签不继承。
+ * [OUTPUT]: 旧库夹具移除新版初始化标记，发送参数受IPC类型约束；核对绑定及版本保持、按轮管理文档、版本伪造/普通员工拒绝。
  * [OUTPUT]: 核心首发技能引用必须已绑定，拒绝时不创建会话或请求回执。
  * [INPUT]: 真实 AppService、SQLite、工作区与可控核心助手执行。
  * [OUTPUT]: 非空首发/具名团队请求同事务与空输入零对象、权威回执只读核对、可靠回滚空目录清理/未知提交保留、清空/删除最小回执不重放；并发/重启幂等和用户名称不可被模型覆盖；文件准备阻塞时停止及时持久受理、实际退出前容量不释放且不发布；原子团队发布与跨会话分层记忆的业务不变量。
@@ -15,6 +15,7 @@ import { ProductStore } from '../src/runtime/adapters/storage/product-store'
 import { ConversationHistory } from '../src/runtime/modules/conversations/history'
 import type { AgentEngine, EngineContext } from '../src/runtime/contracts'
 import type { Conversation, ConversationDetail, MemoryView, Snapshot } from '../src/shared/domain'
+import type { Methods } from '../src/shared/ipc'
 import { writingPlan } from './fixtures/team-planner'
 
 const cleanups: (() => Promise<unknown>)[] = []
@@ -308,12 +309,12 @@ test('旧库普通 bobo 会话按本轮管理标签加载随包文档，下一�
   expect(engine.contexts[0].bootstrap?.dynamicInstructions).toContain('automations.preview')
   expect(engine.contexts[0].application).toBeDefined()
   expect((await detail(service, conversation)).messages.find(message => message.senderType === 'user')?.composerReferences).toEqual([reference])
-  await service.handle('sendMessage', { conversationId: conversation.id, content: '下一轮普通交流', requestId: 'management-next' })
+  await service.handle('sendMessage', { conversationId: conversation.id, content: '下一轮普通交流', mentionIds: [], requestId: 'management-next' } satisfies Methods['sendMessage']['input'])
   await settled(service, conversation)
   expect(engine.contexts).toHaveLength(2)
   expect(engine.contexts[1].bootstrap?.dynamicInstructions).not.toContain('[Selected BOAI management skills]')
   expect((await snapshot(service)).agents.find(agent => agent.id === 'bobo')).toMatchObject({ skillIds: oldCore.skillIds, configVersion: oldCore.configVersion })
   const ordinary = (await snapshot(service)).agents.find(agent => agent.id !== 'bobo')!
   const room = await service.handle('createConversation', { kind: 'direct', title: ordinary.name, agentIds: [ordinary.id] }) as Conversation
-  await expect(service.handle('sendMessage', { conversationId: room.id, content: '查看计划', requestId: 'ordinary-management', composerReferences: [{ ...reference, agentId: ordinary.id }] })).rejects.toThrow('管理技能仅用于')
+  await expect(service.handle('sendMessage', { conversationId: room.id, content: '查看计划', mentionIds: [], requestId: 'ordinary-management', composerReferences: [{ ...reference, agentId: ordinary.id }] } satisfies Methods['sendMessage']['input'])).rejects.toThrow('管理技能仅用于')
 })
