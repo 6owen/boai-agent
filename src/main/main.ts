@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 允许本人打开受管桌面活动截图目录。
+ * [OUTPUT]: 消息复制经主窗口系统剪贴板桥完成，复制回执沿preload类型合同返回。
+ * [OUTPUT]: 消息复制使用仅主窗口可调用的系统剪贴板写入桥，浏览器预览保留Web回退；成功后才显示已复制。
  * [OUTPUT]: 仅appIconId变化触发换图；其他外观保存不重试无关图标故障。
  * [OUTPUT]: Tray按保存ID先初始化，三目标图标统一协调；退出停止新换图并排空已开始的安装写入。
  * [OUTPUT]: Main 快捷键配置/回执、窗口限定菜单捕获及关闭/隐藏前保存握手。
@@ -389,7 +392,7 @@ async function openResource(input: unknown) {
   const roots = await Promise.all([...snapshot.conversations.map((c) => c.workspacePath), ...snapshot.resources.map((r) => r.path), ...snapshot.agents.map(a => join(dataPath, 'agents', a.id, 'workspace')), ...snapshot.agents.map(a => join(dataPath,'external-workspaces',a.id))].map((p) => realpath(p).catch(() => '')))
   const info = await stat(target)
   const dataRoot = await realpath(dataPath)
-  if (!(info.isDirectory() && target === dataRoot) && !roots.some((root) => root && inside(root, target))) throw new Error('只能打开当前工作区或已导入的资源。')
+  if (!(info.isDirectory() && (target === dataRoot || target === join(dataRoot, 'activity-records'))) && !roots.some((root) => root && inside(root, target))) throw new Error('只能打开当前工作区或已导入的资源。')
   const safeExtensions = new Set(['.md', '.txt', '.markdown', '.pdf', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.csv', '.json', '.xlsx', '.docx', '.pptx', '.svg', '.log'])
   if (value.action === 'reveal' || !info.isDirectory() && !safeExtensions.has(extname(target).toLowerCase())) {
     shell.showItemInFolder(target)
@@ -409,6 +412,10 @@ function registerIpc() {
       z.object({ name: z.string().min(1).max(200), bytes: z.instanceof(Uint8Array).refine(bytes => bytes.byteLength <= MATERIAL_LIMITS.attachmentBytes, '附件大小不能超过 20 MiB') }).strict(),
     ]).parse(input)
     return 'path' in value ? materialSources.selectPath(value.path) : materialSources.selectBytes(value.name, value.bytes)
+  })
+  ipcMain.handle('boai:clipboard-write-text', (event, input: unknown) => {
+    if (!window || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) throw new Error('不允许的请求来源。')
+    clipboard.writeText(z.string().max(2_000_000).parse(input))
   })
   ipcMain.handle('boai:clipboard-material-files', async (event) => {
     if (!window || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) throw new Error('不允许的请求来源。')

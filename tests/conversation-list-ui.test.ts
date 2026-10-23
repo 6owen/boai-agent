@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 员工配置与置顶共组、清理独立，导航仍沿明确员工身份。
+ * [OUTPUT]: 本轮覆盖复制/员工入口、定时运行防连点、失败过程、严格私有判断及保留原预算的显式继续；实际范围以各用例为准。
  * [INPUT]: 生产ConversationList/清理确认弹窗、隔离快照与清理回调。
  * [OUTPUT]: 核心助手右键菜单新增/设置入口及无渠道入口；批量确认固定完整核心分组、不受搜索影响，删除/清空标记、失败停止/继续和空分组禁用回归。
  * [POS]: 会话列表前端交互回归，不读取用户数据、不运行Electron或E2E。
@@ -33,6 +35,18 @@ const button = (label: string) => [...document.querySelectorAll<HTMLButtonElemen
 const openMenu = () => act(async () => host.querySelector('.conversation-core-section-row')!.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 20, clientY: 20 })))
 const choose = (label: string) => act(async () => menuItem(label).click())
 const confirm = (label: string) => act(async () => button(label).click())
+
+it('opens the selected employee configuration from its conversation context menu', async () => {
+  const employee = { ...coreAgent, id: 'weekly-employee', name: '周报统计', systemRole: undefined }
+  props = { ...props, onConfigureAgent: vi.fn(), snapshot: { ...props.snapshot, agents: [...props.snapshot.agents, employee], conversations: [...props.snapshot.conversations, room('周报统计', { agentIds: [employee.id], purpose: 'personal' })] } }
+  await render()
+  await act(async () => host.querySelector('[aria-label="周报统计"]')!.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 20, clientY: 20 })))
+  expect(menuItem('员工配置').closest('[role=group]')).toBe(menuItem('置顶').closest('[role=group]'))
+  expect(menuItem('员工配置').closest('[role=group]')).not.toBe(menuItem('清空聊天记录').closest('[role=group]'))
+  await choose('员工配置')
+  expect(props.onConfigureAgent).toHaveBeenCalledWith(employee)
+  expect(props.onSelect).not.toHaveBeenCalled()
+})
 
 it('offers create and settings on the Bobo row without a channel entry', async () => {
   await render(); await openMenu()

@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 员工配置与置顶共用同一右键菜单分组，清理操作独立分组。
+ * [OUTPUT]: 失败/取消/中断的执行过程及自动化镜像保留在聊天；支持显式继续、原生复制和员工配置右键入口。
+ * [OUTPUT]: 员工会话右键配置跳转现有通讯录选中项；定时运行按用户点击查看过程/聊天。
  * [OUTPUT]: 核心助手整行右键提供新增会话/助手设置/清空所有记录/删除所有会话；批量固定全部可见核心会话且不受名称搜索影响，确认后沿原清理回调执行，无渠道入口。
  * [OUTPUT]: 核心助手折叠按钮直接复用通讯录conversation-item的行高、内边距、头像与名称/角色两行排版，整行占满列表且无悬停底色；箭头固定最右，新会话按钮位于其左，各操作与原折叠独立。
  * [OUTPUT]: 渠道列表不显示置顶标记或右键置顶入口，普通会话保持。
@@ -39,6 +42,7 @@ interface Props {
   onSelect(id: string): void; onCreate(kind: 'agent' | 'group'): void
   onCreateCore(): void
   onConfigureCore(): void
+  onConfigureAgent?(agent: DigitalAgent): void
   onEditTitle(conversation: Conversation): void
   onChange(change: ConversationListChange): void; onClear(id: string, hide: boolean): Promise<void>; busy: boolean
   showHeading?: boolean
@@ -47,7 +51,7 @@ interface Props {
   onBack?(): void
   onOpenChannels?(agent: DigitalAgent, conversationId?: string): void
 }
-export function ConversationList({ snapshot, selectedId, previews, messageTimes, drafts, onSelect, onCreate, onCreateCore, onConfigureCore, onEditTitle, onChange, onClear, busy, channelAgent, onBack, onOpenChannels, selectionRequest, showHeading = true }: Props) {
+export function ConversationList({ snapshot, selectedId, previews, messageTimes, drafts, onSelect, onCreate, onCreateCore, onConfigureCore, onConfigureAgent, onEditTitle, onChange, onClear, busy, channelAgent, onBack, onOpenChannels, selectionRequest, showHeading = true }: Props) {
   const [query, setQuery] = useState('')
   const [coreOpen, setCoreOpen] = useState(true)
   const [coreMenuOpen, setCoreMenuOpen] = useState(false)
@@ -107,8 +111,9 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
                 {messageTime && <time dateTime={messageTime}>{timeText(messageTime)}</time>}
               </span><span className={cn('conversation-preview', { 'pr-24': notification })}>{channelAgent && (conversation.channelUnreadCount ?? 0) > 0 && <em>[新回复 {conversation.channelUnreadCount}] </em>}{conversation.purpose === 'automation' && '定时任务 · '}{drafts.get(conversation.id)?.text ? <><em>[草稿]</em> {drafts.get(conversation.id)?.text}</> : previews[conversation.id] || conversation.lastMessagePreview || (conversation.kind === 'group' ? `${conversation.agentIds.length} 位数字员工` : agent?.role || '专属对话')}</span></span>
             </ContextMenuTrigger>}
-            <ContextMenuContent className="w-40">{!isChannelConversation(conversation) && <><ContextMenuGroup>
-              {coreConversation ? <ContextMenuItem disabled={busy} onClick={() => onEditTitle(conversation)}><Pencil />编辑标题</ContextMenuItem> : <ContextMenuItem disabled={busy} onClick={pin}><Pin />{conversation.list?.pinned ? '取消置顶' : '置顶'}</ContextMenuItem>}
+            <ContextMenuContent className="w-40">{(!isChannelConversation(conversation) || !coreConversation && conversation.kind === 'direct' && agent && onConfigureAgent) && <><ContextMenuGroup>
+              {!coreConversation && conversation.kind === 'direct' && agent && onConfigureAgent && <ContextMenuItem onClick={() => onConfigureAgent(agent)}><Settings />员工配置</ContextMenuItem>}
+              {!isChannelConversation(conversation) && (coreConversation ? <ContextMenuItem disabled={busy} onClick={() => onEditTitle(conversation)}><Pencil />编辑标题</ContextMenuItem> : <ContextMenuItem disabled={busy} onClick={pin}><Pin />{conversation.list?.pinned ? '取消置顶' : '置顶'}</ContextMenuItem>)}
             </ContextMenuGroup><ContextMenuSeparator /></>}<ContextMenuGroup>
               <ContextMenuItem disabled={busy} onClick={() => confirm(conversation, false)}><Trash2 />清空聊天记录</ContextMenuItem>
               <ContextMenuItem variant="destructive" disabled={busy} onClick={() => confirm(conversation, true)}><Trash2 />删除会话</ContextMenuItem>

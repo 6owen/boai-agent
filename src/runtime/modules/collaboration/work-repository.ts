@@ -1,4 +1,8 @@
 /*
+ * [OUTPUT]: 默认执行不按累计调用、工具步骤、用量或墙钟截断；保留真实用量、取消/权限和明确指定的预算。
+ * [OUTPUT]: 本人新消息对失败/取消/中断普通工作沿同事务验证并认领，未知操作、版本和权限门禁保持。
+ * [OUTPUT]: 启动升级旧普通API默认额度并保留原身份/累计用量，不重新执行任务。
+ * [OUTPUT]: 自动化预算不按墙钟到期；本人明确继续保留原工作和累计用量，普通工作仅重开时间窗口，未知操作仍阻止重放。
  * [OUTPUT]: 启动恢复按已保存budgetPolicy只重算API工作数；本机工作不进入预算，组织历史累计值保持。
  * [OUTPUT]: 新用户消息接续失败工作与认领同事务；复用原重试校验、版本/身份/预算与重复消息门禁，失败全部回滚。
  * [OUTPUT]: 自动化调用事务不再按命令权限拒绝员工，原来源/运行/预算及实际持有者核验保持。
@@ -35,7 +39,7 @@ import { AUTOMATION_ROOT_KEY, automationDelegation, assertAutomationDelivery } f
 import { ProductStore, type RecordTransaction, type StoredRecord } from '../../adapters/storage/product-store'
 
 import { queueWorkWake, refreshWaiters, validateDependencies } from './work-dependencies'
-import { checkWorkBudget, WORK_DURATION_MS, newWorkBudget, reserveBudgetCall, settleBudgetCall, workBudgetExhausted, workLimits, WorkUnavailableError } from './work-budget'
+import { workLimitReached, checkWorkBudget, workBudgetDeadline, upgradeWorkExecutionAllowance, WORK_DURATION_MS, newWorkBudget, reserveBudgetCall, settleBudgetCall, workBudgetExhausted, workLimits, WorkUnavailableError } from './work-budget'
 export { WorkUnavailableError } from './work-budget'
 
 import { workDelegationSchema, workWaitSchema, workEvidenceError } from './work-protocol'
@@ -76,7 +80,7 @@ export class WorkRepository {
     const budget = await tx.get<WorkBudget>('workBudgets', work.budgetId)
     if (!budget) throw new WorkUnavailableError('原工作预算缺失，不能创建新预算替代')
     checkWorkBudget(budget, work.budgetPolicy)
-    if (work.budgetPolicy !== 'native' && budget.runs >= budget.maxRuns) throw new WorkUnavailableError('达到原始工作的运行次数上限')
+    if (work.budgetPolicy !== 'native' && workLimitReached(budget.runs, budget.maxRuns)) throw new WorkUnavailableError('达到原始工作的运行次数上限')
     if (work.parentWorkId) {
       const parent = await tx.get<WorkItem>('workItems', work.parentWorkId)
       if (!parent || ['cancelled', 'interrupted'].includes(parent.status)) throw new WorkUnavailableError('原工作所属任务已停止或中断')
@@ -126,6 +130,7 @@ export class WorkRepository {
       for (const budget of await tx.list<WorkBudget>('workBudgets')) {
         if (budget.schemaVersion !== 1) throw new Error('不能读取未知版本的工作预算')
         const migrated = { ...workLimits, ...budget }
+        upgradeWorkExecutionAllowance(migrated)
         const retainedItems = (await tx.list<WorkItem>('workItems')).filter(work => work.budgetId === budget.id && work.budgetPolicy !== 'native').length
         migrated.workItems = budget.collaborationRequestId ? Math.max(budget.workItems, retainedItems) : retainedItems
         await tx.put(row('workBudgets', migrated))
@@ -257,11 +262,11 @@ export class WorkRepository {
         const original = await tx.get<Message>('messages', work.sourceMessageId)
         const conversation = await tx.get<Conversation>('conversations', work.conversationId)
         const agent = await tx.get<DigitalAgent>('agents', input.agentId)
-        if (!input.intent.workId || work.status !== 'failed' || work.origin || work.collaborationRequestId || work.organization || work.revisionRequestId || input.origin || input.wakeId || input.nativeTurn ||
+        if (!input.intent.workId || !['failed', 'cancelled', 'interrupted'].includes(work.status) || work.origin || work.collaborationRequestId || work.organization || work.revisionRequestId || input.origin || input.wakeId || input.nativeTurn ||
           !actualSource || actualSource.id === work.sourceMessageId || actualSource.senderType !== 'user' || actualSource.senderId !== 'user' || actualSource.status !== 'completed' || actualSource.channel || actualSource.origin || actualSource.conversationId !== work.conversationId ||
           !original || actualSource.sequence <= original.sequence || !run || run.phase !== 'execution' || run.status !== 'running' || run.agentId !== input.agentId || run.conversationId !== work.conversationId || run.triggerMessageId !== actualSource.id ||
           !turn || turn.triggerMessageId !== actualSource.id || turn.workId || turn.wakeId || turn.origin || turn.collaborationRequestId || !conversation?.agentIds.includes(input.agentId) || !agent?.active || await tx.get('conversationCleanup', work.conversationId)) {
-          throw new WorkUnavailableError('接续必须来自当前会话中新的用户消息及原失败任务')
+          throw new WorkUnavailableError('接续必须来自当前会话中新的用户消息及原未完成任务')
         }
         if ((await tx.list<AgentRun>('runs')).some(previous => previous.id !== run.id && previous.workId === work.id && previous.triggerMessageId === actualSource.id)) throw new WorkUnavailableError('这条接续消息已执行，不能重复重试')
         // Authorization and claim share this transaction: a later admission failure
@@ -302,9 +307,9 @@ export class WorkRepository {
         await this.adoptOrganizationDecision(tx, work, budget, input.priorDecision)
       }
       checkWorkBudget(budget, work.budgetPolicy)
-      if (work.budgetPolicy !== 'native' && budget.runs >= budget.maxRuns) throw new WorkUnavailableError('达到原始工作的运行次数上限')
+      if (work.budgetPolicy !== 'native' && workLimitReached(budget.runs, budget.maxRuns)) throw new WorkUnavailableError('达到原始工作的运行次数上限')
       if (isNew) {
-        if (work.budgetPolicy !== 'native' && budget.workItems >= budget.maxWorkItems) throw new WorkUnavailableError('达到原始工作的拆分上限')
+        if (work.budgetPolicy !== 'native' && workLimitReached(budget.workItems, budget.maxWorkItems)) throw new WorkUnavailableError('达到原始工作的拆分上限')
         if (!native) budget.workItems++
       }
       if (wake) { wake.status = 'consumed'; await tx.put(row('workWakes', wake)); delete work.wakeId }
@@ -327,7 +332,8 @@ export class WorkRepository {
     const calls = (await tx.list<ProfileModelCall>('profileModelCalls')).filter(call => call.runId === run.id)
     if (!sameBackendBinding(agent?.executionBackend, run?.backend) || run.backend?.kind === 'acp-local' || run.activityError || native && run.backend?.externalInvocations !== prior.callIds.length || calls.length !== prior.callIds.length || calls.some(call => !prior.callIds.includes(call.id))) throw new WorkUnavailableError('组织判断必须保留全部实际调用回执与原运行方式')
     if (!Number.isFinite(Date.parse(run.createdAt))) throw new WorkUnavailableError('组织判断缺少可信开始时间')
-    if (!native) budget.deadlineAt = new Date(Math.min(Date.parse(budget.deadlineAt), Date.parse(run.createdAt) + WORK_DURATION_MS)).toISOString()
+    const deadline = workBudgetDeadline(budget)
+    if (!native && deadline !== undefined) budget.deadlineAt = new Date(Math.min(deadline, Date.parse(run.createdAt) + WORK_DURATION_MS)).toISOString()
     for (const id of prior.callIds) {
       const call = await tx.get<ProfileModelCall>('profileModelCalls', id)
       if (!call || call.runId !== run.id || call.conversationId !== work.conversationId || call.phase !== 'decision' || !Number.isFinite(Date.parse(call.startedAt)) || (call.callUnit === 'external-turn') !== native) throw new WorkUnavailableError('组织判断缺少真实唯一模型调用回执')
@@ -536,7 +542,7 @@ export class WorkRepository {
       if (outcome.userQuestion) work.userQuestion = { id: `work:${work.id}:${work.resultVersion}`, messageId: receipt.messageId, content: outcome.userQuestion, revision: work.version }
       work.status = outcome.disposition === 'delivered' ? 'delivered' : outcome.disposition === 'waiting' ? 'waiting' : 'blocked'
       delete work.activeRunId; execution.status = 'released'
-      if (work.budgetPolicy !== 'native' && budget.noProgress >= budget.maxNoProgress && work.status !== 'delivered') { work.status = 'blocked'; work.outcome = { disposition: 'blocked', summary: '达到原始工作的无进展接续上限' } }
+      if (work.budgetPolicy !== 'native' && workLimitReached(budget.noProgress, budget.maxNoProgress) && work.status !== 'delivered') { work.status = 'blocked'; work.outcome = { disposition: 'blocked', summary: '达到原始工作的无进展接续上限' } }
       await tx.put(row('workBudgets', budget))
       await tx.put(row('workItems', work)); await tx.put(row('workExecutions', execution))
       await refreshWaiters(tx, work.conversationId, { runId, agentId: execution.agentId })
@@ -557,7 +563,7 @@ export class WorkRepository {
         work.nextStep = wait.nextStep; work.waitRevision++; work.observedResults = [...work.requiredResults]
         if (!(execution.pendingEffects ?? 0)) work.requiresReview = false
         work.outcome = { disposition: 'waiting', summary: wait.nextStep }; work.status = 'waiting'
-        if (work.budgetPolicy !== 'native' && budget.noProgress >= budget.maxNoProgress) { work.status = 'blocked'; work.outcome = { disposition: 'blocked', summary: '达到原始工作的无进展接续上限' } }
+        if (work.budgetPolicy !== 'native' && workLimitReached(budget.noProgress, budget.maxNoProgress)) { work.status = 'blocked'; work.outcome = { disposition: 'blocked', summary: '达到原始工作的无进展接续上限' } }
         await tx.put(row('workBudgets', budget))
       }
       work.version++; work.updatedAt = timestamp(); delete work.activeRunId; execution.status = 'released'
@@ -592,7 +598,7 @@ export class WorkRepository {
       const budget = (await tx.get<WorkBudget>('workBudgets', work.budgetId))!
       checkWorkBudget(budget, work.budgetPolicy)
       if (work.budgetPolicy === 'native') return
-      if (budget.reportRefreshes >= budget.maxReportRefreshes) throw new WorkUnavailableError('达到原始工作的重新汇报上限')
+      if (workLimitReached(budget.reportRefreshes, budget.maxReportRefreshes)) throw new WorkUnavailableError('达到原始工作的重新汇报上限')
       budget.reportRefreshes++; await tx.put(row('workBudgets', budget))
     })
   }
@@ -616,7 +622,7 @@ export class WorkRepository {
       }
       const native = isNativeBackend((await tx.get<DigitalAgent>('agents', proposal.ownerAgentId))?.executionBackend)
       if (!native) checkWorkBudget(budget)
-      if (!native && (budget.workItems >= budget.maxWorkItems || budget.runs >= budget.maxRuns)) throw new WorkUnavailableError('达到原始工作的拆分或运行上限')
+      if (!native && (workLimitReached(budget.workItems, budget.maxWorkItems) || workLimitReached(budget.runs, budget.maxRuns))) throw new WorkUnavailableError('达到原始工作的拆分或运行上限')
       const dependencies = proposal.dependencies ?? []
       const work: WorkItem = { ...(native ? { budgetPolicy: 'native' as const } : {}), schemaVersion: 2, id, conversationId: parent.conversationId, sourceMessageId: parent.sourceMessageId, ...(parent.origin ? { origin: parent.origin } : {}),
         ...(parent.revisionRequestId ? { revisionRequestId: parent.revisionRequestId } : {}),
@@ -656,7 +662,7 @@ export class WorkRepository {
       const budget = (await tx.get<WorkBudget>('workBudgets', work.budgetId))!
       try {
         checkWorkBudget(budget, work.budgetPolicy)
-        if (work.budgetPolicy !== 'native' && budget.runs >= budget.maxRuns) throw new WorkUnavailableError('达到原始工作的运行次数上限')
+        if (work.budgetPolicy !== 'native' && workLimitReached(budget.runs, budget.maxRuns)) throw new WorkUnavailableError('达到原始工作的运行次数上限')
       } catch (error) {
         work.status = 'blocked'; work.outcome = { disposition: 'blocked', summary: (error as Error).message }; work.version++
         wake.status = 'cancelled'; wake.reason = work.outcome.summary
@@ -702,7 +708,7 @@ export class WorkRepository {
   expire(conversationId: string) {
     return this.store.transaction(async tx => {
       const budgets = new Map((await tx.list<WorkBudget>('workBudgets')).map(budget => [budget.id, budget]))
-      for (const work of await tx.list<WorkItem>('workItems')) if (work.conversationId === conversationId && work.budgetPolicy !== 'native' && ['ready', 'waiting'].includes(work.status) && !work.activeRunId && Date.now() >= Date.parse(budgets.get(work.budgetId)!.deadlineAt)) {
+      for (const work of await tx.list<WorkItem>('workItems')) if (work.conversationId === conversationId && work.budgetPolicy !== 'native' && ['ready', 'waiting'].includes(work.status) && !work.activeRunId && Date.now() >= (workBudgetDeadline(budgets.get(work.budgetId)!) ?? Infinity)) {
         work.status = 'blocked'; work.version++; work.outcome = { disposition: 'blocked', summary: '等待已超过原始工作的时间上限' }
         await tx.put(row('workItems', work))
         if (work.wakeId) {
@@ -713,27 +719,28 @@ export class WorkRepository {
       await refreshWaiters(tx, conversationId, { runId: 'host', agentId: 'host' })
     })
   }
-  authorizeRetry(workId: string, agentId: string, records: StoredRecord[] = []) {
+  authorizeRetry(workId: string, agentId: string, records: StoredRecord[] = [], continuedByUser = false) {
     return this.store.transaction(async tx => {
       const work = await tx.get<WorkItem>('workItems', workId)
       if (!work) throw new WorkUnavailableError('当前工作不能重试')
-      await this.prepareRetry(tx, work, agentId)
+      await this.prepareRetry(tx, work, agentId, continuedByUser)
       for (const record of records) await tx.put(record)
     })
   }
   private async prepareRetry(tx: RecordTransaction, work: WorkItem, agentId: string, continuedByUser = false) {
-    if (work.ownerAgentId !== agentId || work.activeRunId || !['failed', 'cancelled'].includes(work.status)) throw new WorkUnavailableError('当前工作不能重试')
+    if (work.ownerAgentId !== agentId || work.activeRunId || !(continuedByUser ? ['failed', 'cancelled', 'interrupted'] : ['failed', 'cancelled']).includes(work.status)) throw new WorkUnavailableError('当前工作不能重试')
     await this.revisionWork(tx, work)
     if (work.requiresReview) {
       const executions = continuedByUser ? (await tx.list<WorkExecution>('workExecutions')).filter(execution => execution.workId === work.id) : []
       // A new explicit continuation may use confirmed results. Unknown/legacy
-      // counters and any unfinished effect still prohibit replay. The ordinary
-      // retry button retains its existing conservative behavior.
+      // counters and any unfinished effect still prohibit replay. Explicit
+      // continuation uses confirmed tools without executing them again.
       if (!executions.length || executions.some(execution => execution.status !== 'released' || execution.pendingEffects !== 0)) throw new WorkUnavailableError('已有工具操作需要核对，请确认现有结果后发起明确的新请求')
     }
     const budget = (await tx.get<WorkBudget>('workBudgets', work.budgetId))!
+    if (continuedByUser && !budget.origin && work.budgetPolicy !== 'native' && Date.now() >= (workBudgetDeadline(budget) ?? Infinity)) budget.deadlineAt = new Date(Date.now() + WORK_DURATION_MS).toISOString()
     checkWorkBudget(budget, work.budgetPolicy)
-    if (work.budgetPolicy !== 'native' && budget.retries >= budget.maxRetries) throw new WorkUnavailableError('达到原始工作的重试上限')
+    if (work.budgetPolicy !== 'native' && workLimitReached(budget.retries, budget.maxRetries)) throw new WorkUnavailableError('达到原始工作的重试上限')
     for (const result of work.requiredResults) {
       const dependency = await tx.get<WorkItem>('workItems', result.workId)
       if (dependency?.status !== 'delivered' || dependency.resultVersion < result.resultVersion) throw new WorkUnavailableError('所需依赖尚未交付，不能重试执行')
@@ -742,7 +749,7 @@ export class WorkRepository {
       const parent = await tx.get<WorkItem>('workItems', work.parentWorkId)
       if (parent?.status === 'cancelled' || parent?.status === 'interrupted') throw new WorkUnavailableError('父工作已停止，不能单独重试子工作')
     }
-    if (work.origin) await resumeAutomationExecution(tx, work.origin, work.conversationId)
+    if (work.origin) await resumeAutomationExecution(tx, work.origin, work.conversationId, continuedByUser)
     delete work.wakeId
     if (work.budgetPolicy !== 'native') budget.retries++; await tx.put(row('workBudgets', budget))
     work.status = 'ready'; work.requiresReview = false; work.version++; work.updatedAt = timestamp()

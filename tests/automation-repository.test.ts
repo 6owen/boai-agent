@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 本轮覆盖复制/员工入口、定时运行防连点、失败过程、严格私有判断及保留原预算的显式继续；实际范围以各用例为准。
  * [INPUT]: 真实 SQLite、自动化事务账本、原生调度和固定时间策略。
  * [OUTPUT]: 系统时钟跳变不延长已启动预算、数日漏跑不补执行；独立连接的新任务聊天单次绑定与提交故障整体回滚；跨实例受理、版本/恢复/迁移、投递回滚、同步与 DST 不变量验证。
  * [POS]: A+0 持久化边界测试；不运行真实用户计划或模型。
@@ -244,7 +245,7 @@ it.each([9, 11, 3 * 24 * 60])('admits only native misfires within the ten-minute
   if (minutes > 10) expect(result.occurrence.reason).toContain('补跑窗口')
 })
 
-it.each([-48, 48])('does not extend an armed execution budget when the wall clock jumps %i hours', async hours => {
+it.each([-48, 48])('keeps automation running across elapsed time and wall-clock jumps of %i hours until explicitly stopped', async hours => {
   const { root, store } = await fixture()
   let cancellations = 0, dispatches = 0, exited = false
   const service = new AutomationService(store, root, {
@@ -262,13 +263,17 @@ it.each([-48, 48])('does not extend an armed execution budget when the wall cloc
   vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] })
   const startedAt = Date.now(), o = await service.run(d.id, 'clock-jump')
   await service.view()
-  const duration = Date.parse(o.budget!.deadlineAt) - startedAt
+  expect(o.budget!.deadlineAt).toBeUndefined()
+  const duration = 30 * 60_000
   vi.setSystemTime(startedAt + hours * 60 * 60_000)
   await vi.advanceTimersByTimeAsync(duration - 1)
   expect(cancellations).toBe(0)
   await vi.advanceTimersByTimeAsync(1)
+  expect((await service.view()).occurrences[0]).toMatchObject({ id: o.id, status: 'running', budgetId: o.budgetId })
+  expect(cancellations).toBe(0)
+  await service.stop(o.id)
   const stopping = (await service.view()).occurrences[0]
-  expect(stopping).toMatchObject({ id: o.id, status: 'cancelling', cancellationCause: 'budget', budgetId: o.budgetId })
+  expect(stopping).toMatchObject({ id: o.id, status: 'cancelling', cancellationCause: 'user', budgetId: o.budgetId })
   expect(stopping.budget!.deadlineAt).toBe(o.budget!.deadlineAt)
   expect(cancellations).toBe(1)
   await expect(service.beforeBackup()).rejects.toThrow('正在执行')

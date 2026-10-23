@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 验证默认无执行配额、旧默认精确迁移、显式预算仍执行以及用户取消；不调用真实供应商。
+ * [OUTPUT]: 覆盖增大任务额度、真实继续消息或本次运行同类批准；各文件以具体用例限定验证范围。
+ * [OUTPUT]: 本轮覆盖复制/员工入口、定时运行防连点、失败过程、严格私有判断及保留原预算的显式继续；实际范围以各用例为准。
  * [OUTPUT]: Material chat output capacity, effective-model catalog ceiling, plain-chat scope and length rejection use the actual SDK/local HTTP only; no vendor calls or quality certification.
  * [OUTPUT]: bobo公开聊天实际Mastra SDK读取已提交历史与Working Memory，来源失效后原文不再进入请求。
  * [OUTPUT]: 实际SDK判断携带第31项技能及命令权限，私有阶段零工具且其他员工/未绑定技能不泄入。
@@ -376,25 +379,26 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     expect(toolResultText(server.requests[1]!)).toContain('真实本轮页面')
   })
 
-  it.each(['referenced','no-reference','host-budget-exhausted'])('browser step allowance follows the original host budget: %s',async mode=>{
-    const server=await endpoint([...Array.from({length:13},()=>({name:'browser_tool',args:{command:'snapshot'}})),'页面操作已核对。'])
+  it.each(['referenced','no-reference','host-budget-exhausted'])('runs past former step limits until completion or an explicit host budget: %s',async mode=>{
+    const steps = mode === 'no-reference' ? 260 : 13
+    const server=await endpoint([...Array.from({length:steps},()=>({name:'browser_tool',args:{command:'snapshot'}})),'页面操作已核对。'])
     const execute=vi.fn(async()=>({result:{output:'当前实际页面',appendReleaseHint:false}})),drain=vi.fn(async()=>{})
     let reservations=0
     const run=await context(server.url,{
       modelCallId:'initial-call',
-      workBudget:{maxModelCalls:24,modelCalls:1} as EngineContext['workBudget'],
+      workBudget:{maxModelCalls:null,modelCalls:1} as EngineContext['workBudget'],
       onAdditionalModelCall:async()=>{reservations++;if(mode==='host-budget-exhausted'&&reservations===12)throw new Error('ORIGINAL_HOST_BUDGET_EXHAUSTED');return 'reserved-'+reservations},
       browserSession:{execute,drain,...(mode!=='no-reference'?{reference:{instanceId:'original-window',url:'https://example.test/',pageVersion:'original'}}:{})} as unknown as BrowserSession,
     })
     run.ctx.work={id:'claimed-browser-task',sourceMessageId:'message-1',conversationId:run.ctx.conversation.id,ownerAgentId:run.ctx.agent.id,status:'running'} as WorkItem
     const pending=new MastraEngine().run(run.ctx)
-    if(mode==='referenced'){
-      await pending;expect(server.requests).toHaveLength(14);expect(execute).toHaveBeenCalledTimes(13);expect(run.deltas.join('')).toBe('页面操作已核对。')
+    if(mode!=='host-budget-exhausted'){
+      await pending;expect(server.requests).toHaveLength(steps+1);expect(execute).toHaveBeenCalledTimes(steps);expect(run.deltas.join('')).toBe('页面操作已核对。')
     }else{
-      await expect(pending).rejects.toThrow(mode==='no-reference'?'步骤上限':'ORIGINAL_HOST_BUDGET_EXHAUSTED')
+      await expect(pending).rejects.toThrow('ORIGINAL_HOST_BUDGET_EXHAUSTED')
       expect(server.requests).toHaveLength(12);expect(run.deltas).toEqual([])
     }
-    expect(run.ctx.workBudget?.maxModelCalls).toBe(24);expect(drain).toHaveBeenCalledOnce()
+    expect(run.ctx.workBudget?.maxModelCalls).toBeNull();expect(drain).toHaveBeenCalledOnce()
   })
 
   it.each(['inactive','acp','organization','chat','no-work'] as const)('keeps the task browser unavailable for %s even when a session and legacy true flag are supplied',async kind=>{
@@ -446,7 +450,7 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     expect(thinkingProviderOptions(official, 'employee-override', 'high', 'chat')).toBeUndefined()
   })
 
-  it('uses light thinking for DeepSeek decision, chat and memory instead of its expensive provider default', async () => {
+  it('uses non-thinking JSON for automatic DeepSeek routing and light thinking for public chat and memory', async () => {
     const server = await endpoint(['{"action":"reply","responseKind":"chat"}', '今天是星期一。', '{"candidates":[]}'])
     redirectDeepSeekTo(server.url)
     const run = await context('https://api.deepseek.com', { agent: employee({ modelId: 'deepseek-v4-pro' }), responseKind: 'chat' })
@@ -455,7 +459,9 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     await engine.run(run.ctx)
     await engine.extractMemory(run.ctx)
     expect(server.requests).toHaveLength(3)
-    for (const request of server.requests) {
+    expect(server.requests[0].thinking).toEqual({ type: 'disabled' })
+    expect(server.requests[0].reasoning_effort).toBeUndefined()
+    for (const request of server.requests.slice(1)) {
       expect(request.thinking).toEqual({ type: 'enabled' })
       expect(request.reasoning_effort).toBe('low')
     }
@@ -476,6 +482,20 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
       { ...official, defaultModel: 'unverified-model' },
     ]) expect(decisionProviderOptions(settings, '', 'off')).toBeUndefined()
     expect(decisionProviderOptions(official, 'employee-override', 'high')).toBeUndefined()
+  })
+
+  it('repairs duplicate management decisions with non-thinking JSON while keeping strict parsing and both call receipts', async () => {
+    const duplicate = '{"action":"ask","responseKind":"chat"}{"action":"reply","responseKind":"task"}'
+    const server = await endpoint((_body, response, index) => send(response, index ? '{"action":"ask","responseKind":"chat"}' : duplicate, index, { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 }))
+    redirectDeepSeekTo(server.url)
+    const run = await context('https://api.deepseek.com', { agent: employee({ modelId: 'deepseek-flash', thinkingLevel: 'high' }), messages: [message('你能不能给我新建一个数字员工？$管理通讯录')], modelCallId: 'first', onAdditionalModelCall: async () => 'repair' })
+    expect(await new MastraEngine().decide(run.ctx)).toMatchObject({ action: 'ask', responseKind: 'chat' })
+    expect(server.requests).toHaveLength(2)
+    expect(server.requests[0].thinking).toEqual({ type: 'enabled' })
+    expect(server.requests[1].thinking).toEqual({ type: 'disabled' })
+    expect(server.requests[1].reasoning_effort).toBeUndefined()
+    expect(server.requests[1].response_format).toEqual({ type: 'json_object' })
+    expect(run.deltas).toEqual([]); expect(run.tools).toEqual([])
   })
 
   it('uses native JSON mode in both accounted decision attempts without changing authorized input or publishing rejected text', async () => {

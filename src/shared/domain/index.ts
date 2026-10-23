@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Approval明确是否支持本次运行同类操作批准，原目录持久批准保持独立。
  * [OUTPUT]: BootstrapSnapshot区分静态人格与动态状态，保留实际模块/来源hash/配置版本证据。
  * [OUTPUT]: 2026-10-19应用业务协议：AgentInput增加仅创建使用的initialSoul，持久员工人格仍归原SOUL文件。
  * [OUTPUT]: 知识引用只沿实际读取记录及当前授权/内容身份预览；旧版本、伪造路径和未读行不扩权。
@@ -290,9 +291,11 @@ export interface Approval {
   nativeOrigin?: import('./directory-access').DirectoryNativeOrigin
   kind?: import('./execution').ExecutionOperation['kind'] | 'directory'
   directory?: import('./directory-access').DirectoryAccessRequest
-  /** One command approval also grants these missing directories, never ongoing command permission. */
+  /** One command approval also grants these missing directories; persistent directory grants do not grant permanent command permission. */
   commandDirectories?: import('./directory-access').DirectoryAccessRequest[]
   rememberAllowed?: boolean
+  /** Explicit approval for this operation kind in this API run only. */
+  sameKindAllowed?: boolean
   runId: string
   conversationId: string
   agentName: string

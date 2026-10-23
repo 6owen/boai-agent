@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 取消自动化固定执行时限；旧时间预算取消仅由本人显式继续恢复，原occurrence、预算计账、容量与人工停止门禁保持。
  * [OUTPUT]: 固定群分工需全部真实交付才算整体完成；只回复文本或漏分工不能提升为成功。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 文件证据同时保留精确artifactId和实际已提交交付messageId，支持原消息导航；不推断旧记录来源。
@@ -112,7 +113,7 @@ export function aggregateAutomation(o: AutomationOccurrence, input: Results): Pa
   return { ...(budgetScope ? { budgetScope } : {}), status, deliveryStatus, turnIds: [...turnIds], waitingTurnIds: waitingTurns.map(turn => turn.id), workIds: [...workIds], rootWorkIds: works.filter(work => !work.parentWorkId).map(work => work.id),
     runIds: [...runIds], resultMessageIds: messages.map(message => message.id), resultEvidence: evidence,
     modelCalls: budget?.modelCalls ?? turns.reduce((sum, turn) => sum + turn.modelCalls, 0), usage: budget?.usage ?? usage, usageIncomplete: budget?.usageIncomplete ?? true,
-    ...(budget ? { budget: { ...(budget.callUnit ? { callUnit: budget.callUnit } : {}), maxModelCalls: budget.maxModelCalls, maxRuns: budget.maxRuns, maxOutputTokens: budget.maxOutputTokens, deadlineAt: budget.deadlineAt, runs: budget.runs, exhausted: workBudgetExhausted(budget), ...(budget.renewals ? { renewals: budget.renewals } : {}) } } : {}),
+    ...(budget ? { budget: { ...(budget.callUnit ? { callUnit: budget.callUnit } : {}), maxModelCalls: budget.maxModelCalls, maxRuns: budget.maxRuns, maxOutputTokens: budget.maxOutputTokens, runs: budget.runs, exhausted: workBudgetExhausted(budget), ...(budget.renewals ? { renewals: budget.renewals } : {}) } } : {}),
     finishedAt: pending ? undefined : finishedAt,
     reason: o.cancellationRequestedAt ? o.reason : status === 'completed' ? undefined : turns.find(turn => turn.reason && !resumedTurns.has(turn.id))?.reason ?? works.find(work => ['blocked', 'failed', 'interrupted'].includes(work.status))?.outcome?.summary ?? (!pending && !completePlan ? '本次群分工尚未全部交付' : undefined) }
 }

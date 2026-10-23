@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 验证默认无执行配额、旧默认精确迁移、显式预算仍执行以及用户取消；不调用真实供应商。
+ * [OUTPUT]: 覆盖增大任务额度、真实继续消息或本次运行同类批准；各文件以具体用例限定验证范围。
+ * [OUTPUT]: 本轮覆盖复制/员工入口、定时运行防连点、失败过程、严格私有判断及保留原预算的显式继续；实际范围以各用例为准。
  * [OUTPUT]: 新消息重试覆盖来源/成员/版本/已消费消息、待核对操作、额度和认领后失败的完整事务回滚。
  * [INPUT]: 真实 SQLite 产品存储和工作控制协议。
  * [OUTPUT]: 认领竞争、预算、旧运行隔离、事务回滚与副本迁移验证。
@@ -31,11 +34,45 @@ const request = (runId: string, agentId = 'researcher', key = 'main') => ({
 const receipt = { messageId: 'answer-1', content: '计算结果为 42。', artifactIds: [] as string[] }
 
 describe('durable work ownership', () => {
+  it.each(['legacy', 'v1', 'custom', 'organization', 'organization48', 'renewed'] as const)('migrates only legacy default execution allowances without resetting used counters (%s)', async mode => {
+    const { works, store } = await fixture()
+    await works.claim(request('legacy-run'))
+    await works.release('legacy-run', 'failed')
+    const current = (await works.view('group')).workBudgets[0]
+    const { executionAllowanceVersion: _, ...original } = current
+    const saved = { ...original, maxModelCalls: mode === 'custom' ? 30 : mode === 'v1' ? 256 : mode === 'organization48' ? 48 : 24,
+      maxOutputTokens: mode === 'v1' ? 128000 : 16000, maxRuns: 8, maxWorkItems: 8, maxRetries: 3, maxReportRefreshes: 4, maxNoProgress: 3,
+      deadlineAt: new Date(Date.now() + 300000).toISOString(), modelCalls: 12, usage: { outputTokens: 4000 },
+      ...(mode === 'v1' ? { executionAllowanceVersion: 1 as const } : {}),
+      ...(mode.startsWith('organization') ? { collaborationRequestId: 'organization-request' } : {}),
+      ...(mode === 'renewed' ? { renewals: [{ id: 'explicit-renewal' }] as WorkBudget['renewals'] } : {}) }
+    await store.write([{ collection: 'workBudgets', id: saved.id, value: saved }])
+    const restarted = new WorkRepository(store); await restarted.init()
+    const expected = ['custom', 'renewed'].includes(mode) ? saved : { ...saved, executionAllowanceVersion: 2, maxModelCalls: null, maxOutputTokens: null,
+      maxRuns: null, maxWorkItems: null, maxRetries: null, maxReportRefreshes: null, maxNoProgress: null, deadlineAt: '' }
+    expect((await restarted.view('group')).workBudgets[0]).toEqual(expected)
+    await restarted.init()
+    expect((await restarted.view('group')).workBudgets[0]).toEqual(expected)
+  })
+  it('continues confirmed progress after a connection repair without resetting usage or repeating ownership', async () => {
+    const { works, store } = await fixture()
+    const original = await works.claim(request('run-a'))
+    await works.markEffect('run-a'); await works.confirmEffect('run-a')
+    await works.release('run-a', 'failed')
+    const before = (await works.view('group')).workBudgets[0]
+    await store.write([{ collection: 'workBudgets', id: before.id, value: { ...before, deadlineAt: new Date(0).toISOString() } }])
+    await works.authorizeRetry(original.id, 'researcher', [], true)
+    const after = await works.view('group')
+    expect(after.workItems).toHaveLength(1)
+    expect(after.workItems[0]).toMatchObject({ id: original.id, sourceMessageId: original.sourceMessageId, status: 'ready', requiresReview: false })
+    expect(after.workBudgets[0]).toMatchObject({ id: before.id, modelCalls: before.modelCalls, runs: before.runs, usage: before.usage, retries: before.retries + 1 })
+    expect(Date.parse(after.workBudgets[0].deadlineAt)).toBeGreaterThan(Date.now())
+    await expect(works.authorizeRetry(original.id, 'researcher', [], true)).rejects.toThrow('不能重试')
+  })
   it.each([
     ['pending-effect', /已有工具操作需要核对/],
     ['unknown-effects', /已有工具操作需要核对/],
     ['confirmed-effects-rollback', /该运行已释放执行权/],
-    ['expired-budget', /调用、用量或时间上限/],
     ['exhausted-calls', /调用、用量或时间上限/],
     ['stale-version', /工作版本已变化/],
     ['peer-message', /新的用户消息/],
@@ -59,10 +96,9 @@ describe('durable work ownership', () => {
       { collection: 'conversations', id: 'group', value: { id: 'group', agentIds: reason === 'removed-member' ? [] : ['researcher'] } },
       { collection: 'agents', id: 'researcher', value: { id: 'researcher', active: true } },
     ])
-    if (reason === 'expired-budget' || reason === 'exhausted-calls') {
+    if (reason === 'exhausted-calls') {
       const budget = (await works.view('group')).workBudgets[0]
-      if (reason === 'expired-budget') budget.deadlineAt = new Date(0).toISOString()
-      else budget.modelCalls = budget.maxModelCalls
+      budget.maxModelCalls = 2; budget.modelCalls = 2
       await store.write([{ collection: 'workBudgets', id: budget.id, value: budget }])
     }
     if (reason === 'consumed-message') await store.write([{ collection: 'runs', id: 'earlier-continue', value: { id: 'earlier-continue', workId: first.id, triggerMessageId: sourceMessageId } }])
@@ -148,7 +184,7 @@ describe('durable work ownership', () => {
     const { store, works } = await fixture()
     await works.claim(request('seed'))
     const budget = (await works.view('group')).workBudgets[0]
-    for (const change of [{ maxModelCalls: 1 }, { usage: { outputTokens: budget.maxOutputTokens } }, { deadlineAt: new Date(0).toISOString() }]) {
+    for (const change of [{ maxModelCalls: 1 }, { maxOutputTokens: 100, usage: { outputTokens: 100 } }, { deadlineAt: new Date(0).toISOString() }]) {
       await store.write([{ collection: 'workBudgets', id: budget.id, value: { ...budget, ...change } }])
       await expect(works.claim(request('blocked', 'writer', 'new-key'))).rejects.toThrow('上限')
       await expect(works.reserveCall('seed')).rejects.toThrow('上限')
@@ -185,6 +221,7 @@ describe('durable work ownership', () => {
     const work = await works.claim(request('run-a'))
     await works.markEffect('run-a'); await works.release('run-a', 'failed')
     await expect(works.authorizeRetry(work.id, 'researcher')).rejects.toThrow('核对')
+    await expect(works.authorizeRetry(work.id, 'researcher', [], true)).rejects.toThrow('核对')
     expect((await works.view('group')).workBudgets[0].runs).toBe(1)
   })
   it('opens an isolated database copy, interrupts active work and preserves legacy contributions', async () => {

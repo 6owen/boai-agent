@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: DeepSeek私有JSON判断自动档关闭思考，格式修复明确关闭思考；自动化执行不设引擎整体时限，调用计量与严格JSON校验保持。
+ * [OUTPUT]: DeepSeek私有判断自动档使用非思考JSON；格式修复关闭思考，保留单对象严格校验、原预算与真实参数观测。
  * [OUTPUT]: Material-backed replies share the existing bounded task output capacity, capped by the selected model's valid catalog ceiling; ordinary chat retains its default.
  * [OUTPUT]: 模型ID共用1000字符/无控制符边界，完整供应商前缀及原生模型名不截断。
  * [OUTPUT]: Magpie三协议共用根地址和认证解析，SDK保留完整模型ID及已核对目录的推理档位；旧直连路径保持。
@@ -47,7 +49,10 @@ export function thinkingProviderOptions(connection: Connection, override: string
 }
 
 export function decisionProviderOptions(connection: Connection, override: string | undefined, level: ThinkingLevel | undefined, catalog?: ModelCatalog): ModelProviderOptions | undefined {
-  const options = thinkingProviderOptions(connection, override, level, 'decision', catalog)
+  // Private routing needs one JSON object. Automatic DeepSeek reasoning can leak
+  // a reasoning delimiter or a second object into content even in JSON mode.
+  const effective = supportsThinkingControl(connection, override) && (!level || level === 'auto') ? 'off' : level
+  const options = thinkingProviderOptions(connection, override, effective, 'decision', catalog)
   // The verified official Chat family supports JSON mode. Explicit-URL compatibility
   // forwards this body parameter in the same request; other providers keep their options.
   if (!supportsThinkingControl(connection, override)) return options

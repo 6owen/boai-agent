@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 验证默认无执行配额、旧默认精确迁移、显式预算仍执行以及用户取消；不调用真实供应商。
+ * [OUTPUT]: 覆盖增大任务额度、真实继续消息或本次运行同类批准；各文件以具体用例限定验证范围。
+ * [OUTPUT]: 覆盖系统复制回执、员工配置入口、定时运行防连点、失败过程保留、严格私有判断修复及保留原预算的显式继续。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: Claude自动化沿原七项表单、原Mastra时钟/occurrence/预算和宿主文件交付接入；明确程序/API来源逐次核对，命令/旧ACP限制保持，实际验证见第13组06 §57。
  * [OUTPUT]: 本机/API逐请求计量、部分回执未知与伪造运行/来源/阶段拒绝，保留原期限和唯一账本。
@@ -16,7 +19,7 @@ import { ProductStore } from '../src/runtime/adapters/storage/product-store'
 import { activateAutomationExecution, AutomationRepository } from '../src/runtime/modules/automations/automation-repository'
 import { AutomationService } from '../src/runtime/modules/automations/automation-service'
 import { WorkRepository } from '../src/runtime/modules/collaboration/work-repository'
-import { WORK_DURATION_MS } from '../src/runtime/modules/collaboration/work-budget'
+import { workBudgetDeadline } from '../src/runtime/modules/collaboration/work-budget'
 
 const cleanups: (() => Promise<void>)[] = []
 afterEach(async () => { for (const cleanup of cleanups.splice(0).reverse()) await cleanup() })
@@ -72,12 +75,13 @@ it.each(['codex-local', 'claude-local'] as const)('excludes %s from API occurren
   expect(await f.budget(original.id)).toMatchObject({ modelCalls: 1, deadlineAt: original.deadlineAt })
 })
 
-it('creates a bounded budget before any work exists and gives a new occurrence its own budget', async () => {
+it('creates a usage ledger without default ceilings before any work exists and gives a new occurrence its own budget', async () => {
   const f = await fixture(), first = await f.admit()
   expect((await f.works.view('chat')).workItems).toEqual([])
   const initial = await f.budget(first.occurrence.budgetId!)
   expect(initial).toMatchObject({ origin: first.origin, modelCalls: 0, runs: 0, usageIncomplete: false, accounting: 'model-calls-v1' })
-  expect(Date.parse(initial.deadlineAt) - Date.parse(first.occurrence.startedAt)).toBeLessThanOrEqual(WORK_DURATION_MS)
+  expect(initial.deadlineAt).toBe('')
+  expect(workBudgetDeadline(initial)).toBeUndefined()
   await f.works.reserveAutomationCall(first.run, 'decision', 'decision')
   expect(await f.budget(initial.id)).toMatchObject({ modelCalls: 1, runs: 0, unknownCalls: 1, usageIncomplete: true })
   const current = (await f.repository.view()).occurrences[0]
@@ -145,15 +149,16 @@ it('keeps missing usage unknown and accepts late/repeated receipts after stop wi
   await f.works.settleAutomationCall(entry.run.id, 'unknown', usage)
   expect(await f.store.load('budgetModelCalls')).toHaveLength(1)
 })
-it('honors the original absolute deadline and rejects overspending before another request is reserved', async () => {
-  const f = await fixture(), entry = await f.admit(), budget = await f.budget(entry.occurrence.budgetId!)
+it('ignores legacy automation deadlines while rejecting overspending before another request is reserved', async () => {
+  const f = await fixture(), entry = await f.admit(), budget = { ...await f.budget(entry.occurrence.budgetId!), maxOutputTokens: 100 }
+  await f.store.write([row('workBudgets', budget)])
   await f.works.reserveAutomationCall(entry.run, 'first', 'decision')
   await f.works.settleAutomationCall(entry.run.id, 'first', { inputTokens: 1, outputTokens: budget.maxOutputTokens, totalTokens: budget.maxOutputTokens + 1 })
   await expect(f.works.reserveAutomationCall(entry.run, 'over-output', 'decision')).rejects.toThrow('上限')
   const current = await f.budget(budget.id)
   await f.store.write([row('workBudgets', { ...current, usage: {}, deadlineAt: new Date(0).toISOString() })])
-  await expect(f.works.reserveAutomationCall(entry.run, 'expired', 'decision')).rejects.toThrow('上限')
-  expect(await f.store.load('budgetModelCalls')).toHaveLength(1)
+  await f.works.reserveAutomationCall(entry.run, 'after-legacy-deadline', 'decision')
+  expect(await f.store.load('budgetModelCalls')).toHaveLength(2)
 })
 it('reacquires a released automation slot inside the wake transaction and cannot exceed two active occurrences', async () => {
   const f = await fixture(), waiting = await f.admit('waiting')
@@ -193,7 +198,7 @@ function renewalRecords(entry: Awaited<ReturnType<Awaited<ReturnType<typeof fixt
 async function exhaustedFixture() {
   const f = await fixture(), entry = await f.admit()
   await f.works.reserveAutomationCall(entry.run, 'old-unknown', 'decision')
-  const budget = { ...await f.budget(entry.occurrence.budgetId!), deadlineAt: new Date(0).toISOString() }
+  const budget = { ...await f.budget(entry.occurrence.budgetId!), deadlineAt: new Date(0).toISOString(), maxOutputTokens: 0, maxModelCalls: 24, maxRuns: 8 }
   await f.store.write([row('workBudgets', budget)])
   const o = (await f.repository.updateOccurrence(entry.occurrence.id, entry.occurrence.stateVersion, { status: 'waiting_user', startedAt: new Date(0).toISOString() }))!
   return { ...f, entry, before: budget, o }
@@ -205,20 +210,20 @@ it('grants an allowance once across independent writers, keeps unknown usage and
   expect(results.filter(r => r.status === 'fulfilled')).toHaveLength(1)
   expect(results.filter(r => r.status === 'rejected')).toHaveLength(1)
   const budget = await f.budget(f.before.id)
-  expect(budget).toMatchObject({ modelCalls: 1, unknownCalls: 1, usageIncomplete: true, runs: 0, maxModelCalls: 48, maxRuns: 16 })
+  expect(budget).toMatchObject({ modelCalls: 1, unknownCalls: 1, usageIncomplete: true, runs: 0, maxModelCalls: f.before.maxModelCalls + 24, maxRuns: 16 })
   expect(budget.renewals).toHaveLength(1)
-  expect(budget.renewals![0]).toMatchObject({ before: { deadlineAt: f.before.deadlineAt, maxModelCalls: 24 }, after: { maxModelCalls: 48 }, used: { modelCalls: 1, unknownCalls: 1 } })
+  expect(budget.renewals![0]).toMatchObject({ before: { deadlineAt: f.before.deadlineAt, maxModelCalls: f.before.maxModelCalls }, after: { maxModelCalls: f.before.maxModelCalls + 24 }, used: { modelCalls: 1, unknownCalls: 1 } })
   expect((await f.store.load<Message>('messages')).filter(m => m.senderId === 'user')).toHaveLength(1)
   // A late original request receipt still charges the same cumulative ledger, never the frozen grant snapshot.
   await f.works.settleAutomationCall(f.entry.run.id, 'old-unknown', { inputTokens: 2, outputTokens: 3, totalTokens: 5 })
   expect(await f.budget(budget.id)).toMatchObject({ usage: { totalTokens: 5 }, unknownCalls: 0, usageIncomplete: false })
   const current = (await f.repository.view()).occurrences[0]
-  await f.store.write([row('workBudgets', { ...await f.budget(budget.id), deadlineAt: new Date(0).toISOString() }), ...(await f.store.load<import('../src/shared/domain').DiscussionTurn>('turns')).map(t => row('turns', { ...t, status: 'waiting_user' }))])
+  await f.store.write([row('workBudgets', { ...await f.budget(budget.id), deadlineAt: new Date(0).toISOString(), maxOutputTokens: 0 }), ...(await f.store.load<import('../src/shared/domain').DiscussionTurn>('turns')).map(t => row('turns', { ...t, status: 'waiting_user' }))])
   const waiting = (await f.repository.updateOccurrence(current.id, current.stateVersion, { status: 'waiting_user' }))!
   await f.works.renewAutomation(f.entry.origin, 'chat', { ...input, expectedVersion: waiting.stateVersion }, renewalRecords(f.entry, 'second-grant'))
   const renewed = await f.budget(budget.id)
   expect(renewed.renewals).toHaveLength(2)
-  expect(renewed.renewals![1]).toMatchObject({ previousId: budget.renewals![0].id, used: { modelCalls: 1, usage: { totalTokens: 5 } }, before: { maxModelCalls: 48 }, after: { maxModelCalls: 72 } })
+  expect(renewed.renewals![1]).toMatchObject({ previousId: budget.renewals![0].id, used: { modelCalls: 1, usage: { totalTokens: 5 } }, before: { maxModelCalls: f.before.maxModelCalls + 24 }, after: { maxModelCalls: f.before.maxModelCalls + 48 } })
 })
 it.each(['capacity', 'commit', 'user-stop', 'restart', 'legacy', 'not-exhausted'] as const)('does not commit an allowance or message when %s rejects renewal', async blocker => {
   const f = await exhaustedFixture()
@@ -226,7 +231,7 @@ it.each(['capacity', 'commit', 'user-stop', 'restart', 'legacy', 'not-exhausted'
   if (blocker === 'user-stop') await f.store.write([row('automationOccurrences', { ...f.o, status: 'cancelled', cancellationCause: 'user', cancellationRequestedAt: new Date().toISOString() })])
   if (blocker === 'restart') await f.repository.recover()
   if (blocker === 'legacy') await f.store.write([row('workBudgets', { ...f.before, accounting: undefined })])
-  if (blocker === 'not-exhausted') await f.store.write([row('workBudgets', { ...f.before, deadlineAt: new Date(Date.now() + 60000).toISOString() })])
+  if (blocker === 'not-exhausted') await f.store.write([row('workBudgets', { ...f.before, deadlineAt: new Date(Date.now() + 60000).toISOString(), maxOutputTokens: 16000 })])
   const before = await f.budget(f.before.id), transaction = f.store.transaction.bind(f.store)
   if (blocker === 'commit') f.store.transaction = operation => transaction(tx => operation({ ...tx, put: async r => { if (r.collection === 'messages') throw new Error('renewal commit fault'); await tx.put(r) } }))
   await expect(f.works.renewAutomation(f.entry.origin, 'chat', { expectedVersion: f.o.stateVersion, allowance: 'standard-v1' }, renewalRecords(f.entry, 'blocked'))).rejects.toThrow()
@@ -246,7 +251,7 @@ it('continues the same parent and child after budget stop while preserving deliv
   await f.works.settle('parent', { disposition: 'waiting', summary: '等待核查' }, { messageId: 'waiting', content: '等待核查', artifactIds: [] })
   const before = await f.budget(entry.occurrence.budgetId!)
   await f.works.cancelTree(parent.id, '预算到期', 'budget')
-  await f.store.write([row('workBudgets', { ...before, deadlineAt: new Date(0).toISOString() })])
+  await f.store.write([row('workBudgets', { ...before, deadlineAt: new Date(0).toISOString(), maxOutputTokens: 0 })])
   const o = (await f.repository.updateOccurrence(entry.occurrence.id, entry.occurrence.stateVersion, { status: 'cancelled', cancellationCause: 'budget', cancellationRequestedAt: new Date().toISOString() }))!
   await f.works.renewAutomation(entry.origin, 'chat', { expectedVersion: o.stateVersion, allowance: 'standard-v1' }, renewalRecords(entry, 'continue-tree'))
   const view = await f.works.view('chat'), childNow = view.workItems.find(w => w.id === child.id)!
@@ -268,7 +273,7 @@ it.each(['unconfirmed-effect', 'manually-stopped-work'] as const)('does not use 
   const work = await f.works.claim({ conversationId: 'chat', sourceMessageId: entry.message.id, agentId: 'lead', runId: 'task', intent, origin: entry.origin })
   if (blocker === 'unconfirmed-effect') { await f.works.markEffect('task'); await f.works.release('task', 'failed') }
   else await f.works.cancelTree(work.id, '用户停止')
-  const before = { ...await f.budget(work.budgetId), deadlineAt: new Date(0).toISOString() }
+  const before = { ...await f.budget(work.budgetId), deadlineAt: new Date(0).toISOString(), maxOutputTokens: 0 }
   await f.store.write([row('workBudgets', before)])
   const o = (await f.repository.updateOccurrence(entry.occurrence.id, entry.occurrence.stateVersion, { status: 'failed' }))!
   await expect(f.works.renewAutomation(entry.origin, 'chat', { expectedVersion: o.stateVersion, allowance: 'standard-v1' }, renewalRecords(entry, 'unsafe'))).rejects.toThrow('核对')

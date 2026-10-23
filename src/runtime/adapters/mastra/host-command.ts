@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 宿主命令仅在批准后到实际进程组退出期间互斥；排队支持取消，启动前重核副作用授权。
  * [OUTPUT]: 员工进程使用原run短期环境租约，剥离owner/服务密钥变量，实际退出后撤回；不可用时禁止CLI用户配置回退。
  * [OUTPUT]: 员工目录策略启用时通过macOS Seatbelt限制命令及继承后代的实际读写；原取消/进程组退出保持，旧配置和完全访问沿原宿主执行。
  * [OUTPUT]: stdout/stderr 分别增量解码 UTF-8，管道拆包不会损坏中文/emoji；原字节上限和实际退出保持。
@@ -12,6 +13,12 @@ import { StringDecoder } from 'node:string_decoder'
 import { directoryCommandBoundary, type CommandDirectoryScope } from '../../modules/workspaces/directory-command'
 import { employeeEnvironment } from '../../../shared/cli/employee-environment'
 import type { RunCliEnvironment } from '../../../shared/cli/run-access'
+import { TaskAdmission } from '../../modules/collaboration/task-admission'
+const hostCommands = new TaskAdmission()
+export async function withHostCommandAdmission<T>(signal: AbortSignal, operation: () => Promise<T>): Promise<T> {
+  const release = await hostCommands.acquire(true, signal)
+  try { signal.throwIfAborted(); return await operation() } finally { release() }
+}
 const MAX_TOOL_OUTPUT = 48_000
 const EXIT_CHECK_INTERVAL_MS = 10
 const check = (signal: AbortSignal) => signal.throwIfAborted()
@@ -40,7 +47,13 @@ export function abortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<
 }
 
 /** Optional employee filesystem policy; lifetime, output and process-group ownership stay shared. */
-export async function executeCommand(command: string, cwd: string, signal: AbortSignal, timeoutMs: number, directories?: CommandDirectoryScope, cli?: RunCliEnvironment) {
+export async function executeCommand(command: string, cwd: string, signal: AbortSignal, timeoutMs: number, directories?: CommandDirectoryScope, cli?: RunCliEnvironment, beforeStart?: () => Promise<void>) {
+  return withHostCommandAdmission(signal, async () => {
+    await beforeStart?.(); check(signal)
+    return executeAdmittedCommand(command, cwd, signal, timeoutMs, directories, cli)
+  })
+}
+async function executeAdmittedCommand(command: string, cwd: string, signal: AbortSignal, timeoutMs: number, directories?: CommandDirectoryScope, cli?: RunCliEnvironment) {
   check(signal)
   const boundary = directories ? await directoryCommandBoundary(command, directories) : undefined
   check(signal)

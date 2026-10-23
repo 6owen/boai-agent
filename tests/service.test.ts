@@ -1,4 +1,10 @@
 /*
+ * [OUTPUT]: 待批准任务不堵无关员工；命令互斥在实际执行阶段，六席资源排队取消合同保持。
+ * [OUTPUT]: 完整备份恢复默认关闭桌面截图保存，并保留受管截图目录。
+ * [OUTPUT]: 真实服务链路超过300次模型预留和旧累计token边界仍完成，停止与明确预算另行覆盖。
+ * [OUTPUT]: 五项反馈的调度额度/取消接续或历史展示回归；具体验证边界以本文件用例为准。
+ * [OUTPUT]: 覆盖增大任务额度、真实继续消息或本次运行同类批准；各文件以具体用例限定验证范围。
+ * [OUTPUT]: 本轮覆盖复制/员工入口、定时运行防连点、失败过程、严格私有判断及保留原预算的显式继续；实际范围以各用例为准。
  * [OUTPUT]: 整体权限经真实AppService/SQLite保存、审批/拒绝/直接执行及重启持久化，命令与文件使用真实任务工具。
  * [OUTPUT]: 步骤上限后新消息接续覆盖同进程/重启、发送去重、原Work/调用数/绝对期限及历史工具保留。
  * [OUTPUT]: 已忘记历史不重入汇报修复；员工命令永久授权保持配置版本，隔离其他员工并支持重启、撤销与关闭清理。
@@ -16,6 +22,8 @@
  * [POS]: tests/service.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { withHostCommandAdmission } from '../src/runtime/adapters/mastra/host-command'
+import { TaskAdmission } from '../src/runtime/modules/collaboration/task-admission'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cp, mkdtemp, mkdir, readFile, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -97,7 +105,7 @@ afterEach(async () => {
 })
 
 describe('local product service', () => {
-  it.each([[false, 'write_file'], [true, 'write_file'], [false, 'call_data_source'], [false, 'browser_tool']] as const)('continues a step-limited work from a new user message with its original identity (restart=%s, effect=%s)', async (restart, effectTool) => {
+  it.each([[false, 'write_file', 'failed'], [true, 'write_file', 'failed'], [false, 'call_data_source', 'failed'], [false, 'browser_tool', 'failed'], [false, 'write_file', 'cancelled'], [true, 'write_file', 'interrupted']] as const)('continues unfinished work from a new user message with its original identity (restart=%s, effect=%s, status=%s)', async (restart, effectTool, status) => {
     const { service: initialService, engine, root, secrets } = await fixture(); await configure(initialService)
     let service = initialService
     const direct = await conversation(service)
@@ -105,14 +113,24 @@ describe('local product service', () => {
       for (let step = 1; step < 12; step++) await context.onAdditionalModelCall!()
       await context.beforeEffect!(); await context.afterEffect!()
       await context.onTool({ id: 'confirmed-effect', name: effectTool, status: 'completed', detail: '已完成本次操作', createdAt: new Date().toISOString() })
-      throw new Error('已达到单次任务的工具步骤上限，请继续发送消息')
+      if (status === 'failed') throw new Error('已达到单次任务的工具步骤上限，请继续发送消息')
+      await waitForAbort(context)
     }
-    await send(service, direct, '查看目录并汇总内容', 'step-limit-initial'); await idle(service, direct, 1)
+    await send(service, direct, '查看目录并汇总内容', 'step-limit-initial')
+    if (status !== 'failed') {
+      await until(async () => (await detail(service, direct)).runs.some(run => run.toolEvents.some(tool => tool.id === 'confirmed-effect')))
+      if (status === 'cancelled') await service.handle('cancelRun', { conversationId: direct.id })
+      else {
+        await service.close()
+        service = new AppService({ dataPath: join(root, 'data'), engine, secrets, emit: () => {} }); services.push(service); await service.init()
+      }
+    }
+    await idle(service, direct, 1)
     const before = await detail(service, direct)
     const original = before.runs.find(run => run.phase === 'execution')!
     expect(before.workBudgets![0].modelCalls).toBe(12)
     expect(before.workItems![0].requiresReview).toBe(true)
-    if (restart) {
+    if (restart && status !== 'interrupted') {
       await service.close()
       service = new AppService({ dataPath: join(root, 'data'), engine, secrets, emit: () => {} }); services.push(service); await service.init()
       expect(engine.contexts).toHaveLength(1)
@@ -130,7 +148,7 @@ describe('local product service', () => {
     const after = await detail(service, direct)
     const runs = after.runs.filter(run => run.phase === 'execution')
     expect(runs.map(run => ({ status: run.status, error: run.error }))).toEqual([
-      { status: 'failed', error: original.error }, { status: 'completed', error: undefined },
+      { status, error: original.error }, { status: 'completed', error: undefined },
     ])
     expect(engine.contexts).toHaveLength(2)
     expect(runs[1].workId).toBe(original.workId)
@@ -139,6 +157,54 @@ describe('local product service', () => {
     expect(after.workItems).toHaveLength(1)
     expect(after.workItems![0].sourceMessageId).toBe(before.workItems![0].sourceMessageId)
     expect(after.workBudgets![0]).toMatchObject({ id: before.workBudgets![0].id, deadlineAt: before.workBudgets![0].deadlineAt, modelCalls: 13, retries: 1, runs: 2 })
+  })
+
+  it('runs past the former 24/256-call turn ceilings with its original ledger', async () => {
+    const { service, engine } = await fixture(); await configure(service)
+    const direct = await conversation(service)
+    engine.handler = async context => {
+      for (let step = 0; step < 300; step++) await context.onAdditionalModelCall!()
+      await context.onDelta('检查完成')
+    }
+    await send(service, direct, '执行多步检查', 'expanded-turn-limit'); await idle(service, direct, 1)
+    const result = await detail(service, direct)
+    expect(result.runs.find(run => run.phase === 'execution')).toMatchObject({ status: 'completed' })
+    expect(result.turns![0].modelCalls).toBeGreaterThan(300)
+    expect(result.workBudgets![0]).toMatchObject({ modelCalls: 301, maxModelCalls: null })
+  })
+
+  it('lets another employee finish while a command-capable task waits for approval', async () => {
+    const { service, engine } = await fixture(); await configure(service)
+    for (const agent of (await snapshot(service)).agents.filter(a => ['researcher', 'writer'].includes(a.id))) await updateAgent(service, agent, { allowCommands: true, executionPermission: 'ask' })
+    const first = await conversation(service)
+    const second = await service.handle('createConversation', { kind: 'direct', title: '后续任务', agentIds: ['writer'] }) as Conversation
+    engine.handler = async context => { if (context.conversation.id === first.id) await context.approveCommand('printf approved', context.workspace!.runPath); await context.onDelta('检查完成') }
+    await send(service, first, '等待本人批准', 'approval-first')
+    await until(async () => (await snapshot(service)).approvals.length === 1)
+    const approval = (await snapshot(service)).approvals[0]
+    try {
+      await send(service, second, '查询天气', 'independent-second'); await idle(service, second, 1)
+      expect(engine.contexts).toHaveLength(2)
+      expect((await detail(service, first)).runs.find(run => run.phase === 'execution')?.status).toBe('waiting_approval')
+      expect((await detail(service, second)).runs.find(run => run.phase === 'execution')?.status).toBe('completed')
+    } finally { await service.handle('approve', { id: approval.id, approved: false }) }
+    await idle(service, first, 1)
+  })
+  it('shows resource admission as queued and starts automatically after actual capacity releases', async () => {
+    const { service, engine } = await fixture(); await configure(service)
+    const admission = (service as unknown as { taskAdmission: TaskAdmission }).taskAdmission
+    const releases = await Promise.all(Array.from({ length: 6 }, (_, i) => admission.acquire(false, new AbortController().signal, `occupied-${i}`)))
+    const direct = await conversation(service)
+    engine.handler = async context => { await context.onDelta('检查完成') }
+    try {
+      await send(service, direct, '等待资源', 'admission-wait')
+      await until(async () => (await detail(service, direct)).runs.some(run => run.phase === 'execution' && run.status === 'queued'))
+      expect(engine.contexts).toHaveLength(0)
+      expect((await snapshot(service)).conversations.find(room => room.id === direct.id)?.activity).toBe('queued')
+    } finally { releases.forEach(release => release()) }
+    await idle(service, direct, 1)
+    expect(engine.contexts).toHaveLength(1)
+    expect((await detail(service, direct)).runs.find(run => run.phase === 'execution')).toMatchObject({ status: 'completed', taskQueueMs: expect.any(Number) })
   })
 
   it('rejects a failed-work continuation when its confirmed operation context was invalidated', async () => {
@@ -190,6 +256,41 @@ describe('local product service', () => {
     expect(effects).toBe(1); expect(reports).toBe(1)
     expect(result.runs.find(run => run.phase === 'execution')?.status).toBe('completed')
     expect(result.messages.filter(message => message.senderType === 'agent').at(-1)?.content).toBe('天气查询完成')
+  })
+
+  it('allows the same operation kind for the current run only, preserving other approvals and employee policy', async () => {
+    const { service, engine } = await fixture(); await configure(service)
+    const agent = await updateAgent(service, (await snapshot(service)).agents.find(item => item.id === 'researcher')!, { allowCommands: true, executionPermission: 'ask' })
+    const direct = await conversation(service), decisions: boolean[] = []
+    engine.handler = async context => {
+      decisions.push(await context.approveCommand('printf first', context.workspace!.runPath))
+      decisions.push(await context.approveCommand('printf second', context.workspace!.runPath))
+      decisions.push(await context.approveOperation!({ kind: 'file', description: '写入报告' }))
+      await context.onDelta('检查结束')
+      await context.onWorkOutcome!({ disposition: 'delivered', summary: '检查结束', evidence: [{ kind: 'answer', reference: '检查结束' }] })
+    }
+    await send(service, direct, '执行检查', 'same-kind-first')
+    await until(async () => (await snapshot(service)).approvals.length === 1)
+    const command = (await snapshot(service)).approvals[0]
+    expect(command).toMatchObject({ kind: 'command', sameKindAllowed: true, rememberAllowed: false })
+    await expect(service.handle('approve', { id: command.id, approved: false, allowSameKind: true })).rejects.toThrow('不能允许所有同类')
+    expect(decisions).toEqual([])
+    await service.handle('approve', { id: command.id, approved: true, allowSameKind: true })
+    await until(async () => (await snapshot(service)).approvals.some(item => item.kind === 'file'))
+    expect(decisions).toEqual([true, true])
+    await service.handle('approve', { id: (await snapshot(service)).approvals[0].id, approved: false })
+    await idle(service, direct, 1)
+    expect(decisions).toEqual([true, true, false])
+    expect((await snapshot(service)).commandPermissions).toEqual([])
+    expect((await snapshot(service)).agents.find(item => item.id === agent.id)).toEqual(agent)
+    engine.handler = async context => { decisions.push(await context.approveCommand('printf third', context.workspace!.runPath)); await context.onDelta('已处理') }
+    await send(service, direct, '再执行一次', 'same-kind-next')
+    await until(async () => (await snapshot(service)).approvals.length === 1)
+    expect((await snapshot(service)).approvals[0].runId).not.toBe(command.runId)
+    expect(decisions).toHaveLength(3)
+    await service.handle('approve', { id: (await snapshot(service)).approvals[0].id, approved: false })
+    await idle(service, direct, 2)
+    expect(decisions.at(-1)).toBe(false)
   })
 
   it('remembers command approval per employee across runs and restart, with explicit revocation', async () => {
@@ -906,20 +1007,20 @@ describe('local product service', () => {
     expect(reports).toBe(0); expect(engine.contexts).toHaveLength(2)
   })
 
-  it('keeps potentially conflicting host-command tasks serial even with different work IDs', async () => {
+  it('runs independent task reasoning concurrently while serializing actual host commands', async () => {
     const { service, engine } = await fixture(); await configure(service)
     for (const agent of (await snapshot(service)).agents.filter(agent => ['researcher', 'writer'].includes(agent.id))) await updateAgent(service, agent, { allowCommands: true })
     const group = await conversation(service, true)
-    let release!: () => void, active = 0, highest = 0
+    let release!: () => void, active = 0, highest = 0, commands = 0
     const held = new Promise<void>(resolve => { release = resolve })
     engine.handler = async context => {
-      active++; highest = Math.max(highest, active)
-      if (engine.contexts.length === 1) await held
-      await context.onDelta('该独立工作的结果'); active--
+      await withHostCommandAdmission(context.signal, async () => { active++; highest = Math.max(highest, active); if (++commands === 1) await held; active-- })
+      await context.onDelta('该独立工作的结果')
     }
     await send(service, group, '处理两个可能访问同一宿主文件的任务', 'shared-resource', [])
-    await until(async () => engine.contexts.length === 1 && (await detail(service, group)).runs.filter(run => run.phase === 'execution').length === 2)
-    expect(engine.contexts).toHaveLength(1)
+    await until(async () => engine.contexts.length === 2 && (await detail(service, group)).runs.filter(run => run.phase === 'execution').length === 2)
+    expect(engine.contexts).toHaveLength(2)
+    expect(commands).toBe(1)
     release(); await idle(service, group, 2)
     expect(highest).toBe(1); expect(engine.contexts).toHaveLength(2)
     expect(new Set((await detail(service, group)).workItems!.map(work => work.id)).size).toBe(2)
@@ -927,6 +1028,8 @@ describe('local product service', () => {
   it('does not start old-turn work still waiting for resources after a new user request', async () => {
     const { service, engine } = await fixture(); await configure(service)
     for (const agent of (await snapshot(service)).agents.filter(agent => ['researcher', 'writer'].includes(agent.id))) await updateAgent(service, agent, { allowCommands: true })
+    const admission = (service as unknown as { taskAdmission: TaskAdmission }).taskAdmission
+    const occupied = await Promise.all(Array.from({ length: 5 }, (_, i) => admission.acquire(false, new AbortController().signal, `occupied-${i}`)))
     const group = await conversation(service, true)
     let release!: () => void; const held = new Promise<void>(resolve => { release = resolve })
     const decide = engine.decisionHandler
@@ -939,6 +1042,7 @@ describe('local product service', () => {
     expect(engine.contexts).toHaveLength(1)
     expect(result.runs.filter(run => run.phase === 'execution').some(run => run.status === 'cancelled' && run.error?.includes('新消息'))).toBe(true)
     expect(result.workItems).toHaveLength(1)
+    occupied.forEach(release => release())
   })
 
   it('keeps task text private and revises only the report after new user input, without replaying effects', async () => {
@@ -1086,14 +1190,14 @@ describe('local product service', () => {
     expect(result.messages.find(message => message.id === work.resultMessageIds[0])?.status).toBe('completed')
   })
 
-  it('keeps the original work and budget when the user retries a run without side effects', async () => {
+  it.each([false, true])('keeps the original work and budget when the user retries a run without side effects (continuation=%s)', async continuation => {
     const { service, engine } = await fixture(); await configure(service)
     const direct = await conversation(service)
     engine.handler = async context => { await context.onUsage!({ outputTokens: 9 }); throw new Error('任务网络失败') }
     await send(service, direct, '计算', 'retry-work'); await idle(service, direct, 1)
     const before = await detail(service, direct), failed = before.runs.find(run => run.phase === 'execution')!
     engine.handler = async context => { await context.onDelta('计算结果'); await context.onUsage!({ outputTokens: 7 }) }
-    await service.handle('retryRun', { id: failed.id, requestId: 'explicit-retry' }); await idle(service, direct, 2)
+    await service.handle('retryRun', { id: failed.id, requestId: 'explicit-retry', continuation }); await idle(service, direct, 2)
     const result = await detail(service, direct)
     expect(result.workItems).toHaveLength(1)
     expect(result.workItems![0].id).toBe(before.workItems![0].id)
@@ -1719,17 +1823,17 @@ describe('local product service', () => {
     expect((await detail(service, group)).events?.filter(event => event.type === 'handoff')).toHaveLength(1)
   })
 
-  it('accounts cumulative model usage without double counting and stops a runaway tool response', async () => {
+  it('accounts cumulative usage without double counting or aborting a default task', async () => {
     const { service, engine } = await fixture(); await configure(service)
     const direct = await conversation(service)
     engine.decisionHandler = async context => { await context.onUsage?.({ inputTokens: 10, outputTokens: 3 }); return { action: 'reply', responseKind: 'task', observedThroughSequence: context.messages.at(-1)!.sequence } }
-    engine.handler = async context => { await context.onDelta('partial'); await context.onUsage?.({ outputTokens: 100 }); await context.onUsage?.({ outputTokens: 16100 }); await context.onDelta('LATE') }
+    engine.handler = async context => { await context.onDelta('partial'); await context.onUsage?.({ outputTokens: 100 }); await context.onUsage?.({ outputTokens: 128100 }); await context.onDelta('LATE') }
     await send(service, direct, 'large operation', 'usage'); await idle(service, direct, 1)
     const result = await detail(service, direct)
-    expect(result.turns?.[0]).toMatchObject({ status: 'budget_exhausted', modelCalls: 2, tokenEstimate: 16103 })
-    expect(result.runs.find(run => run.phase === 'execution')?.usage?.outputTokens).toBe(16100)
-    expect(result.messages.filter(message => message.senderType === 'agent')).toHaveLength(0)
-    expect(result.runs.find(run => run.phase === 'execution')?.draft).toMatchObject({ text: 'partial', status: 'withheld' })
+    expect(result.turns?.[0]).toMatchObject({ status: 'completed', modelCalls: 2, tokenEstimate: 128103 })
+    expect(result.runs.find(run => run.phase === 'execution')?.usage?.outputTokens).toBe(128100)
+    expect(result.messages.filter(message => message.senderType === 'agent').map(message => message.content)).toEqual(['partialLATE'])
+    expect(result.runs.find(run => run.phase === 'execution')).toMatchObject({ status: 'completed' })
   })
 
   it('cancels ignored-signal decisions and prevents a late decision from reviving a stopped turn', async () => {
@@ -2082,14 +2186,16 @@ describe('local product service', () => {
     expect(originalProfile.features.emotions).toBe(true)
     const calls = { decisions: engine.decisions.length, executions: engine.contexts.length }
     await writeFile(join(direct.workspacePath, 'output.md'), 'saved output')
+    expect(await service.handle('executeApplicationOperation', { operation: 'activity.configure', input: { expectedRevision: 0, saveScreenshots: true }, requestId: 'backup-activity-settings' })).toMatchObject({ status: 'succeeded' })
     const destination = join(root, 'backup'); await service.backup(destination)
-    expect(await readdir(destination)).toEqual(expect.arrayContaining(['boai.sqlite', 'skills', 'knowledge', 'workspaces', 'agents', 'data-version.json', 'backup.json']))
+    expect(await readdir(destination)).toEqual(expect.arrayContaining(['boai.sqlite', 'skills', 'knowledge', 'workspaces', 'agents', 'data-version.json', 'backup.json', 'activity-records']))
     expect(await readdir(destination)).not.toContain('credentials.json')
     expect(JSON.parse(await readFile(join(destination, 'backup.json'), 'utf8'))).toMatchObject({ credentialsIncluded: false, automationRestorePolicy: 'paused', agentBehaviorRestorePolicy: 'paused' })
     expect(await readFile(join(destination, 'RESTORE.txt'), 'utf8')).toContain('情绪/成长/旅行自动行为默认暂停')
     expect(JSON.parse(await readFile(join(destination, 'data-version.json'), 'utf8')).schemaVersion).toBe(2)
     const restorePath = join(root, 'restored'); await cp(destination, restorePath, { recursive: true })
     const restored = new AppService({ dataPath: restorePath, engine, secrets: new MemorySecrets(), emit: () => {} }); services.push(restored); await restored.init()
+    expect(await restored.handle('executeApplicationOperation', { operation: 'activity.status', input: {} })).toMatchObject({ status: 'succeeded', data: { settings: { enabled: false, saveScreenshots: false, enableInputMonitor: false } } })
     const state = await snapshot(restored)
     expect(state.resources[0].id).toBe(resource.id); expect(state.resources[0].path.startsWith(restorePath)).toBe(true)
     expect(await readFile(state.resources[0].path, 'utf8')).toBe('durable source')

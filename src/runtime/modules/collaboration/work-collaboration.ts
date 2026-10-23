@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 默认执行不按累计调用、工具步骤、用量或墙钟截断；保留真实用量、取消/权限和明确指定的预算。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: Codex/Claude共用外部阶段计量，回执同时比较具体kind与profile，禁止跨运行时借用预算身份。
  * [OUTPUT]: bobo可选择API或本机Codex；组织/具名团队按原运行配置创建独立员工，混合成员共原预算；本机自动化沿原时钟/预算接入，实际验证归第13组06。
@@ -14,7 +15,7 @@ import type { BoboCollaborationOperation, BoboOrganizationAuthority } from '../.
 import { isCoreAgent, isCoreConversation } from '../../../shared/domain/core-agent'
 import { isNativeBackend, sameBackendBinding } from '../../../shared/domain/backends'
 import type { RecordTransaction } from '../../adapters/storage/product-store'
-import { checkWorkBudget, WorkUnavailableError } from './work-budget'
+import { workLimitReached, checkWorkBudget, WorkUnavailableError } from './work-budget'
 
 const put = <T extends { id: string }>(collection: string, value: T) => ({ collection, id: value.id, value })
 const identity = (...parts: string[]) => createHash('sha256').update(JSON.stringify(parts)).digest('hex')
@@ -72,7 +73,7 @@ export async function bindGroupStart(tx: RecordTransaction, operation: BoboColla
     return { groupRootWorkId: id, startIntentId: intentId, budgetId: owner.budget.id }
   }
   if (await tx.get('workItems', id)) throw new WorkUnavailableError('协作群根身份已被使用，不能另起预算')
-  if (owner.work.budgetPolicy !== 'native' && owner.budget.workItems >= owner.budget.maxWorkItems) throw new WorkUnavailableError('达到原始工作的拆分上限')
+  if (owner.work.budgetPolicy !== 'native' && workLimitReached(owner.budget.workItems, owner.budget.maxWorkItems)) throw new WorkUnavailableError('达到原始工作的拆分上限')
   const createdAt = new Date().toISOString()
   const root: WorkItem = { budgetPolicy: owner.work.budgetPolicy, schemaVersion: 2, id, collaborationRequestId: operation.requestId, conversationId: group.id, sourceMessageId: actual.id, key: 'collaboration-root', scope: owner.work.organization!.goal, deliverable: '在本群按已授权目标安排分工并交付可检查结果', ownerAgentId: 'bobo', version: 1, status: 'ready', budgetId: owner.budget.id, rootWorkId: id, dependsOnWorkIds: [], requiredResults: [], observedResults: [], waitRevision: 0, resultMessageIds: [], artifactIds: [], resultVersion: 0, requiresReview: false, createdAt, updatedAt: createdAt }
   const intent: CollaborationStartIntent = { id: intentId, schemaVersion: 1, requestId: operation.requestId, operationId: operation.id, groupConversationId: group.id, announcementMessageId: actual.id, announcementHash: collaborationMessageHash(actual), groupRootWorkId: root.id, rootWorkVersion: root.version, budgetId: root.budgetId, status: 'pending', createdAt }
@@ -100,7 +101,7 @@ export async function resumeCollaborationStart(tx: RecordTransaction, intentId: 
   // old tool cannot become a reason to repeat an initial business run.
   if (root.activeRunId || root.cancellationCause || root.resultVersion || root.resultMessageIds.length || root.artifactIds.length || (await tx.list<WorkExecution>('workExecutions')).some(execution => execution.workId === root.id) || (await tx.list<DiscussionTurn>('turns')).some(turn => turn.startIntentId === intent.id)) throw new WorkUnavailableError('原群任务已执行或有待核对事实，不能重放首次开工')
   checkWorkBudget(budget, root.budgetPolicy)
-  if (root.budgetPolicy !== 'native' && budget.runs >= budget.maxRuns) throw new WorkUnavailableError('达到原始工作的运行次数上限')
+  if (root.budgetPolicy !== 'native' && workLimitReached(budget.runs, budget.maxRuns)) throw new WorkUnavailableError('达到原始工作的运行次数上限')
   if (intent.status === 'pending') {
     if (root.status !== 'ready' || root.requiresReview || root.version !== intent.rootWorkVersion) throw new WorkUnavailableError('群协作根工作已变化，不能开工')
     return intent
@@ -127,7 +128,7 @@ export async function claimOrganizationRecovery(tx: RecordTransaction, operation
   const [run, turn] = await Promise.all([tx.get<AgentRun>('runs', runId), tx.get<DiscussionTurn>('turns', turnId)])
   if (!run || run.status !== 'running' || run.agentId !== 'bobo' || run.conversationId !== work.conversationId || run.triggerMessageId !== source.id || run.turnId !== turnId || run.origin || run.collaborationRequestId !== current.requestId || (run.workId && run.workId !== work.id) || !turn || turn.conversationId !== work.conversationId || turn.triggerMessageId !== source.id || turn.collaborationRequestId !== current.requestId || ['cancelled', 'interrupted', 'budget_exhausted'].includes(turn.status) || await tx.get('workExecutions', runId)) throw new WorkUnavailableError('组织文件恢复缺少本次明确的真实运行身份')
   checkWorkBudget(budget, work.budgetPolicy)
-  if (work.budgetPolicy !== 'native' && budget.runs >= budget.maxRuns) throw new WorkUnavailableError('达到原始工作的运行次数上限')
+  if (work.budgetPolicy !== 'native' && workLimitReached(budget.runs, budget.maxRuns)) throw new WorkUnavailableError('达到原始工作的运行次数上限')
   const pendingEffects = executions.some(execution => (execution.pendingEffects ?? 0) > 0) ? 1 : 0
   work.status = 'running'; work.activeRunId = runId; work.version++; work.requiresReview = !!pendingEffects; work.updatedAt = new Date().toISOString()
   if (work.budgetPolicy !== 'native') budget.runs++

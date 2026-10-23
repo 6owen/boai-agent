@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 消息复制经主窗口系统剪贴板桥完成，复制回执沿preload类型合同返回。
+ * [OUTPUT]: 消息复制使用仅主窗口可调用的系统剪贴板写入桥，浏览器预览保留Web回退；成功后才显示已复制。
  * [OUTPUT]: 首帧带已核验插件启停快照，避免停用项在异步初始化前误激活。
  * [OUTPUT]: 工作视图的有界查询/原目标解析复用通用类型化请求桥，无额外窗口或路径接口。
  * [INPUT]: Electron IPC、真实 File/有界字节与 shared/ipc 合同。
@@ -29,6 +31,7 @@ const api: DesktopApi = {
     }
     return ipcRenderer.invoke('boai:material-file', input)
   },
+  writeClipboardText: text => ipcRenderer.invoke('boai:clipboard-write-text', text),
   selectClipboardMaterialFiles: () => ipcRenderer.invoke('boai:clipboard-material-files'),
   request: (method, input) => ipcRenderer.invoke('boai:request', { method, input }),
   subscribe(listener) {

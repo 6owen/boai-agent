@@ -1,9 +1,10 @@
 /*
+ * [OUTPUT]: 默认执行不按累计调用、工具步骤、用量或墙钟截断；保留真实用量、取消/权限和明确指定的预算。
+ * [OUTPUT]: 自动化预算没有执行截止时间，旧持久账本保留兼容；普通工作期限合同不变。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 普通群支持API/本机Codex独立工作与分工等待；原消息共享预算逐请求保留计量，bobo组织群及本机自动化沿原授权与预算接入。
  * [OUTPUT]: 本机交互预算/请求固定原消息来源及external-turn计量，判断/执行/记忆共账本；保留旧字段兼容，不冒充内部逐模型限额。
  * [INPUT]: 用户请求、员工工作意图、执行权与可检查结果。
- * [OUTPUT]: 新宿主授权完整群协作首次固定48次共用调用，其他及追加方案保留24；原保存预算不升级，输出/运行/事项/绝对期限不变。
  * [OUTPUT]: bobo 组织合同/真实组织证据与独立群根共原预算；启动意图唯一消费；非自动化逐调用账本和清理去重；明确用户问题与公开结果绑定，依赖等待保持独立，补充沿原工作/预算；宿主修订请求绑定新根工作并由子工作继承来源身份；材料来源约束工作正文与父子继承；显式追加额度的固定方案与前后限额/累计用量回执；版本化父子工作、依赖、共享预算/调用账本及私有汇报合同。
  * [POS]: 协作工作领域；独立于历史 Contribution 和单次 AgentRun。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -131,11 +132,14 @@ export interface WorkBudget {
   unknownCalls?: number
   id: string
   schemaVersion: 1
+  /** v2 removes former implicit ceilings; null means no cap, zero remains an explicit zero budget. */
+  executionAllowanceVersion?: 1 | 2
   modelCalls: number
   runs: number
-  maxModelCalls: number
-  maxRuns: number
-  maxOutputTokens: number
+  maxModelCalls: number | null
+  maxRuns: number | null
+  maxOutputTokens: number | null
+  /** Empty means no deadline; explicit deadlines on ordinary work remain enforceable. */
   deadlineAt: string
   usage: ModelUsage
   usageIncomplete: boolean
@@ -143,14 +147,17 @@ export interface WorkBudget {
   retries: number
   reportRefreshes: number
   noProgress: number
-  maxWorkItems: number
-  maxRetries: number
-  maxReportRefreshes: number
-  maxNoProgress: number
+  maxWorkItems: number | null
+  maxRetries: number | null
+  maxReportRefreshes: number | null
+  maxNoProgress: number | null
 }
+/** SDK-only Infinity is never persisted; durable optional limits use null. */
+export const WORK_EXECUTION_LIMITS = { steps: Number.POSITIVE_INFINITY, modelCalls: null, outputTokens: null } as const
+
 /** User-confirmed addition; cumulative counters and earlier allowances are never reset. */
 export const WORK_BUDGET_ALLOWANCE = { durationMs: 5 * 60_000, modelCalls: 24, runs: 8, outputTokens: 16000, workItems: 8, retries: 3, reportRefreshes: 4, noProgress: 3 } as const
-/** Only the first host-authorized organize_and_execute budget; persisted budgets and renewals keep their original limits. */
+/** Historical organization default, used only to recognize legacy budgets during migration. */
 export const BOBO_COLLABORATION_INITIAL_MODEL_CALLS = 48
 export type WorkBudgetLimits = Pick<WorkBudget, 'maxModelCalls' | 'maxRuns' | 'maxOutputTokens' | 'maxWorkItems' | 'maxRetries' | 'maxReportRefreshes' | 'maxNoProgress' | 'deadlineAt'>
 export interface BudgetRenewal {

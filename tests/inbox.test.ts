@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 验证默认无执行配额、旧默认精确迁移、显式预算仍执行以及用户取消；不调用真实供应商。
  * [INPUT]: 真实 AppService/SQLite 与可控离线 Engine、原调度器/Work/审批/成果资格。
  * [OUTPUT]: 四来源分页前筛选/稳定游标、同 hash 材料恢复与撤权时代隔离、原成果真实文件名/作者与失效原因、零执行读取、已发布问题关系/回答事务与未知幂等、原 task 预算接续和停止/副作用/清理重启边界。
  * [POS]: D5 待处理宿主验收；不调用商业模型，不替代 Electron BDD。
@@ -148,7 +149,7 @@ describe('D5 original question ownership and safe continuation', () => {
       if (boundary === 'version') current.version++
       if (boundary === 'dependency') current.dependsOnWorkIds = ['another-work']
       if (boundary === 'pendingEffect') { const execution = (await tx.list<WorkExecution>('workExecutions'))[0]; execution.pendingEffects = 1; await tx.put({ collection: 'workExecutions', id: execution.id, value: execution }) }
-      if (boundary === 'budget') { const current = (await tx.get<WorkBudget>('workBudgets', budget.id))!; current.modelCalls = current.maxModelCalls; await tx.put({ collection: 'workBudgets', id: current.id, value: current }) }
+      if (boundary === 'budget') { const current = (await tx.get<WorkBudget>('workBudgets', budget.id))!; current.maxModelCalls = 2; current.modelCalls = 2; await tx.put({ collection: 'workBudgets', id: current.id, value: current }) }
       await tx.put({ collection: 'workItems', id: current.id, value: current })
     })
     const calls = engine.contexts.length

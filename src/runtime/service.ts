@@ -1,4 +1,10 @@
 /*
+ * [OUTPUT]: 任务按独立工作区准入；允许命令或等待批准不再占全局命令独占位，互斥归实际宿主命令生命周期。
+ * [OUTPUT]: 桌面活动截图随源记录备份；备份期间停止采集，恢复默认关闭新增采集。
+ * [OUTPUT]: 默认执行不按累计调用、工具步骤、用量或墙钟截断；保留真实用量、取消/权限和明确指定的预算。
+ * [OUTPUT]: 执行资源准入期间持久queued并广播；新本人消息允许接续failed/cancelled/interrupted普通工作，保留原用量和已确认结果核验。
+ * [OUTPUT]: 同类操作批准限定当前API运行及操作类别，完成/停止清除；新未授权目录与原员工版本核验保持。
+ * [OUTPUT]: 聊天投影保留失败过程；显式继续核对来源/原工作并防重复接续；自动化不再启动工作期限计时器。
  * [OUTPUT]: 本人普通bobo消息核验内置管理技能身份，并为本轮及原生待补充回复装配随包操作文档；不改原业务权限或旧绑定副本。
  * [OUTPUT]: 提示词集合沿原串行写入/备份门禁接入，独立版本与changed刷新。
  * [OUTPUT]: 会话清理先广播停读状态，完成携带隐藏标记；已提交后的存储整理失败单独反馈，不重报删除失败。
@@ -342,6 +348,7 @@ import type { BrowserHostBridge, BrowserLease, BrowserControlInput, BrowserManua
 import { BrowserRepository } from './modules/browser/repository'
 import { BrowserSession } from './modules/browser/session'
 import { WorkRepository, WorkUnavailableError } from './modules/collaboration/work-repository'
+import { workBudgetDeadline, workLimitReached } from './modules/collaboration/work-budget'
 import { BoboCollaborationService, type BoboCollaborationHooks } from './modules/bobo-collaboration/service'
 import type { BoboCollaborationOperation, BoboOrganizationAuthority } from '../shared/domain/bobo-collaboration'
 import { Inbox } from './modules/inbox/inbox'
@@ -466,6 +473,7 @@ export class AppService {
   private snapshots = new Map<string, RunSnapshot>()
   private activeEngineContexts = new Map<string, { context: EngineContext; definition: DigitalAgent }>()
   private approvals = new Map<string, Approval>()
+  private runOperationPermissions = new Map<string, Set<NonNullable<Approval['kind']>>>()
   private pendingApprovals = new Map<string, (approved: boolean) => void>()
   private directoryRuns = new Map<string, { access: import('./modules/workspaces/directory-run').RunDirectoryAccess; context: EngineContext }>()
   private directoryApprovalTargets = new Map<string, import('./modules/workspaces/directory-access').DirectoryTarget[]>()
@@ -523,10 +531,10 @@ export class AppService {
     this.terminals = new TerminalService(this.dataPath)
     this.previews = new PreviewService(this.terminals)
     this.desktopActivity = new DesktopActivityService(this.store, {
-      capture: async (action, excludedApps) => options.applicationHost?.available ? options.applicationHost.request('captureDesktopActivity', { action, excludedApps }) : { supported: false, permission: false },
+      capture: async (action, excludedApps, captureOptions) => options.applicationHost?.available ? options.applicationHost.request('captureDesktopActivity', { action, excludedApps, options: captureOptions }) : { supported: false, permission: false },
       available: () => !this.backingUp && !this.closing && !!options.applicationHost?.available,
       changed: () => this.changed(),
-    })
+    }, this.dataPath)
     this.userMemoryProvider = new UserMemoryProvider(this.store, options.secrets, () => this.changed())
     this.application = new ApplicationService(this.store, [...this.desktopActivity.operations(), ...this.userMemoryProvider.operations(), ...workspaceOperations(this.terminals, this.previews, async (scope, actor, write, directory) => {
       await this.applicationAuthority.getStore()?.validate()
@@ -1513,7 +1521,7 @@ export class AppService {
         case 'replyAutomation': return this.replyAutomation(z.object({ occurrenceId: id, content: text(100000), requestId: id, question: z.object({ expectedVersion: z.number().int().positive(), questionMessageId: id }).strict().optional(), renewBudget: z.object({ expectedVersion: z.number().int().positive(), allowance: z.literal('standard-v1') }).strict().optional() }).strict().parse(input))
         case 'cancelRun': { const { conversationId, workId } = z.object({ conversationId: id, workId: id.optional() }).strict().parse(input); this.getConversation(conversationId); return workId ? this.cancelWork(conversationId, workId) : this.cancelConversation(conversationId) }
         case 'getDirectoryApprovalReceipt': { const value = z.object({ id }).strict().parse(input); return await this.store.get<DirectoryApprovalReceipt>('directoryApprovalReceipts', value.id) ?? null }
-        case 'approve': { const value = z.object({ id, approved: z.boolean(), always: z.boolean().optional() }).strict().parse(input); return this.resolveApproval(value.id, value.approved, value.always) }
+        case 'approve': { const value = z.object({ id, approved: z.boolean(), always: z.boolean().optional(), allowSameKind: z.boolean().optional() }).strict().parse(input); return this.resolveApproval(value.id, value.approved, value.always, value.allowSameKind) }
         case 'revokeCommandPermission': { const value = z.object({ agentId: id, revision: id }).strict().parse(input); this.getAgent(value.agentId); await this.commandPermissions.revoke(value.agentId, value.revision); this.changed(); return }
         case 'saveEmployeeKnowledge': return this.knowledge.save(saveKnowledgeSchema.parse(input))
         case 'setEmployeeKnowledgeSharing': return this.knowledge.share(knowledgeSharingSchema.parse(input))
@@ -1547,7 +1555,7 @@ export class AppService {
           await this.store.write([record('resources', resource)]); this.resources.set(resource.id, resource); this.changed(); return clone(resource)
         }
         case 'removeResource': return this.removeResource(lookupSchema.parse(input).id)
-        case 'retryRun': { const value = z.object({ id, requestId: id }).strict().parse(input); return this.retry(value.id, value.requestId) }
+        case 'retryRun': { const value = z.object({ id, requestId: id, continuation: z.boolean().optional() }).strict().parse(input); return this.retry(value.id, value.requestId, value.continuation) }
         case 'getAgentHome': case 'readAgentFile': case 'regenerateAgentViews': case 'saveAgentFile': return this.agentFiles(method, input)
         case 'getMemory': case 'saveMemory': case 'deleteMemory': case 'clearMemory': return this.memoryOperation(method, input)
         default: fail('此操作必须由桌面主进程处理')
@@ -1561,7 +1569,7 @@ export class AppService {
     const conversations = (await Promise.all([...this.conversations.values()].map(async conversation => {
       const runs = [...this.runs.values()].filter(run => run.conversationId === conversation.id).sort((a, b) => a.createdAt.localeCompare(b.createdAt)), turns = [...this.scheduler.turns.values()].filter(turn => turn.conversationId === conversation.id).sort((a, b) => a.createdAt.localeCompare(b.createdAt))
       const messages = isChannelConversation(conversation) ? (await this.store.conversationMessageRows({ conversationId: conversation.id, limit: 2 })).map(row => JSON.parse(row.source) as Message).sort((a, b) => a.sequence - b.sequence) : this.conversationMessages(conversation.id)
-      const activity: Conversation['activity'] = runs.some(run => run.status === 'waiting_approval') ? 'waiting_approval' : runs.some(run => run.status === 'running') ? 'running' : turns.some(turn => turn.status === 'queued') ? 'queued' : turns.at(-1)?.status === 'failed' || runs.at(-1)?.status === 'failed' ? 'failed' : 'idle'
+      const activity: Conversation['activity'] = runs.some(run => run.status === 'waiting_approval') ? 'waiting_approval' : runs.some(run => run.status === 'running') ? 'running' : runs.some(run => run.status === 'queued') || turns.some(turn => turn.status === 'queued') ? 'queued' : turns.at(-1)?.status === 'failed' || runs.at(-1)?.status === 'failed' ? 'failed' : 'idle'
       return { ...conversation, ...(isChannelConversation(conversation) ? { channelUnreadCount: channelUnread.get(conversation.id) ?? 0 } : {}), activity, lastMessageAt: messages.at(-1)?.createdAt, lastMessagePreview: messages.filter(message => message.status === 'completed').at(-1)?.content.slice(0, 120) ?? '' }
     }))).sort((a, b) => (b.lastMessageAt ?? '').localeCompare(a.lastMessageAt ?? '') || b.createdAt.localeCompare(a.createdAt))
     return clone({ userProfile: await this.userProfile.get(), agents: [...this.employees.values()], commandPermissions: await this.commandPermissions.list(), conversations, connections, resources: [...this.resources.values()], approvals: [...this.approvals.values()], dataPath: this.dataPath })
@@ -1575,7 +1583,7 @@ export class AppService {
     if (target.channel || target.mergedInto || target.purpose && target.purpose !== 'personal') return []
     const mirrors: NonNullable<ConversationDetail['executionMirrors']> = []
     for (const run of this.runs.values()) {
-      if (run.phase !== 'execution' || !['queued', 'running', 'waiting_approval'].includes(run.status) || !run.triggerMessageId) continue
+      if (!['execution', 'decision'].includes(run.phase ?? '') || run.status === 'completed' || run.phase === 'decision' && !['failed', 'cancelled', 'interrupted'].includes(run.status) || !run.triggerMessageId) continue
       const source = this.conversations.get(run.conversationId), original = this.messages.get(run.triggerMessageId)
       if (!source || source.purpose !== 'automation' || !source.automationId || !source.occurrenceId
         || !original || original.conversationId !== source.id || original.automationPublication
@@ -2351,7 +2359,7 @@ export class AppService {
       })
       run = accepted.run; turn = accepted.turn
       const budget = (await this.works.view(run.conversationId)).workBudgets.find(value => value.id === accepted.work.budgetId) ?? fail('原组织预算已不存在')
-      if (accepted.work.budgetPolicy !== 'native') { deadline = setTimeout(() => controller.abort(new Error('达到原组织工作的时间上限')), Math.max(0, Date.parse(budget.deadlineAt) - Date.now())); deadline.unref() }
+      if (accepted.work.budgetPolicy !== 'native' && workBudgetDeadline(budget) !== undefined) { deadline = setTimeout(() => controller.abort(new Error('达到原组织工作的时间上限')), Math.max(0, workBudgetDeadline(budget)! - Date.now())); deadline.unref() }
       const authority: BoboOrganizationAuthority = { workId: accepted.work.id, runId: run.id, workVersion: accepted.work.version, sourceConversationId: operation.sourceConversationId, sourceMessageId: operation.sourceMessageId, agentConfigVersion: this.getAgent(CORE_AGENT_ID).configVersion }
       const result = await this.boboCollaboration.resume(input, authority, controller.signal)
       if (result.status !== 'committed') fail(result.error || '原组织仍未完成，请核对原结果')
@@ -3796,6 +3804,10 @@ export class AppService {
       if (!o.messageId || !visibleMessageIds.has(o.messageId) || turn.replyToTurnIds?.some(id => !messages.some(message => message.turnId === id && message.senderType === 'agent'))) fail('补充信息缺少当前获准的原始请求或提问上下文')
       continuation = { originalRequestId: o.messageId!, replyToTurnIds: [...(turn.replyToTurnIds ?? [])], ...(turn.resumesTurnIds?.length ? { resumesTurnIds: [...turn.resumesTurnIds] } : {}), ...(turn.resumesRunIds?.length ? { resumesRunIds: [...turn.resumesRunIds] } : {}) }
     }
+    if (!origin && turn.resumesRunIds?.length) {
+      if (!visibleMessageIds.has(turn.triggerMessageId)) fail('原请求不在当前获准上下文')
+      continuation = { originalRequestId: turn.triggerMessageId, replyToTurnIds: [], resumesRunIds: [...turn.resumesRunIds] }
+    }
     if (!origin && this.messages.get(turn.triggerMessageId)?.inboxReply) {
       const reply = this.messages.get(turn.triggerMessageId)!.inboxReply!
       const question = this.messages.get(reply.questionMessageId), work = turn.workId && (await this.works.view(conversation.id)).workItems.find(work => work.id === turn.workId)
@@ -3884,7 +3896,7 @@ export class AppService {
       run.usage = runtimeProfile ? clean : { ...run.usage, ...clean }; await this.store.write([record('runs', run)])
       if (run.workId && !run.origin && !(context.workBudget?.accounting && run.phase === 'memory')) {
         const budget = await this.works.usage(run.id, clean)
-        if (context.workBudget?.sourceMessageId && budget && (budget.usage.outputTokens ?? 0) >= budget.maxOutputTokens) this.runControllers.get(run.id)?.abort(new Error('达到原始工作的输出用量上限'))
+        if (context.workBudget?.sourceMessageId && budget && workLimitReached(budget.usage.outputTokens ?? 0, budget.maxOutputTokens)) this.runControllers.get(run.id)?.abort(new Error('达到原始工作的输出用量上限'))
       }
       if (delta !== undefined) await this.scheduler.recordOutputUsage(turn.id, delta, isNativeBackend(run.backend) ? 'native' : 'api')
     })
@@ -4077,17 +4089,17 @@ export class AppService {
         if (this.closing || isNativeBackend(run.backend)) return
         if (run.collaborationRequestId) {
           const budget = await this.works.settleCollaborationCall(run.id, callId, usage, externalComplete)
-          if (budget && (budget.usage.outputTokens ?? 0) >= budget.maxOutputTokens) this.runControllers.get(run.id)?.abort(new Error('达到原始工作的输出用量上限'))
+          if (budget && workLimitReached(budget.usage.outputTokens ?? 0, budget.maxOutputTokens)) this.runControllers.get(run.id)?.abort(new Error('达到原始工作的输出用量上限'))
           return
         }
         if (context.workBudget?.sourceMessageId && run.workId) {
           const budget = await this.works.settleInteractiveCall(run.id, callId, usage, externalComplete)
-          if (budget && (budget.usage.outputTokens ?? 0) >= budget.maxOutputTokens) this.runControllers.get(run.id)?.abort(new Error('达到原始工作的输出用量上限'))
+          if (budget && workLimitReached(budget.usage.outputTokens ?? 0, budget.maxOutputTokens)) this.runControllers.get(run.id)?.abort(new Error('达到原始工作的输出用量上限'))
           return
         }
         if (!run.origin) { await this.observeActivity(run, () => this.userProfile.settle(callId, usage, externalComplete)); return }
         const budget = await this.works.settleAutomationCall(run.id, callId, usage, externalComplete)
-        if (budget && (budget.usage.outputTokens ?? 0) >= budget.maxOutputTokens) {
+        if (budget && workLimitReached(budget.usage.outputTokens ?? 0, budget.maxOutputTokens)) {
           this.runControllers.get(run.id)?.abort(new Error('达到本次自动化的API输出用量上限'))
           await this.automations.stop(run.origin!.occurrenceId, '达到本次自动化的输出用量上限', 'budget')
         }
@@ -4304,7 +4316,7 @@ export class AppService {
     const conversation = this.getConversation(turn.conversationId), run = this.newRun(conversation, decision.agentId, turn.triggerMessageId, turn.id)
     const native = isNativeBackend(this.getAgent(decision.agentId).executionBackend)
     run.responseKind = !native && decision.responseKind === 'task' && ['reply', 'ask'].includes(decision.action) ? 'task' : 'chat'
-    run.status = 'running'; this.runs.set(run.id, run)
+    run.status = run.responseKind === 'task' || native ? 'queued' : 'running'; this.runs.set(run.id, run)
     const controller = new AbortController(), effective = AbortSignal.any([controller.signal, signal]); this.runControllers.set(run.id, controller)
     const abort = () => controller.abort(signal.reason); signal.addEventListener('abort', abort, { once: true })
     let key = ''
@@ -4313,11 +4325,14 @@ export class AppService {
     let workDeadline: ReturnType<typeof setTimeout> | undefined
     let releaseTask: (() => void) | undefined
     try {
-      await this.store.write([record('runs', run)])
+      await this.store.write([record('runs', run)]); this.changed(run.conversationId)
       if (run.responseKind === 'task' || native) {
         const queuedAt = Date.now()
-        try { releaseTask = await this.taskAdmission.acquire(!native && this.getAgent(run.agentId).allowCommands, effective, `${conversation.id}:${run.agentId}`) }
+        try { releaseTask = await this.taskAdmission.acquire(false, effective, `${conversation.id}:${run.agentId}`) }
         finally { run.taskQueueMs = Date.now() - queuedAt }
+        effective.throwIfAborted()
+        run.status = 'running'
+        await this.store.write([record('runs', run)]); this.changed(run.conversationId)
       }
       if (turn.wakeId) await this.serialize(async () => {
         effective.throwIfAborted()
@@ -4465,7 +4480,7 @@ export class AppService {
               intent = { ...intent, key: 'bobo-organization', scope: `发起组织：${organization.goal}`, deliverable: organization.mode === 'employee_creation' ? '发布独立员工并返回真实员工身份' : '发布独立员工群及真实 bobo 目标和分工说明', organization: { mode: organization.mode, goal: organization.goal } }
             }
             const callIds = decision.sourceDecisionRunId && !run.collaborationRequestId ? (await this.store.load<{ id: string; runId: string }>('profileModelCalls')).filter(call => call.runId === decision.sourceDecisionRunId).map(call => call.id) : []
-            const retryFromUserMessage = !native && referenced?.status === 'failed' && !referenced.origin && !referenced.collaborationRequestId && !referenced.organization && !referenced.revisionRequestId && !context.artifactRevision && !turn.workId && !turn.wakeId && !turn.origin && event.type === 'user_message' && event.messageId === source?.id && source?.senderType === 'user' && source.senderId === 'user' && !source.channel && !source.origin && source.id !== referenced.sourceMessageId && decision.action === 'reply'
+            const retryFromUserMessage = !native && !!referenced && ['failed', 'cancelled', 'interrupted'].includes(referenced.status) && !referenced.origin && !referenced.collaborationRequestId && !referenced.organization && !referenced.revisionRequestId && !context.artifactRevision && !turn.workId && !turn.wakeId && !turn.origin && event.type === 'user_message' && event.messageId === source?.id && source?.senderType === 'user' && source.senderId === 'user' && !source.channel && !source.origin && source.id !== referenced.sourceMessageId && decision.action === 'reply'
             if (retryFromUserMessage && referenced.requiresReview) {
               const authorized = new Set(context.resources.map(resource => resource.id))
               const previous = [...this.runs.values()].filter(previous => previous.workId === referenced.id && previous.agentId === run.agentId)
@@ -4489,8 +4504,8 @@ export class AppService {
         }
         const budget = (await this.works.view(conversation.id)).workBudgets.find(budget => budget.id === context.work!.budgetId)!
         context.workBudget = budget
-        if (!native) {
-          workDeadline = setTimeout(() => { void this.serialize(async () => { controller.abort(new Error('达到原始工作的时间上限')) }) }, Math.max(0, Date.parse(budget.deadlineAt) - Date.now()))
+        if (!native && workBudgetDeadline(budget) !== undefined) {
+          workDeadline = setTimeout(() => { void this.serialize(async () => { controller.abort(new Error('达到原始工作的时间上限')) }) }, Math.max(0, workBudgetDeadline(budget)! - Date.now()))
           workDeadline.unref()
         }
         context.workItems = await this.authorizedWorkItems(context.conversation, run.agentId, new Set(context.messages.map(message => message.id)))
@@ -4920,7 +4935,7 @@ export class AppService {
       if (work) run.workId = work.id
       run.status = 'running'; this.runs.set(run.id, run)
       const controller = new AbortController(), effective = AbortSignal.any([signal, controller.signal]); this.runControllers.set(run.id, controller)
-      const deadline = budget ? setTimeout(() => controller.abort(new Error('达到原始工作的时间上限')), Math.max(0, Date.parse(budget.deadlineAt) - Date.now())) : undefined
+      const deadline = budget && workBudgetDeadline(budget) !== undefined ? setTimeout(() => controller.abort(new Error('达到原始工作的时间上限')), Math.max(0, workBudgetDeadline(budget)! - Date.now())) : undefined
       deadline?.unref()
       let key = ''
       try {
@@ -5052,6 +5067,7 @@ export class AppService {
 
   private async finishRun(run: AgentRun, status: 'completed' | 'failed' | 'cancelled' | 'interrupted', error?: string) {
     this.activeEngineContexts.delete(run.id)
+    this.runOperationPermissions.delete(run.id)
     if (run.workId && status !== 'completed') await this.works.release(run.id, status)
     run.status = status; run.finishedAt = now(); if (error) run.error = error
     if (run.draft && status !== 'completed') { run.draft.status = 'withheld'; run.draft.reason = error ?? '运行已停止，草稿未发布' }
@@ -5077,9 +5093,11 @@ export class AppService {
     const agent = this.getAgent(run.agentId)
     if (!agent.active || agent.configVersion !== (expectedAgentVersion ?? this.snapshots.get(run.id)?.agent.configVersion)) fail('员工权限配置已变化，本次操作未执行')
     if (agent.executionPermission === 'read-only' && !(kind === 'directory' && directory?.requests.every(request => request.access === 'read-only'))) fail('当前员工为只读权限，本次操作未执行')
+    const sameKindAllowed = !nativeOrigin && !isNativeBackend(agent.executionBackend) && agent.executionBackend?.kind !== 'acp-local' && kind !== 'directory'
+    if (sameKindAllowed && !directory && this.runOperationPermissions.get(run.id)?.has(kind)) return !signal.aborted && !terminal.has(run.status)
     const rememberAllowed = !!directory || !nativeOrigin && kind === 'command' && canRememberCommands(agent)
     if (kind === 'command' && !directory && rememberAllowed && await this.commandPermissions.allows(agent)) return !signal.aborted && !terminal.has(run.status)
-    const approval: Approval = { id: randomUUID(), kind, ...(nativeOrigin ? { nativeOrigin } : {}), ...(directory ? kind === 'command' ? { commandDirectories: directory.requests } : { directory: directory.requests[0] } : {}), rememberAllowed, runId: run.id, conversationId: run.conversationId, agentName: run.agentName, command, cwd }
+    const approval: Approval = { id: randomUUID(), kind, ...(nativeOrigin ? { nativeOrigin } : {}), ...(directory ? kind === 'command' ? { commandDirectories: directory.requests } : { directory: directory.requests[0] } : {}), rememberAllowed, sameKindAllowed, runId: run.id, conversationId: run.conversationId, agentName: run.agentName, command, cwd }
     run.status = 'waiting_approval'; this.approvals.set(approval.id, approval)
     if (directory) this.directoryApprovalTargets.set(approval.id, directory.targets)
     let settle!: (approved: boolean) => void
@@ -5108,7 +5126,7 @@ export class AppService {
     if (context.memory && !await this.memory.recallValid(context.memory)) fail('当前材料或记忆来源已失效，不能继续目录操作')
     if (run!.origin) await this.automations.assertExecutable(run!.origin!, conversation.id)
   }
-  private async resolveDirectoryApproval(approval: Approval, run: AgentRun, approved: boolean, always: boolean, resolver: (approved: boolean) => void) {
+  private async resolveDirectoryApproval(approval: Approval, run: AgentRun, approved: boolean, always: boolean, resolver: (approved: boolean) => void, allowSameKind = false) {
     const state = this.directoryRuns.get(run.id) ?? fail('原目录授权运行已结束')
     const targets = this.directoryApprovalTargets.get(approval.id) ?? fail('原目录审批目标已失效')
     const requests = approval.commandDirectories ?? (approval.directory ? [approval.directory] : fail('目录审批缺少实际目标'))
@@ -5123,7 +5141,7 @@ export class AppService {
       let updated: DigitalAgent | undefined
       if (approved && always) for (const request of requests) updated = await this.employees.grantDirectoryInTransaction(tx, current.id, current.configVersion, { path: request.directory, access: request.access })
       const request = requests[0]
-      const receipt: DirectoryApprovalReceipt = { id: approval.id, runId: run.id, agentId: run.agentId, conversationId: run.conversationId, directory: request.directory, access: request.access, ...(request.origin ? { origin: request.origin } : {}), ...(approval.commandDirectories ? { command: approval.command, cwd: approval.cwd, directories: requests.map(item => ({ path: item.directory, access: item.access })) } : {}), choice: !approved ? 'deny' : always ? 'employee' : 'run', directoryRevision: updated?.directoryRevision ?? current.directoryRevision ?? 0, createdAt: now() }
+      const receipt: DirectoryApprovalReceipt = { id: approval.id, runId: run.id, agentId: run.agentId, conversationId: run.conversationId, directory: request.directory, access: request.access, ...(request.origin ? { origin: request.origin } : {}), ...(approval.commandDirectories ? { command: approval.command, cwd: approval.cwd, directories: requests.map(item => ({ path: item.directory, access: item.access })) } : {}), choice: !approved ? 'deny' : always ? 'employee' : 'run', ...(allowSameKind ? { allowSameKind: true } : {}), directoryRevision: updated?.directoryRevision ?? current.directoryRevision ?? 0, createdAt: now() }
       await tx.put(record('directoryApprovalReceipts', receipt))
       if (updated) {
         const authorized: RunSnapshot = { ...snapshot, agent: { ...snapshot.agent, directoryGrants: clone(updated.directoryGrants), directoryRevision: updated.directoryRevision } }
@@ -5138,31 +5156,39 @@ export class AppService {
       const snapshot = this.snapshots.get(run.id)!
       snapshot.agent.directoryGrants = clone(committed.updated.directoryGrants); snapshot.agent.directoryRevision = committed.updated.directoryRevision
     }
+    if (allowSameKind) this.rememberRunOperation(approval)
     this.approvals.delete(approval.id); this.pendingApprovals.delete(approval.id); resolver(approved); this.changed(approval.conversationId)
   }
-  private async resolveApproval(id: string, approved: boolean, always = false) {
+  private rememberRunOperation(approval: Approval) {
+    const kinds = this.runOperationPermissions.get(approval.runId) ?? new Set<NonNullable<Approval['kind']>>()
+    kinds.add(approval.kind ?? 'command'); this.runOperationPermissions.set(approval.runId, kinds)
+  }
+  private async resolveApproval(id: string, approved: boolean, always = false, allowSameKind = false) {
     const recorded = await this.store.get<DirectoryApprovalReceipt>('directoryApprovalReceipts', id)
     if (recorded) {
-      if (recorded.choice !== (!approved ? 'deny' : always ? 'employee' : 'run')) fail('此目录审批已经用于不同的回答')
+      if (recorded.choice !== (!approved ? 'deny' : always ? 'employee' : 'run') || Boolean(recorded.allowSameKind) !== allowSameKind) fail('此目录审批已经用于不同的回答')
       return
     }
     const approval = this.approvals.get(id) ?? fail('审批已失效')
     const resolver = this.pendingApprovals.get(id) ?? fail('审批对应任务已经结束')
     const run = this.runs.get(approval.runId)
     if (run?.status !== 'waiting_approval') fail('审批对应任务已停止')
+    if (allowSameKind && (!approved || always || !approval.sameKindAllowed)) fail('本次审批不能允许所有同类操作')
     if (always && (!approved || !approval.rememberAllowed)) fail('本次审批不能保存永久授权')
-    if (approval.kind === 'directory' || approval.commandDirectories) return this.resolveDirectoryApproval(approval, run!, approved, always, resolver)
+    if (approval.kind === 'directory' || approval.commandDirectories) return this.resolveDirectoryApproval(approval, run!, approved, always, resolver, allowSameKind)
     await this.store.transaction(async tx => {
-      if (always) {
+      if (always || allowSameKind) {
         const agent = this.getAgent(run!.agentId)
         if (agent.configVersion !== this.snapshots.get(run!.id)?.agent.configVersion) fail('员工配置已变化，不能保存旧审批授权')
-        await this.commandPermissions.grant(tx, agent)
+        if (always) await this.commandPermissions.grant(tx, agent)
       }
       await tx.remove('approvals', id)
     })
+    if (allowSameKind) this.rememberRunOperation(approval)
     this.approvals.delete(id); this.pendingApprovals.delete(id); resolver(approved); this.changed(approval.conversationId)
   }
   private async clearApprovals(runId: string) {
+    this.runOperationPermissions.delete(runId)
     this.directoryRuns.get(runId)?.access.close(); this.directoryRuns.delete(runId)
     const approvals = [...this.approvals.values()].filter(approval => approval.runId === runId)
     for (const approval of approvals) { this.pendingApprovals.get(approval.id)?.(false); this.pendingApprovals.delete(approval.id); this.approvals.delete(approval.id) }
@@ -5303,7 +5329,7 @@ export class AppService {
       }
       const final = await this.works.view(conversationId)
       const budgetIds = new Set(final.workItems.filter(work => work.budgetPolicy !== 'native' && ['ready', 'waiting'].includes(work.status)).map(work => work.budgetId))
-      const deadlines = final.workBudgets.filter(budget => budgetIds.has(budget.id)).map(budget => Date.parse(budget.deadlineAt))
+      const deadlines = final.workBudgets.filter(budget => budgetIds.has(budget.id)).map(budget => workBudgetDeadline(budget)).filter((deadline): deadline is number => deadline !== undefined)
       if (deadlines.length) {
         const deadline = setTimeout(() => this.scheduleWork(conversationId), Math.max(1, Math.min(...deadlines) - Date.now()))
         deadline.unref(); this.workTimers.set(conversationId, deadline)
@@ -5358,8 +5384,8 @@ export class AppService {
     }); for (const update of updates) if (update.collection === 'agents') this.employees.install(update.id, update.value as DigitalAgent); this.resources.delete(id)
     try { await this.resourceCleanups.finish(id) } finally { this.changed() }
   }
-  private async retry(id: string, requestId: string) {
-    const fingerprint = JSON.stringify({ kind: 'retry', id })
+  private async retry(id: string, requestId: string, continuation = false) {
+    const fingerprint = JSON.stringify({ kind: 'retry', id, ...(continuation ? { continuation: true } : {}) })
     const previous = this.requests.get(requestId)
     if (previous) { if (previous.fingerprint !== fingerprint) fail('requestId 已用于不同请求'); return }
     const original = this.runs.get(id) ?? fail('任务不存在')
@@ -5368,6 +5394,9 @@ export class AppService {
     if (original.phase === 'memory') fail('记忆整理不支持此重试操作，以免重新执行原用户任务。')
     if (!['failed', 'cancelled', 'interrupted'].includes(original.status)) fail('只能重试失败、停止或中断的任务')
     const conversation = this.getConversation(original.conversationId)
+    if (this.conversationBusy(conversation.id) || this.activeAdapters.has(original.id)) fail('当前会话仍在处理，请等待本次执行结束')
+    if ([...this.scheduler.turns.values()].some(turn => turn.id !== original.turnId && turn.resumesRunIds?.includes(original.id))) fail('已从这次失败继续，请查看后续执行记录')
+    if (original.workId && [...this.runs.values()].some(run => run.workId === original.workId && run.createdAt > original.createdAt && run.status === 'completed')) fail('原工作已有后续结果，请查看最新执行记录')
     if (!conversation.agentIds.includes(original.agentId) || !this.getAgent(original.agentId).active) fail('原员工已不在会话中')
     if (isCoreAgent(this.getAgent(original.agentId)) && !this.getAgent(original.agentId).connectionId) await this.ensureCoreConnection()
     const originalMessage = this.messages.get(original.triggerMessageId) ?? fail('原用户消息不存在')
@@ -5376,7 +5405,7 @@ export class AppService {
       if (await this.automationFingerprint(conversation.id) !== original.origin.authorizedFingerprint) fail('自动化授权的员工或会话配置已变更')
     }
     prepared.turn.origin = original.origin ? clone(original.origin) : undefined
-    if (original.origin && !original.workId) prepared.turn.resumesRunIds = [original.id]
+    prepared.turn.resumesRunIds = [original.id]
     if (original.workId) {
       const work = (await this.works.view(conversation.id)).workItems.find(work => work.id === original.workId)
       if (!work || work.ownerAgentId !== original.agentId) fail('原工作归属已变化，不能重试')
@@ -5386,8 +5415,13 @@ export class AppService {
     } else if (original.collaborationRequestId) prepared.turn.collaborationRequestId = original.collaborationRequestId
     const request: RequestRecord = { id: requestId, fingerprint }
     const records = [...prepared.records, record('requests', request)]
-    if (original.workId) await this.works.authorizeRetry(original.workId, original.agentId, records)
-    else if (original.origin) await this.automations.resume(original.origin, conversation.id, records)
+    if (continuation && original.workId) {
+      const resources = new Set(this.authorizedResources(this.getAgent(original.agentId), conversation).map(resource => resource.id))
+      const previousRuns = [...this.runs.values()].filter(run => run.workId === original.workId)
+      if (previousRuns.some(run => { const snapshot = this.snapshots.get(run.id); return !snapshot || snapshot.invalidated || !this.dataSourceSnapshotValid(snapshot) || snapshot.resources.some(resource => !resources.has(resource.id)) })) fail('原执行来源或资源已失效，请核对已有结果后重新发起请求')
+    }
+    if (original.workId) await this.works.authorizeRetry(original.workId, original.agentId, records, continuation)
+    else if (original.origin) await this.automations.resume(original.origin, conversation.id, records, continuation)
     else await this.store.write(records)
     this.requests.set(request.id, request); this.changed(conversation.id); this.scheduler.accept(prepared)
   }
@@ -5410,6 +5444,7 @@ export class AppService {
       await this.teamCreation.assertBackup(); await this.boboCollaboration.assertBackup()
       if (this.teamGeneration.busy) fail('团队方案仍在生成，请停止后备份')
       await this.automations.beforeBackup()
+      await this.desktopActivity.beforeBackup()
       if (this.scheduler.busy || this.runControllers.size || this.activeAdapters.size || this.externalTests.size || this.skills.busy || this.skillUpdates.busy || this.skillLibrary.busy || this.materialImports.size || this.materialUploads.busy || this.materials.busy || this.dataSources.busy || this.webSearch.connections.busy) fail('有任务、材料准备或资源管理操作正在执行或等待修复，请先停止或完成后备份')
       await this.userMemoryProvider.close()
       await mkdir(destination, { recursive: true })
@@ -5423,11 +5458,13 @@ export class AppService {
       await this.materials.exportSnapshot(destination, databaseFile)
       await this.materials.pruneBackup(databaseFile)
       await this.automations.backup(destination)
+      await this.desktopActivity.backup(destination)
       const backupClient = createClient({ url: pathToFileURL(databaseFile).href })
       try {
         // Browser profiles and private page receipts are not part of a portable business backup.
         await backupClient.execute("UPDATE records SET value=json_remove(json_set(value,'$.enabled',json('false'),'$.revision',json_extract(value,'$.revision')+1),'$.credentialId','$.test') WHERE collection IN ('dataSources','webSearchServices')")
         await backupClient.execute("UPDATE records SET value=json_set(value,'$.enabled',json('false')) WHERE collection='channelBindings'")
+        await backupClient.execute("UPDATE records SET value=json_set(value,'$.enabled',json('false'),'$.enableInputMonitor',json('false'),'$.saveScreenshots',json('false'),'$.revision',COALESCE(json_extract(value,'$.revision'),0)+1) WHERE collection='desktopActivitySettings'")
         const profiles = await backupClient.execute("SELECT id,value FROM records WHERE collection='agentProfiles'")
         const backupAgents = await backupClient.execute("SELECT id,value FROM records WHERE collection='agents'")
         for (const row of backupAgents.rows) {
@@ -5458,9 +5495,9 @@ export class AppService {
       } })
       await writeFile(join(destination, 'backup.json'), JSON.stringify({ format: 'boai-agent-local-backup', version: 2, createdAt: now(), sourceDataPath: this.dataPath, credentialsIncluded: false, externalUserMemoryIncluded: false, automationRestorePolicy: 'paused', agentBehaviorRestorePolicy: 'paused', nativeAgentRestorePolicy: 'fresh-session', excludedNativeRuntimeHomes: [...nativeRuntimeHomes].map(directory => relative(this.dataPath, directory)), excludedLegacyBrowserRuns: [...legacyBrowserRuns].map(directory => relative(this.dataPath,directory)) }, null, 2))
       await writeFile(join(destination, 'data-version.json'), JSON.stringify({ schemaVersion: 2, restoredBackup: true, createdAt: now() }, null, 2))
-      await writeFile(join(destination, 'RESTORE.txt'), '退出 BoAI Agent 后，先备份目标应用现有数据，再将 boai.sqlite、data-version.json、skills、knowledge、workspaces、agents、external-workspaces、materials、appearance 和 automation-mastra.sqlite（如存在）复制到目标应用 userData/v2 目录；不要与现有数据库混用。保留 v2 中的 data-version.json 版本标记后再启动新版应用。启动时会自动重定位受管资源、员工目录与产物路径。materials 仅包含已发送的聊天材料；草稿不恢复，也不重新读取外部来源。恢复后定时任务、主动交流及情绪/成长/旅行自动行为默认暂停，员工提示词与疲劳设置保留；请在确认连接、授权和配置后逐项启用。渠道绑定与资料/检索连接也默认停用。旧备份没有 materials 或 appearance 时，请先移走目标目录对应旧文件夹，避免混入旧数据。API Key 与外部登录态未包含在备份中，需重新配置。Memmy 外部服务数据不包含在备份中，恢复后记忆提供方默认关闭；未确认的同步不会自动重发。Mastra bobo 会话投影在下次聊天时从仍有效的产品历史重建。本机 Agent 私有运行目录不包含在备份中，外部程序自己的历史也不由本备份恢复或删除；原会话引用只供核对，下一次发送消息时从获准聊天内容建立新会话，启动不会自动续行。未完成浏览器下载不包含在备份中；旧版浏览器运行目录缺少可信完成状态，原件保留在来源设备但不导出，具体目录见 backup.json。已发布的受管成果仍正常备份。\n')
+      await writeFile(join(destination, 'RESTORE.txt'), '退出 BoAI Agent 后，先备份目标应用现有数据，再将 boai.sqlite、data-version.json、skills、knowledge、workspaces、agents、external-workspaces、materials、appearance、activity-records 和 automation-mastra.sqlite（如存在）复制到目标应用 userData/v2 目录；不要与现有数据库混用。保留 v2 中的 data-version.json 版本标记后再启动新版应用。启动时会自动重定位受管资源、员工目录与产物路径。materials 仅包含已发送的聊天材料；草稿不恢复，也不重新读取外部来源。恢复后桌面活动记录、截图保存和键鼠监听默认关闭；定时任务、主动交流及情绪/成长/旅行自动行为默认暂停，员工提示词与疲劳设置保留；请在确认连接、授权和配置后逐项启用。渠道绑定与资料/检索连接也默认停用。旧备份没有 materials 或 appearance 时，请先移走目标目录对应旧文件夹，避免混入旧数据。API Key 与外部登录态未包含在备份中，需重新配置。Memmy 外部服务数据不包含在备份中，恢复后记忆提供方默认关闭；未确认的同步不会自动重发。Mastra bobo 会话投影在下次聊天时从仍有效的产品历史重建。本机 Agent 私有运行目录不包含在备份中，外部程序自己的历史也不由本备份恢复或删除；原会话引用只供核对，下一次发送消息时从获准聊天内容建立新会话，启动不会自动续行。未完成浏览器下载不包含在备份中；旧版浏览器运行目录缺少可信完成状态，原件保留在来源设备但不导出，具体目录见 backup.json。已发布的受管成果仍正常备份。\n')
     } finally {
-      try { await this.automations.afterBackup() } finally { this.backingUp = false; for (const id of this.conversations.keys()) this.scheduleWork(id) }
+      try { await this.automations.afterBackup() } finally { this.backingUp = false; this.desktopActivity.afterBackup(); for (const id of this.conversations.keys()) this.scheduleWork(id) }
       // A send acknowledged just before backup acquired the gate may have queued a job.
     }
   }

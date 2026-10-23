@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 覆盖增大任务额度、真实继续消息或本次运行同类批准；各文件以具体用例限定验证范围。
  * [OUTPUT]: 网页检索独立能力沿全局服务配置保存；业务数据源解绑不重置检索，停用/迟到目录仍验证。
  * [OUTPUT]: 高级配置默认人格与行为，配置源文件/后台记录直接展示，主动交流即时保存；自动化仅展示员工任务；基础配置排除/草稿保护保持。
  * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
@@ -569,4 +570,15 @@ test.each(['codex-local', 'claude-local'] as const)('native %s directory view ex
   expect(button('添加授权目录')).toBeUndefined()
   expect(host.textContent).not.toContain('接入中')
   expect(request.mock.calls.some(([method])=>method==='chooseEmployeeDirectory'||method==='saveAgent')).toBe(false)
+})
+
+
+test('operation approval exposes explicit same-kind scope and sends its distinct choice', async () => {
+  const approve = vi.fn()
+  await act(async () => root.render(h(ApprovalCard, { busy: false, onApprove: approve, approval: { id: 'operation', kind: 'file', runId: 'run', conversationId: 'chat', agentName: '员工', command: '保存报告', cwd: '/managed/run', sameKindAllowed: true } })))
+  expect(host.textContent).toContain('仅对本次任务生效')
+  await act(async () => button('本次任务允许所有同类操作').click())
+  expect(approve).toHaveBeenLastCalledWith('operation', true, false, true)
+  await act(async () => button('允许这次执行').click())
+  expect(approve).toHaveBeenLastCalledWith('operation', true)
 })

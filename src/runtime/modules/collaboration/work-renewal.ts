@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 默认执行不按累计调用、工具步骤、用量或墙钟截断；保留真实用量、取消/权限和明确指定的预算。
+ * [OUTPUT]: 自动化预算不按墙钟到期；本人明确继续保留原工作和累计用量，普通工作仅重开时间窗口，未知操作仍阻止重放。
  * [OUTPUT]: 显式自动化额度追加保留原计量单位与累计回执，不改内部调用未知事实。
  * [INPUT]: WorkRepository 事务、明确预算授权、原始自动化及新的人类消息/轮次。
  * [OUTPUT]: 明确额度续行保留原接续语义，同事务登记其已接续等待问题的原消息关系。
@@ -42,9 +44,9 @@ export async function renewAutomationWork(tx: RecordTransaction, origin: Automat
   const grant: BudgetRenewal = { id: randomUUID(), previousId: budget.renewals?.at(-1)?.id, requestId: request.id, messageId: message.id, turnId: turn.id, createdAt, before, after: before,
     used: { modelCalls: budget.modelCalls, runs: budget.runs, usage: structuredClone(budget.usage), usageIncomplete: budget.usageIncomplete, unknownCalls: budget.unknownCalls, workItems: budget.workItems, retries: budget.retries, reportRefreshes: budget.reportRefreshes, noProgress: budget.noProgress },
     previousStatus: o.status, previousReason: o.reason, cancellationRequestedAt: o.cancellationRequestedAt, workVersions: unfinished.map(w => ({ id: w.id, version: w.version, status: w.status })) }
-  budget.maxModelCalls += allowance.modelCalls; budget.maxRuns += allowance.runs; budget.maxOutputTokens += allowance.outputTokens
-  budget.maxWorkItems += allowance.workItems; budget.maxRetries += allowance.retries; budget.maxReportRefreshes += allowance.reportRefreshes; budget.maxNoProgress += allowance.noProgress
-  budget.deadlineAt = new Date(Date.now() + allowance.durationMs).toISOString()
+  if (budget.maxModelCalls !== null) budget.maxModelCalls += allowance.modelCalls; if (budget.maxRuns !== null) budget.maxRuns += allowance.runs; if (budget.maxOutputTokens !== null) budget.maxOutputTokens += allowance.outputTokens
+  if (budget.maxWorkItems !== null) budget.maxWorkItems += allowance.workItems; if (budget.maxRetries !== null) budget.maxRetries += allowance.retries; if (budget.maxReportRefreshes !== null) budget.maxReportRefreshes += allowance.reportRefreshes; if (budget.maxNoProgress !== null) budget.maxNoProgress += allowance.noProgress
+  budget.deadlineAt = '' // Automation continuation preserves counters without a wall-clock cutoff.
   grant.after = limits(budget); budget.renewals = [...(budget.renewals ?? []), grant]
   await tx.put(row('workBudgets', budget))
   turn.replyToTurnIds = unansweredAutomationTurns(o, turns).map(t => t.id)
@@ -65,6 +67,6 @@ export async function renewAutomationWork(tx: RecordTransaction, origin: Automat
   await refreshWaiters(tx, conversationId, { runId: 'host', agentId: 'user' })
   delete o.cancellationRequestedAt; delete o.cancellationCause; o.waitingTurnIds = []
   o.status = 'failed' // resumeAutomationExecution must still acquire a computation slot atomically.
-  o.budget = { ...(budget.callUnit ? { callUnit: budget.callUnit } : {}), maxModelCalls: budget.maxModelCalls, maxRuns: budget.maxRuns, maxOutputTokens: budget.maxOutputTokens, deadlineAt: budget.deadlineAt, runs: budget.runs, exhausted: false, renewals: budget.renewals }
+  o.budget = { ...(budget.callUnit ? { callUnit: budget.callUnit } : {}), maxModelCalls: budget.maxModelCalls, maxRuns: budget.maxRuns, maxOutputTokens: budget.maxOutputTokens, runs: budget.runs, exhausted: false, renewals: budget.renewals }
   await tx.put(row('automationOccurrences', o))
 }

@@ -1,0 +1,54 @@
+// @vitest-environment jsdom
+/*
+ * [INPUT]: Production settings sections with confirmed state and mutation callbacks.
+ * [OUTPUT]: Independent opt-ins, permission status, no mount writes and polling-safe draft behavior.
+ * [POS]: DOM interaction checks; macOS permissions and Electron visual acceptance remain separate.
+ * [PROTOCOL]: Update Header and tests/.folder.md when changed.
+ */
+import { act, createElement } from 'react'
+import { createRoot, type Root } from 'react-dom/client'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { ActivityRecorderSettings } from '../src/renderer/pages/settings/activity-recorder-settings'
+import { activityDefaults } from '../src/runtime/modules/desktop-activity/activity-settings'
+import type { ActivityStatus } from '../src/shared/domain/desktop-activity'
+let host: HTMLDivElement, root: Root
+const update = vi.fn(), permission = vi.fn(), openDirectory = vi.fn()
+const initial: ActivityStatus = { settings: activityDefaults, supported: true, permission: false, count: 0, accessibilityPermission: false, monitoring: false, state: 'disabled', screenshotCount: 0, storageBytes: 0, sessionCount: 0, recentSessions: [], outputDirectory: '/test/activity-records' }
+beforeEach(() => { vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true); vi.stubGlobal('PointerEvent', MouseEvent); vi.clearAllMocks(); host = document.createElement('div'); document.body.append(host); root = createRoot(host) })
+afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals() })
+const render = (status = initial, busy = false) => act(async () => root.render(createElement(ActivityRecorderSettings, { status, busy, update, permission, openDirectory })))
+it('loads without writing or requesting permissions and keeps both new capture switches off', async () => {
+  await render()
+  expect(update).not.toHaveBeenCalled(); expect(permission).not.toHaveBeenCalled()
+  for (const label of ['保存桌面截图', '全局键鼠事件监听']) expect(host.querySelector(`[role="switch"][aria-label="${label}"]`)?.getAttribute('aria-checked')).toBe('false')
+})
+it('screenshot opt-in changes only the screenshot preference', async () => {
+  await render()
+  await act(async () => (host.querySelector('[role="switch"][aria-label="保存桌面截图"]') as HTMLElement).click())
+  expect(update).toHaveBeenCalledExactlyOnceWith({ saveScreenshots: true })
+})
+it('displays waiting-for-permission when enabled but recording is unavailable', async () => {
+  await render({ ...initial, settings: { ...activityDefaults, enabled: true }, state: 'permission' })
+  expect(host.textContent).toContain('等待屏幕录制权限')
+  expect(host.textContent).not.toContain('记录中')
+  const buttons = [...host.querySelectorAll('button')].filter(button => button.textContent === '打开系统设置')
+  await act(async () => buttons[1]!.click())
+  expect(permission).toHaveBeenCalledExactlyOnceWith('input', true)
+})
+it('does not overwrite an unsaved exclude-list draft on status polling', async () => {
+  await render()
+  const textarea = host.querySelector('textarea')!
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(textarea, 'custom.private.app')
+    textarea.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  await render({ ...initial, count: 10, settings: { ...activityDefaults } })
+  expect(textarea.value).toBe('custom.private.app')
+  await act(async () => textarea.dispatchEvent(new FocusEvent('focusout', { bubbles: true })))
+  expect(update).toHaveBeenCalledExactlyOnceWith({ excludedApps: ['custom.private.app'] })
+})
+it('busy controls cannot dispatch duplicate writes', async () => {
+  await render(initial, true)
+  await act(async () => (host.querySelector('[role="switch"][aria-label="保存桌面截图"]') as HTMLElement).click())
+  expect(update).not.toHaveBeenCalled()
+})

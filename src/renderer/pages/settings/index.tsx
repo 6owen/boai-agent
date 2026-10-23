@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 桌面活动与日报独立设置分类，沿原 bobo 日报入口。
  * [OUTPUT]: 快捷键分类支持启停/录入与自动保存，传递活跃状态以释放捕获。
  * [OUTPUT]: 运行选项桌面活动日报入口交给原 bobo 首发流程。
  * [OUTPUT]: 2026-10-19 配置分类新增网页检索独立页，沿原活跃读取和页面切换。
@@ -18,6 +19,7 @@ import { AppearanceSettings } from './appearance'
 import { ShortcutSettings } from './shortcuts'
 import { DataSettings } from './data'
 import { DesktopSettingsPage } from './desktop'
+import { DesktopActivityPage } from './desktop-activity'
 import { WebSearchSettingsPage } from './web-search'
 import { PluginSettingsPage } from './plugins'
 import { useContext, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
@@ -27,7 +29,7 @@ import type { DesktopApi } from '@shared/ipc'
 import { Banner, GuardContext, useMutation } from '@/components/common/index'
 import { ConnectionSettings } from './connections'
 import type { LocalAgentTarget } from './local-agents'
-export type SettingsTab = 'profile' | 'connections' | 'data' | 'appearance' | 'shortcuts' | 'desktop' | 'plugins' | 'web-search'
+export type SettingsTab = 'profile' | 'connections' | 'data' | 'appearance' | 'shortcuts' | 'desktop' | 'desktop-activity' | 'plugins' | 'web-search'
 export function SettingsPage({ api, snapshot, refresh, divider, tab, setTab, active, onSkill, localAgentTarget, onActivityReport }: { onActivityReport(from: string, to: string): Promise<void>; api: DesktopApi; snapshot: Snapshot; refresh: () => Promise<void>; divider: ReactNode; tab: SettingsTab; setTab: (tab: SettingsTab) => void; active: boolean; onSkill: (id: string) => void; localAgentTarget?: LocalAgentTarget }) {
   const [search, setSearch] = useState('')
   const [notice, setNotice] = useState('')
@@ -56,7 +58,7 @@ export function SettingsPage({ api, snapshot, refresh, divider, tab, setTab, act
     }
   }, [tab, active])
   const groups = [
-    { label: '个人', items: [{ id: 'profile', label: '个人资料', icon: Contact }, { id: 'appearance', label: '外观', icon: Settings }, { id: 'shortcuts', label: '快捷键', icon: Settings }, { id: 'desktop', label: '运行选项', icon: Settings }] },
+    { label: '个人', items: [{ id: 'profile', label: '个人资料', icon: Contact }, { id: 'appearance', label: '外观', icon: Settings }, { id: 'shortcuts', label: '快捷键', icon: Settings }, { id: 'desktop', label: '运行选项', icon: Settings }, { id: 'desktop-activity', label: '桌面活动与日报', icon: Settings }] },
     { label: '配置', items: [{ id: 'connections', label: '模型连接', icon: Sparkles }, { id: 'web-search', label: '网页检索', icon: Search }, { id: 'plugins', label: '插件', icon: Settings }, { id: 'data', label: '数据与备份', icon: HardDrive }] },
   ] as const
   const matches = groups.flatMap(group => [...group.items]).filter(item => item.label.toLowerCase().includes(search.trim().toLowerCase()))
@@ -68,14 +70,15 @@ export function SettingsPage({ api, snapshot, refresh, divider, tab, setTab, act
       return items.length > 0 && <div className="settings-nav-group" key={group.label}><p>{group.label}</p>{items.map(item => <Button variant="ghost" size="content" key={item.id} className={tab === item.id ? 'selected' : ''} aria-current={tab === item.id ? 'page' : undefined} onClick={() => guard.navigate(() => { setTab(item.id) })}><item.icon size={16} />{item.label}</Button>)}</div>
     })}
     {!matches.length && <p className="settings-search-empty">没有匹配的设置</p>}</div>
-  </nav>{divider}<div className={`settings-content page-scroll${tab === 'appearance' || tab === 'shortcuts' || tab === 'connections' || tab === 'profile' || tab === 'desktop' || tab === 'plugins' || tab === 'web-search' ? ' settings-document-content' : ''}`}>
+  </nav>{divider}<div className={`settings-content page-scroll${tab === 'appearance' || tab === 'shortcuts' || tab === 'connections' || tab === 'profile' || tab === 'desktop' || tab === 'desktop-activity' || tab === 'plugins' || tab === 'web-search' ? ' settings-document-content' : ''}`}>
     <div ref={content} className="settings-page-transition t-panel-slide" data-open="true" data-settled="true">
     {error && <Banner>{error}</Banner>}{notice && <Banner kind="notice" onClose={() => setNotice('')}>{notice}</Banner>}
     {tab === 'profile' && <ProfileSettings api={api} profile={snapshot.userProfile} active={active} refresh={refresh} onSkill={onSkill} />}
     {tab === 'connections' && <ConnectionSettings connections={snapshot.connections} api={api} refresh={refresh} active={active} localAgentTarget={localAgentTarget} />}
     {tab === 'appearance' && <AppearanceSettings />}
     {tab === 'shortcuts' && <ShortcutSettings active={active} />}
-    {tab === 'desktop' && <DesktopSettingsPage onActivityReport={onActivityReport} api={api} active={active} />}
+    {tab === 'desktop' && <DesktopSettingsPage api={api} active={active} />}
+    {tab === 'desktop-activity' && <DesktopActivityPage api={api} active={active} onReport={onActivityReport} />}
     {tab === 'web-search' && <WebSearchSettingsPage api={api} active={active} />}
     {tab === 'plugins' && <PluginSettingsPage />}
     {tab === 'data' && <DataSettings api={api} snapshot={snapshot} busy={busy} run={run} onNotice={setNotice} />}

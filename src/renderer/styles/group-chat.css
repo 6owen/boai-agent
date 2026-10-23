@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 独立权限卡移除额外上下外边距，与消息头像顶部对齐；附在正文后的权限卡保留内容间距。
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [OUTPUT]: 消息技能/数据源/文件与命令标签复用输入框Soft Button皮肤，原位行内排版、基线对齐与正常文本选择。
  * [OUTPUT]: 消息网页预览使用transitions-dev/05-menu-dropdown原版CSS与token，250ms进入/150ms退出，保留减少动态效果支持。
@@ -130,8 +131,9 @@
 .chat-panel .reply-preview { padding:4px 8px;gap:8px;border-radius:5px;margin-bottom:8px }
 .chat-panel .reply-preview>button { flex:none;width:22px;height:22px;order:0 }
 .chat-panel .reply-preview>span { border-left:1px solid var(--border);padding-left:8px;text-align:left }
-.chat-panel .approval-card { border:1px solid var(--border);border-radius:12px;background:var(--surface-content);box-shadow:none;margin:12px 0 16px;max-width:100% }
+.chat-panel .approval-card { border:1px solid var(--border);border-radius:12px;background:var(--surface-content);box-shadow:none;margin:0;max-width:100% }
 .chat-panel .messages>.approval-card { margin-left:44px }
+.chat-panel .message-main>.message-content-space~.approval-card { margin-top:12px }
 .approval-topline { display:flex;align-items:center;gap:8px;flex-wrap:wrap }
 .approval-status { margin-left:auto;color:var(--warning);font-weight:500 }
 .chat-panel .approval-topline { color:var(--foreground) }
