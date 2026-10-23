@@ -31,7 +31,6 @@
     "src",
     "tests",
     "vite.config.ts",
-    "vitest.config.ts",
     "playwright.config.ts",
     "packages/tokens/src",
     "packages/ui/src",
