@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 旧库无需补绑即可在普通核心首发装配所选管理文档；版本伪造/普通员工拒绝，下一轮无标签不继承。
+ * [OUTPUT]: 旧库夹具移除新版初始化标记，核对技能绑定及配置版本保持；普通核心首发装配所选管理文档，版本伪造/普通员工拒绝，下一轮无标签不继承。
  * [OUTPUT]: 核心首发技能引用必须已绑定，拒绝时不创建会话或请求回执。
  * [INPUT]: 真实 AppService、SQLite、工作区与可控核心助手执行。
  * [OUTPUT]: 非空首发/具名团队请求同事务与空输入零对象、权威回执只读核对、可靠回滚空目录清理/未知提交保留、清空/删除最小回执不重放；并发/重启幂等和用户名称不可被模型覆盖；文件准备阻塞时停止及时持久受理、实际退出前容量不释放且不发布；原子团队发布与跨会话分层记忆的业务不变量。
@@ -289,10 +289,14 @@ test('核心首发拒绝未绑定技能且不创建会话或回执', async () =>
 
 test('旧库普通 bobo 会话按本轮管理标签加载随包文档，下一轮不自动继承，伪造版本拒绝且不留空会话', async () => {
   const old = await setup()
+  // Profiles predating bundled default skills have no initialization marker.
+  const oldStore = (old.service as unknown as { store: ProductStore }).store
+  await oldStore.transaction(tx => tx.remove('defaultSkillSeeds', 'bobo'))
   const oldCore = (await snapshot(old.service)).agents.find(agent => agent.id === 'bobo')!
   await old.service.close()
   const { service, engine } = await open(old.root, new CoreModel(), resolve('resources/agent-skills'))
   expect((await snapshot(service)).agents.find(agent => agent.id === 'bobo')!.skillIds).toEqual(oldCore.skillIds)
+  expect((await snapshot(service)).agents.find(agent => agent.id === 'bobo')!.configVersion).toBe(oldCore.configVersion)
   const reference = { kind: 'builtin-skill' as const, id: 'automations' as const, name: '管理定时任务', agentId: 'bobo', version: 1 }
   await expect(service.handle('startCoreConversation', { requestId: 'bad-management', content: '查看计划', composerReferences: [{ ...reference, version: 999 }] })).rejects.toThrow('管理技能已变化')
   expect(await service.handle('getCoreConversationStart', { requestId: 'bad-management' })).toBeNull()
@@ -308,6 +312,7 @@ test('旧库普通 bobo 会话按本轮管理标签加载随包文档，下一�
   await settled(service, conversation)
   expect(engine.contexts).toHaveLength(2)
   expect(engine.contexts[1].bootstrap?.dynamicInstructions).not.toContain('[Selected BOAI management skills]')
+  expect((await snapshot(service)).agents.find(agent => agent.id === 'bobo')).toMatchObject({ skillIds: oldCore.skillIds, configVersion: oldCore.configVersion })
   const ordinary = (await snapshot(service)).agents.find(agent => agent.id !== 'bobo')!
   const room = await service.handle('createConversation', { kind: 'direct', title: ordinary.name, agentIds: [ordinary.id] }) as Conversation
   await expect(service.handle('sendMessage', { conversationId: room.id, content: '查看计划', requestId: 'ordinary-management', composerReferences: [{ ...reference, agentId: ordinary.id }] })).rejects.toThrow('管理技能仅用于')
