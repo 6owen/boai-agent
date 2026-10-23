@@ -1,0 +1,32 @@
+# [INPUT]: Explicit availability branch or manual request; standard hosted runners.
+# [OUTPUT]: Linux/macOS allocation and macOS graphical-session proof; no product tests or baseline writes.
+# [POS]: Cloud CI availability probe, independent of required product checks.
+# [PROTOCOL]: Update Header and parent .folder.md when changing this file.
+name: Actions availability
+on:
+  workflow_dispatch:
+  push:
+    branches: [infra/actions-availability-20261021]
+permissions:
+  contents: read
+jobs:
+  probe:
+    name: Runner probe (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    steps:
+      - name: Verify hosted runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          uname -sm
+          node --version
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          printf 'Runner: %s\nCommit: %s\n' "$RUNNER_NAME" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+      - name: Verify macOS graphical session
+        if: runner.os == 'macOS'
+        run: swift -e 'import AppKit; guard !NSScreen.screens.isEmpty else { fatalError("No graphical display") }; print("Displays:", NSScreen.screens.count)'

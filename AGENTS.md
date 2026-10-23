@@ -1,5 +1,5 @@
 <!--
-[OUTPUT]: 2026-10-23 按用户明确要求只保留 UI 测试；模块/模型连接/T1/T3/业务评估用例及入口已删除，旧完整 CI 要求由本条替代，历史运行结果仅作记录。
+[OUTPUT]: 纠正测试范围：仅 GitHub CI 跑 UI，本地 Vitest/BDD/评估及依赖完整保留。
 [OUTPUT]: PR15与第3组五项整合候选保留共享守卫/自动保存；62定向及类型/lint/build通过，原SIGSEGV与未验范围保持，待当前完整CI后合main。
 [OUTPUT]: 第3组21–25五项实现已接线；133模块通过/1平台跳过，图标/分组/删除/预览/后台及隔离包分批通过；锁屏快捷键/菜单栏视觉与UI环境差异未验范围归各篇进度，未提交合并。
 [OUTPUT]: 五项增量继续实施：快捷键合同/Main回执/录入队列与导航退出候选及回归源码已写；托盘联动仍待编码，四项候选均未完成产品验证。
@@ -560,17 +560,27 @@
 
 - 在本仓库开发功能、修复问题、提交/更新PR、处理CI或合并main时，先读取共享技能[boai-dev-workflow](.agents/skills/boai-dev-workflow/SKILL.md)。以该技能为日常执行入口，测试清单、基准合同和门禁仍以仓库版本化文件与现行工作流为准。
 - Codex、Claude、Pi等开发Agent共用该文件；客户端不自动发现项目技能时按路径直接读取。技能不扩大当前任务或既有推送/合并授权，本机自动CI保持停用。
-- 按可验证的小目标集中 push；PR/main 及手动 Actions 只执行 UI 回归和 Required checks，不再使用 ci:full 或文档/Draft 范围分流。hooks 不运行测试；提交与自动合并后默认不等待 CI。
+- 按可验证的小目标集中push，开发中使用Draft；GitHub Actions 只执行 UI 回归与 Required checks，ci:full 不改变范围，本地完整测试按需保留。专项诊断默认按需手动，hooks只做轻量提醒；具体触发/取消/失败接续以共享Skill为准，不为每次编辑派发Actions。
 
-# UI Testing Rules
+# BOAI业务评估与Codex优化
 
-- 2026-10-23 按用户明确要求只保留 UI 测试；模块/模型连接/T1/T3/业务评估用例及入口已删除，旧完整 CI 要求由本条替代，历史运行结果仅作记录。
-- 唯一自动测试工作流 `.github/workflows/tests.yml` 运行现有 18 项 UI 回归和独立 `Required checks`。保留原截图基线、行为断言、环境身份与截图/trace 核验；不调用真实供应商。
-- UI 场景归 `tests/e2e/features/ui-regression.feature`，步骤和隔离 Electron 生命周期分别归 `steps/`、`support/`；基线合同归 `tests/e2e/baselines/contract.json`。
-- `pnpm test`、`pnpm test:electron` 均进入 `pnpm test:ui`；`pnpm test:electron:list` 只生成/列出用例，不启动 Electron。`.features-gen/` 是忽略的生成文件。
-- 默认把实际 UI 执行交给 Actions，本机只作源码/配置自查；仅在用户明确要求时运行本机 UI。每场使用独立数据目录，不读取日常模型配置或用户数据。
-- 普通 CI 只读比较基线，失败查看对应截图/trace；预期改版沿独立候选工作流审阅后接受，不靠修改阈值/增加跳过取得通过。
-- 历史业务评估文档保留为记录，已删除的模型评估、Vitest、T1/T3 和本机 CI 入口不得因旧文档要求自行恢复。
+- 用户确认真实业务eval为主线：Codex是优化者，BOAI是被测应用。使用项目技能[boai-evals](.agents/skills/boai-evals/SKILL.md)及[第15组11](ai-docs/spec/15.Agent评估与持续优化/11-业务评估与Codex优化主线.md)。`eval:build`准备真实任务/评分审阅包，`eval:hillclimb`驱动原API runner、独立评分与隔离候选。
+- 开发/验证按业务簇分开；优化器只获得开发轨迹。任务内容代表性、真实人工校准、评分一致性、噪声和成本分别核对。技术通过不升级语义质量；不得删除原semantic条款解除pending、伪造human标签或把已读题称为最终未见题。
+- `eval:experiment review/status`复用原件与预算。未知/中断不重放，未校准或证据不足时停止。原工作树和已有修改保持，候选只在隔离目录执行；最终补丁按已有开发授权审阅应用，不自动提交/推送。
+- 原测试修复入口已改名`dev:repair`（第15组10），仅负责固定Vitest/类型检查；不再用`eval:iterate`代表业务优化。该入口不恢复暂停的产品本机员工运行时或A2A。
+
+# Desktop Testing Rules
+
+- 2026-10-23 用户澄清：只缩减 GitHub CI，不删除本地 Vitest、测试代码及依赖。先前“只保留 UI”导致的删除已撤回。本地测试和云端合并门禁分开维护。
+
+- 按 [自动化功能验收与结果审阅](ai-docs/spec/02-自动化功能验收与结果审阅.md)交付：开发代理负责准备数据、执行真实场景、故障/重启、核对及重跑；用户只审阅实际界面、过程和成果，不再承担逐项手动测试。
+- 功能报告按 spec 大功能组织，保留成功与失败、输入/成果原件和版本/hash、关键截图及 trace/适用录屏；技术结果、证据完整性和用户效果评价分开。离线协议、后台真实模型、实际 Electron 和发行包证据明确标注，不跨运行拼成一次成功，不把采用/模型评分/查看报告当人工认可。留证导出必须在临时目录清理前完成；通过 `BOAI_REVIEW_RUN_DIR` 开启清理前留证，并使用 `scripts/generate-feature-review.mjs` 从最终结果生成新目录报告；结束截图不冒充完整过程，文件级分组不冒充条款覆盖率，剩余缺口必须明确。
+- `tests/*.test.ts` 使用 Vitest 验证模块、持久化和模型协议；Electron 流程统一使用 `playwright-bdd`。
+- 桌面场景位于 `tests/e2e/features/`，步骤位于 `tests/e2e/steps/`，共享生命周期位于 `tests/e2e/support/`；不新增平行的 `.spec.ts` 桌面入口。
+- `pnpm test:electron` 先构建、再执行 `bddgen` 和 Playwright；`.features-gen/` 是忽略的生成文件，禁止手工维护。
+- 场景数据必须隔离；重启沿用该场景目录；升级场景先准备旧数据再启动；G4 交付前保持重启中断、不自动重放工具。
+- 修改场景不得减少原有业务断言；中文步骤描述业务意图，协议服务与进程清理留在 TypeScript 支撑层。
+- `.github/workflows/tests.yml` 仅执行 UI regression 与 Required checks。Vitest、完整 BDD、T1/T3 与评估代码保留本地，按需手动运行，不加入 GitHub CI。真实评估仍需明确授权与预算。
 
 # Desktop Collaboration Boundaries
 

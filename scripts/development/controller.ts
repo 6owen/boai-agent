@@ -1,5 +1,4 @@
 /*
- * [OUTPUT]: 共用开发侧 process 工具，不依赖已删除的评估测试目录。
  * [INPUT]: 冻结开发任务、独立Git worktree、原进程工具和Codex结构化建议/审查。
  * [OUTPUT]: 全批边界先验后文字错误有界返工；未知退出/不完整报告持久停止，回执恢复终态且不重放。
  * [POS]: 开发侧控制器；原产品员工/会话/模型运行逻辑保持。
@@ -9,7 +8,7 @@ import { z } from 'zod'
 import { execFileSync } from 'node:child_process'
 import { mkdir, readFile, writeFile, rm, lstat, readdir, rmdir, realpath } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
-import { repairProcess, saveProcess, type ProcessReceipt } from './process'
+import { repairProcess, saveProcess, type ProcessReceipt } from '../../tests/evaluation/repair-process'
 import { claimTask, digest, git, relativePath, type Task, type TaskState } from './task'
 import { acceptController, applyJournal, checkpoint, drainPendingProcesses, recoverCheckpoint, verifyCheckpointReceipts, WORKFLOW_VERSION, writeEvidence, type Cursor, type FileChange } from './recovery'
 import { inspectRequiredTests } from './checks'

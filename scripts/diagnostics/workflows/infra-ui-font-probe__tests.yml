@@ -1,0 +1,94 @@
+# [INPUT]: 固定macOS runner及旧BOAI截图基准。
+# [OUTPUT]: 仅诊断Apple字体来源/按需下载后的旧基准比较；不替换PNG、不提供发布资格。
+# [POS]: 独立诊断分支手动工作流，不合入产品分支。
+# [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
+name: Font source probe
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  font:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.16.0'
+          cache: pnpm
+      - env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: ''
+        run: |
+          pnpm install --frozen-lockfile
+          node node_modules/electron/install.js
+          pnpm exec electron --version
+      - run: pnpm build
+      - run: defaults write -g AppleLanguages -array zh-Hans-CN
+      - run: defaults write -g AppleLocale zh_CN
+      - run: swift -e 'import Foundation; print("SYSTEM_LOCALE", Locale.current.identifier)'
+      - name: Install pinned font bytes from Apple's own asset CDN
+        run: |
+          python3 - <<'PYFONT'
+          from pathlib import Path
+          import urllib.request, zipfile, io, hashlib
+          url = 'https://updates.cdn-apple.com/2024/mobileassets/062-14283/992898D8-65BC-436B-B9F9-EB2D576A24BC/com_apple_MobileAsset_Font7/3419f2a427639ad8c8e139149a287865a90fa17e.zip'
+          with urllib.request.urlopen(url, timeout=120) as response:
+              archive = zipfile.ZipFile(io.BytesIO(response.read()))
+          names = [name for name in archive.namelist() if name == 'AssetData/PingFang.ttc' or name.endswith('/AssetData/PingFang.ttc')]
+          if len(names) != 1:
+              raise RuntimeError('Apple asset does not contain exactly one PingFang font')
+          font = archive.read(names[0])
+          digest = hashlib.sha256(font).hexdigest()
+          if digest != '6bccdb1a967b2ae7e856927eb559591b2ce05656b0d4ad2764b9c9429f12c0b7':
+              raise RuntimeError('Font bytes differ from the local baseline source')
+          destination = Path.home() / 'Library/Fonts/BOAI-CI-PingFang.ttc'
+          destination.parent.mkdir(parents=True, exist_ok=True)
+          destination.write_bytes(font)
+          print('PINNED_FONT', destination, len(font), digest)
+          PYFONT
+          swift -e 'import Foundation; import CoreText; let u = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Fonts/BOAI-CI-PingFang.ttc"); var e: Unmanaged<CFError>?; let ok = CTFontManagerRegisterFontsForURL(u as CFURL, .persistent, &e); print("FONT_REGISTER", ok, String(describing: e?.takeRetainedValue()))'
+      - name: Enumerate and request system-managed font
+        run: |
+          cat > /tmp/boai-font-source.swift <<'SWIFT'
+          import Foundation
+          import CoreText
+          import CryptoKit
+          func inventory(_ phase: String) {
+            let collection = CTFontCollectionCreateFromAvailableFonts(nil)
+            let descriptors = CTFontCollectionCreateMatchingFontDescriptors(collection) as? [CTFontDescriptor] ?? []
+            var records: [[String: Any]] = []
+            for descriptor in descriptors {
+              let name = CTFontDescriptorCopyAttribute(descriptor, kCTFontNameAttribute) as? String ?? ""
+              if !["PingFangSC-Regular", "PingFangSC-Medium", "PingFangSC-Semibold"].contains(name) { continue }
+              let font = CTFontCreateWithFontDescriptor(descriptor, 13, nil)
+              let url = CTFontCopyAttribute(font, kCTFontURLAttribute) as? URL
+              let bytes = url.flatMap { try? Data(contentsOf: $0) }
+              records.append(["name": name, "family": CTFontCopyFamilyName(font) as String, "path": url?.path ?? "unknown", "version": CTFontCopyName(font, kCTFontVersionNameKey) as String? ?? "unknown", "sha256": bytes.map { SHA256.hash(data: $0).map { String(format: "%02x", $0) }.joined() } ?? "unknown", "downloadable": CTFontDescriptorCopyAttribute(descriptor, kCTFontDownloadableAttribute) as? Bool ?? false, "downloaded": CTFontDescriptorCopyAttribute(descriptor, kCTFontDownloadedAttribute) as? Bool ?? false])
+            }
+            let data = try! JSONSerialization.data(withJSONObject: ["phase": phase, "fonts": records], options: [.sortedKeys])
+            print("FONT_SOURCE " + String(data: data, encoding: .utf8)!)
+          }
+          inventory("before")
+          let names = ["PingFangSC-Regular", "PingFangSC-Medium", "PingFangSC-Semibold"]
+          let descriptors = names.map { CTFontDescriptorCreateWithAttributes([kCTFontNameAttribute: $0, kCTFontDownloadableAttribute: true] as CFDictionary) }
+          let finished = DispatchSemaphore(value: 0)
+          let started = CTFontDescriptorMatchFontDescriptorsWithProgressHandler(descriptors as CFArray, nil) { state, info in
+            print("FONT_DOWNLOAD_STATE " + String(state.rawValue))
+            if state == .didFailWithError { print("FONT_DOWNLOAD_ERROR " + String(describing: info)) }
+            if state == .didFinish { finished.signal() }
+            return true
+          }
+          if !started || finished.wait(timeout: .now() + 60) == .timedOut { print("FONT_DOWNLOAD_INCOMPLETE"); exit(1) }
+          inventory("after")
+          SWIFT
+          swift /tmp/boai-font-source.swift
+      - run: node scripts/ui-regression.mjs check --output .local/ui-font-source
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: font-source-ui
+          path: .local/ui-font-source/
+          include-hidden-files: true
+          if-no-files-found: ignore

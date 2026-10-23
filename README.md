@@ -1,5 +1,5 @@
 <!--
-[OUTPUT]: 2026-10-23 按用户明确要求只保留 UI 测试；模块/模型连接/T1/T3/业务评估用例及入口已删除，旧完整 CI 要求由本条替代，历史运行结果仅作记录。
+[OUTPUT]: 纠正测试范围：仅 GitHub CI 跑 UI，本地 Vitest/BDD/评估及依赖完整保留。
 [OUTPUT]: 第3组21–25五项实现已接线；133模块通过/1平台跳过，图标/分组/删除/预览/后台及隔离包分批通过；锁屏快捷键/菜单栏视觉与UI环境差异未验范围归各篇进度，未提交合并。
 [OUTPUT]: 多分支整合候选合入共享开发规范及现有功能历史，保留设计专项/32T1/18UI与原业务失败；当前head须经云端检查后合main。
 [OUTPUT]: 本人要求先人工review，后续执行暂停；6083工程4202项/32T1/18UI及Required已过，Mock业务失败与未完成清单见个人日常稳定化02 §7.19。
@@ -389,7 +389,7 @@ pnpm install
 pnpm dev
 ```
 
-本机运行时的进程树监督复用 Rovai Rust 模块。macOS/Linux 源码开发与构建需安装支持 edition 2024 的 Rust/Cargo；`pnpm dev`、`pnpm build` 自动构建 `dist/native/boai-process-guard`。用户安装后的应用使用随包二进制，无需本地 Rust。
+本机运行时的进程树监督复用 Rovai Rust 模块。macOS/Linux 源码开发与构建需安装支持 edition 2024 的 Rust/Cargo；`pnpm dev`、`pnpm build` 与 Vitest 自动构建 `dist/native/boai-process-guard`。用户安装后的应用使用随包二进制，无需本地 Rust。
 
 开发模式支持界面热更新；修改主进程或运行服务后需要重新启动。生产构建和运行：
 
@@ -479,25 +479,35 @@ v2/
 
 ## 验证与打包
 
-当前自动测试仅保留 **UI 测试**（2026-10-23 用户确认）。[GitHub Actions](https://github.com/6owen/boai-agent/actions/workflows/tests.yml) 在面向 main 的 PR、main push 和手动触发时运行两个任务：
-
-- `UI regression`：安装依赖、构建应用，运行 18 项明暗主题/窄窗/聊天/资源/设置等界面的真实交互和截图比较。
-- `Required checks`：核对 UI 任务成功，以及同一 SHA 的完整原报告、截图和 trace。它不再依赖工程、模型连接、T1/T3 或业务评估测试。
-
-所有非 UI 测试用例、Vitest、评估 runner 和本机全量 CI 入口已删除。保留的 UI 夹具只准备隔离历史和页面数据，不请求真实模型。旧文档中的完整测试门槛与运行成绩是历史记录，不再作为当前合并条件。普通 CI 不修改截图基线。
+日常CI使用GitHub Actions，不占用本机屏幕焦点。以下本机命令供明确手动验证或打包时使用；本轮未运行。
 
 ```sh
-pnpm test                       # 等同 pnpm test:ui；显式手动运行时使用
-pnpm test:electron:list          # 生成并列出 18 项 UI 用例，不启动 Electron
-pnpm test:ui:candidate           # 本机 UI 候选采集
-pnpm typecheck                  # 独立开发工具，不属于 Actions 测试门禁
+pnpm typecheck
+pnpm test
 pnpm build
+pnpm test:electron
 pnpm package
 ```
 
-日常自动验证交给 Actions。本机 UI 仅在明确要求时执行，使用独立数据目录。正式 UI 原件由 Actions 的 `ui` artifact 提供；普通测试、候选采集和候选接受沿原环境档案区分，详见[UI 基准流程](ai-docs/spec/22.开发自动化与持续测试/06-UI回归基准与PR门禁.md)。
+`pnpm package` 在 `release/` 生成当前平台的应用目录；`pnpm dist:mac` 生成 macOS DMG。打包使用本项目安装的 Electron。正式分发还需要应用图标、签名、公证及目标系统验收。
 
-`pnpm package` 在 `release/` 生成当前平台应用目录；`pnpm dist:mac` 生成 macOS DMG。`pnpm release:build --version X.Y.Z --sha 完整SHA` 保留候选构建能力，要求干净源码及一致版本。旧的本机 CI 发布前检和 T1 产物冒烟入口已退役；UI 通过只代表 UI 检查结果。
+本机个人候选使用 `pnpm release:build --version X.Y.Z --sha 完整SHA`，要求干净源码及一致的version/buildVersion，保留原构建资源并显式使用ad-hoc arm64配置，输出独立DMG/ZIP和签名、架构、字节清单；`built`尚不具备发布或安装资格。旧发布前检 `pnpm release:check --version X.Y.Z --sha 完整SHA --local-ci 原件目录`仍仅核本机main封存；云端发布资格适配尚未完成，普通云端CI成功不授Tag/发布或安装资格。实际进度与安装边界见[第22组03](ai-docs/spec/22.开发自动化与持续测试/03-实施步骤与验收.md)。
+
+**测试策略（2026-10-23 澄清）：GitHub CI 只跑 UI，本地测试完整保留。** `pnpm test` 运行 Vitest 单元/集成测试；`pnpm test:electron` 运行完整 BDD；`pnpm test:ui` 只运行界面交互和视觉回归。T1/T3、模型协议夹具和真实评估代码保留为本地手动入口，真实评估仍需明确授权。缩减 CI 不意味着删除测试代码或 Vitest 依赖。
+
+[GitHub Actions](https://github.com/6owen/boai-agent/actions/workflows/tests.yml) 对 main/PR 仅执行 `UI regression` 和 `Required checks`，后者独立核对同 SHA 的全部 18 项 UI 报告、截图和 trace；不等待工程、Vitest、T1/T3 或模型评估。普通 CI 只读比较基线。旧范围分流及本机 CI 工具保留为历史手动工具，不作为当前云端合并条件。
+
+协作重构当前能力：连接共享模型容量，同轮事件合并保留来源；任务已有版本化工作记录、事务认领和跨运行预算。业务结果通过独立声明和证据记录，运行成功不自动等于工作完成。员工可同时判断、流式回复与整理各自记忆；普通同伴消息不作废对原始请求的独立聊天意图。默认同连接六项模型调用、六项独立工作区任务并行；任务结果先保存为草稿，过期时仅重新汇报，命令任务和相同员工会话文件保持互斥。新增父子工作、显式结果版本依赖和负责人定向接续；子工作共享原始预算，依赖失败阻塞，支持单独停止工作树。重启中断且不重放；此前固定验收版本的真实模型样本为 44/45，达到预登记门槛，仍存在内容质量限制且整体 token 开销增加；详见[实施记录](ai-docs/spec/2.已实现功能与代码现状/20-Electron-BDD与协作重构.md)。
+
+```sh
+pnpm test:electron                     # 构建、生成 BDD 并执行全部桌面场景
+pnpm test:electron --grep @creation     # 按功能标签筛选；其他标签见 feature 文件
+pnpm test:electron --grep @smoke        # 创建流程冒烟验收
+pnpm test:electron:list                # 仅生成与列出场景
+pnpm test:electron:report              # 打开最近的 Playwright HTML 报告
+```
+
+每个场景使用临时 `BOAI_DATA_DIR`；场景内重启沿用数据，结束后清理。失败报告包含窗口截图和各次启动的 trace；Cucumber 报告位于 `playwright-report/cucumber.html`。设置 `BOAI_TEST_PACKAGED_PATH` 可验证指定打包应用，开发专用的 `@ui` 组件页会跳过。打包验收不会重建指定安装包，应先用 `pnpm package` 生成当前版本。
 
 首批 B1/B2/S1/F1 已实施，详情见 [实现记录](ai-docs/spec/2.已实现功能与代码现状/15-B1-B2-S1-F1首批重构实现.md)。员工工作区会显示技能说明与执行状态；执行依赖未验证时不会显示为就绪。
 
