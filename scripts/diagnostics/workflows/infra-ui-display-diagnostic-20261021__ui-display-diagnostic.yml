@@ -1,0 +1,54 @@
+# [INPUT]: Explicit isolated diagnostic branch and standard macOS hosted runner.
+# [OUTPUT]: Bounded no-window Electron display samples/events; no product, baseline or merge qualification.
+# [POS]: Temporary cloud diagnostic for preflight/application work-area discrepancy.
+# [PROTOCOL]: Update Header and workflows/.folder.md on changes.
+name: UI display diagnostic
+on:
+  push:
+    branches: [infra/ui-display-diagnostic-20261021]
+permissions:
+  contents: read
+jobs:
+  display:
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.16.0'
+          cache: pnpm
+      - run: |
+          pnpm install --frozen-lockfile
+          node node_modules/electron/install.js
+          node scripts/build-process-guard.mjs
+      - name: Observe native display state without a window
+        run: |
+          mkdir -p .local/display-diagnostic/profile
+          cat > .local/display-diagnostic/probe.cjs <<'JS'
+          const { app, screen, Menu } = require('electron')
+          const path = require('node:path')
+          app.setName('BoAI Agent')
+          app.setPath('userData', path.resolve('.local/display-diagnostic/profile'))
+          app.setPath('sessionData', app.getPath('userData'))
+          const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
+          const sample = phase => console.log(JSON.stringify({phase, at:Date.now(), menu:!!Menu.getApplicationMenu(), dock:app.dock.isVisible(), displays:screen.getAllDisplays().map(d=>({id:d.id,bounds:d.bounds,workArea:d.workArea,scaleFactor:d.scaleFactor,primary:d.id===screen.getPrimaryDisplay().id}))}))
+          app.whenReady().then(async()=>{
+            screen.on('display-metrics-changed',(_,d,metrics)=>{console.log(JSON.stringify({event:'display-metrics-changed',metrics,id:d.id}));sample('event')})
+            sample('ready')
+            for(const ms of [250,750,2000,2000]){await delay(ms);sample('elapsed-'+ms)}
+            Menu.setApplicationMenu(Menu.buildFromTemplate([{role:'appMenu'},{role:'fileMenu'},{role:'editMenu'},{role:'windowMenu'}]))
+            sample('menu-installed');await delay(1000);sample('menu-after-1s')
+            app.quit()
+          }).catch(e=>{console.error(e);app.exit(1)})
+          JS
+          node --input-type=module <<'JS'
+          import {execFileSync} from 'node:child_process'
+          import {createRequire} from 'node:module'
+          import {resolve} from 'node:path'
+          import {acquireResourceLock} from './scripts/resource-lock.mjs'
+          const require=createRequire(import.meta.url),release=acquireResourceLock()
+          try { console.log(execFileSync('dist/native/boai-process-guard',['--ledger',resolve('.local/display-diagnostic/processes'),require('electron'),resolve('.local/display-diagnostic/probe.cjs')],{encoding:'utf8',timeout:30000})) }
+          finally {release()}
+          JS
