@@ -3,8 +3,9 @@ name: boai-dev-workflow
 description: 在 BOAI 仓库开发功能、修复问题、提交或更新 PR、处理 GitHub Actions 失败及合并 main 时使用。统一分支/worktree、云端 CI、默认自动合并和 UI 基准审阅流程，供 Codex、Claude、Pi 等开发 Agent 读取。
 ---
 <!--
+[OUTPUT]: 纠正测试范围：仅 GitHub CI 跑 UI，本地 Vitest/BDD/评估及依赖完整保留。
 [INPUT]: 用户任务和既有提交/合并授权、当前工作区、仓库工作流与测试合同。
-[OUTPUT]: 现行 Actions 只跑 UI；删除旧工程/T1/评估要求。以任务终点表、流程图和CI分流表约束集中推送；合并main默认设置GitHub自动合并并核对回执后结束，仅明确持续跟进才等待，失败由用户查看，原门禁保持。
+[OUTPUT]: 现行 Actions 只跑 UI；本地 Vitest/BDD/评估完整保留。以任务终点表、流程图和CI分流表约束集中推送；合并main默认设置GitHub自动合并并核对回执后结束，仅明确持续跟进才等待，失败由用户查看，原门禁保持。
 [POS]: .agents/skills/boai-dev-workflow/SKILL.md，仓库开发侧共享流程，不是产品员工技能。
 [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
 -->
@@ -56,7 +57,7 @@ flowchart TD
 
 1. 读取仓库 [AGENTS.md](../../../AGENTS.md)、所属功能规格和目录地图，查看当前分支、`git status`、远端。以当前 [.github/workflows/tests.yml](../../../.github/workflows/tests.yml)、[UI 合同](../../../tests/e2e/baselines/contract.json)为准，不把历史运行的 SHA、数量或成绩当新任务资格。
 2. 从最新 `origin/main` 创建功能分支。用户日常在主目录运行 `pnpm dev`，独立工作优先使用 worktree，保留主目录当前分支和未提交工作；已有合适功能分支可继续使用。`main` 用于同步已合并提交。
-3. 按原功能补实现和必要测试。桌面流程复用 `tests/e2e/features/`、`steps/`、`support/` 的 playwright-bdd；文档归 `ai-docs/`，更新受影响 Header 和 `.folder.md`。新增界面功能按需要补 UI 覆盖；保留现有 UI 断言，历史专项仅作记录。
+3. 按原功能补实现和必要测试。桌面流程复用 `tests/e2e/features/`、`steps/`、`support/` 的 playwright-bdd；文档归 `ai-docs/`，更新受影响 Header 和 `.folder.md`。新增界面功能按需要补 UI 覆盖；保留现有本地测试与 UI 断言。
 
 本地用于编码和日常 `pnpm dev` 开发。自动产品验证默认交给 GitHub Actions：不要因完成开发而自动启动本机 CI、产品测试、构建或带 GUI 的 Electron/Playwright 验证；用户明确授权本机验证时才按其范围执行。本机自动 CI 服务保持停用，云端不可用时报告原因和未验证项，不自动恢复本机服务或改用 self-hosted runner。Skill元数据、文档链接和Git差异等轻量校验可在本地完成。
 
@@ -67,7 +68,7 @@ flowchart TD
 
 ### UI 测试与触发规则
 
-2026-10-23 用户明确只保留 UI 测试。该要求替代旧工程、Vitest、模型连接、T1/T3 和业务评估门槛；不要按历史规格恢复这些入口。
+2026-10-23 用户澄清：**仅 GitHub Actions 只跑 UI；本地 Vitest、单元/集成测试、BDD 和评估代码保留。** 不得把缩减云端门禁理解成删除本地测试或依赖。`pnpm test` 仍运行 Vitest，`pnpm test:electron` 为本地完整 BDD，`pnpm test:ui` 为 UI 回归。
 
 | 操作 | Actions 行为 |
 | --- | --- |

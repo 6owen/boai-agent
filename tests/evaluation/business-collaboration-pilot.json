@@ -1,0 +1,16 @@
+{
+  "id": "collaboration-business-pilot",
+  "goal": "先测量真实多人资料计算、写稿、读取审核及文件发布表现，校准评分后再优化完整交付。",
+  "cases": ["reviewed-operations"],
+  "validationCases": ["independent-files"],
+  "samples": 1,
+  "connectionId": "SET_BOAI_CONNECTION_ID",
+  "dataPath": "SET_SAVED_DATA_DIRECTORY",
+  "judge": { "connectionId": "SET_INDEPENDENT_JUDGE_CONNECTION_ID", "model": "deepseek-flash" },
+  "maxRequests": 120,
+  "maxRounds": 2,
+  "stopAfterNoImprovement": 2,
+  "minimumGain": 0.1,
+  "maxCallRatio": 1.1,
+  "allowedChanges": ["src/runtime/adapters/mastra/agent-factory.ts", "src/runtime/adapters/mastra/engine.ts"]
+}

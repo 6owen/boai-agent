@@ -1,24 +1,42 @@
 /*
  * [INPUT]: Actions实际步骤结果、确切提交、UI原始报告及逐场景截图/回放。
- * [OUTPUT]: 同 SHA 全 UI 原报告和原件独立重核；缺失、跳过、重试、改字节均拒绝。
- * [POS]: UI 专用 CI 汇总；无工程、T1 或评估依赖。
+ * [OUTPUT]: Actions 仅核验同 SHA 全 UI；保留本地工程/T1 报告校验函数；缺失、跳过、重试、改字节均拒绝。
+ * [POS]: 云端 UI 与本地完整测试分离的结果工具。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
-import { readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { createHash } from 'node:crypto'
-import { assertDesktopReport, desktopReportRows } from './desktop-plan.mjs'
+import { selectDesktopCases, assertDesktopReport, desktopReportRows } from './desktop-plan.mjs'
 import { verifyDesktopEvidence } from './desktop-evidence.mjs'
 
+const selected = ['install', 'types', 'lint', 'build', 'unit', 'dataset', 'bdd']
 const sameSet = (a, b) => Array.isArray(a) && a.length === b.length && new Set(a).size === b.length && b.every(value => a.includes(value))
 export function validateUiJob(jobs) {
   if (jobs.ui?.result !== 'success') throw new Error(`UI regression 未通过：${jobs.ui?.result ?? 'missing'}；请查看 UI 任务的失败步骤`)
 }
-export function validateGate(jobs, ui, caseIds, sha) {
+export function validateUiSummary(jobs, ui, caseIds, sha) {
   validateUiJob(jobs)
   if (typeof sha !== 'string' || !sha.trim() || !caseIds.length || new Set(caseIds).size !== caseIds.length) throw new Error('缺少确切提交或完整 UI 场景合同')
   if (ui.status !== 'passed' || ui.source?.commit !== sha || ui.source?.dirty !== false || !sameSet(ui.cases, caseIds) || !Array.isArray(ui.errors) || ui.errors.length) throw new Error('UI 报告缺失、不完整或提交不匹配')
+}
+
+export function validateGate(jobs, engineering, ui, caseIds, sha, evidence) {
+  const { summary: desktop, report: desktopReport, identity } = evidence ?? {}
+  if (typeof sha !== 'string' || !sha.trim() || !caseIds.length || new Set(caseIds).size !== caseIds.length) throw new Error('缺少确切提交或完整场景合同')
+  if (!['desktop', 'ui'].every(id => jobs[id]?.result === 'success')) throw new Error('必需任务失败、取消或未运行')
+  if (engineering.status !== 'passed' || engineering.sha !== sha || !sameSet(engineering.selected, selected) || !selected.every(id => engineering.outcomes?.[id] === 'success')) throw new Error('工程报告缺失、不完整或提交不匹配')
+  if (ui.status !== 'passed' || ui.source?.commit !== sha || ui.source?.dirty !== false || !sameSet(ui.cases, caseIds) || !Array.isArray(ui.errors) || ui.errors.length) throw new Error('UI报告缺失、不完整或提交不匹配')
+  if (!identity?.ids?.length || desktop?.tier !== 't1' || desktop.status !== 'passed' || desktop.source?.commit !== sha || desktop.source?.dirty !== false || desktop.planHash !== identity.hash || !sameSet(desktop.cases, identity.ids) || !Array.isArray(desktop.errors) || desktop.errors.length) throw new Error('T1报告缺失、旧计划、非T1或提交不匹配')
+  assertDesktopReport(desktopReport, selectDesktopCases(identity, desktopReport, 't1'))
+}
+
+export async function verifyDesktopGate(directory, desktop, desktopReport, identity) {
+  if (!desktop?.outputDirectory || !/^[a-f0-9]{64}$/.test(desktop.evidenceSha256 ?? '')) throw new Error('缺少本批原件核验身份')
+  const proof = await verifyDesktopEvidence(directory, desktopReport, selectDesktopCases(identity, desktopReport, 't1'), desktop.outputDirectory)
+  if (createHash('sha256').update(JSON.stringify(proof)).digest('hex') !== desktop.evidenceSha256) throw new Error('原件集合或登记已变化')
+  return proof
 }
 
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex')
@@ -63,6 +81,11 @@ async function main() {
   const [command, output] = process.argv.slice(2)
   if (command === 'jobs') {
     validateUiJob(JSON.parse(process.env.CI_JOB_RESULTS ?? '{}'))
+  } else if (command === 'record') {
+    const steps = JSON.parse(process.env.CI_STEP_RESULTS ?? '{}')
+    const failures = selected.filter(id => steps[id]?.outcome !== 'success')
+    const result = { sha: process.env.GITHUB_SHA, head: process.env.CI_PR_HEAD || null, base: process.env.CI_PR_BASE || null, runId: process.env.GITHUB_RUN_ID, selected, outcomes: Object.fromEntries(selected.map(id => [id, steps[id]?.outcome ?? 'missing'])), status: failures.length ? 'failed' : 'passed' }
+    await mkdir(dirname(output), { recursive: true }); await writeFile(output, JSON.stringify(result, null, 2))
   } else if (command === 'record-ui') {
     const contract = await read('tests/e2e/baselines/contract.json')
     const proof = await uiEvidence(output, contract.cases.map(item => item.id))
@@ -71,9 +94,9 @@ async function main() {
     const jobs = JSON.parse(process.env.CI_JOB_RESULTS ?? '{}')
     const ui = await read('.local/ci-artifacts/ui/summary.json')
     const contract = await read('tests/e2e/baselines/contract.json')
-    validateGate(jobs, ui, contract.cases.map(item => item.id), process.env.GITHUB_SHA)
+    validateUiSummary(jobs, ui, contract.cases.map(item => item.id), process.env.GITHUB_SHA)
     await verifyUiGate('.local/ci-artifacts/ui', contract.cases.map(item => item.id))
     console.log(`Required checks passed: ${process.env.GITHUB_SHA}`)
-  } else throw new Error('用法：ci-result.mjs jobs | record-ui DIR | gate')
+  } else throw new Error('用法：ci-result.mjs jobs | record FILE | record-ui DIR | gate')
 }
 if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) main().catch(error => { console.error(String(error)); process.exitCode = 1 })
