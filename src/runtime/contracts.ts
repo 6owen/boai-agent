@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 可选Mastra上下文端口及按原request ID的附加用量，不改变其他后端合同。
  * [OUTPUT]: 引擎可删除单个或全部bobo会话Memory投影，明确遗忘不留其他thread中的旧Working Memory。
  * [OUTPUT]: PPT 专用审阅端口固定当前员工执行与原请求账本，不冒用聊天模型来源。
  * [OUTPUT]: 员工形象相册端口固定本人身份/私聊管理，群内新肖像可用私有参考但不导出原图。
@@ -69,6 +70,9 @@ export interface SecretStore {
   delete(connectionId: string): Promise<void>
 }
 export interface EngineContext {
+  /** Host-authorized working context; product conversations and input consumption remain unchanged. */
+  continuity?: import('./modules/contexts/context-repository').ContextPort
+  onSupplementalUsage?(requestId: string, usage: ModelUsage): Promise<void>
   /** Owner-selected external user memory; the host fixes identity and request, and checks revision before publication. */
   externalMemory?: { revision: number; sourceMemoryIds: string[]; recall(): Promise<{ text: string; sourceMemoryIds: string[]; revision: number } | undefined> }
   presentations?: import('./modules/presentations/presentation-service').PresentationCapability

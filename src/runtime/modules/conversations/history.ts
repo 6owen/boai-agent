@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 会话清理在原事务内移除全部上下文派生集合；失败运行清理包含步骤checkpoint与维护记录。
  * [OUTPUT]: 聊天清理同步移除会话人格/成长/旅行来源与行为结果正文、暂停对应行为，保留最小去重。
  * [OUTPUT]: 2026-10-19应用业务协议：来源聊天清理同事务清除应用回执正文，保留防重放身份。
  * [OUTPUT]: 会话删除操作与原清理屏障同事务登记pending，最终清理同事务完成回执；创建回执清理后失效，重复删除不清后续新消息。
@@ -14,6 +15,7 @@
  * [POS]: conversations 的破坏性历史清理用例；宿主负责阻止执行中的会话进入。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { contextCollections } from '../contexts/context-repository'
 import { clearApplicationReceipts } from '../application/application-service'
 import { clearAgentPersonality } from '../agent-state/lifecycle'
 import { lstat, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
@@ -67,7 +69,7 @@ export class ConversationHistory {
     const ids = new Set(runIds)
     return this.store.transaction(async tx => {
       const removals: { collection: string; id: string }[] = []
-      for (const collection of ['runs', 'snapshots', 'executionEvidence', 'executionClocks', 'nativeActions', 'traceSpans', 'profileModelCalls', 'profileSkillActivations', 'profileExecutions']) {
+      for (const collection of ['contextStepCheckpoints', 'contextMaintenance', 'runs', 'snapshots', 'executionEvidence', 'executionClocks', 'nativeActions', 'traceSpans', 'profileModelCalls', 'profileSkillActivations', 'profileExecutions']) {
         for (const item of await tx.list<HistoryRecord>(collection)) if (ids.has(item.id) || item.runId && ids.has(item.runId)) {
           await tx.remove(collection, item.id); removals.push({ collection, id: item.id })
         }
@@ -153,7 +155,7 @@ export class ConversationHistory {
       const retainedBudgets = new Set((await tx.list<WorkItem>('workItems')).filter(item => item.conversationId !== id).map(item => item.budgetId))
       const sharedBudgets = new Set((await tx.list<WorkBudget>('workBudgets')).filter(item => item.collaborationRequestId && retainedBudgets.has(item.id)).map(item => item.id))
       const work = await collect('workItems', owned), workIds = new Set(work.map(item => item.id)), budgets = new Set(work.map(item => item.budgetId))
-      for (const collection of ['executionEvidence', 'executionClocks', 'nativeActions', 'codexSessions', 'claudeSessions', 'pluginSessions', 'browserScopes', 'browserEvidence', 'browserCleanups', 'profileModelCalls', 'profileSkillActivations', 'profileExecutions', 'traceSpans', 'events', 'deliveries', 'decisions', 'contributions', 'grants', 'approvals', 'directoryApprovalReceipts', 'artifacts', 'jobs', 'workWakes']) {
+      for (const collection of [...contextCollections, 'executionEvidence', 'executionClocks', 'nativeActions', 'codexSessions', 'claudeSessions', 'pluginSessions', 'browserScopes', 'browserEvidence', 'browserCleanups', 'profileModelCalls', 'profileSkillActivations', 'profileExecutions', 'traceSpans', 'events', 'deliveries', 'decisions', 'contributions', 'grants', 'approvals', 'directoryApprovalReceipts', 'artifacts', 'jobs', 'workWakes']) {
         await collect(collection, item => owned(item) || Boolean(item.turnId && turns.has(item.turnId)) || Boolean(item.runId && runIds.has(item.runId)))
       }
       for (const call of await tx.list<BudgetModelCall | ClearedBudgetModelCall>('budgetModelCalls')) {
