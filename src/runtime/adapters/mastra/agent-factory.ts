@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 每步最终prompt容量检查；公开API阶段提供原授权历史回读工具，组织工具精确集合保持。
  * [OUTPUT]: 组织任务仅使用原TaskRuntime管理工具，不重新混入通用应用、人格或技能工具。
  * [OUTPUT]: 私聊相册元信息/删除使用员工固定身份工具；读取无需文件Work。
  * [OUTPUT]: task文件图片启用同一Chat媒体适配，即使没有浏览器或MCP会话也传递真实图片。
@@ -44,6 +45,7 @@ import { sourceCreationSchema, sourceCreationDescription } from '../../modules/s
 import { groupInterpretationInstructions, orderedResponseInstruction } from '../../modules/collaboration/group-coordination'
 import type { ProcessInputStepArgs } from '@mastra/core/processors'
 import { Agent } from '@mastra/core/agent'
+import { contextCapacityProcessor, contextHistoryTools } from './context-maintenance'
 import type { Memory } from '@mastra/memory'
 import { createTool } from '@mastra/core/tools'
 import { mastraCliTools } from './cli-tools'
@@ -73,7 +75,7 @@ async function createStageInstance(phase: AgentPhase, context: EngineContext, co
   assertApiContext(context)
   context.signal.throwIfAborted()
   const adaptMedia=!!(phase === 'task' || context.browserSession || context.callDataSource) && context.connection.provider!=='anthropic' && (context.connection.api ?? 'chat')==='chat'
-  const inputProcessors = context.onTrace || adaptMedia ? [{ id: 'model-request-boundary', processInputStep: ({ model }: ProcessInputStepArgs) => { const actual=adaptMedia ? browserChatModel(model):model;return {model:context.onTrace ? traceModelRequest(actual):actual} } }] : undefined
+  const inputProcessors = [...(context.onTrace || adaptMedia ? [{ id: 'model-request-boundary', processInputStep: ({ model }: ProcessInputStepArgs) => { const actual=adaptMedia ? browserChatModel(model):model;return {model:context.onTrace ? traceModelRequest(actual):actual} } }] : []), contextCapacityProcessor(phase, context)]
   if (phase === 'coordination') {
     const agent = new Agent({ inputProcessors, id: context.agent.id, name: context.agent.name, model: modelConfig(context.connection, context.apiKey, context.agent.modelId), maxRetries: 0, instructions: groupInterpretationInstructions })
     return { agent, task: false, dispose: async () => {} }
@@ -122,7 +124,7 @@ async function createStageInstance(phase: AgentPhase, context: EngineContext, co
   try {
     assertApiContext(context)
   context.signal.throwIfAborted()
-      const tools = ctx.work?.organization ? { ...taskRuntime?.tools } : { ...taskRuntime?.tools, ...Object.fromEntries([...createApplicationTools(ctx), ...createStateTools(ctx), ...createBoundSkillOperations(ctx), ...createMemoryOperations(ctx), ...createReactionOperations(ctx), ...createSelfieOperations(ctx)].map(operation => [operation.name, createTool({ id: operation.name, description: operation.description, inputSchema: operation.schema, execute: input => operation.execute(input) })])), ...(!task && ctx.decision?.action !== 'ask' && ctx.decision?.action !== 'request_handoff' ? createKnowledgeTools(ctx) : {}), ...(!task && hasChatSourceTools(ctx) ? createSourceTools(ctx, !ctx.manageDataSources) : {}), ...(setupBrowser ? { browser_tool: createBrowserTool(setupBrowser) } : {}), ...(ctx.manageSkills ? { manage_skills: createTool({ id: 'manage_skills', description: manageSkillsDescription, inputSchema: manageSkillsSchema, execute: input => ctx.manageSkills!(input) }) } : {}), ...(ctx.manageDataSources ? { manage_data_sources: createTool({ id: 'manage_data_sources', description: manageSourcesDescription, inputSchema: manageSourcesSchema, execute: input => ctx.manageDataSources!(input) }) } : {}), ...(ctx.createDataSource ? { create_data_source: createTool({ id: 'create_data_source', description: sourceCreationDescription, inputSchema: sourceCreationSchema, execute: input => ctx.createDataSource!(input) }) } : {}), ...(ctx.manageAutomation ? { manage_automation: createTool({ id: 'manage_automation', description: automationToolDescription, inputSchema: automationCommandToolSchema, execute: input => ctx.manageAutomation!(automationCommandSchema.parse(input)) }) } : {}) }
+      const tools = ctx.work?.organization ? { ...taskRuntime?.tools } : { ...contextHistoryTools(ctx), ...taskRuntime?.tools, ...Object.fromEntries([...createApplicationTools(ctx), ...createStateTools(ctx), ...createBoundSkillOperations(ctx), ...createMemoryOperations(ctx), ...createReactionOperations(ctx), ...createSelfieOperations(ctx)].map(operation => [operation.name, createTool({ id: operation.name, description: operation.description, inputSchema: operation.schema, execute: input => operation.execute(input) })])), ...(!task && ctx.decision?.action !== 'ask' && ctx.decision?.action !== 'request_handoff' ? createKnowledgeTools(ctx) : {}), ...(!task && hasChatSourceTools(ctx) ? createSourceTools(ctx, !ctx.manageDataSources) : {}), ...(setupBrowser ? { browser_tool: createBrowserTool(setupBrowser) } : {}), ...(ctx.manageSkills ? { manage_skills: createTool({ id: 'manage_skills', description: manageSkillsDescription, inputSchema: manageSkillsSchema, execute: input => ctx.manageSkills!(input) }) } : {}), ...(ctx.manageDataSources ? { manage_data_sources: createTool({ id: 'manage_data_sources', description: manageSourcesDescription, inputSchema: manageSourcesSchema, execute: input => ctx.manageDataSources!(input) }) } : {}), ...(ctx.createDataSource ? { create_data_source: createTool({ id: 'create_data_source', description: sourceCreationDescription, inputSchema: sourceCreationSchema, execute: input => ctx.createDataSource!(input) }) } : {}), ...(ctx.manageAutomation ? { manage_automation: createTool({ id: 'manage_automation', description: automationToolDescription, inputSchema: automationCommandToolSchema, execute: input => ctx.manageAutomation!(automationCommandSchema.parse(input)) }) } : {}) }
       const agent = new Agent({
       inputProcessors,
         ...(memory ? { memory } : {}),

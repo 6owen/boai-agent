@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Mastra扩展历史先事务登记原召回/材料来源再使用；接续从原Run全部已完成工具核源，效果去重保持。
  * [OUTPUT]: 任务按独立工作区准入；允许命令或等待批准不再占全局命令独占位，互斥归实际宿主命令生命周期。
  * [OUTPUT]: 桌面活动截图随源记录备份；备份期间停止采集，恢复默认关闭新增采集。
  * [OUTPUT]: 默认执行不按累计调用、工具步骤、用量或墙钟截断；保留真实用量、取消/权限和明确指定的预算。
@@ -202,6 +203,7 @@ import { DesktopActivityService } from './modules/desktop-activity/activity-serv
 import { UserMemoryProvider } from './modules/memory/user-memory-provider'
 import { PresentationService } from './modules/presentations/presentation-service'
 import { RunModelUsage } from './modules/profile/run-model-usage'
+import { ContextRepository, contextHash, type ContextPort } from './modules/contexts/context-repository'
 import { generatePresentationReview } from './adapters/mastra/presentation-review-model'
 import { SelfieService } from './modules/media/selfie-service'
 import { MODEL_ID_MAX_LENGTH, validModelId } from '../shared/domain/model-id'
@@ -422,6 +424,7 @@ export class AppService {
   private readonly reading: ConversationReadingRepository
   private readonly userProfile: ProfileRepository
   private readonly clearingConversations = new Set<string>()
+  private readonly contexts: ContextRepository
   private readonly store: ProductStore
   private readonly notifications: AutomationNotifications
   private readonly localSkillEditing: LocalSkillEditing
@@ -503,6 +506,7 @@ export class AppService {
   constructor(private readonly options: { toolClientPath?: string; applicationHost?: ApplicationHostPort; channelTransport?: ChannelTransportFactory; browserHost?: BrowserHostBridge; dataPath: string; teamPlanner?: TeamPlanner; teamFileCheckpoint?: TeamFileCheckpoint; boboFileCheckpoint?: BoboCollaborationHooks['checkpoint']; skillDiscovery?: SkillDiscoveryOptions; skillDownloads?: DownloadTransport; skillMarketplaceFetch?: typeof fetch; engine: AgentEngine; secrets: SecretStore; emit: (event: AppEvent) => void }) {
     this.dataPath = resolve(options.dataPath)
     this.store = new ProductStore(join(this.dataPath, 'boai.sqlite'))
+    this.contexts = new ContextRepository(this.store)
     this.images = new ImageService(this.store, {
       connection: async id => this.connections.get(id),
       credential: connection => this.serialize(async () => {
@@ -795,6 +799,7 @@ export class AppService {
   async init() {
     if (this.initialized) return
     await this.store.init()
+    await this.contexts.recover()
     if (['darwin', 'linux'].includes(process.platform)) await this.terminals.recover()
     await this.desktopActivity.init()
     await this.userMemoryProvider.init()
@@ -2026,6 +2031,7 @@ export class AppService {
     } else if (method === 'deleteMemory') result = await this.memory.delete(query, (value as typeof value & { id: string }).id, expectedEpoch, (value as typeof value & { requestId?: string }).requestId)
     else result = await this.memory.clear(query, expectedEpoch, (value as typeof value & { requestId?: string }).requestId)
     await this.memoryChanged([query.agentId])
+    await this.contexts.forgetAgent(query.agentId)
     if (query.agentId === CORE_AGENT_ID) await this.options.engine.forgetAllConversationMemory?.().catch(error => {
       this.emit({ type: 'runtime-error', error: `bobo 记忆投影清理未完成：${error instanceof Error ? error.message : String(error)}` })
     })
@@ -2132,7 +2138,7 @@ export class AppService {
     for (const resourceId of ownedResourceIds) await this.assertSkillUnused(resourceId)
     await this.channels.detachEmployees(agentIds)
     await this.automations.detachContacts(agentIds, affected.map(conversation => conversation.id))
-    for (const agentId of agentIds) { await this.terminals.stopEmployee(agentId); await this.cancelEmployee(agentId, '员工已删除') }
+    for (const agentId of agentIds) { await this.terminals.stopEmployee(agentId); await this.cancelEmployee(agentId, '员工已删除'); await this.contexts.forgetAgent(agentId) }
     await this.clearBrowserTaskRecords(scope => agentIds.includes(scope.agentId))
     if (ownedResourceIds.length) {
       await this.memory.invalidateResources(ownedResourceIds)
@@ -4105,6 +4111,7 @@ export class AppService {
         }
       },
       onUsage: usage => runUsage.main(usage),
+      onSupplementalUsage: (id, usage) => runUsage.supplement(id, usage),
     }
     if (workView) {
       context.work = currentWork
@@ -4191,9 +4198,101 @@ export class AppService {
       context.employeeCandidates = await this.boboCollaboration.findEmployees({ limit: 20 })
       context.legacyTeamName = (await this.store.load<CoreConversationStart>('coreConversationStarts')).find(value => value.conversationId === conversation.id && value.messageId === turn.triggerMessageId && !value.cleared)?.teamName
     }
+    if (!runtimeProfile && run.phase === 'execution') context.continuity = this.contextContinuity(context, throughSequence)
     this.activeEngineContexts.set(run.id, { context, definition: agent })
     return context
     })
+  }
+  private contextContinuity(context: EngineContext, throughSequence: number): ContextPort {
+    const bound = Math.min(throughSequence, Math.max(...context.messages.map(message => message.sequence), 0))
+    const owner = { agentId: context.agent.id, conversationId: context.conversation.id, scopeVersion: contextHash([context.agent.configVersion, context.conversation.configVersion, context.memory?.invalidationEpoch, context.resources, context.materialRefs]) }
+    const enriched = new Map(context.messages.map(message => [message.id, message]))
+    const sources = async () => {
+      await this.assertExecutionAccess(context)
+      const forgotten = await this.memory.forgottenMessageIds(context.agent.id)
+      const messages = (await this.contextMessages(this.getConversation(context.conversation.id), context.triggerMessageId!, bound)).filter(message => !forgotten.has(message.id))
+      const allowed: Message[] = []
+      const materialRefs = new Map<string, MaterialReadRef[]>()
+      for (const message of messages) {
+        try {
+          const projected = enriched.get(message.id)
+          const refs = [...(message.materialSources ?? this.snapshots.get(message.runId ?? '')?.materialRefs ?? []), ...(projected?.materialSources ?? [])]
+          for (const materialId of projected?.materialIds ?? message.materialIds ?? []) refs.push((await this.materials.read(materialId, context.agent.id, context.conversation.id)).ref)
+          if (message.composerReferences?.length) await this.store.transaction(tx => this.validateComposerReferences(tx, context.conversation, message.composerReferences!, false))
+          for (const ref of message.composerReferences ?? []) {
+            if (ref.kind === 'material') refs.push((await this.materials.read(ref.id, context.agent.id, context.conversation.id)).ref)
+            if (ref.kind === 'artifact') refs.push(...(this.artifacts.get(ref.id)?.materialSources ?? []))
+          }
+          if (refs.length) await this.materials.validateRefs(refs, context.agent.id, context.conversation.id)
+          if (message.channelReference) await this.store.transaction(tx => channelReferenceMessage(tx, context.conversation.id, message.channelReference!))
+          allowed.push(message); materialRefs.set(message.id, refs)
+        } catch (error) { if (message.id === context.triggerMessageId) throw error }
+      }
+      context.signal.throwIfAborted()
+      return { messages: allowed, materialRefs }
+    }
+    // Called under the service critical section, before any newly read data reaches
+    // the model. Preserve the original recall object and snapshot identities used
+    // by cancellation, tool gates, publication and transitive memory invalidation.
+    const registerInputs = async (messages: Message[], refsByMessage: Map<string, MaterialReadRef[]>) => {
+      if (!messages.length) return
+      const memory = clone(context.memory ?? fail('上下文历史缺少原记忆来源快照'))
+      if (!memory.recall) fail('上下文历史缺少原召回来源身份')
+      const refs = [...new Map([...(context.materialRefs ?? []), ...messages.flatMap(message => refsByMessage.get(message.id) ?? [])].map(ref => [`${ref.id}:${ref.revision}`, ref])).values()]
+      const updated = await this.store.transaction(async tx => {
+        context.signal.throwIfAborted()
+        const saved = await tx.get<RunSnapshot>('snapshots', context.runId), run = await tx.get<AgentRun>('runs', context.runId)
+        if (!saved || saved.invalidated || !run || terminal.has(run.status) || await tx.get('conversationCleanup', context.conversation.id)) fail('历史输入所属执行已失效')
+        const ids = new Set(memory.recall!.inputMessageIds ?? [])
+        for (const message of messages) {
+          const current = await tx.get<Message>('messages', message.id)
+          if (!current || current.conversationId !== context.conversation.id || contextHash(current) !== contextHash(message)) fail('历史输入来源已变化')
+          ids.add(message.id)
+          if (message.channelReference) ids.add((await channelReferenceMessage(tx, context.conversation.id, message.channelReference)).id)
+        }
+        memory.recall!.inputMessageIds = [...ids]
+        await this.materials.validateRefsInTransaction(tx, refs, context.agent.id, context.conversation.id)
+        if (!await this.memory.recallValidInTransaction(tx, memory)) fail('历史输入已被遗忘或撤销，不能继续使用')
+        const next = { ...saved!, materialRefs: clone(refs), memoryRecall: { namespace: memory.namespace, epoch: memory.epoch, invalidationEpoch: memory.invalidationEpoch, recall: memory.recall } }
+        await tx.put(record('snapshots', next))
+        context.signal.throwIfAborted()
+        return next
+      })
+      context.memory!.recall = memory.recall
+      const liveRefs = context.materialRefs ??= []; liveRefs.splice(0, liveRefs.length, ...refs)
+      Object.assign(this.snapshots.get(context.runId)!, updated)
+      if (context.work && refs.length) Object.assign(context.work, await this.works.recordMaterialSources(context.runId, refs))
+    }
+    return {
+      read: () => this.serialize(async () => {
+        const { messages, materialRefs } = await sources()
+        await registerInputs(messages, materialRefs)
+        const view = await this.contexts.read(owner, messages)
+        const current = this.runs.get(context.runId)!, authorized = new Set(context.resources.map(resource => resource.id))
+        const completed: { runId: string; toolIds: string[] }[] = []
+        for (const runId of context.continuation?.resumesRunIds ?? []) {
+          const previous = this.runs.get(runId), snapshot = this.snapshots.get(runId)
+          if (!previous || previous.id === current.id || previous.phase !== 'execution' || previous.agentId !== current.agentId || previous.conversationId !== current.conversationId || previous.workId !== current.workId || !snapshot || snapshot.invalidated || !this.dataSourceSnapshotValid(snapshot) || !snapshot.resources.every(resource => authorized.has(resource.id))) continue
+          if (snapshot.memoryRecall && !await this.memory.recallValid({ ...snapshot.memoryRecall, entries: [] })) continue
+          await this.materials.validateRefs(snapshot.materialRefs ?? [], context.agent.id, context.conversation.id)
+          completed.push({ runId, toolIds: previous.toolEvents.filter(tool => tool.status === 'completed').map(tool => tool.id) })
+        }
+        return { ...view, resumedSteps: await this.contexts.resumedSteps(owner, completed, messages) }
+      }),
+      begin: (view, action) => this.serialize(async () => { await sources(); return this.contexts.begin(owner, context.runId, view, action) }),
+      commit: (operation, summary, refs, metrics) => this.serialize(async () => {
+        if (operation.scopeVersion !== owner.scopeVersion || operation.runId !== context.runId || operation.agentId !== owner.agentId || operation.conversationId !== owner.conversationId) fail('上下文维护身份不符')
+        return this.contexts.commit(operation, summary, refs, (await sources()).messages, metrics, () => context.signal.throwIfAborted())
+      }),
+      fail: (operation, reason) => this.contexts.fail(operation, reason),
+      recordStep: (summary, tools, metrics) => this.serialize(async () => this.contexts.recordStep(owner, context.runId, summary, tools, (await sources()).messages, metrics, () => context.signal.throwIfAborted())),
+      history: input => this.serialize(async () => {
+        const { messages, materialRefs } = await sources()
+        const rows = messages.filter(message => (!input.messageId || message.id === input.messageId) && (input.afterSequence === undefined || message.sequence > input.afterSequence) && (!input.query || message.content.toLocaleLowerCase().includes(input.query.toLocaleLowerCase()))).slice(0, Math.max(1, Math.min(12, input.limit ?? 6)))
+        await registerInputs(rows, materialRefs)
+        return rows.map(message => ({ ...message, content: message.content.slice(0, 4000), truncated: message.content.length > 4000 }))
+      }),
+    }
   }
   private async contextOnlyPeerDelivery(turn: DiscussionTurn, event: ConversationEvent, delivery: AgentDelivery) {
     if (turn.origin && !turn.workId && !turn.wakeId && delivery.conversationId === turn.conversationId && delivery.turnId === turn.id) {
