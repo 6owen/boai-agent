@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Desktop-only CLI installation status and native directory selection operations.
- * [OUTPUT]: Version/connection, explicit install/update/uninstall and read-only reconciliation after failure.
+ * [OUTPUT]: Compact installation status and explicit actions; usage/connection/path/platform details live in the title icon Tooltip, original reconciliation remains.
  * [POS]: CLI Card within existing desktop settings; errors use global Sonner.
  * [PROTOCOL]: Changes update Header and .folder.md.
  */
@@ -9,7 +9,8 @@ import type { DesktopApi } from '@shared/ipc'
 import type { CliInstallation } from '@shared/ipc/cli-installation'
 import { showErrorToast, errorText } from '@/components/common'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { SettingsHelp } from './settings-layout'
 
 const labels: Record<CliInstallation['state'], string> = { 'not-installed': '未安装', installed: '已安装', 'update-available': '可更新到当前应用', conflict: '安装项已被外部修改' }
 export function CliInstallationCard({ api, active }: { api: DesktopApi; active: boolean }) {
@@ -35,13 +36,15 @@ export function CliInstallationCard({ api, active }: { api: DesktopApi; active: 
     } finally { pending.current = false; setBusy(false) }
   }
   return <Card className="mt-6" role="region" aria-label="命令行工具">
-    <CardHeader><CardTitle>命令行工具</CardTitle><CardDescription>在终端通过 boai 使用当前应用的员工、会话和任务。</CardDescription></CardHeader>
+    <CardHeader><CardTitle className="flex items-center gap-1">命令行工具<SettingsHelp label="命令行工具说明">
+      <p>在终端通过 boai 使用当前应用的员工、会话和任务。安装到 PATH 目录后可直接运行，也可使用命令的完整路径。</p>
+      <p>应用在原位置升级后，命令会使用新版本。</p>
+      {status && <p>{status.connection.state === 'connected' ? `已连接当前工作空间 · 服务 ${status.connection.version}` : '当前工作空间服务暂不可用'}</p>}
+      {status?.commandPath && <p>命令位置：{status.commandPath}</p>}
+      {status && !status.supported && <p>当前仅支持在 macOS 安装命令行工具。</p>}
+    </SettingsHelp></CardTitle></CardHeader>
     <CardContent className="flex flex-col gap-2">
       <p role="status">{status ? `${labels[status.state]} · CLI ${status.installedVersion ?? status.version}` : '正在读取安装状态…'}</p>
-      {status && <p className="field-hint">{status.connection.state === 'connected' ? `已连接当前工作空间 · 服务 ${status.connection.version}` : '当前工作空间服务暂不可用'}</p>}
-      {status?.commandPath && <p className="field-hint break-all">命令位置：{status.commandPath}</p>}
-      <p className="field-hint">选择已加入 PATH 的目录；也可以通过命令的完整路径运行。应用在原位置升级后，命令会使用新版本。</p>
-      {status && !status.supported && <p className="field-hint">当前仅支持在 macOS 安装命令行工具。</p>}
     </CardContent>
     <CardFooter className="flex flex-wrap gap-2">
       <Button size="sm" variant="secondary" disabled={busy || !confirmed || !status?.supported || status.state === 'conflict' || status.state === 'installed'} onClick={() => void act('install')}>{status?.state === 'update-available' ? '更新命令行工具' : '安装命令行工具'}</Button>

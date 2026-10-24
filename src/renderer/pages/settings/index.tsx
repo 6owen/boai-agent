@@ -1,8 +1,8 @@
 /*
- * [OUTPUT]: 桌面活动与日报独立设置分类，沿原 bobo 日报入口。
+ * [OUTPUT]: 九个设置页共用settings-layout，数据与备份同样使用共享文档视口留白。
+ * [OUTPUT]: 桌面活动与日报独立设置分类；页面只提供采集/活动/确认清理，不提供日报入口。
  * [OUTPUT]: 个人资料常用技能菜单通过Shell导航到资源库技能列表，不打开本页详情。
  * [OUTPUT]: 快捷键分类支持启停/录入与自动保存，传递活跃状态以释放捕获。
- * [OUTPUT]: 运行选项桌面活动日报入口交给原 bobo 首发流程。
  * [OUTPUT]: 2026-10-19 配置分类新增网页检索独立页，沿原活跃读取和页面切换。
  * [OUTPUT]: 设置增加内置插件管理，沿原分类/文档布局与启停真源。
  * [OUTPUT]: 运行选项入口接后台常驻与真实系统登录项状态。
@@ -31,7 +31,7 @@ import { Banner, GuardContext, useMutation } from '@/components/common/index'
 import { ConnectionSettings } from './connections'
 import type { LocalAgentTarget } from './local-agents'
 export type SettingsTab = 'profile' | 'connections' | 'data' | 'appearance' | 'shortcuts' | 'desktop' | 'desktop-activity' | 'plugins' | 'web-search'
-export function SettingsPage({ api, snapshot, refresh, divider, tab, setTab, active, onOpenSkills, localAgentTarget, onActivityReport }: { onActivityReport(from: string, to: string): Promise<void>; api: DesktopApi; snapshot: Snapshot; refresh: () => Promise<void>; divider: ReactNode; tab: SettingsTab; setTab: (tab: SettingsTab) => void; active: boolean; onOpenSkills: () => void; localAgentTarget?: LocalAgentTarget }) {
+export function SettingsPage({ api, snapshot, refresh, divider, tab, setTab, active, onOpenSkills, localAgentTarget }: { api: DesktopApi; snapshot: Snapshot; refresh: () => Promise<void>; divider: ReactNode; tab: SettingsTab; setTab: (tab: SettingsTab) => void; active: boolean; onOpenSkills: () => void; localAgentTarget?: LocalAgentTarget }) {
   const [search, setSearch] = useState('')
   const [notice, setNotice] = useState('')
   const guard = useContext(GuardContext)
@@ -71,7 +71,7 @@ export function SettingsPage({ api, snapshot, refresh, divider, tab, setTab, act
       return items.length > 0 && <div className="settings-nav-group" key={group.label}><p>{group.label}</p>{items.map(item => <Button variant="ghost" size="content" key={item.id} className={tab === item.id ? 'selected' : ''} aria-current={tab === item.id ? 'page' : undefined} onClick={() => guard.navigate(() => { setTab(item.id) })}><item.icon size={16} />{item.label}</Button>)}</div>
     })}
     {!matches.length && <p className="settings-search-empty">没有匹配的设置</p>}</div>
-  </nav>{divider}<div className={`settings-content page-scroll${tab === 'appearance' || tab === 'shortcuts' || tab === 'connections' || tab === 'profile' || tab === 'desktop' || tab === 'desktop-activity' || tab === 'plugins' || tab === 'web-search' ? ' settings-document-content' : ''}`}>
+  </nav>{divider}<div className="settings-content page-scroll settings-document-content">
     <div ref={content} className="settings-page-transition t-panel-slide" data-open="true" data-settled="true">
     {error && <Banner>{error}</Banner>}{notice && <Banner kind="notice" onClose={() => setNotice('')}>{notice}</Banner>}
     {tab === 'profile' && <ProfileSettings api={api} profile={snapshot.userProfile} active={active} refresh={refresh} onOpenSkills={onOpenSkills} />}
@@ -79,7 +79,7 @@ export function SettingsPage({ api, snapshot, refresh, divider, tab, setTab, act
     {tab === 'appearance' && <AppearanceSettings />}
     {tab === 'shortcuts' && <ShortcutSettings active={active} />}
     {tab === 'desktop' && <DesktopSettingsPage api={api} active={active} />}
-    {tab === 'desktop-activity' && <DesktopActivityPage api={api} active={active} onReport={onActivityReport} />}
+    {tab === 'desktop-activity' && <DesktopActivityPage api={api} active={active} />}
     {tab === 'web-search' && <WebSearchSettingsPage api={api} active={active} />}
     {tab === 'plugins' && <PluginSettingsPage />}
     {tab === 'data' && <DataSettings api={api} snapshot={snapshot} busy={busy} run={run} onNotice={setNotice} />}

@@ -3,6 +3,7 @@ name: boai-dev-workflow
 description: 在 BOAI 仓库开发功能、修复问题、提交或更新 PR、处理 GitHub Actions 失败及合并 main 时使用。统一分支/worktree、云端 CI、默认自动合并和 UI 基准审阅流程，供 Codex、Claude、Pi 等开发 Agent 读取。
 ---
 <!--
+[OUTPUT]: 2026-10-24按用户要求移除日常固定使用pnpm dev的约束；运行方式不预设，独立worktree及main仅同步已合并提交的规则保持。
 [OUTPUT]: 纠正测试范围：仅 GitHub CI 跑 UI，本地 Vitest/BDD/评估及依赖完整保留。
 [INPUT]: 用户任务和既有提交/合并授权、当前工作区、仓库工作流与测试合同。
 [OUTPUT]: 现行 Actions 只跑 UI；本地 Vitest/BDD/评估完整保留。以任务终点表、流程图和CI分流表约束集中推送；合并main默认设置GitHub自动合并并核对回执后结束，仅明确持续跟进才等待，失败由用户查看，原门禁保持。
@@ -56,10 +57,10 @@ flowchart TD
 ## 开始开发
 
 1. 读取仓库 [AGENTS.md](../../../AGENTS.md)、所属功能规格和目录地图，查看当前分支、`git status`、远端。以当前 [.github/workflows/tests.yml](../../../.github/workflows/tests.yml)、[UI 合同](../../../tests/e2e/baselines/contract.json)为准，不把历史运行的 SHA、数量或成绩当新任务资格。
-2. 从最新 `origin/main` 创建功能分支。用户日常在主目录运行 `pnpm dev`，独立工作优先使用 worktree，保留主目录当前分支和未提交工作；已有合适功能分支可继续使用。`main` 用于同步已合并提交。
+2. 从最新 `origin/main` 创建功能分支。独立工作优先使用 worktree，保留主目录当前分支和未提交工作；已有合适功能分支可继续使用。`main` 用于同步已合并提交。
 3. 按原功能补实现和必要测试。桌面流程复用 `tests/e2e/features/`、`steps/`、`support/` 的 playwright-bdd；文档归 `ai-docs/`，更新受影响 Header 和 `.folder.md`。新增界面功能按需要补 UI 覆盖；保留现有本地测试与 UI 断言。
 
-本地用于编码和日常 `pnpm dev` 开发。自动产品验证默认交给 GitHub Actions：不要因完成开发而自动启动本机 CI、产品测试、构建或带 GUI 的 Electron/Playwright 验证；用户明确授权本机验证时才按其范围执行。本机自动 CI 服务保持停用，云端不可用时报告原因和未验证项，不自动恢复本机服务或改用 self-hosted runner。Skill元数据、文档链接和Git差异等轻量校验可在本地完成。
+本地用于编码。自动产品验证默认交给 GitHub Actions：不要因完成开发而自动启动本机 CI、产品测试、构建或带 GUI 的 Electron/Playwright 验证；用户明确授权本机验证时才按其范围执行。本机自动 CI 服务保持停用，云端不可用时报告原因和未验证项，不自动恢复本机服务或改用 self-hosted runner。Skill元数据、文档链接和Git差异等轻量校验可在本地完成。
 
 ## 提交与 PR
 

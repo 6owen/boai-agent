@@ -1,9 +1,11 @@
 /*
+ * [OUTPUT]: 页面布局复用settings-layout，标题/分组留白与卡片/设置行统一，原业务回调保持。
  * [INPUT]: Independent retrieval settings, current provider presets and versioned desktop API.
  * [OUTPUT]: Compact default retrieval selector with persisted browser fallback for unavailable services, wider single-line browser open menu and service enable switch; shared model-connection key input and save-only dialog footer.
  * [POS]: Settings / configuration / web retrieval; no business data-source forms or bindings.
  * [PROTOCOL]: Update Header and parent .folder.md on change.
  */
+import { SettingsLayout, SettingsSection } from './settings-layout'
 import { useContext, useEffect, useId, useRef, useState } from 'react'
 import deepseekIcon from '@lobehub/icons-static-svg/icons/deepseek.svg'
 import type { DesktopApi } from '@shared/ipc'
@@ -48,15 +50,14 @@ export function WebSearchSettingsPage({ api, active }: { api: DesktopApi; active
     const credential = service ? await api.request('getWebSearchCredential', { id: service.id, expectedRevision: service.revision }) : ''
     setEditing({ provider, service, credential })
   })
-  return <section className="connection-settings settings-document" aria-label="网页检索设置">
-    <header className="settings-document-heading"><h2>网页检索</h2></header>
+  return <SettingsLayout title="网页检索" aria-label="网页检索设置" className="connection-settings">
     <ErrorToast>{mutation.error}</ErrorToast>
-    <div className="connection-section-heading"><h3 className="settings-section-title">默认检索</h3></div>
+    <SettingsSection first title="默认检索">
     <Card className="gap-0 px-5 py-0"><div className="connection-fields">
       <ConnectionSettingRow label="默认检索方式" icon={<Search />}><SelectField className="w-56 max-w-full justify-self-end" aria-label="默认检索方式" value={defaultValue} disabled={!settings || mutation.busy || !active} options={options} onValueChange={value => { void mutation.run(async () => { await api.request('saveWebSearchDefault', { expectedRevision: settings!.revision, default: value === 'browser' ? { mode: 'browser' } : { mode: 'service', serviceId: value } }); await refresh() }) }} /></ConnectionSettingRow>
     </div></Card>
-    <div className="connection-agent-settings">
-      <div className="connection-section-heading"><h3 className="settings-section-title">检索服务</h3></div>
+    </SettingsSection>
+    <SettingsSection title="检索服务">
       <Card className="connection-rows soft-divide-y gap-0 p-0">
         <div className="connection-row" data-search-provider="browser">
           <span className="connection-provider-icon" aria-hidden="true"><i className="app-icon i-carbon-earth size-6" /></span>
@@ -75,10 +76,10 @@ export function WebSearchSettingsPage({ api, active }: { api: DesktopApi; active
         })}
       </Card>
       <p className="connection-footnote"><ShieldCheck size={14} />密钥保存在本机，不会显示在聊天消息中。</p>
-    </div>
+    </SettingsSection>
     {failed && <Button variant="ghost" size="sm" onClick={() => void refresh()}>重新读取</Button>}
     {editing && active && <SearchServiceEditor key={editing.service?.id ?? editing.provider} api={api} target={editing} onClose={() => setEditing(undefined)} onSaved={refresh} />}
-  </section>
+  </SettingsLayout>
 }
 
 function SearchServiceRow({ provider, service, api, disabled, onConfigure, onChanged }: { provider: SearchPreset; service?: WebSearchServiceConfig; api: DesktopApi; disabled: boolean; onConfigure(): void; onChanged(): Promise<void> }) {
