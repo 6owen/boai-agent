@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: ListRow共用资源库图标/两行文字；displayOnly提供无按钮语义的展示行，操作交给行外菜单。
  * [OUTPUT]: 字号和默认行高使用同一工具类，宿主字号覆盖时保持原cn合并语义。
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
  * [OUTPUT]: item 基础组件及其可组合的样式/变体。
@@ -12,6 +13,26 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "cn"
 
 import { Separator } from "./separator"
+import { Button } from "./button"
+
+function ListRow({ label, description, icon, selected, displayOnly = false, className, ...props }: Omit<React.ComponentProps<typeof Button>, 'children' | 'variant' | 'size'> & {
+  label: string
+  description?: React.ReactNode
+  icon?: React.ReactNode
+  selected?: boolean
+  displayOnly?: boolean
+}) {
+  const rowClassName = cn('soft-list-row', !displayOnly && selected && 'selected', className)
+  const content = <>
+    {icon && <span className="soft-list-row-icon [&_:is(svg,.app-icon)]:size-[16px]">{icon}</span>}
+    <span className="soft-list-row-copy">
+      <strong className="soft-list-row-title" title={label}>{label}</strong>
+      {description && <small className="soft-list-row-description">{description}</small>}
+    </span>
+  </>
+  if (displayOnly) return <div className={cn('soft-button-ghost', props.disabled && 'opacity-50', rowClassName)} title={props.title}>{content}</div>
+  return <Button type="button" variant="ghost" size="content" {...props} className={rowClassName} aria-pressed={selected}>{content}</Button>
+}
 
 function ItemGroup({ className, ...props }: React.ComponentProps<"div">) {
   return (
@@ -195,6 +216,7 @@ function ItemFooter({ className, ...props }: React.ComponentProps<"div">) {
 }
 
 export {
+  ListRow,
   Item,
   ItemMedia,
   ItemContent,

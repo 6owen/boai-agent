@@ -2,6 +2,8 @@
  * [OUTPUT]: 审批传递本次运行同类操作选择；目录回执核对包括该选择，未知回答不冒充成功。
  * [OUTPUT]: 员工右键配置跳转通讯录；定时运行图标沿原主会话定位与详情导航。
  * [OUTPUT]: 员工会话右键配置跳转现有通讯录选中项；定时运行按用户点击查看过程/聊天。
+ * [OUTPUT]: 个人资料技能菜单经原导航守卫进入资源库全部技能，清除旧定位，不打开设置页资源详情。
+ * [OUTPUT]: 头像菜单由Base UI内部管理开关，避免重渲染Shell与聊天历史；保留导航关闭、Escape及快捷键门禁，移除会话header网页预览回调。
  * [OUTPUT]: 普通/材料/明确回复发送通过原校验后通知当前聊天回到最新窗口；清除历史定位并使旧分页失效，核对未知回执不触发跳转。
  * [OUTPUT]: 管理入口切到普通核心会话并追加去重的管理技能标签，保留草稿和未知首发身份；定时创建不再使用专用聊天。
  * [OUTPUT]: 清理同时隔离详情和分页请求的迟到结果与错误。
@@ -265,7 +267,8 @@ export function AppShell() {
   if (route.page === 'settings') settingsMounted.current = true
   const [settingsSection,setSettingsSection]=useState<SettingsTab>('connections')
   const [localAgentTarget, setLocalAgentTarget] = useState<LocalAgentTarget>()
-  const [menu, setMenu] = useState<'settings' | null>(null)
+  const userMenuOpen = useRef(false)
+  const userMenuActions = useRef<{ close(): void; unmount(): void } | null>(null)
   const [sharingProfile, setSharingProfile] = useState(false), userMenuButton = useRef<HTMLButtonElement>(null)
   const detailTrigger = useRef<{ scope: string; element: HTMLElement | null } | null>(null)
   const history = useRef<Route[]>([route]), historyIndex = useRef(0)
@@ -456,10 +459,10 @@ export function AppShell() {
   useEffect(() => { try { localStorage.setItem('boai.v2.listWidth', String(listWidth)); localStorage.setItem('boai.v2.page', route.page); localStorage.removeItem('boai.v2.conversation') } catch { /* Preferences are optional. */ } }, [listWidth, route.page])
   useEffect(() => { if (api) void api.request('setUnsavedChanges', { dirty: anyDirty }).catch(e => toast.error(errorText(e))) }, [api, anyDirty])
   useEffect(() => {
-    const key = (event: globalThis.KeyboardEvent) => { if (event.key === 'Escape' && !event.defaultPrevented && !event.composedPath().some(node => node instanceof Element && node.matches('[role=dialog], [role=alertdialog], [data-slot=popover-content]')) && !menu && !sharingProfile && !leaving && !creation && panel && !document.querySelector('[role=dialog], [role=alertdialog], [data-slot=popover-content][data-open]')) { const handle = tabHandles.current.get(detailTabs.activeKey!); if (activeTab?.detail) handle?.navigate(() => dispatchDetails({ type: 'back', key: activeTab.key })); else handle?.close() } }
+    const key = (event: globalThis.KeyboardEvent) => { if (event.key === 'Escape' && !event.defaultPrevented && !event.composedPath().some(node => node instanceof Element && node.matches('[role=dialog], [role=alertdialog], [role=menu], [data-slot=popover-content]')) && !userMenuOpen.current && !sharingProfile && !leaving && !creation && panel && !document.querySelector('[role=dialog], [role=alertdialog], [data-slot=popover-content][data-open], [data-slot=dropdown-menu-content][data-open]')) { const handle = tabHandles.current.get(detailTabs.activeKey!); if (activeTab?.detail) handle?.navigate(() => dispatchDetails({ type: 'back', key: activeTab.key })); else handle?.close() } }
     document.addEventListener('keydown', key)
     return () => document.removeEventListener('keydown', key)
-  }, [menu, sharingProfile, panel, leaving, creation, detailTabs.activeKey, activeTab?.detail])
+  }, [sharingProfile, panel, leaving, creation, detailTabs.activeKey, activeTab?.detail])
   const action = async (fn: () => Promise<void>) => { if (busyRef.current) return; busyRef.current = true; setBusy(true); try { await fn() } catch (e) { if (mounted.current) toast.error(errorText(e)) } finally { busyRef.current = false; if (mounted.current) setBusy(false) } }
   const applyRoute = (requested: Route, addHistory = true, navigated?: () => void) => {
     const target = snapshotRef.current.conversations.find(room => room.id === requested.conversationId)
@@ -487,7 +490,7 @@ export function AppShell() {
     routeRef.current = next
     if (next.page !== 'skills') { setFocusedSkill(undefined); setFocusedSource(undefined) }
     if (next.page !== 'settings') setLocalAgentTarget(undefined)
-    setRoute(next); setCreation(null); setMenu(null); navigated?.()
+    setRoute(next); setCreation(null); userMenuActions.current?.close(); navigated?.()
   }
   const goPage = (page: Page) => navigate(() => applyRoute({ ...route, page }))
   const openUserProfile = () => navigate(() => { setSettingsSection('profile'); applyRoute({ ...route, page: 'settings' }) })
@@ -576,7 +579,7 @@ export function AppShell() {
     const commit = () => {
       if (current && !current()) return
       if (!panel) detailTrigger.current = { scope, element: trigger }
-      dispatchDetails({ type: 'open', target: next, withinKey }, scope); setMenu(null); navigated?.()
+      dispatchDetails({ type: 'open', target: next, withinKey }, scope); userMenuActions.current?.close(); navigated?.()
     }
     navigate(() => {
       if (current && !current()) return
@@ -588,7 +591,7 @@ export function AppShell() {
   const openLocalSkill = (id: string) => navigate(() => {
     setSkillsSection('all'); setFocusedSkill({ id, requestId: crypto.randomUUID() }); applyRoute({ ...route, page: 'skills' })
   })
-  const openCreation = (next: Creation) => navigate(() => { setCreation(next); setMenu(null) })
+  const openCreation = (next: Creation) => navigate(() => { setCreation(next); userMenuActions.current?.close() })
   const createdConversation = async (result: Conversation) => { await refreshSnapshot(); saved(() => { applyRoute({ page: 'conversations', conversationId: result.id }) }) }
   const coreConversationStarted = (result: Conversation) => {
     setSnapshot(previous => ({ ...previous, conversations: previous.conversations.some(item => item.id === result.id) ? previous.conversations : [...previous.conversations, result] }))
@@ -944,7 +947,7 @@ export function AppShell() {
   const toggleList = () => setListShown(shown => !shown)
   useEffect(() => {
     const onShortcut = (event: globalThis.KeyboardEvent) => {
-      if (!api || event.defaultPrevented || event.isComposing || event.repeat || shortcuts.store.getState().capturing || menu || sharingProfile || leaving || creation) return
+      if (!api || event.defaultPrevented || event.isComposing || event.repeat || shortcuts.store.getState().capturing || userMenuOpen.current || sharingProfile || leaving || creation) return
       const shortcutSnapshot = shortcuts.store.getState().snapshot
       if (!shortcutSnapshot) return
       const shortcut = matchShortcut(event, shortcutSnapshot)
@@ -979,7 +982,6 @@ export function AppShell() {
           await refreshSnapshot()
         })
       } : undefined} onFiles={() => showPanel(channel || internal ? { type: 'channel-files', id } : { type: 'files', owner, id: ownerId })}
-      onWorkspace={!channel && !internal && room.agentIds[0] ? () => showPanel({ type: 'workspace', id, employeeId: room.agentIds[0]!, view: 'preview' }) : undefined}
       onTasks={!channel && !internal ? () => showPanel({ type: 'tasks', owner, id: ownerId }) : undefined}
       onChannels={room.kind === 'direct' && !channel && !internal ? () => { const agent = snapshot.agents.find(agent => agent.id === room.agentIds[0]); if (agent) openChannels(agent) } : undefined}
       questionReplies={questionReplies} artifactActions={artifactActions}
@@ -1018,13 +1020,13 @@ export function AppShell() {
       // 看板已移除，暂时隐藏任务入口。
       // {page:'tasks',icon:Workflow,label:'任务'},
       {page:'schedules',icon:Clock,label:'定时任务'},
-    ] as const).map(item=><Button variant="ghost" size="content" className={`rail-item${route.page===item.page?' selected':''}`} key={item.page} aria-label={item.label} title={item.label} aria-current={route.page===item.page?'page':undefined} onClick={()=>goPage(item.page)}><item.icon size={16}/>{item.page==='conversations'&&snapshot.approvals.length>0&&<i className="attention-dot"/>}</Button>)}<SkillsNavigation page={route.page} onSkills={()=>goPage('skills')} /></div><div className="rail-bottom"><DropdownMenu open={menu === 'settings'} onOpenChange={open => setMenu(open ? 'settings' : null)}>
+    ] as const).map(item=><Button variant="ghost" size="content" className={`rail-item${route.page===item.page?' selected':''}`} key={item.page} aria-label={item.label} title={item.label} aria-current={route.page===item.page?'page':undefined} onClick={()=>goPage(item.page)}><item.icon size={16}/>{item.page==='conversations'&&snapshot.approvals.length>0&&<i className="attention-dot"/>}</Button>)}<SkillsNavigation page={route.page} onSkills={()=>goPage('skills')} /></div><div className="rail-bottom"><DropdownMenu actionsRef={userMenuActions} onOpenChange={open => { userMenuOpen.current = open }}>
       <DropdownMenuTrigger render={<Button ref={userMenuButton} variant={route.page === 'settings' ? 'secondary' : 'ghost'} size="icon-lg" className="rail-item" aria-label="我的菜单" title="我" />}><UserAvatar profile={snapshot.userProfile} /></DropdownMenuTrigger>
-      <DropdownMenuContent side="right" align="end" sideOffset={10} className="w-[224px]">
+      <DropdownMenuContent side="right" align="end" sideOffset={10} className="w-[224px] data-open:duration-250 data-closed:duration-150 motion-reduce:animate-none">
         <DropdownMenuItem className="user-menu-profile" aria-label="个人资料" onClick={openUserProfile}><UserAvatar profile={snapshot.userProfile} /><span><strong>{snapshot.userProfile?.displayName ?? '我'}</strong>{snapshot.userProfile?.username && <small>@{snapshot.userProfile.username}</small>}</span></DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem onClick={() => { setMenu(null); setSharingProfile(true) }}><Share />分享</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => { userMenuActions.current?.close(); setSharingProfile(true) }}><Share />分享</DropdownMenuItem>
           <DropdownMenuItem onClick={() => navigate(() => { setSettingsSection('connections'); applyRoute({ ...route, page: 'settings' }) })}><Settings />设置</DropdownMenuItem>
           <DropdownMenuItem onClick={() => goPage('help')}><CircleHelp />帮助</DropdownMenuItem>
         </DropdownMenuGroup>
@@ -1043,7 +1045,7 @@ export function AppShell() {
       {route.page==='contacts'&&<ContactsPage onConversation={(id, messageId) => selectConversation(id, true, messageId)} active={route.page === 'contacts'} onCreateTeam={() => openCreation({ type: 'team' })} api={api} snapshot={snapshot} selected={contactSelection} onSelect={setContactSelection} onMessage={messageContact} onCreate={type=>openCreation({type})} refresh={refreshSnapshot} onAgentSaved={updateAgentSnapshot} onGroupSaved={updateGroupSnapshot} sidebarShown={effectiveList} divider={listResizer} generation={panelGeneration} busy={busy}/>}
       {route.page==='skills'&&<CustomizationWorkspace onRemoveSource={id => { for (const tab of detailTabs.tabs) if (tab.target.type === 'source' && tab.target.id === id) dispatchDetails({ type: 'close', key: tab.key }) }} focusSource={focusedSource} selectedSource={panel?.type === 'source' ? panel.id : undefined} onOpenSource={source => openPanel({ type: 'source', id: source.id, name: source.name, requestId: crypto.randomUUID() })} onManage={openCatalogManagement} onOpenSkill={skill => openPanel({ type: 'local-skill', id: skill.id, name: skill.name, requestId: crypto.randomUUID() })} onOpenMarketplace={item => openPanel({ type: 'marketplace', provider: item.provider, id: item.id, name: item.name })} api={api} section={skillsSection} onSection={setSkillsSection} provider={skillProvider} onProvider={setSkillProvider} divider={listResizer} onCheckUpdates={()=>openPanel({type:'skill-updates'})} focusSkill={focusedSkill} revision={skillsRevision} />}
       <SchedulePage onNavigateMessage={(id, messageId, current) => selectConversation(id, true, messageId, current)} api={api} snapshot={snapshot} active={route.page==='schedules'} sidebarShown={effectiveList} divider={listResizer} location={scheduleLocation} onLocation={setScheduleLocation} onCreateConversation={() => openCatalogManagement('automations')} onInfo={()=>openPanel({type:'schedule'})} selectedOccurrenceId={panel?.type === 'automation-occurrence' ? panel.id : undefined} onOccurrence={id => openPanel({ type: 'automation-occurrence', id }, 'schedules')}/>
-      {settingsMounted.current && <div style={{ display: route.page === 'settings' ? 'contents' : 'none' }}><SettingsPage onActivityReport={startActivityReport} key={panelGeneration} divider={listResizer} tab={settingsSection} setTab={tab => { setLocalAgentTarget(undefined); setSettingsSection(tab) }} localAgentTarget={localAgentTarget} active={route.page === 'settings'} onSkill={id => openPanel({ type: 'resource', id }, 'settings')} api={api} snapshot={snapshot} refresh={refreshSnapshot}/></div>}
+      {settingsMounted.current && <div style={{ display: route.page === 'settings' ? 'contents' : 'none' }}><SettingsPage onActivityReport={startActivityReport} key={panelGeneration} divider={listResizer} tab={settingsSection} setTab={tab => { setLocalAgentTarget(undefined); setSettingsSection(tab) }} localAgentTarget={localAgentTarget} active={route.page === 'settings'} onOpenSkills={() => navigate(() => { setFocusedSource(undefined); setFocusedSkill(undefined); setSkillsSection('all'); applyRoute({ ...routeRef.current, page: 'skills' }) })} api={api} snapshot={snapshot} refresh={refreshSnapshot}/></div>}
       {route.page==='help'&&<HelpPage/>}
       </div>
       <DetailPanel title={panelTitle} hidden={!panel} layout={detailLayout}>

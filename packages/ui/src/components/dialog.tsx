@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: transitions-dev modal动效按Base UI起止状态播放，原语负责退出完成与卸载；支持初始open弹窗。
  * [OUTPUT]: 字号和默认行高使用同一工具类，宿主字号覆盖时保持原cn合并语义。
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
@@ -39,7 +40,7 @@ function DialogOverlay({
     <DialogPrimitive.Backdrop
       data-slot="dialog-overlay"
       className={cn(
-        "fixed inset-0 isolate z-50 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
+        "t-modal-backdrop fixed inset-0 isolate z-50 bg-black/10 supports-backdrop-filter:backdrop-blur-xs",
         className
       )}
       {...props}
@@ -60,9 +61,10 @@ function DialogContent({
       <DialogOverlay />
       <DialogPrimitive.Popup
         data-slot="dialog-content"
-        className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-(--radius-card) bg-popover p-4 text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] text-popover-foreground soft-surface soft-elevated duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
-          className
+        className={state => cn(
+          "t-modal fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-(--radius-card) bg-popover p-4 text-[length:var(--text-ui-body)]/[var(--tw-leading,var(--text-sm--line-height))] text-popover-foreground soft-surface soft-elevated outline-none sm:max-w-sm",
+          { 'is-open': state.open && state.transitionStatus !== 'starting', 'is-closing': !state.open && state.transitionStatus === 'ending' },
+          typeof className === 'function' ? className(state) : className
         )}
         {...props}
       >
