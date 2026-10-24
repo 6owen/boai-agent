@@ -24,6 +24,20 @@
       ],
       "@shared/*": [
         "./src/shared/*"
+      ],
+      "@boai/ui": [
+        "./packages/ui/src/index.ts"
+      ],
+      "@boai/ui/*": [
+        "./packages/ui/src/components/*",
+        "./packages/ui/src/*"
+      ],
+      "@boai/tokens": [
+        "./packages/tokens/src/index.ts"
+      ],
+      "@boai/tokens/*": [
+        "./packages/tokens/src/*",
+        "./packages/tokens/dist/*"
       ]
     }
   },

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 个人资料常用技能菜单通过Shell导航到资源库技能列表，不打开本页详情。
  * [OUTPUT]: 快捷键分类支持启停/录入与自动保存，传递活跃状态以释放捕获。
  * [OUTPUT]: 运行选项桌面活动日报入口交给原 bobo 首发流程。
  * [OUTPUT]: 2026-10-19 配置分类新增网页检索独立页，沿原活跃读取和页面切换。
@@ -28,7 +29,7 @@ import { Banner, GuardContext, useMutation } from '@/components/common/index'
 import { ConnectionSettings } from './connections'
 import type { LocalAgentTarget } from './local-agents'
 export type SettingsTab = 'profile' | 'connections' | 'data' | 'appearance' | 'shortcuts' | 'desktop' | 'plugins' | 'web-search'
-export function SettingsPage({ api, snapshot, refresh, divider, tab, setTab, active, onSkill, localAgentTarget, onActivityReport }: { onActivityReport(from: string, to: string): Promise<void>; api: DesktopApi; snapshot: Snapshot; refresh: () => Promise<void>; divider: ReactNode; tab: SettingsTab; setTab: (tab: SettingsTab) => void; active: boolean; onSkill: (id: string) => void; localAgentTarget?: LocalAgentTarget }) {
+export function SettingsPage({ api, snapshot, refresh, divider, tab, setTab, active, onOpenSkills, localAgentTarget, onActivityReport }: { onActivityReport(from: string, to: string): Promise<void>; api: DesktopApi; snapshot: Snapshot; refresh: () => Promise<void>; divider: ReactNode; tab: SettingsTab; setTab: (tab: SettingsTab) => void; active: boolean; onOpenSkills: () => void; localAgentTarget?: LocalAgentTarget }) {
   const [search, setSearch] = useState('')
   const [notice, setNotice] = useState('')
   const guard = useContext(GuardContext)
@@ -71,7 +72,7 @@ export function SettingsPage({ api, snapshot, refresh, divider, tab, setTab, act
   </nav>{divider}<div className={`settings-content page-scroll${tab === 'appearance' || tab === 'shortcuts' || tab === 'connections' || tab === 'profile' || tab === 'desktop' || tab === 'plugins' || tab === 'web-search' ? ' settings-document-content' : ''}`}>
     <div ref={content} className="settings-page-transition t-panel-slide" data-open="true" data-settled="true">
     {error && <Banner>{error}</Banner>}{notice && <Banner kind="notice" onClose={() => setNotice('')}>{notice}</Banner>}
-    {tab === 'profile' && <ProfileSettings api={api} profile={snapshot.userProfile} active={active} refresh={refresh} onSkill={onSkill} />}
+    {tab === 'profile' && <ProfileSettings api={api} profile={snapshot.userProfile} active={active} refresh={refresh} onOpenSkills={onOpenSkills} />}
     {tab === 'connections' && <ConnectionSettings connections={snapshot.connections} api={api} refresh={refresh} active={active} localAgentTarget={localAgentTarget} />}
     {tab === 'appearance' && <AppearanceSettings />}
     {tab === 'shortcuts' && <ShortcutSettings active={active} />}

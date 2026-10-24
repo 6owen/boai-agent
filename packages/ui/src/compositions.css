@@ -1,9 +1,16 @@
 /*
- * [INPUT]: BOAI Tabs、Composer与拖拽列表。
+ * [INPUT]: BOAI Tabs、Composer、共享ListRow与拖拽列表。
  * [OUTPUT]: 共享组合皮肤；宿主只负责业务布局。
  * [POS]: @boai/ui组合样式。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header与所属目录.folder.md。
  */
+/* Resource-library row metrics, reusable without conversation or skill selectors. */
+.soft-list-row { display:flex;align-items:center;gap:8px;min-width:0;max-width:100%;width:100%;min-height:52px;padding:8px;margin-bottom:3px;border-radius:var(--radius-control);corner-shape:squircle;text-align:left;font-weight:400 }
+.soft-list-row-icon { width:30px;height:30px;display:grid;place-items:center;flex-shrink:0;border-radius:var(--radius-control);background:var(--muted);color:var(--muted-foreground) }
+.soft-list-row-copy { display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;overflow:hidden }
+.soft-list-row-title { display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--text-ui-secondary);font-weight:500;line-height:1.4 }
+.soft-list-row-description { display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--text-ui-caption);color:var(--muted-foreground);line-height:1.5 }
+
 /* Tabs share one compact Soft surface in both embedded pages and side panels. */
 .soft-tabs-list { border-radius:var(--radius-control);background:var(--muted);isolation:isolate;--tabs-text-muted:var(--muted-foreground);--tabs-text-active:var(--foreground);--tabs-pill-bg:var(--card) }
 .soft-tabs-trigger { border-radius:calc(var(--radius-control) - 3px);background:transparent;color:var(--muted-foreground);cursor:pointer;transition:color var(--tabs-dur) var(--tabs-ease) }

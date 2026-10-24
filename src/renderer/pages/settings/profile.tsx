@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 最常用技能复用资源库SkillListItem展示行；悬停/键盘聚焦显示更多菜单，前往资源库技能列表，不在设置页打开详情。
  * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [OUTPUT]: Token 统计、活动图与洞察卡片首帧渲染完整结构，活动数据到达前仅在数值和图格位置显示占位，避免整块内容迟到。
  * [INPUT]: 已提交个人资料、活跃页面标记、变更事件和只读活动接口。
@@ -15,12 +16,14 @@ import { Banner, errorText, Loading, useMutation } from '@/components/common'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Pencil, Share, Sparkles } from '@/components/icons'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { MoreHorizontal, Pencil, Share } from '@/components/icons'
+import { SkillListItem } from '@/pages/library/skill-list-item'
 import { ProfileEditor } from './profile-editor'
 import { ProfileShare } from './profile-share'
 import { ActivityChart, profileActivityRange, tokenText } from './profile-activity'
 
-export function ProfileSettings({ api, profile: committedProfile, active, refresh, onSkill }: { api: DesktopApi; profile?: LocalUserProfile; active: boolean; refresh: () => Promise<void>; onSkill: (id: string) => void }) {
+export function ProfileSettings({ api, profile: committedProfile, active, refresh, onOpenSkills }: { api: DesktopApi; profile?: LocalUserProfile; active: boolean; refresh: () => Promise<void>; onOpenSkills: () => void }) {
   const profile = committedProfile ?? defaultUserProfile, ready = Boolean(committedProfile)
   const [sharing, setSharing] = useState(false), [uploading, setUploading] = useState(false), [editing, setEditing] = useState(false), [activity, setActivity] = useState<ProfileActivity>(), [error, setError] = useState(''), [retry, setRetry] = useState(0)
   const editButton = useRef<HTMLButtonElement>(null), shareButton = useRef<HTMLButtonElement>(null)
@@ -63,7 +66,19 @@ export function ProfileSettings({ api, profile: committedProfile, active, refres
         <div><dt>最常用的推理强度</dt><dd>{activityValue(activity ? activity.thinking ? `${({ off: '关闭', low: '低', high: '高', max: '最高' } as Record<string, string>)[activity.thinking.level] ?? activity.thinking.level} · ${Math.round(activity.thinking.count / activity.thinking.samples * 100)}%` : '暂无记录' : undefined)}</dd></div>
         {activity?.thinking && <p className="field-hint">基于 {activity.thinking.samples} 次已记录实际强度的调用</p>}
         <div><dt>已探索技能数</dt><dd>{activityValue(activity?.exploredSkills)}</dd></div><div><dt>使用的技能总数</dt><dd>{activityValue(activity ? `${activity.skillActivations} 次` : undefined)}</dd></div><div><dt>聊天总数</dt><dd>{activityValue(activity?.chats)}</dd></div>
-      </dl></CardContent></Card></section><section><h3>最常用的技能</h3><Card className="profile-insight-card"><CardContent>{activity ? activity.skills.length ? <ol className="profile-skills">{activity.skills.map(skill => <li key={skill.id}><Button variant="ghost" size="content" disabled={!skill.available} onClick={() => onSkill(skill.id)}><Sparkles /><span>{skill.name}<small>{skill.count} 次使用{!skill.available ? ' · 已移除' : ''}</small></span></Button></li>)}</ol> : <p className="text-muted-foreground">还没有已记录的技能激活</p> : pendingActivity ? <ol className="profile-skills" aria-hidden="true">{[0, 1, 2].map(index => <li key={index} className="py-3"><Skeleton className="h-5 w-32" /></li>)}</ol> : <p className="text-muted-foreground">活动数据暂不可用</p>}</CardContent></Card></section></div>
+      </dl></CardContent></Card></section><section><h3>最常用的技能</h3><Card className="profile-insight-card gap-0 p-2"><CardContent className="p-0">
+        {activity ? activity.skills.length ? <ol className="profile-skills">{activity.skills.map(skill => <li key={skill.id} className="skill-list-row">
+          <SkillListItem displayOnly entry={{ name: skill.name, description: `${skill.count} 次使用${!skill.available ? ' · 已移除' : ''}` }} disabled={!skill.available} />
+          <DropdownMenu>
+            <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" className="skill-row-menu aria-expanded:opacity-100" aria-label={`${skill.name} 的操作`} />}><MoreHorizontal /></DropdownMenuTrigger>
+            <DropdownMenuContent side="right" align="start" className="w-[240px] p-2">
+              <DropdownMenuItem className="px-2.5 py-2" onClick={onOpenSkills}>前往资源库</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </li>)}</ol> : <p className="p-2 text-muted-foreground">还没有已记录的技能激活</p> : pendingActivity ? <ol className="profile-skills" aria-hidden="true">{[0, 1, 2].map(index => <li key={index}>
+          <div className="soft-list-row"><Skeleton className="size-[30px] shrink-0" /><span className="soft-list-row-copy"><span className="soft-list-row-title"><Skeleton className="h-[1em] w-32" /></span><span className="soft-list-row-description"><Skeleton className="h-[1em] w-20" /></span></span></div>
+        </li>)}</ol> : <p className="p-2 text-muted-foreground">活动数据暂不可用</p>}
+      </CardContent></Card></section></div>
     {sharing && activity && <ProfileShare api={api} profile={profile} activity={activity} onClose={() => setSharing(false)} finalFocus={shareButton} />}
     {editing && ready && <ProfileEditor profile={profile} api={api} refresh={refresh} onClose={() => setEditing(false)} finalFocus={editButton} />}
   </section>

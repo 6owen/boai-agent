@@ -1,0 +1,59 @@
+/*
+ * [INPUT]: transitions-dev/06-modal原版CSS与Base UI弹窗状态。
+ * [OUTPUT]: 共享Dialog的250ms进入/150ms退出；初始即打开的弹窗保留首帧，支持减少动态效果。
+ * [POS]: 由共享skin.css加载，桌面与设计站共用。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
+ */
+:root {
+  --modal-open-dur: 250ms;
+  --modal-close-dur: 150ms;
+  --modal-scale: 0.96;
+  --modal-scale-close: 0.96;
+  --modal-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.t-modal {
+  transform-origin: center;
+  transform: scale(var(--modal-scale));
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform var(--modal-open-dur) var(--modal-ease),
+    opacity   var(--modal-open-dur) var(--modal-ease);
+  will-change: transform, opacity;
+}
+.t-modal.is-open {
+  transform: scale(1);
+  opacity: 1;
+  pointer-events: auto;
+}
+.t-modal.is-closing {
+  transform: scale(var(--modal-scale-close));
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform var(--modal-close-dur) var(--modal-ease),
+    opacity   var(--modal-close-dur) var(--modal-ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t-modal { transition: none !important; }
+}
+
+/* Base UI owns transition completion and unmounting. Conditional dialogs may
+   mount already open, so they also need an initial style before their first paint. */
+.t-modal-backdrop {
+  opacity: 0;
+  transition: opacity var(--modal-close-dur) var(--modal-ease);
+}
+.t-modal-backdrop[data-open]:not([data-starting-style]) {
+  opacity: 1;
+  transition-duration: var(--modal-open-dur);
+}
+@starting-style {
+  .t-modal.is-open { transform: scale(var(--modal-scale)); opacity: 0; }
+  .t-modal-backdrop[data-open]:not([data-starting-style]) { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .t-modal-backdrop { transition: none !important; }
+}
