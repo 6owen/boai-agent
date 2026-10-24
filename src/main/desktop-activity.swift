@@ -1,7 +1,8 @@
 /*
 [INPUT]: Explicit screen/OCR command or separately enabled input-monitor process.
 [OUTPUT]: Foreground OCR, optional JPEG and aggregate key/click counts; no typed characters or key codes.
-[POS]: macOS ScreenCaptureKit/Vision helper; permissions are requested only on explicit commands.
+[OUTPUT]: OCR failures retain captured window metadata and optional image with ocr=false; no stale text is reused.
+[POS]: macOS capture/OCR adapter; permissions are requested only on explicit commands.
 [PROTOCOL]: Update Header and main/.folder.md when changed.
 */
 import Cocoa
@@ -92,15 +93,24 @@ func foreground(_ excluded: Set<String>) -> (NSRunningApplication, String)? {
                 config.showsCursor = false
                 let image = try await SCScreenshotManager.captureImage(contentFilter: SCContentFilter(desktopIndependentWindow: window), configuration: config)
                 guard let (current, _) = foreground(excluded), current.processIdentifier == front.processIdentifier else { emit(["skipped": "focus-changed"]); return }
+                result["ocr"] = false
                 if options["enableOcr"] as? Bool ?? true {
-                    let request = VNRecognizeTextRequest()
-                    request.recognitionLevel = .accurate
-                    let languages = options["ocrLanguages"] as? [String] ?? ["zh-Hans", "en-US"]
-                    let available = try request.supportedRecognitionLanguages()
-                    guard languages.allSatisfy({ available.contains($0) }) else { emit(["error": "当前 macOS Vision 不支持所选 OCR 语言，请调整语言设置。"]); return }
-                    request.recognitionLanguages = languages; request.usesLanguageCorrection = true
-                    try VNImageRequestHandler(cgImage: image).perform([request])
-                    result["text"] = String((request.results ?? []).compactMap { $0.topCandidates(1).first?.string }.joined(separator: "\n").prefix(18000))
+                    do {
+                        let request = VNRecognizeTextRequest()
+                        request.recognitionLevel = .accurate
+                        let languages = options["ocrLanguages"] as? [String] ?? ["zh-Hans", "en-US"]
+                        let available = try request.supportedRecognitionLanguages()
+                        if languages.allSatisfy({ available.contains($0) }) {
+                            request.recognitionLanguages = languages; request.usesLanguageCorrection = true
+                            try VNImageRequestHandler(cgImage: image).perform([request])
+                            result["text"] = String((request.results ?? []).compactMap { $0.topCandidates(1).first?.string }.joined(separator: "\n").prefix(18000))
+                            result["ocr"] = true
+                        } else {
+                            result["ocrError"] = "当前识别服务不支持所选语言，已保留窗口记录。"
+                        }
+                    } catch {
+                        result["ocrError"] = "文字识别暂不可用，已保留窗口记录。"
+                    }
                 }
                 // Low resolution grayscale is used only for change detection, not persisted.
                 var pixels = [UInt8](repeating: 0, count: 32 * 24)
