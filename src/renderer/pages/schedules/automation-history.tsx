@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 立即运行只提交并全程loading防重复，两个图标分别打开过程和定位聊天；准备阶段保留等待提示。
  * [OUTPUT]: 单次过程无额外顶部操作栏；停止图标位于最新执行卡片的聊天定位左侧，冻结occurrence身份并锁定提交；只调用原stopAutomation。
  * [OUTPUT]: 未投递/无Run记录不读取未创建的会话；真实失败原因沿Sonner展示，提供查看任务修复入口。
  * [OUTPUT]: 执行卡片可定位到员工/群的实际聊天消息，删除后由Sonner提示。
@@ -49,8 +50,8 @@ export function AutomationOccurrenceView({ api, id, active, snapshot, onNavigate
   return <section className="automation-occurrence-panel" aria-label="本次执行过程" data-occurrence-detail-id={id}>
     {error && <ErrorToast>{error}</ErrorToast>}
     {active && failureReason && <ErrorToast key={o!.id}>{failureReason}</ErrorToast>}
-    {o ? hasExecution ? <TraceTab key={o.id} api={api} snapshot={snapshot} active={active} conversationId={o.conversationId} occurrenceId={o.id} onNavigateMessage={onNavigateMessage} stopAction={stopAction} emptyMessage="本次运行没有保存执行过程。" /> : <div className="flex flex-col items-start gap-3 p-4">
-      <p className="m-0 text-sm text-muted-foreground">{occurrenceStatusLabels[o.status]} · {o.status === 'skipped' ? '本次没有启动员工执行。' : '本次运行没有保存执行过程。'}</p>
+    {o ? hasExecution ? <TraceTab key={o.id} api={api} snapshot={snapshot} active={active} conversationId={o.conversationId} occurrenceId={o.id} onNavigateMessage={onNavigateMessage} stopAction={stopAction} emptyMessage={canStop ? "任务已接收，正在等待员工开始处理…" : "本次运行没有保存执行过程。"} /> : <div className="flex flex-col items-start gap-3 p-4">
+      <p className="m-0 text-sm text-muted-foreground">{occurrenceStatusLabels[o.status]} · {canStop ? '正在等待员工开始处理…' : o.status === 'skipped' ? '本次没有启动员工执行。' : '本次运行没有保存执行过程。'}</p>
       <div className="button-row">
         {stopAction}
         {failureReason && <Button variant="secondary" size="sm" onClick={() => showErrorToast(failureReason)}>查看原因</Button>}

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 实际命令串行/排队取消/启动前核验覆盖，互斥不再扩展到整轮任务。
  * [OUTPUT]: 真实进程逐字节输出中文/emoji，分别验证 stdout/stderr 跨包 UTF-8 保真。
  * [INPUT]: 隔离目录、真实POSIX后台子进程和确定性的终止信号屏障。
  * [OUTPUT]: 命令返回前核对继承进程组实际退出；覆盖主shell先退出、用户取消及超时，不把发出SIGKILL当退出。
@@ -79,4 +80,30 @@ it.skipIf(process.platform === 'win32').each(['cancel', 'timeout'] as const)('wa
     else expect(error).toHaveProperty('message', 'Command timed out')
     expect(alive(ids.parent)).toBe(false); expect(alive(ids.child)).toBe(false); expect(alive(-ids.parent)).toBe(false)
   } finally { controller.abort(); await result }
+})
+
+it.skipIf(process.platform === 'win32')('serializes actual processes and revalidates only after the previous command exits', async () => {
+  const root = await directory()
+  let checks = 0
+  const first = executeCommand('touch first.started; while [ ! -f release ]; do sleep 0.01; done', root, new AbortController().signal, 5000)
+  await expect.poll(() => readFile(join(root, 'first.started'), 'utf8').then(() => true).catch(() => false)).toBe(true)
+  const second = executeCommand('touch second.started', root, new AbortController().signal, 5000, undefined, undefined, async () => { checks++ })
+  try {
+    await new Promise(resolve => setTimeout(resolve, 50))
+    expect(checks).toBe(0)
+    await expect(readFile(join(root, 'second.started'))).rejects.toThrow()
+  } finally { await writeFile(join(root, 'release'), '') }
+  await first; await second
+  expect(checks).toBe(1)
+  expect(await readFile(join(root, 'second.started'), 'utf8')).toBe('')
+})
+it.skipIf(process.platform === 'win32')('cancels a queued command without starting a process or revalidating effects', async () => {
+  const root = await directory(), controller = new AbortController(), beforeStart = vi.fn(async () => {})
+  const first = executeCommand('touch first.started; while [ ! -f release ]; do sleep 0.01; done', root, new AbortController().signal, 5000)
+  await expect.poll(() => readFile(join(root, 'first.started'), 'utf8').then(() => true).catch(() => false)).toBe(true)
+  const second = executeCommand('touch must-not-exist', root, controller.signal, 5000, undefined, undefined, beforeStart)
+  const result = expect(second).rejects.toThrow('取消排队')
+  controller.abort(new Error('取消排队'))
+  try { await result; expect(beforeStart).not.toHaveBeenCalled(); await expect(readFile(join(root, 'must-not-exist'))).rejects.toThrow() }
+  finally { await writeFile(join(root, 'release'), ''); await first }
 })

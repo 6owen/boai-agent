@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 默认执行不按累计调用、工具步骤、用量或墙钟截断；保留真实用量、取消/权限和明确指定的预算。
+ * [OUTPUT]: 自动化预算没有执行截止时间，旧持久账本保留兼容；普通工作期限合同不变。
  * [OUTPUT]: 已删除执行仅保留deletedAt最小触发墓碑，历史查询/统计不展示，旧触发不重跑。
  * [OUTPUT]: 单员工创建共用描述、手动/小时/日/周/月频率和开始日期；旧日周计划兼容。
  * [OUTPUT]: 员工/BOAI群归属、固定成员分工与每次执行快照；旧计划缺省保持原聊天策略。
@@ -163,7 +165,7 @@ export interface AutomationOccurrence {
   cancellationCause?: 'user' | 'budget'
   cancellationRequestedAt?: string
   budgetId?: string
-  budget?: { callUnit?: 'external-turn' | 'mixed'; maxModelCalls: number; maxRuns: number; maxOutputTokens: number; deadlineAt: string; runs: number; exhausted?: boolean; renewals?: BudgetRenewal[] }
+  budget?: { callUnit?: 'external-turn' | 'mixed'; maxModelCalls: number | null; maxRuns: number | null; maxOutputTokens: number | null; deadlineAt?: string; runs: number; exhausted?: boolean; renewals?: BudgetRenewal[] }
   resultEvidence?: { workId: string; resultVersion: number; kind: 'answer' | 'artifact'; reference: string; messageId?: string; artifactId?: string }[]
   runIds: string[]
   resultMessageIds: string[]

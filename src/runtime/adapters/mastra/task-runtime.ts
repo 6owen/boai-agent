@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 实际宿主命令取得互斥位后重核工作和目录，等待审批不持有命令独占位。
  * [OUTPUT]: PPT工具接当前员工会话、授权字节/原文件队列与审批；专用审阅通过后才导出至原成果流程。
  * [OUTPUT]: 自拍保存/新肖像/私聊原图导出复用实际任务字节、独占文件写入和原发布；私人相册由宿主核权。
  * [OUTPUT]: 生图/编辑用独立模型端口，引用逐项核权，新文件独占写入并沿原成果发布；同运行同路径不重放生成。
@@ -493,9 +494,10 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
             let result: Awaited<ReturnType<typeof executeCommand>>
             try {
               const directories = await employeeCommandScope(ctx.agent, { readOnly: [scope.root, scope.sharedPath, ...skillRoots, ...knowledge.map(resource => resource.path), ...(cli?.env.BOAI_CLI_TOOL_CLIENT ? [cli.env.BOAI_CLI_TOOL_CLIENT] : [])], readWrite: [scope.runPath] }, ctx.directoryAccess?.temporaryGrants, ctx.directoryAccess?.protectedRoots)
-              await ctx.beforeEffect?.(); check(signal)
-              for (const target of targets ?? []) await ctx.directoryAccess!.verifyTarget(target, signal)
-              result = await executeCommand(command, commandCwd, signal, commandTimeoutMs, directories, cli?.env)
+              result = await executeCommand(command, commandCwd, signal, commandTimeoutMs, directories, cli?.env, async () => {
+                await ctx.beforeEffect?.(); check(signal)
+                for (const target of targets ?? []) await ctx.directoryAccess!.verifyTarget(target, signal)
+              })
             }
             finally { cli?.release() }
             await ctx.afterEffect?.()

@@ -310,58 +310,58 @@
       "acceptedAt": "2026-10-21T10:46:56.151Z"
     },
     "settings-light": {
-      "sha256": "468d6b10bc3df7a839b383c072a7a0e4c6c85b928c8d5c0662c6054cb24cbd40",
+      "sha256": "a8d474147a731706ceef99aef0079b229ad64c5507556ca9eec605715f7ebc58",
       "contract": "7e5255cd1d6ad9466a69854f08942fa9a02ad84b369f2b941a50a1787ed41c6f",
       "source": {
-        "commit": "44ed16b26c79a15f74a1551c12ab6e8230559885",
-        "sourceHash": "1e62f1a08aeeaca3af91b6c9a9335234e56e110599fdc380c78c9e2c78ef8120",
+        "commit": "fae66f6f9795df9247beced29861b3fd63c6ae40",
+        "sourceHash": "92c229d95b1a2c85302598b62189171eeccc7364ad74acd0418857a714ae3256",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "a0cd4eb49b4e9dfcd6e8f9afb8372fc6942a7369d1bbd0a0759627442913b0e0",
-        "outputHash": "04a1933b07223e25949eee0487a0505564f3dba4f8d6093603fa712e7a81cf4a",
+        "inputHash": "16b1242856434ff38cb42b5b45f5822780aa56a5d61d85c0d9caf9e47a45b958",
+        "outputHash": "aa7da4582a6bf8e69790328b49c9b2f23b85a861af01af7f91af3e05611421e7",
         "node": "v24.16.0",
-        "createdAt": "2026-10-22T13:35:41.110Z"
+        "createdAt": "2026-10-24T05:52:31.065Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "39787900406",
+        "runId": "40067858920",
         "attempt": 1,
-        "commit": "44ed16b26c79a15f74a1551c12ab6e8230559885",
-        "artifactId": 12430826655,
-        "digest": "sha256:2a6532a61cf4136fb029687640c81a93a15140079acc4855aed2245330571f00"
+        "commit": "fae66f6f9795df9247beced29861b3fd63c6ae40",
+        "artifactId": 12550107883,
+        "digest": "sha256:a2a6d6a683c8ffc639dbdbcf51918e5f0adb100e01dbd018ee25754fbd922e79"
       },
-      "reason": "已逐项审阅官方旧图/新图/原始diff：快捷键四行新增启停、组合键编辑与恢复默认，无保存按钮；外观新增Dock/托盘状态说明使页面滚动条长度变化。快捷键比较和独立采集两次图像字节一致，其余14项零像素变化。原阈值与断言保持。",
-      "candidate": "b891d0c9-66a7-49ca-b9af-77c382aede63",
-      "acceptedAt": "2026-10-22T13:58:51.090Z"
+      "reason": "PR19 用户要求新增桌面活动与日报独立设置入口；逐图核对旧图、新图与差异，四项仅左侧菜单新增一行及配置组下移，右侧内容不变，其余14项PNG逐字节相同；保留原合同、阈值和mask。",
+      "candidate": "2ed0b2e1-aae6-4336-9162-e4cc4c68373b",
+      "acceptedAt": "2026-10-24T06:19:53.803Z"
     },
     "settings-dark": {
-      "sha256": "3713b2609b3f490a1cc9e4435f998ab8347f6caafa0776b889c3ef137503c295",
+      "sha256": "c82c0fd74041dced4eeb38d691de15cd5992a33b39ecfc81ae8f154ed6f6125b",
       "contract": "ea3f1f153ee06336a9361e4d5755f3d8d3810e87859b90e767610799dfaeeed1",
       "source": {
-        "commit": "44ed16b26c79a15f74a1551c12ab6e8230559885",
-        "sourceHash": "1e62f1a08aeeaca3af91b6c9a9335234e56e110599fdc380c78c9e2c78ef8120",
+        "commit": "fae66f6f9795df9247beced29861b3fd63c6ae40",
+        "sourceHash": "92c229d95b1a2c85302598b62189171eeccc7364ad74acd0418857a714ae3256",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "a0cd4eb49b4e9dfcd6e8f9afb8372fc6942a7369d1bbd0a0759627442913b0e0",
-        "outputHash": "04a1933b07223e25949eee0487a0505564f3dba4f8d6093603fa712e7a81cf4a",
+        "inputHash": "16b1242856434ff38cb42b5b45f5822780aa56a5d61d85c0d9caf9e47a45b958",
+        "outputHash": "aa7da4582a6bf8e69790328b49c9b2f23b85a861af01af7f91af3e05611421e7",
         "node": "v24.16.0",
-        "createdAt": "2026-10-22T13:35:41.110Z"
+        "createdAt": "2026-10-24T05:52:31.065Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "39787900406",
+        "runId": "40067858920",
         "attempt": 1,
-        "commit": "44ed16b26c79a15f74a1551c12ab6e8230559885",
-        "artifactId": 12430826655,
-        "digest": "sha256:2a6532a61cf4136fb029687640c81a93a15140079acc4855aed2245330571f00"
+        "commit": "fae66f6f9795df9247beced29861b3fd63c6ae40",
+        "artifactId": 12550107883,
+        "digest": "sha256:a2a6d6a683c8ffc639dbdbcf51918e5f0adb100e01dbd018ee25754fbd922e79"
       },
-      "reason": "已逐项审阅官方旧图/新图/原始diff：快捷键四行新增启停、组合键编辑与恢复默认，无保存按钮；外观新增Dock/托盘状态说明使页面滚动条长度变化。快捷键比较和独立采集两次图像字节一致，其余14项零像素变化。原阈值与断言保持。",
-      "candidate": "b891d0c9-66a7-49ca-b9af-77c382aede63",
-      "acceptedAt": "2026-10-22T13:58:51.091Z"
+      "reason": "PR19 用户要求新增桌面活动与日报独立设置入口；逐图核对旧图、新图与差异，四项仅左侧菜单新增一行及配置组下移，右侧内容不变，其余14项PNG逐字节相同；保留原合同、阈值和mask。",
+      "candidate": "2ed0b2e1-aae6-4336-9162-e4cc4c68373b",
+      "acceptedAt": "2026-10-24T06:19:53.803Z"
     },
     "resources-light": {
       "sha256": "6734999fea542d0511b3f61fa1968f5f781a4eb134e58ffb4ee27fabf0646096",
@@ -526,58 +526,58 @@
       "acceptedAt": "2026-10-21T10:46:56.151Z"
     },
     "shortcuts-light": {
-      "sha256": "195b7766e8fb0451cc4f06d5466703f6bd78754de11220ff5775da2f23de66cf",
+      "sha256": "577e68e67c9d1ff66257866c9a653ded53b1966a3115794e15c645496b12c921",
       "contract": "171bb96072a7e80051c7c1c511516129c00e103c4058d3e70e25c8186a56c49a",
       "source": {
-        "commit": "44ed16b26c79a15f74a1551c12ab6e8230559885",
-        "sourceHash": "1e62f1a08aeeaca3af91b6c9a9335234e56e110599fdc380c78c9e2c78ef8120",
+        "commit": "fae66f6f9795df9247beced29861b3fd63c6ae40",
+        "sourceHash": "92c229d95b1a2c85302598b62189171eeccc7364ad74acd0418857a714ae3256",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "a0cd4eb49b4e9dfcd6e8f9afb8372fc6942a7369d1bbd0a0759627442913b0e0",
-        "outputHash": "04a1933b07223e25949eee0487a0505564f3dba4f8d6093603fa712e7a81cf4a",
+        "inputHash": "16b1242856434ff38cb42b5b45f5822780aa56a5d61d85c0d9caf9e47a45b958",
+        "outputHash": "aa7da4582a6bf8e69790328b49c9b2f23b85a861af01af7f91af3e05611421e7",
         "node": "v24.16.0",
-        "createdAt": "2026-10-22T13:35:41.110Z"
+        "createdAt": "2026-10-24T05:52:31.065Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "39787900406",
+        "runId": "40067858920",
         "attempt": 1,
-        "commit": "44ed16b26c79a15f74a1551c12ab6e8230559885",
-        "artifactId": 12430826655,
-        "digest": "sha256:2a6532a61cf4136fb029687640c81a93a15140079acc4855aed2245330571f00"
+        "commit": "fae66f6f9795df9247beced29861b3fd63c6ae40",
+        "artifactId": 12550107883,
+        "digest": "sha256:a2a6d6a683c8ffc639dbdbcf51918e5f0adb100e01dbd018ee25754fbd922e79"
       },
-      "reason": "已逐项审阅官方旧图/新图/原始diff：快捷键四行新增启停、组合键编辑与恢复默认，无保存按钮；外观新增Dock/托盘状态说明使页面滚动条长度变化。快捷键比较和独立采集两次图像字节一致，其余14项零像素变化。原阈值与断言保持。",
-      "candidate": "b891d0c9-66a7-49ca-b9af-77c382aede63",
-      "acceptedAt": "2026-10-22T13:58:51.091Z"
+      "reason": "PR19 用户要求新增桌面活动与日报独立设置入口；逐图核对旧图、新图与差异，四项仅左侧菜单新增一行及配置组下移，右侧内容不变，其余14项PNG逐字节相同；保留原合同、阈值和mask。",
+      "candidate": "2ed0b2e1-aae6-4336-9162-e4cc4c68373b",
+      "acceptedAt": "2026-10-24T06:19:53.803Z"
     },
     "shortcuts-dark": {
-      "sha256": "4b958fb8a3b14869f8363113138e70a765a45b8610769e48cd46e591057d218e",
+      "sha256": "5823982a0f2b97e460de05e52e13eeede1aded68687f18d62ebaaca8e14da0cb",
       "contract": "470a05b4fc32829a5cef4c13044deac140431e51162eb3527e7763896f3e82d9",
       "source": {
-        "commit": "44ed16b26c79a15f74a1551c12ab6e8230559885",
-        "sourceHash": "1e62f1a08aeeaca3af91b6c9a9335234e56e110599fdc380c78c9e2c78ef8120",
+        "commit": "fae66f6f9795df9247beced29861b3fd63c6ae40",
+        "sourceHash": "92c229d95b1a2c85302598b62189171eeccc7364ad74acd0418857a714ae3256",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "a0cd4eb49b4e9dfcd6e8f9afb8372fc6942a7369d1bbd0a0759627442913b0e0",
-        "outputHash": "04a1933b07223e25949eee0487a0505564f3dba4f8d6093603fa712e7a81cf4a",
+        "inputHash": "16b1242856434ff38cb42b5b45f5822780aa56a5d61d85c0d9caf9e47a45b958",
+        "outputHash": "aa7da4582a6bf8e69790328b49c9b2f23b85a861af01af7f91af3e05611421e7",
         "node": "v24.16.0",
-        "createdAt": "2026-10-22T13:35:41.110Z"
+        "createdAt": "2026-10-24T05:52:31.065Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "39787900406",
+        "runId": "40067858920",
         "attempt": 1,
-        "commit": "44ed16b26c79a15f74a1551c12ab6e8230559885",
-        "artifactId": 12430826655,
-        "digest": "sha256:2a6532a61cf4136fb029687640c81a93a15140079acc4855aed2245330571f00"
+        "commit": "fae66f6f9795df9247beced29861b3fd63c6ae40",
+        "artifactId": 12550107883,
+        "digest": "sha256:a2a6d6a683c8ffc639dbdbcf51918e5f0adb100e01dbd018ee25754fbd922e79"
       },
-      "reason": "已逐项审阅官方旧图/新图/原始diff：快捷键四行新增启停、组合键编辑与恢复默认，无保存按钮；外观新增Dock/托盘状态说明使页面滚动条长度变化。快捷键比较和独立采集两次图像字节一致，其余14项零像素变化。原阈值与断言保持。",
-      "candidate": "b891d0c9-66a7-49ca-b9af-77c382aede63",
-      "acceptedAt": "2026-10-22T13:58:51.091Z"
+      "reason": "PR19 用户要求新增桌面活动与日报独立设置入口；逐图核对旧图、新图与差异，四项仅左侧菜单新增一行及配置组下移，右侧内容不变，其余14项PNG逐字节相同；保留原合同、阈值和mask。",
+      "candidate": "2ed0b2e1-aae6-4336-9162-e4cc4c68373b",
+      "acceptedAt": "2026-10-24T06:19:53.803Z"
     }
   }
 }

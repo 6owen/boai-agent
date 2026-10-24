@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 默认关闭的桌面活动记录和真实日报 Card。
+ * [OUTPUT]: 桌面活动与日报迁至独立设置分类；本页保留后台运行与 CLI。
  * [OUTPUT]: 运行选项增加CLI安装管理Card，复用全局组件及Sonner。
  * [INPUT]: 类型化桌面设置 IPC、变化订阅与共用 Card/Switch。
  * [OUTPUT]: 后台常驻、实际登录项状态与隐藏启动设置；共用有界文档容器，即时保存。
@@ -12,7 +12,6 @@ import { Switch } from '@/components/ui/switch'
 import { Banner } from '@/components/common'
 import type { DesktopApi } from '@shared/ipc'
 import type { DesktopPatch, DesktopSettings } from '@shared/ipc/desktop'
-import { DesktopActivityCard } from './desktop-activity'
 import { CliInstallationCard } from './cli-installation'
 
 const loginHints: Record<DesktopSettings['login']['status'], string> = {
@@ -21,7 +20,7 @@ const loginHints: Record<DesktopSettings['login']['status'], string> = {
   development: '安装应用后可设置开机启动，开发模式不会修改系统登录项。',
   unsupported: '当前系统暂不支持设置开机启动。', error: '无法读取系统登录项，请稍后重试。',
 }
-export function DesktopSettingsPage({ api, active, onActivityReport }: { onActivityReport(from: string, to: string): Promise<void>; api: DesktopApi; active: boolean }) {
+export function DesktopSettingsPage({ api, active }: { api: DesktopApi; active: boolean }) {
   const [settings, setSettings] = useState<DesktopSettings>()
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -50,7 +49,6 @@ export function DesktopSettingsPage({ api, active, onActivityReport }: { onActiv
     <p className="field-hint">{settings ? loginHints[settings.login.status] : '正在读取运行设置…'}</p>
     {settings && !settings.trayAvailable && <p className="field-hint">系统托盘不可用，关闭窗口将按系统默认行为处理。</p>}
     <p className="field-hint">通过系统托盘或菜单栏重新打开窗口；选择「退出 BoAI Agent」会停止运行。电脑需保持开机、联网，休眠期间无法接收消息。</p>
-    <DesktopActivityCard api={api} active={active} onReport={onActivityReport} />
     <CliInstallationCard api={api} active={active} />
   </section>
 }

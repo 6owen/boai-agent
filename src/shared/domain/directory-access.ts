@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 组合目录批准回执记录本次同类操作选择，重试核对原答案。
  * [OUTPUT]: 原生目录身份区分native turn与Claude的BOAI run来源，不把宿主run伪报为原生turn。
  * [OUTPUT]: 原生目录身份增加可选approvalId，以区分同一item的独立批准回调。
  * [OUTPUT]: 目录申请/回执可携带原生runtime/thread/turn/item身份，宿主批准与原生提交分开。
@@ -40,6 +41,7 @@ export type DirectoryApprovalReceipt = {
   command?: string
   cwd?: string
   choice: DirectoryApprovalChoice
+  allowSameKind?: boolean
   directoryRevision: number
   createdAt: string
   origin?: DirectoryNativeOrigin

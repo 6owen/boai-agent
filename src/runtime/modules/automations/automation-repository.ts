@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 取消自动化固定执行时限；旧时间预算取消仅由本人显式继续恢复，原occurrence、预算计账、容量与人工停止门禁保持。
  * [OUTPUT]: 已删除历史保留原触发去重，公开视图排除墓碑；待清理来源不能继续执行。
  * [OUTPUT]: 开始日期和频率变化推进日程代际，过期原生触发不能绕过新规则。
  * [OUTPUT]: 同一群消息由多个员工响应时事务拒绝跨员工重复创建；恢复回执绑定原ID与revision。
@@ -60,15 +61,17 @@ export async function activateAutomationExecution(tx: RecordTransaction, origin:
   await tx.put(row('automationOccurrences', o)); return o
 }
 /** Explicit safe retry shares the existing Work budget; stop/restart requires a separate reviewed request. */
-export async function resumeAutomationExecution(tx: RecordTransaction, origin: AutomationOrigin, conversationId: string) {
+export async function resumeAutomationExecution(tx: RecordTransaction, origin: AutomationOrigin, conversationId: string, continuedByUser = false) {
   const o = await tx.get<AutomationOccurrence>('automationOccurrences', origin.occurrenceId)
   if (o?.deletedAt || await tx.get('automationHistoryCleanups', origin.occurrenceId)) throw new Error('本次执行记录已删除或正在清理')
-  if (!o || o.automationId !== origin.automationId || o.conversationId !== conversationId || o.cancellationRequestedAt || !['failed', 'running', 'waiting_work', 'waiting_user', 'waiting_approval'].includes(o.status)) throw new Error('本次自动化已停止或需要核对，请从计划明确发起新一轮')
+  const elapsedLimit = continuedByUser && o?.cancellationCause === 'budget' && o.reason === '达到本次自动化的时间预算'
+  if (!o || o.automationId !== origin.automationId || o.conversationId !== conversationId || o.cancellationRequestedAt && !elapsedLimit || !['failed', 'running', 'waiting_work', 'waiting_user', 'waiting_approval', ...(continuedByUser ? ['interrupted'] : []), ...(elapsedLimit ? ['cancelled'] : [])].includes(o.status)) throw new Error('本次自动化已停止或需要核对，请从计划明确发起新一轮')
   const budget = o.budgetId && await tx.get<WorkBudget>('workBudgets', o.budgetId)
   if (!budget || budget.accounting !== 'model-calls-v1') throw new Error('旧自动化没有可信的原始调用预算，请明确发起新一轮')
   if (!o.budgetScope) checkWorkBudget(budget)
   const others = (await tx.list<AutomationOccurrence>('automationOccurrences')).filter(item => item.id !== o.id && pendingOccurrence.has(item.status))
   if (others.some(item => item.automationId === o.automationId || item.conversationId === conversationId && activeOccurrence.has(item.status)) || others.filter(item => activeOccurrence.has(item.status)).length >= MAX_ACTIVE_AUTOMATIONS) throw new Error('其他自动化正在执行或等待，不能继续本次运行')
+  if (elapsedLimit) { delete o.cancellationRequestedAt; delete o.cancellationCause }
   o.status = 'running'; o.stateVersion++; o.deliveryStatus = o.resultEvidence?.length ? 'partial' : 'pending'
   delete o.finishedAt; delete o.reason
   await tx.put(row('automationOccurrences', o)); return o
@@ -157,8 +160,8 @@ export class AutomationRepository {
       return next
     })
   }
-  resume(origin: AutomationOrigin, conversationId: string, records: StoredRecord[]) {
-    return this.store.transaction(async tx => { const o = await resumeAutomationExecution(tx, origin, conversationId); for (const value of records) await tx.put(value); return o })
+  resume(origin: AutomationOrigin, conversationId: string, records: StoredRecord[], continuedByUser = false) {
+    return this.store.transaction(async tx => { const o = await resumeAutomationExecution(tx, origin, conversationId, continuedByUser); for (const value of records) await tx.put(value); return o })
   }
   view() {
     return this.store.transaction(async tx => ({ definitions: await tx.list<AutomationDefinition>('automations'), occurrences: (await tx.list<AutomationOccurrence>('automationOccurrences')).filter(o => !o.deletedAt) }))
@@ -311,7 +314,7 @@ export class AutomationRepository {
         const members = await Promise.all((conversation?.agentIds ?? []).map(id => tx.get<DigitalAgent>('agents', id)))
         if (members.some(member => isNativeBackend(member?.executionBackend))) o.budgetScope = members.every(member => isNativeBackend(member?.executionBackend)) ? 'native' : 'mixed'
         const budget = newWorkBudget(`automation-budget-${id}`, { origin: dispatch.origin!, conversationId: o.conversationId })
-        o.budgetId = budget.id; o.budget = { maxModelCalls: budget.maxModelCalls, maxRuns: budget.maxRuns, maxOutputTokens: budget.maxOutputTokens, deadlineAt: budget.deadlineAt, runs: budget.runs }
+        o.budgetId = budget.id; o.budget = { maxModelCalls: budget.maxModelCalls, maxRuns: budget.maxRuns, maxOutputTokens: budget.maxOutputTokens, runs: budget.runs }
         await tx.put(row('workBudgets', budget)); await tx.put(row('automationOccurrences', o))
         await tx.put(row('automationDispatches', dispatch))
       }

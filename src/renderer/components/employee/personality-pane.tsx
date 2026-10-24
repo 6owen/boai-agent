@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 虚拟旅行保留能力开关/规则编辑及已有旅程状态，移除手动目的地输入和开始按钮。
  * [OUTPUT]: 后台活动直接展示/确认删除/截止时间清空；沿原写队列和未知回执核对，只刷新历史。
  * [INPUT]: Actual employee, saved profile/state/behavior receipts through the application protocol.
  * [OUTPUT]: Field-local saving with serialized revisioned writes; state/history refresh independently without dimming or remounting the dialog.
@@ -15,7 +16,6 @@ import type { DigitalAgent, Snapshot } from '@shared/domain'
 import { normalizeAgentProfile, primaryPersonalityRoom, promptScenes, type PromptScene, type AgentSourceName, type AgentProfile, type AgentProfileConfig, type AgentStateView, type AgentPersonalityState, type AgentBehaviorRun } from '@shared/domain/agent-profile'
 import { agentPromptModules } from '@shared/domain/agent-prompts'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Field, FieldTitle } from '@/components/ui/field'
 import { Loading, errorText, useMutation } from '@/components/common'
@@ -38,7 +38,7 @@ const conversationRules = [
 const stateFeatures: { key: keyof AgentProfileConfig['features']; label: string; description: string; scene?: PromptScene; editLabel?: string }[] = [
   { key: 'emotions', label: '情绪', description: '让心情影响表达；后台会根据新的交流更新心情。', scene: 'emotion', editLabel: '编辑判断规则' },
   { key: 'growth', label: '人格成长', description: '系统在日终回顾交流、整理记忆，有依据时积累细微的性格变化。', scene: 'reflection', editLabel: '编辑反思规则' },
-  { key: 'travel', label: '虚拟旅行', description: '根据交流与兴趣决定是否开启虚拟旅程，按天积累虚拟经历；也可以指定目的地。', scene: 'travel', editLabel: '编辑旅行规则' },
+  { key: 'travel', label: '虚拟旅行', description: '开启后，员工可根据交流与兴趣开始虚拟旅程，并按天积累虚拟经历。', scene: 'travel', editLabel: '编辑旅行规则' },
   { key: 'fatigue', label: '疲劳与休息', description: '根据交流量、休息时间和时段计算，影响闲聊与主动问候；无需单独提示词。' },
 ]
 const configOf = ({ agentId: _agentId, revision: _revision, updatedAt: _updatedAt, ...config }: AgentProfile): AgentProfileConfig => config
@@ -75,7 +75,6 @@ export function PersonalityPane({ api, agent, snapshot, active, onBusyChange, on
 function PersonalityForm({ api, agent, snapshot, profile, onBusyChange, onReload, onEditSource, sourceFiles }: { sourceFiles?: SourceFiles; api: DesktopApi; agent: DigitalAgent; snapshot: Snapshot; profile: AgentProfile; onBusyChange?(busy: boolean): void; onReload(): void; onEditSource: EditSource }) {
   const [saved, setSaved] = useState(profile), [draft, setDraft] = useState(configOf(profile))
   const [state, setState] = useState<AgentStateView>(), [history, setHistory] = useState<AgentBehaviorRun[]>([])
-  const [destination, setDestination] = useState('')
   const [unknown, setUnknown] = useState(false)
   const { busy, error, run, setError } = useMutation()
   const { busy: readingState, run: readState } = useMutation()
@@ -168,7 +167,7 @@ function PersonalityForm({ api, agent, snapshot, profile, onBusyChange, onReload
             <div className="min-w-0"><label htmlFor={`personality-${feature.key}`}><strong>{feature.label}</strong></label><p className="field-hint">{feature.description}</p></div>
             <div className="flex shrink-0 items-center gap-3"><Switch id={`personality-${feature.key}`} disabled={saving.includes(`feature:${feature.key}`)} checked={draft.features[feature.key]} onCheckedChange={checked => configure(`feature:${feature.key}`, config => ({ ...config, features: { ...config.features, [feature.key]: checked } }))} />{feature.scene && <PromptRuleAction scene={feature.scene} disabledPrompts={draft.disabledPrompts} onEditSource={onEditSource} label={feature.editLabel} />}</div>
             </div>
-            {saved.features[feature.key] && feature.key !== 'growth' && <fieldset disabled={saving.includes(`state:${feature.key}`)} className={feature.key === 'fatigue' ? 'connection-fields connection-model-picker' : 'space-y-2 text-sm'} role="region" aria-label={`${feature.label}当前状态`}>
+            {saved.features[feature.key] && feature.key !== 'growth' && (feature.key !== 'travel' || state?.base.travel?.active) && <fieldset disabled={saving.includes(`state:${feature.key}`)} className={feature.key === 'fatigue' ? 'connection-fields connection-model-picker' : 'space-y-2 text-sm'} role="region" aria-label={`${feature.label}当前状态`}>
               {!state ? <Loading /> : feature.key === 'emotions' ? <p>当前心情：{state.effective.mood} · 情绪 {state.effective.valence}/10 · 精力 {state.effective.energy}/10</p> : feature.key === 'fatigue' ? <Field orientation="horizontal" className="connection-setting-row connection-model-row grid">
                 <FieldTitle><span className="connection-nested-line" aria-hidden="true" />当前疲劳</FieldTitle>
                 <div className="flex min-h-9 min-w-0 flex-wrap items-center justify-between gap-3">
@@ -178,7 +177,7 @@ function PersonalityForm({ api, agent, snapshot, profile, onBusyChange, onReload
                     <Button type="button" variant="secondary" size="sm" onClick={() => stateAction({ action: 'rest' })}>恢复精力</Button>
                   </div>
                 </div>
-              </Field> : state.base.travel?.active ? <><p>当前旅程：{state.base.travel.destination} · 第 {state.base.travel.day} 天</p><Button type="button" variant="secondary" size="sm" onClick={() => stateAction({ action: 'travel-return' })}>结束虚拟旅行</Button></> : <div className="flex gap-2"><Input aria-label="虚拟旅行目的地" placeholder="虚拟旅行目的地" maxLength={200} value={destination} onChange={event => setDestination(event.target.value)} /><Button type="button" variant="secondary" size="sm" disabled={!destination.trim()} onClick={() => stateAction({ action: 'travel-start', destination: destination.trim() })}>开始虚拟旅行</Button></div>}
+              </Field> : state.base.travel?.active ? <><p>当前旅程：{state.base.travel.destination} · 第 {state.base.travel.day} 天</p><Button type="button" variant="secondary" size="sm" onClick={() => stateAction({ action: 'travel-return' })}>结束虚拟旅行</Button></> : null}
             </fieldset>}
           </div>)}</div></ContactProfileCard>
         </ContactProfileSection>

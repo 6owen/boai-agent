@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 系统复制写入成功后显示Sonner复制成功，失败不弹成功提示。
+ * [OUTPUT]: 失败/取消/中断的执行过程及自动化镜像保留在聊天；支持显式继续、原生复制和员工配置右键入口。
+ * [OUTPUT]: 消息复制使用仅主窗口可调用的系统剪贴板写入桥，浏览器预览保留Web回退；成功后才显示已复制。
  * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [OUTPUT]: 渠道投递状态归发送按钮Tooltip，悬停与键盘焦点可查，不常驻正文。
  * [OUTPUT]: 2026-10-15最新16组03 §16替代旧只读镜像/额外讨论：渠道记录直接续聊共用上下文与session，回发按本轮来源；回答工具条明确发送，实际进度02 §7.23。
@@ -17,6 +20,7 @@ import { useMutation } from '@/components/common'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
+import { toast } from 'sonner'
 import { getDesktopClient } from '@/services/request/desktop-client'
 
 const REACTION_USAGE_KEY = 'boai.message-reaction-usage'
@@ -67,13 +71,18 @@ export function MessageCard({ message, profile = defaultUserProfile, children, r
   })
   const copy = () => void run(async () => {
     setCopied(false)
-    if (typeof navigator.clipboard?.writeText !== 'function') throw new Error('复制失败：当前无法使用剪贴板。')
-    try { await navigator.clipboard.writeText(message.content) }
+    const desktop = getDesktopClient()
+    if (!desktop?.writeClipboardText && typeof navigator.clipboard?.writeText !== 'function') throw new Error('复制失败：当前无法使用剪贴板。')
+    try {
+      if (desktop?.writeClipboardText) await desktop.writeClipboardText(message.content)
+      else await navigator.clipboard.writeText(message.content)
+    }
     catch (failure) {
       if ((failure instanceof DOMException || failure instanceof Error) && failure.name === 'NotAllowedError') throw new Error('复制失败：未获得剪贴板权限。')
       throw failure
     }
     setCopied(true)
+    toast.success('复制成功')
   })
   const pick = ([emoji, label]: typeof reactionEmojis[number]) => <Button key={emoji} variant="ghost" size="icon" className="reaction-choice" aria-label={`回应：${label}`} title={label} aria-pressed={reactions.some(item => item.emoji === emoji && item.senderId === 'user')} disabled={busy} focusableWhenDisabled onClick={() => react(emoji)}><span className="reaction-emoji" aria-hidden="true">{emoji}</span></Button>
   return <div className="message-content-space" ref={space}>

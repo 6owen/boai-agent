@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 历史失败只随原消息页呈现，不追加到最新消息底部；自动化终态镜像同样按消息锚点限定。
+ * [OUTPUT]: 继续向当前可见会话发送真实消息并跟随最新；审批提供本次任务同类操作，单聊空姓名行不占位。
+ * [OUTPUT]: 失败/取消/中断的执行过程及自动化镜像保留在聊天；支持显式继续、原生复制和员工配置右键入口。
  * [OUTPUT]: 会话标题菜单不再传递网页预览入口，文件/任务/执行及消息链接预览保持。
  * [OUTPUT]: 有效发送恢复最新页与贴底，手动上滚取消跟随和未完成跳转；布局高度变化不取消跟随，原分页/阅读边界保持。
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
@@ -90,6 +93,7 @@ import { isChannelConversation } from '@shared/domain/conversation-list'
 import { Avatar, timeText } from '@/components/common/index'
 
 import { failureSummary, liveTurn, type ChatDraft } from '../presentation'
+import { ContinueRunButton } from '@/components/detail-panel/continue-run-button'
 import { interruptedTriggerTurn } from '../activity'
 import { artifactsByMessage, approvalsByMessage, continuesMessage, groupMessages } from '../group-chat'
 import { ChatArtifactCard, PendingArtifactActions } from './chat-artifact-card'
@@ -111,7 +115,7 @@ import { useConversationReading } from './use-conversation-reading'
 import { ChatMessagesTransition } from './chat-messages-transition'
 import { READING_UI_LIMITS } from '../reading-state'
 import { type ChatQuestionReplies } from '../question-reply'
-export type ChatViewProps = { headerActions?: ReactNode; onPublish?(message?: ConversationDetail['messages'][number]): void; onFiles?(): void; onTasks?(): void; api: DesktopApi; pageActive: boolean; questionReplies: ChatQuestionReplies; artifactActions: ChatArtifacts; onTeamGroup(id: string): void; onOpenCatalog?(kind: 'skill' | 'source', id: string, name?: string): void; detail: ConversationView | null; conversation?: Conversation; loading?: boolean; onRetry?(): void; snapshot: Snapshot; draft: ChatDraft; setDraft: (value: ChatDraft) => void; busy: boolean; onSend: (onDispatch?: () => void) => void; onDetails: () => void; onChannels?: () => void; onConfigureAgent: (agent: DigitalAgent) => void; onManageModels: (agent: DigitalAgent) => void; onEditTitle: (conversation: Conversation) => void; onClear: (id: string, hide: boolean) => Promise<void>; onTrace: (message?: ConversationDetail['messages'][number]) => void; onSettings: (agent?: DigitalAgent) => void; onProfile: () => void; onChangeAgent: (agent: DigitalAgent, patch: ComposerAgentPatch) => Promise<ComposerAgentSaveResult>; configurationLocked: boolean; onApprove: (id: string, approved: boolean, always?: boolean) => void; onOpenPath: (path: string) => void; onPreviewArtifact(artifact: Artifact): void; onAddMaterial(): void; onDropMaterials(files: File[]): void; onPasteMaterials(files?: File[]): void; onRemoveMaterial(item: MaterialDraftItem): void; onRetryMaterial(item: MaterialDraftItem): void; onPreviewMaterial(material: ConversationMaterial, line?: number): void; onKnowledgePreview?(target: import('@shared/domain/knowledge').KnowledgeCitationInput, reference: import('@shared/domain/knowledge').KnowledgeReadRef, agentId: string): void; onDiscardSubmission(): void; focusMessage?: { id: string; requestId: string }; focusApproval?: { id: string; requestId: string }; scrollPosition?: number; onScrollPosition: (position: number) => void; onReading(state: ConversationReadingState): void; onLocation(messageId: string | undefined, following: boolean, offset?: number): void; onPage(direction: 'before' | 'after'): void; onLatest(isCurrent: () => boolean): Promise<boolean>; paging: boolean; pageEdges: { before: boolean; after: boolean }; restoreAnchor?: { messageId: string; offset?: number } }
+export type ChatViewProps = { headerActions?: ReactNode; onPublish?(message?: ConversationDetail['messages'][number]): void; onFiles?(): void; onTasks?(): void; api: DesktopApi; pageActive: boolean; questionReplies: ChatQuestionReplies; artifactActions: ChatArtifacts; onTeamGroup(id: string): void; onOpenCatalog?(kind: 'skill' | 'source', id: string, name?: string): void; detail: ConversationView | null; conversation?: Conversation; loading?: boolean; onRetry?(): void; snapshot: Snapshot; draft: ChatDraft; setDraft: (value: ChatDraft) => void; busy: boolean; onSend: (onDispatch?: () => void) => void; onDetails: () => void; onChannels?: () => void; onConfigureAgent: (agent: DigitalAgent) => void; onManageModels: (agent: DigitalAgent) => void; onEditTitle: (conversation: Conversation) => void; onClear: (id: string, hide: boolean) => Promise<void>; onTrace: (message?: ConversationDetail['messages'][number]) => void; onSettings: (agent?: DigitalAgent) => void; onProfile: () => void; onChangeAgent: (agent: DigitalAgent, patch: ComposerAgentPatch) => Promise<ComposerAgentSaveResult>; configurationLocked: boolean; onApprove: (id: string, approved: boolean, always?: boolean, allowSameKind?: boolean) => void; onOpenPath: (path: string) => void; onPreviewArtifact(artifact: Artifact): void; onAddMaterial(): void; onDropMaterials(files: File[]): void; onPasteMaterials(files?: File[]): void; onRemoveMaterial(item: MaterialDraftItem): void; onRetryMaterial(item: MaterialDraftItem): void; onPreviewMaterial(material: ConversationMaterial, line?: number): void; onKnowledgePreview?(target: import('@shared/domain/knowledge').KnowledgeCitationInput, reference: import('@shared/domain/knowledge').KnowledgeReadRef, agentId: string): void; onDiscardSubmission(): void; focusMessage?: { id: string; requestId: string }; focusApproval?: { id: string; requestId: string }; scrollPosition?: number; onScrollPosition: (position: number) => void; onReading(state: ConversationReadingState): void; onLocation(messageId: string | undefined, following: boolean, offset?: number): void; onPage(direction: 'before' | 'after'): void; onLatest(isCurrent: () => boolean): Promise<boolean>; paging: boolean; pageEdges: { before: boolean; after: boolean }; restoreAnchor?: { messageId: string; offset?: number } }
 
 export function ChatView(props: ChatViewProps) {
   const { detail, conversation: selectedConversation } = props
@@ -212,11 +216,16 @@ function ChatHistory({ api, pageActive, questionReplies, artifactActions, onTeam
   activeRef.current = pageActive
   const reading = useConversationReading({ api, active: pageActive, view: detail, root: scrollRef, following, onReading, onLocation })
   const approvals = snapshot.approvals.filter(a => a.conversationId === conversation.id)
+  const displayedLiveRuns = useRef(new Set<string>())
   const activeRuns = detail.runs.filter(run => ['queued','running','waiting_approval'].includes(run.status))
-  const executionRuns = latestPage.current || !pageEdges.after ? activeRuns.filter(run => run.phase === 'execution') : []
+  for (const run of activeRuns) displayedLiveRuns.current.add(run.id)
+  const failedRuns = detail.runs.filter(run => run.phase === 'execution' && ['failed', 'cancelled', 'interrupted'].includes(run.status))
+  const failedAnchor = (run: typeof failedRuns[number]) => detail.messages.some(message => message.id === run.triggerMessageId) ? run.triggerMessageId : run.messageId
+  const failedRunsFor = (messageId: string) => failedRuns.filter(run => failedAnchor(run) === messageId)
+  const executionRuns = latestPage.current || !pageEdges.after ? [...activeRuns.filter(run => run.phase === 'execution'), ...failedRuns.filter(run => displayedLiveRuns.current.has(run.id) && !detail.messages.some(message => message.id === failedAnchor(run)))] : []
   const streamingRunIds = new Set(executionRuns.map(run => run.id))
   const mirrors = (detail.executionMirrors ?? []).map(mirror => ({ ...mirror, messageId: detail.messages.find(message => message.automationPublication?.sourceConversationId === mirror.run.conversationId && message.automationPublication.sourceMessageId === mirror.run.messageId)?.id ?? mirror.messageId })).filter(({ run, triggerMessage, messageId }) =>
-    ['queued', 'running', 'waiting_approval'].includes(run.status) && (latestPage.current || !pageEdges.after || detail.messages.some(message => message.id === triggerMessage.id || message.id === messageId)))
+    run.status !== 'completed' && ((['queued', 'running', 'waiting_approval'].includes(run.status) && (latestPage.current || !pageEdges.after)) || detail.messages.some(message => message.id === triggerMessage.id || message.id === messageId)))
   const mirrorAnchor = (mirror: typeof mirrors[number]) => detail.messages.some(message => message.id === mirror.triggerMessage.id) ? mirror.triggerMessage.id : mirror.messageId
   const mirroredMessageIds = new Set(mirrors.map(mirror => mirror.messageId).filter(Boolean))
   const executionCard = (run: typeof activeRuns[number], trigger?: ConversationDetail['messages'][number]) => {
@@ -224,7 +233,7 @@ function ChatHistory({ api, pageActive, questionReplies, artifactActions, onTeam
     return <article key={run.id} className="message-row agent">
       <div className="message-avatar"><Avatar name={run.agentName} seed={run.agentId} avatar={agent?.avatar} color={agent?.color} /></div>
       <div className="message-main min-w-0">{group && <div className="message-meta"><strong>{run.agentName}</strong></div>}
-        <ChatExecutionCard api={api} run={run} active={pageActive} onOpen={() => onTrace(trigger)} />
+        <ChatExecutionCard api={api} run={run} active={pageActive} conversationId={detail.conversation.id} onContinue={() => historyRef.current?.followLatest()} onOpen={() => onTrace(trigger)} />
       </div>
     </article>
   }
@@ -416,10 +425,11 @@ function ChatHistory({ api, pageActive, questionReplies, artifactActions, onTeam
             {useCard ? <MessageCard message={message} profile={snapshot.userProfile} receipt={!group && isPersonalMessage(message) ? <MessageReceipt runs={sourceRuns} /> : undefined} onReply={() => quote(message.id)} onTrace={() => onTrace(message)} onPublish={channel && !historicalChannel && message.senderType === 'agent' && message.status === 'completed' && onPublish ? () => onPublish(message) : undefined} publishDisabled={busy || receipts.some(delivery => ['sent', 'sending'].includes(delivery.status))} publishDescription={channelDeliveryDescription(receipts)}>{body}</MessageCard> : body}
 
             {interruptedTurn && <div role="status" className="field-hint" data-interrupted-turn-id={interruptedTurn.id}><span>该轮处理已中断，已有回复和成果保留；未自动重新执行。</span><Button variant="link" size="sm" onClick={() => onTrace(message)}>查看执行过程</Button></div>}
-            {!interruptedTurn && message.senderType === 'user' && detail.runs.filter(run => run.triggerMessageId === message.id && run.phase === 'decision' && ['failed', 'interrupted'].includes(run.status) && !detail.runs.some(next => next.triggerMessageId === message.id && next.agentId === run.agentId && next.phase === run.phase && next.createdAt > run.createdAt)).map(run => <div key={run.id} role="status" className="field-hint"><span>{run.agentName}：{run.error ? failureSummary(run.error) : '处理已中断，请查看执行过程。'}</span><Button variant="link" size="sm" onClick={() => onTrace(message)}>查看执行过程</Button></div>)}
+            {!interruptedTurn && message.senderType === 'user' && detail.runs.filter(run => run.triggerMessageId === message.id && run.phase === 'decision' && ['failed', 'interrupted'].includes(run.status) && !detail.runs.some(next => next.triggerMessageId === message.id && next.agentId === run.agentId && next.phase === run.phase && next.createdAt > run.createdAt)).map(run => <div key={run.id} role="status" className="field-hint"><span>{run.agentName}：{run.error ? failureSummary(run.error) : '处理已中断，请查看执行过程。'}</span><ContinueRunButton key={run.id} api={api} run={run} active={pageActive} /><Button variant="link" size="sm" onClick={() => onTrace(message)}>查看执行过程</Button></div>)}
             {attachedApprovals.map(approval => <ApprovalCard key={approval.id} approval={approval} busy={busy || !pageActive} onApprove={onApprove} />)}
           </div>
         </article>
+        {failedRunsFor(message.id).map(run => executionCard(run, message))}
         {attachedMirrors.map(mirror => executionCard(mirror.run, mirror.triggerMessage))}
         {onOpenCatalog && catalogByMessage.has(message.id) && <CatalogResults items={catalogByMessage.get(message.id)!} agent={snapshot.agents.find(isCoreAgent)} onOpen={onOpenCatalog} />}
         </Fragment>
@@ -428,13 +438,13 @@ function ChatHistory({ api, pageActive, questionReplies, artifactActions, onTeam
       {isCoreConversation(conversation) && <CoreCollaborationResults api={api} conversationId={conversation.id} snapshot={snapshot} active={pageActive} busy={busy} onGroup={onTeamGroup} onAgent={onConfigureAgent} />}
       {executionRuns.map(run => executionCard(run, detail.messages.find(message => message.id === run.triggerMessageId)))}
       {mirrors.filter(mirror => !detail.messages.some(message => message.id === mirrorAnchor(mirror))).map(mirror => executionCard(mirror.run, mirror.triggerMessage))}
-      {approvalGroups.pending.map(approval => <article key={approval.id} className="message-row agent"><div className="message-avatar"><Avatar name={approval.agentName} seed={detail.runs.find(run => run.id === approval.runId)?.agentId ?? approval.id} avatar={snapshot.agents.find(agent => agent.id === detail.runs.find(run => run.id === approval.runId)?.agentId)?.avatar} color={snapshot.agents.find(agent => agent.id === detail.runs.find(run => run.id === approval.runId)?.agentId)?.color} /></div><div className="message-main"><div className="message-meta">{group && <strong>{approval.agentName}</strong>}</div><ApprovalCard approval={approval} busy={busy || !pageActive} onApprove={onApprove} /></div></article>)}
+      {approvalGroups.pending.map(approval => <article key={approval.id} className="message-row agent"><div className="message-avatar"><Avatar name={approval.agentName} seed={detail.runs.find(run => run.id === approval.runId)?.agentId ?? approval.id} avatar={snapshot.agents.find(agent => agent.id === detail.runs.find(run => run.id === approval.runId)?.agentId)?.avatar} color={snapshot.agents.find(agent => agent.id === detail.runs.find(run => run.id === approval.runId)?.agentId)?.color} /></div><div className="message-main">{group && <div className="message-meta"><strong>{approval.agentName}</strong></div>}<ApprovalCard approval={approval} busy={busy || !pageActive} onApprove={onApprove} /></div></article>)}
       {artifactRequests.filter(value => !visibleArtifactIds.has(pendingArtifactId(value))).map(value => <PendingArtifactActions key={JSON.stringify([value.scope, value.logicalArtifactId])} pending={value} artifacts={detail.artifacts} actions={artifactActions} active={pageActive} onRestoreRevision={restoreRevision} />)}
     </ScrollArea>
   )
 }
 
-export function ApprovalCard({ approval, onApprove, busy }: { approval: Approval; onApprove: (id: string, approved: boolean, always?: boolean) => void; busy: boolean }) {
+export function ApprovalCard({ approval, onApprove, busy }: { approval: Approval; onApprove: (id: string, approved: boolean, always?: boolean, allowSameKind?: boolean) => void; busy: boolean }) {
   const kind = approval.kind ?? 'command'
   const combined = kind === 'command' && !!approval.commandDirectories?.length
   const directories = combined ? approval.commandDirectories! : kind === 'directory' && approval.directory ? [approval.directory] : []
@@ -449,10 +459,12 @@ export function ApprovalCard({ approval, onApprove, busy }: { approval: Approval
       <p className="field-hint">权限：{directory.access === 'read-only' ? '只读' : '读取、编辑、创建和删除文件'}</p>
     </div>)}
     {kind === 'command' && <p className="field-hint">工作目录：{approval.cwd}</p>}
-    <p className="field-hint">{combined ? '命令仅批准这一次；目录可仅本次运行使用或保留到员工配置。后续命令仍按员工权限审批。' : kind === 'directory' ? '本次运行授权在任务结束后失效；始终允许的目录可在员工配置中移除。' : kind === 'browser' ? '请核对当前网页和操作内容；网页变化后需要重新确认。' : kind === 'command' ? '命令使用应用的主机权限，请核对实际操作范围。' : '请核对本次操作，批准仅用于这一次执行。'}</p>
+    <p className="field-hint">{combined ? approval.sameKindAllowed ? '可允许一次命令或本次任务的同类命令；目录授权可用于本次运行或保留到员工配置。' : '命令仅批准这一次；目录可仅本次运行使用或保留到员工配置。后续命令仍按员工权限审批。' : kind === 'directory' ? '本次运行授权在任务结束后失效；始终允许的目录可在员工配置中移除。' : kind === 'browser' ? '请核对当前网页和操作内容，并选择本次允许的范围。' : kind === 'command' ? '命令使用应用的主机权限，请核对实际操作范围。' : '请核对本次操作，并选择允许的范围。'}</p>
+    {approval.sameKindAllowed && <p className="field-hint">同类允许仅对本次任务生效，任务结束后失效；新的未授权目录仍单独确认。</p>}
     <div className="button-row">
       <Button variant="secondary" size="sm" disabled={busy} onClick={() => onApprove(approval.id, false)}>拒绝</Button>
       <Button size="sm" disabled={busy} onClick={() => onApprove(approval.id, true)}>{combined ? '允许命令及本次目录访问' : kind === 'directory' ? '允许本次运行' : '允许这次执行'}</Button>
+      {approval.sameKindAllowed && <Button variant="secondary" size="sm" disabled={busy} onClick={() => onApprove(approval.id, true, false, true)}>本次任务允许所有同类操作</Button>}
       {approval.rememberAllowed && <Button variant="secondary" size="sm" disabled={busy} onClick={() => onApprove(approval.id, true, true)}>{combined ? '运行命令并保留目录授权' : kind === 'directory' ? '始终允许此目录' : '始终允许此类操作'}</Button>}
     </div>
   </CardContent></Card>

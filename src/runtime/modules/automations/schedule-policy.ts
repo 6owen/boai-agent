@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 取消自动化固定执行时限；旧时间预算取消仅由本人显式继续恢复，原occurrence、预算计账、容量与人工停止门禁保持。
  * [OUTPUT]: 手动无时钟、小时按分钟、月按日期及开始日期共用预览与真实触发校验。
  * [INPUT]: 显式时区、周期规则、实际触发时刻与版本。
  * [OUTPUT]: 工作日/星期多选统一校验、规范化 cron 和纯预览；共用日历匹配/预览、稳定手动/周期身份与等待/取消退出占用与准入容量常量。
@@ -11,7 +12,6 @@ import { z } from 'zod'
 import type { AutomationDefinition, AutomationInput, OccurrenceStatus } from '../../../shared/domain/automations'
 
 export const AUTOMATION_MISFIRE_MS = 10 * 60_000
-export const AUTOMATION_RUN_MS = 10 * 60_000
 export const MAX_ACTIVE_AUTOMATIONS = 2
 export const activeOccurrence = new Set<OccurrenceStatus>(['admitted', 'running', 'waiting_approval', 'cancelling'])
 export const pendingOccurrence = new Set<OccurrenceStatus>([...activeOccurrence, 'waiting_user', 'waiting_work'])

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 覆盖增大任务额度、真实继续消息或本次运行同类批准；各文件以具体用例限定验证范围。
  * [OUTPUT]: 核心员工现行默认完全权限；显式配置不改变普通员工原审批权限。
  * [OUTPUT]: API完整/审批权限下的命令关闭跨其他字段保存与重启保持，整体只读不能借命令开关扩权。
  * [OUTPUT]: API群只读并发/命令互斥两种准入保持独立批准；自动化持久许可与备份原件保持。
@@ -288,6 +289,30 @@ describe('真实目录审批与文件接续', () => {
     await expect(readFile(marker)).rejects.toMatchObject({ code: 'ENOENT' })
     expect((await snapshot(f.service)).agents.find(agent => agent.id === f.agent.id)?.directoryGrants).toEqual(f.agent.directoryGrants)
     expect(await f.service.handle('getDirectoryApprovalReceipt', { id: approval.id })).toMatchObject({ choice: 'deny' })
+  })
+  it.skipIf(process.platform !== 'darwin')('本次同类批准沿用已批准目录，新目录仍确认且不保存永久权限', async () => {
+    const f = await fixture(), c = join(f.root, 'next-directory'), output = join(f.b, 'same-kind.txt')
+    await mkdir(c)
+    f.engine.handler = context => task(context, async call => {
+      await call('execute_command', { command: `printf first > ${shellQuote(output)}`, directories: [{ path: f.b, access: 'read-write' }] })
+      await call('execute_command', { command: `printf second >> ${shellQuote(output)}`, directories: [{ path: f.b, access: 'read-write' }] })
+      await call('execute_command', { command: `printf third >> ${shellQuote(output)}`, directories: [{ path: c, access: 'read-write' }] })
+    })
+    await f.send(); const first = await f.pending()
+    expect(first).toMatchObject({ kind: 'command', sameKindAllowed: true })
+    const answer = { id: first.id, approved: true, allowSameKind: true }
+    await f.service.handle('approve', answer)
+    const next = await f.pending()
+    expect(next.id).not.toBe(first.id)
+    expect(next.commandDirectories).toMatchObject([{ directory: c }])
+    expect(await readFile(output, 'utf8')).toBe('firstsecond')
+    expect(await f.service.handle('getDirectoryApprovalReceipt', { id: first.id })).toMatchObject({ choice: 'run', allowSameKind: true })
+    await f.service.handle('approve', answer)
+    await expect(f.approve(first)).rejects.toThrow('不同的回答')
+    await f.approve(next, false); await f.idle(1)
+    expect(await readFile(output, 'utf8')).toBe('firstsecond')
+    expect((await snapshot(f.service)).agents.find(agent => agent.id === f.agent.id)?.directoryGrants).toEqual(f.agent.directoryGrants)
+    expect((await snapshot(f.service)).commandPermissions).toEqual([])
   })
   it.skipIf(process.platform !== 'darwin')('永久组合批准只保留目录，下一条命令仍需批准；重启只恢复目录而不重放命令', async () => {
     const f = await fixture(), c = join(f.root, 'results'), output = join(c, 'out.txt')

@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 验证默认无执行配额、旧默认精确迁移、显式预算仍执行以及用户取消；不调用真实供应商。
+ * [OUTPUT]: 覆盖增大任务额度、真实继续消息或本次运行同类批准；各文件以具体用例限定验证范围。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: bobo可选择API或本机Codex；组织/具名团队按原运行配置创建独立员工，混合成员共原预算；本机自动化沿原时钟/预算接入，实际验证归第13组06。
  * [INPUT]: 真实 SQLite、bobo 核心来源/组织工作、群启动 CAS、原调用回执和会话清理。
@@ -73,21 +75,20 @@ async function claimRoot(f: Awaited<ReturnType<typeof fixture>>) {
 }
 
 describe('bobo fixed organization authority and genuine delivery', () => {
-  it.each(['organize_and_execute', 'organize_only', 'employee_creation'] as const)('sets only the first host-authorized %s budget to its fixed call allowance', async mode => {
+  it.each(['organize_and_execute', 'organize_only', 'employee_creation'] as const)('starts %s with accounting and no implicit execution ceilings', async mode => {
     const f = await fixture(mode, false), budget = (await f.works.view(f.core.id)).workBudgets[0]!
-    expect(budget).toMatchObject({ maxModelCalls: mode === 'organize_and_execute' ? 48 : 24, maxRuns: 8, maxOutputTokens: 16000, maxWorkItems: 8, maxRetries: 3, maxReportRefreshes: 4, maxNoProgress: 3 })
-    expect(Date.parse(budget.deadlineAt) - Date.parse(f.work.createdAt)).toBeGreaterThanOrEqual(299_950)
-    expect(Date.parse(budget.deadlineAt) - Date.parse(f.work.createdAt)).toBeLessThanOrEqual(300_050)
+    expect(budget).toMatchObject({ maxModelCalls: null, maxRuns: null, maxOutputTokens: null, maxWorkItems: null, maxRetries: null, maxReportRefreshes: null, maxNoProgress: null })
+    expect(budget.deadlineAt).toBe('')
     await f.works.claim(f.claim)
     expect((await f.works.view(f.core.id)).workBudgets[0]).toEqual(budget)
     expect(() => workIntentSchema.parse({ ...f.claim.intent, organization: { mode, goal: '合作', maxModelCalls: 48 } })).toThrow()
   })
-  it('keeps ordinary and automation initial budgets at twenty-four without importing a collaboration allowance', async () => {
+  it('does not impose default limits on ordinary, automated or organization work', async () => {
     const f = await fixture('organize_only', false)
     const ordinary = await f.works.claim({ ...f.claim, sourceMessageId: 'ordinary-user', runId: 'ordinary-run', organization: undefined })
-    expect((await f.works.view(f.core.id)).workBudgets.find(budget => budget.id === ordinary.budgetId)).toMatchObject({ maxModelCalls: 24, maxOutputTokens: 16000, maxRuns: 8 })
+    expect((await f.works.view(f.core.id)).workBudgets.find(budget => budget.id === ordinary.budgetId)).toMatchObject({ executionAllowanceVersion: 2, maxModelCalls: null, maxOutputTokens: null, maxRuns: null })
     const automation = newWorkBudget('automation-budget', { conversationId: f.core.id, origin: { kind: 'automation', automationId: 'automation', occurrenceId: 'occurrence', name: '定时任务', authorizedFingerprint: 'explicit-source' } }, 'organize_and_execute')
-    expect(automation).toMatchObject({ maxModelCalls: 24, maxOutputTokens: 16000, maxRuns: 8 })
+    expect(automation).toMatchObject({ executionAllowanceVersion: 2, maxModelCalls: null, maxOutputTokens: null, maxRuns: null })
   })
   it('retains a stored old twenty-four-call full organization through restart and explicit reclaim', async () => {
     const f = await fixture('organize_and_execute', false)
@@ -101,7 +102,7 @@ describe('bobo fixed organization authority and genuine delivery', () => {
     await f.store.write([row('runs', retry)])
     await restarted.claim({ ...f.claim, runId: retry.id })
     const retained = (await restarted.view(f.core.id)).workBudgets[0]!
-    expect(retained).toMatchObject({ id: budget.id, maxModelCalls: 24, deadlineAt: budget.deadlineAt, maxOutputTokens: 16000, maxRuns: 8, retries: 1, runs: 2 })
+    expect(retained).toMatchObject({ id: budget.id, maxModelCalls: 24, deadlineAt: budget.deadlineAt, maxOutputTokens: null, maxRuns: null, retries: 1, runs: 2 })
   })
   it('keeps model intent limited to judgment and refuses caller-owned request identity', () => {
     expect(workIntentSchema.parse({ key: 'main', scope: '组织', deliverable: '真实组织回执', organization: { mode: 'organize_only', goal: '合作讨论' } }).organization?.mode).toBe('organize_only')
@@ -158,7 +159,7 @@ describe('independent group root and original shared budget', () => {
     expect(root.parentWorkId).toBeUndefined(); expect(child.parentWorkId).toBe(root.id)
     const budgets = await f.store.load<WorkBudget>('workBudgets')
     expect(budgets).toHaveLength(1)
-    expect(budgets[0]).toMatchObject({ id: original.id, maxModelCalls: old ? 24 : 48, deadlineAt: original.deadlineAt, maxOutputTokens: 16000, maxRuns: 8, maxWorkItems: 8, maxReportRefreshes: 4 })
+    expect(budgets[0]).toMatchObject({ id: original.id, maxModelCalls: old ? 24 : null, deadlineAt: original.deadlineAt, maxOutputTokens: null, maxRuns: null, maxWorkItems: null, maxReportRefreshes: null })
   })
   it('binds one bobo root and one startup intent in the publication transaction, without a cross-conversation parent', async () => {
     const f = await fixture(), published = await f.publish(), root = (await f.works.view(f.group.id)).workItems[0]!
@@ -332,7 +333,7 @@ it('native organization and an API child share ownership while only the API chil
   const f = await fixture('organize_and_execute', true, true)
   const budget = () => f.store.transaction(tx => tx.get<WorkBudget>('workBudgets', f.work.budgetId))
   expect(await budget()).toMatchObject({ callUnit: 'mixed', modelCalls: 0, unknownCalls: 0 })
-  expect(Date.parse((await budget())!.deadlineAt)).toBeGreaterThan(Date.parse(f.decisionRun.createdAt) + 300000)
+  expect((await budget())!.deadlineAt).toBe('')
   await f.works.reserveCollaborationCall(f.organizationRun, 'native-execution', 'execution')
   await f.works.settleCollaborationCall(f.organizationRun.id, 'native-execution', { inputTokens: 10, outputTokens: 2, totalTokens: 12 })
   expect((await budget())!.unknownCalls).toBe(0)
@@ -351,7 +352,7 @@ it('native organization and an API child share ownership while only the API chil
   const call = (await f.store.load<BudgetModelCall>('budgetModelCalls')).find(call => call.id === 'api-call')!
   expect(call.callUnit).toBeUndefined(); expect(call.usageComplete).toBe(true)
   expect(child.budgetId).toBe(root.budgetId); expect(root.budgetId).toBe(f.work.budgetId)
-  expect(Date.parse((await budget())!.deadlineAt)).toBeGreaterThan(Date.parse(f.decisionRun.createdAt) + 300000)
+  expect((await budget())!.deadlineAt).toBe('')
   const changed = { ...f.agents[0], executionBackend: { kind: 'mastra-model' as const } }
   await f.store.write([row('agents', changed)])
   await expect(f.works.reserveCollaborationCall(run, 'wrong-runtime', 'execution')).rejects.toThrow('运行方式')

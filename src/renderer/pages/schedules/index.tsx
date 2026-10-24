@@ -1,10 +1,11 @@
 /*
+ * [OUTPUT]: 立即运行只提交并全程loading防重复，两个图标分别打开过程和定位聊天；准备阶段保留等待提示。
  * [OUTPUT]: 重回定时任务页及首次异步载入详情也播放Panel reveal，后台数据刷新不重播。
  * [OUTPUT]: 对话创建转到会话页并预选管理定时任务技能；本页只保留手动创建/编辑Dialog及任务详情/历史。
  * [OUTPUT]: 详情/历史内容切换沿设置页Panel reveal，后台刷新不重播；滚动条占位由真实滚动区保持。
  * [OUTPUT]: 编辑主色/暂停中性/删除危险色；删除Popover只保留确认标题与按钮，取消不提交，失败保留确认入口。
  * [INPUT]: 计划投影、Shell页面状态、单员工编辑器与普通bobo会话导航。
- * [OUTPUT]: 40px操作行下统一执行记录列表，检索和分页留在主区，点击记录/单次运行打开Shell执行面板。
+ * [OUTPUT]: 40px操作行下统一执行记录列表，检索和分页留在主区，点击记录或查看图标打开Shell执行面板，运行按钮只受理并显示loading。
  * [POS]: 定时任务唯一管理页；员工入口只跳转至本页，隐藏停止读取。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -20,12 +21,15 @@ import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@/compone
 import { AutomationHistory } from './automation-history-list'
 import { IllustratedEmpty } from '@/components/common/illustrated-empty'
 import { PanelResize } from '@/components/common/panel-resize'
+import { AutomationRunActions } from './automation-run-actions'
+import type { ExecutionMessageNavigation } from '@/components/detail-panel/execution-message-button'
 import { AutomationDetails } from './automation-details'
 import { AutomationDialog, type AutomationDialogTarget } from './automation-dialog'
 import { scheduleSummary } from './schedule-presentation'
 export type ScheduleLocation = { kind: 'overview' } | { kind: 'definition'; id: string } | { kind: 'history'; attention?: boolean } | { kind: 'occurrence'; id: string; requestId: string }
-export function SchedulePage({ api, snapshot, active, sidebarShown, divider, location, onLocation, onInfo, onOccurrence, onCreateConversation, selectedOccurrenceId }: {
+export function SchedulePage({ api, snapshot, active, sidebarShown, divider, location, onLocation, onInfo, onOccurrence, onCreateConversation, selectedOccurrenceId, onNavigateMessage }: {
   api: DesktopApi; snapshot: Snapshot; active: boolean; sidebarShown: boolean; divider: ReactNode; location: ScheduleLocation; onLocation(value: ScheduleLocation): void
+  onNavigateMessage: ExecutionMessageNavigation
   onInfo(): void; onOccurrence(id: string): void; onCreateConversation(): void; selectedOccurrenceId?: string
 }) {
   useEffect(() => {
@@ -91,7 +95,7 @@ export function SchedulePage({ api, snapshot, active, sidebarShown, divider, loc
           <Button variant="secondary" disabled={busy} onClick={() => void run(async () => { await api.request(definition.enabled ? 'pauseAutomation' : 'resumeAutomation', { id: definition.id }) })}>{definition.enabled ? '暂停' : '恢复'}</Button>
           <DeleteAutomationButton key={definition.id} name={definition.name} busy={busy} onConfirm={() => void run(async () => { await api.request('deleteAutomation', { id: definition.id }); onLocation({ kind: 'overview' }) })} />
         </div></div>
-        <AutomationDetails definition={definition} snapshot={snapshot} action={<Button variant="secondary" size="sm" disabled={busy} onClick={() => void run(async () => { const occurrence = await api.request('runAutomation', { id: definition.id, requestId: crypto.randomUUID() }); openOccurrence(occurrence.id) })}>立即运行一次</Button>} />
+        <AutomationDetails definition={definition} snapshot={snapshot} action={<AutomationRunActions key={definition.id} api={api} automationId={definition.id} occurrences={view.occurrences} active={active} onOccurrence={openOccurrence} onNavigateMessage={onNavigateMessage} />} />
         {definition.syncError && <Banner>{definition.syncError}</Banner>}
         <AutomationHistory key={definition.id} api={api} active={active} automationId={definition.id} selectedId={selectedOccurrenceId} onOccurrence={openOccurrence} />
       </div> : !loading && <Banner>此任务已删除或不可用，留存结果仍可在执行记录中查看。</Banner>)}

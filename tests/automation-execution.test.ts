@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 验证默认无执行配额、旧默认精确迁移、显式预算仍执行以及用户取消；不调用真实供应商。
+ * [OUTPUT]: 覆盖增大任务额度、真实继续消息或本次运行同类批准；各文件以具体用例限定验证范围。
+ * [OUTPUT]: 本轮覆盖复制/员工入口、定时运行防连点、失败过程、严格私有判断及保留原预算的显式继续；实际范围以各用例为准。
  * [OUTPUT]: 额度确认中的原未完成负责人只沿定向 Work 接续，不再次判断新任务；已交付同事仍能独立参与且不重放，普通本人消息仍正常判断。
  * [OUTPUT]: 自动化文件证据保留已提交交付消息身份，原件未核验或原回复不匹配时不能提供文件交付导航。
  * [INPUT]: 隔离 SQLite、真实 AppService/工作接续、受控模型与已提交交付证据。
@@ -326,13 +329,13 @@ it('fences a chat clarification to the exact occurrence version and current wait
   expect(await restarted.handle('replyAutomation', input)).toEqual(reply)
   expect(contexts).toHaveLength(completedCalls)
 })
-it.each(['deadline', 'capacity', 'permission', 'commit'] as const)('rejects a clarification without a partial message or budget reset when %s blocks admission', async blocker => {
+it.each(['usage', 'capacity', 'permission', 'commit'] as const)('rejects a clarification without a partial message or budget reset when %s blocks admission', async blocker => {
   const f = await setup(clarificationEngine())
   const o = await f.service.handle('runAutomation', { id: f.plan.id, requestId: 'blocked' }) as AutomationOccurrence
   await until(async () => (await f.view()).occurrences[0]?.status === 'waiting_user')
   const store = (f.service as unknown as { store: ProductStore }).store
   const budget = (await f.detail()).workBudgets![0]
-  if (blocker === 'deadline') await store.write([row('workBudgets', { ...budget, deadlineAt: new Date(0).toISOString() })])
+  if (blocker === 'usage') await store.write([row('workBudgets', { ...budget, deadlineAt: new Date(0).toISOString(), maxOutputTokens: 0 })])
   if (blocker === 'capacity') await store.write(['a', 'b'].map(id => row('automationOccurrences', { ...o, id, conversationId: id, status: 'running' })))
   if (blocker === 'permission') {
     const agent = (await f.service.handle('snapshot', undefined) as Snapshot).agents.find(agent => agent.id === 'researcher')!
@@ -465,6 +468,46 @@ it('keeps an explicitly retried work in the same occurrence and budget without h
   expect(result.turnIds).toHaveLength(2)
   expect(attempts).toBe(2)
 })
+it('continues a legacy timed-out automation only on explicit request and retains its original progress and budget', async () => {
+  let attempts = 0
+  const contexts: EngineContext[] = []
+  const f = await setup({ test: async () => '', decide, run: async context => {
+    contexts.push(context)
+    if (++attempts === 1) {
+      await context.onDelta('已经整理的周报内容')
+      await new Promise<void>((_, reject) => {
+        if (context.signal.aborted) reject(context.signal.reason)
+        else context.signal.addEventListener('abort', () => reject(context.signal.reason), { once: true })
+      })
+    } else await deliver(context, '接续完成周报')
+  } })
+  const occurrence = await f.service.handle('runAutomation', { id: f.plan.id, requestId: 'legacy-timeout' }) as AutomationOccurrence
+  await until(async () => attempts === 1)
+  const internal = f.service as unknown as { store: ProductStore; automations: import('../src/runtime/modules/automations/automation-service').AutomationService }
+  const budget = (await f.detail()).workBudgets![0]
+  await internal.store.write([row('workBudgets', { ...budget, deadlineAt: new Date(0).toISOString() })])
+  await internal.automations.stop(occurrence.id, '达到本次自动化的时间预算', 'budget')
+  await until(async () => (await f.view()).occurrences[0]?.status === 'cancelled')
+  const before = await f.detail(), failed = before.runs.find(run => run.phase === 'execution' && run.status === 'cancelled')!
+  expect(failed).toBeTruthy()
+  await expect(f.service.handle('retryRun', { id: failed.id, requestId: 'implicit-retry' })).rejects.toThrow('停止或需要核对')
+  const input = { id: failed.id, requestId: 'explicit-continue', continuation: true }
+  await f.service.handle('retryRun', input)
+  await f.service.handle('retryRun', input)
+  await until(async () => (await f.view()).occurrences[0]?.deliveryStatus === 'delivered')
+  const after = await f.detail(), result = (await f.view()).occurrences[0]
+  expect(after.workItems).toHaveLength(1)
+  expect(after.workBudgets).toHaveLength(1)
+  expect(after.workBudgets![0]).toMatchObject({ id: budget.id, runs: 2, retries: 1, maxModelCalls: budget.maxModelCalls })
+  expect(after.workBudgets![0].modelCalls).toBeGreaterThan(budget.modelCalls)
+  expect(after.runs.find(run => run.id === failed.id)).toMatchObject({ status: 'cancelled', error: '达到本次自动化的时间预算' })
+  expect(result).toMatchObject({ id: occurrence.id, status: 'completed', budgetId: budget.id })
+  expect(result.cancellationRequestedAt).toBeUndefined()
+  expect(result.runIds).toContain(failed.id)
+  expect(contexts[1].continuation).toMatchObject({ originalRequestId: occurrence.messageId, resumesRunIds: [failed.id] })
+  expect(attempts).toBe(2)
+  await expect(f.service.handle('retryRun', { ...input, requestId: 'duplicate-new-id' })).rejects.toThrow('已从这次失败继续')
+})
 it('accounts initial decisions, task steps and memory once while preserving unknown rate-limit attempts', async () => {
   const requests: { id: string; phase: string }[] = []
   let rejected = false
@@ -527,15 +570,15 @@ it('atomically fences work publication after stop and preserves independent depe
   await expect(repository.resume(origin, 'chat', [])).rejects.toThrow('停止或需要核对')
 })
 
-it('explicitly renews an expired clarification, keeps all accounting and ignores the previous deadline after delivery and restart', async () => {
+it('explicitly renews a usage-exhausted clarification, keeps all accounting and ignores the previous deadline after delivery and restart', async () => {
   const engine = clarificationEngine(), contexts: EngineContext[] = [], baseDecide = engine.decide!
   engine.decide = async context => { contexts.push(context); return baseDecide(context) }
   const f = await setup(engine), first = await f.service.handle('runAutomation', { id: f.plan.id, requestId: 'expire-clarification' }) as AutomationOccurrence
   await until(async () => (await f.view()).occurrences[0]?.status === 'waiting_user')
   const internal = f.service as unknown as { store: ProductStore; automations: import('../src/runtime/modules/automations/automation-service').AutomationService }
   const before = (await f.detail()).workBudgets![0]
-  await internal.store.write([row('workBudgets', { ...before, deadlineAt: new Date(0).toISOString() })])
-  await internal.automations.stop(first.id, '时间预算到期', 'budget')
+  await internal.store.write([row('workBudgets', { ...before, deadlineAt: new Date(0).toISOString(), maxOutputTokens: 0 })])
+  await internal.automations.stop(first.id, '输出额度耗尽', 'budget')
   const stopped = (await f.view()).occurrences[0]
   expect(stopped).toMatchObject({ status: 'cancelled', cancellationCause: 'budget' })
   await expect(f.service.handle('replyAutomation', { occurrenceId: first.id, content: '42', requestId: 'without-grant' })).rejects.toThrow()
@@ -547,7 +590,7 @@ it('explicitly renews an expired clarification, keeps all accounting and ignores
   await expect(f.service.handle('replyAutomation', { ...input, renewBudget: undefined })).rejects.toThrow('必须固定原问题')
   const detail = await f.detail(), after = (await f.view()).occurrences[0], budget = detail.workBudgets![0]
   expect(detail.workBudgets).toHaveLength(1)
-  expect(budget).toMatchObject({ id: before.id, maxModelCalls: 48, maxRuns: 16, usageIncomplete: true })
+  expect(budget).toMatchObject({ id: before.id, maxModelCalls: null, maxRuns: null, usageIncomplete: true })
   expect(budget.modelCalls).toBeGreaterThan(before.modelCalls)
   expect(budget.renewals).toHaveLength(1)
   expect(budget.renewals![0]).toMatchObject({ requestId: input.requestId, messageId: reply.id, turnId: reply.turnId, used: { modelCalls: before.modelCalls }, previousStatus: 'cancelled' })
@@ -597,7 +640,7 @@ it('renews failed unfinished work under its original identity without repeating 
   const first = await f.service.handle('runAutomation', { id: f.plan.id, requestId: 'mixed-work' }) as AutomationOccurrence
   await until(async () => (await f.view()).occurrences[0]?.status === 'failed' && (await f.detail()).workItems?.some(w => w.status === 'delivered') === true)
   const internal = f.service as unknown as { store: ProductStore }, before = await f.detail()
-  await internal.store.write([row('workBudgets', { ...before.workBudgets![0], deadlineAt: new Date(0).toISOString() })])
+  await internal.store.write([row('workBudgets', { ...before.workBudgets![0], deadlineAt: new Date(0).toISOString(), maxOutputTokens: 0 })])
   const o = (await f.view()).occurrences[0]
   await f.service.handle('replyAutomation', { occurrenceId: first.id, content: '继续未完成部分，保留已交付结果', requestId: 'continue-mixed', renewBudget: { expectedVersion: o.stateVersion, allowance: 'standard-v1' } })
   await until(async () => (await f.view()).occurrences[0]?.deliveryStatus === 'delivered')
@@ -633,7 +676,7 @@ it.each(['researcher', 'writer'])('routes a renewal only through the original un
   const host = f.service as unknown as { store: ProductStore; automations: import('../src/runtime/modules/automations/automation-service').AutomationService }
   const before = await f.detail(), peer = before.workItems!.find(work => work.ownerAgentId === peerId)!
   originalWork = before.workItems!.find(work => work.ownerAgentId === ownerId)!
-  await host.store.write([row('workBudgets', { ...before.workBudgets![0], deadlineAt: new Date(0).toISOString() })])
+  await host.store.write([row('workBudgets', { ...before.workBudgets![0], deadlineAt: new Date(0).toISOString(), maxOutputTokens: 0 })])
   await host.automations.stop(first.id, '离线意图测试准备原预算到期', 'budget')
   const stopped = (await f.view()).occurrences[0]
   const input = { occurrenceId: first.id, content: confirmation, requestId: `grant-${ownerId}`, renewBudget: { expectedVersion: stopped.stateVersion, allowance: 'standard-v1' } }
@@ -658,7 +701,7 @@ it('does not append a human message or grant after the occurrence authorization 
   const f = await setup(clarificationEngine()), first = await f.service.handle('runAutomation', { id: f.plan.id, requestId: 'renew-authorization' }) as AutomationOccurrence
   await until(async () => (await f.view()).occurrences[0]?.status === 'waiting_user')
   const store = (f.service as unknown as { store: ProductStore }).store, budget = (await f.detail()).workBudgets![0]
-  await store.write([row('workBudgets', { ...budget, deadlineAt: new Date(0).toISOString() })])
+  await store.write([row('workBudgets', { ...budget, deadlineAt: new Date(0).toISOString(), maxOutputTokens: 0 })])
   const agent = (await f.service.handle('snapshot', undefined) as Snapshot).agents.find(a => a.id === 'researcher')!
   const { configVersion, workspaceRef, memoryNamespace, policyVersion, ...input } = agent
   await f.service.handle('saveAgent', { ...input, name: '配置已变更' })

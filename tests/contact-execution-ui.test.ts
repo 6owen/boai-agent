@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 五项反馈的调度额度/取消接续或历史展示回归；具体验证边界以本文件用例为准。
  * [OUTPUT]: 订阅夹具沿DesktopApi声明回调类型，保持严格类型检查。
  * [INPUT]: 生产通讯录直接执行列表、TraceTab及受控原IPC。
  * [OUTPUT]: 标题行筛选、可见读取、隐藏停读、固定Run导航与迟到隔离；员工绑定源/核心已启用源按原权限展示。
@@ -124,4 +125,16 @@ it('does not load resource metadata while hidden or publish a late result after 
   await render(false)
   await act(async () => resolve([{ id: 'allowed', name: '迟到数据源', type: 'api', enabled: true }]))
   expect(host.textContent).not.toContain('迟到数据源')
+})
+
+
+it.each(['failed', 'cancelled', 'interrupted'] as const)('execution history never offers a send or continue action for %s records', async status => {
+  request.mockImplementation(async (method: string) => {
+    if (method === 'listExecutionHistory') return { items: [{ run: { ...run, status }, trigger: '原任务' }] }
+    throw new Error(`unexpected ${method}`)
+  })
+  await act(async () => root.render(h(TraceTab, { api, snapshot, active: true, conversationId: 'room', agentId: 'ds' })))
+  expect(host.querySelector('[data-execution-run-id]')).not.toBeNull()
+  expect([...host.querySelectorAll('button')].some(button => button.textContent === '继续')).toBe(false)
+  expect(request.mock.calls.some(([method]) => method === 'sendMessage' || method === 'retryRun')).toBe(false)
 })

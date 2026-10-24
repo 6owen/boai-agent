@@ -1,5 +1,9 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 运行卡无常驻查看；历史失败/自动化镜像仅回到原消息页，新终态不闪退。
+ * [OUTPUT]: 五项反馈的调度额度/取消接续或历史展示回归；具体验证边界以本文件用例为准。
+ * [OUTPUT]: 覆盖增大任务额度、真实继续消息或本次运行同类批准；各文件以具体用例限定验证范围。
+ * [OUTPUT]: 本轮覆盖复制/员工入口、定时运行防连点、失败过程、严格私有判断及保留原预算的显式继续；实际范围以各用例为准。
  * [OUTPUT]: 已载入执行流夹具显式限定非空ConversationView，保留共享ChatView新增加载态的类型边界。
  * [OUTPUT]: 自动化头像沿真实默认个人资料夹具，原任务执行镜像与定时角标共存。
  * [OUTPUT]: 定时任务聊天镜像沿原Run读取思考/工具，固定消息定位仍展示，完成后仅保留公开答复。
@@ -42,13 +46,50 @@ beforeEach(() => {
     detail: { conversation: { id: 'chat', kind: 'direct', title: '员工', agentIds: ['employee'] }, messages: [], messagePage: { items: [] }, runs: [run], turns: [], workItems: [], artifacts: [], materials: [] },
     snapshot: { conversations: [], resources: [], agents: [{ id: 'employee', name: '员工', skillIds: [], knowledgeIds: [] }], approvals: [], connections: [], userProfile: defaultUserProfile },
     draft: { text: '', mentionIds: [] }, questionReplies: { values: {} }, artifactActions: { values: {} },
-    pageEdges: { before: true, after: true }, onReading: noop, onLocation: noop, onScrollPosition: noop,
+    pageEdges: { before: true, after: true }, onReading: noop, onLocation: noop, onScrollPosition: noop, onLatest: async () => true,
   } as unknown as LoadedChatProps
   host = document.createElement('div'); document.body.append(host); root = createRoot(host)
 })
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals() })
 const render = async () => { await act(async () => root.render(createElement(ChatView, props))) }
 const textEvent = (text: string, revision: number): ExecutionEvidence => ({ id: 'text', eventType: 'agent.text.block', payload: { text, itemId: 'text' }, agentRunId: run.id, runId: run.id, conversationId: run.conversationId, agentId: run.agentId, createdAt: run.createdAt, updatedAt: run.createdAt, sequence: 1, revision, contentLength: text.length, deferred: false })
+
+test.each(['failed', 'cancelled', 'interrupted'] as const)('retains %s execution content at its original message and admits one explicit continuation', async status => {
+  const trigger = { id: 'question', conversationId: 'chat', senderType: 'user' as const, senderId: 'user', senderName: '我', content: '统计周报', status: 'completed' as const, sequence: 1, createdAt: run.createdAt }
+  const request = vi.fn(async (_method: string) => undefined)
+  props = { ...props, api: { ...props.api, request: request as typeof props.api.request }, detail: { ...props.detail, runs: [{ ...run, status, error: '网络断开' }], messages: [trigger], messagePage: { ...props.detail.messagePage, items: [{ messageId: trigger.id, sequence: 1, status: 'available', message: trigger }] } } }
+  fixture.evidence = [textEvent('已经整理第一部分周报', 1)]
+  await render()
+  expect(host.querySelectorAll('[data-chat-execution-run]')).toHaveLength(1)
+  expect(host.textContent).toContain('已经整理第一部分周报')
+  expect(host.textContent).not.toContain('已有过程保留')
+  expect(host.textContent).not.toContain('已取消 ·')
+  expect(host.querySelector('[data-chat-execution-run]')?.classList.contains('w-full')).toBe(true)
+  const button = [...host.querySelectorAll<HTMLButtonElement>('button')].find(item => item.textContent === '继续')!
+  await act(async () => { button.click(); button.click() })
+  expect(request.mock.calls.filter(([method]) => method === 'sendMessage')).toHaveLength(1)
+  expect(request).toHaveBeenCalledWith('sendMessage', { conversationId: run.conversationId, content: '继续', mentionIds: [], requestId: expect.any(String) })
+  expect(button.closest('.button-row')).not.toBeNull()
+  const view = host.querySelector<HTMLButtonElement>('[aria-label="查看完整执行过程"]')!
+  expect(view.parentElement).toBe(button.parentElement)
+  expect(view.textContent).toBe('查看')
+  expect(button.textContent).toBe('已发送')
+  expect(button.disabled).toBe(true)
+})
+
+test('retains failed automation mirrors at a located public trigger', async () => {
+  const trigger = { id: 'published-question', conversationId: 'chat', senderType: 'user' as const, senderId: 'automation', senderName: '定时任务', content: '统计周报', status: 'completed' as const, sequence: 1, createdAt: run.createdAt }
+  props = { ...props, restoreAnchor: { messageId: trigger.id }, detail: { ...props.detail, runs: [], executionMirrors: [{ run: { ...run, conversationId: 'task-chat', status: 'cancelled', error: '达到本次自动化的时间预算' }, triggerMessage: trigger }], messages: [trigger], messagePage: { ...props.detail.messagePage, items: [{ messageId: trigger.id, sequence: 1, status: 'available', message: trigger }] } } }
+  const request = vi.fn(async (_method: string) => undefined)
+  props = { ...props, api: { ...props.api, request: request as typeof props.api.request } }
+  fixture.evidence = [textEvent('已读取的周报统计过程', 1)]
+  await render()
+  expect(host.querySelector('[data-chat-execution-run]')).not.toBeNull()
+  expect(host.textContent).toContain('已读取的周报统计过程')
+  expect(fixture.source).toBe('task-chat')
+  await act(async () => [...host.querySelectorAll<HTMLButtonElement>('button')].find(item => item.textContent === '继续')!.click())
+  expect(request).toHaveBeenCalledWith('sendMessage', { conversationId: 'chat', content: '继续', mentionIds: [], requestId: expect.any(String) })
+})
 
 test.each([false, true])('mirrors scheduled reasoning and tools from the original run, including located messages (%s)', async located => {
   const publication = { automationId: 'plan', occurrenceId: 'occurrence', sourceConversationId: 'task-chat', sourceMessageId: 'question' }
@@ -69,8 +110,8 @@ test.each([false, true])('mirrors scheduled reasoning and tools from the origina
   await render()
   expect(host.textContent).toContain('browser_tool')
   expect(host.textContent).toContain('核对天气来源')
-  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="查看完整执行过程"]')!.click())
-  expect(onTrace).toHaveBeenCalledWith(trigger)
+  expect(host.querySelector('[aria-label="查看完整执行过程"]')).toBeNull()
+  expect(onTrace).not.toHaveBeenCalled()
   props = { ...props, pageActive: false }; await render()
   expect(fixture.active).toBe(false)
   props = { ...props, pageActive: true, detail: { ...props.detail, executionMirrors: [{ run: { ...mirroredRun, status: 'waiting_approval' }, triggerMessage: trigger }] } }; await render()
@@ -167,4 +208,44 @@ test('pauses execution reads only while the chat page is hidden and resumes when
  props = { ...props, pageActive: true }; await render()
  expect(fixture.active).toBe(true)
  expect(request).toHaveBeenCalledWith('listNativeActions', expect.objectContaining({ runId: run.id }))
+})
+
+
+test('keeps the execution card width rule when its content collapses after failure', async () => {
+  fixture.evidence = [textEvent('仍在处理的内容', 1)]
+  await render()
+  const before = host.querySelector('[data-chat-execution-run]')!.className
+  props = { ...props, detail: { ...props.detail, runs: [{ ...run, status: 'failed', error: '网络断开' }] } }
+  await render()
+  expect(host.querySelector('[data-chat-execution-run]')!.className).toBe(before)
+  expect(before).toContain('w-full')
+  expect(before).not.toContain('w-fit')
+})
+
+test('shows resource queue state instead of pretending the employee is generating', async () => {
+  props = { ...props, detail: { ...props.detail, runs: [{ ...run, status: 'queued' }] } }
+  await render()
+  expect(host.textContent).toContain('等待执行资源')
+  expect(host.textContent).not.toContain('正在处理')
+  expect(host.querySelector('[aria-label="查看完整执行过程"]')).toBeNull()
+  expect(host.querySelector('[data-chat-execution-run] .button-row')).toBeNull()
+})
+
+test('does not append old failures or terminal automation mirrors below the newest queued task', async () => {
+  const old = { id: 'old-question', conversationId: 'chat', senderType: 'user' as const, senderId: 'user', senderName: '我', content: '上周的请求', status: 'completed' as const, sequence: 1, createdAt: run.createdAt }
+  const current = { ...old, id: 'today-question', content: '调用浏览器查询一下南京的天气', sequence: 100, createdAt: '2026-10-24T00:00:00Z' }
+  const historical = { ...run, id: 'old-failure', triggerMessageId: old.id, status: 'failed' as const, error: '已达到单次任务的工具步骤上限，请继续发送消息' }
+  const mirror = { run: { ...historical, id: 'old-mirror', conversationId: 'task-old', error: '工作当前为 failed，不能重复执行' }, triggerMessage: { ...old, id: 'old-publication' } }
+  props = { ...props, pageEdges: { before: true, after: false }, detail: { ...props.detail, messages: [current], messagePage: { ...props.detail.messagePage, items: [{ messageId: current.id, sequence: current.sequence, status: 'available', message: current }] }, runs: [{ ...run, status: 'queued', triggerMessageId: current.id }, historical], executionMirrors: [mirror] } }
+  await render()
+  expect(host.querySelectorAll('[data-chat-execution-run]')).toHaveLength(1)
+  expect(host.textContent).toContain('等待执行资源')
+  expect(host.textContent).not.toContain('工具步骤上限')
+  expect(host.textContent).not.toContain('不能重复执行')
+  // Reading the original page still exposes both original failures and their retained process.
+  const originals = [old, mirror.triggerMessage]
+  props = { ...props, restoreAnchor: { messageId: old.id }, pageEdges: { before: false, after: true }, detail: { ...props.detail, messages: originals, messagePage: { ...props.detail.messagePage, items: originals.map((message, index) => ({ messageId: message.id, sequence: index + 1, status: 'available' as const, message })) } } }
+  await render()
+  expect(host.querySelector('[data-chat-execution-run="old-failure"]')).not.toBeNull()
+  expect(host.querySelector('[data-chat-execution-run="old-mirror"]')).not.toBeNull()
 })

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 自动化补充不再因旧五分钟期限禁用，仍读取实际调用额度和等待状态。
  * [OUTPUT]: 2026-10-10 原问题仅紧凑回复按钮，已回答和成功补充不额外挂卡；未知/失败请求仍沿原身份核对。
  * [OUTPUT]: 主聊天与右侧渠道聊天共用未决请求账本，按实际可见会话集合核对来源；隐藏或切换仍使旧请求未知而不重放。
  * [INPUT]: 原问题/获准补充状态、本人原消息关系回执、跨关闭/重启未决请求与当前聊天活跃身份。
@@ -66,7 +67,7 @@ export function useChatQuestionReplies(api: DesktopApi | undefined, options: Que
         const occurrence = await api.request('getAutomationOccurrence', { id: item.occurrenceId })
         if (!valid()) return
         if (occurrence.id !== item.occurrenceId || occurrence.automationId !== item.automationId || occurrence.conversationId !== target.conversationId || occurrence.status !== 'waiting_user' || occurrence.stateVersion !== question.revision || occurrence.cancellationRequestedAt || occurrence.taskKind === 'monitor') throw new Error('这一次自动化已经变化或停止，请核对原运行。')
-        if (!occurrence.budget || occurrence.budget.exhausted || Date.parse(occurrence.budget.deadlineAt) <= Date.now()) throw new Error('本次预算不可续用，请在定时任务的本次运行中明确核对或确认追加额度。')
+        if (!occurrence.budget || occurrence.budget.exhausted) throw new Error('本次预算不可续用，请在定时任务的本次运行中明确核对或确认追加额度。')
       } else if (!question.canReply) throw new Error(question.unavailableReason ?? '原问题当前不能补充，请核对原记录。')
       return { ...target, revision: question.revision }
     }

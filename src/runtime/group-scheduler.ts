@@ -1,8 +1,9 @@
 /*
+ * [OUTPUT]: 默认执行不按累计调用、工具步骤、用量或墙钟截断；保留真实用量、取消/权限和明确指定的预算。
  * [OUTPUT]: 原轮次支持员工定向取消、独立信号及禁止本轮重新邀请；同事继续，实际退出仍归原运行。
  * [OUTPUT]: 2026-10-14 安装已提交的空闲房间历史迁移，仅更新原缓存，不重新调度或运行启动恢复。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
- * [OUTPUT]: 调度轮次只累计API用量；本机不受API16000输出、调用或时长截断，API预算取消与本机执行信号分离。
+ * [OUTPUT]: 调度轮次只累计API用量；本机不受API输出额度、调用或时长截断，API预算取消与本机执行信号分离。
  * [OUTPUT]: 第14组API群请求解释与持久顺序接续；保留独立并行、原Work和本机旧路径，实际验收归第14组05。
  * [INPUT]: 共享领域类型、产品存储与群事件。
  * [OUTPUT]: 宿主核对已分工成员的真实业务广播仅保留上下文，在模型计数前跳过重复判断；用户/明确收件人/首轮/定向接续及未分工成员保持原边界。真实 bobo 公告的 collaboration_start 以唯一启动意图在原事务消费；仅同请求的定向工作可与开场并行，同员工真实执行/退出仍互斥，普通用户轮次仍单 lane 并优先；bobo 固定群根/成员独立判断及同预算子工作接续；重启不自动开工。普通聊天最终公开回复通过宿主 commitReply hook 同事务保存真实完成事实；失败/流式/取消不计完成，task 仍由原 Work 事务所有者提交。
@@ -36,7 +37,7 @@ type EventRecord = ConversationEvent & { generation: number; sequence: number }
 type TurnRecord = DiscussionTurn & { cancelledAgentIds?: string[]; epoch: number; decisionCalls?: number; deliveryFailure?: boolean }
 type DeliveryRecord = AgentDelivery & { failurePhase?: 'decision' | 'execution' }
 type Grant = { id: string; turnId: string; agentId: string; decisionId: string; contextVersion: number; status: 'active' | 'done' | 'expired' }
-type Active = { turn: TurnRecord; controller: AbortController; apiController: AbortController; employeeControllers: Map<string, AbortController>; pending: Map<string, AgentDelivery>; inflight: Map<string, Promise<void>>; ready: Map<string, DecisionRecord>; waiting: Map<string, DecisionRecord>; handled: Set<string>; contributions: Map<string, number>; retriedDependencies: Set<string>; invited: Set<string>; tasks: Map<string, Promise<void>>; deferredWork: Set<string>; awaitingExecution: Set<string>; chats: Map<string, Promise<void>>; wake: () => void; wakePromise: Promise<void>; promise: Promise<void>; yielded: boolean; asked: boolean; budgetLimited?: boolean; latestEvent: EventRecord; timer: ReturnType<typeof setTimeout>; done: boolean }
+type Active = { turn: TurnRecord; controller: AbortController; apiController: AbortController; employeeControllers: Map<string, AbortController>; pending: Map<string, AgentDelivery>; inflight: Map<string, Promise<void>>; ready: Map<string, DecisionRecord>; waiting: Map<string, DecisionRecord>; handled: Set<string>; contributions: Map<string, number>; retriedDependencies: Set<string>; invited: Set<string>; tasks: Map<string, Promise<void>>; deferredWork: Set<string>; awaitingExecution: Set<string>; chats: Map<string, Promise<void>>; wake: () => void; wakePromise: Promise<void>; promise: Promise<void>; yielded: boolean; asked: boolean; budgetLimited?: boolean; latestEvent: EventRecord; done: boolean }
 export type PublishReply = (message: Message, records: StoredRecord[], commit?: (records: StoredRecord[]) => Promise<void>) => Promise<void>
 export interface SchedulerHooks {
   interpretGroup?(turn: DiscussionTurn, signal: AbortSignal): Promise<DiscussionTurn['coordination']>
@@ -176,14 +177,12 @@ export class GroupScheduler {
   get busy() { return this.active.size > 0 || [...this.turns.values()].some(turn => turn.status === 'queued') }
   async reserveMaintenance(turnId: string) {
     const turn = this.turns.get(turnId), active = this.active.get(turnId)
-    if (!turn || !active || active.yielded || active.controller.signal.aborted || turn.modelCalls >= this.totalCallLimit(turn)) return false
+    if (!turn || !active || active.yielded || active.controller.signal.aborted) return false
     turn.modelCalls++; await this.store.write([row('turns', turn)]); return true
   }
-  private totalCallLimit(turn: DiscussionTurn) { return Math.max(24, this.hooks.conversation(turn.conversationId).agentIds.length * 8) }
   async reserveAdditionalCall(turnId: string, phase: 'decision' | 'execution' | 'memory') {
     const turn = this.turns.get(turnId), active = this.active.get(turnId)
     if (!turn || !active || active.turn.id !== turnId || this.closing || active.controller.signal.aborted || (active.done && phase !== 'memory') || (active.yielded && phase === 'decision')) throw new Error('本轮已结束或已有用户新消息，不能继续请求模型')
-    if (turn.modelCalls >= this.totalCallLimit(turn)) { await this.stop(active, 'budget_exhausted', '达到本轮模型调用上限'); throw new Error('达到本轮模型调用上限') }
     if (phase === 'decision') {
       if ((turn.decisionCalls ?? 0) >= Math.max(12, this.hooks.conversation(turn.conversationId).agentIds.length * 4)) { active.budgetLimited = true; throw new Error('达到本轮判断调用上限，未发起补充模型请求') }
       turn.decisionCalls = (turn.decisionCalls ?? 0) + 1
@@ -199,14 +198,8 @@ export class GroupScheduler {
     if (runtime === 'api') turn.apiTokenEstimate = Math.max(0, turn.apiTokenEstimate + delta)
     turn.tokenEstimate = Math.max(0, (turn.tokenEstimate ?? 0) + delta)
     await this.store.write([row('turns', turn)])
-    const active = this.active.get(turnId)
-    if (active?.turn.id === turnId && turn.apiTokenEstimate >= 16000) {
-      await this.hooks.critical(async () => {
-        if (active.done) active.controller.abort(new Error('达到本轮输出用量上限'))
-        else await this.stop(active, 'budget_exhausted', '达到本轮输出用量上限')
-      })
-    }
   }
+
   detail(conversationId: string) {
     const turns = [...this.turns.values()].filter(turn => turn.conversationId === conversationId).sort((a, b) => a.createdAt.localeCompare(b.createdAt))
     return { turns, unresolvedFailureDeliveryIds: turns.flatMap(turn => this.unresolvedFailures(turn.id).map(delivery => delivery.id)), events: [...this.events.values()].filter(event => event.conversationId === conversationId).sort((a, b) => a.createdAt.localeCompare(b.createdAt)), deliveries: [...this.deliveries.values()].filter(delivery => delivery.conversationId === conversationId), decisions: [...this.decisions.values()].filter(decision => this.turns.get(decision.turnId)?.conversationId === conversationId).sort((a, b) => a.createdAt.localeCompare(b.createdAt)), contributions: [...this.contributions.values()].filter(contribution => this.turns.get(contribution.turnId)?.conversationId === conversationId) }
@@ -258,12 +251,9 @@ export class GroupScheduler {
     const turn = userTurn ?? queued.find(turn => (!runningOpening || (turn.wakeId && turn.collaborationRequestId === runningOpening.turn.collaborationRequestId)) && (!running.length || turn.wakeId) && !occupied.has(this.workOwner(turn)) && !this.hooks.executionBusy?.(conversationId, this.workOwner(turn) ?? ''))
     if (!turn) return
     const event = [...this.events.values()].find(event => event.turnId === turn.id && ['user_message', 'work_ready', 'collaboration_start'].includes(event.type))!
-    const active = { turn, controller: new AbortController(), apiController: new AbortController(), employeeControllers: new Map(), pending: new Map([...this.deliveries.values()].filter(delivery => delivery.turnId === turn.id).map(delivery => [delivery.agentId, delivery])), inflight: new Map(), chats: new Map(), tasks: new Map(), deferredWork: new Set(), awaitingExecution: new Set(), ready: new Map(), waiting: new Map(), handled: new Set(), contributions: new Map(), retriedDependencies: new Set(), invited: new Set(event.recipientAgentIds ?? []), wake: () => {}, wakePromise: Promise.resolve(), promise: Promise.resolve(), yielded: false, asked: false, latestEvent: event, timer: setTimeout(() => {}, 0), done: false } as Active
-    clearTimeout(active.timer)
-    if (this.hooks.conversation(conversationId).agentIds.some(id => !isNativeBackend(this.hooks.agent(id).executionBackend))) active.timer = setTimeout(() => { void this.hooks.critical(() => this.stop(active, 'budget_exhausted', '达到本轮时间上限')).catch(error => this.hooks.error(error)) }, 5 * 60_000)
-    active.timer.unref()
+    const active = { turn, controller: new AbortController(), apiController: new AbortController(), employeeControllers: new Map(), pending: new Map([...this.deliveries.values()].filter(delivery => delivery.turnId === turn.id).map(delivery => [delivery.agentId, delivery])), inflight: new Map(), chats: new Map(), tasks: new Map(), deferredWork: new Set(), awaitingExecution: new Set(), ready: new Map(), waiting: new Map(), handled: new Set(), contributions: new Map(), retriedDependencies: new Set(), invited: new Set(event.recipientAgentIds ?? []), wake: () => {}, wakePromise: Promise.resolve(), promise: Promise.resolve(), yielded: false, asked: false, latestEvent: event, done: false } as Active
     this.active.set(turn.id, active)
-    active.promise = this.loop(active).catch(async error => { this.hooks.error(error); await this.stop(active, 'failed', error instanceof Error ? error.message : String(error)) }).finally(() => { clearTimeout(active.timer); this.active.delete(turn.id); this.hooks.changed(conversationId); this.executionReleased(conversationId) })
+    active.promise = this.loop(active).catch(async error => { this.hooks.error(error); await this.stop(active, 'failed', error instanceof Error ? error.message : String(error)) }).finally(() => { this.active.delete(turn.id); this.hooks.changed(conversationId); this.executionReleased(conversationId) })
     if (turn.wakeId) this.kick(conversationId)
   }
   private signal(active: Active) {
@@ -318,7 +308,6 @@ export class GroupScheduler {
           for (const item of pending) { item.status = 'skipped'; item.error = '达到本轮判断调用上限，尚未发出的判断已停止' }
           await this.store.write(pending.map(item => row('deliveries', item))); continue
         }
-        if (!isNativeBackend(this.hooks.agent(delivery.agentId).executionBackend) && active.turn.modelCalls >= this.totalCallLimit(active.turn)) { await this.stop(active, 'budget_exhausted', '达到本轮模型调用上限'); break }
         active.pending.delete(delivery.agentId)
         const openingRoot = this.events.get(delivery.eventId)?.type === 'collaboration_start' && delivery.agentId === 'bobo'
         if (!isNativeBackend(this.hooks.agent(delivery.agentId).executionBackend) && !active.turn.wakeId && !openingRoot && active.turn.coordination?.mode !== 'ordered') { active.turn.modelCalls++; active.turn.decisionCalls = (active.turn.decisionCalls ?? 0) + 1 }
@@ -332,7 +321,7 @@ export class GroupScheduler {
           if (!isNativeBackend(this.hooks.agent(selected.agentId).executionBackend) && active.apiController.signal.aborted) { active.ready.delete(selected.agentId); continue }
           const task = selected.action === 'reply' && selected.responseKind === 'task'
           if (!this.executionAvailable(active, selected.agentId) || active.tasks.has(selected.agentId) || active.chats.has(selected.agentId) || this.dependencies(active, selected) !== 'ready' || (task && active.tasks.size >= MAX_INDEPENDENT_TASKS)) continue
-          if (!isNativeBackend(this.hooks.agent(selected.agentId).executionBackend) && active.turn.modelCalls >= this.totalCallLimit(active.turn)) { await this.stop(active, 'budget_exhausted', '达到本轮模型调用上限'); break }
+          // Execution owns its Work deadline; admission waiting must not spend a second turn-wide clock.
           active.ready.delete(selected.agentId); active.awaitingExecution.add(selected.agentId)
           const execution = this.respond(active, selected).catch(error => this.hooks.error(error)).finally(() => {
             active.awaitingExecution.delete(selected.agentId)
@@ -539,7 +528,7 @@ export class GroupScheduler {
         this.events.set(next.id, next); active.latestEvent = next
         for (const candidate of candidates) { this.deliveries.set(candidate.id, candidate); active.pending.set(candidate.agentId, candidate); active.ready.delete(candidate.agentId); active.waiting.delete(candidate.agentId) }
         published = true; this.hooks.changed(delivery.conversationId); active.wake()
-        if ((!ordered && next.generation >= 3) || (active.turn.apiTokenEstimate ?? active.turn.tokenEstimate ?? 0) > 16000) await this.stop(active, 'budget_exhausted', next.generation >= 3 ? '达到本轮自动接续代数上限' : '达到本轮输出长度上限')
+        if (!ordered && next.generation >= 3) await this.stop(active, 'budget_exhausted', '达到本轮自动接续代数上限')
       })
       if (!this.alive(active, decision.agentId)) return
       if (result === 'deferred') {

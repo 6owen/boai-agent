@@ -1,4 +1,8 @@
 /*
+ * [OUTPUT]: 桌面活动原生采集参数、独立键鼠监听及权限命令保持宿主私有调用。
+ * [OUTPUT]: approve协议新增allowSameKind，只表达本次运行同类操作批准。
+ * [OUTPUT]: 增加系统文本复制桥和retryRun的显式continuation标识，原请求身份及通用IPC保持。
+ * [OUTPUT]: 消息复制使用仅主窗口可调用的系统剪贴板写入桥，浏览器预览保留Web回退；成功后才显示已复制。
  * [OUTPUT]: 快捷键偏好、回执、窗口捕获与退出保存沿原受控 IPC。
  * [OUTPUT]: 提示词集合读取及版本化分组/排序合同，与正文版本独立。
  * [OUTPUT]: 清理开始事件先于读取失效，完成事件携带隐藏状态，供界面停读和准确移出列表。
@@ -118,7 +122,7 @@ export type AppEvent =
   | { type: 'runtime-error'; error: string }
 
 export interface Methods {
-  captureDesktopActivity: { input: { action: 'status' | 'request' | 'sample'; excludedApps?: string[] }; output: import('../domain/desktop-activity').ActivityCaptureResult }
+  captureDesktopActivity: { input: { action: import('../domain/desktop-activity').ActivityCaptureAction; excludedApps?: string[]; options?: import('../domain/desktop-activity').ActivityCaptureOptions }; output: import('../domain/desktop-activity').ActivityCaptureResult }
   getApplicationCatalog: { input: import('../domain/application-protocol').ApplicationCatalogQuery; output: import('../domain/application-protocol').ApplicationCatalog }
   executeApplicationOperation: { input: import('../domain/application-protocol').ApplicationRequest; output: import('../domain/application-protocol').ApplicationResult }
   getApplicationReceipt: { input: import('../domain/application-protocol').ApplicationReceiptQuery; output: import('../domain/application-protocol').ApplicationResult | null }
@@ -354,7 +358,7 @@ export interface Methods {
   cancelRunExecution: { input: { conversationId: string; runId: string }; output: import('../domain/run-cancellation').RunCancellation }
   cancelRun: { input: { conversationId: string; workId?: string; runId?: string }; output: void }
   getDirectoryApprovalReceipt: { input: { id: string }; output: import('../domain/directory-access').DirectoryApprovalReceipt | null }
-  approve: { input: { id: string; approved: boolean; always?: boolean }; output: void }
+  approve: { input: { id: string; approved: boolean; always?: boolean; allowSameKind?: boolean }; output: void }
   revokeCommandPermission: { input: { agentId: string; revision: string }; output: void }
   importResource: { input: { kind: Resource['kind']; path: string; ownerAgentId?: string }; output: Resource }
   chooseKnowledgeSource: { input: undefined; output: { id: string; name: string } | null }
@@ -367,7 +371,7 @@ export interface Methods {
   getEmployeeKnowledgeFiles: { input: { agentId: string; resourceId: string }; output: import('../domain/knowledge').KnowledgeFilesView }
   getEmployeeKnowledgePreview: { input: { agentId: string; resourceId: string; contentHash: string; fileKey?: string }; output: import('../domain/knowledge').KnowledgePreview }
   removeResource: { input: { id: string }; output: void }
-  retryRun: { input: { id: string; requestId: string }; output: void }
+  retryRun: { input: { id: string; requestId: string; continuation?: boolean }; output: void }
   getAgentHome: { input: { agentId: string; conversationId?: string }; output: AgentHome }
   readAgentFile: { input: { agentId: string; name: string; conversationId?: string }; output: AgentFileContent }
   saveAgentFile: { input: { agentId: string; name: import('../domain/agent-profile').AgentSourceName; content: string; expectedHash: string; expectedConfigVersion: number }; output: AgentHome }
@@ -388,6 +392,7 @@ export interface DesktopApi {
   initialAppearance?: AppearanceSnapshot
   selectSkillFile?(file: File, kind: 'folder' | 'zip'): Promise<string>
   selectMaterialFile?(file: File): Promise<{ id: string; name: string }>
+  writeClipboardText?(text: string): Promise<void>
   selectClipboardMaterialFiles?(): Promise<{ id: string; name: string }[]>
   request<K extends Method>(method: K, input: Methods[K]['input']): Promise<Methods[K]['output']>
   subscribe(listener: (event: AppEvent) => void): () => void
