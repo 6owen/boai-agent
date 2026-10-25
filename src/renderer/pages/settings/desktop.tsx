@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 页面无副标题或卡片下说明；后台/登录/隐藏启动说明归标签旁SettingsHelp，原保存保持。
  * [OUTPUT]: 桌面活动与日报迁至独立设置分类；本页保留后台运行与 CLI。
  * [OUTPUT]: 运行选项增加CLI安装管理Card，复用全局组件及Sonner。
  * [INPUT]: 类型化桌面设置 IPC、变化订阅与共用 Card/Switch。
@@ -7,7 +8,7 @@
  * [PROTOCOL]: 变化同步 Header 与所属 .folder.md。
  */
 import { useEffect, useState } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
+import { SettingsLayout, SettingsCard, SettingsRow, SettingsHelp } from './settings-layout'
 import { Switch } from '@/components/ui/switch'
 import { Banner } from '@/components/common'
 import type { DesktopApi } from '@shared/ipc'
@@ -39,16 +40,17 @@ export function DesktopSettingsPage({ api, active }: { api: DesktopApi; active: 
     finally { setBusy(false) }
   }
   const disabled = busy || !settings || Boolean(settings.error)
-  return <section className="settings-document"><div className="page-heading"><div><h2>运行选项</h2><p>关闭窗口后继续接收渠道消息和执行定时任务。</p></div></div>
+  return <SettingsLayout title="运行选项">
     {error && <Banner>{error}</Banner>}{settings?.error && <Banner>{settings.error}</Banner>}
-    <Card className="gap-0 p-0"><CardContent className="appearance-options soft-divide-y">
-      <div className="appearance-row"><label htmlFor="desktop-background">关闭窗口后继续运行</label><Switch id="desktop-background" aria-label="关闭窗口后继续运行" checked={settings?.preferences.runInBackground ?? false} disabled={disabled || !settings?.trayAvailable} onCheckedChange={value => { void update({ runInBackground: value }) }} /></div>
-      <div className="appearance-row"><label htmlFor="desktop-login">开机启动</label><Switch id="desktop-login" aria-label="开机启动" checked={settings?.login.enabled ?? false} disabled={disabled || !settings?.login.supported || settings.login.status === 'error'} onCheckedChange={value => { void update({ openAtLogin: value }) }} /></div>
-      <div className="appearance-row"><label htmlFor="desktop-hidden">登录后隐藏启动</label><Switch id="desktop-hidden" aria-label="登录后隐藏启动" checked={settings?.preferences.startHidden ?? false} disabled={disabled || !settings?.preferences.runInBackground} onCheckedChange={value => { void update({ startHidden: value }) }} /></div>
-    </CardContent></Card>
-    <p className="field-hint">{settings ? loginHints[settings.login.status] : '正在读取运行设置…'}</p>
-    {settings && !settings.trayAvailable && <p className="field-hint">系统托盘不可用，关闭窗口将按系统默认行为处理。</p>}
-    <p className="field-hint">通过系统托盘或菜单栏重新打开窗口；选择「退出 BoAI Agent」会停止运行。电脑需保持开机、联网，休眠期间无法接收消息。</p>
+    <SettingsCard>
+      <SettingsRow><div className="flex items-center gap-1 font-medium"><label htmlFor="desktop-background">关闭窗口后继续运行</label><SettingsHelp label="后台运行说明">
+        <p>关闭窗口后继续接收渠道消息和执行定时任务，可通过托盘或菜单栏重新打开窗口。退出应用会停止运行。</p>
+        <p>电脑需保持开机、联网，休眠期间无法接收消息。</p>
+        {settings && !settings.trayAvailable && <p>系统托盘不可用，关闭窗口将按系统默认行为处理。</p>}
+      </SettingsHelp></div><Switch id="desktop-background" aria-label="关闭窗口后继续运行" checked={settings?.preferences.runInBackground ?? false} disabled={disabled || !settings?.trayAvailable} onCheckedChange={value => { void update({ runInBackground: value }) }} /></SettingsRow>
+      <SettingsRow><div className="flex items-center gap-1 font-medium"><label htmlFor="desktop-login">开机启动</label><SettingsHelp label="开机启动说明">{settings ? loginHints[settings.login.status] : '正在读取运行设置…'}</SettingsHelp></div><Switch id="desktop-login" aria-label="开机启动" checked={settings?.login.enabled ?? false} disabled={disabled || !settings?.login.supported || settings.login.status === 'error'} onCheckedChange={value => { void update({ openAtLogin: value }) }} /></SettingsRow>
+      <SettingsRow><div className="flex items-center gap-1 font-medium"><label htmlFor="desktop-hidden">登录后隐藏启动</label><SettingsHelp label="隐藏启动说明">登录后在后台运行，不自动打开窗口。需先开启“关闭窗口后继续运行”。</SettingsHelp></div><Switch id="desktop-hidden" aria-label="登录后隐藏启动" checked={settings?.preferences.startHidden ?? false} disabled={disabled || !settings?.preferences.runInBackground} onCheckedChange={value => { void update({ startHidden: value }) }} /></SettingsRow>
+    </SettingsCard>
     <CliInstallationCard api={api} active={active} />
-  </section>
+  </SettingsLayout>
 }

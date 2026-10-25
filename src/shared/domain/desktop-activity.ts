@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Opt-in local foreground-window OCR and source-checked report snapshots.
- * [OUTPUT]: Independent opt-in screenshots/input events, recorder settings, samples, permission state, source-bound structured analysis and daily/multiday report contracts.
+ * [OUTPUT]: Platform-neutral capture/OCR capabilities, source-bound paginated session details and activity/report contracts.
  * [POS]: Shared application and desktop activity UI types.
  * [PROTOCOL]: Update Header and owning .folder.md when changed.
  */
@@ -14,6 +14,11 @@ export type ActivityCaptureAction = 'status' | 'request' | 'request-input' | 'op
 export type ActivityCaptureOptions = Pick<ActivitySettings, 'enableInputMonitor' | 'enableOcr' | 'ocrLanguages' | 'saveScreenshots' | 'jpegQuality' | 'idleThresholdMs'>
 export interface ActivityInputEvent { id: string; capturedAt: string; firstCapturedAt?: string; app: string; bundleId: string; keypresses: number; clicks: number }
 export interface ActivitySession { id: string; from: string; to: string; apps: string[]; sampleCount: number; screenshotCount: number; keypresses: number; clicks: number; active: boolean }
+export interface ActivitySessionPage {
+  session: ActivitySession; revision: string
+  samples: ActivitySample[]; total: number; nextOffset: number | null
+  analyses: ActivityAnalysis[]; analysisTotal: number; nextAnalysisOffset: number | null
+}
 export interface ActivitySample { id: string; capturedAt: string; app: string; bundleId: string; title: string; text: string; hash: string; screenshot?: { bytes: number }; ocr?: boolean }
 export interface ActivityFragment { id: string; app: string; bundleId: string; firstObservedAt: string; lastObservedAt: string; sampleIds: string[]; titles: string[] }
 export interface ActivityReport { id: string; from: string; to: string; generatedAt: string; sourceHash: string; sampleIds: string[]; content: string }
@@ -35,10 +40,16 @@ export interface ActivityTopicCluster {
 }
 export interface ActivityCaptureResult {
   supported?: boolean; permission?: boolean; accessibilityPermission?: boolean; monitoring?: boolean; skipped?: string; error?: string
+  capabilities?: ActivityCaptureCapabilities; ocr?: boolean; ocrError?: string
   app?: string; bundleId?: string; title?: string; text?: string; capturedAt?: string; idleMs?: number; typingIdleMs?: number
   image?: string; fingerprint?: string; events?: Omit<ActivityInputEvent, 'id'>[]
 }
+export interface ActivityCaptureCapabilities {
+  platform: 'macos' | 'windows' | 'linux' | 'other'
+  screenshots: boolean; inputMonitor: boolean; ocr: boolean
+}
 export interface ActivityStatus { settings: ActivitySettings; supported: boolean; permission: boolean; count: number; lastCapturedAt?: string; lastError?: string
+  capabilities?: ActivityCaptureCapabilities
   accessibilityPermission: boolean; monitoring: boolean; state: 'disabled' | 'permission' | 'idle' | 'recording' | 'unavailable' | 'error'
   screenshotCount: number; storageBytes: number; outputDirectory?: string; foregroundApp?: string; sessionCount: number; recentSessions: ActivitySession[]
 }

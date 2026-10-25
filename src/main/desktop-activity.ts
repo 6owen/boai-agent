@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Explicit recorder commands and independent input-monitor opt-in from the runtime.
- * [OUTPUT]: Foreground OCR/optional JPEG, permission controls and lease-bound aggregate input events.
+ * [OUTPUT]: Actual platform capabilities, foreground OCR/optional JPEG, permission controls and lease-bound aggregate input events; unsupported adapters stay explicit.
  * [POS]: Native desktop host; settings, persistence and quota belong to the runtime.
  * [PROTOCOL]: Update Header and main/.folder.md when changed.
  */
@@ -15,7 +15,7 @@ const inputSchema = z.object({
   options: z.object({ enableInputMonitor: z.boolean(), enableOcr: z.boolean(), ocrLanguages: z.array(z.string().max(32)).max(16), saveScreenshots: z.boolean(), jpegQuality: z.number().int().min(10).max(100), idleThresholdMs: z.number().int().min(10000).max(3600000) }).strict().optional(),
 }).strict()
 const inputEvent = z.object({ app: z.string().max(1000), bundleId: z.string().max(200), capturedAt: z.iso.datetime(), keypresses: z.number().int().nonnegative(), clicks: z.number().int().nonnegative() }).strict()
-const resultSchema = z.object({ supported: z.boolean().optional(), permission: z.boolean().optional(), accessibilityPermission: z.boolean().optional(), skipped: z.string().max(100).optional(), error: z.string().max(1000).optional(), app: z.string().max(1000).optional(), bundleId: z.string().max(200).optional(), title: z.string().max(1000).optional(), text: z.string().max(18000).optional(), capturedAt: z.iso.datetime().optional(), idleMs: z.number().nonnegative().optional(), typingIdleMs: z.number().nonnegative().optional(), image: z.string().max(8_000_000).optional(), fingerprint: z.string().max(2048).optional() }).strict()
+const resultSchema = z.object({ supported: z.boolean().optional(), permission: z.boolean().optional(), accessibilityPermission: z.boolean().optional(), skipped: z.string().max(100).optional(), error: z.string().max(1000).optional(), ocr: z.boolean().optional(), ocrError: z.string().max(1000).optional(), app: z.string().max(1000).optional(), bundleId: z.string().max(200).optional(), title: z.string().max(1000).optional(), text: z.string().max(18000).optional(), capturedAt: z.iso.datetime().optional(), idleMs: z.number().nonnegative().optional(), typingIdleMs: z.number().nonnegative().optional(), image: z.string().max(8_000_000).optional(), fingerprint: z.string().max(2048).optional() }).strict()
 let monitor: ChildProcess | undefined, monitorKey = '', buffer = '', lease = 0
 let events: NonNullable<ActivityCaptureResult['events']> = []
 let monitorError: string | undefined
@@ -47,7 +47,7 @@ function ensureMonitor(excludedApps: string[]) {
 export async function desktopActivityCapture(input: unknown): Promise<ActivityCaptureResult> {
   const value = inputSchema.parse(input)
   if (value.action === 'stop') { stopMonitor(); monitorError = undefined; return {} }
-  if (process.platform !== 'darwin') return { supported: false, permission: false, accessibilityPermission: false }
+  if (process.platform !== 'darwin') return { supported: false, permission: false, accessibilityPermission: false, capabilities: { platform: process.platform === 'win32' ? 'windows' : process.platform === 'linux' ? 'linux' : 'other', screenshots: false, inputMonitor: false, ocr: false } }
   const result = await promisify(execFile)(executable(), [value.action, JSON.stringify({ ...value.options, excludedApps: value.excludedApps ?? [] })], { timeout: 20000, maxBuffer: 9_000_000 })
   const parsed = resultSchema.parse(JSON.parse(result.stdout))
   if (value.action === 'probe') {
@@ -55,5 +55,5 @@ export async function desktopActivityCapture(input: unknown): Promise<ActivityCa
     else stopMonitor()
   }
   const drained = value.action === 'probe' ? events.splice(0) : undefined
-  return { ...parsed, monitoring: !!monitor, ...(drained ? { events: drained } : {}), ...(monitorError && !parsed.error ? { error: monitorError } : {}) }
+  return { ...parsed, capabilities: { platform: 'macos', screenshots: parsed.supported ?? true, inputMonitor: true, ocr: parsed.supported ?? true }, monitoring: !!monitor, ...(drained ? { events: drained } : {}), ...(monitorError && !parsed.error ? { error: monitorError } : {}) }
 }

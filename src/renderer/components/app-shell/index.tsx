@@ -13,7 +13,7 @@
  * [OUTPUT]: 阅读历史锚点的有界页不再改写侧栏最新摘要/时间；仅尾页读取与原实时消息更新列表，历史定位/分页/草稿保持。
  * [OUTPUT]: 四组默认应用快捷键与工具栏共用搜索、三页列表和原历史动作；输入、自定义选择控件、组合键与浮层保留自身按键。
  * [OUTPUT]: 主聊天按选中会话元信息立即保留ChatView外框，不再以会话ID重建整个聊天；首屏40条、刷新保留已加载窗口且最多80条，原请求代次/锚点/清理隔离保持。
- * [OUTPUT]: 同会话终端/预览侧栏与桌面活动日报的真实 bobo 首发入口。
+ * [OUTPUT]: 同会话终端/预览侧栏；设置不再透传桌面活动日报首发回调。
  * [OUTPUT]: 保留挂载的主会话与渠道聊天各提供浮层可见作用域，切页/隐藏详情立即撤下Portal，不清理正文、草稿和阅读位置。
  * [OUTPUT]: 会话消息与群标题头像的配置入口统一跳转通讯录并选中对应员工，bobo与创建的员工共用原导航守卫。
  * [OUTPUT]: 2026-10-19 员工配置检索服务入口导航到独立设置页，沿原未保存守卫。
@@ -598,15 +598,6 @@ export function AppShell() {
     navigate(() => { applyRoute({ page: 'conversations', conversationId: result.id }) })
     void refreshSnapshot().catch(failure => toast.error(errorText(failure)))
   }
-  const activityReportRequests = useRef(new Map<string, string>())
-  const startActivityReport = async (from: string, to: string) => {
-    const key = `${from}:${to}`, previous = activityReportRequests.current.get(key), requestId = previous ?? crypto.randomUUID()
-    activityReportRequests.current.set(key, requestId)
-    const known = previous ? await api!.request('getCoreConversationStart', { requestId }) : null
-    const result = known ?? await api!.request('startCoreConversation', { requestId, content: `请使用 boai-daily-report 技能，根据 ${from} 至 ${to} 的真实桌面活动生成主题日报，并保存日报。不要使用聊天历史补造活动；没有记录就如实说明。` })
-    activityReportRequests.current.delete(key)
-    await refreshSnapshot(); selectConversation(result.id, true)
-  }
   const createCoreConversation = () => navigate(() => {
     applyRoute({ page: 'conversations', conversationId: null, coreDraft: true })
     requestAnimationFrame(() => document.querySelector<HTMLTextAreaElement>('.core-chat-start [aria-label="消息内容"]')?.focus())
@@ -1045,7 +1036,7 @@ export function AppShell() {
       {route.page==='contacts'&&<ContactsPage onConversation={(id, messageId) => selectConversation(id, true, messageId)} active={route.page === 'contacts'} onCreateTeam={() => openCreation({ type: 'team' })} api={api} snapshot={snapshot} selected={contactSelection} onSelect={setContactSelection} onMessage={messageContact} onCreate={type=>openCreation({type})} refresh={refreshSnapshot} onAgentSaved={updateAgentSnapshot} onGroupSaved={updateGroupSnapshot} sidebarShown={effectiveList} divider={listResizer} generation={panelGeneration} busy={busy}/>}
       {route.page==='skills'&&<CustomizationWorkspace onRemoveSource={id => { for (const tab of detailTabs.tabs) if (tab.target.type === 'source' && tab.target.id === id) dispatchDetails({ type: 'close', key: tab.key }) }} focusSource={focusedSource} selectedSource={panel?.type === 'source' ? panel.id : undefined} onOpenSource={source => openPanel({ type: 'source', id: source.id, name: source.name, requestId: crypto.randomUUID() })} onManage={openCatalogManagement} onOpenSkill={skill => openPanel({ type: 'local-skill', id: skill.id, name: skill.name, requestId: crypto.randomUUID() })} onOpenMarketplace={item => openPanel({ type: 'marketplace', provider: item.provider, id: item.id, name: item.name })} api={api} section={skillsSection} onSection={setSkillsSection} provider={skillProvider} onProvider={setSkillProvider} divider={listResizer} onCheckUpdates={()=>openPanel({type:'skill-updates'})} focusSkill={focusedSkill} revision={skillsRevision} />}
       <SchedulePage onNavigateMessage={(id, messageId, current) => selectConversation(id, true, messageId, current)} api={api} snapshot={snapshot} active={route.page==='schedules'} sidebarShown={effectiveList} divider={listResizer} location={scheduleLocation} onLocation={setScheduleLocation} onCreateConversation={() => openCatalogManagement('automations')} onInfo={()=>openPanel({type:'schedule'})} selectedOccurrenceId={panel?.type === 'automation-occurrence' ? panel.id : undefined} onOccurrence={id => openPanel({ type: 'automation-occurrence', id }, 'schedules')}/>
-      {settingsMounted.current && <div style={{ display: route.page === 'settings' ? 'contents' : 'none' }}><SettingsPage onActivityReport={startActivityReport} key={panelGeneration} divider={listResizer} tab={settingsSection} setTab={tab => { setLocalAgentTarget(undefined); setSettingsSection(tab) }} localAgentTarget={localAgentTarget} active={route.page === 'settings'} onOpenSkills={() => navigate(() => { setFocusedSource(undefined); setFocusedSkill(undefined); setSkillsSection('all'); applyRoute({ ...routeRef.current, page: 'skills' }) })} api={api} snapshot={snapshot} refresh={refreshSnapshot}/></div>}
+      {settingsMounted.current && <div style={{ display: route.page === 'settings' ? 'contents' : 'none' }}><SettingsPage key={panelGeneration} divider={listResizer} tab={settingsSection} setTab={tab => { setLocalAgentTarget(undefined); setSettingsSection(tab) }} localAgentTarget={localAgentTarget} active={route.page === 'settings'} onOpenSkills={() => navigate(() => { setFocusedSource(undefined); setFocusedSkill(undefined); setSkillsSection('all'); applyRoute({ ...routeRef.current, page: 'skills' }) })} api={api} snapshot={snapshot} refresh={refreshSnapshot}/></div>}
       {route.page==='help'&&<HelpPage/>}
       </div>
       <DetailPanel title={panelTitle} hidden={!panel} layout={detailLayout}>

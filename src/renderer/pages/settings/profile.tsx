@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 页面布局复用settings-layout，标题/分组留白与卡片/设置行统一，原业务回调保持。
  * [OUTPUT]: 最常用技能复用资源库SkillListItem展示行；悬停/键盘聚焦显示更多菜单，前往资源库技能列表，不在设置页打开详情。
  * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [OUTPUT]: Token 统计、活动图与洞察卡片首帧渲染完整结构，活动数据到达前仅在数值和图格位置显示占位，避免整块内容迟到。
@@ -7,6 +8,7 @@
  * [POS]: 复用设置文档布局的个人资料页面。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { SettingsLayout } from './settings-layout'
 import { useEffect, useRef, useState } from 'react'
 import type { DesktopApi } from '@shared/ipc'
 import type { LocalUserProfile, ProfileActivity, UserAvatar } from '@shared/domain/profile'
@@ -53,8 +55,7 @@ export function ProfileSettings({ api, profile: committedProfile, active, refres
     { label: '最长连续', value: activity ? activity.longestStreak === null ? '未记录' : `${activity.longestStreak} 天` : undefined, hint: '本机保留记录中的最长连续使用天数' },
     { label: '当前连续', value: activity ? activity.currentStreak === null ? '未记录' : `${activity.currentStreak} 天` : undefined, hint: '按本人主动发送消息的自然日计算' },
   ]
-  return <section className="settings-document profile-document">
-    <header className="settings-document-heading"><h2>个人资料</h2><div className="button-row"><Button ref={shareButton} variant="ghost" size="sm" disabled={!ready || !activity || avatarBusy || uploading} onClick={() => setSharing(true)}><Share />分享</Button><Button variant="secondary" size="sm" disabled={!ready || avatarBusy || uploading} onClick={event => openEditor(event.currentTarget)}><Pencil />编辑</Button></div></header>
+  return <SettingsLayout title="个人资料" actions={<div className="button-row"><Button ref={shareButton} variant="ghost" size="sm" disabled={!ready || !activity || avatarBusy || uploading} onClick={() => setSharing(true)}><Share />分享</Button><Button variant="secondary" size="sm" disabled={!ready || avatarBusy || uploading} onClick={event => openEditor(event.currentTarget)}><Pencil />编辑</Button></div>}  className="profile-document">
     {avatarError && <Banner>{avatarError}</Banner>}
     {error && <><Banner>{error}</Banner><Button variant="link" onClick={() => { setError(''); setRetry(value => value + 1) }}>重试</Button></>}
     <div className="profile-identity"><AvatarPicker personal value={profile.avatar} name={profile.displayName} disabled={!ready || avatarBusy} onBusyChange={setUploading} onChange={selectAvatar} onReset={() => selectAvatar(defaultUserAvatar)} /><h1 title={profile.displayName}><Button variant="ghost" size="content" className="profile-name-edit" aria-label="编辑显示名称" disabled={!ready || avatarBusy || uploading} onClick={event => openEditor(event.currentTarget)}>{profile.displayName}</Button></h1>{profile.username && <p>@{profile.username}</p>}</div>
@@ -81,5 +82,5 @@ export function ProfileSettings({ api, profile: committedProfile, active, refres
       </CardContent></Card></section></div>
     {sharing && activity && <ProfileShare api={api} profile={profile} activity={activity} onClose={() => setSharing(false)} finalFocus={shareButton} />}
     {editing && ready && <ProfileEditor profile={profile} api={api} refresh={refresh} onClose={() => setEditing(false)} finalFocus={editButton} />}
-  </section>
+  </SettingsLayout>
 }
