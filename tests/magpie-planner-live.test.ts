@@ -4,15 +4,16 @@
  * [POS]: Real structured-planning acceptance after stream completion checks, separate from ordinary employee tasks.
  * [PROTOCOL]: Update Header, tests/.folder.md and the Magpie ledger for every actual batch.
  */
+import { workspaceInputFiles } from './support/workspace-inputs'
 import { createHash } from 'node:crypto'
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { afterAll, beforeAll, expect, test } from 'vitest'
-import { AppService } from '../src/runtime/service'
-import { MastraEngine } from '../src/runtime/adapters/mastra/engine'
-import { probeMagpie } from '../src/runtime/adapters/mastra/model-catalog'
-import type { Connection, Snapshot } from '../src/shared/domain'
-import type { TeamDraft, TeamDraftView } from '../src/shared/domain/team-creation'
+import { AppService } from '../packages/runtime/src/service'
+import { MastraEngine } from '../packages/runtime/src/adapters/mastra/engine'
+import { probeMagpie } from '../packages/runtime/src/adapters/mastra/model-catalog'
+import type { Connection, Snapshot } from '../packages/shared/src/domain'
+import type { TeamDraft, TeamDraftView } from '../packages/shared/src/domain/team-creation'
 
 const enabled = process.env.BOAI_MAGPIE_PLANNER_REAL === '1', batch = process.env.BOAI_MAGPIE_BATCH ?? ''
 const root = 'http://127.0.0.1:3425', model = 'group/auto-gpt-6-luna', evidence = resolve('.local/magpie-20261017', `planner-${batch}`), originalFetch = globalThis.fetch
@@ -20,7 +21,7 @@ const prompt = '设计两人资料整理团队：一人整理用户提供的材�
 let current = '', version = '', sourceBefore: Record<string, string>
 const requests: { protocol: string; path: string; model: string; tools: number; status?: number; actualModel?: string | null; actualProvider?: string | null }[] = []
 async function sources() {
-  const files = (await readdir('src', { recursive: true })).filter(file => /\.(ts|tsx|json)$/.test(file)).map(file => `src/${file}`)
+  const files = (await workspaceInputFiles()).filter(file => /\.(ts|tsx|json)$/.test(file))
   files.push('package.json', 'pnpm-lock.yaml', 'tests/magpie-planner-live.test.ts')
   return Object.fromEntries(await Promise.all(files.sort().map(async file => [file, createHash('sha256').update(await readFile(file)).digest('hex')])))
 }

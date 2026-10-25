@@ -7,8 +7,8 @@
  * [PROTOCOL]: 修改时同步Header和所属.folder.md。
  */
 import { describe, expect, it } from 'vitest'
-import type { ConversationDetail, Message } from '../src/shared/domain'
-import { completedFileEditArtifact, fileEditKey, fileEditReceiptMatches, fileEditResults, materialEditInput, restoreFileEdits, type FileEditRequest } from '../src/renderer/components/detail-panel/file-edit-state'
+import type { ConversationDetail, Message } from '../packages/shared/src/domain'
+import { completedFileEditArtifact, fileEditKey, fileEditReceiptMatches, fileEditResults, materialEditInput, restoreFileEdits, type FileEditRequest } from '../apps/electron/src/renderer/components/detail-panel/file-edit-state'
 
 const source: FileEditRequest['source'] = { kind: 'material', id: 'material-a', conversationId: 'room-a', name: '计划.md', contentHash: 'a'.repeat(64), revision: 2, parseVersion: 'text-v1' }
 const request: FileEditRequest = { id: 'request-a', source, agentId: 'employee-a', content: '修改第二段', createdAt: '2026-10-15T00:00:00.000Z', status: 'pending' }

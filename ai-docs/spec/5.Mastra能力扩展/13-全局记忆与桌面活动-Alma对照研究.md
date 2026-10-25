@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [OUTPUT]: 2026-10-20用户要求先文档、能直接复用的代码直接迁用；后续开发与源码R清单转15，本文保持现状/Alma来源依据。
 [OUTPUT]: 同日用户明确可启用Mastra Memory并优先复用插件；最新选型转14，本篇自建全局库方案保留为候选，现状/Alma来源与生命周期要求保持。
 [INPUT]: 2026-10-20用户提出全局/bobo/桌面活动与日报记忆研究；BOAI当前源码、已安装Mastra文档与类型、ai-docs/alma-研究固定归档。
@@ -23,9 +24,9 @@
 
 | 来源 | 本轮核对范围 | 使用限制 |
 | --- | --- | --- |
-| [当前记忆领域](../../../src/shared/domain/memory.ts)、[仓库](../../../src/runtime/modules/memory/memory-repository.ts)、[召回](../../../src/runtime/modules/memory/memory-recall.ts)、[策略](../../../src/runtime/modules/memory/memory-policy.ts)、[工具](../../../src/runtime/modules/memory/memory-tools.ts) | 所有权、来源、生命周期、写入、相关性与有界上下文 | 静态源码核对，不代表真实效果已通过新验收 |
-| [AppService](../../../src/runtime/service.ts)、[Agent 工厂](../../../src/runtime/adapters/mastra/agent-factory.ts)、[工作区投影](../../../src/runtime/modules/workspaces/workspace-service.ts) | 实际装配、模型阶段、API/本机差异与生成文件 | 以当前分支为准，不能用依赖列表推断启用状态 |
-| [活动领域](../../../src/shared/domain/desktop-activity.ts)、[活动服务](../../../src/runtime/modules/desktop-activity/activity-service.ts)、[采集宿主](../../../src/main/desktop-activity.ts)、[现有日报技能](../../../resources/agent-skills/boai-daily-report/SKILL.md) | 本地采集、查询、报告证据、缓存与清除 | 已有技能是当前产品合同；不能直接替换为 Alma CLI |
+| [当前记忆领域](../../../packages/shared/src/domain/memory.ts)、[仓库](../../../packages/runtime/src/modules/memory/memory-repository.ts)、[召回](../../../packages/runtime/src/modules/memory/memory-recall.ts)、[策略](../../../packages/runtime/src/modules/memory/memory-policy.ts)、[工具](../../../packages/runtime/src/modules/memory/memory-tools.ts) | 所有权、来源、生命周期、写入、相关性与有界上下文 | 静态源码核对，不代表真实效果已通过新验收 |
+| [AppService](../../../packages/runtime/src/service.ts)、[Agent 工厂](../../../packages/runtime/src/adapters/mastra/agent-factory.ts)、[工作区投影](../../../packages/runtime/src/modules/workspaces/workspace-service.ts) | 实际装配、模型阶段、API/本机差异与生成文件 | 以当前分支为准，不能用依赖列表推断启用状态 |
+| [活动领域](../../../packages/shared/src/domain/desktop-activity.ts)、[活动服务](../../../packages/runtime/src/modules/desktop-activity/activity-service.ts)、[采集宿主](../../../apps/electron/src/main/desktop-activity.ts)、[现有日报技能](../../../resources/agent-skills/boai-daily-report/SKILL.md) | 本地采集、查询、报告证据、缓存与清除 | 已有技能是当前产品合同；不能直接替换为 Alma CLI |
 | [Alma 归档说明](../../alma-研究/README.md)与[可读主进程源码](../../alma-研究/原始文件/可读源码/main.txt) | 固定 Alma 0.4.196 归档 | 没有读取 Alma 私人聊天或真实活动数据库；不是新版能力承诺 |
 | [Alma 记忆与反思提示词](../../alma-研究/提示词/分类原文/05-记忆与反思.md)、[记忆技能](../../alma-研究/技能/memory-management/SKILL.md)、[日报技能](../../alma-研究/技能/daily-report/SKILL.md) | 提示词约束、检索习惯、活动提炼与日报组织 | 提示词意图须与代码核对，不等同实际质量保证 |
 | 已安装 Mastra 文档与类型 | `@mastra/core 1.71.0`、`@mastra/memory 1.32.1`、`@mastra/libsql 1.23.3` | 安装版优先；线上与上游文档仅用于识别演进 |

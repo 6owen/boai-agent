@@ -9,10 +9,10 @@ import { mkdtemp, mkdir, rm, writeFile, readFile, access } from 'node:fs/promise
 import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { AppService } from '../src/runtime/service'
-import type { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import type { AgentRun, Conversation } from '../src/shared/domain'
-import { APPLICATION_BROWSER_SCOPE, type BrowserHostBridge, type BrowserHostMethods, type BrowserWindowState } from '../src/shared/ipc/browser'
+import { AppService } from '../packages/runtime/src/service'
+import type { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import type { AgentRun, Conversation } from '../packages/shared/src/domain'
+import { APPLICATION_BROWSER_SCOPE, type BrowserHostBridge, type BrowserHostMethods, type BrowserWindowState } from '../packages/shared/src/ipc/browser'
 const cleanup:(()=>Promise<unknown>)[]=[]
 afterEach(async()=>{for(const close of cleanup.splice(0).reverse())await close()})
 async function setup() {

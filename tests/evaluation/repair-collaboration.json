@@ -1,8 +1,8 @@
 {
   "goal": "维护API群聊的完整成员顺序、Unicode限字计数和真实消息/成果来源约束。只修复固定回归暴露的缺陷，保留产品权限和预算。",
   "allowedFiles": [
-    "src/runtime/modules/collaboration/group-coordination.ts",
-    "src/renderer/pages/conversations/group-chat.ts"
+    "packages/runtime/src/modules/collaboration/group-coordination.ts",
+    "apps/electron/src/renderer/pages/conversations/group-chat.ts"
   ],
   "tests": [
     "tests/group-coordination-contract.test.ts",

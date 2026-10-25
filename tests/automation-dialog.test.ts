@@ -12,11 +12,11 @@ import { act, createElement as h, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { toast } from 'sonner'
-import type { AutomationDefinition, AutomationOccurrence, Snapshot } from '../src/shared/domain'
-import type { DesktopApi } from '../src/shared/ipc'
-import { AutomationDialog, type AutomationDialogTarget } from '../src/renderer/pages/schedules/automation-dialog'
-import { SchedulePage, type ScheduleLocation } from '../src/renderer/pages/schedules'
-import { AutomationRunActions } from '../src/renderer/pages/schedules/automation-run-actions'
+import type { AutomationDefinition, AutomationOccurrence, Snapshot } from '../packages/shared/src/domain'
+import type { DesktopApi } from '../packages/shared/src/ipc'
+import { AutomationDialog, type AutomationDialogTarget } from '../apps/electron/src/renderer/pages/schedules/automation-dialog'
+import { SchedulePage, type ScheduleLocation } from '../apps/electron/src/renderer/pages/schedules'
+import { AutomationRunActions } from '../apps/electron/src/renderer/pages/schedules/automation-run-actions'
 
 const snapshot = { agents: [{ id: 'employee', name: 'DS', active: true, connectionId: 'connection', modelId: 'model' }], connections: [{ id: 'connection', defaultModel: 'model' }], conversations: [] } as unknown as Snapshot
 const plan = { id: 'plan', name: '每日天气预报', prompt: '查询南京天气', frequency: 'manual', time: '09:00', weekday: 1, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, enabled: false, notify: true, notificationPolicy: 'important_only', conversationPolicy: 'new-conversation', employeeIds: ['employee'], owner: { kind: 'employee', employeeId: 'employee' }, revision: 1 } as AutomationDefinition

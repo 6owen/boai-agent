@@ -8,9 +8,9 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { AgentRun, AutomationOccurrence, AutomationOrigin, Conversation, DecisionRecord, DigitalAgent, DiscussionTurn, Message, WorkItem } from '../src/shared/domain'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { automationQuestionSource } from '../src/runtime/modules/inbox/user-question'
+import type { AgentRun, AutomationOccurrence, AutomationOrigin, Conversation, DecisionRecord, DigitalAgent, DiscussionTurn, Message, WorkItem } from '../packages/shared/src/domain'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { automationQuestionSource } from '../packages/runtime/src/modules/inbox/user-question'
 
 const stores: ProductStore[] = [], roots: string[] = []
 afterEach(async () => { await Promise.all(stores.splice(0).map(store => store.close())); await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))) })

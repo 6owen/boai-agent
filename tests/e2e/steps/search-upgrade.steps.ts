@@ -7,9 +7,9 @@
  */
 import { expect } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
-import type { ArtifactVersion } from '../../../src/shared/domain/artifacts'
-import type { ConversationMaterial } from '../../../src/shared/domain/materials'
-import type { ConversationSearchTarget } from '../../../src/shared/domain/reading'
+import type { ArtifactVersion } from '../../../packages/shared/src/domain/artifacts'
+import type { ConversationMaterial } from '../../../packages/shared/src/domain/materials'
+import type { ConversationSearchTarget } from '../../../packages/shared/src/domain/reading'
 import { test as base } from '../support/test'
 import type { Desktop } from '../support/desktop'
 import { artifactDetail, artifactRecords, prepareArtifactsDesktop } from '../support/artifacts'

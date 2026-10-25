@@ -5,7 +5,7 @@
  * [PROTOCOL]: Update Header and fixtures/.folder.md when changing this fixture.
  */
 import type { ServerResponse } from 'node:http'
-import type { ModelProtocol } from '../../src/shared/domain/model-gateway'
+import type { ModelProtocol } from '../../packages/shared/src/domain/model-gateway'
 
 const syntheticRoute = { 'X-Magpie-Model': 'provider/actual', 'X-Magpie-Provider': 'provider' }
 function begin(response: ServerResponse, route: Record<string, string> = syntheticRoute) {

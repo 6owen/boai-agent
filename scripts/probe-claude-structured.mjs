@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Workspace源码路径迁至apps/packages，保留既有输出与业务合同。
  * [OUTPUT]: 实际CLI十五组核对终态/取消、白名单事件与收取/处理计数、格式回执和已知用量；观测只描述外部协议。
  * [INPUT]: 实际本机Claude、生产阶段适配器与隔离的合成模型协议服务。
  * [OUTPUT]: 三类私有阶段直接格式化、提醒/有界纠正及计量触发取消；实际CLI部分用量与终态总额一致，私有文本不公开；本地协议端不代表供应商或产品Work/UI。
@@ -12,17 +13,17 @@ import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve, dirname } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { build } from 'esbuild'
+import { buildWorkspace as build } from './workspace-packages.mjs'
 
 if (!process.env.BOAI_CLAUDE_PROGRAM || !process.env.BOAI_CLAUDE_EVIDENCE) throw new Error('需要明确的程序路径和新证据文件')
 const out = resolve(process.env.BOAI_CLAUDE_EVIDENCE)
 await mkdir(dirname(out), { recursive: true })
 const root = await mkdtemp(join(tmpdir(), 'boai-claude-format-'))
 const bundle = join(root, 'adapter.cjs')
-const built = await build({ stdin: { contents: `export { verifyClaudeProgram, runClaudePhase } from './src/runtime/adapters/claude/turn';
+const built = await build({ stdin: { contents: `export { verifyClaudeProgram, runClaudePhase } from './packages/runtime/src/adapters/claude/turn';
 import { z } from 'zod';
-import { decisionPromptSchema, memorySchema } from './src/runtime/modules/employees/phase-protocol';
-import { modelWorkReportSchema } from './src/runtime/modules/collaboration/work-protocol';
+import { decisionPromptSchema, memorySchema } from './packages/runtime/src/modules/employees/phase-protocol';
+import { modelWorkReportSchema } from './packages/runtime/src/modules/collaboration/work-protocol';
 export const phaseSchemas = [decisionPromptSchema, memorySchema, modelWorkReportSchema({organization:false, artifactIds:[]})].map(schema => z.toJSONSchema(schema, {target:'draft-07'}));`, resolveDir: process.cwd(), loader: 'ts' },
   outfile: bundle, bundle: true, platform: 'node', format: 'cjs', target: 'node22', logLevel: 'silent', metafile: true })
 const { verifyClaudeProgram, runClaudePhase, phaseSchemas } = await import(pathToFileURL(bundle).href)

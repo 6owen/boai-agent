@@ -9,13 +9,13 @@ import { mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/prom
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { DesktopActivityService } from '../src/runtime/modules/desktop-activity/activity-service'
-import { ActivityStorage } from '../src/runtime/modules/desktop-activity/activity-storage'
-import { activitySessions } from '../src/runtime/modules/desktop-activity/activity-sessions'
-import { restoreActivitySettings } from '../src/runtime/modules/desktop-activity/activity-settings'
-import { ApplicationService } from '../src/runtime/modules/application/application-service'
-import type { ActivityCaptureAction, ActivityCaptureOptions, ActivityCaptureResult, ActivityInputEvent, ActivitySample } from '../src/shared/domain/desktop-activity'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { DesktopActivityService } from '../packages/runtime/src/modules/desktop-activity/activity-service'
+import { ActivityStorage } from '../packages/runtime/src/modules/desktop-activity/activity-storage'
+import { activitySessions } from '../packages/runtime/src/modules/desktop-activity/activity-sessions'
+import { restoreActivitySettings } from '../packages/runtime/src/modules/desktop-activity/activity-settings'
+import { ApplicationService } from '../packages/runtime/src/modules/application/application-service'
+import type { ActivityCaptureAction, ActivityCaptureOptions, ActivityCaptureResult, ActivityInputEvent, ActivitySample } from '../packages/shared/src/domain/desktop-activity'
 const cleanup: (() => Promise<unknown>)[] = []
 afterEach(async () => { vi.useRealTimers(); for (const fn of cleanup.splice(0).reverse()) await fn() })
 const jpeg = Buffer.from([255, 216, 1, 2, 255, 217]).toString('base64')

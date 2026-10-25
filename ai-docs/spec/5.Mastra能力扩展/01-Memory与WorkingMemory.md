@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [OUTPUT]: 2026-10-20后续Memory实施入口转15：原包/服务/代码直接复用、R清单及阶段；本篇仍为历史框架基线。
 [OUTPUT]: 2026-10-20最新记忆选型转14：Mastra原生与Memmy插件优先、Hy/Mem0对照；13继续维护当前源码与Alma研究。
 [OUTPUT]: 2026-10-20当前全局/bobo/桌面活动与日报记忆研究转13；本文保留2026-09-27框架基线，不作为最新实现清单。
@@ -31,11 +32,11 @@ USER.md / MEMORY.md / 日期文件生成视图
 
 当前已实现的是**产品级记忆**：
 
-- [MemoryRepository](../../../src/runtime/modules/memory/memory-repository.ts) 管理 `profile` 与 `conversation` 范围、员工所有权、来源消息/资源、版本、epoch、删除标记和串行写入。
-- [AppService](../../../src/runtime/service.ts) 根据当前成员资格、绑定资源、来源可见性和失效快照筛选记忆，校验模型候选后提交。
-- [AgentHomes](../../../src/runtime/modules/workspaces/workspace-service.ts) 将获准记忆装入 bootstrap，并生成有范围的 Markdown 视图。生成文件不是第二份可独立写入的记忆权威。
-- [MastraEngine](../../../src/runtime/adapters/mastra/engine.ts) 显式投影消息上下文，分别标注旧轮与当前轮；记忆维护只提取当前轮增量，保留旧事实用于去重。长度/格式错误最多进行一次计入预算的纠正，不保存截断结果。
-- [ProductStore](../../../src/runtime/adapters/storage/product-store.ts) 直接通过 `@libsql/client` 保存产品记录；没有实例化 Mastra 的 `LibSQLStore` 或 `LibSQLVector`。
+- [MemoryRepository](../../../packages/runtime/src/modules/memory/memory-repository.ts) 管理 `profile` 与 `conversation` 范围、员工所有权、来源消息/资源、版本、epoch、删除标记和串行写入。
+- [AppService](../../../packages/runtime/src/service.ts) 根据当前成员资格、绑定资源、来源可见性和失效快照筛选记忆，校验模型候选后提交。
+- [AgentHomes](../../../packages/runtime/src/modules/workspaces/workspace-service.ts) 将获准记忆装入 bootstrap，并生成有范围的 Markdown 视图。生成文件不是第二份可独立写入的记忆权威。
+- [MastraEngine](../../../packages/runtime/src/adapters/mastra/engine.ts) 显式投影消息上下文，分别标注旧轮与当前轮；记忆维护只提取当前轮增量，保留旧事实用于去重。长度/格式错误最多进行一次计入预算的纠正，不保存截断结果。
+- [ProductStore](../../../packages/runtime/src/adapters/storage/product-store.ts) 直接通过 `@libsql/client` 保存产品记录；没有实例化 Mastra 的 `LibSQLStore` 或 `LibSQLVector`。
 
 当前普通 Agent 没有配置 `memory`，因此没有 Mastra 自动 message history、Working Memory、Semantic Recall 或 Observational Memory。包已安装只是依赖可用。
 

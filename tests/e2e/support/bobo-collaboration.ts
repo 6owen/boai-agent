@@ -11,8 +11,8 @@ import { dirname, join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { teamEndpoint, sendTeamOutput } from '../../fixtures/team-planner'
 import type { Desktop } from './desktop'
-import type { Snapshot, WorkItem } from '../../../src/shared/domain'
-import type { EmployeeCandidatePage } from '../../../src/shared/domain/bobo-collaboration'
+import type { Snapshot, WorkItem } from '../../../packages/shared/src/domain'
+import type { EmployeeCandidatePage } from '../../../packages/shared/src/domain/bobo-collaboration'
 
 interface ModelMessage { role: string; content: unknown; tool_calls?: { id: string; function: { name: string; arguments: string } }[] }
 interface ModelTool { function: { name: string; description?: string } }

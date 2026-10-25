@@ -9,7 +9,7 @@ import { createBdd } from 'playwright-bdd'
 import { test as base } from '../support/test'
 import { coreEndpoint } from '../../fixtures/core-model'
 import { coreReplyFault, coreStartReceipts, interruptTeamRuntime } from '../support/teams'
-import type { Message, Snapshot } from '../../../src/shared/domain'
+import type { Message, Snapshot } from '../../../packages/shared/src/domain'
 interface State { before?: Snapshot; endpoint?: Awaited<ReturnType<typeof coreEndpoint>>; calls?: number; created?: Snapshot; coreId?: string; renamedTitle?: string; renamedMessages?: Message[]; replyFault?: Awaited<ReturnType<typeof coreReplyFault>> }
 export const test = base.extend<{ team: State }>({ team: async ({}, use) => use({}) })
 const { Given, When, Then } = createBdd(test)

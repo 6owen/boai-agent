@@ -9,9 +9,9 @@ import { createHash, randomUUID } from 'node:crypto'
 import { mkdtemp, readFile, readdir, realpath, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { MaterialUploads } from '../src/runtime/modules/materials/material-upload'
-import { MATERIAL_CHUNK_BYTES } from '../src/shared/domain/material-upload'
-import { MATERIAL_LIMITS } from '../src/shared/domain/materials'
+import { MaterialUploads } from '../packages/runtime/src/modules/materials/material-upload'
+import { MATERIAL_CHUNK_BYTES } from '../packages/shared/src/domain/material-upload'
+import { MATERIAL_LIMITS } from '../packages/shared/src/domain/materials'
 const cleanups: (() => Promise<unknown> | void)[] = []
 afterEach(async () => { for (const clean of cleanups.splice(0).reverse()) await clean() })
 async function setup() {

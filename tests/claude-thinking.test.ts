@@ -6,7 +6,7 @@
  */
 import { afterEach,expect,it } from 'vitest'
 import { createServer,request,type IncomingMessage,type ServerResponse } from 'node:http'
-import { createClaudeThinkingBridge } from '../src/runtime/adapters/claude/thinking-bridge'
+import { createClaudeThinkingBridge } from '../packages/runtime/src/adapters/claude/thinking-bridge'
 
 const cleanups:(()=>Promise<unknown>)[]=[]
 afterEach(async()=>{for(const close of cleanups.splice(0).reverse())await close()})

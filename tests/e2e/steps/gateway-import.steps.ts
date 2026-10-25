@@ -7,6 +7,7 @@
  * [POS]: G3 source event fixtures and explicitly tagged actual application OS delivery tests.
  * [PROTOCOL]: Update Header and steps/.folder.md when changing scenario coverage.
  */
+import { workspaceInputFiles } from '../../support/workspace-inputs'
 import { createBdd } from 'playwright-bdd'
 import { expect } from '@playwright/test'
 import { createServer, type ServerResponse } from 'node:http'
@@ -17,9 +18,9 @@ import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import type { Desktop } from '../support/desktop'
 import { test as base } from '../support/test'
-import { gatewayImportUrl } from '../../../src/shared/domain/gateway-import'
-import type { Connection, ConversationDetail } from '../../../src/shared/domain'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
+import { gatewayImportUrl } from '../../../packages/shared/src/domain/gateway-import'
+import type { Connection, ConversationDetail } from '../../../packages/shared/src/domain'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
 
 import { isolatedMagpie } from '../../fixtures/magpie-isolated'
 import { streamText } from '../../fixtures/gateway-stream'
@@ -181,7 +182,7 @@ Given('隔离桌面有两条实际Magpie调用正在运行', async ({ runtime, g
   })
   await new Promise<void>(done => server.listen(0, '127.0.0.1', done)); runtime.trackServer(server)
   let gateway: Awaited<ReturnType<typeof isolatedMagpie>> | undefined, dataPath = '', pids: number[] = []
-  const inputFiles = (await readdir('src', { recursive: true })).filter(name => /\.(ts|tsx|json)$/.test(name)).map(name => `src/${name}`)
+  const inputFiles = (await workspaceInputFiles()).filter(name => /\.(ts|tsx|json)$/.test(name))
   inputFiles.push('package.json', 'pnpm-lock.yaml', 'tests/e2e/steps/gateway-import.steps.ts', 'tests/e2e/features/gateway-import.feature', 'tests/fixtures/magpie-isolated.ts', 'tests/fixtures/gateway-stream.ts', 'dist/main/main.cjs', 'dist/runtime/worker.mjs')
   const hash = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex')
   const inputs = Object.fromEntries(await Promise.all(inputFiles.sort().map(async path => [path, hash(await readFile(path))])))

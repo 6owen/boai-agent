@@ -6,7 +6,7 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { TOPIC_CARD, TOPIC_ROBOT } from 'dingtalk-stream'
-import { DingTalkStreamRegistry } from '../src/runtime/adapters/channels/rovai/dingtalk-stream-registry'
+import { DingTalkStreamRegistry } from '../packages/runtime/src/adapters/channels/rovai/dingtalk-stream-registry'
 
 afterEach(() => vi.useRealTimers())
 

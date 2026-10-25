@@ -8,10 +8,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { WorkRepository } from '../src/runtime/modules/collaboration/work-repository'
-import type { AutomationOrigin, Message, WorkItem } from '../src/shared/domain'
-import type { ArtifactRevisionRequest, ArtifactVersion } from '../src/shared/domain/artifacts'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { WorkRepository } from '../packages/runtime/src/modules/collaboration/work-repository'
+import type { AutomationOrigin, Message, WorkItem } from '../packages/shared/src/domain'
+import type { ArtifactRevisionRequest, ArtifactVersion } from '../packages/shared/src/domain/artifacts'
 
 const disposers: (() => Promise<void>)[] = []
 afterEach(async () => { vi.restoreAllMocks(); for (const dispose of disposers.splice(0)) await dispose() })

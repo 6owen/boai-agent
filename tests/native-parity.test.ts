@@ -6,7 +6,7 @@
  * [PROTOCOL]: 变化同步Header和tests/.folder.md。
  */
 import { describe, expect, it } from 'vitest'
-import type { NativeAction } from '../src/shared/domain/execution'
+import type { NativeAction } from '../packages/shared/src/domain/execution'
 import { parityCase, checkParity, nativeInputCoverage, nativeToolChecks, publicCliFrame, sha } from './evaluation/native-parity'
 describe('native entry parity contract', () => {
   it('counts durable interrupted input and separates transport submission from unknown answers', () => {

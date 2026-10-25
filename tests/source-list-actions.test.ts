@@ -9,9 +9,9 @@ import { act, createElement as h, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { toast } from 'sonner'
-import type { DesktopApi } from '../src/shared/ipc'
-import type { DataSource } from '../src/shared/domain/sources'
-import { SourcesView } from '../src/renderer/pages/sources/sources-view'
+import type { DesktopApi } from '../packages/shared/src/ipc'
+import type { DataSource } from '../packages/shared/src/domain/sources'
+import { SourcesView } from '../apps/electron/src/renderer/pages/sources/sources-view'
 
 const source: DataSource = { id: 'source-a', name: '法律检索', type: 'mcp', description: '', guide: '', enabled: true, revision: 3, createdAt: '2026-10-17', updatedAt: '2026-10-17', hasCredential: true, mcp: { transport: 'http', url: 'https://example.com/mcp', authType: 'bearer' } }
 let host: HTMLDivElement, root: Root

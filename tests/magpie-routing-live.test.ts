@@ -4,19 +4,20 @@
  * [POS]: Actual installed-gateway acceptance with synthetic suppliers; no supplier inference or desktop certification.
  * [PROTOCOL]: Update Header, tests/.folder.md and the Magpie ledger; retain failures and closed-process evidence.
  */
+import { workspaceInputFiles } from './support/workspace-inputs'
 import { createServer, type Server } from 'node:http'
 import { createHash } from 'node:crypto'
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { afterAll, beforeAll, expect, test } from 'vitest'
-import { AppService } from '../src/runtime/service'
-import { MastraEngine } from '../src/runtime/adapters/mastra/engine'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import type { Connection, Conversation, ConversationDetail, DigitalAgent } from '../src/shared/domain'
-import type { TeamDraft, TeamDraftView } from '../src/shared/domain/team-creation'
-import type { AutomationDraftResult } from '../src/shared/domain/automations'
+import { AppService } from '../packages/runtime/src/service'
+import { MastraEngine } from '../packages/runtime/src/adapters/mastra/engine'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import type { Connection, Conversation, ConversationDetail, DigitalAgent } from '../packages/shared/src/domain'
+import type { TeamDraft, TeamDraftView } from '../packages/shared/src/domain/team-creation'
+import type { AutomationDraftResult } from '../packages/shared/src/domain/automations'
 import { writingPlan } from './fixtures/team-planner'
-import type { ModelProtocol } from '../src/shared/domain/model-gateway'
+import type { ModelProtocol } from '../packages/shared/src/domain/model-gateway'
 import { isolatedMagpie } from './fixtures/magpie-isolated'
 import { streamText, streamTool } from './fixtures/gateway-stream'
 
@@ -32,7 +33,7 @@ let upstream: Server | undefined, proxy: Server | undefined, gateway: Awaited<Re
 const models = protocols.flatMap(protocol => [`route-${protocol}`, `parallel-a-${protocol}`, `parallel-b-${protocol}`, `probe-${protocol}`, `hidden-${protocol}`, `crash-${protocol}`, `group-a-${protocol}`, `group-b-${protocol}`, `team-${protocol}`, `hidden-draft-${protocol}`])
 async function sources() {
   const files: string[] = []
-  for (const directory of ['src', 'tests', 'scripts']) for (const name of await readdir(directory, { recursive: true })) if (/\.(ts|tsx|mjs|json)$/.test(name)) files.push(`${directory}/${name}`)
+  for (const path of await workspaceInputFiles(['apps', 'packages', 'tests', 'scripts'])) if (/\.(ts|tsx|mjs|json)$/.test(path)) files.push(path)
   files.push('package.json', 'pnpm-lock.yaml')
   return Object.fromEntries(await Promise.all(files.sort().map(async file => [file, createHash('sha256').update(await readFile(file)).digest('hex')])))
 }

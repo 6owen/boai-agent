@@ -7,10 +7,10 @@
 import { DatabaseSync } from 'node:sqlite'
 import { createHash } from 'node:crypto'
 import { join } from 'node:path'
-import type { DigitalAgent } from '../../src/shared/domain'
-import { defaultAgentProfile, normalizeAgentProfile, promptSourceNames, type AgentProfile } from '../../src/shared/domain/agent-profile'
-import { isCoreAgent } from '../../src/shared/domain/core-agent'
-import { WorkspaceService } from '../../src/runtime/modules/workspaces/workspace-service'
+import type { DigitalAgent } from '../../packages/shared/src/domain'
+import { defaultAgentProfile, normalizeAgentProfile, promptSourceNames, type AgentProfile } from '../../packages/shared/src/domain/agent-profile'
+import { isCoreAgent } from '../../packages/shared/src/domain/core-agent'
+import { WorkspaceService } from '../../packages/runtime/src/modules/workspaces/workspace-service'
 
 export async function snapshotStoredProfile(dataPath: string, connectionId: string) {
   const records = () => {

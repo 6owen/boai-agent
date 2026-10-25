@@ -41,7 +41,7 @@ async function loadComponentFixture(runtime: Desktop) {
   const page = await app.firstWindow(),
     errors: string[] = runtime.errors
 
-  const modules = (await readdir('src/renderer/components/ui')).filter((file) => file.endsWith('.tsx'))
+  const modules = (await readdir('apps/electron/src/renderer/components/ui')).filter((file) => file.endsWith('.tsx'))
   await expect(page.locator('main')).toHaveAttribute('data-module-count', String(modules.length))
   await page.evaluate(async () => {
     const state = await window.boai.request('getAppearance', undefined)

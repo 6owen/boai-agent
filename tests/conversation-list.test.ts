@@ -8,8 +8,8 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { describe, expect, it } from 'vitest'
-import type { Conversation } from '../src/shared/domain'
-import { channelConversations, mainConversations, CONVERSATION_TITLE_MAX_LENGTH, conversationListUpdates, sortedConversations, type ConversationListChange } from '../src/shared/domain/conversation-list'
+import type { Conversation } from '../packages/shared/src/domain'
+import { channelConversations, mainConversations, CONVERSATION_TITLE_MAX_LENGTH, conversationListUpdates, sortedConversations, type ConversationListChange } from '../packages/shared/src/domain/conversation-list'
 const conversation = (id: string, time: string): Conversation => ({ id, kind: 'group', title: id, agentIds: ['researcher'], mode: 'natural', workspacePath: `/work/${id}`, sharedKnowledgeIds: [], createdAt: time, updatedAt: time, configVersion: 3 })
 const names = (items: Conversation[]) => sortedConversations(items).map(item => item.id)
 const change = (items: Conversation[], action: ConversationListChange) => {

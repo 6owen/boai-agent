@@ -6,7 +6,7 @@
  */
 import { afterEach, describe, expect, it } from 'vitest'
 import { spawn } from 'node:child_process'
-import { watchDesktopProcess } from '../src/runtime/desktop-process'
+import { watchDesktopProcess } from '../packages/runtime/src/desktop-process'
 
 const cleanup: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const action of cleanup.splice(0).reverse()) await action() })

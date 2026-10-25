@@ -1,11 +1,11 @@
 /*
- * [INPUT]: Rovai @ f9acc239 (MIT)原测试，许可见src/shared/rovai/LICENSE。
+ * [INPUT]: Rovai @ f9acc239 (MIT)原测试，许可见packages/shared/src/rovai/LICENSE。
  * [OUTPUT]: 原分组/窗口/公开结果合同回归，只调整本地导入。
  * [POS]: 迁入行为测试，不代替真实模型/产品界面验证。
  * [PROTOCOL]: 修改同步Header和tests/.folder.md。
  */
 import { describe, expect, it } from 'vitest'
-import type { ExecutionProgressItem } from '../src/shared/rovai/index'
+import type { ExecutionProgressItem } from '../packages/shared/src/rovai/index'
 import {
   executionHasActiveCompaction,
   groupConsecutiveToolItems,
@@ -13,7 +13,7 @@ import {
   toolActivityGroupHasActiveTool,
   toolActivityGroupPresentation,
   type ToolProgressItem
-} from '../src/shared/rovai/tool-grouping'
+} from '../packages/shared/src/rovai/tool-grouping'
 
 function tool(
   id: string,

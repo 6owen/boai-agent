@@ -5,13 +5,13 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { fork } from 'node:child_process'
-import { build } from 'esbuild'
+import { buildWorkspace as build } from '../scripts/workspace-packages.mjs'
 import { mkdtemp, mkdir, rm } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { expect, test } from 'vitest'
-import { AppService } from '../src/runtime/service'
-import type { ConversationDetail, MemoryView } from '../src/shared/domain'
+import { AppService } from '../packages/runtime/src/service'
+import type { ConversationDetail, MemoryView } from '../packages/shared/src/domain'
 test.each(['before-commit', 'after-commit'])('UM14 real SIGKILL at %s leaves no partial summary and never replays', async phase => {
   const root = await mkdtemp(join(tmpdir(), 'boai-memory-crash-')), cache = resolve('node_modules/.cache'); await mkdir(cache, { recursive: true })
   const temporary = await mkdtemp(join(cache, 'memory-crash-')), file = join(temporary, 'runner.mjs')

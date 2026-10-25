@@ -5,9 +5,9 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { describe, expect, it } from 'vitest'
-import type { DigitalAgent, Resource } from '../src/shared/domain'
-import type { BindLocalSkillInput, SkillBindingReceipt } from '../src/shared/domain/skills'
-import { committedSkillBindingAgent, mergeSkillBindingDraft, restoreSkillBindingPending, skillBindingPendingKey, skillBindingReceiptMatches, updateSkillBindingPending } from '../src/renderer/components/employee/local-skill-binding-state'
+import type { DigitalAgent, Resource } from '../packages/shared/src/domain'
+import type { BindLocalSkillInput, SkillBindingReceipt } from '../packages/shared/src/domain/skills'
+import { committedSkillBindingAgent, mergeSkillBindingDraft, restoreSkillBindingPending, skillBindingPendingKey, skillBindingReceiptMatches, updateSkillBindingPending } from '../apps/electron/src/renderer/components/employee/local-skill-binding-state'
 
 const input: BindLocalSkillInput = { agentId: 'writer', localSkillId: 'local:first', planId: 'plan', requestId: 'request', expectedConfigVersion: 3, contentHash: 'a'.repeat(64) }
 const resource: Resource = { id: 'managed', kind: 'skill', ownerAgentId: 'writer', name: '同名技能', description: '', path: '/managed/skill', createdAt: '2026-10-01' }

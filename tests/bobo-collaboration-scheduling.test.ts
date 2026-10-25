@@ -14,12 +14,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { AppService } from '../src/runtime/service'
-import { publishArtifact } from '../src/runtime/modules/workspaces/file-access'
-import type { AgentEngine, EngineContext } from '../src/runtime/contracts'
-import type { AgentDelivery, AgentRun, Connection, Conversation, ConversationDetail, ConversationEvent, DigitalAgent, DiscussionTurn, Message, ParticipationDecision, Snapshot, WorkItem } from '../src/shared/domain'
-import type { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import type { BoboCollaborationReceipt } from '../src/shared/domain/bobo-collaboration'
+import { AppService } from '../packages/runtime/src/service'
+import { publishArtifact } from '../packages/runtime/src/modules/workspaces/file-access'
+import type { AgentEngine, EngineContext } from '../packages/runtime/src/contracts'
+import type { AgentDelivery, AgentRun, Connection, Conversation, ConversationDetail, ConversationEvent, DigitalAgent, DiscussionTurn, Message, ParticipationDecision, Snapshot, WorkItem } from '../packages/shared/src/domain'
+import type { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import type { BoboCollaborationReceipt } from '../packages/shared/src/domain/bobo-collaboration'
 
 const cleanup: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const close of cleanup.splice(0).reverse()) await close() })

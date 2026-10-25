@@ -108,7 +108,7 @@ export async function runBusinessHillclimb(root: string, source: string, signal 
       await mkdir(output, { recursive: false })
       const current = Object.fromEntries(await Promise.all(plan.allowedChanges.map(async file => [file, await readFile(join(incumbent.started.source, file), 'utf8')] as const)))
       const baseChanges = { ...current }, context = join(output, 'context')
-      const contextFiles = Object.fromEntries(Object.entries(files).filter(([path]) => path.startsWith('src/')))
+      const contextFiles = Object.fromEntries(Object.entries(files).filter(([path]) => /^(?:src|apps|packages)\//.test(path)))
       await materialize(context, contextFiles, baseChanges)
       const loadDevelopment = async (round: number) => {
         const records: EvaluationRecord[] = [], directory = join(root, `run-${roundName(round)}`)

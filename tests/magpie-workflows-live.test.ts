@@ -4,16 +4,17 @@
  * [POS]: Gateway business wiring acceptance; synthetic supplier, not natural model quality or desktop/package certification.
  * [PROTOCOL]: Update Header, tests/.folder.md and Magpie ledger; preserve every failed batch and original request identity.
  */
+import { workspaceInputFiles } from './support/workspace-inputs'
 import { createHash } from 'node:crypto'
 import { createServer, type ServerResponse } from 'node:http'
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { afterAll, beforeAll, expect, test } from 'vitest'
-import { AppService } from '../src/runtime/service'
-import { MastraEngine } from '../src/runtime/adapters/mastra/engine'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import type { AgentRun, AutomationDefinition, AutomationOccurrence, AutomationsView, Connection, Conversation, ConversationDetail, DigitalAgent, Message, Snapshot, WorkItem } from '../src/shared/domain'
-import type { ModelProtocol } from '../src/shared/domain/model-gateway'
+import { AppService } from '../packages/runtime/src/service'
+import { MastraEngine } from '../packages/runtime/src/adapters/mastra/engine'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import type { AgentRun, AutomationDefinition, AutomationOccurrence, AutomationsView, Connection, Conversation, ConversationDetail, DigitalAgent, Message, Snapshot, WorkItem } from '../packages/shared/src/domain'
+import type { ModelProtocol } from '../packages/shared/src/domain/model-gateway'
 import { isolatedMagpie } from './fixtures/magpie-isolated'
 import { streamText, streamTool } from './fixtures/gateway-stream'
 
@@ -34,7 +35,7 @@ let current: ModelProtocol = 'chat', phase = '', editorId = ''
 let childGate = Promise.resolve(), releaseChild = () => {}
 const strings = (value: unknown): string[] => typeof value === 'string' ? [value] : value && typeof value === 'object' ? Object.values(value).flatMap(strings) : []
 async function sources() {
-  const files = (await readdir('src', { recursive: true })).filter(x => /\.(ts|tsx|json)$/.test(x)).map(x => `src/${x}`)
+  const files = (await workspaceInputFiles()).filter(x => /\.(ts|tsx|json)$/.test(x))
   files.push('package.json','pnpm-lock.yaml','tests/magpie-workflows-live.test.ts','tests/fixtures/magpie-isolated.ts','tests/fixtures/gateway-stream.ts')
   return Object.fromEntries(await Promise.all(files.sort().map(async p => [p,sha(await readFile(p))])))
 }

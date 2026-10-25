@@ -9,10 +9,10 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { act, createElement as h } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import { PersonalityPane } from '../src/renderer/components/employee/personality-pane'
-import { defaultAgentProfile, type AgentBehaviorDefinition } from '../src/shared/domain/agent-profile'
-import type { DesktopApi } from '../src/shared/ipc'
-import type { DigitalAgent, Snapshot } from '../src/shared/domain'
+import { PersonalityPane } from '../apps/electron/src/renderer/components/employee/personality-pane'
+import { defaultAgentProfile, type AgentBehaviorDefinition } from '../packages/shared/src/domain/agent-profile'
+import type { DesktopApi } from '../packages/shared/src/ipc'
+import type { DigitalAgent, Snapshot } from '../packages/shared/src/domain'
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
 let root: Root | undefined
 beforeEach(() => { vi.stubGlobal('PointerEvent', MouseEvent) })

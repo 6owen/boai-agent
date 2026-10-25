@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [OUTPUT]: §12.35补第23组同9d7产品指纹CLI恢复7场及现行任务管理共8场通过；原附着/退役导航失败保留，准备屏障不改变业务断言。
 [OUTPUT]: 2026-10-19按用户明确要求删除本次四目标的测试数据、截图、回放、数据库、构建归档及临时验收包，不保留本地或上传GitHub；源码/测试源码及文字结果保留，原附件链接已移除。
 [OUTPUT]: 2026-10-19四项目标当前macOS约定技术范围完成：目录06 §5.15、知识07 §9.13、搜索19组09 §10.11、CLI21组01 §12.34；本机沿原生配置，历次失败/人工未评价及另期范围保留。
@@ -77,11 +78,11 @@
 | 现有位置 | 本次核对事实 | 待实现内容 |
 | --- | --- | --- |
 | [package.json](../../../package.json) | Electron入口和开发/评估脚本，无产品`boai`命令bin | 产品CLI构建、分发与安装入口 |
-| [src/shared/ipc/index.ts](../../../src/shared/ipc/index.ts) | 已有Methods、AppEvent、sendMessage/getMessageReceipt/cancelRun等类型 | 对外WS合同、方法准入、事件及错误映射 |
-| [src/main/main.ts](../../../src/main/main.ts) | 校验桌面请求来源，托管runtime和宿主能力 | 桌面服务入口、连接发现、独立服务连接与生命周期 |
-| [src/runtime/worker.ts](../../../src/runtime/worker.ts) | 依赖Electron parentPort；凭据/浏览器向主进程请求 | 可复用服务装配，Electron和独立Node两种启动适配 |
-| [src/runtime/service.ts](../../../src/runtime/service.ts) | AppService拥有员工、消息、运行、调度与回执 | CLI复用原业务；不新增第二套执行循环或数据库写入者 |
-| [src/main/vault.ts](../../../src/main/vault.ts)、[browser-service.ts](../../../src/main/browser/browser-service.ts) | 凭据使用Electron safeStorage；浏览器由桌面宿主持有 | 显式宿主能力/凭据提供者，缺失时如实返回不可用 |
+| [src/shared/ipc/index.ts](../../../packages/shared/src/ipc/index.ts) | 已有Methods、AppEvent、sendMessage/getMessageReceipt/cancelRun等类型 | 对外WS合同、方法准入、事件及错误映射 |
+| [src/main/main.ts](../../../apps/electron/src/main/main.ts) | 校验桌面请求来源，托管runtime和宿主能力 | 桌面服务入口、连接发现、独立服务连接与生命周期 |
+| [src/runtime/worker.ts](../../../apps/electron/src/worker/index.ts) | 依赖Electron parentPort；凭据/浏览器向主进程请求 | 可复用服务装配，Electron和独立Node两种启动适配 |
+| [src/runtime/service.ts](../../../packages/runtime/src/service.ts) | AppService拥有员工、消息、运行、调度与回执 | CLI复用原业务；不新增第二套执行循环或数据库写入者 |
+| [src/main/vault.ts](../../../apps/electron/src/main/vault.ts)、[browser-service.ts](../../../apps/electron/src/main/browser/browser-service.ts) | 凭据使用Electron safeStorage；浏览器由桌面宿主持有 | 显式宿主能力/凭据提供者，缺失时如实返回不可用 |
 
 已有IPC类型不能直接当成无认证远程接口。当前浏览器、资料和插件能力均以原专题实际状态为准；这张表不表示已有独立服务或网络CLI。
 
@@ -356,7 +357,7 @@ C1/C2可先形成可用增量，但完整goal包含C0–C5、独立服务和run�
 
 ### 12.1 2026-10-18：Craft协议、桌面共享服务与独立CLI构建
 
-**本轮为实现和新验证，有实际进展；完整CLI和四项目标均未完成。** 固定Craft提交不变，已将client的关联请求/握手/事件生命周期、protocol信封与codec迁入BOAI接线。逐文件上游hash/修改记录见[src/shared/cli/source-manifest.json](../../../src/shared/cli/source-manifest.json)，Apache许可和原NOTICE随源码及CLI构建分发。未迁入Craft的执行引擎、Claude Agent SDK或SessionManager。
+**本轮为实现和新验证，有实际进展；完整CLI和四项目标均未完成。** 固定Craft提交不变，已将client的关联请求/握手/事件生命周期、protocol信封与codec迁入BOAI接线。逐文件上游hash/修改记录见[src/shared/cli/source-manifest.json](../../../packages/shared/src/cli/source-manifest.json)，Apache许可和原NOTICE随源码及CLI构建分发。未迁入Craft的执行引擎、Claude Agent SDK或SessionManager。
 
 新增src/cli的client/server/channels/discovery/index及main/cli-service。桌面在已有Electron单实例与worker就绪后开启127.0.0.1随机端口，调用同一个requestRuntime；没有第二AppService/SQLite写入者/调度器。每次桌面启动生成独立随机token，写入实际dataPath/.cli/connection.json（0600，目录0700），只在认证握手使用；原worker环境白名单不含此凭据。关闭等待原worker/浏览器和CLI监听实际退出，仅删除属于本实例的连接文件；业务备份不包含.cli。
 

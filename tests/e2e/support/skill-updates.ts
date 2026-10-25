@@ -11,8 +11,8 @@ import { Readable } from 'node:stream'
 import type { ServerResponse } from 'node:http'
 import { strToU8, zipSync } from 'fflate'
 import type { Desktop } from './desktop'
-import { AppService } from '../../../src/runtime/service'
-import type { Method, Methods } from '../../../src/shared/ipc'
+import { AppService } from '../../../packages/runtime/src/service'
+import type { Method, Methods } from '../../../packages/shared/src/ipc'
 
 export async function startSkillUpdatesFixture(runtime: Desktop) {
   let upstream = '原始上游说明'

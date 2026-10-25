@@ -14,12 +14,12 @@ import { afterEach, expect, it } from 'vitest'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { AgentRun, AutomationOccurrence, BudgetModelCall, Message, WorkBudget } from '../src/shared/domain'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { activateAutomationExecution, AutomationRepository } from '../src/runtime/modules/automations/automation-repository'
-import { AutomationService } from '../src/runtime/modules/automations/automation-service'
-import { WorkRepository } from '../src/runtime/modules/collaboration/work-repository'
-import { workBudgetDeadline } from '../src/runtime/modules/collaboration/work-budget'
+import type { AgentRun, AutomationOccurrence, BudgetModelCall, Message, WorkBudget } from '../packages/shared/src/domain'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { activateAutomationExecution, AutomationRepository } from '../packages/runtime/src/modules/automations/automation-repository'
+import { AutomationService } from '../packages/runtime/src/modules/automations/automation-service'
+import { WorkRepository } from '../packages/runtime/src/modules/collaboration/work-repository'
+import { workBudgetDeadline } from '../packages/runtime/src/modules/collaboration/work-budget'
 
 const cleanups: (() => Promise<void>)[] = []
 afterEach(async () => { for (const cleanup of cleanups.splice(0).reverse()) await cleanup() })
@@ -192,7 +192,7 @@ it('allows only one of two waiting occurrences to take the final slot across ind
 
 function renewalRecords(entry: Awaited<ReturnType<Awaited<ReturnType<typeof fixture>>['admit']>>, id: string) {
   const message: Message = { ...entry.message, id: `human-${id}`, turnId: `turn-${id}`, senderId: 'user', senderName: '我', content: '继续未完成部分' }
-  const turn: import('../src/shared/domain').DiscussionTurn = { id: message.turnId!, conversationId: message.conversationId, triggerMessageId: message.id, origin: entry.origin, status: 'queued', generation: 0, createdAt: message.createdAt, modelCalls: 0, publicMessages: 0 }
+  const turn: import('../packages/shared/src/domain').DiscussionTurn = { id: message.turnId!, conversationId: message.conversationId, triggerMessageId: message.id, origin: entry.origin, status: 'queued', generation: 0, createdAt: message.createdAt, modelCalls: 0, publicMessages: 0 }
   return [row('messages', message), row('turns', turn), row('requests', { id, fingerprint: id, messageId: message.id })]
 }
 async function exhaustedFixture() {
@@ -218,7 +218,7 @@ it('grants an allowance once across independent writers, keeps unknown usage and
   await f.works.settleAutomationCall(f.entry.run.id, 'old-unknown', { inputTokens: 2, outputTokens: 3, totalTokens: 5 })
   expect(await f.budget(budget.id)).toMatchObject({ usage: { totalTokens: 5 }, unknownCalls: 0, usageIncomplete: false })
   const current = (await f.repository.view()).occurrences[0]
-  await f.store.write([row('workBudgets', { ...await f.budget(budget.id), deadlineAt: new Date(0).toISOString(), maxOutputTokens: 0 }), ...(await f.store.load<import('../src/shared/domain').DiscussionTurn>('turns')).map(t => row('turns', { ...t, status: 'waiting_user' }))])
+  await f.store.write([row('workBudgets', { ...await f.budget(budget.id), deadlineAt: new Date(0).toISOString(), maxOutputTokens: 0 }), ...(await f.store.load<import('../packages/shared/src/domain').DiscussionTurn>('turns')).map(t => row('turns', { ...t, status: 'waiting_user' }))])
   const waiting = (await f.repository.updateOccurrence(current.id, current.stateVersion, { status: 'waiting_user' }))!
   await f.works.renewAutomation(f.entry.origin, 'chat', { ...input, expectedVersion: waiting.stateVersion }, renewalRecords(f.entry, 'second-grant'))
   const renewed = await f.budget(budget.id)

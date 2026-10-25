@@ -15,10 +15,10 @@ import { promisify } from 'node:util'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import WebSocket from 'ws'
-import { CliRpcClient } from '../src/cli/client'
-import { startRpcServer, type RpcChannel } from '../src/cli/server'
-import { deserializeEnvelope, serializeEnvelope } from '../src/shared/cli/codec'
-import { MAX_MESSAGE_BYTES, PROTOCOL_VERSION, type MessageEnvelope } from '../src/shared/cli/protocol'
+import { CliRpcClient } from '../packages/transport/src/client'
+import { startRpcServer, type RpcChannel } from '../packages/transport/src/server'
+import { deserializeEnvelope, serializeEnvelope } from '../packages/shared/src/cli/codec'
+import { MAX_MESSAGE_BYTES, PROTOCOL_VERSION, type MessageEnvelope } from '../packages/shared/src/cli/protocol'
 
 const cleanup: (() => Promise<unknown> | void)[] = []
 afterEach(async () => { for (const close of cleanup.splice(0).reverse()) await close() })

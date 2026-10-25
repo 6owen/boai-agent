@@ -4,8 +4,8 @@
  * [POS]: Installed-Codex first-use recovery fixture; local HTTP only, no supplier inference.
  * [PROTOCOL]: Update Header and fixtures/.folder.md when this process contract changes.
  */
-import { AppService } from '../../src/runtime/service'
-import type { ConversationDetail, Message } from '../../src/shared/domain'
+import { AppService } from '../../packages/runtime/src/service'
+import type { ConversationDetail, Message } from '../../packages/shared/src/domain'
 
 const [dataPath, conversationId, requestId] = process.argv.slice(2)
 let parentCalls = 0

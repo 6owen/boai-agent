@@ -26,23 +26,23 @@ import { execFile } from 'node:child_process'
 import { resolve } from 'node:path'
 import { promisify } from 'node:util'
 import { DatabaseSync } from 'node:sqlite'
-import { openDesktopCli } from '../src/main/cli-service'
-import { readLocalConnection } from '../src/cli/discovery'
-import { CliRpcClient } from '../src/cli/client'
-import { AppService } from '../src/runtime/service'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { mergeRooms } from '../src/runtime/modules/conversations/room-migration'
-import type { AgentEngine, EngineContext, SecretStore } from '../src/runtime/contracts'
-import type { ChannelBindingState, ChannelDelivery, ChannelBindingInput } from '../src/shared/domain/channels'
-import type { Connection, Conversation, ConversationDetail, DigitalAgent, Message, Snapshot } from '../src/shared/domain'
-import type { ChannelInbound, ChannelTransportFactory } from '../src/runtime/modules/channels/channel-service'
-import { isChannelConversation, mainConversations, sortedConversations } from '../src/shared/domain/conversation-list'
-import { createKnowledgeOperations } from '../src/runtime/modules/resources/knowledge-tools'
-import type { Resource } from '../src/shared/domain'
-import type { DataSource } from '../src/shared/domain/sources'
-import type { WebSearchServiceConfig } from '../src/shared/domain/web-search'
+import { openDesktopCli } from '../apps/electron/src/main/cli-service'
+import { readLocalConnection } from '../packages/transport/src/discovery'
+import { CliRpcClient } from '../packages/transport/src/client'
+import { AppService } from '../packages/runtime/src/service'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { mergeRooms } from '../packages/runtime/src/modules/conversations/room-migration'
+import type { AgentEngine, EngineContext, SecretStore } from '../packages/runtime/src/contracts'
+import type { ChannelBindingState, ChannelDelivery, ChannelBindingInput } from '../packages/shared/src/domain/channels'
+import type { Connection, Conversation, ConversationDetail, DigitalAgent, Message, Snapshot } from '../packages/shared/src/domain'
+import type { ChannelInbound, ChannelTransportFactory } from '../packages/runtime/src/modules/channels/channel-service'
+import { isChannelConversation, mainConversations, sortedConversations } from '../packages/shared/src/domain/conversation-list'
+import { createKnowledgeOperations } from '../packages/runtime/src/modules/resources/knowledge-tools'
+import type { Resource } from '../packages/shared/src/domain'
+import type { DataSource } from '../packages/shared/src/domain/sources'
+import type { WebSearchServiceConfig } from '../packages/shared/src/domain/web-search'
 import { webSearchServer, webSourceConfig, resultUrl, pageText } from './fixtures/web-search-server'
-import { createTaskRuntime } from '../src/runtime/adapters/mastra/task-runtime'
+import { createTaskRuntime } from '../packages/runtime/src/adapters/mastra/task-runtime'
 import { RequestContext } from '@mastra/core/request-context'
 import { noopObserve } from '@mastra/core/tools'
 
@@ -290,14 +290,14 @@ describe('employee channel business connection', () => {
     const store = new ProductStore(join(f.root, 'boai.sqlite')); await store.init()
     const local: Message = { id: 'old-private-user', conversationId: room.id, senderType: 'user', senderId: 'user', senderName: '本人', content: '历史内部密语', status: 'completed', sequence: 3, createdAt: new Date().toISOString() }
     const reply: Message = { ...local, id: 'old-private-reply', senderType: 'agent', senderId: 'writer', content: '历史内部答复', sequence: 4, runId: 'old-private-run' }
-    const reading = new (await import('../src/runtime/modules/conversations/reading-repository')).ConversationReadingRepository(store)
+    const reading = new (await import('../packages/runtime/src/modules/conversations/reading-repository')).ConversationReadingRepository(store)
     try { await store.transaction(async tx => {
       await tx.put({ collection: 'messages', id: local.id, value: local }); await tx.put({ collection: 'messages', id: reply.id, value: reply })
       await tx.put({ collection: 'runs', id: reply.runId!, value: { ...existing.runs.find(run => run.messageId), id: reply.runId, conversationId: room.id, messageId: reply.id, triggerMessageId: local.id, agentId: 'writer', status: 'completed', createdAt: local.createdAt } })
       await reading.recordCompletion(tx, reply)
     }) } finally { await store.close() }
     const service = await f.create()
-    const view = await service.handle('getConversationView', { conversationId: room.id }) as import('../src/shared/domain/reading').ConversationView
+    const view = await service.handle('getConversationView', { conversationId: room.id }) as import('../packages/shared/src/domain/reading').ConversationView
     expect(view.messages.map(message => message.id)).toEqual([...existing.messages.map(message => message.id), local.id, reply.id])
     expect(view.reading.unreadCount).toBe(2)
     expect((await channels(service))[0].channelUnreadCount).toBe(2)
@@ -316,7 +316,7 @@ describe('employee channel business connection', () => {
     await f.incoming.get(binding.id)!(event()); await until(() => f.sent.length === 1)
     const parent = (await channels(f.service))[0], source = (await detail(f.service, parent.id)).messages[0]
     const internal = parent
-    const host = f.service as unknown as { store: ProductStore; artifactRepository: import('../src/runtime/modules/workspaces/artifact-repository').ArtifactRepository }
+    const host = f.service as unknown as { store: ProductStore; artifactRepository: import('../packages/runtime/src/modules/workspaces/artifact-repository').ArtifactRepository }
     const fileId = randomUUID(), directory = join(f.root, 'workspaces', internal.id, 'artifacts', fileId)
     await mkdir(directory, { recursive: true }); const path = join(directory, 'internal.md'), text = '# 内部修改结果\n'
     await writeFile(path, text)
@@ -432,7 +432,7 @@ describe('employee channel business connection', () => {
     await f.incoming.get(binding.id)!(event()); await until(() => f.sent.length === 1)
     const room = (await channels(f.service))[0]
     expect(room.channelUnreadCount).toBe(1)
-    const view = await f.service.handle('getConversationView', { conversationId: room.id }) as import('../src/shared/domain/reading').ConversationView
+    const view = await f.service.handle('getConversationView', { conversationId: room.id }) as import('../packages/shared/src/domain/reading').ConversationView
     expect((await channels(f.service))[0].channelUnreadCount).toBe(1)
     const completions = view.messagePage.items.flatMap(item => item.completion ? [{ messageId: item.completion.messageId, epoch: item.completion.epoch, ordinal: item.completion.ordinal, contentHash: item.completion.contentHash }] : [])
     await f.service.handle('observeConversationReading', { conversationId: room.id, epoch: view.reading.epoch, expectedRevision: view.reading.revision, completions })

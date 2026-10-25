@@ -14,9 +14,9 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { describe, expect, it } from 'vitest'
-import { detailTabsReducer as reduce, detailWorkspacesReducer, emptyDetailTabs, type DetailTarget } from '../src/renderer/components/detail-panel/tabs-state'
-import { artifactPendingKey, artifactReceiptResult, artifactRequestAction, artifactRevisionTarget, artifactRevisionReceiptMatches, artifactAdoptionReceiptMatches, restoreArtifactPending, updateArtifactPending, type ArtifactPending } from '../src/renderer/components/detail-panel/artifact-state'
-import type { Connection, DigitalAgent } from '../src/shared/domain'
+import { detailTabsReducer as reduce, detailWorkspacesReducer, emptyDetailTabs, type DetailTarget } from '../apps/electron/src/renderer/components/detail-panel/tabs-state'
+import { artifactPendingKey, artifactReceiptResult, artifactRequestAction, artifactRevisionTarget, artifactRevisionReceiptMatches, artifactAdoptionReceiptMatches, restoreArtifactPending, updateArtifactPending, type ArtifactPending } from '../apps/electron/src/renderer/components/detail-panel/artifact-state'
+import type { Connection, DigitalAgent } from '../packages/shared/src/domain'
 
 describe('detail workspace tabs', () => {
   it('keeps shared legacy knowledge preview scoped to the selected employee', () => {

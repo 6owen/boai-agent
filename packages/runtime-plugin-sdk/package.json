@@ -1,0 +1,23 @@
+{
+  "name": "@boai/runtime-plugin-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Private BOAI runtime provider contracts",
+  "exports": {
+    ".": {
+      "types": "./src/runtime-api.ts",
+      "development": "./src/runtime-api.ts",
+      "default": "./src/runtime-api.ts"
+    },
+    "./manifest": {
+      "types": "./src/manifest.ts",
+      "development": "./src/manifest.ts",
+      "default": "./src/manifest.ts"
+    },
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "zod": "4.6.5"
+  }
+}

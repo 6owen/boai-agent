@@ -22,9 +22,9 @@ import { verifyLocalAgentNavigation } from '../support/local-agent-navigation'
 import { archiveNativeFinalReview } from '../support/native-final-review'
 import { crashAutomationRuntime, runtimeChildProcessIds } from '../support/automation-recovery'
 import type { Desktop } from '../support/desktop'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
-import type { AgentRun, BudgetModelCall, DigitalAgent, WorkBudget, WorkItem, WorkExecution, WorkWake, Message, Conversation, CollaborationStartIntent } from '../../../src/shared/domain'
-import type { BoboCollaborationOperation } from '../../../src/shared/domain/bobo-collaboration'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
+import type { AgentRun, BudgetModelCall, DigitalAgent, WorkBudget, WorkItem, WorkExecution, WorkWake, Message, Conversation, CollaborationStartIntent } from '../../../packages/shared/src/domain'
+import type { BoboCollaborationOperation } from '../../../packages/shared/src/domain/bobo-collaboration'
 
 const { Then } = createBdd(test)
 async function mixedCoreMembers(runtime: Desktop, state: { employeeId?: string; connectionName?: string; connectionId?: string }, coreKind: string) {

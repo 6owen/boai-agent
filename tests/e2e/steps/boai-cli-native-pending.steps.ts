@@ -12,10 +12,10 @@ import { randomUUID } from 'node:crypto'
 import { copyFile, chmod, realpath, readFile, stat } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { test as base } from '../support/test'
-import { CliRpcClient } from '../../../src/cli/client'
-import { readLocalConnection, type LocalConnection } from '../../../src/cli/discovery'
-import type { DigitalAgent, ConversationDetail } from '../../../src/shared/domain'
-import type { MessageExecution } from '../../../src/shared/domain/message-execution'
+import { CliRpcClient } from '../../../packages/transport/src/client'
+import { readLocalConnection, type LocalConnection } from '../../../packages/transport/src/discovery'
+import type { DigitalAgent, ConversationDetail } from '../../../packages/shared/src/domain'
+import type { MessageExecution } from '../../../packages/shared/src/domain/message-execution'
 
 type Result = { stdout: string; stderr: string; code: number }
 interface State {

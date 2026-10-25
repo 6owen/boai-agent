@@ -8,9 +8,9 @@ import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, expect, test } from 'vitest'
-import { probeMagpie } from '../src/runtime/adapters/mastra/model-catalog'
-import { discoverLocalMagpie } from '../src/main/local-configs/magpie-discovery'
-import type { GatewayIdentity } from '../src/shared/domain/model-gateway'
+import { probeMagpie } from '../packages/runtime/src/adapters/mastra/model-catalog'
+import { discoverLocalMagpie } from '../apps/electron/src/main/local-configs/magpie-discovery'
+import type { GatewayIdentity } from '../packages/shared/src/domain/model-gateway'
 const cleanup: string[] = []
 afterEach(async () => { for (const path of cleanup.splice(0)) await rm(path, { recursive: true, force: true }) })
 async function fixture() { const home = await mkdtemp(join(tmpdir(), 'magpie-discovery-')); cleanup.push(home); await mkdir(join(home, '.config/magpie'), { recursive: true }); return { home, configHome: '', file: join(home, '.config/magpie/settings.json') } }

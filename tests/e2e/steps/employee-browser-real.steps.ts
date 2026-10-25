@@ -9,12 +9,12 @@ import { createBdd } from 'playwright-bdd'
 import { createServer } from 'node:http'
 import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
-import type { Conversation, ConversationDetail, DigitalAgent, LaunchProfile } from '../../../src/shared/domain'
-import type { NativeAction } from '../../../src/shared/domain/execution'
-import type { BrowserPageReference } from '../../../src/shared/ipc/browser'
+import type { Conversation, ConversationDetail, DigitalAgent, LaunchProfile } from '../../../packages/shared/src/domain'
+import type { NativeAction } from '../../../packages/shared/src/domain/execution'
+import type { BrowserPageReference } from '../../../packages/shared/src/ipc/browser'
 import { test as base } from '../support/test'
 import { browserRecords, browserToolbarAction, nativeBrowserViews } from '../support/browser-migration'
-import { prepareV2DataRoot } from '../../../src/main/migration'
+import { prepareV2DataRoot } from '../../../apps/electron/src/main/migration'
 import { prepareSavedModel, systemKeychainLaunch } from '../support/saved-model'
 import { archiveNativeFinalReview } from '../support/native-final-review'
 
@@ -62,7 +62,7 @@ Given('我为网页任务准备真实的 {string} 员工和隔离页面', async 
   await expect.poll(async () => (await d.page.evaluate(() => window.boai.request('getBrowserWindows', {})))[0]?.title).toBe('员工网页表单')
   s.reference = await d.page.evaluate(() => window.boai.request('referenceBrowserPage', {}))
   await d.page.evaluate(() => window.boai.request('browserControl', { action: 'hide' }))
-  await d.reviewData('本批源码身份', Object.fromEntries(await Promise.all(['dist/main/main.cjs','dist/runtime/worker.mjs','src/main/browser/browser-cdp.ts','src/main/browser/browser-pane-manager.ts','src/runtime/modules/browser/session.ts','tests/e2e/steps/employee-browser-real.steps.ts'].map(async file => [file, createHash('sha256').update(await readFile(file)).digest('hex')]))))
+  await d.reviewData('本批源码身份', Object.fromEntries(await Promise.all(['dist/main/main.cjs','dist/runtime/worker.mjs','apps/electron/src/main/browser/browser-cdp.ts','apps/electron/src/main/browser/browser-pane-manager.ts','packages/runtime/src/modules/browser/session.ts','tests/e2e/steps/employee-browser-real.steps.ts'].map(async file => [file, createHash('sha256').update(await readFile(file)).digest('hex')]))))
   await d.reviewData('真实网页身份', { reference: s.reference, agent: s.agent, chat: s.chat, profile, connection: connection && { provider: connection.provider, model: connection.defaultModel } })
 })
 When('我要求员工识别图中数字并填写保存', async ({ runtime: d, employeeBrowser: s }) => {

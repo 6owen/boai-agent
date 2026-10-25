@@ -6,9 +6,9 @@
  */
 import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { AppService } from '../../src/runtime/service'
-import type { Connection } from '../../src/shared/domain'
-import type { TeamDraftView } from '../../src/shared/domain/team-creation'
+import { AppService } from '../../packages/runtime/src/service'
+import type { Connection } from '../../packages/shared/src/domain'
+import type { TeamDraftView } from '../../packages/shared/src/domain/team-creation'
 
 export const teamCasesV1 = [
   { id: 'writing-four', prompt: '创建四人中文写作团队，负责策划、资料整理、撰写和审核，帮我把提供的材料整理成文章。' },

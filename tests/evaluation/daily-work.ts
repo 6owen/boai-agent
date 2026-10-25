@@ -7,14 +7,14 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { AppService } from '../../src/runtime/service'
-import { MastraEngine } from '../../src/runtime/adapters/mastra/engine'
-import type { AgentEngine, EngineContext } from '../../src/runtime/contracts'
-import type { AgentProfile, AgentSourceName } from '../../src/shared/domain/agent-profile'
-import type { ApplicationResult } from '../../src/shared/domain/application-protocol'
-import type { AgentHome, Connection, Conversation, ConversationDetail, Message, ModelUsage } from '../../src/shared/domain'
-import { MATERIAL_CHUNK_BYTES, type MaterialUploadReceipt, type SubmittedMaterial } from '../../src/shared/domain/material-upload'
-import type { ArtifactPreview } from '../../src/shared/domain/artifacts'
+import { AppService } from '../../packages/runtime/src/service'
+import { MastraEngine } from '../../packages/runtime/src/adapters/mastra/engine'
+import type { AgentEngine, EngineContext } from '../../packages/runtime/src/contracts'
+import type { AgentProfile, AgentSourceName } from '../../packages/shared/src/domain/agent-profile'
+import type { ApplicationResult } from '../../packages/shared/src/domain/application-protocol'
+import type { AgentHome, Connection, Conversation, ConversationDetail, Message, ModelUsage } from '../../packages/shared/src/domain'
+import { MATERIAL_CHUNK_BYTES, type MaterialUploadReceipt, type SubmittedMaterial } from '../../packages/shared/src/domain/material-upload'
+import type { ArtifactPreview } from '../../packages/shared/src/domain/artifacts'
 import { EvaluationBudget } from './budget'
 import { dailyWorkPreservesUnchangedText } from './daily-work-checks'
 
@@ -80,7 +80,7 @@ export async function runDailyWorkEvaluation({ settings, connection, apiKey }: {
     await open()
     const uploads: SubmittedMaterial[] = []
     if (prior) {
-      const snapshot = await service!.handle('snapshot', undefined) as import('../../src/shared/domain').Snapshot
+      const snapshot = await service!.handle('snapshot', undefined) as import('../../packages/shared/src/domain').Snapshot
       const saved = snapshot.connections.find(c => c.baseUrl === connection.baseUrl && c.defaultModel === (settings.currentConfiguration.agent.modelId || connection.defaultModel))
       if (!saved || prior.stages.length !== 1 || prior.stages[0].detail.turns.at(-1).status !== 'failed' || prior.requests.some((r: any) => r.status !== 200)) throw Error('Continuation must preserve a known failed first reply, never retry an unknown request')
       secrets.set(saved.id, apiKey); conversation = prior.stages[0].detail.conversation

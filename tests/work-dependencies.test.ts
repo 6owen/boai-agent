@@ -10,9 +10,9 @@ import { afterEach, expect, it } from 'vitest'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { WorkRepository } from '../src/runtime/modules/collaboration/work-repository'
-import type { WorkItem, WorkWake } from '../src/shared/domain'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { WorkRepository } from '../packages/runtime/src/modules/collaboration/work-repository'
+import type { WorkItem, WorkWake } from '../packages/shared/src/domain'
 
 const disposers: (() => Promise<void>)[] = []
 afterEach(async () => { for (const dispose of disposers.splice(0)) await dispose() })

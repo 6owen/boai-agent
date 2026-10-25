@@ -1,10 +1,11 @@
 /*
+ * [OUTPUT]: 应用与评估编译按当前工作区公开exports解析，保留原执行与分发合同。
  * [INPUT]: 实验轮次登记的judge模型、原件目录与共享预算。
  * [OUTPUT]: 原Electron只读凭据桥启动独立Mastra评审；原始评分、重复一致性和未知计量保留。
  * [POS]: scripts/judge-evaluation.mjs，内部业务评审命令，不自行选择模型或增加预算。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
-import { build } from 'esbuild'
+import { buildWorkspace as build } from './workspace-packages.mjs'
 import { mkdir, readFile } from 'node:fs/promises'
 import { resolve, join } from 'node:path'
 import { spawn } from 'node:child_process'

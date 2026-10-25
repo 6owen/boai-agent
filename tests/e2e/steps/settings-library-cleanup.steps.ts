@@ -13,10 +13,10 @@ import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { test as base } from '../support/test'
 import type { Desktop } from '../support/desktop'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
-import { appIconPresets, defaultAppIconId } from '../../../src/shared/appearance'
-import type { Conversation, Message } from '../../../src/shared/domain'
-import type { PromptTemplate, PromptCollections } from '../../../src/shared/domain/prompt-templates'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
+import { appIconPresets, defaultAppIconId } from '../../../packages/shared/src/appearance'
+import type { Conversation, Message } from '../../../packages/shared/src/domain'
+import type { PromptTemplate, PromptCollections } from '../../../packages/shared/src/domain/prompt-templates'
 
 type State = { prompts?: PromptTemplate[]; collections?: PromptCollections; rooms?: Conversation[]; finalIcon?: string; trayCalls?: unknown[] }
 export const test = base.extend<{ improvement: State }>({ improvement: async ({}, use) => use({}) })

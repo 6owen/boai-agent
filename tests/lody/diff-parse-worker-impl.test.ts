@@ -32,7 +32,7 @@ describe('diff-parse.worker', () => {
       postMessage: vi.fn(),
     };
     vi.stubGlobal('self', worker);
-    await import('../../src/renderer/components/common/lody/diff-parse.worker');
+    await import('../../apps/electron/src/renderer/components/common/lody/diff-parse.worker');
 
     worker.onmessage?.({
       data: {

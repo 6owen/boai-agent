@@ -8,10 +8,10 @@ import { afterEach, expect, it } from 'vitest'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { ProductStore, type StoredRecord } from '../src/runtime/adapters/storage/product-store'
-import { mergeRooms } from '../src/runtime/modules/conversations/room-migration'
-import { ConversationReadingRepository, completionHash } from '../src/runtime/modules/conversations/reading-repository'
-import type { Conversation, Message } from '../src/shared/domain'
+import { ProductStore, type StoredRecord } from '../packages/runtime/src/adapters/storage/product-store'
+import { mergeRooms } from '../packages/runtime/src/modules/conversations/room-migration'
+import { ConversationReadingRepository, completionHash } from '../packages/runtime/src/modules/conversations/reading-repository'
+import type { Conversation, Message } from '../packages/shared/src/domain'
 
 const roots: string[] = [], stores: ProductStore[] = []
 afterEach(async () => { for (const store of stores.splice(0)) await store.close(); for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }) })
@@ -37,7 +37,7 @@ async function fixture() {
   await store.write(records)
   const reading = new ConversationReadingRepository(store)
   await store.transaction(async tx => { await reading.recordCompletion(tx, a); await reading.recordCompletion(tx, b) })
-  const state = await reading.readState(old.id), completion = (await store.load<import('../src/shared/domain/reading').ConversationCompletion>('conversationCompletions')).find(value => value.messageId === b.id)!
+  const state = await reading.readState(old.id), completion = (await store.load<import('../packages/shared/src/domain/reading').ConversationCompletion>('conversationCompletions')).find(value => value.messageId === b.id)!
   await reading.observe({ conversationId: old.id, epoch: state.epoch, expectedRevision: state.revision, completions: [completion] })
   return { store, main, old, records, reading, a, b }
 }
@@ -55,7 +55,7 @@ it('preserves linked business identities, original bytes, unknown sends and read
   for (const collection of ['codexSessions', 'claudeSessions']) expect((await f.store.load<Record<string, unknown>>(collection)).every(session => session.resumeInvalidated === 'room-merged')).toBe(true)
   const state = await f.reading.readState('main')
   expect(state).toMatchObject({ completionCount: 2, unreadCount: 1, sparseSeen: [2], firstUnreadMessageId: f.a.id })
-  const migrated = await f.store.get<Message>('messages', f.b.id), completion = await f.store.get<import('../src/shared/domain/reading').ConversationCompletion>('conversationCompletions', f.b.id)
+  const migrated = await f.store.get<Message>('messages', f.b.id), completion = await f.store.get<import('../packages/shared/src/domain/reading').ConversationCompletion>('conversationCompletions', f.b.id)
   expect(completion?.contentHash).toBe(completionHash(migrated!))
   expect(await f.store.get('conversations', 'old')).toMatchObject({ mergedInto: 'main', list: { hidden: true } })
 })

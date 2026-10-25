@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 图标清单读取shared包真源，PNG/SVG输出目录保持resources。
  * [INPUT]: 应用图标manifest与手工绘制的22点SVG模板；既有canvas依赖。
  * [OUTPUT]: 离线生成22/44像素模板和可选审阅图，不修改Dock PNG或默认icns。
  * [POS]: 托盘资源生成入口；构建只复制已登记产物。
@@ -12,7 +13,7 @@ const args = Object.fromEntries(process.argv.slice(2).map(value => { const [key,
 const require = createRequire(args.dependencies ? resolve(args.dependencies) : import.meta.url)
 const { createCanvas, loadImage } = require('@napi-rs/canvas')
 const root = resolve(import.meta.dirname, '..'), directory = join(root, 'resources/app-icons')
-const manifest = JSON.parse(await readFile(join(directory, 'manifest.json'), 'utf8'))
+const manifest = JSON.parse(await readFile(join(root, 'packages/shared/src/appearance/app-icon-manifest.json'), 'utf8'))
 const selected = args.only ? new Set(args.only.split(',')) : undefined
 const icons = manifest.icons.filter(icon => !selected || selected.has(icon.id))
 if (!icons.length || (selected && icons.length !== selected.size)) throw new Error('Unknown tray icon selection')

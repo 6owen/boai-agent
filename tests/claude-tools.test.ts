@@ -13,8 +13,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
-import type { NativeTool } from '../src/runtime/adapters/native-task'
-import { createClaudeToolBridge } from '../src/runtime/adapters/claude/tools'
+import type { NativeTool } from '../packages/runtime/src/adapters/native-task'
+import { createClaudeToolBridge } from '../packages/runtime/src/adapters/claude/tools'
 
 const cleanup: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const operation of cleanup.splice(0).reverse()) await operation() })

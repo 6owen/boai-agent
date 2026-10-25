@@ -12,12 +12,12 @@ import { tmpdir } from 'node:os'
 import { randomUUID } from 'node:crypto'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { openDesktopCli } from '../../src/main/cli-service'
-import { CliRpcClient } from '../../src/cli/client'
-import { RunCliAccess } from '../../src/runtime/run-cli-access'
-import type { AppService } from '../../src/runtime/service'
-import type { ConversationDetail, Message, Snapshot, DigitalAgent } from '../../src/shared/domain'
-import type { RunCliEnvironmentLease } from '../../src/shared/cli/run-access'
+import { openDesktopCli } from '../../apps/electron/src/main/cli-service'
+import { CliRpcClient } from '../../packages/transport/src/client'
+import { RunCliAccess } from '../../packages/runtime/src/run-cli-access'
+import type { AppService } from '../../packages/runtime/src/service'
+import type { ConversationDetail, Message, Snapshot, DigitalAgent } from '../../packages/shared/src/domain'
+import type { RunCliEnvironmentLease } from '../../packages/shared/src/cli/run-access'
 
 export async function verifyCliEnvironment(f: {
   root: string; service: AppService; agent: { id: string }; chat: { id: string }

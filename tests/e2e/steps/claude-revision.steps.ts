@@ -11,8 +11,8 @@ import { createHash } from 'node:crypto'
 import { readFile, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test } from './claude-employee.steps'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
-import type { BudgetModelCall } from '../../../src/shared/domain'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
+import type { BudgetModelCall } from '../../../packages/shared/src/domain'
 const { Then } = createBdd(test)
 
 Then('用户在Claude原文件卡片要求修改并采用新版且重启保留原记录', async ({ runtime, claudeEmployee: state }) => {

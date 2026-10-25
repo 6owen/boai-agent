@@ -10,9 +10,9 @@ import { act, createElement } from 'react'
 import { toast } from 'sonner'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { FilePreview } from '../src/renderer/components/common/file-preview'
-import { pluginUsage, usePlugins } from '../src/renderer/stores/plugins'
-import { MAX_OFFICE_PREVIEW_BYTES } from '../src/renderer/components/common/lody/session-file-office-source'
+import { FilePreview } from '../apps/electron/src/renderer/components/common/file-preview'
+import { pluginUsage, usePlugins } from '../apps/electron/src/renderer/stores/plugins'
+import { MAX_OFFICE_PREVIEW_BYTES } from '../apps/electron/src/renderer/components/common/lody/session-file-office-source'
 
 let host: HTMLDivElement, root: Root
 beforeEach(() => {

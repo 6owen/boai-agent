@@ -11,13 +11,13 @@ import { act, createElement as h } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { toast } from 'sonner'
-import type { AgentRun, DigitalAgent, Snapshot } from '../src/shared/domain'
-import type { AppEvent, DesktopApi } from '../src/shared/ipc'
-import { EmployeeExecutionNavigation, EmployeeExecutionPane } from '../src/renderer/components/employee/execution-pane'
-import { TraceTab } from '../src/renderer/components/detail-panel/trace-tab'
-import { EmployeeResourceCards } from '../src/renderer/components/employee/resource-cards'
+import type { AgentRun, DigitalAgent, Snapshot } from '../packages/shared/src/domain'
+import type { AppEvent, DesktopApi } from '../packages/shared/src/ipc'
+import { EmployeeExecutionNavigation, EmployeeExecutionPane } from '../apps/electron/src/renderer/components/employee/execution-pane'
+import { TraceTab } from '../apps/electron/src/renderer/components/detail-panel/trace-tab'
+import { EmployeeResourceCards } from '../apps/electron/src/renderer/components/employee/resource-cards'
 
-vi.mock('../src/renderer/components/detail-panel/execution-feed', () => ({ ExecutionFeed: ({ run }: { run: AgentRun }) => h('div', { 'data-feed-run': run.id }, run.id) }))
+vi.mock('../apps/electron/src/renderer/components/detail-panel/execution-feed', () => ({ ExecutionFeed: ({ run }: { run: AgentRun }) => h('div', { 'data-feed-run': run.id }, run.id) }))
 const agent = { id: 'ds', name: 'DS', configVersion: 1 } as DigitalAgent
 const snapshot = { agents: [agent], conversations: [{ id: 'room', kind: 'group', title: '天气讨论', agentIds: ['ds'] }], resources: [] } as unknown as Snapshot
 const run: AgentRun = { id: 'run-older', agentId: 'ds', agentName: 'DS', conversationId: 'room', triggerMessageId: 'prompt', messageId: 'answer', createdAt: '2026-10-17T06:00:00Z', status: 'completed', phase: 'execution', toolEvents: [] }

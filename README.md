@@ -1,4 +1,6 @@
 <!--
+[OUTPUT]: 2026-10-25 Workspace源码归属迁移，当前状态见第26组02。
+[OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [OUTPUT]: 桌面活动独立设置与新增采集实际结果见前端27。
 [OUTPUT]: 第3组26新增会话与定时执行六项修复，自动化无固定时间截断及失败显式接续；实际验证边界见该篇。
 [OUTPUT]: 纠正测试范围：仅 GitHub CI 跑 UI，本地 Vitest/BDD/评估及依赖完整保留。
@@ -441,9 +443,9 @@ pnpm start
 
 ## Skills 与知识
 
-会话与技能正文通过 [共享 Markdown](src/renderer/components/common/markdown.tsx) 使用 [CodeBlock](src/renderer/components/ui/code-block.tsx) 的 Shiki 高亮，语言/主题随应用打包并按需加载；未知语言或高亮失败仍显示原文。明暗主题与代码块样式统一在 [shiki.css](src/renderer/styles/shiki.css)，行内代码保持普通排版。
+会话与技能正文通过 [共享 Markdown](apps/electron/src/renderer/components/common/markdown.tsx) 使用 [CodeBlock](apps/electron/src/renderer/components/ui/code-block.tsx) 的 Shiki 高亮，语言/主题随应用打包并按需加载；未知语言或高亮失败仍显示原文。明暗主题与代码块样式统一在 [shiki.css](apps/electron/src/renderer/styles/shiki.css)，行内代码保持普通排版。
 
-成果文件和聊天附件共用 [FilePreview](src/renderer/components/common/file-preview/index.tsx)，标题栏、Markdown/源码、代码/文本、PDF/Office和图片预览集中在 `components/common/file-preview/`。Markdown正文与源码分别复用共享Markdown和CodeBlock，源码不显示行号栏，但保留引用行定位及高亮。文本预览与源码的滚动条贴面板右缘，正文留白和固定标题栏保持。PDF/Office继续使用既有Lody查看器；文件读取、来源核验与业务操作由调用页面管理。
+成果文件和聊天附件共用 [FilePreview](apps/electron/src/renderer/components/common/file-preview/index.tsx)，标题栏、Markdown/源码、代码/文本、PDF/Office和图片预览集中在 `components/common/file-preview/`。Markdown正文与源码分别复用共享Markdown和CodeBlock，源码不显示行号栏，但保留引用行定位及高亮。文本预览与源码的滚动条贴面板右缘，正文留白和固定标题栏保持。PDF/Office继续使用既有Lody查看器；文件读取、来源核验与业务操作由调用页面管理。
 
 侧栏只有一个“技能”入口，顶部本地/收藏/商城 Tabs 共用列表与详情布局。技能页发现本机全局、Agent 与启用插件技能，支持收藏/分组；目录默认使用宿主和渲染器缓存，有效缓存切回页面不重新请求目录；本地/收藏使用 TanStack Virtual 按可见区域渲染，搜索与排序复用索引，手动扫描或安装/更新后刷新；商城支持 skills.sh / ClawHub / SkillHub 的搜索、详情和安装。搜索右侧一个操作图标向右展开导入、重新扫描、检查更新和导出菜单；导入内容保留紧凑浮层，移除安装记录和底部关闭按钮，空闲时可按 Esc 或点击外部关闭。批量检查在技能页自己的右侧“技能更新”标签中完成；单项进度、差异和升级放在详情标题图标的 Popover，正文不显示更新状态卡片。目录、ZIP、公开 HTTPS 技能包和 GitHub 仓库先展示实际包内容，再固定安装到 `~/.agents/skills`，不创建员工 Resource 或自动绑定。资料库主页面和导航已删除，旧启动位置回退到会话；已保存资源和员工绑定保留。
 
@@ -621,3 +623,5 @@ Soft 风格变量与验证记录见 [全局 Soft UI](ai-docs/spec/2.已实现功
 2026-10-23会话与定时执行修复：[第3组26](ai-docs/spec/3.前端重构与功能/26-会话与定时执行恢复.md)。
 
 - [27 桌面活动与日报独立设置](ai-docs/spec/3.前端重构与功能/27-桌面活动与日报独立设置.md)：独立设置分类、默认关闭的截图/键鼠采集和存储管理；实际验证与未验范围见专题。
+
+2026-10-25工程结构：Electron与CLI归apps，共享运行核心/传输/合同及插件归packages；[第26组](ai-docs/spec/26.Workspace工程结构重构/README.md)维护合同和实际进度。根命令与dist分布保持。

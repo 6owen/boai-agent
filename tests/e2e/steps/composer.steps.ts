@@ -13,8 +13,8 @@ import { join } from 'node:path'
 import { test as base } from '../support/test'
 import { messageDraft } from '../support/editor-controls'
 import { nextMaterialDialog } from '../support/materials'
-import type { DataSource } from '../../../src/shared/domain/sources'
-import type { Conversation, DigitalAgent, Resource } from '../../../src/shared/domain'
+import type { DataSource } from '../../../packages/shared/src/domain/sources'
+import type { Conversation, DigitalAgent, Resource } from '../../../packages/shared/src/domain'
 
 type State = { source?: DataSource; sourceAgentVersion?: number; direct?: Conversation; group?: Conversation; employee?: DigitalAgent; writer?: DigitalAgent; connectionId?: string; skill?: Resource; materialId?: string; catalogRequests?: number; holdCatalog?: boolean; releaseCatalog?: () => void }
 export const test = base.extend<{ scenario: State }>({ scenario: async ({}, use) => use({}) })

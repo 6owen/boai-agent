@@ -12,12 +12,12 @@ import { chmod, mkdir, mkdtemp, readFile, readdir, realpath, rm, symlink, writeF
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { LocalConfigDiscovery } from '../src/main/local-configs/discovery'
-import { AppService } from '../src/runtime/service'
-import { runAcp } from '../src/runtime/adapters/acp/client'
-import * as acpClient from '../src/runtime/adapters/acp/client'
-import { inspectProgram, resolveProgram } from '../src/runtime/modules/backends/program'
-import type { Conversation, DigitalAgent, LaunchProfile, LaunchProfileStatus, Snapshot } from '../src/shared/domain'
+import { LocalConfigDiscovery } from '../apps/electron/src/main/local-configs/discovery'
+import { AppService } from '../packages/runtime/src/service'
+import { runAcp } from '../packages/runtime/src/adapters/acp/client'
+import * as acpClient from '../packages/runtime/src/adapters/acp/client'
+import { inspectProgram, resolveProgram } from '../packages/runtime/src/modules/backends/program'
+import type { Conversation, DigitalAgent, LaunchProfile, LaunchProfileStatus, Snapshot } from '../packages/shared/src/domain'
 
 const cleanup: (() => Promise<unknown>)[] = []
 afterEach(async () => { vi.unstubAllEnvs(); for (const close of cleanup.splice(0).reverse()) await close() })

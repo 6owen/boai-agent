@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [OUTPUT]: 2026-10-20 Memory实施已启动，当前Mastra本人聊天投影、可选Memmy连接和日报来源校验归15 §10.2；完整长期/活动记忆未完成。
 [OUTPUT]: 2026-10-20新增15 Memory源码复用与实施交接：原包/服务优先、Alma可迁用代码、R清单/M0–M4及唯一后续进度§10；用户明确以后开发，本轮仅文档。
 [OUTPUT]: 2026-10-20新增14记忆选型：bobo采用Mastra Memory，用户长期记忆可插件化、Memmy外部首选，Hy/Mem0对照；替代13自建优先倾向，仅研究。
@@ -77,7 +78,7 @@ Mastra已有五类模型阶段；减少单聊额外判断、汇报和自动记�
 | 定时任务 | 原生 schedules、事务受理/稳定触发身份、投递意图、定义同步重试、执行记录、单聊/群聊投递、统一请求预算/等待再准入和备份恢复暂停 | 独立任务聊天、通知/额度接续及 JSON 产物监控已增量接入；故障矩阵已核对，验证范围见实施记录，退出/睡眠不执行 |
 | 外部连接与浏览器 | 已有受限本地 ACP 显式任务入口和第11组 Electron/CDP 任务浏览器；固定员工×会话登录与执行范围 | ACP 自主群聊/定时自动化、A2A/MCP连接或完整真实浏览器交付已全部通过 |
 
-源码入口：[ProductStore](../../../src/runtime/adapters/storage/product-store.ts)、[MemoryRepository](../../../src/runtime/modules/memory/memory-repository.ts)、[AgentHomes](../../../src/runtime/modules/workspaces/workspace-service.ts)、[MastraEngine](../../../src/runtime/adapters/mastra/engine.ts)、[AppService](../../../src/runtime/service.ts)、[GroupScheduler](../../../src/runtime/group-scheduler.ts)。
+源码入口：[ProductStore](../../../packages/runtime/src/adapters/storage/product-store.ts)、[MemoryRepository](../../../packages/runtime/src/modules/memory/memory-repository.ts)、[AgentHomes](../../../packages/runtime/src/modules/workspaces/workspace-service.ts)、[MastraEngine](../../../packages/runtime/src/adapters/mastra/engine.ts)、[AppService](../../../packages/runtime/src/service.ts)、[GroupScheduler](../../../packages/runtime/src/group-scheduler.ts)。
 
 **安装 `@mastra/memory` 不等于已经启用它。Working Memory 是模型可用的持久上下文，不是 workspace 文件目录。** 当前员工引擎没有给 Agent 配置 `memory: new Memory(...)`；自动化适配器已使用 `new Mastra(...)` 和 `createWorkflow()` 建立薄投递包装，这不等于员工业务流程已改为动态工作流。
 

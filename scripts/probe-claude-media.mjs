@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Workspace源码路径迁至apps/packages，保留既有输出与业务合同。
  * [INPUT]: 锁定的真实Claude程序、生产输入适配器、合成图片与本地Anthropic协议服务。
  * [OUTPUT]: 首次/续聊/文本接续/员工隔离的实际媒体请求hash与无工具证据；不存图片正文，不冒充真实视觉模型或UI验收。
  * [POS]: 第13组Claude媒体传输探测，保留独立失败和源码hash。
@@ -11,13 +12,13 @@ import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve, dirname } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { build } from 'esbuild'
+import { buildWorkspace as build } from './workspace-packages.mjs'
 
 if (!process.env.BOAI_CLAUDE_PROGRAM || !process.env.BOAI_CLAUDE_EVIDENCE) throw new Error('需要明确的程序路径和新证据文件')
 const out = resolve(process.env.BOAI_CLAUDE_EVIDENCE)
 await mkdir(dirname(out), { recursive: true })
 const root = await mkdtemp(join(tmpdir(), 'boai-claude-media-')), bundle = join(root, 'adapter.cjs')
-const built = await build({ stdin: { contents: "export { verifyClaudeProgram, runClaudeNoTools } from './src/runtime/adapters/claude/turn'", resolveDir: process.cwd(), loader: 'ts' }, outfile: bundle, bundle: true, platform: 'node', format: 'cjs', target: 'node22', metafile: true, logLevel: 'silent' })
+const built = await build({ stdin: { contents: "export { verifyClaudeProgram, runClaudeNoTools } from './packages/runtime/src/adapters/claude/turn'", resolveDir: process.cwd(), loader: 'ts' }, outfile: bundle, bundle: true, platform: 'node', format: 'cjs', target: 'node22', metafile: true, logLevel: 'silent' })
 const { verifyClaudeProgram, runClaudeNoTools } = await import(pathToFileURL(bundle).href)
 const hash = value => createHash('sha256').update(value).digest('hex')
 const sources = [...Object.keys(built.metafile.inputs).filter(path => path !== '<stdin>'), 'scripts/probe-claude-media.mjs', 'package.json', 'pnpm-lock.yaml']

@@ -6,11 +6,11 @@
  */
 import { RequestContext } from '@mastra/core/request-context'
 import { noopObserve } from '@mastra/core/tools'
-import { AppService } from '../../src/runtime/service'
-import { ProductStore } from '../../src/runtime/adapters/storage/product-store'
-import { createTaskRuntime } from '../../src/runtime/adapters/mastra/task-runtime'
-import type { AgentEngine } from '../../src/runtime/contracts'
-import type { Artifact, Connection, Conversation, Snapshot } from '../../src/shared/domain'
+import { AppService } from '../../packages/runtime/src/service'
+import { ProductStore } from '../../packages/runtime/src/adapters/storage/product-store'
+import { createTaskRuntime } from '../../packages/runtime/src/adapters/mastra/task-runtime'
+import type { AgentEngine } from '../../packages/runtime/src/contracts'
+import type { Artifact, Connection, Conversation, Snapshot } from '../../packages/shared/src/domain'
 
 const [root, phase] = process.argv.slice(2), hold = () => new Promise<void>(() => {})
 let publication: Artifact | undefined

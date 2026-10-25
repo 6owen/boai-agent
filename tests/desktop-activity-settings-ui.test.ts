@@ -8,9 +8,9 @@
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { ActivityRecorderSettings } from '../src/renderer/pages/settings/activity-recorder-settings'
-import { activityDefaults } from '../src/runtime/modules/desktop-activity/activity-settings'
-import type { ActivityStatus } from '../src/shared/domain/desktop-activity'
+import { ActivityRecorderSettings } from '../apps/electron/src/renderer/pages/settings/activity-recorder-settings'
+import { activityDefaults } from '../packages/runtime/src/modules/desktop-activity/activity-settings'
+import type { ActivityStatus } from '../packages/shared/src/domain/desktop-activity'
 let host: HTMLDivElement, root: Root
 const update = vi.fn(), permission = vi.fn(), openDirectory = vi.fn()
 const initial: ActivityStatus = { settings: activityDefaults, supported: true, permission: false, count: 0, accessibilityPermission: false, monitoring: false, state: 'disabled', screenshotCount: 0, storageBytes: 0, sessionCount: 0, recentSessions: [], outputDirectory: '/test/activity-records' }

@@ -8,13 +8,13 @@ import { afterEach, expect, test, vi } from 'vitest'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { AppService } from '../src/runtime/service'
-import type { Method, Methods } from '../src/shared/ipc'
-import { TEAM_LIMITS, type TeamDraftView } from '../src/shared/domain/team-creation'
+import { AppService } from '../packages/runtime/src/service'
+import type { Method, Methods } from '../packages/shared/src/ipc'
+import { TEAM_LIMITS, type TeamDraftView } from '../packages/shared/src/domain/team-creation'
 import { teamEndpoint, sendTeamOutput, writingPlan } from './fixtures/team-planner'
-import type { TeamPlanner } from '../src/runtime/adapters/mastra/team-planner'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { TeamRepository } from '../src/runtime/modules/teams/team-repository'
+import type { TeamPlanner } from '../packages/runtime/src/adapters/mastra/team-planner'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { TeamRepository } from '../packages/runtime/src/modules/teams/team-repository'
 const cleanup: (() => Promise<unknown>)[] = []
 afterEach(async () => { vi.useRealTimers(); for (const close of cleanup.splice(0).reverse()) await close() })
 async function setup(url = 'http://127.0.0.1:1/v1', teamPlanner?: TeamPlanner) {
@@ -144,6 +144,6 @@ test('abandon waits for generation exit, scrubs private content and retains late
   const view = await api('getTeamDraft', { draftId: draft.id })
   expect(view.draft.prompt).toBe(''); expect(view.draft.status).toBe('cancelled'); expect(view.draft.plan).toBeUndefined()
   const store = new ProductStore(join(dataPath, 'boai.sqlite')); await store.init(); cleanup.push(() => store.close())
-  const generations = await store.load<import('../src/shared/domain/team-creation').TeamGeneration>('teamGenerations')
+  const generations = await store.load<import('../packages/shared/src/domain/team-creation').TeamGeneration>('teamGenerations')
   expect(generations[0].attempts[0].usage).toEqual({ inputTokens: 3, outputTokens: 6 })
 })

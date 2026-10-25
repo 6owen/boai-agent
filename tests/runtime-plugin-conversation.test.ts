@@ -9,9 +9,9 @@ import { afterEach, describe, expect, test } from 'vitest'
 import { mkdtemp, realpath, copyFile, chmod, rm, readFile, cp, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
-import { AppService } from '../src/runtime/service'
-import type { Conversation, ConversationDetail, DigitalAgent, LaunchProfile, Message } from '../src/shared/domain'
-import type { RuntimePluginCatalog } from '../src/shared/plugins/runtime-catalog'
+import { AppService } from '../packages/runtime/src/service'
+import type { Conversation, ConversationDetail, DigitalAgent, LaunchProfile, Message } from '../packages/shared/src/domain'
+import type { RuntimePluginCatalog } from '../packages/shared/src/plugins/runtime-catalog'
 import { verifyCliEnvironment, verifyWorkingDirectory } from './fixtures/cli-environment'
 const cleanup: (()=>Promise<void>)[]=[]
 afterEach(async()=>{for(const close of cleanup.splice(0).reverse())await close()})
@@ -57,8 +57,8 @@ describe.each(['pi','opencode'] as const)('%s runtime plugin',provider=>{
   expect(file.runs.every(run=>run.usage===undefined)).toBe(true)
  },60000)
  test('native permission denial is honored and does not execute the requested operation',async()=>{
-  const f=await setup(provider),message=await f.send('PLUGIN_ACTION');let runId='',action:import('../src/shared/domain/execution').NativeAction|undefined
-  await expect.poll(async()=>{runId=(await f.detail()).runs.at(-1)?.id??'';if(!runId)return;action=(await f.service.handle('listNativeActions',{conversationId:f.chat.id,runId}) as import('../src/shared/domain/execution').NativeAction[])[0];return action?.status},{timeout:20000}).toBe('pending')
+  const f=await setup(provider),message=await f.send('PLUGIN_ACTION');let runId='',action:import('../packages/shared/src/domain/execution').NativeAction|undefined
+  await expect.poll(async()=>{runId=(await f.detail()).runs.at(-1)?.id??'';if(!runId)return;action=(await f.service.handle('listNativeActions',{conversationId:f.chat.id,runId}) as import('../packages/shared/src/domain/execution').NativeAction[])[0];return action?.status},{timeout:20000}).toBe('pending')
   await f.service.handle('respondNativeAction',{conversationId:f.chat.id,runId,actionId:action!.id,response:{option:'no'}})
   const detail=await f.wait(message);expect(detail.runs.at(-1)?.status,detail.runs.at(-1)?.error).toBe('completed');await expect(readFile(join(f.work,'plugin-approved.txt'))).rejects.toThrow()
  },60000)

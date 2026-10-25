@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 应用与评估编译按当前工作区公开exports解析，保留原执行与分发合同。
  * [OUTPUT]: --stream-stability沿现有BDD登记Claude三次独立四轮及长命令/停止/重启探针，共15用户消息；失败完整保留、零重试，生产协议不改。
  * [INPUT]: 用户明确启动真实本机接入对照、已选择CLI程序与新的留证目录。
  * [OUTPUT]: 冻结源码/题目、零模型审阅/开窗、原pnpm dev BDD登记路径；复用已完成CLI基线仍沿原16外部运行账本，跨批来源/失败/回放保留。
@@ -11,7 +12,7 @@ import { mkdir, mkdtemp, readFile, writeFile, symlink, copyFile, readdir, open }
 import { resolve, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { createHash } from 'node:crypto'
-import { build } from 'esbuild'
+import { buildWorkspace as build } from './workspace-packages.mjs'
 
 const args = process.argv.slice(2), option = name => { const i = args.indexOf(name); return i < 0 ? undefined : args[i + 1] }, prepared = args.includes('--run-prepared')
 if (args.includes('--help')) { process.stdout.write('node scripts/evaluate-native-parity.mjs --root NEW_DIR --codex FILE --claude FILE [--prepare-only] [--input-delivery] [--reuse-direct-root DIR --budget-file FILE] [--boai-only-recheck --reuse-direct-root DIR] [--stream-stability --reuse-direct-root DIR]\nUse --run-prepared to execute an existing prepared snapshot once. Freezes source and tasks; zero-model boot precheck, then paired BDD scenarios (four tasks or input-delivery four-round tasks for two runtimes). Up to 16 shared external native turns; no retries, model substitution or production edits.\n'); process.exit(0) }

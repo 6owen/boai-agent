@@ -7,7 +7,7 @@
 import { expect } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 import { test as base } from '../support/test'
-import type { WebSearchServiceConfig } from '../../../src/shared/domain/web-search'
+import type { WebSearchServiceConfig } from '../../../packages/shared/src/domain/web-search'
 
 export const test = base.extend<{ search: { service?: WebSearchServiceConfig } }>({ search: async ({}, use) => use({}) })
 const { Given, When, Then } = createBdd(test)

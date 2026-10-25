@@ -6,10 +6,10 @@
  * [PROTOCOL]: 变化同步Header与所属.folder.md。
  */
 import { expect, it } from 'vitest'
-import type { AgentRun, DiscussionTurn, Message, WorkItem } from '../src/shared/domain'
-import type { NativeAction } from '../src/shared/domain/execution'
-import type { InboxItem } from '../src/shared/domain/inbox'
-import { messageExecutionScope, projectMessageExecution } from '../src/runtime/modules/conversations/message-execution'
+import type { AgentRun, DiscussionTurn, Message, WorkItem } from '../packages/shared/src/domain'
+import type { NativeAction } from '../packages/shared/src/domain/execution'
+import type { InboxItem } from '../packages/shared/src/domain/inbox'
+import { messageExecutionScope, projectMessageExecution } from '../packages/runtime/src/modules/conversations/message-execution'
 
 const message: Message = { id: 'm1', conversationId: 'group', senderType: 'user', senderId: 'user', senderName: 'User', content: 'first root', sequence: 1, createdAt: '2026-10-18T00:00:00Z', status: 'completed' }
 function run(id: string, options: Partial<AgentRun> = {}): AgentRun { return { id, conversationId: 'group', triggerMessageId: 'm1', messageId: '', agentId: 'one', agentName: 'One', status: 'completed', createdAt: '2026-10-18T00:00:00Z', toolEvents: [], phase: 'execution', ...options } }

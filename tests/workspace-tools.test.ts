@@ -9,8 +9,8 @@ import { mkdtemp, realpath, rm, mkdir, writeFile, symlink, readFile } from 'node
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { get } from 'node:http'
-import { TerminalService } from '../src/runtime/modules/workspace-tools/terminal-service'
-import { PreviewService } from '../src/runtime/modules/workspace-tools/preview-service'
+import { TerminalService } from '../packages/runtime/src/modules/workspace-tools/terminal-service'
+import { PreviewService } from '../packages/runtime/src/modules/workspace-tools/preview-service'
 const clean: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const f of clean.splice(0).reverse()) await f(); vi.unstubAllEnvs() })
 async function fixture() {

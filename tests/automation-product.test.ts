@@ -17,22 +17,22 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { mkdtemp, mkdir, readFile, readdir, rename, rm, writeFile, access } from 'node:fs/promises'
 import { RequestContext } from '@mastra/core/request-context'
 import { noopObserve } from '@mastra/core/tools'
-import { createTaskRuntime } from '../src/runtime/adapters/mastra/task-runtime'
+import { createTaskRuntime } from '../packages/runtime/src/adapters/mastra/task-runtime'
 import { tmpdir } from 'node:os'
 import { createHash, randomUUID } from 'node:crypto'
 import { join } from 'node:path'
-import type { AgentEngine, EngineContext } from '../src/runtime/contracts'
-import type { AutomationDefinition, AutomationHistoryPage, AutomationInput, AutomationOccurrence, AutomationsView, Connection, Conversation, ConversationDetail, Snapshot } from '../src/shared/domain'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { AppService } from '../src/runtime/service'
-import { automationCron, matchesSchedule, nextTimes } from '../src/runtime/modules/automations/schedule-policy'
-import { automationNeedsAttention } from '../src/shared/domain/automations'
-import type { AppEvent } from '../src/shared/ipc'
-import { mainConversations } from '../src/shared/domain/conversation-list'
-import type { BrowserActionEnvelope, BrowserHostBridge, BrowserLease } from '../src/shared/ipc/browser'
-import type { BrowserRepository } from '../src/runtime/modules/browser/repository'
-import type { ConversationView } from '../src/shared/domain/reading'
-import type { DataSource } from '../src/shared/domain/sources'
+import type { AgentEngine, EngineContext } from '../packages/runtime/src/contracts'
+import type { AutomationDefinition, AutomationHistoryPage, AutomationInput, AutomationOccurrence, AutomationsView, Connection, Conversation, ConversationDetail, Snapshot } from '../packages/shared/src/domain'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { AppService } from '../packages/runtime/src/service'
+import { automationCron, matchesSchedule, nextTimes } from '../packages/runtime/src/modules/automations/schedule-policy'
+import { automationNeedsAttention } from '../packages/shared/src/domain/automations'
+import type { AppEvent } from '../packages/shared/src/ipc'
+import { mainConversations } from '../packages/shared/src/domain/conversation-list'
+import type { BrowserActionEnvelope, BrowserHostBridge, BrowserLease } from '../packages/shared/src/ipc/browser'
+import type { BrowserRepository } from '../packages/runtime/src/modules/browser/repository'
+import type { ConversationView } from '../packages/shared/src/domain/reading'
+import type { DataSource } from '../packages/shared/src/domain/sources'
 import { webSearchServer, webSourceConfig, resultUrl, pageText } from './fixtures/web-search-server'
 
 const disposers: (() => Promise<void>)[] = []
@@ -56,7 +56,7 @@ async function setup({ allowCommands = false, engine: customEngine, browserHost 
 
 async function stagedDownload(f: Awaited<ReturnType<typeof setup>>, conversationId: string, runId: string) {
   const store = (f.service as unknown as { store: ProductStore }).store
-  const run = await store.get<import('../src/shared/domain').AgentRun>('runs', runId)
+  const run = await store.get<import('../packages/shared/src/domain').AgentRun>('runs', runId)
   const directory = join(f.root, 'browser-downloads', runId), path = join(directory, 'report.txt'), bytes = 'downloaded report'
   await mkdir(directory, { recursive: true }); await writeFile(path, bytes)
   const lease = { id: runId, scopeKey: 'application', conversationId, agentId: run!.agentId, runId, downloadDirectory: directory }
@@ -242,7 +242,7 @@ it('shows scheduled instructions and replies in the employee main chat after cle
   const execution = (await f.detail(first.conversationId)).runs.find(run => run.phase === 'execution')!
   expect(await f.service.handle('resolveExecutionMessage', { conversationId: first.conversationId, runId: execution.id })).toEqual({ conversationId: personal.id, messageId: messages[0].id })
   expect(messages.map(message => message.content)).toEqual([f.input.prompt, '当前聊天的回复'])
-  const chat = await f.service.handle('getConversationView', { conversationId: personal.id }) as import('../src/shared/domain/reading').ConversationView
+  const chat = await f.service.handle('getConversationView', { conversationId: personal.id }) as import('../packages/shared/src/domain/reading').ConversationView
   expect(chat.messages).toEqual(messages)
   expect(chat.messagePage.items.every(item => item.status === 'available')).toBe(true)
   expect(messages.every(message => message.automationPublication?.occurrenceId === first.id && !message.runId && !message.turnId)).toBe(true)

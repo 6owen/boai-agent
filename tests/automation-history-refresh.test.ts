@@ -10,9 +10,9 @@
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import type { AutomationHistoryPage } from '../src/shared/domain'
-import type { DesktopApi } from '../src/shared/ipc'
-import { AutomationHistory } from '../src/renderer/pages/schedules/automation-history-list'
+import type { AutomationHistoryPage } from '../packages/shared/src/domain'
+import type { DesktopApi } from '../packages/shared/src/ipc'
+import { AutomationHistory } from '../apps/electron/src/renderer/pages/schedules/automation-history-list'
 import { toast } from 'sonner'
 
 let host: HTMLDivElement, root: Root

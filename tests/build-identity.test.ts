@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 共享包外改同时使桌面构建和UI来源身份失效。
+ * [OUTPUT]: 应用与共享包外改同时使桌面构建和UI来源身份失效。
  * [INPUT]: 独立Git工作目录、源码/技能源和实际构建文件。
  * [OUTPUT]: 旧dist/外改拒绝；真实重复记录仅时间变化仍同字节，源码/输出/Node变化不相同。
  * [POS]: 开发/CI产物身份的真实文件负例，不启动应用。
@@ -50,6 +50,18 @@ it('共享设计包变化使桌面构建与UI源码身份一并失效', async ()
   await recordBuildIdentity(await buildInputHash(root), root)
   const before = await sourceIdentity(root)
   await writeFile(file, 'export const accent = "#93b8ff"')
+  expect((await sourceIdentity(root)).sourceHash).not.toBe(before.sourceHash)
+  await expect(verifyBuildIdentity(root)).rejects.toThrow(/源码/)
+})
+it.each(['apps/electron/src/main/main.ts', 'apps/cli/src/index.ts', 'apps/electron/package.json'])('应用输入 %s 外改使旧构建与UI源码身份失效', async (path) => {
+  await mkdir(join(root, path.slice(0, path.lastIndexOf('/'))), { recursive: true })
+  const file = join(root, path)
+  await writeFile(file, path.endsWith('.json') ? '{"name":"fixture"}' : 'export const value = 1')
+  execFileSync('git', ['add', path], { cwd: root })
+  execFileSync('git', ['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'fixture'], { cwd: root })
+  await recordBuildIdentity(await buildInputHash(root), root)
+  const before = await sourceIdentity(root)
+  await writeFile(file, path.endsWith('.json') ? '{"name":"changed"}' : 'export const value = 2')
   expect((await sourceIdentity(root)).sourceHash).not.toBe(before.sourceHash)
   await expect(verifyBuildIdentity(root)).rejects.toThrow(/源码/)
 })

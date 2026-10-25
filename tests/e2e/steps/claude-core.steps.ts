@@ -18,13 +18,13 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test } from './claude-employee.steps'
 import { systemKeychainLaunch } from '../support/saved-model'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
 import { verifyLocalAgentNavigation } from '../support/local-agent-navigation'
 import { archiveNativeFinalReview } from '../support/native-final-review'
-import type { AgentDelivery, AgentRun, BudgetModelCall, Conversation, ConversationEvent, DecisionRecord, DiscussionTurn, WorkBudget, WorkItem } from '../../../src/shared/domain'
-import type { BoboCollaborationOperation } from '../../../src/shared/domain/bobo-collaboration'
-import type { TeamCreationOperation } from '../../../src/shared/domain/team-creation'
-import type { ProfileModelCall } from '../../../src/runtime/modules/profile/profile-activity'
+import type { AgentDelivery, AgentRun, BudgetModelCall, Conversation, ConversationEvent, DecisionRecord, DiscussionTurn, WorkBudget, WorkItem } from '../../../packages/shared/src/domain'
+import type { BoboCollaborationOperation } from '../../../packages/shared/src/domain/bobo-collaboration'
+import type { TeamCreationOperation } from '../../../packages/shared/src/domain/team-creation'
+import type { ProfileModelCall } from '../../../packages/runtime/src/modules/profile/profile-activity'
 
 const { Then } = createBdd(test)
 Then('用户通过Claude核心助手完成{string}并在重启后核对原结果', async ({ runtime, claudeEmployee: state }, scenario: string) => {

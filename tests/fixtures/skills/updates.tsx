@@ -9,8 +9,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { ResourceDetail } from '@/pages/library/resource-detail'
 import { SkillUpdateBatchView } from '@/pages/library/skill-update-batch'
 import { Button } from '@/components/ui/button'
-import type { Resource, Snapshot } from '@shared/domain'
-import type { AppEvent, DesktopApi } from '@shared/ipc'
+import type { Resource, Snapshot } from '@boai/shared/domain'
+import type { AppEvent, DesktopApi } from '@boai/shared/ipc'
 import '@/styles/global.css'
 
 const listeners = new Set<(event: AppEvent) => void>(), events = new EventSource('/fixture-skill-events')

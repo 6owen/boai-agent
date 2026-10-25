@@ -10,7 +10,7 @@ import { createBdd } from 'playwright-bdd'
 import { test as base } from '../support/test'
 import { publishMonitorSample, monitorCheckpoint } from '../support/automation-monitor'
 import { captureAutomationNotifications, notificationCount } from '../support/automation-notifications'
-import type { AutomationMonitorCheckpoint, AutomationOccurrence } from '../../../src/shared/domain'
+import type { AutomationMonitorCheckpoint, AutomationOccurrence } from '../../../packages/shared/src/domain'
 
 type State = { conversationId: string; planId: string; changed?: AutomationOccurrence; cooling?: AutomationOccurrence; checkpoint?: AutomationMonitorCheckpoint; count?: number }
 export const test = base.extend<{ monitor: State }>({ monitor: async ({}, use) => use({ conversationId: '', planId: '' }) })

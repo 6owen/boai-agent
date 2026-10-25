@@ -8,10 +8,10 @@ import { afterEach, expect, test } from 'vitest'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { behaviorModelContext } from '../src/runtime/modules/employees/behavior-context'
-import { NativeConversationEngine, type NativeConversationInput } from '../src/runtime/adapters/native-conversation'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import type { EngineContext } from '../src/runtime/contracts'
+import { behaviorModelContext } from '../packages/runtime/src/modules/employees/behavior-context'
+import { NativeConversationEngine, type NativeConversationInput } from '../packages/runtime/src/adapters/native-conversation'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import type { EngineContext } from '../packages/runtime/src/contracts'
 
 const roots: string[] = []
 afterEach(async () => { for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }) })

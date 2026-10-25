@@ -6,22 +6,23 @@
  * [POS]: Real G2a/G2b representative acceptance, independently labeled; no personal writes or product budget.
  * [PROTOCOL]: Update Header/tests map and the Magpie ledger for every batch, including failures.
  */
+import { workspaceInputFiles } from './support/workspace-inputs'
 import { createServer } from 'node:http'
 import { createHash } from 'node:crypto'
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { expect, test, vi } from 'vitest'
-import { AppService } from '../src/runtime/service'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import type { AgentHome, Connection, Conversation, ConversationDetail, DigitalAgent, LaunchProfile, Message } from '../src/shared/domain'
-import type { ArtifactPreview, ArtifactVersion } from '../src/shared/domain/artifacts'
-import type { RuntimePluginCatalog } from '../src/shared/plugins/runtime-catalog'
-import type { NativeAction } from '../src/shared/domain/execution'
+import { AppService } from '../packages/runtime/src/service'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import type { AgentHome, Connection, Conversation, ConversationDetail, DigitalAgent, LaunchProfile, Message } from '../packages/shared/src/domain'
+import type { ArtifactPreview, ArtifactVersion } from '../packages/shared/src/domain/artifacts'
+import type { RuntimePluginCatalog } from '../packages/shared/src/plugins/runtime-catalog'
+import type { NativeAction } from '../packages/shared/src/domain/execution'
 import { nativeMagpieProfile } from './fixtures/native-magpie-profile'
 
 const sha = (bytes: Buffer | string) => createHash('sha256').update(bytes).digest('hex')
 async function sources() {
-  const paths = (await readdir(resolve('src'), { recursive: true })).filter(file => /\.(ts|tsx|json)$/.test(file)).map(file => `src/${file}`)
+  const paths = (await workspaceInputFiles()).filter(file => /\.(ts|tsx|json)$/.test(file))
   paths.push('package.json', 'pnpm-lock.yaml', 'tests/plugin-magpie-live.test.ts', 'tests/fixtures/native-magpie-profile.ts')
   const entries = await Promise.all(paths.sort().map(async path => [path, sha(await readFile(path))]))
   return { hash: sha(JSON.stringify(entries)), files: Object.fromEntries(entries) }

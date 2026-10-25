@@ -17,11 +17,11 @@ import { randomUUID } from 'node:crypto'
 import type { Desktop } from '../support/desktop'
 import { processIsRunning, runtimeChildProcessIds } from '../support/automation-recovery'
 import { test } from './codex-employee.steps'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
 import { legacyMaterialGrant, nextMaterialDialog } from '../support/materials'
 import { prepareCodexMaterialSource } from '../support/codex-resources'
 import { openBindingEmployee } from '../support/skill-binding'
-import type { BudgetModelCall } from '../../../src/shared/domain'
+import type { BudgetModelCall } from '../../../packages/shared/src/domain'
 
 const { Then } = createBdd(test)
 async function prepareGroup(runtime: Desktop, firstId: string) {

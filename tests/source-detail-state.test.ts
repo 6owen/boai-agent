@@ -5,9 +5,9 @@
  * [PROTOCOL]: 变化同步Header与所属.folder.md。
  */
 import { afterEach, expect, it, vi } from 'vitest'
-import type { AppEvent, DesktopApi } from '../src/shared/ipc'
-import type { DataSource } from '../src/shared/domain/sources'
-import { observeSourceDetail } from '../src/renderer/pages/sources/source-detail-state'
+import type { AppEvent, DesktopApi } from '../packages/shared/src/ipc'
+import type { DataSource } from '../packages/shared/src/domain/sources'
+import { observeSourceDetail } from '../apps/electron/src/renderer/pages/sources/source-detail-state'
 
 const source = { id: 'source-a', name: 'MCP', type: 'mcp', revision: 1, mcp: { transport: 'http', url: 'https://example.com/mcp', authType: 'none' } } as DataSource
 function deferred() {

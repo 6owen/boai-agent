@@ -8,12 +8,12 @@
 import { act, createElement as h, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import type { Conversation, ConversationInput, DigitalAgent, Snapshot } from '../src/shared/domain'
-import type { DesktopApi } from '../src/shared/ipc'
-import { GuardContext } from '../src/renderer/components/common'
-import { useEditorGuard } from '../src/renderer/components/common/use-editor-guard'
-import { GroupProfile } from '../src/renderer/pages/contacts/group-profile'
-import { GroupMemberDialog } from '../src/renderer/components/employee/group-member-selection'
+import type { Conversation, ConversationInput, DigitalAgent, Snapshot } from '../packages/shared/src/domain'
+import type { DesktopApi } from '../packages/shared/src/ipc'
+import { GuardContext } from '../apps/electron/src/renderer/components/common'
+import { useEditorGuard } from '../apps/electron/src/renderer/components/common/use-editor-guard'
+import { GroupProfile } from '../apps/electron/src/renderer/pages/contacts/group-profile'
+import { GroupMemberDialog } from '../apps/electron/src/renderer/components/employee/group-member-selection'
 
 const agents = ['Alice', 'Bob', 'Carol'].map((name, index) => ({ id: `a${index}`, name, role: '研究员', active: true, color: '#438b80' } as DigitalAgent))
 const initial = { id: 'g', kind: 'group', title: '原群名', agentIds: ['a0', 'a1'], mode: 'mention', sharedKnowledgeIds: [], memoryScope: 'conversation', configVersion: 4 } as unknown as Conversation

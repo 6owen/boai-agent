@@ -10,10 +10,10 @@ import { createServer } from 'node:http'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { AppService } from '../src/runtime/service'
-import { MastraEngine } from '../src/runtime/adapters/mastra/engine'
-import type { ChannelBindingState, ChannelDelivery } from '../src/shared/domain/channels'
-import type { Connection, ConversationDetail, DigitalAgent, Snapshot } from '../src/shared/domain'
+import { AppService } from '../packages/runtime/src/service'
+import { MastraEngine } from '../packages/runtime/src/adapters/mastra/engine'
+import type { ChannelBindingState, ChannelDelivery } from '../packages/shared/src/domain/channels'
+import type { Connection, ConversationDetail, DigitalAgent, Snapshot } from '../packages/shared/src/domain'
 
 const platform = vi.hoisted(() => ({ channels: [] as unknown[], sends: [] as { url: string; data: unknown }[] }))
 vi.mock('@larksuite/channel', async importOriginal => {

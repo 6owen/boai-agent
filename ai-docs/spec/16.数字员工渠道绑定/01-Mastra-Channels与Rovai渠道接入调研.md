@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [INPUT]: 用户提出每个数字员工连接飞书/Telegram/钉钉机器人并要求实现前review；本仓库Mastra 1.71.0文档与类型、官方资料、固定Chat SDK/Rovai源码、飞书适配器0.3.0/channel 0.7.1发布包、BOAI主进程与runtime消息入口。
 [OUTPUT]: 2026-10-12按用户纠正收敛为现成Mastra优先，飞书/Lark不适配时直接迁用并维护Rovai对应代码；首版以机器人绑定员工、平台聊天映射现有会话和聊天记录为基础，不自建渠道框架，未实施。
 [OUTPUT]: 2026-10-12归入第16组数字员工渠道绑定，保留固定来源与复核记录；后续开发阶段、验收及唯一进度见本组02，未接入真实渠道。
@@ -164,20 +165,20 @@ flowchart LR
 
 ### 4.2 临时Agent不构成自建渠道的理由
 
-[agent-factory.ts](../../../src/runtime/adapters/mastra/agent-factory.ts) 的阶段Agent仍按原方式创建。接入时把**框架管理的Channel/Provider对象**放在应用运行期，通过现成handlers关联员工和会话；不在每个执行阶段重新连接机器人。
+[agent-factory.ts](../../../packages/runtime/src/adapters/mastra/agent-factory.ts) 的阶段Agent仍按原方式创建。接入时把**框架管理的Channel/Provider对象**放在应用运行期，通过现成handlers关联员工和会话；不在每个执行阶段重新连接机器人。
 
-这属于生命周期装配。BOAI已有持续运行的 [runtime worker](../../../src/runtime/worker.ts)，由 [Electron Main](../../../src/main/main.ts) 启动；无需因为阶段Agent临时创建就推导出“必须自行维护机器人系统”。长期注册对象、已有持久存储及应用退出如何接线，先按所选Provider/AgentChannels公开接口验证。
+这属于生命周期装配。BOAI已有持续运行的 [runtime worker](../../../apps/electron/src/worker/index.ts)，由 [Electron Main](../../../apps/electron/src/main/main.ts) 启动；无需因为阶段Agent临时创建就推导出“必须自行维护机器人系统”。长期注册对象、已有持久存储及应用退出如何接线，先按所选Provider/AgentChannels公开接口验证。
 
 对于API员工与原生员工，均优先让自定义handler调用BOAI原执行入口；原生员工接线需要实际验证，不能为了渠道额外运行一次Mastra模型。也不要求把Rovai每个模块重新包装成自定义Mastra Provider后才可使用。
 
 ### 4.3 必要接线与验收不变量
 
 - **员工与渠道绑定**：同一机器人明确对应员工；一个员工可以有多个平台身份。优先引用现成安装记录，只补BOAI员工关系。
-- **消息来源**：[service.ts](../../../src/runtime/service.ts) 当前 `sendMessage` 使用本地 `user` 身份。外部身份须经过授权与映射，保留平台来源，不能把任意入站消息直接当成本机用户。
+- **消息来源**：[service.ts](../../../packages/runtime/src/service.ts) 当前 `sendMessage` 使用本地 `user` 身份。外部身份须经过授权与映射，保留平台来源，不能把任意入站消息直接当成本机用户。
 - **会话归属**：外部私聊/群/thread须映射到明确会话，不因同名用户或同一员工而合并不同平台历史。SDK线程与BOAI会话之间的必要映射不等于新建第二套聊天系统。
 - **单次业务执行**：复用现有消息回执与请求ID，核对平台重复投递不会再创建同一任务；群多机器人处理优先复用现成渠道能力或Rovai既有聚合实现。
 - **回复与重试**：任务结果和平台发送结果分别记录；发送未知不能伪装成功，也不能通过重新执行员工任务解决。优先保留现成组件的状态与查询能力，补BOAI展示即可。
-- **凭据与UI**：[vault.ts](../../../src/main/vault.ts) 及现有BOAI组件继续复用；Provider有加密配置时直接接入。飞书、Lark分别配置、连接、断开和验收。
+- **凭据与UI**：[vault.ts](../../../apps/electron/src/main/vault.ts) 及现有BOAI组件继续复用；Provider有加密配置时直接接入。飞书、Lark分别配置、连接、断开和验收。
 
 这些是接入已有产品必须核对的关系，不预设新的数据库表族或另一套队列服务。
 

@@ -12,8 +12,8 @@ import { join, resolve } from 'node:path'
 import { createHash } from 'node:crypto'
 import { test as base } from '../support/test'
 import { nextMaterialDialog } from '../support/materials'
-import type { CliInstallation } from '../../../src/shared/ipc/cli-installation'
-import type { Snapshot } from '../../../src/shared/domain'
+import type { CliInstallation } from '../../../packages/shared/src/ipc/cli-installation'
+import type { Snapshot } from '../../../packages/shared/src/domain'
 
 interface State { directory?: string; command?: string; status?: CliInstallation; before?: Snapshot; facts: unknown[] }
 export const test = base.extend<{ installation: State }>({ installation: async ({}, use) => use({ facts: [] }) })

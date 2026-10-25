@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [OUTPUT]: 2026-10-17 Magpie完整约定范围技术验收收口，当前包7场/350回归/8受控及3真实请求，M01–M22证据归20组02 §6.34；原失败与外部未认证范围保留。
 [OUTPUT]: 2026-10-17 Magpie四CLI原生外改/备份恢复及双连接删除换绑已验，插件停用排空已验；49受控请求和Pi原断言失败归20组02 §6.33，原问答偏差补Trace定位，完整goal未完成。
 [OUTPUT]: 2026-10-17 Magpie实际混合预算负例、四CLI活动更新及源码桌面活动导入已补；67受控请求、原失败和最终类型/构建归20组02 §6.32；未改生产逻辑，完整goal未完成。
@@ -95,14 +96,14 @@ M20须分开验证网关对合成空历史的行为与BOAI真实中断后生成�
 
 | 代码位置 | 初始基线事实 | 设计要求（当前落实程度见02） |
 | --- | --- | --- |
-| [Connection](../../../src/shared/domain/index.ts) | provider为openai/anthropic/openai-compatible，含baseUrl、model、chat/responses | 兼容扩展网关元信息与协议端点，不按网关品牌扩张执行后端 |
-| [model-config](../../../src/runtime/adapters/mastra/model-config.ts) | 自定义地址已走Mastra兼容适配；Anthropic使用SDK | 复用调用路径，补协议相关URL、请求标识与响应元信息 |
-| [model-catalog](../../../src/runtime/adapters/mastra/model-catalog.ts) | 标准目录解析只返回去重ID | 增加结构化目录，保留旧调用者兼容投影 |
-| [model-preferences](../../../src/shared/domain/model-preferences.ts) | 推理控制仅开放已验证的DeepSeek官方地址/模型，持久类型只有auto/off/low/high/max | 网关能力按目录及协议验证，补完整偏好类型/校验/UI/请求映射，不能仅放开域名 |
-| [claude-provider](../../../src/shared/domain/claude-provider.ts) | 明确Anthropic来源可接；普通OpenAI兼容地址不会自动视为Messages | 让明确支持的网关Messages端点进入原校验，不能放开任意地址推断 |
-| [runtime-config](../../../src/runtime/modules/backends/runtime-config.ts) | Codex和插件绑定当前拒绝connectionId；Claude已有明确API来源分路 | 第二期增加有能力声明的模型来源绑定；不能只删拒绝条件 |
-| [Runtime API](../../../src/shared/plugins/runtime-api.ts) | 有程序/会话/事件与工具桥，尚无本设计的外部模型连接声明 | 按能力演进最小接口，旧插件继续沿原配置运行 |
-| [桌面入口](../../../src/main/main.ts)、[打包配置](../../../package.json) | 已有单实例处理；未发现`boai://`导入注册/冷启动处理 | G3须同时接系统协议注册、冷/热启动、待初始化队列与真实保存回执 |
+| [Connection](../../../packages/shared/src/domain/index.ts) | provider为openai/anthropic/openai-compatible，含baseUrl、model、chat/responses | 兼容扩展网关元信息与协议端点，不按网关品牌扩张执行后端 |
+| [model-config](../../../packages/runtime/src/adapters/mastra/model-config.ts) | 自定义地址已走Mastra兼容适配；Anthropic使用SDK | 复用调用路径，补协议相关URL、请求标识与响应元信息 |
+| [model-catalog](../../../packages/runtime/src/adapters/mastra/model-catalog.ts) | 标准目录解析只返回去重ID | 增加结构化目录，保留旧调用者兼容投影 |
+| [model-preferences](../../../packages/shared/src/domain/model-preferences.ts) | 推理控制仅开放已验证的DeepSeek官方地址/模型，持久类型只有auto/off/low/high/max | 网关能力按目录及协议验证，补完整偏好类型/校验/UI/请求映射，不能仅放开域名 |
+| [claude-provider](../../../packages/shared/src/domain/claude-provider.ts) | 明确Anthropic来源可接；普通OpenAI兼容地址不会自动视为Messages | 让明确支持的网关Messages端点进入原校验，不能放开任意地址推断 |
+| [runtime-config](../../../packages/runtime/src/modules/backends/runtime-config.ts) | Codex和插件绑定当前拒绝connectionId；Claude已有明确API来源分路 | 第二期增加有能力声明的模型来源绑定；不能只删拒绝条件 |
+| [Runtime API](../../../packages/runtime-plugin-sdk/src/runtime-api.ts) | 有程序/会话/事件与工具桥，尚无本设计的外部模型连接声明 | 按能力演进最小接口，旧插件继续沿原配置运行 |
+| [桌面入口](../../../apps/electron/src/main/main.ts)、[打包配置](../../../package.json) | 已有单实例处理；未发现`boai://`导入注册/冷启动处理 | G3须同时接系统协议注册、冷/热启动、待初始化队列与真实保存回执 |
 
 以上是最初审阅时的差距；本次实现及当前包技术验收已补齐，逐项证据归02 §6.34。逐请求响应头记录已有首批证据，可选路由轮询另期。其他专题的兼容API、Codex或插件测试结果不能替代本组Magpie批次。
 

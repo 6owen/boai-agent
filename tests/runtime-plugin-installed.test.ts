@@ -8,9 +8,9 @@ import { expect, test } from 'vitest'
 import { mkdtemp, realpath, rm, mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { AppService } from '../src/runtime/service'
-import type { LaunchProfile, Conversation, DigitalAgent, ConversationDetail, Message } from '../src/shared/domain'
-import type { RuntimePluginCatalog } from '../src/shared/plugins/runtime-catalog'
+import { AppService } from '../packages/runtime/src/service'
+import type { LaunchProfile, Conversation, DigitalAgent, ConversationDetail, Message } from '../packages/shared/src/domain'
+import type { RuntimePluginCatalog } from '../packages/shared/src/plugins/runtime-catalog'
 const mode = process.env.BOAI_TEST_INSTALLED_PI
 const evidenceRoot = process.env.BOAI_PLUGIN_EVIDENCE_DIR
 test.skipIf(!mode)('installed Pi handshake and explicitly opted-in live messages', async () => {

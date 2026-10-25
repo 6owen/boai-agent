@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [INPUT]: 2026-10-02 的全局检索/员工任务源码、@mastra/core 1.71.0 安装版文档与类型、Mastra Search/Filesystem/LSP 官方说明、D6 既有验收记录，以及用户明确排除向量语义检索和 embedding、先检索后浏览器的实施顺序。
 [OUTPUT]: Q1-A/B/C 与 Q2 已实现并通过正文来源/48项定向/8项桌面与固定中文质量规模验收；已实现能力与剩余缺口、上一轮 73 项定向回归基线证据、Q1 文件正文/Q2 中文多词与相关性排序的本地实施合同和唯一详细进度；Q3 员工检索与 LSP 为后续按需求确定的能力，不阻塞浏览器。
 [POS]: ai-docs/spec/5.Mastra能力扩展/09-检索文件系统与LSP能力核对.md；本地检索升级执行与进度入口，第 10 组仅保留既有 D6 证据，第 11 组单独维护浏览器进度。
@@ -56,16 +57,16 @@ Mastra Search 提供独立文本索引及关键词检索；Filesystem 管文件�
 
 | 文件与行号 | 当前职责 | 升级时复用位置 |
 | --- | --- | --- |
-| [reading-sql.ts](../../../src/runtime/modules/conversations/reading-sql.ts) `:22–44` | 可见性、完成状态、连续子串、条件及分页顺序 | Q1 正文读模型；Q2 候选与排序 |
-| [search-repository.ts](../../../src/runtime/modules/conversations/search-repository.ts) `:39–114` | 来源身份、摘要、有界补页和点击复核 | 新正文命中仍沿原对象身份与校验 |
-| [search-repository.ts](../../../src/runtime/modules/conversations/search-repository.ts) `:129–158` | 明确消息窗口、目标消失空页 | 保持历史定位合同 |
-| [reading.ts](../../../src/shared/domain/reading.ts) `:42` | 四类结果与固定目标协议 | 正文命中信息按需扩展，不生成第五种假对象 |
-| [conversation-search.tsx](../../../src/renderer/pages/conversations/-components/conversation-search.tsx) `:70–88` | 延迟查询、代际失效和点击复核 | 沿用普通搜索弹窗及失效处理 |
-| [task-runtime.ts](../../../src/runtime/adapters/mastra/task-runtime.ts) `:29–32` | 每次运行的 LocalFilesystem/Workspace；原生工具关闭 | 员工检索用可信任务上下文装配 |
-| [task-runtime.ts](../../../src/runtime/adapters/mastra/task-runtime.ts) `:62–115` | 自定义读/写/列目录/发布/知识搜索 | 保留权限包装及同一核验字节读取 |
-| [knowledge-search.ts](../../../src/runtime/modules/resources/knowledge-search.ts) `:16、35、49` | 已获准 MD/TXT 知识关键词搜索；扫描最多 256 文件/8 MiB | Q3 先复用，不能扩大为全盘扫描 |
-| [file-access.ts](../../../src/runtime/modules/workspaces/file-access.ts) `:19–27、108–117` | 来源复核、`self:/work`/`runs` 边界及 shared 只读 | 文件正文与员工工具仍核对原授权 |
-| [agent-factory.ts](../../../src/runtime/adapters/mastra/agent-factory.ts) `:95–115` | 仅任务装配工具；阶段结束销毁 Workspace | 普通聊天不自动获得检索或文件工具 |
+| [reading-sql.ts](../../../packages/runtime/src/modules/conversations/reading-sql.ts) `:22–44` | 可见性、完成状态、连续子串、条件及分页顺序 | Q1 正文读模型；Q2 候选与排序 |
+| [search-repository.ts](../../../packages/runtime/src/modules/conversations/search-repository.ts) `:39–114` | 来源身份、摘要、有界补页和点击复核 | 新正文命中仍沿原对象身份与校验 |
+| [search-repository.ts](../../../packages/runtime/src/modules/conversations/search-repository.ts) `:129–158` | 明确消息窗口、目标消失空页 | 保持历史定位合同 |
+| [reading.ts](../../../packages/shared/src/domain/reading.ts) `:42` | 四类结果与固定目标协议 | 正文命中信息按需扩展，不生成第五种假对象 |
+| [conversation-search.tsx](../../../apps/electron/src/renderer/pages/conversations/-components/conversation-search.tsx) `:70–88` | 延迟查询、代际失效和点击复核 | 沿用普通搜索弹窗及失效处理 |
+| [task-runtime.ts](../../../packages/runtime/src/adapters/mastra/task-runtime.ts) `:29–32` | 每次运行的 LocalFilesystem/Workspace；原生工具关闭 | 员工检索用可信任务上下文装配 |
+| [task-runtime.ts](../../../packages/runtime/src/adapters/mastra/task-runtime.ts) `:62–115` | 自定义读/写/列目录/发布/知识搜索 | 保留权限包装及同一核验字节读取 |
+| [knowledge-search.ts](../../../packages/runtime/src/modules/resources/knowledge-search.ts) `:16、35、49` | 已获准 MD/TXT 知识关键词搜索；扫描最多 256 文件/8 MiB | Q3 先复用，不能扩大为全盘扫描 |
+| [file-access.ts](../../../packages/runtime/src/modules/workspaces/file-access.ts) `:19–27、108–117` | 来源复核、`self:/work`/`runs` 边界及 shared 只读 | 文件正文与员工工具仍核对原授权 |
+| [agent-factory.ts](../../../packages/runtime/src/adapters/mastra/agent-factory.ts) `:95–115` | 仅任务装配工具；阶段结束销毁 Workspace | 普通聊天不自动获得检索或文件工具 |
 
 ## 3. Mastra Search 怎样复用才合适
 

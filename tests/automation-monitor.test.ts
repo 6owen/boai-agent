@@ -8,11 +8,11 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { AutomationDefinition, AutomationInput, AutomationMonitorCheckpoint, AutomationMonitorPolicy, AutomationMonitorRead, AutomationNotice, AutomationOccurrence } from '../src/shared/domain'
-import { compareMonitorObservation, monitorPolicyFingerprint } from '../src/runtime/modules/automations/automation-monitor'
-import { AutomationRepository } from '../src/runtime/modules/automations/automation-repository'
-import { AutomationNotifications } from '../src/runtime/modules/automations/automation-notifications'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
+import type { AutomationDefinition, AutomationInput, AutomationMonitorCheckpoint, AutomationMonitorPolicy, AutomationMonitorRead, AutomationNotice, AutomationOccurrence } from '../packages/shared/src/domain'
+import { compareMonitorObservation, monitorPolicyFingerprint } from '../packages/runtime/src/modules/automations/automation-monitor'
+import { AutomationRepository } from '../packages/runtime/src/modules/automations/automation-repository'
+import { AutomationNotifications } from '../packages/runtime/src/modules/automations/automation-notifications'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
 
 const disposers: (() => Promise<unknown>)[] = []
 afterEach(async () => { vi.useRealTimers(); for (const dispose of disposers.splice(0).reverse()) await dispose() })

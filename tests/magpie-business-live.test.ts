@@ -4,17 +4,18 @@
  * [POS]: Deterministic integration acceptance, not semantic quality optimization; personal BOAI/Magpie settings are untouched.
  * [PROTOCOL]: Update Header and tests/.folder.md and record every actual batch in the Magpie acceptance ledger.
  */
+import { workspaceInputFiles } from './support/workspace-inputs'
 import { createHash } from 'node:crypto'
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { afterAll, beforeAll, expect, test } from 'vitest'
-import { AppService } from '../src/runtime/service'
-import { MastraEngine } from '../src/runtime/adapters/mastra/engine'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { probeMagpie } from '../src/runtime/adapters/mastra/model-catalog'
-import type { Connection, Conversation, ConversationDetail, DigitalAgent, Message } from '../src/shared/domain'
-import type { ArtifactPreview, ArtifactVersion } from '../src/shared/domain/artifacts'
-import type { ModelProtocol } from '../src/shared/domain/model-gateway'
+import { AppService } from '../packages/runtime/src/service'
+import { MastraEngine } from '../packages/runtime/src/adapters/mastra/engine'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { probeMagpie } from '../packages/runtime/src/adapters/mastra/model-catalog'
+import type { Connection, Conversation, ConversationDetail, DigitalAgent, Message } from '../packages/shared/src/domain'
+import type { ArtifactPreview, ArtifactVersion } from '../packages/shared/src/domain/artifacts'
+import type { ModelProtocol } from '../packages/shared/src/domain/model-gateway'
 
 const enabled = process.env.BOAI_MAGPIE_BUSINESS_REAL === '1'
 const batch = process.env.BOAI_MAGPIE_BATCH ?? 'unset'
@@ -29,7 +30,7 @@ const requests: { protocol: ModelProtocol; phase: string; path: string; model: u
 let current: { protocol: ModelProtocol; phase: string } | undefined, version = ''
 const sha = (value: string | Buffer) => createHash('sha256').update(value).digest('hex')
 async function inputs() {
-  const files = (await readdir(resolve('src'), { recursive: true })).filter(file => /\.(ts|tsx|json)$/.test(file)).map(file => `src/${file}`)
+  const files = (await workspaceInputFiles()).filter(file => /\.(ts|tsx|json)$/.test(file))
   files.push('package.json', 'pnpm-lock.yaml', 'tests/magpie-business-live.test.ts')
   const entries = await Promise.all(files.sort().map(async file => [file, sha(await readFile(file))] as const))
   return { hash: sha(JSON.stringify(entries)), files: Object.fromEntries(entries) }

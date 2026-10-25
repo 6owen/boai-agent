@@ -40,20 +40,20 @@ import { DatabaseSync } from 'node:sqlite'
 import { teamEndpoint, sendTeamOutput } from './fixtures/team-planner'
 import { cliCommandEndpoint } from './fixtures/cli-command'
 import { cancellationEndpoint, cancellationInstructions } from './fixtures/cli-cancellation'
-import type { CancellationTarget } from '../src/shared/domain/run-cancellation'
-import type { MessageExecution } from '../src/shared/domain/message-execution'
-import type { RunCliGrant } from '../src/shared/cli/run-access'
-import { readLocalConnection } from '../src/cli/discovery'
-import { CliRpcClient } from '../src/cli/client'
-import type { Connection, DigitalAgent, Conversation } from '../src/shared/domain'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { startOwnedRuntime } from '../src/runtime/bootstrap'
-import { LaunchProfiles } from '../src/runtime/modules/backends/profiles'
+import type { CancellationTarget } from '../packages/shared/src/domain/run-cancellation'
+import type { MessageExecution } from '../packages/shared/src/domain/message-execution'
+import type { RunCliGrant } from '../packages/shared/src/cli/run-access'
+import { readLocalConnection } from '../packages/transport/src/discovery'
+import { CliRpcClient } from '../packages/transport/src/client'
+import type { Connection, DigitalAgent, Conversation } from '../packages/shared/src/domain'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { startOwnedRuntime } from '../packages/runtime/src/bootstrap'
+import { LaunchProfiles } from '../packages/runtime/src/modules/backends/profiles'
 import { version } from '../package.json'
-import { PROTOCOL_VERSION } from '../src/shared/cli/protocol'
-import { openValidationFixture } from '../src/cli/validation-fixture'
+import { PROTOCOL_VERSION } from '../packages/shared/src/cli/protocol'
+import { openValidationFixture } from '../apps/cli/src/validation-fixture'
 import { cliQuestionEndpoint } from './fixtures/cli-question'
-import type { ConversationDetail, Message } from '../src/shared/domain'
+import type { ConversationDetail, Message } from '../packages/shared/src/domain'
 
 const cleanup: (() => Promise<unknown> | void)[] = []
 afterEach(async () => { for (const action of cleanup.splice(0).reverse()) await action() })
@@ -592,8 +592,8 @@ describe.skipIf(process.env.BOAI_CLI_PROCESS_TEST !== '1')('actual standalone se
     expect(sessions.items.filter(room => room.purpose === 'core')).toHaveLength(0)
     const firstId = randomUUID(), args = ['run', '--attachment', valid, '--request-id', firstId, '--json']
     const first = await command(path, args); expect(first.code, first.stderr + first.stdout).toBe(0)
-    const original = await client.invoke('getMessageReceipt', { requestId: firstId }) as import('../src/shared/domain').Message
-    const detail = await client.invoke('getConversation', { id: original.conversationId }) as import('../src/shared/domain').ConversationDetail
+    const original = await client.invoke('getMessageReceipt', { requestId: firstId }) as import('../packages/shared/src/domain').Message
+    const detail = await client.invoke('getConversation', { id: original.conversationId }) as import('../packages/shared/src/domain').ConversationDetail
     expect(detail.conversation).toMatchObject({ purpose: 'core', title: '首次资料.md', agentIds: ['bobo'] })
     expect(original.content).toBe(''); expect(original.materialIds).toHaveLength(1)
     expect(await readFile(join(path, 'profile', 'materials', original.conversationId, original.materialIds![0], 'original'), 'utf8')).toBe('BOBO_FIRST_ATTACHMENT_7703')
@@ -601,7 +601,7 @@ describe.skipIf(process.env.BOAI_CLI_PROCESS_TEST !== '1')('actual standalone se
     expect((await command(path, args)).code).toBe(0); expect(protocol.requests).toHaveLength(firstCalls)
     const nextId = randomUUID(), nextArgs = ['run', '--attachment', valid, '--request-id', nextId, '--json', '继续查看附件']
     expect((await command(path, nextArgs)).code).toBe(0)
-    const next = await client.invoke('getMessageReceipt', { requestId: nextId }) as import('../src/shared/domain').Message
+    const next = await client.invoke('getMessageReceipt', { requestId: nextId }) as import('../packages/shared/src/domain').Message
     expect(next.conversationId).toBe(original.conversationId); expect(next.materialIds).toHaveLength(1)
     const calls = protocol.requests.length
     await client.invoke('server:shutdown', { serverId: service.ready.serverId }); expect(await service.exit).toBe(0)
@@ -628,7 +628,7 @@ describe.skipIf(process.env.BOAI_CLI_PROCESS_TEST !== '1')('actual standalone se
     await writeFile(textPath, text); await writeFile(binaryPath, binary)
     const requestId = randomUUID(), args = ['send', room.id, '--attachment', textPath, '--attachment', binaryPath, '--request-id', requestId, '--json', '阅读这些附件']
     const sent = await command(path, args); expect(sent.code, sent.stderr).toBe(0)
-    const receipt = await client.invoke('getMessageReceipt', { requestId }) as import('../src/shared/domain').Message
+    const receipt = await client.invoke('getMessageReceipt', { requestId }) as import('../packages/shared/src/domain').Message
     expect(receipt.materialIds).toHaveLength(2); expect(receipt.content).toBe('阅读这些附件')
     const bytes = await Promise.all(receipt.materialIds!.map(id => readFile(join(path, 'profile', 'materials', room.id, id, 'original'))))
     expect(bytes[0].toString()).toBe(text); expect(bytes[1]).toEqual(binary)
@@ -637,7 +637,7 @@ describe.skipIf(process.env.BOAI_CLI_PROCESS_TEST !== '1')('actual standalone se
     expect((await command(path, args)).code).toBe(0); expect(protocol.requests).toHaveLength(count)
     const runId = randomUUID(), ran = await command(path, ['run', '--employee', 'researcher', '--attachment', textPath, '--request-id', runId, '--json'])
     expect(ran.code, ran.stderr).toBe(0)
-    const runReceipt = await client.invoke('getMessageReceipt', { requestId: runId }) as import('../src/shared/domain').Message
+    const runReceipt = await client.invoke('getMessageReceipt', { requestId: runId }) as import('../packages/shared/src/domain').Message
     expect(runReceipt.materialIds).toHaveLength(1); expect(runReceipt.content).toBe('')
     const beforeRestart = protocol.requests.length
     await client.invoke('server:shutdown', { serverId: service.ready.serverId }); expect(await service.exit).toBe(0)
@@ -668,7 +668,7 @@ describe.skipIf(process.env.BOAI_CLI_PROCESS_TEST !== '1')('actual standalone se
     expect(original.requests).toHaveLength(0); expect(selected.requests.length).toBeGreaterThanOrEqual(2)
     expect(selected.requests.every(body => body.model === 'selected-once')).toBe(true)
     expect(authorizationMatches.length).toBe(selected.requests.length); expect(authorizationMatches.every(Boolean)).toBe(true)
-    const receipt = await client.invoke('getMessageReceipt', { requestId }) as import('../src/shared/domain').Message
+    const receipt = await client.invoke('getMessageReceipt', { requestId }) as import('../packages/shared/src/domain').Message
     expect(receipt).toMatchObject({ content: '按本轮模型回复', apiModelSource: { connection: { baseUrl: selected.url, defaultModel: 'selected-once', hasApiKey: true } } })
     const calls = selected.requests.length
     expect((await command(path, args)).code).toBe(0); expect(selected.requests).toHaveLength(calls)
@@ -710,8 +710,8 @@ describe.skipIf(process.env.BOAI_CLI_PROCESS_TEST !== '1')('actual standalone se
     expect(original.requests).toHaveLength(0); expect(selected.requests.length).toBeGreaterThanOrEqual(5)
     expect(selected.requests.every(body => body.model === 'task-selected')).toBe(true); expect(auth.every(Boolean)).toBe(true)
     expect((await client.invoke('employees') as DigitalAgent[]).find(agent => agent.id === 'researcher')).toEqual(saved)
-    const receipt = await client.invoke('getMessageReceipt', { requestId }) as import('../src/shared/domain').Message
-    const detail = await client.invoke('getConversation', { id: receipt.conversationId }) as import('../src/shared/domain').ConversationDetail
+    const receipt = await client.invoke('getMessageReceipt', { requestId }) as import('../packages/shared/src/domain').Message
+    const detail = await client.invoke('getConversation', { id: receipt.conversationId }) as import('../packages/shared/src/domain').ConversationDetail
     expect(detail.workItems).toHaveLength(1); expect(detail.workItems![0].status).toBe('delivered')
     const phases = selected.requests.map(body => {
       const system = (body.messages as { role: string; content: string }[]).filter(message => message.role === 'system').map(message => message.content).join('\n')
@@ -729,9 +729,9 @@ describe.skipIf(process.env.BOAI_CLI_PROCESS_TEST !== '1')('actual standalone se
     const noModel = async (): Promise<never> => { throw new Error('Source preparation must not run an employee') }
     const prepareSources = () => startOwnedRuntime({ dataPath: join(path, 'profile'), skillDiscovery: { homeDir: path }, engine: { test: noModel, decide: noModel, run: noModel }, secrets: { get: async () => '', set: async () => {}, delete: async () => {} }, emit: () => {} })
     const config = { name: '同名源', description: '', guide: '', enabled: true, type: 'mcp', mcp: { transport: 'http', url: 'http://127.0.0.1:1/mcp', authType: 'none' } }
-    const sources = [] as import('../src/shared/domain/sources').DataSource[]
+    const sources = [] as import('../packages/shared/src/domain/sources').DataSource[]
     const setup = await prepareSources()
-    try { for (let i = 0; i < 2; i++) sources.push(await setup.service.handle('saveDataSource', { id: randomUUID(), expectedRevision: 0, config }) as import('../src/shared/domain/sources').DataSource) } finally { await setup.close() }
+    try { for (let i = 0; i < 2; i++) sources.push(await setup.service.handle('saveDataSource', { id: randomUUID(), expectedRevision: 0, config }) as import('../packages/shared/src/domain/sources').DataSource) } finally { await setup.close() }
     let { service, client } = await configured(path, endpoint.url)
     const employee = (await client.invoke('employees') as DigitalAgent[]).find(agent => agent.id === 'researcher')!
     const { configVersion, directoryRevision, workspaceRef: _w, memoryNamespace: _m, policyVersion: _p, systemRole: _s, creationSource: _c, ...definition } = employee
@@ -739,7 +739,7 @@ describe.skipIf(process.env.BOAI_CLI_PROCESS_TEST !== '1')('actual standalone se
     const room = await client.invoke('createConversation', { kind: 'direct', title: 'CLI指定来源', agentIds: [employee.id] }) as Conversation
     const requestId = randomUUID(), args = ['send', room.id, '本轮使用明确数据源', '--source', sources[0].id, '--source', sources[1].id, '--json', '--request-id', requestId]
     const sent = await command(path, args); expect(sent.code, sent.stderr).toBe(0)
-    const receipt = await client.invoke('getMessageReceipt', { requestId }) as import('../src/shared/domain').Message
+    const receipt = await client.invoke('getMessageReceipt', { requestId }) as import('../packages/shared/src/domain').Message
     expect(receipt.content).toBe('本轮使用明确数据源')
     expect(receipt.composerReferences).toEqual(sources.map(source => ({ kind: 'source', id: source.id, name: source.name, revision: 1, agentId: employee.id })))
     const calls = endpoint.requests.length
@@ -754,7 +754,7 @@ describe.skipIf(process.env.BOAI_CLI_PROCESS_TEST !== '1')('actual standalone se
     expect(rejected.code).not.toBe(0); expect(rejected.stderr).toContain('未启用'); expect(endpoint.requests).toHaveLength(calls)
     const nextRequest = randomUUID(), run = await command(path, ['run', '--employee', employee.id, '--source', sources[1].id, '--json', '--request-id', nextRequest, '仅选择第二个同名源'])
     expect(run.code, run.stderr).toBe(0)
-    const next = await client.invoke('getMessageReceipt', { requestId: nextRequest }) as import('../src/shared/domain').Message
+    const next = await client.invoke('getMessageReceipt', { requestId: nextRequest }) as import('../packages/shared/src/domain').Message
     expect(next.composerReferences).toEqual([receipt.composerReferences![1]])
     const invalid = await command(path, ['sources', '--source', sources[1].id, '--json']); expect(invalid.code).not.toBe(0); expect(invalid.stderr).toContain('仅适用于')
     await client.invoke('server:shutdown', { serverId: service.ready.serverId }); expect(await service.exit).toBe(0)
@@ -776,7 +776,7 @@ describe.skipIf(process.env.BOAI_CLI_PROCESS_TEST !== '1')('actual standalone se
       const identity = JSON.parse(endpoint.commandReceipt!.stdout)
       expect(identity.cwd).toBe(cwd); expect(identity.nested).toEqual({ same: true, content: 'CLI_NESTED_FILE' })
       expect(await readFile(join(cwd, 'cli-nested.txt'), 'utf8')).toBe('CLI_NESTED_FILE')
-      const receipt = await client.invoke('getMessageReceipt', { requestId }) as import('../src/shared/domain').Message
+      const receipt = await client.invoke('getMessageReceipt', { requestId }) as import('../packages/shared/src/domain').Message
       expect(receipt.content).toBe('核对本次工作位置'); expect(receipt.workingDirectory).toBe(cwd)
       expect(await client.invoke('auth:revoke-run', { grantId: identity.context.grantId })).toEqual({ revoked: false })
       facts.push({ identity, receipt })
@@ -804,7 +804,7 @@ describe.skipIf(process.env.BOAI_CLI_PROCESS_TEST !== '1')('actual standalone se
     expect(identity.context.runId).toBe(identity.run)
     expect(identity.nested).toEqual({ same: true, content: 'CLI_NESTED_FILE' })
     expect(await client.invoke('auth:revoke-run', { grantId: identity.context.grantId })).toEqual({ revoked: false })
-    const detail = await client.invoke('getConversation', { id: chat.id }) as import('../src/shared/domain').ConversationDetail
+    const detail = await client.invoke('getConversation', { id: chat.id }) as import('../packages/shared/src/domain').ConversationDetail
     expect(detail.runs.find(run => run.id === identity.run)?.toolEvents).toEqual(expect.arrayContaining([expect.objectContaining({ name: 'execute_command', status: 'completed' })]))
     await client.invoke('server:shutdown', { serverId: service.ready.serverId }); expect(await service.exit).toBe(0)
     if (process.env.BOAI_CLI_EVIDENCE_DIR) await writeFile(join(process.env.BOAI_CLI_EVIDENCE_DIR, 'environment-facts.json'), JSON.stringify({ identity, commandExit: commandReceipt!.exitCode, credentialRevoked: true, controlledRequests: endpoint.requests.length, externalRequests: 0, serviceExit: service.child.exitCode }, null, 2))

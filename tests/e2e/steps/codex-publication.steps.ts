@@ -12,9 +12,9 @@ import { readFile, readdir, stat } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { test } from './codex-employee.steps'
 import { crashAutomationRuntime, processIsRunning, runtimeChildProcessIds } from '../support/automation-recovery'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
 import { runtimeBreakpoint } from '../support/runtime-breakpoint'
-import type { AgentRun, ArtifactVersion, BudgetModelCall, Message, WorkBudget, WorkItem } from '../../../src/shared/domain'
+import type { AgentRun, ArtifactVersion, BudgetModelCall, Message, WorkBudget, WorkItem } from '../../../packages/shared/src/domain'
 
 const { Then } = createBdd(test)
 Then('本机文件在{string}精确退出后保持未交付且两次重启不重放', async ({ runtime, codexEmployee }, boundary: string) => {

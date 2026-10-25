@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [OUTPUT]: 2026-10-13本机不展示/限制BOAI用量预算，覆盖Work与本机协作/自动化；14最新补充为现行规则，实际见06 §147。
 [OUTPUT]: 专项R1/I1/M1实施及同run真实通过见06 §143/145；最新重复/长命令失败与候选撤回见§146，R2/E1–E3待修。
 [OUTPUT]: 用户确认员工通信入口后复核修复文档，纠正边界见14 §8、状态归06 §142；原代码review发现和历史检查保持，未修产品代码。
@@ -21,7 +22,7 @@
 
 ## Standards：一项确认问题
 
-**R1 / P2：附材料回答原生追问无法接续。** [service.ts:1568](../../../src/runtime/service.ts#L1568)以`!input.materialSelections?.length`排除原生输入回答；带附件的消息因此生成普通新轮。原请求等待回答，而[group-scheduler.ts:242](../../../src/runtime/group-scheduler.ts#L242)禁止新轮越过活动执行，消息已保存却不能推进。违反当前AGENTS“普通消息回答接续”及“附件随消息发送”的合同。
+**R1 / P2：附材料回答原生追问无法接续。** [service.ts:1568](../../../packages/runtime/src/service.ts#L1568)以`!input.materialSelections?.length`排除原生输入回答；带附件的消息因此生成普通新轮。原请求等待回答，而[group-scheduler.ts:242](../../../packages/runtime/src/group-scheduler.ts#L242)禁止新轮越过活动执行，消息已保存却不能推进。违反当前AGENTS“普通消息回答接续”及“附件随消息发送”的合同。
 
 复现使用生产AppService和现有Codex/Claude stdio夹具：先触发`NATIVE_QUESTION`，再发“白噪音小程序，需求见附件”并附TXT。两后端均仍为`run=running`、原请求`pending`、旧轮`responding`、新轮`queued`。这是离线接线复现，没有调用真实模型；隔离运行已停止，临时runner与目录已清理。修复时须同事务保存附件和回答来源，核对原请求仍有效，避免将附件丢弃或同时回答并另起重复执行。
 
@@ -29,7 +30,7 @@
 
 ## Spec：一项确认问题
 
-**R2 / P2：回应后的审批历史没有查看入口。** [execution-feed.tsx:131](../../../src/renderer/components/detail-panel/execution-feed.tsx#L131)只保留`status === 'pending'`的请求，允许、拒绝、停止或重启中断后动作卡消失。仓库仍在[execution.ts:79](../../../src/runtime/modules/conversations/execution.ts#L79)保存`answered`、实际回应和关联消息，但过程/原生两种视图均未显示历史请求；审批也没有进入`executionEvidence`。用户无法核对某次操作批准了什么、范围是什么或为什么中断。
+**R2 / P2：回应后的审批历史没有查看入口。** [execution-feed.tsx:131](../../../apps/electron/src/renderer/components/detail-panel/execution-feed.tsx#L131)只保留`status === 'pending'`的请求，允许、拒绝、停止或重启中断后动作卡消失。仓库仍在[execution.ts:79](../../../packages/runtime/src/modules/conversations/execution.ts#L79)保存`answered`、实际回应和关联消息，但过程/原生两种视图均未显示历史请求；审批也没有进入`executionEvidence`。用户无法核对某次操作批准了什么、范围是什么或为什么中断。
 
 与11 §5.1“展示原生真实审批请求和结果”及§7“历史旧审批和未知回执需保留可核对入口”不符。应显示已回答/中断动作的只读历史，待决操作继续使用现有回应接口；秘密答案保持不持久化、不展示。核读其他适配器和执行呈现未确认新增规格错误。
 

@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [OUTPUT]: 2026-10-19按用户明确要求删除本次四目标的测试数据、截图、回放、数据库、构建归档及临时验收包，不保留本地或上传GitHub；源码/测试源码及文字结果保留，原附件链接已移除。
 [OUTPUT]: 2026-10-19四项目标当前macOS约定技术范围完成：目录06 §5.15、知识07 §9.13、搜索19组09 §10.11、CLI21组01 §12.34；本机沿原生配置，原失败与人工未评价范围保留。
 [OUTPUT]: 2026-10-19用户明确本机Agent沿原生配置、不增加限制；Claude/Codex目录策略退役并可返回本机权限，API目录保持；当前实现/验证归4组06 §5.14，完整goal未完成。
@@ -68,7 +69,7 @@ B 表示保持行为的后端重构，E 表示新执行后端，不能混为一�
 | `shared/contracts.ts` | 产品类型、IPC 合同、引擎内部合同混合 | 拆分所有权，旧文件过渡重导出，保持现有 import 可用 |
 | `renderer` | UI、请求、快照与增量事件合并、轮次展示 | 由前端任务处理；不得绕过 IPC 导入 runtime |
 
-依据：[Main](../../../src/main/main.ts)、[Worker](../../../src/runtime/worker.ts)、[AppService](../../../src/runtime/service.ts)、[GroupScheduler](../../../src/runtime/group-scheduler.ts)、[MastraEngine](../../../src/runtime/adapters/mastra/engine.ts)。
+依据：[Main](../../../apps/electron/src/main/main.ts)、[Worker](../../../apps/electron/src/worker/index.ts)、[AppService](../../../packages/runtime/src/service.ts)、[GroupScheduler](../../../packages/runtime/src/group-scheduler.ts)、[MastraEngine](../../../packages/runtime/src/adapters/mastra/engine.ts)。
 
 ## 3. 建议目标目录
 

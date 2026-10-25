@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 应用与评估编译按当前工作区公开exports解析，保留原执行与分发合同。
  * [INPUT]: 明确版本/SHA、干净源码及完整原构建配置；本机macOS arm64，共用清单接受规范化路径。
  * [OUTPUT]: 旧进程排空后隔离ad-hoc候选、实际链接与可取消hash/身份/签名；仅built，不授发布或安装资格。
  * [POS]: 个人候选构建；不创建Tag/Release、不替换应用或个人数据，产物冒烟另行核对。
@@ -11,7 +12,7 @@ import { mkdir, readFile, writeFile, copyFile, chmod, lstat, readdir, readlink, 
 import { join, resolve, dirname, isAbsolute } from 'node:path'
 import { tmpdir, userInfo } from 'node:os'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { build } from 'esbuild'
+import { buildWorkspace as build } from './workspace-packages.mjs'
 import { verifyReleaseSource } from './release-check.mjs'
 import { sourceIdentity } from './ui-regression.mjs'
 import { verifyBuildIdentity } from './build-identity.mjs'

@@ -7,7 +7,7 @@
 import { copyFile, chmod, readFile, realpath, stat } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { createHash } from 'node:crypto'
-import type { AgentRun, DigitalAgent } from '../../../src/shared/domain'
+import type { AgentRun, DigitalAgent } from '../../../packages/shared/src/domain'
 import type { Desktop } from './desktop'
 
 export async function prepareNativeGroup(runtime: Desktop, kind: 'codex' | 'claude', mode: 'input' | 'approval') {

@@ -4,10 +4,10 @@
  * [POS]: T2.4 原生进程中断支撑。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { AppService } from '../../src/runtime/service'
-import { ProductStore } from '../../src/runtime/adapters/storage/product-store'
-import type { AgentEngine } from '../../src/runtime/contracts'
-import type { Connection, Conversation, Snapshot } from '../../src/shared/domain'
+import { AppService } from '../../packages/runtime/src/service'
+import { ProductStore } from '../../packages/runtime/src/adapters/storage/product-store'
+import type { AgentEngine } from '../../packages/runtime/src/contracts'
+import type { Connection, Conversation, Snapshot } from '../../packages/shared/src/domain'
 const [root, phase] = process.argv.slice(2), hold = () => new Promise<void>(() => {})
 const engine: AgentEngine = {
   test: async () => '', decide: async context => ({ action: context.messages.some(m => m.senderId === context.agent.id && m.turnId === context.turnId) ? 'pass' : 'reply', responseKind: 'chat', observedThroughSequence: context.participation!.observedThroughSequence }),

@@ -12,15 +12,15 @@ import { mkdtemp, realpath, rm, mkdir, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
-import { AppService } from '../src/runtime/service'
-import { searchSelection, assertSearchSelection } from '../src/runtime/modules/sources/search-selection'
-import { hasChatSourceTools, createSourceTools } from '../src/runtime/adapters/mastra/source-tools'
-import { createNativeProducts } from '../src/runtime/adapters/native-products'
+import { AppService } from '../packages/runtime/src/service'
+import { searchSelection, assertSearchSelection } from '../packages/runtime/src/modules/sources/search-selection'
+import { hasChatSourceTools, createSourceTools } from '../packages/runtime/src/adapters/mastra/source-tools'
+import { createNativeProducts } from '../packages/runtime/src/adapters/native-products'
 import { RequestContext } from '@mastra/core/request-context'
 import { noopObserve } from '@mastra/core/tools'
-import type { AgentEngine, EngineContext } from '../src/runtime/contracts'
-import type { AgentInput, Connection, Conversation, ConversationDetail, DigitalAgent, Snapshot } from '../src/shared/domain'
-import type { WebSearchServiceConfig } from '../src/shared/domain/web-search'
+import type { AgentEngine, EngineContext } from '../packages/runtime/src/contracts'
+import type { AgentInput, Connection, Conversation, ConversationDetail, DigitalAgent, Snapshot } from '../packages/shared/src/domain'
+import type { WebSearchServiceConfig } from '../packages/shared/src/domain/web-search'
 import { webSearchServer, resultUrl, pageText } from './fixtures/web-search-server'
 
 const cleanup: (() => Promise<unknown>)[] = []
@@ -29,7 +29,7 @@ const definition = ({ configVersion, workspaceRef: _w, memoryNamespace: _m, poli
 async function fixture(engine: AgentEngine = { test: async () => 'unused', decide: async () => { throw new Error('No model expected') }, run: async () => { throw new Error('No model expected') } }, browserAvailable = false) {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'boai-search-selection-'))); cleanup.push(() => rm(root, { recursive: true, force: true }))
   const vault = new Map<string, string>()
-  const create = async () => { const app = new AppService({ dataPath: root, skillDiscovery: { homeDir: root }, engine, ...(browserAvailable ? { browserHost: { available: true, request: (async (method: string) => { if (method !== 'disconnect') throw new Error('selection must not launch the browser') }) as import('../src/shared/ipc/browser').BrowserHostBridge['request'] } } : {}), secrets: { get: async id => vault.get(id) ?? '', set: async (id, value) => { vault.set(id, value) }, delete: async id => { vault.delete(id) } }, emit: () => {} }); cleanup.push(() => app.close()); await app.init(); return app }
+  const create = async () => { const app = new AppService({ dataPath: root, skillDiscovery: { homeDir: root }, engine, ...(browserAvailable ? { browserHost: { available: true, request: (async (method: string) => { if (method !== 'disconnect') throw new Error('selection must not launch the browser') }) as import('../packages/shared/src/ipc/browser').BrowserHostBridge['request'] } } : {}), secrets: { get: async id => vault.get(id) ?? '', set: async (id, value) => { vault.set(id, value) }, delete: async id => { vault.delete(id) } }, emit: () => {} }); cleanup.push(() => app.close()); await app.init(); return app }
   let app = await create()
   const connection = await app.handle('saveConnection', { name: 'fixture', provider: 'openai-compatible', baseUrl: 'http://localhost:1234', defaultModel: 'fixture' }) as Connection
   const sources: WebSearchServiceConfig[] = []

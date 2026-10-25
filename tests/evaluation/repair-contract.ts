@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Codex开发循环的固定测试计划、Vitest原始JSON和结构化文本修复。
- * [OUTPUT]: 严格输入/补丁合同、完整逐例比较；质量声明限于开发检查，不替代语义评审。
+ * [OUTPUT]: 源码位置覆盖apps/packages并保留独立src夹具；严格输入/补丁合同、完整逐例比较；质量声明限于开发检查，不替代语义评审。
  * [POS]: tests/evaluation/repair-contract.ts，开发侧自迭代的纯合同与评分。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -15,7 +15,7 @@ export function safeRelative(path: string) {
 const pathSchema = z.string().refine(safeRelative, '必须使用仓库内规范相对路径')
 export const repairConfigSchema = z.object({
   goal: z.string().trim().min(1).max(8000),
-  allowedFiles: z.array(pathSchema.refine(path => /^src\/.+\.(ts|tsx)$/.test(path), '只允许修改src内明确的TS/TSX文件')).min(1).max(20),
+  allowedFiles: z.array(pathSchema.refine(path => /^(?:src\/|(?:apps|packages)\/[^/]+\/src\/).+\.(ts|tsx)$/.test(path), '只允许修改应用或包源码内明确的TS/TSX文件')).min(1).max(20),
   tests: z.array(pathSchema.refine(path => /^tests\/.+\.test\.ts$/.test(path) && !path.includes('holdout'), '必须选择开发/回归Vitest文件')).min(1).max(40),
   contextFiles: z.array(pathSchema).max(30).default([]),
   maxRounds: z.number().int().min(1).max(10).default(3),
@@ -29,7 +29,7 @@ export const repairConfigSchema = z.object({
 }).strict().superRefine((value, ctx) => {
   for (const field of ['allowedFiles', 'tests', 'contextFiles'] as const) if (new Set(value[field]).size !== value[field].length) ctx.addIssue({ code: 'custom', message: `${field}不能重复` })
   if (value.maxNoImprovement > value.maxRounds) ctx.addIssue({ code: 'custom', message: '无提升停止数不能超过最大轮数' })
-  if (value.contextFiles.some(path => !/^(src\/|tests\/|ai-docs\/spec\/)/.test(path) || path.includes('holdout') || path.startsWith('tests/evaluation/'))) ctx.addIssue({ code: 'custom', message: '上下文只接源码/开发测试/规格；不投喂冻结题库或私有目录' })
+  if (value.contextFiles.some(path => !/^(src\/|(?:apps|packages)\/[^/]+\/src\/|tests\/|ai-docs\/spec\/)/.test(path) || path.includes('holdout') || path.startsWith('tests/evaluation/'))) ctx.addIssue({ code: 'custom', message: '上下文只接源码/开发测试/规格；不投喂冻结题库或私有目录' })
 })
 export type RepairConfig = z.infer<typeof repairConfigSchema>
 export const proposalSchema = z.object({

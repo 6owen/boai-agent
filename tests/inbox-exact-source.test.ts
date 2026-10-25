@@ -9,10 +9,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mkdtemp, realpath, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { AgentRun, AutomationOccurrence, Conversation, DecisionRecord, DigitalAgent, DiscussionTurn, Message, WorkItem } from '../src/shared/domain'
-import { ProductStore, type RecordTransaction } from '../src/runtime/adapters/storage/product-store'
-import { WorkRepository } from '../src/runtime/modules/collaboration/work-repository'
-import { Inbox } from '../src/runtime/modules/inbox/inbox'
+import type { AgentRun, AutomationOccurrence, Conversation, DecisionRecord, DigitalAgent, DiscussionTurn, Message, WorkItem } from '../packages/shared/src/domain'
+import { ProductStore, type RecordTransaction } from '../packages/runtime/src/adapters/storage/product-store'
+import { WorkRepository } from '../packages/runtime/src/modules/collaboration/work-repository'
+import { Inbox } from '../packages/runtime/src/modules/inbox/inbox'
 
 const stores: ProductStore[] = [], roots: string[] = []
 afterEach(async () => { await Promise.all(stores.splice(0).map(store => store.close())); await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))) })

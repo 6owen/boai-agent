@@ -9,8 +9,8 @@ import { mkdir, mkdtemp, readFile, readdir, realpath, rm, symlink, writeFile } f
 import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { Artifact, DigitalAgent, SessionWorkspace } from '../src/shared/domain'
-import { publishArtifact } from '../src/runtime/modules/workspaces/file-access'
+import type { Artifact, DigitalAgent, SessionWorkspace } from '../packages/shared/src/domain'
+import { publishArtifact } from '../packages/runtime/src/modules/workspaces/file-access'
 
 const control = vi.hoisted(() => ({ beforeMkdir: undefined as ((target: string) => Promise<void>) | undefined }))
 vi.mock('node:fs/promises', async importOriginal => {

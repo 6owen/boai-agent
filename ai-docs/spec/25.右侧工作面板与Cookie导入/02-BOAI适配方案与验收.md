@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [INPUT]: 用户保留 BOAI 业务/样式/独立浏览器的要求，以及 01 的固定源码结论。
 [OUTPUT]: 早期适配方案及历史进度保留；用户最新仅要架构参考，本组不在当前执行范围，未实施。
 [POS]: ai-docs/spec/25.右侧工作面板与Cookie导入/02-BOAI适配方案与验收.md。
@@ -197,14 +198,14 @@ Mastra 的执行上下文压缩或更换内部 Session，不应销毁面板、�
 
 已有位置：
 
-- [detail-panel/tabs-state.ts](../../../src/renderer/components/detail-panel/tabs-state.ts)：开始/文件/终端标签记录、scope、去重和关闭语义；旧 terminal 输入当前被忽略。
-- [detail-panel/index.tsx](../../../src/renderer/components/detail-panel/index.tsx)、[tab-session.tsx](../../../src/renderer/components/detail-panel/tab-session.tsx)：标签栏、布局、生命周期和未保存守卫。
-- [app-shell/index.tsx](../../../src/renderer/components/app-shell/index.tsx)：新面板入口和 active 传递。
-- [ConversationFiles](../../../src/renderer/components/work-views/conversation-files.tsx)：原聚合列表上方工作区工具栏，保留全部业务。
-- [main.ts](../../../src/main/main.ts)、[IPC 类型](../../../src/shared/ipc/index.ts)：复用 openResource 校验，加入应用列表与指定打开。
-- [TerminalService](../../../src/runtime/modules/workspace-tools/terminal-service.ts)、[Rust PTY](../../../src/runtime/adapters/process-guard/terminal.rs)：进程层复用，补用途隔离；不破坏预览。
-- [BrowserService](../../../src/main/browser/browser-service.ts)、[BrowserPaneManager](../../../src/main/browser/browser-pane-manager.ts)：目标分区、导入与控制时序。
-- [browser-toolbar.tsx](../../../src/renderer/browser-toolbar.tsx)、[toolbar preload](../../../src/main/browser-toolbar-preload.ts)、[browser IPC](../../../src/shared/ipc/browser.ts)：独立窗口导入入口及无凭据 DTO。
+- [detail-panel/tabs-state.ts](../../../apps/electron/src/renderer/components/detail-panel/tabs-state.ts)：开始/文件/终端标签记录、scope、去重和关闭语义；旧 terminal 输入当前被忽略。
+- [detail-panel/index.tsx](../../../apps/electron/src/renderer/components/detail-panel/index.tsx)、[tab-session.tsx](../../../apps/electron/src/renderer/components/detail-panel/tab-session.tsx)：标签栏、布局、生命周期和未保存守卫。
+- [app-shell/index.tsx](../../../apps/electron/src/renderer/components/app-shell/index.tsx)：新面板入口和 active 传递。
+- [ConversationFiles](../../../apps/electron/src/renderer/components/work-views/conversation-files.tsx)：原聚合列表上方工作区工具栏，保留全部业务。
+- [main.ts](../../../apps/electron/src/main/main.ts)、[IPC 类型](../../../packages/shared/src/ipc/index.ts)：复用 openResource 校验，加入应用列表与指定打开。
+- [TerminalService](../../../packages/runtime/src/modules/workspace-tools/terminal-service.ts)、[Rust PTY](../../../packages/runtime/src/adapters/process-guard/terminal.rs)：进程层复用，补用途隔离；不破坏预览。
+- [BrowserService](../../../apps/electron/src/main/browser/browser-service.ts)、[BrowserPaneManager](../../../apps/electron/src/main/browser/browser-pane-manager.ts)：目标分区、导入与控制时序。
+- [browser-toolbar.tsx](../../../apps/electron/src/renderer/browser-toolbar.tsx)、[toolbar preload](../../../apps/electron/src/preload/browser-toolbar.ts)、[browser IPC](../../../packages/shared/src/ipc/browser.ts)：独立窗口导入入口及无凭据 DTO。
 
 拟新增模块：
 

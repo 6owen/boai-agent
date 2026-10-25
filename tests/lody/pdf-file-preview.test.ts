@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
-import { createLocalPdfRangeTransport, PDF_RANGE_CHUNK_BYTES } from '../../src/renderer/components/common/lody/pdf-file-preview';
+import { createLocalPdfRangeTransport, PDF_RANGE_CHUNK_BYTES } from '../../apps/electron/src/renderer/components/common/lody/pdf-file-preview';
 
 describe('local PDF range transport', () => {
   it('loads bounded initial data and supplies requested ranges', async () => {

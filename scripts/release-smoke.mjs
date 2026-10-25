@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 应用与评估编译按当前工作区公开exports解析，保留原执行与分发合同。
  * [INPUT]: 当前干净源码对应的个人built候选、锁定BDD及隔离输出；已登录macOS arm64/Node24。
  * [OUTPUT]: ZIP8/DMG2原场景、逐启动完整独立profile/包身份、实际执行墙钟窗口与bundle前后字节；受管worker配对挂载/封存，未知先恢复。
  * [POS]: 个人候选产物冒烟入口；不修改基线、创建Tag/Release或替换个人应用/数据。
@@ -11,7 +12,7 @@ import { readFile, writeFile, mkdir, readdir, lstat, copyFile, chmod, rm, realpa
 import { join, resolve, dirname, basename, isAbsolute } from 'node:path'
 import { tmpdir, userInfo } from 'node:os'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { build } from 'esbuild'
+import { buildWorkspace as build } from './workspace-packages.mjs'
 import { acquireResourceLock } from './resource-lock.mjs'
 import { sourceIdentity } from './ui-regression.mjs'
 import { verifyBuildIdentity, sameBuildBytes } from './build-identity.mjs'

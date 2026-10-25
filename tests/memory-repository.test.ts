@@ -12,12 +12,12 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { mkdtemp, rm, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { WorkspaceService } from '../src/runtime/modules/workspaces/workspace-service'
-import { MemoryRepository, type ExtractionPolicy } from '../src/runtime/modules/memory/memory-repository'
-import { memoryAllowed, memoryStatus } from '../src/runtime/modules/memory/memory-policy'
-import { recallMemory } from '../src/runtime/modules/memory/memory-recall'
-import type { DigitalAgent, MemoryEntry, MemoryQuery, MemoryView, Message } from '../src/shared/domain'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { WorkspaceService } from '../packages/runtime/src/modules/workspaces/workspace-service'
+import { MemoryRepository, type ExtractionPolicy } from '../packages/runtime/src/modules/memory/memory-repository'
+import { memoryAllowed, memoryStatus } from '../packages/runtime/src/modules/memory/memory-policy'
+import { recallMemory } from '../packages/runtime/src/modules/memory/memory-recall'
+import type { DigitalAgent, MemoryEntry, MemoryQuery, MemoryView, Message } from '../packages/shared/src/domain'
 const roots: string[] = [], stores: ProductStore[] = []
 afterEach(async () => { vi.restoreAllMocks(); for (const store of stores.splice(0)) await store.close(); for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }) })
 async function fixture() {

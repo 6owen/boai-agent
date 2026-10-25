@@ -8,12 +8,12 @@ import { afterEach, expect, it } from 'vitest'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { ApplicationService, clearApplicationReceipts } from '../src/runtime/modules/application/application-service'
-import { planOperations } from '../src/runtime/modules/application/plan-operations'
-import type { ApplicationActor } from '../src/shared/domain/application-protocol'
-import { startOwnedRuntime } from '../src/runtime/bootstrap'
-import type { Conversation, Snapshot } from '../src/shared/domain'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { ApplicationService, clearApplicationReceipts } from '../packages/runtime/src/modules/application/application-service'
+import { planOperations } from '../packages/runtime/src/modules/application/plan-operations'
+import type { ApplicationActor } from '../packages/shared/src/domain/application-protocol'
+import { startOwnedRuntime } from '../packages/runtime/src/bootstrap'
+import type { Conversation, Snapshot } from '../packages/shared/src/domain'
 
 const clean: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const action of clean.splice(0).reverse()) await action() })

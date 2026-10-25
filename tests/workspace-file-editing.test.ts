@@ -8,8 +8,8 @@ import { afterEach, expect, it } from 'vitest'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { FileReadBaselines, decodeWorkspaceText, fileContentHash, readFilePage, replaceFileText } from '../src/runtime/modules/workspaces/file-editing'
-import { writeWorkspaceFile } from '../src/runtime/modules/workspaces/file-access'
+import { FileReadBaselines, decodeWorkspaceText, fileContentHash, readFilePage, replaceFileText } from '../packages/runtime/src/modules/workspaces/file-editing'
+import { writeWorkspaceFile } from '../packages/runtime/src/modules/workspaces/file-access'
 const roots: string[] = []
 afterEach(async () => { await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))) })
 

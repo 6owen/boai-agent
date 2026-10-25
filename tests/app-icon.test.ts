@@ -5,8 +5,8 @@
  * [PROTOCOL]: 变化同步Header与tests/.folder.md。
  */
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { AppIconController, type TrayIconPort } from '../src/main/app-icon'
-import type { AppIconStatus, TrayIconStatus } from '../src/shared/appearance'
+import { AppIconController, type TrayIconPort } from '../apps/electron/src/main/app-icon'
+import type { AppIconStatus, TrayIconStatus } from '../packages/shared/src/appearance'
 const fake = vi.hoisted(() => ({
   packaged: false, dock: [] as string[], missing: new Set<string>(), dockFailure: new Set<string>(),
   helpers: [] as Array<{ args: string[]; finish(error?: Error): void }>,

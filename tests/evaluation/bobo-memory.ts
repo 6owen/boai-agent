@@ -6,10 +6,10 @@
  */
 import { mkdir, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { AppService } from '../../src/runtime/service'
-import { MastraEngine } from '../../src/runtime/adapters/mastra/engine'
-import type { AgentEngine, EngineContext } from '../../src/runtime/contracts'
-import type { Connection, Conversation, ConversationDetail, MemoryView, ModelUsage, Snapshot } from '../../src/shared/domain'
+import { AppService } from '../../packages/runtime/src/service'
+import { MastraEngine } from '../../packages/runtime/src/adapters/mastra/engine'
+import type { AgentEngine, EngineContext } from '../../packages/runtime/src/contracts'
+import type { Connection, Conversation, ConversationDetail, MemoryView, ModelUsage, Snapshot } from '../../packages/shared/src/domain'
 
 interface Settings { output: string; maxRequests: number; maxOutputTokens: number; deadlineMs: number }
 export async function runBoboMemoryEvaluation({ settings, connection, apiKey }: { settings: Settings; connection: Connection; apiKey: string }) {

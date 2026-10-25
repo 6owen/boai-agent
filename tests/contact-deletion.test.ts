@@ -8,10 +8,10 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { DigitalAgent } from '../src/shared/domain'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { ContactDeletionService } from '../src/runtime/modules/employees/contact-deletion'
-import { ConversationHistory } from '../src/runtime/modules/conversations/history'
+import type { DigitalAgent } from '../packages/shared/src/domain'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { ContactDeletionService } from '../packages/runtime/src/modules/employees/contact-deletion'
+import { ConversationHistory } from '../packages/runtime/src/modules/conversations/history'
 
 const fixtures: { root: string; store: ProductStore }[] = []
 const row = (collection: string, id: string, value: object) => ({ collection, id, value: { id, ...value } })

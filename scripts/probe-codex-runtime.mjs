@@ -1,10 +1,11 @@
 /*
+ * [OUTPUT]: Workspace源码路径迁至apps/packages，保留既有输出与业务合同。
  * [INPUT]: 用户明确允许的本机Codex登录、当前适配器与隔离验证目录。
  * [OUTPUT]: 真实握手/双轮续聊/员工会话隔离的独立JSON证据，失败保留；不复制凭据或读取个人会话。
  * [POS]: 第13组LR0真实运行时探测；不代替新建员工UI或Work验收。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
-import { build } from 'esbuild'
+import { buildWorkspace as build } from './workspace-packages.mjs'
 import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -15,11 +16,11 @@ if (!process.argv.includes('--real')) throw new Error('真实模型探测需要�
 const directory = await mkdtemp(join(tmpdir(), 'boai-codex-real-'))
 const out = resolve(process.env.BOAI_CODEX_EVIDENCE ?? join(directory, 'result.json'))
 const entry = join(directory, 'adapter.mjs')
-await build({ stdin: { contents: "export { runCodexPhase, testCodexConnection } from './src/runtime/adapters/codex/turn'; export { resolveProgram } from './src/runtime/modules/backends/program'", resolveDir: process.cwd(), loader: 'ts' }, outfile: entry, platform: 'node', format: 'esm', bundle: true, target: 'node22', logLevel: 'silent' })
+await build({ stdin: { contents: "export { runCodexPhase, testCodexConnection } from './packages/runtime/src/adapters/codex/turn'; export { resolveProgram } from './packages/runtime/src/modules/backends/program'", resolveDir: process.cwd(), loader: 'ts' }, outfile: entry, platform: 'node', format: 'esm', bundle: true, target: 'node22', logLevel: 'silent' })
 const { runCodexPhase, testCodexConnection, resolveProgram } = await import(pathToFileURL(entry).href)
 const file = resolveProgram(process.env.BOAI_CODEX_PROGRAM ?? 'codex')
 const profile = { id: randomUUID(), name: 'BoAI Codex实际接入验证', protocol: 'codex-app-server', executable: file.path, executableHash: file.hash, runtime: file.runtime, args: [], revision: 1, useExistingLogin: true, hostAccessAcknowledged: true, ...(process.env.CODEX_HOME ? { codexHome: process.env.CODEX_HOME } : {}) }
-const sourceHashes = Object.fromEntries(await Promise.all(['client.ts', 'policy.ts', 'turn.ts', 'catalog.ts'].map(async name => [name, createHash('sha256').update(await readFile(resolve('src/runtime/adapters/codex', name))).digest('hex')])))
+const sourceHashes = Object.fromEntries(await Promise.all(['client.ts', 'policy.ts', 'turn.ts', 'catalog.ts'].map(async name => [name, createHash('sha256').update(await readFile(resolve('packages/runtime/src/adapters/codex', name))).digest('hex')])))
 const evidence = { sourceHashes, createdAt: new Date().toISOString(), platform: process.platform, programHash: file.hash, kind: 'actual-codex-adapter-only', uiVerified: false, workVerified: false, steps: [] }
 const signal = AbortSignal.timeout(150_000)
 try {

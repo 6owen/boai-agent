@@ -1,10 +1,11 @@
 /*
+ * [OUTPUT]: 应用与评估编译按当前工作区公开exports解析，保留原执行与分发合同。
  * [INPUT]: build/hillclimb及init/run/status/review、业务任务分组和源码/模型选择。
  * [OUTPUT]: 业务审阅包、真实API实验、独立评审与Codex隔离候选；旧手动实验保持，不自动提交或发布。
  * [POS]: scripts/evaluation-experiment.mjs，第15组实验生命周期CLI。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
-import { build } from 'esbuild'
+import { buildWorkspace as build } from './workspace-packages.mjs'
 import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises'
 import { resolve, join } from 'node:path'
 import { pathToFileURL } from 'node:url'

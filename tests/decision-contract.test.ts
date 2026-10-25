@@ -6,9 +6,9 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { AjvJsonSchemaValidator } from '@modelcontextprotocol/sdk/validation/ajv'
-import type { EngineContext } from '../src/runtime/contracts'
-import { NativeEmployeeEngine, type NativePhase, type NativePhaseInput } from '../src/runtime/adapters/native-employee'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
+import type { EngineContext } from '../packages/runtime/src/contracts'
+import { NativeEmployeeEngine, type NativePhase, type NativePhaseInput } from '../packages/runtime/src/adapters/native-employee'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
 
 const date = '2026-10-07T00:00:00.000Z'
 function fixture(runtime: 'codex' | 'claude', core: boolean, candidates: unknown[], formatter = true) {

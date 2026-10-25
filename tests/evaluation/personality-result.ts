@@ -4,7 +4,7 @@
  * [POS]: Evaluation-only completion gate; never changes product publication or work evidence.
  * [PROTOCOL]: Update Header and evaluation/.folder.md when changed.
  */
-import type { ConversationDetail } from '../../src/shared/domain'
+import type { ConversationDetail } from '../../packages/shared/src/domain'
 export function personalityTurnFailure(detail: Pick<ConversationDetail, 'messages' | 'runs' | 'turns'>): string | undefined {
   if (detail.runs.some(run => ['failed', 'interrupted', 'cancelled'].includes(run.status))) return 'run_failed'
   const source = [...detail.messages].reverse().find(message => message.senderType === 'user')

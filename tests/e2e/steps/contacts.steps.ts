@@ -19,8 +19,8 @@ import { dirname, join } from 'node:path'
 import { test as base } from '../support/test'
 import { messageDraft } from '../support/editor-controls'
 import type { Desktop } from '../support/desktop'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
-import { contactTagIds } from '../../../src/shared/domain/contact-list'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
+import { contactTagIds } from '../../../packages/shared/src/domain/contact-list'
 
 type Scenario = {
   openContacts?: Awaited<ReturnType<typeof openContacts>>

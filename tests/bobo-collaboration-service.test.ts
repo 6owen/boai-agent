@@ -10,12 +10,12 @@ import { createHash } from 'node:crypto'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { AppService } from '../src/runtime/service'
-import { MastraEngine } from '../src/runtime/adapters/mastra/engine'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
+import { AppService } from '../packages/runtime/src/service'
+import { MastraEngine } from '../packages/runtime/src/adapters/mastra/engine'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
 import { teamEndpoint, sendTeamOutput } from './fixtures/team-planner'
-import type { BoboCollaborationOperation, BoboCollaborationReceipt, EmployeeCandidatePage } from '../src/shared/domain/bobo-collaboration'
-import type { AgentRun, Connection, Conversation, ConversationDetail, MemoryView, Message, Snapshot, WorkBudget, WorkExecution, WorkItem } from '../src/shared/domain'
+import type { BoboCollaborationOperation, BoboCollaborationReceipt, EmployeeCandidatePage } from '../packages/shared/src/domain/bobo-collaboration'
+import type { AgentRun, Connection, Conversation, ConversationDetail, MemoryView, Message, Snapshot, WorkBudget, WorkExecution, WorkItem } from '../packages/shared/src/domain'
 
 const cleanup: (() => Promise<unknown>)[] = []
 afterEach(async () => { vi.restoreAllMocks(); for (const close of cleanup.splice(0).reverse()) await close() })

@@ -14,7 +14,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { expect, type Page, type ElectronApplication } from '@playwright/test'
-import { isCoreAgent } from '../../../src/shared/domain/core-agent'
+import { isCoreAgent } from '../../../packages/shared/src/domain/core-agent'
 import { createBdd } from 'playwright-bdd'
 import { messageDraft } from '../support/editor-controls'
 import { test as base } from '../support/test'
@@ -23,7 +23,7 @@ import { createServer } from 'node:http'
 import { realpath } from 'node:fs/promises'
 
 import { join } from 'node:path'
-import type { ConversationDetail, Snapshot } from '../../../src/shared/domain'
+import type { ConversationDetail, Snapshot } from '../../../packages/shared/src/domain'
 
 type Scenario = {
   prepareCollaboration?: Awaited<ReturnType<typeof prepareCollaboration>>

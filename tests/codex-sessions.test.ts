@@ -8,12 +8,12 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { EngineContext } from '../src/runtime/contracts'
-import type { Message, MemoryEntry } from '../src/shared/domain'
-import { MATERIAL_PARSE_VERSION } from '../src/shared/domain/materials'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { CodexSessions, digest } from '../src/runtime/adapters/codex/sessions'
-import { NativeSessions } from '../src/runtime/adapters/native-sessions'
+import type { EngineContext } from '../packages/runtime/src/contracts'
+import type { Message, MemoryEntry } from '../packages/shared/src/domain'
+import { MATERIAL_PARSE_VERSION } from '../packages/shared/src/domain/materials'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { CodexSessions, digest } from '../packages/runtime/src/adapters/codex/sessions'
+import { NativeSessions } from '../packages/runtime/src/adapters/native-sessions'
 
 const cleanups: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const cleanup of cleanups.splice(0).reverse()) await cleanup() })

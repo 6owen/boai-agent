@@ -8,7 +8,7 @@
 import { expect } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 import { test } from '../support/test'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
 import { join } from 'node:path'
 import { realpath } from 'node:fs/promises'
 import { DatabaseSync } from 'node:sqlite'

@@ -1,0 +1,49 @@
+{
+  "name": "@boai/transport",
+  "version": "0.2.4",
+  "private": true,
+  "type": "module",
+  "description": "BOAI RPC transport independent of application implementations",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "development": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./channels": {
+      "types": "./src/channels.ts",
+      "development": "./src/channels.ts",
+      "default": "./src/channels.ts"
+    },
+    "./client": {
+      "types": "./src/client.ts",
+      "development": "./src/client.ts",
+      "default": "./src/client.ts"
+    },
+    "./discovery": {
+      "types": "./src/discovery.ts",
+      "development": "./src/discovery.ts",
+      "default": "./src/discovery.ts"
+    },
+    "./events": {
+      "types": "./src/events.ts",
+      "development": "./src/events.ts",
+      "default": "./src/events.ts"
+    },
+    "./history": {
+      "types": "./src/history.ts",
+      "development": "./src/history.ts",
+      "default": "./src/history.ts"
+    },
+    "./server": {
+      "types": "./src/server.ts",
+      "development": "./src/server.ts",
+      "default": "./src/server.ts"
+    }
+  },
+  "dependencies": {
+    "@boai/shared": "workspace:*",
+    "ws": "8.21.3",
+    "zod": "4.6.5"
+  }
+}

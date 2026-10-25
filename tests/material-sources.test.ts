@@ -9,9 +9,9 @@ import { mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { MaterialSources } from '../src/main/material-sources'
-import { readClipboardMaterialPaths } from '../src/main/clipboard-material-files'
-import { MATERIAL_LIMITS } from '../src/shared/domain/materials'
+import { MaterialSources } from '../packages/shared/src/node/material-sources'
+import { readClipboardMaterialPaths } from '../apps/electron/src/main/clipboard-material-files'
+import { MATERIAL_LIMITS } from '../packages/shared/src/domain/materials'
 
 const roots: string[] = [], registries: MaterialSources[] = []
 afterEach(async () => {

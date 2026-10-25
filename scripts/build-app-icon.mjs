@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Workspace源码路径迁至apps/packages，保留既有输出与业务合同。
  * [INPUT]: app-icon-helper.swift.
  * [OUTPUT]: Bundled macOS helper for setting current BOAI .app Finder icon.
  * [POS]: Build-time native helper compilation; no app icon operation during build.
@@ -12,7 +13,7 @@ export default async function buildAppIcon() {
   if (process.platform !== 'darwin') return
   await mkdir('dist/native', { recursive: true })
   await promisify(execFile)('/usr/bin/swiftc', [
-    '-O', '-framework', 'AppKit', 'src/main/app-icon-helper.swift',
+    '-O', '-framework', 'AppKit', 'apps/electron/src/main/app-icon-helper.swift',
     '-o', 'dist/native/app-icon-helper',
   ], { timeout: 120_000, maxBuffer: 1_000_000 })
 }

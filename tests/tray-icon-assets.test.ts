@@ -10,9 +10,9 @@ import { mkdtemp, mkdir, copyFile, rm, writeFile, readFile } from 'node:fs/promi
 import { tmpdir } from 'node:os'
 import { resolve, join } from 'node:path'
 import { createHash } from 'node:crypto'
-import manifest from '../resources/app-icons/manifest.json'
-import { appIconPresets } from '../src/shared/appearance/app-icons'
-import { loadTrayIcon } from '../src/main/tray-icon'
+import manifest from '../packages/shared/src/appearance/app-icon-manifest.json'
+import { appIconPresets } from '../packages/shared/src/appearance/app-icons'
+import { loadTrayIcon } from '../apps/electron/src/main/tray-icon'
 const fake = vi.hoisted(() => ({ empty: false, representations: [] as Array<{ scaleFactor: number; dataURL: string }>, templates: [] as boolean[] }))
 vi.mock('electron', () => ({ nativeImage: { createFromBuffer: (bytes: Buffer) => ({ isEmpty: () => fake.empty, getSize: () => ({ width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) }), addRepresentation(value: { scaleFactor: number; dataURL: string }) { fake.representations.push(value) }, setTemplateImage(value: boolean) { fake.templates.push(value) } }) } }))
 const directory = resolve('resources/app-icons'), roots: string[] = []

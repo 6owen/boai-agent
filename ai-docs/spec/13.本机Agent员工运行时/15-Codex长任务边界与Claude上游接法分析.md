@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [OUTPUT]: 2026-10-20按用户要求清理测试产物/独立记录及其附件链接；历史文字结果不代表原件仍然保留。
 [OUTPUT]: 普通native通用截断已修及真实同run材料回答/四轮结果见06 §145；下方原分析留存，Work独立预算仍有限，不认证全长任务。
 [OUTPUT]: 2026-10-13用户授权普通本机通用16000截断移除，实际实施/复测归06 §145；API及显式业务预算保持，较早仅分析按原日期阅读。
@@ -21,7 +22,7 @@
 
 ## 2. 原分析确认的通用16000截断（后续已按§145修复）
 
-[`group-scheduler.ts`](../../../src/runtime/group-scheduler.ts) `recordOutputUsage`保存累计输出，达到16000时中断活动轮次；[`service.ts`](../../../src/runtime/service.ts)的`onUsage`把run.outputTokens的变化量送入该方法，没有按原生/API或是否显式Work区分。该限制也作用于Codex；本轮Codex样例只是未触发。
+[`group-scheduler.ts`](../../../packages/runtime/src/group-scheduler.ts) `recordOutputUsage`保存累计输出，达到16000时中断活动轮次；[`service.ts`](../../../packages/runtime/src/service.ts)的`onUsage`把run.outputTokens的变化量送入该方法，没有按原生/API或是否显式Work区分。该限制也作用于Codex；本轮Codex样例只是未触发。
 
 原03批Claude失败run `0fea243a-efb9-4b6f-8c66-0b2086c96bbf`保存输出29653，所属turn `4af07d51-1d7c-4621-93aa-96aa9dd375fd`的tokenEstimate同为29653，turn为budget_exhausted且reason为“达到本轮输出用量上限”，run为cancelled；原生AskUserQuestion在取消前5毫秒成功登记。这足以定位实际取消路径。1M上下文容量与本轮输出额度是不同指标，容量修正不解除该限制。
 

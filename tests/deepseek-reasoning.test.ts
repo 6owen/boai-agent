@@ -9,12 +9,12 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, expect, test, vi } from 'vitest'
-import { deepseekReasoningHistory } from '../src/runtime/adapters/mastra/deepseek-reasoning-model'
-import { MastraEngine } from '../src/runtime/adapters/mastra/engine'
-import type { EngineContext } from '../src/runtime/contracts'
-import type { Connection, DigitalAgent, Message } from '../src/shared/domain'
-import type { BrowserSession } from '../src/runtime/modules/browser/session'
-import type { TraceSpan } from '../src/shared/domain/traces'
+import { deepseekReasoningHistory } from '../packages/runtime/src/adapters/mastra/deepseek-reasoning-model'
+import { MastraEngine } from '../packages/runtime/src/adapters/mastra/engine'
+import type { EngineContext } from '../packages/runtime/src/contracts'
+import type { Connection, DigitalAgent, Message } from '../packages/shared/src/domain'
+import type { BrowserSession } from '../packages/runtime/src/modules/browser/session'
+import type { TraceSpan } from '../packages/shared/src/domain/traces'
 
 type WireMessage = { role: string; content: unknown; reasoning_content?: string; tool_call_id?: string; tool_calls?: { id: string; type: string; function: { name: string; arguments: string } }[] }
 type WireRequest = { model: string; messages: WireMessage[]; tools: { type: string; function: { name: string } }[]; thinking?: { type: string }; reasoning_effort?: string; max_tokens?: number }

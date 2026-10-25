@@ -9,7 +9,7 @@
 import { createServer } from 'node:http'
 import { expect } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
-import type { Conversation, ConversationDetail } from '../../../src/shared/domain'
+import type { Conversation, ConversationDetail } from '../../../packages/shared/src/domain'
 import { test as base } from './collaboration.steps'
 import { prepareSavedModel, systemKeychainLaunch } from '../support/saved-model'
 import type { Desktop } from '../support/desktop'

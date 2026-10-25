@@ -8,12 +8,12 @@
 import { act, createElement as h, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { FloatingLayerScope } from '../src/renderer/components/ui/floating-layer-scope'
-import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '../src/renderer/components/ui/popover'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../src/renderer/components/ui/dropdown-menu'
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '../src/renderer/components/ui/hover-card'
-import { AgentInfoPopover } from '../src/renderer/pages/conversations/-components/agent-info-popover'
-import type { DigitalAgent } from '../src/shared/domain'
+import { FloatingLayerScope } from '../apps/electron/src/renderer/components/ui/floating-layer-scope'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '../apps/electron/src/renderer/components/ui/popover'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../apps/electron/src/renderer/components/ui/dropdown-menu'
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '../apps/electron/src/renderer/components/ui/hover-card'
+import { AgentInfoPopover } from '../apps/electron/src/renderer/pages/conversations/-components/agent-info-popover'
+import type { DigitalAgent } from '../packages/shared/src/domain'
 
 type LayerProps = { open?: boolean; defaultOpen?: boolean; onOpenChange?(open: boolean): void }
 const layers = {

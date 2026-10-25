@@ -9,8 +9,8 @@ import { afterEach, expect, it } from 'vitest'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { ProductStore, type StoredRecord } from '../src/runtime/adapters/storage/product-store'
-import { EMPLOYEE_EXECUTION_LIMITS } from '../src/shared/domain/employee-executions'
+import { ProductStore, type StoredRecord } from '../packages/runtime/src/adapters/storage/product-store'
+import { EMPLOYEE_EXECUTION_LIMITS } from '../packages/shared/src/domain/employee-executions'
 
 const fixtures: { store: ProductStore; root: string }[] = []
 afterEach(async () => { for (const { store, root } of fixtures.splice(0)) { await store.close(); await rm(root, { recursive: true, force: true }) } })

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Workspace源码路径迁至apps/packages，保留既有输出与业务合同。
  * [OUTPUT]: 字号扫描覆盖共享UI与设计站；token定义仍是唯一数值来源。
  * [INPUT]: BOAI Renderer CSS/TS/TSX and the shared typography resolver.
  * [OUTPUT]: Fails on newly scattered literal font sizes in Renderer source.
@@ -8,7 +9,7 @@
 import { readdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
-const roots = ['src/renderer', 'packages/ui/src', 'apps/design-docs/src']
+const roots = ['apps/electron/src/renderer', 'packages/ui/src', 'apps/design-docs/src']
 const violations = []
 const patterns = [
   /font-size\s*:\s*-?\d+(?:\.\d+)?(?:px|rem|em)\b/gi,

@@ -8,9 +8,9 @@
 import { act, createElement as h } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, expect, it, vi } from 'vitest'
-import { MaterialMarkdown } from '../src/renderer/pages/conversations/-components/material-citations'
-import type { ConversationDetail, Message } from '../src/shared/domain'
-import type { DesktopApi } from '../src/shared/ipc'
+import { MaterialMarkdown } from '../apps/electron/src/renderer/pages/conversations/-components/material-citations'
+import type { ConversationDetail, Message } from '../packages/shared/src/domain'
+import type { DesktopApi } from '../packages/shared/src/ipc'
 
 const cleanup: (() => Promise<void>)[] = []
 afterEach(async () => { for (const close of cleanup.splice(0).reverse()) await close(); Reflect.deleteProperty(window, 'boai'); vi.restoreAllMocks() })

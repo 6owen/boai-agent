@@ -15,10 +15,10 @@ import { join } from 'node:path'
 import type { ServerResponse } from 'node:http'
 import type { Desktop } from './desktop'
 import { teamEndpoint, sendTeamOutput } from '../../fixtures/team-planner'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
-import type { ConversationDetail, DiscussionTurn, Message, WorkItem } from '../../../src/shared/domain'
-import type { ArtifactAdoptionCurrent, ArtifactAdoptionEvent, ArtifactAdoptionInput, ArtifactAdoptionReceipt, ArtifactRevisionInput, ArtifactRevisionRequest, ArtifactVersion } from '../../../src/shared/domain/artifacts'
-import type { ConversationMaterial } from '../../../src/shared/domain/materials'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
+import type { ConversationDetail, DiscussionTurn, Message, WorkItem } from '../../../packages/shared/src/domain'
+import type { ArtifactAdoptionCurrent, ArtifactAdoptionEvent, ArtifactAdoptionInput, ArtifactAdoptionReceipt, ArtifactRevisionInput, ArtifactRevisionRequest, ArtifactVersion } from '../../../packages/shared/src/domain/artifacts'
+import type { ConversationMaterial } from '../../../packages/shared/src/domain/materials'
 
 interface ModelMessage { role: string; content: unknown; tool_calls?: { function: { name: string } }[] }
 interface ModelTool { function: { name: string; description?: string } }

@@ -9,10 +9,10 @@ import { afterEach, expect, it } from 'vitest'
 import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { Conversation } from '../src/shared/domain'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { ConversationHistory } from '../src/runtime/modules/conversations/history'
-import { prepareSessionDeletion, sessionFingerprint, type SessionOperationRecord } from '../src/runtime/modules/conversations/session-operations'
+import type { Conversation } from '../packages/shared/src/domain'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { ConversationHistory } from '../packages/runtime/src/modules/conversations/history'
+import { prepareSessionDeletion, sessionFingerprint, type SessionOperationRecord } from '../packages/runtime/src/modules/conversations/session-operations'
 const fixtures: { root: string; store: ProductStore }[] = []
 const row = (collection: string, id: string, value: object) => ({ collection, id, value: { id, ...value } })
 async function setup() {

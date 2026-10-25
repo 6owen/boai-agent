@@ -40,16 +40,16 @@ import { promisify } from 'node:util'
 import { join } from 'node:path'
 import { createHash } from 'node:crypto'
 import { personalityTurnFailure } from './personality-result'
-import { AppService } from '../../src/runtime/service'
-import { openDesktopCli } from '../../src/main/cli-service'
-import { MastraEngine } from '../../src/runtime/adapters/mastra/engine'
-import type { AgentEngine, EngineContext } from '../../src/runtime/contracts'
-import type { AgentHome, Connection, Conversation, ConversationDetail, ModelUsage } from '../../src/shared/domain'
-import type { AgentProfile, AgentBehaviorRun, AgentStateView } from '../../src/shared/domain/agent-profile'
-import type { ApplicationResult } from '../../src/shared/domain/application-protocol'
-import type { WebSearchSettings, WebSearchPreference, WebSearchServiceConfig } from '../../src/shared/domain/web-search'
+import { AppService } from '../../packages/runtime/src/service'
+import { openDesktopCli } from '../../apps/electron/src/main/cli-service'
+import { MastraEngine } from '../../packages/runtime/src/adapters/mastra/engine'
+import type { AgentEngine, EngineContext } from '../../packages/runtime/src/contracts'
+import type { AgentHome, Connection, Conversation, ConversationDetail, ModelUsage } from '../../packages/shared/src/domain'
+import type { AgentProfile, AgentBehaviorRun, AgentStateView } from '../../packages/shared/src/domain/agent-profile'
+import type { ApplicationResult } from '../../packages/shared/src/domain/application-protocol'
+import type { WebSearchSettings, WebSearchPreference, WebSearchServiceConfig } from '../../packages/shared/src/domain/web-search'
 import { EvaluationBudget } from './budget'
-import { promptSourceDefaults } from '../../src/shared/domain/agent-prompts'
+import { promptSourceDefaults } from '../../packages/shared/src/domain/agent-prompts'
 
 export const personalityVersion = 'PERSONA-v1'
 const runFile = promisify(execFile)
@@ -153,7 +153,7 @@ export const personalitySkillCases = [
   { id: 'skill-computer-health', split: 'development', cluster: 'skills', turns: ['读一下电脑操作技能，检查 BOAI Computer Use 连接的 health_report。只检查权限，不截图、不读取应用内容、不点击，也不要弹出权限申请。'], criteria: ['读取技能、检查实际 MCP 目录并调用 health_report。', '报告实际 macOS 权限，不声称已能控制电脑或要求反复批准。'] },
 ] as const
 
-interface Settings { webSearch?: { service: WebSearchServiceConfig; preference: WebSearchPreference; default: WebSearchSettings['default']; revision: number }; toolClientPath?: string; candidateReflectionText?: string; candidateReflection?: boolean; skillSourceRoot?: string; skills?: { name: string; content: string; hash: string }[]; computerSource?: import('../../src/shared/domain/sources').DataSource; output: string; maxRequests: number; deadlineMs: number; label: string; caseIds?: string[]; currentConfiguration?: { agent: { modelId: string; configVersion: number }; profile: AgentProfile; files: { name: string; hash: string; content: string }[] } }
+interface Settings { webSearch?: { service: WebSearchServiceConfig; preference: WebSearchPreference; default: WebSearchSettings['default']; revision: number }; toolClientPath?: string; candidateReflectionText?: string; candidateReflection?: boolean; skillSourceRoot?: string; skills?: { name: string; content: string; hash: string }[]; computerSource?: import('../../packages/shared/src/domain/sources').DataSource; output: string; maxRequests: number; deadlineMs: number; label: string; caseIds?: string[]; currentConfiguration?: { agent: { modelId: string; configVersion: number }; profile: AgentProfile; files: { name: string; hash: string; content: string }[] } }
 function selectPersonalityCases(caseIds?: string[]) {
   const allCases = [...personalityCases, ...personalityGroundingCases, ...personalityStateCases, ...personalitySkillCases]
   if (caseIds?.some(id => !allCases.some(example => example.id === id)) || caseIds && new Set(caseIds).size !== caseIds.length) throw new Error('Unknown or duplicate personality case')
@@ -217,7 +217,7 @@ export async function runPersonalityEvaluation({ settings, connection, apiKey, s
       if (result.status !== 'succeeded') throw new Error('隔离检索服务未保存')
       const preferences = await call('webSearch.setDefault', { expectedRevision: 0, default: settings.webSearch.default }, 'search-default')
       if (preferences.status !== 'succeeded') throw new Error('隔离检索偏好未保存')
-      const employee = (await call('employees.get', { id: 'bobo' })).data as import('../../src/shared/domain').DigitalAgent
+      const employee = (await call('employees.get', { id: 'bobo' })).data as import('../../packages/shared/src/domain').DigitalAgent
       const { configVersion, workspaceRef: _workspace, memoryNamespace: _namespace, policyVersion: _policy, ...input } = employee
       await service.handle('saveAgent', { ...input, expectedConfigVersion: configVersion, webSearch: settings.webSearch.preference })
     }
@@ -230,13 +230,13 @@ export async function runPersonalityEvaluation({ settings, connection, apiKey, s
       const previous = home.files.find(item => item.name === file.name)
       if (!previous || previous.kind !== 'source') throw new Error('当前源文件不在登记范围内')
       const content = file.name === 'prompts/reflection.md' ? settings.candidateReflectionText ?? (settings.candidateReflection ? promptSourceDefaults[file.name] : file.content) : file.content
-      if (previous.hash !== createHash('sha256').update(content).digest('hex')) await service.handle('saveAgentFile', { agentId: 'bobo', name: file.name as import('../../src/shared/domain/agent-profile').AgentSourceName, content, expectedHash: previous.hash, expectedConfigVersion: home.configVersion })
+      if (previous.hash !== createHash('sha256').update(content).digest('hex')) await service.handle('saveAgentFile', { agentId: 'bobo', name: file.name as import('../../packages/shared/src/domain/agent-profile').AgentSourceName, content, expectedHash: previous.hash, expectedConfigVersion: home.configVersion })
     }
     for (const skill of settings.skillSourceRoot ? [] : settings.skills ?? []) {
       const saved = await call('skills.save', { name: skill.name, content: skill.content, expectedHash: null }, 'source-' + skill.name)
       if (saved.status !== 'succeeded') throw new Error('评估技能未保存: ' + skill.name + ' ' + JSON.stringify(saved))
       const localSkillId = (saved.data as { skill: { id: string } }).skill.id
-      const employee = (await call('employees.get', { id: 'bobo' })).data as import('../../src/shared/domain').DigitalAgent
+      const employee = (await call('employees.get', { id: 'bobo' })).data as import('../../packages/shared/src/domain').DigitalAgent
       const plan = (await call('skills.bindingPlan', { agentId: 'bobo', localSkillId, expectedConfigVersion: employee.configVersion }, 'plan-' + skill.name)).data as { id: string; contentHash: string }
       const bound = await call('skills.bind', { agentId: 'bobo', localSkillId, expectedConfigVersion: employee.configVersion, planId: plan.id, contentHash: plan.contentHash }, 'bind-' + skill.name)
       if (bound.status !== 'succeeded') throw new Error('评估技能未受理')
@@ -287,7 +287,7 @@ export async function runPersonalityEvaluation({ settings, connection, apiKey, s
         if ((await service.handle('getConversation', { id: room.id }) as ConversationDetail).messages.length) throw new Error('笔记探路会话未清空')
         const query = { agentId: 'bobo', scope: 'employee' }
         for (const [index, content] of example.seedNotes.entries()) {
-          const view = await service.handle('getMemory', query) as import('../../src/shared/domain').MemoryView
+          const view = await service.handle('getMemory', query) as import('../../packages/shared/src/domain').MemoryView
           await service.handle('saveMemory', { ...query, content, kind: 'experience', evidence: 'claim', useScope: 'employee', expectedEpoch: view.epoch, requestId: current + ':' + index })
         }
         const view = await service.handle('getMemory', query)

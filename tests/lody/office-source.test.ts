@@ -5,7 +5,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
 import { describe, expect, it, vi } from 'vitest'
-import { MAX_OFFICE_PREVIEW_BYTES, OfficePreviewTooLargeError, readOfficePreviewBytes } from '../../src/renderer/components/common/lody/session-file-office-source'
+import { MAX_OFFICE_PREVIEW_BYTES, OfficePreviewTooLargeError, readOfficePreviewBytes } from '../../apps/electron/src/renderer/components/common/lody/session-file-office-source'
 describe('copied Office input boundaries', () => {
   it('keeps bytes independent from a mutable host DTO and performs no fetch', async () => {
     const bytes = new Uint8Array([1, 2, 3]), fetcher = vi.fn()

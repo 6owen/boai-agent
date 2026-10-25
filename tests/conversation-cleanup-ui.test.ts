@@ -9,10 +9,10 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { toast } from 'sonner'
-import type { Conversation, Snapshot } from '../src/shared/domain'
-import type { AppEvent, DesktopApi } from '../src/shared/ipc'
-import { CoreCollaborationResults } from '../src/renderer/pages/conversations/-components/core-collaboration-results'
-import { ConversationHistoryDialog, type ConversationHistoryTarget } from '../src/renderer/pages/conversations/-components/conversation-history-dialog'
+import type { Conversation, Snapshot } from '../packages/shared/src/domain'
+import type { AppEvent, DesktopApi } from '../packages/shared/src/ipc'
+import { CoreCollaborationResults } from '../apps/electron/src/renderer/pages/conversations/-components/core-collaboration-results'
+import { ConversationHistoryDialog, type ConversationHistoryTarget } from '../apps/electron/src/renderer/pages/conversations/-components/conversation-history-dialog'
 
 let host: HTMLDivElement, root: Root, api: DesktopApi
 let pending: Array<{ resolve(value: []): void; reject(error: Error): void }>

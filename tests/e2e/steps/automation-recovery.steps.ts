@@ -12,7 +12,7 @@ import { readFile, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test as base } from '../support/test'
 import { crashAutomationRuntime, startInterruptedAutomation } from '../support/automation-recovery'
-import type { AutomationOccurrence } from '../../../src/shared/domain'
+import type { AutomationOccurrence } from '../../../packages/shared/src/domain'
 
 type State = { fixture?: Awaited<ReturnType<typeof startInterruptedAutomation>>; occurrence?: AutomationOccurrence; file?: string; modifiedAt?: number; calls?: number; scheduled?: { planId: string; dueAt: string } }
 export const test = base.extend<{ recovery: State }>({ recovery: async ({}, use) => use({}) })

@@ -9,8 +9,8 @@ import { spawn, type ChildProcess } from 'node:child_process'
 import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { nativeProcessGuard, recoverNativeProcesses } from '../src/runtime/adapters/native-process-guard'
-import { NATIVE_PROCESS_SUPERVISOR } from '../src/runtime/adapters/native-process-supervisor'
+import { nativeProcessGuard, recoverNativeProcesses } from '../packages/runtime/src/adapters/native-process-guard'
+import { NATIVE_PROCESS_SUPERVISOR } from '../packages/runtime/src/adapters/native-process-supervisor'
 const cleanups: (()=>Promise<void>)[]=[]
 afterEach(async()=>{for(const cleanup of cleanups.splice(0).reverse())await cleanup()})
 const alive=(pid:number)=>{try{process.kill(pid,0);return true}catch{return false}}

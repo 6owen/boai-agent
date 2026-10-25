@@ -23,29 +23,29 @@ import { mkdtemp, realpath, rm, lstat, chmod, symlink, writeFile, readFile } fro
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { createHash, randomUUID } from 'node:crypto'
-import type { MaterialUploads } from '../src/runtime/modules/materials/material-upload'
-import { AppService } from '../src/runtime/service'
-import { CliRpcClient } from '../src/cli/client'
-import { readLocalConnection } from '../src/cli/discovery'
-import { openDesktopCli } from '../src/main/cli-service'
-import type { AppEvent } from '../src/shared/ipc'
-import type { Connection, Conversation, ConversationDetail, DigitalAgent, Message, Snapshot } from '../src/shared/domain'
-import type { AgentEngine, EngineContext } from '../src/runtime/contracts'
-import { executeMessage, executionWriter, readPrompt, type ExecutionEvent } from '../src/cli/execution'
-import type { MessageExecution } from '../src/shared/domain/message-execution'
+import type { MaterialUploads } from '../packages/runtime/src/modules/materials/material-upload'
+import { AppService } from '../packages/runtime/src/service'
+import { CliRpcClient } from '../packages/transport/src/client'
+import { readLocalConnection } from '../packages/transport/src/discovery'
+import { openDesktopCli } from '../apps/electron/src/main/cli-service'
+import type { AppEvent } from '../packages/shared/src/ipc'
+import type { Connection, Conversation, ConversationDetail, DigitalAgent, Message, Snapshot } from '../packages/shared/src/domain'
+import type { AgentEngine, EngineContext } from '../packages/runtime/src/contracts'
+import { executeMessage, executionWriter, readPrompt, type ExecutionEvent } from '../apps/cli/src/execution'
+import type { MessageExecution } from '../packages/shared/src/domain/message-execution'
 import { Readable } from 'node:stream'
-import { executeSessionOperation } from '../src/cli/session'
-import { executeRunCancellation } from '../src/cli/cancel'
-import type { RunCancellation, CancellationTarget } from '../src/shared/domain/run-cancellation'
-import { CliError, PROTOCOL_VERSION } from '../src/shared/cli/protocol'
-import type { SessionOperationReceipt } from '../src/shared/domain/session-operation'
-import type { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import type { ConversationMessagePage } from '../src/shared/domain/reading'
-import { historyQuery } from '../src/cli/history'
-import { selectSources } from '../src/cli/sources'
-import { selectAttachments, uploadEmployeeAttachments } from '../src/cli/attachments'
-import type { DataSource } from '../src/shared/domain/sources'
-import type { ComposerReference } from '../src/shared/domain/composer-references'
+import { executeSessionOperation } from '../apps/cli/src/session'
+import { executeRunCancellation } from '../apps/cli/src/cancel'
+import type { RunCancellation, CancellationTarget } from '../packages/shared/src/domain/run-cancellation'
+import { CliError, PROTOCOL_VERSION } from '../packages/shared/src/cli/protocol'
+import type { SessionOperationReceipt } from '../packages/shared/src/domain/session-operation'
+import type { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import type { ConversationMessagePage } from '../packages/shared/src/domain/reading'
+import { historyQuery } from '../packages/transport/src/history'
+import { selectSources } from '../apps/cli/src/sources'
+import { selectAttachments, uploadEmployeeAttachments } from '../apps/cli/src/attachments'
+import type { DataSource } from '../packages/shared/src/domain/sources'
+import type { ComposerReference } from '../packages/shared/src/domain/composer-references'
 
 const cleanup: (() => Promise<unknown> | void)[] = []
 afterEach(async () => { for (const close of cleanup.splice(0).reverse()) await close() })
@@ -798,7 +798,7 @@ it('uploads real local bytes through owner RPC and preserves material receipts w
   expect(await selectAttachments(f.client, [path], f.room.id, requestId)).toEqual(selections)
   expect(calls.mock.calls.some(([name]) => name === 'transferMaterial')).toBe(false)
   calls.mockRestore()
-  const preview = await f.app.handle('getMaterialPreview', { id: selections![0].id }) as import('../src/shared/domain/materials').MaterialPreview
+  const preview = await f.app.handle('getMaterialPreview', { id: selections![0].id }) as import('../packages/shared/src/domain/materials').MaterialPreview
   expect(preview.text).toBe('ATTACHMENT_REAL_BYTES_5829'); expect(preview.material.deliveryScope).toBe('conversation')
   const other = await f.app.handle('createConversation', { kind: 'group', title: '其他群', agentIds: ['researcher', 'writer'] }) as Conversation
   await expect(f.client.invoke('sendMessage', { conversationId: other.id, content: '越过原聊天', mentionIds: [], materialSelections: selections, requestId: randomUUID() })).rejects.toThrow('不属于')
@@ -864,7 +864,7 @@ it('rejects bad first attachments without publishing a core room, message or mod
   expect((await f.app.handle('snapshot', undefined) as Snapshot).conversations.filter(room => room.purpose === 'core')).toHaveLength(0)
   expect(f.runs).toBe(0)
   const store = (f.app as unknown as { store: ProductStore }).store
-  const materials = await store.load<import('../src/shared/domain/materials').ConversationMaterial>('materials')
+  const materials = await store.load<import('../packages/shared/src/domain/materials').ConversationMaterial>('materials')
   expect(materials).toHaveLength(2)
   for (const material of materials) {
     expect(material.status).toBe('removed'); expect(material.messageId).toBeUndefined()

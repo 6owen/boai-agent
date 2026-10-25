@@ -9,7 +9,7 @@ import { createBdd } from 'playwright-bdd'
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { test } from './codex-employee.steps'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
 
 const { Then } = createBdd(test)
 Then('原聊天清空后重启不恢复外部会话且新发送不带旧暗号', async ({ runtime, codexEmployee }) => {

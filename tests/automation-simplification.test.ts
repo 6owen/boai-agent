@@ -8,12 +8,12 @@ import { afterEach, expect, it } from 'vitest'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { AutomationRepository } from '../src/runtime/modules/automations/automation-repository'
-import { validateAutomationDraft } from '../src/runtime/modules/automations/automation-draft'
-import { AppService } from '../src/runtime/service'
-import type { AutomationDraftRequest, AutomationDraftResult, AutomationInput, AutomationOccurrence } from '../src/shared/domain/automations'
-import type { Connection, Snapshot } from '../src/shared/domain'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { AutomationRepository } from '../packages/runtime/src/modules/automations/automation-repository'
+import { validateAutomationDraft } from '../packages/runtime/src/modules/automations/automation-draft'
+import { AppService } from '../packages/runtime/src/service'
+import type { AutomationDraftRequest, AutomationDraftResult, AutomationInput, AutomationOccurrence } from '../packages/shared/src/domain/automations'
+import type { Connection, Snapshot } from '../packages/shared/src/domain'
 const dispose: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const fn of dispose.splice(0).reverse()) await fn() })
 async function database() {

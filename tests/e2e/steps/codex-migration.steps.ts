@@ -15,11 +15,11 @@ import { readFile, stat } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { test } from './codex-employee.steps'
 import { openBindingEmployee } from '../support/skill-binding'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
 import { verifyLocalAgentNavigation } from '../support/local-agent-navigation'
 import { installSaveProbe, type SaveProbe } from '../support/agent-config-save'
 import type { Desktop } from '../support/desktop'
-import type { DigitalAgent } from '../../../src/shared/domain'
+import type { DigitalAgent } from '../../../packages/shared/src/domain'
 
 const { When, Then } = createBdd(test)
 When('本场旧ACP迁移核对受理前后丢失的配置答复', async ({ codexEmployee }) => { codexEmployee.migrationSaveFault = true })

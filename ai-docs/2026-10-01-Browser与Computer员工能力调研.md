@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [INPUT]: Mastra 当前 Browser 官方文档、已安装 core 的 Computer/Browser 文档与工具类型、Daytona 与 E2B 官方集成/API/计费资料，以及 BoAI task 工厂/工作区与按员工授权和真实 Work 的既有边界；后续旧 boai-app 浏览器分析入口。
 [OUTPUT]: Browser 先行/Computer 独立沙箱接入与 MCP 后续插件的建议、能力范围、运行对象、BYOK、产品内置/员工授权/启动的默认取舍及当前源码缺口；后续复用旧 Electron/CDP 底座的选型更新；不代表已实现或通过运行验收。
 [POS]: ai-docs 中的功能选型调研；供后续规格拆解，尚不是实现完成或运行验收记录。
@@ -69,13 +70,13 @@ Mastra Browser 页面列出 SDK providers：`AgentBrowser`、`StagehandBrowser`�
 
 ### 当前源码接线与首批 Browser 选择
 
-当前 [package.json](../package.json) 有 `@mastra/core 1.71.0`，没有声明 AgentBrowser、Stagehand、Daytona 或 E2B Desktop provider；[Agent 工厂](../src/runtime/adapters/mastra/agent-factory.ts)尚未传 `browser`，[task-runtime](../src/runtime/adapters/mastra/task-runtime.ts)的 Workspace 原生工具整体禁用。框架定义存在不等于产品可用。
+当前 [package.json](../package.json) 有 `@mastra/core 1.71.0`，没有声明 AgentBrowser、Stagehand、Daytona 或 E2B Desktop provider；[Agent 工厂](../packages/runtime/src/adapters/mastra/agent-factory.ts)尚未传 `browser`，[task-runtime](../packages/runtime/src/adapters/mastra/task-runtime.ts)的 Workspace 原生工具整体禁用。框架定义存在不等于产品可用。
 
 安装版 [Browser 文档](../node_modules/@mastra/core/dist/docs/references/docs-browser.md)及 [Agent 类型](../node_modules/@mastra/core/dist/agent/types.d.ts)证实 `Agent.browser` 原生入口。直接挂 `browser` 会自动合并 provider 全部工具；仅给普通 `tools` 配白名单或关闭 workspace tools 不能裁剪它。AgentBrowser 有 `excludeTools`，安装版 [ToolHooks](../node_modules/@mastra/core/dist/tools/types.d.ts)也有 `beforeToolCall` / `afterToolCall`；应接 BoAI 宿主检查，保留单一受控工具路径。[AgentBrowser API](https://mastra.ai/reference/browser/agent-browser)
 
 首批建议本地 AgentBrowser：用确定性页面快照/ref，由员工已有模型决定动作，较容易接现有 Work 预算。Stagehand 的 AI act/extract/observe 另有内部 model/key，需额外用量、取消与预算接线，不默认继承外层模型账本。[Stagehand API](https://mastra.ai/reference/browser/stagehand-browser)。需要截图理解时仍须检查图像输入；纯文本网页提取不能自动证明视觉能力。
 
-Browser 的租约/登录范围固定员工×会话，第一片可先每个 run 使用临时独占实例，再增加用户明确保留的登录 profile。现有 StageInstance.dispose 只销毁 workspace，需扩展真实 browser.close / 退出后释放容量；浏览器动作、审批与回执另接 [EngineContext](../src/runtime/contracts.ts) 和既有原 Work，而不是把网页操作伪装成 shell 审批。现有[第 5 组 BR1 规格](./spec/5.Mastra能力扩展/04-Browser浏览器能力.md)可继续作为范围基础，最终 provider 类型、Chromium 打包和真实取消待锁版验收。
+Browser 的租约/登录范围固定员工×会话，第一片可先每个 run 使用临时独占实例，再增加用户明确保留的登录 profile。现有 StageInstance.dispose 只销毁 workspace，需扩展真实 browser.close / 退出后释放容量；浏览器动作、审批与回执另接 [EngineContext](../packages/runtime/src/contracts.ts) 和既有原 Work，而不是把网页操作伪装成 shell 审批。现有[第 5 组 BR1 规格](./spec/5.Mastra能力扩展/04-Browser浏览器能力.md)可继续作为范围基础，最终 provider 类型、Chromium 打包和真实取消待锁版验收。
 
 ## 给 BoAI 的最小接入方式
 

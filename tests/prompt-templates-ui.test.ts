@@ -10,13 +10,13 @@
 import { act, createElement as h, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import type { DesktopApi } from '../src/shared/ipc'
-import type { DigitalAgent, Resource } from '../src/shared/domain'
-import type { PromptTemplate } from '../src/shared/domain/prompt-templates'
-import type { ChatDraft } from '../src/renderer/pages/conversations/presentation'
-import { PromptBar } from '../src/renderer/pages/conversations/-components/prompt-bar'
-import { draftContent, draftResourceReferences } from '../src/renderer/pages/conversations/inline-mentions'
-import { PromptTemplatesView } from '../src/renderer/pages/library/prompt-templates-view'
+import type { DesktopApi } from '../packages/shared/src/ipc'
+import type { DigitalAgent, Resource } from '../packages/shared/src/domain'
+import type { PromptTemplate } from '../packages/shared/src/domain/prompt-templates'
+import type { ChatDraft } from '../apps/electron/src/renderer/pages/conversations/presentation'
+import { PromptBar } from '../apps/electron/src/renderer/pages/conversations/-components/prompt-bar'
+import { draftContent, draftResourceReferences } from '../apps/electron/src/renderer/pages/conversations/inline-mentions'
+import { PromptTemplatesView } from '../apps/electron/src/renderer/pages/library/prompt-templates-view'
 
 let host: HTMLDivElement, root: Root, latestDraft: ChatDraft
 const employee = { id: 'alice', name: 'Alice', role: '研究员', active: true, configVersion: 1, skillIds: ['skill-a'] } as DigitalAgent

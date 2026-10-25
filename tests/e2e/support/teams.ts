@@ -8,12 +8,12 @@
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { Desktop } from './desktop'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
-import { TeamRepository } from '../../../src/runtime/modules/teams/team-repository'
-import type { TeamDraft } from '../../../src/shared/domain/team-creation'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
+import { TeamRepository } from '../../../packages/runtime/src/modules/teams/team-repository'
+import type { TeamDraft } from '../../../packages/shared/src/domain/team-creation'
 import type { TestInfo } from '@playwright/test'
-import type { Connection } from '../../../src/shared/domain'
-import type { Methods } from '../../../src/shared/ipc'
+import type { Connection } from '../../../packages/shared/src/domain'
+import type { Methods } from '../../../packages/shared/src/ipc'
 
 type CoreStartInput = Methods['startCoreConversation']['input']
 interface CoreReplyState { starts: CoreStartInput[]; lookups: string[]; committedIds: string[]; lostStarts: number; unavailableLookups: number; lookupUnavailable: boolean }

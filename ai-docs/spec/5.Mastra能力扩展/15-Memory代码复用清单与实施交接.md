@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [OUTPUT]: §10.11当前Bobo冻结9轮真实29请求完成，偏好纠正/临时边界已观察；通知补造事实保留，质量仍needs_review。
 [OUTPUT]: §10.10补个人日常稳定化当前配置零调用准备和统一记忆管理原BDD入口红例/候选，未新增真实模型质量成绩。
 [INPUT]: 2026-10-20用户明确先落实文档、以后实现Memory，并要求Mastra/Alma/Memmy/Hy-Memory能直接复用的代码直接复用；13/14研究、固定上游与当前BOAI源码。
@@ -129,19 +130,19 @@ Alma 的向量仓库、LLM去重、sleep整理调度和 bobo 现有人格反思�
 
 | 现有位置/拟新增文件 | 实施职责 | 复用编号 |
 | --- | --- | --- |
-| [agent-factory.ts](../../../src/runtime/adapters/mastra/agent-factory.ts)、[engine.ts](../../../src/runtime/adapters/mastra/engine.ts) | 公开阶段使用Memory；稳定thread/resource，消除重复历史装配 | R-M1–M4 |
+| [agent-factory.ts](../../../packages/runtime/src/adapters/mastra/agent-factory.ts)、[engine.ts](../../../packages/runtime/src/adapters/mastra/engine.ts) | 公开阶段使用Memory；稳定thread/resource，消除重复历史装配 | R-M1–M4 |
 | `src/runtime/adapters/mastra/memory-adapter.ts`（新增） | Memory实例、已提交消息投影、Working Memory读写、失效/关闭 | R-M1–M4 |
-| [contracts.ts](../../../src/runtime/contracts.ts)、[service.ts](../../../src/runtime/service.ts) | 提供实际身份/来源/提交事件；原回执、取消、调用计量 | 原有产品链路 |
-| [memory.ts](../../../src/shared/domain/memory.ts) | provider选择、能力、来源及迁移状态；复用已有领域类型 | R-E2 |
+| [contracts.ts](../../../packages/runtime/src/contracts.ts)、[service.ts](../../../packages/runtime/src/service.ts) | 提供实际身份/来源/提交事件；原回执、取消、调用计量 | 原有产品链路 |
+| [memory.ts](../../../packages/shared/src/domain/memory.ts) | provider选择、能力、来源及迁移状态；复用已有领域类型 | R-E2 |
 | `src/runtime/modules/memory/memory-provider.ts`（新增） | 小型provider合同及选择；统一现有工具入口 | R-M3、R-E1/E2 |
 | `src/runtime/modules/memory/providers/memmy-client.ts`（新增） | 迁入客户端与必要类型，连接原服务 | R-E1/E2 |
 | `src/runtime/modules/memory/memory-sync.ts`（新增） | 稳定事件ID、待同步状态、来源映射、核对/删除 | 原事务及provider回执 |
-| [memory-tools.ts](../../../src/runtime/modules/memory/memory-tools.ts)、[memory-recall.ts](../../../src/runtime/modules/memory/memory-recall.ts) | 接当前provider；保留有界召回/真实来源，不增加同名平行工具 | R-M2、R-E1 |
-| [memory-repository.ts](../../../src/runtime/modules/memory/memory-repository.ts) | 保留未迁移范围；旧数据读取/迁移和已有来源屏障 | 原实现 |
-| [plugins/types.ts](../../../src/shared/plugins/types.ts)、[catalog.ts](../../../src/shared/plugins/catalog.ts) | 增加memory贡献及启停/兼容声明；复用现有设置持久化 | 既有插件平台 |
-| [activity-service.ts](../../../src/runtime/modules/desktop-activity/activity-service.ts)与同目录拟新增`activity-analysis.ts / activity-report.ts` | 片段、Alma归组/协议、Memmy evidence接入、清除传播 | R-A1–A4、R-E4/E5 |
-| [desktop-activity.ts](../../../src/shared/domain/desktop-activity.ts) | 片段、分析状态、实际来源集合和报告版本 | 现有活动领域 |
-| [employee/memory-pane.tsx](../../../src/renderer/components/employee/memory-pane.tsx)、[设置入口](../../../src/renderer/pages/settings/index.tsx)、[桌面活动设置](../../../src/renderer/pages/settings/desktop-activity.tsx) | 复用管理页，增加provider/状态/来源与必要操作 | 原UI与provider能力 |
+| [memory-tools.ts](../../../packages/runtime/src/modules/memory/memory-tools.ts)、[memory-recall.ts](../../../packages/runtime/src/modules/memory/memory-recall.ts) | 接当前provider；保留有界召回/真实来源，不增加同名平行工具 | R-M2、R-E1 |
+| [memory-repository.ts](../../../packages/runtime/src/modules/memory/memory-repository.ts) | 保留未迁移范围；旧数据读取/迁移和已有来源屏障 | 原实现 |
+| [plugins/types.ts](../../../packages/shared/src/plugins/types.ts)、[catalog.ts](../../../packages/shared/src/plugins/catalog.ts) | 增加memory贡献及启停/兼容声明；复用现有设置持久化 | 既有插件平台 |
+| [activity-service.ts](../../../packages/runtime/src/modules/desktop-activity/activity-service.ts)与同目录拟新增`activity-analysis.ts / activity-report.ts` | 片段、Alma归组/协议、Memmy evidence接入、清除传播 | R-A1–A4、R-E4/E5 |
+| [desktop-activity.ts](../../../packages/shared/src/domain/desktop-activity.ts) | 片段、分析状态、实际来源集合和报告版本 | 现有活动领域 |
+| [employee/memory-pane.tsx](../../../apps/electron/src/renderer/components/employee/memory-pane.tsx)、[设置入口](../../../apps/electron/src/renderer/pages/settings/index.tsx)、[桌面活动设置](../../../apps/electron/src/renderer/pages/settings/desktop-activity.tsx) | 复用管理页，增加provider/状态/来源与必要操作 | 原UI与provider能力 |
 | [boai-daily-report技能](../../../resources/agent-skills/boai-daily-report/SKILL.md) | 迁用Alma报告规则、明确活动来源及深挖后保存 | R-A4/A5 |
 
 插件首版是受控连接型能力：连接Memmy不自动安装另一套Agent、扫描所有软件或改动本机Hook。原生Agent已有Hook与BOAI事件可能重复时按真实会话/轮次映射处理，不修改本机原生权限。

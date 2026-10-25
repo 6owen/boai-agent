@@ -14,11 +14,11 @@ import { parse } from 'yaml'
 // @ts-expect-error Shared plain Node CI module has no declaration file.
 import { ciMode, scopeForEvent, validateDevelopmentMarkdown, validateDocumentation, validateScopeJobs } from '../scripts/ci-scope.mjs'
 
-it.each(['README.md', 'AGENTS.md', 'CLAUDE.md', '.agents/skills/shared/SKILL.md', 'ai-docs/spec/新规范.md', 'src/runtime/.folder.md'])('仅开发Markdown允许轻量：%s', path => {
+it.each(['README.md', 'AGENTS.md', 'CLAUDE.md', '.agents/skills/shared/SKILL.md', 'ai-docs/spec/新规范.md', 'packages/runtime/src/.folder.md'])('仅开发Markdown允许轻量：%s', path => {
   expect(ciMode('pull_request', [path])).toBe('documentation')
   expect(ciMode('push', [path])).toBe('documentation')
 })
-it.each(['src/main/main.ts', 'package.json', 'pnpm-lock.yaml', '.github/workflows/tests.yml', 'tests/e2e/baselines/chat.png', 'tests/ci-scope.test.ts', '.agents/skills/shared/scripts/run.mjs', 'ai-docs/contract.json', 'src/runtime/prompt.md', '../README.md', '.agents/../package.json', 'README.md\nignored'])('任意混入程序/未知路径均完整执行：%s', path => expect(ciMode('pull_request', ['README.md', path])).toBe('full'))
+it.each(['apps/electron/src/main/main.ts', 'package.json', 'pnpm-lock.yaml', '.github/workflows/tests.yml', 'tests/e2e/baselines/chat.png', 'tests/ci-scope.test.ts', '.agents/skills/shared/scripts/run.mjs', 'ai-docs/contract.json', 'packages/runtime/src/prompt.md', '../README.md', '.agents/../package.json', 'README.md\nignored'])('任意混入程序/未知路径均完整执行：%s', path => expect(ciMode('pull_request', ['README.md', path])).toBe('full'))
 it('手动、未知事件和空差异保留完整验证', () => {
   for (const event of ['workflow_dispatch', 'merge_group', undefined]) expect(ciMode(event, ['README.md'])).toBe('full')
   expect(ciMode('push', [])).toBe('full')
@@ -58,7 +58,7 @@ it('同时报告两路异常，文档范围仍要求产品任务明确跳过', (
 })
 
 it('草稿产品改动暂缓，Ready和明确标签恢复完整；文档仍按实际范围检查', () => {
-  const paths = ['src/main/main.ts']
+  const paths = ['apps/electron/src/main/main.ts']
   expect(ciMode('pull_request', paths, { draft: true })).toBe('deferred')
   expect(ciMode('pull_request', paths, { draft: false })).toBe('full')
   expect(ciMode('pull_request', paths, { draft: true, labels: [{ name: 'ci:full' }] })).toBe('full')

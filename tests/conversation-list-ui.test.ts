@@ -10,11 +10,11 @@
 import { act, createElement as h, type ComponentProps } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import type { Conversation, DigitalAgent, Snapshot } from '../src/shared/domain'
-import { ConversationList } from '../src/renderer/pages/conversations/-components/conversation-list'
-import { showErrorToast } from '../src/renderer/components/common/error-feedback'
+import type { Conversation, DigitalAgent, Snapshot } from '../packages/shared/src/domain'
+import { ConversationList } from '../apps/electron/src/renderer/pages/conversations/-components/conversation-list'
+import { showErrorToast } from '../apps/electron/src/renderer/components/common/error-feedback'
 
-vi.mock('../src/renderer/components/common/error-feedback', () => ({ ErrorToast: () => null, showErrorToast: vi.fn() }))
+vi.mock('../apps/electron/src/renderer/components/common/error-feedback', () => ({ ErrorToast: () => null, showErrorToast: vi.fn() }))
 type Props = ComponentProps<typeof ConversationList>
 let root: Root, host: HTMLDivElement, props: Props
 const room = (id: string, extra: Partial<Conversation> = {}): Conversation => ({ id, kind: 'direct', title: id, agentIds: ['bobo'], purpose: 'core', mode: 'natural', workspacePath: `/workspace/${id}`, sharedKnowledgeIds: [], createdAt: '2026-10-20T00:00:00Z', updatedAt: '2026-10-20T00:00:00Z', ...extra })

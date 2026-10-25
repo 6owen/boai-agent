@@ -4,22 +4,23 @@
  * [POS]: Actual gateway transport-fault acceptance; does not stop Magpie or modify personal configuration.
  * [PROTOCOL]: Update Header, tests/.folder.md and Magpie ledger for every actual batch, including failures.
  */
+import { workspaceInputFiles } from './support/workspace-inputs'
 import { createServer } from 'node:http'
 import { createHash } from 'node:crypto'
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { afterAll, beforeAll, expect, test } from 'vitest'
-import { AppService } from '../src/runtime/service'
-import { MastraEngine } from '../src/runtime/adapters/mastra/engine'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { probeMagpie } from '../src/runtime/adapters/mastra/model-catalog'
-import type { Connection } from '../src/shared/domain'
+import { AppService } from '../packages/runtime/src/service'
+import { MastraEngine } from '../packages/runtime/src/adapters/mastra/engine'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { probeMagpie } from '../packages/runtime/src/adapters/mastra/model-catalog'
+import type { Connection } from '../packages/shared/src/domain'
 
 const enabled = process.env.BOAI_MAGPIE_STREAM_REAL === '1', batch = process.env.BOAI_MAGPIE_BATCH ?? ''
 const evidence = resolve('.local/magpie-20261017', `stream-${batch}`), origin = 'http://127.0.0.1:3425', model = 'group/auto-gpt-6-luna'
 let version = '', inferenceRequests = 0, sourceBefore: Record<string, string>
 async function sources() {
-  const files = (await readdir('src', { recursive: true })).filter(file => /\.(ts|tsx|json)$/.test(file)).map(file => `src/${file}`)
+  const files = (await workspaceInputFiles()).filter(file => /\.(ts|tsx|json)$/.test(file))
   files.push('package.json', 'pnpm-lock.yaml', 'tests/magpie-stream-live.test.ts')
   return Object.fromEntries(await Promise.all(files.sort().map(async file => [file, createHash('sha256').update(await readFile(file)).digest('hex')])))
 }

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Workspace源码路径迁至apps/packages，保留既有输出与业务合同。
  * [INPUT]: 实际Claude程序、生产MCP桥与本地Anthropic协议服务；仅合成凭据。
  * [OUTPUT]: 实际CLI宿主工具阶段明确低强度/取消默认、工具目录、文件回执、多步用量及取消等待；不证明员工UI或Work发布。
  * [POS]: 第13组Claude宿主工具桥的独立协议验收入口。
@@ -11,15 +12,15 @@ import { mkdtemp, mkdir, readFile, readdir, writeFile, rm } from 'node:fs/promis
 import { tmpdir } from 'node:os'
 import { join, resolve, dirname } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { build } from 'esbuild'
+import { buildWorkspace as build } from './workspace-packages.mjs'
 
 if (!process.env.BOAI_CLAUDE_PROGRAM || !process.env.BOAI_CLAUDE_EVIDENCE) throw new Error('需要明确的程序路径和新证据文件')
 const out=resolve(process.env.BOAI_CLAUDE_EVIDENCE)
 await mkdir(dirname(out),{recursive:true})
 const root=await mkdtemp(join(tmpdir(),'boai-claude-tools-')),bundle=join(root,'adapter.cjs')
-await build({stdin:{contents:"export { verifyClaudeProgram, runClaudePhase } from './src/runtime/adapters/claude/turn'",resolveDir:process.cwd(),loader:'ts'},outfile:bundle,bundle:true,platform:'node',format:'cjs',target:'node22',logLevel:'silent'})
+await build({stdin:{contents:"export { verifyClaudeProgram, runClaudePhase } from './packages/runtime/src/adapters/claude/turn'",resolveDir:process.cwd(),loader:'ts'},outfile:bundle,bundle:true,platform:'node',format:'cjs',target:'node22',logLevel:'silent'})
 const {verifyClaudeProgram,runClaudePhase}=await import(pathToFileURL(bundle).href)
-const sources=['src/runtime/adapters/claude/turn.ts','src/runtime/adapters/claude/tools.ts','src/runtime/adapters/claude/policy.ts','src/runtime/adapters/claude/process.ts','src/runtime/modules/backends/program.ts','src/runtime/adapters/mastra/host-command.ts','scripts/probe-claude-tools.mjs','package.json','pnpm-lock.yaml']
+const sources=['packages/runtime/src/adapters/claude/turn.ts','packages/runtime/src/adapters/claude/tools.ts','packages/runtime/src/adapters/claude/policy.ts','packages/runtime/src/adapters/claude/process.ts','packages/runtime/src/modules/backends/program.ts','packages/runtime/src/adapters/mastra/host-command.ts','scripts/probe-claude-tools.mjs','package.json','pnpm-lock.yaml']
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex')
 const sourceHashes=Object.fromEntries(await Promise.all(sources.map(async path=>[path,hash(await readFile(path))])))
 const evidence={kind:'actual-claude-cli-production-mcp-local-protocol',createdAt:new Date().toISOString(),platform:process.platform,realProvider:false,uiVerified:false,workVerified:false,sourceHashes,requests:[],hostCalls:[],steps:[]}

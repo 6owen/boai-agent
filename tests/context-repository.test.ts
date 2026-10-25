@@ -8,10 +8,10 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, expect, it, vi } from 'vitest'
-import type { Message } from '../src/shared/domain'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { ContextRepository, contextSource, contextCollections, type ContextOwner } from '../src/runtime/modules/contexts/context-repository'
-import { contextCapacity, estimateTokens } from '../src/runtime/modules/contexts/context-capacity'
+import type { Message } from '../packages/shared/src/domain'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { ContextRepository, contextSource, contextCollections, type ContextOwner } from '../packages/runtime/src/modules/contexts/context-repository'
+import { contextCapacity, estimateTokens } from '../packages/runtime/src/modules/contexts/context-capacity'
 
 const cleanups: (() => Promise<void>)[] = []
 afterEach(async () => { vi.restoreAllMocks(); for (const cleanup of cleanups.splice(0).reverse()) await cleanup() })
@@ -129,7 +129,7 @@ it('isolates employees and blocks a cleared conversation from reviving context',
   await expect(repository.read(owner, messages)).rejects.toThrow('来源或版本')
 })
 it('uses only selected model window metadata and labels the unknown input ceiling honestly', () => {
-  const agent = { modelId: 'small' } as import('../src/shared/domain').DigitalAgent
+  const agent = { modelId: 'small' } as import('../packages/shared/src/domain').DigitalAgent
   expect(contextCapacity({ agent }, 2000)).toMatchObject({ window: undefined, source: 'unknown-policy', limit: 48000 })
   expect(contextCapacity({ agent, modelCatalog: { models: [{ id: 'small', contextWindow: 8000 }, { id: 'large', contextWindow: 100000 }], source: 'service-declared', fetchedAt: '' } }, 2000)).toMatchObject({ window: 8000, limit: 4976 })
   expect(contextCapacity({ agent }, 2000, 50000)).toMatchObject({ window: undefined, source: 'unknown-policy', limit: 98000 })

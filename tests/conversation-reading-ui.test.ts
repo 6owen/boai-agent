@@ -5,16 +5,16 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { describe, expect, it, vi } from 'vitest'
-import type { Message } from '../src/shared/domain'
-import { READING_LIMITS, type ConversationMessageItem, type ConversationMessagePage, type ConversationReadingState, type ConversationSearchPage, type ConversationSearchResult, type ConversationSearchTarget, type ConversationView } from '../src/shared/domain/reading'
-import type { DesktopApi } from '../src/shared/ipc'
-import { mergeMessagePages, mergeReadingState, readConversationSearchPages, sameSearchTarget, searchExcerptParts, updateLiveMessage, visibleCompletions } from '../src/renderer/pages/conversations/reading-state'
-import { useConversationReading } from '../src/renderer/pages/conversations/-components/use-conversation-reading'
-import { readDetailMessages } from '../src/renderer/pages/conversations/detail-reading'
+import type { Message } from '../packages/shared/src/domain'
+import { READING_LIMITS, type ConversationMessageItem, type ConversationMessagePage, type ConversationReadingState, type ConversationSearchPage, type ConversationSearchResult, type ConversationSearchTarget, type ConversationView } from '../packages/shared/src/domain/reading'
+import type { DesktopApi } from '../packages/shared/src/ipc'
+import { mergeMessagePages, mergeReadingState, readConversationSearchPages, sameSearchTarget, searchExcerptParts, updateLiveMessage, visibleCompletions } from '../apps/electron/src/renderer/pages/conversations/reading-state'
+import { useConversationReading } from '../apps/electron/src/renderer/pages/conversations/-components/use-conversation-reading'
+import { readDetailMessages } from '../apps/electron/src/renderer/pages/conversations/detail-reading'
 
 const readingEffects = vi.hoisted(() => [] as (() => (() => void) | undefined)[])
 vi.mock('react', () => ({ useRef: (current: unknown) => ({ current }), useState: (value: unknown) => [value, () => {}], useCallback: (callback: unknown) => callback, useEffect: (effect: () => (() => void) | undefined) => readingEffects.push(effect) }))
-vi.mock('../src/renderer/components/common', () => ({ errorText: (cause: unknown) => String(cause) }))
+vi.mock('../apps/electron/src/renderer/components/common', () => ({ errorText: (cause: unknown) => String(cause) }))
 
 const message = (id: string, sequence: number, status: Message['status'] = 'completed'): Message => ({ id, sequence, status, conversationId: 'chat', senderType: 'agent', senderId: 'employee', senderName: '员工', content: '相同正文', createdAt: '2026-10-01T00:00:00Z' })
 const item = (id: string, sequence: number, ordinal?: number): ConversationMessageItem => ({ messageId: id, sequence, status: 'available', message: message(id, sequence), ...(ordinal ? { completion: { messageId: id, epoch: 1, ordinal, contentHash: 'a'.repeat(64) } } : {}) })

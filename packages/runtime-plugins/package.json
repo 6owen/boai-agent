@@ -1,0 +1,30 @@
+{
+  "name": "@boai/runtime-plugins",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Private BOAI runtime provider implementations",
+  "exports": {
+    "./pi": {
+      "types": "./src/pi.ts",
+      "development": "./src/pi.ts",
+      "default": "./src/pi.ts"
+    },
+    "./opencode": {
+      "types": "./src/opencode.ts",
+      "development": "./src/opencode.ts",
+      "default": "./src/opencode.ts"
+    },
+    "./acp": {
+      "types": "./src/acp.ts",
+      "development": "./src/acp.ts",
+      "default": "./src/acp.ts"
+    },
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "@agentclientprotocol/sdk": "1.5.0",
+    "@boai/runtime-plugin-sdk": "workspace:*",
+    "@boai/shared": "workspace:*"
+  }
+}

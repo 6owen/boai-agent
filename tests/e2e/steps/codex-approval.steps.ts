@@ -14,8 +14,8 @@ import { join } from 'node:path'
 import { test } from './codex-employee.steps'
 import { openBindingEmployee } from '../support/skill-binding'
 import { crashAutomationRuntime, processIsRunning, runtimeChildProcessIds } from '../support/automation-recovery'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
-import type { BudgetModelCall } from '../../../src/shared/domain'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
+import type { BudgetModelCall } from '../../../packages/shared/src/domain'
 
 const { Then } = createBdd(test)
 Then('原命令审批以{string}结束后旧批准不执行也不重放', async ({ runtime, codexEmployee }, mode: string) => {

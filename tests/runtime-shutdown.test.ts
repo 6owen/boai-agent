@@ -6,7 +6,7 @@
  */
 import { EventEmitter } from 'node:events'
 import { afterEach, expect, it, vi } from 'vitest'
-import { stopRuntime } from '../src/main/runtime-shutdown'
+import { stopRuntime } from '../apps/electron/src/main/runtime-shutdown'
 class Child extends EventEmitter { postMessage = vi.fn(); kill = vi.fn(() => true) }
 afterEach(() => { vi.useRealTimers() })
 it('收到 stopped 后仍等实际 exit，且清理自己的监听', async () => {

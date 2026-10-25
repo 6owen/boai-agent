@@ -10,11 +10,11 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createServer } from 'node:http'
-import { LocalConfigDiscovery } from '../src/main/local-configs/discovery'
-import { AppService } from '../src/runtime/service'
-import { MastraEngine } from '../src/runtime/adapters/mastra/engine'
-import { modelConfig } from '../src/runtime/adapters/mastra/model-config'
-import type { Connection, Snapshot } from '../src/shared/domain'
+import { LocalConfigDiscovery } from '../apps/electron/src/main/local-configs/discovery'
+import { AppService } from '../packages/runtime/src/service'
+import { MastraEngine } from '../packages/runtime/src/adapters/mastra/engine'
+import { modelConfig } from '../packages/runtime/src/adapters/mastra/model-config'
+import type { Connection, Snapshot } from '../packages/shared/src/domain'
 
 const cleanup: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const close of cleanup.splice(0).reverse()) await close() })

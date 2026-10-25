@@ -1,0 +1,99 @@
+{
+  "name": "@boai/runtime",
+  "version": "0.2.4",
+  "private": true,
+  "type": "module",
+  "description": "Shared BOAI execution and persistence runtime",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "development": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./adapters/claude/policy": {
+      "types": "./src/adapters/claude/policy.ts",
+      "development": "./src/adapters/claude/policy.ts",
+      "default": "./src/adapters/claude/policy.ts"
+    },
+    "./adapters/mastra/browser-tool-runtime": {
+      "types": "./src/adapters/mastra/browser-tool-runtime.ts",
+      "development": "./src/adapters/mastra/browser-tool-runtime.ts",
+      "default": "./src/adapters/mastra/browser-tool-runtime.ts"
+    },
+    "./adapters/mastra/browser-tool-types": {
+      "types": "./src/adapters/mastra/browser-tool-types.ts",
+      "development": "./src/adapters/mastra/browser-tool-types.ts",
+      "default": "./src/adapters/mastra/browser-tool-types.ts"
+    },
+    "./adapters/mastra/engine": {
+      "types": "./src/adapters/mastra/engine.ts",
+      "development": "./src/adapters/mastra/engine.ts",
+      "default": "./src/adapters/mastra/engine.ts"
+    },
+    "./bootstrap": {
+      "types": "./src/bootstrap.ts",
+      "development": "./src/bootstrap.ts",
+      "default": "./src/bootstrap.ts"
+    },
+    "./contracts": {
+      "types": "./src/contracts.ts",
+      "development": "./src/contracts.ts",
+      "default": "./src/contracts.ts"
+    },
+    "./dispatch": {
+      "types": "./src/dispatch.ts",
+      "development": "./src/dispatch.ts",
+      "default": "./src/dispatch.ts"
+    },
+    "./modules/backends/program": {
+      "types": "./src/modules/backends/program.ts",
+      "development": "./src/modules/backends/program.ts",
+      "default": "./src/modules/backends/program.ts"
+    },
+    "./owner": {
+      "types": "./src/owner.ts",
+      "development": "./src/owner.ts",
+      "default": "./src/owner.ts"
+    },
+    "./profile-access": {
+      "types": "./src/profile-access.ts",
+      "development": "./src/profile-access.ts",
+      "default": "./src/profile-access.ts"
+    }
+  },
+  "dependencies": {
+    "@agentclientprotocol/sdk": "1.5.0",
+    "@ai-sdk/anthropic": "2.0.105",
+    "@babel/parser": "7.29.9",
+    "@boai/runtime-plugin-sdk": "workspace:*",
+    "@boai/shared": "workspace:*",
+    "@boai/transport": "workspace:*",
+    "@iconify-json/lucide": "1.2.130",
+    "@iconify/utils": "3.1.7",
+    "@larksuite/channel": "0.7.1",
+    "@larksuite/vercel-chat-adapter": "0.3.0",
+    "@libsql/client": "0.18.0",
+    "@mastra/core": "1.71.0",
+    "@mastra/libsql": "1.23.3",
+    "@mastra/memory": "1.32.1",
+    "@mastra/observability": "1.18.1",
+    "@mastra/telegram": "0.2.2",
+    "@mathjax/src": "4.1.3",
+    "@modelcontextprotocol/sdk": "1.30.1",
+    "@napi-rs/canvas": "1.0.10",
+    "beautiful-mermaid": "1.1.3",
+    "chat": "4.41.1",
+    "croner": "9.1.0",
+    "dingtalk-stream": "2.1.5",
+    "fflate": "0.8.3",
+    "jszip": "3.10.1",
+    "pdfjs-dist": "6.3.289",
+    "pptxgenjs": "4.0.1",
+    "qrcode": "1.5.4",
+    "smol-toml": "1.9.0",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
+    "yaml": "2.9.1",
+    "yauzl": "3.4.0",
+    "zod": "4.6.5"
+  }
+}

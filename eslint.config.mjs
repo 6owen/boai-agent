@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Workspace源码路径迁至apps/packages，保留既有输出与业务合同。
  * [OUTPUT]: 共享UI和设计站沿同一图标/Sonner规则检查。
  * [INPUT]: Renderer TypeScript/TSX 源码与本地图标约束。
  * [OUTPUT]: 本地图标导入和全局Sonner错误反馈门禁，禁止业务DOM内联alert报错。
@@ -8,7 +9,7 @@
 import parser from '@babel/eslint-parser'
 
 export default [{
-  files: ['src/renderer/**/*.{ts,tsx}', 'packages/ui/src/**/*.{ts,tsx}', 'apps/design-docs/src/**/*.{ts,tsx}'],
+  files: ['apps/electron/src/renderer/**/*.{ts,tsx}', 'packages/ui/src/**/*.{ts,tsx}', 'apps/design-docs/src/**/*.{ts,tsx}'],
   languageOptions: { parser, parserOptions: { requireConfigFile: false, sourceType: 'module', babelOptions: { babelrc: false, configFile: false, plugins: [['@babel/plugin-syntax-typescript', { isTSX: true }]] } } },
   rules: {
     'no-restricted-syntax': ['error', {

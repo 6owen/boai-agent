@@ -8,9 +8,9 @@ import { mkdtemp, mkdir, readFile, realpath, rm, writeFile } from 'node:fs/promi
 import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { expect, test, vi } from 'vitest'
-import { AppService } from '../src/runtime/service'
-import type { Conversation, ConversationDetail, DigitalAgent, LaunchProfile, Message } from '../src/shared/domain'
-import type { RuntimePluginCatalog } from '../src/shared/plugins/runtime-catalog'
+import { AppService } from '../packages/runtime/src/service'
+import type { Conversation, ConversationDetail, DigitalAgent, LaunchProfile, Message } from '../packages/shared/src/domain'
+import type { RuntimePluginCatalog } from '../packages/shared/src/plugins/runtime-catalog'
 import { gatewayWireServer } from './fixtures/gateway-wire-server'
 
 for (const runtime of ['codex', 'claude', 'pi', 'opencode'] as const) test.skipIf(process.env.BOAI_NATIVE_GATEWAY_WIRE !== runtime)(`${runtime} follows native model configuration and fences external changes across restart`, async () => {

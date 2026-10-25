@@ -4,9 +4,9 @@
  * [POS]: Gateway recovery fixture; the engine is offline and never contacts Magpie or a supplier.
  * [PROTOCOL]: Update Header and fixtures/.folder.md when changing this fixture.
  */
-import { AppService } from '../../src/runtime/service'
-import type { Connection } from '../../src/shared/domain'
-import type { GatewayModelCall } from '../../src/shared/domain/model-gateway'
+import { AppService } from '../../packages/runtime/src/service'
+import type { Connection } from '../../packages/shared/src/domain'
+import type { GatewayModelCall } from '../../packages/shared/src/domain/model-gateway'
 
 const [dataPath] = process.argv.slice(2)
 let block = false

@@ -8,11 +8,11 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { Message } from '../src/shared/domain'
-import { READING_LIMITS, type ConversationCompletion } from '../src/shared/domain/reading'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { completionHash, ConversationReadingRepository } from '../src/runtime/modules/conversations/reading-repository'
-import { MaterialRepository } from '../src/runtime/modules/materials/material-repository'
+import type { Message } from '../packages/shared/src/domain'
+import { READING_LIMITS, type ConversationCompletion } from '../packages/shared/src/domain/reading'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { completionHash, ConversationReadingRepository } from '../packages/runtime/src/modules/conversations/reading-repository'
+import { MaterialRepository } from '../packages/runtime/src/modules/materials/material-repository'
 
 const roots: string[] = [], stores: ProductStore[] = []
 afterEach(async () => { await Promise.all(stores.splice(0).map(store => store.close())); await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))) })

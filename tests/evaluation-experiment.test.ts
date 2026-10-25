@@ -68,7 +68,7 @@ async function fixture(statuses = ['passed', 'failed']) {
     specs.push({ id, title: '<script>业务</script>', file: 'editorial-collaboration.feature.spec.js', tests: [{ projectName: '', expectedStatus: 'passed', status: status === 'passed' ? 'expected' : 'unexpected', results: [{ retry: 0, status, duration: 1000, startTime: new Date(1000).toISOString() }] }] })
   }
   await writeFile(join(root, 'playwright-results.json'), JSON.stringify({ stats: { startTime: new Date(1000).toISOString() }, suites: [{ specs }], errors: [] }))
-  await writeFile(join(root, 'build-manifest.json'), JSON.stringify({ files: { 'tests/e2e/features/editorial-collaboration.feature': sha('fixed input'), 'src/runtime/service.ts': sha('runtime') } }))
+  await writeFile(join(root, 'build-manifest.json'), JSON.stringify({ files: { 'tests/e2e/features/editorial-collaboration.feature': sha('fixed input'), 'packages/runtime/src/service.ts': sha('runtime') } }))
   await writeFile(join(root, 'registration.json'), JSON.stringify({ desktopMode: 'development', desktopModelMode: 'offline-protocol', repeat: statuses.length }))
   await writeFile(join(root, 'verification.json'), JSON.stringify({ changed: [] }))
   return root

@@ -9,7 +9,7 @@
  * [PROTOCOL]: 变化同步Header与所属.folder.md。
  */
 import { expect, it } from 'vitest'
-import { isPublicMethod } from '../src/main/public-methods'
+import { isPublicMethod } from '../packages/shared/src/ipc/public-methods'
 
 it('admits catalog result reads and shared skill changes alongside the source lifecycle', () => {
   for (const method of ['listPromptTemplates', 'savePromptTemplate', 'removePromptTemplate']) expect(isPublicMethod(method), method).toBe(true)

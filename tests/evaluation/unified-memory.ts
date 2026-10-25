@@ -6,10 +6,10 @@
  */
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { AppService } from '../../src/runtime/service'
-import { MastraEngine } from '../../src/runtime/adapters/mastra/engine'
-import type { AgentEngine, EngineContext } from '../../src/runtime/contracts'
-import type { Connection, Conversation, ConversationDetail, MemoryView, Snapshot } from '../../src/shared/domain'
+import { AppService } from '../../packages/runtime/src/service'
+import { MastraEngine } from '../../packages/runtime/src/adapters/mastra/engine'
+import type { AgentEngine, EngineContext } from '../../packages/runtime/src/contracts'
+import type { Connection, Conversation, ConversationDetail, MemoryView, Snapshot } from '../../packages/shared/src/domain'
 export const unifiedMemoryVersion = 'UM-v1'
 export const unifiedMemoryCases = [
   { id: 'dm-group', side: 'direct', content: '请记住我的海报写作偏好：用简洁中文，称呼大学新生为“同学”，避免营销口吻。先简短确认。' },
@@ -26,7 +26,7 @@ export const unifiedMemoryCases = [
   { id: 'temporary-expired', side: 'group', content: '现在还存在有效的本局女巫身份吗？到期的约定不能当作当前身份。', expire: true },
 ] as const
 export async function runUnifiedMemoryEvaluation(input: { settings: { output: string; maxRequests: number; maxOutputTokens: number; deadlineMs: number }; connection: Connection; apiKey: string }) {
-  const { settings, connection, apiKey } = input, rows: unknown[] = [], calls = new Map<string, { id: string; phase: string; usage?: import('../../src/shared/domain').ModelUsage }>(), contexts: unknown[] = [], traces: unknown[] = [], started = Date.now()
+  const { settings, connection, apiKey } = input, rows: unknown[] = [], calls = new Map<string, { id: string; phase: string; usage?: import('../../packages/shared/src/domain').ModelUsage }>(), contexts: unknown[] = [], traces: unknown[] = [], started = Date.now()
   await mkdir(settings.output, { recursive: true })
   const adapter = new MastraEngine({ runTimeoutMs: 45000, connectionTimeoutMs: 30000 })
   let current = '', omitExtraction = false, unknown = false

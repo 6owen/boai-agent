@@ -8,15 +8,15 @@
 import { act, createElement, createRef, type ComponentProps } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import type { Snapshot } from '../src/shared/domain'
-import type { DesktopApi } from '../src/shared/ipc'
-import type { SelectionActions } from '../src/renderer/components/ui/selection-actions'
-import { FileEditSession, type FileEditHandle } from '../src/renderer/components/detail-panel/file-edit-session'
-import type { FileEditRequest, FileEditSource } from '../src/renderer/components/detail-panel/file-edit-state'
+import type { Snapshot } from '../packages/shared/src/domain'
+import type { DesktopApi } from '../packages/shared/src/ipc'
+import type { SelectionActions } from '../apps/electron/src/renderer/components/ui/selection-actions'
+import { FileEditSession, type FileEditHandle } from '../apps/electron/src/renderer/components/detail-panel/file-edit-session'
+import type { FileEditRequest, FileEditSource } from '../apps/electron/src/renderer/components/detail-panel/file-edit-state'
 
 // Geometry/animation belong to the real toolbar's browser regression. Keep its
 // open, busy and action contract while testing the production session state.
-vi.mock('../src/renderer/components/ui/selection-actions', () => ({
+vi.mock('../apps/electron/src/renderer/components/ui/selection-actions', () => ({
   SelectionActions: (props: ComponentProps<typeof SelectionActions>) => props.open ? createElement('section', null,
     createElement('button', { 'data-close': true, onClick: () => props.onOpenChange(false) }, '关闭'),
     createElement('button', { 'data-submit': true, disabled: props.disabled || props.pending || props.busy, onClick: () => props.onAction('精简这段。') }, '精简'),

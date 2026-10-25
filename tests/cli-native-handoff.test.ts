@@ -13,11 +13,11 @@ import { randomUUID } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { createClient } from '@libsql/client'
 import { pathToFileURL } from 'node:url'
-import { startOwnedRuntime } from '../src/runtime/bootstrap'
-import { CliRpcClient } from '../src/cli/client'
-import { readLocalConnection } from '../src/cli/discovery'
-import type { ConversationDetail, Message, DigitalAgent, LaunchProfile } from '../src/shared/domain'
-import type { MessageExecution } from '../src/shared/domain/message-execution'
+import { startOwnedRuntime } from '../packages/runtime/src/bootstrap'
+import { CliRpcClient } from '../packages/transport/src/client'
+import { readLocalConnection } from '../packages/transport/src/discovery'
+import type { ConversationDetail, Message, DigitalAgent, LaunchProfile } from '../packages/shared/src/domain'
+import type { MessageExecution } from '../packages/shared/src/domain/message-execution'
 
 const cleanup: (() => Promise<void>)[] = []
 afterEach(async () => { for (const close of cleanup.splice(0).reverse()) await close() })

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 源码冻结覆盖迁移后的apps及公共包，不扫描node_modules或生成dist。
  * [INPUT]: 固定collaboration-suite BDD、显式offline/real模式、可选标题过滤和1–3次独立样本。
  * [OUTPUT]: pnpm dev多Agent用例集执行、源码/预算登记、所有成功失败的原始留证与回放归档及独立报告。
  * [POS]: 第14组可重复验收入口，复用Playwright BDD/Desktop，不安装依赖或构建安装包。
@@ -49,7 +50,7 @@ env.PLAYWRIGHT_JSON_OUTPUT_NAME = join(batch, 'playwright-results.json')
 await buildHost()
 const sha = bytes => createHash('sha256').update(bytes).digest('hex')
 const files = {}
-for (const directory of ['src', 'scripts', 'tests']) for (const entry of (await readdir(directory, { recursive: true })).sort()) {
+for (const directory of ['apps/electron/src', 'apps/cli/src', 'apps/design-docs/src', 'packages/shared/src', 'packages/runtime/src', 'packages/transport/src', 'packages/runtime-plugin-sdk/src', 'packages/runtime-plugins/src', 'packages/ui/src', 'packages/tokens/src', 'scripts', 'tests']) for (const entry of (await readdir(directory, { recursive: true })).sort()) {
   if (!/\.(ts|tsx|mjs|feature)$/.test(entry)) continue
   const file = `${directory}/${entry}`; files[file] = sha(await readFile(file))
 }

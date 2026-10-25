@@ -5,8 +5,8 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { describe, expect, it } from 'vitest'
-import type { AgentHome, DigitalAgent, LaunchProfile, LaunchProfileStatus, Snapshot } from '../src/shared/domain'
-import { employeeCapabilityFacts } from '../src/renderer/components/employee/overview-state'
+import type { AgentHome, DigitalAgent, LaunchProfile, LaunchProfileStatus, Snapshot } from '../packages/shared/src/domain'
+import { employeeCapabilityFacts } from '../apps/electron/src/renderer/components/employee/overview-state'
 
 const agent: DigitalAgent = { id: 'writer', name: '写手', role: '写作', instructions: '擅长写作', color: '#777', connectionId: 'model', modelId: '', skillIds: ['skill'], knowledgeIds: [], allowCommands: true, active: true, configVersion: 3 }
 const snapshot: Snapshot = { agents: [agent], connections: [{ id: 'model', name: '已配置连接', provider: 'openai-compatible', baseUrl: 'http://localhost', defaultModel: 'configured-model', hasApiKey: false }], resources: [{ id: 'skill', kind: 'skill', name: 'writing', description: '', path: '/managed/writing', createdAt: '2026-10-05' }], conversations: [], approvals: [], dataPath: '/data' }

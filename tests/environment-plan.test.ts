@@ -9,11 +9,11 @@ import { mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from 'node
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { Workspace } from '@mastra/core/workspace'
-import type { EngineContext } from '../src/runtime/contracts'
-import type { Resource, WorkItem } from '../src/shared/domain'
-import { assertEnvironmentScope, describeEnvironment, prepareEnvironment, readVersionedText } from '../src/runtime/modules/workspaces/environment-plan'
-import { createStageAgent } from '../src/runtime/adapters/mastra/agent-factory'
-import { createCodexTask } from '../src/runtime/adapters/codex/task'
+import type { EngineContext } from '../packages/runtime/src/contracts'
+import type { Resource, WorkItem } from '../packages/shared/src/domain'
+import { assertEnvironmentScope, describeEnvironment, prepareEnvironment, readVersionedText } from '../packages/runtime/src/modules/workspaces/environment-plan'
+import { createStageAgent } from '../packages/runtime/src/adapters/mastra/agent-factory'
+import { createCodexTask } from '../packages/runtime/src/adapters/codex/task'
 
 const roots: string[] = []
 afterEach(async () => { vi.restoreAllMocks(); await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))) })

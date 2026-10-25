@@ -9,9 +9,9 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { nativeFixture } from './fixtures/native-product'
-import type { Conversation, ConversationDetail, DigitalAgent } from '../src/shared/domain'
-import type { NativeAction, ExecutionEvidencePage, ExecutionEvidence } from '../src/shared/domain/execution'
-import { ExecutionWindow } from '../src/renderer/components/detail-panel/execution-window'
+import type { Conversation, ConversationDetail, DigitalAgent } from '../packages/shared/src/domain'
+import type { NativeAction, ExecutionEvidencePage, ExecutionEvidence } from '../packages/shared/src/domain/execution'
+import { ExecutionWindow } from '../apps/electron/src/renderer/components/detail-panel/execution-window'
 const disposals:(()=>Promise<void>)[]=[]
 afterEach(async()=>{for(const dispose of disposals.splice(0).reverse())await dispose()})
 describe.each(['codex','claude'] as const)('%s 原生生命周期',runtime=>{
@@ -50,7 +50,7 @@ describe.each(['codex','claude'] as const)('%s 原生生命周期',runtime=>{
   const child=events.find(e=>e.canonical?.operationId.endsWith('child-read'))!
   expect(child.parentId).toBe('spawn');expect(JSON.stringify(child.payload)).toContain('child-evidence')
   expect(d.messages.filter(m=>m.senderType==='agent')).toHaveLength(1)
-  const window=new ExecutionWindow(f.chat.id,d.runs[0].id,12,params=>f.service.handle('listExecutionWindow',{conversationId:params.threadId,runId:params.agentRunId,beforeSequence:params.beforeSequence,afterSequence:params.afterSequence,limit:params.limit}) as Promise<import('../src/shared/rovai/contracts').AgentRunExecutionBlockPage>,()=>{},params=>f.service.handle('listExecutionWindow',{conversationId:params.threadId,runId:params.agentRunId,afterChangeSequence:params.afterChangeSequence,limit:params.limit}) as Promise<import('../src/shared/rovai/contracts').AgentRunExecutionBlockChanges>)
+  const window=new ExecutionWindow(f.chat.id,d.runs[0].id,12,params=>f.service.handle('listExecutionWindow',{conversationId:params.threadId,runId:params.agentRunId,beforeSequence:params.beforeSequence,afterSequence:params.afterSequence,limit:params.limit}) as Promise<import('../packages/shared/src/rovai/contracts').AgentRunExecutionBlockPage>,()=>{},params=>f.service.handle('listExecutionWindow',{conversationId:params.threadId,runId:params.agentRunId,afterChangeSequence:params.afterChangeSequence,limit:params.limit}) as Promise<import('../packages/shared/src/rovai/contracts').AgentRunExecutionBlockChanges>)
   await window.latest();expect(window.error).toBeNull();expect(window.hasEarlier).toBe(true)
   while(window.hasEarlier){await window.earlier();expect(window.error).toBeNull()}
   expect(window.evidence.map(e=>e.id)).toEqual(events.map(e=>e.id));await window.refresh();expect(window.error).toBeNull();window.dispose()

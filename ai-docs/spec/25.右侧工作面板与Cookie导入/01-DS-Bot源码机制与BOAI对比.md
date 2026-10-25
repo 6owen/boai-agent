@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [INPUT]: DS Bot、DSH 固定源码、BOAI 当前源码及用户四张截图。
 [OUTPUT]: 面板/文件/终端/Cookie的历史源码研究；当前仅供架构参考，不作为新增产品/UI的实施依据。
 [POS]: ai-docs/spec/25.右侧工作面板与Cookie导入/01-DS-Bot源码机制与BOAI对比.md。
@@ -84,13 +85,13 @@ BOAI 已有统一 AppShell、DetailPanel、DetailTabSession 和标签 reducer，
 
 ### 2.4 BOAI 已有的基础与待查点
 
-BOAI 的 [DetailTabSession](../../../src/renderer/components/detail-panel/tab-session.tsx) 已使用 keepMounted 和 hidden，保留各标签编辑状态与退出守卫。[PanelResize](../../../packages/ui/src/components/panel-resize.tsx) 收起时仍保留子树，并设置 inert / aria-hidden。不能建议再造一套同样的缓存。
+BOAI 的 [DetailTabSession](../../../apps/electron/src/renderer/components/detail-panel/tab-session.tsx) 已使用 keepMounted 和 hidden，保留各标签编辑状态与退出守卫。[PanelResize](../../../packages/ui/src/components/panel-resize.tsx) 收起时仍保留子树，并设置 inert / aria-hidden。不能建议再造一套同样的缓存。
 
 差异和后续检查点：
 
 - BOAI 共用 [panel-resize.css](../../../packages/ui/src/panel-resize.css) 使用 width/height 过渡；拖宽度会更新布局状态。应测量复杂内容下的 layout/paint 成本，再决定是否增加固定宽度内层与 transform。
-- [详情头部](../../../src/renderer/components/detail-panel/index.tsx) 已用 ResizeObserver + requestAnimationFrame 只滚动标签栏，避免 scrollIntoView 带动整个壳。
-- [AppShell](../../../src/renderer/components/app-shell/index.tsx) 集中装配详情正文；应测量消息流更新是否让无关面板重复 render，再决定拆订阅或 memo。当前研究不把它判为已经证实的性能问题。
+- [详情头部](../../../apps/electron/src/renderer/components/detail-panel/index.tsx) 已用 ResizeObserver + requestAnimationFrame 只滚动标签栏，避免 scrollIntoView 带动整个壳。
+- [AppShell](../../../apps/electron/src/renderer/components/app-shell/index.tsx) 集中装配详情正文；应测量消息流更新是否让无关面板重复 render，再决定拆订阅或 memo。当前研究不把它判为已经证实的性能问题。
 - 已有 active 参数负责停读；保留挂载不应让隐藏文件列表、预览、终端持续做高频 UI 工作。
 
 ## 3. 文件面板及“外部打开”
@@ -127,11 +128,11 @@ BOAI 的 [DetailTabSession](../../../src/renderer/components/detail-panel/tab-se
 
 给 BOAI 的可复制部分是 catalog、locator、argv adapter、缓存与失效策略。DSH 的 HTTP 路由和 slots 应改成 BOAI 现有 IPC 与菜单组件。
 
-BOAI [openResource](../../../src/main/main.ts) 已执行 realpath、工作区/资源范围校验，并区分 open 和 reveal；部分扩展名默认定位文件而非执行。外部应用选择要扩展这一宿主路径，不能绕开它在 renderer 中直接 spawn。
+BOAI [openResource](../../../apps/electron/src/main/main.ts) 已执行 realpath、工作区/资源范围校验，并区分 open 和 reveal；部分扩展名默认定位文件而非执行。外部应用选择要扩展这一宿主路径，不能绕开它在 renderer 中直接 spawn。
 
 ### 3.4 BOAI 的“文件”与 DSH 文件树业务不同
 
-[ConversationFiles](../../../src/renderer/components/work-views/conversation-files.tsx) 是附件、成果及知识资料入口；支持员工跨会话筛选、分页、预览和原消息定位。它不是单一磁盘目录的镜像。
+[ConversationFiles](../../../apps/electron/src/renderer/components/work-views/conversation-files.tsx) 是附件、成果及知识资料入口；支持员工跨会话筛选、分页、预览和原消息定位。它不是单一磁盘目录的镜像。
 
 因此：
 
@@ -172,7 +173,7 @@ shell 输出沿反向链路返回；终端尺寸通过 resize 送到 PTY，支�
 
 ### 4.3 BOAI 不是完全没有 PTY
 
-BOAI 当前已移除公开交互终端入口和 xterm 前端，但内部 [TerminalService](../../../src/runtime/modules/workspace-tools/terminal-service.ts) 仍服务于预览进程。
+BOAI 当前已移除公开交互终端入口和 xterm 前端，但内部 [TerminalService](../../../packages/runtime/src/modules/workspace-tools/terminal-service.ts) 仍服务于预览进程。
 
 它已有：
 
@@ -180,7 +181,7 @@ BOAI 当前已移除公开交互终端入口和 xterm 前端，但内部 [Termin
 - process guard 管理及旧残留回收。
 - create / write / resize / read(cursor) / exec / kill。
 - 1,000,000 字符尾部缓冲和截断标记。
-- 通过 Rust guard 的 [terminal.rs](../../../src/runtime/adapters/process-guard/terminal.rs) 使用 openpty、setsid、TIOCSCTTY，启动交互 shell；Node 与 guard 的 pipes 是传输层，不能据此误判为没有 PTY。
+- 通过 Rust guard 的 [terminal.rs](../../../packages/runtime/src/adapters/process-guard/terminal.rs) 使用 openpty、setsid、TIOCSCTTY，启动交互 shell；Node 与 guard 的 pipes 是传输层，不能据此误判为没有 PTY。
 
 和 DSH 的主要差异是：
 
@@ -256,7 +257,7 @@ BOAI 当前 guard 使用 shell -i，继承一组受控环境变量。后续要�
 
 DS Bot 的分区 key 是 bot:<id>，经哈希变成持久分区，所以它的 UI 可以说“登录属于此 Bot”。见 [bot-browser](https://github.com/Fei2411/DeepSeek-Bot/blob/1bebe826f74e9a72cabafd3b80602b05af867b38/app/src/bot-browser.mjs)。
 
-BOAI 使用 [APPLICATION_BROWSER_SCOPE](../../../src/shared/ipc/browser.ts)，[BrowserService](../../../src/main/browser/browser-service.ts) 为应用级浏览器创建持久分区；员工/会话/run 的 lease 是任务操作身份，不决定登录资料归属。[BrowserPaneManager](../../../src/main/browser/browser-pane-manager.ts) 管理独立 BrowserWindow 和页面视图。
+BOAI 使用 [APPLICATION_BROWSER_SCOPE](../../../packages/shared/src/ipc/browser.ts)，[BrowserService](../../../apps/electron/src/main/browser/browser-service.ts) 为应用级浏览器创建持久分区；员工/会话/run 的 lease 是任务操作身份，不决定登录资料归属。[BrowserPaneManager](../../../apps/electron/src/main/browser/browser-pane-manager.ts) 管理独立 BrowserWindow 和页面视图。
 
 适配结论：
 

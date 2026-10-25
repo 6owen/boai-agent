@@ -7,8 +7,8 @@
  */
 import { createServer } from 'node:http'
 import { join } from 'node:path'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
-import type { Message } from '../../../src/shared/domain'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
+import type { Message } from '../../../packages/shared/src/domain'
 import type { Desktop } from './desktop'
 
 export async function prepareProfile(runtime: Desktop, large = false) {
@@ -62,7 +62,7 @@ export async function prepareProfile(runtime: Desktop, large = false) {
       }
     }
     await db.write(messages.map(message => ({ collection: 'messages', id: message.id, value: message })))
-    const writer = (await db.load<import('../../../src/shared/domain').DigitalAgent>('agents')).find(agent => agent.id === 'writer')!
+    const writer = (await db.load<import('../../../packages/shared/src/domain').DigitalAgent>('agents')).find(agent => agent.id === 'writer')!
     await db.write([{ collection: 'agents', id: writer.id, value: { ...writer, executionBackend: { kind: 'acp-local', profileId: 'historical-external' } } }])
     if (large) {
       const calls = Array.from({ length: 90 }, (_, i) => { const startedAt = new Date(Date.now() - i * 4 * 86400000).toISOString(); return { id: `activity-${i}`, runId: 'profile-history-run', conversationId: chats.direct.id, phase: 'chat', budgetOwned: false, startedAt, ...(i % 17 ? { usage: { totalTokens: i * 103 } } : {}) } })

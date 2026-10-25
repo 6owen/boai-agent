@@ -7,7 +7,7 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 import { toast } from 'sonner'
-import type { Message } from '@shared/domain'
+import type { Message } from '@boai/shared/domain'
 import { initializeAppearance, useAppearance } from '@/stores/appearance'
 import { MessageCard } from '@/pages/conversations/-components/message-card'
 import { ChatComposer, ChatComposerInput, ChatComposerFooter } from '@/components/ui/chat-composer'
@@ -34,7 +34,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import '@/styles/global.css'
 
 // Eager imports ensure every installed module and its dependencies compile in Vite.
-const modules = import.meta.glob('../../../src/renderer/components/ui/*.tsx', { eager: true })
+const modules = import.meta.glob('../../../apps/electron/src/renderer/components/ui/*.tsx', { eager: true })
 const items = [{ label: '浅色', value: 'light' }, { label: '深色', value: 'dark' }]
 const toastPreviews = [
   { type: 'success', label: '成功提示', title: '操作完成', description: '你的更改已保存。' },

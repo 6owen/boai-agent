@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Workspace源码路径迁至apps/packages，保留既有输出与业务合同。
  * [OUTPUT]: 真实探路允许显式缩小请求上限，复测沿原批次剩余额度。
  * [OUTPUT]: 真实评估冻结完整随包技能目录并沿内置绑定加载脚本/参考文件，不再只复制正文。
  * [OUTPUT]: PPT真实技能评估冻结原模型/编译/素材worker与hash，实际草稿可运行原版编译；不注入视觉配置。
@@ -13,7 +14,7 @@
  * [POS]: Personality migration probe reusing tests/evaluation/host.ts; does not launch a product window or modify daily data.
  * [PROTOCOL]: Update Header and owning .folder.md when changed.
  */
-import { build } from 'esbuild'
+import { buildWorkspace as build } from './workspace-packages.mjs'
 import { spawn, fork, execFileSync } from 'node:child_process'
 import { cp, lstat, mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
@@ -92,13 +93,13 @@ if (includeSkills) {
   const response = JSON.parse(execFileSync(process.execPath, ['dist/cli/index.mjs', 'app', 'call', 'sources.list', '{}', '--json'], { encoding: 'utf8' }))
   settings.computerSource = response.data?.find(source => source.name === 'BOAI Computer Use')
 }
-for (const directory of ['src/runtime', 'src/shared', 'src/cli']) for (const file of (await readdir(directory, { recursive: true })).sort().filter(file => /\.(ts|tsx)$/.test(file))) {
+for (const directory of ['packages/runtime/src', 'packages/shared/src', 'packages/transport/src', 'packages/runtime-plugin-sdk/src', 'packages/runtime-plugins/src', 'apps/cli/src']) for (const file of (await readdir(directory, { recursive: true })).sort().filter(file => /\.(ts|tsx)$/.test(file))) {
   const path = join(directory, file); settings.hashes[path] = createHash('sha256').update(await readFile(path)).digest('hex')
 }
 for (const path of ['pnpm-lock.yaml', 'tests/evaluation/personality.ts', 'tests/evaluation/stored-profile.ts', 'tests/evaluation/host.ts', 'scripts/evaluate-personality.mjs']) settings.hashes[path] = createHash('sha256').update(await readFile(path)).digest('hex')
 const worker = join(output, 'worker.mjs'), host = join(output, 'host.cjs')
 if (settings.caseIds?.some(id => id.startsWith('skill-presentations-'))) {
-  const source = 'src/runtime/modules/presentations/alma'
+  const source = 'packages/runtime/src/modules/presentations/alma'
   await cp(source, join(output, 'alma'), { recursive: true, filter: path => !path.endsWith('/.folder.md') })
   for (const entry of await readdir(source, { withFileTypes: true })) if (entry.isFile() && entry.name !== '.folder.md') {
     const path = join(source, entry.name), bytes = await readFile(path)
@@ -108,7 +109,7 @@ if (settings.caseIds?.some(id => id.startsWith('skill-presentations-'))) {
 }
 if (settings.caseIds?.some(id => id.startsWith('skill-programmatic-'))) {
   settings.toolClientPath = join(output, 'employee-tools.mjs')
-  await build({ entryPoints: ['src/cli/employee-tools.ts'], outfile: settings.toolClientPath, bundle: true, platform: 'node', format: 'esm', target: 'node22', external: ['bufferutil', 'utf-8-validate'], banner: { js: "import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);" } })
+  await build({ entryPoints: ['apps/cli/src/employee-tools.ts'], outfile: settings.toolClientPath, bundle: true, platform: 'node', format: 'esm', target: 'node22', external: ['bufferutil', 'utf-8-validate'], banner: { js: "import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);" } })
   settings.toolClientHash = createHash('sha256').update(await readFile(settings.toolClientPath)).digest('hex')
 }
 await build({ stdin: { contents: `import { runPersonalityEvaluation, preparePersonalityEvaluation } from './tests/evaluation/personality.ts'; process.once('disconnect',()=>process.exit(1)); process.once('message',input=>(input.prepareOnly ? preparePersonalityEvaluation(input.settings) : runPersonalityEvaluation(input)).then(()=>process.exit(0),error=>{process.stderr.write(String(error.message)+'\\n');process.exit(1)}));`, resolveDir: process.cwd() }, outfile: worker, bundle: true, platform: 'node', format: 'esm', packages: 'external', target: 'node22' })

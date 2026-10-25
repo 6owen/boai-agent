@@ -5,8 +5,8 @@
  * [PROTOCOL]: 修改时同步Header与tests/.folder.md。
  */
 import { expect, test } from 'vitest'
-import type { Message } from '../src/shared/domain'
-import { LiveMessageBuffer } from '../src/renderer/pages/conversations/live-message-buffer'
+import type { Message } from '../packages/shared/src/domain'
+import { LiveMessageBuffer } from '../apps/electron/src/renderer/pages/conversations/live-message-buffer'
 
 const message = (id: string, conversationId = 'chat', content = 'current') => ({ id, conversationId, content }) as Message
 

@@ -8,10 +8,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mkdir, mkdtemp, readFile, realpath, rename, rm, symlink, unlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import type { AgentInput, DigitalAgent, Snapshot } from '../src/shared/domain'
-import { directoryGrantsSchema } from '../src/shared/domain/directory-access'
-import { assertDirectoryTargetCurrent, decideDirectoryAccess, normalizeDirectoryGrants, resolveDirectoryTarget } from '../src/runtime/modules/workspaces/directory-access'
-import { AppService } from '../src/runtime/service'
+import type { AgentInput, DigitalAgent, Snapshot } from '../packages/shared/src/domain'
+import { directoryGrantsSchema } from '../packages/shared/src/domain/directory-access'
+import { assertDirectoryTargetCurrent, decideDirectoryAccess, normalizeDirectoryGrants, resolveDirectoryTarget } from '../packages/runtime/src/modules/workspaces/directory-access'
+import { AppService } from '../packages/runtime/src/service'
 
 const roots: string[] = [], services: AppService[] = []
 afterEach(async () => { for (const service of services.splice(0)) await service.close(); for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }) })

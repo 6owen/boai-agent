@@ -9,11 +9,11 @@ import { mkdtemp, mkdir, readFile, realpath, writeFile, rm, symlink, link } from
 import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { Artifact, AutomationDefinition, AutomationInput, AutomationMonitorCheckpoint, AutomationMonitorRead, AutomationOccurrence, AutomationsView, Connection, Conversation, ConversationDetail, Snapshot } from '../src/shared/domain'
-import { readMonitorArtifact } from '../src/runtime/modules/automations/monitor-source'
-import { AutomationService } from '../src/runtime/modules/automations/automation-service'
-import { AppService } from '../src/runtime/service'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
+import type { Artifact, AutomationDefinition, AutomationInput, AutomationMonitorCheckpoint, AutomationMonitorRead, AutomationOccurrence, AutomationsView, Connection, Conversation, ConversationDetail, Snapshot } from '../packages/shared/src/domain'
+import { readMonitorArtifact } from '../packages/runtime/src/modules/automations/monitor-source'
+import { AutomationService } from '../packages/runtime/src/modules/automations/automation-service'
+import { AppService } from '../packages/runtime/src/service'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
 
 const disposers: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const dispose of disposers.splice(0).reverse()) await dispose() })

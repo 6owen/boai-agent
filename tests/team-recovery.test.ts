@@ -9,10 +9,10 @@ import { mkdtemp, rm, readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { interruptTeamCreation } from './fixtures/team-crash'
-import { AppService } from '../src/runtime/service'
-import type { Snapshot } from '../src/shared/domain'
-import type { TeamCreationOperation } from '../src/shared/domain/team-creation'
-import type { ContactListPreferences } from '../src/shared/domain/contact-list'
+import { AppService } from '../packages/runtime/src/service'
+import type { Snapshot } from '../packages/shared/src/domain'
+import type { TeamCreationOperation } from '../packages/shared/src/domain/team-creation'
+import type { ContactListPreferences } from '../packages/shared/src/domain/contact-list'
 const cleanup: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const action of cleanup.splice(0).reverse()) await action() })
 

@@ -8,7 +8,7 @@ import { spawn } from 'node:child_process'
 import { readFile, writeFile } from 'node:fs/promises'
 import { closeSync, openSync, writeSync } from 'node:fs'
 import { join } from 'node:path'
-import { waitForProcessGroupExit } from '../../src/runtime/adapters/mastra/host-command'
+import { waitForProcessGroupExit } from '../../packages/runtime/src/adapters/mastra/host-command'
 import { proposalJsonSchema, proposalSchema, REPAIR_LIMITS, type RepairConfig, type RepairProposal } from './repair-contract'
 
 export interface ProcessReceipt { exitCode: number | null; stdout: string; stderr: string; failure?: string; elapsedMs: number }

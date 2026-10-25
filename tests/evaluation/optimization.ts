@@ -26,7 +26,7 @@ const configuration = z.object({
   maxRequests: z.number().int().min(1).max(1000), maxRounds: z.number().int().min(1).max(10),
   stopAfterNoImprovement: z.number().int().min(1).max(10),
   minimumGain: z.number().positive().max(1), maxCallRatio: z.number().positive().max(10),
-  allowedChanges: z.array(z.string().regex(/^src\/(runtime|shared)\/.+\.tsx?$/)).min(1),
+  allowedChanges: z.array(z.string().regex(/^(?:src\/(?:runtime|shared)|packages\/(?:runtime|shared|runtime-plugins|runtime-plugin-sdk)\/src|apps\/electron\/src\/worker)\/.+\.tsx?$/)).min(1),
   validationCases: z.array(id).min(1).optional(),
   goal: z.string().trim().min(1).max(8000).optional(),
   optimizerModel: z.string().regex(/^[\w.:-]+$/).optional(),

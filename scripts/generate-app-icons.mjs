@@ -1,5 +1,6 @@
 /*
- * [INPUT]: Checked-in transparent avatar WebP files and resources/app-icons/manifest.json.
+ * [OUTPUT]: Workspace源码路径迁至apps/packages，保留既有输出与业务合同。
+ * [INPUT]: Checked-in transparent avatar WebP files and packages/shared/src/appearance/app-icon-manifest.json.
  * [OUTPUT]: 21 PNG app icons with a centered mascot on a pure-white macOS-size rounded tile and the matching default macOS .icns; no baked gradient or shadow.
  * [POS]: Explicit offline asset generation; build copies the generated results.
  * [PROTOCOL]: Update this Header and scripts/.folder.md when this file changes.
@@ -15,8 +16,8 @@ if (process.platform !== 'darwin') throw new Error('macOS sips/iconutil is requi
 const run = promisify(execFile)
 const root = resolve(import.meta.dirname, '..')
 const target = join(root, 'resources/app-icons')
-const source = join(root, 'src/renderer/assets/avatars')
-const manifest = JSON.parse(await readFile(join(target, 'manifest.json'), 'utf8'))
+const source = join(root, 'apps/electron/src/renderer/assets/avatars')
+const manifest = JSON.parse(await readFile(join(root, 'packages/shared/src/appearance/app-icon-manifest.json'), 'utf8'))
 const { canvasSize, artworkMaxSize, tileSize, tileCornerRadius, background } = manifest
 if (canvasSize !== 1024 || !Number.isInteger(artworkMaxSize) || artworkMaxSize < 512 || artworkMaxSize > 900 ||
   !Number.isInteger(tileSize) || tileSize <= artworkMaxSize || tileSize > canvasSize ||

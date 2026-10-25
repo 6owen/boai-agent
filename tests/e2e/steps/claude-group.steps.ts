@@ -19,9 +19,9 @@ import { join } from 'node:path'
 import { test } from './claude-employee.steps'
 import { systemKeychainLaunch } from '../support/saved-model'
 import { archiveNativeFinalReview } from '../support/native-final-review'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
-import type { BudgetModelCall, MemoryEntry, MemoryView } from '../../../src/shared/domain'
-import type { ProfileModelCall } from '../../../src/runtime/modules/profile/profile-activity'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
+import type { BudgetModelCall, MemoryEntry, MemoryView } from '../../../packages/shared/src/domain'
+import type { ProfileModelCall } from '../../../packages/runtime/src/modules/profile/profile-activity'
 
 const { Then, When } = createBdd(test)
 When('本场在原群消息更新后暂不公开旧等待汇报', async ({ claudeEmployee: state }) => {

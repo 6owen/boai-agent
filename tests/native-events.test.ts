@@ -7,8 +7,8 @@
  * [PROTOCOL]: 修改同步Header和tests/.folder.md。
  */
 import { describe, expect, it } from 'vitest'
-import { codexExecutionEvent, nativeActivity, publicNativeToolResult } from '../src/runtime/adapters/native-events'
-import { executionActivityTitle } from '../src/shared/rovai'
+import { codexExecutionEvent, nativeActivity, publicNativeToolResult } from '../packages/runtime/src/adapters/native-events'
+import { executionActivityTitle } from '../packages/shared/src/rovai'
 
 describe('原生执行文件与结果呈现',()=>{
  it('shows the actual read filename and retains every original result block',()=>{

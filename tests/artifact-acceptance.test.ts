@@ -11,11 +11,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { createClient } from '@libsql/client'
-import type { Conversation, DigitalAgent, Message, WorkItem } from '../src/shared/domain'
-import type { ArtifactAcceptanceInput, ArtifactPublication, ArtifactRevisionInput, ArtifactVersion } from '../src/shared/domain/artifacts'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { ArtifactRepository } from '../src/runtime/modules/workspaces/artifact-repository'
-import { MaterialRepository } from '../src/runtime/modules/materials/material-repository'
+import type { Conversation, DigitalAgent, Message, WorkItem } from '../packages/shared/src/domain'
+import type { ArtifactAcceptanceInput, ArtifactPublication, ArtifactRevisionInput, ArtifactVersion } from '../packages/shared/src/domain/artifacts'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { ArtifactRepository } from '../packages/runtime/src/modules/workspaces/artifact-repository'
+import { MaterialRepository } from '../packages/runtime/src/modules/materials/material-repository'
 
 const roots: string[] = [], stores: ProductStore[] = []
 afterEach(async () => {

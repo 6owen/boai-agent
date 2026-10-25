@@ -1,0 +1,29 @@
+/*
+ * [OUTPUT]: 共享UI源码纳入类名发现，语义映射迁入@boai/ui/theme.css。
+ * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
+ * [OUTPUT]: 导入作用域化Beautiful UI SelectionActions原版token，避免覆盖全局主题。
+ * [INPUT]: Tailwind v4、shadcn 动画/状态工具类、Iconify 与现有语义变量。
+ * [OUTPUT]: Soft 圆角/字号/阴影映射与隔离旧控件的 Preflight 兼容基线，不附加 outline 颜色。
+ * [POS]: global.css 唯一 Tailwind 入口；components.json 指向此文件。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
+@import 'tailwindcss';
+@import '@boai/ui/theme.css';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+@import '../components/ui/selection-actions.css';
+@custom-variant dark (&:where(.dark, .dark *));
+@source '../../../../../packages/ui/src';
+@config '../../../../../tailwind.config.ts';
+
+/* Preserve the existing desktop typography and native form baseline under Preflight.
+   The unlayered application styles and Tailwind utilities still take precedence. */
+@layer base {
+  [data-slot] { @apply border-border; }
+  html { line-height: normal; }
+  :where(h1, h2, h3, h4, h5, h6):not([data-slot]) { font-size: revert; font-weight: revert; }
+  :where(h1, h2, h3, h4, h5, h6, p, pre, blockquote, ul, ol, dl, figure, fieldset):not([data-slot]) { margin: revert; }
+  :where(ul, ol):not([data-slot]) { list-style: revert; padding: revert; }
+  .app-shell :where(button, input, select, textarea):not([data-slot]) { padding: revert; border: revert; background: revert; }
+  small { font-size: revert; }
+}

@@ -5,8 +5,8 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { describe, expect, it, vi } from 'vitest'
-import { SkillMarketplace } from '../src/runtime/modules/resources/skill-marketplace'
-import { getSkillMarketplaceDetail, listSkillMarketplace } from '../src/runtime/modules/resources/marketplace-providers'
+import { SkillMarketplace } from '../packages/runtime/src/modules/resources/skill-marketplace'
+import { getSkillMarketplaceDetail, listSkillMarketplace } from '../packages/runtime/src/modules/resources/marketplace-providers'
 
 type FetchInput = Parameters<typeof fetch>[0]
 

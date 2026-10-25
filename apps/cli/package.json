@@ -1,0 +1,15 @@
+{
+  "name": "@boai/cli",
+  "version": "0.2.4",
+  "private": true,
+  "type": "module",
+  "description": "BOAI command-line application entry",
+  "scripts": {
+    "build": "pnpm --dir ../.. build",
+    "start": "pnpm --dir ../.. cli"
+  },
+  "dependencies": {
+    "@boai/shared": "workspace:*",
+    "@boai/transport": "workspace:*"
+  }
+}

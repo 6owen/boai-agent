@@ -13,7 +13,7 @@ import { createSamplePdf } from './office-viewer-files'
 
 type Observed = { targets: Set<Node>; disconnect(): void }
 let host: HTMLDivElement, root: Root
-let Preview: typeof import('../../src/renderer/components/common/lody/session-file-pdf-preview')['SessionFilePdfPreview']
+let Preview: typeof import('../../apps/electron/src/renderer/components/common/lody/session-file-pdf-preview')['SessionFilePdfPreview']
 let observers: Observed[], listeners: { type: string; listener: EventListenerOrEventListenerObject; signal?: AbortSignal }[]
 const activeObservers = () => observers.filter(value => value.targets.size).length
 const liveDocumentListeners = () => listeners.filter(value => !value.signal?.aborted)
@@ -47,7 +47,7 @@ beforeEach(async () => {
     if (type === 'copy' || type === 'visibilitychange') listeners.push({ type, listener, signal: typeof options === 'object' ? options.signal : undefined })
     add(type, listener, options)
   })
-  Preview = (await import('../../src/renderer/components/common/lody/session-file-pdf-preview')).SessionFilePdfPreview
+  Preview = (await import('../../apps/electron/src/renderer/components/common/lody/session-file-pdf-preview')).SessionFilePdfPreview
   host = document.createElement('div'); document.body.append(host); root = createRoot(host)
 })
 afterEach(async () => {

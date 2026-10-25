@@ -9,10 +9,10 @@ import { act, createElement as h, StrictMode, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { toast } from 'sonner'
-import { Banner, useMutation } from '../src/renderer/components/common'
-import { ErrorToast } from '../src/renderer/components/common/error-feedback'
-import { FieldError } from '../src/renderer/components/ui/field'
-import { Alert, AlertDescription } from '../src/renderer/components/ui/alert'
+import { Banner, useMutation } from '../apps/electron/src/renderer/components/common'
+import { ErrorToast } from '../apps/electron/src/renderer/components/common/error-feedback'
+import { FieldError } from '../apps/electron/src/renderer/components/ui/field'
+import { Alert, AlertDescription } from '../apps/electron/src/renderer/components/ui/alert'
 
 let host: HTMLDivElement, root: Root
 beforeEach(() => {

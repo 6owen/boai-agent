@@ -8,10 +8,10 @@
 import { act, createElement, StrictMode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import type { DesktopApi } from '../src/shared/ipc'
-import type { Message } from '../src/shared/domain'
-import { useFileEdits } from '../src/renderer/components/detail-panel/use-file-edits'
-import { FILE_EDIT_STORAGE, fileEditKey, materialEditInput, type FileEditRequest } from '../src/renderer/components/detail-panel/file-edit-state'
+import type { DesktopApi } from '../packages/shared/src/ipc'
+import type { Message } from '../packages/shared/src/domain'
+import { useFileEdits } from '../apps/electron/src/renderer/components/detail-panel/use-file-edits'
+import { FILE_EDIT_STORAGE, fileEditKey, materialEditInput, type FileEditRequest } from '../apps/electron/src/renderer/components/detail-panel/file-edit-state'
 
 let root: Root, host: HTMLDivElement
 let current: ReturnType<typeof useFileEdits>

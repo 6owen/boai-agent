@@ -11,11 +11,11 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { ConversationSearchRepository } from '../src/runtime/modules/conversations/search-repository'
-import type { SearchBodyRecord } from '../src/runtime/modules/conversations/search-index-sql'
-import type { ArtifactVersion } from '../src/shared/domain/artifacts'
-import type { ConversationSearchQuery } from '../src/shared/domain/reading'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { ConversationSearchRepository } from '../packages/runtime/src/modules/conversations/search-repository'
+import type { SearchBodyRecord } from '../packages/runtime/src/modules/conversations/search-index-sql'
+import type { ArtifactVersion } from '../packages/shared/src/domain/artifacts'
+import type { ConversationSearchQuery } from '../packages/shared/src/domain/reading'
 
 const corpus = [
   { id: 'a', name: '报告.md', text: '苹果浏览器中文官网更新。' },

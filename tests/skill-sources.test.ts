@@ -10,8 +10,8 @@ import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { zipSync, strToU8 } from 'fflate'
-import { archivePath, extractSkillArchive } from '../src/runtime/adapters/skills/archive'
-import { downloadBytes, downloadUrl, isPublicAddress, resolvePublicEndpoint, type DownloadTransport } from '../src/runtime/adapters/skills/download'
+import { archivePath, extractSkillArchive } from '../packages/runtime/src/adapters/skills/archive'
+import { downloadBytes, downloadUrl, isPublicAddress, resolvePublicEndpoint, type DownloadTransport } from '../packages/runtime/src/adapters/skills/download'
 
 const roots: string[] = []
 afterEach(async () => { for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }) })

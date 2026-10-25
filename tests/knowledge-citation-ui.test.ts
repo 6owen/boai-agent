@@ -8,13 +8,13 @@
 import { act, createElement as h } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import type { DesktopApi } from '../src/shared/ipc'
-import type { ConversationDetail, Message } from '../src/shared/domain'
-import type { KnowledgePreview, KnowledgeReadRef } from '../src/shared/domain/knowledge'
-import { MaterialMarkdown } from '../src/renderer/pages/conversations/-components/material-citations'
-import { KnowledgeCitationPane } from '../src/renderer/components/work-views/knowledge-citation'
+import type { DesktopApi } from '../packages/shared/src/ipc'
+import type { ConversationDetail, Message } from '../packages/shared/src/domain'
+import type { KnowledgePreview, KnowledgeReadRef } from '../packages/shared/src/domain/knowledge'
+import { MaterialMarkdown } from '../apps/electron/src/renderer/pages/conversations/-components/material-citations'
+import { KnowledgeCitationPane } from '../apps/electron/src/renderer/components/work-views/knowledge-citation'
 
-vi.mock('../src/renderer/components/common/file-preview', () => ({ FilePreview: ({ file, line }: { file: { text: string }; line: number }) => h('p', { 'data-line': line }, file.text) }))
+vi.mock('../apps/electron/src/renderer/components/common/file-preview', () => ({ FilePreview: ({ file, line }: { file: { text: string }; line: number }) => h('p', { 'data-line': line }, file.text) }))
 let root: Root, host: HTMLDivElement
 beforeEach(() => { Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true }); host = document.createElement('div'); document.body.append(host); root = createRoot(host) })
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.useRealTimers(); vi.restoreAllMocks() })

@@ -8,8 +8,8 @@ import { afterEach, expect, it } from 'vitest'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { Message } from '../src/shared/domain'
-import { BoboConversationMemory } from '../src/runtime/adapters/mastra/conversation-memory'
+import type { Message } from '../packages/shared/src/domain'
+import { BoboConversationMemory } from '../packages/runtime/src/adapters/mastra/conversation-memory'
 
 const roots: string[] = []
 afterEach(async () => { await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))) })

@@ -1,11 +1,12 @@
 /*
+ * [OUTPUT]: 应用与评估编译按当前工作区公开exports解析，保留原执行与分发合同。
  * [OUTPUT]: 2026-10-11 新增native桌面证据导入，保留hash/原生完整步骤和失败；评分仍走原独立judge，无隐式模型调用。
  * [INPUT]: 保存的评估样本目录和可选评审/比较/校准文件，或数据集清单请求。
  * [OUTPUT]: 无网络调用的服务重评分/显式桌面证据导入、严格基线配对及报告；未知与人工待评不通过。
  * [POS]: scripts/score-collaboration.mjs。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { build } from 'esbuild'
+import { buildWorkspace as build } from './workspace-packages.mjs'
 import { mkdir, readFile, rm } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'

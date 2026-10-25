@@ -9,9 +9,9 @@ import { afterEach, expect, it } from 'vitest'
 import { mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import type { EngineContext } from '../src/runtime/contracts'
-import { createKnowledgeOperations } from '../src/runtime/modules/resources/knowledge-tools'
-import { prepareEnvironment } from '../src/runtime/modules/workspaces/environment-plan'
+import type { EngineContext } from '../packages/runtime/src/contracts'
+import { createKnowledgeOperations } from '../packages/runtime/src/modules/resources/knowledge-tools'
+import { prepareEnvironment } from '../packages/runtime/src/modules/workspaces/environment-plan'
 
 const roots: string[] = []
 afterEach(async () => { for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }) })

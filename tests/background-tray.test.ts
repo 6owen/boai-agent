@@ -8,10 +8,10 @@
 import { EventEmitter } from 'node:events'
 import { afterEach, expect, it, vi } from 'vitest'
 import type { BrowserWindow } from 'electron'
-import { BackgroundTray, cancelWindowHide, hideMainWindow } from '../src/main/background'
-import type { DesktopSettingsStore } from '../src/main/desktop-settings'
+import { BackgroundTray, cancelWindowHide, hideMainWindow } from '../apps/electron/src/main/background'
+import type { DesktopSettingsStore } from '../apps/electron/src/main/desktop-settings'
 const fake = vi.hoisted(() => ({ fail: false, replaceFail: false, bad: new Set<string>(), loads: [] as string[], instances: [] as { menu: any[]; handlers: Record<string, () => void>; destroy: ReturnType<typeof vi.fn>; image: { id?: string }; updates: number }[] }))
-vi.mock('../src/main/tray-icon', () => ({ loadTrayIcon: (_root: string, id: string) => { fake.loads.push(id); if (fake.bad.has(id)) throw new Error('missing'); return { id } } }))
+vi.mock('../apps/electron/src/main/tray-icon', () => ({ loadTrayIcon: (_root: string, id: string) => { fake.loads.push(id); if (fake.bad.has(id)) throw new Error('missing'); return { id } } }))
 vi.mock('electron', () => ({
   Menu: { buildFromTemplate: (items: unknown) => items },
   nativeImage: { createFromBitmap: () => ({ addRepresentation() {}, setTemplateImage() {}, toPNG: () => Buffer.alloc(0) }) },

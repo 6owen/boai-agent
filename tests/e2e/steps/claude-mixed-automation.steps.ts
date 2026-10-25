@@ -25,8 +25,8 @@ import { systemKeychainLaunch } from '../support/saved-model'
 import { openSchedule, scheduleAction, scheduleTarget, selectScheduleOption } from '../support/schedule-controls'
 import { archiveNativeFinalReview } from '../support/native-final-review'
 import { crashAutomationRuntime, runtimeChildProcessIds } from '../support/automation-recovery'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
-import type { AgentRun, AutomationDefinition, AutomationDispatch, AutomationOccurrence, BudgetModelCall, DigitalAgent, WorkBudget, WorkItem, Message } from '../../../src/shared/domain'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
+import type { AgentRun, AutomationDefinition, AutomationDispatch, AutomationOccurrence, BudgetModelCall, DigitalAgent, WorkBudget, WorkItem, Message } from '../../../packages/shared/src/domain'
 
 const { Then } = createBdd(test)
 async function observedProcessStarts(pids: number[]) {

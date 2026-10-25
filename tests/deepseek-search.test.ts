@@ -10,9 +10,9 @@ import { randomUUID } from 'node:crypto'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { webSearchProvider, type DataSourceConfig, type SourceTool } from '../src/shared/domain/sources'
-import { SourceService } from '../src/runtime/modules/sources/source-service'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
+import { webSearchProvider, type DataSourceConfig, type SourceTool } from '../packages/shared/src/domain/sources'
+import { SourceService } from '../packages/runtime/src/modules/sources/source-service'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
 
 const cleanups: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const fn of cleanups.splice(0).reverse()) await fn() })

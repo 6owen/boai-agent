@@ -10,9 +10,9 @@ import { expect } from 'vitest'
 import { mkdtemp, readFile, rm, realpath, copyFile, chmod } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
-import { AppService } from '../../src/runtime/service'
-import type { Conversation, ConversationDetail, DigitalAgent, LaunchProfile, Message } from '../../src/shared/domain'
-export async function nativeFixture(runtime: 'codex' | 'claude', disposals: (()=>Promise<void>)[], apiEngine?: import('../../src/runtime/contracts').AgentEngine, canonicalRoot = true, browserHost?:import('../../src/shared/ipc/browser').BrowserHostBridge){
+import { AppService } from '../../packages/runtime/src/service'
+import type { Conversation, ConversationDetail, DigitalAgent, LaunchProfile, Message } from '../../packages/shared/src/domain'
+export async function nativeFixture(runtime: 'codex' | 'claude', disposals: (()=>Promise<void>)[], apiEngine?: import('../../packages/runtime/src/contracts').AgentEngine, canonicalRoot = true, browserHost?:import('../../packages/shared/src/ipc/browser').BrowserHostBridge){
  const directory=await mkdtemp(join(tmpdir(),'boai-native-conversation-'))
  const root=canonicalRoot ? await realpath(directory) : directory
  const observers=new Set<()=>void>()

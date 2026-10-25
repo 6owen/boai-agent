@@ -9,7 +9,7 @@ import { createBdd } from 'playwright-bdd'
 import { test as base } from '../support/test'
 import { resourceSample, verifyResources, type ResourceSample } from '../support/background-resources'
 import { selectScheduleOption } from '../support/schedule-controls'
-import type { AutomationDefinition } from '../../../src/shared/domain'
+import type { AutomationDefinition } from '../../../packages/shared/src/domain'
 
 export const test = base.extend<{ employeeAutomation: { groupId?: string; planId?: string } }>({ employeeAutomation: async ({}, use) => use({}) })
 const { Given, When, Then } = createBdd(test)

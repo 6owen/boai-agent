@@ -7,7 +7,7 @@
 import { createServer } from 'vite'
 import { resolve } from 'node:path'
 import type { Desktop } from './desktop'
-import { SkillMarketplace } from '../../../src/runtime/modules/resources/skill-marketplace'
+import { SkillMarketplace } from '../../../packages/runtime/src/modules/resources/skill-marketplace'
 
 export async function startMarketplaceFixture(runtime: Desktop) {
   const requests: string[] = []

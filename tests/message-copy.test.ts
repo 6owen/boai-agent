@@ -9,11 +9,11 @@ import { act, createElement as h } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { toast } from 'sonner'
-import { MessageCard } from '../src/renderer/pages/conversations/-components/message-card'
-import type { Message } from '../src/shared/domain'
+import { MessageCard } from '../apps/electron/src/renderer/pages/conversations/-components/message-card'
+import type { Message } from '../packages/shared/src/domain'
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn() } }))
-vi.mock('../src/renderer/components/common/error-feedback', () => ({ ErrorToast: () => null, showErrorToast: vi.fn() }))
+vi.mock('../apps/electron/src/renderer/components/common/error-feedback', () => ({ ErrorToast: () => null, showErrorToast: vi.fn() }))
 let host: HTMLDivElement, root: Root
 beforeEach(() => {
   vi.clearAllMocks()

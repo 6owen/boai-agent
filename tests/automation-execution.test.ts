@@ -16,17 +16,17 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { AgentEngine, EngineContext } from '../src/runtime/contracts'
-import type { AgentRun, AutomationDefinition, AutomationOccurrence, AutomationOrigin, AutomationsView, BudgetModelCall, Connection, Conversation, ConversationDetail, DiscussionTurn, Message, Snapshot, WorkExecution, WorkItem } from '../src/shared/domain'
-import { AppService } from '../src/runtime/service'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { AutomationRepository } from '../src/runtime/modules/automations/automation-repository'
-import { aggregateAutomation } from '../src/runtime/modules/automations/automation-results'
-import { WorkRepository } from '../src/runtime/modules/collaboration/work-repository'
+import type { AgentEngine, EngineContext } from '../packages/runtime/src/contracts'
+import type { AgentRun, AutomationDefinition, AutomationOccurrence, AutomationOrigin, AutomationsView, BudgetModelCall, Connection, Conversation, ConversationDetail, DiscussionTurn, Message, Snapshot, WorkExecution, WorkItem } from '../packages/shared/src/domain'
+import { AppService } from '../packages/runtime/src/service'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { AutomationRepository } from '../packages/runtime/src/modules/automations/automation-repository'
+import { aggregateAutomation } from '../packages/runtime/src/modules/automations/automation-results'
+import { WorkRepository } from '../packages/runtime/src/modules/collaboration/work-repository'
 import { RequestContext } from '@mastra/core/request-context'
 import { noopObserve } from '@mastra/core/tools'
-import { createTaskRuntime } from '../src/runtime/adapters/mastra/task-runtime'
-import type { InboxItem } from '../src/shared/domain/inbox'
+import { createTaskRuntime } from '../packages/runtime/src/adapters/mastra/task-runtime'
+import type { InboxItem } from '../packages/shared/src/domain/inbox'
 
 const disposers: (() => Promise<void>)[] = []
 afterEach(async () => { for (const dispose of disposers.splice(0).reverse()) await dispose() })
@@ -483,7 +483,7 @@ it('continues a legacy timed-out automation only on explicit request and retains
   } })
   const occurrence = await f.service.handle('runAutomation', { id: f.plan.id, requestId: 'legacy-timeout' }) as AutomationOccurrence
   await until(async () => attempts === 1)
-  const internal = f.service as unknown as { store: ProductStore; automations: import('../src/runtime/modules/automations/automation-service').AutomationService }
+  const internal = f.service as unknown as { store: ProductStore; automations: import('../packages/runtime/src/modules/automations/automation-service').AutomationService }
   const budget = (await f.detail()).workBudgets![0]
   await internal.store.write([row('workBudgets', { ...budget, deadlineAt: new Date(0).toISOString() })])
   await internal.automations.stop(occurrence.id, '达到本次自动化的时间预算', 'budget')
@@ -575,7 +575,7 @@ it('explicitly renews a usage-exhausted clarification, keeps all accounting and 
   engine.decide = async context => { contexts.push(context); return baseDecide(context) }
   const f = await setup(engine), first = await f.service.handle('runAutomation', { id: f.plan.id, requestId: 'expire-clarification' }) as AutomationOccurrence
   await until(async () => (await f.view()).occurrences[0]?.status === 'waiting_user')
-  const internal = f.service as unknown as { store: ProductStore; automations: import('../src/runtime/modules/automations/automation-service').AutomationService }
+  const internal = f.service as unknown as { store: ProductStore; automations: import('../packages/runtime/src/modules/automations/automation-service').AutomationService }
   const before = (await f.detail()).workBudgets![0]
   await internal.store.write([row('workBudgets', { ...before, deadlineAt: new Date(0).toISOString(), maxOutputTokens: 0 })])
   await internal.automations.stop(first.id, '输出额度耗尽', 'budget')
@@ -673,7 +673,7 @@ it.each(['researcher', 'writer'])('routes a renewal only through the original un
   } })
   const first = await f.service.handle('runAutomation', { id: f.plan.id, requestId: `renewal-routing-${ownerId}` }) as AutomationOccurrence
   await until(async () => { const d = await f.detail(); return (await f.view()).occurrences[0]?.status === 'waiting_user' && d.workItems?.length === 2 && d.runs.every(run => run.status === 'completed') })
-  const host = f.service as unknown as { store: ProductStore; automations: import('../src/runtime/modules/automations/automation-service').AutomationService }
+  const host = f.service as unknown as { store: ProductStore; automations: import('../packages/runtime/src/modules/automations/automation-service').AutomationService }
   const before = await f.detail(), peer = before.workItems!.find(work => work.ownerAgentId === peerId)!
   originalWork = before.workItems!.find(work => work.ownerAgentId === ownerId)!
   await host.store.write([row('workBudgets', { ...before.workBudgets![0], deadlineAt: new Date(0).toISOString(), maxOutputTokens: 0 })])

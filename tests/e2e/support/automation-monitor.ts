@@ -8,8 +8,8 @@
 import { randomUUID } from 'node:crypto'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import type { AutomationMonitorCheckpoint } from '../../../src/shared/domain'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
+import type { AutomationMonitorCheckpoint } from '../../../packages/shared/src/domain'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
 export async function publishMonitorSample(root: string, conversationId: string, count: number, complete = true) {
   const id = randomUUID(), publishedAt = new Date().toISOString(), name = 'metrics.json'
   const folder = join(root, 'v2', 'workspaces', conversationId, 'artifacts'), path = join(folder, `${id}-${name}`)

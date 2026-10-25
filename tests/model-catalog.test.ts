@@ -10,10 +10,10 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { mkdtemp, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { listCompatibleModels, modelCatalogUrl } from '../src/runtime/adapters/mastra/model-catalog'
-import { AppService } from '../src/runtime/service'
-import type { Connection, ConnectionInput, Snapshot } from '../src/shared/domain'
-import type { AgentEngine } from '../src/runtime/contracts'
+import { listCompatibleModels, modelCatalogUrl } from '../packages/runtime/src/adapters/mastra/model-catalog'
+import { AppService } from '../packages/runtime/src/service'
+import type { Connection, ConnectionInput, Snapshot } from '../packages/shared/src/domain'
+import type { AgentEngine } from '../packages/runtime/src/contracts'
 
 const cleanup: (() => Promise<unknown>)[] = []
 afterEach(async () => {

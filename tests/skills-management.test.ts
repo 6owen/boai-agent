@@ -8,9 +8,9 @@ import { afterEach, expect, test, vi } from 'vitest'
 import { mkdtemp, mkdir, readFile, readdir, rm, symlink, link, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { AppService } from '../src/runtime/service'
-import type { Method, Methods } from '../src/shared/ipc'
-import { inspectResourceTree, parseSkillDocument } from '../src/runtime/modules/resources/local-resources'
+import { AppService } from '../packages/runtime/src/service'
+import type { Method, Methods } from '../packages/shared/src/ipc'
+import { inspectResourceTree, parseSkillDocument } from '../packages/runtime/src/modules/resources/local-resources'
 
 const roots: string[] = [], services: AppService[] = []
 afterEach(async () => { for (const service of services.splice(0)) await service.close(); for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }) })
@@ -240,7 +240,7 @@ test('skill and group ordering persist atomically without changing favorites or 
   await install(api, join(root, 'library'))
   let value = await api('getSkillCollections', undefined)
   const [alpha, beta, gamma] = value.favoriteResourceIds
-  const change = async (action: import('../src/shared/domain/skills').SkillCollectionAction) => {
+  const change = async (action: import('../packages/shared/src/domain/skills').SkillCollectionAction) => {
     value = await api('updateSkillCollections', { expectedRevision: value.revision, action })
   }
   await change({ kind: 'create-group', name: 'A' }); await change({ kind: 'create-group', name: 'B' })

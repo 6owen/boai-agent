@@ -1,10 +1,11 @@
 /*
+ * [OUTPUT]: 应用与评估编译按当前工作区公开exports解析，保留原执行与分发合同。
  * [INPUT]: 冻结任务、明确仓库、run/resume/status/deliver及可选原控制器hash。
  * [OUTPUT]: 唯一领取/隔离开发/原检查/审查/PR；显式接续已知检查点，未知操作非零且不重放。
  * [POS]: 第22组开发侧CLI；兼容迁移需明确原hash，旧无检查点任务保留。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
-import { build } from 'esbuild'
+import { buildWorkspace as build } from './workspace-packages.mjs'
 import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'

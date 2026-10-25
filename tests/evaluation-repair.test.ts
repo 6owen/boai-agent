@@ -38,7 +38,8 @@ function report() {
 }
 it('requires exact source paths and freezes test selection independently of repairable files', () => {
   expect(repairConfigSchema.parse(config).repeats).toBe(1)
-  for (const patch of [{ allowedFiles: ['../src/a.ts'] }, { allowedFiles: ['tests/counter.test.ts'] }, { tests: ['tests/holdout.test.ts'] }, { contextFiles: ['tests/evaluation/datasets.ts'] }, { contextFiles: ['.env'] }, { tests: [...config.tests, ...config.tests] }, { maxNoImprovement: 3 }]) expect(() => repairConfigSchema.parse({ ...config, ...patch })).toThrow()
+  for (const path of ['apps/electron/src/main/main.ts', 'packages/runtime/src/service.ts']) expect(repairConfigSchema.parse({ ...config, allowedFiles: [path], contextFiles: [path] }).allowedFiles).toEqual([path])
+  for (const patch of [{ allowedFiles: ['../src/a.ts'] }, { allowedFiles: ['tests/counter.test.ts'] }, { allowedFiles: ['packages/runtime/tests/hidden.ts'] }, { allowedFiles: ['apps/electron/src/../private.ts'] }, { tests: ['tests/holdout.test.ts'] }, { contextFiles: ['tests/evaluation/datasets.ts'] }, { contextFiles: ['.env'] }, { tests: [...config.tests, ...config.tests] }, { maxNoImprovement: 3 }]) expect(() => repairConfigSchema.parse({ ...config, ...patch })).toThrow()
 })
 it('applies all exact text edits in memory and rejects forbidden, ambiguous or unchanged edits', () => {
   expect(applyRepairEdits({ 'src/counter.ts': bad }, proposal(), config.allowedFiles)['src/counter.ts']).toBe(good)

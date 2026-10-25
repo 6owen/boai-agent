@@ -10,7 +10,7 @@ import { randomInt, randomUUID } from 'node:crypto'
 import { mkdir, readFile, realpath, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { deflateSync } from 'node:zlib'
-import type { ConversationMaterial } from '../../../src/shared/domain/materials'
+import type { ConversationMaterial } from '../../../packages/shared/src/domain/materials'
 
 export async function prepareCodexMaterialSource(root: string) {
   const directory = join(await realpath(root), 'native-material-source')

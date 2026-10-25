@@ -12,9 +12,9 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { WorkRepository } from '../src/runtime/modules/collaboration/work-repository'
-import type { WorkBudget, WorkItem } from '../src/shared/domain'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { WorkRepository } from '../packages/runtime/src/modules/collaboration/work-repository'
+import type { WorkBudget, WorkItem } from '../packages/shared/src/domain'
 
 const roots: string[] = [], stores: ProductStore[] = []
 afterEach(async () => {
@@ -103,7 +103,7 @@ describe('durable work ownership', () => {
     }
     if (reason === 'consumed-message') await store.write([{ collection: 'runs', id: 'earlier-continue', value: { id: 'earlier-continue', workId: first.id, triggerMessageId: sourceMessageId } }])
     if (reason === 'unknown-effects') await store.transaction(async tx => {
-      const execution = (await tx.get<import('../src/shared/domain').WorkExecution>('workExecutions', 'run-a'))!
+      const execution = (await tx.get<import('../packages/shared/src/domain').WorkExecution>('workExecutions', 'run-a'))!
       delete execution.pendingEffects
       await tx.put({ collection: 'workExecutions', id: execution.id, value: execution })
     })

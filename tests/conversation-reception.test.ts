@@ -8,10 +8,10 @@ import { afterEach, expect, it } from 'vitest'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { AppService } from '../src/runtime/service'
-import type { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import type { Conversation, Message, Snapshot } from '../src/shared/domain'
-import { mainConversations } from '../src/shared/domain/conversation-list'
+import { AppService } from '../packages/runtime/src/service'
+import type { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import type { Conversation, Message, Snapshot } from '../packages/shared/src/domain'
+import { mainConversations } from '../packages/shared/src/domain/conversation-list'
 
 const dispose: (() => Promise<void>)[] = []
 afterEach(async () => { for (const close of dispose.splice(0).reverse()) await close() })

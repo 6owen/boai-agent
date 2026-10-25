@@ -10,9 +10,9 @@ import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { test } from './claude-employee.steps'
 import { createClaudeAuthProvider } from '../support/claude-auth-provider'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
-import type { ProfileModelCall } from '../../../src/runtime/modules/profile/profile-activity'
-import type { StoredTraceSpan } from '../../../src/shared/domain/traces'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
+import type { ProfileModelCall } from '../../../packages/runtime/src/modules/profile/profile-activity'
+import type { StoredTraceSpan } from '../../../packages/shared/src/domain/traces'
 
 const { Then } = createBdd(test)
 Then('Claude拒绝无效API凭据后恢复原来源且不重放失败消息', async ({ runtime, claudeEmployee: state }) => {

@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [INPUT]: 用户要求全量安装组件、既有前端规范和 shadcn 官方 Base UI registry。
 [OUTPUT]: 基础组件清单、样式入口、使用与维护约定、验证范围。
 [POS]: 基础 UI 接入实现记录；业务页面迁移和个性化样式另行推进。
@@ -10,7 +11,7 @@
 
 ## 安装范围
 
-执行官方 `add --all`，得到 **61个UI源码文件**和 `hooks/use-mobile.ts`。完整成员及职责见 [ui/.folder.md](../../../src/renderer/components/ui/.folder.md)。这次交付为后续统一定制提供基础；现有业务页面中的旧控件还没有批量替换。
+执行官方 `add --all`，得到 **61个UI源码文件**和 `hooks/use-mobile.ts`。完整成员及职责见 [ui/.folder.md](../../../apps/electron/src/renderer/components/ui/.folder.md)。这次交付为后续统一定制提供基础；现有业务页面中的旧控件还没有批量替换。
 
 | 类别 | 组件 |
 | --- | --- |

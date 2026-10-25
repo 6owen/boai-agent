@@ -10,8 +10,8 @@ import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { expect, test, vi } from 'vitest'
-import { AppService } from '../src/runtime/service'
-import type { Connection, Conversation, ConversationDetail, DigitalAgent, LaunchProfile, Message } from '../src/shared/domain'
+import { AppService } from '../packages/runtime/src/service'
+import type { Connection, Conversation, ConversationDetail, DigitalAgent, LaunchProfile, Message } from '../packages/shared/src/domain'
 
 test.skipIf(process.env.BOAI_CLAUDE_GATEWAY_WIRE !== '1')('installed Claude honors the host gateway over ambient and settings sources while retaining native tools', async () => {
   const batch = process.env.BOAI_MAGPIE_BATCH

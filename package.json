@@ -14,14 +14,14 @@
     "build": "node scripts/build.mjs",
     "icons:generate": "node scripts/generate-app-icons.mjs",
     "lint:typography": "node scripts/check-typography.mjs",
-    "typecheck": "node scripts/build-design.mjs && tsc --noEmit",
+    "typecheck": "pnpm check:workspace && node scripts/build-design.mjs && tsc --noEmit",
     "test": "node scripts/build-design.mjs && vitest run",
     "test:collaboration": "node scripts/test-group-collaboration.mjs",
     "test:electron": "pnpm build && pnpm test:bddgen && playwright test",
     "start": "electron .",
     "package": "pnpm build && electron-builder --dir",
     "dist:mac": "pnpm build && electron-builder --mac dmg",
-    "lint:ui": "eslint src/renderer packages/ui/src apps/design-docs/src && pnpm lint:typography",
+    "lint:ui": "eslint apps/electron/src/renderer packages/ui/src apps/design-docs/src && pnpm lint:typography",
     "test:bddgen": "bddgen",
     "test:electron:list": "pnpm test:bddgen && playwright test --list",
     "test:electron:report": "playwright show-report",
@@ -50,7 +50,8 @@
     "build:design": "node scripts/build-design.mjs --site",
     "build:design-packages": "node scripts/build-design.mjs",
     "check:design": "node scripts/check-design-distribution.mjs && node scripts/check-design-site.mjs",
-    "icons:generate:tray": "node scripts/generate-tray-icons.mjs"
+    "icons:generate:tray": "node scripts/generate-tray-icons.mjs",
+    "check:workspace": "node scripts/check-workspace-boundaries.mjs"
   },
   "dependencies": {
     "@agentclientprotocol/sdk": "1.5.0",
@@ -116,7 +117,12 @@
     "yaml": "2.9.1",
     "yauzl": "3.4.0",
     "zod": "4.6.5",
-    "zustand": "5.0.15"
+    "zustand": "5.0.15",
+    "@boai/shared": "workspace:*",
+    "@boai/runtime": "workspace:*",
+    "@boai/transport": "workspace:*",
+    "@boai/runtime-plugin-sdk": "workspace:*",
+    "@boai/runtime-plugins": "workspace:*"
   },
   "build": {
     "appId": "com.boai.agent",
