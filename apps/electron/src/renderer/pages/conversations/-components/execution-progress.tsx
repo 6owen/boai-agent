@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 终态执行卡接统一任务结果文件/记录/原因；继续仍沿真实用户消息。
  * [OUTPUT]: 查看仅随可继续的终态操作区出现；排队、运行和待批准没有常驻查看或空操作行。
  * [OUTPUT]: 错误正文复用流式正文的MarkdownContent compact排版，字号/行高/颜色一致；底部查看按钮文案为“查看”。
  * [OUTPUT]: 查看完整执行过程与继续统一放在卡片底部操作区，查看使用文字按钮并位于继续左侧，运行时同样不占状态行。
@@ -22,6 +23,7 @@ import { Icon, Clock } from '@/components/icons'
 import { LoadingState } from '@/components/ui/loading-state'
 import { useState } from 'react'
 import type { DesktopApi } from '@boai/shared/ipc'
+import { TaskResultButton } from '@/components/detail-panel/task-result'
 import { canContinueRun, ContinueRunButton } from '@/components/detail-panel/continue-run-button'
 import { failureSummary } from '../presentation'
 import { ExecutionFeed } from '@/components/detail-panel/execution-feed'
@@ -56,6 +58,7 @@ export function ChatExecutionCard({ api, run, active, onOpen, conversationId, on
       </div>}
       {!live && run.error && <MarkdownContent size="compact">{failureSummary(run.error)}</MarkdownContent>}
       <ExecutionFeed api={api} run={run} active={active} cache={cache} presentation="chat" />
+      {!live && run.workId && <div className="flex justify-end"><TaskResultButton api={api} run={run} active={active} allowContinue /></div>}
       {canContinueRun(run) && <div className="button-row justify-end">
         <Button variant="secondary" size="sm" onClick={onOpen} aria-label="查看完整执行过程">查看</Button>
         <ContinueRunButton api={api} run={run} active={active} conversationId={conversationId} onDispatch={onContinue} />

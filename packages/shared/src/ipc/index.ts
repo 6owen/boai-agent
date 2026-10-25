@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Owner任务结果读取复用共享Work结果合同，桌面与CLI同一投影。
  * [OUTPUT]: 桌面活动原生采集参数、独立键鼠监听及权限命令保持宿主私有调用。
  * [OUTPUT]: approve协议新增allowSameKind，只表达本次运行同类操作批准。
  * [OUTPUT]: 增加系统文本复制桥和retryRun的显式continuation标识，原请求身份及通用IPC保持。
@@ -182,6 +183,7 @@ export interface Methods {
   getEmployeeExecution: { input: { agentId: string; runId: string }; output: import('../domain/employee-executions').EmployeeExecutionDetail }
   getLaunchProfileModelCatalog: { input: { id: string }; output: NonNullable<import('../domain/execution').NativeAgentInfo['models']> }
   listLaunchProfileModels: { input: { id: string }; output: string[] }
+  getTaskResult: { input: { workId: string }; output: import('../domain/task-results').TaskResult }
   queryWorkViews: { input: import('../domain/work-views').WorkViewQuery; output: import('../domain/work-views').WorkViewPage }
   queryConversationFiles: { input: import('../domain/work-views').ConversationFileQuery; output: import('../domain/work-views').ConversationFilePage }
   resolveWorkViewTarget: { input: import('../domain/work-views').WorkViewTargetInput; output: import('../domain/work-views').WorkViewTarget }

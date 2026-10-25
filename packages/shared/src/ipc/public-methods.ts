@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 公开getTaskResult只读方法，现有桌面准入保持。
  * [OUTPUT]: 快捷键偏好、回执与受控窗口捕获仅准入主窗口。
  * [OUTPUT]: 提示词集合读取/版本化修改沿原主窗口来源准入。
  * [OUTPUT]: 2026-10-20全局字体与应用图标设置接入原外观持久化和宿主协议。
@@ -222,6 +223,7 @@ const methods = {
   publishChannelReply: true,
   publishExternalArtifact: true,
   queryConversationFiles: true,
+  getTaskResult: true,
   queryWorkViews: true,
   readAgentFile: true,
   readSkillFile: true,

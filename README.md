@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-25第26组续行独立应用构建、外部插件接入与任务结果闭环；Web遥控暂缓，实际归26组02 §8。
 [OUTPUT]: 2026-10-25 Workspace源码归属迁移，当前状态见第26组02。
 [OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [OUTPUT]: 桌面活动独立设置与新增采集实际结果见前端27。
@@ -402,6 +403,14 @@ pnpm build
 pnpm start
 ```
 
+按应用开发和构建（本轮实现与验证进度见[第26组02 §8](ai-docs/spec/26.Workspace工程结构重构/02-实施步骤与验收.md#8-2026-10-25-独立应用外部插件与任务闭环增量)）：
+
+- Electron：`pnpm dev:electron`、`pnpm build:electron`；根`pnpm dev`、`pnpm build`保持兼容。
+- CLI完整宿主：`pnpm dev:cli --help`、`pnpm build:cli`，包含独立serve所需运行核心与资源。
+- CLI轻客户端：`pnpm dev:cli:client --help`、`pnpm build:cli:client`，用于连接已有宿主。
+- 设计站：`pnpm dev:design`、`pnpm build:design`；也可通过对应workspace包命令使用。
+- 单应用产物继续使用约定dist路径；部分构建不会登记为完整桌面构建通过，也不证明当前旧进程已重载。
+
 1. 在左下角「设置」添加模型连接。支持 OpenAI、Anthropic 和 OpenAI Chat Completions / Responses 兼容服务；兼容服务填写完整 API 基础地址，可不填 Key。也可点击「扫描本地 Agent」，预览 Codex / Claude Code 的 API 配置并逐项导入，或选择其他配置目录（JSON、TOML、YAML、dotenv）。缺少模型名时先补填；已导入来源不会重复创建或覆盖已有编辑。扫描不会联网、改写来源或将密钥带入扫描结果；本机 Codex/Claude 可沿用各自 CLI 登录；员工选择“本机 Agent”并绑定实际程序，旧 ACP 配置只作兼容保留。
 2. 在「通讯录 → 加号 → 创建团队」的弹窗填写团队名称和团队需求，点击「生成」进入系统核心助手 bobo 的会话；它根据需求安排成员，并默认创建使用该团队名称的群聊。团队入口不需要模型、模板、群开关或草稿配置。也可手工新建员工，并在「编辑配置」选择模型；员工模型 ID 留空时使用连接默认模型。
 3. 通讯录按群聊、联系人展示资料；点击「发消息」进入对应会话，也可在会话页新建群聊。`@` 和引用可明确收件人。API员工沿现有Mastra调度，本机员工直接使用自己的持续原生会话；普通本机聊天可以使用其原生工具，遵循所选权限。
@@ -535,16 +544,18 @@ node dist/cli/index.mjs receipt REQUEST_ID --json
 ## 代码结构
 
 ```text
-packages/tokens/  纯配色/排版与Soft变量，共享真源
-packages/ui/      桌面与设计站共用的React组件/皮肤
-apps/design-docs/ 独立设计文档站，pnpm dev:design
-src/cli/         CLI 客户端、认证RPC和原服务公共接线（完整范围实施中）
-src/main/        Electron 窗口、受控 IPC、凭据、运行进程生命周期
-src/renderer/    React 中文桌面界面
-src/runtime/     Mastra 引擎、产品服务、SQLite、资源管理
-src/shared/      跨进程数据与事件契约
-tests/           Vitest 引擎与服务回归、Electron BDD 场景
-ai-docs/spec/    产品规格与实际实现记录
+apps/electron/               桌面main/preload/renderer与worker入口
+apps/cli/                    CLI命令解析、输出与服务启动入口
+apps/design-docs/            独立设计文档站
+packages/tokens/             配色/排版与Soft变量
+packages/ui/                 共享React组件/皮肤
+packages/shared/             领域、跨进程协议和显式Node辅助
+packages/transport/          RPC、事件、发现与历史查询
+packages/runtime/            引擎、产品服务、SQLite与资源管理
+packages/runtime-plugin-sdk/ 运行时插件开发合同
+packages/runtime-plugins/    Pi/OpenCode/ACP实现
+tests/                      Vitest与Electron BDD场景
+ai-docs/spec/               产品规格与实际实现记录
 ```
 
 当前直接使用 `@mastra/core` 的 Agent/Workspace 执行能力。用户可见消息由产品数据库管理，按成员和会话筛选后显式投影进模型输入；未同时开启框架 Memory 自动回放，避免历史重复。员工统一记忆由产品 MemoryRepository 的 SQLite 事务管理，按来源、范围和有效期筛选后有界召回，Markdown 记忆文件是生成视图。自动化将原生时钟触发交给宿主：报告走员工执行链，结构化监控走有界文件读取和确定性比较；两者均以产品事务保存结果，运行结束不等于业务交付。MCP 连接器、多设备同步与系统级执行隔离另行实现。
@@ -615,6 +626,14 @@ Soft 风格变量与验证记录见 [全局 Soft UI](ai-docs/spec/2.已实现功
 
 2026-10-16新增[Agent运行时插件设计](ai-docs/spec/19.应用插件架构/05-Agent运行时插件协议与接入架构.md)与[实施计划](ai-docs/spec/19.应用插件架构/06-Agent运行时插件实施计划与验收.md)：保留Mastra主线，通过统一provider合同、共享ACP驱动、Pi RPC插件及独立包接入新Agent；受信本地包安装/更新/启停已接入，市场与不受信代码沙箱另期。Pi RPC及共用ACP已有源码/协议验证，真实Pi登录失败、OpenCode实机未验；已有驱动和个人配置保持。
 
+运行时插件的仓库外开发见[第26组04](ai-docs/spec/26.Workspace工程结构重构/04-外部插件开发与接入.md)：
+
+- `pnpm plugin:sdk`：导出本地SDK tarball到`.local/plugin-devkit`。
+- `pnpm plugin:create /绝对路径/新插件目录`：生成独立Text Inspector示例；进入目录后执行`pnpm install`、`pnpm build`、`pnpm check`，将生成的`package/`目录交给现有插件安装入口。
+- `pnpm plugin:check /绝对路径/package`：只读检查包结构和依赖，不执行插件。本轮提供本地分发工具，没有发布npm包或远端仓库。
+
+任务结果见[第26组05](ai-docs/spec/26.Workspace工程结构重构/05-任务结果闭环.md)：聊天终态执行卡和执行详情的“任务结果”读取原Work的文件、消息、失败原因与关键记录；CLI通过`task list`、`task result WORK_ID`读取同一投影。读取会核对原来源与文件hash，继续沿原聊天操作，不自动重做任务。
+
 2026-10-20 Alma技能接续：当前Bobo实际绑定16项适配技能；会话搜索/核心会话改名走统一应用协议，文件与系统能力沿现有工具。原研究完整371候选/40技能范围、真实失败和当前剩余归[独立Agent架构§11.23](ai-docs/2026-10-19-BOAI独立Agent配置与行为运行架构.md#1123-技能管理会话与文件能力接入2026-10-20goal继续中)。
 
 
@@ -625,3 +644,5 @@ Soft 风格变量与验证记录见 [全局 Soft UI](ai-docs/spec/2.已实现功
 - [27 桌面活动与日报独立设置](ai-docs/spec/3.前端重构与功能/27-桌面活动与日报独立设置.md)：独立设置分类、默认关闭的截图/键鼠采集和存储管理；实际验证与未验范围见专题。
 
 2026-10-25工程结构：Electron与CLI归apps，共享运行核心/传输/合同及插件归packages；[第26组](ai-docs/spec/26.Workspace工程结构重构/README.md)维护合同和实际进度。根命令与dist分布保持。
+
+2026-10-25后续开发：[第26组](ai-docs/spec/26.Workspace工程结构重构/README.md)新增独立应用开发构建、外部插件接入和任务结果闭环，先文档再实施；Web遥控端暂不做，实际进度唯一归02 §8。

@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 应用与共享包外改同时使桌面构建和UI来源身份失效。
+ * [OUTPUT]: 应用/开发编排外改使来源身份失效；部分构建清除旧全量资格且保留产物。
  * [INPUT]: 独立Git工作目录、源码/技能源和实际构建文件。
  * [OUTPUT]: 旧dist/外改拒绝；真实重复记录仅时间变化仍同字节，源码/输出/Node变化不相同。
  * [POS]: 开发/CI产物身份的真实文件负例，不启动应用。
@@ -11,7 +11,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 // @ts-expect-error Plain Node ESM build helper intentionally has no declaration file.
-import { buildInputHash, recordBuildIdentity, verifyBuildIdentity, sameBuildBytes } from '../scripts/build-identity.mjs'
+import { buildInputHash, recordBuildIdentity, verifyBuildIdentity, sameBuildBytes, invalidateBuildIdentity } from '../scripts/build-identity.mjs'
 // @ts-expect-error Plain Node ESM CLI intentionally has no declaration file.
 import { sourceIdentity } from '../scripts/ui-regression.mjs'
 
@@ -19,8 +19,8 @@ let root: string
 beforeEach(async () => {
   root = await mkdtemp(join(tmpdir(), 'boai-build-identity-'))
   execFileSync('git', ['init', '-q'], { cwd: root })
-  for (const name of ['src', 'resources', 'dist']) await mkdir(join(root, name))
-  await writeFile(join(root, 'src/entry.ts'), 'export const value = 1')
+  for (const name of ['apps/cli/src', 'resources', 'dist']) await mkdir(join(root, name), { recursive: true })
+  await writeFile(join(root, 'apps/cli/src/entry.ts'), 'export const value = 1')
   await writeFile(join(root, 'resources/skill.md'), '固定技能源')
   await writeFile(join(root, 'dist/main.mjs'), 'export const value = 1')
 })
@@ -28,7 +28,7 @@ afterEach(async () => { vi.restoreAllMocks(); await rm(root, { recursive: true, 
 it('完整同源产物通过，源码变化后旧dist被拒绝', async () => {
   await recordBuildIdentity(await buildInputHash(root), root)
   await expect(verifyBuildIdentity(root)).resolves.toHaveProperty('version', 1)
-  await writeFile(join(root, 'src/entry.ts'), 'export const value = 2')
+  await writeFile(join(root, 'apps/cli/src/entry.ts'), 'export const value = 2')
   await expect(verifyBuildIdentity(root)).rejects.toThrow(/源码/)
 })
 it('构建后修改任一实际输出字节会失败', async () => {
@@ -82,8 +82,24 @@ it('真实相同文件重新登记仅时间变化可比，输入/输出/Node变�
   await writeFile(join(root, 'dist/main.mjs'), 'actual different bytes')
   const differentOutput = await recordBuildIdentity(await buildInputHash(root), root)
   expect(sameBuildBytes(first, differentOutput)).toBe(false)
-  await writeFile(join(root, 'src/entry.ts'), 'actual different source')
+  await writeFile(join(root, 'apps/cli/src/entry.ts'), 'actual different source')
   expect(sameBuildBytes(differentOutput, await recordBuildIdentity(await buildInputHash(root), root))).toBe(false)
   expect(sameBuildBytes(first, { ...first, node: 'v1.0.0' })).toBe(false)
   expect(sameBuildBytes(first, { ...first, version: 2 })).toBe(false)
+})
+
+it('部分构建先移除全量身份，原产物仍在也不能复用旧资格', async () => {
+  await recordBuildIdentity(await buildInputHash(root), root)
+  await invalidateBuildIdentity(root)
+  await expect(verifyBuildIdentity(root)).rejects.toThrow(/缺少构建身份/)
+  await expect(invalidateBuildIdentity(root)).resolves.toBeUndefined()
+  // Re-recording verifies invalidation did not remove distribution bytes.
+  await expect(recordBuildIdentity(await buildInputHash(root), root)).resolves.toHaveProperty('version', 1)
+})
+it('CLI开发编排变化使旧构建身份失效', async () => {
+  await mkdir(join(root, 'scripts'))
+  await writeFile(join(root, 'scripts/dev-cli.mjs'), 'export const value = 1')
+  await recordBuildIdentity(await buildInputHash(root), root)
+  await writeFile(join(root, 'scripts/dev-cli.mjs'), 'export const value = 2')
+  await expect(verifyBuildIdentity(root)).rejects.toThrow(/源码/)
 })

@@ -1,0 +1,3 @@
+Private development example. No public license is declared for this example.
+Before distributing your derived plugin, choose your own applicable license and
+include the notices required by any third-party code you add.

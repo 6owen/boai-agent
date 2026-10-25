@@ -5,7 +5,10 @@
   "type": "module",
   "description": "BOAI command-line application entry",
   "scripts": {
-    "build": "pnpm --dir ../.. build",
+    "dev": "node ../../scripts/dev-cli.mjs",
+    "dev:client": "node ../../scripts/dev-cli.mjs --client-only",
+    "build": "node ../../scripts/build.mjs --app cli",
+    "build:client": "node ../../scripts/build.mjs --app cli-client",
     "start": "pnpm --dir ../.. cli"
   },
   "dependencies": {

@@ -424,6 +424,11 @@
       "types": "./src/node/native-source.ts",
       "development": "./src/node/native-source.ts",
       "default": "./src/node/native-source.ts"
+    },
+    "./domain/task-results": {
+      "types": "./src/domain/task-results.ts",
+      "development": "./src/domain/task-results.ts",
+      "default": "./src/domain/task-results.ts"
     }
   },
   "dependencies": {

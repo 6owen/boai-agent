@@ -3,8 +3,8 @@
  * [OUTPUT]: Runtime API v2私有模型来源按清单/握手/会话三次核对，Pi与OpenCode明确网关接入；v1原生来源兼容，凭据不进入公共配置或回执。
  * [INPUT]: Trusted runtime packages and serializable native session requests.
  * [OUTPUT]: Runtime API v2 candidate/private model source; no AppService, credential store or business repository access.
- * [POS]: Standalone provider SDK contract, emitted with the runtime build.
- * [PROTOCOL]: Update Header and plugins/.folder.md when changing this contract.
+ * [POS]: Standalone provider SDK source truth; runtime distribution and local external SDK export share this file.
+ * [PROTOCOL]: Update Header, SDK src/.folder.md and external developer guide when changing this contract.
  */
 export const RUNTIME_API_VERSION = 2
 export type RuntimeModelProtocol = 'chat' | 'responses' | 'messages'

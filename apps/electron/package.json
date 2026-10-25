@@ -5,8 +5,8 @@
   "type": "module",
   "description": "BOAI Electron application entry and desktop UI",
   "scripts": {
-    "dev": "pnpm --dir ../.. dev",
-    "build": "pnpm --dir ../.. build",
+    "dev": "node ../../scripts/dev.mjs",
+    "build": "node ../../scripts/build.mjs --app electron",
     "start": "pnpm --dir ../.. start"
   },
   "dependencies": {

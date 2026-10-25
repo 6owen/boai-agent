@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Private BOAI runtime provider contracts",
+  "description": "BOAI runtime provider contracts for workspace and local external development",
+  "license": "UNLICENSED",
   "exports": {
     ".": {
       "types": "./src/runtime-api.ts",

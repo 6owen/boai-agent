@@ -139,3 +139,25 @@ it('uses the supplied CA before WSS connection and never disables certificate va
   const wrong = new CliRpcClient(server.url, { token }); cleanup.push(() => wrong.destroy()); await expect(wrong.connect()).rejects.toMatchObject({ code: 'CLIENT_DISCONNECTED' })
   const good = new CliRpcClient(server.url, { token, ca: await readFile(cert) }); cleanup.push(() => good.destroy()); await good.connect(); expect(await good.invoke('ping')).toBe('pong')
 })
+
+it('task-result owner reads remain denied to raw run credentials and use the original service', async () => {
+  const { publicChannels } = await import('../packages/transport/src/channels')
+  const request = vi.fn(async (method: string, input: unknown) => ({ method, input }))
+  const channels = publicChannels({ request: request as never }, { workspaceId: 'fixture', name: 'fixture', version: 'test', browserAvailable: false, credentialProvider: 'unavailable' })
+  const runToken = randomBytes(32).toString('base64url')
+  const { client, server } = await fixture(new Map(channels), { authenticateRun: async candidate => {
+    if (candidate !== runToken) throw new Error('bad token')
+    return { kind: 'run', grantId: randomUUID(), runId: 'r1', employeeId: 'a1', conversationId: 'c1', expiresAt: Date.now() + 60000 }
+  } })
+  expect(channels.get('getTaskResult')?.effect).toBe('read')
+  expect(await client.invoke('getTaskResult', { workId: 'work' })).toEqual({ method: 'getTaskResult', input: { workId: 'work' } })
+  expect(await client.invoke('queryWorkViews', { limit: 2 })).toEqual({ method: 'queryWorkViews', input: { limit: 2 } })
+  request.mockClear()
+  const { ws, value } = await raw(server.url, { id: randomUUID(), type: 'handshake', token: runToken, protocolVersion: PROTOCOL_VERSION })
+  expect(value.registeredChannels).not.toContain('getTaskResult'); expect(value.registeredChannels).not.toContain('queryWorkViews')
+  for (const channel of ['getTaskResult', 'queryWorkViews']) {
+    const reply = once(ws, 'message'); ws.send(serializeEnvelope({ id: randomUUID(), type: 'request', channel, args: [{ workId: 'work' }] }))
+    expect(deserializeEnvelope(String((await reply)[0])).error?.code).toBe('AUTH_FAILED')
+  }
+  expect(request).not.toHaveBeenCalled()
+})

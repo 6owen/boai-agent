@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: task list/result读取真实执行Work及共享结果，无消息发送或重试副作用。
  * [OUTPUT]: 2026-10-20原生Node测试加载的package.json导入标注JSON类型；CLI业务协议与退出状态保持。
  * [OUTPUT]: 2026-10-19应用业务协议：增加app catalog/describe/call/receipt/receipt-id，写操作显式稳定请求ID及真实结果退出状态。
  * [OUTPUT]: run监听覆盖服务启动至原执行结束；ready前中断保留恢复身份，退出130且不提交业务。
@@ -58,6 +59,8 @@ Usage: boai <command> [options]
   session messages ID [--limit N] [--cursor JSON] [--direction before|after]
   session delete ID [--request-id ID]   Clear history and hide, as in the desktop
   session receipt REQUEST_ID
+  task list [--session ID] [--employee ID] [--limit N] [--cursor CURSOR]  List execution Work
+  task result WORK_ID           Read files, outcomes and continuation state
   receipt REQUEST_ID [--follow]   Observe the same request without sending again
   send SESSION_ID [MESSAGE] [--stdin] [--request-id ID]
   run [MESSAGE] [--employee ID_OR_UNIQUE_NAME] [--stdin] [--request-id ID]
@@ -157,6 +160,7 @@ async function main() {
   if (values.host !== undefined || values.port !== undefined) throw new CliError('INVALID_REQUEST', '--host/--port仅适用于serve')
   const noArgs = ['ping', 'health', 'versions', 'workspaces', 'employees', 'connections', 'sessions', 'sources']
   const messages = command === 'session' && args[0] === 'messages'
+  const taskList = command === 'task' && args[0] === 'list' && args.length === 1
   let channel: string, input: unknown
   const integer = (value: string, max: number) => { if (!/^\d+$/.test(value) || !Number.isSafeInteger(Number(value)) || Number(value) < 1 || Number(value) > max) throw new CliError('INVALID_REQUEST', '数字参数超出范围'); return Number(value) }
   if (noArgs.includes(command) && !args.length) {
@@ -166,6 +170,8 @@ async function main() {
   else if (command === 'session' && args[0] === 'create' && args.length === 1 && values.employee) { channel = 'createEmployeeSession'; input = undefined }
   else if (command === 'session' && args[0] === 'delete' && args.length === 2) { channel = 'deleteSession'; input = undefined }
   else if (command === 'session' && args[0] === 'receipt' && args.length === 2) { channel = 'getSessionReceipt'; input = { requestId: args[1] } }
+  else if (taskList) { channel = 'queryWorkViews'; input = { conversationId: values.session, ownerAgentId: values.employee, limit: values.limit !== undefined ? integer(values.limit, 100) : 30, cursor: values.cursor } }
+  else if (command === 'task' && args[0] === 'result' && args.length === 2) { channel = 'getTaskResult'; input = { workId: args[1] } }
   else if (command === 'receipt' && args.length === 1) { channel = 'getMessageExecution'; input = { requestId: args[0] } }
   else if (command === 'send' && args.length >= 1) { channel = 'sendMessage'; input = undefined }
   else if (command === 'run') { channel = 'sendEmployeeMessage'; input = undefined }
@@ -184,7 +190,7 @@ async function main() {
   else if (command === 'invoke' && args.length >= 1 && args.length <= 2) { channel = args[0]; try { input = args.length === 2 ? JSON.parse(args[1]) : undefined } catch { throw new CliError('INVALID_REQUEST', 'invoke 参数不是有效 JSON') } }
   else if (command === 'listen' && args.length === 1 && eventChannelSchema.safeParse(args[0]).success) { channel = 'events:subscribe'; input = { channel: args[0], conversationId: values.session } }
   else throw new CliError('INVALID_REQUEST', '命令或参数无效，请使用 --help 查看当前可用命令')
-  if ((values.employee !== undefined && !['sessions', 'sources', 'run'].includes(command) && !(command === 'session' && args[0] === 'create')) || (values.name !== undefined && !(command === 'session' && args[0] === 'create')) || (values.cursor !== undefined && command !== 'sessions' && !messages) || (values.limit !== undefined && command !== 'sessions' && !messages) || (values.direction !== undefined && !messages) || (values.session !== undefined && command !== 'listen')) throw new CliError('INVALID_REQUEST', '该选项不适用于当前命令')
+  if ((values.employee !== undefined && !['sessions', 'sources', 'run'].includes(command) && !taskList && !(command === 'session' && args[0] === 'create')) || (values.name !== undefined && !(command === 'session' && args[0] === 'create')) || (values.cursor !== undefined && command !== 'sessions' && !messages && !taskList) || (values.limit !== undefined && command !== 'sessions' && !messages && !taskList) || (values.direction !== undefined && !messages) || (values.session !== undefined && command !== 'listen' && !taskList)) throw new CliError('INVALID_REQUEST', '该选项不适用于当前命令')
   if (values.run !== undefined && (command !== 'cancel' || !values.run.length || values.run.length > 200 || values['request-id'] !== undefined)) throw new CliError('INVALID_REQUEST', '--run仅适用于cancel，且不能与--request-id同时使用')
   if (values.source !== undefined && !['send', 'run'].includes(command)) throw new CliError('INVALID_REQUEST', '--source仅适用于send/run')
   if (values.attachment !== undefined && (!['send', 'run'].includes(command) || values.attachment.length > MATERIAL_LIMITS.perMessage || values.attachment.some(file => !file))) throw new CliError('INVALID_REQUEST', '--attachment仅适用于send/run，每条消息最多三份本地文件')

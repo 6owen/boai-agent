@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 任务结果使用相同原文件/hash/来源校验但不写回路径或状态。
  * [OUTPUT]: 模型图片读取复用原成果核源/hash及同次字节快照，不增加路径或预览权限。
  * [OUTPUT]: 知识保留返回已核验成果的材料来源，支持后续明确材料撤权向独立知识副本传播。
  * [OUTPUT]: 明确知识保留只读取已发布且当前员工获准的成果原件，不复制可变工作文件。
@@ -163,7 +164,7 @@ export class ArtifactRepository {
     } catch (error) { if (error instanceof ContentError) throw error; throw new ContentError(errorText(error)) }
     finally { await handle.close() }
   }
-  private async checked(tx: RecordTransaction, artifact: ArtifactVersion, expectedHash?: string, agentId?: string, requirePreview = true, readContent: boolean | 'search' | 'bytes' = false, allowUnsupported = false): Promise<Pick<ArtifactPreview, 'artifact' | 'text' | 'filePreview' | 'binaryPreview'> & { bytes?: Buffer }> {
+  private async checked(tx: RecordTransaction, artifact: ArtifactVersion, expectedHash?: string, agentId?: string, requirePreview = true, readContent: boolean | 'search' | 'bytes' = false, allowUnsupported = false, persist = true): Promise<Pick<ArtifactPreview, 'artifact' | 'text' | 'filePreview' | 'binaryPreview'> & { bytes?: Buffer }> {
     const readText = readContent === true || readContent === 'search'
     await this.conversation(tx, artifact.conversationId)
     if (expectedHash !== undefined && expectedHash !== artifact.contentHash) throw new Error('成果内容身份已更新，请重新打开所见版本')
@@ -177,7 +178,7 @@ export class ArtifactRepository {
     const text = filePreview?.text ?? (readContent === 'search' ? markdown(actual.bytes) : readText ? actual.bytes.toString('utf8') : ''), verified: ArtifactVersion = { ...clone(artifact), path: actual.path, ...(filePreview ? { contentStatus: filePreview.kind === 'unsupported' ? 'unsupported' as const : 'ready' as const } : {}) }
     if (filePreview?.kind === 'unsupported') verified.contentError = filePreview.reason
     else if (filePreview) delete verified.contentError
-    if (verified.path !== artifact.path || verified.contentStatus !== artifact.contentStatus || verified.contentError !== artifact.contentError) await tx.put(record('artifacts', verified))
+    if (persist && (verified.path !== artifact.path || verified.contentStatus !== artifact.contentStatus || verified.contentError !== artifact.contentError)) await tx.put(record('artifacts', verified))
     const binaryPreview = requirePreview && allowUnsupported ? previewBinaryFile(artifact.name, actual.bytes) : undefined
     return { artifact: verified, text, ...(filePreview ? { filePreview } : {}), ...(binaryPreview ? { binaryPreview } : {}), ...(readContent === 'bytes' ? { bytes: actual.bytes } : {}) }
   }
@@ -515,6 +516,10 @@ export class ArtifactRepository {
   private async previewState(tx: RecordTransaction, preview: Pick<ArtifactPreview, 'artifact' | 'text' | 'filePreview' | 'binaryPreview'>): Promise<ArtifactPreview> {
     const versions = (await tx.list<ArtifactVersion>('artifacts')).filter(value => known(value) && value.logicalArtifactId === preview.artifact.logicalArtifactId).sort((a, b) => a.contentVersion - b.contentVersion).map(clone)
     return { ...preview, versions, adoption: await this.adoptionInTransaction(tx, preview.artifact.logicalArtifactId), acceptance: await this.acceptanceInTransaction(tx, preview.artifact.id, true) }
+  }
+  /** Same byte/source checks without refreshing any persisted path/status on a read-only result query. */
+  async inspectCurrentArtifact(tx: RecordTransaction, artifactId: string, contentHash: string) {
+    return this.checked(tx, await this.version(tx, artifactId), contentHash, undefined, false, false, false, false)
   }
   async validateCurrentArtifact(tx: RecordTransaction, artifactId: string, contentHash: string, agentId?: string, readText = false): Promise<Pick<ArtifactPreview, 'artifact' | 'text'>> {
     return this.checked(tx, await this.version(tx, artifactId), contentHash, agentId, false, readText)

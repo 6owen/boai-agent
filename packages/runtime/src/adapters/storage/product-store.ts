@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 任务结果Run在原事务内固定Work/会话/员工、有界SELECT并只投影公开状态与计数。
  * [OUTPUT]: Explicit task pages filter current source/viewer rights before SQL LIMIT; project bounded notes/steps without loading all task records.
  * [OUTPUT]: 事务list支持固定status过滤，调用者决定恢复语义；无需读取已终态观察记录。
  * [OUTPUT]: 定时执行历史与计划最近结果在分页/统计前排除已删除墓碑。
@@ -79,6 +80,7 @@ function invalidateSearchBodies(collection: string, id: string, value?: string) 
 export interface StoredRecord { collection: string; id: string; value: unknown }
 export interface MessageCommit { message: import('@boai/shared/domain').Message; inserted: boolean }
 export interface RecordTransaction {
+  taskResultRuns(work: Pick<WorkItem, 'id' | 'conversationId' | 'ownerAgentId'>, limit: number): Promise<{ items: import('@boai/shared/domain/task-results').TaskResultRun[]; total: number }>
   conversationRecords(ids: string[]): Promise<StoredRecord[]>
   get<T>(collection: string, id: string): Promise<T | undefined>
   list<T>(collection: string, filter?: { status: string }): Promise<T[]>
@@ -401,6 +403,13 @@ export class ProductStore {
       try {
         const messages = new Map<string, MessageCommit>()
         const records: RecordTransaction = {
+          taskResultRuns: async (work, limit) => {
+            const args = [work.id, work.conversationId, work.ownerAgentId]
+            const scope = "collection='runs' AND json_extract(value,'$.workId')=? AND json_extract(value,'$.conversationId')=? AND json_extract(value,'$.agentId')=?"
+            const count = await transaction.execute({ sql: `SELECT count(*) AS total FROM records WHERE ${scope}`, args })
+            const result = await transaction.execute({ sql: `SELECT json_object('id',id,'conversationId',json_extract(value,'$.conversationId'),'agentId',json_extract(value,'$.agentId'),'status',json_extract(value,'$.status'),'phase',json_extract(value,'$.phase'),'createdAt',json_extract(value,'$.createdAt'),'finishedAt',json_extract(value,'$.finishedAt'),'messageId',json_extract(value,'$.messageId'),'triggerMessageId',json_extract(value,'$.triggerMessageId'),'error',substr(json_extract(value,'$.error'),1,2000),'errorTruncated',CASE WHEN length(json_extract(value,'$.error'))>2000 THEN json('true') ELSE json('false') END,'toolCounts',json_object('completed',(SELECT count(*) FROM json_each(records.value,'$.toolEvents') tool WHERE json_extract(tool.value,'$.status')='completed'),'failed',(SELECT count(*) FROM json_each(records.value,'$.toolEvents') tool WHERE json_extract(tool.value,'$.status')='failed'),'running',(SELECT count(*) FROM json_each(records.value,'$.toolEvents') tool WHERE json_extract(tool.value,'$.status')='running'))) AS summary FROM records WHERE ${scope} ORDER BY json_extract(value,'$.createdAt') DESC,id DESC LIMIT ?`, args: [...args, limit] })
+            return { items: result.rows.map(row => { const summary = JSON.parse(String(row.summary)); for (const key of Object.keys(summary)) if (summary[key] === null) delete summary[key]; return summary }), total: Number(count.rows[0].total) }
+          },
           conversationRecords: async ids => {
             if (!ids.length) return []
             const placeholders = ids.map(() => '?').join(',')

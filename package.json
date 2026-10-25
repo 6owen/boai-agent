@@ -51,7 +51,16 @@
     "build:design-packages": "node scripts/build-design.mjs",
     "check:design": "node scripts/check-design-distribution.mjs && node scripts/check-design-site.mjs",
     "icons:generate:tray": "node scripts/generate-tray-icons.mjs",
-    "check:workspace": "node scripts/check-workspace-boundaries.mjs"
+    "check:workspace": "node scripts/check-workspace-boundaries.mjs",
+    "dev:electron": "node scripts/dev.mjs",
+    "dev:cli": "node scripts/dev-cli.mjs",
+    "dev:cli:client": "node scripts/dev-cli.mjs --client-only",
+    "build:electron": "node scripts/build.mjs --app electron",
+    "build:cli": "node scripts/build.mjs --app cli",
+    "build:cli:client": "node scripts/build.mjs --app cli-client",
+    "plugin:sdk": "node scripts/runtime-plugin-devkit.mjs sdk",
+    "plugin:create": "node scripts/runtime-plugin-devkit.mjs create",
+    "plugin:check": "node scripts/runtime-plugin-devkit.mjs check"
   },
   "dependencies": {
     "@agentclientprotocol/sdk": "1.5.0",

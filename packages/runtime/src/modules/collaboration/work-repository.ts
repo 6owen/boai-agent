@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 提取原继续只读preflight供结果视图，prepareRetry在原事务仍完整重核并写入。
  * [OUTPUT]: 默认执行不按累计调用、工具步骤、用量或墙钟截断；保留真实用量、取消/权限和明确指定的预算。
  * [OUTPUT]: 本人新消息对失败/取消/中断普通工作沿同事务验证并认领，未知操作、版本和权限门禁保持。
  * [OUTPUT]: 启动升级旧普通API默认额度并保留原身份/累计用量，不重新执行任务。
@@ -727,7 +728,8 @@ export class WorkRepository {
       for (const record of records) await tx.put(record)
     })
   }
-  private async prepareRetry(tx: RecordTransaction, work: WorkItem, agentId: string, continuedByUser = false) {
+  /** Shared read-only preflight; authoritative prepareRetry still runs this inside its original transaction. */
+  async checkRetry(tx: RecordTransaction, work: WorkItem, agentId: string, continuedByUser = false) {
     if (work.ownerAgentId !== agentId || work.activeRunId || !(continuedByUser ? ['failed', 'cancelled', 'interrupted'] : ['failed', 'cancelled']).includes(work.status)) throw new WorkUnavailableError('当前工作不能重试')
     await this.revisionWork(tx, work)
     if (work.requiresReview) {
@@ -749,6 +751,10 @@ export class WorkRepository {
       const parent = await tx.get<WorkItem>('workItems', work.parentWorkId)
       if (parent?.status === 'cancelled' || parent?.status === 'interrupted') throw new WorkUnavailableError('父工作已停止，不能单独重试子工作')
     }
+    return budget
+  }
+  private async prepareRetry(tx: RecordTransaction, work: WorkItem, agentId: string, continuedByUser = false) {
+    const budget = await this.checkRetry(tx, work, agentId, continuedByUser)
     if (work.origin) await resumeAutomationExecution(tx, work.origin, work.conversationId, continuedByUser)
     delete work.wakeId
     if (work.budgetPolicy !== 'native') budget.retries++; await tx.put(row('workBudgets', budget))

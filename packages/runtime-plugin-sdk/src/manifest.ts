@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Runtime API v1/v2 provider manifests and serializable configuration.
  * [OUTPUT]: Pure manifest/configuration schemas; no BOAI business services or built-in brands.
- * [POS]: @boai/runtime-plugin-sdk/manifest, private workspace contract.
+ * [POS]: @boai/runtime-plugin-sdk/manifest, shared by workspace and portable local SDK artifacts.
  * [PROTOCOL]: Update Header and .folder.md when changing this contract.
  */
 import { z } from 'zod'

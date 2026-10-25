@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 任务结果统一投影接原Work/消息/文件核源和停止、继续门禁；查询不执行任务。
  * [OUTPUT]: Mastra扩展历史先事务登记原召回/材料来源再使用；接续从原Run全部已完成工具核源，效果去重保持。
  * [OUTPUT]: 任务按独立工作区准入；允许命令或等待批准不再占全局命令独占位，互斥归实际宿主命令生命周期。
  * [OUTPUT]: 桌面活动截图随源记录备份；备份期间停止采集，恢复默认关闭新增采集。
@@ -328,6 +329,8 @@ import { EmployeeChannels, type ChannelAttachment, type ChannelTransportFactory 
 import { channelTransportFactory } from './adapters/channels/mastra-channels'
 import type { ChannelConversationSource, ChannelMessageSource } from '@boai/shared/domain/channels'
 import { CHANNEL_NAMES, channelPublishSchema, channelReplySchema, channelDeliveriesQuerySchema } from '@boai/shared/domain/channels'
+import { taskResultQuerySchema } from '@boai/shared/domain/task-results'
+import { TaskResultRepository, projectRunCancellation } from './modules/collaboration/task-result-repository'
 import { WorkViewRepository } from './modules/collaboration/work-view-repository'
 import { workViewQuerySchema, conversationFileQuerySchema, workViewTargetSchema, conversationFileTargetSchema } from './modules/collaboration/work-view-sql'
 import { ConversationReadingRepository } from './modules/conversations/reading-repository'
@@ -1478,6 +1481,7 @@ export class AppService {
         case 'listConversationMessages': return this.conversationBrowsing.messagePage(messagePageSchema.parse(input))
         case 'getConversationView': return this.conversationView(messagePageSchema.parse(input))
         case 'getConversationMetadata': { const value = conversationMetadataSchema.parse(input); return this.conversationMetadata(value.id, value.includeTriggerSummaries) }
+        case 'getTaskResult': return this.taskResults.read(taskResultQuerySchema.parse(input).workId)
         case 'queryWorkViews': return this.works.queryViews(workViewQuerySchema.parse(input))
         case 'queryConversationFiles': return this.store.queryConversationFiles(conversationFileQuerySchema.parse(input))
         case 'resolveWorkViewTarget': return this.workViewReading.resolveWork(workViewTargetSchema.parse(input))
@@ -1684,6 +1688,44 @@ export class AppService {
       validateArtifact: async (artifact, conversation) => { this.getConversation(conversation.id); if (!artifact.contentHash) fail('成果没有可信内容身份，请核对原文件'); await this.store.transaction(tx => this.artifactRepository.validateCurrentArtifact(tx, artifact.id, artifact.contentHash!, undefined, false)) },
       readMaterialText: async (material, conversation) => { this.getConversation(conversation.id); if (!material.messageId || material.status !== 'ready') fail('材料未发送或已不可用'); return (await this.materials.preview(material.id, material.revision)).text },
       readArtifactText: async (artifact, conversation) => { this.getConversation(conversation.id); if (!artifact.contentHash) fail('成果没有可信内容身份'); return (await this.store.transaction(tx => this.artifactRepository.readSearchText(tx, artifact.id, artifact.contentHash!))).text },
+    })
+  }
+  private get taskResults() {
+    return new TaskResultRepository(this.store, {
+      work: (tx, work) => this.materials.validateRefsInTransaction(tx, work.materialSources ?? [], undefined, work.conversationId),
+      message: (tx, message) => this.validateReadingMessage(tx, message),
+      artifact: async (tx, artifact) => { await this.artifactRepository.inspectCurrentArtifact(tx, artifact.id, artifact.contentHash) },
+      run: async (tx, run) => {
+        const snapshot = await tx.get<RunSnapshot>('snapshots', run.id)
+        if (!snapshot || snapshot.invalidated || !this.dataSourceSnapshotValid(snapshot)) fail('原执行来源已失效')
+        const agent = await tx.get<DigitalAgent>('agents', snapshot!.agent.id)
+        if (!agent) fail('原执行员工已不存在')
+        const resources = new Set(this.authorizedResources(agent!, this.getConversation(run.conversationId)).map(resource => resource.id))
+        if (snapshot!.resources.some(resource => !resources.has(resource.id))) fail('原执行资源已失效')
+        await this.materials.validateRefsInTransaction(tx, snapshot!.materialRefs ?? [], undefined, run.conversationId)
+      },
+      continuation: async (tx, work, run) => {
+        if (!['failed', 'cancelled', 'interrupted'].includes(work.status)) return { state: 'not_applicable' }
+        if (!run || run.workId !== work.id || run.conversationId !== work.conversationId || run.agentId !== work.ownerAgentId) return { state: 'blocked', reason: '原执行身份缺失，请在原聊天核对' }
+        const target = { runId: run.id }
+        if (run.backend || work.origin || work.organization || work.collaborationRequestId || work.revisionRequestId) return { ...target, state: 'review_required', reason: '请在原聊天按已有专用流程处理' }
+        if (!['decision', 'execution'].includes(run.phase ?? '') || !['failed', 'cancelled', 'interrupted'].includes(run.status)) return { ...target, state: 'blocked', reason: '原执行当前不能继续' }
+        const stopped = projectRunCancellation(run, id => this.runs.get(id), this.activeRunIds())
+        if (stopped.state !== 'stopped' || this.conversationBusy(work.conversationId)) return { ...target, state: 'blocked', reason: '原执行尚未确认停止或会话仍在处理' }
+        if ([...this.scheduler.turns.values()].some(turn => turn.id !== run.turnId && turn.resumesRunIds?.includes(run.id))) return { ...target, state: 'blocked', reason: '已有后续执行，请查看最新记录' }
+        const agent = await tx.get<DigitalAgent>('agents', work.ownerAgentId)
+        if (!agent?.active) return { ...target, state: 'blocked', reason: '原员工已停用' }
+        const resources = new Set(this.authorizedResources(agent, this.getConversation(work.conversationId)).map(resource => resource.id))
+        const previousRuns = [...this.runs.values()].filter(previous => previous.workId === work.id)
+        if (previousRuns.some(previous => previous.createdAt > run.createdAt && previous.status === 'completed')) return { ...target, state: 'blocked', reason: '原工作已有后续结果，请查看最新记录' }
+        for (const previous of previousRuns) {
+          const snapshot = await tx.get<RunSnapshot>('snapshots', previous.id)
+          if (!snapshot || snapshot.invalidated || !this.dataSourceSnapshotValid(snapshot) || snapshot.resources.some(resource => !resources.has(resource.id))) return { ...target, state: 'review_required', reason: '原执行来源或资源已失效，请核对已有结果' }
+        }
+        try { await this.works.checkRetry(tx, work, work.ownerAgentId, true) }
+        catch (error) { return { ...target, state: 'review_required', reason: this.errorMessage(error) } }
+        return { ...target, state: 'available' }
+      },
     })
   }
   private get workViewReading() {
@@ -2743,12 +2785,7 @@ export class AppService {
     if (!run || run.conversationId !== conversationId) fail('原运行不属于指定会话')
     const current = run!, persisted = await this.store.get<AgentRun>('runs', runId)
     if (persisted?.cancellation) current.cancellation = persisted.cancellation
-    const scope = current.cancellation, runIds = scope?.runIds ?? [runId], active = this.activeRunIds()
-    const activeRunIds = runIds.filter(id => active.has(id))
-    const missing = runIds.some(id => !this.runs.has(id))
-    const ended = runIds.every(id => terminal.has(this.runs.get(id)?.status!))
-    return { conversationId, runId, agentId: current.agentId, requested: !!scope, runIds, workIds: scope?.workIds ?? [], activeRunIds,
-      state: missing || (scope && !scope.appliedAt) ? 'unknown' : activeRunIds.length ? (scope || terminal.has(current.status) ? 'stopping' : 'running') : ended ? 'stopped' : 'running' }
+    return projectRunCancellation(current, id => this.runs.get(id), this.activeRunIds())
   }
   private async cancelRunExecution(conversationId: string, runId: string) {
     const before = await this.runCancellation(conversationId, runId), run = this.runs.get(runId)!

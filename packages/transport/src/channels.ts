@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Owner task list/result复用原有界Work查询及统一结果；run凭据不获得owner读取范围。
  * [OUTPUT]: 2026-10-19应用业务协议：应用业务协议目录/调用/回执接原owner通道，run凭据沿实际员工工具授权。
  * [OUTPUT]: Owner明确渠道发布及发送回执查询接原服务，共用桌面schema；普通send不外发，运行凭据不获发布权。
  * [OUTPUT]: 知识引用只沿实际读取记录及当前授权/内容身份预览；旧版本、伪造路径和未读行不扩权。
@@ -21,6 +22,7 @@
  * [PROTOCOL]: 变化同步Header与所属.folder.md。
  */
 import { z } from 'zod'
+import { taskResultQuerySchema, taskResultListSchema } from '@boai/shared/domain/task-results'
 import { applicationCatalogQuerySchema, applicationRequestSchema, applicationReceiptQuerySchema } from '@boai/shared/domain/application-protocol'
 import { executionPermissionSchema } from '@boai/shared/domain/execution'
 import { inboxQuerySchema, inboxReplySchema } from '@boai/shared/domain/inbox'
@@ -84,6 +86,8 @@ export function publicChannels(service: CliServicePort, identity: CliServiceIden
     if (employeeId && !agent) throw new Error('员工不存在')
     return (await service.request('listDataSources', undefined)).filter(source => !agent || (agent.id === 'bobo' && agent.systemRole === 'core') || agent.sourceIds?.includes(source.id)).map(source => ({ id: source.id, name: source.name, type: source.type, enabled: source.enabled, revision: source.revision, hasCredential: source.hasCredential }))
   })
+  method('getTaskResult', taskResultQuerySchema)
+  method('queryWorkViews', taskResultListSchema)
   method('getConversation', z.object({ id }).strict())
   method('createEmployeeSession', z.object({ expectedExecutionPermission: executionPermissionSchema.optional(), employeeId: id, name: z.string().trim().min(1).max(200).optional(), requestId: id }).strict(), 'write')
   method('deleteSession', z.object({ conversationId: id, requestId: id }).strict(), 'write')
