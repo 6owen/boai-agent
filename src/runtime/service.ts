@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 桌面工作区路径与轻量归属复核分离；成员移除先排空精确终端并在失败后释放关闭标记。
  * [OUTPUT]: Mastra扩展历史先事务登记原召回/材料来源再使用；接续从原Run全部已完成工具核源，效果去重保持。
  * [OUTPUT]: 任务按独立工作区准入；允许命令或等待批准不再占全局命令独占位，互斥归实际宿主命令生命周期。
  * [OUTPUT]: 桌面活动截图随源记录备份；备份期间停止采集，恢复默认关闭新增采集。
@@ -424,6 +425,7 @@ export class AppService {
   private readonly reading: ConversationReadingRepository
   private readonly userProfile: ProfileRepository
   private readonly clearingConversations = new Set<string>()
+  private readonly userWorkspaceClosures = new Set<string>()
   private readonly contexts: ContextRepository
   private readonly store: ProductStore
   private readonly notifications: AutomationNotifications
@@ -950,6 +952,19 @@ export class AppService {
     if (isApplicationHostMethod(method)) {
       if (!this.options.applicationHost?.available) throw new Error('当前服务没有连接桌面设置宿主')
       return this.options.applicationHost.request(method, input as never)
+    }
+    if (method === 'getWorkspaceRoot' || method === 'validateWorkspaceScope') {
+      const value = z.object({ employeeId: id, conversationId: id.optional() }).strict().parse(input)
+      const assertCurrent = () => {
+        this.getAgent(value.employeeId)
+        if (this.userWorkspaceClosures.has(`employee:${value.employeeId}`) || value.conversationId && (this.userWorkspaceClosures.has(`conversation:${value.conversationId}`) || this.userWorkspaceClosures.has(`scope:${JSON.stringify([value.employeeId, value.conversationId])}`))) fail('工作区正在关闭，请稍后重试')
+        if (value.conversationId && !this.getConversation(value.conversationId).agentIds.includes(value.employeeId)) fail('员工不属于当前会话')
+      }
+      assertCurrent()
+      if (method === 'validateWorkspaceScope') return
+      const root = await restrictedPath([this.dataPath], this.homes.root(value.employeeId))
+      assertCurrent()
+      return root
     }
     if (method === 'getApplicationCatalog') return this.application.catalog(input as Methods['getApplicationCatalog']['input'])
     if (method === 'executeApplicationOperation') return this.application.call(input as Methods['executeApplicationOperation']['input'])
@@ -2128,6 +2143,12 @@ export class AppService {
   }
 
   private async deleteEmployees(agentIds: string[], category?: { id: string; expectedRevision: number }) {
+    for (const id of agentIds) this.userWorkspaceClosures.add(`employee:${id}`)
+    try { return await this.deleteEmployeeRecords(agentIds, category) }
+    finally { for (const id of agentIds) this.userWorkspaceClosures.delete(`employee:${id}`) }
+  }
+
+  private async deleteEmployeeRecords(agentIds: string[], category?: { id: string; expectedRevision: number }) {
     await this.contactDeletion.prepare({ agentIds, category })
     if (this.skills.busy || this.skillUpdates.busy || this.skillLibrary.busy) fail('技能管理操作尚未结束，请完成后再删除员工')
     try { await this.teamCreation.assertBackup(); await this.boboCollaboration.assertBackup() } catch { fail('请先完成或放弃未结束的团队创建，再删除员工') }
@@ -2136,6 +2157,7 @@ export class AppService {
     if ([...this.runs.values()].some(run => agentIds.includes(run.agentId) && (this.runControllers.has(run.id) || this.activeAdapters.has(run.id)))) fail('员工仍有任务执行或收尾，请停止并等待结束后再删除')
     const ownedResourceIds = [...this.resources.values()].filter(resource => resource.ownerAgentId && agentIds.includes(resource.ownerAgentId)).map(resource => resource.id)
     for (const resourceId of ownedResourceIds) await this.assertSkillUnused(resourceId)
+    if (this.options.applicationHost?.available) for (const employeeId of agentIds) await this.options.applicationHost.request('closeUserWorkspace', { employeeId })
     await this.channels.detachEmployees(agentIds)
     await this.automations.detachContacts(agentIds, affected.map(conversation => conversation.id))
     for (const agentId of agentIds) { await this.terminals.stopEmployee(agentId); await this.cancelEmployee(agentId, '员工已删除'); await this.contexts.forgetAgent(agentId) }
@@ -2162,9 +2184,16 @@ export class AppService {
   }
 
   private async clearConversationHistory(id: string, hide: boolean, remove = false, sessionReceipt?: SessionOperationRecord) {
+    this.userWorkspaceClosures.add(`conversation:${id}`)
+    try { return await this.clearConversationRecords(id, hide, remove, sessionReceipt) }
+    finally { this.userWorkspaceClosures.delete(`conversation:${id}`) }
+  }
+
+  private async clearConversationRecords(id: string, hide: boolean, remove = false, sessionReceipt?: SessionOperationRecord) {
     await this.agentBehaviors.cancelScope({ conversationId: id })
     const conversation = this.conversations.get(id) ?? fail('会话不存在')
     this.assertConversationIdle(id)
+    if (this.options.applicationHost?.available) await this.options.applicationHost.request('closeUserWorkspace', { conversationId: id })
     await this.previews.clearConversation(id)
     await this.terminals.clearConversation(id)
     const discussions = [...this.conversations.values()].filter(room => room.channelDiscussion?.conversationId === id)
@@ -2483,11 +2512,19 @@ export class AppService {
     const conversation: Conversation = { ...previous, ...definition, ...(memoryContextRef !== undefined ? { memoryContextRef: memoryContextRef ?? undefined } : {}), ...(teamSetup !== undefined ? { teamSetup: teamSetup ?? undefined } : {}), configVersion: (previous?.configVersion ?? 0) + 1, mode: 'natural', id: conversationId, sharedKnowledgeIds: input.sharedKnowledgeIds ?? [], workspacePath: previous?.workspacePath ?? join(this.dataPath, 'workspaces', conversationId), createdAt: previous?.createdAt ?? now(), updatedAt: now() }
     await mkdir(conversation.workspacePath, { recursive: true })
     if (conversation.kind === 'direct' && !previous?.channel && conversation.purpose !== 'automation' && conversation.purpose !== 'core' && conversation.purpose !== 'channel-internal') conversation.mainPrivate = true
-    if (commit) await commit(conversation, !previous)
-    else await this.store.write([record('conversations', conversation)])
-    this.conversations.set(conversation.id, conversation)
+    const removedMembers = previous?.agentIds.filter(id => !conversation.agentIds.includes(id)) ?? []
+    const closingScopes = removedMembers.map(employeeId => `scope:${JSON.stringify([employeeId, conversation.id])}`)
+    for (const scope of closingScopes) this.userWorkspaceClosures.add(scope)
+    try {
+      // Revoke the exact old employee/room attachment before publishing membership.
+      // Other members, other rooms and metadata-only edits keep their terminal alive.
+      if (this.options.applicationHost?.available) for (const employeeId of removedMembers) await this.options.applicationHost.request('closeUserWorkspace', { employeeId, conversationId: conversation.id })
+      if (commit) await commit(conversation, !previous)
+      else await this.store.write([record('conversations', conversation)])
+      this.conversations.set(conversation.id, conversation)
+    } finally { for (const scope of closingScopes) this.userWorkspaceClosures.delete(scope) }
     if (previous) {
-      const removed = previous.agentIds.filter(id => !conversation.agentIds.includes(id))
+      const removed = removedMembers
       const revoked = previous.sharedKnowledgeIds.filter(id => !conversation.sharedKnowledgeIds.includes(id))
       await this.cancelWhere(run => run.conversationId === conversation.id && (removed.includes(run.agentId) || !!this.snapshots.get(run.id)?.resources.some(resource => revoked.includes(resource.id)) || (run.phase === 'coordination' && (removed.length > 0 || revoked.length > 0))), '群成员或共享资料权限已变更')
       if (removed.length || revoked.length) {

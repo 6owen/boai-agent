@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 工作区文件及用户终端允许桌面请求；根路径及轻量身份核验仅供宿主转交运行服务。
  * [OUTPUT]: 快捷键偏好、回执与受控窗口捕获仅准入主窗口。
  * [OUTPUT]: 提示词集合读取/版本化修改沿原主窗口来源准入。
  * [OUTPUT]: 2026-10-20全局字体与应用图标设置接入原外观持久化和宿主协议。
@@ -276,6 +277,13 @@ const methods = {
   setPluginEnabled: true,
   setRuntimePluginEnabled: true,
   setUnsavedChanges: true,
+  closeUserWorkspace: false,
+  getWorkspaceRoot: false,
+  validateWorkspaceScope: false,
+  listWorkspaceFiles: true,
+  listWorkspaceApplications: true,
+  openWorkspacePath: true,
+  workspaceTerminal: true,
   snapshot: true,
   startCoreConversation: true,
   stopAutomation: true,

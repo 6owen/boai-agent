@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工工作区目录/外部应用及独立用户终端走主窗校验；删除/清空/移除成员等待精确终端退出，输入沿私有轻量身份复核。
  * [OUTPUT]: 允许本人打开受管桌面活动截图目录。
  * [OUTPUT]: 消息复制经主窗口系统剪贴板桥完成，复制回执沿preload类型合同返回。
  * [OUTPUT]: 消息复制使用仅主窗口可调用的系统剪贴板写入桥，浏览器预览保留Web回退；成功后才显示已复制。
@@ -63,6 +64,10 @@ import { GatewayImportInbox } from './gateway-import-inbox'
 import { MODEL_ID_MAX_LENGTH, validModelId } from '../shared/domain/model-id'
 import { AutomationNotificationConsumer } from './automation-notifications'
 import { BrowserService } from './browser/browser-service'
+import { WorkspaceFileService } from './workspace-files'
+import { WorkspaceApplications, openLocalResource } from './workspace-applications'
+import { WorkspaceTerminalService } from './workspace-terminal/service'
+import type { WorkspaceFileScope } from '../shared/ipc/workspace-files'
 import type { BrowserHostMethods, BrowserLease } from '../shared/ipc/browser'
 import type { AutomationNotice } from '../shared/domain/automations'
 import { z } from 'zod'
@@ -128,6 +133,13 @@ let ready: Promise<void> | null = null
 let cli: Awaited<ReturnType<typeof openDesktopCli>> | undefined
 async function applicationHostRequest(method: ApplicationHostMethod, input: unknown): Promise<unknown> {
   if (quitting) throw new Error('应用正在退出')
+  if (method === 'closeUserWorkspace') {
+    const value = z.union([z.object({ employeeId: z.string().min(1).max(200), conversationId: z.string().min(1).max(200).optional() }).strict(), z.object({ conversationId: z.string().min(1).max(200) }).strict()]).parse(input)
+    if ('employeeId' in value && value.conversationId) await userTerminals.stopScope({ employeeId: value.employeeId, conversationId: value.conversationId })
+    else if ('employeeId' in value) await userTerminals.stopEmployee(value.employeeId)
+    else await userTerminals.clearConversation(value.conversationId)
+    return
+  }
   if (method === 'captureDesktopActivity') return desktopActivityCapture(input)
   if (method === 'getAppearance') { z.undefined().parse(input); return appearance.snapshot() }
   if (method === 'updateAppearance') { const value = z.object({ patch: appearancePatchSchema, expectedRevision: z.number().int().nonnegative() }).strict().parse(input); return appearance.update(value.patch, value.expectedRevision) }
@@ -186,6 +198,34 @@ const background = new BackgroundTray(desktopSettings, () => { void showMainWind
 const selectedPaths = new Set<string>()
 const materialSources = new MaterialSources(join(dataPath, 'material-sources'), error => sendEvent({ type: 'runtime-error', error: `临时附件清理失败：${String(error)}` }))
 const pending = new Map<string, { resolve: (value: unknown) => void; reject: (error: Error) => void; timer?: ReturnType<typeof setTimeout> }>()
+const workspaceApplications = new WorkspaceApplications(shell)
+const resolveUserWorkspace = async (scope: WorkspaceFileScope) => {
+  if (quitting) throw new Error('应用正在退出')
+  return await requestRuntime('getWorkspaceRoot', scope) as string
+}
+const workspaceFiles = new WorkspaceFileService(resolveUserWorkspace, (path, action, applicationId) => workspaceApplications.open(path, action, applicationId))
+const userTerminals = new WorkspaceTerminalService(dataPath, {
+  resolveScope: resolveUserWorkspace,
+  validateScope: async scope => {
+    if (quitting) throw new Error('应用正在退出')
+    await requestRuntime('validateWorkspaceScope', scope)
+  },
+})
+let userTerminalsReady: Promise<void> | undefined
+let workspaceDocumentEpoch = 0
+let userTerminalShutdownInterrupted = false
+let userTerminalResuming: Promise<void> | undefined
+async function resumeUserTerminals() {
+  if (!userTerminalShutdownInterrupted) return
+  userTerminalResuming ??= (async () => {
+    await userTerminals.close()
+    userTerminals.resumeAfterShutdown()
+    userTerminalsReady = undefined
+    userTerminalShutdownInterrupted = false
+  })().finally(() => { userTerminalResuming = undefined })
+  await userTerminalResuming
+}
+
 let browserConnectionDrain: Promise<void> = Promise.resolve()
 const browsers = new BrowserService({
   rendererDirectory: join(__dirname, '../renderer'),
@@ -393,13 +433,7 @@ async function openResource(input: unknown) {
   const info = await stat(target)
   const dataRoot = await realpath(dataPath)
   if (!(info.isDirectory() && (target === dataRoot || target === join(dataRoot, 'activity-records'))) && !roots.some((root) => root && inside(root, target))) throw new Error('只能打开当前工作区或已导入的资源。')
-  const safeExtensions = new Set(['.md', '.txt', '.markdown', '.pdf', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.csv', '.json', '.xlsx', '.docx', '.pptx', '.svg', '.log'])
-  if (value.action === 'reveal' || !info.isDirectory() && !safeExtensions.has(extname(target).toLowerCase())) {
-    shell.showItemInFolder(target)
-    return
-  }
-  const error = await shell.openPath(target)
-  if (error) throw new Error(error)
+  await openLocalResource(shell, target, value.action)
 }
 
 function registerIpc() {
@@ -590,6 +624,20 @@ function registerIpc() {
         if (typeof candidate?.source !== 'string' || !selectedPaths.has(await realpath(candidate.source))) throw new Error('请先通过文件选择器选择技能目录或 ZIP。')
       }
     }
+    if (method === 'listWorkspaceFiles') return workspaceFiles.list(input)
+    if (method === 'openWorkspacePath') return workspaceFiles.open(input)
+    if (method === 'listWorkspaceApplications') {
+      const value = z.object({ refresh: z.boolean().optional() }).strict().parse(input)
+      return workspaceApplications.list(value.refresh)
+    }
+    if (method === 'workspaceTerminal') {
+      const documentEpoch = workspaceDocumentEpoch
+      await resumeUserTerminals()
+      userTerminalsReady ??= userTerminals.recover().catch(error => { userTerminalsReady = undefined; throw error })
+      await userTerminalsReady
+      if (documentEpoch !== workspaceDocumentEpoch || !window || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) throw new Error('原终端页面已失效，请重新打开')
+      return userTerminals.handle(event.sender.id, input as Methods['workspaceTerminal']['input'])
+    }
     if (method === 'openPath') return openResource(input)
     if (method === 'exportSkillLibrary') {
       const value = z.object({ planId: z.string().min(1).max(200), requestId: z.string().min(1).max(200) }).strict().parse(input)
@@ -665,6 +713,11 @@ async function createWindow(show = true) {
   }
   mainWindow.on('blur', releaseShortcutCapture)
   mainWindow.on('hide', releaseShortcutCapture)
+  const terminalClientId = mainWindow.webContents.id
+  const releaseUserTerminals = () => { workspaceDocumentEpoch++; userTerminals.releaseClient(terminalClientId) }
+  mainWindow.webContents.on('render-process-gone', releaseUserTerminals)
+  mainWindow.webContents.on('did-start-loading', releaseUserTerminals)
+  mainWindow.webContents.on('destroyed', releaseUserTerminals)
   mainWindow.webContents.on('render-process-gone', releaseShortcutCapture)
   mainWindow.webContents.on('before-input-event', () => mainWindow.webContents.setIgnoreMenuShortcuts(shortcutCapture?.windowId === mainWindow.id && mainWindow.isFocused()))
   mainWindow.webContents.on('did-start-loading', () => { importWindowReady = false; releaseShortcutCapture() })
@@ -777,8 +830,12 @@ else {
     })
     // A timeout may terminate the worker, but never counts as Chromium action exit.
     const cliExit = (cliStarting ?? Promise.resolve()).then(async () => { await cli?.close(); cli = undefined })
-    void Promise.all([runtimeExit, cliExit, iconExit, browsers.shutdown(), materialSources.close(), desktopSettings.flush(), shortcutSettings.flush(), pluginSettings.flush(), cliInstaller.flush()]).then(() => { background.destroy(); quitApproved = true; app.quit() }).catch(error => {
+    const userTerminalExit = userTerminals.close()
+    void Promise.all([runtimeExit, cliExit, iconExit, userTerminalExit, browsers.shutdown(), materialSources.close(), desktopSettings.flush(), shortcutSettings.flush(), pluginSettings.flush(), cliInstaller.flush()]).then(() => { background.destroy(); quitApproved = true; app.quit() }).catch(async error => {
+      await userTerminalExit.catch(() => {})
+      userTerminalShutdownInterrupted = true
       quitting = false
+      await resumeUserTerminals().catch(recoveryError => sendEvent({ type: 'runtime-error', error: String(recoveryError) }))
       background.resumeIconUpdates()
       void appIconController.resume().catch(error => sendEvent({ type: 'runtime-error', error: String(error) }))
       void showMainWindow()

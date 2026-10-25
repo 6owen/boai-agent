@@ -1,6 +1,6 @@
 /*
-[INPUT]: Host-validated working directory/shell and bounded JSON input on stdin.
-[OUTPUT]: Real PTY bytes, resize and actual shell exit; outer process guard owns descendants.
+[INPUT]: Host-validated directory/shell, optional interactive login mode and bounded JSON input.
+[OUTPUT]: Bounded PTY read batches keep control responsive; stdin EOF leaves ancestry intact for outer cleanup.
 [POS]: Private --pty mode, always launched beneath the normal identity-bound guard.
 [PROTOCOL]: Update Header and .folder.md when changed.
 */
@@ -16,7 +16,7 @@ fn emit(value: Value) -> io::Result<()> {
 }
 pub(crate) fn run() -> io::Result<i32> {
     let args: Vec<_> = env::args().skip(2).collect();
-    if args.len() != 2 { return Err(io::Error::other("expected --pty CWD SHELL")); }
+    if args.len() < 2 || args.len() > 3 || (args.len() == 3 && args[2] != "--login") { return Err(io::Error::other("expected --pty CWD SHELL [--login]")); }
     let (mut master, mut slave): (RawFd, RawFd) = (-1, -1);
     let mut size = libc::winsize { ws_row: 30, ws_col: 100, ws_xpixel: 0, ws_ypixel: 0 };
     if unsafe { libc::openpty(&mut master, &mut slave, std::ptr::null_mut(), std::ptr::null_mut(), &mut size) } != 0 { return Err(io::Error::last_os_error()); }
@@ -27,7 +27,7 @@ pub(crate) fn run() -> io::Result<i32> {
         libc::fcntl(master, libc::F_SETFL, libc::O_NONBLOCK);
     }
     let mut cmd = Command::new(&args[1]);
-    cmd.arg("-i").current_dir(&args[0])
+    cmd.arg(if args.len() == 3 { "-il" } else { "-i" }).current_dir(&args[0])
         .stdin(Stdio::from(slave_file.try_clone()?))
         .stdout(Stdio::from(slave_file.try_clone()?))
         .stderr(Stdio::from(slave_file));
@@ -55,7 +55,9 @@ pub(crate) fn run() -> io::Result<i32> {
     let mut pending = VecDeque::<u8>::new();
     loop {
         for input in receive.try_iter() {
-            let Some(input) = input else { let _ = child.kill(); let _ = child.wait(); return Ok(130); };
+            // The outer owner handles cancellation/parent loss after capturing the
+            // tree. Killing the shell here would sever ancestry before that capture.
+            let Some(input) = input else { continue; };
             if let Some(data) = input.get("data").and_then(Value::as_str) {
                 if pending.len() + data.len() > 262144 { return Err(io::Error::other("PTY input queue is full")); }
                 pending.extend(data.as_bytes());
@@ -73,7 +75,9 @@ pub(crate) fn run() -> io::Result<i32> {
                 Err(error) => return Err(error),
             }
         }
-        loop {
+        // A continuously writable program (for example `yes`) must not starve
+        // the next stdin/control pass. The pipe itself supplies output backpressure.
+        for _ in 0..32 {
             match reader.read(&mut bytes) {
                 Ok(0) => break,
                 Ok(n) => emit(json!({"type":"data","bytes":&bytes[..n]}))?,

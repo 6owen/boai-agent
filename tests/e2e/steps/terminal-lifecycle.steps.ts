@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 用户终端真实输出/满高、十次切换保留屏幕；UI关闭后核实际shell PID消失和owner账本排空，不假设已关闭项仍在活跃列表。
  * [INPUT]: 原 Desktop、owner 预览协议、真实 PTY/native guard 和网页预览侧栏。
  * [OUTPUT]: 两员工服务进程、隐藏保活/定向退出、七轮 UI 启停与原资源门槛、真正退出/重启零重放。
  * [POS]: 原 DS05/DS12/DS13 随公开终端退役迁为预览进程；保留进程身份、资源和回执断言。
@@ -6,8 +7,8 @@
  */
 import { expect } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
-import { readFile, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { mkdir, realpath, readFile, readdir, writeFile } from 'node:fs/promises'
+import { join, relative, isAbsolute } from 'node:path'
 import type { Conversation } from '../../../src/shared/domain'
 import type { ApplicationResult } from '../../../src/shared/domain/application-protocol'
 import type { PreviewInfo, TerminalScope } from '../../../src/shared/domain/workspace-tools'
@@ -15,7 +16,7 @@ import { test as base } from '../support/test'
 import type { Desktop } from '../support/desktop'
 import { resourceSample, verifyResources, type ResourceSample } from '../support/background-resources'
 
-type State = { rooms?: Conversation[]; scopes?: TerminalScope[]; previews?: PreviewInfo[]; pids: number[]; otherReceipt?: ApplicationResult; samples?: ResourceSample[]; commands: string[]; counter?: string }
+type State = { workspace?: { scope: TerminalScope; employeeName: string; terminalId?: string; terminalTitle?: string; shellPid?: number }; rooms?: Conversation[]; scopes?: TerminalScope[]; previews?: PreviewInfo[]; pids: number[]; otherReceipt?: ApplicationResult; samples?: ResourceSample[]; commands: string[]; counter?: string }
 export const test = base.extend<{ terminalState: State }>({ terminalState: async ({}, use) => use({ pids: [], commands: [] }) })
 const { Given, When, Then } = createBdd(test)
 async function operation<T>(runtime: Desktop, operation: string, input: Record<string, unknown>, requestId?: string) {
@@ -129,4 +130,102 @@ Then('预览短期资源有界且真正退出和重启不重做旧命令', async
   }
   expect(runtime.errors).toEqual([])
   await runtime.reviewData('真实退出后两员工预览不重放', { originalPids: state.pids, secondReceipt: receipt, starts, modelCalls: 0 })
+})
+
+
+Given('我打开两名员工群聊的工作区开始页', async ({ runtime, terminalState: state }) => {
+  await runtime.start()
+  const page = runtime.page
+  await expect(page.locator('.app-shell')).toBeVisible()
+  state.workspace = await page.evaluate(async () => {
+    const room = await window.boai.request('createConversation', { title: '工作区浏览验收群', kind: 'group', agentIds: ['researcher', 'writer'] })
+    const snapshot = await window.boai.request('snapshot', undefined)
+    return { scope: { employeeId: 'researcher', conversationId: room.id }, employeeName: snapshot.agents.find(agent => agent.id === 'researcher')!.name }
+  })
+  await page.locator('.conversation-item').filter({ hasText: '工作区浏览验收群' }).click()
+  await page.getByRole('button', { name: '打开工作区', exact: true }).click()
+  await expect(page.getByRole('region', { name: '工作区开始', exact: true })).toBeVisible()
+})
+Then('群工作区要求选择员工且原会话文件入口保留', async ({ runtime }) => {
+  const page = runtime.page, start = page.getByRole('region', { name: '工作区开始', exact: true })
+  await expect(start.getByRole('button', { name: /^工作区文件/ })).toBeDisabled()
+  await expect(start.getByRole('button', { name: /^新建终端/ })).toBeDisabled()
+  await page.getByRole('button', { name: '会话操作', exact: true }).click()
+  await page.getByRole('menuitem', { name: '文件', exact: true }).click()
+  await expect(page.getByRole('region', { name: '会话文件', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: '打开工作区', exact: true }).click()
+})
+When('我浏览员工工作区目录并新建用户终端', async ({ runtime, terminalState: state }) => {
+  const page = runtime.page, current = state.workspace!
+  const directory = await page.evaluate(scope => window.boai.request('listWorkspaceFiles', { scope }), current.scope)
+  const base = await realpath(runtime.root), target = await realpath(directory.rootPath), rel = relative(base, target)
+  expect(rel && !rel.startsWith('..') && !isAbsolute(rel), '文件夹具只能写本场隔离工作区').toBeTruthy()
+  await mkdir(join(target, 'workspace-ui-fixture'), { recursive: true })
+  await writeFile(join(target, 'workspace-ui-fixture', 'marker.txt'), 'workspace fixture')
+  await page.getByRole('combobox', { name: '工作区员工', exact: true }).click()
+  await page.getByRole('option', { name: current.employeeName, exact: true }).click()
+  await page.getByRole('region', { name: '工作区开始', exact: true }).getByRole('button', { name: /^工作区文件/ }).click()
+  const files = page.getByRole('region', { name: '工作区文件', exact: true })
+  await expect(files).toBeVisible()
+  await files.getByRole('button', { name: 'workspace-ui-fixture', exact: true }).click()
+  await expect(files.getByRole('button', { name: 'marker.txt', exact: true })).toBeVisible()
+  await expect(files.locator('[title]').filter({ hasText: join(target, 'workspace-ui-fixture') })).toBeVisible()
+  await files.getByRole('button', { name: '新建工作区终端', exact: true }).click()
+  await expect(page.getByLabel('终端屏幕', { exact: true })).toHaveAttribute('aria-busy', 'false')
+  const listed = await page.evaluate(scope => window.boai.request('workspaceTerminal', { action: 'list', scope }), current.scope)
+  expect(listed.kind).toBe('listed')
+  if (listed.kind !== 'listed') throw new Error('未返回终端列表')
+  expect(listed.terminals).toHaveLength(1)
+  current.terminalId = listed.terminals[0]!.id; current.terminalTitle = listed.terminals[0]!.title
+  expect(listed.terminals[0]).toMatchObject({ status: 'running', cwd: target })
+  await page.locator('.detail-content:not([hidden]) .xterm-helper-textarea').focus()
+  await page.keyboard.type("printf '__BOAI_%s__\\n' WORKSPACE_TERMINAL; printf '%s\\n' \"$$\" > workspace-ui-fixture/shell.pid")
+  await page.keyboard.press('Enter')
+  await expect.poll(async () => { try { current.shellPid = Number((await readFile(join(target, 'workspace-ui-fixture', 'shell.pid'), 'utf8')).trim()); return current.shellPid } catch { return 0 } }).toBeGreaterThan(0)
+  expect(await alive(runtime, current.shellPid!)).toBe(true)
+})
+Then('切换文件标签后原终端仍运行且重开可读原输出', async ({ runtime, terminalState: state }) => {
+  const page = runtime.page, current = state.workspace!, tabs = page.getByRole('tablist', { name: '详情标签' })
+  const rows = page.locator('.detail-content:not([hidden]) .xterm-rows')
+  await expect(rows).toContainText('__BOAI_WORKSPACE_TERMINAL__')
+  const screen = await page.locator('.detail-content:not([hidden]) .xterm').elementHandle()
+  if (!screen) throw new Error('终端屏幕未挂载')
+  try {
+    for (let index = 0; index < 10; index++) {
+      await tabs.getByRole('tab', { name: `${current.employeeName} · 文件`, exact: true }).click()
+      await expect(page.getByRole('region', { name: '工作区文件', exact: true }).getByRole('button', { name: 'marker.txt', exact: true })).toBeVisible()
+      expect(await screen.evaluate(node => node.isConnected), '隐藏不能销毁终端屏幕').toBe(true)
+      await tabs.getByRole('tab', { name: current.terminalTitle!, exact: true }).click()
+      await expect(page.getByLabel('终端屏幕', { exact: true })).toHaveAttribute('aria-busy', 'false')
+      expect(await screen.evaluate(node => node === document.querySelector('.detail-content:not([hidden]) .xterm')), '切回必须复用原屏幕').toBe(true)
+      await expect(rows).toContainText('__BOAI_WORKSPACE_TERMINAL__')
+    }
+    const dimensions = await screen.evaluate(node => {
+      const panel = node.closest('.detail-content')!.getBoundingClientRect(), bounds = node.getBoundingClientRect()
+      return { height: bounds.height, panelHeight: panel.height, bottomGap: panel.bottom - bounds.bottom }
+    })
+    expect(dimensions.height).toBeGreaterThan(dimensions.panelHeight * 0.7)
+    expect(dimensions.bottomGap).toBeLessThanOrEqual(20)
+    await expect(page.locator('.detail-content:not([hidden])')).toHaveCSS('opacity', '1')
+    await test.info().attach('终端切换后的稳定屏幕', { body: await page.screenshot(), contentType: 'image/png' })
+  } finally { await screen.dispose() }
+  const listed = await page.evaluate(scope => window.boai.request('workspaceTerminal', { action: 'list', scope }), current.scope)
+  expect(listed.kind === 'listed' && listed.terminals.filter(item => item.id === current.terminalId && item.status === 'running')).toHaveLength(1)
+})
+When('我明确关闭这个用户终端标签', async ({ runtime }) => {
+  await runtime.page.getByRole('tablist', { name: '详情标签' }).getByRole('button', { name: '关闭详情', exact: true }).click()
+  await expect(runtime.page.getByRole('region', { name: '工作区终端', exact: true })).toHaveCount(0)
+})
+Then('宿主确认该终端结束且群聊身份没有改变', async ({ runtime, terminalState: state }) => {
+  const current = state.workspace!
+  const listed = await runtime.page.evaluate(scope => window.boai.request('workspaceTerminal', { action: 'list', scope }), current.scope)
+  expect(listed.kind).toBe('listed')
+  if (listed.kind !== 'listed') throw new Error('未返回终端列表')
+  // Closed terminals leave the live list after the host's close receipt; verify
+  // actual OS cleanup instead of expecting a retired screen in that list.
+  expect(listed.terminals.some(item => item.id === current.terminalId)).toBe(false)
+  expect(await alive(runtime, current.shellPid!)).toBe(false)
+  expect((await readdir(join(runtime.root, 'v2', '.interactive-workspace-processes'))).filter(name => name.endsWith('.json'))).toEqual([])
+  const room = await runtime.page.evaluate(async id => (await window.boai.request('snapshot', undefined)).conversations.find(room => room.id === id), current.scope.conversationId)
+  expect(room?.agentIds).toEqual(['researcher', 'writer'])
 })

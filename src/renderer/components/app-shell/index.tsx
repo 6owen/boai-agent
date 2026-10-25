@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 工作区开始、真实目录浏览和用户终端独立标签；终端关闭等待宿主退出，原附件/成果与浏览器保持。
  * [OUTPUT]: 审批传递本次运行同类操作选择；目录回执核对包括该选择，未知回答不冒充成功。
  * [OUTPUT]: 员工右键配置跳转通讯录；定时运行图标沿原主会话定位与详情导航。
  * [OUTPUT]: 员工会话右键配置跳转现有通讯录选中项；定时运行按用户点击查看过程/聊天。
@@ -87,6 +88,10 @@
 import { shortcuts } from '@/stores/shortcuts'
 import { matchShortcut } from '@shared/shortcuts'
 import { WorkspacePanel } from '../detail-panel/workspace-panel'
+import { WorkspaceHome } from '../detail-panel/workspace-home'
+import { WorkspaceFiles } from '../detail-panel/workspace-files'
+import { WorkspaceTerminal } from '../detail-panel/workspace-terminal'
+import type { TerminalInfo } from '@shared/domain/workspace-tools'
 import { appendDraftReference, draftResourceReferences } from '@/pages/conversations/inline-mentions'
 import { managementSkillReference } from '@/pages/conversations/composer-commands'
 import type { ManagementSkillId } from '@shared/domain/management-skills'
@@ -215,6 +220,8 @@ export function AppShell() {
   const allDetailTabs = Object.entries(detailWorkspaces).flatMap(([scope, state]) => state.tabs.map(tab => ({ scope, ...tab })))
   const dispatchDetails = (action: DetailTabsAction, scope: string = route.page) => dispatchWorkspace({ scope, action })
   const tabHandles = useRef(new Map<string, DetailTabHandle>())
+  const closingTerminals = useRef(new Set<string>())
+  const creatingTerminals = useRef(new Map<string, { requestId: string; pending: boolean }>())
   const [tabDirty, setTabDirty] = useState<Record<string, boolean>>({})
   const onTabDirty = useCallback((key: string, value: boolean) => setTabDirty(previous => {
     if (Boolean(previous[key]) === value) return previous
@@ -621,7 +628,33 @@ export function AppShell() {
     requestAnimationFrame(() => document.querySelector<HTMLElement>('.core-chat-start [aria-label="消息内容"]')?.focus())
   })
   const closeTab = (key: string, scope: string = route.page) => {
-    dispatchDetails({ type: 'close', key }, scope)
+    const tab = allDetailTabs.find(item => item.key === key && item.scope === scope)
+    if (tab?.target.type === 'user-terminal') {
+      if (!api || closingTerminals.current.has(tab.target.id)) return
+      const terminal = tab.target
+      closingTerminals.current.add(terminal.id)
+      void api.request('workspaceTerminal', { action: 'close', terminalId: terminal.id }).then(result => {
+        if (result.kind !== 'closed' || result.terminal.status !== 'exited') throw new Error('终端尚未确认停止，请重试关闭')
+        if (mounted.current) dispatchDetails({ type: 'close', key, keepWorkspace: true }, scope)
+      }).catch(error => { if (mounted.current) toast.error(errorText(error)) }).finally(() => closingTerminals.current.delete(terminal.id))
+      return
+    }
+    dispatchDetails({ type: 'close', key, keepWorkspace: true }, scope)
+  }
+  const showWorkspaceTerminal = (terminal: TerminalInfo, scope: string = route.page) => openPanel({ type: 'user-terminal', id: terminal.id, employeeId: terminal.employeeId, conversationId: terminal.conversationId, name: terminal.title }, scope)
+  const createWorkspaceTerminal = async (employeeId: string, conversationId: string, scope: string) => {
+    if (!api) return
+    const key = JSON.stringify([employeeId, conversationId]), previous = creatingTerminals.current.get(key)
+    if (previous?.pending) return
+    const request = { requestId: previous?.requestId ?? crypto.randomUUID(), pending: true }
+    creatingTerminals.current.set(key, request)
+    const origin = routeRef.current, originPanel = panelRef.current
+    try {
+      const result = await api.request('workspaceTerminal', { action: 'create', requestId: request.requestId, scope: { employeeId, conversationId } })
+      if (result.kind !== 'created') throw new Error('终端创建回执无效')
+      creatingTerminals.current.delete(key)
+      if (mounted.current && routeRef.current === origin && panelRef.current === originPanel && snapshotRef.current.conversations.some(room => room.id === conversationId && room.agentIds.includes(employeeId))) showWorkspaceTerminal(result.terminal, scope)
+    } catch (error) { request.pending = false; if (mounted.current) toast.error(errorText(error)) }
   }
   const requestCloseTab = (key: string) => {
     if (tabDirty[key]) dispatchDetails({ type: 'select', key })
@@ -903,13 +936,13 @@ export function AppShell() {
   }
   const title = route.page === 'conversations' ? conversation?.title ?? '会话' : labels[route.page]
   const describePanel = (item: Panel) => {
-    const title = item.type === 'workspace' ? '网页预览' : item.type === 'files' ? '文件' : item.type === 'tasks' ? '任务' : item.type === 'channel-discussion' ? '历史会话' : item.type === 'channel-publish' ? '发送到渠道' : item.type === 'channel-files' ? '渠道文件' : item.type === 'channels' ? '渠道会话' : item.type === 'artifact' ? '成果预览' : item.type === 'material' ? '材料原文' : item.type === 'skill-updates' ? '技能更新' : item.type === 'automation-editor' ? (item.id ? '编辑定时任务' : '新建定时任务') : item.type === 'agent' ? '数字员工' : item.type === 'group' ? (snapshot.conversations.some(room => room.id === item.id && isChannelConversation(room)) ? '渠道信息' : '群聊详情') : item.type === 'trace' || item.type === 'activity' || item.type === 'automation-occurrence' ? '执行过程' : item.type === 'source' ? '数据源详情' : item.type === 'local-skill' ? '技能详情' : item.type === 'resource' ? '资源详情' : item.type === 'marketplace' ? '商店详情' : '任务详情'
-    const name = item.type === 'files' || item.type === 'tasks' ? `${item.owner === 'employee' ? snapshot.agents.find(agent => agent.id === item.id)?.name ?? '员工' : snapshot.conversations.find(room => room.id === item.id)?.title ?? '会话'} · ${title}` : item.type === 'channels' ? `${snapshot.agents.find(a => a.id === item.id)?.name ?? '员工'}的渠道` : item.type === 'artifact' || item.type === 'material' ? item.name : item.type === 'automation-editor' ? item.name : item.type === 'marketplace' || item.type === 'local-skill' || item.type === 'source' ? item.name : item.type === 'trace' ? '执行' : item.type === 'agent' ? snapshot.agents.find(a => a.id === item.id)?.name : item.type === 'group' ? snapshot.conversations.find(c => c.id === item.id)?.title : item.type === 'resource' ? snapshot.resources.find(r => r.id === item.id)?.name : undefined
+    const title = item.type === 'user-workspace' ? (item.view === 'start' ? '开始' : '工作区文件') : item.type === 'user-terminal' ? '终端' : item.type === 'workspace' ? '网页预览' : item.type === 'files' ? '文件' : item.type === 'tasks' ? '任务' : item.type === 'channel-discussion' ? '历史会话' : item.type === 'channel-publish' ? '发送到渠道' : item.type === 'channel-files' ? '渠道文件' : item.type === 'channels' ? '渠道会话' : item.type === 'artifact' ? '成果预览' : item.type === 'material' ? '材料原文' : item.type === 'skill-updates' ? '技能更新' : item.type === 'automation-editor' ? (item.id ? '编辑定时任务' : '新建定时任务') : item.type === 'agent' ? '数字员工' : item.type === 'group' ? (snapshot.conversations.some(room => room.id === item.id && isChannelConversation(room)) ? '渠道信息' : '群聊详情') : item.type === 'trace' || item.type === 'activity' || item.type === 'automation-occurrence' ? '执行过程' : item.type === 'source' ? '数据源详情' : item.type === 'local-skill' ? '技能详情' : item.type === 'resource' ? '资源详情' : item.type === 'marketplace' ? '商店详情' : '任务详情'
+    const name = item.type === 'user-terminal' ? item.name ?? '终端' : item.type === 'user-workspace' && item.view === 'files' ? `${snapshot.agents.find(agent => agent.id === item.employeeId)?.name ?? '员工'} · 文件` : item.type === 'files' || item.type === 'tasks' ? `${item.owner === 'employee' ? snapshot.agents.find(agent => agent.id === item.id)?.name ?? '员工' : snapshot.conversations.find(room => room.id === item.id)?.title ?? '会话'} · ${title}` : item.type === 'channels' ? `${snapshot.agents.find(a => a.id === item.id)?.name ?? '员工'}的渠道` : item.type === 'artifact' || item.type === 'material' ? item.name : item.type === 'automation-editor' ? item.name : item.type === 'marketplace' || item.type === 'local-skill' || item.type === 'source' ? item.name : item.type === 'trace' ? '执行' : item.type === 'agent' ? snapshot.agents.find(a => a.id === item.id)?.name : item.type === 'group' ? snapshot.conversations.find(c => c.id === item.id)?.title : item.type === 'resource' ? snapshot.resources.find(r => r.id === item.id)?.name : undefined
     const context = item.type === 'agent' || item.type === 'artifact' || item.type === 'material' ? snapshot.conversations.find(c => c.id === item.conversationId)?.title : (item.type === 'activity' || item.type === 'trace') ? snapshot.conversations.find(c => c.id === item.id)?.title : undefined
     const sameType = detailTabs.tabs.filter(tab => tab.target.type === item.type && (item.type !== 'agent' || (tab.target.type === 'agent' && tab.target.id === item.id))).length > 1
     const label = `${name ?? title}${sameType && context ? ` · ${context}` : ''}`
     const Icon = item.type === 'channels' ? MessageCircle : item.type === 'skill-updates' ? RefreshCw : item.type === 'agent' ? Contact : item.type === 'group' ? Users : item.type === 'artifact' || item.type === 'material' || item.type === 'resource' || item.type === 'marketplace' || item.type === 'local-skill' || item.type === 'source' || item.type === 'files' ? FileText : item.type === 'trace' || item.type === 'activity' || item.type === 'automation-occurrence' || item.type === 'tasks' ? Workflow : Clock
-    return { title, label, description: [title, name, context].filter(Boolean).join(' · '), icon: <Icon /> }
+    return { title, label, description: [title, name, context].filter(Boolean).join(' · '), icon: item.type === 'user-terminal' ? <span className="i-carbon-terminal size-4" /> : item.type === 'user-workspace' ? <span className={item.view === 'start' ? 'i-solar-home-2-linear size-4' : 'i-solar-folder-linear size-4'} /> : <Icon /> }
   }
   const panelTitle = panel ? describePanel(panel).title : '详情'
   const effectiveList = listShown
@@ -929,7 +962,7 @@ export function AppShell() {
   }
   const toggleDetails = () => {
     if (detailTabs.tabs.length) dispatchDetails({ type: 'visibility', shown: !detailTabs.shown })
-    else if (conversation && route.page === 'conversations') openPanel(conversation.kind === 'group' || isChannelConversation(conversation) ? { type: 'group', id: conversation.id } : { type: 'agent', id: conversation.agentIds[0]!, conversationId: conversation.id })
+    else if (conversation && route.page === 'conversations') openPanel({ type: 'user-workspace', id: conversation.id, view: 'start' })
     else if (route.page === 'schedules') openPanel({ type: 'schedule' })
   }
   const openSearch = () => { setSearchRequest({ requestId: crypto.randomUUID() }); setConversationSearchOpen(true) }
@@ -999,7 +1032,7 @@ export function AppShell() {
       onRemoveMaterial={item => { void materialDrafts.remove(id, item) }} onRetryMaterial={item => { void materialDrafts.retry(id, item) }} onPreviewMaterial={(material, line) => previewMaterial(material, line, scope, undefined, undefined, withinKey)} onKnowledgePreview={(citation, reference, agentId) => dispatchDetails({ type: 'open', withinKey, target: { type: 'resource', id: reference.resourceId, agentId, citation: { ...citation, requestId: crypto.randomUUID() } } }, scope)} onDiscardSubmission={() => clearUnacceptedSubmission(id)} /></FloatingLayerScope>
   }
   if (!api) return <div className="unavailable-page"><MessageCircle size={34}/><h1>请在桌面应用打开</h1><p>当前浏览器没有本地运行接口，无法访问员工、文件或模型。</p></div>
-  const headerActions = <><HeaderBrowser api={api} /><Dialog open={conversationSearchOpen} onOpenChange={setConversationSearchOpen}>
+  const headerActions = <>{route.page === 'conversations' && conversation && <div className="titlebar-no-drag flex shrink-0 items-center"><Button variant="ghost" size="icon-sm" aria-label="打开工作区" title="工作区" onClick={() => openPanel({ type: 'user-workspace', id: conversation.id, view: 'start' })}><span className="i-solar-folder-open-linear size-4" /></Button></div>}<HeaderBrowser api={api} /><Dialog open={conversationSearchOpen} onOpenChange={setConversationSearchOpen}>
     <DialogTrigger render={<Button className="titlebar-no-drag" variant="ghost" size="icon-sm" aria-label="搜索会话内容" title="搜索" />} onClick={openSearch}><Search /></DialogTrigger>
     <ConversationSearch api={api} active={conversationSearchOpen} snapshot={snapshot} selectedId={selectedId} request={searchRequest} onOpen={(result, current) => openSearchResult(result, current, () => setConversationSearchOpen(false))} onUnavailable={searchSourceUnavailable} />
   </Dialog></>
@@ -1050,6 +1083,8 @@ export function AppShell() {
           const fileChannelId = fileRoom?.channel ? fileRoom.id : fileRoom?.channelDiscussion?.conversationId
           const targetRoom = target.type === 'group' ? snapshot.conversations.find(room => room.id === target.id) : undefined
           const content = <>
+            {target.type === 'user-workspace' && (target.view === 'start' || !target.employeeId ? <WorkspaceHome api={api} snapshot={snapshot} active={active} conversationId={target.id} employeeId={target.employeeId} onFiles={employeeId => openPanel({ type: 'user-workspace', id: target.id, employeeId, view: 'files' }, tab.scope)} onTerminal={terminal => showWorkspaceTerminal(terminal, tab.scope)} /> : <WorkspaceFiles api={api} active={active} employeeId={target.employeeId} conversationId={target.id} onHome={() => openPanel({ type: 'user-workspace', id: target.id, employeeId: target.employeeId, view: 'start' }, tab.scope)} onTerminal={() => void createWorkspaceTerminal(target.employeeId!, target.id, tab.scope)} />)}
+            {target.type === 'user-terminal' && <WorkspaceTerminal api={api} active={active} terminalId={target.id} onHome={() => openPanel({ type: 'user-workspace', id: target.conversationId, employeeId: target.employeeId, view: 'start' }, tab.scope)} />}
             {target.type === 'workspace' && target.view === 'preview' && <WorkspacePanel api={api} active={active} scope={{ employeeId: target.employeeId, conversationId: target.id }} />}
             {target.type === 'channel-publish' && <ChannelPublishPanel key={target.requestId} api={api} snapshot={snapshot} target={target} active={active} onBack={() => closeView()} />}
             {(target.type === 'files' || target.type === 'tasks') && <div className="conversation-panel-content">

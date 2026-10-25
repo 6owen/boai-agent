@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Host-authorized scope/directory, native guard and explicit PTY operations.
- * [OUTPUT]: Persistent shell, bounded cursor output, command receipts and actual tree cleanup.
+ * [OUTPUT]: Isolated PTYs with bounded output; close requires the outer guard's explicit descendant-cleanup receipt.
  * [POS]: Workspace terminal owner; hidden UI never terminates a running session.
  * [PROTOCOL]: Update Header and owning .folder.md when changed.
  */
@@ -17,23 +17,33 @@ const maxOutput = 1_000_000
 interface Session {
   info: TerminalInfo; process: ChildProcessWithoutNullStreams; output: string; offset: number; closed: Promise<void>; initializing: boolean
   execution?: { result: TerminalExecution; start: string; end: string; pending: string; started: boolean }
+  cleanupError?: Error
+}
+export interface TerminalServiceOptions {
+  purpose?: 'preview' | 'interactive'
+  onCreated?: (info: TerminalInfo) => void
+  onData?: (id: string, data: string) => void
+  onExit?: (info: TerminalInfo) => void
 }
 export class TerminalService {
   private sessions = new Map<string, Session>()
   private closing = false
-  constructor(private dataPath: string) {}
+  private creating = 0
+  constructor(private dataPath: string, private options: TerminalServiceOptions = {}) {}
   async recover() {
     const guard = await assertNativeProcessGuard()
     await mkdir(this.ledger(), { recursive: true })
     await promisify(execFile)(guard, ['--recover', this.ledger()], { timeout: 15000, maxBuffer: 65536 })
   }
-  private ledger() { return join(this.dataPath, '.workspace-terminal-processes') }
+  private ledger() { return join(this.dataPath, this.options.purpose === 'interactive' ? '.interactive-workspace-processes' : '.workspace-terminal-processes') }
   list(scope?: TerminalScope) { return [...this.sessions.values()].filter(s => !scope || s.info.employeeId === scope.employeeId && s.info.conversationId === scope.conversationId).map(s => ({ ...s.info })) }
   info(id: string) { return { ...this.get(id).info } }
   private get(id: string) { const s = this.sessions.get(id); if (!s) throw new Error('终端不存在或服务已重启'); return s }
   async create(scope: TerminalScope, directory: string, title = '终端') {
     if (this.closing) throw new Error('终端服务正在退出')
-    if ([...this.sessions.values()].filter(s => s.info.status !== 'exited').length >= 16) throw new Error('最多同时运行 16 个终端，请先关闭不用的终端')
+    if ([...this.sessions.values()].filter(s => s.info.status !== 'exited').length + this.creating >= 16) throw new Error('最多同时运行 16 个终端，请先关闭不用的终端')
+    this.creating += 1
+    try {
     const cwd = await realpath(directory), guard = await assertNativeProcessGuard()
     await mkdir(this.ledger(), { recursive: true })
     if (this.closing) throw new Error('终端服务正在退出')
@@ -42,17 +52,18 @@ export class TerminalService {
     const env: NodeJS.ProcessEnv = { TERM: 'xterm-256color', COLORTERM: 'truecolor', LANG: process.env.LANG || 'en_US.UTF-8' }
     for (const name of ['PATH', 'HOME', 'USER', 'LOGNAME', 'SHELL', 'TMPDIR', 'XDG_CONFIG_HOME']) if (process.env[name]) env[name] = process.env[name]
     const shell = process.platform === 'darwin' ? '/bin/zsh' : '/bin/bash'
-    const child = spawn(guard, ['--ledger', this.ledger(), guard, '--pty', cwd, shell], { cwd, env, stdio: ['pipe', 'pipe', 'pipe'] })
+    const child = spawn(guard, ['--ledger', this.ledger(), '--terminal', guard, '--pty', cwd, shell, ...(this.options.purpose === 'interactive' ? ['--login'] : [])], { cwd, env, stdio: ['pipe', 'pipe', 'pipe'] })
     let finish!: () => void, ready!: () => void, fail!: (error: Error) => void
     const started = new Promise<void>((resolve, reject) => { ready = resolve; fail = reject })
     const session: Session = { info: { ...scope, id, title, cwd, createdAt: new Date().toISOString(), status: 'starting' }, process: child, output: '', offset: 0, initializing: true, closed: new Promise(resolve => { finish = resolve }) }
     this.sessions.set(id, session)
+    this.options.onCreated?.({ ...session.info })
     const decoder = new StringDecoder('utf8')
-    let protocol = '', errors = ''
+    let protocol = '', errors = '', cleanupConfirmed = false
     child.stdout.setEncoding('utf8')
     child.stdout.on('data', (text: string) => {
       protocol += text
-      if (protocol.length > 2_000_000) { fail(new Error('终端传输超出限制')); child.stdin.end(); return }
+      if (protocol.length > 2_000_000) { fail(new Error('终端传输超出限制')); child.kill('SIGTERM'); return }
       let lineEnd: number
       while ((lineEnd = protocol.indexOf('\n')) >= 0) {
         const line = protocol.slice(0, lineEnd); protocol = protocol.slice(lineEnd + 1)
@@ -61,7 +72,8 @@ export class TerminalService {
           if (message.type === 'ready') { session.info.status = 'running'; ready() }
           if (message.type === 'data' && Array.isArray(message.bytes)) this.append(session, decoder.write(Buffer.from(message.bytes)))
           if (message.type === 'exit' && Number.isInteger(message.code)) session.info.exitCode = message.code
-        } catch { fail(new Error('终端传输无法解析')); child.stdin.end() }
+          if (message.type === 'closed') cleanupConfirmed = true
+        } catch { fail(new Error('终端传输无法解析')); child.kill('SIGTERM') }
       }
     })
     child.stderr.on('data', (data: Buffer) => { errors = (errors + data.toString()).slice(-4000) })
@@ -69,19 +81,24 @@ export class TerminalService {
     child.once('error', error => fail(error))
     child.once('close', code => {
       this.append(session, decoder.end())
+      if (!cleanupConfirmed) session.cleanupError = new Error(errors || '终端宿主已退出，但子进程清理尚未确认')
       session.info.status = 'exited'; session.info.exitCode ??= code ?? 130
       if (session.execution?.result.status === 'running') { session.execution.result.status = 'exited'; session.execution.result.exitCode = session.info.exitCode }
+      this.options.onExit?.({ ...session.info })
       fail(new Error(errors || '终端已退出')); finish()
     })
-    const timeout = setTimeout(() => { fail(new Error('终端启动超时')); child.stdin.end() }, 10000)
+    const timeout = setTimeout(() => { fail(new Error('终端启动超时')); child.kill('SIGTERM') }, 10000)
     try {
       await started
+      if (this.options.purpose === 'interactive') { session.initializing = false; return { ...session.info } }
       const hook = `__boai_prompt(){ local __boai_prompt_status=$?; printf '\\033]633;BOAI;prompt;%s\\007' "$__boai_prompt_status"; }; `
       await this.write(id, hook + (shell.endsWith('zsh') ? 'precmd_functions=(__boai_prompt ${precmd_functions:#__boai_prompt})' : 'PROMPT_COMMAND=(__boai_prompt "${PROMPT_COMMAND[@]}")') + '\n')
       return { ...session.info }
-    } catch (error) { child.stdin.end(); child.kill('SIGTERM'); await session.closed; throw error } finally { clearTimeout(timeout) }
+    } catch (error) { child.kill('SIGTERM'); await session.closed; throw error } finally { clearTimeout(timeout) }
+    } finally { this.creating -= 1 }
   }
   private append(session: Session, text: string) {
+    if (this.options.purpose === 'interactive') { if (text) this.options.onData?.(session.info.id, text); return }
     session.output += text
     if (session.output.length > maxOutput) { const drop = session.output.length - maxOutput; session.output = session.output.slice(drop); session.offset += drop }
     if (session.initializing) {
@@ -118,6 +135,13 @@ export class TerminalService {
     if (Buffer.byteLength(data) > 65536) throw new Error('单次终端输入超过限制')
     return new Promise<void>((resolve, reject) => s.process.stdin.write(`${JSON.stringify({ data })}\n`, error => error ? reject(error) : resolve()))
   }
+  pauseOutput(id: string) { this.get(id).process.stdout.pause() }
+  resumeOutput(id: string) { this.get(id).process.stdout.resume() }
+  async resizeConfirmed(id: string, cols: number, rows: number) {
+    const s = this.get(id)
+    if (s.info.status !== 'running') return
+    await new Promise<void>((resolve, reject) => s.process.stdin.write(`${JSON.stringify({ cols, rows })}\n`, error => error ? reject(error) : resolve()))
+  }
   resize(id: string, cols: number, rows: number) {
     const s = this.get(id)
     if (s.info.status !== 'running') return
@@ -139,11 +163,14 @@ export class TerminalService {
   execution(id: string) { return this.get(id).execution ? { ...this.get(id).execution!.result } : null }
   async kill(id: string) {
     const s = this.get(id)
-    if (s.info.status !== 'exited') { s.process.stdin.end(); s.process.kill('SIGTERM') }
+    s.process.stdout.resume()
+    if (s.info.status !== 'exited') s.process.kill('SIGTERM')
     // Signal the identity-bound supervisor, not just stdin: shell jobs cannot defer shutdown.
     await s.closed
+    if (s.cleanupError) throw s.cleanupError
     return { ...s.info }
   }
+  forget(id: string) { const s = this.get(id); if (s.info.status !== 'exited') throw new Error('终端仍在运行'); this.sessions.delete(id) }
   async stopEmployee(employeeId: string) { await Promise.all([...this.sessions.values()].filter(s => s.info.employeeId === employeeId).map(s => this.kill(s.info.id))) }
   async clearConversation(conversationId: string) {
     for (const s of [...this.sessions.values()]) if (s.info.conversationId === conversationId) { await this.kill(s.info.id); this.sessions.delete(s.info.id) }

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 加载工作区终端满高/代码语义字号及局部详情表面适配。
  * [OUTPUT]: 加载消息骨架局部布局，正文复用通讯录共享Panel reveal；header/composer保持固定，减少动态效果沿原片段。
  * [OUTPUT]: 加载 transitions-dev Card resize 原版与左右分栏/标题区布局适配。
  * [OUTPUT]: 加载 Craft Scenic 原版背景/遮罩/玻璃/边框及 BOAI 选择器适配。
@@ -28,6 +29,7 @@
 @import './prompt-bar.css' layer(components);
 @import '../pages/settings/generation/ui-generation.css' layer(components);
 @import './profile.css' layer(components);
+@import './workspace-terminal.css' layer(components);
 
 /* Disable focus rings globally, including Base UI portals; keep the Soft surface shadows. */
 *, *::before, *::after {

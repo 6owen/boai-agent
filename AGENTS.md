@@ -1,4 +1,7 @@
 <!--
+[OUTPUT]: 第25组终端唤醒/常驻主题/真实退出与Cookie本机profile已修；342回归、Rust3及两条分批Electron通过，开发版重启；个人窗口CUA超时、真实登录/跨平台未验归25组02 §9。
+[OUTPUT]: 第25组现场未知请求修复：getWorkspaceRoot接私有dispatch；43定向/类型及重启后目录和终端prompt通过，完整GUI仍未验，实际归25组02 §9。
+[OUTPUT]: 2026-10-25用户明确启动第25组：独立worktree实现工作区目录、用户终端和Cookie文件导入；旧员工终端协议退役保持，实际归25组02 §9。
 [OUTPUT]: 第24组review三类修复及回归归24组02：旧滑窗前覆盖、原来源事务登记、全量已完成工具核源；真实模型/桌面仍未验。
 [OUTPUT]: 2026-10-24按用户要求移除日常固定使用pnpm dev的约束；运行方式不预设，独立worktree及main仅同步已合并提交的规则保持。
 [OUTPUT]: 2026-10-24禁止无意义description与操作状态DOM文案；必要说明归图标Tooltip、操作反馈沿Sonner，快捷键clickoutside自动保存。

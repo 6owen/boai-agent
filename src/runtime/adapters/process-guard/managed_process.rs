@@ -1,6 +1,6 @@
 /*
 [INPUT]: Rovai identity-bound ProcessTree modules, actual CLI and private owner ledger.
-[OUTPUT]: Native stdio/cleanup plus private desktop lifetime observation; only a confirmed dead root permits descendant cleanup.
+[OUTPUT]: Native stdio/cleanup plus private desktop lifetime observation; PTY mode confirms cleanup explicitly after macOS PID reaping.
 [POS]: Minimal native supervisor; no model, product data or second employee/task authority.
 [PROTOCOL]: Update .folder.md, build integration and migration manifest when changed.
 */
@@ -13,7 +13,7 @@ use std::os::unix::process::CommandExt;
 static STOP: AtomicBool = AtomicBool::new(false);
 extern "C" fn stopping(_: i32) { STOP.store(true, Ordering::SeqCst); }
 pub(crate) fn run() -> io::Result<i32> {
-    let args: Vec<_> = env::args().skip(1).collect();
+    let mut args: Vec<_> = env::args().skip(1).collect();
     if args.len() == 2 && args[0] == "--watch-desktop" {
         let pid = args[1].parse::<i32>().map_err(|_| io::Error::other("invalid desktop PID"))?;
         return watch_desktop(pid);
@@ -22,7 +22,9 @@ pub(crate) fn run() -> io::Result<i32> {
         #[cfg(target_os="macos")] process_tree::recover(Path::new(&args[1]))?;
         return Ok(0);
     }
-    if args.len() < 3 || args[0] != "--ledger" { return Err(io::Error::other("expected --ledger DIR COMMAND [ARGS]")); }
+    let terminal = args.first().is_some_and(|arg| arg == "--ledger") && args.get(2).is_some_and(|arg| arg == "--terminal");
+    if terminal { args.remove(2); }
+    if args.len() < 3 || args[0] != "--ledger" { return Err(io::Error::other("expected --ledger DIR [--terminal] COMMAND [ARGS]")); }
     let ledger = Path::new(&args[1]);
     #[cfg(target_os="macos")] process_tree::recover(ledger)?;
     unsafe { libc::signal(libc::SIGTERM, stopping as *const () as libc::sighandler_t); libc::signal(libc::SIGINT, stopping as *const () as libc::sighandler_t); }
@@ -48,7 +50,9 @@ pub(crate) fn run() -> io::Result<i32> {
         if let Err(error) = tree.capture() { fault.get_or_insert(error); }
         if let Err(error) = tree.signal(libc::SIGKILL) { fault.get_or_insert(error); }
         let _ = child.try_wait();
-        match tree.is_empty() {
+        let complete = tree.is_empty();
+        #[cfg(target_os="macos")] let complete = if terminal { tree.is_reaped() } else { complete };
+        match complete {
             Ok(true) => break,
             Ok(false) => {},
             Err(error) => { fault.get_or_insert(error); }
@@ -58,6 +62,7 @@ pub(crate) fn run() -> io::Result<i32> {
     let exit = child.wait()?;
     #[cfg(target_os="macos")] tree.retire()?;
     if let Some(error) = fault { return Err(error); }
+    if terminal { println!("{{\"type\":\"closed\"}}"); io::stdout().flush()?; }
     Ok(status.unwrap_or(exit).code().unwrap_or(130))
 }
 

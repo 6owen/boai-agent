@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Private workspace-root and lightweight scope queries reach original validation without exposing them to renderers.
  * [OUTPUT]: Private run-credential bridge preserves structured errors and is never a public owner/run method.
  * [INPUT]: Authenticated same-machine desktop requests or the original Electron worker parent port.
  * [OUTPUT]: One explicit public/private host dispatcher into original AppService methods and schemas.
@@ -25,6 +26,8 @@ export async function dispatchRuntime(service: AppService, method: string, input
     case '__settleAutomationNotice': return service.settleAutomationNotice(input as AutomationNoticeReceipt)
     case '__backup': return service.backup(z.object({ destination: z.string().min(1) }).strict().parse(input).destination)
     case '__exportSkillLibrary': { const value = z.object({ input: z.unknown(), destination: z.string().min(1) }).strict().parse(input); return service.exportSkillLibrary(value.input, value.destination) }
+    case 'getWorkspaceRoot': return service.handle('getWorkspaceRoot', input)
+    case 'validateWorkspaceScope': return service.handle('validateWorkspaceScope', input)
     default: if (!isPublicMethod(method)) throw new Error('未知或未公开的桌面请求'); return service.handle(method, input)
   }
 }
