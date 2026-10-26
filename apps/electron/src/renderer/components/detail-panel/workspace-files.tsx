@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 宿主核定员工工作区、相对目录与显式用户打开操作。
- * [OUTPUT]: 有界分页与固定行虚拟目录、真实路径和外部应用打开；隐藏停读、保留已加载页/滚动并丢弃迟到结果。
+ * [OUTPUT]: 有界虚拟目录、路径/细分割线，最右侧单按钮打开菜单和随全局字号缩放的原生应用图标；隐藏停读及迟到隔离保持。
  * [POS]: 工作区文件标签；原会话附件/成果列表保持独立。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -9,8 +9,17 @@ import { defaultRangeExtractor, useVirtualizer } from '@tanstack/react-virtual'
 import type { DesktopApi } from '@boai/shared/ipc'
 import type { WorkspaceDirectoryPage, WorkspaceApplication } from '@boai/shared/ipc/workspace-files'
 import { Button } from '@/components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
+
+function ApplicationIcon({ application }: { application?: WorkspaceApplication }) {
+  const [failedSource, setFailedSource] = useState<string>()
+  const source = application?.iconDataUrl
+  const style = { width: '1.25em', height: '1.25em', fontSize: 'var(--text-ui-body)' }
+  if (source && source !== failedSource) return <img src={source} alt="" aria-hidden="true" className="shrink-0 object-contain" style={style} onError={() => setFailedSource(source)} />
+  return <span aria-hidden="true" style={style} className={`shrink-0 ${application?.kind === 'terminal' ? 'i-carbon-terminal' : application?.kind === 'editor' ? 'i-solar-code-square-linear' : 'i-solar-folder-open-linear'}`} />
+}
 
 export function WorkspaceFiles({ api, active, employeeId, conversationId, onHome, onTerminal }: {
   api: DesktopApi; active: boolean; employeeId: string; conversationId: string; onHome(): void; onTerminal(): void
@@ -72,24 +81,27 @@ export function WorkspaceFiles({ api, active, employeeId, conversationId, onHome
     } catch (error) { if (current(ticket)) toast.error(String(error)) }
     finally { if (current(ticket)) { pendingRead.current = false; setLoading(false) } }
   }
-  return <section className="flex h-full min-h-0 flex-col" aria-label="工作区文件">
-    <div className="flex shrink-0 items-center gap-1 border-b p-2">
+  const systemApplication = applications.find(application => application.kind === 'system')
+  return <section className="workspace-files flex h-full min-h-0 flex-col" aria-label="工作区文件">
+    <div className="flex shrink-0 items-center gap-1 p-2">
       <Button variant="ghost" size="icon-sm" aria-label="工作区开始" onClick={onHome}><span className="i-solar-home-2-linear size-4" /></Button>
       <Button variant="ghost" size="icon-sm" aria-label="上一级目录" disabled={loading || !page || page.parentPath === undefined} onClick={() => navigate(page!.parentPath!)}><span className="i-solar-arrow-up-linear size-4" /></Button>
       <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground" title={page?.path}>{page?.path ?? '员工工作区'}</span>
       <Button variant="ghost" size="icon-sm" aria-label="复制工作区路径" disabled={!page} onClick={() => { if (page) void (api.writeClipboardText ? api.writeClipboardText(page.path) : navigator.clipboard.writeText(page.path)).catch(error => toast.error(String(error))) }}><span className="i-solar-copy-linear size-4" /></Button>
       <Button variant="ghost" size="icon-sm" aria-label="刷新工作区文件" disabled={loading} onClick={() => refresh(value => value + 1)}><span className="i-solar-refresh-linear size-4" /></Button>
-      <Button variant="secondary" size="sm" disabled={!page || opening} onClick={() => void open(path)}>打开</Button>
-      <DropdownMenu>
-        <DropdownMenuTrigger render={<Button variant="secondary" size="icon-sm" disabled={!page || opening} aria-label="工作区外部打开方式" />}><span className="i-solar-alt-arrow-down-linear size-3" /></DropdownMenuTrigger>
-        <DropdownMenuContent align="end"><DropdownMenuGroup>
-          <DropdownMenuItem disabled={!page || opening} onClick={() => void open(path)}>系统默认打开</DropdownMenuItem>
-          {applications.filter(application => application.kind !== 'system').map(application => <DropdownMenuItem key={application.id} disabled={opening} onClick={() => void open(path, 'open', application.id)}>{application.name}</DropdownMenuItem>)}
-          <DropdownMenuItem onClick={() => { const ticket = generation.current; void api.request('listWorkspaceApplications', { refresh: true }).then(value => { if (current(ticket)) setApplications(value) }).catch(error => { if (current(ticket)) toast.error(String(error)) }) }}>刷新应用列表</DropdownMenuItem>
-        </DropdownMenuGroup></DropdownMenuContent>
-      </DropdownMenu>
       <Button variant="ghost" size="icon-sm" aria-label="新建工作区终端" onClick={onTerminal}><span className="i-carbon-terminal size-4" /></Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger render={<Button variant="secondary" size="sm" disabled={!page || opening} aria-label="工作区外部打开方式" />}><ApplicationIcon application={systemApplication} />打开<span className="i-solar-alt-arrow-down-linear" aria-hidden="true" /></DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-48"><DropdownMenuGroup>
+          <DropdownMenuItem disabled={!page || opening} onClick={() => void open(path)}><ApplicationIcon application={systemApplication} />{systemApplication ? `${systemApplication.name}（默认）` : '系统默认打开'}</DropdownMenuItem>
+          {applications.filter(application => application.kind !== 'system').map(application => <DropdownMenuItem key={application.id} disabled={opening} onClick={() => void open(path, 'open', application.id)}><ApplicationIcon application={application} />{application.name}</DropdownMenuItem>)}
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => { const ticket = generation.current; void api.request('listWorkspaceApplications', { refresh: true }).then(value => { if (current(ticket)) setApplications(value) }).catch(error => { if (current(ticket)) toast.error(String(error)) }) }}><span className="i-solar-refresh-linear size-4" aria-hidden="true" />刷新应用列表</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
+    <Separator />
     <div ref={scroller} className="min-h-0 flex-1 overflow-auto p-2" aria-busy={loading} onScroll={event => { if (active) scrollTop.current = event.currentTarget.scrollTop }}>
       <div className="relative w-full" style={{ height: rows.getTotalSize() }}>
       {rows.getVirtualItems().map(row => {

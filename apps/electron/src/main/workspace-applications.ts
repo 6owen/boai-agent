@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Fixed application catalog, local installations and already-authorized filesystem targets.
- * [OUTPUT]: Cached available openers and argv-only launches; default file behavior preserves original safe extensions.
+ * [OUTPUT]: Cached available openers with bounded native PNG icons and argv-only launches; icon failures preserve openers and original safe extensions.
  * [POS]: Main-process external application adapter shared by old openPath and workspace browsing.
  * [PROTOCOL]: Update this Header and owning .folder.md when changed.
  */
@@ -12,7 +12,11 @@ import { delimiter, extname, join } from 'node:path'
 import { promisify } from 'node:util'
 import type { WorkspaceApplication } from '@boai/shared/ipc/workspace-files'
 
-interface DesktopOpener { openPath(path: string): Promise<string>; showItemInFolder(path: string): void }
+interface DesktopOpener {
+  openPath(path: string): Promise<string>
+  showItemInFolder(path: string): void
+  iconForPath?(path: string): Promise<string | undefined>
+}
 const safeExtensions = new Set(['.md', '.txt', '.markdown', '.pdf', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.csv', '.json', '.xlsx', '.docx', '.pptx', '.svg', '.log'])
 export async function openLocalResource(desktop: DesktopOpener, path: string, action: 'open' | 'reveal' = 'open') {
   const info = await stat(path)
@@ -36,6 +40,7 @@ const catalog: { id: string; name: string; kind: 'editor' | 'terminal'; mac: str
 
 export class WorkspaceApplications {
   private installed = new Map<string, { view: WorkspaceApplication; path: string }>()
+  private systemIcon?: string
   private scannedAt = 0
   private scanning?: Promise<void>
   constructor(private desktop: DesktopOpener, private platform: NodeJS.Platform = process.platform, private home = homedir()) {}
@@ -45,10 +50,17 @@ export class WorkspaceApplications {
       this.scanning = this.scan().finally(() => { this.scanning = undefined })
       await this.scanning
     }
-    return [{ id: 'system', name: this.platform === 'darwin' ? '访达' : '系统默认', kind: 'system' }, ...[...this.installed.values()].map(item => ({ ...item.view }))]
+    return [{ id: 'system', name: this.platform === 'darwin' ? '访达' : '系统默认', kind: 'system', ...(this.systemIcon && { iconDataUrl: this.systemIcon }) }, ...[...this.installed.values()].map(item => ({ ...item.view }))]
+  }
+  private async icon(path: string): Promise<string | undefined> {
+    try {
+      const data = await this.desktop.iconForPath?.(path)
+      return data?.startsWith('data:image/png;base64,') && data.length <= 128 * 1024 ? data : undefined
+    } catch { return undefined }
   }
   private async scan() {
     const found = new Map<string, { view: WorkspaceApplication; path: string }>()
+    this.systemIcon = this.platform === 'darwin' ? await this.icon('/System/Library/CoreServices/Finder.app') : undefined
     await Promise.all(catalog.map(async item => {
       const candidates = this.platform === 'darwin'
         ? [join('/Applications', item.mac), join(this.home, 'Applications', item.mac), join('/System/Applications', item.mac)]
@@ -58,7 +70,8 @@ export class WorkspaceApplications {
           const info = await stat(candidate)
           if (this.platform === 'darwin' ? !info.isDirectory() : !info.isFile()) continue
           if (this.platform !== 'darwin') await access(candidate, constants.X_OK)
-          found.set(item.id, { view: { id: item.id, name: item.name, kind: item.kind }, path: await realpath(candidate) }); break
+          const path = await realpath(candidate), iconDataUrl = await this.icon(path)
+          found.set(item.id, { view: { id: item.id, name: item.name, kind: item.kind, ...(iconDataUrl && { iconDataUrl }) }, path }); break
         } catch { /* Missing application is simply omitted from the catalog. */ }
       }
     }))

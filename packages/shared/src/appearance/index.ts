@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 终端ANSI色板复用当前应用主题，不新增外观偏好或保存字段。
  * [OUTPUT]: 统一导出TrayIconStatus与逐目标AppIconStatus，不新增托盘偏好。
  * [OUTPUT]: 保底配色与纯颜色解析迁入@boai/tokens；插件/偏好/资产协议仍归宿主。
  * [OUTPUT]: 2026-10-20全局字体与应用图标设置接入原外观持久化和宿主协议。
@@ -15,6 +16,7 @@ import { applicationPlugins } from '../plugins/catalog'
 import { APPLICATION_PLUGIN_API } from '../plugins/types'
 import { typographyDefaults, type InterfaceFont, type TypographyPreferences } from './typography'
 import { defaultAppIconId, type AppIconId } from './app-icons'
+export { terminalAnsiNames, terminalAnsiPalette } from './terminal'
 export { typographyControls, typographyDefaults, typographyFamilies, typographyRoles, typographyLineHeights, resolveTypography } from './typography'
 export type { InterfaceFont, ContentFont, CodeFont, TypographyPreferences, TypographyGroup } from './typography'
 export { appIconPresets, defaultAppIconId, isAppIconId } from './app-icons'

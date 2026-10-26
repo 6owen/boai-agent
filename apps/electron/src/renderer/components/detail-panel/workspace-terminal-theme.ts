@@ -1,16 +1,14 @@
 /*
- * [INPUT]: BOAI代码字号/行高/详情表面与终端OSC颜色指令。
- * [OUTPUT]: 明暗ANSI色板、选择/光标对比与保留程序覆写的主题更新/重置；查询由宿主唯一回答。
+ * [INPUT]: BOAI当前应用主题/代码字号/行高/详情表面与终端OSC颜色指令。
+ * [OUTPUT]: 应用主题/全局代码字号与字体，xterm原生1倍单元行高避免光标拉长；ANSI和程序OSC覆写保持。
  * [POS]: 工作区终端外观适配，不修改用户shell主题。
  * [PROTOCOL]: 变化同步Header及所属.folder.md。
  */
 import type { ITheme, Terminal } from '@xterm/xterm'
 
-const names = ['black', 'red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white', 'brightBlack', 'brightRed', 'brightGreen', 'brightYellow', 'brightBlue', 'brightMagenta', 'brightCyan', 'brightWhite'] as const
-const darkPalette = ['#25272d', '#ed8796', '#a6da95', '#eed49f', '#8aadf4', '#c6a0f6', '#8bd5ca', '#cad3f5', '#6e738d', '#f5a0ad', '#b7e5a7', '#f5dfb2', '#a2bbf7', '#d4b7fa', '#a5e1d8', '#f4f5f8']
-const lightPalette = ['#323640', '#b42336', '#2b6a35', '#896000', '#245db7', '#8150a6', '#186c76', '#6c7080', '#575d6b', '#c52f41', '#357b40', '#986c0b', '#316bc4', '#955bb9', '#247c88', '#e6e9ef']
+import { terminalAnsiNames as names, terminalAnsiPalette } from '@boai/shared/appearance'
 
-/** Resolve CSS variables through the browser, including color-mix/oklch tokens. */
+/** Resolve the actual application colors, including custom colors and Scenic tokens. */
 function resolvedColor(element: HTMLElement, variable: string, fallback: string): string {
   const probe = document.createElement('span')
   probe.style.color = `var(${variable}, ${fallback})`
@@ -27,11 +25,12 @@ export function terminalAppearance(element: HTMLElement): { theme: ITheme; fontF
   const selection = resolvedColor(element, '--selection', '#c8d8f4')
   const dark = document.documentElement.classList.contains('dark') || document.documentElement.dataset.theme === 'dark'
   const fontSize = Number.parseFloat(style.fontSize) || 12
-  const lineHeight = Number.parseFloat(style.lineHeight)
   return {
-    theme: { ...Object.fromEntries(names.map((name, index) => [name, (dark ? darkPalette : lightPalette)[index]])), foreground, background, cursor: foreground, cursorAccent: background, selectionBackground: selection, selectionInactiveBackground: selection, selectionForeground: foreground },
+    theme: { ...terminalAnsiPalette(document.documentElement.dataset.themeId, dark ? 'dark' : 'light'), foreground, background, cursor: foreground, cursorAccent: background, selectionBackground: selection, selectionInactiveBackground: selection, selectionForeground: foreground },
     fontFamily: style.fontFamily || 'monospace', fontSize,
-    lineHeight: Number.isFinite(lineHeight) ? Math.max(1, lineHeight / fontSize) : 1.5,
+    // xterm multiplies the measured glyph cell, not the CSS font size. Applying
+    // the prose line-height here stretches both terminal rows and the cursor.
+    lineHeight: 1,
   }
 }
 

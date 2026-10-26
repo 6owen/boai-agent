@@ -1,5 +1,5 @@
 # [INPUT]: 明确手动触发的受信仓库分支及固定macOS构建。
-# [OUTPUT]: 手动独立云端候选；官方原件审阅，不提供合并资格或自动接受。
+# [OUTPUT]: 手动独立云端候选及轻量逐场景差异报告；官方原件审阅，不提供合并资格或自动接受。
 # [POS]: 开发侧环境基线采集；无发布/仓库写权限。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
 name: UI baseline candidate
@@ -45,3 +45,19 @@ jobs:
           include-hidden-files: true
           retention-days: 3
           if-no-files-found: ignore
+      - name: Generate candidate review report
+        if: always()
+        run: node scripts/ui-review-report.mjs candidate .local/ui-candidate .local/ui-candidate-review
+      - uses: actions/upload-artifact@v4
+        id: review
+        if: always()
+        with:
+          name: ui-review
+          path: .local/ui-candidate-review/
+          retention-days: 3
+          if-no-files-found: error
+      - name: Publish candidate review summary
+        if: always()
+        env:
+          UI_REVIEW_ARTIFACT_URL: ${{ steps.review.outputs.artifact-url }}
+        run: node scripts/ui-review-report.mjs summary .local/ui-candidate-review

@@ -1,5 +1,6 @@
 /*
  * [OUTPUT]: 桌面诊断持久保留每次构建身份及初始化失败；导出校验真实父目录，系统事件不重发工作。
+ * [OUTPUT]: 工作区打开方式在macOS读取应用声明的ICNS并转PNG，避免通用图标；其他平台沿Electron接口，随应用列表缓存。
  * [OUTPUT]: 员工工作区目录/外部应用及独立用户终端走主窗校验；删除/清空/移除成员等待精确终端退出，输入沿私有轻量身份复核。
  * [OUTPUT]: 允许本人打开受管桌面活动截图目录。
  * [OUTPUT]: 消息复制经主窗口系统剪贴板桥完成，复制回执沿preload类型合同返回。
@@ -67,6 +68,7 @@ import { AutomationNotificationConsumer } from './automation-notifications'
 import { BrowserService } from './browser/browser-service'
 import { WorkspaceFileService } from './workspace-files'
 import { WorkspaceApplications, openLocalResource } from './workspace-applications'
+import { readMacApplicationIcon } from './workspace-application-icon'
 import { WorkspaceTerminalService } from './workspace-terminal/service'
 import type { WorkspaceFileScope } from '@boai/shared/ipc/workspace-files'
 import type { BrowserHostMethods, BrowserLease } from '@boai/shared/ipc/browser'
@@ -210,7 +212,15 @@ const background = new BackgroundTray(desktopSettings, () => { void showMainWind
 const selectedPaths = new Set<string>()
 const materialSources = new MaterialSources(join(dataPath, 'material-sources'), error => sendEvent({ type: 'runtime-error', error: `临时附件清理失败：${String(error)}` }))
 const pending = new Map<string, { resolve: (value: unknown) => void; reject: (error: Error) => void; timer?: ReturnType<typeof setTimeout> }>()
-const workspaceApplications = new WorkspaceApplications(shell)
+const workspaceApplications = new WorkspaceApplications({
+  openPath: path => shell.openPath(path),
+  showItemInFolder: path => shell.showItemInFolder(path),
+  iconForPath: async path => {
+    if (process.platform === 'darwin') return readMacApplicationIcon(path)
+    const icon = await app.getFileIcon(path, { size: 'normal' })
+    return icon.isEmpty() ? undefined : icon.toDataURL()
+  },
+})
 const resolveUserWorkspace = async (scope: WorkspaceFileScope) => {
   if (quitting) throw new Error('应用正在退出')
   return await requestRuntime('getWorkspaceRoot', scope) as string

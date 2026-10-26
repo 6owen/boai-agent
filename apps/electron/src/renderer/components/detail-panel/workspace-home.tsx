@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 原会话成员、明确员工选择和用户终端宿主回执。
- * [OUTPUT]: 工作区开始入口、文件标签和真实终端创建/重连；群聊不自动选择员工。
+ * [OUTPUT]: 全局空态组件/新工作区SVG与随全局字号缩放的入口图标；真实创建/重连、群员工选择和Sonner反馈保持。
  * [POS]: 右侧工作区开始页，保留既有联系人和独立浏览器。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -10,6 +10,7 @@ import type { Snapshot } from '@boai/shared/domain'
 import type { TerminalInfo } from '@boai/shared/domain/workspace-tools'
 import { Button } from '@/components/ui/button'
 import { SelectField } from '@/components/ui/select-field'
+import { IllustratedEmpty } from '@/components/common/illustrated-empty'
 import { toast } from 'sonner'
 
 export function WorkspaceHome({ api, snapshot, active, conversationId, employeeId, onFiles, onTerminal }: {
@@ -46,17 +47,22 @@ export function WorkspaceHome({ api, snapshot, active, conversationId, employeeI
     } catch (error) { if (current.current.active) toast.error(String(error)) }
     finally { pending.current = false; setCreating(false); refresh(value => value + 1) }
   }
-  return <section className="flex h-full min-h-0 flex-col gap-4 overflow-auto p-4" aria-label="工作区开始">
-    <div className="flex items-center gap-2 text-sm"><span className="i-solar-folder-linear size-4" /><span>{room?.title ?? '工作区'}</span></div>
-    {employees.length > 1 || room?.kind === 'group' ? <SelectField aria-label="工作区员工" placeholder="选择员工工作区" value={selected} disabled={creating} options={employees.map(agent => ({ value: agent.id, label: agent.name }))} onValueChange={select} /> : <p className="text-sm text-muted-foreground">{owner?.name ?? '该员工已不可用'}</p>}
-    <Button variant="outline" size="content" className="justify-start gap-3 p-4 text-left" disabled={!owner || creating} onClick={() => owner && onFiles(owner.id)}>
-      <span className="i-solar-folder-open-linear size-5 shrink-0" /><span className="flex min-w-0 flex-col gap-1"><span>工作区文件</span><span className="text-xs font-normal text-muted-foreground">浏览员工工作区中的文件</span></span>
-    </Button>
-    <Button variant="outline" size="content" className="justify-start gap-3 p-4 text-left" disabled={!owner || creating} onClick={() => void create()}>
-      <span className="i-carbon-terminal size-5 shrink-0" /><span className="flex min-w-0 flex-col gap-1"><span>{creating ? '正在创建终端…' : '新建终端'}</span><span className="text-xs font-normal text-muted-foreground">在员工工作区运行命令</span></span>
-    </Button>
-    {!!terminals.length && <div className="flex flex-col gap-1"><div className="flex items-center justify-between"><span className="text-xs text-muted-foreground">已打开的终端</span><Button variant="ghost" size="icon-sm" aria-label="刷新终端列表" onClick={() => refresh(value => value + 1)}><span className="i-solar-refresh-linear size-4" /></Button></div>
-      {terminals.map(terminal => <Button variant="ghost" size="sm" className="justify-start" key={terminal.id} onClick={() => onTerminal(terminal)}><span className="i-carbon-terminal size-4" /><span className="truncate">{terminal.title}</span><span className="ml-auto text-xs text-muted-foreground">{terminal.status === 'exited' ? '已结束' : '运行中'}</span></Button>)}
-    </div>}
+  return <section className="workspace-home" aria-label="工作区开始">
+    <IllustratedEmpty kind="workspace" className="workspace-home-content h-auto min-h-full flex-none gap-7 px-6 py-8">
+      <div className="workspace-home-actions">
+        {(employees.length > 1 || room?.kind === 'group') && <SelectField aria-label="工作区员工" placeholder="选择员工工作区" value={selected} disabled={creating} options={employees.map(agent => ({ value: agent.id, label: agent.name }))} onValueChange={select} />}
+        <Button variant="outline" size="content" className="workspace-home-action" disabled={!owner || creating} onClick={() => owner && onFiles(owner.id)}>
+          <span className="workspace-home-action-icon workspace-home-files-icon i-solar-folder-with-files-bold" aria-hidden="true" />
+          <span className="workspace-home-action-text"><span className="workspace-home-action-title">工作区文件</span><span className="workspace-home-action-description">浏览会话工作区的文件</span></span>
+        </Button>
+        <Button variant="outline" size="content" className="workspace-home-action" disabled={!owner || creating} aria-busy={creating} onClick={() => void create()}>
+          <span className="workspace-home-action-icon workspace-home-terminal-icon i-carbon-terminal" aria-hidden="true" />
+          <span className="workspace-home-action-text"><span className="workspace-home-action-title">新建终端</span><span className="workspace-home-action-description">在会话工作区运行命令</span></span>
+        </Button>
+        {!!terminals.length && <div className="workspace-home-terminals"><div className="flex items-center justify-between"><span className="text-xs text-muted-foreground">已打开的终端</span><Button variant="ghost" size="icon-sm" aria-label="刷新终端列表" onClick={() => refresh(value => value + 1)}><span className="i-solar-refresh-linear size-4" /></Button></div>
+          {terminals.map(terminal => <Button variant="ghost" size="sm" className="min-w-0 justify-start" key={terminal.id} onClick={() => onTerminal(terminal)}><span className="i-carbon-terminal size-4 shrink-0" /><span className="truncate">{terminal.title}</span><span className="ml-auto shrink-0 text-xs text-muted-foreground">{terminal.status === 'exited' ? '已结束' : '运行中'}</span></Button>)}
+        </div>}
+      </div>
+    </IllustratedEmpty>
   </section>
 }

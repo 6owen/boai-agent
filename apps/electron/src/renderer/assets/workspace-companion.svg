@@ -1,0 +1,46 @@
+<!--
+[INPUT]: BOAI透明毛绒伙伴空态的淡紫/奶油/薄荷配色与工作区用途。
+[OUTPUT]: 原创小猫/文件夹/终端矢量插画，无外链或嵌入位图，透明背景。
+[POS]: 工作区开始页，沿全局IllustratedEmpty资产映射。
+[PROTOCOL]: 变化同步Header及assets/.folder.md。
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="184" viewBox="0 0 240 184" fill="none">
+  <defs>
+    <radialGradient id="fur" cx="105" cy="45" r="120" gradientUnits="userSpaceOnUse"><stop stop-color="#e6d8f4"/><stop offset=".65" stop-color="#c1a6de"/><stop offset="1" stop-color="#a88ac8"/></radialGradient>
+    <radialGradient id="cream" cx="110" cy="65" r="90" gradientUnits="userSpaceOnUse"><stop stop-color="#fffaf0"/><stop offset="1" stop-color="#eadbc4"/></radialGradient>
+    <linearGradient id="folder" x1="117" y1="101" x2="147" y2="168" gradientUnits="userSpaceOnUse"><stop stop-color="#c0e4d4"/><stop offset="1" stop-color="#87bba9"/></linearGradient>
+    <linearGradient id="screen" x1="41" y1="115" x2="74" y2="160" gradientUnits="userSpaceOnUse"><stop stop-color="#536978"/><stop offset="1" stop-color="#354956"/></linearGradient>
+    <filter id="shadow" x="-25%" y="-25%" width="150%" height="160%"><feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#5b466e" flood-opacity=".13"/></filter>
+    <filter id="ground" x="-50%" y="-100%" width="200%" height="300%"><feGaussianBlur stdDeviation="3"/></filter>
+  </defs>
+  <ellipse cx="124" cy="167" rx="79" ry="5" fill="#998baa" opacity=".18" filter="url(#ground)"/>
+  <g filter="url(#shadow)">
+    <path d="M160 137c24-21 39-8 30 8-6 10-21 13-34 9" stroke="#b59acf" stroke-width="14" stroke-linecap="round"/>
+    <ellipse cx="124" cy="121" rx="43" ry="43" fill="url(#fur)"/>
+    <ellipse cx="125" cy="129" rx="27" ry="29" fill="url(#cream)"/>
+    <path d="M79 60c-5-11-8-28-2-35 5-5 23 6 30 13m36 0c9-9 24-17 29-11 5 6 3 24-3 35" fill="url(#fur)"/>
+    <path d="m82 34 4 22 14-13-18-9Zm81 0-16 10 14 12 2-22Z" fill="#e8c7d9"/>
+    <path d="M75 70c0-26 18-38 49-38s49 13 49 38c0 29-19 45-49 45S75 98 75 70Z" fill="url(#fur)"/>
+    <path d="M93 75c6-14 22-16 31-3 9-13 25-11 31 3 10 23-11 34-31 34S83 98 93 75Z" fill="url(#cream)"/>
+    <ellipse cx="105" cy="73" rx="5" ry="6" fill="#3c3344"/><ellipse cx="144" cy="73" rx="5" ry="6" fill="#3c3344"/>
+    <circle cx="103.5" cy="71" r="1.5" fill="#fff"/><circle cx="142.5" cy="71" r="1.5" fill="#fff"/>
+    <ellipse cx="91" cy="85" rx="7" ry="4" fill="#e8b6c3" opacity=".65"/><ellipse cx="158" cy="85" rx="7" ry="4" fill="#e8b6c3" opacity=".65"/>
+    <path d="M119 85c0-3 10-3 10 0 0 2-4 5-5 5s-5-3-5-5Z" fill="#9e768c"/>
+    <path d="M124 90v3m0 0c-2 4-6 4-8 1m8-1c2 4 6 4 8 1" stroke="#9e768c" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="m114 36 2 8m10-9v8m11-6-2 7" stroke="#ac8bc9" stroke-width="3" stroke-linecap="round" opacity=".5"/>
+    <ellipse cx="102" cy="156" rx="17" ry="9" fill="url(#fur)"/><ellipse cx="146" cy="156" rx="17" ry="9" fill="url(#fur)"/>
+    <path d="M100 114a6 6 0 0 1 6-6h19l8 7h35a6 6 0 0 1 6 6v37a7 7 0 0 1-7 7h-61a6 6 0 0 1-6-6v-45Z" fill="#80ad9e"/>
+    <rect x="106" y="119" width="59" height="35" rx="3" fill="#fffaf0" transform="rotate(-4 106 119)"/>
+    <path d="M103 127a6 6 0 0 1 6-6h62a6 6 0 0 1 6 7l-5 32a6 6 0 0 1-6 5h-56a6 6 0 0 1-6-6l-1-32Z" fill="url(#folder)"/>
+    <path d="M112 128h55" stroke="#d8eee5" stroke-width="2" stroke-linecap="round" opacity=".8"/>
+    <ellipse cx="166" cy="117" rx="10" ry="15" fill="url(#fur)" transform="rotate(-25 166 117)"/>
+    <rect x="43" y="113" width="59" height="44" rx="7" fill="#c5c4da" transform="rotate(-7 43 113)"/>
+    <rect x="48" y="118" width="49" height="32" rx="3" fill="url(#screen)" transform="rotate(-7 48 118)"/>
+    <path d="m58 126 6 4-5 6m12-1 9-1" stroke="#c7e9dc" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="m39 158 66-8 8 7c2 3 0 6-4 6l-62 7c-4 0-8-3-8-6v-6Z" fill="#e2deed"/>
+    <path d="m65 159 20-2" stroke="#bab1ce" stroke-width="3" stroke-linecap="round"/>
+    <ellipse cx="87" cy="112" rx="9" ry="13" fill="url(#fur)" transform="rotate(25 87 112)"/>
+  </g>
+  <path d="M197 71v8m-4-4h8M46 90v6m-3-3h6" stroke="#c9b6df" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="184" cy="49" r="2" fill="#b9d8c9"/><circle cx="58" cy="65" r="2" fill="#dcc9a7"/>
+</svg>

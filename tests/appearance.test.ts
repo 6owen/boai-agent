@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 导入主题沿原持久化及插件回退，覆盖全部主题文字对比度；忽略已撤销的终端独立主题字段。
  * [INPUT]: AppearanceStore、共享外观合同和临时文件系统。
  * [OUTPUT]: Scenic图片遵循明暗模式；玻璃/遮罩/模糊独立校验、旧配置8px默认、零值重启/备份/换图保留及重置回归。
  * [OUTPUT]: 外观兼容、自定义色、缩放/备份以及正文与 Soft 操作按钮文字对比度回归。
@@ -10,10 +11,33 @@ import { mkdtemp, rm, writeFile, readFile, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { AppearanceStore } from '../apps/electron/src/main/appearance'
-import { themes, themeTokens, mergeAppearancePatch, maxBackgroundBlur, typographyControls, resolveTypography, defaultAppIconId } from '../packages/shared/src/appearance'
+import { themes, themeTokens, mergeAppearancePatch, maxBackgroundBlur, typographyControls, resolveTypography, defaultAppIconId, resolveTheme, terminalAnsiPalette } from '../packages/shared/src/appearance'
 const roots:string[]=[]
 afterEach(async()=>{await Promise.all(roots.splice(0).map(r=>rm(r,{recursive:true,force:true})))})
 async function setup(){const root=await mkdtemp(join(tmpdir(),'boai-appearance-'));roots.push(root);let dark=false;const store=new AppearanceStore(root,()=>dark,()=>{},()=>({width:1,height:1}));await store.init();return {root,store,dark:()=>{dark=true;store.systemChanged()}}}
+
+it('ignores the retired terminal theme field without changing the application theme or other preferences', async () => {
+  const { root, store } = await setup()
+  await writeFile(join(root, 'settings.json'), JSON.stringify({ revision: 3, preferences: { ...store.snapshot().preferences, themeIds: { light: 'catppuccin-latte', dark: 'catppuccin' }, terminalThemeId: 'nord', zoomFactor: 1.25 } }))
+  const reopened = new AppearanceStore(root, () => true, () => {}, () => ({ width: 1, height: 1 }))
+  await reopened.init()
+  expect(reopened.snapshot()).toMatchObject({ revision: 3, resolvedThemeId: 'catppuccin', preferences: { zoomFactor: 1.25, themeIds: { light: 'catppuccin-latte', dark: 'catppuccin' } } })
+  expect(reopened.snapshot().preferences).not.toHaveProperty('terminalThemeId')
+  await reopened.update({ zoomFactor: 1 }, 3)
+  expect(JSON.parse(await readFile(join(root, 'settings.json'), 'utf8')).preferences).not.toHaveProperty('terminalThemeId')
+})
+it('persists imported light/dark themes and restores the original selection after a plugin fallback', async () => {
+  const { root, store } = await setup()
+  await store.update({ themeIds: { light: 'moegi-dawn', dark: 'gruvchad' } }, 0)
+  const reopened = new AppearanceStore(root, () => true, () => {}, () => ({ width: 1, height: 1 }))
+  await reopened.init()
+  expect(reopened.snapshot()).toMatchObject({ resolvedThemeId: 'gruvchad', preferences: { themeIds: { light: 'moegi-dawn', dark: 'gruvchad' } } })
+  expect(resolveTheme('dark', 'gruvchad')).toMatchObject({ background: '#1e2122', surface: '#242728', accent: '#a9b665' })
+  expect(resolveTheme('light', 'moegi-dawn')).toMatchObject({ background: '#fff9f3', surface: '#faf3ed', accent: '#af5d5d' })
+  expect(resolveTheme('dark', 'gruvchad', ['boai.theme.base46']).id).toBe('boai-dark')
+  expect(resolveTheme('dark', reopened.snapshot().preferences.themeIds.dark).id).toBe('gruvchad')
+  expect(terminalAnsiPalette('gruvchad', 'dark')).toMatchObject({ green: '#a9b665', red: '#ec6b64' })
+})
 it('serializes revisions, keeps system sequence separate and restores preferences',async()=>{const {root,store,dark}=await setup();await store.update({themeIds:{dark:'nord'}},0);await expect(store.update({mode:'dark'},0)).rejects.toThrow('CONFLICT');dark();expect(store.snapshot()).toMatchObject({revision:1,resolvedMode:'dark',resolvedThemeId:'nord',sequence:2});const reopened=new AppearanceStore(root,()=>true,()=>{},()=>({width:1,height:1}));await reopened.init();expect(reopened.snapshot().resolvedThemeId).toBe('nord')})
 it('imports managed images and validates content, opacity, and opaque asset paths',async()=>{const {root,store}=await setup();const file=join(root,'source.png');await writeFile(file,Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6MxsAAAAASUVORK5CYII=','base64'));const imported=await store.import(file);await rm(file);expect((await store.asset(imported.preferences.background.assetId!)).type).toBe('image/png');await expect(store.asset('../settings.json')).rejects.toThrow();await expect(store.update({background:{imageOpacity:2}},1)).rejects.toThrow();await writeFile(file,'not an image');await expect(store.import(file)).rejects.toThrow('PNG');expect(store.snapshot().revision).toBe(1);await symlink(join(root,'settings.json'),join(root,'assets','11111111-1111-1111-1111-111111111111.png'));await expect(store.asset('11111111-1111-1111-1111-111111111111.png')).rejects.toThrow();const destination=join(root,'backup');await store.backup(destination);expect(JSON.parse(await readFile(join(destination,'appearance','settings.json'),'utf8')).preferences.background.assetId).toBe(imported.preferences.background.assetId)})
 it('preserves future config read-only',async()=>{const {root}=await setup();const bytes=JSON.stringify({preferences:{schemaVersion:8}});await writeFile(join(root,'settings.json'),bytes);const store=new AppearanceStore(root,()=>false,()=>{},()=>({width:0,height:0}));await store.init();await expect(store.reset()).rejects.toThrow('只读');expect(await readFile(join(root,'settings.json'),'utf8')).toBe(bytes)})
