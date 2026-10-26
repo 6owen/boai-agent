@@ -1,5 +1,5 @@
 # [INPUT]: 面向 main 的 PR、main push 或手动触发；版本化 UI 合同与已接受基线。
-# [OUTPUT]: 只执行 UI 回归；Required checks 独立核验当前 SHA 的完整 UI 报告和原件。
+# [OUTPUT]: 全UI只读比较及轻量差异审阅附件；Required checks独立核原完整结果，待审阅不放行。
 # [POS]: 唯一自动测试工作流，不运行模块、模型连接、T1/T3 或评估用例。
 # [PROTOCOL]: 修改同步 Header、目录地图及共享开发 Skill。
 name: UI tests
@@ -44,6 +44,22 @@ jobs:
           include-hidden-files: true
           retention-days: 3
           if-no-files-found: warn
+      - name: Generate UI review report
+        if: always()
+        run: node scripts/ui-review-report.mjs report .local/ui-ci .local/ui-review
+      - uses: actions/upload-artifact@v4
+        id: review
+        if: always()
+        with:
+          name: ui-review
+          path: .local/ui-review/
+          retention-days: 3
+          if-no-files-found: error
+      - name: Publish UI review summary
+        if: always()
+        env:
+          UI_REVIEW_ARTIFACT_URL: ${{ steps.review.outputs.artifact-url }}
+        run: node scripts/ui-review-report.mjs summary .local/ui-review
   required:
     name: Required checks
     if: always()
