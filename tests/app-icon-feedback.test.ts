@@ -9,8 +9,8 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { toast } from 'sonner'
-import type { AppIconStatus } from '../src/shared/appearance'
-import { AppIconFeedback, acceptAppIconStatus } from '../src/renderer/pages/settings/app-icon-feedback'
+import type { AppIconStatus } from '../packages/shared/src/appearance'
+import { AppIconFeedback, acceptAppIconStatus } from '../apps/electron/src/renderer/pages/settings/app-icon-feedback'
 let host: HTMLDivElement, root: Root
 const status = (): AppIconStatus => ({ sequence: 1, platform: 'macos', environment: 'development', requestedId: 'avatar-bear', pending: false, dock: { appliedId: 'avatar-bear', error: null }, tray: { supported: true, available: true, state: 'applied', appliedId: 'avatar-bear', fallback: null, error: null }, installed: { available: false, appliedId: null, error: null } })
 beforeEach(() => { vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true); vi.spyOn(toast, 'error').mockReturnValue('error'); vi.spyOn(toast, 'success').mockReturnValue('success'); host = document.createElement('div'); document.body.append(host); root = createRoot(host) })

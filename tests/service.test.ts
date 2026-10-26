@@ -22,22 +22,22 @@
  * [POS]: tests/service.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { withHostCommandAdmission } from '../src/runtime/adapters/mastra/host-command'
-import { TaskAdmission } from '../src/runtime/modules/collaboration/task-admission'
+import { withHostCommandAdmission } from '../packages/runtime/src/adapters/mastra/host-command'
+import { TaskAdmission } from '../packages/runtime/src/modules/collaboration/task-admission'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cp, mkdtemp, mkdir, readFile, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { AgentEngine, EngineContext, SecretStore } from '../src/runtime/contracts'
-import type { AgentInput, AgentRun, Connection, Conversation, ConversationDetail, DigitalAgent, Message, Resource, Snapshot, ParticipationDecision, MemoryView, AgentFileContent } from '../src/shared/domain'
-import type { StoredTraceSpan } from '../src/shared/domain/traces'
-import type { AgentProfile } from '../src/shared/domain/agent-profile'
-import { AppService } from '../src/runtime/service'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { createTaskRuntime } from '../src/runtime/adapters/mastra/task-runtime'
+import type { AgentEngine, EngineContext, SecretStore } from '../packages/runtime/src/contracts'
+import type { AgentInput, AgentRun, Connection, Conversation, ConversationDetail, DigitalAgent, Message, Resource, Snapshot, ParticipationDecision, MemoryView, AgentFileContent } from '../packages/shared/src/domain'
+import type { StoredTraceSpan } from '../packages/shared/src/domain/traces'
+import type { AgentProfile } from '../packages/shared/src/domain/agent-profile'
+import { AppService } from '../packages/runtime/src/service'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { createTaskRuntime } from '../packages/runtime/src/adapters/mastra/task-runtime'
 import { RequestContext } from '@mastra/core/request-context'
 import { noopObserve } from '@mastra/core/tools'
-import { publishArtifact } from '../src/runtime/modules/workspaces/file-access'
+import { publishArtifact } from '../packages/runtime/src/modules/workspaces/file-access'
 
 const roots: string[] = []
 const services: AppService[] = []
@@ -310,7 +310,7 @@ describe('local product service', () => {
     expect(approval.rememberAllowed).toBe(true)
     await expect(service.handle('approve', { id: approval.id, approved: false, always: true })).rejects.toThrow('不能保存')
     expect((await snapshot(service)).commandPermissions).toEqual([])
-    const permissions = (service as unknown as { commandPermissions: import('../src/runtime/modules/employees/command-permissions').CommandPermissions }).commandPermissions
+    const permissions = (service as unknown as { commandPermissions: import('../packages/runtime/src/modules/employees/command-permissions').CommandPermissions }).commandPermissions
     const grant = permissions.grant.bind(permissions)
     const failure = vi.spyOn(permissions, 'grant').mockImplementationOnce(async (tx, employee) => { await grant(tx, employee); throw new Error('授权事务提交失败') })
     await expect(service.handle('approve', { id: approval.id, approved: true, always: true })).rejects.toThrow('授权事务提交失败')
@@ -2356,7 +2356,7 @@ it('stores streamed API narration once, independently from the final message and
  }
  await send(service, chat, '处理文件', 'stream-once'); await idle(service, chat, 1)
  const state = await detail(service, chat), run = state.runs.find(run => run.phase === 'execution')!
- const evidence = await service.handle('listExecutionEvidence', { conversationId: chat.id, runId: run.id }) as import('../src/shared/domain/execution').ExecutionEvidencePage
+ const evidence = await service.handle('listExecutionEvidence', { conversationId: chat.id, runId: run.id }) as import('../packages/shared/src/domain/execution').ExecutionEvidencePage
  expect(evidence.items.map(event => event.payload)).toEqual([{ text: '正在读取文件' }])
  expect(state.messages.filter(message => message.senderType === 'agent').map(message => message.content)).toEqual(['最终答复'])
 })

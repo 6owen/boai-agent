@@ -15,9 +15,9 @@ import { join, resolve } from 'node:path'
 import { test as employeeTest } from './codex-employee.steps'
 import type { Desktop } from '../support/desktop'
 import { archiveNativeFinalReview } from '../support/native-final-review'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
-import type { AgentRun, ArtifactVersion, DigitalAgent, DiscussionTurn, LaunchProfile, Message } from '../../../src/shared/domain'
-import type { ProfileModelCall } from '../../../src/runtime/modules/profile/profile-activity'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
+import type { AgentRun, ArtifactVersion, DigitalAgent, DiscussionTurn, LaunchProfile, Message } from '../../../packages/shared/src/domain'
+import type { ProfileModelCall } from '../../../packages/runtime/src/modules/profile/profile-activity'
 
 type Entry = { executable?: string; policyVersion: number; evidence: Record<string, unknown> }
 type Upgrade = { old?: Entry; current?: Entry }
@@ -66,7 +66,7 @@ Given('Codex策略升级使用{string}的原v5完整应用和{string}', async ({
     const policySources = map.sources.map((path: string, index: number) => path.endsWith('/adapters/codex/policy.ts') ? map.sourcesContent[index] : undefined).filter((value: unknown) => value !== undefined)
     expect(policySources).toHaveLength(1)
     const policy = policySources[0] as string
-    expect(hash(policy)).toBe(freeze.files['src/runtime/adapters/codex/policy.ts'])
+    expect(hash(policy)).toBe(freeze.files['packages/runtime/src/adapters/codex/policy.ts'])
     expect(policy).toContain(`CODEX_EMPLOYEE_POLICY_VERSION = ${version}`)
     expect(policy).toContain("CODEX_VERIFIED_VERSION = '0.159.3'")
     expect(policy.match(/features\.respect_system_proxy=true/g) ?? []).toHaveLength(version === 6 ? 1 : 0)
@@ -75,15 +75,15 @@ Given('Codex策略升级使用{string}的原v5完整应用和{string}', async ({
       manifestHash: version === 5 ? '36230e2f2224579099f5eafe9db25302d8e372b82ff0e000a4dc69bdceee2293' : 'bd58a0edea49e22769fae35e5a5bfba3f98f6ac05268185334769527721eff57',
       frozenInputsPath: resolve(version === 5 ? oldReview + '/current-input-baseline.json' : currentReview + '/package-build-1/build-manifest.json'),
       frozenInputsHash: version === 5 ? 'f567586956fb46feacfd7e7b80368330a07183b3e51e8c5051fadcb88f61564a' : '20d65aa669b6182689b7d9f8b23e93ca069d071df447a1e7ea85b095e4d22999',
-      launcherHash: manifest.files['Contents/MacOS/BoAI Agent'], asarHash: manifest.files['Contents/Resources/app.asar'], policySourceHash: hash(policy), frozenPolicySourceHash: freeze.files['src/runtime/adapters/codex/policy.ts'], nativeVersion: '0.159.3', proofScope: 'pinned whole-package manifest plus actual launcher/ASAR and embedded policy; no package replacement' } }
+      launcherHash: manifest.files['Contents/MacOS/BoAI Agent'], asarHash: manifest.files['Contents/Resources/app.asar'], policySourceHash: hash(policy), frozenPolicySourceHash: freeze.files['packages/runtime/src/adapters/codex/policy.ts'], nativeVersion: '0.159.3', proofScope: 'pinned whole-package manifest plus actual launcher/ASAR and embedded policy; no package replacement' } }
   }
   codexPolicyUpgrade.old = await packaged(oldManifest, oldFreeze, 5, process.env.BOAI_TEST_POLICY_UPGRADE_OLD_PATH)
   if (target === '新应用包') codexPolicyUpgrade.current = await packaged(currentManifest, currentFreeze, 6, process.env.BOAI_TEST_POLICY_UPGRADE_NEW_PATH ?? process.env.BOAI_TEST_PACKAGED_PATH)
   else {
     const files = Object.keys(currentFreeze.files).filter(path => path.startsWith('dist/'))
     for (const path of files) expect(hash(await readFile(resolve(path)))).toBe(currentFreeze.files[path])
-    expect(hash(await readFile(resolve('src/runtime/adapters/codex/policy.ts')))).toBe(currentFreeze.files['src/runtime/adapters/codex/policy.ts'])
-    codexPolicyUpgrade.current = { policyVersion: 6, evidence: { sourceBuildManifest: resolve(currentReview + '/package-build-1/build-manifest.json'), sourceBuildManifestHash: '20d65aa669b6182689b7d9f8b23e93ca069d071df447a1e7ea85b095e4d22999', builtFilesChecked: files.length, main: 'dist/main/main.cjs', policySourceHash: currentFreeze.files['src/runtime/adapters/codex/policy.ts'], nativeVersion: '0.159.3' } }
+    expect(hash(await readFile(resolve('packages/runtime/src/adapters/codex/policy.ts')))).toBe(currentFreeze.files['packages/runtime/src/adapters/codex/policy.ts'])
+    codexPolicyUpgrade.current = { policyVersion: 6, evidence: { sourceBuildManifest: resolve(currentReview + '/package-build-1/build-manifest.json'), sourceBuildManifestHash: '20d65aa669b6182689b7d9f8b23e93ca069d071df447a1e7ea85b095e4d22999', builtFilesChecked: files.length, main: 'dist/main/main.cjs', policySourceHash: currentFreeze.files['packages/runtime/src/adapters/codex/policy.ts'], nativeVersion: '0.159.3' } }
   }
   const previous = process.env.BOAI_TEST_PACKAGED_PATH
   runtime.defer(async () => { if (previous === undefined) delete process.env.BOAI_TEST_PACKAGED_PATH; else process.env.BOAI_TEST_PACKAGED_PATH = previous })

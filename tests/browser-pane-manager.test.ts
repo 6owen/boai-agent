@@ -12,8 +12,8 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { BrowserPaneManager } from '../src/main/browser/browser-pane-manager'
-import type { BrowserManagerOptions } from '../src/main/browser/types'
+import { BrowserPaneManager } from '../apps/electron/src/main/browser/browser-pane-manager'
+import type { BrowserManagerOptions } from '../apps/electron/src/main/browser/types'
 
 const directories: string[] = []
 afterEach(async () => { await Promise.all(directories.splice(0).map(path => rm(path, { recursive: true, force: true }))) })

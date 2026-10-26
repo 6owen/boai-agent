@@ -12,17 +12,17 @@ import { afterEach, expect, it } from 'vitest'
 import { mkdtemp, mkdir, writeFile, rm, realpath, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { startOwnedRuntime } from '../src/runtime/bootstrap'
-import type { AgentEngine, EngineContext } from '../src/runtime/contracts'
-import type { ApplicationResult } from '../src/shared/domain/application-protocol'
-import type { Conversation, Snapshot } from '../src/shared/domain'
-import { createBoundSkillOperations } from '../src/runtime/modules/resources/bound-skill-tools'
-import { createReactionOperations } from '../src/runtime/modules/conversations/reaction-tools'
-import { createNativeProducts } from '../src/runtime/adapters/native-products'
-import { mcpModelOutput } from '../src/runtime/modules/sources/mcp-media'
-import { summarizeMedia } from '../src/runtime/modules/browser/media'
-import { browserChatPrompt } from '../src/runtime/adapters/mastra/browser-model'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { startOwnedRuntime } from '../packages/runtime/src/bootstrap'
+import type { AgentEngine, EngineContext } from '../packages/runtime/src/contracts'
+import type { ApplicationResult } from '../packages/shared/src/domain/application-protocol'
+import type { Conversation, Snapshot } from '../packages/shared/src/domain'
+import { createBoundSkillOperations } from '../packages/runtime/src/modules/resources/bound-skill-tools'
+import { createReactionOperations } from '../packages/runtime/src/modules/conversations/reaction-tools'
+import { createNativeProducts } from '../packages/runtime/src/adapters/native-products'
+import { mcpModelOutput } from '../packages/runtime/src/modules/sources/mcp-media'
+import { summarizeMedia } from '../packages/runtime/src/modules/browser/media'
+import { browserChatPrompt } from '../packages/runtime/src/adapters/mastra/browser-model'
 const clean: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const done of clean.splice(0).reverse()) await done() })
 async function temporary() { const root = await realpath(await mkdtemp(join(tmpdir(), 'boai-alma-skills-'))); clean.push(() => rm(root, { recursive: true, force: true })); return root }
@@ -235,7 +235,7 @@ it('employee reactions persist as themselves, preserve user reactions and cannot
   expect(observed).toMatchObject({ destination: 'boai', status: 'applied' })
   const db = await ProductStore.openReadOnly(join(f.root, 'boai.sqlite'))
   try {
-    const message = (await db.load<import('../src/shared/domain').Message>('messages')).find(message => message.id === context!.triggerMessageId!)
+    const message = (await db.load<import('../packages/shared/src/domain').Message>('messages')).find(message => message.id === context!.triggerMessageId!)
     expect(message?.reactions).toEqual([{ senderId: 'user', senderName: '我', emoji: '👍' }, { senderId: 'bobo', senderName: context!.agent.name, emoji: '👍' }])
     expect(await db.load('workItems')).toHaveLength(0)
     expect(await db.load('channelDeliveries')).toHaveLength(0)

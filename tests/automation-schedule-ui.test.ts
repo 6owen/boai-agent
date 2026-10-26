@@ -9,11 +9,11 @@ import { act, createElement as h } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { toast } from 'sonner'
-import type { AutomationDefinition, AutomationOccurrence, Snapshot } from '../src/shared/domain'
-import type { DesktopApi } from '../src/shared/ipc'
-import { AutomationEditorTab } from '../src/renderer/pages/schedules/automation-editor'
-import { AutomationOccurrenceView } from '../src/renderer/pages/schedules/automation-history'
-import { ScheduleNavigationContext } from '../src/renderer/pages/schedules/owner-automations'
+import type { AutomationDefinition, AutomationOccurrence, Snapshot } from '../packages/shared/src/domain'
+import type { DesktopApi } from '../packages/shared/src/ipc'
+import { AutomationEditorTab } from '../apps/electron/src/renderer/pages/schedules/automation-editor'
+import { AutomationOccurrenceView } from '../apps/electron/src/renderer/pages/schedules/automation-history'
+import { ScheduleNavigationContext } from '../apps/electron/src/renderer/pages/schedules/owner-automations'
 
 let host: HTMLDivElement, root: Root
 const definition = { id: 'plan', revision: 6, owner: { kind: 'employee', employeeId: 'ds' }, employeeIds: ['ds'], conversationPolicy: 'new-conversation', name: '每日天气预报', prompt: '查询南京天气', frequency: 'daily', time: '09:00', weekday: 1, enabled: true, notify: false } as AutomationDefinition

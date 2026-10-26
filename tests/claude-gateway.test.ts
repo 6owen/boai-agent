@@ -9,11 +9,11 @@ import { afterEach, expect, test, vi } from 'vitest'
 import { mkdtemp, realpath, readFile, writeFile, copyFile, chmod, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { claudeProvider, assertClaudeGatewayVersion } from '../src/shared/domain/claude-provider'
-import { claudeGatewayEnvironment } from '../src/runtime/adapters/claude/gateway-source'
-import { AppService } from '../src/runtime/service'
-import { agentModelSelectionReady } from '../src/renderer/components/employee/agent-model-selection'
-import type { Connection, DigitalAgent, LaunchProfile, Conversation, ConversationDetail, Message, Snapshot } from '../src/shared/domain'
+import { claudeProvider, assertClaudeGatewayVersion } from '../packages/shared/src/domain/claude-provider'
+import { claudeGatewayEnvironment } from '../packages/runtime/src/adapters/claude/gateway-source'
+import { AppService } from '../packages/runtime/src/service'
+import { agentModelSelectionReady } from '../apps/electron/src/renderer/components/employee/agent-model-selection'
+import type { Connection, DigitalAgent, LaunchProfile, Conversation, ConversationDetail, Message, Snapshot } from '../packages/shared/src/domain'
 
 const disposals: (() => Promise<void>)[] = []
 afterEach(async () => { for (const dispose of disposals.splice(0).reverse()) await dispose(); vi.unstubAllEnvs() })

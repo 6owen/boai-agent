@@ -8,7 +8,7 @@ import { createServer } from 'node:http'
 import { expect } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 import { test as base } from '../support/test'
-import type { AgentProfile } from '../../../src/shared/domain/agent-profile'
+import type { AgentProfile } from '../../../packages/shared/src/domain/agent-profile'
 type State = { roomId?: string; modelRequests: Record<string, unknown>[] }
 export const test = base.extend<{ personality: State }>({ personality: async ({}, use) => use({ modelRequests: [] }) })
 const { Given, When, Then } = createBdd(test)

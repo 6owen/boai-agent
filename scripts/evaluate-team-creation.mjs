@@ -1,10 +1,11 @@
 /*
+ * [OUTPUT]: Workspace源码路径迁至apps/packages，保留既有输出与业务合同。
  * [INPUT]: 显式模型连接 ID、只读产品凭据、当前团队创建源码。
  * [OUTPUT]: T1-v2 最多七例十四次请求，支持单例最多两次调用的隔离验收及源码 hash。
  * [POS]: 手动 T1.5 入口；复用已存在的系统凭据桥接。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { build } from 'esbuild'
+import { buildWorkspace as build } from './workspace-packages.mjs'
 import { spawn } from 'node:child_process'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
@@ -19,7 +20,7 @@ const output = resolve(`.local/team-evaluation/T1-v2-${Date.now()}`)
 await mkdir(output, { recursive: true })
 const maxCases = caseId ? 1 : caseIds.length
 const settings = { output, connectionId, caseId, dataPath: join(homedir(), 'Library/Application Support/BoAI Agent/v2'), caseVersion: 'T1-v2', maxCases, maxRequests: maxCases * 2, maxOutputTokensPerRequest: 8192, deadlineMsPerCase: 120000, hashes: {} }
-for (const file of ['src/shared/domain/team-creation.ts', 'src/runtime/adapters/mastra/team-planner.ts', 'src/runtime/modules/teams/team-generation.ts', 'tests/evaluation/team-creation.ts', 'pnpm-lock.yaml']) settings.hashes[file] = createHash('sha256').update(await readFile(file)).digest('hex')
+for (const file of ['packages/shared/src/domain/team-creation.ts', 'packages/runtime/src/adapters/mastra/team-planner.ts', 'packages/runtime/src/modules/teams/team-generation.ts', 'tests/evaluation/team-creation.ts', 'pnpm-lock.yaml']) settings.hashes[file] = createHash('sha256').update(await readFile(file)).digest('hex')
 await writeFile(join(output, 'settings.json'), JSON.stringify(settings, null, 2))
 const worker = join(output, 'worker.mjs'), host = join(output, 'host.cjs')
 await build({ stdin: { contents: `import { runTeamEvaluation } from './tests/evaluation/team-creation.ts'; process.once('message', input => { runTeamEvaluation(input).then(() => process.exit(0), () => process.exit(1)) });`, resolveDir: process.cwd() }, outfile: worker, bundle: true, platform: 'node', format: 'esm', packages: 'external', target: 'node22' })

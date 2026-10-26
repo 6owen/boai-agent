@@ -18,17 +18,17 @@
 import { act, createElement, useRef, type ComponentProps } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { beforeEach, afterEach, expect, test, vi } from 'vitest'
-import { ChatView } from '../src/renderer/pages/conversations/-components/chat-view'
-import type { ExecutionEvidence } from '../src/shared/domain/execution'
-import type { AgentRun } from '../src/shared/domain'
-import { defaultUserProfile } from '../src/shared/domain/profile'
-import { nativeActivity } from '../src/runtime/adapters/native-events'
+import { ChatView } from '../apps/electron/src/renderer/pages/conversations/-components/chat-view'
+import type { ExecutionEvidence } from '../packages/shared/src/domain/execution'
+import type { AgentRun } from '../packages/shared/src/domain'
+import { defaultUserProfile } from '../packages/shared/src/domain/profile'
+import { nativeActivity } from '../packages/runtime/src/adapters/native-events'
 
-vi.mock('../src/renderer/pages/conversations/-components/prompt-bar', () => ({ PromptBar: () => null }))
-vi.mock('../src/renderer/pages/conversations/-components/conversation-header', () => ({ ConversationHeader: () => null }))
-vi.mock('../src/renderer/pages/conversations/-components/use-conversation-reading', () => ({ useConversationReading: () => ({}) }))
+vi.mock('../apps/electron/src/renderer/pages/conversations/-components/prompt-bar', () => ({ PromptBar: () => null }))
+vi.mock('../apps/electron/src/renderer/pages/conversations/-components/conversation-header', () => ({ ConversationHeader: () => null }))
+vi.mock('../apps/electron/src/renderer/pages/conversations/-components/use-conversation-reading', () => ({ useConversationReading: () => ({}) }))
 const fixture = vi.hoisted(() => ({ evidence: [] as ExecutionEvidence[], active: false, source: '' }))
-vi.mock('../src/renderer/components/detail-panel/useExecutionWindow', () => ({
+vi.mock('../apps/electron/src/renderer/components/detail-panel/useExecutionWindow', () => ({
   useExecutionWindow: (_client: unknown, active: boolean, source: string) => { fixture.active = active; fixture.source = source; return { root: useRef(null), evidence: fixture.evidence, loading: false } },
 }))
 

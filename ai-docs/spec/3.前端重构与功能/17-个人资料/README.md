@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [INPUT]: 用户于 2026-09-29 提供的桌面个人资料截图及沿用项目统一组件/主题的补充要求，以及设置、会话、头像、SQLite/IPC 和 Mastra 用量采集现状。
 [OUTPUT]: 头像菜单身份首项/分享/设置/帮助、姓名按钮悬停背景与无图标编辑入口、紧凑表单和上传说明 tooltip；统计上三下二的容器响应式布局；资料编辑复用兼容接口横向表单且卡片不覆盖颜色；默认小猫 SVG 与旧文字头像兼容；用户八项前端调整、头像菜单/全屏分享与精简排版； 沿用项目设计系统的个人资料/会话头像规格，Mastra 逐步用量到本地统计的链路与缺口、实施映射及实际验收；保留实施前基线并链接交付证据。
 [POS]: ai-docs/spec/3.前端重构与功能/17-个人资料/README.md；前端第 17 项规格与实施验收。
@@ -64,17 +65,17 @@
 
 | 位置 | 当前事实 | 后续接入 |
 | --- | --- | --- |
-| [设置入口](../../../../src/renderer/pages/settings/index.tsx) | 「个人」仅外观；另有模型连接和数据与备份，支持搜索、分栏和离开守卫 | 在外观上方加「个人资料」，扩展分类和直达入口 |
-| [桌面 Shell](../../../../src/renderer/components/app-shell/index.tsx) | 持有快照、事件订阅、导航、各页独立详情标签与会话状态 | 分发唯一资料快照，增加底部头像入口；遵守主页面作用域 |
-| [聊天界面](../../../../src/renderer/pages/conversations/-components/chat-view.tsx) | 用户头像为「我」或按 `origin` 显示「定」；员工走共享 Avatar | 以真实发送者身份显示个人头像，覆盖单聊、群聊与外部任务单聊 |
-| [会话样式](../../../../src/renderer/styles/legacy.css)、[群聊样式](../../../../src/renderer/styles/group-chat.css) | 单聊 `.message-row.user .message-avatar` 被隐藏，群聊重新显示且为 32px 圆形；群聊连续消息省略重复头像 | 单聊也显示用户头像；保留已有消息方向、分组与滚动 |
-| [共享 Avatar](../../../../src/renderer/components/common/index.tsx)、[头像合同](../../../../src/shared/domain/avatars.ts) | 员工支持 12 个离线预设或 PNG data URL，损坏时回退预设 | 复用图片呈现和约束；个人的文字默认头像需显式区分，不能改变员工默认头像 |
-| [头像选择器](../../../../src/renderer/components/employee/avatar-picker.tsx) | PNG/JPG/WebP，最大 5 MiB，居中裁成 256 × 256 PNG；表单确认前不持久化 | 复用处理逻辑及弹层原语，提供个人文案和恢复默认头像操作 |
-| [产品合同](../../../../src/shared/domain/index.ts)、[IPC](../../../../src/shared/ipc/index.ts) | `Snapshot` 无个人资料；`Message` 有发送者身份；`AgentRun.usage` 的 Token 字段可缺失 | 新增资料及统计 DTO；展示身份与消息持久身份分开 |
-| [服务](../../../../src/runtime/service.ts) | 本人发送和表情回应使用 `senderId='user'`；自动触发使用 `automation:<id>`；人工补充仍可能带 `origin` | 保留稳定身份，不用是否带 `origin` 判断本人 |
-| [ProductStore](../../../../src/runtime/adapters/storage/product-store.ts) | SQLite 记录、事务和统一备份 | 存单例个人资料，事务校验版本后保存 |
-| [工作用量合同](../../../../src/shared/domain/work.ts)、[预算记账](../../../../src/runtime/modules/collaboration/work-budget.ts) | 有自动化逐请求 `budgetModelCalls` 与幂等结算；普通运行也可能有累计 usage | 可复用可信证据，但不是已经完成的全局个人统计服务 |
-| [原生技能执行入口](../../../../src/runtime/adapters/mastra/task-runtime.ts) | 通过绑定资源提供 Mastra 原生技能工具 | 后续需记录真实技能激活证据，不能从资源清单推断调用次数 |
+| [设置入口](../../../../apps/electron/src/renderer/pages/settings/index.tsx) | 「个人」仅外观；另有模型连接和数据与备份，支持搜索、分栏和离开守卫 | 在外观上方加「个人资料」，扩展分类和直达入口 |
+| [桌面 Shell](../../../../apps/electron/src/renderer/components/app-shell/index.tsx) | 持有快照、事件订阅、导航、各页独立详情标签与会话状态 | 分发唯一资料快照，增加底部头像入口；遵守主页面作用域 |
+| [聊天界面](../../../../apps/electron/src/renderer/pages/conversations/-components/chat-view.tsx) | 用户头像为「我」或按 `origin` 显示「定」；员工走共享 Avatar | 以真实发送者身份显示个人头像，覆盖单聊、群聊与外部任务单聊 |
+| [会话样式](../../../../apps/electron/src/renderer/styles/legacy.css)、[群聊样式](../../../../apps/electron/src/renderer/styles/group-chat.css) | 单聊 `.message-row.user .message-avatar` 被隐藏，群聊重新显示且为 32px 圆形；群聊连续消息省略重复头像 | 单聊也显示用户头像；保留已有消息方向、分组与滚动 |
+| [共享 Avatar](../../../../apps/electron/src/renderer/components/common/index.tsx)、[头像合同](../../../../packages/shared/src/domain/avatars.ts) | 员工支持 12 个离线预设或 PNG data URL，损坏时回退预设 | 复用图片呈现和约束；个人的文字默认头像需显式区分，不能改变员工默认头像 |
+| [头像选择器](../../../../apps/electron/src/renderer/components/employee/avatar-picker.tsx) | PNG/JPG/WebP，最大 5 MiB，居中裁成 256 × 256 PNG；表单确认前不持久化 | 复用处理逻辑及弹层原语，提供个人文案和恢复默认头像操作 |
+| [产品合同](../../../../packages/shared/src/domain/index.ts)、[IPC](../../../../packages/shared/src/ipc/index.ts) | `Snapshot` 无个人资料；`Message` 有发送者身份；`AgentRun.usage` 的 Token 字段可缺失 | 新增资料及统计 DTO；展示身份与消息持久身份分开 |
+| [服务](../../../../packages/runtime/src/service.ts) | 本人发送和表情回应使用 `senderId='user'`；自动触发使用 `automation:<id>`；人工补充仍可能带 `origin` | 保留稳定身份，不用是否带 `origin` 判断本人 |
+| [ProductStore](../../../../packages/runtime/src/adapters/storage/product-store.ts) | SQLite 记录、事务和统一备份 | 存单例个人资料，事务校验版本后保存 |
+| [工作用量合同](../../../../packages/shared/src/domain/work.ts)、[预算记账](../../../../packages/runtime/src/modules/collaboration/work-budget.ts) | 有自动化逐请求 `budgetModelCalls` 与幂等结算；普通运行也可能有累计 usage | 可复用可信证据，但不是已经完成的全局个人统计服务 |
+| [原生技能执行入口](../../../../packages/runtime/src/adapters/mastra/task-runtime.ts) | 通过绑定资源提供 Mastra 原生技能工具 | 后续需记录真实技能激活证据，不能从资源清单推断调用次数 |
 
 设置已有全局样式和 Base UI 原语，不另建设置外壳。个人资料属于本机用户，不是数字员工配置，不写入员工的 `AGENTS.md`、SOUL 或记忆。
 
@@ -120,7 +121,7 @@
 | 会话个人头像 | 复用共享头像和现有消息布局；固定占位，尺寸与相邻员工头像协调 |
 | 导航底部头像 | 沿用 rail 按钮触达面积与交互态，内部使用同一头像组件 |
 
-颜色从 [global.css](../../../../src/renderer/styles/global.css)、[colors.css](../../../../src/renderer/styles/colors.css) 及现有主题语义变量取值。背景、次级文字、分隔线和控件沿用现有 Soft UI；热力图用项目现有蓝色/图表 token，缺少色阶时补入统一主题来源，不在页面散落颜色函数。个人默认头像使用稳定的柔和底色，图片保持原色。
+颜色从 [global.css](../../../../apps/electron/src/renderer/styles/global.css)、[colors.css](../../../../apps/electron/src/renderer/styles/colors.css) 及现有主题语义变量取值。背景、次级文字、分隔线和控件沿用现有 Soft UI；热力图用项目现有蓝色/图表 token，缺少色阶时补入统一主题来源，不在页面散落颜色函数。个人默认头像使用稳定的柔和底色，图片保持原色。
 
 浅色、深色、跟随系统及用户所选主题都由现有外观系统驱动，不维护个人资料专用主题。图标沿用本地 Solar/Carbon 封装。头像图片不能拉伸，使用正方形裁剪后圆形遮罩。
 
@@ -194,10 +195,10 @@
 
 现有链路的准确范围：
 
-1. **逐步采集**：[engine.ts](../../../../src/runtime/adapters/mastra/engine.ts) 在 `step-finish` 读取供应商用量，工具后的后续模型步骤也会采集。`UsageRecorder` 仅接收有效非负数；只有合成的 `totalTokens: 0` 而无输入/输出时保留未知。各字段只合计已知值，因此普通 run 的汇总本身不能证明所有步骤都已记录。
-2. **运行汇总**：[service.ts](../../../../src/runtime/service.ts) 的 `onUsage` 保存 `AgentRun.usage` 到 SQLite `runs`，覆盖已接入的判断、回复/执行、记忆与重新汇报。普通任务还将用量更新到工作预算；这些是同一批用量的不同投影，不能相加。当前回调会跳过已取消/终止/关闭后的更新，不能承诺所有中断调用都有完整最终回执。
-3. **自动化明细**：宿主预留唯一 `callId`，逐步用量经 `onModelCallUsage` 进入 [work-budget.ts](../../../../src/runtime/modules/collaboration/work-budget.ts)。`budgetModelCalls` 保留运行/轮次/会话/阶段、预留与结算时间、usage 及完整性；重复回执只更新差额，缺失回执不按零处理。
-4. **Trace**：[trace.ts](../../../../src/runtime/adapters/mastra/trace.ts) 将 Mastra 原生 Span 的 attributes、input/output 等交给本地 exporter，再存入 `traceSpans`。这是执行诊断链路；当前没有配置 Mastra 的 `MastraStorageExporter` 作为个人统计后端，也没有年度活动查询接口。
+1. **逐步采集**：[engine.ts](../../../../packages/runtime/src/adapters/mastra/engine.ts) 在 `step-finish` 读取供应商用量，工具后的后续模型步骤也会采集。`UsageRecorder` 仅接收有效非负数；只有合成的 `totalTokens: 0` 而无输入/输出时保留未知。各字段只合计已知值，因此普通 run 的汇总本身不能证明所有步骤都已记录。
+2. **运行汇总**：[service.ts](../../../../packages/runtime/src/service.ts) 的 `onUsage` 保存 `AgentRun.usage` 到 SQLite `runs`，覆盖已接入的判断、回复/执行、记忆与重新汇报。普通任务还将用量更新到工作预算；这些是同一批用量的不同投影，不能相加。当前回调会跳过已取消/终止/关闭后的更新，不能承诺所有中断调用都有完整最终回执。
+3. **自动化明细**：宿主预留唯一 `callId`，逐步用量经 `onModelCallUsage` 进入 [work-budget.ts](../../../../packages/runtime/src/modules/collaboration/work-budget.ts)。`budgetModelCalls` 保留运行/轮次/会话/阶段、预留与结算时间、usage 及完整性；重复回执只更新差额，缺失回执不按零处理。
+4. **Trace**：[trace.ts](../../../../packages/runtime/src/adapters/mastra/trace.ts) 将 Mastra 原生 Span 的 attributes、input/output 等交给本地 exporter，再存入 `traceSpans`。这是执行诊断链路；当前没有配置 Mastra 的 `MastraStorageExporter` 作为个人统计后端，也没有年度活动查询接口。
 
 Mastra 也提供结果用量读取接口，见 [MastraModelOutput](https://mastra.ai/reference/streaming/agents/MastraModelOutput)。官方 [Automatic metrics](https://mastra.ai/reference/observability/metrics/automatic-metrics) 说明：Token 指标来自带 usage 的 `MODEL_GENERATION` Span，依赖供应商返回数据；内置指标落库还需要对应 exporter 和支持指标的存储。框架具备这些能力，不代表当前项目已经启用该存储链路。本文以项目已安装版本与实际接入为实施依据。
 

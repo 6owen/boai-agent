@@ -5,7 +5,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
 import { expect, it } from 'vitest'
-import { orderedResponseInstruction, replyCharacterCount, validateGroupInterpretation } from '../src/runtime/modules/collaboration/group-coordination'
+import { orderedResponseInstruction, replyCharacterCount, validateGroupInterpretation } from '../packages/runtime/src/modules/collaboration/group-coordination'
 
 it('counts a Chinese reply by Unicode code points while excluding all whitespace', () => {
   expect(replyCharacterCount('甲 乙\n丙\t丁　戊')).toBe(5)

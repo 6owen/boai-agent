@@ -10,8 +10,8 @@ import { createServer } from 'node:http'
 import { readFile, mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
-import type { Connection } from '../../src/shared/domain'
-import type { BrowserWindowState } from '../../src/shared/ipc/browser'
+import type { Connection } from '../../packages/shared/src/domain'
+import type { BrowserWindowState } from '../../packages/shared/src/ipc/browser'
 
 interface Settings { version:string;connectionId:string;output:string;source:string;dataPath:string;maxRequests:number;maxKnownTokens:number;maxOutputTokensPerRequest:number;deadlineMs:number }
 export async function runBrowserDelivery({ settings, connection, apiKey }: { settings: Settings; connection: Connection; apiKey: string }) {

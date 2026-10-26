@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [OUTPUT]: 第13组承接本机Agent完整员工化，仍待实施；本篇保留协议研究与当前受限ACP事实。
 [INPUT]: 2026-09-27协议研究及当前受控本地ACP源码、后端契约和后续连接范围。
 [OUTPUT]: 当前本地ACP接入与历史Mastra封装研究的明确区分；A2A/MCP和反向服务仍为后续设计。
@@ -9,7 +10,7 @@
 
 2026-10-05 后续落地见[第13组本机Agent员工运行时](../13.本机Agent员工运行时/README.md)：Codex/Claude专用接入与通用ACP按能力并存，IM和业务权威保留；当前仅规格，06为唯一新进度。该方案不表示普通聊天、群协作、自动化或MCP业务桥已开放。
 
-当前状态核对（2026-10-02）：项目已用 `@agentclientprotocol/sdk` 接入受控本地 ACP，见 [客户端](../../../src/runtime/adapters/acp/client.ts)、[启动项](../../../src/runtime/modules/backends/profiles.ts)和[实现记录](../2.已实现功能与代码现状/16-主题外部Agent与自动化实现.md)。它保持单聊显式任务、新 session、外部自有工具和未知用量边界，不等于采用下文研究的 `@mastra/acp` 包，也不支持自主群聊或自动化。A2A、MCP、SDK Agent adapter 和反向服务仍未接入。
+当前状态核对（2026-10-02）：项目已用 `@agentclientprotocol/sdk` 接入受控本地 ACP，见 [客户端](../../../packages/runtime/src/adapters/acp/client.ts)、[启动项](../../../packages/runtime/src/modules/backends/profiles.ts)和[实现记录](../2.已实现功能与代码现状/16-主题外部Agent与自动化实现.md)。它保持单聊显式任务、新 session、外部自有工具和未知用量边界，不等于采用下文研究的 `@mastra/acp` 包，也不支持自主群聊或自动化。A2A、MCP、SDK Agent adapter 和反向服务仍未接入。
 
 以下为 **2026-09-27 官方能力核对与后续设计的历史记录**，其中“尚未接入/未安装”的产品状态以当日为准；框架 API 说明不冒充当前实际适配器行为。对应 E2 / E3 / C1；员工后端契约见 [执行后端与能力契约](../4.数字员工与协作重构/04-员工执行后端与能力契约.md)。
 

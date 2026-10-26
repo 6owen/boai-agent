@@ -8,11 +8,11 @@ import { afterEach, expect, test } from 'vitest'
 import { mkdir, mkdtemp, readFile, readdir, rename, writeFile, rm, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { WorkspaceService } from '../src/runtime/modules/workspaces/workspace-service'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { MemoryRepository } from '../src/runtime/modules/memory/memory-repository'
-import { prepareV2DataRoot } from '../src/main/migration'
-import type { DigitalAgent, MemoryQuery, MemoryView, Conversation } from '../src/shared/domain'
+import { WorkspaceService } from '../packages/runtime/src/modules/workspaces/workspace-service'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { MemoryRepository } from '../packages/runtime/src/modules/memory/memory-repository'
+import { prepareV2DataRoot } from '../apps/electron/src/main/migration'
+import type { DigitalAgent, MemoryQuery, MemoryView, Conversation } from '../packages/shared/src/domain'
 const roots: string[] = []
 const stores: ProductStore[] = []
 afterEach(async () => { for (const store of stores.splice(0)) await store.close(); for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }) })

@@ -10,8 +10,8 @@ import { execFileSync } from 'node:child_process'
 import { readFile, readdir } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { baseThemes, foundationCss, foundationVariables, themeTokens, typographyDefaults, typographyVariables, resolveTypography, tokenRows, tokenDocument, resolveTokenValue } from '@boai/tokens'
-import { resolveTypography as hostTypography } from '../src/shared/appearance/typography'
-import { themeTokens as hostThemeTokens } from '../src/shared/appearance'
+import { resolveTypography as hostTypography } from '../packages/shared/src/appearance/typography'
+import { themeTokens as hostThemeTokens } from '../packages/shared/src/appearance'
 import { searchPages } from '../apps/design-docs/src/search'
 // @ts-expect-error Shared Node public-content generator has no declaration file.
 import { readDesignContent, designPublicFiles, designContentPlugin } from '../scripts/design-content.mjs'
@@ -72,7 +72,7 @@ it('public Markdown and component indexes only contain registered pages', async 
   const files = designPublicFiles(content)
   const catalog = JSON.parse(await readFile(resolve('ai-docs/design-system/catalog.json'), 'utf8'))
   expect(content.pages).toHaveLength(catalog.pages.length)
-  const modules = (await readdir('src/renderer/components/ui')).filter(name => name.endsWith('.tsx')).map(name => '@boai/ui/' + name.slice(0, -4))
+  const modules = (await readdir('apps/electron/src/renderer/components/ui')).filter(name => name.endsWith('.tsx')).map(name => '@boai/ui/' + name.slice(0, -4))
   for (const entry of modules) expect(content.components.some((component: { import: string }) => component.import === entry), entry).toBe(true)
   expect(new Set(content.components.map((component: { import: string }) => component.import)).size).toBe(content.components.length)
   const publicModules = (await readdir('packages/ui/src/components')).filter(name => name.endsWith('.tsx')).map(name => '@boai/ui/' + name.slice(0, -4)).sort()

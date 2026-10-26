@@ -4,17 +4,18 @@
  * [POS]: Real supplier material business acceptance; internal service entry, not public IPC or desktop certification.
  * [PROTOCOL]: Update Header, tests/.folder.md and the Magpie ledger for each actual batch, preserving failures.
  */
+import { workspaceInputFiles } from './support/workspace-inputs'
 import { createHash } from 'node:crypto'
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { afterAll, beforeAll, expect, test } from 'vitest'
-import { AppService } from '../src/runtime/service'
-import { MastraEngine } from '../src/runtime/adapters/mastra/engine'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { listModelCatalog, probeMagpie } from '../src/runtime/adapters/mastra/model-catalog'
-import type { Connection, Conversation, ConversationDetail, DigitalAgent, Message } from '../src/shared/domain'
-import type { ConversationMaterial, MaterialPreview } from '../src/shared/domain/materials'
-import type { ModelProtocol } from '../src/shared/domain/model-gateway'
+import { AppService } from '../packages/runtime/src/service'
+import { MastraEngine } from '../packages/runtime/src/adapters/mastra/engine'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { listModelCatalog, probeMagpie } from '../packages/runtime/src/adapters/mastra/model-catalog'
+import type { Connection, Conversation, ConversationDetail, DigitalAgent, Message } from '../packages/shared/src/domain'
+import type { ConversationMaterial, MaterialPreview } from '../packages/shared/src/domain/materials'
+import type { ModelProtocol } from '../packages/shared/src/domain/model-gateway'
 import { gatewayVisionImage } from './fixtures/gateway-vision-image'
 
 const enabled = process.env.BOAI_MAGPIE_MATERIALS_REAL === '1', batch = process.env.BOAI_MAGPIE_BATCH ?? ''
@@ -33,7 +34,7 @@ type Wire = { protocol: ModelProtocol; effort: string; stage: string; path: stri
 const requests: Wire[] = []
 let current: { protocol: ModelProtocol; effort: string } | undefined, version = '', sourceBefore: Record<string, string>
 async function sources() {
-  const files = (await readdir('src', { recursive: true })).filter(name => /\.(ts|tsx|json)$/.test(name)).map(name => `src/${name}`)
+  const files = (await workspaceInputFiles()).filter(name => /\.(ts|tsx|json)$/.test(name))
   files.push('package.json', 'pnpm-lock.yaml', 'tests/magpie-materials-live.test.ts', 'tests/fixtures/gateway-vision-image.ts')
   return Object.fromEntries(await Promise.all(files.sort().map(async name => [name, sha(await readFile(name))])))
 }

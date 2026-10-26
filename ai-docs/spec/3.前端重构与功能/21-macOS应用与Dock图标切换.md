@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [OUTPUT]: 托盘联动已接线并完成模块/编译版及pnpm dev代表路径，包内42张模板字节核对通过；真实菜单栏多环境视觉未认证。
 [OUTPUT]: 2026-10-22 已获“开始执行”授权，五项目标在原独立worktree推进；托盘联动尚未编码，既有Dock成绩保持。
 [INPUT]: 2026-10-20预置头像转应用/Dock图标需求、2026-10-22托盘联动先落实文档的要求；当前源码与Electron官方资料。
@@ -46,7 +47,7 @@
 
 `src/shared/domain/avatars.ts`定义21个稳定预设ID，`src/renderer/assets/avatars/index.ts`映射本地WebP。目录资源说明登记为320×320透明图像；转换时仍须逐张核对像素、alpha和主体边缘。
 
-截至2026-10-22，外观schema v2已有`appIconId`；[AppIconController](../../../src/main/app-icon.ts)已接运行态Dock和当前安装副本原生更新，[manifest](../../../resources/app-icons/manifest.json)登记21款PNG及默认ID，`package.json`已指定`resources/app-icons/default.icns`。托盘仍由[BackgroundTray](../../../src/main/background.ts)独立绘制固定像素字母B，尚未读取`appIconId`。不能再把前期“尚无字段/API/图标集”的调查当作当前现状。
+截至2026-10-22，外观schema v2已有`appIconId`；[AppIconController](../../../apps/electron/src/main/app-icon.ts)已接运行态Dock和当前安装副本原生更新，[manifest](../../../packages/shared/src/appearance/app-icon-manifest.json)登记21款PNG及默认ID，`package.json`已指定`resources/app-icons/default.icns`。托盘仍由[BackgroundTray](../../../apps/electron/src/main/background.ts)独立绘制固定像素字母B，尚未读取`appIconId`。不能再把前期“尚无字段/API/图标集”的调查当作当前现状。
 
 当前依赖是Electron `39.2.7`、electron-builder `26.15.3`；官方最新资料作为设计依据，落地须再按锁定版本验证。
 

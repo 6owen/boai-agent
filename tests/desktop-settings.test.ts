@@ -8,7 +8,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { DesktopSettingsStore, LOGIN_ARGUMENT, type LoginHost } from '../src/main/desktop-settings'
+import { DesktopSettingsStore, LOGIN_ARGUMENT, type LoginHost } from '../apps/electron/src/main/desktop-settings'
 const roots: string[] = []
 afterEach(async () => { await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))) })
 async function fixture(overrides: Partial<LoginHost> = {}) {

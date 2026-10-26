@@ -6,7 +6,7 @@
  */
 import { expect } from '@playwright/test'
 import { createHash } from 'node:crypto'
-import type { ConversationDetail } from '../../../src/shared/domain'
+import type { ConversationDetail } from '../../../packages/shared/src/domain'
 import type { Desktop } from './desktop'
 
 function strings(value: unknown): string[] {

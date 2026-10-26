@@ -17,9 +17,9 @@ import { createBdd } from 'playwright-bdd'
 import { createHash, randomUUID } from 'node:crypto'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
-import type { AgentRun, ArtifactVersion, DiscussionTurn } from '../../../src/shared/domain'
-import type { ProfileModelCall } from '../../../src/runtime/modules/profile/profile-activity'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
+import type { AgentRun, ArtifactVersion, DiscussionTurn } from '../../../packages/shared/src/domain'
+import type { ProfileModelCall } from '../../../packages/runtime/src/modules/profile/profile-activity'
 import { test } from '../support/test'
 import type { Desktop } from '../support/desktop'
 import { installSaveProbe, type SaveProbe } from '../support/agent-config-save'
@@ -166,7 +166,7 @@ Then('原员工正常更换独立本机配置并切回后只执行明确新交�
   const real = test.info().annotations.some(value => value.type === 'model-mode' && value.description === 'real-provider')
   const profiles = () => runtime.page.evaluate(() => window.boai.request('listLaunchProfiles', undefined))
   const originalProfiles = await profiles(), original = originalProfiles.find(value => value.id === (employee.executionBackend as { profileId: string }).profileId)!
-  const records = async () => ({ ...await facts(), profileCalls: await store.load<import('../../../src/runtime/modules/profile/profile-activity').ProfileModelCall>('profileModelCalls'), sessions: await store.load<{ id: string; threadId: string; fingerprint: string; state: string }>(sessionCollection) })
+  const records = async () => ({ ...await facts(), profileCalls: await store.load<import('../../../packages/runtime/src/modules/profile/profile-activity').ProfileModelCall>('profileModelCalls'), sessions: await store.load<{ id: string; threadId: string; fingerprint: string; state: string }>(sessionCollection) })
   const code = `CHAT_CODE_${randomUUID()}`, draft = '更换配置期间保留的原聊天草稿'
   const send = async (content: string, profileId: string) => {
     const before = await records()
@@ -386,7 +386,7 @@ Then('未知员工保存由真实原生关闭弹窗继续或放弃后重启不�
   const real = test.info().annotations.some(value => value.type === 'model-mode' && value.description === 'real-provider')
   let saveInstalled = false, dialogInstalled = false
   const allCalls: { method: string; admitted: boolean; expectedConfigVersion?: number }[] = []
-  const savedAgent = async () => (await store.load<import('../../../src/shared/domain').DigitalAgent>('agents')).find(value => value.id === employee.id)!
+  const savedAgent = async () => (await store.load<import('../../../packages/shared/src/domain').DigitalAgent>('agents')).find(value => value.id === employee.id)!
   try {
     await chat()
     await runtime.page.getByRole('textbox', { name: '消息内容', exact: true }).fill(`现在只是普通聊天，不执行任何工具，不保存长期记忆。暗号为 ${code}，请只回复这个暗号。${!real && kind === 'claude-local' ? ' empty-memory' : ''}`)

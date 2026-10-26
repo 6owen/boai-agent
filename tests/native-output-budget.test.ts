@@ -11,9 +11,9 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { GroupScheduler, type SchedulerHooks } from '../src/runtime/group-scheduler'
-import type { Conversation, DigitalAgent, Message } from '../src/shared/domain'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { GroupScheduler, type SchedulerHooks } from '../packages/runtime/src/group-scheduler'
+import type { Conversation, DigitalAgent, Message } from '../packages/shared/src/domain'
 const cleanups: (() => Promise<void>)[] = []
 afterEach(async () => { try { for (const close of cleanups.splice(0).reverse()) await close() } finally { vi.useRealTimers() } })
 async function fixture(automation = false) {

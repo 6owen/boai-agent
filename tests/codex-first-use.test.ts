@@ -4,18 +4,19 @@
  * [POS]: G2a first-use regression; no personal settings or supplier inference.
  * [PROTOCOL]: Update this Header, tests/.folder.md and the Magpie ledger with every actual batch.
  */
+import { workspaceInputFiles } from './support/workspace-inputs'
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
 import { fork } from 'node:child_process'
 import { join, resolve } from 'node:path'
 import { expect, test, vi } from 'vitest'
-import { build } from 'esbuild'
-import { AppService } from '../src/runtime/service'
-import type { Conversation, ConversationDetail, DigitalAgent, LaunchProfile, Message } from '../src/shared/domain'
+import { buildWorkspace as build } from '../scripts/workspace-packages.mjs'
+import { AppService } from '../packages/runtime/src/service'
+import type { Conversation, ConversationDetail, DigitalAgent, LaunchProfile, Message } from '../packages/shared/src/domain'
 import { gatewayWireServer } from './fixtures/gateway-wire-server'
 
 async function sources() {
-  const paths = (await readdir('src', { recursive: true })).filter(path => /\.(ts|tsx|json)$/.test(path)).map(path => `src/${path}`)
+  const paths = (await workspaceInputFiles()).filter(path => /\.(ts|tsx|json)$/.test(path))
   paths.push('package.json', 'pnpm-lock.yaml', 'tests/codex-first-use.test.ts', 'tests/fixtures/gateway-wire-server.ts', 'tests/fixtures/native-first-use-process.ts')
   return Object.fromEntries(await Promise.all(paths.sort().map(async path => [path, createHash('sha256').update(await readFile(path)).digest('hex')])))
 }

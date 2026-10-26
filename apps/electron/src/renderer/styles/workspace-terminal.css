@@ -1,0 +1,23 @@
+/*
+ * [INPUT]: 常驻详情标签与BOAI代码/颜色语义token。
+ * [OUTPUT]: 终端填满剩余详情高度，独立滚动，字体/行高/背景跟随全局设置。
+ * [POS]: 用户工作区终端局部布局，不影响其他详情或员工执行视图。
+ * [PROTOCOL]: 变化同步Header及styles/.folder.md。
+ */
+.detail-content:has(> .detail-session > .workspace-terminal):not([hidden]),
+.detail-session:has(> .workspace-terminal) {
+  display:flex;
+  flex:1;
+  min-height:0;
+  min-width:0;
+  overflow:hidden;
+}
+.workspace-terminal { width:100%; background:var(--surface-detail); }
+.workspace-terminal-screen {
+  font-family:var(--font-code-family);
+  font-size:var(--text-code-terminal);
+  line-height:var(--leading-code-body);
+  color:var(--foreground);
+  background:var(--surface-detail);
+}
+.workspace-terminal-screen > .xterm { height:100%; }

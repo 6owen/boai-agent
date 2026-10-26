@@ -9,8 +9,8 @@ import { it, expect, afterEach } from 'vitest'
 import { mkdtemp, rm, writeFile, readFile, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { AppearanceStore } from '../src/main/appearance'
-import { themes, themeTokens, mergeAppearancePatch, maxBackgroundBlur, typographyControls, resolveTypography, defaultAppIconId } from '../src/shared/appearance'
+import { AppearanceStore } from '../apps/electron/src/main/appearance'
+import { themes, themeTokens, mergeAppearancePatch, maxBackgroundBlur, typographyControls, resolveTypography, defaultAppIconId } from '../packages/shared/src/appearance'
 const roots:string[]=[]
 afterEach(async()=>{await Promise.all(roots.splice(0).map(r=>rm(r,{recursive:true,force:true})))})
 async function setup(){const root=await mkdtemp(join(tmpdir(),'boai-appearance-'));roots.push(root);let dark=false;const store=new AppearanceStore(root,()=>dark,()=>{},()=>({width:1,height:1}));await store.init();return {root,store,dark:()=>{dark=true;store.systemChanged()}}}

@@ -6,7 +6,7 @@
  * [PROTOCOL]: 变化同步Header与tests/fixtures/.folder.md。
  */
 import { teamEndpoint, sendTeamOutput } from './team-planner'
-import type { DirectoryGrant } from '../../src/shared/domain/directory-access'
+import type { DirectoryGrant } from '../../packages/shared/src/domain/directory-access'
 
 export async function cliCommandEndpoint(executable: string, businessFile = false, directories?: DirectoryGrant[]) {
   const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`

@@ -28,9 +28,9 @@ import { selectPreviewLine, selectPreviewText } from '../support/file-preview'
 import { sampleDocx, sampleXlsx, samplePptx, createSamplePdf } from '../../lody/office-viewer-files'
 import { messageDraft } from '../support/editor-controls'
 import { artifactDetail, artifactOriginal, artifactPendingRequests, artifactRecords, artifactReplyFault, changeArtifactOriginal, prepareArtifactsDesktop, removeArtifactOriginal } from '../support/artifacts'
-import type { ArtifactAdoptionInput, ArtifactRevisionInput, ArtifactVersion } from '../../../src/shared/domain/artifacts'
-import type { ConversationDetail } from '../../../src/shared/domain'
-import type { ConversationMaterial } from '../../../src/shared/domain/materials'
+import type { ArtifactAdoptionInput, ArtifactRevisionInput, ArtifactVersion } from '../../../packages/shared/src/domain/artifacts'
+import type { ConversationDetail } from '../../../packages/shared/src/domain'
+import type { ConversationMaterial } from '../../../packages/shared/src/domain/materials'
 
 type Fault = Awaited<ReturnType<typeof artifactReplyFault>>
 interface State {

@@ -14,20 +14,20 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { WorkspaceService } from '../src/runtime/modules/workspaces/workspace-service'
-import { AgentProfileService } from '../src/runtime/modules/employees/agent-profile-service'
-import { AgentStateService, effectiveAgentState } from '../src/runtime/modules/agent-state/state-service'
-import { clearAgentPersonality } from '../src/runtime/modules/agent-state/lifecycle'
-import { AgentBehaviorService } from '../src/runtime/modules/automations/agent-behaviors'
-import { NativeSchedules, BEHAVIOR_WORKFLOW } from '../src/runtime/modules/automations/native-schedules'
-import { compileAgentContext } from '../src/runtime/modules/employees/context-compiler'
-import { defaultAgentProfile, primaryPersonalityRoom, type AgentBehaviorRun, type AgentBehaviorDefinition } from '../src/shared/domain/agent-profile'
-import { PERSONALITY_HEARTBEAT, personalityBehavior, personalityDue, reflectionRooms } from '../src/runtime/modules/automations/personality-policy'
-import { reflectionContext } from '../src/runtime/modules/agent-state/reflection-context'
-import { promptSourceDefaults } from '../src/shared/domain/agent-prompts'
-import { BOBO_ALMA_SOUL } from '../src/shared/domain/bobo-persona'
-import type { Conversation, DigitalAgent } from '../src/shared/domain'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { WorkspaceService } from '../packages/runtime/src/modules/workspaces/workspace-service'
+import { AgentProfileService } from '../packages/runtime/src/modules/employees/agent-profile-service'
+import { AgentStateService, effectiveAgentState } from '../packages/runtime/src/modules/agent-state/state-service'
+import { clearAgentPersonality } from '../packages/runtime/src/modules/agent-state/lifecycle'
+import { AgentBehaviorService } from '../packages/runtime/src/modules/automations/agent-behaviors'
+import { NativeSchedules, BEHAVIOR_WORKFLOW } from '../packages/runtime/src/modules/automations/native-schedules'
+import { compileAgentContext } from '../packages/runtime/src/modules/employees/context-compiler'
+import { defaultAgentProfile, primaryPersonalityRoom, type AgentBehaviorRun, type AgentBehaviorDefinition } from '../packages/shared/src/domain/agent-profile'
+import { PERSONALITY_HEARTBEAT, personalityBehavior, personalityDue, reflectionRooms } from '../packages/runtime/src/modules/automations/personality-policy'
+import { reflectionContext } from '../packages/runtime/src/modules/agent-state/reflection-context'
+import { promptSourceDefaults } from '../packages/shared/src/domain/agent-prompts'
+import { BOBO_ALMA_SOUL } from '../packages/shared/src/domain/bobo-persona'
+import type { Conversation, DigitalAgent } from '../packages/shared/src/domain'
 const disposals: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const close of disposals.splice(0).reverse()) await close(); vi.useRealTimers() })
 async function fixture() {
@@ -65,7 +65,7 @@ it('records source-backed emotion transitions atomically and clears them with an
 
 it('selects recorded emotion times with current source restrictions, parent versions and forget barriers', async () => {
   const f = await fixture(), at = new Date(2026, 9, 20, 12).toISOString()
-  const parent = { id: 'parent', ownerAgentId: 'bobo', scope: 'employee', useScope: 'employee', content: '较早的依据', sourceMessageIds: ['older'], sourceResourceIds: [], sourceConversationIds: ['room'], origin: 'user', version: 2, status: 'active', createdAt: '2026-10-18T00:00:00Z', updatedAt: at } as import('../src/shared/domain').MemoryEntry
+  const parent = { id: 'parent', ownerAgentId: 'bobo', scope: 'employee', useScope: 'employee', content: '较早的依据', sourceMessageIds: ['older'], sourceResourceIds: [], sourceConversationIds: ['room'], origin: 'user', version: 2, status: 'active', createdAt: '2026-10-18T00:00:00Z', updatedAt: at } as import('../packages/shared/src/domain').MemoryEntry
   const event = { id: 'event', agentId: 'bobo', stateId: 'state', stateRevision: 1, conversationId: 'other', sourceConversationIds: ['other'], sourceMessageIds: ['current'], sourceMemories: [{ id: 'parent', version: 2 }], emotion: { mood: 'curious', valence: 7, energy: 6, reason: '一个例子让我好奇', updatedAt: at } }
   const other = { ...f.room, id: 'other' }
   const input = { day: '2026-10-20', rooms: [f.room, other], messages: [], entries: [parent], emotions: [event], access: { agentId: 'bobo', conversationId: 'room', sourceAllowed: () => true, conversationRestricted: () => false }, forgotten: new Set<string>(), provenance: () => ({ memories: [], messageIds: [], resourceIds: [], conversationIds: [] }) }
@@ -128,7 +128,7 @@ it('stops returning trips derived from forgotten messages and permits a fresh tr
 it('projects catch-up diaries alongside that day notes and preserves externally edited views', async () => {
   const f = await fixture(), homes = new WorkspaceService(f.root)
   await homes.initialize(f.agent)
-  const note: import('../src/shared/domain').MemoryEntry = { id: 'note', ownerAgentId: f.agent.id, scope: 'employee', content: '当日笔记', sourceMessageIds: [], sourceResourceIds: [], origin: 'user', version: 1, createdAt: new Date(2026, 9, 19, 8).toISOString(), updatedAt: new Date(2026, 9, 19, 8).toISOString(), useScope: 'employee', status: 'active' }
+  const note: import('../packages/shared/src/domain').MemoryEntry = { id: 'note', ownerAgentId: f.agent.id, scope: 'employee', content: '当日笔记', sourceMessageIds: [], sourceResourceIds: [], origin: 'user', version: 1, createdAt: new Date(2026, 9, 19, 8).toISOString(), updatedAt: new Date(2026, 9, 19, 8).toISOString(), useScope: 'employee', status: 'active' }
   const diary = { ...note, id: 'diary', content: '昨天的反思正文', origin: 'model' as const, createdAt: new Date(2026, 9, 20, 12).toISOString(), diary: { date: '2026-10-19', behaviorRunId: 'day-reflection' } }
   const today = { ...note, id: 'today', content: '次日笔记', createdAt: new Date(2026, 9, 20, 8).toISOString() }
   const memory = { namespace: 'employee:bobo', epoch: 1, entries: [today, diary, note] }
@@ -148,7 +148,7 @@ it('keeps every authorized message of the source day and does not replay it afte
   const group = { ...f.room, id: 'group', kind: 'group' as const, mainPrivate: false }
   const rooms = reflectionRooms('bobo', f.room, [f.room, group, { ...group, id: 'restricted', memoryScope: 'conversation' }, { ...group, id: 'foreign', agentIds: ['peer'] }])
   expect(rooms.map(room => room.id)).toEqual(['room', 'group'])
-  const messages = Array.from({ length: 70 }, (_, index) => ({ id: `day-${index}`, conversationId: index % 2 ? 'group' : 'room', sequence: index, senderType: 'user', status: 'completed', createdAt: new Date(day + index * 60_000).toISOString(), content: `当日内容${index}` })) as import('../src/shared/domain').Message[]
+  const messages = Array.from({ length: 70 }, (_, index) => ({ id: `day-${index}`, conversationId: index % 2 ? 'group' : 'room', sequence: index, senderType: 'user', status: 'completed', createdAt: new Date(day + index * 60_000).toISOString(), content: `当日内容${index}` })) as import('../packages/shared/src/domain').Message[]
   const selected = reflectionContext({ day: '2026-10-19', rooms, messages, entries: [], access: { agentId: 'bobo', conversationId: 'room', sourceAllowed: () => true, conversationRestricted: () => false }, forgotten: new Set(['day-4']), provenance: () => ({ memories: [], messageIds: [], resourceIds: [], conversationIds: [] }) })
   expect(selected.messages).toHaveLength(69)
   expect(selected.messages[0].id).toBe('day-0')
@@ -165,7 +165,7 @@ it('keeps every authorized message of the source day and does not replay it afte
 
 it('continues through older missed source days without replaying failed or already written diaries', async () => {
   const f = await fixture(), profile = defaultAgentProfile('bobo', true), reflection = behavior({ id: 'builtin-reflection', kind: 'reflection' })
-  const messages = [16, 17, 18, 19, 20].map(day => ({ id: `day-${day}`, conversationId: f.room.id, status: 'completed', senderType: 'user', createdAt: new Date(2026, 9, day, 9).toISOString() })) as import('../src/shared/domain').Message[]
+  const messages = [16, 17, 18, 19, 20].map(day => ({ id: `day-${day}`, conversationId: f.room.id, status: 'completed', senderType: 'user', createdAt: new Date(2026, 9, day, 9).toISOString() })) as import('../packages/shared/src/domain').Message[]
   const attempted = [{ behaviorId: 'builtin-reflection', sourceMessageId: 'day-19', reflectionDay: '2026-10-19', status: 'failed' }] as AgentBehaviorRun[]
   const at = new Date(2026, 9, 20, 12).getTime()
   const next = personalityDue(profile, reflection, messages, attempted, undefined, at, ['2026-10-18'])!
@@ -197,7 +197,7 @@ it('admits an older missed day through actual storage and keeps existing diary a
 
 it('includes only actual dated notes with all authorized parent versions and keeps their original dates', async () => {
   const f = await fixture(), at = new Date(2026, 9, 19, 12).toISOString()
-  const parent = { id: 'parent', ownerAgentId: 'bobo', scope: 'employee', useScope: 'employee', content: '原笔记', sourceMessageIds: ['older-source'], sourceResourceIds: [], sourceConversationIds: ['room'], origin: 'user', version: 2, status: 'active', createdAt: new Date(2026, 9, 18, 9).toISOString(), updatedAt: at } as import('../src/shared/domain').MemoryEntry
+  const parent = { id: 'parent', ownerAgentId: 'bobo', scope: 'employee', useScope: 'employee', content: '原笔记', sourceMessageIds: ['older-source'], sourceResourceIds: [], sourceConversationIds: ['room'], origin: 'user', version: 2, status: 'active', createdAt: new Date(2026, 9, 18, 9).toISOString(), updatedAt: at } as import('../packages/shared/src/domain').MemoryEntry
   const note = { ...parent, id: 'note', sourceMemoryIds: ['parent'], createdAt: at, content: '今天整理的旧笔记', version: 1 }
   const restricted = { ...note, id: 'restricted', conversationId: 'other', sourceConversationIds: ['other'], useScope: 'conversation' as const }
   const expired = { ...note, id: 'expired', expiresAt: '2000-01-01T00:00:00Z' }
@@ -387,7 +387,7 @@ it('only addresses the main private chat and respects quiet hours, idle frequenc
   expect(primaryPersonalityRoom('bobo', rooms)?.id).toBe('room')
   expect(primaryPersonalityRoom('bobo', [{ ...f.room, list: { hidden: true } }])).toBeUndefined()
   const greeting = personalityBehavior(profile, f.room, 'builtin-greeting')!
-  const messages = [{ id: 'user', conversationId: 'room', senderType: 'user', status: 'completed', createdAt: new Date(at - 5 * 3600_000).toISOString() }] as import('../src/shared/domain').Message[]
+  const messages = [{ id: 'user', conversationId: 'room', senderType: 'user', status: 'completed', createdAt: new Date(at - 5 * 3600_000).toISOString() }] as import('../packages/shared/src/domain').Message[]
   expect(personalityDue(profile, greeting, messages, [], undefined, at)?.sourceMessageId).toBe('user')
   expect(personalityDue(profile, greeting, messages, [], undefined, new Date(2026, 9, 19, 23).getTime())).toBeUndefined()
   expect(personalityDue(profile, greeting, [{ ...messages[0], createdAt: new Date(at - 60_000).toISOString() }], [], undefined, at)).toBeUndefined()
@@ -403,13 +403,13 @@ it('reflects at day end or catches up once, advances travel at most daily and pr
   expect((await f.profiles.get('bobo')).behaviors).toEqual([behavior()])
   expect((await f.profiles.get('bobo')).proactive.enabled).toBe(false)
   const reflection = personalityBehavior(profile, f.room, 'builtin-reflection')!, travel = personalityBehavior(profile, f.room, 'builtin-travel')!
-  const messages = [{ id: 'today', conversationId: 'room', senderType: 'user', status: 'completed', createdAt: new Date(2026, 9, 19, 12).toISOString() }] as import('../src/shared/domain').Message[]
+  const messages = [{ id: 'today', conversationId: 'room', senderType: 'user', status: 'completed', createdAt: new Date(2026, 9, 19, 12).toISOString() }] as import('../packages/shared/src/domain').Message[]
   expect(personalityDue(profile, reflection, messages, [], undefined, new Date(2026, 9, 19, 20).getTime())).toBeUndefined()
   const due = personalityDue(profile, reflection, messages, [], undefined, at)!
   expect(due).toBeDefined()
   expect(personalityDue(profile, reflection, messages, [{ ...due, behaviorId: reflection.id, conversationId: 'room', status: 'interrupted' } as AgentBehaviorRun], undefined, at)).toBeUndefined()
   expect(personalityDue(profile, reflection, messages, [], undefined, new Date(2026, 9, 20, 12).getTime())).toBeDefined()
-  const state: import('../src/shared/domain/agent-profile').AgentPersonalityState = { id: 'state', agentId: 'bobo', revision: 1, updatedAt: new Date(at).toISOString(), travel: { destination: '京都', active: true, day: 1, startedAt: new Date(at).toISOString(), events: [] } }
+  const state: import('../packages/shared/src/domain/agent-profile').AgentPersonalityState = { id: 'state', agentId: 'bobo', revision: 1, updatedAt: new Date(at).toISOString(), travel: { destination: '京都', active: true, day: 1, startedAt: new Date(at).toISOString(), events: [] } }
   expect(personalityDue(profile, travel, messages, [], state, at)).toBeUndefined()
   expect(personalityDue(profile, travel, messages, [], state, at + 24 * 3600_000)).toBeDefined()
   expect(personalityBehavior(profile, f.room, 'check-in')).toBeUndefined()

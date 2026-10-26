@@ -6,14 +6,14 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { expect } from '@playwright/test'
-import { isCoreAgent } from '../../../src/shared/domain/core-agent'
+import { isCoreAgent } from '../../../packages/shared/src/domain/core-agent'
 import { createBdd } from 'playwright-bdd'
 import { test as base } from '../support/test'
 import type { Desktop } from '../support/desktop'
 import { cp, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
-import type { DigitalAgent, Conversation, Message, AgentRun, Resource } from '../../../src/shared/domain'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
+import type { DigitalAgent, Conversation, Message, AgentRun, Resource } from '../../../packages/shared/src/domain'
 import { startSkillDeliveryModel } from '../../fixtures/skills/delivery-model'
 
 type Scenario = {

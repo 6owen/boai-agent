@@ -10,9 +10,9 @@ import { spawn } from 'node:child_process'
 import { StringDecoder } from 'node:string_decoder'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { nativeProcessGuard } from '../../src/runtime/adapters/native-process-guard'
+import { nativeProcessGuard } from '../../packages/runtime/src/adapters/native-process-guard'
 import { EvaluationBudget } from './budget'
-import type { NativeAction } from '../../src/shared/domain/execution'
+import type { NativeAction } from '../../packages/shared/src/domain/execution'
 
 /** Durable action records include requests too short-lived for the UI polling interval. */
 export function nativeInputCoverage(actions: NativeAction[]) {

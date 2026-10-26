@@ -6,7 +6,7 @@
  */
 import { resolve } from 'node:path'
 import type { Desktop } from './desktop'
-import type { Methods } from '../../../src/shared/ipc'
+import type { Methods } from '../../../packages/shared/src/ipc'
 type Fault = { sends: Methods['sendExternalTask']['input'][]; lookups: number; lost: number }
 export async function prepareExternalTask(runtime: Desktop) {
   await runtime.start()

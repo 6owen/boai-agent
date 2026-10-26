@@ -11,11 +11,11 @@ import { mkdtemp, mkdir, realpath, writeFile, readFile, readdir, rm, copyFile, c
 import { tmpdir } from 'node:os'
 import { basename, join, resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
-import { AppService } from '../src/runtime/service'
-import { bundledRuntimePlugins, runtimeManifestSchema, type RuntimePluginCatalog } from '../src/shared/plugins/runtime-catalog'
-import { hostFrameSchema } from '../src/runtime/adapters/plugins/validation'
-import { piGatewaySource, opencodeGatewaySource } from '../src/runtime/adapters/plugins/gateway-source'
-import type { Connection, Conversation, ConversationDetail, DigitalAgent, LaunchProfile, Message } from '../src/shared/domain'
+import { AppService } from '../packages/runtime/src/service'
+import { bundledRuntimePlugins, runtimeManifestSchema, type RuntimePluginCatalog } from '../packages/shared/src/plugins/runtime-catalog'
+import { hostFrameSchema } from '../packages/runtime/src/adapters/plugins/validation'
+import { piGatewaySource, opencodeGatewaySource } from '../packages/runtime-plugins/src/gateway-source'
+import type { Connection, Conversation, ConversationDetail, DigitalAgent, LaunchProfile, Message } from '../packages/shared/src/domain'
 
 const cleanup: (() => Promise<void>)[] = []
 afterEach(async () => { for (const close of cleanup.splice(0).reverse()) await close() })

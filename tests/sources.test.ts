@@ -14,12 +14,12 @@ import { mkdtemp, realpath, readFile, writeFile, rm, symlink } from 'node:fs/pro
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { sourceCreationCommands } from '../src/runtime/modules/sources/source-commands'
-import { SourceService } from '../src/runtime/modules/sources/source-service'
-import { openSourceSession, redactSourceValue } from '../src/runtime/modules/sources/source-provider'
-import { type DataSource, type DataSourceConfig } from '../src/shared/domain/sources'
-import type { DigitalAgent } from '../src/shared/domain'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { sourceCreationCommands } from '../packages/runtime/src/modules/sources/source-commands'
+import { SourceService } from '../packages/runtime/src/modules/sources/source-service'
+import { openSourceSession, redactSourceValue } from '../packages/runtime/src/modules/sources/source-provider'
+import { type DataSource, type DataSourceConfig } from '../packages/shared/src/domain/sources'
+import type { DigitalAgent } from '../packages/shared/src/domain'
 import { webSearchServer, webSourceConfig, webResult, pageText, resultUrl } from './fixtures/web-search-server'
 
 const cleanups: (() => Promise<unknown>)[] = []

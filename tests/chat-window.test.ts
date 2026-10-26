@@ -10,16 +10,16 @@
 import { act, createElement as h, createRef, type ComponentProps } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import type { Conversation, DigitalAgent, Message } from '../src/shared/domain'
-import type { ConversationView } from '../src/shared/domain/reading'
-import type { DesktopApi } from '../src/shared/ipc'
-import { defaultUserProfile } from '../src/shared/domain/profile'
-import { ChatView, type ChatViewProps } from '../src/renderer/pages/conversations/-components/chat-view'
-import { MentionInput, type MentionInputHandle } from '../src/renderer/pages/conversations/-components/mention-input'
-import type { ChatDraft } from '../src/renderer/pages/conversations/presentation'
-import { ChannelsTab, type ChannelChatWindow } from '../src/renderer/components/detail-panel/channels-tab'
+import type { Conversation, DigitalAgent, Message } from '../packages/shared/src/domain'
+import type { ConversationView } from '../packages/shared/src/domain/reading'
+import type { DesktopApi } from '../packages/shared/src/ipc'
+import { defaultUserProfile } from '../packages/shared/src/domain/profile'
+import { ChatView, type ChatViewProps } from '../apps/electron/src/renderer/pages/conversations/-components/chat-view'
+import { MentionInput, type MentionInputHandle } from '../apps/electron/src/renderer/pages/conversations/-components/mention-input'
+import type { ChatDraft } from '../apps/electron/src/renderer/pages/conversations/presentation'
+import { ChannelsTab, type ChannelChatWindow } from '../apps/electron/src/renderer/components/detail-panel/channels-tab'
 
-vi.mock('../src/renderer/pages/conversations/-components/composer-toolbar', () => ({ ComposerToolbar: () => null }))
+vi.mock('../apps/electron/src/renderer/pages/conversations/-components/composer-toolbar', () => ({ ComposerToolbar: () => null }))
 let host: HTMLDivElement, root: Root, props: ChatViewProps
 const noop = () => {}
 const room = (id: string): Conversation => ({ id, kind: 'direct', title: `会话${id}`, agentIds: ['employee'], workspacePath: `/workspace/${id}`, createdAt: '2026-10-20T00:00:00Z', updatedAt: '2026-10-20T00:00:00Z' }) as Conversation

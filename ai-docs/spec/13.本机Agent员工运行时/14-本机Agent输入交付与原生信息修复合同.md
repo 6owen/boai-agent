@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [OUTPUT]: 2026-10-20按用户要求清理测试产物/独立记录及其附件链接；历史文字结果不代表原件仍然保留。
 [OUTPUT]: 2026-10-13用户明确本机Agent不显示、不施加BOAI用量或预算；覆盖普通聊天、文件Work和本机协作/自动化，API规则保留；实施与验证唯一归13组06 §147。
 [OUTPUT]: 2026-10-13普通native截断已移除，真实Claude同run材料回答与双后端四轮复测归06 §145；Work/组织/自动化独立预算保持，完整认证分口径。
@@ -48,7 +49,7 @@ flowchart LR
 | I1，新增静态缺口 | 当前材料投影将TXT/MD正文交给Agent、图片走首发媒体输入；通用文件只提供元数据。运行中的原生回答接口只有字符串，初始材料快照也不会自动包含新附件 | 源码分析确认交付缺口；普通文件和等待中图片尚未新增真实任务验证，不能说Agent已读原件或已验证所有文件格式 |
 | M1，原生元信息 | Claude驱动忽略初始化模型/命令/Agent目录，以消息model查`result.modelUsage`容量。原CLI初始化为`deepseek-flash[1m]`，主消息model为`deepseek-flash` | 两类任务的原始CLI事件代入现算法均重现首轮取200k、第二轮缺失；按初始化模型取到的主模型条目两轮均为1M。与BOAI记录吻合，但未直接留存BOAI完整result帧，不能据此断言实际能力被降为200k |
 
-根因落点： [service.ts](../../../src/runtime/service.ts)、[group-scheduler.ts](../../../src/runtime/group-scheduler.ts)、[execution.ts](../../../src/runtime/modules/conversations/execution.ts)、[native-sessions.ts](../../../src/runtime/adapters/native-sessions.ts)、[Claude会话驱动](../../../src/runtime/adapters/claude/conversation.ts)。CLI原始事件和BOAI回执见summary.json（测试记录已清理），待决边界见boundaries/summary.json（测试记录已清理），零业务消息初始化见claude-initialization-metadata.json（测试记录已清理）。
+根因落点： [service.ts](../../../packages/runtime/src/service.ts)、[group-scheduler.ts](../../../packages/runtime/src/group-scheduler.ts)、[execution.ts](../../../packages/runtime/src/modules/conversations/execution.ts)、[native-sessions.ts](../../../packages/runtime/src/adapters/native-sessions.ts)、[Claude会话驱动](../../../packages/runtime/src/adapters/claude/conversation.ts)。CLI原始事件和BOAI回执见summary.json（测试记录已清理），待决边界见boundaries/summary.json（测试记录已清理），零业务消息初始化见claude-initialization-metadata.json（测试记录已清理）。
 
 ## 3. 当前原生请求的回答接续
 

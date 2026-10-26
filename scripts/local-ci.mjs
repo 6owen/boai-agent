@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 应用与评估编译按当前工作区公开exports解析，保留原执行与分发合同。
  * [INPUT]: 当前干净提交、锁定依赖、固定工程/T1/全部本机UI合同。
  * [OUTPUT]: 本机完整CI/串行封存；核验原manifest及封存触发分支/runId供发布前检，不接云端旁路。
  * [POS]: 本机CI唯一入口；真实供应商/基线接受/发布及安装不在此执行。
@@ -10,7 +11,7 @@ import { mkdir, readFile, writeFile, readdir, lstat } from 'node:fs/promises'
 import { join, resolve, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { tmpdir } from 'node:os'
-import { build } from 'esbuild'
+import { buildWorkspace as build } from './workspace-packages.mjs'
 import buildProcessGuard from './build-process-guard.mjs'
 import { acquireResourceLock } from './resource-lock.mjs'
 import { sourceIdentity } from './ui-regression.mjs'

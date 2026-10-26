@@ -11,8 +11,8 @@ import { fork } from 'node:child_process'
 import { mkdirSync, readFileSync } from 'node:fs'
 import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { CredentialVault } from '../../src/main/vault'
-import type { Connection } from '../../src/shared/domain'
+import { CredentialVault } from '../../apps/electron/src/main/vault'
+import type { Connection } from '../../packages/shared/src/domain'
 
 let failurePath: string | undefined
 async function main() {

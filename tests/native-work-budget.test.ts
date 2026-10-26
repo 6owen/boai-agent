@@ -12,11 +12,11 @@ import { afterEach, expect, it } from 'vitest'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { AgentRun, BudgetModelCall, Conversation, DigitalAgent, Message, WorkBudget, WorkItem } from '../src/shared/domain'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { WorkRepository } from '../src/runtime/modules/collaboration/work-repository'
-import { WORK_DURATION_MS } from '../src/runtime/modules/collaboration/work-budget'
-import { aggregateActivity } from '../src/runtime/modules/profile/profile-activity'
+import type { AgentRun, BudgetModelCall, Conversation, DigitalAgent, Message, WorkBudget, WorkItem } from '../packages/shared/src/domain'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { WorkRepository } from '../packages/runtime/src/modules/collaboration/work-repository'
+import { WORK_DURATION_MS } from '../packages/runtime/src/modules/collaboration/work-budget'
+import { aggregateActivity } from '../packages/runtime/src/modules/profile/profile-activity'
 
 const cleanups: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const cleanup of cleanups.splice(0).reverse()) await cleanup() })

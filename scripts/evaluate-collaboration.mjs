@@ -1,10 +1,11 @@
 /*
+ * [OUTPUT]: Workspace源码路径迁至apps/packages，保留既有输出与业务合同。
  * [INPUT]: 源码版本、固定评估场景/样本编号、只读本地连接和显式运行参数。
  * [OUTPUT]: 支持零调用预登记/原登记执行、前后输入核验及模型配置锁定；隔离真实评估共用请求总预算。
  * [POS]: 手动真实模型验收入口；不进入 pnpm test，也不修改产品数据。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { build } from 'esbuild'
+import { buildWorkspace as build } from './workspace-packages.mjs'
 import { spawn } from 'node:child_process'
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { resolve, join, dirname } from 'node:path'
@@ -32,7 +33,7 @@ if (!registered) { await mkdir(dirname(output), { recursive: true }); await mkdi
 const buildDir = join(output, 'runtime'); await mkdir(buildDir, { recursive: true })
 async function snapshot() {
 const hashes = {}
-for (const directory of ['src/runtime', 'src/shared']) for (const entry of (await readdir(join(source, directory), { recursive: true })).sort()) {
+for (const directory of ['packages/runtime/src', 'packages/shared/src', 'packages/transport/src', 'packages/runtime-plugin-sdk/src', 'packages/runtime-plugins/src']) for (const entry of (await readdir(join(source, directory), { recursive: true })).sort()) {
   if (!/\.(ts|tsx)$/.test(entry)) continue
   const file = `${directory}/${entry}`; hashes[file] = createHash('sha256').update(await readFile(join(source, file))).digest('hex')
 }
@@ -49,7 +50,7 @@ if (!registered) await writeFile(join(output, 'settings.json'), JSON.stringify(s
 if (args.includes('--prepare')) process.exit(0)
 await writeFile(join(output, 'execution-start.json'), JSON.stringify({ at: new Date().toISOString(), registered: !!registered }), { flag: 'wx' })
 const worker = join(buildDir, `${label}-worker.mjs`), host = join(buildDir, `${label}-host.cjs`)
-await build({ stdin: { contents: `import { AppService } from ${JSON.stringify(join(source, 'src/runtime/service.ts'))}; import { MastraEngine } from ${JSON.stringify(join(source, 'src/runtime/adapters/mastra/engine.ts'))}; import { runEvaluation } from ${JSON.stringify(resolve('tests/evaluation/harness.ts'))}; process.once('message', input => { runEvaluation(input, { AppService, MastraEngine }).then(() => process.exit(process.exitCode ?? 0), error => { process.stderr.write(String(error?.message ?? error)+'\\n'); process.exit(1) }) });`, resolveDir: process.cwd() }, outfile: worker, bundle: true, platform: 'node', format: 'esm', packages: 'external', target: 'node22', nodePaths: [resolve('node_modules')] })
+await build({ stdin: { contents: `import { AppService } from ${JSON.stringify(join(source, 'packages/runtime/src/service.ts'))}; import { MastraEngine } from ${JSON.stringify(join(source, 'packages/runtime/src/adapters/mastra/engine.ts'))}; import { runEvaluation } from ${JSON.stringify(resolve('tests/evaluation/harness.ts'))}; process.once('message', input => { runEvaluation(input, { AppService, MastraEngine }).then(() => process.exit(process.exitCode ?? 0), error => { process.stderr.write(String(error?.message ?? error)+'\\n'); process.exit(1) }) });`, resolveDir: process.cwd() }, outfile: worker, workspaceRoot: source, bundle: true, platform: 'node', format: 'esm', packages: 'external', target: 'node22', nodePaths: [resolve('node_modules')] })
 await build({ entryPoints: ['tests/evaluation/host.ts'], outfile: host, bundle: true, platform: 'node', format: 'cjs', packages: 'external', target: 'node22' })
 const env = { ...process.env }; delete env.ELECTRON_RUN_AS_NODE
 const child = spawn(electron, [host, join(output, 'settings.json'), worker], { stdio: 'inherit', env })

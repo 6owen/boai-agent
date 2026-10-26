@@ -7,9 +7,9 @@
  * [PROTOCOL]: 修改时同步Header及所属.folder.md。
  */
 import { join, resolve } from 'node:path'
-import type { AgentRun, Conversation, Message, WorkItem } from '../../../src/shared/domain'
-import type { WorkViewPage, WorkViewQuery } from '../../../src/shared/domain/work-views'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
+import type { AgentRun, Conversation, Message, WorkItem } from '../../../packages/shared/src/domain'
+import type { WorkViewPage, WorkViewQuery } from '../../../packages/shared/src/domain/work-views'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
 import type { Desktop } from './desktop'
 import { prepareArtifactsDesktop } from './artifacts'
 import { teamEndpoint, sendTeamOutput } from '../../fixtures/team-planner'

@@ -10,8 +10,8 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { expect, it } from 'vitest'
-import type { Connection, LaunchProfile } from '../src/shared/domain'
-import { agentModelConnections, agentModelLabel, agentModelSelectionReady, agentRunMode, changeAgentRunMode, selectAgentProfile, type AgentModelSelection } from '../src/renderer/components/employee/agent-model-selection'
+import type { Connection, LaunchProfile } from '../packages/shared/src/domain'
+import { agentModelConnections, agentModelLabel, agentModelSelectionReady, agentRunMode, changeAgentRunMode, selectAgentProfile, type AgentModelSelection } from '../apps/electron/src/renderer/components/employee/agent-model-selection'
 
 const connections: Connection[] = [
   { id: 'first', name: '日常连接', provider: 'openai', baseUrl: '', defaultModel: 'default-a', hasApiKey: true },

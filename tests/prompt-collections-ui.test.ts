@@ -8,9 +8,9 @@
 import { act, createElement as h } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import type { DesktopApi } from '../src/shared/ipc'
-import type { PromptCollections } from '../src/shared/domain/prompt-templates'
-import { usePromptCollections } from '../src/renderer/pages/library/use-prompt-collections'
+import type { DesktopApi } from '../packages/shared/src/ipc'
+import type { PromptCollections } from '../packages/shared/src/domain/prompt-templates'
+import { usePromptCollections } from '../apps/electron/src/renderer/pages/library/use-prompt-collections'
 let root: Root, host: HTMLDivElement, current: ReturnType<typeof usePromptCollections>
 const value = (revision: number, promptIds: string[]): PromptCollections => ({ revision, promptIds, groups: [], groupByPromptId: {} })
 beforeEach(() => { vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true); host = document.createElement('div'); document.body.append(host); root = createRoot(host) })

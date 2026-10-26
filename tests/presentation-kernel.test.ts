@@ -9,8 +9,8 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import JSZip from 'jszip'
 import { afterEach, expect, test } from 'vitest'
-import { PresentationProjects } from '../src/runtime/modules/presentations/presentation-project'
-import { f as layouts, c as icons } from '../src/runtime/modules/presentations/alma/model.mjs'
+import { PresentationProjects } from '../packages/runtime/src/modules/presentations/presentation-project'
+import { f as layouts, c as icons } from '../packages/runtime/src/modules/presentations/alma/model.mjs'
 
 const roots: string[] = []
 afterEach(async () => { for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }) })

@@ -18,11 +18,11 @@ import { sampleHash } from './evaluation/checks'
 import { EvaluationBudget } from './evaluation/budget'
 import { cases } from './evaluation/cases'
 import { SCORER_VERSION, type EvaluationRecord } from './evaluation/schema'
-import type { Connection } from '../src/shared/domain'
+import type { Connection } from '../packages/shared/src/domain'
 
 const roots: string[] = []
 afterEach(async () => { vi.restoreAllMocks(); for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }) })
-const sourceFile = 'src/runtime/prompt.ts'
+const sourceFile = 'packages/runtime/src/prompt.ts'
 const config: OptimizationConfig = { id: 'business-fixture', goal: '提高真实文件交付', cases: ['reviewed-operations', 'parallel-branches', 'conflicting-sources', 'hostile-source', 'no-unsupported-claims', 'wrong-child-result'],
   validationCases: ['renamed-team', 'changed-values', 'authorized-takeover', 'bounded-relay', 'independent-files', 'plan-only'], samples: 3,
   connectionId: 'fixture-only', dataPath: '/not-real-credentials', maxRequests: 100, maxRounds: 2, stopAfterNoImprovement: 2, minimumGain: 0.1, maxCallRatio: 1.1, allowedChanges: [sourceFile] }
@@ -131,7 +131,7 @@ it('validates raw JSON using the product protocol and preserves rejected text an
 async function setup() {
   const parent = await mkdtemp(join(tmpdir(), 'boai-business-')); roots.push(parent)
   const source = join(parent, 'source'), root = join(parent, 'experiment')
-  await mkdir(join(source, 'src/runtime'), { recursive: true })
+  await mkdir(join(source, 'packages/runtime/src'), { recursive: true })
   await writeFile(join(source, sourceFile), 'export const instruction = "broken"\n')
   await writeFile(join(source, 'package.json'), '{"type":"module"}'); await writeFile(join(source, 'vitest.config.ts'), 'export default {}')
   await symlink(resolve('node_modules'), join(source, 'node_modules'), 'dir')

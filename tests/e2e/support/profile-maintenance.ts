@@ -10,7 +10,7 @@ import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { createHash, randomUUID } from 'node:crypto'
 import type { Desktop } from './desktop'
-import { acquireProfileAccess } from '../../../src/runtime/profile-access'
+import { acquireProfileAccess } from '../../../packages/runtime/src/profile-access'
 import { repairProcess, type ProcessReceipt } from '../../evaluation/repair-process'
 
 async function snapshot(root: string): Promise<unknown[]> {

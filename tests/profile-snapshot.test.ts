@@ -10,8 +10,8 @@ import { tmpdir, userInfo } from 'node:os'
 import { join, resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { DatabaseSync } from 'node:sqlite'
-import { acquireProfileAccess, acquireRuntimeProfileAccess, ProfileAccessBusyError } from '../src/runtime/profile-access'
-import { createProfileSnapshot, verifyProfileSnapshot, type ProfileSnapshotTools } from '../src/runtime/profile-snapshot'
+import { acquireProfileAccess, acquireRuntimeProfileAccess, ProfileAccessBusyError } from '../packages/runtime/src/profile-access'
+import { createProfileSnapshot, verifyProfileSnapshot, type ProfileSnapshotTools } from '../packages/runtime/src/profile-snapshot'
 import { repairProcess, saveProcess } from './evaluation/repair-process'
 
 let helper: string, tool: string, guard: string
@@ -183,7 +183,7 @@ test.each(['manifest-sync', 'directory-sync', 'manifest-read'])('cancellation du
       return value
     },
   }))
-  const isolated = await import('../src/runtime/profile-snapshot')
+  const isolated = await import('../packages/runtime/src/profile-snapshot')
   const outcome = await isolated.createProfileSnapshot(f.maintenance, f.output, f.id, f.tools).then(() => 'completed', () => 'rejected')
   expect(triggered).toBe(true)
   expect(outcome).toBe('rejected')
@@ -205,7 +205,7 @@ test('a final sync failure and an unwritable failure marker cannot turn a reject
       return actual.writeFile(...args)
     },
   }))
-  const isolated = await import('../src/runtime/profile-snapshot')
+  const isolated = await import('../packages/runtime/src/profile-snapshot')
   const outcome = await isolated.createProfileSnapshot(f.maintenance, f.output, f.id, f.tools).then(() => 'completed', () => 'rejected')
   expect(failedSync && failedMarker).toBe(true)
   expect(outcome).toBe('rejected')

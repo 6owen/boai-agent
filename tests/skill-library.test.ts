@@ -10,11 +10,11 @@ import { cp, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
-import { AppService } from '../src/runtime/service'
-import type { Method, Methods } from '../src/shared/ipc'
-import type { SkillScan } from '../src/shared/domain/skills'
-import { inspectResourceTree } from '../src/runtime/modules/resources/local-resources'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
+import { AppService } from '../packages/runtime/src/service'
+import type { Method, Methods } from '../packages/shared/src/ipc'
+import type { SkillScan } from '../packages/shared/src/domain/skills'
+import { inspectResourceTree } from '../packages/runtime/src/modules/resources/local-resources'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
 
 const roots: string[] = [], services: AppService[] = []
 afterEach(async () => { for (const service of services.splice(0)) await service.close(); for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }) })

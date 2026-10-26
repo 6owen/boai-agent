@@ -1,10 +1,11 @@
 /*
+ * [OUTPUT]: 应用与评估编译按当前工作区公开exports解析，保留原执行与分发合同。
  * [INPUT]: 固定开发计划、新实验目录和源码目录；可选只读状态查询。
  * [OUTPUT]: 一条命令运行Codex开发自迭代、打印停止与补丁位置；不改当前工作树或自动提交。
  * [POS]: scripts/iterate-agent.mjs，pnpm dev:repair入口。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
-import { build } from 'esbuild'
+import { buildWorkspace as build } from './workspace-packages.mjs'
 import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises'
 import { resolve, join } from 'node:path'
 import { pathToFileURL } from 'node:url'

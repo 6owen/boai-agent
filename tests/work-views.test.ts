@@ -13,11 +13,11 @@ import { createClient } from '@libsql/client'
 import { pathToFileURL } from 'node:url'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { AgentRun, Approval, WorkItem, Conversation, Message } from '../src/shared/domain'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { WorkViewRepository } from '../src/runtime/modules/collaboration/work-view-repository'
-import { ArtifactRepository } from '../src/runtime/modules/workspaces/artifact-repository'
-import { conversationFileQuerySchema, workViewQuerySchema, workViewTargetSchema, workViewsSql } from '../src/runtime/modules/collaboration/work-view-sql'
+import type { AgentRun, Approval, WorkItem, Conversation, Message } from '../packages/shared/src/domain'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { WorkViewRepository } from '../packages/runtime/src/modules/collaboration/work-view-repository'
+import { ArtifactRepository } from '../packages/runtime/src/modules/workspaces/artifact-repository'
+import { conversationFileQuerySchema, workViewQuerySchema, workViewTargetSchema, workViewsSql } from '../packages/runtime/src/modules/collaboration/work-view-sql'
 
 const stores: ProductStore[] = [], roots: string[] = []
 afterEach(async () => { await Promise.all(stores.splice(0).map(store => store.close())); await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))) })

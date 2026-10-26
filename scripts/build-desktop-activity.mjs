@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Workspace源码路径迁至apps/packages，保留既有输出与业务合同。
  * [INPUT]: Local macOS SDK and fixed ScreenCaptureKit/Vision helper source.
  * [OUTPUT]: Native local-OCR helper; building never requests permission or captures a screen.
  * [POS]: Shared host build step.
@@ -13,7 +14,7 @@ import { promisify } from 'node:util'
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
 export default async function buildDesktopActivity() {
   if (process.platform !== 'darwin') return
-  const source = join(root, 'src/main/desktop-activity.swift'), output = join(root, 'dist/native/boai-desktop-activity')
+  const source = join(root, 'apps/electron/src/main/desktop-activity.swift'), output = join(root, 'dist/native/boai-desktop-activity')
   const hash = createHash('sha256').update(await readFile(source)).update(process.arch).digest('hex')
   try { await access(output); if ((await readFile(`${output}.sha256`, 'utf8')) === hash) return } catch {}
   await mkdir(join(root, 'dist/native'), { recursive: true })

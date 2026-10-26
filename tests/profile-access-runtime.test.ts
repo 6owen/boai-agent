@@ -9,10 +9,10 @@ import { mkdtemp, readFile, rm, mkdir, lstat, symlink } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { randomUUID } from 'node:crypto'
-import { startOwnedRuntime } from '../src/runtime/bootstrap'
-import { startHeadlessServer } from '../src/runtime/headless'
-import { DesktopHostBridge } from '../src/runtime/desktop-host'
-import { acquireProfileAccess, ProfileAccessBusyError, ProfileMaintenancePendingError } from '../src/runtime/profile-access'
+import { startOwnedRuntime } from '../packages/runtime/src/bootstrap'
+import { startHeadlessServer } from '../packages/runtime/src/headless'
+import { DesktopHostBridge } from '../packages/runtime/src/desktop-host'
+import { acquireProfileAccess, ProfileAccessBusyError, ProfileMaintenancePendingError } from '../packages/runtime/src/profile-access'
 
 const cleanup: (() => unknown | Promise<unknown>)[] = []
 afterEach(async () => { vi.restoreAllMocks(); for (const dispose of cleanup.splice(0).reverse()) await dispose() })

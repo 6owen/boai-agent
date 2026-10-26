@@ -8,8 +8,8 @@ import { afterEach, expect, test } from 'vitest'
 import { mkdtemp, rm, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { SEARCH_INDEX_CLOCK_COLLECTION, SEARCH_INDEX_COLLECTION } from '../src/runtime/modules/conversations/search-index-sql'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { SEARCH_INDEX_CLOCK_COLLECTION, SEARCH_INDEX_COLLECTION } from '../packages/runtime/src/modules/conversations/search-index-sql'
 
 const roots: string[] = [], stores: Pick<ProductStore, 'close'>[] = []
 afterEach(async () => {

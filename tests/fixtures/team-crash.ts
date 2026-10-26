@@ -7,7 +7,7 @@
 import { fork } from 'node:child_process'
 import { mkdir, mkdtemp, rm } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
-import { build } from 'esbuild'
+import { buildWorkspace as build } from '../../scripts/workspace-packages.mjs'
 export async function interruptTeamCreation(dataPath: string, phase: string) {
   const cache = resolve('node_modules/.cache'); await mkdir(cache, { recursive: true })
   const runtime = await mkdtemp(join(cache, 'team-crash-')), outfile = join(runtime, 'runner.mjs')

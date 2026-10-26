@@ -6,9 +6,9 @@
  */
 import { join } from 'node:path'
 import { writeFile } from 'node:fs/promises'
-import { AppService } from '../../src/runtime/service'
+import { AppService } from '../../packages/runtime/src/service'
 import { writingPlan } from './team-planner'
-import type { TeamDraft, TeamDraftView } from '../../src/shared/domain/team-creation'
+import type { TeamDraft, TeamDraftView } from '../../packages/shared/src/domain/team-creation'
 
 const [dataPath, stopAt] = process.argv.slice(2)
 const service = new AppService({ dataPath, teamPlanner: async () => writingPlan, engine: { run: async () => {}, test: async () => '' }, secrets: { get: async () => '', set: async () => {}, delete: async () => {} }, emit: () => {},

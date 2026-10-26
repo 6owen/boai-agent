@@ -5,8 +5,8 @@
  * [PROTOCOL]: Update this Header and tests/.folder.md when changed.
  */
 import { expect, it } from 'vitest'
-import { observedFragments } from '../src/runtime/modules/desktop-activity/activity-fragments'
-import type { ActivitySample } from '../src/shared/domain/desktop-activity'
+import { observedFragments } from '../packages/runtime/src/modules/desktop-activity/activity-fragments'
+import type { ActivitySample } from '../packages/shared/src/domain/desktop-activity'
 
 const sample = (id: string, seconds: number, bundleId: string, title: string): ActivitySample => ({
   id, app: bundleId, bundleId, title, text: '', capturedAt: new Date(Date.UTC(2026, 9, 20, 10, 0, seconds)).toISOString(), hash: id,

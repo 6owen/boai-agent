@@ -6,7 +6,7 @@
  */
 import { expect } from '@playwright/test'
 import { join } from 'node:path'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
 import type { Desktop } from './desktop'
 
 type NavigationProbe = typeof globalThis & { __contextNavigation: { writes: string[]; dispose(): void } }

@@ -12,9 +12,9 @@ import { randomUUID } from 'node:crypto'
 import type { Desktop } from './desktop'
 import { localSkillsEntry } from './local-skills'
 import { startSkillDeliveryModel } from '../../fixtures/skills/delivery-model'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
-import type { DigitalAgent, Resource } from '../../../src/shared/domain'
-import type { BindLocalSkillInput } from '../../../src/shared/domain/skills'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
+import type { DigitalAgent, Resource } from '../../../packages/shared/src/domain'
+import type { BindLocalSkillInput } from '../../../packages/shared/src/domain/skills'
 
 export async function prepareSkillBindingDesktop(runtime: Desktop) {
   const packaged = Boolean(process.env.BOAI_TEST_PACKAGED_PATH), skillName = packaged ? `boai-d4-${randomUUID()}` : 'report-helper'

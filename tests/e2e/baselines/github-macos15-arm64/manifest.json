@@ -94,166 +94,166 @@
   },
   "cases": {
     "chat-light": {
-      "sha256": "164ec4d6861ab54d6129d2611ddbd3c131295df12c296afc21f8c778a4e104c2",
+      "sha256": "07cc67328b52024cacee41e1470c70840f3e3a2dcf5d4b10f0c4d5a9c1006743",
       "contract": "c89efcb46cb1942370b1cd9ad2d044f7bec6181d01781ab5637da12d61ea2e21",
       "source": {
-        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
-        "sourceHash": "a08516d07992c7bca13a646853fdffc6e2c7b0ad795fba5d7f6674328946c92b",
+        "commit": "1b49b93c5de7d261f26541ce20fe6a40f7bf5f07",
+        "sourceHash": "900fa579978d933334b614b1590ba443ffde50208d8805e1b93715e381ca58b0",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "afafe88230c5d9f6f4a320459006e80d1333b66b6f12e1bf0c30f890c152e91b",
-        "outputHash": "f64ceb504386f5ea68ec9c4d47459707fc2e58b5431493b385f199afe2d9b4a0",
+        "inputHash": "8080a6899df9b5765c8fb8d15b119dce941b92de4b88e8f2fc8c6c992e263e6c",
+        "outputHash": "fd1da487e175f11462a2b5bf3b7c14040f6443a89592b4ae608fc9131249d750",
         "node": "v24.16.0",
-        "createdAt": "2026-10-21T10:20:54.585Z"
+        "createdAt": "2026-10-26T01:56:51.784Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "39583678813",
+        "runId": "40256537906",
         "attempt": 1,
-        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
-        "artifactId": 12339308033,
-        "digest": "sha256:7f2a4b9e13c13433888b0d8a205657da12c505ecb5286641d5590c1f501cb832"
+        "commit": "1b49b93c5de7d261f26541ce20fe6a40f7bf5f07",
+        "artifactId": 12623323447,
+        "digest": "sha256:1bf32fe9601b6ba9eb72d4ea337db25eacff60cbb4b4c4caded5cbce15368b3a"
       },
-      "reason": "Reviewed v3 hosted display migration: 16 PNGs byte-identical; settings light/dark match main 6b464b31 typography groups and React Aria NumberField. Both review axes approve; pixel thresholds and masks unchanged.",
-      "candidate": "125048b1-d855-4084-b49a-a24b9436cfed",
-      "acceptedAt": "2026-10-21T10:46:56.150Z"
+      "reason": "PR25工作区入口随PR23目录整合进入AppShell；逐项审阅官方旧图、新图和差异图，五组明暗共10项均仅顶部工作区图标变化，原始RGBA各81像素且局限11x13区域，内容与布局保持。环境v3完全一致，其余8项PNG字节相同并保留；原行为断言、像素阈值和只读CI保持。",
+      "candidate": "6f22a62f-4484-414a-ad71-e676e6001331",
+      "acceptedAt": "2026-10-26T02:34:55.976Z"
     },
     "chat-dark": {
-      "sha256": "bc3e83a98b9ee77c59913c828709a9080cd32583ba019c503a7be9ae4f13288e",
+      "sha256": "f8a677aeadeff04b7f37692ac1e3881783e0e8660fffc9e0a55ce465378c1b1b",
       "contract": "7e8706c333be59ca1f8b8bb1b354fe4ef9bff324842980290dc58df20bcb3e8a",
       "source": {
-        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
-        "sourceHash": "a08516d07992c7bca13a646853fdffc6e2c7b0ad795fba5d7f6674328946c92b",
+        "commit": "1b49b93c5de7d261f26541ce20fe6a40f7bf5f07",
+        "sourceHash": "900fa579978d933334b614b1590ba443ffde50208d8805e1b93715e381ca58b0",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "afafe88230c5d9f6f4a320459006e80d1333b66b6f12e1bf0c30f890c152e91b",
-        "outputHash": "f64ceb504386f5ea68ec9c4d47459707fc2e58b5431493b385f199afe2d9b4a0",
+        "inputHash": "8080a6899df9b5765c8fb8d15b119dce941b92de4b88e8f2fc8c6c992e263e6c",
+        "outputHash": "fd1da487e175f11462a2b5bf3b7c14040f6443a89592b4ae608fc9131249d750",
         "node": "v24.16.0",
-        "createdAt": "2026-10-21T10:20:54.585Z"
+        "createdAt": "2026-10-26T01:56:51.784Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "39583678813",
+        "runId": "40256537906",
         "attempt": 1,
-        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
-        "artifactId": 12339308033,
-        "digest": "sha256:7f2a4b9e13c13433888b0d8a205657da12c505ecb5286641d5590c1f501cb832"
+        "commit": "1b49b93c5de7d261f26541ce20fe6a40f7bf5f07",
+        "artifactId": 12623323447,
+        "digest": "sha256:1bf32fe9601b6ba9eb72d4ea337db25eacff60cbb4b4c4caded5cbce15368b3a"
       },
-      "reason": "Reviewed v3 hosted display migration: 16 PNGs byte-identical; settings light/dark match main 6b464b31 typography groups and React Aria NumberField. Both review axes approve; pixel thresholds and masks unchanged.",
-      "candidate": "125048b1-d855-4084-b49a-a24b9436cfed",
-      "acceptedAt": "2026-10-21T10:46:56.151Z"
+      "reason": "PR25工作区入口随PR23目录整合进入AppShell；逐项审阅官方旧图、新图和差异图，五组明暗共10项均仅顶部工作区图标变化，原始RGBA各81像素且局限11x13区域，内容与布局保持。环境v3完全一致，其余8项PNG字节相同并保留；原行为断言、像素阈值和只读CI保持。",
+      "candidate": "6f22a62f-4484-414a-ad71-e676e6001331",
+      "acceptedAt": "2026-10-26T02:34:55.977Z"
     },
     "chat-narrow-light": {
-      "sha256": "feeb9b83688808bf6ebc5b0740b29622772db8e06c5a09e55874ffcc21b42552",
+      "sha256": "8039854cae35c2530b24cfd86ed75f5e34f88b055a4ddc9000b6194bae47e704",
       "contract": "4d481acc3e3eef3012bec72e844b4b4cbaeaaf506adbc8cb3f5415ec50c7ac58",
       "source": {
-        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
-        "sourceHash": "a08516d07992c7bca13a646853fdffc6e2c7b0ad795fba5d7f6674328946c92b",
+        "commit": "1b49b93c5de7d261f26541ce20fe6a40f7bf5f07",
+        "sourceHash": "900fa579978d933334b614b1590ba443ffde50208d8805e1b93715e381ca58b0",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "afafe88230c5d9f6f4a320459006e80d1333b66b6f12e1bf0c30f890c152e91b",
-        "outputHash": "f64ceb504386f5ea68ec9c4d47459707fc2e58b5431493b385f199afe2d9b4a0",
+        "inputHash": "8080a6899df9b5765c8fb8d15b119dce941b92de4b88e8f2fc8c6c992e263e6c",
+        "outputHash": "fd1da487e175f11462a2b5bf3b7c14040f6443a89592b4ae608fc9131249d750",
         "node": "v24.16.0",
-        "createdAt": "2026-10-21T10:20:54.585Z"
+        "createdAt": "2026-10-26T01:56:51.784Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "39583678813",
+        "runId": "40256537906",
         "attempt": 1,
-        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
-        "artifactId": 12339308033,
-        "digest": "sha256:7f2a4b9e13c13433888b0d8a205657da12c505ecb5286641d5590c1f501cb832"
+        "commit": "1b49b93c5de7d261f26541ce20fe6a40f7bf5f07",
+        "artifactId": 12623323447,
+        "digest": "sha256:1bf32fe9601b6ba9eb72d4ea337db25eacff60cbb4b4c4caded5cbce15368b3a"
       },
-      "reason": "Reviewed v3 hosted display migration: 16 PNGs byte-identical; settings light/dark match main 6b464b31 typography groups and React Aria NumberField. Both review axes approve; pixel thresholds and masks unchanged.",
-      "candidate": "125048b1-d855-4084-b49a-a24b9436cfed",
-      "acceptedAt": "2026-10-21T10:46:56.151Z"
+      "reason": "PR25工作区入口随PR23目录整合进入AppShell；逐项审阅官方旧图、新图和差异图，五组明暗共10项均仅顶部工作区图标变化，原始RGBA各81像素且局限11x13区域，内容与布局保持。环境v3完全一致，其余8项PNG字节相同并保留；原行为断言、像素阈值和只读CI保持。",
+      "candidate": "6f22a62f-4484-414a-ad71-e676e6001331",
+      "acceptedAt": "2026-10-26T02:34:55.977Z"
     },
     "chat-narrow-dark": {
-      "sha256": "dd758e4d67c9f2cb5bdfffba39d9c2081f82d6748aeeb6d0c65315a62873e8d1",
+      "sha256": "55eff0f60922f5220a23c341ac019902e96032b93cdecf6b4ac83850204f811f",
       "contract": "bd29d62d66cfa260c4f16dab0255bb70dbc152b20b21f4061b93b63faabdb4ff",
       "source": {
-        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
-        "sourceHash": "a08516d07992c7bca13a646853fdffc6e2c7b0ad795fba5d7f6674328946c92b",
+        "commit": "1b49b93c5de7d261f26541ce20fe6a40f7bf5f07",
+        "sourceHash": "900fa579978d933334b614b1590ba443ffde50208d8805e1b93715e381ca58b0",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "afafe88230c5d9f6f4a320459006e80d1333b66b6f12e1bf0c30f890c152e91b",
-        "outputHash": "f64ceb504386f5ea68ec9c4d47459707fc2e58b5431493b385f199afe2d9b4a0",
+        "inputHash": "8080a6899df9b5765c8fb8d15b119dce941b92de4b88e8f2fc8c6c992e263e6c",
+        "outputHash": "fd1da487e175f11462a2b5bf3b7c14040f6443a89592b4ae608fc9131249d750",
         "node": "v24.16.0",
-        "createdAt": "2026-10-21T10:20:54.585Z"
+        "createdAt": "2026-10-26T01:56:51.784Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "39583678813",
+        "runId": "40256537906",
         "attempt": 1,
-        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
-        "artifactId": 12339308033,
-        "digest": "sha256:7f2a4b9e13c13433888b0d8a205657da12c505ecb5286641d5590c1f501cb832"
+        "commit": "1b49b93c5de7d261f26541ce20fe6a40f7bf5f07",
+        "artifactId": 12623323447,
+        "digest": "sha256:1bf32fe9601b6ba9eb72d4ea337db25eacff60cbb4b4c4caded5cbce15368b3a"
       },
-      "reason": "Reviewed v3 hosted display migration: 16 PNGs byte-identical; settings light/dark match main 6b464b31 typography groups and React Aria NumberField. Both review axes approve; pixel thresholds and masks unchanged.",
-      "candidate": "125048b1-d855-4084-b49a-a24b9436cfed",
-      "acceptedAt": "2026-10-21T10:46:56.151Z"
+      "reason": "PR25工作区入口随PR23目录整合进入AppShell；逐项审阅官方旧图、新图和差异图，五组明暗共10项均仅顶部工作区图标变化，原始RGBA各81像素且局限11x13区域，内容与布局保持。环境v3完全一致，其余8项PNG字节相同并保留；原行为断言、像素阈值和只读CI保持。",
+      "candidate": "6f22a62f-4484-414a-ad71-e676e6001331",
+      "acceptedAt": "2026-10-26T02:34:55.977Z"
     },
     "empty-chat-light": {
-      "sha256": "458f37de653d54c2c837e3ff2b09728cb18d09f18e8c405e02090df412ad0a2c",
+      "sha256": "95e2255cd8332e889fea48f94b179428825acecfd224b03f6d4aaec122db1c1f",
       "contract": "f67798d98d951bdd62d80d92b3dc15a990979d199ae7d9dc12fb23b96e6aa8b1",
       "source": {
-        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
-        "sourceHash": "a08516d07992c7bca13a646853fdffc6e2c7b0ad795fba5d7f6674328946c92b",
+        "commit": "1b49b93c5de7d261f26541ce20fe6a40f7bf5f07",
+        "sourceHash": "900fa579978d933334b614b1590ba443ffde50208d8805e1b93715e381ca58b0",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "afafe88230c5d9f6f4a320459006e80d1333b66b6f12e1bf0c30f890c152e91b",
-        "outputHash": "f64ceb504386f5ea68ec9c4d47459707fc2e58b5431493b385f199afe2d9b4a0",
+        "inputHash": "8080a6899df9b5765c8fb8d15b119dce941b92de4b88e8f2fc8c6c992e263e6c",
+        "outputHash": "fd1da487e175f11462a2b5bf3b7c14040f6443a89592b4ae608fc9131249d750",
         "node": "v24.16.0",
-        "createdAt": "2026-10-21T10:20:54.585Z"
+        "createdAt": "2026-10-26T01:56:51.784Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "39583678813",
+        "runId": "40256537906",
         "attempt": 1,
-        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
-        "artifactId": 12339308033,
-        "digest": "sha256:7f2a4b9e13c13433888b0d8a205657da12c505ecb5286641d5590c1f501cb832"
+        "commit": "1b49b93c5de7d261f26541ce20fe6a40f7bf5f07",
+        "artifactId": 12623323447,
+        "digest": "sha256:1bf32fe9601b6ba9eb72d4ea337db25eacff60cbb4b4c4caded5cbce15368b3a"
       },
-      "reason": "Reviewed v3 hosted display migration: 16 PNGs byte-identical; settings light/dark match main 6b464b31 typography groups and React Aria NumberField. Both review axes approve; pixel thresholds and masks unchanged.",
-      "candidate": "125048b1-d855-4084-b49a-a24b9436cfed",
-      "acceptedAt": "2026-10-21T10:46:56.151Z"
+      "reason": "PR25工作区入口随PR23目录整合进入AppShell；逐项审阅官方旧图、新图和差异图，五组明暗共10项均仅顶部工作区图标变化，原始RGBA各81像素且局限11x13区域，内容与布局保持。环境v3完全一致，其余8项PNG字节相同并保留；原行为断言、像素阈值和只读CI保持。",
+      "candidate": "6f22a62f-4484-414a-ad71-e676e6001331",
+      "acceptedAt": "2026-10-26T02:34:55.977Z"
     },
     "empty-chat-dark": {
-      "sha256": "dbe94618a0a4fcd9508a77b16ffce57aa372582003bf72efa472a71239e71cdc",
+      "sha256": "fccaf21606bf598c9aeecadc7efd28ccf24c62ab3289a417d03887c40eed9930",
       "contract": "1e107ae51b50bcc971e6a819554efb7d2a16d556d4acd98f39b181915dcec271",
       "source": {
-        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
-        "sourceHash": "a08516d07992c7bca13a646853fdffc6e2c7b0ad795fba5d7f6674328946c92b",
+        "commit": "1b49b93c5de7d261f26541ce20fe6a40f7bf5f07",
+        "sourceHash": "900fa579978d933334b614b1590ba443ffde50208d8805e1b93715e381ca58b0",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "afafe88230c5d9f6f4a320459006e80d1333b66b6f12e1bf0c30f890c152e91b",
-        "outputHash": "f64ceb504386f5ea68ec9c4d47459707fc2e58b5431493b385f199afe2d9b4a0",
+        "inputHash": "8080a6899df9b5765c8fb8d15b119dce941b92de4b88e8f2fc8c6c992e263e6c",
+        "outputHash": "fd1da487e175f11462a2b5bf3b7c14040f6443a89592b4ae608fc9131249d750",
         "node": "v24.16.0",
-        "createdAt": "2026-10-21T10:20:54.585Z"
+        "createdAt": "2026-10-26T01:56:51.784Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "39583678813",
+        "runId": "40256537906",
         "attempt": 1,
-        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
-        "artifactId": 12339308033,
-        "digest": "sha256:7f2a4b9e13c13433888b0d8a205657da12c505ecb5286641d5590c1f501cb832"
+        "commit": "1b49b93c5de7d261f26541ce20fe6a40f7bf5f07",
+        "artifactId": 12623323447,
+        "digest": "sha256:1bf32fe9601b6ba9eb72d4ea337db25eacff60cbb4b4c4caded5cbce15368b3a"
       },
-      "reason": "Reviewed v3 hosted display migration: 16 PNGs byte-identical; settings light/dark match main 6b464b31 typography groups and React Aria NumberField. Both review axes approve; pixel thresholds and masks unchanged.",
-      "candidate": "125048b1-d855-4084-b49a-a24b9436cfed",
-      "acceptedAt": "2026-10-21T10:46:56.151Z"
+      "reason": "PR25工作区入口随PR23目录整合进入AppShell；逐项审阅官方旧图、新图和差异图，五组明暗共10项均仅顶部工作区图标变化，原始RGBA各81像素且局限11x13区域，内容与布局保持。环境v3完全一致，其余8项PNG字节相同并保留；原行为断言、像素阈值和只读CI保持。",
+      "candidate": "6f22a62f-4484-414a-ad71-e676e6001331",
+      "acceptedAt": "2026-10-26T02:34:55.977Z"
     },
     "employee-light": {
       "sha256": "a2fb5815935bed16019e6d878aacfac36207ce0dd312a0319a72482eee6ee42a",
@@ -418,112 +418,112 @@
       "acceptedAt": "2026-10-21T10:46:56.151Z"
     },
     "detail-light": {
-      "sha256": "2faad76d54924952df855968c5318df4a42346c88f43532888997ae28f5c065a",
+      "sha256": "08e1e41935f7c22080f38288f0530914876b3cc94cc118b1fc04e117e1376541",
       "contract": "6be6641275a5227b7ed45e5216e887a80e49414ef933c97c8fccf47e41540478",
       "source": {
-        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
-        "sourceHash": "a08516d07992c7bca13a646853fdffc6e2c7b0ad795fba5d7f6674328946c92b",
+        "commit": "1b49b93c5de7d261f26541ce20fe6a40f7bf5f07",
+        "sourceHash": "900fa579978d933334b614b1590ba443ffde50208d8805e1b93715e381ca58b0",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "afafe88230c5d9f6f4a320459006e80d1333b66b6f12e1bf0c30f890c152e91b",
-        "outputHash": "f64ceb504386f5ea68ec9c4d47459707fc2e58b5431493b385f199afe2d9b4a0",
+        "inputHash": "8080a6899df9b5765c8fb8d15b119dce941b92de4b88e8f2fc8c6c992e263e6c",
+        "outputHash": "fd1da487e175f11462a2b5bf3b7c14040f6443a89592b4ae608fc9131249d750",
         "node": "v24.16.0",
-        "createdAt": "2026-10-21T10:20:54.585Z"
+        "createdAt": "2026-10-26T01:56:51.784Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "39583678813",
+        "runId": "40256537906",
         "attempt": 1,
-        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
-        "artifactId": 12339308033,
-        "digest": "sha256:7f2a4b9e13c13433888b0d8a205657da12c505ecb5286641d5590c1f501cb832"
+        "commit": "1b49b93c5de7d261f26541ce20fe6a40f7bf5f07",
+        "artifactId": 12623323447,
+        "digest": "sha256:1bf32fe9601b6ba9eb72d4ea337db25eacff60cbb4b4c4caded5cbce15368b3a"
       },
-      "reason": "Reviewed v3 hosted display migration: 16 PNGs byte-identical; settings light/dark match main 6b464b31 typography groups and React Aria NumberField. Both review axes approve; pixel thresholds and masks unchanged.",
-      "candidate": "125048b1-d855-4084-b49a-a24b9436cfed",
-      "acceptedAt": "2026-10-21T10:46:56.151Z"
+      "reason": "PR25工作区入口随PR23目录整合进入AppShell；逐项审阅官方旧图、新图和差异图，五组明暗共10项均仅顶部工作区图标变化，原始RGBA各81像素且局限11x13区域，内容与布局保持。环境v3完全一致，其余8项PNG字节相同并保留；原行为断言、像素阈值和只读CI保持。",
+      "candidate": "6f22a62f-4484-414a-ad71-e676e6001331",
+      "acceptedAt": "2026-10-26T02:34:55.977Z"
     },
     "detail-dark": {
-      "sha256": "d6d289388a0ea9e2c465c6371fd56f8034e338905ebfd3b64ee9048aa2e55765",
+      "sha256": "19df7baccc017bc87f91819d1667fd4610fc93ee5a97a4116da7a13d1ae3c648",
       "contract": "b94c00c459787ce967bdb732c72dab242f86b0a461685263e0993bae83a1825f",
       "source": {
-        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
-        "sourceHash": "a08516d07992c7bca13a646853fdffc6e2c7b0ad795fba5d7f6674328946c92b",
+        "commit": "1b49b93c5de7d261f26541ce20fe6a40f7bf5f07",
+        "sourceHash": "900fa579978d933334b614b1590ba443ffde50208d8805e1b93715e381ca58b0",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "afafe88230c5d9f6f4a320459006e80d1333b66b6f12e1bf0c30f890c152e91b",
-        "outputHash": "f64ceb504386f5ea68ec9c4d47459707fc2e58b5431493b385f199afe2d9b4a0",
+        "inputHash": "8080a6899df9b5765c8fb8d15b119dce941b92de4b88e8f2fc8c6c992e263e6c",
+        "outputHash": "fd1da487e175f11462a2b5bf3b7c14040f6443a89592b4ae608fc9131249d750",
         "node": "v24.16.0",
-        "createdAt": "2026-10-21T10:20:54.585Z"
+        "createdAt": "2026-10-26T01:56:51.784Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "39583678813",
+        "runId": "40256537906",
         "attempt": 1,
-        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
-        "artifactId": 12339308033,
-        "digest": "sha256:7f2a4b9e13c13433888b0d8a205657da12c505ecb5286641d5590c1f501cb832"
+        "commit": "1b49b93c5de7d261f26541ce20fe6a40f7bf5f07",
+        "artifactId": 12623323447,
+        "digest": "sha256:1bf32fe9601b6ba9eb72d4ea337db25eacff60cbb4b4c4caded5cbce15368b3a"
       },
-      "reason": "Reviewed v3 hosted display migration: 16 PNGs byte-identical; settings light/dark match main 6b464b31 typography groups and React Aria NumberField. Both review axes approve; pixel thresholds and masks unchanged.",
-      "candidate": "125048b1-d855-4084-b49a-a24b9436cfed",
-      "acceptedAt": "2026-10-21T10:46:56.151Z"
+      "reason": "PR25工作区入口随PR23目录整合进入AppShell；逐项审阅官方旧图、新图和差异图，五组明暗共10项均仅顶部工作区图标变化，原始RGBA各81像素且局限11x13区域，内容与布局保持。环境v3完全一致，其余8项PNG字节相同并保留；原行为断言、像素阈值和只读CI保持。",
+      "candidate": "6f22a62f-4484-414a-ad71-e676e6001331",
+      "acceptedAt": "2026-10-26T02:34:55.977Z"
     },
     "preview-light": {
-      "sha256": "2ab181e330761c5d9c56446a4f5a28f9ac159f72bb163b8c8a0e3391c006ca42",
+      "sha256": "842e53b8965ac6de7c1094af4a0e3c72b8edafa2c7807d27dd392f7669f3b882",
       "contract": "92cf7c356cf53ace610af0abe3983a01955331e076593c2a9c4454df51e6d55c",
       "source": {
-        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
-        "sourceHash": "a08516d07992c7bca13a646853fdffc6e2c7b0ad795fba5d7f6674328946c92b",
+        "commit": "1b49b93c5de7d261f26541ce20fe6a40f7bf5f07",
+        "sourceHash": "900fa579978d933334b614b1590ba443ffde50208d8805e1b93715e381ca58b0",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "afafe88230c5d9f6f4a320459006e80d1333b66b6f12e1bf0c30f890c152e91b",
-        "outputHash": "f64ceb504386f5ea68ec9c4d47459707fc2e58b5431493b385f199afe2d9b4a0",
+        "inputHash": "8080a6899df9b5765c8fb8d15b119dce941b92de4b88e8f2fc8c6c992e263e6c",
+        "outputHash": "fd1da487e175f11462a2b5bf3b7c14040f6443a89592b4ae608fc9131249d750",
         "node": "v24.16.0",
-        "createdAt": "2026-10-21T10:20:54.585Z"
+        "createdAt": "2026-10-26T01:56:51.784Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "39583678813",
+        "runId": "40256537906",
         "attempt": 1,
-        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
-        "artifactId": 12339308033,
-        "digest": "sha256:7f2a4b9e13c13433888b0d8a205657da12c505ecb5286641d5590c1f501cb832"
+        "commit": "1b49b93c5de7d261f26541ce20fe6a40f7bf5f07",
+        "artifactId": 12623323447,
+        "digest": "sha256:1bf32fe9601b6ba9eb72d4ea337db25eacff60cbb4b4c4caded5cbce15368b3a"
       },
-      "reason": "Reviewed v3 hosted display migration: 16 PNGs byte-identical; settings light/dark match main 6b464b31 typography groups and React Aria NumberField. Both review axes approve; pixel thresholds and masks unchanged.",
-      "candidate": "125048b1-d855-4084-b49a-a24b9436cfed",
-      "acceptedAt": "2026-10-21T10:46:56.151Z"
+      "reason": "PR25工作区入口随PR23目录整合进入AppShell；逐项审阅官方旧图、新图和差异图，五组明暗共10项均仅顶部工作区图标变化，原始RGBA各81像素且局限11x13区域，内容与布局保持。环境v3完全一致，其余8项PNG字节相同并保留；原行为断言、像素阈值和只读CI保持。",
+      "candidate": "6f22a62f-4484-414a-ad71-e676e6001331",
+      "acceptedAt": "2026-10-26T02:34:55.977Z"
     },
     "preview-dark": {
-      "sha256": "8a7e4d609d462030136019bb9683f0c385a1674f999144847894ab37c820781c",
+      "sha256": "def4e0007887da0ba71608696b3b41558d6a7d68ebc7aa9120dd206eaa473035",
       "contract": "fb5b0028ec61dcce694beff6122b0e86a1153edd9259064b1b151d874dfdc6eb",
       "source": {
-        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
-        "sourceHash": "a08516d07992c7bca13a646853fdffc6e2c7b0ad795fba5d7f6674328946c92b",
+        "commit": "1b49b93c5de7d261f26541ce20fe6a40f7bf5f07",
+        "sourceHash": "900fa579978d933334b614b1590ba443ffde50208d8805e1b93715e381ca58b0",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "afafe88230c5d9f6f4a320459006e80d1333b66b6f12e1bf0c30f890c152e91b",
-        "outputHash": "f64ceb504386f5ea68ec9c4d47459707fc2e58b5431493b385f199afe2d9b4a0",
+        "inputHash": "8080a6899df9b5765c8fb8d15b119dce941b92de4b88e8f2fc8c6c992e263e6c",
+        "outputHash": "fd1da487e175f11462a2b5bf3b7c14040f6443a89592b4ae608fc9131249d750",
         "node": "v24.16.0",
-        "createdAt": "2026-10-21T10:20:54.585Z"
+        "createdAt": "2026-10-26T01:56:51.784Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "39583678813",
+        "runId": "40256537906",
         "attempt": 1,
-        "commit": "c9747dd42ff68dfbde8d7cd5a1f547e60917e2b7",
-        "artifactId": 12339308033,
-        "digest": "sha256:7f2a4b9e13c13433888b0d8a205657da12c505ecb5286641d5590c1f501cb832"
+        "commit": "1b49b93c5de7d261f26541ce20fe6a40f7bf5f07",
+        "artifactId": 12623323447,
+        "digest": "sha256:1bf32fe9601b6ba9eb72d4ea337db25eacff60cbb4b4c4caded5cbce15368b3a"
       },
-      "reason": "Reviewed v3 hosted display migration: 16 PNGs byte-identical; settings light/dark match main 6b464b31 typography groups and React Aria NumberField. Both review axes approve; pixel thresholds and masks unchanged.",
-      "candidate": "125048b1-d855-4084-b49a-a24b9436cfed",
-      "acceptedAt": "2026-10-21T10:46:56.151Z"
+      "reason": "PR25工作区入口随PR23目录整合进入AppShell；逐项审阅官方旧图、新图和差异图，五组明暗共10项均仅顶部工作区图标变化，原始RGBA各81像素且局限11x13区域，内容与布局保持。环境v3完全一致，其余8项PNG字节相同并保留；原行为断言、像素阈值和只读CI保持。",
+      "candidate": "6f22a62f-4484-414a-ad71-e676e6001331",
+      "acceptedAt": "2026-10-26T02:34:55.977Z"
     },
     "shortcuts-light": {
       "sha256": "577e68e67c9d1ff66257866c9a653ded53b1966a3115794e15c645496b12c921",

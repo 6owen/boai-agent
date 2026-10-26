@@ -10,10 +10,10 @@ import { act, createElement, useEffect, useState } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { toast } from 'sonner'
-import { FilePreview } from '../src/renderer/components/common/file-preview'
-import { createPreviewRegistry } from '../src/renderer/components/common/file-preview/plugins/registry'
-import type { PreviewPlugin, PreviewRendererProps } from '../src/renderer/components/common/file-preview/plugins/types'
-import { pluginUsage, usePlugins } from '../src/renderer/stores/plugins'
+import { FilePreview } from '../apps/electron/src/renderer/components/common/file-preview'
+import { createPreviewRegistry } from '../apps/electron/src/renderer/components/common/file-preview/plugins/registry'
+import type { PreviewPlugin, PreviewRendererProps } from '../apps/electron/src/renderer/components/common/file-preview/plugins/types'
+import { pluginUsage, usePlugins } from '../apps/electron/src/renderer/stores/plugins'
 
 const manifest = (id: string) => ({ id, version: '1.0.0', apiVersion: 1, kinds: ['text'] as const })
 const plain: PreviewPlugin = { manifest: manifest('general'), component: ({ content }) => createElement('p', null, 'text' in content ? content.text : '') }

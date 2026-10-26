@@ -9,17 +9,17 @@
 import { act, createElement, useRef } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import type { AgentRun } from '../src/shared/domain'
-import type { ExecutionEvidence } from '../src/shared/domain/execution'
-import type { DesktopApi } from '../src/shared/ipc'
-import { nativeActivity } from '../src/runtime/adapters/native-events'
-import { ExecutionFeed, type ExecutionView } from '../src/renderer/components/detail-panel/execution-feed'
-import { ExecutionNarration } from '../src/renderer/components/detail-panel/ExecutionNarration'
-import { ExecutionContentContext } from '../src/renderer/components/detail-panel/ExecutionVirtualList'
-import { ExecutionContentCache } from '../src/renderer/components/detail-panel/execution-content-cache'
+import type { AgentRun } from '../packages/shared/src/domain'
+import type { ExecutionEvidence } from '../packages/shared/src/domain/execution'
+import type { DesktopApi } from '../packages/shared/src/ipc'
+import { nativeActivity } from '../packages/runtime/src/adapters/native-events'
+import { ExecutionFeed, type ExecutionView } from '../apps/electron/src/renderer/components/detail-panel/execution-feed'
+import { ExecutionNarration } from '../apps/electron/src/renderer/components/detail-panel/ExecutionNarration'
+import { ExecutionContentContext } from '../apps/electron/src/renderer/components/detail-panel/ExecutionVirtualList'
+import { ExecutionContentCache } from '../apps/electron/src/renderer/components/detail-panel/execution-content-cache'
 
 const fixture = vi.hoisted(() => ({ evidence: [] as ExecutionEvidence[] }))
-vi.mock('../src/renderer/components/detail-panel/useExecutionWindow', () => ({
+vi.mock('../apps/electron/src/renderer/components/detail-panel/useExecutionWindow', () => ({
   useExecutionWindow: () => ({ root: useRef(null), evidence: fixture.evidence, loading: false }),
 }))
 

@@ -1,10 +1,11 @@
 /*
+ * [OUTPUT]: 应用与评估编译按当前工作区公开exports解析，保留原执行与分发合同。
  * [INPUT]: 显式--real、原BoAI数据目录/连接ID、本机Claude路径和新输出目录。
  * [OUTPUT]: 独立Electron实际Claude+DeepSeek无工具、--tools私有读写或--employee共同阶段，冻结本地源码；不读取个人登录或记录密钥。
  * [POS]: 第13组Claude底层真实探测；不替代员工UI、Work和Claude模型验收。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
-import { build } from 'esbuild'
+import { buildWorkspace as build } from './workspace-packages.mjs'
 import electronPath from 'electron'
 import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'

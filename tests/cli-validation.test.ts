@@ -10,9 +10,9 @@ import { mkdtemp, readFile, writeFile, rm, readdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { randomBytes } from 'node:crypto'
-import { startRpcServer, type RpcChannel } from '../src/cli/server'
-import { validateServer } from '../src/cli/validation'
-import { PROTOCOL_VERSION } from '../src/shared/cli/protocol'
+import { startRpcServer, type RpcChannel } from '../packages/transport/src/server'
+import { validateServer } from '../apps/cli/src/validation'
+import { PROTOCOL_VERSION } from '../packages/shared/src/cli/protocol'
 
 const cleanup: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const close of cleanup.splice(0).reverse()) await close() })

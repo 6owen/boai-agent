@@ -11,7 +11,7 @@ import { createBdd } from 'playwright-bdd'
 import { createHash } from 'node:crypto'
 import { chmod, lstat, mkdir, readFile, readdir, readlink, rename, rm, symlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
 import { runtimeChildProcessIds } from '../support/automation-recovery'
 import { test } from './codex-employee.steps'
 

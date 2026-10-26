@@ -11,12 +11,12 @@ import { copyFile, link, mkdir, mkdtemp, readFile, realpath, rename, rm, symlink
 import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { Conversation, DigitalAgent } from '../src/shared/domain'
-import { BINARY_MATERIAL_PARSE_VERSION, isConversationMaterialVisible, MATERIAL_LIMITS, MATERIAL_PARSE_VERSION, type ConversationMaterial } from '../src/shared/domain/materials'
-import { FILE_PREVIEW_LIMITS } from '../src/shared/domain/file-preview'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { MaterialRepository } from '../src/runtime/modules/materials/material-repository'
-import { materialDirectory, materialImageMimeType, readMaterialOriginal, type MaterialCheckpoint } from '../src/runtime/modules/materials/material-files'
+import type { Conversation, DigitalAgent } from '../packages/shared/src/domain'
+import { BINARY_MATERIAL_PARSE_VERSION, isConversationMaterialVisible, MATERIAL_LIMITS, MATERIAL_PARSE_VERSION, type ConversationMaterial } from '../packages/shared/src/domain/materials'
+import { FILE_PREVIEW_LIMITS } from '../packages/shared/src/domain/file-preview'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { MaterialRepository } from '../packages/runtime/src/modules/materials/material-repository'
+import { materialDirectory, materialImageMimeType, readMaterialOriginal, type MaterialCheckpoint } from '../packages/shared/src/node/material-files'
 
 const roots: string[] = [], stores: ProductStore[] = []
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6GNAAAAAASUVORK5CYII=', 'base64')

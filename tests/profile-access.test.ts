@@ -13,8 +13,8 @@ import { once } from 'node:events'
 import { createRequire } from 'node:module'
 import { DatabaseSync } from 'node:sqlite'
 import { randomUUID } from 'node:crypto'
-import { build } from 'esbuild'
-import { acquireProfileAccess, acquireRuntimeProfileAccess, ProfileAccessBusyError } from '../src/runtime/profile-access'
+import { buildWorkspace as build } from '../scripts/workspace-packages.mjs'
+import { acquireProfileAccess, acquireRuntimeProfileAccess, ProfileAccessBusyError } from '../packages/runtime/src/profile-access'
 
 const require = createRequire(import.meta.url), leases: ReturnType<typeof acquireProfileAccess>[] = [], roots: string[] = []
 const children = new Set<{ process: ChildProcess; ended: Promise<unknown> }>()
@@ -22,7 +22,7 @@ let helperRoot: string, helper: string
 beforeAll(async () => {
   helperRoot = await mkdtemp(join(tmpdir(), 'boai-profile-helper-')); helper = join(helperRoot, 'child.mjs')
   await build({ stdin: { contents: `
-    import { acquireProfileAccess } from ${JSON.stringify(resolve('src/runtime/profile-access.ts'))};
+    import { acquireProfileAccess } from ${JSON.stringify(resolve('packages/runtime/src/profile-access.ts'))};
     let lease = acquireProfileAccess(process.argv[2], process.argv[3]);
     process.send({kind:'ready',pid:process.pid,node:process.version});
     process.on('message',kind=>{

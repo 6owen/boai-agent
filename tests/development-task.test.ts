@@ -361,7 +361,7 @@ it('缺少完整模型回执时显式resume仍然不重放，恢复也不能续�
 })
 
 it.each(['file', 'anchor'] as const)('真实owner在apply的%s窗口被SIGKILL后接续，模型回执和唯一候选提交保持', async point => {
-  const { build } = await import('esbuild')
+  const { buildWorkspace: build } = await import('../scripts/workspace-packages.mjs')
   const { spawn } = await import('node:child_process')
   const { once } = await import('node:events')
   const local = resolve('.local'); await mkdir(local, { recursive: true })

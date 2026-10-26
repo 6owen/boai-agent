@@ -9,8 +9,8 @@ import { afterEach, expect, it } from 'vitest'
 import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { LocalConfigDiscovery } from '../src/main/local-configs/discovery'
-import { localAgentProtocol } from '../src/shared/domain/local-configs'
+import { LocalConfigDiscovery } from '../apps/electron/src/main/local-configs/discovery'
+import { localAgentProtocol } from '../packages/shared/src/domain/local-configs'
 
 const roots: string[] = []
 afterEach(async () => { for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }) })

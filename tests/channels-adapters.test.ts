@@ -10,9 +10,9 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Message } from 'chat'
-import { channelTransportFactory, normalizeChatInbound } from '../src/runtime/adapters/channels/mastra-channels'
-import type { ChannelBinding } from '../src/shared/domain/channels'
-import type { ChannelInbound, ChannelTransport } from '../src/runtime/modules/channels/channel-service'
+import { channelTransportFactory, normalizeChatInbound } from '../packages/runtime/src/adapters/channels/mastra-channels'
+import type { ChannelBinding } from '../packages/shared/src/domain/channels'
+import type { ChannelInbound, ChannelTransport } from '../packages/runtime/src/modules/channels/channel-service'
 
 const platform = vi.hoisted(() => ({ channels: [] as { appId: string; domain: string; handlers: Map<string, (value: unknown) => Promise<void>>; sends: unknown[]; reactions: unknown[]; disconnected: boolean; downloads: number }[] }))
 vi.mock('@larksuite/channel', () => ({ createLarkChannel: (options: { appId: string; domain: string }) => {

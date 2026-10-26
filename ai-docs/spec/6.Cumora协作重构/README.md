@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [OUTPUT]: 第14组承接普通群报数/接龙的依赖型协作设计；独立参与仍沿本组并行/本人判断规则，普通API群顺序接续已接线，进度归第14组05。
 [INPUT]: Cumora 群聊源码、Paperclip 任务源码、BoAI v0.2.2 当前实现和协作需求。
 [OUTPUT]: 综合协作方案、G0–G3 交付与历史验收、问候故障修复、composer 思考强度与真实模型限制、38题/评分报告/CI的首版测试体系及剩余验收、质量/成本及 G4 未启用边界。
@@ -61,7 +62,7 @@
 
 任务机制参考：[paperclipai/paperclip](https://github.com/paperclipai/paperclip)，固定提交 [`0f14d261233c545aa6a8a38ec253c498a5130fff`](https://github.com/paperclipai/paperclip/tree/0f14d261233c545aa6a8a38ec253c498a5130fff)。已核对任务 schema/checkout、评论与依赖唤醒、续跑上下文、预算及执行协议；完整证据与限制见 [05](./05-Paperclip机制与方案修订.md)。
 
-BoAI 基线来自当前工作区的 [GroupScheduler](../../../src/runtime/group-scheduler.ts)、[AppService](../../../src/runtime/service.ts)、[Mastra 工厂](../../../src/runtime/adapters/mastra/agent-factory.ts) 和[引擎](../../../src/runtime/adapters/mastra/engine.ts)，包版本为 v0.2.2，`@mastra/core` 为 1.71.0。正式实施时应记录当次代码版本及未提交改动，不能只凭版本号判断实现相同。
+BoAI 基线来自当前工作区的 [GroupScheduler](../../../packages/runtime/src/group-scheduler.ts)、[AppService](../../../packages/runtime/src/service.ts)、[Mastra 工厂](../../../packages/runtime/src/adapters/mastra/agent-factory.ts) 和[引擎](../../../packages/runtime/src/adapters/mastra/engine.ts)，包版本为 v0.2.2，`@mastra/core` 为 1.71.0。正式实施时应记录当次代码版本及未提交改动，不能只凭版本号判断实现相同。
 
 参考研究没有部署 Cumora/Paperclip，也没有运行它们的 benchmarks。BoAI 已完成确定性回归、Electron BDD 与双版本真实模型评估，详见实施记录和 07/08；最终固定样本语义通过 44/45，仍有质量和成本限制。上游实验结果不是本项目的效果证明。
 

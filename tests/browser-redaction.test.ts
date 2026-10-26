@@ -5,8 +5,8 @@
  * [PROTOCOL]: Update Header and parent .folder.md on change.
  */
 import { expect, it } from 'vitest'
-import { redactBrowserCommand, redactBrowserToolInput } from '../src/runtime/adapters/mastra/browser-tool-redaction'
-import { summarizeMedia } from '../src/runtime/modules/browser/media'
+import { redactBrowserCommand, redactBrowserToolInput } from '../packages/runtime/src/adapters/mastra/browser-tool-redaction'
+import { summarizeMedia } from '../packages/runtime/src/modules/browser/media'
 
 it('uses the upstream parser to redact quoted fill and typed text while preserving targets', () => {
   const secret = 'private-value with spaces'

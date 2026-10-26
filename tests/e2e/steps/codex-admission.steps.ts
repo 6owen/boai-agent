@@ -13,9 +13,9 @@ import { test } from './codex-employee.steps'
 import { runtimeBreakpoint, type RuntimeBoundary } from '../support/runtime-breakpoint'
 import { materialSendReplyFault } from '../support/materials'
 import { processIsRunning, runtimeChildProcessIds } from '../support/automation-recovery'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
-import type { AgentRun, DiscussionTurn, Message, WorkItem, WorkBudget, WorkExecution, BudgetModelCall } from '../../../src/shared/domain'
-import type { ProfileModelCall } from '../../../src/runtime/modules/profile/profile-activity'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
+import type { AgentRun, DiscussionTurn, Message, WorkItem, WorkBudget, WorkExecution, BudgetModelCall } from '../../../packages/shared/src/domain'
+import type { ProfileModelCall } from '../../../packages/runtime/src/modules/profile/profile-activity'
 
 const { Then } = createBdd(test)
 Then('本机请求在{string}精确退出后两次重启不丢失已提交事实或重复执行', async ({ runtime, codexEmployee }, boundary: string) => {

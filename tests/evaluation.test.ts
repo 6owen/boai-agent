@@ -21,8 +21,8 @@ import { teamScorer } from './evaluation/scorers'
 import type { ArtifactEvidence, EvaluationCase, EvaluationRecord, ExternalReview } from './evaluation/schema'
 import { SCORER_VERSION } from './evaluation/schema'
 import { runEvaluation } from './evaluation/harness'
-import { AppService } from '../src/runtime/service'
-import { MastraEngine } from '../src/runtime/adapters/mastra/engine'
+import { AppService } from '../packages/runtime/src/service'
+import { MastraEngine } from '../packages/runtime/src/adapters/mastra/engine'
 const roots: string[] = []
 afterEach(async () => { vi.restoreAllMocks(); for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }) })
 async function temporary() { const root = await mkdtemp(join(tmpdir(), 'boai-eval-')); roots.push(root); return root }

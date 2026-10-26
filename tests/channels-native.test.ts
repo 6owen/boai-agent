@@ -16,13 +16,13 @@ import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { nativeFixture } from './fixtures/native-product'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { mergeRooms } from '../src/runtime/modules/conversations/room-migration'
-import { isChannelConversation } from '../src/shared/domain/conversation-list'
-import { AppService } from '../src/runtime/service'
-import type { ChannelInbound, ChannelTransportFactory } from '../src/runtime/modules/channels/channel-service'
-import type { ChannelBindingState } from '../src/shared/domain/channels'
-import type { Snapshot, ConversationDetail, Message, Resource } from '../src/shared/domain'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { mergeRooms } from '../packages/runtime/src/modules/conversations/room-migration'
+import { isChannelConversation } from '../packages/shared/src/domain/conversation-list'
+import { AppService } from '../packages/runtime/src/service'
+import type { ChannelInbound, ChannelTransportFactory } from '../packages/runtime/src/modules/channels/channel-service'
+import type { ChannelBindingState } from '../packages/shared/src/domain/channels'
+import type { Snapshot, ConversationDetail, Message, Resource } from '../packages/shared/src/domain'
 
 const disposals: (() => Promise<void>)[] = []
 afterEach(async () => { for (const close of disposals.splice(0).reverse()) await close() })
@@ -171,7 +171,7 @@ describe.each(['codex', 'claude'] as const)('%s employee contacted through chann
     const restored = new AppService({ dataPath: destination, engine: { run: async () => { throw new Error('restore must not execute') }, test: async () => '' }, secrets: { get: async () => undefined, set: async () => {}, delete: async () => {} }, emit: () => {} })
     disposals.push(() => restored.close()); await restored.init()
     for (const artifact of revised.artifacts) {
-      const preview = await restored.handle('getArtifactPreview', { id: artifact.id, expectedHash: artifact.contentHash }) as import('../src/shared/domain/artifacts').ArtifactPreview
+      const preview = await restored.handle('getArtifactPreview', { id: artifact.id, expectedHash: artifact.contentHash }) as import('../packages/shared/src/domain/artifacts').ArtifactPreview
       expect(preview.artifact.contentHash).toBe(artifact.contentHash)
     }
     expect(sent).toHaveLength(2); expect((await restored.handle('getConversation', { id: native.chat.id }) as ConversationDetail).runs).toHaveLength(revised.runs.length)

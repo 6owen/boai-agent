@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 应用与评估编译按当前工作区公开exports解析，保留原执行与分发合同。
  * [INPUT]: 本人仓库main/同仓库PR快照、专用worktree与本机登录会话。
  * [OUTPUT]: 每目标SHA一次受管CI；Git顶层/登记/gitdir回链一致，旧进程未排空不切源码，未知不重放。
  * [POS]: 本地CI轮询及可选LaunchAgent；不启动Actions、不合并或发布。
@@ -10,7 +11,7 @@ import { join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { homedir, tmpdir, userInfo } from 'node:os'
 import { createHash } from 'node:crypto'
-import { build } from 'esbuild'
+import { buildWorkspace as build } from './workspace-packages.mjs'
 import buildProcessGuard from './build-process-guard.mjs'
 import { acquireResourceLock } from './resource-lock.mjs'
 import { localCiRepository } from './local-ci-github.mjs'

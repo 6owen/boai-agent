@@ -9,9 +9,9 @@ import { act, createElement as h } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { toast } from 'sonner'
-import type { DesktopApi } from '../src/shared/ipc'
-import { TooltipProvider } from '../src/renderer/components/ui/tooltip'
-import { ExecutionMessageButton } from '../src/renderer/components/detail-panel/execution-message-button'
+import type { DesktopApi } from '../packages/shared/src/ipc'
+import { TooltipProvider } from '../apps/electron/src/renderer/components/ui/tooltip'
+import { ExecutionMessageButton } from '../apps/electron/src/renderer/components/detail-panel/execution-message-button'
 
 let host: HTMLDivElement, root: Root
 beforeEach(() => {

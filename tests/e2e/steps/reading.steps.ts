@@ -16,10 +16,10 @@ import { prepareArtifactsDesktop } from '../support/artifacts'
 import { delayNextReadingPage, delayNextReadingTarget, historyId, prepareReadingHistory, prepareReadingSearchSource, prepareReadingStreams, readingBrowserProbe, readingRecords } from '../support/reading'
 import { nextMaterialDialog } from '../support/materials'
 import type { Desktop } from '../support/desktop'
-import type { ArtifactVersion } from '../../../src/shared/domain/artifacts'
-import type { ConversationMaterial } from '../../../src/shared/domain/materials'
-import type { Conversation } from '../../../src/shared/domain'
-import { READING_LIMITS, type ConversationReadingState, type ConversationSearchTarget, type ConversationView } from '../../../src/shared/domain/reading'
+import type { ArtifactVersion } from '../../../packages/shared/src/domain/artifacts'
+import type { ConversationMaterial } from '../../../packages/shared/src/domain/materials'
+import type { Conversation } from '../../../packages/shared/src/domain'
+import { READING_LIMITS, type ConversationReadingState, type ConversationSearchTarget, type ConversationView } from '../../../packages/shared/src/domain/reading'
 
 interface State {
   history?: Awaited<ReturnType<typeof prepareReadingHistory>>
@@ -493,7 +493,7 @@ Then('补页保持原阅读位置且不会跳到最新或后台加载', async ({
 })
 When('用户搜索旧正文并打开第一条原消息', async ({ runtime, readingState }) => {
   const fixture = readingState.history!, input = { keyword: 'D6_DUPLICATE', scope: 'all' as const, kinds: ['message' as const], limit: 1 }
-  const ids: string[] = []; let before: import('../../../src/shared/domain/reading').ConversationSearchCursor | undefined
+  const ids: string[] = []; let before: import('../../../packages/shared/src/domain/reading').ConversationSearchCursor | undefined
   for (let page = 0; page < 4; page++) {
     const result = await runtime.page.evaluate(query => window.boai.request('searchConversations', query), { ...input, before })
     ids.push(...result.results.map(item => item.id)); before = result.nextCursor; if (!before) break

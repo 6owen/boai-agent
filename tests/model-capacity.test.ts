@@ -5,7 +5,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { describe, expect, it } from 'vitest'
-import { ModelCapacity, type ModelTiming } from '../src/runtime/modules/collaboration/model-capacity'
+import { ModelCapacity, type ModelTiming } from '../packages/runtime/src/modules/collaboration/model-capacity'
 
 function barrier() { let release!: () => void; const promise = new Promise<void>(resolve => { release = resolve }); return { promise, release } }
 const signal = () => new AbortController().signal

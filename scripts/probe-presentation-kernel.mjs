@@ -1,10 +1,11 @@
 /*
+ * [OUTPUT]: Workspace源码路径迁至apps/packages，保留既有输出与业务合同。
  * [INPUT]: Explicit installed LibreOffice executable and migrated source kernel.
  * [OUTPUT]: Real editable three-slide PPTX, same-revision PNGs, material manifest and source hashes; escaped fixture newlines; no model/quality grade.
  * [POS]: Isolated local kernel probe, not E2E, daily data or an employee tool.
  * [PROTOCOL]: Update Header and scripts/.folder.md when changed.
  */
-import { build } from 'esbuild'
+import { buildWorkspace as build } from './workspace-packages.mjs'
 import { cp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { spawn } from 'node:child_process'
 import { resolve, join } from 'node:path'
@@ -13,13 +14,13 @@ const [renderer] = process.argv.slice(2)
 if (!renderer || process.argv.length !== 3) throw new Error('Usage: node scripts/probe-presentation-kernel.mjs /absolute/path/to/soffice')
 const output = resolve(`.local/presentation-kernel-${Date.now()}`)
 await mkdir(output, { recursive: true })
-await cp('src/runtime/modules/presentations/alma', join(output, 'alma'), { recursive: true })
-const files = await readdir('src/runtime/modules/presentations', { recursive: true }), hashes = {}
-for (const name of files.filter(name => /\.(ts|mjs|mts|json)$/.test(name))) hashes[name] = createHash('sha256').update(await readFile(join('src/runtime/modules/presentations', name))).digest('hex')
+await cp('packages/runtime/src/modules/presentations/alma', join(output, 'alma'), { recursive: true })
+const files = await readdir('packages/runtime/src/modules/presentations', { recursive: true }), hashes = {}
+for (const name of files.filter(name => /\.(ts|mjs|mts|json)$/.test(name))) hashes[name] = createHash('sha256').update(await readFile(join('packages/runtime/src/modules/presentations', name))).digest('hex')
 await writeFile(join(output, 'source.json'), JSON.stringify({ renderer: resolve(renderer), sourceHashes: hashes, modelRequests: 0 }, null, 2) + '\n')
 const code = `
-import { PresentationProjects } from './src/runtime/modules/presentations/presentation-project.ts';
-import { presentationWorker } from './src/runtime/modules/presentations/worker-client.ts';
+import { PresentationProjects } from './packages/runtime/src/modules/presentations/presentation-project.ts';
+import { presentationWorker } from './packages/runtime/src/modules/presentations/worker-client.ts';
 import { writeFile, readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';

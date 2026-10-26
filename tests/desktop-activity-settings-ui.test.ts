@@ -1,16 +1,16 @@
 // @vitest-environment jsdom
 /*
  * [INPUT]: Production settings sections with confirmed state and mutation callbacks.
- * [OUTPUT]: Independent opt-ins, shared permission Badges, capability-aware OCR fallback and polling-safe drafts.
+ * [OUTPUT]: Independent opt-ins, permission Badges, accessible OCR disabled state with blocked interaction and polling-safe drafts.
  * [POS]: DOM interaction checks; real OS permissions and Electron visual acceptance remain separate.
  * [PROTOCOL]: Update Header and tests/.folder.md when changed.
  */
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { ActivityRecorderSettings } from '../src/renderer/pages/settings/activity-recorder-settings'
-import { activityDefaults } from '../src/runtime/modules/desktop-activity/activity-settings'
-import type { ActivityStatus } from '../src/shared/domain/desktop-activity'
+import { ActivityRecorderSettings } from '../apps/electron/src/renderer/pages/settings/activity-recorder-settings'
+import { activityDefaults } from '../packages/runtime/src/modules/desktop-activity/activity-settings'
+import type { ActivityStatus } from '../packages/shared/src/domain/desktop-activity'
 let host: HTMLDivElement, root: Root
 const update = vi.fn(), permission = vi.fn(), openDirectory = vi.fn()
 const initial: ActivityStatus = { settings: activityDefaults, supported: true, permission: false, count: 0, accessibilityPermission: false, monitoring: false, state: 'disabled', screenshotCount: 0, storageBytes: 0, sessionCount: 0, recentSessions: [], outputDirectory: '/test/activity-records' }
@@ -44,7 +44,13 @@ it('uses generic OCR labels and disables unavailable adapter features without ch
   expect(host.textContent).not.toContain('macOS')
   expect(host.textContent).not.toContain('Vision')
   expect(host.textContent).not.toContain('辅助功能')
-  expect((host.querySelector('[role="switch"][aria-label="OCR 文字识别"]') as HTMLButtonElement).disabled).toBe(true)
+  const ocrSwitch = host.querySelector('[role="switch"][aria-label="OCR 文字识别"]') as HTMLElement
+  expect(ocrSwitch.getAttribute('aria-disabled')).toBe('true')
+  await act(async () => {
+    ocrSwitch.click()
+    ocrSwitch.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }))
+    ocrSwitch.dispatchEvent(new KeyboardEvent('keyup', { key: ' ', bubbles: true }))
+  })
   expect((host.querySelector('[aria-label="OCR 语言"]') as HTMLInputElement).disabled).toBe(true)
   expect(update).not.toHaveBeenCalled()
 })

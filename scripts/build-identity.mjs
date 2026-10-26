@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 共享设计包源码及配置纳入桌面构建身份，修改token不能复用旧产物。
+ * [OUTPUT]: apps/packages及开发/构建编排纳入身份；任何部分构建先清旧全量身份，只有完整产物可登记通过。
  * [INPUT]: 实际源码/资源/构建配置和完整dist字节。
  * [OUTPUT]: 构建前后同源/全dist哈希核对；跨次构建按输入/输出/Node比身份，记录时间不充当字节差异。
  * [POS]: 构建与开发测试共用的产物身份，不进入产品运行协议。
@@ -7,11 +7,11 @@
  */
 import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
-import { readFile, readdir, readlink, writeFile } from 'node:fs/promises'
+import { readFile, readdir, readlink, rm, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 
 export async function buildInputHash(root = process.cwd()) {
-  const paths = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', 'src', 'resources', 'packages', 'scripts/build.mjs', 'scripts/build-*.mjs', 'package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', 'vite.config.ts', 'tailwind.config.ts', 'tsconfig.json'], { cwd: root, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }).split('\0').filter(path => path && !path.endsWith('/.folder.md')).sort()
+  const paths = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', 'apps', 'resources', 'packages', 'scripts/build.mjs', 'scripts/build-*.mjs', 'scripts/dev.mjs', 'scripts/dev-*.mjs', 'scripts/workspace-packages.mjs', 'scripts/workspace-packages.d.mts', 'scripts/design-packages.mjs', 'package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', 'vite.config.ts', 'tailwind.config.ts', 'tsconfig.json'], { cwd: root, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }).split('\0').filter(path => path && !path.endsWith('/.folder.md')).sort()
   const digest = createHash('sha256')
   for (const path of paths) { digest.update(path + '\0'); try { digest.update(await readFile(join(root, path))) } catch (error) { if (error.code !== 'ENOENT') throw error; digest.update('<deleted>') } }
   return digest.digest('hex')
@@ -29,6 +29,10 @@ async function outputHash(directory) {
   }
   await walk(directory)
   return digest.digest('hex')
+}
+
+export async function invalidateBuildIdentity(root = process.cwd()) {
+  await rm(join(root, 'dist/build-identity.json'), { force: true })
 }
 
 export async function recordBuildIdentity(expected, root = process.cwd()) {

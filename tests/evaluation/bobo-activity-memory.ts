@@ -7,12 +7,12 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { mkdir, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { ProductStore } from '../../src/runtime/adapters/storage/product-store'
-import { AppService } from '../../src/runtime/service'
-import { MastraEngine } from '../../src/runtime/adapters/mastra/engine'
-import type { AgentEngine, EngineContext } from '../../src/runtime/contracts'
-import type { ActivitySample } from '../../src/shared/domain/desktop-activity'
-import type { Connection, Conversation, ConversationDetail, ModelUsage, Snapshot } from '../../src/shared/domain'
+import { ProductStore } from '../../packages/runtime/src/adapters/storage/product-store'
+import { AppService } from '../../packages/runtime/src/service'
+import { MastraEngine } from '../../packages/runtime/src/adapters/mastra/engine'
+import type { AgentEngine, EngineContext } from '../../packages/runtime/src/contracts'
+import type { ActivitySample } from '../../packages/shared/src/domain/desktop-activity'
+import type { Connection, Conversation, ConversationDetail, ModelUsage, Snapshot } from '../../packages/shared/src/domain'
 
 interface Settings { output: string; maxRequests: number; maxOutputTokens: number; deadlineMs: number }
 export async function runBoboActivityMemoryEvaluation({ settings, connection, apiKey }: { settings: Settings; connection: Connection; apiKey: string }) {

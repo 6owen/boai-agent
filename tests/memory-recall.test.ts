@@ -7,9 +7,9 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { expect, test } from 'vitest'
-import { observationAuthorityFingerprint, recallMemory } from '../src/runtime/modules/memory/memory-recall'
-import { memoryText, memoryTokenEstimate, type MemoryAccess } from '../src/runtime/modules/memory/memory-policy'
-import type { MemoryEntry, MemoryObservation, MemoryView, Message } from '../src/shared/domain'
+import { observationAuthorityFingerprint, recallMemory } from '../packages/runtime/src/modules/memory/memory-recall'
+import { memoryText, memoryTokenEstimate, type MemoryAccess } from '../packages/runtime/src/modules/memory/memory-policy'
+import type { MemoryEntry, MemoryObservation, MemoryView, Message } from '../packages/shared/src/domain'
 const access: MemoryAccess = { agentId: 'a', conversationId: 'group', sourceAllowed: () => true, conversationRestricted: () => false, contextRefs: [{ kind: 'conversation', id: 'group' }] }
 const entry = (id: string, extra: Partial<MemoryEntry> = {}): MemoryEntry => ({ id, ownerAgentId: 'a', scope: 'employee', content: '喜欢简洁中文写作', sourceMessageIds: ['source-' + id], sourceResourceIds: [], origin: 'model', version: 1, createdAt: '2026-09-30T00:00:00Z', updatedAt: '2026-09-30T00:00:00Z', schemaVersion: 2, kind: 'experience', evidence: 'claim', useScope: 'employee', status: 'active', ...extra })
 function recall(entries: MemoryEntry[], override: Partial<MemoryAccess> = {}, request = '请用简洁中文写作', extra: Partial<Parameters<typeof recallMemory>[0]> = {}) {

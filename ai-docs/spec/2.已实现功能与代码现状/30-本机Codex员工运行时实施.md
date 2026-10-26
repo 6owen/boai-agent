@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [OUTPUT]: 明确原生Codex目录准备/新草稿来源核验保持协议，双配置独立和旧ACP缺省保持；代码事实及定向证据分别登记，完整进度归第13组06。
 [OUTPUT]: §108Claude外部流字节与固定内容桶仅增加观察，类型/168模块/构建通过；新完整macOS arm64包3405/26672/119、895输入，6实际3通过3失败，反向三场因原预算取消、旧失败保持，完整目标未完成。
 [OUTPUT]: §107混合核心真实父子工作停止/故障，6实际4通过2失败、2计划未运行；240资源/262hash与6原图，原组织独立根/预算/原件/两重启核对，生产双包未改、反向与完整目标未完成。
@@ -50,15 +51,15 @@
 
 | 位置 | 实际行为 |
 | --- | --- |
-| [原生适配器](../../../src/runtime/adapters/codex/engine.ts) | Codex负责独立判断、连续聊天、私有增量记忆和任务工具循环，不创建额外API父模型。判断/普通聊天/记忆使用轻量思考；任务沿本机模型配置。 |
-| [进程与阶段](../../../src/runtime/adapters/codex/turn.ts) | 受管app-server、真实turn终态、有界事件、工具请求身份核对和去重、实际退出；失败不自动重发。 |
-| [审批策略](../../../src/runtime/adapters/codex/policy.ts) | 策略v6同时在启动及每次无工具线程配置显式请求系统代理，原23项禁用、全部原生审批拒绝、只读和空环境保持。客户端boai工具按原聊天审批；策略版本变化在明确新消息时使不匹配旧session重建，重启不自动调用。真实网络路由与已有v5桌面升级未测，证据统一见第13组06 §104。 |
-| [能力目录](../../../src/runtime/adapters/codex/catalog.ts) | 公开模型元信息结合阶段限制；禁止原生工具/子代理，任务只提供当前BoAI宿主工具。缺少能力数据时拒绝执行。 |
-| [会话映射](../../../src/runtime/adapters/codex/sessions.ts) | SQLite记录员工×聊天的原生session；仅已由产品公开且来源仍有效的终态可接续。按实际消息投影hash和输入身份增量发送，新图片随新消息；上一轮公开回复只关联身份。旧映射无可信边界时保守新建。普通聊天没有Work。 |
-| [宿主工具桥](../../../src/runtime/adapters/codex/task.ts) | 复用文件、逐次命令审批、成果发布、工作结果、冻结技能/参考读取与知识搜索及原来源门禁；普通交互根/子任务；提供原委派及结果等待工具。 |
-| [产品服务](../../../src/runtime/service.ts)与[Work事务](../../../src/runtime/modules/collaboration/work-repository.ts) | 工作持久认领、私有草稿、交付证据、问题补充、剩余额度与绝对期限。外部请求单独标记计量单位，内部模型次数未知。 |
-| [成果权威](../../../src/runtime/modules/workspaces/artifact-repository.ts) | 复制前由原SQLite保存`artifactPublicationIntents`，固定相对路径/hash及来源指纹；成果登记与准备记录消耗同事务，重启不将未提交原件导入为历史成果，清理仍核对hash。原消息固定版本修订及新版新根保持。旧ACP人工发布共用准备记录，但不接受原生Codex运行。 |
-| [员工创建](../../../src/renderer/components/employee/creation-dialogs.tsx)与[设置](../../../src/renderer/pages/settings/local-agent-editor.tsx) | 原页面内选择运行方式、添加/测试本机连接，无模型API也能创建员工；底部显示本机来源。 |
+| [原生适配器](../../../packages/runtime/src/adapters/codex/engine.ts) | Codex负责独立判断、连续聊天、私有增量记忆和任务工具循环，不创建额外API父模型。判断/普通聊天/记忆使用轻量思考；任务沿本机模型配置。 |
+| [进程与阶段](../../../packages/runtime/src/adapters/codex/turn.ts) | 受管app-server、真实turn终态、有界事件、工具请求身份核对和去重、实际退出；失败不自动重发。 |
+| [审批策略](../../../packages/runtime/src/adapters/codex/policy.ts) | 策略v6同时在启动及每次无工具线程配置显式请求系统代理，原23项禁用、全部原生审批拒绝、只读和空环境保持。客户端boai工具按原聊天审批；策略版本变化在明确新消息时使不匹配旧session重建，重启不自动调用。真实网络路由与已有v5桌面升级未测，证据统一见第13组06 §104。 |
+| [能力目录](../../../packages/runtime/src/adapters/codex/catalog.ts) | 公开模型元信息结合阶段限制；禁止原生工具/子代理，任务只提供当前BoAI宿主工具。缺少能力数据时拒绝执行。 |
+| [会话映射](../../../packages/runtime/src/adapters/codex/sessions.ts) | SQLite记录员工×聊天的原生session；仅已由产品公开且来源仍有效的终态可接续。按实际消息投影hash和输入身份增量发送，新图片随新消息；上一轮公开回复只关联身份。旧映射无可信边界时保守新建。普通聊天没有Work。 |
+| [宿主工具桥](../../../packages/runtime/src/adapters/codex/task.ts) | 复用文件、逐次命令审批、成果发布、工作结果、冻结技能/参考读取与知识搜索及原来源门禁；普通交互根/子任务；提供原委派及结果等待工具。 |
+| [产品服务](../../../packages/runtime/src/service.ts)与[Work事务](../../../packages/runtime/src/modules/collaboration/work-repository.ts) | 工作持久认领、私有草稿、交付证据、问题补充、剩余额度与绝对期限。外部请求单独标记计量单位，内部模型次数未知。 |
+| [成果权威](../../../packages/runtime/src/modules/workspaces/artifact-repository.ts) | 复制前由原SQLite保存`artifactPublicationIntents`，固定相对路径/hash及来源指纹；成果登记与准备记录消耗同事务，重启不将未提交原件导入为历史成果，清理仍核对hash。原消息固定版本修订及新版新根保持。旧ACP人工发布共用准备记录，但不接受原生Codex运行。 |
+| [员工创建](../../../apps/electron/src/renderer/components/employee/creation-dialogs.tsx)与[设置](../../../apps/electron/src/renderer/pages/settings/local-agent-editor.tsx) | 原页面内选择运行方式、添加/测试本机连接，无模型API也能创建员工；底部显示本机来源。 |
 
 备份仅在副本保存`codexRuntime`恢复标记，映射原thread/run/终态/来源保留；恢复或安装位置改变时，启动事务标记旧映射不可续用。没有旧安装权威的记录同样保守失效；正常重启不重复失效新会话。下一次明确消息从当前获准历史建立新thread，启动不联系Codex。备份按实际原生run归属排除受管`.codex-private`目录；同名业务子目录保持，外部自有历史不复制也不删除。
 
@@ -68,7 +69,7 @@
 
 - 原文本/图片附件入口与MaterialRepository复用；原件/hash/当前授权核对后提供正文或原生图片输入。会话映射新增材料来源摘要，失效来源不得续用旧session，媒体字节不保存到BoAI消息、运行快照或映射。
 - 原员工表单开放技能/知识绑定，资料页读取同一员工Home说明与启动项状态。绑定版本进入原环境快照；技能/参考工具额外核对冻结来源，不能因框架已有缓存而读取外改内容。原生全局技能发现仍关闭。
-- [共享记忆准备](../../../src/runtime/modules/employees/memory-extraction.ts)与纯指令被API/Codex/Claude复用；以本轮完成消息为证据，本员工本轮实际公开交付的Work可补入有界获准的精确原用户请求，其他历史仍只作去重背景。模型输入与宿主提交共用来源选择，旧原请求不能取得当前用户纠正权限。原生记忆阶段独立且无业务工具，最终写入仍由宿主验证来源、当前资格与作用域。失败是可见运行记录，不生成公开回复或虚构Work。
+- [共享记忆准备](../../../packages/runtime/src/modules/employees/memory-extraction.ts)与纯指令被API/Codex/Claude复用；以本轮完成消息为证据，本员工本轮实际公开交付的Work可补入有界获准的精确原用户请求，其他历史仍只作去重背景。模型输入与宿主提交共用来源选择，旧原请求不能取得当前用户纠正权限。原生记忆阶段独立且无业务工具，最终写入仍由宿主验证来源、当前资格与作用域。失败是可见运行记录，不生成公开回复或虚构Work。
 - 本机正式工作以原消息关联逐请求账本：采用真实前置判断回执，再分别预留执行、汇报和已交付后的私有记忆；计量单位仍是external-turn，内部模型次数未知。期限从原判断开始，维护不重新认领已交付Work；等待/待核对工作不额外维护，普通聊天仍无Work。旧记录没有可信请求账本时拒绝隐式重建额度。
 - 外部中途用量只增加已知下限，完整字段和真实终态同时成立才结束未知状态；重复/迟到回执不重复累计，清理后不复活。工具失败保留原原因，不误报为用户取消。
 
@@ -76,7 +77,7 @@
 
 ## 普通群与原预算
 
-[交互预算授权](../../../src/runtime/modules/collaboration/work-interactive-budget.ts)核对当前成员、原Work根/父子、来源、运行与完整前置判断回执。混合群预算使用mixed，具体回执分别保存API实际调用或Codex外部turn；重复回执不重扣、未知不归零、原期限不续期。普通群候选开放API/Codex，旧ACP仍受限。工作唤醒的维护资格按原账本核对，只有本人本轮真实交付可整理记忆；等待及其他唤醒不扩权，维护共原预算。具体证据唯一归[第13组06 §14](../13.本机Agent员工运行时/06-实施步骤与自动验收.md#14-lr5-普通群与混合员工的原请求预算2026-10-05进行中)。
+[交互预算授权](../../../packages/runtime/src/modules/collaboration/work-interactive-budget.ts)核对当前成员、原Work根/父子、来源、运行与完整前置判断回执。混合群预算使用mixed，具体回执分别保存API实际调用或Codex外部turn；重复回执不重扣、未知不归零、原期限不续期。普通群候选开放API/Codex，旧ACP仍受限。工作唤醒的维护资格按原账本核对，只有本人本轮真实交付可整理记忆；等待及其他唤醒不扩权，维护共原预算。具体证据唯一归[第13组06 §14](../13.本机Agent员工运行时/06-实施步骤与自动验收.md#14-lr5-普通群与混合员工的原请求预算2026-10-05进行中)。
 
 ## 当前边界
 
@@ -89,13 +90,13 @@
 
 ## 本机 bobo 与团队运行配置
 
-[助手配置](../../../src/runtime/modules/employees/employee-service.ts)保留API/Codex核心运行方式，原生判断/任务复用[核心组织指令](../../../src/runtime/modules/employees/phase-instructions.ts)，无需API父模型。[运行配置核对](../../../src/runtime/modules/backends/runtime-config.ts)服务于[组织发布](../../../src/runtime/modules/bobo-collaboration/service.ts)与[具名团队](../../../src/runtime/modules/teams/team-creation.ts)：新员工继承实际后端，复用员工不被改写，原发布事务复核profile/程序/配置指纹。候选查询与profile代际同步，旧ACP不获得自主组织能力。
+[助手配置](../../../packages/runtime/src/modules/employees/employee-service.ts)保留API/Codex核心运行方式，原生判断/任务复用[核心组织指令](../../../packages/runtime/src/modules/employees/phase-instructions.ts)，无需API父模型。[运行配置核对](../../../packages/runtime/src/modules/backends/runtime-config.ts)服务于[组织发布](../../../packages/runtime/src/modules/bobo-collaboration/service.ts)与[具名团队](../../../packages/runtime/src/modules/teams/team-creation.ts)：新员工继承实际后端，复用员工不被改写，原发布事务复核profile/程序/配置指纹。候选查询与profile代际同步，旧ACP不获得自主组织能力。
 
-[协作预算授权](../../../src/runtime/modules/collaboration/work-collaboration.ts)核对当前运行方式，原组织账本接纳API与外部turn的各自回执及真实终态；最初判断全部采用并保留原绝对期限。具体技术、桌面与人工边界唯一见[第13组06 §15](../13.本机Agent员工运行时/06-实施步骤与自动验收.md#15-lr5-本机-bobo-与原组织群2026-10-05进行中)。
+[协作预算授权](../../../packages/runtime/src/modules/collaboration/work-collaboration.ts)核对当前运行方式，原组织账本接纳API与外部turn的各自回执及真实终态；最初判断全部采用并保留原绝对期限。具体技术、桌面与人工边界唯一见[第13组06 §15](../13.本机Agent员工运行时/06-实施步骤与自动验收.md#15-lr5-本机-bobo-与原组织群2026-10-05进行中)。
 
 ## 本机自动化
 
-[运行配置核对](../../../src/runtime/modules/backends/runtime-config.ts)用于自动化的异步保存/受理/每阶段执行检查，保留API旧指纹。Codex阶段均沿原occurrence的唯一预算预留，原判断不重复采用；具体回执保存external-turn，预算mixed支持与API共用，内部模型次数不推断。已交付后的记忆继续原账本而不再次认领已释放的Work。
+[运行配置核对](../../../packages/runtime/src/modules/backends/runtime-config.ts)用于自动化的异步保存/受理/每阶段执行检查，保留API旧指纹。Codex阶段均沿原occurrence的唯一预算预留，原判断不重复采用；具体回执保存external-turn，预算mixed支持与API共用，内部模型次数不推断。已交付后的记忆继续原账本而不再次认领已释放的Work。
 
 七项表单允许已验证的本机员工，命令权限仍需关闭；实际用量与额度追加显示原计量口径。原问题补充、停止/未知、重启、通知与正式文件交付复用原业务事务，未新增时钟。实际验证与剩余矩阵唯一见[第13组06](../13.本机Agent员工运行时/06-实施步骤与自动验收.md)。
 
@@ -112,7 +113,7 @@ Codex外部阶段观测复用`EngineContext.onTrace`与原`traceSpans`仓库，`
 
 ## 普通消息发送与未知回执
 
-[发送持久状态](../../../src/renderer/pages/conversations/message-send-state.ts)与[原AppShell](../../../src/renderer/components/app-shell/index.tsx)共用普通IM和旧ACP的冻结请求：发送前保存稳定key及原正文、成员提及、回复和材料id/版本；原存储key保持以兼容旧ACP。重启统一恢复为unknown，原composer提供“核对发送结果”；只有宿主明确返回无回执，才开放原请求的显式重试或放弃。只读核对不调用模型、创建Work或重放工具。
+[发送持久状态](../../../apps/electron/src/renderer/pages/conversations/message-send-state.ts)与[原AppShell](../../../apps/electron/src/renderer/components/app-shell/index.tsx)共用普通IM和旧ACP的冻结请求：发送前保存稳定key及原正文、成员提及、回复和材料id/版本；原存储key保持以兼容旧ACP。重启统一恢复为unknown，原composer提供“核对发送结果”；只有宿主明确返回无回执，才开放原请求的显式重试或放弃。只读核对不调用模型、创建Work或重放工具。
 
 存储不可写时先阻止发送；不可读或不支持的新记录保留并显示错误，不能被空状态覆盖。后续草稿编辑不覆盖已尝试的载荷，同次核对成功仍保留后续编辑；重启仅恢复原提交，不恢复一般未发送草稿。材料仅保存版本引用，界面显示原发送包含的材料数量，不把媒体字节、路径或准备期对象放进本地未决记录。清空/删除沿原回执与清理流程移除对应记录。本节仅涉及已有会话的普通发送和ACP显式任务；空白核心首发、问题补充和成果修订仍归各自合同。实际故障、重启与Codex证据统一见[第13组06 §34](../13.本机Agent员工运行时/06-实施步骤与自动验收.md#34-普通消息回执失联与跨重启核对2026-10-06进行中)。
 
@@ -122,15 +123,15 @@ Codex外部阶段观测复用`EngineContext.onTrace`与原`traceSpans`仓库，`
 
 ## 原消息中断与执行记录
 
-[原消息活动投影](../../../src/renderer/pages/conversations/activity.ts)核对聊天、触发消息和持久 turn，只有原轮次确认为 interrupted 才显示说明；旧消息缺少 turnId 时按稳定时间/身份选择其匹配轮次，不借用无关新消息的完成状态。[聊天区域](../../../src/renderer/pages/conversations/-components/chat-view.tsx)在原用户消息下显示中断和“查看执行过程”，不新增消息、Work 或模型调用。用户消息打开执行过程时不再用 user 身份过滤员工运行；员工消息仍保持原员工筛选。
+[原消息活动投影](../../../apps/electron/src/renderer/pages/conversations/activity.ts)核对聊天、触发消息和持久 turn，只有原轮次确认为 interrupted 才显示说明；旧消息缺少 turnId 时按稳定时间/身份选择其匹配轮次，不借用无关新消息的完成状态。[聊天区域](../../../apps/electron/src/renderer/pages/conversations/-components/chat-view.tsx)在原用户消息下显示中断和“查看执行过程”，不新增消息、Work 或模型调用。用户消息打开执行过程时不再用 user 身份过滤员工运行；员工消息仍保持原员工筛选。
 
-[工作卡片](../../../src/renderer/components/work-views/work-card.tsx)保留实际 nextStep/outcome，缺少详细原因的中断工作提示先核对已有结果，不猜测失败原因。[执行摘要](../../../src/renderer/pages/conversations/-components/run-detail.tsx)按已有宿主拒绝原生任务自动重放的边界隐藏本机“重试本轮”，显示明确后续要求的指引；API 原有重试边界保留。
+[工作卡片](../../../apps/electron/src/renderer/components/work-views/work-card.tsx)保留实际 nextStep/outcome，缺少详细原因的中断工作提示先核对已有结果，不猜测失败原因。[执行摘要](../../../apps/electron/src/renderer/pages/conversations/-components/run-detail.tsx)按已有宿主拒绝原生任务自动重放的边界隐藏本机“重试本轮”，显示明确后续要求的指引；API 原有重试边界保留。
 
 Codex 摘要分别展示调度处理尝试和当前记录中 externalInvocations 的实际请求数。缺少或无效旧计数显示未知，Agent 内部模型调用次数始终不从外部请求数推断；筛选后的计数仅代表当前记录。此处是展示修正，不修改预算、调用账本或运行事务。分批验收、首批文案/截图缺口和最终原图见[第13组06 §46](../13.本机Agent员工运行时/06-实施步骤与自动验收.md#46-原消息中断反馈与本机实际请求计数2026-10-06)。
 
 ## 员工会话目录故障
 
-[WorkspaceService.load](../../../src/runtime/modules/workspaces/workspace-service.ts)在准备原会话的运行、工作和共享目录时，先沿原安全检查核对路径，再创建目录。准备失败保留原错误cause，对用户显示“员工会话工作目录不可用，请恢复原目录及访问权限后再发送新消息。”；工作区身份未迁移、员工源文件无效等既有校验继续分别处理。
+[WorkspaceService.load](../../../packages/runtime/src/modules/workspaces/workspace-service.ts)在准备原会话的运行、工作和共享目录时，先沿原安全检查核对路径，再创建目录。准备失败保留原错误cause，对用户显示“员工会话工作目录不可用，请恢复原目录及访问权限后再发送新消息。”；工作区身份未迁移、员工源文件无效等既有校验继续分别处理。
 
 该准备发生在运行快照和本机模型调用之前，失败不能切换到另一个目录或API连接继续工作。原消息保留失败事实，已发布成果与原预算不因新的目录故障重建；恢复文件系统及重启不自动重新执行失败请求。实际路径占位、链接和权限故障的证据、测试准备失败与修正结果统一见[第13组06 §47](../13.本机Agent员工运行时/06-实施步骤与自动验收.md#47-员工会话目录故障与明确恢复2026-10-06)。
 
@@ -161,16 +162,16 @@ Codex 摘要分别展示调度处理尝试和当前记录中 externalInvocations
 
 ## 底部员工配置保存与未知结果核对
 
-[聊天底部](../../../src/renderer/pages/conversations/-components/composer-toolbar.tsx)的本机员工设置沿原详情配置标签进入[AgentEditor](../../../src/renderer/components/employee/editors.tsx)。现有保存携带`expectedConfigVersion`，由[EmployeeService](../../../src/runtime/modules/employees/employee-service.ts)核对原版本；本轮没有新增保存请求回执。保存答复失败后编辑器保留并冻结当前草稿，只读读取当前员工配置。版本变化和版本未变均不证明本次保存的回执；只有明确“载入已提交配置”，经过原未保存修改守卫，才以已读取版本重新编辑。
+[聊天底部](../../../apps/electron/src/renderer/pages/conversations/-components/composer-toolbar.tsx)的本机员工设置沿原详情配置标签进入[AgentEditor](../../../apps/electron/src/renderer/components/employee/editors.tsx)。现有保存携带`expectedConfigVersion`，由[EmployeeService](../../../packages/runtime/src/modules/employees/employee-service.ts)核对原版本；本轮没有新增保存请求回执。保存答复失败后编辑器保留并冻结当前草稿，只读读取当前员工配置。版本变化和版本未变均不证明本次保存的回执；只有明确“载入已提交配置”，经过原未保存修改守卫，才以已读取版本重新编辑。
 
-切换运行方式由[AppService](../../../src/runtime/service.ts)核对该员工所有运行及待核对工作，实际执行未退出或原工作仍未结束时拒绝换绑。纯配置保存不调用模型；原聊天、消息、工作和文件归属保持，后续明确消息沿新配置边界执行。API底部仍复用原模型连接菜单，切回本机通过原通讯录配置入口，不增加第二套配置页面。
+切换运行方式由[AppService](../../../packages/runtime/src/service.ts)核对该员工所有运行及待核对工作，实际执行未退出或原工作仍未结束时拒绝换绑。纯配置保存不调用模型；原聊天、消息、工作和文件归属保持，后续明确消息沿新配置边界执行。API底部仍复用原模型连接菜单，切回本机通过原通讯录配置入口，不增加第二套配置页面。
 
 [底部配置BDD](../../../tests/e2e/steps/local-agent-configuration.steps.ts)只在本场IPC受理前或实际保存后丢弃答复，并继续核对真实原记录、显式载入、原草稿与重启；[原审批BDD](../../../tests/e2e/steps/codex-approval.steps.ts)从底部打开原编辑器验证活动及故障后的换绑拒绝。实际独立批次、首批测试定位失败和完整未验范围统一归[第13组06 §69](../13.本机Agent员工运行时/06-实施步骤与自动验收.md#69-底部员工配置保存与未知结果核对2026-10-06)。
 
 
 ## 已完成旧版本会话的实际升级
 
-[升级BDD](../../../tests/e2e/steps/codex-policy-upgrade.steps.ts)使用留存v5完整应用从原UI生成旧员工及两轮聊天，沿同一隔离数据进入v6源码或新包，逐次保存实际入口与原manifest身份。没有生产变更、mapping注入或记忆关闭选项。启动／受控重启只核对旧记录，新的明确消息才沿原[会话资格](../../../src/runtime/adapters/native-sessions.ts)重建或续用；签名中的非policy因素相同并不保证旧记忆仍在当前召回投影，已有保护合同会保守重建。
+[升级BDD](../../../tests/e2e/steps/codex-policy-upgrade.steps.ts)使用留存v5完整应用从原UI生成旧员工及两轮聊天，沿同一隔离数据进入v6源码或新包，逐次保存实际入口与原manifest身份。没有生产变更、mapping注入或记忆关闭选项。启动／受控重启只核对旧记录，新的明确消息才沿原[会话资格](../../../packages/runtime/src/adapters/native-sessions.ts)重建或续用；签名中的非policy因素相同并不保证旧记忆仍在当前召回投影，已有保护合同会保守重建。
 
 本例严格核首个v6映射既有召回记忆为空，下一消息的材料、消息来源及公开回复hash保持并走增量；不覆盖非空既有记忆稳定保留。首次重建也改变了召回投影，不能以此单独证明policy因果。离线源码／新包分别通过，两真实旧v5首判断达到原120秒期限、用量未知，尚未进入v6。实际原件、两次测试前置失败、逐次进程退出和完整剩余统一见[第13组06 §105](../13.本机Agent员工运行时/06-实施步骤与自动验收.md#105-已完成v5会话至v6的实际升级2026-10-07真实未通过)。
 

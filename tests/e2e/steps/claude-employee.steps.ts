@@ -20,8 +20,8 @@ import { prepareSavedModel, systemKeychainLaunch } from '../support/saved-model'
 import { nextMaterialDialog } from '../support/materials'
 import { addNativeConnection, selectNativeEmployee } from '../support/native-connection'
 import { prepareCodexResources } from '../support/codex-resources'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
-import type { ConversationDetail } from '../../../src/shared/domain'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
+import type { ConversationDetail } from '../../../packages/shared/src/domain'
 
 type State = { waitUpdate?: boolean; withholdWait?: boolean; switchSource?: { id: string; name: string }; switchBindings?: { modelId: string; profile: { id: string; name: string } }; real?: boolean; program?: string; connectionId?: string; connectionName?: string; employeeId?: string; conversationId?: string; token?: string; final?: ConversationDetail; media?: { threadId: string; imageBase64: string; token: string } }
 export const test = base.extend<{ claudeEmployee: State }>({ claudeEmployee: async ({}, use) => use({}) })

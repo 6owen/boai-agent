@@ -4,16 +4,17 @@
  * [POS]: API report-phase gateway acceptance; separate from the original business runs and publication transaction.
  * [PROTOCOL]: Update Header, tests/.folder.md and the Magpie ledger for every batch.
  */
+import { workspaceInputFiles } from './support/workspace-inputs'
 import { createHash } from 'node:crypto'
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { afterAll, beforeAll, expect, test } from 'vitest'
-import { MastraEngine } from '../src/runtime/adapters/mastra/engine'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { listModelCatalog, probeMagpie } from '../src/runtime/adapters/mastra/model-catalog'
-import type { Connection, Conversation, DigitalAgent, ModelUsage, WorkItem, WorkReport } from '../src/shared/domain'
-import type { GatewayRouteEvidence, ModelCatalog } from '../src/shared/domain/model-gateway'
-import type { EngineContext } from '../src/runtime/contracts'
+import { MastraEngine } from '../packages/runtime/src/adapters/mastra/engine'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { listModelCatalog, probeMagpie } from '../packages/runtime/src/adapters/mastra/model-catalog'
+import type { Connection, Conversation, DigitalAgent, ModelUsage, WorkItem, WorkReport } from '../packages/shared/src/domain'
+import type { GatewayRouteEvidence, ModelCatalog } from '../packages/shared/src/domain/model-gateway'
+import type { EngineContext } from '../packages/runtime/src/contracts'
 
 const enabled = process.env.BOAI_MAGPIE_REPORT_REAL === '1', batch = process.env.BOAI_MAGPIE_BATCH ?? '', sourceBatch = process.env.BOAI_MAGPIE_REPORT_SOURCE ?? ''
 const root = 'http://127.0.0.1:3425', evidence = resolve('.local/magpie-20261017', `report-${batch}`), originalFetch = globalThis.fetch
@@ -21,7 +22,7 @@ const sha = (value: Buffer | string) => createHash('sha256').update(value).diges
 let catalog: ModelCatalog, version = '', sourceBefore: Record<string, string>, current = ''
 const requests: { protocol: string; path: string; model: string; tools: number; status?: number; actualModel?: string | null; actualProvider?: string | null }[] = []
 async function sources() {
-  const paths = (await readdir('src', { recursive: true })).filter(path => /\.(ts|tsx|json)$/.test(path)).map(path => `src/${path}`)
+  const paths = (await workspaceInputFiles()).filter(path => /\.(ts|tsx|json)$/.test(path))
   paths.push('package.json', 'pnpm-lock.yaml', 'tests/magpie-report-live.test.ts')
   return Object.fromEntries(await Promise.all(paths.sort().map(async path => [path, sha(await readFile(path))])))
 }

@@ -7,8 +7,8 @@
 import { expect, test } from 'vitest'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import type { DesktopApi } from '../src/shared/ipc'
-import { HeaderBrowser } from '../src/renderer/components/app-shell/header-browser'
+import type { DesktopApi } from '../packages/shared/src/ipc'
+import { HeaderBrowser } from '../apps/electron/src/renderer/components/app-shell/header-browser'
 
 test('the built-in browser entry is one direct action with no ownership or account settings', () => {
   const html = renderToStaticMarkup(createElement(HeaderBrowser, { api: {} as DesktopApi }))

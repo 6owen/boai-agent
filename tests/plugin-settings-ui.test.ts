@@ -6,8 +6,8 @@
  * [PROTOCOL]: 变化同步Header及tests/.folder.md。
  */
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { setPluginEnabled, usePlugins } from '../src/renderer/stores/plugins'
-import type { DesktopApi } from '../src/shared/ipc'
+import { setPluginEnabled, usePlugins } from '../apps/electron/src/renderer/stores/plugins'
+import type { DesktopApi } from '../packages/shared/src/ipc'
 
 beforeEach(() => usePlugins.setState({ settings: { revision: 0, disabledIds: [] }, ready: true, busy: undefined, error: '' }))
 afterEach(() => { delete (window as Partial<Window>).boai; vi.restoreAllMocks() })

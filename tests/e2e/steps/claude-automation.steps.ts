@@ -17,9 +17,9 @@ import { openSchedule, scheduleAction, scheduleTarget } from '../support/schedul
 import { seedExpiredAutomationBudget } from '../support/automation-history'
 import { systemKeychainLaunch } from '../support/saved-model'
 import { beforeWorkQuestion } from '../support/native-continuation'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
 import { verifyLocalAgentNavigation } from '../support/local-agent-navigation'
-import type { AgentRun, AutomationOccurrence, BudgetModelCall, ConversationDetail, WorkBudget } from '../../../src/shared/domain'
+import type { AgentRun, AutomationOccurrence, BudgetModelCall, ConversationDetail, WorkBudget } from '../../../packages/shared/src/domain'
 
 const { Then } = createBdd(test)
 function expectReadableDelivery(detail: ConversationDetail) {

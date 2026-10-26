@@ -10,9 +10,9 @@ import { createHash, randomUUID } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { expect, test, vi } from 'vitest'
-import { AppService } from '../src/runtime/service'
-import type { Connection, Conversation, ConversationDetail, DigitalAgent, LaunchProfile, Message } from '../src/shared/domain'
-import type { RuntimePluginCatalog } from '../src/shared/plugins/runtime-catalog'
+import { AppService } from '../packages/runtime/src/service'
+import type { Connection, Conversation, ConversationDetail, DigitalAgent, LaunchProfile, Message } from '../packages/shared/src/domain'
+import type { RuntimePluginCatalog } from '../packages/shared/src/plugins/runtime-catalog'
 
 for (const provider of ['pi', 'opencode'] as const) test.skipIf(process.env.BOAI_PLUGIN_GATEWAY_WIRE !== provider).each(['chat', 'responses', 'messages'] as const)(`${provider} installed binary honors explicit %s source and retains native/product tools`, async protocol => {
   const batch = process.env.BOAI_MAGPIE_BATCH

@@ -8,11 +8,11 @@ import { afterEach, expect, test } from 'vitest'
 import { mkdtemp, realpath, readFile, writeFile, copyFile, chmod, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { codexGatewayProvider, assertCodexGatewayVersion } from '../src/shared/domain/codex-provider'
-import { codexGatewaySource } from '../src/runtime/adapters/codex/gateway-source'
-import { AppService } from '../src/runtime/service'
-import { agentModelConnections, agentModelSelectionReady } from '../src/renderer/components/employee/agent-model-selection'
-import type { Connection, DigitalAgent, LaunchProfile, Conversation, ConversationDetail, Message } from '../src/shared/domain'
+import { codexGatewayProvider, assertCodexGatewayVersion } from '../packages/shared/src/domain/codex-provider'
+import { codexGatewaySource } from '../packages/runtime/src/adapters/codex/gateway-source'
+import { AppService } from '../packages/runtime/src/service'
+import { agentModelConnections, agentModelSelectionReady } from '../apps/electron/src/renderer/components/employee/agent-model-selection'
+import type { Connection, DigitalAgent, LaunchProfile, Conversation, ConversationDetail, Message } from '../packages/shared/src/domain'
 
 const disposals: (() => Promise<void>)[] = []
 afterEach(async () => { for (const dispose of disposals.splice(0).reverse()) await dispose() })

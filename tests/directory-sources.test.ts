@@ -9,13 +9,13 @@ import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promi
 import { tmpdir } from 'node:os'
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { SourceService } from '../src/runtime/modules/sources/source-service'
-import { RunDirectoryAccess } from '../src/runtime/modules/workspaces/directory-run'
-import { AppService } from '../src/runtime/service'
-import type { AgentEngine, EngineContext } from '../src/runtime/contracts'
-import type { Connection, Conversation, ConversationDetail, DigitalAgent, Snapshot } from '../src/shared/domain'
-import type { DataSource } from '../src/shared/domain/sources'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { SourceService } from '../packages/runtime/src/modules/sources/source-service'
+import { RunDirectoryAccess } from '../packages/runtime/src/modules/workspaces/directory-run'
+import { AppService } from '../packages/runtime/src/service'
+import type { AgentEngine, EngineContext } from '../packages/runtime/src/contracts'
+import type { Connection, Conversation, ConversationDetail, DigitalAgent, Snapshot } from '../packages/shared/src/domain'
+import type { DataSource } from '../packages/shared/src/domain/sources'
 
 const cleanups: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const cleanup of cleanups.splice(0).reverse()) await cleanup() })

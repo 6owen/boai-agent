@@ -15,12 +15,12 @@ import { mkdtemp, mkdir, readFile, writeFile, rm, realpath } from 'node:fs/promi
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createHash } from 'node:crypto'
-import { BrowserService } from '../src/main/browser/browser-service'
-import { BrowserPaneManager } from '../src/main/browser/browser-pane-manager'
-import { parseBrowserSingleCommand } from '../src/runtime/adapters/mastra/browser-tool-runtime'
-import { APPLICATION_BROWSER_SCOPE } from '../src/shared/ipc/browser'
-import type { BrowserLease, BrowserActionEnvelope } from '../src/shared/ipc/browser'
-import { BrowserCDP } from '../src/main/browser/browser-cdp'
+import { BrowserService } from '../apps/electron/src/main/browser/browser-service'
+import { BrowserPaneManager } from '../apps/electron/src/main/browser/browser-pane-manager'
+import { parseBrowserSingleCommand } from '../packages/runtime/src/adapters/mastra/browser-tool-runtime'
+import { APPLICATION_BROWSER_SCOPE } from '../packages/shared/src/ipc/browser'
+import type { BrowserLease, BrowserActionEnvelope } from '../packages/shared/src/ipc/browser'
+import { BrowserCDP } from '../apps/electron/src/main/browser/browser-cdp'
 import type { WebContents } from 'electron'
 
 const roots: string[] = []

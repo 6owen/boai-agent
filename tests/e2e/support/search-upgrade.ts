@@ -5,7 +5,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { readFile, writeFile } from 'node:fs/promises'
-import type { ArtifactVersion } from '../../../src/shared/domain/artifacts'
+import type { ArtifactVersion } from '../../../packages/shared/src/domain/artifacts'
 import type { Desktop } from './desktop'
 export const SEARCH_ARTIFACT_BODY = 'ARTIFACT_V1'
 export const SEARCH_MATERIAL_BODY = 'ARTIFACT_MATERIAL_EVIDENCE'

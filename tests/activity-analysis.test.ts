@@ -5,8 +5,8 @@
  * [PROTOCOL]: Update this Header and tests/.folder.md when changed.
  */
 import { expect, it } from 'vitest'
-import { clusterActivityAnalyses, emptyActivityEntities } from '../src/runtime/modules/desktop-activity/activity-analysis'
-import type { ActivityAnalysis } from '../src/shared/domain/desktop-activity'
+import { clusterActivityAnalyses, emptyActivityEntities } from '../packages/runtime/src/modules/desktop-activity/activity-analysis'
+import type { ActivityAnalysis } from '../packages/shared/src/domain/desktop-activity'
 
 const item = (id: string, at: string, patch: Partial<ActivityAnalysis> = {}): ActivityAnalysis => ({
   id, from: '2026-10-20', to: '2026-10-20', observedAt: at, analyzedAt: at, sourceHash: id, sampleIds: [id],

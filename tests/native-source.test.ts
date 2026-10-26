@@ -9,9 +9,9 @@ import { afterEach, expect, test, vi } from 'vitest'
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { nativeConfigurationIdentity } from '../src/runtime/adapters/native-source'
-import { employeeEnvironment } from '../src/shared/cli/employee-environment'
-import { piNativeSourceIdentity, opencodeNativeSourceIdentity } from '../src/runtime/adapters/plugins/native-source'
+import { nativeConfigurationIdentity } from '../packages/shared/src/node/native-source'
+import { employeeEnvironment } from '../packages/shared/src/cli/employee-environment'
+import { piNativeSourceIdentity, opencodeNativeSourceIdentity } from '../packages/runtime-plugins/src/native-source'
 const roots: string[] = []
 afterEach(async () => { vi.unstubAllEnvs(); for (const path of roots.splice(0)) await rm(path, { recursive: true, force: true }) })
 async function root() { const value = await mkdtemp(join(tmpdir(), 'boai-native-source-')); roots.push(value); return value }

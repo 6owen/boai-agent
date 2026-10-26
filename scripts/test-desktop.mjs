@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 应用与评估编译按当前工作区公开exports解析，保留原执行与分发合同。
  * [INPUT]: 明确T1核心或T3完整旧清单、当前构建、原BDD和隔离新输出目录。
  * [OUTPUT]: 先核实际清单并记录监督入口执行墙钟；源码/构建前后、截图/trace/日志严格核验，不跳过旧失败。
  * [POS]: T1必需检查与手动T3执行入口；真实供应商T2另按原明确配置。
@@ -8,7 +9,7 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { createHash, randomUUID } from 'node:crypto'
 import { join, resolve, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { build } from 'esbuild'
+import { buildWorkspace as build } from './workspace-packages.mjs'
 import { sourceIdentity } from './ui-regression.mjs'
 import { verifyBuildIdentity } from './build-identity.mjs'
 import { desktopPlanIdentity, desktopReportRows, selectDesktopCases, assertDesktopReport } from './desktop-plan.mjs'

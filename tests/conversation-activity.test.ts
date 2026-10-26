@@ -5,8 +5,8 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
 import { describe, expect, it } from 'vitest'
-import { interruptedTriggerTurn } from '../src/renderer/pages/conversations/activity'
-import type { ConversationDetail, DiscussionTurn, Message } from '../src/shared/domain'
+import { interruptedTriggerTurn } from '../apps/electron/src/renderer/pages/conversations/activity'
+import type { ConversationDetail, DiscussionTurn, Message } from '../packages/shared/src/domain'
 
 const message: Message = { id: 'request', conversationId: 'chat', turnId: 'turn', senderType: 'user', senderId: 'user', senderName: '我', content: '请交付报告', status: 'completed', sequence: 1, createdAt: '2026-10-06T00:00:00Z' }
 const turn: DiscussionTurn = { id: 'turn', conversationId: 'chat', triggerMessageId: 'request', status: 'interrupted', generation: 0, createdAt: message.createdAt, modelCalls: 0, publicMessages: 0 }

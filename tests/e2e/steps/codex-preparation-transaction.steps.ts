@@ -10,12 +10,12 @@ import { createHash } from 'node:crypto'
 import { lstat, readFile, readdir, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test } from './codex-employee.steps'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
-import { workspaceTarget } from '../../../src/runtime/modules/workspaces/file-access'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
+import { workspaceTarget } from '../../../packages/runtime/src/modules/workspaces/file-access'
 import { runtimeBreakpoint } from '../support/runtime-breakpoint'
 import { runtimeChildProcessIds, processIsRunning } from '../support/automation-recovery'
 import { archiveNativeFinalReview } from '../support/native-final-review'
-import type { AgentRun, ArtifactVersion, BudgetModelCall, Message, WorkBudget, WorkItem } from '../../../src/shared/domain'
+import type { AgentRun, ArtifactVersion, BudgetModelCall, Message, WorkBudget, WorkItem } from '../../../packages/shared/src/domain'
 
 const { Then } = createBdd(test)
 Then('复制前准备事务内部实际退出后两次重启保持未交付且不重放', async ({ runtime, codexEmployee }) => {

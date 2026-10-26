@@ -5,10 +5,10 @@
  * [PROTOCOL]: 修改同步Header和tests/.folder.md。
  */
 import { expect, it, vi } from 'vitest'
-import type { DesktopApi } from '../src/shared/ipc'
-import type { AgentRun } from '../src/shared/domain'
-import type { ExecutionEvidence } from '../src/shared/domain/execution'
-import { ExecutionContentUpdating, readExecutionEvidence } from '../src/renderer/components/detail-panel/execution-content'
+import type { DesktopApi } from '../packages/shared/src/ipc'
+import type { AgentRun } from '../packages/shared/src/domain'
+import type { ExecutionEvidence } from '../packages/shared/src/domain/execution'
+import { ExecutionContentUpdating, readExecutionEvidence } from '../apps/electron/src/renderer/components/detail-panel/execution-content'
 const run = { id: 'run', conversationId: 'chat' } as AgentRun
 const full = (revision: number, text = '完整的思考正文') => ({ id: 'body', runId: run.id, conversationId: run.conversationId, revision, payload: { text }, deferred: false } as ExecutionEvidence)
 const deferred = { ...full(1), deferred: true, payload: { deferred: true } }

@@ -8,11 +8,11 @@ import { afterEach, expect, test } from 'vitest'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { EmployeeService, agentSchema } from '../src/runtime/modules/employees/employee-service'
-import { WorkspaceService } from '../src/runtime/modules/workspaces/workspace-service'
-import type { AgentInput, DigitalAgent } from '../src/shared/domain'
-import { isBrowserCapableAgent } from '../src/shared/domain'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { EmployeeService, agentSchema } from '../packages/runtime/src/modules/employees/employee-service'
+import { WorkspaceService } from '../packages/runtime/src/modules/workspaces/workspace-service'
+import type { AgentInput, DigitalAgent } from '../packages/shared/src/domain'
+import { isBrowserCapableAgent } from '../packages/shared/src/domain'
 
 const roots: string[] = [], stores: ProductStore[] = []
 afterEach(async () => { for (const store of stores.splice(0)) await store.close(); for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }) })

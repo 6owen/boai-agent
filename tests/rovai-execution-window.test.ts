@@ -1,12 +1,12 @@
 /*
- * [INPUT]: Rovai @ f9acc239 (MIT)原测试，许可见src/shared/rovai/LICENSE。
+ * [INPUT]: Rovai @ f9acc239 (MIT)原测试，许可见packages/shared/src/rovai/LICENSE。
  * [OUTPUT]: 原分组/窗口/公开结果合同回归，只调整本地导入。
  * [POS]: 迁入行为测试，不代替真实模型/产品界面验证。
  * [PROTOCOL]: 修改同步Header和tests/.folder.md。
  */
 import { describe, expect, it, vi } from 'vitest'
-import type { AgentRunExecutionEvidenceView as Evidence, AgentRunExecutionBlock, AgentRunExecutionBlockPage } from '../src/shared/rovai/contracts'
-import { ExecutionWindow, ExecutionWindowCache, executionWindowCacheFor, executionWindowPageSize, type ExecutionChangesRequest, type ExecutionWindowRequest } from '../src/renderer/components/detail-panel/execution-window'
+import type { AgentRunExecutionEvidenceView as Evidence, AgentRunExecutionBlock, AgentRunExecutionBlockPage } from '../packages/shared/src/rovai/contracts'
+import { ExecutionWindow, ExecutionWindowCache, executionWindowCacheFor, executionWindowPageSize, type ExecutionChangesRequest, type ExecutionWindowRequest } from '../apps/electron/src/renderer/components/detail-panel/execution-window'
 
 function evidence(sequence: number): Evidence {
   return { id: `e-${sequence}`, agentRunId: 'run', executionEpoch: 1, sequence,

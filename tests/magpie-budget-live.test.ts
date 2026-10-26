@@ -4,6 +4,7 @@
  * [POS]: M14 source integration acceptance; synthetic supplier does not certify natural model quality or desktop/package behavior.
  * [PROTOCOL]: Update Header, tests/.folder.md and Magpie ledger; preserve failures and personal HOME/CODEX_HOME/configuration.
  */
+import { workspaceInputFiles } from './support/workspace-inputs'
 import { createHash } from 'node:crypto'
 import { execFile } from 'node:child_process'
 import { createServer } from 'node:http'
@@ -11,11 +12,11 @@ import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 import { beforeAll, afterAll, expect, test, vi } from 'vitest'
-import { AppService } from '../src/runtime/service'
-import { MastraEngine } from '../src/runtime/adapters/mastra/engine'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import type { AgentRun, AutomationDefinition, AutomationOccurrence, AutomationsView, BudgetModelCall, Connection, Conversation, ConversationDetail, DigitalAgent, LaunchProfile, WorkBudget, WorkItem } from '../src/shared/domain'
-import type { RuntimePluginCatalog } from '../src/shared/plugins/runtime-catalog'
+import { AppService } from '../packages/runtime/src/service'
+import { MastraEngine } from '../packages/runtime/src/adapters/mastra/engine'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import type { AgentRun, AutomationDefinition, AutomationOccurrence, AutomationsView, BudgetModelCall, Connection, Conversation, ConversationDetail, DigitalAgent, LaunchProfile, WorkBudget, WorkItem } from '../packages/shared/src/domain'
+import type { RuntimePluginCatalog } from '../packages/shared/src/plugins/runtime-catalog'
 import { isolatedMagpie } from './fixtures/magpie-isolated'
 import { streamText, streamTool } from './fixtures/gateway-stream'
 
@@ -29,7 +30,7 @@ const strings = (value: unknown): string[] => typeof value === 'string' ? [value
 const alive = (pid: number) => { try { process.kill(pid, 0); return true } catch { return false } }
 async function sources() {
   const files: string[] = []
-  for (const root of ['src', 'tests', 'scripts']) for (const file of await readdir(root, { recursive: true })) if (/\.(ts|tsx|mjs|json)$/.test(file)) files.push(`${root}/${file}`)
+  for (const path of await workspaceInputFiles(['apps', 'packages', 'tests', 'scripts'])) if (/\.(ts|tsx|mjs|json)$/.test(path)) files.push(path)
   files.push('package.json', 'pnpm-lock.yaml')
   return Object.fromEntries(await Promise.all(files.sort().map(async file => [file, sha(await readFile(file))])))
 }

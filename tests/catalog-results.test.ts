@@ -8,9 +8,9 @@
 import { act, createElement as h } from 'react'
 import { createRoot } from 'react-dom/client'
 import { expect, it, vi } from 'vitest'
-import { mergeCatalogResults, type CatalogResult } from '../src/shared/domain/catalog-management'
-import type { ConversationDetail } from '../src/shared/domain'
-import { CatalogResults, catalogResultsByMessage } from '../src/renderer/pages/conversations/-components/catalog-results'
+import { mergeCatalogResults, type CatalogResult } from '../packages/shared/src/domain/catalog-management'
+import type { ConversationDetail } from '../packages/shared/src/domain'
+import { CatalogResults, catalogResultsByMessage } from '../apps/electron/src/renderer/pages/conversations/-components/catalog-results'
 
 const result = (overrides: Partial<CatalogResult> = {}): CatalogResult => ({ id: 'create', conversationId: 'chat', messageId: 'request-1', kind: 'source', targetId: 'source-1', action: 'create', createdAt: '2026-10-17T00:00:00.000Z', name: 'Notes', available: true, ...overrides })
 

@@ -28,23 +28,23 @@ import { mkdtemp, realpath, rm, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
-import { startHeadlessServer } from '../src/runtime/headless'
-import { findAttachedRuntime } from '../src/main/attached-runtime'
-import { AppearanceStore } from '../src/main/appearance'
-import { readLocalConnection } from '../src/cli/discovery'
-import { CliRpcClient } from '../src/cli/client'
-import type { AppearancePatch } from '../src/shared/appearance'
-import { startOwnedRuntime } from '../src/runtime/bootstrap'
-import { createNativeProducts } from '../src/runtime/adapters/native-products'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { ApplicationService } from '../src/runtime/modules/application/application-service'
+import { startHeadlessServer } from '../packages/runtime/src/headless'
+import { findAttachedRuntime } from '../apps/electron/src/main/attached-runtime'
+import { AppearanceStore } from '../apps/electron/src/main/appearance'
+import { readLocalConnection } from '../packages/transport/src/discovery'
+import { CliRpcClient } from '../packages/transport/src/client'
+import type { AppearancePatch } from '../packages/shared/src/appearance'
+import { startOwnedRuntime } from '../packages/runtime/src/bootstrap'
+import { createNativeProducts } from '../packages/runtime/src/adapters/native-products'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { ApplicationService } from '../packages/runtime/src/modules/application/application-service'
 import { z } from 'zod'
-import type { ApplicationResult } from '../src/shared/domain/application-protocol'
-import type { AgentEngine } from '../src/runtime/contracts'
-import type { Connection, DigitalAgent, Conversation, Snapshot } from '../src/shared/domain'
-import { BOBO_RULES, BOBO_SOUL, LEGACY_BOBO_RULES, DEFAULT_EMPLOYEE_SOUL } from '../src/shared/domain/agent-presets'
-import { promptSourceDefaults } from '../src/shared/domain/agent-prompts'
-import type { AgentBehaviorRun, AgentProfile, AgentStateView } from '../src/shared/domain/agent-profile'
+import type { ApplicationResult } from '../packages/shared/src/domain/application-protocol'
+import type { AgentEngine } from '../packages/runtime/src/contracts'
+import type { Connection, DigitalAgent, Conversation, Snapshot } from '../packages/shared/src/domain'
+import { BOBO_RULES, BOBO_SOUL, LEGACY_BOBO_RULES, DEFAULT_EMPLOYEE_SOUL } from '../packages/shared/src/domain/agent-presets'
+import { promptSourceDefaults } from '../packages/shared/src/domain/agent-prompts'
+import type { AgentBehaviorRun, AgentProfile, AgentStateView } from '../packages/shared/src/domain/agent-profile'
 
 const cleanup: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const action of cleanup.splice(0).reverse()) await action(); vi.useRealTimers() })
@@ -66,7 +66,7 @@ it('manages prompt templates through durable application receipts and the same r
   const created = await f.call('prompts.create', input, 'prompt-create')
   expect(created).toMatchObject({ status: 'succeeded', data: { ...input, revision: 1 } })
   expect(await f.call('prompts.create', input, 'prompt-create')).toEqual(created)
-  const saved = created.data as import('../src/shared/domain/prompt-templates').PromptTemplate
+  const saved = created.data as import('../packages/shared/src/domain/prompt-templates').PromptTemplate
   expect(await f.owned.service.handle('listPromptTemplates', undefined)).toEqual([saved])
   expect(await f.call('prompts.get', { id: saved.id })).toMatchObject({ data: saved })
   const edited = await f.call('prompts.update', { ...input, id: saved.id, expectedRevision: 1, content: '仅保留关键事实。' }, 'prompt-edit')
@@ -87,7 +87,7 @@ async function prepareBehavior(f: Awaited<ReturnType<typeof fixture>>) {
   expect(vi.isFakeTimers()).toBe(false)
   await f.call('connections.create', connection, 'behavior-model')
   const room = await f.owned.service.handle('startCoreConversation', { content: '保留我们关于具体例子的约定。', requestId: 'behavior-context' }) as Conversation
-  await expect.poll(async () => (await f.owned.service.handle('getConversation', { id: room.id }) as import('../src/shared/domain').ConversationDetail).messages.some(message => message.senderType === 'agent'), { timeout: 10_000 }).toBe(true)
+  await expect.poll(async () => (await f.owned.service.handle('getConversation', { id: room.id }) as import('../packages/shared/src/domain').ConversationDetail).messages.some(message => message.senderType === 'agent'), { timeout: 10_000 }).toBe(true)
   await expect.poll(async () => (await f.owned.service.handle('snapshot', undefined) as Snapshot).conversations.find(value => value.id === room.id)?.activity).toBe('idle')
   expect(Date.now()).toBe(day.getTime())
   const profile = (await f.call('employees.profile', { agentId: 'bobo' })).data as AgentProfile
@@ -99,7 +99,7 @@ async function prepareBehavior(f: Awaited<ReturnType<typeof fixture>>) {
 const chatFixture: Partial<AgentEngine> = { decide: async context => ({ action: 'reply', responseKind: 'chat', observedThroughSequence: context.participation!.observedThroughSequence }), run: async context => { await context.onDelta('记下这轮约定，继续用具体例子交流。') } }
 
 it('persists scoped planning through restart, feeds actual context, and clears mode/receipts with its chat', async () => {
-  const contexts: import('../src/runtime/contracts').EngineContext[] = []
+  const contexts: import('../packages/runtime/src/contracts').EngineContext[] = []
   let entered: ApplicationResult | undefined, otherId: string | undefined, foreign: ApplicationResult | undefined
   const f = await fixture({ ...chatFixture, run: async context => {
     contexts.push(context)
@@ -153,7 +153,7 @@ it('deletes and clears personality history through durable operations without re
   const room = await prepareBehavior(f)
   const run = await f.call('employees.runBehavior', { agentId: 'bobo', behaviorId: 'builtin-greeting' }, 'history-activity')
   await expect.poll(async () => ((await f.call('employees.behaviorHistory', { agentId: 'bobo' })).data as AgentBehaviorRun[])[0]?.status).toBe('completed')
-  const messages = (await f.owned.service.handle('getConversation', { id: room.id }) as import('../src/shared/domain').ConversationDetail).messages
+  const messages = (await f.owned.service.handle('getConversation', { id: room.id }) as import('../packages/shared/src/domain').ConversationDetail).messages
   const input = { agentId: 'bobo', runId: (run.data as AgentBehaviorRun).id }
   const deleted = await f.call('employees.deleteBehaviorHistory', input, 'delete-history')
   expect(deleted).toMatchObject({ status: 'succeeded', data: { agentId: 'bobo', deletedCount: 1 } })
@@ -166,7 +166,7 @@ it('deletes and clears personality history through durable operations without re
   const cleared = await f.call('employees.clearBehaviorHistory', clearInput, 'clear-history')
   expect(cleared).toMatchObject({ status: 'succeeded', data: { agentId: 'bobo', deletedCount: 0 } })
   expect(await f.call('employees.clearBehaviorHistory', clearInput, 'clear-history')).toEqual(cleared)
-  expect((await f.owned.service.handle('getConversation', { id: room.id }) as import('../src/shared/domain').ConversationDetail).messages).toEqual(messages)
+  expect((await f.owned.service.handle('getConversation', { id: room.id }) as import('../packages/shared/src/domain').ConversationDetail).messages).toEqual(messages)
   expect(calls).toBe(1)
 })
 
@@ -180,12 +180,12 @@ it('publishes eligible built-in outreach as the employee, retains actual prompt 
     return { decision: 'apply', reason: '按具体约定跟进', message: '上次说的具体例子，我想到一个。', sourceMessageIds: context.messages.filter(message => message.senderType === 'user').map(message => message.id) }
   } })
   const room = await prepareBehavior(f)
-  const before = await f.owned.service.handle('getConversation', { id: room.id }) as import('../src/shared/domain').ConversationDetail
+  const before = await f.owned.service.handle('getConversation', { id: room.id }) as import('../packages/shared/src/domain').ConversationDetail
   const admitted = await f.call('employees.runBehavior', { agentId: 'bobo', behaviorId: 'builtin-greeting' }, 'once')
   expect(admitted.status).toBe('succeeded')
   await expect.poll(async () => ((await f.call('employees.behaviorHistory', { agentId: 'bobo' })).data as AgentBehaviorRun[]).slice(0, 1)).toEqual([expect.objectContaining({ status: 'completed' })])
   expect(await f.call('employees.runBehavior', { agentId: 'bobo', behaviorId: 'builtin-greeting' }, 'once')).toEqual(admitted)
-  const after = await f.owned.service.handle('getConversation', { id: room.id }) as import('../src/shared/domain').ConversationDetail
+  const after = await f.owned.service.handle('getConversation', { id: room.id }) as import('../packages/shared/src/domain').ConversationDetail
   expect(after.messages.filter(message => message.senderType === 'user')).toEqual(before.messages.filter(message => message.senderType === 'user'))
   expect(after.messages.at(-1)).toMatchObject({ senderId: 'bobo', senderType: 'agent', content: '上次说的具体例子，我想到一个。' })
   expect(after.workItems).toEqual([])
@@ -243,7 +243,7 @@ it('commits a final travel day with its diary and rejects made-up research witho
   const rejected = (await f.call('employees.runBehavior', { agentId: 'bobo', behaviorId: 'builtin-travel' }, 'travel-fake-source')).data as AgentBehaviorRun
   await expect.poll(async () => (await history()).find(row => row.id === rejected.id)?.status).toBe('failed')
   expect((await state()).base.travel).toMatchObject({ active: true, day: 1, budget: 1000, events: [] })
-  const detail = await f.owned.service.handle('getConversation', { id: room.id }) as import('../src/shared/domain').ConversationDetail
+  const detail = await f.owned.service.handle('getConversation', { id: room.id }) as import('../packages/shared/src/domain').ConversationDetail
   expect(detail.messages.some(message => message.content.includes('虚拟游记'))).toBe(false)
 })
 
@@ -253,7 +253,7 @@ it('persists scoped reflection and growth, then clears derived state and pauses 
   expect(await f.call('employees.runBehavior', { agentId: 'bobo', behaviorId: 'builtin-reflection' }, 'reflect')).toMatchObject({ status: 'succeeded' })
   await expect.poll(async () => ((await f.call('employees.behaviorHistory', { agentId: 'bobo' })).data as AgentBehaviorRun[]).slice(0, 1)).toEqual([expect.objectContaining({ status: 'completed' })])
   expect(((await f.call('employees.state', { agentId: 'bobo', conversationId: room.id })).data as AgentStateView).base.traits).toHaveLength(1)
-  const memory = await f.owned.service.handle('getMemory', { agentId: 'bobo', scope: 'employee' }) as import('../src/shared/domain').MemoryView
+  const memory = await f.owned.service.handle('getMemory', { agentId: 'bobo', scope: 'employee' }) as import('../packages/shared/src/domain').MemoryView
   expect(memory.entries.some(entry => entry.content.includes('具体例子更容易'))).toBe(true)
   await f.owned.service.handle('clearConversationHistory', { id: room.id, hide: false })
   expect((await f.call('employees.runBehavior', { agentId: 'bobo', behaviorId: 'builtin-reflection' }, 'after-clear')).data).toBeNull()
@@ -262,7 +262,7 @@ it('persists scoped reflection and growth, then clears derived state and pauses 
 })
 
 it.each(['employee', 'conversation'] as const)('carries growth through actual recall for %s sources and revokes it when forgotten', async scope => {
-  const contexts: import('../src/runtime/contracts').EngineContext[] = []
+  const contexts: import('../packages/runtime/src/contracts').EngineContext[] = []
   const trait = '说明观点时更愿意给具体例子。'
   const f = await fixture({ ...chatFixture,
     run: async context => { contexts.push(context); await context.onDelta('你好。') },
@@ -285,7 +285,7 @@ it.each(['employee', 'conversation'] as const)('carries growth through actual re
     await f.owned.service.handle('createConversation', { id: room.id, kind: room.kind, title: room.title, agentIds: room.agentIds, memoryScope: 'conversation' })
     expect((await inspectNewChat('after-restriction')).bootstrap?.dynamicInstructions).not.toContain(trait)
   }
-  const memory = await f.owned.service.handle('getMemory', { agentId: 'bobo', scope: 'employee' }) as import('../src/shared/domain').MemoryView
+  const memory = await f.owned.service.handle('getMemory', { agentId: 'bobo', scope: 'employee' }) as import('../packages/shared/src/domain').MemoryView
   const entry = memory.entries.find(item => item.content.includes('通过具体事例'))!
   await f.owned.service.handle('deleteMemory', { agentId: 'bobo', scope: 'employee', id: entry.id, expectedEpoch: memory.epoch, requestId: 'forget-growth' })
   expect(((await f.call('employees.state', { agentId: 'bobo', conversationId: room.id })).data as AgentStateView).base.traits).toEqual([])
@@ -293,7 +293,7 @@ it.each(['employee', 'conversation'] as const)('carries growth through actual re
 })
 
 it.each([false, true])('reflects the full source day across private/group chats, including catch-up=%s, and clears derivatives with any source', async catchup => {
-  let observed: import('../src/runtime/contracts').EngineContext | undefined
+  let observed: import('../packages/runtime/src/contracts').EngineContext | undefined
   const f = await fixture({ ...chatFixture, runBehavior: async context => {
     observed = context
     return { decision: 'apply', reason: 'day-source-result', reflection: '今天私聊和群里都学到了把讨论落到例子上。', trait: '我更喜欢先摆出一个具体例子。', sourceMessageIds: [context.messages.find(message => message.content === '早上的私聊经历')!.id] }
@@ -301,7 +301,7 @@ it.each([false, true])('reflects the full source day across private/group chats,
   vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date(2026, 9, 19, 9))
   await f.call('connections.create', connection, 'day-model')
   const employee = (await f.call('employees.create', { name: '小研', role: '共同研究' }, 'day-employee')).data as DigitalAgent
-  const first = await f.owned.service.handle('sendEmployeeMessage', { employeeId: employee.id, content: '早上的私聊经历', requestId: 'day-private' }) as import('../src/shared/domain').Message
+  const first = await f.owned.service.handle('sendEmployeeMessage', { employeeId: employee.id, content: '早上的私聊经历', requestId: 'day-private' }) as import('../packages/shared/src/domain').Message
   const idle = async (id: string) => expect.poll(async () => (await f.owned.service.handle('snapshot', undefined) as Snapshot).conversations.find(room => room.id === id)?.activity).toBe('idle')
   await idle(first.conversationId)
   const group = await f.owned.service.handle('createConversation', { kind: 'group', title: '公开讨论', agentIds: [employee.id] }) as Conversation
@@ -309,7 +309,7 @@ it.each([false, true])('reflects the full source day across private/group chats,
   await f.owned.service.handle('sendMessage', { conversationId: group.id, content: '下午群聊一起找到了关键例子', mentionIds: [employee.id], requestId: 'day-group' }); await idle(group.id)
   const restricted = await f.owned.service.handle('createConversation', { kind: 'group', title: '限定讨论', agentIds: [employee.id], memoryScope: 'conversation' }) as Conversation
   await f.owned.service.handle('sendMessage', { conversationId: restricted.id, content: 'LIMITED_DAY_SENTINEL', mentionIds: [employee.id], requestId: 'day-restricted' }); await idle(restricted.id)
-  const dayMemory = await f.owned.service.handle('getMemory', { agentId: employee.id, scope: 'employee' }) as import('../src/shared/domain').MemoryView
+  const dayMemory = await f.owned.service.handle('getMemory', { agentId: employee.id, scope: 'employee' }) as import('../packages/shared/src/domain').MemoryView
   await f.owned.service.handle('saveMemory', { agentId: employee.id, scope: 'employee', content: '当日笔记：举例前先说清适用范围，先区分观察与推测。', kind: 'long_term', useScope: 'employee', expectedEpoch: dayMemory.epoch, requestId: 'day-note' })
   const profile = (await f.call('employees.profile', { agentId: employee.id })).data as AgentProfile
   const { agentId: _id, revision, updatedAt: _time, ...config } = profile
@@ -323,7 +323,7 @@ it.each([false, true])('reflects the full source day across private/group chats,
   expect(JSON.stringify(observed)).not.toContain('LIMITED_DAY_SENTINEL')
   expect(observed?.personalityReflection?.conversations.map(room => room.kind).sort()).toEqual(['direct', 'group'])
   expect(observed?.personalityReflection?.notes).toEqual(expect.arrayContaining([expect.objectContaining({ content: '当日笔记：举例前先说清适用范围，先区分观察与推测。', evidence: 'fact' })]))
-  const memory = await f.owned.service.handle('getMemory', { agentId: employee.id, scope: 'employee' }) as import('../src/shared/domain').MemoryView
+  const memory = await f.owned.service.handle('getMemory', { agentId: employee.id, scope: 'employee' }) as import('../packages/shared/src/domain').MemoryView
   const diary = memory.entries.find(entry => entry.content.startsWith('今天私聊'))!
   const note = memory.entries.find(entry => entry.content.startsWith('当日笔记'))!
   expect(diary.sourceMemoryIds).toContain(note.id)
@@ -348,7 +348,7 @@ it.each([false, true])('reflects the full source day across private/group chats,
 
 it('continues reflection after an actual correction invalidates a sibling memory of the same message', async () => {
   let extraction = 0, prior: { id: string; version: number } | undefined
-  let observed: import('../src/runtime/contracts').EngineContext | undefined
+  let observed: import('../packages/runtime/src/contracts').EngineContext | undefined
   const f = await fixture({ ...chatFixture, extractMemory: async context => {
     const source = context.messages.filter(message => message.senderType === 'user').at(-1)!.id
     if (++extraction === 1) return [
@@ -361,13 +361,13 @@ it('continues reflection after an actual correction invalidates a sibling memory
     return { decision: 'apply', reason: '只使用纠正后来源', reflection: '需要以当前已经核对的事实为准。', sourceMessageIds: context.messages.filter(message => message.senderType === 'user').map(message => message.id) }
   } })
   const room = await prepareBehavior(f), query = { agentId: 'bobo', scope: 'employee' }
-  let memory = await f.owned.service.handle('getMemory', query) as import('../src/shared/domain').MemoryView
+  let memory = await f.owned.service.handle('getMemory', query) as import('../packages/shared/src/domain').MemoryView
   const target = memory.entries.find(entry => entry.content.startsWith('旧判断'))!
   prior = { id: target.id, version: target.version }
   vi.setSystemTime(new Date(2026, 9, 19, 14))
   await f.owned.service.handle('sendMessage', { conversationId: room.id, content: '纠正刚才的判断，结果有遗漏。', mentionIds: [], requestId: 'actual-correction' })
   await expect.poll(async () => (await f.owned.service.handle('snapshot', undefined) as Snapshot).conversations.find(value => value.id === room.id)?.activity).toBe('idle')
-  memory = await f.owned.service.handle('getMemory', query) as import('../src/shared/domain').MemoryView
+  memory = await f.owned.service.handle('getMemory', query) as import('../packages/shared/src/domain').MemoryView
   expect(memory.entries.find(entry => entry.id === prior!.id)?.status).toBe('superseded')
   expect(memory.entries.find(entry => entry.content.startsWith('同源偏好'))?.status).toBe('active')
   vi.setSystemTime(new Date(2026, 9, 20, 12))
@@ -379,7 +379,7 @@ it('continues reflection after an actual correction invalidates a sibling memory
 })
 
 it('reflects actual self-state history and timestamps catch-up emotion now instead of rewriting yesterday', async () => {
-  let observed: import('../src/runtime/contracts').EngineContext | undefined
+  let observed: import('../packages/runtime/src/contracts').EngineContext | undefined
   const f = await fixture({ ...chatFixture, run: async context => {
     const state = await context.personality!.read()
     await context.personality!.update({ scope: 'context', expectedRevision: state.context!.revision, change: { action: 'emotion', emotion: { mood: 'curious', valence: 7, energy: 6, reason: '具体例子激起了我的好奇。' } } })
@@ -397,10 +397,10 @@ it('reflects actual self-state history and timestamps catch-up emotion now inste
   expect(observed?.personalityReflection?.date).toBe('2026-10-19')
   expect(observed?.memory?.recall?.inputMessageIds).toEqual(expect.arrayContaining(history![0].sourceMessageIds))
   const store = await ProductStore.openReadOnly(join(f.root, 'boai.sqlite')); cleanup.push(() => store.close())
-  const recorded = await store.load<import('../src/shared/domain/agent-profile').AgentEmotionHistory>('agentEmotionHistory')
+  const recorded = await store.load<import('../packages/shared/src/domain/agent-profile').AgentEmotionHistory>('agentEmotionHistory')
   expect(recorded).toHaveLength(2)
   expect(recorded[1]).toMatchObject({ emotion: { mood: 'content', updatedAt: new Date(2026, 9, 20, 12).toISOString() } })
-  const memory = await f.owned.service.handle('getMemory', { agentId: 'bobo', scope: 'employee' }) as import('../src/shared/domain').MemoryView
+  const memory = await f.owned.service.handle('getMemory', { agentId: 'bobo', scope: 'employee' }) as import('../packages/shared/src/domain').MemoryView
   const diary = memory.entries.find(entry => entry.diary)!
   expect(diary.diary?.date).toBe('2026-10-19')
   expect(diary.sourceMessageIds).toEqual(expect.arrayContaining(history![0].sourceMessageIds))
@@ -409,41 +409,41 @@ it('reflects actual self-state history and timestamps catch-up emotion now inste
 })
 
 it('reflects on a note-only day without manufacturing chat and invalidates its derived diary, growth and emotion', async () => {
-  let observed: import('../src/runtime/contracts').EngineContext | undefined
+  let observed: import('../packages/runtime/src/contracts').EngineContext | undefined
   const f = await fixture({ ...chatFixture, runBehavior: async context => {
     observed = context
     return { decision: 'apply', reason: '回顾实际保存的笔记', reflection: '这份笔记让我重新考虑如何解释判断。', trait: '我愿意先说明判断的依据。', emotion: { mood: 'curious', valence: 7, energy: 6, reason: '笔记提出了一个值得思考的问题。' }, sourceMessageIds: [] }
   } })
   const room = await prepareBehavior(f), query = { agentId: 'bobo', scope: 'employee' }
   // Chat was yesterday; today has a directly saved note and no message at all.
-  let memory = await f.owned.service.handle('getMemory', query) as import('../src/shared/domain').MemoryView
-  memory = await f.owned.service.handle('saveMemory', { ...query, content: '判断需区分证据和假设。', kind: 'experience', evidence: 'preference', useScope: 'employee', expectedEpoch: memory.epoch, requestId: 'notes-only-source' }) as import('../src/shared/domain').MemoryView
+  let memory = await f.owned.service.handle('getMemory', query) as import('../packages/shared/src/domain').MemoryView
+  memory = await f.owned.service.handle('saveMemory', { ...query, content: '判断需区分证据和假设。', kind: 'experience', evidence: 'preference', useScope: 'employee', expectedEpoch: memory.epoch, requestId: 'notes-only-source' }) as import('../packages/shared/src/domain').MemoryView
   const note = memory.entries.find(entry => entry.content === '判断需区分证据和假设。')!
-  const before = await f.owned.service.handle('getConversation', { id: room.id }) as import('../src/shared/domain').ConversationDetail
+  const before = await f.owned.service.handle('getConversation', { id: room.id }) as import('../packages/shared/src/domain').ConversationDetail
   vi.setSystemTime(new Date(2026, 9, 21, 12))
   const admitted = await f.call('employees.runBehavior', { agentId: 'bobo', behaviorId: 'builtin-reflection' }, 'note-only-day')
   expect(admitted.data).toMatchObject({ reflectionDay: '2026-10-20', sourceMemoryId: note.id })
   await expect.poll(async () => ((await f.call('employees.behaviorHistory', { agentId: 'bobo' })).data as AgentBehaviorRun[]).find(item => item.id === (admitted.data as AgentBehaviorRun).id)?.status).toBe('completed')
   expect(observed?.messages).toEqual([])
   expect(observed?.personalityReflection?.notes).toMatchObject([{ id: note.id, version: note.version, origin: 'user' }])
-  const after = await f.owned.service.handle('getConversation', { id: room.id }) as import('../src/shared/domain').ConversationDetail
+  const after = await f.owned.service.handle('getConversation', { id: room.id }) as import('../packages/shared/src/domain').ConversationDetail
   expect(after.messages).toEqual(before.messages)
-  memory = await f.owned.service.handle('getMemory', query) as import('../src/shared/domain').MemoryView
+  memory = await f.owned.service.handle('getMemory', query) as import('../packages/shared/src/domain').MemoryView
   const diary = memory.entries.find(entry => entry.diary?.date === '2026-10-20')!
   expect(diary.sourceMessageIds).toEqual([]); expect(diary.sourceMemoryIds).toContain(note.id)
   expect(((await f.call('employees.state', { agentId: 'bobo', conversationId: room.id })).data as AgentStateView).base.traits).toHaveLength(1)
   const store = new ProductStore(join(f.root, 'boai.sqlite')); await store.init(); cleanup.push(() => store.close())
-  const emotion = (await store.load<import('../src/shared/domain/agent-profile').AgentEmotionHistory>('agentEmotionHistory'))[0]
+  const emotion = (await store.load<import('../packages/shared/src/domain/agent-profile').AgentEmotionHistory>('agentEmotionHistory'))[0]
   expect(emotion).toMatchObject({ sourceMessageIds: [], sourceMemories: expect.arrayContaining([{ id: note.id, version: note.version }]) })
   await f.owned.service.handle('deleteMemory', { ...query, id: note.id, expectedEpoch: memory.epoch, requestId: 'delete-only-note' })
   expect(((await f.call('employees.state', { agentId: 'bobo', conversationId: room.id })).data as AgentStateView).base.traits).toEqual([])
-  memory = await f.owned.service.handle('getMemory', query) as import('../src/shared/domain').MemoryView
+  memory = await f.owned.service.handle('getMemory', query) as import('../packages/shared/src/domain').MemoryView
   expect(memory.entries.find(entry => entry.id === diary.id)?.status).not.toBe('active')
   expect((await f.call('employees.runBehavior', { agentId: 'bobo', behaviorId: 'builtin-reflection' }, 'note-only-day')).data).toMatchObject({ id: (admitted.data as AgentBehaviorRun).id })
 })
 
 it('invalidates a diary and growth when a dated note used only by reflection is forgotten', async () => {
-  let observed: import('../src/runtime/contracts').EngineContext | undefined
+  let observed: import('../packages/runtime/src/contracts').EngineContext | undefined
   const f = await fixture({ ...chatFixture, runBehavior: async context => {
     observed = context
     return { decision: 'apply', reason: '结合当日笔记', reflection: '当日笔记提醒我在表达看法前分清依据。', trait: '我更愿意明确说出判断的依据。', sourceMessageIds: [context.messages.find(message => message.senderType === 'user')!.id] }
@@ -451,12 +451,12 @@ it('invalidates a diary and growth when a dated note used only by reflection is 
   const room = await prepareBehavior(f)
   vi.setSystemTime(new Date(2026, 9, 19, 14))
   const query = { agentId: 'bobo', scope: 'employee' }
-  let memory = await f.owned.service.handle('getMemory', query) as import('../src/shared/domain').MemoryView
+  let memory = await f.owned.service.handle('getMemory', query) as import('../packages/shared/src/domain').MemoryView
   await f.owned.service.handle('saveMemory', { ...query, content: '笔记专属的依据要求，不在聊天正文里。', kind: 'experience', evidence: 'preference', useScope: 'employee', expectedEpoch: memory.epoch, requestId: 'reflection-only-note' })
   vi.setSystemTime(new Date(2026, 9, 20, 12))
   const admitted = await f.call('employees.runBehavior', { agentId: 'bobo', behaviorId: 'builtin-reflection' }, 'reflect-note')
   await expect.poll(async () => ((await f.call('employees.behaviorHistory', { agentId: 'bobo' })).data as AgentBehaviorRun[]).find(item => item.id === (admitted.data as AgentBehaviorRun).id)?.status).toBe('completed')
-  memory = await f.owned.service.handle('getMemory', query) as import('../src/shared/domain').MemoryView
+  memory = await f.owned.service.handle('getMemory', query) as import('../packages/shared/src/domain').MemoryView
   const note = memory.entries.find(entry => entry.content.startsWith('笔记专属'))!, diary = memory.entries.find(entry => entry.diary)!
   expect(observed?.personalityReflection?.notes?.some(entry => entry.id === note.id)).toBe(true)
   expect(observed?.messages.some(message => message.content.includes('笔记专属'))).toBe(false)
@@ -522,7 +522,7 @@ it('rechecks quiet hours before publishing an already running proactive draft', 
   vi.setSystemTime(new Date(2026, 9, 20, 23))
   release()
   await expect.poll(async () => ((await f.call('employees.behaviorHistory', { agentId: 'bobo' })).data as AgentBehaviorRun[]).find(run => run.id === (result.data as AgentBehaviorRun).id)?.status).toBe('skipped')
-  const detail = await f.owned.service.handle('getConversation', { id: room.id }) as import('../src/shared/domain').ConversationDetail
+  const detail = await f.owned.service.handle('getConversation', { id: room.id }) as import('../packages/shared/src/domain').ConversationDetail
   expect(detail.messages.some(message => message.content.includes('不应在免打扰时发出'))).toBe(false)
 })
 
@@ -622,7 +622,7 @@ it('runs real bobo host callbacks for independent employee and future schedule c
   await f.owned.service.handle('saveAgent', { id: core.id, expectedConfigVersion: core.configVersion, name: core.name, role: core.role, instructions: core.instructions, color: core.color, connectionId: model.id, modelId: model.defaultModel, skillIds: [], knowledgeIds: [], active: true, allowCommands: false })
   const room = await f.owned.service.handle('startCoreConversation', { content: '创建小研，再给他建一个每天九点执行的研究计划，先不要启用。', requestId: 'user-intent' }) as Conversation
   await expect.poll(async () => {
-    const detail = await f.owned.service.handle('getConversation', { id: room.id }) as import('../src/shared/domain').ConversationDetail
+    const detail = await f.owned.service.handle('getConversation', { id: room.id }) as import('../packages/shared/src/domain').ConversationDetail
     return detail.messages.some(message => message.senderType === 'agent' && message.content.includes('已创建小研'))
   }, { timeout: 10000 }).toBe(true)
   expect(((await f.call('employees.list')).data as DigitalAgent[]).filter(agent => agent.name === 'bobo创建的小研')).toHaveLength(1)

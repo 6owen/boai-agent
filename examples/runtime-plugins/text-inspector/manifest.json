@@ -1,0 +1,22 @@
+{
+  "id": "example.text-inspector",
+  "version": "0.1.0",
+  "apiVersion": 2,
+  "name": "Text Inspector",
+  "description": "确定性文本统计示例；不调用模型，不支持工具或图片。",
+  "contributions": [{
+    "type": "agent-runtime",
+    "providerId": "text-inspector",
+    "runtimeApiVersion": 2,
+    "driver": { "kind": "module", "entry": "plugin.mjs" },
+    "discovery": { "commands": ["node"] },
+    "configSchemaVersion": 1,
+    "configSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "includePreview": { "type": "boolean", "title": "包含文本预览" }
+      }
+    }
+  }]
+}

@@ -10,11 +10,11 @@ import { act, createElement as h } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { toast } from 'sonner'
-import type { Resource } from '../src/shared/domain'
-import type { DesktopApi } from '../src/shared/ipc'
-import { KnowledgePreviewPane } from '../src/renderer/components/work-views/employee-knowledge'
-vi.mock('../src/renderer/components/common/file-preview', () => ({ FilePreview: ({ name, file }: { name: string; file: { text: string } }) => h('article', { 'aria-label': name }, file.text) }))
-vi.mock('../src/renderer/components/ui/select-field', () => ({ SelectField: ({ value, options, onValueChange }: { value: string; options: {value: string; label: string}[]; onValueChange(value: string): void }) => h('select', { 'aria-label': '知识资料文件', value, onChange: (event: {target: {value: string}}) => onValueChange(event.target.value) }, options.map(option => h('option', { key: option.value, value: option.value }, option.label))) }))
+import type { Resource } from '../packages/shared/src/domain'
+import type { DesktopApi } from '../packages/shared/src/ipc'
+import { KnowledgePreviewPane } from '../apps/electron/src/renderer/components/work-views/employee-knowledge'
+vi.mock('../apps/electron/src/renderer/components/common/file-preview', () => ({ FilePreview: ({ name, file }: { name: string; file: { text: string } }) => h('article', { 'aria-label': name }, file.text) }))
+vi.mock('../apps/electron/src/renderer/components/ui/select-field', () => ({ SelectField: ({ value, options, onValueChange }: { value: string; options: {value: string; label: string}[]; onValueChange(value: string): void }) => h('select', { 'aria-label': '知识资料文件', value, onChange: (event: {target: {value: string}}) => onValueChange(event.target.value) }, options.map(option => h('option', { key: option.value, value: option.value }, option.label))) }))
 const first = { id: 'resource', kind: 'knowledge', ownerAgentId: 'employee', name: '旧资料.md', knowledge: { revision: 1, contentHash: 'old' } } as Resource
 const latest = { ...first, name: '新资料.md', knowledge: { ...first.knowledge!, revision: 2, contentHash: 'new' } }
 let root: Root, host: HTMLDivElement

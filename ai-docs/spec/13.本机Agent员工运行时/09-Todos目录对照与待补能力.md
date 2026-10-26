@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [OUTPUT]: 2026-10-11按Rovai纠正文档：员工一等公民、原生session/turn与工具、右侧执行历史；删除消息流程卡片，不精简输入框工具栏；仅文档，状态归06 §121。
 [INPUT]: 用户确认的IM产品方向、Todos官方文档目录与专题页、当前员工/工具栏/运行时源码、本组01–08和06当前剩余清单。
 [OUTPUT]: 按Todos目录区分BoAI已有基础、本机员工待补能力和独立产品扩展；给出后续开发选择及原合同入口，不建立第二份实施进度。
@@ -52,7 +53,7 @@ Todos既有内置模型运行时，也可驱动本机成熟Agent；Codex、Claud
 | 连接、密钥、权限 | 已有模型连接、受管运行配置、材料／工具授权与宿主命令审批 | “模型连接”“本机程序”“外部工具连接”不可共用一个含糊状态；认证、可用能力和权限分别展示，不把cwd称为硬沙箱。见[01](./01-产品范围与前端交互.md)、[02](./02-运行时适配与能力契约.md)。 |
 | 疑难排查、Changelog | 已有运行详情、外部阶段Trace与分批实施记录 | 从原消息或设置解释具体失败及下一步；外部内部模型步骤、费用或用量不可见时保持未知。面向用户的诊断按实际适配器能力补齐，不把开发留证报告直接当产品诊断入口。 |
 
-当前代码的复用入口：[员工表单](../../../src/renderer/components/employee/editors.tsx)、[本机连接](../../../src/renderer/pages/settings/local-agents.tsx)、[聊天底部](../../../src/renderer/pages/conversations/-components/composer-toolbar.tsx)、[能力概览](../../../src/renderer/components/employee/overview-state.ts)、[执行后端类型](../../../src/shared/domain/backends.ts)。API执行位于[Mastra适配器](../../../src/runtime/adapters/mastra/engine.ts)，周期时钟位于[原生日程](../../../src/runtime/modules/automations/native-schedules.ts)。
+当前代码的复用入口：[员工表单](../../../apps/electron/src/renderer/components/employee/editors.tsx)、[本机连接](../../../apps/electron/src/renderer/pages/settings/local-agents.tsx)、[聊天底部](../../../apps/electron/src/renderer/pages/conversations/-components/composer-toolbar.tsx)、[能力概览](../../../apps/electron/src/renderer/components/employee/overview-state.ts)、[执行后端类型](../../../packages/shared/src/domain/backends.ts)。API执行位于[Mastra适配器](../../../packages/runtime/src/adapters/mastra/engine.ts)，周期时钟位于[原生日程](../../../packages/runtime/src/modules/automations/native-schedules.ts)。
 
 ## 3. 本机员工仍需补齐或验证的部分
 

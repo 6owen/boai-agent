@@ -9,11 +9,11 @@ import { act, createElement as h } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { toast } from 'sonner'
-import type { AppEvent, DesktopApi } from '../src/shared/ipc'
-import { shortcutDefaults, reservedShortcuts, validateShortcuts, type ShortcutSnapshot, type ShortcutUpdate } from '../src/shared/shortcuts'
-import { shortcuts, ShortcutController } from '../src/renderer/stores/shortcuts'
-import { ShortcutSettings } from '../src/renderer/pages/settings/shortcuts'
-import { useEditorGuard } from '../src/renderer/components/common/use-editor-guard'
+import type { AppEvent, DesktopApi } from '../packages/shared/src/ipc'
+import { shortcutDefaults, reservedShortcuts, validateShortcuts, type ShortcutSnapshot, type ShortcutUpdate } from '../packages/shared/src/shortcuts'
+import { shortcuts, ShortcutController } from '../apps/electron/src/renderer/stores/shortcuts'
+import { ShortcutSettings } from '../apps/electron/src/renderer/pages/settings/shortcuts'
+import { useEditorGuard } from '../apps/electron/src/renderer/components/common/use-editor-guard'
 
 let host: HTMLDivElement, root: Root
 const controllers: ShortcutController[] = []

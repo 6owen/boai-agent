@@ -6,9 +6,9 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { join } from 'node:path'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
-import type { AutomationOccurrence } from '../../../src/shared/domain'
-import { ExecutionRepository } from '../../../src/runtime/modules/conversations/execution'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
+import type { AutomationOccurrence } from '../../../packages/shared/src/domain'
+import { ExecutionRepository } from '../../../packages/runtime/src/modules/conversations/execution'
 
 export async function seedAutomationProcesses(root: string, automationId: string, conversationId: string) {
   const store = new ProductStore(join(root, 'boai.sqlite'))
@@ -17,9 +17,9 @@ export async function seedAutomationProcesses(root: string, automationId: string
     const execution = new ExecutionRepository(store, () => {})
     for (let index = 0; index < 3; index++) {
       const id = `${automationId}-process-${index}`, runId = `${id}-run`, startedAt = `2026-10-1${index + 1}T01:00:00.000Z`
-      const message: import('../../../src/shared/domain').Message = { id: `${id}-request`, conversationId, senderType: 'user', senderId: 'user', senderName: '我', content: `第${index + 1}次天气查询`, status: 'completed', sequence: index * 2 + 1, createdAt: startedAt }
+      const message: import('../../../packages/shared/src/domain').Message = { id: `${id}-request`, conversationId, senderType: 'user', senderId: 'user', senderName: '我', content: `第${index + 1}次天气查询`, status: 'completed', sequence: index * 2 + 1, createdAt: startedAt }
       const result: typeof message = { ...message, id: `${id}-result`, senderType: 'agent', senderId: 'researcher', senderName: '研究员', content: `南京天气结果 ${index + 1}`, sequence: index * 2 + 2, runId }
-      const run: import('../../../src/shared/domain').AgentRun = { id: runId, conversationId, agentId: 'researcher', agentName: '研究员', triggerMessageId: message.id, messageId: result.id, status: 'completed', phase: 'execution', createdAt: startedAt, finishedAt: startedAt, toolEvents: [] }
+      const run: import('../../../packages/shared/src/domain').AgentRun = { id: runId, conversationId, agentId: 'researcher', agentName: '研究员', triggerMessageId: message.id, messageId: result.id, status: 'completed', phase: 'execution', createdAt: startedAt, finishedAt: startedAt, toolEvents: [] }
       const occurrence: AutomationOccurrence = { schemaVersion: 1, stateVersion: 1, id, automationId, name: `天气记录 ${index + 1}`, source: 'schedule', startedAt, scheduledFor: startedAt, finishedAt: startedAt, status: 'completed', deliveryStatus: 'delivered', conversationId, messageId: message.id, runIds: [runId], resultMessageIds: [result.id], modelCalls: 1, usageIncomplete: true }
       await store.write([{ collection: 'messages', id: message.id, value: message }, { collection: 'messages', id: result.id, value: result }, { collection: 'runs', id: run.id, value: run }, { collection: 'automationOccurrences', id: occurrence.id, value: occurrence }])
       await execution.append(run, { id: `${run.id}-text`, eventType: 'agent.text.block', payload: { text: result.content } })
@@ -43,7 +43,7 @@ export async function seedExpiredAutomationBudget(root: string, occurrenceId: st
     await store.transaction(async tx => {
       const o = (await tx.get<AutomationOccurrence>('automationOccurrences', occurrenceId))!
       if (o.status !== 'waiting_user' || !o.budgetId || !o.budget) throw new Error('Fixture requires a settled clarification')
-      const budget = (await tx.get<import('../../../src/shared/domain').WorkBudget>('workBudgets', o.budgetId))!
+      const budget = (await tx.get<import('../../../packages/shared/src/domain').WorkBudget>('workBudgets', o.budgetId))!
       budget.deadlineAt = new Date(0).toISOString()
       o.budget.deadlineAt = budget.deadlineAt; o.budget.exhausted = true
       o.status = 'cancelled'; o.cancellationCause = 'budget'; o.reason = '达到本次自动化的时间预算'; o.cancellationRequestedAt = new Date().toISOString(); o.finishedAt = o.cancellationRequestedAt; o.stateVersion++

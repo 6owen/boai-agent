@@ -13,7 +13,7 @@ import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { test as base } from '../support/test'
 import type { Desktop } from '../support/desktop'
-import type { LaunchProfile } from '../../../src/shared/domain'
+import type { LaunchProfile } from '../../../packages/shared/src/domain'
 
 type State = { source?: string; codexId?: string; configId?: string; profileId?: string; loginId?: string; nativeStarts?: string; nativeSource?: string; legacyProgramSource?: string; legacyProfile?: LaunchProfile; nativeProfile?: LaunchProfile }
 export const test = base.extend<{ localConfigState: State }>({ localConfigState: async ({}, use) => use({}) })

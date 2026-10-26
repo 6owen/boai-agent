@@ -1,10 +1,11 @@
 /*
+ * [OUTPUT]: Workspace源码路径迁至apps/packages，保留既有输出与业务合同。
  * [INPUT]: 显式已保存连接、只读凭据桥和 BC-v1 两个独立真实模型场景。
  * [OUTPUT]: 全已有/补缺员的真实组织与依赖交付证据及阶段合同源码hash；累计48请求/40000已知输出token/240秒，不改冻结留出题或用户数据库。
  * [POS]: BC4 手动评估入口；初始化期限和实际失败留证，人工质量独立 pending。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { build } from 'esbuild'
+import { buildWorkspace as build } from './workspace-packages.mjs'
 import { spawn } from 'node:child_process'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join, resolve, dirname } from 'node:path'
@@ -16,7 +17,7 @@ if (!connectionId || process.argv.length !== 3) throw new Error('Usage: node scr
 const output = resolve(`.local/bobo-collaboration-evaluation/BC-v1-${Date.now()}`)
 await mkdir(dirname(output), { recursive: true }); await mkdir(output)
 const settings = { version: 'BC-v1', output, connectionId, dataPath: join(homedir(), 'Library/Application Support/BoAI Agent/v2'), maxRequests: 48, maxOutputTokens: 40000, deadlineMs: 240000, hashes: {} }
-for (const file of ['tests/evaluation/bobo-collaboration.ts','src/runtime/service.ts','src/runtime/modules/bobo-collaboration/service.ts','src/runtime/modules/collaboration/work-collaboration.ts','src/runtime/group-scheduler.ts','src/runtime/adapters/mastra/engine.ts','src/runtime/adapters/mastra/agent-factory.ts','src/runtime/adapters/mastra/task-runtime.ts','src/runtime/modules/collaboration/work-protocol.ts','src/runtime/contracts.ts','src/runtime/adapters/mastra/deepseek-reasoning-model.ts','pnpm-lock.yaml']) {
+for (const file of ['tests/evaluation/bobo-collaboration.ts','packages/runtime/src/service.ts','packages/runtime/src/modules/bobo-collaboration/service.ts','packages/runtime/src/modules/collaboration/work-collaboration.ts','packages/runtime/src/group-scheduler.ts','packages/runtime/src/adapters/mastra/engine.ts','packages/runtime/src/adapters/mastra/agent-factory.ts','packages/runtime/src/adapters/mastra/task-runtime.ts','packages/runtime/src/modules/collaboration/work-protocol.ts','packages/runtime/src/contracts.ts','packages/runtime/src/adapters/mastra/deepseek-reasoning-model.ts','pnpm-lock.yaml']) {
   try { settings.hashes[file] = createHash('sha256').update(await readFile(file)).digest('hex') } catch (error) { throw new Error(`评估源文件不可读：${file}`, { cause: error }) }
 }
 await writeFile(join(output, 'settings.json'), JSON.stringify(settings, null, 2))

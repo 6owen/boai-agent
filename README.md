@@ -1,4 +1,7 @@
 <!--
+[OUTPUT]: 2026-10-25第26组续行独立应用构建、外部插件接入与任务结果闭环；Web遥控暂缓，实际归26组02 §8。
+[OUTPUT]: 2026-10-25 Workspace源码归属迁移，当前状态见第26组02。
+[OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [OUTPUT]: 2026-10-25新增第19组11/12语音输入可选应用插件设计与实施验收；默认关闭、模型按需下载、录音转原草稿，本轮仅文档并提交推送，产品开发留待后续。
 [OUTPUT]: 2026-10-24按用户要求移除日常固定使用pnpm dev的约束；运行方式不预设，独立worktree及main仅同步已合并提交的规则保持。
 [OUTPUT]: 2026-10-24界面禁止无意义description和操作状态DOM文案，说明用图标Tooltip、反馈沿Sonner；规约归AGENTS。
@@ -405,6 +408,14 @@ pnpm build
 pnpm start
 ```
 
+按应用开发和构建（本轮实现与验证进度见[第26组02 §8](ai-docs/spec/26.Workspace工程结构重构/02-实施步骤与验收.md#8-2026-10-25-独立应用外部插件与任务闭环增量)）：
+
+- Electron：`pnpm dev:electron`、`pnpm build:electron`；根`pnpm dev`、`pnpm build`保持兼容。
+- CLI完整宿主：`pnpm dev:cli --help`、`pnpm build:cli`，包含独立serve所需运行核心与资源。
+- CLI轻客户端：`pnpm dev:cli:client --help`、`pnpm build:cli:client`，用于连接已有宿主。
+- 设计站：`pnpm dev:design`、`pnpm build:design`；也可通过对应workspace包命令使用。
+- 单应用产物继续使用约定dist路径；部分构建不会登记为完整桌面构建通过，也不证明当前旧进程已重载。
+
 1. 在左下角「设置」添加模型连接。支持 OpenAI、Anthropic 和 OpenAI Chat Completions / Responses 兼容服务；兼容服务填写完整 API 基础地址，可不填 Key。也可点击「扫描本地 Agent」，预览 Codex / Claude Code 的 API 配置并逐项导入，或选择其他配置目录（JSON、TOML、YAML、dotenv）。缺少模型名时先补填；已导入来源不会重复创建或覆盖已有编辑。扫描不会联网、改写来源或将密钥带入扫描结果；本机 Codex/Claude 可沿用各自 CLI 登录；员工选择“本机 Agent”并绑定实际程序，旧 ACP 配置只作兼容保留。
 2. 在「通讯录 → 加号 → 创建团队」的弹窗填写团队名称和团队需求，点击「生成」进入系统核心助手 bobo 的会话；它根据需求安排成员，并默认创建使用该团队名称的群聊。团队入口不需要模型、模板、群开关或草稿配置。也可手工新建员工，并在「编辑配置」选择模型；员工模型 ID 留空时使用连接默认模型。
 3. 通讯录按群聊、联系人展示资料；点击「发消息」进入对应会话，也可在会话页新建群聊。`@` 和引用可明确收件人。API员工沿现有Mastra调度，本机员工直接使用自己的持续原生会话；普通本机聊天可以使用其原生工具，遵循所选权限。
@@ -446,9 +457,9 @@ pnpm start
 
 ## Skills 与知识
 
-会话与技能正文通过 [共享 Markdown](src/renderer/components/common/markdown.tsx) 使用 [CodeBlock](src/renderer/components/ui/code-block.tsx) 的 Shiki 高亮，语言/主题随应用打包并按需加载；未知语言或高亮失败仍显示原文。明暗主题与代码块样式统一在 [shiki.css](src/renderer/styles/shiki.css)，行内代码保持普通排版。
+会话与技能正文通过 [共享 Markdown](apps/electron/src/renderer/components/common/markdown.tsx) 使用 [CodeBlock](apps/electron/src/renderer/components/ui/code-block.tsx) 的 Shiki 高亮，语言/主题随应用打包并按需加载；未知语言或高亮失败仍显示原文。明暗主题与代码块样式统一在 [shiki.css](apps/electron/src/renderer/styles/shiki.css)，行内代码保持普通排版。
 
-成果文件和聊天附件共用 [FilePreview](src/renderer/components/common/file-preview/index.tsx)，标题栏、Markdown/源码、代码/文本、PDF/Office和图片预览集中在 `components/common/file-preview/`。Markdown正文与源码分别复用共享Markdown和CodeBlock，源码不显示行号栏，但保留引用行定位及高亮。文本预览与源码的滚动条贴面板右缘，正文留白和固定标题栏保持。PDF/Office继续使用既有Lody查看器；文件读取、来源核验与业务操作由调用页面管理。
+成果文件和聊天附件共用 [FilePreview](apps/electron/src/renderer/components/common/file-preview/index.tsx)，标题栏、Markdown/源码、代码/文本、PDF/Office和图片预览集中在 `components/common/file-preview/`。Markdown正文与源码分别复用共享Markdown和CodeBlock，源码不显示行号栏，但保留引用行定位及高亮。文本预览与源码的滚动条贴面板右缘，正文留白和固定标题栏保持。PDF/Office继续使用既有Lody查看器；文件读取、来源核验与业务操作由调用页面管理。
 
 侧栏只有一个“技能”入口，顶部本地/收藏/商城 Tabs 共用列表与详情布局。技能页发现本机全局、Agent 与启用插件技能，支持收藏/分组；目录默认使用宿主和渲染器缓存，有效缓存切回页面不重新请求目录；本地/收藏使用 TanStack Virtual 按可见区域渲染，搜索与排序复用索引，手动扫描或安装/更新后刷新；商城支持 skills.sh / ClawHub / SkillHub 的搜索、详情和安装。搜索右侧一个操作图标向右展开导入、重新扫描、检查更新和导出菜单；导入内容保留紧凑浮层，移除安装记录和底部关闭按钮，空闲时可按 Esc 或点击外部关闭。批量检查在技能页自己的右侧“技能更新”标签中完成；单项进度、差异和升级放在详情标题图标的 Popover，正文不显示更新状态卡片。目录、ZIP、公开 HTTPS 技能包和 GitHub 仓库先展示实际包内容，再固定安装到 `~/.agents/skills`，不创建员工 Resource 或自动绑定。资料库主页面和导航已删除，旧启动位置回退到会话；已保存资源和员工绑定保留。
 
@@ -538,16 +549,18 @@ node dist/cli/index.mjs receipt REQUEST_ID --json
 ## 代码结构
 
 ```text
-packages/tokens/  纯配色/排版与Soft变量，共享真源
-packages/ui/      桌面与设计站共用的React组件/皮肤
-apps/design-docs/ 独立设计文档站，pnpm dev:design
-src/cli/         CLI 客户端、认证RPC和原服务公共接线（完整范围实施中）
-src/main/        Electron 窗口、受控 IPC、凭据、运行进程生命周期
-src/renderer/    React 中文桌面界面
-src/runtime/     Mastra 引擎、产品服务、SQLite、资源管理
-src/shared/      跨进程数据与事件契约
-tests/           Vitest 引擎与服务回归、Electron BDD 场景
-ai-docs/spec/    产品规格与实际实现记录
+apps/electron/               桌面main/preload/renderer与worker入口
+apps/cli/                    CLI命令解析、输出与服务启动入口
+apps/design-docs/            独立设计文档站
+packages/tokens/             配色/排版与Soft变量
+packages/ui/                 共享React组件/皮肤
+packages/shared/             领域、跨进程协议和显式Node辅助
+packages/transport/          RPC、事件、发现与历史查询
+packages/runtime/            引擎、产品服务、SQLite与资源管理
+packages/runtime-plugin-sdk/ 运行时插件开发合同
+packages/runtime-plugins/    Pi/OpenCode/ACP实现
+tests/                      Vitest与Electron BDD场景
+ai-docs/spec/               产品规格与实际实现记录
 ```
 
 当前直接使用 `@mastra/core` 的 Agent/Workspace 执行能力。用户可见消息由产品数据库管理，按成员和会话筛选后显式投影进模型输入；未同时开启框架 Memory 自动回放，避免历史重复。员工统一记忆由产品 MemoryRepository 的 SQLite 事务管理，按来源、范围和有效期筛选后有界召回，Markdown 记忆文件是生成视图。自动化将原生时钟触发交给宿主：报告走员工执行链，结构化监控走有界文件读取和确定性比较；两者均以产品事务保存结果，运行结束不等于业务交付。MCP 连接器、多设备同步与系统级执行隔离另行实现。
@@ -620,6 +633,14 @@ Soft 风格变量与验证记录见 [全局 Soft UI](ai-docs/spec/2.已实现功
 
 2026-10-16新增[Agent运行时插件设计](ai-docs/spec/19.应用插件架构/05-Agent运行时插件协议与接入架构.md)与[实施计划](ai-docs/spec/19.应用插件架构/06-Agent运行时插件实施计划与验收.md)：保留Mastra主线，通过统一provider合同、共享ACP驱动、Pi RPC插件及独立包接入新Agent；受信本地包安装/更新/启停已接入，市场与不受信代码沙箱另期。Pi RPC及共用ACP已有源码/协议验证，真实Pi登录失败、OpenCode实机未验；已有驱动和个人配置保持。
 
+运行时插件的仓库外开发见[第26组04](ai-docs/spec/26.Workspace工程结构重构/04-外部插件开发与接入.md)：
+
+- `pnpm plugin:sdk`：导出本地SDK tarball到`.local/plugin-devkit`。
+- `pnpm plugin:create /绝对路径/新插件目录`：生成独立Text Inspector示例；进入目录后执行`pnpm install`、`pnpm build`、`pnpm check`，将生成的`package/`目录交给现有插件安装入口。
+- `pnpm plugin:check /绝对路径/package`：只读检查包结构和依赖，不执行插件。本轮提供本地分发工具，没有发布npm包或远端仓库。
+
+任务结果见[第26组05](ai-docs/spec/26.Workspace工程结构重构/05-任务结果闭环.md)：聊天终态执行卡和执行详情的“任务结果”读取原Work的文件、消息、失败原因与关键记录；CLI通过`task list`、`task result WORK_ID`读取同一投影。读取会核对原来源与文件hash，继续沿原聊天操作，不自动重做任务。
+
 2026-10-20 Alma技能接续：当前Bobo实际绑定16项适配技能；会话搜索/核心会话改名走统一应用协议，文件与系统能力沿现有工具。原研究完整371候选/40技能范围、真实失败和当前剩余归[独立Agent架构§11.23](ai-docs/2026-10-19-BOAI独立Agent配置与行为运行架构.md#1123-技能管理会话与文件能力接入2026-10-20goal继续中)。
 
 
@@ -628,3 +649,7 @@ Soft 风格变量与验证记录见 [全局 Soft UI](ai-docs/spec/2.已实现功
 2026-10-23会话与定时执行修复：[第3组26](ai-docs/spec/3.前端重构与功能/26-会话与定时执行恢复.md)。
 
 - [27 桌面活动与日报独立设置](ai-docs/spec/3.前端重构与功能/27-桌面活动与日报独立设置.md)：独立设置分类、默认关闭的截图/键鼠采集和存储管理；实际验证与未验范围见专题。
+
+2026-10-25工程结构：Electron与CLI归apps，共享运行核心/传输/合同及插件归packages；[第26组](ai-docs/spec/26.Workspace工程结构重构/README.md)维护合同和实际进度。根命令与dist分布保持。
+
+2026-10-25后续开发：[第26组](ai-docs/spec/26.Workspace工程结构重构/README.md)新增独立应用开发构建、外部插件接入和任务结果闭环，先文档再实施；Web遥控端暂不做，实际进度唯一归02 §8。

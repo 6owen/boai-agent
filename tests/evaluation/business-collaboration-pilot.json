@@ -12,5 +12,5 @@
   "stopAfterNoImprovement": 2,
   "minimumGain": 0.1,
   "maxCallRatio": 1.1,
-  "allowedChanges": ["src/runtime/adapters/mastra/agent-factory.ts", "src/runtime/adapters/mastra/engine.ts"]
+  "allowedChanges": ["packages/runtime/src/adapters/mastra/agent-factory.ts", "packages/runtime/src/adapters/mastra/engine.ts"]
 }

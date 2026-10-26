@@ -8,7 +8,7 @@
 import { createServer } from 'node:http'
 import { expect } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
-import type { Conversation, ConversationDetail, WorkItem } from '../../../src/shared/domain'
+import type { Conversation, ConversationDetail, WorkItem } from '../../../packages/shared/src/domain'
 import { test as base } from '../support/test'
 import type { Desktop } from '../support/desktop'
 

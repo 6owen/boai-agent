@@ -5,9 +5,9 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { expect, test } from 'vitest'
-import type { BoboCollaborationReceipt } from '../src/shared/domain/bobo-collaboration'
-import type { Conversation, DigitalAgent } from '../src/shared/domain'
-import { collaborationObjects, coreCollaborationReceipts, restoreCollaborationRecoveries } from '../src/renderer/pages/conversations/-components/core-collaboration-results'
+import type { BoboCollaborationReceipt } from '../packages/shared/src/domain/bobo-collaboration'
+import type { Conversation, DigitalAgent } from '../packages/shared/src/domain'
+import { collaborationObjects, coreCollaborationReceipts, restoreCollaborationRecoveries } from '../apps/electron/src/renderer/pages/conversations/-components/core-collaboration-results'
 
 const employee = (id: string, name = '同名员工') => ({ id, name } as DigitalAgent)
 const group = (id: string, title = '同名协作群') => ({ id, kind: 'group', title } as Conversation)

@@ -8,10 +8,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mkdtemp, mkdir, open, readFile, realpath, rename, rm, symlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import type { DigitalAgent } from '../src/shared/domain'
-import { RunDirectoryAccess } from '../src/runtime/modules/workspaces/directory-run'
-import { moveBusinessFile } from '../src/runtime/modules/workspaces/directory-files'
-import { searchTaskFiles } from '../src/runtime/modules/workspaces/file-search'
+import type { DigitalAgent } from '../packages/shared/src/domain'
+import { RunDirectoryAccess } from '../packages/runtime/src/modules/workspaces/directory-run'
+import { moveBusinessFile } from '../packages/runtime/src/modules/workspaces/directory-files'
+import { searchTaskFiles } from '../packages/runtime/src/modules/workspaces/file-search'
 
 const hooks = vi.hoisted(() => ({ beforeOpen: undefined as ((path: string) => Promise<void>) | undefined, afterWrite: undefined as ((path: string) => Promise<void>) | undefined }))
 vi.mock('node:fs/promises', async importOriginal => {

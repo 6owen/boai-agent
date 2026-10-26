@@ -6,8 +6,8 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { describe, expect, it } from 'vitest'
-import { approvalsByMessage, artifactsByMessage, continuesMessage, groupMessages, workDisplayState } from '../src/renderer/pages/conversations/group-chat'
-import type { ConversationDetail, Message, WorkItem } from '../src/shared/domain'
+import { approvalsByMessage, artifactsByMessage, continuesMessage, groupMessages, workDisplayState } from '../apps/electron/src/renderer/pages/conversations/group-chat'
+import type { ConversationDetail, Message, WorkItem } from '../packages/shared/src/domain'
 
 const message: Message = { id: 'm', conversationId: 'c', senderType: 'agent', senderId: 'writer', senderName: '写手', content: '报告已完成', status: 'completed', sequence: 1, turnId: 't', runId: 'r', createdAt: '2026-09-29T10:00:00Z' }
 const work: WorkItem = { schemaVersion: 2, id: 'w', conversationId: 'c', sourceMessageId: 'u', key: 'report', scope: '报告', deliverable: '报告', ownerAgentId: 'writer', version: 1, status: 'delivered', budgetId: 'b', rootWorkId: 'w', dependsOnWorkIds: [], requiredResults: [], observedResults: [], waitRevision: 0, resultMessageIds: ['m'], artifactIds: ['a'], resultVersion: 1, requiresReview: false, outcome: { disposition: 'delivered', summary: '完成', evidence: [{ kind: 'answer', reference: '报告已完成' }] }, createdAt: message.createdAt, updatedAt: message.createdAt }

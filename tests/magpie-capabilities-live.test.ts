@@ -4,15 +4,16 @@
  * [POS]: Actual API capability acceptance; isolated contexts, no personal settings, no automatic inference retry.
  * [PROTOCOL]: Update Header, tests/.folder.md and the Magpie ledger for every actual batch, including failures.
  */
+import { workspaceInputFiles } from './support/workspace-inputs'
 import { createHash } from 'node:crypto'
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { afterAll, beforeAll, expect, test } from 'vitest'
-import { MastraEngine } from '../src/runtime/adapters/mastra/engine'
-import { listModelCatalog, probeMagpie } from '../src/runtime/adapters/mastra/model-catalog'
-import type { EngineContext } from '../src/runtime/contracts'
-import type { Connection, ModelUsage } from '../src/shared/domain'
-import type { GatewayRouteEvidence, ModelCatalog, ModelProtocol } from '../src/shared/domain/model-gateway'
+import { MastraEngine } from '../packages/runtime/src/adapters/mastra/engine'
+import { listModelCatalog, probeMagpie } from '../packages/runtime/src/adapters/mastra/model-catalog'
+import type { EngineContext } from '../packages/runtime/src/contracts'
+import type { Connection, ModelUsage } from '../packages/shared/src/domain'
+import type { GatewayRouteEvidence, ModelCatalog, ModelProtocol } from '../packages/shared/src/domain/model-gateway'
 import { gatewayVisionImage } from './fixtures/gateway-vision-image'
 
 const enabled = process.env.BOAI_MAGPIE_CAPABILITIES_REAL === '1', batch = process.env.BOAI_MAGPIE_BATCH ?? ''
@@ -34,7 +35,7 @@ let catalog: ModelCatalog, version = '', current: { caseId: string; protocol: Mo
 type RequestRecord = { caseId: string; protocol: ModelProtocol; path: string; model: string; reasoning?: unknown; thinking?: unknown; outputConfig?: unknown; imageHashes: string[]; status?: number; actualModel?: string | null; actualProvider?: string | null; error?: string }
 const requests: RequestRecord[] = []
 async function sources() {
-  const files = (await readdir('src', { recursive: true })).filter(file => /\.(ts|tsx|json)$/.test(file)).map(file => `src/${file}`)
+  const files = (await workspaceInputFiles()).filter(file => /\.(ts|tsx|json)$/.test(file))
   files.push('package.json', 'pnpm-lock.yaml', 'tests/magpie-capabilities-live.test.ts', 'tests/fixtures/gateway-vision-image.ts')
   return Object.fromEntries(await Promise.all(files.sort().map(async file => [file, sha(await readFile(file))])))
 }

@@ -10,9 +10,9 @@
 import { dirname, join } from 'node:path'
 import { writeFile } from 'node:fs/promises'
 import type { ServerResponse } from 'node:http'
-import type { Message, Conversation } from '../../../src/shared/domain'
-import type { ConversationCompletion, ConversationReadingState } from '../../../src/shared/domain/reading'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
+import type { Message, Conversation } from '../../../packages/shared/src/domain'
+import type { ConversationCompletion, ConversationReadingState } from '../../../packages/shared/src/domain/reading'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
 import { teamEndpoint, sendTeamOutput } from '../../fixtures/team-planner'
 import type { Desktop } from './desktop'
 

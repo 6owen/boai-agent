@@ -7,9 +7,9 @@
 import { expect, test } from 'vitest'
 import { resolve } from 'node:path'
 import manifest from '../resources/agent-skills/manifest.json'
-import { managementSkillIds, managementSkills } from '../src/shared/domain/management-skills'
-import { managementSkillInstructions } from '../src/runtime/modules/resources/management-skills'
-import { composerCommands, managementSkillReference } from '../src/renderer/pages/conversations/composer-commands'
+import { managementSkillIds, managementSkills } from '../packages/shared/src/domain/management-skills'
+import { managementSkillInstructions } from '../packages/runtime/src/modules/resources/management-skills'
+import { composerCommands, managementSkillReference } from '../apps/electron/src/renderer/pages/conversations/composer-commands'
 
 test('all five slash commands resolve to their shipped workflow, without loading unselected documents', async () => {
   for (const id of managementSkillIds) {

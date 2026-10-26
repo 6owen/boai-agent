@@ -10,8 +10,8 @@ import { lstat, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test as base } from '../support/test'
 import { bindingRecords, boundOriginal, loseBindingReply, openBindingEmployee, prepareSkillBindingDesktop } from '../support/skill-binding'
-import type { BindLocalSkillInput, SkillBindingReceipt } from '../../../src/shared/domain/skills'
-import type { Resource } from '../../../src/shared/domain'
+import type { BindLocalSkillInput, SkillBindingReceipt } from '../../../packages/shared/src/domain/skills'
+import type { Resource } from '../../../packages/shared/src/domain'
 
 interface State { fixture?: Awaited<ReturnType<typeof prepareSkillBindingDesktop>>; fault?: Awaited<ReturnType<typeof loseBindingReply>>; frozen?: BindLocalSkillInput; receipt?: SkillBindingReceipt; resource?: Resource; calls?: number; conversationId?: string; originalRole?: string }
 export const test = base.extend<{ bindingState: State }>({ bindingState: async ({}, use) => use({}) })

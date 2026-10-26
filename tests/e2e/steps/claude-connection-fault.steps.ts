@@ -11,8 +11,8 @@ import { appendFile, chmod, copyFile, mkdir, readFile, realpath, rename } from '
 import { createHash } from 'node:crypto'
 import { join } from 'node:path'
 import { test } from './claude-employee.steps'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
-import type { ProfileModelCall } from '../../../src/runtime/modules/profile/profile-activity'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
+import type { ProfileModelCall } from '../../../packages/runtime/src/modules/profile/profile-activity'
 
 const { Given, Then } = createBdd(test)
 const hash = async (path: string) => createHash('sha256').update(await readFile(path)).digest('hex')

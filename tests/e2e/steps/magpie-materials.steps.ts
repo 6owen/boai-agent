@@ -4,6 +4,7 @@
  * [POS]: Current Electron attachment gate; native file-dialog result injection is explicit, no personal application/config changes.
  * [PROTOCOL]: Update Header and steps/.folder.md plus the Magpie ledger for all actual runs and failures.
  */
+import { workspaceInputFiles } from '../../support/workspace-inputs'
 import { createHash } from 'node:crypto'
 import { createServer } from 'node:http'
 import { Readable } from 'node:stream'
@@ -16,8 +17,8 @@ import { test as base } from '../support/test'
 import type { Desktop } from '../support/desktop'
 import { nextMaterialDialog } from '../support/materials'
 import { gatewayVisionImage } from '../../fixtures/gateway-vision-image'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
-import type { ConversationDetail } from '../../../src/shared/domain'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
+import type { ConversationDetail } from '../../../packages/shared/src/domain'
 
 const model = 'deepseek/deepseek-flash', png = gatewayVisionImage()
 const sha = (value: Buffer | string) => createHash('sha256').update(value).digest('hex')
@@ -49,7 +50,7 @@ Given('隔离桌面已连接实际Magpie图片模型', async ({ runtime, magpieM
   test.info().annotations.push({ type: 'model-mode', description: previewOnly ? 'no-inference' : 'real-provider' })
   const hello = await fetch('http://127.0.0.1:3425/api/hello').then(response => response.json())
   expect(hello.name).toBe('magpie')
-  const files = (await readdir('src', { recursive: true })).filter(name => /\.(ts|tsx|json)$/.test(name)).map(name => `src/${name}`)
+  const files = (await workspaceInputFiles()).filter(name => /\.(ts|tsx|json)$/.test(name))
   files.push('package.json', 'pnpm-lock.yaml', 'tests/e2e/steps/magpie-materials.steps.ts', 'tests/e2e/features/magpie-materials.feature', 'tests/fixtures/gateway-vision-image.ts', 'dist/main/main.cjs', 'dist/runtime/worker.mjs')
   const inputs = Object.fromEntries(await Promise.all(files.sort().map(async name => [name, sha(await readFile(name))])))
   await runtime.reviewData('实际图片桌面批次计划', { hello, model, protocol: 'chat', preference: 'none', userMessages: previewOnly ? 0 : 1, maxInferenceRequests: cap, sourceAndBuildInputs: inputs, prompt, oracle, imageHash: sha(png), nativeSelection: 'existing nextMaterialDialog injects one original path; production host issues selectionId', scope: 'source-built Electron; packaged binary only when explicitly selected' })

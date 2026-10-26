@@ -4,6 +4,7 @@
  * [POS]: Source business acceptance for API/native mixtures and opt-in actual Mastra clock; Electron/package certification remains separate.
  * [PROTOCOL]: Update Header, tests/.folder.md and Magpie ledger; retain failures and never change personal HOME, CODEX_HOME or gateway settings.
  */
+import { workspaceInputFiles } from './support/workspace-inputs'
 import { createHash } from 'node:crypto'
 import { execFile } from 'node:child_process'
 import { createServer } from 'node:http'
@@ -14,19 +15,19 @@ import { pathToFileURL } from 'node:url'
 import { createClient } from '@libsql/client'
 import { TABLE_SCHEDULE_TRIGGERS } from '@mastra/core/storage'
 import { expect, test, vi } from 'vitest'
-import { AppService } from '../src/runtime/service'
-import { MastraEngine } from '../src/runtime/adapters/mastra/engine'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import type { AgentRun, AutomationDefinition, AutomationOccurrence, AutomationsView, Connection, Conversation, ConversationDetail, DigitalAgent, LaunchProfile, Message, Snapshot, WorkItem } from '../src/shared/domain'
-import type { NativeAction } from '../src/shared/domain/execution'
-import type { RuntimePluginCatalog } from '../src/shared/plugins/runtime-catalog'
+import { AppService } from '../packages/runtime/src/service'
+import { MastraEngine } from '../packages/runtime/src/adapters/mastra/engine'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import type { AgentRun, AutomationDefinition, AutomationOccurrence, AutomationsView, Connection, Conversation, ConversationDetail, DigitalAgent, LaunchProfile, Message, Snapshot, WorkItem } from '../packages/shared/src/domain'
+import type { NativeAction } from '../packages/shared/src/domain/execution'
+import type { RuntimePluginCatalog } from '../packages/shared/src/plugins/runtime-catalog'
 
 const enabled = process.env.BOAI_MAGPIE_COLLABORATION_REAL === '1'
 const terminal = new Set(['completed', 'failed', 'cancelled', 'interrupted', 'budget_exhausted', 'waiting_user'])
 const sha = (value: string | Buffer) => createHash('sha256').update(value).digest('hex')
 const collections = ['agents', 'connections', 'launchProfiles', 'conversations', 'messages', 'messageReceipts', 'runs', 'turns', 'workItems', 'workExecutions', 'workBudgets', 'budgetModelCalls', 'boboCollaborations', 'automations', 'automationOccurrences', 'automationDispatches', 'nativeActions', 'codexSessions', 'claudeSessions', 'pluginSessions', 'codexRuntime', 'claudeRuntime', 'pluginRuntime']
 async function sources() {
-  const files = (await readdir('src', { recursive: true })).filter(path => /\.(ts|tsx|json)$/.test(path)).map(path => `src/${path}`)
+  const files = (await workspaceInputFiles()).filter(path => /\.(ts|tsx|json)$/.test(path))
   files.push('package.json', 'pnpm-lock.yaml', 'tests/magpie-collaboration-live.test.ts')
   return Object.fromEntries(await Promise.all(files.sort().map(async path => [path, sha(await readFile(path))])))
 }

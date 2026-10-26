@@ -38,7 +38,7 @@ import { join, resolve } from 'node:path'
 import { test as base } from '../support/test'
 import { beforeWorkQuestion } from '../support/native-continuation'
 import { archiveNativeFinalReview } from '../support/native-final-review'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
 import { verifyLocalAgentNavigation } from '../support/local-agent-navigation'
 import { nextMaterialDialog } from '../support/materials'
 import { openBindingEmployee } from '../support/skill-binding'
@@ -47,7 +47,7 @@ import { prepareCodexResources } from '../support/codex-resources'
 import { openSchedule, scheduleAction, scheduleTarget } from '../support/schedule-controls'
 import { crashAutomationRuntime, processIsRunning, runtimeChildProcessIds } from '../support/automation-recovery'
 import { seedExpiredAutomationBudget } from '../support/automation-history'
-import type { ArtifactVersion, BudgetModelCall } from '../../../src/shared/domain'
+import type { ArtifactVersion, BudgetModelCall } from '../../../packages/shared/src/domain'
 type State = { real?: boolean; token?: string; employeeId?: string; conversationId?: string; migrationSaveFault?: boolean }
 export const test = base.extend<{ codexEmployee: State }>({ codexEmployee: async ({}, use) => use({}) })
 const { Given, When, Then } = createBdd(test)
@@ -91,10 +91,10 @@ Then('用户将 bobo 配置为本机并组织员工完成真实文件交付', as
   const store = await ProductStore.openReadOnly(join(runtime.root, 'v2', 'boai.sqlite'))
   try {
     await expect.poll(async () => {
-      const works = await store.load<import('../../../src/shared/domain').WorkItem>('workItems')
+      const works = await store.load<import('../../../packages/shared/src/domain').WorkItem>('workItems')
       return works.length >= 3 && works.every(work => work.status === 'delivered')
     }, { timeout: 360000 }).toBe(true)
-    await expect.poll(async () => (await store.load<import('../../../src/shared/domain').AgentRun>('runs')).every(run => ['completed', 'failed', 'cancelled', 'interrupted'].includes(run.status)), { timeout: 90000 }).toBe(true)
+    await expect.poll(async () => (await store.load<import('../../../packages/shared/src/domain').AgentRun>('runs')).every(run => ['completed', 'failed', 'cancelled', 'interrupted'].includes(run.status)), { timeout: 90000 }).toBe(true)
     const snapshot = await page.evaluate(() => window.boai.request('snapshot', undefined))
     expect(snapshot.connections).toEqual([])
     const employee = snapshot.agents.find(agent => agent.name === '本机新同事')!
@@ -113,13 +113,13 @@ Then('用户将 bobo 配置为本机并组织员工完成真实文件交付', as
     expect(artifact).toBeDefined()
     expect(await readFile(artifact.path, 'utf8')).toContain(codexEmployee.real ? codexEmployee.token! : 'NATIVE_FILE_TASK')
     for (const file of group.artifacts) await runtime.reviewFile('本机组织群实际交付原件-' + file.name, file.path)
-    const works = await store.load<import('../../../src/shared/domain').WorkItem>('workItems'), budgets = await store.load<import('../../../src/shared/domain').WorkBudget>('workBudgets'), calls = await store.load<BudgetModelCall>('budgetModelCalls')
+    const works = await store.load<import('../../../packages/shared/src/domain').WorkItem>('workItems'), budgets = await store.load<import('../../../packages/shared/src/domain').WorkBudget>('workBudgets'), calls = await store.load<BudgetModelCall>('budgetModelCalls')
     expect(budgets).toHaveLength(1)
     expect(works.every(work => work.budgetId === budgets[0].id)).toBe(true)
     expect(budgets[0]).toMatchObject({ maxModelCalls: 48, callUnit: 'mixed', unknownCalls: 0, usageIncomplete: false })
     expect(calls.length).toBe(budgets[0].modelCalls)
     expect(calls.every(call => call.callUnit === 'external-turn' && call.usageComplete)).toBe(true)
-    expect((await store.load<import('../../../src/shared/domain').AgentRun>('runs')).filter(run => run.status !== 'completed')).toEqual([])
+    expect((await store.load<import('../../../packages/shared/src/domain').AgentRun>('runs')).filter(run => run.status !== 'completed')).toEqual([])
     await runtime.reviewData('本机bobo组织与独立群交付证据', { receipt, employee, group, works, budgets, calls })
     await runtime.reviewCheckpoint('原核心讨论保留真实组织回执')
     await page.getByRole('region', { name: '群协作组织结果', exact: true }).getByRole('button', { name: '进入群聊', exact: true }).click()
@@ -207,7 +207,7 @@ Then('用户以{string}继续本机定时任务的原问题且不重复已完成
       await expect(page.getByText(/累计请求上限将为 48 次/)).toBeVisible()
       await runtime.reviewCheckpoint('本机到期后显示原计量和明确追加额度')
       await page.getByRole('button', { name: '取消', exact: true }).click()
-      expect((await store.load<import('../../../src/shared/domain').WorkBudget>('workBudgets'))[0].renewals).toBeUndefined()
+      expect((await store.load<import('../../../packages/shared/src/domain').WorkBudget>('workBudgets'))[0].renewals).toBeUndefined()
       expect(await store.load('budgetModelCalls')).toHaveLength(budget.modelCalls)
       await page.getByRole('button', { name: '追加预算并继续', exact: true }).click()
       await page.getByLabel('继续未完成工作的说明', { exact: true }).fill(answer)
@@ -256,7 +256,7 @@ Then('用户以{string}继续本机定时任务的原问题且不重复已完成
     const runs = await store.load('runs')
     await runtime.restart()
     expect(await store.load('runs')).toEqual(runs); expect(await store.load('budgetModelCalls')).toEqual(calls)
-    expect((await store.load<import('../../../src/shared/domain').WorkBudget>('workBudgets'))[0]).toEqual(spent)
+    expect((await store.load<import('../../../packages/shared/src/domain').WorkBudget>('workBudgets'))[0]).toEqual(spent)
     expect((await stat(prepared)).mtimeMs).toBe(modified)
     await runtime.reviewCheckpoint('重启保留原问题补充及累计预算没有重放')
     expect(runtime.errors).toEqual([])
@@ -359,7 +359,7 @@ Then('员工无需模型 API 即可连续回答两轮且重启保持身份', asy
         const evidence = await ProductStore.openReadOnly(join(runtime.root, 'v2', 'boai.sqlite'))
         try {
           const runIds = new Set(detail.runs.map(run => run.id))
-          await runtime.reviewData(`第${count}轮失败外部阶段Trace`, (await evidence.load<import('../../../src/shared/domain/traces').StoredTraceSpan>('traceSpans')).filter(span => runIds.has(span.runId ?? '')))
+          await runtime.reviewData(`第${count}轮失败外部阶段Trace`, (await evidence.load<import('../../../packages/shared/src/domain/traces').StoredTraceSpan>('traceSpans')).filter(span => runIds.has(span.runId ?? '')))
         } finally { await evidence.close() }
       }
     }
@@ -813,10 +813,10 @@ Then('用户在定时文件工作执行期间以{string}结束并核对重启没
   const store = await ProductStore.openReadOnly(join(runtime.root, 'v2', 'boai.sqlite'))
   try {
     await expect.poll(async () => {
-      const runs = await store.load<import('../../../src/shared/domain').AgentRun>('runs')
+      const runs = await store.load<import('../../../packages/shared/src/domain').AgentRun>('runs')
       return runs.some(run => run.toolEvents.some(event => event.name === 'write_file' && event.status === 'completed')) || runs.some(run => ['failed', 'cancelled', 'interrupted'].includes(run.status))
     }, { timeout: 210000, intervals: [100, 250, 500] }).toBe(true)
-    expect((await store.load<import('../../../src/shared/domain').AgentRun>('runs')).filter(run => ['failed', 'cancelled', 'interrupted'].includes(run.status))).toEqual([])
+    expect((await store.load<import('../../../packages/shared/src/domain').AgentRun>('runs')).filter(run => ['failed', 'cancelled', 'interrupted'].includes(run.status))).toEqual([])
     const plan = (await page.evaluate(() => window.boai.request('listAutomations', undefined))).definitions.find(value => value.name === title)!
     const occurrence = (await page.evaluate(() => window.boai.request('listAutomations', undefined))).occurrences.find(value => value.automationId === plan.id)!
     expect(occurrence.status).toBe('running')
@@ -845,7 +845,7 @@ Then('用户在定时文件工作执行期间以{string}结束并核对重启没
     expect(detail.workItems).toHaveLength(1)
     expect(detail.workItems![0]).toMatchObject({ status: expectedStatus, origin: { occurrenceId: occurrence.id }, budgetId: occurrence.budgetId })
     expect(detail.runs.some(run => run.status === expectedStatus && run.backend?.kind === 'codex-local')).toBe(true)
-    const calls = await store.load<BudgetModelCall>('budgetModelCalls'), budgets = await store.load<import('../../../src/shared/domain').WorkBudget>('workBudgets')
+    const calls = await store.load<BudgetModelCall>('budgetModelCalls'), budgets = await store.load<import('../../../packages/shared/src/domain').WorkBudget>('workBudgets')
     expect(calls.some(call => call.phase === 'execution' && !call.usageComplete)).toBe(true)
     expect(budgets).toHaveLength(1)
     expect(calls.map(call => call.id).sort()).toEqual(callIds)
@@ -934,7 +934,7 @@ Then('两位本机员工在四个上下文中续聊且切页和普通发送不�
   }
   const send = async (text: string) => { await runtime.page.getByRole('textbox', { name: '消息内容', exact: true }).fill(text); await runtime.page.getByRole('button', { name: '发送消息', exact: true }).click() }
   const store = await ProductStore.openReadOnly(join(runtime.root, 'v2', 'boai.sqlite'))
-  const state = async () => ({ messages: await store.load<import('../../../src/shared/domain').Message>('messages'), runs: await store.load<import('../../../src/shared/domain').AgentRun>('runs'), turns: await store.load<import('../../../src/shared/domain').DiscussionTurn>('turns'), sessions: await store.load<{ agentId: string; conversationId: string; threadId: string; state: string }>('codexSessions'), works: await store.load('workItems') })
+  const state = async () => ({ messages: await store.load<import('../../../packages/shared/src/domain').Message>('messages'), runs: await store.load<import('../../../packages/shared/src/domain').AgentRun>('runs'), turns: await store.load<import('../../../packages/shared/src/domain').DiscussionTurn>('turns'), sessions: await store.load<{ agentId: string; conversationId: string; threadId: string; state: string }>('codexSessions'), works: await store.load('workItems') })
   const idle = async (minimum: number) => {
     await expect.poll(async () => {
       const value = await state()
@@ -998,7 +998,7 @@ Then('两位本机员工在四个上下文中续聊且切页和普通发送不�
       for (const reply of replies) { expect(reply.status).toBe('completed'); expect(reply.content).toContain(codes[index]); for (const other of codes.filter(code => code !== codes[index])) expect(reply.content).not.toContain(other) }
     }
     for (const name of [names[0], names[1], group.title]) { await navigate(name); await runtime.reviewCheckpoint('各原聊天保持独立暗号-' + name) }
-    const spans = await store.load<import('../../../src/shared/domain/traces').StoredTraceSpan>('traceSpans')
+    const spans = await store.load<import('../../../packages/shared/src/domain/traces').StoredTraceSpan>('traceSpans')
     for (const run of final.runs.filter(run => run.backend?.externalInvocations)) {
       const trace = spans.filter(span => span.runId === run.id)
       expect(trace).toHaveLength(run.backend!.externalInvocations!)

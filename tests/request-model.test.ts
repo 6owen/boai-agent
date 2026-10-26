@@ -5,8 +5,8 @@
  * [PROTOCOL]: 变化同步Header与tests/.folder.md。
  */
 import { describe, expect, it, vi } from 'vitest'
-import { modelRequestIdentity, prepareRequestModel, RequestModelSecrets } from '../src/runtime/request-model'
-import type { Connection, DigitalAgent } from '../src/shared/domain'
+import { modelRequestIdentity, prepareRequestModel, RequestModelSecrets } from '../packages/runtime/src/request-model'
+import type { Connection, DigitalAgent } from '../packages/shared/src/domain'
 
 const agent = { id: 'worker', active: true, configVersion: 2, modelId: 'saved-model', connectionId: 'saved', executionBackend: { kind: 'mastra-model' } } as DigitalAgent
 const base: Connection = { id: 'saved', revision: 4, name: '原连接', provider: 'openai-compatible', baseUrl: 'https://models.example/v1', defaultModel: 'default-model', hasApiKey: true }

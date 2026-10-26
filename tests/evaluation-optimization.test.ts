@@ -19,7 +19,7 @@ import { runEvaluation } from './evaluation/harness'
 const roots: string[] = []
 afterEach(async () => { vi.restoreAllMocks(); for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }) })
 const config: OptimizationConfig = { id: 'fixture', cases: ['legal-silence', 'explicit-mention'], samples: 3, connectionId: 'fixture-only', dataPath: '/fixture-no-credentials',
-  maxRequests: 30, maxRounds: 3, stopAfterNoImprovement: 2, minimumGain: 0.1, maxCallRatio: 1.1, allowedChanges: ['src/runtime/adapters/mastra/prompts.ts'] }
+  maxRequests: 30, maxRounds: 3, stopAfterNoImprovement: 2, minimumGain: 0.1, maxCallRatio: 1.1, allowedChanges: ['packages/runtime/src/adapters/mastra/prompts.ts'] }
 const plan = () => createPlan(config, 'fixture-evaluator')
 function trials(plan: OptimizationPlan, sourceHash = 'candidate', verdict: EvaluationTrial['verdict'] = 'passed'): EvaluationTrial[] {
   return plan.tasks.flatMap(task => Array.from({ length: plan.samples }, (_, index) => ({
@@ -31,7 +31,7 @@ function trials(plan: OptimizationPlan, sourceHash = 'candidate', verdict: Evalu
 }
 it('registers fixed cases and refuses final holdout, duplicates, path escapes and incompatible delivery protocol', () => {
   expect(plan().tasks).toHaveLength(2)
-  for (const changes of [{ cases: [cases.find(row => row.split === 'holdout')!.id] }, { cases: ['legal-silence', 'legal-silence'] }, { allowedChanges: ['src/runtime/../outside.ts'] }, { stopAfterNoImprovement: 4 }, { cases: ['unknown'] }, { maxRequests: 1001 }]) {
+  for (const changes of [{ cases: [cases.find(row => row.split === 'holdout')!.id] }, { cases: ['legal-silence', 'legal-silence'] }, { allowedChanges: ['packages/runtime/src/../outside.ts'] }, { stopAfterNoImprovement: 4 }, { cases: ['unknown'] }, { maxRequests: 1001 }]) {
     expect(() => createPlan({ ...config, ...changes }, 'hash')).toThrow()
   }
 })
@@ -115,7 +115,7 @@ it('runs baseline and candidates through one ledger, stops on registered flat ro
 }, 20_000)
 it('rejects changes outside the registered patch scope before the execution half', async () => {
   const root = await setup(); await runExperimentRound(root, '.', '基线', fixtureExecutor(root))
-  const execute = fixtureExecutor(root, true, settings => { settings.hashes['src/shared/domain.ts'] = 'outside-scope' })
+  const execute = fixtureExecutor(root, true, settings => { settings.hashes['packages/shared/src/domain.ts'] = 'outside-scope' })
   const result = await runExperimentRound(root, '.', '越界修改夹具', execute)
   expect(result.decision.status).toBe('blocked'); expect(result.issues.join(' ')).toContain('超出允许范围'); expect(result.calls).toBe(0)
   expect(execute).toHaveBeenCalledTimes(1)

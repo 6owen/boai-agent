@@ -7,7 +7,7 @@
 import { afterEach, expect, it } from 'vitest'
 import { createServer, type Server } from 'node:http'
 import { once } from 'node:events'
-import { MemmyRestClient, MemmyRestClientError } from '../src/runtime/modules/memory/providers/memmy-client'
+import { MemmyRestClient, MemmyRestClientError } from '../packages/runtime/src/modules/memory/providers/memmy-client'
 
 const servers: Server[] = []
 afterEach(async () => { for (const server of servers.splice(0)) await new Promise<void>(resolve => server.close(() => resolve())) })

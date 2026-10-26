@@ -27,10 +27,10 @@ overrides:
 patchedDependencies:
   '@pierre/diffs@1.0.10':
     hash: 389aac33b5e4b5b8ac36ffa7cfa8ed3ba894c8daccc2fc587f6dae5337a56e6c
-    path: src/renderer/components/common/lody/pierre-diffs-host.patch
+    path: apps/electron/src/renderer/components/common/lody/pierre-diffs-host.patch
   react-aria@3.53.1:
     hash: 83c459db55839595f6215d24b8f5757cbd5726450a4446c8a634464f9611547a
-    path: src/renderer/components/ui/react-aria@3.53.1.patch
+    path: apps/electron/src/renderer/components/ui/react-aria@3.53.1.patch
 
 importers:
 
@@ -48,9 +48,24 @@ importers:
       '@base-ui/react':
         specifier: 1.8.0
         version: 1.8.0(@date-fns/tz@1.5.0)(@types/react@19.3.0)(date-fns@4.4.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@boai/runtime':
+        specifier: workspace:*
+        version: link:packages/runtime
+      '@boai/runtime-plugin-sdk':
+        specifier: workspace:*
+        version: link:packages/runtime-plugin-sdk
+      '@boai/runtime-plugins':
+        specifier: workspace:*
+        version: link:packages/runtime-plugins
+      '@boai/shared':
+        specifier: workspace:*
+        version: link:packages/shared
       '@boai/tokens':
         specifier: workspace:*
         version: link:packages/tokens
+      '@boai/transport':
+        specifier: workspace:*
+        version: link:packages/transport
       '@boai/ui':
         specifier: workspace:*
         version: link:packages/ui
@@ -120,6 +135,18 @@ importers:
       '@tiptap/pm':
         specifier: 3.31.3
         version: 3.31.3
+      '@xterm/addon-fit':
+        specifier: 0.10.0
+        version: 0.10.0(@xterm/xterm@5.5.0)
+      '@xterm/addon-serialize':
+        specifier: 0.13.0
+        version: 0.13.0(@xterm/xterm@5.5.0)
+      '@xterm/headless':
+        specifier: 5.5.0
+        version: 5.5.0
+      '@xterm/xterm':
+        specifier: 5.5.0
+        version: 5.5.0
       beautiful-mermaid:
         specifier: 1.1.3
         version: 1.1.3
@@ -308,6 +335,15 @@ importers:
         specifier: 5.0.2
         version: 5.0.2(@types/node@26.6.3)(jsdom@26.1.0)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
 
+  apps/cli:
+    dependencies:
+      '@boai/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      '@boai/transport':
+        specifier: workspace:*
+        version: link:../../packages/transport
+
   apps/design-docs:
     dependencies:
       '@boai/tokens':
@@ -369,7 +405,284 @@ importers:
         specifier: 8.3.1
         version: 8.3.1(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1)
 
+  apps/electron:
+    dependencies:
+      '@xterm/addon-fit':
+        specifier: 0.10.0
+        version: 0.10.0(@xterm/xterm@5.5.0)
+      '@xterm/addon-serialize':
+        specifier: 0.13.0
+        version: 0.13.0(@xterm/xterm@5.5.0)
+      '@xterm/headless':
+        specifier: 5.5.0
+        version: 5.5.0
+      '@xterm/xterm':
+        specifier: 5.5.0
+        version: 5.5.0
+      '@base-ui/react':
+        specifier: 1.8.0
+        version: 1.8.0(@date-fns/tz@1.5.0)(@types/react@19.3.0)(date-fns@4.4.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@boai/runtime':
+        specifier: workspace:*
+        version: link:../../packages/runtime
+      '@boai/runtime-plugin-sdk':
+        specifier: workspace:*
+        version: link:../../packages/runtime-plugin-sdk
+      '@boai/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      '@boai/tokens':
+        specifier: workspace:*
+        version: link:../../packages/tokens
+      '@boai/transport':
+        specifier: workspace:*
+        version: link:../../packages/transport
+      '@boai/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      '@extend-ai/react-docx':
+        specifier: 0.9.2
+        version: 0.9.2(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@extend-ai/react-pptx':
+        specifier: 0.2.1
+        version: 0.2.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@extend-ai/react-xlsx':
+        specifier: 0.16.5
+        version: 0.16.5(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@libsql/client':
+        specifier: 0.18.0
+        version: 0.18.0
+      '@lobehub/icons-static-svg':
+        specifier: 1.95.1
+        version: 1.95.1
+      '@pierre/diffs':
+        specifier: 1.0.10
+        version: 1.0.10(patch_hash=389aac33b5e4b5b8ac36ffa7cfa8ed3ba894c8daccc2fc587f6dae5337a56e6c)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@tanstack/react-virtual':
+        specifier: 3.14.13
+        version: 3.14.13(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@tiptap/core':
+        specifier: 3.31.3
+        version: 3.31.3(@tiptap/pm@3.31.3)
+      '@tiptap/pm':
+        specifier: 3.31.3
+        version: 3.31.3
+      cn:
+        specifier: 0.4.0
+        version: 0.4.0
+      date-fns:
+        specifier: 4.4.0
+        version: 4.4.0
+      iconoir-react:
+        specifier: 7.12.1
+        version: 7.12.1(react@19.3.0)
+      motion:
+        specifier: 13.5.0
+        version: 13.5.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      pdfjs-dist:
+        specifier: 6.3.289
+        version: 6.3.289
+      react:
+        specifier: 19.3.0
+        version: 19.3.0
+      react-day-picker:
+        specifier: 10.0.1
+        version: 10.0.1(@types/react@19.3.0)(react@19.3.0)
+      react-dom:
+        specifier: 19.3.0
+        version: 19.3.0(react@19.3.0)
+      react-markdown:
+        specifier: 10.1.0
+        version: 10.1.0(@types/react@19.3.0)(react@19.3.0)
+      recharts:
+        specifier: 3.8.0
+        version: 3.8.0(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react-is@19.3.0)(react@19.3.0)(redux@5.0.1)
+      remark-gfm:
+        specifier: 4.0.1
+        version: 4.0.1
+      smol-toml:
+        specifier: 1.9.0
+        version: 1.9.0
+      sonner:
+        specifier: 2.0.8
+        version: 2.0.8(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      yaml:
+        specifier: 2.9.1
+        version: 2.9.1
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
+      zustand:
+        specifier: 5.0.15
+        version: 5.0.15(@types/react@19.3.0)(immer@11.1.18)(react@19.3.0)(use-sync-external-store@1.7.0(react@19.3.0))
+    devDependencies:
+      electron:
+        specifier: 39.2.7
+        version: 39.2.7
+      shadcn:
+        specifier: 4.21.0
+        version: 4.21.0(typescript@7.0.2)
+      tailwindcss:
+        specifier: 4.3.3
+        version: 4.3.3
+      tw-animate-css:
+        specifier: 1.4.0
+        version: 1.4.0
+
+  packages/runtime:
+    dependencies:
+      '@agentclientprotocol/sdk':
+        specifier: 1.5.0
+        version: 1.5.0(zod@4.6.5)
+      '@ai-sdk/anthropic':
+        specifier: 2.0.105
+        version: 2.0.105(zod@4.6.5)
+      '@babel/parser':
+        specifier: 7.29.9
+        version: 7.29.9
+      '@boai/runtime-plugin-sdk':
+        specifier: workspace:*
+        version: link:../runtime-plugin-sdk
+      '@boai/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@boai/transport':
+        specifier: workspace:*
+        version: link:../transport
+      '@iconify-json/lucide':
+        specifier: 1.2.130
+        version: 1.2.130
+      '@iconify/utils':
+        specifier: 3.1.7
+        version: 3.1.7
+      '@larksuite/channel':
+        specifier: 0.7.1
+        version: 0.7.1
+      '@larksuite/vercel-chat-adapter':
+        specifier: 0.3.0
+        version: 0.3.0(chat@4.41.1(zod@4.6.5))(zod@4.6.5)
+      '@libsql/client':
+        specifier: 0.18.0
+        version: 0.18.0
+      '@mastra/core':
+        specifier: 1.71.0
+        version: 1.71.0(express@5.2.1)(zod-to-json-schema@3.25.2(zod@4.6.5))(zod@4.6.5)
+      '@mastra/libsql':
+        specifier: 1.23.3
+        version: 1.23.3(@mastra/core@1.71.0(express@5.2.1)(zod-to-json-schema@3.25.2(zod@4.6.5))(zod@4.6.5))
+      '@mastra/memory':
+        specifier: 1.32.1
+        version: 1.32.1(@mastra/core@1.71.0(express@5.2.1)(zod-to-json-schema@3.25.2(zod@4.6.5))(zod@4.6.5))
+      '@mastra/observability':
+        specifier: 1.18.1
+        version: 1.18.1(@mastra/core@1.71.0(express@5.2.1)(zod-to-json-schema@3.25.2(zod@4.6.5))(zod@4.6.5))(zod@4.6.5)
+      '@mastra/telegram':
+        specifier: 0.2.2
+        version: 0.2.2(@mastra/core@1.71.0(express@5.2.1)(zod-to-json-schema@3.25.2(zod@4.6.5))(zod@4.6.5))(zod@4.6.5)
+      '@mathjax/src':
+        specifier: 4.1.3
+        version: 4.1.3
+      '@modelcontextprotocol/sdk':
+        specifier: 1.30.1
+        version: 1.30.1(zod@4.6.5)
+      '@napi-rs/canvas':
+        specifier: 1.0.10
+        version: 1.0.10
+      beautiful-mermaid:
+        specifier: 1.1.3
+        version: 1.1.3
+      chat:
+        specifier: 4.41.1
+        version: 4.41.1(zod@4.6.5)
+      croner:
+        specifier: 9.1.0
+        version: 9.1.0
+      dingtalk-stream:
+        specifier: 2.1.5
+        version: 2.1.5
+      fflate:
+        specifier: 0.8.3
+        version: 0.8.3
+      jszip:
+        specifier: 3.10.1
+        version: 3.10.1
+      pdfjs-dist:
+        specifier: 6.3.289
+        version: 6.3.289
+      pptxgenjs:
+        specifier: 4.0.1
+        version: 4.0.1
+      qrcode:
+        specifier: 1.5.4
+        version: 1.5.4
+      smol-toml:
+        specifier: 1.9.0
+        version: 1.9.0
+      xlsx:
+        specifier: https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz
+        version: https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz
+      yaml:
+        specifier: 2.9.1
+        version: 2.9.1
+      yauzl:
+        specifier: 3.4.0
+        version: 3.4.0
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
+
+  packages/runtime-plugin-sdk:
+    dependencies:
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
+
+  packages/runtime-plugins:
+    dependencies:
+      '@agentclientprotocol/sdk':
+        specifier: 1.5.0
+        version: 1.5.0(zod@4.6.5)
+      '@boai/runtime-plugin-sdk':
+        specifier: workspace:*
+        version: link:../runtime-plugin-sdk
+      '@boai/shared':
+        specifier: workspace:*
+        version: link:../shared
+
+  packages/shared:
+    dependencies:
+      '@boai/runtime-plugin-sdk':
+        specifier: workspace:*
+        version: link:../runtime-plugin-sdk
+      '@boai/tokens':
+        specifier: workspace:*
+        version: link:../tokens
+      remark-gfm:
+        specifier: 4.0.1
+        version: 4.0.1
+      remark-parse:
+        specifier: 11.0.0
+        version: 11.0.0
+      unified:
+        specifier: 11.0.5
+        version: 11.0.5
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
+
   packages/tokens: {}
+
+  packages/transport:
+    dependencies:
+      '@boai/shared':
+        specifier: workspace:*
+        version: link:../shared
+      ws:
+        specifier: 8.21.3
+        version: 8.21.3
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
 
   packages/ui:
     dependencies:
@@ -2621,6 +2934,22 @@ packages:
   '@xmldom/xmldom@0.9.12':
     resolution: {integrity: sha512-5AXjrcMClTryPe9LgZrygpB1lj7s0S9E0+W+AHaVKAVyHanafK86iPSvG5xHVSp/jC+VH1UXu0TAEmY279xH7A==}
     engines: {node: '>=14.6'}
+
+  '@xterm/addon-fit@0.10.0':
+    resolution: {integrity: sha512-UFYkDm4HUahf2lnEyHvio51TNGiLK66mqP2JoATy7hRZeXaGMRDr00JiSF7m63vR5WKATF605yEggJKsw0JpMQ==}
+    peerDependencies:
+      '@xterm/xterm': ^5.0.0
+
+  '@xterm/addon-serialize@0.13.0':
+    resolution: {integrity: sha512-kGs8o6LWAmN1l2NpMp01/YkpxbmO4UrfWybeGu79Khw5K9+Krp7XhXbBTOTc3GJRRhd6EmILjpR8k5+odY39YQ==}
+    peerDependencies:
+      '@xterm/xterm': ^5.0.0
+
+  '@xterm/headless@5.5.0':
+    resolution: {integrity: sha512-5xXB7kdQlFBP82ViMJTwwEc3gKCLGKR/eoxQm4zge7GPBl86tCdI0IdPJjoKd8mUSFXz5V7i/25sfsEkP4j46g==}
+
+  '@xterm/xterm@5.5.0':
+    resolution: {integrity: sha512-hqJHYaQb5OptNunnyAnkHyM8aCjZ1MEIDTQu1iIbbTD/xops91NB5yq1ZK/dC2JDbVWtF23zUtl9JE2NqwT87A==}
 
   '@yuku-core/binding-android-arm64@0.19.0':
     resolution: {integrity: sha512-wdL2XmTiZixAOaHk9Z0JJZ8u9Qm8d333Zjpc6gaxXFX+UR5BlsfxZ7a2+2Rm71pamppsPYGUGFq2oVLbh6DISw==}
@@ -8726,6 +9055,18 @@ snapshots:
   '@xmldom/xmldom@0.8.15': {}
 
   '@xmldom/xmldom@0.9.12': {}
+
+  '@xterm/addon-fit@0.10.0(@xterm/xterm@5.5.0)':
+    dependencies:
+      '@xterm/xterm': 5.5.0
+
+  '@xterm/addon-serialize@0.13.0(@xterm/xterm@5.5.0)':
+    dependencies:
+      '@xterm/xterm': 5.5.0
+
+  '@xterm/headless@5.5.0': {}
+
+  '@xterm/xterm@5.5.0': {}
 
   '@yuku-core/binding-android-arm64@0.19.0':
     optional: true

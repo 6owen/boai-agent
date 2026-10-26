@@ -37,7 +37,7 @@ import {
   configureDiffRenderWorkerPool,
   createDiffRenderWorkerPool,
   terminateDiffRenderWorkerPools,
-} from '../../src/renderer/components/common/lody/diff-render-worker';
+} from '../../apps/electron/src/renderer/components/common/lody/diff-render-worker';
 
 describe('shared diff render worker pools', () => {
   beforeEach(() => {

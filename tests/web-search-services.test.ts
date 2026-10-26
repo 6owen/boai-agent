@@ -9,12 +9,12 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { randomUUID } from 'node:crypto'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { SourceService } from '../src/runtime/modules/sources/source-service'
-import { WebSearchService } from '../src/runtime/modules/sources/web-search-service'
-import { searchConnection } from '../src/shared/domain/web-search'
-import { openJinaSearchSession } from '../src/runtime/modules/sources/jina-search'
-import type { DigitalAgent } from '../src/shared/domain'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { SourceService } from '../packages/runtime/src/modules/sources/source-service'
+import { WebSearchService } from '../packages/runtime/src/modules/sources/web-search-service'
+import { searchConnection } from '../packages/shared/src/domain/web-search'
+import { openJinaSearchSession } from '../packages/runtime/src/modules/sources/jina-search'
+import type { DigitalAgent } from '../packages/shared/src/domain'
 
 const cleanups: (() => Promise<unknown>)[] = []
 afterEach(async () => { vi.restoreAllMocks(); for (const fn of cleanups.splice(0).reverse()) await fn() })

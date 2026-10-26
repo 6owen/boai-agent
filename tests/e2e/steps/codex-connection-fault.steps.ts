@@ -10,7 +10,7 @@ import { createBdd } from 'playwright-bdd'
 import { join, resolve } from 'node:path'
 import { chmod, cp, mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { test } from './codex-employee.steps'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
 
 const { Then } = createBdd(test)
 Then('连接停用现有登录后拒绝执行且重新验证不重放原消息', async ({ runtime, codexEmployee }) => {

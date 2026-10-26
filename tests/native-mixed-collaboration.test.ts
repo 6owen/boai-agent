@@ -6,10 +6,10 @@
  */
 import { afterEach, expect, it } from 'vitest'
 import { resolve } from 'node:path'
-import type { AgentEngine, EngineContext } from '../src/runtime/contracts'
-import type { Conversation, ConversationDetail, DigitalAgent, LaunchProfile } from '../src/shared/domain'
+import type { AgentEngine, EngineContext } from '../packages/runtime/src/contracts'
+import type { Conversation, ConversationDetail, DigitalAgent, LaunchProfile } from '../packages/shared/src/domain'
 import { nativeFixture } from './fixtures/native-product'
-import { createTaskRuntime } from '../src/runtime/adapters/mastra/task-runtime'
+import { createTaskRuntime } from '../packages/runtime/src/adapters/mastra/task-runtime'
 const cleanup:(()=>Promise<void>)[]=[]
 afterEach(async()=>{for(const close of cleanup.splice(0).reverse())await close()})
 it.each(['codex','claude'] as const)('keeps %s and API employees independent in both delegation directions',async runtime=>{

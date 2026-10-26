@@ -8,14 +8,14 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { describe, expect, it } from 'vitest'
-import { appendDraftReference, draftContent, draftMentions, draftResourceReferences, insertDraftMention, mentionRange, replaceDraftRange, updateDraftText } from '../src/renderer/pages/conversations/inline-mentions'
-import { managementSkillReference } from '../src/renderer/pages/conversations/composer-commands'
-import type { ChatDraft } from '../src/renderer/pages/conversations/presentation'
+import { appendDraftReference, draftContent, draftMentions, draftResourceReferences, insertDraftMention, mentionRange, replaceDraftRange, updateDraftText } from '../apps/electron/src/renderer/pages/conversations/inline-mentions'
+import { managementSkillReference } from '../apps/electron/src/renderer/pages/conversations/composer-commands'
+import type { ChatDraft } from '../apps/electron/src/renderer/pages/conversations/presentation'
 import { getSchema } from '@tiptap/core'
 import { EditorState, NodeSelection, TextSelection } from '@tiptap/pm/state'
 import { deleteSelection } from '@tiptap/pm/commands'
 import { history, redo, undo } from '@tiptap/pm/history'
-import { deleteMention, documentDraft, documentPosition, draftOffset, mentionDocument, mentionExtensions } from '../src/renderer/pages/conversations/mention-editor'
+import { deleteMention, documentDraft, documentPosition, draftOffset, mentionDocument, mentionExtensions } from '../apps/electron/src/renderer/pages/conversations/mention-editor'
 
 const draft = (text = ''): ChatDraft => ({ text, mentionIds: [] })
 const writer = { id: 'writer', name: '写手' }

@@ -6,8 +6,8 @@
  */
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
-import type { DataSource } from '../src/shared/domain/sources'
-import { assertWebSearchResult, isTavilySearchEndpoint, verifiedWebCapability } from '../src/runtime/modules/sources/web-search-profile'
+import type { DataSource } from '../packages/shared/src/domain/sources'
+import { assertWebSearchResult, isTavilySearchEndpoint, verifiedWebCapability } from '../packages/runtime/src/modules/sources/web-search-profile'
 
 const observed = JSON.parse(readFileSync(new URL('./fixtures/tavily-catalog.json', import.meta.url), 'utf8'))
 const source = { id: 'source', revision: 1, name: 'Tavily', type: 'mcp', mcp: { transport: 'http', url: 'https://mcp.tavily.com/mcp/', authType: 'none' } } as DataSource

@@ -10,8 +10,8 @@ import { createServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { test } from './claude-employee.steps'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
-import type { ProfileModelCall } from '../../../src/runtime/modules/profile/profile-activity'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
+import type { ProfileModelCall } from '../../../packages/runtime/src/modules/profile/profile-activity'
 
 const { Then } = createBdd(test)
 Then('Claude模型来源遇到{string}后恢复同员工且只执行新消息', async ({ runtime, claudeEmployee: state }, fault: string) => {

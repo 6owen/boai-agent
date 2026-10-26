@@ -4,6 +4,7 @@
  * [POS]: M13/M17 lifecycle acceptance using a synthetic supplier; no personal configuration or natural-model quality claim.
  * [PROTOCOL]: Update Header, tests/.folder.md and the Magpie ledger; preserve failed batches and original files.
  */
+import { workspaceInputFiles } from './support/workspace-inputs'
 import { createServer } from 'node:http'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
@@ -11,10 +12,10 @@ import { createHash } from 'node:crypto'
 import { mkdir, readFile, readdir, writeFile, stat } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { afterAll, beforeAll, expect, test, vi } from 'vitest'
-import { AppService } from '../src/runtime/service'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import type { AgentHome, AgentRun, Conversation, ConversationDetail, DigitalAgent, LaunchProfile, Message } from '../src/shared/domain'
-import type { RuntimePluginCatalog } from '../src/shared/plugins/runtime-catalog'
+import { AppService } from '../packages/runtime/src/service'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import type { AgentHome, AgentRun, Conversation, ConversationDetail, DigitalAgent, LaunchProfile, Message } from '../packages/shared/src/domain'
+import type { RuntimePluginCatalog } from '../packages/shared/src/plugins/runtime-catalog'
 import { isolatedMagpie } from './fixtures/magpie-isolated'
 import { streamText, streamTool } from './fixtures/gateway-stream'
 import { writeNativeMagpieProfile } from './fixtures/native-magpie-profile'
@@ -31,7 +32,7 @@ type Wire = { phase: string; model: string; tools: string[]; title: boolean; clo
 let sourceBefore: Record<string, string>, started = false
 async function sources() {
   const files: string[] = []
-  for (const root of ['src', 'tests', 'scripts']) for (const name of await readdir(root, { recursive: true })) if (/\.(ts|tsx|mjs|json)$/.test(name)) files.push(`${root}/${name}`)
+  for (const path of await workspaceInputFiles(['apps', 'packages', 'tests', 'scripts'])) if (/\.(ts|tsx|mjs|json)$/.test(path)) files.push(path)
   files.push('package.json', 'pnpm-lock.yaml')
   return Object.fromEntries(await Promise.all(files.sort().map(async name => [name, sha(await readFile(name))])))
 }

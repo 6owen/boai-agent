@@ -41,7 +41,7 @@
  * [POS]: tests/mastra-engine.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { workEvidenceError } from '../src/runtime/modules/collaboration/work-protocol'
+import { workEvidenceError } from '../packages/runtime/src/modules/collaboration/work-protocol'
 import { createServer, type ServerResponse } from 'node:http'
 import { createHash, randomUUID } from 'node:crypto'
 import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises'
@@ -50,18 +50,18 @@ import path from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { RequestContext } from '@mastra/core/request-context'
 import { noopObserve } from '@mastra/core/tools'
-import { MastraEngine } from '../src/runtime/adapters/mastra/engine'
-import { createTaskRuntime } from '../src/runtime/adapters/mastra/task-runtime'
-import { thinkingProviderOptions, decisionProviderOptions } from '../src/runtime/adapters/mastra/model-config'
-import { projectMessages, messageData, decisionMessageData } from '../src/runtime/adapters/mastra/message-projection'
-import type { Connection, DigitalAgent, Artifact, Message, ModelUsage, ToolEvent, WorkItem } from '../src/shared/domain'
-import type { TraceSpan } from '../src/shared/domain/traces'
-import type { EngineContext } from '../src/runtime/contracts'
-import type { BrowserSession } from '../src/runtime/modules/browser/session'
-import { ModelCapacity } from '../src/runtime/modules/collaboration/model-capacity'
-import { openSourceSession } from '../src/runtime/modules/sources/source-provider'
+import { MastraEngine } from '../packages/runtime/src/adapters/mastra/engine'
+import { createTaskRuntime } from '../packages/runtime/src/adapters/mastra/task-runtime'
+import { thinkingProviderOptions, decisionProviderOptions } from '../packages/runtime/src/adapters/mastra/model-config'
+import { projectMessages, messageData, decisionMessageData } from '../packages/runtime/src/adapters/mastra/message-projection'
+import type { Connection, DigitalAgent, Artifact, Message, ModelUsage, ToolEvent, WorkItem } from '../packages/shared/src/domain'
+import type { TraceSpan } from '../packages/shared/src/domain/traces'
+import type { EngineContext } from '../packages/runtime/src/contracts'
+import type { BrowserSession } from '../packages/runtime/src/modules/browser/session'
+import { ModelCapacity } from '../packages/runtime/src/modules/collaboration/model-capacity'
+import { openSourceSession } from '../packages/runtime/src/modules/sources/source-provider'
 import { webSearchServer, webSourceConfig, resultUrl, pageText } from './fixtures/web-search-server'
-import { searchSelection, validateWebSearchChoice, assertSearchSelection } from '../src/runtime/modules/sources/search-selection'
+import { searchSelection, validateWebSearchChoice, assertSearchSelection } from '../packages/runtime/src/modules/sources/search-selection'
 
 type RequestBody = { model: string; thinking?: { type: string }; reasoning_effort?: string; response_format?: { type: string }; max_tokens?: number; max_completion_tokens?: number; messages: { role: string; content: unknown; tool_call_id?: string }[]; tools?: { function: { name: string; parameters?: { properties: Record<string, unknown> } } }[] }
 const cleanup: (() => Promise<void>)[] = []
@@ -607,7 +607,7 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
       chunk({ role: 'assistant', reasoning_content: '先比较输入' }); chunk({ content: '正在核对' })
       finish = () => { chunk({ content: '，已完成。' }); chunk({}, 'stop'); response.end('data: [DONE]\n\n') }
     })
-    const events: import('../src/shared/domain/execution').ExecutionEvent[] = []
+    const events: import('../packages/shared/src/domain/execution').ExecutionEvent[] = []
     const run = await context(server.url, { onExecutionEvent: async event => { events.push(event) } })
     let completed = false
     const execution = new MastraEngine().run(run.ctx).then(() => { completed = true })

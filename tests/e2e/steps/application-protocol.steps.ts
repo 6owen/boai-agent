@@ -9,9 +9,9 @@ import { expect } from '@playwright/test'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { resolve } from 'node:path'
-import type { ApplicationResult } from '../../../src/shared/domain/application-protocol'
-import type { DigitalAgent } from '../../../src/shared/domain'
-import { readLocalConnection } from '../../../src/cli/discovery'
+import type { ApplicationResult } from '../../../packages/shared/src/domain/application-protocol'
+import type { DigitalAgent } from '../../../packages/shared/src/domain'
+import { readLocalConnection } from '../../../packages/transport/src/discovery'
 import { test as base } from '../support/test'
 
 type State = { employee?: DigitalAgent; dataPath?: string; group?: ApplicationResult; command?: (args: string[]) => Promise<unknown> }

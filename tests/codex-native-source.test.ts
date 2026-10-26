@@ -8,11 +8,11 @@ import { mkdtemp, mkdir, readFile, realpath, rm, writeFile } from 'node:fs/promi
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, expect, test, vi } from 'vitest'
-import type { EngineContext } from '../src/runtime/contracts'
-import { CodexClient } from '../src/runtime/adapters/codex/client'
-import { runCodexConversation } from '../src/runtime/adapters/codex/conversation'
-import { codexNativeSourceIdentity } from '../src/runtime/adapters/codex/native-source'
-import { codexProjectTrustTarget } from '../src/runtime/adapters/codex/project-trust'
+import type { EngineContext } from '../packages/runtime/src/contracts'
+import { CodexClient } from '../packages/runtime/src/adapters/codex/client'
+import { runCodexConversation } from '../packages/runtime/src/adapters/codex/conversation'
+import { codexNativeSourceIdentity } from '../packages/runtime/src/adapters/codex/native-source'
+import { codexProjectTrustTarget } from '../packages/runtime/src/adapters/codex/project-trust'
 
 const roots: string[] = []
 afterEach(async () => { vi.restoreAllMocks(); vi.unstubAllEnvs(); for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }) })

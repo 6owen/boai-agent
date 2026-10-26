@@ -8,11 +8,11 @@ import { expect } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
-import type { AutomationDefinition, AutomationOccurrence, Conversation, ConversationDetail, DigitalAgent } from '../../../src/shared/domain'
+import type { AutomationDefinition, AutomationOccurrence, Conversation, ConversationDetail, DigitalAgent } from '../../../packages/shared/src/domain'
 import { test as base } from '../support/test'
 import { prepareSavedModel, systemKeychainLaunch } from '../support/saved-model'
 import type { Desktop } from '../support/desktop'
-import { prepareV2DataRoot } from '../../../src/main/migration'
+import { prepareV2DataRoot } from '../../../apps/electron/src/main/migration'
 
 interface State { backend?: string; dataPath?: string; chat?: Conversation; plan?: AutomationDefinition; occurrence?: AutomationOccurrence; members: DigitalAgent[]; execution?: ConversationDetail }
 const records = (dataPath: string) => {

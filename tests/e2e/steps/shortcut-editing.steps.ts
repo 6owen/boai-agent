@@ -10,7 +10,7 @@ import { randomUUID } from 'node:crypto'
 import { test as base } from '../support/test'
 import { prepareGroupChat } from '../support/group-chat'
 import type { Desktop } from '../support/desktop'
-import type { ShortcutSnapshot } from '../../../src/shared/shortcuts'
+import type { ShortcutSnapshot } from '../../../packages/shared/src/shortcuts'
 
 type State = { fixture?: Awaited<ReturnType<typeof prepareGroupChat>>; before?: ShortcutSnapshot; marker?: string }
 export const test = base.extend<{ editing: State }>({ editing: async ({}, use) => use({}) })

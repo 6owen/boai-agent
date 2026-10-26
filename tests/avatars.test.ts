@@ -8,10 +8,10 @@ import { expect, test } from 'vitest'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { WorkspaceService } from '../src/runtime/modules/workspaces/workspace-service'
-import { EmployeeService, agentSchema } from '../src/runtime/modules/employees/employee-service'
-import { AVATAR_IMAGE_MAX_LENGTH, avatarPresets, defaultAvatar } from '../src/shared/domain/avatars'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { WorkspaceService } from '../packages/runtime/src/modules/workspaces/workspace-service'
+import { EmployeeService, agentSchema } from '../packages/runtime/src/modules/employees/employee-service'
+import { AVATAR_IMAGE_MAX_LENGTH, avatarPresets, defaultAvatar } from '../packages/shared/src/domain/avatars'
 
 test('employee avatars survive storage/restart and an older client omitting the field', async () => {
   const root = await mkdtemp(join(tmpdir(), 'boai-avatars-'))

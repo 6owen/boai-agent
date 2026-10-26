@@ -5,7 +5,7 @@
  * [PROTOCOL]: 修改同步Header及tests/.folder.md。
  */
 import { expect, test } from 'vitest'
-import { prepareDiffPreview } from '../src/renderer/components/common/file-preview/diff-preview-data'
+import { prepareDiffPreview } from '../apps/electron/src/renderer/components/common/file-preview/diff-preview-data'
 
 const modified = 'diff --git a/src/a.ts b/src/a.ts\n--- a/src/a.ts\n+++ b/src/a.ts\n@@ -120,2 +120,2 @@\n keep\n-before\n+after\n'
 const added = 'diff --git a/需求.md b/需求.md\nnew file mode 100644\n--- /dev/null\n+++ b/需求.md\n@@ -0,0 +1 @@\n+# 需求\n'

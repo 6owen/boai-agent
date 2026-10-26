@@ -7,8 +7,8 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
 import { describe, expect, it } from 'vitest'
-import { draftFingerprint, pendingMessageRequests, restorePendingMessageDrafts } from '../src/renderer/pages/conversations/message-send-state'
-import type { ChatDraft } from '../src/renderer/pages/conversations/presentation'
+import { draftFingerprint, pendingMessageRequests, restorePendingMessageDrafts } from '../apps/electron/src/renderer/pages/conversations/message-send-state'
+import type { ChatDraft } from '../apps/electron/src/renderer/pages/conversations/presentation'
 
 describe('pending message identity', () => {
   it.each([undefined, 'external'] as const)('keeps the original %s request rather than later edits or unsent drafts', kind => {

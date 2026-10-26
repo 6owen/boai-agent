@@ -10,7 +10,7 @@ import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test } from './codex-employee.steps'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
 import { nextMaterialDialog } from '../support/materials'
 import { faultCodexMaterialSource, prepareCodexMaterialSource } from '../support/codex-resources'
 

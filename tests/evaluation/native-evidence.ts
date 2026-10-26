@@ -7,8 +7,8 @@
 import { createHash } from 'node:crypto'
 import { readdir, readFile, mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import type { ConversationDetail, DigitalAgent } from '../../src/shared/domain'
-import type { ExecutionEvidence } from '../../src/shared/domain/execution'
+import type { ConversationDetail, DigitalAgent } from '../../packages/shared/src/domain'
+import type { ExecutionEvidence } from '../../packages/shared/src/domain/execution'
 import type { EvaluationCase, EvaluationRecord, ArtifactEvidence } from './schema'
 const hash=(input:string|Buffer)=>createHash('sha256').update(input).digest('hex')
 export const nativeDocumentCriteria=['第一版的目标用户、核心功能和实施步骤针对白噪音微信小程序，内容具体且彼此一致。','第二版新增可实施的离线音频缓存方案，保留原来三个主题与验证标记，没有仅改标题或声称完成。','重启后回复准确引用已交付第二版的验证标记和离线章节；结合第三轮完整原生步骤与工作区文件hash核对未修改或重新发布，缺证据不能推定通过。']

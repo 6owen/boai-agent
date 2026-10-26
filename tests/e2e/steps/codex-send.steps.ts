@@ -10,7 +10,7 @@ import { join } from 'node:path'
 import { test } from './codex-employee.steps'
 import { materialSendReplyFault } from '../support/materials'
 import type { Desktop } from '../support/desktop'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
 
 const { Then } = createBdd(test)
 Then('已受理的本机消息回执丢失后重启只核对原请求且不重复工作', async ({ runtime, codexEmployee }) => checkSendReceipt(runtime, codexEmployee.conversationId!, false))

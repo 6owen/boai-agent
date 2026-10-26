@@ -9,8 +9,8 @@ import { mkdtemp, readFile, rm, writeFile, mkdir, readdir } from 'node:fs/promis
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
-import { ShortcutSettingsStore } from '../src/main/shortcut-settings'
-import { acceleratorBinding, bindingFromKey, matchShortcut, reservedShortcuts, shortcutDefaults, shortcutText, validateShortcuts, type ShortcutEntry, type ShortcutUpdate } from '../src/shared/shortcuts'
+import { ShortcutSettingsStore } from '../apps/electron/src/main/shortcut-settings'
+import { acceleratorBinding, bindingFromKey, matchShortcut, reservedShortcuts, shortcutDefaults, shortcutText, validateShortcuts, type ShortcutEntry, type ShortcutUpdate } from '../packages/shared/src/shortcuts'
 const roots: string[] = []
 afterEach(async () => { await Promise.all(roots.splice(0).map(path => rm(path, { recursive: true, force: true }))) })
 const entry = (code: string | null, enabled = true, shift = false, alt = false): ShortcutEntry => ({ enabled, binding: code ? { code, shift, alt } : null })

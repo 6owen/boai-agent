@@ -23,8 +23,8 @@ import { observeWorkViews } from '../support/work-views'
 import { resourceSample, verifyResources, type ResourceSample } from '../support/background-resources'
 import { messageDraft } from '../support/editor-controls'
 import { dropNativeMaterialFile, forgedMaterialRequests, managedMaterialFiles, legacyMaterialGrant, materialOriginal, materialRecords, materialReplyFault, materialSendReplyFault, nextMaterialDialog, prepareMaterialsDesktop, temporarilyRemoveMaterialOriginal } from '../support/materials'
-import type { ConversationMaterial } from '../../../src/shared/domain/materials'
-import type { ConversationDetail, Message } from '../../../src/shared/domain'
+import type { ConversationMaterial } from '../../../packages/shared/src/domain/materials'
+import type { ConversationDetail, Message } from '../../../packages/shared/src/domain'
 
 type SendFault = Awaited<ReturnType<typeof materialSendReplyFault>>
 interface State {

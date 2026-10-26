@@ -7,14 +7,14 @@
  */
 import { fork } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { build } from 'esbuild'
+import { buildWorkspace as build } from '../scripts/workspace-packages.mjs'
 import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { expect, test } from 'vitest'
-import { AppService } from '../src/runtime/service'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import type { Artifact, ConversationDetail } from '../src/shared/domain'
+import { AppService } from '../packages/runtime/src/service'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import type { Artifact, ConversationDetail } from '../packages/shared/src/domain'
 
 test.each(['before-register', 'before-commit', 'after-commit'])('real SIGKILL at %s preserves the publication boundary through two restarts', async phase => {
   const root = await mkdtemp(join(tmpdir(), 'boai-artifact-crash-')), cache = resolve('node_modules/.cache')

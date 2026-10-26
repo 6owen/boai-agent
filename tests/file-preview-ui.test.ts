@@ -7,10 +7,10 @@
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { expect, test } from 'vitest'
-import { FilePreview } from '../src/renderer/components/common/file-preview'
-import { CodeBlock } from '../src/renderer/components/ui/code-block'
-import { highlightCode } from '../src/renderer/components/ui/shiki-highlighter'
-import { FILE_PREVIEW_LIMITS } from '../src/shared/domain/file-preview'
+import { FilePreview } from '../apps/electron/src/renderer/components/common/file-preview'
+import { CodeBlock } from '../apps/electron/src/renderer/components/ui/code-block'
+import { highlightCode } from '../apps/electron/src/renderer/components/ui/shiki-highlighter'
+import { FILE_PREVIEW_LIMITS } from '../packages/shared/src/domain/file-preview'
 
 test('HTML source is visible text without executable elements or remote requests', () => {
   const source = '<script>window.previewExecuted=true</script>\n<iframe src="https://example.invalid"></iframe>'

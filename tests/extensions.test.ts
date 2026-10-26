@@ -5,16 +5,16 @@
  * [POS]: tests/extensions.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
 import { it, expect, afterEach, vi } from 'vitest'
 import { mkdtemp, rm, cp, mkdir, writeFile, readFile, access } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import type { AgentEngine } from '../src/runtime/contracts'
-import type { Snapshot, Connection, Conversation, DigitalAgent, ConversationDetail, LaunchProfile, AutomationsView, AutomationDefinition, AutomationOccurrence, Message, AgentRun } from '../src/shared/domain'
-import { AppService } from '../src/runtime/service'
-import { NativeSchedules, AUTOMATION_WORKFLOW } from '../src/runtime/modules/automations/native-schedules'
-import { AutomationService, calendarSlot, automationCron } from '../src/runtime/modules/automations/automation-service'
+import type { AgentEngine } from '../packages/runtime/src/contracts'
+import type { Snapshot, Connection, Conversation, DigitalAgent, ConversationDetail, LaunchProfile, AutomationsView, AutomationDefinition, AutomationOccurrence, Message, AgentRun } from '../packages/shared/src/domain'
+import { AppService } from '../packages/runtime/src/service'
+import { NativeSchedules, AUTOMATION_WORKFLOW } from '../packages/runtime/src/modules/automations/native-schedules'
+import { AutomationService, calendarSlot, automationCron } from '../packages/runtime/src/modules/automations/automation-service'
 const roots:string[]=[],services:AppService[]=[],natives:NativeSchedules[]=[]
 afterEach(async()=>{for(const s of services.splice(0))await s.close();for(const n of natives.splice(0))await n.close();await Promise.all(roots.splice(0).map(r=>rm(r,{recursive:true,force:true})))})
 const engine:AgentEngine={test:async()=>'',report:async(_context,draft)=>({action:'publish',text:draft.text}),run:async c=>{await c.onDelta('automation result')},decide:async c=>({action:c.messages.some(m=>m.senderId===c.agent.id&&m.status==='completed')?'pass':'reply',responseKind:'task',work:{key:'fixture-'+c.agent.id,scope:'独立报告该员工的工作',deliverable:'该员工的报告'},observedThroughSequence:Math.max(...c.messages.map(m=>m.sequence))})}
@@ -30,7 +30,7 @@ it('calendar keys deduplicate the repeated DST hour and daily/weekly cron is bou
 
 it('records missed, stale, overlapping, and revoked occurrences without dispatching twice',async()=>{
  const root=await mkdtemp(join(tmpdir(),'boai-admission-'));roots.push(root);const store=new ProductStore(join(root,'boai.sqlite'));await store.init();let fingerprint='v1',dispatches=0
- const automation=new AutomationService(store,root,{critical:operation=>operation(),validate:()=>fingerprint,busy:()=>false,dispatch:async(d,o,origin,commit)=>{dispatches++;const message:import('../src/shared/domain').Message = {id:o.id,turnId:'turn-'+o.id,conversationId:o.conversationId,senderType:'user',senderId:'automation',senderName:d.name,content:d.prompt,status:'completed',sequence:dispatches,createdAt:new Date().toISOString(),origin};await commit(message,[]);return message},inspect:()=>undefined,cancel:async()=>{},changed:()=>{},notify:()=>{}})
+ const automation=new AutomationService(store,root,{critical:operation=>operation(),validate:()=>fingerprint,busy:()=>false,dispatch:async(d,o,origin,commit)=>{dispatches++;const message:import('../packages/shared/src/domain').Message = {id:o.id,turnId:'turn-'+o.id,conversationId:o.conversationId,senderType:'user',senderId:'automation',senderName:d.name,content:d.prompt,status:'completed',sequence:dispatches,createdAt:new Date().toISOString(),origin};await commit(message,[]);return message},inspect:()=>undefined,cancel:async()=>{},changed:()=>{},notify:()=>{}})
  // Plan creation and its current admission share one calendar minute and effective time.
  vi.useFakeTimers({toFake:['Date']});vi.setSystemTime(new Date('2026-10-05T12:07:30.000Z'))
  try{await automation.init();const time=new Date().toISOString().slice(11,16);const d=await automation.save({name:'guarded',prompt:'report',conversationId:'direct',frequency:'daily',weekday:1,time,timezone:'UTC',enabled:true,notify:false});

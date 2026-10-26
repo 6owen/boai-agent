@@ -8,7 +8,7 @@
 import { expect, type Page } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 import { test as base } from '../support/test'
-import type { WorkViewQuery } from '../../../src/shared/domain/work-views'
+import type { WorkViewQuery } from '../../../packages/shared/src/domain/work-views'
 import { prepareScopeHistory, prepareActualWorkSources, createActualNoWorkSources, observeScopeQueries, scopeMemory, scopeRecords, seedUnknownWorkHistory } from '../support/work-views-scope'
 import { openSchedule, selectScheduleOption } from '../support/schedule-controls'
 

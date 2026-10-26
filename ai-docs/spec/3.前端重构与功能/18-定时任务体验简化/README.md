@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [OUTPUT]: 2026-10-14员工/群自动化与员工浏览器为独立待实施闭环；群内真实采集→依赖汇总，浏览器优先直接迁用固定GitHub源码；仅文档复核。
 [INPUT]: 用户于 2026-09-29 提供的定时任务总览/新建截图、简化配置与 Agent 辅助创建意图、通讯录分类样式，以及当前 schedules/contacts/Shell/自动化合同与运行实现。
 [OUTPUT]: 定时任务总览、通讯录式即将执行/执行记录分类、七项精简表单、Agent 辅助草稿、旧监控兼容、实施映射与已验证验收清单。
@@ -250,18 +251,18 @@ UI 简化后仍须保持：Mastra 原生 schedules 是唯一周期时钟；受�
 
 | 位置 | 原有职责 | 本轮实现映射 |
 | --- | --- | --- |
-| [schedules/index.tsx](../../../../src/renderer/pages/schedules/index.tsx) | 计划列表、欢迎态与阅读区 | 总览、两类侧栏、明确阅读状态与稳定导航；职责增多时按实际独立视图拆组件 |
-| [automation-editor.tsx](../../../../src/renderer/pages/schedules/automation-editor.tsx) | 新建/编辑、权限选择、预览和保存 | 七项精简编辑器、嵌入式执行对象/时间选择、默认值仅用于新建；接收 Agent 草稿 |
-| [automation-history.tsx](../../../../src/renderer/pages/schedules/automation-history.tsx) | 完整历史、结果、待处理和预算追加 | 轻量记录摘要、单次结果阅读、按需展开技术细节；保持既有操作和精确定位 |
-| [monitor-editor.tsx](../../../../src/renderer/pages/schedules/monitor-editor.tsx) | 结构化监控规则 | 专用创建/编辑上下文复用，不删除已有能力 |
-| [contacts/contact-list.tsx](../../../../src/renderer/pages/contacts/contact-list.tsx) | 通讯录分组标题和折叠 | 作为样式/交互依据；不修改通讯录数据或排序规则 |
-| [app-shell/index.tsx](../../../../src/renderer/components/app-shell/index.tsx)、[tabs-state.ts](../../../../src/renderer/components/detail-panel/tabs-state.ts) | 主导航、选中项、页内标签身份 | 保存本页阅读状态、草稿/编辑标签复用与通知定向路由；各页隔离 |
-| [tab-session.tsx](../../../../src/renderer/components/detail-panel/tab-session.tsx) | 常驻内容与未保存守卫 | 继续承接关闭、切换和异步更新，不重复实现确认层 |
-| [automations.ts](../../../../src/shared/domain/automations.ts)、[IPC](../../../../src/shared/ipc/index.ts) | 自动化输入、历史查询和事件 | 按需增加草稿与创建回执合同、历史查询的搜索/状态过滤；不把页面分组变成业务计划状态 |
-| [service.ts](../../../../src/runtime/service.ts)、[automation-service.ts](../../../../src/runtime/modules/automations/automation-service.ts)、[automation-repository.ts](../../../../src/runtime/modules/automations/automation-repository.ts) | 应用接入、调度与事务账本 | 草稿校验/受控保存、必要的创建幂等回执、完整历史过滤分页；复用原执行链 |
-| [schedule-policy.ts](../../../../src/runtime/modules/automations/schedule-policy.ts) | 日历规范化与纯预览 | 保持日期权威计算，不为 UI 新写第二套时间算法 |
-| [automation-draft.ts](../../../../src/runtime/modules/automations/automation-draft.ts)、[engine.ts](../../../../src/runtime/adapters/mastra/engine.ts) | 候选校验与模型适配 | 独立无工具草稿提取；明确连接、姓名/授权校验、原始用量回执，不创建 Work 或 occurrence |
-| [global.css](../../../../src/renderer/styles/global.css)、[pages.css](../../../../src/renderer/styles/pages.css) | 全局样式入口与页面布局 | 复用通讯录分组与现有设置行视觉，局部调整布局和留白 |
+| [schedules/index.tsx](../../../../apps/electron/src/renderer/pages/schedules/index.tsx) | 计划列表、欢迎态与阅读区 | 总览、两类侧栏、明确阅读状态与稳定导航；职责增多时按实际独立视图拆组件 |
+| [automation-editor.tsx](../../../../apps/electron/src/renderer/pages/schedules/automation-editor.tsx) | 新建/编辑、权限选择、预览和保存 | 七项精简编辑器、嵌入式执行对象/时间选择、默认值仅用于新建；接收 Agent 草稿 |
+| [automation-history.tsx](../../../../apps/electron/src/renderer/pages/schedules/automation-history.tsx) | 完整历史、结果、待处理和预算追加 | 轻量记录摘要、单次结果阅读、按需展开技术细节；保持既有操作和精确定位 |
+| [monitor-editor.tsx](../../../../apps/electron/src/renderer/pages/schedules/monitor-editor.tsx) | 结构化监控规则 | 专用创建/编辑上下文复用，不删除已有能力 |
+| [contacts/contact-list.tsx](../../../../apps/electron/src/renderer/pages/contacts/contact-list.tsx) | 通讯录分组标题和折叠 | 作为样式/交互依据；不修改通讯录数据或排序规则 |
+| [app-shell/index.tsx](../../../../apps/electron/src/renderer/components/app-shell/index.tsx)、[tabs-state.ts](../../../../apps/electron/src/renderer/components/detail-panel/tabs-state.ts) | 主导航、选中项、页内标签身份 | 保存本页阅读状态、草稿/编辑标签复用与通知定向路由；各页隔离 |
+| [tab-session.tsx](../../../../apps/electron/src/renderer/components/detail-panel/tab-session.tsx) | 常驻内容与未保存守卫 | 继续承接关闭、切换和异步更新，不重复实现确认层 |
+| [automations.ts](../../../../packages/shared/src/domain/automations.ts)、[IPC](../../../../packages/shared/src/ipc/index.ts) | 自动化输入、历史查询和事件 | 按需增加草稿与创建回执合同、历史查询的搜索/状态过滤；不把页面分组变成业务计划状态 |
+| [service.ts](../../../../packages/runtime/src/service.ts)、[automation-service.ts](../../../../packages/runtime/src/modules/automations/automation-service.ts)、[automation-repository.ts](../../../../packages/runtime/src/modules/automations/automation-repository.ts) | 应用接入、调度与事务账本 | 草稿校验/受控保存、必要的创建幂等回执、完整历史过滤分页；复用原执行链 |
+| [schedule-policy.ts](../../../../packages/runtime/src/modules/automations/schedule-policy.ts) | 日历规范化与纯预览 | 保持日期权威计算，不为 UI 新写第二套时间算法 |
+| [automation-draft.ts](../../../../packages/runtime/src/modules/automations/automation-draft.ts)、[engine.ts](../../../../packages/runtime/src/adapters/mastra/engine.ts) | 候选校验与模型适配 | 独立无工具草稿提取；明确连接、姓名/授权校验、原始用量回执，不创建 Work 或 occurrence |
+| [global.css](../../../../apps/electron/src/renderer/styles/global.css)、[pages.css](../../../../apps/electron/src/renderer/styles/pages.css) | 全局样式入口与页面布局 | 复用通讯录分组与现有设置行视觉，局部调整布局和留白 |
 
 本轮实现遵守的最小合同：
 

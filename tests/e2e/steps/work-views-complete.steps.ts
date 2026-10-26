@@ -14,11 +14,11 @@ import type { Desktop } from '../support/desktop'
 import { artifactDetail, artifactPendingRequests, artifactRecords, artifactReplyFault, prepareArtifactsDesktop } from '../support/artifacts'
 import { inboxRecords, openSourceChat } from '../support/inbox'
 import { nextMaterialDialog } from '../support/materials'
-import type { ArtifactRevisionInput, ArtifactVersion } from '../../../src/shared/domain/artifacts'
-import type { AutomationOccurrence, WorkItem } from '../../../src/shared/domain'
-import type { InboxItem } from '../../../src/shared/domain/inbox'
+import type { ArtifactRevisionInput, ArtifactVersion } from '../../../packages/shared/src/domain/artifacts'
+import type { AutomationOccurrence, WorkItem } from '../../../packages/shared/src/domain'
+import type { InboxItem } from '../../../packages/shared/src/domain/inbox'
 
-type AutomationReplyInput = import('../../../src/shared/ipc').Methods['replyAutomation']['input']
+type AutomationReplyInput = import('../../../packages/shared/src/ipc').Methods['replyAutomation']['input']
 interface ReplyFault { submissions: AutomationReplyInput[]; lookups: string[]; unavailable: boolean }
 interface State {
   fixture?: Awaited<ReturnType<typeof prepareArtifactsDesktop>>

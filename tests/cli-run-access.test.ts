@@ -12,30 +12,30 @@ import { mkdtemp, realpath, rm, writeFile, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { randomUUID } from 'node:crypto'
-import { startOwnedRuntime } from '../src/runtime/bootstrap'
-import { startHeadlessServer } from '../src/runtime/headless'
-import { openDesktopCli } from '../src/main/cli-service'
-import { dispatchRuntime } from '../src/runtime/dispatch'
-import { RunCliAccess } from '../src/runtime/run-cli-access'
-import { CliRpcClient } from '../src/cli/client'
-import { readLocalConnection } from '../src/cli/discovery'
-import { CliError, type ErrorCode } from '../src/shared/cli/protocol'
-import type { RunCliGrant, RunCliPrincipal } from '../src/shared/cli/run-access'
-import type { AgentEngine, EngineContext } from '../src/runtime/contracts'
-import type { Connection, Conversation, ConversationDetail, Resource, Snapshot } from '../src/shared/domain'
-import { createTaskRuntime } from '../src/runtime/adapters/mastra/task-runtime'
+import { startOwnedRuntime } from '../packages/runtime/src/bootstrap'
+import { startHeadlessServer } from '../packages/runtime/src/headless'
+import { openDesktopCli } from '../apps/electron/src/main/cli-service'
+import { dispatchRuntime } from '../packages/runtime/src/dispatch'
+import { RunCliAccess } from '../packages/runtime/src/run-cli-access'
+import { CliRpcClient } from '../packages/transport/src/client'
+import { readLocalConnection } from '../packages/transport/src/discovery'
+import { CliError, type ErrorCode } from '../packages/shared/src/cli/protocol'
+import type { RunCliGrant, RunCliPrincipal } from '../packages/shared/src/cli/run-access'
+import type { AgentEngine, EngineContext } from '../packages/runtime/src/contracts'
+import type { Connection, Conversation, ConversationDetail, Resource, Snapshot } from '../packages/shared/src/domain'
+import { createTaskRuntime } from '../packages/runtime/src/adapters/mastra/task-runtime'
 import { RequestContext } from '@mastra/core/request-context'
 import { noopObserve } from '@mastra/core/tools'
-import { createStageAgent } from '../src/runtime/adapters/mastra/agent-factory'
-import { employeeEnvironment } from '../src/shared/cli/employee-environment'
-import { withEmployeeTools, type EmployeeTools } from '../src/cli/employee-tools'
-import { build } from 'esbuild'
+import { createStageAgent } from '../packages/runtime/src/adapters/mastra/agent-factory'
+import { employeeEnvironment } from '../packages/shared/src/cli/employee-environment'
+import { withEmployeeTools, type EmployeeTools } from '../apps/cli/src/employee-tools'
+import { buildWorkspace as build } from '../scripts/workspace-packages.mjs'
 
 const cleanups: (() => Promise<unknown> | void)[] = []
 async function scriptLibrary() {
   const root = await mkdtemp(join(tmpdir(), 'boai-script-library-')); cleanups.push(() => rm(root, { recursive: true, force: true }))
   const path = join(root, 'employee-tools.mjs')
-  await build({ entryPoints: ['src/cli/employee-tools.ts'], outfile: path, bundle: true, platform: 'node', format: 'esm', target: 'node22', external: ['bufferutil', 'utf-8-validate'], banner: { js: "import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);" } })
+  await build({ entryPoints: ['apps/cli/src/employee-tools.ts'], outfile: path, bundle: true, platform: 'node', format: 'esm', target: 'node22', external: ['bufferutil', 'utf-8-validate'], banner: { js: "import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);" } })
   return path
 }
 

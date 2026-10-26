@@ -11,7 +11,7 @@ import { mkdtemp, realpath, mkdir, writeFile, readFile, rm, lstat, symlink, unli
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createHash } from 'node:crypto'
-import { CliInstaller } from '../src/main/cli-installation'
+import { CliInstaller } from '../apps/electron/src/main/cli-installation'
 
 const roots: string[] = [], exec = promisify(execFile)
 afterEach(async () => { await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))) })

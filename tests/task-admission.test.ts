@@ -5,7 +5,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { describe, expect, it } from 'vitest'
-import { TaskAdmission } from '../src/runtime/modules/collaboration/task-admission'
+import { TaskAdmission } from '../packages/runtime/src/modules/collaboration/task-admission'
 
 const signal = () => new AbortController().signal
 const tick = () => new Promise<void>(resolve => setTimeout(resolve, 0))

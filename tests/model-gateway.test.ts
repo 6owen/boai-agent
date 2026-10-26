@@ -14,23 +14,23 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, expect, test } from 'vitest'
 import { Agent } from '@mastra/core/agent'
-import { teamEditableSchema } from '../src/shared/domain/team-creation'
-import { claudeProvider } from '../src/shared/domain/claude-provider'
-import { claudeProviderEnvironment } from '../src/runtime/adapters/claude/policy'
-import { hostFrameSchema } from '../src/runtime/adapters/plugins/validation'
-import { decisionProviderOptions, modelConfig, thinkingProviderOptions } from '../src/runtime/adapters/mastra/model-config'
-import { gatewayRouteEvidence, gatewayRouteObserver } from '../src/runtime/adapters/mastra/gateway-route'
-import { assertThinkingPreference } from '../src/shared/domain/model-preferences'
-import type { ModelCatalog } from '../src/shared/domain/model-gateway'
-import { gatewayApiKey, gatewayEndpoint, type ModelGateway, type ModelProtocol } from '../src/shared/domain/model-gateway'
-import type { AgentInput, Connection, ConnectionInput, Snapshot } from '../src/shared/domain'
-import { listModelCatalog, probeMagpie } from '../src/runtime/adapters/mastra/model-catalog'
-import { MastraEngine } from '../src/runtime/adapters/mastra/engine'
-import type { AgentEngine } from '../src/runtime/contracts'
-import { AppService } from '../src/runtime/service'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
+import { teamEditableSchema } from '../packages/shared/src/domain/team-creation'
+import { claudeProvider } from '../packages/shared/src/domain/claude-provider'
+import { claudeProviderEnvironment } from '../packages/runtime/src/adapters/claude/policy'
+import { hostFrameSchema } from '../packages/runtime/src/adapters/plugins/validation'
+import { decisionProviderOptions, modelConfig, thinkingProviderOptions } from '../packages/runtime/src/adapters/mastra/model-config'
+import { gatewayRouteEvidence, gatewayRouteObserver } from '../packages/runtime/src/adapters/mastra/gateway-route'
+import { assertThinkingPreference } from '../packages/shared/src/domain/model-preferences'
+import type { ModelCatalog } from '../packages/shared/src/domain/model-gateway'
+import { gatewayApiKey, gatewayEndpoint, type ModelGateway, type ModelProtocol } from '../packages/shared/src/domain/model-gateway'
+import type { AgentInput, Connection, ConnectionInput, Snapshot } from '../packages/shared/src/domain'
+import { listModelCatalog, probeMagpie } from '../packages/runtime/src/adapters/mastra/model-catalog'
+import { MastraEngine } from '../packages/runtime/src/adapters/mastra/engine'
+import type { AgentEngine } from '../packages/runtime/src/contracts'
+import { AppService } from '../packages/runtime/src/service'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
 import { sendTeamOutput, writingPlan } from './fixtures/team-planner'
-import type { TeamDraft, TeamDraftView } from '../src/shared/domain/team-creation'
+import type { TeamDraft, TeamDraftView } from '../packages/shared/src/domain/team-creation'
 
 const cleanup: (() => Promise<void>)[] = []
 afterEach(async () => { for (const fn of cleanup.splice(0).reverse()) await fn() })
@@ -67,7 +67,7 @@ test('standalone SDK calls persist routes under tests, draft requests and indivi
   const f = await fixture(new MastraEngine()), { service } = f
   const source: ConnectionInput = { name: 'Magpie', provider: 'openai-compatible', baseUrl: root, defaultModel: 'group/work', gateway: gateway() }
   const saved = await service.handle('saveConnection', source) as Connection
-  const tested = await service.handle('testConnection', { id: saved.id }) as { modelCall: import('../src/shared/domain/model-gateway').GatewayModelCall }
+  const tested = await service.handle('testConnection', { id: saved.id }) as { modelCall: import('../packages/shared/src/domain/model-gateway').GatewayModelCall }
   const draftTest = await service.handle('testConnectionDraft', { ...source, id: saved.id, expectedRevision: saved.revision }) as typeof tested
   expect(tested.modelCall).toMatchObject({ connectionId: saved.id, connectionRevision: 1, phase: 'connection-test', route: { actualModelId: 'vendor/model-1' } })
   expect(draftTest.modelCall.connectionId).not.toBe(saved.id); expect(draftTest.modelCall.connectionRevision).toBe(0)
@@ -119,7 +119,7 @@ test.skipIf(!process.env.BOAI_MAGPIE_READONLY)('installed Magpie is readable thr
   const { service, keys, calls } = await fixture(), baseUrl = 'http://127.0.0.1:3425'
   const identity = await service.handle('probeModelGateway', { baseUrl })
   expect(identity).toMatchObject({ name: 'magpie', baseUrl })
-  const catalog = await service.handle('getConnectionModelCatalog', { baseUrl, gateway: gateway() }) as import('../src/shared/domain/model-gateway').ModelCatalog
+  const catalog = await service.handle('getConnectionModelCatalog', { baseUrl, gateway: gateway() }) as import('../packages/shared/src/domain/model-gateway').ModelCatalog
   expect(catalog.models.length).toBeGreaterThan(0)
   expect(catalog.models.every(model => model.id.length > 0)).toBe(true)
   expect((await service.handle('snapshot', undefined) as Snapshot).connections).toEqual([])
@@ -197,7 +197,7 @@ test.each(['chat', 'responses', 'messages'] as const)('actual SDK uses the gatew
   const levels = ['medium', 'xhigh', 'none', 'future_effort', ...(protocol === 'messages' ? ['off'] : [])]
   const catalog: ModelCatalog = { source: 'service-declared', fetchedAt: new Date().toISOString(), models: [{ id: connection.defaultModel, reasoningLevels: levels }] }
   const sdk = new Agent({ id: 'gateway-preferences', name: 'Fixture', instructions: 'Reply OK.', model: modelConfig(connection, '') })
-  const routes: { id: string; route: import('../src/shared/domain/model-gateway').GatewayRouteEvidence }[] = []
+  const routes: { id: string; route: import('../packages/shared/src/domain/model-gateway').GatewayRouteEvidence }[] = []
   for (const level of [...levels, 'auto']) {
     const output = await sdk.stream('Reply OK.', { maxSteps: 1, modelSettings: { maxOutputTokens: 100 }, providerOptions: thinkingProviderOptions(connection, undefined, level, 'chat', catalog), onStepFinish: gatewayRouteObserver({ connection, apiKey: 'magpie-boai', onModelCallRoute: async (id, route) => { routes.push({ id, route }) } }, () => `call-${level}`) })
     let text = ''; for await (const delta of output.textStream) text += delta
@@ -237,7 +237,7 @@ test('saved gateway catalog survives restart without modifying source or employe
   await expect(f.service.handle('saveAgent', input)).rejects.toThrow('推理目录')
   const request = { id: connection.id, baseUrl: root, gateway: gateway(), expectedRevision: connection.revision }
   await f.service.handle('getConnectionModelCatalog', request)
-  const employee = await f.service.handle('saveAgent', input) as import('../src/shared/domain').DigitalAgent
+  const employee = await f.service.handle('saveAgent', input) as import('../packages/shared/src/domain').DigitalAgent
   const before = await f.service.handle('snapshot', undefined) as Snapshot
   levels = ['medium', 'xhigh', 'future_effort']
   await f.service.handle('getConnectionModelCatalog', request)
@@ -310,17 +310,17 @@ test('host persists route evidence by original run/call across restart and never
     },
   })
   const connection = await f.service.handle('saveConnection', { name: 'Magpie', provider: 'openai-compatible', baseUrl: 'http://127.0.0.1:3425', defaultModel: 'group/route', gateway: gateway() }) as Connection
-  const employee = await f.service.handle('saveAgent', { name: 'Routing employee', role: '', instructions: '', color: '#123456', connectionId: connection.id, modelId: 'group/route', skillIds: [], knowledgeIds: [], allowCommands: false, active: true }) as import('../src/shared/domain').DigitalAgent
-  const conversation = await f.service.handle('createConversation', { kind: 'direct', title: 'Routing fixture', agentIds: [employee.id], mode: 'mention', sharedKnowledgeIds: [] }) as import('../src/shared/domain').Conversation
+  const employee = await f.service.handle('saveAgent', { name: 'Routing employee', role: '', instructions: '', color: '#123456', connectionId: connection.id, modelId: 'group/route', skillIds: [], knowledgeIds: [], allowCommands: false, active: true }) as import('../packages/shared/src/domain').DigitalAgent
+  const conversation = await f.service.handle('createConversation', { kind: 'direct', title: 'Routing fixture', agentIds: [employee.id], mode: 'mention', sharedKnowledgeIds: [] }) as import('../packages/shared/src/domain').Conversation
   await f.service.handle('sendMessage', { conversationId: conversation.id, content: '你好', requestId: 'gateway-route-fixture', mentionIds: [] })
-  const detail = () => f.service.handle('getConversation', { id: conversation.id }) as Promise<import('../src/shared/domain').ConversationDetail>
+  const detail = () => f.service.handle('getConversation', { id: conversation.id }) as Promise<import('../packages/shared/src/domain').ConversationDetail>
   await expect.poll(async () => (await detail()).runs.find(run => run.phase === 'execution')?.status, { timeout: 5000 }).toBe('completed')
   const run = (await detail()).runs.find(run => run.phase === 'execution')!
   expect(run.modelCalls).toHaveLength(2)
   expect(run.modelCalls![0]).toMatchObject({ connectionId: connection.id, connectionRevision: 1, selectedModelId: 'group/route', route: { actualModelId: 'vendor/model-a', reportedModelId: 'body-a', routeSource: 'response-headers' } })
   expect(run.modelCalls![1]).toMatchObject({ selectedModelId: 'group/route', route: { routeSource: 'unknown', reportedModelId: 'body-b' } })
   expect(run.modelCalls![1].route?.actualModelId).toBeUndefined(); expect(run.modelCalls![0].callId).not.toBe(run.modelCalls![1].callId)
-  const restarted = await f.restart(), after = await restarted.handle('getConversation', { id: conversation.id }) as import('../src/shared/domain').ConversationDetail
+  const restarted = await f.restart(), after = await restarted.handle('getConversation', { id: conversation.id }) as import('../packages/shared/src/domain').ConversationDetail
   expect(after.runs.find(item => item.id === run.id)?.modelCalls).toEqual(run.modelCalls)
 })
 
@@ -381,7 +381,7 @@ test.each(['connection-test', 'automation-draft'] as const)('%s source replaceme
 
 test('legacy SQLite API records retain absent gateway/protocol/revision fields when a separate gateway is added and refreshed', async () => {
   const f = await fixture(), original = await f.service.handle('saveConnection', { name: 'Legacy direct', provider: 'openai-compatible', baseUrl: 'https://legacy.example/v1', defaultModel: 'old/vendor/model', apiKey: 'legacy-private-key' }) as Connection
-  const employee = await f.service.handle('saveAgent', { name: 'Legacy employee', role: '', instructions: '', color: '#123456', connectionId: original.id, modelId: 'old/vendor/model', skillIds: [], knowledgeIds: [], allowCommands: false, active: true }) as import('../src/shared/domain').DigitalAgent
+  const employee = await f.service.handle('saveAgent', { name: 'Legacy employee', role: '', instructions: '', color: '#123456', connectionId: original.id, modelId: 'old/vendor/model', skillIds: [], knowledgeIds: [], allowCommands: false, active: true }) as import('../packages/shared/src/domain').DigitalAgent
   const { gateway: _gateway, api: _api, revision: _revision, ...legacy } = original
   const { executionBackend: _backend, ...legacyEmployee } = employee
   await f.service.close()
@@ -394,7 +394,7 @@ test('legacy SQLite API records retain absent gateway/protocol/revision fields w
   const backups = (await readdir(f.dataPath)).filter(name => name.startsWith('boai.sqlite.before-backends-'))
   expect(backups).toHaveLength(1)
   const preserved = await ProductStore.openReadOnly(join(f.dataPath, backups[0]))
-  try { expect((await preserved.load<import('../src/shared/domain').DigitalAgent>('agents')).find(row => row.id === employee.id)).toEqual(legacyEmployee) } finally { await preserved.close() }
+  try { expect((await preserved.load<import('../packages/shared/src/domain').DigitalAgent>('agents')).find(row => row.id === employee.id)).toEqual(legacyEmployee) } finally { await preserved.close() }
   expect(f.calls).toEqual([])
   const root = await server((_req, res) => { res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ data: [{ id: 'new/vendor/model' }] })) })
   const added = await restarted.handle('saveConnection', { name: 'Separate Magpie', provider: 'openai-compatible', baseUrl: root, defaultModel: 'new/vendor/model', gateway: gateway() }) as Connection
@@ -406,7 +406,7 @@ test('legacy SQLite API records retain absent gateway/protocol/revision fields w
   const readonly = await ProductStore.openReadOnly(join(f.dataPath, 'boai.sqlite'))
   try {
     expect((await readonly.load<Connection>('connections')).find(row => row.id === legacy.id)).toEqual(legacy)
-    expect((await readonly.load<import('../src/shared/domain').DigitalAgent>('agents')).find(row => row.id === employee.id)).toEqual(migratedEmployee)
+    expect((await readonly.load<import('../packages/shared/src/domain').DigitalAgent>('agents')).find(row => row.id === employee.id)).toEqual(migratedEmployee)
     expect(await readonly.load('messages')).toEqual([])
   } finally { await readonly.close() }
   const second = await f.restart(), final = await second.handle('snapshot', undefined) as Snapshot

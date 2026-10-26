@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [OUTPUT]: 2026-10-11按Rovai纠正文档：员工一等公民、原生session/turn与工具、右侧执行历史；删除消息流程卡片，不精简输入框工具栏；仅文档，状态归06 §121。
 [OUTPUT]: 第13组09按Todos目录区分已有基础、待补或待验证能力与独立扩展；保留IM和API/本机双路径，当前进度唯一归06。
 [INPUT]: 用户确认的IM产品方向和底部调整、Todos官方外部运行时说明、当前员工后端/运行配置/工具栏源码及本组01–07。
@@ -46,8 +47,8 @@ ACP用于标准化客户端与Agent的通信；支持ACP的程序才能直接走
 
 当前代码事实需与设计区分：
 
-- `ExecutionBackend`已有`mastra-model`、`codex-local`、`claude-local`和`acp-local`四种身份。见[后端类型](../../../src/shared/domain/backends.ts)。
-- 当前Codex配置不能同时绑定BoAI API连接；Claude采用已核对程序与明确兼容API来源，当前核验拒绝`useExistingLogin`。因此“本机Claude”不能宣传为已经复用个人订阅登录。见[运行配置核验](../../../src/runtime/modules/backends/runtime-config.ts)。
+- `ExecutionBackend`已有`mastra-model`、`codex-local`、`claude-local`和`acp-local`四种身份。见[后端类型](../../../packages/shared/src/domain/backends.ts)。
+- 当前Codex配置不能同时绑定BoAI API连接；Claude采用已核对程序与明确兼容API来源，当前核验拒绝`useExistingLogin`。因此“本机Claude”不能宣传为已经复用个人订阅登录。见[运行配置核验](../../../packages/runtime/src/modules/backends/runtime-config.ts)。
 - 现有通用ACP仍是显式任务与新会话路径，普通聊天、判断和记忆未开放；选项存在和握手成功不能代表完整员工化。现状见同一后端类型文件，目标合同见[02](./02-运行时适配与能力契约.md)。
 
 ### 2.1 员工选择后的调用关系
@@ -95,7 +96,7 @@ Codex员工：  (+)  /  [命令权限]          [本机 Codex ▾]  发送
 Claude员工： (+)  /  [命令权限]          [本机 Claude · 模型 ▾]  发送
 ```
 
-这是交互示意，不是新增界面的验收截图。具体布局、群聊/核心助手差异和可用选项遵循[01前端合同](./01-产品范围与前端交互.md#53-底部显示示例与配置回写)，当前接线位于[原工具栏](../../../src/renderer/pages/conversations/-components/composer-toolbar.tsx)。
+这是交互示意，不是新增界面的验收截图。具体布局、群聊/核心助手差异和可用选项遵循[01前端合同](./01-产品范围与前端交互.md#53-底部显示示例与配置回写)，当前接线位于[原工具栏](../../../apps/electron/src/renderer/pages/conversations/-components/composer-toolbar.tsx)。
 
 点击运行来源先定位该员工设置或已绑定连接。配置变更继续通过原保存和未知结果核对流程；活动或待核对工作期间不能借快捷入口换绑。普通发送不主动取消当前处理，原问题补充和成果修订继续使用同一composer。
 

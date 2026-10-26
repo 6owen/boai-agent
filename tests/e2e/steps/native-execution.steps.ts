@@ -12,7 +12,7 @@ import { expect } from '@playwright/test'
 import { resolve } from 'node:path'
 import { readFile, realpath } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
-import type { AgentRun, Conversation, ConversationDetail, DigitalAgent, LaunchProfile } from '../../../src/shared/domain'
+import type { AgentRun, Conversation, ConversationDetail, DigitalAgent, LaunchProfile } from '../../../packages/shared/src/domain'
 import { test as base } from '../support/test'
 import { prepareSavedModel, systemKeychainLaunch } from '../support/saved-model'
 import type { Desktop } from '../support/desktop'
@@ -27,7 +27,7 @@ async function send(d:Desktop,state:State,content:string){
  let detail:ConversationDetail|undefined
  await expect.poll(async()=>{
   detail=await request(d,'getConversation',{id:state.chat.id})
-  for(const run of detail!.runs)for(const action of await request<import('../../../src/shared/domain/execution').NativeAction[]>(d,'listNativeActions',{conversationId:state.chat.id,runId:run.id})){
+  for(const run of detail!.runs)for(const action of await request<import('../../../packages/shared/src/domain/execution').NativeAction[]>(d,'listNativeActions',{conversationId:state.chat.id,runId:run.id})){
    if(action.status==='pending'&&action.method==='mcp__boai__publish_artifact'){
     await d.reviewData(`明确批准文件登记-${action.id}`,{action,decision:'allow',scope:'本次测试用户要求的文件交付'})
     await request(d,'respondNativeAction',{conversationId:state.chat.id,runId:run.id,actionId:action.id,response:{option:'allow'}})
@@ -97,7 +97,7 @@ Then('重启后原生员工续聊且不会重放交付',async({runtime,nativeSta
 })
 
 async function approveProducts(d:Desktop,detail:ConversationDetail){
- for(const run of detail.runs)for(const action of await request<import('../../../src/shared/domain/execution').NativeAction[]>(d,'listNativeActions',{conversationId:detail.conversation.id,runId:run.id})){
+ for(const run of detail.runs)for(const action of await request<import('../../../packages/shared/src/domain/execution').NativeAction[]>(d,'listNativeActions',{conversationId:detail.conversation.id,runId:run.id})){
   if(action.status!=='pending')continue
   const input=(action.detail as {input?:{file_path?:string;command?:string}})?.input
   const originals=detail.artifacts.flatMap(artifact=>[artifact.path,artifact.sourcePath].filter((value):value is string=>!!value))
@@ -156,11 +156,11 @@ Then('协作执行和原件在重启后保持且不重放',async({runtime,native
 })
 When('用原定时计划入口运行本机员工',async({runtime,nativeState:state})=>{
  const prompt=state.real?'在当前工作目录创建 scheduled-check.md，标题为“离线缓存每日核查”，内容为三项核查：缓存容量、音频可播放、离线状态。每项写一个检查动作，末尾标记 BOAI-SCHEDULE-20261011。使用原生文件或命令工具写入，再通过 publish_artifact 交付真实文件。':'NATIVE_PUBLISH'
- const plan=await request<import('../../../src/shared/domain').AutomationDefinition>(runtime,'saveAutomation',{name:`${state.runtime}原生计划验收`,prompt,conversationPolicy:'new-conversation',employeeIds:[state.agent.id],frequency:'daily',time:'09:00',weekday:1,timezone:'UTC',enabled:false,notify:false})
+ const plan=await request<import('../../../packages/shared/src/domain').AutomationDefinition>(runtime,'saveAutomation',{name:`${state.runtime}原生计划验收`,prompt,conversationPolicy:'new-conversation',employeeIds:[state.agent.id],frequency:'daily',time:'09:00',weekday:1,timezone:'UTC',enabled:false,notify:false})
  await runtime.reviewData('自动化预登记',{source:state.real?'real-local-cli':'offline-protocol-fixture',plan,externalTurnCeiling:2,observationMs:300000,trigger:'原runAutomation产品入口，不伪造时钟触发'})
- const occurrence=await request<import('../../../src/shared/domain').AutomationOccurrence>(runtime,'runAutomation',{id:plan.id,requestId:crypto.randomUUID()})
+ const occurrence=await request<import('../../../packages/shared/src/domain').AutomationOccurrence>(runtime,'runAutomation',{id:plan.id,requestId:crypto.randomUUID()})
  await expect.poll(async()=>{
-  const current=await request<import('../../../src/shared/domain').AutomationOccurrence>(runtime,'getAutomationOccurrence',{id:occurrence.id})
+  const current=await request<import('../../../packages/shared/src/domain').AutomationOccurrence>(runtime,'getAutomationOccurrence',{id:occurrence.id})
   if(current.conversationId){state.detail=await request(runtime,'getConversation',{id:current.conversationId});state.chat=state.detail.conversation;await approveProducts(runtime,state.detail);if(state.detail.runs.length>2)throw Error('超过本场预登记的2次外部运行')}
   return current.status
  },{timeout:300000,intervals:[500]}).toBe('completed')
@@ -184,9 +184,9 @@ After('@native_runtime_validation',async({runtime,nativeState:state})=>{
  await runtime.reviewData('最终场景快照',detail)
  for(const artifact of detail.artifacts)await runtime.reviewFile('最终原件-'+artifact.id,artifact.path,{required:true,expectedSha256:artifact.contentHash})
  for(const run of detail.runs){
-  const items:import('../../../src/shared/domain/execution').ExecutionEvidence[]=[];let after:number|undefined
+  const items:import('../../../packages/shared/src/domain/execution').ExecutionEvidence[]=[];let after:number|undefined
   do{
-   const page=await request<import('../../../src/shared/domain/execution').ExecutionEvidencePage>(runtime,'listExecutionEvidence',{conversationId:state.chat.id,runId:run.id,after})
+   const page=await request<import('../../../packages/shared/src/domain/execution').ExecutionEvidencePage>(runtime,'listExecutionEvidence',{conversationId:state.chat.id,runId:run.id,after})
    for(let item of page.items){
     if(item.deferred){let body='',offset=0;for(;;){const chunk=await request<{content:string;next?:number;revision:number}>(runtime,'getExecutionContent',{conversationId:state.chat.id,runId:run.id,evidenceId:item.id,offset});expect(chunk.revision).toBe(item.revision);body+=chunk.content;if(chunk.next===undefined)break;offset=chunk.next}item=JSON.parse(body)}
     items.push(item)
@@ -209,7 +209,7 @@ When('核对本机员工公开消息和原生命令停止',async({runtime,native
  await expect.poll(async()=>{
   state.detail=await request(runtime,'getConversation',{id:state.chat.id});run=state.detail.runs[0]
   if(!run)return false
-  for(const action of await request<import('../../../src/shared/domain/execution').NativeAction[]>(runtime,'listNativeActions',{conversationId:state.chat.id,runId:run.id})){
+  for(const action of await request<import('../../../packages/shared/src/domain/execution').NativeAction[]>(runtime,'listNativeActions',{conversationId:state.chat.id,runId:run.id})){
    if(action.status==='pending'&&(action.method==='mcp__boai__send_message'||(action.detail as any)?.input?.command===command||(action.detail as any)?.command===command)){
     await runtime.reviewData('批准停止场景-'+action.id,{action,decision:'allow once'})
     await request(runtime,'respondNativeAction',{conversationId:state.chat.id,runId:run.id,actionId:action.id,response:{option:state.runtime==='codex'?'accept':'allow'}})
@@ -236,7 +236,7 @@ When('核对本机员工公开消息和原生命令停止',async({runtime,native
 })
 When('本机核心助手创建独立员工并保留执行配置',async({runtime,nativeState:state})=>{
  test.skip(!state.real,'此场景专门验证真实CLI核心创建员工')
- const snapshot=await request<import('../../../src/shared/domain').Snapshot>(runtime,'snapshot',undefined)
+ const snapshot=await request<import('../../../packages/shared/src/domain').Snapshot>(runtime,'snapshot',undefined)
  const core=snapshot.agents.find(a=>a.id==='bobo')!
  const {id,configVersion,workspaceRef,memoryNamespace,policyVersion,systemRole,...input}=core
  const backend=state.agent.executionBackend,options=state.agent.nativeOptions,model=state.agent.modelId
@@ -247,14 +247,14 @@ When('本机核心助手创建独立员工并保留执行配置',async({runtime,
  await openChat(runtime,state)
  await expect.poll(async()=>{
   state.detail=await request(runtime,'getConversation',{id:state.chat.id})
-  for(const run of state.detail.runs)for(const action of await request<import('../../../src/shared/domain/execution').NativeAction[]>(runtime,'listNativeActions',{conversationId:state.chat.id,runId:run.id}))if(action.status==='pending'&&['mcp__boai__find_employees','mcp__boai__organize_collaboration','mcp__boai__report_work','mcp__boai__send_message'].includes(action.method)){
+  for(const run of state.detail.runs)for(const action of await request<import('../../../packages/shared/src/domain/execution').NativeAction[]>(runtime,'listNativeActions',{conversationId:state.chat.id,runId:run.id}))if(action.status==='pending'&&['mcp__boai__find_employees','mcp__boai__organize_collaboration','mcp__boai__report_work','mcp__boai__send_message'].includes(action.method)){
    await runtime.reviewData('批准核心创建-'+action.id,{action,decision:'allow once'})
    await request(runtime,'respondNativeAction',{conversationId:state.chat.id,runId:run.id,actionId:action.id,response:{option:'allow'}})
   }
   return state.detail.runs.length>0&&state.detail.runs.every(r=>['completed','failed'].includes(r.status))
  },{timeout:180000,intervals:[400]}).toBe(true)
  expect(state.detail.runs.map(r=>r.error)).toEqual([undefined])
- const after=await request<import('../../../src/shared/domain').Snapshot>(runtime,'snapshot',undefined)
+ const after=await request<import('../../../packages/shared/src/domain').Snapshot>(runtime,'snapshot',undefined)
  const employee=after.agents.find(a=>a.name==='缓存核查员')!
  expect(employee).toBeTruthy();expect(employee.id).not.toBe(core.id);expect(employee.executionBackend).toEqual(backend);expect(employee.nativeOptions).toEqual(options)
  expect(after.conversations.filter(c=>c.kind==='group')).toEqual(snapshot.conversations.filter(c=>c.kind==='group'))

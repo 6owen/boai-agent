@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Workspace源码路径迁至apps/packages，保留既有输出与业务合同。
  * [INPUT]: Directly migrated Rovai macOS/Linux process identity modules and Cargo.lock.
  * [OUTPUT]: Host-native process guard and PTY transport in dist/native; source hash avoids rebuilding unchanged inputs.
  * [POS]: Shared build/dev/Vitest setup; no native Agent or model invocation.
@@ -12,7 +13,7 @@ import { fileURLToPath } from 'node:url'
 const root=resolve(fileURLToPath(new URL('..',import.meta.url)))
 export default async function buildProcessGuard(){
  if(!['darwin','linux'].includes(process.platform))return
- const source=join(root,'src/runtime/adapters/process-guard'),output=join(root,'dist/native'),target=join(root,'.local/native-process-guard-target')
+ const source=join(root,'packages/runtime/src/adapters/process-guard'),output=join(root,'dist/native'),target=join(root,'.local/native-process-guard-target')
  const hash=async()=>{const h=createHash('sha256');h.update(process.platform+process.arch);for(const file of ['Cargo.toml','Cargo.lock','main.rs','managed_process.rs','terminal.rs','macos.rs','linux.rs'])h.update(await readFile(join(source,file)));return h.digest('hex')}
  const stamp=await hash()
  try{await access(join(output,'boai-process-guard'));if((await readFile(join(output,'source.sha256'),'utf8')).trim()===stamp)return}catch{}

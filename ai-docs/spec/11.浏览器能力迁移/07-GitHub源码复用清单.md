@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [OUTPUT]: API交付回执沿用既有本机答复证据提醒，明确为BOAI适配；不归为Craft驱动变更。
 [OUTPUT]: 2026-10-15追加固定Craft坐标点击/拖拽示例和画布指引，真实缺项及候选验收唯一归05。
 [INPUT]: 2026-10-14用户要求浏览器优先直接复用GitHub代码；Craft v0.15.1源文件/测试/许可、Ego Lite helper和OpenCLI架构资料、BOAI现有迁入版本。
@@ -29,10 +30,10 @@ Craft的[v0.15.1发布说明](https://github.com/craft-ai-agents/craft-agents-os
 
 | 源模块 | BOAI目标/接点 | 优先直接采用的实现 | 必要适配 |
 | --- | --- | --- | --- |
-| [browser-cdp.ts](https://github.com/craft-ai-agents/craft-agents-oss/blob/2e3ba53ff80b229a07e9d1884dc58f6733f22e1f/apps/electron/src/main/browser-cdp.ts) | [main/browser/browser-cdp.ts](../../../src/main/browser/browser-cdp.ts) | CDP输入、点击命中核对/明确回退、选项选择、字段输入/敏感标记 | Electron类型、原在途CDP跟踪、现有ref/密码字段保护；回退事实必须返回 |
-| [browser-pane-manager.ts](https://github.com/craft-ai-agents/craft-agents-oss/blob/2e3ba53ff80b229a07e9d1884dc58f6733f22e1f/apps/electron/src/main/browser-pane-manager.ts) | [main/browser/browser-pane-manager.ts](../../../src/main/browser/browser-pane-manager.ts) | 隐藏窗口绘制控制、新帧截图、popup/销毁、加载与验证相关处理 | 应用统一partition、BOAI下载策略和实际退出；不得恢复旧session所有权/输入遮罩/关闭即隐藏规则 |
-| [browser-tool-runtime.ts](https://github.com/craft-ai-agents/craft-agents-oss/blob/2e3ba53ff80b229a07e9d1884dc58f6733f22e1f/packages/shared/src/agent/browser-tool-runtime.ts) | [mastra/browser-tool-runtime.ts](../../../src/runtime/adapters/mastra/browser-tool-runtime.ts) | 命令解析、页面快照/目标/动作结果、验证判断、精简截图说明、敏感输入标记 | 继续经现有单动作parser与服务授权，不因复制内部批命令函数而开放模型批执行 |
-| [browser-tools.ts](https://github.com/craft-ai-agents/craft-agents-oss/blob/2e3ba53ff80b229a07e9d1884dc58f6733f22e1f/packages/shared/src/agent/browser-tools.ts) | [browser-tool-types.ts](../../../src/runtime/adapters/mastra/browser-tool-types.ts)、[browser-tool.ts](../../../src/runtime/adapters/mastra/browser-tool.ts)及native-products | BrowserPaneFns/结果类型、工具说明和图片结果格式 | 本版本类型在browser-tools.ts中；拆出所需类型，使用现有Mastra/Codex/Claude注册方式，不为复制工厂引入整套Claude Agent SDK |
+| [browser-cdp.ts](https://github.com/craft-ai-agents/craft-agents-oss/blob/2e3ba53ff80b229a07e9d1884dc58f6733f22e1f/apps/electron/src/main/browser-cdp.ts) | [main/browser/browser-cdp.ts](../../../apps/electron/src/main/browser/browser-cdp.ts) | CDP输入、点击命中核对/明确回退、选项选择、字段输入/敏感标记 | Electron类型、原在途CDP跟踪、现有ref/密码字段保护；回退事实必须返回 |
+| [browser-pane-manager.ts](https://github.com/craft-ai-agents/craft-agents-oss/blob/2e3ba53ff80b229a07e9d1884dc58f6733f22e1f/apps/electron/src/main/browser-pane-manager.ts) | [main/browser/browser-pane-manager.ts](../../../apps/electron/src/main/browser/browser-pane-manager.ts) | 隐藏窗口绘制控制、新帧截图、popup/销毁、加载与验证相关处理 | 应用统一partition、BOAI下载策略和实际退出；不得恢复旧session所有权/输入遮罩/关闭即隐藏规则 |
+| [browser-tool-runtime.ts](https://github.com/craft-ai-agents/craft-agents-oss/blob/2e3ba53ff80b229a07e9d1884dc58f6733f22e1f/packages/shared/src/agent/browser-tool-runtime.ts) | [mastra/browser-tool-runtime.ts](../../../packages/runtime/src/adapters/mastra/browser-tool-runtime.ts) | 命令解析、页面快照/目标/动作结果、验证判断、精简截图说明、敏感输入标记 | 继续经现有单动作parser与服务授权，不因复制内部批命令函数而开放模型批执行 |
+| [browser-tools.ts](https://github.com/craft-ai-agents/craft-agents-oss/blob/2e3ba53ff80b229a07e9d1884dc58f6733f22e1f/packages/shared/src/agent/browser-tools.ts) | [browser-tool-types.ts](../../../packages/runtime/src/adapters/mastra/browser-tool-types.ts)、[browser-tool.ts](../../../packages/runtime/src/adapters/mastra/browser-tool.ts)及native-products | BrowserPaneFns/结果类型、工具说明和图片结果格式 | 本版本类型在browser-tools.ts中；拆出所需类型，使用现有Mastra/Codex/Claude注册方式，不为复制工厂引入整套Claude Agent SDK |
 | [browser-tool-redaction.ts](https://github.com/craft-ai-agents/craft-agents-oss/blob/2e3ba53ff80b229a07e9d1884dc58f6733f22e1f/packages/shared/src/agent/browser-tool-redaction.ts) | 现有工具参数/结果、native执行事件与持久记录入口 | 密码输入识别、命令文本替换、结果标记保留 | 核对browser-tool-names/runtime常量依赖；迁入后在持久化之前脱敏，不能只处理最终输出 |
 | [browser-tools.md](https://github.com/craft-ai-agents/craft-agents-oss/blob/2e3ba53ff80b229a07e9d1884dc58f6733f22e1f/apps/electron/resources/docs/browser-tools.md) | BOAI现有工具帮助/员工可读说明 | snapshot→动作→再核对的操作说明与命令示例 | 帮助只列实际开放能力；去掉旧workspace/session/远程配置及未接通命令的可用承诺 |
 

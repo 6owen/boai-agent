@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [INPUT]: 当前 BoAI 源码、boai-app 删除前历史、Craft 上游固定提交、Mastra 安装包与官方文档、针对性测试结果。
 [OUTPUT]: 可复核的版本基准、代码事实、框架能力、差距、方案比较与研究限制。
 [POS]: 自动化设计的事实与取舍依据；07 为目标方案，本文不将框架能力或计划冒充产品交付。
@@ -28,16 +29,16 @@
 
 | 文件/符号 | 已核对事实 |
 | --- | --- |
-| [automations.ts](../../../src/shared/domain/automations.ts) | Definition、Input、Occurrence、Origin；目前频率 daily/weekly，固定 conversationId，notify 布尔值 |
-| [automation-service.ts](../../../src/runtime/modules/automations/automation-service.ts) | schema、cron、calendarSlot、定义/历史持久化、版本校验、并发/忙碌跳过、10 分钟窗口、恢复/备份 |
-| [native-schedules.ts](../../../src/runtime/modules/automations/native-schedules.ts) | `boai-automation-dispatch-v1` 固定 workflow；`schedule: []`；独立 LibSQLStore；startWorkers/stopWorkers/shutdown |
-| [service.ts](../../../src/runtime/service.ts)：构造 hooks、sendMessage、automationFingerprint、inspectAutomation | 自动化通过原有聊天调度；保存来源；检查模型员工、会话/员工配置，拒绝命令与 ACP；按 turn 聚合结果 |
-| [group-scheduler.ts](../../../src/runtime/group-scheduler.ts) | 成员独立判断、chat/task 分开、单轮结束与持久工作不同；定向接续有新 turn |
-| [work-repository.ts](../../../src/runtime/modules/collaboration/work-repository.ts) | 工作身份、SQLite 事务认领、根预算、父子/依赖、证据与停止树；重启中断 |
-| [product-store.ts](../../../src/runtime/adapters/storage/product-store.ts) | JSON records + 复合主键，提供读/比较/写一体事务；外层 write 是 upsert，不是条件认领 |
-| [schedules/index.tsx](../../../src/renderer/pages/schedules/index.tsx) | 已有列表、搜索/筛选、新建编辑、立即运行、暂停删除、预览、历史、通知开关 |
-| [main.ts](../../../src/main/main.ts) | 单实例锁、utility process 生命周期、系统通知、点击打开目标聊天 |
-| [history.ts](../../../src/runtime/modules/conversations/history.ts) | 清理会话内容时更新 occurrence 引用，保留触发身份 |
+| [automations.ts](../../../packages/shared/src/domain/automations.ts) | Definition、Input、Occurrence、Origin；目前频率 daily/weekly，固定 conversationId，notify 布尔值 |
+| [automation-service.ts](../../../packages/runtime/src/modules/automations/automation-service.ts) | schema、cron、calendarSlot、定义/历史持久化、版本校验、并发/忙碌跳过、10 分钟窗口、恢复/备份 |
+| [native-schedules.ts](../../../packages/runtime/src/modules/automations/native-schedules.ts) | `boai-automation-dispatch-v1` 固定 workflow；`schedule: []`；独立 LibSQLStore；startWorkers/stopWorkers/shutdown |
+| [service.ts](../../../packages/runtime/src/service.ts)：构造 hooks、sendMessage、automationFingerprint、inspectAutomation | 自动化通过原有聊天调度；保存来源；检查模型员工、会话/员工配置，拒绝命令与 ACP；按 turn 聚合结果 |
+| [group-scheduler.ts](../../../packages/runtime/src/group-scheduler.ts) | 成员独立判断、chat/task 分开、单轮结束与持久工作不同；定向接续有新 turn |
+| [work-repository.ts](../../../packages/runtime/src/modules/collaboration/work-repository.ts) | 工作身份、SQLite 事务认领、根预算、父子/依赖、证据与停止树；重启中断 |
+| [product-store.ts](../../../packages/runtime/src/adapters/storage/product-store.ts) | JSON records + 复合主键，提供读/比较/写一体事务；外层 write 是 upsert，不是条件认领 |
+| [schedules/index.tsx](../../../apps/electron/src/renderer/pages/schedules/index.tsx) | 已有列表、搜索/筛选、新建编辑、立即运行、暂停删除、预览、历史、通知开关 |
+| [main.ts](../../../apps/electron/src/main/main.ts) | 单实例锁、utility process 生命周期、系统通知、点击打开目标聊天 |
+| [history.ts](../../../packages/runtime/src/modules/conversations/history.ts) | 清理会话内容时更新 occurrence 引用，保留触发身份 |
 
 原生 workflow 的输出是 `dispatched: true`；它没有等待任务交付。因此“Mastra workflow 成功”和“自动化任务交付”本来就是两个阶段，后续 UI 与存储应显式区分。
 

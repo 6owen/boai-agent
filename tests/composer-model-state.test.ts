@@ -5,8 +5,8 @@
  * [PROTOCOL]: 变化同步Header与所属.folder.md。
  */
 import { expect, it } from 'vitest'
-import { composerEffortPatch, composerEfforts, composerModelPatch } from '../src/renderer/pages/conversations/composer-model-state'
-import type { Connection, DigitalAgent } from '../src/shared/domain'
+import { composerEffortPatch, composerEfforts, composerModelPatch } from '../apps/electron/src/renderer/pages/conversations/composer-model-state'
+import type { Connection, DigitalAgent } from '../packages/shared/src/domain'
 const native = { id: 'a', modelId: 'native-model', executionBackend: { kind: 'codex-local', profileId: 'p' }, nativeOptions: { effort: 'high', codexApprovalPolicy: 'on-request', codexSandbox: 'workspace-write' } } as DigitalAgent
 it('uses only actual native effort metadata and preserves permission options', () => {
   expect(composerEfforts(native, undefined, [])).toEqual([])

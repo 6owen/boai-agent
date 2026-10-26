@@ -1,0 +1,3 @@
+Private BOAI runtime plugin development contracts.
+No public license is declared. This local SDK artifact is provided for authorized
+BOAI plugin development. Third-party dependencies retain their own licenses.

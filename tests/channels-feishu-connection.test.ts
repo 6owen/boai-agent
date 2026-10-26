@@ -8,9 +8,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { channelTransportFactory } from '../src/runtime/adapters/channels/mastra-channels'
-import type { ChannelBinding } from '../src/shared/domain/channels'
-import type { ChannelTransport } from '../src/runtime/modules/channels/channel-service'
+import { channelTransportFactory } from '../packages/runtime/src/adapters/channels/mastra-channels'
+import type { ChannelBinding } from '../packages/shared/src/domain/channels'
+import type { ChannelTransport } from '../packages/runtime/src/modules/channels/channel-service'
 
 const io = vi.hoisted(() => ({ urls: [] as string[] }))
 vi.mock('@larksuite/channel', async importOriginal => {

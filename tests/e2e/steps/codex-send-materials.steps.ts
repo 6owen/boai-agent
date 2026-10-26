@@ -13,8 +13,8 @@ import { basename, join } from 'node:path'
 import { test } from './codex-employee.steps'
 import { materialSendReplyFault, nextMaterialDialog } from '../support/materials'
 import { prepareCodexSendMaterials } from '../support/codex-resources'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
-import type { ConversationMaterial } from '../../../src/shared/domain/materials'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
+import type { ConversationMaterial } from '../../../packages/shared/src/domain/materials'
 
 const { Then } = createBdd(test)
 Then('三附件消息在{string}失联后重启只核对原请求且清理不重读来源', async ({ runtime, codexEmployee }, boundary: string) => {

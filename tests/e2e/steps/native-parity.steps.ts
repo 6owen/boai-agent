@@ -10,14 +10,14 @@ import { createBdd } from 'playwright-bdd'
 import { expect } from '@playwright/test'
 import { join, resolve, relative, isAbsolute } from 'node:path'
 import { mkdir, writeFile, readFile, realpath } from 'node:fs/promises'
-import type { Conversation, ConversationDetail, DigitalAgent, LaunchProfile } from '../../../src/shared/domain'
-import type { ExecutionEvidence, NativeAction } from '../../../src/shared/domain/execution'
+import type { Conversation, ConversationDetail, DigitalAgent, LaunchProfile } from '../../../packages/shared/src/domain'
+import type { ExecutionEvidence, NativeAction } from '../../../packages/shared/src/domain/execution'
 import { test as base } from '../support/test'
 import { EvaluationBudget } from '../../evaluation/budget'
 import { parityCase, seedParity, captureParity, checkParity, nativeInputCoverage, nativeToolChecks, directCliTurn, PARITY_VERSION, STREAM_STABILITY, sha, type ParityCase, type ParityRuntime, type ParityTask, type DirectTurn, type ParityCheck } from '../../evaluation/native-parity'
 import type { Desktop } from '../support/desktop'
 import { nextMaterialDialog } from '../support/materials'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
 type Captured = Awaited<ReturnType<typeof captureParity>>
 type Result = { round: number; output: string; files: Captured; checks: ParityCheck[]; error?: string; native?: DirectTurn; runId?: string }
 type State = { runtime: ParityRuntime; executable: string; model: string; scenario: ParityCase; direct: Result[]; boai: Result[]; directRoot: string; directSource?: string; cwd?: string; inputRoot?: string; blockingInputs?: string[]; nativeInputs?: NativeAction[]; agent?: DigitalAgent; chat?: Conversation; detail?: ConversationDetail; error?: string; summaryPath: string }

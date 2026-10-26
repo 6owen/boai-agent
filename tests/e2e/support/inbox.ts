@@ -7,10 +7,10 @@
  */
 import { join } from 'node:path'
 import type { Desktop } from './desktop'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
-import type { Message, WorkItem, WorkBudget } from '../../../src/shared/domain'
-import type { InboxItem, InboxQuestionReply } from '../../../src/shared/domain/inbox'
-import type { ArtifactAcceptance } from '../../../src/shared/domain/artifacts'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
+import type { Message, WorkItem, WorkBudget } from '../../../packages/shared/src/domain'
+import type { InboxItem, InboxQuestionReply } from '../../../packages/shared/src/domain/inbox'
+import type { ArtifactAcceptance } from '../../../packages/shared/src/domain/artifacts'
 
 export async function openSourceChat(runtime: Desktop, conversationId: string) {
   const detail = await runtime.page.evaluate(id => window.boai.request('getConversation', { id }), conversationId)

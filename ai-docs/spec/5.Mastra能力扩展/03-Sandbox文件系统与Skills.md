@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [OUTPUT]: 2026-10-18新目录授权归4组05/06，复用现有Workspace与批准接口；额外目录可申请、完全访问自动允许，当前仅文档。
 [INPUT]: Sandbox、文件系统与 Skills相关规格与当前模块实现。
 [OUTPUT]: Sandbox、文件系统与 Skills的说明和源码入口。
@@ -39,7 +40,7 @@
 | 已装 `@mastra/core 1.71.0` | 包含 LocalFilesystem、Workspace、LocalSandbox、原生隔离配置及 skills API | 可以直接做 S1；不能把 LocalSandbox 默认配置当隔离产品交付 |
 | 官网其他后端 | Docker、Apple Container、本地/远程浏览器及远程沙箱有独立集成 | 当前未安装对应 provider；后续接入必须锁定版本、再读其类型并实测 |
 
-代码依据：[任务工具和命令执行](../../../src/runtime/adapters/mastra/engine.ts)、[员工目录](../../../src/runtime/modules/workspaces/workspace-service.ts)、[资源导入](../../../src/runtime/modules/resources/local-resources.ts)、[授权与生命周期](../../../src/runtime/service.ts)。当前 `@mastra/` 依赖只有 core、memory、libsql；开发测试使用 Playwright 也不代表已经提供生产浏览器或容器环境。
+代码依据：[任务工具和命令执行](../../../packages/runtime/src/adapters/mastra/engine.ts)、[员工目录](../../../packages/runtime/src/modules/workspaces/workspace-service.ts)、[资源导入](../../../packages/runtime/src/modules/resources/local-resources.ts)、[授权与生命周期](../../../packages/runtime/src/service.ts)。当前 `@mastra/` 依赖只有 core、memory、libsql；开发测试使用 Playwright 也不代表已经提供生产浏览器或容器环境。
 
 ### LocalSandbox 的真实边界
 

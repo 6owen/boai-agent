@@ -19,14 +19,14 @@ import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { createClient } from '@libsql/client'
 import { test } from './claude-employee.steps'
-import type { AgentDelivery, AgentRun, ArtifactVersion, BudgetModelCall, Conversation, DigitalAgent, DiscussionTurn, Message, WorkBudget, WorkExecution, WorkItem } from '../../../src/shared/domain'
-import type { BoboCollaborationOperation } from '../../../src/shared/domain/bobo-collaboration'
-import type { ProfileModelCall } from '../../../src/runtime/modules/profile/profile-activity'
+import type { AgentDelivery, AgentRun, ArtifactVersion, BudgetModelCall, Conversation, DigitalAgent, DiscussionTurn, Message, WorkBudget, WorkExecution, WorkItem } from '../../../packages/shared/src/domain'
+import type { BoboCollaborationOperation } from '../../../packages/shared/src/domain/bobo-collaboration'
+import type { ProfileModelCall } from '../../../packages/runtime/src/modules/profile/profile-activity'
 import { installSaveProbe, type SaveProbe } from '../support/agent-config-save'
 import { runtimeChildProcessIds } from '../support/automation-recovery'
 import { archiveNativeFinalReview } from '../support/native-final-review'
 import { systemKeychainLaunch } from '../support/saved-model'
-import { MAX_FILE_BYTES, workspaceTarget } from '../../../src/runtime/modules/workspaces/file-access'
+import { MAX_FILE_BYTES, workspaceTarget } from '../../../packages/runtime/src/modules/workspaces/file-access'
 
 const { Then } = createBdd(test)
 type ProcessIdentity = { pid: number; group: number; started: string }

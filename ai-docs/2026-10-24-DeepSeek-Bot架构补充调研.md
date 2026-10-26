@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [INPUT]: 用户要求继续研究 DS Bot 源码中的架构参考；明确不引入其产品能力或 UI，BOAI 现有员工、workspace、记忆及业务设计保持。
 [OUTPUT]: 六项架构机制与BOAI边界；用户已启动第24组实现，当前候选/实际验证/剩余统一归第24组02。
 [POS]: ai-docs/2026-10-24-DeepSeek-Bot架构补充调研.md；原跨项目研究的架构补充，不是新增产品功能或实施授权。
@@ -53,9 +54,9 @@ DSH 的 projection cache 会核对状态版本、schema 和 Session 生命周期
 
 BOAI 已经具备“原始业务记录为准、索引派生”的设计：
 
-- ProductStore 在原始记录增删改时，同步推进相关查询时钟并使正文索引失效；事务提交成功后才调用后续消息通知回调。[product-store.ts](../src/runtime/adapters/storage/product-store.ts)
-- `SearchBodyIndex.commit()` 在事务内重新核对原始来源内容、所属会话、隐藏/清理状态和版本，避免迟到的索引任务恢复已删除来源；重复提交相同结果不推进索引时钟。[search-body-index.ts](../src/runtime/modules/conversations/search-body-index.ts)
-- 员工记忆也有来源消息、资料和会话的失效路径。[memory-repository.ts](../src/runtime/modules/memory/memory-repository.ts)
+- ProductStore 在原始记录增删改时，同步推进相关查询时钟并使正文索引失效；事务提交成功后才调用后续消息通知回调。[product-store.ts](../packages/runtime/src/adapters/storage/product-store.ts)
+- `SearchBodyIndex.commit()` 在事务内重新核对原始来源内容、所属会话、隐藏/清理状态和版本，避免迟到的索引任务恢复已删除来源；重复提交相同结果不推进索引时钟。[search-body-index.ts](../packages/runtime/src/modules/conversations/search-body-index.ts)
+- 员工记忆也有来源消息、资料和会话的失效路径。[memory-repository.ts](../packages/runtime/src/modules/memory/memory-repository.ts)
 
 因此不建议重写 BOAI 的索引或改成全量事件溯源。真正可吸收的是：把来源覆盖信息继续用于第24组新增的上下文摘要和 checkpoint。
 
@@ -80,7 +81,7 @@ DS Bot 在 `btw.js` 的内部上下文读取中，同步取得 `requestHeader()`
 
 ### 3.2 BOAI 的适用点
 
-BOAI 当前 `contextWindow()` 以完整公开消息、100 条和 48,000 字符做有界选择，并保护触发输入和最新消息。这是公开消息层的窗口；Mastra 工具循环中的实际输入还包括系统指令、记忆、工具 schema、工具返回和媒体，不能用公开消息快照替代最终模型输入快照。[message-projection.ts](../src/runtime/adapters/mastra/message-projection.ts)、[agent-factory.ts](../src/runtime/adapters/mastra/agent-factory.ts)
+BOAI 当前 `contextWindow()` 以完整公开消息、100 条和 48,000 字符做有界选择，并保护触发输入和最新消息。这是公开消息层的窗口；Mastra 工具循环中的实际输入还包括系统指令、记忆、工具 schema、工具返回和媒体，不能用公开消息快照替代最终模型输入快照。[message-projection.ts](../packages/runtime/src/adapters/mastra/message-projection.ts)、[agent-factory.ts](../packages/runtime/src/adapters/mastra/agent-factory.ts)
 
 [第24组设计](./spec/24.Mastra上下文容量与连续会话/01-容量管理与上下文接续设计.md)已要求安全边界、闭合工具步骤和来源校验。这次源码研究补充的实现细节是：
 
@@ -141,7 +142,7 @@ DS Bot 对切换中到达输入的处理，可以转成 BOAI 的验收细节：
 
 ### 5.2 BOAI 已有的设计
 
-`SourceService` 已按 `runId:sourceId` 持有 lease，同时记录 source revision、目录授权身份、AbortController、活动调用和 close/detach 行为；调用前后均重新核对版本与取消状态。关闭运行时先 abort，等待活动调用结束，再关闭连接和移除 lease。[source-service.ts](../src/runtime/modules/sources/source-service.ts)
+`SourceService` 已按 `runId:sourceId` 持有 lease，同时记录 source revision、目录授权身份、AbortController、活动调用和 close/detach 行为；调用前后均重新核对版本与取消状态。关闭运行时先 abort，等待活动调用结束，再关闭连接和移除 lease。[source-service.ts](../packages/runtime/src/modules/sources/source-service.ts)
 
 因此不应把 DS Bot 的长驻 Session Agent 连接缓存直接移入 BOAI，尤其不能为了省一次装配而让不同 Run 共用可变权限和凭据上下文。
 
@@ -166,7 +167,7 @@ DS Bot 给 Session 外的摘要、交接等模型请求打归属标签。`usage.
 
 ### 6.2 BOAI 直接沿用现有能力
 
-BOAI `RunModelUsage` 已区分主 SDK 累计量与按原 request ID 记录的附加调用，用 Map 更新同一回执，串行发布合计；活动统计另有 `unknownCalls`、`unrecordedRuns` 和不完整性字段。[run-model-usage.ts](../src/runtime/modules/profile/run-model-usage.ts)、[profile.ts](../src/shared/domain/profile.ts)
+BOAI `RunModelUsage` 已区分主 SDK 累计量与按原 request ID 记录的附加调用，用 Map 更新同一回执，串行发布合计；活动统计另有 `unknownCalls`、`unrecordedRuns` 和不完整性字段。[run-model-usage.ts](../packages/runtime/src/modules/profile/run-model-usage.ts)、[profile.ts](../packages/shared/src/domain/profile.ts)
 
 本期的动作应是把 Mastra 压缩/交接请求接入这些已有机制：
 
@@ -183,9 +184,9 @@ DS Bot `home-lock.js` 用排他创建的锁文件、随机 token、PID 与心跳
 
 BOAI 的区别：
 
-- runtime owner 使用 SQLite 写事务作为独占依据；进程信息 JSON 只是身份说明，不靠心跳过期就接管，也不删除权威锁 inode。[owner.ts](../src/runtime/owner.ts)
-- profile 的应用访问与维护操作另有访问协调，不能仅凭“前一个调用超时了”推断资源已退出。[profile-access.ts](../src/runtime/profile-access.ts)
-- ProductStore 的读/检查/写处在同一事务；只重试取得 BEGIN，不重放已经进入的业务回调和 commit。[product-store.ts](../src/runtime/adapters/storage/product-store.ts)
+- runtime owner 使用 SQLite 写事务作为独占依据；进程信息 JSON 只是身份说明，不靠心跳过期就接管，也不删除权威锁 inode。[owner.ts](../packages/runtime/src/owner.ts)
+- profile 的应用访问与维护操作另有访问协调，不能仅凭“前一个调用超时了”推断资源已退出。[profile-access.ts](../packages/runtime/src/profile-access.ts)
+- ProductStore 的读/检查/写处在同一事务；只重试取得 BEGIN，不重放已经进入的业务回调和 commit。[product-store.ts](../packages/runtime/src/adapters/storage/product-store.ts)
 
 这部分的比较结论是保留 BOAI。尤其不能把内部 Session 更新、自动化触发或工作领取改成“内存先改完，再异步保存整个 JSON”。
 

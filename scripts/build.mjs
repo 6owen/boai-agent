@@ -1,71 +1,55 @@
 /*
- * [OUTPUT]: 按manifest分发21款22/44px托盘模板，与原Dock图分开；缺图阻止构建。
- * [OUTPUT]: dev/完整宿主构建将同一版本与输入hash固化进运行时；结束重核输入，不依赖可能已被后续构建覆盖的dist文件。
- * [OUTPUT]: 先构建共享设计包；Node产物内联纯tokens，保留独立serve和桌面运行。
- * [OUTPUT]: 完整构建核对输入前后一致，并登记dist输入/产物hash供UI及发布复验，避免测试旧构建。
- * [OUTPUT]: 2026-10-20构建并分发预置应用图标和macOS本机图标辅助程序。
- * [OUTPUT]: 构建真实 PTY 与 macOS 本地桌面 OCR 辅助程序；构建不采集桌面。
- * [OUTPUT]: 分发 PPT 原版 worker 与相对依赖至 runtime/alma，桌面/独立服务共用。
- * [OUTPUT]: 分发可选本地Qwen语音安装器/固定清单；模型与venv不随包分发。
- * [OUTPUT]: 清单中的完整技能源随 dist 分发供桌面/独立服务首次绑定，排除开发目录地图。
- * [OUTPUT]: 分发员工脚本工具库，复用原CLI客户端；不包含owner发现或独立执行服务。
- * [OUTPUT]: 同时构建独立Node serve装配，原worker共用owner；CLI客户端仍单文件且不内联服务依赖。
- * [OUTPUT]: 构建无Electron依赖的BOAI CLI客户端，并分发固定Craft CLI/协议来源许可。
- * [OUTPUT]: 运行时插件独立构建/SDK与清单产物随应用分发；新增桌面场景纳入F11审阅。
- * [OUTPUT]: 随 runtime 分发 Hermes 文件工具策略的 MIT 许可和固定来源清单。
- * [OUTPUT]: 随渲染资源分发 Craft Scenic 的 Apache 许可、NOTICE 与固定迁入清单。
- * [OUTPUT]: 第16组直接迁入的Rovai钉钉MIT许可与固定来源清单随runtime构建分发。
- * [INPUT]: 宿主/渲染进程源码与离线素材许可。
- * [OUTPUT]: dist 桌面构建及随包分发的 Base46、Geist、Lobe Icons、本地配置扫描与迁入浏览器源码许可/NOTICE；专用工具栏 preload 和三 HTML 入口。
- * [POS]: 项目构建入口。
- * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ * [INPUT]: Electron/CLI应用目标、当前worktree源码、默认技能及来源许可。
+ * [OUTPUT]: 独立client/CLI/Electron闭包；仅完整Electron登记全量dist身份，保留buildHost开发兼容入口。
+ * [POS]: 应用构建编排；默认全量Electron，固定原dist布局，无导入副作用。
+ * [PROTOCOL]: 修改同步scripts/.folder.md及第26组03。
  */
 import { buildRuntimePlugins } from './build-runtime-plugins.mjs'
 import buildDesktopActivity from './build-desktop-activity.mjs'
 import buildProcessGuard from './build-process-guard.mjs'
 import buildAppIcon from './build-app-icon.mjs'
 import { copyFile, cp, readFile, rm, mkdir } from 'node:fs/promises'
-import { basename } from 'node:path'
-import { build as esbuild } from 'esbuild'
-import { resolve } from 'node:path'
-import { buildDesign } from './design-packages.mjs'
+import { basename, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { buildWorkspace as build, workspaceRoot } from './workspace-packages.mjs'
+import { buildInputHash, invalidateBuildIdentity, recordBuildIdentity } from './build-identity.mjs'
 
-import { build as buildRenderer } from 'vite'
-import { buildInputHash, recordBuildIdentity } from './build-identity.mjs'
+const targets = ['electron', 'cli', 'cli-client']
+export function parseBuildArguments(args) {
+  if (args.length === 0) return 'electron'
+  if (args.length === 2 && args[0] === '--app' && targets.includes(args[1])) return args[1]
+  throw new Error('Usage: node scripts/build.mjs [--app electron|cli|cli-client]')
+}
 
-// Bundle workspace tokens into runtime artifacts, including packages: external builds.
-const build = options => esbuild({ ...options, alias: { '@boai/tokens': resolve('packages/tokens/src/index.ts'), '@boai/tokens/typography': resolve('packages/tokens/src/typography.ts'), ...options.alias } })
-
-export async function buildHost({ inputHash } = {}) {
-  await buildDesign()
-  const inputs = inputHash ?? await buildInputHash()
+async function context(inputHash) {
+  // Native helpers, Vite and runtime discovery share the distribution root.
+  process.chdir(workspaceRoot)
+  await invalidateBuildIdentity(workspaceRoot)
+  const inputs = inputHash ?? await buildInputHash(workspaceRoot)
   const { version } = JSON.parse(await readFile('package.json', 'utf8'))
   const define = { __BOAI_APPLICATION_BUILD__: JSON.stringify({ version, inputHash: inputs }) }
-  const compile = options => build({ ...options, define })
+  return { inputs, compile: options => build({ ...options, define }) }
+}
+async function assertUnchanged(inputs) {
+  if (await buildInputHash(workspaceRoot) !== inputs) throw new Error('应用构建期间源码或资源变化，请重新构建后启动')
+}
+
+async function buildClient(compile) {
+  const options = { bundle: true, platform: 'node', format: 'esm', target: 'node22', external: ['bufferutil', 'utf-8-validate'], sourcemap: true }
+  await Promise.all([
+    compile({ ...options, entryPoints: ['apps/cli/src/employee-tools.ts'], outfile: 'dist/cli/employee-tools.mjs', banner: { js: "import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);" } }),
+    compile({ ...options, entryPoints: ['apps/cli/src/index.ts'], outfile: 'dist/cli/index.mjs', banner: { js: "#!/usr/bin/env node\nimport { createRequire as cliCreateRequire } from 'node:module'; const require = cliCreateRequire(import.meta.url);" } }),
+  ])
+  for (const name of ['LICENSE.txt', 'NOTICE.txt', 'source-manifest.json']) await copyFile(`packages/shared/src/cli/${name}`, `dist/cli/${name}`)
+}
+
+async function buildRuntime(compile) {
   await buildProcessGuard()
-  await buildDesktopActivity()
-  await buildAppIcon()
   await Promise.all([
     buildRuntimePlugins(),
-    compile({ entryPoints: ['src/cli/employee-tools.ts'], outfile: 'dist/cli/employee-tools.mjs', bundle: true, platform: 'node', format: 'esm', target: 'node22', external: ['bufferutil', 'utf-8-validate'], banner: { js: "import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);" }, sourcemap: true }),
-    compile({ entryPoints: ['src/cli/index.ts'], outfile: 'dist/cli/index.mjs', bundle: true, platform: 'node', format: 'esm', target: 'node22', external: ['bufferutil', 'utf-8-validate'], banner: { js: "#!/usr/bin/env node\nimport { createRequire as cliCreateRequire } from 'node:module'; const require = cliCreateRequire(import.meta.url);" }, sourcemap: true }),
-    compile({ entryPoints: ['src/main/main.ts'], outfile: 'dist/main/main.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron', '@libsql/client'], sourcemap: true }),
-    compile({ entryPoints: ['src/main/browser-toolbar-preload.ts'], outfile: 'dist/main/browser-toolbar-preload.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron'] }),
-    compile({ entryPoints: ['src/main/preload.ts'], outfile: 'dist/main/preload.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron'] }),
-    compile({ entryPoints: ['src/runtime/worker.ts'], outfile: 'dist/runtime/worker.mjs', bundle: true, platform: 'node', format: 'esm', target: 'node22', packages: 'external', sourcemap: true }),
-    compile({ entryPoints: ['src/runtime/serve.ts'], outfile: 'dist/runtime/serve.mjs', bundle: true, platform: 'node', format: 'esm', target: 'node22', packages: 'external', sourcemap: true }),
+    compile({ entryPoints: ['packages/runtime/src/serve.ts'], outfile: 'dist/runtime/serve.mjs', bundle: true, platform: 'node', format: 'esm', target: 'node22', packages: 'external', sourcemap: true }),
   ])
-  await cp('src/runtime/modules/presentations/alma', 'dist/runtime/alma', { recursive: true, filter: path => basename(path) !== '.folder.md' })
-  await mkdir('dist/main/app-icons', { recursive: true })
-  const appIconManifest = JSON.parse(await readFile('resources/app-icons/manifest.json', 'utf8'))
-  await mkdir('dist/main/app-icons/tray', { recursive: true })
-  for (const icon of appIconManifest.icons) {
-    await copyFile(`resources/app-icons/${icon.id}.png`, `dist/main/app-icons/${icon.id}.png`)
-    for (const file of [icon.tray.oneX, icon.tray.twoX]) {
-      if (!/^tray\/avatar-[a-z-]+Template(?:@2x)?\.png$/.test(file)) throw new Error(`Invalid tray asset: ${icon.id}`)
-      await copyFile(`resources/app-icons/${file}`, `dist/main/app-icons/${file}`)
-    }
-  }
+  await cp('packages/runtime/src/modules/presentations/alma', 'dist/runtime/alma', { recursive: true, filter: path => basename(path) !== '.folder.md' })
   const skillManifest = JSON.parse(await readFile('resources/agent-skills/manifest.json', 'utf8'))
   await Promise.all(skillManifest.skills.map(name => readFile(`resources/agent-skills/${name}/SKILL.md`, 'utf8')))
   await rm('dist/agent-skills', { recursive: true, force: true })
@@ -73,25 +57,64 @@ export async function buildHost({ inputHash } = {}) {
   for (const name of skillManifest.skills) await cp(`resources/agent-skills/${name}`, `dist/agent-skills/${name}`, { recursive: true, filter: path => basename(path) !== '.folder.md' })
   await copyFile('resources/agent-skills/manifest.json', 'dist/agent-skills/manifest.json')
   await cp('resources/capabilities/voice', 'dist/capabilities/voice', { recursive: true, filter: path => !['.folder.md', '__pycache__'].includes(basename(path)) })
-  for (const name of ['LICENSE.txt', 'NOTICE.txt', 'source-manifest.json']) await copyFile(`src/shared/cli/${name}`, `dist/cli/${name}`)
-  await copyFile('src/runtime/adapters/channels/rovai/LICENSE.txt', 'dist/runtime/rovai-channels-LICENSE.txt')
-  await copyFile('src/runtime/adapters/channels/rovai/source-manifest.json', 'dist/runtime/rovai-channels-source-manifest.json')
-  await copyFile('src/runtime/modules/workspaces/hermes/LICENSE.txt', 'dist/runtime/hermes-file-tools-LICENSE.txt')
-  await copyFile('src/runtime/modules/workspaces/hermes/source-manifest.json', 'dist/runtime/hermes-file-tools-source-manifest.json')
-  if (await buildInputHash() !== inputs) throw new Error('宿主构建期间源码或资源变化，请重新构建后启动')
+  for (const [source, prefix] of [['packages/runtime/src/adapters/channels/rovai', 'rovai-channels'], ['packages/runtime/src/modules/workspaces/hermes', 'hermes-file-tools']]) {
+    for (const name of ['LICENSE.txt', 'source-manifest.json']) await copyFile(`${source}/${name}`, `dist/runtime/${prefix}-${name}`)
+  }
 }
-if (process.argv[1]?.endsWith('build.mjs')) {
-  const inputs = await buildInputHash()
+
+async function buildElectronHost(compile) {
+  await buildDesktopActivity()
+  await buildAppIcon()
+  await Promise.all([
+    compile({ entryPoints: ['apps/electron/src/main/main.ts'], outfile: 'dist/main/main.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron', '@libsql/client'], sourcemap: true }),
+    compile({ entryPoints: ['apps/electron/src/preload/browser-toolbar.ts'], outfile: 'dist/main/browser-toolbar-preload.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron'] }),
+    compile({ entryPoints: ['apps/electron/src/preload/index.ts'], outfile: 'dist/main/preload.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron'] }),
+    compile({ entryPoints: ['apps/electron/src/worker/index.ts'], outfile: 'dist/runtime/worker.mjs', bundle: true, platform: 'node', format: 'esm', target: 'node22', packages: 'external', sourcemap: true }),
+  ])
+  await mkdir('dist/main/app-icons/tray', { recursive: true })
+  const appIconManifest = JSON.parse(await readFile('packages/shared/src/appearance/app-icon-manifest.json', 'utf8'))
+  for (const icon of appIconManifest.icons) {
+    await copyFile(`resources/app-icons/${icon.id}.png`, `dist/main/app-icons/${icon.id}.png`)
+    for (const file of [icon.tray.oneX, icon.tray.twoX]) {
+      if (!/^tray\/avatar-[a-z-]+Template(?:@2x)?\.png$/.test(file)) throw new Error(`Invalid tray asset: ${icon.id}`)
+      await copyFile(`resources/app-icons/${file}`, `dist/main/app-icons/${file}`)
+    }
+  }
+  for (const name of ['LICENSE.txt', 'NOTICE.txt']) await copyFile(`apps/electron/src/main/local-configs/${name}`, `dist/main/local-configs-${name}`)
+  for (const name of ['LICENSE.txt', 'NOTICE.txt', 'source-manifest.json']) await copyFile(`apps/electron/src/main/browser/${name}`, `dist/main/browser-${name}`)
+}
+
+export async function buildCli({ inputHash, clientOnly = false } = {}) {
+  const { inputs, compile } = await context(inputHash)
+  await buildClient(compile)
+  if (!clientOnly) await buildRuntime(compile)
+  await assertUnchanged(inputs)
+}
+
+export async function buildHost({ inputHash } = {}) {
+  const { inputs, compile } = await context(inputHash)
+  const { buildDesign } = await import('./design-packages.mjs')
+  await buildDesign()
+  await buildClient(compile)
+  await buildRuntime(compile)
+  await buildElectronHost(compile)
+  await assertUnchanged(inputs)
+}
+
+export async function buildApplication(target = 'electron') {
+  if (!targets.includes(target)) throw new Error(`Unknown application build target: ${target}`)
+  if (target !== 'electron') return buildCli({ clientOnly: target === 'cli-client' })
+  const inputs = await buildInputHash(workspaceRoot)
   await buildHost({ inputHash: inputs })
-  await buildRenderer()
-  for (const name of ['LICENSE.txt', 'NOTICE.txt', 'source-manifest.json']) await copyFile(`src/renderer/styles/craft-scenic/${name}`, `dist/renderer/craft-scenic-${name}`)
-  await copyFile('src/shared/appearance/BASE46-LICENSE.txt', 'dist/renderer/BASE46-LICENSE.txt')
-  await copyFile('src/renderer/assets/Geist-OFL.txt', 'dist/renderer/Geist-OFL.txt')
-  await copyFile('src/renderer/assets/LobeIcons-LICENSE.txt', 'dist/renderer/LobeIcons-LICENSE.txt')
-  await copyFile('src/main/local-configs/LICENSE.txt', 'dist/main/local-configs-LICENSE.txt')
-  await copyFile('src/main/local-configs/NOTICE.txt', 'dist/main/local-configs-NOTICE.txt')
-  await copyFile('src/main/browser/LICENSE.txt', 'dist/main/browser-LICENSE.txt')
-  await copyFile('src/main/browser/NOTICE.txt', 'dist/main/browser-NOTICE.txt')
-  await copyFile('src/main/browser/source-manifest.json', 'dist/main/browser-source-manifest.json')
-  await recordBuildIdentity(inputs)
+  const { build: buildRenderer } = await import('vite')
+  await buildRenderer({ configFile: resolve(workspaceRoot, 'vite.config.ts') })
+  for (const name of ['LICENSE.txt', 'NOTICE.txt', 'source-manifest.json']) await copyFile(`apps/electron/src/renderer/styles/craft-scenic/${name}`, `dist/renderer/craft-scenic-${name}`)
+  await copyFile('packages/shared/src/appearance/BASE46-LICENSE.txt', 'dist/renderer/BASE46-LICENSE.txt')
+  await copyFile('apps/electron/src/renderer/assets/Geist-OFL.txt', 'dist/renderer/Geist-OFL.txt')
+  await copyFile('apps/electron/src/renderer/assets/LobeIcons-LICENSE.txt', 'dist/renderer/LobeIcons-LICENSE.txt')
+  await recordBuildIdentity(inputs, workspaceRoot)
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  await buildApplication(parseBuildArguments(process.argv.slice(2)))
 }

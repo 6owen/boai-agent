@@ -8,10 +8,10 @@ import assert from 'node:assert/strict'
 import { createHash, randomUUID } from 'node:crypto'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import type { ToolEvent } from '../../src/shared/domain'
-import type { EngineContext } from '../../src/runtime/contracts'
-import { createNativeTask } from '../../src/runtime/adapters/native-task'
-import { runClaudePhase, type ClaudePhaseInput } from '../../src/runtime/adapters/claude/turn'
+import type { ToolEvent } from '../../packages/shared/src/domain'
+import type { EngineContext } from '../../packages/runtime/src/contracts'
+import { createNativeTask } from '../../packages/runtime/src/adapters/native-task'
+import { runClaudePhase, type ClaudePhaseInput } from '../../packages/runtime/src/adapters/claude/turn'
 
 export async function claudeProbeContext(root: string, signal: AbortSignal) {
   const session=join(root,'employee-host','sessions','conversation'),runId='probe-run',now=new Date().toISOString()

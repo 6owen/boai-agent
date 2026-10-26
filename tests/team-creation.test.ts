@@ -8,11 +8,11 @@ import { afterEach, expect, test } from 'vitest'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { TeamRepository } from '../src/runtime/modules/teams/team-repository'
-import { teamPlannerOutputSchema, type TeamDraft, type TeamEditable } from '../src/shared/domain/team-creation'
-import { AppService } from '../src/runtime/service'
-import type { Method, Methods } from '../src/shared/ipc'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { TeamRepository } from '../packages/runtime/src/modules/teams/team-repository'
+import { teamPlannerOutputSchema, type TeamDraft, type TeamEditable } from '../packages/shared/src/domain/team-creation'
+import { AppService } from '../packages/runtime/src/service'
+import type { Method, Methods } from '../packages/shared/src/ipc'
 
 const roots: string[] = [], cleanup: (() => Promise<unknown> | void)[] = []
 afterEach(async () => { for (const close of cleanup.splice(0).reverse()) await close(); for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }) })

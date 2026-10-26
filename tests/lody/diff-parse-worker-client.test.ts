@@ -57,7 +57,7 @@ const diffParseWorkerMock = vi.hoisted(() => {
   return { FakeDiffParseWorker, instances };
 });
 
-vi.mock('../../src/renderer/components/common/lody/diff-parse.worker?worker', () => ({
+vi.mock('../../apps/electron/src/renderer/components/common/lody/diff-parse.worker?worker', () => ({
   default: diffParseWorkerMock.FakeDiffParseWorker,
 }));
 
@@ -66,7 +66,7 @@ import {
   DIFF_PARSE_WORKER_TEXT_CHUNK_LENGTH,
   parseDiffInWorker,
   parseDiffTextSourceInWorker,
-} from '../../src/renderer/components/common/lody/diff-parse-worker';
+} from '../../apps/electron/src/renderer/components/common/lody/diff-parse-worker';
 
 describe('parseDiffInWorker', () => {
   beforeEach(() => {

@@ -8,9 +8,9 @@ import { afterEach, expect, it } from 'vitest'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { startOwnedRuntime } from '../src/runtime/bootstrap'
-import type { AgentEngine, EngineContext } from '../src/runtime/contracts'
-import type { Conversation, MemoryView, Snapshot } from '../src/shared/domain'
+import { startOwnedRuntime } from '../packages/runtime/src/bootstrap'
+import type { AgentEngine, EngineContext } from '../packages/runtime/src/contracts'
+import type { Conversation, MemoryView, Snapshot } from '../packages/shared/src/domain'
 
 const cleanup: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const action of cleanup.splice(0).reverse()) await action() })

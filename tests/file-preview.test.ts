@@ -5,7 +5,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { describe, expect, it } from 'vitest'
-import { FILE_PREVIEW_LIMITS, previewFile } from '../src/shared/domain/file-preview'
+import { FILE_PREVIEW_LIMITS, previewFile } from '../packages/shared/src/domain/file-preview'
 
 describe('bounded inert file previews', () => {
   it.each([

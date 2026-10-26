@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [OUTPUT]: 删除状态修复、分页/详情/组织结果迟到隔离已接线；模块负例与编译版/pnpm dev四次真实删除通过，用户原偶发事故未独立复现。
 [OUTPUT]: 2026-10-22 已获实施授权；清理开始/隐藏完成事件、详情/组织结果停读与迟到隔离、一次成功及刷新故障分离候选已写；未实测。
 [INPUT]: 2026-10-22用户报告删除“bobo agent”会话时偶发两条清理未完成错误，随后删除成功；用户截图及当前会话清理、后台刷新与Sonner实现。
@@ -31,10 +32,10 @@
 
 | 位置 | 已核对的源码行为 | 后续需要核实 |
 | --- | --- | --- |
-| [Runtime](../../../src/runtime/service.ts)的`clearConversationHistory`、`getConversation` | 清理加入`clearingConversations`后先发`changed`，随后执行多项异步清理；标记存在时，读取会话会报“此会话清理尚未完成，请重试清空聊天记录” | 本次删除是否在该窗口内触发了额外读取，标记与完成事件的真实顺序 |
-| [组织结果](../../../src/renderer/pages/conversations/-components/core-collaboration-results.tsx) | 初始加载和`changed`刷新会调用`listBoboCollaborationOperations`；失败展示“组织结果暂不可核对：”加原错误；该查询会经过会话读取守卫 | 删除中的组织结果刷新或此前发出的读取，是否产生截图第一条提示 |
-| [AppShell](../../../src/renderer/components/app-shell/index.tsx)的`refreshDetail`及清理回调 | `changed`会调度快照/详情刷新；仍属于当前请求的详情读取失败会直接`toast.error`；清理回调在等待请求后才清理位置状态 | 删除等待期间的详情刷新是否产生第二条提示；也需排除其他同文案调用方 |
-| [清理确认框](../../../src/renderer/pages/conversations/-components/conversation-history-dialog.tsx)、[公共组件](../../../src/renderer/components/common/index.tsx)与[错误反馈](../../../src/renderer/components/common/error-feedback.tsx) | 清理中按钮显示“正在清理…”并锁定操作；错误沿Sonner反馈，按完整文案去重；带前缀和不带前缀的错误属于不同消息 | 操作失败、旁路读取失败与迟到错误是否混在同一次删除反馈中；成功提示应由哪个现有入口统一负责 |
+| [Runtime](../../../packages/runtime/src/service.ts)的`clearConversationHistory`、`getConversation` | 清理加入`clearingConversations`后先发`changed`，随后执行多项异步清理；标记存在时，读取会话会报“此会话清理尚未完成，请重试清空聊天记录” | 本次删除是否在该窗口内触发了额外读取，标记与完成事件的真实顺序 |
+| [组织结果](../../../apps/electron/src/renderer/pages/conversations/-components/core-collaboration-results.tsx) | 初始加载和`changed`刷新会调用`listBoboCollaborationOperations`；失败展示“组织结果暂不可核对：”加原错误；该查询会经过会话读取守卫 | 删除中的组织结果刷新或此前发出的读取，是否产生截图第一条提示 |
+| [AppShell](../../../apps/electron/src/renderer/components/app-shell/index.tsx)的`refreshDetail`及清理回调 | `changed`会调度快照/详情刷新；仍属于当前请求的详情读取失败会直接`toast.error`；清理回调在等待请求后才清理位置状态 | 删除等待期间的详情刷新是否产生第二条提示；也需排除其他同文案调用方 |
+| [清理确认框](../../../apps/electron/src/renderer/pages/conversations/-components/conversation-history-dialog.tsx)、[公共组件](../../../apps/electron/src/renderer/components/common/index.tsx)与[错误反馈](../../../apps/electron/src/renderer/components/common/error-feedback.tsx) | 清理中按钮显示“正在清理…”并锁定操作；错误沿Sonner反馈，按完整文案去重；带前缀和不带前缀的错误属于不同消息 | 操作失败、旁路读取失败与迟到错误是否混在同一次删除反馈中；成功提示应由哪个现有入口统一负责 |
 
 **当前推测**：清理的正常中间状态与自动读取发生重叠，读取守卫拒绝后被当作用户操作错误显示；两个读取入口可能生成两条不同文案。这与偶发现象相符，但完整根因尚未确认，也未证明截图第二条一定来自详情刷新。
 

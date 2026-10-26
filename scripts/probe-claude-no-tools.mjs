@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Workspace源码路径迁至apps/packages，保留既有输出与业务合同。
  * [INPUT]: 实际本机Claude程序、当前底层适配器与隔离的本地Anthropic协议服务。
  * [OUTPUT]: 版本/hash、工具目录、续聊/隔离、用量口径和取消的独立证据；仅合成凭据，不调用真实模型。
  * [POS]: 第13组Claude能力探测，不代替员工UI、Work或供应商验收。
@@ -11,16 +12,16 @@ import { mkdtemp, mkdir, readFile, readdir, writeFile, rm } from 'node:fs/promis
 import { tmpdir } from 'node:os'
 import { join, resolve, dirname } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { build } from 'esbuild'
+import { buildWorkspace as build } from './workspace-packages.mjs'
 
 if (!process.env.BOAI_CLAUDE_PROGRAM || !process.env.BOAI_CLAUDE_EVIDENCE) throw new Error('需要明确的程序路径和新证据文件')
 const out = resolve(process.env.BOAI_CLAUDE_EVIDENCE)
 await mkdir(dirname(out), {recursive:true})
 const root = await mkdtemp(join(tmpdir(), 'boai-claude-no-tools-'))
 const bundle=join(root,'adapter.cjs')
-await build({stdin:{contents:"export { verifyClaudeProgram, runClaudeNoTools } from './src/runtime/adapters/claude/turn'",resolveDir:process.cwd(),loader:'ts'},outfile:bundle,bundle:true,platform:'node',format:'cjs',target:'node22',logLevel:'silent'})
+await build({stdin:{contents:"export { verifyClaudeProgram, runClaudeNoTools } from './packages/runtime/src/adapters/claude/turn'",resolveDir:process.cwd(),loader:'ts'},outfile:bundle,bundle:true,platform:'node',format:'cjs',target:'node22',logLevel:'silent'})
 const {verifyClaudeProgram,runClaudeNoTools}=await import(pathToFileURL(bundle).href)
-const sources=['src/runtime/adapters/claude/turn.ts','src/runtime/adapters/claude/tools.ts','src/runtime/adapters/claude/policy.ts','src/runtime/adapters/claude/process.ts','src/runtime/modules/backends/program.ts','src/runtime/adapters/mastra/host-command.ts','scripts/probe-claude-no-tools.mjs','package.json','pnpm-lock.yaml']
+const sources=['packages/runtime/src/adapters/claude/turn.ts','packages/runtime/src/adapters/claude/tools.ts','packages/runtime/src/adapters/claude/policy.ts','packages/runtime/src/adapters/claude/process.ts','packages/runtime/src/modules/backends/program.ts','packages/runtime/src/adapters/mastra/host-command.ts','scripts/probe-claude-no-tools.mjs','package.json','pnpm-lock.yaml']
 const evidence={kind:'actual-claude-cli-local-protocol',createdAt:new Date().toISOString(),platform:process.platform,uiVerified:false,workVerified:false,realProvider:false,
   sourceHashes:Object.fromEntries(await Promise.all(sources.map(async path=>[path,createHash('sha256').update(await readFile(path)).digest('hex')]))),requests:[],steps:[]}
 const token=`fixture-${randomUUID()}`, poison=`untrusted-${randomUUID()}`, fakeKey=`boai-synthetic-${randomUUID()}`

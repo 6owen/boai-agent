@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Cookie来源菜单沿真实工具栏打开/文件项选择/48px恢复，受控对话框取消与无值预览，应用Cookie仓库零写入。
  * [OUTPUT]: 卡死关闭前只读确认原wait的真实JavaScript查询已挂起；观察器返回原Promise，不替换动作或伪造退出。
  * [OUTPUT]: 员工浏览器表单交互直接执行，无审批卡，真实提交/工作回执及退出保持。
  * [OUTPUT]: 已受理wait动作的隔离网页运行真实while(true)，实际工具栏X与WebContents销毁/未知回执及重开零重放回归。
@@ -19,14 +20,14 @@ import { resolve } from 'node:path'
 import { createHash } from 'node:crypto'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import type { Conversation, Message, WorkItem, WorkBudget } from '../../../src/shared/domain'
-import type { ArtifactVersion } from '../../../src/shared/domain/artifacts'
+import type { Conversation, Message, WorkItem, WorkBudget } from '../../../packages/shared/src/domain/index'
+import type { ArtifactVersion } from '../../../packages/shared/src/domain/artifacts'
 import { test as base } from '../support/test'
 import type { Desktop } from '../support/desktop'
 import { resourceSample, verifyResources, type ResourceSample } from '../support/background-resources'
 import { BROWSER_BODY_MARKER, BROWSER_PAGE_MARKER, BROWSER_PASSWORD, browserDetail, browserRecords, browserToolbarAction, browserToolbarSurface, browserWindows, nativeBrowserViews, prepareBrowserDesktop, spoofBrowserSender, webpageIsolation } from '../support/browser-migration'
 
-interface State { resources?: ResourceSample[]; timings?: number[]; fixture?: Awaited<ReturnType<typeof prepareBrowserDesktop>>; artifact?: ArtifactVersion; calls?: number; generation?: string; actions?: number; navigationWork?: WorkItem; navigationBudget?: WorkBudget; manualAgentId?: string; originalMessages?: Message[]; attach?: (name:string,body:Buffer,contentType:string)=>Promise<void>; imagePath?:string }
+interface State { cookieImportProof?: { cookieCount:number; previewRedacted:boolean; toolbarRedacted:boolean }; resources?: ResourceSample[]; timings?: number[]; fixture?: Awaited<ReturnType<typeof prepareBrowserDesktop>>; artifact?: ArtifactVersion; calls?: number; generation?: string; actions?: number; navigationWork?: WorkItem; navigationBudget?: WorkBudget; manualAgentId?: string; originalMessages?: Message[]; attach?: (name:string,body:Buffer,contentType:string)=>Promise<void>; imagePath?:string }
 export const test = base.extend<{ browserMigrationState: State }>({ browserMigrationState: async ({ runtime: _runtime }, use, info) => {
   const state: State = { attach: async(name,body,contentType)=>{if(contentType==='image/png'){await mkdir(resolve('.local/browser-debug'),{recursive:true});await writeFile(resolve('.local/browser-debug',`${name}.png`),body)}await info.attach(name,{body,contentType})},imagePath:info.outputPath('native-browser-window.png') }
   try { await use(state) } finally {
@@ -450,4 +451,58 @@ Then('卡住页面实际退出且重开浏览器不会重放原任务',async({ru
   expect(f.endpoint.requests).toHaveLength(state.calls!);expect(f.errors).toEqual([]);expect(runtime.errors).toEqual([])
   await browserToolbarAction(runtime,browser.instanceId,'close')
   await expect.poll(()=>nativeBrowserViews(runtime)).toEqual([])
+})
+
+When('用户从真实工具栏分别取消Cookie文件选择和导入确认', async ({ runtime, browserMigrationState: state }) => {
+  const browser = (await browserWindows(runtime))[0]!
+  const path = resolve(state.fixture!.dataPath, 'cookie-import-fixture.json')
+  await writeFile(path, JSON.stringify([{ domain: 'cookie-import.invalid', name: 'cancelled-import-fixture', value: 'COOKIE_IMPORT_FIXTURE_SECRET', secure: true, httpOnly: true }]))
+  await runtime.app.evaluate(({ dialog }, path) => {
+    const holder = globalThis as typeof globalThis & { __boaiCookieImportTest?: { open: typeof dialog.showOpenDialog; message: typeof dialog.showMessageBox; picks: number; confirms: number; previewRedacted: boolean } }
+    const test = { open: dialog.showOpenDialog, message: dialog.showMessageBox, picks: 0, confirms: 0, previewRedacted: true }
+    holder.__boaiCookieImportTest = test
+    dialog.showOpenDialog = (async () => { test.picks += 1;return { canceled: test.picks === 1, filePaths: test.picks === 1 ? [] : [path] } }) as typeof dialog.showOpenDialog
+    dialog.showMessageBox = (async (...args: unknown[]) => { const options = args.at(-1) as { title?: string; detail?: string };if (options.title === '导入 Cookie') { test.confirms += 1;test.previewRedacted = test.previewRedacted && !String(options.detail).includes('COOKIE_IMPORT_FIXTURE_SECRET') && String(options.detail).includes('cookie-import.invalid') };return { response: 0, checkboxChecked: false } }) as typeof dialog.showMessageBox
+  }, path)
+  try {
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      await runtime.app.evaluate(async ({ BrowserWindow }, id) => {
+        const toolbar = BrowserWindow.getAllWindows().flatMap(window => window.getBrowserViews()).find(view => view.webContents.getURL().includes(`instanceId=${id}`))!.webContents
+        await toolbar.executeJavaScript(`(() => { const button=document.querySelector('button[aria-label="导入 Cookie"]');if(!button || button.disabled)throw new Error('Cookie导入按钮不可用');button.click() })()`)
+      }, browser.instanceId)
+      await expect.poll(() => runtime.app.evaluate(async ({ BrowserWindow }, id) => {
+        const toolbar = BrowserWindow.getAllWindows().flatMap(window => window.getBrowserViews()).find(view => view.webContents.getURL().includes(`instanceId=${id}`))!
+        return { expanded: toolbar.getBounds().height > 48, fileItem: await toolbar.webContents.executeJavaScript(`Array.from(document.querySelectorAll('[role="menuitem"]')).some(item=>item.textContent.includes('从文件导入'))`) }
+      }, browser.instanceId)).toEqual({ expanded: true, fileItem: true })
+      await runtime.app.evaluate(async ({ BrowserWindow }, id) => {
+        const toolbar = BrowserWindow.getAllWindows().flatMap(window => window.getBrowserViews()).find(view => view.webContents.getURL().includes(`instanceId=${id}`))!.webContents
+        await toolbar.executeJavaScript(`(() => { const item=Array.from(document.querySelectorAll('[role="menuitem"]')).find(item=>item.textContent.includes('从文件导入'));if(!item)throw new Error('Cookie文件菜单不可用');item.click() })()`)
+      }, browser.instanceId)
+      await expect.poll(() => runtime.app.evaluate(async ({ BrowserWindow }, id) => {
+        const toolbar = BrowserWindow.getAllWindows().flatMap(window => window.getBrowserViews()).find(view => view.webContents.getURL().includes(`instanceId=${id}`))!
+        const available = await toolbar.webContents.executeJavaScript(`!document.querySelector('button[aria-label="导入 Cookie"]')?.disabled`)
+        const test = (globalThis as typeof globalThis & { __boaiCookieImportTest: { picks: number; confirms: number } }).__boaiCookieImportTest
+        return { available, height: toolbar.getBounds().height, picks: test.picks, confirms: test.confirms }
+      }, browser.instanceId)).toEqual({ available: true, height: 48, picks: attempt, confirms: attempt - 1 })
+    }
+    const proof = await runtime.app.evaluate(async ({ BrowserWindow }, id) => {
+      const window = BrowserWindow.getAllWindows().find(window => window.getBrowserViews().some(view => view.webContents.getURL().includes(`instanceId=${id}`)))!
+      const views = window.getBrowserViews(), toolbar = views.find(view => view.webContents.getURL().includes(`instanceId=${id}`))!.webContents
+      const page = views.find(view => view.webContents !== toolbar && view.getBounds().height > 0)!.webContents
+      const cookies = await page.session.cookies.get({ url: 'https://cookie-import.invalid/', name: 'cancelled-import-fixture' })
+      const preview = (globalThis as typeof globalThis & { __boaiCookieImportTest: { previewRedacted: boolean } }).__boaiCookieImportTest
+      return { cookieCount: cookies.length, previewRedacted: preview.previewRedacted, toolbarRedacted: await toolbar.executeJavaScript(`!document.body.textContent.includes('COOKIE_IMPORT_FIXTURE_SECRET')`) as boolean }
+    }, browser.instanceId)
+    state.cookieImportProof = proof
+  } finally {
+    await runtime.app.evaluate(({ dialog }) => {
+      const holder = globalThis as typeof globalThis & { __boaiCookieImportTest?: { open: typeof dialog.showOpenDialog; message: typeof dialog.showMessageBox } }
+      const test = holder.__boaiCookieImportTest
+      if (test) { dialog.showOpenDialog = test.open;dialog.showMessageBox = test.message;delete holder.__boaiCookieImportTest }
+    })
+  }
+})
+Then('Cookie导入没有写入登录记录且预览和页面没有凭据明文', async ({ browserMigrationState: state }) => {
+  expect(state.cookieImportProof).toEqual({ cookieCount: 0, previewRedacted: true, toolbarRedacted: true })
+  expect(state.fixture!.endpoint.requests).toHaveLength(0)
 })

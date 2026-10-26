@@ -8,10 +8,10 @@
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { DesktopApi } from '../src/shared/ipc'
-import type { KnowledgeReceipt } from '../src/shared/domain/knowledge'
-import { useKnowledgeOperation } from '../src/renderer/components/work-views/use-knowledge-operation'
-vi.mock('../src/renderer/components/common/error-feedback', () => ({ showErrorToast: vi.fn(), ErrorToast: () => null }))
+import type { DesktopApi } from '../packages/shared/src/ipc'
+import type { KnowledgeReceipt } from '../packages/shared/src/domain/knowledge'
+import { useKnowledgeOperation } from '../apps/electron/src/renderer/components/work-views/use-knowledge-operation'
+vi.mock('../apps/electron/src/renderer/components/common/error-feedback', () => ({ showErrorToast: vi.fn(), ErrorToast: () => null }))
 const roots: Root[] = []
 beforeEach(() => { localStorage.clear(); (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true })
 afterEach(async () => { for (const root of roots.splice(0)) await act(async () => root.unmount()); document.body.innerHTML = ''; vi.restoreAllMocks() })

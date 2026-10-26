@@ -15,7 +15,7 @@ import { prepareArtifactsDesktop, artifactDetail, artifactRecords, artifactReply
 import { nextMaterialDialog } from '../support/materials'
 import { messageDraft } from '../support/editor-controls'
 import { observeWorkViews } from '../support/work-views'
-import type { ArtifactVersion } from '../../../src/shared/domain/artifacts'
+import type { ArtifactVersion } from '../../../packages/shared/src/domain/artifacts'
 
 interface State {
   fixture?: Awaited<ReturnType<typeof prepareArtifactsDesktop>>

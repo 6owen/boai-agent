@@ -11,8 +11,8 @@ import { createServer } from 'node:http'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { Desktop } from './desktop'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
-import type { Message, WorkItem, Artifact } from '../../../src/shared/domain'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
+import type { Message, WorkItem, Artifact } from '../../../packages/shared/src/domain'
 
 export async function prepareGroupChat(runtime: Desktop, { emulateViewport = true, mainEntry, now = Date.now() }: { emulateViewport?: boolean; mainEntry?: string; now?: number } = {}) {
   const state = { calls: 0, errors: [] as string[] }

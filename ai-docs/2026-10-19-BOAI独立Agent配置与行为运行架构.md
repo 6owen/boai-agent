@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [OUTPUT]: 2026-10-22用户要求先移除会话终端，仅落实文档；现行范围归第3组24，预览/日报保留，§11.57原接入与验证保持历史身份。
 [OUTPUT]: 2026-10-20按用户要求清理测试产物/独立记录及其附件链接；历史文字结果不代表原件仍然保留。
 [OUTPUT]: §11.57按用户缩减范围完成侧栏PTY/预览与桌面活动日报，36绑定/64检查/35实际请求累计1552；其余四技能停止，旧人格缺口未认证。
@@ -78,7 +79,7 @@
 | `ApplicationActor`的员工分支必需`conversationId/messageId` | 无聊天来源的反思、主动跟进没有合适的身份合同 | 增加宿主生成的行为/计划来源，不能伪造用户消息 |
 | SQLite已有权威记忆与自动化账本，文件为部分投影 | 可复用持久化和恢复，但尚无完整情绪/疲劳/旅行领域 | 增加员工状态和行为记录，接原事务、备份、清理、忘记链路 |
 
-源码入口：[员工定义](../src/shared/domain/index.ts)、[员工保存](../src/runtime/modules/employees/employee-service.ts)、[工作区](../src/runtime/modules/workspaces/workspace-service.ts)、[阶段指令](../src/runtime/modules/employees/phase-instructions.ts)、[API装配](../src/runtime/adapters/mastra/agent-factory.ts)、[本机装配](../src/runtime/adapters/native-conversation.ts)、[工具挂载](../src/runtime/service.ts)、[应用协议](../src/shared/domain/application-protocol.ts)。
+源码入口：[员工定义](../packages/shared/src/domain/index.ts)、[员工保存](../packages/runtime/src/modules/employees/employee-service.ts)、[工作区](../packages/runtime/src/modules/workspaces/workspace-service.ts)、[阶段指令](../packages/runtime/src/modules/employees/phase-instructions.ts)、[API装配](../packages/runtime/src/adapters/mastra/agent-factory.ts)、[本机装配](../packages/runtime/src/adapters/native-conversation.ts)、[工具挂载](../packages/runtime/src/service.ts)、[应用协议](../packages/shared/src/domain/application-protocol.ts)。
 
 上表是修改前的现状核对，不表示修改其中一行即可完成高权限或完整迁移。例如去掉`allowCommands=false`后，还需要核对执行准入、工具注册、原生权限与实际任务回执。
 
@@ -327,13 +328,13 @@ execution: runId或内部作业ID、取消信号、当前有效版本
 | --- | --- | --- |
 | 独立配置 | `AgentProfile`按员工ID存入原SQLite的`agentProfiles`，使用独立revision；预设、八场景开关、四种状态功能和行为定义 | `employees.profile/configure`；员工高级配置“人格与行为” |
 | 人格与模块 | AGENTS、SOUL及`prompts/{direct,group,channel,task,emotion,reflection,greeting,travel}.md`十个登记源；每文件64 KiB，取消原两文件合计12000字符上限 | 人格/场景编辑与页内配置源文件共用原Dialog、`employees.readFile/writeFile` |
-| 基础人格 | 按固定`T-c30259259edee3`与`T-cba8851d2a6bb0`原文适配，保留具体语气、例子、禁用客服开场、观点、幽默和语言规则 | [bobo-persona.ts](../src/shared/domain/bobo-persona.ts)；`agent-presets.ts`引用 |
+| 基础人格 | 按固定`T-c30259259edee3`与`T-cba8851d2a6bb0`原文适配，保留具体语气、例子、禁用客服开场、观点、幽默和语言规则 | [bobo-persona.ts](../packages/shared/src/domain/bobo-persona.ts)；`agent-presets.ts`引用 |
 | 自定义保留 | 只升级内容精确匹配旧出厂默认的bobo人格；自定义SOUL不覆盖。八个新模块首次补齐，已登记后丢失的文件显示缺失并阻止错误加载 | 原员工初始化/manifest/hash保存流程 |
-| 共享装配 | API/native都按实际场景选择模块；静态规则、动态状态分开。普通Run的bootstrap保留模块文件、hash、来源ID、选择原因和版本；行为记录保留同样证据 | [context-compiler.ts](../src/runtime/modules/employees/context-compiler.ts)、原WorkspaceService |
+| 共享装配 | API/native都按实际场景选择模块；静态规则、动态状态分开。普通Run的bootstrap保留模块文件、hash、来源ID、选择原因和版本；行为记录保留同样证据 | [context-compiler.ts](../packages/runtime/src/modules/employees/context-compiler.ts)、原WorkspaceService |
 | 原生续聊 | 情绪/疲劳变化只进当轮数据，不改变会话静态指纹；人格文件或功能工具开关变化才刷新相应会话 | Codex/Claude实际stdio协议测试已核对 |
 | 高权限bobo | 新核心API预设为完全访问；旧核心未设置整体权限时迁移，已明确设置的只读/审批保留。本机现有权限不强改。本人当前消息中的群/工作管理沿原业务工具 | 原员工权限入口；真实核心身份和来源由宿主确定 |
 | 持久状态 | 原SQLite保存全局/会话情绪、疲劳、虚拟旅行和小幅成长；CAs更新、情绪衰减、每消息只计一次疲劳。成长保留来源消息及父记忆版本，忘记/删除后不再注入 | [agent-state/](../src/runtime/modules/agent-state/)；`employees.state/updateState`与固定身份自我工具 |
-| 行为运行 | 情绪判断、反思、问候、跟进、旅行使用原Mastra唯一时钟的独立workflow；记录真实事件、配置版本、模型调用/可得用量、跳过/失败/取消/中断 | [agent-behaviors.ts](../src/runtime/modules/automations/agent-behaviors.ts)；界面立即运行/停止/历史 |
+| 行为运行 | 情绪判断、反思、问候、跟进、旅行使用原Mastra唯一时钟的独立workflow；记录真实事件、配置版本、模型调用/可得用量、跳过/失败/取消/中断 | [agent-behaviors.ts](../packages/runtime/src/modules/automations/agent-behaviors.ts)；界面立即运行/停止/历史 |
 | 真实交付 | 问候/跟进直接以员工身份提交原消息事务，不插入假用户消息、不生成行政Work；反思进入原记忆仓库。只有显式管理行为的bobo获得应用工具，后台应用写入还要求完全访问 | `employees.runBehavior/stopBehavior/behaviorHistory` |
 | 运行边界 | 同员工行为互斥、目标忙碌跳过、冷却、过期触发不补发；已受理事件不重放。停止等待执行返回；活跃行为未实际退出时不能清理目标聊天 | 原消息、员工、备份和退出生命周期 |
 | 清理与恢复 | 聊天清理删除会话状态、相关成长/旅行来源和行为结果正文并暂停计划；员工删除移除独立记录；备份中的行为默认停用；旧running启动转interrupted | 原history/contact-deletion/backup，未新增第二套数据库 |

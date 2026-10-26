@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 公开工作区导出固定解析至当前worktree，设计站不读取其他工作区源码。
  * [INPUT]: React、Tailwind、Fumadocs MDX及公开内容/token插件。
  * [OUTPUT]: 白名单Markdown经Fumadocs编译的独立开发与静态站点。
  * [POS]: apps/design-docs，默认localhost:5190，不启动BOAI桌面。
@@ -9,12 +10,14 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { fumadocsMdx } from 'fumadocs-mdx/vite'
 import { fileURLToPath } from 'node:url'
+import { workspaceViteAliases } from '../../scripts/workspace-packages.mjs'
 // @ts-expect-error Shared Node build helper intentionally has no declaration file.
 import { designTokensPlugin } from '../../scripts/design-packages.mjs'
 // @ts-expect-error Public content generator intentionally has no declaration file.
 import { designContentPlugin } from '../../scripts/design-content.mjs'
 
 export default defineConfig({
+  resolve: { alias: workspaceViteAliases() },
   root: fileURLToPath(new URL('./', import.meta.url)),
   plugins: [fumadocsMdx({ index: false, macro: false, outDir: '.local/fumadocs' }), react(), tailwindcss(), designTokensPlugin(), designContentPlugin()],
   server: { host: '127.0.0.1', port: 5190, strictPort: true },

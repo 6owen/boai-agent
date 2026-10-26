@@ -5,7 +5,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { app } from 'electron'
-import { CredentialVault } from '../../src/main/vault'
+import { CredentialVault } from '../../apps/electron/src/main/vault'
 
 app.setName('BoAI Agent')
 app.setPath('userData', process.argv[2])

@@ -10,9 +10,9 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Readable } from 'node:stream'
 import { strToU8, zipSync } from 'fflate'
-import { AppService } from '../src/runtime/service'
-import { MastraEngine } from '../src/runtime/adapters/mastra/engine'
-import type { Method, Methods } from '../src/shared/ipc'
+import { AppService } from '../packages/runtime/src/service'
+import { MastraEngine } from '../packages/runtime/src/adapters/mastra/engine'
+import type { Method, Methods } from '../packages/shared/src/ipc'
 import { startSkillDeliveryModel } from './fixtures/skills/delivery-model'
 
 const cleanup: (() => Promise<unknown>)[] = []

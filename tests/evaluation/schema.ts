@@ -5,7 +5,7 @@
  * [POS]: tests/evaluation/schema.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import type { Artifact, ConversationDetail } from '../../src/shared/domain'
+import type { Artifact, ConversationDetail } from '../../packages/shared/src/domain'
 import type { MaterialDeliveryContract, MaterialDeliveryEvidence } from './material-delivery'
 export const DATASET_VERSION = 'boai-team-2026-09-28-v1'
 export const SCORER_VERSION = 'boai-team-checks-v1'
@@ -40,7 +40,7 @@ export interface EvaluationRecord {
   scenario?: EvaluationCase; datasetVersion?: string; error?: string; runtimeErrors: string[]
   metadata: { label: string; revision: string; sourceHashes: Record<string, string>; model: string; provider: string; members: { id: string; name: string; role: string; instructions?: string }[]; promptHash?: string; datasetHash?: string; modelSignature?: string; team?: 'single' | 'multi'; requestLimit?: number }
   detail?: ConversationDetail; artifacts: ArtifactEvidence[]; events?: EventEvidence[]
-  nativeEvidence?: { items: import('../../src/shared/domain/execution').ExecutionEvidence[]; completeRunIds: string[]; sourceFiles: { label: string; sha256: string; contentHashMatched: boolean }[] }
+  nativeEvidence?: { items: import('../../packages/shared/src/domain/execution').ExecutionEvidence[]; completeRunIds: string[]; sourceFiles: { label: string; sha256: string; contentHashMatched: boolean }[] }
   delivery?: MaterialDeliveryEvidence
   phases?: { phase: string; agentId: string; runId: string; startAt: number; endAt?: number }[]
   emitted?: { id: string; at: number; content: string; status: string }[]

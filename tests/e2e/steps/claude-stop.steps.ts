@@ -16,8 +16,8 @@ import { join } from 'node:path'
 import { test } from './claude-employee.steps'
 import { openSchedule, scheduleAction, scheduleTarget } from '../support/schedule-controls'
 import { crashAutomationRuntime, processIsRunning, runtimeChildProcessIds } from '../support/automation-recovery'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
-import type { BudgetModelCall } from '../../../src/shared/domain'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
+import type { BudgetModelCall } from '../../../packages/shared/src/domain'
 const { When, Then } = createBdd(test)
 When('用户为Claude换绑核对准备不同模型ID和独立本机配置', async ({ runtime, claudeEmployee }) => {
   const page = runtime.page, before = await page.evaluate(() => window.boai.request('snapshot', undefined))
@@ -105,7 +105,7 @@ Then('Claude员工在定时文件工作执行期间以{string}结束并核对重
     const currentPage = runtime.page
     const snapshot = () => currentPage.evaluate(() => window.boai.request('snapshot', undefined))
     const agent = (await snapshot()).agents.find(value => value.id === claudeEmployee.employeeId)!
-    const facts = async () => ({ detail: await currentPage.evaluate(id => window.boai.request('getConversation', { id }), conversationId), calls: await store.load<BudgetModelCall>('budgetModelCalls'), budgets: await store.load('workBudgets'), profileCalls: await store.load<import('../../../src/runtime/modules/profile/profile-activity').ProfileModelCall>('profileModelCalls'), sessions: await store.load('claudeSessions') })
+    const facts = async () => ({ detail: await currentPage.evaluate(id => window.boai.request('getConversation', { id }), conversationId), calls: await store.load<BudgetModelCall>('budgetModelCalls'), budgets: await store.load('workBudgets'), profileCalls: await store.load<import('../../../packages/runtime/src/modules/profile/profile-activity').ProfileModelCall>('profileModelCalls'), sessions: await store.load('claudeSessions') })
     const before = await facts()
     expect(agent.executionBackend?.kind).toBe('claude-local')
     expect(before.detail.workItems).toHaveLength(1)
@@ -171,10 +171,10 @@ Then('Claude员工在定时文件工作执行期间以{string}结束并核对重
   let originalFile: string | undefined
   try {
     await expect.poll(async () => {
-      const runs = await store.load<import('../../../src/shared/domain').AgentRun>('runs')
+      const runs = await store.load<import('../../../packages/shared/src/domain').AgentRun>('runs')
       return runs.some(run => run.toolEvents.some(event => event.name === 'write_file' && event.status === 'completed')) || runs.some(run => ['failed', 'cancelled', 'interrupted'].includes(run.status))
     }, { timeout: 210000, intervals: [100, 250, 500] }).toBe(true)
-    expect((await store.load<import('../../../src/shared/domain').AgentRun>('runs')).filter(run => ['failed', 'cancelled', 'interrupted'].includes(run.status))).toEqual([])
+    expect((await store.load<import('../../../packages/shared/src/domain').AgentRun>('runs')).filter(run => ['failed', 'cancelled', 'interrupted'].includes(run.status))).toEqual([])
     const plan = (await page.evaluate(() => window.boai.request('listAutomations', undefined))).definitions.find(value => value.name === title)!
     const occurrence = (await page.evaluate(() => window.boai.request('listAutomations', undefined))).occurrences.find(value => value.automationId === plan.id)!
     expect(occurrence.status).toBe('running')
@@ -209,7 +209,7 @@ Then('Claude员工在定时文件工作执行期间以{string}结束并核对重
     expect(detail.workItems![0]).toMatchObject({ status: expectedStatus, origin: { occurrenceId: occurrence.id }, budgetId: occurrence.budgetId })
     expect(detail.runs.some(run => run.status === expectedStatus && run.backend?.kind === 'claude-local')).toBe(true)
     await rejectSwitch(occurrence.conversationId, '员工仍有未结束或待核对工作，请先处理原工作再切换运行方式', crashed ? '故障首次重启后' : '实际停止退出后', false)
-    const calls = await store.load<BudgetModelCall>('budgetModelCalls'), budgets = await store.load<import('../../../src/shared/domain').WorkBudget>('workBudgets')
+    const calls = await store.load<BudgetModelCall>('budgetModelCalls'), budgets = await store.load<import('../../../packages/shared/src/domain').WorkBudget>('workBudgets')
     expect(calls.some(call => call.phase === 'execution' && !call.usageComplete)).toBe(true)
     expect(budgets).toHaveLength(1)
     expect(calls.map(call => call.id).sort()).toEqual(callIds)

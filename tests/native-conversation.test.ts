@@ -24,11 +24,11 @@ import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { nativeFixture } from './fixtures/native-product'
 import { createHash } from 'node:crypto'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import type { AutomationDefinition, AutomationOccurrence, Conversation, ConversationDetail, DigitalAgent, LaunchProfile, Message, Snapshot } from '../src/shared/domain'
-import type { BrowserActionEnvelope, BrowserHostBridge, BrowserLease } from '../src/shared/ipc/browser'
-import { parseBrowserSingleCommand } from '../src/runtime/adapters/mastra/browser-tool-runtime'
-import type { ExecutionEvidence, ExecutionEvidencePage, NativeAction } from '../src/shared/domain/execution'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import type { AutomationDefinition, AutomationOccurrence, Conversation, ConversationDetail, DigitalAgent, LaunchProfile, Message, Snapshot } from '../packages/shared/src/domain'
+import type { BrowserActionEnvelope, BrowserHostBridge, BrowserLease } from '../packages/shared/src/ipc/browser'
+import { parseBrowserSingleCommand } from '../packages/runtime/src/adapters/mastra/browser-tool-runtime'
+import type { ExecutionEvidence, ExecutionEvidencePage, NativeAction } from '../packages/shared/src/domain/execution'
 const disposals: (()=>Promise<void>)[]=[]
 afterEach(async()=>{for(const close of disposals.splice(0).reverse())await close()})
 describe.each(['codex', 'claude'] as const)('%s 原生员工', runtime => {
@@ -36,8 +36,8 @@ const setup=()=>nativeFixture(runtime,disposals)
 
 it('keeps its native session across emotion changes but refreshes tools when personality features change', async () => {
  const f = await setup()
- const read = await f.service.handle('executeApplicationOperation', { operation: 'employees.profile', input: { agentId: f.agent.id } }) as import('../src/shared/domain/application-protocol').ApplicationResult
- const { agentId, revision, updatedAt, ...config } = read.data as import('../src/shared/domain/agent-profile').AgentProfile
+ const read = await f.service.handle('executeApplicationOperation', { operation: 'employees.profile', input: { agentId: f.agent.id } }) as import('../packages/shared/src/domain/application-protocol').ApplicationResult
+ const { agentId, revision, updatedAt, ...config } = read.data as import('../packages/shared/src/domain/agent-profile').AgentProfile
  expect(await f.service.handle('executeApplicationOperation', { operation: 'employees.configure', input: { agentId, expectedRevision: revision, config: { ...config, features: { ...config.features, emotions: true } } }, requestId: 'state-tools' })).toMatchObject({ status: 'succeeded' })
  expect((await f.wait(await f.send('普通交流'))).runs.every(run => run.status === 'completed')).toBe(true)
  expect(await f.service.handle('executeApplicationOperation', { operation: 'employees.updateState', input: { agentId, conversationId: f.chat.id, expectedRevision: 0, change: { action: 'emotion', emotion: { mood: 'curious', valence: 8, energy: 7, reason: '本轮讨论' } } }, requestId: 'new-mood' })).toMatchObject({ status: 'succeeded' })
@@ -102,8 +102,8 @@ it('preserves native configuration and explicit cwd when old API directory metad
 it('reads knowledge through native product tools without Work and rebuilds the native session only when the knowledge version changes', async () => {
  const f=await setup(), source=join(f.root,'knowledge-source.md'), first='# 品牌规范\n标题蓝色。', second='# 品牌规范\n标题绿色。'
  await writeFile(source,first)
- const receipt=await f.service.handle('saveEmployeeKnowledge',{requestId:crypto.randomUUID(),agentId:f.agent.id,expectedConfigVersion:f.agent.configVersion,source:{kind:'file',path:source,name:'品牌规范.md'}}) as import('../src/shared/domain/knowledge').KnowledgeReceipt
- const resource=(await f.service.handle('listEmployeeKnowledge',{agentId:f.agent.id}) as import('../src/shared/domain').Resource[])[0]
+ const receipt=await f.service.handle('saveEmployeeKnowledge',{requestId:crypto.randomUUID(),agentId:f.agent.id,expectedConfigVersion:f.agent.configVersion,source:{kind:'file',path:source,name:'品牌规范.md'}}) as import('../packages/shared/src/domain/knowledge').KnowledgeReceipt
+ const resource=(await f.service.handle('listEmployeeKnowledge',{agentId:f.agent.id}) as import('../packages/shared/src/domain').Resource[])[0]
  for(let i=0;i<2;i++){
   const detail=await f.wait(await f.send('NATIVE_KNOWLEDGE'))
   expect(detail.runs.every(run=>run.status==='completed'),JSON.stringify(detail.runs.map(run=>({status:run.status,error:run.error})))).toBe(true)
@@ -125,7 +125,7 @@ it('reads knowledge through native product tools without Work and rebuilds the n
  const reads=(await readFile(join(cwd,'native-knowledge-reads.jsonl'),'utf8')).trim().split('\n').map(line=>JSON.parse(line))
  expect(reads.map(read=>read.content)).toEqual([first,first,second,second])
  expect(reads.every(read=>read.contentHash===createHash('sha256').update(read.content).digest('hex'))).toBe(true)
- const current=(await f.service.handle('listEmployeeKnowledge',{agentId:f.agent.id}) as import('../src/shared/domain').Resource[])[0]
+ const current=(await f.service.handle('listEmployeeKnowledge',{agentId:f.agent.id}) as import('../packages/shared/src/domain').Resource[])[0]
  // Identical bytes still receive a new immutable copy/path and revision.
  await f.service.handle('saveEmployeeKnowledge',{requestId:crypto.randomUUID(),agentId:f.agent.id,expectedConfigVersion:receipt.configVersion,source:{kind:'file',path:source,name:'品牌规范.md'},replace:{resourceId:current.id,revision:current.knowledge!.revision,contentHash:current.knowledge!.contentHash}})
  const copied=await f.wait(await f.send('NATIVE_KNOWLEDGE'))
@@ -217,7 +217,7 @@ it('exposes narration and reasoning while execution is still running, without pu
 it('reads images through the native browser tool without Work, then lazily claims a real write and preserves read receipts',async()=>{
  const page={instanceId:'browser-instance',scopeKey:'application-browser',pageVersion:'1',url:'https://example.test/',title:'Current page',obtainedAt:new Date().toISOString()}
  const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+yRuoAAAAASUVORK5CYII=','base64')
- const acquired:import('../src/shared/ipc/browser').BrowserLease[]=[],actions:import('../src/shared/ipc/browser').BrowserActionEnvelope[]=[]
+ const acquired:import('../packages/shared/src/ipc/browser').BrowserLease[]=[],actions:import('../packages/shared/src/ipc/browser').BrowserActionEnvelope[]=[]
  let f:Awaited<ReturnType<typeof nativeFixture>>,value='before'
  const host={request:async(method:string,input:any)=>{
   if(method==='disconnect')return
@@ -232,14 +232,14 @@ it('reads images through the native browser tool without Work, then lazily claim
    return {actionId:input.actionId,generation:input.lease.generation,status:'completed',source:{...page,generation:input.lease.generation},result:{output:value,appendReleaseHint:false,...(input.command.includes('screenshot')?{image:{data:png.toString('base64'),mimeType:'image/png',sizeBytes:png.length}}:{})}}
   }
   throw Error('unexpected browser method '+method)
- }} as import('../src/shared/ipc/browser').BrowserHostBridge
+ }} as import('../packages/shared/src/ipc/browser').BrowserHostBridge
  f=await nativeFixture(runtime,disposals,undefined,true,host)
  const first=await f.wait(await f.send('NATIVE_BROWSER_READ https://example.test/'))
  expect(first.runs[0].status,first.runs[0].error).toBe('completed');expect(first.workItems).toHaveLength(0)
  expect(acquired).toHaveLength(1);expect(acquired[0].workId).toBeUndefined();expect(acquired[0].sourceMessageId).toBeTruthy()
  const secondMessage=await f.send('NATIVE_BROWSER_WRITE https://example.test/')
  const second=await f.wait(secondMessage)
- expect(((await f.service.handle('snapshot',undefined)) as import('../src/shared/domain').Snapshot).approvals.filter(approval=>approval.kind==='browser')).toEqual([])
+ expect(((await f.service.handle('snapshot',undefined)) as import('../packages/shared/src/domain').Snapshot).approvals.filter(approval=>approval.kind==='browser')).toEqual([])
  expect(second.runs.at(-1)?.status,second.runs.at(-1)?.error).toBe('completed')
  expect(second.workItems).toHaveLength(1);expect(second.workItems![0].status).toBe('delivered')
  const read=actions.find(action=>action.command.includes('snapshot'))!,write=actions.find(action=>action.command.includes('fill'))!
@@ -260,15 +260,15 @@ it('manages an automation through the native product bridge without Work and rea
  const f=await setup(),first=await f.wait(await f.send('NATIVE_AUTOMATION_SAVE'))
  expect(first.runs[0].status,first.runs[0].error).toBe('completed')
  expect(first.workItems).toHaveLength(0)
- const view=await f.service.handle('listOwnerAutomations',{owner:{kind:'employee',employeeId:f.agent.id},limit:20}) as import('../src/shared/domain').AutomationListPage
+ const view=await f.service.handle('listOwnerAutomations',{owner:{kind:'employee',employeeId:f.agent.id},limit:20}) as import('../packages/shared/src/domain').AutomationListPage
  expect(view.definitions).toHaveLength(1)
  expect(view.definitions[0]).toMatchObject({name:'原生日报',enabled:false,revision:1,employeeIds:[f.agent.id],conversationPolicy:'new-conversation'})
  await f.restart();await f.restart()
  const second=await f.wait(await f.send('NATIVE_AUTOMATION_LIST'))
  expect(second.runs.at(-1)?.status,second.runs.at(-1)?.error).toBe('completed')
- const after=await f.service.handle('listOwnerAutomations',{owner:{kind:'employee',employeeId:f.agent.id},limit:20}) as import('../src/shared/domain').AutomationListPage
+ const after=await f.service.handle('listOwnerAutomations',{owner:{kind:'employee',employeeId:f.agent.id},limit:20}) as import('../packages/shared/src/domain').AutomationListPage
  expect(after.definitions.map(d=>d.id)).toEqual(view.definitions.map(d=>d.id))
- expect((await f.service.handle('listAutomations',undefined) as import('../src/shared/domain').AutomationsView).occurrences).toHaveLength(0)
+ expect((await f.service.handle('listAutomations',undefined) as import('../packages/shared/src/domain').AutomationsView).occurrences).toHaveLength(0)
 })
 it('keeps an ordinary native turn above 16000 running through final reply and restart, without BOAI usage accounting',async()=>{
  const f=await setup(),first=await f.wait(await f.send('NATIVE_HIGH_USAGE'))
@@ -301,7 +301,7 @@ it('allows a high-usage native question to receive material in the same run',asy
  const f=await setup(),message=await f.send('NATIVE_HIGH_USAGE NATIVE_QUESTION NATIVE_READ_MATERIALS')
  await expect.poll(async()=>(await f.detail()).messages.some(m=>m.content==='这个文档针对什么产品？')).toBe(true)
  const path=join(f.root,'high-usage-input.json');await writeFile(path,'{"source":"HIGH_USAGE_ORIGINAL_29653"}')
- const material=await f.service.handle('prepareMaterial',{conversationId:f.chat.id,path,requestId:crypto.randomUUID()}) as import('../src/shared/domain').ConversationMaterial
+ const material=await f.service.handle('prepareMaterial',{conversationId:f.chat.id,path,requestId:crypto.randomUUID()}) as import('../packages/shared/src/domain').ConversationMaterial
  await f.service.handle('sendMessage',{conversationId:f.chat.id,content:'请读取这一份原件',mentionIds:[],requestId:crypto.randomUUID(),materialSelections:[{id:material.id,revision:material.revision}]})
  const detail=await f.wait(message);expect(detail.runs.map(r=>r.status)).toEqual(['completed'])
  const actions=await f.service.handle('listNativeActions',{conversationId:f.chat.id,runId:detail.runs[0].id}) as NativeAction[]
@@ -348,7 +348,7 @@ it.each(['正文和文本','只附原件'] as const)('delivers %s to the waiting
  await expect.poll(async()=>{runId=(await f.detail()).runs[0]?.id??'';if(!runId)return;action=(await f.service.handle('listNativeActions',{conversationId:f.chat.id,runId}) as NativeAction[])[0];return action?.status}).toBe('pending')
  const bytes=Buffer.from(kind==='正文和文本'?'源材料：甲方项目原文':'{"amount":731,"original":"文件原件"}'),path=join(f.root,kind==='正文和文本'?'request.md':'request.json')
  await writeFile(path,bytes)
- const material=await f.service.handle('prepareMaterial',{conversationId:f.chat.id,path,requestId:crypto.randomUUID(),authorizedAgentIds:[f.agent.id]}) as import('../src/shared/domain').ConversationMaterial
+ const material=await f.service.handle('prepareMaterial',{conversationId:f.chat.id,path,requestId:crypto.randomUUID(),authorizedAgentIds:[f.agent.id]}) as import('../packages/shared/src/domain').ConversationMaterial
  const input={conversationId:f.chat.id,content:kind==='正文和文本'?'项目资料见附件':'',mentionIds:[],requestId:crypto.randomUUID(),materialSelections:[{id:material.id,revision:material.revision}]}
  const answer=await f.service.handle('sendMessage',input) as Message
  const d=await f.wait(first)
@@ -375,7 +375,7 @@ it.each(['正文和文本','只附原件'] as const)('delivers %s to the waiting
 it('provides actual image and ordinary file bytes to native tools on the first turn',async()=>{
  const f=await setup(),files=[{name:'one.png',bytes:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNwmHAAAAKkAZGL4t77AAAAAElFTkSuQmCC','base64')},{name:'payload.json',bytes:Buffer.from('{"value":731}')}]
  const selections=[]
- for(const file of files){const path=join(f.root,file.name);await writeFile(path,file.bytes);const material=await f.service.handle('prepareMaterial',{conversationId:f.chat.id,path,requestId:crypto.randomUUID(),authorizedAgentIds:[f.agent.id]}) as import('../src/shared/domain').ConversationMaterial;selections.push({id:material.id,revision:material.revision})}
+ for(const file of files){const path=join(f.root,file.name);await writeFile(path,file.bytes);const material=await f.service.handle('prepareMaterial',{conversationId:f.chat.id,path,requestId:crypto.randomUUID(),authorizedAgentIds:[f.agent.id]}) as import('../packages/shared/src/domain').ConversationMaterial;selections.push({id:material.id,revision:material.revision})}
  const message=await f.service.handle('sendMessage',{conversationId:f.chat.id,content:'NATIVE_READ_MATERIALS',mentionIds:[],requestId:crypto.randomUUID(),materialSelections:selections}) as Message
  const d=await f.wait(message);expect(d.runs[0].status,d.runs[0].error).toBe('completed')
  const cwd=join(f.root,'agents',f.agent.id,'workspace','sessions',f.chat.id,'work')
@@ -408,7 +408,7 @@ it('does not release a native answer or keep an exported copy when its message t
  await expect.poll(async()=>(await f.detail()).messages.some(m=>m.content==='这个文档针对什么产品？')).toBe(true)
  const runId=(await f.detail()).runs[0].id
  const path=join(f.root,'fault.json');await writeFile(path,'{"value":913}')
- const material=await f.service.handle('prepareMaterial',{conversationId:f.chat.id,path,requestId:crypto.randomUUID()}) as import('../src/shared/domain').ConversationMaterial
+ const material=await f.service.handle('prepareMaterial',{conversationId:f.chat.id,path,requestId:crypto.randomUUID()}) as import('../packages/shared/src/domain').ConversationMaterial
  const input={conversationId:f.chat.id,content:'核对这个原件',mentionIds:[],requestId:crypto.randomUUID(),materialSelections:[{id:material.id,revision:material.revision}]}
  const original=ProductStore.prototype.transaction
  const spy=vi.spyOn(ProductStore.prototype,'transaction').mockImplementation(function(this:ProductStore,callback:any){return original.call(this,async tx=>callback({...tx,put:async(value:any)=>{if(value.collection==='messageReceipts'&&value.id===input.requestId)throw Error('SQLITE_FULL injected before message acceptance');await tx.put(value)}})) as any})
@@ -426,7 +426,7 @@ it('cancels an active native run when newly answered material is revoked and rem
  const f=await setup(),first=await f.send('NATIVE_QUESTION NATIVE_READ_MATERIALS NATIVE_WAIT')
  await expect.poll(async()=>(await f.detail()).messages.some(m=>m.content==='这个文档针对什么产品？')).toBe(true)
  const path=join(f.root,'revoke.json');await writeFile(path,'{"actual":317}')
- const material=await f.service.handle('prepareMaterial',{conversationId:f.chat.id,path,requestId:crypto.randomUUID(),authorizedAgentIds:[f.agent.id]}) as import('../src/shared/domain').ConversationMaterial
+ const material=await f.service.handle('prepareMaterial',{conversationId:f.chat.id,path,requestId:crypto.randomUUID(),authorizedAgentIds:[f.agent.id]}) as import('../packages/shared/src/domain').ConversationMaterial
  await f.service.handle('sendMessage',{conversationId:f.chat.id,content:'使用附件',mentionIds:[],requestId:crypto.randomUUID(),materialSelections:[{id:material.id,revision:material.revision}]})
  const cwd=join(f.root,'agents',f.agent.id,'workspace','sessions',f.chat.id,'work')
  await expect.poll(async()=>readFile(join(cwd,'native-material-reads.jsonl'),'utf8').catch(()=>''),{timeout:5000}).toContain('317'.split('').map(c=>c.charCodeAt(0).toString(16)).join(''))
@@ -529,7 +529,7 @@ it('records a real text result without a private reporting model call',async()=>
  expect(d.runs[0].status,d.runs[0].error).toBe('completed');expect(d.workItems?.[0].status).toBe('delivered');expect(d.messages.some(m=>m.content==='原生核对完成')).toBe(true)
 })
 it.each(['CREATE','ONLY','EXEC'])('core employee organizes %s through native product tools and actual receipts',async mode=>{
- const f=await setup(),snapshot=await f.service.handle('snapshot',undefined) as import('../src/shared/domain').Snapshot
+ const f=await setup(),snapshot=await f.service.handle('snapshot',undefined) as import('../packages/shared/src/domain').Snapshot
  const core=snapshot.agents.find(a=>a.id==='bobo')!
  const {id,configVersion,workspaceRef,memoryNamespace,policyVersion,systemRole,...input}=core
  await f.service.handle('saveAgent',{...input,id,expectedConfigVersion:configVersion,connectionId:'',modelId:'',executionBackend:f.agent.executionBackend})
@@ -537,13 +537,13 @@ it.each(['CREATE','ONLY','EXEC'])('core employee organizes %s through native pro
  let d:ConversationDetail|undefined
  await expect.poll(async()=>{d=await f.service.handle('getConversation',{id:chat.id}) as ConversationDetail;return d.runs.length&&d.runs.every(r=>['completed','failed'].includes(r.status))},{timeout:15000}).toBeTruthy()
  expect(d!.runs.map(r=>r.error)).toEqual([undefined]);expect(d!.workItems?.[0].status,JSON.stringify(d!.messages)).toBe('delivered')
- const after=await f.service.handle('snapshot',undefined) as import('../src/shared/domain').Snapshot
+ const after=await f.service.handle('snapshot',undefined) as import('../packages/shared/src/domain').Snapshot
  expect(after.agents.find(a=>a.name==='新核查员')?.executionBackend).toEqual(f.agent.executionBackend)
  if(mode!=='CREATE')expect(after.conversations.some(c=>c.title==='原生组织群')).toBe(true)
  await f.restart();expect((await f.service.handle('getConversation',{id:chat.id}) as ConversationDetail).runs).toHaveLength(1)
 })
 it('inherits native execution when the core creates a named team',async()=>{
- const f=await setup(),snapshot=await f.service.handle('snapshot',undefined) as import('../src/shared/domain').Snapshot
+ const f=await setup(),snapshot=await f.service.handle('snapshot',undefined) as import('../packages/shared/src/domain').Snapshot
  const core=snapshot.agents.find(a=>a.id==='bobo')!
  const {id,configVersion,workspaceRef,memoryNamespace,policyVersion,systemRole,...input}=core
  await f.service.handle('saveAgent',{...input,id,expectedConfigVersion:configVersion,connectionId:'',modelId:'',executionBackend:f.agent.executionBackend})
@@ -551,7 +551,7 @@ it('inherits native execution when the core creates a named team',async()=>{
  let d:ConversationDetail|undefined
  await expect.poll(async()=>{d=await f.service.handle('getConversation',{id:chat.id}) as ConversationDetail;return d.runs.length&&d.runs.every(r=>['completed','failed'].includes(r.status))},{timeout:15000}).toBeTruthy()
  expect(d!.runs.map(r=>r.error)).toEqual([undefined]);expect(d!.workItems?.[0].status,JSON.stringify(d!.messages)).toBe('delivered')
- expect((await f.service.handle('snapshot',undefined) as import('../src/shared/domain').Snapshot).conversations.some(c=>c.title==='用户团队名')).toBe(true)
+ expect((await f.service.handle('snapshot',undefined) as import('../packages/shared/src/domain').Snapshot).conversations.some(c=>c.title==='用户团队名')).toBe(true)
 })
 it('delegates to a real employee and resumes only the parent on the original work budget',async()=>{
  const f=await setup(),{id,configVersion,workspaceRef,memoryNamespace,policyVersion,...input}=f.agent
@@ -566,9 +566,9 @@ it('delegates to a real employee and resumes only the parent on the original wor
 })
 it('runs automation with the real native backend and does not replay it after restart',async()=>{
  const f=await setup()
- const plan=await f.service.handle('saveAutomation',{name:'原生自动化',prompt:'NATIVE_PUBLISH',conversationPolicy:'new-conversation',employeeIds:[f.agent.id],frequency:'daily',time:'09:00',weekday:1,timezone:'UTC',enabled:false,notify:false}) as import('../src/shared/domain').AutomationDefinition
- const occurrence=await f.service.handle('runAutomation',{id:plan.id,requestId:crypto.randomUUID()}) as import('../src/shared/domain').AutomationOccurrence
- let result:import('../src/shared/domain').AutomationOccurrence|undefined
+ const plan=await f.service.handle('saveAutomation',{name:'原生自动化',prompt:'NATIVE_PUBLISH',conversationPolicy:'new-conversation',employeeIds:[f.agent.id],frequency:'daily',time:'09:00',weekday:1,timezone:'UTC',enabled:false,notify:false}) as import('../packages/shared/src/domain').AutomationDefinition
+ const occurrence=await f.service.handle('runAutomation',{id:plan.id,requestId:crypto.randomUUID()}) as import('../packages/shared/src/domain').AutomationOccurrence
+ let result:import('../packages/shared/src/domain').AutomationOccurrence|undefined
  await expect.poll(async()=>{result=await f.service.handle('getAutomationOccurrence',{id:occurrence.id}) as typeof result;return result?.status},{timeout:15000}).toBe('completed')
  const d=await f.service.handle('getConversation',{id:result!.conversationId!}) as ConversationDetail
  expect(d.artifacts,JSON.stringify(d)).toHaveLength(1);expect(d.runs.filter(r=>r.phase==='execution')).toHaveLength(1)
@@ -616,7 +616,7 @@ it('exports business records while excluding private native files, then restores
 })
 it('passes authorized attachments and revokes old input before reusing native context',async()=>{
  const f=await setup(),path=join(f.root,'source.txt');await writeFile(path,'MATERIAL_ONLY_CANARY')
- const material=await f.service.handle('prepareMaterial',{conversationId:f.chat.id,path,requestId:crypto.randomUUID(),authorizedAgentIds:[f.agent.id]}) as import('../src/shared/domain').ConversationMaterial
+ const material=await f.service.handle('prepareMaterial',{conversationId:f.chat.id,path,requestId:crypto.randomUUID(),authorizedAgentIds:[f.agent.id]}) as import('../packages/shared/src/domain').ConversationMaterial
  const message=await f.service.handle('sendMessage',{conversationId:f.chat.id,content:'读取附件',mentionIds:[],requestId:crypto.randomUUID(),materialSelections:[{id:material.id,revision:material.revision}]}) as Message
  const first=await f.wait(message),cwd=join(f.root,'agents',f.agent.id,'workspace','sessions',f.chat.id,'work')
  const read=async()=>JSON.parse(JSON.parse((await readFile(join(cwd,'native-turn-requests.jsonl'),'utf8')).trim().split('\n').at(-1)!).input[0].text)

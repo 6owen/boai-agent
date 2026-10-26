@@ -18,8 +18,8 @@ import type { Desktop } from '../support/desktop'
 import { artifactDetail, artifactOriginal, artifactRecords } from '../support/artifacts'
 import { selectPreviewLine } from '../support/file-preview'
 import { CHAT_AFTER_RESTART, CHAT_ONE, CHAT_TWO, FILE_REQUEST, MAINLINE_EMPLOYEE, MAINLINE_ROLE, MAINLINE_RULES, prepareMastraMainline, publicChatRequests, REPLY_AFTER_RESTART, REPLY_ONE, REPLY_TWO, REVISION_REQUEST, settledMainline } from '../support/mastra-mainline'
-import type { ArtifactVersion } from '../../../src/shared/domain/artifacts'
-import type { DigitalAgent, Conversation } from '../../../src/shared/domain'
+import type { ArtifactVersion } from '../../../packages/shared/src/domain/artifacts'
+import type { DigitalAgent, Conversation } from '../../../packages/shared/src/domain'
 
 interface State {
   fixture?: Awaited<ReturnType<typeof prepareMastraMainline>>

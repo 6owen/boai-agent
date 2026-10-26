@@ -12,10 +12,10 @@ import { mkdir, readFile, readdir, realpath, rename, writeFile } from 'node:fs/p
 import { join } from 'node:path'
 import type { Desktop } from './desktop'
 import { teamEndpoint, sendTeamOutput } from '../../fixtures/team-planner'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
-import { MATERIAL_LIMITS, type ConversationMaterial } from '../../../src/shared/domain/materials'
-import type { DiscussionTurn, Message } from '../../../src/shared/domain'
-import type { Methods } from '../../../src/shared/ipc'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
+import { MATERIAL_LIMITS, type ConversationMaterial } from '../../../packages/shared/src/domain/materials'
+import type { DiscussionTurn, Message } from '../../../packages/shared/src/domain'
+import type { Methods } from '../../../packages/shared/src/ipc'
 
 type PreparationInput = Methods['prepareMaterial']['input']
 type SendInput = Methods['sendMessage']['input']

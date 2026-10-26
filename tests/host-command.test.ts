@@ -10,7 +10,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { executeCommand } from '../src/runtime/adapters/mastra/host-command'
+import { executeCommand } from '../packages/runtime/src/adapters/mastra/host-command'
 
 const cleanups: (() => Promise<void>)[] = []
 afterEach(async () => { vi.restoreAllMocks(); for (const clean of cleanups.splice(0).reverse()) await clean() })

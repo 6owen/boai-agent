@@ -21,12 +21,12 @@ import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { RequestContext } from '@mastra/core/request-context'
 import { noopObserve } from '@mastra/core/tools'
-import { AppService } from '../src/runtime/service'
-import { createNativeProducts } from '../src/runtime/adapters/native-products'
-import { createSourceTools } from '../src/runtime/adapters/mastra/source-tools'
-import type { AgentEngine, EngineContext } from '../src/runtime/contracts'
-import type { Connection, Conversation, ConversationDetail, DigitalAgent, Snapshot } from '../src/shared/domain'
-import type { DataSource } from '../src/shared/domain/sources'
+import { AppService } from '../packages/runtime/src/service'
+import { createNativeProducts } from '../packages/runtime/src/adapters/native-products'
+import { createSourceTools } from '../packages/runtime/src/adapters/mastra/source-tools'
+import type { AgentEngine, EngineContext } from '../packages/runtime/src/contracts'
+import type { Connection, Conversation, ConversationDetail, DigitalAgent, Snapshot } from '../packages/shared/src/domain'
+import type { DataSource } from '../packages/shared/src/domain/sources'
 import { webSearchServer, webSourceConfig, deepSeekSearchServer, deepSeekSourceConfig, resultUrl, pageText } from './fixtures/web-search-server'
 const cleanups: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const cleanup of cleanups.splice(0).reverse()) await cleanup() })
@@ -311,7 +311,7 @@ it.each(['researcher', 'bobo'])('keeps selected source identity through message 
     await expect(submit(ref)).rejects.toThrow()
   }
   expect(calls).toEqual([])
-  const requestId = randomUUID(), accepted = await submit(reference, requestId) as Conversation | import('../src/shared/domain').Message
+  const requestId = randomUUID(), accepted = await submit(reference, requestId) as Conversation | import('../packages/shared/src/domain').Message
   const conversationId = direct?.id ?? accepted.id
   await vi.waitFor(async () => {
     if (failure) throw failure

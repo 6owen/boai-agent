@@ -8,11 +8,11 @@ import { afterEach, expect, it } from 'vitest'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { AutomationRepository } from '../src/runtime/modules/automations/automation-repository'
-import { AutomationNotifications } from '../src/runtime/modules/automations/automation-notifications'
-import { AutomationNotificationConsumer } from '../src/main/automation-notifications'
-import type { AutomationDefinition, AutomationInput, AutomationNotice, AutomationNoticeReceipt, AutomationOccurrence } from '../src/shared/domain'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { AutomationRepository } from '../packages/runtime/src/modules/automations/automation-repository'
+import { AutomationNotifications } from '../packages/runtime/src/modules/automations/automation-notifications'
+import { AutomationNotificationConsumer } from '../apps/electron/src/main/automation-notifications'
+import type { AutomationDefinition, AutomationInput, AutomationNotice, AutomationNoticeReceipt, AutomationOccurrence } from '../packages/shared/src/domain'
 const cleanups: (() => Promise<void>)[] = []
 afterEach(async () => { for (const cleanup of cleanups.splice(0).reverse()) await cleanup() })
 const input = (notificationPolicy: AutomationInput['notificationPolicy'] = 'important_only'): AutomationInput => ({ name: '通知验收', prompt: '汇总资料', conversationId: 'chat', frequency: 'daily', time: '09:00', weekday: 1, timezone: 'UTC', enabled: false, notify: notificationPolicy !== 'muted', notificationPolicy })

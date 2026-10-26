@@ -5,7 +5,7 @@
  * [PROTOCOL]: Changes update Header and tests/.folder.md.
  */
 import { afterEach, expect, it, vi } from 'vitest'
-import { CliPresentation } from '../src/cli/presentation'
+import { CliPresentation } from '../apps/cli/src/presentation'
 
 afterEach(() => vi.useRealTimers())
 function terminal(options: Partial<ConstructorParameters<typeof CliPresentation>[0]> = {}) {

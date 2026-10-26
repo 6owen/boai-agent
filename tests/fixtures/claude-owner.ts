@@ -4,7 +4,7 @@
  * [POS]: Claude宿主死亡回归子进程，不替代传输实现。
  * [PROTOCOL]: 一旦本文件变化，必须同步Header与所属.folder.md。
  */
-import { runClaudeProcess } from '../../src/runtime/adapters/claude/process'
+import { runClaudeProcess } from '../../packages/runtime/src/adapters/claude/process'
 const [executable, cwd] = process.argv.slice(2)
 await runClaudeProcess({ executable, runtime: 'node', cwd, env: { PATH: process.env.PATH }, args: [],
   stdin: 'owner-death-tree', signal: new AbortController().signal, timeoutMs: 60000, onLine: () => {} })

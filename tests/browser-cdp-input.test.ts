@@ -2,12 +2,12 @@
  * [OUTPUT]: 密码焦点输入在首个键盘事件前拒绝，真实WebContents效果另由Electron验收。
  * [INPUT]: Craft v0.15.1 browser-cdp.test.ts输入用例意图、实际BOAI CDP驱动和可控Electron传输。
  * [OUTPUT]: CDP点击/拖动/键盘、仅attach前回退、中途失败零重放与实际drain核验；真实后台网页另验。
- * [POS]: Apache-2.0 upstream 2e3ba53ff80b229a07e9d1884dc58f6733f22e1f；许可见src/main/browser/LICENSE.txt和NOTICE.txt。
+ * [POS]: Apache-2.0 upstream 2e3ba53ff80b229a07e9d1884dc58f6733f22e1f；许可见apps/electron/src/main/browser/LICENSE.txt和NOTICE.txt。
  * [PROTOCOL]: 变化同步Header和所属.folder.md。
  */
 import { afterEach, expect, it, vi } from 'vitest'
 import type { WebContents } from 'electron'
-import { BrowserCDP, resolveCdpKey } from '../src/main/browser/browser-cdp'
+import { BrowserCDP, resolveCdpKey } from '../apps/electron/src/main/browser/browser-cdp'
 
 const clients: BrowserCDP[] = []
 afterEach(() => { for (const cdp of clients.splice(0)) cdp.detach() })

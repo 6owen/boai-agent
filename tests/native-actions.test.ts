@@ -8,10 +8,10 @@ import { afterEach, expect, it } from 'vitest'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { ExecutionRepository } from '../src/runtime/modules/conversations/execution'
-import type { AgentRun } from '../src/shared/domain'
-import type { NativeAction } from '../src/shared/domain/execution'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { ExecutionRepository } from '../packages/runtime/src/modules/conversations/execution'
+import type { AgentRun } from '../packages/shared/src/domain'
+import type { NativeAction } from '../packages/shared/src/domain/execution'
 const fixtures: { root: string; store: ProductStore }[] = []
 afterEach(async () => { for (const f of fixtures.splice(0)) { await f.store.close(); await rm(f.root, { recursive: true, force: true }) } })
 it.each(['accepted', 'submitted', 'completed'] as const)('audits %s answer on reopening without resubmitting it', async phase => {

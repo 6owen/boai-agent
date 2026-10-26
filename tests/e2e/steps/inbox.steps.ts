@@ -15,9 +15,9 @@ import { artifactDetail, prepareArtifactsDesktop } from '../support/artifacts'
 import { prepareGroupChat } from '../support/group-chat'
 import { messageDraft } from '../support/editor-controls'
 import { inboxRecords, loseInboxReply, openQuestionMessage, openSourceChat } from '../support/inbox'
-import type { ArtifactVersion } from '../../../src/shared/domain/artifacts'
-import type { InboxItem, InboxQuestionReply } from '../../../src/shared/domain/inbox'
-import type { Message, WorkBudget, WorkItem } from '../../../src/shared/domain'
+import type { ArtifactVersion } from '../../../packages/shared/src/domain/artifacts'
+import type { InboxItem, InboxQuestionReply } from '../../../packages/shared/src/domain/inbox'
+import type { Message, WorkBudget, WorkItem } from '../../../packages/shared/src/domain'
 import type { Desktop } from '../support/desktop'
 
 interface State {

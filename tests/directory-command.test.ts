@@ -9,13 +9,13 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { executeCommand } from '../src/runtime/adapters/mastra/host-command'
-import { employeeCommandScope } from '../src/runtime/modules/workspaces/directory-command'
-import { createTaskRuntime } from '../src/runtime/adapters/mastra/task-runtime'
+import { executeCommand } from '../packages/runtime/src/adapters/mastra/host-command'
+import { employeeCommandScope } from '../packages/runtime/src/modules/workspaces/directory-command'
+import { createTaskRuntime } from '../packages/runtime/src/adapters/mastra/task-runtime'
 import { RequestContext } from '@mastra/core/request-context'
 import { noopObserve } from '@mastra/core/tools'
-import type { EngineContext } from '../src/runtime/contracts'
-import type { DigitalAgent } from '../src/shared/domain'
+import type { EngineContext } from '../packages/runtime/src/contracts'
+import type { DigitalAgent } from '../packages/shared/src/domain'
 
 const roots: string[] = []
 afterEach(async () => { for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }) })

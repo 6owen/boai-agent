@@ -6,10 +6,10 @@
  * [PROTOCOL]: 变化同步Header及tests/.folder.md。
  */
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { appearanceDefaults, applyAppearancePatch, type AppearancePatch, type AppearanceSnapshot } from '../src/shared/appearance'
-import type { DesktopApi } from '../src/shared/ipc'
+import { appearanceDefaults, applyAppearancePatch, type AppearancePatch, type AppearanceSnapshot } from '../packages/shared/src/appearance'
+import type { DesktopApi } from '../packages/shared/src/ipc'
 
-vi.mock('../src/renderer/components/common', () => ({ errorText: (error: unknown) => String(error) }))
+vi.mock('../apps/electron/src/renderer/components/common', () => ({ errorText: (error: unknown) => String(error) }))
 
 beforeEach(() => { vi.resetModules(); vi.useFakeTimers() })
 afterEach(() => {
@@ -31,7 +31,7 @@ it.each(['light', 'dark'] as const)('clears every Scenic surface and blur in %s 
     return structuredClone(saved)
   })
   Object.defineProperty(window, 'boai', { configurable: true, value: { initialAppearance: saved, request, subscribe: vi.fn(() => () => {}) } as unknown as DesktopApi })
-  const { initializeAppearance, previewAppearance, flushAppearance, appearanceAction } = await import('../src/renderer/stores/appearance')
+  const { initializeAppearance, previewAppearance, flushAppearance, appearanceAction } = await import('../apps/electron/src/renderer/stores/appearance')
   initializeAppearance()
   await Promise.resolve()
   const style = document.documentElement.style

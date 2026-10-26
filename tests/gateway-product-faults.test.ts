@@ -10,15 +10,15 @@ import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/
 import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, expect, test } from 'vitest'
-import { AppService } from '../src/runtime/service'
-import { MastraEngine } from '../src/runtime/adapters/mastra/engine'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import type { Connection, Conversation, ConversationDetail, DigitalAgent, Snapshot } from '../src/shared/domain'
-import type { ModelProtocol } from '../src/shared/domain/model-gateway'
-import type { TeamDraft, TeamDraftView } from '../src/shared/domain/team-creation'
+import { AppService } from '../packages/runtime/src/service'
+import { MastraEngine } from '../packages/runtime/src/adapters/mastra/engine'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import type { Connection, Conversation, ConversationDetail, DigitalAgent, Snapshot } from '../packages/shared/src/domain'
+import type { ModelProtocol } from '../packages/shared/src/domain/model-gateway'
+import type { TeamDraft, TeamDraftView } from '../packages/shared/src/domain/team-creation'
 import { streamText, streamTool } from './fixtures/gateway-stream'
 import { writingPlan } from './fixtures/team-planner'
-import { gatewayImportUrl } from '../src/shared/domain/gateway-import'
+import { gatewayImportUrl } from '../packages/shared/src/domain/gateway-import'
 
 const protocols = ['chat', 'responses', 'messages'] as const
 const terminal = new Set(['completed', 'failed', 'cancelled', 'interrupted', 'budget_exhausted', 'waiting_user'])

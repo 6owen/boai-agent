@@ -1,10 +1,11 @@
 /*
+ * [OUTPUT]: Workspace源码路径迁至apps/packages，保留既有输出与业务合同。
  * [INPUT]: 已安装Codex、当前生产适配器、隔离HOME和只在127.0.0.1接收的假模型端点。
  * [OUTPUT]: 真实Codex实际提交的工具目录与无工具门禁证据；不使用登录或真实模型。
  * [POS]: 第13组LR0能力实测；配合真实供应商续聊证据，二者不合并为同一运行。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
-import { build } from 'esbuild'
+import { buildWorkspace as build } from './workspace-packages.mjs'
 import { createServer } from 'node:http'
 import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -14,7 +15,7 @@ import { createHash } from 'node:crypto'
 const directory = await mkdtemp(join(tmpdir(), 'boai-codex-no-tools-')), home = join(directory, 'home')
 await mkdir(home)
 await writeFile(join(home, 'models_cache.json'), await readFile(resolve('tests/fixtures/codex-model-catalog.json')))
-const sourceHashes = Object.fromEntries(await Promise.all(['client.ts', 'policy.ts', 'turn.ts', 'catalog.ts'].map(async name => [name, createHash('sha256').update(await readFile(resolve('src/runtime/adapters/codex', name))).digest('hex')])))
+const sourceHashes = Object.fromEntries(await Promise.all(['client.ts', 'policy.ts', 'turn.ts', 'catalog.ts'].map(async name => [name, createHash('sha256').update(await readFile(resolve('packages/runtime/src/adapters/codex', name))).digest('hex')])))
 const evidence = { sourceHashes, createdAt: new Date().toISOString(), platform: process.platform, kind: 'actual-cli-local-inference-fixture', realModel: false, requests: [] }
 const server = createServer(async (request, response) => {
   let text = ''
@@ -27,7 +28,7 @@ const server = createServer(async (request, response) => {
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
 await writeFile(join(home, 'config.toml'), `model_provider = "boai_probe"\nmodel = "gpt-6.1-sol"\n[model_providers.boai_probe]\nname = "BoAI local capability probe"\nbase_url = "http://127.0.0.1:${server.address().port}/v1"\nwire_api = "responses"\nrequires_openai_auth = false\nrequest_max_retries = 0\nstream_max_retries = 0\nsupports_websockets = false\n`)
 const entry = join(directory, 'adapter.mjs')
-await build({ stdin: { contents: "export { runCodexPhase, testCodexConnection } from './src/runtime/adapters/codex/turn'; export { resolveProgram } from './src/runtime/modules/backends/program'", resolveDir: process.cwd(), loader: 'ts' }, outfile: entry, platform: 'node', format: 'esm', bundle: true, target: 'node22', logLevel: 'silent' })
+await build({ stdin: { contents: "export { runCodexPhase, testCodexConnection } from './packages/runtime/src/adapters/codex/turn'; export { resolveProgram } from './packages/runtime/src/modules/backends/program'", resolveDir: process.cwd(), loader: 'ts' }, outfile: entry, platform: 'node', format: 'esm', bundle: true, target: 'node22', logLevel: 'silent' })
 const { runCodexPhase, testCodexConnection, resolveProgram } = await import(pathToFileURL(entry).href)
 const file = resolveProgram(process.env.BOAI_CODEX_PROGRAM ?? 'codex')
 const profile = { id: 'no-tools-probe', name: 'Codex', protocol: 'codex-app-server', executable: file.path, executableHash: file.hash, runtime: file.runtime, args: [], revision: 1, useExistingLogin: false, hostAccessAcknowledged: true }

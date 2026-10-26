@@ -1,15 +1,18 @@
 <!--
+[OUTPUT]: 2026-10-26随PR23/25整合更新BOAI源码路径，保留原功能范围及验证记录。
+[OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
+[OUTPUT]: 2026-10-25补当前终端主题/轮询/重建与隔离微基准，复核浏览器profile自动发现和非默认profile选择风险，见第7节。
 [INPUT]: DS Bot、DSH 固定源码、BOAI 当前源码及用户四张截图。
-[OUTPUT]: 面板/文件/终端/Cookie的历史源码研究；当前仅供架构参考，不作为新增产品/UI的实施依据。
+[OUTPUT]: 固定版本面板/文件/终端/Cookie源码研究；2026-10-25授权实施的适配与实际结果归02。
 [POS]: ai-docs/spec/25.右侧工作面板与Cookie导入/01-DS-Bot源码机制与BOAI对比.md。
 [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 -->
 
 # DS Bot 右侧面板源码机制与 BOAI 对比
 
-更新：2026-10-24。
+更新：2026-10-25。第1–6节保留原研究基线，第7节针对已实现版本的体验反馈复核。
 
-现行范围以 [本组README](./README.md)为准：用户已收窄至架构研究。以下保留此前源码事实和候选背景，不进入当前产品/UI待执行清单。
+固定源码事实保留2026-10-24的研究时间点。用户2026-10-25已授权实现本组文件浏览、用户终端和Cookie文件导入，现行范围以[README](./README.md)及[02实际进度](./02-BOAI适配方案与验收.md#9-唯一实际进度)为准。
 
 ## 1. 结论与证据范围
 
@@ -84,13 +87,13 @@ BOAI 已有统一 AppShell、DetailPanel、DetailTabSession 和标签 reducer，
 
 ### 2.4 BOAI 已有的基础与待查点
 
-BOAI 的 [DetailTabSession](../../../src/renderer/components/detail-panel/tab-session.tsx) 已使用 keepMounted 和 hidden，保留各标签编辑状态与退出守卫。[PanelResize](../../../packages/ui/src/components/panel-resize.tsx) 收起时仍保留子树，并设置 inert / aria-hidden。不能建议再造一套同样的缓存。
+BOAI 的 [DetailTabSession](../../../apps/electron/src/renderer/components/detail-panel/tab-session.tsx) 已使用 keepMounted 和 hidden，保留各标签编辑状态与退出守卫。[PanelResize](../../../packages/ui/src/components/panel-resize.tsx) 收起时仍保留子树，并设置 inert / aria-hidden。不能建议再造一套同样的缓存。
 
 差异和后续检查点：
 
 - BOAI 共用 [panel-resize.css](../../../packages/ui/src/panel-resize.css) 使用 width/height 过渡；拖宽度会更新布局状态。应测量复杂内容下的 layout/paint 成本，再决定是否增加固定宽度内层与 transform。
-- [详情头部](../../../src/renderer/components/detail-panel/index.tsx) 已用 ResizeObserver + requestAnimationFrame 只滚动标签栏，避免 scrollIntoView 带动整个壳。
-- [AppShell](../../../src/renderer/components/app-shell/index.tsx) 集中装配详情正文；应测量消息流更新是否让无关面板重复 render，再决定拆订阅或 memo。当前研究不把它判为已经证实的性能问题。
+- [详情头部](../../../apps/electron/src/renderer/components/detail-panel/index.tsx) 已用 ResizeObserver + requestAnimationFrame 只滚动标签栏，避免 scrollIntoView 带动整个壳。
+- [AppShell](../../../apps/electron/src/renderer/components/app-shell/index.tsx) 集中装配详情正文；应测量消息流更新是否让无关面板重复 render，再决定拆订阅或 memo。当前研究不把它判为已经证实的性能问题。
 - 已有 active 参数负责停读；保留挂载不应让隐藏文件列表、预览、终端持续做高频 UI 工作。
 
 ## 3. 文件面板及“外部打开”
@@ -127,11 +130,11 @@ BOAI 的 [DetailTabSession](../../../src/renderer/components/detail-panel/tab-se
 
 给 BOAI 的可复制部分是 catalog、locator、argv adapter、缓存与失效策略。DSH 的 HTTP 路由和 slots 应改成 BOAI 现有 IPC 与菜单组件。
 
-BOAI [openResource](../../../src/main/main.ts) 已执行 realpath、工作区/资源范围校验，并区分 open 和 reveal；部分扩展名默认定位文件而非执行。外部应用选择要扩展这一宿主路径，不能绕开它在 renderer 中直接 spawn。
+BOAI [openResource](../../../apps/electron/src/main/main.ts) 已执行 realpath、工作区/资源范围校验，并区分 open 和 reveal；部分扩展名默认定位文件而非执行。外部应用选择要扩展这一宿主路径，不能绕开它在 renderer 中直接 spawn。
 
 ### 3.4 BOAI 的“文件”与 DSH 文件树业务不同
 
-[ConversationFiles](../../../src/renderer/components/work-views/conversation-files.tsx) 是附件、成果及知识资料入口；支持员工跨会话筛选、分页、预览和原消息定位。它不是单一磁盘目录的镜像。
+[ConversationFiles](../../../apps/electron/src/renderer/components/work-views/conversation-files.tsx) 是附件、成果及知识资料入口；支持员工跨会话筛选、分页、预览和原消息定位。它不是单一磁盘目录的镜像。
 
 因此：
 
@@ -172,7 +175,7 @@ shell 输出沿反向链路返回；终端尺寸通过 resize 送到 PTY，支�
 
 ### 4.3 BOAI 不是完全没有 PTY
 
-BOAI 当前已移除公开交互终端入口和 xterm 前端，但内部 [TerminalService](../../../src/runtime/modules/workspace-tools/terminal-service.ts) 仍服务于预览进程。
+BOAI 当前已移除公开交互终端入口和 xterm 前端，但内部 [TerminalService](../../../packages/runtime/src/modules/workspace-tools/terminal-service.ts) 仍服务于预览进程。
 
 它已有：
 
@@ -180,7 +183,7 @@ BOAI 当前已移除公开交互终端入口和 xterm 前端，但内部 [Termin
 - process guard 管理及旧残留回收。
 - create / write / resize / read(cursor) / exec / kill。
 - 1,000,000 字符尾部缓冲和截断标记。
-- 通过 Rust guard 的 [terminal.rs](../../../src/runtime/adapters/process-guard/terminal.rs) 使用 openpty、setsid、TIOCSCTTY，启动交互 shell；Node 与 guard 的 pipes 是传输层，不能据此误判为没有 PTY。
+- 通过 Rust guard 的 [terminal.rs](../../../packages/runtime/src/adapters/process-guard/terminal.rs) 使用 openpty、setsid、TIOCSCTTY，启动交互 shell；Node 与 guard 的 pipes 是传输层，不能据此误判为没有 PTY。
 
 和 DSH 的主要差异是：
 
@@ -256,7 +259,7 @@ BOAI 当前 guard 使用 shell -i，继承一组受控环境变量。后续要�
 
 DS Bot 的分区 key 是 bot:<id>，经哈希变成持久分区，所以它的 UI 可以说“登录属于此 Bot”。见 [bot-browser](https://github.com/Fei2411/DeepSeek-Bot/blob/1bebe826f74e9a72cabafd3b80602b05af867b38/app/src/bot-browser.mjs)。
 
-BOAI 使用 [APPLICATION_BROWSER_SCOPE](../../../src/shared/ipc/browser.ts)，[BrowserService](../../../src/main/browser/browser-service.ts) 为应用级浏览器创建持久分区；员工/会话/run 的 lease 是任务操作身份，不决定登录资料归属。[BrowserPaneManager](../../../src/main/browser/browser-pane-manager.ts) 管理独立 BrowserWindow 和页面视图。
+BOAI 使用 [APPLICATION_BROWSER_SCOPE](../../../packages/shared/src/ipc/browser.ts)，[BrowserService](../../../apps/electron/src/main/browser/browser-service.ts) 为应用级浏览器创建持久分区；员工/会话/run 的 lease 是任务操作身份，不决定登录资料归属。[BrowserPaneManager](../../../apps/electron/src/main/browser/browser-pane-manager.ts) 管理独立 BrowserWindow 和页面视图。
 
 适配结论：
 
@@ -290,3 +293,69 @@ BOAI 使用 [APPLICATION_BROWSER_SCOPE](../../../src/shared/ipc/browser.ts)，[B
 - 不完善的分区 Cookie 写入、存在即成功的读回判断，以及仅凭源码文件存在就启用的恢复 UI。
 
 DS Bot 根目录为 [Apache-2.0](https://github.com/Fei2411/DeepSeek-Bot/blob/1bebe826f74e9a72cabafd3b80602b05af867b38/LICENSE)，[NOTICE](https://github.com/Fei2411/DeepSeek-Bot/blob/1bebe826f74e9a72cabafd3b80602b05af867b38/NOTICE)还标注了第三方来源；本次涉及 DSH 包声明 MIT，例如 [terminal-controller package](https://github.com/deepseek-ai/deepseek-harness/blob/687f282e8625c6b8d11ff58211a90524be2e4317/packages/api/terminal-controller/package.json)。实际移植时保存具体文件、提交、许可证与修改说明，沿用仓库第三方 notice 方式。这里没有复制上游实现代码。
+
+## 7. 2026-10-25：终端体验与本机 Cookie 来源复核
+
+本节针对 `feat/workspace-files-terminal-cookie` 当前实现。GitHub DS Bot main重新核对仍为 `1bebe826f74e9a72cabafd3b80602b05af867b38`；DSH终端对比固定于上述 `687f282e`。本轮是源码与隔离测量，没有实施以下优化、导入真实Cookie或更改个人shell配置。
+
+### 7.1 当前终端实际上怎样运行
+
+- 前端使用 `@xterm/xterm` 与 FitAddon；Electron Main运行 `WorkspaceTerminalService`，复用原TerminalService、Rust process guard与真实PTY，启动员工workspace里的登录交互shell。
+- 输出经过Rust的JSON字节帧、Node解码、Main中的 `@xterm/headless` 解析，再经renderer的read/ack请求写入前端xterm。headless保留隐藏期间屏幕、处理终端设备查询，重新附着时由SerializeAddon生成快照。
+- 进程保活和前端实例保活是两件事：当前代码保留shell进程，但 `active` 改变会销毁前端xterm，下次切回重新创建、附着、重放快照和计算尺寸。
+- DSH同样使用xterm、headless与快照；目前没有依据认为必须换掉BOAI原PTY或整个终端库。
+
+代码：[前端终端](../../../apps/electron/src/renderer/components/detail-panel/workspace-terminal.tsx)、[Main屏幕与协议](../../../apps/electron/src/main/workspace-terminal/service.ts)、[原PTY服务](../../../packages/runtime/src/modules/workspace-tools/terminal-service.ts)、[Rust PTY](../../../packages/runtime/src/adapters/process-guard/terminal.rs)。
+
+### 7.2 样式和主题的具体缺口
+
+- 当前theme函数只设置foreground、background、cursor。背景取body/root而非详情面板的 `--surface-detail`，容易形成单独一块底色；没有统一选区、失焦选区、cursorAccent或最低对比度。
+- 字体族沿用了代码字体，但字号直接读取容器继承值，没有使用BOAI已有 `--text-code-terminal`；终端行高也没有沿代码排版角色设置。因而改变“代码”字号时，终端字号未必跟随预期。
+- shell提示符的内容、颜色和符号由用户现有zsh/starship配置输出；终端UI负责底色、字体和可读性，两者应分别处理，不自动改 `.zshrc`。
+- DSH终端明确使用terminal字体/字号、`minimumContrastRatio: 4.5`，专门处理选区、光标和OSC颜色覆盖/重置；BOAI应映射自己的tokens，而不是引入DS Bot全局样式。
+- 另有待现场尺寸确认的布局风险：当前 `.detail-session` 没有为用户终端建立铺满高度的flex链，终端根部的 `h-full` 可能依赖不确定的父高度；应在后续修复中测量真实容器与xterm网格，不将静态判断写作已测尺寸结果。
+
+源码：[DSH终端界面](https://github.com/deepseek-ai/deepseek-harness/blob/687f282e8625c6b8d11ff58211a90524be2e4317/packages/client/ui-sidebar-terminal/src/client/terminal.tsx)、[DSH主题与OSC](https://github.com/deepseek-ai/deepseek-harness/blob/687f282e8625c6b8d11ff58211a90524be2e4317/packages/client/ui-sidebar-terminal/src/client/terminal-theme.ts)、[BOAI排版定义](../../../packages/tokens/src/typography.ts)。
+
+### 7.3 已确认的性能开销与测量边界
+
+- 前端每轮执行 `read → xterm.write回调 → ack → 等80ms`。连续输出最多约12.5批/秒；按键回显可能额外等0–80ms，均匀到达时平均约40ms，尚未包含IPC、PTY调度和绘制。退出后的终端也仍轮询。
+- 一般增量按64KiB分帧，结合80ms间隔形成约800KiB/s的理想增量上限；完整快照及超大源块例外，不能称全部传输的硬上限。
+- Main的每次read/ack/resize/detach都先跨runtime查询根目录，write做两次。标准路径一次涉及4次lstat和2次realpath。这是可减少的热路径开销，但本机隔离测量很小，不能单独归因为严重卡顿。
+- 每个输出小块都排队等待一次headless.write回调，会累积异步调度。待解析块需要有界合并，保留顺序和协议回复；不能用Main同步解析无限输出替代。
+- 隐藏会销毁xterm，切回重新解析完整快照；增量历史仅256KiB，连续输出落后时会回退快照并reset前端，可能重复付出全屏序列化/重绘成本。
+- Rust每8KiB块转JSON数字数组并flush，常见ASCII约膨胀3–4倍；循环有8ms等待。这是后续可测的传输开销，目前没有证明是首要瓶颈。
+
+隔离微基准使用真实 `WorkspaceTerminalService + @xterm/headless + restrictedPath`、临时目录和fake PTY，不包含真实shell、Electron IPC、runtime worker或renderer。单次结果用于定位机制，不授予桌面性能资格：
+
+- 250次空read：250次根核验，总30.18ms，p50 0.108ms、p95 0.202ms。
+- 250次write：500次根核验，总53.05ms，p50 0.190ms、p95 0.330ms。
+- 同样128KiB：128字节×1024块的串行解析约1184ms；1KiB×128块约150ms；8KiB×16块约20ms；一块约4.35ms。真实输出分片分布尚未采样，不把最小块场景当实际日常速度。
+- 192KiB、3个64KiB帧：连续read/ack约32.55ms，加入当前80ms间隔后约194.67ms。
+- 320KiB未读突发输出：确认回退snapshot，序列化结果约102980字节，该隔离过程约60.2ms。
+- 临时复现脚本与结果在 `/tmp/boai-terminal-perf-20261025/`，不是持久GUI验收原件。
+
+DSH的输出队列有数据就唤醒等待者，客户端连续消费流，xterm解析完成后释放下一帧，没有这里的固定80ms轮询。其实例初始化effect依赖model，visible主要控制fit与输入状态；这解释了值得借鉴的机制，但未进行两款软件同条件性能对照。
+
+源码：[DSH输出队列](https://github.com/deepseek-ai/deepseek-harness/blob/687f282e8625c6b8d11ff58211a90524be2e4317/packages/api/terminal-controller/src/stream.ts)、[DSH客户端流与确认](https://github.com/deepseek-ai/deepseek-harness/blob/687f282e8625c6b8d11ff58211a90524be2e4317/packages/api/terminal-controller/src/client/model.ts)。
+
+### 7.4 DS Bot怎样自动列出浏览器账户
+
+- 菜单里的“Chrome — wwb”代表本机profile。Chromium从 `Local State.profile.info_cache` 取name，缺失再取gaia_name/目录名；Firefox从profiles.ini取Name/Path。不是通过云账户API枚举账号。
+- 菜单首次展开才列出来源：文件项加Chrome、Edge、Brave、Chromium、Firefox的可用profile。源码没有Safari入口。
+- 选择Chrome系profile后，复制Local State与所选Cookie数据库及sidecar到临时目录，启动源浏览器自己的二进制，用临时user-data-dir和remote-debugging-pipe调用 `Storage.getCookies`，由源浏览器解密。完成后退出临时进程并清理副本。
+- Firefox查询复制的SQLite，跳过非默认容器。Windows遇锁定先报告running，仅用户明确选择后关闭源浏览器，并在结束时尝试重开。
+- BOAI当前按钮直接弹文件选择器，核心只有prepareFile/文本解析，确实没有来源发现与本机读取这一层；不是设置没打开。
+
+源码：[profile发现](https://github.com/Fei2411/DeepSeek-Bot/blob/1bebe826f74e9a72cabafd3b80602b05af867b38/app/src/browser-sources.mjs#L141-L228)、[临时浏览器读取](https://github.com/Fei2411/DeepSeek-Bot/blob/1bebe826f74e9a72cabafd3b80602b05af867b38/app/src/browser-sources.mjs#L321-L411)、[菜单入口](https://github.com/Fei2411/DeepSeek-Bot/blob/1bebe826f74e9a72cabafd3b80602b05af867b38/ds-bot/src/client/browser-pane.js#L243-L265)。
+
+### 7.5 后续适配顺序
+
+1. 终端主题接BOAI现有代码字号/行高、面板底色、明暗颜色与选区；核对父容器高度和实际网格。保留个人shell配置。
+2. read轮询改为有数据唤醒/订阅，保留序号、解析确认和有界背压；同轮小块合并、输入采用有容量上限的流水传递。
+3. xterm实例随terminalId保留，active只控制订阅/测量/显示，明确关闭才dispose；退出后停读。根路径在创建/附着核定，以清空/删除/客户端代际使范围租约失效，热路径采用轻量身份检查，不能直接取消授权检查或用不会失效的缓存。
+4. Cookie新增Main-only来源模块：listSources只返回opaque id、浏览器/profile展示名；prepareSource重新核定来源并提取，然后接现有pending、目标绑定、确认、apply与逐值读回流程。
+5. 工具栏使用BOAI现有Dropdown显示“从文件导入”和各浏览器profile，继续当前独立浏览器与原登录partition；目录、源程序路径及Cookie值不交renderer。
+6. 补实际按键回显、持续输出、滚动和切换测试，以及虚构profile A/B不同Cookie标记的选源验收。真实个人账号读取、系统凭据提示与站点登录仍需单独验证。
+
+不能盲抄的上游风险：源代码将Cookie复制到原profile名目录，但临时Chromium启动没有显式 `--profile-directory`，非Default来源选择准确性仍需验证；Linux多个浏览器root的同名profile id可能冲突。BOAI应明确绑定canonical root与profile，显式选中正确profile，并保留已有逐值/属性读回、一次性目标绑定及分区Cookie明确跳过行为。这里只做源码风险判断，没有读取个人profile验证。

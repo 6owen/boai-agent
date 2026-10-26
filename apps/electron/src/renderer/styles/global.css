@@ -1,0 +1,40 @@
+/*
+ * [OUTPUT]: 加载工作区终端满高/代码语义字号及局部详情表面适配。
+ * [OUTPUT]: 加载消息骨架局部布局，正文复用通讯录共享Panel reveal；header/composer保持固定，减少动态效果沿原片段。
+ * [OUTPUT]: 加载 transitions-dev Card resize 原版与左右分栏/标题区布局适配。
+ * [OUTPUT]: 加载 Craft Scenic 原版背景/遮罩/玻璃/边框及 BOAI 选择器适配。
+ * [OUTPUT]: 加载共享 Tabs 的 transitions-dev 原版滑动片段后由 skin.css 适配 BOAI；加载个人资料分享点阵生成原版样式和 Typeset。
+ * [OUTPUT]: 加载设置分类内容的 panel reveal 原版片段及局部距离适配。
+ * [INPUT]: Tailwind、视觉 token、桌面布局、Markdown/Shiki 排版、群聊与页面样式。
+ * [OUTPUT]: 加载个人资料和本人头像布局；加载 Prompt Bar 真实成员/命令浮层；技能图标浮层与列表详情样式入口；唯一全局样式入口，加载独立 Shiki 明暗高亮；基础组件 Soft 样式覆盖旧页面外观，保留布局工具类，统一禁用 ring/outline，保留表面阴影，输入/选择焦点和校验边缘由 skin.css 统一。
+ * [POS]: 由 renderer/main.tsx 加载。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ */
+@layer theme, base, legacy, components, utilities;
+@import './tailwind.css';
+@import './colors.css';
+@import './craft-scenic/scenic.css';
+@import './legacy.css' layer(legacy);
+@import './typeset.css' layer(legacy);
+@import './pages.css' layer(components);
+@import '../pages/settings/settings-transition.css' layer(components);
+@import './skills.css' layer(components);
+@import './shiki.css' layer(components);
+@import './shadcn-typeset.css';
+@import '../components/ui/tabs-motion.css' layer(components);
+@import '../components/ui/skin.css' layer(components);
+@import '../components/common/panel-resize.css' layer(components);
+@import './group-chat.css' layer(components);
+@import '../pages/conversations/chat-transitions.css' layer(components);
+@import './prompt-bar.css' layer(components);
+@import '../pages/settings/generation/ui-generation.css' layer(components);
+@import './profile.css' layer(components);
+@import './workspace-terminal.css' layer(components);
+
+/* Disable focus rings globally, including Base UI portals; keep the Soft surface shadows. */
+*, *::before, *::after {
+  outline:none !important;
+  --tw-ring-shadow:0 0 transparent !important;
+  --tw-ring-offset-shadow:0 0 transparent !important;
+  --tw-inset-ring-shadow:0 0 transparent !important;
+}

@@ -8,9 +8,9 @@
 import { act, createElement as h } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import type { ConversationDetail, Message } from '../src/shared/domain'
-import type { ComposerReference } from '../src/shared/domain/composer-references'
-import { MaterialMarkdown } from '../src/renderer/pages/conversations/-components/material-citations'
+import type { ConversationDetail, Message } from '../packages/shared/src/domain'
+import type { ComposerReference } from '../packages/shared/src/domain/composer-references'
+import { MaterialMarkdown } from '../apps/electron/src/renderer/pages/conversations/-components/material-citations'
 
 let root: Root, host: HTMLDivElement
 const skill: ComposerReference = { kind: 'skill', id: 'travel-id', agentId: 'bobo', name: 'boai-travel', configVersion: 1 }

@@ -10,7 +10,7 @@ import {
   boundParsedFileDiffForMainThread,
   measureParsedFileDiffComplexity,
   stripParsedFileDiffFullText,
-} from '../../src/renderer/components/common/lody/code-collab-diff-metadata-bounds';
+} from '../../apps/electron/src/renderer/components/common/lody/code-collab-diff-metadata-bounds';
 
 describe('Code Collab parsed diff metadata bounds', () => {
   it('strips full old/new file lines before returning parsed diff metadata to the main thread', () => {

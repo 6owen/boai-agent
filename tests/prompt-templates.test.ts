@@ -10,11 +10,11 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { listPromptTemplates, savePromptTemplate, removePromptTemplate } from '../src/runtime/modules/resources/prompt-templates'
-import { AppService } from '../src/runtime/service'
-import { readPromptCollections, updatePromptCollections } from '../src/runtime/modules/resources/prompt-collections'
-import type { PromptCollectionAction } from '../src/shared/domain/prompt-templates'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { listPromptTemplates, savePromptTemplate, removePromptTemplate } from '../packages/runtime/src/modules/resources/prompt-templates'
+import { AppService } from '../packages/runtime/src/service'
+import { readPromptCollections, updatePromptCollections } from '../packages/runtime/src/modules/resources/prompt-collections'
+import type { PromptCollectionAction } from '../packages/shared/src/domain/prompt-templates'
 
 const cleanup: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const fn of cleanup.splice(0).reverse()) await fn() })

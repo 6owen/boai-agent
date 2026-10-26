@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync, realpathSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { scanLocalConfigs, readScannedApiKeyConfig } from '../src/main/local-configs/local-config-scan'
+import { scanLocalConfigs, readScannedApiKeyConfig } from '../apps/electron/src/main/local-configs/local-config-scan'
 
 const dirs: string[] = []
 afterEach(() => dirs.splice(0).forEach(dir => rmSync(dir, { recursive: true, force: true })))

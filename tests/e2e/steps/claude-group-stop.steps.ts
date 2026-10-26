@@ -15,8 +15,8 @@ import { test } from './claude-employee.steps'
 import { crashAutomationRuntime, runtimeChildProcessIds } from '../support/automation-recovery'
 import { systemKeychainLaunch } from '../support/saved-model'
 import { archiveNativeFinalReview } from '../support/native-final-review'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
-import type { AgentRun, ArtifactVersion, BudgetModelCall, WorkBudget, WorkItem } from '../../../src/shared/domain'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
+import type { AgentRun, ArtifactVersion, BudgetModelCall, WorkBudget, WorkItem } from '../../../packages/shared/src/domain'
 
 const { Then } = createBdd(test)
 async function processStarts(pids: number[]) {

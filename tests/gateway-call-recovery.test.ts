@@ -8,11 +8,11 @@ import { fork } from 'node:child_process'
 import { mkdir, mkdtemp, rm } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
-import { build } from 'esbuild'
+import { buildWorkspace as build } from '../scripts/workspace-packages.mjs'
 import { expect, test } from 'vitest'
-import { AppService } from '../src/runtime/service'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import type { GatewayModelCall } from '../src/shared/domain/model-gateway'
+import { AppService } from '../packages/runtime/src/service'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import type { GatewayModelCall } from '../packages/shared/src/domain/model-gateway'
 
 interface Call { id: string; status: string; finishedAt?: string; outcome?: string; modelCall: GatewayModelCall }
 test('SIGKILL leaves standalone calls unknown, keeps their identities and never replays them on restart or restore', async () => {

@@ -7,9 +7,9 @@
  */
 import { mkdir, realpath, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import type { AutomationOccurrence, Conversation, Message } from '../../../src/shared/domain'
-import type { ConversationMaterial } from '../../../src/shared/domain/materials'
-import { ProductStore } from '../../../src/runtime/adapters/storage/product-store'
+import type { AutomationOccurrence, Conversation, Message } from '../../../packages/shared/src/domain'
+import type { ConversationMaterial } from '../../../packages/shared/src/domain/materials'
+import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
 import type { Desktop } from './desktop'
 import { nextMaterialDialog, prepareMaterialsDesktop } from './materials'
 

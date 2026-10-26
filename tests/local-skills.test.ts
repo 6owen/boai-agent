@@ -8,8 +8,8 @@ import { afterEach, expect, test } from 'vitest'
 import { mkdtemp, mkdir, writeFile, symlink, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { AppService } from '../src/runtime/service'
-import type { Method, Methods } from '../src/shared/ipc'
+import { AppService } from '../packages/runtime/src/service'
+import type { Method, Methods } from '../packages/shared/src/ipc'
 const roots: string[] = [], services: AppService[] = []
 afterEach(async () => { for (const service of services.splice(0)) await service.close(); for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }) })
 async function setup() {

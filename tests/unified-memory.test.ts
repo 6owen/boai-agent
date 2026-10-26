@@ -10,10 +10,10 @@ import { afterEach, expect, test, vi } from 'vitest'
 import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { AppService } from '../src/runtime/service'
-import type { AgentEngine, EngineContext } from '../src/runtime/contracts'
-import type { Connection, Conversation, ConversationDetail, DigitalAgent, MemoryCandidate, MemoryView, Snapshot, ParticipationDecision } from '../src/shared/domain'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
+import { AppService } from '../packages/runtime/src/service'
+import type { AgentEngine, EngineContext } from '../packages/runtime/src/contracts'
+import type { Connection, Conversation, ConversationDetail, DigitalAgent, MemoryCandidate, MemoryView, Snapshot, ParticipationDecision } from '../packages/shared/src/domain'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
 const cleanup: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const fn of cleanup.splice(0).reverse()) await fn() })
 class Model implements AgentEngine {
@@ -102,7 +102,7 @@ test.each([false, true])('UM report actual new input source cleared=%s fences la
   if (!related) {
     const store = (service as unknown as { store: ProductStore }).store
     const snapshot = (await store.load<{ id: string; memoryRecall: MemoryView }>('snapshots')).find(value => value.id === execution!.runId)!
-    const observation = (await store.load<import('../src/shared/domain/memory').MemoryObservation>('memoryObservations')).find(value => value.id === execution!.runId)!
+    const observation = (await store.load<import('../packages/shared/src/domain/memory').MemoryObservation>('memoryObservations')).find(value => value.id === execution!.runId)!
     expect(snapshot.memoryRecall.recall?.inputMessageIds).toContain(b.id)
     expect(observation.sourceMessageIds).toContain(b.id)
     // Clearing C later must also invalidate the published re-report, through B's actual run snapshot.

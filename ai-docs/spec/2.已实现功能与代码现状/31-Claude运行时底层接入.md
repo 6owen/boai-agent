@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [OUTPUT]: §114组织goal/委派保留必要精确约束，文件提示尊重指定路径；224模块/类型/源码构建通过，真实私有组织及普通判断两例通过，原两产品失败/新包/原生关闭/完整目标未完成。
 [OUTPUT]: §113策略11真实Claude活动核心源码三场1通过2未到保存；正常保存/两业务重启零重放，路径约束与普通工作分类缺口及原摘要更正保留，77资源/85引用，新包/原生关闭/完整目标未完成。
 [OUTPUT]: §112私有格式器有序选择/布尔回执已接生产Claude策略11，三组红绿与单次208模块、类型/源码构建通过；复杂真实两阶段仅对照，旧根因/成本及活动保存/新包/完整目标仍未完成。
@@ -41,18 +42,18 @@
 
 | 代码位置 | 当前实际职责 |
 | --- | --- |
-| [policy.ts](../../../src/runtime/adapters/claude/policy.ts) | 限定当前已验证的2.1.214；最小环境、明确API端点/密钥和模型、独立配置目录；禁用原生执行工具、技能、隐式MCP发现、自动压缩和中断后自动续做；私有阶段仅允许格式器。 |
-| [input.ts](../../../src/runtime/adapters/claude/input.ts) | 四类PNG/JPEG/GIF/WebP以stream-json原生媒体传入；严格base64/原件MIME、单件20MiB及总原件60MiB，文字2MiB，原输出8MiB/单事件2MiB门禁不放宽。超限/不支持格式拒绝整次请求，不静默省略图片。 |
-| [process.ts](../../../src/runtime/adapters/claude/process.ts) | 参数数组和独立进程组启动；有界UTF-8事件/输出、串行回调、超时及取消；复用现有POSIX进程组退出核对，资源实际结束后返回；每次两流原始字节仅作诊断，原门禁不变。 |
-| [turn.ts](../../../src/runtime/adapters/claude/turn.ts) | 不带凭据的版本检查、运行前程序hash核验；原生session创建/续聊、当前session事件核对、聊天转发公开文本、明确成功终态和已知用量；私有格式器要求调用ID/成功回执/structured_output三者一致，不公开前缀；固定start/delta子类型桶统计进入处理，不代表回调完成或内部模型步骤。 |
-| [tools.ts](../../../src/runtime/adapters/claude/tools.ts) | 每阶段私有回环MCP，仅暴露本次明确目录；核对原生调用ID/工具名/参数，同ID重传复用原回执；关闭先等待已执行工具，再释放SDK传输。 |
-| [native-task.ts](../../../src/runtime/adapters/native-task.ts) | 提取Codex已有宿主工具封装供两类运行时共用；复用原文件、审批、技能来源与副作用边界，不添加父模型或第二套业务状态。 |
-| [native-employee.ts](../../../src/runtime/adapters/native-employee.ts) | Codex与Claude共用判断、聊天、任务、汇报和记忆流程；私有格式器使用draft-07，固定版本的合成提醒有界且仅留在私有阶段，最终须匹配工具回执；Codex专用适配器保持原JSON提示词/宿主校验，不将该格式器schema作为原生strict输出参数；原提示词JSON与业务Zod检查保持；汇报再次核对交付证据和等待语义。 |
-| [native-sessions.ts](../../../src/runtime/adapters/native-sessions.ts) | 分别使用codexSessions/codexRuntime与claudeSessions/claudeRuntime；复用来源、公开答复hash和迟到更新的事务核对。Codex要求真实turnId，Claude要求实际完成的宿主runId，不将其伪装为原生turnId。 |
-| [native-trace.ts](../../../src/runtime/adapters/native-trace.ts) | 共同外部阶段观测；保留各自运行时名称和原归属，观测失败不改变或重发业务。 |
-| [claude/engine.ts](../../../src/runtime/adapters/claude/engine.ts)、[provider.ts](../../../src/runtime/adapters/claude/provider.ts) | 内部ClaudeEmployeeEngine核对员工/配置/连接一致性，使用明确API来源，结算完整已知用量；Anthropic来源和已知DeepSeek兼容端点明确映射，其他来源拒绝。策略v3接入当前获准图片，连续聊天仅追加新消息的图片，任务使用当前授权上下文；私有判断/记忆只传来源元信息。 |
+| [policy.ts](../../../packages/runtime/src/adapters/claude/policy.ts) | 限定当前已验证的2.1.214；最小环境、明确API端点/密钥和模型、独立配置目录；禁用原生执行工具、技能、隐式MCP发现、自动压缩和中断后自动续做；私有阶段仅允许格式器。 |
+| [input.ts](../../../packages/runtime/src/adapters/claude/input.ts) | 四类PNG/JPEG/GIF/WebP以stream-json原生媒体传入；严格base64/原件MIME、单件20MiB及总原件60MiB，文字2MiB，原输出8MiB/单事件2MiB门禁不放宽。超限/不支持格式拒绝整次请求，不静默省略图片。 |
+| [process.ts](../../../packages/runtime/src/adapters/claude/process.ts) | 参数数组和独立进程组启动；有界UTF-8事件/输出、串行回调、超时及取消；复用现有POSIX进程组退出核对，资源实际结束后返回；每次两流原始字节仅作诊断，原门禁不变。 |
+| [turn.ts](../../../packages/runtime/src/adapters/claude/turn.ts) | 不带凭据的版本检查、运行前程序hash核验；原生session创建/续聊、当前session事件核对、聊天转发公开文本、明确成功终态和已知用量；私有格式器要求调用ID/成功回执/structured_output三者一致，不公开前缀；固定start/delta子类型桶统计进入处理，不代表回调完成或内部模型步骤。 |
+| [tools.ts](../../../packages/runtime/src/adapters/claude/tools.ts) | 每阶段私有回环MCP，仅暴露本次明确目录；核对原生调用ID/工具名/参数，同ID重传复用原回执；关闭先等待已执行工具，再释放SDK传输。 |
+| [native-task.ts](../../../packages/runtime/src/adapters/native-task.ts) | 提取Codex已有宿主工具封装供两类运行时共用；复用原文件、审批、技能来源与副作用边界，不添加父模型或第二套业务状态。 |
+| [native-employee.ts](../../../packages/runtime/src/adapters/native-employee.ts) | Codex与Claude共用判断、聊天、任务、汇报和记忆流程；私有格式器使用draft-07，固定版本的合成提醒有界且仅留在私有阶段，最终须匹配工具回执；Codex专用适配器保持原JSON提示词/宿主校验，不将该格式器schema作为原生strict输出参数；原提示词JSON与业务Zod检查保持；汇报再次核对交付证据和等待语义。 |
+| [native-sessions.ts](../../../packages/runtime/src/adapters/native-sessions.ts) | 分别使用codexSessions/codexRuntime与claudeSessions/claudeRuntime；复用来源、公开答复hash和迟到更新的事务核对。Codex要求真实turnId，Claude要求实际完成的宿主runId，不将其伪装为原生turnId。 |
+| [native-trace.ts](../../../packages/runtime/src/adapters/native-trace.ts) | 共同外部阶段观测；保留各自运行时名称和原归属，观测失败不改变或重发业务。 |
+| [claude/engine.ts](../../../packages/runtime/src/adapters/claude/engine.ts)、[provider.ts](../../../packages/runtime/src/adapters/claude/provider.ts) | 内部ClaudeEmployeeEngine核对员工/配置/连接一致性，使用明确API来源，结算完整已知用量；Anthropic来源和已知DeepSeek兼容端点明确映射，其他来源拒绝。策略v3接入当前获准图片，连续聊天仅追加新消息的图片，任务使用当前授权上下文；私有判断/记忆只传来源元信息。 |
 | [claude-employee.test.ts](../../../tests/claude-employee.test.ts) | 私有结果/来源门禁、会话续用、实际原文件工具与无工具重新汇报；格式器缺失/身份错误/结果错配不得作为完成，业务无效的等待与交付组合拒绝。 |
-| [program.ts](../../../src/runtime/modules/backends/program.ts) | 保留普通发现的200MiB限制；Claude专用入口显式使用512MiB上限，以支持当前约236MiB原生程序，不放宽其他驱动。 |
+| [program.ts](../../../packages/runtime/src/modules/backends/program.ts) | 保留普通发现的200MiB限制；Claude专用入口显式使用512MiB上限，以支持当前约236MiB原生程序，不放宽其他驱动。 |
 | [claude-runtime.test.ts](../../../tests/claude-runtime.test.ts) | 使用真实协议进程检验身份/终态、私有内容不公开、未知用量不填零、取消/超时及无输出管道子进程的实际退出。 |
 | [claude-tools.test.ts](../../../tests/claude-tools.test.ts) | 实际MCP客户端检验身份/参数一致、重传只执行一次、断连接不重放、来源/凭据门禁、关闭等待真实工具退出及外改配置保留。 |
 
@@ -223,9 +224,9 @@ Claude策略v9在原v8判断/记忆/明确组织Work低档基础上，仅为`pha
 
 ## 22. 私有等待汇报的显式思考参数兼容
 
-[engine.ts](../../../src/runtime/adapters/claude/engine.ts)将策略递增至10，仅在官方DeepSeek Anthropic端点、deepseek-v4-pro、report阶段、当前Work及非空pendingWorkWait同时成立时传thinking disabled；原判断/记忆/组织low、普通交付/用户问题/旧依赖默认保持。实际配置在原profileModelCalls记录为off，不把它解释为额外模型调用。
+[engine.ts](../../../packages/runtime/src/adapters/claude/engine.ts)将策略递增至10，仅在官方DeepSeek Anthropic端点、deepseek-v4-pro、report阶段、当前Work及非空pendingWorkWait同时成立时传thinking disabled；原判断/记忆/组织low、普通交付/用户问题/旧依赖默认保持。实际配置在原profileModelCalls记录为off，不把它解释为额外模型调用。
 
-[turn.ts](../../../src/runtime/adapters/claude/turn.ts)在原程序/hash/版本及私有无业务工具隔离核验后创建[thinking-bridge.ts](../../../src/runtime/adapters/claude/thinking-bridge.ts)。固定CLI的设置同时关闭其本地思考构造，但仅省略字段仍不足；桥按实际Messages报文明确disabled并删除不适用effort。原模型、消息、系统说明、StructuredOutput及响应字节保持，真实阶段仍经过原格式回执、用量和宿主报告证据检查。该桥只处理当前私有提供方参数，不创建业务工具、Work或发布权限。
+[turn.ts](../../../packages/runtime/src/adapters/claude/turn.ts)在原程序/hash/版本及私有无业务工具隔离核验后创建[thinking-bridge.ts](../../../packages/runtime/src/adapters/claude/thinking-bridge.ts)。固定CLI的设置同时关闭其本地思考构造，但仅省略字段仍不足；桥按实际Messages报文明确disabled并删除不适用effort。原模型、消息、系统说明、StructuredOutput及响应字节保持，真实阶段仍经过原格式回执、用量和宿主报告证据检查。该桥只处理当前私有提供方参数，不创建业务工具、Work或发布权限。
 
 桥持有原明确API凭据，CLI只取得32字节随机nonce和本轮127.0.0.1端点；Host/Origin/密钥与消息路由核验，有界正文、固定模型、只允许格式器，其他预检有界JSON且不转上游。使用项目已有Node HTTP传输范式，桥自身不重试、不跟随重定向；原信号、断开和close核对实际上游请求关闭。媒体、公开、其他模型及同时effort在启动前拒绝，原CLI私有有界格式纠正和内部未知步骤保持。
 
@@ -236,15 +237,15 @@ Claude策略v9在原v8判断/记忆/明确组织Work低档基础上，仅为`pha
 
 ## 23. 当前请求执行权与原工作记忆来源
 
-共同[phase-instructions.ts](../../../src/runtime/modules/employees/phase-instructions.ts)明确：当前消息的执行授权与历史任务/记忆分开。仅更新进度、保持分工且无需新任务或单独回复时选择pass；不能复制旧目标新建根/子工作、重复委派或认领有wakeId的定向接续。真正独立的新执行请求仍选择task，由原宿主和WorkRepository核验；没有增加文本相似度判断、静默修改结构化结果或移除定向认领门禁。
+共同[phase-instructions.ts](../../../packages/runtime/src/modules/employees/phase-instructions.ts)明确：当前消息的执行授权与历史任务/记忆分开。仅更新进度、保持分工且无需新任务或单独回复时选择pass；不能复制旧目标新建根/子工作、重复委派或认领有wakeId的定向接续。真正独立的新执行请求仍选择task，由原宿主和WorkRepository核验；没有增加文本相似度判断、静默修改结构化结果或移除定向认领门禁。
 
-共同[memory-extraction.ts](../../../src/runtime/modules/employees/memory-extraction.ts)的memoryEvidenceMessages供私有准备与AppService提交共用。已交付且不待核对的本员工Work，在本轮完成消息中确有本人原结果时，可补入仍在当前会话有界获准窗口的精确原用户请求；最新进度成为trigger不会丢掉原偏好来源。其他历史、员工/会话、未交付或旧轮结果、缺失/窗口外来源仍拒绝。旧原请求不进入当前用户纠正白名单；现有事实去重、来源hash/epoch、撤权、原账本及绝对期限保持，维护失败不改变正式交付或重放业务。
+共同[memory-extraction.ts](../../../packages/runtime/src/modules/employees/memory-extraction.ts)的memoryEvidenceMessages供私有准备与AppService提交共用。已交付且不待核对的本员工Work，在本轮完成消息中确有本人原结果时，可补入仍在当前会话有界获准窗口的精确原用户请求；最新进度成为trigger不会丢掉原偏好来源。其他历史、员工/会话、未交付或旧轮结果、缺失/窗口外来源仍拒绝。旧原请求不进入当前用户纠正白名单；现有事实去重、来源hash/epoch、撤权、原账本及绝对期限保持，维护失败不改变正式交付或重放业务。
 
 本次仅改变私有判断/维护说明与宿主证据选择，不改变公开连续聊天的bootstrap合同，不因这项增量重置原生聊天映射。真实受控阶段、实际源码/应用包通过及失败、完整未完成范围唯一见[第13组06 §74](../13.本机Agent员工运行时/06-实施步骤与自动验收.md#74-当前请求执行权与已交付工作记忆2026-10-06)。
 
 ## 24. 私有记忆的显式思考配置
 
-[engine.ts](../../../src/runtime/adapters/claude/engine.ts)只在已验证官方DeepSeek Anthropic端点及deepseek-v4-pro组合，对memory阶段发送显式disabled；实际配置沿原profileModelCalls记录为off。当前依赖等待report的既有off边界保持。decision仍使用low，明确组织管理Work仍为low，业务任务、普通聊天、其他汇报/来源/模型沿原配置；不因有限对照把decision也改为off。
+[engine.ts](../../../packages/runtime/src/adapters/claude/engine.ts)只在已验证官方DeepSeek Anthropic端点及deepseek-v4-pro组合，对memory阶段发送显式disabled；实际配置沿原profileModelCalls记录为off。当前依赖等待report的既有off边界保持。decision仍使用low，明确组织管理Work仍为low，业务任务、普通聊天、其他汇报/来源/模型沿原配置；不因有限对照把decision也改为off。
 
 记忆仍经过共同增量准备、精确原Work来源选择、私有StructuredOutput回执和宿主提交白名单，不能执行工具、发布消息或改变原工作。原流式计量、累计预算、绝对期限及实际进程退出保持。该私有参数不改变公开bootstrap和聊天输入，策略会话指纹保持10；实际模块核对维护前后同一聊天映射与明确新消息续用，来源变更仍按原门禁重建。
 
@@ -252,9 +253,9 @@ Claude策略v9在原v8判断/记忆/明确组织Work低档基础上，仅为`pha
 
 ## 25. 宿主工具只读诊断与群失败留证
 
-[tools.ts](../../../src/runtime/adapters/claude/tools.ts)新增ClaudeToolBridgeDiagnostic：按稳定调用身份记录announcedCalls、receivedCalls、executionStarts、executionReturns、executionExits、completionConfirmations和responsePreparations，另计处理失败的failedRequests。实际接收在回环授权及有效身份后，重复请求不重复执行；执行返回和finally退出分别保存，原取消核对之后才确认完成。有界响应准备不证明CLI收到，也不取得Work/审批/成果权威。
+[tools.ts](../../../packages/runtime/src/adapters/claude/tools.ts)新增ClaudeToolBridgeDiagnostic：按稳定调用身份记录announcedCalls、receivedCalls、executionStarts、executionReturns、executionExits、completionConfirmations和responsePreparations，另计处理失败的failedRequests。实际接收在回环授权及有效身份后，重复请求不重复执行；执行返回和finally退出分别保存，原取消核对之后才确认完成。有界响应准备不证明CLI收到，也不取得Work/审批/成果权威。
 
-callState与diagnostic只读取既有Map，不调用创建身份/执行门禁；失败、取消和实际清理后仍可读。[turn.ts](../../../src/runtime/adapters/claude/turn.ts)在原生工具错误时读取unknown/announced/received/executing/exited_unconfirmed/confirmed白名单状态，仍抛出原失败；实际清理后再保存最终计数，观测失败不能改变或重放业务。新诊断不序列化调用身份、工具名称、输入、结果、原始错误或凭据；公开聊天指纹保持10。
+callState与diagnostic只读取既有Map，不调用创建身份/执行门禁；失败、取消和实际清理后仍可读。[turn.ts](../../../packages/runtime/src/adapters/claude/turn.ts)在原生工具错误时读取unknown/announced/received/executing/exited_unconfirmed/confirmed白名单状态，仍抛出原失败；实际清理后再保存最终计数，观测失败不能改变或重放业务。新诊断不序列化调用身份、工具名称、输入、结果、原始错误或凭据；公开聊天指纹保持10。
 
 [普通群BDD](../../../tests/e2e/steps/claude-group.steps.ts)的finally逐文件核对当前已登记成果hash并清理前导出，逐项失败留证后整场失败。它先于运行夹具退出，失败时其他员工可能仍活动，故只证明该快照的原件；退出后的迟到发布/最终状态仍待补齐，不据“没有导出”推断最终不存在。合成协议覆盖宿主请求前原生错误和确认写入后的原生错误，两项均失败、唯一写入且无重放；模块和真实源码/应用包结果、保留失败及完整剩余范围唯一见[第13组06 §76](../13.本机Agent员工运行时/06-实施步骤与自动验收.md#76-宿主工具诊断与当前源码及应用包复验2026-10-06)。
 

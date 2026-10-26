@@ -5,11 +5,11 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { describe, expect, it } from 'vitest'
-import { chatQuestions, inboxQuestionReceiptMatches, restoreInboxQuestionRequests, updateInboxQuestionRequests, type InboxQuestionRequest } from '../src/renderer/pages/conversations/question-state'
-import { artifactAcceptanceReceiptMatches, artifactPendingKey, artifactPendingScope, restoreArtifactPending, updateArtifactPending } from '../src/renderer/components/detail-panel/artifact-state'
-import { detailWorkspacesReducer, type DetailTarget } from '../src/renderer/components/detail-panel/tabs-state'
-import type { ArtifactAcceptanceInput, ArtifactAcceptanceReceipt } from '../src/shared/domain/artifacts'
-import type { AgentRun, ConversationDetail, Message, WorkItem } from '../src/shared/domain'
+import { chatQuestions, inboxQuestionReceiptMatches, restoreInboxQuestionRequests, updateInboxQuestionRequests, type InboxQuestionRequest } from '../apps/electron/src/renderer/pages/conversations/question-state'
+import { artifactAcceptanceReceiptMatches, artifactPendingKey, artifactPendingScope, restoreArtifactPending, updateArtifactPending } from '../apps/electron/src/renderer/components/detail-panel/artifact-state'
+import { detailWorkspacesReducer, type DetailTarget } from '../apps/electron/src/renderer/components/detail-panel/tabs-state'
+import type { ArtifactAcceptanceInput, ArtifactAcceptanceReceipt } from '../packages/shared/src/domain/artifacts'
+import type { AgentRun, ConversationDetail, Message, WorkItem } from '../packages/shared/src/domain'
 
 describe('chat questions require the actual published message and original owner', () => {
   const question = { id: 'original-question', messageId: 'problem-message', content: '请明确交付对象？', revision: 2 }

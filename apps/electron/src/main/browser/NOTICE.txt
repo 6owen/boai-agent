@@ -1,0 +1,32 @@
+Craft Agents
+Copyright 2026 Craft Docs Ltd.
+
+This product includes software developed by Craft Docs Ltd.
+https://craft.do
+
+---
+
+This project uses the Claude Agent SDK, which is subject to Anthropic's
+Commercial Terms of Service: https://www.anthropic.com/legal/commercial-terms
+
+---
+
+Third-party dependencies are listed in package.json files and are subject
+to their respective licenses.
+
+BoAI Agent migration note: Only the browser window/CDP/parser/UI source subset is migrated. The Claude Agent SDK mentioned above is not introduced as a new browser dependency. Modified source files identify their original paths and local adaptations.
+
+---
+
+DS Bot
+Copyright 2026 Fei2411 and the DS Bot contributors
+https://github.com/Fei2411/DeepSeek-Bot
+Licensed under the Apache License, Version 2.0 (see LICENSE.txt).
+
+BoAI Agent Cookie-source adaptation: cookie-sources.ts adapts the browser-profile
+enumeration, private cookie-store copy and Chromium remote-debugging-pipe approach
+from app/src/browser-sources.mjs at commit
+1bebe826f74e9a72cabafd3b80602b05af867b38. Local changes include opaque canonical
+source identities, explicit selected profile, preserved database layout, bounded
+copy/transport, cancellation/cleanup, and Firefox schema-aware attribute handling.
+The source-browser process closing/relaunching behavior is not included.

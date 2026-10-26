@@ -9,12 +9,12 @@ import { mkdtemp, realpath, mkdir, writeFile, readFile, rm } from 'node:fs/promi
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import mastraPackage from '@mastra/core/package.json' with { type: 'json' }
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { LaunchProfiles } from '../src/runtime/modules/backends/profiles'
-import { RuntimePlugins } from '../src/runtime/modules/backends/runtime-plugins'
-import { runtimeVersions } from '../src/runtime/modules/backends/versions'
-import { bundledRuntimePlugins } from '../src/shared/plugins/runtime-catalog'
-import { build } from 'esbuild'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { LaunchProfiles } from '../packages/runtime/src/modules/backends/profiles'
+import { RuntimePlugins } from '../packages/runtime/src/modules/backends/runtime-plugins'
+import { runtimeVersions } from '../packages/runtime/src/modules/backends/versions'
+import { bundledRuntimePlugins } from '../packages/shared/src/plugins/runtime-catalog'
+import { buildWorkspace as build } from '../scripts/workspace-packages.mjs'
 
 const cleanup: (() => Promise<unknown> | void)[] = []
 afterEach(async () => { for (const action of cleanup.splice(0).reverse()) await action() })
@@ -30,7 +30,7 @@ async function fixture() {
 
 it('reports the loaded application inputs rather than a later dist identity or caller mutation', async () => {
   const f = await fixture(), compiled = { version: '0.2.4-fixture', inputHash: 'a'.repeat(64) }
-  const output = await build({ stdin: { contents: "export { runtimeVersions } from './src/runtime/modules/backends/versions'", resolveDir: process.cwd() }, bundle: true, write: false, platform: 'node', format: 'esm', define: { __BOAI_APPLICATION_BUILD__: JSON.stringify(compiled) } })
+  const output = await build({ stdin: { contents: "export { runtimeVersions } from './packages/runtime/src/modules/backends/versions'", resolveDir: process.cwd() }, bundle: true, write: false, platform: 'node', format: 'esm', define: { __BOAI_APPLICATION_BUILD__: JSON.stringify(compiled) } })
   const loaded = await import(`data:text/javascript;base64,${Buffer.from(output.outputFiles[0].contents).toString('base64')}`)
   await mkdir(join(f.root, 'dist'))
   await writeFile(join(f.root, 'dist/build-identity.json'), JSON.stringify({ inputHash: 'b'.repeat(64) }))

@@ -10,8 +10,8 @@ import { once } from 'node:events'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { ProductStore } from '../src/runtime/adapters/storage/product-store'
-import { UserMemoryProvider } from '../src/runtime/modules/memory/user-memory-provider'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { UserMemoryProvider } from '../packages/runtime/src/modules/memory/user-memory-provider'
 
 const cleanup: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const action of cleanup.splice(0).reverse()) await action() })

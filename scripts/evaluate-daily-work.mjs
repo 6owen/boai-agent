@@ -1,10 +1,11 @@
 /*
+ * [OUTPUT]: Workspace源码路径迁至apps/packages，保留既有输出与业务合同。
  * [INPUT]: Explicit saved connection/data path, reviewed Mock-v1 files and original evaluation host.
  * [OUTPUT]: Zero-call frozen preparation and at most two isolated actual attempts, sharing 60 requests/20 minutes; no daily data mutation.
  * [POS]: Daily-work-v1 manual acceptance controller; no automatic hillclimb or human/judge pass labels.
  * [PROTOCOL]: Update Header and scripts/.folder.md on change.
  */
-import { build } from 'esbuild'
+import { buildWorkspace as build } from './workspace-packages.mjs'
 import { spawn, execFileSync } from 'node:child_process'
 import { readFile, writeFile, mkdir, readdir, access } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
@@ -52,7 +53,7 @@ try { started = JSON.parse(await readFile(join(root, 'started.json'), 'utf8')) }
 if (Date.now() >= started.deadlineAt) throw Error('Original shared experiment window expired; no automatic budget reset')
 const output = join(root, mode); await mkdir(output, { mode: 0o700 })
 const hashes = {}
-for (const directory of ['src/runtime', 'src/shared', 'tests/evaluation']) for (const member of (await readdir(directory, { recursive: true })).filter(f => /\.(ts|tsx)$/.test(f)).sort()) { const path = join(directory, member); hashes[path] = sha(await readFile(path)) }
+for (const directory of ['packages/runtime/src', 'packages/shared/src', 'packages/transport/src', 'packages/runtime-plugin-sdk/src', 'packages/runtime-plugins/src', 'tests/evaluation']) for (const member of (await readdir(directory, { recursive: true })).filter(f => /\.(ts|tsx)$/.test(f)).sort()) { const path = join(directory, member); hashes[path] = sha(await readFile(path)) }
 for (const path of ['pnpm-lock.yaml', 'scripts/evaluate-daily-work.mjs']) hashes[path] = sha(await readFile(path))
 const worker = join(output, 'worker.mjs'), host = join(output, 'host.cjs')
 await build({ stdin: { contents: "import {runDailyWorkEvaluation} from './tests/evaluation/daily-work.ts';process.once('disconnect',()=>process.exit(1));process.once('message',input=>runDailyWorkEvaluation(input).then(()=>process.exit(process.exitCode??0),error=>{process.stderr.write(String(error.message)+'\\n');process.exit(1)}));", resolveDir: process.cwd() }, outfile: worker, bundle: true, platform: 'node', format: 'esm', packages: 'external', target: 'node22' })

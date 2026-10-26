@@ -1,0 +1,452 @@
+{
+  "name": "@boai/shared",
+  "version": "0.2.4",
+  "private": true,
+  "type": "module",
+  "description": "BOAI domain contracts and explicit platform helpers",
+  "exports": {
+    ".": {
+      "types": "./src/domain/index.ts",
+      "development": "./src/domain/index.ts",
+      "default": "./src/domain/index.ts"
+    },
+    "./appearance": {
+      "types": "./src/appearance/index.ts",
+      "development": "./src/appearance/index.ts",
+      "default": "./src/appearance/index.ts"
+    },
+    "./appearance/app-icons": {
+      "types": "./src/appearance/app-icons.ts",
+      "development": "./src/appearance/app-icons.ts",
+      "default": "./src/appearance/app-icons.ts"
+    },
+    "./appearance/schema": {
+      "types": "./src/appearance/schema.ts",
+      "development": "./src/appearance/schema.ts",
+      "default": "./src/appearance/schema.ts"
+    },
+    "./cli/codec": {
+      "types": "./src/cli/codec.ts",
+      "development": "./src/cli/codec.ts",
+      "default": "./src/cli/codec.ts"
+    },
+    "./cli/employee-environment": {
+      "types": "./src/cli/employee-environment.ts",
+      "development": "./src/cli/employee-environment.ts",
+      "default": "./src/cli/employee-environment.ts"
+    },
+    "./cli/protocol": {
+      "types": "./src/cli/protocol.ts",
+      "development": "./src/cli/protocol.ts",
+      "default": "./src/cli/protocol.ts"
+    },
+    "./cli/run-access": {
+      "types": "./src/cli/run-access.ts",
+      "development": "./src/cli/run-access.ts",
+      "default": "./src/cli/run-access.ts"
+    },
+    "./domain": {
+      "types": "./src/domain/index.ts",
+      "development": "./src/domain/index.ts",
+      "default": "./src/domain/index.ts"
+    },
+    "./domain/agent-presets": {
+      "types": "./src/domain/agent-presets.ts",
+      "development": "./src/domain/agent-presets.ts",
+      "default": "./src/domain/agent-presets.ts"
+    },
+    "./domain/agent-profile": {
+      "types": "./src/domain/agent-profile.ts",
+      "development": "./src/domain/agent-profile.ts",
+      "default": "./src/domain/agent-profile.ts"
+    },
+    "./domain/agent-prompts": {
+      "types": "./src/domain/agent-prompts.ts",
+      "development": "./src/domain/agent-prompts.ts",
+      "default": "./src/domain/agent-prompts.ts"
+    },
+    "./domain/application-protocol": {
+      "types": "./src/domain/application-protocol.ts",
+      "development": "./src/domain/application-protocol.ts",
+      "default": "./src/domain/application-protocol.ts"
+    },
+    "./domain/artifacts": {
+      "types": "./src/domain/artifacts.ts",
+      "development": "./src/domain/artifacts.ts",
+      "default": "./src/domain/artifacts.ts"
+    },
+    "./domain/automations": {
+      "types": "./src/domain/automations.ts",
+      "development": "./src/domain/automations.ts",
+      "default": "./src/domain/automations.ts"
+    },
+    "./domain/avatars": {
+      "types": "./src/domain/avatars.ts",
+      "development": "./src/domain/avatars.ts",
+      "default": "./src/domain/avatars.ts"
+    },
+    "./domain/backends": {
+      "types": "./src/domain/backends.ts",
+      "development": "./src/domain/backends.ts",
+      "default": "./src/domain/backends.ts"
+    },
+    "./domain/bobo-collaboration": {
+      "types": "./src/domain/bobo-collaboration.ts",
+      "development": "./src/domain/bobo-collaboration.ts",
+      "default": "./src/domain/bobo-collaboration.ts"
+    },
+    "./domain/bobo-persona": {
+      "types": "./src/domain/bobo-persona.ts",
+      "development": "./src/domain/bobo-persona.ts",
+      "default": "./src/domain/bobo-persona.ts"
+    },
+    "./domain/catalog-management": {
+      "types": "./src/domain/catalog-management.ts",
+      "development": "./src/domain/catalog-management.ts",
+      "default": "./src/domain/catalog-management.ts"
+    },
+    "./domain/channels": {
+      "types": "./src/domain/channels.ts",
+      "development": "./src/domain/channels.ts",
+      "default": "./src/domain/channels.ts"
+    },
+    "./domain/claude-provider": {
+      "types": "./src/domain/claude-provider.ts",
+      "development": "./src/domain/claude-provider.ts",
+      "default": "./src/domain/claude-provider.ts"
+    },
+    "./domain/codex-provider": {
+      "types": "./src/domain/codex-provider.ts",
+      "development": "./src/domain/codex-provider.ts",
+      "default": "./src/domain/codex-provider.ts"
+    },
+    "./domain/composer-references": {
+      "types": "./src/domain/composer-references.ts",
+      "development": "./src/domain/composer-references.ts",
+      "default": "./src/domain/composer-references.ts"
+    },
+    "./domain/contact-list": {
+      "types": "./src/domain/contact-list.ts",
+      "development": "./src/domain/contact-list.ts",
+      "default": "./src/domain/contact-list.ts"
+    },
+    "./domain/conversation-list": {
+      "types": "./src/domain/conversation-list.ts",
+      "development": "./src/domain/conversation-list.ts",
+      "default": "./src/domain/conversation-list.ts"
+    },
+    "./domain/core-agent": {
+      "types": "./src/domain/core-agent.ts",
+      "development": "./src/domain/core-agent.ts",
+      "default": "./src/domain/core-agent.ts"
+    },
+    "./domain/desktop-activity": {
+      "types": "./src/domain/desktop-activity.ts",
+      "development": "./src/domain/desktop-activity.ts",
+      "default": "./src/domain/desktop-activity.ts"
+    },
+    "./domain/directory-access": {
+      "types": "./src/domain/directory-access.ts",
+      "development": "./src/domain/directory-access.ts",
+      "default": "./src/domain/directory-access.ts"
+    },
+    "./domain/employee-executions": {
+      "types": "./src/domain/employee-executions.ts",
+      "development": "./src/domain/employee-executions.ts",
+      "default": "./src/domain/employee-executions.ts"
+    },
+    "./domain/execution": {
+      "types": "./src/domain/execution.ts",
+      "development": "./src/domain/execution.ts",
+      "default": "./src/domain/execution.ts"
+    },
+    "./domain/file-edit": {
+      "types": "./src/domain/file-edit.ts",
+      "development": "./src/domain/file-edit.ts",
+      "default": "./src/domain/file-edit.ts"
+    },
+    "./domain/file-preview": {
+      "types": "./src/domain/file-preview.ts",
+      "development": "./src/domain/file-preview.ts",
+      "default": "./src/domain/file-preview.ts"
+    },
+    "./domain/gateway-import": {
+      "types": "./src/domain/gateway-import.ts",
+      "development": "./src/domain/gateway-import.ts",
+      "default": "./src/domain/gateway-import.ts"
+    },
+    "./domain/global-memory": {
+      "types": "./src/domain/global-memory.ts",
+      "development": "./src/domain/global-memory.ts",
+      "default": "./src/domain/global-memory.ts"
+    },
+    "./domain/group-coordination": {
+      "types": "./src/domain/group-coordination.ts",
+      "development": "./src/domain/group-coordination.ts",
+      "default": "./src/domain/group-coordination.ts"
+    },
+    "./domain/inbox": {
+      "types": "./src/domain/inbox.ts",
+      "development": "./src/domain/inbox.ts",
+      "default": "./src/domain/inbox.ts"
+    },
+    "./domain/knowledge": {
+      "types": "./src/domain/knowledge.ts",
+      "development": "./src/domain/knowledge.ts",
+      "default": "./src/domain/knowledge.ts"
+    },
+    "./domain/local-configs": {
+      "types": "./src/domain/local-configs.ts",
+      "development": "./src/domain/local-configs.ts",
+      "default": "./src/domain/local-configs.ts"
+    },
+    "./domain/management-skills": {
+      "types": "./src/domain/management-skills.ts",
+      "development": "./src/domain/management-skills.ts",
+      "default": "./src/domain/management-skills.ts"
+    },
+    "./domain/material-upload": {
+      "types": "./src/domain/material-upload.ts",
+      "development": "./src/domain/material-upload.ts",
+      "default": "./src/domain/material-upload.ts"
+    },
+    "./domain/materials": {
+      "types": "./src/domain/materials.ts",
+      "development": "./src/domain/materials.ts",
+      "default": "./src/domain/materials.ts"
+    },
+    "./domain/memory": {
+      "types": "./src/domain/memory.ts",
+      "development": "./src/domain/memory.ts",
+      "default": "./src/domain/memory.ts"
+    },
+    "./domain/message-execution": {
+      "types": "./src/domain/message-execution.ts",
+      "development": "./src/domain/message-execution.ts",
+      "default": "./src/domain/message-execution.ts"
+    },
+    "./domain/message-reactions": {
+      "types": "./src/domain/message-reactions.ts",
+      "development": "./src/domain/message-reactions.ts",
+      "default": "./src/domain/message-reactions.ts"
+    },
+    "./domain/model-gateway": {
+      "types": "./src/domain/model-gateway.ts",
+      "development": "./src/domain/model-gateway.ts",
+      "default": "./src/domain/model-gateway.ts"
+    },
+    "./domain/model-id": {
+      "types": "./src/domain/model-id.ts",
+      "development": "./src/domain/model-id.ts",
+      "default": "./src/domain/model-id.ts"
+    },
+    "./domain/model-preferences": {
+      "types": "./src/domain/model-preferences.ts",
+      "development": "./src/domain/model-preferences.ts",
+      "default": "./src/domain/model-preferences.ts"
+    },
+    "./domain/model-source": {
+      "types": "./src/domain/model-source.ts",
+      "development": "./src/domain/model-source.ts",
+      "default": "./src/domain/model-source.ts"
+    },
+    "./domain/plugin-model-source": {
+      "types": "./src/domain/plugin-model-source.ts",
+      "development": "./src/domain/plugin-model-source.ts",
+      "default": "./src/domain/plugin-model-source.ts"
+    },
+    "./domain/profile": {
+      "types": "./src/domain/profile.ts",
+      "development": "./src/domain/profile.ts",
+      "default": "./src/domain/profile.ts"
+    },
+    "./domain/prompt-templates": {
+      "types": "./src/domain/prompt-templates.ts",
+      "development": "./src/domain/prompt-templates.ts",
+      "default": "./src/domain/prompt-templates.ts"
+    },
+    "./domain/reading": {
+      "types": "./src/domain/reading.ts",
+      "development": "./src/domain/reading.ts",
+      "default": "./src/domain/reading.ts"
+    },
+    "./domain/references": {
+      "types": "./src/domain/references.ts",
+      "development": "./src/domain/references.ts",
+      "default": "./src/domain/references.ts"
+    },
+    "./domain/run-cancellation": {
+      "types": "./src/domain/run-cancellation.ts",
+      "development": "./src/domain/run-cancellation.ts",
+      "default": "./src/domain/run-cancellation.ts"
+    },
+    "./domain/runtime-versions": {
+      "types": "./src/domain/runtime-versions.ts",
+      "development": "./src/domain/runtime-versions.ts",
+      "default": "./src/domain/runtime-versions.ts"
+    },
+    "./domain/session-operation": {
+      "types": "./src/domain/session-operation.ts",
+      "development": "./src/domain/session-operation.ts",
+      "default": "./src/domain/session-operation.ts"
+    },
+    "./domain/skill-marketplace": {
+      "types": "./src/domain/skill-marketplace.ts",
+      "development": "./src/domain/skill-marketplace.ts",
+      "default": "./src/domain/skill-marketplace.ts"
+    },
+    "./domain/skills": {
+      "types": "./src/domain/skills.ts",
+      "development": "./src/domain/skills.ts",
+      "default": "./src/domain/skills.ts"
+    },
+    "./domain/sources": {
+      "types": "./src/domain/sources.ts",
+      "development": "./src/domain/sources.ts",
+      "default": "./src/domain/sources.ts"
+    },
+    "./domain/team-creation": {
+      "types": "./src/domain/team-creation.ts",
+      "development": "./src/domain/team-creation.ts",
+      "default": "./src/domain/team-creation.ts"
+    },
+    "./domain/traces": {
+      "types": "./src/domain/traces.ts",
+      "development": "./src/domain/traces.ts",
+      "default": "./src/domain/traces.ts"
+    },
+    "./domain/tracked-tasks": {
+      "types": "./src/domain/tracked-tasks.ts",
+      "development": "./src/domain/tracked-tasks.ts",
+      "default": "./src/domain/tracked-tasks.ts"
+    },
+    "./domain/web-search": {
+      "types": "./src/domain/web-search.ts",
+      "development": "./src/domain/web-search.ts",
+      "default": "./src/domain/web-search.ts"
+    },
+    "./domain/work": {
+      "types": "./src/domain/work.ts",
+      "development": "./src/domain/work.ts",
+      "default": "./src/domain/work.ts"
+    },
+    "./domain/work-views": {
+      "types": "./src/domain/work-views.ts",
+      "development": "./src/domain/work-views.ts",
+      "default": "./src/domain/work-views.ts"
+    },
+    "./domain/workspace-tools": {
+      "types": "./src/domain/workspace-tools.ts",
+      "development": "./src/domain/workspace-tools.ts",
+      "default": "./src/domain/workspace-tools.ts"
+    },
+    "./ipc": {
+      "types": "./src/ipc/index.ts",
+      "development": "./src/ipc/index.ts",
+      "default": "./src/ipc/index.ts"
+    },
+    "./ipc/application-host": {
+      "types": "./src/ipc/application-host.ts",
+      "development": "./src/ipc/application-host.ts",
+      "default": "./src/ipc/application-host.ts"
+    },
+    "./ipc/browser": {
+      "types": "./src/ipc/browser.ts",
+      "development": "./src/ipc/browser.ts",
+      "default": "./src/ipc/browser.ts"
+    },
+    "./ipc/cli-installation": {
+      "types": "./src/ipc/cli-installation.ts",
+      "development": "./src/ipc/cli-installation.ts",
+      "default": "./src/ipc/cli-installation.ts"
+    },
+    "./ipc/desktop": {
+      "types": "./src/ipc/desktop.ts",
+      "development": "./src/ipc/desktop.ts",
+      "default": "./src/ipc/desktop.ts"
+    },
+    "./ipc/public-methods": {
+      "types": "./src/ipc/public-methods.ts",
+      "development": "./src/ipc/public-methods.ts",
+      "default": "./src/ipc/public-methods.ts"
+    },
+    "./node/material-files": {
+      "types": "./src/node/material-files.ts",
+      "development": "./src/node/material-files.ts",
+      "default": "./src/node/material-files.ts"
+    },
+    "./node/material-sources": {
+      "types": "./src/node/material-sources.ts",
+      "development": "./src/node/material-sources.ts",
+      "default": "./src/node/material-sources.ts"
+    },
+    "./plugins/catalog": {
+      "types": "./src/plugins/catalog.ts",
+      "development": "./src/plugins/catalog.ts",
+      "default": "./src/plugins/catalog.ts"
+    },
+    "./plugins/runtime-catalog": {
+      "types": "./src/plugins/runtime-catalog.ts",
+      "development": "./src/plugins/runtime-catalog.ts",
+      "default": "./src/plugins/runtime-catalog.ts"
+    },
+    "./plugins/types": {
+      "types": "./src/plugins/types.ts",
+      "development": "./src/plugins/types.ts",
+      "default": "./src/plugins/types.ts"
+    },
+    "./plugins/usage": {
+      "types": "./src/plugins/usage.ts",
+      "development": "./src/plugins/usage.ts",
+      "default": "./src/plugins/usage.ts"
+    },
+    "./rovai": {
+      "types": "./src/rovai/index.ts",
+      "development": "./src/rovai/index.ts",
+      "default": "./src/rovai/index.ts"
+    },
+    "./rovai/contracts": {
+      "types": "./src/rovai/contracts.ts",
+      "development": "./src/rovai/contracts.ts",
+      "default": "./src/rovai/contracts.ts"
+    },
+    "./rovai/tool-grouping": {
+      "types": "./src/rovai/tool-grouping.ts",
+      "development": "./src/rovai/tool-grouping.ts",
+      "default": "./src/rovai/tool-grouping.ts"
+    },
+    "./shortcuts": {
+      "types": "./src/shortcuts.ts",
+      "development": "./src/shortcuts.ts",
+      "default": "./src/shortcuts.ts"
+    },
+    "./node/native-source": {
+      "types": "./src/node/native-source.ts",
+      "development": "./src/node/native-source.ts",
+      "default": "./src/node/native-source.ts"
+    },
+    "./domain/task-results": {
+      "types": "./src/domain/task-results.ts",
+      "development": "./src/domain/task-results.ts",
+      "default": "./src/domain/task-results.ts"
+    },
+    "./ipc/workspace-files": {
+      "types": "./src/ipc/workspace-files.ts",
+      "development": "./src/ipc/workspace-files.ts",
+      "default": "./src/ipc/workspace-files.ts"
+    },
+    "./ipc/workspace-terminal": {
+      "types": "./src/ipc/workspace-terminal.ts",
+      "development": "./src/ipc/workspace-terminal.ts",
+      "default": "./src/ipc/workspace-terminal.ts"
+    }
+  },
+  "dependencies": {
+    "@boai/runtime-plugin-sdk": "workspace:*",
+    "@boai/tokens": "workspace:*",
+    "remark-gfm": "4.0.1",
+    "remark-parse": "11.0.0",
+    "unified": "11.0.5",
+    "zod": "4.6.5"
+  }
+}
