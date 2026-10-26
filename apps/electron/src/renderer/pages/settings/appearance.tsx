@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 页面布局复用settings-layout，标题/分组留白与卡片/设置行统一，原业务回调保持。
  * [OUTPUT]: 开发版与安装版均显示Dock/托盘逐目标状态；迟到状态不覆盖新选择，失败沿Sonner和原重试。
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [OUTPUT]: 三组字号改用全局 React Aria NumberField，统一边界、步长、键盘与步进按钮交互，沿原外观预览保存。
@@ -12,9 +13,9 @@
  * [POS]: 设置页外观分区；使用统一预览和持久化流程。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { SettingsLayout, SettingsCard, SettingsRow, SettingsSection } from './settings-layout'
 import { AppIconFeedback, acceptAppIconStatus } from './app-icon-feedback'
 import { useEffect, useState } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { NumberField } from '@/components/ui/number-field'
 import { SelectField } from '@/components/ui/select-field'
@@ -85,10 +86,7 @@ export function AppearanceSettings() {
   const blurRadius = p.background.blurRadius ?? appearanceDefaults.background.blurRadius
   const theme = resolveAppearanceTheme(p, mode, disabledIds)
   const setColor = (key: keyof ThemeOverrides, value: string | null) => previewAppearance({ customColors: { [mode]: { [key]: value } } })
-  return <section className="appearance-settings settings-document">
-    <header className="settings-document-heading">
-      <h2>外观</h2>
-      <Popover open={resetOpen} onOpenChange={setResetOpen}>
+  return <SettingsLayout title="外观" actions={<Popover open={resetOpen} onOpenChange={setResetOpen}>
         <PopoverTrigger render={<Button variant="secondary" size="sm" aria-label="恢复默认外观" disabled={preview.readOnly || status === 'saving'} />}><RefreshCw />重置</PopoverTrigger>
         <PopoverContent align="end">
           <PopoverHeader><PopoverTitle>恢复默认外观？</PopoverTitle></PopoverHeader>
@@ -97,12 +95,11 @@ export function AppearanceSettings() {
             <Button size="sm" disabled={preview.readOnly || status === 'saving'} onClick={() => { setResetOpen(false); void appearanceAction('resetAppearance') }}>确认重置</Button>
           </div>
         </PopoverContent>
-      </Popover>
-    </header>
+      </Popover>}>
     {error && status === 'error' && <Button variant="secondary" size="sm" onClick={() => void flushAppearance()}>重试保存</Button>}
     <fieldset disabled={preview.readOnly}>
       <legend className="settings-section-title">视觉风格</legend>
-      <Card className="mb-4 gap-0 p-0"><CardContent className="appearance-mode-row mb-0">
+      <SettingsCard className="mb-4" contentClassName="appearance-mode-row mb-0">
         <span>模式</span>
         <div className="appearance-modes">
           {modes.map(item => <Button variant="ghost" size="content" key={item.value} type="button" aria-label={item.label} title={item.label} aria-pressed={p.mode === item.value} className="theme-card" onClick={() => previewAppearance({ mode: item.value })}>
@@ -110,37 +107,35 @@ export function AppearanceSettings() {
             <span className="sr-only">{item.label}</span>
           </Button>)}
         </div>
-      </CardContent></Card>
-      <Card className="gap-0 p-0"><CardContent className="appearance-options soft-divide-y">
-        {(['light', 'dark'] as const).filter(value => p.mode === 'system' || p.mode === value).map(value => <div className="appearance-row" key={value}>
+      </SettingsCard>
+      <SettingsCard>
+        {(['light', 'dark'] as const).filter(value => p.mode === 'system' || p.mode === value).map(value => <SettingsRow key={value}>
           <label htmlFor={`theme-${value}`}>{p.mode === 'system' ? value === 'light' ? '浅色主题' : '深色主题' : '主题'}</label>
           <SelectField id={`theme-${value}`} aria-label={value === 'light' ? '浅色配色' : '深色配色'} value={resolveTheme(value, p.themeIds[value], disabledIds).id} onValueChange={selectedValue => previewAppearance({ themeIds: { [value]: selectedValue }, customColors: { [value]: { accent: null, background: null, foreground: null } } })} options={themes.filter(t => t.mode === value).map(t => ({ value: t.id, label: t.name }))} />
-        </div>)}
-        <div className="appearance-row">
+        </SettingsRow>)}
+        <SettingsRow>
           <span>强调色</span>
           <div className="appearance-row-controls">
             <SelectField aria-label="强调色来源" value={p.customColors[mode].accent ? 'custom' : 'theme'} onValueChange={selectedValue => setColor('accent', selectedValue === 'theme' ? null : theme.accent)} options={[{ value: 'theme', label: '主题' }, { value: 'custom', label: '自定义' }]} />
             <ColorControl label="强调色" value={theme.accent} onChange={value => setColor('accent', value)} />
           </div>
-        </div>
-        {!scenic && <><div className="appearance-row"><span>背景</span><ColorControl label="背景色" value={theme.surface} onChange={value => setColor('background', value)} /></div>
-        <div className="appearance-row"><span>前景</span><ColorControl label="前景色" value={theme.foreground} onChange={value => setColor('foreground', value)} /></div></>}
-        <div className="appearance-row"><label htmlFor="appearance-zoom" title="同步调整文字、图标与布局大小">界面缩放</label>
+        </SettingsRow>
+        {!scenic && <><SettingsRow><span>背景</span><ColorControl label="背景色" value={theme.surface} onChange={value => setColor('background', value)} /></SettingsRow>
+        <SettingsRow><span>前景</span><ColorControl label="前景色" value={theme.foreground} onChange={value => setColor('foreground', value)} /></SettingsRow></>}
+        <SettingsRow><label htmlFor="appearance-zoom" title="同步调整文字、图标与布局大小">界面缩放</label>
           <SelectField id="appearance-zoom" value={p.zoomFactor} onValueChange={selectedValue => previewAppearance({ zoomFactor: Number(selectedValue) })} options={zoomFactors.map(value => ({ value: value, label: `${Math.round(value * 100)}%${value === 1 ? '（默认）' : ''}` }))} />
-        </div>
-      </CardContent></Card>
+        </SettingsRow>
+      </SettingsCard>
       {preview.resolvedThemeId !== p.themeIds[mode] && <p className="field-hint mt-2">原主题插件已停用，暂用 BoAI 配色。重新启用插件后恢复原选择。</p>}
-      <section className="appearance-advanced" aria-labelledby="appearance-typography-heading">
-        <div className="flex items-center justify-between gap-2"><h3 id="appearance-typography-heading" className="settings-section-title">字体</h3>
-          <Button type="button" variant="ghost" size="sm" onClick={() => previewAppearance({ typography: typographyDefaults })}>重置字体</Button></div>
-        <Card className="mb-4 gap-0 p-0"><CardContent className="appearance-options soft-divide-y">
-          {(['ui', 'code'] as const).map(group => <div className="appearance-row" key={group}>
+      <SettingsSection title="字体" titleId="appearance-typography-heading" actions={<Button type="button" variant="ghost" size="sm" onClick={() => previewAppearance({ typography: typographyDefaults })}>重置字体</Button>}>
+        <SettingsCard className="mb-4">
+          {(['ui', 'code'] as const).map(group => <SettingsRow key={group}>
             <label htmlFor={`appearance-${group}-size`}>{group === 'ui' ? '界面字号' : '代码字体大小'}</label>
             <FontSizeInput group={group} value={p.typography[group].sizePx} />
-          </div>)}
-        </CardContent></Card>
-        <Card className="gap-0 p-0"><CardContent className="appearance-options soft-divide-y">
-          {typographyGroups.map(group => <div className="appearance-row" key={group.id}>
+          </SettingsRow>)}
+        </SettingsCard>
+        <SettingsCard>
+          {typographyGroups.map(group => <SettingsRow key={group.id}>
             <div className="flex items-center gap-1 font-medium">
               <label htmlFor={`appearance-${group.id}-family`}>{group.label}</label>
               <Tooltip><TooltipTrigger render={<Button type="button" variant="ghost" size="icon-xs" aria-label={`${group.label}示例`} />}><InfoIcon /></TooltipTrigger>
@@ -148,13 +143,11 @@ export function AppearanceSettings() {
               </Tooltip>
             </div>
             <SelectField id={`appearance-${group.id}-family`} value={p.typography[group.id].family} options={[...group.options]} onValueChange={family => previewAppearance({ typography: { [group.id]: { family } } })} />
-          </div>)}
-        </CardContent></Card>
-      </section>
-      {iconStatus?.platform === 'macos' && <section className="appearance-advanced" aria-labelledby="appearance-icon-heading">
-        <div className="flex items-center justify-between gap-2"><h3 id="appearance-icon-heading" className="settings-section-title">应用图标</h3>
-          <Button type="button" variant="ghost" size="sm" disabled={p.appIconId === defaultAppIconId} onClick={() => previewAppearance({ appIconId: defaultAppIconId })}>恢复默认图标</Button></div>
-        <Card className="gap-0 p-0"><CardContent className="py-4">
+          </SettingsRow>)}
+        </SettingsCard>
+      </SettingsSection>
+      {iconStatus?.platform === 'macos' && <SettingsSection title="应用图标" titleId="appearance-icon-heading" actions={<Button type="button" variant="ghost" size="sm" disabled={p.appIconId === defaultAppIconId} onClick={() => previewAppearance({ appIconId: defaultAppIconId })}>恢复默认图标</Button>}>
+        <SettingsCard contentClassName="py-4">
           <div className="grid grid-cols-[repeat(auto-fill,minmax(4.5rem,1fr))] gap-2" role="group" aria-label="选择应用图标">
             {appIconPresets.map(icon => <Button type="button" key={icon.id} variant="ghost" size="content" aria-label={icon.name} aria-pressed={p.appIconId === icon.id}
               className="flex min-w-0 flex-col items-center gap-1.5 rounded-lg px-1 py-2 aria-pressed:bg-accent aria-pressed:shadow-sm" onClick={() => previewAppearance({ appIconId: icon.id })}>
@@ -163,11 +156,10 @@ export function AppearanceSettings() {
             </Button>)}
           </div>
           <AppIconFeedback status={iconStatus} onRetry={() => { void getDesktopClient()?.request('retryAppIcon', undefined).then(value => setIconStatus(previous => acceptAppIconStatus(previous, value))).catch(error => toast.error(String(error))) }} />
-        </CardContent></Card>
-      </section>}
-      <section className="appearance-advanced" aria-labelledby="appearance-advanced-heading">
-        <h3 id="appearance-advanced-heading" className="settings-section-title">背景图片</h3>
-        <Card className="gap-0 p-0"><CardContent><FieldGroup className="gap-0">
+        </SettingsCard>
+      </SettingsSection>}
+      <SettingsSection title="背景图片" titleId="appearance-advanced-heading">
+        <SettingsCard contentClassName=""><FieldGroup className="gap-0">
           <Field orientation="responsive" className="py-4">
             <FieldContent><FieldTitle>图片换肤<Tooltip>
               <TooltipTrigger render={<Button type="button" variant="ghost" size="icon-xs" aria-label="图片换肤说明" />}><InfoIcon /></TooltipTrigger>
@@ -180,7 +172,7 @@ export function AppearanceSettings() {
           </Field>
           {p.background.assetId && <>
             <div className="pb-4"><img className="appearance-background-preview" src={`boai-asset://appearance/${p.background.assetId}`} alt="当前背景图片" /></div>
-            <Card size="sm" className="mb-4 gap-0 p-0"><CardContent className="soft-divide-y">
+            <SettingsCard size="sm" className="mb-4" contentClassName="soft-divide-y">
               {([
                 { key: 'glassOpacity', label: '毛玻璃不透明度', value: glassOpacity, max: 100, unit: '%', scale: 100 },
                 { key: 'overlayOpacity', label: '遮罩浓度', value: overlayOpacity, max: 100, unit: '%', scale: 100 },
@@ -192,10 +184,10 @@ export function AppearanceSettings() {
                   onValueChange={value => previewAppearance({ background: { [control.key]: (typeof value === 'number' ? value : value[0]) / control.scale } })} />
                 <span className="col-start-2 row-start-1 text-right text-sm tabular-nums text-muted-foreground @md/field-group:col-start-3">{control.value}{control.unit}</span>
               </div>)}
-            </CardContent></Card>
+            </SettingsCard>
           </>}
-        </FieldGroup></CardContent></Card>
-      </section>
+        </FieldGroup></SettingsCard>
+      </SettingsSection>
     </fieldset>
-  </section>
+  </SettingsLayout>
 }

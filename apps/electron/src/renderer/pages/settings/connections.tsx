@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 页面布局复用settings-layout，标题/分组留白与卡片/设置行统一，原业务回调保持。
  * [OUTPUT]: 全部模型连接草稿/保存携带revision，避免CLI和桌面并发覆盖旧配置。
  * [OUTPUT]: Magpie连接入口与列表共用官网下载的本地SVG，单色mask沿主题着色。
  * [OUTPUT]: 测试与保存共用草稿必填/URL校验，缺少模型等错误统一Sonner反馈，不触发浏览器原生校验气泡。
@@ -11,6 +12,7 @@
  * [POS]: apps/electron/src/renderer/pages/settings/connections.tsx；模型连接设置的界面与交互，按当前服务初始化草稿基准，返回/关闭前保护真实修改，放弃后清理草稿。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { SettingsLayout, SettingsSection } from './settings-layout'
 import { ErrorToast, showErrorToast } from '@/components/common/error-feedback'
 import { useContext, useId, useRef, useState, type RefObject } from 'react'
 import openaiIcon from '@lobehub/icons-static-svg/icons/openai.svg'
@@ -72,10 +74,9 @@ export function ConnectionSettings({ connections, api, refresh, active, localAge
     }
   })
 
-  return <section className="connection-settings settings-document" aria-labelledby="connections-heading">
-    <header className="settings-document-heading"><h2 id="connections-heading">模型连接</h2></header>
+  return <SettingsLayout title="模型连接" titleId="connections-heading" aria-labelledby="connections-heading" className="connection-settings">
     {error && <Banner>{error}</Banner>}
-    <div className="connection-section-heading"><h3 className="settings-section-title">我的连接</h3><Button ref={addButton} variant="secondary" disabled={busy} onClick={() => setEditing('new')}><Plus />添加连接</Button></div>
+    <SettingsSection first title="我的连接" actions={<Button ref={addButton} variant="secondary" disabled={busy} onClick={() => setEditing('new')}><Plus />添加连接</Button>}>
     <Card className="connection-rows soft-divide-y gap-0 p-0">
       {connections.length ? connections.map(connection => {
         const result = feedback[connection.id]
@@ -102,12 +103,13 @@ export function ConnectionSettings({ connections, api, refresh, active, localAge
       }) : <div className="connections-empty"><span className="connection-empty-icon"><Sparkles size={26} /></span><h3>连接你的第一个模型</h3><p>选择模型服务，填写连接信息，即可开始与员工协作。</p></div>}
     </Card>
     <p className="connection-footnote"><ShieldCheck size={14} />密钥保存在本机，不会显示在聊天消息中。</p>
+    </SettingsSection>
     {localAgentSetupEnabled && <LocalAgents api={api} refresh={refresh} active={active} target={localAgentTarget} />}
     {editing && <ConnectionEditor key={editing === 'new' ? 'new' : editing.connection.id} connections={connections} connection={editing === 'new' ? undefined : editing.connection} initialApiKey={editing === 'new' ? '' : editing.apiKey} api={api} onSaved={async () => {
       if (editing !== 'new') setFeedback(current => ({ ...current, [editing.connection.id]: undefined }))
       await refresh()
     }} onCancel={() => setEditing(null)} finalFocus={addButton} />}
-  </section>
+  </SettingsLayout>
 }
 
 function ConnectionEditor({ connections, connection, initialApiKey, api, onSaved, onCancel, finalFocus }: { connections: Connection[]; connection?: Connection; initialApiKey: string; api: DesktopApi; onSaved: () => Promise<void>; onCancel: () => void; finalFocus: RefObject<HTMLButtonElement | null> }) {

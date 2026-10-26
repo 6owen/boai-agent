@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Opted-in host OCR samples, original ProductStore and explicitly generated report text.
- * [OUTPUT]: Independent screenshot/input opt-ins, capture scheduling, quota/session status and local records, Alma-rule observed fragments/structured themes, bounded date/search evidence, retention and source-bound report cache.
+ * [OUTPUT]: Independent capture/OCR capabilities and fallback records, paginated exact-session sources/themes and source-bound report cache.
  * [POS]: Desktop activity domain; never substitutes chat history or generates fictional activity.
  * [PROTOCOL]: Update Header and owning .folder.md when changed.
  */
@@ -8,7 +8,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import type { ProductStore } from '../../adapters/storage/product-store'
 import { ApplicationValidationError, type ApplicationOperation } from '../application/application-service'
-import type { ActivityCaptureResult, ActivitySettings, ActivitySample, ActivityReport, ActivityEvidence, ActivityStatus, ActivityMemoryHit, ActivityMemoryPage, ActivityAnalysis, ActivityCaptureAction, ActivityCaptureOptions, ActivityInputEvent } from '@boai/shared/domain/desktop-activity'
+import type { ActivityCaptureResult, ActivitySettings, ActivitySample, ActivityReport, ActivityEvidence, ActivityStatus, ActivityMemoryHit, ActivityMemoryPage, ActivityAnalysis, ActivityCaptureAction, ActivityCaptureOptions, ActivityInputEvent, ActivitySessionPage } from '@boai/shared/domain/desktop-activity'
 import { activityDefaults as defaults, restoreActivitySettings, activityPatch, type ActivityPatch } from './activity-settings'
 import { ActivityStorage } from './activity-storage'
 import { activitySessions } from './activity-sessions'
@@ -129,7 +129,7 @@ export class DesktopActivityService {
     const recording = this.settings.enabled && !!permission.permission && !!permission.supported && this.host.available()
     const sessions = activitySessions(samples, events, (this.settings.enableInputMonitor ? this.settings.idleThresholdMs : Math.max(this.settings.idleThresholdMs, this.settings.intervalSeconds * 1000)), recording)
     const state = !this.settings.enabled ? 'disabled' : !permission.supported ? 'unavailable' : !permission.permission ? 'permission' : this.lastError ? 'error' : this.lastProbe?.skipped || (this.lastProbe?.idleMs ?? 0) >= this.settings.idleThresholdMs ? 'idle' : 'recording'
-    return { settings: structuredClone(this.settings), supported: !!permission.supported, permission: !!permission.permission, accessibilityPermission: !!permission.accessibilityPermission,
+    return { settings: structuredClone(this.settings), supported: !!permission.supported, permission: !!permission.permission, accessibilityPermission: !!permission.accessibilityPermission, capabilities: permission.capabilities,
       monitoring: !!permission.monitoring && this.settings.enableInputMonitor && recording, count: samples.length,
       lastCapturedAt: samples.map(s => s.capturedAt).sort().at(-1), lastError: this.lastError, state,
       screenshotCount: samples.filter(s => s.screenshot).length, storageBytes: samples.reduce((sum, s) => sum + (s.screenshot?.bytes ?? 0) + Buffer.byteLength(JSON.stringify(s)), 0) + events.reduce((sum, e) => sum + Buffer.byteLength(JSON.stringify(e)), 0),
@@ -166,12 +166,13 @@ export class DesktopActivityService {
   }
   async sample(force = false) {
     if (!this.settings.enabled || this.closing || this.paused) return
-    const epoch = this.epoch, ocr = this.settings.enableOcr && this.captureIndex % this.settings.ocrEveryN === 0
-    const value = await this.host.capture('sample', this.settings.excludedApps, this.captureOptions(ocr))
+    const epoch = this.epoch, requestOcr = this.settings.enableOcr && this.lastProbe?.capabilities?.ocr !== false && this.captureIndex % this.settings.ocrEveryN === 0
+    const value = await this.host.capture('sample', this.settings.excludedApps, this.captureOptions(requestOcr))
     if (epoch !== this.epoch || !this.settings.enabled || this.closing || !this.host.available()) return
     if (value.error) throw new Error(value.error)
     if (value.skipped || !value.capturedAt || !value.app || !value.bundleId) return
     this.captureIndex++
+    const ocr = requestOcr && value.capabilities?.ocr !== false && value.ocr !== false
     const text = (ocr ? value.text ?? '' : '').slice(0, 6000), title = value.title ?? '', contentHash = hash([value.bundleId, title, text])
     const sameImage = this.lastScreen === JSON.stringify([value.bundleId, title]) && value.fingerprint && this.lastFingerprint && (() => {
       const a = Buffer.from(value.fingerprint, 'base64'), b = Buffer.from(this.lastFingerprint!, 'base64')
@@ -186,7 +187,7 @@ export class DesktopActivityService {
       await tx.put({ collection: samplesCollection, id: sample.id, value: sample })
       this.lastHash = contentHash; this.lastFingerprint = value.fingerprint; this.lastScreen = JSON.stringify([value.bundleId, title]); this.lastCapturedAt = sample.capturedAt; committed = true
     }) } finally { if (!committed && sample.screenshot) await this.files?.remove(sample.id) }
-    this.lastError = undefined
+    this.lastError = value.ocrError
     await this.purgeExpired()
   }
   private async purgeExpired() {
@@ -213,6 +214,19 @@ export class DesktopActivityService {
     const samples = (await this.store.load<ActivitySample>(samplesCollection)).filter(s => +new Date(s.capturedAt) >= start && +new Date(s.capturedAt) < end && (!search || `${s.app}\n${s.title}\n${s.text}`.toLowerCase().includes(search))).sort((a, b) => a.capturedAt.localeCompare(b.capturedAt))
     const offset = input.offset ?? 0, limit = input.limit ?? 50
     return { total: samples.length, samples: samples.slice(offset, offset + limit), nextOffset: offset + limit < samples.length ? offset + limit : null }
+  }
+  async sessionSources(id: string, offset = 0, analysisOffset = 0, limit = 20): Promise<ActivitySessionPage> {
+    const { samples, events, savedAnalyses } = await this.store.transaction(async tx => ({ samples: await tx.list<ActivitySample>(samplesCollection), events: await tx.list<ActivityInputEvent>(eventsCollection), savedAnalyses: await tx.list<ActivityAnalysis>(analysesCollection) }))
+    const gap = this.settings.enableInputMonitor ? this.settings.idleThresholdMs : Math.max(this.settings.idleThresholdMs, this.settings.intervalSeconds * 1000)
+    const session = activitySessions(samples, events, gap, false).find(item => item.id === id)
+    if (!session) throw new ApplicationValidationError('REVISION_CONFLICT', '活动片段已变化或删除，请刷新最近活动')
+    const start = +new Date(session.from), end = +new Date(session.to)
+    const sources = samples.filter(sample => +new Date(sample.capturedAt) >= start && +new Date(sample.capturedAt) <= end).sort((a, b) => a.capturedAt.localeCompare(b.capturedAt) || a.id.localeCompare(b.id))
+    const ids = new Set(sources.map(sample => sample.id)), current = new Map(samples.map(sample => [sample.id, sample]))
+    const analyses = savedAnalyses.filter(record => record.sampleIds.some(sampleId => ids.has(sampleId)) && hasCurrentSources(record, current)).sort((a, b) => a.observedAt.localeCompare(b.observedAt) || a.id.localeCompare(b.id))
+    return { session, revision: hash([session.id, session.from, sources.map(sample => [sample.id, sample.hash]), analyses]),
+      samples: sources.slice(offset, offset + limit), total: sources.length, nextOffset: offset + limit < sources.length ? offset + limit : null,
+      analyses: analyses.slice(analysisOffset, analysisOffset + limit), analysisTotal: analyses.length, nextAnalysisOffset: analysisOffset + limit < analyses.length ? analysisOffset + limit : null }
   }
   /** The model receives these hashes with real sample IDs; it never manufactures a source version. */
   async prepareAnalyses(input: z.infer<typeof analysisPrepare>) {
@@ -370,6 +384,7 @@ export class DesktopActivityService {
         return { url: await this.files.read(input.id) }
       }, true),
       op('activity.query', '按本机日期/关键词分页检索真实前台窗口与本地 OCR；无记录不推测。', range, 'read', input => this.query(input)),
+      op('activity.session.sources', '按仍有效的活动片段身份分页读取原始观察与相关分析；来源变化时重新读取，截图仍需本人单独打开。', z.object({ id: z.string().uuid(), offset: z.number().int().nonnegative().optional(), analysisOffset: z.number().int().nonnegative().optional(), limit: z.number().int().min(1).max(40).optional() }).strict(), 'read', input => this.sessionSources(input.id, input.offset, input.analysisOffset, input.limit)),
       op('activity.memory.search', '跨日期检索仍有效的桌面观察、结构化分析与日报；派生内容不是第二份独立证明。', memoryRange, 'read', input => this.searchMemory(input)),
       op('activity.analysis.prepare', '将实际阅读的桌面样本分组，宿主核验并返回每组来源hash；用于随后保存结构化主题分析。', analysisPrepare, 'read', input => this.prepareAnalyses(input)),
       op('activity.analysis.save', '保存Alma式结构化活动分析，逐组核验真实样本hash；长期候选只保留待核建议，不自动晋升。', analysisSave, 'write', input => this.saveAnalyses(input)),
