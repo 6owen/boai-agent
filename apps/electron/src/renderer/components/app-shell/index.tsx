@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 用户终端仅渲染xterm，撤销顶部开始/重连工具栏及其导航透传。
  * [OUTPUT]: 终端关闭先停止所有挂载视图的读写/附着，再等待真实退出；关闭失败保留标签并重连。
  * [OUTPUT]: 系统唤醒/解锁后沿原只读刷新恢复显示，不重发消息。
  * [OUTPUT]: 工作区开始、真实目录浏览和用户终端独立标签；终端关闭等待宿主退出，原附件/成果与浏览器保持。
@@ -1082,7 +1083,7 @@ export function AppShell() {
           const targetRoom = target.type === 'group' ? snapshot.conversations.find(room => room.id === target.id) : undefined
           const content = <>
             {target.type === 'user-workspace' && (target.view === 'start' || !target.employeeId ? <WorkspaceHome api={api} snapshot={snapshot} active={active} conversationId={target.id} employeeId={target.employeeId} onFiles={employeeId => openPanel({ type: 'user-workspace', id: target.id, employeeId, view: 'files' }, tab.scope)} onTerminal={terminal => showWorkspaceTerminal(terminal, tab.scope)} /> : <WorkspaceFiles api={api} active={active} employeeId={target.employeeId} conversationId={target.id} onHome={() => openPanel({ type: 'user-workspace', id: target.id, employeeId: target.employeeId, view: 'start' }, tab.scope)} onTerminal={() => void createWorkspaceTerminal(target.employeeId!, target.id, tab.scope)} />)}
-            {target.type === 'user-terminal' && <WorkspaceTerminal api={api} active={active} terminalId={target.id} onHome={() => openPanel({ type: 'user-workspace', id: target.conversationId, employeeId: target.employeeId, view: 'start' }, tab.scope)} />}
+            {target.type === 'user-terminal' && <WorkspaceTerminal api={api} active={active} terminalId={target.id} />}
             {target.type === 'workspace' && target.view === 'preview' && <WorkspacePanel api={api} active={active} scope={{ employeeId: target.employeeId, conversationId: target.id }} />}
             {target.type === 'channel-publish' && <ChannelPublishPanel key={target.requestId} api={api} snapshot={snapshot} target={target} active={active} onBack={() => closeView()} />}
             {target.type === 'files' && <div className="conversation-panel-content">

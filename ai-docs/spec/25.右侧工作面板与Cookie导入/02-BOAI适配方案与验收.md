@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-26工作区样式及截图纠正归§12：全局空态SVG/字号图标、纯xterm/原生行高、单打开按钮和应用包图标，32项与7个实际图标通过，不跑E2E。
 [OUTPUT]: 2026-10-26终端跟随应用主题并复用Base46/VS Code Plus ANSI，撤销独立配置；关闭前停流修复与验证边界归§11。
 [OUTPUT]: 2026-10-26随PR23/25整合更新BOAI源码路径，保留原功能范围及验证记录。
 [OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
@@ -392,3 +393,22 @@ RP2 与 Cookie 核心可独立交付，但完整终端和本机导入不能因�
 - 在原终端适配中补VS Code Plus明暗16色，来源为[VS Code固定提交的terminalColorRegistry](https://github.com/microsoft/vscode/blob/af3b54ddd0c4f81765fc218856e2e73491051092/src/vs/workbench/contrib/terminal/common/terminalColorRegistry.ts)，并核对Dark+/Light+及继承主题未覆写ANSI色板。应用主题ID仍是唯一选择；BoAI回退、Base46和程序OSC覆写保持。
 - 程序显式输出的RGB、扩展256色或自行设置的OSC颜色不强制重染；标准ANSI 16色随应用主题改变。没有修改用户Starship/zsh或外观配置。
 - 本批2个终端定向文件17项、全项目TypeScript、相关renderer ESLint与Git差异检查通过；主题切换回归核对VS Code Plus明暗的青/绿/蓝色，同时保持同一终端实例/附着。未运行E2E、真实窗口视觉验收、构建或应用重启。
+
+## 12. 2026-10-26：工作区开始、路径栏与打开方式图标
+
+- 按用户截图调整当前main目录中的工作区局部样式，不运行E2E。开始页使用淡色指南针、居中两张圆角入口卡片和较大的留白；复用应用主题/字号变量，群聊员工选择、已有终端入口和原创建请求保持。没有绑定的快捷键不显示装饰性键位，创建过程只禁用按钮并设置`aria-busy`，不添加状态文案。
+- 终端顶部移除路径文字，保留回到开始和重连操作；xterm使用`cursorStyle: 'bar'`、`cursorWidth: 1`和非聚焦竖线光标。终端实例保留、传输、主题及关闭协调保持。
+- 文件顶部继续显示真实路径，用现有共享`Separator`替换工具栏普通border；打开方式菜单和默认打开按钮展示原生应用图标，图片不可用时回退原图标体系，刷新条目也补图标。
+- 参考固定DSH提交`687f282e8625c6b8d11ff58211a90524be2e4317`的[图标读取实现](https://github.com/deepseek-ai/deepseek-harness/blob/687f282e8625c6b8d11ff58211a90524be2e4317/packages/host/open-in-app/src/icons.ts)：macOS从安装的`.app`读取图标。本次BOAI沿同一来源，使用[Electron原生接口](https://www.electronjs.org/docs/latest/api/app#appgetfileiconpath-options)获取PNG；只访问固定目录中已核定的安装路径及系统Finder，随现有5分钟应用列表缓存/显式刷新，不另增renderer路径输入。单图最多128KiB，图标失败不移除应用、不阻止原打开行为。
+- 全项目`tsc --noEmit`、3个相关renderer文件ESLint及Git差异检查通过。4个定向Vitest文件28项全部通过，覆盖图标缓存/并发扫描/刷新/读取失败和载荷边界，以及原目录安全/分页、终端传输与组件生命周期。
+- 未运行E2E、截图/视觉基线、个人窗口或跨平台原生图标验收；未执行完整应用构建或重启当前开发版。原生图标读取属于Main改动，需重新构建并重载主进程后才会在当前应用生效，不能以renderer热更新或上述夹具回归代替实际运行验收。
+
+### 同日用户截图纠正
+
+- 首版错误保留了终端顶部工具栏，把“移除顶部”理解成仅删除路径；固定尺寸图标又被图标库的`1em`规则覆盖，未随全局界面字号放大；Electron在这些`.app`路径上返回通用应用图标。这些首版问题如实保留，以上28项夹具检查不代表实际视觉正确。
+- 本次完整移除终端开始/刷新/状态工具栏及其Shell透传，只留下xterm屏幕。此前将代码正文1.5倍行高传给xterm，后者又按实测字形单元高度缩放，导致行与光标偏长；现恢复xterm原生1倍行高，1px竖线、全局代码字号/字体及主题保持。原退出失败重连协调继续有效。
+- 开始页入口图标使用全局`--text-ui-hero`作为图标字体尺寸，让图标库的`1em`跟随外观字号。现有全局空态资产实际为透明毛绒WebP，本次新建同角色配色的纯矢量`workspace-companion.svg`（小猫、文件夹与终端），沿原`IllustratedEmpty`组件展示并随界面字号缩放；共享组件只增加可选布局类，原页面默认样式保持。
+- 文件工具栏仅保留一个“图标＋打开＋箭头”的菜单按钮，系统默认和其他应用均从该菜单进入；菜单应用图标按全局界面字号缩放，路径和共享细分割线保持。
+- macOS改为沿DSH已核对的应用包来源读取`Info.plist`的`CFBundleIconFile`，由`plutil`与`sips`生成64px PNG。仅使用已核定的安装路径/声明文件、固定命令argv及有界超时，转换后清理私有临时目录；不回退为错误的通用`.app`图片。其他平台保留Electron接口。应用列表缓存与图标失败时应用仍可打开的行为保持。
+- 使用新读取函数直接提取本机Finder、VS Code、Xcode、IntelliJ IDEA、Terminal、Ghostty、Warp共7个真实图标，全部获得64×64 PNG且摘要互不相同，并查看Finder/VS Code/Ghostty及新SVG的渲染图。没有启动应用、读取个人文件或将这些资产检查称作Electron端到端验证。
+- 当前全项目TypeScript、7个相关前端/共享UI文件ESLint及Git差异检查通过；5个定向Vitest文件32项通过，新增应用包声明/后缀/目录逃逸拒绝与转换失败清理。未运行E2E、完整应用构建或重启个人开发版；实际窗口/全局字号切换和主进程重载后的菜单验收仍未执行，Main图标修复须由新构建生效。

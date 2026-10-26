@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 常驻详情标签与BOAI代码/颜色语义token。
- * [OUTPUT]: 终端填满剩余详情高度，独立滚动，字体/行高/背景跟随全局设置。
+ * [OUTPUT]: 无工具栏的终端填满详情，字体/字号/背景跟随全局，行高使用xterm原生尺寸。
  * [POS]: 用户工作区终端局部布局，不影响其他详情或员工执行视图。
  * [PROTOCOL]: 变化同步Header及styles/.folder.md。
  */
@@ -16,7 +16,7 @@
 .workspace-terminal-screen {
   font-family:var(--font-code-family);
   font-size:var(--text-code-terminal);
-  line-height:var(--leading-code-body);
+  line-height:normal;
   color:var(--foreground);
   background:var(--surface-detail);
 }

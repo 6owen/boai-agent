@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 终端撤销顶部工具栏，字号仍取全局但单元行高回到xterm原生1倍；原关闭/恢复回归保持。
  * [OUTPUT]: 导入配色/Base46/VS Code Plus跟随应用主题及明暗回退、关闭前停读解除附着和失败重连回归；不运行E2E。
  * [INPUT]: 真实React终端组件、异步IPC夹具与可观测xterm适配器。
  * [OUTPUT]: 100次标签显隐不重建终端、隐藏停测量/读取、稳定尺寸不重复提交及明暗/OSC回归。
@@ -69,7 +70,7 @@ function apiHarness() {
       default: throw new Error('unexpected request')
     }
   }) } as unknown as DesktopApi
-  const render = async (active: boolean) => { await act(async () => { root.render(createElement(WorkspaceTerminal, { api, active, terminalId: 'term', onHome() {} })); for (let i = 0; i < 20; i++) await Promise.resolve() }) }
+  const render = async (active: boolean) => { await act(async () => { root.render(createElement(WorkspaceTerminal, { api, active, terminalId: 'term' })); for (let i = 0; i < 20; i++) await Promise.resolve() }) }
   return { api, calls, render, controls }
 }
 
@@ -113,7 +114,7 @@ test('hidden terminal never measures or reads; redundant resize callbacks do not
 test('appearance reads effective code font/line-height and updates the ANSI palette with theme', () => {
   host.style.fontFamily = 'Menlo, monospace'; host.style.fontSize = '14px'; host.style.lineHeight = '21px'; host.style.color = 'rgb(20, 21, 22)'
   const light = terminalAppearance(host)
-  expect(light.fontFamily).toBe('Menlo, monospace'); expect(light.fontSize).toBe(14); expect(light.lineHeight).toBe(1.5)
+  expect(light.fontFamily).toBe('Menlo, monospace'); expect(light.fontSize).toBe(14); expect(light.lineHeight).toBe(1)
   expect(light.theme.cursor).toBe('rgb(20, 21, 22)'); expect(light.theme.cursorAccent).toBe(light.theme.background)
   expect(light.theme.selectionBackground).toBeTruthy()
   document.documentElement.classList.add('dark')

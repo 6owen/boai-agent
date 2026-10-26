@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 用户显式创建的terminalId、宿主挂起读取/输入确认协议与标签可见性。
- * [OUTPUT]: 按terminalId常驻xterm、隐藏停读停测量、跟随应用主题及导入色板；主动关闭先停读写/解除附着，真实关闭失败恢复连接。
+ * [OUTPUT]: 仅xterm屏幕、无顶部工具栏，1px竖线/原生行高；常驻实例跟随应用主题，隐藏停读，关闭先解除附着且失败恢复。
  * [POS]: 用户交互终端视图；实际进程归宿主，显隐不会重建或解除附着。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header及所属.folder.md。
  */
@@ -8,21 +8,19 @@ import { useEffect, useRef, useState } from 'react'
 import type { DesktopApi } from '@boai/shared/ipc'
 import type { TerminalInfo } from '@boai/shared/domain/workspace-tools'
 import type { WorkspaceTerminalRequest } from '@boai/shared/ipc/workspace-terminal'
-import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { WorkspaceTerminalController } from './workspace-terminal-controller'
 import { terminalAppearance, WorkspaceTerminalTheme } from './workspace-terminal-theme'
 import { registerWorkspaceTerminal } from './workspace-terminal-sessions'
 
-export function WorkspaceTerminal({ api, active, terminalId, onHome }: { api: DesktopApi; active: boolean; terminalId: string; onHome(): void }) {
+export function WorkspaceTerminal({ api, active, terminalId }: { api: DesktopApi; active: boolean; terminalId: string }) {
   const container = useRef<HTMLDivElement>(null)
   const attachmentQueue = useRef<Promise<void>>(Promise.resolve())
   const visibility = useRef(active), session = useRef<{ setActive(value: boolean): void } | undefined>(undefined)
   const [terminal, setTerminal] = useState<TerminalInfo>(), [connected, setConnected] = useState(false), [revision, reconnect] = useState(0)
-  const [closing, setClosing] = useState(false)
   useEffect(() => { visibility.current = active; session.current?.setActive(active) }, [active])
   useEffect(() => {
-    setConnected(false); setTerminal(undefined); setClosing(false)
+    setConnected(false); setTerminal(undefined)
     const previousAttachment = attachmentQueue.current
     let release!: () => void
     attachmentQueue.current = new Promise<void>(resolve => { release = () => { void previousAttachment.then(resolve) } })
@@ -41,7 +39,7 @@ export function WorkspaceTerminal({ api, active, terminalId, onHome }: { api: De
       const detached = controller?.dispose()
       await Promise.all([attachPromise, detached])
     }
-    const unregister = registerWorkspaceTerminal(terminalId, { stop: async () => { setClosing(true); setConnected(false); await stop() }, resume: () => reconnect(value => value + 1) })
+    const unregister = registerWorkspaceTerminal(terminalId, { stop: async () => { setConnected(false); await stop() }, resume: () => reconnect(value => value + 1) })
     const applyResize = async () => {
       if (resizing || !controller) return
       resizing = true
@@ -92,7 +90,7 @@ export function WorkspaceTerminal({ api, active, terminalId, onHome }: { api: De
         if (disposed) { release(); return }
         const [{ Terminal }, { FitAddon }] = await Promise.all([import('@xterm/xterm'), import('@xterm/addon-fit'), import('@xterm/xterm/css/xterm.css')])
         if (disposed || !container.current) { release(); return }
-        screen = new Terminal({ allowProposedApi: true, cursorBlink: true, scrollback: 2000, minimumContrastRatio: 4.5, disableStdin: true })
+        screen = new Terminal({ allowProposedApi: true, cursorBlink: true, cursorStyle: 'bar', cursorWidth: 1, cursorInactiveStyle: 'bar', scrollback: 2000, minimumContrastRatio: 4.5, disableStdin: true })
         // Host headless is the sole terminal query responder, including while hidden.
         for (const identifier of [{ final: 'c' }, { prefix: '>', final: 'c' }, { final: 'n' }, { prefix: '?', final: 'n' }, { intermediates: '$', final: 'p' }, { prefix: '?', intermediates: '$', final: 'p' }]) subscriptions.push(screen.parser.registerCsiHandler(identifier, () => true))
         subscriptions.push(screen.parser.registerDcsHandler({ intermediates: '$', final: 'q' }, () => true))
@@ -141,12 +139,6 @@ export function WorkspaceTerminal({ api, active, terminalId, onHome }: { api: De
     }
   }, [api, terminalId, revision])
   return <section className="workspace-terminal flex h-full min-h-0 flex-col" aria-label="工作区终端">
-    <div className="flex shrink-0 items-center gap-2 border-b p-2">
-      <Button variant="ghost" size="icon-sm" aria-label="工作区开始" onClick={onHome}><span className="i-solar-home-2-linear size-4" /></Button>
-      <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground" title={terminal?.cwd}>{terminal?.cwd}</span>
-      {terminal?.status === 'exited' && <span className="text-xs text-muted-foreground">已结束{terminal.exitCode !== undefined ? ` · ${terminal.exitCode}` : ''}</span>}
-      <Button variant="ghost" size="icon-sm" aria-label="重新连接终端" disabled={!active || closing} onClick={() => reconnect(value => value + 1)}><span className="i-solar-refresh-linear size-4" /></Button>
-    </div>
     <div className="workspace-terminal-screen min-h-0 flex-1 overflow-hidden p-2" ref={container} aria-label="终端屏幕" onKeyDown={event => event.stopPropagation()} aria-busy={!connected && terminal?.status !== 'exited'} />
   </section>
 }

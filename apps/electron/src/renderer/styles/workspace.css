@@ -1,0 +1,66 @@
+/*
+ * [INPUT]: 工作区开始/文件标签及共享颜色、字号和分割线token。
+ * [OUTPUT]: 满高工作区、共享空态SVG和双入口卡片；图标按全局字号缩放，文件工具栏沿细分割线，矮/窄窗口可滚动。
+ * [POS]: 工作区开始和文件浏览局部样式；终端屏幕独立归workspace-terminal.css。
+ * [PROTOCOL]: 变化同步Header及styles/.folder.md。
+ */
+.detail-content:has(> .detail-session > :is(.workspace-home, .workspace-files)):not([hidden]),
+.detail-session:has(> :is(.workspace-home, .workspace-files)) {
+  display:flex;
+  flex:1;
+  min-height:0;
+  min-width:0;
+  overflow:hidden;
+}
+.workspace-home {
+  width:100%;
+  min-height:0;
+  overflow:auto;
+  background:var(--surface-detail);
+}
+.workspace-home-content {
+  display:flex;
+  min-height:100%;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+}
+.workspace-home .empty-illustration {
+  width:calc(var(--text-ui-body) * 12);
+  max-width:100%;
+  height:auto;
+}
+.workspace-home-actions {
+  display:flex;
+  width:380px;
+  max-width:100%;
+  flex-direction:column;
+  gap:14px;
+}
+.workspace-home-action.soft-button {
+  display:flex;
+  width:100%;
+  min-height:68px;
+  align-items:center;
+  gap:18px;
+  padding:16px 24px;
+  border:.5px solid var(--border);
+  border-radius:16px;
+  background:var(--card);
+  color:var(--foreground);
+  box-shadow:none;
+  text-align:left;
+}
+.workspace-home-action.soft-button:is(:hover, :focus-visible):not(:disabled):not([aria-disabled=true]) {
+  border-color:var(--border);
+  background:var(--muted);
+  color:var(--foreground);
+}
+.workspace-home-action-icon { font-size:var(--text-ui-hero); width:1em; height:1em; flex-shrink:0; }
+.workspace-home-files-icon { color:var(--warning); }
+.workspace-home-terminal-icon { color:var(--link); }
+.workspace-home-action-text { display:flex; min-width:0; flex-direction:column; gap:5px; }
+.workspace-home-action-title { font-size:var(--text-ui-body); font-weight:500; line-height:1.4; }
+.workspace-home-action-description { font-size:var(--text-ui-caption); font-weight:400; line-height:1.4; color:var(--muted-foreground); }
+.workspace-home-terminals { display:flex; min-width:0; flex-direction:column; gap:2px; margin-top:2px; }
+.workspace-files { width:100%; background:var(--surface-detail); }

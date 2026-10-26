@@ -1,6 +1,6 @@
 /*
  * [INPUT]: BOAI当前应用主题/代码字号/行高/详情表面与终端OSC颜色指令。
- * [OUTPUT]: 跟随应用主题的导入配色/Base46/VS Code ANSI映射及全局前景/背景/选择/光标；保留程序覆写和重置，查询由宿主唯一回答。
+ * [OUTPUT]: 应用主题/全局代码字号与字体，xterm原生1倍单元行高避免光标拉长；ANSI和程序OSC覆写保持。
  * [POS]: 工作区终端外观适配，不修改用户shell主题。
  * [PROTOCOL]: 变化同步Header及所属.folder.md。
  */
@@ -25,11 +25,12 @@ export function terminalAppearance(element: HTMLElement): { theme: ITheme; fontF
   const selection = resolvedColor(element, '--selection', '#c8d8f4')
   const dark = document.documentElement.classList.contains('dark') || document.documentElement.dataset.theme === 'dark'
   const fontSize = Number.parseFloat(style.fontSize) || 12
-  const lineHeight = Number.parseFloat(style.lineHeight)
   return {
     theme: { ...terminalAnsiPalette(document.documentElement.dataset.themeId, dark ? 'dark' : 'light'), foreground, background, cursor: foreground, cursorAccent: background, selectionBackground: selection, selectionInactiveBackground: selection, selectionForeground: foreground },
     fontFamily: style.fontFamily || 'monospace', fontSize,
-    lineHeight: Number.isFinite(lineHeight) ? Math.max(1, lineHeight / fontSize) : 1.5,
+    // xterm multiplies the measured glyph cell, not the CSS font size. Applying
+    // the prose line-height here stretches both terminal rows and the cursor.
+    lineHeight: 1,
   }
 }
 
