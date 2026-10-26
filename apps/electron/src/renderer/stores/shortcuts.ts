@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Main 快捷键快照/回执、设置录入与导航/窗口结束事件。
- * [OUTPUT]: 页外草稿、单写入队列、捕获租约和未知结果核对；只执行已保存绑定。
+ * [OUTPUT]: 页外草稿、单写入队列、捕获租约和未知结果核对；只执行已保存绑定，真实保存或回执核对确认提交后使用Sonner成功提示。
  * [POS]: Renderer 快捷键状态所有者；页面卸载不丢待处理修改。
  * [PROTOCOL]: 变化同步 Header 与所属 .folder.md。
  */
@@ -153,7 +153,7 @@ export class ShortcutController {
         this.pending = pending
         try {
           this.accept(await bounded(this.api.request('updateShortcutSettings', input)))
-          this.pending = undefined; this.clearVersions(versions); return
+          this.pending = undefined; this.clearVersions(versions); toast.success('快捷键已保存'); return
         } catch (error) {
           const result = await this.resolvePending()
           if (result === 'committed') return
@@ -181,7 +181,7 @@ export class ShortcutController {
       this.accept(result.snapshot)
       if (result.state !== 'unknown') {
         this.pending = undefined
-        if (result.state === 'committed') this.clearVersions(pending.versions)
+        if (result.state === 'committed') { this.clearVersions(pending.versions); toast.success('快捷键已保存') }
       }
       this.store.setState({ unknown: result.state === 'unknown' }); return result.state
     } catch { this.store.setState({ unknown: true }); return 'unknown' }

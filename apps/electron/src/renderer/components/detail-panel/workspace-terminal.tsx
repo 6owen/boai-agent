@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 用户显式创建的terminalId、宿主挂起读取/输入确认协议与标签可见性。
- * [OUTPUT]: 按terminalId常驻xterm、隐藏停读停测量、增量续接、BOAI语义主题与有界输入流水。
+ * [OUTPUT]: 按terminalId常驻xterm、隐藏停读停测量、跟随应用主题及导入色板；主动关闭先停读写/解除附着，真实关闭失败恢复连接。
  * [POS]: 用户交互终端视图；实际进程归宿主，显隐不会重建或解除附着。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header及所属.folder.md。
  */
@@ -12,15 +12,17 @@ import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { WorkspaceTerminalController } from './workspace-terminal-controller'
 import { terminalAppearance, WorkspaceTerminalTheme } from './workspace-terminal-theme'
+import { registerWorkspaceTerminal } from './workspace-terminal-sessions'
 
 export function WorkspaceTerminal({ api, active, terminalId, onHome }: { api: DesktopApi; active: boolean; terminalId: string; onHome(): void }) {
   const container = useRef<HTMLDivElement>(null)
   const attachmentQueue = useRef<Promise<void>>(Promise.resolve())
   const visibility = useRef(active), session = useRef<{ setActive(value: boolean): void } | undefined>(undefined)
   const [terminal, setTerminal] = useState<TerminalInfo>(), [connected, setConnected] = useState(false), [revision, reconnect] = useState(0)
+  const [closing, setClosing] = useState(false)
   useEffect(() => { visibility.current = active; session.current?.setActive(active) }, [active])
   useEffect(() => {
-    setConnected(false); setTerminal(undefined)
+    setConnected(false); setTerminal(undefined); setClosing(false)
     const previousAttachment = attachmentQueue.current
     let release!: () => void
     attachmentQueue.current = new Promise<void>(resolve => { release = () => { void previousAttachment.then(resolve) } })
@@ -31,6 +33,15 @@ export function WorkspaceTerminal({ api, active, terminalId, onHome }: { api: De
     let lastSize = '', desiredSize: { cols: number; rows: number } | undefined
     const subscriptions: { dispose(): void }[] = []
     const request = (input: WorkspaceTerminalRequest) => api.request('workspaceTerminal', input)
+    const stop = async () => {
+      disposed = true
+      cancelAnimationFrame(resizeFrame)
+      observer?.disconnect(); themeObserver?.disconnect()
+      if (screen) screen.options.disableStdin = true
+      const detached = controller?.dispose()
+      await Promise.all([attachPromise, detached])
+    }
+    const unregister = registerWorkspaceTerminal(terminalId, { stop: async () => { setClosing(true); setConnected(false); await stop() }, resume: () => reconnect(value => value + 1) })
     const applyResize = async () => {
       if (resizing || !controller) return
       resizing = true
@@ -57,7 +68,7 @@ export function WorkspaceTerminal({ api, active, terminalId, onHome }: { api: De
       })
     }
     const theme = () => {
-      if (!screen || !container.current || !visibility.current) return
+      if (disposed || !screen || !container.current || !visibility.current) return
       const next = terminalAppearance(container.current)
       screen.options.fontFamily = next.fontFamily
       screen.options.fontSize = next.fontSize
@@ -65,6 +76,7 @@ export function WorkspaceTerminal({ api, active, terminalId, onHome }: { api: De
       appearance?.update(next.theme)
     }
     const setActive = (value: boolean) => {
+      if (disposed) return
       controller?.setActive(value)
       observer?.disconnect()
       if (screen) screen.options.disableStdin = !controller?.canInput
@@ -108,7 +120,7 @@ export function WorkspaceTerminal({ api, active, terminalId, onHome }: { api: De
         subscriptions.push(screen.onData(data => controller?.input(data)))
         observer = new ResizeObserver(resize)
         themeObserver = new MutationObserver(() => { theme(); resize() })
-        themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style', 'data-theme'] })
+        themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style', 'data-theme', 'data-theme-id'] })
         setActive(visibility.current)
         attachPromise = controller.attach(terminalId)
         await attachPromise
@@ -118,14 +130,13 @@ export function WorkspaceTerminal({ api, active, terminalId, onHome }: { api: De
       }
     })()
     return () => {
-      disposed = true
+      unregister()
+      const stopped = stop()
       session.current = undefined
-      cancelAnimationFrame(resizeFrame)
-      observer?.disconnect(); themeObserver?.disconnect(); subscriptions.forEach(subscription => subscription.dispose()); appearance?.dispose()
-      const detachPromise = controller?.dispose()
+      subscriptions.forEach(subscription => subscription.dispose()); appearance?.dispose()
       // Await late attachment cleanup before an explicit reconnect obtains a new
       // owner. Simple tab switches never enter this cleanup or recreate xterm.
-      void Promise.all([attachPromise, detachPromise]).then(release)
+      void stopped.then(release)
       screen?.dispose()
     }
   }, [api, terminalId, revision])
@@ -134,7 +145,7 @@ export function WorkspaceTerminal({ api, active, terminalId, onHome }: { api: De
       <Button variant="ghost" size="icon-sm" aria-label="工作区开始" onClick={onHome}><span className="i-solar-home-2-linear size-4" /></Button>
       <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground" title={terminal?.cwd}>{terminal?.cwd}</span>
       {terminal?.status === 'exited' && <span className="text-xs text-muted-foreground">已结束{terminal.exitCode !== undefined ? ` · ${terminal.exitCode}` : ''}</span>}
-      <Button variant="ghost" size="icon-sm" aria-label="重新连接终端" disabled={!active} onClick={() => reconnect(value => value + 1)}><span className="i-solar-refresh-linear size-4" /></Button>
+      <Button variant="ghost" size="icon-sm" aria-label="重新连接终端" disabled={!active || closing} onClick={() => reconnect(value => value + 1)}><span className="i-solar-refresh-linear size-4" /></Button>
     </div>
     <div className="workspace-terminal-screen min-h-0 flex-1 overflow-hidden p-2" ref={container} aria-label="终端屏幕" onKeyDown={event => event.stopPropagation()} aria-busy={!connected && terminal?.status !== 'exited'} />
   </section>

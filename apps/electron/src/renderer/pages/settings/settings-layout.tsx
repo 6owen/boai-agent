@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Settings page titles/actions and section/card/row contents using existing UI components and semantic classes.
- * [OUTPUT]: Shared settings layout without a persistent description slot; contextual help uses icon Tooltips with appearance page spacing.
+ * [OUTPUT]: Shared settings layout without a persistent description slot; action headings share the local-agent heading's 12px bottom gap; contextual help uses icon Tooltips.
  * [POS]: Settings presentation primitives; contains no requests, persistence or page-specific state.
  * [PROTOCOL]: Update Header and settings/.folder.md when changed.
  */
@@ -28,7 +28,7 @@ export function SettingsSection({ title, titleId, actions, first = false, classN
   const generatedId = useId(), headingId = titleId ?? generatedId
   const heading = <h3 id={headingId} className="settings-section-title flex items-center gap-1">{title}</h3>
   return <section {...props} aria-labelledby={props['aria-labelledby'] ?? headingId} className={cn(!first && 'appearance-advanced', className)}>
-    {actions ? <div className="flex items-center justify-between gap-2">{heading}{actions}</div> : heading}
+    {actions ? <div className="settings-section-heading">{heading}{actions}</div> : heading}
     {children}
   </section>
 }

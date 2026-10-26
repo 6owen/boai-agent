@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 终端关闭先停止所有挂载视图的读写/附着，再等待真实退出；关闭失败保留标签并重连。
  * [OUTPUT]: 系统唤醒/解锁后沿原只读刷新恢复显示，不重发消息。
  * [OUTPUT]: 工作区开始、真实目录浏览和用户终端独立标签；终端关闭等待宿主退出，原附件/成果与浏览器保持。
  * [OUTPUT]: 审批传递本次运行同类操作选择；目录回执核对包括该选择，未知回答不冒充成功。
@@ -92,6 +93,7 @@ import { WorkspacePanel } from '../detail-panel/workspace-panel'
 import { WorkspaceHome } from '../detail-panel/workspace-home'
 import { WorkspaceFiles } from '../detail-panel/workspace-files'
 import { WorkspaceTerminal } from '../detail-panel/workspace-terminal'
+import { closeWorkspaceTerminal } from '../detail-panel/workspace-terminal-sessions'
 import type { TerminalInfo } from '@boai/shared/domain/workspace-tools'
 import { appendDraftReference, draftResourceReferences } from '@/pages/conversations/inline-mentions'
 import { managementSkillReference } from '@/pages/conversations/composer-commands'
@@ -634,8 +636,7 @@ export function AppShell() {
       if (!api || closingTerminals.current.has(tab.target.id)) return
       const terminal = tab.target
       closingTerminals.current.add(terminal.id)
-      void api.request('workspaceTerminal', { action: 'close', terminalId: terminal.id }).then(result => {
-        if (result.kind !== 'closed' || result.terminal.status !== 'exited') throw new Error('终端尚未确认停止，请重试关闭')
+      void closeWorkspaceTerminal(terminal.id, input => api.request('workspaceTerminal', input)).then(() => {
         if (mounted.current) dispatchDetails({ type: 'close', key, keepWorkspace: true }, scope)
       }).catch(error => { if (mounted.current) toast.error(errorText(error)) }).finally(() => closingTerminals.current.delete(terminal.id))
       return

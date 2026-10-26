@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: Cookie菜单列本机profile及文件入口/刷新，Main展开工具栏透明覆盖后再绘制；收起/失焦/导入前恢复原高度。
+ * [OUTPUT]: Cookie菜单列本机profile及文件入口/刷新，Main展开覆盖后再绘制；普通关闭等退出动画完成再收回高度，重开不被迟到关闭覆盖；失焦/导入沿原立即收回。
  * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [INPUT]: 原工具栏布局、专用 preload 与主进程网页事实。
  * [OUTPUT]: 内置浏览器工具栏不显示员工/会话归属，正常导航与直接关闭保留。
@@ -39,6 +39,7 @@ function BrowserToolbarApp() {
   const [loadingSources,setLoadingSources]=useState(false)
   const [sourcesFailed,setSourcesFailed]=useState(false)
   const menuGeneration=useRef(0), sourceGeneration=useRef(0), importingRef=useRef(false)
+  const menuRequested=useRef(false)
   const api=window.browserToolbar
   useEffect(()=>{ if(!api)return; const remove=api.onStateUpdate(next=>{setState(next);setThemeColor(next.themeColor??null);if(next.isDark!==undefined)document.documentElement.classList.toggle('dark',next.isDark)});void api.getState().catch(e=>showErrorToast(String(e)));return remove },[api])
   useEffect(()=>api?.onThemeColor(setThemeColor),[api])
@@ -51,20 +52,21 @@ function BrowserToolbarApp() {
   },[api])
   const changeMenu=useCallback(async(open:boolean)=>{
     const generation=++menuGeneration.current
-    if(!open)setMenuOpen(false)
+    menuRequested.current=open
+    if(!open){setMenuOpen(false);return}
     try{await api.setCookieMenuOpen(open);if(menuGeneration.current!==generation)return;if(open){setMenuOpen(true);void loadSources()}}
-    catch(e){if(menuGeneration.current===generation)setMenuOpen(false);showErrorToast(e instanceof Error?e.message:String(e))}
+    catch(e){if(menuGeneration.current===generation){menuRequested.current=false;setMenuOpen(false)}showErrorToast(e instanceof Error?e.message:String(e))}
   },[api,loadSources])
-  useEffect(()=>api?.onCookieMenuDismiss(()=>{menuGeneration.current++;setMenuOpen(false)}),[api])
+  useEffect(()=>api?.onCookieMenuDismiss(()=>{menuGeneration.current++;menuRequested.current=false;setMenuOpen(false)}),[api])
   useEffect(()=>()=>{menuGeneration.current++;sourceGeneration.current++;void api?.setCookieMenuOpen(false).catch(()=>{})},[api])
   const importCookies=useCallback(async(sourceId?:string)=>{
-    if(importingRef.current)return;importingRef.current=true;setImporting(true);menuGeneration.current++;setMenuOpen(false)
+    if(importingRef.current)return;importingRef.current=true;setImporting(true);menuGeneration.current++;menuRequested.current=false;setMenuOpen(false)
     try{await api.setCookieMenuOpen(false);await api.importCookies(sourceId)}
     catch(e){showErrorToast(e instanceof Error?e.message:String(e))}
     finally{importingRef.current=false;setImporting(false)}
   },[api])
   return <><BrowserControls url={state.url} loading={state.isLoading} canGoBack={state.canGoBack} canGoForward={state.canGoForward} onNavigate={url=>void run(()=>api.navigate(url))} onGoBack={()=>void run(api.goBack)} onGoForward={()=>void run(api.goForward)} onReload={()=>void run(api.reload)} onStop={()=>void run(api.stop)} themeColor={themeColor} urlBarClassName="max-w-[600px]" className="titlebar-drag-region bg-background" trailingContent={<div className="ml-2 flex items-center gap-1.5 titlebar-no-drag">
-    <DropdownMenu open={menuOpen} onOpenChange={open=>void changeMenu(open)}>
+    <DropdownMenu open={menuOpen} onOpenChange={open=>void changeMenu(open)} onOpenChangeComplete={open=>{if(!open&&!menuRequested.current)void run(()=>api.setCookieMenuOpen(false))}}>
       <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="导入 Cookie" title="从本机浏览器或文件导入 Cookie" disabled={importing} />}><i aria-hidden="true" className={`app-icon size-3.5 ${importing?'i-solar-refresh-linear animate-spin':'i-carbon-document-import'}`} /></DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-72 titlebar-no-drag">
         <DropdownMenuGroup>

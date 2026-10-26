@@ -1,7 +1,7 @@
 /*
  * [OUTPUT]: 页面布局复用settings-layout，标题/分组留白与卡片/设置行统一，原业务回调保持。
  * [INPUT]: Main 快照、页外保存队列、共用 Card/Switch/Button 和平台按键规则。
- * [OUTPUT]: 四项启停/录入、clickoutside自动保存；不渲染保存/准备/错误状态文案，失败沿Sonner和原恢复动作。
+ * [OUTPUT]: 四项启停/录入、clickoutside自动保存；不渲染保存/准备/错误状态文案，保存成功和失败由页外队列沿Sonner提示，保留原恢复动作。
  * [POS]: 设置中的快捷键页；页面卸载只结束捕获，不清除失败草稿。
  * [PROTOCOL]: 变化同步 Header 与所属 .folder.md。
  */

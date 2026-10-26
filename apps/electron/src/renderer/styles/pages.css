@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 设置分组与本机Agent标题操作栏共用12px下方留白，标题自身不重复添加外边距。
  * [OUTPUT]: 定时对话创建改用普通会话布局，移除旧专用聊天弹窗的标题占位；手动表单弹窗布局保持。
  * [OUTPUT]: 插画空态图片尺寸迁入公共组合样式，页面容器/过渡保持。
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
@@ -92,8 +93,8 @@
 }
 /* Model connections reuse the settings surface and keep setup in a focused dialog. */
 .connection-settings>.banner { margin-bottom:20px }
-.connection-section-heading { display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px }
-.connection-section-heading .settings-section-title { margin:0 }
+.settings-section-heading,.connection-section-heading { display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px }
+.settings-section-heading .settings-section-title,.connection-section-heading .settings-section-title { margin:0 }
 .connection-agent-settings { margin-top:40px }
 .connection-agent-settings>.banner,.connection-agent-settings>.connection-feedback { margin:0 0 12px }
 .connection-row { display:flex;align-items:center;gap:14px;padding:18px 20px;min-width:0 }

@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-26终端跟随应用主题并复用Base46/VS Code Plus ANSI，撤销独立配置；关闭前停流修复与验证边界归§11。
 [OUTPUT]: 2026-10-26随PR23/25整合更新BOAI源码路径，保留原功能范围及验证记录。
 [OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
 [OUTPUT]: 本轮修复最终19文件342项、类型/lint/build、Rust3项及两条分批Electron场景通过；开发版已重启，个人窗口CUA超时与真实登录/跨平台未验边界保持。
@@ -370,3 +371,24 @@ RP2 与 Cookie 核心可独立交付，但完整终端和本机导入不能因�
 ## 10. PR23新目录整合
 
 2026-10-26用户要求保留最新apps/packages结构和本PR全部功能。原fdbef412提交完整合入PR23整合候选，Electron宿主/UI、运行核心/PTY与共享IPC迁至对应包；原实现和验证/失败记录保留。合成版本的185项定向、完整构建、3条桌面检查及剩余边界统一见[第26组02 §10](../26.Workspace工程结构重构/02-实施步骤与验收.md#10-2026-10-26-main与pr25目录整合)。最终从PR23统一合入main，本分支保留为原功能来源。
+
+
+## 11. 2026-10-26：终端复用应用主题与关闭误报
+
+本轮按用户要求在当前main目录续改，保留同轮设置页与Cookie菜单修复，不运行E2E。用户随后明确终端直接复用现有应用主题，因此撤销本轮新增的独立终端主题选择及保存字段。
+
+- 终端跟随现有外观的实际应用主题ID、明暗模式、全局背景/前景/光标/选区，以及代码字体/字号。Base46主题使用同一份`base46.json`；自定义颜色仍从当前CSS语义变量解析，停用主题插件后跟随应用的实际回退主题。非Base46主题保留原有明暗ANSI色板。
+- ANSI 16色映射采用固定版本`7df2bd89295db00b649cbc49bdf6fe5a1cc5df3b`的[上游term.lua](https://github.com/NvChad/base46/blob/7df2bd89295db00b649cbc49bdf6fe5a1cc5df3b/lua/base46/term.lua)，沿现有MIT许可。不修改用户shell配置；程序OSC覆写跨主题变化保留，reset恢复当前主题。
+- 设置页不再增加终端分区，偏好、patch/schema及Main加载均移除独立`terminalThemeId`；已有配置中的该字段被忽略，下一次正常保存不再写入，其他偏好和版本保持。不再需要为新增保存字段重启主进程。
+- 关闭误报来自原先直接结束PTY而页面仍在挂起读取：宿主关闭唤醒读取后抛出“终端正在关闭”。保留前一轮修复：先同步停止已挂载视图的输入/测量/读取，等待解除附着及迟到attach清理，再调用原关闭请求。宿主确认exited后才移除标签；关闭失败仍报真实错误，并重新连接保留的终端。没有按错误文本吞错，也不将未知输入重发。
+- 此前独立配置候选的5文件43项及类型/定向lint通过属于旧批次；当前复用主题候选的检查结果另行登记，不把旧结果移作本次证明。
+- 当前候选4个定向Vitest文件38项全部通过，覆盖应用主题切换、Base46 ANSI映射、原明暗回退、旧字段清理和关闭顺序/失败恢复；全项目TypeScript、相关前端ESLint及Git差异检查通过。Main、外观store/schema和终端CSS已撤回本轮独立主题增量，生产代码无独立终端主题字段残留。
+- 未运行E2E、真实PTY关闭、截图/视觉基线或个人窗口验收，未重新构建或重启当前开发版。
+
+### 同日反馈：VS Code Plus 的文字颜色未变化
+
+- 当前外观文件选择`vscode-plus-dark`，前一版仅映射Base46，其他主题共享旧ANSI色板；因此VS Code Plus仅背景等语义颜色跟随，标准彩色文字仍是旧色。这是适配遗漏。
+- 只读确认本机zsh使用Starship；单独输出directory/character模块并仅提取SGR，分别为`1;36`与`1;32`，确认为标准青色/绿色，而非固定RGB；没有执行完整prompt或读取云账号凭据。终端快照序列化也保留ANSI索引。
+- 在原终端适配中补VS Code Plus明暗16色，来源为[VS Code固定提交的terminalColorRegistry](https://github.com/microsoft/vscode/blob/af3b54ddd0c4f81765fc218856e2e73491051092/src/vs/workbench/contrib/terminal/common/terminalColorRegistry.ts)，并核对Dark+/Light+及继承主题未覆写ANSI色板。应用主题ID仍是唯一选择；BoAI回退、Base46和程序OSC覆写保持。
+- 程序显式输出的RGB、扩展256色或自行设置的OSC颜色不强制重染；标准ANSI 16色随应用主题改变。没有修改用户Starship/zsh或外观配置。
+- 本批2个终端定向文件17项、全项目TypeScript、相关renderer ESLint与Git差异检查通过；主题切换回归核对VS Code Plus明暗的青/绿/蓝色，同时保持同一终端实例/附着。未运行E2E、真实窗口视觉验收、构建或应用重启。

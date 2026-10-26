@@ -1,6 +1,6 @@
 <!--
 [INPUT]: 原独立浏览器 HTML 与本地 UI 入口。
-[OUTPUT]: 不使用远程字体的随包浏览器界面。
+[OUTPUT]: 不使用远程字体的随包浏览器界面；根视口固定尺寸且不滚动，覆盖层收回时不产生页面滚动条，菜单内部独立滚动。
 [POS]: apps/electron/src/renderer/browser-toolbar.html。
 [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 -->
@@ -13,7 +13,7 @@
   <title>Browser Toolbar</title>
   <style>
     /* Prevent any flash of unstyled content */
-    html, body { margin: 0; padding: 0; min-height: 48px; overflow: visible; background: transparent; }
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; min-height: 48px; overflow: hidden; background: transparent; }
     /* Interactive elements must not be draggable within the titlebar-drag-region */
     button, input { -webkit-app-region: no-drag; app-region: no-drag; }
   </style>

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 导入配色/Base46/VS Code Plus跟随应用主题及明暗回退、关闭前停读解除附着和失败重连回归；不运行E2E。
  * [INPUT]: 真实React终端组件、异步IPC夹具与可观测xterm适配器。
  * [OUTPUT]: 100次标签显隐不重建终端、隐藏停测量/读取、稳定尺寸不重复提交及明暗/OSC回归。
  * [POS]: 工作区终端renderer生命周期回归；真实桌面视觉由单独验收覆盖。
@@ -13,6 +14,8 @@ import type { DesktopApi } from '../packages/shared/src/ipc/index'
 import type { WorkspaceTerminalRequest, WorkspaceTerminalResponse } from '../packages/shared/src/ipc/workspace-terminal'
 import { WorkspaceTerminal } from '../apps/electron/src/renderer/components/detail-panel/workspace-terminal'
 import { WorkspaceTerminalTheme, parseTerminalColor, terminalAppearance } from '../apps/electron/src/renderer/components/detail-panel/workspace-terminal-theme'
+import { closeWorkspaceTerminal } from '../apps/electron/src/renderer/components/detail-panel/workspace-terminal-sessions'
+import { toast } from 'sonner'
 
 const mocks = vi.hoisted(() => ({ screens: [] as Array<{ options: Record<string, unknown>; dispose: ReturnType<typeof vi.fn>; focus: ReturnType<typeof vi.fn>; reset: ReturnType<typeof vi.fn>; buffer: { active: { viewportY: number; baseY: number } } }>, measure: vi.fn(() => ({ cols: 90, rows: 32 })) }))
 vi.mock('@xterm/xterm', () => ({ Terminal: class {
@@ -35,7 +38,7 @@ let host: HTMLDivElement, root: Root
 let rafs: Map<number, FrameRequestCallback>, resizeCallbacks: Array<ResizeObserverCallback>, rafId: number
 beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
-  mocks.screens.length = 0; mocks.measure.mockReset(); mocks.measure.mockReturnValue({ cols: 90, rows: 32 })
+  mocks.screens.length = 0; mocks.measure.mockReset(); mocks.measure.mockReturnValue({ cols: 90, rows: 32 }); vi.mocked(toast.error).mockClear()
   rafs = new Map(); resizeCallbacks = []; rafId = 0
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { rafs.set(++rafId, callback); return rafId })
   vi.stubGlobal('cancelAnimationFrame', (id: number) => rafs.delete(id))
@@ -44,10 +47,11 @@ beforeEach(() => {
   vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(600)
   host = document.createElement('div'); document.body.append(host); root = createRoot(host)
 })
-afterEach(async () => { await act(async () => root.unmount()); host.remove(); document.documentElement.className = ''; vi.restoreAllMocks(); vi.unstubAllGlobals() })
+afterEach(async () => { await act(async () => root.unmount()); host.remove(); document.documentElement.className = ''; delete document.documentElement.dataset.themeId; delete document.documentElement.dataset.theme; delete document.documentElement.dataset.terminalTheme; vi.restoreAllMocks(); vi.unstubAllGlobals() })
 async function flushFrames() { await act(async () => { const callbacks = [...rafs.values()]; rafs.clear(); callbacks.forEach(callback => callback(1)); for (let i = 0; i < 15; i++) await Promise.resolve() }) }
 function apiHarness() {
   const calls: WorkspaceTerminalRequest[] = []
+  const controls: { closeError?: Error } = {}
   let pending: ((value: WorkspaceTerminalResponse) => void) | undefined
   const api = { request: vi.fn(async (_method: string, input: WorkspaceTerminalRequest): Promise<WorkspaceTerminalResponse> => {
     calls.push(input)
@@ -58,11 +62,15 @@ function apiHarness() {
       case 'ack': return { kind: 'acknowledged', sequence: input.sequence }
       case 'resize': return { kind: 'resized' }
       case 'detach': return { kind: 'detached' }
+      case 'close':
+        if (pending) throw new Error('终端正在关闭')
+        if (controls.closeError) throw controls.closeError
+        return { kind: 'closed', terminal: { id: input.terminalId, employeeId: 'employee', conversationId: 'conversation', title: 'zsh', cwd: '/workspace', createdAt: '', status: 'exited' } }
       default: throw new Error('unexpected request')
     }
   }) } as unknown as DesktopApi
   const render = async (active: boolean) => { await act(async () => { root.render(createElement(WorkspaceTerminal, { api, active, terminalId: 'term', onHome() {} })); for (let i = 0; i < 20; i++) await Promise.resolve() }) }
-  return { api, calls, render }
+  return { api, calls, render, controls }
 }
 
 test('100 active switches retain one emulator/attachment, scroll position and one final dispose', async () => {
@@ -110,6 +118,51 @@ test('appearance reads effective code font/line-height and updates the ANSI pale
   expect(light.theme.selectionBackground).toBeTruthy()
   document.documentElement.classList.add('dark')
   expect(terminalAppearance(host).theme.red).not.toBe(light.theme.red)
+  document.documentElement.dataset.themeId = 'nord'
+  expect(terminalAppearance(host).theme.red).toBe('#bf616a')
+  expect(terminalAppearance(host).theme.foreground).toBe('rgb(20, 21, 22)')
+  document.documentElement.dataset.terminalTheme = 'catppuccin'
+  expect(terminalAppearance(host).theme.red).toBe('#bf616a')
+  document.documentElement.classList.remove('dark')
+  document.documentElement.dataset.themeId = 'catppuccin-latte'
+  expect(terminalAppearance(host).theme.red).toBe('#E64553')
+})
+
+test('explicit close cancels reads and detaches before the host closes, without a spurious error', async () => {
+  const h = apiHarness(); await h.render(true); await flushFrames()
+  await act(async () => closeWorkspaceTerminal('term', input => h.api.request('workspaceTerminal', input)))
+  const actions = h.calls.map(call => call.action)
+  expect(actions.indexOf('cancelRead')).toBeLessThan(actions.indexOf('detach'))
+  expect(actions.indexOf('detach')).toBeLessThan(actions.indexOf('close'))
+  expect(toast.error).not.toHaveBeenCalled()
+  expect(mocks.screens[0]!.options.disableStdin).toBe(true)
+  await h.render(false); await h.render(true); await flushFrames()
+  expect(h.calls.filter(call => call.action === 'attach')).toHaveLength(1)
+})
+
+test('a real close failure remains an error and reconnects the retained terminal for retry', async () => {
+  const h = apiHarness(); await h.render(true); await flushFrames()
+  h.controls.closeError = new Error('进程停止失败')
+  await act(async () => { await expect(closeWorkspaceTerminal('term', input => h.api.request('workspaceTerminal', input))).rejects.toThrow('进程停止失败') })
+  await flushFrames()
+  expect(h.calls.filter(call => call.action === 'attach')).toHaveLength(2)
+  expect(mocks.screens[0]!.dispose).toHaveBeenCalledOnce()
+  expect(mocks.screens[1]!.options.disableStdin).toBe(false)
+  expect(toast.error).not.toHaveBeenCalled()
+  h.controls.closeError = undefined
+  await act(async () => closeWorkspaceTerminal('term', input => h.api.request('workspaceTerminal', input)))
+})
+
+test('application theme, mode and plugin fallback update the mounted emulator without restarting its session', async () => {
+  const h = apiHarness(); await h.render(true); await flushFrames()
+  for (const [id, dark, red] of [['nord', true, '#bf616a'], ['catppuccin', true, '#f38ba8'], ['catppuccin-latte', false, '#E64553'], ['gruvchad', true, '#ec6b64'], ['moegi-dawn', false, '#e65050'], ['vscode-plus-dark', true, '#cd3131'], ['vscode-plus-light', false, '#cd3131'], ['vscode-dark-modern', true, '#cd3131'], ['vscode-light-modern', false, '#cd3131'], ['boai-dark', true, '#ed8796']] as const) {
+    await act(async () => { document.documentElement.dataset.themeId = id; document.documentElement.classList.toggle('dark', dark) }); await flushFrames()
+    expect(mocks.screens[0]!.options.theme).toMatchObject({ red })
+    if (id === 'vscode-plus-dark') expect(mocks.screens[0]!.options.theme).toMatchObject({ cyan: '#11a8cd', green: '#0DBC79', blue: '#2472c8' })
+    if (id === 'vscode-plus-light') expect(mocks.screens[0]!.options.theme).toMatchObject({ cyan: '#0598bc', green: '#107C10', blue: '#0451a5' })
+  }
+  expect(mocks.screens).toHaveLength(1)
+  expect(h.calls.filter(call => call.action === 'attach')).toHaveLength(1)
 })
 
 test('collapsed or undersized panels do not submit an invalid host resize or disable input', async () => {
