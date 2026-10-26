@@ -1,10 +1,12 @@
 /*
+ * [OUTPUT]: 版本化系统睡眠/锁屏快照，供桌面与应用插件核对当前状态。
  * [INPUT]: 主进程桌面偏好与操作系统登录项事实。
  * [OUTPUT]: 后台运行、登录启动的布尔白名单合同；不接受路径或命令。
  * [POS]: 桌面生命周期 IPC 类型。
  * [PROTOCOL]: 变化同步 Header 与所属 .folder.md。
  */
 export type DesktopPreferences = { runInBackground: boolean; startHidden: boolean }
+export type DesktopLifecycle = { sessionId: string; revision: number; power: 'awake' | 'suspended'; locked: boolean; changedAt: string }
 export type DesktopPatch = Partial<DesktopPreferences> & { openAtLogin?: boolean }
 export type DesktopSettings = {
   revision: number

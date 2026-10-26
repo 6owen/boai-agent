@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 系统唤醒/解锁后沿原只读刷新恢复显示，不重发消息。
  * [OUTPUT]: 工作区开始、真实目录浏览和用户终端独立标签；终端关闭等待宿主退出，原附件/成果与浏览器保持。
  * [OUTPUT]: 审批传递本次运行同类操作选择；目录回执核对包括该选择，未知回答不冒充成功。
  * [OUTPUT]: 员工右键配置跳转通讯录；定时运行图标沿原主会话定位与详情导航。
@@ -421,6 +422,7 @@ export function AppShell() {
       })
     }).catch(report) }
     const unsubscribe = api.subscribe((event: AppEvent) => {
+      if (event.type === 'desktop:lifecycle') { if (event.state.power === 'awake' && !event.state.locked) schedule(); return }
       if (event.type === 'workspace:show') { if (event.view !== 'preview') return; dispatchDetails({ type: 'open', target: { type: 'workspace', id: event.conversationId, employeeId: event.employeeId, view: event.view } }, 'conversations'); return }
       if (event.type === 'automation:history-deleted') { dispatchWorkspace({ type: 'remove-automation-occurrence', id: event.occurrenceId }); schedule(); return }
       if (event.type === 'automation:navigate') { openAutomationNotice(); return }
