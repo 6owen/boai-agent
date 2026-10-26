@@ -1,6 +1,6 @@
 /*
 [INPUT]: Rovai managed_process/macos.rs @ f9acc2395283d49f0ce247dc0af2207c155f6eb6 (MIT).
-[OUTPUT]: Identity-bound native supervision; BOAI adds same-UID desktop observation and root-exit checks without persistent recovery ledgers.
+[OUTPUT]: Identity-bound supervision; PTY-only final receipts may additionally require captured identities to be reaped.
 [POS]: Platform module for BOAI process guard; license is in this directory.
 [PROTOCOL]: Preserve provenance and update .folder.md if changed.
 */
@@ -49,6 +49,10 @@ struct Identity {
 }
 
 fn identity(pid: i32) -> io::Result<Option<Identity>> {
+    process_identity(pid, false)
+}
+
+fn process_identity(pid: i32, include_zombies: bool) -> io::Result<Option<Identity>> {
     // SAFETY: proc_pidinfo receives an initialized buffer of its exact ABI size.
     let mut info: ProcessInfo = unsafe { std::mem::zeroed() };
     let size = std::mem::size_of::<ProcessInfo>();
@@ -56,7 +60,9 @@ fn identity(pid: i32) -> io::Result<Option<Identity>> {
         libc::proc_pidinfo(
             pid,
             18,
-            0,
+            // XNU proc_pidinfo only searches its zombie list when arg is nonzero
+            // for PROC_PIDT_BSDINFOWITHUNIQID. Keep normal identity() unchanged.
+            u64::from(include_zombies),
             (&mut info as *mut ProcessInfo).cast(),
             size as i32,
         )
@@ -72,7 +78,7 @@ fn identity(pid: i32) -> io::Result<Option<Identity>> {
         };
     }
     // A zombie can no longer execute or write; its parent owns wait/reaping.
-    if info.bsd.pbi_status == libc::SZOMB as u32 {
+    if !include_zombies && info.bsd.pbi_status == libc::SZOMB as u32 {
         return Ok(None);
     }
     Ok(Some(Identity {
@@ -87,6 +93,10 @@ fn identity(pid: i32) -> io::Result<Option<Identity>> {
 impl Identity {
     fn alive(&self) -> io::Result<bool> {
         Ok(identity(self.pid)?.is_some_and(|now| now.unique == self.unique && now.uid == self.uid))
+    }
+
+    fn present(&self) -> io::Result<bool> {
+        Ok(process_identity(self.pid, true)?.is_some_and(|now| now.unique == self.unique && now.uid == self.uid))
     }
 
     fn signal(&self, signal: i32) -> io::Result<()> {
@@ -316,6 +326,15 @@ impl ProcessTree {
         Ok(true)
     }
 
+    // Explicit PTY close promises no remaining PID, rather than just no executing
+    // descendants. Keep alive()/is_empty() unchanged for Agent/recovery observers.
+    pub(super) fn is_reaped(&self) -> io::Result<bool> {
+        for process in self.ledger.processes.values() {
+            if process.present()? { return Ok(false); }
+        }
+        Ok(true)
+    }
+
     #[cfg(test)]
     pub(super) fn owns_live_pid(&self, pid: u32) -> io::Result<bool> {
         for process in self.ledger.processes.values() {
@@ -337,6 +356,29 @@ impl ProcessTree {
             Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
             result => result,
         }
+    }
+}
+
+#[cfg(test)]
+mod terminal_cleanup_tests {
+    use super::*;
+    use std::process::Command;
+
+    #[test]
+    fn terminal_receipt_waits_for_reaping_without_changing_alive_semantics() {
+        let mut child = Command::new("/bin/sleep").arg("30").spawn().unwrap();
+        let tree = ProcessTree::new(child.id() as i32).unwrap();
+        child.kill().unwrap();
+        let deadline = Instant::now() + Duration::from_secs(1);
+        while !tree.is_empty().unwrap() && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        let stopped = tree.is_empty().unwrap();
+        let premature_receipt = tree.is_reaped().unwrap();
+        child.wait().unwrap();
+        assert!(stopped, "a zombie must retain the existing non-executing meaning");
+        assert!(!premature_receipt, "a zombie must not acknowledge PTY cleanup");
+        assert!(tree.is_reaped().unwrap());
     }
 }
 

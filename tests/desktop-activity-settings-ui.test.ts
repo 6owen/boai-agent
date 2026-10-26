@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /*
  * [INPUT]: Production settings sections with confirmed state and mutation callbacks.
- * [OUTPUT]: Independent opt-ins, shared permission Badges, capability-aware OCR fallback and polling-safe drafts.
+ * [OUTPUT]: Independent opt-ins, permission Badges, accessible OCR disabled state with blocked interaction and polling-safe drafts.
  * [POS]: DOM interaction checks; real OS permissions and Electron visual acceptance remain separate.
  * [PROTOCOL]: Update Header and tests/.folder.md when changed.
  */
@@ -44,7 +44,13 @@ it('uses generic OCR labels and disables unavailable adapter features without ch
   expect(host.textContent).not.toContain('macOS')
   expect(host.textContent).not.toContain('Vision')
   expect(host.textContent).not.toContain('辅助功能')
-  expect((host.querySelector('[role="switch"][aria-label="OCR 文字识别"]') as HTMLButtonElement).disabled).toBe(true)
+  const ocrSwitch = host.querySelector('[role="switch"][aria-label="OCR 文字识别"]') as HTMLElement
+  expect(ocrSwitch.getAttribute('aria-disabled')).toBe('true')
+  await act(async () => {
+    ocrSwitch.click()
+    ocrSwitch.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }))
+    ocrSwitch.dispatchEvent(new KeyboardEvent('keyup', { key: ' ', bubbles: true }))
+  })
   expect((host.querySelector('[aria-label="OCR 语言"]') as HTMLInputElement).disabled).toBe(true)
   expect(update).not.toHaveBeenCalled()
 })

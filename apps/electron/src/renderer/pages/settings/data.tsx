@@ -1,7 +1,7 @@
 /*
  * [INPUT]: 快照领域类型、DesktopApi 与公共组件、统一 UI 基础组件。
  * [OUTPUT]: 数据目录/备份复用公共设置分区、Card与横向行；说明归图标Tooltip，原打开目录与导出回调保持。
- * [POS]: apps/electron/src/renderer/pages/settings/data.tsx。
+ * [POS]: apps/electron/apps/electron/src/renderer/pages/settings/data.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { Button } from '@/components/ui/button'

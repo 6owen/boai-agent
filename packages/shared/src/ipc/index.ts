@@ -1,5 +1,6 @@
 /*
  * [OUTPUT]: Owner任务结果读取复用共享Work结果合同，桌面与CLI同一投影。
+ * [OUTPUT]: 工作区路径核验及轻量身份复核为私有合同；终端精确员工/会话排空保持原清理边界。
  * [OUTPUT]: 桌面活动原生采集参数、独立键鼠监听及权限命令保持宿主私有调用。
  * [OUTPUT]: approve协议新增allowSameKind，只表达本次运行同类操作批准。
  * [OUTPUT]: 增加系统文本复制桥和retryRun的显式continuation标识，原请求身份及通用IPC保持。
@@ -123,6 +124,13 @@ export type AppEvent =
   | { type: 'runtime-error'; error: string }
 
 export interface Methods {
+  closeUserWorkspace: { input: { employeeId: string; conversationId?: string } | { conversationId: string }; output: void }
+  getWorkspaceRoot: { input: import('./workspace-files').WorkspaceFileScope; output: string }
+  validateWorkspaceScope: { input: import('./workspace-files').WorkspaceFileScope; output: void }
+  listWorkspaceFiles: { input: import('./workspace-files').WorkspaceFilesQuery; output: import('./workspace-files').WorkspaceDirectoryPage }
+  listWorkspaceApplications: { input: { refresh?: boolean }; output: import('./workspace-files').WorkspaceApplication[] }
+  openWorkspacePath: { input: import('./workspace-files').WorkspaceOpenInput; output: void }
+  workspaceTerminal: { input: import('./workspace-terminal').WorkspaceTerminalRequest; output: import('./workspace-terminal').WorkspaceTerminalResponse }
   captureDesktopActivity: { input: { action: import('../domain/desktop-activity').ActivityCaptureAction; excludedApps?: string[]; options?: import('../domain/desktop-activity').ActivityCaptureOptions }; output: import('../domain/desktop-activity').ActivityCaptureResult }
   getApplicationCatalog: { input: import('../domain/application-protocol').ApplicationCatalogQuery; output: import('../domain/application-protocol').ApplicationCatalog }
   executeApplicationOperation: { input: import('../domain/application-protocol').ApplicationRequest; output: import('../domain/application-protocol').ApplicationResult }

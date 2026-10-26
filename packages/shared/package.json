@@ -429,6 +429,16 @@
       "types": "./src/domain/task-results.ts",
       "development": "./src/domain/task-results.ts",
       "default": "./src/domain/task-results.ts"
+    },
+    "./ipc/workspace-files": {
+      "types": "./src/ipc/workspace-files.ts",
+      "development": "./src/ipc/workspace-files.ts",
+      "default": "./src/ipc/workspace-files.ts"
+    },
+    "./ipc/workspace-terminal": {
+      "types": "./src/ipc/workspace-terminal.ts",
+      "development": "./src/ipc/workspace-terminal.ts",
+      "default": "./src/ipc/workspace-terminal.ts"
     }
   },
   "dependencies": {

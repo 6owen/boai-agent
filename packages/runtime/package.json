@@ -59,6 +59,16 @@
       "types": "./src/profile-access.ts",
       "development": "./src/profile-access.ts",
       "default": "./src/profile-access.ts"
+    },
+    "./modules/workspaces/file-access": {
+      "types": "./src/modules/workspaces/file-access.ts",
+      "development": "./src/modules/workspaces/file-access.ts",
+      "default": "./src/modules/workspaces/file-access.ts"
+    },
+    "./modules/workspace-tools/terminal-service": {
+      "types": "./src/modules/workspace-tools/terminal-service.ts",
+      "development": "./src/modules/workspace-tools/terminal-service.ts",
+      "default": "./src/modules/workspace-tools/terminal-service.ts"
     }
   },
   "dependencies": {

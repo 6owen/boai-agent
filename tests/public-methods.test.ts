@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 工作区根读取及终端清理仅允许受信任宿主调用，不向renderer公开。
  * [OUTPUT]: 桌面 OCR 原始采集属于私有宿主入口，公共请求拒绝。
  * [OUTPUT]: 提示词列表/版本保存/删除通过原公共准入，内部方法仍拒绝。
  * [OUTPUT]: 2026-10-19 独立网页检索六项 IPC 的实际公共准入与未知方法拒绝。
@@ -17,5 +18,5 @@ it('admits catalog result reads and shared skill changes alongside the source li
 })
 
 it('keeps runtime internals and arbitrary names outside the desktop entry point', () => {
-  for (const method of ['captureDesktopActivity', '__installRuntimePlugin', '__takeAutomationNotice', '__settleAutomationNotice', 'toString', 'constructor', '__proto__', '', 'nonexistent']) expect(isPublicMethod(method), method).toBe(false)
+  for (const method of ['getWorkspaceRoot', 'closeUserWorkspace', 'captureDesktopActivity', '__installRuntimePlugin', '__takeAutomationNotice', '__settleAutomationNotice', 'toString', 'constructor', '__proto__', '', 'nonexistent']) expect(isPublicMethod(method), method).toBe(false)
 })

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Cookie文件/浏览器profile导入经无值确认，原窗口/partition绑定；关闭取消副本读取并等待清理，保留逐项写回核验。
  * [OUTPUT]: 运行连接失联时立即关闭仍有员工动作的页面，再等待原CDP/队列真实退出；空闲窗口保持原drain。
  * [OUTPUT]: 有效员工租约默认允许HTTP(S)浏览和交互，无域名或逐次审批门禁；旧页面版本、真实开始握手、取消/退出及下载核验保持。
  * [OUTPUT]: 用户明确关闭/清登录资料/应用退出先封禁原租约并实际销毁页面，解除挂起动作后仍等待真实退出；资料仅退出后清除，普通drain语义不变。
@@ -14,12 +15,14 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { mkdir, readFile, writeFile, rename, lstat, realpath } from 'node:fs/promises'
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
-import { session } from 'electron'
+import { dialog, session, type BrowserWindow } from 'electron'
+import { CookieImports, type CookieImportPort } from './cookie-import'
+import { BrowserCookieSources, type CookieSourceProvider } from './cookie-sources'
 import { BrowserPaneManager } from './browser-pane-manager'
 import type { BrowserPaneFns } from '@boai/runtime/adapters/mastra/browser-tool-types'
 import { BROWSER_PAGE_METRICS_EXPRESSION, executeBrowserSingleCommand, parseBrowserSingleCommand } from '@boai/runtime/adapters/mastra/browser-tool-runtime'
 import { APPLICATION_BROWSER_SCOPE } from '@boai/shared/ipc/browser'
-import type { BrowserActionEnvelope, BrowserActionReply, BrowserCompletedDownload, BrowserControlAction, BrowserLease, BrowserManualOpenRequest, BrowserPageEvidence, BrowserPageReference, BrowserWindowState } from '@boai/shared/ipc/browser'
+import type { BrowserCookieSourceList, BrowserCookieImportPreview, BrowserCookieImportReply, BrowserCookieImportResult, BrowserActionEnvelope, BrowserActionReply, BrowserCompletedDownload, BrowserControlAction, BrowserLease, BrowserManualOpenRequest, BrowserPageEvidence, BrowserPageReference, BrowserWindowState } from '@boai/shared/ipc/browser'
 
 const PAGE_STATE_EXPRESSION = `(() => ({url:location.href,title:document.title,html:(document.documentElement?.outerHTML||'').slice(0,2000000),forms:Array.from(document.querySelectorAll('input,textarea,select')).slice(0,1000).map(e=>({type:e.type,name:e.name,value:e.type==='password'?'[redacted]':String(e.value).slice(0,2000),checked:e.checked,disabled:e.disabled}))}))()`
 interface Profile { scopeKey: string; partition: string; status: 'ready' | 'clearing' | 'cleared'; retiredLeases?: string[] }
@@ -28,6 +31,9 @@ interface Scope {
   queue: Promise<void>; inFlight?: Promise<BrowserActionReply>; actionReplies: Map<string, { hash: string; reply?: BrowserActionReply; pending?: Promise<BrowserActionReply> }>
   draining?: Promise<{ drained: true }>
   closing?: Promise<void>
+  cookieImportPending?: boolean
+  cookieSourceAbort?: AbortController
+  cookieSourceRead?: Promise<void>
   pageHash?: string; pageCounter: number; releaseRequested: boolean; performingAgentAction: boolean
 }
 export interface BrowserServiceOptions {
@@ -38,6 +44,14 @@ export interface BrowserServiceOptions {
   /** Tests inject a driver; production always uses the copied native manager. */
   manager?: BrowserPaneManager
   clearPartition?: (partition: string) => Promise<void>
+  cookieSources?: CookieSourceProvider
+  /** Host-only test seams; no renderer controls dialogs, cookie values or partition. */
+  cookieImport?: {
+    chooseFile: (window: BrowserWindow) => Promise<string | undefined>
+    confirm: (window: BrowserWindow, preview: BrowserCookieImportPreview) => Promise<boolean>
+    showResult: (window: BrowserWindow, result: BrowserCookieImportResult) => Promise<boolean>
+    cookies: (partition: string) => CookieImportPort
+  }
 }
 const hash = (value: string) => createHash('sha256').update(value).digest('hex')
 const origin = (url: string) => { try { const value = new URL(url); return ['http:', 'https:'].includes(value.protocol) && !value.username && !value.password ? value.origin : undefined } catch { return undefined } }
@@ -52,7 +66,10 @@ export class BrowserService {
   private registryQueue: Promise<void> = Promise.resolve()
   private scopeTransitions = new Map<string, Promise<unknown>>()
   private shuttingDown = false
+  private cookieImports = new CookieImports()
+  private cookieSources: CookieSourceProvider
   constructor(private readonly options: BrowserServiceOptions) {
+    this.cookieSources = options.cookieSources ?? new BrowserCookieSources()
     this.registryReady = this.loadRegistry()
     // Keep the original rejection observable by acquire/shutdown while preventing
     // an eager asynchronous registry read from becoming an unhandled rejection.
@@ -73,6 +90,8 @@ export class BrowserService {
       allowUserNavigation: id => { const scope = this.byInstance(id); return !!scope && !scope.state.clearing && !['closing', 'closed'].includes(scope.state.control) },
       userNavigation: (id, operation) => this.navigateByUser(id, operation),
       toolbarState: id => { const scope = this.byInstance(id); return scope ? { state: scope.state } : {} },
+      importCookies: (id, assertSender, sourceId) => this.importCookies(id, assertSender, sourceId),
+      listCookieSources: (id, assertSender, refresh) => this.listCookieSources(id, assertSender, refresh),
       userControl: async (id, action) => {
         const scope = this.byInstance(id); if (!scope) throw new Error('浏览器已关闭')
         if (!this.options.onUserControl) throw new Error('浏览器宿主控制入口不可用')
@@ -107,6 +126,7 @@ export class BrowserService {
   }
   private navigateByUser(id: string, operation: () => Promise<void>): Promise<void> {
     const scope = this.byInstance(id)
+    if (scope?.cookieImportPending) return Promise.reject(new Error('Cookie 导入期间请等待完成后再导航'))
     if (!scope || scope.state.clearing || ['closing', 'closed'].includes(scope.state.control)) return Promise.reject(new Error('浏览器已关闭或正在清理'))
     const navigation = scope.queue.then(async () => {
       if (this.scopes.get(APPLICATION_BROWSER_SCOPE) !== scope || scope.state.clearing || ['closing', 'closed'].includes(scope.state.control)) throw new Error('原浏览器已关闭或正在清理')
@@ -115,6 +135,76 @@ export class BrowserService {
     scope.queue = navigation.catch(() => undefined)
     // Creation/close/cleanup also wait for this real navigation to exit.
     return this.transition(APPLICATION_BROWSER_SCOPE, () => navigation)
+  }
+  /** Only the authenticated toolbar calls this; credentials never cross its preload. */
+  async listCookieSources(id: string, assertSender: () => void, refresh = false): Promise<BrowserCookieSourceList> {
+    const instance = this.manager.getInstance(id), scope = this.byInstance(id)
+    const assertCurrent = () => {
+      assertSender()
+      if (!instance || !scope || this.shuttingDown || this.manager.getInstance(id) !== instance || this.byInstance(id) !== scope || ['closing', 'closed'].includes(scope.state.control)) throw new Error('原浏览器已关闭，请重新打开后刷新来源')
+    }
+    assertCurrent(); const sources = await this.cookieSources.list(refresh); assertCurrent(); return sources
+  }
+  async importCookies(id: string, assertSender: () => void, sourceId?: string): Promise<BrowserCookieImportReply> {
+    const scope = this.byInstance(id), instance = this.manager.getInstance(id)
+    if (!scope || !instance) throw new Error('浏览器已关闭')
+    const assertCurrent = () => {
+      assertSender()
+      if (this.shuttingDown || this.scopes.get(APPLICATION_BROWSER_SCOPE) !== scope || this.manager.getInstance(id) !== instance || instance.window.isDestroyed() || scope.state.clearing || ['closing', 'closed', 'draining'].includes(scope.state.control)) throw new Error('原浏览器已关闭或正在清理，请重新导入')
+      if (scope.active || scope.inFlight) throw new Error('员工正在使用浏览器，请在本次操作结束后导入 Cookie')
+    }
+    assertCurrent()
+    if (scope.cookieImportPending) throw new Error('已有 Cookie 导入正在处理')
+    scope.cookieImportPending = true
+    const binding = { instanceId: id, partition: scope.partition }, window = instance.window
+    let reload = false, result: BrowserCookieImportReply = { status: 'cancelled' }
+    try {
+      let preview: BrowserCookieImportPreview
+      if (sourceId !== undefined) {
+        scope.cookieSourceAbort = new AbortController()
+        const reading = this.cookieSources.read(sourceId, scope.cookieSourceAbort.signal)
+        scope.cookieSourceRead = reading.then(() => undefined, () => undefined)
+        const payload = await reading
+        assertCurrent()
+        preview = this.cookieImports.prepare(payload.text, payload.source, binding)
+      } else {
+        const path = this.options.cookieImport ? await this.options.cookieImport.chooseFile(window) : await dialog.showOpenDialog(window, { title: '选择 Cookie 文件', properties: ['openFile'], filters: [{ name: 'Cookie 文件', extensions: ['txt', 'json'] }] }).then(value => value.canceled ? undefined : value.filePaths[0])
+        assertCurrent()
+        if (!path) return result
+        preview = await this.cookieImports.prepareFile(path, binding)
+      }
+      assertCurrent()
+      const siteDetails = preview.sites.join('、') + (preview.siteCount > preview.sites.length ? ` 等 ${preview.siteCount} 个站点` : '')
+      const details = [`来源：${preview.source}`, `可导入 ${preview.ready} 条，共 ${preview.siteCount} 个站点。`, siteDetails, ...preview.skipped.map(item => `跳过 ${item.count} 条：${item.reason}`), '', '将导入到 BOAI 独立浏览器的共享登录状态，相同 Cookie 会被覆盖。', '仅导入 Cookie，不包括 localStorage/IndexedDB；网站可能仍需登录验证。'].filter(Boolean).join('\n')
+      const confirmed = this.options.cookieImport ? await this.options.cookieImport.confirm(window, preview) : (await dialog.showMessageBox(window, { type: 'question', title: '导入 Cookie', message: preview.ready ? '确认导入所选来源？' : '来源中没有可导入的 Cookie', detail: details, buttons: preview.ready ? ['取消', '导入'] : ['关闭'], defaultId: 0, cancelId: 0, noLink: true })).response === 1
+      assertCurrent()
+      if (!confirmed || !preview.ready) return result
+      const apply = scope.queue.then(async () => {
+        assertCurrent()
+        const report = await this.cookieImports.apply(preview.id, binding, this.options.cookieImport?.cookies(scope.partition) ?? session.fromPartition(scope.partition).cookies, assertCurrent)
+        // Cookie changes invalidate evidence even if the current DOM has not yet reloaded.
+        if (this.scopes.get(APPLICATION_BROWSER_SCOPE) === scope && this.manager.getInstance(id) === instance) {
+          instance.documentRevision = (instance.documentRevision ?? 0) + 1
+          instance.cdp.invalidateRefs(); scope.pageHash = undefined; scope.pageCounter += 1
+          scope.state.pageVersion = `${scope.pageCounter}:cookie-import-${randomUUID()}`
+          this.emit(scope)
+        }
+        return report
+      })
+      scope.queue = apply.then(() => undefined, () => undefined)
+      result = await this.transition(APPLICATION_BROWSER_SCOPE, () => apply)
+      // An explicit close/clear may already be waiting; never reopen a result dialog.
+      try { assertCurrent() } catch { return result }
+      const report = result
+      const summary = [`已核对 ${report.verified} 条；写入 ${report.written} 条。`, `跳过 ${report.skipped} 条，失败 ${report.failed} 条，读回不一致 ${report.mismatched} 条，未执行 ${report.notAttempted} 条。`, report.adjusted ? `${report.adjusted} 条有效期按浏览器上限调整。` : '', report.flushed ? '已完成 Cookie 存储落盘。会话 Cookie 仍沿浏览器会话有效期。' : '存储落盘未确认；已写入的记录未回滚。', '刷新当前网页后使用新的登录状态。'].filter(Boolean).join('\n')
+      reload = this.options.cookieImport ? await this.options.cookieImport.showResult(window, report) : (await dialog.showMessageBox(window, { type: 'info', title: 'Cookie 导入结果', message: `已核对 ${report.verified} 条 Cookie`, detail: summary, buttons: ['完成', '刷新当前页'], defaultId: 0, cancelId: 0, noLink: true })).response === 1
+    } finally {
+      this.cookieImports.cancel(id)
+      scope.cookieSourceAbort = undefined; scope.cookieSourceRead = undefined
+      scope.cookieImportPending = false
+    }
+    if (reload) { assertCurrent(); await this.navigateByUser(id, () => this.manager.navigateFromToolbar(id, 'reload')) }
+    return result
   }
   private require(lease: BrowserLease, active = true): Scope {
     const scope = this.scopes.get(APPLICATION_BROWSER_SCOPE)
@@ -190,6 +280,7 @@ export class BrowserService {
   }
   acquire(lease: BrowserLease): Promise<void> {
     const existing = this.scopes.get(APPLICATION_BROWSER_SCOPE)
+    if (existing?.cookieImportPending) return Promise.reject(new Error('Cookie 导入期间暂不受理员工浏览器操作'))
     if (existing && (['draining', 'closing'].includes(existing.state.control) || existing.inFlight && (!existing.lease || !sameLease(existing.lease, lease)))) return Promise.reject(new Error('原浏览器动作尚未实际退出，请等待后重试'))
     return this.transition(APPLICATION_BROWSER_SCOPE, () => this.acquireScope(lease))
   }
@@ -202,6 +293,7 @@ export class BrowserService {
     if (profile?.status === 'clearing') throw new Error('内置浏览器登录资料正在清理')
     if (profile?.retiredLeases?.includes(`${lease.runId}:${lease.generation}`)) throw new Error('旧浏览器租约已清理，不得重放')
     const existing = this.scopes.get(APPLICATION_BROWSER_SCOPE)
+    if (existing?.cookieImportPending) throw new Error('Cookie 导入期间暂不受理员工浏览器操作')
     const alreadyClosed = existing?.state.control === 'closed'
     if (existing && ['draining', 'closing'].includes(existing.state.control)) throw new Error('原浏览器动作尚未实际退出，请等待后重试')
     if (existing?.active) { if (existing.lease && sameLease(existing.lease, lease)) return; throw new Error('内置浏览器正由另一任务使用，请等待实际退出') }
@@ -421,6 +513,8 @@ export class BrowserService {
     return { drained: true }
   }
   private closeScope(scope: Scope): Promise<void> {
+    this.cookieImports.cancel(scope.state.instanceId)
+    scope.cookieSourceAbort?.abort()
     if (scope.closing) return scope.closing
     scope.active = false; scope.releaseRequested = true
     if (scope.state.control !== 'closed') scope.state.control = 'closing'
@@ -428,7 +522,7 @@ export class BrowserService {
     // Start actual destruction outside the transition queue: that queue may be
     // waiting on the very renderer this explicit close is meant to terminate.
     const draining = this.drainScope(scope)
-    const closing = Promise.all([this.manager.destroyInstance(scope.state.instanceId), draining]).then(() => {
+    const closing = Promise.all([this.manager.destroyInstance(scope.state.instanceId), draining, scope.cookieSourceRead]).then(() => {
       scope.state.control = 'closed'; this.emit(scope)
     }).catch(error => {
       scope.state.error = error instanceof Error ? error.message : String(error); this.emit(scope)

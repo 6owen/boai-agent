@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Cookie来源只共享opaque id和浏览器/profile标签；预览/结果无值，不携带原路径或目标partition。
  * [OUTPUT]: 动态available标记独立服务当前是否有可信同机浏览器宿主。
  * [OUTPUT]: 有效员工默认拥有浏览器权限；旧approval/approvedOrigins仅保留历史输入兼容，不再触发人工审批。
  * [OUTPUT]: 2026-10-14固定网页引用由宿主核源；本机只读租约绑定真实消息/run，写操作沿Work；重开窗口使用独立实例身份。
@@ -81,3 +82,19 @@ export interface BrowserHostBridge {
   readonly available?: boolean
   request<K extends keyof BrowserHostMethods>(method: K, input: BrowserHostMethods[K]['input']): Promise<BrowserHostMethods[K]['output']>
 }
+
+/** Main-only candidate identity plus redacted preview. Cookie names and values are never exposed. */
+export interface BrowserCookieImportPreview {
+  id: string; source: string; total: number; ready: number
+  sites: string[]; siteCount: number; skipped: Array<{ reason: string; count: number }>; expiresAt: number
+}
+export interface BrowserCookieImportResult {
+  status: 'completed'; verified: number; written: number; adjusted: number
+  failed: number; mismatched: number; notAttempted: number; skipped: number; flushed: boolean
+}
+export type BrowserCookieImportReply = { status: 'cancelled' } | BrowserCookieImportResult
+export interface BrowserCookieSource {
+  id: string; kind: 'chrome' | 'edge' | 'brave' | 'chromium' | 'firefox'; label: string; profileName: string
+}
+
+export interface BrowserCookieSourceList { sources: BrowserCookieSource[]; warning?: string }

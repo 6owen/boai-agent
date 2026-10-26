@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Cookie来源/导入及菜单覆盖只接真实工具栏主frame；菜单关闭/失焦/导航恢复48px，不改变页面边界。
  * [OUTPUT]: 页面实际destroyed结束原JavaScript查询等待；仅请求关闭或超时不代替退出，正常/失败回执均清理监听器。
  * [OUTPUT]: 实际销毁后释放WebContents网络计数/时间戳，迟到或无所属页面事件不重新登记。
  * [OUTPUT]: 明确销毁先关闭真实页面以解除挂起CDP，再核对全部WebContents退出和命令settle；不以超时代替退出。
@@ -7,7 +8,7 @@
  * [OUTPUT]: Craft v0.15.1按键优先走CDP，已知Ctrl/Cmd等原生快捷键回退保留，应用统一窗口/登录与退出保持。
  * [INPUT]: Electron 与冻结的 Craft BrowserWindow / 三 BrowserView、CDP 算法；内置浏览器导航与下载策略。
  * [OUTPUT]: 固定地址栏布局/正常窗口缩放与网页输入；持久登录分区、沙箱与实际退出；人工下载沿原生保存，工具下载固定受管目录，工具退出仅取消受管下载；同ID重开拒绝旧窗口迟到回调。
- * [POS]: apps/electron/src/main/browser/browser-pane-manager.ts。
+ * [POS]: apps/electron/apps/electron/src/main/browser/browser-pane-manager.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 // Apache-2.0; adapted from Craft Docs Ltd. apps/electron/src/main/browser-pane-manager.ts. See LICENSE.txt, NOTICE.txt and source-manifest.json.
@@ -121,6 +122,7 @@ const TOOLBAR_CHANNELS = {
 const UI_SESSION_PARTITION = 'boai:browser-ui'
 
 interface BrowserInstance {
+  cookieMenuOpen?: boolean
   rendersWhileHidden?: boolean
   documentRevision?: number
   id: string
@@ -1875,9 +1877,14 @@ export class BrowserPaneManager {
   }
 
   private layoutToolbarView(instance: BrowserInstance): void {
-    const [width] = instance.window.getContentSize()
-    instance.toolbarView.setBounds({ x: 0, y: 0, width, height: TOOLBAR_HEIGHT })
+    const [width, height] = instance.window.getContentSize()
+    instance.toolbarView.setBounds({ x: 0, y: 0, width, height: instance.cookieMenuOpen ? height : TOOLBAR_HEIGHT })
     instance.toolbarView.setAutoResize({ width: true, height: false })
+  }
+  private setCookieMenuOpen(instance: BrowserInstance, open: boolean, notify = false): void {
+    instance.cookieMenuOpen = open
+    if (this.canLayoutViews(instance)) this.layoutToolbarView(instance)
+    if (notify && !instance.toolbarView.webContents.isDestroyed()) instance.toolbarView.webContents.send('browser-toolbar:cookie-menu-dismiss')
   }
 
   async destroyAll(): Promise<void> {
@@ -2035,7 +2042,7 @@ export class BrowserPaneManager {
     instance.toolbarView.webContents.send(TOOLBAR_CHANNELS.STATE_UPDATE, state)
   }
 
-  private async navigateFromToolbar(id: string, action: 'navigate' | 'back' | 'forward' | 'reload', url?: string): Promise<void> {
+  async navigateFromToolbar(id: string, action: 'navigate' | 'back' | 'forward' | 'reload', url?: string): Promise<void> {
     const instance = this.requireAliveInstance(id)
     if (action === 'navigate') { await this.navigate(id, url!); return }
     const contents = instance.pageView.webContents
@@ -2071,6 +2078,7 @@ export class BrowserPaneManager {
     }
     const manual = (event: IpcMainInvokeEvent, id: string, action: 'navigate' | 'back' | 'forward' | 'reload', url?: string) => {
       const instance = findInstance(event, id)
+      this.setCookieMenuOpen(instance, false, true)
       if (!this.options.allowUserNavigation(id) || !this.options.userNavigation) throw new Error('浏览器已关闭或正在清理')
       return this.options.userNavigation(instance.id, () => this.navigateFromToolbar(instance.id, action, url))
     }
@@ -2081,6 +2089,27 @@ export class BrowserPaneManager {
     ipcMain.handle(TOOLBAR_CHANNELS.STOP, async (event, id: string) => { this.stop(findInstance(event, id).id) })
     ipcMain.handle(TOOLBAR_CHANNELS.DESTROY, async (event, id: string) => { await this.options.userControl?.(findInstance(event, id).id, 'close') })
     ipcMain.handle('browser-toolbar:get-state', async (event, id: string) => { const instance = findInstance(event, id); this.pushToolbarState(instance) })
+    ipcMain.handle('browser-toolbar:cookie-menu-open', async (event, id: string, open: unknown) => {
+      const instance = findInstance(event, id)
+      if (typeof open !== 'boolean') throw new Error('无效的 Cookie 菜单状态')
+      this.setCookieMenuOpen(instance, open)
+    })
+    ipcMain.handle('browser-toolbar:list-cookie-sources', async (event, id: string, refresh: unknown = false) => {
+      const instance = findInstance(event, id), senderFrame = event.senderFrame
+      if (typeof refresh !== 'boolean' || !this.options.listCookieSources) throw new Error('Cookie 来源暂不可用')
+      return this.options.listCookieSources(instance.id, () => {
+        if (findInstance(event, id) !== instance || event.sender.mainFrame !== senderFrame) throw new Error('原浏览器工具栏已变化，请刷新来源')
+      }, refresh)
+    })
+    ipcMain.handle('browser-toolbar:import-cookies', async (event, id: string, sourceId?: unknown) => {
+      const instance = findInstance(event, id), senderFrame = event.senderFrame
+      if (sourceId !== undefined && (typeof sourceId !== 'string' || !/^[a-f0-9-]{36}$/.test(sourceId))) throw new Error('无效的 Cookie 来源')
+      this.setCookieMenuOpen(instance, false, true)
+      if (!this.options.importCookies) throw new Error('Cookie 导入暂不可用')
+      return this.options.importCookies(instance.id, () => {
+        if (findInstance(event, id) !== instance || event.sender.mainFrame !== senderFrame) throw new Error('原浏览器工具栏已变化，请重新导入')
+      }, sourceId as string | undefined)
+    })
   }
 
   private markToolbarReady(instance: BrowserInstance, reason: string): void {
@@ -2544,6 +2573,9 @@ export class BrowserPaneManager {
     instance.window.on('resize', () => {
       this.layoutAllViews(instance)
     })
+    instance.window.on('blur', () => this.setCookieMenuOpen(instance, false, true))
+    toolbarWc.on('did-start-navigation', () => this.setCookieMenuOpen(instance, false, true))
+    toolbarWc.on('render-process-gone', () => this.setCookieMenuOpen(instance, false))
 
     toolbarWc.on('did-finish-load', () => {
       const loadedUrl = typeof toolbarWc.getURL === 'function' ? toolbarWc.getURL() : ''
@@ -2589,6 +2621,7 @@ export class BrowserPaneManager {
     })
 
     pageWc.on('did-navigate', (_event, urlFromEvent) => {
+      this.setCookieMenuOpen(instance, false, true)
       instance.documentRevision=(instance.documentRevision ?? 0)+1
       const url = typeof pageWc.getURL === 'function' ? pageWc.getURL() : (urlFromEvent || instance.currentUrl)
       instance.cdp.invalidateRefs()
@@ -2619,6 +2652,7 @@ export class BrowserPaneManager {
     })
 
     pageWc.on('did-navigate-in-page', (_event, urlFromEvent) => {
+      this.setCookieMenuOpen(instance, false, true)
       instance.documentRevision=(instance.documentRevision ?? 0)+1
       instance.cdp.invalidateRefs()
       const url = typeof pageWc.getURL === 'function' ? pageWc.getURL() : (urlFromEvent || instance.currentUrl)
@@ -2772,6 +2806,7 @@ export class BrowserPaneManager {
     })
 
     instance.window.on('hide', () => {
+      this.setCookieMenuOpen(instance, false, true)
       instance.isVisible = false
       this.emitStateChange(instance)
     })

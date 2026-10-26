@@ -10,7 +10,7 @@
  * [OUTPUT]: 原模型连接页接具体本机配置导航，隐藏状态传递到本机读取与编辑器。
  * [INPUT]: 设置子页、领域类型、DesktopApi、Shell 共用分栏拖拽线、统一导航图标与公共组件、统一 UI 基础组件。
  * [OUTPUT]: 个人资料分类、受控当前分类及活跃读取标记；设置包含个人资料、模型连接、外观、数据与备份，移除独立外部 Agent 分类；设置分类与内容使用共用可调分栏；与会话共用标题栏和搜索图标尺寸、搜索后独立滚动的设置分类；外观/模型连接共用文档留白，委托子页管理内容与配置弹窗。
- * [POS]: apps/electron/src/renderer/pages/settings/index.tsx。
+ * [POS]: apps/electron/apps/electron/src/renderer/pages/settings/index.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { ProfileSettings } from './profile'
