@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 桌面生命周期事件与主窗专用快照/诊断导出桥；员工公共方法不扩展。
  * [OUTPUT]: Owner任务结果读取复用共享Work结果合同，桌面与CLI同一投影。
  * [OUTPUT]: 工作区路径核验及轻量身份复核为私有合同；终端精确员工/会话排空保持原清理边界。
  * [OUTPUT]: 桌面活动原生采集参数、独立键鼠监听及权限命令保持宿主私有调用。
@@ -100,6 +101,7 @@ export const CLIPBOARD_MATERIAL_FILE_FORMATS = ['Files', 'text/uri-list', 'x-spe
 export type MaterialFileSourceInput = { path: string } | { name: string; bytes: Uint8Array }
 
 export type AppEvent =
+  | { type: 'desktop:lifecycle'; state: import('./desktop').DesktopLifecycle }
   | { type: 'workspace:show'; employeeId: string; conversationId: string; view: 'terminal' | 'preview' }
   | { type: 'gateway-imports:changed' }
   | { type: 'automation:history-deleted'; occurrenceId: string }
@@ -398,6 +400,8 @@ export interface Methods {
 }
 export type Method = keyof Methods
 export interface DesktopApi {
+  getDesktopLifecycle?(): Promise<import('./desktop').DesktopLifecycle>
+  exportDiagnostics?(): Promise<string | null>
   initialPlugins?: PluginSettingsSnapshot
   initialAppearance?: AppearanceSnapshot
   selectSkillFile?(file: File, kind: 'folder' | 'zip'): Promise<string>

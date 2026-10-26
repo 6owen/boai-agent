@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 主窗专用诊断导出和当前桌面生命周期读取；不加入员工RPC。
  * [OUTPUT]: 消息复制经主窗口系统剪贴板桥完成，复制回执沿preload类型合同返回。
  * [OUTPUT]: 消息复制使用仅主窗口可调用的系统剪贴板写入桥，浏览器预览保留Web回退；成功后才显示已复制。
  * [OUTPUT]: 首帧带已核验插件启停快照，避免停用项在异步初始化前误激活。
@@ -16,6 +17,8 @@ import type { AppEvent, DesktopApi, MaterialFileSourceInput } from '@boai/shared
 import { MATERIAL_LIMITS } from '@boai/shared/domain/materials'
 
 const api: DesktopApi = {
+  getDesktopLifecycle: () => ipcRenderer.invoke('boai:desktop-lifecycle'),
+  exportDiagnostics: () => ipcRenderer.invoke('boai:export-diagnostics'),
   initialPlugins: ipcRenderer.sendSync('boai:plugins-initial'),
   initialAppearance: ipcRenderer.sendSync('boai:appearance-initial'),
   selectSkillFile: (file, kind) => ipcRenderer.invoke('boai:skill-file', { path: webUtils.getPathForFile(file), kind }),

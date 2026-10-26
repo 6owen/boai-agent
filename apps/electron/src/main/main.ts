@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 桌面诊断持久保留每次构建身份及初始化失败；导出校验真实父目录，系统事件不重发工作。
  * [OUTPUT]: 员工工作区目录/外部应用及独立用户终端走主窗校验；删除/清空/移除成员等待精确终端退出，输入沿私有轻量身份复核。
  * [OUTPUT]: 允许本人打开受管桌面活动截图目录。
  * [OUTPUT]: 消息复制经主窗口系统剪贴板桥完成，复制回执沿preload类型合同返回。
@@ -74,7 +75,7 @@ import { z } from 'zod'
 import { LocalConfigDiscovery } from './local-configs/discovery'
 import { discoverLocalMagpie } from './local-configs/magpie-discovery'
 import { decodeImage } from './decode-image'
-import { app, BrowserWindow, dialog, ipcMain, shell, utilityProcess, nativeTheme, protocol, Notification, Menu, clipboard } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, shell, utilityProcess, nativeTheme, protocol, Notification, Menu, clipboard, powerMonitor } from 'electron'
 import type { UtilityProcess } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { mkdir, realpath, stat, rm, readFile, writeFile } from 'node:fs/promises'
@@ -105,12 +106,23 @@ import { openDesktopCli, desktopCliConnection } from './cli-service'
 import { CliInstaller } from './cli-installation'
 import { CliError, type ErrorCode } from '@boai/shared/cli/protocol'
 import { AttachedRuntime, findAttachedRuntime, waitForAttachedRuntime } from './attached-runtime'
+import { DesktopDiagnostics, diagnosticError, diagnosticRequest, writeDiagnosticsReport } from './diagnostics'
+import { DesktopLifecycleMonitor } from './desktop-lifecycle'
+import { setBrowserDiagnostic } from './browser/logger'
+
+declare const __BOAI_APPLICATION_BUILD__: { version: string; inputHash: string }
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'boai-asset', privileges: { standard: true, secure: true, supportFetchAPI: true } }])
 app.setName('BoAI Agent')
 if (process.env.BOAI_DATA_DIR) app.setPath('userData', resolve(process.env.BOAI_DATA_DIR))
 const legacyDataPath = app.getPath('userData')
 const dataPath = join(legacyDataPath, 'v2')
+const compiledApplication = typeof __BOAI_APPLICATION_BUILD__ === 'undefined' ? null : __BOAI_APPLICATION_BUILD__
+const diagnostics = new DesktopDiagnostics(join(legacyDataPath, 'diagnostics'), compiledApplication ? { ...compiledApplication, source: 'compiled-inputs' } : { version: null, inputHash: null, source: 'unknown' })
+const desktopLifecycle = new DesktopLifecycleMonitor((state, event) => {
+  diagnostics.record(event)
+  sendEvent({ type: 'desktop:lifecycle', state })
+})
 let profileAccessError: Error | undefined
 try {
   // Pinned through actual process exit, including Chromium's final profile writes.
@@ -244,6 +256,7 @@ const browsers = new BrowserService({
 })
 
 function sendEvent(event: unknown) {
+  if (event && typeof event === 'object' && 'type' in event && event.type === 'runtime-error') diagnostics.record('runtime-error', diagnosticError('error' in event ? event.error : undefined))
   if (window && !window.isDestroyed()) window.webContents.send('boai:event', event)
   cli?.publish(event as AppEvent)
 }
@@ -278,24 +291,29 @@ function startRuntime() {
       const winner = await waitForAttachedRuntime(dataPath, app.getVersion(), desktopHostId, { stopping: () => quitting })
       await connectRuntime(winner)
     }
-  }).catch(error => { if (!runtime) ready = null; throw error })
+  }).catch(error => { diagnostics.record('runtime-start-failed', diagnosticError(error)); if (!runtime) ready = null; throw error })
   return ready
 }
 
 function connectRuntime(attached: AttachedRuntime | null) {
   return new Promise<void>((resolveReady, rejectReady) => {
     let workerReady = false, ownershipRejected = false
+    let childPid: number | undefined
     // Only carry platform essentials into the worker. Model credentials arrive through the vault.
     const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => /^(PATH|HOME|USER|SHELL|LANG|LC_.*|TMPDIR|TEMP|TMP|SystemRoot|APPDATA|LOCALAPPDATA|USERPROFILE)$/i.test(key)))
     const child = attached ?? utilityProcess.fork(join(__dirname, '../runtime/worker.mjs'), [dataPath], {
       serviceName: 'BoAI Agent Runtime', stdio: 'pipe', env: { ...env, BOAI_NATIVE_PROCESS_GUARD: join(__dirname,'../native/boai-process-guard').replace('app.asar/','app.asar.unpacked/') },
     })
     runtime = child
+    if (child instanceof AttachedRuntime) diagnostics.record('runtime-start', { serverId: child.serverId })
+    else child.once('spawn', () => { childPid = child.pid; diagnostics.record('runtime-start', { pid: childPid }) })
     const timer = setTimeout(() => { rejectReady(new Error('本地运行服务启动超时。')); child.kill() }, 90_000)
     child.on('message', async (message) => {
       if (runtime !== child) return
       if (message?.type === 'owner-busy' && !workerReady && !(child instanceof AttachedRuntime)) { ownershipRejected = true; child.kill(); return }
       if (message?.type === 'ready') {
+        if (!(child instanceof AttachedRuntime)) childPid ??= child.pid
+        diagnostics.record('runtime-ready', { pid: childPid, ...(child instanceof AttachedRuntime ? { serverId: child.serverId } : {}) })
         workerReady = true
         clearTimeout(timer)
         try {
@@ -359,6 +377,8 @@ function connectRuntime(attached: AttachedRuntime | null) {
     child.stdout?.on('data', (chunk) => { if (!app.isPackaged) process.stdout.write(chunk) })
     child.on('exit', (code) => {
       clearTimeout(timer)
+      // Electron clears child.pid before exit; preserve the PID observed at spawn/ready.
+      diagnostics.record('runtime-exit', { pid: childPid, ...(typeof code === 'number' ? { exitCode: code } : {}), ...(child instanceof AttachedRuntime ? { reason: 'disconnected', serverId: child.serverId } : {}) })
       if (runtime !== child) return
       if (ownershipRejected && !workerReady) { runtime = null; rejectReady(new RuntimeStartupOwnedError('原运行服务已取得所有权')); return }
       // Replacing the connection cannot issue a new lease until old actions really exit.
@@ -410,14 +430,14 @@ async function requestRuntime(method: string, input?: unknown, waitForCompletion
 
 function requestCurrentRuntime(child: RuntimeHandle, method: string, input?: unknown, waitForCompletion = false) {
   if (!child || runtime !== child) return Promise.reject(new Error('原运行服务连接已失效。'))
+  const id = randomUUID()
   return new Promise<unknown>((resolveRequest, reject) => {
-    const id = randomUUID()
     // Temporary input files must remain until the importer responds or its worker really exits.
-    const timer = waitForCompletion ? undefined : setTimeout(() => { pending.delete(id); reject(new Error('操作超时，请查看任务状态。')) }, 120_000)
+    const timer = waitForCompletion ? undefined : setTimeout(() => { diagnostics.record('request-timeout', diagnosticRequest(method, id, input)); pending.delete(id); reject(new Error('操作超时，请查看任务状态。')) }, 120_000)
     pending.set(id, { resolve: resolveRequest, reject, timer })
     try { child.postMessage({ type: 'request', request: { id, method, input }, waitForCompletion }) }
     catch (error) { clearTimeout(timer); pending.delete(id); reject(error) }
-  })
+  }).catch(error => { diagnostics.record('request-failed', { ...diagnosticRequest(method, id, input), ...diagnosticError(error) }); throw error })
 }
 
 function inside(root: string, target: string) {
@@ -437,6 +457,16 @@ async function openResource(input: unknown) {
 }
 
 function registerIpc() {
+  const requireMainFrame = (event: Electron.IpcMainInvokeEvent) => {
+    if (!window || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) throw new Error('不允许的请求来源。')
+  }
+  ipcMain.handle('boai:desktop-lifecycle', event => { requireMainFrame(event); return desktopLifecycle.snapshot() })
+  ipcMain.handle('boai:export-diagnostics', async event => {
+    requireMainFrame(event)
+    const result = await dialog.showSaveDialog(window!, { title: '导出诊断记录', defaultPath: join(app.getPath('documents'), `boai-diagnostics-${new Date().toISOString().replace(/[:.]/g, '-')}.json`), filters: [{ name: 'JSON', extensions: ['json'] }] })
+    if (result.canceled || !result.filePath) return null
+    return writeDiagnosticsReport(legacyDataPath, result.filePath, { ...diagnostics.report(), lifecycle: desktopLifecycle.snapshot(), runtime: { present: !!runtime, mode: runtime instanceof AttachedRuntime ? 'attached' : runtime ? 'owned' : 'absent', pid: runtime && !(runtime instanceof AttachedRuntime) ? runtime.pid ?? null : null } })
+  })
   ipcMain.on('boai:plugins-initial', event => { if (window && event.sender === window.webContents && event.senderFrame === window.webContents.mainFrame) event.returnValue = pluginSettings.snapshot() })
   ipcMain.on('boai:appearance-initial', event => { if (window && event.sender === window.webContents && event.senderFrame === window.webContents.mainFrame) event.returnValue = appearance.snapshot() })
   ipcMain.handle('boai:material-file', async (event, input: unknown) => {
@@ -716,6 +746,8 @@ async function createWindow(show = true) {
   const terminalClientId = mainWindow.webContents.id
   const releaseUserTerminals = () => { workspaceDocumentEpoch++; userTerminals.releaseClient(terminalClientId) }
   mainWindow.webContents.on('render-process-gone', releaseUserTerminals)
+  mainWindow.webContents.on('render-process-gone', (_event, details) => { diagnostics.record('renderer-gone', { exitCode: details.exitCode, reason: details.reason }) })
+  mainWindow.on('unresponsive', () => { diagnostics.record('renderer-unresponsive') })
   mainWindow.webContents.on('did-start-loading', releaseUserTerminals)
   mainWindow.webContents.on('destroyed', releaseUserTerminals)
   mainWindow.webContents.on('render-process-gone', releaseShortcutCapture)
@@ -789,12 +821,17 @@ if (profileAccessError) {
 }
 else if (!app.requestSingleInstanceLock()) app.quit()
 else {
+  diagnostics.record('app-start', { pid: process.pid })
+  process.on('uncaughtExceptionMonitor', (error, origin) => { diagnostics.record(origin === 'unhandledRejection' ? 'unhandled-rejection' : 'uncaught-exception', diagnosticError(error)) })
+  app.on('child-process-gone', (_event, details) => { diagnostics.record('child-gone', { exitCode: details.exitCode, reason: details.reason }) })
+  setBrowserDiagnostic(entry => { if (entry.level !== 'info') diagnostics.record(entry.level === 'error' ? 'browser-error' : 'browser-warning') })
   // Register before any asynchronous initialization so macOS cold-start URLs are retained.
   app.on('open-url', (event, url) => { event.preventDefault(); gatewayImportInbox.receive(url) })
   const receiveImportArguments = (args: string[]) => { for (const value of args) if (/^boai:/i.test(value)) gatewayImportInbox.receive(value) }
   receiveImportArguments(process.argv)
   app.on('second-instance', (_event, args) => { receiveImportArguments(args); void (initialized ?? app.whenReady()).then(showMainWindow) })
   initialized = app.whenReady().then(async () => {
+    desktopLifecycle.start(powerMonitor)
     await prepareV2DataRoot(legacyDataPath)
     await pluginSettings.init()
     await appearance.init()
@@ -813,7 +850,7 @@ else {
     await materialSources.recover()
     cliStarting = startRuntime().then(() => gatewayImportInbox.start()).catch(error => sendEvent({ type: 'runtime-error', error: error.message }))
     app.on('activate', () => { void showMainWindow() })
-  }).catch((error) => { dialog.showErrorBox('BoAI Agent 启动失败', error.message); app.quit() })
+  }).catch((error) => { diagnostics.record('app-start-failed', diagnosticError(error)); dialog.showErrorBox('BoAI Agent 启动失败', error.message); app.quit() })
   app.on('window-all-closed', () => { if (process.platform !== 'darwin' && !background.shouldHide()) app.quit() })
   app.on('before-quit', (event) => {
     if (quitApproved) return
@@ -831,7 +868,8 @@ else {
     // A timeout may terminate the worker, but never counts as Chromium action exit.
     const cliExit = (cliStarting ?? Promise.resolve()).then(async () => { await cli?.close(); cli = undefined })
     const userTerminalExit = userTerminals.close()
-    void Promise.all([runtimeExit, cliExit, iconExit, userTerminalExit, browsers.shutdown(), materialSources.close(), desktopSettings.flush(), shortcutSettings.flush(), pluginSettings.flush(), cliInstaller.flush()]).then(() => { background.destroy(); quitApproved = true; app.quit() }).catch(async error => {
+    void Promise.all([runtimeExit, cliExit, iconExit, userTerminalExit, browsers.shutdown(), materialSources.close(), desktopSettings.flush(), shortcutSettings.flush(), pluginSettings.flush(), cliInstaller.flush()]).then(() => { diagnostics.record('app-quit'); desktopLifecycle.stop(); background.destroy(); quitApproved = true; app.quit() }).catch(async error => {
+      diagnostics.record('app-quit-failed', diagnosticError(error))
       await userTerminalExit.catch(() => {})
       userTerminalShutdownInterrupted = true
       quitting = false

@@ -1,11 +1,13 @@
 /*
+ * [OUTPUT]: 数据设置增加明确诊断导出，取消零成功提示、操作反馈沿Sonner。
  * [INPUT]: 快照领域类型、DesktopApi 与公共组件、统一 UI 基础组件。
  * [OUTPUT]: 数据目录/备份复用公共设置分区、Card与横向行；说明归图标Tooltip，原打开目录与导出回调保持。
  * [POS]: apps/electron/apps/electron/src/renderer/pages/settings/data.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { Button } from '@/components/ui/button'
-import { FolderOpen, HardDrive } from '@/components/icons'
+import { toast } from 'sonner'
+import { FolderOpen, HardDrive, Download } from '@/components/icons'
 import type { DesktopApi } from '@boai/shared/ipc'
 import type { Snapshot } from '@boai/shared/domain'
 import type { useMutation } from '@/components/common'
@@ -28,5 +30,11 @@ export function DataSettings({ api, snapshot, busy, run, onNotice }: { api: Desk
         <Button size="sm" className="shrink-0" disabled={busy} onClick={() => { void run(async () => { const path = await api.request('exportBackup', undefined); if (path) onNotice(`备份已导出：${path}`) }) }}><HardDrive size={16} />导出备份</Button>
       </SettingsRow></SettingsCard>
     </SettingsSection>
+    {api.exportDiagnostics && <SettingsSection title="故障诊断">
+      <SettingsCard><SettingsRow>
+        <div className="flex min-w-0 items-center gap-1 font-medium"><span>运行记录</span><SettingsHelp label="诊断记录说明">导出应用版本、进程退出和系统中断记录；不包含聊天正文、录音或模型凭据。</SettingsHelp></div>
+        <Button variant="secondary" size="sm" className="shrink-0" disabled={busy} onClick={() => { void run(async () => { const path = await api.exportDiagnostics!(); if (path) toast.success(`诊断记录已导出：${path}`) }) }}><Download size={16} />导出诊断</Button>
+      </SettingsRow></SettingsCard>
+    </SettingsSection>}
   </SettingsLayout>
 }

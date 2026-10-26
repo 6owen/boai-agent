@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 运行设置说明已移入Tooltip，按实际入口验证原文与禁用状态，原资源门槛保持。
  * [INPUT]: 原 Desktop、真实窗口/Utility PID、固定离线 API 员工回复。
  * [OUTPUT]: 原生窗口/草稿与原GC资源门槛；显式诊断只在原断言失败后收集DOM/堆，不改变通过条件。
  * [POS]: 后台常驻的 Electron BDD 步骤。
@@ -64,7 +65,9 @@ Then('运行设置显示开发环境开机启动不可操作', async ({ runtime 
   await expect(runtime.page.getByRole('button', { name: '运行选项', exact: true })).toHaveAttribute('aria-current', 'page')
   await expect(runtime.page.getByRole('switch', { name: '关闭窗口后继续运行' })).toBeChecked()
   await expect(runtime.page.getByRole('switch', { name: '开机启动', exact: true })).toBeDisabled()
+  await runtime.page.getByRole('button', { name: '开机启动说明', exact: true }).hover()
   await expect(runtime.page.getByText('安装应用后可设置开机启动，开发模式不会修改系统登录项。')).toBeVisible()
+  await runtime.page.getByRole('heading', { name: '运行选项', exact: true }).hover()
   expect(await runtime.page.getByRole('switch').evaluateAll(switches => switches.every(control => { const rect = control.getBoundingClientRect(); return rect.left >= 0 && rect.right <= innerWidth && rect.top >= 0 && rect.bottom <= innerHeight }))).toBe(true)
   await runtime.reviewNativeCheckpoint('运行选项')
 })
