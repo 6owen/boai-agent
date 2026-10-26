@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: Adds SQL-bounded tasks.page for the future task entry; original mutations/list and receipt semantics remain compatible.
+ * [OUTPUT]: Provides employee task records and SQL-bounded tasks.page; original mutations/list and receipt semantics remain compatible.
  * [INPUT]: Original ProductStore, authenticated application actor and explicit task tracking intent.
  * [OUTPUT]: Durable per-employee multi-step tracking with revision checks; no scheduler or Work execution.
  * [POS]: Application tasks domain, separate from model Work/budget and employee automation plans.

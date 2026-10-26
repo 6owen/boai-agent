@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Original task records, fixed SQL read model and trusted application actor.
  * [OUTPUT]: Read-only task pages with query-bound cursors and honest progress/list fields.
- * [POS]: Task entry foundation; does not turn plans, Work or ordinary chat into tasks.
+ * [POS]: Employee task record queries; does not turn plans, Work or ordinary chat into tasks.
  * [PROTOCOL]: Update Header and application/.folder.md on change.
  */
 import { createHash } from 'node:crypto'

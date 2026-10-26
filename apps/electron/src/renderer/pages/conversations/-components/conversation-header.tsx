@@ -1,19 +1,19 @@
 /*
  * [OUTPUT]: 标题栏随会话切换保持挂载，身份变化清理旧菜单动作与清空确认，避免把上一会话操作带入当前。
- * [OUTPUT]: 会话菜单移除网页预览入口，文件、任务和执行过程入口保持。
- * [OUTPUT]: 任务/文件收进标题下拉菜单，关闭菜单后打开右侧面板，与主聊天并行；无独立按钮或互斥Tabs。
- * [OUTPUT]: 删除任务与产物菜单；文件、任务和执行过程各归独立入口。
+ * [OUTPUT]: 会话菜单移除网页预览入口，文件和执行过程入口保持。
+ * [OUTPUT]: 文件收进标题下拉菜单，关闭菜单后打开右侧面板，与主聊天并行；无独立按钮或互斥Tabs。
+ * [OUTPUT]: 删除任务与产物菜单；文件和执行过程各归独立入口。
  * [OUTPUT]: 菜单动作等待真实关闭动画完成再导航或打开面板，避免原触发器隐藏后Portal退出动画失去定位；重新打开或来源隐藏取消旧动作。
  * [OUTPUT]: 配置定位通讯录当前员工/群；执行过程与渠道收进操作菜单，标题不再提供置顶或搜索本会话。
  * [OUTPUT]: 渠道标题保持单行，取消重复的“渠道会话”副标题。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: 渠道镜像移除常驻三Tabs，文件和执行以Header入口进入同容器详情。
  * [OUTPUT]: 导出ConversationHeaderLayout供渠道空态共用标题/操作栏，渐隐滚动与宽度规则沿共享聊天布局。
- * [OUTPUT]: 右侧渠道聊天通过headerActions注入列表Popover按钮；共用聊天标题/任务/文件入口。
+ * [OUTPUT]: 右侧渠道聊天通过headerActions注入列表Popover按钮；共用聊天标题/文件入口。
  * [OUTPUT]: 2026-10-14现行分离合同：员工主私聊右上角渠道入口，渠道详情保持只读来源与接入员工。
- * [INPUT]: 最新会话/成员/资料快照、群组/员工配置、执行/渠道与任务入口、标题编辑与清理回调、统一 DropdownMenu 与成员资料浮层。
+ * [INPUT]: 最新会话/成员/资料快照、群组/员工配置、执行/渠道与文件入口、标题编辑与清理回调、统一 DropdownMenu 与成员资料浮层。
  * [OUTPUT]: 外部渠道仅显示接入员工与渠道信息入口，不呈现BOAI群成员管理。
- * [OUTPUT]: 聊天标题下拉菜单中的任务/文件打开右侧详情；核心标题编辑及成员资料保持。
+ * [OUTPUT]: 聊天标题下拉菜单中的文件打开右侧详情；核心标题编辑及成员资料保持。
  * [POS]: 会话标题交互；清空确认复用 ConversationHistoryDialog，持久操作交给宿主。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -37,7 +37,6 @@ interface Props {
   onFiles?(): void
   onChannels?(): void
   headerActions?: ReactNode
-  onTasks?(): void
 }
 
 export function ConversationHeaderLayout({ title, description, children }: { title: string; description?: string; children?: ReactNode }) {
@@ -47,7 +46,7 @@ export function ConversationHeaderLayout({ title, description, children }: { tit
   </header>
 }
 
-export function ConversationHeader({ conversation, members, resources, busy, onDetails, onConfigureAgent, onEditTitle, onTrace, onClear, onTasks, onChannels, headerActions, onFiles }: Props) {
+export function ConversationHeader({ conversation, members, resources, busy, onDetails, onConfigureAgent, onEditTitle, onTrace, onClear, onChannels, headerActions, onFiles }: Props) {
   const [clearing, setClearing] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const pendingAction = useRef<(() => void) | null>(null)
@@ -79,7 +78,6 @@ export function ConversationHeader({ conversation, members, resources, busy, onD
               <DropdownMenuItem onClick={() => afterMenuClose(onDetails)}><Settings />{channel ? '渠道信息' : '配置'}</DropdownMenuItem>
               {isCoreConversation(conversation) && <DropdownMenuItem disabled={busy} onClick={() => afterMenuClose(() => onEditTitle(conversation))}><Pencil />编辑标题</DropdownMenuItem>}
               {onFiles && <DropdownMenuItem onClick={() => afterMenuClose(onFiles)}><FolderOpen />文件</DropdownMenuItem>}
-              {onTasks && <DropdownMenuItem onClick={() => afterMenuClose(onTasks)}><Workflow />任务</DropdownMenuItem>}
               <DropdownMenuItem onClick={() => afterMenuClose(onTrace)}><Workflow />执行过程</DropdownMenuItem>
               {onChannels && <DropdownMenuItem onClick={() => afterMenuClose(onChannels)}><MessageCircle />渠道</DropdownMenuItem>}
             </DropdownMenuGroup>
