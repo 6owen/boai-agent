@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: UI可在本场独立profile用原bootstrap/配置事务准备数据后仅启动一次；其他BDD保留原桌面配置和重启路径。
  * [OUTPUT]: 渠道引用在模型正文附带固定来源，离线参与判断按首行原测试要求识别；不改员工实际判断逻辑。
  * [OUTPUT]: 原视觉夹具默认模拟视口；后台原生窗口场景可显式禁用，避免截图截断。
  * [OUTPUT]: 第14组API群请求解释与持久顺序接续；保留独立并行、原Work和本机旧路径，实际验收归第14组05。
@@ -9,12 +10,26 @@
  */
 import { createServer } from 'node:http'
 import { mkdir, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import type { Desktop } from './desktop'
 import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
 import type { Message, WorkItem, Artifact } from '../../../packages/shared/src/domain'
+import type { Methods } from '../../../packages/shared/src/ipc'
 
-export async function prepareGroupChat(runtime: Desktop, { emulateViewport = true, mainEntry, now = Date.now() }: { emulateViewport?: boolean; mainEntry?: string; now?: number } = {}) {
+type Request = <K extends keyof Methods>(method: K, input: Methods[K]['input']) => Promise<Methods[K]['output']>
+async function configureGroupChat(request: Request, port: number) {
+  const connection = await request('saveConnection', { name: '群聊离线验收', provider: 'openai-compatible', baseUrl: `http://127.0.0.1:${port}/v1`, defaultModel: 'fixture' })
+  const names: Record<string, [string, string]> = { researcher: ['研究员', '信息研究'], writer: ['写手', '内容创作'], reviewer: ['设计师', '视觉设计'] }
+  for (const agent of (await request('snapshot', undefined)).agents.filter(agent => agent.id in names)) {
+    const { configVersion, workspaceRef, memoryNamespace, policyVersion, ...input } = agent
+    await request('saveAgent', { ...input, name: names[agent.id][0], role: names[agent.id][1], connectionId: connection.id, modelId: 'fixture', allowCommands: agent.id === 'reviewer', expectedConfigVersion: configVersion })
+  }
+  const group = await request('createConversation', { kind: 'group', title: '产品讨论组', agentIds: ['researcher', 'writer', 'reviewer'] })
+  const direct = await request('createConversation', { kind: 'direct', title: '与研究员对话', agentIds: ['researcher'] })
+  return { group, direct, dataPath: (await request('snapshot', undefined)).dataPath }
+}
+
+export async function prepareGroupChat(runtime: Desktop, { emulateViewport = true, mainEntry, now = Date.now(), seedBeforeLaunch = false }: { emulateViewport?: boolean; mainEntry?: string; now?: number; seedBeforeLaunch?: boolean } = {}) {
   const state = { calls: 0, errors: [] as string[] }
   const server = createServer(async (request, response) => {
     try {
@@ -43,21 +58,28 @@ export async function prepareGroupChat(runtime: Desktop, { emulateViewport = tru
   })
   runtime.trackServer(server)
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
-  await runtime.start({ mainEntry })
-  const setup = await runtime.page.evaluate(async port => {
-    const connection = await window.boai.request('saveConnection', { name: '群聊离线验收', provider: 'openai-compatible', baseUrl: `http://127.0.0.1:${port}/v1`, defaultModel: 'fixture' })
-    const names: Record<string, [string, string]> = { researcher: ['研究员', '信息研究'], writer: ['写手', '内容创作'], reviewer: ['设计师', '视觉设计'] }
-    for (const agent of (await window.boai.request('snapshot', undefined)).agents.filter(agent => agent.id in names)) {
-      const { configVersion, workspaceRef, memoryNamespace, policyVersion, ...input } = agent
-      await window.boai.request('saveAgent', { ...input, name: names[agent.id][0], role: names[agent.id][1], connectionId: connection.id, modelId: 'fixture', allowCommands: agent.id === 'reviewer', expectedConfigVersion: configVersion })
-    }
-    const appearance = await window.boai.request('getAppearance', undefined)
-    await window.boai.request('updateAppearance', { patch: { mode: 'light', zoomFactor: 1 }, expectedRevision: appearance.revision })
-    const group = await window.boai.request('createConversation', { kind: 'group', title: '产品讨论组', agentIds: ['researcher', 'writer', 'reviewer'] })
-    const direct = await window.boai.request('createConversation', { kind: 'direct', title: '与研究员对话', agentIds: ['researcher'] })
-    return { group, direct, dataPath: (await window.boai.request('snapshot', undefined)).dataPath }
-  }, (server.address() as { port: number }).port)
-  await runtime.close()
+  const port = (server.address() as { port: number }).port
+  let setup: Awaited<ReturnType<typeof configureGroupChat>>
+  if (seedBeforeLaunch) {
+    const { startOwnedRuntime } = await import('../../../packages/runtime/src/bootstrap')
+    const noModel = async () => { throw new Error('UI历史准备不得调用模型') }
+    const owned = await startOwnedRuntime({
+      dataPath: join(runtime.root, 'v2'),
+      skillDiscovery: { homeDir: join(runtime.root, 'local-user'), bundledRoot: resolve('dist/agent-skills') },
+      engine: { run: noModel, test: noModel },
+      secrets: { get: async () => undefined, set: noModel, delete: noModel }, emit: () => {},
+    })
+    try { setup = await configureGroupChat((method, input) => owned.service.handle(method, input) as ReturnType<Request>, port) }
+    finally { await owned.close() }
+  } else {
+    await runtime.start({ mainEntry })
+    setup = await configureGroupChat((method, input) => runtime.page.evaluate(({ method, input }) => window.boai.request(method, input), { method, input }) as ReturnType<Request>, port)
+    await runtime.page.evaluate(async () => {
+      const appearance = await window.boai.request('getAppearance', undefined)
+      await window.boai.request('updateAppearance', { patch: { mode: 'light', zoomFactor: 1 }, expectedRevision: appearance.revision })
+    })
+    await runtime.close()
+  }
   const { group } = setup
   const baseTime = now - 10 * 60_000
   const makeMessage = (id: string, senderId: string, content: string, index: number, replyToMessageId?: string): Message => ({ id, conversationId: group.id, senderType: senderId === 'user' ? 'user' : 'agent', senderId, senderName: ({ user: '你', researcher: '研究员', writer: '写手' })[senderId]!, content, status: 'completed', sequence: index, turnId: 'history-turn', runId: senderId === 'user' ? undefined : `history-${senderId}`, replyToMessageId, createdAt: new Date(baseTime + index * 30_000).toISOString() })
@@ -87,7 +109,7 @@ export async function prepareGroupChat(runtime: Desktop, { emulateViewport = tru
     ...works.map(value => ({ collection: 'workItems', id: value.id, value })),
     ...artifacts.map(value => ({ collection: 'artifacts', id: value.id!, value })),
   ]) } finally { await store.close() }
-  await runtime.start()
+  await runtime.start({ mainEntry })
   if (emulateViewport) await resizeGroupWindow(runtime, 1487, 1058)
   await runtime.page.getByRole('button', { name: /产品讨论组/ }).click()
   return { ...setup, state, artifacts }
