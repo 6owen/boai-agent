@@ -1,5 +1,5 @@
 <!--
-[OUTPUT]: §29用户已明确确认效果、六张新基准和合并；继续修复后的同SHA官方候选，原失败和未验范围保留。
+[OUTPUT]: §29确认后候选25过1失败，原件证明标签已保存但check同步检查过早；改单次点击后等回执，既有断言保持。
 [OUTPUT]: §19对话创建进入普通会话并预选管理标签，五类命令加载随包操作文档；提示词业务接口复用原CRUD，当前仅静态检查。
 [OUTPUT]: §28.2自然待批停止/迟到批准与恢复后明确新运行2场最终通过；7启动/31证据及真实面板终态已核，原图旧帧和原期限保留。
 [OUTPUT]: §28自然调度旧产品3过/停止入口1失败，单次停止修复同4场全过；真实12启动/49证据及两次重启无重放，完整DS11/新head门禁仍继续。
@@ -362,4 +362,5 @@
 - 同步 main 的 PR43 新UI确认规则后，主动取消修复提交的候选 [40482684554](https://github.com/6owen/boai-agent/actions/runs/40482684554)，不计为功能通过或失败。PR42保持Draft、未启用自动合并；基准未接受，新增UI提交在用户确认前不再推送。
 - 功能 worktree 为 `/Users/wangwenbo/Desktop/demo/boai/boai-schedule-groups-motion`，分支 `feat/schedule-groups-motion`。检查无本任务产品进程后，仅解除本worktree的跨目录node_modules链接，使用锁定pnpm正常安装，1226包、reused1223、downloaded0、17.9秒；个人应用与main依赖保持。独立安装后的完整 `tsc --noEmit` 再次通过。预览命令为 `BOAI_DATA_DIR="$PWD/.local/dev-profile" BOAI_DEV_PORT=0 pnpm dev`，须在该worktree执行；当前尚未启动预览。
 - 用户随后明确回复“确认，更新基准，合并”：已确认定时任务侧栏/标签管理、执行记录Tab及列表动效、本人菜单六个入口，以及 schedules-light/dark、schedule-manager-light/dark、user-menu-light/dark 六张新基准。继续同SHA官方候选、审图和基准提交，原20张保持；不重复询问本批效果。
+- 确认后的官方候选 [40484226752](https://github.com/6owen/boai-agent/actions/runs/40484226752) 实际25通过、1失败；失败为Playwright `check()` 点击后立即核对状态，早于受控标签的IPC保存回执。同SHA普通检查的失败原件已显示两标签勾选且三项任务均已赋值，证明命名修复生效、点击和保存真实发生。只将该处改为单次点击后等待勾选/可用及三项持久化断言，不重试点击、不放宽期限；其余三场定时任务已走完拖拽、排序、筛选和动效。BDD生成及差异检查通过，新SHA完整候选仍待验证。
 - 未在本机启动产品构建或 Electron GUI；个人正在运行的应用尚未重载。此处不声明真实模型、自然定时执行或用户数据已验证。

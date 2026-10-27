@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 标签浮层按唯一可访问名称操作，并逐次核对三项任务的实际标签保存回执。
+ * [OUTPUT]: 标签浮层按唯一可访问名称单次点击，等待受控勾选和三项任务的实际保存回执，不要求异步保存同步完成。
  * [OUTPUT]: 本人菜单明暗两场核对头像与五项导航，菜单分享/帮助消失，逐个入口定位对应设置。
  * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
  * [OUTPUT]: 新增定时任务历史/管理明暗四场；实际标签CRUD、多选、拖拽/排序、筛选键盘与动效/布局覆盖，原20场保持。
@@ -256,7 +256,9 @@ async function checkScheduleUi(runtime: import('../support/desktop').Desktop, sh
   await expect(assignment).toBeVisible()
   for (const name of ['日常', '关注']) {
     const checkbox = assignment.getByRole('checkbox', { name, exact: true })
-    await checkbox.check()
+    await expect(checkbox).not.toBeChecked()
+    // This control reflects the host transaction, so its checked state changes after IPC acknowledgement.
+    await checkbox.click()
     await expect(checkbox).toBeChecked()
     await expect(checkbox).toBeEnabled()
     await expect.poll(async () => {
