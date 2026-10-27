@@ -118,6 +118,18 @@
       "scene": "shortcuts",
       "mode": "dark",
       "width": 1280
+    },
+    {
+      "id": "voice-settings-light",
+      "scene": "voice-settings",
+      "mode": "light",
+      "width": 1280
+    },
+    {
+      "id": "voice-settings-dark",
+      "scene": "voice-settings",
+      "mode": "dark",
+      "width": 1280
     }
   ]
 }
