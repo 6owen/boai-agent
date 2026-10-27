@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 开始页入口统一Iconify Solar folder-linear/file-terminal-linear，保留全局字号；实际Tailwind图标生成/类型/lint通过，无E2E。
 [OUTPUT]: 2026-10-26工作区样式及截图纠正归§12：全局空态SVG/字号图标、纯xterm/原生行高、单打开按钮和应用包图标，32项与7个实际图标通过，不跑E2E。
 [OUTPUT]: 2026-10-26终端跟随应用主题并复用Base46/VS Code Plus ANSI，撤销独立配置；关闭前停流修复与验证边界归§11。
 [OUTPUT]: 2026-10-26随PR23/25整合更新BOAI源码路径，保留原功能范围及验证记录。
@@ -412,3 +413,4 @@ RP2 与 Cookie 核心可独立交付，但完整终端和本机导入不能因�
 - macOS改为沿DSH已核对的应用包来源读取`Info.plist`的`CFBundleIconFile`，由`plutil`与`sips`生成64px PNG。仅使用已核定的安装路径/声明文件、固定命令argv及有界超时，转换后清理私有临时目录；不回退为错误的通用`.app`图片。其他平台保留Electron接口。应用列表缓存与图标失败时应用仍可打开的行为保持。
 - 使用新读取函数直接提取本机Finder、VS Code、Xcode、IntelliJ IDEA、Terminal、Ghostty、Warp共7个真实图标，全部获得64×64 PNG且摘要互不相同，并查看Finder/VS Code/Ghostty及新SVG的渲染图。没有启动应用、读取个人文件或将这些资产检查称作Electron端到端验证。
 - 当前全项目TypeScript、7个相关前端/共享UI文件ESLint及Git差异检查通过；5个定向Vitest文件32项通过，新增应用包声明/后缀/目录逃逸拒绝与转换失败清理。未运行E2E、完整应用构建或重启个人开发版；实际窗口/全局字号切换和主进程重载后的菜单验收仍未执行，Main图标修复须由新构建生效。
+- 后续按用户要求统一开始页的两个入口图标：原文件夹为Solar folder-with-files-bold，原终端为Carbon terminal，均非手绘；现改用已安装Iconify Solar的folder-linear/file-terminal-linear，已打开终端列表沿同一终端图标。保留原全局字号、颜色及顶部插画，类型/相关界面ESLint和实际Tailwind图标规则生成检查通过；未做实际窗口视觉验收或E2E。
