@@ -122,6 +122,7 @@ Then('当前场景的真实交互和布局满足原约定', async ({ runtime, ui
       await avatar.click()
       await expect(page.locator('.agent-info-popover[data-open]').getByRole('heading', { name: '写手', exact: true })).toBeVisible()
       await page.keyboard.press('Escape')
+      await input.click() // Restore the original screenshot focus after checking the profile.
     }
     const original = uiRegression.fixture!.direct
     const repeated = await page.evaluate(() => window.boai.request('createConversation', { kind: 'direct', title: '重复进入不能新建另一个单聊', agentIds: ['researcher'] }))
