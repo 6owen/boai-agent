@@ -742,58 +742,58 @@
       "acceptedAt": "2026-10-27T10:17:11.911Z"
     },
     "user-menu-light": {
-      "sha256": "4fd2d1ed956718484a19ad61971fdb5ef46dbf0f4b0dec0d753575a47ce875b8",
+      "sha256": "a072c0caebeb5086b8da3cd680ba7790714a6e15f29e5bc7f8ab33a248a2a490",
       "contract": "b6ce48687765d4b62a4d488c05c11456d8becf326e9ec10cae2fc66f61bbefb3",
       "source": {
-        "commit": "95b5426368100db8540b5ef41226959213b8a80c",
-        "sourceHash": "f26b7d9cde673fbe80e0ccc8caa13545fdabdd0d5c3a100252fc0c9d0fed7e57",
+        "commit": "a9fe8891cd24aeb5702df45a943f5ed8f222e145",
+        "sourceHash": "66afdaafc4163818081ad833eb86dea0d3e7adee62de5685904937e83aae71fd",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "8a534030e91e0f10d3411d9042d3e476cf24d9ff5e80d2007eacc05365fef6f6",
-        "outputHash": "eb5121ccb63f9bf2296ee326788d82c488fd37d10e3bf1cf4c59cacdb0b1aa14",
+        "inputHash": "4bc210cdaf7e9420bfc60d3c86a5d2271decece487a94a4de098e34b3ca8b5b7",
+        "outputHash": "f24fa5b02c04ec3e4828ede24ff4af4596f5f739931879df1700f08a10386c93",
         "node": "v24.16.0",
-        "createdAt": "2026-10-27T10:04:15.357Z"
+        "createdAt": "2026-10-27T14:06:52.589Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "40485363446",
+        "runId": "40517660052",
         "attempt": 1,
-        "commit": "95b5426368100db8540b5ef41226959213b8a80c",
-        "artifactId": 12725536150,
-        "digest": "sha256:321154b75d7b6de57cde973e6028e976f61d2fc81a150acf4097bf9da961b099"
+        "commit": "a9fe8891cd24aeb5702df45a943f5ed8f222e145",
+        "artifactId": 12740263147,
+        "digest": "sha256:d5936735211ae4e4cb5fe7227ba93d57db0c8eb742558cd2e4249899c87ad9b1"
       },
-      "reason": "用户已确认定时任务分组、执行记录动效和本人菜单；官方26场通过，六张新图逐项审阅，原20图零像素变化",
-      "candidate": "695ce4b8-8bcd-4919-9922-c9e06a559711",
-      "acceptedAt": "2026-10-27T10:17:11.911Z"
+      "reason": "用户已确认PR42效果并要求合并所有PR；审阅整合PR44后的官方候选，仅本人菜单背景聊天滚动位置变化，在线更新明暗两图，其余24场基准保持。",
+      "candidate": "cbc52dcd-365d-4578-a6e2-fca270591acf",
+      "acceptedAt": "2026-10-27T14:17:09.141Z"
     },
     "user-menu-dark": {
-      "sha256": "fc55bcdd7085e7ed2b3f6cffa3368c0a37169f1071e8342fa579970f81d22d77",
+      "sha256": "8ccfd373aa35f2763e4ac1580051d9811b8bccb467df6c53ca2ed2ae5ea42f38",
       "contract": "4ede3263ec870aa6243855f58e6431395f5733d46aa0289e3dbcd263e3682aa9",
       "source": {
-        "commit": "95b5426368100db8540b5ef41226959213b8a80c",
-        "sourceHash": "f26b7d9cde673fbe80e0ccc8caa13545fdabdd0d5c3a100252fc0c9d0fed7e57",
+        "commit": "a9fe8891cd24aeb5702df45a943f5ed8f222e145",
+        "sourceHash": "66afdaafc4163818081ad833eb86dea0d3e7adee62de5685904937e83aae71fd",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "8a534030e91e0f10d3411d9042d3e476cf24d9ff5e80d2007eacc05365fef6f6",
-        "outputHash": "eb5121ccb63f9bf2296ee326788d82c488fd37d10e3bf1cf4c59cacdb0b1aa14",
+        "inputHash": "4bc210cdaf7e9420bfc60d3c86a5d2271decece487a94a4de098e34b3ca8b5b7",
+        "outputHash": "f24fa5b02c04ec3e4828ede24ff4af4596f5f739931879df1700f08a10386c93",
         "node": "v24.16.0",
-        "createdAt": "2026-10-27T10:04:15.357Z"
+        "createdAt": "2026-10-27T14:06:52.589Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "40485363446",
+        "runId": "40517660052",
         "attempt": 1,
-        "commit": "95b5426368100db8540b5ef41226959213b8a80c",
-        "artifactId": 12725536150,
-        "digest": "sha256:321154b75d7b6de57cde973e6028e976f61d2fc81a150acf4097bf9da961b099"
+        "commit": "a9fe8891cd24aeb5702df45a943f5ed8f222e145",
+        "artifactId": 12740263147,
+        "digest": "sha256:d5936735211ae4e4cb5fe7227ba93d57db0c8eb742558cd2e4249899c87ad9b1"
       },
-      "reason": "用户已确认定时任务分组、执行记录动效和本人菜单；官方26场通过，六张新图逐项审阅，原20图零像素变化",
-      "candidate": "695ce4b8-8bcd-4919-9922-c9e06a559711",
-      "acceptedAt": "2026-10-27T10:17:11.911Z"
+      "reason": "用户已确认PR42效果并要求合并所有PR；审阅整合PR44后的官方候选，仅本人菜单背景聊天滚动位置变化，在线更新明暗两图，其余24场基准保持。",
+      "candidate": "cbc52dcd-365d-4578-a6e2-fca270591acf",
+      "acceptedAt": "2026-10-27T14:17:09.148Z"
     }
   }
 }
