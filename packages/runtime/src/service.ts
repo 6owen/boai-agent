@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 定时任务列表偏好独立 CAS 读写及变更事件，不改执行配置。
  * [OUTPUT]: 2026-10-27 进度核验绑定宿主原运行阶段，决策不再误用执行工具门禁；原停止、版本与来源校验保持。
  * [OUTPUT]: 2026-10-27 默认持续执行、来源校验及工作现场/复核接线；沿原权限和账本。
  * [OUTPUT]: 任务结果统一投影接原Work/消息/文件核源和停止、继续门禁；查询不执行任务。
@@ -347,6 +348,8 @@ import { WorkspaceService } from './modules/workspaces/workspace-service'
 import { EmployeeService, agentSchema } from './modules/employees/employee-service'
 import { CommandPermissions, canRememberCommands } from './modules/employees/command-permissions'
 import { memoryEvidenceMessages } from './modules/employees/memory-extraction'
+import { ScheduleListRepository } from './modules/automations/schedule-list'
+import { scheduleListChangeSchema } from '@boai/shared/domain/schedule-list'
 import { ContactListRepository, contactListChangeSchema } from './modules/employees/contact-list'
 import { ContactDeletionService } from './modules/employees/contact-deletion'
 import { MemoryRepository } from './modules/memory/memory-repository'
@@ -472,6 +475,7 @@ export class AppService {
   private externalRuns=new Map<string,Promise<void>>()
   private readonly employees: EmployeeService
   private readonly commandPermissions: CommandPermissions
+  private readonly scheduleList: ScheduleListRepository
   private readonly contactList: ContactListRepository
   private readonly contactDeletion: ContactDeletionService
   private connections = new Map<string, Connection>()
@@ -590,6 +594,7 @@ export class AppService {
     this.teams = new TeamRepository(this.store)
     this.teamGeneration = new TeamGenerationService(this.teams, this.modelCapacity, options.teamPlanner ?? planTeam, { key: id => options.secrets.get(id), changed: () => this.changed() })
     this.userProfile = new ProfileRepository(this.store)
+    this.scheduleList = new ScheduleListRepository(this.store)
     this.contactList = new ContactListRepository(this.store)
     this.contactDeletion = new ContactDeletionService(this.store, this.dataPath, { prepare: (tx, resource) => this.resourceCleanups.prepare(tx, resource), prepareBindingCopy: (tx, copy) => this.resourceCleanups.prepareBindingCopy(tx, copy), finish: id => this.resourceCleanups.finish(id) })
     this.notifications = new AutomationNotifications(this.store)
@@ -1192,6 +1197,8 @@ export class AppService {
     if (method === 'installSkills') return this.skills.install(installSkillsSchema.parse(input))
     if (method === 'getSkillOperation') return this.skillLibrary.operationStatus(this.skillUpdates.operationStatus(await this.skills.getOperation(lookupSchema.parse(input).id)))
     if (method === 'cancelSkillOperation') { const value = lookupSchema.parse(input); await this.skills.cancel(value.id); await this.skillUpdates.cancel(value.id); return this.skillLibrary.cancel(value.id) }
+    if (method === 'getScheduleList') { z.undefined().parse(input); return this.scheduleList.read() }
+    if (method === 'updateScheduleList') { const result = await this.scheduleList.update(scheduleListChangeSchema.parse(input)); this.emit({ type: 'schedule-list:changed' }); return result }
     if(method==='listAutomations'){z.undefined().parse(input);return this.automations.view()}
     if(method==='getAutomation'){const {id}=z.object({id:z.string().min(1).max(200)}).strict().parse(input);const definition=await this.store.get<AutomationDefinition>('automations',id);return definition&&!definition.deletedAt?definition:null}
     if(method==='listOwnerAutomations')return this.automations.list(automationListSchema.parse(input))

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 定时任务列表偏好独立 CAS 读写及变更事件，不改执行配置。
  * [OUTPUT]: 允许可信桌面语音设置保存排空回执。
  * [OUTPUT]: 公开getTaskResult只读方法，现有桌面准入保持。
  * [OUTPUT]: 工作区文件及用户终端允许桌面请求；根路径及轻量身份核验仅供宿主转交运行服务。
@@ -122,6 +123,8 @@ const methods = {
   getBrowserWindows: true,
   getChannelBindingReceipt: true,
   getConnectionApiKey: true,
+  getScheduleList: true,
+  updateScheduleList: true,
   getContactList: true,
   getConversation: true,
   getConversationMetadata: true,

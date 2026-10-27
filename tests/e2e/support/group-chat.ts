@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 可在同一次离线预备事务阶段追加场景历史，实际Electron仍只启动一次。
  * [OUTPUT]: 单次启动先经原snapshot请求等待服务就绪并核对本场profile/会话，再开始真实点击；不重试或重建数据。
  * [OUTPUT]: UI可在本场独立profile用原bootstrap/配置事务准备数据后仅启动一次；其他BDD保留原桌面配置和重启路径。
  * [OUTPUT]: 渠道引用在模型正文附带固定来源，离线参与判断按首行原测试要求识别；不改员工实际判断逻辑。
@@ -30,7 +31,7 @@ async function configureGroupChat(request: Request, port: number) {
   return { group, direct, dataPath: (await request('snapshot', undefined)).dataPath }
 }
 
-export async function prepareGroupChat(runtime: Desktop, { emulateViewport = true, mainEntry, now = Date.now(), seedBeforeLaunch = false }: { emulateViewport?: boolean; mainEntry?: string; now?: number; seedBeforeLaunch?: boolean } = {}) {
+export async function prepareGroupChat(runtime: Desktop, { emulateViewport = true, mainEntry, now = Date.now(), seedBeforeLaunch = false, seedAdditional }: { emulateViewport?: boolean; mainEntry?: string; now?: number; seedBeforeLaunch?: boolean; seedAdditional?: (store: ProductStore, setup: Awaited<ReturnType<typeof configureGroupChat>>) => Promise<void> } = {}) {
   const state = { calls: 0, errors: [] as string[] }
   const server = createServer(async (request, response) => {
     try {
@@ -109,7 +110,7 @@ export async function prepareGroupChat(runtime: Desktop, { emulateViewport = tru
     ...directMessages.map(value => ({ collection: 'messages', id: value.id, value })),
     ...works.map(value => ({ collection: 'workItems', id: value.id, value })),
     ...artifacts.map(value => ({ collection: 'artifacts', id: value.id!, value })),
-  ]) } finally { await store.close() }
+  ]); await seedAdditional?.(store, setup) } finally { await store.close() }
   await runtime.start({ mainEntry })
   if (seedBeforeLaunch) {
     // A preload bridge exists before the cold runtime is ready. Confirm the

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: 实际20项UI合同、两片摘要和工作流。
- * [OUTPUT]: 拒绝漏片/重复/旧合同/跨提交/不同环境及失败结果，保持全20项。
+ * [INPUT]: 实际24项UI合同、两片摘要和工作流。
+ * [OUTPUT]: 拒绝漏片/重复/旧合同/跨提交/不同环境及失败结果，保持全24项。
  * [POS]: 并行UI基础设施回归，不启动Electron。
  * [PROTOCOL]: 修改同步Header和tests/.folder.md。
  */
@@ -19,12 +19,12 @@ const summaries = () => [1, 2].map(index => {
   const shard = uiShardPlan(ids, index)
   return { shard, cases: shard.cases, status: 'passed', errors: [] as string[], source: { commit: sha, dirty: false, sourceHash: 'b'.repeat(64) }, built: { inputHash: 'c'.repeat(64), outputHash: String(index).repeat(64) }, profile: 'github-macos15-arm64', environment: { version: 3 }, node: 'v24.16.0' }
 })
-it('真实合同两片各10项，无重叠且覆盖原18项与新增语音2项，独立构建输出可不同', () => {
+it('真实合同两片各12项，无重叠且覆盖原20项与新增定时任务4项，独立构建输出可不同', () => {
   const parts = summaries()
-  expect(ids).toHaveLength(20)
-  expect(parts.map(part => part.cases.length)).toEqual([10, 10])
+  expect(ids).toHaveLength(24)
+  expect(parts.map(part => part.cases.length)).toEqual([12, 12])
   expect(parts.flatMap(part => part.cases).sort()).toEqual([...ids].sort())
-  expect(new Set(parts.flatMap(part => part.cases)).size).toBe(20)
+  expect(new Set(parts.flatMap(part => part.cases)).size).toBe(24)
   expect(() => validateUiShards(jobs, parts, ids, sha)).not.toThrow()
 })
 it.each([0, 3, -1, 1.5, NaN])('拒绝非法编号%s', index => expect(() => uiShardPlan(ids, index)).toThrow())

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 筛选复用公共FilterTabs及transitions-dev滑动层；实际新结果沿Panel reveal显现，后台刷新与分页不重播。
  * [OUTPUT]: 悬停/聚焦显示逐条删除；当前任务全部清空先分页冻结已结束记录，再按版本清理，活动/新记录保留。
  * [OUTPUT]: 每条已结束执行可经Popover确认删除；传所见版本，失败Sonner，运行/等待记录禁删。
  * [INPUT]: 原自动化分页查询、当前计划和右侧执行记录导航。
@@ -11,6 +12,8 @@ import { useEffect, useRef, useState } from 'react'
 import type { AutomationHistoryPage, AutomationHistoryQuery } from '@boai/shared/domain'
 import type { DesktopApi } from '@boai/shared/ipc'
 import { Banner, errorText, Loading } from '@/components/common'
+import { FilterTabs } from '@/components/common/filter-tabs'
+import { usePanelReveal } from '@/components/common/use-panel-reveal'
 import { CatalogSearch } from '@/components/common/catalog-search'
 import { Button } from '@/components/ui/button'
 import { Clock, Trash2 } from '@/components/icons'
@@ -19,10 +22,12 @@ import { toast } from 'sonner'
 import { AUTOMATION_ONGOING_STATUSES } from '@boai/shared/domain/automations'
 import { occurrenceStatusLabels, deliveries } from './automation-history'
 
+const historyFilters = [{ value: 'all', label: '全部' }, { value: 'active', label: '进行中' }, { value: 'completed', label: '已完成' }, { value: 'attention', label: '需处理' }] as const
+
 export function AutomationHistory({ api, active, automationId, attentionOnly = false, selectedId, onOccurrence }: {
   api: DesktopApi; active: boolean; automationId?: string; attentionOnly?: boolean; selectedId?: string; onOccurrence(id: string): void
 }) {
-  const [search, setSearch] = useState(''), [status, setStatus] = useState<AutomationHistoryQuery['status']>('all')
+  const [search, setSearch] = useState(''), [status, setStatus] = useState<NonNullable<AutomationHistoryQuery['status']>>('all')
   const [pages, setPages] = useState(1), [revision, setRevision] = useState(0)
   const [history, setHistory] = useState<AutomationHistoryPage>({ occurrences: [] })
   const [loading, setLoading] = useState(true), [loaded, setLoaded] = useState(false), [error, setError] = useState('')
@@ -59,12 +64,8 @@ export function AutomationHistory({ api, active, automationId, attentionOnly = f
     })().catch(cause => { if (live) setError(errorText(cause)) }).finally(() => { if (live) setLoading(false) })
     return () => { live = false }
   }, [api, active, automationId, attentionOnly, pages, revision, search, status])
-  return <section className="automation-records" aria-label="执行记录" style={active ? undefined : { display: 'none' }}>
-    <div className="automation-records-heading"><h3>{attentionOnly ? '需处理记录' : '执行记录'}</h3><div className="automation-record-actions">
-      {automationId && <ClearHistoryRecords api={api} automationId={automationId} active={active} onBusyChange={setClearing} onDeleted={removeRows} />}
-      <CatalogSearch label="搜索执行记录" placeholder="搜索记录中的任务标题" value={search} onChange={value => { setSearch(value.slice(0, 200)); setPages(1); setLoaded(false); setHistory({ occurrences: [] }) }} />
-    </div></div>
-    {!automationId && !attentionOnly && <div className="button-row" aria-label="执行记录筛选">{([{ value: 'all', label: '全部' }, { value: 'active', label: '进行中' }, { value: 'completed', label: '已完成' }, { value: 'attention', label: '需处理' }] as const).map(item => <Button key={item.value} size="sm" variant={status === item.value ? 'secondary' : 'ghost'} aria-pressed={status === item.value} onClick={() => { if (status === item.value) return; setStatus(item.value); setPages(1); setLoaded(false); setHistory({ occurrences: [] }) }}>{item.label}</Button>)}</div>}
+  const listReveal = usePanelReveal(`${status}:${search}:${attentionOnly}`, active && loaded)
+  const results = <div ref={listReveal} className="schedule-content-transition t-panel-slide" data-open="true" data-settled="true" aria-busy={loading}>
     {error && <Banner>{error}</Banner>}
     <div className="automation-record-list">{history.occurrences.map(o => {
       const date = new Date(o.startedAt).toLocaleString('zh-CN', { hour12: false })
@@ -77,6 +78,14 @@ export function AutomationHistory({ api, active, automationId, attentionOnly = f
     {loaded && !error && !history.occurrences.length && <p className="field-hint">{search ? '没有匹配的执行记录' : '暂无执行记录'}</p>}
     {history.nextCursor && <Button variant="secondary" size="sm" disabled={loading} onClick={() => setPages(value => value + 1)}>加载更早记录</Button>}
     {error && <Button variant="secondary" size="sm" onClick={() => setRevision(value => value + 1)}>重试读取</Button>}
+  </div>
+  return <section className="automation-records" aria-label="执行记录" style={active ? undefined : { display: 'none' }}>
+    <div className="automation-records-heading"><h3>{attentionOnly ? '需处理记录' : '执行记录'}</h3><div className="automation-record-actions">
+      {automationId && <ClearHistoryRecords api={api} automationId={automationId} active={active} onBusyChange={setClearing} onDeleted={removeRows} />}
+      <CatalogSearch label="搜索执行记录" placeholder="搜索记录中的任务标题" value={search} onChange={value => { setSearch(value.slice(0, 200)); setPages(1); setLoaded(false); setHistory({ occurrences: [] }) }} />
+    </div></div>
+    {!automationId && !attentionOnly ? <FilterTabs label="执行记录筛选" value={status} options={historyFilters} onValueChange={value => { setStatus(value); setPages(1); setLoaded(false); setHistory({ occurrences: [] }) }}>{results}</FilterTabs> : results}
+
   </section>
 }
 

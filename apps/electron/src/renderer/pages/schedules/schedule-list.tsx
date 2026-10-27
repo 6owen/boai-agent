@@ -1,0 +1,67 @@
+/*
+ * [INPUT]: 定时任务、独立列表偏好、任务导航及创建回调。
+ * [OUTPUT]: 通讯录式搜索/折叠分组、任务与标签拖拽排序、跨标签移动和键盘/右键替代；标题说明Tooltip。
+ * [POS]: 定时任务左栏，复用DragList与通讯录管理布局。
+ * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header 与所属目录 .folder.md。
+ */
+import { useEffect, useState, type ReactNode } from 'react'
+import type { AutomationsView } from '@boai/shared/domain'
+import { scheduleTagIds, sortedSchedules } from '@boai/shared/domain/schedule-list'
+import { Banner, Loading } from '@/components/common'
+import { DragList, DragListGroupTarget, DragListItem } from '@/components/common/drag-list'
+import { ChevronRight, CircleHelp, Clock, MoreHorizontal, Search, Settings } from '@/components/icons'
+import { Button } from '@/components/ui/button'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { ContextMenu, ContextMenuContent, ContextMenuGroup, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { ScheduleManager } from './schedule-manager'
+import { scheduleSummary } from './schedule-presentation'
+import type { useScheduleList } from './use-schedule-list'
+
+const stateKey = 'boai.schedules.list-state'
+function readCollapsed(): string[] { try { const value: unknown = JSON.parse(localStorage.getItem(stateKey) ?? '[]'); return Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : [] } catch { return [] } }
+type Row = { key: string; task: AutomationsView['definitions'][number]; tagId?: string }
+export function ScheduleList({ definitions, preferences, loading, selectedId, onSelect, onHistory, create }: {
+  definitions: AutomationsView['definitions']; preferences: ReturnType<typeof useScheduleList>; loading: boolean; selectedId?: string
+  onSelect(id: string): void; onHistory(): void; create: ReactNode
+}) {
+  const [query, setQuery] = useState(''), [collapsed, setCollapsed] = useState(readCollapsed), [managerOpen, setManagerOpen] = useState(false)
+  useEffect(() => { try { localStorage.setItem(stateKey, JSON.stringify(collapsed)) } catch { /* Optional local presentation preference. */ } }, [collapsed])
+  const value = preferences.value, disabled = preferences.busy || !value || loading
+  const tags = value?.tags ?? [], search = query.trim().toLocaleLowerCase()
+  const tasks = sortedSchedules(definitions, value?.order ?? []).filter(task => `${task.name} ${tags.filter(tag => scheduleTagIds(value, task.id).includes(tag.id)).map(tag => tag.name).join(' ')}`.toLocaleLowerCase().includes(search))
+  const groups = [{ id: '', name: tags.length ? '无标签' : '全部定时任务' }, ...tags]
+  const rows: Row[] = groups.flatMap(group => tasks.filter(task => group.id ? scheduleTagIds(value, task.id).includes(group.id) : !scheduleTagIds(value, task.id).length).map(task => ({ key: JSON.stringify([group.id, task.id]), task, tagId: group.id || undefined })))
+  const rowByKey = new Map(rows.map(row => [row.key, row]))
+  const tagKey = (id: string) => `tag:${id}`
+  const tagByKey = new Map(tags.map(tag => [tagKey(tag.id), tag.id]))
+  const moveTo = (row: Row, tagId: string) => void preferences.change({ kind: 'move-to-tag', id: row.task.id, fromTagId: row.tagId, tagId: tagId || undefined })
+  const section = (group: { id: string; name: string }) => {
+    const items = rows.filter(row => (row.tagId ?? '') === group.id)
+    if (search && !items.length) return null
+    const heading = (dragProps = {}) => <CollapsibleTrigger render={<Button variant="ghost" size="content" className="conversation-section-heading contacts-section-heading" />} {...dragProps}><span className="truncate">{group.name}</span><ChevronRight /><span className="contacts-count">{items.length}</span></CollapsibleTrigger>
+    return <DragListGroupTarget key={group.id} id={group.id}><Collapsible open={Boolean(search) || !collapsed.includes(group.id)} onOpenChange={open => { if (!search) setCollapsed(current => open ? current.filter(id => id !== group.id) : [...current, group.id]) }}>
+      {group.id ? <DragListItem id={tagKey(group.id)}>{({ dragProps }) => heading(dragProps)}</DragListItem> : heading()}
+      <CollapsibleContent><div role="group" aria-label={group.name} className="schedule-items">{items.map(row => <DragListItem key={row.key} id={row.key}>{({ dragProps, dragging }) => <ContextMenu><ContextMenuTrigger render={<Button variant="ghost" size="content" className={`schedule-item${selectedId === row.task.id ? ' selected' : ''}${dragging ? ' drag-list-dragging' : ''}`} />} {...dragProps} aria-label={row.task.name} aria-current={selectedId === row.task.id ? 'page' : undefined} onClick={() => { if (!dragging) onSelect(row.task.id) }}>
+        <strong title={row.task.name}>{row.task.name}</strong><small>{!row.task.enabled ? '已暂停 · ' : ''}{scheduleSummary(row.task)}</small>
+      </ContextMenuTrigger><ContextMenuContent><ContextMenuGroup>{groups.filter(target => target.id !== (row.tagId ?? '')).map(target => <ContextMenuItem key={target.id} disabled={disabled} onClick={() => moveTo(row, target.id)}>移至 {target.name}</ContextMenuItem>)}<ContextMenuItem disabled={disabled} onClick={() => setManagerOpen(true)}><Settings />管理标签</ContextMenuItem></ContextMenuGroup></ContextMenuContent></ContextMenu>}</DragListItem>)}</div></CollapsibleContent>
+    </Collapsible></DragListGroupTarget>
+  }
+  return <>
+    <div className="list-heading"><div className="schedule-list-title"><h2>定时任务</h2><Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-xs" aria-label="定时任务说明" />}><CircleHelp /></TooltipTrigger><TooltipContent className="max-w-xs">应用打开或最小化时按计划执行；退出或休眠期间不执行。暂停计划不会停止当前执行，结果保留在原会话。</TooltipContent></Tooltip></div><DropdownMenu><DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="定时任务选项" />}><MoreHorizontal /></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onClick={onHistory}><Clock />执行记录</DropdownMenuItem><DropdownMenuItem disabled={disabled} onClick={() => setManagerOpen(true)}><Settings />定时任务管理</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div>
+    {create}
+    <InputGroup className="schedule-search"><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput aria-label="搜索定时任务" placeholder="搜索任务或标签" value={query} onChange={event => setQuery(event.target.value)} /></InputGroup>
+    {preferences.error && <Banner>{preferences.error}</Banner>}
+    <div className="contacts-sections"><DragList ids={[...tagByKey.keys(), ...rowByKey.keys()]} disabled={disabled || managerOpen}
+      canMove={(id, targetId) => tagByKey.has(id) && tagByKey.has(targetId) || rowByKey.has(id) && rowByKey.has(targetId) && rowByKey.get(id)!.tagId === rowByKey.get(targetId)!.tagId}
+      onMove={move => { const tagId = tagByKey.get(move.id), targetTagId = tagByKey.get(move.targetId); if (tagId && targetTagId) void preferences.change({ kind: 'move-tag', tagId, targetId: targetTagId, placement: move.placement }); else { const from = rowByKey.get(move.id), to = rowByKey.get(move.targetId); if (from && to) void preferences.change({ kind: 'move-task', id: from.task.id, targetId: to.task.id, placement: move.placement }) } }}
+      canGroupDrop={(id, groupId) => rowByKey.has(id) && groups.some(group => group.id === groupId) && (rowByKey.get(id)!.tagId ?? '') !== groupId}
+      onGroupDrop={(id, groupId) => { const row = rowByKey.get(id); if (row) moveTo(row, groupId) }}>{groups.map(section)}</DragList>
+      {loading && <Loading />}
+      {search && !tasks.length && <p className="contacts-list-empty">没有匹配的定时任务</p>}
+    </div>
+    {managerOpen && <ScheduleManager definitions={definitions} preferences={preferences} onClose={() => setManagerOpen(false)} />}
+  </>
+}

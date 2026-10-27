@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 定时任务列表偏好独立 CAS 读写及变更事件，不改执行配置。
  * [OUTPUT]: 语音设置页外自动保存及关闭前排空回执，独立voice脏来源。
  * [OUTPUT]: 2026-10-27 语音插件与显式执行额度的公共合同；不依赖可执行插件。
  * [OUTPUT]: 桌面生命周期事件与主窗专用快照/诊断导出桥；员工公共方法不扩展。
@@ -122,6 +123,7 @@ export type AppEvent =
   | { type: 'conversation:clearing'; conversationId: string }
   | { type: 'conversation:cleared'; conversationId: string; hidden?: boolean }
   | { type: 'conversation:deleted'; conversationId: string }
+  | { type: 'schedule-list:changed' }
   | { type: 'contact-list:changed' }
   | { type: 'browser:changed' }
   | { type: 'changed'; conversationId?: string }
@@ -243,6 +245,8 @@ export interface Methods {
   getTeamDraft: { input: { draftId: string }; output: TeamDraftView }
   abandonTeamDraft: { input: { draftId: string; expectedVersion: number }; output: TeamDraft }
   listTeamCreationRecovery: { input: undefined; output: TeamRecovery }
+  getScheduleList: { input: undefined; output: import('../domain/schedule-list').ScheduleListPreferences }
+  updateScheduleList: { input: import('../domain/schedule-list').ScheduleListChange; output: import('../domain/schedule-list').ScheduleListPreferences }
   getContactList: { input: undefined; output: ContactListPreferences }
   updateContactList: { input: { expectedRevision: number; action: ContactListAction }; output: ContactListPreferences }
   saveLocalSkill: { input: { id?: string; name?: string; content: string; expectedHash: string | null }; output: LocalSkillDetail & { contentHash: string; treeHash: string } }
