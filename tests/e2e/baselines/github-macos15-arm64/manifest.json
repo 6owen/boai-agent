@@ -608,10 +608,10 @@
     },
     "voice-settings-dark": {
       "sha256": "88da29a189592704ba54f400c99e590b0af956adf3c1fa98129a74e9a68e9c01",
-      "contract": "dfc4b128f8326094849f1c09ff27a6797431584054b0ce9ea5796bf4cd5632c9",
+      "contract": "f15bd6d173be5d60cae354d1734b851b0f8ffa2527a777b9674abb730d450941",
       "source": {
-        "commit": "b3ab57650dfaaa6b90d9dd84bfe8e7f91630bcdc",
-        "sourceHash": "3e21d40656cc0e36bc846dbabffb64575c2ce07bf0b2243e94befabec8368b91",
+        "commit": "b58e71f4198592588cfca962a3ca8b8211acc6e4",
+        "sourceHash": "9fd262d06a7b0e2bc78cbf51ada362f48227d8302f4a05236d0b2c30b454b0b9",
         "dirty": false
       },
       "built": {
@@ -619,19 +619,19 @@
         "inputHash": "cb30fe9829267d4bf37a834ca4618deb4fb825643232ba833ef3a68631125ba0",
         "outputHash": "65730ad3f5b47d16e20203665d52989dfea10ec12109ecc6a7e80edb85ad2e84",
         "node": "v24.16.0",
-        "createdAt": "2026-10-27T07:31:54.777Z"
+        "createdAt": "2026-10-27T08:20:37.544Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "40467444974",
+        "runId": "40472649141",
         "attempt": 1,
-        "commit": "b3ab57650dfaaa6b90d9dd84bfe8e7f91630bcdc",
-        "artifactId": 12716699793,
-        "digest": "sha256:6499debb3cad58fe159b7b77126dfc5954125b7a3b4111b243d6c8276ef72440"
+        "commit": "b58e71f4198592588cfca962a3ca8b8211acc6e4",
+        "artifactId": 12718957644,
+        "digest": "sha256:ae6becbf5517560d5cf41de3d77c1b9372601461abb68778e0be179b1dcd4329"
       },
-      "reason": "补语音设置页明暗覆盖；已审阅官方原件：220px控件右对齐、32px同高，授权操作居左同排，术语自动保存及快捷键导航通过；原18图无变化。",
-      "candidate": "f05c1c40-055e-492f-a09c-f4cf697ba376",
-      "acceptedAt": "2026-10-27T07:46:02.002Z"
+      "reason": "Reviewed docs-only failure 40470324383: 8149 raw pixels differ by at most 1/255 only on input gradients. Apply existing 0.005 gradient calibration with zero anomalous pixels; measured 2/255 and 1px regressions still fail. Official candidate 40472649141 passed all 20; all old/new PNGs byte-identical, accept only voice-settings-dark contract provenance.",
+      "candidate": "d1f3399c-a5ad-470b-a876-118b3ae2d97e",
+      "acceptedAt": "2026-10-27T08:29:46.555Z"
     }
   }
 }
