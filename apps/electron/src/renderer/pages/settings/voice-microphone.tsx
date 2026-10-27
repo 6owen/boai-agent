@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 麦克风选择按内容取宽，授权和取消使用统一标准按钮高度。
  * [INPUT]: Explicit microphone authorization, configured device ID and trusted voice lease API.
  * [OUTPUT]: Device picker with missing-device visibility; temporary authorization streams close on every exit.
  * [POS]: Voice settings microphone field; never starts ASR, stores audio or chooses a fallback device.
@@ -10,7 +11,7 @@ import type { VoiceApi } from '@boai/shared/plugins/voice-input'
 import { openVoiceMicrophone } from '@boai/voice-input-plugin/capture'
 import { Button } from '@/components/ui/button'
 import { SelectField } from '@/components/ui/select-field'
-import { ConnectionSettingRow } from './connection-layout'
+import { VoiceSettingRow } from './voice-setting-row'
 import { getDesktopClient } from '@/services/request/desktop-client'
 
 export function VoiceMicrophone({ voice, active, enabled, disabled, value, onChange }: { voice?: VoiceApi; active: boolean; enabled: boolean; disabled: boolean; value: string; onChange(value: string): void }) {
@@ -58,10 +59,10 @@ export function VoiceMicrophone({ voice, active, enabled, disabled, value, onCha
   }
   const options = [{ value: '', label: '系统默认麦克风' }, ...devices.filter(device => device.deviceId && device.deviceId !== 'default').map((device, index) => ({ value: device.deviceId, label: device.label || `麦克风 ${index + 1}` }))]
   if (value && !options.some(option => option.value === value)) options.push({ value, label: '已选设备不可用，请授权刷新或重新选择' })
-  return <ConnectionSettingRow label="麦克风" hint="指定设备不可用时会停止并提示，不会自动改用其他设备。授权会短暂打开系统默认麦克风以读取设备，随后立即关闭；不会发送或保存音频。">
+  return <VoiceSettingRow label="麦克风" hint="指定设备不可用时会停止并提示，不会自动改用其他设备。授权会短暂打开系统默认麦克风以读取设备，随后立即关闭；不会发送或保存音频。">
     <div className="flex min-w-0 flex-wrap items-center gap-2">
-      <SelectField aria-label="麦克风" className="min-w-0 flex-1" disabled={disabled || checking} value={value} options={options} onValueChange={onChange} />
-      {checking ? <Button type="button" variant="ghost" size="sm" onClick={() => pending.current?.abort()}>取消授权</Button> : <Button type="button" variant="secondary" size="sm" disabled={disabled || !enabled || !voice} onClick={() => void authorize()}>授权并刷新设备</Button>}
+      <SelectField aria-label="麦克风" className="w-auto min-w-0" disabled={disabled || checking} value={value} options={options} onValueChange={onChange} />
+      {checking ? <Button type="button" variant="ghost" onClick={() => pending.current?.abort()}>取消授权</Button> : <Button type="button" variant="secondary" disabled={disabled || !enabled || !voice} onClick={() => void authorize()}>授权并刷新设备</Button>}
     </div>
-  </ConnectionSettingRow>
+  </VoiceSettingRow>
 }

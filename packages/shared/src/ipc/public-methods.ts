@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 允许可信桌面语音设置保存排空回执。
  * [OUTPUT]: 公开getTaskResult只读方法，现有桌面准入保持。
  * [OUTPUT]: 工作区文件及用户终端允许桌面请求；根路径及轻量身份核验仅供宿主转交运行服务。
  * [OUTPUT]: 快捷键偏好、回执与受控窗口捕获仅准入主窗口。
@@ -105,6 +106,7 @@ const methods = {
   getShortcutReceipt: true,
   setShortcutCapture: true,
   completeShortcutFlush: true,
+  completeVoiceSettingsFlush: true,
   getAppearance: true,
   getAppIconStatus: true,
   getApplicationCatalog: true,
