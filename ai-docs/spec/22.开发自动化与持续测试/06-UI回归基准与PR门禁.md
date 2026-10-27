@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-26UI夹具预备数据后单次真实启动、退出清理仍受理及原始阶段计时；全部18项和像素/原件门禁保持。
 [OUTPUT]: 2026-10-26复核预期改版流程：报告区分视觉差异待审阅与执行失败；原Required checks保持，候选接受不等于设计认可，生效须新提交与新运行。
 [OUTPUT]: 产品Draft可暂缓UI但Required checks明确失败；Ready/ci:full及CI机制变更保持原全18与原件门槛，标签不单独创建运行、必需检查固定名称。
 [OUTPUT]: 纯开发Markdown允许02 §10文档资格，始终运行Required checks独立重算；任何产品/UI/基准/配置变更仍全18及原件门禁，不授文档分项产品资格。
@@ -217,3 +218,13 @@ UI job通过后由record-ui登记summary、compare/summary、原始Playwright报
 - 本轮用户另行明确授权强制合并PR #28并交付新CI；该单次合并例外不等于基线接受或云端测试通过，也不改变后续默认门禁。实际执行与剩余归03。
 
 官方依据：[Playwright视觉比较](https://playwright.dev/docs/test-snapshots)、[Chromatic审阅与接受变化](https://www.chromatic.com/docs/quickstart/#4-review-changes)、[GitHub触发事件](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows)、[重跑原SHA/ref](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/re-run-workflows-and-jobs)。上述最小实现是BOAI适配决定；实际验证与剩余归03。
+
+## 13. UI执行性能与阶段计时（2026-10-26）
+
+- UI回归可在本场独立profile使用原bootstrap、saveConnection/saveAgent/createConversation事务准备配置和同一固定历史；准备服务实际排空并释放owner后才启动Electron。配置保留版本校验，模型入口明确拒绝调用；不引入产品测试RPC或复用前场活动数据。
+- 专门的重启/恢复BDD保持原生命周期；UI18项仍逐场运行真实Electron，执行原行为/布局/截图、来源和原件核验。仅把用于准备数据的额外桌面启动移出UI场景。
+- 主进程退出时仍受理captureDesktopActivity的stop清理，原完整输入校验保持；其他宿主业务拒绝。正常stopped后依然核对实际exit，保留原8秒/4秒兜底，不靠缩短期限或强杀实现提速。
+- 轻量审阅报告从本次原Playwright四步结果统计准备、交互/布局、截图、其他（含fixture收尾）耗时；缺步骤、负值或不一致时不补零。统计不含排队/依赖/构建，与合并资格判定分离。
+- 先核对上述修复的真实云端时间，再决定独立macOS runner分片；当前保持单worker以免桌面焦点互扰，不减少场景或放宽基线。实际验证、旧失败和生效状态见03末段。
+
+- 普通比较的旧图附件可指向同提交checkout内已登记的case/profile基线，需固定路径、PNG类型、非符号链接及manifest hash一致；不从任意报告路径读取仓库外文件。原图/差异图仍限定本批目录，报告缺材料不会当成预期改版。
