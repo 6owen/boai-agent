@@ -1,3 +1,4 @@
+# [OUTPUT]: 2026-10-27固定use-stick-to-bottom 1.1.6及其React peer，原依赖版本保持。
 # [OUTPUT]: 2026-10-27 开发依赖锁定及可选原生识别包；安装脚本未在本轮执行。
 # [INPUT]: Workspace依赖与本轮语音插件实现。
 # [OUTPUT]: 依赖与分发配置；非运行时验收。
@@ -245,6 +246,9 @@ importers:
       unified:
         specifier: 11.0.5
         version: 11.0.5
+      use-stick-to-bottom:
+        specifier: 1.1.6
+        version: 1.1.6(react@19.3.0)
       ws:
         specifier: 8.21.3
         version: 8.21.3
@@ -521,6 +525,9 @@ importers:
       sonner:
         specifier: 2.0.8
         version: 2.0.8(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      use-stick-to-bottom:
+        specifier: 1.1.6
+        version: 1.1.6(react@19.3.0)
       yaml:
         specifier: 2.9.1
         version: 2.9.1
@@ -6579,6 +6586,11 @@ packages:
     peerDependenciesMeta:
       '@types/react':
         optional: true
+
+  use-stick-to-bottom@1.1.6:
+    resolution: {integrity: sha512-z3Up8jYQGTkUCsGBnwg6/wj70KgXoW5Kz1AAc1j8MtQuYMBo6ZsdhrIXoegxa7gaMMilgQYyTohTrt3p94jHog==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
   use-sync-external-store@1.7.0:
     resolution: {integrity: sha512-6L+EeigHMQhdaIPNIFUKwfWJSwWFQ8gJbJ2DLOs5sDIegTwR9fRxvnM3uciHKjIZhFz+KAv2emhWMRvDmMcY8A==}
@@ -13214,6 +13226,10 @@ snapshots:
       tslib: 2.8.1
     optionalDependencies:
       '@types/react': 19.3.0
+
+  use-stick-to-bottom@1.1.6(react@19.3.0):
+    dependencies:
+      react: 19.3.0
 
   use-sync-external-store@1.7.0(react@19.3.0):
     dependencies:

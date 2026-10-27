@@ -97,109 +97,109 @@
       "sha256": "3d04888f987a44b03b7b15ebd59e1b5161d4982c609c4e4203f74a472c1421a0",
       "contract": "c89efcb46cb1942370b1cd9ad2d044f7bec6181d01781ab5637da12d61ea2e21",
       "source": {
-        "commit": "dcb69a0b57ed87f9fb694101b0c7a47789ab9d2b",
-        "sourceHash": "f5257efe28f79f4b7e2cf5ebd6c662e6f85cf9268192dc1022245e672e855bcb",
+        "commit": "873e9ec59a506dc351afe46d5743722e14ba91f1",
+        "sourceHash": "affa7c4e13b0fc5c9a970528e07942f56589c446f3a955bf833487cf41f5ff0c",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "4c628ae95610d518e6da7baf84f35dd67d1a1a8efe04f8213111e23073c9b283",
-        "outputHash": "d2cfacd29d14fc6c63624ba2d0af54acdca8b16e0ad0d9466a03058e9090faf5",
+        "inputHash": "94ea4ab98c6d8135295f174dae8135b5bcac71306fddbb7b47dc7c6013cfd35a",
+        "outputHash": "5d0a0b64a07d98345268eb7fa6596ee43c6c5bebe209ee312d516971690cd7d5",
         "node": "v24.16.0",
-        "createdAt": "2026-10-27T01:38:22.431Z"
+        "createdAt": "2026-10-27T09:59:56.736Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "40433557844",
+        "runId": "40484743959",
         "attempt": 1,
-        "commit": "dcb69a0b57ed87f9fb694101b0c7a47789ab9d2b",
-        "artifactId": 12703436901,
-        "digest": "sha256:42dabe2ab9996f0836ff2ff62a89e6282e399aae967743dc6730498711c49826"
+        "commit": "873e9ec59a506dc351afe46d5743722e14ba91f1",
+        "artifactId": 12724867253,
+        "digest": "sha256:b4483393a06e32579db0d71ca7c75a5ebb95c6565cc343951e8afaf8b5723a67"
       },
-      "reason": "PR29默认用户头像由虎改为牛，全部18页公共导航受影响；已逐项审阅官方旧图/新图/diff，导航外仅聊天页员工头像边缘8或20个原始像素差异，无布局文字变化；原18项行为布局保持。活动详情/资料新状态不在这18项覆盖内。",
-      "candidate": "905e9ef2-bfb0-48c8-be03-793c49f33832",
-      "acceptedAt": "2026-10-27T01:55:16.973Z"
+      "reason": "用户已明确更新基准并合并。新增头像交互移至原静态截图后，四项恢复原场景并与独立PR运行截图逐字节一致；真实头像与流式滚动检查全保留。逐张审阅官方旧/新/原始diff，只接受已确认的聊天明暗宽窄四项，其他16项及阈值/mask保持。",
+      "candidate": "e0befeb6-4e33-4f50-a78f-fa30a8576aa1",
+      "acceptedAt": "2026-10-27T10:10:39.037Z"
     },
     "chat-dark": {
       "sha256": "a977cc8fa1f6b2a5ad05c2220ac86e8fdd45afcd19af325b57fbd3d1bda3edbb",
       "contract": "7e8706c333be59ca1f8b8bb1b354fe4ef9bff324842980290dc58df20bcb3e8a",
       "source": {
-        "commit": "dcb69a0b57ed87f9fb694101b0c7a47789ab9d2b",
-        "sourceHash": "f5257efe28f79f4b7e2cf5ebd6c662e6f85cf9268192dc1022245e672e855bcb",
+        "commit": "873e9ec59a506dc351afe46d5743722e14ba91f1",
+        "sourceHash": "affa7c4e13b0fc5c9a970528e07942f56589c446f3a955bf833487cf41f5ff0c",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "4c628ae95610d518e6da7baf84f35dd67d1a1a8efe04f8213111e23073c9b283",
-        "outputHash": "d2cfacd29d14fc6c63624ba2d0af54acdca8b16e0ad0d9466a03058e9090faf5",
+        "inputHash": "94ea4ab98c6d8135295f174dae8135b5bcac71306fddbb7b47dc7c6013cfd35a",
+        "outputHash": "5d0a0b64a07d98345268eb7fa6596ee43c6c5bebe209ee312d516971690cd7d5",
         "node": "v24.16.0",
-        "createdAt": "2026-10-27T01:38:22.431Z"
+        "createdAt": "2026-10-27T09:59:56.736Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "40433557844",
+        "runId": "40484743959",
         "attempt": 1,
-        "commit": "dcb69a0b57ed87f9fb694101b0c7a47789ab9d2b",
-        "artifactId": 12703436901,
-        "digest": "sha256:42dabe2ab9996f0836ff2ff62a89e6282e399aae967743dc6730498711c49826"
+        "commit": "873e9ec59a506dc351afe46d5743722e14ba91f1",
+        "artifactId": 12724867253,
+        "digest": "sha256:b4483393a06e32579db0d71ca7c75a5ebb95c6565cc343951e8afaf8b5723a67"
       },
-      "reason": "PR29默认用户头像由虎改为牛，全部18页公共导航受影响；已逐项审阅官方旧图/新图/diff，导航外仅聊天页员工头像边缘8或20个原始像素差异，无布局文字变化；原18项行为布局保持。活动详情/资料新状态不在这18项覆盖内。",
-      "candidate": "905e9ef2-bfb0-48c8-be03-793c49f33832",
-      "acceptedAt": "2026-10-27T01:55:16.974Z"
+      "reason": "用户已明确更新基准并合并。新增头像交互移至原静态截图后，四项恢复原场景并与独立PR运行截图逐字节一致；真实头像与流式滚动检查全保留。逐张审阅官方旧/新/原始diff，只接受已确认的聊天明暗宽窄四项，其他16项及阈值/mask保持。",
+      "candidate": "e0befeb6-4e33-4f50-a78f-fa30a8576aa1",
+      "acceptedAt": "2026-10-27T10:10:39.038Z"
     },
     "chat-narrow-light": {
       "sha256": "110141d225733d029b442a1ff987bd27b34c51918e89e63ceb5e1f2503997bfe",
       "contract": "4d481acc3e3eef3012bec72e844b4b4cbaeaaf506adbc8cb3f5415ec50c7ac58",
       "source": {
-        "commit": "dcb69a0b57ed87f9fb694101b0c7a47789ab9d2b",
-        "sourceHash": "f5257efe28f79f4b7e2cf5ebd6c662e6f85cf9268192dc1022245e672e855bcb",
+        "commit": "873e9ec59a506dc351afe46d5743722e14ba91f1",
+        "sourceHash": "affa7c4e13b0fc5c9a970528e07942f56589c446f3a955bf833487cf41f5ff0c",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "4c628ae95610d518e6da7baf84f35dd67d1a1a8efe04f8213111e23073c9b283",
-        "outputHash": "d2cfacd29d14fc6c63624ba2d0af54acdca8b16e0ad0d9466a03058e9090faf5",
+        "inputHash": "94ea4ab98c6d8135295f174dae8135b5bcac71306fddbb7b47dc7c6013cfd35a",
+        "outputHash": "5d0a0b64a07d98345268eb7fa6596ee43c6c5bebe209ee312d516971690cd7d5",
         "node": "v24.16.0",
-        "createdAt": "2026-10-27T01:38:22.431Z"
+        "createdAt": "2026-10-27T09:59:56.736Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "40433557844",
+        "runId": "40484743959",
         "attempt": 1,
-        "commit": "dcb69a0b57ed87f9fb694101b0c7a47789ab9d2b",
-        "artifactId": 12703436901,
-        "digest": "sha256:42dabe2ab9996f0836ff2ff62a89e6282e399aae967743dc6730498711c49826"
+        "commit": "873e9ec59a506dc351afe46d5743722e14ba91f1",
+        "artifactId": 12724867253,
+        "digest": "sha256:b4483393a06e32579db0d71ca7c75a5ebb95c6565cc343951e8afaf8b5723a67"
       },
-      "reason": "PR29默认用户头像由虎改为牛，全部18页公共导航受影响；已逐项审阅官方旧图/新图/diff，导航外仅聊天页员工头像边缘8或20个原始像素差异，无布局文字变化；原18项行为布局保持。活动详情/资料新状态不在这18项覆盖内。",
-      "candidate": "905e9ef2-bfb0-48c8-be03-793c49f33832",
-      "acceptedAt": "2026-10-27T01:55:16.974Z"
+      "reason": "用户已明确更新基准并合并。新增头像交互移至原静态截图后，四项恢复原场景并与独立PR运行截图逐字节一致；真实头像与流式滚动检查全保留。逐张审阅官方旧/新/原始diff，只接受已确认的聊天明暗宽窄四项，其他16项及阈值/mask保持。",
+      "candidate": "e0befeb6-4e33-4f50-a78f-fa30a8576aa1",
+      "acceptedAt": "2026-10-27T10:10:39.038Z"
     },
     "chat-narrow-dark": {
       "sha256": "9bec4ce3de04e900a41a6d793879627591de7cd31a65e9ef2fe6b9f1e3579552",
       "contract": "bd29d62d66cfa260c4f16dab0255bb70dbc152b20b21f4061b93b63faabdb4ff",
       "source": {
-        "commit": "dcb69a0b57ed87f9fb694101b0c7a47789ab9d2b",
-        "sourceHash": "f5257efe28f79f4b7e2cf5ebd6c662e6f85cf9268192dc1022245e672e855bcb",
+        "commit": "873e9ec59a506dc351afe46d5743722e14ba91f1",
+        "sourceHash": "affa7c4e13b0fc5c9a970528e07942f56589c446f3a955bf833487cf41f5ff0c",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "4c628ae95610d518e6da7baf84f35dd67d1a1a8efe04f8213111e23073c9b283",
-        "outputHash": "d2cfacd29d14fc6c63624ba2d0af54acdca8b16e0ad0d9466a03058e9090faf5",
+        "inputHash": "94ea4ab98c6d8135295f174dae8135b5bcac71306fddbb7b47dc7c6013cfd35a",
+        "outputHash": "5d0a0b64a07d98345268eb7fa6596ee43c6c5bebe209ee312d516971690cd7d5",
         "node": "v24.16.0",
-        "createdAt": "2026-10-27T01:38:22.431Z"
+        "createdAt": "2026-10-27T09:59:56.736Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "40433557844",
+        "runId": "40484743959",
         "attempt": 1,
-        "commit": "dcb69a0b57ed87f9fb694101b0c7a47789ab9d2b",
-        "artifactId": 12703436901,
-        "digest": "sha256:42dabe2ab9996f0836ff2ff62a89e6282e399aae967743dc6730498711c49826"
+        "commit": "873e9ec59a506dc351afe46d5743722e14ba91f1",
+        "artifactId": 12724867253,
+        "digest": "sha256:b4483393a06e32579db0d71ca7c75a5ebb95c6565cc343951e8afaf8b5723a67"
       },
-      "reason": "PR29默认用户头像由虎改为牛，全部18页公共导航受影响；已逐项审阅官方旧图/新图/diff，导航外仅聊天页员工头像边缘8或20个原始像素差异，无布局文字变化；原18项行为布局保持。活动详情/资料新状态不在这18项覆盖内。",
-      "candidate": "905e9ef2-bfb0-48c8-be03-793c49f33832",
-      "acceptedAt": "2026-10-27T01:55:16.974Z"
+      "reason": "用户已明确更新基准并合并。新增头像交互移至原静态截图后，四项恢复原场景并与独立PR运行截图逐字节一致；真实头像与流式滚动检查全保留。逐张审阅官方旧/新/原始diff，只接受已确认的聊天明暗宽窄四项，其他16项及阈值/mask保持。",
+      "candidate": "e0befeb6-4e33-4f50-a78f-fa30a8576aa1",
+      "acceptedAt": "2026-10-27T10:10:39.038Z"
     },
     "empty-chat-light": {
       "sha256": "8c698dc3f1aad504fad5a1eaa0ede68dbf038e844ed25172b377ea5b9761aff4",
