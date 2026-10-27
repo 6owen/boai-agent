@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 官方候选仅完整采集一次并离线生成差异；明确不授普通比较资格。
+ * [OUTPUT]: 官方只读比较支持固定两片，记录完整合同hash；候选/接受仍全量协议。
  * [OUTPUT]: Workspace源码路径迁至apps/packages，保留既有输出与业务合同。
  * [OUTPUT]: 共享设计包计入UI源码身份，拒绝组件外改复用旧比较资格。
  * [INPUT]: 版本化BDD/截图合同、实际源码/字体/平台及显式候选接受命令。
@@ -18,6 +20,7 @@ import { acquireResourceLock } from './resource-lock.mjs'
 import { createBaselineReview, verifyBaselineReview } from './ui-baseline-review.mjs'
 import { uiProfile, assertCaptureMode, assertProfileCommand } from './ui-profiles.mjs'
 import { recordDesktopExecution } from './desktop-evidence.mjs'
+import { selectUiShard } from './ui-shards.mjs'
 
 const require = createRequire(import.meta.url)
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
@@ -132,7 +135,9 @@ async function main() {
   if (options.fault && (process.env.CI || command !== 'check' || !['layout', 'behavior', 'environment'].includes(options.fault))) throw new Error('故障演练仅支持本地check --fault layout|behavior|environment')
   const contract = await json(join(baseline, 'contract.json'))
   if (process.env.CI && options.cases) throw new Error('CI必须运行全部登记UI场景')
-  const ids = options.cases ? options.cases.split(',') : contract.cases.map(item => item.id)
+  const allIds = contract.cases.map(item => item.id)
+  const shard = selectUiShard(allIds, options.shard, command, profile.id, options.cases)
+  const ids = shard ? shard.cases : options.cases ? options.cases.split(',') : allIds
   if (!ids.length || new Set(ids).size !== ids.length || ids.some(id => !contract.cases.some(item => item.id === id))) throw new Error('场景列表为空、重复或未登记')
   const directory = command === 'accept' ? null : resolve(options.output ?? join(root, '.local/ui-runs', randomUUID()))
   if (directory) { await mkdir(dirname(directory), { recursive: true }); await mkdir(directory); activeRun = directory }
@@ -171,17 +176,18 @@ async function main() {
     }
     const built = await verifyBuildIdentity(root)
     const ci = process.env.GITHUB_ACTIONS === 'true' ? { repository: process.env.GITHUB_REPOSITORY, runId: process.env.GITHUB_RUN_ID, attempt: process.env.GITHUB_RUN_ATTEMPT, sha: process.env.GITHUB_SHA, workflow: process.env.GITHUB_WORKFLOW_REF } : undefined
-    const identity = { id: randomUUID(), profile: profile.id, source, built, environment, ci, osRelease: release(), osVersion: execFileSync('sw_vers', ['-productVersion'], { encoding: 'utf8' }).trim(), node: process.version, selected: ids, startedAt: new Date().toISOString() }
+    const identity = { id: randomUUID(), profile: profile.id, source, built, environment, ci, ...(shard ? { shard } : {}), osRelease: release(), osVersion: execFileSync('sw_vers', ['-productVersion'], { encoding: 'utf8' }).trim(), node: process.version, selected: ids, startedAt: new Date().toISOString() }
     await save(join(directory, 'run.json'), identity)
     const generated = await runCommand('pnpm', ['test:bddgen'], process.env)
     if (generated.code !== 0) throw new Error('BDD生成失败，未执行UI回归')
-    // Initial recording has no old expected images to compare. Keep that gap explicit;
-    // the capture still runs every real behavior/layout assertion before writing a candidate.
+    // Official candidates run all behavior/layout checks once during capture.
+    // Review compares those exact PNGs with the old baselines offline; ordinary
+    // CI remains a separate mandatory read-only comparison after acceptance.
     const hasBaseline = await stat(join(selectedBaseline, 'manifest.json')).then(() => true, error => { if (error.code === 'ENOENT') return false; throw error })
     let comparison
-    if (['candidate', 'candidate-ci'].includes(command) && !hasBaseline) {
+    if (command === 'candidate-ci' || command === 'candidate' && !hasBaseline) {
       await mkdir(join(directory, 'compare'))
-      comparison = { status: 'not-run', cases: ids, errors: ['首次采集：缺少已接受基线，无旧期望图可比较；不代表比较通过'] }
+      comparison = { status: 'not-run', cases: ids, errors: [command === 'candidate-ci' ? '官方候选仅完整采集一次，旧/新/diff由本批PNG生成；未执行普通比较，不提供合并资格' : '首次采集：缺少已接受基线，无旧期望图可比较；不代表比较通过'] }
       await save(join(directory, 'compare/summary.json'), comparison)
     } else comparison = await execute(join(directory, 'compare'), ids, environment, profile)
     if (cancelled) throw new Error('UI测试已取消，保留原报告；不继续采集或接受基线')
@@ -203,7 +209,7 @@ async function main() {
     for (const id of ids) cases[id] = { sha256: hash(await readFile(join(snapshots, `${id}.png`))), contract: baselineContractHash(contract, id) }
     await createBaselineReview(directory, ids, selectedBaseline)
     await save(join(directory, 'candidate.json'), { ...identity, cases, comparison: comparison.status })
-    console.log(`待审阅UI候选：${directory}；旧/新/差异见compare报告，未修改已接受基线。`)
+    console.log(`待审阅UI候选：${directory}；旧/新/差异见review目录，未修改已接受基线。`)
   } finally { releaseLock() }
 }
 

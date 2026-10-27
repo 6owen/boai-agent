@@ -1,5 +1,6 @@
 /*
  * [OUTPUT]: 2026-10-27 默认关闭语音插件接线、可信主窗口与原草稿/生命周期边界。
+ * [OUTPUT]: 退出时允许运行服务完成停止桌面采集清理，拒绝新业务；避免先拒清理再等待8秒终止。
  * [OUTPUT]: 桌面诊断持久保留每次构建身份及初始化失败；导出校验真实父目录，系统事件不重发工作。
  * [OUTPUT]: 工作区打开方式在macOS读取应用声明的ICNS并转PNG，避免通用图标；其他平台沿Electron接口，随应用列表缓存。
  * [OUTPUT]: 员工工作区目录/外部应用及独立用户终端走主窗校验；删除/清空/移除成员等待精确终端退出，输入沿私有轻量身份复核。
@@ -103,7 +104,7 @@ import { ShortcutSettingsStore } from './shortcut-settings'
 import { acceleratorBinding, reservedShortcuts, type ReservedShortcut } from '@boai/shared/shortcuts'
 import { DesktopSettingsStore } from './desktop-settings'
 import { BackgroundTray, hideMainWindow, cancelWindowHide } from './background'
-import { stopRuntime } from './runtime-shutdown'
+import { assertRuntimeHostRequest, stopRuntime } from './runtime-shutdown'
 import { acquireRuntimeProfileAccess } from '@boai/runtime/profile-access'
 import { isPublicMethod } from '@boai/shared/ipc/public-methods'
 import { isApplicationHostMethod, type ApplicationHostMethod } from '@boai/shared/ipc/application-host'
@@ -151,7 +152,7 @@ let pendingAutomationNavigation: Methods['getPendingAutomationNavigation']['outp
 let ready: Promise<void> | null = null
 let cli: Awaited<ReturnType<typeof openDesktopCli>> | undefined
 async function applicationHostRequest(method: ApplicationHostMethod, input: unknown): Promise<unknown> {
-  if (quitting) throw new Error('应用正在退出')
+  assertRuntimeHostRequest(quitting, method, input)
   if (method === 'closeUserWorkspace') {
     const value = z.union([z.object({ employeeId: z.string().min(1).max(200), conversationId: z.string().min(1).max(200).optional() }).strict(), z.object({ conversationId: z.string().min(1).max(200) }).strict()]).parse(input)
     if ('employeeId' in value && value.conversationId) await userTerminals.stopScope({ employeeId: value.employeeId, conversationId: value.conversationId })

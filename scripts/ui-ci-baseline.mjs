@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 完整原件下载允许10分钟网络预算，来源/摘要/逐文件复核保持；不延长云端UI测试。
  * [INPUT]: 明确GitHub独立采集run、官方artifact摘要、当前干净源码及逐项审阅后的接受命令。
  * [OUTPUT]: 官方v3显示环境原件重下载核验；共锁逐项接受，初始/环境迁移全量，旧v2不能晋升。
  * [POS]: 开发侧CI基线进口；无远程写入、无自动晋升或Required checks资格。
@@ -83,7 +84,7 @@ async function download(root, runId, output) {
   const artifact = verifyCandidateRun(run, api(`actions/runs/${runId}/artifacts?per_page=100`).artifacts, current, runId)
   await mkdir(output) // Must be new; never merge a fresh artifact into old evidence.
   const archive = `${output}.zip`, fd = openSync(archive, 'wx', 0o600)
-  try { execFileSync('gh', ['api', `repos/${repository}/actions/artifacts/${artifact.id}/zip`], { stdio: ['ignore', fd, 'pipe'], timeout: 180_000 }) } finally { closeSync(fd) }
+  try { execFileSync('gh', ['api', `repos/${repository}/actions/artifacts/${artifact.id}/zip`], { stdio: ['ignore', fd, 'pipe'], timeout: 600_000 }) } finally { closeSync(fd) }
   const digest = createHash('sha256'); for await (const chunk of createReadStream(archive)) digest.update(chunk)
   if (`sha256:${digest.digest('hex')}` !== artifact.digest) throw new Error('下载archive与GitHub摘要不符')
   unpackCandidateArchive(archive, output)

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 原18项UI先在本场独立profile准备同一历史再单次启动真实Electron；行为/布局/截图断言保持。
  * [OUTPUT]: 草稿切换先核对应会话数据/编辑器真实就绪，避免空草稿早于消息加载导致侧栏前缀缺失；原18基线/零像素门槛保持。
  * [INPUT]: 版本化UI合同、真实Electron、固定历史与隔离本机技能。
  * [OUTPUT]: 每员工唯一主单聊及明暗/窄窗页面；快捷键页核对四行启停/录入且无保存按钮，保留原搜索断言；既有16场与像素阈值保持。
@@ -35,7 +36,7 @@ Given('UI回归已准备隔离的固定历史和资源', async ({ runtime, uiReg
   await writeFile(join(skill, 'SKILL.md'), '---\nname: ui-baseline\ndescription: 核对来源与交付结果。\n---\n# UI 基线技能\n保留明确来源，核对真实文件。\n')
   const original = await localSkillsEntry(runtime), mainEntry = join(runtime.root, 'ui-regression-main.cjs')
   await writeFile(mainEntry, `require('electron').app.commandLine.appendSwitch('lang', 'zh-CN');\nrequire(${JSON.stringify(original)});\n`)
-  uiRegression.fixture = await prepareGroupChat(runtime, { mainEntry, now: fixedNow })
+  uiRegression.fixture = await prepareGroupChat(runtime, { mainEntry, now: fixedNow, seedBeforeLaunch: true })
   await runtime.page.clock.setFixedTime(fixedNow)
   // Explicit local fault rehearsal: the real appearance buttons still run; only persistence is lost.
   if (process.env.BOAI_UI_FAULT === 'behavior') await runtime.app.evaluate(({ ipcMain }) => {
