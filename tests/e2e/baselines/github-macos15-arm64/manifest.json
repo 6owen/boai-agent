@@ -310,58 +310,58 @@
       "acceptedAt": "2026-10-21T10:46:56.151Z"
     },
     "settings-light": {
-      "sha256": "a8d474147a731706ceef99aef0079b229ad64c5507556ca9eec605715f7ebc58",
+      "sha256": "e81799bf539fedfac74089711da3023e8e0148ac976b99b888d53406c93fcca9",
       "contract": "7e5255cd1d6ad9466a69854f08942fa9a02ad84b369f2b941a50a1787ed41c6f",
       "source": {
-        "commit": "fae66f6f9795df9247beced29861b3fd63c6ae40",
-        "sourceHash": "92c229d95b1a2c85302598b62189171eeccc7364ad74acd0418857a714ae3256",
+        "commit": "40d27f39742fd4857cc141ed1d1b8c45ea0f9cc1",
+        "sourceHash": "e051760a4ce37dd10985d8cf8c84130ffa1a940923b885bf9cb5a9812e987c6e",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "16b1242856434ff38cb42b5b45f5822780aa56a5d61d85c0d9caf9e47a45b958",
-        "outputHash": "aa7da4582a6bf8e69790328b49c9b2f23b85a861af01af7f91af3e05611421e7",
+        "inputHash": "71032fa8c8ee03d5970376d1513fbe2c05e36456a53900a92a271b906dee8253",
+        "outputHash": "d32877091ba4803a8942c5f1242e1dac5031611332a8eb47c1d489a304840909",
         "node": "v24.16.0",
-        "createdAt": "2026-10-24T05:52:31.065Z"
+        "createdAt": "2026-10-27T01:11:21.714Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "40067858920",
+        "runId": "40430852980",
         "attempt": 1,
-        "commit": "fae66f6f9795df9247beced29861b3fd63c6ae40",
-        "artifactId": 12550107883,
-        "digest": "sha256:a2a6d6a683c8ffc639dbdbcf51918e5f0adb100e01dbd018ee25754fbd922e79"
+        "commit": "40d27f39742fd4857cc141ed1d1b8c45ea0f9cc1",
+        "artifactId": 12702695471,
+        "digest": "sha256:d4e09463fca78c5082cce1cc5298815bf5dc591e76e8f773d19d08a28c459a31"
       },
-      "reason": "PR19 用户要求新增桌面活动与日报独立设置入口；逐图核对旧图、新图与差异，四项仅左侧菜单新增一行及配置组下移，右侧内容不变，其余14项PNG逐字节相同；保留原合同、阈值和mask。",
-      "candidate": "2ed0b2e1-aae6-4336-9162-e4cc4c68373b",
-      "acceptedAt": "2026-10-24T06:19:53.803Z"
+      "reason": "逐图审阅官方候选40430852980的旧图、新图和原始差异：仅接受PR28已合并的字体分组操作栏下方12px留白及随之产生的纵向位移；主题区、导航与其他16项字节保持，原行为/布局断言、阈值、无mask不变。",
+      "candidate": "3bfbec2c-3cf7-4add-a8af-fa6b30bd31ae",
+      "acceptedAt": "2026-10-27T01:31:04.630Z"
     },
     "settings-dark": {
-      "sha256": "c82c0fd74041dced4eeb38d691de15cd5992a33b39ecfc81ae8f154ed6f6125b",
+      "sha256": "429f4aa0c252db65a4ac390fa50a9f071fac89471ccfac237f0a1add8f3b2c5c",
       "contract": "ea3f1f153ee06336a9361e4d5755f3d8d3810e87859b90e767610799dfaeeed1",
       "source": {
-        "commit": "fae66f6f9795df9247beced29861b3fd63c6ae40",
-        "sourceHash": "92c229d95b1a2c85302598b62189171eeccc7364ad74acd0418857a714ae3256",
+        "commit": "40d27f39742fd4857cc141ed1d1b8c45ea0f9cc1",
+        "sourceHash": "e051760a4ce37dd10985d8cf8c84130ffa1a940923b885bf9cb5a9812e987c6e",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "16b1242856434ff38cb42b5b45f5822780aa56a5d61d85c0d9caf9e47a45b958",
-        "outputHash": "aa7da4582a6bf8e69790328b49c9b2f23b85a861af01af7f91af3e05611421e7",
+        "inputHash": "71032fa8c8ee03d5970376d1513fbe2c05e36456a53900a92a271b906dee8253",
+        "outputHash": "d32877091ba4803a8942c5f1242e1dac5031611332a8eb47c1d489a304840909",
         "node": "v24.16.0",
-        "createdAt": "2026-10-24T05:52:31.065Z"
+        "createdAt": "2026-10-27T01:11:21.714Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "40067858920",
+        "runId": "40430852980",
         "attempt": 1,
-        "commit": "fae66f6f9795df9247beced29861b3fd63c6ae40",
-        "artifactId": 12550107883,
-        "digest": "sha256:a2a6d6a683c8ffc639dbdbcf51918e5f0adb100e01dbd018ee25754fbd922e79"
+        "commit": "40d27f39742fd4857cc141ed1d1b8c45ea0f9cc1",
+        "artifactId": 12702695471,
+        "digest": "sha256:d4e09463fca78c5082cce1cc5298815bf5dc591e76e8f773d19d08a28c459a31"
       },
-      "reason": "PR19 用户要求新增桌面活动与日报独立设置入口；逐图核对旧图、新图与差异，四项仅左侧菜单新增一行及配置组下移，右侧内容不变，其余14项PNG逐字节相同；保留原合同、阈值和mask。",
-      "candidate": "2ed0b2e1-aae6-4336-9162-e4cc4c68373b",
-      "acceptedAt": "2026-10-24T06:19:53.803Z"
+      "reason": "逐图审阅官方候选40430852980的旧图、新图和原始差异：仅接受PR28已合并的字体分组操作栏下方12px留白及随之产生的纵向位移；主题区、导航与其他16项字节保持，原行为/布局断言、阈值、无mask不变。",
+      "candidate": "3bfbec2c-3cf7-4add-a8af-fa6b30bd31ae",
+      "acceptedAt": "2026-10-27T01:31:04.631Z"
     },
     "resources-light": {
       "sha256": "6734999fea542d0511b3f61fa1968f5f781a4eb134e58ffb4ee27fabf0646096",

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 原始四步计时独立汇总；不把缺失/负值或未登记步骤补为零，不改变视觉门禁。
  * [INPUT]: 代表Playwright结果、实际临时PNG、执行摘要及现有UI门禁。
  * [OUTPUT]: 视觉变化仅可待审阅；行为/环境/中断/缺图保持失败，报告不授门禁资格或修改基线。
  * [POS]: CI审阅反馈的基础设施回归；不启动Electron或真实模型。
@@ -52,6 +53,22 @@ it('正常一次通过可以展示比较通过，报告本身不能提供合并�
   expect(result.status).toBe('passed')
   expect(() => validateUiSummary({ ui: { result: 'success' } }, result, [id], sha)).toThrow()
 })
+it('从原四步时长分别展示准备、交互、截图和其余fixture耗时', async () => {
+  const steps = [
+    { title: '假如UI回归已准备隔离的固定历史和资源', duration: 18000 },
+    { title: `当用户打开UI基准场景 "${id}"`, duration: 500 },
+    { title: '那么当前场景的真实交互和布局满足原约定', duration: 1000 },
+    { title: '并且当前场景与已接受的UI截图一致', duration: 500 },
+  ]
+  await save(join(input, 'compare/playwright.json'), raw({}, { duration: 28000, steps }))
+  const report = await generateUiReview(input, output, [id])
+  expect(report.cases[0].timing).toEqual({ total: 28000, prepare: 18000, interaction: 1500, screenshot: 500, other: 8000 })
+  expect(reviewMarkdown(report)).toContain('准备 18.0 秒，交互/布局 1.5 秒，截图比较 0.5 秒，其他（含收尾）8.0 秒')
+  expect(renderUiReview(report)).toContain('不含安装、构建和排队')
+  expect(classifyUiResults(raw({}, { duration: 1, steps }), [id]).cases[0].timing).toBeNull()
+  expect(classifyUiResults(raw({}, { duration: 28000, steps: steps.slice(1) }), [id]).cases[0].timing).toBeNull()
+  expect(classifyUiResults(raw({}, { duration: 28000, steps: steps.map(s => ({ ...s, duration: -1 })) }), [id]).cases[0].timing).toBeNull()
+})
 it('真实三张PNG的纯像素差异显示待审阅，保留原失败和原图片字节', async () => {
   await visualFailure()
   const original = await readFile(join(input, 'summary.json'))
@@ -60,6 +77,25 @@ it('真实三张PNG的纯像素差异显示待审阅，保留原失败和原图�
   expect(await readFile(join(output, `${id}-actual.png`))).toEqual(png)
   expect(await readFile(join(input, 'summary.json'))).toEqual(original)
   expect(() => validateUiSummary({ ui: { result: 'failure' } }, result, [id], sha)).toThrow()
+})
+it('支持Playwright按附件name登记、path指向当前checkout已接受旧基线的真实格式', async () => {
+  const report = await visualFailure()
+  const expected = report.suites[0].specs[0].tests[0].results[0].attachments[0]
+  Object.assign(expected, { name: `${id}-expected.png`, path: resolve(`tests/e2e/baselines/github-macos15-arm64/${id}.png`) })
+  const commit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
+  await save(join(input, 'summary.json'), { ...summary('failed'), profile: 'github-macos15-arm64', source: { commit, dirty: false } })
+  await save(join(input, 'compare/playwright.json'), report)
+  const result = await generateUiReview(input, output, [id])
+  expect(result.status).toBe('needs-review'); expect(result.cases[0].status).toBe('changed')
+  expect(await readFile(join(output, `${id}-expected.png`))).toEqual(await readFile(expected.path))
+  await save(join(input, 'summary.json'), { ...summary('failed'), profile: 'github-macos15-arm64' })
+  const wrongCommit = await generateUiReview(input, join(directory, 'wrong-commit'), [id])
+  expect(wrongCommit.status).toBe('failed'); expect(wrongCommit.cases[0].images.expected).toBeUndefined()
+  expected.path = join(directory, `${id}.png`); await writeFile(expected.path, png)
+  await save(join(input, 'summary.json'), { ...summary('failed'), profile: 'github-macos15-arm64', source: { commit, dirty: false } })
+  await save(join(input, 'compare/playwright.json'), report)
+  const outside = await generateUiReview(input, join(directory, 'arbitrary-outside'), [id])
+  expect(outside.status).toBe('failed'); expect(outside.cases[0].images.expected).toBeUndefined()
 })
 it.each([
   ['跳过', { status: 'skipped' }, { status: 'skipped' }],

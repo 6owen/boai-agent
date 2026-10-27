@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 原全UI门禁保持；Draft/Ready切换不重复跑同SHA，PR源码生命周期与main复验仍触发。
  * [INPUT]: 真实临时Git提交/事件、开发Markdown白名单及job结果协议。
  * [OUTPUT]: 实际 YAML 仅 UI，保留本地 Vitest；旧范围工具的独立本地合同仍可验证。
  * [POS]: 历史范围工具与当前云端配置的本地 Vitest 合同；不开产品窗口。
@@ -71,12 +72,13 @@ it('草稿产品改动暂缓，Ready和明确标签恢复完整；文档仍按�
 it.each(['.github/workflows/tests.yml', '.github/workflows/diagnostic.yml', 'scripts/ci-scope.mjs', 'scripts/ci-result.mjs', 'tests/ci-scope.test.ts'])('草稿也不能跳过CI机制本身的完整验证：%s', path => {
   expect(ciMode('pull_request', [path], { draft: true })).toBe('full')
 })
-it('实际工作流仅在源码/就绪变化触发，普通标签不产生空运行且必需检查固定', async () => {
+it('实际工作流仅随PR源码生命周期触发，Draft/Ready及标签不重复运行且必需检查固定', async () => {
   const workflow = parse(await readFile(new URL('../.github/workflows/tests.yml', import.meta.url), 'utf8'))
   const events = workflow.on.pull_request.types
   expect(events).not.toContain('labeled')
   expect(events).not.toContain('unlabeled')
-  expect(events).toEqual(expect.arrayContaining(['opened', 'synchronize', 'reopened', 'ready_for_review', 'converted_to_draft']))
+  expect(events).toEqual(['opened', 'synchronize', 'reopened'])
+  expect(workflow.on.push.branches).toEqual(['main'])
   expect(Object.hasOwn(workflow.on, 'workflow_dispatch')).toBe(true)
   expect(workflow.jobs.required).toMatchObject({ name: 'Required checks', if: 'always()' })
 })
