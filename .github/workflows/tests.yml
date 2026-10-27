@@ -1,4 +1,5 @@
-# [OUTPUT]: 两台macOS各9项并行；Required checks独立复核两片完整原件。
+# [OUTPUT]: 两台macOS各10项并行；Required checks独立复核两片完整原件。
+# [OUTPUT]: 两级依赖缓存精确命中跳过安装；完整UI与原件门禁按版本化合同执行。
 # [INPUT]: 面向 main 的 PR、main push 或手动触发；版本化 UI 合同与已接受基线。
 # [OUTPUT]: 源码更新全UI只读比较；Draft/Ready不重复触发同SHA，原Required checks和main复验保持。
 # [POS]: 唯一自动测试工作流，不运行模块、模型连接、T1/T3 或评估用例。
@@ -27,17 +28,10 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: ./.github/actions/setup-ui-dependencies
+        id: dependencies
         with:
-          node-version: '24.16.0'
-          cache: pnpm
-      - env:
-          ELECTRON_SKIP_BINARY_DOWNLOAD: ''
-        run: |
-          pnpm install --frozen-lockfile
-          node node_modules/electron/install.js
-          pnpm exec electron --version
+          save-cache: ${{ matrix.shard == 1 }}
       - run: pnpm build
       - run: node scripts/ui-regression.mjs check --profile github-macos15-arm64 --shard ${{ matrix.shard }}/2 --output .local/ui-ci
       - run: node scripts/ci-result.mjs record-ui-shard .local/ui-ci ${{ matrix.shard }}

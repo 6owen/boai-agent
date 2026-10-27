@@ -1,0 +1,77 @@
+# [INPUT]: 固定Node、完整workspace依赖清单/锁/补丁及macOS runner身份。
+# [OUTPUT]: 精确安装缓存命中跳过install，缺失时复用pnpm仓库并严格安装；始终核实际Electron。
+# [POS]: 普通UI与官方候选共用的依赖准备，不缓存产品dist或业务数据。
+# [PROTOCOL]: 修改同步Header、目录地图及22组06第17节。
+name: Set up UI dependencies
+description: Restore exact installed dependencies or install from the pnpm store.
+inputs:
+  node-version:
+    description: Exact UI Node runtime.
+    default: '24.16.0'
+  save-cache:
+    description: Only one matrix shard saves the shared installation.
+    default: 'true'
+outputs:
+  cache-hit:
+    description: Exact installed dependency cache hit.
+    value: ${{ steps.modules.outputs.cache-hit }}
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@v4
+    - uses: actions/setup-node@v4
+      id: node
+      with:
+        node-version: ${{ inputs.node-version }}
+    - name: Restore installed UI dependencies
+      id: modules
+      uses: actions/cache/restore@v4
+      with:
+        path: |
+          node_modules
+          apps/*/node_modules
+          packages/*/node_modules
+        key: ui-installed-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.node.outputs.node-version }}-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml', '.npmrc', 'package.json', 'apps/*/package.json', 'packages/*/package.json', 'apps/electron/src/renderer/components/common/lody/*.patch', 'apps/electron/src/renderer/components/ui/*.patch', '.github/actions/setup-ui-dependencies/action.yml') }}
+    - name: Locate pnpm store
+      id: store
+      if: steps.modules.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+        echo "arch=$(node -p process.arch)" >> "$GITHUB_OUTPUT"
+    - name: Restore pnpm package store
+      id: packages
+      if: steps.modules.outputs.cache-hit != 'true'
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ steps.store.outputs.path }}
+        key: node-cache-${{ runner.os }}-${{ steps.store.outputs.arch }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+        restore-keys: node-cache-${{ runner.os }}-${{ steps.store.outputs.arch }}-pnpm-
+    - name: Install exact dependencies on cache miss
+      if: steps.modules.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        ELECTRON_SKIP_BINARY_DOWNLOAD: ''
+      run: |
+        pnpm install --frozen-lockfile --prefer-offline
+        node node_modules/electron/install.js
+    - name: Verify UI dependency runtime
+      shell: bash
+      run: |
+        pnpm exec electron --version
+        echo "Installed UI dependency cache hit: ${{ steps.modules.outputs.cache-hit }}"
+    - name: Save verified installed dependencies
+      if: inputs.save-cache == 'true' && steps.modules.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: |
+          node_modules
+          apps/*/node_modules
+          packages/*/node_modules
+        key: ${{ steps.modules.outputs.cache-primary-key }}
+    - name: Save updated pnpm package store
+      if: inputs.save-cache == 'true' && steps.modules.outputs.cache-hit != 'true' && steps.packages.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ steps.store.outputs.path }}
+        key: ${{ steps.packages.outputs.cache-primary-key }}
