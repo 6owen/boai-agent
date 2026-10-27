@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 官方候选仅完整采集一次并离线生成差异；明确不授普通比较资格。
  * [OUTPUT]: 官方只读比较支持固定两片，记录完整合同hash；候选/接受仍全量协议。
  * [OUTPUT]: Workspace源码路径迁至apps/packages，保留既有输出与业务合同。
  * [OUTPUT]: 共享设计包计入UI源码身份，拒绝组件外改复用旧比较资格。
@@ -179,13 +180,14 @@ async function main() {
     await save(join(directory, 'run.json'), identity)
     const generated = await runCommand('pnpm', ['test:bddgen'], process.env)
     if (generated.code !== 0) throw new Error('BDD生成失败，未执行UI回归')
-    // Initial recording has no old expected images to compare. Keep that gap explicit;
-    // the capture still runs every real behavior/layout assertion before writing a candidate.
+    // Official candidates run all behavior/layout checks once during capture.
+    // Review compares those exact PNGs with the old baselines offline; ordinary
+    // CI remains a separate mandatory read-only comparison after acceptance.
     const hasBaseline = await stat(join(selectedBaseline, 'manifest.json')).then(() => true, error => { if (error.code === 'ENOENT') return false; throw error })
     let comparison
-    if (['candidate', 'candidate-ci'].includes(command) && !hasBaseline) {
+    if (command === 'candidate-ci' || command === 'candidate' && !hasBaseline) {
       await mkdir(join(directory, 'compare'))
-      comparison = { status: 'not-run', cases: ids, errors: ['首次采集：缺少已接受基线，无旧期望图可比较；不代表比较通过'] }
+      comparison = { status: 'not-run', cases: ids, errors: [command === 'candidate-ci' ? '官方候选仅完整采集一次，旧/新/diff由本批PNG生成；未执行普通比较，不提供合并资格' : '首次采集：缺少已接受基线，无旧期望图可比较；不代表比较通过'] }
       await save(join(directory, 'compare/summary.json'), comparison)
     } else comparison = await execute(join(directory, 'compare'), ids, environment, profile)
     if (cancelled) throw new Error('UI测试已取消，保留原报告；不继续采集或接受基线')
@@ -207,7 +209,7 @@ async function main() {
     for (const id of ids) cases[id] = { sha256: hash(await readFile(join(snapshots, `${id}.png`))), contract: baselineContractHash(contract, id) }
     await createBaselineReview(directory, ids, selectedBaseline)
     await save(join(directory, 'candidate.json'), { ...identity, cases, comparison: comparison.status })
-    console.log(`待审阅UI候选：${directory}；旧/新/差异见compare报告，未修改已接受基线。`)
+    console.log(`待审阅UI候选：${directory}；旧/新/差异见review目录，未修改已接受基线。`)
   } finally { releaseLock() }
 }
 
