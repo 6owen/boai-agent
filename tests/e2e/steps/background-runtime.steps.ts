@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
  * [OUTPUT]: 运行设置说明已移入Tooltip，按实际入口验证原文与禁用状态，原资源门槛保持。
  * [INPUT]: 原 Desktop、真实窗口/Utility PID、固定离线 API 员工回复。
  * [OUTPUT]: 原生窗口/草稿与原GC资源门槛；显式诊断只在原断言失败后收集DOM/堆，不改变通过条件。
@@ -60,7 +61,7 @@ Then('多次重新打开保持同一主窗口和运行进程', async ({ runtime 
 })
 Then('运行设置显示开发环境开机启动不可操作', async ({ runtime }) => {
   await runtime.page.getByRole('button', { name: '我的菜单', exact: true }).click()
-  await runtime.page.getByRole('menuitem', { name: '设置', exact: true }).click()
+  await runtime.page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
   await runtime.page.getByRole('button', { name: '运行选项', exact: true }).click()
   await expect(runtime.page.getByRole('button', { name: '运行选项', exact: true })).toHaveAttribute('aria-current', 'page')
   await expect(runtime.page.getByRole('switch', { name: '关闭窗口后继续运行' })).toBeChecked()
@@ -94,7 +95,7 @@ When('反复隐藏重开切换设置并在后台处理消息', async ({ runtime 
   const cycle = async () => { await runtime.app.evaluate(({ app }, window) => { window.close(); app.emit('activate') }, nativeWindow) }
   const openSettings = async () => {
     await page.getByRole('button', { name: '我的菜单', exact: true }).click()
-    await page.getByRole('menuitem', { name: '设置', exact: true }).click()
+    await page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
   }
   const settingsCycle = async () => {
     await page.getByRole('button', { name: '运行选项', exact: true }).click()

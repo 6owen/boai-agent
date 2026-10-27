@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
  * [INPUT]: 原Claude员工/连接编辑UI、明确程序及本场独立合成模型连接；真实CLI/API恢复和离线协议分批启用。
  * [OUTPUT]: 协议不兼容/无密钥/删除连接按原UI错误在模型调用前拒绝；同员工恢复原来源及两次重启保留失败、零重放，只有新消息执行；真实核对码与离线首次回复分开断言，个人连接与凭据不改。
  * [POS]: Claude来源门禁BDD；不把零预算当零普通调用，不将配置故障冒充供应商拒绝。
@@ -34,7 +35,7 @@ Then('Claude模型来源遇到{string}后恢复同员工且只执行新消息', 
     await runtime.page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).click()
     await runtime.page.getByRole('navigation', { name: '会话列表', exact: true }).getByRole('button', { name: '本机 Claude 同事', exact: true }).click()
   }
-  const settings = async () => { await runtime.page.getByRole('button', { name: '我的菜单', exact: true }).click(); await runtime.page.getByRole('menuitem', { name: '设置', exact: true }).click() }
+  const settings = async () => { await runtime.page.getByRole('button', { name: '我的菜单', exact: true }).click(); await runtime.page.getByRole('menuitem', { name: '其他配置', exact: true }).click() }
   const bind = async (connectionName: string, connectionId: string) => {
     const before = await facts(), version = (await agent()).configVersion
     await runtime.page.getByRole('button', { name: '选择模型', exact: true }).click()

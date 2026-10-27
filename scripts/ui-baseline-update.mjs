@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 用户确认后由Agent提交的候选run、已审阅SHA、明确case及原因。
- * [OUTPUT]: main上的受信代码核验官方原件，通过Git API只提交受影响基准并显式派发只读CI。
+ * [OUTPUT]: main受信代码在线提交受影响基准；Agent接续创建PR或批准当前PR检查，避免独立dispatch绿灯不计入PR门禁。
  * [POS]: 独立线上更新入口；不执行功能分支代码、不写main、不强推或自动接受普通CI失败。
  * [PROTOCOL]: 修改同步Header、目录地图及共享开发Skill。
  */
@@ -41,9 +41,8 @@ export function publishBaselineUpdate({ branch, expectedHead, runId, files }, re
   const commit = request('git/commits', { message: `test(ui): accept reviewed CI baselines from run ${runId}`, tree: nextTree.sha, parents: [expectedHead] })
   assertHead()
   request(`git/refs/heads/${branch}`, { sha: commit.sha, force: false })
-  // GITHUB_TOKEN pushes are not sufficient to start checks. Dispatch explicitly.
-  try { request('actions/workflows/tests.yml/dispatches', { ref: branch }) }
-  catch (error) { throw new Error(`基准已提交 ${commit.sha}；只读CI派发失败，需为 ${branch} 补派 tests.yml：${error.message}`, { cause: error }) }
+  // A bot push creates a PR run requiring approval. A separate dispatch can
+  // pass without satisfying that PR's gate. The agent must resume the PR run.
   return commit.sha
 }
 
@@ -61,7 +60,7 @@ async function main() {
   const files = [{ path: `${prefix}manifest.json`, content: Buffer.from(JSON.stringify(manifest, null, 2) + '\n') }]
   for (const id of selected) files.push({ path: `${prefix}${id}.png`, content: await readFile(join(directory, 'snapshots', `${id}.png`)) })
   const sha = publishBaselineUpdate({ branch, expectedHead, runId, files })
-  const receipt = `Updated ${branch} to ${sha}; cases: ${selected.join(', ')}. Read-only UI tests dispatched; merge still requires Required checks.\n`
+  const receipt = `Updated ${branch} to ${sha}; cases: ${selected.join(', ')}. Agent must create the PR or approve its current-head UI tests run. Baseline update alone does not satisfy Required checks.\n`
   console.log(receipt)
   if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, receipt)
 }

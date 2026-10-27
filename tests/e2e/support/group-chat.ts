@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 可在同一次离线预备事务阶段追加场景历史，实际Electron仍只启动一次。
  * [OUTPUT]: UI截图后可明确启动单聊受控reasoning流，原历史准备零调用保持；通过真实HTTP增量验证聊天滚动。
  * [OUTPUT]: 单次启动先经原snapshot请求等待服务就绪并核对本场profile/会话，再开始真实点击；不重试或重建数据。
  * [OUTPUT]: UI可在本场独立profile用原bootstrap/配置事务准备数据后仅启动一次；其他BDD保留原桌面配置和重启路径。
@@ -31,7 +32,7 @@ async function configureGroupChat(request: Request, port: number) {
   return { group, direct, dataPath: (await request('snapshot', undefined)).dataPath }
 }
 
-export async function prepareGroupChat(runtime: Desktop, { emulateViewport = true, mainEntry, now = Date.now(), seedBeforeLaunch = false }: { emulateViewport?: boolean; mainEntry?: string; now?: number; seedBeforeLaunch?: boolean } = {}) {
+export async function prepareGroupChat(runtime: Desktop, { emulateViewport = true, mainEntry, now = Date.now(), seedBeforeLaunch = false, seedAdditional }: { emulateViewport?: boolean; mainEntry?: string; now?: number; seedBeforeLaunch?: boolean; seedAdditional?: (store: ProductStore, setup: Awaited<ReturnType<typeof configureGroupChat>>) => Promise<void> } = {}) {
   const state = { calls: 0, errors: [] as string[] }
   let scrollStream: { emit(delta: unknown, finish?: string | null): void; finish(): void } | undefined
   const scrolling = {
@@ -123,7 +124,7 @@ export async function prepareGroupChat(runtime: Desktop, { emulateViewport = tru
     ...directMessages.map(value => ({ collection: 'messages', id: value.id, value })),
     ...works.map(value => ({ collection: 'workItems', id: value.id, value })),
     ...artifacts.map(value => ({ collection: 'artifacts', id: value.id!, value })),
-  ]) } finally { await store.close() }
+  ]); await seedAdditional?.(store, setup) } finally { await store.close() }
   await runtime.start({ mainEntry })
   if (seedBeforeLaunch) {
     // A preload bridge exists before the cold runtime is ready. Confirm the

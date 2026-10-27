@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
  * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
  * [OUTPUT]: 真正窗口关闭的未保存测试显式关闭后台常驻，保留原原生关闭/草稿断言。
  * [OUTPUT]: 核心助手未发送首发的正常/受理前后未知保存沿原配置，草稿与零业务调用分别核对；两次实际重启不重放，只有明确发送才建立核心聊天并调用当前本机员工。
@@ -201,7 +202,7 @@ Then('原员工正常更换独立本机配置并切回后只执行明确新交�
     const first = await send(`现在只是普通聊天，不执行任何工具，不保存长期记忆。临时暗号为 ${code}，只回复这个暗号。${!real && kind === 'claude-local' ? ' empty-memory' : ''}`, original.id)
     const originalAgent = await agent()
     await runtime.page.getByRole('button', { name: '我的菜单', exact: true }).click()
-    await runtime.page.getByRole('menuitem', { name: '设置', exact: true }).click()
+    await runtime.page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
     await runtime.page.getByRole('button', { name: '扫描本机 Agent', exact: true }).click()
     await runtime.page.getByRole('button', { name: kind === 'codex-local' ? '本机 Codex 使用已安装的 Codex 和本机登录，支持连续聊天' : '本机 Claude 使用已安装程序，在员工设置中选择模型 API', exact: true }).click()
     const dialog = runtime.page.getByRole('dialog', { name: '手动添加 Agent', exact: true }), name = kind === 'codex-local' ? '本场正常换绑Codex配置' : '本场正常换绑Claude配置'

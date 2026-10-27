@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
  * [OUTPUT]: 2026-10-27 语音主要控件220px同宽、辅助操作居左和快捷键无箭头；自动保存、持久化及零下载合同保持。
 [OUTPUT]: 配色菜单先核实际打开及回退选项，再核禁用主题缺席与Escape关闭；不把尚未显示时按键当作关闭验证。
  * [OUTPUT]: 初始目录核对十项固定插件身份（含DeepSeek和双运行时），不从实现派生期望；原筛选/启停/重启断言保持。
@@ -18,7 +19,7 @@ const { Given, When, Then } = createBdd(test)
 const futureBytes = JSON.stringify({ schemaVersion: 99, revision: 17, disabledIds: ['future.unknown'] })
 async function openPlugins(runtime: Desktop) {
   await runtime.page.getByRole('button', { name: '我的菜单', exact: true }).click()
-  await runtime.page.getByRole('menuitem', { name: '设置', exact: true }).click()
+  await runtime.page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
   await runtime.page.getByRole('button', { name: '插件', exact: true }).click()
   await expect(runtime.page.getByRole('region', { name: '内置插件', exact: true })).toBeVisible()
 }

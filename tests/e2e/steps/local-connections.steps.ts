@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
  * [OUTPUT]: 新原生目录场景以realpath固定程序和所选登录目录的规范路径，四处严格路径断言保持；旧ACP步骤不改。
  * [OUTPUT]: 明确原生Codex目录入口沿真实IPC保持协议，同账号ACP独立；无ACP程序仍可预填/测试/保存，换账号在新草稿测试/保存前拒绝，Claude无Codex目录入口。新增场景须实际运行后才计桌面通过。
  * [INPUT]: 本地配置导入中文场景、Electron fixture 与临时配置文件。
@@ -32,7 +33,7 @@ async function openModelImport(runtime: Desktop) {
 }
 async function settings(runtime: Desktop) {
   await runtime.page.getByRole('button', { name: '我的菜单', exact: true }).click()
-  await runtime.page.getByRole('menuitem', { name: '设置', exact: true }).click()
+  await runtime.page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
 }
 
 Given('本地配置导入使用独立的 Codex 和 Claude 配置', async ({ runtime, localConfigState }) => {

@@ -444,6 +444,11 @@
       "types": "./src/plugins/voice-input.ts",
       "development": "./src/plugins/voice-input.ts",
       "default": "./src/plugins/voice-input.ts"
+    },
+    "./domain/schedule-list": {
+      "types": "./src/domain/schedule-list.ts",
+      "development": "./src/domain/schedule-list.ts",
+      "default": "./src/domain/schedule-list.ts"
     }
   },
   "dependencies": {

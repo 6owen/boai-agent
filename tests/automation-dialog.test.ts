@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 对话创建允许独立读取列表偏好，仍不写入或执行计划。
  * [OUTPUT]: 手动本次查看按钮仅运行期间显示；历史/自动执行及完成/失败/取消/中断后的按钮均隐藏。
  * [OUTPUT]: 本轮覆盖复制/员工入口、定时运行防连点、失败过程、严格私有判断及保留原预算的显式继续；实际范围以各用例为准。
  * [OUTPUT]: 对话创建仅委托普通会话导航、无弹窗/自动提交；手动创建编辑原Portal、草稿和关闭保护保持。
@@ -149,6 +150,7 @@ test('exiting a dirty schedule discards without saving', async () => {
 
 test('conversation creation delegates to the ordinary chat without creating a dialog or submitting', async () => {
   const request = vi.fn(async (method: string) => {
+    if (method === 'getScheduleList') return { revision: 0, tags: [], tagIdsByAutomationId: {}, order: [] }
     if (method === 'listAutomations') return { definitions: [], occurrences: [], available: true }
     throw new Error(`Unexpected request: ${method}`)
   })
@@ -156,7 +158,7 @@ test('conversation creation delegates to the ordinary chat without creating a di
   const openConversation = vi.fn()
   function Page() {
     const [location, setLocation] = useState<ScheduleLocation>({ kind: 'overview' })
-    return h(SchedulePage, { api, snapshot, active: true, sidebarShown: true, divider: null, location, onLocation: setLocation, onCreateConversation: openConversation, onInfo() {}, onOccurrence() {}, onNavigateMessage() {} })
+    return h(SchedulePage, { api, snapshot, active: true, sidebarShown: true, divider: null, location, onLocation: setLocation, onCreateConversation: openConversation, onOccurrence() {}, onNavigateMessage() {} })
   }
   await act(async () => root.render(h(Page)))
   await act(async () => button('新建定时任务').click())
@@ -164,5 +166,5 @@ test('conversation creation delegates to the ordinary chat without creating a di
   expect(openConversation).toHaveBeenCalledOnce()
   expect(document.querySelector('[role=dialog]')).toBeNull()
   expect(host.querySelector('.schedule-assistant-chat')).toBeNull()
-  expect(request.mock.calls.every(([method]) => method === 'listAutomations')).toBe(true)
+  expect(request.mock.calls.every(([method]) => ['listAutomations', 'getScheduleList'].includes(method))).toBe(true)
 })

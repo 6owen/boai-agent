@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
  * [INPUT]: 原Claude员工UI、已核对启动项和本场自有程序副本；离线协议与真实CLI/API分批明确启用。
  * [OUTPUT]: 程序外改/丢失时旧verified不能绕过调用前核对；失败位于执行器信息保存前，按原员工身份和实际调用账本核对；恢复重测和两次重启不重放，明确新消息才执行。
  * [POS]: Claude程序身份故障BDD；不改个人安装、登录或模型连接，不用任务预算为空代替普通聊天零调用证据。
@@ -43,7 +44,7 @@ Then('Claude程序遇到{string}后明确修复且只执行新消息', async ({ 
   const facts = async () => ({ detail: await read(), calls: await store.load<ProfileModelCall>('profileModelCalls'), budgets: await store.load('budgetModelCalls'), sessions: await store.load('claudeSessions') })
   const settings = async () => {
     await runtime.page.getByRole('button', { name: '我的菜单', exact: true }).click()
-    await runtime.page.getByRole('menuitem', { name: '设置', exact: true }).click()
+    await runtime.page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
   }
   const chat = async () => {
     await runtime.page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).click()

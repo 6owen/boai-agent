@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 定时任务侧栏委托独立标签/排序管理；说明移至标题Tooltip，原执行与详情行为保持。
  * [OUTPUT]: 立即运行只提交并全程loading防重复，两个图标分别打开过程和定位聊天；准备阶段保留等待提示。
  * [OUTPUT]: 重回定时任务页及首次异步载入详情也播放Panel reveal，后台数据刷新不重播。
  * [OUTPUT]: 对话创建转到会话页并预选管理定时任务技能；本页只保留手动创建/编辑Dialog及任务详情/历史。
@@ -12,11 +13,10 @@
 import { useEffect, useLayoutEffect, useRef, useState, useContext, type ReactNode } from 'react'
 import type { AutomationsView, Snapshot } from '@boai/shared/domain'
 import type { DesktopApi } from '@boai/shared/ipc'
-import { Banner, GuardContext, Loading, useMutation } from '@/components/common'
-import { ChevronRight, MoreHorizontal, Plus, MessageCircle, Pencil } from '@/components/icons'
+import { Banner, GuardContext, useMutation } from '@/components/common'
+import { Plus, MessageCircle, Pencil } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
 import { AutomationHistory } from './automation-history-list'
 import { IllustratedEmpty } from '@/components/common/illustrated-empty'
@@ -25,18 +25,19 @@ import { AutomationRunActions } from './automation-run-actions'
 import type { ExecutionMessageNavigation } from '@/components/detail-panel/execution-message-button'
 import { AutomationDetails } from './automation-details'
 import { AutomationDialog, type AutomationDialogTarget } from './automation-dialog'
-import { scheduleSummary } from './schedule-presentation'
+import { ScheduleList } from './schedule-list'
+import { useScheduleList } from './use-schedule-list'
 export type ScheduleLocation = { kind: 'overview' } | { kind: 'definition'; id: string } | { kind: 'history'; attention?: boolean } | { kind: 'occurrence'; id: string; requestId: string }
-export function SchedulePage({ api, snapshot, active, sidebarShown, divider, location, onLocation, onInfo, onOccurrence, onCreateConversation, selectedOccurrenceId, onNavigateMessage }: {
+export function SchedulePage({ api, snapshot, active, sidebarShown, divider, location, onLocation, onOccurrence, onCreateConversation, selectedOccurrenceId, onNavigateMessage }: {
   api: DesktopApi; snapshot: Snapshot; active: boolean; sidebarShown: boolean; divider: ReactNode; location: ScheduleLocation; onLocation(value: ScheduleLocation): void
   onNavigateMessage: ExecutionMessageNavigation
-  onInfo(): void; onOccurrence(id: string): void; onCreateConversation(): void; selectedOccurrenceId?: string
+  onOccurrence(id: string): void; onCreateConversation(): void; selectedOccurrenceId?: string
 }) {
   useEffect(() => {
     if (active && location.kind === 'occurrence') { onOccurrence(location.id); onLocation({ kind: 'history' }) }
   }, [active, location, onOccurrence, onLocation])
   const [view, setView] = useState<AutomationsView>({ definitions: [], occurrences: [], available: true })
-  const [loading, setLoading] = useState(true), [loadError, setLoadError] = useState(''), [listOpen, setListOpen] = useState(true)
+  const [loading, setLoading] = useState(true), [loadError, setLoadError] = useState('')
   const [dialog, setDialog] = useState<AutomationDialogTarget>()
   const guard = useContext(GuardContext), { busy, error, run } = useMutation()
   useEffect(() => {
@@ -73,18 +74,15 @@ export function SchedulePage({ api, snapshot, active, sidebarShown, divider, loc
     element.addEventListener('transitionend', settle)
     return () => { element.removeEventListener('transitionend', settle); element.dataset.settled = 'true' }
   }, [contentKey, active])
-  const definitions = [...view.definitions].sort((a, b) => b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id))
+  const preferences = useScheduleList(api, active)
   const navigate = (value: ScheduleLocation) => guard.navigate(() => onLocation(value), { resetOnDiscard: false })
   const openDialog = (target: AutomationDialogTarget) => guard.navigate(() => setDialog(target), { resetOnDiscard: false })
   const openOccurrence = onOccurrence
   return <div className="schedule-page" style={active ? undefined : { display: 'none' }}>
     <PanelResize open={sidebarShown} side="left" divider={divider}><aside className="schedule-list conversation-list-panel" aria-label="定时任务列表">
-      <div className="list-heading"><h2>定时任务</h2><DropdownMenu><DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="定时任务选项" />}><MoreHorizontal /></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onClick={() => navigate({ kind: 'history' })}>执行记录</DropdownMenuItem><DropdownMenuItem onClick={onInfo}>定时执行说明</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div>
-      <DropdownMenu><DropdownMenuTrigger render={<Button variant="secondary" className="schedule-create" aria-label="新建定时任务" />}><Plus /><span>新建定时任务</span></DropdownMenuTrigger><DropdownMenuContent align="start"><DropdownMenuItem onClick={() => openDialog({ kind: 'manual', key: crypto.randomUUID() })}><Pencil />手动创建</DropdownMenuItem><DropdownMenuItem onClick={onCreateConversation}><MessageCircle />对话创建</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
-      <Collapsible className="flex min-h-0 flex-1 flex-col" open={listOpen} onOpenChange={setListOpen}>
-        <CollapsibleTrigger render={<Button variant="ghost" size="content" className="conversation-section-heading" />}><span>全部定时任务</span><ChevronRight /></CollapsibleTrigger>
-        <CollapsibleContent className="min-h-0 overflow-y-auto"><div role="group" aria-label="全部定时任务" className="schedule-items">{definitions.map(d => <Button variant="ghost" size="content" key={d.id} aria-current={'id' in location && location.id === d.id ? 'page' : undefined} className={`schedule-item${'id' in location && location.id === d.id ? ' selected' : ''}`} onClick={() => navigate({ kind: 'definition', id: d.id })}><strong title={d.name}>{d.name}</strong><small title={`${!d.enabled ? '已暂停 · ' : ''}${scheduleSummary(d)}`}>{!d.enabled ? '已暂停 · ' : ''}{scheduleSummary(d)}</small></Button>)}{loading && <Loading />}</div></CollapsibleContent>
-      </Collapsible>
+      <ScheduleList definitions={view.definitions} preferences={preferences} loading={loading} selectedId={location.kind === 'definition' ? location.id : undefined} onSelect={id => navigate({ kind: 'definition', id })} onHistory={() => navigate({ kind: 'history' })} create={
+        <DropdownMenu><DropdownMenuTrigger render={<Button variant="secondary" className="schedule-create" aria-label="新建定时任务" />}><Plus /><span>新建定时任务</span></DropdownMenuTrigger><DropdownMenuContent align="start"><DropdownMenuItem onClick={() => openDialog({ kind: 'manual', key: crypto.randomUUID() })}><Pencil />手动创建</DropdownMenuItem><DropdownMenuItem onClick={onCreateConversation}><MessageCircle />对话创建</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
+      } />
     </aside></PanelResize>
     <main className="schedule-content page-scroll">
       {(error || loadError || view.error) && <Banner>{error || loadError || view.error}</Banner>}

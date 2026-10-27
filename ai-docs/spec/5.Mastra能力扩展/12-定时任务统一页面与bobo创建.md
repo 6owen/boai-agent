@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: §29最终26场候选/六图接受后同步main已合PR44，保留其20项来源；依赖/类型/BDD通过，提交后普通CI独立。
 [OUTPUT]: §19对话创建进入普通会话并预选管理标签，五类命令加载随包操作文档；提示词业务接口复用原CRUD，当前仅静态检查。
 [OUTPUT]: §28.2自然待批停止/迟到批准与恢复后明确新运行2场最终通过；7启动/31证据及真实面板终态已核，原图旧帧和原期限保留。
 [OUTPUT]: §28自然调度旧产品3过/停止入口1失败，单次停止修复同4场全过；真实12启动/49证据及两次重启无重放，完整DS11/新head门禁仍继续。
@@ -346,3 +347,24 @@
 7e57ba94的39688956351最终2场全部通过，零跳过/重试/flaky，总267.955秒，分别140.680/123.145秒；类型/构建也通过。原件已取得，7次真实`pnpm dev`启动、31份证据大小/hash一致，两个manifest的gaps/cleanupErrors/testErrors均为0。已查看原生停止/新运行交付两张图：原面板显示已停止/已完成且停止按钮均移除；首轮旧帧说明截图前须核实际UI终态，本批未修改产品来调整捕获。
 
 两次重启的原生触发/Run/消息/成果和模型请求仍分别保持2/9：待批停止旧审批失效、无命令文件、无永久授权；恢复后原schedule保持failed/blocked、新manual保持completed/delivered，旧新文件的真实字节与mtime均不变，同manualRequestId重复核对不产生第三条执行。三个文件原件都是20字节固定标记加换行。这里只收口这两条本地协议恢复路径，原四场和固定T1清单/断言/期限不变；实际供应商/个人配置及OS生命周期仍沿第23组剩余。
+
+
+## 29. 定时任务标签管理与执行记录动效（2026-10-27）
+
+- 用户要求移除菜单中的说明入口；必要说明归标题后的图标 Tooltip。菜单新增“定时任务管理”，沿通讯录管理的双栏布局、标签筛选、搜索和表格多选。
+- 标签支持行内新建、重命名、确认删除和批量即时增删；每项操作固定所见 revision，提交锁和冲突重读保持。删除标签保留原计划、执行历史及其他标签。
+- 列表按标签分组，无标签单列；支持搜索、折叠、标签排序、任务排序、跨组拖拽及右键/Alt 方向键替代。跨标签移动仅移除来源标签并加入目标标签，其余标签保持；移到“无标签”解除全部标签。
+- 偏好在 SQLite 的 scheduleList/schedules 独立事务保存；getScheduleList/updateScheduleList 与专用变更事件接原 IPC，不改任务 revision、调度、Run、Work 或交付。
+- 执行记录的四项筛选抽为公共 FilterTabs，复用共享 Base UI Tabs 和 transitions-dev tabs sliding 原版资源；新筛选结果复用现有 Panel reveal，后台更新和追加页不重播；系统圆角、键盘语义及减少动态效果保持。
+- 本地实际：完整 tsc --noEmit 通过；工作区边界检查通过；12 项定向 Vitest 通过，包含 SQLite 重启、CAS 竞争、批量拒绝、跨组标签保留及原任务/历史不变。前端定向 ESLint 零错误；非前端测试/运行时文件不在现有 ESLint 配置范围。
+- UI 影响：原20场未覆盖定时任务，追加 schedules-light/dark 与 schedule-manager-light/dark 四场，原场景、阈值、mask 和零重试保持。新增场景检查真实标签 CRUD、多选、拖拽、键盘排序/Tab、筛选结果及 CSS 动效/reduced-motion。本人菜单另增明暗两场，当前合同共26场。
+- 首轮官方候选 [40479030099](https://github.com/6owen/boai-agent/actions/runs/40479030099) 实际22通过、4失败；本人菜单两场及原20场通过。四场定时任务均因标签选项可访问名称重复为“标签 日常 日常”而停于定位；原件确认浮层正常展示。修正原生label与aria-label的重复命名，保留精确名称断言并增加逐项持久化检查；新候选、视觉审阅和基线接受仍待完成。
+- 同步 main 的 PR43 新UI确认规则后，主动取消修复提交的候选 [40482684554](https://github.com/6owen/boai-agent/actions/runs/40482684554)，不计为功能通过或失败。PR42保持Draft、未启用自动合并；基准未接受，新增UI提交在用户确认前不再推送。
+- 功能 worktree 为 `/Users/wangwenbo/Desktop/demo/boai/boai-schedule-groups-motion`，分支 `feat/schedule-groups-motion`。检查无本任务产品进程后，仅解除本worktree的跨目录node_modules链接，使用锁定pnpm正常安装，1226包、reused1223、downloaded0、17.9秒；个人应用与main依赖保持。独立安装后的完整 `tsc --noEmit` 再次通过。预览命令为 `BOAI_DATA_DIR="$PWD/.local/dev-profile" BOAI_DEV_PORT=0 pnpm dev`，须在该worktree执行；当前尚未启动预览。
+- 用户随后明确回复“确认，更新基准，合并”：已确认定时任务侧栏/标签管理、执行记录Tab及列表动效、本人菜单六个入口，以及 schedules-light/dark、schedule-manager-light/dark、user-menu-light/dark 六张新基准。继续同SHA官方候选、审图和基准提交，原20张保持；不重复询问本批效果。
+- 确认后的官方候选 [40484226752](https://github.com/6owen/boai-agent/actions/runs/40484226752) 实际25通过、1失败；失败为Playwright `check()` 点击后立即核对状态，早于受控标签的IPC保存回执。同SHA普通检查的失败原件已显示两标签勾选且三项任务均已赋值，证明命名修复生效、点击和保存真实发生。只将该处改为单次点击后等待勾选/可用及三项持久化断言，不重试点击、不放宽期限；其余三场定时任务已走完拖拽、排序、筛选和动效。BDD生成及差异检查通过，新SHA完整候选仍待验证。
+- 最终提交95b54263的官方候选 [40485363446](https://github.com/6owen/boai-agent/actions/runs/40485363446) 完整26场全部通过，0跳过/失败/flaky，总270.071秒。标签CRUD、批量保存、跨组拖拽、键盘排序、四个筛选、滑动/列表CSS动效及reduced-motion、本人菜单六入口均完成。普通运行40485368813的原20场截图比较通过，新六场也完成交互，仅在缺少正式基准来源时按预期拒绝比较。
+- 官方原件经import和accept独立重下载、GitHub摘要及逐文件核验：artifact12725536150，archive SHA256 `321154b75d7b6de57cde973e6028e976f61d2fc81a150acf4097bf9da961b099`。已逐项查看六张新图，定时任务标签与执行记录、通讯录式双栏管理、本人菜单顺序/分隔/无帮助均符合用户确认；新增场景无旧图，原20场的旧/新逐字节一致且原始像素差异均0。
+- 仅接受 schedules-light/dark、schedule-manager-light/dark、user-menu-light/dark 六张PNG及其manifest条目，原20张图片/来源、环境、合同、mask和阈值保持。基准随本次PR提交后由新普通只读CI独立检查，再按用户确认设置自动合并；候选通过不冒充当前Required checks或已经合并。
+- 基准接受后main合入PR44聊天滚动修复（7c7b8e54），本分支同步该已合提交。冲突均为说明Header，保留双方说明和测试逻辑；合并后的20项既有manifest逐项等于最新main，六项新记录仍为上述官方来源，全部26张hash核对通过。锁文件变化后按原store安装839ms，完整TypeScript、BDD生成和差异检查通过；整合后的当前提交仍由普通CI复核，不重复派发无视觉变化的候选。
+- 未在本机启动产品构建或 Electron GUI；个人正在运行的应用尚未重载。此处不声明真实模型、自然定时执行或用户数据已验证。

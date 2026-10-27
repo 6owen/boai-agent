@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
  * [INPUT]: Actual settings/employee UI, synthetic keys and isolated persisted state.
  * [OUTPUT]: Browser/DeepSeek only, model-style dialog/menu, global default, employee choice, disable/restart and confirmed removal.
  * [POS]: Web-search capability BDD, shared Desktop supports pnpm dev; no remote provider calls.
@@ -15,7 +16,7 @@ Given('从全局网页检索页面配置{string}', async ({ runtime, search }, p
   await runtime.start()
   const page = runtime.page
   await page.getByRole('button', { name: '我的菜单', exact: true }).click()
-  await page.getByRole('menuitem', { name: '设置', exact: true }).click()
+  await page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
   await page.getByRole('navigation', { name: '设置分类' }).getByRole('button', { name: '网页检索', exact: true }).click()
   await expect(page.getByRole('region', { name: '网页检索设置' })).toContainText('BOAI 浏览器')
   await expect(page.locator('[data-search-provider]')).toHaveCount(2)

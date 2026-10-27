@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
  * [INPUT]: 原Claude员工UI、真实CLI/已保存原API来源，以及本场回环转发和独立无效合成凭据连接。
  * [OUTPUT]: 实际供应商401经CLI使原decision明确失败、用量未知保留；原保存自动退出编辑，修复来源与两次重启不重放失败，只有明确新消息调用原来源。
  * [POS]: Claude真实认证拒绝BDD；不撤销个人凭据、不打开原连接密钥编辑，不以程序核对冒充API认证成功。
@@ -49,7 +50,7 @@ Then('Claude拒绝无效API凭据后恢复原来源且不重放失败消息', as
   const send = async (content: string) => { await runtime.page.getByRole('textbox', { name: '消息内容', exact: true }).fill(content); await runtime.page.getByRole('button', { name: '发送消息', exact: true }).click() }
   try {
     await runtime.page.getByRole('button', { name: '我的菜单', exact: true }).click()
-    await runtime.page.getByRole('menuitem', { name: '设置', exact: true }).click()
+    await runtime.page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
     await runtime.page.getByRole('button', { name: '添加连接', exact: true }).click()
     const dialog = runtime.page.getByRole('dialog')
     await dialog.getByRole('button', { name: /^Anthropic/ }).click()

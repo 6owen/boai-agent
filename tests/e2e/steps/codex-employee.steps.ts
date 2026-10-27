@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
  * [OUTPUT]: 两轮/重启发送沿原可编辑等待，随后直接核contenteditable与aria-disabled均就绪，不增加第二套等待或放宽业务断言。
  * [OUTPUT]: 原生普通聊天按13组10/11核对零私有memory阶段及两轮/重启线程；重启等实际编辑器可编辑后输入，保留原终态。
  * [OUTPUT]: 新建员工沿现行工作方式/本机Agent两级选择，核对明确profile；其余业务/调用/重启断言保持。
@@ -563,7 +564,7 @@ Then('本机员工备份恢复到{string}后新建会话且原聊天保持', asy
   const exportRoot = join(sourceRoot, 'backup-exports'); await mkdir(exportRoot)
   await runtime.app.evaluate(({ dialog }, path) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [path] }) }, exportRoot)
   await runtime.page.getByRole('button', { name: '我的菜单', exact: true }).click()
-  await runtime.page.getByRole('menuitem', { name: '设置', exact: true }).click()
+  await runtime.page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
   await runtime.page.getByRole('button', { name: '数据与备份', exact: true }).click()
   await runtime.page.getByRole('button', { name: '导出备份', exact: true }).click()
   await expect(runtime.page.getByText(/^备份已导出：/)).toBeVisible({ timeout: 30000 })

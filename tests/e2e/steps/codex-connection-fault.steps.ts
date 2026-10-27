@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
  * [OUTPUT]: 程序被替换/丢失及协议版本变化在隔离副本注入；原验证不能继续使用，修复后明确重测仍不重放失败消息。
  * [INPUT]: 已验证Codex连接、原员工与隔离产品数据；认证场景用真实程序，文件/版本故障用隔离协议副本，不读取或改动个人凭据。
  * [OUTPUT]: 配置停用现有登录后实际握手拒绝，保存失效配置不沿用验证；新消息无模型调用，重新验证也不重放原消息。
@@ -23,7 +24,7 @@ Then('连接停用现有登录后拒绝执行且重新验证不重放原消息',
   const id = codexEmployee.conversationId!, read = () => runtime.page.evaluate(id => window.boai.request('getConversation', { id }), id)
   const settings = async () => {
     await runtime.page.getByRole('button', { name: '我的菜单', exact: true }).click()
-    await runtime.page.getByRole('menuitem', { name: '设置', exact: true }).click()
+    await runtime.page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
   }
   const editor = async () => {
     await runtime.page.getByRole('region', { name: '本机 Agent', exact: true }).getByRole('button', { name: `管理 ${original.name}`, exact: true }).click()
@@ -103,7 +104,7 @@ Then('已验证连接遇到{string}后保留原失败且恢复程序不自动重
   const read = () => runtime.page.evaluate(id => window.boai.request('getConversation', { id }), id)
   const settings = async () => {
     await runtime.page.getByRole('button', { name: '我的菜单', exact: true }).click()
-    await runtime.page.getByRole('menuitem', { name: '设置', exact: true }).click()
+    await runtime.page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
   }
   await settings()
   await runtime.page.getByRole('region', { name: '本机 Agent', exact: true }).getByRole('button', { name: '管理 本机 Codex', exact: true }).click()

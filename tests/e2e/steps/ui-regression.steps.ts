@@ -1,4 +1,8 @@
 /*
+ * [OUTPUT]: 标签浮层按唯一可访问名称单次点击，等待受控勾选和三项任务的实际保存回执，不要求异步保存同步完成。
+ * [OUTPUT]: 本人菜单明暗两场核对头像与五项导航，菜单分享/帮助消失，逐个入口定位对应设置。
+ * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
+ * [OUTPUT]: 新增定时任务历史/管理明暗四场；实际标签CRUD、多选、拖拽/排序、筛选键盘与动效/布局覆盖，原20场保持。
  * [OUTPUT]: 新增头像点击与滚动均放原截图后，静态场景保持原交互轨迹，避免浮层重绘影响头像位图。
  * [OUTPUT]: 普通消息及生成中的执行卡员工头像均核对rounded-md和资料卡点击；执行卡无任务结果/查看/继续。
  * [OUTPUT]: 原截图后恢复走时再测流式滚动，核对Date.now推进；原截图时间、阈值和超时保持。
@@ -21,6 +25,7 @@ import { localSkillsEntry } from '../support/local-skills'
 import { prepareGroupChat } from '../support/group-chat'
 import { messageDraft } from '../support/editor-controls'
 import { compareUiBaseline } from '../support/ui-baseline'
+import { seedScheduleUi } from '../support/schedule-ui'
 import contract from '../baselines/contract.json' with { type: 'json' }
 
 type Case = typeof contract.cases[number]
@@ -42,7 +47,7 @@ Given('UI回归已准备隔离的固定历史和资源', async ({ runtime, uiReg
   await writeFile(join(skill, 'SKILL.md'), '---\nname: ui-baseline\ndescription: 核对来源与交付结果。\n---\n# UI 基线技能\n保留明确来源，核对真实文件。\n')
   const original = await localSkillsEntry(runtime), mainEntry = join(runtime.root, 'ui-regression-main.cjs')
   await writeFile(mainEntry, `require('electron').app.commandLine.appendSwitch('lang', 'zh-CN');\nrequire(${JSON.stringify(original)});\n`)
-  uiRegression.fixture = await prepareGroupChat(runtime, { mainEntry, now: fixedNow, seedBeforeLaunch: true })
+  uiRegression.fixture = await prepareGroupChat(runtime, { mainEntry, now: fixedNow, seedBeforeLaunch: true, seedAdditional: /(?:schedules|schedule-manager)-(?:light|dark)/.test(test.info().title) ? (store, setup) => seedScheduleUi(store, setup.direct.id) : undefined })
   await runtime.page.clock.setFixedTime(fixedNow)
   // Explicit local fault rehearsal: the real appearance buttons still run; only persistence is lost.
   if (process.env.BOAI_UI_FAULT === 'behavior') await runtime.app.evaluate(({ ipcMain }) => {
@@ -66,12 +71,16 @@ When('用户打开UI基准场景 {string}', async ({ runtime, uiRegression }, ca
   }, selected.mode as 'light' | 'dark')
   await expect(page.locator('html')).toHaveAttribute('data-theme', selected.mode)
   const scene = selected.scene
-  if (scene === 'employee') {
+  if (scene === 'user-menu') {
+    await page.getByRole('button', { name: '我的菜单', exact: true }).click()
+  } else if (scene === 'schedules' || scene === 'schedule-manager') {
+    await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '定时任务', exact: true }).click()
+  } else if (scene === 'employee') {
     await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '通讯录', exact: true }).click()
     await page.getByRole('complementary', { name: '通讯录列表', exact: true }).getByRole('button', { name: '研究员', exact: true }).click()
   } else if (scene === 'settings' || scene === 'shortcuts' || scene === 'voice-settings') {
     await page.getByRole('button', { name: '我的菜单', exact: true }).click()
-    await page.getByRole('menuitem', { name: '设置', exact: true }).click()
+    await page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
     await page.getByRole('navigation', { name: '设置分类', exact: true }).getByRole('button', { name: scene === 'shortcuts' ? '快捷键' : scene === 'voice-settings' ? '语音输入' : '外观', exact: true }).click()
   } else if (scene === 'resources') {
     await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '资源库', exact: true }).click()
@@ -122,6 +131,10 @@ Then('当前场景的真实交互和布局满足原约定', async ({ runtime, ui
     expect(repeated.title).toBe(original.title)
     const rooms = await page.evaluate(async () => (await window.boai.request('snapshot', undefined)).conversations.filter(room => room.kind === 'direct' && !room.channel && !room.mergedInto && room.agentIds[0] === 'researcher'))
     expect(rooms.map(room => room.id)).toEqual([original.id])
+  } else if (selected.scene === 'user-menu') {
+    await checkUserMenu(runtime)
+  } else if (selected.scene === 'schedules' || selected.scene === 'schedule-manager') {
+    await checkScheduleUi(runtime, selected.scene === 'schedule-manager')
   } else if (selected.scene === 'employee') {
     const detail = page.getByRole('region', { name: '通讯录详情', exact: true })
     const role = detail.getByRole('textbox', { name: '员工职责', exact: true })
@@ -282,3 +295,113 @@ Then('当前场景与已接受的UI截图一致', async ({ runtime, uiRegression
   expect(fixture.state.errors).toEqual([]); expect(runtime.errors).toEqual([])
   await test.info().attach('生成中聊天双向滚动', { body: JSON.stringify({ readingTop, calls: fixture.state.calls, directionChanges: 4, readingDriftLimit: 2 }), contentType: 'application/json' })
 })
+
+async function checkScheduleUi(runtime: import('../support/desktop').Desktop, showManager: boolean) {
+  const page = runtime.page, list = page.getByRole('complementary', { name: '定时任务列表', exact: true })
+  const read = () => page.evaluate(() => window.boai.request('getScheduleList', undefined))
+  await expect(list.getByRole('button', { name: '定时任务说明', exact: true })).toBeVisible()
+  await list.getByRole('button', { name: '定时任务选项', exact: true }).click()
+  await expect(page.getByRole('menuitem', { name: '定时执行说明', exact: true })).toHaveCount(0)
+  await page.getByRole('menuitem', { name: '定时任务管理', exact: true }).click()
+  const manager = page.getByRole('dialog', { name: '定时任务管理', exact: true })
+  for (const name of ['日常', '关注', '临时']) {
+    await manager.getByRole('button', { name: '新建标签', exact: true }).click()
+    await manager.getByRole('textbox', { name: '标签名称', exact: true }).fill(name)
+    await manager.getByRole('button', { name: '保存新标签', exact: true }).click()
+    await expect.poll(async () => (await read()).tags.some(tag => tag.name === name)).toBe(true)
+    await expect(manager.getByRole('button', { name: '新建标签', exact: true })).toBeEnabled()
+  }
+  await manager.getByRole('checkbox', { name: '全选当前结果', exact: true }).check()
+  await manager.getByRole('button', { name: '设置标签', exact: true }).click()
+  const assignment = page.getByRole('dialog', { name: '设置标签', exact: true })
+  await expect(assignment).toBeVisible()
+  for (const name of ['日常', '关注']) {
+    const checkbox = assignment.getByRole('checkbox', { name, exact: true })
+    await expect(checkbox).not.toBeChecked()
+    // This control reflects the host transaction, so its checked state changes after IPC acknowledgement.
+    await checkbox.click()
+    await expect(checkbox).toBeChecked()
+    await expect(checkbox).toBeEnabled()
+    await expect.poll(async () => {
+      const preferences = await read(), tag = preferences.tags.find(item => item.name === name)!
+      return ['ui-schedule-0', 'ui-schedule-1', 'ui-schedule-2'].every(id => preferences.tagIdsByAutomationId[id]?.includes(tag.id))
+    }).toBe(true)
+  }
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('textbox', { name: '搜索标签', exact: true })).toHaveCount(0)
+  await manager.getByRole('button', { name: '筛选标签 临时', exact: true }).click({ button: 'right' })
+  await page.getByRole('menuitem', { name: '重命名标签', exact: true }).click()
+  const rename = page.getByRole('dialog', { name: '重命名标签', exact: true })
+  await rename.getByRole('textbox', { name: '标签名称', exact: true }).fill('可删除')
+  await rename.getByRole('button', { name: '保存标签', exact: true }).click()
+  await expect(manager.getByRole('button', { name: '筛选标签 可删除', exact: true })).toBeEnabled()
+  await manager.getByRole('button', { name: '筛选标签 可删除', exact: true }).click({ button: 'right' })
+  await page.getByRole('menuitem', { name: '删除标签', exact: true }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: '删除标签', exact: true }).click()
+  await expect.poll(async () => (await read()).tags.map(tag => tag.name)).toEqual(['日常', '关注'])
+  await manager.getByRole('button', { name: '关闭定时任务管理', exact: true }).click()
+  await expect(manager).toHaveCount(0)
+  const daily = list.getByRole('group', { name: '日常', exact: true })
+  const source = daily.getByRole('button', { name: 'AI 新闻早报', exact: true })
+  const untagged = list.getByRole('button', { name: /^无标签/ })
+  await source.dragTo(untagged)
+  await expect.poll(async () => (await read()).tagIdsByAutomationId['ui-schedule-0']).toEqual([])
+  await expect(list.getByRole('group', { name: '无标签', exact: true }).getByRole('button', { name: 'AI 新闻早报', exact: true })).toBeVisible()
+  const row = daily.getByRole('button', { name: '每周五工作周报', exact: true })
+  await row.focus(); await page.keyboard.press('Alt+ArrowUp')
+  await expect.poll(async () => (await read()).order.slice(0, 2)).toEqual(['ui-schedule-0', 'ui-schedule-2'])
+  const count = await page.evaluate(async () => (await window.boai.request('listAutomations', undefined)).definitions.length)
+  expect(count).toBe(3)
+  await list.getByRole('button', { name: '定时任务选项', exact: true }).click()
+  await page.getByRole('menuitem', { name: '执行记录', exact: true }).click()
+  const history = page.getByRole('region', { name: '执行记录', exact: true })
+  await expect(history.locator('[data-occurrence-id]')).toHaveCount(3)
+  // Verify real CSS motion, then restore reduced motion for deterministic screenshots.
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await history.getByRole('tab', { name: '已完成', exact: true }).click()
+  await expect(history.locator('[data-occurrence-id]')).toHaveCount(1)
+  await expect(history.locator('[data-slot=tabs-indicator]')).toBeVisible()
+  expect(await history.locator('[data-slot=tabs-indicator]').evaluate(el => getComputedStyle(el).transitionDuration)).toContain('0.25s')
+  expect(await history.locator('[role=tabpanel] .t-panel-slide').evaluate(el => getComputedStyle(el).transitionDuration)).toContain('0.4s')
+  await history.getByRole('tab', { name: '已完成', exact: true }).focus()
+  await page.keyboard.press('ArrowLeft'); await page.keyboard.press('Enter')
+  await expect(history.getByRole('tab', { name: '进行中', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await expect(history.locator('[data-occurrence-id]')).toHaveCount(0)
+  await history.getByRole('tab', { name: '需处理', exact: true }).click()
+  const attention = await page.evaluate(() => window.boai.request('listAutomationHistory', { status: 'attention', limit: 30 }))
+  await expect(history.locator('[data-occurrence-id]')).toHaveCount(attention.occurrences.length)
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await history.getByRole('tab', { name: '全部', exact: true }).click()
+  await expect(history.locator('[data-occurrence-id]')).toHaveCount(3)
+  expect(await history.locator('[data-slot=tabs-indicator]').evaluate(el => getComputedStyle(el).transitionDuration)).toBe('0s')
+  if (showManager) {
+    await list.getByRole('button', { name: '定时任务选项', exact: true }).click()
+    await page.getByRole('menuitem', { name: '定时任务管理', exact: true }).click()
+    await manager.getByRole('checkbox', { name: '选择 每日复盘日报', exact: true }).check()
+    await manager.getByRole('checkbox', { name: '选择 每周五工作周报', exact: true }).check()
+    await expect(manager.getByRole('button', { name: '设置标签', exact: true })).toBeInViewport()
+    expect(await manager.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+  }
+  await page.mouse.move(0, 0)
+}
+
+async function checkUserMenu(runtime: import('../support/desktop').Desktop) {
+  const page = runtime.page
+  const destinations = ['个人资料', '外观', '快捷键', '运行选项', '桌面活动与日报', '其他配置']
+  const menu = page.getByRole('menu')
+  await expect(menu.getByRole('menuitem')).toHaveCount(destinations.length)
+  await expect(menu.getByRole('menuitem').first()).toHaveAttribute('aria-label', '个人资料')
+  await expect(menu.locator('[role=menuitem]:not(.user-menu-profile)')).toHaveText(destinations.slice(1))
+  await expect(menu.getByRole('menuitem', { name: /^(分享|设置|帮助)$/ })).toHaveCount(0)
+  for (const label of destinations) {
+    await menu.getByRole('menuitem', { name: label, exact: true }).click()
+    await expect(page.getByRole('navigation', { name: '设置分类', exact: true }).getByRole('button', { name: label === '其他配置' ? '模型连接' : label, exact: true })).toHaveAttribute('aria-current', 'page')
+    await page.getByRole('button', { name: '我的菜单', exact: true }).click()
+  }
+  await page.keyboard.press('Escape')
+  await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).click()
+  await page.getByRole('button', { name: '我的菜单', exact: true }).click()
+  await expect(menu.getByRole('menuitem', { name: '其他配置', exact: true })).toBeInViewport()
+  expect(await menu.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+  await page.mouse.move(0, 0)
+}

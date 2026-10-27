@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 协议fixture：官方候选、分支SHA、线上上下文及Git API回执。
- * [OUTPUT]: 拒绝旧SHA/失败/普通CI/main；只提交指定基准，竞态不覆盖，写入后显式复验。
+ * [OUTPUT]: 拒绝旧SHA/失败/普通CI/main；限定基准提交、不覆盖并发提交、不派发无法替代PR门禁的重复CI。
  * [POS]: 线上更新入口的权限/提交/触发回归，不冒充真实云端验收。
  * [PROTOCOL]: 修改同步Header及tests/.folder.md。
  */
@@ -23,7 +23,7 @@ it('只允许main受信更新入口处理已确认的当前SHA和成功候选', 
   expect(() => verifyOnlineUpdate(run, sha, 'main', env)).toThrow()
 })
 
-function mockApi(options: { race?: boolean; pushFailure?: boolean; dispatchFailure?: boolean } = {}) {
+function mockApi(options: { race?: boolean; pushFailure?: boolean } = {}) {
   let reads = 0
   return vi.fn((path: string, body?: Record<string, unknown>) => {
     if (path.startsWith('git/ref/')) return { object: { sha: options.race && ++reads === 2 ? next : sha } }
@@ -32,17 +32,17 @@ function mockApi(options: { race?: boolean; pushFailure?: boolean; dispatchFailu
     if (path === 'git/trees') return { sha: 'new-tree' }
     if (path === 'git/commits') return { sha: next }
     if (path.startsWith('git/refs/')) { if (options.pushFailure) throw new Error('non-fast-forward'); return { object: { sha: body?.sha } } }
-    if (path.endsWith('/dispatches')) { if (options.dispatchFailure) throw new Error('dispatch failed'); return null }
     throw new Error(`Unexpected API call: ${path}`)
   })
 }
 
-it('只把指定PNG和manifest加入原tree，正常提交后派发同分支只读CI', () => {
+it('只把指定PNG和manifest加入原tree，提交后由Agent接续PR检查', () => {
   const api = mockApi()
   expect(publishBaselineUpdate(update, api)).toBe(next)
   expect(api).toHaveBeenCalledWith('git/trees', { base_tree: 'old-tree', tree: files.map(file => ({ path: file.path, mode: '100644', type: 'blob', sha: 'blob' })) })
   expect(api).toHaveBeenCalledWith('git/commits', { message: 'test(ui): accept reviewed CI baselines from run 123', tree: 'new-tree', parents: [sha] })
-  expect(api.mock.calls.slice(-2)).toEqual([[`git/refs/heads/${run.head_branch}`, { sha: next, force: false }], ['actions/workflows/tests.yml/dispatches', { ref: run.head_branch }]])
+  expect(api.mock.calls.at(-1)).toEqual([`git/refs/heads/${run.head_branch}`, { sha: next, force: false }])
+  expect(api.mock.calls.some(([path]) => path.startsWith('actions/'))).toBe(false)
 })
 
 it('主分支和基准目录外文件在任何远程调用前拒绝', () => {
@@ -56,8 +56,4 @@ it.each([{ race: true }, { pushFailure: true }])('并发源码推送或非快进
   expect(() => publishBaselineUpdate(update, api)).toThrow()
   expect(api.mock.calls.some(([path]) => path.endsWith('/dispatches'))).toBe(false)
   if (options.race) expect(api.mock.calls.some(([path]) => path.startsWith('git/refs/'))).toBe(false)
-})
-
-it('基准已提交但派发失败时报告失败，不伪报CI已启动', () => {
-  expect(() => publishBaselineUpdate(update, mockApi({ dispatchFailure: true }))).toThrow('dispatch failed')
 })
