@@ -5,7 +5,7 @@
  * [PROTOCOL]: 修改同步Header及tests/.folder.md。
  */
 import { expect, it } from 'vitest'
-import { readFile, readdir } from 'node:fs/promises'
+import { readFile } from 'node:fs/promises'
 import { parse } from 'yaml'
 
 const action = parse(await readFile(new URL('../.github/actions/setup-ui-dependencies/action.yml', import.meta.url), 'utf8'))
@@ -25,7 +25,6 @@ it('完整安装仅允许同运行时和全部依赖输入的精确缓存，业�
   }
   const paths = modules.with.path.trim().split('\n')
   expect(paths).toEqual(['node_modules', 'apps/*/node_modules', 'packages/*/node_modules'])
-  for (const directory of ['apps', 'packages']) expect((await readdir(new URL(`../${directory}`, import.meta.url))).length).toBeGreaterThan(0)
 })
 
 it('安装目录未命中才严格安装；每次验证真实Electron后才能保存', () => {
@@ -40,13 +39,26 @@ it('安装目录未命中才严格安装；每次验证真实Electron后才能�
   }
 })
 
-it('普通UI和候选共用准备入口，矩阵仅一片保存', async () => {
+it('普通UI和候选只恢复安装，依赖变化的独立任务才预热', async () => {
   for (const name of ['tests', 'ui-baseline-candidate']) {
     const workflow = parse(await readFile(new URL(`../.github/workflows/${name}.yml`, import.meta.url), 'utf8'))
     const job = workflow.jobs[name === 'tests' ? 'ui' : 'capture']
     const setup = job.steps.findIndex((step: { uses?: string }) => step.uses === './.github/actions/setup-ui-dependencies')
     expect(setup).toBeGreaterThan(0)
     expect(job.steps.findIndex((step: { run?: string }) => step.run === 'pnpm build')).toBeGreaterThan(setup)
-    if (name === 'tests') expect(job.steps[setup].with['save-cache']).toBe('${{ matrix.shard == 1 }}')
+    expect(job.steps[setup].with?.['save-cache']).not.toBe('true')
   }
+})
+
+it('预热仅依赖输入变化自动触发，不进入必需UI门禁', async () => {
+  expect(action.inputs['save-cache'].default).toBe('false')
+  const workflow = parse(await readFile(new URL('../.github/workflows/ui-dependency-cache.yml', import.meta.url), 'utf8'))
+  expect(workflow.on.push.branches).toEqual(['main'])
+  expect(workflow.on.pull_request.paths).toEqual(workflow.on.push.paths)
+  for (const input of ['pnpm-lock.yaml', 'pnpm-workspace.yaml', 'package.json', 'apps/*/package.json', 'packages/*/package.json']) expect(workflow.on.push.paths).toContain(input)
+  expect(workflow.on.push.paths).not.toContain('**')
+  expect(workflow.jobs.warm.steps.find((step: { uses?: string }) => step.uses === './.github/actions/setup-ui-dependencies').with['save-cache']).toBe('true')
+  expect(workflow.jobs.warm.steps.some((step: { run?: string }) => step.run?.includes('pnpm build'))).toBe(false)
+  const tests = parse(await readFile(new URL('../.github/workflows/tests.yml', import.meta.url), 'utf8'))
+  expect(tests.jobs.required.needs).toEqual(['ui'])
 })

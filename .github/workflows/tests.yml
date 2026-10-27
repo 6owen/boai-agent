@@ -30,8 +30,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-ui-dependencies
         id: dependencies
-        with:
-          save-cache: ${{ matrix.shard == 1 }}
       - run: pnpm build
       - run: node scripts/ui-regression.mjs check --profile github-macos15-arm64 --shard ${{ matrix.shard }}/2 --output .local/ui-ci
       - run: node scripts/ci-result.mjs record-ui-shard .local/ui-ci ${{ matrix.shard }}

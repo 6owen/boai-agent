@@ -175,6 +175,7 @@ Then('当前场景的真实交互和布局满足原约定', async ({ runtime, ui
     const authorize = await voice.getByRole('button', { name: '授权并刷新设备', exact: true }).boundingBox()
     expect(authorize!.height).toBe(32)
     expect(microphone!.height).toBe(authorize!.height)
+    for (const control of [languageBox, microphone]) expect(control!.width).toBe(220)
     await expect(voice.getByRole('button', { name: /^(保存|应用)$/ })).toHaveCount(0)
     await expect(voice.locator('kbd')).toHaveCount(0)
     const terms = voice.getByRole('textbox', { name: '语音术语表', exact: true })

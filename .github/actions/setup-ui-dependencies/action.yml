@@ -1,5 +1,5 @@
 # [INPUT]: 固定Node、完整workspace依赖清单/锁/补丁及macOS runner身份。
-# [OUTPUT]: 精确安装缓存命中跳过install，缺失时复用pnpm仓库并严格安装；始终核实际Electron。
+# [OUTPUT]: 普通UI只恢复/安装/验证；仅独立预热任务保存完整缓存，压缩不串行阻塞UI。
 # [POS]: 普通UI与官方候选共用的依赖准备，不缓存产品dist或业务数据。
 # [PROTOCOL]: 修改同步Header、目录地图及22组06第17节。
 name: Set up UI dependencies
@@ -9,8 +9,8 @@ inputs:
     description: Exact UI Node runtime.
     default: '24.16.0'
   save-cache:
-    description: Only one matrix shard saves the shared installation.
-    default: 'true'
+    description: Only the independent cache warm-up workflow writes caches.
+    default: 'false'
 outputs:
   cache-hit:
     description: Exact installed dependency cache hit.

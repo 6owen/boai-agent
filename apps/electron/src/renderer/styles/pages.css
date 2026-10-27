@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 2026-10-27云端新增语音场景查出控件36px与授权32px不一致；语音行局部control-height固定原约定32px。
+ * [OUTPUT]: 语音选择器32px沿组件utilities约束，页面低层规则不再假设覆盖Select默认高度。
  * [OUTPUT]: 语音页主要控件统一220px/32px，辅助操作在左；仅覆盖语音设置行，窄屏按可用宽度收缩。
  * [OUTPUT]: 移除被utilities覆盖的活动分隔条局部规则；透明默认色与会话同款ring交互色归组件同层样式。
  * [OUTPUT]: 设置分组与本机Agent标题操作栏共用12px下方留白，标题自身不重复添加外边距。
@@ -80,7 +80,6 @@
 .appearance-row>label,.appearance-row>span { font-weight:500;flex-shrink:0 }
 .appearance-row-controls { display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:0 }
 .appearance-row [data-slot=select-trigger] { max-width:180px }
-.appearance-row[data-voice-setting-row] { --control-height:32px }
 .appearance-row[data-voice-setting-row] .appearance-row-controls { justify-content:flex-end }
 .appearance-row[data-voice-setting-row] .soft-button-link { font-size:var(--text-ui-caption) }
 .appearance-row[data-voice-setting-row] :is([data-slot=select-trigger],[data-voice-setting-control]) { width:220px;max-width:100%;height:var(--control-height) }
