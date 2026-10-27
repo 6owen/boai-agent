@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 单次启动先经原snapshot请求等待服务就绪并核对本场profile/会话，再开始真实点击；不重试或重建数据。
  * [OUTPUT]: UI可在本场独立profile用原bootstrap/配置事务准备数据后仅启动一次；其他BDD保留原桌面配置和重启路径。
  * [OUTPUT]: 渠道引用在模型正文附带固定来源，离线参与判断按首行原测试要求识别；不改员工实际判断逻辑。
  * [OUTPUT]: 原视觉夹具默认模拟视口；后台原生窗口场景可显式禁用，避免截图截断。
@@ -110,6 +111,14 @@ export async function prepareGroupChat(runtime: Desktop, { emulateViewport = tru
     ...artifacts.map(value => ({ collection: 'artifacts', id: value.id!, value })),
   ]) } finally { await store.close() }
   await runtime.start({ mainEntry })
+  if (seedBeforeLaunch) {
+    // A preload bridge exists before the cold runtime is ready. Confirm the
+    // original service has opened this fixture before starting UI navigation.
+    const snapshot = await runtime.page.evaluate(() => window.boai.request('snapshot', undefined))
+    if (snapshot.dataPath !== setup.dataPath || ![setup.group.id, setup.direct.id].every(id => snapshot.conversations.some(room => room.id === id))) {
+      throw new Error('UI启动未读取本场预备的profile和会话；禁止重建数据后掩盖失败')
+    }
+  }
   if (emulateViewport) await resizeGroupWindow(runtime, 1487, 1058)
   await runtime.page.getByRole('button', { name: /产品讨论组/ }).click()
   return { ...setup, state, artifacts }

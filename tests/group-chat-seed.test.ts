@@ -1,6 +1,7 @@
 /*
  * [INPUT]: UI准备入口、原bootstrap/SQLite及隔离profile；Electron仅以启动边界替身观测。
  * [OUTPUT]: 历史/成果准备完成且owner已释放后才首次启动，跨场数据/端口独立、零模型调用；不代替真实UI。
+ * [OUTPUT]: 重新打开原运行服务核对snapshot后才导航；错误profile或缺少原会话直接拒绝。
  * [POS]: UI数据夹具生命周期回归。
  * [PROTOCOL]: 修改同步Header、tests/.folder.md和第22组03。
  */
@@ -12,11 +13,12 @@ import type { Server } from 'node:http'
 import { prepareGroupChat } from './e2e/support/group-chat'
 import type { Desktop } from './e2e/support/desktop'
 import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
-import type { Conversation, Message } from '../packages/shared/src/domain'
+import type { Conversation, Message, Snapshot } from '../packages/shared/src/domain'
+import { startOwnedRuntime } from '../packages/runtime/src/bootstrap'
 
 const cleanups: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const cleanup of cleanups.splice(0).reverse()) await cleanup() })
-async function fixture() {
+async function fixture(invalidSnapshot?: 'profile' | 'conversations') {
   const root = await mkdtemp(join(tmpdir(), 'boai-ui-seed-'))
   cleanups.push(() => rm(root, { recursive: true, force: true }))
   const start = vi.fn(async () => {
@@ -28,7 +30,20 @@ async function fixture() {
       expect(await store.get<Message>('messages', 'history-direct-13')).toMatchObject({ status: 'completed' })
     } finally { await store.close() }
   })
-  const page = { setViewportSize: vi.fn(), getByRole: vi.fn(() => ({ click: vi.fn() })) }
+  let ready = false
+  const page = {
+    evaluate: vi.fn(async () => {
+      const noModel = async () => { throw new Error('UI数据校验不得调用模型') }
+      const owned = await startOwnedRuntime({ dataPath: join(root, 'v2'), engine: { run: noModel, test: noModel }, secrets: { get: async () => undefined, set: noModel, delete: noModel }, emit: () => {} })
+      try {
+        const snapshot = await owned.service.handle('snapshot', undefined) as Snapshot
+        ready = true
+        return { ...snapshot, ...(invalidSnapshot === 'profile' ? { dataPath: `${root}/wrong` } : invalidSnapshot === 'conversations' ? { conversations: [] } : {}) }
+      } finally { await owned.close() }
+    }),
+    setViewportSize: vi.fn(),
+    getByRole: vi.fn(() => ({ click: vi.fn(() => { expect(ready).toBe(true) }) })),
+  }
   const runtime = { root, start, page, trackServer(server: Server) { cleanups.push(() => new Promise<void>((resolve, reject) => { server.closeAllConnections(); server.close(error => error ? reject(error) : resolve()) })) } } as unknown as Desktop
   const data = await prepareGroupChat(runtime, { mainEntry: 'observed-entry.cjs', seedBeforeLaunch: true, now: Date.parse('2026-10-20T01:00:00Z') })
   return { root, start, data }
@@ -50,4 +65,7 @@ it('不同UI场景保持独立profile、工作区和历史，准备不复用前�
   const other = new ProductStore(join(b.data.dataPath, 'boai.sqlite')); await other.init()
   try { expect(await other.get<Conversation>('conversations', b.data.group.id)).toMatchObject({ title: '产品讨论组' }) } finally { await other.close() }
   expect(a.data.state.calls + b.data.state.calls).toBe(0)
+})
+it.each(['profile', 'conversations'] as const)('启动后的%s不匹配时保留失败，不重建数据', async invalidSnapshot => {
+  await expect(fixture(invalidSnapshot)).rejects.toThrow('UI启动未读取本场预备的profile和会话')
 })
