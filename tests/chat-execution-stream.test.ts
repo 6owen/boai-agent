@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 所有终态执行卡不再挂查看/继续/任务结果；执行与普通消息共用可打开的员工资料头像及rounded-md。
  * [OUTPUT]: 历史预取期间保留当前窗口的实时执行卡，窗口移出后才卸载；不以最新页标记提前清空思考。
  * [OUTPUT]: 运行卡无常驻查看；历史失败/自动化镜像仅回到原消息页，新终态不闪退。
  * [OUTPUT]: 五项反馈的调度额度/取消接续或历史展示回归；具体验证边界以本文件用例为准。
@@ -55,10 +56,10 @@ afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi
 const render = async () => { await act(async () => root.render(createElement(ChatView, props))) }
 const textEvent = (text: string, revision: number): ExecutionEvidence => ({ id: 'text', eventType: 'agent.text.block', payload: { text, itemId: 'text' }, agentRunId: run.id, runId: run.id, conversationId: run.conversationId, agentId: run.agentId, createdAt: run.createdAt, updatedAt: run.createdAt, sequence: 1, revision, contentLength: text.length, deferred: false })
 
-test.each(['failed', 'cancelled', 'interrupted'] as const)('retains %s execution content at its original message and admits one explicit continuation', async status => {
+test.each(['failed', 'cancelled', 'interrupted'] as const)('retains %s execution content at its original message without persistent action buttons', async status => {
   const trigger = { id: 'question', conversationId: 'chat', senderType: 'user' as const, senderId: 'user', senderName: '我', content: '统计周报', status: 'completed' as const, sequence: 1, createdAt: run.createdAt }
   const request = vi.fn(async (_method: string) => undefined)
-  props = { ...props, api: { ...props.api, request: request as typeof props.api.request }, detail: { ...props.detail, runs: [{ ...run, status, error: '网络断开' }], messages: [trigger], messagePage: { ...props.detail.messagePage, items: [{ messageId: trigger.id, sequence: 1, status: 'available', message: trigger }] } } }
+  props = { ...props, api: { ...props.api, request: request as typeof props.api.request }, detail: { ...props.detail, runs: [{ ...run, workId: 'old-work', status, error: '网络断开' }], messages: [trigger], messagePage: { ...props.detail.messagePage, items: [{ messageId: trigger.id, sequence: 1, status: 'available', message: trigger }] } } }
   fixture.evidence = [textEvent('已经整理第一部分周报', 1)]
   await render()
   expect(host.querySelectorAll('[data-chat-execution-run]')).toHaveLength(1)
@@ -66,16 +67,9 @@ test.each(['failed', 'cancelled', 'interrupted'] as const)('retains %s execution
   expect(host.textContent).not.toContain('已有过程保留')
   expect(host.textContent).not.toContain('已取消 ·')
   expect(host.querySelector('[data-chat-execution-run]')?.classList.contains('w-full')).toBe(true)
-  const button = [...host.querySelectorAll<HTMLButtonElement>('button')].find(item => item.textContent === '继续')!
-  await act(async () => { button.click(); button.click() })
-  expect(request.mock.calls.filter(([method]) => method === 'sendMessage')).toHaveLength(1)
-  expect(request).toHaveBeenCalledWith('sendMessage', { conversationId: run.conversationId, content: '继续', mentionIds: [], requestId: expect.any(String) })
-  expect(button.closest('.button-row')).not.toBeNull()
-  const view = host.querySelector<HTMLButtonElement>('[aria-label="查看完整执行过程"]')!
-  expect(view.parentElement).toBe(button.parentElement)
-  expect(view.textContent).toBe('查看')
-  expect(button.textContent).toBe('已发送')
-  expect(button.disabled).toBe(true)
+  expect(host.querySelector('[data-chat-execution-run] .button-row')).toBeNull()
+  for (const label of ['继续', '查看', '任务结果']) expect([...host.querySelectorAll('button')].map(button => button.textContent)).not.toContain(label)
+  expect(request.mock.calls.filter(([method]) => method === 'sendMessage' || method === 'getTaskResult')).toHaveLength(0)
 })
 
 test('retains failed automation mirrors at a located public trigger', async () => {
@@ -88,8 +82,8 @@ test('retains failed automation mirrors at a located public trigger', async () =
   expect(host.querySelector('[data-chat-execution-run]')).not.toBeNull()
   expect(host.textContent).toContain('已读取的周报统计过程')
   expect(fixture.source).toBe('task-chat')
-  await act(async () => [...host.querySelectorAll<HTMLButtonElement>('button')].find(item => item.textContent === '继续')!.click())
-  expect(request).toHaveBeenCalledWith('sendMessage', { conversationId: 'chat', content: '继续', mentionIds: [], requestId: expect.any(String) })
+  for (const label of ['继续', '查看', '任务结果']) expect([...host.querySelectorAll('button')].map(button => button.textContent)).not.toContain(label)
+  expect(request.mock.calls.filter(([method]) => method === 'sendMessage' || method === 'getTaskResult')).toHaveLength(0)
 })
 
 test.each([false, true])('mirrors scheduled reasoning and tools from the original run, including located messages (%s)', async located => {
@@ -268,4 +262,24 @@ test('keeps the live execution card while an older page is in flight, then remov
   props = { ...props, paging: false, detail: { ...props.detail, messages: [], messagePage: { ...props.detail.messagePage, items: [] } } }; await render()
   expect(host.querySelector('[data-chat-execution-run="run"]')).toBeNull()
   vi.restoreAllMocks()
+})
+
+test.each([false, true])('uses the same interactive employee avatar for execution and normal messages (completed: %s)', async completed => {
+  const configure = vi.fn()
+  props = { ...props, onConfigureAgent: configure }
+  if (completed) {
+    const message = { id: 'answer', conversationId: 'chat', senderType: 'agent' as const, senderId: 'employee', senderName: '员工', content: '最终答复', status: 'completed' as const, sequence: 2, createdAt: run.createdAt }
+    props = { ...props, detail: { ...props.detail, runs: [{ ...run, status: 'completed' }], messages: [message], messagePage: { ...props.detail.messagePage, items: [{ messageId: message.id, sequence: 2, status: 'available', message }] } } }
+  }
+  await render()
+  const avatar = host.querySelector<HTMLButtonElement>('.message-avatar-trigger')!
+  expect(avatar).not.toBeNull()
+  expect(avatar.classList.contains('rounded-md')).toBe(true)
+  expect(avatar.classList.contains('soft-button-round')).toBe(false)
+  await act(async () => avatar.click())
+  const popover = document.querySelector('.agent-info-popover')!
+  expect(popover.textContent).toContain('员工')
+  expect(popover.textContent).toContain('技能')
+  await act(async () => [...popover.querySelectorAll('button')].find(button => button.textContent === '配置 Agent')!.click())
+  expect(configure).toHaveBeenCalledWith(props.snapshot.agents[0])
 })

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 普通消息及生成中的执行卡员工头像均核对rounded-md和资料卡点击；执行卡无任务结果/查看/继续。
  * [OUTPUT]: 原截图后恢复走时再测流式滚动，核对Date.now推进；原截图时间、阈值和超时保持。
  * [OUTPUT]: chat-light在原截图后经实际发送/HTTP思考增量验证上滚停跟随、空历史预取保卡、双向滚轮及回底恢复；其余20场合同/截图保持。
  * [OUTPUT]: 新增语音设置明暗两场，核对默认关闭、紧凑控件/32px、术语真实自动保存及统一快捷键导航；原18项保持。
@@ -113,7 +114,15 @@ Then('当前场景的真实交互和布局满足原约定', async ({ runtime, ui
     await input.press('Backspace')
     await expect.poll(() => messageDraft(input)).toBe('')
     await expect(page.getByRole('button', { name: '发送消息', exact: true })).toBeDisabled()
-    if (selected.scene === 'chat') await expect(page.locator('#message-history-writer')).toContainText('报告初稿')
+    if (selected.scene === 'chat') {
+      await expect(page.locator('#message-history-writer')).toContainText('报告初稿')
+      const avatar = page.locator('#message-history-writer .message-avatar-trigger')
+      await expect(avatar).toHaveClass(/rounded-md/)
+      await expect(avatar).not.toHaveClass(/soft-button-round/)
+      await avatar.click()
+      await expect(page.locator('.agent-info-popover[data-open]').getByRole('heading', { name: '写手', exact: true })).toBeVisible()
+      await page.keyboard.press('Escape')
+    }
     const original = uiRegression.fixture!.direct
     const repeated = await page.evaluate(() => window.boai.request('createConversation', { kind: 'direct', title: '重复进入不能新建另一个单聊', agentIds: ['researcher'] }))
     expect(repeated.id).toBe(original.id)
@@ -237,6 +246,13 @@ Then('当前场景与已接受的UI截图一致', async ({ runtime, uiRegression
   await expect.poll(fixture.scrolling.started).toBe(true)
   const viewport = page.locator('.messages:visible'), card = viewport.locator('[data-chat-execution-run]')
   await expect(card).toContainText('UI_SCROLL_START')
+  const executionAvatar = card.locator('xpath=ancestor::article').getByRole('button', { name: '查看 研究员 的资料', exact: true })
+  await expect(executionAvatar).toHaveClass(/rounded-md/)
+  await expect(executionAvatar).not.toHaveClass(/soft-button-round/)
+  await executionAvatar.click()
+  await expect(page.locator('.agent-info-popover[data-open]').getByRole('heading', { name: '研究员', exact: true })).toBeVisible()
+  await page.keyboard.press('Escape')
+  for (const name of ['任务结果', '查看', '继续']) await expect(card.getByRole('button', { name, exact: true })).toHaveCount(0)
   fixture.scrolling.append(Array.from({ length: 90 }, (_, i) => `第${i + 1}段思考：持续核对消息滚动位置。\n\n`).join('') + 'UI_SCROLL_LONG\n\n')
   await expect(card).toContainText('UI_SCROLL_LONG')
   await expect.poll(() => viewport.evaluate(el => el.scrollHeight - el.clientHeight - el.scrollTop)).toBeLessThanOrEqual(1)

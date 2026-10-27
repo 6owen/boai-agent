@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 执行详情增加按需共享任务结果；历史面板不新增继续或发送操作。
+ * [OUTPUT]: 2026-10-27移除任务结果入口与弹窗，执行记录沿原详情展示。
  * [OUTPUT]: 执行历史仅查看过程/定位消息及原停止入口，不提供继续或发送消息的按钮。
  * [OUTPUT]: 通讯录固定Run通过原员工详情查询精确读取，同一执行卡片不加载其他历史或额外摘要。
  * [OUTPUT]: 卡片工具行按停止图标、定位聊天记录、原生记录切换排列；定时任务停止由父级按本次身份提供，仅显示在最新卡片。
@@ -26,7 +26,6 @@ import { Separator } from '@/components/ui/separator'
 import { Popover, PopoverTrigger, PopoverContent, PopoverHeader, PopoverTitle, PopoverDescription } from '@/components/ui/popover'
 import { ChevronRight, Icon, Square, Terminal, Workflow } from '@/components/icons'
 import { ExecutionFeed, type ExecutionView } from './execution-feed'
-import { TaskResultButton } from './task-result'
 import { ExecutionRunInfo } from './execution-record'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ExecutionAvatarRail } from './ExecutionAvatarRail'
@@ -166,7 +165,6 @@ function ExecutionRunContent({ api, run, active, cache, view, live, onViewChange
         <span className="flex items-center gap-1"><Icon name={run.status === 'running' ? 'LoaderCircle' : run.status === 'completed' ? 'CircleCheck' : run.status === 'failed' ? 'OctagonX' : 'Clock'} className={run.status === 'running' ? 'size-3.5 animate-spin' : 'size-3.5'} />{labels[run.status]}</span>
       </div>
       <div className="flex shrink-0 items-center gap-1">
-      {run.workId && <TaskResultButton api={api} run={run} active={active} />}
       {stopAction}
       {allowNativeStop && live && run.backend && ['codex-local', 'claude-local', 'runtime-plugin'].includes(run.backend.kind) && <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-xs" disabled={!active} aria-label="停止本次执行" onClick={() => void api.request('stopNativeExecution', { conversationId: run.conversationId, runId: run.id }).catch(error => onError(errorText(error)))} />}><Square /></TooltipTrigger><TooltipContent>停止本次执行</TooltipContent></Tooltip>}
       {onNavigateMessage && <ExecutionMessageButton api={api} run={run} active={active} onNavigate={onNavigateMessage} />}

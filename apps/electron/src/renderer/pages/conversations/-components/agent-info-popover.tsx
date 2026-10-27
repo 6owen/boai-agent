@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 普通/执行消息共用资料卡与rounded-md头像触发器，不传独立round覆盖。
  * [INPUT]: 当前员工与已绑定资料快照、头像所在位置、配置导航回调、共享 Avatar/Popover/Separator。
  * [OUTPUT]: 点击消息或标题头像查看姓名、职责和技能/知识资料，不展示启用状态；底部配置按钮关闭浮层并通过稳定头像入口跳转该员工配置；标题保持原尺寸重叠头像。
  * [POS]: 单聊/群聊消息与群标题共用的员工资料浮层，复用系统 Soft 皮肤。
@@ -17,7 +18,7 @@ export function AgentInfoPopover({ agent, resources, onConfigure, placement = 'm
   const header = placement === 'header'
   const names = (ids: string[]) => ids.map(id => resources.find(resource => resource.id === id)?.name ?? '资料已移除').join('、') || '未绑定'
   return <Popover open={open} onOpenChange={setOpen}>
-    <PopoverTrigger render={<Button ref={trigger} variant={header ? 'link' : 'ghost'} size={header ? 'icon-xs' : 'icon'} round className={header ? 'chat-member-avatar' : 'message-avatar-trigger'} aria-label={`查看 ${agent.name} 的资料`} title={agent.name} />}>
+    <PopoverTrigger render={<Button ref={trigger} variant={header ? 'link' : 'ghost'} size={header ? 'icon-xs' : 'icon'} className={header ? 'chat-member-avatar rounded-md' : 'message-avatar-trigger rounded-md'} aria-label={`查看 ${agent.name} 的资料`} title={agent.name} />}>
       <Avatar name={agent.name} seed={agent.id} avatar={agent.avatar} color={agent.color} />
     </PopoverTrigger>
     <PopoverContent side={header ? 'bottom' : 'right'} align={header ? 'end' : 'start'} className="agent-info-popover w-72 max-w-[calc(100vw-24px)] gap-3 p-4">

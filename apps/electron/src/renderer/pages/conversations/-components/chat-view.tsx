@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 执行卡头像复用正常消息AgentInfoPopover，移除执行卡及失败决策的常驻查看/继续动作。
  * [OUTPUT]: 开发StrictMode effect清理不改变用户跟随意图，隐藏生命周期仍暂停。
  * [OUTPUT]: 聊天跟随委托use-stick-to-bottom；分页仅在消息窗口变化时恢复锚点，预取保留当前窗口内的实时执行卡。
  * [OUTPUT]: 2026-10-27 默认关闭语音插件接线、可信主窗口与原草稿/生命周期边界。
@@ -98,7 +99,6 @@ import { isChannelConversation } from '@boai/shared/domain/conversation-list'
 import { Avatar, timeText } from '@/components/common/index'
 
 import { failureSummary, liveTurn, type ChatDraft } from '../presentation'
-import { ContinueRunButton } from '@/components/detail-panel/continue-run-button'
 import { interruptedTriggerTurn } from '../activity'
 import { artifactsByMessage, approvalsByMessage, continuesMessage, groupMessages } from '../group-chat'
 import { ChatArtifactCard, PendingArtifactActions } from './chat-artifact-card'
@@ -243,12 +243,12 @@ function ChatHistory({ api, pageActive, questionReplies, artifactActions, onTeam
     run.status !== 'completed' && ((['queued', 'running', 'waiting_approval'].includes(run.status) && (latestPage.current || !pageEdges.after)) || detail.messages.some(message => message.id === triggerMessage.id || message.id === messageId)))
   const mirrorAnchor = (mirror: typeof mirrors[number]) => detail.messages.some(message => message.id === mirror.triggerMessage.id) ? mirror.triggerMessage.id : mirror.messageId
   const mirroredMessageIds = new Set(mirrors.map(mirror => mirror.messageId).filter(Boolean))
-  const executionCard = (run: typeof activeRuns[number], trigger?: ConversationDetail['messages'][number]) => {
-    const agent = members.find(member => member.id === run.agentId)
+  const executionCard = (run: typeof activeRuns[number]) => {
+    const agent = snapshot.agents.find(member => member.id === run.agentId)
     return <article key={run.id} className="message-row agent">
-      <div className="message-avatar"><Avatar name={run.agentName} seed={run.agentId} avatar={agent?.avatar} color={agent?.color} /></div>
+      <div className="message-avatar">{agent ? <AgentInfoPopover agent={agent} resources={snapshot.resources} onConfigure={() => onConfigureAgent(agent)} /> : <Avatar name={run.agentName} seed={run.agentId} />}</div>
       <div className="message-main min-w-0">{group && <div className="message-meta"><strong>{run.agentName}</strong></div>}
-        <ChatExecutionCard api={api} run={run} active={pageActive} conversationId={detail.conversation.id} onContinue={() => historyRef.current?.followLatest()} onOpen={() => onTrace(trigger)} />
+        <ChatExecutionCard api={api} run={run} active={pageActive} />
       </div>
     </article>
   }
@@ -402,7 +402,7 @@ function ChatHistory({ api, pageActive, questionReplies, artifactActions, onTeam
           {(detail.materials ?? []).filter(material => material.messageId === item.messageId && ['ready', 'unavailable'].includes(material.status)).map(material => <Button key={material.id} variant="link" size="sm" aria-label={`核对材料 ${materialDisplayName(material.name)}`} onClick={() => onPreviewMaterial(material)}>核对材料：{materialDisplayName(material.name)}</Button>)}
         </article>
         const attachedMirrors = mirrors.filter(mirror => mirrorAnchor(mirror) === message.id)
-        if (message.status === 'streaming' && mirroredMessageIds.has(message.id)) return <Fragment key={message.id}>{attachedMirrors.map(mirror => executionCard(mirror.run, mirror.triggerMessage))}</Fragment>
+        if (message.status === 'streaming' && mirroredMessageIds.has(message.id)) return <Fragment key={message.id}>{attachedMirrors.map(mirror => executionCard(mirror.run))}</Fragment>
         if (message.status === 'streaming' && message.automationPublication && message.senderType === 'agent' && !message.content) return null
         // Message events can arrive before the run snapshot; do not flash the old empty typing bubble.
         if (message.status === 'streaming' && message.runId) {
@@ -446,19 +446,19 @@ function ChatHistory({ api, pageActive, questionReplies, artifactActions, onTeam
             {useCard ? <MessageCard message={message} profile={snapshot.userProfile} receipt={!group && isPersonalMessage(message) ? <MessageReceipt runs={sourceRuns} /> : undefined} onReply={() => quote(message.id)} onTrace={() => onTrace(message)} onPublish={channel && !historicalChannel && message.senderType === 'agent' && message.status === 'completed' && onPublish ? () => onPublish(message) : undefined} publishDisabled={busy || receipts.some(delivery => ['sent', 'sending'].includes(delivery.status))} publishDescription={channelDeliveryDescription(receipts)}>{body}</MessageCard> : body}
 
             {interruptedTurn && <div role="status" className="field-hint" data-interrupted-turn-id={interruptedTurn.id}><span>该轮处理已中断，已有回复和成果保留；未自动重新执行。</span><Button variant="link" size="sm" onClick={() => onTrace(message)}>查看执行过程</Button></div>}
-            {!interruptedTurn && message.senderType === 'user' && detail.runs.filter(run => run.triggerMessageId === message.id && run.phase === 'decision' && ['failed', 'interrupted'].includes(run.status) && !detail.runs.some(next => next.triggerMessageId === message.id && next.agentId === run.agentId && next.phase === run.phase && next.createdAt > run.createdAt)).map(run => <div key={run.id} role="status" className="field-hint"><span>{run.agentName}：{run.error ? failureSummary(run.error) : '处理已中断，请查看执行过程。'}</span><ContinueRunButton key={run.id} api={api} run={run} active={pageActive} /><Button variant="link" size="sm" onClick={() => onTrace(message)}>查看执行过程</Button></div>)}
+            {!interruptedTurn && message.senderType === 'user' && detail.runs.filter(run => run.triggerMessageId === message.id && run.phase === 'decision' && ['failed', 'interrupted'].includes(run.status) && !detail.runs.some(next => next.triggerMessageId === message.id && next.agentId === run.agentId && next.phase === run.phase && next.createdAt > run.createdAt)).map(run => <div key={run.id} role="status" className="field-hint"><span>{run.agentName}：{run.error ? failureSummary(run.error) : '处理已中断，请查看执行过程。'}</span></div>)}
             {attachedApprovals.map(approval => <ApprovalCard key={approval.id} approval={approval} busy={busy || !pageActive} onApprove={onApprove} />)}
           </div>
         </article>
-        {failedRunsFor(message.id).map(run => executionCard(run, message))}
-        {attachedMirrors.map(mirror => executionCard(mirror.run, mirror.triggerMessage))}
+        {failedRunsFor(message.id).map(run => executionCard(run))}
+        {attachedMirrors.map(mirror => executionCard(mirror.run))}
         {onOpenCatalog && catalogByMessage.has(message.id) && <CatalogResults items={catalogByMessage.get(message.id)!} agent={snapshot.agents.find(isCoreAgent)} onOpen={onOpenCatalog} />}
         </Fragment>
       })}
       {isCoreConversation(conversation) && <CoreTeamResults api={api} detail={detail} snapshot={snapshot} active={pageActive} busy={busy} onGroup={onTeamGroup} />}
       {isCoreConversation(conversation) && <CoreCollaborationResults api={api} conversationId={conversation.id} snapshot={snapshot} active={pageActive} busy={busy} onGroup={onTeamGroup} onAgent={onConfigureAgent} />}
-      {executionRuns.map(run => executionCard(run, detail.messages.find(message => message.id === run.triggerMessageId)))}
-      {mirrors.filter(mirror => !detail.messages.some(message => message.id === mirrorAnchor(mirror))).map(mirror => executionCard(mirror.run, mirror.triggerMessage))}
+      {executionRuns.map(run => executionCard(run))}
+      {mirrors.filter(mirror => !detail.messages.some(message => message.id === mirrorAnchor(mirror))).map(mirror => executionCard(mirror.run))}
       {approvalGroups.pending.map(approval => <article key={approval.id} className="message-row agent"><div className="message-avatar"><Avatar name={approval.agentName} seed={detail.runs.find(run => run.id === approval.runId)?.agentId ?? approval.id} avatar={snapshot.agents.find(agent => agent.id === detail.runs.find(run => run.id === approval.runId)?.agentId)?.avatar} color={snapshot.agents.find(agent => agent.id === detail.runs.find(run => run.id === approval.runId)?.agentId)?.color} /></div><div className="message-main">{group && <div className="message-meta"><strong>{approval.agentName}</strong></div>}<ApprovalCard approval={approval} busy={busy || !pageActive} onApprove={onApprove} /></div></article>)}
       {artifactRequests.filter(value => !visibleArtifactIds.has(pendingArtifactId(value))).map(value => <PendingArtifactActions key={JSON.stringify([value.scope, value.logicalArtifactId])} pending={value} artifacts={detail.artifacts} actions={artifactActions} active={pageActive} onRestoreRevision={restoreRevision} />)}
     </ScrollArea>
