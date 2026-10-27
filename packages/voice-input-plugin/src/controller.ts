@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 2026-10-27 临时预览、一次草稿插入、改稿失效与迟到整理保护。
+ * [OUTPUT]: 2026-10-27 每次录音使用同版配置的指定麦克风；原草稿、预览与迟到整理保护保持。
  * [INPUT]: Voice API events, active Composer target and actual capture lifecycle.
  * [OUTPUT]: Ephemeral ordered preview, once-only insertion and guarded optional refinement.
  * [POS]: Plugin UI controller; draft writes are delegated to host editor transactions.
@@ -53,7 +53,7 @@ export class VoiceController {
         this.update({ preview: [...this.segments.values()].sort((a, b) => a.sequence - b.sequence).map(item => item.text).join('') })
       })
       await this.api.start(identity); current()
-      const capture = await this.createCapture(controller.signal, pcm => this.api.append({ sessionId: identity.sessionId, sequence: this.sequence++, pcm }), error => { this.error(error.message); void this.finish(true) })
+      const capture = await this.createCapture(controller.signal, pcm => this.api.append({ sessionId: identity.sessionId, sequence: this.sequence++, pcm }), error => { this.error(error.message); void this.finish(true) }, snapshot.settings.microphoneDeviceId)
       if (generation !== this.generation || controller.signal.aborted || this.identity !== identity || this.consumed) { capture.cancel(); return }
       this.capture = capture; this.update({ phase: 'recording' })
     } catch (error) { if (generation === this.generation) { if (!controller.signal.aborted) this.error(error instanceof Error ? error.message : '无法开始录音'); await this.cancel() } else controller.abort() }

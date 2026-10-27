@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 2026-10-27 Qwen确认/重复/乱序/断流和取消协议回归源码。
+ * [OUTPUT]: 2026-10-27 Qwen语言/术语实际会话参数及原确认/断流协议回归源码。
  * [INPUT]: Qwen socket events, finalization, duplicate segments and interrupted audio.
  * [OUTPUT]: Ordered confirmed text, truthful partial results and cancellation without reconnect.
  * [POS]: Controlled protocol regression source; no provider or microphone access.
@@ -9,7 +9,7 @@ import { expect, it } from 'vitest'
 import { EventEmitter } from 'node:events'
 import type WebSocket from 'ws'
 import { QwenRecognition } from '../packages/voice-input-plugin/src/qwen'
-import { defaultVoiceSettings, type VoiceEvent } from '../packages/voice-input-plugin/src/protocol'
+import { defaultVoiceSettings, type VoiceEvent, type VoiceSettings } from '../packages/voice-input-plugin/src/protocol'
 class Socket extends EventEmitter {
   readyState = 1; bufferedAmount = 0; sent: { type: string }[] = []; terminated = false
   send(value: string) { this.sent.push(JSON.parse(value)) }
@@ -17,9 +17,9 @@ class Socket extends EventEmitter {
   terminate() { this.terminated = true; this.close() }
   receive(value: unknown) { this.emit('message', Buffer.from(JSON.stringify(value))) }
 }
-function fixture() {
+function fixture(settings: VoiceSettings = defaultVoiceSettings()) {
   const socket = new Socket(), events: VoiceEvent[] = []
-  const asr = new QwenRecognition('session', defaultVoiceSettings(), 'fixture-secret', event => events.push(event), () => socket as unknown as WebSocket)
+  const asr = new QwenRecognition('session', settings, 'fixture-secret', event => events.push(event), () => socket as unknown as WebSocket)
   socket.emit('open'); socket.receive({ type: 'session.updated' })
   return { socket, asr, events }
 }
@@ -48,4 +48,15 @@ it('cancels a pending connection and rejects readiness without leaving its timer
   const socket = new Socket(), asr = new QwenRecognition('pending', defaultVoiceSettings(), 'fixture-secret', () => {}, () => socket as unknown as WebSocket)
   const rejected = asr.ready.catch(error => error)
   asr.cancel(); expect(await rejected).toBeInstanceOf(Error); expect(socket.terminated).toBe(true)
+})
+
+it('sends explicit language and terminology together, omits auto rather than sending an unsupported code', async () => {
+  const settings = defaultVoiceSettings(); settings.mode = 'qwen-realtime'; settings.language = 'de'; settings.terms = [{ word: 'BOAI', aliases: ['波艾'] }]
+  const explicit = fixture(settings); await explicit.asr.ready
+  expect(explicit.socket.sent[0]).toMatchObject({ type: 'session.update', session: { input_audio_transcription: { language: 'de', corpus: { text: 'BOAI / 波艾' } } } })
+  explicit.asr.cancel()
+  const automatic = fixture(); await automatic.asr.ready
+  expect(automatic.socket.sent[0]).toMatchObject({ session: { input_audio_transcription: {} } })
+  expect(JSON.stringify(automatic.socket.sent[0])).not.toContain('"language"')
+  automatic.asr.cancel()
 })

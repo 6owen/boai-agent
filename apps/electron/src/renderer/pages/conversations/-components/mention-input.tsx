@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 提供当前编辑器焦点查询，语音快捷键不能定位到其他输入框。
  * [OUTPUT]: 2026-10-27 默认关闭语音插件接线、可信主窗口与原草稿/生命周期边界。
  * [OUTPUT]: aria-disabled与实际编辑锁同步，使加载/待核对输入向辅助技术和真实UI操作报告同一禁用状态。
  * [OUTPUT]: scope变化保留编辑器DOM并重建ProseMirror文档/插件状态，撤销不跨会话；同scope草稿仍保留原历史。
@@ -24,6 +25,7 @@ import type { TextRange } from '../inline-mentions'
 import { documentDraft, documentPosition, draftOffset, mentionDocument, mentionExtensions, textNodes, voiceTextTransaction } from '../mention-editor'
 
 export interface MentionInputHandle {
+  hasFocus(): boolean
   voiceSnapshot(): VoiceAnchor | undefined
   insertVoice(anchor: VoiceAnchor, text: string): VoiceAnchor | undefined
   replaceVoice(anchor: VoiceAnchor, original: string, text: string): VoiceAnchor | undefined
@@ -69,6 +71,7 @@ export function MentionInput(props: Props) {
     return { ...anchor, end: anchor.start + text.length, revision: revision.current }
   }
   useImperativeHandle(props.ref, () => ({
+    hasFocus: () => editor.current?.view.hasFocus() ?? false,
     focus: () => editor.current?.view.focus(), selection, replace,
     voiceSnapshot: () => !editor.current || latest.current.disabled ? undefined : { scope: scope.current ?? '', revision: revision.current, start: selection().end, end: selection().end },
     insertVoice: (anchor, text) => voiceEdit(anchor, text),

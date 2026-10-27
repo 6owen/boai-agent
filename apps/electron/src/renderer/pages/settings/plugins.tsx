@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 2026-10-27 默认关闭语音插件接线、可信主窗口与原草稿/生命周期边界。
+ * [OUTPUT]: 2026-10-27 语音配置入口跳转独立设置页；启停仍由原插件真源保存。
  * [OUTPUT]: 页面布局复用settings-layout，标题/分组留白与卡片/设置行统一，原业务回调保持。
  * [OUTPUT]: 2026-10-19 原插件目录增加网页检索分类；启停仍由原宿主配置负责。
  * [OUTPUT]: 插件分类触发器与搜索输入统一使用全局控件高度并垂直对齐。
@@ -9,7 +9,6 @@
  * [POS]: 设置中的内置插件管理，不伪装成安装器或第三方市场。
  * [PROTOCOL]: 变化同步Header及所属.folder.md。
  */
-import { VoiceInputSettings } from './voice-input'
 import { Settings } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { SettingsLayout, SettingsCard } from './settings-layout'
@@ -23,10 +22,9 @@ import { Input } from '@/components/ui/input'
 import { SelectField } from '@/components/ui/select-field'
 import { Switch } from '@/components/ui/switch'
 
-export function PluginSettingsPage() {
+export function PluginSettingsPage({ onOpenVoice }: { onOpenVoice(): void }) {
   const { settings, ready, busy, error } = usePlugins()
   const usage = useSyncExternalStore(pluginUsage.subscribe, pluginUsage.snapshot, pluginUsage.snapshot)
-  const [voiceOpen, setVoiceOpen] = useState(false)
   const [query, setQuery] = useState(''), [kind, setKind] = useState('all')
   const plugins = applicationPlugins.filter(plugin => (kind === 'all' || plugin.contributions.some(item => item.type === kind)) && `${plugin.name} ${plugin.description} ${plugin.id}`.toLowerCase().includes(query.trim().toLowerCase()))
   return <SettingsLayout title="插件" aria-label="内置插件">
@@ -47,13 +45,12 @@ export function PluginSettingsPage() {
             {plugin.id !== 'boai.voice-input' && <p role="status" className="field-hint mt-1">{status}{busy === plugin.id ? ' · 正在保存…' : ''}</p>}
             {activity?.failure && <p className="field-hint text-destructive">最近一次预览加载失败。其他插件仍可使用。</p>}
           </div>
-          {plugin.id === 'boai.voice-input' && availability === 'enabled' && <Button variant="ghost" size="icon-sm" aria-label="配置语音输入" onClick={() => setVoiceOpen(true)}><Settings /></Button>}
+          {plugin.id === 'boai.voice-input' && <Button variant="ghost" size="icon-sm" aria-label="配置语音输入" onClick={onOpenVoice}><Settings /></Button>}
           <Switch id={`plugin-${plugin.id}`} aria-label={plugin.name} checked={availability === 'enabled'} disabled={!ready || Boolean(busy) || settings.readOnly || availability === 'incompatible'} onCheckedChange={enabled => { void setPluginEnabled(plugin.id, enabled) }} />
         </div>
       })}
       {!plugins.length && <p className="field-hint py-4">没有匹配的插件。</p>}
     </SettingsCard>
-    {voiceOpen && <VoiceInputSettings onClose={() => setVoiceOpen(false)} />}
     <RuntimePluginManager query={query} kind={kind} />
   </SettingsLayout>
 }

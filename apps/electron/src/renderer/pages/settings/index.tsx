@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 九个设置页共用settings-layout，数据与备份同样使用共享文档视口留白。
+ * [OUTPUT]: 十个设置页共用settings-layout；语音输入独立入口沿原导航草稿守卫，数据与备份同样使用共享文档视口留白。
  * [OUTPUT]: 桌面活动与日报独立设置分类；页面只提供采集/活动/确认清理，不提供日报入口。
  * [OUTPUT]: 个人资料常用技能菜单通过Shell导航到资源库技能列表，不打开本页详情。
  * [OUTPUT]: 快捷键分类支持启停/录入与自动保存，传递活跃状态以释放捕获。
@@ -23,14 +23,15 @@ import { DesktopSettingsPage } from './desktop'
 import { DesktopActivityPage } from './desktop-activity'
 import { WebSearchSettingsPage } from './web-search'
 import { PluginSettingsPage } from './plugins'
+import { VoiceInputSettingsPage } from './voice-input'
 import { useContext, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { LoaderCircle, HardDrive, Sparkles, Settings, Search, Contact } from '@/components/icons/index'
+import { LoaderCircle, HardDrive, Sparkles, Settings, Search, Contact, Mic } from '@/components/icons/index'
 import type { Snapshot } from '@boai/shared/domain'
 import type { DesktopApi } from '@boai/shared/ipc'
 import { Banner, GuardContext, useMutation } from '@/components/common/index'
 import { ConnectionSettings } from './connections'
 import type { LocalAgentTarget } from './local-agents'
-export type SettingsTab = 'profile' | 'connections' | 'data' | 'appearance' | 'shortcuts' | 'desktop' | 'desktop-activity' | 'plugins' | 'web-search'
+export type SettingsTab = 'profile' | 'connections' | 'data' | 'appearance' | 'shortcuts' | 'desktop' | 'desktop-activity' | 'plugins' | 'web-search' | 'voice-input'
 export function SettingsPage({ api, snapshot, refresh, divider, tab, setTab, active, onOpenSkills, localAgentTarget }: { api: DesktopApi; snapshot: Snapshot; refresh: () => Promise<void>; divider: ReactNode; tab: SettingsTab; setTab: (tab: SettingsTab) => void; active: boolean; onOpenSkills: () => void; localAgentTarget?: LocalAgentTarget }) {
   const [search, setSearch] = useState('')
   const [notice, setNotice] = useState('')
@@ -60,7 +61,7 @@ export function SettingsPage({ api, snapshot, refresh, divider, tab, setTab, act
   }, [tab, active])
   const groups = [
     { label: '个人', items: [{ id: 'profile', label: '个人资料', icon: Contact }, { id: 'appearance', label: '外观', icon: Settings }, { id: 'shortcuts', label: '快捷键', icon: Settings }, { id: 'desktop', label: '运行选项', icon: Settings }, { id: 'desktop-activity', label: '桌面活动与日报', icon: Settings }] },
-    { label: '配置', items: [{ id: 'connections', label: '模型连接', icon: Sparkles }, { id: 'web-search', label: '网页检索', icon: Search }, { id: 'plugins', label: '插件', icon: Settings }, { id: 'data', label: '数据与备份', icon: HardDrive }] },
+    { label: '配置', items: [{ id: 'connections', label: '模型连接', icon: Sparkles }, { id: 'web-search', label: '网页检索', icon: Search }, { id: 'voice-input', label: '语音输入', icon: Mic }, { id: 'plugins', label: '插件', icon: Settings }, { id: 'data', label: '数据与备份', icon: HardDrive }] },
   ] as const
   const matches = groups.flatMap(group => [...group.items]).filter(item => item.label.toLowerCase().includes(search.trim().toLowerCase()))
   return <div className="settings-page"><nav className="page-subnav" aria-label="设置分类">
@@ -81,7 +82,8 @@ export function SettingsPage({ api, snapshot, refresh, divider, tab, setTab, act
     {tab === 'desktop' && <DesktopSettingsPage api={api} active={active} />}
     {tab === 'desktop-activity' && <DesktopActivityPage api={api} active={active} />}
     {tab === 'web-search' && <WebSearchSettingsPage api={api} active={active} />}
-    {tab === 'plugins' && <PluginSettingsPage />}
+    {tab === 'voice-input' && <VoiceInputSettingsPage active={active} onOpenShortcuts={() => guard.navigate(() => setTab('shortcuts'))} />}
+    {tab === 'plugins' && <PluginSettingsPage onOpenVoice={() => guard.navigate(() => setTab('voice-input'))} />}
     {tab === 'data' && <DataSettings api={api} snapshot={snapshot} busy={busy} run={run} onNotice={setNotice} />}
     {busy && <p className="inline-loading"><LoaderCircle className="spinner" size={16} />正在处理…</p>}
   </div></div></div>

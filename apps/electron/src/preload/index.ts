@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 2026-10-27 默认关闭语音插件接线、可信主窗口与原草稿/生命周期边界。
+ * [OUTPUT]: 2026-10-27 增加可信主窗口语音设备授权租约；原默认关闭与草稿边界保持。
  * [OUTPUT]: 主窗专用诊断导出和当前桌面生命周期读取；不加入员工RPC。
  * [OUTPUT]: 消息复制经主窗口系统剪贴板桥完成，复制回执沿preload类型合同返回。
  * [OUTPUT]: 消息复制使用仅主窗口可调用的系统剪贴板写入桥，浏览器预览保留Web回退；成功后才显示已复制。
@@ -19,6 +19,7 @@ import { MATERIAL_LIMITS } from '@boai/shared/domain/materials'
 
 const api: DesktopApi = {
   voice: {
+    microphoneAccess: input => ipcRenderer.invoke('boai:voice', 'microphoneAccess', input),
     snapshot: () => ipcRenderer.invoke('boai:voice', 'snapshot'),
     configure: input => ipcRenderer.invoke('boai:voice', 'configure', input),
     download: action => ipcRenderer.invoke('boai:voice', 'download', action),

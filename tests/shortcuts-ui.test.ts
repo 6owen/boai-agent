@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 快捷键第五行默认关闭/未绑定；原捕获、自动保存与未知回执回归保持。
  * [INPUT]: 实际设置组件、页外 Controller 和可控 Main 回执端口。
  * [OUTPUT]: 候选/启停、clickoutside/Tab/失焦、同一行原子提交、并发/失败/未知及原导航确认回归。
  * [POS]: 快捷键组件与状态回归；原五场桌面流程单独保留。
@@ -62,15 +63,17 @@ beforeEach(() => {
 })
 afterEach(async () => { await act(async () => root.unmount()); for (const controller of controllers.splice(0)) controller.dispose(); host.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers() })
 
-test('初次四行稳定占位、不可编辑假默认；已读后有开关和组合键，无保存按钮', async () => {
+test('初次五行稳定占位、不可编辑假默认；已读后有开关和组合键，无保存按钮', async () => {
   let resolve!: (snapshot: ShortcutSnapshot) => void
   const api = { request: vi.fn((method: string) => method === 'getShortcutSettings' ? new Promise(value => { resolve = value }) : Promise.resolve()), subscribe: () => () => {} } as unknown as DesktopApi
   shortcuts.initialize(api); controllers.push(shortcuts)
   await act(async () => root.render(h(ShortcutSettings)))
-  expect(document.querySelectorAll('[role=switch]')).toHaveLength(4)
+  expect(document.querySelectorAll('[role=switch]')).toHaveLength(5)
   expect([...document.querySelectorAll<HTMLButtonElement>('[role=switch]')].every(item => item.disabled || item.getAttribute('aria-disabled') === 'true')).toBe(true)
   await act(async () => resolve({ schemaVersion: 1, revision: 0, platform: 'mac', preferences: shortcutDefaults(), reserved: [] }))
-  expect(document.querySelectorAll('kbd')).toHaveLength(4)
+  expect(document.querySelectorAll('kbd')).toHaveLength(5)
+  expect(document.querySelector('[aria-label="语音输入"]')?.getAttribute('aria-checked')).toBe('false')
+  expect(document.querySelector('[data-shortcut-recorder=voiceInput]')?.textContent).toBe('无')
   expect([...document.querySelectorAll('button')].some(item => /^(保存|应用|完成)$/.test(item.textContent ?? ''))).toBe(false)
 })
 test('候选不替换实际绑定，点击不可聚焦空白和随后 blur 只保存一次', async () => {
