@@ -1,5 +1,5 @@
 <!--
-[OUTPUT]: §29首轮候选22过4失败，标签重复名称已定位修正；新四场候选和视觉审阅仍待完成。
+[OUTPUT]: §29首轮候选22过4失败、重复名称已修正；同步最新UI用户确认流程后取消新候选，独立依赖与预览命令已备，待本人确认效果。
 [OUTPUT]: §19对话创建进入普通会话并预选管理标签，五类命令加载随包操作文档；提示词业务接口复用原CRUD，当前仅静态检查。
 [OUTPUT]: §28.2自然待批停止/迟到批准与恢复后明确新运行2场最终通过；7启动/31证据及真实面板终态已核，原图旧帧和原期限保留。
 [OUTPUT]: §28自然调度旧产品3过/停止入口1失败，单次停止修复同4场全过；真实12启动/49证据及两次重启无重放，完整DS11/新head门禁仍继续。
@@ -359,4 +359,7 @@
 - 本地实际：完整 tsc --noEmit 通过；工作区边界检查通过；12 项定向 Vitest 通过，包含 SQLite 重启、CAS 竞争、批量拒绝、跨组标签保留及原任务/历史不变。前端定向 ESLint 零错误；非前端测试/运行时文件不在现有 ESLint 配置范围。
 - UI 影响：原20场未覆盖定时任务，追加 schedules-light/dark 与 schedule-manager-light/dark 四场，原场景、阈值、mask 和零重试保持。新增场景检查真实标签 CRUD、多选、拖拽、键盘排序/Tab、筛选结果及 CSS 动效/reduced-motion。本人菜单另增明暗两场，当前合同共26场。
 - 首轮官方候选 [40479030099](https://github.com/6owen/boai-agent/actions/runs/40479030099) 实际22通过、4失败；本人菜单两场及原20场通过。四场定时任务均因标签选项可访问名称重复为“标签 日常 日常”而停于定位；原件确认浮层正常展示。修正原生label与aria-label的重复命名，保留精确名称断言并增加逐项持久化检查；新候选、视觉审阅和基线接受仍待完成。
+- 同步 main 的 PR43 新UI确认规则后，主动取消修复提交的候选 [40482684554](https://github.com/6owen/boai-agent/actions/runs/40482684554)，不计为功能通过或失败。PR42保持Draft、未启用自动合并；基准未接受，新增UI提交在用户确认前不再推送。
+- 功能 worktree 为 `/Users/wangwenbo/Desktop/demo/boai/boai-schedule-groups-motion`，分支 `feat/schedule-groups-motion`。检查无本任务产品进程后，仅解除本worktree的跨目录node_modules链接，使用锁定pnpm正常安装，1226包、reused1223、downloaded0、17.9秒；个人应用与main依赖保持。独立安装后的完整 `tsc --noEmit` 再次通过。预览命令为 `BOAI_DATA_DIR="$PWD/.local/dev-profile" BOAI_DEV_PORT=0 pnpm dev`，须在该worktree执行；当前尚未启动预览。
+- 待用户确认范围：定时任务侧栏/标签管理、执行记录Tab及列表动效、本人菜单六个入口；拟新增 schedules-light/dark、schedule-manager-light/dark、user-menu-light/dark 六张基准，原20张保持。
 - 未在本机启动产品构建或 Electron GUI；个人正在运行的应用尚未重载。此处不声明真实模型、自然定时执行或用户数据已验证。
