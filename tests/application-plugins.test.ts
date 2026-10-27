@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-27 本轮相关回归合同/源码更新；执行状态另行记录，不以源码存在判通过。
  * [OUTPUT]: 2026-10-19 插件目录仅发布 DeepSeek 网页检索贡献，原预览/主题持久启停合同保持。
  * [OUTPUT]: 运行时包生命周期/线协议、Pi与ACP连续会话/真实工具副作用及独立模块安装；真实Pi探针显式选择。
  * [INPUT]: 生产插件目录/配置存储/生命周期与真实临时文件、外观配置。
@@ -27,7 +28,7 @@ async function setup() {
 afterEach(async () => { await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))) })
 
 test('one immutable catalog supplies preview and theme identities without mutating declarations', () => {
-  expect(applicationPlugins).toHaveLength(7)
+  expect(applicationPlugins).toHaveLength(8)
   expect(applicationPlugins.flatMap(plugin => plugin.contributions).filter(contribution => contribution.type === 'web-search').map(contribution => contribution.provider)).toEqual(['deepseek'])
   expect(themePluginId('nord')).toBe(themeId)
   expect(themePluginId('boai-dark')).toBeUndefined()
@@ -60,7 +61,7 @@ test('settings are serial, CAS-protected, atomically persisted and restored with
     store.update({ id: themeId, enabled: false, expectedRevision: 0 }),
   ])
   expect(writes.map(value => value.status)).toEqual(['fulfilled', 'rejected'])
-  expect(store.snapshot()).toEqual({ revision: 1, disabledIds: [textId] })
+  expect(store.snapshot()).toEqual({ revision: 1, disabledIds: [textId], enabledIds: [] })
   expect(changed).toHaveBeenCalledTimes(1)
   await store.update({ id: textId, enabled: false, expectedRevision: 1 })
   expect(changed).toHaveBeenCalledTimes(1)
@@ -70,7 +71,7 @@ test('settings are serial, CAS-protected, atomically persisted and restored with
   const copy = reopened.snapshot(); (copy.disabledIds as string[]).push('fake')
   expect(reopened.snapshot().disabledIds).toEqual([textId])
   await reopened.update({ id: textId, enabled: true, expectedRevision: 1 })
-  expect(JSON.parse(await readFile(path, 'utf8'))).toEqual({ schemaVersion: 1, revision: 2, disabledIds: [] })
+  expect(JSON.parse(await readFile(path, 'utf8'))).toEqual({ schemaVersion: 2, revision: 2, disabledIds: [], enabledIds: [textId] })
 })
 
 test.each(['{broken', JSON.stringify({ schemaVersion: 2, revision: 7, disabledIds: [] }), 'x'.repeat(32_769)])('unreadable/future configuration is preserved byte for byte and cannot be rewritten (%#)', async bytes => {
@@ -97,7 +98,7 @@ test('unknown disabled ids survive upgrades while unknown writes and incompatibl
 test('write failure publishes nothing and a subsequent explicit operation can succeed', async () => {
   const { path, store, changed } = await setup(); await mkdir(path)
   await expect(store.update({ id: textId, enabled: false, expectedRevision: 0 })).rejects.toThrow()
-  expect(changed).not.toHaveBeenCalled(); expect(store.snapshot()).toEqual({ revision: 0, disabledIds: [] })
+  expect(changed).not.toHaveBeenCalled(); expect(store.snapshot()).toEqual({ revision: 0, disabledIds: [], enabledIds: [] })
   await rm(path, { recursive: true })
   await store.update({ id: textId, enabled: false, expectedRevision: 0 })
   expect(changed).toHaveBeenCalledTimes(1)

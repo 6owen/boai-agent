@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-27 本轮相关回归合同/源码更新；执行状态另行记录，不以源码存在判通过。
  * [OUTPUT]: 验证默认无执行配额、旧默认精确迁移、显式预算仍执行以及用户取消；不调用真实供应商。
  * [OUTPUT]: 覆盖增大任务额度、真实继续消息或本次运行同类批准；各文件以具体用例限定验证范围。
  * [OUTPUT]: 本轮覆盖复制/员工入口、定时运行防连点、失败过程、严格私有判断及保留原预算的显式继续；实际范围以各用例为准。
@@ -34,12 +35,12 @@ const request = (runId: string, agentId = 'researcher', key = 'main') => ({
 const receipt = { messageId: 'answer-1', content: '计算结果为 42。', artifactIds: [] as string[] }
 
 describe('durable work ownership', () => {
-  it.each(['legacy', 'v1', 'custom', 'organization', 'organization48', 'renewed'] as const)('migrates only legacy default execution allowances without resetting used counters (%s)', async mode => {
+  it.each(['legacy', 'v1', 'custom', 'organization', 'organization48', 'renewed'] as const)('preserves unverified historical limits at startup without inferring intent from matching numbers (%s)', async mode => {
     const { works, store } = await fixture()
     await works.claim(request('legacy-run'))
     await works.release('legacy-run', 'failed')
     const current = (await works.view('group')).workBudgets[0]
-    const { executionAllowanceVersion: _, ...original } = current
+    const { executionAllowanceVersion: _, limitAuthority: _authority, ...original } = current
     const saved = { ...original, maxModelCalls: mode === 'custom' ? 30 : mode === 'v1' ? 256 : mode === 'organization48' ? 48 : 24,
       maxOutputTokens: mode === 'v1' ? 128000 : 16000, maxRuns: 8, maxWorkItems: 8, maxRetries: 3, maxReportRefreshes: 4, maxNoProgress: 3,
       deadlineAt: new Date(Date.now() + 300000).toISOString(), modelCalls: 12, usage: { outputTokens: 4000 },
@@ -48,8 +49,7 @@ describe('durable work ownership', () => {
       ...(mode === 'renewed' ? { renewals: [{ id: 'explicit-renewal' }] as WorkBudget['renewals'] } : {}) }
     await store.write([{ collection: 'workBudgets', id: saved.id, value: saved }])
     const restarted = new WorkRepository(store); await restarted.init()
-    const expected = ['custom', 'renewed'].includes(mode) ? saved : { ...saved, executionAllowanceVersion: 2, maxModelCalls: null, maxOutputTokens: null,
-      maxRuns: null, maxWorkItems: null, maxRetries: null, maxReportRefreshes: null, maxNoProgress: null, deadlineAt: '' }
+    const expected = saved
     expect((await restarted.view('group')).workBudgets[0]).toEqual(expected)
     await restarted.init()
     expect((await restarted.view('group')).workBudgets[0]).toEqual(expected)
@@ -66,7 +66,7 @@ describe('durable work ownership', () => {
     expect(after.workItems).toHaveLength(1)
     expect(after.workItems[0]).toMatchObject({ id: original.id, sourceMessageId: original.sourceMessageId, status: 'ready', requiresReview: false })
     expect(after.workBudgets[0]).toMatchObject({ id: before.id, modelCalls: before.modelCalls, runs: before.runs, usage: before.usage, retries: before.retries + 1 })
-    expect(Date.parse(after.workBudgets[0].deadlineAt)).toBeGreaterThan(Date.now())
+    expect(after.workBudgets[0].deadlineAt).toBe('')
     await expect(works.authorizeRetry(original.id, 'researcher', [], true)).rejects.toThrow('不能重试')
   })
   it.each([
@@ -98,7 +98,7 @@ describe('durable work ownership', () => {
     ])
     if (reason === 'exhausted-calls') {
       const budget = (await works.view('group')).workBudgets[0]
-      budget.maxModelCalls = 2; budget.modelCalls = 2
+      budget.limitAuthority = { kind: 'user', requestId: 'explicit-budget', messageId: 'user-request', version: 1 }; budget.maxModelCalls = 2; budget.modelCalls = 2
       await store.write([{ collection: 'workBudgets', id: budget.id, value: budget }])
     }
     if (reason === 'consumed-message') await store.write([{ collection: 'runs', id: 'earlier-continue', value: { id: 'earlier-continue', workId: first.id, triggerMessageId: sourceMessageId } }])

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-27 默认持续执行、来源校验及工作现场/复核接线；沿原权限和账本。
  * [OUTPUT]: 可选Mastra上下文端口及按原request ID的附加用量，不改变其他后端合同。
  * [OUTPUT]: 引擎可删除单个或全部bobo会话Memory投影，明确遗忘不留其他thread中的旧Working Memory。
  * [OUTPUT]: PPT 专用审阅端口固定当前员工执行与原请求账本，不冒用聊天模型来源。
@@ -70,6 +71,10 @@ export interface SecretStore {
   delete(connectionId: string): Promise<void>
 }
 export interface EngineContext {
+  /** Host-validated projection from original Work/Run/artifact records; no model call or replay. */
+  workingScene?(): Promise<string>
+  progressCurrent?(): Promise<boolean>
+  progressFeedback?: string
   /** Host-authorized working context; product conversations and input consumption remain unchanged. */
   continuity?: import('./modules/contexts/context-repository').ContextPort
   onSupplementalUsage?(requestId: string, usage: ModelUsage): Promise<void>

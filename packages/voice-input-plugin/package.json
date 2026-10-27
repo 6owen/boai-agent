@@ -1,0 +1,42 @@
+{
+  "name": "@boai/voice-input-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Optional desktop voice capture and transcription adapters",
+  "exports": {
+    "./protocol": {
+      "types": "./src/protocol.ts",
+      "development": "./src/protocol.ts",
+      "default": "./src/protocol.ts"
+    },
+    "./host": {
+      "types": "./src/host.ts",
+      "development": "./src/host.ts",
+      "default": "./src/host.ts"
+    },
+    "./capture": {
+      "types": "./src/capture.ts",
+      "development": "./src/capture.ts",
+      "default": "./src/capture.ts"
+    },
+    "./controller": {
+      "types": "./src/controller.ts",
+      "development": "./src/controller.ts",
+      "default": "./src/controller.ts"
+    },
+    "./model-manifest": {
+      "types": "./src/model-manifest.ts",
+      "development": "./src/model-manifest.ts",
+      "default": "./src/model-manifest.ts"
+    }
+  },
+  "dependencies": {
+    "zod": "4.6.5",
+    "ws": "8.21.3",
+    "@boai/shared": "workspace:*"
+  },
+  "optionalDependencies": {
+    "sherpa-onnx-node": "2.0.0"
+  }
+}

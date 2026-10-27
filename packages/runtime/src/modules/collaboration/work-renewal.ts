@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-27 默认持续执行、来源校验及工作现场/复核接线；沿原权限和账本。
  * [OUTPUT]: 默认执行不按累计调用、工具步骤、用量或墙钟截断；保留真实用量、取消/权限和明确指定的预算。
  * [OUTPUT]: 自动化预算不按墙钟到期；本人明确继续保留原工作和累计用量，普通工作仅重开时间窗口，未知操作仍阻止重放。
  * [OUTPUT]: 显式自动化额度追加保留原计量单位与累计回执，不改内部调用未知事实。
@@ -46,6 +47,7 @@ export async function renewAutomationWork(tx: RecordTransaction, origin: Automat
     previousStatus: o.status, previousReason: o.reason, cancellationRequestedAt: o.cancellationRequestedAt, workVersions: unfinished.map(w => ({ id: w.id, version: w.version, status: w.status })) }
   if (budget.maxModelCalls !== null) budget.maxModelCalls += allowance.modelCalls; if (budget.maxRuns !== null) budget.maxRuns += allowance.runs; if (budget.maxOutputTokens !== null) budget.maxOutputTokens += allowance.outputTokens
   if (budget.maxWorkItems !== null) budget.maxWorkItems += allowance.workItems; if (budget.maxRetries !== null) budget.maxRetries += allowance.retries; if (budget.maxReportRefreshes !== null) budget.maxReportRefreshes += allowance.reportRefreshes; if (budget.maxNoProgress !== null) budget.maxNoProgress += allowance.noProgress
+  budget.limitAuthority = { kind: 'user', requestId: request.id, messageId: message.id, version: (budget.limitAuthority?.kind === 'user' ? budget.limitAuthority.version : 0) + 1 }
   budget.deadlineAt = '' // Automation continuation preserves counters without a wall-clock cutoff.
   grant.after = limits(budget); budget.renewals = [...(budget.renewals ?? []), grant]
   await tx.put(row('workBudgets', budget))

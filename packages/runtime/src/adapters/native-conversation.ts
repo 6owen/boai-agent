@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-27 默认持续执行、来源校验及工作现场/复核接线；沿原权限和账本。
  * [OUTPUT]: 本机反思共用保存前事实复核并累加两个阶段已返回的用量；第二阶段不提供产品工具，原生配置/实际内部调用数沿本机运行时。
  * [OUTPUT]: 本机/API行为共用真实说话人ID与笔记引文装配，来源说明不混入用户引用。
  * [OUTPUT]: 2026-10-20 Alma技能接线：普通聊天按需读绑定技能/有来源记忆，独立任务协议与MCP媒体保持实际授权；本轮证据归独立Agent架构§11.21。
@@ -120,7 +121,7 @@ export abstract class NativeConversationEngine {
         ...(context.manageAutomation ? [`For a BOAI employee/group automation request, use ${this.runtime === 'claude' ? 'mcp__boai__manage_automation' : 'manage_automation'} with the actual owner and members. Native cron/scheduling tools do not create BOAI plans or right-panel records. Only a persisted management receipt proves creation.`] : []),
       ].join('\n\n')
       const result = await this.conversation(nativeContext, { instructions, nativeInstructions, threadId, tools: products.tools,
-        prompt: JSON.stringify({ employeeState: context.bootstrap?.dynamicInstructions, contextMode: threadId ? 'incremental' : 'initial', employeeId: context.agent.id, members: context.members?.map(({id, name, role}) => ({id, name, role})), priorReply, messages: messages.map(message => decisionMessageData(message)), deliveredFiles: context.nativeArtifacts, currentWork: context.work, dependencies: context.dependencyArtifacts, continuation: context.continuation }),
+        prompt: JSON.stringify({ privateExecutionFeedback: context.progressFeedback, workingScene: context.continuation && context.workingScene ? await context.workingScene() : undefined, employeeState: context.bootstrap?.dynamicInstructions, contextMode: threadId ? 'incremental' : 'initial', employeeId: context.agent.id, members: context.members?.map(({id, name, role}) => ({id, name, role})), priorReply, messages: messages.map(message => decisionMessageData(message)), deliveredFiles: context.nativeArtifacts, currentWork: context.work, dependencies: context.dependencyArtifacts, continuation: context.continuation }),
         images: context.materialImages?.filter(image => newIds.has(image.messageId)).map(image => image.dataUrl) ?? [],
         cancelProducts: () => productController.abort(new Error('原生插件已退出')),
         onSession: (id, preparedSource) => this.sessions.update(session, { threadId: id, ...(preparedSource ? { fingerprint: fingerprintFor(preparedSource) } : {}) }), onSubmitted: (_, id) => this.sessions.update(session, { turnId: id }),

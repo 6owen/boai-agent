@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-27 语音录入/还原所需本地图标，沿原主题和公共图标入口。
  * [OUTPUT]: 增加本地 Carbon 数据库图标供数据源入口共用。
  * [OUTPUT]: 2026-10-11 第13组原生员工与Rovai执行过程接线，沿用BOAI视觉组件；消息流程卡片退役，输入框工具栏保持。
  * [INPUT]: 离线 Carbon/Solar 图标集合与图标尺寸。
@@ -10,6 +11,8 @@ import type { CSSProperties, ComponentProps } from 'react'
 
 // Keep full class names literal so Tailwind includes every mask in the offline bundle.
 const classes = {
+  Mic: 'i-carbon-microphone',
+  Undo2: 'i-carbon-undo',
   Grid2X2: 'i-carbon-grid',
   ThumbsUp: 'i-carbon-thumbs-up',
   Copy: 'i-carbon-copy',
@@ -161,3 +164,6 @@ export const PanelLeftIcon = uiComponent('PanelLeft')
 export const SearchIcon = uiComponent('Search')
 export const TriangleAlertIcon = uiComponent('TriangleAlert')
 export const XIcon = uiComponent('X')
+
+export const Mic = component('Mic')
+export const Undo2 = component('Undo2')

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-27 默认持续执行、来源校验及工作现场/复核接线；沿原权限和账本。
  * [OUTPUT]: 任务结果统一投影接原Work/消息/文件核源和停止、继续门禁；查询不执行任务。
  * [OUTPUT]: 桌面工作区路径与轻量归属复核分离；成员移除先排空精确终端并在失败后释放关闭标记。
  * [OUTPUT]: Mastra扩展历史先事务登记原召回/材料来源再使用；接续从原Run全部已完成工具核源，效果去重保持。
@@ -176,6 +177,9 @@
  * [POS]: packages/runtime/src/service.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { workingScene } from './modules/contexts/working-scene'
+import { progressBoundary } from './adapters/mastra/progress-review'
+import { ProgressStalledError, type ProgressMonitor } from './modules/contexts/progress-monitor'
 import { initializeBundledSkills } from './modules/resources/bundled-skills'
 import { availableReactionEmojis, reactionInputSchema, type ReactionInput, type ReactionResult } from './modules/conversations/reaction-tools'
 import { AgentBehaviorService } from './modules/automations/agent-behaviors'
@@ -739,8 +743,8 @@ export class AppService {
       conversation: id => this.getConversation(id), agent: id => this.getAgent(id), message: id => this.messages.get(id),
       interpretGroup: (turn, signal) => this.interpretGroup(turn, signal),
       contextOnly: (turn, event, delivery) => this.contextOnlyPeerDelivery(turn, event, delivery),
-      decide: (turn, event, delivery, signal) => this.executeDecision(turn, event, delivery, signal),
-      speak: (turn, event, decision, signal, publish) => this.executeResponse(turn, event, decision, signal, publish),
+      decide: (turn, event, delivery, signal, progress) => this.executeDecision(turn, event, delivery, signal, progress),
+      speak: (turn, event, decision, signal, publish, progress) => this.executeResponse(turn, event, decision, signal, publish, progress),
       settled: (turn, participants, signal) => this.updateMemories(turn, participants, signal),
       executionBusy: (conversationId, agentId) => [...this.activeAdapters].some(id => { const run = this.runs.get(id); return run?.conversationId === conversationId && run.agentId === agentId && run.phase === 'execution' }),
       idle: id => this.scheduleWork(id), changed: id => this.changed(id), error: error => this.emit({ type: 'runtime-error', error: this.errorMessage(error) }),
@@ -4272,6 +4276,37 @@ export class AppService {
       context.employeeCandidates = await this.boboCollaboration.findEmployees({ limit: 20 })
       context.legacyTeamName = (await this.store.load<CoreConversationStart>('coreConversationStarts')).find(value => value.conversationId === conversation.id && value.messageId === turn.triggerMessageId && !value.cleared)?.teamName
     }
+    const observedUserSequence = Math.max(0, ...context.messages.filter(message => message.senderType === 'user').map(message => message.sequence))
+    context.progressCurrent = () => this.serialize(async () => {
+      await this.assertExecutionAccess(context)
+      const latestUserSequence = Math.max(0, ...this.conversationMessages(conversation.id).filter(message => message.senderType === 'user' && message.status === 'completed').map(message => message.sequence))
+      if (latestUserSequence !== observedUserSequence) return false
+      if (context.work) {
+        const current = (await this.works.view(conversation.id)).workItems.find(item => item.id === context.work!.id)
+        if (!current || current.version !== context.work.version || current.ownerAgentId !== agent.id) return false
+      }
+      return true
+    })
+    if (run.phase === 'execution') context.workingScene = () => this.serialize(async () => {
+      await this.assertExecutionAccess(context)
+      const previous: AgentRun[] = []
+      const authorized = new Set(context.resources.map(resource => resource.id))
+      for (const id of context.continuation?.resumesRunIds ?? []) {
+        const candidate = this.runs.get(id), snapshot = this.snapshots.get(id)
+        if (!candidate || candidate.id === context.runId || candidate.agentId !== agent.id || candidate.conversationId !== conversation.id || candidate.workId !== context.work?.id || !snapshot || snapshot.invalidated || !this.dataSourceSnapshotValid(snapshot) || !snapshot.resources.every(resource => authorized.has(resource.id))) continue
+        if (snapshot.memoryRecall && !await this.memory.recallValid({ ...snapshot.memoryRecall, entries: [] })) continue
+        await this.materials.validateRefs(snapshot.materialRefs ?? [], agent.id, conversation.id)
+        previous.push(candidate)
+      }
+      const work = context.work ? (await this.works.view(conversation.id)).workItems.find(item => item.id === context.work!.id && item.ownerAgentId === agent.id) : undefined
+      const files = [...this.artifacts.values()].filter(file => file.ownerAgentId === agent.id && file.conversationId === conversation.id && !!file.id && !!work?.artifactIds.includes(file.id))
+      for (const file of files) await this.materials.validateRefs(file.materialSources ?? [], agent.id, conversation.id)
+      const executions = await this.store.transaction(async tx => (await tx.list<import('@boai/shared/domain').WorkExecution>('workExecutions')).filter(item => previous.some(run => run.id === item.id)))
+      const forgotten = await this.memory.forgottenMessageIds(agent.id)
+      const sourceMessages = context.messages.filter(message => !forgotten.has(message.id))
+      context.signal.throwIfAborted()
+      return workingScene({ work, messages: sourceMessages, runs: previous, artifacts: files, executions })
+    })
     if (!runtimeProfile && run.phase === 'execution') context.continuity = this.contextContinuity(context, throughSequence)
     this.activeEngineContexts.set(run.id, { context, definition: agent })
     return context
@@ -4434,11 +4469,12 @@ export class AppService {
       await this.finishRun(run, 'completed')
       return { ...plan, agentIds: plan.mode === 'ordered' ? plan.agentIds : eligible.map(member => member.id), sourceRunId: run.id, memberConfigVersions: versions, revision: 1, completed: [] }
     } catch (error) {
-      if (!terminal.has(run.status)) await this.finishRun(run, effective.aborted ? (this.closing ? 'interrupted' : 'cancelled') : 'failed', this.redact(this.errorMessage(error), key))
+      if (!terminal.has(run.status)) await this.finishRun(run, effective.aborted ? (this.closing ? 'interrupted' : 'cancelled') : error instanceof ProgressStalledError ? 'interrupted' : 'failed', this.redact(this.errorMessage(error), key))
+      if (error instanceof ProgressStalledError) throw error
       throw new Error(this.redact(this.errorMessage(error), key))
     } finally { this.runControllers.delete(run.id) }
   }
-  private async executeDecision(turn: DiscussionTurn, event: ConversationEvent, delivery: AgentDelivery, signal: AbortSignal) {
+  private async executeDecision(turn: DiscussionTurn, event: ConversationEvent, delivery: AgentDelivery, signal: AbortSignal, progress?: ProgressMonitor) {
     signal.throwIfAborted()
     if (turn.workId && this.messages.get(turn.triggerMessageId)?.inboxReply?.workId === turn.workId) {
       signal.throwIfAborted()
@@ -4458,6 +4494,7 @@ export class AppService {
     let key = ''
     try {
       const context = await this.engineContext(run, turn, effective, delivery.observedThroughSequence); key = context.apiKey
+      if (progress) { context.progressFeedback = await progressBoundary(context, progress); await this.assertExecutionAccess(context) }
       const visible = new Set(context.messages.map(message => message.id))
       context.workItems = await this.authorizedWorkItems(context.conversation, run.agentId, visible)
       context.participation = { isFirstDecision: ![...this.scheduler.deliveries.values()].some(item => item.turnId === turn.id && item.agentId === delivery.agentId && item.id !== delivery.id && !['pending', 'evaluating'].includes(item.status)), hasRespondedInTurn: [...this.messages.values()].some(message => message.turnId === turn.id && message.senderId === delivery.agentId && message.status === 'completed'), triggerEventType: event.type, eventMessageId: event.messageId, observedThroughSequence: delivery.observedThroughSequence, sourceEventIds: delivery.eventIds ?? [event.id] }
@@ -4480,11 +4517,12 @@ export class AppService {
       effective.throwIfAborted()
       await this.finishRun(run, 'completed'); return { ...decision, sourceDecisionRunId: run.id }
     } catch (error) {
-      if (!terminal.has(run.status)) await this.finishRun(run, effective.aborted ? (this.closing ? 'interrupted' : 'cancelled') : 'failed', this.redact(this.errorMessage(error), key))
+      if (!terminal.has(run.status)) await this.finishRun(run, effective.aborted ? (this.closing ? 'interrupted' : 'cancelled') : error instanceof ProgressStalledError ? 'interrupted' : 'failed', this.redact(this.errorMessage(error), key))
+      if (error instanceof ProgressStalledError) throw error
       throw new Error(this.redact(this.errorMessage(error), key))
     } finally { this.runControllers.delete(run.id); this.organizationModelCalls.delete(run.id) }
   }
-  private async executeResponse(turn: DiscussionTurn, event: ConversationEvent, decision: DecisionRecord, signal: AbortSignal, publish: PublishReply): Promise<void | 'deferred'> {
+  private async executeResponse(turn: DiscussionTurn, event: ConversationEvent, decision: DecisionRecord, signal: AbortSignal, publish: PublishReply, progress?: ProgressMonitor): Promise<void | 'deferred'> {
     signal.throwIfAborted()
     const conversation = this.getConversation(turn.conversationId), run = this.newRun(conversation, decision.agentId, turn.triggerMessageId, turn.id)
     const native = isNativeBackend(this.getAgent(decision.agentId).executionBackend)
@@ -4517,6 +4555,7 @@ export class AppService {
         await this.store.write([record('turns', turn), record('runs', run), record('decisions', decision)])
       })
       const context = await this.engineContext(run, turn, effective, run.responseKind === 'chat' ? undefined : decision.observedThroughSequence); key = context.apiKey
+      if (native && progress) context.progressFeedback = await progressBoundary({ ...context, connection: undefined, onAdditionalModelCall: undefined }, progress)
       context.approveOperation = operation => this.requestApproval(run, controller, operation.description, this.runDirectories.get(run.id) ?? '', true, operation.kind)
       const source = this.messages.get(turn.triggerMessageId)
       const stateProfile = await this.agentProfiles.get(context.agent.id)
@@ -5066,8 +5105,9 @@ export class AppService {
       } else await this.serialize(commit)
       this.emit({ type: 'message', message }); this.changed(conversation.id)
     } catch (error) {
-      if (!terminal.has(run.status)) await this.finishRun(run, effective.aborted ? (this.closing ? 'interrupted' : 'cancelled') : error instanceof WorkUnavailableError ? 'cancelled' : 'failed', this.redact(this.errorMessage(error), key))
+      if (!terminal.has(run.status)) await this.finishRun(run, effective.aborted ? (this.closing ? 'interrupted' : 'cancelled') : error instanceof ProgressStalledError ? 'interrupted' : error instanceof WorkUnavailableError ? 'cancelled' : 'failed', this.redact(this.errorMessage(error), key))
       if (error instanceof WorkUnavailableError || (run.workId && controller.signal.aborted && !signal.aborted)) return 'deferred'
+      if (error instanceof ProgressStalledError) throw error
       throw new Error(this.redact(this.errorMessage(error), key))
     } finally {
       try { await Promise.all([this.dataSources.closeRun(run.id), this.webSearch.connections.closeRun(run.id)]) } finally {
@@ -5141,7 +5181,7 @@ export class AppService {
           await this.homes.regenerate(currentAgent, await this.recallEmployeeMemory(currentAgent, current, this.messages.get(turn.triggerMessageId)?.content ?? ''), turn.conversationId)
         })
         if (!terminal.has(run.status)) await this.finishRun(run, 'completed')
-      } catch (error) { if (!terminal.has(run.status)) await this.finishRun(run, effective.aborted ? (this.closing ? 'interrupted' : 'cancelled') : 'failed', this.redact(this.errorMessage(error), key)) }
+      } catch (error) { if (!terminal.has(run.status)) await this.finishRun(run, effective.aborted ? (this.closing ? 'interrupted' : 'cancelled') : error instanceof ProgressStalledError ? 'interrupted' : 'failed', this.redact(this.errorMessage(error), key)) }
       finally { if (deadline) clearTimeout(deadline); this.runControllers.delete(run.id) }
     }))
   }

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-27 默认关闭语音插件接线、可信主窗口与原草稿/生命周期边界。
  * [OUTPUT]: 页面布局复用settings-layout，标题/分组留白与卡片/设置行统一，原业务回调保持。
  * [OUTPUT]: 2026-10-19 原插件目录增加网页检索分类；启停仍由原宿主配置负责。
  * [OUTPUT]: 插件分类触发器与搜索输入统一使用全局控件高度并垂直对齐。
@@ -8,6 +9,9 @@
  * [POS]: 设置中的内置插件管理，不伪装成安装器或第三方市场。
  * [PROTOCOL]: 变化同步Header及所属.folder.md。
  */
+import { VoiceInputSettings } from './voice-input'
+import { Settings } from '@/components/icons'
+import { Button } from '@/components/ui/button'
 import { SettingsLayout, SettingsCard } from './settings-layout'
 import { RuntimePluginManager } from './runtime-plugins'
 import { useState, useSyncExternalStore } from 'react'
@@ -22,6 +26,7 @@ import { Switch } from '@/components/ui/switch'
 export function PluginSettingsPage() {
   const { settings, ready, busy, error } = usePlugins()
   const usage = useSyncExternalStore(pluginUsage.subscribe, pluginUsage.snapshot, pluginUsage.snapshot)
+  const [voiceOpen, setVoiceOpen] = useState(false)
   const [query, setQuery] = useState(''), [kind, setKind] = useState('all')
   const plugins = applicationPlugins.filter(plugin => (kind === 'all' || plugin.contributions.some(item => item.type === kind)) && `${plugin.name} ${plugin.description} ${plugin.id}`.toLowerCase().includes(query.trim().toLowerCase()))
   return <SettingsLayout title="插件" aria-label="内置插件">
@@ -29,7 +34,7 @@ export function PluginSettingsPage() {
     {(error || settings.diagnostic) && <Banner>{error || settings.diagnostic}</Banner>}
     <div className="mb-4 flex items-center gap-2" data-plugin-filters>
       <Input className="min-w-0 flex-1" aria-label="搜索插件" placeholder="搜索插件" value={query} onChange={event => setQuery(event.target.value)} />
-      <div className="w-32 shrink-0"><SelectField className="h-(--control-height)" aria-label="插件类型" value={kind} onValueChange={setKind} options={[{ value: 'all', label: '全部类型' }, { value: 'preview', label: '文件预览' }, { value: 'theme', label: '主题' }, { value: 'web-search', label: '网页检索' }, { value: 'agent-runtime', label: 'Agent 运行时' }]} /></div>
+      <div className="w-32 shrink-0"><SelectField className="h-(--control-height)" aria-label="插件类型" value={kind} onValueChange={setKind} options={[{ value: 'all', label: '全部类型' }, { value: 'voice-input', label: '语音输入' }, { value: 'preview', label: '文件预览' }, { value: 'theme', label: '主题' }, { value: 'web-search', label: '网页检索' }, { value: 'agent-runtime', label: 'Agent 运行时' }]} /></div>
     </div>
     <SettingsCard contentClassName="soft-divide-y px-4 py-0">
       {plugins.map(plugin => {
@@ -39,14 +44,16 @@ export function PluginSettingsPage() {
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2"><label className="font-medium" htmlFor={`plugin-${plugin.id}`}>{plugin.name}</label><span className="text-xs text-muted-foreground">{plugin.version} · 内置</span></div>
             <p className="field-hint mt-1">{plugin.description}</p>
-            <p role="status" className="field-hint mt-1">{status}{busy === plugin.id ? ' · 正在保存…' : ''}</p>
+            {plugin.id !== 'boai.voice-input' && <p role="status" className="field-hint mt-1">{status}{busy === plugin.id ? ' · 正在保存…' : ''}</p>}
             {activity?.failure && <p className="field-hint text-destructive">最近一次预览加载失败。其他插件仍可使用。</p>}
           </div>
+          {plugin.id === 'boai.voice-input' && availability === 'enabled' && <Button variant="ghost" size="icon-sm" aria-label="配置语音输入" onClick={() => setVoiceOpen(true)}><Settings /></Button>}
           <Switch id={`plugin-${plugin.id}`} aria-label={plugin.name} checked={availability === 'enabled'} disabled={!ready || Boolean(busy) || settings.readOnly || availability === 'incompatible'} onCheckedChange={enabled => { void setPluginEnabled(plugin.id, enabled) }} />
         </div>
       })}
       {!plugins.length && <p className="field-hint py-4">没有匹配的插件。</p>}
     </SettingsCard>
+    {voiceOpen && <VoiceInputSettings onClose={() => setVoiceOpen(false)} />}
     <RuntimePluginManager query={query} kind={kind} />
   </SettingsLayout>
 }

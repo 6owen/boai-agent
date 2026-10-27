@@ -135,7 +135,8 @@
     "@boai/runtime": "workspace:*",
     "@boai/transport": "workspace:*",
     "@boai/runtime-plugin-sdk": "workspace:*",
-    "@boai/runtime-plugins": "workspace:*"
+    "@boai/runtime-plugins": "workspace:*",
+    "@boai/voice-input-plugin": "workspace:*"
   },
   "build": {
     "appId": "com.boai.agent",
@@ -156,14 +157,21 @@
       "node_modules/@parcel/watcher/**/*",
       "dist/native/**/*",
       "dist/main/app-icons/**/*",
-      "dist/runtime/plugins/**/*"
+      "dist/runtime/plugins/**/*",
+      "node_modules/sherpa-onnx*/**/*",
+      "dist/voice-input/**/*"
     ],
     "mac": {
       "category": "public.app-category.productivity",
       "icon": "resources/app-icons/default.icns",
       "target": [
         "dmg"
-      ]
+      ],
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "仅在你点击语音输入时录音，将语音转成当前输入框中的文字。"
+      },
+      "entitlements": "resources/entitlements.mac.plist",
+      "entitlementsInherit": "resources/entitlements.mac.plist"
     },
     "linux": {
       "target": [
@@ -217,5 +225,8 @@
   },
   "bin": {
     "boai": "dist/cli/index.mjs"
+  },
+  "optionalDependencies": {
+    "sherpa-onnx-node": "2.0.0"
   }
 }

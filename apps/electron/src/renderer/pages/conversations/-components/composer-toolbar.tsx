@@ -1,10 +1,12 @@
 /*
+ * [OUTPUT]: 2026-10-27 默认关闭语音插件接线、可信主窗口与原草稿/生命周期边界。
  * [OUTPUT]: @按钮仅提及会话员工，$按钮引用技能/文件/提示词，两类候选与显隐状态独立。
  * [INPUT]: 当前员工、连接、运行状态和原消息/配置回调。
  * [OUTPUT]: 附件、数据源指定、命令、技能/文件提及及当前连接内模型选择；数据源选择不改变绑定；暂时隐藏权限菜单，原权限值保持。
  * [POS]: 会话与核心首发共用的轻量工具栏；连接管理归员工设置。
  * [PROTOCOL]: 变化同步Header与所属.folder.md。
  */
+import type { ReactNode } from 'react'
 import type { AgentRun, DigitalAgent, Snapshot } from '@boai/shared/domain'
 import type { DesktopApi } from '@boai/shared/ipc'
 import type { ComposerReference } from '@boai/shared/domain/composer-references'
@@ -19,6 +21,7 @@ import { ComposerSourcePicker } from './composer-source-picker'
 export type ComposerAgentSaveResult = { status: 'saved'; agent: DigitalAgent } | { status: 'not-submitted' | 'unconfirmed' }
 export type ComposerAgentPatch = Partial<Pick<DigitalAgent, 'executionBackend' | 'connectionId' | 'modelId' | 'allowCommands' | 'thinkingLevel' | 'nativeOptions'>>
 interface Props {
+  voice?: ReactNode
   api: DesktopApi; members: DigitalAgent[]; snapshot: Snapshot; group: boolean; external: boolean; runs?: AgentRun[]
   conversationReady?: boolean; replyMode?: boolean
   busy: boolean; active: boolean; canSend: boolean; configurationLocked: boolean; mentionsVisible: boolean
@@ -51,6 +54,7 @@ export function ComposerToolbar(props: Props) {
       {/* 权限模式暂不展示；不修改员工已保存的权限，真实审批仍由原执行入口办理。 */}
     </ChatComposerActions>
     <ChatComposerActions align="end">
+      {props.voice}
       {!group && primary && <ComposerModelMenu key={primary.id} api={props.api} agent={primary} snapshot={snapshot} runs={props.runs} locked={Boolean(busy || active || configurationLocked || !primary.active || running)} onSave={props.onChangeAgent} onConfigure={props.onConfigureAgent} />}
       <Button variant="ink" size={external ? 'sm' : 'icon-sm'} round={!external} aria-label={external ? '执行外部任务' : '发送消息'} disabled={busy || !props.canSend} onClick={() => props.onSend()}>{busy ? <LoaderCircle className="spinner" /> : external ? '执行外部任务' : <ArrowUp />}</Button>
     </ChatComposerActions>

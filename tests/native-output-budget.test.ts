@@ -1,9 +1,11 @@
 /*
+ * [OUTPUT]: 2026-10-27 本轮相关回归合同/源码更新；执行状态另行记录，不以源码存在判通过。
+ * [OUTPUT]: 判断与执行均可超过旧调用上限，真实用户取消仍阻止后续请求。
  * [OUTPUT]: 验证默认无执行配额、旧默认精确迁移、显式预算仍执行以及用户取消；不调用真实供应商。
  * [OUTPUT]: 五项反馈的调度额度/取消接续或历史展示回归；具体验证边界以本文件用例为准。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [INPUT]: 实际GroupScheduler/SQLite的混合同轮原生与API用量。
- * [OUTPUT]: 原生用量照常记账，API配额独立累计；API达到128000边界仍停止，明确Work预算另由原仓库核对。
+ * [OUTPUT]: 原生不写API用量账本；API用量持续累计且不按旧累计阈值停止，明确Work预算另由原仓库核对。
  * [POS]: 宿主输出预算作用域回归，零模型；真实任务由native-parity验收。
  * [PROTOCOL]: 变化同步Header和tests/.folder.md。
  */
@@ -40,13 +42,13 @@ it('accounts API usage beyond former ceilings without aborting API or native exe
   expect(f.signals.every(signal => !signal.aborted)).toBe(true)
   expect(await f.store.get('turns', f.turn.id)).toMatchObject({ tokenEstimate: 1_000_000, apiTokenEstimate: 1_000_000 })
 })
-it('runs beyond 24/256 calls and still obeys explicit user cancellation', async () => {
+it.each(['decision', 'execution'] as const)('runs %s beyond 24/256 calls and still obeys explicit user cancellation', async phase => {
   const f = await fixture()
-  while (f.turn.modelCalls < 300) await f.scheduler.reserveAdditionalCall(f.turn.id, 'execution')
+  while (f.turn.modelCalls < 300) await f.scheduler.reserveAdditionalCall(f.turn.id, phase)
   expect(f.signals.every(signal => !signal.aborted)).toBe(true)
   await f.scheduler.cancel('mixed')
   expect(f.signals.every(signal => signal.aborted)).toBe(true)
-  await expect(f.scheduler.reserveAdditionalCall(f.turn.id, 'execution')).rejects.toThrow('本轮已结束')
+  await expect(f.scheduler.reserveAdditionalCall(f.turn.id, phase)).rejects.toThrow('本轮已结束')
   expect(f.turn.modelCalls).toBe(300)
 })
 it.each([false, true])('does not expire ordinary or automated execution by wall clock (automation=%s)', async automation => {

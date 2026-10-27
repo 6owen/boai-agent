@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-27 默认关闭语音插件接线、可信主窗口与原草稿/生命周期边界。
  * [OUTPUT]: 插件目录安装经原生选择与私有runtime通道；运行时列表/启停/卸载IPC及动态发现。
  * [INPUT]: 固定本机配置路径、已校验内置清单与明确启停/CAS请求。
  * [OUTPUT]: 串行原子持久化；坏文件/未来版本只读保留、未知id偏好保留，失败不发布状态。
@@ -10,14 +11,16 @@ import { dirname } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { applicationPlugins } from '@boai/shared/plugins/catalog'
-import { APPLICATION_PLUGIN_API, type ApplicationPluginManifest, type PluginEnableInput, type PluginSettingsSnapshot } from '@boai/shared/plugins/types'
+import { APPLICATION_PLUGIN_API, pluginAvailability, type ApplicationPluginManifest, type PluginEnableInput, type PluginSettingsSnapshot } from '@boai/shared/plugins/types'
 
 const pluginId = z.string().min(1).max(100).regex(/^[a-z0-9][a-z0-9.-]*$/)
-const savedSchema = z.object({ schemaVersion: z.literal(1), revision: z.number().int().nonnegative(), disabledIds: z.array(pluginId).max(256) }).strict()
+const legacySchema = z.object({ schemaVersion: z.literal(1), revision: z.number().int().nonnegative(), disabledIds: z.array(pluginId).max(256) }).strict()
+const savedSchema = legacySchema.extend({ schemaVersion: z.literal(2), enabledIds: z.array(pluginId).max(256) }).strict()
+const readSchema = z.union([savedSchema, legacySchema.transform(value => ({ ...value, schemaVersion: 2 as const, enabledIds: [] as string[] }))])
 const updateSchema = z.object({ id: pluginId, enabled: z.boolean(), expectedRevision: z.number().int().nonnegative() }).strict()
 
 export class PluginSettingsStore {
-  private value = { schemaVersion: 1 as const, revision: 0, disabledIds: [] as string[] }
+  private value = { schemaVersion: 2 as const, revision: 0, disabledIds: [] as string[], enabledIds: [] as string[] }
   private diagnostic?: string
   private queue: Promise<unknown> = Promise.resolve()
   constructor(private readonly path: string, private readonly changed: (value: PluginSettingsSnapshot) => void,
@@ -27,7 +30,7 @@ export class PluginSettingsStore {
       if ((await stat(this.path)).size > 32_768) throw new Error('Plugin settings too large')
       const bytes = await readFile(this.path)
       if (bytes.length > 32_768) throw new Error('Plugin settings too large')
-      this.value = savedSchema.parse(JSON.parse(bytes.toString('utf8')))
+      this.value = readSchema.parse(JSON.parse(bytes.toString('utf8')))
       this.value.disabledIds = [...new Set(this.value.disabledIds)].sort()
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
@@ -37,7 +40,7 @@ export class PluginSettingsStore {
     }
   }
   snapshot(): PluginSettingsSnapshot {
-    return { revision: this.value.revision, disabledIds: [...this.value.disabledIds], ...(this.diagnostic ? { readOnly: true, diagnostic: this.diagnostic } : {}) }
+    return { revision: this.value.revision, disabledIds: [...this.value.disabledIds], enabledIds: [...this.value.enabledIds], ...(this.diagnostic ? { readOnly: true, diagnostic: this.diagnostic } : {}) }
   }
   update(input: PluginEnableInput): Promise<PluginSettingsSnapshot> {
     const work = this.queue.then(async () => {
@@ -46,10 +49,10 @@ export class PluginSettingsStore {
       if (!plugin) throw new Error('找不到此内置插件。')
       if (value.enabled && ![APPLICATION_PLUGIN_API, 2].includes(plugin.apiVersion)) throw new Error('此插件与当前应用版本不兼容。')
       if (!Number.isSafeInteger(value.expectedRevision) || value.expectedRevision !== this.value.revision) throw new Error('插件设置已变化，请刷新后重试。')
-      const disabled = new Set(this.value.disabledIds)
-      if (value.enabled === !disabled.has(value.id)) return this.snapshot()
-      if (value.enabled) disabled.delete(value.id); else disabled.add(value.id)
-      const next = savedSchema.parse({ schemaVersion: 1, revision: this.value.revision + 1, disabledIds: [...disabled].sort() })
+      const disabled = new Set(this.value.disabledIds), enabled = new Set(this.value.enabledIds)
+      if (value.enabled === (pluginAvailability(plugin, this.snapshot()) === 'enabled')) return this.snapshot()
+      if (value.enabled) { disabled.delete(value.id); enabled.add(value.id) } else { disabled.add(value.id); enabled.delete(value.id) }
+      const next = savedSchema.parse({ schemaVersion: 2, revision: this.value.revision + 1, disabledIds: [...disabled].sort(), enabledIds: [...enabled].sort() })
       const temporary = `${this.path}.${randomUUID()}.tmp`
       await mkdir(dirname(this.path), { recursive: true })
       try { await writeFile(temporary, JSON.stringify(next), { mode: 0o600 }); await rename(temporary, this.path) }

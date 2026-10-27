@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 2026-10-27 本轮相关回归合同/源码更新；执行状态另行记录，不以源码存在判通过。
+ * [OUTPUT]: 判断追加请求超过旧12次仍完成；多轮定向群协作跨过旧发言和代数阈值，不改变停止与来源校验。
  * [OUTPUT]: 待批准任务不堵无关员工；命令互斥在实际执行阶段，六席资源排队取消合同保持。
  * [OUTPUT]: 完整备份恢复默认关闭桌面截图保存，并保留受管截图目录。
  * [OUTPUT]: 真实服务链路超过300次模型预留和旧累计token边界仍完成，停止与明确预算另行覆盖。
@@ -1516,16 +1518,17 @@ describe('local product service', () => {
     expect(repaired).toBe(0); expect((await detail(service, direct)).turns?.[0].modelCalls).toBe(1)
   })
 
-  it('denies additional decision requests once the shared turn budget is exhausted', async () => {
+  it('continues additional decision requests beyond the former shared turn ceiling', async () => {
     const { service, engine } = await fixture(); await configure(service)
     const direct = await conversation(service)
     let actualRequests = 1
     engine.decisionHandler = async context => { for (let i = 0; i < 20; i++) { await context.onAdditionalModelCall!(); actualRequests++ }; return { action: 'pass', observedThroughSequence: context.participation!.observedThroughSequence } }
     await send(service, direct, '请求格式异常', 'repair-budget'); await idle(service, direct, 0)
     const result = await detail(service, direct)
-    expect(actualRequests).toBe(12)
-    expect(result.turns?.[0]).toMatchObject({ status: 'budget_exhausted', modelCalls: 12 })
-    expect(result.runs[0].error).toContain('判断调用上限')
+    expect(actualRequests).toBe(21)
+    expect(result.turns?.[0]).toMatchObject({ status: 'completed', modelCalls: 21 })
+    expect(result.runs[0]).toMatchObject({ status: 'completed' })
+    expect(result.runs[0].error).toBeUndefined()
   })
 
   it('orders chats by real messages while settings edits and newer empty chats do not jump above them', async () => {
@@ -1762,6 +1765,34 @@ describe('local product service', () => {
     expect(result.deliveries!.every(delivery => ['completed', 'passed', 'skipped'].includes(delivery.status))).toBe(true)
     expect(result.turns![0].modelCalls).toBeLessThanOrEqual(Math.max(24, size * 8))
     expect(engine.decisions.length).toBeLessThanOrEqual(Math.max(12, size * 4))
+  })
+
+  it('completes a directed group exchange beyond former decision, contribution and generation ceilings', async () => {
+    const { service, engine } = await fixture(); await configure(service)
+    const group = await conversation(service, true)
+    const total = 16
+    engine.decisionHandler = async context => {
+      const completed = context.messages.filter(message => message.senderType === 'agent' && message.status === 'completed').length
+      const nextAgent = completed % 2 === 0 ? 'researcher' : 'writer'
+      const base = { responseKind: 'chat' as const, observedThroughSequence: context.participation!.observedThroughSequence }
+      return completed >= total || context.agent.id !== nextAgent ? { ...base, action: 'pass' } : {
+        ...base, action: 'request_handoff', recipientAgentIds: [nextAgent === 'researcher' ? 'writer' : 'researcher'],
+      }
+    }
+    engine.handler = async context => {
+      const completed = context.messages.filter(message => message.senderType === 'agent' && message.status === 'completed').length
+      await context.onDelta(`已完成协作步骤 ${completed + 1}`)
+    }
+    await send(service, group, '请研究员和写作员依次交接，完成十六个协作步骤', 'long-directed-exchange', ['researcher'])
+    await idle(service, group, total)
+    const result = await detail(service, group)
+    expect(result.turns![0].status).toBe('completed')
+    expect(result.turns![0].generation).toBeGreaterThan(3)
+    expect(engine.decisions.length).toBeGreaterThan(12)
+    for (const id of group.agentIds) expect(engine.contexts.filter(context => context.agent.id === id)).toHaveLength(8)
+    expect(result.messages.filter(message => message.senderType === 'agent').map(message => message.content)).toEqual(Array.from({ length: total }, (_, index) => `已完成协作步骤 ${index + 1}`))
+    expect(result.events!.filter(event => event.type === 'handoff')).toHaveLength(total)
+    expect(result.deliveries!.some(delivery => delivery.error?.includes('上限'))).toBe(false)
   })
 
   it('resolves a future main-work dependency and asks the waiting employee to decide again', async () => {

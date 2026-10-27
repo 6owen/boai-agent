@@ -1,6 +1,7 @@
 /*
+ * [OUTPUT]: 2026-10-27 本轮相关回归合同/源码更新；执行状态另行记录，不以源码存在判通过。
 [OUTPUT]: 配色菜单先核实际打开及回退选项，再核禁用主题缺席与Escape关闭；不把尚未显示时按键当作关闭验证。
- * [OUTPUT]: 初始目录核对九项固定插件身份（含DeepSeek和双运行时），不从实现派生期望；原筛选/启停/重启断言保持。
+ * [OUTPUT]: 初始目录核对十项固定插件身份（含DeepSeek和双运行时），不从实现派生期望；原筛选/启停/重启断言保持。
  * [INPUT]: 插件平台中文场景、真实Electron与隔离固定配置文件。
  * [OUTPUT]: UI启停/同行筛选/窄窗/重启和主题真实token回退；未来配置零写入及开关动画结束后原生整幅截图。
  * [POS]: 内置插件平台BDD步骤，不调用真实模型。
@@ -35,8 +36,8 @@ async function toggle(page: Page, name: string, checked: boolean) {
 }
 Given('内置插件管理在独立桌面打开', async ({ runtime }) => {
   await start(runtime)
-  await expect.poll(() => runtime.page.locator('[data-application-plugin]').evaluateAll(elements => elements.map(element => element.getAttribute('data-application-plugin')).sort())).toEqual(['boai.preview.text', 'boai.preview.image', 'boai.preview.pdf', 'boai.preview.office', 'boai.theme.vscode-plus', 'boai.theme.base46', 'boai.search.deepseek', 'boai.runtime.pi', 'boai.runtime.opencode'].sort())
-  await expect.poll(() => settings(runtime.page)).toEqual({ revision: 0, disabledIds: [] })
+  await expect.poll(() => runtime.page.locator('[data-application-plugin]').evaluateAll(elements => elements.map(element => element.getAttribute('data-application-plugin')).sort())).toEqual(['boai.preview.text', 'boai.preview.image', 'boai.preview.pdf', 'boai.preview.office', 'boai.theme.vscode-plus', 'boai.theme.base46', 'boai.search.deepseek', 'boai.runtime.pi', 'boai.runtime.opencode', 'boai.voice-input'].sort())
+  await expect.poll(() => settings(runtime.page)).toEqual({ revision: 0, disabledIds: [], enabledIds: [] })
   const filters = runtime.page.locator('[data-plugin-filters]')
   expect(await filters.evaluate(element => {
     const input = element.querySelector('input')!.getBoundingClientRect(), select = element.querySelector('[role="combobox"]')!.getBoundingClientRect()
@@ -62,13 +63,13 @@ When('用户筛选并停用PDF预览插件', async ({ runtime }) => {
 })
 Then('插件设置实际落盘且重启后保持停用', async ({ runtime }) => {
   const path = join(runtime.root, 'application-plugins.json')
-  expect(JSON.parse(await readFile(path, 'utf8'))).toEqual({ schemaVersion: 1, revision: 1, disabledIds: ['boai.preview.pdf'] })
+  expect(JSON.parse(await readFile(path, 'utf8'))).toEqual({ schemaVersion: 2, revision: 1, disabledIds: ['boai.preview.pdf'], enabledIds: [] })
   await runtime.reviewFile('本机插件配置', path)
   await runtime.close(); await start(runtime)
   await expect(runtime.page.getByRole('switch', { name: 'PDF 预览', exact: true })).not.toBeChecked()
   await expect(runtime.page.getByRole('switch', { name: '文本预览', exact: true })).toBeChecked()
   await toggle(runtime.page, 'PDF 预览', true)
-  await expect.poll(() => settings(runtime.page)).toEqual({ revision: 2, disabledIds: [] })
+  await expect.poll(() => settings(runtime.page)).toEqual({ revision: 2, disabledIds: [], enabledIds: ['boai.preview.pdf'] })
   expect(runtime.errors).toEqual([])
   await runtime.reviewNativeCheckpoint('重启保留插件设置且可重新启用')
   await runtime.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(900, 700))
@@ -131,4 +132,28 @@ Then('插件页显示只读诊断且重启没有覆盖配置', async ({ runtime 
     if (!restart) { await runtime.close(); await start(runtime) }
   }
   expect(runtime.errors).toEqual([])
+})
+
+When('用户明确启用语音并保存术语配置', async ({ runtime }) => {
+  const page = runtime.page
+  await expect(page.getByRole('switch', { name: '语音输入', exact: true })).not.toBeChecked()
+  const before = await page.evaluate(() => window.boai.voice!.snapshot())
+  expect(before.settings.mode).toBe('local'); expect(before.settings.refinement.enabled).toBe(false)
+  await toggle(page, '语音输入', true)
+  await page.getByRole('button', { name: '配置语音输入', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: '语音输入', exact: true })
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole('textbox', { name: '语音术语表', exact: true }).fill('BOAI | 波艾')
+  await dialog.getByRole('button', { name: '保存', exact: true }).click()
+  await expect.poll(async () => (await page.evaluate(() => window.boai.voice!.snapshot())).settings.terms).toEqual([{ word: 'BOAI', aliases: ['波艾'] }])
+})
+Then('重启保留语音选择且没有自动下载或录音', async ({ runtime }) => {
+  await runtime.restart(); await openPlugins(runtime)
+  await expect(runtime.page.getByRole('switch', { name: '语音输入', exact: true })).toBeChecked()
+  const snapshot = await runtime.page.evaluate(() => window.boai.voice!.snapshot())
+  expect(snapshot.settings.terms).toEqual([{ word: 'BOAI', aliases: ['波艾'] }])
+  expect(snapshot.localReady).toBe(false); expect(snapshot.download).toBeUndefined()
+  expect(snapshot.settings.refinement.enabled).toBe(false)
+  await toggle(runtime.page, '语音输入', false)
+  await expect(runtime.page.getByRole('button', { name: '配置语音输入', exact: true })).toHaveCount(0)
 })
