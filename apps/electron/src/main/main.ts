@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 语音设备授权仅接可信主窗口短期租约，原media检查/生命周期释放保持。
  * [OUTPUT]: 2026-10-27 默认关闭语音插件接线、可信主窗口与原草稿/生命周期边界。
  * [OUTPUT]: 退出时允许运行服务完成停止桌面采集清理，拒绝新业务；避免先拒清理再等待8秒终止。
  * [OUTPUT]: 桌面诊断持久保留每次构建身份及初始化失败；导出校验真实父目录，系统事件不重发工作。
@@ -489,6 +490,7 @@ function registerIpc() {
     requireMainFrame(event)
     if (quitting) throw new Error('应用正在退出')
     switch (method) {
+      case 'microphoneAccess': return voice.microphoneAccess(input as Parameters<typeof voice.microphoneAccess>[0])
       case 'snapshot': z.undefined().parse(input); return voice.snapshot()
       case 'configure': return voice.configure(input as Parameters<typeof voice.configure>[0])
       case 'download': return voice.download(z.enum(['start', 'cancel', 'remove']).parse(input))

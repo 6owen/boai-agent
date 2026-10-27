@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 生产快捷键合同、Main Store 与隔离文件。
- * [OUTPUT]: 物理键/平台规则、禁用/冲突、CAS/回执、原子恢复和损坏只读回归。
+ * [OUTPUT]: 语音快捷键默认关闭/旧配置投影与统一冲突；原平台、CAS和恢复回归保持。
  * [POS]: 快捷键模块测试，不操作用户偏好或系统热键。
  * [PROTOCOL]: 变化同步 Header 与 tests/.folder.md。
  */
@@ -23,7 +23,7 @@ async function fixture() {
 }
 const update = (patch: ShortcutUpdate['patch'], expectedRevision = 0): ShortcutUpdate => ({ patch, expectedRevision, requestId: randomUUID() })
 
-test('缺少文件仅投影四项默认值，读取不写文件；启停和清空跨重启保持', async () => {
+test('缺少文件仅投影五项默认值，读取不写文件；启停和清空跨重启保持', async () => {
   const { store, path, root, changed } = await fixture()
   expect(store.snapshot().preferences).toEqual(shortcutDefaults()); expect(await readdir(root)).toEqual([])
   await store.update(update({ search: entry('KeyP', false, true), forward: entry(null) }))
@@ -107,4 +107,20 @@ test('规范化按物理位置匹配括号/中英文键，精确修饰键并忽�
   expect(acceleratorBinding('CmdOrCtrl+Shift+P', 'mac')).toEqual({ code: 'KeyP', shift: true, alt: false })
   expect(acceleratorBinding('Control+Command+F', 'mac')).toBeUndefined()
   expect(() => validateShortcuts(shortcutDefaults(), reservedShortcuts('other', true))).not.toThrow()
+})
+
+test('legacy shortcut preferences gain disabled unbound voice input without rewriting the source', async () => {
+  const { store, path } = await fixture()
+  const { voiceInput: _, ...preferences } = shortcutDefaults()
+  const bytes = JSON.stringify({ schemaVersion: 1, revision: 4, preferences, receipts: [] })
+  await writeFile(path, bytes); await store.init()
+  expect(store.snapshot().preferences.voiceInput).toEqual({ enabled: false, binding: null })
+  expect(await readFile(path, 'utf8')).toBe(bytes)
+  await expect(store.update(update({ voiceInput: entry('KeyK') }, 4))).rejects.toThrow('已用于')
+  await store.update(update({ voiceInput: entry('KeyM', true, true) }, 4))
+  expect(store.snapshot().preferences.voiceInput).toEqual(entry('KeyM', true, true))
+  const key = { code: 'KeyM', key: 'M', metaKey: true, ctrlKey: false, altKey: false, shiftKey: true, repeat: false, isComposing: false }
+  expect(matchShortcut(key, store.snapshot())).toBe('voiceInput')
+  expect(matchShortcut({ ...key, repeat: true }, store.snapshot())).toBeUndefined()
+  expect(matchShortcut({ ...key, isComposing: true }, store.snapshot())).toBeUndefined()
 })

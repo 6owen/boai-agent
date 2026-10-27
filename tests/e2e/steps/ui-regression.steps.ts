@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 快捷键页新增第五项语音动作，明确断言默认关闭/未绑定，原四项断言保持。
  * [OUTPUT]: 原18项UI先在本场独立profile准备同一历史再单次启动真实Electron；行为/布局/截图断言保持。
  * [OUTPUT]: 草稿切换先核对应会话数据/编辑器真实就绪，避免空草稿早于消息加载导致侧栏前缀缺失；原18基线/零像素门槛保持。
  * [INPUT]: 版本化UI合同、真实Electron、固定历史与隔离本机技能。
@@ -133,7 +134,7 @@ Then('当前场景的真实交互和布局满足原约定', async ({ runtime, ui
   } else if (selected.scene === 'shortcuts') {
     const content = page.locator('.settings-content')
     await expect(content.getByRole('heading', { name: '快捷键', exact: true })).toBeInViewport()
-    await expect(content.locator('.appearance-row')).toHaveCount(4)
+    await expect(content.locator('.appearance-row')).toHaveCount(5)
     for (const [label, key] of [['Open Search / 全局搜索', 'K'], ['切换侧边栏', 'B'], ['后退', '['], ['前进', ']']]) {
       const row = content.locator('.appearance-row').filter({ hasText: label })
       await expect(row).toBeInViewport()
@@ -141,8 +142,13 @@ Then('当前场景的真实交互和布局满足原约定', async ({ runtime, ui
       await expect(row.getByRole('switch', { name: label, exact: true })).toBeChecked()
       await expect(row.getByRole('button', { name: `修改${label}快捷键`, exact: true })).toBeEnabled()
     }
-    await expect(content.getByRole('switch')).toHaveCount(4)
-    await expect(content.locator('[data-shortcut-recorder]')).toHaveCount(4)
+    const voice = content.locator('.appearance-row').filter({ hasText: '语音输入' })
+    await expect(voice).toBeInViewport()
+    await expect(voice.locator('kbd')).toHaveText('无')
+    await expect(voice.getByRole('switch', { name: '语音输入', exact: true })).not.toBeChecked()
+    await expect(voice.getByRole('button', { name: '修改语音输入快捷键', exact: true })).toBeEnabled()
+    await expect(content.getByRole('switch')).toHaveCount(5)
+    await expect(content.locator('[data-shortcut-recorder]')).toHaveCount(5)
     await expect(content.getByRole('button', { name: '恢复默认', exact: true })).toBeEnabled()
     await expect(content.getByRole('button', { name: /^(保存|应用)$/ })).toHaveCount(0)
     await page.keyboard.press(process.platform === 'darwin' ? 'Meta+k' : 'Control+k')

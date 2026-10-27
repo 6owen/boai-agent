@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 独立 JSON 路径、平台菜单占用、版本化 patch 和请求身份。
- * [OUTPUT]: 串行 CAS/原子持久化、原文件只读保护、可核对回执与提交后事件。
+ * [OUTPUT]: 缺省语音快捷键只读投影为关闭/未绑定；原CAS、回执与原文件保护保持。
  * [POS]: Main 快捷键偏好真源，不进入员工或业务备份。
  * [PROTOCOL]: 变化同步 Header 与所属 .folder.md。
  */
@@ -11,7 +11,7 @@ import { z } from 'zod'
 import { shortcutDefaults, shortcutEntrySchema, shortcutUpdateSchema, validateShortcuts, type ReservedShortcut, type ShortcutPlatform, type ShortcutSnapshot, type ShortcutUpdate, type ShortcutReceipt } from '@boai/shared/shortcuts'
 
 const receiptSchema = z.object({ requestId: z.string().uuid(), fingerprint: z.string().max(4096), revision: z.number().int().positive().safe() }).strict()
-const fileSchema = z.object({ schemaVersion: z.literal(1), revision: z.number().int().nonnegative().safe(), preferences: z.object({ search: shortcutEntrySchema.optional(), sidebar: shortcutEntrySchema.optional(), back: shortcutEntrySchema.optional(), forward: shortcutEntrySchema.optional() }).strict(), receipts: z.array(receiptSchema).max(128).default([]) }).strict()
+const fileSchema = z.object({ schemaVersion: z.literal(1), revision: z.number().int().nonnegative().safe(), preferences: z.object({ search: shortcutEntrySchema.optional(), sidebar: shortcutEntrySchema.optional(), back: shortcutEntrySchema.optional(), forward: shortcutEntrySchema.optional(), voiceInput: shortcutEntrySchema.optional() }).strict(), receipts: z.array(receiptSchema).max(128).default([]) }).strict()
 type FileValue = Omit<z.infer<typeof fileSchema>, 'preferences'> & { preferences: ShortcutSnapshot['preferences'] }
 
 export class ShortcutSettingsStore {

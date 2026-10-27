@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 2026-10-27 原Composer语音控件/临时预览、版本守卫和导航/生命周期取消。
+ * [OUTPUT]: 2026-10-27 原Composer语音控件增加统一快捷键，限定当前输入焦点/窗口与非录入状态。
  * [INPUT]: Active Composer instance, plugin snapshot and trusted desktop voice API.
  * [OUTPUT]: Explicit recording controls and ephemeral transcription preview; navigation/lifecycle cancels.
  * [POS]: Thin Composer adapter; ordinary draft/send flow remains the owner.
@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/button'
 import { applicationPlugins } from '@boai/shared/plugins/catalog'
 import { pluginAvailability } from '@boai/shared/plugins/types'
 import type { DesktopApi } from '@boai/shared/ipc'
+import { shortcuts } from '@/stores/shortcuts'
+import { matchShortcut } from '@boai/shared/shortcuts'
 import { pluginUsage, usePlugins } from '@/stores/plugins'
 import { VoiceController, type VoiceUi } from '@boai/voice-input-plugin/controller'
 import type { MentionInputHandle } from './mention-input'
@@ -36,6 +38,22 @@ export function useVoiceInput(api: DesktopApi | undefined, editor: RefObject<Men
     document.addEventListener('visibilitychange', visibility)
     return () => { mounted = false; owner.current = undefined; void controller.cancel(); unsubscribe(); document.removeEventListener('visibilitychange', visibility); setState({ phase: 'idle', preview: '' }) }
   }, [api, enabled, active, disabled, scope, editor])
+  useEffect(() => {
+    if (!enabled || !active || disabled) return
+    const onKey = (event: KeyboardEvent) => {
+      const shortcut = shortcuts.store.getState(), controller = owner.current
+      if (!controller || !document.hasFocus() || document.hidden || event.defaultPrevented || shortcut.capturing || shortcut.snapshot?.error || !shortcut.snapshot || matchShortcut(event, shortcut.snapshot) !== 'voiceInput') return
+      const overlay = '[role="dialog"], [role="alertdialog"], [role="menu"], [data-slot="popover-content"], [data-slot="select-content"], [data-slot="context-menu-content"]'
+      if ([...document.querySelectorAll(overlay)].some(node => node.getClientRects().length > 0)) return
+      if (controller.state.phase === 'idle' && !editor.current?.hasFocus()) return
+      if (controller.state.phase !== 'idle' && controller.state.phase !== 'recording') return
+      event.preventDefault()
+      if (controller.state.phase === 'recording') void controller.finish()
+      else void controller.start(instance.current)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [enabled, active, disabled, editor])
   useEffect(() => {
     if (state.phase !== 'recording') return
     setSeconds(0)

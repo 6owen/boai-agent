@@ -1,22 +1,22 @@
 /*
  * [INPUT]: 平台、物理键码和 Main 持久快捷键快照。
- * [OUTPUT]: 四项动作、规范化绑定、展示/执行一致的匹配与冲突校验。
+ * [OUTPUT]: 五项动作（含默认关闭语音输入）、规范化绑定、展示/执行一致的匹配与冲突校验。
  * [POS]: Main 与 Renderer 共用快捷键合同，不注册系统热键。
  * [PROTOCOL]: 变化同步 Header 与所属 .folder.md。
  */
 import { z } from 'zod'
 
-export const shortcutIds = ['search', 'sidebar', 'back', 'forward'] as const
+export const shortcutIds = ['search', 'sidebar', 'back', 'forward', 'voiceInput'] as const
 export type ShortcutId = typeof shortcutIds[number]
 export type ShortcutPlatform = 'mac' | 'other'
-export const shortcutLabels: Record<ShortcutId, string> = { search: 'Open Search / 全局搜索', sidebar: '切换侧边栏', back: '后退', forward: '前进' }
+export const shortcutLabels: Record<ShortcutId, string> = { search: 'Open Search / 全局搜索', sidebar: '切换侧边栏', back: '后退', forward: '前进', voiceInput: '语音输入' }
 const codeSchema = z.string().regex(/^(Key[A-Z]|Digit[0-9]|F([1-9]|1[0-9]|2[0-4])|BracketLeft|BracketRight|Backslash|Semicolon|Quote|Comma|Period|Slash|Backquote|Minus|Equal|Enter|Arrow(Up|Down|Left|Right)|Home|End|PageUp|PageDown)$/)
 export const shortcutBindingSchema = z.object({ code: codeSchema, shift: z.boolean(), alt: z.boolean() }).strict()
 export type ShortcutBinding = z.infer<typeof shortcutBindingSchema>
 export const shortcutEntrySchema = z.object({ enabled: z.boolean(), binding: shortcutBindingSchema.nullable() }).strict()
 export type ShortcutEntry = z.infer<typeof shortcutEntrySchema>
 export type ShortcutPreferences = Record<ShortcutId, ShortcutEntry>
-export const shortcutPatchSchema = z.object({ search: shortcutEntrySchema.optional(), sidebar: shortcutEntrySchema.optional(), back: shortcutEntrySchema.optional(), forward: shortcutEntrySchema.optional() }).strict().refine(value => Object.keys(value).length > 0)
+export const shortcutPatchSchema = z.object({ search: shortcutEntrySchema.optional(), sidebar: shortcutEntrySchema.optional(), back: shortcutEntrySchema.optional(), forward: shortcutEntrySchema.optional(), voiceInput: shortcutEntrySchema.optional() }).strict().refine(value => Object.keys(value).length > 0)
 export const shortcutUpdateSchema = z.object({ patch: shortcutPatchSchema, expectedRevision: z.number().int().nonnegative().safe(), requestId: z.string().uuid() }).strict()
 export type ShortcutUpdate = z.infer<typeof shortcutUpdateSchema>
 export type ReservedShortcut = { binding: ShortcutBinding; label: string }
@@ -25,7 +25,7 @@ export type ShortcutReceipt = { state: 'committed' | 'absent' | 'unknown'; snaps
 
 export function shortcutDefaults(): ShortcutPreferences {
   const entry = (code: string): ShortcutEntry => ({ enabled: true, binding: { code, shift: false, alt: false } })
-  return { search: entry('KeyK'), sidebar: entry('KeyB'), back: entry('BracketLeft'), forward: entry('BracketRight') }
+  return { search: entry('KeyK'), sidebar: entry('KeyB'), back: entry('BracketLeft'), forward: entry('BracketRight'), voiceInput: { enabled: false, binding: null } }
 }
 export function bindingKey(binding: ShortcutBinding | null) { return binding ? `${binding.code}:${Number(binding.shift)}:${Number(binding.alt)}` : '' }
 export function sameShortcut(a: ShortcutEntry, b: ShortcutEntry) { return a.enabled === b.enabled && bindingKey(a.binding) === bindingKey(b.binding) }

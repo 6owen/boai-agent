@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 2026-10-27 Qwen实际实时协议、确认片段排序/去重及未知用量，不重传。
+ * [OUTPUT]: 2026-10-27 Qwen识别语言与术语下发；自动语言省略字段，原确认片段和断流合同保持。
  * [INPUT]: Explicit Qwen Realtime endpoint/key and ordered PCM16 chunks.
  * [OUTPUT]: Actual partial/final segments, bounded transport and truthful partial failure; no reconnect/replay/fallback.
  * [POS]: Main-side ASR adapter; protocol frozen against official client/server events on 2026-10-27.
@@ -26,7 +26,7 @@ export class QwenRecognition {
       const rejectReady = () => { clearTimeout(timeout); reject(new Error('识别服务连接失败')) }
       this.socket.once('error', rejectReady); this.socket.once('close', rejectReady)
       this.socket.once('open', () => this.send('session.update', { session: { input_audio_format: 'pcm', sample_rate: 16000,
-        input_audio_transcription: { ...(settings.terms.length ? { corpus: { text: settings.terms.map(term => [term.word, ...term.aliases].join(' / ')).join('\n') } } : {}) },
+        input_audio_transcription: { ...(settings.language !== 'auto' ? { language: settings.language } : {}), ...(settings.terms.length ? { corpus: { text: settings.terms.map(term => [term.word, ...term.aliases].join(' / ')).join('\n') } } : {}) },
         turn_detection: { type: 'server_vad', threshold: 0.2, silence_duration_ms: 800 },
       } }))
       this.socket.on('message', bytes => {

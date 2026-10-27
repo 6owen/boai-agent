@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 2026-10-27 默认关闭、设置/凭据、单租约、迟到录音/整理与原草稿回归源码。
+ * [OUTPUT]: 2026-10-27 新增v1无写入迁移、语言/规则下发和设备授权互斥；原草稿与单租约回归保持。
  * [INPUT]: Explicit plugin settings, controlled host lifecycle, helper exit and voice event streams.
  * [OUTPUT]: Opt-in migration, endpoint credentials, capture ownership, once-only drafts and late-result regressions.
  * [POS]: Controlled plugin contracts; no microphone, real ASR or online service calls.
@@ -141,4 +141,52 @@ it('does not resurrect failed-session text when the user cancels while cleanup i
   await vi.waitFor(() => expect(f.api.cancel).toHaveBeenCalledOnce())
   await f.controller.cancel(); cleanup.resolve(); await finishing
   expect(f.controller.state.pending).toBeUndefined(); expect(f.text()).toBe('原草稿')
+})
+
+it('projects legacy voice settings without writing, then persists explicit v2 fields and preserves credentials', async () => {
+  const root = await directory(), path = join(root, 'voice.json'), vault = secrets()
+  const legacy = { schemaVersion: 1, revision: 8, mode: 'local', online: { ...defaultVoiceSettings().online, credentialRef: 'existing' }, refinement: { enabled: false, connectionId: 'text-connection', model: 'model' }, terms: [{ word: 'BOAI', aliases: ['波艾'] }] }
+  const bytes = JSON.stringify(legacy); await writeFile(path, bytes); await vault.set('existing', 'kept-secret')
+  const store = new VoiceSettingsStore(path, vault); await store.init()
+  expect(store.readOnly).toBe(false); expect(store.value).toMatchObject({ schemaVersion: 2, revision: 8, language: 'auto', microphoneDeviceId: '', refinement: { instructions: '' } })
+  expect(await readFile(path, 'utf8')).toBe(bytes)
+  const { revision: _, schemaVersion: _version, ...settings } = store.value
+  settings.online = { endpoint: settings.online.endpoint, model: settings.online.model }
+  await expect(store.update({ expectedRevision: 8, settings: { ...settings, language: 'de' } })).rejects.toThrow('不支持')
+  expect(await readFile(path, 'utf8')).toBe(bytes)
+  await store.update({ expectedRevision: 8, settings: { ...settings, language: 'zh', microphoneDeviceId: 'usb-device', refinement: { ...settings.refinement, instructions: '保留语气词' } } })
+  const reopened = new VoiceSettingsStore(path, vault); await reopened.init()
+  expect(reopened.value).toMatchObject({ schemaVersion: 2, revision: 9, language: 'zh', microphoneDeviceId: 'usb-device', online: { credentialRef: 'existing' }, refinement: { instructions: '保留语气词' }, terms: legacy.terms })
+  expect(await vault.get('existing')).toBe('kept-secret')
+  const future = JSON.stringify({ ...reopened.value, schemaVersion: 99 }); await writeFile(path, future)
+  const unknown = new VoiceSettingsStore(path, vault); await unknown.init(); expect(unknown.readOnly).toBe(true)
+  expect(await readFile(path, 'utf8')).toBe(future)
+})
+it('passes the selected language to the helper and only the saved rules to refinement', async () => {
+  const helper = vi.fn((_models: string, _audio: string, segment: (index: number, text: string) => void, _language: string) => { segment(0, '预算1234元'); return { result: Promise.resolve({ complete: true }), kill: async () => {} } })
+  const refine = vi.fn(async () => '预算1234元。')
+  const host = new VoiceHost(await directory(), { secrets: secrets(), enabled: () => true, allowed: () => true, supported: () => true, emit: () => {}, helper, refine })
+  await host.init(); vi.spyOn(host.models, 'ready').mockResolvedValue(true)
+  const { schemaVersion: _, revision: _revision, ...settings } = defaultVoiceSettings()
+  await host.configure({ expectedRevision: 0, settings: { ...settings, language: 'en', refinement: { enabled: true, connectionId: 'text', model: 'model', instructions: '保留语气词' } } })
+  const id = { ...identity(), settingsRevision: 1 }; await host.start(id)
+  await host.append({ sessionId: id.sessionId, sequence: 0, pcm: new Uint8Array([1, 0]) })
+  expect(await host.finish(id.sessionId)).toMatchObject({ complete: true, text: '预算1234元' })
+  expect(helper.mock.calls[0]?.[3]).toBe('en')
+  expect(await host.refine({ sessionId: id.sessionId, text: '预算1234元', settingsRevision: 1 })).toMatchObject({ text: '预算1234元。' })
+  expect(refine).toHaveBeenCalledWith('text', 'model', '预算1234元', [], expect.any(AbortSignal), '保留语气词')
+  await host.close()
+})
+it('keeps a device authorization mutually exclusive and a late release cannot close a newer lease', async () => {
+  let enabled = false
+  const helper = vi.fn(() => { throw new Error('must not run ASR') })
+  const host = new VoiceHost(await directory(), { secrets: secrets(), enabled: () => enabled, allowed: () => true, supported: () => true, emit: () => {}, helper, refine: async () => '' })
+  await host.init(); const first = randomUUID(), second = randomUUID()
+  expect(() => host.microphoneAccess({ token: first, active: true })).toThrow('启用')
+  enabled = true; host.microphoneAccess({ token: first, active: true }); expect(host.canCapture()).toBe(true)
+  await expect(host.start(identity())).rejects.toThrow('正在使用')
+  host.microphoneAccess({ token: first, active: false }); expect(host.canCapture()).toBe(false)
+  host.microphoneAccess({ token: second, active: true }); host.microphoneAccess({ token: first, active: false })
+  expect(host.canCapture()).toBe(true)
+  await host.cancelAll(); expect(host.canCapture()).toBe(false); expect(helper).not.toHaveBeenCalled()
 })
