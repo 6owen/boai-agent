@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-27 语音插件与显式执行额度的公共合同；不依赖可执行插件。
  * [OUTPUT]: 默认执行不按累计调用、工具步骤、用量或墙钟截断；保留真实用量、取消/权限和明确指定的预算。
  * [OUTPUT]: 自动化预算没有执行截止时间，旧持久账本保留兼容；普通工作期限合同不变。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
@@ -120,6 +121,9 @@ export interface WorkItem {
   updatedAt: string
 }
 export interface WorkBudget {
+  /** A finite ceiling needs an explicit user receipt; historical unknown limits are retained until an explicit continuation. */
+  limitAuthority?: { kind: 'default' } | { kind: 'user'; requestId: string; messageId: string; version: number }
+  legacyLimits?: { limits: WorkBudgetLimits; retainedAt: string; reason: 'unverified-origin' }
   /** Original interactive request; unlike an occurrence or organized collaboration. */
   sourceMessageId?: string
   /** Legacy field names remain compatible; native Codex counts host turns, never internal model steps. */

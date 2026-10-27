@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-27 默认关闭语音插件接线、可信主窗口与原草稿/生命周期边界。
  * [OUTPUT]: bobo普通会话/首发的五类管理命令插入固定技能标签，选择时不发送消息或执行操作。
  * [OUTPUT]: 快捷命令目录与消息标签展示共用composer-commands，原候选/展开及即时文件/目录操作保持。
  * [OUTPUT]: 会话切换保留输入布局，按scope重置候选/光标/IME状态并将编辑器撤销历史隔离到当前会话。
@@ -9,6 +10,7 @@
  * [POS]: Composer输入增强；文件目录惰性有界读取，实际权限由宿主核验。
  * [PROTOCOL]: 变化同步Header与所属.folder.md。
  */
+import { useVoiceInput } from './use-voice-input'
 import { ErrorToast } from '@/components/common/error-feedback'
 import { useEffect, useId, useImperativeHandle, useLayoutEffect, useRef, useState, type ReactNode, type Ref } from 'react'
 import type { DigitalAgent, Resource, ConversationFileItem } from '@boai/shared/domain'
@@ -38,14 +40,16 @@ export interface PromptBarHandle { mention(id: string): void; focus(): void }
 interface Props {
   ref?: Ref<PromptBarHandle>; api?: DesktopApi; resources?: Resource[]; conversationId?: string
   draft: ChatDraft; setDraft(value: ChatDraft): void; members: DigitalAgent[]; group: boolean; external: boolean; placeholder: string
-  conversationReady?: boolean; mentionsAllowed?: boolean; disabled?: boolean
+  pageActive?: boolean; conversationReady?: boolean; mentionsAllowed?: boolean; disabled?: boolean
   onSend(): void; onActivity(): void; onOpenWorkspace(): void; onPasteMaterials?(files?: File[]): void
-  attachments?: ReactNode; children(openMenu: (kind: Menu) => void, menu: Menu | null, reference: (value: ComposerReference) => void): ReactNode
+  attachments?: ReactNode; children(openMenu: (kind: Menu) => void, menu: Menu | null, reference: (value: ComposerReference) => void, voice: { controls: ReactNode; onSend(): void }): ReactNode
 }
-export function PromptBar({ ref, api, resources = [], conversationId, draft, setDraft, members, group, external, placeholder, conversationReady = true, mentionsAllowed = true, disabled = false, onSend, onActivity, onOpenWorkspace, onPasteMaterials, attachments, children }: Props) {
+export function PromptBar({ ref, api, resources = [], conversationId, draft, setDraft, members, group, external, placeholder, pageActive = true, conversationReady = true, mentionsAllowed = true, disabled = false, onSend: submit, onActivity, onOpenWorkspace, onPasteMaterials, attachments, children }: Props) {
   const anchor = useRef<HTMLDivElement>(null), list = useRef<HTMLDivElement>(null), richInput = useRef<MentionInputHandle>(null)
   const listId = useId(), primary = members.length === 1 ? members[0] : undefined
   const scope = `${conversationId ?? 'new'}:${primary?.id ?? 'group'}`
+  const voice = useVoiceInput(api, richInput, scope, pageActive && !external, disabled || Boolean(draft.submission))
+  const onSend = () => { voice.cancel(); submit() }
   const current = useRef({ scope, text: draft.text, disabled }); current.current = { scope, text: draft.text, disabled }
   const mentions = draftMentions(draft)
   const [selection, setSelection] = useState({ start: draft.text.length, end: draft.text.length })
@@ -170,11 +174,12 @@ export function PromptBar({ ref, api, resources = [], conversationId, draft, set
   return <Popover open={Boolean(menu)} modal={false} onOpenChange={value => { if (!value) close() }}>
     <ChatComposer ref={anchor}>{attachments}
       <MentionInput scope={scope} ref={richInput} disabled={disabled} draft={draft} placeholder={placeholder} listId={menu ? listId : undefined} activeId={menu && rows.length ? `${listId}-${selected}` : undefined} onChange={value => { setDraft(value); setManual(null); setDismissed(false) }} onSelection={setSelection} onKeyDown={keyDown} onPaste={paste} onComposing={setComposing} />
+      {voice.preview}
       {children(openMenu, menu, reference => {
         if (disabled || !mentionsAllowed || external || !primary || reference.agentId !== primary.id) return
         richInput.current?.replace(richInput.current.selection(), '', { id: `${reference.kind}:${reference.id}`, name: reference.name, resource: reference })
         close()
-      })}
+      }, { controls: voice.controls, onSend })}
     </ChatComposer>
     <PopoverContent anchor={anchor} side="top" align="start" sideOffset={8} initialFocus={false} finalFocus={false} className="prompt-bar-menu w-[320px] max-w-[calc(100vw-24px)] gap-1.5 p-2">
       <PopoverTitle>{displayedMenu === 'at' ? '提及员工' : displayedMenu === 'dollar' ? '引用技能、文件和提示词' : '命令'}</PopoverTitle>

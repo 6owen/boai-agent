@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-27 默认关闭语音插件接线、可信主窗口与原草稿/生命周期边界。
  * [OUTPUT]: 桌面诊断持久保留每次构建身份及初始化失败；导出校验真实父目录，系统事件不重发工作。
  * [OUTPUT]: 工作区打开方式在macOS读取应用声明的ICNS并转PNG，避免通用图标；其他平台沿Electron接口，随应用列表缓存。
  * [OUTPUT]: 员工工作区目录/外部应用及独立用户终端走主窗校验；删除/清空/移除成员等待精确终端退出，输入沿私有轻量身份复核。
@@ -60,6 +61,9 @@
  * [POS]: apps/electron/apps/electron/src/main/main.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { createVoiceHost } from './voice-input'
+import { pluginAvailability } from '@boai/shared/plugins/types'
+import { applicationPlugins } from '@boai/shared/plugins/catalog'
 import { desktopActivityCapture } from './desktop-activity'
 import { saveEmployeeKnowledgeSchema } from '@boai/shared/domain/knowledge'
 import { GatewayImportInbox } from './gateway-import-inbox'
@@ -123,6 +127,7 @@ const compiledApplication = typeof __BOAI_APPLICATION_BUILD__ === 'undefined' ? 
 const diagnostics = new DesktopDiagnostics(join(legacyDataPath, 'diagnostics'), compiledApplication ? { ...compiledApplication, source: 'compiled-inputs' } : { version: null, inputHash: null, source: 'unknown' })
 const desktopLifecycle = new DesktopLifecycleMonitor((state, event) => {
   diagnostics.record(event)
+  if (state.power === 'suspended' || state.locked) void voice.cancelAll().catch(() => {})
   sendEvent({ type: 'desktop:lifecycle', state })
 })
 let profileAccessError: Error | undefined
@@ -200,8 +205,17 @@ const appIconController = new AppIconController(appIconAssets, join(__dirname, '
   snapshot: () => background.iconStatus(), apply: id => background.applyIcon(id), retry: id => background.retryIcon(id),
 })
 const pluginSettings = new PluginSettingsStore(join(legacyDataPath, 'application-plugins.json'), settings => {
+  if (pluginAvailability(applicationPlugins.find(plugin => plugin.id === 'boai.voice-input')!, settings) !== 'enabled') void voice.close().catch(() => {})
   sendEvent({ type: 'plugins:changed', settings })
   appearance.systemChanged()
+})
+const voice = createVoiceHost(join(legacyDataPath, 'voice-input'), join(__dirname, '../voice-input/local-helper.cjs').replace('app.asar/', 'app.asar.unpacked/'), {
+  secrets: vault,
+  enabled: () => pluginAvailability(applicationPlugins.find(plugin => plugin.id === 'boai.voice-input')!, pluginSettings.snapshot()) === 'enabled',
+  allowed: () => !quitting && !!window && !window.isDestroyed() && window.isVisible() && desktopLifecycle.snapshot().power === 'awake' && !desktopLifecycle.snapshot().locked,
+  emit: event => { if (window && !window.isDestroyed()) window.webContents.send('boai:voice-event', event) },
+  usage: ({ stage, state, ...entry }) => diagnostics.record('voice-usage', { ...entry, method: stage, usageState: state }),
+  connection: async id => (await requestRuntime('snapshot') as Snapshot).connections.find(connection => connection.id === id),
 })
 const localConfigs = new LocalConfigDiscovery()
 const desktopSettings = new DesktopSettingsStore(join(legacyDataPath, 'desktop-settings.json'), {
@@ -470,6 +484,21 @@ function registerIpc() {
   const requireMainFrame = (event: Electron.IpcMainInvokeEvent) => {
     if (!window || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) throw new Error('不允许的请求来源。')
   }
+  ipcMain.handle('boai:voice', async (event, method: unknown, input: unknown) => {
+    requireMainFrame(event)
+    if (quitting) throw new Error('应用正在退出')
+    switch (method) {
+      case 'snapshot': z.undefined().parse(input); return voice.snapshot()
+      case 'configure': return voice.configure(input as Parameters<typeof voice.configure>[0])
+      case 'download': return voice.download(z.enum(['start', 'cancel', 'remove']).parse(input))
+      case 'start': return voice.start(input as Parameters<typeof voice.start>[0])
+      case 'append': return voice.append(input as Parameters<typeof voice.append>[0])
+      case 'finish': return voice.finish(z.string().uuid().parse(input))
+      case 'cancel': return voice.cancel(z.string().uuid().parse(input))
+      case 'refine': return voice.refine(input as Parameters<typeof voice.refine>[0])
+      default: throw new Error('未知语音操作')
+    }
+  })
   ipcMain.handle('boai:desktop-lifecycle', event => { requireMainFrame(event); return desktopLifecycle.snapshot() })
   ipcMain.handle('boai:export-diagnostics', async event => {
     requireMainFrame(event)
@@ -753,6 +782,10 @@ async function createWindow(show = true) {
   }
   mainWindow.on('blur', releaseShortcutCapture)
   mainWindow.on('hide', releaseShortcutCapture)
+  mainWindow.on('hide', () => { void voice.cancelAll().catch(() => {}) })
+  mainWindow.webContents.on('render-process-gone', () => { void voice.cancelAll().catch(() => {}) })
+  mainWindow.webContents.on('did-start-loading', () => { void voice.cancelAll().catch(() => {}) })
+  mainWindow.webContents.on('destroyed', () => { void voice.cancelAll().catch(() => {}) })
   const terminalClientId = mainWindow.webContents.id
   const releaseUserTerminals = () => { workspaceDocumentEpoch++; userTerminals.releaseClient(terminalClientId) }
   mainWindow.webContents.on('render-process-gone', releaseUserTerminals)
@@ -776,7 +809,8 @@ async function createWindow(show = true) {
   window.webContents.on('will-navigate', (event) => event.preventDefault())
   window.webContents.on('did-finish-load', () => window?.webContents.setZoomFactor(appearance.snapshot().preferences.zoomFactor))
   window.webContents.on('zoom-changed', (_event, direction) => changeZoom(direction === 'in' ? 1 : -1))
-  window.webContents.session.setPermissionRequestHandler((_contents, _permission, callback) => callback(false))
+  window.webContents.session.setPermissionCheckHandler((contents, permission, _origin, details) => permission === 'media' && contents === window?.webContents && details.isMainFrame && details.mediaType === 'audio' && details.requestingUrl === window?.webContents.getURL() && voice.canCapture())
+  window.webContents.session.setPermissionRequestHandler((contents, permission, callback, details) => callback(permission === 'media' && contents === window?.webContents && details.isMainFrame && details.requestingUrl === window?.webContents.getURL() && 'mediaTypes' in details && details.mediaTypes?.length === 1 && details.mediaTypes[0] === 'audio' && voice.canCapture()))
   if (!app.isPackaged && process.env.BOAI_RENDERER_URL) {
     const url = new URL(process.env.BOAI_RENDERER_URL)
     if (!['127.0.0.1', 'localhost'].includes(url.hostname)) throw new Error('开发页面必须来自本机。')
@@ -844,6 +878,7 @@ else {
     desktopLifecycle.start(powerMonitor)
     await prepareV2DataRoot(legacyDataPath)
     await pluginSettings.init()
+    await voice.init()
     await appearance.init()
     await desktopSettings.init()
     installMenu()
@@ -878,7 +913,7 @@ else {
     // A timeout may terminate the worker, but never counts as Chromium action exit.
     const cliExit = (cliStarting ?? Promise.resolve()).then(async () => { await cli?.close(); cli = undefined })
     const userTerminalExit = userTerminals.close()
-    void Promise.all([runtimeExit, cliExit, iconExit, userTerminalExit, browsers.shutdown(), materialSources.close(), desktopSettings.flush(), shortcutSettings.flush(), pluginSettings.flush(), cliInstaller.flush()]).then(() => { diagnostics.record('app-quit'); desktopLifecycle.stop(); background.destroy(); quitApproved = true; app.quit() }).catch(async error => {
+    void Promise.all([runtimeExit, cliExit, iconExit, userTerminalExit, voice.close(), browsers.shutdown(), materialSources.close(), desktopSettings.flush(), shortcutSettings.flush(), pluginSettings.flush(), cliInstaller.flush()]).then(() => { diagnostics.record('app-quit'); desktopLifecycle.stop(); background.destroy(); quitApproved = true; app.quit() }).catch(async error => {
       diagnostics.record('app-quit-failed', diagnosticError(error))
       await userTerminalExit.catch(() => {})
       userTerminalShutdownInterrupted = true

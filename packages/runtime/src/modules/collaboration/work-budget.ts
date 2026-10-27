@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-27 显式额度来源与未知旧值归档，默认无累计上限且不重置用量。
  * [OUTPUT]: 默认执行不按累计调用、工具步骤、用量或墙钟截断；保留真实用量、取消/权限和明确指定的预算。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 普通群/组织/自动化共用工作身份；共享预算只约束API请求，本机持有的Work不受额度和期限限制。
@@ -9,7 +10,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import type { AutomationOrigin, BudgetModelCall, ClearedBudgetModelCall, ModelUsage, WorkBudget, WorkOrganization } from '@boai/shared/domain'
-import { WORK_BUDGET_ALLOWANCE as allowance, BOBO_COLLABORATION_INITIAL_MODEL_CALLS, WORK_EXECUTION_LIMITS } from '@boai/shared/domain/work'
+import { WORK_BUDGET_ALLOWANCE as allowance, WORK_EXECUTION_LIMITS } from '@boai/shared/domain/work'
 import type { RecordTransaction } from '../../adapters/storage/product-store'
 
 export const workLimits = { workItems: 0, retries: 0, reportRefreshes: 0, noProgress: 0, maxWorkItems: null, maxRetries: null, maxReportRefreshes: null, maxNoProgress: null }
@@ -17,20 +18,23 @@ export const WORK_DURATION_MS = allowance.durationMs
 export class WorkUnavailableError extends Error {}
 const row = <T extends { id: string }>(collection: string, value: T) => ({ collection, id: value.id, value })
 export function newWorkBudget(id: string, source?: { origin: AutomationOrigin; conversationId: string } | { collaborationRequestId: string; conversationId: string } | { sourceMessageId: string; conversationId: string; callUnit: 'external-turn' | 'mixed' }, _organizationMode?: WorkOrganization['mode']) : WorkBudget {
-  return { ...workLimits, id, schemaVersion: 1, executionAllowanceVersion: 2, modelCalls: 0, runs: 0,
+  return { ...workLimits, id, schemaVersion: 1, executionAllowanceVersion: 2, limitAuthority: { kind: 'default' }, modelCalls: 0, runs: 0,
     maxModelCalls: WORK_EXECUTION_LIMITS.modelCalls, maxRuns: null, maxOutputTokens: WORK_EXECUTION_LIMITS.outputTokens,
     deadlineAt: '', usage: {}, usageIncomplete: false,
     ...(source ? { ...source, accounting: 'model-calls-v1', unknownCalls: 0 } : {}) }
 }
-/** Upgrade exact former defaults, including organizations; preserve explicit/custom/renewed budgets and all usage. */
-export function upgradeWorkExecutionAllowance(budget: WorkBudget) {
-  if (budget.executionAllowanceVersion === 2 || budget.callUnit === 'external-turn' || budget.renewals?.length) return
-  const oldCalls = budget.executionAllowanceVersion === 1 ? budget.maxModelCalls === 256 && budget.maxOutputTokens === 128000
-    : (budget.maxModelCalls === allowance.modelCalls || !!budget.collaborationRequestId && budget.maxModelCalls === BOBO_COLLABORATION_INITIAL_MODEL_CALLS) && budget.maxOutputTokens === allowance.outputTokens
-  if (!oldCalls || budget.maxRuns !== allowance.runs || budget.maxWorkItems !== allowance.workItems || budget.maxRetries !== allowance.retries || budget.maxReportRefreshes !== allowance.reportRefreshes || budget.maxNoProgress !== allowance.noProgress) return
+/** Never infer user intent from a number matching a former default. Startup preserves unverified history. */
+export function upgradeWorkExecutionAllowance(budget: WorkBudget, explicitContinuation = false) {
+  if (budget.limitAuthority?.kind === 'user' || budget.renewals?.length) return
+  if (budget.limitAuthority?.kind !== 'default' && !explicitContinuation) return
+  if (!budget.limitAuthority && !budget.legacyLimits) budget.legacyLimits = { limits: {
+    maxModelCalls: budget.maxModelCalls, maxRuns: budget.maxRuns, maxOutputTokens: budget.maxOutputTokens,
+    maxWorkItems: budget.maxWorkItems, maxRetries: budget.maxRetries, maxReportRefreshes: budget.maxReportRefreshes,
+    maxNoProgress: budget.maxNoProgress, deadlineAt: budget.deadlineAt,
+  }, retainedAt: new Date().toISOString(), reason: 'unverified-origin' }
   budget.maxModelCalls = null; budget.maxOutputTokens = null; budget.maxRuns = null
   budget.maxWorkItems = null; budget.maxRetries = null; budget.maxReportRefreshes = null; budget.maxNoProgress = null
-  budget.deadlineAt = ''; budget.executionAllowanceVersion = 2
+  budget.deadlineAt = ''; budget.executionAllowanceVersion = 2; budget.limitAuthority = { kind: 'default' }
 }
 /** A null ceiling means unlimited. Explicit zero limits still reject immediately. */
 export function workLimitReached(used: number, limit: number | null) { return limit !== null && used >= limit }

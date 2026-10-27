@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-27 本轮相关回归合同/源码更新；执行状态另行记录，不以源码存在判通过。
  * [INPUT]: Actual installed Mastra SDK, local streaming HTTP provider, real ProductStore and host-like authorization ports.
  * [OUTPUT]: Public checkpoint/rotation, final-prompt tool compaction, original budgets, Memory pruning, review regressions for provenance, legacy clipping and readonly-step recovery.
  * [POS]: Controlled SDK integration; no external model, GUI or semantic-quality certification.
@@ -17,6 +18,8 @@ import { ProductStore } from '../packages/runtime/src/adapters/storage/product-s
 import { ContextRepository, type ContextPort } from '../packages/runtime/src/modules/contexts/context-repository'
 import { RunModelUsage } from '../packages/runtime/src/modules/profile/run-model-usage'
 import { snapshotProviderPrompt } from '../packages/runtime/src/adapters/mastra/context-maintenance'
+import { progressBoundary } from '../packages/runtime/src/adapters/mastra/progress-review'
+import { ProgressMonitor, ProgressStalledError } from '../packages/runtime/src/modules/contexts/progress-monitor'
 
 interface Body { messages: { role: string; content: unknown }[]; tools?: unknown[] }
 const cleanup: (() => Promise<void>)[] = []
@@ -346,4 +349,21 @@ it('inherits old material sources into snapshot, reply and Work before data use,
   expect(detail.workItems?.find(work => work.id === context.work?.id)?.materialSources).toEqual(expected)
   await service.handle('setMaterialAuthorization', { id: material.id, expectedRevision: material.revision, authorizedAgentIds: [] })
   expect(service['snapshots'].get(context.runId)?.invalidated).toBe(true)
+})
+
+for (const state of ['stuck', 'unknown', 'bad-citations', 'changed-source'] as const) it(`reviews repeated evidence through the actual SDK: ${state}`, async () => {
+  let current = true
+  const model = await endpoint((_body, response, index) => { if (state === 'changed-source') current = false; send(response, JSON.stringify({ state: state === 'bad-citations' || state === 'changed-source' ? 'stuck' : state, sourceIds: state === 'bad-citations' ? ['invented'] : ['tool-1', 'tool-3'], reason: 'Controlled evidence review' }), index) })
+  const f = await fixture(model.url, [message(1, 'Read the report and find a new fact.')]), monitor = new ProgressMonitor()
+  f.ctx.progressCurrent = async () => current
+  const observe = (id: number) => { monitor.start(`tool-${id}`, 'read_file', { path: 'report.txt' }); monitor.finish(`tool-${id}`, 'read_file', { text: 'same fact' }); monitor.endStep() }
+  for (let i = 0; i < 3; i++) observe(i)
+  expect(await progressBoundary(f.ctx, monitor)).toContain('tool-0')
+  expect(model.requests).toHaveLength(0)
+  observe(3)
+  if (state === 'stuck') await expect(progressBoundary(f.ctx, monitor)).rejects.toBeInstanceOf(ProgressStalledError)
+  else { await progressBoundary(f.ctx, monitor); expect(monitor.pauseRequested).toBe(false); observe(4); await progressBoundary(f.ctx, monitor) }
+  expect(model.requests).toHaveLength(1)
+  expect(model.requests[0]!.tools?.length ?? 0).toBe(0)
+  expect(f.started).toEqual(['extra-1']); expect(f.settled).toContain('extra-1'); expect(f.supplements).toContain('extra-1')
 })

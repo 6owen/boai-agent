@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-27 默认关闭语音插件接线、可信主窗口与原草稿/生命周期边界。
  * [OUTPUT]: aria-disabled与实际编辑锁同步，使加载/待核对输入向辅助技术和真实UI操作报告同一禁用状态。
  * [OUTPUT]: scope变化保留编辑器DOM并重建ProseMirror文档/插件状态，撤销不跨会话；同scope草稿仍保留原历史。
  * [OUTPUT]: @员工与$资源/提示词共用原子插入，提示词正文快照随撤销/草稿保留。
@@ -9,6 +10,7 @@
  * [POS]: 单聊/群聊及核心首发共用的原子输入控件。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import type { VoiceAnchor } from '@boai/voice-input-plugin/controller'
 import { useImperativeHandle, useLayoutEffect, useRef, type Ref } from 'react'
 import { Editor } from '@tiptap/core'
 import { closeHistory } from '@tiptap/pm/history'
@@ -19,9 +21,12 @@ import type { ComposerReference } from '@boai/shared/domain/composer-references'
 import type { PromptTemplateReference } from '@boai/shared/domain/prompt-templates'
 import type { ChatDraft } from '../presentation'
 import type { TextRange } from '../inline-mentions'
-import { documentDraft, documentPosition, draftOffset, mentionDocument, mentionExtensions, textNodes } from '../mention-editor'
+import { documentDraft, documentPosition, draftOffset, mentionDocument, mentionExtensions, textNodes, voiceTextTransaction } from '../mention-editor'
 
 export interface MentionInputHandle {
+  voiceSnapshot(): VoiceAnchor | undefined
+  insertVoice(anchor: VoiceAnchor, text: string): VoiceAnchor | undefined
+  replaceVoice(anchor: VoiceAnchor, original: string, text: string): VoiceAnchor | undefined
   focus(): void
   selection(): TextRange
   replace(range: TextRange, text: string, member?: { id: string; name: string; resource?: ComposerReference; prompt?: PromptTemplateReference }): void
@@ -36,29 +41,38 @@ interface Props {
 
 export function MentionInput(props: Props) {
   const host = useRef<HTMLDivElement>(null), editor = useRef<Editor | null>(null), latest = useRef(props)
-  const scope = useRef(props.scope)
+  const scope = useRef(props.scope), revision = useRef(0)
   latest.current = props
   const selection = (): TextRange => {
     const instance = editor.current
     return instance ? { start: draftOffset(instance.state.doc, instance.state.selection.from), end: draftOffset(instance.state.doc, instance.state.selection.to) } : { start: 0, end: 0 }
   }
+  const replace = (range: TextRange, text: string, member?: { id: string; name: string; resource?: ComposerReference; prompt?: PromptTemplateReference }, isolated = false) => {
+    const instance = editor.current
+    if (!instance || latest.current.disabled) return
+    const content = member ? [{ type: 'mention', attrs: { id: member.id, label: member.name, trigger: member.resource || member.prompt ? '$' : '@', resource: member.resource ?? null, prompt: member.prompt ?? null } }] : textNodes(text)
+    const positions = { from: documentPosition(instance.state.doc, range.start), to: documentPosition(instance.state.doc, range.end) }
+    if (member || isolated) instance.view.dispatch(closeHistory(instance.state.tr))
+    if (content.length) instance.commands.insertContentAt(positions, content)
+    else instance.commands.deleteRange(positions)
+    if (member || isolated) instance.view.dispatch(closeHistory(instance.state.tr))
+    instance.view.focus()
+  }
+  const voiceEdit = (anchor: VoiceAnchor, text: string, original?: string): VoiceAnchor | undefined => {
+    const instance = editor.current
+    if (!instance || latest.current.disabled || anchor.scope !== (scope.current ?? '') || anchor.revision !== revision.current) return
+    const current = documentDraft(instance.state.doc, latest.current.draft)
+    if (original !== undefined && current.text.slice(anchor.start, anchor.end) !== original) return
+    instance.view.dispatch(voiceTextTransaction(instance.state, anchor, text))
+    instance.view.dispatch(closeHistory(instance.state.tr))
+    instance.view.focus()
+    return { ...anchor, end: anchor.start + text.length, revision: revision.current }
+  }
   useImperativeHandle(props.ref, () => ({
-    focus: () => editor.current?.view.focus(),
-    selection,
-    replace: (range, text, member) => {
-      const instance = editor.current
-      if (!instance || latest.current.disabled) return
-      const { doc } = instance.state
-      const content = member ? [{ type: 'mention', attrs: { id: member.id, label: member.name, trigger: member.resource || member.prompt ? '$' : '@', resource: member.resource ?? null, prompt: member.prompt ?? null } }] : textNodes(text)
-      const positions = { from: documentPosition(doc, range.start), to: documentPosition(doc, range.end) }
-      if (member) instance.view.dispatch(closeHistory(instance.state.tr))
-      if (content.length) instance.commands.insertContentAt(positions, content)
-      else instance.commands.deleteRange(positions)
-      if (member) instance.view.dispatch(closeHistory(instance.state.tr))
-      // EditorView restores its transaction's selection as well as focusing without scrolling.
-      // Native DOM focus alone returns a blurred contenteditable's caret to the paragraph start.
-      instance.view.focus()
-    },
+    focus: () => editor.current?.view.focus(), selection, replace,
+    voiceSnapshot: () => !editor.current || latest.current.disabled ? undefined : { scope: scope.current ?? '', revision: revision.current, start: selection().end, end: selection().end },
+    insertVoice: (anchor, text) => voiceEdit(anchor, text),
+    replaceVoice: (anchor, original, text) => voiceEdit(anchor, text, original),
   }), [])
   useLayoutEffect(() => {
     const instance = new Editor({
@@ -82,6 +96,7 @@ export function MentionInput(props: Props) {
           compositionend: () => { latest.current.onComposing(false); return false },
         },
       },
+      onTransaction: ({ transaction }) => { if (transaction.docChanged || transaction.selectionSet) revision.current++ },
       onUpdate: ({ editor: value }) => latest.current.onChange(documentDraft(value.state.doc, latest.current.draft)),
       onSelectionUpdate: () => latest.current.onSelection(selection()),
     })
@@ -93,7 +108,7 @@ export function MentionInput(props: Props) {
     const instance = editor.current
     if (!instance) return
     if (scope.current !== props.scope) {
-      scope.current = props.scope
+      scope.current = props.scope; revision.current++
       instance.view.updateState(EditorState.create({ schema: instance.schema, doc: instance.schema.nodeFromJSON(mentionDocument(props.draft)), plugins: instance.state.plugins }))
       instance.commands.setTextSelection(instance.state.doc.content.size - 1)
     }

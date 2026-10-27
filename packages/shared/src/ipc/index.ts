@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-27 语音插件与显式执行额度的公共合同；不依赖可执行插件。
  * [OUTPUT]: 桌面生命周期事件与主窗专用快照/诊断导出桥；员工公共方法不扩展。
  * [OUTPUT]: Owner任务结果读取复用共享Work结果合同，桌面与CLI同一投影。
  * [OUTPUT]: 工作区路径核验及轻量身份复核为私有合同；终端精确员工/会话排空保持原清理边界。
@@ -400,6 +401,8 @@ export interface Methods {
 }
 export type Method = keyof Methods
 export interface DesktopApi {
+  /** Trusted main-window-only voice bridge; absent from employee and external RPC. */
+  voice?: import('../plugins/voice-input').VoiceApi
   getDesktopLifecycle?(): Promise<import('./desktop').DesktopLifecycle>
   exportDiagnostics?(): Promise<string | null>
   initialPlugins?: PluginSettingsSnapshot

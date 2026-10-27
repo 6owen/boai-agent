@@ -71,6 +71,9 @@
       ],
       "@boai/runtime-plugins/acp": [
         "./packages/runtime-plugins/src/acp.ts"
+      ],
+      "@boai/voice-input-plugin/*": [
+        "./packages/voice-input-plugin/src/*"
       ]
     }
   },

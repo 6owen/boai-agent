@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-27 语音包分发、工作区依赖或静音诊断候选；不代表产品验收。
  * [INPUT]: Electron/CLI应用目标、当前worktree源码、默认技能及来源许可。
  * [OUTPUT]: 独立client/CLI/Electron闭包；仅完整Electron登记全量dist身份，保留buildHost开发兼容入口。
  * [POS]: 应用构建编排；默认全量Electron，固定原dist布局，无导入副作用。
@@ -71,6 +72,8 @@ async function buildElectronHost(compile) {
     compile({ entryPoints: ['apps/electron/src/preload/index.ts'], outfile: 'dist/main/preload.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron'] }),
     compile({ entryPoints: ['apps/electron/src/worker/index.ts'], outfile: 'dist/runtime/worker.mjs', bundle: true, platform: 'node', format: 'esm', target: 'node22', packages: 'external', sourcemap: true }),
   ])
+  await mkdir('dist/voice-input', { recursive: true })
+  await copyFile('packages/voice-input-plugin/src/local-helper.cjs', 'dist/voice-input/local-helper.cjs')
   await mkdir('dist/main/app-icons/tray', { recursive: true })
   const appIconManifest = JSON.parse(await readFile('packages/shared/src/appearance/app-icon-manifest.json', 'utf8'))
   for (const icon of appIconManifest.icons) {

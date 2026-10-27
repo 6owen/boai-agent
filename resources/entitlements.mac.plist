@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+[INPUT]: electron-builder default runtime entitlements and explicit voice microphone use.
+[OUTPUT]: Preserve existing JIT/native loading requirements and enable OS-authorized audio input.
+[POS]: macOS application and inherited helper signing configuration; no permission auto-grant.
+[PROTOCOL]: Update Header and resources/.folder.md when changed.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>com.apple.security.cs.allow-jit</key><true/>
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key><true/>
+    <key>com.apple.security.cs.disable-library-validation</key><true/>
+    <key>com.apple.security.device.audio-input</key><true/>
+  </dict>
+</plist>

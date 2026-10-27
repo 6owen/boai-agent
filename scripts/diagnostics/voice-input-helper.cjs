@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-27 语音包分发、工作区依赖或静音诊断候选；不代表产品验收。
  * [INPUT]: Explicit VI0 fixture directory containing one pinned local engine/model and synthetic WAV.
  * [OUTPUT]: Single utility-process recognition measurement followed by real process exit.
  * [POS]: Manual voice-input feasibility probe; never imported by the BOAI application.
@@ -30,9 +31,12 @@ try {
   if (!pcm || pcm.length % 2 || pcm.length > 120 * 32000 || format?.encoding !== 1 || format.channels !== 1 || format.rate !== 16000 || format.bits !== 16) throw new Error('Invalid PCM16 fixture')
   const samples = new Float32Array(pcm.length / 2), stream = recognizer.createStream()
   for (let index = 0; index < samples.length; index++) samples[index] = pcm.readInt16LE(index * 2) / 32768
-  stream.acceptWaveform({ sampleRate: 16000, samples })
-  recognizer.decode(stream)
-  const result = recognizer.getResult(stream)
+  let result = { text: '' }
+  if (samples.some(sample => sample !== 0 && Number.isFinite(sample))) {
+    stream.acceptWaveform({ sampleRate: 16000, samples })
+    recognizer.decode(stream)
+    result = recognizer.getResult(stream)
+  }
   process.parentPort.postMessage({ ok: true, text: result.text, seconds: samples.length / 16000, loadedMs, totalMs: performance.now() - started, maxRssBytes: process.resourceUsage().maxRSS * 1024, electron: process.versions.electron, node: process.versions.node, pid: process.pid })
   process.exit(0)
 } catch (error) {

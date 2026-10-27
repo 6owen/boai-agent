@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-27 本轮相关回归合同/源码更新；执行状态另行记录，不以源码存在判通过。
  * [OUTPUT]: 管理标签保留原草稿/已有引用、按身份去重，真实编辑节点删除/撤销同步固定引用。
  * [OUTPUT]: $资源/提示词与@员工身份隔离，提示词正文快照发送展开，混排/原子删除/撤销及旧@资源草稿保持。
  * [OUTPUT]: 资源标签保留固定身份及可见名称，原子删除/撤销不产生群成员路由。
@@ -14,8 +15,8 @@ import type { ChatDraft } from '../apps/electron/src/renderer/pages/conversation
 import { getSchema } from '@tiptap/core'
 import { EditorState, NodeSelection, TextSelection } from '@tiptap/pm/state'
 import { deleteSelection } from '@tiptap/pm/commands'
-import { history, redo, undo } from '@tiptap/pm/history'
-import { deleteMention, documentDraft, documentPosition, draftOffset, mentionDocument, mentionExtensions } from '../apps/electron/src/renderer/pages/conversations/mention-editor'
+import { history, redo, undo, closeHistory } from '@tiptap/pm/history'
+import { deleteMention, documentDraft, documentPosition, draftOffset, mentionDocument, mentionExtensions, voiceTextTransaction } from '../apps/electron/src/renderer/pages/conversations/mention-editor'
 
 const draft = (text = ''): ChatDraft => ({ text, mentionIds: [] })
 const writer = { id: 'writer', name: '写手' }
@@ -205,4 +206,18 @@ it('round-trips resource tags independently of group mentions and removes refere
   undo(state, transaction => { state = state.apply(transaction) })
   expect(draftResourceReferences(documentDraft(state.doc, value))).toEqual([resource])
   expect(documentDraft(state.doc, value).mentionIds).toEqual([])
+})
+
+it('keeps voice raw insertion and refinement as separate undo groups without changing mention atoms', () => {
+  const original = appendDraftReference(insertDraftMention(draft('保留草稿 '), { start: 0, end: 0 }, writer).draft, managementSkillReference('skills', 'bobo'))
+  const schema = getSchema(mentionExtensions('tag'))
+  let state = EditorState.create({ schema, doc: schema.nodeFromJSON(mentionDocument(original)), plugins: [history()] })
+  const start = original.text.length, raw = '预算一二三四不要发送', refined = '预算1234，不要发送。'
+  state = state.apply(voiceTextTransaction(state, { start, end: start }, raw)); state = state.apply(closeHistory(state.tr))
+  state = state.apply(voiceTextTransaction(state, { start, end: start + raw.length }, refined)); state = state.apply(closeHistory(state.tr))
+  expect(documentDraft(state.doc, original).text).toBe(original.text + refined)
+  undo(state, transaction => { state = state.apply(transaction) })
+  expect(documentDraft(state.doc, original).text).toBe(original.text + raw)
+  undo(state, transaction => { state = state.apply(transaction) })
+  expect(documentDraft(state.doc, original)).toEqual(original)
 })

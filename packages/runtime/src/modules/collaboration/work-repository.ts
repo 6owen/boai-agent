@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-27 默认持续执行、来源校验及工作现场/复核接线；沿原权限和账本。
  * [OUTPUT]: 提取原继续只读preflight供结果视图，prepareRetry在原事务仍完整重核并写入。
  * [OUTPUT]: 默认执行不按累计调用、工具步骤、用量或墙钟截断；保留真实用量、取消/权限和明确指定的预算。
  * [OUTPUT]: 本人新消息对失败/取消/中断普通工作沿同事务验证并认领，未知操作、版本和权限门禁保持。
@@ -740,7 +741,7 @@ export class WorkRepository {
       if (!executions.length || executions.some(execution => execution.status !== 'released' || execution.pendingEffects !== 0)) throw new WorkUnavailableError('已有工具操作需要核对，请确认现有结果后发起明确的新请求')
     }
     const budget = (await tx.get<WorkBudget>('workBudgets', work.budgetId))!
-    if (continuedByUser && !budget.origin && work.budgetPolicy !== 'native' && Date.now() >= (workBudgetDeadline(budget) ?? Infinity)) budget.deadlineAt = new Date(Date.now() + WORK_DURATION_MS).toISOString()
+    if (continuedByUser) upgradeWorkExecutionAllowance(budget, true)
     checkWorkBudget(budget, work.budgetPolicy)
     if (work.budgetPolicy !== 'native' && workLimitReached(budget.retries, budget.maxRetries)) throw new WorkUnavailableError('达到原始工作的重试上限')
     for (const result of work.requiredResults) {

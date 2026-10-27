@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-27 默认关闭语音插件接线、可信主窗口与原草稿/生命周期边界。
  * [OUTPUT]: 原子节点区分@员工与$资源/提示词，提示词正文快照保留于编辑/撤销/草稿往返，复制标签不伪造引用。
  * [OUTPUT]: 原子标签保存成员或资源身份，复制纯文字不伪造引用。
  * [INPUT]: Tiptap/ProseMirror 原子节点与 DOM NodeView、共享草稿及主题按钮 class。
@@ -7,9 +8,9 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { Extension, Node, type JSONContent } from '@tiptap/core'
-import type { Node as DocumentNode } from '@tiptap/pm/model'
-import type { Command } from '@tiptap/pm/state'
-import { history, undo, redo } from '@tiptap/pm/history'
+import { Fragment, type Node as DocumentNode } from '@tiptap/pm/model'
+import type { Command, EditorState } from '@tiptap/pm/state'
+import { history, undo, redo, closeHistory } from '@tiptap/pm/history'
 import type { ChatDraft, DraftMention } from './presentation'
 import { draftMentions } from './inline-mentions'
 
@@ -118,4 +119,10 @@ export function documentPosition(doc: DocumentNode, offset: number): number {
     textOffset += length
   })
   return result
+}
+
+/** Voice edits contain text only and start their own undo group; caller closes it after dispatch. */
+export function voiceTextTransaction(state: EditorState, range: { start: number; end: number }, text: string) {
+  const content = Fragment.fromArray(textNodes(text).map(node => state.schema.nodeFromJSON(node)))
+  return closeHistory(state.tr.replaceWith(documentPosition(state.doc, range.start), documentPosition(state.doc, range.end), content))
 }

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-27 默认关闭语音插件接线、可信主窗口与原草稿/生命周期边界。
  * [OUTPUT]: Composer以@提及员工、$引用技能/文件/提示词，沿原消息正文与引用发送。
  * [OUTPUT]: 首发使用当前连接模型菜单、已绑定技能提及与核心全部启用数据源指定，尚无会话时不查询文件。
  * [OUTPUT]: 核心首发与已有聊天共用当前连接内的模型和推理选项，保存沿真实回执并区分未提交/未知，原首发草稿和发送语义保持。
@@ -17,10 +18,11 @@ import type { ChatDraft } from '../presentation'
 import { draftContent } from '../inline-mentions'
 
 interface Props {
+  pageActive: boolean
   api: DesktopApi; snapshot: Snapshot; draft: ChatDraft; setDraft(value: ChatDraft): void; busy: boolean; configurationLocked: boolean
   onSend(): void; onSettings(agent?: DigitalAgent): void; onConfigureAgent(agent: DigitalAgent): void; onChangeAgent(agent: DigitalAgent, patch: ComposerAgentPatch): Promise<ComposerAgentSaveResult>
 }
-export function CoreChatStart({ api, snapshot, draft, setDraft, busy, configurationLocked, onSend, onSettings, onConfigureAgent, onChangeAgent }: Props) {
+export function CoreChatStart({ pageActive, api, snapshot, draft, setDraft, busy, configurationLocked, onSend, onSettings, onConfigureAgent, onChangeAgent }: Props) {
   const members = snapshot.agents.filter(isCoreAgent)
   const core = members[0]
   const name = core?.name ?? CORE_AGENT_DEFAULT_NAME
@@ -31,8 +33,8 @@ export function CoreChatStart({ api, snapshot, draft, setDraft, busy, configurat
       <div className="avatar-stack">{core && <Avatar name={core.name} seed={core.id} avatar={core.avatar} color={core.color} />}</div>
       <h2>与{name}聊一聊</h2><p>从日常交流到具体工作，都可以直接提出。</p>
     </div></div>
-    <div className="composer-wrap"><PromptBar api={api} resources={snapshot.resources} draft={draft} setDraft={setDraft} members={members} group={false} external={false} conversationReady={false} placeholder="说说你想完成什么，/ 查看命令…" onSend={onSend} onActivity={noConversation} onOpenWorkspace={noConversation}>
-      {(openMenu, menu, reference) => <ComposerToolbar api={api} members={members} snapshot={snapshot} group={false} external={false} conversationReady={false} busy={busy} active={false} canSend={Boolean(draftContent(draft))} configurationLocked={configurationLocked} mentionsVisible={menu === 'at'} referencesVisible={menu === 'dollar'} onReferences={() => openMenu('dollar')} commandsVisible={menu === 'slash'} sourcesDisabled={Boolean(draft.submission)} onSelectSource={reference} onOpenWorkspace={noConversation} onMentions={() => openMenu('at')} onCommands={() => openMenu('slash')} onSettings={onSettings} onConfigureAgent={onConfigureAgent} onChangeAgent={onChangeAgent} onSend={onSend} />}
+    <div className="composer-wrap"><PromptBar pageActive={pageActive} api={api} resources={snapshot.resources} draft={draft} setDraft={setDraft} members={members} group={false} external={false} conversationReady={false} placeholder="说说你想完成什么，/ 查看命令…" onSend={onSend} onActivity={noConversation} onOpenWorkspace={noConversation}>
+      {(openMenu, menu, reference, voice) => <ComposerToolbar voice={voice.controls} api={api} members={members} snapshot={snapshot} group={false} external={false} conversationReady={false} busy={busy} active={false} canSend={Boolean(draftContent(draft))} configurationLocked={configurationLocked} mentionsVisible={menu === 'at'} referencesVisible={menu === 'dollar'} onReferences={() => openMenu('dollar')} commandsVisible={menu === 'slash'} sourcesDisabled={Boolean(draft.submission)} onSelectSource={reference} onOpenWorkspace={noConversation} onMentions={() => openMenu('at')} onCommands={() => openMenu('slash')} onSettings={onSettings} onConfigureAgent={onConfigureAgent} onChangeAgent={onChangeAgent} onSend={voice.onSend} />}
     </PromptBar></div>
   </div>
 }

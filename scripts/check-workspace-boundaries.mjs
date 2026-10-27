@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-27 语音包分发、工作区依赖或静音诊断候选；不代表产品验收。
  * [INPUT]: Workspace manifests, public exports and TS/JS source imports.
  * [OUTPUT]: Reject app/package dependency reversals, source path escapes and unresolved public entries.
  * [POS]: Lightweight static workspace contract; does not build or execute product code.
@@ -15,13 +16,14 @@ const sourceExtensions = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'])
 const builtins = new Set(builtinModules.flatMap(name => [name, `node:${name}`]))
 const allowed = {
   '@boai/shared': ['@boai/tokens', '@boai/runtime-plugin-sdk'],
+  '@boai/voice-input-plugin': ['@boai/shared'],
   '@boai/transport': ['@boai/shared'],
   '@boai/runtime': ['@boai/shared', '@boai/transport', '@boai/tokens', '@boai/runtime-plugin-sdk', '@boai/runtime-plugins'],
   '@boai/runtime-plugin-sdk': [],
   '@boai/runtime-plugins': ['@boai/shared', '@boai/runtime-plugin-sdk'],
   '@boai/ui': ['@boai/tokens'],
   '@boai/tokens': [],
-  '@boai/electron': ['@boai/runtime', '@boai/shared', '@boai/transport', '@boai/ui', '@boai/tokens', '@boai/runtime-plugin-sdk'],
+  '@boai/electron': ['@boai/voice-input-plugin', '@boai/runtime', '@boai/shared', '@boai/transport', '@boai/ui', '@boai/tokens', '@boai/runtime-plugin-sdk'],
   '@boai/cli': ['@boai/shared', '@boai/transport'],
   '@boai/design-docs': ['@boai/ui', '@boai/tokens'],
 }
