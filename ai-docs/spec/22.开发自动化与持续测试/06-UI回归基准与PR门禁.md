@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 首轮线上更新与独立复验成功但PR待批准；§20.1修正为Agent批准当前PR检查，移除重复dispatch。
 [OUTPUT]: PR42官方40485363446完整26场通过，用户确认后审阅接受新增六图；原20图字节不变，普通当前提交门禁独立。
 [OUTPUT]: 2026-10-27最终流程归§20：本地效果确认，Agent驱动线上构建、基准提交与只读复验；§19部分规则已被替代。
 [OUTPUT]: 2026-10-27有意UI改动先向用户展示预览并确认具体效果/基准范围，再候选与PR；worktree独立node_modules复用pnpm store，BOAI_DEV_PORT支持按需独立预览。
@@ -324,3 +325,9 @@ UI job通过后由record-ui登记summary、compare/summary、原始Playwright报
 - GitHub token提交后显式workflow_dispatch触发普通UI检查，不假定push会自动启动。原只读Required checks仍决定合并，候选/更新成功不能冒充通过；派发失败报失败并由Agent补派。新入口必须合入main后才可运行。
 - 当前本节描述实现与合同；真实新功能的完整闭环还需用户确认具体效果、成功官方候选、线上更新及新SHA复验，不能把协议fixture回归称为真实产品验收。
 - 本轮本地验证：9个基础设施文件177项通过，最终派发失败回执调整后6项入口回归再次通过；TypeScript无输出错误，actionlint 1.7.12检查新工作流通过，语法/diff检查通过。未在本地构建产品、启动Electron或生成新基准；真实云端更新首轮仍待具体UI确认和成功候选。
+
+### 20.1 首轮实际接续与PR批准修正
+
+- 官方候选40517660052全26场通过。23图字节相同，schedule-manager-dark仅16个边缘像素各差1/255，经原Playwright比较器原阈值/零差异额度验证通过，保留原基准。整合聊天滚动后仅user-menu明暗两图需晋升。
+- 线上更新40519462671成功提交301c2b14，实际仅两PNG/manifest变化，其他24场图片及记录不变；未上传本地dev图片。独立复验40519674960全绿，但机器人提交产生的PR运行40519684594为action_required，GitHub仍阻止合并。
+- 因此线上更新只负责提交基准；Agent必须接续：没有PR则由Agent创建，有PR则核对同仓库/当前SHA/tests.yml并通过Actions approve API批准它的运行，再开启自动合并。不让用户重复确认技术步骤，不再用独立dispatch产生重复CI。新提交的PR门禁仍需通过，原比较规则及失败记录保留。
