@@ -94,112 +94,112 @@
   },
   "cases": {
     "chat-light": {
-      "sha256": "4269bb682d17e93553282aaff6851485a2c8e256a925b27403a880a7768f2651",
+      "sha256": "3d04888f987a44b03b7b15ebd59e1b5161d4982c609c4e4203f74a472c1421a0",
       "contract": "c89efcb46cb1942370b1cd9ad2d044f7bec6181d01781ab5637da12d61ea2e21",
       "source": {
-        "commit": "ffadaad414579f164cbca82afee3d537dfe90675",
-        "sourceHash": "d427602609aa37790476c3f3a0af509439dab1ebbf173cba1351bff01bf7122a",
+        "commit": "873e9ec59a506dc351afe46d5743722e14ba91f1",
+        "sourceHash": "affa7c4e13b0fc5c9a970528e07942f56589c446f3a955bf833487cf41f5ff0c",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "92cf810db596854febdfe087667c417ed590f63ebd07aac383ede0ba0349e4a3",
-        "outputHash": "32e6cb746194d250869b7d88d95d107f1a8048bd0e274a1fde4370c01e0e0dac",
+        "inputHash": "94ea4ab98c6d8135295f174dae8135b5bcac71306fddbb7b47dc7c6013cfd35a",
+        "outputHash": "5d0a0b64a07d98345268eb7fa6596ee43c6c5bebe209ee312d516971690cd7d5",
         "node": "v24.16.0",
-        "createdAt": "2026-10-27T09:26:44.557Z"
+        "createdAt": "2026-10-27T09:59:56.736Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "40480486700",
+        "runId": "40484743959",
         "attempt": 1,
-        "commit": "ffadaad414579f164cbca82afee3d537dfe90675",
-        "artifactId": 12722169617,
-        "digest": "sha256:c1f4a29e1f1d5a47d7c87e7613ac1abf139d9c2911232a513b302d3810edf9fc"
+        "commit": "873e9ec59a506dc351afe46d5743722e14ba91f1",
+        "artifactId": 12724867253,
+        "digest": "sha256:b4483393a06e32579db0d71ca7c75a5ebb95c6565cc343951e8afaf8b5723a67"
       },
-      "reason": "按用户要求统一消息头像 rounded-md 并复用员工资料交互；逐张审阅旧图、新图和原始像素差异，仅聊天明暗宽窄四图头像区域变化，正文与布局保持，其余16场零像素差异。",
-      "candidate": "8e21d695-8a3f-40fd-88cd-b265cf3ed662",
-      "acceptedAt": "2026-10-27T09:38:50.174Z"
+      "reason": "用户已明确更新基准并合并。新增头像交互移至原静态截图后，四项恢复原场景并与独立PR运行截图逐字节一致；真实头像与流式滚动检查全保留。逐张审阅官方旧/新/原始diff，只接受已确认的聊天明暗宽窄四项，其他16项及阈值/mask保持。",
+      "candidate": "e0befeb6-4e33-4f50-a78f-fa30a8576aa1",
+      "acceptedAt": "2026-10-27T10:10:39.037Z"
     },
     "chat-dark": {
-      "sha256": "797b3df731f64779cb6f7c5a929f81612d14a330ff3d1a7504dc1fa9dba7808f",
+      "sha256": "a977cc8fa1f6b2a5ad05c2220ac86e8fdd45afcd19af325b57fbd3d1bda3edbb",
       "contract": "7e8706c333be59ca1f8b8bb1b354fe4ef9bff324842980290dc58df20bcb3e8a",
       "source": {
-        "commit": "ffadaad414579f164cbca82afee3d537dfe90675",
-        "sourceHash": "d427602609aa37790476c3f3a0af509439dab1ebbf173cba1351bff01bf7122a",
+        "commit": "873e9ec59a506dc351afe46d5743722e14ba91f1",
+        "sourceHash": "affa7c4e13b0fc5c9a970528e07942f56589c446f3a955bf833487cf41f5ff0c",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "92cf810db596854febdfe087667c417ed590f63ebd07aac383ede0ba0349e4a3",
-        "outputHash": "32e6cb746194d250869b7d88d95d107f1a8048bd0e274a1fde4370c01e0e0dac",
+        "inputHash": "94ea4ab98c6d8135295f174dae8135b5bcac71306fddbb7b47dc7c6013cfd35a",
+        "outputHash": "5d0a0b64a07d98345268eb7fa6596ee43c6c5bebe209ee312d516971690cd7d5",
         "node": "v24.16.0",
-        "createdAt": "2026-10-27T09:26:44.557Z"
+        "createdAt": "2026-10-27T09:59:56.736Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "40480486700",
+        "runId": "40484743959",
         "attempt": 1,
-        "commit": "ffadaad414579f164cbca82afee3d537dfe90675",
-        "artifactId": 12722169617,
-        "digest": "sha256:c1f4a29e1f1d5a47d7c87e7613ac1abf139d9c2911232a513b302d3810edf9fc"
+        "commit": "873e9ec59a506dc351afe46d5743722e14ba91f1",
+        "artifactId": 12724867253,
+        "digest": "sha256:b4483393a06e32579db0d71ca7c75a5ebb95c6565cc343951e8afaf8b5723a67"
       },
-      "reason": "按用户要求统一消息头像 rounded-md 并复用员工资料交互；逐张审阅旧图、新图和原始像素差异，仅聊天明暗宽窄四图头像区域变化，正文与布局保持，其余16场零像素差异。",
-      "candidate": "8e21d695-8a3f-40fd-88cd-b265cf3ed662",
-      "acceptedAt": "2026-10-27T09:38:50.175Z"
+      "reason": "用户已明确更新基准并合并。新增头像交互移至原静态截图后，四项恢复原场景并与独立PR运行截图逐字节一致；真实头像与流式滚动检查全保留。逐张审阅官方旧/新/原始diff，只接受已确认的聊天明暗宽窄四项，其他16项及阈值/mask保持。",
+      "candidate": "e0befeb6-4e33-4f50-a78f-fa30a8576aa1",
+      "acceptedAt": "2026-10-27T10:10:39.038Z"
     },
     "chat-narrow-light": {
-      "sha256": "997f211c5a7d701fd47d8b7a42223b258a4aa2869e6fd9006090a6ac0c2e92f5",
+      "sha256": "110141d225733d029b442a1ff987bd27b34c51918e89e63ceb5e1f2503997bfe",
       "contract": "4d481acc3e3eef3012bec72e844b4b4cbaeaaf506adbc8cb3f5415ec50c7ac58",
       "source": {
-        "commit": "ffadaad414579f164cbca82afee3d537dfe90675",
-        "sourceHash": "d427602609aa37790476c3f3a0af509439dab1ebbf173cba1351bff01bf7122a",
+        "commit": "873e9ec59a506dc351afe46d5743722e14ba91f1",
+        "sourceHash": "affa7c4e13b0fc5c9a970528e07942f56589c446f3a955bf833487cf41f5ff0c",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "92cf810db596854febdfe087667c417ed590f63ebd07aac383ede0ba0349e4a3",
-        "outputHash": "32e6cb746194d250869b7d88d95d107f1a8048bd0e274a1fde4370c01e0e0dac",
+        "inputHash": "94ea4ab98c6d8135295f174dae8135b5bcac71306fddbb7b47dc7c6013cfd35a",
+        "outputHash": "5d0a0b64a07d98345268eb7fa6596ee43c6c5bebe209ee312d516971690cd7d5",
         "node": "v24.16.0",
-        "createdAt": "2026-10-27T09:26:44.557Z"
+        "createdAt": "2026-10-27T09:59:56.736Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "40480486700",
+        "runId": "40484743959",
         "attempt": 1,
-        "commit": "ffadaad414579f164cbca82afee3d537dfe90675",
-        "artifactId": 12722169617,
-        "digest": "sha256:c1f4a29e1f1d5a47d7c87e7613ac1abf139d9c2911232a513b302d3810edf9fc"
+        "commit": "873e9ec59a506dc351afe46d5743722e14ba91f1",
+        "artifactId": 12724867253,
+        "digest": "sha256:b4483393a06e32579db0d71ca7c75a5ebb95c6565cc343951e8afaf8b5723a67"
       },
-      "reason": "按用户要求统一消息头像 rounded-md 并复用员工资料交互；逐张审阅旧图、新图和原始像素差异，仅聊天明暗宽窄四图头像区域变化，正文与布局保持，其余16场零像素差异。",
-      "candidate": "8e21d695-8a3f-40fd-88cd-b265cf3ed662",
-      "acceptedAt": "2026-10-27T09:38:50.175Z"
+      "reason": "用户已明确更新基准并合并。新增头像交互移至原静态截图后，四项恢复原场景并与独立PR运行截图逐字节一致；真实头像与流式滚动检查全保留。逐张审阅官方旧/新/原始diff，只接受已确认的聊天明暗宽窄四项，其他16项及阈值/mask保持。",
+      "candidate": "e0befeb6-4e33-4f50-a78f-fa30a8576aa1",
+      "acceptedAt": "2026-10-27T10:10:39.038Z"
     },
     "chat-narrow-dark": {
-      "sha256": "011368f0f203ea5b3ff1c86a3435f9e87b681b2c62e07a52fe58668dde5e8418",
+      "sha256": "9bec4ce3de04e900a41a6d793879627591de7cd31a65e9ef2fe6b9f1e3579552",
       "contract": "bd29d62d66cfa260c4f16dab0255bb70dbc152b20b21f4061b93b63faabdb4ff",
       "source": {
-        "commit": "ffadaad414579f164cbca82afee3d537dfe90675",
-        "sourceHash": "d427602609aa37790476c3f3a0af509439dab1ebbf173cba1351bff01bf7122a",
+        "commit": "873e9ec59a506dc351afe46d5743722e14ba91f1",
+        "sourceHash": "affa7c4e13b0fc5c9a970528e07942f56589c446f3a955bf833487cf41f5ff0c",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "92cf810db596854febdfe087667c417ed590f63ebd07aac383ede0ba0349e4a3",
-        "outputHash": "32e6cb746194d250869b7d88d95d107f1a8048bd0e274a1fde4370c01e0e0dac",
+        "inputHash": "94ea4ab98c6d8135295f174dae8135b5bcac71306fddbb7b47dc7c6013cfd35a",
+        "outputHash": "5d0a0b64a07d98345268eb7fa6596ee43c6c5bebe209ee312d516971690cd7d5",
         "node": "v24.16.0",
-        "createdAt": "2026-10-27T09:26:44.557Z"
+        "createdAt": "2026-10-27T09:59:56.736Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "40480486700",
+        "runId": "40484743959",
         "attempt": 1,
-        "commit": "ffadaad414579f164cbca82afee3d537dfe90675",
-        "artifactId": 12722169617,
-        "digest": "sha256:c1f4a29e1f1d5a47d7c87e7613ac1abf139d9c2911232a513b302d3810edf9fc"
+        "commit": "873e9ec59a506dc351afe46d5743722e14ba91f1",
+        "artifactId": 12724867253,
+        "digest": "sha256:b4483393a06e32579db0d71ca7c75a5ebb95c6565cc343951e8afaf8b5723a67"
       },
-      "reason": "按用户要求统一消息头像 rounded-md 并复用员工资料交互；逐张审阅旧图、新图和原始像素差异，仅聊天明暗宽窄四图头像区域变化，正文与布局保持，其余16场零像素差异。",
-      "candidate": "8e21d695-8a3f-40fd-88cd-b265cf3ed662",
-      "acceptedAt": "2026-10-27T09:38:50.175Z"
+      "reason": "用户已明确更新基准并合并。新增头像交互移至原静态截图后，四项恢复原场景并与独立PR运行截图逐字节一致；真实头像与流式滚动检查全保留。逐张审阅官方旧/新/原始diff，只接受已确认的聊天明暗宽窄四项，其他16项及阈值/mask保持。",
+      "candidate": "e0befeb6-4e33-4f50-a78f-fa30a8576aa1",
+      "acceptedAt": "2026-10-27T10:10:39.038Z"
     },
     "empty-chat-light": {
       "sha256": "8c698dc3f1aad504fad5a1eaa0ede68dbf038e844ed25172b377ea5b9761aff4",
