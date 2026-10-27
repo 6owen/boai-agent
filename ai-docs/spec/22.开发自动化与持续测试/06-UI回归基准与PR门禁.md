@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-27官方候选40472649141全部20场通过且PNG逐字节不变；仅晋升voice-settings-dark的已审阅渐变校准与来源，普通新head CI另验。
 [OUTPUT]: 2026-10-27 PR40仅文档运行40470324383的语音暗色渐变8149原始像素均仅差1/255；沿已有0.005颜色校准，异常像素仍0、无mask，需官方候选审阅晋升。
 [OUTPUT]: 2026-10-27计划增加语音设置明暗两场与两级依赖缓存；20场完整门禁及原像素条件保持，实际云端验证待本批。
 [OUTPUT]: 2026-10-27有意UI变更在Ready前完成官方候选、差异审阅和受影响基线提交；当前完整CI通过后正常合并，不用force或放宽标准。
@@ -287,3 +288,5 @@ UI job通过后由record-ui登记summary、compare/summary、原始Playwright报
 - 该新增场景补用已有settings-light/settings-dark/resources-dark的0.005颜色校准；只改voice-settings-dark，其他19项合同不变。maxDiffPixels仍为0、无mask、零重试及全部行为/布局断言保持。旧合同来源不得手工改写，必须重采同SHA官方候选并仅晋升该场景。
 - 校准含义遵循[Playwright官方视觉比较](https://playwright.dev/docs/test-snapshots)：颜色容差与允许异常像素数分别控制；本次针对已测得的1/255渐变差，不能用来接受移动、缺字、控件尺寸错误。实际离线比较与候选验证结果在本节追加，未完成前不宣称CI已通过。
 - 离线原图核验使用锁定Playwright自身比较器，4项通过：原阈值重现失败、0.005接受本次1/255噪声、2/255灰度变化仍拒绝、整体横移1px仍拒绝。未启动浏览器或Electron，未改任何产品代码、缓存工作流或全局阈值；其他19个case合同hash逐项相同。8文件171项CI/来源/候选协议检查通过；官方候选及新head只读CI仍待云端。
+- 官方候选 [40472649141](https://github.com/6owen/boai-agent/actions/runs/40472649141) 在b58e71f4完成全部20场；轻量报告与完整原件交叉核对，全部20张PNG逐字节等于原基准（原始diff均0）。语音暗色新图与旧图均为88da29a189592704ba54f400c99e590b0af956adf3c1fa98129a74e9a68e9c01，已实际审阅旧/新/diff。
+- 沿原import及accept独立重下载/摘要校验，仅更新voice-settings-dark的manifest合同与来源；没有PNG变化，其余19个manifest条目不变。候选artifact 12718957644，archive SHA256 ae6becbf5517560d5cf41de3d77c1b9372601461abb68778e0be179b1dcd4329。提交后仍由普通只读CI决定自动合并，候选成功不冒充Required checks通过。
