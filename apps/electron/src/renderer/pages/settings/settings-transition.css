@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 稳定态关闭过渡，防止transform/filter归一化为none后再触发第二轮400ms等值动画。
  * [INPUT]: transitions-dev/07-panel-reveal.md 原版片段与设置分类切换状态。
  * [OUTPUT]: 仅内容区上移渐显，距离局部设为 8px；结束移除变换上下文，减少动态效果直接显示。
  * [POS]: 设置页面局部动效，由 global.css 加载，不覆盖侧栏/弹窗样式。
@@ -33,6 +34,9 @@
     opacity   var(--panel-open-dur) var(--panel-ease),
     filter    var(--panel-open-dur) var(--panel-ease);
 }
+
+/* Settling releases the layer; equivalent identity values must not animate again. */
+.t-panel-slide[data-settled="true"] { transition:none }
 
 @media (prefers-reduced-motion: reduce) {
   .t-panel-slide { transition: none !important; }
