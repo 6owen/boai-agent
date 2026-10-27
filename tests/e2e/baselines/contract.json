@@ -129,7 +129,9 @@
       "id": "voice-settings-dark",
       "scene": "voice-settings",
       "mode": "dark",
-      "width": 1280
+      "width": 1280,
+      "threshold": 0.005,
+      "calibration": "Initial calibration: docs-only run 40470324383 differed at 8149 raw pixels solely in search-input and terminology gradients, maximum channel delta exactly 1/255. Reuse the existing gradient calibration; maxDiffPixels remains 0, no masks. Raw old/new/diff reviewed; all other cases unchanged."
     }
   ]
 }
