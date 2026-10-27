@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 历史预取期间保留当前窗口的实时执行卡，窗口移出后才卸载；不以最新页标记提前清空思考。
  * [OUTPUT]: 运行卡无常驻查看；历史失败/自动化镜像仅回到原消息页，新终态不闪退。
  * [OUTPUT]: 五项反馈的调度额度/取消接续或历史展示回归；具体验证边界以本文件用例为准。
  * [OUTPUT]: 覆盖增大任务额度、真实继续消息或本次运行同类批准；各文件以具体用例限定验证范围。
@@ -248,4 +249,23 @@ test('does not append old failures or terminal automation mirrors below the newe
   await render()
   expect(host.querySelector('[data-chat-execution-run="old-failure"]')).not.toBeNull()
   expect(host.querySelector('[data-chat-execution-run="old-mirror"]')).not.toBeNull()
+})
+
+test('keeps the live execution card while an older page is in flight, then removes it only when its messages leave the window', async () => {
+  const trigger = { id: 'question', conversationId: 'chat', senderType: 'user' as const, senderId: 'user', senderName: '我', content: '检查滚动', status: 'completed' as const, sequence: 10, createdAt: run.createdAt }
+  props = { ...props, onPage: vi.fn(), detail: { ...props.detail, messages: [trigger], reading: { epoch: 1 } as typeof props.detail.reading, messagePage: { ...props.detail.messagePage, items: [{ messageId: trigger.id, sequence: 10, status: 'available', message: trigger }], beforeCursor: { id: trigger.id, sequence: 10 } } } }
+  vi.spyOn(document, 'hasFocus').mockReturnValue(true)
+  fixture.evidence = [{ ...textEvent('持续生成的思考过程', 1), eventType: 'agent.reasoning.block' }]
+  await render()
+  const card = host.querySelector('[data-chat-execution-run="run"]')!
+  const viewport = host.querySelector<HTMLElement>('.messages')!
+  Object.defineProperties(viewport, { clientHeight: { value: 300 }, scrollHeight: { value: 2000 }, scrollTop: { value: 100, writable: true } })
+  await act(async () => viewport.dispatchEvent(new WheelEvent('wheel', { bubbles: true, deltaY: -80 })))
+  expect(props.onPage).toHaveBeenCalledWith('before')
+  props = { ...props, paging: true }; await render()
+  expect(host.querySelector('[data-chat-execution-run="run"]')).toBe(card)
+  expect(host.textContent).toContain('持续生成的思考过程')
+  props = { ...props, paging: false, detail: { ...props.detail, messages: [], messagePage: { ...props.detail.messagePage, items: [] } } }; await render()
+  expect(host.querySelector('[data-chat-execution-run="run"]')).toBeNull()
+  vi.restoreAllMocks()
 })

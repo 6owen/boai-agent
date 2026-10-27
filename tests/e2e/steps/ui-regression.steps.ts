@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: chat-light在原截图后经实际发送/HTTP思考增量验证上滚停跟随、空历史预取保卡、双向滚轮及回底恢复；其余20场合同/截图保持。
  * [OUTPUT]: 新增语音设置明暗两场，核对默认关闭、紧凑控件/32px、术语真实自动保存及统一快捷键导航；原18项保持。
  * [OUTPUT]: 快捷键页新增第五项语音动作，明确断言默认关闭/未绑定，原四项断言保持。
  * [OUTPUT]: 原18项UI先在本场独立profile准备同一历史再单次启动真实Electron；行为/布局/截图断言保持。
@@ -220,4 +221,38 @@ Then('当前场景的真实交互和布局满足原约定', async ({ runtime, ui
 
 Then('当前场景与已接受的UI截图一致', async ({ runtime, uiRegression }) => {
   await compareUiBaseline(runtime, uiRegression.selected!.id, test.info())
+  if (uiRegression.selected!.id !== 'chat-light') return
+  // Run after the original snapshot: the fixed baseline still proves the same scene.
+  const page = runtime.page, fixture = uiRegression.fixture!
+  await page.getByRole('button', { name: /^与研究员对话/ }).click()
+  await readyConversation(runtime, fixture.direct.id)
+  const input = page.getByRole('textbox', { name: '消息内容', exact: true })
+  await input.fill('UI滚动验收'); await page.getByRole('button', { name: '发送消息', exact: true }).click()
+  await expect.poll(fixture.scrolling.started).toBe(true)
+  const viewport = page.locator('.messages:visible'), card = viewport.locator('[data-chat-execution-run]')
+  await expect(card).toContainText('UI_SCROLL_START')
+  fixture.scrolling.append(Array.from({ length: 90 }, (_, i) => `第${i + 1}段思考：持续核对消息滚动位置。\n\n`).join('') + 'UI_SCROLL_LONG\n\n')
+  await expect(card).toContainText('UI_SCROLL_LONG')
+  await expect.poll(() => viewport.evaluate(el => el.scrollHeight - el.clientHeight - el.scrollTop)).toBeLessThanOrEqual(1)
+  await viewport.hover(); await page.mouse.wheel(0, -600)
+  await expect.poll(() => viewport.evaluate(el => el.scrollHeight - el.clientHeight - el.scrollTop)).toBeGreaterThan(300)
+  const readingTop = await viewport.evaluate(el => el.scrollTop)
+  fixture.scrolling.append('UI_SCROLL_MORE\n\n' + '追加思考不能打断向上阅读。\n\n'.repeat(30))
+  await expect(card).toContainText('UI_SCROLL_MORE')
+  expect(Math.abs(await viewport.evaluate(el => el.scrollTop) - readingTop)).toBeLessThanOrEqual(2)
+  await page.mouse.wheel(0, -100_000)
+  await expect.poll(() => viewport.evaluate(el => el.scrollTop)).toBeLessThanOrEqual(1)
+  await expect(viewport).toHaveAttribute('aria-busy', 'false')
+  await expect(card).toContainText('UI_SCROLL_MORE')
+  await page.mouse.wheel(0, 600)
+  await expect.poll(() => viewport.evaluate(el => el.scrollTop)).toBeGreaterThan(300)
+  await page.mouse.wheel(0, 100_000)
+  await expect.poll(() => viewport.evaluate(el => el.scrollHeight - el.clientHeight - el.scrollTop)).toBeLessThanOrEqual(1)
+  fixture.scrolling.append('UI_SCROLL_RESUMED\n\n' + '回到底部继续跟随。\n\n'.repeat(10))
+  await expect(card).toContainText('UI_SCROLL_RESUMED')
+  await expect.poll(() => viewport.evaluate(el => el.scrollHeight - el.clientHeight - el.scrollTop)).toBeLessThanOrEqual(1)
+  fixture.scrolling.finish()
+  await expect(viewport).toContainText('UI_SCROLL_DONE')
+  expect(fixture.state.errors).toEqual([]); expect(runtime.errors).toEqual([])
+  await test.info().attach('生成中聊天双向滚动', { body: JSON.stringify({ readingTop, calls: fixture.state.calls, directionChanges: 4, readingDriftLimit: 2 }), contentType: 'application/json' })
 })
