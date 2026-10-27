@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: BOAI_DEV_PORT支持worktree预览独立端口（0为系统分配），默认5187与BDD端口约定保持。
  * [INPUT]: Vite、当前worktree宿主源码及可选完整 Electron 启动参数。
  * [OUTPUT]: 根或Electron应用目录调用均定位当前worktree，保留原开发启动参数。
  * [OUTPUT]: pnpm dev 启动真实开发窗口；BDD首次分配独立端口，重启显式复用同一origin验证持久记录；端口冲突直接失败，不占用或关闭用户开发窗口。
@@ -13,9 +14,13 @@ import { buildHost } from './build.mjs'
 import { workspaceRoot } from './workspace-packages.mjs'
 
 process.chdir(workspaceRoot)
+const previewPort = process.env.BOAI_DEV_PORT === undefined ? undefined : Number(process.env.BOAI_DEV_PORT)
+if (previewPort !== undefined && (!/^\d+$/.test(process.env.BOAI_DEV_PORT) || !Number.isInteger(previewPort) || previewPort < 0 || previewPort > 65535)) throw new Error('BOAI_DEV_PORT must be an integer between 0 and 65535')
 await buildHost()
 const testPort = Number(process.env.BOAI_TEST_DEV_PORT ?? 0)
-const server = await createServer(process.env.BOAI_TEST_DEV_SERVER === '1' ? { server: { port: testPort, strictPort: testPort !== 0 } } : undefined)
+const server = await createServer(process.env.BOAI_TEST_DEV_SERVER === '1'
+  ? { server: { port: testPort, strictPort: testPort !== 0 } }
+  : previewPort === undefined ? undefined : { server: { port: previewPort, strictPort: true } })
 await server.listen()
 const args = process.argv.slice(2)
 const child = spawn(electron, args.length ? args : ['.'], {
