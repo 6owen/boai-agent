@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
  * [INPUT]: Original isolated Desktop fixture, controlled employee and host-private diagnostic bridge.
  * [OUTPUT]: Session/PID-specific SIGKILL, protected export destinations and durable initialization-failure evidence.
  * [POS]: Daily stability desktop acceptance; no system sleep or personal profile access.
@@ -59,7 +60,7 @@ Then('桌面生命周期代次更新且原草稿和回复保持', async ({ runti
 
 When('原运行服务进程异常退出', async ({ runtime }) => {
   await runtime.page.getByRole('button', { name: '我的菜单', exact: true }).click()
-  await runtime.page.getByRole('menuitem', { name: '设置', exact: true }).click()
+  await runtime.page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
   await runtime.page.getByRole('button', { name: '数据与备份', exact: true }).click()
   const state = states.get(runtime)!
   const ready = (await journalEntries(runtime)).filter(entry => entry.event === 'runtime-ready').at(-1)!
@@ -131,7 +132,7 @@ Given('隔离诊断桌面已有原插件配置并打开数据设置', async ({ r
   await runtime.start()
   await expect(runtime.page.locator('.app-shell')).toBeVisible()
   await runtime.page.getByRole('button', { name: '我的菜单', exact: true }).click()
-  await runtime.page.getByRole('menuitem', { name: '设置', exact: true }).click()
+  await runtime.page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
   await runtime.page.getByRole('button', { name: '数据与备份', exact: true }).click()
   protectedExports.set(runtime, { original, target })
 })

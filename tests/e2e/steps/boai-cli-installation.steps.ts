@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
  * [INPUT]: Real isolated Electron settings, native directory choice and installed launcher process.
  * [OUTPUT]: Installed CLI read-only/isolated validation, own installation, no-system-Node execution, packaged relocation and selective uninstall.
  * [POS]: CLI installation BDD for source/current package, zero model calls.
@@ -28,7 +29,7 @@ Given('CLI安装验收已打开隔离桌面的运行设置', async ({ runtime, i
   installation.before = await runtime.page.evaluate(() => window.boai.request('snapshot', undefined))
   await writeFile(join(runtime.root, 'business-original.txt'), 'KEEP_ORIGINAL_BUSINESS_FILE')
   await runtime.page.getByRole('button', { name: '我的菜单', exact: true }).click()
-  await runtime.page.getByRole('menuitem', { name: '设置', exact: true }).click()
+  await runtime.page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
   await runtime.page.getByRole('button', { name: '运行选项', exact: true }).click()
   await expect(runtime.page.getByRole('region', { name: '命令行工具' }).getByRole('button', { name: '安装命令行工具', exact: true })).toBeEnabled()
 })
@@ -116,7 +117,7 @@ Then('重开桌面后可卸载命令而保留原业务数据', async ({ runtime,
     await runtime.reviewData('移动应用后的原命令更新提示', { originalExecutable: packaged, relocated, archiveHash, links, changed })
   }
   await runtime.page.getByRole('button', { name: '我的菜单', exact: true }).click()
-  await runtime.page.getByRole('menuitem', { name: '设置', exact: true }).click()
+  await runtime.page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
   await runtime.page.getByRole('button', { name: '运行选项', exact: true }).click()
   const card = runtime.page.getByRole('region', { name: '命令行工具' })
   if (relocated) {

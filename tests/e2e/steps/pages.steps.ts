@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
  * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
  * [OUTPUT]: 技能一级入口随产品统一为自定义。
  * [INPUT]: 页面表单校验、固定启用员工的职责草稿保存、模型连接真实修改/返回边界与焦点恢复的中文场景、Electron fixture 与现有产品 API。
@@ -126,10 +127,10 @@ async function searchEmployee(previous: Awaited<ReturnType<typeof saveEmployeeCo
 async function submitConnectionAndFilter(previous: Awaited<ReturnType<typeof searchEmployee>>) {
   let { page, errors } = previous
   await page.getByRole('button', { name: '我的菜单', exact: true }).click()
-  await page.getByRole('menuitem', { name: '设置', exact: true }).click()
+  await page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
   await page.getByRole('navigation', { name: '设置分类' }).getByRole('button', { name: '外观', exact: true }).click()
   await page.getByRole('button', { name: '我的菜单', exact: true }).click()
-  await page.getByRole('menuitem', { name: '设置', exact: true }).click()
+  await page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
   await page.getByRole('button', { name: '添加连接', exact: true }).click()
   await page.getByRole('button', { name: /^OpenAI 兼容接口/ }).click()
   await page.getByLabel('连接名称', { exact: true }).fill('页面组件验证')
@@ -215,7 +216,7 @@ async function prepareConnections(runtime: Desktop) {
     await window.boai.request('updateAppearance', { patch: { mode: 'light' }, expectedRevision: appearance.revision })
   })
   await page.getByRole('button', { name: '我的菜单', exact: true }).click()
-  await page.getByRole('menuitem', { name: '设置', exact: true }).click()
+  await page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
   await expect(page.getByRole('heading', { name: '连接你的第一个模型' })).toBeVisible()
   await page.screenshot({ animations: 'disabled', path: 'test-results/connections-empty.png' })
   return { baseUrl, requests, modelRequests, releaseSlow: () => releaseSlow?.(), releaseProbe: () => releaseProbe?.() }
@@ -259,7 +260,7 @@ Then('配置保持未保存直到主动保存连接', async ({ runtime }) => {
 When('从外观切换到模型连接并放弃配置草稿', async ({ runtime }) => {
   const page = runtime.page
   await page.getByRole('button', { name: '我的菜单', exact: true }).click()
-  await page.getByRole('menuitem', { name: '设置', exact: true }).click()
+  await page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
   await page.getByRole('navigation', { name: '设置分类' }).getByRole('button', { name: '外观', exact: true }).click()
   await page.getByRole('textbox', { name: '搜索设置' }).fill('模型')
   await page.getByRole('navigation', { name: '设置分类' }).getByRole('button', { name: '模型连接', exact: true }).click()

@@ -1,4 +1,5 @@
 # [INPUT]: 固定历史/本机技能、原生Electron与版本化UI场景清单。
+# [OUTPUT]: 本人菜单新增明暗两场，检查所有直达设置入口。
 # [OUTPUT]: 新增定时任务标签管理/历史明暗四场，原20场保持。
 # [OUTPUT]: 原18项及新增语音设置明暗两项的真实行为、布局、自动保存与严格截图比较。
 # [POS]: UI回归BDD入口；不建立平行spec入口。
@@ -38,3 +39,5 @@
       | schedules-dark |
       | schedule-manager-light |
       | schedule-manager-dark |
+      | user-menu-light |
+      | user-menu-dark |

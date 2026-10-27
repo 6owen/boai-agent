@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 本人菜单头像进入个人资料；个人设置快捷入口及其他配置进入模型连接，全部沿原草稿守卫，移除菜单分享/帮助。
  * [OUTPUT]: 定时任务说明由页面标题Tooltip承接，保留旧详情标签的兼容恢复。
  * [OUTPUT]: 2026-10-27 默认关闭语音插件接线、可信主窗口与原草稿/生命周期边界。
  * [OUTPUT]: 用户终端仅渲染xterm，撤销顶部开始/重连工具栏及其导航透传。
@@ -84,7 +85,7 @@
  * [OUTPUT]: ACP未决请求仅在成功权威快照后清理已删除聊天，首次读取失败保持原身份；按原通道/载荷/key持久化，跨重启只读核对，执行过程精确停止原run；composer仅发送消息，无停止本轮/停止并发送按钮或即时停止回调；普通发送不主动取消当前处理，员工回复继续沿消息流展示。
  * [INPUT]: sidebar 主页面及其独立详情标签作用域、领域类型、员工思考强度配置、IPC 事件、独立页面组件与桌面请求入口、统一 UI 基础组件与 Sonner 操作提示。
  * [OUTPUT]: 成果采用/稍后处理与修订未知回执留在原聊天；修订通过同一composer固定原成果版本和明确员工，右侧仅只读预览，提交失败立即复核已开正文。
- * [OUTPUT]: 顶栏始终打开应用级独立浏览器，不绑定员工/会话、不创建工作或调用模型；页面瞬时操作/校验/宿主错误使用 Sonner，成果未决身份的本地存储故障保留持续提醒；核心会话行/右键/更多和聊天标题菜单共用明确会话标题弹窗，仅调用列表rename且刷新快照，失败留在弹窗不重写成员/配置；边界滚动有界分页的同步请求门禁/保留当前位置与请求期间实时消息，方向反转后不淘汰当前阅读锚点，清空/删除同步移除固定消息定位与导航历史定位，过期详情失败不显示顶栏错误；独立个人有界历史/真实完成未读与稳定锚点、普通 Dialog 会话/正文/文件混合搜索点击复核和固定目标导航；搜索不隐式恢复隐藏会话，编辑器延迟导航后再次只读核对原目标与当前可见元信息，实际导航成功才关闭弹窗，弹窗期间暂停背景阅读，隐藏会话暂停查询；撤销独立待处理主页面，原问题消息通过聊天输入框明确关联回复；补充未决载荷持久化并只读核对，原审批和任务记录保留；员工技能绑定按主页面/详情标签传递活跃状态与作用域，隐藏暂停回执读取；成果按逻辑家族复用明确版本标签，未决修订/采用身份沿页面隔离并持久化，关闭/重启只读核对、清理删除私有输入；会话材料原生选择/drop、按聊天保留草稿与稳定发送请求、未知准备/发送回执只读核对、当前聊天发送范围、独立材料来源标签与清理失效；聊天头像资料导航指定员工配置或本人资料，复用既有导航/详情标签并保留未保存守卫；真实群删除清除选中会话、草稿和导航历史，群编辑解散使用独立刷新回调；核心助手空白页重复打开保留输入、首次发送稳定受理才持久化、失败只读核对原请求回执；团队名称与需求弹窗受理后即时会话导航及当前工作团队结果/恢复入口，普通单聊复用排除核心会话；头像菜单首项展示本人头像/名称，后接分享/设置/帮助；分享直接打开全屏弹窗并恢复头像按钮焦点；个人资料导航及唯一快照、设置分类/滚动与聊天 DOM 保留；定时任务常驻阅读状态与隐藏暂停读取，七项手动/Agent/专用监控共用编辑标签；通讯录加号菜单团队创建弹窗； 发送时分离 composer 行内标签和正文，沿用结构化成员 ID；移除独立外部 Agent 设置路由与导航菜单项；设置与定时任务复用列表拖拽线、键盘调宽、双击复位及宽度记忆；右侧标签按 sidebar 页面分别保留顺序/选中/显隐与编辑草稿，切换主页面不混用标签；技能更新复用任务与产物所在的 Shell 右侧详情 Tabs，重复打开激活既有标签、保留技能主详情并在升级后刷新/定位本机技能；移除 Skills 统计并回退旧分类偏好；技能/商城复用会话可调分栏，旧更新/记录页面偏好回到本地； 单一技能图标与统一页面、本地/收藏/商城顶部 Tabs、独立于员工资源、独立列表详情及重启不自动联网；启动与删除当前会话后保持未选中，仅展示居中的共用毛绒伙伴插画，不含标题、按钮或模板卡片；消费系统提醒导航，重载后定位具体结果或无消息的执行记录；独立定时任务编辑标签/选中计划、指定结果消息导航与普通单聊复用隔离；商店详情复用独立标签；回复旁图标打开固定消息/员工的执行过程标签；Carbon 导航、会话页按手动宽度和显式开关控制的分栏容器、保留草稿和独立会话上下文的顶栏多标签及下方配置、通讯录/会话路由、共用创建入口、列表排序/置顶/隐藏恢复、创建弹窗、头像配置保存、工作树停止及支持局部标签切换的退出编辑保护。 置顶仅归列表，列表和标题下拉菜单共用清理能力、会话清理缓存及右侧窗口排序。
+ * [OUTPUT]: 顶栏始终打开应用级独立浏览器，不绑定员工/会话、不创建工作或调用模型；页面瞬时操作/校验/宿主错误使用 Sonner，成果未决身份的本地存储故障保留持续提醒；核心会话行/右键/更多和聊天标题菜单共用明确会话标题弹窗，仅调用列表rename且刷新快照，失败留在弹窗不重写成员/配置；边界滚动有界分页的同步请求门禁/保留当前位置与请求期间实时消息，方向反转后不淘汰当前阅读锚点，清空/删除同步移除固定消息定位与导航历史定位，过期详情失败不显示顶栏错误；独立个人有界历史/真实完成未读与稳定锚点、普通 Dialog 会话/正文/文件混合搜索点击复核和固定目标导航；搜索不隐式恢复隐藏会话，编辑器延迟导航后再次只读核对原目标与当前可见元信息，实际导航成功才关闭弹窗，弹窗期间暂停背景阅读，隐藏会话暂停查询；撤销独立待处理主页面，原问题消息通过聊天输入框明确关联回复；补充未决载荷持久化并只读核对，原审批和任务记录保留；员工技能绑定按主页面/详情标签传递活跃状态与作用域，隐藏暂停回执读取；成果按逻辑家族复用明确版本标签，未决修订/采用身份沿页面隔离并持久化，关闭/重启只读核对、清理删除私有输入；会话材料原生选择/drop、按聊天保留草稿与稳定发送请求、未知准备/发送回执只读核对、当前聊天发送范围、独立材料来源标签与清理失效；聊天头像资料导航指定员工配置或本人资料，复用既有导航/详情标签并保留未保存守卫；真实群删除清除选中会话、草稿和导航历史，群编辑解散使用独立刷新回调；核心助手空白页重复打开保留输入、首次发送稳定受理才持久化、失败只读核对原请求回执；团队名称与需求弹窗受理后即时会话导航及当前工作团队结果/恢复入口，普通单聊复用排除核心会话；头像菜单首项进入个人资料，后接外观/快捷键/运行选项/桌面活动与日报和其他配置；分享保留在个人资料页；个人资料导航及唯一快照、设置分类/滚动与聊天 DOM 保留；定时任务常驻阅读状态与隐藏暂停读取，七项手动/Agent/专用监控共用编辑标签；通讯录加号菜单团队创建弹窗； 发送时分离 composer 行内标签和正文，沿用结构化成员 ID；移除独立外部 Agent 设置路由与导航菜单项；设置与定时任务复用列表拖拽线、键盘调宽、双击复位及宽度记忆；右侧标签按 sidebar 页面分别保留顺序/选中/显隐与编辑草稿，切换主页面不混用标签；技能更新复用任务与产物所在的 Shell 右侧详情 Tabs，重复打开激活既有标签、保留技能主详情并在升级后刷新/定位本机技能；移除 Skills 统计并回退旧分类偏好；技能/商城复用会话可调分栏，旧更新/记录页面偏好回到本地； 单一技能图标与统一页面、本地/收藏/商城顶部 Tabs、独立于员工资源、独立列表详情及重启不自动联网；启动与删除当前会话后保持未选中，仅展示居中的共用毛绒伙伴插画，不含标题、按钮或模板卡片；消费系统提醒导航，重载后定位具体结果或无消息的执行记录；独立定时任务编辑标签/选中计划、指定结果消息导航与普通单聊复用隔离；商店详情复用独立标签；回复旁图标打开固定消息/员工的执行过程标签；Carbon 导航、会话页按手动宽度和显式开关控制的分栏容器、保留草稿和独立会话上下文的顶栏多标签及下方配置、通讯录/会话路由、共用创建入口、列表排序/置顶/隐藏恢复、创建弹窗、头像配置保存、工作树停止及支持局部标签切换的退出编辑保护。 置顶仅归列表，列表和标题下拉菜单共用清理能力、会话清理缓存及右侧窗口排序。
  * [OUTPUT]: 聊天标题栏不提供阅读状态或返回未读/最新按钮，滚动锚点/历史加载/可见阅读观测保持。
  * [OUTPUT]: 删除资料库主页面与导航；旧资料库启动偏好回退会话，技能页及共享资源详情保留。
  * [POS]: apps/electron/apps/electron/src/renderer/components/app-shell/index.tsx。
@@ -131,7 +132,7 @@ import { SourceDetailPanel } from '@/pages/sources/source-detail'
 import { SkillsNavigation } from './skills-navigation'
 import { DetailPanel, DetailPanelHeader, useDetailPanelLayout } from '../detail-panel/index'
 import { useCallback, useEffect, useReducer, useRef, useState, type ReactNode, type CSSProperties, type PointerEvent, type KeyboardEvent } from 'react'
-import { ArrowLeft, Clock, Home, Contact, CircleHelp, MessageCircle, Users, FileText, Workflow, RefreshCw, Search, Settings, Share } from '@/components/icons/index'
+import { ArrowLeft, Clock, Home, Contact, MessageCircle, Users, FileText, Workflow, RefreshCw, Search, Settings } from '@/components/icons/index'
 import { channelConversations, mainConversations, isChannelConversation, type ConversationListChange } from '@boai/shared/domain/conversation-list'
 import type { AppEvent } from '@boai/shared/ipc'
 import type { Artifact, DigitalAgent, Conversation, Message, Snapshot } from '@boai/shared/domain'
@@ -174,7 +175,6 @@ import { ScheduleDetail, SchedulePage, type ScheduleLocation } from '@/pages/sch
 import { AutomationOccurrenceView } from '@/pages/schedules/automation-history'
 import { AutomationEditorTab } from '@/pages/schedules/automation-editor'
 import { UserAvatar } from '@/components/common/user-avatar'
-import { ProfileShare } from '@/pages/settings/profile-share'
 import { SettingsPage, type SettingsTab } from '@/pages/settings'
 import type { LocalAgentTarget } from '@/pages/settings/local-agents'
 import { Avatar, Banner, errorText, GuardContext, Loading } from '@/components/common/index'
@@ -281,7 +281,6 @@ export function AppShell() {
   const [localAgentTarget, setLocalAgentTarget] = useState<LocalAgentTarget>()
   const userMenuOpen = useRef(false)
   const userMenuActions = useRef<{ close(): void; unmount(): void } | null>(null)
-  const [sharingProfile, setSharingProfile] = useState(false), userMenuButton = useRef<HTMLButtonElement>(null)
   const detailTrigger = useRef<{ scope: string; element: HTMLElement | null } | null>(null)
   const history = useRef<Route[]>([route]), historyIndex = useRef(0)
   const mounted = useRef(true), selectedRef = useRef<string | null>(route.conversationId), snapshotRequest = useRef(0), detailRequest = useRef(0)
@@ -472,10 +471,10 @@ export function AppShell() {
   useEffect(() => { try { localStorage.setItem('boai.v2.listWidth', String(listWidth)); localStorage.setItem('boai.v2.page', route.page); localStorage.removeItem('boai.v2.conversation') } catch { /* Preferences are optional. */ } }, [listWidth, route.page])
   useEffect(() => { if (api) void api.request('setUnsavedChanges', { dirty: anyDirty }).catch(e => toast.error(errorText(e))) }, [api, anyDirty])
   useEffect(() => {
-    const key = (event: globalThis.KeyboardEvent) => { if (event.key === 'Escape' && !event.defaultPrevented && !event.composedPath().some(node => node instanceof Element && node.matches('[role=dialog], [role=alertdialog], [role=menu], [data-slot=popover-content]')) && !userMenuOpen.current && !sharingProfile && !leaving && !creation && panel && !document.querySelector('[role=dialog], [role=alertdialog], [data-slot=popover-content][data-open], [data-slot=dropdown-menu-content][data-open]')) { const handle = tabHandles.current.get(detailTabs.activeKey!); if (activeTab?.detail) handle?.navigate(() => dispatchDetails({ type: 'back', key: activeTab.key })); else handle?.close() } }
+    const key = (event: globalThis.KeyboardEvent) => { if (event.key === 'Escape' && !event.defaultPrevented && !event.composedPath().some(node => node instanceof Element && node.matches('[role=dialog], [role=alertdialog], [role=menu], [data-slot=popover-content]')) && !userMenuOpen.current && !leaving && !creation && panel && !document.querySelector('[role=dialog], [role=alertdialog], [data-slot=popover-content][data-open], [data-slot=dropdown-menu-content][data-open]')) { const handle = tabHandles.current.get(detailTabs.activeKey!); if (activeTab?.detail) handle?.navigate(() => dispatchDetails({ type: 'back', key: activeTab.key })); else handle?.close() } }
     document.addEventListener('keydown', key)
     return () => document.removeEventListener('keydown', key)
-  }, [sharingProfile, panel, leaving, creation, detailTabs.activeKey, activeTab?.detail])
+  }, [panel, leaving, creation, detailTabs.activeKey, activeTab?.detail])
   const action = async (fn: () => Promise<void>) => { if (busyRef.current) return; busyRef.current = true; setBusy(true); try { await fn() } catch (e) { if (mounted.current) toast.error(errorText(e)) } finally { busyRef.current = false; if (mounted.current) setBusy(false) } }
   const applyRoute = (requested: Route, addHistory = true, navigated?: () => void) => {
     const target = snapshotRef.current.conversations.find(room => room.id === requested.conversationId)
@@ -506,7 +505,8 @@ export function AppShell() {
     setRoute(next); setCreation(null); userMenuActions.current?.close(); navigated?.()
   }
   const goPage = (page: Page) => navigate(() => applyRoute({ ...route, page }))
-  const openUserProfile = () => navigate(() => { setSettingsSection('profile'); applyRoute({ ...route, page: 'settings' }) })
+  const openSettings = (tab: SettingsTab) => navigate(() => { setLocalAgentTarget(undefined); setSettingsSection(tab); applyRoute({ ...routeRef.current, page: 'settings' }) })
+  const openUserProfile = () => openSettings('profile')
   const selectConversation = (id: string, _clearSearch = false, messageId?: string, current?: () => boolean, navigated?: () => void) => {
     let pending: Promise<void> | undefined
     navigate(() => {
@@ -976,7 +976,7 @@ export function AppShell() {
   const toggleList = () => setListShown(shown => !shown)
   useEffect(() => {
     const onShortcut = (event: globalThis.KeyboardEvent) => {
-      if (!api || event.defaultPrevented || event.isComposing || event.repeat || shortcuts.store.getState().capturing || userMenuOpen.current || sharingProfile || leaving || creation) return
+      if (!api || event.defaultPrevented || event.isComposing || event.repeat || shortcuts.store.getState().capturing || userMenuOpen.current || leaving || creation) return
       const shortcutSnapshot = shortcuts.store.getState().snapshot
       if (!shortcutSnapshot) return
       const shortcut = matchShortcut(event, shortcutSnapshot)
@@ -1047,14 +1047,14 @@ export function AppShell() {
       {page:'contacts',icon:Contact,label:'通讯录'},
       {page:'schedules',icon:Clock,label:'定时任务'},
     ] as const).map(item=><Button variant="ghost" size="content" className={`rail-item${route.page===item.page?' selected':''}`} key={item.page} aria-label={item.label} title={item.label} aria-current={route.page===item.page?'page':undefined} onClick={()=>goPage(item.page)}><item.icon size={16}/>{item.page==='conversations'&&snapshot.approvals.length>0&&<i className="attention-dot"/>}</Button>)}<SkillsNavigation page={route.page} onSkills={()=>goPage('skills')} /></div><div className="rail-bottom"><DropdownMenu actionsRef={userMenuActions} onOpenChange={open => { userMenuOpen.current = open }}>
-      <DropdownMenuTrigger render={<Button ref={userMenuButton} variant={route.page === 'settings' ? 'secondary' : 'ghost'} size="icon-lg" className="rail-item" aria-label="我的菜单" title="我" />}><UserAvatar profile={snapshot.userProfile} /></DropdownMenuTrigger>
+      <DropdownMenuTrigger render={<Button variant={route.page === 'settings' ? 'secondary' : 'ghost'} size="icon-lg" className="rail-item" aria-label="我的菜单" title="我" />}><UserAvatar profile={snapshot.userProfile} /></DropdownMenuTrigger>
       <DropdownMenuContent side="right" align="end" sideOffset={10} className="w-[224px] data-open:duration-250 data-closed:duration-150 motion-reduce:animate-none">
         <DropdownMenuItem className="user-menu-profile" aria-label="个人资料" onClick={openUserProfile}><UserAvatar profile={snapshot.userProfile} /><span><strong>{snapshot.userProfile?.displayName ?? '我'}</strong>{snapshot.userProfile?.username && <small>@{snapshot.userProfile.username}</small>}</span></DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem onClick={() => { userMenuActions.current?.close(); setSharingProfile(true) }}><Share />分享</DropdownMenuItem>
-          <DropdownMenuItem onClick={() => navigate(() => { setSettingsSection('connections'); applyRoute({ ...route, page: 'settings' }) })}><Settings />设置</DropdownMenuItem>
-          <DropdownMenuItem onClick={() => goPage('help')}><CircleHelp />帮助</DropdownMenuItem>
+          {([{ id: 'appearance', label: '外观' }, { id: 'shortcuts', label: '快捷键' }, { id: 'desktop', label: '运行选项' }, { id: 'desktop-activity', label: '桌面活动与日报' }] as const).map(item => <DropdownMenuItem key={item.id} onClick={() => openSettings(item.id)}><Settings />{item.label}</DropdownMenuItem>)}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => openSettings('connections')}><Settings />其他配置</DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu></div></nav>
@@ -1127,7 +1127,6 @@ export function AppShell() {
       {creation?.type==='agent'&&<CreateAgentDialog key={`agent-${panelGeneration}`} api={api} snapshot={snapshot} template={creation.template} onClose={()=>setCreation(null)} onCreated={createdConversation}/>}
       {creation?.type==='group'&&<CreateGroupDialog key={`group-${panelGeneration}`} api={api} snapshot={snapshot} onClose={()=>setCreation(null)} onCreated={createdConversation}/>}
       <TeamCreator open={creation?.type==='team'} api={api} snapshot={snapshot} onOpenChange={open=>{if(!open)setCreation(null)}} onStarted={coreConversationStarted} onConfigure={()=>{setSettingsSection('connections');goPage('settings')}}/>
-      {sharingProfile && <ProfileShare api={api} profile={snapshot.userProfile} onClose={() => setSharingProfile(false)} finalFocus={userMenuButton} />}
       {confirmation}
     </div></div>
   </Tabs></EmployeeExecutionNavigation.Provider></EmployeeResourceNavigation.Provider></ScheduleNavigationContext.Provider></GuardContext.Provider>

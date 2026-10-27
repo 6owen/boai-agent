@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
  * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
  * [OUTPUT]: 原自动化停止/故障finally另留外部阶段Trace、普通调用及原生会话映射；阶段失败时仍保留格式计数与等待位置，原业务断言和清理分界保持。
  * [OUTPUT]: 原UI建立可选独立来源或同程序的独立本机配置；模型ID/本机配置分别在执行、退出待核对及重启时拒绝，原API/来源场景及完整停止断言保持。
@@ -27,7 +28,7 @@ When('用户为Claude换绑核对准备不同模型ID和独立本机配置', asy
   const original = profiles.find(value => value.id === (agent.executionBackend as { profileId: string }).profileId)!
   const source = before.connections.find(value => value.id === agent.connectionId)!
   await page.getByRole('button', { name: '我的菜单', exact: true }).click()
-  await page.getByRole('menuitem', { name: '设置', exact: true }).click()
+  await page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
   await page.getByRole('button', { name: '扫描本机 Agent', exact: true }).click()
   await page.getByRole('button', { name: '本机 Claude 使用已安装程序，在员工设置中选择模型 API', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: '手动添加 Agent', exact: true }), name = '本场独立Claude配置'
@@ -55,7 +56,7 @@ When('用户为Claude换绑核对建立独立模型来源', async ({ runtime, cl
   const page = runtime.page, before = await page.evaluate(() => window.boai.request('snapshot', undefined))
   const source = before.connections.find(value => value.id === claudeEmployee.connectionId)!
   await page.getByRole('button', { name: '我的菜单', exact: true }).click()
-  await page.getByRole('menuitem', { name: '设置', exact: true }).click()
+  await page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
   await page.getByRole('button', { name: '添加连接', exact: true }).click()
   const dialog = page.getByRole('dialog'), name = '本场换绑目标'
   await dialog.getByRole('button', { name: /^Anthropic/ }).click()

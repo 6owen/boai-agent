@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
  * [INPUT]: 真实 Electron/原群聊夹具、设置开关和录入按钮。
  * [OUTPUT]: 四动作原功能保持、单行原子提交、菜单保护、实际窗口焦点前置、分类/失焦与重启保存。
  * [POS]: 可编辑快捷键增量 BDD；不改原冻结五场或 UI 基线。
@@ -21,7 +22,7 @@ const recorder = (runtime: Desktop, id = 'search') => runtime.page.locator(`[dat
 const toggle = (runtime: Desktop) => runtime.page.getByRole('switch', { name: 'Open Search / 全局搜索', exact: true })
 async function settings(runtime: Desktop) {
   await runtime.page.getByRole('button', { name: '我的菜单', exact: true }).click()
-  await runtime.page.getByRole('menuitem', { name: '设置', exact: true }).click()
+  await runtime.page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
   await runtime.page.getByRole('navigation', { name: '设置分类', exact: true }).getByRole('button', { name: '快捷键', exact: true }).click()
   await expect(recorder(runtime)).toBeEnabled()
 }

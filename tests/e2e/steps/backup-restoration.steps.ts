@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
  * [INPUT]: 原Desktop/成果协议/材料选择和实际公开IPC，真实备份原件及RESTORE说明。
  * [OUTPUT]: UI取消/导出、原路径不可用的异路径冷恢复和二次启动，核对实际字节/来源/记忆/规则/外观/计划暂停/凭据排除/零重放。
  * [POS]: DS14桌面闭环；仅原生选择器返回本场授权路径，未替换备份、工具、数据读取或恢复实现。
@@ -76,7 +77,7 @@ Given('隔离聊天已有真实材料成果记忆规则和未来计划', async (
 When('我取消一次备份再从数据与备份界面实际导出', async ({ runtime, backupState: state }) => {
   const page = runtime.page
   await page.getByRole('button', { name: '我的菜单', exact: true }).click()
-  await page.getByRole('menuitem', { name: '设置', exact: true }).click()
+  await page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
   await page.getByRole('button', { name: '数据与备份', exact: true }).click()
   await runtime.app.evaluate(({ dialog }) => {
     const original = dialog.showOpenDialog

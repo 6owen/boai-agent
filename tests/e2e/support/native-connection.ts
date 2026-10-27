@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
  * [INPUT]: 原Electron桌面和明确的真实/离线Codex验收开关。
  * [OUTPUT]: 原设置单一手动入口明确名称/命令/协议、测试/保存，核对唯一新配置与登录来源；不转存登录凭据。
  * [POS]: 单员工与混合群共用现行本机Agent连接UI入口，不依赖个人机器扫描候选。
@@ -11,7 +12,7 @@ import type { Desktop } from './desktop'
 export async function addNativeConnection(runtime: Desktop, kind: 'Codex' | 'Claude', program: string, useExistingLogin: boolean) {
   const page = runtime.page, before = await page.evaluate(() => window.boai.request('listLaunchProfiles', undefined))
   await page.getByRole('button', { name: '我的菜单', exact: true }).click()
-  await page.getByRole('menuitem', { name: '设置', exact: true }).click()
+  await page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
   await page.getByRole('button', { name: '扫描本机 Agent', exact: true }).click()
   await page.getByRole('button', { name: '手动添加 填写启动命令，或从目录加载', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: '手动添加 Agent', exact: true })

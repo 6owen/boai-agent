@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
  * [INPUT]: 原 Desktop、生产设置/分组/删除组件、隔离 SQLite 历史数据。
  * [OUTPUT]: 21 款真实 Tray.setImage/模板代表、空折叠组真实拖拽/分组 UI 持久化及四轮 bobo 清理事件/Toast。
  * [POS]: 五项改进的增量 Electron 验收；原生 Tray 观察包装保持调用，不替换实现。
@@ -23,7 +24,7 @@ export const test = base.extend<{ improvement: State }>({ improvement: async ({}
 const { Given, When, Then } = createBdd(test)
 async function appearance(runtime: Desktop) {
   await runtime.page.getByRole('button', { name: '我的菜单', exact: true }).click()
-  await runtime.page.getByRole('menuitem', { name: '设置', exact: true }).click()
+  await runtime.page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
   await runtime.page.getByRole('navigation', { name: '设置分类', exact: true }).getByRole('button', { name: '外观', exact: true }).click()
 }
 const iconStatus = (runtime: Desktop) => runtime.page.evaluate(() => window.boai.request('getAppIconStatus', undefined))

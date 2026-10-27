@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 本人菜单明暗两场核对头像与五项导航，菜单分享/帮助消失，逐个入口定位对应设置。
+ * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
  * [OUTPUT]: 新增定时任务历史/管理明暗四场；实际标签CRUD、多选、拖拽/排序、筛选键盘与动效/布局覆盖，原20场保持。
  * [OUTPUT]: 新增语音设置明暗两场，核对默认关闭、紧凑控件/32px、术语真实自动保存及统一快捷键导航；原18项保持。
  * [OUTPUT]: 快捷键页新增第五项语音动作，明确断言默认关闭/未绑定，原四项断言保持。
@@ -64,14 +66,16 @@ When('用户打开UI基准场景 {string}', async ({ runtime, uiRegression }, ca
   }, selected.mode as 'light' | 'dark')
   await expect(page.locator('html')).toHaveAttribute('data-theme', selected.mode)
   const scene = selected.scene
-  if (scene === 'schedules' || scene === 'schedule-manager') {
+  if (scene === 'user-menu') {
+    await page.getByRole('button', { name: '我的菜单', exact: true }).click()
+  } else if (scene === 'schedules' || scene === 'schedule-manager') {
     await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '定时任务', exact: true }).click()
   } else if (scene === 'employee') {
     await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '通讯录', exact: true }).click()
     await page.getByRole('complementary', { name: '通讯录列表', exact: true }).getByRole('button', { name: '研究员', exact: true }).click()
   } else if (scene === 'settings' || scene === 'shortcuts' || scene === 'voice-settings') {
     await page.getByRole('button', { name: '我的菜单', exact: true }).click()
-    await page.getByRole('menuitem', { name: '设置', exact: true }).click()
+    await page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
     await page.getByRole('navigation', { name: '设置分类', exact: true }).getByRole('button', { name: scene === 'shortcuts' ? '快捷键' : scene === 'voice-settings' ? '语音输入' : '外观', exact: true }).click()
   } else if (scene === 'resources') {
     await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '资源库', exact: true }).click()
@@ -122,6 +126,8 @@ Then('当前场景的真实交互和布局满足原约定', async ({ runtime, ui
     expect(repeated.title).toBe(original.title)
     const rooms = await page.evaluate(async () => (await window.boai.request('snapshot', undefined)).conversations.filter(room => room.kind === 'direct' && !room.channel && !room.mergedInto && room.agentIds[0] === 'researcher'))
     expect(rooms.map(room => room.id)).toEqual([original.id])
+  } else if (selected.scene === 'user-menu') {
+    await checkUserMenu(runtime)
   } else if (selected.scene === 'schedules' || selected.scene === 'schedule-manager') {
     await checkScheduleUi(runtime, selected.scene === 'schedule-manager')
   } else if (selected.scene === 'employee') {
@@ -304,5 +310,26 @@ async function checkScheduleUi(runtime: import('../support/desktop').Desktop, sh
     await expect(manager.getByRole('button', { name: '设置标签', exact: true })).toBeInViewport()
     expect(await manager.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
   }
+  await page.mouse.move(0, 0)
+}
+
+async function checkUserMenu(runtime: import('../support/desktop').Desktop) {
+  const page = runtime.page
+  const destinations = ['个人资料', '外观', '快捷键', '运行选项', '桌面活动与日报', '其他配置']
+  const menu = page.getByRole('menu')
+  await expect(menu.getByRole('menuitem')).toHaveCount(destinations.length)
+  await expect(menu.getByRole('menuitem').first()).toHaveAttribute('aria-label', '个人资料')
+  await expect(menu.locator('[role=menuitem]:not(.user-menu-profile)')).toHaveText(destinations.slice(1))
+  await expect(menu.getByRole('menuitem', { name: /^(分享|设置|帮助)$/ })).toHaveCount(0)
+  for (const label of destinations) {
+    await menu.getByRole('menuitem', { name: label, exact: true }).click()
+    await expect(page.getByRole('navigation', { name: '设置分类', exact: true }).getByRole('button', { name: label === '其他配置' ? '模型连接' : label, exact: true })).toHaveAttribute('aria-current', 'page')
+    await page.getByRole('button', { name: '我的菜单', exact: true }).click()
+  }
+  await page.keyboard.press('Escape')
+  await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).click()
+  await page.getByRole('button', { name: '我的菜单', exact: true }).click()
+  await expect(menu.getByRole('menuitem', { name: '其他配置', exact: true })).toBeInViewport()
+  expect(await menu.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
   await page.mouse.move(0, 0)
 }

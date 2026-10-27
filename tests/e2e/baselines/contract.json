@@ -156,6 +156,18 @@
       "scene": "schedule-manager",
       "mode": "dark",
       "width": 1280
+    },
+    {
+      "id": "user-menu-light",
+      "scene": "user-menu",
+      "mode": "light",
+      "width": 1280
+    },
+    {
+      "id": "user-menu-dark",
+      "scene": "user-menu",
+      "mode": "dark",
+      "width": 1280
     }
   ]
 }
