@@ -5,6 +5,7 @@
  * [OUTPUT]: Claude明确Magpie来源固定Messages及原连接revision，默认模型实际传CLI；进程级host-managed覆盖竞争来源，2.1.302起版本门槛，原生能力保持。
  * [OUTPUT]: 执行历史支持按定时任务单次occurrence身份限定，在分页前排除同会话其他运行。
  * [OUTPUT]: 2026-10-12原生回应接受/提交/未知与公开模型/目录/容量来源合同；提交不等于接收。
+ * [OUTPUT]: Claude原生Skills与插件公开身份沿执行回执保留，不存插件路径或私有配置。
  * [INPUT]: 原生执行事件、实际运行身份与Rovai执行呈现合同。
  * [OUTPUT]: 可分页重读的执行证据和原生交互请求；正文按需读取，不截断持久内容。
  * [POS]: 员工执行面板与运行时共用合同。
@@ -53,6 +54,8 @@ export type NativeAction = NativeActionInput & {
 }
 export type NativeActionResponse = { option?: string; answers?: Record<string, string[]> }
 export type NativeAgentInfo = {
+  skills?: string[]
+  plugins?: { name: string; source?: string; version?: string }[]
   models?: { value: string; displayName?: string; description?: string; supportsEffort?: boolean; supportedEffortLevels?: string[] }[]
   commands?: { name: string; description?: string; argumentHint?: string }[]
   agents?: { name: string; description?: string; model?: string }[]

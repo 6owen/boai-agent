@@ -24,6 +24,7 @@
  * [OUTPUT]: 真实原生上下文明确内置浏览器/自动化产品工具及当前可用身份，保持原生循环与选定权限。
  * [OUTPUT]: 输入投影v2包含真实材料路径，旧投影首次明确新消息时保守重建；历史保留，启动不重放。
  * [OUTPUT]: 2026-10-11 同一员工聊天一条消息一次持续原生turn；普通公开消息与final去重，真实输出身份支持重启续聊。
+ * [OUTPUT]: 显式取消且已提交的内置原生轮次在驱动/产品工具退出后登记中断；下次明确消息按原输入接收/来源核验决定续聊。
  * [INPUT]: 员工身份、普通IM增量、原生运行时和可选产品协作工具。
  * [OUTPUT]: 每员工×会话独立持续原生session；一条消息一次turn，无额外判断/汇报/记忆模型调用。
  * [POS]: 本机员工共同生产入口；旧native-employee仅保留旧阶段兼容代码。
@@ -104,6 +105,7 @@ export abstract class NativeConversationEngine {
     } : undefined }
     const products = createNativeProducts(nativeContext)
     const releaseCliTools = context.registerCliTools?.(products.tools.map(tool => ({ ...tool, effect: ['boai_catalog', 'boai_receipt', 'inspect_knowledge', 'search_knowledge', 'read_knowledge', 'inspect_data_source', 'inspect_web_search', 'call_web_search', 'select_web_search', 'read_messages'].includes(tool.name) ? 'read' : 'write', observed: true })))
+    let submitted = false, interrupted = false
     try {
       if (context.modelCallId) await context.onModelCallStarted?.(context.modelCallId, 'chat', context.agent.nativeOptions?.effort)
       const newIds = new Set(messages.map(message => message.id))
@@ -124,11 +126,18 @@ export abstract class NativeConversationEngine {
         prompt: JSON.stringify({ privateExecutionFeedback: context.progressFeedback, workingScene: context.continuation && context.workingScene ? await context.workingScene() : undefined, employeeState: context.bootstrap?.dynamicInstructions, contextMode: threadId ? 'incremental' : 'initial', employeeId: context.agent.id, members: context.members?.map(({id, name, role}) => ({id, name, role})), priorReply, messages: messages.map(message => decisionMessageData(message)), deliveredFiles: context.nativeArtifacts, currentWork: context.work, dependencies: context.dependencyArtifacts, continuation: context.continuation }),
         images: context.materialImages?.filter(image => newIds.has(image.messageId)).map(image => image.dataUrl) ?? [],
         cancelProducts: () => productController.abort(new Error('原生插件已退出')),
-        onSession: (id, preparedSource) => this.sessions.update(session, { threadId: id, ...(preparedSource ? { fingerprint: fingerprintFor(preparedSource) } : {}) }), onSubmitted: (_, id) => this.sessions.update(session, { turnId: id }),
+        onSession: (id, preparedSource) => this.sessions.update(session, { threadId: id, ...(preparedSource ? { fingerprint: fingerprintFor(preparedSource) } : {}) }), onSubmitted: async (_, id) => { await this.sessions.update(session, { turnId: id }); submitted = true },
       })
       const reply = result.text.trim() ? [...publicReplies].reverse().find(message => message.content.trim() === result.text.trim())?.content ?? result.text : publicReplies.at(-1)?.content ?? ''
       if (!result.text.trim() && reply) await context.onDelta(reply)
       await this.sessions.update(session, { state: 'completed', outputHash: digest(reply), completedInvocationId: context.runId })
-    } finally { productController.abort(); try { await releaseCliTools?.() } finally { await products.dispose() } }
+    } catch (error) {
+      interrupted = context.signal.aborted && submitted && ['codex', 'claude'].includes(this.runtime)
+      throw error
+    } finally {
+      productController.abort()
+      try { await releaseCliTools?.() } finally { await products.dispose() }
+      if (interrupted) await this.sessions.update(session, { state: 'interrupted' })
+    }
   }
 }

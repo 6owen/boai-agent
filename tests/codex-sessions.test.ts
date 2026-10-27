@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 已退出且确认接收的取消轮次只投递新消息；投递未知/会话错配/来源漂移/宿主中断仍重建。
  * [INPUT]: 实际SQLite、获准消息投影及原生会话公开终态。
  * [OUTPUT]: Codex/Claude逐个验证增量/来源/恢复和迟到提交；各自原生turn或宿主完成回执不可替代，分集合不互相续用。
  * [POS]: 本机会话来源事务验收；真实协议与Electron分别留证。
@@ -59,6 +60,21 @@ it('appends only new authorized messages across multiple published turns and a n
   expect(third.session.inputMessageIds).toEqual(['third'])
   expect(third.session.sources.map(source => source.id)).toEqual(['first', first.reply.id, 'second', second.reply.id, 'third'])
   expect(JSON.stringify(await f.store.load(`${runtime}Sessions`))).not.toContain('Private message')
+})
+
+it.each(['confirmed', 'pending', 'host-interrupted', 'unknown-input', 'wrong-session', 'wrong-turn', 'changed-source', 'changed-config', 'unknown-answer', 'unknown-approval', 'unanswered-input'] as const)('checks cancelled native session continuation: %s', async condition => {
+  const f = await fixture(), source = message('cancelled-input', 1), first = await f.sessions.begin(context([source]), 'verified-config')
+  await f.sessions.update(first.session, { state: condition === 'pending' ? 'pending' : 'interrupted', threadId: 'native-cancelled', turnId: 'native-turn' })
+  await f.store.write([{ collection: 'runs', id: 'run-1', value: {
+    id: 'run-1', status: condition === 'host-interrupted' ? 'interrupted' : 'cancelled',
+    backend: { kind: `${runtime}-local`, sessionId: condition === 'wrong-session' ? 'other' : 'native-cancelled', turnId: condition === 'wrong-turn' ? undefined : 'native-turn', inputAccepted: condition !== 'unknown-input' },
+  } }])
+  if (['unknown-answer', 'unknown-approval', 'unanswered-input'].includes(condition)) await f.store.write([{ collection: 'nativeActions', id: 'answer', value: { id: 'answer', runId: 'run-1', kind: condition === 'unknown-approval' ? 'approval' : 'input', status: condition === 'unanswered-input' ? 'interrupted' : 'answered', delivery: 'unknown' } }])
+  const next = await repository(f.store).begin(context([condition === 'changed-source' ? { ...source, content: 'edited source' } : source, message('followup', 2)], { runId: 'run-2' }), condition === 'changed-config' ? 'new-config' : 'verified-config')
+  const allowed = condition === 'confirmed' || condition === 'wrong-turn' && runtime === 'claude'
+  expect(next.threadId).toBe(allowed ? 'native-cancelled' : undefined)
+  expect(next.messages.map(value => value.id)).toEqual(allowed ? ['followup'] : ['cancelled-input', 'followup'])
+  expect(next.priorReply).toBeUndefined()
 })
 
 it('keeps two employees and multiple conversations isolated when they use the same executable configuration', async () => {
