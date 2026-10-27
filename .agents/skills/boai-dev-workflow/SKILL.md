@@ -3,6 +3,7 @@ name: boai-dev-workflow
 description: 在 BOAI 仓库开发功能、修复问题、提交或更新 PR、处理 GitHub Actions 失败及合并 main 时使用。统一分支/worktree、云端 CI、默认自动合并和 UI 基准审阅流程，供 Codex、Claude、Pi 等开发 Agent 读取。
 ---
 <!--
+[OUTPUT]: 2026-10-27仅PR打开/源码同步/重开触发；Draft/Ready不重复跑同SHA，main复验和原完整门禁保持。
 [OUTPUT]: 2026-10-26UI功能交付前说明影响/覆盖并主动准备候选；ui-review轻量附件区分视觉待审阅与执行失败，原门禁及生效边界保持。
 [OUTPUT]: 2026-10-24按用户要求移除日常固定使用pnpm dev的约束；运行方式不预设，独立worktree及main仅同步已合并提交的规则保持。
 [OUTPUT]: 纠正测试范围：仅 GitHub CI 跑 UI，本地 Vitest/BDD/评估及依赖完整保留。
@@ -75,7 +76,8 @@ flowchart TD
 | 操作 | Actions 行为 |
 | --- | --- |
 | 本地保存/commit，或无 PR 的功能分支 push | 不触发 |
-| 面向 main 的 PR 创建/更新/重开/Ready/Draft 切换 | 执行 UI regression 和 Required checks |
+| 面向 main 的 PR 创建/源码更新/重开 | 执行 UI regression 和 Required checks |
+| 仅 Ready/Draft 状态切换 | 不重复触发；已有同 SHA 检查继续作为门禁，Draft 仍由 GitHub 禁止合并 |
 | main push 或手动运行 UI tests | 执行同一 UI 流程 |
 | ci:full 标签变化 | 不影响当前流程，不触发 |
 
