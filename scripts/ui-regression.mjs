@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 官方只读比较支持固定两片，记录完整合同hash；候选/接受仍全量协议。
  * [OUTPUT]: Workspace源码路径迁至apps/packages，保留既有输出与业务合同。
  * [OUTPUT]: 共享设计包计入UI源码身份，拒绝组件外改复用旧比较资格。
  * [INPUT]: 版本化BDD/截图合同、实际源码/字体/平台及显式候选接受命令。
@@ -18,6 +19,7 @@ import { acquireResourceLock } from './resource-lock.mjs'
 import { createBaselineReview, verifyBaselineReview } from './ui-baseline-review.mjs'
 import { uiProfile, assertCaptureMode, assertProfileCommand } from './ui-profiles.mjs'
 import { recordDesktopExecution } from './desktop-evidence.mjs'
+import { selectUiShard } from './ui-shards.mjs'
 
 const require = createRequire(import.meta.url)
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
@@ -132,7 +134,9 @@ async function main() {
   if (options.fault && (process.env.CI || command !== 'check' || !['layout', 'behavior', 'environment'].includes(options.fault))) throw new Error('故障演练仅支持本地check --fault layout|behavior|environment')
   const contract = await json(join(baseline, 'contract.json'))
   if (process.env.CI && options.cases) throw new Error('CI必须运行全部登记UI场景')
-  const ids = options.cases ? options.cases.split(',') : contract.cases.map(item => item.id)
+  const allIds = contract.cases.map(item => item.id)
+  const shard = selectUiShard(allIds, options.shard, command, profile.id, options.cases)
+  const ids = shard ? shard.cases : options.cases ? options.cases.split(',') : allIds
   if (!ids.length || new Set(ids).size !== ids.length || ids.some(id => !contract.cases.some(item => item.id === id))) throw new Error('场景列表为空、重复或未登记')
   const directory = command === 'accept' ? null : resolve(options.output ?? join(root, '.local/ui-runs', randomUUID()))
   if (directory) { await mkdir(dirname(directory), { recursive: true }); await mkdir(directory); activeRun = directory }
@@ -171,7 +175,7 @@ async function main() {
     }
     const built = await verifyBuildIdentity(root)
     const ci = process.env.GITHUB_ACTIONS === 'true' ? { repository: process.env.GITHUB_REPOSITORY, runId: process.env.GITHUB_RUN_ID, attempt: process.env.GITHUB_RUN_ATTEMPT, sha: process.env.GITHUB_SHA, workflow: process.env.GITHUB_WORKFLOW_REF } : undefined
-    const identity = { id: randomUUID(), profile: profile.id, source, built, environment, ci, osRelease: release(), osVersion: execFileSync('sw_vers', ['-productVersion'], { encoding: 'utf8' }).trim(), node: process.version, selected: ids, startedAt: new Date().toISOString() }
+    const identity = { id: randomUUID(), profile: profile.id, source, built, environment, ci, ...(shard ? { shard } : {}), osRelease: release(), osVersion: execFileSync('sw_vers', ['-productVersion'], { encoding: 'utf8' }).trim(), node: process.version, selected: ids, startedAt: new Date().toISOString() }
     await save(join(directory, 'run.json'), identity)
     const generated = await runCommand('pnpm', ['test:bddgen'], process.env)
     if (generated.code !== 0) throw new Error('BDD生成失败，未执行UI回归')

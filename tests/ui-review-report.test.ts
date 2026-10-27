@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 分片报告核合同并标明局部范围，伪造片号保持失败。
  * [OUTPUT]: 原始四步计时独立汇总；不把缺失/负值或未登记步骤补为零，不改变视觉门禁。
  * [INPUT]: 代表Playwright结果、实际临时PNG、执行摘要及现有UI门禁。
  * [OUTPUT]: 视觉变化仅可待审阅；行为/环境/中断/缺图保持失败，报告不授门禁资格或修改基线。
@@ -194,4 +195,20 @@ it('两个工作流只附加报告，原只读检查、独立采集和必需门�
     expect(steps.filter(step => step.run?.includes('ui-review-report.mjs')).every(step => step.if === 'always()')).toBe(true)
     expect(steps.some(step => step.run?.includes('ui-ci-baseline.mjs accept'))).toBe(false)
   }
+})
+
+it('分片报告只展示合同内本片，明确完整资格仍由汇总核验', async () => {
+  // @ts-expect-error Shared Node protocol.
+  const { uiShardPlan } = await import('../scripts/ui-shards.mjs')
+  const ids = [id, 'settings-dark']
+  await save(join(input, 'summary.json'), { ...summary(), shard: uiShardPlan(ids, 1) })
+  const result = await generateUiReview(input, output, ids)
+  expect(result.status).toBe('passed')
+  expect(result.cases.map((item: { id: string }) => item.id)).toEqual([id])
+  expect(reviewMarkdown(result)).toContain('分片 1/2')
+  expect(renderUiReview(result)).toContain('完整资格由 Required checks 汇总')
+})
+it('伪造分片不能隐藏缺失场景', async () => {
+  await save(join(input, 'summary.json'), { ...summary(), shard: { index: 1, total: 2, cases: [id] } })
+  expect((await generateUiReview(input, output, [id, 'settings-dark'])).status).toBe('failed')
 })

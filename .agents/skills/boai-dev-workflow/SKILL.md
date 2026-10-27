@@ -3,6 +3,7 @@ name: boai-dev-workflow
 description: 在 BOAI 仓库开发功能、修复问题、提交或更新 PR、处理 GitHub Actions 失败及合并 main 时使用。统一分支/worktree、云端 CI、默认自动合并和 UI 基准审阅流程，供 Codex、Claude、Pi 等开发 Agent 读取。
 ---
 <!--
+[OUTPUT]: 2026-10-27普通UI两台macOS分片并行；完整合同、身份及逐片原件统一门禁。
 [OUTPUT]: 2026-10-27仅PR打开/源码同步/重开触发；Draft/Ready不重复跑同SHA，main复验和原完整门禁保持。
 [OUTPUT]: 2026-10-26UI功能交付前说明影响/覆盖并主动准备候选；ui-review轻量附件区分视觉待审阅与执行失败，原门禁及生效边界保持。
 [OUTPUT]: 2026-10-24按用户要求移除日常固定使用pnpm dev的约束；运行方式不预设，独立worktree及main仅同步已合并提交的规则保持。
@@ -81,7 +82,7 @@ flowchart TD
 | main push 或手动运行 UI tests | 执行同一 UI 流程 |
 | ci:full 标签变化 | 不影响当前流程，不触发 |
 
-`UI regression` 安装依赖并构建，然后按版本化合同执行全部 18 项 UI 回归。`Required checks` 名称不变，始终运行，独立核对 UI 任务、当前 SHA、原始报告、全部截图/trace。它不等待任何工程或模型测试；UI 失败、取消、缺场景或缺原件仍拒绝通过。Draft 的合并限制由 GitHub 原生状态负责，不再额外设置范围判定任务。
+`UI regression` 使用两台独立 macOS runner，各安装依赖、构建并执行固定9项，合计原18项。每台保持单worker，避免桌面焦点互扰。`Required checks` 名称不变，始终运行，独立重算两片完整合同并核对 UI 任务、当前 SHA、源码/构建输入/环境、原始报告、全部截图/trace；缺片、重复片或跨提交均拒绝。它不等待任何工程或模型测试；UI 失败、取消、缺场景或缺原件仍拒绝通过。Draft 的合并限制由 GitHub 原生状态负责，不再额外设置范围判定任务。
 
 同一 PR 的新运行取消旧运行，main 已开始的运行保留。UI 结果只说明界面交互/布局/视觉检查通过，不代表真实模型质量或发布验收。
 
