@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 补内容缩短不误翻页、拖动滚动条仍预取及StrictMode初始跟随回归。
  * [OUTPUT]: 使用真实use-stick-to-bottom；模拟浏览器ResizeObserver/rAF交付，覆盖流式阅读、双向滚动及同窗口刷新不重放旧锚点。
  * [OUTPUT]: 补发送后贴底/内容增长/手动滚动/跨会话迟到发送及渠道旧分页竞态回归；组件用例待运行，不代表Electron或E2E验证。
  * [INPUT]: 生产ChatView/PromptBar/MentionInput、真实分页消息与隔离IPC。
@@ -8,7 +9,7 @@
  * [POS]: 会话固定布局与消息窗口组件回归，不运行Electron或模型。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查tests/.folder.md。
  */
-import { act, createElement as h, createRef, type ComponentProps } from 'react'
+import { act, createElement as h, createRef, StrictMode, type ComponentProps } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import type { Conversation, DigitalAgent, Message } from '../packages/shared/src/domain'
@@ -334,4 +335,11 @@ it('does not prefetch history when a reply shrinks at the bottom, but does prefe
   await act(async () => geometry.scroll()); await frames()
   await act(async () => { geometry.viewport.scrollTop = 0; geometry.scroll() }); await frames()
   expect(onPage.mock.calls).toEqual([['before']])
+})
+
+it('follows the initial latest window under the development StrictMode lifecycle', async () => {
+  await act(async () => root.render(h(StrictMode, null, h(ChatView, props))))
+  const geometry = viewportGeometry()
+  await act(async () => geometry.notify()); await frames()
+  expect(geometry.viewport.scrollTop).toBe(1099)
 })

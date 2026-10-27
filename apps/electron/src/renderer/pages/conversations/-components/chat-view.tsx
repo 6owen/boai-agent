@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 开发StrictMode effect清理不改变用户跟随意图，隐藏生命周期仍暂停。
  * [OUTPUT]: 聊天跟随委托use-stick-to-bottom；分页仅在消息窗口变化时恢复锚点，预取保留当前窗口内的实时执行卡。
  * [OUTPUT]: 2026-10-27 默认关闭语音插件接线、可信主窗口与原草稿/生命周期边界。
  * [OUTPUT]: 移除空任务面板的菜单回调，聊天、文件和执行过程沿原入口。
@@ -297,7 +298,8 @@ function ChatHistory({ api, pageActive, questionReplies, artifactActions, onTeam
       if (loaded && request === followRequest.current) pendingLatest.current = false
     })
   } }))
-  useEffect(() => () => { followRequest.current++; stopScroll() }, [stopScroll])
+  // Ref cleanup disconnects the library; effect replay in dev must not simulate a user escape.
+  useEffect(() => () => { followRequest.current++ }, [])
   const loadAtEdge = (direction: 'before' | 'after') => {
     const el = scrollRef.current
     if (!el || !pageActive || document.visibilityState !== 'visible' || !document.hasFocus() || paging || !pageEdges[direction]) return

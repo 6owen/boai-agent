@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 原截图后恢复走时再测流式滚动，核对Date.now推进；原截图时间、阈值和超时保持。
  * [OUTPUT]: chat-light在原截图后经实际发送/HTTP思考增量验证上滚停跟随、空历史预取保卡、双向滚轮及回底恢复；其余20场合同/截图保持。
  * [OUTPUT]: 新增语音设置明暗两场，核对默认关闭、紧凑控件/32px、术语真实自动保存及统一快捷键导航；原18项保持。
  * [OUTPUT]: 快捷键页新增第五项语音动作，明确断言默认关闭/未绑定，原四项断言保持。
@@ -224,6 +225,11 @@ Then('当前场景与已接受的UI截图一致', async ({ runtime, uiRegression
   if (uiRegression.selected!.id !== 'chat-light') return
   // Run after the original snapshot: the fixed baseline still proves the same scene.
   const page = runtime.page, fixture = uiRegression.fixture!
+  // Fixed screenshot time would permanently block the hook's Date.now() + 1 wait.
+  // The snapshot is already captured; exercise live behavior with a ticking clock.
+  await page.clock.setSystemTime(Date.now())
+  const resumedAt = await page.evaluate(() => Date.now())
+  await expect.poll(() => page.evaluate(() => Date.now())).toBeGreaterThan(resumedAt)
   await page.getByRole('button', { name: /^与研究员对话/ }).click()
   await readyConversation(runtime, fixture.direct.id)
   const input = page.getByRole('textbox', { name: '消息内容', exact: true })
