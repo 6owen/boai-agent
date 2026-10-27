@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 2026-10-27 语音设置 clickoutside、直接离页保存与紧凑行布局；快捷键导航、持久化及零下载合同保持。
+ * [OUTPUT]: 2026-10-27 语音主要控件220px同宽、辅助操作居左和快捷键无箭头；自动保存、持久化及零下载合同保持。
 [OUTPUT]: 配色菜单先核实际打开及回退选项，再核禁用主题缺席与Escape关闭；不把尚未显示时按键当作关闭验证。
  * [OUTPUT]: 初始目录核对十项固定插件身份（含DeepSeek和双运行时），不从实现派生期望；原筛选/启停/重启断言保持。
  * [INPUT]: 插件平台中文场景、真实Electron与隔离固定配置文件。
@@ -164,6 +164,23 @@ When('用户明确启用语音并保存术语配置', async ({ runtime }) => {
   const microphone = await voicePage.getByRole('combobox', { name: '麦克风', exact: true }).boundingBox()
   const authorize = await voicePage.getByRole('button', { name: '授权并刷新设备', exact: true }).boundingBox()
   expect(authorize!.height).toBe(32); expect(microphone!.height).toBe(authorize!.height)
+  const mode = await voicePage.getByRole('combobox', { name: '识别方式', exact: true }).boundingBox()
+  const shortcutButton = voicePage.getByRole('button', { name: '前往快捷键设置', exact: true })
+  const shortcut = await shortcutButton.boundingBox()
+  const download = await voicePage.getByRole('button', { name: '下载模型', exact: true }).boundingBox()
+  const license = await voicePage.getByRole('link', { name: '模型许可', exact: true }).boundingBox()
+  for (const control of [mode, language, microphone, shortcut, download]) {
+    expect(control!.width).toBe(220)
+    expect(Math.abs(control!.x + control!.width - languageRow!.x - languageRow!.width)).toBeLessThanOrEqual(2)
+  }
+  expect(authorize!.x + authorize!.width).toBeLessThan(microphone!.x)
+  expect(license!.x + license!.width).toBeLessThan(download!.x)
+  await expect(voicePage.getByRole('button', { name: '授权并刷新设备', exact: true })).toHaveAttribute('data-variant', 'link')
+  await expect(voicePage.getByRole('button', { name: '授权并刷新设备', exact: true })).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+  const authorizationFont = await voicePage.getByRole('button', { name: '授权并刷新设备', exact: true }).evaluate(element => parseFloat(getComputedStyle(element).fontSize))
+  const microphoneFont = await voicePage.getByRole('combobox', { name: '麦克风', exact: true }).evaluate(element => parseFloat(getComputedStyle(element).fontSize))
+  expect(authorizationFont).toBeLessThan(microphoneFont)
+  await expect(shortcutButton.locator('svg, .app-icon')).toHaveCount(0)
   await page.getByRole('button', { name: '插件', exact: true }).click()
   await expect(page.getByRole('alertdialog')).toHaveCount(0)
   await expect(page.getByRole('switch', { name: '语音输入', exact: true })).toBeChecked()
