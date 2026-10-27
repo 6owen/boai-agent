@@ -310,58 +310,58 @@
       "acceptedAt": "2026-10-27T01:55:16.974Z"
     },
     "settings-light": {
-      "sha256": "3fba5ea17f32b3c3be3285411fe2c41351c1edabcbf7b5ae6c18a0346336e512",
+      "sha256": "3686c9e57975a7bdd60238f5744b258d1159292986064adbf8da4d1edd5d9293",
       "contract": "7e5255cd1d6ad9466a69854f08942fa9a02ad84b369f2b941a50a1787ed41c6f",
       "source": {
-        "commit": "dcb69a0b57ed87f9fb694101b0c7a47789ab9d2b",
-        "sourceHash": "f5257efe28f79f4b7e2cf5ebd6c662e6f85cf9268192dc1022245e672e855bcb",
+        "commit": "d07bbf0d44d3111f2d267bcc1dd1372fe5b264eb",
+        "sourceHash": "b8fba644e9d4a06f01155b3d5a1ddb34f93eae77b07332c26788ebe5130471d0",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "4c628ae95610d518e6da7baf84f35dd67d1a1a8efe04f8213111e23073c9b283",
-        "outputHash": "d2cfacd29d14fc6c63624ba2d0af54acdca8b16e0ad0d9466a03058e9090faf5",
+        "inputHash": "b51e9aec89679c2a74d1758140f51acebe7bf0d04c7b8cb1e9336a7dd90a74e4",
+        "outputHash": "9af002471a731233103f0fbac314009106af7b553a09d13b5c1d47911d73502f",
         "node": "v24.16.0",
-        "createdAt": "2026-10-27T01:38:22.431Z"
+        "createdAt": "2026-10-27T04:00:02.521Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "40433557844",
+        "runId": "40447090366",
         "attempt": 1,
-        "commit": "dcb69a0b57ed87f9fb694101b0c7a47789ab9d2b",
-        "artifactId": 12703436901,
-        "digest": "sha256:42dabe2ab9996f0836ff2ff62a89e6282e399aae967743dc6730498711c49826"
+        "commit": "d07bbf0d44d3111f2d267bcc1dd1372fe5b264eb",
+        "artifactId": 12709037268,
+        "digest": "sha256:ad5c79370c0b36f11391d2c335a31c542ae8a29bebbbe8c40855ad74b75b8d26"
       },
-      "reason": "PR29默认用户头像由虎改为牛，全部18页公共导航受影响；已逐项审阅官方旧图/新图/diff，导航外仅聊天页员工头像边缘8或20个原始像素差异，无布局文字变化；原18项行为布局保持。活动详情/资料新状态不在这18项覆盖内。",
-      "candidate": "905e9ef2-bfb0-48c8-be03-793c49f33832",
-      "acceptedAt": "2026-10-27T01:55:16.974Z"
+      "reason": "PR36用户新增语音输入独立设置导航及第五条语音快捷键；已审阅同SHA官方候选四组旧图/新图/diff：新增导航及下方两项顺移，新增快捷键默认关闭且未绑定，明暗布局正常。其余14项零像素变化，保留原基线和全部断言/阈值。",
+      "candidate": "39ca4d7d-52f9-42f3-9a21-c3d27cdecd84",
+      "acceptedAt": "2026-10-27T05:38:06.416Z"
     },
     "settings-dark": {
-      "sha256": "c5f72997c160ded0f0ecd381e7bfe3ca5359d4ec997f1ffc72ef103087afdb09",
+      "sha256": "f2c0cf83178f5bebfc818a05c2ea291ee35aa18b759e949c7baecedf2d22ddd0",
       "contract": "ea3f1f153ee06336a9361e4d5755f3d8d3810e87859b90e767610799dfaeeed1",
       "source": {
-        "commit": "dcb69a0b57ed87f9fb694101b0c7a47789ab9d2b",
-        "sourceHash": "f5257efe28f79f4b7e2cf5ebd6c662e6f85cf9268192dc1022245e672e855bcb",
+        "commit": "d07bbf0d44d3111f2d267bcc1dd1372fe5b264eb",
+        "sourceHash": "b8fba644e9d4a06f01155b3d5a1ddb34f93eae77b07332c26788ebe5130471d0",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "4c628ae95610d518e6da7baf84f35dd67d1a1a8efe04f8213111e23073c9b283",
-        "outputHash": "d2cfacd29d14fc6c63624ba2d0af54acdca8b16e0ad0d9466a03058e9090faf5",
+        "inputHash": "b51e9aec89679c2a74d1758140f51acebe7bf0d04c7b8cb1e9336a7dd90a74e4",
+        "outputHash": "9af002471a731233103f0fbac314009106af7b553a09d13b5c1d47911d73502f",
         "node": "v24.16.0",
-        "createdAt": "2026-10-27T01:38:22.431Z"
+        "createdAt": "2026-10-27T04:00:02.521Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "40433557844",
+        "runId": "40447090366",
         "attempt": 1,
-        "commit": "dcb69a0b57ed87f9fb694101b0c7a47789ab9d2b",
-        "artifactId": 12703436901,
-        "digest": "sha256:42dabe2ab9996f0836ff2ff62a89e6282e399aae967743dc6730498711c49826"
+        "commit": "d07bbf0d44d3111f2d267bcc1dd1372fe5b264eb",
+        "artifactId": 12709037268,
+        "digest": "sha256:ad5c79370c0b36f11391d2c335a31c542ae8a29bebbbe8c40855ad74b75b8d26"
       },
-      "reason": "PR29默认用户头像由虎改为牛，全部18页公共导航受影响；已逐项审阅官方旧图/新图/diff，导航外仅聊天页员工头像边缘8或20个原始像素差异，无布局文字变化；原18项行为布局保持。活动详情/资料新状态不在这18项覆盖内。",
-      "candidate": "905e9ef2-bfb0-48c8-be03-793c49f33832",
-      "acceptedAt": "2026-10-27T01:55:16.974Z"
+      "reason": "PR36用户新增语音输入独立设置导航及第五条语音快捷键；已审阅同SHA官方候选四组旧图/新图/diff：新增导航及下方两项顺移，新增快捷键默认关闭且未绑定，明暗布局正常。其余14项零像素变化，保留原基线和全部断言/阈值。",
+      "candidate": "39ca4d7d-52f9-42f3-9a21-c3d27cdecd84",
+      "acceptedAt": "2026-10-27T05:38:06.416Z"
     },
     "resources-light": {
       "sha256": "0949cb633409e2bb0f21c58974f83da3dad6f64919a35955116655cb8dbad57e",
@@ -526,58 +526,58 @@
       "acceptedAt": "2026-10-27T01:55:16.974Z"
     },
     "shortcuts-light": {
-      "sha256": "309b82f0b34dc83e14440b328ef396b4450faefd728ca23e88397c27afdc7810",
+      "sha256": "d84de9c4930d809c7fa311eb5bba109d35c5e01addd1c3b09e3410a92ae2956c",
       "contract": "171bb96072a7e80051c7c1c511516129c00e103c4058d3e70e25c8186a56c49a",
       "source": {
-        "commit": "dcb69a0b57ed87f9fb694101b0c7a47789ab9d2b",
-        "sourceHash": "f5257efe28f79f4b7e2cf5ebd6c662e6f85cf9268192dc1022245e672e855bcb",
+        "commit": "d07bbf0d44d3111f2d267bcc1dd1372fe5b264eb",
+        "sourceHash": "b8fba644e9d4a06f01155b3d5a1ddb34f93eae77b07332c26788ebe5130471d0",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "4c628ae95610d518e6da7baf84f35dd67d1a1a8efe04f8213111e23073c9b283",
-        "outputHash": "d2cfacd29d14fc6c63624ba2d0af54acdca8b16e0ad0d9466a03058e9090faf5",
+        "inputHash": "b51e9aec89679c2a74d1758140f51acebe7bf0d04c7b8cb1e9336a7dd90a74e4",
+        "outputHash": "9af002471a731233103f0fbac314009106af7b553a09d13b5c1d47911d73502f",
         "node": "v24.16.0",
-        "createdAt": "2026-10-27T01:38:22.431Z"
+        "createdAt": "2026-10-27T04:00:02.521Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "40433557844",
+        "runId": "40447090366",
         "attempt": 1,
-        "commit": "dcb69a0b57ed87f9fb694101b0c7a47789ab9d2b",
-        "artifactId": 12703436901,
-        "digest": "sha256:42dabe2ab9996f0836ff2ff62a89e6282e399aae967743dc6730498711c49826"
+        "commit": "d07bbf0d44d3111f2d267bcc1dd1372fe5b264eb",
+        "artifactId": 12709037268,
+        "digest": "sha256:ad5c79370c0b36f11391d2c335a31c542ae8a29bebbbe8c40855ad74b75b8d26"
       },
-      "reason": "PR29默认用户头像由虎改为牛，全部18页公共导航受影响；已逐项审阅官方旧图/新图/diff，导航外仅聊天页员工头像边缘8或20个原始像素差异，无布局文字变化；原18项行为布局保持。活动详情/资料新状态不在这18项覆盖内。",
-      "candidate": "905e9ef2-bfb0-48c8-be03-793c49f33832",
-      "acceptedAt": "2026-10-27T01:55:16.974Z"
+      "reason": "PR36用户新增语音输入独立设置导航及第五条语音快捷键；已审阅同SHA官方候选四组旧图/新图/diff：新增导航及下方两项顺移，新增快捷键默认关闭且未绑定，明暗布局正常。其余14项零像素变化，保留原基线和全部断言/阈值。",
+      "candidate": "39ca4d7d-52f9-42f3-9a21-c3d27cdecd84",
+      "acceptedAt": "2026-10-27T05:38:06.416Z"
     },
     "shortcuts-dark": {
-      "sha256": "6620e83f85215237402be2accd59f1d9b5a4e3480f8a66612ee45026e324ea70",
+      "sha256": "3e0389e55864b3b8b79ea6ebf54848211660dc08889fcd088c5aeb6c7d7167e6",
       "contract": "470a05b4fc32829a5cef4c13044deac140431e51162eb3527e7763896f3e82d9",
       "source": {
-        "commit": "dcb69a0b57ed87f9fb694101b0c7a47789ab9d2b",
-        "sourceHash": "f5257efe28f79f4b7e2cf5ebd6c662e6f85cf9268192dc1022245e672e855bcb",
+        "commit": "d07bbf0d44d3111f2d267bcc1dd1372fe5b264eb",
+        "sourceHash": "b8fba644e9d4a06f01155b3d5a1ddb34f93eae77b07332c26788ebe5130471d0",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "4c628ae95610d518e6da7baf84f35dd67d1a1a8efe04f8213111e23073c9b283",
-        "outputHash": "d2cfacd29d14fc6c63624ba2d0af54acdca8b16e0ad0d9466a03058e9090faf5",
+        "inputHash": "b51e9aec89679c2a74d1758140f51acebe7bf0d04c7b8cb1e9336a7dd90a74e4",
+        "outputHash": "9af002471a731233103f0fbac314009106af7b553a09d13b5c1d47911d73502f",
         "node": "v24.16.0",
-        "createdAt": "2026-10-27T01:38:22.431Z"
+        "createdAt": "2026-10-27T04:00:02.521Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "40433557844",
+        "runId": "40447090366",
         "attempt": 1,
-        "commit": "dcb69a0b57ed87f9fb694101b0c7a47789ab9d2b",
-        "artifactId": 12703436901,
-        "digest": "sha256:42dabe2ab9996f0836ff2ff62a89e6282e399aae967743dc6730498711c49826"
+        "commit": "d07bbf0d44d3111f2d267bcc1dd1372fe5b264eb",
+        "artifactId": 12709037268,
+        "digest": "sha256:ad5c79370c0b36f11391d2c335a31c542ae8a29bebbbe8c40855ad74b75b8d26"
       },
-      "reason": "PR29默认用户头像由虎改为牛，全部18页公共导航受影响；已逐项审阅官方旧图/新图/diff，导航外仅聊天页员工头像边缘8或20个原始像素差异，无布局文字变化；原18项行为布局保持。活动详情/资料新状态不在这18项覆盖内。",
-      "candidate": "905e9ef2-bfb0-48c8-be03-793c49f33832",
-      "acceptedAt": "2026-10-27T01:55:16.974Z"
+      "reason": "PR36用户新增语音输入独立设置导航及第五条语音快捷键；已审阅同SHA官方候选四组旧图/新图/diff：新增导航及下方两项顺移，新增快捷键默认关闭且未绑定，明暗布局正常。其余14项零像素变化，保留原基线和全部断言/阈值。",
+      "candidate": "39ca4d7d-52f9-42f3-9a21-c3d27cdecd84",
+      "acceptedAt": "2026-10-27T05:38:06.416Z"
     }
   }
 }
