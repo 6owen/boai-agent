@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 两片完整合同重算及同SHA/源码/构建输入/环境核对，逐片原件复核后才通过。
  * [INPUT]: Actions实际步骤结果、确切提交、UI原始报告及逐场景截图/回放。
  * [OUTPUT]: Actions 仅核验同 SHA 全 UI；保留本地工程/T1 报告校验函数；缺失、跳过、重试、改字节均拒绝。
  * [POS]: 云端 UI 与本地完整测试分离的结果工具。
@@ -10,6 +11,7 @@ import { pathToFileURL } from 'node:url'
 import { createHash } from 'node:crypto'
 import { selectDesktopCases, assertDesktopReport, desktopReportRows } from './desktop-plan.mjs'
 import { verifyDesktopEvidence } from './desktop-evidence.mjs'
+import { UI_SHARD_COUNT, assertUiShard, uiShardPlan } from './ui-shards.mjs'
 
 const selected = ['install', 'types', 'lint', 'build', 'unit', 'dataset', 'bdd']
 const sameSet = (a, b) => Array.isArray(a) && a.length === b.length && new Set(a).size === b.length && b.every(value => a.includes(value))
@@ -20,6 +22,16 @@ export function validateUiSummary(jobs, ui, caseIds, sha) {
   validateUiJob(jobs)
   if (typeof sha !== 'string' || !sha.trim() || !caseIds.length || new Set(caseIds).size !== caseIds.length) throw new Error('缺少确切提交或完整 UI 场景合同')
   if (ui.status !== 'passed' || ui.source?.commit !== sha || ui.source?.dirty !== false || !sameSet(ui.cases, caseIds) || !Array.isArray(ui.errors) || ui.errors.length) throw new Error('UI 报告缺失、不完整或提交不匹配')
+}
+export function validateUiShards(jobs, summaries, ids, sha) {
+  validateUiJob(jobs)
+  if (!Array.isArray(summaries) || summaries.length !== UI_SHARD_COUNT || new Set(summaries.map(ui => ui.shard?.index)).size !== UI_SHARD_COUNT) throw new Error('UI分片缺失或重复')
+  for (const ui of summaries) {
+    const plan = assertUiShard(ids, ui.shard)
+    validateUiSummary(jobs, ui, plan.cases, sha)
+    const first = summaries[0]
+    if (!ui.source.sourceHash || !ui.built?.inputHash || !ui.environment || !ui.node || ui.source.sourceHash !== first.source.sourceHash || ui.built.inputHash !== first.built.inputHash || ui.profile !== first.profile || ui.node !== first.node || JSON.stringify(ui.environment) !== JSON.stringify(first.environment)) throw new Error('UI分片源码、构建输入或环境不一致')
+  }
 }
 
 export function validateGate(jobs, engineering, ui, caseIds, sha, evidence) {
@@ -78,7 +90,7 @@ export async function verifyUiGate(directory, ids) {
 
 const read = async file => JSON.parse(await readFile(file, 'utf8'))
 async function main() {
-  const [command, output] = process.argv.slice(2)
+  const [command, output, shardIndex] = process.argv.slice(2)
   if (command === 'jobs') {
     validateUiJob(JSON.parse(process.env.CI_JOB_RESULTS ?? '{}'))
   } else if (command === 'record') {
@@ -86,10 +98,30 @@ async function main() {
     const failures = selected.filter(id => steps[id]?.outcome !== 'success')
     const result = { sha: process.env.GITHUB_SHA, head: process.env.CI_PR_HEAD || null, base: process.env.CI_PR_BASE || null, runId: process.env.GITHUB_RUN_ID, selected, outcomes: Object.fromEntries(selected.map(id => [id, steps[id]?.outcome ?? 'missing'])), status: failures.length ? 'failed' : 'passed' }
     await mkdir(dirname(output), { recursive: true }); await writeFile(output, JSON.stringify(result, null, 2))
-  } else if (command === 'record-ui') {
+  } else if (command === 'record-ui' || command === 'record-ui-shard') {
     const contract = await read('tests/e2e/baselines/contract.json')
-    const proof = await uiEvidence(output, contract.cases.map(item => item.id))
+    const ids = contract.cases.map(item => item.id)
+    const plan = command === 'record-ui-shard' ? uiShardPlan(ids, Number(shardIndex)) : null
+    if (plan) {
+      const summary = await read(join(output, 'summary.json'))
+      if (summary.shard?.index !== plan.index) throw new Error('本任务分片编号不匹配')
+      assertUiShard(ids, summary.shard)
+      validateUiSummary({ ui: { result: 'success' } }, summary, plan.cases, process.env.GITHUB_SHA)
+    }
+    const proof = await uiEvidence(output, plan?.cases ?? ids)
     await writeFile(join(output, 'ui-evidence.json'), JSON.stringify(proof, null, 2) + '\n', { flag: 'wx' })
+  } else if (command === 'gate-shards') {
+    const jobs = JSON.parse(process.env.CI_JOB_RESULTS ?? '{}')
+    const contract = await read('tests/e2e/baselines/contract.json')
+    const ids = contract.cases.map(item => item.id)
+    const directories = Array.from({ length: UI_SHARD_COUNT }, (_, i) => `.local/ci-artifacts/ui-${i + 1}`)
+    const summaries = await Promise.all(directories.map(dir => read(join(dir, 'summary.json'))))
+    validateUiShards(jobs, summaries, ids, process.env.GITHUB_SHA)
+    for (const [i, directory] of directories.entries()) {
+      if (summaries[i].shard.index !== i + 1) throw new Error('原件目录与分片编号不匹配')
+      await verifyUiGate(directory, uiShardPlan(ids, i + 1).cases)
+    }
+    console.log(`Required checks passed: ${process.env.GITHUB_SHA}; ${ids.length} UI cases across ${UI_SHARD_COUNT} runners`)
   } else if (command === 'gate') {
     const jobs = JSON.parse(process.env.CI_JOB_RESULTS ?? '{}')
     const ui = await read('.local/ci-artifacts/ui/summary.json')
@@ -97,6 +129,6 @@ async function main() {
     validateUiSummary(jobs, ui, contract.cases.map(item => item.id), process.env.GITHUB_SHA)
     await verifyUiGate('.local/ci-artifacts/ui', contract.cases.map(item => item.id))
     console.log(`Required checks passed: ${process.env.GITHUB_SHA}`)
-  } else throw new Error('用法：ci-result.mjs jobs | record FILE | record-ui DIR | gate')
+  } else throw new Error('用法：ci-result.mjs jobs | record FILE | record-ui DIR | record-ui-shard DIR INDEX | gate | gate-shards')
 }
 if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) main().catch(error => { console.error(String(error)); process.exitCode = 1 })
