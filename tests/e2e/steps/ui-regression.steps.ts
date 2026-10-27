@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 新增头像点击与滚动均放原截图后，静态场景保持原交互轨迹，避免浮层重绘影响头像位图。
  * [OUTPUT]: 普通消息及生成中的执行卡员工头像均核对rounded-md和资料卡点击；执行卡无任务结果/查看/继续。
  * [OUTPUT]: 原截图后恢复走时再测流式滚动，核对Date.now推进；原截图时间、阈值和超时保持。
  * [OUTPUT]: chat-light在原截图后经实际发送/HTTP思考增量验证上滚停跟随、空历史预取保卡、双向滚轮及回底恢复；其余20场合同/截图保持。
@@ -114,16 +115,7 @@ Then('当前场景的真实交互和布局满足原约定', async ({ runtime, ui
     await input.press('Backspace')
     await expect.poll(() => messageDraft(input)).toBe('')
     await expect(page.getByRole('button', { name: '发送消息', exact: true })).toBeDisabled()
-    if (selected.scene === 'chat') {
-      await expect(page.locator('#message-history-writer')).toContainText('报告初稿')
-      const avatar = page.locator('#message-history-writer .message-avatar-trigger')
-      await expect(avatar).toHaveClass(/rounded-md/)
-      await expect(avatar).not.toHaveClass(/soft-button-round/)
-      await avatar.click()
-      await expect(page.locator('.agent-info-popover[data-open]').getByRole('heading', { name: '写手', exact: true })).toBeVisible()
-      await page.keyboard.press('Escape')
-      await input.click() // Restore the original screenshot focus after checking the profile.
-    }
+    if (selected.scene === 'chat') await expect(page.locator('#message-history-writer')).toContainText('报告初稿')
     const original = uiRegression.fixture!.direct
     const repeated = await page.evaluate(() => window.boai.request('createConversation', { kind: 'direct', title: '重复进入不能新建另一个单聊', agentIds: ['researcher'] }))
     expect(repeated.id).toBe(original.id)
@@ -232,9 +224,20 @@ Then('当前场景的真实交互和布局满足原约定', async ({ runtime, ui
 
 Then('当前场景与已接受的UI截图一致', async ({ runtime, uiRegression }) => {
   await compareUiBaseline(runtime, uiRegression.selected!.id, test.info())
+  const page = runtime.page, fixture = uiRegression.fixture!
+  // New profile interactions follow the existing snapshot so popup painting does
+  // not change the static screenshot's original interaction history.
+  if (uiRegression.selected!.scene === 'chat') {
+    const avatar = page.locator('#message-history-writer .message-avatar-trigger')
+    await expect(avatar).toHaveClass(/rounded-md/)
+    await expect(avatar).not.toHaveClass(/soft-button-round/)
+    await avatar.click()
+    await expect(page.locator('.agent-info-popover[data-open]').getByRole('heading', { name: '写手', exact: true })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await page.getByRole('textbox', { name: '消息内容', exact: true }).click()
+  }
   if (uiRegression.selected!.id !== 'chat-light') return
   // Run after the original snapshot: the fixed baseline still proves the same scene.
-  const page = runtime.page, fixture = uiRegression.fixture!
   // Fixed screenshot time would permanently block the hook's Date.now() + 1 wait.
   // The snapshot is already captured; exercise live behavior with a ticking clock.
   await page.clock.setSystemTime(Date.now())
