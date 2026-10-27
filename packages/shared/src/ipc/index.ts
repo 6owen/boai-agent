@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 语音设置页外自动保存及关闭前排空回执，独立voice脏来源。
  * [OUTPUT]: 2026-10-27 语音插件与显式执行额度的公共合同；不依赖可执行插件。
  * [OUTPUT]: 桌面生命周期事件与主窗专用快照/诊断导出桥；员工公共方法不扩展。
  * [OUTPUT]: Owner任务结果读取复用共享Work结果合同，桌面与CLI同一投影。
@@ -111,6 +112,7 @@ export type AppEvent =
   | { type: 'shortcuts:changed'; settings: ShortcutSnapshot }
   | { type: 'shortcuts:capture-ended' }
   | { type: 'shortcuts:flush'; requestId: string; discard?: boolean }
+  | { type: 'voice-settings:flush'; requestId: string; discard?: boolean }
   | { type: 'appearance:flush' }
   | { type: 'appearance:changed'; appearance: AppearanceSnapshot }
   | { type: 'app-icon:changed'; status: AppIconStatus }
@@ -310,6 +312,7 @@ export interface Methods {
   updateShortcutSettings: { input: ShortcutUpdate; output: ShortcutSnapshot }
   getShortcutReceipt: { input: Pick<ShortcutUpdate, 'requestId' | 'expectedRevision'>; output: ShortcutReceipt }
   setShortcutCapture: { input: { token: string; active: boolean }; output: boolean }
+  completeVoiceSettingsFlush: { input: { requestId: string; clean: boolean; settled: boolean }; output: void }
   completeShortcutFlush: { input: { requestId: string; clean: boolean; settled: boolean }; output: void }
   getAppearance: { input: undefined; output: AppearanceSnapshot }
   getAppIconStatus: { input: undefined; output: AppIconStatus }
@@ -397,7 +400,7 @@ export interface Methods {
   choosePath: { input: { kind: 'skill' | 'knowledge' }; output: string | null }
   openPath: { input: { path: string; action?: 'open' | 'reveal' }; output: void }
   exportBackup: { input: undefined; output: string | null }
-  setUnsavedChanges: { input: { dirty: boolean; source?: 'business' | 'appearance' | 'shortcuts' }; output: void }
+  setUnsavedChanges: { input: { dirty: boolean; source?: 'business' | 'appearance' | 'shortcuts' | 'voice' }; output: void }
 }
 export type Method = keyof Methods
 export interface DesktopApi {

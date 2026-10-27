@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 语音设置关闭/隐藏前等待自动保存，未结束写入不允许直接退出。
  * [OUTPUT]: 语音设备授权仅接可信主窗口短期租约，原media检查/生命周期释放保持。
  * [OUTPUT]: 2026-10-27 默认关闭语音插件接线、可信主窗口与原草稿/生命周期边界。
  * [OUTPUT]: 退出时允许运行服务完成停止桌面采集清理，拒绝新业务；避免先拒清理再等待8秒终止。
@@ -189,6 +190,7 @@ const dirtySources = new Set<string>()
 const hasUnsavedChanges = () => dirtySources.size > 0
 let confirmingClose = false
 let shortcutCapture: { windowId: number; token: string } | undefined
+let voiceSettingsFlush: { requestId: string; resolve: (value: { clean: boolean; settled: boolean }) => void } | undefined
 let shortcutFlush: { requestId: string; resolve: (value: { clean: boolean; settled: boolean }) => void } | undefined
 const shortcutPlatform = process.platform === 'darwin' ? 'mac' as const : 'other' as const
 const shortcutSettings = new ShortcutSettingsStore(join(legacyDataPath, 'shortcut-settings.json'), shortcutPlatform, reservedShortcuts(shortcutPlatform, !app.isPackaged), settings => sendEvent({ type: 'shortcuts:changed', settings }))
@@ -563,6 +565,11 @@ function registerIpc() {
       }
       return true
     }
+    if (method === 'completeVoiceSettingsFlush') {
+      const value = z.object({ requestId: z.string().uuid(), clean: z.boolean(), settled: z.boolean() }).strict().parse(input)
+      if (voiceSettingsFlush?.requestId === value.requestId) voiceSettingsFlush.resolve(value)
+      return
+    }
     if (method === 'completeShortcutFlush') {
       const value = z.object({ requestId: z.string().uuid(), clean: z.boolean(), settled: z.boolean() }).strict().parse(input)
       if (shortcutFlush?.requestId === value.requestId) shortcutFlush.resolve(value)
@@ -653,7 +660,7 @@ function registerIpc() {
     if (method === 'importAppearanceBackground') { const result=await dialog.showOpenDialog(window,{title:'选择背景图片',properties:['openFile'],filters:[{name:'图片',extensions:['png','jpg','jpeg','webp']}]}); return result.canceled||!result.filePaths[0]?null:appearance.import(result.filePaths[0]) }
     if (method === 'setUnsavedChanges') {
       if (typeof (input as { dirty?: unknown })?.dirty !== 'boolean') throw new Error('无效编辑状态')
-      const source=(input as {source?:string}).source??'business'; if(!['business','appearance','shortcuts'].includes(source))throw new Error('无效编辑来源'); if((input as {dirty:boolean}).dirty)dirtySources.add(source);else{dirtySources.delete(source);if(source==='appearance')appearanceFlushed?.()}
+      const source=(input as {source?:string}).source??'business'; if(!['business','appearance','shortcuts','voice'].includes(source))throw new Error('无效编辑来源'); if((input as {dirty:boolean}).dirty)dirtySources.add(source);else{dirtySources.delete(source);if(source==='appearance')appearanceFlushed?.()}
       return
     }
     if (method === 'openLocalSkill') {
@@ -802,7 +809,7 @@ async function createWindow(show = true) {
   mainWindow.once('ready-to-show', () => { if (show && !quitting && !mainWindow.isDestroyed()) mainWindow.show() })
   mainWindow.on('closed', () => { releaseShortcutCapture(); if (window === mainWindow) window = null })
   mainWindow.on('close', event => {
-    if (!quitting && background.shouldHide()) { event.preventDefault(); if (dirtySources.has('shortcuts') || shortcutCapture) void confirmDiscard(() => hideMainWindow(mainWindow), true); else hideMainWindow(mainWindow); return }
+    if (!quitting && background.shouldHide()) { event.preventDefault(); if (dirtySources.has('shortcuts') || shortcutCapture || dirtySources.has('voice')) void confirmDiscard(() => hideMainWindow(mainWindow), true); else hideMainWindow(mainWindow); return }
     if (!quitting && hasUnsavedChanges()) { event.preventDefault(); void confirmDiscard(() => window?.close()) }
   })
   window.webContents.setWindowOpenHandler(({ url }) => {
@@ -841,6 +848,16 @@ async function flushShortcutRenderer(discard = false): Promise<{ clean: boolean;
   })
 }
 
+async function flushVoiceSettingsRenderer(discard = false): Promise<{ clean: boolean; settled: boolean }> {
+  if (!window || window.isDestroyed()) return { clean: false, settled: false }
+  const requestId = randomUUID()
+  return new Promise(resolve => {
+    const timer = setTimeout(() => { voiceSettingsFlush = undefined; resolve({ clean: false, settled: false }) }, 25_000)
+    voiceSettingsFlush = { requestId, resolve: value => { clearTimeout(timer); voiceSettingsFlush = undefined; resolve(value) } }
+    sendEvent({ type: 'voice-settings:flush', requestId, discard })
+  })
+}
+
 async function confirmDiscard(continueClose: () => void, hiding = false) {
   if (confirmingClose || !window) return
   confirmingClose = true
@@ -849,13 +866,18 @@ async function confirmDiscard(continueClose: () => void, hiding = false) {
       const flushed = await flushShortcutRenderer()
       if (!flushed.settled) { await dialog.showMessageBox(window, { type: 'warning', message: '快捷键保存结果尚未确认', detail: '请保持应用打开，稍后重新核对。', buttons: ['返回'] }); return }
     }
-    if (hiding && !dirtySources.has('shortcuts')) { continueClose(); return }
+    if (dirtySources.has('voice')) {
+      const flushed = await flushVoiceSettingsRenderer()
+      if (!flushed.settled) { await dialog.showMessageBox(window, { type: 'warning', message: '语音设置保存尚未结束', detail: '请保持应用打开，稍后重试。', buttons: ['返回'] }); return }
+    }
+    if (hiding && !dirtySources.has('shortcuts') && !dirtySources.has('voice')) { continueClose(); return }
     if(dirtySources.has('appearance'))await new Promise<void>(resolve=>{const timeout=setTimeout(()=>{appearanceFlushed=undefined;resolve()},3000);appearanceFlushed=()=>{clearTimeout(timeout);appearanceFlushed=undefined;resolve()};sendEvent({type:'appearance:flush'})})
     if(!hasUnsavedChanges()){continueClose();return}
     const result = await dialog.showMessageBox(window, { type: 'question', title: '有未保存的修改', message: '仍有修改尚未保存', detail: dirtySources.has('appearance')?'外观保存尚未完成，退出将放弃未保存的外观修改。':'退出后，未保存的修改将丢失。', buttons: ['取消', '退出'], defaultId: 0, cancelId: 0, noLink: true })
     if (result.response === 1) {
       if (dirtySources.has('shortcuts') && !(await flushShortcutRenderer(true)).clean) return
-      if (hiding) dirtySources.delete('shortcuts'); else dirtySources.clear()
+      if (dirtySources.has('voice') && !(await flushVoiceSettingsRenderer(true)).clean) return
+      if (hiding) { dirtySources.delete('shortcuts'); dirtySources.delete('voice') } else dirtySources.clear()
       continueClose()
     }
   } finally { confirmingClose = false }
