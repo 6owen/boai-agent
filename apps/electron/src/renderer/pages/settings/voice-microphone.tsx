@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 麦克风选择按内容取宽，授权和取消使用统一标准按钮高度。
+ * [OUTPUT]: 麦克风选择器居右并统一宽度；授权/取消作为左侧无背景小字号操作，高度与选择器一致。
  * [INPUT]: Explicit microphone authorization, configured device ID and trusted voice lease API.
  * [OUTPUT]: Device picker with missing-device visibility; temporary authorization streams close on every exit.
  * [POS]: Voice settings microphone field; never starts ASR, stores audio or chooses a fallback device.
@@ -60,9 +60,9 @@ export function VoiceMicrophone({ voice, active, enabled, disabled, value, onCha
   const options = [{ value: '', label: '系统默认麦克风' }, ...devices.filter(device => device.deviceId && device.deviceId !== 'default').map((device, index) => ({ value: device.deviceId, label: device.label || `麦克风 ${index + 1}` }))]
   if (value && !options.some(option => option.value === value)) options.push({ value, label: '已选设备不可用，请授权刷新或重新选择' })
   return <VoiceSettingRow label="麦克风" hint="指定设备不可用时会停止并提示，不会自动改用其他设备。授权会短暂打开系统默认麦克风以读取设备，随后立即关闭；不会发送或保存音频。">
-    <div className="flex min-w-0 flex-wrap items-center gap-2">
-      <SelectField aria-label="麦克风" className="w-auto min-w-0" disabled={disabled || checking} value={value} options={options} onValueChange={onChange} />
-      {checking ? <Button type="button" variant="ghost" onClick={() => pending.current?.abort()}>取消授权</Button> : <Button type="button" variant="secondary" disabled={disabled || !enabled || !voice} onClick={() => void authorize()}>授权并刷新设备</Button>}
+    <div className="flex min-w-0 flex-wrap items-center justify-end gap-3">
+      {checking ? <Button type="button" variant="link" className="px-0" onClick={() => pending.current?.abort()}>取消授权</Button> : <Button type="button" variant="link" className="px-0" disabled={disabled || !enabled || !voice} onClick={() => void authorize()}>授权并刷新设备</Button>}
+      <SelectField aria-label="麦克风" disabled={disabled || checking} value={value} options={options} onValueChange={onChange} />
     </div>
   </VoiceSettingRow>
 }

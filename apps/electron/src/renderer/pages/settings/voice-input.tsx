@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 2026-10-27 语音设置 clickoutside 自动保存、两端布局、标准操作高度与快捷键导航，版本化草稿由页外队列持有。
+ * [OUTPUT]: 2026-10-27 主要控件统一220px，许可/授权辅助操作在左；快捷键去箭头，原自动保存队列保持。
  * [INPUT]: Explicit voice configuration, model installation and existing text-model connections.
  * [OUTPUT]: Optional local/online ASR, separately opt-in refinement and manually maintained terminology.
  * [POS]: Voice application-plugin settings; failure feedback uses Sonner.
@@ -24,7 +24,6 @@ import { SettingsLayout, SettingsSection, SettingsCard } from './settings-layout
 import { VoiceSettingRow } from './voice-setting-row'
 import { VoiceMicrophone } from './voice-microphone'
 import { useVoiceSettings, voiceDraft, voiceSettings } from '@/stores/voice-settings'
-import { ArrowRight } from '@/components/icons'
 
 export function VoiceInputSettingsPage({ active, onOpenShortcuts }: { active: boolean; onOpenShortcuts(): void }) {
   const api = getDesktopClient(), voice = api?.voice, guard = useContext(GuardContext)
@@ -102,13 +101,13 @@ export function VoiceInputSettingsPage({ active, onOpenShortcuts }: { active: bo
         </VoiceSettingRow>
         <VoiceMicrophone voice={voice} active={active} enabled={enabled} disabled={disabled || saving} value={settings?.microphoneDeviceId ?? ''} onChange={microphoneDeviceId => setSettings(value => value ? { ...value, microphoneDeviceId } : value, true)} />
         <VoiceSettingRow label="语音快捷键" hint="在快捷键设置中启用和录入。聚焦当前聊天输入框时按下开始录音，再按一次停止；不自动发送。">
-          <Button type="button" variant="ghost" aria-label="前往快捷键设置" onClick={onOpenShortcuts}>前往快捷键设置<ArrowRight /></Button>
+          <Button type="button" variant="ghost" data-voice-setting-control aria-label="前往快捷键设置" onClick={onOpenShortcuts}>前往快捷键设置</Button>
         </VoiceSettingRow>
         {(settings?.mode ?? 'local') === 'local' ? <VoiceSettingRow label="SenseVoiceSmall 模型" hint={`由 FunAudioLLM 提供，使用 sherpa-onnx INT8 转换及 Silero VAD。模型和完整许可按需下载，约 ${Math.ceil((snapshot?.modelBytes ?? 0) / 1024 / 1024)} MiB；不会包含在聊天备份中。`}>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" variant="secondary" disabled={downloadingModel || (!snapshot?.localReady && !enabled)} onClick={() => void download(snapshot?.localReady ? 'remove' : 'start')}>{snapshot?.localReady ? '移除模型' : '下载模型'}</Button>
-            {downloadingModel && <><progress aria-label="语音模型下载进度" max={snapshot?.modelBytes} value={snapshot?.download?.received ?? 0} className="w-24" /><Button type="button" variant="ghost" onClick={() => void download('cancel')}>取消</Button></>}
+          <div className="flex min-w-0 flex-wrap items-center justify-end gap-3">
             <a className="text-xs underline" href="https://github.com/modelscope/FunASR/blob/58830eca4012644aac0c3218c3ccc7d98f003fda/MODEL_LICENSE" target="_blank" rel="noreferrer">模型许可</a>
+            {downloadingModel && <><progress aria-label="语音模型下载进度" max={snapshot?.modelBytes} value={snapshot?.download?.received ?? 0} className="w-24" /><Button type="button" variant="link" className="px-0" onClick={() => void download('cancel')}>取消</Button></>}
+            <Button type="button" variant="secondary" data-voice-setting-control disabled={downloadingModel || (!snapshot?.localReady && !enabled)} onClick={() => void download(snapshot?.localReady ? 'remove' : 'start')}>{snapshot?.localReady ? '移除模型' : '下载模型'}</Button>
           </div>
         </VoiceSettingRow> : <>
           <VoiceSettingRow label="识别服务地址" hint="音频将发往此 WSS 地址。更换地址后须重新填写密钥。"><Input value={settings?.online.endpoint ?? ''} onChange={event => setSettings(value => value ? { ...value, online: { ...value.online, endpoint: event.target.value } } : value)} /></VoiceSettingRow>
