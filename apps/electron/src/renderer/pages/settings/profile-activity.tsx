@@ -1,11 +1,12 @@
 /*
+ * [OUTPUT]: 活动数据与加载状态未变时复用图表，避免隐藏资料页在其他页面导航时重建全年日期/Tooltip树。
  * [INPUT]: 同一时区的日聚合 DTO 与项目 Chart/Tooltip 原语。
  * [OUTPUT]: 页面/分享共用日期范围、色阶与周偏移；精简的七行年度热力图、每周柱图和区间累计曲线；日期/缺口保留在图格 tooltip 和可访问名称。
  * [OUTPUT]: Token 活动标题、粒度操作与图格首帧挂载；真实活动到达前按当前日期范围显示占位格，数据只替换图内内容。
  * [POS]: 个人资料只读活动展示；粒度切换不重新请求模型或历史正文。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { memo, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Bar, BarChart, Line, LineChart, XAxis, YAxis } from 'recharts'
 import type { ActivityDay, ProfileActivity } from '@boai/shared/domain/profile'
 import { Button } from '@/components/ui/button'
@@ -28,7 +29,7 @@ export function activityThresholds(days: ActivityDay[]) {
 }
 const dayLabel = (day: ActivityDay) => `${day.date}：${day.tokens === null ? day.unknownCalls ? '用量未记录' : '暂无记录' : `已知 ${tokenText(day.tokens)} Token`}${day.unknownCalls ? '，部分用量未记录' : ''}`
 
-export function ActivityChart({ activity, loading = false }: { activity?: ProfileActivity; loading?: boolean }) {
+export const ActivityChart = memo(function ActivityChart({ activity, loading = false }: { activity?: ProfileActivity; loading?: boolean }) {
   const [mode, setMode] = useState<'daily' | 'weekly' | 'cumulative'>('daily'), scroll = useRef<HTMLDivElement>(null)
   const placeholderDays = useMemo(() => {
     const { from, to } = profileActivityRange()
@@ -70,4 +71,4 @@ export function ActivityChart({ activity, loading = false }: { activity?: Profil
     {!activity && !loading && <p className="empty-note">活动数据暂不可用</p>}
 
   </section>
-}
+})
