@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-27最终流程归§20：本地效果确认，Agent驱动线上构建、基准提交与只读复验；§19部分规则已被替代。
 [OUTPUT]: 2026-10-27有意UI改动先向用户展示预览并确认具体效果/基准范围，再候选与PR；worktree独立node_modules复用pnpm store，BOAI_DEV_PORT支持按需独立预览。
 [OUTPUT]: 2026-10-27官方候选40472649141全部20场通过且PNG逐字节不变；仅晋升voice-settings-dark的已审阅渐变校准与来源，普通新head CI另验。
 [OUTPUT]: 2026-10-27 PR40仅文档运行40470324383的语音暗色渐变8149原始像素均仅差1/255；沿已有0.005颜色校准，异常像素仍0、无mask，需官方候选审阅晋升。
@@ -292,7 +293,7 @@ UI job通过后由record-ui登记summary、compare/summary、原始Playwright报
 - 官方候选 [40472649141](https://github.com/6owen/boai-agent/actions/runs/40472649141) 在b58e71f4完成全部20场；轻量报告与完整原件交叉核对，全部20张PNG逐字节等于原基准（原始diff均0）。语音暗色新图与旧图均为88da29a189592704ba54f400c99e590b0af956adf3c1fa98129a74e9a68e9c01，已实际审阅旧/新/diff。
 - 沿原import及accept独立重下载/摘要校验，仅更新voice-settings-dark的manifest合同与来源；没有PNG变化，其余19个manifest条目不变。候选artifact 12718957644，archive SHA256 ae6becbf5517560d5cf41de3d77c1b9372601461abb68778e0be179b1dcd4329。提交后仍由普通只读CI决定自动合并，候选成功不冒充Required checks通过。
 
-## 19. 先预览、用户确认，再更新UI基准（2026-10-27）
+## 19. 先预览、用户确认，再更新UI基准（2026-10-27，流程后由§20修订）
 
 - 用户重申：有意改UI不能直接拿旧基准报错，必须主动询问是否接受实际效果并更新受影响基准。原共享Skill只写Agent审阅，漏了用户确认；当前Actions在Draft opened/synchronize时也比较旧图，两者共同造成反复报红。PR42为Draft、未设置自动合并，但已同时运行候选与普通比较；新增6场不能凭原20场绿灯验收。
 - 新流程：功能worktree实现并提供可运行预览或实际截图，列出具体变化/受影响case，等待用户对本批效果和基准范围的明确确认。用户只要求开发不等于已接受实际画面。确认前不采集/接受基准、不Ready/自动合并；新任务不提前创建PR，显式要求先保存PR才使用Draft并说明旧基准差异。已有PR在确认前不推新UI改动。
@@ -303,3 +304,12 @@ UI job通过后由record-ui登记summary、compare/summary、原始Playwright报
 - 当前工作tree实际解除自身node_modules软链接后正常安装：pnpm10.13.1共1226包、reused1223/downloaded0，17.9秒完成；main及本worktree的安装清单storeDir均为/Users/wangwenbo/Library/pnpm/store/v10/v3/v10，main依赖目录未删除。该结果证明包缓存复用，不宣称每个worktree零额外磁盘占用。
 - 启动入口轻量检查：未设置端口保持默认配置，指定端口/0正确传给Vite，BDD端口优先，空值/负数/65536/非数字在构建前拒绝，共8种情况通过；未启动Electron或产品构建。
 - PR42当前候选40479030099另外有实际执行失败：4个定时任务场景等待checkbox“标签 日常”均30秒超时，其余22场通过。此类失败不能靠更新截图解决，需要功能或测试定位修正；本轮不改该任务产品源码、不晋升其基准，也不冒称已修复该PR。
+
+## 20. 本地确认效果，基准在线更新（2026-10-27）
+
+- 用户最终澄清：本地dev只是确认功能页面是不是自己想要的，目前先人工确认以验证后续流程，未来可授权Agent判断。不是本地跑正式基准，也不要求用户审查case或处理测试命令。§19的确认前禁止普通push、要求用户确认技术范围及本地接受方式由本节替代；自行commit/push仍可用，未确认UI的PR不自动合并。
+- Agent必须接续：确认效果→推源码→原候选工作流在线build/采集→核对官方旧/新/diff→调用main上的ui-baseline-update.yml→在线提交受影响PNG/manifest到同一功能分支→显式派发原tests.yml只读验证→Ready PR当前SHA自动合并。普通依赖缓存、构建和测试合同不改；线上更新复用已完成的候选，不重复build/采集。
+- 更新入口输入成功候选run、确认SHA、明确case和原因；执行main受信脚本，功能分支仅作只读源码/合同，不执行其脚本或安装其依赖。原官方artifact摘要、源码/构建/显示环境、全场景行为成功及原始差异核验共用现有逻辑。通过Git API只提交选中基准，以确认SHA为父提交，非快进拒绝，禁止写main。
+- GitHub token提交后显式workflow_dispatch触发普通UI检查，不假定push会自动启动。原只读Required checks仍决定合并，候选/更新成功不能冒充通过；派发失败报失败并由Agent补派。新入口必须合入main后才可运行。
+- 当前本节描述实现与合同；真实新功能的完整闭环还需用户确认具体效果、成功官方候选、线上更新及新SHA复验，不能把协议fixture回归称为真实产品验收。
+- 本轮本地验证：9个基础设施文件177项通过，最终派发失败回执调整后6项入口回归再次通过；TypeScript无输出错误，actionlint 1.7.12检查新工作流通过，语法/diff检查通过。未在本地构建产品、启动Electron或生成新基准；真实云端更新首轮仍待具体UI确认和成功候选。

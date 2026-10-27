@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 本地接受与独立线上更新共用官方原件/范围核验；普通CI入口仍禁止接受。
  * [OUTPUT]: 完整原件下载允许10分钟网络预算，来源/摘要/逐文件复核保持；不延长云端UI测试。
  * [INPUT]: 明确GitHub独立采集run、官方artifact摘要、当前干净源码及逐项审阅后的接受命令。
  * [OUTPUT]: 官方v3显示环境原件重下载核验；共锁逐项接受，初始/环境迁移全量，旧v2不能晋升。
@@ -79,7 +80,7 @@ with zipfile.ZipFile(archive) as z:
 `
   execFileSync('python3', ['-c', unpack, archive, output], { timeout: 120_000 })
 }
-async function download(root, runId, output) {
+export async function downloadCiCandidate(root, runId, output) {
   const current = await sourceIdentity(root), run = api(`actions/runs/${runId}`)
   const artifact = verifyCandidateRun(run, api(`actions/runs/${runId}/artifacts?per_page=100`).artifacts, current, runId)
   await mkdir(output) // Must be new; never merge a fresh artifact into old evidence.
@@ -89,6 +90,7 @@ async function download(root, runId, output) {
   if (`sha256:${digest.digest('hex')}` !== artifact.digest) throw new Error('下载archive与GitHub摘要不符')
   unpackCandidateArchive(archive, output)
   const candidate = await json(join(output, 'candidate.json')), contract = await json(join(root, 'tests/e2e/baselines/contract.json')), ids = contract.cases.map(item => item.id)
+  if (!ids.length || new Set(ids).size !== ids.length || ids.some(id => typeof id !== 'string' || !/^[a-z0-9][a-z0-9_-]*$/.test(id))) throw new Error('UI场景ID必须唯一且不能包含路径')
   verifyCandidateIdentity(candidate, run, current, ids, await buildInputHash(root))
   if (validateReport(await json(join(output, 'capture/playwright.json')), ids).status !== 'passed' || (await json(join(output, 'capture/summary.json'))).status !== 'passed') throw new Error('候选真实场景未全部一次通过')
   for (const id of ids) if (candidate.cases[id].contract !== baselineContractHash(contract, id) || hash(await readFile(join(output, 'snapshots', `${id}.png`))) !== candidate.cases[id].sha256) throw new Error(`候选字节/合同错误：${id}`)
@@ -96,12 +98,23 @@ async function download(root, runId, output) {
   await writeFile(join(output, 'github-provenance.json'), JSON.stringify(provenance, null, 2) + '\n', { flag: 'wx' })
   return { candidate, ids, provenance, source: current }
 }
+export async function prepareCiBaseline(root, directory, result, selected, reason) {
+  if (!reason?.trim()) throw new Error('接受需明确审阅原因')
+  const { candidate, ids } = result
+  const baseline = uiProfile(root, CI_PROFILE, {}).directory
+  const previous = await json(join(baseline, 'manifest.json')).catch(error => { if (error.code === 'ENOENT') return null; throw error })
+  const manifest = planCiBaselineManifest(candidate, ids, selected, previous, result.provenance, reason)
+  for (const id of ids.filter(id => !selected.includes(id))) await readUiBaseline({ id: CI_PROFILE, directory: baseline }, candidate.environment, id, candidate.cases[id].contract)
+  await verifyBaselineReview(directory, selected, baseline, candidate)
+  if (JSON.stringify(await sourceIdentity(root)) !== JSON.stringify(result.source)) throw new Error('接受期间源码变化')
+  return { baseline, manifest }
+}
 async function main() {
   if (process.env.CI) throw new Error('CI不允许进口/接受基线')
   const root = resolve(fileURLToPath(new URL('..', import.meta.url))), [command, ...args] = process.argv.slice(2), options = {}
   for (let i = 0; i < args.length; i += 2) { if (!['--run', '--output', '--candidate', '--cases', '--reason'].includes(args[i]) || !args[i + 1] || options[args[i]]) throw new Error('参数缺失/重复/未知'); options[args[i]] = args[i + 1] }
   if (!['import', 'accept'].includes(command) || !/^\d+$/.test(options['--run'] ?? '')) throw new Error('用法：ui-ci-baseline.mjs import --run ID --output 新目录 | accept --run ID --candidate 已审阅目录 --cases 明确ID --reason 原因')
-  if (command === 'import') { if (!options['--output']) throw new Error('缺少output'); const result = await download(root, options['--run'], resolve(options['--output'])); console.log(JSON.stringify(result.provenance)); return }
+  if (command === 'import') { if (!options['--output']) throw new Error('缺少output'); const result = await downloadCiCandidate(root, options['--run'], resolve(options['--output'])); console.log(JSON.stringify(result.provenance)); return }
   if (!options['--candidate'] || !options['--cases'] || !options['--reason']) throw new Error('接受需明确已审阅候选、逐项ID及原因')
   await mkdir(join(root, '.local'), { recursive: true })
   const release = acquireResourceLock(join(root, '.local/ui-regression-lock.sqlite'))
@@ -109,15 +122,10 @@ async function main() {
   const reviewed = resolve(options['--candidate'])
   if (!(await lstat(reviewed)).isDirectory() || (await lstat(reviewed)).isSymbolicLink()) throw new Error('候选须为普通目录')
   const fresh = join(root, '.local', `ui-ci-verify-${randomUUID()}`)
-  const result = await download(root, options['--run'], fresh), { candidate, ids } = result
+  const result = await downloadCiCandidate(root, options['--run'], fresh)
   if (JSON.stringify(await json(join(reviewed, 'github-provenance.json'))) !== JSON.stringify(result.provenance) || JSON.stringify(await tree(reviewed)) !== JSON.stringify(await tree(fresh))) throw new Error('已审阅原件与重新下载的官方artifact不符')
   const selected = options['--cases'].split(',')
-  const baseline = uiProfile(root, CI_PROFILE, {}).directory
-  const previous = await json(join(baseline, 'manifest.json')).catch(error => { if (error.code === 'ENOENT') return null; throw error })
-  const manifest = planCiBaselineManifest(candidate, ids, selected, previous, result.provenance, options['--reason'])
-  for (const id of ids.filter(id => !selected.includes(id))) await readUiBaseline({ id: CI_PROFILE, directory: baseline }, candidate.environment, id, candidate.cases[id].contract)
-  await verifyBaselineReview(fresh, selected, baseline, candidate)
-  if (JSON.stringify(await sourceIdentity(root)) !== JSON.stringify(result.source)) throw new Error('接受期间源码变化')
+  const { baseline, manifest } = await prepareCiBaseline(root, fresh, result, selected, options['--reason'])
   await mkdir(baseline, { recursive: true })
   for (const id of selected) await copyFile(join(fresh, 'snapshots', `${id}.png`), join(baseline, `${id}.png`))
   await writeFile(join(baseline, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n')
