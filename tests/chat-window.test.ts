@@ -318,3 +318,20 @@ it('does not replay an older anchor while a native scroll is between events and 
   props = { ...props, detail: view('A') }; await render()
   expect(geometry.viewport.scrollTop).toBe(200)
 })
+
+it('does not prefetch history when a reply shrinks at the bottom, but does prefetch after an upward scrollbar drag', async () => {
+  const onPage = vi.fn()
+  props = { ...props, onPage, onLatest: async () => true, onSend: dispatch => dispatch?.() }
+  await render()
+  const geometry = viewportGeometry()
+  await act(async () => { geometry.notify(); enter() }); await frames()
+  await act(async () => geometry.scroll()); await frames()
+  geometry.height(400)
+  await act(async () => { geometry.scroll(); geometry.notify() }); await frames()
+  expect(onPage).not.toHaveBeenCalled()
+  geometry.height(2000)
+  await act(async () => geometry.notify()); await frames()
+  await act(async () => geometry.scroll()); await frames()
+  await act(async () => { geometry.viewport.scrollTop = 0; geometry.scroll() }); await frames()
+  expect(onPage.mock.calls).toEqual([['before']])
+})

@@ -313,6 +313,9 @@ function ChatHistory({ api, pageActive, questionReplies, artifactActions, onTeam
     onLocation(localAnchor.current?.messageId, false, localAnchor.current?.offset)
     onPage(direction)
   }
+  // The hook resolves scrollbar intent after ResizeObserver, so shrinking content
+  // cannot be mistaken for a request to fetch earlier messages.
+  useEffect(() => { if (escapedFromLock) loadAtEdge('before') }, [escapedFromLock])
   // Streaming/reading refreshes replace messagePage objects without moving the window.
   // Re-applying a stale anchor on those refreshes fights the user's native scroll.
   const windowKey = JSON.stringify(detail.messagePage.items.map(item => item.messageId))
@@ -381,7 +384,7 @@ function ChatHistory({ api, pageActive, questionReplies, artifactActions, onTeam
         following.current = latestPage.current && stickyState.isAtBottom
         onScrollPosition(el.scrollTop); captureAnchor(el)
         onLocation(localAnchor.current?.messageId, following.current, localAnchor.current?.offset)
-        if (delta < 0 && el.scrollTop <= READING_UI_LIMITS.historyPrefetchDistance) loadAtEdge('before')
+        if (!following.current && delta < 0) loadAtEdge('before')
         else if (!following.current && delta > 0) loadAtEdge('after')
       },
       onWheel: event => { if (event.deltaY < 0) { pauseFollowing(); loadAtEdge('before') } else if (event.deltaY > 0) loadAtEdge('after') },
