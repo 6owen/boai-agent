@@ -13,6 +13,7 @@
  * [OUTPUT]: Codex动态工具和Claude产品MCP实际stdio保存/重复核对与重启查询计划，不创建文件Work或调用API。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 2026-10-13高原生用量的最终发布/重启及同run材料回答回归；原接线合同保持，协议夹具不认证真实模型。
+ * [OUTPUT]: 明确停止并实际退出后的新消息沿同一原生会话接续，重启不重放已取消消息。
  * [INPUT]: 第13组原生员工规范和隔离stdio协议进程。
  * [OUTPUT]: 连续会话、真实文件登记、普通消息回答、权限拒绝与完整大输出；不把夹具视为真实模型评测。
  * [POS]: 生产AppService/本机驱动集成合同。
@@ -482,6 +483,20 @@ it('refuses native operations when the user denies permission',async()=>{
  await f.service.handle('respondNativeAction',{conversationId:f.chat.id,runId,actionId:action!.id,response:{option:runtime === 'codex' ? 'decline' : 'deny'}})
  const d=await f.wait(m);expect(d.messages.some(m=>m.content==='已拒绝，未执行')).toBe(true)
  await expect(readFile(join(f.root,'agents',f.agent.id,'workspace','sessions',f.chat.id,'work','permission-marker'))).rejects.toThrow()
+})
+it('resumes the same native session after confirmed cancellation without replaying the cancelled message',async()=>{
+ const f=await setup(),message=await f.send('NATIVE_WAIT'),before=await f.waitForMessages(message,detail=>detail.runs.some(run=>run.triggerMessageId===message.id&&run.backend?.inputAccepted===true))
+ const original=before.runs.find(run=>run.triggerMessageId===message.id)!
+ await f.service.handle('cancelRunExecution',{conversationId:f.chat.id,runId:original.id})
+ const stopped=await f.wait(message);expect(stopped.runs.find(run=>run.id===original.id)?.status).toBe('cancelled')
+ await f.restart()
+ const next=await f.wait(await f.send('只读已有结果，不重跑上一轮命令'))
+ const run=next.runs.at(-1)!
+ expect(run.status,run.error).toBe('completed');expect(run.backend?.sessionId).toBe(original.backend?.sessionId)
+ const cwd=join(f.root,'agents',f.agent.id,'workspace','sessions',f.chat.id,'work')
+ const calls=(await readFile(join(cwd,'native-thread-requests.jsonl'),'utf8')).trim().split('\n').map(line=>JSON.parse(line))
+ if(runtime==='codex')expect(calls.at(-1).method).toBe('thread/resume')
+ else expect(calls.at(-1).params.argv).toContain('--resume')
 })
 it('retains complete streamed output and unknown extensions, excluding private frames/signatures',async()=>{
  const f=await setup(),d=await f.wait(await f.send('NATIVE_LONG')),run=d.runs[0]

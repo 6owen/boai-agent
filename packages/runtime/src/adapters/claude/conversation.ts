@@ -14,6 +14,7 @@
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 2026-10-12保留公开初始化目录和原生/API模型身份，容量匹配原生条目且带来源；账号/私有字段排除，回应写入独立记账。
  * [OUTPUT]: 工具结果同时核对原生双错误标记，保留原始结果与真实文件活动；不从create猜测新增。
+ * [OUTPUT]: 原生init中的Skills及插件公开身份进入原执行回执，路径/账号/配置仍不持久化。
  * [INPUT]: Rovai claude.rs/claude_control.rs @ f9acc239 (MIT)、已核对程序和持续员工session。
  * [OUTPUT]: stream-json双向控制、原生登录/工具/插件、公开过程和完整工具参数结果；用户批准精确回传。
  * [POS]: Claude生产会话驱动；不采用旧私有阶段或空工具策略，许可见shared/rovai/LICENSE。
@@ -54,6 +55,8 @@ export function claudePublicInfo(input: unknown): NativeAgentInfo {
   if (Array.isArray(frame.commands)) result.commands = entries(frame.commands, 'name', ['description', 'argumentHint']) as NativeAgentInfo['commands']
   if (Array.isArray(frame.agents)) result.agents = entries(frame.agents, 'name', ['description', 'model']) as NativeAgentInfo['agents']
   if (Array.isArray(frame.tools)) result.tools = strings(frame.tools)
+  if (Array.isArray(frame.skills)) result.skills = strings(frame.skills)
+  if (Array.isArray(frame.plugins)) result.plugins = entries(frame.plugins, 'name', ['source', 'version']) as NativeAgentInfo['plugins']
   if (Array.isArray(frame.mcp_servers)) result.mcpServers = entries(frame.mcp_servers, 'name', ['status']) as NativeAgentInfo['mcpServers']
   return result
 }

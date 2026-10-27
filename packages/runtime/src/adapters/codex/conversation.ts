@@ -11,6 +11,7 @@
  * [OUTPUT]: 显式宿主媒体投影转换为当前app-server schema的inputImage，普通工具保持原文本，不变更原生循环。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 2026-10-12原生交互身份关联实际回应写入，材料路径沿原会话接收；不改变工具目录和所选权限。
+ * [OUTPUT]: Codex代码模式subAgentActivity沿原父子映射登记原生子线程，避免其后续事件因未知线程被丢弃。
  * [INPUT]: Rovai codex.rs @ f9acc239 (MIT)、原生会话、用户权限选择与追加的产品工具。
  * [OUTPUT]: 原生工具/配置的持续turn、完整公开事件、真实审批和用量；不改模型目录、不划分私有模型阶段。
  * [POS]: Codex员工生产会话驱动；协议移植来源许可见shared/rovai/LICENSE。
@@ -101,6 +102,9 @@ export async function runCodexConversation(context: EngineContext, input: Native
       if (child && method === 'turn/started') child.turnId = String(recordValue(params.turn).id)
       if (!child && params.turnId && turnId && params.turnId !== turnId) return
       const nativeItem = recordValue(params.item)
+      if (nativeItem.type === 'subAgentActivity' && typeof nativeItem.agentThreadId === 'string' && nativeItem.agentThreadId !== threadId && !children.has(nativeItem.agentThreadId)) {
+        children.set(nativeItem.agentThreadId, { parentId: child ? `${params.threadId}:${nativeItem.id}` : String(nativeItem.id) })
+      }
       if (nativeItem.type === 'collabAgentToolCall' && Array.isArray(nativeItem.receiverThreadIds)) {
         for (const id of nativeItem.receiverThreadIds) if (typeof id === 'string' && id !== threadId && !children.has(id)) children.set(id, { parentId: child ? `${params.threadId}:${nativeItem.id}` : String(nativeItem.id) })
       }
