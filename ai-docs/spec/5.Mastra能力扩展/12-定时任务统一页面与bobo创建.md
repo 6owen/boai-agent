@@ -1,5 +1,5 @@
 <!--
-[OUTPUT]: §29定时任务标签管理/拖拽与公共筛选Tab动效源码及本地检查；云端新四场候选待审阅。
+[OUTPUT]: §29首轮候选22过4失败，标签重复名称已定位修正；新四场候选和视觉审阅仍待完成。
 [OUTPUT]: §19对话创建进入普通会话并预选管理标签，五类命令加载随包操作文档；提示词业务接口复用原CRUD，当前仅静态检查。
 [OUTPUT]: §28.2自然待批停止/迟到批准与恢复后明确新运行2场最终通过；7启动/31证据及真实面板终态已核，原图旧帧和原期限保留。
 [OUTPUT]: §28自然调度旧产品3过/停止入口1失败，单次停止修复同4场全过；真实12启动/49证据及两次重启无重放，完整DS11/新head门禁仍继续。
@@ -357,5 +357,6 @@
 - 偏好在 SQLite 的 scheduleList/schedules 独立事务保存；getScheduleList/updateScheduleList 与专用变更事件接原 IPC，不改任务 revision、调度、Run、Work 或交付。
 - 执行记录的四项筛选抽为公共 FilterTabs，复用共享 Base UI Tabs 和 transitions-dev tabs sliding 原版资源；新筛选结果复用现有 Panel reveal，后台更新和追加页不重播；系统圆角、键盘语义及减少动态效果保持。
 - 本地实际：完整 tsc --noEmit 通过；工作区边界检查通过；12 项定向 Vitest 通过，包含 SQLite 重启、CAS 竞争、批量拒绝、跨组标签保留及原任务/历史不变。前端定向 ESLint 零错误；非前端测试/运行时文件不在现有 ESLint 配置范围。
-- UI 影响：原20场未覆盖定时任务，追加 schedules-light/dark 与 schedule-manager-light/dark 四场，原场景、阈值、mask 和零重试保持。新增场景检查真实标签 CRUD、多选、拖拽、键盘排序/Tab、筛选结果及 CSS 动效/reduced-motion。当前尚未执行云端候选、视觉审阅或接受新基线。
+- UI 影响：原20场未覆盖定时任务，追加 schedules-light/dark 与 schedule-manager-light/dark 四场，原场景、阈值、mask 和零重试保持。新增场景检查真实标签 CRUD、多选、拖拽、键盘排序/Tab、筛选结果及 CSS 动效/reduced-motion。本人菜单另增明暗两场，当前合同共26场。
+- 首轮官方候选 [40479030099](https://github.com/6owen/boai-agent/actions/runs/40479030099) 实际22通过、4失败；本人菜单两场及原20场通过。四场定时任务均因标签选项可访问名称重复为“标签 日常 日常”而停于定位；原件确认浮层正常展示。修正原生label与aria-label的重复命名，保留精确名称断言并增加逐项持久化检查；新候选、视觉审阅和基线接受仍待完成。
 - 未在本机启动产品构建或 Electron GUI；个人正在运行的应用尚未重载。此处不声明真实模型、自然定时执行或用户数据已验证。

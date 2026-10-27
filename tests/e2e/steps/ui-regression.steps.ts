@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 标签浮层按唯一可访问名称操作，并逐次核对三项任务的实际标签保存回执。
  * [OUTPUT]: 本人菜单明暗两场核对头像与五项导航，菜单分享/帮助消失，逐个入口定位对应设置。
  * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
  * [OUTPUT]: 新增定时任务历史/管理明暗四场；实际标签CRUD、多选、拖拽/排序、筛选键盘与动效/布局覆盖，原20场保持。
@@ -251,9 +252,17 @@ async function checkScheduleUi(runtime: import('../support/desktop').Desktop, sh
   }
   await manager.getByRole('checkbox', { name: '全选当前结果', exact: true }).check()
   await manager.getByRole('button', { name: '设置标签', exact: true }).click()
+  const assignment = page.getByRole('dialog', { name: '设置标签', exact: true })
+  await expect(assignment).toBeVisible()
   for (const name of ['日常', '关注']) {
-    await page.getByRole('checkbox', { name: `标签 ${name}`, exact: true }).check()
-    await expect(page.getByRole('checkbox', { name: `标签 ${name}`, exact: true })).toBeEnabled()
+    const checkbox = assignment.getByRole('checkbox', { name, exact: true })
+    await checkbox.check()
+    await expect(checkbox).toBeChecked()
+    await expect(checkbox).toBeEnabled()
+    await expect.poll(async () => {
+      const preferences = await read(), tag = preferences.tags.find(item => item.name === name)!
+      return ['ui-schedule-0', 'ui-schedule-1', 'ui-schedule-2'].every(id => preferences.tagIdsByAutomationId[id]?.includes(tag.id))
+    }).toBe(true)
   }
   await page.keyboard.press('Escape')
   await expect(page.getByRole('textbox', { name: '搜索标签', exact: true })).toHaveCount(0)

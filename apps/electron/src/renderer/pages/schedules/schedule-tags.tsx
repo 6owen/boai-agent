@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 定时任务标签、冻结版本与明确选中任务。
- * [OUTPUT]: 通讯录同款行内新建、重命名/删除、部分勾选及批量即时标签；逐次接续回执版本。
+ * [OUTPUT]: 通讯录同款行内新建、重命名/删除、部分勾选及批量即时标签；原生标签提供唯一无障碍名称，逐次接续回执版本。
  * [POS]: 定时任务管理的标签操作；原任务与执行记录保持。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header 与所属目录 .folder.md。
  */
@@ -97,7 +97,7 @@ export function ScheduleTagAssignment({ value, automationIds, busy, browsingDisa
       <div className="contact-tag-options">
         {value.tags.filter(tag => tag.name.toLocaleLowerCase().includes(search)).map(tag => {
           const matching = targets.filter(id => scheduleTagIds(value, id).includes(tag.id)).length
-          return <label key={tag.id} className="contact-tag-option"><Checkbox aria-label={`标签 ${tag.name}`} checked={Boolean(targets.length) && matching === targets.length} indeterminate={matching > 0 && matching < targets.length} disabled={locked || stale || !targets.length} onCheckedChange={checked => toggle(tag.id, checked)} /><span>{tag.name}</span></label>
+          return <label key={tag.id} className="contact-tag-option"><Checkbox checked={Boolean(targets.length) && matching === targets.length} indeterminate={matching > 0 && matching < targets.length} disabled={locked || stale || !targets.length} onCheckedChange={checked => toggle(tag.id, checked)} /><span>{tag.name}</span></label>
         })}
         {!value.tags.some(tag => tag.name.toLocaleLowerCase().includes(search)) && <p className="contacts-list-empty">{search ? '没有匹配的标签' : '暂无标签，请先新建标签'}</p>}
       </div>
