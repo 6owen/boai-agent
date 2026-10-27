@@ -1,0 +1,49 @@
+# [INPUT]: 依赖清单/锁/配置/补丁/安装Action变化或手动请求。
+# [OUTPUT]: 独立预热严格安装缓存；普通UI未命中时直接安装，不等待本任务。
+# [POS]: 缓存准备，不提供UI或Required checks资格，不构建产品或启动测试。
+# [PROTOCOL]: 修改同步Header、目录地图、共享Skill及22组06第17节。
+name: Prepare UI dependency cache
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+    paths:
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - package.json
+      - .npmrc
+      - apps/*/package.json
+      - packages/*/package.json
+      - apps/electron/src/renderer/components/common/lody/*.patch
+      - apps/electron/src/renderer/components/ui/*.patch
+      - .github/actions/setup-ui-dependencies/**
+      - .github/workflows/ui-dependency-cache.yml
+  push:
+    branches: [main]
+    paths:
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - package.json
+      - .npmrc
+      - apps/*/package.json
+      - packages/*/package.json
+      - apps/electron/src/renderer/components/common/lody/*.patch
+      - apps/electron/src/renderer/components/ui/*.patch
+      - .github/actions/setup-ui-dependencies/**
+      - .github/workflows/ui-dependency-cache.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ui-dependency-cache-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  warm:
+    name: Prepare cache independently
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-ui-dependencies
+        with:
+          save-cache: 'true'

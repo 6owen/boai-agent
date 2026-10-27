@@ -578,6 +578,60 @@
       "reason": "PR36用户新增语音输入独立设置导航及第五条语音快捷键；已审阅同SHA官方候选四组旧图/新图/diff：新增导航及下方两项顺移，新增快捷键默认关闭且未绑定，明暗布局正常。其余14项零像素变化，保留原基线和全部断言/阈值。",
       "candidate": "39ca4d7d-52f9-42f3-9a21-c3d27cdecd84",
       "acceptedAt": "2026-10-27T05:38:06.416Z"
+    },
+    "voice-settings-light": {
+      "sha256": "579e1bf21634435799bf971aea3661fe2acb71df3fd9fbb11c9f2a12854b4b6e",
+      "contract": "f1adaca5cec973f32af158b8b776d708ed1cb60ea804b7f26dfa0e33403cf4dc",
+      "source": {
+        "commit": "b3ab57650dfaaa6b90d9dd84bfe8e7f91630bcdc",
+        "sourceHash": "3e21d40656cc0e36bc846dbabffb64575c2ce07bf0b2243e94befabec8368b91",
+        "dirty": false
+      },
+      "built": {
+        "version": 1,
+        "inputHash": "cb30fe9829267d4bf37a834ca4618deb4fb825643232ba833ef3a68631125ba0",
+        "outputHash": "65730ad3f5b47d16e20203665d52989dfea10ec12109ecc6a7e80edb85ad2e84",
+        "node": "v24.16.0",
+        "createdAt": "2026-10-27T07:31:54.777Z"
+      },
+      "provenance": {
+        "version": 1,
+        "runId": "40467444974",
+        "attempt": 1,
+        "commit": "b3ab57650dfaaa6b90d9dd84bfe8e7f91630bcdc",
+        "artifactId": 12716699793,
+        "digest": "sha256:6499debb3cad58fe159b7b77126dfc5954125b7a3b4111b243d6c8276ef72440"
+      },
+      "reason": "补语音设置页明暗覆盖；已审阅官方原件：220px控件右对齐、32px同高，授权操作居左同排，术语自动保存及快捷键导航通过；原18图无变化。",
+      "candidate": "f05c1c40-055e-492f-a09c-f4cf697ba376",
+      "acceptedAt": "2026-10-27T07:46:02.002Z"
+    },
+    "voice-settings-dark": {
+      "sha256": "88da29a189592704ba54f400c99e590b0af956adf3c1fa98129a74e9a68e9c01",
+      "contract": "dfc4b128f8326094849f1c09ff27a6797431584054b0ce9ea5796bf4cd5632c9",
+      "source": {
+        "commit": "b3ab57650dfaaa6b90d9dd84bfe8e7f91630bcdc",
+        "sourceHash": "3e21d40656cc0e36bc846dbabffb64575c2ce07bf0b2243e94befabec8368b91",
+        "dirty": false
+      },
+      "built": {
+        "version": 1,
+        "inputHash": "cb30fe9829267d4bf37a834ca4618deb4fb825643232ba833ef3a68631125ba0",
+        "outputHash": "65730ad3f5b47d16e20203665d52989dfea10ec12109ecc6a7e80edb85ad2e84",
+        "node": "v24.16.0",
+        "createdAt": "2026-10-27T07:31:54.777Z"
+      },
+      "provenance": {
+        "version": 1,
+        "runId": "40467444974",
+        "attempt": 1,
+        "commit": "b3ab57650dfaaa6b90d9dd84bfe8e7f91630bcdc",
+        "artifactId": 12716699793,
+        "digest": "sha256:6499debb3cad58fe159b7b77126dfc5954125b7a3b4111b243d6c8276ef72440"
+      },
+      "reason": "补语音设置页明暗覆盖；已审阅官方原件：220px控件右对齐、32px同高，授权操作居左同排，术语自动保存及快捷键导航通过；原18图无变化。",
+      "candidate": "f05c1c40-055e-492f-a09c-f4cf697ba376",
+      "acceptedAt": "2026-10-27T07:46:02.002Z"
     }
   }
 }

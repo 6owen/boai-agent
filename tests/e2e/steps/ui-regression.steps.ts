@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 新增语音设置明暗两场，核对默认关闭、紧凑控件/32px、术语真实自动保存及统一快捷键导航；原18项保持。
  * [OUTPUT]: 快捷键页新增第五项语音动作，明确断言默认关闭/未绑定，原四项断言保持。
  * [OUTPUT]: 原18项UI先在本场独立profile准备同一历史再单次启动真实Electron；行为/布局/截图断言保持。
  * [OUTPUT]: 草稿切换先核对应会话数据/编辑器真实就绪，避免空草稿早于消息加载导致侧栏前缀缺失；原18基线/零像素门槛保持。
@@ -64,10 +65,10 @@ When('用户打开UI基准场景 {string}', async ({ runtime, uiRegression }, ca
   if (scene === 'employee') {
     await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '通讯录', exact: true }).click()
     await page.getByRole('complementary', { name: '通讯录列表', exact: true }).getByRole('button', { name: '研究员', exact: true }).click()
-  } else if (scene === 'settings' || scene === 'shortcuts') {
+  } else if (scene === 'settings' || scene === 'shortcuts' || scene === 'voice-settings') {
     await page.getByRole('button', { name: '我的菜单', exact: true }).click()
     await page.getByRole('menuitem', { name: '设置', exact: true }).click()
-    await page.getByRole('navigation', { name: '设置分类', exact: true }).getByRole('button', { name: scene === 'shortcuts' ? '快捷键' : '外观', exact: true }).click()
+    await page.getByRole('navigation', { name: '设置分类', exact: true }).getByRole('button', { name: scene === 'shortcuts' ? '快捷键' : scene === 'voice-settings' ? '语音输入' : '外观', exact: true }).click()
   } else if (scene === 'resources') {
     await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '资源库', exact: true }).click()
     await page.getByRole('complementary', { name: '资源库导航', exact: true }).getByRole('button', { name: '技能', exact: true }).click()
@@ -156,6 +157,40 @@ Then('当前场景的真实交互和布局满足原约定', async ({ runtime, ui
     await expect(page.getByRole('textbox', { name: '搜索关键词', exact: true })).toBeFocused()
     await page.getByRole('button', { name: '关闭搜索', exact: true }).click()
     await expect(content.getByRole('heading', { name: '快捷键', exact: true })).toBeInViewport()
+  } else if (selected.scene === 'voice-settings') {
+    const voice = page.getByRole('region', { name: '语音输入设置', exact: true })
+    const heading = voice.getByRole('heading', { name: '语音输入', exact: true })
+    await expect(heading).toBeInViewport()
+    await expect(voice.getByRole('switch', { name: '启用语音输入', exact: true })).not.toBeChecked()
+    await expect(voice.getByRole('switch', { name: '启用文字整理', exact: true })).not.toBeChecked()
+    await expect(voice.getByRole('button', { name: '下载模型', exact: true })).toBeDisabled()
+    await expect(voice.getByRole('button', { name: '授权并刷新设备', exact: true })).toBeDisabled()
+    const language = voice.getByRole('combobox', { name: '识别语言', exact: true })
+    await expect(language).toBeEnabled()
+    const languageBox = await language.boundingBox()
+    const rowBox = await language.locator('xpath=ancestor::*[@data-voice-setting-row][1]').boundingBox()
+    expect(languageBox!.width).toBeLessThan(rowBox!.width / 2)
+    expect(Math.abs(languageBox!.x + languageBox!.width - rowBox!.x - rowBox!.width)).toBeLessThanOrEqual(2)
+    const microphone = await voice.getByRole('combobox', { name: '麦克风', exact: true }).boundingBox()
+    const authorize = await voice.getByRole('button', { name: '授权并刷新设备', exact: true }).boundingBox()
+    expect(authorize!.height).toBe(32)
+    expect(microphone!.height).toBe(authorize!.height)
+    for (const control of [languageBox, microphone]) expect(control!.width).toBe(220)
+    await expect(voice.getByRole('button', { name: /^(保存|应用)$/ })).toHaveCount(0)
+    await expect(voice.locator('kbd')).toHaveCount(0)
+    const terms = voice.getByRole('textbox', { name: '语音术语表', exact: true })
+    await terms.fill('BOAI | 波艾')
+    await heading.click()
+    await expect.poll(async () => (await page.evaluate(() => window.boai.voice!.snapshot())).settings.terms).toEqual([{ word: 'BOAI', aliases: ['波艾'] }])
+    await voice.getByRole('button', { name: '前往快捷键设置', exact: true }).click()
+    await expect(page.locator('.settings-content').getByRole('heading', { name: '快捷键', exact: true })).toBeInViewport()
+    await page.getByRole('navigation', { name: '设置分类', exact: true }).getByRole('button', { name: '语音输入', exact: true }).click()
+    await expect(terms).toHaveValue('BOAI | 波艾')
+    const snapshot = await page.evaluate(() => window.boai.voice!.snapshot())
+    expect(snapshot.localReady).toBe(false)
+    expect(snapshot.download).toBeUndefined()
+    await heading.click()
+    await expect(page.getByText('语音输入设置已保存', { exact: true })).toHaveCount(0)
   } else if (selected.scene === 'resources') {
     await page.getByRole('button', { name: '搜索本机技能', exact: true }).click()
     const search = page.getByRole('textbox', { name: '搜索本机技能', exact: true })
