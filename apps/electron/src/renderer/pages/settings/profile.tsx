@@ -1,14 +1,15 @@
 /*
+ * [OUTPUT]: 推理强度样本说明使用共享SettingsHelp图标Tooltip，洞察dl仅保留等高数据行。
  * [OUTPUT]: 页面布局复用settings-layout，标题/分组留白与卡片/设置行统一，原业务回调保持。
  * [OUTPUT]: 最常用技能复用资源库SkillListItem展示行；悬停/键盘聚焦显示更多菜单，前往资源库技能列表，不在设置页打开详情。
  * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [OUTPUT]: Token 统计、活动图与洞察卡片首帧渲染完整结构，活动数据到达前仅在数值和图格位置显示占位，避免整块内容迟到。
  * [INPUT]: 已提交个人资料、活跃页面标记、变更事件和只读活动接口。
- * [OUTPUT]: 资料页正常直接显示，点阵动画仅在分享弹窗中播放。首次权威资料快照前禁用所有编辑/头像写入入口，真实版本变化仍保留冲突保护；直接选头像/恢复默认小老虎并保存、姓名悬停采用按钮背景且无编辑图标、点击编辑与焦点恢复、全屏分享入口；统计按用量/峰值/任务及最长/当前连续排序，配合上三下二响应式卡片；上下洞察 Card，隐藏时暂停读取。
+ * [OUTPUT]: 资料页正常直接显示，点阵动画仅在分享弹窗中播放。首次权威资料快照前禁用所有编辑/头像写入入口，真实版本变化仍保留冲突保护；直接选头像/恢复默认小牛并保存、姓名悬停采用按钮背景且无编辑图标、点击编辑与焦点恢复、全屏分享入口；统计按用量/峰值/任务及最长/当前连续排序，配合上三下二响应式卡片；上下洞察 Card，隐藏时暂停读取。
  * [POS]: 复用设置文档布局的个人资料页面。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { SettingsLayout } from './settings-layout'
+import { SettingsHelp, SettingsLayout } from './settings-layout'
 import { useEffect, useRef, useState } from 'react'
 import type { DesktopApi } from '@boai/shared/ipc'
 import type { LocalUserProfile, ProfileActivity, UserAvatar } from '@boai/shared/domain/profile'
@@ -64,8 +65,7 @@ export function ProfileSettings({ api, profile: committedProfile, active, refres
     <ActivityChart activity={activity} loading={pendingActivity} />
     <div className="profile-insights"><section><h3>活动洞察</h3><Card className="profile-insight-card"><CardContent><dl className="soft-divide-y" aria-busy={pendingActivity}>
         <div><dt>快速模式</dt><dd>暂不支持</dd></div>
-        <div><dt>最常用的推理强度</dt><dd>{activityValue(activity ? activity.thinking ? `${({ off: '关闭', low: '低', high: '高', max: '最高' } as Record<string, string>)[activity.thinking.level] ?? activity.thinking.level} · ${Math.round(activity.thinking.count / activity.thinking.samples * 100)}%` : '暂无记录' : undefined)}</dd></div>
-        {activity?.thinking && <p className="field-hint">基于 {activity.thinking.samples} 次已记录实际强度的调用</p>}
+        <div><dt>最常用的推理强度{activity?.thinking && <SettingsHelp label="推理强度统计说明">基于 {activity.thinking.samples} 次已记录实际强度的调用</SettingsHelp>}</dt><dd>{activityValue(activity ? activity.thinking ? `${({ off: '关闭', low: '低', high: '高', max: '最高' } as Record<string, string>)[activity.thinking.level] ?? activity.thinking.level} · ${Math.round(activity.thinking.count / activity.thinking.samples * 100)}%` : '暂无记录' : undefined)}</dd></div>
         <div><dt>已探索技能数</dt><dd>{activityValue(activity?.exploredSkills)}</dd></div><div><dt>使用的技能总数</dt><dd>{activityValue(activity ? `${activity.skillActivations} 次` : undefined)}</dd></div><div><dt>聊天总数</dt><dd>{activityValue(activity?.chats)}</dd></div>
       </dl></CardContent></Card></section><section><h3>最常用的技能</h3><Card className="profile-insight-card gap-0 p-2"><CardContent className="p-0">
         {activity ? activity.skills.length ? <ol className="profile-skills">{activity.skills.map(skill => <li key={skill.id} className="skill-list-row">

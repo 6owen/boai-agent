@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 活动洞察采用等高网格行，推理强度说明沿行内图标Tooltip，字号放大/窄窗仍按最大行高对齐。
  * [OUTPUT]: 最常用技能仅维护列表容器，行与占位结构统一复用共享ListRow排版。
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [OUTPUT]: Token 统计数值位预留同一行高，首帧占位与真实数值共用布局。
@@ -59,10 +60,11 @@
 .profile-chart { width:100%;height:220px;min-width:0;aspect-ratio:auto }
 .profile-insights { display:flex;flex-direction:column;gap:28px;margin-top:32px }
 .profile-insight-card { margin-top:14px }
-.profile-insights dl { margin:0 }
-.profile-insights dl>div { display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0 }
-.profile-insights dt { color:var(--muted-foreground) }
-.profile-insights dd { margin:0;text-align:right }
+.profile-insights dl { display:grid;grid-auto-rows:1fr;margin:0 }
+.profile-insights dl>div { display:flex;min-height:44px;align-items:center;justify-content:space-between;gap:12px;padding:10px 0 }
+.profile-insights dt { display:flex;min-width:0;align-items:center;gap:4px;color:var(--muted-foreground) }
+.profile-insights dt>button { flex-shrink:0 }
+.profile-insights dd { flex-shrink:0;margin:0;text-align:right }
 .profile-skills { list-style:none;padding:0;margin:0 }
 .profile-editor { max-height:calc(100dvh - 32px);overflow-y:auto }
 .profile-editor .connection-fields [data-slot=input] { min-height:var(--control-height) }
