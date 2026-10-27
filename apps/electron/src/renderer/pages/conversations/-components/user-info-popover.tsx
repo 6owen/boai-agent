@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 消息头像触发器同员工入口使用全局rounded-md。
  * [INPUT]: 已提交的本机个人资料快照、个人资料导航回调与共享 UserAvatar/Popover/Button/Separator。
  * [OUTPUT]: 点击本人消息的圆角方形头像查看当前姓名和用户名，底部按钮关闭浮层并进入个人资料，保留稳定入口焦点。
  * [POS]: 单聊/群聊共用的本人资料浮层，仅读取当前资料，不改写消息身份或历史。
@@ -15,7 +16,7 @@ export function UserInfoPopover({ profile = defaultUserProfile, onProfile }: { p
   const [open, setOpen] = useState(false)
   const trigger = useRef<HTMLButtonElement>(null)
   return <Popover open={open} onOpenChange={setOpen}>
-    <PopoverTrigger render={<Button ref={trigger} variant="ghost" size="icon" className="message-avatar-trigger user-avatar-trigger" aria-label={`查看 ${profile.displayName} 的个人资料`} title={profile.displayName} />}>
+    <PopoverTrigger render={<Button ref={trigger} variant="ghost" size="icon" className="message-avatar-trigger user-avatar-trigger rounded-md" aria-label={`查看 ${profile.displayName} 的个人资料`} title={profile.displayName} />}>
       <UserAvatar profile={profile} />
     </PopoverTrigger>
     <PopoverContent side="left" align="start" className="agent-info-popover user-info-popover w-72 max-w-[calc(100vw-24px)] gap-3 p-4">

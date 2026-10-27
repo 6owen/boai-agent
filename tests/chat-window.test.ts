@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 补内容缩短不误翻页、拖动滚动条仍预取及StrictMode初始跟随回归。
+ * [OUTPUT]: 使用真实use-stick-to-bottom；模拟浏览器ResizeObserver/rAF交付，覆盖流式阅读、双向滚动及同窗口刷新不重放旧锚点。
  * [OUTPUT]: 补发送后贴底/内容增长/手动滚动/跨会话迟到发送及渠道旧分页竞态回归；组件用例待运行，不代表Electron或E2E验证。
  * [INPUT]: 生产ChatView/PromptBar/MentionInput、真实分页消息与隔离IPC。
  * [OUTPUT]: 同一真实编辑器在会话切换加载/就绪时，contenteditable与无障碍禁用状态必须同步，草稿与DOM保持。
@@ -7,7 +9,7 @@
  * [POS]: 会话固定布局与消息窗口组件回归，不运行Electron或模型。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查tests/.folder.md。
  */
-import { act, createElement as h, createRef, type ComponentProps } from 'react'
+import { act, createElement as h, createRef, StrictMode, type ComponentProps } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import type { Conversation, DigitalAgent, Message } from '../packages/shared/src/domain'
@@ -21,6 +23,11 @@ import { ChannelsTab, type ChannelChatWindow } from '../apps/electron/src/render
 
 vi.mock('../apps/electron/src/renderer/pages/conversations/-components/composer-toolbar', () => ({ ComposerToolbar: () => null }))
 let host: HTMLDivElement, root: Root, props: ChatViewProps
+const resizeObservers = new Set<{ targets: Set<Element>; callback: ResizeObserverCallback }>()
+function resize(element: Element, height: number) {
+  for (const observer of resizeObservers) if (observer.targets.has(element)) observer.callback([{ target: element, contentRect: new DOMRect(0, 0, 600, height) } as ResizeObserverEntry], {} as ResizeObserver)
+}
+const frames = () => act(async () => { await vi.advanceTimersByTimeAsync(80) })
 const noop = () => {}
 const room = (id: string): Conversation => ({ id, kind: 'direct', title: `会话${id}`, agentIds: ['employee'], workspacePath: `/workspace/${id}`, createdAt: '2026-10-20T00:00:00Z', updatedAt: '2026-10-20T00:00:00Z' }) as Conversation
 function view(id: string, start = 1): ConversationView {
@@ -30,7 +37,14 @@ function view(id: string, start = 1): ConversationView {
 beforeEach(() => {
   vi.useFakeTimers()
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
-  vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
+  resizeObservers.clear()
+  vi.stubGlobal('ResizeObserver', class {
+    targets = new Set<Element>()
+    constructor(public callback: ResizeObserverCallback) { resizeObservers.add(this) }
+    observe(element: Element) { this.targets.add(element) }
+    unobserve(element: Element) { this.targets.delete(element) }
+    disconnect() { this.targets.clear() }
+  })
   vi.spyOn(document, 'hasFocus').mockReturnValue(true)
   Element.prototype.getAnimations = () => []
   Element.prototype.scrollIntoView = () => {}
@@ -59,7 +73,8 @@ function viewportGeometry() {
   viewport.getBoundingClientRect = () => new DOMRect(0, 0, 600, 300)
   const rows = () => { for (const row of viewport.querySelectorAll<HTMLElement>('[data-reading-message-id]')) row.getBoundingClientRect = () => new DOMRect(0, -viewport.scrollTop, 600, height) }
   rows()
-  return { viewport, rows, height: (value: number) => { height = value }, scroll: () => viewport.dispatchEvent(new Event('scroll')) }
+  viewport.style.overflow = 'auto'
+  return { viewport, rows, height: (value: number) => { height = value }, notify: () => { resize(viewport.firstElementChild!, height); resize(viewport, 300) }, scroll: () => viewport.dispatchEvent(new Event('scroll')) }
 }
 function deferred<T>() {
   let resolve!: (value: T) => void
@@ -73,22 +88,24 @@ it('returns from restored history to the latest window on dispatch and follows g
   await render()
   const geometry = viewportGeometry()
   props = { ...props, detail: view('A', 50) }; await render()
+  await act(async () => geometry.notify()); await frames()
   expect(geometry.viewport.scrollTop).toBe(350)
-  await act(async () => enter())
+  await act(async () => enter()); await frames()
   expect(onLatest).toHaveBeenCalledTimes(1)
   expect(onLatest.mock.calls[0]![0]()).toBe(true)
   expect(onLocation).toHaveBeenCalledWith(undefined, true)
-  expect(geometry.viewport.scrollTop).toBe(1100)
+  expect(geometry.viewport.scrollTop).toBe(1099)
 
   // The server returns the actual tail, not the bottom of the old history page.
   geometry.height(1800)
   props = { ...props, detail: view('A', 1000) }; await render(); geometry.rows()
-  expect(geometry.viewport.scrollTop).toBe(1500)
+  await act(async () => geometry.notify()); await frames()
+  expect(geometry.viewport.scrollTop).toBe(1499)
   // A layout-induced scroll event before React/ResizeObserver must not turn following off.
   geometry.height(2200)
-  await act(async () => geometry.scroll())
+  await act(async () => { geometry.scroll(); geometry.notify() }); await frames()
   props = { ...props, detail: view('A', 1000) }; await render()
-  expect(geometry.viewport.scrollTop).toBe(1900)
+  expect(geometry.viewport.scrollTop).toBe(1899)
 
   await act(async () => {
     geometry.viewport.dispatchEvent(new WheelEvent('wheel', { bubbles: true, deltaY: -20 }))
@@ -97,7 +114,8 @@ it('returns from restored history to the latest window on dispatch and follows g
   expect(onLatest.mock.calls[0]![0]()).toBe(false)
   geometry.height(2500)
   props = { ...props, detail: view('A', 1000) }; await render()
-  expect(geometry.viewport.scrollTop).toBe(1860)
+  await act(async () => geometry.notify()); await frames()
+  expect(geometry.viewport.scrollTop).toBe(1859)
   expect(onLocation.mock.calls.at(-1)?.[1]).toBe(false)
 })
 
@@ -140,10 +158,12 @@ it('treats an upward scrollbar movement as manual reading and leaves it in place
   props = { ...props, onLatest: async () => true, onSend: dispatch => dispatch?.() }
   await render()
   const geometry = viewportGeometry()
-  await act(async () => enter())
-  await act(async () => { geometry.viewport.scrollTop = 900; geometry.scroll() })
+  await act(async () => enter()); await frames()
+  await act(async () => { geometry.scroll() }); await frames()
+  await act(async () => { geometry.viewport.scrollTop = 900; geometry.scroll() }); await frames()
   geometry.height(1700)
   props = { ...props, detail: view('A') }; await render()
+  await act(async () => geometry.notify()); await frames()
   expect(geometry.viewport.scrollTop).toBe(900)
 })
 
@@ -284,4 +304,42 @@ it('uses the shared contact reveal without replay when reduced motion is request
   expect(content.getAttribute('data-open')).toBe('true')
   expect(content.getAttribute('data-settled')).toBe('true')
   expect(content.getAttribute('style')).toBeNull()
+})
+
+it('does not replay an older anchor while a native scroll is between events and the same message window refreshes', async () => {
+  props = { ...props, restoreAnchor: { messageId: 'A-1', offset: 350 } }
+  await render()
+  const geometry = viewportGeometry()
+  await act(async () => { geometry.scroll() }); await frames()
+  // A compositor scroll can move before the coalesced scroll event reaches React.
+  geometry.viewport.scrollTop = 700
+  props = { ...props, detail: view('A') }; await render()
+  expect(geometry.viewport.scrollTop).toBe(700)
+  geometry.viewport.scrollTop = 200
+  props = { ...props, detail: view('A') }; await render()
+  expect(geometry.viewport.scrollTop).toBe(200)
+})
+
+it('does not prefetch history when a reply shrinks at the bottom, but does prefetch after an upward scrollbar drag', async () => {
+  const onPage = vi.fn()
+  props = { ...props, onPage, onLatest: async () => true, onSend: dispatch => dispatch?.() }
+  await render()
+  const geometry = viewportGeometry()
+  await act(async () => { geometry.notify(); enter() }); await frames()
+  await act(async () => geometry.scroll()); await frames()
+  geometry.height(400)
+  await act(async () => { geometry.scroll(); geometry.notify() }); await frames()
+  expect(onPage).not.toHaveBeenCalled()
+  geometry.height(2000)
+  await act(async () => geometry.notify()); await frames()
+  await act(async () => geometry.scroll()); await frames()
+  await act(async () => { geometry.viewport.scrollTop = 0; geometry.scroll() }); await frames()
+  expect(onPage.mock.calls).toEqual([['before']])
+})
+
+it('follows the initial latest window under the development StrictMode lifecycle', async () => {
+  await act(async () => root.render(h(StrictMode, null, h(ChatView, props))))
+  const geometry = viewportGeometry()
+  await act(async () => geometry.notify()); await frames()
+  expect(geometry.viewport.scrollTop).toBe(1099)
 })

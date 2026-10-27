@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: UI截图后可明确启动单聊受控reasoning流，原历史准备零调用保持；通过真实HTTP增量验证聊天滚动。
  * [OUTPUT]: 单次启动先经原snapshot请求等待服务就绪并核对本场profile/会话，再开始真实点击；不重试或重建数据。
  * [OUTPUT]: UI可在本场独立profile用原bootstrap/配置事务准备数据后仅启动一次；其他BDD保留原桌面配置和重启路径。
  * [OUTPUT]: 渠道引用在模型正文附带固定来源，离线参与判断按首行原测试要求识别；不改员工实际判断逻辑。
@@ -32,6 +33,12 @@ async function configureGroupChat(request: Request, port: number) {
 
 export async function prepareGroupChat(runtime: Desktop, { emulateViewport = true, mainEntry, now = Date.now(), seedBeforeLaunch = false }: { emulateViewport?: boolean; mainEntry?: string; now?: number; seedBeforeLaunch?: boolean } = {}) {
   const state = { calls: 0, errors: [] as string[] }
+  let scrollStream: { emit(delta: unknown, finish?: string | null): void; finish(): void } | undefined
+  const scrolling = {
+    started: () => !!scrollStream,
+    append: (text: string) => { if (!scrollStream) throw new Error('滚动验收流尚未开始'); scrollStream.emit({ reasoning_content: text }) },
+    finish: () => { if (!scrollStream) throw new Error('滚动验收流尚未开始'); scrollStream.finish() },
+  }
   const server = createServer(async (request, response) => {
     try {
       let body = ''; for await (const chunk of request) body += chunk
@@ -43,15 +50,22 @@ export async function prepareGroupChat(runtime: Desktop, { emulateViewport = tru
       else if (system.includes('Private participation decision')) {
         const data = JSON.parse(input.messages.at(-1)!.content).data
         const root = data.currentTurnMessages?.find((message: { id: string }) => message.id === data.currentTurn.rootMessageId)
-        const directChat = ['单聊统一交互验收', '单聊滚动补充消息'].includes(root?.content?.split('\n')[0])
+        const directChat = ['单聊统一交互验收', '单聊滚动补充消息', 'UI滚动验收'].includes(root?.content?.split('\n')[0])
         content = JSON.stringify(directChat && data.currentEmployeeId === 'researcher' && !data.currentTurn.ownCompletedMessageIds.length ? { action: 'reply', responseKind: 'chat' } : data.currentEmployeeId === 'reviewer' && data.participation.isFirstDecision && input.messages.at(-1)!.content.includes('排版目录') ? { action: 'reply', responseKind: 'task', work: { key: `layout-${data.triggerMessage?.id ?? state.calls}`, scope: '检查报告排版目录', deliverable: '报告排版检查' } } : { action: 'pass' })
       } else if (system.includes('Private memory maintenance')) content = JSON.stringify({ candidates: [] })
+      else if (JSON.stringify(input.messages).includes('UI滚动验收')) content = 'UI_SCROLL_DONE'
       else if (JSON.stringify(input.messages).includes('单聊统一交互验收') || JSON.stringify(input.messages).includes('单聊滚动补充消息')) content = '研究员：单聊和群聊保持一致，可以查看我的资料、回应消息、引用、复制和查看执行过程。'
       else if (!input.messages.some(message => message.role === 'tool')) tool = { name: 'execute_command', arguments: JSON.stringify({ command: 'printf group-chat-approved > approval-marker.txt' }) }
       else content = '排版检查已结束，请查看执行过程中的命令结果。'
       response.writeHead(200, { 'Content-Type': 'text/event-stream' })
       const emit = (delta: unknown, finish_reason: string | null = null) => response.write(`data: ${JSON.stringify({ id: `group-${state.calls}`, object: 'chat.completion.chunk', created: 1, model: 'fixture', choices: [{ index: 0, delta, finish_reason }] })}\n\n`)
       emit({ role: 'assistant' })
+      if (content === 'UI_SCROLL_DONE') {
+        if (scrollStream) throw new Error('滚动验收只能启动一次实际流')
+        scrollStream = { emit, finish: () => { emit({ content }); emit({}, 'stop'); response.end('data: [DONE]\n\n') } }
+        emit({ reasoning_content: 'UI_SCROLL_START\n\n' })
+        return
+      }
       if (tool) { emit({ tool_calls: [{ index: 0, id: `tool-${state.calls}`, type: 'function', function: tool }] }); emit({}, 'tool_calls') }
       else { emit({ content }); emit({}, 'stop') }
       response.end('data: [DONE]\n\n')
@@ -121,7 +135,7 @@ export async function prepareGroupChat(runtime: Desktop, { emulateViewport = tru
   }
   if (emulateViewport) await resizeGroupWindow(runtime, 1487, 1058)
   await runtime.page.getByRole('button', { name: /产品讨论组/ }).click()
-  return { ...setup, state, artifacts }
+  return { ...setup, state, artifacts, scrolling }
 }
 
 export async function resizeGroupWindow(runtime: Desktop, width: number, height: number) {

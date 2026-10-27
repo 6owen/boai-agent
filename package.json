@@ -136,7 +136,8 @@
     "@boai/transport": "workspace:*",
     "@boai/runtime-plugin-sdk": "workspace:*",
     "@boai/runtime-plugins": "workspace:*",
-    "@boai/voice-input-plugin": "workspace:*"
+    "@boai/voice-input-plugin": "workspace:*",
+    "use-stick-to-bottom": "1.1.6"
   },
   "build": {
     "appId": "com.boai.agent",

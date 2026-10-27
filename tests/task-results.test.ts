@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 桌面任务结果Dialog已退役，保留只读服务/CLI数据及原文件核验回归。
  * [INPUT]: Real ProductStore/managed files, original Work continuation preflight and owner transport catalog.
  * [OUTPUT]: Result identity, revocation, file bytes, bounded history and zero business writes regression sources.
  * [POS]: Workspace task-result increment; no provider or GUI.
@@ -124,13 +125,4 @@ it('同Work展示窗口外的旧资源撤权阻断继续，即使最新来源有
   expect(after.runs.items.map(item => item.id)).not.toContain(previous[0].id)
   expect(after.continuation).toMatchObject({ state: 'review_required', runId: previous.at(-1)!.id, reason: '原执行来源或资源已失效，请核对已有结果' })
   expect(await authority.get('workItems', ended.id)).toEqual(ended); expect(calls).toBe(0)
-})
-
-it('结果Dialog只返回原聊天，不创建第二个继续请求或独立发送器', async () => {
-  const { readFile } = await import('node:fs/promises')
-  const panel = await readFile('apps/electron/src/renderer/components/detail-panel/task-result.tsx', 'utf8')
-  const chat = await readFile('apps/electron/src/renderer/pages/conversations/-components/execution-progress.tsx', 'utf8')
-  expect(panel).not.toContain('ContinueRunButton'); expect(panel).not.toContain("'sendMessage'"); expect(panel).not.toContain('randomUUID')
-  expect(panel).toContain('onClick={() => setOpen(false)}>返回聊天继续')
-  expect(chat.match(/<ContinueRunButton\b/g)).toHaveLength(1)
 })
