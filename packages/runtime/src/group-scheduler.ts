@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 群判断、主动发言和事件接续只累计计数，不按次数或代数截断；保留取消、来源/成员校验及真实依赖。
  * [OUTPUT]: 默认执行不按累计调用、工具步骤、用量或墙钟截断；保留真实用量、取消/权限和明确指定的预算。
  * [OUTPUT]: 原轮次支持员工定向取消、独立信号及禁止本轮重新邀请；同事继续，实际退出仍归原运行。
  * [OUTPUT]: 2026-10-14 安装已提交的空闲房间历史迁移，仅更新原缓存，不重新调度或运行启动恢复。
@@ -183,10 +184,7 @@ export class GroupScheduler {
   async reserveAdditionalCall(turnId: string, phase: 'decision' | 'execution' | 'memory') {
     const turn = this.turns.get(turnId), active = this.active.get(turnId)
     if (!turn || !active || active.turn.id !== turnId || this.closing || active.controller.signal.aborted || (active.done && phase !== 'memory') || (active.yielded && phase === 'decision')) throw new Error('本轮已结束或已有用户新消息，不能继续请求模型')
-    if (phase === 'decision') {
-      if ((turn.decisionCalls ?? 0) >= Math.max(12, this.hooks.conversation(turn.conversationId).agentIds.length * 4)) { active.budgetLimited = true; throw new Error('达到本轮判断调用上限，未发起补充模型请求') }
-      turn.decisionCalls = (turn.decisionCalls ?? 0) + 1
-    }
+    if (phase === 'decision') turn.decisionCalls = (turn.decisionCalls ?? 0) + 1
     turn.modelCalls++; await this.store.write([row('turns', turn)])
   }
   async recordOutputUsage(turnId: string, delta: number, runtime: 'api' | 'native' = 'api') {
@@ -302,12 +300,6 @@ export class GroupScheduler {
         // Coalesce peer events while replies execute, then refresh a bounded batch.
         // A slow peer decision must not serialize the remaining independent members.
         if (active.handled.has(delivery.agentId) && (active.tasks.size || [...active.ready.values()].some(decision => this.dependencies(active, decision) === 'ready'))) break
-        if (!isNativeBackend(this.hooks.agent(delivery.agentId).executionBackend) && (active.turn.decisionCalls ?? 0) >= Math.max(12, this.hooks.conversation(active.turn.conversationId).agentIds.length * 4)) {
-          active.budgetLimited = true
-          const pending = [...active.pending.values()].filter(item => !isNativeBackend(this.hooks.agent(item.agentId).executionBackend)); for (const item of pending) active.pending.delete(item.agentId)
-          for (const item of pending) { item.status = 'skipped'; item.error = '达到本轮判断调用上限，尚未发出的判断已停止' }
-          await this.store.write(pending.map(item => row('deliveries', item))); continue
-        }
         active.pending.delete(delivery.agentId)
         const openingRoot = this.events.get(delivery.eventId)?.type === 'collaboration_start' && delivery.agentId === 'bobo'
         if (!isNativeBackend(this.hooks.agent(delivery.agentId).executionBackend) && !active.turn.wakeId && !openingRoot && active.turn.coordination?.mode !== 'ordered') { active.turn.modelCalls++; active.turn.decisionCalls = (active.turn.decisionCalls ?? 0) + 1 }
@@ -354,7 +346,7 @@ export class GroupScheduler {
           const failed = this.unresolvedFailures(active.turn.id)
           active.turn.status = active.budgetLimited ? 'budget_exhausted' : failed.length ? 'failed' : active.turn.cancelledAgentIds?.length ? 'cancelled' : active.asked ? 'waiting_user' : 'completed'; active.turn.finishedAt = now(); active.done = true
           active.turn.deliveryFailure = failed.length > 0
-          if (active.budgetLimited) active.turn.reason ??= '达到本轮判断调用上限'
+          if (active.budgetLimited) active.turn.reason ??= '达到明确指定的工作预算上限'
           else if (failed.length) active.turn.reason = `${new Set(failed.map(delivery => delivery.agentId)).size} 名员工未完成本轮判断或执行；已收到的回复会保留`
           const unfinished = [...this.contributions.values()].filter(item => item.turnId === active.turn.id && ['proposed', 'accepted', 'running'].includes(item.status))
           for (const item of unfinished) { item.status = 'declined'; item.error ??= active.asked ? '需要用户补充信息，本轮工作尚未完成' : '员工本轮没有完成该工作项' }
@@ -412,7 +404,6 @@ export class GroupScheduler {
         if (contribution && contribution.status !== 'completed') { contribution.status = 'declined'; changes.push(row('contributions', contribution)) }
       } else if (active.invited.size && !active.invited.has(delivery.agentId)) { delivery.status = 'skipped'; delivery.error = '本轮有明确收件人，保留判断但不抢答' }
       else if (parsed.action === 'reply' && parsed.responseKind === 'task' && active.deferredWork.has(`${delivery.agentId}:${parsed.work?.workId ?? parsed.work?.key ?? 'main'}`)) { delivery.status = 'skipped'; delivery.error = '本轮已暂缓该工作，不重复争抢或重新执行' }
-      else if ((active.contributions.get(delivery.agentId) ?? 0) >= 2) { delivery.status = 'skipped'; delivery.error = '该员工已达到本轮主动发言上限' }
       else if (parsed.action === 'wait') { delivery.status = 'waiting'; active.waiting.set(delivery.agentId, decision) }
       else { delivery.status = 'ready'; active.ready.set(delivery.agentId, decision); active.waiting.delete(delivery.agentId) }
       delivery.updatedAt = now(); changes.push(row('deliveries', delivery)); await this.store.write(changes); this.hooks.changed(delivery.conversationId)
@@ -443,7 +434,7 @@ export class GroupScheduler {
     return statuses.every(status => status === 'completed') ? 'ready' : 'pending'
   }
   private async queue(active: Active, event: EventRecord, agentId: string) {
-    if (!this.alive(active, agentId) || active.yielded || (active.contributions.get(agentId) ?? 0) >= 2) return
+    if (!this.alive(active, agentId) || active.yielded) return
     const delivery = this.delivery(event, agentId)
     if (this.deliveries.has(delivery.id)) return
     const previous = active.pending.get(agentId)
@@ -494,8 +485,8 @@ export class GroupScheduler {
         const previousContributions = active.contributions.get(decision.agentId) ?? 0
         const nextContribution = contribution ? { ...contribution, status: 'completed' as const, resultMessageIds: [...contribution.resultMessageIds, message.id], artifactIds: [...contribution.artifactIds, ...records.filter(record => record.collection === 'artifacts').map(record => record.id)] } : undefined
         const next: EventRecord = { id: randomUUID(), turnId: active.turn.id, conversationId: active.turn.conversationId, ...(active.turn.collaborationRequestId ? { collaborationRequestId: active.turn.collaborationRequestId } : {}), type: decision.action === 'request_handoff' ? 'handoff' : 'agent_message', agentId: decision.agentId, messageId: message.id, recipientAgentIds: decision.recipientAgentIds, sequence: Math.max(active.latestEvent.sequence, message.sequence), generation: previousContributions === 0 ? 1 : event.generation + 1, createdAt: now() }
-        const shouldDispatch = !ordered && !active.turn.wakeId && !active.yielded && next.generation < 3 && this.hooks.conversation(active.turn.conversationId).kind === 'group'
-        const candidates = shouldDispatch ? this.hooks.conversation(active.turn.conversationId).agentIds.filter(agentId => !active.turn.cancelledAgentIds?.includes(agentId) && agentId !== decision.agentId && active.handled.has(agentId) && (!active.ready.has(agentId) || !this.independentChat(active.ready.get(agentId)!)) && (active.contributions.get(agentId) ?? 0) < 2).map(agentId => this.delivery(next, agentId)) : []
+        const shouldDispatch = !ordered && !active.turn.wakeId && !active.yielded && this.hooks.conversation(active.turn.conversationId).kind === 'group'
+        const candidates = shouldDispatch ? this.hooks.conversation(active.turn.conversationId).agentIds.filter(agentId => !active.turn.cancelledAgentIds?.includes(agentId) && agentId !== decision.agentId && active.handled.has(agentId) && (!active.ready.has(agentId) || !this.independentChat(active.ready.get(agentId)!))).map(agentId => this.delivery(next, agentId)) : []
         const nextCoordination = ordered ? { ...ordered, revision: ordered.revision + 1, completed: [...ordered.completed, { agentId: decision.agentId, messageId: message.id, eventId: next.id, contentHash: createHash('sha256').update(message.content).digest('hex') }] } : undefined
         const nextAgentId = nextCoordination?.agentIds[nextCoordination.completed.length]
         if (nextAgentId && !active.yielded && !active.turn.cancelledAgentIds?.includes(nextAgentId)) {
@@ -528,7 +519,6 @@ export class GroupScheduler {
         this.events.set(next.id, next); active.latestEvent = next
         for (const candidate of candidates) { this.deliveries.set(candidate.id, candidate); active.pending.set(candidate.agentId, candidate); active.ready.delete(candidate.agentId); active.waiting.delete(candidate.agentId) }
         published = true; this.hooks.changed(delivery.conversationId); active.wake()
-        if (!ordered && next.generation >= 3) await this.stop(active, 'budget_exhausted', '达到本轮自动接续代数上限')
       })
       if (!this.alive(active, decision.agentId)) return
       if (result === 'deferred') {
