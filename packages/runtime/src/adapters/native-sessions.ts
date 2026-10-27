@@ -4,6 +4,7 @@
  * [OUTPUT]: 2026-10-14 房间历史合并保守撤销原生线程续用资格，明确新消息才重建。
  * [OUTPUT]: 2026-10-12运行中回答来源和材料与消息同事务登记，未知输入投递不续用旧session；明确新消息才重建，不自动重发。
  * [OUTPUT]: 2026-10-11 持续原生会话按员工/聊天/来源隔离，固定实际输入和答复身份；清理/换绑/恢复撤销续用资格，重启不重放。
+ * [OUTPUT]: 原生输入已确认接收且驱动退出后的显式取消可续原session；来源/权限变化、未知投递和宿主中断仍撤销资格。
  * [INPUT]: 当前员工/聊天身份、已核读输入与 SQLite 产品仓库。
  * [OUTPUT]: 仅恢复完整已发布且来源仍获准的本机聊天；备份恢复/安装位置变化只撤销续用资格，原事实保留，新消息从获准上下文重建。
  * [POS]: 本机员工共同会话仓库；Codex/Claude分集合，原生turn和宿主完成身份分开。
@@ -23,7 +24,7 @@ interface Session {
   id: string; conversationId: string; agentId: string; fingerprint: string; runId: string
   sourceVersion?: 2
   resumeInvalidated?: 'restored-backup' | 'installation-changed' | 'unverified-installation' | 'room-merged'
-  state: 'pending' | 'completed'; threadId?: string; turnId?: string; outputHash?: string; completedInvocationId?: string
+  state: 'pending' | 'completed' | 'interrupted'; threadId?: string; turnId?: string; outputHash?: string; completedInvocationId?: string
   inputMessageIds: string[]
   sources: { id: string; hash: string }[]
   memories: { id: string; hash: string }[]
@@ -69,7 +70,8 @@ export class NativeSessions {
       const rawSources = context.nativeSourceIds ? await Promise.all(sources.map(async source => ({ id: source.id, hash: sourceHash(await tx.get<Message>('messages', source.id)) }))) : undefined
       const oldRaw = previous?.rawSources ? await Promise.all(previous.rawSources.map(async source => authorized.has(source.id) && sourceHash(await tx.get<Message>('messages', source.id)) === source.hash)) : undefined
       const previousRun = previous && await tx.get<import('@boai/shared/domain').AgentRun>('runs', previous.runId)
-      const previousActions = previous ? (await tx.list<import('@boai/shared/domain/execution').NativeAction>('nativeActions')).filter(action => action.runId === previous.runId && action.kind === 'input' && action.status === 'answered') : []
+      const runActions = previous ? (await tx.list<import('@boai/shared/domain/execution').NativeAction>('nativeActions')).filter(action => action.runId === previous.runId) : []
+      const previousActions = runActions.filter(action => action.kind === 'input' && action.status === 'answered')
       const savedReply = previousRun?.messageId && authorized.has(previousRun.messageId) ? await tx.get<Message>('messages', previousRun.messageId) : undefined
       const replyCandidates = savedReply ? [savedReply] : messages
       const replies = previous ? replyCandidates.filter(message => message.runId === previous.runId && message.senderType === 'agent' && message.senderId === context.agent.id && digest(message.content) === previous.outputHash) : []
@@ -80,16 +82,23 @@ export class NativeSessions {
         const material = await tx.get<ConversationMaterial>('materials', ref.id)
         return !!material && material.status === 'ready' && material.contentHash === ref.contentHash && isMaterialReadRevisionValid(material, ref.revision) && isConversationMaterialVisible(material, context.conversation, context.agent.id)
       })) : undefined
-      const valid = previous?.sourceVersion === 2 && !previous.resumeInvalidated && previous.state === 'completed' && !!previous.threadId && (this.runtime === 'codex' ? !!previous.turnId : !!previous.completedInvocationId && previous.completedInvocationId === previous.runId) && previous.fingerprint === fingerprint
+      // Explicit cancellation may continue only after the driver and product
+      // tools exited and the original native input was actually accepted.
+      const cancelled = previous?.state === 'interrupted' && previousRun?.status === 'cancelled'
+        && previousRun.backend?.kind === `${this.runtime}-local` && previousRun.backend.inputAccepted === true
+        && !!previous.threadId && previousRun.backend.sessionId === previous.threadId
+        && !!previous.turnId && (this.runtime !== 'codex' || previousRun.backend.turnId === previous.turnId)
+        && runActions.every(action => action.status === 'answered' && action.delivery === 'submitted')
+      const completed = previous?.state === 'completed' && (this.runtime === 'codex' ? !!previous.turnId : !!previous.completedInvocationId && previous.completedInvocationId === previous.runId) && !!previousReply
+      const valid = previous?.sourceVersion === 2 && !previous.resumeInvalidated && (completed || cancelled) && !!previous.threadId && previous.fingerprint === fingerprint
         && previous.agentId === context.agent.id && previous.conversationId === context.conversation.id
         && (!!context.nativeSourceIds || (previous.memories ?? []).every(source => memories.some(memory => memory.id === source.id && memory.hash === source.hash)))
         && (oldMaterials ? oldMaterials.every(Boolean) : (previous.materials ?? []).every(source => materials.some(material => material.id === source.id && material.hash === source.hash)))
         && (oldRaw ? oldRaw.every(Boolean) : previous.sources.every(source => sources.some(current => current.id === source.id && current.hash === source.hash)))
         && previousActions.every(action => action.delivery === 'submitted')
-        && !!previousReply
       // The previous reply is already the assistant output in the native thread.
       // Record its product identity without injecting its text as new user input.
-      const knownIds = valid ? new Set([...previous.sources.map(source => source.id), previousReply.id]) : new Set<string>()
+      const knownIds = valid ? new Set([...previous.sources.map(source => source.id), ...(previousReply ? [previousReply.id] : [])]) : new Set<string>()
       if (valid && context.nativeSourceIds) {
         const actions = await tx.list<import('@boai/shared/domain/execution').NativeAction>('nativeActions')
         for (const action of actions) if (action.runId === previous.runId && action.status === 'answered' && action.responseMessageId) knownIds.add(action.responseMessageId)
@@ -101,7 +110,7 @@ export class NativeSessions {
       await tx.put({ collection, id, value: session })
       return { session, threadId: valid ? previous.threadId : undefined,
         messages: added,
-        priorReply: valid ? { messageId: previousReply.id, ...(this.runtime === 'codex' ? { nativeTurnId: previous.turnId } : { hostRunId: previous.completedInvocationId }) } : undefined }
+        priorReply: valid && previousReply ? { messageId: previousReply.id, ...(this.runtime === 'codex' ? { nativeTurnId: previous.turnId } : { hostRunId: previous.completedInvocationId }) } : undefined }
     })
   }
   async update(session: Session, changes: Partial<Pick<Session, 'threadId' | 'turnId' | 'fingerprint' | 'outputHash' | 'state' | 'completedInvocationId'>>) {
