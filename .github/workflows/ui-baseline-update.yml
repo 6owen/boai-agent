@@ -1,0 +1,53 @@
+# [INPUT]: 本地效果确认后的官方候选run、已审阅SHA、明确case和原因。
+# [OUTPUT]: 在线核验并提交受影响基准，显式触发普通只读CI；不重建/重采集，不授合并资格。
+# [POS]: 仅main受信代码执行写入；功能分支仅作为只读源码/合同，不执行其脚本。
+# [PROTOCOL]: 修改同步Header、目录地图及共享开发Skill。
+name: UI baseline update
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_run:
+        description: Successful official candidate run ID
+        required: true
+        type: string
+      approved_head:
+        description: Full feature commit SHA reviewed locally
+        required: true
+        type: string
+      cases:
+        description: Reviewed case IDs, comma separated
+        required: true
+        type: string
+      reason:
+        description: Confirmed UI changes and review decision
+        required: true
+        type: string
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: ui-baseline-update-${{ inputs.candidate_run }}
+  cancel-in-progress: false
+jobs:
+  update:
+    if: github.ref == 'refs/heads/main'
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-ui-dependencies
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.approved_head }}
+          path: .local/ui-update-target
+          persist-credentials: false
+      - name: Update reviewed baselines and dispatch read-only CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UI_CANDIDATE_RUN: ${{ inputs.candidate_run }}
+          UI_APPROVED_HEAD: ${{ inputs.approved_head }}
+          UI_APPROVED_CASES: ${{ inputs.cases }}
+          UI_APPROVAL_REASON: ${{ inputs.reason }}
+        run: node scripts/ui-baseline-update.mjs

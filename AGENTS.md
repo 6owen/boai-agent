@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-27本地仅确认UI效果，Agent接续线上构建/官方候选/线上基准提交和只读复验；普通push可用，当前人工审阅不永久替代Agent流程。
 [OUTPUT]: 2026-10-27有意UI改动先向用户展示预览并确认具体效果/基准范围，再候选与PR；worktree独立node_modules复用pnpm store，BOAI_DEV_PORT支持按需独立预览。
 [OUTPUT]: 2026-10-27官方候选40472649141全部20场通过且PNG逐字节不变；仅晋升voice-settings-dark的已审阅渐变校准与来源，普通新head CI另验。
 [OUTPUT]: 2026-10-27 PR40仅文档运行40470324383的语音暗色渐变8149原始像素均仅差1/255；沿已有0.005颜色校准，异常像素仍0、无mask，需官方候选审阅晋升。
@@ -582,12 +583,11 @@
 
 # BOAI开发流程
 
-- 2026-10-27现行规则：worktree独立依赖树复用pnpm共享store；有可见UI变化必须先提供实际效果预览、询问用户是否接受并更新列出的基准，得到明确确认后才采集/晋升候选并创建Ready PR。用户要求开发不等于接受实际画面，Agent自审及git cp不能替代该确认。无UI变化直接设置自动合并；设置成功并核对回执后结束。
-
-- UI功能先在功能worktree看效果，不先合main试用。未获用户确认时不创建新PR、不接受基准、不Ready/自动合并；已有PR保持Draft且确认前不推新UI修改。确认后候选可直接针对远端分支派发，无需先开PR。当前流程见第22组06 §19。
-- 在本仓库开发功能、修复问题、提交/更新PR、处理CI或合并main时，先读取共享技能[boai-dev-workflow](.agents/skills/boai-dev-workflow/SKILL.md)，并fetch/read origin/main上的最新版本；旧worktree/旧Session不得只依赖旧副本。本分支规则修订和最新用户指令同时核对，测试合同及门禁沿仓库版本化文件。
-- Codex、Claude、Pi等开发Agent共用该文件；客户端不自动发现项目技能时按路径直接读取。技能不扩大当前任务或既有推送/合并授权，本机自动CI保持停用。
-- 按可验证的小目标集中push；只有明确要求先保存PR时才提前创建Draft，并说明旧基准检查的待审阅状态。GitHub Actions只执行UI回归与Required checks，ci:full不改变范围，本地完整测试按需保留；具体触发/失败接续沿共享Skill，不为每次编辑派发Actions。
+- 2026-10-27现行规则：功能worktree的本地dev只用于用户确认实际UI效果是否符合需求；当前先人工确认，后续是否交给Agent判断由用户另行决定。Agent负责识别受影响case、GitHub构建/候选差异审阅、调用线上基准更新入口提交原功能分支、只读CI复验及自动合并。不上传本地dev截图当正式基准，也不能停在确认/采集这一步。
+- 用户可以自行commit/push；提交不等于接受UI。未确认UI的PR保持Draft、不开自动合并；确认同一批效果一次即可，后续技术操作由Agent接续。无UI变化直接设置自动合并，核对回执后结束。
+- 在本仓库开发、交付、CI或合并前，读取共享技能[boai-dev-workflow](.agents/skills/boai-dev-workflow/SKILL.md)，并fetch/read origin/main最新版本；旧worktree/Session也必须重新读取。本分支修订和最新用户指令优先核对。当前详细合同见第22组06 §20。
+- worktree独立node_modules复用pnpm store；普通pnpm i即可复用缓存，首次冻结安装可加--prefer-offline。main只同步实际已合并提交，预览和产品开发均不复制回main。
+- Codex、Claude、Pi共用该技能，客户端不自动发现时按路径读取。技能不扩大任务授权，本机自动CI保持停用。GitHub只执行UI/Required，本地Vitest/BDD/评估保留。
 
 # BOAI业务评估与Codex优化
 
