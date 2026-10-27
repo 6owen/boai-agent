@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 执行卡头像复用正常消息AgentInfoPopover，移除执行卡及失败决策的常驻查看/继续动作。
+ * [OUTPUT]: 开发StrictMode effect清理不改变用户跟随意图，隐藏生命周期仍暂停。
+ * [OUTPUT]: 聊天跟随委托use-stick-to-bottom；分页仅在消息窗口变化时恢复锚点，预取保留当前窗口内的实时执行卡。
  * [OUTPUT]: 2026-10-27 默认关闭语音插件接线、可信主窗口与原草稿/生命周期边界。
  * [OUTPUT]: 移除空任务面板的菜单回调，聊天、文件和执行过程沿原入口。
  * [OUTPUT]: 历史失败只随原消息页呈现，不追加到最新消息底部；自动化终态镜像同样按消息锚点限定。
@@ -68,6 +71,7 @@
  * [OUTPUT]: 图片附件位于composer内部文本上方，悬停/键盘焦点右上角删除，点击与消息图片共用全屏预览；移除常驻容量说明。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { useStickToBottom } from 'use-stick-to-bottom'
 import { toast } from 'sonner'
 import { errorText } from '@/components/common'
 import { channelDeliveryDescription, useChannelDeliveries } from './channel-message-status'
@@ -87,7 +91,7 @@ import { PromptBar, type PromptBarHandle } from './prompt-bar'
 import { ExternalFiles } from './external-files'
 import { ComposerToolbar, type ComposerAgentPatch, type ComposerAgentSaveResult } from './composer-toolbar'
 import { ConversationHeader } from './conversation-header'
-import { Fragment, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { Fragment, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { LoaderCircle, Reply, ShieldCheck, X } from '@/components/icons/index'
 import type { Approval, Artifact, Conversation, ConversationDetail, DigitalAgent, Snapshot } from '@boai/shared/domain'
 import { MATERIAL_LIMITS, type ConversationMaterial } from '@boai/shared/domain/materials'
@@ -95,7 +99,6 @@ import { isChannelConversation } from '@boai/shared/domain/conversation-list'
 import { Avatar, timeText } from '@/components/common/index'
 
 import { failureSummary, liveTurn, type ChatDraft } from '../presentation'
-import { ContinueRunButton } from '@/components/detail-panel/continue-run-button'
 import { interruptedTriggerTurn } from '../activity'
 import { artifactsByMessage, approvalsByMessage, continuesMessage, groupMessages } from '../group-chat'
 import { ChatArtifactCard, PendingArtifactActions } from './chat-artifact-card'
@@ -212,10 +215,19 @@ function ChatHistory({ api, pageActive, questionReplies, artifactActions, onTeam
   const files = artifactsByMessage(detail)
   const approvalGroups = approvalsByMessage(detail, snapshot.approvals)
   const members = snapshot.agents.filter(agent => conversation.agentIds.includes(agent.id))
-  const scrollRef = useRef<HTMLDivElement>(null), following = useRef(!restoreAnchor), initialized = useRef(false), focusedRequest = useRef<string | undefined>(undefined), focusedApprovalRequest = useRef<string | undefined>(undefined), localAnchor = useRef<{ messageId: string; offset?: number } | undefined>(restoreAnchor)
+  const scrollRef = useRef<HTMLDivElement>(null), following = useRef(!restoreAnchor), focusedRequest = useRef<string | undefined>(undefined), focusedApprovalRequest = useRef<string | undefined>(undefined), localAnchor = useRef<{ messageId: string; offset?: number } | undefined>(restoreAnchor)
   const latestPage = useRef(!restoreAnchor && !focusMessage), beforeLatestPage = useRef(false), lastScrollTop = useRef(0), pageRequests = useRef({ before: '', after: '' }), touchY = useRef<number | undefined>(undefined)
-  const scrollSize = useRef({ height: 0, content: 0 }), followRequest = useRef(0), pendingLatest = useRef(false), activeRef = useRef(pageActive)
+  const followRequest = useRef(0), pendingLatest = useRef(false), activeRef = useRef(pageActive)
+  const visualAnchor = useRef<{ attribute: string; id: string; offset: number } | undefined>(undefined)
+  const { scrollRef: stickyScrollRef, contentRef, scrollToBottom, stopScroll, state: stickyState, isAtBottom, escapedFromLock } = useStickToBottom({ initial: !restoreAnchor && !focusMessage ? 'instant' : false, resize: 'instant' })
+  const setScrollRef = useCallback((element: HTMLDivElement | null) => { scrollRef.current = element; stickyScrollRef(element) }, [stickyScrollRef])
+  following.current = pageActive && latestPage.current && stickyState.isAtBottom
   activeRef.current = pageActive
+  const resumeFollowing = useRef(false)
+  useLayoutEffect(() => {
+    if (!pageActive) { resumeFollowing.current = latestPage.current && stickyState.isAtBottom; stopScroll() }
+    else if (resumeFollowing.current) { resumeFollowing.current = false; void scrollToBottom('instant') }
+  }, [pageActive, scrollToBottom, stopScroll, stickyState])
   const reading = useConversationReading({ api, active: pageActive, view: detail, root: scrollRef, following, onReading, onLocation })
   const approvals = snapshot.approvals.filter(a => a.conversationId === conversation.id)
   const displayedLiveRuns = useRef(new Set<string>())
@@ -224,18 +236,19 @@ function ChatHistory({ api, pageActive, questionReplies, artifactActions, onTeam
   const failedRuns = detail.runs.filter(run => run.phase === 'execution' && ['failed', 'cancelled', 'interrupted'].includes(run.status))
   const failedAnchor = (run: typeof failedRuns[number]) => detail.messages.some(message => message.id === run.triggerMessageId) ? run.triggerMessageId : run.messageId
   const failedRunsFor = (messageId: string) => failedRuns.filter(run => failedAnchor(run) === messageId)
-  const executionRuns = latestPage.current || !pageEdges.after ? [...activeRuns.filter(run => run.phase === 'execution'), ...failedRuns.filter(run => displayedLiveRuns.current.has(run.id) && !detail.messages.some(message => message.id === failedAnchor(run)))] : []
+  const inWindow = (run: typeof activeRuns[number]) => detail.messagePage.items.some(item => item.messageId === run.triggerMessageId || item.messageId === run.messageId)
+  const executionRuns = [...activeRuns.filter(run => run.phase === 'execution' && (latestPage.current || !pageEdges.after || inWindow(run))), ...failedRuns.filter(run => (latestPage.current || !pageEdges.after) && displayedLiveRuns.current.has(run.id) && !detail.messages.some(message => message.id === failedAnchor(run)))]
   const streamingRunIds = new Set(executionRuns.map(run => run.id))
   const mirrors = (detail.executionMirrors ?? []).map(mirror => ({ ...mirror, messageId: detail.messages.find(message => message.automationPublication?.sourceConversationId === mirror.run.conversationId && message.automationPublication.sourceMessageId === mirror.run.messageId)?.id ?? mirror.messageId })).filter(({ run, triggerMessage, messageId }) =>
     run.status !== 'completed' && ((['queued', 'running', 'waiting_approval'].includes(run.status) && (latestPage.current || !pageEdges.after)) || detail.messages.some(message => message.id === triggerMessage.id || message.id === messageId)))
   const mirrorAnchor = (mirror: typeof mirrors[number]) => detail.messages.some(message => message.id === mirror.triggerMessage.id) ? mirror.triggerMessage.id : mirror.messageId
   const mirroredMessageIds = new Set(mirrors.map(mirror => mirror.messageId).filter(Boolean))
-  const executionCard = (run: typeof activeRuns[number], trigger?: ConversationDetail['messages'][number]) => {
-    const agent = members.find(member => member.id === run.agentId)
+  const executionCard = (run: typeof activeRuns[number]) => {
+    const agent = snapshot.agents.find(member => member.id === run.agentId)
     return <article key={run.id} className="message-row agent">
-      <div className="message-avatar"><Avatar name={run.agentName} seed={run.agentId} avatar={agent?.avatar} color={agent?.color} /></div>
+      <div className="message-avatar">{agent ? <AgentInfoPopover agent={agent} resources={snapshot.resources} onConfigure={() => onConfigureAgent(agent)} /> : <Avatar name={run.agentName} seed={run.agentId} />}</div>
       <div className="message-main min-w-0">{group && <div className="message-meta"><strong>{run.agentName}</strong></div>}
-        <ChatExecutionCard api={api} run={run} active={pageActive} conversationId={detail.conversation.id} onContinue={() => historyRef.current?.followLatest()} onOpen={() => onTrace(trigger)} />
+        <ChatExecutionCard api={api} run={run} active={pageActive} />
       </div>
     </article>
   }
@@ -251,18 +264,18 @@ function ChatHistory({ api, pageActive, questionReplies, artifactActions, onTeam
   }
   const visibleArtifactIds = new Set([...files.values()].flat().map(value => value.id))
   const pendingArtifactId = (value: typeof artifactRequests[number]) => value.revision?.input.artifactId ?? value.adoption?.input.artifactId ?? value.acceptance?.input.artifactId
-  const last = detail.messages.at(-1)
   const captureAnchor = (el: HTMLDivElement) => {
     const viewport = el.getBoundingClientRect()
+    const visible = [...el.querySelectorAll<HTMLElement>('[data-reading-message-id], [data-chat-execution-run]')].find(row => row.getBoundingClientRect().bottom > viewport.top)
+    visualAnchor.current = visible ? { attribute: visible.dataset.readingMessageId ? 'data-reading-message-id' : 'data-chat-execution-run', id: visible.dataset.readingMessageId ?? visible.dataset.chatExecutionRun!, offset: viewport.top - visible.getBoundingClientRect().top } : undefined
     const row = [...el.querySelectorAll<HTMLElement>('[data-reading-message-id]')].find(row => row.getBoundingClientRect().bottom > viewport.top)
     if (row?.dataset.readingMessageId) localAnchor.current = { messageId: row.dataset.readingMessageId, offset: viewport.top - row.getBoundingClientRect().top }
   }
   const rememberScroll = (el: HTMLDivElement) => {
     lastScrollTop.current = el.scrollTop
-    scrollSize.current = { height: el.clientHeight, content: el.scrollHeight }
   }
-  const pinBottom = (el: HTMLDivElement) => { el.scrollTop = el.scrollHeight; rememberScroll(el) }
   const pauseFollowing = () => {
+    stopScroll()
     following.current = false
     // Until the tail is loaded, the current DOM can still be an old history page.
     if (pendingLatest.current) latestPage.current = false
@@ -276,15 +289,16 @@ function ChatHistory({ api, pageActive, questionReplies, artifactActions, onTeam
     const request = ++followRequest.current
     following.current = true; latestPage.current = true; beforeLatestPage.current = false
     pendingLatest.current = true
-    localAnchor.current = undefined; pageRequests.current = { before: '', after: '' }
+    localAnchor.current = undefined; visualAnchor.current = undefined; pageRequests.current = { before: '', after: '' }
     // Sending supersedes an earlier search/approval focus, including one still loading.
     focusedRequest.current = focusMessage?.requestId; focusedApprovalRequest.current = focusApproval?.requestId
     onLocation(undefined, true)
-    if (scrollRef.current) pinBottom(scrollRef.current)
-    void onLatest(() => request === followRequest.current && following.current && activeRef.current).then(loaded => {
+    void scrollToBottom('instant')
+    void onLatest(() => request === followRequest.current && stickyState.isAtBottom && activeRef.current).then(loaded => {
       if (loaded && request === followRequest.current) pendingLatest.current = false
     })
   } }))
+  // Ref cleanup disconnects the library; effect replay in dev must not simulate a user escape.
   useEffect(() => () => { followRequest.current++ }, [])
   const loadAtEdge = (direction: 'before' | 'after') => {
     const el = scrollRef.current
@@ -297,21 +311,25 @@ function ChatHistory({ api, pageActive, questionReplies, artifactActions, onTeam
     if (pageRequests.current[direction] === key) return
     pageRequests.current[direction] = key
     if (direction === 'before') beforeLatestPage.current = latestPage.current
-    captureAnchor(el); following.current = false; latestPage.current = false
+    captureAnchor(el); stopScroll(); following.current = false; latestPage.current = false
     onLocation(localAnchor.current?.messageId, false, localAnchor.current?.offset)
     onPage(direction)
   }
+  // The hook resolves scrollbar intent after ResizeObserver, so shrinking content
+  // cannot be mistaken for a request to fetch earlier messages.
+  useEffect(() => { if (escapedFromLock) loadAtEdge('before') }, [escapedFromLock])
+  // Streaming/reading refreshes replace messagePage objects without moving the window.
+  // Re-applying a stale anchor on those refreshes fights the user's native scroll.
+  const windowKey = JSON.stringify(detail.messagePage.items.map(item => item.messageId))
   useLayoutEffect(() => {
     const el = scrollRef.current
     if (!el || !pageActive) return
     if (focusMessage && focusedRequest.current !== focusMessage.requestId || focusApproval && focusedApprovalRequest.current !== focusApproval.requestId) return
-    const anchor = localAnchor.current
-    const row = anchor && [...el.querySelectorAll<HTMLElement>('[data-reading-message-id]')].find(row => row.dataset.readingMessageId === anchor.messageId)
-    if (row && !following.current) el.scrollTop += row.getBoundingClientRect().top - el.getBoundingClientRect().top + (anchor?.offset ?? 0)
-    else if (!initialized.current || following.current) el.scrollTop = el.scrollHeight
-    initialized.current = true
+    const anchor = visualAnchor.current ?? (localAnchor.current && { attribute: 'data-reading-message-id', id: localAnchor.current.messageId, offset: localAnchor.current.offset ?? 0 })
+    const row = anchor && [...el.querySelectorAll<HTMLElement>(`[${anchor.attribute}]`)].find(row => row.getAttribute(anchor.attribute) === anchor.id)
+    if (row && !following.current) el.scrollTop += row.getBoundingClientRect().top - el.getBoundingClientRect().top + anchor!.offset
     rememberScroll(el)
-  }, [pageActive, detail.messagePage, focusMessage, focusApproval])
+  }, [pageActive, windowKey])
   useLayoutEffect(() => {
     if (!pageActive || !focusMessage || focusedRequest.current === focusMessage.requestId) return
     const message = document.getElementById(`message-${focusMessage.id}`)
@@ -319,7 +337,7 @@ function ChatHistory({ api, pageActive, questionReplies, artifactActions, onTeam
     focusedRequest.current = focusMessage.requestId
     followRequest.current++; pendingLatest.current = false
     latestPage.current = false; beforeLatestPage.current = false; pageRequests.current = { before: '', after: '' }
-    following.current = false
+    stopScroll(); following.current = false
     message.scrollIntoView({ block: 'center' }); message.focus({ preventScroll: true })
     rememberScroll(scrollRef.current)
   }, [focusMessage, detail.messagePage, pageActive])
@@ -329,7 +347,7 @@ function ChatHistory({ api, pageActive, questionReplies, artifactActions, onTeam
     if (!approval) { if (!snapshot.approvals.some(value => value.id === focusApproval.id)) focusedApprovalRequest.current = focusApproval.requestId; return }
     focusedApprovalRequest.current = focusApproval.requestId
     followRequest.current++; pendingLatest.current = false
-    following.current = false
+    stopScroll(); following.current = false
     approval.scrollIntoView({ block: 'center' }); approval.focus({ preventScroll: true })
     if (scrollRef.current) rememberScroll(scrollRef.current)
   }, [focusApproval, pageActive, detail.messagePage, snapshot.approvals])
@@ -339,32 +357,33 @@ function ChatHistory({ api, pageActive, questionReplies, artifactActions, onTeam
     if (paging || !pageActive || !(noNewer || noOlderAtLatest)) return
     latestPage.current = true
     const el = scrollRef.current
-    if (el && el.scrollHeight - el.scrollTop - el.clientHeight < READING_UI_LIMITS.historyEdgeDistance) { following.current = true; onLocation(undefined, true) }
+    if (el && el.scrollHeight - el.scrollTop - el.clientHeight < READING_UI_LIMITS.historyEdgeDistance) { following.current = true; void scrollToBottom('instant'); onLocation(undefined, true) }
   }, [paging, pageEdges.before, pageEdges.after, pageActive, onLocation])
-  useEffect(() => { const el = scrollRef.current; if (el && el.clientHeight > 0 && following.current) pinBottom(el) }, [last?.content, last?.status, detail.messages.length, approvals.length, detail.runs])
+  useEffect(() => {
+    following.current = pageActive && latestPage.current && stickyState.isAtBottom
+    onLocation(localAnchor.current?.messageId, following.current, localAnchor.current?.offset)
+  }, [isAtBottom, escapedFromLock, pageActive, onLocation, stickyState])
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
-    const observer = new ResizeObserver(() => { if (el.clientHeight > 0 && following.current) pinBottom(el) })
+    // The library observes content; the composer can independently resize the viewport.
+    const observer = new ResizeObserver(() => {
+      if (pageActive && el.clientHeight > 0 && latestPage.current) void scrollToBottom({ animation: 'instant', preserveScrollPosition: true })
+    })
     observer.observe(el)
-    if (el.firstElementChild) observer.observe(el.firstElementChild)
     return () => observer.disconnect()
-  }, [])
+  }, [pageActive, scrollToBottom])
   return (
-    <ScrollArea className="messages-scroll-area" contentProps={{ className: channel && !detail.messagePage.items.length ? 'flex flex-col' : undefined }} viewportProps={{ className: 'messages scroll-fade-y scroll-fade-6', ref: scrollRef, 'aria-busy': paging,
+    <ScrollArea className="messages-scroll-area" contentProps={{ ref: contentRef, className: channel && !detail.messagePage.items.length ? 'flex flex-col' : undefined }} viewportProps={{ className: 'messages scroll-fade-y scroll-fade-6', ref: setScrollRef, 'aria-busy': paging, 'data-following-latest': following.current,
       onScroll: () => {
         const el = scrollRef.current
         if (!el || el.clientHeight === 0) return
         const delta = el.scrollTop - lastScrollTop.current
-        const resized = el.clientHeight !== scrollSize.current.height || el.scrollHeight !== scrollSize.current.content
         rememberScroll(el)
         const bottom = el.scrollHeight - el.scrollTop - el.clientHeight
         if (el.scrollTop > READING_UI_LIMITS.historyPrefetchDistance) pageRequests.current.before = ''
         if (bottom > READING_UI_LIMITS.historyPrefetchDistance) pageRequests.current.after = ''
-        // Content/viewport resizing is not an instruction to stop following.
-        // Wheel/touch/keyboard intent is handled below; this also covers dragging the scrollbar.
-        if (delta < 0 && !resized) pauseFollowing()
-        else if (delta > 0 && !resized && latestPage.current && bottom < READING_UI_LIMITS.historyEdgeDistance) following.current = true
+        following.current = latestPage.current && stickyState.isAtBottom
         onScrollPosition(el.scrollTop); captureAnchor(el)
         onLocation(localAnchor.current?.messageId, following.current, localAnchor.current?.offset)
         if (!following.current && delta < 0) loadAtEdge('before')
@@ -383,7 +402,7 @@ function ChatHistory({ api, pageActive, questionReplies, artifactActions, onTeam
           {(detail.materials ?? []).filter(material => material.messageId === item.messageId && ['ready', 'unavailable'].includes(material.status)).map(material => <Button key={material.id} variant="link" size="sm" aria-label={`核对材料 ${materialDisplayName(material.name)}`} onClick={() => onPreviewMaterial(material)}>核对材料：{materialDisplayName(material.name)}</Button>)}
         </article>
         const attachedMirrors = mirrors.filter(mirror => mirrorAnchor(mirror) === message.id)
-        if (message.status === 'streaming' && mirroredMessageIds.has(message.id)) return <Fragment key={message.id}>{attachedMirrors.map(mirror => executionCard(mirror.run, mirror.triggerMessage))}</Fragment>
+        if (message.status === 'streaming' && mirroredMessageIds.has(message.id)) return <Fragment key={message.id}>{attachedMirrors.map(mirror => executionCard(mirror.run))}</Fragment>
         if (message.status === 'streaming' && message.automationPublication && message.senderType === 'agent' && !message.content) return null
         // Message events can arrive before the run snapshot; do not flash the old empty typing bubble.
         if (message.status === 'streaming' && message.runId) {
@@ -427,19 +446,19 @@ function ChatHistory({ api, pageActive, questionReplies, artifactActions, onTeam
             {useCard ? <MessageCard message={message} profile={snapshot.userProfile} receipt={!group && isPersonalMessage(message) ? <MessageReceipt runs={sourceRuns} /> : undefined} onReply={() => quote(message.id)} onTrace={() => onTrace(message)} onPublish={channel && !historicalChannel && message.senderType === 'agent' && message.status === 'completed' && onPublish ? () => onPublish(message) : undefined} publishDisabled={busy || receipts.some(delivery => ['sent', 'sending'].includes(delivery.status))} publishDescription={channelDeliveryDescription(receipts)}>{body}</MessageCard> : body}
 
             {interruptedTurn && <div role="status" className="field-hint" data-interrupted-turn-id={interruptedTurn.id}><span>该轮处理已中断，已有回复和成果保留；未自动重新执行。</span><Button variant="link" size="sm" onClick={() => onTrace(message)}>查看执行过程</Button></div>}
-            {!interruptedTurn && message.senderType === 'user' && detail.runs.filter(run => run.triggerMessageId === message.id && run.phase === 'decision' && ['failed', 'interrupted'].includes(run.status) && !detail.runs.some(next => next.triggerMessageId === message.id && next.agentId === run.agentId && next.phase === run.phase && next.createdAt > run.createdAt)).map(run => <div key={run.id} role="status" className="field-hint"><span>{run.agentName}：{run.error ? failureSummary(run.error) : '处理已中断，请查看执行过程。'}</span><ContinueRunButton key={run.id} api={api} run={run} active={pageActive} /><Button variant="link" size="sm" onClick={() => onTrace(message)}>查看执行过程</Button></div>)}
+            {!interruptedTurn && message.senderType === 'user' && detail.runs.filter(run => run.triggerMessageId === message.id && run.phase === 'decision' && ['failed', 'interrupted'].includes(run.status) && !detail.runs.some(next => next.triggerMessageId === message.id && next.agentId === run.agentId && next.phase === run.phase && next.createdAt > run.createdAt)).map(run => <div key={run.id} role="status" className="field-hint"><span>{run.agentName}：{run.error ? failureSummary(run.error) : '处理已中断，请查看执行过程。'}</span></div>)}
             {attachedApprovals.map(approval => <ApprovalCard key={approval.id} approval={approval} busy={busy || !pageActive} onApprove={onApprove} />)}
           </div>
         </article>
-        {failedRunsFor(message.id).map(run => executionCard(run, message))}
-        {attachedMirrors.map(mirror => executionCard(mirror.run, mirror.triggerMessage))}
+        {failedRunsFor(message.id).map(run => executionCard(run))}
+        {attachedMirrors.map(mirror => executionCard(mirror.run))}
         {onOpenCatalog && catalogByMessage.has(message.id) && <CatalogResults items={catalogByMessage.get(message.id)!} agent={snapshot.agents.find(isCoreAgent)} onOpen={onOpenCatalog} />}
         </Fragment>
       })}
       {isCoreConversation(conversation) && <CoreTeamResults api={api} detail={detail} snapshot={snapshot} active={pageActive} busy={busy} onGroup={onTeamGroup} />}
       {isCoreConversation(conversation) && <CoreCollaborationResults api={api} conversationId={conversation.id} snapshot={snapshot} active={pageActive} busy={busy} onGroup={onTeamGroup} onAgent={onConfigureAgent} />}
-      {executionRuns.map(run => executionCard(run, detail.messages.find(message => message.id === run.triggerMessageId)))}
-      {mirrors.filter(mirror => !detail.messages.some(message => message.id === mirrorAnchor(mirror))).map(mirror => executionCard(mirror.run, mirror.triggerMessage))}
+      {executionRuns.map(run => executionCard(run))}
+      {mirrors.filter(mirror => !detail.messages.some(message => message.id === mirrorAnchor(mirror))).map(mirror => executionCard(mirror.run))}
       {approvalGroups.pending.map(approval => <article key={approval.id} className="message-row agent"><div className="message-avatar"><Avatar name={approval.agentName} seed={detail.runs.find(run => run.id === approval.runId)?.agentId ?? approval.id} avatar={snapshot.agents.find(agent => agent.id === detail.runs.find(run => run.id === approval.runId)?.agentId)?.avatar} color={snapshot.agents.find(agent => agent.id === detail.runs.find(run => run.id === approval.runId)?.agentId)?.color} /></div><div className="message-main">{group && <div className="message-meta"><strong>{approval.agentName}</strong></div>}<ApprovalCard approval={approval} busy={busy || !pageActive} onApprove={onApprove} /></div></article>)}
       {artifactRequests.filter(value => !visibleArtifactIds.has(pendingArtifactId(value))).map(value => <PendingArtifactActions key={JSON.stringify([value.scope, value.logicalArtifactId])} pending={value} artifacts={detail.artifacts} actions={artifactActions} active={pageActive} onRestoreRevision={restoreRevision} />)}
     </ScrollArea>

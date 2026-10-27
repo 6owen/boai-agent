@@ -1,10 +1,11 @@
 /*
  * [INPUT]: Rovai ExecutionVirtualList.tsx @ f9acc2395283d49f0ce247dc0af2207c155f6eb6 (MIT)。
- * [OUTPUT]: 可变高度虚拟列表/正文缓存绑定卡片viewport；停读/折叠仍保留有界渲染，避免突然挂载全部记录，不截断持久执行内容。
+ * [OUTPUT]: TanStack useVirtualizer测量可变行高，识别主聊天/执行面板两种viewport；稳定key及焦点保留、停读时保持有界窗口。
  * [POS]: BOAI执行面板的阅读基础，许可见shared/rovai/LICENSE。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
-import { createContext, useContext, useLayoutEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react'
+import { defaultRangeExtractor, elementScroll, useVirtualizer, type VirtualItem } from '@tanstack/react-virtual'
+import { createContext, useContext, useLayoutEffect, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react'
 import { ExecutionContentCache } from './execution-content-cache'
 
 export const ExecutionContentContext = createContext<ExecutionContentCache | null>(null)
@@ -19,112 +20,80 @@ export function useExecutionRetainedState<T>(key: string, initial: T | (() => T)
   })]
 }
 
-/** Measured variable-height rows; the native scroll space remains continuous. */
+/** TanStack owns the visible range and variable-height scroll compensation. */
 export function ExecutionVirtualList<T extends { key: string }>({ items, children, enabled = true, gap = 14, gapAfter, onVisible }: {
   items: T[]; children: (item: T) => ReactNode; enabled?: boolean; gap?: number; gapAfter?: (item: T, next: T) => number; onVisible?: (items: T[]) => void
 }) {
   const root = useRef<HTMLDivElement>(null)
-  const heights = useRef(new Map<string, number>())
-  const [measurement, measure] = useState(0)
-  const [range, setRange] = useState(() => ({ start: Math.max(0, items.length - 8), end: items.length, key: items[Math.max(0, items.length - 8)]?.key, focus: undefined as string | undefined, anchor: undefined as string | undefined }))
-  const onVisibleRef = useRef(onVisible); onVisibleRef.current = onVisible
-  const gaps = useMemo(() => items.map((item, index) => index === items.length - 1 ? 0
-    : gapAfter?.(item, items[index + 1]) ?? gap), [items, gap, gapAfter])
-  const positions = useMemo(() => {
-    const result = [0]
-    for (const [index, item] of items.entries()) result.push(result.at(-1)! + (heights.current.get(item.key) ?? 72) + gaps[index])
-    return result
-  }, [items, gaps, measurement])
+  const [scrollMargin, setScrollMargin] = useState(0)
+  const [retained, setRetained] = useState<{ focus?: string; anchor?: string }>({})
+  const lastWindow = useRef<VirtualItem[]>([])
+  const lastTotal = useRef(0)
+  const firstKey = useRef(items[0]?.key)
   const virtual = items.length > 16
-  const retainedIndex = range.key === undefined ? -1 : items.findIndex(item => item.key === range.key)
-  const start = virtual ? Math.min(retainedIndex < 0 ? range.start : retainedIndex, Math.max(0, items.length - 1)) : 0
-  const end = virtual ? Math.min(items.length, Math.max(start + 1, start + range.end - range.start)) : items.length
-
-  useLayoutEffect(() => {
-    const element = root.current
-    const host = element?.closest<HTMLElement>('.execution-drawer-body')
-    if (!element || !host || !enabled) return undefined
-    let frame = 0
-    const update = () => {
-      frame = 0
-      const offset = host.getBoundingClientRect().top - element.getBoundingClientRect().top
-      const overscan = Math.max(120, Math.min(240, host.clientHeight / 2))
-      const lower = offset - overscan, upper = offset + host.clientHeight + overscan
-      let first = 0
-      while (first < items.length - 1 && positions[first + 1] < lower) first++
-      let last = first + 1
-      while (last < items.length && positions[last] < upper) last++
-      // Keep keyboard focus mounted even when scrolling with the keyboard.
-      const focused = element.querySelector<HTMLElement>('[data-execution-virtual-key]:focus-within')?.dataset.executionVirtualKey
-      const anchor = host.dataset.executionDisclosureAnchor === 'true'
-        ? [...element.querySelectorAll<HTMLElement>(':scope > [data-execution-virtual-key]')]
-          .find(row => row.querySelector(`[data-execution-item-key="${CSS.escape(host.dataset.executionAnchorKey ?? '')}"], [data-execution-item-keys~="${CSS.escape(host.dataset.executionAnchorKey ?? '')}"]`))?.dataset.executionVirtualKey
-        : undefined
-      setRange(previous => previous.start === first && previous.end === last && previous.key === items[first]?.key && previous.focus === focused && previous.anchor === anchor ? previous : { start: first, end: last, key: items[first]?.key, focus: focused, anchor })
-      onVisibleRef.current?.(items.slice(first, last))
-    }
-    const schedule = () => { if (!frame) frame = requestAnimationFrame(update) }
-    const resize = new ResizeObserver(entries => {
-      let dirty = false, adjustment = 0
-      const anchorKey = host.dataset.executionAnchorKey
-      const anchorRun = host.dataset.executionAnchorRun
-      const anchorRoot = anchorRun ? host.querySelector(`[data-execution-run-id="${CSS.escape(anchorRun)}"]`) ?? host.closest(`[data-execution-run-id="${CSS.escape(anchorRun)}"]`) : host
-      const anchor = anchorKey ? anchorRoot?.querySelector<HTMLElement>(`[data-execution-item-key="${CSS.escape(anchorKey)}"], [data-execution-item-keys~="${CSS.escape(anchorKey)}"]`) : null
-      const anchorTop = anchor?.getBoundingClientRect().top ?? host.getBoundingClientRect().top
-      for (const entry of entries) {
-        const row = entry.target as HTMLElement
-        const key = row.dataset.executionVirtualKey
-        if (!key) continue
-        const height = row.getBoundingClientRect().height - (Number.parseFloat(row.style.paddingBottom) || 0)
-        const previous = heights.current.get(key) ?? 72
-        if (Math.abs(height - previous) < 0.5) continue
-        heights.current.set(key, height); dirty = true
-        if (!row.contains(anchor ?? null) && row.getBoundingClientRect().bottom <= anchorTop) adjustment += height - previous
+  const getScrollElement = () => root.current?.closest<HTMLElement>('.messages, .execution-drawer-body') ?? null
+  const gapAt = (index: number) => index === items.length - 1 ? 0 : gapAfter?.(items[index], items[index + 1]) ?? gap
+  const virtualizer = useVirtualizer<HTMLElement, HTMLDivElement>({
+    count: items.length,
+    getScrollElement,
+    getItemKey: index => items[index].key,
+    estimateSize: index => 72 + gapAt(index),
+    enabled: virtual && enabled,
+    scrollMargin,
+    // Preserve the visible stable key when ExecutionWindow prepends/trims a page.
+    // Ordinary stream growth uses start anchoring; the host owns bottom following.
+    anchorTo: firstKey.current !== items[0]?.key ? 'end' : 'start',
+    overscan: 4,
+    rangeExtractor: range => {
+      const indexes = new Set(defaultRangeExtractor(range))
+      for (const key of [retained.focus, retained.anchor]) {
+        const index = key === undefined ? -1 : items.findIndex(item => item.key === key)
+        if (index >= 0) indexes.add(index)
       }
-      if (dirty) {
-        // Disclosure geometry has one owner, after the new measurements commit.
-        if (host.dataset.executionDisclosureAnchor !== 'true') {
-          if (host.dataset.followingLatest === 'true') host.scrollTop = host.scrollHeight
-          else if (adjustment) host.scrollTop += adjustment
-        }
-        host.dataset.executionAdjustedTop = String(host.scrollTop)
-        measure(value => value + 1)
-      }
-      schedule()
-    })
-    resize.observe(host)
-    element.querySelectorAll<HTMLElement>(':scope > [data-execution-virtual-key]').forEach(row => resize.observe(row))
-    host.addEventListener('scroll', schedule, { passive: true })
-    host.addEventListener('execution-disclosure-anchor', update)
-    schedule()
-    return () => { cancelAnimationFrame(frame); resize.disconnect(); host.removeEventListener('scroll', schedule); host.removeEventListener('execution-disclosure-anchor', update) }
-  }, [enabled, items, positions, gap, start, end, range.anchor, range.focus])
-
-  // Retain measurements only for the bounded loaded interval.
-  useLayoutEffect(() => {
-    const keys = new Set(items.map(item => item.key))
-    for (const key of heights.current.keys()) if (!keys.has(key)) heights.current.delete(key)
-  }, [items])
-  // An empty wrapper would add a grid gap before the initial Run feedback.
-  if (items.length === 0) return null
-  const indexes = Array.from({ length: end - start }, (_, offset) => start + offset)
-  const focusedIndex = range.focus ? items.findIndex(item => item.key === range.focus) : -1
-  if (focusedIndex >= 0 && !indexes.includes(focusedIndex)) indexes.push(focusedIndex)
-  const anchorIndex = range.anchor ? items.findIndex(item => item.key === range.anchor) : -1
-  if (anchorIndex >= 0 && !indexes.includes(anchorIndex)) indexes.push(anchorIndex)
-  indexes.sort((a, b) => a - b)
-  let cursor = 0
-  const rows = indexes.flatMap(index => {
-    const item = items[index]
-    const result: ReactNode[] = []
-    if (index > cursor) result.push(<div key={`space:${item.key}`} aria-hidden="true" style={{ height: positions[index] - positions[cursor] }} />)
-    result.push(<div key={item.key} data-execution-virtual-key={item.key}
-      style={{ paddingBottom: gaps[index], display: 'flow-root' }}>{children(item)}</div>)
-    cursor = index + 1
-    return result
+      return [...indexes].sort((a, b) => a - b)
+    },
+    scrollToFn: (offset, options, instance) => {
+      elementScroll(offset, options, instance)
+      // ExecutionWindow must not mistake measurement compensation for user intent.
+      if (instance.scrollElement) instance.scrollElement.dataset.executionAdjustedTop = String(instance.scrollElement.scrollTop)
+    },
   })
-  return <div ref={root} className="execution-virtual-list" style={{ overflowAnchor: 'none' }}>
-    {rows}
-    {cursor < items.length && <div aria-hidden="true" style={{ height: positions[items.length] - positions[cursor] }} />}
+  useLayoutEffect(() => {
+    const element = root.current, host = getScrollElement()
+    if (!element || !host || !enabled || !virtual) return
+    const measureOffset = () => setScrollMargin(element.getBoundingClientRect().top - host.getBoundingClientRect().top + host.scrollTop - host.clientTop)
+    const retainAnchor = () => {
+      const key = host.dataset.executionAnchorKey
+      const row = host.dataset.executionDisclosureAnchor === 'true' && key
+        ? [...element.querySelectorAll<HTMLElement>('[data-execution-virtual-key]')].find(row => row.querySelector(`[data-execution-item-key="${CSS.escape(key)}"], [data-execution-item-keys~="${CSS.escape(key)}"]`)) : undefined
+      setRetained(previous => ({ ...previous, anchor: row?.dataset.executionVirtualKey }))
+    }
+    measureOffset()
+    const observer = new ResizeObserver(measureOffset)
+    observer.observe(host)
+    // Earlier message/card growth changes the list's offset within the shared viewport.
+    if (host.firstElementChild) observer.observe(host.firstElementChild)
+    host.addEventListener('execution-disclosure-anchor', retainAnchor)
+    return () => { observer.disconnect(); host.removeEventListener('execution-disclosure-anchor', retainAnchor) }
+  }, [enabled, virtual, items])
+  useLayoutEffect(() => { firstKey.current = items[0]?.key }, [items])
+  const measured = virtualizer.getVirtualItems()
+  if (measured.length) lastWindow.current = measured
+  const window = enabled ? measured : lastWindow.current.filter(row => items[row.index]?.key === row.key)
+  useLayoutEffect(() => {
+    if (enabled) onVisible?.(virtual ? measured.map(row => items[row.index]) : items)
+  }, [enabled, items, measured, onVisible, virtual])
+  if (!items.length) return null
+  const rows = virtual ? window : items.map((item, index) => ({ index, key: item.key, start: 0, end: 0, size: 0 }))
+  if (enabled) lastTotal.current = virtualizer.getTotalSize()
+  const total = lastTotal.current
+  return <div ref={root} className="execution-virtual-list" style={{ overflowAnchor: 'none', ...(virtual ? { height: total, position: 'relative' } : {}) }}
+    onFocusCapture={event => {
+      const key = (event.target as HTMLElement).closest<HTMLElement>('[data-execution-virtual-key]')?.dataset.executionVirtualKey
+      setRetained(previous => ({ ...previous, focus: key }))
+    }} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setRetained(previous => ({ ...previous, focus: undefined })) }}>
+    {rows.map(row => <div key={row.key} data-index={row.index} data-execution-virtual-key={items[row.index].key}
+      ref={virtual ? virtualizer.measureElement : undefined}
+      style={{ paddingBottom: gapAt(row.index), display: 'flow-root', ...(virtual ? { position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${row.start - scrollMargin}px)` } : {}) }}>{children(items[row.index])}</div>)}
   </div>
 }
