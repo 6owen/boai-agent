@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-27 普通/bobo聊天与重复反馈通过原决策链；执行工具仍限执行阶段，停止/改权后的旧进度回调拒绝。
  * [OUTPUT]: 2026-10-27 本轮相关回归合同/源码更新；执行状态另行记录，不以源码存在判通过。
  * [OUTPUT]: 判断追加请求超过旧12次仍完成；多轮定向群协作跨过旧发言和代数阈值，不改变停止与来源校验。
  * [OUTPUT]: 待批准任务不堵无关员工；命令互斥在实际执行阶段，六席资源排队取消合同保持。
@@ -40,6 +41,8 @@ import { createTaskRuntime } from '../packages/runtime/src/adapters/mastra/task-
 import { RequestContext } from '@mastra/core/request-context'
 import { noopObserve } from '@mastra/core/tools'
 import { publishArtifact } from '../packages/runtime/src/modules/workspaces/file-access'
+import { ProgressMonitor } from '../packages/runtime/src/modules/contexts/progress-monitor'
+import { progressBoundary } from '../packages/runtime/src/adapters/mastra/progress-review'
 
 const roots: string[] = []
 const services: AppService[] = []
@@ -107,6 +110,56 @@ afterEach(async () => {
 })
 
 describe('local product service', () => {
+  it.each(['bobo', 'researcher'])('allows %s chat decisions and repeat feedback without granting execution tools', async agentId => {
+    const { service, engine } = await fixture(); await configure(service, [agentId])
+    engine.decisionHandler = async context => {
+      expect(await context.progressCurrent!()).toBe(true)
+      await expect(context.assertSkillAccess!([])).rejects.toThrow('当前执行已失去访问权限')
+      const progress = new ProgressMonitor()
+      for (let i = 0; i < 3; i++) progress.observe(`decision-${i}`, 'group_reply', { text: 'same reply' })
+      expect(await progressBoundary(context, progress)).toContain('Private execution feedback')
+      return { action: 'reply', responseKind: 'chat', observedThroughSequence: context.participation!.observedThroughSequence }
+    }
+    engine.handler = async context => {
+      expect(await context.progressCurrent!()).toBe(true)
+      await context.assertSkillAccess!([])
+      await context.onDelta('你好，已收到')
+    }
+    const direct = agentId === 'bobo'
+      ? await service.handle('startCoreConversation', { requestId: 'decision-access-core', content: 'hi' }) as Conversation
+      : await conversation(service)
+    if (agentId !== 'bobo') await send(service, direct, 'hi', 'decision-access-direct')
+    await idle(service, direct, 1)
+    const result = await detail(service, direct)
+    expect(engine.decisions).toHaveLength(1)
+    expect(result.runs.filter(run => run.phase === 'decision' || run.phase === 'execution').map(run => [run.phase, run.status])).toEqual([['decision', 'completed'], ['execution', 'completed']])
+    expect(result.messages.map(message => message.content)).toEqual(['hi', '你好，已收到'])
+    await expect(engine.decisions[0].progressCurrent!()).rejects.toThrow()
+    await expect(engine.contexts[0].progressCurrent!()).rejects.toThrow()
+  })
+
+  it.each(['stop', 'permission'] as const)('rejects stale decision progress after %s without starting execution', async change => {
+    const { service, engine } = await fixture(); await configure(service)
+    const direct = await conversation(service)
+    let entered = false, checked = false
+    engine.decisionHandler = async context => {
+      expect(await context.progressCurrent!()).toBe(true)
+      entered = true
+      await waitForAbort(context)
+      await expect(context.progressCurrent!()).rejects.toThrow()
+      checked = true
+      return { action: 'reply', responseKind: 'chat', observedThroughSequence: context.participation!.observedThroughSequence }
+    }
+    await send(service, direct, 'hi', `decision-access-${change}`)
+    await until(() => entered)
+    if (change === 'stop') await service.handle('cancelRun', { conversationId: direct.id })
+    else await updateAgent(service, (await snapshot(service)).agents.find(agent => agent.id === 'researcher')!, { executionPermission: 'read-only' })
+    await idle(service, direct, 0)
+    expect(checked).toBe(true)
+    expect(engine.contexts).toHaveLength(0)
+    expect((await detail(service, direct)).messages.map(message => message.content)).toEqual(['hi'])
+  })
+
   it.each([[false, 'write_file', 'failed'], [true, 'write_file', 'failed'], [false, 'call_data_source', 'failed'], [false, 'browser_tool', 'failed'], [false, 'write_file', 'cancelled'], [true, 'write_file', 'interrupted']] as const)('continues unfinished work from a new user message with its original identity (restart=%s, effect=%s, status=%s)', async (restart, effectTool, status) => {
     const { service: initialService, engine, root, secrets } = await fixture(); await configure(initialService)
     let service = initialService
