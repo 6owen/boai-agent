@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-27 进度核验绑定宿主原运行阶段，决策不再误用执行工具门禁；原停止、版本与来源校验保持。
  * [OUTPUT]: 2026-10-27 默认持续执行、来源校验及工作现场/复核接线；沿原权限和账本。
  * [OUTPUT]: 任务结果统一投影接原Work/消息/文件核源和停止、继续门禁；查询不执行任务。
  * [OUTPUT]: 桌面工作区路径与轻量归属复核分离；成员移除先排空精确终端并在失败后释放关闭标记。
@@ -3745,10 +3746,13 @@ export class AppService {
     this.messages.set(messageId, updated); this.changed(message.conversationId)
   }
   private async assertExecutionAccess(context: EngineContext) {
+    return this.assertRunAccess(context, 'execution')
+  }
+  private async assertRunAccess(context: EngineContext, phase: AgentRun['phase']) {
     context.signal.throwIfAborted()
     const current = this.getAgent(context.agent.id), conversation = this.getConversation(context.conversation.id)
     const snapshot = this.snapshots.get(context.runId), run = this.runs.get(context.runId)
-    if (this.closing || this.backingUp || !current.active || current.configVersion !== context.agent.configVersion || !conversation.agentIds.includes(current.id) || conversation.configVersion !== context.conversation.configVersion || !snapshot || snapshot.invalidated || !run || terminal.has(run.status) || run.phase !== 'execution') fail('当前执行已失去访问权限')
+    if (this.closing || this.backingUp || !current.active || current.configVersion !== context.agent.configVersion || !conversation.agentIds.includes(current.id) || conversation.configVersion !== context.conversation.configVersion || !snapshot || snapshot.invalidated || !run || terminal.has(run.status) || run.phase !== phase) fail('当前执行已失去访问权限')
     await this.assertMaterialRefs(context)
     if (context.memory && !await this.memory.recallValid(context.memory)) fail('材料或记忆来源已失效，不能继续访问')
     if (run!.origin) await this.automations.assertExecutable(run!.origin, conversation.id)
@@ -4276,9 +4280,10 @@ export class AppService {
       context.employeeCandidates = await this.boboCollaboration.findEmployees({ limit: 20 })
       context.legacyTeamName = (await this.store.load<CoreConversationStart>('coreConversationStarts')).find(value => value.conversationId === conversation.id && value.messageId === turn.triggerMessageId && !value.cleared)?.teamName
     }
+    const progressPhase = run.phase
     const observedUserSequence = Math.max(0, ...context.messages.filter(message => message.senderType === 'user').map(message => message.sequence))
     context.progressCurrent = () => this.serialize(async () => {
-      await this.assertExecutionAccess(context)
+      await this.assertRunAccess(context, progressPhase)
       const latestUserSequence = Math.max(0, ...this.conversationMessages(conversation.id).filter(message => message.senderType === 'user' && message.status === 'completed').map(message => message.sequence))
       if (latestUserSequence !== observedUserSequence) return false
       if (context.work) {
@@ -4494,7 +4499,10 @@ export class AppService {
     let key = ''
     try {
       const context = await this.engineContext(run, turn, effective, delivery.observedThroughSequence); key = context.apiKey
-      if (progress) { context.progressFeedback = await progressBoundary(context, progress); await this.assertExecutionAccess(context) }
+      if (progress) {
+        context.progressFeedback = await progressBoundary(context, progress)
+        await this.serialize(() => this.assertRunAccess(context, 'decision'))
+      }
       const visible = new Set(context.messages.map(message => message.id))
       context.workItems = await this.authorizedWorkItems(context.conversation, run.agentId, visible)
       context.participation = { isFirstDecision: ![...this.scheduler.deliveries.values()].some(item => item.turnId === turn.id && item.agentId === delivery.agentId && item.id !== delivery.id && !['pending', 'evaluating'].includes(item.status)), hasRespondedInTurn: [...this.messages.values()].some(message => message.turnId === turn.id && message.senderId === delivery.agentId && message.status === 'completed'), triggerEventType: event.type, eventMessageId: event.messageId, observedThroughSequence: delivery.observedThroughSequence, sourceEventIds: delivery.eventIds ?? [event.id] }
