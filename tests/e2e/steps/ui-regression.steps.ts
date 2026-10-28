@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 语音页核对独立本地模型Card、三项真实目录和空安装Select；原默认关闭/控件/自动保存/快捷键断言保持。
  * [OUTPUT]: 菜单单行高度按同次DOM读取的布局尺寸比较，避免跨动画帧的缩放包围盒误判；等高及无溢出要求保持。
  * [OUTPUT]: 定时任务侧栏无搜索、选项文字单行；原截图后验证右键图标/危险色、取消不删、确认只删目标且历史保留。
  * [OUTPUT]: 标签浮层按唯一可访问名称单次点击，等待受控勾选和三项任务的实际保存回执，不要求异步保存同步完成。
@@ -182,7 +183,17 @@ Then('当前场景的真实交互和布局满足原约定', async ({ runtime, ui
     await expect(heading).toBeInViewport()
     await expect(voice.getByRole('switch', { name: '启用语音输入', exact: true })).not.toBeChecked()
     await expect(voice.getByRole('switch', { name: '启用文字整理', exact: true })).not.toBeChecked()
-    await expect(voice.getByRole('button', { name: '下载模型', exact: true })).toBeDisabled()
+    const localModels = voice.getByRole('region', { name: '本地模型', exact: true })
+    await expect(localModels.locator('[data-slot="card"]')).toHaveCount(1)
+    await expect(localModels.locator('[data-voice-model-id]')).toHaveCount(3)
+    for (const name of ['SenseVoiceSmall', 'Whisper Tiny', 'Whisper Base']) {
+      await expect(localModels.getByRole('button', { name: `下载 ${name}`, exact: true })).toBeDisabled()
+      await expect(localModels.getByRole('link', { name: `${name}模型许可`, exact: true })).toHaveAttribute('href', /^https:\/\//)
+    }
+    const currentModel = voice.getByRole('combobox', { name: '当前模型', exact: true })
+    await expect(currentModel).toBeDisabled()
+    await expect(currentModel).toContainText('请先下载模型')
+    await expect(voice.getByRole('combobox', { name: '识别方式', exact: true })).toContainText('本地')
     await expect(voice.getByRole('button', { name: '授权并刷新设备', exact: true })).toBeDisabled()
     const language = voice.getByRole('combobox', { name: '识别语言', exact: true })
     await expect(language).toBeEnabled()
@@ -194,7 +205,7 @@ Then('当前场景的真实交互和布局满足原约定', async ({ runtime, ui
     const authorize = await voice.getByRole('button', { name: '授权并刷新设备', exact: true }).boundingBox()
     expect(authorize!.height).toBe(32)
     expect(microphone!.height).toBe(authorize!.height)
-    for (const control of [languageBox, microphone]) expect(control!.width).toBe(220)
+    for (const control of [languageBox, microphone, await currentModel.boundingBox()]) expect(control!.width).toBe(220)
     await expect(voice.getByRole('button', { name: /^(保存|应用)$/ })).toHaveCount(0)
     await expect(voice.locator('kbd')).toHaveCount(0)
     const terms = voice.getByRole('textbox', { name: '语音术语表', exact: true })
@@ -208,6 +219,9 @@ Then('当前场景的真实交互和布局满足原约定', async ({ runtime, ui
     const snapshot = await page.evaluate(() => window.boai.voice!.snapshot())
     expect(snapshot.localReady).toBe(false)
     expect(snapshot.download).toBeUndefined()
+    expect(snapshot.settings.localModelId).toBe('sensevoice-small')
+    expect(snapshot.models.map(model => model.id)).toEqual(['sensevoice-small', 'whisper-tiny', 'whisper-base'])
+    expect(snapshot.models.every(model => !model.ready && !model.download)).toBe(true)
     await heading.click()
     await expect(page.getByText('语音输入设置已保存', { exact: true })).toHaveCount(0)
   } else if (selected.scene === 'resources') {

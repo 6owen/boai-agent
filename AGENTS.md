@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-28用户授权语音多模型Card/Select与适配器实现；首批SenseVoiceSmall及Whisper Tiny/Base，实际验证归19组12第7节。
 [OUTPUT]: 2026-10-28自动PR采集、Agent差异审阅、线上选择更新与最新只读复验；ui:deliver接续，取消强制本地人工确认，实际归22组06 §21。
 [OUTPUT]: 2026-10-28第28组首轮真实CLI/AppService对照及取消续接/Claude目录/Codex子线程三修复；单次复验、原失败与未验范围归28组02/03，不宣称全量无损。
 [OUTPUT]: 2026-10-27线上基准提交后Agent须批准当前PR的action_required运行；独立dispatch全绿不能替代该PR门禁，普通人工push保持自动检查。

@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 2026-10-27 语音单租约和临时设备授权互斥，识别语言/整理规则沿配置版本传递。
+ * [OUTPUT]: 2026-10-28 逐模型安装与快照、已安装模型选择、录音固定模型身份及活动资源移除保护。
  * [INPUT]: Trusted desktop frame commands, plugin enablement, lifecycle, vault and isolated helper port.
  * [OUTPUT]: Single application capture lease, private bounded PCM spool, local/online transcription and optional refinement.
  * [POS]: Optional voice application plugin host; no employee execution or message publication.
@@ -11,9 +11,8 @@ import { join } from 'node:path'
 import { z } from 'zod'
 import { VoiceSettingsStore, type VoiceSecrets } from './settings'
 import { VoiceModels } from './models'
-import { voiceModelBytes } from './model-manifest'
 import { QwenRecognition } from './qwen'
-import { voiceIdentitySchema, type VoiceApi, type VoiceEvent, type VoiceIdentity, type VoiceResult, type VoiceSnapshot, type VoiceSettings, type VoiceLanguage } from './protocol'
+import { voiceIdentitySchema, voiceConfigureSchema, voiceDownloadSchema, validateVoiceLanguage, type VoiceApi, type VoiceEvent, type VoiceIdentity, type VoiceResult, type VoiceSnapshot, type VoiceSettings, type VoiceLanguage, type VoiceModelId } from './protocol'
 
 export interface VoiceHelper {
   kill(): Promise<void>
@@ -26,10 +25,10 @@ export interface VoiceHostPorts {
   supported(): boolean
   emit(event: VoiceEvent): void
   usage?(entry: { requestId: string; stage: 'asr' | 'refinement'; state: 'started' | 'reported' | 'unknown'; inputTokens?: number; outputTokens?: number; totalTokens?: number }): void
-  helper(models: string, audio: string, segment: (index: number, text: string) => void, language: VoiceLanguage): VoiceHelper
+  helper(models: string, audio: string, segment: (index: number, text: string) => void, language: VoiceLanguage, modelId: VoiceModelId): VoiceHelper
   refine(connectionId: string, model: string, text: string, terms: { word: string; aliases: string[] }[], signal: AbortSignal, instructions: string): Promise<string>
 }
-type Session = { language: VoiceLanguage; identity: VoiceIdentity; controller: AbortController; sequence: number; accepting: boolean; queue: Promise<void>; pendingBytes: number; file?: FileHandle; path?: string; online?: QwenRecognition; helper?: VoiceHelper; texts: string[]; finish?: Promise<VoiceResult> }
+type Session = { mode: VoiceSettings['mode']; localModelId: VoiceModelId; language: VoiceLanguage; identity: VoiceIdentity; controller: AbortController; sequence: number; accepting: boolean; queue: Promise<void>; pendingBytes: number; file?: FileHandle; path?: string; online?: QwenRecognition; helper?: VoiceHelper; texts: string[]; finish?: Promise<VoiceResult> }
 export class VoiceHost {
   readonly settings: VoiceSettingsStore
   readonly models: VoiceModels
@@ -39,6 +38,7 @@ export class VoiceHost {
   private pending?: { session: Session; done: Promise<void> }
   private generation = 0
   private configuring = false
+  private removing = new Set<VoiceModelId>()
   private microphoneCheck?: { token: string; timer: ReturnType<typeof setTimeout> }
   private initializationError?: string
   constructor(private root: string, private ports: VoiceHostPorts) {
@@ -53,20 +53,42 @@ export class VoiceHost {
     const settings = structuredClone(this.settings.value)
     const ref = settings.online.credentialRef
     const onlineKeyPresent = ref ? await (this.ports.secrets.has ? this.ports.secrets.has(ref) : this.ports.secrets.get(ref).then(Boolean)).catch(() => false) : false
-    return { settings, localReady: await this.models.ready(), supported: this.ports.supported(), onlineKeyPresent, readOnly: this.settings.readOnly, diagnostic: this.initializationError ?? (this.settings.readOnly ? '语音设置无法读取或来自更新版本，原文件已保留；请修复后重启' : undefined), download: this.models.progress && { ...this.models.progress }, modelBytes: voiceModelBytes }
+    const models = await this.models.snapshot(), selected = models.find(model => model.id === settings.localModelId)!
+    return { settings, models, localReady: selected.ready, supported: this.ports.supported(), onlineKeyPresent, readOnly: this.settings.readOnly, diagnostic: this.initializationError ?? (this.settings.readOnly ? '语音设置无法读取或来自更新版本，原文件已保留；请修复后重启' : undefined), download: selected.download, modelBytes: selected.bytes }
   }
   async configure(input: Parameters<VoiceApi['configure']>[0]) {
     if (this.configuring) throw new Error('语音设置正在保存，请稍后重试')
+    const parsed = voiceConfigureSchema.parse(input)
+    if (this.settings.readOnly || parsed.expectedRevision !== this.settings.value.revision) throw new Error('语音设置不可写或已变化，请重新读取')
+    validateVoiceLanguage(parsed.settings)
+    const modelChanged = parsed.settings.localModelId !== this.settings.value.localModelId
+    if (modelChanged && (this.session || this.pending)) throw new Error('请先结束当前录音，再切换识别模型')
+    if (this.removing.has(parsed.settings.localModelId)) throw new Error('模型正在移除，请稍后重试')
     this.configuring = true
-    try { await this.cancelAll(); await this.settings.update(input); return await this.snapshot() }
-    finally { this.configuring = false }
+    try {
+      if (modelChanged && !(await this.models.ready(true, undefined, parsed.settings.localModelId))) throw new Error('请先下载并校验所选模型')
+      await this.cancelAll(); await this.settings.update(parsed); return await this.snapshot()
+    } finally { this.configuring = false }
   }
-  async download(action: 'start' | 'cancel' | 'remove') {
-    z.enum(['start', 'cancel', 'remove']).parse(action)
-    if (action === 'start') { if (!this.ports.enabled() || this.settings.readOnly) throw new Error('请先启用语音输入插件'); await this.models.download() }
-    else if (action === 'cancel') await this.models.cancel()
-    else { await this.cancelAll(); await this.models.remove() }
+  async download(input: Parameters<VoiceApi['download']>[0]) {
+    const { action, modelId } = voiceDownloadSchema.parse(input)
+    if (action === 'start') {
+      if (!this.ports.enabled() || this.settings.readOnly) throw new Error('请先启用语音输入插件')
+      if (this.removing.has(modelId)) throw new Error('模型正在移除，请稍后重试')
+      if (this.modelInUse(modelId)) throw new Error('请先结束当前录音，再更新模型')
+      await this.models.download(modelId)
+    } else if (action === 'cancel') await this.models.cancel(modelId)
+    else {
+      if (this.configuring || this.removing.has(modelId)) throw new Error('语音模型正在更新，请稍后重试')
+      if (this.modelInUse(modelId)) throw new Error('请先结束当前录音，再移除模型')
+      if (this.ports.enabled() && this.settings.value.mode === 'local' && this.settings.value.localModelId === modelId) throw new Error('请先选择其他模型或停用语音输入，再移除当前模型')
+      this.removing.add(modelId)
+      try { await this.models.remove(modelId) } finally { this.removing.delete(modelId) }
+    }
     return this.snapshot()
+  }
+  private modelInUse(modelId: VoiceModelId) {
+    return [this.session, this.pending?.session].some(session => session?.mode === 'local' && session.localModelId === modelId)
   }
   microphoneAccess(input: { token: string; active: boolean }) {
     const { token, active } = z.object({ token: z.string().uuid(), active: z.boolean() }).strict().parse(input)
@@ -83,7 +105,7 @@ export class VoiceHost {
     if (identity.settingsRevision !== this.settings.value.revision) throw new Error('语音设置已变化，请重新开始')
     const generation = ++this.generation, settings = structuredClone(this.settings.value)
     this.settled?.controller.abort(); this.settled = undefined; this.refinements.clear()
-    const session: Session = { language: settings.language, identity, controller: new AbortController(), sequence: 0, accepting: true, queue: Promise.resolve(), pendingBytes: 0, texts: [] }
+    const session: Session = { mode: settings.mode, localModelId: settings.localModelId, language: settings.language, identity, controller: new AbortController(), sequence: 0, accepting: true, queue: Promise.resolve(), pendingBytes: 0, texts: [] }
     const pending = { session, done: Promise.resolve() }
     this.pending = pending
     pending.done = this.prepare(session, generation, settings).finally(() => { if (this.pending === pending) this.pending = undefined })
@@ -93,7 +115,8 @@ export class VoiceHost {
     const signal = session.controller.signal
     try {
       if (settings.mode === 'local') {
-        const ready = this.ports.supported() && await this.models.ready(true, signal)
+        if (this.removing.has(session.localModelId)) throw new Error('模型正在移除，请稍后重试')
+        const ready = this.ports.supported() && await this.models.ready(true, signal, session.localModelId)
         signal.throwIfAborted()
         if (!ready) throw new Error('本地语音模型或引擎未就绪，请在设置的语音输入页下载')
         const directory = join(this.root, 'temporary'); await mkdir(directory, { recursive: true, mode: 0o700 })
@@ -144,11 +167,11 @@ export class VoiceHost {
       let result: VoiceResult
       if (session.online) result = await session.online.finish()
       else {
-        session.helper = this.ports.helper(this.models.directory, session.path!, (sequence, text) => {
+        session.helper = this.ports.helper(this.models.directoryFor(session.localModelId), session.path!, (sequence, text) => {
           if (this.session !== session || session.controller.signal.aborted || sequence !== session.texts.length) return
           session.texts.push(text)
           this.ports.emit({ type: 'segment', sessionId: id, id: `local:${sequence}`, sequence, revision: 1, text, final: true })
-        }, session.language)
+        }, session.language, session.localModelId)
         const outcome = await session.helper.result
         result = { sessionId: id, text: session.texts.join(''), complete: outcome.complete, error: outcome.error, usage: 'local' }
       }
