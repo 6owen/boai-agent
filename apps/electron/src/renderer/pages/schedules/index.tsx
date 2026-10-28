@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 列表右键删除固定所选任务，经统一AlertDialog确认后沿原删除接口提交；取消不提交，成功同步移除并退出已删任务详情。
  * [OUTPUT]: 定时任务侧栏委托独立标签/排序管理；说明移至标题Tooltip，原执行与详情行为保持。
  * [OUTPUT]: 立即运行只提交并全程loading防重复，两个图标分别打开过程和定位聊天；准备阶段保留等待提示。
  * [OUTPUT]: 重回定时任务页及首次异步载入详情也播放Panel reveal，后台数据刷新不重播。
@@ -15,6 +16,7 @@ import type { AutomationsView, Snapshot } from '@boai/shared/domain'
 import type { DesktopApi } from '@boai/shared/ipc'
 import { Banner, GuardContext, useMutation } from '@/components/common'
 import { Plus, MessageCircle, Pencil } from '@/components/icons'
+import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
@@ -39,6 +41,7 @@ export function SchedulePage({ api, snapshot, active, sidebarShown, divider, loc
   const [view, setView] = useState<AutomationsView>({ definitions: [], occurrences: [], available: true })
   const [loading, setLoading] = useState(true), [loadError, setLoadError] = useState('')
   const [dialog, setDialog] = useState<AutomationDialogTarget>()
+  const [deleting, setDeleting] = useState<{ id: string; name: string } | null>(null)
   const guard = useContext(GuardContext), { busy, error, run } = useMutation()
   useEffect(() => {
     if (!active) return
@@ -80,7 +83,7 @@ export function SchedulePage({ api, snapshot, active, sidebarShown, divider, loc
   const openOccurrence = onOccurrence
   return <div className="schedule-page" style={active ? undefined : { display: 'none' }}>
     <PanelResize open={sidebarShown} side="left" divider={divider}><aside className="schedule-list conversation-list-panel" aria-label="定时任务列表">
-      <ScheduleList definitions={view.definitions} preferences={preferences} loading={loading} selectedId={location.kind === 'definition' ? location.id : undefined} onSelect={id => navigate({ kind: 'definition', id })} onHistory={() => navigate({ kind: 'history' })} create={
+      <ScheduleList definitions={view.definitions} preferences={preferences} loading={loading} busy={busy} selectedId={location.kind === 'definition' ? location.id : undefined} onSelect={id => navigate({ kind: 'definition', id })} onHistory={() => navigate({ kind: 'history' })} onDelete={setDeleting} create={
         <DropdownMenu><DropdownMenuTrigger render={<Button variant="secondary" className="schedule-create" aria-label="新建定时任务" />}><Plus /><span>新建定时任务</span></DropdownMenuTrigger><DropdownMenuContent align="start"><DropdownMenuItem onClick={() => openDialog({ kind: 'manual', key: crypto.randomUUID() })}><Pencil />手动创建</DropdownMenuItem><DropdownMenuItem onClick={onCreateConversation}><MessageCircle />对话创建</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
       } />
     </aside></PanelResize>
@@ -99,6 +102,21 @@ export function SchedulePage({ api, snapshot, active, sidebarShown, divider, loc
       </div> : !loading && <Banner>此任务已删除或不可用，留存结果仍可在执行记录中查看。</Banner>)}
       {<div ref={location.kind === 'history' ? content : undefined} hidden={location.kind !== 'history'} className="schedule-document schedule-content-transition t-panel-slide" data-open="true" data-settled="true"><AutomationHistory api={api} active={active && location.kind === 'history'} attentionOnly={location.kind === 'history' && location.attention} selectedId={selectedOccurrenceId} onOccurrence={openOccurrence} /></div>}
     </main>
+    <AlertDialog open={active && Boolean(deleting)} onOpenChange={open => { if (!open && !busy) setDeleting(null) }}>
+      <AlertDialogContent>
+        <AlertDialogHeader><AlertDialogTitle className="break-words">删除“{deleting?.name}”？</AlertDialogTitle><AlertDialogDescription>删除后不再按计划执行，已有执行记录保留。</AlertDialogDescription></AlertDialogHeader>
+        <AlertDialogFooter><Button variant="secondary" disabled={busy} onClick={() => setDeleting(null)}>取消</Button><Button variant="destructive" disabled={busy || !deleting} onClick={() => {
+          if (!deleting) return
+          const id = deleting.id
+          void run(async () => {
+            await api.request('deleteAutomation', { id })
+            setView(current => ({ ...current, definitions: current.definitions.filter(task => task.id !== id) }))
+            setDeleting(null)
+            if (location.kind === 'definition' && location.id === id) onLocation({ kind: 'overview' })
+          })
+        }}>确认删除</Button></AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     {dialog && <AutomationDialog key={dialog.key} api={api} snapshot={snapshot} active={active} target={dialog} onClose={() => setDialog(undefined)} onSaved={value => {
       setView(current => ({ ...current, definitions: [{ ...value, nextTimes: [] }, ...current.definitions.filter(d => d.id !== value.id)] }))
       setDialog(undefined); onLocation({ kind: 'definition', id: value.id })

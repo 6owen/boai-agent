@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 菜单单行高度按同次DOM读取的布局尺寸比较，避免跨动画帧的缩放包围盒误判；等高及无溢出要求保持。
+ * [OUTPUT]: 定时任务侧栏无搜索、选项文字单行；原截图后验证右键图标/危险色、取消不删、确认只删目标且历史保留。
  * [OUTPUT]: 标签浮层按唯一可访问名称单次点击，等待受控勾选和三项任务的实际保存回执，不要求异步保存同步完成。
  * [OUTPUT]: 本人菜单明暗两场核对头像与五项导航，菜单分享/帮助消失，逐个入口定位对应设置。
  * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
@@ -238,6 +240,7 @@ Then('当前场景的真实交互和布局满足原约定', async ({ runtime, ui
 Then('当前场景与已接受的UI截图一致', async ({ runtime, uiRegression }) => {
   await compareUiBaseline(runtime, uiRegression.selected!.id, test.info())
   const page = runtime.page, fixture = uiRegression.fixture!
+  if (uiRegression.selected!.scene === 'schedules') await checkScheduleDelete(runtime)
   // New profile interactions follow the existing snapshot so popup painting does
   // not change the static screenshot's original interaction history.
   if (uiRegression.selected!.scene === 'chat') {
@@ -299,9 +302,18 @@ Then('当前场景与已接受的UI截图一致', async ({ runtime, uiRegression
 async function checkScheduleUi(runtime: import('../support/desktop').Desktop, showManager: boolean) {
   const page = runtime.page, list = page.getByRole('complementary', { name: '定时任务列表', exact: true })
   const read = () => page.evaluate(() => window.boai.request('getScheduleList', undefined))
+  await expect(list.getByRole('textbox')).toHaveCount(0)
   await expect(list.getByRole('button', { name: '定时任务说明', exact: true })).toBeVisible()
   await list.getByRole('button', { name: '定时任务选项', exact: true }).click()
   await expect(page.getByRole('menuitem', { name: '定时执行说明', exact: true })).toHaveCount(0)
+  const menu = page.getByRole('menu')
+  await expect(menu.getByRole('menuitem')).toHaveCount(2)
+  // Layout heights are independent of the popup's in-flight scale transform.
+  const itemHeights = await menu.getByRole('menuitem').evaluateAll(items => items.map(item => (item as HTMLElement).offsetHeight))
+  expect(itemHeights).toHaveLength(2)
+  expect(itemHeights[0]).toBeGreaterThan(0)
+  expect(itemHeights[0]).toBe(itemHeights[1])
+  expect(await menu.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
   await page.getByRole('menuitem', { name: '定时任务管理', exact: true }).click()
   const manager = page.getByRole('dialog', { name: '定时任务管理', exact: true })
   for (const name of ['日常', '关注', '临时']) {
@@ -383,6 +395,40 @@ async function checkScheduleUi(runtime: import('../support/desktop').Desktop, sh
     expect(await manager.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
   }
   await page.mouse.move(0, 0)
+}
+
+async function checkScheduleDelete(runtime: import('../support/desktop').Desktop) {
+  const page = runtime.page, list = page.getByRole('complementary', { name: '定时任务列表', exact: true })
+  const read = () => page.evaluate(() => window.boai.request('listAutomations', undefined))
+  const before = await read()
+  const row = list.getByRole('button', { name: 'AI 新闻早报', exact: true })
+  await row.click()
+  await expect(page.locator('.schedule-content').getByRole('heading', { name: 'AI 新闻早报', exact: true })).toBeVisible()
+  await row.click({ button: 'right' })
+  const menu = page.getByRole('menu'), remove = menu.getByRole('menuitem', { name: '删除', exact: true })
+  for (const item of await menu.getByRole('menuitem').all()) await expect(item.locator(':scope > :is(svg, .app-icon)')).toHaveCount(1)
+  await expect(remove).toHaveAttribute('data-variant', 'destructive')
+  await remove.click()
+  const confirmation = page.getByRole('alertdialog', { name: '删除“AI 新闻早报”？', exact: true })
+  await expect(confirmation).toBeVisible()
+  expect((await read()).definitions).toEqual(before.definitions)
+  await confirmation.getByRole('button', { name: '取消', exact: true }).click()
+  await expect(confirmation).toHaveCount(0)
+  expect((await read()).definitions).toEqual(before.definitions)
+  await expect(row).toBeVisible()
+  await row.click({ button: 'right' })
+  await remove.click()
+  await confirmation.getByRole('button', { name: '确认删除', exact: true }).click()
+  await expect(confirmation).toHaveCount(0)
+  await expect(row).toHaveCount(0)
+  const remaining = await read()
+  expect(remaining.definitions).toEqual(before.definitions.filter(task => task.id !== 'ui-schedule-0'))
+  expect(remaining.occurrences).toEqual(before.occurrences)
+  await expect(page.locator('.schedule-content').getByRole('heading', { name: 'AI 新闻早报', exact: true })).toHaveCount(0)
+  await list.getByRole('button', { name: '定时任务选项', exact: true }).click()
+  await page.getByRole('menuitem', { name: '执行记录', exact: true }).click()
+  await expect(page.getByRole('region', { name: '执行记录', exact: true }).locator('[data-occurrence-id]')).toHaveCount(3)
+  expect(runtime.errors).toEqual([])
 }
 
 async function checkUserMenu(runtime: import('../support/desktop').Desktop) {
