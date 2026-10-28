@@ -1,13 +1,14 @@
 /*
  * [OUTPUT]: 页面布局复用settings-layout，标题/分组留白与卡片/设置行统一，原业务回调保持。
  * [INPUT]: Independent retrieval settings, current provider presets and versioned desktop API.
- * [OUTPUT]: Compact default retrieval selector with persisted browser fallback for unavailable services, wider single-line browser open menu and service enable switch; shared model-connection key input and save-only dialog footer.
+ * [OUTPUT]: Default/service controls follow verified availability; dialog tests the current unsaved key, with all test feedback in Sonner.
  * [POS]: Settings / configuration / web retrieval; no business data-source forms or bindings.
  * [PROTOCOL]: Update Header and parent .folder.md on change.
  */
 import { SettingsLayout, SettingsSection } from './settings-layout'
 import { useContext, useEffect, useId, useRef, useState } from 'react'
 import deepseekIcon from '@lobehub/icons-static-svg/icons/deepseek.svg'
+import { toast } from 'sonner'
 import type { DesktopApi } from '@boai/shared/ipc'
 import { searchProviderPresets, type SearchProviderId, type WebSearchServiceConfig } from '@boai/shared/domain/web-search'
 import { useWebSearchSettings } from '@/hooks/use-web-search'
@@ -84,18 +85,16 @@ export function WebSearchSettingsPage({ api, active }: { api: DesktopApi; active
 
 function SearchServiceRow({ provider, service, api, disabled, onConfigure, onChanged }: { provider: SearchPreset; service?: WebSearchServiceConfig; api: DesktopApi; disabled: boolean; onConfigure(): void; onChanged(): Promise<void> }) {
   const mutation = useMutation(), menuAnchor = useRef<HTMLButtonElement>(null)
-  const [removing, setRemoving] = useState(false), [testing, setTesting] = useState(false)
+  const [removing, setRemoving] = useState(false)
   const working = disabled || mutation.busy, name = service?.name ?? provider.name
   const ready = !!service && service.enabled && service.pluginEnabled && (!provider.requiresKey || service.hasCredential)
   const status = !service ? '未配置' : !service.pluginEnabled ? '插件已停用' : !service.enabled ? '已停用' : !ready ? '待配置密钥' : '已配置'
   const testService = () => void mutation.run(async () => {
     if (!service) return
-    setTesting(true)
-    try {
-      const result = await api.request('testWebSearchService', { id: service.id, expectedRevision: service.revision })
-      await onChanged()
-      if (result.test?.status === 'failed') throw new Error(result.test.message)
-    } finally { setTesting(false) }
+    const result = await api.request('testWebSearchService', { id: service.id, expectedRevision: service.revision })
+    await onChanged()
+    if (result.test?.status === 'failed') throw new Error(result.test.message)
+    if (result.test?.status === 'success') toast.success(result.test.message)
   })
   return <div className="connection-row" data-search-provider={provider.id}>
     <ErrorToast>{mutation.error}</ErrorToast>
@@ -103,9 +102,6 @@ function SearchServiceRow({ provider, service, api, disabled, onConfigure, onCha
     <div className="connection-row-body">
       <div className="connection-row-title">
         <strong title={name}>{name}</strong><span className="connection-state" data-ready={ready}>{status}</span>
-        {(testing || service?.test) && <p className="connection-feedback connection-inline-feedback" data-status={testing ? 'testing' : service?.test?.status === 'success' ? 'success' : undefined} role="status" title={testing ? undefined : service?.test?.message}>
-          {testing ? <LoaderCircle className="spinner" size={13} /> : service?.test?.status === 'success' ? <Check size={13} /> : null}<span>{testing ? '正在测试连接…' : service?.test?.status === 'success' ? service.test.message : '测试未通过'}</span>
-        </p>}
       </div>
       <p className="connection-row-description">{provider.description}</p>
     </div>
@@ -132,8 +128,21 @@ function SearchServiceEditor({ api, target, onClose, onSaved }: { api: DesktopAp
   const nameInput = useRef<HTMLInputElement>(null)
   const [id] = useState(() => target.service?.id ?? crypto.randomUUID())
   const [name, setName] = useState(target.service?.name ?? provider.name), [enabled, setEnabled] = useState(target.service?.enabled ?? true), [credential, setCredential] = useState(target.credential), [visible, setVisible] = useState(false)
+  const [testing, setTesting] = useState(false)
   const resetDirty = useDirty({ name, enabled, credential })
   const close = () => { if (!mutation.busy) guard.navigate(onClose, { resetOnDiscard: false }) }
+  const testDraft = () => {
+    if (mutation.busy || provider.id !== 'deepseek') return
+    if (!credential.trim()) { showErrorToast('请填写 API Key 后测试连接'); return }
+    const input = { provider: provider.id, credential: credential.trim() }
+    void mutation.run(async () => {
+      setTesting(true)
+      try {
+        const result = await api.request('testWebSearchServiceDraft', input)
+        toast.success(result.message)
+      } finally { setTesting(false) }
+    })
+  }
   return <Dialog open onOpenChange={open => { if (!open) close() }}><ConnectionDialogLayout choosing={false} label="配置网页检索" title={`连接 ${provider.name}`} illustration={<ConnectionIllustration configuring />} closeLabel="关闭网页检索配置" working={mutation.busy} onClose={close} finalFocus={undefined} initialFocus={nameInput}>
     <ErrorToast>{mutation.error}</ErrorToast>
     <ConnectionForm noValidate disabled={mutation.busy} onSubmit={event => {
@@ -144,7 +153,7 @@ function SearchServiceEditor({ api, target, onClose, onSaved }: { api: DesktopAp
         await api.request('saveWebSearchService', { id, expectedRevision: target.service?.revision ?? 0, provider: provider.id, name: name.trim(), enabled, credential: credential.trim() })
         resetDirty(); await onSaved(); guard.saved(onClose)
       })
-    }} footer={<div className="connection-editor-actions"><Button type="submit" disabled={mutation.busy}>{mutation.busy && <LoaderCircle size={14} className="spinner" />}{mutation.busy ? '正在保存…' : '保存连接'}</Button></div>}>
+    }} footer={<div className="connection-editor-actions"><Button type="button" variant="outline" aria-busy={testing} disabled={mutation.busy} onClick={testDraft}>{testing && <LoaderCircle size={14} className="spinner" />}测试</Button><Button type="submit" disabled={mutation.busy} aria-busy={mutation.busy && !testing}>保存连接</Button></div>}>
       <ConnectionSettingRow label="连接名称" htmlFor={`${fieldId}-name`} icon={<Pencil />}><Input id={`${fieldId}-name`} ref={nameInput} required maxLength={100} value={name} onChange={event => setName(event.target.value)} placeholder="为这个连接起个名字" /></ConnectionSettingRow>
       <ConnectionSettingRow label="API Key" icon={<Key />} htmlFor={`${fieldId}-key`} hint="由网页检索服务独立保存。"><div className="connection-setting-control"><InputGroup><InputGroupInput id={`${fieldId}-key`} aria-label={`${provider.name} API Key`} type={visible ? 'text' : 'password'} autoComplete="off" spellCheck={false} value={credential} onChange={event => setCredential(event.target.value)} placeholder="输入 API Key" /><InputGroupAddon align="inline-end" className="pr-2.5 has-[>button]:mr-0"><InputGroupButton size="icon-xs" className="connection-key-visibility" aria-label={visible ? '隐藏 API Key' : '显示 API Key'} aria-pressed={visible} onClick={() => setVisible(value => !value)}>{visible ? <EyeOff /> : <Eye />}</InputGroupButton></InputGroupAddon></InputGroup></div></ConnectionSettingRow>
       <ConnectionSettingRow label="启用服务" icon={<Search />}><Switch checked={enabled} onCheckedChange={setEnabled} /></ConnectionSettingRow>

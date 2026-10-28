@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 当前密钥草稿测试可达，仍拒绝任意内部方法。
  * [OUTPUT]: 工作区根读取及终端清理仅允许受信任宿主调用，不向renderer公开。
  * [OUTPUT]: 桌面 OCR 原始采集属于私有宿主入口，公共请求拒绝。
  * [OUTPUT]: 提示词列表/版本保存/删除通过原公共准入，内部方法仍拒绝。
@@ -13,6 +14,7 @@ import { expect, it } from 'vitest'
 import { isPublicMethod } from '../packages/shared/src/ipc/public-methods'
 
 it('admits catalog result reads and shared skill changes alongside the source lifecycle', () => {
+  expect(isPublicMethod('testWebSearchServiceDraft')).toBe(true)
   for (const method of ['listPromptTemplates', 'savePromptTemplate', 'removePromptTemplate']) expect(isPublicMethod(method), method).toBe(true)
   for (const method of ['listCatalogResults', 'saveLocalSkill', 'removeLocalSkill', 'listDataSources', 'getDataSource', 'getDataSourceCredential', 'saveDataSource', 'testDataSource', 'removeDataSource', 'setDataSourceBindings', 'getWebSearchSettings', 'saveWebSearchService', 'saveWebSearchDefault', 'getWebSearchCredential', 'testWebSearchService', 'removeWebSearchService']) expect(isPublicMethod(method), method).toBe(true)
 })

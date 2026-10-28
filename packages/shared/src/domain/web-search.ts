@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 网页检索草稿测试只接收当前提供方与密钥，不包含保存身份或启停修改。
  * [INPUT]: Built-in retrieval providers and employee/global preferences.
  * [OUTPUT]: Independent search service settings and DeepSeek-only public preset; legacy provider metadata remains readable.
  * [POS]: Web-search capability contract, separate from business data-source bindings.
@@ -38,6 +39,8 @@ export type WebSearchServiceConfig = { id: string; revision: number; provider: S
 export type WebSearchSettings = { revision: number; default: WebSearchDefault; services: WebSearchServiceConfig[] }
 export const saveWebSearchServiceSchema = z.object({ id: z.string().uuid(), expectedRevision: z.number().int().nonnegative(), provider: searchProviderSchema, name: z.string().trim().min(1).max(100), enabled: z.boolean(), credential: z.string().max(32000).optional() }).strict()
 export type SaveWebSearchService = z.infer<typeof saveWebSearchServiceSchema>
+export const testWebSearchDraftSchema = z.object({ provider: z.literal('deepseek'), credential: z.string().trim().min(1, '请填写 API Key 后测试连接').max(32000) }).strict()
+export type TestWebSearchDraft = z.infer<typeof testWebSearchDraftSchema>
 export const saveWebSearchDefaultSchema = z.object({ expectedRevision: z.number().int().nonnegative(), default: webSearchDefaultSchema }).strict()
 export type SaveWebSearchDefault = z.infer<typeof saveWebSearchDefaultSchema>
 export function searchConnection(provider: SearchProviderId, name: string, enabled: boolean): DataSourceConfig {

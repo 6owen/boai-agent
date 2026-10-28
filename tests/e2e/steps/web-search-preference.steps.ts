@@ -1,35 +1,49 @@
 /*
+ * [OUTPUT]: 使用真实宿主写入v2插件配置后仍可选DeepSeek；弹窗有草稿测试入口，列表测试不误禁用；配置统一沿本人菜单入口。
  * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
  * [INPUT]: Actual settings/employee UI, synthetic keys and isolated persisted state.
  * [OUTPUT]: Browser/DeepSeek only, model-style dialog/menu, global default, employee choice, disable/restart and confirmed removal.
  * [POS]: Web-search capability BDD, shared Desktop supports pnpm dev; no remote provider calls.
  * [PROTOCOL]: Update Header and parent .folder.md on change.
  */
-import { expect } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 import { test as base } from '../support/test'
 import type { WebSearchServiceConfig } from '../../../packages/shared/src/domain/web-search'
 
 export const test = base.extend<{ search: { service?: WebSearchServiceConfig } }>({ search: async ({}, use) => use({}) })
 const { Given, When, Then } = createBdd(test)
-Given('从全局网页检索页面配置{string}', async ({ runtime, search }, provider: string) => {
-  await runtime.start()
-  const page = runtime.page
+async function openSearchSettings(page: Page) {
   await page.getByRole('button', { name: '我的菜单', exact: true }).click()
   await page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
   await page.getByRole('navigation', { name: '设置分类' }).getByRole('button', { name: '网页检索', exact: true }).click()
+}
+Given('从全局网页检索页面配置{string}', async ({ runtime, search }, provider: string) => {
+  await runtime.start()
+  const page = runtime.page
+  await page.evaluate(async () => {
+    const settings = await window.boai.request('getPluginSettings', undefined)
+    await window.boai.request('setPluginEnabled', { id: 'boai.preview.pdf', enabled: false, expectedRevision: settings.revision })
+  })
+  await openSearchSettings(page)
   await expect(page.getByRole('region', { name: '网页检索设置' })).toContainText('BOAI 浏览器')
   await expect(page.locator('[data-search-provider]')).toHaveCount(2)
   await expect(page.getByRole('region', { name: '网页检索设置' })).not.toContainText(/Jina|Tavily|Exa/)
   await page.locator(`[data-search-provider="${provider.toLowerCase()}"]`).getByRole('button', { name: '配置', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: `连接 ${provider}`, exact: true })
   await expect(dialog).toBeVisible()
+  await expect(dialog.getByRole('button', { name: '测试', exact: true })).toBeEnabled()
   await dialog.getByRole('textbox', { name: `${provider} API Key`, exact: true }).fill('ISOLATED_SEARCH_KEY')
+  await runtime.reviewNativeCheckpoint('网页检索配置与独立测试')
   await dialog.getByRole('button', { name: '保存连接', exact: true }).click()
   await expect(dialog).toHaveCount(0)
   search.service = (await page.evaluate(() => window.boai.request('getWebSearchSettings', undefined))).services[0]
   expect(search.service.provider).toBe(provider.toLowerCase())
   expect(search.service.hasCredential).toBe(true)
+  expect(search.service.pluginEnabled).toBe(true)
+  await page.getByRole('button', { name: `管理 ${provider}`, exact: true }).click()
+  await expect(page.getByRole('menuitem', { name: '测试连接', exact: true })).toBeEnabled()
+  await page.keyboard.press('Escape')
   await page.getByRole('combobox', { name: '默认检索方式' }).click()
   await expect(page.getByRole('option')).toHaveText(['BOAI 浏览器', provider])
   await page.getByRole('option', { name: provider, exact: true }).click()
@@ -57,7 +71,7 @@ When('在员工独立网页检索分区选择服务并保存', async ({ runtime,
     expect(saved.sourceIds ?? []).toEqual([]); expect(saved.modelId).toBe(before.modelId); expect(saved.executionBackend).toEqual(before.executionBackend)
   }
   await runtime.reviewNativeCheckpoint('员工独立网页检索 Card')
-  await page.getByRole('button', { name: '配置检索服务', exact: true }).click()
+  await openSearchSettings(page)
   await expect(page.getByRole('region', { name: '网页检索设置' })).toBeVisible()
   await page.getByRole('button', { name: `管理 ${name}`, exact: true }).click()
   await page.getByRole('menuitem', { name: '编辑配置', exact: true }).click()
@@ -79,7 +93,7 @@ Then('检索配置重启后保持且停用状态准确', async ({ runtime, searc
   await expect(page.getByRole('region', { name: '网页检索配置' })).toContainText(search.service!.name + '（已停用）')
   expect((await page.evaluate(() => window.boai.request('getWebSearchSettings', undefined))).services[0].enabled).toBe(false)
   expect(await page.evaluate(() => window.boai.request('listDataSources', undefined))).toEqual([])
-  await page.getByRole('button', { name: '配置检索服务', exact: true }).click()
+  await openSearchSettings(page)
   await page.getByRole('button', { name: `管理 ${search.service!.name}`, exact: true }).click()
   await page.getByRole('menuitem', { name: '移除', exact: true }).click()
   await expect(page.getByText(`移除“${search.service!.name}”？`, { exact: true })).toBeVisible()

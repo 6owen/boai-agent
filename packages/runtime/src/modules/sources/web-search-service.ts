@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 插件配置共用v1/v2解析；DeepSeek草稿测试有界、脱敏并复核插件状态，不写连接或密钥。
  * [INPUT]: ProductStore, vault, application plugin settings and explicit search settings.
  * [OUTPUT]: Independent search connections/default, atomic legacy migration and verified read-only calls.
  * [POS]: Search capability authority; reuses transport lifecycle without employee sourceIds.
@@ -9,13 +10,15 @@ import { dirname, join } from 'node:path'
 import { z } from 'zod'
 import type { DigitalAgent } from '@boai/shared/domain'
 import { webSearchProvider, type DataSource, type SourceCall, type SourceSummary } from '@boai/shared/domain/sources'
-import { saveWebSearchServiceSchema, saveWebSearchDefaultSchema, webSearchDefaultSchema, searchConnection, searchPluginId, searchProviders, type WebSearchServiceConfig, type WebSearchSettings, type WebSearchPreference } from '@boai/shared/domain/web-search'
+import { saveWebSearchServiceSchema, saveWebSearchDefaultSchema, webSearchDefaultSchema, testWebSearchDraftSchema, searchConnection, searchPluginId, searchProviders, type WebSearchServiceConfig, type WebSearchSettings, type WebSearchPreference } from '@boai/shared/domain/web-search'
+import { readPluginSettingsSchema } from '@boai/shared/plugins/types'
 import type { SecretStore } from '../../contracts'
 import type { ProductStore } from '../../adapters/storage/product-store'
 import { SourceService } from './source-service'
+import { openDeepSeekSearchSession } from './deepseek-search'
+import { redactSourceValue, SOURCE_TIMEOUT } from './source-provider'
 
 const collection = 'webSearchServices'
-const pluginState = z.object({ schemaVersion: z.literal(1), revision: z.number().int().nonnegative(), disabledIds: z.array(z.string()).max(256) })
 type Defaults = Pick<WebSearchSettings, 'revision' | 'default'>
 export class WebSearchService {
   readonly connections: SourceService
@@ -65,7 +68,7 @@ export class WebSearchService {
     try {
       const content = await readFile(join(dirname(this.dataPath), 'application-plugins.json'), 'utf8')
       if (content.length > 32768) throw new Error('插件配置过大')
-      return new Set(pluginState.parse(JSON.parse(content)).disabledIds)
+      return new Set(readPluginSettingsSchema.parse(JSON.parse(content)).disabledIds)
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') return new Set<string>()
       // Match PluginSettingsStore's fail-closed behavior without blocking unrelated employee chats.
@@ -138,5 +141,22 @@ export class WebSearchService {
     const result = await this.connections.test(input)
     await this.hooks.changed()
     return this.view(result, await this.disabledPlugins())
+  }
+  async testDraft(input: unknown, signal: AbortSignal): Promise<NonNullable<DataSource['test']>> {
+    const value = testWebSearchDraftSchema.parse(input)
+    const validate = async () => {
+      signal.throwIfAborted()
+      if ((await this.disabledPlugins()).has(searchPluginId(value.provider))) throw new Error('网页检索插件已停用，请先在插件管理中启用')
+      signal.throwIfAborted()
+    }
+    await validate()
+    const session = openDeepSeekSearchSession(value.credential)
+    try {
+      await session.call('deepseek_search', { query: 'DeepSeek', count: 1 }, AbortSignal.any([signal, AbortSignal.timeout(SOURCE_TIMEOUT)]))
+      await validate()
+      return { status: 'success', checkedAt: new Date().toISOString(), message: 'DeepSeek 搜索请求成功（已执行一次测试查询）' }
+    } catch (error) {
+      throw new Error(String(redactSourceValue(error instanceof Error ? error.message : '连接失败', value.credential)))
+    } finally { await session.close() }
   }
 }
