@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: testWebSearchServiceDraft显式测试当前DeepSeek密钥，不保存配置。
  * [OUTPUT]: 当前轮次纯文本补充固定run/turn，原消息保存接受、原生确认与未知投递。
  * [OUTPUT]: 定时任务列表偏好独立 CAS 读写及变更事件，不改执行配置。
  * [OUTPUT]: 语音设置页外自动保存及关闭前排空回执，独立voice脏来源。
@@ -148,6 +149,7 @@ export interface Methods {
   saveWebSearchDefault: { input: import('../domain/web-search').SaveWebSearchDefault; output: import('../domain/web-search').WebSearchSettings }
   getWebSearchCredential: { input: import('../domain/sources').DataSourceIdentity; output: string }
   testWebSearchService: { input: import('../domain/sources').DataSourceIdentity; output: import('../domain/web-search').WebSearchServiceConfig }
+  testWebSearchServiceDraft: { input: import('../domain/web-search').TestWebSearchDraft; output: NonNullable<import('../domain/sources').DataSource['test']> }
   removeWebSearchService: { input: import('../domain/sources').DataSourceIdentity; output: void }
 
   listGatewayImports: { input: undefined; output: import('../domain/gateway-import').GatewayImportView[] }

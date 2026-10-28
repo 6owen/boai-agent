@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 真实PluginSettingsStore写出的v2须保持DeepSeek可用；草稿测试不保存、只调用一次并保留停用/取消门禁。
  * [INPUT]: Independent search registry, legacy records, plugin settings and synthetic HTTP responses.
  * [OUTPUT]: Atomic credential-preserving migration, independent authorization/defaults and Jina wire/failure checks.
  * [POS]: Retrieval capability contracts; no external requests or model certification.
@@ -14,6 +15,8 @@ import { SourceService } from '../packages/runtime/src/modules/sources/source-se
 import { WebSearchService } from '../packages/runtime/src/modules/sources/web-search-service'
 import { searchConnection } from '../packages/shared/src/domain/web-search'
 import { openJinaSearchSession } from '../packages/runtime/src/modules/sources/jina-search'
+import { PluginSettingsStore } from '../apps/electron/src/main/plugin-settings'
+import { AppService } from '../packages/runtime/src/service'
 import type { DigitalAgent } from '../packages/shared/src/domain'
 
 const cleanups: (() => Promise<unknown>)[] = []
@@ -119,4 +122,106 @@ it('rejects results arriving after plugin disable and keeps unrelated capabiliti
   await writeFile(pluginFile, '{broken')
   expect(await service.summaries(agent)).toEqual([])
   expect((await service.settings()).services[0].pluginEnabled).toBe(false)
+})
+
+it('reads current host-written v2 settings so enabled DeepSeek can be tested and selected as default', async () => {
+  const f = await fixture(), service = f.create(); await service.init()
+  const source = await service.save({ id: randomUUID(), expectedRevision: 0, provider: 'deepseek', name: 'DeepSeek', enabled: true, credential: 'fixture' })
+  const plugins = new PluginSettingsStore(join(f.root, 'application-plugins.json'), () => {}); await plugins.init()
+  await plugins.update({ id: 'boai.preview.pdf', enabled: false, expectedRevision: 0 })
+  await plugins.update({ id: 'boai.voice-input', enabled: true, expectedRevision: 1 })
+  expect((await service.settings()).services[0]).toMatchObject({ enabled: true, pluginEnabled: true, hasCredential: true })
+  await expect(service.saveDefault({ expectedRevision: 0, default: { mode: 'service', serviceId: source.id } })).resolves.toMatchObject({ default: { mode: 'service', serviceId: source.id } })
+  const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ results: [] })))
+  await expect(service.test({ id: source.id, expectedRevision: source.revision })).resolves.toMatchObject({ test: { status: 'success' } })
+  expect(fetch).toHaveBeenCalledTimes(1)
+  await plugins.update({ id: 'boai.search.deepseek', enabled: false, expectedRevision: 2 })
+  expect((await service.settings()).services[0].pluginEnabled).toBe(false)
+  await expect(service.test({ id: source.id, expectedRevision: source.revision })).rejects.toThrow('停用')
+  await expect(service.saveDefault({ expectedRevision: 1, default: { mode: 'service', serviceId: source.id } })).rejects.toThrow('停用')
+  expect(fetch).toHaveBeenCalledTimes(1)
+  await plugins.update({ id: 'boai.search.deepseek', enabled: true, expectedRevision: 3 })
+  expect((await service.settings()).services[0].pluginEnabled).toBe(true)
+})
+
+it('tests the unsaved DeepSeek key once without changing the saved service, default or vault', async () => {
+  const f = await fixture(), service = f.create(); await service.init()
+  const source = await service.save({ id: randomUUID(), expectedRevision: 0, provider: 'deepseek', name: 'Original', enabled: false, credential: 'original-key' })
+  const before = await service.settings(), vault = [...f.vault]
+  const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ results: [] })))
+  await expect(service.testDraft({ provider: 'deepseek', credential: ' draft-key ' }, new AbortController().signal)).resolves.toMatchObject({ status: 'success' })
+  expect(fetch).toHaveBeenCalledTimes(1)
+  expect(fetch.mock.calls[0]).toMatchObject(['https://api.deepseek.com/v1/tools/search', { method: 'POST', headers: { Authorization: 'Bearer draft-key' } }])
+  expect(await service.settings()).toEqual(before)
+  expect([...f.vault]).toEqual(vault)
+  expect(await service.connections.getCredential({ id: source.id, expectedRevision: source.revision })).toBe('original-key')
+})
+
+it('rejects empty keys, disabled plugins, aborted drafts and failed provider calls without saving or retrying', async () => {
+  const f = await fixture(), service = f.create(); await service.init()
+  const fetch = vi.spyOn(globalThis, 'fetch'), input = { provider: 'deepseek', credential: 'draft-key' }, signal = new AbortController().signal
+  await expect(service.testDraft({ ...input, credential: ' ' }, signal)).rejects.toThrow('API Key')
+  await expect(service.testDraft(input, AbortSignal.abort(new Error('cancelled')))).rejects.toThrow('cancelled')
+  const plugins = new PluginSettingsStore(join(f.root, 'application-plugins.json'), () => {}); await plugins.init()
+  await plugins.update({ id: 'boai.search.deepseek', enabled: false, expectedRevision: 0 })
+  await expect(service.testDraft(input, signal)).rejects.toThrow('停用')
+  expect(fetch).not.toHaveBeenCalled()
+  await plugins.update({ id: 'boai.search.deepseek', enabled: true, expectedRevision: 1 })
+  fetch.mockResolvedValueOnce(new Response('draft-key', { status: 401 }))
+  await expect(service.testDraft(input, signal)).rejects.toThrow('HTTP 401')
+  fetch.mockRejectedValueOnce(new Error('transport draft-key'))
+  await expect(service.testDraft(input, signal)).rejects.toThrow('transport [redacted]')
+  expect(fetch).toHaveBeenCalledTimes(2)
+  expect((await service.settings()).services).toEqual([])
+  expect(f.vault.size).toBe(0)
+})
+
+it('rejects draft results after plugin disable or cancellation', async () => {
+  const f = await fixture(), service = f.create(); await service.init()
+  const plugins = new PluginSettingsStore(join(f.root, 'application-plugins.json'), () => {}); await plugins.init()
+  const input = { provider: 'deepseek', credential: 'draft-key' }, controller = new AbortController()
+  const fetch = vi.spyOn(globalThis, 'fetch').mockImplementationOnce(async () => {
+    await plugins.update({ id: 'boai.search.deepseek', enabled: false, expectedRevision: 0 })
+    return new Response(JSON.stringify({ results: [] }))
+  })
+  await expect(service.testDraft(input, controller.signal)).rejects.toThrow('停用')
+  await plugins.update({ id: 'boai.search.deepseek', enabled: true, expectedRevision: 1 })
+  fetch.mockImplementationOnce(async () => { controller.abort(new Error('cancelled')); return new Response(JSON.stringify({ results: [] })) })
+  await expect(service.testDraft(input, controller.signal)).rejects.toThrow('cancelled')
+  expect(fetch).toHaveBeenCalledTimes(2)
+})
+
+it.each([
+  { schemaVersion: 2, revision: 1, disabledIds: [] },
+  { schemaVersion: 3, revision: 1, disabledIds: [], enabledIds: [] },
+])('still refuses malformed or unknown plugin formats (%j)', async settings => {
+  const f = await fixture(), service = f.create(); await service.init()
+  await service.save({ id: randomUUID(), expectedRevision: 0, provider: 'deepseek', name: 'DeepSeek', enabled: true, credential: 'fixture' })
+  await writeFile(join(f.root, 'application-plugins.json'), JSON.stringify(settings))
+  expect((await service.settings()).services[0].pluginEnabled).toBe(false)
+})
+
+it('dispatches draft tests through AppService and cancels active requests on shutdown', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'boai-search-draft-')); cleanups.push(() => rm(root, { recursive: true, force: true }))
+  const keys = new Map<string, string>()
+  const service = new AppService({ dataPath: join(root, 'v2'), engine: { run: async () => {}, test: async () => 'OK' }, secrets: { get: async id => keys.get(id), set: async (id, key) => { keys.set(id, key) }, delete: async id => { keys.delete(id) } }, emit: () => {} })
+  cleanups.push(() => service.close()); await service.init()
+  const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(JSON.stringify({ results: [] })))
+  const input = { provider: 'deepseek', credential: 'draft-key' }
+  await expect(service.handle('testWebSearchServiceDraft', input)).resolves.toMatchObject({ status: 'success' })
+  expect(await service.handle('getWebSearchSettings', undefined)).toMatchObject({ services: [], default: { mode: 'browser' } })
+  expect(keys.size).toBe(0)
+  let started = false, aborted = false
+  fetch.mockImplementationOnce(async (_url, options) => new Promise((_resolve, reject) => {
+    started = true
+    const signal = options!.signal!
+    signal.addEventListener('abort', () => { aborted = true; reject(signal.reason) }, { once: true })
+  }))
+  const pending = service.handle('testWebSearchServiceDraft', input)
+  const rejected = expect(pending).rejects.toThrow()
+  await vi.waitFor(() => expect(started).toBe(true))
+  expect(await service.claimIdleShutdown(() => true)).toBe(false)
+  await service.close(); await rejected
+  expect(aborted).toBe(true)
+  expect(fetch).toHaveBeenCalledTimes(2)
 })

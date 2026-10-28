@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 网页检索草稿测试进入原公共IPC准入，不开放任意请求地址。
  * [OUTPUT]: 定时任务列表偏好独立 CAS 读写及变更事件，不改执行配置。
  * [OUTPUT]: 允许可信桌面语音设置保存排空回执。
  * [OUTPUT]: 公开getTaskResult只读方法，现有桌面准入保持。
@@ -186,6 +187,7 @@ const methods = {
   saveWebSearchDefault: true,
   getWebSearchCredential: true,
   testWebSearchService: true,
+  testWebSearchServiceDraft: true,
   removeWebSearchService: true,
   listDataSources: true,
   getPromptCollections: true,
