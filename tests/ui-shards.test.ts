@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 待审阅不冒充只读通过，最终仍保留两片独立原件门禁。
+ * [OUTPUT]: 2026-10-28保留旧截图工具及其回归，已退出自动PR工作流；现行Test/UI preview见第22组06。
  * [INPUT]: 实际26项UI合同、两片摘要和工作流。
  * [OUTPUT]: 拒绝漏片/重复/旧合同/跨提交/不同环境及失败结果，保持全26项。
  * [POS]: 并行UI基础设施回归，不启动Electron。
@@ -7,7 +7,6 @@
  */
 import { expect, it } from 'vitest'
 import { readFile } from 'node:fs/promises'
-import { parse } from 'yaml'
 // @ts-expect-error Shared Node protocol.
 import { uiShardPlan, selectUiShard } from '../scripts/ui-shards.mjs'
 // @ts-expect-error Shared Node gate.
@@ -57,12 +56,3 @@ it.each(['missing', 'duplicate', 'wrong-sha', 'dirty', 'missing-case', 'old-plan
   expect(() => validateUiShards(jobs, parts, ids, sha)).toThrow()
 })
 it.each(['failure', 'cancelled', 'skipped', undefined])('矩阵非成功%s保持阻断', result => expect(() => validateUiShards({ ui: { result } }, summaries(), ids, sha)).toThrow())
-it('实际工作流同时执行两片，Required下载两份原件且使用分片门禁', async () => {
-  const workflow = parse(await readFile(new URL('../.github/workflows/tests.yml', import.meta.url), 'utf8'))
-  expect(workflow.jobs.ui.strategy).toEqual({ 'fail-fast': false, matrix: { shard: [1, 2] } })
-  expect(workflow.jobs.ui.steps.find((step: { run?: string }) => step.run?.includes('ui-regression.mjs check')).run).toContain('--shard ${{ matrix.shard }}/2')
-  expect(workflow.jobs.required.needs).toEqual(['plan', 'capture', 'ui'])
-  expect(workflow.jobs.required.steps.filter((step: { uses?: string }) => step.uses?.startsWith('actions/download-artifact')).map((step: { with: { name: string } }) => step.with.name)).toEqual(['ui-1', 'ui-2'])
-  expect(await readFile(new URL('../scripts/ui-delivery-ci.mjs', import.meta.url), 'utf8')).toContain("['scripts/ci-result.mjs', 'gate-shards']")
-  expect(workflow.jobs.required.steps.some((step: { run?: string }) => step.run === 'node scripts/ui-delivery-ci.mjs finish')).toBe(true)
-})

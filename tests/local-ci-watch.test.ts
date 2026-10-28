@@ -1,6 +1,7 @@
 /*
  * [INPUT]: 同仓库/外部PR分页、真实Git/guard和明确假gh/失败CI协议夹具。
  * [OUTPUT]: 身份/去重/未知归属拒绝，Git向上发现/活跃账本阻止换版；隔离夹具清除云端调度守卫环境，实际CLI取消/死亡后不重放。
+ * [OUTPUT]: 隔离CLI复用真实workspace构建解析并提供登记版本协议输入，Node22工程测试进入实际进程守卫。
  * [POS]: 本地轮询边界测试；不访问GitHub、不运行GUI或注册服务。
  * [PROTOCOL]: 修改同步Header与tests/.folder.md。
  */
@@ -77,6 +78,11 @@ async function cliFixture() {
   await symlink(join(source, 'node_modules'), join(root, 'node_modules'))
   await writeFile(join(root, '.gitignore'), '.local/\nnode_modules/\ndist/\n')
   for (const name of ['local-ci-watch.mjs', 'local-ci-github.mjs']) await copyFile(join(source, 'scripts', name), join(root, 'scripts', name))
+  await writeFile(join(root, 'scripts/workspace-packages.mjs'), `export {buildWorkspace} from ${JSON.stringify(join(source, 'scripts/workspace-packages.mjs'))};\n`)
+  // Only the registered-version input is fixed; the CLI, SQLite and supervisor
+  // still execute on the test runner's real Node binary and operating system.
+  // This protocol fixture does not qualify an actual Node24 local CI/release.
+  await writeFile(join(root, 'scripts/registered-runtime.mjs'), `Object.defineProperty(process,'version',{value:'v24.16.0'});\n`)
   // Protocol-only fixture: the real SQLite primitive is retained, with a private
   // lock so this child CLI never competes with the real scheduled CI parent.
   await writeFile(join(root, 'scripts/resource-lock.mjs'), `import {acquireResourceLock as actual} from ${JSON.stringify(join(source, 'scripts/resource-lock.mjs'))};export const acquireResourceLock=()=>actual(${JSON.stringify(join(root, '.local/watch.sqlite'))});\n`)
@@ -89,8 +95,9 @@ async function cliFixture() {
   await writeFile(join(root, '.local/mode'), 'hang')
   await writeFile(join(bin, 'git'), `#!${process.execPath}\nconst{execFileSync}=require('node:child_process');const a=process.argv.slice(2);if(a[0]==='fetch')a[2]=${JSON.stringify(root)};process.stdout.write(execFileSync(${JSON.stringify(realGit)},a,{cwd:process.cwd(),encoding:'utf8'}));\n`, { mode: 0o700 })
   await writeFile(join(bin, 'gh'), `#!${process.execPath}\nconst{execFileSync}=require('node:child_process'),fs=require('node:fs');const p=process.argv[3];fs.appendFileSync(${JSON.stringify(join(root, '.local/gh-calls'))},p+'\\n');if(p.endsWith('git/ref/heads/main'))process.stdout.write(JSON.stringify({object:{sha:execFileSync(${JSON.stringify(realGit)},['rev-parse','HEAD'],{cwd:${JSON.stringify(root)},encoding:'utf8'}).trim()}}));else if(p.endsWith('pulls?state=open&base=main&per_page=100'))process.stdout.write('[[]]');else process.exit(93);\n`, { mode: 0o700 })
-  const start = () => {
-    const child = spawn(process.execPath, ['scripts/local-ci-watch.mjs', 'once'], { cwd: root, env: { ...process.env, GITHUB_ACTIONS: '', PATH: `${bin}:${process.env.PATH}` }, stdio: ['ignore', 'pipe', 'pipe'] })
+  const start = (registeredVersion = true) => {
+    const preload = registeredVersion ? ['--import', './scripts/registered-runtime.mjs'] : []
+    const child = spawn(process.execPath, [...preload, 'scripts/local-ci-watch.mjs', 'once'], { cwd: root, env: { ...process.env, GITHUB_ACTIONS: '', PATH: `${bin}:${process.env.PATH}` }, stdio: ['ignore', 'pipe', 'pipe'] })
     let stdout = '', stderr = ''; child.stdout.on('data', bytes => { stdout += bytes }); child.stderr.on('data', bytes => { stderr += bytes })
     const timer = setTimeout(() => child.kill('SIGKILL'), 15_000)
     const ended = once(child, 'close').then(([code]) => ({ code, stdout, stderr })).finally(() => clearTimeout(timer))
@@ -98,6 +105,22 @@ async function cliFixture() {
   }
   return { root, git, start, async runs() { return (await readFile(join(root, '.local/entered'), 'utf8')).trim().split('\n').length } }
 }
+it('不注入版本协议夹具时，真实CLI仍按实际运行时检查本机资格', async () => {
+  const f = await cliFixture()
+  try {
+    await writeFile(join(f.root, '.local/mode'), 'fail')
+    const result = await f.start(false).ended
+    expect(result.code, result.stderr).toBe(1)
+    if (process.platform !== 'darwin' || process.arch !== 'arm64' || process.version !== 'v24.16.0') {
+      expect(result.stderr).toContain('调度仅支持已登记的本机macOS arm64/Node24.16.0')
+      await expect(readFile(join(f.root, '.local/gh-calls'))).rejects.toMatchObject({ code: 'ENOENT' })
+      await expect(readFile(join(f.root, '.local/entered'))).rejects.toMatchObject({ code: 'ENOENT' })
+    } else {
+      expect(result.stdout).toContain('本地CI未成功：2')
+      expect(await f.runs()).toBe(1)
+    }
+  } finally { await rm(f.root, { recursive: true, force: true }) }
+}, 20_000)
 it.each(['SIGTERM', 'SIGKILL'] as const)('实际调度CLI %s中断后，同SHA下一轮零CI启动', async signal => {
   const f = await cliFixture(), first = f.start()
   try {

@@ -1,41 +1,45 @@
 ---
 name: boai-dev-workflow
-description: BOAI 开发、git cp、PR/CI 和合并的共享流程。独立 worktree 开发，自动官方 UI 采集，Agent 按需求审阅基准，最新提交只读复验后交付。
+description: BOAI 共享开发流程；沿 Magpie Test 和 DeepSeek UI preview 完成交付。
 ---
 <!--
-[INPUT]: 用户任务、现有授权、当前worktree和官方PR运行。
-[OUTPUT]: 2026-10-28用可接续ui:deliver落地采集/审阅/基准/复验；取代强制用户本地dev确认的前置条件。
-[POS]: Codex/Claude/Pi共用开发技能，不属于产品员工运行时。
-[PROTOCOL]: 修改同步AGENTS.md、目录地图和第22组06当前合同。
+[INPUT]: 当前用户任务、独立worktree及Magpie Test/UI preview源码。
+[OUTPUT]: 工程测试与自动界面预览；撤销固定截图基准更新作为PR前置。
+[POS]: Codex、Claude、Pi共用开发技能。
+[PROTOCOL]: 变化同步Header、所属.folder.md与第22组06现行合同。
 -->
-# BOAI 开发与 UI 交付
+# BOAI 开发与交付
 
-## 开始与修改
+## 开始与范围
 
-- 开始和交付前读取当前用户指令、AGENTS.md、本 Skill；fetch main 并核对 `git show origin/main:.agents/skills/boai-dev-workflow/SKILL.md`，同时尊重本分支流程修订和最新用户指令。2026-10-28规则替代此前“用户先在本地确认，才能采集/更新”的要求。
-- 检查状态、分支、远端、worktree、对应 PR。独立功能 worktree 开发，保留他人文件和进程，main 只同步实际已合并提交。只暂存本次明确文件，禁止 `git add .`。
-- 根据需求和 diff 判断已有 UI 场景受影响范围；新页/交互补覆盖。保持完整合同、原断言、阈值、mask、零重试；不得换图掩盖控件缺失、布局断言失败或功能错误。
-- 本地执行与改动相关的模块/类型/lint 检查；GitHub 运行 UI。不要在本地启动 UI 自动测试或恢复已暂停的本机 CI。
-- 各 worktree 使用独立 node_modules，复用 pnpm store；首次 `pnpm install --frozen-lockfile --prefer-offline`，禁止跨 worktree 软链接整个依赖树。
-- `pnpm dev` 是可选预览，不是交付前置：需要时在功能 worktree 用 `BOAI_DATA_DIR="$PWD/.local/dev-profile" BOAI_DEV_PORT=0 pnpm dev`。保护其他进程和预览数据。
+- 每次开始和交付前读取当前用户指令、AGENTS.md、本技能，并fetch/read origin/main的最新技能；当前用户指令优先。
+- 核对分支、status、remote和worktrees，使用对应独立功能worktree。只修改、暂存本任务文件；保留其他任务改动和进程。main只同步实际已合并提交。
 
-## 实际交付入口
+## Worktree 依赖与预览
 
-源码提交/推送 → Draft PR 自动完整采集 → Agent 审阅官方差异 → main 受信流程提交受影响基准 → 当前 PR 最新提交只读复验 → Ready/正常自动合并。
+- main 和所有功能 worktree 使用仓库锁定的 pnpm 版本及同一 pnpm store。各 worktree 保留独立 node_modules/虚拟依赖树，由 pnpm 通过硬链接或写时复制共享包内容；禁止把整个 node_modules 或虚拟依赖树软链接到 main/另一个 worktree。
+- 需要运行的功能 worktree 首次安装：`pnpm install --frozen-lockfile --prefer-offline`。包已缓存时复用，仅补缺失内容；依赖输入未变化且安装有效时不重复安装。纯文档任务不必安装。新增依赖正常更新清单/锁文件。
+- 发现旧的跨 worktree node_modules 软链接时，先检查本任务进程，再只解除本 worktree 的链接并正常安装；不得删除链接目标，也不得改其他任务的依赖。
+- 用户要求看效果时，直接在功能 worktree 启动预览，不必先合 main：`BOAI_DATA_DIR="$PWD/.local/dev-profile" BOAI_DEV_PORT=0 pnpm dev`。数据目录独立于个人应用，端口0由系统分配；报告 worktree、分支/提交和实际启动结果。不要关闭或接管 main 的运行进程。
+- `pnpm dev` 是按需预览，不是固定日常运行方式。预览启动会编译开发宿主，但不等于跑完整构建、GUI测试或业务验收。不得借预览自行启动本机自动CI、全量测试或模型调用。
+- 清理时保留可能含用户录入的预览数据，不能仅因位于.local就视为可删除缓存。
 
-1. 按授权提交推送。首次 `pnpm ui:deliver start --title "..." --body-file /绝对路径/pr.md` 创建本分支 Draft；已有 PR 用 `pnpm ui:deliver`。入口不会替你暂存或推送。用户禁止合并时传 `--no-auto-merge`，该选择写入本 worktree 接续记录。
-2. 普通 PR 源码 push 自动采集全部登记场景，不需先通过旧截图比较。所有行为/布局断言仍执行；有执行失败则正常失败，先修功能/测试真实错误。纯视觉变化使 `Required checks` 保持 **in_progress（待 Agent 审阅）**，不授予合并资格，也不占用 runner 等用户。
-3. Agent 在采集与汇总任务完成后接续 `pnpm ui:deliver`。它只选择当前分支、当前 head 的 PR 运行；按当前attempt核验采集/汇总成功后下载并核验官方 artifact（整体run可能因Required待审阅仍为in_progress，不能等它先变绿），输出每个变化场景及本地 `review/` 的 old/new/diff 路径。查看这些图片，逐项对应用户需求；默认由 Agent 判断预期变化，用户不必再操作 dev 或理解 case。出现需求不明确、预期外设计变化或整套环境迁移时，再具体说明疑点并询问用户；等待期间可以继续独立工作。
-4. 审阅全部实际变化后执行 `pnpm ui:deliver review --cases id1,id2 --reason "逐项需求与视觉审阅结论"`。cases 必须精确覆盖本批实际变化，不能批量接受无关场景。入口派发 main 上的 `ui-baseline-update.yml`；受信 main 代码重新下载官方材料并校验当前 SHA、环境、构建、原件和选择，只提交所选 PNG/manifest 到原功能分支。普通检查从不写基准。
-5. 更新结束继续 `pnpm ui:deliver`：仅将已登记的基准提交快进到干净 worktree；核对并批准机器人提交所触发的当前 PR `action_required` 运行。不能单独 dispatch 一次 UI 检查来替代该 PR 门禁。源码变化、run attempt 变化会使旧审阅失效，重新采集/审阅；不覆盖并发源码提交。
-6. 基准提交直接进入两片完整只读复验；无视觉变化的候选也在同一工作流自动进入只读复验。`Required checks` 只有原 `ci-result gate-shards` 核对当前 merge SHA、全部场景与原件成功才绿。候选成功、更新成功和调度 job 的绿灯均不等于合并资格。
-7. Agent 接续到当前只读复验成功，再运行入口设置 Ready/普通自动合并并读回一次回执。默认交付不止于“提交了/旧图红了/待用户手动测试”。若用户明确只要提交或不跟踪 CI，遵守边界并准确报告当前阶段、下一条接续命令，不能宣称完成 UI 交付。
+## Test 与 UI preview
 
-运行中按阶段等待并更新用户，不盲目 rerun；失败保留原件，诊断后修复新提交。`pnpm ui:deliver status` 只看状态。接续记录在 `.local/ui-delivery/state.json`，含精确 head/run/attempt/审阅范围；网络提交回执未知时保留记录、查既有更新运行，不重复派发。更新失败先核实没有写入，归档旧记录后才可显式重新审阅。证据过期需要新官方候选，不用本地图片替代。
+开发完成 → 提交功能分支/PR → Test 与 UI preview 自动运行 → 查看实际检查和PR预览 → 按本次授权交付。
 
-## 合并、清理与生效
+- `Test` 沿 Magpie 的 PR/main/manual 触发与并发取消方式，用BOAI现有 typecheck、lint、build、Vitest 命令；CLI集成测试依赖dist/cli，因此先构建再测试。现阶段在已支持的macOS执行；Required checks只汇总工程测试结果，保持原分支保护名称。
+- `UI preview` 沿上游 detect → record → publish：UI文件变更或ui-preview标签触发；DeepSeek读取diff及真实页面，规划操作、截图，交互时录屏，在PR描述固定区域更新预览。已有DeepSeek配置通过ui-preview environment提供。
+- 执行PR代码的record任务没有仓库写权限；有写权限的publish任务不运行PR代码。预览是运行画面与规划说明，不冒充工程测试通过。
+- 不要求用户先在本地确认效果；不运行基准candidate/accept/update，不以新旧PNG不同阻止正常UI开发。旧本地UI回归工具、测试源码及历史结果保留为按需工具，不属于PR门禁。
+- 没有UI变化时，preview检测后跳过录制；Test正常执行。不为通过CI修改产品UI、删除产品行为测试或伪造模型调用。
+- 用户明确要求执行试验时跟进本次实际结果；失败先定位再有针对性修复，不盲目重跑。
 
-- 不使用 `--admin`、force push 或放宽保护。自动合并配置不等于实际合并；明确要求等待合并时核对 `state/mergedAt/mergeCommit`。
-- main 干净且确认实际合并后才 `git pull --ff-only`，不复制功能文件回 main。
-- 只清理已合入 main、无未提交/未合入内容、无活动任务/进程、无需保留数据的 worktree；先 `git worktree remove`，再删本地分支。不为回收常驻等待，不动其他任务。
-- 本流程代码合入 main 后，新的分支/会话读取当前 Skill 生效。已有旧分支须同步新流程；旧失败记录保持，不自动重跑或合并旧 PR。上线验证记录在第22组06 §21，未实际验证的环节必须明确说明。
+## PR、合并与回收
+
+- 根据本次授权创建或更新同一PR。普通授权交付沿既有默认自动合并；用户明确只修改/测试或不合并时，不设置自动合并。
+- 允许合并时核对仓库/main与当前head，使用 `gh pr merge --auto --merge --match-head-commit <SHA>`，读回一次回执。只有明确要求等到通过或处理失败才持续跟进。
+- 不使用admin、强推或放宽分支保护。确认实际合并后才在干净main同步。
+- 仅回收已合并、干净、没有活动进程/任务和需保留数据的worktree。先移除worktree，再删除本地分支；不为回收常驻等待。
+
+现行上游与必要适配见 `.github/ui-preview/README.md`。Tag、Release、安装包发布不属于日常交付。

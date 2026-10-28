@@ -2,7 +2,7 @@
  * [OUTPUT]: 实际AppService记忆装配保持用户原文与保存时间/内容主体边界，不虚构事件时间。
  * [INPUT]: 真实 AppService/SQLite/工作区和无工具可控模型，独立持久目录。
  * [OUTPUT]: 双向即时接续、员工隔离/范围收紧、忘记发布门禁/清理冲突、纠正/临时失效与重启/备份回归；真实运行只随实际使用来源清理失效，无关清空继续交付且派生回复保持可用。
- * [OUTPUT]: 真实AppService持有重新汇报时新增派生回复的相关/无关清理门禁、持久获知来源与后续传播；可控时钟超过30秒仍沿原Work绝对期限，不续期、不增加额度或重放执行。
+ * [OUTPUT]: 真实AppService持有重新汇报时新增派生回复的相关/无关清理门禁、持久获知来源与后续传播；可控时钟超过30秒仍沿用户显式Work绝对期限，不续期、不增加额度或重放执行。
  * [POS]: T2 宿主验收，读取实际 EngineContext 和文件，普通聊天不产生 Work。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -14,6 +14,7 @@ import { AppService } from '../packages/runtime/src/service'
 import type { AgentEngine, EngineContext } from '../packages/runtime/src/contracts'
 import type { Connection, Conversation, ConversationDetail, DigitalAgent, MemoryCandidate, MemoryView, Snapshot, ParticipationDecision } from '../packages/shared/src/domain'
 import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import type { WorkRepository } from '../packages/runtime/src/modules/collaboration/work-repository'
 const cleanup: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const fn of cleanup.splice(0).reverse()) await fn() })
 class Model implements AgentEngine {
@@ -110,8 +111,17 @@ test.each([false, true])('UM report actual new input source cleared=%s fences la
     expect((await store.load<{ id: string; invalidated?: boolean }>('snapshots')).find(value => value.id === execution!.runId)?.invalidated).toBe(true)
   }
 })
-test.each([false, true])('UM report uses original absolute work deadline exceeded=%s rather than a separate thirty-second timeout', async exceeded => {
+test.each([false, true])('UM report uses an explicit original absolute work deadline exceeded=%s rather than a separate thirty-second timeout', async exceeded => {
   const { service, engine, direct } = await setup()
+  const { works, store } = service as unknown as { works: WorkRepository; store: ProductStore }
+  const claim = works.claim.bind(works)
+  const claimWithDeadline = vi.spyOn(works, 'claim').mockImplementation(async input => {
+    const work = await claim(input)
+    const budget = (await works.view(input.conversationId)).workBudgets.find(budget => budget.id === work.budgetId)!
+    await store.write([{ collection: 'workBudgets', id: budget.id, value: { ...budget, deadlineAt: new Date(Date.now() + 60_000).toISOString(), limitAuthority: { kind: 'user', requestId: 'deadline-original', messageId: input.sourceMessageId, version: 1 } } }])
+    return work
+  })
+  cleanup.push(async () => claimWithDeadline.mockRestore())
   let finishExecution!: () => void, finishReport!: () => void, execution: EngineContext | undefined, report: EngineContext | undefined
   const heldExecution = new Promise<void>(resolve => { finishExecution = resolve })
   const heldReport = new Promise<void>(resolve => { finishReport = resolve })
