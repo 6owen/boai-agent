@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: v3模型选择沿CAS保存；目录轮询不覆盖草稿，旧目录回执不能回退新安装状态。
  * [INPUT]: 真实语音设置 controller 与可控制延迟、失败、版本冲突的宿主端口。
  * [OUTPUT]: 编辑提交时机、串行回执、新草稿保护、错误恢复及关闭前排空回归。
  * [POS]: 语音设置持久化测试，不访问麦克风或下载模型。
@@ -14,7 +15,7 @@ const controllers: VoiceSettingsController[] = []
 const deferred = () => { let resolve!: () => void; const promise = new Promise<void>(done => { resolve = done }); return { promise, resolve } }
 async function fixture() {
   const controller = new VoiceSettingsController(); controllers.push(controller)
-  let snapshot: VoiceSnapshot = { settings: defaultVoiceSettings(), localReady: false, supported: true, onlineKeyPresent: false, modelBytes: 100 }
+  let snapshot: VoiceSnapshot = { settings: defaultVoiceSettings(), models: [], localReady: false, supported: true, onlineKeyPresent: false, modelBytes: 100 }
   const listeners = new Set<(event: AppEvent) => void>()
   const control: { gate?: Promise<void>; failure?: string; readFailure?: boolean } = {}
   const voice = {
@@ -23,7 +24,7 @@ async function fixture() {
       await control.gate
       if (control.failure) throw new Error(control.failure)
       if (input.expectedRevision !== snapshot.settings.revision) throw new Error('语音设置已变化，请重新读取')
-      snapshot = { ...snapshot, settings: { ...input.settings, schemaVersion: 2, revision: input.expectedRevision + 1 } }
+      snapshot = { ...snapshot, settings: { ...input.settings, schemaVersion: 3, revision: input.expectedRevision + 1 } }
       return structuredClone(snapshot)
     }),
   }
@@ -114,4 +115,38 @@ test('放弃也等待正在写入，读取失败不能清除草稿；再次读�
   expect(await discarding).toBe(false); expect(controller.hasWork()).toBe(true)
   control.readFailure = false
   expect(await controller.discard()).toBe(true); expect(controller.hasWork()).toBe(false)
+})
+
+test('当前模型选择保存真实模型身份，重载后仍使用该模型', async () => {
+  const { controller, voice, read } = await fixture()
+  controller.edit(draft => ({ ...draft, settings: { ...draft.settings, localModelId: 'whisper-tiny', language: 'de' } }), true)
+  expect(await controller.flush()).toBe(true)
+  expect(voice.configure).toHaveBeenCalledWith(expect.objectContaining({ settings: expect.objectContaining({ localModelId: 'whisper-tiny', language: 'de' }) }))
+  expect(read().settings.localModelId).toBe('whisper-tiny')
+  await controller.load()
+  expect(controller.store.getState().snapshot?.settings.localModelId).toBe('whisper-tiny')
+})
+
+test('下载目录刷新保留尚未保存的模型选择和术语，不提交或覆盖设置', async () => {
+  const { controller, voice, read } = await fixture()
+  controller.edit(draft => ({ ...draft, settings: { ...draft.settings, localModelId: 'whisper-base' }, terms: '继续编辑的术语' }))
+  read().models = [{ id: 'whisper-tiny', name: 'Whisper Tiny', languages: ['auto', 'en'], licenseUrl: 'https://example.test/license', bytes: 42, ready: true }]
+  await controller.refreshModels()
+  expect(controller.store.getState().models).toEqual(read().models)
+  expect(controller.store.getState().draft?.settings.localModelId).toBe('whisper-base')
+  expect(controller.store.getState().draft?.terms).toBe('继续编辑的术语')
+  expect(controller.store.getState().snapshot?.settings.localModelId).toBe('sensevoice-small')
+  expect(voice.configure).not.toHaveBeenCalled()
+})
+
+test('迟到的目录轮询不能把已完成下载恢复成旧下载进度', async () => {
+  const { controller, voice, read } = await fixture(), gate = deferred()
+  const model = { id: 'whisper-tiny' as const, name: 'Whisper Tiny', languages: ['auto' as const], licenseUrl: 'https://example.test/license', bytes: 42, ready: false, download: { received: 3, total: 42 } }
+  const previous: VoiceSnapshot = { ...structuredClone(read()), models: [model] }
+  voice.snapshot.mockImplementationOnce(async () => { await gate.promise; return previous })
+  const polling = controller.refreshModels()
+  read().models = [{ ...model, ready: true, download: undefined }]
+  await controller.refreshModels()
+  gate.resolve(); await polling
+  expect(controller.store.getState().models?.[0]).toMatchObject({ ready: true, download: undefined })
 })

@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-28用户授权语音多模型Card/Select与适配器实现；首批SenseVoiceSmall及Whisper Tiny/Base，实际验证归19组12第7节。
 [OUTPUT]: 2026-10-28用户选择先修工程测试再正常合并；修复判断承接的空期限/隐式五分钟缺陷并校准旧夹具，实际结果及切换状态归22组03。
 [OUTPUT]: 2026-10-28用户要求立即切换；旧Actions已停用，新Test独立test.yml，合并/实际生效状态归22组03。
 [OUTPUT]: 2026-10-28按用户要求回到Magpie Test与DeepSeek UI preview；旧PNG基准晋升退出PR流程，实际验证归22组03。

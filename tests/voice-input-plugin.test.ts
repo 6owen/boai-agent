@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 2026-10-27 新增v1无写入迁移、语言/规则下发和设备授权互斥；原草稿与单租约回归保持。
+ * [OUTPUT]: 2026-10-28 v1/v2无写入迁移到v3；保留语言/规则、设备授权、草稿与单租约回归。
  * [INPUT]: Explicit plugin settings, controlled host lifecycle, helper exit and voice event streams.
  * [OUTPUT]: Opt-in migration, endpoint credentials, capture ownership, once-only drafts and late-result regressions.
  * [POS]: Controlled plugin contracts; no microphone, real ASR or online service calls.
@@ -143,12 +143,12 @@ it('does not resurrect failed-session text when the user cancels while cleanup i
   expect(f.controller.state.pending).toBeUndefined(); expect(f.text()).toBe('原草稿')
 })
 
-it('projects legacy voice settings without writing, then persists explicit v2 fields and preserves credentials', async () => {
+it('projects legacy voice settings without writing, then persists explicit v3 fields and preserves credentials', async () => {
   const root = await directory(), path = join(root, 'voice.json'), vault = secrets()
   const legacy = { schemaVersion: 1, revision: 8, mode: 'local', online: { ...defaultVoiceSettings().online, credentialRef: 'existing' }, refinement: { enabled: false, connectionId: 'text-connection', model: 'model' }, terms: [{ word: 'BOAI', aliases: ['波艾'] }] }
   const bytes = JSON.stringify(legacy); await writeFile(path, bytes); await vault.set('existing', 'kept-secret')
   const store = new VoiceSettingsStore(path, vault); await store.init()
-  expect(store.readOnly).toBe(false); expect(store.value).toMatchObject({ schemaVersion: 2, revision: 8, language: 'auto', microphoneDeviceId: '', refinement: { instructions: '' } })
+  expect(store.readOnly).toBe(false); expect(store.value).toMatchObject({ schemaVersion: 3, revision: 8, language: 'auto', microphoneDeviceId: '', refinement: { instructions: '' } })
   expect(await readFile(path, 'utf8')).toBe(bytes)
   const { revision: _, schemaVersion: _version, ...settings } = store.value
   settings.online = { endpoint: settings.online.endpoint, model: settings.online.model }
@@ -156,7 +156,7 @@ it('projects legacy voice settings without writing, then persists explicit v2 fi
   expect(await readFile(path, 'utf8')).toBe(bytes)
   await store.update({ expectedRevision: 8, settings: { ...settings, language: 'zh', microphoneDeviceId: 'usb-device', refinement: { ...settings.refinement, instructions: '保留语气词' } } })
   const reopened = new VoiceSettingsStore(path, vault); await reopened.init()
-  expect(reopened.value).toMatchObject({ schemaVersion: 2, revision: 9, language: 'zh', microphoneDeviceId: 'usb-device', online: { credentialRef: 'existing' }, refinement: { instructions: '保留语气词' }, terms: legacy.terms })
+  expect(reopened.value).toMatchObject({ schemaVersion: 3, revision: 9, language: 'zh', microphoneDeviceId: 'usb-device', online: { credentialRef: 'existing' }, refinement: { instructions: '保留语气词' }, terms: legacy.terms })
   expect(await vault.get('existing')).toBe('kept-secret')
   const future = JSON.stringify({ ...reopened.value, schemaVersion: 99 }); await writeFile(path, future)
   const unknown = new VoiceSettingsStore(path, vault); await unknown.init(); expect(unknown.readOnly).toBe(true)
