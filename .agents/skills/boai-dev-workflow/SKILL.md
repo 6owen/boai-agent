@@ -6,6 +6,7 @@ description: BOAI 共享开发流程；沿 Magpie Test 和 DeepSeek UI preview �
 [INPUT]: 当前用户任务、独立worktree及Magpie Test/UI preview源码。
 [OUTPUT]: 工程测试与自动界面预览；撤销固定截图基准更新作为PR前置。
 [OUTPUT]: 任务worktree完成即回收；实际合并或最终提交archive存档二选一，编排会话负责子worktree。
+[OUTPUT]: 面向使用者的UI_TEST_CI.md与本技能及实际workflow保持一致。
 [POS]: Codex、Claude、Pi共用开发技能。
 [PROTOCOL]: 变化同步Header、所属.folder.md与第22组06现行合同。
 -->
@@ -28,6 +29,8 @@ description: BOAI 共享开发流程；沿 Magpie Test 和 DeepSeek UI preview �
 ## Test 与 UI preview
 
 开发完成 → 提交功能分支/PR → Test 与 UI preview 自动运行 → 查看实际检查和PR预览 → 按本次授权交付。
+
+面向使用者的流程与常见状态说明见 [UI_TEST_CI.md](../../../UI_TEST_CI.md)；执行依据保持本技能、AGENTS.md及实际workflow，变化时同步该说明。
 
 - `Test` 沿 Magpie 的 PR/main/manual 触发与并发取消方式，用BOAI现有 typecheck、lint、build、Vitest 命令；CLI集成测试依赖dist/cli，因此先构建再测试。现阶段在已支持的macOS执行；Required checks只汇总工程测试结果，保持原分支保护名称。
 - `UI preview` 沿上游 detect → record → publish：UI文件变更或ui-preview标签触发；DeepSeek读取diff及真实页面，规划操作、截图，交互时录屏，在PR描述固定区域更新预览。已有DeepSeek配置通过ui-preview environment提供。

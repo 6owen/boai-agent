@@ -2,10 +2,13 @@
 [INPUT]: 2026-10-28用户要求完整迁用Magpie Test与UI preview。
 [OUTPUT]: 工程Test与DeepSeek自动预览；固定PNG基准及候选晋升退出PR流程。
 [OUTPUT]: worktree交付后按AGENTS合并或归档再回收，不以自动合并已启用冒称实际合并。
+[OUTPUT]: 根目录UI_TEST_CI.md提供现行流程的日常使用说明。
 [POS]: 第22组现行CI合同；旧流程与证据归10，实际运行归03。
 [PROTOCOL]: 变化同步Header、.folder.md、开发skill及Actions。
 -->
 # Test 与 UI preview
+
+日常使用、常见状态与配置入口见 [UI_TEST_CI.md](../../../UI_TEST_CI.md)，与开发skill和本合同同步维护。
 
 2026-10-28用户明确要求照搬Magpie两条工作流，只作BOAI技术栈适配。本文替代旧截图基准更新、用户本地效果确认和独立晋升门禁；历史保留在[10](./10-旧截图基准流程历史.md)。
 
