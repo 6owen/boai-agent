@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Codex当前轮次补充沿原消息事务/来源投影受理，原生RPC在服务串行区之外单次投递。
  * [OUTPUT]: 定时任务列表偏好独立 CAS 读写及变更事件，不改执行配置。
  * [OUTPUT]: 2026-10-27 进度核验绑定宿主原运行阶段，决策不再误用执行工具门禁；原停止、版本与来源校验保持。
  * [OUTPUT]: 2026-10-27 默认持续执行、来源校验及工作现场/复核接线；沿原权限和账本。
@@ -255,6 +256,7 @@ import { ConversationHistory } from './modules/conversations/history'
 import { RequestError } from '@agentclientprotocol/sdk'
 import { publishArtifact, restrictedPath } from './modules/workspaces/file-access'
 import { createHash } from 'node:crypto'
+import { NativeSteering } from './modules/conversations/native-steering'
 import { recordNativeInput } from './adapters/native-sessions'
 import { createClient } from '@libsql/client'
 import { pathToFileURL } from 'node:url'
@@ -405,7 +407,7 @@ const artifactAdoptionSchema = z.object({ artifactId: id, contentHash: artifactH
 const artifactAcceptanceSchema = z.object({ artifactId: id, logicalArtifactId: id, contentVersion: z.number().int().positive(), contentHash: artifactHash, expectedAcceptanceRevision: z.number().int().nonnegative(), requestId: id }).strict()
 const materialReferenceSchema = z.object({ id, conversationId: id, revision: z.number().int().positive(), contentHash: artifactHash, parseVersion: z.enum(['text-v1', 'binary-v1']) }).strict()
 const channelReferenceSchema = z.object({ conversationId: id, messageId: id, contentHash: artifactHash }).strict()
-const sendSchema = z.object({ expectedExecutionPermission: executionPermissionSchema.optional(), materialUploads: submittedMaterialsSchema.optional(), apiModel: apiModelOverrideSchema.optional(), workingDirectory: directoryGrantSchema.shape.path.optional(), composerReferences: composerReferencesSchema.optional(), channelReference: channelReferenceSchema.optional(), materialReference: materialReferenceSchema.optional(), conversationId: id, content: z.string().trim().max(100000), browserReference:z.object({instanceId:id,pageVersion:z.string().min(1).max(200)}).strict().optional(), artifactRevision: artifactRevisionSourceSchema.optional(), materialSelections: z.array(z.object({ id, revision: z.number().int().positive() }).strict()).max(MATERIAL_LIMITS.perMessage).optional(), mentionIds: ids, requestId: id, replyToMessageId: id.optional(), stopPrevious: z.boolean().optional() }).strict().refine(input => !!input.content || !!input.materialSelections?.length || !!input.materialUploads?.length, '请输入消息或添加就绪材料').refine(input => !(input.materialSelections?.length && input.materialUploads?.length), '材料选择和上传来源不能同时提供')
+const sendSchema = z.object({ steer: z.object({ runId: id, turnId: id }).strict().optional(), expectedExecutionPermission: executionPermissionSchema.optional(), materialUploads: submittedMaterialsSchema.optional(), apiModel: apiModelOverrideSchema.optional(), workingDirectory: directoryGrantSchema.shape.path.optional(), composerReferences: composerReferencesSchema.optional(), channelReference: channelReferenceSchema.optional(), materialReference: materialReferenceSchema.optional(), conversationId: id, content: z.string().trim().max(100000), browserReference:z.object({instanceId:id,pageVersion:z.string().min(1).max(200)}).strict().optional(), artifactRevision: artifactRevisionSourceSchema.optional(), materialSelections: z.array(z.object({ id, revision: z.number().int().positive() }).strict()).max(MATERIAL_LIMITS.perMessage).optional(), mentionIds: ids, requestId: id, replyToMessageId: id.optional(), stopPrevious: z.boolean().optional() }).strict().refine(input => !!input.content || !!input.materialSelections?.length || !!input.materialUploads?.length, '请输入消息或添加就绪材料').refine(input => !(input.materialSelections?.length && input.materialUploads?.length), '材料选择和上传来源不能同时提供')
 type MessageReceipt = { id: string; fingerprint: string; conversationId: string; messageId?: string; cleared?: true }
 const lookupSchema = z.object({ id }).strict()
 const memoryQuerySchema = z.object({ agentId: id, scope: z.enum(['profile', 'conversation', 'employee']), conversationId: id.optional(), kind: z.enum(['long_term', 'experience', 'temporary']).optional(), status: z.enum(['active', 'history', 'all']).optional(), sourceConversationId: id.optional(), before: z.object({ createdAt: z.string().max(100), id }).strict().optional(), limit: z.number().int().min(1).max(40).optional(), search: z.string().max(200).optional() }).strict()
@@ -481,6 +483,7 @@ export class AppService {
   private connections = new Map<string, Connection>()
   private readonly gatewayCatalogs: GatewayCatalogStore
   private conversations = new Map<string, Conversation>()
+  private readonly steering: NativeSteering
   private readonly executions: ExecutionRepository
   private readonly channels: EmployeeChannels
   private resources = new Map<string, Resource>()
@@ -587,6 +590,7 @@ export class AppService {
       install: agents => this.employees.installBatch(agents),
       changed: (id, agents) => this.dataSourcesChanged(id, agents),
     })
+    this.steering = new NativeSteering(this.store, message => { this.messages.set(message.id, message); this.emit({ type: 'message', message }); this.changed(message.conversationId) })
     this.executions = new ExecutionRepository(this.store, id => this.changed(id))
     this.materials = new MaterialRepository(this.store, this.dataPath)
     this.materialUploads = new MaterialUploads(join(this.dataPath, '.cli-material-sources'), error => this.emit({ type: 'runtime-error', error: this.errorMessage(error) }))
@@ -832,6 +836,7 @@ export class AppService {
     await this.webSearch.init()
     await this.dataSources.init()
     await this.executions.recover()
+    await this.steering.recover()
     await this.codexEngine.recover(this.dataPath)
     await this.claudeEngine.recover(this.dataPath)
     await this.preserveLegacyRuntimeFacts()
@@ -962,6 +967,15 @@ export class AppService {
     if (!this.initialized || this.closing) fail('运行服务尚未就绪或正在退出')
     if (this.backingUp) fail('正在生成备份，请稍后再试')
     await this.applicationAuthority.getStore()?.validate()
+    if (method === 'sendMessage' && (input as { steer?: unknown } | null)?.steer) {
+      const value = sendSchema.parse(input)
+      const message = await this.serialize(async () => {
+        if (this.closing || this.backingUp) fail('服务正在退出或备份')
+        await this.applicationAuthority.getStore()?.validate()
+        return this.sendMessage(value)
+      })
+      return this.steering.deliver(message)
+    }
     if (isApplicationHostMethod(method)) {
       if (!this.options.applicationHost?.available) throw new Error('当前服务没有连接桌面设置宿主')
       return this.options.applicationHost.request(method, input as never)
@@ -2953,6 +2967,10 @@ export class AppService {
     const existing = this.requests.get(input.requestId)
     if (existing) { if (existing.fingerprint !== fingerprint) fail('requestId 已用于不同请求'); return clone(this.messages.get(existing.messageId!) ?? fail('原请求消息不存在')) }
     const conversation = clone(this.getConversation(input.conversationId))
+    if (input.steer) {
+      if (origin || commit || humanReply || questionReply || channelSource || conversation.channel || input.stopPrevious || input.replyToMessageId || input.artifactRevision || input.materialReference || input.channelReference || input.browserReference || input.apiModel || input.workingDirectory || input.expectedExecutionPermission || input.composerReferences?.length || input.materialSelections?.length || input.materialUploads?.length || !input.content.trim()) fail('补充当前执行只接受本人纯文本，请使用普通消息发送材料或其他请求')
+      await this.steering.validate(input.steer, conversation.id, input.mentionIds)
+    }
     const permissionExpectation = this.prepareMessagePermission(input.expectedExecutionPermission, conversation, input.mentionIds)
     if (conversation.mergedInto) fail('此聊天已归入员工主私聊，请从主私聊发送新消息。')
     if (conversation.channelDiscussion) await this.store.transaction(tx => assertChannelSourceAccess(tx, conversation.id, conversation.channelDiscussion!.conversationId))
@@ -2995,10 +3013,10 @@ export class AppService {
     if (input.materialReference) { message.materialReference = input.materialReference; message.materialSources = [input.materialReference] }
     if (revision) message.artifactRevisionRequestId = revision.requestId
     if (relation) message.inboxReply = relation
-    const nativeInput = !origin && !commit && !revision && !input.materialReference && !questionReply ? await this.executions.inputForMessage(conversation.id, input.mentionIds.length ? input.mentionIds : conversation.kind === 'direct' ? conversation.agentIds : []) : undefined
+    const nativeInput = !input.steer && !origin && !commit && !revision && !input.materialReference && !questionReply ? await this.executions.inputForMessage(conversation.id, input.mentionIds.length ? input.mentionIds : conversation.kind === 'direct' ? conversation.agentIds : []) : undefined
     let nativeResponse: { deliver(): Promise<void>; rollback(): Promise<void> } | undefined
     const directedAutomation = origin && !humanReply && input.mentionIds.length ? { ...conversation, agentIds: input.mentionIds } : conversation
-    const prepared = nativeInput ? undefined : questionReply ? this.scheduler.prepareQuestionReply(conversation, message, questionReply.turn.id, questionReply.agentId, questionReply.work) : this.scheduler.prepare(revision ? { ...conversation, agentIds: [revision.targetAgentId] } : input.materialReference ? { ...conversation, agentIds: input.mentionIds } : directedAutomation, message)
+    const prepared = nativeInput || input.steer ? undefined : questionReply ? this.scheduler.prepareQuestionReply(conversation, message, questionReply.turn.id, questionReply.agentId, questionReply.work) : this.scheduler.prepare(revision ? { ...conversation, agentIds: [revision.targetAgentId] } : input.materialReference ? { ...conversation, agentIds: input.mentionIds } : directedAutomation, message)
     const request: RequestRecord = { id: input.requestId, fingerprint, messageId: message.id }
     conversation.lastMessageAt = message.createdAt
     const accepted: MessageReceipt = { id: input.requestId, fingerprint: receiptFingerprint, conversationId: conversation.id, messageId: message.id }
@@ -3018,6 +3036,7 @@ export class AppService {
         if (conversation.channelDiscussion) await assertChannelSourceAccess(tx, conversation.id, conversation.channelDiscussion.conversationId)
         if (input.materialReference) await this.materials.validateRefsInTransaction(tx, [input.materialReference], input.mentionIds[0], conversation.id)
         if (materialSelections?.length) await this.materials.attach(tx, conversation.id, message.id, materialSelections)
+        if (input.steer) nativeResponse = await this.steering.prepare(tx, input.steer, message)
         if (nativeInput) nativeResponse = await this.executions.answerMessage(tx, nativeInput.id, message)
         if (questionReply) {
           const current = await questionSource(tx, questionReply.question.id)
@@ -4229,6 +4248,36 @@ export class AppService {
     if (runtimeProfile) {
       context.nativeSourceIds = (await this.contextMessages(conversation, turn.triggerMessageId, throughSequence)).filter(message => !forgotten.has(message.id)).map(message => message.id)
       context.nativeArtifacts = [...this.artifacts.values()].filter(artifact => artifact.conversationId === conversation.id && artifact.ownerAgentId === agent.id && artifact.contentStatus === 'ready').map(artifact => ({ id: artifact.id, name: artifact.name, version: artifact.contentVersion ?? 1, sourcePath: artifact.sourcePath ?? '' }))
+      const prepareNativeMessage = async (tx: RecordTransaction, message: Message) => {
+        signal.throwIfAborted()
+        const current = await tx.get<AgentRun>('runs', run.id), saved = await tx.get<RunSnapshot>('snapshots', run.id) ?? fail('原生请求所属执行快照已失效')
+        if (!current || terminal.has(current.status) || saved.invalidated || saved.agent.configVersion !== agent.configVersion) fail('原生请求所属执行或来源已失效')
+        const runtime = nativeRuntimeNamespace(backend)
+        const projected = await this.materials.nativeMessage(tx, message, agent.id, runtime)
+        try {
+          signal.throwIfAborted()
+          if (isCoreAgent(agent) && conversation.purpose === 'core' && !conversation.channel && message.senderType === 'user' && !message.channel) {
+            const instructions = await managementSkillInstructions(message.composerReferences ?? [], this.options.skillDiscovery?.bundledRoot)
+            if (instructions) projected.message.content += '\n\n' + instructions
+          }
+          const refs = [...new Map([...(context.materialRefs ?? []), ...projected.refs].map(ref => [`${ref.id}:${ref.revision}`, ref])).values()]
+          await this.materials.validateRefsInTransaction(tx, refs, agent.id, conversation.id)
+          await recordNativeInput(tx, runtime, run.id, agent.id, conversation.id, projected.message, message)
+          const updated = { ...saved, materialRefs: refs, ...(saved.memoryRecall ? { memoryRecall: clone(saved.memoryRecall) } : {}) }
+          if (updated.memoryRecall?.recall) updated.memoryRecall.recall.inputMessageIds = [...new Set([...(updated.memoryRecall.recall.inputMessageIds ?? []), message.id])]
+          await tx.put(record('snapshots', updated))
+          return { content: projected.message.content, rollback: projected.rollback, commit: () => {
+            const liveRefs = context.materialRefs ??= []; liveRefs.splice(0, liveRefs.length, ...refs)
+            context.messages.push(projected.message); context.nativeSourceIds?.push(message.id)
+            if (context.memory?.recall) context.memory.recall.inputMessageIds = [...new Set([...(context.memory.recall.inputMessageIds ?? []), message.id])]
+            Object.assign(snapshot, updated); this.snapshots.set(run.id, snapshot)
+          } }
+        } catch (error) { await projected.rollback(); throw error }
+      }
+      context.registerNativeSteering = send => this.steering.register(run, signal, {
+        validate: () => this.assertRunAccess(context, run.phase), prepare: prepareNativeMessage, send,
+        fail: error => this.runControllers.get(run.id)?.abort(error),
+      })
       context.requestNativeAction = async (action, localSignal) => {
         try {
           return await this.executions.request(run, JSON.parse(this.redact(JSON.stringify(action), apiKey)), localSignal ? AbortSignal.any([signal, localSignal]) : signal, () => this.serialize(async () => {
@@ -4241,32 +4290,7 @@ export class AppService {
               this.messages.set(message.id, message); await this.store.write([record('messages', message)]); this.emit({ type: 'message', message })
             }
             await this.store.write([record('runs', run)]); this.changed(run.conversationId)
-          }), async (tx, message) => {
-            signal.throwIfAborted()
-            const current = await tx.get<AgentRun>('runs', run.id), saved = await tx.get<RunSnapshot>('snapshots', run.id) ?? fail('原生请求所属执行快照已失效')
-            if (!current || terminal.has(current.status) || saved.invalidated || saved.agent.configVersion !== agent.configVersion) fail('原生请求所属执行或来源已失效')
-            const runtime = nativeRuntimeNamespace(backend)
-            const projected = await this.materials.nativeMessage(tx, message, agent.id, runtime)
-            try {
-              signal.throwIfAborted()
-              if (isCoreAgent(agent) && conversation.purpose === 'core' && !conversation.channel && message.senderType === 'user' && !message.channel) {
-                const instructions = await managementSkillInstructions(message.composerReferences ?? [], this.options.skillDiscovery?.bundledRoot)
-                if (instructions) projected.message.content += '\n\n' + instructions
-              }
-              const refs = [...new Map([...(context.materialRefs ?? []), ...projected.refs].map(ref => [`${ref.id}:${ref.revision}`, ref])).values()]
-              await this.materials.validateRefsInTransaction(tx, refs, agent.id, conversation.id)
-              await recordNativeInput(tx, runtime, run.id, agent.id, conversation.id, projected.message, message)
-              const updated = { ...saved, materialRefs: refs, ...(saved.memoryRecall ? { memoryRecall: clone(saved.memoryRecall) } : {}) }
-              if (updated.memoryRecall?.recall) updated.memoryRecall.recall.inputMessageIds = [...new Set([...(updated.memoryRecall.recall.inputMessageIds ?? []), message.id])]
-              await tx.put(record('snapshots', updated))
-              return { content: projected.message.content, rollback: projected.rollback, commit: () => {
-                const liveRefs = context.materialRefs ??= []; liveRefs.splice(0, liveRefs.length, ...refs)
-                context.messages.push(projected.message); context.nativeSourceIds?.push(message.id)
-                if (context.memory?.recall) context.memory.recall.inputMessageIds = [...new Set([...(context.memory.recall.inputMessageIds ?? []), message.id])]
-                Object.assign(snapshot, updated); this.snapshots.set(run.id, snapshot)
-              } }
-            } catch (error) { await projected.rollback(); throw error }
-          })
+          }), prepareNativeMessage)
         } finally {
           await this.serialize(async () => {
             if (run.status === 'waiting_approval' && !signal.aborted && !await this.executions.hasPendingApproval(run.id)) { run.status = 'running'; await this.store.write([record('runs', run)]); this.changed(run.conversationId) }

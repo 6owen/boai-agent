@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 更多操作增加明确的当前执行补充，沿当前输入草稿并保留普通发送。
  * [OUTPUT]: 2026-10-27 默认关闭语音插件接线、可信主窗口与原草稿/生命周期边界。
  * [OUTPUT]: @按钮仅提及会话员工，$按钮引用技能/文件/提示词，两类候选与显隐状态独立。
  * [INPUT]: 当前员工、连接、运行状态和原消息/配置回调。
@@ -21,6 +22,7 @@ import { ComposerSourcePicker } from './composer-source-picker'
 export type ComposerAgentSaveResult = { status: 'saved'; agent: DigitalAgent } | { status: 'not-submitted' | 'unconfirmed' }
 export type ComposerAgentPatch = Partial<Pick<DigitalAgent, 'executionBackend' | 'connectionId' | 'modelId' | 'allowCommands' | 'thinkingLevel' | 'nativeOptions'>>
 interface Props {
+  onSteer?(): void
   voice?: ReactNode
   api: DesktopApi; members: DigitalAgent[]; snapshot: Snapshot; group: boolean; external: boolean; runs?: AgentRun[]
   conversationReady?: boolean; replyMode?: boolean
@@ -44,6 +46,7 @@ export function ComposerToolbar(props: Props) {
         <DropdownMenuContent side="top" align="start" className="w-56"><DropdownMenuGroup>
           {!external && props.onAddMaterial && <DropdownMenuItem disabled={busy || props.materialsDisabled} onClick={props.onAddMaterial}><FileText />添加文件</DropdownMenuItem>}
           {props.onReferenceBrowser && <DropdownMenuItem disabled={busy || props.browserReferenceBusy || props.materialsDisabled} onClick={props.onReferenceBrowser}><FileText />引用当前网页</DropdownMenuItem>}
+          {props.onSteer && <DropdownMenuItem disabled={busy || !props.canSend} onClick={props.onSteer}><ArrowUp />补充到当前执行</DropdownMenuItem>}
           <DropdownMenuItem onClick={props.onOpenWorkspace}><FolderOpen />打开会话工作目录</DropdownMenuItem>
         </DropdownMenuGroup></DropdownMenuContent>
       </DropdownMenu>}
