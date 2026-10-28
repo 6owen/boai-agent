@@ -12,7 +12,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { parse } from 'yaml'
 // @ts-expect-error Shared plain Node delivery protocol.
-import { candidateWorkflow, baselineOnlyCommit, deliveryOutcome, BASELINE_PREFIX } from '../scripts/ui-delivery-protocol.mjs'
+import { candidateWorkflow, candidateRunReady, baselineOnlyCommit, deliveryOutcome, BASELINE_PREFIX } from '../scripts/ui-delivery-protocol.mjs'
 // @ts-expect-error Shared plain Node delivery CLI.
 import { currentPrRun, assertReview, assertBaselineAdvance } from '../scripts/ui-delivery.mjs'
 // @ts-expect-error Shared plain Node CI controller.
@@ -29,7 +29,8 @@ import { createBaselineReview } from '../scripts/ui-baseline-review.mjs'
 import { baselineContractHash } from '../scripts/ui-regression.mjs'
 const repo = '6owen/boai-agent', sha = 'a'.repeat(40), next = 'b'.repeat(40)
 const pr = { number: 99, head: { sha, ref: 'fix/ui', repo: { id: 123 } }, base: { repo: { id: 123 } } }
-const run = { id: 456, path: '.github/workflows/tests.yml', event: 'pull_request', head_sha: sha, head_branch: 'fix/ui', repository: { id: 123, full_name: repo }, head_repository: { full_name: repo }, pull_requests: [pr], run_attempt: 1, status: 'completed', conclusion: 'success' }
+const captureJobs = ['Plan UI delivery', 'Capture UI for review', 'UI delivery gate'].map(name => ({ name, status: 'completed', conclusion: 'success' })).concat([1, 2].map(shard => ({ name: `UI regression (${shard}/2)`, status: 'completed', conclusion: 'skipped' })))
+const run = { capture_jobs: captureJobs, id: 456, path: '.github/workflows/tests.yml', event: 'pull_request', head_sha: sha, head_branch: 'fix/ui', repository: { id: 123, full_name: repo }, head_repository: { full_name: repo }, pull_requests: [pr], run_attempt: 1, status: 'completed', conclusion: 'success' }
 const source = { commit: sha, sourceHash: 'c'.repeat(64), dirty: false }
 const artifact = { id: 7, name: 'ui-candidate-github-macos15-arm64', digest: 'sha256:' + 'd'.repeat(64), size_in_bytes: 12, expired: false, workflow_run: { head_sha: sha } }
 const env = { CI: 'true', GITHUB_ACTIONS: 'true', GITHUB_EVENT_NAME: 'pull_request', GITHUB_REPOSITORY: repo, GITHUB_WORKFLOW_REF: `${repo}/.github/workflows/tests.yml@refs/pull/99/merge`, GITHUB_REF: 'refs/pull/99/merge', GITHUB_SHA: next, GITHUB_RUN_ID: '456', GITHUB_RUN_ATTEMPT: '1', RUNNER_OS: 'macOS', RUNNER_ARCH: 'ARM64', BOAI_UI_PR_HEAD: sha, BOAI_UI_PR_NUMBER: '99', BOAI_UI_HEAD_REPOSITORY: repo }
@@ -131,4 +132,18 @@ it('Required发布到PR head供合并保护识别，实际测试仍使用独立m
   expect(checkCommit('pull_request', { pull_request: pr }, next)).toBe(sha)
   expect(checkCommit('push', null, next)).toBe(next)
   expect(() => checkCommit('pull_request', null, next)).toThrow()
+})
+
+it('Required pending不能造成审阅死锁：同attempt实际采集和汇总完成即可审阅；缺失/失败/重试证明拒绝', () => {
+  const pending = { ...run, status: 'in_progress', conclusion: null }
+  expect(candidateRunReady(pending)).toBe(true)
+  expect(verifyCandidateRun(pending, [artifact], source, 456)).toEqual(artifact)
+  expect(verifyOnlineUpdate(pending, sha, sha, updateEnv)).toBe('fix/ui')
+  expect(() => assertReview(state, sha, pending, ['a'], reason)).not.toThrow()
+  for (const name of ['Plan UI delivery', 'Capture UI for review', 'UI delivery gate', 'UI regression (1/2)']) {
+    for (const conclusion of ['failure', 'cancelled', null]) expect(candidateRunReady({ ...pending, capture_jobs: captureJobs.map(job => job.name === name ? { ...job, conclusion } : job) })).toBe(false)
+  }
+  expect(candidateRunReady({ ...pending, capture_jobs: [] })).toBe(false)
+  expect(candidateRunReady({ ...pending, capture_jobs: [...captureJobs, captureJobs[0]] })).toBe(false)
+  expect(candidateRunReady({ ...pending, capture_jobs: [...captureJobs.slice(0, 3), { name: 'UI regression', status: 'completed', conclusion: 'skipped' }] })).toBe(true)
 })

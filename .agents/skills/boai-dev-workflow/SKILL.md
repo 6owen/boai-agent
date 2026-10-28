@@ -25,7 +25,7 @@ description: BOAI 开发、git cp、PR/CI 和合并的共享流程。独立 work
 
 1. 按授权提交推送。首次 `pnpm ui:deliver start --title "..." --body-file /绝对路径/pr.md` 创建本分支 Draft；已有 PR 用 `pnpm ui:deliver`。入口不会替你暂存或推送。用户禁止合并时传 `--no-auto-merge`，该选择写入本 worktree 接续记录。
 2. 普通 PR 源码 push 自动采集全部登记场景，不需先通过旧截图比较。所有行为/布局断言仍执行；有执行失败则正常失败，先修功能/测试真实错误。纯视觉变化使 `Required checks` 保持 **in_progress（待 Agent 审阅）**，不授予合并资格，也不占用 runner 等用户。
-3. Agent 在运行结束后接续 `pnpm ui:deliver`。它只选择当前分支、当前 head 的 PR 运行；下载并核验官方 artifact，输出每个变化场景及本地 `review/` 的 old/new/diff 路径。查看这些图片，逐项对应用户需求；默认由 Agent 判断预期变化，用户不必再操作 dev 或理解 case。出现需求不明确、预期外设计变化或整套环境迁移时，再具体说明疑点并询问用户；等待期间可以继续独立工作。
+3. Agent 在采集与汇总任务完成后接续 `pnpm ui:deliver`。它只选择当前分支、当前 head 的 PR 运行；按当前attempt核验采集/汇总成功后下载并核验官方 artifact（整体run可能因Required待审阅仍为in_progress，不能等它先变绿），输出每个变化场景及本地 `review/` 的 old/new/diff 路径。查看这些图片，逐项对应用户需求；默认由 Agent 判断预期变化，用户不必再操作 dev 或理解 case。出现需求不明确、预期外设计变化或整套环境迁移时，再具体说明疑点并询问用户；等待期间可以继续独立工作。
 4. 审阅全部实际变化后执行 `pnpm ui:deliver review --cases id1,id2 --reason "逐项需求与视觉审阅结论"`。cases 必须精确覆盖本批实际变化，不能批量接受无关场景。入口派发 main 上的 `ui-baseline-update.yml`；受信 main 代码重新下载官方材料并校验当前 SHA、环境、构建、原件和选择，只提交所选 PNG/manifest 到原功能分支。普通检查从不写基准。
 5. 更新结束继续 `pnpm ui:deliver`：仅将已登记的基准提交快进到干净 worktree；核对并批准机器人提交所触发的当前 PR `action_required` 运行。不能单独 dispatch 一次 UI 检查来替代该 PR 门禁。源码变化、run attempt 变化会使旧审阅失效，重新采集/审阅；不覆盖并发源码提交。
 6. 基准提交直接进入两片完整只读复验；无视觉变化的候选也在同一工作流自动进入只读复验。`Required checks` 只有原 `ci-result gate-shards` 核对当前 merge SHA、全部场景与原件成功才绿。候选成功、更新成功和调度 job 的绿灯均不等于合并资格。

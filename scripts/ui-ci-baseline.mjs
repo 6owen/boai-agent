@@ -17,7 +17,7 @@ import { sourceIdentity, baselineContractHash, validateReport } from './ui-regre
 import { buildInputHash } from './build-identity.mjs'
 import { verifyBaselineReview } from './ui-baseline-review.mjs'
 import { CI_PROFILE, uiProfile, readUiBaseline } from './ui-profiles.mjs'
-import { candidateWorkflow } from './ui-delivery-protocol.mjs'
+import { candidateWorkflow, candidateRunReady, withCandidateJobs } from './ui-delivery-protocol.mjs'
 import { acquireResourceLock } from './resource-lock.mjs'
 
 const repository = '6owen/boai-agent'
@@ -26,7 +26,7 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex')
 const api = path => JSON.parse(execFileSync('gh', ['api', `repos/${repository}/${path}`], { encoding: 'utf8', timeout: 30_000, maxBuffer: 2 * 1024 * 1024 }))
 export function verifyCandidateRun(run, artifacts, current, runId) {
   const trigger = candidateWorkflow(run)
-  if (String(run.id) !== String(runId) || run.repository?.full_name !== repository || run.head_repository?.full_name !== repository || !trigger || run.status !== 'completed' || run.conclusion !== 'success' || run.head_sha !== current.commit || current.dirty) throw new Error('采集run不是当前干净SHA的受信官方采集结果')
+  if (String(run.id) !== String(runId) || run.repository?.full_name !== repository || run.head_repository?.full_name !== repository || !trigger || !candidateRunReady(run) || run.head_sha !== current.commit || current.dirty) throw new Error('采集run不是当前干净SHA的受信官方采集结果')
   const found = artifacts.filter(item => item.name === `ui-candidate-${CI_PROFILE}`)
   if (found.length !== 1) throw new Error('缺少唯一CI候选artifact')
   const artifact = found[0]
@@ -83,7 +83,7 @@ with zipfile.ZipFile(archive) as z:
   execFileSync('python3', ['-c', unpack, archive, output], { timeout: 120_000 })
 }
 export async function downloadCiCandidate(root, runId, output) {
-  const current = await sourceIdentity(root), run = api(`actions/runs/${runId}`)
+  const current = await sourceIdentity(root), run = withCandidateJobs(api(`actions/runs/${runId}`), api)
   const artifact = verifyCandidateRun(run, api(`actions/runs/${runId}/artifacts?per_page=100`).artifacts, current, runId)
   await mkdir(output) // Must be new; never merge a fresh artifact into old evidence.
   const archive = `${output}.zip`, fd = openSync(archive, 'wx', 0o600)

@@ -10,7 +10,7 @@ import { appendFile, readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { downloadCiCandidate, prepareCiBaseline } from './ui-ci-baseline.mjs'
-import { candidateWorkflow } from './ui-delivery-protocol.mjs'
+import { candidateWorkflow, candidateRunReady, withCandidateJobs } from './ui-delivery-protocol.mjs'
 import { CI_PROFILE } from './ui-profiles.mjs'
 
 const repository = '6owen/boai-agent'
@@ -23,7 +23,7 @@ const api = (path, body) => {
 export function verifyOnlineUpdate(run, branchHead, expectedHead, env = process.env) {
   if (env.GITHUB_REPOSITORY !== repository || env.GITHUB_EVENT_NAME !== 'workflow_dispatch' || env.GITHUB_REF !== 'refs/heads/main' || env.GITHUB_WORKFLOW_REF !== `${repository}/.github/workflows/ui-baseline-update.yml@refs/heads/main`) throw new Error('只能由main上的独立线上基准更新工作流执行')
   if (!/^[a-f0-9]{40}$/.test(expectedHead ?? '') || run.head_sha !== expectedHead || branchHead !== expectedHead) throw new Error('分支已变化或与已确认SHA不符，请审阅新增变化后重新采集')
-  if (run.repository?.full_name !== repository || run.head_repository?.full_name !== repository || !candidateWorkflow(run) || run.status !== 'completed' || run.conclusion !== 'success') throw new Error('需要成功的官方候选，执行失败不能更新基准')
+  if (run.repository?.full_name !== repository || run.head_repository?.full_name !== repository || !candidateWorkflow(run) || !candidateRunReady(run)) throw new Error('需要成功的官方候选，执行失败不能更新基准')
   if (!run.head_branch || run.head_branch === 'main' || /[\r\n]/.test(run.head_branch)) throw new Error('只能更新明确功能分支，不能写main')
   return run.head_branch
 }
@@ -50,7 +50,7 @@ export function publishBaselineUpdate({ branch, expectedHead, runId, files }, re
 async function main() {
   const runId = process.env.UI_CANDIDATE_RUN, expectedHead = process.env.UI_APPROVED_HEAD
   if (!/^\d+$/.test(runId ?? '')) throw new Error('缺少候选run')
-  const run = api(`actions/runs/${runId}`)
+  const run = withCandidateJobs(api(`actions/runs/${runId}`), api)
   // Validate the workflow context and candidate before resolving any branch ref.
   verifyOnlineUpdate(run, expectedHead, expectedHead)
   const branch = verifyOnlineUpdate(run, api(`git/ref/heads/${run.head_branch}`).object.sha, expectedHead)

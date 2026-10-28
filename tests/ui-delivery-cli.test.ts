@@ -29,6 +29,7 @@ else if (route.includes('pulls?')) respond([data.pr]);
 else if (route.endsWith('pulls/99')) respond(data.pr);
 else if (route.includes('actions/workflows/tests.yml/runs')) respond({ workflow_runs: [data.run] });
 else if (route.endsWith('/approve')) { data.run.status = 'in_progress'; data.run.conclusion = null; fs.writeFileSync(path, JSON.stringify(data)); }
+else if (route.includes('/attempts/')) respond({ total_count: 5, jobs: ['Plan UI delivery', 'Capture UI for review', 'UI delivery gate', 'UI regression (1/2)', 'UI regression (2/2)'].map((name, i) => ({ name, status: data.run.status === 'in_progress' && !data.reviewReady ? 'in_progress' : 'completed', conclusion: i < 3 ? 'success' : 'skipped' })) });
 else if (route.includes('/artifacts?')) respond({ artifacts: [{ name: 'ui-candidate-github-macos15-arm64' }] });
 else if (args[0] === 'workflow') { process.stderr.write('fixture: dispatch receipt lost'); process.exit(1); }
 else if (route.includes('ui-baseline-update.yml/runs')) respond({ workflow_runs: [] });
@@ -51,7 +52,7 @@ it('实际CLI对旧head的action_required不批准', async () => {
   expect((await calls()).some(args => args.some(arg => arg.endsWith('/approve')))).toBe(false)
 })
 it('dispatch回执丢失前已保存精确审阅；下一进程查已有运行，不重放写请求', async () => {
-  const path = join(root, '.local/fake.json'), fake = JSON.parse(await readFile(path, 'utf8')); fake.run.conclusion = 'success'; await save(path, fake)
+  const path = join(root, '.local/fake.json'), fake = JSON.parse(await readFile(path, 'utf8')); fake.run.conclusion = null; fake.run.status = 'in_progress'; fake.reviewReady = true; await save(path, fake)
   await save(join(root, '.local/ui-delivery/state.json'), { branch: 'fix/ui', head: sha, run: 456, attempt: 1, evidence: '.local/reviewed-fixture', changed: ['a'], noAutoMerge: true })
   const first = runCli('review', '--cases', 'a', '--reason', 'fixture explicit review'); expect(first.status).toBe(1)
   const saved = JSON.parse(await readFile(join(root, '.local/ui-delivery/state.json'), 'utf8'))

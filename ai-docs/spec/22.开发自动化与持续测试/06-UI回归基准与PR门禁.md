@@ -351,6 +351,8 @@ UI job通过后由record-ui登记summary、compare/summary、原始Playwright报
 
 实现位于独立 `fix/ui-delivery-flow` worktree。26场合同、PNG、mask、阈值、产品UI和原ci-result验证器未修改；PR48保持原状。流程的本地协议/真实PNG/工作流静态检查和云端运行结果在本节追加；未实际完成云端接续前不宣称已端到端上线。main未合入前其他worktree仍须明确同步本批流程。
 
-本地验证：14个定向文件共257项通过（含原件/范围/缓存/显示稳定性及真实CLI接续），类型检查、修改脚本ESLint、actionlint 1.7.12和diff检查通过。测试文件不在现有ESLint匹配范围，使用Vitest/TypeScript核验。未在本机运行Electron UI测试。云端结果继续记录，未把本地协议测试当作远端端到端证明。
+本地验证：14个定向文件共258项通过（含原件/范围/缓存/显示稳定性及真实CLI接续），类型检查、修改脚本ESLint、actionlint 1.7.12和diff检查通过。测试文件不在现有ESLint匹配范围，使用Vitest/TypeScript核验。未在本机运行Electron UI测试。云端结果继续记录，未把本地协议测试当作远端端到端证明。
 
 首轮云端运行40619848626的阶段规划和自动采集已启动。发现将自定义Required发到合成merge提交时，`gh pr checks --required`不报告该项；修正为按GitHub PR呈现发布到feature head，同时保留原gate对实际merge SHA的严格核验。新增新head保留no-auto-merge偏好和双SHA映射回归；旧运行保留，修订后新提交重新验证。
+
+第二轮40620275036实测Required已按当前PR head被必需检查列表识别；同一Actions run的jobs API会包含自定义pending检查，因此补充按当前attempt的实际Plan/Capture/Gate及分片job核验候选就绪，允许已完成采集但整体run仍in_progress的审阅。缺失/失败/取消/不完整job证明仍拒绝，官方PNG和原始行为结果重验保持。这样待审阅状态不会与“必须整个run成功才能接受”互相等待。新增真实CLI在pending run下提交及未知回执不重放验证。

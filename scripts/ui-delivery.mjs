@@ -9,7 +9,7 @@ import { execFileSync } from 'node:child_process'
 import { mkdir, readFile, writeFile, rename, rm } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { UI_REPOSITORY, BASELINE_PREFIX, candidateWorkflow, baselineOnlyCommit } from './ui-delivery-protocol.mjs'
+import { UI_REPOSITORY, BASELINE_PREFIX, candidateWorkflow, candidateRunReady, withCandidateJobs, baselineOnlyCommit } from './ui-delivery-protocol.mjs'
 const git = (...args) => execFileSync('git', args, { encoding: 'utf8' }).trim()
 const gh = (...args) => execFileSync('gh', args, { encoding: 'utf8', timeout: 60_000, maxBuffer: 4 * 1024 * 1024 }).trim()
 const api = path => JSON.parse(gh('api', `repos/${UI_REPOSITORY}/${path}`))
@@ -18,7 +18,7 @@ export function currentPrRun(runs, pr) {
   return runs.filter(run => run.path === '.github/workflows/tests.yml' && run.event === 'pull_request' && run.head_sha === pr.head.sha && run.head_branch === pr.head.ref && run.repository?.full_name === UI_REPOSITORY && run.head_repository?.full_name === UI_REPOSITORY && run.pull_requests?.some(item => item.number === pr.number)).sort((a, b) => b.id - a.id)[0]
 }
 export function assertReview(state, head, run, selected, reason) {
-  if (state.head !== head || String(state.run) !== String(run.id) || state.attempt !== run.run_attempt || run.status !== 'completed' || run.conclusion !== 'success' || !candidateWorkflow(run)) throw new Error('审阅已过期，先重新运行 pnpm ui:deliver 取得当前候选')
+  if (state.head !== head || String(state.run) !== String(run.id) || state.attempt !== run.run_attempt || !candidateRunReady(run) || !candidateWorkflow(run)) throw new Error('审阅已过期，先重新运行 pnpm ui:deliver 取得当前候选')
   if (!reason?.trim() || !selected.length || new Set(selected).size !== selected.length || [...selected].sort().join() !== [...state.changed].sort().join()) throw new Error('必须逐项审阅全部实际变化；cases需与当前变化范围完全一致，不能接受无关场景')
 }
 export function assertBaselineAdvance({ state, head, parent, files, manifest }) {
@@ -85,7 +85,7 @@ async function main() {
       console.log('基准更新已成功，等待PR head同步；再次接续即可。'); return
     }
     const runs = api(`actions/workflows/tests.yml/runs?event=pull_request&head_sha=${pr.head.sha}&per_page=100`).workflow_runs
-    const run = currentPrRun(runs, pr)
+    let run = currentPrRun(runs, pr)
     if (!run) { console.log('当前head的PR检查尚未出现；接续同一命令，不派发替代检查。'); return }
     console.log(`${pr.html_url}\n${run.html_url}\nhead=${pr.head.sha}`)
     if (command === 'status') { console.log(JSON.stringify({ status: run.status, conclusion: run.conclusion, review: state.changed, submission: state.submission }, null, 2)); return }
@@ -93,8 +93,10 @@ async function main() {
       gh('api', '--method', 'POST', `repos/${UI_REPOSITORY}/actions/runs/${run.id}/approve`)
       console.log('已批准当前PR、当前head的运行；继续接续原PR检查。'); return
     }
-    if (run.status !== 'completed') { console.log('当前PR检查运行中；完成后接续 pnpm ui:deliver。'); return }
-    if (run.conclusion !== 'success') throw new Error('功能执行/构建/证据失败；查看原件修复。不能通过换基准解决。')
+    run = withCandidateJobs(run, api)
+    const readyForReview = candidateRunReady(run)
+    if (run.status !== 'completed' && !readyForReview) { console.log('当前PR检查运行中；完成后接续 pnpm ui:deliver。'); return }
+    if (run.conclusion !== 'success' && !readyForReview) throw new Error('功能执行/构建/证据失败；查看原件修复。不能通过换基准解决。')
     const artifacts = api(`actions/runs/${run.id}/artifacts?per_page=100`).artifacts
     const hasCandidate = artifacts.some(item => item.name === 'ui-candidate-github-macos15-arm64')
     if (hasCandidate) {
