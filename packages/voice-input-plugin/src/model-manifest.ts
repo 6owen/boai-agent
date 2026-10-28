@@ -1,10 +1,12 @@
 /*
- * [OUTPUT]: 2026-10-27 SenseVoiceSmall/Silero模型及完整许可的固定来源、字节和SHA256。
- * [INPUT]: Pinned SenseVoice INT8, Silero VAD and upstream license artifacts.
+ * [OUTPUT]: 2026-10-28 SenseVoiceSmall、Whisper Tiny/Base多语言INT8目录及独立资源/许可固定校验。
+ * [INPUT]: Pinned SenseVoice/Whisper INT8, Silero VAD and complete upstream license artifacts.
  * [OUTPUT]: Explicit on-demand download sizes and SHA-256; no model bytes in the application bundle.
  * [POS]: Reviewed plugin asset manifest; changing assets requires a new revision.
  * [PROTOCOL]: Update Header and .folder.md when changed.
  */
+import { voiceModelLanguages, type VoiceModelId, type VoiceLanguage } from '@boai/shared/plugins/voice-input'
+
 export const voiceModelRevision = 'sensevoice-20240717-silero-066409f3-v1'
 export const voiceModelAssets = [
   {"name": "FUNASR-MODEL-LICENSE.txt", "url": "https://raw.githubusercontent.com/modelscope/FunASR/58830eca4012644aac0c3218c3ccc7d98f003fda/MODEL_LICENSE", "bytes": 5306, "sha256": "7dba975a2069691db4992b0592d70828b330d2f8a30a71450f4e152a554e84f8"},
@@ -46,3 +48,115 @@ export const voiceModelAssets = [
   }
 ] as const
 export const voiceModelBytes = voiceModelAssets.reduce((total, item) => total + item.bytes, 0)
+
+export interface VoiceModelAsset { name: string; url: string; bytes: number; sha256: string }
+export interface VoiceModelDefinition {
+  id: VoiceModelId
+  name: string
+  languages: readonly VoiceLanguage[]
+  licenseUrl: string
+  revision: string
+  assets: readonly VoiceModelAsset[]
+  engine: 'sensevoice' | 'whisper'
+}
+const whisperAssets = {
+  tiny: [
+    {
+      "name": "decoder.int8.onnx",
+      "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-tiny/resolve/65176e2deb88badc814a94058666cadccc29b61c/tiny-decoder.int8.onnx",
+      "bytes": 89855401,
+      "sha256": "d2fece8dd42771f1df975c6c0445770d0c292bf7547c2cae04a6c0cc57540925"
+    },
+    {
+      "name": "encoder.int8.onnx",
+      "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-tiny/resolve/65176e2deb88badc814a94058666cadccc29b61c/tiny-encoder.int8.onnx",
+      "bytes": 12937772,
+      "sha256": "d24fb083ae3b1041fc24e97971d60e280c9342201fbb67b0ab428a8b4a51a434"
+    },
+    {
+      "name": "tokens.txt",
+      "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-tiny/resolve/65176e2deb88badc814a94058666cadccc29b61c/tiny-tokens.txt",
+      "bytes": 816730,
+      "sha256": "b34b360dbb493e781e479794586d661700670d65564001f23024971d1f2fa126"
+    },
+    {
+      "name": "silero-vad.onnx",
+      "url": "https://raw.githubusercontent.com/snakers4/silero-vad/066409f3d9db45a30d21dfcbf9147826ffdd7052/src/silero_vad/data/silero_vad.onnx",
+      "bytes": 2327524,
+      "sha256": "1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3"
+    },
+    {
+      "name": "SILERO-LICENSE.txt",
+      "url": "https://raw.githubusercontent.com/snakers4/silero-vad/066409f3d9db45a30d21dfcbf9147826ffdd7052/LICENSE",
+      "bytes": 1075,
+      "sha256": "2e63e9a38b6e8fc0c7bc37ce174caca1862870856c6daf5697cfb785e925520b"
+    },
+    {
+      "name": "WHISPER-LICENSE.txt",
+      "url": "https://raw.githubusercontent.com/openai/whisper/86098128c0b4f24f0e2aa2994de830614b474227/LICENSE",
+      "bytes": 1063,
+      "sha256": "b5d65a59060e68c4ff940e1eddfa6f94b2d68fdf58ed7f4dd57721c997e35e9d"
+    },
+    {
+      "name": "SHERPA-ONNX-LICENSE.txt",
+      "url": "https://raw.githubusercontent.com/k2-fsa/sherpa-onnx/2505cca5d7d5806bf3bdbd1db717100123fac005/LICENSE",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    }
+  ],
+  base: [
+    {
+      "name": "decoder.int8.onnx",
+      "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-base/resolve/bb53ee204431c90d314c1cc08d28d23e5b7927cc/base-decoder.int8.onnx",
+      "bytes": 130672026,
+      "sha256": "9759d217388a01b3a4c7c15533201067b48ae819c4daafc8624e64b9409dc02d"
+    },
+    {
+      "name": "encoder.int8.onnx",
+      "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-base/resolve/bb53ee204431c90d314c1cc08d28d23e5b7927cc/base-encoder.int8.onnx",
+      "bytes": 29120534,
+      "sha256": "0b8fb1304b6109976038efff5ace81720e00386f3ff6b54ee8c75291ca0a1e11"
+    },
+    {
+      "name": "tokens.txt",
+      "url": "https://huggingface.co/csukuangfj/sherpa-onnx-whisper-base/resolve/bb53ee204431c90d314c1cc08d28d23e5b7927cc/base-tokens.txt",
+      "bytes": 816730,
+      "sha256": "b34b360dbb493e781e479794586d661700670d65564001f23024971d1f2fa126"
+    },
+    {
+      "name": "silero-vad.onnx",
+      "url": "https://raw.githubusercontent.com/snakers4/silero-vad/066409f3d9db45a30d21dfcbf9147826ffdd7052/src/silero_vad/data/silero_vad.onnx",
+      "bytes": 2327524,
+      "sha256": "1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3"
+    },
+    {
+      "name": "SILERO-LICENSE.txt",
+      "url": "https://raw.githubusercontent.com/snakers4/silero-vad/066409f3d9db45a30d21dfcbf9147826ffdd7052/LICENSE",
+      "bytes": 1075,
+      "sha256": "2e63e9a38b6e8fc0c7bc37ce174caca1862870856c6daf5697cfb785e925520b"
+    },
+    {
+      "name": "WHISPER-LICENSE.txt",
+      "url": "https://raw.githubusercontent.com/openai/whisper/86098128c0b4f24f0e2aa2994de830614b474227/LICENSE",
+      "bytes": 1063,
+      "sha256": "b5d65a59060e68c4ff940e1eddfa6f94b2d68fdf58ed7f4dd57721c997e35e9d"
+    },
+    {
+      "name": "SHERPA-ONNX-LICENSE.txt",
+      "url": "https://raw.githubusercontent.com/k2-fsa/sherpa-onnx/2505cca5d7d5806bf3bdbd1db717100123fac005/LICENSE",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    }
+  ],
+} as const
+
+export const voiceModelCatalog: readonly VoiceModelDefinition[] = [
+  { id: 'sensevoice-small', name: 'SenseVoiceSmall', languages: voiceModelLanguages('sensevoice-small'), engine: 'sensevoice', revision: voiceModelRevision, assets: voiceModelAssets, licenseUrl: 'https://github.com/modelscope/FunASR/blob/58830eca4012644aac0c3218c3ccc7d98f003fda/MODEL_LICENSE' },
+  { id: 'whisper-tiny', name: 'Whisper Tiny', languages: voiceModelLanguages('whisper-tiny'), engine: 'whisper', revision: 'whisper-tiny-65176e2-silero-066409f3-v1', assets: whisperAssets.tiny, licenseUrl: 'https://github.com/openai/whisper/blob/86098128c0b4f24f0e2aa2994de830614b474227/LICENSE' },
+  { id: 'whisper-base', name: 'Whisper Base', languages: voiceModelLanguages('whisper-base'), engine: 'whisper', revision: 'whisper-base-bb53ee2-silero-066409f3-v1', assets: whisperAssets.base, licenseUrl: 'https://github.com/openai/whisper/blob/86098128c0b4f24f0e2aa2994de830614b474227/LICENSE' },
+]
+export function getVoiceModel(id: VoiceModelId): VoiceModelDefinition {
+  const model = voiceModelCatalog.find(model => model.id === id)
+  if (!model) throw new Error('不支持的本地语音模型')
+  return model
+}

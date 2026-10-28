@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 2026-10-27 主要控件统一220px，许可/授权辅助操作在左；快捷键去箭头，原自动保存队列保持。
+ * [OUTPUT]: 当前模型Select与独立本地模型Card；按模型下载/取消/移除，资源轮询不覆盖配置草稿。
  * [INPUT]: Explicit voice configuration, model installation and existing text-model connections.
  * [OUTPUT]: Optional local/online ASR, separately opt-in refinement and manually maintained terminology.
  * [POS]: Voice application-plugin settings; failure feedback uses Sonner.
@@ -8,7 +8,7 @@
 import { useContext, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import type { Connection } from '@boai/shared/domain'
-import type { VoiceSnapshot, VoiceSettings } from '@boai/voice-input-plugin/protocol'
+import type { VoiceModelId, VoiceSettings } from '@boai/voice-input-plugin/protocol'
 import { getDesktopClient } from '@/services/request/desktop-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,13 +16,14 @@ import { Textarea } from '@/components/ui/textarea'
 import { SelectField } from '@/components/ui/select-field'
 import { Switch } from '@/components/ui/switch'
 import { GuardContext } from '@/components/common'
-import { VOICE_PLUGIN_ID as voicePluginId, voiceLanguages, localVoiceLanguages, type VoiceLanguage } from '@boai/shared/plugins/voice-input'
+import { VOICE_PLUGIN_ID as voicePluginId, voiceLanguages, voiceModelLanguages, validateVoiceLanguage, type VoiceLanguage } from '@boai/shared/plugins/voice-input'
 import { applicationPlugins } from '@boai/shared/plugins/catalog'
 import { pluginAvailability } from '@boai/shared/plugins/types'
 import { setPluginEnabled, usePlugins } from '@/stores/plugins'
 import { SettingsLayout, SettingsSection, SettingsCard } from './settings-layout'
 import { VoiceSettingRow } from './voice-setting-row'
 import { VoiceMicrophone } from './voice-microphone'
+import { VoiceModelsCard } from './voice-models'
 import { useVoiceSettings, voiceDraft, voiceSettings } from '@/stores/voice-settings'
 
 export function VoiceInputSettingsPage({ active, onOpenShortcuts }: { active: boolean; onOpenShortcuts(): void }) {
@@ -32,9 +33,10 @@ export function VoiceInputSettingsPage({ active, onOpenShortcuts }: { active: bo
   const state = useVoiceSettings(), draft = state.draft ?? (state.snapshot && voiceDraft(state.snapshot))
   const settings = draft?.settings, terms = draft?.terms ?? '', key = draft?.key
   const { loading, saving } = state
-  const [modelSnapshot, setSnapshot] = useState<VoiceSnapshot>(), [connections, setConnections] = useState<Connection[]>([])
-  const snapshot = modelSnapshot ?? state.snapshot
-  const [downloading, setDownloading] = useState(false), mounted = useRef(false), form = useRef<HTMLFormElement>(null)
+  const [connections, setConnections] = useState<Connection[]>([])
+  const models = state.models ?? state.snapshot?.models ?? []
+  const [operations, setOperations] = useState<ReadonlyMap<VoiceModelId, 'start' | 'cancel' | 'remove'>>(new Map())
+  const pending = useRef(new Map<VoiceModelId, 'start' | 'cancel' | 'remove'>()), mounted = useRef(false), form = useRef<HTMLFormElement>(null)
   const fail = (error: unknown) => toast.error(error instanceof Error ? error.message : typeof error === 'string' ? error : '语音设置操作失败')
   const setSettings = (change: (value: VoiceSettings) => VoiceSettings, immediate = false) => voiceSettings.edit(value => ({ ...value, settings: change(value.settings) }), immediate)
   useEffect(() => {
@@ -68,18 +70,42 @@ export function VoiceInputSettingsPage({ active, onOpenShortcuts }: { active: bo
       flush()
     }
   }, [active])
-  const downloadingModel = downloading || !!snapshot?.download
+  const downloadingModel = operations.size > 0 || models.some(model => model.download)
   useEffect(() => {
-    if (!active || !downloadingModel || !voice) return
-    let current = true
-    const timer = setInterval(() => { void voice.snapshot().then(value => { if (current) setSnapshot(value) }).catch(() => {}) }, 700)
-    return () => { current = false; clearInterval(timer) }
+    if (!active || !voice) return
+    // Refresh on return even when a download finished while this page was hidden.
+    void voiceSettings.refreshModels().catch(() => {})
+    if (!downloadingModel) return
+    const timer = setInterval(() => { void voiceSettings.refreshModels().catch(() => {}) }, 700)
+    return () => { clearInterval(timer) }
   }, [active, downloadingModel, voice])
-  const download = async (action: 'start' | 'cancel' | 'remove') => {
+  const download = async (modelId: VoiceModelId, action: 'start' | 'cancel' | 'remove') => {
     if (!voice) return
-    if (action === 'start') setDownloading(true)
-    try { const state = await voice.download(action); if (mounted.current) setSnapshot(state) } catch (error) { fail(error) }
-    finally { if (mounted.current && action !== 'remove') setDownloading(false) }
+    const previous = pending.current.get(modelId)
+    if (previous && !(previous === 'start' && action === 'cancel')) return
+    pending.current.set(modelId, action); setOperations(new Map(pending.current))
+    try {
+      await voice.download({ modelId, action })
+      await voiceSettings.refreshModels()
+      if (mounted.current && action !== 'cancel' && pending.current.get(modelId) === action) toast.success(action === 'start' ? '语音模型已下载' : '语音模型已移除')
+    } catch (error) {
+      if (mounted.current && pending.current.get(modelId) === action) fail(error)
+      void voiceSettings.refreshModels().catch(() => {})
+    }
+    finally {
+      if (pending.current.get(modelId) === action) pending.current.delete(modelId)
+      if (mounted.current) setOperations(new Map(pending.current))
+    }
+  }
+  const local = (settings?.mode ?? 'local') === 'local'
+  const installedModels = models.filter(model => model.ready)
+  const selectedModel = installedModels.find(model => model.id === settings?.localModelId)
+  const languages = voiceModelLanguages(settings?.localModelId ?? 'sensevoice-small')
+  const selectRecognition = (change: Partial<Pick<VoiceSettings, 'mode' | 'localModelId'>>) => {
+    if (!settings) return
+    try { validateVoiceLanguage({ ...settings, ...change }) }
+    catch (error) { fail(error); return }
+    setSettings(value => ({ ...value, ...change }), true)
   }
   const disabled = loading || !settings || state.snapshot?.readOnly === true || !active
   return <SettingsLayout title="语音输入" aria-label="语音输入设置">
@@ -94,28 +120,26 @@ export function VoiceInputSettingsPage({ active, onOpenShortcuts }: { active: bo
         <fieldset disabled={disabled} className="mt-3 min-w-0">
         <SettingsCard>
         <VoiceSettingRow label="识别方式" hint="本地识别在此电脑处理音频；在线识别仅发送到你配置的服务，不自动回退或切换。">
-          <SelectField value={settings?.mode ?? 'local'} onValueChange={mode => setSettings(value => value ? { ...value, mode: mode as VoiceSettings['mode'] } : value, true)} options={[{ value: 'local', label: '本地 · SenseVoice' }, { value: 'qwen-realtime', label: '在线 · Qwen 实时识别' }]} />
+          <SelectField value={settings?.mode ?? 'local'} onValueChange={mode => selectRecognition({ mode: mode as VoiceSettings['mode'] })} options={[{ value: 'local', label: '本地' }, { value: 'qwen-realtime', label: '在线 · Qwen 实时识别' }]} />
         </VoiceSettingRow>
-        <VoiceSettingRow label="识别语言" hint="自动识别适合多语言混读；指定语言可减少误判。可选语言由当前识别方式决定。">
-          <SelectField value={settings?.language ?? 'auto'} options={voiceLanguages.filter(item => settings?.mode !== 'local' || localVoiceLanguages.includes(item.value) || item.value === settings.language).map(item => ({ ...item, label: settings?.mode === 'local' && !localVoiceLanguages.includes(item.value) ? `${item.label}（本地不支持，请重选）` : item.label }))} onValueChange={language => setSettings(value => value ? { ...value, language: language as VoiceLanguage } : value, true)} />
+        {local && <VoiceSettingRow label="当前模型" hint="从已安装模型中选择。下方模型列表可下载多个模型，下载完成后不会自动切换；切换前请结束当前录音。">
+          <SelectField value={selectedModel?.id ?? ''} placeholder={installedModels.length ? '选择已安装的模型' : '请先下载模型'} disabled={!installedModels.length || saving} options={installedModels.map(model => ({ value: model.id, label: model.name }))} onValueChange={localModelId => selectRecognition({ localModelId: localModelId as VoiceModelId })} />
+        </VoiceSettingRow>}
+        <VoiceSettingRow label="识别语言" hint="自动识别适合多语言混读；指定语言可减少误判。可选语言由当前识别模型决定。">
+          <SelectField value={settings?.language ?? 'auto'} options={voiceLanguages.filter(item => !local || languages.includes(item.value) || item.value === settings?.language).map(item => ({ ...item, label: local && !languages.includes(item.value) ? `${item.label}（当前模型不支持，请重选）` : item.label }))} onValueChange={language => setSettings(value => value ? { ...value, language: language as VoiceLanguage } : value, true)} />
         </VoiceSettingRow>
         <VoiceMicrophone voice={voice} active={active} enabled={enabled} disabled={disabled || saving} value={settings?.microphoneDeviceId ?? ''} onChange={microphoneDeviceId => setSettings(value => value ? { ...value, microphoneDeviceId } : value, true)} />
         <VoiceSettingRow label="语音快捷键" hint="在快捷键设置中启用和录入。聚焦当前聊天输入框时按下开始录音，再按一次停止；不自动发送。">
           <Button type="button" variant="ghost" data-voice-setting-control aria-label="前往快捷键设置" onClick={onOpenShortcuts}>前往快捷键设置</Button>
         </VoiceSettingRow>
-        {(settings?.mode ?? 'local') === 'local' ? <VoiceSettingRow label="SenseVoiceSmall 模型" hint={`由 FunAudioLLM 提供，使用 sherpa-onnx INT8 转换及 Silero VAD。模型和完整许可按需下载，约 ${Math.ceil((snapshot?.modelBytes ?? 0) / 1024 / 1024)} MiB；不会包含在聊天备份中。`}>
-          <div className="flex min-w-0 flex-wrap items-center justify-end gap-3">
-            <a className="text-xs underline" href="https://github.com/modelscope/FunASR/blob/58830eca4012644aac0c3218c3ccc7d98f003fda/MODEL_LICENSE" target="_blank" rel="noreferrer">模型许可</a>
-            {downloadingModel && <><progress aria-label="语音模型下载进度" max={snapshot?.modelBytes} value={snapshot?.download?.received ?? 0} className="w-24" /><Button type="button" variant="link" className="px-0" onClick={() => void download('cancel')}>取消</Button></>}
-            <Button type="button" variant="secondary" data-voice-setting-control disabled={downloadingModel || (!snapshot?.localReady && !enabled)} onClick={() => void download(snapshot?.localReady ? 'remove' : 'start')}>{snapshot?.localReady ? '移除模型' : '下载模型'}</Button>
-          </div>
-        </VoiceSettingRow> : <>
+        {!local && <>
           <VoiceSettingRow label="识别服务地址" hint="音频将发往此 WSS 地址。更换地址后须重新填写密钥。"><Input value={settings?.online.endpoint ?? ''} onChange={event => setSettings(value => value ? { ...value, online: { ...value.online, endpoint: event.target.value } } : value)} /></VoiceSettingRow>
           <VoiceSettingRow label="识别模型"><Input value={settings?.online.model ?? ''} onChange={event => setSettings(value => value ? { ...value, online: { ...value.online, model: event.target.value } } : value)} /></VoiceSettingRow>
           <VoiceSettingRow label="API 密钥"><Input type="password" autoComplete="off" value={key ?? ''} placeholder={state.snapshot?.onlineKeyPresent ? '已配置，留空保持' : '输入所选服务的密钥'} onChange={event => voiceSettings.edit(value => ({ ...value, key: event.target.value }))} /></VoiceSettingRow>
         </>}
         </SettingsCard></fieldset>
       </SettingsSection>
+      {local && <VoiceModelsCard models={models} selected={settings?.localModelId ?? 'sensevoice-small'} enabled={enabled} disabled={disabled} pending={operations} onAction={(modelId, action) => { void download(modelId, action) }} />}
       <SettingsSection title="文字整理">
         <fieldset disabled={disabled} className="min-w-0"><SettingsCard>
         <VoiceSettingRow label="启用文字整理" hint="默认关闭。开启后仅将本次转写和术语表发送给所选文字模型，不读取聊天历史；原文可以立即编辑或发送。"><Switch checked={settings?.refinement.enabled ?? false} onCheckedChange={enabled => setSettings(value => value ? { ...value, refinement: { ...value.refinement, enabled } } : value, true)} /></VoiceSettingRow>

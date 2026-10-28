@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-28 模型下载/取消/移除传递显式modelId及action。
  * [OUTPUT]: 2026-10-27 增加可信主窗口语音设备授权租约；原默认关闭与草稿边界保持。
  * [OUTPUT]: 主窗专用诊断导出和当前桌面生命周期读取；不加入员工RPC。
  * [OUTPUT]: 消息复制经主窗口系统剪贴板桥完成，复制回执沿preload类型合同返回。
@@ -22,7 +23,7 @@ const api: DesktopApi = {
     microphoneAccess: input => ipcRenderer.invoke('boai:voice', 'microphoneAccess', input),
     snapshot: () => ipcRenderer.invoke('boai:voice', 'snapshot'),
     configure: input => ipcRenderer.invoke('boai:voice', 'configure', input),
-    download: action => ipcRenderer.invoke('boai:voice', 'download', action),
+    download: input => ipcRenderer.invoke('boai:voice', 'download', input),
     start: identity => ipcRenderer.invoke('boai:voice', 'start', identity),
     append: input => ipcRenderer.invoke('boai:voice', 'append', input),
     finish: id => ipcRenderer.invoke('boai:voice', 'finish', id),

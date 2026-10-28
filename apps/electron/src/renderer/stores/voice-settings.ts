@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 模型选择随原CAS保存；下载目录刷新独立于设置草稿，迟到读取不覆盖新模型状态。
  * [INPUT]: 语音配置草稿、版本化宿主回执、导航与窗口结束事件。
  * [OUTPUT]: 页外串行自动保存；失败保留草稿，旧回执不覆盖新输入，关闭前等待写入结束。
  * [POS]: Renderer 语音设置状态所有者；不启动录音、下载或在线识别。
@@ -11,7 +12,7 @@ import type { DesktopApi } from '@boai/shared/ipc'
 import { validateVoiceLanguage, type VoiceSettings, type VoiceSnapshot } from '@boai/shared/plugins/voice-input'
 
 export type VoiceDraft = { settings: VoiceSettings; terms: string; key?: string }
-type State = { snapshot?: VoiceSnapshot; draft?: VoiceDraft; loading: boolean; saving: boolean; error?: string }
+type State = { snapshot?: VoiceSnapshot; models?: VoiceSnapshot['models']; draft?: VoiceDraft; loading: boolean; saving: boolean; error?: string }
 export const voiceDraft = (snapshot: VoiceSnapshot): VoiceDraft => ({ settings: snapshot.settings, terms: snapshot.settings.terms.map(term => [term.word, ...term.aliases].join(' | ')).join('\n') })
 const message = (error: unknown) => error instanceof Error ? error.message : String(error)
 
@@ -23,6 +24,8 @@ export class VoiceSettingsController {
   private queued = false
   private writing?: Promise<boolean>
   private loading?: Promise<void>
+  private modelRequest = 0
+  private modelAccepted = 0
 
   initialize(api: DesktopApi) {
     if (this.api === api) return
@@ -41,11 +44,24 @@ export class VoiceSettingsController {
   }
   dispose() { for (const unsubscribe of this.subscriptions) unsubscribe(); this.subscriptions = [] }
   hasWork() { const state = this.store.getState(); return !!state.draft || state.saving }
+  private acceptModels(snapshot: VoiceSnapshot, request: number) {
+    if (request < this.modelAccepted) return
+    this.modelAccepted = request
+    this.store.setState({ models: snapshot.models })
+  }
+  async refreshModels() {
+    const api = this.api
+    if (!api?.voice) return
+    const request = ++this.modelRequest, snapshot = await api.voice.snapshot()
+    if (api === this.api) this.acceptModels(snapshot, request)
+  }
   async load() {
     if (!this.api?.voice || this.hasWork()) return
     if (!this.loading) {
       this.store.setState({ loading: true })
+      const request = ++this.modelRequest
       this.loading = this.api.voice.snapshot().then(snapshot => {
+        this.acceptModels(snapshot, request)
         if (!this.hasWork()) this.store.setState({ snapshot, error: snapshot.diagnostic })
         if (snapshot.diagnostic) this.fail(snapshot.diagnostic)
       }).catch(error => this.fail(error)).finally(() => { this.loading = undefined; this.store.setState({ loading: false }) })
@@ -77,11 +93,13 @@ export class VoiceSettingsController {
         try {
           const { settings, terms, key } = draft
           validateVoiceLanguage(settings)
+          const modelRequest = ++this.modelRequest
           const result = await this.api.voice.configure({ expectedRevision: settings.revision, settings: {
-            mode: settings.mode, language: settings.language, microphoneDeviceId: settings.microphoneDeviceId,
+            mode: settings.mode, localModelId: settings.localModelId, language: settings.language, microphoneDeviceId: settings.microphoneDeviceId,
             online: { endpoint: settings.online.endpoint.trim(), model: settings.online.model.trim() }, refinement: settings.refinement,
             terms: terms.split('\n').map(line => line.split('|').map(word => word.trim()).filter(Boolean)).filter(parts => parts.length).map(([word, ...aliases]) => ({ word: word!, aliases })),
           }, ...(key !== undefined ? { apiKey: key } : {}) })
+          this.acceptModels(result, modelRequest)
           const current = this.store.getState().draft
           this.store.setState({ snapshot: result, error: undefined, draft: version === this.version || !current ? undefined : {
             ...current, key: current.key === key ? undefined : current.key,
@@ -100,7 +118,8 @@ export class VoiceSettingsController {
     if (!this.api?.voice) return !this.hasWork()
     try {
       // A rejected configure can follow a committed write. Re-read before abandoning its draft.
-      const snapshot = await this.api.voice.snapshot()
+      const request = ++this.modelRequest, snapshot = await this.api.voice.snapshot()
+      this.acceptModels(snapshot, request)
       this.version++; this.store.setState({ snapshot, draft: undefined, error: snapshot.diagnostic })
       return true
     } catch (error) { this.fail(error); return false }

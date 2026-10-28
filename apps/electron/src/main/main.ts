@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-28 语音模型操作透传显式modelId/action，由宿主唯一schema校验。
  * [OUTPUT]: 语音设置关闭/隐藏前等待自动保存，未结束写入不允许直接退出。
  * [OUTPUT]: 语音设备授权仅接可信主窗口短期租约，原media检查/生命周期释放保持。
  * [OUTPUT]: 2026-10-27 默认关闭语音插件接线、可信主窗口与原草稿/生命周期边界。
@@ -495,7 +496,7 @@ function registerIpc() {
       case 'microphoneAccess': return voice.microphoneAccess(input as Parameters<typeof voice.microphoneAccess>[0])
       case 'snapshot': z.undefined().parse(input); return voice.snapshot()
       case 'configure': return voice.configure(input as Parameters<typeof voice.configure>[0])
-      case 'download': return voice.download(z.enum(['start', 'cancel', 'remove']).parse(input))
+      case 'download': return voice.download(input as Parameters<typeof voice.download>[0])
       case 'start': return voice.start(input as Parameters<typeof voice.start>[0])
       case 'append': return voice.append(input as Parameters<typeof voice.append>[0])
       case 'finish': return voice.finish(z.string().uuid().parse(input))
