@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-28自动PR采集、Agent差异审阅、线上选择更新与最新只读复验；ui:deliver接续，取消强制本地人工确认，实际归22组06 §21。
 [OUTPUT]: 2026-10-28第28组首轮真实CLI/AppService对照及取消续接/Claude目录/Codex子线程三修复；单次复验、原失败与未验范围归28组02/03，不宣称全量无损。
 [OUTPUT]: 2026-10-27线上基准提交后Agent须批准当前PR的action_required运行；独立dispatch全绿不能替代该PR门禁，普通人工push保持自动检查。
 [OUTPUT]: PR42官方候选40485363446的26场全部通过，已按用户确认接受定时任务/管理/本人菜单六张新基准；原20图零差异，普通提交后CI及自动合并独立。
@@ -590,9 +591,9 @@
 
 # BOAI开发流程
 
-- 2026-10-27现行规则：功能worktree的本地dev只用于用户确认实际UI效果是否符合需求；当前先人工确认，后续是否交给Agent判断由用户另行决定。Agent负责识别受影响case、GitHub构建/候选差异审阅、调用线上基准更新入口提交原功能分支、批准机器人提交的当前PR检查并复验及自动合并。不上传本地dev截图当正式基准，也不能停在确认/采集这一步。
-- 用户可以自行commit/push；提交不等于接受UI。未确认UI的PR保持Draft、不开自动合并；确认同一批效果一次即可，后续技术操作由Agent接续。无UI变化直接设置自动合并，核对回执后结束。
-- 在本仓库开发、交付、CI或合并前，读取共享技能[boai-dev-workflow](.agents/skills/boai-dev-workflow/SKILL.md)，并fetch/read origin/main最新版本；旧worktree/Session也必须重新读取。本分支修订和最新用户指令优先核对。当前详细合同见第22组06 §20。
+- 2026-10-28现行规则替代此前强制本地人工确认：PR源码提交先由GitHub完整采集行为/布局及截图；Agent按用户需求查看官方old/new/diff，明确范围后线上更新同分支基准；当前PR最新提交完整只读复验通过后正常交付。预期视觉变化保持Required pending，执行失败正常阻断；不改阈值或断言绕过。
+- 默认Agent完成审阅和技术接续，不要求用户先运行dev或手动管理基准；只有需求/设计不明确的差异才询问用户。本地预览可选。`pnpm ui:deliver`提供可接续入口，源码变化使旧审阅失效。
+- 在开发、交付、CI或合并前读取共享技能[boai-dev-workflow](.agents/skills/boai-dev-workflow/SKILL.md)，fetch/read origin/main最新版本，同时核对本分支修订和最新用户指令。当前详细合同见第22组06 §21；历史§19/20的人工前置条件已被替代。
 - worktree独立node_modules复用pnpm store；普通pnpm i即可复用缓存，首次冻结安装可加--prefer-offline。main只同步实际已合并提交，预览和产品开发均不复制回main。
 - Codex、Claude、Pi共用该技能，客户端不自动发现时按路径读取。技能不扩大任务授权，本机自动CI保持停用。GitHub只执行UI/Required，本地Vitest/BDD/评估保留。
 

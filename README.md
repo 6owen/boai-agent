@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-28自动PR采集、Agent差异审阅、线上选择更新与最新只读复验；ui:deliver接续，取消强制本地人工确认，实际归22组06 §21。
 [INPUT]: 现有产品能力、源码启动命令与resources/readme中的真实Electron界面截图。
 [OUTPUT]: 2026-10-27 GitHub产品展示首页；历史开发记录完整归档至ai-docs/2026-10-27-README历史开发记录.md。
 [POS]: 仓库公开介绍与使用入口；功能状态见各专题，开发规约真源为AGENTS.md。
@@ -110,6 +111,7 @@ ai-docs/             设计、规格与实施记录
 ```
 
 - `pnpm build` / `pnpm start`：构建并运行桌面应用。
+- `pnpm ui:deliver`：接续 PR 的 UI 采集、Agent 差异审阅、基准更新与只读复验，详见[开发流程](.agents/skills/boai-dev-workflow/SKILL.md)。
 - `pnpm dev:cli --help`：查看 CLI 开发入口。
 - `pnpm dev:design`：启动独立设计文档站。
 - `pnpm plugin:create /绝对路径/新插件目录`：创建运行时插件示例。

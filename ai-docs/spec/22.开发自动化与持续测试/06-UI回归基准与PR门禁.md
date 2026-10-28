@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-28自动PR采集、Agent差异审阅、线上选择更新与最新只读复验；ui:deliver接续，取消强制本地人工确认，实际归22组06 §21。
 [OUTPUT]: 首轮线上更新与独立复验成功但PR待批准；§20.1修正为Agent批准当前PR检查，移除重复dispatch。
 [OUTPUT]: PR42官方40485363446完整26场通过，用户确认后审阅接受新增六图；原20图字节不变，普通当前提交门禁独立。
 [OUTPUT]: 2026-10-27最终流程归§20：本地效果确认，Agent驱动线上构建、基准提交与只读复验；§19部分规则已被替代。
@@ -317,7 +318,7 @@ UI job通过后由record-ui登记summary、compare/summary、原始Playwright报
 - 启动入口轻量检查：未设置端口保持默认配置，指定端口/0正确传给Vite，BDD端口优先，空值/负数/65536/非数字在构建前拒绝，共8种情况通过；未启动Electron或产品构建。
 - PR42当前候选40479030099另外有实际执行失败：4个定时任务场景等待checkbox“标签 日常”均30秒超时，其余22场通过。此类失败不能靠更新截图解决，需要功能或测试定位修正；本轮不改该任务产品源码、不晋升其基准，也不冒称已修复该PR。
 
-## 20. 本地确认效果，基准在线更新（2026-10-27）
+## 20. 本地确认效果，基准在线更新（2026-10-27，人工前置已由§21替代）
 
 - 用户最终澄清：本地dev只是确认功能页面是不是自己想要的，目前先人工确认以验证后续流程，未来可授权Agent判断。不是本地跑正式基准，也不要求用户审查case或处理测试命令。§19的确认前禁止普通push、要求用户确认技术范围及本地接受方式由本节替代；自行commit/push仍可用，未确认UI的PR不自动合并。
 - Agent必须接续：确认效果→推源码→原候选工作流在线build/采集→核对官方旧/新/diff→调用main上的ui-baseline-update.yml→在线提交受影响PNG/manifest到同一功能分支→显式派发原tests.yml只读验证→Ready PR当前SHA自动合并。普通依赖缓存、构建和测试合同不改；线上更新复用已完成的候选，不重复build/采集。
@@ -331,3 +332,27 @@ UI job通过后由record-ui登记summary、compare/summary、原始Playwright报
 - 官方候选40517660052全26场通过。23图字节相同，schedule-manager-dark仅16个边缘像素各差1/255，经原Playwright比较器原阈值/零差异额度验证通过，保留原基准。整合聊天滚动后仅user-menu明暗两图需晋升。
 - 线上更新40519462671成功提交301c2b14，实际仅两PNG/manifest变化，其他24场图片及记录不变；未上传本地dev图片。独立复验40519674960全绿，但机器人提交产生的PR运行40519684594为action_required，GitHub仍阻止合并。
 - 因此线上更新只负责提交基准；Agent必须接续：没有PR则由Agent创建，有PR则核对同仓库/当前SHA/tests.yml并通过Actions approve API批准它的运行，再开启自动合并。不让用户重复确认技术步骤，不再用独立dispatch产生重复CI。新提交的PR门禁仍需通过，原比较规则及失败记录保留。
+
+## 21. 自动采集、Agent审阅与可接续交付（2026-10-28）
+
+用户要求修正流程本身，不处理PR48的失败或合并。此前普通push先对旧图判失败、候选又依赖用户本地确认，导致Agent可停在Draft/旧图失败处；Skill文字无法让CI自行转入候选。现改为实际工作流分阶段，并取消强制人工本地确认。
+
+### 当前合同
+
+1. 同仓库PR的源码head自动全场采集，feature head与GitHub合成merge SHA分别记录。采集仍执行全部行为/布局断言，缺控件/布局/超时为失败，不允许换图掩盖。
+2. 用锁文件Playwright真实PNG比较器和原合同阈值分类，保留原始RGBA old/new/diff。缺基准/合同变化/环境迁移需审阅；原件篡改与执行失败直接失败。环境迁移单独解释，不能当作普通UI变更悄悄接受。
+3. 纯视觉变化由独立 `Required checks` Check Run 表示 `in_progress`，调度job叫 `UI delivery gate`，避免skipped/neutral被当作通过。待审阅不占runner、不伪造失败或成功。检查绑定本次run/attempt及PR head；最终原件独立核验实际merge SHA。
+4. `pnpm ui:deliver start`创建Draft，普通push触发采集；`pnpm ui:deliver`接续当前PR和head，下载/校验官方候选并列出变化。Agent查看图片并按需求判断；无需用户先打开dev。只有疑义设计差异才询问。
+5. `pnpm ui:deliver review --cases ... --reason ...`必须精确选择所有实际变化，main受信更新入口重验官方run/artifact/source/build/environment及材料，只提交所选PNG与manifest。普通CI始终只读。本地接续记录含head/run/attempt；提交网络回执未知时禁止自动重复写入。
+6. 纯基准提交直接转只读两片；无视觉变化的候选同一workflow自动转只读两片。最终success必须由原 `ci-result gate-shards`独立核验全部场景及原件。候选/更新通过不授资格。新源码则重新采集，旧审阅失效。
+7. 接续入口仅快进已登记的基准提交；并发源码推送需正常同步重新审阅。机器人push触发的当前PR action_required由Agent核实后批准，不另dispatch替代。当前只读复验过后Ready/正常自动合并；`--no-auto-merge`持久保留用户的禁止合并边界。
+
+### 验证和生效
+
+实现位于独立 `fix/ui-delivery-flow` worktree。26场合同、PNG、mask、阈值、产品UI和原ci-result验证器未修改；PR48保持原状。流程的本地协议/真实PNG/工作流静态检查和云端运行结果在本节追加；未实际完成云端接续前不宣称已端到端上线。main未合入前其他worktree仍须明确同步本批流程。
+
+本地验证：14个定向文件共258项通过（含原件/范围/缓存/显示稳定性及真实CLI接续），类型检查、修改脚本ESLint、actionlint 1.7.12和diff检查通过。测试文件不在现有ESLint匹配范围，使用Vitest/TypeScript核验。未在本机运行Electron UI测试。云端结果继续记录，未把本地协议测试当作远端端到端证明。
+
+首轮云端运行40619848626的阶段规划和自动采集已启动。发现将自定义Required发到合成merge提交时，`gh pr checks --required`不报告该项；修正为按GitHub PR呈现发布到feature head，同时保留原gate对实际merge SHA的严格核验。新增新head保留no-auto-merge偏好和双SHA映射回归；旧运行保留，修订后新提交重新验证。
+
+第二轮40620275036实测Required已按当前PR head被必需检查列表识别；同一Actions run的jobs API会包含自定义pending检查，因此补充按当前attempt的实际Plan/Capture/Gate及分片job核验候选就绪，允许已完成采集但整体run仍in_progress的审阅。缺失/失败/取消/不完整job证明仍拒绝，官方PNG和原始行为结果重验保持。这样待审阅状态不会与“必须整个run成功才能接受”互相等待。新增真实CLI在pending run下提交及未知回执不重放验证。

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 支持同仓库PR自动候选和独立候选；绑定PR/head/run/attempt。
  * [OUTPUT]: 本地接受与独立线上更新共用官方原件/范围核验；普通CI入口仍禁止接受。
  * [OUTPUT]: 完整原件下载允许10分钟网络预算，来源/摘要/逐文件复核保持；不延长云端UI测试。
  * [INPUT]: 明确GitHub独立采集run、官方artifact摘要、当前干净源码及逐项审阅后的接受命令。
@@ -16,6 +17,7 @@ import { sourceIdentity, baselineContractHash, validateReport } from './ui-regre
 import { buildInputHash } from './build-identity.mjs'
 import { verifyBaselineReview } from './ui-baseline-review.mjs'
 import { CI_PROFILE, uiProfile, readUiBaseline } from './ui-profiles.mjs'
+import { candidateWorkflow, candidateRunReady, withCandidateJobs } from './ui-delivery-protocol.mjs'
 import { acquireResourceLock } from './resource-lock.mjs'
 
 const repository = '6owen/boai-agent'
@@ -23,8 +25,8 @@ const json = async path => JSON.parse(await readFile(path, 'utf8'))
 const hash = bytes => createHash('sha256').update(bytes).digest('hex')
 const api = path => JSON.parse(execFileSync('gh', ['api', `repos/${repository}/${path}`], { encoding: 'utf8', timeout: 30_000, maxBuffer: 2 * 1024 * 1024 }))
 export function verifyCandidateRun(run, artifacts, current, runId) {
-  const trigger = run.event === 'workflow_dispatch' || run.event === 'push' && run.head_branch === 'infra/ui-environment-profiles'
-  if (String(run.id) !== String(runId) || run.repository?.full_name !== repository || run.head_repository?.full_name !== repository || run.path !== '.github/workflows/ui-baseline-candidate.yml' || !trigger || run.status !== 'completed' || run.conclusion !== 'success' || run.head_sha !== current.commit || current.dirty) throw new Error('采集run不是当前干净SHA的受信独立采集结果')
+  const trigger = candidateWorkflow(run)
+  if (String(run.id) !== String(runId) || run.repository?.full_name !== repository || run.head_repository?.full_name !== repository || !trigger || !candidateRunReady(run) || run.head_sha !== current.commit || current.dirty) throw new Error('采集run不是当前干净SHA的受信官方采集结果')
   const found = artifacts.filter(item => item.name === `ui-candidate-${CI_PROFILE}`)
   if (found.length !== 1) throw new Error('缺少唯一CI候选artifact')
   const artifact = found[0]
@@ -32,7 +34,7 @@ export function verifyCandidateRun(run, artifacts, current, runId) {
   return artifact
 }
 export function verifyCandidateIdentity(candidate, run, current, ids, inputHash) {
-  if (candidate.profile !== CI_PROFILE || candidate.source?.commit !== current.commit || candidate.source?.sourceHash !== current.sourceHash || candidate.source?.dirty !== false || candidate.ci?.repository !== repository || candidate.ci?.runId !== String(run.id) || candidate.ci?.attempt !== String(run.run_attempt) || candidate.ci?.sha !== run.head_sha || candidate.ci?.workflow !== `${repository}/.github/workflows/ui-baseline-candidate.yml@refs/heads/${run.head_branch}`) throw new Error('候选身份与官方run/源码不匹配')
+  if (!candidateWorkflow(run) || candidate.profile !== CI_PROFILE || candidate.source?.commit !== current.commit || candidate.source?.sourceHash !== current.sourceHash || candidate.source?.dirty !== false || candidate.ci?.repository !== repository || candidate.ci?.runId !== String(run.id) || candidate.ci?.attempt !== String(run.run_attempt) || candidate.ci?.sha !== run.head_sha || candidate.ci?.workflow !== candidateWorkflow(run)) throw new Error('候选身份与官方run/源码不匹配')
   if (candidate.environment?.version !== 3 || candidate.environment.platform !== 'darwin' || candidate.environment.arch !== 'arm64' || candidate.environment.osVersion?.split('.')[0] !== '15' || candidate.built?.version !== 1 || candidate.built.inputHash !== inputHash || !/^[a-f0-9]{64}$/.test(candidate.built.outputHash ?? '')) throw new Error('候选构建或环境不完整')
   const displays = candidate.environment.displays
   const positive = value => Number.isFinite(value) && value > 0
@@ -81,7 +83,7 @@ with zipfile.ZipFile(archive) as z:
   execFileSync('python3', ['-c', unpack, archive, output], { timeout: 120_000 })
 }
 export async function downloadCiCandidate(root, runId, output) {
-  const current = await sourceIdentity(root), run = api(`actions/runs/${runId}`)
+  const current = await sourceIdentity(root), run = withCandidateJobs(api(`actions/runs/${runId}`), api)
   const artifact = verifyCandidateRun(run, api(`actions/runs/${runId}/artifacts?per_page=100`).artifacts, current, runId)
   await mkdir(output) // Must be new; never merge a fresh artifact into old evidence.
   const archive = `${output}.zip`, fd = openSync(archive, 'wx', 0o600)
