@@ -5,7 +5,7 @@
  * [OUTPUT]: 补发送后贴底/内容增长/手动滚动/跨会话迟到发送及渠道旧分页竞态回归；组件用例待运行，不代表Electron或E2E验证。
  * [INPUT]: 生产ChatView/PromptBar/MentionInput、真实分页消息与隔离IPC。
  * [OUTPUT]: 同一真实编辑器在会话切换加载/就绪时，contenteditable与无障碍禁用状态必须同步，草稿与DOM保持。
- * [OUTPUT]: 切换/加载保持header/composer节点，旧会话正文立即卸下；历史游标去重，草稿撤销不跨会话，过渡按真实opacity结束事件清理、遵循减少动态效果，补页不重播入场。
+ * [OUTPUT]: 切换/加载保持header/composer节点，旧会话正文立即卸下且不渲染骨架；历史游标去重，草稿撤销不跨会话，保留原消息入场及减少动态效果行为，补页不重播。
  * [POS]: 会话固定布局与消息窗口组件回归，不运行Electron或模型。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查tests/.folder.md。
  */
@@ -242,8 +242,7 @@ it('rejects a late view for another conversation and hides the prior reveal imme
   await render()
   await act(async () => vi.advanceTimersByTimeAsync(500))
   expect(host.querySelector<HTMLElement>('.chat-messages-content')?.hidden).toBe(true)
-  expect(host.querySelector('.chat-history-skeleton')?.classList.contains('messages')).toBe(true)
-  expect(host.querySelector('.chat-history-skeleton [data-reading-message-id]')).toBeNull()
+  expect(host.querySelector('.chat-history-skeleton')).toBeNull()
   expect(host.querySelector('.chat-header')?.textContent).toContain('会话C')
   expect(host.textContent).not.toMatch(/正文[ABC]-1/)
   expect(host.querySelector('.chat-history-retry')).toBeNull()
