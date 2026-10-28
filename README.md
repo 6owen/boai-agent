@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 根目录UI_TEST_CI.md提供日常UI修改、PR检查、合并与worktree收尾用法入口。
 [OUTPUT]: 2026-10-28按Magpie拆为Test与DeepSeek UI preview；固定PNG基准退出PR门禁，旧说明仅作历史，实际运行见22组03。
 [INPUT]: 现有产品能力、源码启动命令与resources/readme中的真实Electron界面截图。
 [OUTPUT]: 2026-10-27 GitHub产品展示首页；历史开发记录完整归档至ai-docs/2026-10-27-README历史开发记录.md。
@@ -94,7 +95,7 @@ pnpm dev
 
 - [文档入口](ai-docs/README.md) · [功能规格](ai-docs/spec/README.md)
 - [BOAI CLI](ai-docs/spec/21.BOAI-CLI/README.md) · [外部插件开发](ai-docs/spec/26.Workspace工程结构重构/04-外部插件开发与接入.md)
-- [协作规约](AGENTS.md) · [开发流程](.agents/skills/boai-dev-workflow/SKILL.md)
+- [协作规约](AGENTS.md) · [开发流程](.agents/skills/boai-dev-workflow/SKILL.md) · [UI 测试与 CI 用法](UI_TEST_CI.md)
 
 <details>
 <summary>源码结构与常用命令</summary>

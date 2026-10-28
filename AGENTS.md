@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-28任务worktree完成即回收；已合并或最终提交经archive标签存档后删除本地任务分支，编排会话负责子worktree。
 [OUTPUT]: 2026-10-28用户授权语音多模型Card/Select与适配器实现；首批SenseVoiceSmall及Whisper Tiny/Base，实际验证归19组12第7节。
 [OUTPUT]: 2026-10-28用户选择先修工程测试再正常合并；修复判断承接的空期限/隐式五分钟缺陷并校准旧夹具，实际结果及切换状态归22组03。
 [OUTPUT]: 2026-10-28用户要求立即切换；旧Actions已停用，新Test独立test.yml，合并/实际生效状态归22组03。
@@ -598,6 +599,8 @@
 - 开发使用独立worktree，交付按本次用户授权；明确只修改/执行试验时不合并。旧UI工具和历史结果保留为本地按需入口。
 - 在本仓库开发、交付、CI或合并前，读取共享技能[boai-dev-workflow](.agents/skills/boai-dev-workflow/SKILL.md)，并fetch/read origin/main最新版本；旧worktree/Session也必须重新读取。本分支修订和最新用户指令优先核对。当前详细合同见第22组06。
 - worktree独立node_modules复用pnpm store；普通pnpm i即可复用缓存，首次冻结安装可加--prefer-offline。main只同步实际已合并提交，预览和产品开发均不复制回main。
+- **worktree 不遗留：** 在任务worktree（含subagent的`.claude/worktrees/agent-*`）里做的任务，完成时必须删除该worktree及其本地任务分支，已核实专属于它的cargo target目录一并删除。删除前二选一：确认最终提交已实际合并进main；或不合并时先把本任务应保留的未提交改动（含未跟踪源码）提交到该分支，再打`archive/<worktree名>`标签存档并核对指向最终提交；同名标签已存在时加唯一后缀，不覆盖旧档。随后执行`git worktree remove`，已合并分支用`git branch -d`，已归档的未合并分支用`git branch -D`。编排subagent的会话负责收尾它派生的worktree。确需保留的（待用户裁决、有冲突待解等）必须在最终回复点名路径与原因，不得默默留下。
+- 删除前确认本任务及子任务进程已退出、会话工作目录已移出目标，核对未跟踪及ignored文件；tag只保存提交内容，需要保留的数据先迁出，密钥不得提交。只删该worktree专用的构建产物，不删共享cargo target、pnpm store或符号链接指向的共享目录；不得借收尾清理其他会话的任务分支。
 - Codex、Claude、Pi共用该技能，客户端不自动发现时按路径读取。技能不扩大任务授权，本机自动CI保持停用。GitHub沿Magpie执行Test与DeepSeek UI preview；固定PNG基准不再作为PR门禁，本地BDD/评估保留。
 
 # BOAI业务评估与Codex优化
