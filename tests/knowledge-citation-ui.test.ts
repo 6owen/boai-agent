@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 未变化正文保留引用焦点，回调切换使用新处理器；正文更新及撤权仍及时反映。
  * [INPUT]: 生产Markdown引用/预览组件和受控宿主回执。
  * [OUTPUT]: 未读/伪造引用纯文本，实际读取按钮仅传消息身份；网页链接允许预览/外开且不请求元数据，其他协议不导航；更新/隐藏与迟到正文隔离。
  * [POS]: 知识引用UI合同，实际桌面另验。
@@ -65,4 +66,22 @@ it('drops a visible citation on change and ignores a delayed response after hidi
   await act(async () => vi.advanceTimersByTime(120))
   await act(async () => root.render(h(KnowledgeCitationPane, { api, active: false, target })))
   await act(async () => resolve(preview)); expect(host.textContent).not.toContain('实际原文')
+})
+
+it('keeps citation focus across callback changes, invokes the current handler and still updates content and authorization', async () => {
+  const first = vi.fn(), latest = vi.fn()
+  const detail = { materials: [] } as unknown as ConversationDetail
+  const message = { id: 'reply', senderId: 'employee', senderType: 'agent', status: 'completed', knowledgeSources: [reference], content: `[引用](<${reference.path}:2>)` } as Message
+  await act(async () => root.render(h(MaterialMarkdown, { message, detail, onPreview: vi.fn(), onKnowledgePreview: first })))
+  const button = host.querySelector('button')!
+  button.focus()
+  await act(async () => root.render(h(MaterialMarkdown, { message, detail, onPreview: vi.fn(), onKnowledgePreview: latest })))
+  expect(document.activeElement).toBe(button)
+  await act(async () => button.click())
+  expect(first).not.toHaveBeenCalled()
+  expect(latest).toHaveBeenCalledWith({ messageId: 'reply', referenceIndex: 0, line: 2 }, reference, 'employee')
+  await act(async () => root.render(h(MaterialMarkdown, { message: { ...message, content: '更新后的正文' }, detail, onPreview: vi.fn(), onKnowledgePreview: latest })))
+  expect(host.textContent).toBe('更新后的正文')
+  await act(async () => root.render(h(MaterialMarkdown, { message: { ...message, knowledgeSources: undefined }, detail, onPreview: vi.fn(), onKnowledgePreview: latest })))
+  expect(host.querySelector('button')).toBeNull()
 })

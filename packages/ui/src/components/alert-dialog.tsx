@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 与普通Dialog共用轻量底色遮罩，取消全屏背景模糊；确认/取消、焦点与原淡入/缩放保持。
  * [OUTPUT]: 字号和默认行高使用同一工具类，宿主字号覆盖时保持原cn合并语义。
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
  * [OUTPUT]: alert-dialog 基础组件；表面共用 Soft 样式，底部按钮区无独立背景、分隔线或外扩留白。
@@ -35,7 +36,7 @@ function AlertDialogOverlay({
     <AlertDialogPrimitive.Backdrop
       data-slot="alert-dialog-overlay"
       className={cn(
-        "fixed inset-0 isolate z-50 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
+        "fixed inset-0 isolate z-50 bg-black/10 duration-100 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
         className
       )}
       {...props}

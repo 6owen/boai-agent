@@ -1,6 +1,7 @@
 /*
  * [OUTPUT]: 分片报告核合同并标明局部范围，伪造片号保持失败。
  * [OUTPUT]: 原始四步计时独立汇总；不把缺失/负值或未登记步骤补为零，不改变视觉门禁。
+ * [OUTPUT]: 自动候选与最终只读流程均附报告，报告本身不授合并资格。
  * [INPUT]: 代表Playwright结果、实际临时PNG、执行摘要及现有UI门禁。
  * [OUTPUT]: 视觉变化仅可待审阅；行为/环境/中断/缺图保持失败，报告不授门禁资格或修改基线。
  * [POS]: CI审阅反馈的基础设施回归；不启动Electron或真实模型。
@@ -185,9 +186,9 @@ it('真实CLI在无报告时生成失败说明，退出0只表示报告生成成
   execFileSync(process.execPath, [cli, 'summary', output], { env: { ...process.env, GITHUB_STEP_SUMMARY: stepSummary, UI_REVIEW_ARTIFACT_URL: 'https://github.com/6owen/boai-agent/actions/runs/123/artifacts/456' } })
   expect(await readFile(stepSummary, 'utf8')).toContain('下载轻量审阅附件')
 })
-it('两个工作流只附加报告，原只读检查、独立采集和必需门禁保持', async () => {
+it('两个工作流保留审阅报告，最终只读检查和必需门禁独立', async () => {
   const workflow = parse(await readFile('.github/workflows/tests.yml', 'utf8'))
-  expect(workflow.jobs.required.name).toBe('Required checks'); expect(workflow.jobs.required.if).toBe('always()')
+  expect(workflow.jobs.required.name).toBe('UI delivery gate'); expect(workflow.jobs.required.if).toBe('always()')
   expect(workflow.jobs.ui.steps.find((step: { run?: string }) => step.run?.includes('ui-regression.mjs check'))['continue-on-error']).toBeUndefined()
   for (const name of ['tests.yml', 'ui-baseline-candidate.yml']) {
     const value = parse(await readFile(`.github/workflows/${name}`, 'utf8'))
