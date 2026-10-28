@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 遮罩仅淡入半透明底色，避免首次全屏backdrop模糊的额外绘制；250/150ms缩放/淡入和模态语义保持。
  * [OUTPUT]: transitions-dev modal动效按Base UI起止状态播放，原语负责退出完成与卸载；支持初始open弹窗。
  * [OUTPUT]: 字号和默认行高使用同一工具类，宿主字号覆盖时保持原cn合并语义。
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
@@ -40,7 +41,7 @@ function DialogOverlay({
     <DialogPrimitive.Backdrop
       data-slot="dialog-overlay"
       className={cn(
-        "t-modal-backdrop fixed inset-0 isolate z-50 bg-black/10 supports-backdrop-filter:backdrop-blur-xs",
+        "t-modal-backdrop fixed inset-0 isolate z-50 bg-black/10",
         className
       )}
       {...props}
