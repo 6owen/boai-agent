@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Codex实际版本观察独立保存并核对配置revision/程序身份，不覆盖人工验证；失败验证清除观察。
  * [OUTPUT]: 受信运行时包登记/内容hash/CAS/租约、通用连接验证与配置指纹。
  * [OUTPUT]: 插件连接固定包hash与严格配置，测试/保存沿原草稿身份核对。
  * [OUTPUT]: 2026-10-11 第13组员工执行来源/本机登录和运行选项沿原产品身份接线；持续原生合同见13组10/11，实际成绩唯一归06 §122。
@@ -47,7 +48,14 @@ export class LaunchProfiles {
  forgetDraftVerification(profile:LaunchProfile){this.draftVerifications.delete(this.draftKey(profile))}
  async save(input:LaunchProfileInput){const prepared=await this.prepare(input),key=this.draftKey(prepared),verified=this.draftVerifications.get(key);const p:LaunchProfile={...prepared,id:prepared.id||randomUUID(),...(verified?{verified}: {})};await this.persist(p);this.draftVerifications.delete(key);return structuredClone(p)}
  async verified(id:string,revision:number,verified:LaunchProfile['verified']){const p=this.get(id);if(p.revision!==revision)throw new Error('测试期间启动项已更新，请重新测试');p.verified=verified;await this.persist(p);return p}
- async failedVerification(id:string,revision:number){const p=this.get(id);if(p.revision!==revision)return;delete p.verified;await this.persist(p)}
+ async observedProgram(expected: LaunchProfile, verified: NonNullable<LaunchProfile['observedProgram']>) {
+  const current = this.get(expected.id)
+  if (current.protocol !== 'codex-app-server' || !current.verified || current.revision !== expected.revision || current.executable !== expected.executable || current.executableHash !== expected.executableHash) throw new Error('原生握手期间连接配置已变化')
+  const file = inspectProgram(current.executable)
+  if (file.path !== current.executable || file.hash !== current.executableHash) throw new Error('原生握手期间程序文件已变化，请重新核对连接')
+  if (!current.observedProgram || current.observedProgram.checkedAt <= verified.checkedAt) await this.persist({ ...current, observedProgram: { ...verified } })
+ }
+ async failedVerification(id:string,revision:number){const p=this.get(id);if(p.revision!==revision)return;delete p.verified;delete p.observedProgram;await this.persist(p)}
  async remove(id:string){this.get(id);await this.store.write([],[{collection:'launchProfiles',id}]);this.items.delete(id)}
  private async persist(p:LaunchProfile){await this.store.write([{collection:'launchProfiles',id:p.id,value:p}]);this.items.set(p.id,p)}
 }

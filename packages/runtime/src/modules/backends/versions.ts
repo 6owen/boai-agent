@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 只读版本目录优先较新的实际握手观察；人工lastVerification独立，程序文件变化仍显示未知。
  * [INPUT]: Compiled application identity, installed Mastra metadata, original launch profiles and runtime plugin owner.
  * [OUTPUT]: Immutable compiled application identity plus current-file-checked program/package versions; absent build identity remains unknown.
  * [POS]: Read-only runtime inventory; never spawns an executable or calls a model.
@@ -17,11 +18,12 @@ export async function runtimeVersions(profiles: LaunchProfiles, plugins: Runtime
   const result: RuntimeVersions = { application: application ? { ...application, source: 'compiled-inputs' } : { version: null, inputHash: null, source: 'unknown' }, node: process.versions.node, mastra: { package: '@mastra/core', version: mastraPackage.version, source: 'installed-package' }, programs: [], plugins: [] }
   for (const profile of profiles.list().sort((a, b) => a.id.localeCompare(b.id))) {
     const status = await profiles.status(profile.id)
-    const verified = status.profile.verified
+    const verified = status.profile.verified, observed = status.profile.observedProgram
+    const current = verified && observed && observed.checkedAt >= verified.checkedAt ? observed : verified
     result.programs.push({ profileId: profile.id, revision: profile.revision, protocol: profile.protocol ?? 'acp', employeeIds: agents.filter(agent => agent.executionBackend && 'profileId' in agent.executionBackend && agent.executionBackend.profileId === profile.id).map(agent => agent.id).sort(),
       availability: status.status, checkedAt: status.checkedAt,
-      version: status.status === 'available' && verified ? verified.version : null,
-      source: status.status === 'available' && verified ? 'verified-program' : 'unknown',
+      version: status.status === 'available' && current ? current.version : null,
+      source: status.status === 'available' && current ? 'verified-program' : 'unknown',
       ...(verified ? { lastVerification: { version: verified.version, protocolVersion: verified.protocolVersion, checkedAt: verified.checkedAt } } : {}) })
   }
   for (const plugin of plugins.snapshot().plugins.sort((a, b) => a.manifest.id.localeCompare(b.manifest.id))) {

@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 原生Codex握手观察沿原run权限与串行事务保存版本，不改变配置revision或自动重发输入。
+ * [OUTPUT]: 网页检索草稿测试接现有externalTests/externalTasks退出取消与备份门禁，不保存连接。
  * [OUTPUT]: Codex当前轮次补充沿原消息事务/来源投影受理，原生RPC在服务串行区之外单次投递。
  * [OUTPUT]: 定时任务列表偏好独立 CAS 读写及变更事件，不改执行配置。
  * [OUTPUT]: 2026-10-27 进度核验绑定宿主原运行阶段，决策不再误用执行工具门禁；原停止、版本与来源校验保持。
@@ -1114,6 +1116,14 @@ export class AppService {
     if (method === 'saveWebSearchDefault') return this.webSearch.saveDefault(input)
     if (method === 'getWebSearchCredential') return this.webSearch.connections.getCredential(input)
     if (method === 'testWebSearchService') { if (this.closing || this.backingUp) fail('服务正在退出或备份'); return this.webSearch.test(input) }
+    if (method === 'testWebSearchServiceDraft') {
+      if (this.closing || this.backingUp) fail('服务正在退出或备份')
+      const controller = new AbortController()
+      this.externalTests.add(controller)
+      const task = this.webSearch.testDraft(input, controller.signal), settled = task.then(() => {}, () => {})
+      this.externalTasks.add(settled)
+      try { return await task } finally { this.externalTests.delete(controller); this.externalTasks.delete(settled) }
+    }
     if (method === 'removeWebSearchService') return this.webSearch.connections.remove(input)
     if (method === 'listDataSources') { z.undefined().parse(input); return this.dataSources.list() }
     if (method === 'getPromptCollections') { z.undefined().parse(input); return this.store.transaction(readPromptCollections) }
@@ -4298,6 +4308,14 @@ export class AppService {
         }
       }
       context.runtimeDirectory = { cwd: loaded.workspace.workPath, privateHome: join(loaded.workspace.root, `.${nativeRuntimeNamespace(backend)}-private`) }
+      context.onNativeProgram = program => this.serialize(async () => {
+        await this.assertRunAccess(context, run.phase)
+        if (run.backend?.kind !== 'codex-local' || program.name !== 'Codex' || program.protocolVersion !== 2) fail('原生程序回执与当前运行不一致')
+        await this.profiles.observedProgram(runtimeProfile, program)
+        run.backend!.program = { name: program.name, version: program.version, executableHash: runtimeProfile.executableHash }
+        await this.store.write([record('runs', run)])
+        this.changed(run.conversationId)
+      })
       context.onNativeActionSubmitted = id => this.executions.submitted(run.id, id)
       context.onNativeExecution = receipt => this.serialize(async () => {
         signal.throwIfAborted()

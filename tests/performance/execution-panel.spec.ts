@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Real Electron UI with seeded long chat/execution text and no model calls.
- * [OUTPUT]: Cold/warm panel frame intervals, layout/script time and observed content widths.
+ * [OUTPUT]: Panel timings plus frame-by-frame synchronized opening, closing and reversal geometry.
  * [POS]: Opt-in panel diagnosis; trace recording is stopped during measurement.
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md和17组04实际进度。
  */
@@ -20,6 +20,52 @@ async function settle(page: Page) {
     await Promise.all(document.getAnimations().filter(a => a.playState === 'running' && Number.isFinite(a.effect?.getComputedTiming().endTime)).map(a => a.finished.catch(() => {})))
     await new Promise<void>(r => requestAnimationFrame(() => requestAnimationFrame(() => r())))
   })
+}
+// Keep geometry assertions outside the performance samples: reading rectangles can force layout.
+async function checkPanelMotion(toggle: Locator, reverse = false) {
+  const motion = await toggle.evaluate(async (button, reverse) => {
+    const frame = document.querySelector<HTMLElement>('.content-frame')!
+    const main = document.querySelector<HTMLElement>('.content-main')!
+    const panel = document.querySelector<HTMLElement>('.panel-resize[data-side=right]')!
+    const snapshot = () => {
+      const m = main.getBoundingClientRect(), p = panel.getBoundingClientRect()
+      return { main: m.width, panel: p.width, available: frame.clientWidth, gap: p.left - m.right }
+    }
+    const initialOpen = button.getAttribute('aria-pressed') === 'true'
+    const fullWidth = parseFloat(getComputedStyle(panel).getPropertyValue('--detail-size')) + 1
+    const frames = [snapshot()]
+    const start = performance.now()
+    let reversed = false, settledFrames = 0
+    ;(button as HTMLButtonElement).click()
+    while (performance.now() - start < 3000) {
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+      const current = snapshot()
+      frames.push(current)
+      const running = panel.getAnimations().some(animation => animation.playState === 'running')
+      // Reverse during motion, without Playwright waiting for the moving button to settle.
+      if (reverse && !reversed && running && Math.abs(current.main - frames[0].main) > fullWidth / 2) {
+        ;(button as HTMLButtonElement).click()
+        reversed = true
+        continue
+      }
+      settledFrames = running ? 0 : settledFrames + 1
+      if (settledFrames === 2) break
+    }
+    return { initialOpen, finalOpen: button.getAttribute('aria-pressed') === 'true', reverse, reversed, settledFrames, frames }
+  }, reverse)
+  await test.info().attach(`panel-motion-${motion.initialOpen ? 'close' : 'open'}${reverse ? '-reverse' : ''}`, { body: JSON.stringify(motion), contentType: 'application/json' })
+  expect(motion.settledFrames, 'panel animation must finish').toBe(2)
+  expect(motion.reversed).toBe(reverse)
+  expect(motion.finalOpen).toBe(reverse ? motion.initialOpen : !motion.initialOpen)
+  for (const frame of motion.frames) {
+    expect(Math.abs(frame.gap), 'main and panel must stay adjacent throughout motion').toBeLessThan(1)
+    expect(Math.abs(frame.main + frame.panel - frame.available), 'main must fill the space freed by the closing panel on every frame').toBeLessThan(1)
+  }
+  const widths = motion.frames.map(frame => frame.main)
+  const min = Math.min(...widths), max = Math.max(...widths)
+  expect(max - min, 'main must resize during the transition').toBeGreaterThan(20)
+  expect(widths.filter(width => width > min + 1 && width < max - 1).length, 'main must have intermediate widths, not jump at either endpoint').toBeGreaterThan(1)
+  return motion
 }
 for (let batch = 0; batch < batches; batch++) test(`execution panel batch ${batch + 1}`, async ({}, info) => {
   const desktop = await Desktop.create(info)
@@ -95,7 +141,15 @@ for (let batch = 0; batch < batches; batch++) test(`execution panel batch ${batc
         await mkdir(output, { recursive: true }); await writeFile(join(output, `cpu-${batch}-${sample}.cpuprofile`), JSON.stringify(cpu))
       }
     }
-    // Outside timing: width changes, reduced motion, close isolation and reading remain functional.
+    // Outside timing: closing/opening stay synchronized, including both reversal directions.
+    const motion = []
+    motion.push(await checkPanelMotion(toggle)) // close
+    motion.push(await checkPanelMotion(toggle)) // open
+    motion.push(await checkPanelMotion(toggle, true)) // close -> reopen
+    motion.push(await checkPanelMotion(toggle)) // close
+    motion.push(await checkPanelMotion(toggle, true)) // open -> reclose
+    motion.push(await checkPanelMotion(toggle)) // open
+    // Width changes, reduced motion, close isolation and reading remain functional.
     const separator = page.getByRole('separator', { name: '调整详情宽度', exact: true })
     const width = Number(await separator.getAttribute('aria-valuenow'))
     await separator.press('ArrowLeft')
@@ -119,7 +173,7 @@ for (let batch = 0; batch < batches; batch++) test(`execution panel batch ${batc
     expect(fixture.state.calls).toBe(0)
     expect(desktop.errors).toEqual([])
     await mkdir(output, { recursive: true })
-    await writeFile(join(output, `batch-${batch}.json`), JSON.stringify({ rows, mode: process.env.BOAI_TEST_DEV_SERVER === '1' ? 'development' : 'production', built: process.env.BOAI_TEST_DEV_SERVER === '1' ? null : JSON.parse(await readFile('dist/build-identity.json', 'utf8')), fixture: { narrationBlocks: 8, paragraphsPerBlock: 22, longChatParagraphs: 36, modelCalls: fixture.state.calls }, bounds, environment: await desktop.app.evaluate(() => ({ electron: process.versions.electron, chrome: process.versions.chrome, platform: process.platform, arch: process.arch })), renderer: page.url() }, null, 2))
+    await writeFile(join(output, `batch-${batch}.json`), JSON.stringify({ rows, motion, mode: process.env.BOAI_TEST_DEV_SERVER === '1' ? 'development' : 'production', built: process.env.BOAI_TEST_DEV_SERVER === '1' ? null : JSON.parse(await readFile('dist/build-identity.json', 'utf8')), fixture: { narrationBlocks: 8, paragraphsPerBlock: 22, longChatParagraphs: 36, modelCalls: fixture.state.calls }, bounds, environment: await desktop.app.evaluate(() => ({ electron: process.versions.electron, chrome: process.versions.chrome, platform: process.platform, arch: process.arch })), renderer: page.url() }, null, 2))
     console.log(JSON.stringify(rows.map((r: any) => ({ sample: r.sample, elapsed: Math.round(r.elapsed), maxFrame: Math.round(Math.max(...r.frames)), slowFrames: r.frames.filter((n: number) => n > 25).length, layout: Math.round(r.metrics.LayoutDuration), script: Math.round(r.metrics.ScriptDuration), resizeEvents: r.widths.length }))))
     await cdp.detach()
   } finally {

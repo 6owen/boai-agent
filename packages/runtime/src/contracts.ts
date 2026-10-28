@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: onNativeProgram承接实际原生握手/线程的程序身份，不代表任务执行或人工连接验证。
  * [OUTPUT]: 当前轮次纯文本补充固定run/turn，原消息保存接受、原生确认与未知投递。
  * [OUTPUT]: 2026-10-27 默认持续执行、来源校验及工作现场/复核接线；沿原权限和账本。
  * [OUTPUT]: 可选Mastra上下文端口及按原request ID的附加用量，不改变其他后端合同。
@@ -215,6 +216,8 @@ export interface EngineContext {
   onArtifactPreparing?(artifact: Artifact): Promise<void>
   onArtifact?(artifact: Artifact): Promise<void>
   onUsage?(usage: ModelUsage): Promise<void>
+  /** Successfully initialized native program and thread, before submitting user input. */
+  onNativeProgram?(program: NonNullable<import('@boai/shared/domain/backends').LaunchProfile['observedProgram']>): Promise<void>
   onNativeExecution?(receipt: import('@boai/shared/domain/execution').NativeExecutionReceipt): Promise<void>
   /** A successful transport write is not a native acknowledgement. */
   onNativeActionSubmitted?(nativeId: string): Promise<void>

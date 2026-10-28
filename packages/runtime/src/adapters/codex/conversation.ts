@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 握手及原生线程成功后、用户输入前回传实际程序版本；网关最低版本按实际握手核对。
  * [OUTPUT]: 原生turn/steer固定expectedTurnId与用户消息ID，仅当前活动轮次注册，结束与退出撤销。
  * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
  * [OUTPUT]: 原生命令additionalPermissions接组合目录审批；其余无法确认范围的提权继续拒绝。
@@ -41,7 +42,6 @@ export async function runCodexConversation(context: EngineContext, input: Native
   context = { ...context, signal: AbortSignal.any([context.signal, controller.signal]) }
   const { runtimeProfile: profile, runtimeDirectory: directory, signal } = context
   if (!profile?.verified || !directory) throw new Error('请先测试本机 Codex 连接')
-  if (context.connection) assertCodexGatewayVersion(profile.verified.version)
   const gateway = context.connection ? codexGatewaySource(context.connection, context.agent.modelId, context.apiKey, process.env) : undefined
   let releaseSteering: (() => void) | undefined, turnEnded = false
   const steeringCalls = new Set<Promise<void>>()
@@ -134,6 +134,7 @@ export async function runCodexConversation(context: EngineContext, input: Native
     },
   })
   client = started.client
+    if (context.connection) assertCodexGatewayVersion(started.verified.version)
     const options = executionPermissionNativeOptions('codex-local', context.agent.nativeOptions, context.agent.executionPermission)
     const threadOptions = { cwd: directory.cwd, developerInstructions: input.instructions,
       ...(options?.codexApprovalPolicy ? { approvalPolicy: options.codexApprovalPolicy } : {}),
@@ -148,6 +149,7 @@ export async function runCodexConversation(context: EngineContext, input: Native
     const sandbox = recordValue(thread.sandbox)
     const preparedSource = await preparation?.verify(!input.threadId && ['workspaceWrite', 'dangerFullAccess', 'externalSandbox'].includes(String(sandbox.type)))
     if (preparedSource) context = { ...context, nativeSourceFingerprint: preparedSource }
+    await context.onNativeProgram?.(started.verified)
     await input.onSession(threadId, preparedSource)
     await context.onNativeExecution?.({ sessionId: threadId, ...(typeof thread.model === 'string' ? { modelId: thread.model } : {}), ...(gateway ? { selectedModelId: gateway.model, modelSource: { mode: 'boai-connection' as const, connectionId: context.connection!.id, connectionRevision: context.connection!.revision ?? 1, protocol: 'responses' as const, selectedModelId: gateway.model } } : {}) })
     await assertCodexNativeSource(context)
