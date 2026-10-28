@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 新采集/复验阶段仍不依赖缓存预热任务。
  * [INPUT]: 两个真实UI工作流、共享依赖Action和workspace安装输入。
  * [OUTPUT]: 防止依赖变化后复用旧安装，禁止安装目录前缀回退及业务产物混入缓存。
  * [POS]: CI依赖缓存合同，不启动产品或Electron。
@@ -60,5 +61,6 @@ it('预热仅依赖输入变化自动触发，不进入必需UI门禁', async ()
   expect(workflow.jobs.warm.steps.find((step: { uses?: string }) => step.uses === './.github/actions/setup-ui-dependencies').with['save-cache']).toBe('true')
   expect(workflow.jobs.warm.steps.some((step: { run?: string }) => step.run?.includes('pnpm build'))).toBe(false)
   const tests = parse(await readFile(new URL('../.github/workflows/tests.yml', import.meta.url), 'utf8'))
-  expect(tests.jobs.required.needs).toEqual(['ui'])
+  expect(tests.jobs.required.needs).toEqual(['plan', 'capture', 'ui'])
+  expect(tests.jobs.required.needs).not.toContain('warm')
 })

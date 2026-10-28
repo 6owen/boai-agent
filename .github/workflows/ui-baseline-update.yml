@@ -1,8 +1,9 @@
-# [INPUT]: 本地效果确认后的官方候选run、已审阅SHA、明确case和原因。
+# [INPUT]: Agent按需求审阅后的官方候选run、已审阅SHA、明确case和原因。
 # [OUTPUT]: 在线提交受影响基准；Agent接续创建/批准PR只读CI，不重复dispatch或把独立检查冒充PR门禁。
 # [POS]: 仅main受信代码执行写入；功能分支仅作为只读源码/合同，不执行其脚本。
 # [PROTOCOL]: 修改同步Header、目录地图及共享开发Skill。
 name: UI baseline update
+run-name: UI baseline ${{ inputs.candidate_run }} ${{ inputs.approved_head }}
 on:
   workflow_dispatch:
     inputs:
@@ -11,7 +12,7 @@ on:
         required: true
         type: string
       approved_head:
-        description: Full feature commit SHA reviewed locally
+        description: Full feature commit SHA reviewed by agent
         required: true
         type: string
       cases:
@@ -19,7 +20,7 @@ on:
         required: true
         type: string
       reason:
-        description: Confirmed UI changes and review decision
+        description: Requirement and per-case review decision
         required: true
         type: string
 permissions:

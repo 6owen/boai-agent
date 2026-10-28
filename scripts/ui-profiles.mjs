@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 同仓库PR的明确采集阶段可产候选，普通check仍只读。
  * [INPUT]: 明确UI环境档案、GitHub运行上下文和本地命令。
  * [OUTPUT]: 限定采集/接受与明确本机CI只读入口；GitHub仍逐case官方来源，无跨档案回退。
  * [POS]: 开发侧UI环境合同；不改产品字体或比较阈值。
@@ -27,10 +28,13 @@ export function manualCiCapture(env = process.env) {
   const trigger = env.GITHUB_EVENT_NAME === 'workflow_dispatch' || env.GITHUB_EVENT_NAME === 'push' && env.GITHUB_REF === 'refs/heads/infra/ui-environment-profiles'
   return env.CI === 'true' && env.GITHUB_ACTIONS === 'true' && trigger && env.GITHUB_REPOSITORY === '6owen/boai-agent' && /^6owen\/boai-agent\/\.github\/workflows\/ui-baseline-candidate\.yml@refs\/heads\/.+$/.test(env.GITHUB_WORKFLOW_REF ?? '') && /^\d+$/.test(env.GITHUB_RUN_ID ?? '') && /^\d+$/.test(env.GITHUB_RUN_ATTEMPT ?? '') && /^[a-f0-9]{40}$/.test(env.GITHUB_SHA ?? '') && env.RUNNER_OS === 'macOS' && env.RUNNER_ARCH === 'ARM64'
 }
+export function prCiCapture(env = process.env) {
+  return env.CI === 'true' && env.GITHUB_ACTIONS === 'true' && env.GITHUB_EVENT_NAME === 'pull_request' && env.GITHUB_REPOSITORY === '6owen/boai-agent' && env.BOAI_UI_HEAD_REPOSITORY === '6owen/boai-agent' && /^[1-9]\d*$/.test(env.BOAI_UI_PR_NUMBER ?? '') && env.GITHUB_REF === `refs/pull/${env.BOAI_UI_PR_NUMBER}/merge` && env.GITHUB_WORKFLOW_REF === `6owen/boai-agent/.github/workflows/tests.yml@${env.GITHUB_REF}` && /^[a-f0-9]{40}$/.test(env.BOAI_UI_PR_HEAD ?? '') && /^[a-f0-9]{40}$/.test(env.GITHUB_SHA ?? '') && /^\d+$/.test(env.GITHUB_RUN_ID ?? '') && /^\d+$/.test(env.GITHUB_RUN_ATTEMPT ?? '') && env.RUNNER_OS === 'macOS' && env.RUNNER_ARCH === 'ARM64'
+}
 export function assertCaptureMode(command, env = process.env) {
-  if (command === 'candidate-ci' && !manualCiCapture(env)) throw new Error('远程候选仅允许独立手动采集工作流')
+  if (command === 'candidate-ci' && !(manualCiCapture(env) || prCiCapture(env))) throw new Error('远程候选仅允许官方独立或同仓库PR采集')
   if (env.CI && command !== 'check' && command !== 'candidate-ci') throw new Error('普通CI禁止候选采集或基线晋升')
-  if (env.CI && env.BOAI_UI_CANDIDATE_DIR && !(env.BOAI_UI_CAPTURE_MODE === 'manual-github' && manualCiCapture(env))) throw new Error('普通CI禁止候选基线写入')
+  if (env.CI && env.BOAI_UI_CANDIDATE_DIR && !(env.BOAI_UI_CAPTURE_MODE === 'manual-github' && (manualCiCapture(env) || prCiCapture(env)))) throw new Error('普通CI禁止候选基线写入')
 }
 export async function readUiBaseline(profile, environment, caseId, contractHash) {
   if (!/^[a-z0-9-]+$/.test(caseId)) throw new Error('非法UI场景名称')

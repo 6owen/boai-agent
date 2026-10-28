@@ -1,5 +1,5 @@
 /*
- * [INPUT]: 用户确认后由Agent提交的候选run、已审阅SHA、明确case及原因。
+ * [INPUT]: Agent按用户需求审阅后提交的候选run、已审阅SHA、明确case及原因。
  * [OUTPUT]: main受信代码在线提交受影响基准；Agent接续创建PR或批准当前PR检查，避免独立dispatch绿灯不计入PR门禁。
  * [POS]: 独立线上更新入口；不执行功能分支代码、不写main、不强推或自动接受普通CI失败。
  * [PROTOCOL]: 修改同步Header、目录地图及共享开发Skill。
@@ -10,6 +10,7 @@ import { appendFile, readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { downloadCiCandidate, prepareCiBaseline } from './ui-ci-baseline.mjs'
+import { candidateWorkflow } from './ui-delivery-protocol.mjs'
 import { CI_PROFILE } from './ui-profiles.mjs'
 
 const repository = '6owen/boai-agent'
@@ -22,7 +23,7 @@ const api = (path, body) => {
 export function verifyOnlineUpdate(run, branchHead, expectedHead, env = process.env) {
   if (env.GITHUB_REPOSITORY !== repository || env.GITHUB_EVENT_NAME !== 'workflow_dispatch' || env.GITHUB_REF !== 'refs/heads/main' || env.GITHUB_WORKFLOW_REF !== `${repository}/.github/workflows/ui-baseline-update.yml@refs/heads/main`) throw new Error('只能由main上的独立线上基准更新工作流执行')
   if (!/^[a-f0-9]{40}$/.test(expectedHead ?? '') || run.head_sha !== expectedHead || branchHead !== expectedHead) throw new Error('分支已变化或与已确认SHA不符，请审阅新增变化后重新采集')
-  if (run.repository?.full_name !== repository || run.head_repository?.full_name !== repository || run.path !== '.github/workflows/ui-baseline-candidate.yml' || run.event !== 'workflow_dispatch' || run.status !== 'completed' || run.conclusion !== 'success') throw new Error('需要成功的官方独立候选，执行失败不能更新基准')
+  if (run.repository?.full_name !== repository || run.head_repository?.full_name !== repository || !candidateWorkflow(run) || run.status !== 'completed' || run.conclusion !== 'success') throw new Error('需要成功的官方候选，执行失败不能更新基准')
   if (!run.head_branch || run.head_branch === 'main' || /[\r\n]/.test(run.head_branch)) throw new Error('只能更新明确功能分支，不能写main')
   return run.head_branch
 }

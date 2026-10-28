@@ -3,6 +3,7 @@
  * [OUTPUT]: 官方只读比较支持固定两片，记录完整合同hash；候选/接受仍全量协议。
  * [OUTPUT]: Workspace源码路径迁至apps/packages，保留既有输出与业务合同。
  * [OUTPUT]: 共享设计包计入UI源码身份，拒绝组件外改复用旧比较资格。
+ * [OUTPUT]: PR候选绑定显式feature head；正式复验仍绑定实际merge SHA。
  * [INPUT]: 版本化BDD/截图合同、实际源码/字体/平台及显式候选接受命令。
  * [OUTPUT]: 环境v3严格核实际Electron显示器，并记录监督入口执行墙钟；本机/CI档案只读比较，不回退或放宽像素。
  * [POS]: 开发侧UI门槛CLI；不调用供应商、不提交或推送、不改产品数据。
@@ -174,8 +175,9 @@ async function main() {
       console.log(`已接受${ids.length}项本地候选；提交PR后仍需独立审阅。`)
       return
     }
+    if (command === 'candidate-ci' && process.env.GITHUB_EVENT_NAME === 'pull_request' && source.commit !== process.env.BOAI_UI_PR_HEAD) throw new Error('PR候选必须检出当前head，不能采集合成merge提交')
     const built = await verifyBuildIdentity(root)
-    const ci = process.env.GITHUB_ACTIONS === 'true' ? { repository: process.env.GITHUB_REPOSITORY, runId: process.env.GITHUB_RUN_ID, attempt: process.env.GITHUB_RUN_ATTEMPT, sha: process.env.GITHUB_SHA, workflow: process.env.GITHUB_WORKFLOW_REF } : undefined
+    const ci = process.env.GITHUB_ACTIONS === 'true' ? { repository: process.env.GITHUB_REPOSITORY, runId: process.env.GITHUB_RUN_ID, attempt: process.env.GITHUB_RUN_ATTEMPT, sha: command === 'candidate-ci' && process.env.GITHUB_EVENT_NAME === 'pull_request' ? process.env.BOAI_UI_PR_HEAD : process.env.GITHUB_SHA, workflow: process.env.GITHUB_WORKFLOW_REF } : undefined
     const identity = { id: randomUUID(), profile: profile.id, source, built, environment, ci, ...(shard ? { shard } : {}), osRelease: release(), osVersion: execFileSync('sw_vers', ['-productVersion'], { encoding: 'utf8' }).trim(), node: process.version, selected: ids, startedAt: new Date().toISOString() }
     await save(join(directory, 'run.json'), identity)
     const generated = await runCommand('pnpm', ['test:bddgen'], process.env)
