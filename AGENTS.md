@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-28本机Codex版本漂移误拦截修复及Raft/Lody源码对照归28组05；人工刷新已恢复，候选验证/生效边界独立。
 [OUTPUT]: 2026-10-28 Codex当前轮次纯文本补充接通，固定原run/turn、未知不重发；实际验证及原失败归28组02/04。
 [OUTPUT]: 2026-10-28任务worktree完成即回收；已合并或最终提交经archive标签存档后删除本地任务分支，编排会话负责子worktree。
 [OUTPUT]: 2026-10-28用户授权语音多模型Card/Select与适配器实现；首批SenseVoiceSmall及Whisper Tiny/Base，实际验证归19组12第7节。

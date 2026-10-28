@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 原生握手接受已核准程序的实际版本变化；精确旧版本限制只留旧阶段入口，协议与文件身份仍核对。
  * [OUTPUT]: 诊断识别turn/steer请求，沿原超时/失联规则且不重发。
  * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
  * [OUTPUT]: 显式业务cwd只核对已存在目录，原受管目录仍可初始化。
@@ -133,7 +134,7 @@ export class CodexClient {
       if (!version) throw new Error('Codex未返回可验证的程序版本')
       if (!input.native && !CODEX_SUPPORTED_VERSIONS.includes(version)) throw new Error(`Codex ${version}尚未通过当前协议兼容检查；支持版本为${CODEX_SUPPORTED_VERSIONS.join('、')}`)
       const verified = { name: 'Codex', version, protocolVersion: 2, checkedAt: new Date().toISOString() }
-      if (input.profile.verified && (input.profile.verified.version !== version || input.profile.verified.name !== verified.name)) throw new Error('Codex版本已变化，请重新测试连接')
+      if (!input.native && input.profile.verified && (input.profile.verified.version !== version || input.profile.verified.name !== verified.name)) throw new Error('Codex版本已变化，请重新测试连接')
       client.notify('initialized', {})
       return { client, verified }
     } catch (error) { await client.close(); throw error }

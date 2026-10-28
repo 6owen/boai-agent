@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 原生模型目录接受实际升级后的版本；旧阶段版本限定和原生命周期断言保持。
  * [OUTPUT]: 独立程序核对不冒充认证；沿用登录继续拒绝缺登录，两个入口均不发送推理。
  * [OUTPUT]: 模型目录原生档位/显示名保留，重复条目不丢能力，旧字符串接口兼容。
  * [OUTPUT]: 2026-10-11 第13组原生生产合同回归与旧阶段兼容分开；夹具成功不冒充真实模型验收。
@@ -89,7 +90,7 @@ it('loads canonical native models without submitting inference and still rejects
   expect(await listCodexModelCatalog(input)).toEqual([{ value: 'gpt-6.1-sol', displayName: 'Protocol fixture', supportedEffortLevels: ['low', 'high'], supportsEffort: true }])
   await expect(readFile(join(input.cwd, 'turn-requests.txt'))).rejects.toThrow()
   await expect(listCodexModels({ ...input, profile: { ...input.profile, verified: undefined } })).rejects.toThrow('请先测试')
-  await expect(listCodexModels({ ...input, profile: { ...input.profile, verified: { ...input.profile.verified!, version: '0.159.3' } } })).rejects.toThrow('版本已变化')
+  expect(await listCodexModels({ ...input, profile: { ...input.profile, verified: { ...input.profile.verified!, version: '0.159.3' } } })).toEqual(['gpt-6.1-sol'])
   await expect(listCodexModels(await fixture('model-catalog-repeat'))).rejects.toThrow('游标没有推进')
 })
 

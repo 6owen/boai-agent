@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 /*
+ * [OUTPUT]: 支持同一启动文件的版本升级及initialize/thread故障注入，用于零模型版本刷新回归。
  * [OUTPUT]: turn/steer确定性夹具保留原turn，记录单次输入并覆盖拒绝/断流。
  * [OUTPUT]: 当前轮次补充严格校验expectedTurnId，覆盖同轮生效、拒绝与效果后断流，零真实模型。
  * [OUTPUT]: 协议夹具支持仅第二员工提问延迟1200ms，真实提问/回答协议保持；不认证模型或生产延迟。
@@ -15,7 +16,7 @@
 import { business, consumeNativeMaterials } from './native-business.mjs'
 import { createInterface } from 'node:readline'
 import { randomUUID } from 'node:crypto'
-import { writeFile, appendFile } from 'node:fs/promises'
+import { readFile, writeFile, appendFile } from 'node:fs/promises'
 const send = value => process.stdout.write(JSON.stringify(value)+'\n')
 const callbacks = new Map()
 const steering = new Map()
@@ -23,12 +24,17 @@ const ask = (method, params) => { const id=randomUUID();send({id,method,params})
 createInterface({input:process.stdin}).on('line',async line=>{
  const {id,method,params,result,error}=JSON.parse(line)
  if(!method) { callbacks.get(id)?.({result,error});callbacks.delete(id);return }
- if(method==='initialize')return send({id,result:{userAgent:'boai_agent/0.161.0 (fixture)'}})
+ if(method==='initialize'){
+  const version = await readFile(new URL('./native-version.txt',import.meta.url),'utf8').catch(error=>{if(error.code==='ENOENT')return '0.161.0';throw error})
+  if(version.trim()==='BROKEN')return send({id,error:{code:-32601,message:'fixture initialize unsupported'}})
+  return send({id,result:{userAgent:'boai_agent/'+version.trim()+' (fixture)'}})
+ }
  if(method==='initialized')return
  if(method==='account/read')return send({id,result:{requiresOpenaiAuth:false,account:{type:'apiKey'}}})
  if(method==='config/read')return send({id,result:{config:{}}})
  if(method==='model/list')return send({id,result:{data:[{model:'fixture'}],nextCursor:null}})
  if(method==='thread/start'||method==='thread/resume'){
+  if(await readFile(new URL('./native-thread-fault',import.meta.url),'utf8').catch(()=>''))return send({id,error:{code:-32602,message:'fixture native thread schema incompatible'}})
   await appendFile('native-thread-requests.jsonl',JSON.stringify({method,params})+'\n')
   return send({id,result:{thread:{id:params.threadId??randomUUID()},model:'fixture'}})
  }

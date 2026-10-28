@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 程序版本观察记录不参与配置指纹，避免正常升级断开原会话；原来源与权限核验保持。
  * [OUTPUT]: 2026-10-27 默认持续执行、来源校验及工作现场/复核接线；沿原权限和账本。
  * [OUTPUT]: 本机反思共用保存前事实复核并累加两个阶段已返回的用量；第二阶段不提供产品工具，原生配置/实际内部调用数沿本机运行时。
  * [OUTPUT]: 本机/API行为共用真实说话人ID与笔记引文装配，来源说明不混入用户引用。
@@ -30,6 +31,7 @@
  * [POS]: 本机员工共同生产入口；旧native-employee仅保留旧阶段兼容代码。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
+import { launchProfileConfiguration } from '@boai/shared/domain/backends'
 import type { ModelUsage } from '@boai/shared/domain'
 import { behaviorModelContext, needsReflectionReview, reflectionReviewInstructions, reflectionReviewPrompt } from '../modules/employees/behavior-context'
 import { hasKnowledge, knowledgeInstructions } from '../modules/resources/knowledge-tools'
@@ -95,7 +97,7 @@ export abstract class NativeConversationEngine {
     }
     const nativeSourceFingerprint = await this.sourceFingerprint(context)
     if (nativeSourceFingerprint) context = { ...context, nativeSourceFingerprint }
-    const fingerprintFor = (source: string | undefined) => digest(['native-conversation-v2', ...(context.workingDirectory ? ['business-cwd-v1', context.runtimeDirectory?.cwd] : []), context.runtimeProfile, context.connection, context.agent.modelId, context.agent.nativeOptions, context.agent.configVersion, context.bootstrap?.hashes, context.bootstrap?.promptEvidence?.capabilityHash, context.memory?.invalidationEpoch, context.environment?.knowledge.map(version => [version.resource.id, version.hash, version.resource.path, version.resource.knowledge?.copyId, version.resource.knowledge?.revision]), ...(source ? ['native-source-v1', source] : []), ...(this.runtime === 'claude' && !context.runtimeProfile?.useExistingLogin && context.connection?.gateway ? ['claude-magpie-source-v1'] : []), ...(this.runtime === 'codex' && context.connection?.gateway ? ['codex-magpie-source-v1'] : [])])
+    const fingerprintFor = (source: string | undefined) => digest(['native-conversation-v2', ...(context.workingDirectory ? ['business-cwd-v1', context.runtimeDirectory?.cwd] : []), launchProfileConfiguration(context.runtimeProfile), context.connection, context.agent.modelId, context.agent.nativeOptions, context.agent.configVersion, context.bootstrap?.hashes, context.bootstrap?.promptEvidence?.capabilityHash, context.memory?.invalidationEpoch, context.environment?.knowledge.map(version => [version.resource.id, version.hash, version.resource.path, version.resource.knowledge?.copyId, version.resource.knowledge?.revision]), ...(source ? ['native-source-v1', source] : []), ...(this.runtime === 'claude' && !context.runtimeProfile?.useExistingLogin && context.connection?.gateway ? ['claude-magpie-source-v1'] : []), ...(this.runtime === 'codex' && context.connection?.gateway ? ['codex-magpie-source-v1'] : [])])
     const fingerprint = fingerprintFor(nativeSourceFingerprint)
     const { session, threadId, messages, priorReply } = await this.sessions.begin(context, fingerprint)
     const publicReplies: { messageId: string; content: string }[] = []
