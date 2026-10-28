@@ -1,6 +1,7 @@
 <!--
 [INPUT]: 2026-10-28用户要求完整迁用Magpie Test与UI preview。
 [OUTPUT]: 工程Test与DeepSeek自动预览；固定PNG基准及候选晋升退出PR流程。
+[OUTPUT]: worktree交付后按AGENTS合并或归档再回收，不以自动合并已启用冒称实际合并。
 [POS]: 第22组现行CI合同；旧流程与证据归10，实际运行归03。
 [PROTOCOL]: 变化同步Header、.folder.md、开发skill及Actions。
 -->
@@ -14,3 +15,5 @@
 4. 不再创建/晋升截图基准，不再要求用户先本地确认效果。已有本地BDD、截图工具、测试源码和历史结果保留；不恢复全量桌面BDD到工程Test。
 
 固定上游、文件映射、配置与本地命令见[预览说明](../../../.github/ui-preview/README.md)。只改BOAI启动/fixture/页面/工程命令，以及保留现有Required checks名称；不加AI评分或基准批准系统。
+
+任务收尾遵守AGENTS.md“worktree不遗留”：实际合并，或最终提交以`archive/*`标签存档后，删除本地任务worktree及分支，专用cargo target一并回收；编排会话负责subagent派生目录，保留例外须在最终回复点名路径与原因。归档不授予CI或合并资格，也不删除共享缓存与需保留数据。
