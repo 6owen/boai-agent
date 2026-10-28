@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 定时任务侧栏移除检索框及其专属间距，保留管理弹窗与执行记录搜索。
  * [OUTPUT]: 定时任务标题Tooltip、标签分组侧栏与复用系统滑动层的透明筛选Tab。
  * [OUTPUT]: 语音选择器32px沿组件utilities约束，页面低层规则不再假设覆盖Select默认高度。
  * [OUTPUT]: 语音页主要控件统一220px/32px，辅助操作在左；仅覆盖语音设置行，窄屏按可用宽度收缩。
@@ -232,8 +233,6 @@
 .filter-tabs[data-slot=tabs-list] { background:transparent;box-shadow:none;gap:8px;padding:0;height:28px }
 .filter-tabs[data-slot=tabs-list] [data-slot=tabs-trigger] { height:28px;padding-inline:10px }
 .schedule-manager .contact-manager-table { min-width:560px }
-.schedule-search { margin:0 0 10px }
-.schedule-search [data-slot=button] { width:20px;height:20px }
 .schedule-create { display:flex;align-items:center;justify-content:flex-start;gap:8px;width:100%;height:32px;flex-shrink:0;margin:0 0 8px;font-size:var(--text-ui-secondary);font-weight:500;text-align:left }
 .schedule-section-heading { display:flex;align-items:center;justify-content:space-between;gap:5px;min-height:28px;margin:8px 0 3px;padding:4px 8px;color:var(--muted-foreground);font-size:var(--text-ui-secondary) }
 .schedule-list-actions { display:flex;align-items:center;gap:2px }
