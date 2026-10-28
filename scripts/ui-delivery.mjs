@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 新源码保留no-auto-merge偏好，核对PR head上的Required及独立merge原件门禁。
  * [INPUT]: Clean pushed feature worktree, current PR and an explicit Agent review.
  * [OUTPUT]: Resumable official evidence import, online baseline update and PR verification.
  * [POS]: Development delivery CLI; never auto-accepts pixels, pushes source or merges forcibly.
@@ -70,7 +71,7 @@ async function main() {
       git('merge', '--ff-only', pr.head.sha)
       state = { branch, head: pr.head.sha, baselineFrom: state.run, noAutoMerge: state.noAutoMerge }; await save()
     }
-    if (state.head !== pr.head.sha) { state = { branch, head: pr.head.sha, noAutoMerge: options['--no-auto-merge'] === true }; await save() }
+    if (state.head !== pr.head.sha) { state = { branch, head: pr.head.sha, noAutoMerge: state.noAutoMerge === true || options['--no-auto-merge'] === true }; await save() }
     if (options['--no-auto-merge']) { state.noAutoMerge = true; await save() }
     if (state.submission && command !== 'status') {
       const updates = api('actions/workflows/ui-baseline-update.yml/runs?event=workflow_dispatch&per_page=100').workflow_runs
@@ -124,9 +125,9 @@ async function main() {
       }
     }
     if (command === 'review') throw new Error('当前没有待接受的视觉差异')
-    const checks = api(`commits/${pr.merge_commit_sha}/check-runs?per_page=100`).check_runs
+    const checks = api(`commits/${pr.head.sha}/check-runs?per_page=100`).check_runs
     const check = checks.find(item => item.name === 'Required checks' && item.external_id === `ui-delivery-${run.id}-${run.run_attempt}`)
-    if (check?.status !== 'completed' || check.conclusion !== 'success') throw new Error('缺少当前PR merge SHA的Required checks成功回执；候选成功不能替代')
+    if (check?.status !== 'completed' || check.conclusion !== 'success') throw new Error('缺少当前PR head的Required checks成功回执；候选成功不能替代')
     if (state.noAutoMerge) { console.log('最新提交只读复验通过；按 --no-auto-merge 保留PR，未设置自动合并。'); return }
     if (pr.draft) gh('pr', 'ready', String(pr.number), '--repo', UI_REPOSITORY)
     gh('pr', 'merge', String(pr.number), '--repo', UI_REPOSITORY, '--auto', '--merge', '--match-head-commit', pr.head.sha)

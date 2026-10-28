@@ -1,5 +1,6 @@
 /*
  * [INPUT]: PR context, official capture and unchanged readonly shard evidence.
+ * [OUTPUT]: Required发布PR head供保护识别，原件仍独立验证本次merge SHA。
  * [OUTPUT]: Pending visual review or failure; success only after ci-result gate-shards.
  * [POS]: UI workflow phase/check controller, not a baseline acceptance authority.
  * [PROTOCOL]: Update workflow, tests and scripts/.folder.md together.
@@ -40,6 +41,11 @@ export async function classifyCandidate(root, directory) {
   }
   return { version: 1, source: candidate.source, review: changed.length ? 'required' : 'none', changed, environmentChanged }
 }
+export function checkCommit(eventName, event, sha) {
+  const head = eventName === 'pull_request' ? event?.pull_request?.head?.sha : sha
+  if (!/^[a-f0-9]{40}$/.test(head ?? '')) throw new Error('缺少当前PR检查提交')
+  return head
+}
 export function checkPayload(outcome, sha, runId, attempt) {
   const review = outcome === 'review', success = outcome === 'passed'
   return {
@@ -58,18 +64,21 @@ async function main() {
     await output('review', result.review); await output('changed', result.changed.join(',')); return
   }
   if (env.GITHUB_REPOSITORY !== UI_REPOSITORY || !/^[a-f0-9]{40}$/.test(env.GITHUB_SHA ?? '') || !/^\d+$/.test(env.GITHUB_RUN_ID ?? '')) throw new Error('无效的官方检查上下文')
+  const event = env.GITHUB_EVENT_NAME === 'pull_request' ? await json(env.GITHUB_EVENT_PATH) : null
+  const checkSha = checkCommit(env.GITHUB_EVENT_NAME, event, env.GITHUB_SHA)
   if (command === 'plan') {
     let mode = 'verify'
     if (env.GITHUB_EVENT_NAME === 'pull_request') {
-      const event = await json(env.GITHUB_EVENT_PATH), pr = event.pull_request
+      const pr = event.pull_request
       if (pr.head.repo.full_name !== UI_REPOSITORY || pr.base.repo.full_name !== UI_REPOSITORY || git('rev-parse', 'HEAD') !== pr.head.sha) throw new Error('只接受同仓库当前 PR head')
       const parents = git('rev-list', '--parents', '-n', '1', 'HEAD').split(' ')
       const files = git('diff-tree', '--no-commit-id', '--name-only', '-r', 'HEAD').split('\n')
       const manifest = await json(BASELINE_PREFIX + 'manifest.json')
       mode = parents.length === 2 && baselineOnlyCommit(files, manifest, parents[1]) ? 'verify' : 'capture'
     }
-    // Create a new pending check at this run's exact merge SHA, never reuse old green.
-    const check = api('check-runs', checkPayload('started', env.GITHUB_SHA, env.GITHUB_RUN_ID, env.GITHUB_RUN_ATTEMPT))
+    // Publish on PR head so branch protection and PR checks see it. The readonly
+    // evidence gate independently verifies GITHUB_SHA (the tested merge commit).
+    const check = api('check-runs', checkPayload('started', checkSha, env.GITHUB_RUN_ID, env.GITHUB_RUN_ATTEMPT))
     await output('check', check.id); await output('mode', mode); return
   }
   if (command !== 'finish') throw new Error('用法：ui-delivery-ci.mjs plan | classify 目录 | finish')
@@ -78,7 +87,7 @@ async function main() {
   if (state === 'verify') {
     try { execFileSync(process.execPath, ['scripts/ci-result.mjs', 'gate-shards'], { stdio: 'inherit' }); outcome = 'passed' } catch { outcome = 'failed' }
   }
-  const payload = checkPayload(outcome, env.GITHUB_SHA, env.GITHUB_RUN_ID, env.GITHUB_RUN_ATTEMPT)
+  const payload = checkPayload(outcome, checkSha, env.GITHUB_RUN_ID, env.GITHUB_RUN_ATTEMPT)
   const id = needs.plan?.outputs?.check
   if (id) { delete payload.head_sha; api(`check-runs/${id}`, payload, 'PATCH') }
   else api('check-runs', payload)

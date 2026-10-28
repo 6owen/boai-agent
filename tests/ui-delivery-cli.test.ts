@@ -60,3 +60,9 @@ it('dispatch回执丢失前已保存精确审阅；下一进程查已有运行�
   expect((await calls()).filter(args => args[0] === 'workflow')).toHaveLength(1)
   expect(git('status', '--porcelain')).toBe('')
 })
+
+it('新源码head使旧审阅失效但保留禁止自动合并偏好', async () => {
+  await save(join(root, '.local/ui-delivery/state.json'), { branch: 'fix/ui', head: 'f'.repeat(40), run: 1, changed: ['old'], noAutoMerge: true })
+  const result = runCli(); expect(result.status, result.stderr).toBe(0)
+  expect(JSON.parse(await readFile(join(root, '.local/ui-delivery/state.json'), 'utf8'))).toEqual({ branch: 'fix/ui', head: sha, noAutoMerge: true })
+})

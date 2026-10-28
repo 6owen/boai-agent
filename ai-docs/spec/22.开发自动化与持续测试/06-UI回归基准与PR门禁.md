@@ -341,7 +341,7 @@ UI job通过后由record-ui登记summary、compare/summary、原始Playwright报
 
 1. 同仓库PR的源码head自动全场采集，feature head与GitHub合成merge SHA分别记录。采集仍执行全部行为/布局断言，缺控件/布局/超时为失败，不允许换图掩盖。
 2. 用锁文件Playwright真实PNG比较器和原合同阈值分类，保留原始RGBA old/new/diff。缺基准/合同变化/环境迁移需审阅；原件篡改与执行失败直接失败。环境迁移单独解释，不能当作普通UI变更悄悄接受。
-3. 纯视觉变化由独立 `Required checks` Check Run 表示 `in_progress`，调度job叫 `UI delivery gate`，避免skipped/neutral被当作通过。待审阅不占runner、不伪造失败或成功。检查绑定本次run/attempt及实际merge SHA。
+3. 纯视觉变化由独立 `Required checks` Check Run 表示 `in_progress`，调度job叫 `UI delivery gate`，避免skipped/neutral被当作通过。待审阅不占runner、不伪造失败或成功。检查绑定本次run/attempt及PR head；最终原件独立核验实际merge SHA。
 4. `pnpm ui:deliver start`创建Draft，普通push触发采集；`pnpm ui:deliver`接续当前PR和head，下载/校验官方候选并列出变化。Agent查看图片并按需求判断；无需用户先打开dev。只有疑义设计差异才询问。
 5. `pnpm ui:deliver review --cases ... --reason ...`必须精确选择所有实际变化，main受信更新入口重验官方run/artifact/source/build/environment及材料，只提交所选PNG与manifest。普通CI始终只读。本地接续记录含head/run/attempt；提交网络回执未知时禁止自动重复写入。
 6. 纯基准提交直接转只读两片；无视觉变化的候选同一workflow自动转只读两片。最终success必须由原 `ci-result gate-shards`独立核验全部场景及原件。候选/更新通过不授资格。新源码则重新采集，旧审阅失效。
@@ -351,4 +351,6 @@ UI job通过后由record-ui登记summary、compare/summary、原始Playwright报
 
 实现位于独立 `fix/ui-delivery-flow` worktree。26场合同、PNG、mask、阈值、产品UI和原ci-result验证器未修改；PR48保持原状。流程的本地协议/真实PNG/工作流静态检查和云端运行结果在本节追加；未实际完成云端接续前不宣称已端到端上线。main未合入前其他worktree仍须明确同步本批流程。
 
-本地验证：14个定向文件共255项通过（含原件/范围/缓存/显示稳定性及真实CLI接续），类型检查、修改脚本ESLint、actionlint 1.7.12和diff检查通过。测试文件不在现有ESLint匹配范围，使用Vitest/TypeScript核验。未在本机运行Electron UI测试。云端结果继续记录，未把本地协议测试当作远端端到端证明。
+本地验证：14个定向文件共257项通过（含原件/范围/缓存/显示稳定性及真实CLI接续），类型检查、修改脚本ESLint、actionlint 1.7.12和diff检查通过。测试文件不在现有ESLint匹配范围，使用Vitest/TypeScript核验。未在本机运行Electron UI测试。云端结果继续记录，未把本地协议测试当作远端端到端证明。
+
+首轮云端运行40619848626的阶段规划和自动采集已启动。发现将自定义Required发到合成merge提交时，`gh pr checks --required`不报告该项；修正为按GitHub PR呈现发布到feature head，同时保留原gate对实际merge SHA的严格核验。新增新head保留no-auto-merge偏好和双SHA映射回归；旧运行保留，修订后新提交重新验证。

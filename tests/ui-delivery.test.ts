@@ -16,7 +16,7 @@ import { candidateWorkflow, baselineOnlyCommit, deliveryOutcome, BASELINE_PREFIX
 // @ts-expect-error Shared plain Node delivery CLI.
 import { currentPrRun, assertReview, assertBaselineAdvance } from '../scripts/ui-delivery.mjs'
 // @ts-expect-error Shared plain Node CI controller.
-import { comparePng, checkPayload, classifyCandidate } from '../scripts/ui-delivery-ci.mjs'
+import { comparePng, checkPayload, classifyCandidate, checkCommit } from '../scripts/ui-delivery-ci.mjs'
 // @ts-expect-error Shared plain Node capture protocol.
 import { assertCaptureMode } from '../scripts/ui-profiles.mjs'
 // @ts-expect-error Shared official candidate verifier.
@@ -125,4 +125,10 @@ it('实际工作流不把skipped当green：自定义Required独立于调度job�
   const controller = await readFile('scripts/ui-delivery-ci.mjs', 'utf8')
   expect(controller).toContain("['scripts/ci-result.mjs', 'gate-shards']")
   expect(workflow.jobs.ui.if).toContain("needs.capture.outputs.review == 'none'")
+})
+
+it('Required发布到PR head供合并保护识别，实际测试仍使用独立merge SHA', () => {
+  expect(checkCommit('pull_request', { pull_request: pr }, next)).toBe(sha)
+  expect(checkCommit('push', null, next)).toBe(next)
+  expect(() => checkCommit('pull_request', null, next)).toThrow()
 })
