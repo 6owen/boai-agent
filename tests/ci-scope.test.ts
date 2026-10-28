@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 真实临时Git提交/事件、开发Markdown白名单及job结果协议。
- * [OUTPUT]: 实际 YAML 为工程Test与独立预览，保留本地UI工具；旧范围工具的独立本地合同仍可验证。
+ * [OUTPUT]: 实际 YAML 为工程Test与独立预览；CLI产物先构建再测试，旧范围工具仍可独立验证。
  * [POS]: 历史范围工具与当前云端配置的本地 Vitest 合同；不开产品窗口。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -86,7 +86,8 @@ it('GitHub Test执行工程检查且不以截图基准作为合并门禁', async
   const metadata = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
   expect(Object.keys(workflow.jobs).sort()).toEqual(['required', 'test'])
   expect(workflow.jobs.required.needs).toEqual(['test'])
-  expect(workflow.jobs.test.steps.map((step: { run?: string }) => step.run).filter(Boolean)).toEqual(['pnpm install --frozen-lockfile --prefer-offline', 'pnpm typecheck', 'pnpm lint:ui', 'pnpm test', 'pnpm build'])
+  // CLI integration tests launch dist/cli/index.mjs from the application build.
+  expect(workflow.jobs.test.steps.map((step: { run?: string }) => step.run).filter(Boolean)).toEqual(['pnpm install --frozen-lockfile --prefer-offline', 'pnpm typecheck', 'pnpm lint:ui', 'pnpm build', 'pnpm test'])
   expect(metadata.devDependencies.vitest).toBeDefined()
   expect(metadata.scripts.test).toContain('vitest run')
   expect(metadata.scripts['test:electron']).toContain('playwright test')

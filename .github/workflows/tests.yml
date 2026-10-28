@@ -1,5 +1,5 @@
 # [INPUT]: PR/main commits and explicit manual runs.
-# [OUTPUT]: Magpie-style engineering Test, using BOAI commands; no screenshot baseline gate.
+# [OUTPUT]: Magpie-style engineering Test; build CLI artifacts before their tests, no screenshot baseline gate.
 # [POS]: Engineering CI; Required checks retains the existing branch-protection name.
 # [PROTOCOL]: Update .github/workflows/.folder.md and the shared development skill.
 name: Test
@@ -28,8 +28,8 @@ jobs:
       - run: pnpm install --frozen-lockfile --prefer-offline
       - run: pnpm typecheck
       - run: pnpm lint:ui
-      - run: pnpm test
       - run: pnpm build
+      - run: pnpm test
   required:
     name: Required checks
     if: always()

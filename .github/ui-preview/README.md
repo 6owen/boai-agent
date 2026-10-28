@@ -14,7 +14,7 @@ Derived from [yetone/magpie](https://github.com/yetone/magpie/tree/396e0e463805d
 - `app.ts`: BOAI Electron lifecycle/navigation; reuses existing isolated conversation and schedule fixtures. Demo model traffic uses the fixture, DeepSeek plans actions.
 - `run.mjs`: builds the adapter, then invokes the recorder. Full application build remains an explicit preceding step.
 
-`Test` uses BOAI's typecheck/lint/Vitest/build on its supported macOS runtime. It retains the existing Required checks name so branch protection need not change. `UI preview` retains detect/record/publish permission separation and PR event handling. Neither workflow compares or updates PNG baselines.
+`Test` uses BOAI's typecheck/lint/build/Vitest on its supported macOS runtime. CLI integration tests need the built dist/cli entry, so build precedes Vitest. It retains the existing Required checks name so branch protection need not change. `UI preview` retains detect/record/publish permission separation and PR event handling. Neither workflow compares or updates PNG baselines.
 
 ## Configuration
 
