@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 覆盖独立握手观察、旧回执/配置拒绝、文件变化及失败验证撤销，不执行真实程序。
  * [INPUT]: Isolated SQLite profiles, real executable/package bytes and original verification records.
  * [OUTPUT]: Compiled identity stays bound to loaded code despite later builds; uncompiled inventory remains unknown, with zero executable launches.
  * [POS]: Runtime inventory provenance and read-only regression checks; verification versions are fixtures.
@@ -95,4 +96,22 @@ it('checks bundled driver bytes too, without changing the original package lease
   expect((await runtimeVersions(f.profiles, f.plugins, [])).plugins[0]).toMatchObject({ version: null, source: 'unknown', inUse: 1 })
   await expect(f.plugins.acquire(ref)).rejects.toThrow('文件已变化')
   lease.release(); expect(f.plugins.snapshot().plugins[0].inUse).toBe(0)
+})
+
+it('records observed Codex versions without overwriting manual verification or accepting stale configuration', async () => {
+  const f = await fixture(), executable = join(f.root, 'codex.cjs')
+  await writeFile(executable, '#!/usr/bin/env node\nthrow new Error("must not execute")', { mode: 0o700 })
+  const profile = await f.profiles.save({ name: 'Codex', executable, args: [], protocol: 'codex-app-server', useExistingLogin: true, hostAccessAcknowledged: true })
+  const old = { name: 'Codex', version: '0.162.1', protocolVersion: 2, checkedAt: '2026-10-15T00:00:00.000Z' }
+  const observed = { ...old, version: '0.164.0', checkedAt: '2026-10-28T00:00:00.000Z' }
+  await f.profiles.verified(profile.id, profile.revision, old)
+  await f.profiles.observedProgram(profile, observed)
+  await f.profiles.observedProgram(profile, old)
+  expect(f.profiles.get(profile.id)).toMatchObject({ revision: profile.revision, verified: old, observedProgram: observed })
+  await expect(f.profiles.observedProgram({ ...profile, revision: 2 }, observed)).rejects.toThrow('配置已变化')
+  await writeFile(executable, '#!/usr/bin/env node\n// changed', { mode: 0o700 })
+  await expect(f.profiles.observedProgram(profile, observed)).rejects.toThrow('程序文件已变化')
+  expect((await runtimeVersions(f.profiles, f.plugins, [])).programs[0]).toMatchObject({ version: null, availability: 'changed' })
+  await f.profiles.failedVerification(profile.id, profile.revision)
+  expect(f.profiles.get(profile.id).observedProgram).toBeUndefined()
 })

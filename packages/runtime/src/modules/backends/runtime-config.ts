@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Codex运行指纹剔除程序版本观察元数据，保留用户配置、人工验证及程序身份核验。
  * [OUTPUT]: Runtime API v2私有模型来源按清单/握手/会话三次核对，Pi与OpenCode明确网关接入；v1原生来源兼容，凭据不进入公共配置或回执。
  * [OUTPUT]: Codex明确网关来源固定Responses/原模型与连接revision，进程私有provider与凭据环境；原生来源选项和非模型能力保持。
  * [OUTPUT]: Claude明确Magpie来源固定Messages及原连接revision，默认模型实际传CLI；进程级host-managed覆盖竞争来源，2.1.302起版本门槛，原生能力保持。
@@ -13,6 +14,7 @@
  * [POS]: 组织、团队与自动化共用的运行配置核对；本机核对不嵌套产品事务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
+import { launchProfileConfiguration } from '@boai/shared/domain/backends'
 import { pluginGatewayProvider } from '@boai/shared/domain/plugin-model-source'
 import { stat } from 'node:fs/promises'
 import type { Connection, DigitalAgent, LaunchProfile } from '@boai/shared/domain'
@@ -63,7 +65,7 @@ export async function resolveCodexRuntime(input: Pick<DigitalAgent, 'executionBa
   if (file.path !== profile.executable || file.hash !== profile.executableHash) return teamError('CONFIG_CHANGED', '本机程序已变化，请重新核对连接')
   if (profile.codexHome && !(await stat(profile.codexHome)).isDirectory()) return teamError('MODEL_UNAVAILABLE', '本机登录目录不可用')
   const modelId = input.connectionId ? codexGatewayProvider(connection, input.modelId).model : input.modelId
-  return { executionBackend, nativeOptions: input.nativeOptions, connectionId: input.connectionId || '', modelId, fingerprint: teamHash({ executionBackend, ...(input.nativeOptions ? {nativeOptions: input.nativeOptions} : {}), profile, ...(input.connectionId ? { connection } : {}), modelId }) }
+  return { executionBackend, nativeOptions: input.nativeOptions, connectionId: input.connectionId || '', modelId, fingerprint: teamHash({ executionBackend, ...(input.nativeOptions ? {nativeOptions: input.nativeOptions} : {}), profile: launchProfileConfiguration(profile), ...(input.connectionId ? { connection } : {}), modelId }) }
 }
 
 export function resolvePluginRuntime(input: Pick<DigitalAgent, 'executionBackend' | 'connectionId' | 'modelId' | 'nativeOptions'>, profile: LaunchProfile | undefined, connection?: Connection) {
