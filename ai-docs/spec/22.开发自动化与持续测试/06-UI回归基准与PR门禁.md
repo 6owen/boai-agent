@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-28 PR50已合main；保留明色渐变1/255原失败及单次定向复核，采集审阅附件修正为candidate入口。
 [OUTPUT]: 2026-10-28自动PR采集、Agent差异审阅、线上选择更新与最新只读复验；ui:deliver接续，取消强制本地人工确认，实际归22组06 §21。
 [OUTPUT]: 首轮线上更新与独立复验成功但PR待批准；§20.1修正为Agent批准当前PR检查，移除重复dispatch。
 [OUTPUT]: PR42官方40485363446完整26场通过，用户确认后审阅接受新增六图；原20图字节不变，普通当前提交门禁独立。
@@ -356,3 +357,7 @@ UI job通过后由record-ui登记summary、compare/summary、原始Playwright报
 首轮云端运行40619848626的阶段规划和自动采集已启动。发现将自定义Required发到合成merge提交时，`gh pr checks --required`不报告该项；修正为按GitHub PR呈现发布到feature head，同时保留原gate对实际merge SHA的严格核验。新增新head保留no-auto-merge偏好和双SHA映射回归；旧运行保留，修订后新提交重新验证。
 
 第二轮40620275036实测Required已按当前PR head被必需检查列表识别；同一Actions run的jobs API会包含自定义pending检查，因此补充按当前attempt的实际Plan/Capture/Gate及分片job核验候选就绪，允许已完成采集但整体run仍in_progress的审阅。缺失/失败/取消/不完整job证明仍拒绝，官方PNG和原始行为结果重验保持。这样待审阅状态不会与“必须整个run成功才能接受”互相等待。新增真实CLI在pending run下提交及未知回执不重放验证。
+
+合并接续：PR50同步main后运行40626498910，完整候选和暗色分片通过，明色分片的voice-settings-light在术语框渐变有8183个原始像素均只差1/255（Playwright报告8157），其余内容/布局不变。保留attempt1失败，仅定向复核该分片一次；attempt2与独立gate通过，阈值、mask及基准均未修改，PR50于2026-10-28合入main（4e30459d）。这不是渐变跨机器稳定性的永久修复。
+
+审阅附件核查另发现自动采集误用普通report入口，产出仅2KB且缺图片；真实候选及分类仍完整，故既有门禁没有被授予错误资格。本批将自动采集的轻量附件改用已有candidate入口，读取candidate.json及review旧/新/diff；普通只读分片仍使用report入口。沿PR48最新main同步一起验证，不改原件/分类/接受或最终门禁规则。
