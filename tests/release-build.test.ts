@@ -1,6 +1,7 @@
 /*
  * [INPUT]: 原构建配置、个人候选身份和临时真实文件/链接。
  * [OUTPUT]: 原配置/身份拒绝、实际链式链接外逃与旧guard未退出负例；不降低候选排他边界。
+ * [OUTPUT]: 临时CLI复用真实workspace构建解析并提供登记版本协议输入，Node22工程测试进入旧进程守卫。
  * [POS]: 候选构建合同；不实际打包、不运行GUI或发布资产。
  * [PROTOCOL]: 修改同步Header与tests/.folder.md。
  */
@@ -48,6 +49,11 @@ it('实际构建CLI遇到旧活跃账本时，零dist/构建写入并保留失�
     await mkdir(join(directory, 'scripts/development'), { recursive: true }); await mkdir(join(directory, 'tests/evaluation'), { recursive: true })
     await symlink(join(source, 'node_modules'), join(directory, 'node_modules')); await writeFile(join(directory, 'package.json'), JSON.stringify({ ...metadata, type: 'module' }))
     for (const name of ['release-build.mjs', 'release-check.mjs']) await copyFile(join(source, 'scripts', name), join(directory, 'scripts', name))
+    await writeFile(join(directory, 'scripts/workspace-packages.mjs'), `export {buildWorkspace} from ${JSON.stringify(join(source, 'scripts/workspace-packages.mjs'))};\n`)
+    // Keep the actual Node binary and OS; fix only the release host's registered
+    // version input so this protocol test reaches real process recovery on CI.
+    // This does not qualify an actual Node24 release build.
+    await writeFile(join(directory, 'scripts/registered-runtime.mjs'), `Object.defineProperty(process,'version',{value:'v24.16.0'});\n`)
     await writeFile(join(directory, 'scripts/local-ci.mjs'), 'export async function verifyLocalCi(){throw Error("not a CI qualification")}')
     await writeFile(join(directory, 'scripts/local-ci-github.mjs'), 'export const localCiRepository="6owen/boai-agent",localCiContext="BOAI local CI"')
     // Explicit protocol fixtures: source identity is fixed, resource locks remain
@@ -58,7 +64,7 @@ it('实际构建CLI遇到旧活跃账本时，零dist/构建写入并保留失�
     await writeFile(join(directory, 'scripts/build-process-guard.mjs'), `import{writeFile}from'node:fs/promises';export default async()=>{await writeFile(${JSON.stringify(join(directory, '.local/build-entered'))},'entered');throw Error('build must not start')}`)
     for (const [target, actual] of [['tests/evaluation/repair-process.ts', 'tests/evaluation/repair-process.ts'], ['scripts/development/recovery.ts', 'scripts/development/recovery.ts']]) await writeFile(join(directory, target!), `export * from ${JSON.stringify(join(source, actual!))}`)
     await expect.poll(async () => (await readdir(ledger)).some(name => name.endsWith('.json'))).toBe(true)
-    const child = spawn(process.execPath, ['scripts/release-build.mjs', '--version', version, '--sha', sha], { cwd: directory, stdio: ['ignore', 'pipe', 'pipe'] })
+    const child = spawn(process.execPath, ['--import', './scripts/registered-runtime.mjs', 'scripts/release-build.mjs', '--version', version, '--sha', sha], { cwd: directory, stdio: ['ignore', 'pipe', 'pipe'] })
     let stderr = ''; child.stdout.resume(); child.stderr.on('data', bytes => { stderr += bytes }); const timer = setTimeout(() => child.kill('SIGKILL'), 10_000)
     let code: unknown
     try { [code] = await once(child, 'close') } finally { clearTimeout(timer) }

@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 2026-10-27 本地helper使用显式语言；附加润色规则受固定整理边界约束。
+ * [OUTPUT]: 2026-10-28 本地helper按已选择模型清单传递引擎及语言；公共隔离进程协议保持。
  * [INPUT]: Trusted host lifecycle, encrypted vault and selected text-model connection.
  * [OUTPUT]: Isolated utility-process ASR and opt-in tool-free text correction; secrets stay in main.
  * [POS]: Electron adapter for the optional voice-input application plugin.
@@ -11,13 +11,14 @@ import { createRequire } from 'node:module'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { VoiceHost, type VoiceHostPorts } from '@boai/voice-input-plugin/host'
+import { getVoiceModel } from '@boai/voice-input-plugin/model-manifest'
 import type { Connection } from '@boai/shared/domain'
 
 export function createVoiceHost(root: string, helperPath: string, ports: Omit<VoiceHostPorts, 'helper' | 'supported' | 'refine'> & { connection(id: string): Promise<Connection | undefined> }) {
   return new VoiceHost(root, { ...ports,
     supported: () => { try { if (!existsSync(helperPath)) return false; createRequire(helperPath).resolve('sherpa-onnx-node'); return true } catch { return false } },
-    helper: (models, audio, segment, language) => {
-      const child = utilityProcess.fork(helperPath, [models, audio, language], { serviceName: 'BOAI Voice Input', stdio: 'pipe', env: Object.fromEntries(['PATH', 'HOME', 'TMPDIR', 'TEMP', 'SystemRoot'].flatMap(key => process.env[key] ? [[key, process.env[key]!]] : [])) })
+    helper: (models, audio, segment, language, modelId) => {
+      const child = utilityProcess.fork(helperPath, [models, audio, language, getVoiceModel(modelId).engine], { serviceName: 'BOAI Voice Input', stdio: 'pipe', env: Object.fromEntries(['PATH', 'HOME', 'TMPDIR', 'TEMP', 'SystemRoot'].flatMap(key => process.env[key] ? [[key, process.env[key]!]] : [])) })
       let done = false, error: string | undefined, exited = false, sequence = 0
       child.stdout?.resume(); child.stderr?.resume() // No audio, transcripts or provider errors in application logs.
       child.on('message', (value: unknown) => {

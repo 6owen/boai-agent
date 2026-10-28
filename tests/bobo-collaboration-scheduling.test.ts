@@ -5,7 +5,7 @@
  * [INPUT]: 真实 AppService/SQLite/组织发布和工作接续，带明确开始/实际退出屏障的内部模型协议。
  * [OUTPUT]: 失败群业务根重试的判断/执行继续原预算；群内bobo未选连接沿首个有效默认模型且不获得组织权限。
  * [OUTPUT]: 无关历史清理后组织继续并真实交付；依赖成果经宿主来源/hash 核对后提供确切路径，依赖引用不变成本人产物。
- * [OUTPUT]: 新完整组织的原共享额度固定48次，真实定向执行仍验证24次内完成和零未知账本；原存储预算不提升。
+ * [OUTPUT]: 默认共享预算无固定调用上限，真实定向执行仍验证24次内完成和零未知账本；显式用户上限阻止超额重试。
  * [OUTPUT]: 已分工员工的真实广播更新在模型计数前跳过，合并邀请/普通聊天/用户/未分工及来源本人问题/待核对仍保持判断；同请求定向工作在慢开场结束前交付、未拥有工作/普通 peer 无权抢 wake、同员工取消后实际退出再接续；普通用户群仍单 lane、原预算与一次认领保持。
  * [POS]: BC 群工作调度业务意图；内部确定性模型不计为真实供应商或人工质量验收。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -208,7 +208,7 @@ describe('bobo opening and real directed work scheduling', () => {
     expect(final.workItems!.every(work => work.status === 'delivered')).toBe(true)
     expect(f.state.childRuns.filter(context => context.agent.id === 'writer')).toHaveLength(1)
     expect(final.workWakes!.every(wake => wake.status === 'consumed')).toBe(true)
-    expect(final.workBudgets![0]).toMatchObject({ maxModelCalls: 48, usageIncomplete: false, unknownCalls: 0 })
+    expect(final.workBudgets![0]).toMatchObject({ maxModelCalls: null, deadlineAt: '', limitAuthority: { kind: 'default' }, usageIncomplete: false, unknownCalls: 0 })
   })
   it('preserves genuine invitations, ordinary conversation and uncertain work instead of treating them as redundant business broadcasts', async () => {
     const childWait = barrier(), f = await fixture({ childWait, dependentWriter: true })
@@ -256,7 +256,7 @@ describe('bobo opening and real directed work scheduling', () => {
     rootWait.release(); chatWait.release(); await f.settled()
     const final = await f.detail()
     expect(final.workItems!.every(work => work.status === 'delivered')).toBe(true); expect(final.workBudgets).toHaveLength(1)
-    expect(final.workBudgets![0]).toMatchObject({ id: root.budgetId, maxModelCalls: 48, usageIncomplete: false, unknownCalls: 0 })
+    expect(final.workBudgets![0]).toMatchObject({ id: root.budgetId, maxModelCalls: null, deadlineAt: '', limitAuthority: { kind: 'default' }, usageIncomplete: false, unknownCalls: 0 })
     expect(final.workBudgets![0]!.modelCalls).toBeLessThanOrEqual(24)
     expect(final.workWakes!.every(wake => wake.status === 'consumed')).toBe(true)
     expect((await f.service.handle('getConversation', { id: f.core!.id }) as ConversationDetail).conversation).toMatchObject({ id: f.core!.id, purpose: 'core', agentIds: ['bobo'] })
@@ -338,7 +338,7 @@ it('uses the core default connection in an existing authorized group after clear
 it.each(['calls','deadline'] as const)('refuses a retry decision before calling the model when the original collaboration %s budget is exhausted',async boundary=>{
  const f=await fixture({failRootOnce:true});await f.settled()
  const before=await f.detail(),failed=before.runs.find(run=>run.agentId==='bobo' && run.status==='failed')!,budget=before.workBudgets![0]!,calls=f.state.decisions.length
- const next={...budget,...(boundary==='calls'?{modelCalls:budget.maxModelCalls}:{deadlineAt:new Date(0).toISOString()})}
+ const next={...budget,limitAuthority:{kind:'user' as const,requestId:'explicit-retry-limit',messageId:budget.sourceMessageId!,version:1},...(boundary==='calls'?{maxModelCalls:budget.modelCalls}:{deadlineAt:new Date(0).toISOString()})}
  await (f.service as unknown as {store:ProductStore}).store.write([{collection:'workBudgets',id:budget.id,value:next}])
  await expect(f.service.handle('retryRun',{id:failed.id,requestId:'exhausted-root-retry'})).rejects.toThrow()
  expect(f.state.decisions).toHaveLength(calls);expect((await f.detail()).runs).toEqual(before.runs)
@@ -356,5 +356,5 @@ it('reserves retry judgment on the original core organization budget before taki
  await vi.waitFor(async()=>{const d=await detail();expect(d.turns!.every(turn=>turn.status==='failed')).toBe(true);expect(d.runs.filter(run=>run.phase==='execution')).toHaveLength(2)})
  const after=await detail(),newRuns=after.runs.filter(run=>!before.runs.some(old=>old.id===run.id))
  expect(newRuns.map(run=>run.phase).sort()).toEqual(['decision','execution'])
- expect(after.workBudgets![0]).toMatchObject({id:budget.id,modelCalls:budget.modelCalls+2,deadlineAt:budget.deadlineAt,maxModelCalls:24})
+ expect(after.workBudgets![0]).toMatchObject({id:budget.id,modelCalls:budget.modelCalls+2,deadlineAt:budget.deadlineAt,maxModelCalls:null,limitAuthority:{kind:'default'}})
 })

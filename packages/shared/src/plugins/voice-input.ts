@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 2026-10-27 语音v2配置、后端语言目录、精确设备选择、附加整理规则和短期设备授权合同。
+ * [OUTPUT]: 2026-10-28 语音v3记录本地模型身份；v1/v2只读迁移、逐模型安装快照和明确模型下载操作。
  * [INPUT]: Explicit desktop settings and a trusted Composer identity.
  * [OUTPUT]: Typed voice-only protocol, no employee tool, message send or raw credential return.
  * [POS]: Host-owned voice application-plugin contract; independent of executable plugin code.
@@ -26,22 +26,45 @@ export const voiceLanguages = [
 ] as const
 export type VoiceLanguage = typeof voiceLanguages[number]['value']
 export const localVoiceLanguages: readonly VoiceLanguage[] = ['auto', 'zh', 'yue', 'en', 'ja', 'ko']
-export const voiceSettingsSchema = legacyVoiceSettingsSchema.extend({
+const voiceSettingsV2Schema = legacyVoiceSettingsSchema.extend({
   schemaVersion: z.literal(2), language: z.enum(voiceLanguages.map(item => item.value)),
   microphoneDeviceId: z.string().max(512),
   refinement: legacyVoiceSettingsSchema.shape.refinement.extend({ instructions: z.string().max(4000) }),
 })
-export function validateVoiceLanguage(settings: { mode: 'local' | 'qwen-realtime'; language: VoiceLanguage }) {
-  if (settings.mode === 'local' && !localVoiceLanguages.includes(settings.language)) throw new Error('本地识别不支持所选语言，请重新选择识别语言')
+export const voiceModelIds = ['sensevoice-small', 'whisper-tiny', 'whisper-base'] as const
+export type VoiceModelId = typeof voiceModelIds[number]
+export const voiceModelIdSchema = z.enum(voiceModelIds)
+const whisperVoiceLanguages: readonly VoiceLanguage[] = voiceLanguages.map(item => item.value).filter(value => value !== 'yue')
+const localModelLanguages: Record<VoiceModelId, readonly VoiceLanguage[]> = {
+  'sensevoice-small': localVoiceLanguages, 'whisper-tiny': whisperVoiceLanguages, 'whisper-base': whisperVoiceLanguages,
+}
+export function voiceModelLanguages(modelId: VoiceModelId): readonly VoiceLanguage[] { return localModelLanguages[modelId] }
+export const voiceSettingsSchema = voiceSettingsV2Schema.extend({ schemaVersion: z.literal(3), localModelId: voiceModelIdSchema })
+export const voiceDownloadSchema = z.object({ modelId: voiceModelIdSchema, action: z.enum(['start', 'cancel', 'remove']) }).strict()
+export const voiceConfigureSchema = z.object({
+  expectedRevision: z.number().int().nonnegative(),
+  settings: voiceSettingsSchema.omit({ revision: true, schemaVersion: true }).extend({ online: voiceSettingsSchema.shape.online.omit({ credentialRef: true }) }),
+  apiKey: z.string().max(4096).optional(),
+}).strict()
+export function validateVoiceLanguage(settings: { mode: 'local' | 'qwen-realtime'; language: VoiceLanguage; localModelId?: VoiceModelId }) {
+  if (settings.mode === 'local' && !voiceModelLanguages(settings.localModelId ?? 'sensevoice-small').includes(settings.language)) throw new Error('所选本地模型不支持当前语言，请先重新选择识别语言')
 }
 export function readVoiceSettings(value: unknown): VoiceSettings {
   const legacy = legacyVoiceSettingsSchema.safeParse(value)
-  const settings = legacy.success ? voiceSettingsSchema.parse({ ...legacy.data, schemaVersion: 2, language: 'auto', microphoneDeviceId: '', refinement: { ...legacy.data.refinement, instructions: '' } }) : voiceSettingsSchema.parse(value)
+  const previous = voiceSettingsV2Schema.safeParse(legacy.success ? { ...legacy.data, schemaVersion: 2, language: 'auto', microphoneDeviceId: '', refinement: { ...legacy.data.refinement, instructions: '' } } : value)
+  const settings = voiceSettingsSchema.parse(previous.success ? { ...previous.data, schemaVersion: 3, localModelId: 'sensevoice-small' } : value)
   validateVoiceLanguage(settings)
   return settings
 }
 export type VoiceSettings = z.infer<typeof voiceSettingsSchema>
-export interface VoiceSnapshot { settings: VoiceSettings; localReady: boolean; supported: boolean; onlineKeyPresent: boolean; readOnly?: boolean; diagnostic?: string; download?: { received: number; total: number }; modelBytes: number }
+export interface VoiceModelSnapshot {
+  id: VoiceModelId; name: string; languages: readonly VoiceLanguage[]; bytes: number; ready: boolean; licenseUrl: string
+  download?: { received: number; total: number }
+}
+export interface VoiceSnapshot {
+  settings: VoiceSettings; models: VoiceModelSnapshot[]; localReady: boolean; supported: boolean; onlineKeyPresent: boolean
+  readOnly?: boolean; diagnostic?: string; download?: { received: number; total: number }; modelBytes: number
+}
 export const voiceIdentitySchema = z.object({ sessionId: z.string().uuid(), scope: z.string().min(1).max(500), instanceId: z.string().uuid(), generation: z.number().int().nonnegative(), draftRevision: z.number().int().nonnegative(), settingsRevision: z.number().int().nonnegative(), anchor: z.object({ start: z.number().int().nonnegative(), end: z.number().int().nonnegative() }).strict() }).strict()
 export type VoiceIdentity = z.infer<typeof voiceIdentitySchema>
 export type VoiceEvent = { type: 'segment'; sessionId: string; id: string; sequence: number; revision: number; text: string; final: boolean }
@@ -50,8 +73,8 @@ export interface VoiceResult { sessionId: string; text: string; complete: boolea
 export interface VoiceApi {
   microphoneAccess(input: { token: string; active: boolean }): Promise<void>
   snapshot(): Promise<VoiceSnapshot>
-  configure(input: { expectedRevision: number; settings: Omit<VoiceSettings, 'revision' | 'schemaVersion'>; apiKey?: string }): Promise<VoiceSnapshot>
-  download(action: 'start' | 'cancel' | 'remove'): Promise<VoiceSnapshot>
+  configure(input: z.infer<typeof voiceConfigureSchema>): Promise<VoiceSnapshot>
+  download(input: z.infer<typeof voiceDownloadSchema>): Promise<VoiceSnapshot>
   start(identity: VoiceIdentity): Promise<void>
   append(input: { sessionId: string; sequence: number; pcm: Uint8Array }): Promise<void>
   finish(sessionId: string): Promise<VoiceResult>
@@ -59,7 +82,7 @@ export interface VoiceApi {
   refine(input: { sessionId: string; text: string; settingsRevision: number }): Promise<{ text: string; settingsRevision: number } | null>
   subscribe(listener: (event: VoiceEvent) => void): () => void
 }
-export const defaultVoiceSettings = (): VoiceSettings => ({ schemaVersion: 2, revision: 0, mode: 'local', language: 'auto', microphoneDeviceId: '',
+export const defaultVoiceSettings = (): VoiceSettings => ({ schemaVersion: 3, revision: 0, mode: 'local', localModelId: 'sensevoice-small', language: 'auto', microphoneDeviceId: '',
   online: { endpoint: 'wss://dashscope.aliyuncs.com/api-ws/v1/realtime', model: 'qwen3-asr-flash-realtime' },
   refinement: { enabled: false, connectionId: '', model: '', instructions: '' }, terms: [],
 })

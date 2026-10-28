@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 自动化等待按现行无默认期限/调用上限核对，员工删除后原预算计数与触发身份保持。
  * [INPUT]: 真实 AppService/SQLite 与隔离通讯录数据。
  * [OUTPUT]: 标签提交仅通知通讯录且员工删除仍使关联页面失效，版本冲突不广播；旧分类无损转多标签、原子批量标签/选中员工删除、统一排序和核心/未知身份整批拒绝；标签错误文案及未分类/无标签保留名；员工删除清空全部单聊/记忆/专属文件且保留其他群历史；关联员工新任务聊天/群计划暂停；保留群中的自动化等待随员工删除终结并保留原预算/触发身份；群目录链接失败可修复重试且外部文件保留；空群/明确群解散持久删除；完整多标签成员删除及过期版本拒绝；核心身份和运行/取消待退出保护；标签排序/归属/搜索顺序及重启隔离验证。
  * [POS]: 通讯录真实 AppService/SQLite 集成回归；不启动 Electron 或请求外部模型。
@@ -516,7 +517,7 @@ test('deleting a member ends a preserved group automation wait immediately while
   const waiting = (await api('listAutomations', undefined)).occurrences.find(item => item.id === occurrence.id)!
   const beforeGroup = await api('getConversation', { id: group.id }), originalBudget = beforeGroup.workBudgets!.find(budget => budget.id === waiting.budgetId)!
   expect(waiting.waitingTurnIds).toContain(waiting.turnId)
-  expect(Date.parse(originalBudget.deadlineAt)).toBeGreaterThan(Date.now())
+  expect(originalBudget).toMatchObject({ deadlineAt: '', maxModelCalls: null })
   expect(beforeGroup.messages.some(message => message.senderId === 'researcher' && message.content.includes('请补充'))).toBe(true)
   const aliases = await f.store.load<{ id: string; occurrenceId: string }>('automationTriggerAliases')
   expect(aliases.some(alias => alias.occurrenceId === waiting.id)).toBe(true)

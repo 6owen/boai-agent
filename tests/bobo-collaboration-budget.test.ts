@@ -1,10 +1,11 @@
 /*
+ * [OUTPUT]: 2026-10-28组织判断承接保留用户明确1/10分钟原绝对期限与授权，已耗判断时间不重置、不追加隐式上限。
  * [OUTPUT]: 验证默认无执行配额、旧默认精确迁移、显式预算仍执行以及用户取消；不调用真实供应商。
  * [OUTPUT]: 覆盖增大任务额度、真实继续消息或本次运行同类批准；各文件以具体用例限定验证范围。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: bobo可选择API或本机Codex；组织/具名团队按原运行配置创建独立员工，混合成员共原预算；本机自动化沿原时钟/预算接入，实际验证归第13组06。
  * [INPUT]: 真实 SQLite、bobo 核心来源/组织工作、群启动 CAS、原调用回执和会话清理。
- * [OUTPUT]: 新完整协作48/其他24首次事务、根子同ID共原期限；人为旧24重启/明确重认领/群根/子工作保持24，模型无法指定额度，输出等原限制不变。
+ * [OUTPUT]: 默认协作无固定额度，根子同ID共原期限；显式用户24次额度经重启/明确重认领保持，模型无法指定额度。
  * [OUTPUT]: 固定组织权限/真实证据、两会话无父子共预算、逐调用已知/未知记账、原子发布/启动回滚、子工作/成员边界与重启不自动开工。
  * [POS]: BC3 模块合同；真实模型/桌面群协作由 Electron BDD 验证。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -90,9 +91,9 @@ describe('bobo fixed organization authority and genuine delivery', () => {
     const automation = newWorkBudget('automation-budget', { conversationId: f.core.id, origin: { kind: 'automation', automationId: 'automation', occurrenceId: 'occurrence', name: '定时任务', authorizedFingerprint: 'explicit-source' } }, 'organize_and_execute')
     expect(automation).toMatchObject({ executionAllowanceVersion: 2, maxModelCalls: null, maxOutputTokens: null, maxRuns: null })
   })
-  it('retains a stored old twenty-four-call full organization through restart and explicit reclaim', async () => {
+  it('retains an explicit user twenty-four-call full organization budget through restart and explicit reclaim', async () => {
     const f = await fixture('organize_and_execute', false)
-    const budget = { ...(await f.works.view(f.core.id)).workBudgets[0]!, maxModelCalls: 24 }
+    const budget = { ...(await f.works.view(f.core.id)).workBudgets[0]!, maxModelCalls: 24, limitAuthority: { kind: 'user' as const, requestId: 'explicit-twenty-four-calls', messageId: f.source.id, version: 1 } }
     await f.store.write([row('workBudgets', budget)])
     await f.works.release(f.organizationRun.id, 'failed')
     const restarted = new WorkRepository(f.store); await restarted.init()
@@ -102,7 +103,24 @@ describe('bobo fixed organization authority and genuine delivery', () => {
     await f.store.write([row('runs', retry)])
     await restarted.claim({ ...f.claim, runId: retry.id })
     const retained = (await restarted.view(f.core.id)).workBudgets[0]!
-    expect(retained).toMatchObject({ id: budget.id, maxModelCalls: 24, deadlineAt: budget.deadlineAt, maxOutputTokens: null, maxRuns: null, retries: 1, runs: 2 })
+    expect(retained).toMatchObject({ id: budget.id, limitAuthority: budget.limitAuthority, maxModelCalls: 24, deadlineAt: budget.deadlineAt, maxOutputTokens: null, maxRuns: null, retries: 1, runs: 2 })
+  })
+  it.each([60_000, 600_000])('preserves an explicit %sms absolute organization deadline including time already spent deciding', async duration => {
+    const f = await fixture('organize_and_execute', false)
+    const decision = { ...f.decisionRun, createdAt: new Date(Date.now() - 2_000).toISOString() }
+    const deadlineAt = new Date(Date.parse(decision.createdAt) + duration).toISOString()
+    const limitAuthority = { kind: 'user' as const, requestId: 'explicit-organization-deadline', messageId: f.source.id, version: 1 }
+    const budget = { ...(await f.works.view(f.core.id)).workBudgets[0]!, deadlineAt, limitAuthority }
+    await f.store.write([row('runs', decision), row('workBudgets', budget)])
+    await f.works.release(f.organizationRun.id, 'failed')
+    await f.works.authorizeRetry(f.work.id, 'bobo')
+    const retry = f.run('explicit-deadline-retry', { workId: f.work.id })
+    await f.store.write([row('runs', retry)])
+    const work = await f.works.claim({ ...f.claim, runId: retry.id, priorDecision: { runId: decision.id, callIds: ['decision-known', 'decision-unknown'] } })
+    const retained = (await f.works.view(f.core.id)).workBudgets[0]!
+    expect(work.budgetId).toBe(budget.id)
+    expect(retained).toMatchObject({ deadlineAt, limitAuthority, modelCalls: 2, unknownCalls: 1, usage: { inputTokens: 20, outputTokens: 8, totalTokens: 25 }, usageIncomplete: true })
+    expect(Date.parse(retained.deadlineAt) - Date.now()).toBeLessThanOrEqual(duration - 2_000)
   })
   it('keeps model intent limited to judgment and refuses caller-owned request identity', () => {
     expect(workIntentSchema.parse({ key: 'main', scope: '组织', deliverable: '真实组织回执', organization: { mode: 'organize_only', goal: '合作讨论' } }).organization?.mode).toBe('organize_only')

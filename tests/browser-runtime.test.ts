@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 局部AppService夹具初始化运行内权限映射，取消仍走生产清理及原未知回执断言。
  * [OUTPUT]: 原browserControl局部AppService夹具补齐目录运行及活跃引擎上下文状态，保留真实退出与未知不重放断言。
  * [OUTPUT]: 显式整体权限在浏览器交互前等待/拒绝，导航观察保留且批准内容不包含输入正文。
  * [OUTPUT]: 默认浏览器交互/新网站无需审批，仍核对页面版本、参数身份和真实回执。
@@ -207,7 +208,7 @@ describe('per-run browser session actual exit and no replay',()=>{
     const session=new BrowserSession(lease,bridge,repository,{signal:controller.signal,originalRequest:'https://example.test/',validate:async()=>{},approve:async()=>true})
     const run={id:lease.runId,workId:lease.workId,messageId:'message',conversationId:lease.conversationId,status:'running'}
     // Keep production cancellation, serialization and persistence; only the Electron transport is a controlled fixture.
-    const service=Object.assign(Object.create(AppService.prototype),{options:{browserHost:bridge},browserSessions:new Map([[lease.runId,{session}]]),runControllers:new Map([[lease.runId,controller]]),runs:new Map([[lease.runId,run]]),messages:new Map(),approvals:new Map(),pendingApprovals:new Map(),directoryRuns:new Map(),activeEngineContexts:new Map(),mutations:Promise.resolve(),store,works,emit:vi.fn(),changed:vi.fn()}) as AppService
+    const service=Object.assign(Object.create(AppService.prototype),{options:{browserHost:bridge},browserSessions:new Map([[lease.runId,{session}]]),runControllers:new Map([[lease.runId,controller]]),runs:new Map([[lease.runId,run]]),messages:new Map(),approvals:new Map(),pendingApprovals:new Map(),directoryRuns:new Map(),activeEngineContexts:new Map(),runOperationPermissions:new Map(),mutations:Promise.resolve(),store,works,emit:vi.fn(),changed:vi.fn()}) as AppService
     const running=session.execute('click @e1','hanging-click').catch(error=>error)
     await started.promise
     const closing=service.browserControl({action})

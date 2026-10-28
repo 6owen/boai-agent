@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-28汇报与重试上限由显式用户预算夹具声明，跨运行继续保持独立累计、不重置。
  * [OUTPUT]: 暂不公开等待仍计算原无进展额度，不以新等待revision绕过原上限；先后交付和未知副作用分开验证。
  * [OUTPUT]: 重新汇报暂不公开时保留已声明依赖等待，结果先后竞态共原唤醒/预算；未知副作用仍阻止续行。
  * [INPUT]: 隔离 SQLite 工作图、并发结果提交与根预算。
@@ -200,7 +201,9 @@ it('ends queued continuations when the root run budget is exhausted and propagat
 })
 
 it('counts report refreshes and retries separately across new runs without resetting either allowance', async () => {
-  const { works, parent } = await fixture()
+  const { works, store, parent } = await fixture()
+  const budget = (await works.view('group')).workBudgets[0]
+  await store.write([{ collection: 'workBudgets', id: budget.id, value: { ...budget, maxReportRefreshes: 4, maxRetries: 3, limitAuthority: { kind: 'user', requestId: 'explicit-retry-report-limits', messageId: 'request', version: 1 } } }])
   for (let i = 0; i < 4; i++) await works.reserveReport('parent-run')
   await expect(works.reserveReport('parent-run')).rejects.toThrow('重新汇报上限')
   await works.release('parent-run', 'failed')
