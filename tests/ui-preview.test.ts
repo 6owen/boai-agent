@@ -30,7 +30,7 @@ it('keeps untrusted PR execution apart from the trusted writer and engineering g
   const writer = workflow.jobs.publish.steps.map((step: { run?: string }) => step.run || '').join('\n')
   expect(writer).not.toContain('pnpm')
   expect(writer).toContain('publish.mjs publish')
-  const test = parse(await readFile('.github/workflows/tests.yml', 'utf8'))
+  const test = parse(await readFile('.github/workflows/test.yml', 'utf8'))
   expect(test.jobs.required.needs).toEqual(['test'])
   expect(test.jobs.test.steps.some((step: { run?: string }) => step.run === 'pnpm test')).toBe(true)
   expect(JSON.stringify(test.jobs.required)).not.toMatch(/baseline|candidate|ui-regression/)

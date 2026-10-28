@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-28用户要求立即切换；旧Actions已停用，新Test独立test.yml，合并/实际生效状态归22组03。
 [OUTPUT]: 2026-10-28按用户要求回到Magpie Test与DeepSeek UI preview；旧PNG基准晋升退出PR流程，实际验证归22组03。
 [OUTPUT]: 2026-10-28第28组首轮真实CLI/AppService对照及取消续接/Claude目录/Codex子线程三修复；单次复验、原失败与未验范围归28组02/03，不宣称全量无损。
 [OUTPUT]: 2026-10-27线上基准提交后Agent须批准当前PR的action_required运行；独立dispatch全绿不能替代该PR门禁，普通人工push保持自动检查。
@@ -615,7 +616,7 @@
 - `pnpm test:electron` 先构建、再执行 `bddgen` 和 Playwright；`.features-gen/` 是忽略的生成文件，禁止手工维护。
 - 场景数据必须隔离；重启沿用该场景目录；升级场景先准备旧数据再启动；G4 交付前保持重启中断、不自动重放工具。
 - 修改场景不得减少原有业务断言；中文步骤描述业务意图，协议服务与进程清理留在 TypeScript 支撑层。
-- `.github/workflows/tests.yml`执行BOAI工程Test；`ui-preview.yml`沿Magpie用DeepSeek规划操作并发布截图/录屏。旧candidate/accept/update不再属于PR交付流程，不要求本地效果确认；当前合同见第22组06。
+- `.github/workflows/test.yml`执行BOAI工程Test；`ui-preview.yml`沿Magpie用DeepSeek规划操作并发布截图/录屏。旧candidate/accept/update不再属于PR交付流程，不要求本地效果确认；当前合同见第22组06。
 
 # Desktop Collaboration Boundaries
 

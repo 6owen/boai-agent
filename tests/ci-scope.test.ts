@@ -18,7 +18,7 @@ it.each(['README.md', 'AGENTS.md', 'CLAUDE.md', '.agents/skills/shared/SKILL.md'
   expect(ciMode('pull_request', [path])).toBe('documentation')
   expect(ciMode('push', [path])).toBe('documentation')
 })
-it.each(['apps/electron/src/main/main.ts', 'package.json', 'pnpm-lock.yaml', '.github/workflows/tests.yml', 'tests/e2e/baselines/chat.png', 'tests/ci-scope.test.ts', '.agents/skills/shared/scripts/run.mjs', 'ai-docs/contract.json', 'packages/runtime/src/prompt.md', '../README.md', '.agents/../package.json', 'README.md\nignored'])('任意混入程序/未知路径均完整执行：%s', path => expect(ciMode('pull_request', ['README.md', path])).toBe('full'))
+it.each(['apps/electron/src/main/main.ts', 'package.json', 'pnpm-lock.yaml', '.github/workflows/test.yml', 'tests/e2e/baselines/chat.png', 'tests/ci-scope.test.ts', '.agents/skills/shared/scripts/run.mjs', 'ai-docs/contract.json', 'packages/runtime/src/prompt.md', '../README.md', '.agents/../package.json', 'README.md\nignored'])('任意混入程序/未知路径均完整执行：%s', path => expect(ciMode('pull_request', ['README.md', path])).toBe('full'))
 it('手动、未知事件和空差异保留完整验证', () => {
   for (const event of ['workflow_dispatch', 'merge_group', undefined]) expect(ciMode(event, ['README.md'])).toBe('full')
   expect(ciMode('push', [])).toBe('full')
@@ -68,11 +68,11 @@ it('草稿产品改动暂缓，Ready和明确标签恢复完整；文档仍按�
   for (const event of ['push', 'workflow_dispatch']) expect(ciMode(event, paths, { draft: true })).toBe('full')
   expect(ciMode('pull_request', [], { draft: true })).toBe('full')
 })
-it.each(['.github/workflows/tests.yml', '.github/workflows/diagnostic.yml', 'scripts/ci-scope.mjs', 'scripts/ci-result.mjs', 'tests/ci-scope.test.ts'])('草稿也不能跳过CI机制本身的完整验证：%s', path => {
+it.each(['.github/workflows/test.yml', '.github/workflows/diagnostic.yml', 'scripts/ci-scope.mjs', 'scripts/ci-result.mjs', 'tests/ci-scope.test.ts'])('草稿也不能跳过CI机制本身的完整验证：%s', path => {
   expect(ciMode('pull_request', [path], { draft: true })).toBe('full')
 })
 it('实际工作流仅随PR源码生命周期触发，Draft/Ready及标签不重复运行且必需检查固定', async () => {
-  const workflow = parse(await readFile(new URL('../.github/workflows/tests.yml', import.meta.url), 'utf8'))
+  const workflow = parse(await readFile(new URL('../.github/workflows/test.yml', import.meta.url), 'utf8'))
   const events = workflow.on.pull_request?.types ?? ['opened', 'synchronize', 'reopened']
   expect(events).not.toContain('labeled')
   expect(events).not.toContain('unlabeled')
@@ -82,7 +82,7 @@ it('实际工作流仅随PR源码生命周期触发，Draft/Ready及标签不重
   expect(workflow.jobs.required).toMatchObject({ name: 'Required checks', if: 'always()' })
 })
 it('GitHub Test执行工程检查且不以截图基准作为合并门禁', async () => {
-  const workflow = parse(await readFile(new URL('../.github/workflows/tests.yml', import.meta.url), 'utf8'))
+  const workflow = parse(await readFile(new URL('../.github/workflows/test.yml', import.meta.url), 'utf8'))
   const metadata = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
   expect(Object.keys(workflow.jobs).sort()).toEqual(['required', 'test'])
   expect(workflow.jobs.required.needs).toEqual(['test'])
