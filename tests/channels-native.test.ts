@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 已确认输入并实际退出的取消运行沿同原生session明确续接，仍验证新请求重新读取及零渠道回发。
  * [OUTPUT]: 原生渠道知识引用核对真实读取；仅断线保留历史，撤原请求者授权拒绝旧引用而本地明确回复保持。
  * [OUTPUT]: Codex/Claude渠道知识已读未发布时取消、执行器退出与本人本地重新查阅的原生协议回归。
  * [OUTPUT]: 2026-10-15最新16组03 §16替代旧只读镜像/额外讨论：渠道记录直接续聊共用上下文与session，回发按本轮来源；回答工具条明确发送，实际进度02 §7.23。
@@ -27,7 +28,7 @@ import type { Snapshot, ConversationDetail, Message, Resource } from '../package
 const disposals: (() => Promise<void>)[] = []
 afterEach(async () => { for (const close of disposals.splice(0).reverse()) await close() })
 describe.each(['codex', 'claude'] as const)('%s employee contacted through channel', runtime => {
-  it('cancels a channel knowledge answer after the native read and starts fresh for an explicit local continuation', async () => {
+  it('cancels a channel knowledge answer after the native read and resumes its session for an explicit local continuation', async () => {
     const native = await nativeFixture(runtime, disposals), path = join(native.root, 'reference.md'), content = '# 品牌规范\n标题蓝色。'
     await writeFile(path, content)
     await native.service.handle('saveEmployeeKnowledge', { requestId: crypto.randomUUID(), agentId: native.agent.id, expectedConfigVersion: native.agent.configVersion, source: { kind: 'file', path, name: '品牌规范.md' } })
@@ -59,6 +60,7 @@ describe.each(['codex', 'claude'] as const)('%s employee contacted through chann
     await expect.poll(async () => (await reads()).length, { timeout: 15000 }).toBe(2)
     const held = (await detail()).runs.filter(run => run.phase === 'execution').at(-1)!
     expect(held.status).toBe('running')
+    expect(held.backend?.inputAccepted).toBe(true)
     const connected = (await service.handle('listChannelBindings', { agentId: native.agent.id }) as ChannelBindingState[])[0]
     await service.handle('disconnectChannelBinding', { id: binding.id, expectedRevision: connected.revision })
     const execution = service as unknown as { activeAdapters: Map<string, unknown>; adapterExits: Set<unknown> }
@@ -73,7 +75,8 @@ describe.each(['codex', 'claude'] as const)('%s employee contacted through chann
     const final = await detail(), answer = final.messages.filter(message => message.senderType === 'agent' && message.status === 'completed').at(-1)!
     expect(answer.content).toContain(content); expect(sent).toHaveLength(2); expect(final.workItems).toEqual([])
     const requests = (await readFile(join(cwd, 'native-thread-requests.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line))
-    expect(requests.slice(-3).map(request => request.method)).toEqual(['thread/start', 'thread/resume', 'thread/start'])
+    expect(requests.slice(-3).map(request => request.method)).toEqual(['thread/start', 'thread/resume', 'thread/resume'])
+    expect(final.runs.filter(run => run.phase === 'execution').at(-1)?.backend?.sessionId).toBe(held.backend?.sessionId)
     expect((await reads()).map(read => read.content)).toEqual([content, content, content])
     // Transport disconnect alone does not erase historical recipient authority.
     expect(await service.handle('getKnowledgeCitationPreview', externalCitation)).toMatchObject({ filePreview: { text: content } })

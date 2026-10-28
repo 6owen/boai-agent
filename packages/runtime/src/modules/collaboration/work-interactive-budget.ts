@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-28承接API判断保留默认无限与用户原绝对期限，判断耗时自然计入，不追加固定期限或续期。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: Codex/Claude共用外部阶段计量，承接判断时保留明确的未知完整性；回执比较具体kind与profile，不跨运行时借用身份。
  * [INPUT]: 已核对的交互Work、原判断回执、当前运行与SQLite事务。
@@ -10,7 +11,7 @@ import type { AgentRun, BudgetModelCall, Conversation, DigitalAgent, Message, Wo
 import { isNativeBackend, sameBackendBinding } from '@boai/shared/domain/backends'
 import type { RecordTransaction } from '../../adapters/storage/product-store'
 import type { ProfileModelCall } from '../profile/profile-activity'
-import { reserveBudgetCall, settleBudgetCall, WORK_DURATION_MS, WorkUnavailableError } from './work-budget'
+import { reserveBudgetCall, settleBudgetCall, WorkUnavailableError } from './work-budget'
 
 export async function adoptInteractiveDecision(tx: RecordTransaction, work: WorkItem, budget: WorkBudget, sourceMessageId: string, prior: { runId: string; callIds: string[] }) {
   const run = await tx.get<AgentRun>('runs', prior.runId)
@@ -19,9 +20,8 @@ export async function adoptInteractiveDecision(tx: RecordTransaction, work: Work
   const agent = await tx.get<DigitalAgent>('agents', run.agentId)
   const calls = (await tx.list<ProfileModelCall>('profileModelCalls')).filter(call => call.runId === run.id)
   if (!sameBackendBinding(agent?.executionBackend, run?.backend) || run.activityError || calls.length !== prior.callIds.length || calls.some(call => !prior.callIds.includes(call.id))) throw new WorkUnavailableError('工作判断必须保留全部实际调用与原运行方式')
-  // The original decision consumes time too. Adoption can only shorten, never renew.
+  // Keeping the original absolute deadline includes decision time without imposing a new duration or renewing it.
   if (!Number.isFinite(Date.parse(run.createdAt))) throw new WorkUnavailableError('本机判断缺少可信开始时间')
-  if (!native) budget.deadlineAt = new Date(Math.min(Date.parse(budget.deadlineAt), Date.parse(run.createdAt) + WORK_DURATION_MS)).toISOString()
   for (const id of prior.callIds) {
     const call = await tx.get<ProfileModelCall>('profileModelCalls', id)
     if (!call || call.runId !== run.id || call.conversationId !== work.conversationId || call.phase !== 'decision' || !Number.isFinite(Date.parse(call.startedAt)) || (call.callUnit === 'external-turn') !== native) throw new WorkUnavailableError('工作判断缺少匹配计量的唯一请求记录')

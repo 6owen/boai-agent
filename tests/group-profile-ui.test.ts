@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 未知保存回执时验证真实不可编辑状态和零自动重试，显式核对后恢复已提交版本及可编辑状态。
  * [INPUT]: 群聊资料页/高级配置/共用双栏成员选择器与受控IPC。
  * [OUTPUT]: 名称局部保存/并发草稿、成员回填/取消/版本提交、选择人数限制和高级配置草稿隔离的前端回归。
  * [POS]: 群聊就地配置交互测试，不运行E2E或真实模型。
@@ -142,12 +143,18 @@ test('member picker enforces 1–12 members and search does not clear selection'
 test('failed autosave keeps its draft, blocks automatic retry and can explicitly reload the committed version', async () => {
   const original = request.getMockImplementation()!
   request.mockImplementation(async (method, input) => { const result = await original(method, input); if (method === 'createConversation') throw new Error('response lost'); return result })
-  await fixture(); await rename('未知回执名称')
-  await rename('不会重复提交')
+  const f = await fixture(); await rename('未知回执名称')
+  expect(title().getAttribute('aria-disabled')).toBe('true')
+  expect(title().getAttribute('contenteditable')).toBe('false')
+  expect(title().textContent).toBe('未知回执名称')
+  // A disabled contentEditable cannot receive new user text; do not mutate its DOM behind React.
+  await act(async () => { title().dispatchEvent(new Event('input', { bubbles: true })); title().dispatchEvent(new FocusEvent('focusout', { bubbles: true })) })
   expect(saves()).toHaveLength(1)
   expect(button('载入当前配置')).toBeDefined()
   await act(async () => button('载入当前配置').click())
   await act(async () => button('退出').click())
   expect(title().textContent).toBe('未知回执名称')
+  expect(title().getAttribute('aria-disabled')).toBe('false')
+  expect(f.saved).toHaveBeenCalledWith(expect.objectContaining({ title: '未知回执名称', configVersion: 5 }))
   expect(saves()).toHaveLength(1)
 })

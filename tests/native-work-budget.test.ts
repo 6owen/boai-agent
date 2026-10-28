@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-28API判断承接保持默认无限与用户原绝对期限，判断耗时不重置且不追加隐式上限，原子调用上限仍执行。
  * [OUTPUT]: 服务重开仅重算API工作数，混合本机子工作与已清理组织历史不增加或归零原预算。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 新交互工作承接已知但不完整的本机判断用量，unknownCalls及完整性随原请求保持。
@@ -15,7 +16,6 @@ import { join } from 'node:path'
 import type { AgentRun, BudgetModelCall, Conversation, DigitalAgent, Message, WorkBudget, WorkItem } from '../packages/shared/src/domain'
 import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
 import { WorkRepository } from '../packages/runtime/src/modules/collaboration/work-repository'
-import { WORK_DURATION_MS } from '../packages/runtime/src/modules/collaboration/work-budget'
 import { aggregateActivity } from '../packages/runtime/src/modules/profile/profile-activity'
 
 const cleanups: (() => Promise<unknown>)[] = []
@@ -61,11 +61,10 @@ it('does not adopt historical native usage into the API ledger', async () => {
   expect(f.work.budgetPolicy).toBe('native')
 })
 
-it('keeps API decision time and atomic call limits in a mixed group', async () => {
+it('keeps default API decisions unlimited and enforces explicit atomic call limits in a mixed group', async () => {
   const f = await fixture(false, true), before = await f.budget()
-  expect(before).toMatchObject({ modelCalls: 1, usage: known })
-  expect(Date.parse(before.deadlineAt)).toBe(Date.parse(f.decision.createdAt) + WORK_DURATION_MS)
-  await f.store.write([row('workBudgets', { ...before, maxModelCalls: 3 })])
+  expect(before).toMatchObject({ modelCalls: 1, usage: known, deadlineAt: '', maxModelCalls: null, limitAuthority: { kind: 'default' } })
+  await f.store.write([row('workBudgets', { ...before, maxModelCalls: 3, limitAuthority: { kind: 'user', requestId: 'explicit-three-calls', messageId: f.claim.sourceMessageId, version: 1 } })])
   const other = new WorkRepository(await f.connect())
   const results = await Promise.allSettled([f.works.reserveInteractiveCall(f.task, 'a', 'execution'), other.reserveInteractiveCall(f.task, 'b', 'execution'), f.works.reserveInteractiveCall(f.task, 'c', 'execution')])
   expect(results.filter(result => result.status === 'fulfilled')).toHaveLength(2)
@@ -105,6 +104,19 @@ async function otherDecision(f: Awaited<ReturnType<typeof fixture>>, native: boo
   await f.store.write([row('runs', decision), row('profileModelCalls', { id: 'other-call', runId: decision.id, conversationId: 'chat', phase: 'decision', startedAt: decision.createdAt, budgetOwned: false, ...(native ? { callUnit: 'external-turn' } : {}), usage: known })])
   return { ...f.claim, agentId: 'other', runId: 'other-task', intent: { ...intent, key: 'independent' }, priorDecision: { runId: decision.id, callIds: ['other-call'] } }
 }
+
+it.each([60_000, 600_000])('preserves an explicit %sms absolute API deadline including time already spent deciding', async duration => {
+  const f = await fixture(true, true), claim = await otherDecision(f, false)
+  const decision = (await f.store.load<AgentRun>('runs')).find(run => run.id === claim.priorDecision.runId)!
+  const before = await f.budget(), deadlineAt = new Date(Date.parse(decision.createdAt) + duration).toISOString()
+  const limitAuthority = { kind: 'user' as const, requestId: 'explicit-deadline', messageId: f.claim.sourceMessageId, version: 1 }
+  await f.store.write([row('workBudgets', { ...before, deadlineAt, limitAuthority })])
+  const work = await f.works.claim(claim)
+  expect(work.budgetId).toBe(f.work.budgetId)
+  const retained = await f.budget()
+  expect(retained).toMatchObject({ deadlineAt, limitAuthority, modelCalls: 1, usage: known })
+  expect(Date.parse(retained.deadlineAt) - Date.now()).toBeLessThanOrEqual(duration - 2_200)
+})
 
 it.each([true, false])('accounts only for API calls in a mixed ledger with native first=%s', async native => {
   const f = await fixture(native, true), claim = await otherDecision(f, !native)

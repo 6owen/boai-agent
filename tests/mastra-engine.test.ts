@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 限字草稿沿原授权持续修订且只发布合格正文；长步骤回归使用真实变化的观测，重复轨迹复核另验。
  * [OUTPUT]: 验证默认无执行配额、旧默认精确迁移、显式预算仍执行以及用户取消；不调用真实供应商。
  * [OUTPUT]: 覆盖增大任务额度、真实继续消息或本次运行同类批准；各文件以具体用例限定验证范围。
  * [OUTPUT]: 本轮覆盖复制/员工入口、定时运行防连点、失败过程、严格私有判断及保留原预算的显式继续；实际范围以各用例为准。
@@ -254,17 +255,28 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     expect(totals.at(-1)).toEqual({ inputTokens: 20, outputTokens: 40, totalTokens: 60 })
   })
 
-  it.each(['still too long', 'budget refused', 'cancelled'] as const)('does not publish or keep rewriting a limited chat when %s', async failure => {
-    const server = await endpoint(['超出五字的原始草稿', '仍然超出五字的修改稿'])
+  it.each(['budget exhausted after revisions', 'budget refused', 'cancelled'] as const)('does not publish a limited chat or continue past %s', async failure => {
+    const server = await endpoint(['超出五字的原始草稿', '仍然超出五字的修改稿', '第三份仍然超限的私有草稿'])
     const run = await context(server.url, { responseKind: 'chat', groupCoordination: { mode: 'ordered', instruction: '每人5字以内', maxReplyCharacters: 5, agentIds: ['agent-a', 'agent-b'], sourceRunId: 'interpretation', memberConfigVersions: {}, revision: 1, completed: [] } })
+    let reservations = 0
     run.ctx.onAdditionalModelCall = async () => {
-      if (failure === 'budget refused') throw new Error('原预算耗尽')
+      expect(run.deltas).toEqual([])
+      if (failure === 'budget refused' || failure === 'budget exhausted after revisions' && ++reservations === 3) throw new Error('原预算耗尽')
       if (failure === 'cancelled') run.controller.abort()
       return 'rewrite'
     }
-    await expect(new MastraEngine().run(run.ctx)).rejects.toThrow(failure === 'still too long' ? '5' : failure === 'budget refused' ? '原预算耗尽' : '取消')
-    expect(server.requests).toHaveLength(failure === 'still too long' ? 2 : 1)
+    await expect(new MastraEngine().run(run.ctx)).rejects.toThrow(failure === 'cancelled' ? '取消' : '原预算耗尽')
+    expect(server.requests).toHaveLength(failure === 'budget exhausted after revisions' ? 3 : 1)
     expect(run.deltas).toEqual([])
+  })
+
+  it('continues authorized private revisions past one rewrite and publishes only text within the explicit limit', async () => {
+    const server = await endpoint(['超出五字的原始草稿', '第二份仍然超限的草稿', '第三份仍然超限的草稿', '合格答复'])
+    const run = await context(server.url, { responseKind: 'chat', groupCoordination: { mode: 'ordered', instruction: '每人5字以内', maxReplyCharacters: 5, agentIds: ['agent-a', 'agent-b'], sourceRunId: 'interpretation', memberConfigVersions: {}, revision: 1, completed: [] } })
+    run.ctx.onAdditionalModelCall = async () => { expect(run.deltas).toEqual([]); return 'authorized-revision' }
+    await new MastraEngine().run(run.ctx)
+    expect(server.requests).toHaveLength(4)
+    expect(run.deltas).toEqual(['合格答复'])
   })
 
   it('counts Chinese, punctuation, digits and Unicode code points but not whitespace in an explicit limit', async () => {
@@ -382,7 +394,9 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
   it.each(['referenced','no-reference','host-budget-exhausted'])('runs past former step limits until completion or an explicit host budget: %s',async mode=>{
     const steps = mode === 'no-reference' ? 260 : 13
     const server=await endpoint([...Array.from({length:steps},()=>({name:'browser_tool',args:{command:'snapshot'}})),'页面操作已核对。'])
-    const execute=vi.fn(async()=>({result:{output:'当前实际页面',appendReleaseHint:false}})),drain=vi.fn(async()=>{})
+    // Changing observations exercise sustained progress; identical snapshots also invoke the separate progress reviewer.
+    let snapshot = 0
+    const execute=vi.fn(async()=>({result:{output:`当前实际页面内容 ${++snapshot}`,appendReleaseHint:false}})),drain=vi.fn(async()=>{})
     let reservations=0
     const run=await context(server.url,{
       modelCallId:'initial-call',

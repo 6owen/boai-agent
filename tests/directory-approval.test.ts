@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 目录读取/等待审批不占命令独占位，两员工均可等待各自审批；批准第一人不扩展第二人权限。
  * [OUTPUT]: 覆盖增大任务额度、真实继续消息或本次运行同类批准；各文件以具体用例限定验证范围。
  * [OUTPUT]: 核心员工现行默认完全权限；显式配置不改变普通员工原审批权限。
  * [OUTPUT]: API完整/审批权限下的命令关闭跨其他字段保存与重启保持，整体只读不能借命令开关扩权。
@@ -105,12 +106,13 @@ describe('目录许可跨原业务生命周期', () => {
       await context.onWorkOutcome!({ disposition: 'delivered', summary: '已完成目录操作', evidence: [{ kind: 'answer', reference: '已完成目录操作' }] })
     })
     await f.send(f.service, group)
-    try { await until(async () => (await snapshot(f.service)).approvals.length === (permission === 'read-only' ? 2 : 1)) }
+    try { await until(async () => (await snapshot(f.service)).approvals.length === 2) }
     catch (error) { await evidence(`group-${permission}-failed`, f, { reads, errors: f.engine.errors.map(String), state: await snapshot(f.service), detail: await details(f.service, group) }); throw error }
     const pending = (await snapshot(f.service)).approvals, runs = (await details(f.service, group)).runs
     const first = pending.find(approval => runs.find(run => run.id === approval.runId)?.agentId === f.agent.id)!
     expect(first).toBeDefined()
-    expect(reads).toEqual(permission === 'read-only' ? { researcher: ['A'], writer: ['B'] } : { researcher: ['A'] })
+    expect(reads).toEqual({ researcher: ['A'], writer: ['B'] })
+    expect(runs.filter(run => run.phase === 'execution').map(run => run.status)).toEqual(['waiting_approval', 'waiting_approval'])
     await f.approve(first, true, true)
     await until(() => reads.researcher?.length === 2)
     await until(async () => (await snapshot(f.service)).approvals.some(approval => approval.id !== first.id))

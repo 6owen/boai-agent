@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-28组织判断承接沿用户原绝对期限计入耗时，不追加固定五分钟上限或续期。
  * [OUTPUT]: 2026-10-27 默认持续执行、来源校验及工作现场/复核接线；沿原权限和账本。
  * [OUTPUT]: 提取原继续只读preflight供结果视图，prepareRetry在原事务仍完整重核并写入。
  * [OUTPUT]: 默认执行不按累计调用、工具步骤、用量或墙钟截断；保留真实用量、取消/权限和明确指定的预算。
@@ -41,7 +42,7 @@ import { AUTOMATION_ROOT_KEY, automationDelegation, assertAutomationDelivery } f
 import { ProductStore, type RecordTransaction, type StoredRecord } from '../../adapters/storage/product-store'
 
 import { queueWorkWake, refreshWaiters, validateDependencies } from './work-dependencies'
-import { workLimitReached, checkWorkBudget, workBudgetDeadline, upgradeWorkExecutionAllowance, WORK_DURATION_MS, newWorkBudget, reserveBudgetCall, settleBudgetCall, workBudgetExhausted, workLimits, WorkUnavailableError } from './work-budget'
+import { workLimitReached, checkWorkBudget, workBudgetDeadline, upgradeWorkExecutionAllowance, newWorkBudget, reserveBudgetCall, settleBudgetCall, workBudgetExhausted, workLimits, WorkUnavailableError } from './work-budget'
 export { WorkUnavailableError } from './work-budget'
 
 import { workDelegationSchema, workWaitSchema, workEvidenceError } from './work-protocol'
@@ -334,8 +335,7 @@ export class WorkRepository {
     const calls = (await tx.list<ProfileModelCall>('profileModelCalls')).filter(call => call.runId === run.id)
     if (!sameBackendBinding(agent?.executionBackend, run?.backend) || run.backend?.kind === 'acp-local' || run.activityError || native && run.backend?.externalInvocations !== prior.callIds.length || calls.length !== prior.callIds.length || calls.some(call => !prior.callIds.includes(call.id))) throw new WorkUnavailableError('组织判断必须保留全部实际调用回执与原运行方式')
     if (!Number.isFinite(Date.parse(run.createdAt))) throw new WorkUnavailableError('组织判断缺少可信开始时间')
-    const deadline = workBudgetDeadline(budget)
-    if (!native && deadline !== undefined) budget.deadlineAt = new Date(Math.min(deadline, Date.parse(run.createdAt) + WORK_DURATION_MS)).toISOString()
+    // The stored absolute deadline already includes decision time; adoption must not change the user's allowance.
     for (const id of prior.callIds) {
       const call = await tx.get<ProfileModelCall>('profileModelCalls', id)
       if (!call || call.runId !== run.id || call.conversationId !== work.conversationId || call.phase !== 'decision' || !Number.isFinite(Date.parse(call.startedAt)) || (call.callUnit === 'external-turn') !== native) throw new WorkUnavailableError('组织判断缺少真实唯一模型调用回执')

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 群模型夹具在本人已回复后明确pass，避免无默认上限下无限互相回复；原计划纠错/幂等断言保持。
  * [OUTPUT]: 群计划误填employeeId须给出可执行纠错，拒绝期间零创建；同key省略归属字段后沿原群保存。
  * [OUTPUT]: bobo专用创建会话单员工保存、同请求幂等和普通核心/员工越权拒绝。
  * [OUTPUT]: 模型目录对象根和跨供应商regex保持运行时动作/路径拒绝，不放松校验。
@@ -28,7 +29,7 @@ const plan: AutomationInput = { name: '日报', prompt: '总结获准资料', fr
 async function setup() {
   const root = await mkdtemp(join(tmpdir(), 'boai-plan-commands-')); cleanup.push(() => rm(root, { recursive: true, force: true }))
   let handler: (ctx: EngineContext) => Promise<void> = async () => {}, current: EngineContext | undefined
-  const service = new AppService({ dataPath: root, emit: () => {}, secrets: { get: async () => undefined, set: async () => {}, delete: async () => {} }, engine: { test: async () => '', decide: async ctx => ({ action: 'reply', responseKind: 'chat', observedThroughSequence: Math.max(...ctx.messages.map(m => m.sequence)) }), run: async ctx => { current = ctx; await handler(ctx); await ctx.onDelta('根据实际回执回复') } } })
+  const service = new AppService({ dataPath: root, emit: () => {}, secrets: { get: async () => undefined, set: async () => {}, delete: async () => {} }, engine: { test: async () => '', decide: async ctx => ({ action: ctx.participation?.hasRespondedInTurn ? 'pass' : 'reply', responseKind: 'chat', observedThroughSequence: Math.max(...ctx.messages.map(m => m.sequence)) }), run: async ctx => { current = ctx; await handler(ctx); await ctx.onDelta('根据实际回执回复') } } })
   cleanup.push(() => service.close()); await service.init()
   const connection = await service.handle('saveConnection', { name: 'fixture', provider: 'openai-compatible', baseUrl: 'http://127.0.0.1:1', defaultModel: 'fixture' }) as { id: string }
   for (const id of ['researcher', 'writer']) {
