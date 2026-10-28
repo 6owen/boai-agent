@@ -1,8 +1,6 @@
 /*
- * [OUTPUT]: 原全UI门禁保持；Draft/Ready切换不重复跑同SHA，PR源码生命周期与main复验仍触发。
- * [OUTPUT]: 自动PR采集与最终只读阶段保持UI专用，不跳过Required门禁。
  * [INPUT]: 真实临时Git提交/事件、开发Markdown白名单及job结果协议。
- * [OUTPUT]: 实际 YAML 仅 UI，保留本地 Vitest；旧范围工具的独立本地合同仍可验证。
+ * [OUTPUT]: 实际 YAML 为工程Test与独立预览；CLI产物先构建再测试，旧范围工具仍可独立验证。
  * [POS]: 历史范围工具与当前云端配置的本地 Vitest 合同；不开产品窗口。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -20,7 +18,7 @@ it.each(['README.md', 'AGENTS.md', 'CLAUDE.md', '.agents/skills/shared/SKILL.md'
   expect(ciMode('pull_request', [path])).toBe('documentation')
   expect(ciMode('push', [path])).toBe('documentation')
 })
-it.each(['apps/electron/src/main/main.ts', 'package.json', 'pnpm-lock.yaml', '.github/workflows/tests.yml', 'tests/e2e/baselines/chat.png', 'tests/ci-scope.test.ts', '.agents/skills/shared/scripts/run.mjs', 'ai-docs/contract.json', 'packages/runtime/src/prompt.md', '../README.md', '.agents/../package.json', 'README.md\nignored'])('任意混入程序/未知路径均完整执行：%s', path => expect(ciMode('pull_request', ['README.md', path])).toBe('full'))
+it.each(['apps/electron/src/main/main.ts', 'package.json', 'pnpm-lock.yaml', '.github/workflows/test.yml', 'tests/e2e/baselines/chat.png', 'tests/ci-scope.test.ts', '.agents/skills/shared/scripts/run.mjs', 'ai-docs/contract.json', 'packages/runtime/src/prompt.md', '../README.md', '.agents/../package.json', 'README.md\nignored'])('任意混入程序/未知路径均完整执行：%s', path => expect(ciMode('pull_request', ['README.md', path])).toBe('full'))
 it('手动、未知事件和空差异保留完整验证', () => {
   for (const event of ['workflow_dispatch', 'merge_group', undefined]) expect(ciMode(event, ['README.md'])).toBe('full')
   expect(ciMode('push', [])).toBe('full')
@@ -70,25 +68,26 @@ it('草稿产品改动暂缓，Ready和明确标签恢复完整；文档仍按�
   for (const event of ['push', 'workflow_dispatch']) expect(ciMode(event, paths, { draft: true })).toBe('full')
   expect(ciMode('pull_request', [], { draft: true })).toBe('full')
 })
-it.each(['.github/workflows/tests.yml', '.github/workflows/diagnostic.yml', 'scripts/ci-scope.mjs', 'scripts/ci-result.mjs', 'tests/ci-scope.test.ts'])('草稿也不能跳过CI机制本身的完整验证：%s', path => {
+it.each(['.github/workflows/test.yml', '.github/workflows/diagnostic.yml', 'scripts/ci-scope.mjs', 'scripts/ci-result.mjs', 'tests/ci-scope.test.ts'])('草稿也不能跳过CI机制本身的完整验证：%s', path => {
   expect(ciMode('pull_request', [path], { draft: true })).toBe('full')
 })
 it('实际工作流仅随PR源码生命周期触发，Draft/Ready及标签不重复运行且必需检查固定', async () => {
-  const workflow = parse(await readFile(new URL('../.github/workflows/tests.yml', import.meta.url), 'utf8'))
-  const events = workflow.on.pull_request.types
+  const workflow = parse(await readFile(new URL('../.github/workflows/test.yml', import.meta.url), 'utf8'))
+  const events = workflow.on.pull_request?.types ?? ['opened', 'synchronize', 'reopened']
   expect(events).not.toContain('labeled')
   expect(events).not.toContain('unlabeled')
   expect(events).toEqual(['opened', 'synchronize', 'reopened'])
   expect(workflow.on.push.branches).toEqual(['main'])
   expect(Object.hasOwn(workflow.on, 'workflow_dispatch')).toBe(true)
-  expect(workflow.jobs.required).toMatchObject({ name: 'UI delivery gate', if: 'always()' })
+  expect(workflow.jobs.required).toMatchObject({ name: 'Required checks', if: 'always()' })
 })
-it('GitHub CI 只执行 UI，保留本地 Vitest 与完整测试入口', async () => {
-  const workflow = parse(await readFile(new URL('../.github/workflows/tests.yml', import.meta.url), 'utf8'))
+it('GitHub Test执行工程检查且不以截图基准作为合并门禁', async () => {
+  const workflow = parse(await readFile(new URL('../.github/workflows/test.yml', import.meta.url), 'utf8'))
   const metadata = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
-  expect(Object.keys(workflow.jobs).sort()).toEqual(['capture', 'plan', 'required', 'ui'])
-  expect(workflow.jobs.required.needs).toEqual(['plan', 'capture', 'ui'])
-  expect(workflow.jobs.ui.steps.some((step: { run?: string }) => step.run?.includes('scripts/ui-regression.mjs check'))).toBe(true)
+  expect(Object.keys(workflow.jobs).sort()).toEqual(['required', 'test'])
+  expect(workflow.jobs.required.needs).toEqual(['test'])
+  // CLI integration tests launch dist/cli/index.mjs from the application build.
+  expect(workflow.jobs.test.steps.map((step: { run?: string }) => step.run).filter(Boolean)).toEqual(['pnpm install --frozen-lockfile --prefer-offline', 'pnpm typecheck', 'pnpm lint:ui', 'pnpm build', 'pnpm test'])
   expect(metadata.devDependencies.vitest).toBeDefined()
   expect(metadata.scripts.test).toContain('vitest run')
   expect(metadata.scripts['test:electron']).toContain('playwright test')
