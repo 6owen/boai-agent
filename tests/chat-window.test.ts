@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 当前轮次补充固定run/turn且不改变Enter发送；跨聊天/多人/材料/失效目标不提供补充入口。
  * [OUTPUT]: 补内容缩短不误翻页、拖动滚动条仍预取及StrictMode初始跟随回归。
  * [OUTPUT]: 使用真实use-stick-to-bottom；模拟浏览器ResizeObserver/rAF交付，覆盖流式阅读、双向滚动及同窗口刷新不重放旧锚点。
  * [OUTPUT]: 补发送后贴底/内容增长/手动滚动/跨会话迟到发送及渠道旧分页竞态回归；组件用例待运行，不代表Electron或E2E验证。
@@ -21,7 +22,7 @@ import { MentionInput, type MentionInputHandle } from '../apps/electron/src/rend
 import type { ChatDraft } from '../apps/electron/src/renderer/pages/conversations/presentation'
 import { ChannelsTab, type ChannelChatWindow } from '../apps/electron/src/renderer/components/detail-panel/channels-tab'
 
-vi.mock('../apps/electron/src/renderer/pages/conversations/-components/composer-toolbar', () => ({ ComposerToolbar: () => null }))
+vi.mock('../apps/electron/src/renderer/pages/conversations/-components/composer-toolbar', () => ({ ComposerToolbar: ({ onSteer }: { onSteer?: () => void }) => onSteer ? h('button', { onClick: onSteer, 'data-test-steer': true }, '补充到当前执行') : null }))
 let host: HTMLDivElement, root: Root, props: ChatViewProps
 const resizeObservers = new Set<{ targets: Set<Element>; callback: ResizeObserverCallback }>()
 function resize(element: Element, height: number) {
@@ -341,4 +342,28 @@ it('follows the initial latest window under the development StrictMode lifecycle
   const geometry = viewportGeometry()
   await act(async () => geometry.notify()); await frames()
   expect(geometry.viewport.scrollTop).toBe(1099)
+})
+
+
+it('submits explicit steering to the current native turn while Enter keeps ordinary send semantics', async () => {
+  const onSend = vi.fn()
+  const run = { id: 'native-run', agentId: 'employee', status: 'running', backend: { kind: 'codex-local', canSteer: true, turnId: 'native-turn' } } as ConversationView['runs'][number]
+  props = { ...props, onSend, detail: { ...view('A'), runs: [run] } }
+  await render()
+  await act(async () => host.querySelector<HTMLButtonElement>('[data-test-steer]')!.click())
+  expect(onSend).toHaveBeenLastCalledWith(expect.any(Function), { runId: run.id, turnId: run.backend!.turnId })
+  await act(async () => enter())
+  expect(onSend.mock.calls.at(-1)).toHaveLength(1)
+  const base = props
+  const variants: Partial<ChatViewProps>[] = [
+    { detail: { ...view('A'), runs: [{ ...run, status: 'completed' }] } },
+    { detail: { ...view('A'), runs: [{ ...run, backend: { ...run.backend!, kind: 'claude-local' } }] } },
+    { detail: { ...view('A'), runs: [run, { ...run, id: 'another', agentId: 'other' }] } },
+    { draft: { ...base.draft, text: '' } },
+    { draft: { ...base.draft, mentionIds: ['employee', 'other'] } },
+    { draft: { ...base.draft, replyId: 'A-1' } },
+    { draft: { ...base.draft, materials: [{ id: 'upload', requestId: 'upload-request', status: 'preparing', name: 'file.txt' }] as ChatDraft['materials'] } },
+    { conversation: room('B'), detail: view('B') },
+  ]
+  for (const variant of variants) { props = { ...base, ...variant }; await render(); expect(host.querySelector('[data-test-steer]')).toBeNull() }
 })

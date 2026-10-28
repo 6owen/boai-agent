@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 补充消息沿原run投影执行状态，未知投递不算完成或重新调度。
  * [OUTPUT]: 只纳入原轮次/工作的问题，已发布且可接续的任务问题显示等待输入。
  * [INPUT]: Original message, Run/Turn/Work records, native input relations and live host ownership.
  * [OUTPUT]: Exact request scope and conservative execution state without replay or new storage.
@@ -18,6 +19,7 @@ export function messageExecutionScope(message: Message, records: { runs: AgentRu
   const runs = records.runs.filter(run => run.conversationId === message.conversationId)
   const works = records.works.filter(work => work.conversationId === message.conversationId)
   const nativeRunIds = new Set(records.nativeActions.filter(action => action.conversationId === message.conversationId && action.responseMessageId === message.id).map(action => action.runId))
+  if (message.nativeSteering) nativeRunIds.add(message.nativeSteering.runId)
   const workIds = new Set(works.filter(work => work.sourceMessageId === message.id || work.id === message.inboxReply?.workId || runs.some(run => nativeRunIds.has(run.id) && run.workId === work.id)).map(work => work.id))
   // Follow owned descendants only, never another root merely woken by the latest user message.
   for (let size = -1; size !== workIds.size;) {
@@ -41,7 +43,7 @@ export function projectMessageExecution(requestId: string, message: Message, sco
   const questions = (facts.questions ?? []).filter(item => item.kind === 'question' && item.conversationId === message.conversationId && (item.workId ? workIds.has(item.workId) : turnIds.has(item.turnId ?? '')))
   const stopped = scope.turns.some(turn => turn.status === 'cancelled') || scope.works.some(work => work.status === 'cancelled') || scope.runs.some(run => run.status === 'cancelled')
   let state: MessageExecutionState
-  if (nativeActions.some(action => action.delivery === 'unknown')) state = 'unknown'
+  if (message.nativeSteering?.delivery === 'unknown' || nativeActions.some(action => action.delivery === 'unknown')) state = 'unknown'
   else if (approvals.length || nativeActions.some(action => action.kind === 'approval' && action.status === 'pending')) state = 'waiting_approval'
   else if (questions.some(item => item.question?.canReply) || nativeActions.some(action => action.kind === 'input' && action.status === 'pending') || scope.turns.some(turn => turn.status === 'waiting_user')) state = 'waiting_input'
   else if (activeRunIds.length || scope.runs.some(run => !runTerminal.has(run.status))) state = stopped ? 'stopping' : 'running'

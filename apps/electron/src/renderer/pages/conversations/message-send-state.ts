@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 补充目标随未决请求持久冻结，重启只核对原回执。
  * [OUTPUT]: 未决消息冻结资源引用并严格恢复，未知不重放。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: 渠道引用随原请求持久冻结/严格还原，不在重启后改指另一消息。
@@ -27,6 +28,10 @@ export function draftFingerprint(draft: ChatDraft) {
 function messageInput(value: unknown): Submission['input'] {
   if (!object(value) || typeof value.content !== 'string' || value.content.length > 100_000 || !Array.isArray(value.mentionIds) || value.mentionIds.length > 100 || !value.mentionIds.every(identity) || new Set(value.mentionIds).size !== value.mentionIds.length) throw invalid()
   const input: Submission['input'] = { content: value.content, mentionIds: [...value.mentionIds] }
+  if (value.steer !== undefined) {
+    if (!object(value.steer) || !identity(value.steer.runId) || !identity(value.steer.turnId)) throw invalid()
+    input.steer = { runId: value.steer.runId, turnId: value.steer.turnId }
+  }
   if (value.composerReferences !== undefined) input.composerReferences = composerReferencesSchema.parse(value.composerReferences)
   if (value.channelReference !== undefined) {
     const ref = value.channelReference
@@ -52,6 +57,7 @@ function messageInput(value: unknown): Submission['input'] {
   }
   if (!input.content.trim() && !input.materialSelections?.length) throw invalid()
   if (value.replyToMessageId !== undefined) { if (!identity(value.replyToMessageId)) throw invalid(); input.replyToMessageId = value.replyToMessageId }
+  if (input.steer && (input.composerReferences?.length || input.channelReference || input.materialReference || input.browserReference || input.materialSelections?.length || input.replyToMessageId || value.stopPrevious)) throw invalid()
   if (value.stopPrevious !== undefined) { if (typeof value.stopPrevious !== 'boolean') throw invalid(); input.stopPrevious = value.stopPrevious }
   return input
 }
@@ -78,7 +84,7 @@ export function restorePendingMessageDrafts(value: unknown): Map<string, ChatDra
       if (!identity(id) || !object(item) || !identity(item.requestId) || item.schemaVersion !== 2 || !['message', 'external'].includes(String(item.kind))) throw invalid()
       kind = item.kind === 'external' ? 'external' : undefined
       input = messageInput(item.input)
-      if (kind === 'external' && (!input.content.trim() || input.mentionIds.length || input.materialSelections?.length || input.replyToMessageId || input.stopPrevious || input.materialReference || input.channelReference || input.composerReferences?.length)) throw invalid()
+      if (kind === 'external' && (input.steer || !input.content.trim() || input.mentionIds.length || input.materialSelections?.length || input.replyToMessageId || input.stopPrevious || input.materialReference || input.channelReference || input.composerReferences?.length)) throw invalid()
     }
     const draft: ChatDraft = { text: input.content, mentionIds: [...input.mentionIds], ...(input.channelReference ? { channelReference: input.channelReference } : {}), ...(input.replyToMessageId ? { replyId: input.replyToMessageId } : {}) }
     draft.submission = { ...(kind ? { kind } : {}), requestId: item.requestId as string, status: 'unknown', fingerprint: draftFingerprint(draft), input }

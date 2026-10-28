@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 当前轮次纯文本补充固定run/turn，原消息保存接受、原生确认与未知投递。
  * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
  * [OUTPUT]: 显式CLI权限仅核对员工已保存模式，受理后继续沿原审批和当前授权，不临时改权。
  * [OUTPUT]: API/Codex/Claude共用整体执行权限；原生访问范围和审批参数由同一选择派生，旧配置未选择时保留。
@@ -62,7 +63,11 @@ export type NativeAgentInfo = {
   tools?: string[]
   mcpServers?: { name: string; status?: string }[]
 }
+export type NativeSteeringTarget = { runId: string; turnId: string }
+export type NativeSteeringReceipt = NativeSteeringTarget & { delivery: 'accepted' | 'submitted' | 'unknown' }
+
 export type NativeExecutionReceipt = {
+  canSteer?: boolean
   modelSource?: { mode: 'boai-connection'; connectionId: string; connectionRevision: number; protocol: import('./model-gateway').ModelProtocol; selectedModelId: string }
   modelId?: string; selectedModelId?: string; reportedModelId?: string; modelIdSource?: 'native-init' | 'api-event'
   sessionId?: string; turnId?: string; inputAccepted?: boolean

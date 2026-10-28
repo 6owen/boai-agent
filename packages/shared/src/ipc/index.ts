@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 当前轮次纯文本补充固定run/turn，原消息保存接受、原生确认与未知投递。
  * [OUTPUT]: 定时任务列表偏好独立 CAS 读写及变更事件，不改执行配置。
  * [OUTPUT]: 语音设置页外自动保存及关闭前排空回执，独立voice脏来源。
  * [OUTPUT]: 2026-10-27 语音插件与显式执行额度的公共合同；不依赖可执行插件。
@@ -371,7 +372,7 @@ export interface Methods {
   getMessageExecution: { input: { requestId: string }; output: import('../domain/message-execution').MessageExecution | null }
   cancelMessageExecution: { input: { requestId: string }; output: import('../domain/message-execution').MessageExecution }
   referenceBrowserPage: { input: Record<string, never>; output: import('./browser').BrowserPageReference }
-  sendMessage: { input: { expectedExecutionPermission?: import('../domain/execution').ExecutionPermission; materialUploads?: import('../domain/material-upload').SubmittedMaterial[]; apiModel?: import('../domain/model-source').ApiModelOverride; workingDirectory?: string; composerReferences?: import('../domain/composer-references').ComposerReference[]; channelReference?: import('../domain/channels').ChannelMessageReference; materialReference?: import('../domain/materials').MaterialReadRef; conversationId: string; content: string; browserReference?: Pick<import('./browser').BrowserPageReference, 'instanceId' | 'pageVersion'>; materialSelections?: MaterialSelection[]; mentionIds: string[]; requestId: string; replyToMessageId?: string; stopPrevious?: boolean }; output: Message }
+  sendMessage: { input: { steer?: import('../domain/execution').NativeSteeringTarget; expectedExecutionPermission?: import('../domain/execution').ExecutionPermission; materialUploads?: import('../domain/material-upload').SubmittedMaterial[]; apiModel?: import('../domain/model-source').ApiModelOverride; workingDirectory?: string; composerReferences?: import('../domain/composer-references').ComposerReference[]; channelReference?: import('../domain/channels').ChannelMessageReference; materialReference?: import('../domain/materials').MaterialReadRef; conversationId: string; content: string; browserReference?: Pick<import('./browser').BrowserPageReference, 'instanceId' | 'pageVersion'>; materialSelections?: MaterialSelection[]; mentionIds: string[]; requestId: string; replyToMessageId?: string; stopPrevious?: boolean }; output: Message }
   setMessageReaction: { input: { conversationId: string; messageId: string; emoji: string; active: boolean }; output: Message }
   getCancellationTargets: { input: { conversationId: string }; output: import('../domain/run-cancellation').CancellationTarget[] }
   getRunCancellation: { input: { conversationId: string; runId: string }; output: import('../domain/run-cancellation').RunCancellation }
