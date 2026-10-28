@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 性能夹具可将首次会话选择留到显式reload后；普通BDD仍默认直接选择，原就绪/数据核对保持。
  * [OUTPUT]: 可在同一次离线预备事务阶段追加场景历史，实际Electron仍只启动一次。
  * [OUTPUT]: UI截图后可明确启动单聊受控reasoning流，原历史准备零调用保持；通过真实HTTP增量验证聊天滚动。
  * [OUTPUT]: 单次启动先经原snapshot请求等待服务就绪并核对本场profile/会话，再开始真实点击；不重试或重建数据。
@@ -32,7 +33,7 @@ async function configureGroupChat(request: Request, port: number) {
   return { group, direct, dataPath: (await request('snapshot', undefined)).dataPath }
 }
 
-export async function prepareGroupChat(runtime: Desktop, { emulateViewport = true, mainEntry, now = Date.now(), seedBeforeLaunch = false, seedAdditional }: { emulateViewport?: boolean; mainEntry?: string; now?: number; seedBeforeLaunch?: boolean; seedAdditional?: (store: ProductStore, setup: Awaited<ReturnType<typeof configureGroupChat>>) => Promise<void> } = {}) {
+export async function prepareGroupChat(runtime: Desktop, { emulateViewport = true, selectConversation = true, mainEntry, now = Date.now(), seedBeforeLaunch = false, seedAdditional }: { emulateViewport?: boolean; selectConversation?: boolean; mainEntry?: string; now?: number; seedBeforeLaunch?: boolean; seedAdditional?: (store: ProductStore, setup: Awaited<ReturnType<typeof configureGroupChat>>) => Promise<void> } = {}) {
   const state = { calls: 0, errors: [] as string[] }
   let scrollStream: { emit(delta: unknown, finish?: string | null): void; finish(): void } | undefined
   const scrolling = {
@@ -135,7 +136,7 @@ export async function prepareGroupChat(runtime: Desktop, { emulateViewport = tru
     }
   }
   if (emulateViewport) await resizeGroupWindow(runtime, 1487, 1058)
-  await runtime.page.getByRole('button', { name: /产品讨论组/ }).click()
+  if (selectConversation) await runtime.page.getByRole('button', { name: /产品讨论组/ }).click()
   return { ...setup, state, artifacts, scrolling }
 }
 

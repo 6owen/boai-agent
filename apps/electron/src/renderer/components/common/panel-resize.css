@@ -1,10 +1,14 @@
 /*
  * [INPUT]: 共享面板样式。
- * [OUTPUT]: 保持桌面分栏级联。
+ * [OUTPUT]: 右侧保留宽度过渡，主内容在展开前一次排版、收起结束后再扩展，避免长聊天在动画每帧重排。
  * [POS]: src/renderer/components/common/panel-resize.css
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header与所属目录.folder.md。
  */
 @import '@boai/ui/panel-resize.css';
+/* Reserve the final main width once; only the clipped detail slot animates. */
+.content-frame>.content-main { flex:0 0 auto;width:100%;transition:width 0s var(--resize-dur) }
+.content-frame.detail-open>.content-main { width:max(0px,calc(100% - var(--detail-size) - var(--detail-divider-width)));transition:none }
+.content-frame>.panel-resize[data-side=right] { margin-left:auto }
 .panel-resize-content>.detail-panel { max-width:none;contain:layout paint }
 /* Only right panels enter on mount; left lists appear immediately on page changes. */
 @starting-style {
@@ -38,5 +42,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .content-frame>.content-main { transition:none }
   .panel-resize-content, .panel-resize .detail-content { transition:none !important; }
 }
