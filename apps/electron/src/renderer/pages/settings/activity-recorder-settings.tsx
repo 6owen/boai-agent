@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Confirmed recorder status and versioned settings mutations.
- * [OUTPUT]: Shared settings layout, Badge permission states and platform-neutral OCR controls with capability-aware fallback.
+ * [OUTPUT]: 权限读取前保留两行布局，未知不当作拒绝；共享Badge与能力降级保持。
  * [POS]: Desktop activity settings sections using shared settings layout and components.
  * [PROTOCOL]: Update Header and settings/.folder.md when changed.
  */
@@ -42,7 +42,7 @@ export function ActivityRecorderSettings({ status, busy, update, permission, ope
   const settings = status?.settings, disabled = !settings || busy
   const capabilities = status?.capabilities
   const screenshotAvailable = capabilities?.screenshots ?? !!status?.supported
-  const inputAvailable = capabilities?.inputMonitor ?? !!status?.supported
+  const inputAvailable = capabilities?.inputMonitor ?? status?.supported ?? true
   const ocrAvailable = capabilities?.ocr ?? !!status?.supported
   const [languages, setLanguages] = useState(''), [excluded, setExcluded] = useState('')
   useEffect(() => { if (settings) { setLanguages((settings.ocrLanguages ?? ['zh-Hans', 'en-US']).join(', ')); setExcluded(settings.excludedApps.join('\n')) } }, [settings?.revision]) // Confirmed revisions only; status polling preserves drafts.
@@ -53,7 +53,7 @@ export function ActivityRecorderSettings({ status, busy, update, permission, ope
       <ActivitySettingRow label="记录桌面活动"><Switch aria-label="记录桌面活动" checked={settings?.enabled ?? false} disabled={disabled || !status?.supported} onCheckedChange={enabled => update({ enabled })} /></ActivitySettingRow>
     </ActivitySection>
     <ActivitySection title="系统权限">
-      {status && !status.supported ? <ActivitySettingRow label="桌面采集"><Badge variant="outline">当前环境暂不支持</Badge></ActivitySettingRow> : (['screen', 'input'] as const).filter(kind => kind === 'screen' || inputAvailable).map(kind => { const allowed = kind === 'screen' ? status?.permission : status?.accessibilityPermission; const macPermissions = !capabilities || capabilities.platform === 'macos'; return <ActivitySettingRow key={kind} label={kind === 'screen' ? macPermissions ? '屏幕录制' : '屏幕采集' : macPermissions ? '辅助功能' : '键鼠监听'}><Badge variant={allowed ? 'secondary' : 'outline'}>{allowed === undefined ? '读取中' : allowed ? '已授权' : '未授权'}</Badge>{!allowed && <Button variant="secondary" size="sm" disabled={disabled || !status?.supported} onClick={() => permission(kind)}>申请权限</Button>}<Button variant="ghost" size="sm" disabled={disabled || !status?.supported} onClick={() => permission(kind, true)}>打开系统设置</Button></ActivitySettingRow> })}
+      {status && !status.supported ? <ActivitySettingRow label="桌面采集"><Badge variant="outline">当前环境暂不支持</Badge></ActivitySettingRow> : (['screen', 'input'] as const).filter(kind => kind === 'screen' || inputAvailable).map(kind => { const allowed = kind === 'screen' ? status?.permission : status?.accessibilityPermission; const macPermissions = !capabilities || capabilities.platform === 'macos'; return <ActivitySettingRow key={kind} label={kind === 'screen' ? macPermissions ? '屏幕录制' : '屏幕采集' : macPermissions ? '辅助功能' : '键鼠监听'}><Badge variant={allowed ? 'secondary' : 'outline'}>{allowed === undefined ? '读取中' : allowed ? '已授权' : '未授权'}</Badge>{allowed === false && <Button variant="secondary" size="sm" disabled={disabled || !status?.supported} onClick={() => permission(kind)}>申请权限</Button>}<Button variant="ghost" size="sm" disabled={disabled || !status?.supported} onClick={() => permission(kind, true)}>打开系统设置</Button></ActivitySettingRow> })}
     </ActivitySection>
     <ActivitySection title="采集">
       {switchRow('saveScreenshots', '保存桌面截图', '将前台窗口的截图保存在本机；关闭后继续保留已有截图。', screenshotAvailable)}

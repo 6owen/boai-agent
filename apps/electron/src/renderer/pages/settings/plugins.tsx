@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 2026-10-27 语音配置入口跳转独立设置页；启停仍由原插件真源保存。
+ * [OUTPUT]: 运行时目录共用读取缓存，仅当前可见分类轮询；语音入口与原插件真源保持。
  * [OUTPUT]: 页面布局复用settings-layout，标题/分组留白与卡片/设置行统一，原业务回调保持。
  * [OUTPUT]: 2026-10-19 原插件目录增加网页检索分类；启停仍由原宿主配置负责。
  * [OUTPUT]: 插件分类触发器与搜索输入统一使用全局控件高度并垂直对齐。
@@ -22,7 +22,7 @@ import { Input } from '@/components/ui/input'
 import { SelectField } from '@/components/ui/select-field'
 import { Switch } from '@/components/ui/switch'
 
-export function PluginSettingsPage({ onOpenVoice }: { onOpenVoice(): void }) {
+export function PluginSettingsPage({ onOpenVoice, active = true }: { onOpenVoice(): void; active?: boolean }) {
   const { settings, ready, busy, error } = usePlugins()
   const usage = useSyncExternalStore(pluginUsage.subscribe, pluginUsage.snapshot, pluginUsage.snapshot)
   const [query, setQuery] = useState(''), [kind, setKind] = useState('all')
@@ -51,6 +51,6 @@ export function PluginSettingsPage({ onOpenVoice }: { onOpenVoice(): void }) {
       })}
       {!plugins.length && <p className="field-hint py-4">没有匹配的插件。</p>}
     </SettingsCard>
-    <RuntimePluginManager query={query} kind={kind} />
+    <RuntimePluginManager query={query} kind={kind} active={active} />
   </SettingsLayout>
 }

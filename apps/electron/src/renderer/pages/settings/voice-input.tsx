@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 复用Shell连接及页外配置缓存；多模型目录独立刷新并保留原选择/下载交互。
  * [OUTPUT]: 当前模型Select与独立本地模型Card；按模型下载/取消/移除，资源轮询不覆盖配置草稿。
  * [INPUT]: Explicit voice configuration, model installation and existing text-model connections.
  * [OUTPUT]: Optional local/online ASR, separately opt-in refinement and manually maintained terminology.
@@ -26,14 +27,14 @@ import { VoiceMicrophone } from './voice-microphone'
 import { VoiceModelsCard } from './voice-models'
 import { useVoiceSettings, voiceDraft, voiceSettings } from '@/stores/voice-settings'
 
-export function VoiceInputSettingsPage({ active, onOpenShortcuts }: { active: boolean; onOpenShortcuts(): void }) {
+export function VoiceInputSettingsPage({ active, connections: allConnections, onOpenShortcuts }: { active: boolean; connections: Connection[]; onOpenShortcuts(): void }) {
   const api = getDesktopClient(), voice = api?.voice, guard = useContext(GuardContext)
   const plugins = usePlugins(), plugin = applicationPlugins.find(item => item.id === voicePluginId)!
   const availability = pluginAvailability(plugin, plugins.settings), enabled = plugins.ready && availability === 'enabled'
   const state = useVoiceSettings(), draft = state.draft ?? (state.snapshot && voiceDraft(state.snapshot))
   const settings = draft?.settings, terms = draft?.terms ?? '', key = draft?.key
   const { loading, saving } = state
-  const [connections, setConnections] = useState<Connection[]>([])
+  const connections = allConnections.filter(connection => connection.provider !== 'anthropic' && connection.api !== 'responses' && !connection.gateway)
   const models = state.models ?? state.snapshot?.models ?? []
   const [operations, setOperations] = useState<ReadonlyMap<VoiceModelId, 'start' | 'cancel' | 'remove'>>(new Map())
   const pending = useRef(new Map<VoiceModelId, 'start' | 'cancel' | 'remove'>()), mounted = useRef(false), form = useRef<HTMLFormElement>(null)
@@ -44,14 +45,14 @@ export function VoiceInputSettingsPage({ active, onOpenShortcuts }: { active: bo
     return () => { mounted.current = false }
   }, [])
   useEffect(() => {
-    let current = true
     if (!api || !voice) return
-    voiceSettings.initialize(api); void voiceSettings.load()
-    void api.request('snapshot', undefined).then(app => {
-      if (current) setConnections(app.connections.filter(connection => connection.provider !== 'anthropic' && connection.api !== 'responses' && !connection.gateway))
-    }).catch(error => { if (current) fail(error) })
-    return () => { current = false }
-  }, [voice, api])
+    voiceSettings.initialize(api)
+    if (!active) return
+    const stop = voiceSettings.activate()
+    const refresh = () => voiceSettings.invalidate()
+    window.addEventListener('focus', refresh)
+    return () => { stop(); window.removeEventListener('focus', refresh) }
+  }, [voice, api, active])
   useEffect(() => {
     if (!active) { void voiceSettings.flush(); return }
     const flush = () => { void voiceSettings.flush() }
@@ -73,8 +74,8 @@ export function VoiceInputSettingsPage({ active, onOpenShortcuts }: { active: bo
   const downloadingModel = operations.size > 0 || models.some(model => model.download)
   useEffect(() => {
     if (!active || !voice) return
-    // Refresh on return even when a download finished while this page was hidden.
-    void voiceSettings.refreshModels().catch(() => {})
+    // Reuse a fresh catalog; stale catalogs and ongoing downloads still reconcile on return.
+    void voiceSettings.refreshModels(false).catch(() => {})
     if (!downloadingModel) return
     const timer = setInterval(() => { void voiceSettings.refreshModels().catch(() => {}) }, 700)
     return () => { clearInterval(timer) }
@@ -107,9 +108,9 @@ export function VoiceInputSettingsPage({ active, onOpenShortcuts }: { active: bo
     catch (error) { fail(error); return }
     setSettings(value => ({ ...value, ...change }), true)
   }
-  const disabled = loading || !settings || state.snapshot?.readOnly === true || !active
+  const disabled = !settings || state.snapshot?.readOnly === true || !active
   return <SettingsLayout title="语音输入" aria-label="语音输入设置">
-    {state.error && <Button type="button" variant="ghost" disabled={saving || loading || !voice || !active} onClick={() => guard.navigate(() => { void voiceSettings.load() }, { resetOnDiscard: false })}>重新读取语音设置</Button>}
+    {state.error && <Button type="button" variant="ghost" disabled={saving || loading || !voice || !active} onClick={() => guard.navigate(() => { void voiceSettings.load(true) }, { resetOnDiscard: false })}>重新读取语音设置</Button>}
     <form ref={form} data-edit-form onBlur={event => { if (event.target.matches('input, textarea')) void voiceSettings.flush() }} onSubmit={event => { event.preventDefault(); void voiceSettings.flush() }}>
       <SettingsSection first title="识别">
         <SettingsCard>

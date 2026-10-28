@@ -1,33 +1,47 @@
 /*
  * [INPUT]: Runtime plugin catalog and explicit local package/CAS operations.
- * [OUTPUT]: Install/update, enable/drain, uninstall and read-only reconciliation after lost responses.
+ * [OUTPUT]: Page-independent confirmed catalog cache, visible-only usage polling and CAS writes with read-only reconciliation.
  * [POS]: Runtime contributions within the common settings plugin page.
  * [PROTOCOL]: Update Header and settings/.folder.md when changing management.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { RuntimePluginCatalog } from '@boai/shared/plugins/runtime-catalog'
 import { getDesktopClient } from '@/services/request/desktop-client'
 import { Banner } from '@/components/common'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
-export function RuntimePluginManager({ query, kind }: { query: string; kind: string }) {
-  const [catalog, setCatalog] = useState<RuntimePluginCatalog>(), [busy, setBusy] = useState(false), [error, setError] = useState('')
+import { getSettingsQuery, useSettingsQuery } from '@/stores/settings-query'
+export function RuntimePluginManager({ query, kind, active = true }: { query: string; kind: string; active?: boolean }) {
+  const [busy, setBusy] = useState(false), [error, setError] = useState('')
   const api = getDesktopClient()
+  const cache = api && getSettingsQuery<RuntimePluginCatalog>(api, 'runtime-plugins', {
+    read: () => api.request('listRuntimePlugins', undefined), staleTime: 3000, refreshOnFocus: true,
+    merge: (previous, next) => previous && next.revision < previous.revision ? previous : next,
+    onEvent: (event, current) => { if (event.type === 'changed' && !event.conversationId) current.invalidate() },
+  })
+  const visible = active && (kind === 'all' || kind === 'agent-runtime')
+  const { data: catalog } = useSettingsQuery(cache, visible)
+  const current = useRef({ api, visible })
+  current.current = { api, visible }
   useEffect(() => {
-    let active = true, timer: ReturnType<typeof setTimeout> | undefined
-    async function refresh() {
-      if (!api || busy) return
-      try { const value = await api.request('listRuntimePlugins', undefined); if (active) setCatalog(value) }
-      catch (error) { if (active) setError(String(error)) }
-      finally { if (active) timer = setTimeout(() => void refresh(), 3000) }
-    }
-    void refresh(); return () => { active = false; clearTimeout(timer) }
-  }, [api, busy])
+    current.current = { api, visible }
+    return () => { current.current = { api, visible: false } }
+  }, [api, visible])
+  useEffect(() => {
+    if (!cache || !visible || busy) return
+    const timer = setInterval(() => void cache.ensure({ silent: true }), 3000)
+    return () => clearInterval(timer)
+  }, [cache, visible, busy])
   async function run(operation: () => Promise<RuntimePluginCatalog | null>) {
-    if (busy || !api) return; setBusy(true); setError('')
-    try { const value = await operation(); if (value) setCatalog(value) }
-    catch (error) { setError(error instanceof Error ? error.message : String(error)); try { setCatalog(await api.request('listRuntimePlugins', undefined)) } catch { /* Unknown writes are never replayed. */ } }
+    if (busy || !cache || !visible) return; setBusy(true); setError('')
+    try { const value = await operation(); if (value) cache.accept(value) }
+    catch (error) {
+      setError(error instanceof Error ? error.message : String(error))
+      // Reconcile unknown writes once when visible; never restart hidden polling or replay a write.
+      if (current.current.api === api && current.current.visible) await cache.refresh()
+      else cache.invalidate()
+    }
     finally { setBusy(false) }
   }
   if (kind !== 'all' && kind !== 'agent-runtime') return null

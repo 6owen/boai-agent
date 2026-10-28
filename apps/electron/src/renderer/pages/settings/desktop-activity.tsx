@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 共用Zustand读取缓存；短时重进复用已确认快照，活跃轮询/窗口聚焦复核权限，保存后强制刷新。
  * [OUTPUT]: 页面布局复用settings-layout，标题/分组留白与卡片/设置行统一，原业务回调保持。
  * [INPUT]: Actual local recorder status and source-bound session details.
  * [OUTPUT]: Card-wrapped recent activity list and recorder settings, with a destructive clear action behind explicit Popover confirmation; no report section.
@@ -17,38 +18,36 @@ import { InfoIcon, Trash2, RefreshCw } from '@/components/icons'
 import { toast } from 'sonner'
 import { ActivityRecorderSettings, ActivitySection, ActivitySettingRow } from './activity-recorder-settings'
 import { RecentActivityRow } from './activity-session-detail'
+import { getSettingsQuery, useSettingsQuery } from '@/stores/settings-query'
 
 export function DesktopActivityPage({ api, active }: { api: DesktopApi; active: boolean }) {
-  const [status, setStatus] = useState<ActivityStatus>(), [busy, setBusy] = useState(false), [clearOpen, setClearOpen] = useState(false)
-  const lock = useRef(false), generation = useRef(0), activeRef = useRef(active)
-  activeRef.current = active
-  const refresh = async () => {
-    if (!activeRef.current) return
-    const sequence = ++generation.current
-    const next = await applicationCall<ActivityStatus>(api, 'activity.status')
-    if (!activeRef.current || sequence !== generation.current) return
-    setStatus(previous => !previous || next.settings.revision >= previous.settings.revision ? next : previous)
-  }
+  const query = getSettingsQuery<ActivityStatus>(api, 'desktop-activity', {
+    read: () => applicationCall<ActivityStatus>(api, 'activity.status'), staleTime: 5000, refreshOnFocus: true,
+    merge: (previous, next) => previous && next.settings.revision < previous.settings.revision ? previous : next,
+    onEvent: (event, cache) => { if (event.type === 'changed' && !event.conversationId) cache.invalidate() },
+  })
+  const { data: status } = useSettingsQuery(query, active)
+  const [busy, setBusy] = useState(false), [clearOpen, setClearOpen] = useState(false)
+  const lock = useRef(false), current = useRef({ api, active })
+  current.current = { api, active }
+  useEffect(() => {
+    current.current = { api, active }
+    return () => { current.current = { api, active: false } }
+  }, [api, active])
   useEffect(() => {
     if (!active) return
-    let live = true, reading = false
-    void refresh().catch(error => { if (live) toast.error(String(error)) })
-    const poll = async () => {
-      if (reading || lock.current) return
-      reading = true
-      try { await refresh() }
-      catch { /* Manual refresh exposes failures without repeated background toasts. */ }
-      finally { reading = false }
-    }
-    const timer = setInterval(() => void poll(), 5000)
-    window.addEventListener('focus', poll)
-    return () => { live = false; generation.current++; clearInterval(timer); window.removeEventListener('focus', poll) }
-  }, [api, active])
+    const timer = setInterval(() => { if (!lock.current) void query.ensure({ silent: true }) }, 5000)
+    return () => clearInterval(timer)
+  }, [query, active])
   const action = async (run: () => Promise<unknown>) => {
     if (lock.current) return
     lock.current = true; setBusy(true)
     try { await run() } catch (error) { toast.error(error instanceof Error ? error.message : String(error)) }
-    finally { try { await refresh() } catch (error) { toast.error(String(error)) } lock.current = false; setBusy(false) }
+    finally {
+      if (current.current.api === api && current.current.active) await query.refresh()
+      else query.invalidate()
+      lock.current = false; setBusy(false)
+    }
   }
   const update = (patch: Partial<ActivitySettings>) => void action(() => applicationCall(api, 'activity.configure', { expectedRevision: status!.settings.revision, ...patch }, true))
   return <SettingsLayout title={<>桌面活动与日报<Tooltip><TooltipTrigger render={<Button size="icon-xs" variant="ghost" aria-label="桌面活动说明" />}><InfoIcon /></TooltipTrigger><TooltipContent>记录保存在本机</TooltipContent></Tooltip></>} actions={<Button size="icon-sm" variant="ghost" disabled={busy} aria-label="刷新桌面活动" onClick={() => void action(async () => {})}><RefreshCw /></Button>}>

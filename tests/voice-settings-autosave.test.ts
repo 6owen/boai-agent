@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 语音缓存/失效、背景草稿保护与API读写隔离，同多模型目录回归共同验证。
  * [OUTPUT]: v3模型选择沿CAS保存；目录轮询不覆盖草稿，旧目录回执不能回退新安装状态。
  * [INPUT]: 真实语音设置 controller 与可控制延迟、失败、版本冲突的宿主端口。
  * [OUTPUT]: 编辑提交时机、串行回执、新草稿保护、错误恢复及关闭前排空回归。
@@ -149,4 +150,89 @@ test('迟到的目录轮询不能把已完成下载恢复成旧下载进度', as
   await controller.refreshModels()
   gate.resolve(); await polling
   expect(controller.store.getState().models?.[0]).toMatchObject({ ready: true, download: undefined })
+})
+
+test('离开再进入复用已确认快照，过期后才背景读取', async () => {
+  const { controller, voice } = await fixture(), now = Date.now()
+  const clock = vi.spyOn(Date, 'now').mockReturnValue(now)
+  const stop = controller.activate(); stop()
+  const stopAgain = controller.activate(); await controller.load(); stopAgain()
+  expect(voice.snapshot).toHaveBeenCalledTimes(1)
+  clock.mockReturnValue(now + 60_001)
+  const stopExpired = controller.activate(); await controller.load(); stopExpired()
+  expect(voice.snapshot).toHaveBeenCalledTimes(2)
+})
+
+test('重进复用新鲜模型目录，过期或操作后仍可重新核实', async () => {
+  const { controller, voice } = await fixture(), now = Date.now()
+  const clock = vi.spyOn(Date, 'now').mockReturnValue(now)
+  await controller.refreshModels(false); await controller.refreshModels(false)
+  expect(voice.snapshot).toHaveBeenCalledTimes(1)
+  clock.mockReturnValue(now + 5001)
+  await controller.refreshModels(false)
+  expect(voice.snapshot).toHaveBeenCalledTimes(2)
+  await controller.refreshModels()
+  expect(voice.snapshot).toHaveBeenCalledTimes(3)
+})
+
+test('未显示时变更只失效，重进才读取并更新', async () => {
+  const { controller, voice, external, emit } = await fixture()
+  external(); emit({ type: 'changed' })
+  expect(voice.snapshot).toHaveBeenCalledTimes(1)
+  expect(controller.store.getState().snapshot?.settings.language).toBe('auto')
+  const stop = controller.activate(); await controller.load(); stop()
+  expect(voice.snapshot).toHaveBeenCalledTimes(2)
+  expect(controller.store.getState().snapshot?.settings.language).toBe('en')
+})
+
+test('背景读取合并并发请求，期间编辑的草稿不被返回覆盖', async () => {
+  const { controller, voice, read } = await fixture(), gate = deferred(), old = structuredClone(read())
+  voice.snapshot.mockImplementationOnce(async () => { await gate.promise; return old })
+  const first = controller.load(true), second = controller.load(true)
+  expect(voice.snapshot).toHaveBeenCalledTimes(2)
+  expect(controller.store.getState().snapshot).toBeDefined()
+  controller.edit(draft => ({ ...draft, terms: '读取途中输入' }))
+  gate.resolve(); await Promise.all([first, second])
+  expect(controller.store.getState().draft?.terms).toBe('读取途中输入')
+  expect(await controller.flush()).toBe(true)
+  expect(voice.configure.mock.calls[0]![0].settings.terms[0]?.word).toBe('读取途中输入')
+})
+
+test('刷新失败保留上次数据，随后重进重试而不误判为新鲜', async () => {
+  const { controller, voice, control } = await fixture()
+  control.readFailure = true; await controller.load(true)
+  expect(controller.store.getState().snapshot).toBeDefined()
+  expect(controller.store.getState().error).toBe('读取失败')
+  control.readFailure = false; await controller.load()
+  expect(voice.snapshot).toHaveBeenCalledTimes(3)
+  expect(controller.store.getState().error).toBeUndefined()
+})
+
+test('API切换后旧读取及旧写入回执均不能进入新环境', async () => {
+  const { controller, voice, control, read } = await fixture(), readGate = deferred(), writeGate = deferred(), old = structuredClone(read())
+  voice.snapshot.mockImplementationOnce(async () => { await readGate.promise; return old })
+  const reading = controller.load(true)
+  controller.edit(draft => ({ ...draft, terms: '旧环境草稿' }))
+  control.gate = writeGate.promise
+  const writing = controller.flush(); await Promise.resolve()
+  const nextSnapshot = { ...old, settings: { ...old.settings, revision: 9, language: 'ja' as const } }
+  const nextVoice = { snapshot: vi.fn(async () => nextSnapshot) }
+  controller.initialize({ voice: nextVoice, request: vi.fn(async () => {}), subscribe: () => () => {} } as unknown as DesktopApi)
+  await controller.load()
+  readGate.resolve(); writeGate.resolve(); await reading
+  expect(await writing).toBe(false)
+  expect(controller.store.getState().snapshot?.settings).toEqual(nextSnapshot.settings)
+  expect(controller.store.getState().draft).toBeUndefined()
+  expect(controller.store.getState().saving).toBe(false)
+})
+
+test('下载目录刷新只更新模型状态，不覆盖配置或草稿', async () => {
+  const { controller, voice, read } = await fixture()
+  controller.edit(draft => ({ ...draft, terms: '保留输入' }))
+  const model = { id: 'whisper-tiny' as const, name: 'Whisper Tiny', languages: ['auto' as const], licenseUrl: 'https://example.test/license', bytes: 42, ready: true }
+  voice.snapshot.mockResolvedValueOnce({ ...read(), models: [model], settings: { ...read().settings, language: 'en' } })
+  await controller.refreshModels()
+  expect(controller.store.getState().models).toEqual([model])
+  expect(controller.store.getState().snapshot?.settings.language).toBe('auto')
+  expect(controller.store.getState().draft?.terms).toBe('保留输入')
 })
