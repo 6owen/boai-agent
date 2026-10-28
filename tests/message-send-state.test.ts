@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 当前轮次补充目标随原请求冻结，混合输入拒绝，重启unknown不自动重发。
  * [OUTPUT]: 2026-10-15文件预览标注进入原聊天明确修改；成果固定版本修订、附件固定来源/权限和未知回执保持；实际结果归8组14。
  * [OUTPUT]: 技能/数据源/文件引用随原请求恢复，不能伪造本机路径或在重启后重绑来源。
  * [INPUT]: 普通/ACP原请求、材料版本引用与跨重启快照。
@@ -89,4 +90,12 @@ it('restores the exact selected source version without granting a member mention
   expect(restored.mentionIds).toEqual([])
   expect(pendingMessageRequests(new Map([['chat', restored]]))).toMatchObject({ chat: { input } })
   expect(() => restorePendingMessageDrafts({ chat: { schemaVersion: 2, kind: 'message', requestId: 'source-request', input: { ...input, composerReferences: [{ ...reference, credential: 'DO_NOT_SEND' }] } } })).toThrow()
+})
+
+it('keeps the exact active turn for unknown steering without converting it into an ordinary message', () => {
+  const input = { content: '补充要求', mentionIds: [], steer: { runId: 'run-1', turnId: 'turn-1' } }
+  const saved = pendingMessageRequests(new Map([['chat', { text: 'later', mentionIds: [], submission: { requestId: 'steer-request', status: 'pending', fingerprint: 'old', input } } as ChatDraft]]))
+  expect(restorePendingMessageDrafts(saved).get('chat')?.submission).toMatchObject({ requestId: 'steer-request', status: 'unknown', input })
+  for (const steer of [{ runId: 'r' }, { runId: '', turnId: 't' }]) expect(() => restorePendingMessageDrafts({ chat: { schemaVersion: 2, kind: 'message', requestId: 'r', input: { ...input, steer } } })).toThrow('未决消息记录')
+  expect(() => restorePendingMessageDrafts({ chat: { schemaVersion: 2, kind: 'external', requestId: 'r', input } })).toThrow('未决消息记录')
 })

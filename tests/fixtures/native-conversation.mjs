@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 /*
+ * [OUTPUT]: turn/steer确定性夹具保留原turn，记录单次输入并覆盖拒绝/断流。
+ * [OUTPUT]: 当前轮次补充严格校验expectedTurnId，覆盖同轮生效、拒绝与效果后断流，零真实模型。
  * [OUTPUT]: 协议夹具支持仅第二员工提问延迟1200ms，真实提问/回答协议保持；不认证模型或生产延迟。
  * [OUTPUT]: 执行未完成时的正文/思考增量回归，最终答复与私有协议字段保持分离。
  * [OUTPUT]: 固定文件修订从宿主授权原消息取 revisionRequestId，允许独立内部会话无旧交付历史；普通同会话修订保持。
@@ -16,6 +18,7 @@ import { randomUUID } from 'node:crypto'
 import { writeFile, appendFile } from 'node:fs/promises'
 const send = value => process.stdout.write(JSON.stringify(value)+'\n')
 const callbacks = new Map()
+const steering = new Map()
 const ask = (method, params) => { const id=randomUUID();send({id,method,params});return new Promise(resolve=>callbacks.set(id,resolve)) }
 createInterface({input:process.stdin}).on('line',async line=>{
  const {id,method,params,result,error}=JSON.parse(line)
@@ -28,6 +31,17 @@ createInterface({input:process.stdin}).on('line',async line=>{
  if(method==='thread/start'||method==='thread/resume'){
   await appendFile('native-thread-requests.jsonl',JSON.stringify({method,params})+'\n')
   return send({id,result:{thread:{id:params.threadId??randomUUID()},model:'fixture'}})
+ }
+ if(method==='turn/steer') {
+  const active=steering.get(params.expectedTurnId)
+  await appendFile('native-steer-requests.jsonl',JSON.stringify(params)+'\n')
+  if(!active || active.threadId!==params.threadId)return send({id,error:{code:-32602,message:'active turn mismatch'}})
+  const text=params.input[0].text
+  if(text.includes('DROP_STEER')){await writeFile('steer-effect','once');process.exit(3)}
+  if(text.includes('REJECT_STEER'))return send({id,error:{code:-32602,message:'steer rejected'}})
+  send({id,result:{turnId:params.expectedTurnId}})
+  active.resolve(text)
+  return
  }
  if(method!=='turn/start')return send({id,error:{code:-32601,message:method}})
  const turnId=randomUUID(), threadId=params.threadId, ev=(method,rest)=>send({method,params:{threadId,turnId,...rest}})
@@ -46,6 +60,12 @@ createInterface({input:process.stdin}).on('line',async line=>{
  }
  if(text.includes('NATIVE_MANY'))for(let index=0;index<125;index++)ev('item/completed',{item:{id:'step-'+index,type:'mcpToolCall',server:'native-plugin',tool:'search',arguments:{index},result:'step-'+index,status:'completed'}})
  let reply=await business(prompt,tool)??'普通回复'
+ if(prompt.messages.at(-1)?.content.includes('NATIVE_STEER_WAIT')) {
+  const added=await new Promise(resolve=>steering.set(turnId,{threadId,resolve}))
+  reply='当前轮次收到：'+added
+  steering.delete(turnId)
+ }
+
  ev('item/started',{item:{id:'comment',type:'agentMessage',phase:'commentary',text:''}})
  ev('item/agentMessage/delta',{itemId:'comment',delta:'正在处理原生请求。'})
  ev('item/completed',{item:{id:'comment',type:'agentMessage',phase:'commentary',text:'正在处理原生请求。'}})

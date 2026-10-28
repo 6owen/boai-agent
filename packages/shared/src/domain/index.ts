@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 当前轮次纯文本补充固定run/turn，原消息保存接受、原生确认与未知投递。
  * [OUTPUT]: Approval明确是否支持本次运行同类操作批准，原目录持久批准保持独立。
  * [OUTPUT]: BootstrapSnapshot区分静态人格与动态状态，保留实际模块/来源hash/配置版本证据。
  * [OUTPUT]: 2026-10-19应用业务协议：AgentInput增加仅创建使用的initialSoul，持久员工人格仍归原SOUL文件。
@@ -192,6 +193,7 @@ export interface ConversationInput {
 }
 export type RunStatus = 'queued' | 'running' | 'waiting_approval' | 'completed' | 'failed' | 'cancelled' | 'interrupted'
 export interface Message {
+  nativeSteering?: import('./execution').NativeSteeringReceipt
   permissionExpectation?: import('./execution').MessagePermissionExpectation
   attachmentInputs?: Omit<import('./material-upload').SubmittedMaterial, 'selectionId'>[]
   apiModelSource?: import('./model-source').RequestModelSource

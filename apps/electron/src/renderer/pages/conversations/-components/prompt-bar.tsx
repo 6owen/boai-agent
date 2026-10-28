@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 当前轮次补充与普通发送共用录音取消，防止迟到转写写回已发送草稿。
  * [OUTPUT]: 2026-10-27 默认关闭语音插件接线、可信主窗口与原草稿/生命周期边界。
  * [OUTPUT]: bobo普通会话/首发的五类管理命令插入固定技能标签，选择时不发送消息或执行操作。
  * [OUTPUT]: 快捷命令目录与消息标签展示共用composer-commands，原候选/展开及即时文件/目录操作保持。
@@ -42,7 +43,7 @@ interface Props {
   draft: ChatDraft; setDraft(value: ChatDraft): void; members: DigitalAgent[]; group: boolean; external: boolean; placeholder: string
   pageActive?: boolean; conversationReady?: boolean; mentionsAllowed?: boolean; disabled?: boolean
   onSend(): void; onActivity(): void; onOpenWorkspace(): void; onPasteMaterials?(files?: File[]): void
-  attachments?: ReactNode; children(openMenu: (kind: Menu) => void, menu: Menu | null, reference: (value: ComposerReference) => void, voice: { controls: ReactNode; onSend(): void }): ReactNode
+  attachments?: ReactNode; children(openMenu: (kind: Menu) => void, menu: Menu | null, reference: (value: ComposerReference) => void, voice: { controls: ReactNode; onSend(): void; cancel(): void }): ReactNode
 }
 export function PromptBar({ ref, api, resources = [], conversationId, draft, setDraft, members, group, external, placeholder, pageActive = true, conversationReady = true, mentionsAllowed = true, disabled = false, onSend: submit, onActivity, onOpenWorkspace, onPasteMaterials, attachments, children }: Props) {
   const anchor = useRef<HTMLDivElement>(null), list = useRef<HTMLDivElement>(null), richInput = useRef<MentionInputHandle>(null)
@@ -179,7 +180,7 @@ export function PromptBar({ ref, api, resources = [], conversationId, draft, set
         if (disabled || !mentionsAllowed || external || !primary || reference.agentId !== primary.id) return
         richInput.current?.replace(richInput.current.selection(), '', { id: `${reference.kind}:${reference.id}`, name: reference.name, resource: reference })
         close()
-      }, { controls: voice.controls, onSend })}
+      }, { controls: voice.controls, onSend, cancel: voice.cancel })}
     </ChatComposer>
     <PopoverContent anchor={anchor} side="top" align="start" sideOffset={8} initialFocus={false} finalFocus={false} className="prompt-bar-menu w-[320px] max-w-[calc(100vw-24px)] gap-1.5 p-2">
       <PopoverTitle>{displayedMenu === 'at' ? '提及员工' : displayedMenu === 'dollar' ? '引用技能、文件和提示词' : '命令'}</PopoverTitle>

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 当前轮次补充复用冻结消息请求与回执核对，未知输入不自动重发。
  * [OUTPUT]: 本人菜单头像进入个人资料；个人设置快捷入口及其他配置进入模型连接，全部沿原草稿守卫，移除菜单分享/帮助。
  * [OUTPUT]: 定时任务说明由页面标题Tooltip承接，保留旧详情标签的兼容恢复。
  * [OUTPUT]: 2026-10-27 默认关闭语音插件接线、可信主窗口与原草稿/生命周期边界。
@@ -736,7 +737,7 @@ export function AppShell() {
       if (current?.submission?.requestId === submission.requestId) { drafts.current.set(id, { ...current, submission: undefined }); persistMessageRequests(); bumpDrafts() }
     })
   }
-  const send = (conversationId = selectedId, onDispatch?: () => void) => {
+  const send = (conversationId = selectedId, onDispatch?: () => void, steer?: import('@boai/shared/domain/execution').NativeSteeringTarget) => {
     const sendingDraft = conversationId ? drafts.current.get(conversationId) ?? EMPTY_DRAFT : draft
     const conversation = snapshot.conversations.find(room => room.id === conversationId)
     const text = draftContent(sendingDraft)
@@ -833,7 +834,7 @@ export function AppShell() {
       if (items.some(item => item.status !== 'ready' || item.material?.status !== 'ready' || item.busy)) { toast.error('请等待材料就绪；失败材料需要重试或移除后才能发送。'); return }
       if (items.reduce((total, item) => total + (item.material?.format === 'txt' || item.material?.format === 'markdown' ? item.material.characterCount ?? MATERIAL_LIMITS.messageCharacters + 1 : 0), 0) > MATERIAL_LIMITS.messageCharacters) { toast.error(`每条消息的材料正文最多 ${MATERIAL_LIMITS.messageCharacters} 字，请分批发送。`); return }
       if (items.length && sentText.length > MATERIAL_LIMITS.messageTextCharacters) { toast.error(`带材料消息的正文最多 ${MATERIAL_LIMITS.messageTextCharacters} 字，请拆分发送。`); return }
-      submission = { requestId: crypto.randomUUID(), status: 'pending', fingerprint: draftFingerprint(sent), input: { ...(draftResourceReferences(sent).length ? { composerReferences: draftResourceReferences(sent) } : {}), ...(sent.channelReference ? { channelReference: sent.channelReference } : {}), ...(sent.browserReference ? {browserReference:{instanceId:sent.browserReference.instanceId,pageVersion:sent.browserReference.pageVersion}}:{}), ...(sent.materialEdit ? { materialReference: sent.materialEdit.reference } : {}), content: sent.materialEdit ? fileEditContent(sentText, sent.materialEdit.annotation) : sentText, mentionIds: sent.materialEdit ? [sent.materialEdit.targetAgentId] : [...sent.mentionIds], replyToMessageId: sent.replyId, materialSelections: items.length ? items.map(item => ({ id: item.material!.id, revision: item.material!.revision })) : undefined } }
+      submission = { requestId: crypto.randomUUID(), status: 'pending', fingerprint: draftFingerprint(sent), input: { ...(steer ? { steer } : {}), ...(draftResourceReferences(sent).length ? { composerReferences: draftResourceReferences(sent) } : {}), ...(sent.channelReference ? { channelReference: sent.channelReference } : {}), ...(sent.browserReference ? {browserReference:{instanceId:sent.browserReference.instanceId,pageVersion:sent.browserReference.pageVersion}}:{}), ...(sent.materialEdit ? { materialReference: sent.materialEdit.reference } : {}), content: sent.materialEdit ? fileEditContent(sentText, sent.materialEdit.annotation) : sentText, mentionIds: sent.materialEdit ? [sent.materialEdit.targetAgentId] : [...sent.mentionIds], replyToMessageId: sent.replyId, materialSelections: items.length ? items.map(item => ({ id: item.material!.id, revision: item.material!.revision })) : undefined } }
       drafts.current.set(id, { ...sent, submission }); bumpDrafts()
       if (!persistMessageRequests()) { updateSubmission(id, submission.requestId, 'not_accepted'); return }
     }
@@ -852,7 +853,13 @@ export function AppShell() {
       if (!persistMessageRequests()) return
       updateSubmission(id, request.requestId, 'pending')
       onDispatch?.()
-      try { await api.request('sendMessage', { conversationId: id, requestId: request.requestId, ...request.input }) }
+      try {
+        const receipt = await api.request('sendMessage', { conversationId: id, requestId: request.requestId, ...request.input })
+        if (receipt.nativeSteering) {
+          if (receipt.nativeSteering.delivery === 'submitted') toast.success('已补充到当前执行')
+          else toast.error('补充接收结果未确认，请查看原消息；没有自动重发')
+        }
+      }
       catch (failure) {
         updateSubmission(id, request.requestId, 'unknown')
         let receipt: Message | null | undefined
@@ -1013,7 +1020,7 @@ export function AppShell() {
       } : undefined} onFiles={() => showPanel(channel || internal ? { type: 'channel-files', id } : { type: 'files', owner, id: ownerId })}
       onChannels={room.kind === 'direct' && !channel && !internal ? () => { const agent = snapshot.agents.find(agent => agent.id === room.agentIds[0]); if (agent) openChannels(agent) } : undefined}
       questionReplies={questionReplies} artifactActions={artifactActions}
-      onOpenCatalog={openCatalogResult} onTeamGroup={id => selectConversation(id, true)} draft={drafts.current.get(id) ?? EMPTY_DRAFT} setDraft={value => { drafts.current.set(id, value); bumpDrafts() }} busy={busy || questionReplies.busy} onSend={onDispatch => send(id, onDispatch)}
+      onOpenCatalog={openCatalogResult} onTeamGroup={id => selectConversation(id, true)} draft={drafts.current.get(id) ?? EMPTY_DRAFT} setDraft={value => { drafts.current.set(id, value); bumpDrafts() }} busy={busy || questionReplies.busy} onSend={(onDispatch, steer) => send(id, onDispatch, steer)}
       onDetails={() => {
         if (channel) { showPanel({ type: 'group', id }); return }
         openContact(room.kind === 'group' ? { kind: 'group', id } : { kind: 'agent', id: room.agentIds[0]! })
@@ -1021,7 +1028,7 @@ export function AppShell() {
       onManageModels={agent => openContact(room.kind === 'group' && !channel ? { kind: 'group', id } : { kind: 'agent', id: agent.id })}
       onConfigureAgent={agent => openContact({ kind: 'agent', id: agent.id })} onProfile={openUserProfile}
       onEditTitle={setEditingTitle} onClear={clearConversationHistory}
-      onTrace={message => showPanel(message?.automationPublication ? { type: 'automation-occurrence', id: message.automationPublication.occurrenceId } : { type: 'trace', requestId: crypto.randomUUID(), id, messageId: message?.id, turnId: message?.turnId, agentId: message?.senderType === 'agent' ? message.senderId : undefined })}
+      onTrace={message => showPanel(message?.automationPublication ? { type: 'automation-occurrence', id: message.automationPublication.occurrenceId } : { type: 'trace', requestId: crypto.randomUUID(), id, runId: message?.nativeSteering?.runId, messageId: message?.id, turnId: message?.turnId, agentId: message?.senderType === 'agent' ? message.senderId : undefined })}
       onSettings={agent => { const originPanel = panelRef.current; openModelSettings(agent, () => !isChannelConversation(room) || panelRef.current === originPanel) }} onChangeAgent={changeComposerAgent} configurationLocked={anyDirty}
       onApprove={(approvalId, approved, always, allowSameKind) => { void action(async () => {
         try { await api!.request('approve', { id: approvalId, approved, always, allowSameKind }) }

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 原生turn/steer固定expectedTurnId与用户消息ID，仅当前活动轮次注册，结束与退出撤销。
  * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
  * [OUTPUT]: 原生命令additionalPermissions接组合目录审批；其余无法确认范围的提权继续拒绝。
  * [OUTPUT]: 用户所选业务cwd必须已存在，不由本机进程准备隐式创建。
@@ -42,6 +43,8 @@ export async function runCodexConversation(context: EngineContext, input: Native
   if (!profile?.verified || !directory) throw new Error('请先测试本机 Codex 连接')
   if (context.connection) assertCodexGatewayVersion(profile.verified.version)
   const gateway = context.connection ? codexGatewaySource(context.connection, context.agent.modelId, context.apiKey, process.env) : undefined
+  let releaseSteering: (() => void) | undefined, turnEnded = false
+  const steeringCalls = new Set<Promise<void>>()
   let threadId = input.threadId ?? '', turnId = '', finalText = '', completedTurn: Record<string, unknown> | undefined
   let resolveDone!: () => void, rejectDone!: (error: Error) => void
   const done = new Promise<void>((resolve, reject) => { resolveDone = resolve; rejectDone = reject }); void done.catch(() => {})
@@ -53,6 +56,7 @@ export async function runCodexConversation(context: EngineContext, input: Native
   const complete = (turn: Record<string, unknown>) => {
     if (!turnId) { completedTurn = turn; return }
     if (turn.id !== turnId) return
+    turnEnded = true; releaseSteering?.()
     if (turn.status === 'completed') resolveDone()
     else rejectDone(new Error(String(recordValue(turn.error).message ?? `Codex 本轮${turn.status === 'interrupted' ? '已中断' : '失败'}`)))
   }
@@ -153,10 +157,28 @@ export async function runCodexConversation(context: EngineContext, input: Native
     turnId = string(object(response.turn).id, '原生轮次身份')
     await input.onSubmitted(threadId, turnId); await context.onNativeExecution?.({ sessionId: threadId, turnId, inputAccepted: true }); releaseReady()
     if (completedTurn) complete(completedTurn)
-    await client.wait(done); await client.drain(); signal.throwIfAborted()
+    if (!turnEnded && context.registerNativeSteering) {
+      releaseSteering = context.registerNativeSteering((messageId, content) => {
+        const call = (async () => {
+          signal.throwIfAborted()
+          if (turnEnded) throw new Error('原生轮次已结束，未补充到下一轮')
+          await assertCodexNativeSource(context)
+          signal.throwIfAborted()
+          if (turnEnded) throw new Error('原生轮次已结束，未补充到下一轮')
+          const response = await client!.request('turn/steer', { threadId, expectedTurnId: turnId, clientUserMessageId: messageId, input: [{ type: 'text', text: content, text_elements: [] }] })
+          if (response.turnId !== turnId) throw new Error('Codex补充回执轮次不匹配，未自动重发')
+        })()
+        steeringCalls.add(call)
+        void call.finally(() => steeringCalls.delete(call)).catch(() => {})
+        return call
+      })
+      await context.onNativeExecution?.({ canSteer: true })
+    }
+    await client.wait(done); await Promise.all([...steeringCalls]); await client.drain(); signal.throwIfAborted()
     await context.onDelta(finalText)
     return { text: finalText }
   } finally {
+    releaseSteering?.()
     controller.abort(new Error('Codex 原生turn已退出')); releaseReady()
     preparation?.dispose()
     try { await client?.close() } finally { cli?.release() }

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 诊断识别turn/steer请求，沿原超时/失联规则且不重发。
  * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
  * [OUTPUT]: 显式业务cwd只核对已存在目录，原受管目录仍可初始化。
  * [OUTPUT]: 员工进程使用原run短期环境租约，剥离owner/服务密钥变量，实际退出后撤回；不可用时禁止CLI用户配置回退。
@@ -34,7 +35,7 @@ type JsonRecord = Record<string, unknown>
 type RpcId = string | number
 const OUTPUT_LIMIT = 8 * 1024 * 1024
 const MESSAGE_LIMIT = 2 * 1024 * 1024
-const diagnosticMethods = new Set(['initialize', 'config/read', 'model/list', 'account/read', 'thread/start', 'thread/resume', 'turn/start',
+const diagnosticMethods = new Set(['initialize', 'config/read', 'model/list', 'account/read', 'thread/start', 'thread/resume', 'turn/start', 'turn/steer',
   'thread/started', 'thread/status/changed', 'turn/started', 'turn/completed', 'error', 'warning', 'item/started', 'item/completed',
   'item/agentMessage/delta', 'item/reasoning/summaryTextDelta', 'item/reasoning/textDelta', 'thread/tokenUsage/updated', 'item/tool/call'])
 const diagnosticMethod = (method: string) => diagnosticMethods.has(method) ? method : 'other'

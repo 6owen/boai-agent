@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 当前轮次纯文本补充固定run/turn，原消息保存接受、原生确认与未知投递。
  * [OUTPUT]: 2026-10-27 默认持续执行、来源校验及工作现场/复核接线；沿原权限和账本。
  * [OUTPUT]: 可选Mastra上下文端口及按原request ID的附加用量，不改变其他后端合同。
  * [OUTPUT]: 引擎可删除单个或全部bobo会话Memory投影，明确遗忘不留其他thread中的旧Working Memory。
@@ -71,6 +72,8 @@ export interface SecretStore {
   delete(connectionId: string): Promise<void>
 }
 export interface EngineContext {
+  /** Register only while a native turn can accept explicit text steering. */
+  registerNativeSteering?(send: (messageId: string, content: string) => Promise<void>): () => void
   /** Host-validated projection from original Work/Run/artifact records; no model call or replay. */
   workingScene?(): Promise<string>
   progressCurrent?(): Promise<boolean>

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 补充指令回执区分宿主接受、原生当前轮次确认和未知，不以普通调度冒充生效。
  * [OUTPUT]: 2026-10-27按用户要求删除执行卡查看/继续与任务结果；卡片只展示原执行内容和状态。
  * [OUTPUT]: 错误正文复用流式正文的MarkdownContent compact排版，字号/行高/颜色一致。
  * [OUTPUT]: 执行与失败卡片共用可用宽度；终态仅显示实际错误，不添加取消/已有过程保留状态行。
@@ -23,9 +24,9 @@ import { failureSummary } from '../presentation'
 import { ExecutionFeed } from '@/components/detail-panel/execution-feed'
 import { ExecutionContentCache } from '@/components/detail-panel/execution-content-cache'
 
-export function MessageReceipt({ runs }: { runs: AgentRun[] }) {
-  const received = runs.some(run => ['codex-local', 'claude-local', 'runtime-plugin'].includes(run.backend?.kind ?? '') ? run.backend?.inputAccepted || run.backend?.turnId : run.progress?.some(event => event.id === 'stage:employee_start'))
-  const label = received ? '员工已接收这条消息' : runs.length && runs.every(run => !['queued', 'running', 'waiting_approval'].includes(run.status)) ? '已发送，接收回执未记录' : '已发送，等待员工处理'
+export function MessageReceipt({ runs, steering }: { runs: AgentRun[]; steering?: import('@boai/shared/domain/execution').NativeSteeringReceipt }) {
+  const received = steering ? steering.delivery === 'submitted' : runs.some(run => ['codex-local', 'claude-local', 'runtime-plugin'].includes(run.backend?.kind ?? '') ? run.backend?.inputAccepted || run.backend?.turnId : run.progress?.some(event => event.id === 'stage:employee_start'))
+  const label = steering ? steering.delivery === 'submitted' ? '原生当前轮次已接收补充' : steering.delivery === 'unknown' ? '补充接收结果未确认，没有自动重发' : '补充已保存，等待原生接收确认' : received ? '员工已接收这条消息' : runs.length && runs.every(run => !['queued', 'running', 'waiting_approval'].includes(run.status)) ? '已发送，接收回执未记录' : '已发送，等待员工处理'
   return <Tooltip><TooltipTrigger render={<span className={`message-receipt${received ? ' is-received' : ''}`} tabIndex={0} aria-label={label} />}>
     {received ? <Icon name="CircleCheck" /> : <Clock />}
   </TooltipTrigger><TooltipContent>{label}</TooltipContent></Tooltip>
