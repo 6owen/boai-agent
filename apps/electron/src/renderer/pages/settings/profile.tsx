@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 活动聚合按API与日期时区保留Zustand快照，切页复用新鲜数据；变更合并刷新及跨日换键不清空后台已确认内容。
  * [OUTPUT]: 推理强度样本说明使用共享SettingsHelp图标Tooltip，洞察dl仅保留等高数据行。
  * [OUTPUT]: 页面布局复用settings-layout，标题/分组留白与卡片/设置行统一，原业务回调保持。
  * [OUTPUT]: 最常用技能复用资源库SkillListItem展示行；悬停/键盘聚焦显示更多菜单，前往资源库技能列表，不在设置页打开详情。
@@ -15,7 +16,8 @@ import type { DesktopApi } from '@boai/shared/ipc'
 import type { LocalUserProfile, ProfileActivity, UserAvatar } from '@boai/shared/domain/profile'
 import { defaultUserAvatar, defaultUserProfile } from '@boai/shared/domain/profile'
 import { AvatarPicker } from '@/components/employee/avatar-picker'
-import { Banner, errorText, Loading, useMutation } from '@/components/common'
+import { Banner, Loading, useMutation } from '@/components/common'
+import { getSettingsQuery, pruneSettingsQueries, useSettingsQuery } from '@/stores/settings-query'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -28,7 +30,14 @@ import { ActivityChart, profileActivityRange, tokenText } from './profile-activi
 
 export function ProfileSettings({ api, profile: committedProfile, active, refresh, onOpenSkills }: { api: DesktopApi; profile?: LocalUserProfile; active: boolean; refresh: () => Promise<void>; onOpenSkills: () => void }) {
   const profile = committedProfile ?? defaultUserProfile, ready = Boolean(committedProfile)
-  const [sharing, setSharing] = useState(false), [uploading, setUploading] = useState(false), [editing, setEditing] = useState(false), [activity, setActivity] = useState<ProfileActivity>(), [error, setError] = useState(''), [retry, setRetry] = useState(0)
+  const [sharing, setSharing] = useState(false), [uploading, setUploading] = useState(false), [editing, setEditing] = useState(false)
+  const [range, setRange] = useState(profileActivityRange)
+  const activityQuery = getSettingsQuery<ProfileActivity>(api, `profile-activity:${JSON.stringify(range)}`, {
+    read: () => api.request('getProfileActivity', range), staleTime: 60_000,
+    onEvent: (event, query) => { if (event.type === 'changed' || event.type === 'conversation:cleared') query.invalidate() },
+  })
+  const { data: activity, error } = useSettingsQuery(activityQuery, active)
+  useEffect(() => { pruneSettingsQueries(api, 'profile-activity:', 4) }, [api, activityQuery])
   const editButton = useRef<HTMLButtonElement>(null), shareButton = useRef<HTMLButtonElement>(null)
   const openEditor = (trigger: HTMLButtonElement) => { if (ready) { editButton.current = trigger; setEditing(true) } }
   const { busy: avatarBusy, error: avatarError, run: saveAvatar } = useMutation()
@@ -39,14 +48,11 @@ export function ProfileSettings({ api, profile: committedProfile, active, refres
   })
   useEffect(() => {
     if (!active) return
-    let disposed = false, serial = 0, timer: ReturnType<typeof setTimeout> | undefined, currentRange = JSON.stringify(profileActivityRange())
-    const load = async () => { const request = ++serial; try { const result = await api.request('getProfileActivity', profileActivityRange()); if (!disposed && request === serial) { setActivity(result); setError('') } } catch (error) { if (!disposed && request === serial) setError(errorText(error)) } }
-    const schedule = () => { if (!timer) timer = setTimeout(() => { timer = undefined; void load() }, 400) }
-    const unsubscribe = api.subscribe(event => { if (event.type === 'changed' || event.type === 'conversation:cleared') schedule() })
-    const interval = setInterval(() => { const next = JSON.stringify(profileActivityRange()); if (next !== currentRange) { currentRange = next; schedule() } }, 30_000)
-    void load()
-    return () => { disposed = true; unsubscribe(); clearInterval(interval); if (timer) clearTimeout(timer) }
-  }, [api, active, retry])
+    const checkRange = () => { const next = profileActivityRange(); setRange(current => JSON.stringify(current) === JSON.stringify(next) ? current : next) }
+    checkRange()
+    const interval = setInterval(checkRange, 30_000)
+    return () => clearInterval(interval)
+  }, [active])
   const pendingActivity = !activity && !error
   const activityValue = (value: string | number | undefined) => value === undefined ? pendingActivity ? <Skeleton className="ml-auto h-[1em] w-16" aria-hidden="true" /> : '—' : value
   const metrics = [
@@ -58,7 +64,7 @@ export function ProfileSettings({ api, profile: committedProfile, active, refres
   ]
   return <SettingsLayout title="个人资料" actions={<div className="button-row"><Button ref={shareButton} variant="ghost" size="sm" disabled={!ready || !activity || avatarBusy || uploading} onClick={() => setSharing(true)}><Share />分享</Button><Button variant="secondary" size="sm" disabled={!ready || avatarBusy || uploading} onClick={event => openEditor(event.currentTarget)}><Pencil />编辑</Button></div>}  className="profile-document">
     {avatarError && <Banner>{avatarError}</Banner>}
-    {error && <><Banner>{error}</Banner><Button variant="link" onClick={() => { setError(''); setRetry(value => value + 1) }}>重试</Button></>}
+    {error && <Button variant="link" onClick={() => { void activityQuery.refresh() }}>重试</Button>}
     <div className="profile-identity"><AvatarPicker personal value={profile.avatar} name={profile.displayName} disabled={!ready || avatarBusy} onBusyChange={setUploading} onChange={selectAvatar} onReset={() => selectAvatar(defaultUserAvatar)} /><h1 title={profile.displayName}><Button variant="ghost" size="content" className="profile-name-edit" aria-label="编辑显示名称" disabled={!ready || avatarBusy || uploading} onClick={event => openEditor(event.currentTarget)}>{profile.displayName}</Button></h1>{profile.username && <p>@{profile.username}</p>}</div>
     {!ready && <Loading>正在读取个人资料…</Loading>}
     <Card className="profile-metrics grid gap-0 p-0" aria-label="个人活动摘要" aria-busy={pendingActivity}>{metrics.map(metric => <div key={metric.label} title={metric.hint}><div className="profile-metric-value">{metric.value === undefined && pendingActivity ? <Skeleton className="h-[1em] w-16" aria-hidden="true" /> : <strong>{metric.value ?? '—'}</strong>}</div><span>{metric.label}</span></div>)}</Card>

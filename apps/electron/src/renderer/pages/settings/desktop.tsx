@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 运行选项复用按DesktopApi隔离的设置缓存；事件/保存接受真实版本，切回直接显示，聚焦后台核实系统登录项。
  * [OUTPUT]: 页面无副标题或卡片下说明；后台/登录/隐藏启动说明归标签旁SettingsHelp，原保存保持。
  * [OUTPUT]: 桌面活动与日报迁至独立设置分类；本页保留后台运行与 CLI。
  * [OUTPUT]: 运行选项增加CLI安装管理Card，复用全局组件及Sonner。
@@ -7,13 +8,14 @@
  * [POS]: 设置中的运行选项；保持 BOAI 原组件和样式。
  * [PROTOCOL]: 变化同步 Header 与所属 .folder.md。
  */
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { SettingsLayout, SettingsCard, SettingsRow, SettingsHelp } from './settings-layout'
 import { Switch } from '@/components/ui/switch'
 import { Banner } from '@/components/common'
 import type { DesktopApi } from '@boai/shared/ipc'
 import type { DesktopPatch, DesktopSettings } from '@boai/shared/ipc/desktop'
 import { CliInstallationCard } from './cli-installation'
+import { getSettingsQuery, useSettingsQuery } from '@/stores/settings-query'
 
 const loginHints: Record<DesktopSettings['login']['status'], string> = {
   enabled: '已启用系统登录启动。', disabled: '系统登录启动未启用。',
@@ -22,24 +24,24 @@ const loginHints: Record<DesktopSettings['login']['status'], string> = {
   unsupported: '当前系统暂不支持设置开机启动。', error: '无法读取系统登录项，请稍后重试。',
 }
 export function DesktopSettingsPage({ api, active }: { api: DesktopApi; active: boolean }) {
-  const [settings, setSettings] = useState<DesktopSettings>()
+  const query = getSettingsQuery(api, 'desktop-settings', {
+    read: () => api.request('getDesktopSettings', undefined), staleTime: 60_000, refreshOnFocus: true,
+    merge: (previous, next) => previous && previous.revision > next.revision ? previous : next,
+    onEvent: (event, current) => {
+      if (event.type === 'desktop:changed' && event.settings.revision >= (current.store.getState().data?.revision ?? -1)) current.accept(event.settings)
+    },
+  })
+  const { data: settings } = useSettingsQuery(query, active)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  useEffect(() => {
-    if (!active) return
-    let live = true
-    const unsubscribe = api.subscribe(event => { if (live && event.type === 'desktop:changed') setSettings(event.settings) })
-    void api.request('getDesktopSettings', undefined).then(value => { if (live) setSettings(value) }).catch(error => { if (live) setError(String(error)) })
-    return () => { live = false; unsubscribe() }
-  }, [api, active])
   const update = async (patch: DesktopPatch) => {
-    if (!settings || busy) return
+    if (!settings || busy || !active) return
     setBusy(true); setError('')
-    try { setSettings(await api.request('updateDesktopSettings', { patch, expectedRevision: settings.revision })) }
-    catch (error) { setError(error instanceof Error ? error.message : String(error)); try { setSettings(await api.request('getDesktopSettings', undefined)) } catch { /* Keep the last confirmed settings. */ } }
+    try { query.accept(await api.request('updateDesktopSettings', { patch, expectedRevision: settings.revision })) }
+    catch (error) { setError(error instanceof Error ? error.message : String(error)); await query.refresh() }
     finally { setBusy(false) }
   }
-  const disabled = busy || !settings || Boolean(settings.error)
+  const disabled = busy || !active || !settings || Boolean(settings.error)
   return <SettingsLayout title="运行选项">
     {error && <Banner>{error}</Banner>}{settings?.error && <Banner>{settings.error}</Banner>}
     <SettingsCard>

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Desktop-only CLI installation status and native directory selection operations.
- * [OUTPUT]: Compact installation status and explicit actions; usage/connection/path/platform details live in the title icon Tooltip, original reconciliation remains.
+ * [OUTPUT]: Per-API installation cache survives page changes; short freshness/focus reads retain visible data, revision-checked writes and unknown-result reconciliation remain.
  * [POS]: CLI Card within existing desktop settings; errors use global Sonner.
  * [PROTOCOL]: Changes update Header and .folder.md.
  */
@@ -11,16 +11,19 @@ import { showErrorToast, errorText } from '@/components/common'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { SettingsHelp } from './settings-layout'
+import { getSettingsQuery, useSettingsQuery } from '@/stores/settings-query'
 
 const labels: Record<CliInstallation['state'], string> = { 'not-installed': '未安装', installed: '已安装', 'update-available': '可更新到当前应用', conflict: '安装项已被外部修改' }
 export function CliInstallationCard({ api, active }: { api: DesktopApi; active: boolean }) {
-  const [status, setStatus] = useState<CliInstallation>(), [busy, setBusy] = useState(false), [confirmed, setConfirmed] = useState(false)
+  const query = getSettingsQuery<CliInstallation>(api, 'cli-installation', {
+    read: () => api.request('getCliInstallation', undefined), staleTime: 15_000, refreshOnFocus: true,
+  })
+  const { data: status, loading, error } = useSettingsQuery(query, active)
+  const [busy, setBusy] = useState(false)
+  const confirmed = !!status && !loading && !error
   const generation = useRef(0), pending = useRef(false)
   useEffect(() => {
-    const ticket = ++generation.current
-    if (!active) return
-    setConfirmed(false)
-    void api.request('getCliInstallation', undefined).then(value => { if (ticket === generation.current) { setStatus(value); setConfirmed(true) } }, error => { if (ticket === generation.current) showErrorToast(errorText(error)) })
+    generation.current++
     return () => { generation.current++ }
   }, [api, active])
   async function act(kind: 'refresh' | 'install' | 'uninstall') {
@@ -28,11 +31,15 @@ export function CliInstallationCard({ api, active }: { api: DesktopApi; active: 
     pending.current = true; setBusy(true)
     const ticket = ++generation.current
     try {
-      const value = kind === 'refresh' ? await api.request('getCliInstallation', undefined) : kind === 'install' ? await api.request('installCli', { expectedRevision: status!.revision }) : await api.request('uninstallCli', { expectedRevision: status!.revision })
-      if (ticket === generation.current && value) { setStatus(value); setConfirmed(true) }
+      if (kind === 'refresh') await query.refresh()
+      else {
+        const value = kind === 'install' ? await api.request('installCli', { expectedRevision: status!.revision }) : await api.request('uninstallCli', { expectedRevision: status!.revision })
+        if (value) query.accept(value)
+      }
     } catch (error) {
-      if (ticket === generation.current) { showErrorToast(errorText(error)); setConfirmed(false) }
-      try { const value = await api.request('getCliInstallation', undefined); if (ticket === generation.current) { setStatus(value); setConfirmed(true) } } catch { /* Keep recovery explicit; never repeat a write. */ }
+      if (ticket === generation.current) showErrorToast(errorText(error))
+      // Reconcile a potentially committed write without replaying it.
+      await query.refresh()
     } finally { pending.current = false; setBusy(false) }
   }
   return <Card className="mt-6" role="region" aria-label="命令行工具">

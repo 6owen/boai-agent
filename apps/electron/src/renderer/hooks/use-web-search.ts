@@ -1,30 +1,23 @@
 /*
  * [INPUT]: Desktop search settings API and page visibility.
- * [OUTPUT]: Versioned settings with source/plugin change refresh and late-response isolation.
+ * [OUTPUT]: Shared per-API settings cache with source/plugin invalidation, retained confirmed data and version-safe refresh.
  * [POS]: Shared read-only search settings hook.
  * [PROTOCOL]: Update Header and parent .folder.md on change.
  */
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback } from 'react'
 import type { DesktopApi } from '@boai/shared/ipc'
 import type { WebSearchSettings } from '@boai/shared/domain/web-search'
-import { showErrorToast, errorText } from '@/components/common'
+import { getSettingsQuery, useSettingsQuery } from '@/stores/settings-query'
 
 export function useWebSearchSettings(api: DesktopApi, active = true) {
-  const [settings, setSettings] = useState<WebSearchSettings>(), [failed, setFailed] = useState(false)
-  const request = useRef(0), live = useRef(false)
-  const refresh = useCallback(async () => {
-    const token = ++request.current
-    try {
-      const next = await api.request('getWebSearchSettings', undefined)
-      if (live.current && token === request.current) { setSettings(next); setFailed(false) }
-    } catch (error) { if (live.current && token === request.current) { setFailed(true); showErrorToast(errorText(error)) } }
-  }, [api])
-  useEffect(() => {
-    live.current = active
-    if (!active) return
-    void refresh()
-    const unsubscribe = api.subscribe(event => { if (event.type === 'plugins:changed' || event.type === 'changed' && !event.conversationId) void refresh() })
-    return () => { live.current = false; request.current++; unsubscribe() }
-  }, [api, active, refresh])
-  return { settings, failed, refresh }
+  const query = getSettingsQuery<WebSearchSettings>(api, 'web-search-settings', {
+    read: () => api.request('getWebSearchSettings', undefined), staleTime: 60_000,
+    merge: (previous, next) => previous && previous.revision > next.revision ? previous : next,
+    onEvent: (event, current) => {
+      if (event.type === 'plugins:changed' || event.type === 'changed' && !event.conversationId) current.invalidate()
+    },
+  })
+  const { data: settings, error } = useSettingsQuery(query, active)
+  const refresh = useCallback(() => query.refresh(), [query])
+  return { settings, failed: Boolean(error), refresh }
 }

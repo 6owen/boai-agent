@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 应用图标状态沿共享读取缓存与单调事件，切换设置不重复冷读，原外观预览保存保持。
  * [OUTPUT]: 页面布局复用settings-layout，标题/分组留白与卡片/设置行统一，原业务回调保持。
  * [OUTPUT]: 开发版与安装版均不显示图标状态文案；迟到状态不覆盖新选择，失败沿Sonner和原重试。
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
@@ -27,6 +28,7 @@ import { InfoIcon, RefreshCw } from '@/components/icons'
 import { appearanceDefaults, appIconPresets, availableThemes, defaultAppIconId, defaultGlassOpacity, maxBackgroundBlur, resolveTheme, resolveAppearanceTheme, typographyControls, typographyDefaults, zoomFactors, type AppIconStatus, type ThemeOverrides } from '@boai/shared/appearance'
 import { usePlugins } from '@/stores/plugins'
 import { useAppearance, previewAppearance, flushAppearance, appearanceAction } from '@/stores/appearance'
+import { getSettingsQuery, useSettingsQuery } from '@/stores/settings-query'
 import lightPreview from '@/assets/mode-light.webp'
 import darkPreview from '@/assets/mode-dark.webp'
 import systemPreview from '@/assets/mode-system.webp'
@@ -63,17 +65,15 @@ function ColorControl({ label, value, onChange }: { label: string; value: string
   </label>
 }
 
-export function AppearanceSettings() {
+export function AppearanceSettings({ active = true }: { active?: boolean }) {
   const [resetOpen, setResetOpen] = useState(false)
-  const [iconStatus, setIconStatus] = useState<AppIconStatus | null>(null)
-  useEffect(() => {
-    const api = getDesktopClient()
-    if (!api) return
-    let live = true
-    void api.request('getAppIconStatus', undefined).then(value => { if (live) setIconStatus(previous => acceptAppIconStatus(previous, value)) }).catch(error => toast.error(String(error)))
-    const dispose = api.subscribe(event => { if (event.type === 'app-icon:changed' && live) setIconStatus(previous => acceptAppIconStatus(previous, event.status)) })
-    return () => { live = false; dispose() }
-  }, [])
+  const api = getDesktopClient()
+  const iconQuery = api ? getSettingsQuery<AppIconStatus>(api, 'appearance-icon', {
+    read: () => api.request('getAppIconStatus', undefined), staleTime: 60_000,
+    merge: (previous, next) => acceptAppIconStatus(previous ?? null, next),
+    onEvent: (event, query) => { if (event.type === 'app-icon:changed') query.accept(event.status) },
+  }) : undefined
+  const { data: iconStatus } = useSettingsQuery(iconQuery, active)
   const { preview, status, error } = useAppearance()
   useEffect(() => { if (error) toast.error(error) }, [error])
   useEffect(() => { if (preview.diagnostic) toast.warning(preview.diagnostic) }, [preview.diagnostic])
@@ -155,7 +155,7 @@ export function AppearanceSettings() {
               <span className="w-full truncate text-center text-xs">{icon.name}</span>
             </Button>)}
           </div>
-          <AppIconFeedback status={iconStatus} onRetry={() => { void getDesktopClient()?.request('retryAppIcon', undefined).then(value => setIconStatus(previous => acceptAppIconStatus(previous, value))).catch(error => toast.error(String(error))) }} />
+          <AppIconFeedback status={iconStatus} onRetry={() => { void api?.request('retryAppIcon', undefined).then(value => iconQuery?.accept(value)).catch(error => toast.error(String(error))) }} />
         </SettingsCard>
       </SettingsSection>}
       <SettingsSection title="背景图片" titleId="appearance-advanced-heading">

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 真实语音设置 controller 与可控制延迟、失败、版本冲突的宿主端口。
- * [OUTPUT]: 编辑提交时机、串行回执、新草稿保护、错误恢复及关闭前排空回归。
+ * [OUTPUT]: 编辑提交/关闭排空及快照复用、过期/事件失效、背景读草稿保护、API迟到隔离回归。
  * [POS]: 语音设置持久化测试，不访问麦克风或下载模型。
  * [PROTOCOL]: 变化同步 Header 与 tests/.folder.md。
  */
@@ -30,7 +30,7 @@ async function fixture() {
   const request = vi.fn(async () => {})
   const api = { voice, request, subscribe: (listener: (event: AppEvent) => void) => { listeners.add(listener); return () => listeners.delete(listener) } } as unknown as DesktopApi
   controller.initialize(api); await controller.load()
-  return { controller, voice, control, request, read: () => snapshot, external: () => { snapshot.settings.revision++; snapshot.settings.language = 'en' }, emit: (event: AppEvent) => { for (const listener of listeners) listener(event) } }
+  return { controller, api, voice, control, request, read: () => snapshot, external: () => { snapshot.settings.revision++; snapshot.settings.language = 'en' }, emit: (event: AppEvent) => { for (const listener of listeners) listener(event) } }
 }
 afterEach(() => { for (const controller of controllers.splice(0)) controller.dispose(); vi.restoreAllMocks() })
 
@@ -114,4 +114,75 @@ test('放弃也等待正在写入，读取失败不能清除草稿；再次读�
   expect(await discarding).toBe(false); expect(controller.hasWork()).toBe(true)
   control.readFailure = false
   expect(await controller.discard()).toBe(true); expect(controller.hasWork()).toBe(false)
+})
+
+test('离开再进入复用已确认快照，过期后才背景读取', async () => {
+  const { controller, voice } = await fixture(), now = Date.now()
+  const clock = vi.spyOn(Date, 'now').mockReturnValue(now)
+  const stop = controller.activate(); stop()
+  const stopAgain = controller.activate(); await controller.load(); stopAgain()
+  expect(voice.snapshot).toHaveBeenCalledTimes(1)
+  clock.mockReturnValue(now + 60_001)
+  const stopExpired = controller.activate(); await controller.load(); stopExpired()
+  expect(voice.snapshot).toHaveBeenCalledTimes(2)
+})
+
+test('未显示时变更只失效，重进才读取并更新', async () => {
+  const { controller, voice, external, emit } = await fixture()
+  external(); emit({ type: 'changed' })
+  expect(voice.snapshot).toHaveBeenCalledTimes(1)
+  expect(controller.store.getState().snapshot?.settings.language).toBe('auto')
+  const stop = controller.activate(); await controller.load(); stop()
+  expect(voice.snapshot).toHaveBeenCalledTimes(2)
+  expect(controller.store.getState().snapshot?.settings.language).toBe('en')
+})
+
+test('背景读取合并并发请求，期间编辑的草稿不被返回覆盖', async () => {
+  const { controller, voice, read } = await fixture(), gate = deferred(), old = structuredClone(read())
+  voice.snapshot.mockImplementationOnce(async () => { await gate.promise; return old })
+  const first = controller.load(true), second = controller.load(true)
+  expect(voice.snapshot).toHaveBeenCalledTimes(2)
+  expect(controller.store.getState().snapshot).toBeDefined()
+  controller.edit(draft => ({ ...draft, terms: '读取途中输入' }))
+  gate.resolve(); await Promise.all([first, second])
+  expect(controller.store.getState().draft?.terms).toBe('读取途中输入')
+  expect(await controller.flush()).toBe(true)
+  expect(voice.configure.mock.calls[0]![0].settings.terms[0]?.word).toBe('读取途中输入')
+})
+
+test('刷新失败保留上次数据，随后重进重试而不误判为新鲜', async () => {
+  const { controller, voice, control } = await fixture()
+  control.readFailure = true; await controller.load(true)
+  expect(controller.store.getState().snapshot).toBeDefined()
+  expect(controller.store.getState().error).toBe('读取失败')
+  control.readFailure = false; await controller.load()
+  expect(voice.snapshot).toHaveBeenCalledTimes(3)
+  expect(controller.store.getState().error).toBeUndefined()
+})
+
+test('API切换后旧读取及旧写入回执均不能进入新环境', async () => {
+  const { controller, voice, control, read } = await fixture(), readGate = deferred(), writeGate = deferred(), old = structuredClone(read())
+  voice.snapshot.mockImplementationOnce(async () => { await readGate.promise; return old })
+  const reading = controller.load(true)
+  controller.edit(draft => ({ ...draft, terms: '旧环境草稿' }))
+  control.gate = writeGate.promise
+  const writing = controller.flush(); await Promise.resolve()
+  const nextSnapshot = { ...old, settings: { ...old.settings, revision: 9, language: 'ja' as const } }
+  const nextVoice = { snapshot: vi.fn(async () => nextSnapshot) }
+  controller.initialize({ voice: nextVoice, request: vi.fn(async () => {}), subscribe: () => () => {} } as unknown as DesktopApi)
+  await controller.load()
+  readGate.resolve(); writeGate.resolve(); await reading
+  expect(await writing).toBe(false)
+  expect(controller.store.getState().snapshot?.settings).toEqual(nextSnapshot.settings)
+  expect(controller.store.getState().draft).toBeUndefined()
+  expect(controller.store.getState().saving).toBe(false)
+})
+
+test('下载状态写入同一快照且不改变草稿或已确认配置', async () => {
+  const { controller, api, read } = await fixture()
+  controller.edit(draft => ({ ...draft, terms: '保留输入' }))
+  controller.acceptModelStatus(api, { ...read(), localReady: true, settings: { ...read().settings, language: 'en' } })
+  expect(controller.store.getState().snapshot?.localReady).toBe(true)
+  expect(controller.store.getState().snapshot?.settings.language).toBe('auto')
+  expect(controller.store.getState().draft?.terms).toBe('保留输入')
 })

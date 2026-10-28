@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 设置查询缓存的宿主事件与窗口恢复订阅由Shell统一持有，切换设置分类时保留快照和失效通知。
  * [OUTPUT]: 本人菜单头像进入个人资料；个人设置快捷入口及其他配置进入模型连接，全部沿原草稿守卫，移除菜单分享/帮助。
  * [OUTPUT]: 定时任务说明由页面标题Tooltip承接，保留旧详情标签的兼容恢复。
  * [OUTPUT]: 2026-10-27 默认关闭语音插件接线、可信主窗口与原草稿/生命周期边界。
@@ -179,6 +180,7 @@ import { SettingsPage, type SettingsTab } from '@/pages/settings'
 import type { LocalAgentTarget } from '@/pages/settings/local-agents'
 import { Avatar, Banner, errorText, GuardContext, Loading } from '@/components/common/index'
 import { toast } from 'sonner'
+import { initializeSettingsQueries } from '@/stores/settings-query'
 
 type Page = 'conversations' | 'contacts' | 'schedules' | 'skills' | 'settings' | 'help'
 type Creation = { type: 'agent'; template?: number } | { type: 'group' | 'team' }
@@ -192,6 +194,7 @@ function initialRoute(): Route { try { const p = localStorage.getItem('boai.v2.p
 
 export function AppShell() {
   const api = getDesktopClient()
+  useEffect(() => { if (api) return initializeSettingsQueries(api) }, [api])
   const [snapshot, setSnapshot] = useState<Snapshot>(EMPTY), [detail, setDetail] = useState<ConversationView | null>(null)
   const snapshotRef = useRef(snapshot); snapshotRef.current = snapshot
   const [snapshotReady, setSnapshotReady] = useState(false)

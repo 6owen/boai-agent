@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 复用Shell模型连接与页外语音快照；重进缓存即显，下载状态回写同一控制器，后台读取保留编辑。
  * [OUTPUT]: 2026-10-27 主要控件统一220px，许可/授权辅助操作在左；快捷键去箭头，原自动保存队列保持。
  * [INPUT]: Explicit voice configuration, model installation and existing text-model connections.
  * [OUTPUT]: Optional local/online ASR, separately opt-in refinement and manually maintained terminology.
@@ -8,7 +9,7 @@
 import { useContext, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import type { Connection } from '@boai/shared/domain'
-import type { VoiceSnapshot, VoiceSettings } from '@boai/voice-input-plugin/protocol'
+import type { VoiceSettings } from '@boai/voice-input-plugin/protocol'
 import { getDesktopClient } from '@/services/request/desktop-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,31 +26,31 @@ import { VoiceSettingRow } from './voice-setting-row'
 import { VoiceMicrophone } from './voice-microphone'
 import { useVoiceSettings, voiceDraft, voiceSettings } from '@/stores/voice-settings'
 
-export function VoiceInputSettingsPage({ active, onOpenShortcuts }: { active: boolean; onOpenShortcuts(): void }) {
+export function VoiceInputSettingsPage({ active, connections: allConnections, onOpenShortcuts }: { active: boolean; connections: Connection[]; onOpenShortcuts(): void }) {
   const api = getDesktopClient(), voice = api?.voice, guard = useContext(GuardContext)
   const plugins = usePlugins(), plugin = applicationPlugins.find(item => item.id === voicePluginId)!
   const availability = pluginAvailability(plugin, plugins.settings), enabled = plugins.ready && availability === 'enabled'
   const state = useVoiceSettings(), draft = state.draft ?? (state.snapshot && voiceDraft(state.snapshot))
   const settings = draft?.settings, terms = draft?.terms ?? '', key = draft?.key
   const { loading, saving } = state
-  const [modelSnapshot, setSnapshot] = useState<VoiceSnapshot>(), [connections, setConnections] = useState<Connection[]>([])
-  const snapshot = modelSnapshot ?? state.snapshot
-  const [downloading, setDownloading] = useState(false), mounted = useRef(false), form = useRef<HTMLFormElement>(null)
+  const connections = allConnections.filter(connection => connection.provider !== 'anthropic' && connection.api !== 'responses' && !connection.gateway)
+  const snapshot = state.snapshot
+  const [downloading, setDownloading] = useState(false), mounted = useRef(false), modelRequest = useRef(0), form = useRef<HTMLFormElement>(null)
   const fail = (error: unknown) => toast.error(error instanceof Error ? error.message : typeof error === 'string' ? error : '语音设置操作失败')
   const setSettings = (change: (value: VoiceSettings) => VoiceSettings, immediate = false) => voiceSettings.edit(value => ({ ...value, settings: change(value.settings) }), immediate)
   useEffect(() => {
     mounted.current = true
-    return () => { mounted.current = false }
+    return () => { mounted.current = false; modelRequest.current++ }
   }, [])
   useEffect(() => {
-    let current = true
     if (!api || !voice) return
-    voiceSettings.initialize(api); void voiceSettings.load()
-    void api.request('snapshot', undefined).then(app => {
-      if (current) setConnections(app.connections.filter(connection => connection.provider !== 'anthropic' && connection.api !== 'responses' && !connection.gateway))
-    }).catch(error => { if (current) fail(error) })
-    return () => { current = false }
-  }, [voice, api])
+    voiceSettings.initialize(api)
+    if (!active) return
+    const stop = voiceSettings.activate()
+    const refresh = () => voiceSettings.invalidate()
+    window.addEventListener('focus', refresh)
+    return () => { stop(); window.removeEventListener('focus', refresh) }
+  }, [voice, api, active])
   useEffect(() => {
     if (!active) { void voiceSettings.flush(); return }
     const flush = () => { void voiceSettings.flush() }
@@ -70,20 +71,26 @@ export function VoiceInputSettingsPage({ active, onOpenShortcuts }: { active: bo
   }, [active])
   const downloadingModel = downloading || !!snapshot?.download
   useEffect(() => {
-    if (!active || !downloadingModel || !voice) return
-    let current = true
-    const timer = setInterval(() => { void voice.snapshot().then(value => { if (current) setSnapshot(value) }).catch(() => {}) }, 700)
+    if (!active || !downloadingModel || !voice || !api) return
+    let current = true, reading = false
+    const timer = setInterval(() => {
+      if (reading) return
+      reading = true
+      const ticket = ++modelRequest.current
+      void voice.snapshot().then(value => { if (current && ticket === modelRequest.current) voiceSettings.acceptModelStatus(api, value) }).catch(() => {}).finally(() => { reading = false })
+    }, 700)
     return () => { current = false; clearInterval(timer) }
-  }, [active, downloadingModel, voice])
+  }, [active, downloadingModel, voice, api])
   const download = async (action: 'start' | 'cancel' | 'remove') => {
-    if (!voice) return
+    if (!voice || !api) return
+    const ticket = ++modelRequest.current
     if (action === 'start') setDownloading(true)
-    try { const state = await voice.download(action); if (mounted.current) setSnapshot(state) } catch (error) { fail(error) }
+    try { const state = await voice.download(action); if (mounted.current && ticket === modelRequest.current) voiceSettings.acceptModelStatus(api, state) } catch (error) { fail(error) }
     finally { if (mounted.current && action !== 'remove') setDownloading(false) }
   }
-  const disabled = loading || !settings || state.snapshot?.readOnly === true || !active
+  const disabled = !settings || state.snapshot?.readOnly === true || !active
   return <SettingsLayout title="语音输入" aria-label="语音输入设置">
-    {state.error && <Button type="button" variant="ghost" disabled={saving || loading || !voice || !active} onClick={() => guard.navigate(() => { void voiceSettings.load() }, { resetOnDiscard: false })}>重新读取语音设置</Button>}
+    {state.error && <Button type="button" variant="ghost" disabled={saving || loading || !voice || !active} onClick={() => guard.navigate(() => { void voiceSettings.load(true) }, { resetOnDiscard: false })}>重新读取语音设置</Button>}
     <form ref={form} data-edit-form onBlur={event => { if (event.target.matches('input, textarea')) void voiceSettings.flush() }} onSubmit={event => { event.preventDefault(); void voiceSettings.flush() }}>
       <SettingsSection first title="识别">
         <SettingsCard>

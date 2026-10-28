@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 语音配置草稿、版本化宿主回执、导航与窗口结束事件。
- * [OUTPUT]: 页外串行自动保存；失败保留草稿，旧回执不覆盖新输入，关闭前等待写入结束。
+ * [OUTPUT]: 页外快照缓存与串行自动保存；失效/过期才重读，背景读取不覆盖草稿，API切换隔离迟到回执。
  * [POS]: Renderer 语音设置状态所有者；不启动录音、下载或在线识别。
  * [PROTOCOL]: 变化同步 Header 与所属 .folder.md。
  */
@@ -23,11 +23,18 @@ export class VoiceSettingsController {
   private queued = false
   private writing?: Promise<boolean>
   private loading?: Promise<void>
+  private generation = 0
+  private readVersion = 0
+  private modelVersion = 0
+  private updatedAt = 0
+  private invalidated = true
+  private active = 0
 
   initialize(api: DesktopApi) {
     if (this.api === api) return
     this.dispose(); this.api = api
     this.subscriptions.push(api.subscribe(event => {
+      if (event.type === 'plugins:changed' || event.type === 'changed' && !event.conversationId) this.invalidate()
       if (event.type === 'voice-settings:flush') void (async () => {
         const clean = event.discard ? await this.discard() : await this.flush()
         await api.request('completeVoiceSettingsFlush', { requestId: event.requestId, clean, settled: !this.store.getState().saving }).catch(() => {})
@@ -39,22 +46,57 @@ export class VoiceSettingsController {
       if (dirty !== previous) { previous = dirty; void api.request('setUnsavedChanges', { source: 'voice', dirty }).catch(() => {}) }
     }))
   }
-  dispose() { for (const unsubscribe of this.subscriptions) unsubscribe(); this.subscriptions = [] }
+  dispose() {
+    for (const unsubscribe of this.subscriptions) unsubscribe()
+    this.subscriptions = []; this.api = undefined; this.generation++; this.readVersion++; this.modelVersion++
+    this.loading = undefined; this.writing = undefined; this.queued = false; this.active = 0; this.updatedAt = 0; this.invalidated = true
+    this.store.setState({ snapshot: undefined, draft: undefined, loading: false, saving: false, error: undefined })
+  }
+  activate() {
+    const generation = this.generation
+    this.active++; void this.load()
+    return () => { if (generation === this.generation) this.active-- }
+  }
+  invalidate() {
+    this.invalidated = true; this.readVersion++
+    if (this.active) void this.load()
+  }
   hasWork() { const state = this.store.getState(); return !!state.draft || state.saving }
-  async load() {
+  async load(force = false) {
     if (!this.api?.voice || this.hasWork()) return
+    if (!force && !this.invalidated && this.store.getState().snapshot && Date.now() - this.updatedAt < 60_000) return
     if (!this.loading) {
+      const generation = this.generation, readVersion = this.readVersion, version = this.version, modelVersion = this.modelVersion
       this.store.setState({ loading: true })
-      this.loading = this.api.voice.snapshot().then(snapshot => {
-        if (!this.hasWork()) this.store.setState({ snapshot, error: snapshot.diagnostic })
+      const loading = this.api.voice.snapshot().then(snapshot => {
+        if (generation !== this.generation || readVersion !== this.readVersion || version !== this.version || this.hasWork()) return
+        this.accept(snapshot, modelVersion)
         if (snapshot.diagnostic) this.fail(snapshot.diagnostic)
-      }).catch(error => this.fail(error)).finally(() => { this.loading = undefined; this.store.setState({ loading: false }) })
+      }).catch(error => { if (generation === this.generation && readVersion === this.readVersion) this.fail(error) }).finally(() => {
+        if (generation !== this.generation || this.loading !== loading) return
+        this.loading = undefined; this.store.setState({ loading: false })
+        if (readVersion !== this.readVersion && this.active && !this.hasWork()) void this.load()
+      })
+      this.loading = loading
     }
     await this.loading
   }
+  private accept(snapshot: VoiceSnapshot, modelVersion = this.modelVersion) {
+    const previous = this.store.getState().snapshot
+    const next = previous && previous.settings.revision > snapshot.settings.revision ? { ...snapshot, settings: previous.settings, onlineKeyPresent: previous.onlineKeyPresent } : snapshot
+    this.updatedAt = Date.now(); this.invalidated = false
+    this.store.setState({ snapshot: previous && modelVersion !== this.modelVersion ? { ...next, localReady: previous.localReady, download: previous.download, modelBytes: previous.modelBytes } : next, error: snapshot.diagnostic })
+  }
+  acceptModelStatus(api: DesktopApi, snapshot: VoiceSnapshot) {
+    if (api !== this.api) return
+    this.modelVersion++
+    const previous = this.store.getState().snapshot
+    if (previous) this.store.setState({ snapshot: { ...previous, localReady: snapshot.localReady, download: snapshot.download, modelBytes: snapshot.modelBytes } })
+    else this.invalidate()
+  }
   edit(change: (draft: VoiceDraft) => VoiceDraft, immediate = false) {
     const state = this.store.getState()
-    if (!state.snapshot || state.snapshot.readOnly || state.loading) return
+    if (!state.snapshot || state.snapshot.readOnly) return
     const draft = change(state.draft ?? voiceDraft(state.snapshot))
     this.version++
     this.store.setState({ draft: !state.saving && JSON.stringify(draft) === JSON.stringify(voiceDraft(state.snapshot)) ? undefined : draft, error: undefined })
@@ -62,15 +104,17 @@ export class VoiceSettingsController {
   }
   private fail(error: unknown) {
     this.store.setState({ error: message(error) })
-    toast.error(message(error), { action: { label: '重试', onClick: () => { void (this.hasWork() ? this.flush() : this.load()) } } })
+    this.invalidated = true
+    toast.error(message(error), { action: { label: '重试', onClick: () => { void (this.hasWork() ? this.flush() : this.load(true)) } } })
   }
   flush(): Promise<boolean> {
     this.queued = true
     if (this.writing) return this.writing
-    this.writing = Promise.resolve().then(async () => {
-      while (this.queued) {
+    const generation = this.generation
+    const writing = Promise.resolve().then(async () => {
+      while (this.queued && generation === this.generation) {
         this.queued = false
-        const { draft, snapshot } = this.store.getState(), version = this.version
+        const { draft, snapshot } = this.store.getState(), version = this.version, modelVersion = this.modelVersion
         if (!draft || !snapshot) break
         if (!this.api?.voice || snapshot.readOnly) return false
         this.store.setState({ saving: true })
@@ -82,28 +126,34 @@ export class VoiceSettingsController {
             online: { endpoint: settings.online.endpoint.trim(), model: settings.online.model.trim() }, refinement: settings.refinement,
             terms: terms.split('\n').map(line => line.split('|').map(word => word.trim()).filter(Boolean)).filter(parts => parts.length).map(([word, ...aliases]) => ({ word: word!, aliases })),
           }, ...(key !== undefined ? { apiKey: key } : {}) })
+          if (generation !== this.generation) return false
           const current = this.store.getState().draft
-          this.store.setState({ snapshot: result, error: undefined, draft: version === this.version || !current ? undefined : {
+          this.readVersion++; this.accept(result, modelVersion)
+          this.store.setState({ draft: version === this.version || !current ? undefined : {
             ...current, key: current.key === key ? undefined : current.key,
             settings: { ...current.settings, revision: result.settings.revision },
           } })
           toast.success('语音输入设置已保存')
-        } catch (error) { this.queued = false; this.fail(error); return false }
-        finally { this.store.setState({ saving: false }) }
+        } catch (error) { if (generation === this.generation) { this.queued = false; this.fail(error) } return false }
+        finally { if (generation === this.generation) this.store.setState({ saving: false }) }
       }
-      return !this.hasWork()
-    }).finally(() => { this.writing = undefined })
-    return this.writing
+      return generation === this.generation && !this.hasWork()
+    }).finally(() => { if (this.writing === writing) this.writing = undefined })
+    this.writing = writing
+    return writing
   }
   async discard(): Promise<boolean> {
+    const generation = this.generation
     await this.writing
+    if (generation !== this.generation) return false
     if (!this.api?.voice) return !this.hasWork()
     try {
       // A rejected configure can follow a committed write. Re-read before abandoning its draft.
       const snapshot = await this.api.voice.snapshot()
-      this.version++; this.store.setState({ snapshot, draft: undefined, error: snapshot.diagnostic })
+      if (generation !== this.generation) return false
+      this.version++; this.readVersion++; this.accept(snapshot); this.store.setState({ draft: undefined })
       return true
-    } catch (error) { this.fail(error); return false }
+    } catch (error) { if (generation === this.generation) this.fail(error); return false }
   }
 }
 
