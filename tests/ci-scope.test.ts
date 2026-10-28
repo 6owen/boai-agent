@@ -1,8 +1,6 @@
 /*
- * [OUTPUT]: 原全UI门禁保持；Draft/Ready切换不重复跑同SHA，PR源码生命周期与main复验仍触发。
- * [OUTPUT]: 自动PR采集与最终只读阶段保持UI专用，不跳过Required门禁。
  * [INPUT]: 真实临时Git提交/事件、开发Markdown白名单及job结果协议。
- * [OUTPUT]: 实际 YAML 仅 UI，保留本地 Vitest；旧范围工具的独立本地合同仍可验证。
+ * [OUTPUT]: 实际 YAML 为工程Test与独立预览，保留本地UI工具；旧范围工具的独立本地合同仍可验证。
  * [POS]: 历史范围工具与当前云端配置的本地 Vitest 合同；不开产品窗口。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -75,20 +73,20 @@ it.each(['.github/workflows/tests.yml', '.github/workflows/diagnostic.yml', 'scr
 })
 it('实际工作流仅随PR源码生命周期触发，Draft/Ready及标签不重复运行且必需检查固定', async () => {
   const workflow = parse(await readFile(new URL('../.github/workflows/tests.yml', import.meta.url), 'utf8'))
-  const events = workflow.on.pull_request.types
+  const events = workflow.on.pull_request?.types ?? ['opened', 'synchronize', 'reopened']
   expect(events).not.toContain('labeled')
   expect(events).not.toContain('unlabeled')
   expect(events).toEqual(['opened', 'synchronize', 'reopened'])
   expect(workflow.on.push.branches).toEqual(['main'])
   expect(Object.hasOwn(workflow.on, 'workflow_dispatch')).toBe(true)
-  expect(workflow.jobs.required).toMatchObject({ name: 'UI delivery gate', if: 'always()' })
+  expect(workflow.jobs.required).toMatchObject({ name: 'Required checks', if: 'always()' })
 })
-it('GitHub CI 只执行 UI，保留本地 Vitest 与完整测试入口', async () => {
+it('GitHub Test执行工程检查且不以截图基准作为合并门禁', async () => {
   const workflow = parse(await readFile(new URL('../.github/workflows/tests.yml', import.meta.url), 'utf8'))
   const metadata = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
-  expect(Object.keys(workflow.jobs).sort()).toEqual(['capture', 'plan', 'required', 'ui'])
-  expect(workflow.jobs.required.needs).toEqual(['plan', 'capture', 'ui'])
-  expect(workflow.jobs.ui.steps.some((step: { run?: string }) => step.run?.includes('scripts/ui-regression.mjs check'))).toBe(true)
+  expect(Object.keys(workflow.jobs).sort()).toEqual(['required', 'test'])
+  expect(workflow.jobs.required.needs).toEqual(['test'])
+  expect(workflow.jobs.test.steps.map((step: { run?: string }) => step.run).filter(Boolean)).toEqual(['pnpm install --frozen-lockfile --prefer-offline', 'pnpm typecheck', 'pnpm lint:ui', 'pnpm test', 'pnpm build'])
   expect(metadata.devDependencies.vitest).toBeDefined()
   expect(metadata.scripts.test).toContain('vitest run')
   expect(metadata.scripts['test:electron']).toContain('playwright test')

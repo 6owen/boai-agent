@@ -1,5 +1,5 @@
 <!--
-[OUTPUT]: 2026-10-28自动PR采集、Agent差异审阅、线上选择更新与最新只读复验；ui:deliver接续，取消强制本地人工确认，实际归22组06 §21。
+[OUTPUT]: 2026-10-28按用户要求回到Magpie Test与DeepSeek UI preview；旧PNG基准晋升退出PR流程，实际验证归22组03。
 [OUTPUT]: 2026-10-28第28组首轮真实CLI/AppService对照及取消续接/Claude目录/Codex子线程三修复；单次复验、原失败与未验范围归28组02/03，不宣称全量无损。
 [OUTPUT]: 2026-10-27线上基准提交后Agent须批准当前PR的action_required运行；独立dispatch全绿不能替代该PR门禁，普通人工push保持自动检查。
 [OUTPUT]: PR42官方候选40485363446的26场全部通过，已按用户确认接受定时任务/管理/本人菜单六张新基准；原20图零差异，普通提交后CI及自动合并独立。
@@ -591,11 +591,11 @@
 
 # BOAI开发流程
 
-- 2026-10-28现行规则替代此前强制本地人工确认：PR源码提交先由GitHub完整采集行为/布局及截图；Agent按用户需求查看官方old/new/diff，明确范围后线上更新同分支基准；当前PR最新提交完整只读复验通过后正常交付。预期视觉变化保持Required pending，执行失败正常阻断；不改阈值或断言绕过。
-- 默认Agent完成审阅和技术接续，不要求用户先运行dev或手动管理基准；只有需求/设计不明确的差异才询问用户。本地预览可选。`pnpm ui:deliver`提供可接续入口，源码变化使旧审阅失效。
-- 在开发、交付、CI或合并前读取共享技能[boai-dev-workflow](.agents/skills/boai-dev-workflow/SKILL.md)，fetch/read origin/main最新版本，同时核对本分支修订和最新用户指令。当前详细合同见第22组06 §21；历史§19/20的人工前置条件已被替代。
+- 2026-10-28现行规则：直接迁用Magpie Test与DeepSeek UI preview；工程检查与界面预览自动运行，预览发布到PR。撤销本地效果确认前置、固定PNG基准门禁、独立候选与基准晋升流程。
+- 开发使用独立worktree，交付按本次用户授权；明确只修改/执行试验时不合并。旧UI工具和历史结果保留为本地按需入口。
+- 在本仓库开发、交付、CI或合并前，读取共享技能[boai-dev-workflow](.agents/skills/boai-dev-workflow/SKILL.md)，并fetch/read origin/main最新版本；旧worktree/Session也必须重新读取。本分支修订和最新用户指令优先核对。当前详细合同见第22组06。
 - worktree独立node_modules复用pnpm store；普通pnpm i即可复用缓存，首次冻结安装可加--prefer-offline。main只同步实际已合并提交，预览和产品开发均不复制回main。
-- Codex、Claude、Pi共用该技能，客户端不自动发现时按路径读取。技能不扩大任务授权，本机自动CI保持停用。GitHub只执行UI/Required，本地Vitest/BDD/评估保留。
+- Codex、Claude、Pi共用该技能，客户端不自动发现时按路径读取。技能不扩大任务授权，本机自动CI保持停用。GitHub沿Magpie执行Test与DeepSeek UI preview；固定PNG基准不再作为PR门禁，本地BDD/评估保留。
 
 # BOAI业务评估与Codex优化
 
@@ -615,7 +615,7 @@
 - `pnpm test:electron` 先构建、再执行 `bddgen` 和 Playwright；`.features-gen/` 是忽略的生成文件，禁止手工维护。
 - 场景数据必须隔离；重启沿用该场景目录；升级场景先准备旧数据再启动；G4 交付前保持重启中断、不自动重放工具。
 - 修改场景不得减少原有业务断言；中文步骤描述业务意图，协议服务与进程清理留在 TypeScript 支撑层。
-- `.github/workflows/tests.yml` 仅执行 UI regression 与 Required checks。Vitest、完整 BDD、T1/T3 与评估代码保留本地，按需手动运行，不加入 GitHub CI。真实评估仍需明确授权与预算。
+- `.github/workflows/tests.yml`执行BOAI工程Test；`ui-preview.yml`沿Magpie用DeepSeek规划操作并发布截图/录屏。旧candidate/accept/update不再属于PR交付流程，不要求本地效果确认；当前合同见第22组06。
 
 # Desktop Collaboration Boundaries
 
@@ -944,7 +944,7 @@ L1 是 L2 的折叠，L2 是 L3 的折叠，L3 是代码逻辑的折叠。
 - bobo 发起与组织群协作的后续规格见 [第 12 组](ai-docs/spec/12.bobo发起与组织群协作/README.md)，BC0–BC5 实际进度仅由该组 05 维护。员工身份与群组织形式无关，原 bobo 会话持续保留；BC0–BC4 已接通，BC5 未实施；核心/群权限与生命周期以本文件 Bobo Collaboration Boundaries、实际代码和第 12 组合同为准。
 
 
-2026-10-20用户已授权在独立worktree实施第22组四目标。UI比较使用`pnpm test:ui`，候选采集/逐case接受使用独立入口；普通CI禁止更新基线。范围和唯一实际进度见[22组03](ai-docs/spec/22.开发自动化与持续测试/03-实施步骤与验收.md#51-独立worktree实施批次2026-10-20进行中)。业务评估继续沿原第15组；画板供Codex、Claude、Pi等外部开发Agent共用，BOAI产品不嵌入编辑器。现有MCP核心和历史Codex实测不代表共享Skill、其他真实客户端及跨Agent接续已完成，现行边界与待验项见22组05及03。
+历史记录（2026-10-28已由第22组06的新CI流程替代）：2026-10-20用户曾授权在独立worktree实施第22组四目标。旧UI比较使用`pnpm test:ui`，候选采集/逐case接受使用独立入口；普通CI禁止更新基线。范围和唯一实际进度见[22组03](ai-docs/spec/22.开发自动化与持续测试/03-实施步骤与验收.md#51-独立worktree实施批次2026-10-20进行中)。业务评估继续沿原第15组；画板供Codex、Claude、Pi等外部开发Agent共用，BOAI产品不嵌入编辑器。现有MCP核心和历史Codex实测不代表共享Skill、其他真实客户端及跨Agent接续已完成，现行边界与待验项见22组05及03。
 
 2026-10-25工程结构：Electron与CLI归apps，共享运行核心/传输/合同及插件归packages；[第26组](ai-docs/spec/26.Workspace工程结构重构/README.md)维护合同和实际进度。根命令与dist分布保持。
 

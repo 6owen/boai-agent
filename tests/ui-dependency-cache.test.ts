@@ -1,6 +1,5 @@
 /*
- * [OUTPUT]: 新采集/复验阶段仍不依赖缓存预热任务。
- * [INPUT]: 两个真实UI工作流、共享依赖Action和workspace安装输入。
+ * [INPUT]: 历史本地共享依赖Action和workspace安装输入。
  * [OUTPUT]: 防止依赖变化后复用旧安装，禁止安装目录前缀回退及业务产物混入缓存。
  * [POS]: CI依赖缓存合同，不启动产品或Electron。
  * [PROTOCOL]: 修改同步Header及tests/.folder.md。
@@ -38,29 +37,4 @@ it('安装目录未命中才严格安装；每次验证真实Electron后才能�
     expect(steps.indexOf(save)).toBeGreaterThan(verify)
     expect(save.if).toContain("steps.modules.outputs.cache-hit != 'true'")
   }
-})
-
-it('普通UI和候选只恢复安装，依赖变化的独立任务才预热', async () => {
-  for (const name of ['tests', 'ui-baseline-candidate']) {
-    const workflow = parse(await readFile(new URL(`../.github/workflows/${name}.yml`, import.meta.url), 'utf8'))
-    const job = workflow.jobs[name === 'tests' ? 'ui' : 'capture']
-    const setup = job.steps.findIndex((step: { uses?: string }) => step.uses === './.github/actions/setup-ui-dependencies')
-    expect(setup).toBeGreaterThan(0)
-    expect(job.steps.findIndex((step: { run?: string }) => step.run === 'pnpm build')).toBeGreaterThan(setup)
-    expect(job.steps[setup].with?.['save-cache']).not.toBe('true')
-  }
-})
-
-it('预热仅依赖输入变化自动触发，不进入必需UI门禁', async () => {
-  expect(action.inputs['save-cache'].default).toBe('false')
-  const workflow = parse(await readFile(new URL('../.github/workflows/ui-dependency-cache.yml', import.meta.url), 'utf8'))
-  expect(workflow.on.push.branches).toEqual(['main'])
-  expect(workflow.on.pull_request.paths).toEqual(workflow.on.push.paths)
-  for (const input of ['pnpm-lock.yaml', 'pnpm-workspace.yaml', 'package.json', 'apps/*/package.json', 'packages/*/package.json']) expect(workflow.on.push.paths).toContain(input)
-  expect(workflow.on.push.paths).not.toContain('**')
-  expect(workflow.jobs.warm.steps.find((step: { uses?: string }) => step.uses === './.github/actions/setup-ui-dependencies').with['save-cache']).toBe('true')
-  expect(workflow.jobs.warm.steps.some((step: { run?: string }) => step.run?.includes('pnpm build'))).toBe(false)
-  const tests = parse(await readFile(new URL('../.github/workflows/tests.yml', import.meta.url), 'utf8'))
-  expect(tests.jobs.required.needs).toEqual(['plan', 'capture', 'ui'])
-  expect(tests.jobs.required.needs).not.toContain('warm')
 })
