@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 商店元数据/ZIP fixture、真实 AppService/Mastra 工具链与隔离备份目录。
- * [OUTPUT]: 安装保留原员工权限/绑定、明确绑定后真实读取/发布及备份恢复，不假定核心员工初始无权限。
+ * [OUTPUT]: 安装保留原员工权限/绑定、明确绑定后真实读取/发布；等待后台收尾后备份恢复，不假定核心员工初始无权限。
  * [POS]: Skills 管理到业务任务交付的集成验收；网络只使用本地协议服务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -84,6 +84,13 @@ it('delivers evidence from a marketplace installation only after binding and pre
   const collections = await api('getSkillCollections', undefined)
   // Ephemeral content must not become restored business data.
   await mkdir(join(sourcePath, 'skill-staging/uncommitted'), { recursive: true }); await writeFile(join(sourcePath, 'skill-staging/uncommitted/sentinel'), 'temporary')
+  // A completed turn can still be extracting memories; backup requires the actual runtime to be idle.
+  const runtime = first.service as unknown as { scheduler: { busy: boolean }; runControllers: Map<string, unknown>; activeAdapters: Set<string> }
+  await vi.waitFor(() => {
+    expect(runtime.scheduler.busy).toBe(false)
+    expect(runtime.runControllers.size).toBe(0)
+    expect(runtime.activeAdapters.size).toBe(0)
+  }, { timeout: 10000 })
   const backupPath = join(root, 'backup'); await first.service.backup(backupPath)
   expect(await readdir(backupPath)).not.toContain('skill-staging')
   expect(JSON.parse(await readFile(join(backupPath, 'backup.json'), 'utf8')).credentialsIncluded).toBe(false)
