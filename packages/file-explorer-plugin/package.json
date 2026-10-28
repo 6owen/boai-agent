@@ -1,0 +1,31 @@
+{
+  "name": "@boai/file-explorer-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Official BOAI directory tree and file preview application plugin",
+  "exports": {
+    "./host": {
+      "types": "./src/host.ts",
+      "development": "./src/host.ts",
+      "default": "./src/host.ts"
+    },
+    "./explorer": {
+      "types": "./src/explorer.tsx",
+      "development": "./src/explorer.tsx",
+      "default": "./src/explorer.tsx"
+    },
+    "./tree": {
+      "types": "./src/tree.ts",
+      "development": "./src/tree.ts",
+      "default": "./src/tree.ts"
+    }
+  },
+  "dependencies": {
+    "@boai/shared": "workspace:*",
+    "@boai/ui": "workspace:*",
+    "@tanstack/react-virtual": "3.14.13",
+    "react": "19.3.0",
+    "zod": "4.6.5"
+  }
+}

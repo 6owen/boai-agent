@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-29 官方文件浏览器包、目录入口及相关构建/测试合同；JSON例外package.json增加包依赖及lint范围。
  * [OUTPUT]: Workspace源码路径迁至apps/packages，保留既有输出与业务合同。
  * [OUTPUT]: 共享UI和设计站沿同一图标/Sonner规则检查。
  * [INPUT]: Renderer TypeScript/TSX 源码与本地图标约束。
@@ -9,7 +10,7 @@
 import parser from '@babel/eslint-parser'
 
 export default [{
-  files: ['apps/electron/src/renderer/**/*.{ts,tsx}', 'packages/ui/src/**/*.{ts,tsx}', 'apps/design-docs/src/**/*.{ts,tsx}'],
+  files: ['apps/electron/src/renderer/**/*.{ts,tsx}', 'packages/ui/src/**/*.{ts,tsx}', 'packages/file-explorer-plugin/src/**/*.{ts,tsx}', 'apps/design-docs/src/**/*.{ts,tsx}'],
   languageOptions: { parser, parserOptions: { requireConfigFile: false, sourceType: 'module', babelOptions: { babelrc: false, configFile: false, plugins: [['@babel/plugin-syntax-typescript', { isTSX: true }]] } } },
   rules: {
     'no-restricted-syntax': ['error', {

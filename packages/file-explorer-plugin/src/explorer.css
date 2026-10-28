@@ -1,0 +1,28 @@
+/*
+ * [OUTPUT]: 2026-10-29 文件浏览器目录边界及真实回归覆盖；验证结果归第19组18。
+ * [INPUT]: BOAI semantic colors, font roles and shared detail panel size.
+ * [OUTPUT]: Resizable-container friendly file tree and preview; narrow panels stack panes.
+ * [POS]: Official file explorer layout only; no global selectors.
+ * [PROTOCOL]: Update Header and owning .folder.md when changed.
+ */
+.boai-explorer { display:flex; flex-direction:column; min-width:0; min-height:0; height:100%; flex:1; container-type:inline-size; }
+.boai-explorer-toolbar { display:flex; align-items:center; gap:4px; min-width:0; padding:8px; border-bottom:1px solid var(--border); }
+.boai-explorer-path { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted-foreground); font-size:var(--font-size-xs,12px); }
+.boai-explorer-panes { display:grid; grid-template-columns:minmax(160px,34%) minmax(0,1fr); flex:1; min-height:0; }
+.boai-explorer-tree { min-height:0; overflow:auto; border-right:1px solid var(--border); padding:6px 0; }
+.boai-explorer-rows { position:relative; min-width:0; }
+.boai-explorer-row { position:absolute; top:0; left:0; display:flex; align-items:center; width:100%; height:32px; gap:4px; padding-right:8px; cursor:pointer; font-size:var(--font-size-sm,13px); }
+.boai-explorer-row:hover,.boai-explorer-row:focus-visible { background:var(--muted); }
+.boai-explorer-row[aria-selected=true] { background:var(--accent); color:var(--accent-foreground); }
+.boai-explorer-row[aria-disabled=true] { opacity:.5; cursor:default; }
+.boai-explorer-chevron { flex-shrink:0; width:12px; height:12px; }
+.boai-explorer-icon { flex-shrink:0; width:16px; height:16px; }
+.boai-explorer-filename { display:flex; min-width:0; }
+.boai-explorer-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.boai-explorer-tail { flex-shrink:0; }
+.boai-explorer-preview { display:flex; flex-direction:column; min-width:0; min-height:0; overflow:hidden; padding:12px; }
+.boai-explorer-empty { padding:20px; text-align:center; color:var(--muted-foreground); font-size:var(--font-size-sm,13px); }
+@container (max-width: 480px) {
+  .boai-explorer-panes { grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(140px,35%) minmax(0,1fr); }
+  .boai-explorer-tree { border-right:0; border-bottom:1px solid var(--border); }
+}

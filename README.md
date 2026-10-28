@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-29 官方文件浏览器包、目录入口及相关构建/测试合同；JSON例外package.json增加包依赖及lint范围。
 [OUTPUT]: 根目录UI_TEST_CI.md提供日常UI修改、PR检查、合并与worktree收尾用法入口。
 [OUTPUT]: 2026-10-28按Magpie拆为Test与DeepSeek UI preview；固定PNG基准退出PR门禁，旧说明仅作历史，实际运行见22组03。
 [INPUT]: 现有产品能力、源码启动命令与resources/readme中的真实Electron界面截图。
@@ -128,3 +129,5 @@ ai-docs/             设计、规格与实施记录
 </details>
 
 2026-10-28：开发CI按[第22组06](ai-docs/spec/22.开发自动化与持续测试/06-UI回归基准与PR门禁.md)运行Test与DeepSeek UI preview；固定PNG基准更新不再是PR前置。
+
+官方文件浏览器：`@boai/file-explorer-plugin` 提供员工工作区与授权目录的文件树和预览，沿插件设置启停；目录边界与实际验证见[第19组18](ai-docs/spec/19.应用插件架构/18-文件浏览器插件与目录入口.md)。

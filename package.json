@@ -21,7 +21,7 @@
     "start": "electron .",
     "package": "pnpm build && electron-builder --dir",
     "dist:mac": "pnpm build && electron-builder --mac dmg",
-    "lint:ui": "eslint apps/electron/src/renderer packages/ui/src apps/design-docs/src && pnpm lint:typography",
+    "lint:ui": "eslint apps/electron/src/renderer packages/ui/src packages/file-explorer-plugin/src apps/design-docs/src && pnpm lint:typography",
     "test:bddgen": "bddgen",
     "test:electron:list": "pnpm test:bddgen && playwright test --list",
     "test:electron:report": "playwright show-report",
@@ -137,7 +137,8 @@
     "@boai/runtime-plugin-sdk": "workspace:*",
     "@boai/runtime-plugins": "workspace:*",
     "@boai/voice-input-plugin": "workspace:*",
-    "use-stick-to-bottom": "1.1.6"
+    "use-stick-to-bottom": "1.1.6",
+    "@boai/file-explorer-plugin": "workspace:*"
   },
   "build": {
     "appId": "com.boai.agent",

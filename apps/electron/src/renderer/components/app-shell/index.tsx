@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-29 员工工作区、会话授权目录分别命名并在撤权/成员移除/插件停用时卸载。
  * [OUTPUT]: 设置查询缓存的宿主事件与窗口恢复订阅由Shell统一持有，切换设置分类时保留快照和失效通知。
  * [OUTPUT]: 当前轮次补充复用冻结消息请求与回执核对，未知输入不自动重发。
  * [OUTPUT]: 本人菜单头像进入个人资料；个人设置快捷入口及其他配置进入模型连接，全部沿原草稿守卫，移除菜单分享/帮助。
@@ -97,6 +98,7 @@ import { shortcuts } from '@/stores/shortcuts'
 import { matchShortcut } from '@boai/shared/shortcuts'
 import { WorkspacePanel } from '../detail-panel/workspace-panel'
 import { WorkspaceHome } from '../detail-panel/workspace-home'
+import { useFileExplorerEnabled } from '@/stores/plugins'
 import { WorkspaceFiles } from '../detail-panel/workspace-files'
 import { WorkspaceTerminal } from '../detail-panel/workspace-terminal'
 import { closeWorkspaceTerminal } from '../detail-panel/workspace-terminal-sessions'
@@ -228,9 +230,21 @@ export function AppShell() {
   const detailTabs = detailWorkspaces[route.page] ?? emptyDetailTabs
   const allDetailTabs = Object.entries(detailWorkspaces).flatMap(([scope, state]) => state.tabs.map(tab => ({ scope, ...tab })))
   const dispatchDetails = (action: DetailTabsAction, scope: string = route.page) => dispatchWorkspace({ scope, action })
+  const filesEnabled = useFileExplorerEnabled()
+  useEffect(() => {
+    if (!snapshotReady) return
+    for (const tab of allDetailTabs) {
+      const target = tab.target
+      const employee = target.type === 'employee-workspace' ? snapshot.agents.find(agent => agent.id === target.id)
+        : target.type === 'user-workspace' && target.view === 'files' ? snapshot.agents.find(agent => agent.id === target.employeeId) : undefined
+      if (target.type === 'employee-workspace' || target.type === 'user-workspace' && target.view === 'files') {
+        const valid = filesEnabled && employee && (target.type === 'employee-workspace' || employee.directoryGrants?.length && snapshot.conversations.some(room => room.id === target.id && room.agentIds.includes(employee.id)))
+        if (!valid) dispatchWorkspace({ scope: tab.scope, action: { type: 'close', key: tab.key } })
+      }
+    }
+  }, [filesEnabled, snapshotReady, snapshot.agents, snapshot.conversations, detailWorkspaces])
   const tabHandles = useRef(new Map<string, DetailTabHandle>())
   const closingTerminals = useRef(new Set<string>())
-  const creatingTerminals = useRef(new Map<string, { requestId: string; pending: boolean }>())
   const [tabDirty, setTabDirty] = useState<Record<string, boolean>>({})
   const onTabDirty = useCallback((key: string, value: boolean) => setTabDirty(previous => {
     if (Boolean(previous[key]) === value) return previous
@@ -651,20 +665,6 @@ export function AppShell() {
     dispatchDetails({ type: 'close', key, keepWorkspace: true }, scope)
   }
   const showWorkspaceTerminal = (terminal: TerminalInfo, scope: string = route.page) => openPanel({ type: 'user-terminal', id: terminal.id, employeeId: terminal.employeeId, conversationId: terminal.conversationId, name: terminal.title }, scope)
-  const createWorkspaceTerminal = async (employeeId: string, conversationId: string, scope: string) => {
-    if (!api) return
-    const key = JSON.stringify([employeeId, conversationId]), previous = creatingTerminals.current.get(key)
-    if (previous?.pending) return
-    const request = { requestId: previous?.requestId ?? crypto.randomUUID(), pending: true }
-    creatingTerminals.current.set(key, request)
-    const origin = routeRef.current, originPanel = panelRef.current
-    try {
-      const result = await api.request('workspaceTerminal', { action: 'create', requestId: request.requestId, scope: { employeeId, conversationId } })
-      if (result.kind !== 'created') throw new Error('终端创建回执无效')
-      creatingTerminals.current.delete(key)
-      if (mounted.current && routeRef.current === origin && panelRef.current === originPanel && snapshotRef.current.conversations.some(room => room.id === conversationId && room.agentIds.includes(employeeId))) showWorkspaceTerminal(result.terminal, scope)
-    } catch (error) { request.pending = false; if (mounted.current) toast.error(errorText(error)) }
-  }
   const requestCloseTab = (key: string) => {
     if (tabDirty[key]) dispatchDetails({ type: 'select', key })
     tabHandles.current.get(key)?.close()
@@ -951,13 +951,13 @@ export function AppShell() {
   }
   const title = route.page === 'conversations' ? conversation?.title ?? '会话' : labels[route.page]
   const describePanel = (item: Panel) => {
-    const title = item.type === 'user-workspace' ? (item.view === 'start' ? '开始' : '工作区文件') : item.type === 'user-terminal' ? '终端' : item.type === 'workspace' ? '网页预览' : item.type === 'files' ? '文件' : item.type === 'channel-discussion' ? '历史会话' : item.type === 'channel-publish' ? '发送到渠道' : item.type === 'channel-files' ? '渠道文件' : item.type === 'channels' ? '渠道会话' : item.type === 'artifact' ? '成果预览' : item.type === 'material' ? '材料原文' : item.type === 'skill-updates' ? '技能更新' : item.type === 'automation-editor' ? (item.id ? '编辑定时任务' : '新建定时任务') : item.type === 'agent' ? '数字员工' : item.type === 'group' ? (snapshot.conversations.some(room => room.id === item.id && isChannelConversation(room)) ? '渠道信息' : '群聊详情') : item.type === 'trace' || item.type === 'activity' || item.type === 'automation-occurrence' ? '执行过程' : item.type === 'source' ? '数据源详情' : item.type === 'local-skill' ? '技能详情' : item.type === 'resource' ? '资源详情' : item.type === 'marketplace' ? '商店详情' : '任务详情'
-    const name = item.type === 'user-terminal' ? item.name ?? '终端' : item.type === 'user-workspace' && item.view === 'files' ? `${snapshot.agents.find(agent => agent.id === item.employeeId)?.name ?? '员工'} · 文件` : item.type === 'files' ? `${item.owner === 'employee' ? snapshot.agents.find(agent => agent.id === item.id)?.name ?? '员工' : snapshot.conversations.find(room => room.id === item.id)?.title ?? '会话'} · ${title}` : item.type === 'channels' ? `${snapshot.agents.find(a => a.id === item.id)?.name ?? '员工'}的渠道` : item.type === 'artifact' || item.type === 'material' ? item.name : item.type === 'automation-editor' ? item.name : item.type === 'marketplace' || item.type === 'local-skill' || item.type === 'source' ? item.name : item.type === 'trace' ? '执行' : item.type === 'agent' ? snapshot.agents.find(a => a.id === item.id)?.name : item.type === 'group' ? snapshot.conversations.find(c => c.id === item.id)?.title : item.type === 'resource' ? snapshot.resources.find(r => r.id === item.id)?.name : undefined
+    const title = item.type === 'employee-workspace' ? '工作区' : item.type === 'user-workspace' ? (item.view === 'start' ? '开始' : '授权目录') : item.type === 'user-terminal' ? '终端' : item.type === 'workspace' ? '网页预览' : item.type === 'files' ? '文件' : item.type === 'channel-discussion' ? '历史会话' : item.type === 'channel-publish' ? '发送到渠道' : item.type === 'channel-files' ? '渠道文件' : item.type === 'channels' ? '渠道会话' : item.type === 'artifact' ? '成果预览' : item.type === 'material' ? '材料原文' : item.type === 'skill-updates' ? '技能更新' : item.type === 'automation-editor' ? (item.id ? '编辑定时任务' : '新建定时任务') : item.type === 'agent' ? '数字员工' : item.type === 'group' ? (snapshot.conversations.some(room => room.id === item.id && isChannelConversation(room)) ? '渠道信息' : '群聊详情') : item.type === 'trace' || item.type === 'activity' || item.type === 'automation-occurrence' ? '执行过程' : item.type === 'source' ? '数据源详情' : item.type === 'local-skill' ? '技能详情' : item.type === 'resource' ? '资源详情' : item.type === 'marketplace' ? '商店详情' : '任务详情'
+    const name = item.type === 'employee-workspace' ? `${snapshot.agents.find(agent => agent.id === item.id)?.name ?? '员工'} · 工作区` : item.type === 'user-terminal' ? item.name ?? '终端' : item.type === 'user-workspace' && item.view === 'files' ? `${snapshot.agents.find(agent => agent.id === item.employeeId)?.name ?? '员工'} · 授权目录` : item.type === 'files' ? `${item.owner === 'employee' ? snapshot.agents.find(agent => agent.id === item.id)?.name ?? '员工' : snapshot.conversations.find(room => room.id === item.id)?.title ?? '会话'} · ${title}` : item.type === 'channels' ? `${snapshot.agents.find(a => a.id === item.id)?.name ?? '员工'}的渠道` : item.type === 'artifact' || item.type === 'material' ? item.name : item.type === 'automation-editor' ? item.name : item.type === 'marketplace' || item.type === 'local-skill' || item.type === 'source' ? item.name : item.type === 'trace' ? '执行' : item.type === 'agent' ? snapshot.agents.find(a => a.id === item.id)?.name : item.type === 'group' ? snapshot.conversations.find(c => c.id === item.id)?.title : item.type === 'resource' ? snapshot.resources.find(r => r.id === item.id)?.name : undefined
     const context = item.type === 'agent' || item.type === 'artifact' || item.type === 'material' ? snapshot.conversations.find(c => c.id === item.conversationId)?.title : (item.type === 'activity' || item.type === 'trace') ? snapshot.conversations.find(c => c.id === item.id)?.title : undefined
     const sameType = detailTabs.tabs.filter(tab => tab.target.type === item.type && (item.type !== 'agent' || (tab.target.type === 'agent' && tab.target.id === item.id))).length > 1
     const label = `${name ?? title}${sameType && context ? ` · ${context}` : ''}`
     const Icon = item.type === 'channels' ? MessageCircle : item.type === 'skill-updates' ? RefreshCw : item.type === 'agent' ? Contact : item.type === 'group' ? Users : item.type === 'artifact' || item.type === 'material' || item.type === 'resource' || item.type === 'marketplace' || item.type === 'local-skill' || item.type === 'source' || item.type === 'files' ? FileText : item.type === 'trace' || item.type === 'activity' || item.type === 'automation-occurrence' ? Workflow : Clock
-    return { title, label, description: [title, name, context].filter(Boolean).join(' · '), icon: item.type === 'user-terminal' ? <span className="i-carbon-terminal size-4" /> : item.type === 'user-workspace' ? <span className={item.view === 'start' ? 'i-solar-home-2-linear size-4' : 'i-solar-folder-linear size-4'} /> : <Icon /> }
+    return { title, label, description: [title, name, context].filter(Boolean).join(' · '), icon: item.type === 'employee-workspace' ? <span className="i-solar-folder-linear size-4" /> : item.type === 'user-terminal' ? <span className="i-carbon-terminal size-4" /> : item.type === 'user-workspace' ? <span className={item.view === 'start' ? 'i-solar-home-2-linear size-4' : 'i-solar-folder-linear size-4'} /> : <Icon /> }
   }
   const panelTitle = panel ? describePanel(panel).title : '详情'
   const effectiveList = listShown
@@ -1077,7 +1077,7 @@ export function AppShell() {
           focusMessage: route.focusMessage, focusApproval: route.focusApproval, scrollPosition: scrollPositions.current.get(conversation.id), onScrollPosition: position => scrollPositions.current.set(conversation.id, position),
          }):loading||detailLoading?<Loading>正在载入工作空间…</Loading>:<IllustratedEmpty kind="conversations" />}</div>
       </div></FloatingLayerScope>}
-      {route.page==='contacts'&&<ContactsPage onConversation={(id, messageId) => selectConversation(id, true, messageId)} active={route.page === 'contacts'} onCreateTeam={() => openCreation({ type: 'team' })} api={api} snapshot={snapshot} selected={contactSelection} onSelect={setContactSelection} onMessage={messageContact} onCreate={type=>openCreation({type})} refresh={refreshSnapshot} onAgentSaved={updateAgentSnapshot} onGroupSaved={updateGroupSnapshot} sidebarShown={effectiveList} divider={listResizer} generation={panelGeneration} busy={busy}/>}
+      {route.page==='contacts'&&<ContactsPage onWorkspace={id => openPanel({ type: 'employee-workspace', id })} onConversation={(id, messageId) => selectConversation(id, true, messageId)} active={route.page === 'contacts'} onCreateTeam={() => openCreation({ type: 'team' })} api={api} snapshot={snapshot} selected={contactSelection} onSelect={setContactSelection} onMessage={messageContact} onCreate={type=>openCreation({type})} refresh={refreshSnapshot} onAgentSaved={updateAgentSnapshot} onGroupSaved={updateGroupSnapshot} sidebarShown={effectiveList} divider={listResizer} generation={panelGeneration} busy={busy}/>}
       {route.page==='skills'&&<CustomizationWorkspace onRemoveSource={id => { for (const tab of detailTabs.tabs) if (tab.target.type === 'source' && tab.target.id === id) dispatchDetails({ type: 'close', key: tab.key }) }} focusSource={focusedSource} selectedSource={panel?.type === 'source' ? panel.id : undefined} onOpenSource={source => openPanel({ type: 'source', id: source.id, name: source.name, requestId: crypto.randomUUID() })} onManage={openCatalogManagement} onOpenSkill={skill => openPanel({ type: 'local-skill', id: skill.id, name: skill.name, requestId: crypto.randomUUID() })} onOpenMarketplace={item => openPanel({ type: 'marketplace', provider: item.provider, id: item.id, name: item.name })} api={api} section={skillsSection} onSection={setSkillsSection} provider={skillProvider} onProvider={setSkillProvider} divider={listResizer} onCheckUpdates={()=>openPanel({type:'skill-updates'})} focusSkill={focusedSkill} revision={skillsRevision} />}
       <SchedulePage onNavigateMessage={(id, messageId, current) => selectConversation(id, true, messageId, current)} api={api} snapshot={snapshot} active={route.page==='schedules'} sidebarShown={effectiveList} divider={listResizer} location={scheduleLocation} onLocation={setScheduleLocation} onCreateConversation={() => openCatalogManagement('automations')} selectedOccurrenceId={panel?.type === 'automation-occurrence' ? panel.id : undefined} onOccurrence={id => openPanel({ type: 'automation-occurrence', id }, 'schedules')}/>
       {settingsMounted.current && <div style={{ display: route.page === 'settings' ? 'contents' : 'none' }}><SettingsPage key={panelGeneration} divider={listResizer} tab={settingsSection} setTab={tab => { setLocalAgentTarget(undefined); setSettingsSection(tab) }} localAgentTarget={localAgentTarget} active={route.page === 'settings'} onOpenSkills={() => navigate(() => { setFocusedSource(undefined); setFocusedSkill(undefined); setSkillsSection('all'); applyRoute({ ...routeRef.current, page: 'skills' }) })} api={api} snapshot={snapshot} refresh={refreshSnapshot}/></div>}
@@ -1094,7 +1094,8 @@ export function AppShell() {
           const fileChannelId = fileRoom?.channel ? fileRoom.id : fileRoom?.channelDiscussion?.conversationId
           const targetRoom = target.type === 'group' ? snapshot.conversations.find(room => room.id === target.id) : undefined
           const content = <>
-            {target.type === 'user-workspace' && (target.view === 'start' || !target.employeeId ? <WorkspaceHome api={api} snapshot={snapshot} active={active} conversationId={target.id} employeeId={target.employeeId} onFiles={employeeId => openPanel({ type: 'user-workspace', id: target.id, employeeId, view: 'files' }, tab.scope)} onTerminal={terminal => showWorkspaceTerminal(terminal, tab.scope)} /> : <WorkspaceFiles api={api} active={active} employeeId={target.employeeId} conversationId={target.id} onHome={() => openPanel({ type: 'user-workspace', id: target.id, employeeId: target.employeeId, view: 'start' }, tab.scope)} onTerminal={() => void createWorkspaceTerminal(target.employeeId!, target.id, tab.scope)} />)}
+            {target.type === 'employee-workspace' && snapshot.agents.find(agent => agent.id === target.id) && <WorkspaceFiles api={api} active={active} agent={snapshot.agents.find(agent => agent.id === target.id)!} location="workspace" />}
+            {target.type === 'user-workspace' && (target.view === 'start' || !target.employeeId ? <WorkspaceHome api={api} snapshot={snapshot} active={active} conversationId={target.id} employeeId={target.employeeId} onFiles={employeeId => openPanel({ type: 'user-workspace', id: target.id, employeeId, view: 'files' }, tab.scope)} onTerminal={terminal => showWorkspaceTerminal(terminal, tab.scope)} /> : snapshot.agents.find(agent => agent.id === target.employeeId) && <WorkspaceFiles api={api} active={active} agent={snapshot.agents.find(agent => agent.id === target.employeeId)!} location="authorized" conversationId={target.id} onHome={() => openPanel({ type: 'user-workspace', id: target.id, employeeId: target.employeeId, view: 'start' }, tab.scope)} />)}
             {target.type === 'user-terminal' && <WorkspaceTerminal api={api} active={active} terminalId={target.id} />}
             {target.type === 'workspace' && target.view === 'preview' && <WorkspacePanel api={api} active={active} scope={{ employeeId: target.employeeId, conversationId: target.id }} />}
             {target.type === 'channel-publish' && <ChannelPublishPanel key={target.requestId} api={api} snapshot={snapshot} target={target} active={active} onBack={() => closeView()} />}

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-29 插件目录增加官方文件浏览器及筛选，启停使用原设置协议。
  * [OUTPUT]: 运行时目录共用读取缓存，仅当前可见分类轮询；语音入口与原插件真源保持。
  * [OUTPUT]: 页面布局复用settings-layout，标题/分组留白与卡片/设置行统一，原业务回调保持。
  * [OUTPUT]: 2026-10-19 原插件目录增加网页检索分类；启停仍由原宿主配置负责。
@@ -28,11 +29,11 @@ export function PluginSettingsPage({ onOpenVoice, active = true }: { onOpenVoice
   const [query, setQuery] = useState(''), [kind, setKind] = useState('all')
   const plugins = applicationPlugins.filter(plugin => (kind === 'all' || plugin.contributions.some(item => item.type === kind)) && `${plugin.name} ${plugin.description} ${plugin.id}`.toLowerCase().includes(query.trim().toLowerCase()))
   return <SettingsLayout title="插件" aria-label="内置插件">
-    <p className="field-hint mb-4">管理网页检索、文件预览、主题与本机 Agent 运行时。停用后对应能力将不可用，已有预览在关闭后生效。</p>
+    <p className="field-hint mb-4">管理文件浏览器、网页检索、文件预览、主题与本机 Agent 运行时。停用后对应能力将不可用，已有预览在关闭后生效。</p>
     {(error || settings.diagnostic) && <Banner>{error || settings.diagnostic}</Banner>}
     <div className="mb-4 flex items-center gap-2" data-plugin-filters>
       <Input className="min-w-0 flex-1" aria-label="搜索插件" placeholder="搜索插件" value={query} onChange={event => setQuery(event.target.value)} />
-      <div className="w-32 shrink-0"><SelectField className="h-(--control-height)" aria-label="插件类型" value={kind} onValueChange={setKind} options={[{ value: 'all', label: '全部类型' }, { value: 'voice-input', label: '语音输入' }, { value: 'preview', label: '文件预览' }, { value: 'theme', label: '主题' }, { value: 'web-search', label: '网页检索' }, { value: 'agent-runtime', label: 'Agent 运行时' }]} /></div>
+      <div className="w-32 shrink-0"><SelectField className="h-(--control-height)" aria-label="插件类型" value={kind} onValueChange={setKind} options={[{ value: 'all', label: '全部类型' }, { value: 'file-explorer', label: '文件浏览器' }, { value: 'voice-input', label: '语音输入' }, { value: 'preview', label: '文件预览' }, { value: 'theme', label: '主题' }, { value: 'web-search', label: '网页检索' }, { value: 'agent-runtime', label: 'Agent 运行时' }]} /></div>
     </div>
     <SettingsCard contentClassName="soft-divide-y px-4 py-0">
       {plugins.map(plugin => {

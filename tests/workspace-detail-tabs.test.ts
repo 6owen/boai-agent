@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-29 文件浏览器入口/预览/启停与目录撤权回归，原终端生命周期断言保持。
  * [INPUT]: 工作区文件/开始身份、真实终端ID和跨页面清理事件。
  * [OUTPUT]: 文件按员工隔离、终端保持实例、显式关闭回开始和清理不复活的状态合同。
  * [POS]: 工作区详情标签回归；不创建PTY或读取真实文件。
@@ -56,4 +57,14 @@ describe('user workspace tabs', () => {
   it('does not reopen the retired employee terminal target', () => {
     expect(detailTabsReducer(emptyDetailTabs, { type: 'open', target: { type: 'workspace', id: 'room', employeeId: 'a', view: 'terminal' } })).toBe(emptyDetailTabs)
   })
+})
+
+it('keeps employee configuration workspace distinct from conversation authorized directories and delivered files', () => {
+  let state = emptyDetailTabs
+  for (const target of [
+    { type: 'employee-workspace', id: 'a' }, { type: 'employee-workspace', id: 'a' },
+    { type: 'user-workspace', id: 'room', employeeId: 'a', view: 'files' },
+    { type: 'files', owner: 'employee', id: 'a' },
+  ] as DetailTarget[]) state = detailTabsReducer(state, { type: 'open', target })
+  expect(state.tabs.map(tab => tab.key)).toEqual(['employee-workspace:a', 'user-workspace:room:a:files', 'files:employee:a'])
 })
