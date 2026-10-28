@@ -1,4 +1,4 @@
-# [OUTPUT]: PR先采集并分类；视觉待审阅保持Required pending，基准提交后两片只读复验。
+# [OUTPUT]: PR先采集并用candidate模式生成旧/新/diff材料；视觉待审阅保持Required pending，基准后只读复验。
 # [OUTPUT]: 两级依赖缓存精确命中跳过安装；完整UI与原件门禁按版本化合同执行。
 # [INPUT]: 面向 main 的 PR、main push 或手动触发；版本化 UI 合同与已接受基线。
 # [OUTPUT]: 源码更新全UI只读比较；Draft/Ready不重复触发同SHA，原Required checks和main复验保持。
@@ -79,7 +79,7 @@ jobs:
           if-no-files-found: warn
       - name: Generate UI review report
         if: always()
-        run: node scripts/ui-review-report.mjs report .local/ui-candidate .local/ui-review
+        run: node scripts/ui-review-report.mjs candidate .local/ui-candidate .local/ui-review
       - uses: actions/upload-artifact@v4
         id: review
         if: always()

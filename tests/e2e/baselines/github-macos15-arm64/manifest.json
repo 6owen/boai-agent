@@ -634,112 +634,112 @@
       "acceptedAt": "2026-10-27T08:29:46.555Z"
     },
     "schedules-light": {
-      "sha256": "9dbd27cf9a18e77fbf76e5fa800a0ab77e86941d272a59b9a290c1bdaceda580",
+      "sha256": "e39a84f64eb98dd63a0e065b9cc86f2fe976505aaa5a74dfc0aafe5026c63c11",
       "contract": "f53fc11532b5ee04e1ad331bf68f190e2985c51338ea1c906495906b1aace3c5",
       "source": {
-        "commit": "95b5426368100db8540b5ef41226959213b8a80c",
-        "sourceHash": "f26b7d9cde673fbe80e0ccc8caa13545fdabdd0d5c3a100252fc0c9d0fed7e57",
+        "commit": "71d946a41a980f52c40ccb15e55eb972f1e712e3",
+        "sourceHash": "b435b6e0db6372a560d6d5e0f6647c6a043b8c2f7777840b50054b080e1fd34d",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "8a534030e91e0f10d3411d9042d3e476cf24d9ff5e80d2007eacc05365fef6f6",
-        "outputHash": "eb5121ccb63f9bf2296ee326788d82c488fd37d10e3bf1cf4c59cacdb0b1aa14",
+        "inputHash": "057618acb5ae9f5de38c641d497f510147056350066bb0a69546bc19bd52969f",
+        "outputHash": "6da690a398bd5200d753dc88db807e3f929d0b3673230c03ac41863c2e3ede23",
         "node": "v24.16.0",
-        "createdAt": "2026-10-27T10:04:15.357Z"
+        "createdAt": "2026-10-28T03:49:37.627Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "40485363446",
+        "runId": "40628660875",
         "attempt": 1,
-        "commit": "95b5426368100db8540b5ef41226959213b8a80c",
-        "artifactId": 12725536150,
-        "digest": "sha256:321154b75d7b6de57cde973e6028e976f61d2fc81a150acf4097bf9da961b099"
+        "commit": "71d946a41a980f52c40ccb15e55eb972f1e712e3",
+        "artifactId": 12790876723,
+        "digest": "sha256:67687d6692d930df83a4371de61fb007a587d9aa6236c8ca1ea7ef152a539325"
       },
-      "reason": "用户已确认定时任务分组、执行记录动效和本人菜单；官方26场通过，六张新图逐项审阅，原20图零像素变化",
-      "candidate": "695ce4b8-8bcd-4919-9922-c9e06a559711",
-      "acceptedAt": "2026-10-27T10:17:11.911Z"
+      "reason": "用户要求全部PR合入main；按现行Agent审阅流程逐项查看四场旧新diff，定时任务侧栏搜索框移除且列表上移符合PR48需求，执行历史和管理弹窗内容布局保持；菜单单行及取消不删、确认仅删目标和历史保留的26场行为布局采集全部通过；其余22图逐字节一致，仅在线更新四张受影响基准，合同阈值mask不变。",
+      "candidate": "59c7190a-1201-41fc-9e83-6d6a53b8d3d4",
+      "acceptedAt": "2026-10-28T03:59:17.712Z"
     },
     "schedules-dark": {
-      "sha256": "e643c283b662ab53dcc5a6797d383e0ff217d72030100b084ae8be7ce8efceb2",
+      "sha256": "d01ebd9c4229e5107d4b7f7f64d905f3e6dfdc6a10f666d7d8e3f31f8abbe720",
       "contract": "0a76165a4bcb0098333e110b7bd7448cab2905a94b92727dc4bb4b60b5f73bdd",
       "source": {
-        "commit": "95b5426368100db8540b5ef41226959213b8a80c",
-        "sourceHash": "f26b7d9cde673fbe80e0ccc8caa13545fdabdd0d5c3a100252fc0c9d0fed7e57",
+        "commit": "71d946a41a980f52c40ccb15e55eb972f1e712e3",
+        "sourceHash": "b435b6e0db6372a560d6d5e0f6647c6a043b8c2f7777840b50054b080e1fd34d",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "8a534030e91e0f10d3411d9042d3e476cf24d9ff5e80d2007eacc05365fef6f6",
-        "outputHash": "eb5121ccb63f9bf2296ee326788d82c488fd37d10e3bf1cf4c59cacdb0b1aa14",
+        "inputHash": "057618acb5ae9f5de38c641d497f510147056350066bb0a69546bc19bd52969f",
+        "outputHash": "6da690a398bd5200d753dc88db807e3f929d0b3673230c03ac41863c2e3ede23",
         "node": "v24.16.0",
-        "createdAt": "2026-10-27T10:04:15.357Z"
+        "createdAt": "2026-10-28T03:49:37.627Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "40485363446",
+        "runId": "40628660875",
         "attempt": 1,
-        "commit": "95b5426368100db8540b5ef41226959213b8a80c",
-        "artifactId": 12725536150,
-        "digest": "sha256:321154b75d7b6de57cde973e6028e976f61d2fc81a150acf4097bf9da961b099"
+        "commit": "71d946a41a980f52c40ccb15e55eb972f1e712e3",
+        "artifactId": 12790876723,
+        "digest": "sha256:67687d6692d930df83a4371de61fb007a587d9aa6236c8ca1ea7ef152a539325"
       },
-      "reason": "用户已确认定时任务分组、执行记录动效和本人菜单；官方26场通过，六张新图逐项审阅，原20图零像素变化",
-      "candidate": "695ce4b8-8bcd-4919-9922-c9e06a559711",
-      "acceptedAt": "2026-10-27T10:17:11.911Z"
+      "reason": "用户要求全部PR合入main；按现行Agent审阅流程逐项查看四场旧新diff，定时任务侧栏搜索框移除且列表上移符合PR48需求，执行历史和管理弹窗内容布局保持；菜单单行及取消不删、确认仅删目标和历史保留的26场行为布局采集全部通过；其余22图逐字节一致，仅在线更新四张受影响基准，合同阈值mask不变。",
+      "candidate": "59c7190a-1201-41fc-9e83-6d6a53b8d3d4",
+      "acceptedAt": "2026-10-28T03:59:17.717Z"
     },
     "schedule-manager-light": {
-      "sha256": "0f365a634f47e6e27e6aa8cb02a9b360a2f8b8026a8270b58e2f1448d97ea05e",
+      "sha256": "64371d6504ef0ada509d40724fb3a624d0925d7bf1e7489f0f417e4cb24567eb",
       "contract": "fa7917a5a59ff6e7f05bd775f86640aae12eca33eb0cdf082a7324b38e1a6ede",
       "source": {
-        "commit": "8aca3cf3e860de77a82ce023e5729575d3efeebd",
-        "sourceHash": "cf1fd4bd4ed43999599df9d3e3db3b24a6aa0ccb191e209f549eeba528666fb1",
+        "commit": "71d946a41a980f52c40ccb15e55eb972f1e712e3",
+        "sourceHash": "b435b6e0db6372a560d6d5e0f6647c6a043b8c2f7777840b50054b080e1fd34d",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "2e2df7dd4a94b8ad183746dc0cbb4511ac3bdb378cdaf878835ae3d04a7ce7ae",
-        "outputHash": "9753ed47511e0a9672c1edb9141b526b4ddab6cbcb4c968e84da3afc7468e764",
+        "inputHash": "057618acb5ae9f5de38c641d497f510147056350066bb0a69546bc19bd52969f",
+        "outputHash": "6da690a398bd5200d753dc88db807e3f929d0b3673230c03ac41863c2e3ede23",
         "node": "v24.16.0",
-        "createdAt": "2026-10-28T02:55:28.585Z"
+        "createdAt": "2026-10-28T03:49:37.627Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "40623612311",
+        "runId": "40628660875",
         "attempt": 1,
-        "commit": "8aca3cf3e860de77a82ce023e5729575d3efeebd",
-        "artifactId": 12788477397,
-        "digest": "sha256:a60ce0577b4bb14d8a6e2615fd7e87d188b1c9d5f04d1679b2fee664a71e6c18"
+        "commit": "71d946a41a980f52c40ccb15e55eb972f1e712e3",
+        "artifactId": 12790876723,
+        "digest": "sha256:67687d6692d930df83a4371de61fb007a587d9aa6236c8ca1ea7ef152a539325"
       },
-      "reason": "用户已明确接受轻量遮罩，保留半透明底色与原缩放淡入；官方候选26场全部通过，旧新差异已审阅，仅两张定时任务管理图取消背景模糊，弹窗位置和内容保持；暗色选中框另有16像素仅差1级通道值，无布局或状态变化，其余24图逐字节一致；不改阈值或mask。",
-      "candidate": "6aa2f587-803a-4d6b-b1cc-8691cc697971",
-      "acceptedAt": "2026-10-28T03:03:47.946Z"
+      "reason": "用户要求全部PR合入main；按现行Agent审阅流程逐项查看四场旧新diff，定时任务侧栏搜索框移除且列表上移符合PR48需求，执行历史和管理弹窗内容布局保持；菜单单行及取消不删、确认仅删目标和历史保留的26场行为布局采集全部通过；其余22图逐字节一致，仅在线更新四张受影响基准，合同阈值mask不变。",
+      "candidate": "59c7190a-1201-41fc-9e83-6d6a53b8d3d4",
+      "acceptedAt": "2026-10-28T03:59:17.717Z"
     },
     "schedule-manager-dark": {
-      "sha256": "997dc4ea864d003e5d2fd5fed8431bce2b8d60b6a6e33d8fb37d25eb28bd653a",
+      "sha256": "0470d47261c37911d5dee509c1489a3cfad5e829d65e92c5aeb4ffa6a1cfa8f7",
       "contract": "586f9def5bc435c1645802766d1348c1eb5a371664937c4381ed6a4c153f605a",
       "source": {
-        "commit": "8aca3cf3e860de77a82ce023e5729575d3efeebd",
-        "sourceHash": "cf1fd4bd4ed43999599df9d3e3db3b24a6aa0ccb191e209f549eeba528666fb1",
+        "commit": "71d946a41a980f52c40ccb15e55eb972f1e712e3",
+        "sourceHash": "b435b6e0db6372a560d6d5e0f6647c6a043b8c2f7777840b50054b080e1fd34d",
         "dirty": false
       },
       "built": {
         "version": 1,
-        "inputHash": "2e2df7dd4a94b8ad183746dc0cbb4511ac3bdb378cdaf878835ae3d04a7ce7ae",
-        "outputHash": "9753ed47511e0a9672c1edb9141b526b4ddab6cbcb4c968e84da3afc7468e764",
+        "inputHash": "057618acb5ae9f5de38c641d497f510147056350066bb0a69546bc19bd52969f",
+        "outputHash": "6da690a398bd5200d753dc88db807e3f929d0b3673230c03ac41863c2e3ede23",
         "node": "v24.16.0",
-        "createdAt": "2026-10-28T02:55:28.585Z"
+        "createdAt": "2026-10-28T03:49:37.627Z"
       },
       "provenance": {
         "version": 1,
-        "runId": "40623612311",
+        "runId": "40628660875",
         "attempt": 1,
-        "commit": "8aca3cf3e860de77a82ce023e5729575d3efeebd",
-        "artifactId": 12788477397,
-        "digest": "sha256:a60ce0577b4bb14d8a6e2615fd7e87d188b1c9d5f04d1679b2fee664a71e6c18"
+        "commit": "71d946a41a980f52c40ccb15e55eb972f1e712e3",
+        "artifactId": 12790876723,
+        "digest": "sha256:67687d6692d930df83a4371de61fb007a587d9aa6236c8ca1ea7ef152a539325"
       },
-      "reason": "用户已明确接受轻量遮罩，保留半透明底色与原缩放淡入；官方候选26场全部通过，旧新差异已审阅，仅两张定时任务管理图取消背景模糊，弹窗位置和内容保持；暗色选中框另有16像素仅差1级通道值，无布局或状态变化，其余24图逐字节一致；不改阈值或mask。",
-      "candidate": "6aa2f587-803a-4d6b-b1cc-8691cc697971",
-      "acceptedAt": "2026-10-28T03:03:47.953Z"
+      "reason": "用户要求全部PR合入main；按现行Agent审阅流程逐项查看四场旧新diff，定时任务侧栏搜索框移除且列表上移符合PR48需求，执行历史和管理弹窗内容布局保持；菜单单行及取消不删、确认仅删目标和历史保留的26场行为布局采集全部通过；其余22图逐字节一致，仅在线更新四张受影响基准，合同阈值mask不变。",
+      "candidate": "59c7190a-1201-41fc-9e83-6d6a53b8d3d4",
+      "acceptedAt": "2026-10-28T03:59:17.717Z"
     },
     "user-menu-light": {
       "sha256": "a072c0caebeb5086b8da3cd680ba7790714a6e15f29e5bc7f8ab33a248a2a490",
