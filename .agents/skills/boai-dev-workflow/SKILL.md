@@ -5,6 +5,8 @@ description: BOAI 共享开发流程；沿 Magpie Test 和 DeepSeek UI preview �
 <!--
 [INPUT]: 当前用户任务、独立worktree及Magpie Test/UI preview源码。
 [OUTPUT]: 工程测试与自动界面预览；撤销固定截图基准更新作为PR前置。
+[OUTPUT]: 任务worktree完成即回收；实际合并或最终提交archive存档二选一，编排会话负责子worktree。
+[OUTPUT]: 面向使用者的UI_TEST_CI.md与本技能及实际workflow保持一致。
 [POS]: Codex、Claude、Pi共用开发技能。
 [PROTOCOL]: 变化同步Header、所属.folder.md与第22组06现行合同。
 -->
@@ -28,6 +30,8 @@ description: BOAI 共享开发流程；沿 Magpie Test 和 DeepSeek UI preview �
 
 开发完成 → 提交功能分支/PR → Test 与 UI preview 自动运行 → 查看实际检查和PR预览 → 按本次授权交付。
 
+面向使用者的流程与常见状态说明见 [UI_TEST_CI.md](../../../UI_TEST_CI.md)；执行依据保持本技能、AGENTS.md及实际workflow，变化时同步该说明。
+
 - `Test` 沿 Magpie 的 PR/main/manual 触发与并发取消方式，用BOAI现有 typecheck、lint、build、Vitest 命令；CLI集成测试依赖dist/cli，因此先构建再测试。现阶段在已支持的macOS执行；Required checks只汇总工程测试结果，保持原分支保护名称。
 - `UI preview` 沿上游 detect → record → publish：UI文件变更或ui-preview标签触发；DeepSeek读取diff及真实页面，规划操作、截图，交互时录屏，在PR描述固定区域更新预览。已有DeepSeek配置通过ui-preview environment提供。
 - 执行PR代码的record任务没有仓库写权限；有写权限的publish任务不运行PR代码。预览是运行画面与规划说明，不冒充工程测试通过。
@@ -40,6 +44,6 @@ description: BOAI 共享开发流程；沿 Magpie Test 和 DeepSeek UI preview �
 - 根据本次授权创建或更新同一PR。普通授权交付沿既有默认自动合并；用户明确只修改/测试或不合并时，不设置自动合并。
 - 允许合并时核对仓库/main与当前head，使用 `gh pr merge --auto --merge --match-head-commit <SHA>`，读回一次回执。只有明确要求等到通过或处理失败才持续跟进。
 - 不使用admin、强推或放宽分支保护。确认实际合并后才在干净main同步。
-- 仅回收已合并、干净、没有活动进程/任务和需保留数据的worktree。先移除worktree，再删除本地分支；不为回收常驻等待。
+- 按AGENTS.md“worktree不遗留”收尾，包括subagent派生目录：最终提交实际合入main，或提交本任务改动并核对`archive/<worktree名>`归档标签后，移除worktree及本地任务分支，并清理经核实的专用cargo target。核对进程退出、CWD移出、未跟踪/ignored数据迁出及共享目录边界；编排会话负责子worktree。确需保留时，最终回复必须点名路径与原因。自动合并仍待检查时可先按归档路径回收本地worktree，不冒称已合并。
 
-现行上游与必要适配见 `.github/ui-preview/README.md`。Tag、Release、安装包发布不属于日常交付。
+现行上游与必要适配见 `.github/ui-preview/README.md`。版本Tag、Release、安装包发布不属于日常交付；本地`archive/*`标签仅用于任务收尾存档。
