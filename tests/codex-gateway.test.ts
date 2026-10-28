@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Gateway source/credential contracts and production AppService with an isolated native Codex fixture.
- * [OUTPUT]: Explicit Responses model/default and revision ownership, private environment, source rejection, session changes and restart without replay.
+ * [OUTPUT]: Explicit Responses/source contracts using a version-file fixture, with confirmed gateway version and no replay.
  * [POS]: G2 Codex source integration; offline fixture does not certify real CLI or supplier quality.
  * [PROTOCOL]: Update Header and tests/.folder.md when changing coverage.
  */
@@ -57,11 +57,12 @@ test('production Codex binds default model/provider, rejects source mismatch bef
   const root = await realpath(await mkdtemp(join(tmpdir(), 'boai-codex-gateway-')))
   disposals.push(() => rm(root, { recursive: true, force: true }))
   const executable = join(root, 'codex.mjs'), observations = join(root, 'source-observations.jsonl')
-  let cli = (await readFile(resolve('tests/fixtures/native-conversation.mjs'), 'utf8')).replace('boai_agent/0.161.0 (fixture)', 'boai_agent/0.162.1 (fixture)')
+  let cli = await readFile(resolve('tests/fixtures/native-conversation.mjs'), 'utf8')
   cli = cli.replace("model:'fixture'}})", "model:params.model??'fixture',modelProvider:params.model==='mismatch'?'wrong-provider':params.modelProvider}})")
   cli = cli.replace("await appendFile('native-thread-requests.jsonl'", `await appendFile(${JSON.stringify(observations)},JSON.stringify({method,model:params.model,provider:params.modelProvider,threadId:params.threadId,keyIsPublic:process.env.BOAI_CODEX_GATEWAY_API_KEY==='magpie-boai'})+'\\n'); await appendFile('native-thread-requests.jsonl'`)
   cli = cli.replace("await appendFile('native-turn-requests.jsonl'", `await appendFile(${JSON.stringify(observations)},JSON.stringify({method,threadId:params.threadId})+'\\n'); await appendFile('native-turn-requests.jsonl'`)
   await writeFile(executable, cli); await chmod(executable, 0o700)
+  await writeFile(join(root, 'native-version.txt'), '0.162.1')
   await copyFile(resolve('tests/fixtures/native-business.mjs'), join(root, 'native-business.mjs'))
   let apiCalls = 0
   const options = { dataPath: root, engine: { run: async () => { apiCalls++; throw new Error('No API parent') }, test: async () => '' }, secrets: { get: async () => undefined, set: async () => {}, delete: async () => {} }, emit: () => {} }
@@ -69,6 +70,7 @@ test('production Codex binds default model/provider, rejects source mismatch bef
   const draft = { name: 'Managed Codex', executable, args: [], protocol: 'codex-app-server', useExistingLogin: false, hostAccessAcknowledged: true }
   await service.handle('testLaunchProfileDraft', draft)
   const profile = await service.handle('saveLaunchProfile', draft) as LaunchProfile
+  expect(profile.verified?.version).toBe('0.162.1')
   const input = { name: 'Magpie', provider: 'openai-compatible', baseUrl: 'http://127.0.0.1:3425/relay', defaultModel: 'group/work', gateway: source().gateway }
   const connection = await service.handle('saveConnection', input) as Connection
   const agent = await service.handle('saveAgent', { name: '网关员工', role: '写作', instructions: '按消息回答', color: '#00AABB', connectionId: connection.id, modelId: '', executionBackend: { kind: 'codex-local', profileId: profile.id }, skillIds: [], knowledgeIds: [], allowCommands: true, active: true }) as DigitalAgent
