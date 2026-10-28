@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-29 tailwind扫描官方file-explorer-plugin的图标和组件类名。
  * [OUTPUT]: 共享UI源码纳入类名发现，语义映射迁入@boai/ui/theme.css。
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [OUTPUT]: 导入作用域化Beautiful UI SelectionActions原版token，避免覆盖全局主题。
@@ -27,3 +28,5 @@
   .app-shell :where(button, input, select, textarea):not([data-slot]) { padding: revert; border: revert; background: revert; }
   small { font-size: revert; }
 }
+
+@source "../../../../../packages/file-explorer-plugin/src";

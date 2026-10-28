@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-29 工作区目录/预览调用由官方file-explorer-plugin宿主处理，原终端resolver独立。
  * [OUTPUT]: 2026-10-28 语音模型操作透传显式modelId/action，由宿主唯一schema校验。
  * [OUTPUT]: 语音设置关闭/隐藏前等待自动保存，未结束写入不允许直接退出。
  * [OUTPUT]: 语音设备授权仅接可信主窗口短期租约，原media检查/生命周期释放保持。
@@ -244,7 +245,7 @@ const resolveUserWorkspace = async (scope: WorkspaceFileScope) => {
   if (quitting) throw new Error('应用正在退出')
   return await requestRuntime('getWorkspaceRoot', scope) as string
 }
-const workspaceFiles = new WorkspaceFileService(resolveUserWorkspace, (path, action, applicationId) => workspaceApplications.open(path, action, applicationId))
+const workspaceFiles = new WorkspaceFileService(resolveUserWorkspace, (path, action, applicationId) => workspaceApplications.open(path, action, applicationId), () => pluginAvailability(applicationPlugins.find(plugin => plugin.id === 'boai.file-explorer')!, pluginSettings.snapshot()) === 'enabled')
 const userTerminals = new WorkspaceTerminalService(dataPath, {
   resolveScope: resolveUserWorkspace,
   validateScope: async scope => {
@@ -704,6 +705,7 @@ function registerIpc() {
         if (typeof candidate?.source !== 'string' || !selectedPaths.has(await realpath(candidate.source))) throw new Error('请先通过文件选择器选择技能目录或 ZIP。')
       }
     }
+    if (method === 'previewWorkspaceFile') return workspaceFiles.preview(input)
     if (method === 'listWorkspaceFiles') return workspaceFiles.list(input)
     if (method === 'openWorkspacePath') return workspaceFiles.open(input)
     if (method === 'listWorkspaceApplications') {

@@ -47,7 +47,8 @@
     "@xterm/addon-fit": "0.10.0",
     "@xterm/addon-serialize": "0.13.0",
     "@boai/voice-input-plugin": "workspace:*",
-    "use-stick-to-bottom": "1.1.6"
+    "use-stick-to-bottom": "1.1.6",
+    "@boai/file-explorer-plugin": "workspace:*"
   },
   "devDependencies": {
     "electron": "39.2.7",

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-29 包边界纳入file-explorer-plugin；build分发固定来源和MIT许可。
  * [OUTPUT]: 2026-10-28 本地语音helper及引擎适配器共同分发，模型权重仍按需下载。
  * [OUTPUT]: 2026-10-27 语音包分发、工作区依赖或静音诊断候选；不代表产品验收。
  * [INPUT]: Electron/CLI应用目标、当前worktree源码、默认技能及来源许可。
@@ -73,6 +74,8 @@ async function buildElectronHost(compile) {
     compile({ entryPoints: ['apps/electron/src/preload/index.ts'], outfile: 'dist/main/preload.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron'] }),
     compile({ entryPoints: ['apps/electron/src/worker/index.ts'], outfile: 'dist/runtime/worker.mjs', bundle: true, platform: 'node', format: 'esm', target: 'node22', packages: 'external', sourcemap: true }),
   ])
+  await mkdir('dist/file-explorer', { recursive: true })
+  for (const name of ['LICENSE.txt', 'source-manifest.json']) await copyFile(`packages/file-explorer-plugin/${name}`, `dist/file-explorer/${name}`)
   await mkdir('dist/voice-input', { recursive: true })
   for (const name of ['local-helper.cjs', 'local-recognizers.cjs', 'local-audio.cjs']) await copyFile(`packages/voice-input-plugin/src/${name}`, `dist/voice-input/${name}`)
   await mkdir('dist/main/app-icons/tray', { recursive: true })

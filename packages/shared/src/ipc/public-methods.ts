@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-29 workspace-files增加授权根及预览DTO，index/public-methods接可信桌面预览入口。
  * [OUTPUT]: 网页检索草稿测试进入原公共IPC准入，不开放任意请求地址。
  * [OUTPUT]: 定时任务列表偏好独立 CAS 读写及变更事件，不改执行配置。
  * [OUTPUT]: 允许可信桌面语音设置保存排空回执。
@@ -290,6 +291,7 @@ const methods = {
   getWorkspaceRoot: false,
   validateWorkspaceScope: false,
   listWorkspaceFiles: true,
+  previewWorkspaceFile: true,
   listWorkspaceApplications: true,
   openWorkspacePath: true,
   workspaceTerminal: true,

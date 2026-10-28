@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-29 文件浏览器入口/预览/启停与目录撤权回归，原终端生命周期断言保持。
  * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
  * [OUTPUT]: 2026-10-27 语音主要控件220px同宽、辅助操作居左和快捷键无箭头；自动保存、持久化及零下载合同保持。
 [OUTPUT]: 配色菜单先核实际打开及回退选项，再核禁用主题缺席与Escape关闭；不把尚未显示时按键当作关闭验证。
@@ -37,7 +38,7 @@ async function toggle(page: Page, name: string, checked: boolean) {
 }
 Given('内置插件管理在独立桌面打开', async ({ runtime }) => {
   await start(runtime)
-  await expect.poll(() => runtime.page.locator('[data-application-plugin]').evaluateAll(elements => elements.map(element => element.getAttribute('data-application-plugin')).sort())).toEqual(['boai.preview.text', 'boai.preview.image', 'boai.preview.pdf', 'boai.preview.office', 'boai.theme.vscode-plus', 'boai.theme.base46', 'boai.search.deepseek', 'boai.runtime.pi', 'boai.runtime.opencode', 'boai.voice-input'].sort())
+  await expect.poll(() => runtime.page.locator('[data-application-plugin]').evaluateAll(elements => elements.map(element => element.getAttribute('data-application-plugin')).sort())).toEqual(['boai.preview.text', 'boai.preview.image', 'boai.preview.pdf', 'boai.preview.office', 'boai.theme.vscode-plus', 'boai.theme.base46', 'boai.search.deepseek', 'boai.runtime.pi', 'boai.runtime.opencode', 'boai.voice-input', 'boai.file-explorer'].sort())
   await expect.poll(() => settings(runtime.page)).toEqual({ revision: 0, disabledIds: [], enabledIds: [] })
   const filters = runtime.page.locator('[data-plugin-filters]')
   expect(await filters.evaluate(element => {

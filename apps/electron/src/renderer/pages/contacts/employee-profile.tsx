@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-29 员工资料页新增工作区按钮，打开共享右侧面板并沿原草稿守卫。
  * [OUTPUT]: 身份自动保存单独标记，顶部操作和悬停编辑保持原外观，同时继续锁定保存期间的导航。
  * [OUTPUT]: 身份保存将服务端回执局部更新到员工快照，避免重新读取整个页面；分区草稿、光标与滚动保持。
  * [INPUT]: 当前员工快照、原版本化编辑器、页面草稿守卫与高级配置弹窗。
@@ -13,16 +14,19 @@ import { GuardContext } from '@/components/common'
 import { AgentEditor, type AgentConfigurationSection } from '@/components/employee/editors'
 import { EmployeeOverview } from '@/components/employee/overview'
 import type { EmployeeSectionEditing } from '@/components/employee/profile-card'
-import { MessageCircle, Settings } from '@/components/icons'
+import { MessageCircle, Settings, FolderOpen } from '@/components/icons'
 import { Button } from '@/components/ui/button'
+import { useFileExplorerEnabled } from '@/stores/plugins'
 import { ContactEditorDialog } from './contact-editor-layout'
 
-export function EmployeeProfile({ api, snapshot, agent, active, busy, refresh, onAgentSaved, onMessage, advancedOpen, onAdvancedChange, onOpenAgent, onConversation }: {
+export function EmployeeProfile({ api, snapshot, agent, active, busy, refresh, onAgentSaved, onMessage, onWorkspace, advancedOpen, onAdvancedChange, onOpenAgent, onConversation }: {
   api: DesktopApi; snapshot: Snapshot; agent: DigitalAgent; active: boolean; busy: boolean
   refresh(): Promise<void>; onMessage(): void; advancedOpen: boolean; onAdvancedChange(open: boolean): void
+  onWorkspace(id: string): void
   onAgentSaved(agent: DigitalAgent): void
   onOpenAgent(id: string): void; onConversation(id: string, messageId?: string): void
 }) {
+  const filesEnabled = useFileExplorerEnabled()
   const [section, setSection] = useState<AgentConfigurationSection | null>(null)
   const [saving, setSaving] = useState(false)
   const [identitySaving, setIdentitySaving] = useState(false)
@@ -45,7 +49,7 @@ export function EmployeeProfile({ api, snapshot, agent, active, busy, refresh, o
     <div className="contact-document employee-form-layout" data-identity-saving={identitySaving && !busy && active ? '' : undefined}>
       <header className="contact-profile-heading" ref={setIdentityTarget} />
       <AgentEditor key={editorKey} api={api} snapshot={snapshot} agent={agent} active={active && !advancedOpen} scope="contact-profile" section={section ?? 'identity'} inlineIdentity identityTarget={identityTarget} sectionTarget={section ? sectionTarget : undefined} identityDisabled={busy || !active || advancedOpen} onSaved={refresh} onIdentitySaved={onAgentSaved} onClose={() => { setSection(null); setEditorKey(value => value + 1) }} onBusyChange={setSaving} onIdentityBusyChange={setIdentitySaving} />
-      <div className="contact-profile-actions mb-6 flex flex-wrap gap-3"><Button disabled={locked} onClick={() => navigate(onMessage)}><MessageCircle />发消息</Button><Button variant="secondary" disabled={locked} onClick={() => navigate(() => onAdvancedChange(true))}><Settings />高级配置</Button></div>
+      <div className="contact-profile-actions mb-6 flex flex-wrap gap-3"><Button disabled={locked} onClick={() => navigate(onMessage)}><MessageCircle />发消息</Button><Button variant="secondary" disabled={locked} onClick={() => navigate(() => onAdvancedChange(true))}><Settings />高级配置</Button>{filesEnabled && <Button variant="secondary" disabled={locked} onClick={() => navigate(() => onWorkspace(agent.id))}><FolderOpen />工作区</Button>}</div>
       <div className="employee-form-sections"><EmployeeOverview api={api} snapshot={snapshot} agent={agent} active={active} editing={editing} /></div>
     </div>
     {advancedOpen && <ContactEditorDialog api={api} snapshot={snapshot} agent={agent} active={active} advancedOnly refresh={refresh} onClose={() => onAdvancedChange(false)} onConfigure={() => { onAdvancedChange(false); setSection('model') }} onConversation={onConversation} onOpenAgent={onOpenAgent} />}
