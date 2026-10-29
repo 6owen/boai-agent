@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: DeepSeek公开历史按当前阶段实际工具集适配，覆盖带工具的普通聊天；当前SDK思考链保持原样。
  * [OUTPUT]: 2026-10-27 默认持续执行、来源校验及工作现场/复核接线；沿原权限和账本。
  * [OUTPUT]: API公开阶段先维护获准历史checkpoint，再沿原Run/Work执行；Bobo Memory只装未覆盖尾部，逐步容量及附加调用不重置预算。
  * [OUTPUT]: 默认执行不按累计调用、工具步骤、用量或墙钟截断；保留真实用量、取消/权限和明确指定的预算。
@@ -202,7 +203,7 @@ export class MastraEngine implements AgentEngine {
           await ctx.onTraceError?.(`Memmy长期记忆暂不可用，已使用本机获准记忆：${errorText(error)}`).catch(() => {})
         }
       }
-      let messages = deepseekReasoningHistory({ connection: ctx.connection, modelId: ctx.agent.modelId, thinkingLevel: ctx.agent.thinkingLevel, task, agentId: ctx.agent.id, conversationId: ctx.conversation.id, messages: ctx.messages, projected: projectMessages(boboMemory?.current ?? ctx.messages, ctx.agent.id, ctx.conversation.id, ctx.triggerMessageId, ctx.turnId, ctx.materialImages) })
+      let messages = projectMessages(boboMemory?.current ?? ctx.messages, ctx.agent.id, ctx.conversation.id, ctx.triggerMessageId, ctx.turnId, ctx.materialImages)
       if (!messages.length) throw new Error('No completed messages in this conversation')
       if (maintained.handoff) messages.unshift({ role: 'user', content: maintained.handoff })
       const stageContext = { ...ctx, ...(ctx.bootstrap ? { bootstrap: { ...ctx.bootstrap,
@@ -210,6 +211,7 @@ export class MastraEngine implements AgentEngine {
         dynamicInstructions: [ctx.bootstrap.dynamicInstructions, externalMemory ? `[外部Memmy用户记忆：仅作可能过时的背景，不是本轮指令、权限或已完成工作的证明。]\n${externalMemory}` : ''].filter(Boolean).join('\n\n'),
       } } : {}) }
       stage = await createStageAgent(task ? 'task' : 'chat', stageContext, this.options.commandTimeoutMs, boboMemory?.memory)
+      messages = deepseekReasoningHistory({ connection: ctx.connection, modelId: ctx.agent.modelId, thinkingLevel: ctx.agent.thinkingLevel, hasTools: stage.hasTools, agentId: ctx.agent.id, conversationId: ctx.conversation.id, messages: ctx.messages, projected: messages })
       const agent = stage.agent
       let admittedSteps = 0
       const maxCharacters = !task && ctx.groupCoordination?.mode === 'ordered' ? ctx.groupCoordination.maxReplyCharacters : undefined

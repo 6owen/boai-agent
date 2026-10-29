@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 宿主已完成消息的初始投影、实际员工身份与官方 DeepSeek Chat 思考偏好。
- * [OUTPUT]: 仅工具任务的历史公开回复作为明确归属的参考记录；不伪造缺失思考、不变更产品消息/授权，SDK 本轮真实 reasoning/tool 消息完整回传。
+ * [OUTPUT]: 实际提供工具的聊天或任务将历史公开回复作为归属参考；无工具/off不变，不伪造思考或改权限。
  * [POS]: DeepSeek thinking/tools 的初始历史兼容边界，位于 SDK 调用前；不拦截流或追加模型调用。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -12,10 +12,10 @@ import type { projectMessages } from './message-projection'
  * not unfinished assistant API turns. Current SDK-generated turns stay untouched.
  * https://api-docs.deepseek.com/guides/thinking_mode/ */
 export function deepseekReasoningHistory(input: {
-  connection: Connection; modelId?: string; thinkingLevel?: ThinkingLevel; task: boolean
+  connection: Connection; modelId?: string; thinkingLevel?: ThinkingLevel; hasTools: boolean
   agentId: string; conversationId: string; messages: Message[]; projected: ReturnType<typeof projectMessages>
 }) {
-  if (!input.task || input.thinkingLevel === 'off' || !supportsThinkingControl(input.connection, input.modelId)) return input.projected
+  if (!input.hasTools || input.thinkingLevel === 'off' || !supportsThinkingControl(input.connection, input.modelId)) return input.projected
   const published = input.messages.filter(message => message.conversationId === input.conversationId && message.senderType === 'agent' && message.senderId === input.agentId && message.status === 'completed')
   return input.projected.map(message => {
     if (message.role !== 'assistant') return message

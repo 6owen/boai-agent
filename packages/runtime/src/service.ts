@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 已登记依赖等待时私有汇报schema错误沿withhold保留等待及错误原文；不发布无效正文或重放操作。
  * [OUTPUT]: 原生Codex握手观察沿原run权限与串行事务保存版本，不改变配置revision或自动重发输入。
  * [OUTPUT]: 网页检索草稿测试接现有externalTests/externalTasks退出取消与备份门禁，不保存连接。
  * [OUTPUT]: Codex当前轮次补充沿原消息事务/来源投影受理，原生RPC在服务串行区之外单次投递。
@@ -5149,7 +5150,23 @@ export class AppService {
               await context.onUsage?.(cumulative)
             },
           }
-          const report = await this.invokeModel(run, reportContext, ctx => this.engineFor(ctx).report!(ctx, run.draft!))
+          let invalidReport: z.ZodError | undefined
+          const report = await this.invokeModel(run, reportContext, async ctx => {
+            try { return await this.engineFor(ctx).report!(ctx, run.draft!) }
+            catch (error) {
+              // Only the report adapter's schema rejection is recoverable here.
+              // Access checks, cancellation and other failures retain their existing path.
+              if (!(error instanceof z.ZodError) || !context.pendingWorkWait) throw error
+              invalidReport = error; return undefined
+            }
+          })
+          if (invalidReport) {
+            // Reject the report, not the already registered wait; never replay effects.
+            effective.throwIfAborted(); run.draft!.revisions++
+            await withhold(`重新汇报格式无效，已保留原依赖等待且未发布草稿或重放操作：${this.redact(this.errorMessage(invalidReport), key)}`)
+            return 'deferred'
+          }
+          if (!report) throw new Error('重新汇报未返回结果')
           effective.throwIfAborted(); run.draft.revisions++
           if (report.action === 'discard') { await withhold('员工根据新信息决定暂不公开旧任务结果；已执行操作不会重放'); return 'deferred' }
           if (!report.text?.trim()) throw new Error('重新汇报没有返回可发布正文')

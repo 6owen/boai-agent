@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: StageInstance暴露实际是否提供工具，DeepSeek历史适配不再误用chat/task分类判断协议要求。
  * [OUTPUT]: 每步最终prompt容量检查；公开API阶段提供原授权历史回读工具，组织工具精确集合保持。
  * [OUTPUT]: 组织任务仅使用原TaskRuntime管理工具，不重新混入通用应用、人格或技能工具。
  * [OUTPUT]: 私聊相册元信息/删除使用员工固定身份工具；读取无需文件Work。
@@ -60,7 +61,7 @@ import { bootstrapInstructions, organizationDecisionAllowed, boboResponseInstruc
 export { bootstrapInstructions, organizationDecisionAllowed } from '../../modules/employees/phase-instructions'
 
 export type AgentPhase = 'coordination' | 'chat' | 'task' | 'decision' | 'memory' | 'report'
-export interface StageInstance { agent: Agent; task: boolean; skills?: { id: string; name: string; path: string }[]; dispose(): Promise<void> }
+export interface StageInstance { agent: Agent; task: boolean; hasTools: boolean; skills?: { id: string; name: string; path: string }[]; dispose(): Promise<void> }
 /** Stateless factory. Every phase has its own SDK instance and explicit resource owner. */
 export async function createStageAgent(phase: AgentPhase, context: EngineContext, commandTimeoutMs?: number, memory?: Memory): Promise<StageInstance> {
   const stage = await createStageInstance(phase, context, commandTimeoutMs, memory)
@@ -78,7 +79,7 @@ async function createStageInstance(phase: AgentPhase, context: EngineContext, co
   const inputProcessors = [...(context.onTrace || adaptMedia ? [{ id: 'model-request-boundary', processInputStep: ({ model }: ProcessInputStepArgs) => { const actual=adaptMedia ? browserChatModel(model):model;return {model:context.onTrace ? traceModelRequest(actual):actual} } }] : []), contextCapacityProcessor(phase, context)]
   if (phase === 'coordination') {
     const agent = new Agent({ inputProcessors, id: context.agent.id, name: context.agent.name, model: modelConfig(context.connection, context.apiKey, context.agent.modelId), maxRetries: 0, instructions: groupInterpretationInstructions })
-    return { agent, task: false, dispose: async () => {} }
+    return { agent, task: false, hasTools: false, dispose: async () => {} }
   }
   if (phase === 'report') {
     const agent = new Agent({
@@ -97,7 +98,7 @@ async function createStageInstance(phase: AgentPhase, context: EngineContext, co
         'Return only one JSON object matching the supplied schema: action publish with text, or action discard. An optional outcome must refer to already executed work and evidence in the revised text or registered artifacts. Public text describes progress/results plainly, without internal work IDs, versions or protocol fields; use artifact names or usable paths when helpful. No reasoning or extra fields.',
       ].join('\n\n'),
     })
-    return { agent, task: false, dispose: async () => {} }
+    return { agent, task: false, hasTools: false, dispose: async () => {} }
   }
   if (phase === 'decision') {
     const agent = new Agent({
@@ -105,7 +106,7 @@ async function createStageInstance(phase: AgentPhase, context: EngineContext, co
       id: context.agent.id, name: context.agent.name, model: modelConfig(context.connection, context.apiKey, context.agent.modelId), maxRetries: 0,
       instructions: decisionInstructions(context),
     })
-    return { agent, task: false, dispose: async () => {} }
+    return { agent, task: false, hasTools: false, dispose: async () => {} }
   }
   if (phase === 'memory') {
     const agent = new Agent({
@@ -113,7 +114,7 @@ async function createStageInstance(phase: AgentPhase, context: EngineContext, co
       id: context.agent.id, name: context.agent.name, model: modelConfig(context.connection, context.apiKey, context.agent.modelId), maxRetries: 0,
       instructions: memoryInstructions(context),
     })
-    return { agent, task: false, dispose: async () => {} }
+    return { agent, task: false, hasTools: false, dispose: async () => {} }
   }
   const toolController = new AbortController()
   const ctx = { ...context, signal: AbortSignal.any([context.signal, toolController.signal]) }
@@ -155,6 +156,6 @@ async function createStageInstance(phase: AgentPhase, context: EngineContext, co
       })
     releaseCliTools = ctx.registerCliTools?.(mastraCliTools(ctx, tools))
     let disposed = false
-    return { agent, task, skills: taskRuntime?.skills, dispose: async () => { if (!disposed) { disposed = true; try { await releaseCliTools?.() } finally { toolController.abort(new Error('原工具阶段已结束')); await taskRuntime?.dispose(); await setupBrowser?.drain() } } } }
+    return { agent, task, hasTools: Object.keys(tools).length > 0, skills: taskRuntime?.skills, dispose: async () => { if (!disposed) { disposed = true; try { await releaseCliTools?.() } finally { toolController.abort(new Error('原工具阶段已结束')); await taskRuntime?.dispose(); await setupBrowser?.drain() } } } }
   } catch (error) { toolController.abort(error); try { await releaseCliTools?.() } finally { await taskRuntime?.dispose(); await setupBrowser?.drain() }; throw error }
 }
