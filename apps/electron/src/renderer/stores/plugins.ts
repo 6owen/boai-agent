@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 2026-10-29 plugins导出文件浏览器启用状态，沿主进程快照与CAS。
+ * [OUTPUT]: 2026-10-29 工作区界面暂时隐藏，原插件配置/文件与宿主能力保持。
  * [INPUT]: 主进程插件配置快照/事件、明确启停与实际视图生命周期。
  * [OUTPUT]: 单一配置订阅、单次CAS写入及失联只读复核；激活状态独立于启用配置。
  * [POS]: renderer插件状态；正文不进入store，恢复不执行插件业务。
@@ -10,6 +10,10 @@ import { applicationPlugins, FILE_EXPLORER_PLUGIN_ID } from '@boai/shared/plugin
 import { PluginUsage } from '@boai/shared/plugins/usage'
 import { pluginAvailability, type PluginSettingsSnapshot } from '@boai/shared/plugins/types'
 import { getDesktopClient } from '@/services/request/desktop-client'
+
+// Temporarily hidden at the user's request; restore this UI gate when workspace work resumes.
+// Do not migrate plugin preferences or disable the employee's actual execution workspace.
+export const WORKSPACE_UI_ENABLED = false
 
 export const pluginUsage = new PluginUsage(applicationPlugins.map(plugin => plugin.id))
 export const usePlugins = create<{ settings: PluginSettingsSnapshot; ready: boolean; busy?: string; error: string }>(() => ({ settings: { revision: 0, disabledIds: [] }, ready: false, error: '' }))
@@ -43,5 +47,5 @@ export async function setPluginEnabled(id: string, enabled: boolean) {
 }
 
 export function useFileExplorerEnabled() {
-  return usePlugins(state => state.ready && pluginAvailability(applicationPlugins.find(plugin => plugin.id === FILE_EXPLORER_PLUGIN_ID)!, state.settings) === 'enabled')
+  return usePlugins(state => WORKSPACE_UI_ENABLED && state.ready && pluginAvailability(applicationPlugins.find(plugin => plugin.id === FILE_EXPLORER_PLUGIN_ID)!, state.settings) === 'enabled')
 }
