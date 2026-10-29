@@ -24,7 +24,7 @@ export const settingsPath = () => process.env.BOAI_RELEASE_CONFIG || join(homedi
 const json = async path => JSON.parse(await readFile(path, 'utf8'))
 export const command = (exe, args, options = {}) => (execFileSync(exe, args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 120_000, ...options }) ?? '').trim()
 export const gh = (...args) => command('gh', args)
-export const api = path => JSON.parse(gh('api', `repos/${releaseRepository}/${path}`))
+export const api = path => JSON.parse(gh('api', `repos/${releaseRepository}${path ? `/${path}` : ''}`))
 export function validateUpdateConfig(value) {
   const url = new URL(value.feedUrl)
   if (url.username || url.password || !(url.protocol === 'https:' || url.protocol === 'http:' && ['127.0.0.1', '[::1]'].includes(url.hostname))) throw Error('更新地址须为HTTPS或隔离测试的loopback')
@@ -69,7 +69,7 @@ export function withSparkle(config, updates) {
     ...config,
     files: [...(config.files ?? []), ...fragment.files],
     asarUnpack: [...(config.asarUnpack ?? []), ...fragment.asarUnpack],
-    extraFiles: [...(config.extraFiles ?? []), ...fragment.extraFiles],
+    extraFiles: [...(config.extraFiles ?? []), ...fragment.extraFiles, { from: 'resources/Sparkle-LICENSE.txt', to: 'Resources/Sparkle-LICENSE.txt' }],
     // electron-builder 26 has no top-level zip option; its unused blockmap is not published.
     dmg: { ...config.dmg, ...fragment.dmg },
     mac: { ...config.mac, minimumSystemVersion: '12.0', extendInfo: { ...config.mac?.extendInfo, ...fragment.mac.extendInfo } },

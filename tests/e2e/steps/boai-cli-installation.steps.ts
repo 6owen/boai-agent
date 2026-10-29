@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 连接状态说明沿现行Tooltip定位，保留安装/无系统Node/独立启动及数据保持断言。
  * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
  * [INPUT]: Real isolated Electron settings, native directory choice and installed launcher process.
  * [OUTPUT]: Installed CLI read-only/isolated validation, own installation, no-system-Node execution, packaged relocation and selective uninstall.
@@ -44,7 +45,8 @@ When('安装命令先保留同名外部文件再由本人选择空闲目录', as
   await expect(card.getByRole('button', { name: '安装命令行工具', exact: true })).toBeEnabled()
   await nextMaterialDialog(runtime, { path: installation.directory! }); await card.getByRole('button', { name: '安装命令行工具', exact: true }).click()
   await expect(card.getByRole('status')).toContainText('已安装')
-  await expect(card.getByText(/已连接当前工作空间/)).toBeVisible()
+  await card.getByRole('button', { name: '命令行工具说明', exact: true }).hover()
+  await expect(runtime.page.getByText(/已连接当前工作空间/)).toBeVisible()
   installation.status = await runtime.page.evaluate(() => window.boai.request('getCliInstallation', undefined))
   expect(installation.status.state).toBe('installed'); expect(installation.status.commandPath).toBe(installation.command)
   const launcher = await readlink(installation.command!)
