@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-29提供git cpf显式快速合并、暂存范围、管理员保护恢复与中断恢复说明。
 [INPUT]: BOAI共享开发skill、GitHub Test/UI preview工作流及任务worktree收尾规则。
 [OUTPUT]: 日常开发、PR检查、原生视频附件配置、合并与清理的使用说明。
 [POS]: 仓库根目录面向使用者的CI说明；执行依据为AGENTS、开发skill及实际workflow。
@@ -15,6 +16,28 @@ BOAI 沿 Magpie 使用两条 GitHub Actions：**Test 检查工程是否通过，
 3. **Test 与 UI preview 分别执行。** Test 检查代码；UI preview 根据改动范围决定是否录制，并把预览更新到 PR 描述。
 4. **按本次授权合并。** 普通交付启用正常自动合并；明确只修改、只测试或不合并时按该要求执行。当前必须通过的 `Required checks` 只汇总工程 Test。
 5. **实际合并后同步 main，完成任务后回收 worktree。** main 收到合并提交还会再跑一次 Test，PR 通过与 main 这次复跑的结果分别查看。
+
+## 需要立即合并：git cpf
+
+本机每个clone安装一次，安装在该仓库的Git配置/公共Git目录，所有worktree共用，不修改全局alias：
+
+```bash
+node scripts/git-cpf.mjs --install
+git add -- path/to/file1 path/to/file2
+git cpf "fix: 修复说明"
+```
+
+已经commit的内容直接执行 `git cpf`。命令提交已暂存文件，推送当前功能分支（在main上则推到`cpf/<提交号>`），创建或复用PR，并按精确head立即合并到main。它不等待CI，也不先同步main到PR来触发一轮重复检查；未暂存文件保持原样。普通`git cp`及默认自动合并流程保持。
+
+需要`git`、Node和已登录的`gh`，账号须有仓库管理员权限。若GitHub对管理员也强制检查，命令只临时关闭`enforce_admins`，合并成功、失败或可捕获中断后恢复并核对；其他保护不变。真实合并冲突、GitHub Ruleset等额外限制仍可拒绝合并，不通过删规则或改写main历史绕过。
+
+网络故障、断电或`kill -9`可能让自动恢复未完成，恢复记录保留在Git公共目录的`boai/cpf-protection.json`。恢复时执行：
+
+```bash
+git cpf --restore-protection
+```
+
+恢复失败会明确报错并阻止下一次合并。命令不会关闭Actions或伪造绿色检查；PR/main仍可能后台跑检查。直接合并不代表测试通过，也不自动发布、重启应用或部署。
 
 ```mermaid
 flowchart LR
