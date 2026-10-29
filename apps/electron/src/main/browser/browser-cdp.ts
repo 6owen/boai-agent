@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: ref首次解析失败抛出明确零输入错误；动作后的几何/传输错误仍保持未知。
  * [OUTPUT]: 输入前复核真实密码字段/焦点，密码交由用户人工输入；CDP与原生回退仍只在首动作前选择。
  * [OUTPUT]: 直接迁入同版命中探针/DOM点击回退、受控输入原生setter与真实下拉选择；部分鼠标失败不再回放，密码保留人工输入。
  * [OUTPUT]: Craft v0.15.1固定commit的后台CDP鼠标/键盘优先、仅attach失败回退；原在途计数、ref及密码保护保持。
@@ -21,6 +22,11 @@
 
 import type { WebContents } from 'electron'
 import { mainLog } from './logger'
+
+/** Only raised before any page input is dispatched, never by post-action geometry checks. */
+export class BrowserInputNotStartedError extends Error {
+  constructor(ref: string) { super(`Element ${ref} not found. Run browser_tool with command "snapshot" to get current element refs.`); this.name = 'BrowserInputNotStartedError' }
+}
 
 export interface AccessibilityNode {
   ref: string           // "@e1", "@e2", etc.
@@ -1140,7 +1146,7 @@ export class BrowserCDP {
   private requireBackendNodeId(ref: string): number {
     const backendNodeId = this.refMap.get(ref)
     if (!backendNodeId) {
-      throw new Error(`Element ${ref} not found. Run browser_snapshot first to get current element refs.`)
+      throw new BrowserInputNotStartedError(ref)
     }
     return backendNodeId
   }

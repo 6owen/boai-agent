@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 待核对写入只阻止新写入/控制操作；新snapshot/截图/find可观察，原unknown与副作用不变。
  * [OUTPUT]: 自动化浏览器沿原Work holder/occurrence/预算和动作事务核验，取消后不能取得新执行权。
  * [OUTPUT]: 受理前仅存网页输入摘要及原参数hash，执行命令仍以原内存信封发送。
  * [OUTPUT]: 本机首次只读沿真实消息/run记账；实际写动作必须持有原Work，旧只读回执保留其原租约，停止后仅结算已开始事实。
@@ -16,6 +17,7 @@ import { APPLICATION_BROWSER_SCOPE } from '@boai/shared/ipc/browser'
 import type { BrowserActionEnvelope, BrowserActionReply, BrowserLease, BrowserTaskAuthorization } from '@boai/shared/ipc/browser'
 import { ProductStore } from '../../adapters/storage/product-store'
 import { WorkRepository } from '../collaboration/work-repository'
+import { parseBrowserSingleCommand } from '../../adapters/mastra/browser-tool-runtime'
 import { redactBrowserCommand } from '../../adapters/mastra/browser-tool-redaction'
 import { summarizeMedia } from './media'
 export interface BrowserActionRecord extends BrowserActionEnvelope { id: string; status: 'prepared'|'started'|'completed'|'failed'|'cancelled_before_start'|'unknown'; mutating: boolean; startedAt?:string; createdAt: string; reply?: BrowserActionReply }
@@ -75,7 +77,8 @@ export class BrowserRepository {
         if (previous.argumentHash !== envelope.argumentHash || !previous.lease || previous.lease.runId !== envelope.lease.runId || previous.lease.workId !== envelope.lease.workId) throw new Error('原浏览器调用已用于不同参数或已清理')
         return { value:{ action:previous,fresh:false } }
       }
-      if ((await tx.list<BrowserActionRecord>('browserActions')).some(action => action.lease?.runId === envelope.lease.runId && action.mutating && ['prepared','started','unknown'].includes(action.status))) throw new Error('原工作仍有未核对的浏览器动作，不能用新调用重放')
+      const observing = !mutating && ['snapshot','screenshot','screenshot-region','find','windows'].includes(parseBrowserSingleCommand(envelope.command).action)
+      if (!observing && (await tx.list<BrowserActionRecord>('browserActions')).some(action => action.lease?.runId === envelope.lease.runId && action.mutating && ['prepared','started','unknown'].includes(action.status))) throw new Error('原工作仍有未核对的浏览器动作，不能用新调用重放')
       const action: BrowserActionRecord = { ...envelope,command:redactBrowserCommand(envelope.command),id:envelope.actionId,status:'prepared',mutating,createdAt:new Date().toISOString() }
       await tx.put({collection:'browserActions',id:action.id,value:action})
       await tx.put({collection:'browserScopes',id:envelope.lease.runId,value:{id:envelope.lease.runId,...envelope.lease}})

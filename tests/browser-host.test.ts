@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 失效ref经真实CDP拒绝后可重新观察，未知写入仍保留核对。
  * [OUTPUT]: 连接断开与显式关闭同样终止挂起动作页面并核对unknown；空闲人工页面保持。
  * [OUTPUT]: 员工默认读取和交互当前网页，无审批时仍核对参数hash/页面版本/真实开始握手。
  * [OUTPUT]: 明确关闭/清登录资料/退出可先终止阻塞页面，随后等待真实destroyed及旧动作结束；销毁失败不清资料，普通drain仍等待，未知不重放。
@@ -517,4 +518,18 @@ it('returns a fresh-snapshot instruction after its own input changes the page an
  const reply=await service.executeSingle(await envelope(service,lease,'fill @e1 "changed"'))
  expect(reply.status).toBe('completed');expect(reply.result?.output).toContain('previous element refs are invalid')
  expect(reply.result?.output).toContain('"snapshot"');expect(cdp.invalidateRefs).toHaveBeenCalledOnce()
+})
+
+it.each(['click @e570', 'fill @e570 text', 'select @e570 value'])('keeps stale ref rejection recoverable before any input: %s', async command => {
+ const {service,lease,fake}=await fixture();await service.acquire(lease)
+ const {cdp,send}=axFixture([])
+ fake.mocks.clickElement.mockImplementation((_id:string,ref:string)=>cdp.clickElement(ref))
+ fake.mocks.fillElement.mockImplementation((_id:string,ref:string,value:string)=>cdp.fillElement(ref,value))
+ fake.mocks.selectOption=vi.fn((_id:string,ref:string,value:string)=>cdp.selectOption(ref,value))
+ const action=await envelope(service,lease,command)
+ const reply=await service.executeSingle(action)
+ expect(reply).toMatchObject({status:'failed',error:expect.stringContaining('snapshot')})
+ expect(send).not.toHaveBeenCalled()
+ expect(service.lookup({lease,actionId:action.actionId})).toEqual(reply)
+ expect((await service.executeSingle(await envelope(service,lease,'snapshot'))).status).toBe('completed')
 })

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: DeepSeek自动档内部摘要关闭思考，显式档位和主任务偏好保持；长度耗尽明确归因且不提交或重试。
  * [OUTPUT]: 2026-10-27 默认持续执行、来源校验及工作现场/复核接线；沿原权限和账本。
  * [INPUT]: Authorized source cuts, existing request reservations and the effective provider prompt after Memory conversion.
  * [OUTPUT]: Bounded, tool-free summary calls with original usage ownership; checkpoints cover every history item the legacy projection would omit.
@@ -11,6 +12,7 @@ import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 import type { EngineContext } from '../../contracts'
 import type { Message } from '@boai/shared/domain'
+import { supportsThinkingControl } from '@boai/shared/domain/model-preferences'
 import { contextHash, contextSource, type ContextView } from '../../modules/contexts/context-repository'
 import { contextCapacity, ContextCapacityError, estimateTokens, type ContextModelSelection } from '../../modules/contexts/context-capacity'
 import { modelConfig, responseOutputTokens, thinkingProviderOptions } from './model-config'
@@ -37,7 +39,11 @@ export async function summarizeContext(context: EngineContext, data: unknown, pr
   context.signal.throwIfAborted()
   const agent = new Agent({ id: `${context.agent.id}-context-maintenance`, name: context.agent.name, model: modelConfig(context.connection, context.apiKey, context.agent.modelId), maxRetries: 0, instructions: summaryInstructions })
   await context.onModelCallStarted?.(callId, 'report')
-  const output = await agent.stream([{ role: 'user', content }], { abortSignal: context.signal, maxSteps: 1, modelSettings: { maxOutputTokens }, providerOptions: thinkingProviderOptions(context.connection, context.agent.modelId, context.agent.thinkingLevel, 'report', context.modelCatalog), onStepFinish: gatewayRouteObserver(context, () => callId) })
+  // A bounded internal handoff needs prose within this budget; default DeepSeek high
+  // reasoning can consume all of it before producing the summary. Explicit preferences remain.
+  const automatic = !context.agent.thinkingLevel || context.agent.thinkingLevel === 'auto'
+  const level = automatic && supportsThinkingControl(context.connection, context.agent.modelId) ? 'off' : context.agent.thinkingLevel
+  const output = await agent.stream([{ role: 'user', content }], { abortSignal: context.signal, maxSteps: 1, modelSettings: { maxOutputTokens }, providerOptions: thinkingProviderOptions(context.connection, context.agent.modelId, level, 'report', context.modelCatalog), onStepFinish: gatewayRouteObserver(context, () => callId) })
   let text = ''
   for await (const chunk of output.fullStream) {
     if (chunk.type === 'step-finish') {
@@ -52,7 +58,9 @@ export async function summarizeContext(context: EngineContext, data: unknown, pr
     else if (chunk.type === 'tool-call' || chunk.type === 'error' || chunk.type === 'abort') throw new Error('上下文摘要未正常完成，候选未提交')
   }
   if (output.error) throw new Error('上下文摘要响应失败，候选未提交')
-  assertStreamCompleted(await output.finishReason)
+  const finish = await output.finishReason
+  if (finish === 'length') throw new Error('工作上下文摘要达到输出上限，候选未提交；原工作现场已保留')
+  assertStreamCompleted(finish)
   context.signal.throwIfAborted()
   if (!text.trim() || text.length > 16000) throw new Error('上下文摘要为空或超过允许大小')
   return text

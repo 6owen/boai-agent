@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 未知写入允许新只读观察，但不解除原副作用或允许新写入。
  * [OUTPUT]: 局部AppService夹具初始化运行内权限映射，取消仍走生产清理及原未知回执断言。
  * [OUTPUT]: 原browserControl局部AppService夹具补齐目录运行及活跃引擎上下文状态，保留真实退出与未知不重放断言。
  * [OUTPUT]: 显式整体权限在浏览器交互前等待/拒绝，导航观察保留且批准内容不包含输入正文。
@@ -520,4 +521,26 @@ it.each(['read-only', 'ask', 'full-access'] as const)('enforces %s before dispat
   } else await writing
   expect(execute).toHaveBeenCalledTimes(executionPermission === 'full-access' ? 1 : 0)
   await session.drain()
+})
+
+it.each(['snapshot','screenshot','find 南京'])('allows read-only verification after an unknown write without confirming or replaying it: %s', async command => {
+ const {repository,envelope,store,lease}=await fixture()
+ await repository.prepare(envelope('click @e570'),true)
+ await repository.start({actionId:'action',generation:lease.generation,runId:lease.runId,workId:lease.workId})
+ await repository.finish(lease,{actionId:'action',generation:lease.generation,status:'unknown'})
+ const observation={...envelope(command),actionId:'observe',toolCallId:'new-observation'}
+ await expect(repository.prepare(observation,false)).resolves.toMatchObject({fresh:true})
+ await repository.start({actionId:'observe',generation:lease.generation,runId:lease.runId,workId:lease.workId})
+ await repository.finish(lease,{actionId:'observe',generation:lease.generation,status:'completed',result:{output:'当前页面已核对',appendReleaseHint:false}})
+ expect((await repository.get('action'))?.status).toBe('unknown')
+ expect((await store.load<WorkExecution>('workExecutions'))[0].pendingEffects).toBe(1)
+ await expect(repository.prepare({...envelope('click @e571'),actionId:'another-write',toolCallId:'another-write'},true)).rejects.toThrow('未核对')
+})
+
+it.each(['close','release','navigate https://example.test/','click @e571'])('keeps unknown writes frozen for non-observation commands even with a false mutating flag: %s',async command=>{
+ const {repository,envelope,lease}=await fixture()
+ await repository.prepare(envelope('click @e570'),true)
+ await repository.start({actionId:'action',generation:lease.generation,runId:lease.runId,workId:lease.workId})
+ await repository.finish(lease,{actionId:'action',generation:lease.generation,status:'unknown'})
+ await expect(repository.prepare({...envelope(command),actionId:'next',toolCallId:'next'},false)).rejects.toThrow('未核对')
 })

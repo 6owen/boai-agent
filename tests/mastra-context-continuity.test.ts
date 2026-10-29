@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: DeepSeek自动档内部摘要关闭思考，受控长度耗尽不提交或重试；显式档位保持。
  * [OUTPUT]: 2026-10-27 本轮相关回归合同/源码更新；执行状态另行记录，不以源码存在判通过。
  * [INPUT]: Actual installed Mastra SDK, local streaming HTTP provider, real ProductStore and host-like authorization ports.
  * [OUTPUT]: Public checkpoint/rotation, final-prompt tool compaction, original budgets, Memory pruning, review regressions for provenance, legacy clipping and readonly-step recovery.
@@ -9,7 +10,7 @@ import { createServer, type ServerResponse } from 'node:http'
 import { mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { afterEach, expect, it } from 'vitest'
+import { afterEach, expect, it, vi } from 'vitest'
 import type { AutomationDefinition, AutomationOccurrence, Connection, Conversation, ConversationDetail, ConversationMaterial, DigitalAgent, MemoryView, Message, Snapshot } from '../packages/shared/src/domain'
 import type { AgentEngine, EngineContext } from '../packages/runtime/src/contracts'
 import { AppService } from '../packages/runtime/src/service'
@@ -17,7 +18,7 @@ import { MastraEngine } from '../packages/runtime/src/adapters/mastra/engine'
 import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
 import { ContextRepository, type ContextPort } from '../packages/runtime/src/modules/contexts/context-repository'
 import { RunModelUsage } from '../packages/runtime/src/modules/profile/run-model-usage'
-import { snapshotProviderPrompt } from '../packages/runtime/src/adapters/mastra/context-maintenance'
+import { summarizeContext, snapshotProviderPrompt } from '../packages/runtime/src/adapters/mastra/context-maintenance'
 import { progressBoundary } from '../packages/runtime/src/adapters/mastra/progress-review'
 import { ProgressMonitor, ProgressStalledError } from '../packages/runtime/src/modules/contexts/progress-monitor'
 
@@ -366,4 +367,34 @@ for (const state of ['stuck', 'unknown', 'bad-citations', 'changed-source'] as c
   expect(model.requests).toHaveLength(1)
   expect(model.requests[0]!.tools?.length ?? 0).toBe(0)
   expect(f.started).toEqual(['extra-1']); expect(f.settled).toContain('extra-1'); expect(f.supplements).toContain('extra-1')
+})
+
+it.each([undefined, 'auto', 'off', 'high'])('completes bounded DeepSeek maintenance instead of exhausting its budget on default reasoning (%s)', async thinkingLevel => {
+ const model=await endpoint((body,response,index)=>{
+  const request=body as Body & {thinking?:{type:string}}
+  if(request.thinking?.type==='disabled') return send(response,'保留南京天气来源与未完成查询 [weather-source]',index)
+  response.writeHead(200,{'Content-Type':'text/event-stream'})
+  response.write(`data: ${JSON.stringify({id:'summary-length',choices:[{index:0,delta:{reasoning_content:'Provider reasoning filled the bounded output'},finish_reason:null}]})}\n\n`)
+  response.write(`data: ${JSON.stringify({id:'summary-length',choices:[{index:0,delta:{},finish_reason:'length'}],usage:{prompt_tokens:31269,completion_tokens:2000,total_tokens:33269}})}\n\n`)
+  response.end('data: [DONE]\n\n')
+ })
+ const f=await fixture(model.url,[message(1,'查询南京天气')])
+ f.ctx.connection={...f.ctx.connection!,baseUrl:'https://api.deepseek.com',defaultModel:'deepseek-flash'}
+ f.ctx.agent={...f.ctx.agent,modelId:'',thinkingLevel}
+ const nativeFetch=globalThis.fetch
+ const spy=vi.spyOn(globalThis,'fetch').mockImplementation((input,init)=>{
+  const target=new URL(input instanceof Request?input.url:input.toString())
+  if(target.hostname!=='api.deepseek.com') throw new Error('Unexpected external request')
+  return nativeFetch(new URL(target.pathname,model.url),init)
+ })
+ try {
+  const request=summarizeContext(f.ctx,{id:'weather-source',result:'南京今日多云，待核对气温'})
+  if(thinkingLevel==='high') {
+   await expect(request).rejects.toThrow('工作上下文摘要达到输出上限')
+   expect(model.requests[0]).toMatchObject({thinking:{type:'enabled'},reasoning_effort:'high'})
+  } else await expect(request).resolves.toContain('[weather-source]')
+  expect(model.requests).toHaveLength(1)
+  expect(f.started).toEqual(['extra-1']);expect(f.settled).toEqual(['extra-1']);expect(f.supplements).toEqual(['extra-1'])
+  expect(f.ctx.agent.thinkingLevel).toBe(thinkingLevel)
+ } finally {spy.mockRestore()}
 })
