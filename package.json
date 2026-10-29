@@ -60,7 +60,11 @@
     "build:cli:client": "node scripts/build.mjs --app cli-client",
     "plugin:sdk": "node scripts/runtime-plugin-devkit.mjs sdk",
     "plugin:create": "node scripts/runtime-plugin-devkit.mjs create",
-    "plugin:check": "node scripts/runtime-plugin-devkit.mjs check"
+    "plugin:check": "node scripts/runtime-plugin-devkit.mjs check",
+    "release:version": "node scripts/release-version.mjs",
+    "release:setup": "node scripts/release-updates.mjs",
+    "release:local": "node scripts/release-local.mjs",
+    "release:publish": "node scripts/release-publish.mjs"
   },
   "dependencies": {
     "@agentclientprotocol/sdk": "1.5.0",
@@ -138,7 +142,8 @@
     "@boai/runtime-plugins": "workspace:*",
     "@boai/voice-input-plugin": "workspace:*",
     "use-stick-to-bottom": "1.1.6",
-    "@boai/file-explorer-plugin": "workspace:*"
+    "@boai/file-explorer-plugin": "workspace:*",
+    "electron-sparkle-updater": "0.5.1"
   },
   "build": {
     "appId": "com.boai.agent",
@@ -212,6 +217,7 @@
     "@types/ws": "8.18.1",
     "@types/yauzl": "3.4.0",
     "@vitejs/plugin-react": "6.1.1",
+    "bumpp": "12.3.0",
     "electron": "39.2.7",
     "electron-builder": "26.15.3",
     "esbuild": "0.28.2",

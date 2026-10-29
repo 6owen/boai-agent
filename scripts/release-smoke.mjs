@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-29 原ZIP8/DMG2来源校验同时核对候选中的更新feed与公钥，原冒烟断言保持；返回已验DMG/ZIP字节身份供发布绑定。
  * [OUTPUT]: 应用与评估编译按当前工作区公开exports解析，保留原执行与分发合同。
  * [INPUT]: 当前干净源码对应的个人built候选、锁定BDD及隔离输出；已登录macOS arm64/Node24。
  * [OUTPUT]: ZIP8/DMG2原场景、逐启动完整独立profile/包身份、实际执行墙钟窗口与bundle前后字节；受管worker配对挂载/封存，未知先恢复。
@@ -147,7 +148,7 @@ async function verifySmokeReports(directory, result, signal) {
     if (!equal(selected, await json(join(stage, 'selection.json'))) || application.binary !== binary) throw Error('固定选择或目标包路径不对应')
     const expected = await json(join(intent.candidate, 'bundle-files.json'))
     if (!equal(await json(join(stage, 'bundle-before.json')), expected) || !equal(await json(join(stage, 'bundle-after.json')), expected)) throw Error('实际包测试前后字节清单缺失或变化')
-    if (!equal(application.metadata, { version: 1, channel: 'personal-macos-arm64', sha: candidate.identity.sha, applicationVersion: candidate.identity.version, arch: 'arm64' }) || !sameBuildBytes(application.packagedBuild, candidate.built)) throw Error('包内来源或构建登记不对应')
+    if (!equal(application.metadata, { version: 1, channel: 'personal-macos-arm64', sha: candidate.identity.sha, applicationVersion: candidate.identity.version, arch: 'arm64', ...(candidate.plist?.SUPublicEDKey ? { updates: { feedUrl: candidate.plist.SUFeedURL, publicKey: candidate.plist.SUPublicEDKey } } : {}) }) || !sameBuildBytes(application.packagedBuild, candidate.built)) throw Error('包内来源或构建登记不对应')
     assertPersonalBundle({ plist: application.info, version: candidate.identity.version, architectures: await readFile(join(stage, 'architecture.stdout.log'), 'utf8'), signature: await readFile(join(stage, 'signature-display.stdout.log'), 'utf8') + await readFile(join(stage, 'signature-display.stderr.log'), 'utf8') })
     for (const name of ['architecture', 'signature-verify', 'signature-display', 'native-app-icon-helper', 'native-boai-desktop-activity', 'native-boai-process-guard', 'inventory', 'selected-list', 'execute']) {
       const receipt = await json(join(stage, name + '.process.json'))
@@ -162,7 +163,7 @@ async function verifySmokeReports(directory, result, signal) {
     stages.push({ kind, cases: selected.length, launches: evidence.launches })
   }
   if (!equal(stages, result.stages)) throw Error('产物两资产场景汇总不对应')
-  return { sha: candidate.identity.sha, version: candidate.identity.version, stages }
+  return { sha: candidate.identity.sha, version: candidate.identity.version, assets: candidate.assets, stages }
 }
 export async function verifyReleaseSmoke(directory) {
   directory = resolve(directory)
@@ -220,7 +221,7 @@ async function worker(directory) {
       assertPersonalBundle({ plist: info, architectures: architectures.stdout, signature: signature.stdout + signature.stderr, version: candidate.identity.version })
       const require = createRequire(import.meta.url), builder = createRequire(require.resolve('electron-builder')).resolve('app-builder-lib'), asar = createRequire(builder)('@electron/asar')
       const metadata = JSON.parse(asar.extractFile(join(app, 'Contents/Resources/app.asar'), 'package.json').toString()), packagedBuild = JSON.parse(asar.extractFile(join(app, 'Contents/Resources/app.asar'), 'dist/build-identity.json').toString())
-      if (metadata.version !== candidate.identity.version || !equal(metadata.boaiRelease, { version: 1, channel: 'personal-macos-arm64', sha: candidate.identity.sha, applicationVersion: candidate.identity.version, arch: 'arm64' }) || !sameBuildBytes(packagedBuild, candidate.built)) throw Error('asar源码、版本或构建不对应')
+      if (metadata.version !== candidate.identity.version || !equal(metadata.boaiRelease, { version: 1, channel: 'personal-macos-arm64', sha: candidate.identity.sha, applicationVersion: candidate.identity.version, arch: 'arm64', ...(candidate.plist?.SUPublicEDKey ? { updates: { feedUrl: candidate.plist.SUFeedURL, publicKey: candidate.plist.SUPublicEDKey } } : {}) }) || !sameBuildBytes(packagedBuild, candidate.built)) throw Error('asar源码、版本或构建不对应')
       await save(join(stage, 'application.json'), { info, binary, metadata: metadata.boaiRelease, packagedBuild })
       for (const name of ['app-icon-helper', 'boai-desktop-activity', 'boai-process-guard']) if ((await step(stage, 'native-' + name, '/usr/bin/lipo', ['-archs', join(app, 'Contents/Resources/app.asar.unpacked/dist/native', name)])).stdout.trim() !== 'arm64') throw Error('实际原生助手架构不符')
       const env = [`BOAI_TEST_PACKAGED_PATH=${binary}`]
