@@ -35,7 +35,7 @@ flowchart LR
 | **Test** | macOS runner、Node 22、pnpm 缓存；安装依赖后依次运行 `pnpm typecheck`、`pnpm lint:ui`、`pnpm build`、`pnpm test` | PR、main push 或手动触发；失败会使 `Required checks` 失败并阻止正常合并 |
 | **UI preview** | `detect` 检测 → `record` 构建真实 Electron 应用并截图录屏 → `publish` 更新 PR 描述中的预览区域 | PR 打开、更新、重开或添加 `ui-preview` 标签时触发，也可手动指定 PR；当前不属于必须通过的合并检查 |
 
-纯文档和后端 PR 也跑完整 Test；未命中 UI 路径时，UI preview 的 `record`、`publish` 显示 `skipped` 属于正常结果。UI 路径检测覆盖 renderer、共享 UI/tokens、图标及相关构建配置；必要时用 `ui-preview` 标签强制录制。
+纯文档和后端 PR 也跑完整 Test；未命中 UI 路径时，UI preview 的 `record`、`publish` 显示 `skipped` 属于正常结果。UI 路径检测覆盖 renderer、共享 UI/tokens、官方文件浏览器组件/样式、图标及相关构建配置；必要时用 `ui-preview` 标签强制录制。
 
 同一 PR 的新提交会取消尚未结束的旧 Test/UI preview，改跑最新提交。main 的 Test 不因后续 main 提交自动取消。
 

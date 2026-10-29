@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-29 右侧详情面板内左预览右文件树，窄栏不再上下堆叠。
 [OUTPUT]: 2026-10-29 文件浏览器目录边界及真实回归覆盖；验证结果归第19组18。
 [INPUT]: Host-approved directory scope, bounded IPC and BOAI preview providers.
 [OUTPUT]: Official file explorer package contract and pinned upstream attribution.
@@ -10,7 +11,7 @@
 Official BOAI file explorer (`boai.file-explorer`). Enabled by default in the application plugin catalog; users can disable it in plugin settings.
 
 - `./host`: bounded directory pagination and read-only file preview. BOAI supplies the current scope resolver, original path validator, external opener and enablement check. It accepts no arbitrary filesystem root from the renderer.
-- `./explorer`: lazy virtual file tree, keyboard navigation, hidden-file toggle and inline preview slot. Requests and document bytes stop/expire on hidden tabs, changed scopes or disablement. The host supplies existing Markdown/code/image/PDF/Office renderers.
+- `./explorer`: left content preview and right lazy virtual file tree inside BOAI's shared right detail panel. Narrow panels retain the horizontal arrangement; the tree width is bounded and filenames truncate. Keyboard navigation and hidden-file toggle remain available. Requests and document bytes stop/expire on hidden tabs, changed scopes or disablement. The host supplies existing Markdown/code/image/PDF/Office renderers.
 - `./tree`: typed directory projection and extension-preserving filenames.
 
 Employee configuration opens the employee's managed workspace. Conversation Start opens only the selected employee's saved directory grants. Grant removal never deletes files and does not change task cwd or artifact publication.

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: File explorer UI triggers recording while its filesystem host remains backend-only.
  * [INPUT]: Real UI detector, preview entry and Actions definitions.
  * [OUTPUT]: UI detection, native video upload/body preservation and isolated publish credentials; no model calls.
  * [POS]: Magpie preview integration regressions, no model calls.
@@ -19,8 +20,8 @@ vi.mock('node:child_process', async (original) => ({
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.clearAllMocks() })
 
 it('detects BOAI pages and shared styling without recording backend-only changes', () => {
-  for (const file of ['apps/electron/src/renderer/app.tsx', 'packages/ui/src/dialog.tsx', 'packages/tokens/src/colors.css', 'vite.config.ts']) expect(isUiFile(file)).toBe(true)
-  for (const file of ['packages/runtime/src/app-service.ts', 'README.md', 'tests/ui-preview.test.ts']) expect(isUiFile(file)).toBe(false)
+  for (const file of ['apps/electron/src/renderer/app.tsx', 'packages/ui/src/dialog.tsx', 'packages/tokens/src/colors.css', 'packages/file-explorer-plugin/src/explorer.tsx', 'packages/file-explorer-plugin/src/explorer.css', 'vite.config.ts']) expect(isUiFile(file)).toBe(true)
+  for (const file of ['packages/runtime/src/app-service.ts', 'packages/file-explorer-plugin/src/host.ts', 'README.md', 'tests/ui-preview.test.ts']) expect(isUiFile(file)).toBe(false)
 })
 it('missing model credentials stop before launching the app or claiming a preview', () => {
   const env = { ...process.env }; delete env.DEEPSEEK_API_KEY; delete env.PLAN_FILE

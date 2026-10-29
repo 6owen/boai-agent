@@ -1,6 +1,6 @@
 <!--
 [INPUT]: Magpie Test/UI preview at 396e0e463805dd5ded971ade37ded08a52512ae5.
-[OUTPUT]: Source attribution, native video attachment configuration and runnable preview instructions.
+[OUTPUT]: Source attribution, explorer UI detection, native attachment configuration and runnable preview instructions.
 [POS]: Development UI preview, separate from product employee skills.
 [PROTOCOL]: Update this header and .folder.md when changed.
 -->
@@ -10,7 +10,7 @@ Derived from [yetone/magpie](https://github.com/yetone/magpie/tree/396e0e463805d
 
 - `cursor.js`: upstream mouse trail/click/caption overlay.
 - `record.mjs`: upstream DeepSeek planner, DOM outlines, actions, bounded operation repair, screenshots, conditional mp4 and leak detection. BOAI replaces page names, prompt context, TypeScript/TSX source discovery and Chromium app launch with real Electron. Chromium is only used to render the video poster.
-- `publish.mjs`: UI-path detection, media branch and fixed PR-description block. Recordings upload as native GitHub video attachments with `gh pr edit --attach`; a poster linking to raw mp4 is not a player.
+- `publish.mjs`: UI-path detection (including the file explorer component/CSS), media branch and fixed PR-description block. Recordings upload as native GitHub video attachments with `gh pr edit --attach`; a poster linking to raw mp4 is not a player.
 - `app.ts`: BOAI Electron lifecycle/navigation; reuses existing isolated conversation and schedule fixtures. Demo model traffic uses the fixture, DeepSeek plans actions.
 - `run.mjs`: builds the adapter, then invokes the recorder. Full application build remains an explicit preceding step.
 

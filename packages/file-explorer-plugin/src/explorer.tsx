@@ -1,7 +1,7 @@
 /*
  * [OUTPUT]: 2026-10-29 文件浏览器目录边界及真实回归覆盖；验证结果归第19组18。
  * [INPUT]: Host-scoped list/preview/open callbacks, visibility and BOAI preview renderer.
- * [OUTPUT]: Virtual file tree, lazy expansion, keyboard navigation and inline file preview.
+ * [OUTPUT]: Left content preview and right virtual file tree inside the shared detail panel.
  * [POS]: Official application plugin UI; adapted dsh-file-browser tree, no global DOM or filesystem writes.
  * [PROTOCOL]: Update Header and owning .folder.md when changed.
  */
@@ -102,6 +102,9 @@ export function FileExplorer(props: FileExplorerProps) {
       {props.toolbar?.(selected ?? '', cache.get('')?.rootPath)}
     </div>
     <div className="boai-explorer-panes">
+      <div className="boai-explorer-preview" role="region" aria-label="文件内容预览" aria-busy={reading}>
+        {content ? props.renderPreview(content.path, content.value) : <div className="boai-explorer-empty">{reading ? '正在读取…' : selected ? <Button variant="ghost" size="sm" onClick={() => void openFile(selected)}>打开预览</Button> : '选择文件预览'}</div>}
+      </div>
       <div className="boai-explorer-tree" ref={scroller} role="tree" aria-label="文件树" aria-busy={loading.size > 0}>
         <div className="boai-explorer-rows" style={{ height: virtual.getTotalSize() }}>
           {virtual.getVirtualItems().map(item => {
@@ -117,9 +120,6 @@ export function FileExplorer(props: FileExplorerProps) {
           })}
         </div>
         {!rows.length && !loading.size && <div className="boai-explorer-empty">{cache.has('') ? '空目录' : <Button variant="ghost" size="sm" onClick={() => setRefresh(value => value + 1)}>重新读取</Button>}</div>}
-      </div>
-      <div className="boai-explorer-preview" aria-busy={reading}>
-        {content ? props.renderPreview(content.path, content.value) : <div className="boai-explorer-empty">{reading ? '正在读取…' : selected ? <Button variant="ghost" size="sm" onClick={() => void openFile(selected)}>打开预览</Button> : '选择文件预览'}</div>}
       </div>
     </div>
   </section>
