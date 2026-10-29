@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 标识原判断/协调/执行阶段；无可读Run时允许显示保留的单次运行记录。
+ * [OUTPUT]: 聊天历史包含已发布的定时执行；跟踪原来源更新/删除，并复用精确停止入口。
  * [OUTPUT]: 2026-10-27移除任务结果入口与弹窗，执行记录沿原详情展示。
  * [OUTPUT]: 执行历史仅查看过程/定位消息及原停止入口，不提供继续或发送消息的按钮。
  * [OUTPUT]: 通讯录固定Run通过原员工详情查询精确读取，同一执行卡片不加载其他历史或额外摘要。
@@ -24,7 +26,7 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/component
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Popover, PopoverTrigger, PopoverContent, PopoverHeader, PopoverTitle, PopoverDescription } from '@/components/ui/popover'
-import { ChevronRight, Icon, Square, Terminal, Workflow } from '@/components/icons'
+import { ChevronRight, Icon, Terminal, Workflow } from '@/components/icons'
 import { ExecutionFeed, type ExecutionView } from './execution-feed'
 import { ExecutionRunInfo } from './execution-record'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -32,16 +34,18 @@ import { ExecutionAvatarRail } from './ExecutionAvatarRail'
 import { ExecutionReadingContext } from './useExecutionWindow'
 import { ExecutionContentCache } from './execution-content-cache'
 import { ExecutionMessageButton, type ExecutionMessageNavigation } from './execution-message-button'
+import { ExecutionStopButton } from './execution-stop-button'
 
 const labels: Record<AgentRun['status'], string> = { queued: '排队中', running: '执行中', completed: '已完成', failed: '失败', cancelled: '已停止', interrupted: '已中断', waiting_approval: '等待批准' }
-export function TraceTab({ api, conversationId, messageId, agentId, active, snapshot, occurrenceId, runId, title, onNavigateMessage, stopAction, emptyMessage = '发送消息后，可在这里查看员工的执行过程。' }: {
+export function TraceTab({ api, conversationId, messageId, agentId, active, snapshot, occurrenceId, runId, title, onNavigateMessage, stopAction, emptyContent, emptyMessage = '发送消息后，可在这里查看员工的执行过程。' }: {
   api: DesktopApi; conversationId: string; messageId?: string; agentId?: string; active: boolean; snapshot: Snapshot; busy?: boolean; onRetry?(id: string): void; onStop?(id: string): void
-  occurrenceId?: string; runId?: string; title?: string; emptyMessage?: string; onNavigateMessage?: ExecutionMessageNavigation; stopAction?: ReactNode
+  occurrenceId?: string; runId?: string; title?: string; emptyMessage?: string; emptyContent?: ReactNode; onNavigateMessage?: ExecutionMessageNavigation; stopAction?: ReactNode
 }) {
   const [views, setViews] = useState<Record<string, ExecutionView>>({})
   const [employee, setEmployee] = useState(agentId ?? ''), [items, setItems] = useState<ExecutionHistoryPage['items']>([]), [next, setNext] = useState<ExecutionHistoryPage['next']>()
   const [error, setError] = useState(''), [loaded, setLoaded] = useState(false), [open, setOpen] = useState<Record<string, boolean>>({})
   const historyScope = useRef(''), paged = useRef(false), caches = useRef(new Map<string, ExecutionContentCache>())
+  const sourceRooms = useRef(new Set<string>())
   useEffect(() => { setEmployee(agentId ?? '') }, [agentId, messageId])
   useEffect(() => {
     if (!active) return
@@ -57,23 +61,26 @@ export function TraceTab({ api, conversationId, messageId, agentId, active, snap
           })
           : await api.request('listExecutionHistory', { conversationId, occurrenceId, agentId: employee || undefined })
         if (!disposed) {
-          setItems(previous => [...page.items, ...previous.filter(item => !page.items.some(current => current.run.id === item.run.id) && (!employee || item.run.agentId === employee))]); if (!paged.current) setNext(page.next); setError(''); setLoaded(true)
+          for (const item of page.items) sourceRooms.current.add(item.run.conversationId)
+          setItems(previous => [...page.items, ...(paged.current ? previous.filter(item => !page.items.some(current => current.run.id === item.run.id) && (!employee || item.run.agentId === employee)) : [])]); if (!paged.current) setNext(page.next); setError(''); setLoaded(true)
           if (messageId) { const target = page.items.find(item => item.run.triggerMessageId === messageId || item.run.messageId === messageId); if (target) setOpen(previous => ({ ...previous, [target.run.id]: true })) }
         }
       } catch (error) { if (!disposed) { setError(errorText(error)); if (runId) { setItems([]); caches.current.clear(); setLoaded(true) } } }
       finally { inFlight = false; if (again && !disposed) { again = false; timer = setTimeout(() => void load(), 150) } }
     }
     const scope = `${conversationId}:${employee}:${occurrenceId ?? ''}:${runId ?? ''}`
-    if (historyScope.current !== scope) { historyScope.current = scope; paged.current = false; setItems([]); setNext(undefined); setLoaded(false) }
+    if (historyScope.current !== scope) { historyScope.current = scope; paged.current = false; sourceRooms.current.clear(); setItems([]); setNext(undefined); setLoaded(false) }
     void load()
     const unsubscribe = api.subscribe(event => {
       if ((event.type === 'conversation:cleared' || event.type === 'conversation:deleted') && event.conversationId === conversationId) { disposed = true; caches.current.clear(); setItems([]); setNext(undefined); setLoaded(true); return }
-      if (event.type === 'changed' && (!event.conversationId || event.conversationId === conversationId) && !timer) timer = setTimeout(() => { timer = undefined; void load() }, 180)
+      if ((event.type === 'conversation:cleared' || event.type === 'conversation:deleted') && sourceRooms.current.has(event.conversationId)) { setItems(previous => previous.filter(item => item.run.conversationId !== event.conversationId)); caches.current.clear() }
+      if (event.type === 'automation:history-deleted') { setItems(previous => previous.filter(item => item.run.origin?.occurrenceId !== event.occurrenceId)); caches.current.clear() }
+      if (event.type === 'changed' && (!event.conversationId || event.conversationId === conversationId || sourceRooms.current.has(event.conversationId)) && !timer) timer = setTimeout(() => { timer = undefined; void load() }, 180)
     })
     return () => { disposed = true; unsubscribe(); clearTimeout(timer) }
   }, [api, conversationId, employee, active, messageId, occurrenceId, runId, agentId, title])
   const loadMore = async () => {
-    try { paged.current = true; const scope = historyScope.current; const page = await api.request('listExecutionHistory', { conversationId, occurrenceId, agentId: employee || undefined, before: next }); if (scope !== historyScope.current) return; setItems(previous => [...previous, ...page.items.filter(item => !previous.some(current => current.run.id === item.run.id))]); setNext(page.next) }
+    try { paged.current = true; const scope = historyScope.current; const page = await api.request('listExecutionHistory', { conversationId, occurrenceId, agentId: employee || undefined, before: next }); if (scope !== historyScope.current) return; for (const item of page.items) sourceRooms.current.add(item.run.conversationId); setItems(previous => [...previous, ...page.items.filter(item => !previous.some(current => current.run.id === item.run.id))]); setNext(page.next) }
     catch (error) { setError(errorText(error)) }
   }
   const conversation = snapshot.conversations.find(value => value.id === conversationId)
@@ -114,22 +121,22 @@ export function TraceTab({ api, conversationId, messageId, agentId, active, snap
           <CollapsibleContent keepMounted={opened}>
             {opened && <ExecutionRunContent api={api} run={run} active={active && expanded} cache={cache} view={view} live={live}
               onNavigateMessage={onNavigateMessage}
-              stopAction={index === 0 ? stopAction : undefined} allowNativeStop={!occurrenceId}
-              onViewChange={value => setViews(previous => ({ ...previous, [run.id]: value }))} onError={setError} />}
+              stopAction={index === 0 ? stopAction : undefined} allowStop={!occurrenceId}
+              onViewChange={value => setViews(previous => ({ ...previous, [run.id]: value }))} />}
           </CollapsibleContent>
           </Collapsible>
         </Card>
       })}
-      {loaded && !items.length && <p className="text-sm text-muted-foreground">{emptyMessage}</p>}
+      {loaded && !items.length && (emptyContent ?? <p className="text-sm text-muted-foreground">{emptyMessage}</p>)}
       {next && <Button variant="secondary" size="sm" onClick={() => void loadMore()}>加载更早的执行</Button>}
     </div>
   </ScrollArea></div>
 }
 
-function ExecutionRunContent({ api, run, active, cache, view, live, onViewChange, onError, onNavigateMessage, stopAction, allowNativeStop }: {
+function ExecutionRunContent({ api, run, active, cache, view, live, onViewChange, onNavigateMessage, stopAction, allowStop }: {
   api: DesktopApi; run: AgentRun; active: boolean; cache: ExecutionContentCache; view: ExecutionView; live: boolean
-  onViewChange(view: ExecutionView): void; onError(error: string): void
-  onNavigateMessage?: ExecutionMessageNavigation; stopAction?: ReactNode; allowNativeStop: boolean
+  onViewChange(view: ExecutionView): void
+  onNavigateMessage?: ExecutionMessageNavigation; stopAction?: ReactNode; allowStop: boolean
 }) {
   const [following, setFollowing] = useState(true)
   const viewport = useRef<HTMLDivElement>(null)
@@ -162,11 +169,12 @@ function ExecutionRunContent({ api, run, active, cache, view, live, onViewChange
       <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
         {!isNativeBackend(run.backend) && run.usage?.totalTokens !== undefined && <span title={`${run.usage.totalTokens.toLocaleString()} tokens`}>{Intl.NumberFormat('en', { notation: 'compact' }).format(run.usage.totalTokens)} tokens</span>}
         <time dateTime={run.createdAt} title={new Date(run.createdAt).toLocaleString('zh-CN')}>{new Date(run.createdAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })}</time>
+        {run.phase && run.phase !== 'execution' && <span>{{ decision: '判断阶段', coordination: '协调阶段', memory: '记忆整理阶段' }[run.phase]}</span>}
         <span className="flex items-center gap-1"><Icon name={run.status === 'running' ? 'LoaderCircle' : run.status === 'completed' ? 'CircleCheck' : run.status === 'failed' ? 'OctagonX' : 'Clock'} className={run.status === 'running' ? 'size-3.5 animate-spin' : 'size-3.5'} />{labels[run.status]}</span>
       </div>
       <div className="flex shrink-0 items-center gap-1">
       {stopAction}
-      {allowNativeStop && live && run.backend && ['codex-local', 'claude-local', 'runtime-plugin'].includes(run.backend.kind) && <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-xs" disabled={!active} aria-label="停止本次执行" onClick={() => void api.request('stopNativeExecution', { conversationId: run.conversationId, runId: run.id }).catch(error => onError(errorText(error)))} />}><Square /></TooltipTrigger><TooltipContent>停止本次执行</TooltipContent></Tooltip>}
+      {allowStop && live && <ExecutionStopButton key={run.id} api={api} run={run} active={active} compact />}
       {onNavigateMessage && <ExecutionMessageButton api={api} run={run} active={active} onNavigate={onNavigateMessage} />}
       <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-xs" className="text-muted-foreground" aria-label={view === 'rendered' ? '显示原生记录' : '显示过程视图'} onClick={() => {
         previousHeight.current = transition.current?.getBoundingClientRect().height

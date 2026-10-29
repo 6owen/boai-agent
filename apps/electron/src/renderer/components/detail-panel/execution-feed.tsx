@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 历史Run无步骤但有失败原因时直接展开原原因，不将没有工具/思考事件说成没有执行记录。
  * [OUTPUT]: 空过程按queued明确展示等待其他任务释放执行资源，running才等待员工输出。
  * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [OUTPUT]: 返回思考使用Beautiful UI ThinkingState；仅最新思考事件在运行时标为思考中，聊天加载由外层统一呈现。
@@ -179,7 +180,7 @@ export function ExecutionFeed({ api, run, active, cache, view = 'rendered', pres
     : <ExecutionVirtualList key="rendered" items={progress} enabled={active} gap={8}>{item => <div key={item.key} data-execution-item-key={item.key}>{item.kind === 'evidence'
       ? <EvidenceRow api={api} event={item.evidence} events={events} run={run} active={active} working={run.status === 'running' && processEvents.at(-1)?.id === item.evidence.id} read={read} />
       : <ExecutionItem item={item} evidence={events} run={run} />}</div>}</ExecutionVirtualList>}
-    {presentation === 'detail' && !events.length && !error && <p className="m-0 text-sm text-muted-foreground">{run.status === 'queued' ? '等待其他任务释放执行资源…' : run.status === 'running' ? '等待员工输出…' : '这次历史执行没有保存原生过程。'}</p>}
-    {run.error && <details className="text-xs text-muted-foreground"><summary>错误详情</summary><pre className="whitespace-pre-wrap break-words">{run.error}</pre></details>}
+    {presentation === 'detail' && !events.length && !error && !run.error && <p className="m-0 text-sm text-muted-foreground">{run.status === 'queued' ? '等待其他任务释放执行资源…' : run.status === 'running' ? '等待员工输出…' : '本次运行未记录工具或思考步骤。'}</p>}
+    {run.error && <details open={presentation === 'detail' && !events.length ? true : undefined} className="text-xs text-muted-foreground"><summary>错误详情</summary><pre className="whitespace-pre-wrap break-words">{run.error}</pre></details>}
   </div></ExecutionContentContext>
 }
