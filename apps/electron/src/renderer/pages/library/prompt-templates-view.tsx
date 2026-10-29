@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 提示词保留分组拖拽；说明归Tooltip，分组管理最右，条目只提供悬停删除菜单并打开Shell详情。
+ * [OUTPUT]: 提示词保留分组拖拽；说明归Tooltip，工具栏搜索最右、分组在左，条目只提供悬停删除菜单并打开Shell详情。
  * [INPUT]: 全局提示词目录、稳定所见版本及资源库选择。
  * [OUTPUT]: 技能同款目录行、右侧新建/编辑导航与确认删除；目录不再持有正文Dialog。
  * [POS]: 资源库提示词管理，不执行提示词或修改员工人格。
@@ -41,7 +41,7 @@ export function PromptTemplatesView({ api, prompts, loaded = true, onReload, sel
   const ids = groups.flatMap(group => group.open ? group.entries.map(item => item.id) : [])
   return <section className="sources-view" aria-label="提示词管理">
     <header className="custom-content-heading"><h1 className="flex items-center gap-2">提示词<Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-xs" aria-label="提示词用法" />}><InfoIcon /></TooltipTrigger><TooltipContent>在输入框中使用 $ 引用，发送时展开为正文。</TooltipContent></Tooltip></h1><Button variant="secondary" size="sm" onClick={onCreate}><Plus />新建提示词</Button></header>
-    <div className="custom-catalog-toolbar source-catalog-toolbar"><div className="custom-catalog-search"><CatalogSearch label="搜索提示词" value={query} onChange={setQuery} placeholder="搜索提示词" /><CollectionGroups groups={value?.groups ?? []} counts={counts} ready={ready} busy={collection.busy || !ready} noun="提示词" change={action => collection.change(action.kind === 'move-group' ? { ...action, placement: action.placement ?? 'before' } : action)} /></div></div>
+    <div className="custom-catalog-toolbar source-catalog-toolbar"><div className="custom-catalog-search"><CollectionGroups groups={value?.groups ?? []} counts={counts} ready={ready} busy={collection.busy || !ready} noun="提示词" change={action => collection.change(action.kind === 'move-group' ? { ...action, placement: action.placement ?? 'before' } : action)} /><CatalogSearch label="搜索提示词" value={query} onChange={setQuery} placeholder="搜索提示词" /></div></div>
     {collection.error && <Banner>{collection.error}</Banner>}
     {(collection.error || !loaded) && <Button variant="ghost" size="sm" disabled={collection.busy} onClick={() => { void collection.reload(true); onReload?.() }}>重新读取提示词分组</Button>}
     {!ready ? <div aria-label="正在读取提示词分组" aria-busy="true" className="space-y-3 p-4">{[0, 1, 2].map(index => <Skeleton key={index} className="h-10 w-full" />)}</div> : query && !visible.length ? <IllustratedEmpty kind="skills" title="没有匹配的提示词" /> : <div className="conversation-list skills-list-scroll skills-browser-list source-catalog" aria-label="提示词列表">
