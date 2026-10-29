@@ -5,6 +5,7 @@
  * [PROTOCOL]: Update Header and tests/.folder.md when changed.
  */
 import { expect, it } from 'vitest'
+import { createRequire } from 'node:module'
 import { execFileSync } from 'node:child_process'
 import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -82,4 +83,12 @@ it('rejects changed prepared assets and changed underlying candidate bundle byte
 it('accepts successful inherited stdio and still surfaces a nonzero child exit', () => {
   expect(command(process.execPath, ['-e', 'process.exit(0)'], { stdio: 'inherit' })).toBe('')
   expect(() => command(process.execPath, ['-e', 'process.exit(3)'])).toThrow()
+})
+
+it('matches the installed electron-builder schema rather than forwarding unsupported upstream zip options', async () => {
+  const require = createRequire(import.meta.url), builder = createRequire(require.resolve('electron-builder'))
+  const { validateConfiguration } = builder('app-builder-lib/out/util/config/config')
+  const metadata = JSON.parse(await readFile('package.json', 'utf8'))
+  const config = withSparkle(metadata.build, updates)
+  await expect(validateConfiguration(config, { isEnabled: false })).resolves.toBeUndefined()
 })

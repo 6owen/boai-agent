@@ -70,7 +70,8 @@ export function withSparkle(config, updates) {
     files: [...(config.files ?? []), ...fragment.files],
     asarUnpack: [...(config.asarUnpack ?? []), ...fragment.asarUnpack],
     extraFiles: [...(config.extraFiles ?? []), ...fragment.extraFiles],
-    dmg: { ...config.dmg, ...fragment.dmg }, zip: { ...config.zip, ...fragment.zip },
+    // electron-builder 26 has no top-level zip option; its unused blockmap is not published.
+    dmg: { ...config.dmg, ...fragment.dmg },
     mac: { ...config.mac, minimumSystemVersion: '12.0', extendInfo: { ...config.mac?.extendInfo, ...fragment.mac.extendInfo } },
     extraMetadata: { ...config.extraMetadata, boaiRelease: { ...config.extraMetadata?.boaiRelease, updates } },
   }
