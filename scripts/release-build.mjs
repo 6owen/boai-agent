@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-29 个人候选嵌入Sparkle与公钥；重编译桥接并从校验过的Electron ZIP保留framework链接。
  * [OUTPUT]: 应用与评估编译按当前工作区公开exports解析，保留原执行与分发合同。
  * [INPUT]: 明确版本/SHA、干净源码及完整原构建配置；本机macOS arm64，共用清单接受规范化路径。
  * [OUTPUT]: 旧进程排空后隔离ad-hoc候选、实际链接与可取消hash/身份/签名；仅built，不授发布或安装资格。
@@ -75,7 +76,7 @@ export function assertPersonalBundle({ plist, architectures, signature, version 
   if (plist?.CFBundleIdentifier !== 'com.boai.agent' || plist.CFBundleShortVersionString !== version || plist.CFBundleVersion !== version || !plist.CFBundleExecutable || /[/\\]/.test(plist.CFBundleExecutable)) throw new Error('候选bundle身份或版本不匹配')
   if (architectures.trim() !== 'arm64' || !/^Signature=adhoc$/m.test(signature) || !/^TeamIdentifier=not set$/m.test(signature) || /^CodeDirectory.*\bruntime\b/m.test(signature)) throw new Error('候选须为arm64/ad-hoc且无hardened runtime，不冒充Developer ID')
 }
-async function run(version, sha) {
+export async function buildRelease(version, sha) {
   if (process.platform !== 'darwin' || process.arch !== 'arm64' || process.version !== 'v24.16.0') throw new Error('个人候选仅支持已登记的macOS arm64/Node24.16.0')
   const source = await sourceIdentity(root), metadata = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
   const identity = verifyReleaseSource({ version, sha, current: { sha: source.commit, dirty: source.dirty }, metadata })
@@ -98,11 +99,15 @@ async function run(version, sha) {
     const guard = join(directory, 'process-guard'); await copyFile(join(root, 'dist/native/boai-process-guard'), guard); await chmod(guard, 0o700)
     const step = async (id, command, args, timeoutMs) => {
       console.log(`个人候选 ${id}`)
-      const receipt = await helpers.repairProcess({ command, args, cwd: root, timeoutMs, signal: controller.signal, managed: { guard, ledger: join(directory, 'processes') }, capture: { directory, prefix: id } })
+      const receipt = await helpers.repairProcess({ command, args, cwd: root, timeoutMs, signal: controller.signal, networkProxy: id === 'package', managed: { guard, ledger: join(directory, 'processes') }, capture: { directory, prefix: id } })
       await helpers.saveProcess(directory, id, receipt)
       if (receipt.failure || receipt.exitCode !== 0) throw new Error(`${id}失败：${receipt.failure ?? receipt.exitCode}`)
     }
-    const config = personalMacConfiguration(metadata, { output: join(directory, 'assets'), version, sha }), path = join(directory, 'builder.json')
+    const { readUpdateConfig, rebuildSparkle, withSparkle, prepareElectronDist } = await import('./release-updates.mjs')
+    const updates = await readUpdateConfig()
+    await rebuildSparkle()
+    const config = withSparkle(personalMacConfiguration(metadata, { output: join(directory, 'assets'), version, sha }), updates), path = join(directory, 'builder.json')
+    config.electronDist = await prepareElectronDist(join(directory, 'electron-dist'))
     await save(path, config)
     await step('build', 'pnpm', ['build'], 10 * 60_000)
     result.built = await verifyBuildIdentity(root)
@@ -135,6 +140,8 @@ async function run(version, sha) {
     finally { for (const release of releases.reverse()) release() }
     console.log(`个人候选 ${result.status}: ${directory}`)
   }
+  if (result.status !== 'built') throw new Error(`候选构建${result.status}: ${result.errors.join("; ")}；${directory}`)
+  return directory
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const options = {}, args = process.argv.slice(2)
@@ -143,5 +150,5 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     options[args[index]] = args[index + 1]
   }
   if (!options['--version'] || !options['--sha']) throw new Error('必须明确候选版本与SHA')
-  run(options['--version'], options['--sha']).catch(error => { console.error(String(error)); process.exitCode = 1 })
+  buildRelease(options['--version'], options['--sha']).catch(error => { console.error(String(error)); process.exitCode = 1 })
 }

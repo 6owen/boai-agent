@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-29 主窗专用updates桥接与事件，不扩大员工通用RPC。
  * [OUTPUT]: 2026-10-28 模型下载/取消/移除传递显式modelId及action。
  * [OUTPUT]: 2026-10-27 增加可信主窗口语音设备授权租约；原默认关闭与草稿边界保持。
  * [OUTPUT]: 主窗专用诊断导出和当前桌面生命周期读取；不加入员工RPC。
@@ -19,6 +20,11 @@ import type { AppEvent, DesktopApi, MaterialFileSourceInput } from '@boai/shared
 import { MATERIAL_LIMITS } from '@boai/shared/domain/materials'
 
 const api: DesktopApi = {
+  updates: {
+    snapshot: () => ipcRenderer.invoke('boai:updates', 'snapshot'),
+    check: () => ipcRenderer.invoke('boai:updates', 'check'),
+    install: version => ipcRenderer.invoke('boai:updates', 'install', version),
+  },
   voice: {
     microphoneAccess: input => ipcRenderer.invoke('boai:voice', 'microphoneAccess', input),
     snapshot: () => ipcRenderer.invoke('boai:voice', 'snapshot'),

@@ -1,4 +1,6 @@
 <!--
+[OUTPUT]: 2026-10-29新增boai-release共享技能，覆盖bumpp、本机候选/Release、下载与自动更新；普通开发转入发布须符合本次请求。
+[OUTPUT]: 2026-10-29 bumpp与Sparkle更新/本机发布已接；原生3场、BOAI包入口及最终ZIP8/DMG2通过，正式发布/个人安装独立，实际归22组03。
 [OUTPUT]: 2026-10-29用户要求git cpf：显式提交/推送/不等CI合并，临时管理员保护必须恢复；普通git cp与默认交付不自动走此例外。
 [OUTPUT]: 2026-10-29 官方文件浏览器包、目录入口及相关构建/测试合同；JSON例外package.json增加包依赖及lint范围。
 [OUTPUT]: 2026-10-29用户授权员工workspace配置入口、会话授权目录显隐与官方文件树/预览插件；执行cwd与交付文件范围保持，实际进度归19组18。
@@ -610,6 +612,7 @@
 - 2026-10-28现行规则：直接迁用Magpie Test与DeepSeek UI preview；工程检查与界面预览自动运行，预览发布到PR。撤销本地效果确认前置、固定PNG基准门禁、独立候选与基准晋升流程。
 - 开发使用独立worktree，交付按本次用户授权；明确只修改/执行试验时不合并。旧UI工具和历史结果保留为本地按需入口。
 - 在本仓库开发、交付、CI或合并前，读取共享技能[boai-dev-workflow](.agents/skills/boai-dev-workflow/SKILL.md)，并fetch/read origin/main最新版本；旧worktree/Session也必须重新读取。本分支修订和最新用户指令优先核对。当前详细合同见第22组06。
+- 本机版本、安装包或Release发布及下载/自动更新说明使用共享技能[boai-release](.agents/skills/boai-release/SKILL.md)，复用bumpp与现有release脚本；发布范围按本次请求，普通开发提交/合并不隐含发版，实际状态归第22组03。
 - worktree独立node_modules复用pnpm store；普通pnpm i即可复用缓存，首次冻结安装可加--prefer-offline。main只同步实际已合并提交，预览和产品开发均不复制回main。
 - **worktree 不遗留：** 在任务worktree（含subagent的`.claude/worktrees/agent-*`）里做的任务，完成时必须删除该worktree及其本地任务分支，已核实专属于它的cargo target目录一并删除。删除前二选一：确认最终提交已实际合并进main；或不合并时先把本任务应保留的未提交改动（含未跟踪源码）提交到该分支，再打`archive/<worktree名>`标签存档并核对指向最终提交；同名标签已存在时加唯一后缀，不覆盖旧档。随后执行`git worktree remove`，已合并分支用`git branch -d`，已归档的未合并分支用`git branch -D`。编排subagent的会话负责收尾它派生的worktree。确需保留的（待用户裁决、有冲突待解等）必须在最终回复点名路径与原因，不得默默留下。
 - 删除前确认本任务及子任务进程已退出、会话工作目录已移出目标，核对未跟踪及ignored文件；tag只保存提交内容，需要保留的数据先迁出，密钥不得提交。只删该worktree专用的构建产物，不删共享cargo target、pnpm store或符号链接指向的共享目录；不得借收尾清理其他会话的任务分支。

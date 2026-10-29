@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-29 主进程外置electron-sparkle-updater，保留原生模块按包内位置加载。
  * [OUTPUT]: 2026-10-29 包边界纳入file-explorer-plugin；build分发固定来源和MIT许可。
  * [OUTPUT]: 2026-10-28 本地语音helper及引擎适配器共同分发，模型权重仍按需下载。
  * [OUTPUT]: 2026-10-27 语音包分发、工作区依赖或静音诊断候选；不代表产品验收。
@@ -69,7 +70,7 @@ async function buildElectronHost(compile) {
   await buildDesktopActivity()
   await buildAppIcon()
   await Promise.all([
-    compile({ entryPoints: ['apps/electron/src/main/main.ts'], outfile: 'dist/main/main.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron', '@libsql/client'], sourcemap: true }),
+    compile({ entryPoints: ['apps/electron/src/main/main.ts'], outfile: 'dist/main/main.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron', '@libsql/client', 'electron-sparkle-updater'], sourcemap: true }),
     compile({ entryPoints: ['apps/electron/src/preload/browser-toolbar.ts'], outfile: 'dist/main/browser-toolbar-preload.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron'] }),
     compile({ entryPoints: ['apps/electron/src/preload/index.ts'], outfile: 'dist/main/preload.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron'] }),
     compile({ entryPoints: ['apps/electron/src/worker/index.ts'], outfile: 'dist/runtime/worker.mjs', bundle: true, platform: 'node', format: 'esm', target: 'node22', packages: 'external', sourcemap: true }),

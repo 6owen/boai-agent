@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-29 应用更新私有API与权威revision事件；通用Methods不包含安装更新。
  * [OUTPUT]: 2026-10-29 workspace-files增加授权根及预览DTO，index/public-methods接可信桌面预览入口。
  * [OUTPUT]: testWebSearchServiceDraft显式测试当前DeepSeek密钥，不保存配置。
  * [OUTPUT]: 当前轮次纯文本补充固定run/turn，原消息保存接受、原生确认与未知投递。
@@ -107,6 +108,7 @@ export const CLIPBOARD_MATERIAL_FILE_FORMATS = ['Files', 'text/uri-list', 'x-spe
 export type MaterialFileSourceInput = { path: string } | { name: string; bytes: Uint8Array }
 
 export type AppEvent =
+  | { type: 'app:update'; state: import('./app-updates').AppUpdateState }
   | { type: 'desktop:lifecycle'; state: import('./desktop').DesktopLifecycle }
   | { type: 'workspace:show'; employeeId: string; conversationId: string; view: 'terminal' | 'preview' }
   | { type: 'gateway-imports:changed' }
@@ -413,6 +415,7 @@ export interface Methods {
 }
 export type Method = keyof Methods
 export interface DesktopApi {
+  updates?: import('./app-updates').AppUpdatesApi
   /** Trusted main-window-only voice bridge; absent from employee and external RPC. */
   voice?: import('../plugins/voice-input').VoiceApi
   getDesktopLifecycle?(): Promise<import('./desktop').DesktopLifecycle>
