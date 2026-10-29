@@ -13,6 +13,7 @@ import { verifyPrepared, command, gh, api, releaseRepository, releaseFeed } from
 
 export function assertPublishable(manifest, smoke) {
   if (manifest.feedUrl !== releaseFeed || smoke.sha !== manifest.identity.sha || smoke.version !== manifest.identity.version || !smoke.manifestSha256) throw Error('更新源或产物冒烟不属于本次发布')
+  if (!Array.isArray(smoke.assets) || smoke.assets.length !== 2 || smoke.assets.some(asset => !manifest.assets.some(published => published.name === asset.name && published.bytes === asset.bytes && published.sha256 === asset.sha256))) throw Error('待发布字节不等于已冒烟的DMG/ZIP')
   const names = manifest.assets.map(asset => asset.name)
   if (new Set(names).size !== names.length || !['appcast.xml', 'SHA256SUMS'].every(name => names.includes(name)) || !names.some(name => name.endsWith('.zip')) || !names.some(name => name.endsWith('.dmg'))) throw Error('发布资产不完整')
 }

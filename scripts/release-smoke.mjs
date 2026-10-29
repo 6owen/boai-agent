@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 2026-10-29 原ZIP8/DMG2来源校验同时核对候选中的更新feed与公钥，原冒烟断言保持。
+ * [OUTPUT]: 2026-10-29 原ZIP8/DMG2来源校验同时核对候选中的更新feed与公钥，原冒烟断言保持；返回已验DMG/ZIP字节身份供发布绑定。
  * [OUTPUT]: 应用与评估编译按当前工作区公开exports解析，保留原执行与分发合同。
  * [INPUT]: 当前干净源码对应的个人built候选、锁定BDD及隔离输出；已登录macOS arm64/Node24。
  * [OUTPUT]: ZIP8/DMG2原场景、逐启动完整独立profile/包身份、实际执行墙钟窗口与bundle前后字节；受管worker配对挂载/封存，未知先恢复。
@@ -163,7 +163,7 @@ async function verifySmokeReports(directory, result, signal) {
     stages.push({ kind, cases: selected.length, launches: evidence.launches })
   }
   if (!equal(stages, result.stages)) throw Error('产物两资产场景汇总不对应')
-  return { sha: candidate.identity.sha, version: candidate.identity.version, stages }
+  return { sha: candidate.identity.sha, version: candidate.identity.version, assets: candidate.assets, stages }
 }
 export async function verifyReleaseSmoke(directory) {
   directory = resolve(directory)

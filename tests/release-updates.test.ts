@@ -54,9 +54,10 @@ it('refuses credentials, insecure remote feeds and missing update keys', () => {
   expect(validateUpdateConfig(updates)).toEqual(updates)
 })
 it('ties publication to the same version/source and production feed', () => {
-  const manifest = { identity: { version: '0.2.5', sha: 'a'.repeat(40) }, feedUrl: releaseFeed, assets: ['appcast.xml', 'SHA256SUMS', 'app.zip', 'app.dmg'].map(name => ({ name })) }
-  const smoke = { version: '0.2.5', sha: 'a'.repeat(40), manifestSha256: 'b'.repeat(64) }
+  const manifest = { identity: { version: '0.2.5', sha: 'a'.repeat(40) }, feedUrl: releaseFeed, assets: ['appcast.xml', 'SHA256SUMS', 'app.zip', 'app.dmg'].map(name => ({ name, bytes: 20, sha256: 'd'.repeat(64) })) }
+  const smoke = { version: '0.2.5', sha: 'a'.repeat(40), manifestSha256: 'b'.repeat(64), assets: manifest.assets.slice(2) }
   expect(() => assertPublishable(manifest, smoke)).not.toThrow()
+  expect(() => assertPublishable(manifest, { ...smoke, assets: smoke.assets.map(asset => ({ ...asset, sha256: 'e'.repeat(64) })) })).toThrow('待发布字节')
   expect(() => assertPublishable(manifest, { ...smoke, sha: 'c'.repeat(40) })).toThrow()
   expect(() => assertPublishable({ ...manifest, feedUrl: 'http://127.0.0.1/feed' }, smoke)).toThrow()
   expect(() => assertPublishable({ ...manifest, assets: manifest.assets.slice(1) }, smoke)).toThrow()
@@ -91,4 +92,12 @@ it('matches the installed electron-builder schema rather than forwarding unsuppo
   const metadata = JSON.parse(await readFile('package.json', 'utf8'))
   const config = withSparkle(metadata.build, updates)
   await expect(validateConfiguration(config, { isEnabled: false })).resolves.toBeUndefined()
+})
+
+it('explicit packaging proxy inheritance never brings model credentials into the child', async () => {
+  const { repairProcess } = await import('./evaluation/repair-process')
+  const controller = new AbortController()
+  const receipt = await repairProcess({ command: process.execPath, args: ['-e', 'console.log(JSON.stringify({http:!!process.env.HTTP_PROXY,https:!!process.env.HTTPS_PROXY,model:!!process.env.OPENAI_API_KEY||!!process.env.CODEX_API_KEY}))'], cwd: process.cwd(), timeoutMs: 5000, signal: controller.signal, networkProxy: true })
+  expect(receipt.exitCode).toBe(0); expect(receipt.failure).toBeUndefined()
+  expect(JSON.parse(receipt.stdout)).toEqual({ http: !!process.env.HTTP_PROXY, https: !!process.env.HTTPS_PROXY, model: false })
 })

@@ -99,7 +99,7 @@ export async function buildRelease(version, sha) {
     const guard = join(directory, 'process-guard'); await copyFile(join(root, 'dist/native/boai-process-guard'), guard); await chmod(guard, 0o700)
     const step = async (id, command, args, timeoutMs) => {
       console.log(`个人候选 ${id}`)
-      const receipt = await helpers.repairProcess({ command, args, cwd: root, timeoutMs, signal: controller.signal, managed: { guard, ledger: join(directory, 'processes') }, capture: { directory, prefix: id } })
+      const receipt = await helpers.repairProcess({ command, args, cwd: root, timeoutMs, signal: controller.signal, networkProxy: id === 'package', managed: { guard, ledger: join(directory, 'processes') }, capture: { directory, prefix: id } })
       await helpers.saveProcess(directory, id, receipt)
       if (receipt.failure || receipt.exitCode !== 0) throw new Error(`${id}失败：${receipt.failure ?? receipt.exitCode}`)
     }
