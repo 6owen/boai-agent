@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: CDP等待绑定实际页面销毁；退出后不再派发，drain不受丢失回执永久阻塞。
  * [OUTPUT]: ref首次解析失败抛出明确零输入错误；动作后的几何/传输错误仍保持未知。
  * [OUTPUT]: 输入前复核真实密码字段/焦点，密码交由用户人工输入；CDP与原生回退仍只在首动作前选择。
  * [OUTPUT]: 直接迁入同版命中探针/DOM点击回退、受控输入原生setter与真实下拉选择；部分鼠标失败不再回放，密码保留人工输入。
@@ -22,6 +23,7 @@
 
 import type { WebContents } from 'electron'
 import { mainLog } from './logger'
+import { untilPageDestroyed } from './browser-page-operation'
 
 /** Only raised before any page input is dispatched, never by post-action geometry checks. */
 export class BrowserInputNotStartedError extends Error {
@@ -469,14 +471,15 @@ export class BrowserCDP {
   }
 
   private async send(method: string, params?: Record<string, unknown>): Promise<any> {
+    if (this.webContents.isDestroyed()) throw new Error('浏览器页面已实际退出，原动作结果未知')
     await this.ensureAttached()
     try {
-      const pending = this.webContents.debugger.sendCommand(method, params)
+      const pending = untilPageDestroyed(this.webContents, () => this.webContents.debugger.sendCommand(method, params))
       this.pendingCommands.add(pending)
       try { return await pending } finally { this.pendingCommands.delete(pending) }
     } finally {
       // Keep detach countdown tied to completed calls so we do not detach mid-flight.
-      this.resetIdleDetachTimer()
+      if (!this.webContents.isDestroyed()) this.resetIdleDetachTimer()
     }
   }
 
