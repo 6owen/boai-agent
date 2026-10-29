@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 独立AgentBrowser/BrowserViewer插件接入；上游工具、启停与运行回收保持独立。
  * [OUTPUT]: Private workspace-root and lightweight scope queries reach original validation without exposing them to renderers.
  * [OUTPUT]: Private run-credential bridge preserves structured errors and is never a public owner/run method.
  * [INPUT]: Authenticated same-machine desktop requests or the original Electron worker parent port.
@@ -15,6 +16,7 @@ import type { RunCliAccessRequest } from '@boai/shared/cli/run-access'
 
 export async function dispatchRuntime(service: AppService, method: string, input: unknown) {
   switch (method) {
+    case '__browserPluginsChanged': z.undefined().parse(input); return service.browserPluginsChanged()
     case '__runCliAccess': {
       try { return { ok: true, result: await service.runCliAccess(input as RunCliAccessRequest) } }
       catch (error) { return { ok: false, code: error instanceof CliError ? error.code : 'HANDLER_ERROR', message: error instanceof Error ? error.message : '员工运行权限核验失败' } }

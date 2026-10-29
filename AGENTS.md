@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-30独立AgentBrowser/BrowserViewer可选插件与验证归19组19；自带浏览器窗口/登录共享保持，Stagehand暂不接。
 [OUTPUT]: 2026-10-29新增boai-release共享技能，覆盖bumpp、本机候选/Release、下载与自动更新；普通开发转入发布须符合本次请求。
 [OUTPUT]: 2026-10-29 bumpp与Sparkle更新/本机发布已接；原生3场、BOAI包入口及最终ZIP8/DMG2通过，正式发布/个人安装独立，实际归22组03。
 [OUTPUT]: 2026-10-29用户要求git cpf：显式提交/推送/不等CI合并，临时管理员保护必须恢复；普通git cp与默认交付不自动走此例外。

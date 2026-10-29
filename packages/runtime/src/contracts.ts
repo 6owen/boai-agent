@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 独立AgentBrowser/BrowserViewer插件接入；上游工具、启停与运行回收保持独立。
  * [OUTPUT]: onNativeProgram承接实际原生握手/线程的程序身份，不代表任务执行或人工连接验证。
  * [OUTPUT]: 当前轮次纯文本补充固定run/turn，原消息保存接受、原生确认与未知投递。
  * [OUTPUT]: 2026-10-27 默认持续执行、来源校验及工作现场/复核接线；沿原权限和账本。
@@ -109,6 +110,9 @@ export interface EngineContext {
   nativeSourceFingerprint?: string
   /** Source-matched metadata only; refreshing it never changes employee or connection identity. */
   modelCatalog?: import('@boai/shared/domain/model-gateway').ModelCatalog
+  browserPluginProviders?: import('@boai/shared/plugins/browser-tools').BrowserPluginProvider[]
+  inspectBrowserPlugin?(provider: import('@boai/shared/plugins/browser-tools').BrowserPluginProvider): Promise<unknown>
+  callBrowserPlugin?(input: import('@boai/shared/plugins/browser-tools').BrowserPluginCall): Promise<unknown>
   webSearchServices?: import('@boai/shared/domain/sources').SourceSummary[]
   webSearchPreference?: import('@boai/shared/domain/web-search').WebSearchPreference
   inspectWebSearch?(serviceId: string): Promise<unknown>

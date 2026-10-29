@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 独立AgentBrowser/BrowserViewer插件接入；上游工具、启停与运行回收保持独立。
  * [OUTPUT]: 已登记依赖等待时私有汇报schema错误沿withhold保留等待及错误原文；不发布无效正文或重放操作。
  * [OUTPUT]: 2026-10-29 getWorkspaceRoot可解析精确已存目录授权，成员/撤权/根替换复核；执行cwd保持。
  * [OUTPUT]: 原生Codex握手观察沿原run权限与串行事务保存版本，不改变配置revision或自动重发输入。
@@ -208,6 +209,8 @@ import { planOperations, activePlanInstructions } from './modules/application/pl
 import { referenceOperations, referenceScope, referenceInstructions, type LoadReferences } from './modules/application/reference-operations'
 import { collectReferenceSources } from './modules/application/reference-sources'
 import { applicationOperations } from './modules/application/operations'
+import { BrowserPluginService } from './modules/browser/plugins'
+import { browserPluginProviderSchema } from '@boai/shared/plugins/browser-tools'
 import { ImageService } from './modules/media/image-service'
 import { TerminalService } from './modules/workspace-tools/terminal-service'
 import { PreviewService } from './modules/workspace-tools/preview-service'
@@ -427,6 +430,7 @@ const fail = (message: string): never => { throw new Error(message) }
 export class AppService {
   private readonly cliRunAccess = new RunCliAccess()
   runCliAccess(input: RunCliAccessRequest) { return this.cliRunAccess.request(input) }
+  private readonly browserPlugins: BrowserPluginService
   private readonly webSearch: WebSearchService
   private readonly dataSources: SourceService
   private readonly materialUploads: MaterialUploads
@@ -528,6 +532,7 @@ export class AppService {
     this.dataPath = resolve(options.dataPath)
     this.store = new ProductStore(join(this.dataPath, 'boai.sqlite'))
     this.contexts = new ContextRepository(this.store)
+    this.browserPlugins = new BrowserPluginService(this.store, this.dataPath, action => this.serialize(async () => { if (this.closing || this.backingUp) fail('服务正在退出或备份'); return action() }))
     this.images = new ImageService(this.store, {
       connection: async id => this.connections.get(id),
       credential: connection => this.serialize(async () => {
@@ -1118,6 +1123,8 @@ export class AppService {
       }
       return mergeCatalogResults(result)
     }
+    if (method === 'getBrowserPluginSettings') return this.browserPlugins.settings(z.object({ provider: browserPluginProviderSchema }).strict().parse(input).provider)
+    if (method === 'saveBrowserPluginSettings') return this.browserPlugins.save(input)
     if (method === 'getWebSearchSettings') { z.undefined().parse(input); return this.webSearch.settings() }
     if (method === 'saveWebSearchService') return this.webSearch.save(input)
     if (method === 'saveWebSearchDefault') return this.webSearch.saveDefault(input)
@@ -4070,6 +4077,9 @@ export class AppService {
         generate: (input, references) => this.images.generate(input, references, signal, () => this.serialize(async () => { await this.assertExecutionAccess(context) })),
         verify: async source => { await this.serialize(async () => { await this.assertExecutionAccess(context) }); await this.images.verify(source) },
       }, dataSources: isCoreAgent(agent) ? this.dataSources.allSummaries() : this.dataSources.summaries(agent.sourceIds),
+      browserPluginProviders: await this.browserPlugins.enabled(),
+      inspectBrowserPlugin: async provider => { await this.serialize(async () => { await this.assertExecutionAccess(context) }); return this.browserPlugins.inspect(provider, context) },
+      callBrowserPlugin: async input => { await this.serialize(async () => { await this.assertExecutionAccess(context) }); const result = await this.browserPlugins.call(input, context); await this.serialize(async () => { await this.assertExecutionAccess(context) }); return result },
       webSearchServices: await this.webSearch.summaries(agent), webSearchPreference: this.webSearch.effectivePreference(agent),
       inspectWebSearch: serviceId => this.useWebSearch(context, serviceId),
       callWebSearch: input => this.useWebSearch(context, input.sourceId, sourceCallSchema.parse(input)),
@@ -5191,9 +5201,9 @@ export class AppService {
       throw new Error(this.redact(this.errorMessage(error), key))
     } finally {
       try { await Promise.all([this.dataSources.closeRun(run.id), this.webSearch.connections.closeRun(run.id)]) } finally {
-        try { await this.browserSessions.get(run.id)?.session.drain(); this.browserSessions.delete(run.id) } finally {
+        try { await this.browserPlugins.closeRun(run.id) } finally { try { await this.browserSessions.get(run.id)?.session.drain(); this.browserSessions.delete(run.id) } finally {
           releaseTask?.(); if (workDeadline) clearTimeout(workDeadline); signal.removeEventListener('abort', abort); this.runControllers.delete(run.id); this.organizationModelCalls.delete(run.id); await this.clearApprovals(run.id)
-        }
+        } }
       }
     }
   }
@@ -5808,10 +5818,12 @@ export class AppService {
       return true
     })
   }
+  browserPluginsChanged() { return this.browserPlugins.refresh() }
   close() { return this.closeTask ??= this.drain() }
   private async drain() {
     this.closing = true
     await this.desktopActivity.close()
+    await this.browserPlugins.close()
     await this.previews.close()
     await this.terminals.close()
     await this.agentBehaviors.close()

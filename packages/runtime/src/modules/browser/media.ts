@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 独立浏览器插件参数在持久Trace/历史中隐藏，原始内存调用与工具名称保持。
  * [OUTPUT]: 持久观测同时脱敏网页fill/type命令，包括JSON嵌套和拒绝请求；模型内存参数不变。
  * [INPUT]: 真实工具/模型/Trace 的媒体值。
  * [OUTPUT]: 只对媒体负载生成 MIME/字节数/hash 观测摘要；原生附件data URI按原始字节核算，普通工具正文和既有凭据脱敏合同保留。
@@ -23,6 +24,7 @@ export function summarizeMedia(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(summarizeMedia)
   if (!value || typeof value !== 'object') return value
   let record = value as Record<string,unknown>
+  if (['agent-browser', 'browser-viewer'].includes(String(record.provider)) && typeof record.tool === 'string' && 'arguments' in record) record = { ...record, arguments: '[browser input omitted]' }
   if (typeof record.command === 'string') record = { ...record, command: redactBrowserCommand(record.command) }
   const mime = typeof record.mimeType === 'string' ? record.mimeType : typeof record.mediaType === 'string' ? record.mediaType : undefined
   if ((record.type === 'image-data' || record.type === 'file-data' || mime?.startsWith('image/')) && typeof record.data === 'string') return { ...Object.fromEntries(Object.entries(record).filter(([key]) => key !== 'data').map(([key,item]) => [key,summarizeMedia(item)])), ...mediaSummary(record.data,mime) }

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 独立AgentBrowser/BrowserViewer插件接入；上游工具、启停与运行回收保持独立。
  * [OUTPUT]: DeepSeek公开历史按当前阶段实际工具集适配，覆盖带工具的普通聊天；当前SDK思考链保持原样。
  * [OUTPUT]: 2026-10-27 默认持续执行、来源校验及工作现场/复核接线；沿原权限和账本。
  * [OUTPUT]: API公开阶段先维护获准历史checkpoint，再沿原Run/Work执行；Bobo Memory只装未覆盖尾部，逐步容量及附加调用不重置预算。
@@ -79,6 +80,7 @@ import { thinkingProviderOptions, decisionProviderOptions, modelConfig, response
 import { gatewayRouteObserver } from './gateway-route'
 import { assertStreamCompleted } from './stream-completion'
 import { supportsThinkingControl } from '@boai/shared/domain/model-preferences'
+import { createBrowserPluginOperations } from './browser-plugin-tools'
 import { createStageAgent, bootstrapInstructions, organizationDecisionAllowed, type StageInstance } from './agent-factory'
 import { BoboConversationMemory } from './conversation-memory'
 import { modelInputGuard, prepareContextHistory } from './context-maintenance'
@@ -275,12 +277,12 @@ export class MastraEngine implements AgentEngine {
     const activations = new Map<string, { id: string; name: string }>()
     const events = new Map<string, ToolEvent>()
     const report = async (id: string, name: string, status: ToolEvent['status'], detail: unknown) => {
-      if(name==='browser_tool' && status==='running') detail={omitted:'网页输入不进入持久事件'}
+      if((name==='browser_tool' || name==='call_browser_plugin') && status==='running') detail={omitted:'网页输入不进入持久事件'}
       const event = { id, name, status, detail: redact(typeof detail === 'string' ? detail : JSON.stringify(summarizeMedia(detail)) ?? '', ctx.apiKey).slice(0, 2000), createdAt: events.get(id)?.createdAt ?? new Date().toISOString() }
       events.set(id, event)
       await ctx.onTool(event)
     }
-    const buffered = task || !!ctx.continuity || ctx.agent.skillIds.length > 0 || !!ctx.recallMemory || !!ctx.application || hasKnowledge(ctx) || hasChatSourceTools(ctx) || !!ctx.manageSkills || !!ctx.manageDataSources || !!ctx.manageAutomation || !!ctx.createDataSource
+    const buffered = !!ctx.browserPluginProviders?.length || task || !!ctx.continuity || ctx.agent.skillIds.length > 0 || !!ctx.recallMemory || !!ctx.application || hasKnowledge(ctx) || hasChatSourceTools(ctx) || !!ctx.manageSkills || !!ctx.manageDataSources || !!ctx.manageAutomation || !!ctx.createDataSource
     let stepNumber = 0, stepText = '', stepHasTools = false, finalText = '', stepId = '', textBlocks = new Set<string>()
     try {
       for await (const chunk of output.fullStream) {
@@ -303,7 +305,7 @@ export class MastraEngine implements AgentEngine {
         } else if (chunk.type === 'reasoning-delta') {
           await ctx.onExecutionEvent?.({ id: `reasoning:${stepId}:${chunk.payload.id}`, eventType: 'agent.reasoning.block', payload: { text: '' }, appendText: chunk.payload.text })
         } else if (chunk.type === 'tool-call') {
-          if (!task && !((ctx.continuity && chunk.payload.toolName === 'read_context_history') || ([...createBoundSkillOperations(ctx), ...createMemoryOperations(ctx), ...createReactionOperations(ctx), ...createSelfieOperations(ctx)].some(operation => operation.name === chunk.payload.toolName)) || (hasKnowledge(ctx) && ctx.decision?.action !== 'ask' && ctx.decision?.action !== 'request_handoff' && knowledgeToolNames.some(name => name === chunk.payload.toolName)) || (hasChatSourceTools(ctx) && sourceToolNames.some(name => name === chunk.payload.toolName)) || (ctx.personality && stateToolNames.some(name => name === chunk.payload.toolName)) || (ctx.application && applicationToolNames.some(name => name === chunk.payload.toolName)) || (ctx.manageSkills && chunk.payload.toolName === 'manage_skills') || (ctx.manageDataSources && (['manage_data_sources', 'inspect_data_source', 'call_data_source'].includes(chunk.payload.toolName) || (ctx.browserSession && chunk.payload.toolName === 'browser_tool'))) || (ctx.manageAutomation && chunk.payload.toolName === 'manage_automation') || (ctx.createDataSource && chunk.payload.toolName === 'create_data_source'))) throw new Error('普通聊天不允许调用此业务工具')
+          if (!task && !((ctx.continuity && chunk.payload.toolName === 'read_context_history') || ([...createBrowserPluginOperations(ctx), ...createBoundSkillOperations(ctx), ...createMemoryOperations(ctx), ...createReactionOperations(ctx), ...createSelfieOperations(ctx)].some(operation => operation.name === chunk.payload.toolName)) || (hasKnowledge(ctx) && ctx.decision?.action !== 'ask' && ctx.decision?.action !== 'request_handoff' && knowledgeToolNames.some(name => name === chunk.payload.toolName)) || (hasChatSourceTools(ctx) && sourceToolNames.some(name => name === chunk.payload.toolName)) || (ctx.personality && stateToolNames.some(name => name === chunk.payload.toolName)) || (ctx.application && applicationToolNames.some(name => name === chunk.payload.toolName)) || (ctx.manageSkills && chunk.payload.toolName === 'manage_skills') || (ctx.manageDataSources && (['manage_data_sources', 'inspect_data_source', 'call_data_source'].includes(chunk.payload.toolName) || (ctx.browserSession && chunk.payload.toolName === 'browser_tool'))) || (ctx.manageAutomation && chunk.payload.toolName === 'manage_automation') || (ctx.createDataSource && chunk.payload.toolName === 'create_data_source'))) throw new Error('普通聊天不允许调用此业务工具')
           stepHasTools = true
           if (chunk.payload.toolName === 'skill') {
             const name = (chunk.payload.args as { name?: string })?.name

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 独立AgentBrowser/BrowserViewer插件接入；上游工具、启停与运行回收保持独立。
  * [OUTPUT]: 2026-10-29 新增file-explorer贡献和boai.file-explorer内置清单。
  * [OUTPUT]: 插件配置v1/v2共用严格读取与v2保存schema，供主进程和检索后台核对同一状态。
  * [OUTPUT]: 2026-10-27 语音插件与显式执行额度的公共合同；不依赖可执行插件。
@@ -21,6 +22,7 @@ export const savedPluginSettingsSchema = legacyPluginSettingsSchema.extend({ sch
 export const readPluginSettingsSchema = z.union([savedPluginSettingsSchema, legacyPluginSettingsSchema.transform(value => ({ ...value, schemaVersion: 2 as const, enabledIds: [] as string[] }))])
 export type PreviewKind = Exclude<FilePreview['kind'], 'unsupported'> | BinaryFilePreview['kind'] | 'image'
 export type PluginContribution =
+  | { readonly type: 'browser-tools'; readonly provider: import('./browser-tools').BrowserPluginProvider }
   | { readonly type: 'file-explorer' }
   | { readonly type: 'voice-input' }
   | { readonly type: 'web-search'; readonly provider: import('../domain/web-search').SearchProviderId }
