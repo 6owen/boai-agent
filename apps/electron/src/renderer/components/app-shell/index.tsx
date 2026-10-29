@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 用户要求暂时隐藏工作区入口与标签；既有终端关闭后不重建开始页。
  * [OUTPUT]: 2026-10-29 员工工作区、会话授权目录分别命名并在撤权/成员移除/插件停用时卸载。
  * [OUTPUT]: 设置查询缓存的宿主事件与窗口恢复订阅由Shell统一持有，切换设置分类时保留快照和失效通知。
  * [OUTPUT]: 当前轮次补充复用冻结消息请求与回执核对，未知输入不自动重发。
@@ -98,7 +99,7 @@ import { shortcuts } from '@/stores/shortcuts'
 import { matchShortcut } from '@boai/shared/shortcuts'
 import { WorkspacePanel } from '../detail-panel/workspace-panel'
 import { WorkspaceHome } from '../detail-panel/workspace-home'
-import { useFileExplorerEnabled } from '@/stores/plugins'
+import { useFileExplorerEnabled, WORKSPACE_UI_ENABLED } from '@/stores/plugins'
 import { WorkspaceFiles } from '../detail-panel/workspace-files'
 import { WorkspaceTerminal } from '../detail-panel/workspace-terminal'
 import { closeWorkspaceTerminal } from '../detail-panel/workspace-terminal-sessions'
@@ -235,6 +236,10 @@ export function AppShell() {
     if (!snapshotReady) return
     for (const tab of allDetailTabs) {
       const target = tab.target
+      if (!WORKSPACE_UI_ENABLED && (target.type === 'employee-workspace' || target.type === 'user-workspace')) {
+        dispatchWorkspace({ scope: tab.scope, action: { type: 'close', key: tab.key } })
+        continue
+      }
       const employee = target.type === 'employee-workspace' ? snapshot.agents.find(agent => agent.id === target.id)
         : target.type === 'user-workspace' && target.view === 'files' ? snapshot.agents.find(agent => agent.id === target.employeeId) : undefined
       if (target.type === 'employee-workspace' || target.type === 'user-workspace' && target.view === 'files') {
@@ -605,6 +610,7 @@ export function AppShell() {
     await refreshSnapshot().catch(failure => toast.error(`会话清理已完成，列表刷新未完成：${errorText(failure)}`))
   }
   const openPanel = (next: Panel, scope: string = route.page, current?: () => boolean, navigated?: () => void, withinKey?: string) => {
+    if (!WORKSPACE_UI_ENABLED && (next.type === 'employee-workspace' || next.type === 'user-workspace')) return
     const trigger = document.activeElement as HTMLElement | null
     const replacingKey = withinKey ?? (next.type === 'channels' ? `${scope}/${detailTargetKey(next)}` : undefined)
     const commit = () => {
@@ -658,11 +664,11 @@ export function AppShell() {
       const terminal = tab.target
       closingTerminals.current.add(terminal.id)
       void closeWorkspaceTerminal(terminal.id, input => api.request('workspaceTerminal', input)).then(() => {
-        if (mounted.current) dispatchDetails({ type: 'close', key, keepWorkspace: true }, scope)
+        if (mounted.current) dispatchDetails({ type: 'close', key, keepWorkspace: WORKSPACE_UI_ENABLED }, scope)
       }).catch(error => { if (mounted.current) toast.error(errorText(error)) }).finally(() => closingTerminals.current.delete(terminal.id))
       return
     }
-    dispatchDetails({ type: 'close', key, keepWorkspace: true }, scope)
+    dispatchDetails({ type: 'close', key, keepWorkspace: WORKSPACE_UI_ENABLED }, scope)
   }
   const showWorkspaceTerminal = (terminal: TerminalInfo, scope: string = route.page) => openPanel({ type: 'user-terminal', id: terminal.id, employeeId: terminal.employeeId, conversationId: terminal.conversationId, name: terminal.title }, scope)
   const requestCloseTab = (key: string) => {
@@ -1046,7 +1052,7 @@ export function AppShell() {
       onRemoveMaterial={item => { void materialDrafts.remove(id, item) }} onRetryMaterial={item => { void materialDrafts.retry(id, item) }} onPreviewMaterial={(material, line) => previewMaterial(material, line, scope, undefined, undefined, withinKey)} onKnowledgePreview={(citation, reference, agentId) => dispatchDetails({ type: 'open', withinKey, target: { type: 'resource', id: reference.resourceId, agentId, citation: { ...citation, requestId: crypto.randomUUID() } } }, scope)} onDiscardSubmission={() => clearUnacceptedSubmission(id)} /></FloatingLayerScope>
   }
   if (!api) return <div className="unavailable-page"><MessageCircle size={34}/><h1>请在桌面应用打开</h1><p>当前浏览器没有本地运行接口，无法访问员工、文件或模型。</p></div>
-  const headerActions = <>{route.page === 'conversations' && conversation && <div className="titlebar-no-drag flex shrink-0 items-center"><Button variant="ghost" size="icon-sm" aria-label="打开工作区" title="工作区" onClick={() => openPanel({ type: 'user-workspace', id: conversation.id, view: 'start' })}><span className="i-solar-folder-open-linear size-4" /></Button></div>}<HeaderBrowser api={api} /><Dialog open={conversationSearchOpen} onOpenChange={setConversationSearchOpen}>
+  const headerActions = <>{WORKSPACE_UI_ENABLED && route.page === 'conversations' && conversation && <div className="titlebar-no-drag flex shrink-0 items-center"><Button variant="ghost" size="icon-sm" aria-label="打开工作区" title="工作区" onClick={() => openPanel({ type: 'user-workspace', id: conversation.id, view: 'start' })}><span className="i-solar-folder-open-linear size-4" /></Button></div>}<HeaderBrowser api={api} /><Dialog open={conversationSearchOpen} onOpenChange={setConversationSearchOpen}>
     <DialogTrigger render={<Button className="titlebar-no-drag" variant="ghost" size="icon-sm" aria-label="搜索会话内容" title="搜索" />} onClick={openSearch}><Search /></DialogTrigger>
     <ConversationSearch api={api} active={conversationSearchOpen} snapshot={snapshot} selectedId={selectedId} request={searchRequest} onOpen={(result, current) => openSearchResult(result, current, () => setConversationSearchOpen(false))} onUnavailable={searchSourceUnavailable} />
   </Dialog></>
@@ -1094,8 +1100,8 @@ export function AppShell() {
           const fileChannelId = fileRoom?.channel ? fileRoom.id : fileRoom?.channelDiscussion?.conversationId
           const targetRoom = target.type === 'group' ? snapshot.conversations.find(room => room.id === target.id) : undefined
           const content = <>
-            {target.type === 'employee-workspace' && snapshot.agents.find(agent => agent.id === target.id) && <WorkspaceFiles api={api} active={active} agent={snapshot.agents.find(agent => agent.id === target.id)!} location="workspace" />}
-            {target.type === 'user-workspace' && (target.view === 'start' || !target.employeeId ? <WorkspaceHome api={api} snapshot={snapshot} active={active} conversationId={target.id} employeeId={target.employeeId} onFiles={employeeId => openPanel({ type: 'user-workspace', id: target.id, employeeId, view: 'files' }, tab.scope)} onTerminal={terminal => showWorkspaceTerminal(terminal, tab.scope)} /> : snapshot.agents.find(agent => agent.id === target.employeeId) && <WorkspaceFiles api={api} active={active} agent={snapshot.agents.find(agent => agent.id === target.employeeId)!} location="authorized" conversationId={target.id} onHome={() => openPanel({ type: 'user-workspace', id: target.id, employeeId: target.employeeId, view: 'start' }, tab.scope)} />)}
+            {WORKSPACE_UI_ENABLED && target.type === 'employee-workspace' && snapshot.agents.find(agent => agent.id === target.id) && <WorkspaceFiles api={api} active={active} agent={snapshot.agents.find(agent => agent.id === target.id)!} location="workspace" />}
+            {WORKSPACE_UI_ENABLED && target.type === 'user-workspace' && (target.view === 'start' || !target.employeeId ? <WorkspaceHome api={api} snapshot={snapshot} active={active} conversationId={target.id} employeeId={target.employeeId} onFiles={employeeId => openPanel({ type: 'user-workspace', id: target.id, employeeId, view: 'files' }, tab.scope)} onTerminal={terminal => showWorkspaceTerminal(terminal, tab.scope)} /> : snapshot.agents.find(agent => agent.id === target.employeeId) && <WorkspaceFiles api={api} active={active} agent={snapshot.agents.find(agent => agent.id === target.employeeId)!} location="authorized" conversationId={target.id} onHome={() => openPanel({ type: 'user-workspace', id: target.id, employeeId: target.employeeId, view: 'start' }, tab.scope)} />)}
             {target.type === 'user-terminal' && <WorkspaceTerminal api={api} active={active} terminalId={target.id} />}
             {target.type === 'workspace' && target.view === 'preview' && <WorkspacePanel api={api} active={active} scope={{ employeeId: target.employeeId, conversationId: target.id }} />}
             {target.type === 'channel-publish' && <ChannelPublishPanel key={target.requestId} api={api} snapshot={snapshot} target={target} active={active} onBack={() => closeView()} />}

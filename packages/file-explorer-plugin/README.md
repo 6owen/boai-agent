@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-29 工作区界面暂时隐藏，恢复时统一打开renderer的WORKSPACE_UI_ENABLED。
 [OUTPUT]: 2026-10-29 右侧详情面板内左预览右文件树，窄栏不再上下堆叠。
 [OUTPUT]: 2026-10-29 文件浏览器目录边界及真实回归覆盖；验证结果归第19组18。
 [INPUT]: Host-approved directory scope, bounded IPC and BOAI preview providers.
@@ -8,7 +9,7 @@
 -->
 # @boai/file-explorer-plugin
 
-Official BOAI file explorer (`boai.file-explorer`). Enabled by default in the application plugin catalog; users can disable it in plugin settings.
+Official BOAI file explorer (`boai.file-explorer`). Its UI is temporarily hidden at the user's request through `WORKSPACE_UI_ENABLED` in the renderer plugin store. Workspace entry points, tabs and the plugin settings entry are hidden; saved plugin preferences, filesystem permissions and employee execution workspaces remain unchanged. The implementation is retained for later resumption.
 
 - `./host`: bounded directory pagination and read-only file preview. BOAI supplies the current scope resolver, original path validator, external opener and enablement check. It accepts no arbitrary filesystem root from the renderer.
 - `./explorer`: left content preview and right lazy virtual file tree inside BOAI's shared right detail panel. Narrow panels retain the horizontal arrangement; the tree width is bounded and filenames truncate. Keyboard navigation and hidden-file toggle remain available. Requests and document bytes stop/expire on hidden tabs, changed scopes or disablement. The host supplies existing Markdown/code/image/PDF/Office renderers.
