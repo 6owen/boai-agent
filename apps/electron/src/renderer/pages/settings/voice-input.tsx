@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 快捷键设置入口使用secondary背景，与语音模型操作按钮保持一致。
  * [OUTPUT]: 复用Shell连接及页外配置缓存；多模型目录独立刷新并保留原选择/下载交互。
  * [OUTPUT]: 当前模型Select与独立本地模型Card；按模型下载/取消/移除，资源轮询不覆盖配置草稿。
  * [INPUT]: Explicit voice configuration, model installation and existing text-model connections.
@@ -131,7 +132,7 @@ export function VoiceInputSettingsPage({ active, connections: allConnections, on
         </VoiceSettingRow>
         <VoiceMicrophone voice={voice} active={active} enabled={enabled} disabled={disabled || saving} value={settings?.microphoneDeviceId ?? ''} onChange={microphoneDeviceId => setSettings(value => value ? { ...value, microphoneDeviceId } : value, true)} />
         <VoiceSettingRow label="语音快捷键" hint="在快捷键设置中启用和录入。聚焦当前聊天输入框时按下开始录音，再按一次停止；不自动发送。">
-          <Button type="button" variant="ghost" data-voice-setting-control aria-label="前往快捷键设置" onClick={onOpenShortcuts}>前往快捷键设置</Button>
+          <Button type="button" variant="secondary" data-voice-setting-control aria-label="前往快捷键设置" onClick={onOpenShortcuts}>前往快捷键设置</Button>
         </VoiceSettingRow>
         {!local && <>
           <VoiceSettingRow label="识别服务地址" hint="音频将发往此 WSS 地址。更换地址后须重新填写密钥。"><Input value={settings?.online.endpoint ?? ''} onChange={event => setSettings(value => value ? { ...value, online: { ...value.online, endpoint: event.target.value } } : value)} /></VoiceSettingRow>
@@ -155,7 +156,7 @@ export function VoiceInputSettingsPage({ active, connections: allConnections, on
       </SettingsSection>
       <SettingsSection title="术语">
         <fieldset disabled={disabled} className="min-w-0"><SettingsCard>
-        <VoiceSettingRow label="术语表" full hint="每行一个标准词，可用 | 添加别名。Qwen 识别与可选文字整理会参考这些词；本地识别不做机械替换，也不会从聊天自动学习。"><Textarea aria-label="语音术语表" rows={4} value={terms} onChange={event => voiceSettings.edit(value => ({ ...value, terms: event.target.value }))} placeholder="BOAI | 波艾" /></VoiceSettingRow>
+        <VoiceSettingRow label="术语表" full hint="每行一个标准词，可用 | 添加别名。在线 Qwen 识别与可选文字整理会参考这些词；本地识别不做机械替换，也不会从聊天自动学习。"><Textarea aria-label="语音术语表" rows={4} value={terms} onChange={event => voiceSettings.edit(value => ({ ...value, terms: event.target.value }))} placeholder="BOAI | 波艾" /></VoiceSettingRow>
         </SettingsCard></fieldset>
       </SettingsSection>
     </form>

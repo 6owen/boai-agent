@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 每个Qwen3识别片段在解码前设置指定语言；自动识别不注入语言。
  * [OUTPUT]: 2026-10-28 按目录引擎适配识别，Whisper补回200ms非重复段首上下文；保持Silero VAD与真实退出。
  * [INPUT]: Host-owned PCM16 mono 16 kHz file, verified model directory and trusted catalog engine.
  * [OUTPUT]: VAD-delimited transcription with explicit language in an isolated utility process, then actual exit.
@@ -12,7 +13,7 @@ const { withSegmentContext } = require('./local-audio.cjs')
 
 const [models, path, language = 'auto', engine = 'sensevoice'] = process.argv.slice(2)
 try {
-  const { config, contextSamples } = localRecognizerConfig(models, engine, language)
+  const { config, contextSamples, streamOptions } = localRecognizerConfig(models, engine, language)
   const sherpa = require('sherpa-onnx-node')
   const vad = new sherpa.Vad({ sileroVad: { model: join(models, 'silero-vad.onnx'), threshold: 0.5, minSilenceDuration: 0.5, minSpeechDuration: 0.15, windowSize: 512, maxSpeechDuration: 20 }, sampleRate: 16000, numThreads: 1, provider: 'cpu', debug: 0 }, 30)
   let recognizer, sequence = 0, previousEnd = 0
@@ -25,6 +26,7 @@ try {
       previousEnd = segment.start + segment.samples.length
       recognizer ??= new sherpa.OfflineRecognizer(config)
       const stream = recognizer.createStream()
+      for (const [key, value] of Object.entries(streamOptions)) stream.setOption(key, value)
       stream.acceptWaveform({ sampleRate: 16000, samples: contextual.samples }); recognizer.decode(stream)
       const text = recognizer.getResult(stream).text
       process.parentPort.postMessage({ type: 'segment', sequence: sequence++, text, startSample: contextual.start })
