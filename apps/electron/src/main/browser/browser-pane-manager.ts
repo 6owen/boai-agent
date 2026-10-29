@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: capturePage与JavaScript共用真实destroyed退出边界，迟到截图不回传。
  * [OUTPUT]: Cookie来源/导入及菜单覆盖只接真实工具栏主frame；菜单关闭/失焦/导航恢复48px，不改变页面边界。
  * [OUTPUT]: 页面实际destroyed结束原JavaScript查询等待；仅请求关闭或超时不代替退出，正常/失败回执均清理监听器。
  * [OUTPUT]: 实际销毁后释放WebContents网络计数/时间戳，迟到或无所属页面事件不重新登记。
@@ -24,6 +25,7 @@ import { join, parse as parsePath, basename, relative, isAbsolute } from 'node:p
 import { existsSync, mkdirSync } from 'node:fs'
 import { screen, BrowserView, BrowserWindow, ipcMain, nativeTheme, session, type Session as ElectronSession, type DownloadItem, type IpcMainInvokeEvent, type WebContents } from 'electron'
 import { mainLog } from './logger'
+import { untilPageDestroyed } from './browser-page-operation'
 import { BrowserCDP, type AccessibilitySnapshot, type ElementGeometry } from './browser-cdp'
 import type { BrowserInstanceInfo, BrowserInstanceSnapshot, BrowserManagerOptions } from './types'
 
@@ -1399,9 +1401,8 @@ export class BrowserPaneManager {
       ? { stayHidden: true, stayAwake: true }
       : undefined
 
-    let image = options.rect
-      ? await instance.pageView.webContents.capturePage(options.rect, captureOpts)
-      : await instance.pageView.webContents.capturePage(undefined, captureOpts)
+    const contents = instance.pageView.webContents
+    let image = await untilPageDestroyed(contents, () => contents.capturePage(options.rect, captureOpts))
 
     if (image.isEmpty()) {
       return null
@@ -1617,19 +1618,7 @@ export class BrowserPaneManager {
 
   private async evaluatePage(instance: BrowserInstance, expression: string): Promise<unknown> {
     const contents = instance.pageView.webContents
-    if (contents.isDestroyed()) throw new Error('浏览器页面已实际退出，原动作结果未知')
-    let rejectDestroyed!: (error: Error) => void
-    const exited = new Promise<never>((_resolve, reject) => { rejectDestroyed = reject })
-    const onDestroyed = () => rejectDestroyed(new Error('浏览器页面已实际退出，原动作结果未知'))
-    contents.once('destroyed', onDestroyed)
-    try {
-      // Electron can leave executeJavaScript pending after an unresponsive page
-      // dies. Actual WebContents destruction is an end to execution; a close
-      // request or elapsed deadline is not. Keep the original reply otherwise.
-      return await Promise.race([contents.executeJavaScript(expression), exited])
-    } finally {
-      contents.removeListener('destroyed', onDestroyed)
-    }
+    return untilPageDestroyed(contents, () => contents.executeJavaScript(expression))
   }
 
   async detectSecurityChallenge(id: string): Promise<{ detected: boolean; provider: string; signals: string[] }> {

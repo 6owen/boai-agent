@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 截图原生回执丢失时以实际页面销毁结束，关闭意图不提前返回；正常截图清理监听器。
  * [OUTPUT]: selector/text等待核对真实destroyed事件结束挂起JavaScript，关闭意图不释放，正常返回清理监听器。
  * [OUTPUT]: 重复关闭页面释放网络计数与时间戳，迟到回调及无归属WebContents不恢复已退出记录。
  * [OUTPUT]: 首次导航等待Craft空白页初始化；准备失败不导航，防止迟到回退覆盖用户目标页。
@@ -154,6 +155,23 @@ describe('内置浏览器窗口重开', () => {
 
 
 describe('网页实际退出后的等待收尾', () => {
+  it.each([false,true])('capturePage keeps real image replies and exits a lost reply on destruction: hung=%s', async hung => {
+    const {manager}=fixture(()=>null)
+    let destroyed=false,resolveCapture!:(image:unknown)=>void
+    const image={isEmpty:()=>false,toPNG:()=>Buffer.from('real-image')}
+    const wc=Object.assign(new EventEmitter(),{isDestroyed:()=>destroyed,capturePage:vi.fn(()=>hung?new Promise<any>(resolve=>{resolveCapture=resolve}):Promise.resolve(image))})
+    const instance={pageView:{webContents:wc}}
+    const result=(manager as any).capturePageImage(instance,{useHiddenCaptureOptions:true}).catch((error:Error)=>error)
+    if(hung){
+      let settled=false;void result.then(()=>{settled=true})
+      wc.emit('close');await Promise.resolve();expect(settled).toBe(false)
+      destroyed=true;wc.emit('destroyed')
+      expect((await result).message).toContain('页面已实际退出')
+      resolveCapture(image)
+    }else expect(await result).toMatchObject({buffer:Buffer.from('real-image'),format:'png'})
+    expect(wc.listenerCount('destroyed')).toBe(0)
+    expect(wc.capturePage).toHaveBeenCalledOnce()
+  })
   it.each(['selector', 'text'] as const)('%s等待不能因底层JavaScript回执永不返回而跨越实际页面销毁', async kind => {
     const { manager } = fixture(() => null)
     let destroyed = false, rejectScript!: (error: Error) => void

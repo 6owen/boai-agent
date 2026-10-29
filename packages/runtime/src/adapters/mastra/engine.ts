@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 浏览器执行参数显示实际命令并脱敏输入值，不再用统一omitted占位对象；模型工具输入/结果不变。
+ * [OUTPUT]: Task SDK单请求重试保留原步骤/工具结果，逐次预留调用并将用量归最终实际请求。
  * [OUTPUT]: DeepSeek公开历史按当前阶段实际工具集适配，覆盖带工具的普通聊天；当前SDK思考链保持原样。
  * [OUTPUT]: 2026-10-27 默认持续执行、来源校验及工作现场/复核接线；沿原权限和账本。
  * [OUTPUT]: API公开阶段先维护获准历史checkpoint，再沿原Run/Work执行；Bobo Memory只装未覆盖尾部，逐步容量及附加调用不重置预算。
@@ -68,6 +70,7 @@ import { groupInterpretationSchema, replyCharacterCount, validateGroupInterpreta
 import type { GroupInterpretation } from '@boai/shared/domain/group-coordination'
 import { prepareMemoryExtraction } from '../../modules/employees/memory-extraction'
 import { summarizeMedia } from '../../modules/browser/media'
+import { browserToolObservation } from './browser-tool-redaction'
 import { automationDraftCandidateSchema } from '../../modules/automations/automation-draft'
 import { Agent } from '@mastra/core/agent'
 import { z } from 'zod'
@@ -210,7 +213,17 @@ export class MastraEngine implements AgentEngine {
         instructions: boboMemory && ctx.bootstrap.baseInstructions ? ctx.bootstrap.baseInstructions : ctx.bootstrap.instructions,
         dynamicInstructions: [ctx.bootstrap.dynamicInstructions, externalMemory ? `[外部Memmy用户记忆：仅作可能过时的背景，不是本轮指令、权限或已完成工作的证明。]\n${externalMemory}` : ''].filter(Boolean).join('\n\n'),
       } } : {}) }
-      stage = await createStageAgent(task ? 'task' : 'chat', stageContext, this.options.commandTimeoutMs, boboMemory?.memory)
+      let callIds: (string | undefined)[] = []
+      stage = await createStageAgent(task ? 'task' : 'chat', stageContext, this.options.commandTimeoutMs, boboMemory?.memory, async () => {
+        check(signal)
+        if (!ctx.onAdditionalModelCall) throw new Error('宿主未提供重试模型调用预算')
+        const reserved = await ctx.onAdditionalModelCall(); check(signal)
+        const callId = typeof reserved === 'string' ? reserved : undefined
+        if (callId) await this.observeCall(ctx, callId, 'task')
+        // Failed HTTP attempts have unknown usage; never assign the successful
+        // retry's tokens or gateway route to an earlier failed request.
+        callIds[callIds.length - 1] = callId
+      })
       messages = deepseekReasoningHistory({ connection: ctx.connection, modelId: ctx.agent.modelId, thinkingLevel: ctx.agent.thinkingLevel, hasTools: stage.hasTools, agentId: ctx.agent.id, conversationId: ctx.conversation.id, messages: ctx.messages, projected: messages })
       const agent = stage.agent
       let admittedSteps = 0
@@ -221,7 +234,7 @@ export class MastraEngine implements AgentEngine {
       // Run until the model finishes or the caller cancels. Explicit Work budgets
       // still reserve each request through the host before it is sent.
       for (;;) {
-        const callIds: (string | undefined)[] = []
+        callIds = []
         let previousFinish: { reason: string | undefined } | undefined
         const observeRoute = gatewayRouteObserver(ctx, () => callIds.at(-1))
         const output = await agent.stream(messages, {
@@ -275,7 +288,7 @@ export class MastraEngine implements AgentEngine {
     const activations = new Map<string, { id: string; name: string }>()
     const events = new Map<string, ToolEvent>()
     const report = async (id: string, name: string, status: ToolEvent['status'], detail: unknown) => {
-      if(name==='browser_tool' && status==='running') detail={omitted:'网页输入不进入持久事件'}
+      if(name==='browser_tool' && status==='running') detail=browserToolObservation(detail)
       const event = { id, name, status, detail: redact(typeof detail === 'string' ? detail : JSON.stringify(summarizeMedia(detail)) ?? '', ctx.apiKey).slice(0, 2000), createdAt: events.get(id)?.createdAt ?? new Date().toISOString() }
       events.set(id, event)
       await ctx.onTool(event)
