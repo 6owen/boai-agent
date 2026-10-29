@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 执行详情保留实际浏览命令，fill/type/select仅隐藏输入值；无效参数不泄漏正文。
  * [INPUT]: Craft 2e3ba53 browser-tool-redaction.ts (Apache-2.0), original parser.
  * [OUTPUT]: Direct password redaction migration; BOAI additionally masks all fill/type values before durable audit and approvals, including rejected calls.
  * [POS]: Browser input audit boundary; raw tool commands stay in memory for execution. License: apps/electron/src/main/browser/LICENSE.txt / NOTICE.txt.
@@ -167,11 +168,28 @@ export function redactBrowserPasswordFills(
 export function redactBrowserCommand(command: string): string {
   try {
     const parsed = parseBrowserSingleCommand(command)
-    if (!['fill', 'type'].includes(parsed.action)) return command
+    if (!['fill', 'type', 'select'].includes(parsed.action)) return command
+    if (parsed.action === 'select') {
+      const value = parsed.parts.slice(2).join(' ')
+      return /^\[input: \d+ characters\]$/.test(value) ? command : `${parsed.parts.slice(0, 2).join(' ')} ${JSON.stringify(`[input: ${value.length} characters]`)}`
+    }
     if (/^\[input: \d+ characters\]$/.test(parsed.parts.slice(parsed.action === 'fill' ? 2 : 1).join(' '))) return command
     const redacted = redactBrowserToolInput({ command }, parsed.action === 'fill' ? [parsed.parts[1]] : [], { typedText: parsed.action === 'type' }).command as string
     return redacted.replace(/\[password: (\d+) characters\]/g, (_, length: string) => JSON.stringify(`[input: ${length} characters]`))
   } catch {
-    return /^\s*["']?(?:fill|type)\b/i.test(command) ? '[invalid browser input omitted]' : command
+    return /^\s*["']?(?:fill|type|select)\b/i.test(command) ? '[invalid browser input omitted]' : command
+  }
+}
+
+/** Durable tool details only. Never replace the model's actual execution input. */
+export function browserToolObservation(input: unknown): { command: string } {
+  try {
+    const value = typeof input === 'string' ? JSON.parse(input) : input
+    const command = value?.command
+    if (typeof command !== 'string') return { command: '[unavailable browser command]' }
+    parseBrowserSingleCommand(command)
+    return { command: redactBrowserCommand(command) }
+  } catch {
+    return { command: '[invalid browser command]' }
   }
 }

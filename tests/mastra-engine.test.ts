@@ -1,5 +1,7 @@
 /*
  * [OUTPUT]: 独立浏览器插件经实际SDK发现/调用，原生产品桥保留同一工具结果及图片部件。
+ * [OUTPUT]: 浏览器详情显示实际命令，后续真实SDK请求仍有页面原文，不注入omitted占位。
+ * [OUTPUT]: Task SDK请求临时失败最多重试两次，逐请求预算/用量归属、取消/鉴权及已执行工具不重放。
  * [OUTPUT]: 限字草稿沿原授权持续修订且只发布合格正文；长步骤回归使用真实变化的观测，重复轨迹复核另验。
  * [OUTPUT]: 验证默认无执行配额、旧默认精确迁移、显式预算仍执行以及用户取消；不调用真实供应商。
  * [OUTPUT]: 覆盖增大任务额度、真实继续消息或本次运行同类批准；各文件以具体用例限定验证范围。
@@ -369,6 +371,9 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     await new MastraEngine().run(run.ctx)
     expect(server.requests[0]!.tools?.some(tool => tool.function.name === 'browser_tool')).toBe(true)
     expect(execute).toHaveBeenCalledExactlyOnceWith('snapshot', 'call-0')
+    expect(run.tools.find(tool => tool.name === 'browser_tool' && tool.status === 'running')?.detail).toBe('{"command":"snapshot"}')
+    expect(JSON.stringify(server.requests[1]!.messages)).toContain('本次天气页面')
+    expect(JSON.stringify(server.requests[1]!.messages)).not.toContain('网页输入不进入持久事件')
     expect(drain).toHaveBeenCalledOnce()
   })
 
@@ -803,6 +808,47 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     expect(mock.requests).toHaveLength(2)
     expect(additionalCalls).toHaveLength(1)
     expect(deltas).toEqual([]); expect(tools).toEqual([])
+  })
+
+  it('retries the failed task model request after a tool, accounting each attempt without replaying the tool', async () => {
+    const mock = await endpoint((_body, response, index) => {
+      if (index === 0) return send(response, { name: 'write_file', args: { path: 'self:/work/once.txt', content: 'written once' } }, index, { prompt_tokens: 100, completion_tokens: 20, total_tokens: 120 })
+      if (index === 1) { response.writeHead(503, { 'Content-Type': 'application/json' }); response.end(JSON.stringify({ error: { message: 'temporarily unavailable' } })); return }
+      send(response, 'Done.', index, { prompt_tokens: 200, completion_tokens: 30, total_tokens: 230 })
+    })
+    let count = 0
+    const started: string[] = [], settled: string[] = []
+    const run = await context(mock.url, { modelCallId: 'first', onTrace: async () => {}, onAdditionalModelCall: async () => `extra-${++count}`,
+      onModelCallStarted: async id => { started.push(id) }, onModelCallUsage: async id => { settled.push(id) } })
+    await new MastraEngine().run(run.ctx)
+    expect(mock.requests).toHaveLength(3)
+    expect(mock.requests[2].messages).toEqual(mock.requests[1].messages)
+    expect(run.tools.filter(tool => tool.name === 'write_file' && tool.status === 'completed')).toHaveLength(1)
+    expect(await readFile(path.join(run.ctx.workspace!.workPath, 'once.txt'), 'utf8')).toBe('written once')
+    expect(run.deltas.join('')).toBe('Done.')
+    expect(started).toEqual(['first', 'extra-1', 'extra-2'])
+    expect(settled).toEqual(['first', 'extra-2'])
+  })
+
+  it.each([{ status: 429, attempts: 3 }, { status: 503, attempts: 3 }, { status: 401, attempts: 1 }])('bounds task HTTP $status retries to $attempts attempts', async ({ status, attempts }) => {
+    const mock = await endpoint((_body, response) => { response.writeHead(status, { 'Content-Type': 'application/json' }); response.end(JSON.stringify({ error: { message: `failure ${status}` } })) })
+    const run = await context(mock.url)
+    await expect(new MastraEngine().run(run.ctx)).rejects.toThrow(`failure ${status}`)
+    expect(mock.requests).toHaveLength(attempts)
+    expect(run.additionalCalls).toHaveLength(attempts - 1)
+  })
+
+  it('does not send a task retry after cancellation or a refused retry budget', async () => {
+    const controller = new AbortController()
+    const mock = await endpoint((_body, response) => { controller.abort(new Error('User stopped')); response.writeHead(503); response.end() })
+    const cancelled = await context(mock.url, { signal: controller.signal })
+    await expect(new MastraEngine().run(cancelled.ctx)).rejects.toThrow('取消')
+    expect(mock.requests).toHaveLength(1); expect(cancelled.additionalCalls).toHaveLength(0)
+    const limited = await endpoint((_body, response) => { response.writeHead(503, { 'Content-Type': 'application/json' }); response.end(JSON.stringify({ error: { message: 'unavailable' } })) })
+    const reserve = vi.fn(async () => { throw new Error('Original budget exhausted') })
+    const blocked = await context(limited.url, { onAdditionalModelCall: reserve })
+    await expect(new MastraEngine().run(blocked.ctx)).rejects.toThrow('Original budget exhausted')
+    expect(limited.requests).toHaveLength(1); expect(reserve).toHaveBeenCalledOnce()
   })
 
   it('completes a material answer above the former chat ceiling in one accounted SDK request', async () => {

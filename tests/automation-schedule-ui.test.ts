@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 历史失败原因随原记录读取，不自动toast；无明细保留运行元数据，实际读取失败仍报错并可重试。
  * [INPUT]: 实际任务编辑器/执行面板与隔离IPC回执。
  * [OUTPUT]: 已有任务可更换执行员工并保存归属/名单；未投递记录不读取虚构会话，原因沿Sonner，已投递仍读取本次Trace。
  * [POS]: 定时任务编辑与未开始执行的组件回归，不运行Electron或模型。
@@ -51,13 +52,13 @@ it('allows changing an existing employee task and saves owner and members togeth
   expect(saved).toHaveBeenCalledWith(expect.objectContaining({ revision: 7 }), false)
 })
 
-it('shows the real skipped reason through Sonner without querying a conversation that was never created', async () => {
+it('shows the saved skipped reason as history without firing a new error or querying a never-created conversation', async () => {
   const api = apiFor({ getAutomationOccurrence: occurrence }), openTask = vi.fn()
   await act(async () => root.render(h(ScheduleNavigationContext.Provider, { value: openTask }, h(AutomationOccurrenceView, { api, snapshot, id: occurrence.id, active: true }))))
-  expect(toast.error).toHaveBeenCalledWith(occurrence.reason, expect.anything())
+  expect(toast.error).not.toHaveBeenCalled()
   expect(vi.mocked(api.request).mock.calls.map(([method]) => method)).toEqual(['getAutomationOccurrence'])
   expect(host.textContent).toContain('本次没有启动员工执行')
-  expect(host.textContent).not.toContain(occurrence.reason)
+  expect(host.textContent).toContain(occurrence.reason)
   await act(async () => Array.from(host.querySelectorAll('button')).find(button => button.textContent === '查看任务')!.click())
   expect(openTask).toHaveBeenCalledWith(definition.id)
 })
@@ -66,4 +67,23 @@ it('keeps the actual occurrence trace query for dispatched executions', async ()
   const api = apiFor({ getAutomationOccurrence: { ...occurrence, status: 'running', messageId: 'accepted-message', reason: undefined }, listExecutionHistory: { items: [] } })
   await act(async () => root.render(h(AutomationOccurrenceView, { api, snapshot, id: occurrence.id, active: true })))
   expect(api.request).toHaveBeenCalledWith('listExecutionHistory', expect.objectContaining({ conversationId: occurrence.conversationId, occurrenceId: occurrence.id }))
+})
+
+it('retains historical status, time and reason when the original process is unavailable', async () => {
+  const api = apiFor({ getAutomationOccurrence: { ...occurrence, status: 'interrupted', messageId: 'old-message', runIds: ['old-run'], reason: '应用退出时讨论尚未完成' }, listExecutionHistory: { items: [] } })
+  await act(async () => root.render(h(AutomationOccurrenceView, { api, snapshot, id: occurrence.id, active: true })))
+  expect(host.querySelector('[aria-label="本次运行记录"]')).not.toBeNull()
+  expect(host.querySelector('time')?.getAttribute('datetime')).toBe(occurrence.startedAt)
+  expect(host.textContent).toContain('每日天气预报')
+  expect(host.textContent).toContain('应用退出时讨论尚未完成')
+  expect(host.textContent).toContain('当前没有可读取的过程明细')
+  expect(toast.error).not.toHaveBeenCalled()
+})
+
+it('reports an actual history read failure and keeps the retry action', async () => {
+  const api = apiFor({})
+  await act(async () => root.render(h(AutomationOccurrenceView, { api, snapshot, id: occurrence.id, active: true })))
+  expect(toast.error).toHaveBeenCalled()
+  expect(host.textContent).toContain('重试读取')
+  expect(host.querySelector('[aria-label="本次运行记录"]')).toBeNull()
 })

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 真实destroyed结束丢失CDP回执并释放drain；关闭意图不提前释放，退出后零派发。
  * [OUTPUT]: 密码焦点输入在首个键盘事件前拒绝，真实WebContents效果另由Electron验收。
  * [INPUT]: Craft v0.15.1 browser-cdp.test.ts输入用例意图、实际BOAI CDP驱动和可控Electron传输。
  * [OUTPUT]: CDP点击/拖动/键盘、仅attach前回退、中途失败零重放与实际drain核验；真实后台网页另验。
@@ -7,15 +8,28 @@
  */
 import { afterEach, expect, it, vi } from 'vitest'
 import type { WebContents } from 'electron'
+import { EventEmitter } from 'node:events'
 import { BrowserCDP, resolveCdpKey } from '../apps/electron/src/main/browser/browser-cdp'
 
 const clients: BrowserCDP[] = []
 afterEach(() => { for (const cdp of clients.splice(0)) cdp.detach() })
 function fixture(command: (method: string, params?: Record<string, unknown>) => Promise<unknown> = async () => ({})) {
-  const wc = { debugger: { attach: vi.fn(), detach: vi.fn(), on: vi.fn(), sendCommand: vi.fn(command) }, sendInputEvent: vi.fn() }
+  const wc = Object.assign(new EventEmitter(), { isDestroyed: vi.fn(() => false), debugger: { attach: vi.fn(), detach: vi.fn(), on: vi.fn(), sendCommand: vi.fn(command) }, sendInputEvent: vi.fn() })
   const cdp = new BrowserCDP(wc as unknown as WebContents); clients.push(cdp)
   return { wc, cdp }
 }
+it('settles a lost CDP reply only after actual page destruction and never dispatches after exit', async () => {
+  const {cdp,wc}=fixture(()=>new Promise(()=>{}))
+  const pending=cdp.getViewportMetrics().catch(error=>error)
+  await vi.waitFor(()=>expect(wc.debugger.sendCommand).toHaveBeenCalledOnce())
+  let drained=false;const draining=cdp.drain().then(()=>{drained=true})
+  wc.emit('close');await Promise.resolve();expect(drained).toBe(false)
+  wc.isDestroyed.mockReturnValue(true);wc.emit('destroyed')
+  expect((await pending).message).toContain('页面已实际退出');await draining
+  expect(wc.listenerCount('destroyed')).toBe(0)
+  await expect(cdp.getViewportMetrics()).rejects.toThrow('页面已实际退出')
+  expect(wc.debugger.sendCommand).toHaveBeenCalledOnce()
+})
 it('clicks and drags through CDP instead of native focus-dependent events', async () => {
   const { cdp, wc } = fixture()
   await cdp.clickAtCoordinates(10.2, 20.4); await cdp.drag(10, 20, 110, 20)

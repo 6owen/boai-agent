@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 主聊天展示定时原执行、刷新原来源及停止原occurrence，删除后撤掉过程卡片。
  * [OUTPUT]: 五项反馈的调度额度/取消接续或历史展示回归；具体验证边界以本文件用例为准。
  * [OUTPUT]: 订阅夹具沿DesktopApi声明回调类型，保持严格类型检查。
  * [INPUT]: 生产通讯录直接执行列表、TraceTab及受控原IPC。
@@ -137,4 +138,27 @@ it.each(['failed', 'cancelled', 'interrupted'] as const)('execution history neve
   expect(host.querySelector('[data-execution-run-id]')).not.toBeNull()
   expect([...host.querySelectorAll('button')].some(button => button.textContent === '继续')).toBe(false)
   expect(request.mock.calls.some(([method]) => method === 'sendMessage' || method === 'retryRun')).toBe(false)
+})
+
+it('shows the scheduled source in main-chat history, stops its occurrence and follows source updates', async () => {
+  const scheduled = { ...run, id: 'scheduled-run', conversationId: 'private-automation', status: 'running', origin: { kind: 'automation', occurrenceId: 'original-occurrence', automationId: 'plan' } } as AgentRun
+  let items = [{ run: scheduled, trigger: '本次定时天气' }]
+  request.mockImplementation(async (method: string) => {
+    if (method === 'listExecutionHistory') return { items }
+    if (method === 'stopAutomation') return
+    throw new Error(`unexpected ${method}`)
+  })
+  await act(async () => root.render(h(TraceTab, { api, snapshot, active: true, conversationId: 'room' })))
+  expect(host.textContent).toContain('本次定时天气')
+  expect(host.textContent).not.toContain('发送消息后')
+  expect(host.querySelector('[data-feed-run="scheduled-run"]')).not.toBeNull()
+  await click('[aria-label="停止本次执行"]')
+  expect(request).toHaveBeenCalledWith('stopAutomation', { id: 'original-occurrence' })
+  items = [{ run: { ...scheduled, status: 'cancelled' }, trigger: '本次定时天气' }]
+  await act(async () => { listeners.forEach(listener => listener({ type: 'changed', conversationId: 'private-automation' })); await vi.advanceTimersByTimeAsync(500) })
+  expect(host.textContent).toContain('已停止')
+  expect(host.querySelector('[aria-label="停止本次执行"]')).toBeNull()
+  items = []
+  await act(async () => { listeners.forEach(listener => listener({ type: 'automation:history-deleted', occurrenceId: 'original-occurrence' })) })
+  expect(host.querySelector('[data-feed-run="scheduled-run"]')).toBeNull()
 })

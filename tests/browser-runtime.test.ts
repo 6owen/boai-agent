@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 原生产品桥保留导航命令和填写脱敏，原执行参数仍完整传递。
+ * [OUTPUT]: 256KiB实际SDK截图在明确64K窗口内以媒体发送，不被base64或SDK元数据副本误计为超大文本。
  * [OUTPUT]: 未知写入允许新只读观察，但不解除原副作用或允许新写入。
  * [OUTPUT]: 局部AppService夹具初始化运行内权限映射，取消仍走生产清理及原未知回执断言。
  * [OUTPUT]: 原browserControl局部AppService夹具补齐目录运行及活跃引擎上下文状态，保留真实退出与未知不重放断言。
@@ -31,6 +33,7 @@ import { summarizeMedia } from '../packages/runtime/src/modules/browser/media'
 import { browserChatPrompt } from '../packages/runtime/src/adapters/mastra/browser-model'
 import { createBrowserTool } from '../packages/runtime/src/adapters/mastra/browser-tool'
 import { MastraEngine } from '../packages/runtime/src/adapters/mastra/engine'
+import { createNativeProducts } from '../packages/runtime/src/adapters/native-products'
 import { AppService } from '../packages/runtime/src/service'
 import type { EngineContext } from '../packages/runtime/src/contracts'
 import type { TraceSpan } from '../packages/shared/src/domain/traces'
@@ -90,7 +93,7 @@ describe('strict original browser command entry',()=>{
   })
   it('transports the actual SDK-normalized screenshot as an image_url PNG to the subsequent HTTP model request and redacts it from Trace',async()=>{
     const {root,store,agent,work}=await fixture(),requests:{messages:{role:string;content:unknown;tool_call_id?:string}[]}[]=[],traces:TraceSpan[]=[]
-    const image=Buffer.from('actual-browser-png-http-boundary'),data=image.toString('base64'),execute=vi.fn(async()=>({result:{output:'真实页面截图',appendReleaseHint:false,image:{data,mimeType:'image/png',sizeBytes:image.length}},source:page}))
+    const image=Buffer.alloc(256*1024,91),data=image.toString('base64'),execute=vi.fn(async()=>({result:{output:'真实页面截图',appendReleaseHint:false,image:{data,mimeType:'image/png',sizeBytes:image.length}},source:page}))
     const server=createServer(async(request,response)=>{
       let raw='';for await(const part of request)raw+=part
       requests.push(JSON.parse(raw));const index=requests.length-1
@@ -104,6 +107,7 @@ describe('strict original browser command entry',()=>{
     await new Promise<void>(resolve=>server.listen(0,'127.0.0.1',resolve));cleanup.push(async()=>{server.closeAllConnections();await new Promise<void>(resolve=>server.close(()=>resolve()))})
     const conversation={...(await store.load<Conversation>('conversations'))[0]!,workspacePath:join(root,'shared')},runPath=join(root,'sessions','chat','runs','run')
     const context:EngineContext={agent,conversation,work,connection:{id:'connection',name:'实际截图协议',provider:'openai-compatible',baseUrl:`http://127.0.0.1:${(server.address() as {port:number}).port}/v1`,defaultModel:'fixture',hasApiKey:false},apiKey:'',messages:[{id:'request',conversationId:'chat',senderType:'user',senderId:'user',senderName:'本人',content:'读取本次页面截图',status:'completed',sequence:1,createdAt:new Date().toISOString()}],resources:[],runId:'run',signal:new AbortController().signal,responseKind:'task',workspace:{root:join(root,'sessions','chat'),workPath:join(root,'sessions','chat','work'),runPath,sharedPath:conversation.workspacePath},browserSession:{execute,drain:vi.fn(async()=>undefined)} as unknown as BrowserSession,onTrace:async span=>{traces.push(span)},onDelta:async()=>{},onTool:async()=>{},onAdditionalModelCall:async()=>{},approveCommand:async()=>false}
+    context.modelCatalog={models:[{id:'fixture',contextWindow:64_000}],source:'service-declared',fetchedAt:new Date().toISOString()}
     await new MastraEngine().run(context)
     expect(execute).toHaveBeenCalledExactlyOnceWith('screenshot --png','actual-browser-call')
     expect(requests).toHaveLength(2)
@@ -112,6 +116,15 @@ describe('strict original browser command entry',()=>{
     const tool=followup.find(message=>message.role==='tool')!
     expect(tool.tool_call_id).toBe('actual-browser-call');expect(JSON.stringify(tool.content)).toContain('真实页面截图');expect(JSON.stringify(tool.content)).not.toContain(data)
     const trace=JSON.stringify(traces);expect(trace).not.toContain(data);expect(trace).toContain('sha256')
+    const observed:unknown[]=[],native=createNativeProducts({...context,nativeBrowserSession:async()=>({execute} as unknown as BrowserSession),onTool:async event=>{observed.push(event)}})
+    try {
+      const tool=native.tools.find(tool=>tool.name==='browser_tool')!
+      await tool.execute({command:'navigate https://example.test/weather'},'native-navigate')
+      expect(observed).toContainEqual(expect.objectContaining({status:'running',detail:'{"command":"navigate https://example.test/weather"}'}))
+      await tool.execute({command:'fill @e1 "private-value"'},'native-fill')
+      expect(execute).toHaveBeenLastCalledWith('"fill" "@e1" "private-value"','native-fill')
+      expect(JSON.stringify(observed)).not.toContain('private-value')
+    } finally {await native.dispose()}
   })
   it('only original explicit HTTP URLs grant origins, never malformed credentials or page content',()=>{
     expect(browserRequestOrigins('请读取 https://example.test/a 和 https://user:pass@private.test/')).toEqual(['https://example.test'])

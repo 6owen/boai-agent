@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 无工具/思考事件的失败判断保留原原因并直接展开，不显示没有保存过程的误导文案。
  * [INPUT]: 生产ExecutionFeed、原生工具事件与真实显示方式切换；仅替换分页读取。
  * [OUTPUT]: 正文流式版本竞争自动恢复、更新保留已读文本、缓存命中清除旧错误；真实读取错误保留。
  * [OUTPUT]: 缓存恢复后首次点击可收起、显式收起不被运行中默认值覆盖的回归。
@@ -112,4 +113,14 @@ test('a successful cached revision clears an earlier real read error', async () 
   expect(host.textContent).toContain('缓存中的正文')
   expect(host.textContent).not.toContain('正文读取失败')
   expect(request).toHaveBeenCalledTimes(1)
+})
+
+
+test('shows the stored decision failure even when no tool or reasoning events were produced', async () => {
+  fixture.evidence = []
+  await act(async () => root.render(createElement(ExecutionFeed, { api, run: { ...run, phase: 'decision', status: 'failed', error: '成员判断失败：getaddrinfo ENOTFOUND api.deepseek.com' }, cache, active: true })))
+  expect(host.querySelector('details')?.open).toBe(true)
+  expect(host.textContent).toContain('getaddrinfo ENOTFOUND api.deepseek.com')
+  expect(host.textContent).not.toContain('没有保存原生过程')
+  expect(host.textContent).not.toContain('未记录工具或思考步骤')
 })
