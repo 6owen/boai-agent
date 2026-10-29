@@ -3,6 +3,7 @@ name: boai-dev-workflow
 description: BOAI 共享开发流程；沿 Magpie Test 和 DeepSeek UI preview 完成交付。
 ---
 <!--
+[OUTPUT]: 2026-10-29用户明确调用git cpf时允许临时管理员检查例外，恢复记录和实际合并核验必需；普通交付保持。
 [OUTPUT]: 2026-10-29 PR录屏采用原生视频附件，独立发布凭据、缺配置及失败不得称在线播放。
 [INPUT]: 当前用户任务、独立worktree及Magpie Test/UI preview源码。
 [OUTPUT]: 工程测试与自动界面预览；撤销固定截图基准更新作为PR前置。
@@ -44,7 +45,7 @@ description: BOAI 共享开发流程；沿 Magpie Test 和 DeepSeek UI preview �
 
 - 根据本次授权创建或更新同一PR。普通授权交付沿既有默认自动合并；用户明确只修改/测试或不合并时，不设置自动合并。
 - 允许合并时核对仓库/main与当前head，使用 `gh pr merge --auto --merge --match-head-commit <SHA>`，读回一次回执。只有明确要求等到通过或处理失败才持续跟进。
-- 不使用admin、强推或放宽分支保护。确认实际合并后才在干净main同步。
+- 普通交付不使用admin、强推或放宽分支保护。仅用户明确要求执行 `git cpf` 或本次跳过CI直接合并时，使用 `scripts/git-cpf.mjs` 的显式例外：只提交已暂存文件，推送分支并精确匹配head合并；必要时临时关闭classic protection的enforce_admins，结束时恢复并读回。不得关闭整个保护、伪造checks或强推main。保护恢复失败保留记录，沿 `git cpf --restore-protection` 处理。确认实际合并后才在干净main同步。
 - 按AGENTS.md“worktree不遗留”收尾，包括subagent派生目录：最终提交实际合入main，或提交本任务改动并核对`archive/<worktree名>`归档标签后，移除worktree及本地任务分支，并清理经核实的专用cargo target。核对进程退出、CWD移出、未跟踪/ignored数据迁出及共享目录边界；编排会话负责子worktree。确需保留时，最终回复必须点名路径与原因。自动合并仍待检查时可先按归档路径回收本地worktree，不冒称已合并。
 
 现行上游与必要适配见 `.github/ui-preview/README.md`。版本Tag、Release、安装包发布不属于日常交付；本地`archive/*`标签仅用于任务收尾存档。
