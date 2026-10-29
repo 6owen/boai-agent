@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 提示词固定身份复用，迟到保存不抢焦点、不重开已关闭标签；元数据更新保留隐藏状态。
  * [OUTPUT]: 旧terminal目标不可重开，预览目标仍沿原标签身份。
  * [OUTPUT]: 同一旧知识资源按员工隔离预览标签，避免授权身份串用。
  * [OUTPUT]: 同一会话不同Run分别打开过程标签，重复点击同Run去重，普通会话历史保持独立。
@@ -19,6 +20,21 @@ import { artifactPendingKey, artifactReceiptResult, artifactRequestAction, artif
 import type { Connection, DigitalAgent } from '../packages/shared/src/domain'
 
 describe('detail workspace tabs', () => {
+  it('reuses prompt tabs and updates saved metadata without reopening or stealing focus', () => {
+    const draft: DetailTarget = { type: 'prompt', id: 'prompt-a', name: '新建提示词', create: true, requestId: 'new' }
+    const opened = detailWorkspacesReducer({}, { scope: 'skills', action: { type: 'open', target: draft } })
+    const repeated = detailWorkspacesReducer(opened, { scope: 'skills', action: { type: 'open', target: draft } })
+    expect(repeated.skills.tabs).toHaveLength(1)
+    const other = detailWorkspacesReducer(repeated, { scope: 'skills', action: { type: 'open', target: { type: 'source', id: draft.id, name: '源', requestId: 'other' } } })
+    const hidden = detailWorkspacesReducer(other, { scope: 'skills', action: { type: 'visibility', shown: false } })
+    const saved: DetailTarget = { ...draft, name: '已命名', create: false, requestId: 'saved' }
+    const updated = detailWorkspacesReducer(hidden, { scope: 'skills', action: { type: 'update', target: saved } })
+    expect(updated.skills.activeKey).toBe(other.skills.activeKey); expect(updated.skills.shown).toBe(false)
+    expect(updated.skills.tabs[0].target).toEqual(saved); expect(updated.skills.tabs[1]).toBe(other.skills.tabs[1])
+    const closed = detailWorkspacesReducer(updated, { scope: 'skills', action: { type: 'close', key: opened.skills.tabs[0].key } })
+    expect(detailWorkspacesReducer(closed, { scope: 'skills', action: { type: 'update', target: saved } })).toBe(closed)
+    expect(detailWorkspacesReducer(updated, { scope: 'conversations', action: { type: 'update', target: saved } })).toBe(updated)
+  })
   it('keeps shared legacy knowledge preview scoped to the selected employee', () => {
     let state = emptyDetailTabs
     for (const agentId of ['a', 'b', 'a']) state = reduce(state, { type: 'open', target: { type: 'resource', id: 'shared', agentId } })

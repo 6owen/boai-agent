@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Pinned catalog, isolated model files, controlled network streams and actual voice host configuration.
- * [OUTPUT]: v2 migration, verified model selection, captured inference identity and model-scoped install/cancel/remove regressions.
+ * [OUTPUT]: v2 migration, verified Whisper/Qwen3 selection, captured inference identity and model-scoped installation regressions.
  * [POS]: Offline multi-model core regression; no microphone or external downloads.
  * [PROTOCOL]: Update Header and tests/.folder.md when changed.
  */
@@ -22,7 +22,7 @@ function secrets() { const values = new Map<string, string>(); return { get: asy
 const identity = (revision = 0): VoiceIdentity => ({ sessionId: randomUUID(), instanceId: randomUUID(), scope: 'chat:test', generation: 1, draftRevision: 0, settingsRevision: revision, anchor: { start: 0, end: 0 } })
 function configuration() { const { schemaVersion: _, revision: _revision, ...settings } = defaultVoiceSettings(); return settings }
 function fixtureCatalog() {
-  return (['sensevoice-small', 'whisper-tiny', 'whisper-base'] as const).map(id => ({
+  return (['sensevoice-small', 'whisper-tiny', 'whisper-base', 'qwen3-asr-0.6b'] as const).map(id => ({
     id, name: id, languages: voiceModelLanguages(id), licenseUrl: 'https://fixture.invalid/LICENSE', revision: id === 'sensevoice-small' ? voiceModelRevision : id + '-fixture',
     assets: [{ name: 'model.onnx', url: `https://fixture.invalid/${id}`, bytes: Buffer.byteLength(id), sha256: createHash('sha256').update(id).digest('hex') }],
   }))
@@ -50,28 +50,28 @@ it('projects v2 to the existing SenseVoice model without rewriting bytes, then p
   expect(() => readVoiceSettings({ ...reopened.value, language: 'yue' })).toThrow('不支持')
 })
 
-it('requires a verified installed model to switch, passes that identity to inference and preserves it across restart', async () => {
+it.each(['whisper-tiny', 'qwen3-asr-0.6b'] as const)('requires verified %s files, passes that identity to inference and preserves it across restart', async modelId => {
   const root = await directory(), helper = vi.fn((_directory: string, _audio: string, segment: (index: number, text: string) => void, _language: string, _modelId: VoiceModelId) => {
     segment(0, '识别结果'); return { result: Promise.resolve({ complete: true }), kill: async () => {} }
   })
   const host = new VoiceHost(root, { secrets: secrets(), enabled: () => true, allowed: () => true, supported: () => true, emit: () => {}, refine: async () => '', helper })
   await host.init()
-  await expect(host.configure({ expectedRevision: 0, settings: { ...configuration(), localModelId: 'whisper-tiny' } })).rejects.toThrow('先下载')
+  await expect(host.configure({ expectedRevision: 0, settings: { ...configuration(), localModelId: modelId } })).rejects.toThrow('先下载')
   expect(host.settings.value.localModelId).toBe('sensevoice-small')
   const ready = vi.spyOn(host.models, 'ready').mockResolvedValue(true)
-  await host.configure({ expectedRevision: 0, settings: { ...configuration(), localModelId: 'whisper-tiny', language: 'de' } })
-  expect(ready).toHaveBeenCalledWith(true, undefined, 'whisper-tiny')
+  await host.configure({ expectedRevision: 0, settings: { ...configuration(), localModelId: modelId, language: 'de' } })
+  expect(ready).toHaveBeenCalledWith(true, undefined, modelId)
   const id = identity(1); await host.start(id)
   await expect(host.configure({ expectedRevision: 1, settings: { ...configuration(), localModelId: 'whisper-base' } })).rejects.toThrow('结束当前录音')
-  await expect(host.download({ action: 'remove', modelId: 'whisper-tiny' })).rejects.toThrow('结束当前录音')
-  await expect(host.download({ action: 'start', modelId: 'whisper-tiny' })).rejects.toThrow('结束当前录音')
+  await expect(host.download({ action: 'remove', modelId })).rejects.toThrow('结束当前录音')
+  await expect(host.download({ action: 'start', modelId })).rejects.toThrow('结束当前录音')
   expect(host.canCapture()).toBe(true)
   await host.append({ sessionId: id.sessionId, sequence: 0, pcm: new Uint8Array([1, 0]) })
   expect(await host.finish(id.sessionId)).toMatchObject({ complete: true, text: '识别结果' })
-  expect(helper).toHaveBeenCalledWith(join(root, 'models', getVoiceModel('whisper-tiny').revision), expect.any(String), expect.any(Function), 'de', 'whisper-tiny')
+  expect(helper).toHaveBeenCalledWith(join(root, 'models', getVoiceModel(modelId).revision), expect.any(String), expect.any(Function), 'de', modelId)
   const reopened = new VoiceSettingsStore(join(root, 'settings.json'), secrets()); await reopened.init()
-  expect(reopened.value).toMatchObject({ localModelId: 'whisper-tiny', language: 'de', revision: 1 })
-  await expect(host.download({ action: 'remove', modelId: 'whisper-tiny' })).rejects.toThrow('选择其他模型')
+  expect(reopened.value).toMatchObject({ localModelId: modelId, language: 'de', revision: 1 })
+  await expect(host.download({ action: 'remove', modelId })).rejects.toThrow('选择其他模型')
   await host.close()
 })
 
@@ -93,12 +93,32 @@ it('keeps installs independent and reuses the legacy SenseVoice directory withou
   const fetch = vi.fn(async (url: string) => response(url.split('/').at(-1)!, url)); vi.stubGlobal('fetch', fetch)
   await models.download('sensevoice-small'); expect(fetch).not.toHaveBeenCalled()
   await Promise.all([models.download('whisper-tiny'), models.download('whisper-base')])
-  expect((await models.snapshot()).map(model => [model.id, model.ready])).toEqual([['sensevoice-small', true], ['whisper-tiny', true], ['whisper-base', true]])
+  expect((await models.snapshot()).map(model => [model.id, model.ready])).toEqual([['sensevoice-small', true], ['whisper-tiny', true], ['whisper-base', true], ['qwen3-asr-0.6b', false]])
   await models.remove('whisper-tiny')
   expect(await models.ready(true, undefined, 'whisper-tiny')).toBe(false)
   expect(await models.ready(true, undefined, 'whisper-base')).toBe(true)
   expect(await models.ready(true)).toBe(true)
   expect(await readFile(join(models.directory, 'model.onnx'), 'utf8')).toBe('sensevoice-small')
+  await models.download('qwen3-asr-0.6b')
+  const reopened = new VoiceModels(root, catalog)
+  expect(await reopened.ready(true, undefined, 'qwen3-asr-0.6b')).toBe(true)
+  await models.remove('qwen3-asr-0.6b')
+  expect(await models.ready(true, undefined, 'whisper-base')).toBe(true)
+})
+
+it('pins the Qwen3 resources consumed by the adapter and keeps existing language support unchanged', () => {
+  const model = getVoiceModel('qwen3-asr-0.6b')
+  expect(model.engine).toBe('qwen3')
+  expect(model.assets.map(asset => asset.name)).toEqual(expect.arrayContaining(['conv_frontend.onnx', 'encoder.int8.onnx', 'decoder.int8.onnx', 'merges.txt', 'vocab.json', 'tokenizer_config.json', 'silero-vad.onnx', 'QWEN3-ASR-LICENSE.txt']))
+  expect(new Set(model.assets.map(asset => asset.name)).size).toBe(model.assets.length)
+  for (const asset of model.assets) {
+    expect(asset.sha256).toMatch(/^[a-f0-9]{64}$/)
+    expect(asset.bytes).toBeGreaterThan(0)
+    expect(asset.url).toMatch(/\/[a-f0-9]{40}\//)
+  }
+  expect(voiceModelLanguages(model.id)).toHaveLength(31)
+  expect(voiceModelLanguages('whisper-tiny')).toHaveLength(27)
+  expect(voiceModelLanguages('sensevoice-small')).toEqual(['auto', 'zh', 'yue', 'en', 'ja', 'ko'])
 })
 
 it('cancels just the requested download and never publishes its partial directory', async () => {
