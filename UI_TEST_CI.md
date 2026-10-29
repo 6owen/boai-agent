@@ -1,6 +1,6 @@
 <!--
 [INPUT]: BOAI共享开发skill、GitHub Test/UI preview工作流及任务worktree收尾规则。
-[OUTPUT]: 日常开发、UI修改、PR检查、合并与清理的使用说明。
+[OUTPUT]: 日常开发、PR检查、原生视频附件配置、合并与清理的使用说明。
 [POS]: 仓库根目录面向使用者的CI说明；执行依据为AGENTS、开发skill及实际workflow。
 [PROTOCOL]: 流程变化时同步开发skill、第22组06、本文件与根目录.folder.md。
 -->
@@ -81,6 +81,14 @@ flowchart LR
 | Variable | `PLAN_MODEL` | 规划模型；当前默认 `deepseek-flash` |
 
 本机 `.env.ui-preview` 用于本地配置，保持 Git 忽略，不能提交密钥。GitHub 不会自动读取本机文件；需要使用云端 environment 中的配置。录制任务运行 PR 代码并使用模型密钥；发布任务拥有写权限，但不运行 PR 代码，沿 Magpie 分离。
+
+## PR 视频在线播放
+
+录屏以 GitHub 视频附件独立显示在 PR 描述中，可直接播放、暂停和拖动；原始 mp4 下载仍保留。截图继续由 `ui-previews` 分支提供，不需要启用 Pages。
+
+在单独的 **`ui-preview-publish` environment** 配置 **`UI_PREVIEW_UPLOAD_TOKEN`**，使用能向本仓库上传附件的专用 OAuth/PAT 凭据。GitHub 当前不允许 Actions 默认令牌上传视频附件；不要把上传凭据放进运行 PR 代码的 `ui-preview` 环境或仓库级 secret。发布任务固定 GitHub CLI 版本并核对下载校验和。
+
+凭据缺失、视频超出 GitHub 附件大小限制或上传失败时，发布步骤失败，PR 显示警告、已有截图与下载链接，不会显示假的播放入口。只有截图时不需要上传令牌。新流程合入 main 后才用于自动 PR 预览；配置完成与实际云端上传通过分开核验。
 
 ## 任务完成后的 worktree 收尾
 
