@@ -22,7 +22,7 @@ export const sparkleRoot = dirname(dirname(require.resolve('electron-sparkle-upd
 export const sparkleBin = join(sparkleRoot, 'native/vendor/bin')
 export const settingsPath = () => process.env.BOAI_RELEASE_CONFIG || join(homedir(), 'Library/Application Support/BoAI Release/settings.json')
 const json = async path => JSON.parse(await readFile(path, 'utf8'))
-export const command = (exe, args, options = {}) => execFileSync(exe, args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 120_000, ...options }).trim()
+export const command = (exe, args, options = {}) => (execFileSync(exe, args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 120_000, ...options }) ?? '').trim()
 export const gh = (...args) => command('gh', args)
 export const api = path => JSON.parse(gh('api', `repos/${releaseRepository}/${path}`))
 export function validateUpdateConfig(value) {

@@ -12,7 +12,7 @@ import { join } from 'node:path'
 // @ts-expect-error Node release module.
 import { bumpApplicationVersion } from '../scripts/release-version.mjs'
 // @ts-expect-error Node release module.
-import { withSparkle, verifyPrepared, validateUpdateConfig, releaseFeed } from '../scripts/release-updates.mjs'
+import { command, withSparkle, verifyPrepared, validateUpdateConfig, releaseFeed } from '../scripts/release-updates.mjs'
 // @ts-expect-error Node release module.
 import { assertPublishable } from '../scripts/release-publish.mjs'
 // @ts-expect-error Node release module.
@@ -77,4 +77,9 @@ it('rejects changed prepared assets and changed underlying candidate bundle byte
     await writeFile(join(prepared, name), 'archive'); await writeFile(join(app, 'main'), 'tampered')
     await expect(verifyPrepared(prepared)).rejects.toThrow('bundle已变化')
   } finally { await rm(root, { recursive: true, force: true }) }
+})
+
+it('accepts successful inherited stdio and still surfaces a nonzero child exit', () => {
+  expect(command(process.execPath, ['-e', 'process.exit(0)'], { stdio: 'inherit' })).toBe('')
+  expect(() => command(process.execPath, ['-e', 'process.exit(3)'])).toThrow()
 })

@@ -140,7 +140,7 @@ export async function buildRelease(version, sha) {
     finally { for (const release of releases.reverse()) release() }
     console.log(`个人候选 ${result.status}: ${directory}`)
   }
-  if (result.status !== 'built') throw new Error(`候选构建${result.status}: ${directory}`)
+  if (result.status !== 'built') throw new Error(`候选构建${result.status}: ${result.errors.join("; ")}；${directory}`)
   return directory
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
