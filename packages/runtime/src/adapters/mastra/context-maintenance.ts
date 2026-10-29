@@ -1,6 +1,6 @@
 /*
  * [OUTPUT]: 提示词容量按实际模型正文估算，SDK内部副本与截图base64不当作额外文本；原提示词及压缩来源保持。
- * [OUTPUT]: DeepSeek自动档内部摘要关闭思考，显式档位和主任务偏好保持；长度耗尽明确归因且不提交或重试。
+ * [OUTPUT]: 摘要重写为有目标长度的交接，长度耗尽仅以原来源受预算约束恢复一次；截断稿不提交、不重放工具，SDK副本不进摘要。
  * [OUTPUT]: 2026-10-27 默认持续执行、来源校验及工作现场/复核接线；沿原权限和账本。
  * [INPUT]: Authorized source cuts, existing request reservations and the effective provider prompt after Memory conversion.
  * [OUTPUT]: Bounded, tool-free summary calls with original usage ownership; checkpoints cover every history item the legacy projection would omit.
@@ -15,7 +15,7 @@ import type { EngineContext } from '../../contracts'
 import type { Message } from '@boai/shared/domain'
 import { supportsThinkingControl } from '@boai/shared/domain/model-preferences'
 import { contextHash, contextSource, type ContextView } from '../../modules/contexts/context-repository'
-import { contextCapacity, ContextCapacityError, estimateTokens, estimatePromptTokens, type ContextModelSelection } from '../../modules/contexts/context-capacity'
+import { contextCapacity, ContextCapacityError, estimateTokens, estimatePromptTokens, modelPromptData, type ContextModelSelection } from '../../modules/contexts/context-capacity'
 import { modelConfig, responseOutputTokens, thinkingProviderOptions } from './model-config'
 import { gatewayRouteObserver } from './gateway-route'
 import { assertStreamCompleted } from './stream-completion'
@@ -31,40 +31,52 @@ export const contextHandoff = (summary: string) => `[WORKING CONTEXT HANDOFF: hi
 export async function summarizeContext(context: EngineContext, data: unknown, previous = ''): Promise<string> {
   context.signal.throwIfAborted()
   if (!context.connection || !context.onAdditionalModelCall) throw new Error('上下文维护缺少原模型连接或调用预算')
-  const capacity = contextCapacity(context, responseOutputTokens(context, context.responseKind === 'task'))
-  const maxOutputTokens = Math.max(128, Math.min(2000, Math.floor(capacity.limit * .15)))
+  const ceiling = responseOutputTokens(context, true)
+  const initial = Math.min(ceiling, 2000, Math.max(128, Math.floor(contextCapacity(context, ceiling).limit * .15)))
   const content = JSON.stringify({ previousSummary: previous, sourceData: data })
-  if (estimateTokens(content) + estimateTokens(summaryInstructions) + maxOutputTokens > capacity.limit) throw new ContextCapacityError()
-  const callId = await context.onAdditionalModelCall('report')
-  if (!callId) throw new Error('上下文维护未取得原调用身份')
-  context.signal.throwIfAborted()
-  const agent = new Agent({ id: `${context.agent.id}-context-maintenance`, name: context.agent.name, model: modelConfig(context.connection, context.apiKey, context.agent.modelId), maxRetries: 0, instructions: summaryInstructions })
-  await context.onModelCallStarted?.(callId, 'report')
-  // A bounded internal handoff needs prose within this budget; default DeepSeek high
-  // reasoning can consume all of it before producing the summary. Explicit preferences remain.
-  const automatic = !context.agent.thinkingLevel || context.agent.thinkingLevel === 'auto'
-  const level = automatic && supportsThinkingControl(context.connection, context.agent.modelId) ? 'off' : context.agent.thinkingLevel
-  const output = await agent.stream([{ role: 'user', content }], { abortSignal: context.signal, maxSteps: 1, modelSettings: { maxOutputTokens }, providerOptions: thinkingProviderOptions(context.connection, context.agent.modelId, level, 'report', context.modelCatalog), onStepFinish: gatewayRouteObserver(context, () => callId) })
-  let text = ''
-  for await (const chunk of output.fullStream) {
-    if (chunk.type === 'step-finish') {
-      const raw = chunk.payload.output.usage, usage: import('@boai/shared/domain').ModelUsage = {}
-      for (const key of ['inputTokens', 'outputTokens', 'totalTokens'] as const) if (typeof raw[key] === 'number' && Number.isFinite(raw[key]) && raw[key] >= 0) usage[key] = raw[key]
-      if (usage.inputTokens === undefined && usage.outputTokens === undefined && usage.totalTokens === 0) delete usage.totalTokens
-      await context.onModelCallUsage?.(callId, usage)
-      await context.onSupplementalUsage?.(callId, usage)
-    }
+  for (let attempt = 0; attempt < 2; attempt++) {
     context.signal.throwIfAborted()
-    if (chunk.type === 'text-delta') text += chunk.payload.text
-    else if (chunk.type === 'tool-call' || chunk.type === 'error' || chunk.type === 'abort') throw new Error('上下文摘要未正常完成，候选未提交')
+    // The target is below the generation ceiling. Rebuild the handoff instead of
+    // appending another transcript to the previous summary on every tool step.
+    const target = Math.max(1, Math.floor(initial / (attempt ? 4 : 2)))
+    const instructions = `${summaryInstructions} Replace the previous summary with one consolidated handoff of at most ${target} tokens; do not append to it. Deduplicate repeated observations and tool failures, keep only task-relevant facts and current state, and cite source IDs for recoverable detail instead of copying logs or page text.${attempt ? ' The previous generation was truncated and discarded. Write a shorter complete handoff from the original sources, never continue the discarded output.' : ''}`
+    const inputTokens = estimateTokens(content) + estimateTokens(instructions)
+    let maxOutputTokens = Math.min(ceiling, initial * (attempt + 1))
+    if (inputTokens > contextCapacity(context, maxOutputTokens).limit) maxOutputTokens = initial
+    if (inputTokens > contextCapacity(context, maxOutputTokens).limit) throw new ContextCapacityError()
+    const callId = await context.onAdditionalModelCall('report')
+    if (!callId) throw new Error('上下文维护未取得原调用身份')
+    context.signal.throwIfAborted()
+    const agent = new Agent({ id: `${context.agent.id}-context-maintenance`, name: context.agent.name, model: modelConfig(context.connection, context.apiKey, context.agent.modelId), maxRetries: 0, instructions })
+    await context.onModelCallStarted?.(callId, 'report')
+    const automatic = !context.agent.thinkingLevel || context.agent.thinkingLevel === 'auto'
+    const level = automatic && supportsThinkingControl(context.connection, context.agent.modelId) ? 'off' : context.agent.thinkingLevel
+    const output = await agent.stream([{ role: 'user', content }], { abortSignal: context.signal, maxSteps: 1, modelSettings: { maxOutputTokens }, providerOptions: thinkingProviderOptions(context.connection, context.agent.modelId, level, 'report', context.modelCatalog), onStepFinish: gatewayRouteObserver(context, () => callId) })
+    let text = ''
+    for await (const chunk of output.fullStream) {
+      if (chunk.type === 'step-finish') {
+        const raw = chunk.payload.output.usage, usage: import('@boai/shared/domain').ModelUsage = {}
+        for (const key of ['inputTokens', 'outputTokens', 'totalTokens'] as const) if (typeof raw[key] === 'number' && Number.isFinite(raw[key]) && raw[key] >= 0) usage[key] = raw[key]
+        if (usage.inputTokens === undefined && usage.outputTokens === undefined && usage.totalTokens === 0) delete usage.totalTokens
+        await context.onModelCallUsage?.(callId, usage)
+        await context.onSupplementalUsage?.(callId, usage)
+      }
+      context.signal.throwIfAborted()
+      if (chunk.type === 'text-delta') text += chunk.payload.text
+      else if (chunk.type === 'tool-call' || chunk.type === 'error' || chunk.type === 'abort') throw new Error('上下文摘要未正常完成，候选未提交')
+    }
+    if (output.error) throw new Error('上下文摘要响应失败，候选未提交')
+    const finish = await output.finishReason
+    context.signal.throwIfAborted()
+    if (finish === 'length') {
+      if (!attempt) continue
+      throw new Error('工作上下文摘要达到输出上限，候选未提交；原工作现场已保留')
+    }
+    assertStreamCompleted(finish)
+    if (!text.trim() || text.length > 16000) throw new Error('上下文摘要为空或超过允许大小')
+    return text
   }
-  if (output.error) throw new Error('上下文摘要响应失败，候选未提交')
-  const finish = await output.finishReason
-  if (finish === 'length') throw new Error('工作上下文摘要达到输出上限，候选未提交；原工作现场已保留')
-  assertStreamCompleted(finish)
-  context.signal.throwIfAborted()
-  if (!text.trim() || text.length > 16000) throw new Error('上下文摘要为空或超过允许大小')
-  return text
+  throw new Error('上下文摘要未正常完成，候选未提交')
 }
 
 /** Preserve every character of large historical messages through bounded source batches. */
@@ -236,7 +248,7 @@ export function contextCapacityProcessor(phase: string, context: EngineContext):
       if (!saved || !saved.hashes.every((hash, index) => hashes[index] === hash)) saved = undefined
       const changed = !saved || hashes.length !== saved.hashes.length
       if (changed) {
-        const summary = await summarizeBatches(context, removed.slice(saved?.hashes.length ?? 0), saved?.summary ?? '', capacity.limit)
+        const summary = await summarizeBatches(context, removed.slice(saved?.hashes.length ?? 0).map(modelPromptData), saved?.summary ?? '', capacity.limit)
         saved = { hashes, summary }
       }
       const projected: Prompt = [...system, { role: 'user', content: [{ type: 'text', text: contextHandoff(saved!.summary) }] }, ...kept]
