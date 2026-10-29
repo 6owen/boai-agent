@@ -1,6 +1,6 @@
 {
   "name": "boai-agent",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "private": true,
   "description": "Local-first digital teammates powered by Mastra",
   "type": "module",
@@ -147,7 +147,7 @@
   },
   "build": {
     "appId": "com.boai.agent",
-    "buildVersion": "0.2.4",
+    "buildVersion": "0.2.5",
     "productName": "BoAI Agent",
     "directories": {
       "output": "release"
