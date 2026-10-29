@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 当前提示词所见版本、操作锁定与删除回执回调。
- * [OUTPUT]: 列表/详情共用更多菜单与锚定删除确认，冻结确认所见版本；不提供分组或编辑按钮。
+ * [OUTPUT]: 列表仅删除，详情可提供编辑菜单项；锚定删除确认冻结所见版本，不提供行内分组/编辑按钮。
  * [POS]: 提示词显式删除交互，复用原版本化IPC与Sonner。
  * [PROTOCOL]: 修改同步Header与所属.folder.md。
  */
@@ -13,11 +13,12 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Popover, PopoverContent, PopoverTitle } from '@/components/ui/popover'
 import { MoreHorizontal } from '@/components/icons'
 
-export function PromptActions({ api, value, disabled = false, onRemoved }: { api: DesktopApi; value: PromptTemplate; disabled?: boolean; onRemoved(): void }) {
+export function PromptActions({ api, value, disabled = false, onEdit, onRemoved }: { api: DesktopApi; value: PromptTemplate; disabled?: boolean; onEdit?(): void; onRemoved(): void }) {
   const anchor = useRef<HTMLButtonElement>(null), [removing, setRemoving] = useState<PromptTemplate | null>(null)
   const { busy, run } = useMutation(), locked = disabled || busy
   return <>
     <DropdownMenu><DropdownMenuTrigger render={<Button ref={anchor} variant="ghost" size="icon-sm" disabled={locked} aria-label={`提示词操作 ${value.name}`} data-confirming={Boolean(removing) || undefined} />}><MoreHorizontal /></DropdownMenuTrigger><DropdownMenuContent align="end" finalFocus={removing ? false : undefined}>
+      {onEdit && <DropdownMenuItem onClick={onEdit}>编辑</DropdownMenuItem>}
       <DropdownMenuItem variant="destructive" onClick={() => setRemoving(value)}>删除提示词</DropdownMenuItem>
     </DropdownMenuContent></DropdownMenu>
     <Popover open={Boolean(removing)} onOpenChange={open => { if (!locked && !open) setRemoving(null) }}><PopoverContent anchor={anchor} align="end" finalFocus={anchor}>

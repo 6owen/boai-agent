@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /*
  * [OUTPUT]: 普通bobo首发提供五项管理命令，选择生成真实标签且零IPC；普通员工不显示核心管理命令。
- * [OUTPUT]: 右侧表单创建/编辑/AI入口及草稿保护；菜单删除冻结所见版本，不削减原CRUD断言。
+ * [OUTPUT]: 详情默认只读、header菜单进入编辑、保存/取消返回阅读；AI入口及草稿保护、菜单删除冻结所见版本保持。
  * [INPUT]: 实际提示词目录/右侧表单/删除菜单、PromptBar/Tiptap与隔离IPC。
  * [OUTPUT]: @员工/$技能文件提示词候选分离，标签快照展开/文件核源；提示词创建查看编辑确认删除走同一版本合同。
  * [POS]: 前端组件回归，不运行Electron或模型。
@@ -45,6 +45,12 @@ beforeEach(() => {
 })
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks() })
 const button = (text: string) => Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(item => item.textContent === text)!
+async function editPrompt() {
+  await act(async () => host.querySelector<HTMLButtonElement>('.prompt-detail-panel .chat-header-actions [aria-label^="提示词操作"]')!.click())
+  expect(Array.from(document.querySelectorAll('[role=menuitem]')).map(item => item.textContent)).toEqual(['编辑', '删除提示词'])
+  await act(async () => Array.from(document.querySelectorAll<HTMLElement>('[role=menuitem]')).find(item => item.textContent === '编辑')!.click())
+  await act(async () => vi.advanceTimersByTimeAsync(300))
+}
 async function input(label: string, value: string) {
   const element = document.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[aria-label="${label}"]`)!
   const prototype = element.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype
@@ -139,6 +145,9 @@ it('edits in the right panel, guards AI navigation and deletes through the row m
   expect(host.textContent).not.toContain('在输入框中使用 $ 引用')
   expect(host.querySelector('[aria-label="提示词用法"]')).not.toBeNull()
   await act(async () => button('新建提示词').click())
+  await act(async () => button('取消').click())
+  expect(host.querySelector('.prompt-detail-panel')).toBeNull()
+  await act(async () => button('新建提示词').click())
   expect(document.querySelector('[role=dialog]')).toBeNull()
   expect(host.querySelector('.skill-detail-title')).not.toBeNull()
   await input('名称', '业务总结'); await input('描述（可选）', '总结格式'); await input('提示词内容', '按事实和结论总结。')
@@ -147,6 +156,10 @@ it('edits in the right panel, guards AI navigation and deletes through the row m
   expect(api.request).toHaveBeenCalledWith('savePromptTemplate', expect.objectContaining({ expectedRevision: 0, name: '业务总结', description: '总结格式', content: '按事实和结论总结。' }))
   await act(async () => host.querySelector<HTMLButtonElement>('.skill-list-select')!.click())
   expect(document.querySelector('[role=dialog]')).toBeNull()
+  expect(host.querySelector('textarea')).toBeNull()
+  expect(host.querySelector('.prompt-detail-panel [aria-label=提示词内容]')?.textContent).toContain('按事实和结论总结。')
+  expect(button('保存')).toBeUndefined()
+  await editPrompt()
   expect(host.querySelector<HTMLTextAreaElement>('textarea')!.value).toBe('按事实和结论总结。')
   expect(host.querySelectorAll('.prompt-catalog-row button')).toHaveLength(2)
   await input('提示词内容', '先结论，再事实。')
@@ -157,6 +170,8 @@ it('edits in the right panel, guards AI navigation and deletes through the row m
   expect(host.querySelector<HTMLTextAreaElement>('textarea')!.value).toBe('先结论，再事实。')
   await act(async () => button('保存').click())
   expect(api.request).toHaveBeenCalledWith('savePromptTemplate', expect.objectContaining({ expectedRevision: 1, content: '先结论，再事实。' }))
+  expect(host.querySelector('textarea')).toBeNull()
+  expect(host.querySelector('.prompt-detail-panel [aria-label=提示词内容]')?.textContent).toContain('先结论，再事实。')
   await act(async () => button('AI 管理').click())
   expect(manage).toHaveBeenCalledWith(expect.objectContaining({ id: prompt.id, name: '业务总结' }))
   await act(async () => host.querySelector<HTMLButtonElement>('.prompt-row-actions button')!.click())
@@ -166,7 +181,8 @@ it('edits in the right panel, guards AI navigation and deletes through the row m
   // An AI edit after confirmation opened must not silently authorize deleting its newer version.
   stored = [{ ...stored[0], revision: 3, content: 'AI 新版本' }]
   await act(async () => { emit(); await vi.advanceTimersByTimeAsync(130) })
-  expect(host.querySelector<HTMLTextAreaElement>('textarea')!.value).toBe('AI 新版本')
+  expect(host.querySelector('textarea')).toBeNull()
+  expect(host.querySelector('.prompt-detail-panel [aria-label=提示词内容]')?.textContent).toContain('AI 新版本')
   await act(async () => button('确认删除').click())
   expect(api.request).toHaveBeenCalledWith('removePromptTemplate', { id: prompt.id, expectedRevision: 2 })
   expect(host.querySelector('.skill-list-select')).not.toBeNull()
@@ -178,4 +194,47 @@ it('edits in the right panel, guards AI navigation and deletes through the row m
   expect(api.request).toHaveBeenCalledWith('removePromptTemplate', { id: prompt.id, expectedRevision: 3 })
   expect(host.querySelector('.skill-list-select')).toBeNull()
   expect(host.querySelector('.prompt-detail-panel')).toBeNull()
+})
+
+it('opens existing prompts read-only and cancels editing back to the latest saved content without closing the panel', async () => {
+  let stored = prompt
+  const listeners = new Set<(event: AppEvent) => void>(), saved = vi.fn(), closed = vi.fn()
+  const api = apiFor(method => { if (method === 'listPromptTemplates') return [stored]; throw new Error(`Unexpected request: ${method}`) })
+  api.subscribe = listener => { listeners.add(listener); return () => { listeners.delete(listener) } }
+  function Panel() {
+    const [generation, setGeneration] = useState(0)
+    const { guard, confirmation } = useEditorGuard({ reset: () => setGeneration(value => value + 1) })
+    return h(GuardContext.Provider, { value: guard },
+      h(PromptDetailPanel, { key: generation, api, id: prompt.id, name: prompt.name, requestId: 'open', active: true, onManage: noop, onSaved: saved, onClose: closed }), confirmation)
+  }
+  await act(async () => root.render(h(Panel)))
+  expect(host.querySelector('input, textarea, form')).toBeNull()
+  expect(host.querySelector('[aria-label=提示词内容]')?.textContent).toContain(prompt.content)
+  expect(button('取消')).toBeUndefined(); expect(button('保存')).toBeUndefined()
+  await editPrompt()
+  await input('名称', '我的草稿名'); await input('提示词内容', '还没保存的正文')
+  stored = { ...prompt, revision: 2, name: '外部更新的标题', content: '外部更新的正文' }
+  await act(async () => { for (const listener of listeners) listener({ type: 'changed' }); await vi.advanceTimersByTimeAsync(130) })
+  expect(host.querySelector<HTMLTextAreaElement>('textarea')!.value).toBe('还没保存的正文')
+  await act(async () => button('取消').click())
+  expect(document.querySelector('[role=alertdialog]')?.textContent).toContain('有未保存的修改')
+  await act(async () => document.querySelector<HTMLButtonElement>('[role=alertdialog] button')!.click())
+  await act(async () => vi.advanceTimersByTimeAsync(300))
+  expect(host.querySelector<HTMLTextAreaElement>('textarea')!.value).toBe('还没保存的正文')
+  await act(async () => button('取消').click())
+  await act(async () => button('退出').click())
+  await act(async () => vi.advanceTimersByTimeAsync(300))
+  expect(host.querySelector('input, textarea, form')).toBeNull()
+  expect(host.querySelector('.chat-title')?.textContent).toBe(stored.name)
+  expect(host.querySelector('[aria-label=提示词内容]')?.textContent).toContain(stored.content)
+  expect(host.textContent).not.toContain('还没保存的正文')
+  expect(saved).not.toHaveBeenCalled(); expect(closed).not.toHaveBeenCalled()
+  expect(vi.mocked(api.request).mock.calls.every(([method]) => method === 'listPromptTemplates')).toBe(true)
+  await editPrompt()
+  expect(host.querySelector<HTMLInputElement>('[aria-label=名称]')!.value).toBe(stored.name)
+  expect(host.querySelector<HTMLTextAreaElement>('textarea')!.value).toBe(stored.content)
+  await act(async () => button('取消').click())
+  expect(host.querySelector('textarea')).toBeNull()
+  expect(document.querySelector('[role=alertdialog]')).toBeNull()
+  expect(closed).not.toHaveBeenCalled()
 })
