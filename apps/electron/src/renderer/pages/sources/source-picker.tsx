@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 无绑定时复用通讯录技能的contact-card-empty占位，不因存在可选数据源而返回空内容。
  * [OUTPUT]: 2026-10-19 数据源选择仅负责 MCP/API/本地文件夹业务绑定，网页检索迁至独立能力分区。
  * [OUTPUT]: 首选检索方式与绑定共用员工草稿；核心可选全局搜索候选，失效首选明确显示，不连接服务。
  * [OUTPUT]: 已绑定数据源以普通行展示，纯文字更多菜单支持详情和经Popover确认的移除；标题添加菜单支持重新绑定，只修改员工草稿。
@@ -45,7 +46,7 @@ export function SourcePicker({ api, ids, onChange, disabled, active, allSources 
     <DropdownMenuTrigger render={<Button type="button" variant="secondary" size="sm" disabled={disabled || !active || !availableSources.length} />}>添加数据源</DropdownMenuTrigger>
     <DropdownMenuContent align="end"><DropdownMenuGroup>{availableSources.map(source => <DropdownMenuItem key={source.id} disabled={disabled || !active} onClick={() => onChange([...new Set([...ids, source.id])])}>{source.name}{!source.enabled ? '（已停用）' : ''}</DropdownMenuItem>)}</DropdownMenuGroup></DropdownMenuContent>
   </DropdownMenu>
-  const content = boundSources.length > 0 || !sources.length || error ? <div className="field full">{label}{error && <Banner>{error}</Banner>}
+  const content = !ids.length ? <>{error && <Banner>{error}</Banner>}<p className="contact-card-empty">未绑定数据源</p></> : boundSources.length > 0 || !sources.length || error ? <div className="field full">{label}{error && <Banner>{error}</Banner>}
     <div className="resource-picker">{boundSources.map(source => <SourceRow key={source.id} source={source} disabled={disabled || !active} active={active} onOpen={onOpen} onRemove={() => onChange(ids.filter(id => id !== source.id))} />)}</div>
     {!sources.length && !error && <p className="field-hint">在“资源库 → 数据源”中添加 API、MCP 或本地文件夹。</p>}
   </div> : null
