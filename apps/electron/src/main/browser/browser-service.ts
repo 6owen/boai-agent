@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 明确未派发输入的失效ref按failed结算；未知动作仍保留核对、不重放。
  * [OUTPUT]: Cookie文件/浏览器profile导入经无值确认，原窗口/partition绑定；关闭取消副本读取并等待清理，保留逐项写回核验。
  * [OUTPUT]: 运行连接失联时立即关闭仍有员工动作的页面，再等待原CDP/队列真实退出；空闲窗口保持原drain。
  * [OUTPUT]: 有效员工租约默认允许HTTP(S)浏览和交互，无域名或逐次审批门禁；旧页面版本、真实开始握手、取消/退出及下载核验保持。
@@ -19,6 +20,7 @@ import { dialog, session, type BrowserWindow } from 'electron'
 import { CookieImports, type CookieImportPort } from './cookie-import'
 import { BrowserCookieSources, type CookieSourceProvider } from './cookie-sources'
 import { BrowserPaneManager } from './browser-pane-manager'
+import { BrowserInputNotStartedError } from './browser-cdp'
 import type { BrowserPaneFns } from '@boai/runtime/adapters/mastra/browser-tool-types'
 import { BROWSER_PAGE_METRICS_EXPRESSION, executeBrowserSingleCommand, parseBrowserSingleCommand } from '@boai/runtime/adapters/mastra/browser-tool-runtime'
 import { APPLICATION_BROWSER_SCOPE } from '@boai/shared/ipc/browser'
@@ -401,7 +403,7 @@ export class BrowserService {
         const reply: BrowserActionReply = { actionId: envelope.actionId, generation: envelope.lease.generation, status: 'completed', result: { ...result, output: result.output.slice(0, 63000) + refresh }, ...(source ? { source } : {}), ...(downloads.length ? { downloads } : {}) }
         return reply
       } catch (error) {
-        return { actionId: envelope.actionId, generation: envelope.lease.generation, status: started ? 'unknown' : 'cancelled_before_start', error: error instanceof Error ? error.message : String(error) }
+        return { actionId: envelope.actionId, generation: envelope.lease.generation, status: !started ? 'cancelled_before_start' : error instanceof BrowserInputNotStartedError ? 'failed' : 'unknown', error: error instanceof Error ? error.message : String(error) }
       } finally {
         scope.performingAgentAction = false
         if (scope.releaseRequested) { scope.active = false; this.retiredRuns.add(`${envelope.lease.runId}:${envelope.lease.generation}`); this.emit(scope) }
