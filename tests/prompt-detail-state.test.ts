@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 提示词版本化草稿、保存回执及可控公开IPC/变更事件。
- * [OUTPUT]: AI刷新不覆盖脏草稿、不升级CAS基线；旧响应/隐藏隔离、删除与读取失败恢复。
+ * [OUTPUT]: AI刷新不覆盖脏草稿、不升级CAS基线；取消采用最新已读版本；旧响应/隐藏隔离、删除与读取失败恢复。
  * [POS]: 提示词右侧编辑器状态回归，不启动Electron或调用模型。
  * [PROTOCOL]: 修改同步Header与tests/.folder.md。
  */
@@ -22,6 +22,8 @@ it('follows AI edits only while clean and preserves the original revision with a
   expect(refreshed.base).toBe(original); expect(refreshed.latest).toBe(updated)
   expect(refreshed.draft.content).toBe('我的草稿'); expect(promptEditorDirty(refreshed)).toBe(true)
   expect(reduce(refreshed, { type: 'receive', value: original })).toBe(refreshed)
+  const discarded = reduce(refreshed, { type: 'discard' })
+  expect(discarded.base).toBe(updated); expect(discarded.draft).toEqual(promptDraft(updated)); expect(promptEditorDirty(discarded)).toBe(false)
 })
 
 it('keeps drafts after deletion and never overwrites an already newer version with a delayed save receipt', () => {
