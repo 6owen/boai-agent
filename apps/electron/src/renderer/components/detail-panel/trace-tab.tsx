@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 标识原判断/协调/执行阶段；无可读Run时允许显示保留的单次运行记录。
  * [OUTPUT]: 聊天历史包含已发布的定时执行；跟踪原来源更新/删除，并复用精确停止入口。
  * [OUTPUT]: 2026-10-27移除任务结果入口与弹窗，执行记录沿原详情展示。
  * [OUTPUT]: 执行历史仅查看过程/定位消息及原停止入口，不提供继续或发送消息的按钮。
@@ -36,9 +37,9 @@ import { ExecutionMessageButton, type ExecutionMessageNavigation } from './execu
 import { ExecutionStopButton } from './execution-stop-button'
 
 const labels: Record<AgentRun['status'], string> = { queued: '排队中', running: '执行中', completed: '已完成', failed: '失败', cancelled: '已停止', interrupted: '已中断', waiting_approval: '等待批准' }
-export function TraceTab({ api, conversationId, messageId, agentId, active, snapshot, occurrenceId, runId, title, onNavigateMessage, stopAction, emptyMessage = '发送消息后，可在这里查看员工的执行过程。' }: {
+export function TraceTab({ api, conversationId, messageId, agentId, active, snapshot, occurrenceId, runId, title, onNavigateMessage, stopAction, emptyContent, emptyMessage = '发送消息后，可在这里查看员工的执行过程。' }: {
   api: DesktopApi; conversationId: string; messageId?: string; agentId?: string; active: boolean; snapshot: Snapshot; busy?: boolean; onRetry?(id: string): void; onStop?(id: string): void
-  occurrenceId?: string; runId?: string; title?: string; emptyMessage?: string; onNavigateMessage?: ExecutionMessageNavigation; stopAction?: ReactNode
+  occurrenceId?: string; runId?: string; title?: string; emptyMessage?: string; emptyContent?: ReactNode; onNavigateMessage?: ExecutionMessageNavigation; stopAction?: ReactNode
 }) {
   const [views, setViews] = useState<Record<string, ExecutionView>>({})
   const [employee, setEmployee] = useState(agentId ?? ''), [items, setItems] = useState<ExecutionHistoryPage['items']>([]), [next, setNext] = useState<ExecutionHistoryPage['next']>()
@@ -126,7 +127,7 @@ export function TraceTab({ api, conversationId, messageId, agentId, active, snap
           </Collapsible>
         </Card>
       })}
-      {loaded && !items.length && <p className="text-sm text-muted-foreground">{emptyMessage}</p>}
+      {loaded && !items.length && (emptyContent ?? <p className="text-sm text-muted-foreground">{emptyMessage}</p>)}
       {next && <Button variant="secondary" size="sm" onClick={() => void loadMore()}>加载更早的执行</Button>}
     </div>
   </ScrollArea></div>
@@ -168,6 +169,7 @@ function ExecutionRunContent({ api, run, active, cache, view, live, onViewChange
       <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
         {!isNativeBackend(run.backend) && run.usage?.totalTokens !== undefined && <span title={`${run.usage.totalTokens.toLocaleString()} tokens`}>{Intl.NumberFormat('en', { notation: 'compact' }).format(run.usage.totalTokens)} tokens</span>}
         <time dateTime={run.createdAt} title={new Date(run.createdAt).toLocaleString('zh-CN')}>{new Date(run.createdAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })}</time>
+        {run.phase && run.phase !== 'execution' && <span>{{ decision: '判断阶段', coordination: '协调阶段', memory: '记忆整理阶段' }[run.phase]}</span>}
         <span className="flex items-center gap-1"><Icon name={run.status === 'running' ? 'LoaderCircle' : run.status === 'completed' ? 'CircleCheck' : run.status === 'failed' ? 'OctagonX' : 'Clock'} className={run.status === 'running' ? 'size-3.5 animate-spin' : 'size-3.5'} />{labels[run.status]}</span>
       </div>
       <div className="flex shrink-0 items-center gap-1">

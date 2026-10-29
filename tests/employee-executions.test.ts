@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 单次运行判断失败及全部阶段在分页前保留；普通历史不混入成功的内部判断。
  * [OUTPUT]: 主聊普通/定时执行合并分页，精确原身份和发布/成员/清理边界回归。
  * [OUTPUT]: 定时记录按持久occurrence和会话身份在分页前筛选；相邻运行、缺失身份和隐藏来源不可混入。
  * [INPUT]: 隔离SQLite内的员工/成员/原消息/运行与冻结配置。
@@ -89,6 +90,22 @@ async function publishedHistory(count = 25) {
   ])
   return store
 }
+
+it('includes every owned phase in occurrence details and keeps failed decisions in ordinary history', async () => {
+  const store = await fixture(0)
+  const phases = ['decision', 'coordination', 'memory', 'execution'] as const
+  const runs = Array.from({ length: 25 }, (_, i) => record('runs', `phase-${String(i).padStart(2, '0')}`, { agentId: 'employee', conversationId: 'chat', triggerMessageId: 'request', phase: phases[i % phases.length], status: i === 24 ? 'failed' : 'completed', error: i === 24 ? 'getaddrinfo ENOTFOUND api.deepseek.com' : undefined, createdAt: '2026-10-26T01:00:06Z' }))
+  await store.write([...runs, record('automationOccurrences', 'selected', { conversationId: 'chat', runIds: runs.map(run => run.id) })])
+  const first = await store.queryExecutionHistory({ conversationId: 'chat', occurrenceId: 'selected' })
+  expect(first).toHaveLength(21)
+  expect(first[0].run).toMatchObject({ id: 'phase-24', phase: 'decision', error: 'getaddrinfo ENOTFOUND api.deepseek.com' })
+  const last = first[19].run
+  const next = await store.queryExecutionHistory({ conversationId: 'chat', occurrenceId: 'selected', before: { createdAt: last.createdAt, id: last.id } })
+  expect([...first.slice(0, 20), ...next].map(item => item.run.id)).toEqual(runs.map(run => run.id).reverse())
+  const ordinary = await store.queryExecutionHistory({ conversationId: 'chat' })
+  expect(ordinary.map(item => item.run.id)).toEqual(['phase-24', 'phase-23', 'phase-19', 'phase-15', 'phase-11', 'phase-07', 'phase-03'])
+  expect(await store.queryExecutionHistory({ conversationId: 'chat', occurrenceId: 'unrelated' })).toEqual([])
+})
 it('pages ordinary and published scheduled runs together without copying their source identities', async () => {
   const store = await publishedHistory()
   const first = await store.queryExecutionHistory({ conversationId: 'main' })

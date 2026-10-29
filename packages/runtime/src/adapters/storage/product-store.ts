@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 单次定时详情读取本次所有阶段；普通历史保留失败/中断的判断与协调，避免有原Run却显示空过程。
  * [OUTPUT]: 主聊天执行历史按已发布原消息关联定时私有Run，合并后统一分页；清理/撤权来源不再可见。
  * [OUTPUT]: 任务结果Run在原事务内固定Work/会话/员工、有界SELECT并只投影公开状态与计数。
  * [OUTPUT]: Explicit task pages filter current source/viewer rights before SQL LIMIT; project bounded notes/steps without loading all task records.
@@ -193,7 +194,8 @@ export class ProductStore {
           AND NOT EXISTS (SELECT 1 FROM records cleanup WHERE cleanup.collection='conversationCleanup' AND cleanup.id=target.id)
           AND NOT EXISTS (SELECT 1 FROM json_each(source.value,'$.agentIds') member WHERE member.value NOT IN (SELECT value FROM json_each(target.value,'$.agentIds')))
       ))`
-      const filters = ["r.collection='runs'", visibleConversation, "COALESCE(json_extract(r.value,'$.phase'),'execution')='execution'", "EXISTS (SELECT 1 FROM records c,json_each(json_extract(c.value,'$.agentIds')) member WHERE c.collection='conversations' AND c.id=json_extract(r.value,'$.conversationId') AND member.value=json_extract(r.value,'$.agentId') AND COALESCE(json_extract(c.value,'$.list.hidden'),0)=0)", "NOT EXISTS (SELECT 1 FROM records cleanup WHERE cleanup.collection='conversationCleanup' AND cleanup.id=json_extract(r.value,'$.conversationId'))"]
+      const phases = query.occurrenceId ? "1=1" : "(COALESCE(json_extract(r.value,'$.phase'),'execution')='execution' OR (json_extract(r.value,'$.phase') IN ('decision','coordination') AND json_extract(r.value,'$.status') IN ('failed','interrupted','cancelled')))"
+      const filters = ["r.collection='runs'", visibleConversation, phases, "EXISTS (SELECT 1 FROM records c,json_each(json_extract(c.value,'$.agentIds')) member WHERE c.collection='conversations' AND c.id=json_extract(r.value,'$.conversationId') AND member.value=json_extract(r.value,'$.agentId') AND COALESCE(json_extract(c.value,'$.list.hidden'),0)=0)", "NOT EXISTS (SELECT 1 FROM records cleanup WHERE cleanup.collection='conversationCleanup' AND cleanup.id=json_extract(r.value,'$.conversationId'))"]
       if (query.occurrenceId) { filters.push("EXISTS (SELECT 1 FROM records o,json_each(json_extract(o.value,'$.runIds')) run WHERE o.collection='automationOccurrences' AND o.id=? AND json_extract(o.value,'$.conversationId')=json_extract(r.value,'$.conversationId') AND run.value=r.id)"); args.push(query.occurrenceId) }
       if (query.agentId) { filters.push("json_extract(r.value,'$.agentId')=?"); args.push(query.agentId) }
       if (query.before) { filters.push("(json_extract(r.value,'$.createdAt')<? OR (json_extract(r.value,'$.createdAt')=? AND r.id<?))"); args.push(query.before.createdAt, query.before.createdAt, query.before.id) }

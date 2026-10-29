@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 保留的定时运行缺失原会话时返回空过程供详情展示历史元数据；无关/缺失运行身份仍拒绝。
  * [OUTPUT]: 已登记依赖等待时私有汇报schema错误沿withhold保留等待及错误原文；不发布无效正文或重放操作。
  * [OUTPUT]: 2026-10-29 getWorkspaceRoot可解析精确已存目录授权，成员/撤权/根替换复核；执行cwd保持。
  * [OUTPUT]: 原生Codex握手观察沿原run权限与串行事务保存版本，不改变配置revision或自动重发输入。
@@ -1443,6 +1444,10 @@ export class AppService {
         }
         case 'listExecutionHistory': {
           const query = z.object({ conversationId: id, agentId: id.optional(), occurrenceId: id.optional(), before: z.object({ createdAt: z.string(), id }).optional() }).strict().parse(input)
+          if (query.occurrenceId && !this.conversations.has(query.conversationId)) {
+            const occurrence = await this.store.get<AutomationOccurrence>('automationOccurrences', query.occurrenceId)
+            if (occurrence && !occurrence.deletedAt && occurrence.conversationId === query.conversationId) return { items: [] }
+          }
           const conversation = this.getConversation(query.conversationId)
           if (conversation.list?.hidden || this.clearingConversations.has(conversation.id)) return { items: [] }
           const rows = (await this.store.queryExecutionHistory(query)).filter(item => conversation.agentIds.includes(item.run.agentId))
