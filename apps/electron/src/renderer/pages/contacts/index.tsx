@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-29 员工资料页新增工作区按钮，打开共享右侧面板并沿原草稿守卫。
  * [OUTPUT]: 原Panel reveal生命周期提至共用usePanelReveal，消息与通讯录复用同一重置/显现/真实结束清理；通讯录现有布局/动效保持。
  * [OUTPUT]: 群聊基础配置与员工一致就地编辑，名称局部保存、头像配置成员；高级配置继续保留基础分类。
  * [OUTPUT]: 员工身份保存回执直接局部更新Shell快照，不触发整页刷新或资料入场过渡。
@@ -41,6 +42,7 @@ interface ContactsPageProps {
   onMessage: (selection: ContactSelection) => void
   refresh: () => Promise<void>
   onAgentSaved(agent: DigitalAgent): void
+  onWorkspace(id: string): void
   onGroupSaved(group: Conversation): void
   sidebarShown: boolean
   divider: ReactNode
@@ -50,7 +52,7 @@ interface ContactsPageProps {
   onConversation(id: string, messageId?: string): void
 }
 
-export function ContactsPage({ api, snapshot, selected, onSelect, onMessage, onCreate, onCreateTeam, refresh, onAgentSaved, onGroupSaved, sidebarShown, divider, generation, busy, active = true, onConversation }: ContactsPageProps) {
+export function ContactsPage({ api, snapshot, selected, onSelect, onMessage, onCreate, onCreateTeam, refresh, onAgentSaved, onGroupSaved, onWorkspace, sidebarShown, divider, generation, busy, active = true, onConversation }: ContactsPageProps) {
   const selectionKey = `${generation}-${selected?.kind}-${selected?.id}`
   const hasDetail = selected?.kind === 'agent' ? snapshot.agents.some(item => item.id === selected.id) : selected?.kind === 'group' && snapshot.conversations.some(item => item.id === selected.id && item.kind === 'group')
   const [detail, setDetail] = useState({ key: selectionKey, editing: false })
@@ -67,16 +69,16 @@ export function ContactsPage({ api, snapshot, selected, onSelect, onMessage, onC
       if (selected && (selected.kind === 'agent' ? agentIds : groupIds).includes(selected.id)) guard.saved(() => setDetail({ key: selectionKey, editing: false }))
     }} /></PanelResize>
     <section className="contacts-detail" aria-label="通讯录详情"><div ref={content} className={`contact-content-transition${hasDetail ? ' settings-page-transition t-panel-slide' : ''}`} data-open="true" data-settled="true">
-      <ContactDetail key={selectionKey} api={api} snapshot={snapshot} selected={selected} refresh={refresh} onAgentSaved={onAgentSaved} onGroupSaved={onGroupSaved} onSelect={select} onMessage={onMessage} busy={busy} active={active} onConversation={onConversation} editing={detail.editing} onEditingChange={editing => setDetail({ key: selectionKey, editing })} />
+      <ContactDetail key={selectionKey} api={api} snapshot={snapshot} selected={selected} refresh={refresh} onAgentSaved={onAgentSaved} onGroupSaved={onGroupSaved} onWorkspace={onWorkspace} onSelect={select} onMessage={onMessage} busy={busy} active={active} onConversation={onConversation} editing={detail.editing} onEditingChange={editing => setDetail({ key: selectionKey, editing })} />
     </div></section>
   </div>
 }
 
-function ContactDetail({ api, snapshot, selected, refresh, onAgentSaved, onGroupSaved, onSelect, onMessage, busy, active = true, onConversation, editing, onEditingChange: setEditing }: Pick<ContactsPageProps, 'api' | 'snapshot' | 'selected' | 'refresh' | 'onAgentSaved' | 'onGroupSaved' | 'onSelect' | 'onMessage' | 'busy' | 'active' | 'onConversation'> & { editing: boolean; onEditingChange(editing: boolean): void }) {
+function ContactDetail({ api, snapshot, selected, refresh, onAgentSaved, onGroupSaved, onWorkspace, onSelect, onMessage, busy, active = true, onConversation, editing, onEditingChange: setEditing }: Pick<ContactsPageProps, 'api' | 'snapshot' | 'selected' | 'refresh' | 'onAgentSaved' | 'onGroupSaved' | 'onWorkspace' | 'onSelect' | 'onMessage' | 'busy' | 'active' | 'onConversation'> & { editing: boolean; onEditingChange(editing: boolean): void }) {
   const agent = selected?.kind === 'agent' ? snapshot.agents.find(item => item.id === selected.id) : undefined
   const group = selected?.kind === 'group' ? snapshot.conversations.find(item => item.id === selected.id && item.kind === 'group') : undefined
   if (!selected || (!agent && !group)) return <IllustratedEmpty kind="contacts" />
   if (group && isChannelConversation(group)) return <ChannelConversationInfo conversation={group} snapshot={snapshot} onOpenAgent={id => onSelect({ kind: 'agent', id })} />
-  if (agent) return <EmployeeProfile api={api} snapshot={snapshot} agent={agent} active={active} busy={busy} refresh={refresh} onAgentSaved={onAgentSaved} onMessage={() => onMessage(selected)} advancedOpen={editing} onAdvancedChange={setEditing} onOpenAgent={id => onSelect({ kind: 'agent', id })} onConversation={onConversation} />
+  if (agent) return <EmployeeProfile onWorkspace={onWorkspace} api={api} snapshot={snapshot} agent={agent} active={active} busy={busy} refresh={refresh} onAgentSaved={onAgentSaved} onMessage={() => onMessage(selected)} advancedOpen={editing} onAdvancedChange={setEditing} onOpenAgent={id => onSelect({ kind: 'agent', id })} onConversation={onConversation} />
   return <GroupProfile api={api} snapshot={snapshot} group={group!} active={active} busy={busy} refresh={refresh} onGroupSaved={onGroupSaved} onMessage={() => onMessage(selected)} advancedOpen={editing} onAdvancedChange={setEditing} onOpenAgent={id => onSelect({ kind: 'agent', id })} onConversation={onConversation} />
 }

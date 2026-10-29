@@ -1,3 +1,4 @@
+# [OUTPUT]: 2026-10-29新增官方文件浏览器workspace包依赖，其他依赖版本保持。
 # [OUTPUT]: 2026-10-27固定use-stick-to-bottom 1.1.6及其React peer，原依赖版本保持。
 # [OUTPUT]: 2026-10-27 开发依赖锁定及可选原生识别包；安装脚本未在本轮执行。
 # [INPUT]: Workspace依赖与本轮语音插件实现。
@@ -54,6 +55,9 @@ importers:
       '@base-ui/react':
         specifier: 1.8.0
         version: 1.8.0(@date-fns/tz@1.5.0)(@types/react@19.3.0)(date-fns@4.4.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@boai/file-explorer-plugin':
+        specifier: workspace:*
+        version: link:packages/file-explorer-plugin
       '@boai/runtime':
         specifier: workspace:*
         version: link:packages/runtime
@@ -426,6 +430,9 @@ importers:
       '@base-ui/react':
         specifier: 1.8.0
         version: 1.8.0(@date-fns/tz@1.5.0)(@types/react@19.3.0)(date-fns@4.4.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@boai/file-explorer-plugin':
+        specifier: workspace:*
+        version: link:../../packages/file-explorer-plugin
       '@boai/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime
@@ -550,6 +557,24 @@ importers:
       tw-animate-css:
         specifier: 1.4.0
         version: 1.4.0
+
+  packages/file-explorer-plugin:
+    dependencies:
+      '@boai/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@boai/ui':
+        specifier: workspace:*
+        version: link:../ui
+      '@tanstack/react-virtual':
+        specifier: 3.14.13
+        version: 3.14.13(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react:
+        specifier: 19.3.0
+        version: 19.3.0
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
 
   packages/runtime:
     dependencies:

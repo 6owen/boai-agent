@@ -1,5 +1,6 @@
 /*
  * [OUTPUT]: 已登记依赖等待时私有汇报schema错误沿withhold保留等待及错误原文；不发布无效正文或重放操作。
+ * [OUTPUT]: 2026-10-29 getWorkspaceRoot可解析精确已存目录授权，成员/撤权/根替换复核；执行cwd保持。
  * [OUTPUT]: 原生Codex握手观察沿原run权限与串行事务保存版本，不改变配置revision或自动重发输入。
  * [OUTPUT]: 网页检索草稿测试接现有externalTests/externalTasks退出取消与备份门禁，不保存连接。
  * [OUTPUT]: Codex当前轮次补充沿原消息事务/来源投影受理，原生RPC在服务串行区之外单次投递。
@@ -984,16 +985,21 @@ export class AppService {
       return this.options.applicationHost.request(method, input as never)
     }
     if (method === 'getWorkspaceRoot' || method === 'validateWorkspaceScope') {
-      const value = z.object({ employeeId: id, conversationId: id.optional() }).strict().parse(input)
+      const schema = z.object({ employeeId: id, conversationId: id.optional() }).strict()
+      const value = (method === 'getWorkspaceRoot' ? schema.extend({ directory: directoryGrantSchema.shape.path.optional() }) : schema).parse(input) as { employeeId: string; conversationId?: string; directory?: string }
       const assertCurrent = () => {
-        this.getAgent(value.employeeId)
+        const agent = this.getAgent(value.employeeId)
+        if (value.directory && !agent.directoryGrants?.some(grant => grant.path === value.directory)) fail('目录授权已失效，请重新打开')
         if (this.userWorkspaceClosures.has(`employee:${value.employeeId}`) || value.conversationId && (this.userWorkspaceClosures.has(`conversation:${value.conversationId}`) || this.userWorkspaceClosures.has(`scope:${JSON.stringify([value.employeeId, value.conversationId])}`))) fail('工作区正在关闭，请稍后重试')
         if (value.conversationId && !this.getConversation(value.conversationId).agentIds.includes(value.employeeId)) fail('员工不属于当前会话')
       }
       assertCurrent()
       if (method === 'validateWorkspaceScope') return
-      const root = await restrictedPath([this.dataPath], this.homes.root(value.employeeId))
+      const root = value.directory
+        ? (await workingDirectoryTarget(value.directory, [await realpath(this.dataPath)])).path
+        : await restrictedPath([this.dataPath], this.homes.root(value.employeeId))
       assertCurrent()
+      if (value.directory && root !== value.directory) fail('授权目录已变化，请重新核对')
       return root
     }
     if (method === 'getApplicationCatalog') return this.application.catalog(input as Methods['getApplicationCatalog']['input'])

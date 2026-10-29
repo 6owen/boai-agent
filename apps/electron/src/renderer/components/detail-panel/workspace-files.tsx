@@ -1,122 +1,70 @@
 /*
- * [INPUT]: 宿主核定员工工作区、相对目录与显式用户打开操作。
- * [OUTPUT]: 有界虚拟目录、路径/细分割线，最右侧单按钮打开菜单和随全局字号缩放的原生应用图标；隐藏停读及迟到隔离保持。
- * [POS]: 工作区文件标签；原会话附件/成果列表保持独立。
- * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
+ * [OUTPUT]: 2026-10-29 官方文件浏览器填满右侧面板，内部左预览右树；目录范围保持。
+ * [INPUT]: Employee workspace or exact saved directory grants and official plugin availability.
+ * [OUTPUT]: File tree and existing inline previews in the shared right panel; scoped read/open only.
+ * [POS]: BOAI host for @boai/file-explorer-plugin; delivered conversation files remain separate.
+ * [PROTOCOL]: Update Header and owning .folder.md when changed.
  */
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { defaultRangeExtractor, useVirtualizer } from '@tanstack/react-virtual'
+import { useEffect, useState } from 'react'
+import { FileExplorer } from '@boai/file-explorer-plugin/explorer'
 import type { DesktopApi } from '@boai/shared/ipc'
-import type { WorkspaceDirectoryPage, WorkspaceApplication } from '@boai/shared/ipc/workspace-files'
+import type { DigitalAgent } from '@boai/shared/domain'
+import type { FileExplorerScope, WorkspaceApplication, WorkspaceFilePreview } from '@boai/shared/ipc/workspace-files'
+import { FILE_EXPLORER_PLUGIN_ID } from '@boai/shared/plugins/catalog'
+import { FilePreview } from '@/components/common/file-preview'
 import { Button } from '@/components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Separator } from '@/components/ui/separator'
+import { SelectField } from '@/components/ui/select-field'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { pluginUsage, useFileExplorerEnabled } from '@/stores/plugins'
 import { toast } from 'sonner'
 
-function ApplicationIcon({ application }: { application?: WorkspaceApplication }) {
-  const [failedSource, setFailedSource] = useState<string>()
-  const source = application?.iconDataUrl
-  const style = { width: '1.25em', height: '1.25em', fontSize: 'var(--text-ui-body)' }
-  if (source && source !== failedSource) return <img src={source} alt="" aria-hidden="true" className="shrink-0 object-contain" style={style} onError={() => setFailedSource(source)} />
-  return <span aria-hidden="true" style={style} className={`shrink-0 ${application?.kind === 'terminal' ? 'i-carbon-terminal' : application?.kind === 'editor' ? 'i-solar-code-square-linear' : 'i-solar-folder-open-linear'}`} />
-}
-
-export function WorkspaceFiles({ api, active, employeeId, conversationId, onHome, onTerminal }: {
-  api: DesktopApi; active: boolean; employeeId: string; conversationId: string; onHome(): void; onTerminal(): void
+export function WorkspaceFiles({ api, active, agent, conversationId, location, onHome }: {
+  api: DesktopApi; active: boolean; agent: DigitalAgent; conversationId?: string; location: 'workspace' | 'authorized'; onHome?(): void
 }) {
-  const scope = { employeeId, conversationId }
-  const [path, setPath] = useState(''), [page, setPage] = useState<WorkspaceDirectoryPage>(), [applications, setApplications] = useState<WorkspaceApplication[]>([])
-  const [loading, setLoading] = useState(false), [opening, setOpening] = useState(false), [revision, refresh] = useState(0)
-  const loadedPath = useRef<string | undefined>(undefined), loadedQuery = useRef<string | undefined>(undefined)
-  const scroller = useRef<HTMLDivElement>(null), scrollTop = useRef(0)
-  const [focusedRow, setFocusedRow] = useState<number | null>(null)
-  const rows = useVirtualizer({
-    count: page?.entries.length ?? 0, getScrollElement: () => scroller.current,
-    estimateSize: () => 32, overscan: 8, enabled: active,
-    initialOffset: () => scrollTop.current,
-    getItemKey: index => page?.entries[index]?.relativePath ?? index,
-    rangeExtractor: range => {
-      const indices = defaultRangeExtractor(range)
-      if (focusedRow !== null && focusedRow < range.count && !indices.includes(focusedRow)) return [...indices, focusedRow].sort((a, b) => a - b)
-      return indices
-    },
-  })
-  useLayoutEffect(() => { if (active && scroller.current) scroller.current.scrollTop = scrollTop.current }, [active])
-  const generation = useRef(0), visible = useRef(active), pendingOpen = useRef(false), pendingRead = useRef(false)
-  visible.current = active
-  const current = (ticket: number) => visible.current && generation.current === ticket
+  const enabled = useFileExplorerEnabled()
+  const grants = agent.directoryGrants ?? []
+  const [selected, setSelected] = useState(grants[0]?.path ?? '')
+  const directory = grants.some(grant => grant.path === selected) ? selected : grants[0]?.path
+  const [applications, setApplications] = useState<WorkspaceApplication[]>([])
   useEffect(() => {
-    const ticket = ++generation.current
-    pendingRead.current = false
-    if (!active) return
-    const query = JSON.stringify([employeeId, conversationId, path, revision])
-    if (loadedQuery.current === query && page) { setLoading(false); return }
-    setLoading(true); if (loadedPath.current !== path) setPage(undefined)
-    void api.request('listWorkspaceFiles', { scope: { employeeId, conversationId }, relativePath: path }).then(value => {
-      if (current(ticket)) { loadedPath.current = path; loadedQuery.current = query; setPage(value) }
-    }).catch(error => { if (current(ticket)) toast.error(String(error)) }).finally(() => { if (current(ticket)) setLoading(false) })
-    return () => { generation.current++ }
-  }, [api, active, employeeId, conversationId, path, revision])
-  useEffect(() => {
-    if (!active) return
-    let disposed = false
-    void api.request('listWorkspaceApplications', {}).then(value => { if (!disposed) setApplications(value) }).catch(error => { if (!disposed) toast.error(String(error)) })
-    return () => { disposed = true }
-  }, [api, active])
-  const open = async (relativePath: string, action: 'open' | 'reveal' = 'open', applicationId?: string) => {
-    if (!active || pendingOpen.current) return
-    pendingOpen.current = true; setOpening(true)
-    try { await api.request('openWorkspacePath', { scope, relativePath, action, applicationId }) }
-    catch (error) { if (visible.current) toast.error(String(error)) }
-    finally { pendingOpen.current = false; setOpening(false) }
+    if (!active || !enabled) return
+    let cancelled = false
+    const release = pluginUsage.acquire(FILE_EXPLORER_PLUGIN_ID)
+    void api.request('listWorkspaceApplications', {}).then(value => { if (!cancelled) setApplications(value) }).catch(error => { if (!cancelled) toast.error(String(error)) })
+    return () => { cancelled = true; release() }
+  }, [api, active, enabled])
+  if (!enabled) return null
+  if (location === 'authorized' && !directory) return null
+  const scope: FileExplorerScope = { employeeId: agent.id, ...(conversationId ? { conversationId } : {}), ...(location === 'authorized' ? { directory } : {}) }
+  const open = async (path: string, action: 'open' | 'reveal' = 'open', applicationId?: string) => {
+    try { await api.request('openWorkspacePath', { scope, relativePath: path, action, applicationId }) }
+    catch (error) { toast.error(String(error)) }
   }
-  const navigate = (relativePath: string) => { if (relativePath !== path) { scrollTop.current = 0; if (scroller.current) scroller.current.scrollTop = 0; setFocusedRow(null); setPage(undefined); setPath(relativePath) } }
-  const more = async () => {
-    if (!active || loading || pendingRead.current || !page?.nextCursor) return
-    const ticket = generation.current, previous = page
-    pendingRead.current = true; setLoading(true)
-    try {
-      const next = await api.request('listWorkspaceFiles', { scope, relativePath: path, cursor: page.nextCursor })
-      if (current(ticket)) setPage({ ...next, entries: [...previous.entries, ...next.entries] })
-    } catch (error) { if (current(ticket)) toast.error(String(error)) }
-    finally { if (current(ticket)) { pendingRead.current = false; setLoading(false) } }
+  const actions = (path: string, rootPath?: string) => <>
+    <Button variant="ghost" size="icon-sm" aria-label="复制文件路径" disabled={!rootPath} onClick={() => {
+      const fullPath = rootPath!.replace(/[\\/]$/, '') + (path ? '/' + path : '')
+      void (api.writeClipboardText ? api.writeClipboardText(fullPath) : Promise.reject(new Error('当前宿主不支持复制'))).then(() => toast.success('已复制路径')).catch(error => toast.error(String(error)))
+    }}><span className="i-solar-copy-linear size-4" /></Button>
+    <DropdownMenu>
+    <DropdownMenuTrigger render={<Button variant="secondary" size="sm" aria-label="文件外部打开方式" />}>打开<span className="i-solar-alt-arrow-down-linear size-4" /></DropdownMenuTrigger>
+    <DropdownMenuContent align="end">
+      <DropdownMenuItem onClick={() => void open(path)}>系统默认打开</DropdownMenuItem>
+      <DropdownMenuItem onClick={() => void open(path, 'reveal')}>在文件管理器中显示</DropdownMenuItem>
+      {applications.filter(item => item.kind !== 'system').map(item => <DropdownMenuItem key={item.id} onClick={() => void open(path, 'open', item.id)}>{item.name}</DropdownMenuItem>)}
+    </DropdownMenuContent>
+  </DropdownMenu></>
+  const preview = (path: string, content: WorkspaceFilePreview) => {
+    const name = path.split('/').pop()!
+    return <FilePreview key={path} name={name} active={active} {...('text' in content ? { file: content } : content.kind === 'image' ? { image: { url: content.url } } : { binary: content })} />
   }
-  const systemApplication = applications.find(application => application.kind === 'system')
-  return <section className="workspace-files flex h-full min-h-0 flex-col" aria-label="工作区文件">
-    <div className="flex shrink-0 items-center gap-1 p-2">
-      <Button variant="ghost" size="icon-sm" aria-label="工作区开始" onClick={onHome}><span className="i-solar-home-2-linear size-4" /></Button>
-      <Button variant="ghost" size="icon-sm" aria-label="上一级目录" disabled={loading || !page || page.parentPath === undefined} onClick={() => navigate(page!.parentPath!)}><span className="i-solar-arrow-up-linear size-4" /></Button>
-      <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground" title={page?.path}>{page?.path ?? '员工工作区'}</span>
-      <Button variant="ghost" size="icon-sm" aria-label="复制工作区路径" disabled={!page} onClick={() => { if (page) void (api.writeClipboardText ? api.writeClipboardText(page.path) : navigator.clipboard.writeText(page.path)).catch(error => toast.error(String(error))) }}><span className="i-solar-copy-linear size-4" /></Button>
-      <Button variant="ghost" size="icon-sm" aria-label="刷新工作区文件" disabled={loading} onClick={() => refresh(value => value + 1)}><span className="i-solar-refresh-linear size-4" /></Button>
-      <Button variant="ghost" size="icon-sm" aria-label="新建工作区终端" onClick={onTerminal}><span className="i-carbon-terminal size-4" /></Button>
-      <DropdownMenu>
-        <DropdownMenuTrigger render={<Button variant="secondary" size="sm" disabled={!page || opening} aria-label="工作区外部打开方式" />}><ApplicationIcon application={systemApplication} />打开<span className="i-solar-alt-arrow-down-linear" aria-hidden="true" /></DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="min-w-48"><DropdownMenuGroup>
-          <DropdownMenuItem disabled={!page || opening} onClick={() => void open(path)}><ApplicationIcon application={systemApplication} />{systemApplication ? `${systemApplication.name}（默认）` : '系统默认打开'}</DropdownMenuItem>
-          {applications.filter(application => application.kind !== 'system').map(application => <DropdownMenuItem key={application.id} disabled={opening} onClick={() => void open(path, 'open', application.id)}><ApplicationIcon application={application} />{application.name}</DropdownMenuItem>)}
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => { const ticket = generation.current; void api.request('listWorkspaceApplications', { refresh: true }).then(value => { if (current(ticket)) setApplications(value) }).catch(error => { if (current(ticket)) toast.error(String(error)) }) }}><span className="i-solar-refresh-linear size-4" aria-hidden="true" />刷新应用列表</DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
-    <Separator />
-    <div ref={scroller} className="min-h-0 flex-1 overflow-auto p-2" aria-busy={loading} onScroll={event => { if (active) scrollTop.current = event.currentTarget.scrollTop }}>
-      <div className="relative w-full" style={{ height: rows.getTotalSize() }}>
-      {rows.getVirtualItems().map(row => {
-        const entry = page!.entries[row.index]!
-        return <div className="absolute left-0 top-0 flex h-8 w-full min-w-0 items-center gap-1 rounded-md hover:bg-muted/50" key={entry.relativePath} style={{ transform: `translateY(${row.start}px)` }} onFocusCapture={() => setFocusedRow(row.index)} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocusedRow(null) }}>
-        <Button variant="ghost" size="sm" className="min-w-0 flex-1 justify-start" disabled={opening || entry.kind === 'other' || entry.kind === 'symlink'} title={entry.name} onClick={() => { if (entry.kind === 'directory') navigate(entry.relativePath); else void open(entry.relativePath) }}>
-          <span className={entry.kind === 'directory' ? 'i-solar-folder-linear size-4 shrink-0' : 'i-solar-document-linear size-4 shrink-0'} /><span className="truncate">{entry.name}</span>{entry.kind === 'symlink' && <span className="text-xs text-muted-foreground">链接</span>}
-        </Button>
-        <Button variant="ghost" size="icon-sm" aria-label={`定位 ${entry.name}`} disabled={opening || entry.kind === 'symlink' || entry.kind === 'other'} onClick={() => void open(entry.relativePath, 'reveal')}><span className="i-solar-folder-open-linear size-4" /></Button>
-      </div>})}
-      </div>
-      {loading && <p className="p-3 text-sm text-muted-foreground">正在读取…</p>}
-      {!loading && page && !page.entries.length && <p className="p-3 text-sm text-muted-foreground">空目录</p>}
-      {!loading && !page && <Button variant="ghost" size="sm" onClick={() => refresh(value => value + 1)}>重新读取</Button>}
-      {page?.nextCursor && <Button variant="ghost" size="sm" disabled={loading} onClick={() => void more()}>加载更多</Button>}
-    </div>
-  </section>
+  return <div className="workspace-files flex h-full min-h-0 min-w-0 flex-col">
+    {(onHome || location === 'authorized') && <div className="flex min-w-0 items-center gap-2 p-2">
+      {onHome && <Button variant="ghost" size="icon-sm" aria-label="返回开始" onClick={onHome}><span className="i-solar-home-2-linear size-4" /></Button>}
+      {location === 'authorized' && <SelectField className="min-w-0 flex-1" aria-label="授权目录" value={directory} options={grants.map(grant => ({ value: grant.path, label: `${grant.path.split(/[\\/]/).filter(Boolean).pop()} · ${grant.path}` }))} onValueChange={setSelected} />}
+    </div>}
+    <FileExplorer key={`${JSON.stringify(scope)}:${agent.directoryRevision ?? 0}`} active={active} label={location === 'workspace' ? '员工工作区' : '授权目录文件'} revision={agent.configVersion}
+      list={(relativePath, cursor) => api.request('listWorkspaceFiles', { scope, relativePath, cursor })}
+      preview={relativePath => api.request('previewWorkspaceFile', { scope, relativePath })}
+      onError={error => toast.error(String(error))} renderPreview={preview} toolbar={actions} />
+  </div>
 }

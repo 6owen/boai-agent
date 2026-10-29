@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-29 workspace-files增加授权根及预览DTO，index/public-methods接可信桌面预览入口。
  * [OUTPUT]: testWebSearchServiceDraft显式测试当前DeepSeek密钥，不保存配置。
  * [OUTPUT]: 当前轮次纯文本补充固定run/turn，原消息保存接受、原生确认与未知投递。
  * [OUTPUT]: 定时任务列表偏好独立 CAS 读写及变更事件，不改执行配置。
@@ -136,6 +137,7 @@ export interface Methods {
   closeUserWorkspace: { input: { employeeId: string; conversationId?: string } | { conversationId: string }; output: void }
   getWorkspaceRoot: { input: import('./workspace-files').WorkspaceFileScope; output: string }
   validateWorkspaceScope: { input: import('./workspace-files').WorkspaceFileScope; output: void }
+  previewWorkspaceFile: { input: { scope: import('./workspace-files').FileExplorerScope; relativePath: string }; output: import('./workspace-files').WorkspaceFilePreview }
   listWorkspaceFiles: { input: import('./workspace-files').WorkspaceFilesQuery; output: import('./workspace-files').WorkspaceDirectoryPage }
   listWorkspaceApplications: { input: { refresh?: boolean }; output: import('./workspace-files').WorkspaceApplication[] }
   openWorkspacePath: { input: import('./workspace-files').WorkspaceOpenInput; output: void }

@@ -1,11 +1,12 @@
 /*
+ * [OUTPUT]: 2026-10-29 文件浏览器入口/预览/启停与目录撤权回归，原终端生命周期断言保持。
  * [INPUT]: Actual private runtime dispatcher, AppService state and deferred desktop cleanup receipts.
  * [OUTPUT]: Private scope checks, clear/delete/member revocation and output-wait termination retain exact ownership.
  * [POS]: Runtime/Main user-workspace lifecycle integration without GUI or model requests.
  * [PROTOCOL]: Update Header and tests/.folder.md when changed.
  */
 import { afterEach, expect, it, vi } from 'vitest'
-import { mkdir, mkdtemp, realpath, rename, rm, symlink } from 'node:fs/promises'
+import { mkdir, mkdtemp, realpath, rename, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { AppService } from '../packages/runtime/src/service'
@@ -14,7 +15,7 @@ import { WorkspaceFileService } from '../apps/electron/src/main/workspace-files'
 import { isPublicMethod } from '../packages/shared/src/ipc/public-methods'
 import type { TerminalInfo, TerminalScope } from '../packages/shared/src/domain/workspace-tools'
 import { WorkspaceTerminalService } from '../apps/electron/src/main/workspace-terminal/service'
-import type { WorkspaceFileScope } from '../packages/shared/src/ipc/workspace-files'
+import type { FileExplorerScope as WorkspaceFileScope } from '../packages/shared/src/ipc/workspace-files'
 import type { AgentEngine, SecretStore } from '../packages/runtime/src/contracts'
 import type { ApplicationHostPort } from '../packages/shared/src/ipc/application-host'
 import type { Conversation, Snapshot } from '../packages/shared/src/domain/index'
@@ -175,4 +176,33 @@ it('keeps membership and releases closing markers when member terminal shutdown 
   f.host.mockClear()
   await f.service.handle('createConversation', { id: room.id, kind: 'group', title: '只改标题', agentIds: ['researcher', 'writer'], sharedKnowledgeIds: [], expectedConfigVersion: room.configVersion })
   expect(f.host).not.toHaveBeenCalled()
+})
+
+
+it('browses only explicitly saved grants, isolates group members, and revokes stale scopes without changing workspace cwd', async () => {
+  const f = await fixture()
+  const project = await realpath(await mkdtemp(join(tmpdir(), 'boai-explorer-project-')))
+  cleanup.push(() => rm(project, { recursive: true, force: true }))
+  await writeFile(join(project, 'business.md'), '# Authorized file')
+  const saveGrants = async (grants: { path: string; access: 'read-only' }[]) => {
+    const agent = (await f.service.handle('snapshot', undefined) as Snapshot).agents.find(agent => agent.id === 'researcher')!
+    const { configVersion, directoryRevision, workspaceRef: _w, memoryNamespace: _m, policyVersion: _p, creationSource: _c, systemRole: _s, ...input } = agent
+    await f.service.handle('saveAgent', { ...input, expectedConfigVersion: configVersion, expectedDirectoryRevision: directoryRevision, directoryGrants: grants })
+  }
+  const scope = { ...f.scope, directory: project }
+  await expect(f.resolveScope(scope)).rejects.toThrow('授权已失效')
+  await saveGrants([{ path: project, access: 'read-only' }])
+  expect(await f.resolveScope(scope)).toBe(project)
+  expect(await f.resolveScope(f.scope)).toBe(join(f.root, 'agents', 'researcher', 'workspace'))
+  const browser = new WorkspaceFileService(f.resolveScope, async () => {})
+  expect(await browser.preview({ scope, relativePath: 'business.md' })).toEqual({ kind: 'markdown', text: '# Authorized file' })
+  await expect(f.resolveScope({ ...scope, employeeId: 'writer' })).rejects.toThrow()
+  await expect(f.resolveScope({ ...scope, directory: join(project, 'child') })).rejects.toThrow('授权已失效')
+  // A replaced grant root may not redirect the browser to a different real directory.
+  await rename(project, project + '-moved'); await symlink(project + '-moved', project)
+  try { await expect(f.resolveScope(scope)).rejects.toThrow('已变化') }
+  finally { await rm(project); await rename(project + '-moved', project) }
+  await saveGrants([])
+  await expect(browser.preview({ scope, relativePath: 'business.md' })).rejects.toThrow('授权已失效')
+  expect(await f.resolveScope(f.scope)).toBe(join(f.root, 'agents', 'researcher', 'workspace'))
 })
