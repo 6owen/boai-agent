@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 主聊普通/定时执行合并分页，精确原身份和发布/成员/清理边界回归。
  * [OUTPUT]: 定时记录按持久occurrence和会话身份在分页前筛选；相邻运行、缺失身份和隐藏来源不可混入。
  * [INPUT]: 隔离SQLite内的员工/成员/原消息/运行与冻结配置。
  * [OUTPUT]: 执行读取按当前成员和未清理来源前置过滤，稳定分页、历史配置不随换绑改变，秘密/提示/工具正文不进入清单，零业务写入。
@@ -75,4 +76,43 @@ it('filters an occurrence before paging even when newer runs share the same conv
   expect((await store.queryExecutionHistory({ conversationId: 'chat' }))[0].run.id).toBe('run-059')
   await store.write([record('conversations', 'chat', { agentIds: ['employee'], list: { hidden: true } })])
   expect(await store.queryExecutionHistory({ conversationId: 'chat', occurrenceId: 'selected' })).toEqual([])
+})
+
+async function publishedHistory(count = 25) {
+  const store = await fixture(count)
+  await store.write([
+    record('conversations', 'chat', { purpose: 'automation', automationId: 'plan', occurrenceId: 'occurrence', agentIds: ['employee'] }),
+    record('conversations', 'main', { agentIds: ['employee'] }),
+    record('messages', 'published', { conversationId: 'main', automationPublication: { automationId: 'plan', occurrenceId: 'occurrence', sourceConversationId: 'chat', sourceMessageId: 'request' } }),
+    record('messages', 'ordinary-request', { conversationId: 'main', content: '普通请求' }),
+    record('runs', 'ordinary', { agentId: 'employee', conversationId: 'main', triggerMessageId: 'ordinary-request', status: 'completed', createdAt: '2026-10-11T00:00:00.000Z' }),
+  ])
+  return store
+}
+it('pages ordinary and published scheduled runs together without copying their source identities', async () => {
+  const store = await publishedHistory()
+  const first = await store.queryExecutionHistory({ conversationId: 'main' })
+  expect(first).toHaveLength(21)
+  expect(first[0].run.id).toBe('ordinary')
+  expect(first.slice(1).every(item => item.run.conversationId === 'chat' && item.run.triggerMessageId === 'request')).toBe(true)
+  const last = first[19].run
+  const next = await store.queryExecutionHistory({ conversationId: 'main', before: { id: last.id, createdAt: last.createdAt } })
+  expect([...first.slice(0, 20), ...next].map(item => item.run.id)).toEqual(['ordinary', ...Array.from({ length: 25 }, (_, i) => `run-${String(24 - i).padStart(3, '0')}`)])
+  expect(await store.queryExecutionHistory({ conversationId: 'main', agentId: 'other' })).toEqual([])
+  expect(JSON.stringify(first)).not.toMatch(/private-tool-body|private-draft/)
+})
+it.each([
+  ['missing publication', undefined, { collection: 'messages', id: 'published' }],
+  ['wrong occurrence', record('messages', 'published', { conversationId: 'main', automationPublication: { automationId: 'plan', occurrenceId: 'other', sourceConversationId: 'chat', sourceMessageId: 'request' } })],
+  ['unrelated publication', record('messages', 'published', { conversationId: 'elsewhere', automationPublication: { automationId: 'plan', occurrenceId: 'occurrence', sourceConversationId: 'chat', sourceMessageId: 'request' } })],
+  ['source cleanup', record('conversationCleanup', 'chat', {})],
+  ['target cleanup', record('conversationCleanup', 'main', {})],
+  ['revoked member', record('conversations', 'main', { agentIds: [] })],
+  ['hidden target', record('conversations', 'main', { agentIds: ['employee'], list: { hidden: true } })],
+  ['hidden source', record('conversations', 'chat', { purpose: 'automation', automationId: 'plan', occurrenceId: 'occurrence', agentIds: ['employee'], list: { hidden: true } })],
+  ['missing original', undefined, { collection: 'messages', id: 'request' }],
+] as const)('does not expose scheduled history after %s', async (_label, updated, deleted?: { collection: string; id: string }) => {
+  const store = await publishedHistory(1)
+  await store.write(updated ? [updated] : [], deleted ? [deleted] : [])
+  expect((await store.queryExecutionHistory({ conversationId: 'main' })).some(item => item.run.conversationId === 'chat')).toBe(false)
 })

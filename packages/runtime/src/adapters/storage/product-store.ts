@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 主聊天执行历史按已发布原消息关联定时私有Run，合并后统一分页；清理/撤权来源不再可见。
  * [OUTPUT]: 任务结果Run在原事务内固定Work/会话/员工、有界SELECT并只投影公开状态与计数。
  * [OUTPUT]: Explicit task pages filter current source/viewer rights before SQL LIMIT; project bounded notes/steps without loading all task records.
  * [OUTPUT]: 事务list支持固定status过滤，调用者决定恢复语义；无需读取已终态观察记录。
@@ -127,6 +128,7 @@ export class ProductStore {
       { sql: "CREATE INDEX IF NOT EXISTS agent_task_page ON records(json_extract(value,'$.updatedAt') DESC,id DESC) WHERE collection='agentTasks'", args: [] },
       { sql: "CREATE INDEX IF NOT EXISTS agent_task_owner_page ON records(json_extract(value,'$.agentId'),json_extract(value,'$.updatedAt') DESC,id DESC) WHERE collection='agentTasks'", args: [] },
       { sql: "CREATE INDEX IF NOT EXISTS employee_execution_scope ON records(json_extract(value,'$.agentId'),json_extract(value,'$.createdAt') DESC,id DESC) WHERE collection='runs'", args: [] },
+      { sql: "CREATE INDEX IF NOT EXISTS execution_publication_source ON records(json_extract(value,'$.automationPublication.sourceConversationId'),json_extract(value,'$.automationPublication.sourceMessageId'),json_extract(value,'$.conversationId')) WHERE collection='messages'", args: [] },
     ], 'write')
     // A reopened or restored database never trusts old bytes before bounded source verification.
     await this.client.batch([{ sql: `UPDATE records SET value=json_remove(json_set(value,'$.status','pending'),'$.text') WHERE collection='${SEARCH_INDEX_COLLECTION}' AND json_extract(value,'$.status')='indexed'`, args: [] }, { sql: advanceSearchClockSql, args: [] }], 'write')
@@ -172,12 +174,30 @@ export class ProductStore {
   }
   queryExecutionHistory(query: import('@boai/shared/domain/execution').ExecutionHistoryQuery) {
     return this.enqueue(async () => {
-      const args: (string | number)[] = [query.conversationId]
-      const filters = ["r.collection='runs'", "json_extract(r.value,'$.conversationId')=?", "COALESCE(json_extract(r.value,'$.phase'),'execution')='execution'", "EXISTS (SELECT 1 FROM records c,json_each(json_extract(c.value,'$.agentIds')) member WHERE c.collection='conversations' AND c.id=json_extract(r.value,'$.conversationId') AND member.value=json_extract(r.value,'$.agentId') AND COALESCE(json_extract(c.value,'$.list.hidden'),0)=0)", "NOT EXISTS (SELECT 1 FROM records cleanup WHERE cleanup.collection='conversationCleanup' AND cleanup.id=json_extract(r.value,'$.conversationId'))"]
+      const args: (string | number)[] = [query.conversationId, query.conversationId]
+      // Publications are anchors, not copied runs. Resolve them before LIMIT so ordinary
+      // and scheduled executions share one stable cursor and the same original evidence.
+      const visibleConversation = `(json_extract(r.value,'$.conversationId')=? OR EXISTS (
+        SELECT 1 FROM records source JOIN records published ON published.collection='messages'
+        JOIN records target ON target.collection='conversations' AND target.id=json_extract(published.value,'$.conversationId')
+        WHERE source.collection='conversations' AND source.id=json_extract(r.value,'$.conversationId')
+          AND json_extract(source.value,'$.purpose')='automation'
+          AND json_extract(published.value,'$.automationPublication.sourceConversationId')=source.id
+          AND json_extract(published.value,'$.automationPublication.sourceMessageId')=m.id
+          AND json_extract(published.value,'$.automationPublication.automationId')=json_extract(source.value,'$.automationId')
+          AND json_extract(published.value,'$.automationPublication.occurrenceId')=json_extract(source.value,'$.occurrenceId')
+          AND json_extract(m.value,'$.automationPublication') IS NULL
+          AND target.id=? AND json_extract(target.value,'$.channel') IS NULL
+          AND json_extract(target.value,'$.mergedInto') IS NULL AND COALESCE(json_extract(target.value,'$.purpose'),'personal')='personal'
+          AND COALESCE(json_extract(target.value,'$.list.hidden'),0)=0
+          AND NOT EXISTS (SELECT 1 FROM records cleanup WHERE cleanup.collection='conversationCleanup' AND cleanup.id=target.id)
+          AND NOT EXISTS (SELECT 1 FROM json_each(source.value,'$.agentIds') member WHERE member.value NOT IN (SELECT value FROM json_each(target.value,'$.agentIds')))
+      ))`
+      const filters = ["r.collection='runs'", visibleConversation, "COALESCE(json_extract(r.value,'$.phase'),'execution')='execution'", "EXISTS (SELECT 1 FROM records c,json_each(json_extract(c.value,'$.agentIds')) member WHERE c.collection='conversations' AND c.id=json_extract(r.value,'$.conversationId') AND member.value=json_extract(r.value,'$.agentId') AND COALESCE(json_extract(c.value,'$.list.hidden'),0)=0)", "NOT EXISTS (SELECT 1 FROM records cleanup WHERE cleanup.collection='conversationCleanup' AND cleanup.id=json_extract(r.value,'$.conversationId'))"]
       if (query.occurrenceId) { filters.push("EXISTS (SELECT 1 FROM records o,json_each(json_extract(o.value,'$.runIds')) run WHERE o.collection='automationOccurrences' AND o.id=? AND json_extract(o.value,'$.conversationId')=json_extract(r.value,'$.conversationId') AND run.value=r.id)"); args.push(query.occurrenceId) }
       if (query.agentId) { filters.push("json_extract(r.value,'$.agentId')=?"); args.push(query.agentId) }
       if (query.before) { filters.push("(json_extract(r.value,'$.createdAt')<? OR (json_extract(r.value,'$.createdAt')=? AND r.id<?))"); args.push(query.before.createdAt, query.before.createdAt, query.before.id) }
-      const result = await this.client.execute({ sql: `SELECT json_remove(r.value,'$.toolEvents','$.draft','$.progress') AS value, substr(json_extract(m.value,'$.content'),1,1000) AS trigger FROM records r JOIN records m ON m.collection='messages' AND m.id=json_extract(r.value,'$.triggerMessageId') WHERE ${filters.join(' AND ')} ORDER BY json_extract(r.value,'$.createdAt') DESC,r.id DESC LIMIT 21`, args })
+      const result = await this.client.execute({ sql: `SELECT json_remove(r.value,'$.toolEvents','$.draft','$.progress') AS value, substr(json_extract(m.value,'$.content'),1,1000) AS trigger FROM records r JOIN records m ON m.collection='messages' AND m.id=json_extract(r.value,'$.triggerMessageId') AND json_extract(m.value,'$.conversationId')=json_extract(r.value,'$.conversationId') WHERE ${filters.join(' AND ')} ORDER BY json_extract(r.value,'$.createdAt') DESC,r.id DESC LIMIT 21`, args })
       return result.rows.map(row => ({ run: JSON.parse(String(row.value)) as AgentRun, trigger: String(row.trigger ?? '') }))
     })
   }

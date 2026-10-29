@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 运行中卡片footer可停止原Run或定时occurrence，终态保留过程并移除停止入口。
  * [OUTPUT]: 补充指令回执区分宿主接受、原生当前轮次确认和未知，不以普通调度冒充生效。
  * [OUTPUT]: 2026-10-27按用户要求删除执行卡查看/继续与任务结果；卡片只展示原执行内容和状态。
  * [OUTPUT]: 错误正文复用流式正文的MarkdownContent compact排版，字号/行高/颜色一致。
@@ -23,6 +24,7 @@ import type { DesktopApi } from '@boai/shared/ipc'
 import { failureSummary } from '../presentation'
 import { ExecutionFeed } from '@/components/detail-panel/execution-feed'
 import { ExecutionContentCache } from '@/components/detail-panel/execution-content-cache'
+import { ExecutionStopButton } from '@/components/detail-panel/execution-stop-button'
 
 export function MessageReceipt({ runs, steering }: { runs: AgentRun[]; steering?: import('@boai/shared/domain/execution').NativeSteeringReceipt }) {
   const received = steering ? steering.delivery === 'submitted' : runs.some(run => ['codex-local', 'claude-local', 'runtime-plugin'].includes(run.backend?.kind ?? '') ? run.backend?.inputAccepted || run.backend?.turnId : run.progress?.some(event => event.id === 'stage:employee_start'))
@@ -53,6 +55,7 @@ export function ChatExecutionCard({ api, run, active }: { api: DesktopApi; run: 
       </div>}
       {!live && run.error && <MarkdownContent size="compact">{failureSummary(run.error)}</MarkdownContent>}
       <ExecutionFeed api={api} run={run} active={active} cache={cache} presentation="chat" />
+      {live && <footer className="soft-divider-top flex justify-end pt-2"><ExecutionStopButton key={run.id} api={api} run={run} active={active} /></footer>}
     </div>
   </div>
 }

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 真实AppService主聊历史读取定时原Run及证据，清理后撤销关联，不额外执行员工。
  * [OUTPUT]: 配置变更后的任务经明确编辑保存恢复执行；更换执行员工仅作用后续运行，历史归属/旧触发回执保持。
  * [OUTPUT]: 手动触发真实自动化来源沿员工数据源绑定，不再填退役的source检索偏好；私有判断零源调用，查询/正文与重复触发/重启不重放。
  * [OUTPUT]: 执行历史删除核对真实目录/日志释放、主聊和其他记录保留、过期/运行门禁、重启续清与旧触发不重放。
@@ -309,10 +310,14 @@ it('mirrors the original live task execution in IM before any public reply and r
   expect(view.executionMirrors, '聊天必须有原执行的实时投影，不能只复制公开消息').toHaveLength(1)
   expect(view.executionMirrors![0]).toMatchObject({ run: { id: run.id, conversationId: occurrence.conversationId, status: 'running' }, triggerMessage: { conversationId: main.id, automationPublication: { sourceMessageId: run.triggerMessageId } } })
   expect(view.runs).toEqual([]); expect(view.workItems).toEqual([])
+  const history = await f.service.handle('listExecutionHistory', { conversationId: main.id }) as import('../packages/shared/src/domain/execution').ExecutionHistoryPage
+  expect(history.items).toHaveLength(1)
+  expect(history.items[0].run).toMatchObject({ id: run.id, conversationId: occurrence.conversationId, status: 'running' })
   const evidence = await f.service.handle('listExecutionEvidence', { conversationId: view.executionMirrors![0].run.conversationId, runId: run.id })
   expect(JSON.stringify(evidence)).toContain('核对天气来源')
   await f.service.handle('clearConversationHistory', { id: main.id, hide: true })
   expect((await f.service.handle('getConversationView', { conversationId: main.id }) as ConversationView).executionMirrors).toEqual([])
+  expect(await f.service.handle('listExecutionHistory', { conversationId: main.id })).toEqual({ items: [] })
   expect((await f.detail(occurrence.conversationId)).runs.find(value => value.id === run.id)?.status).toBe('running')
   expect(calls).toBe(1)
   release()
