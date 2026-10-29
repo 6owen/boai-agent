@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 提示词容量按实际模型正文估算，SDK内部副本与截图base64不当作额外文本；原提示词及压缩来源保持。
  * [OUTPUT]: DeepSeek自动档内部摘要关闭思考，显式档位和主任务偏好保持；长度耗尽明确归因且不提交或重试。
  * [OUTPUT]: 2026-10-27 默认持续执行、来源校验及工作现场/复核接线；沿原权限和账本。
  * [INPUT]: Authorized source cuts, existing request reservations and the effective provider prompt after Memory conversion.
@@ -14,7 +15,7 @@ import type { EngineContext } from '../../contracts'
 import type { Message } from '@boai/shared/domain'
 import { supportsThinkingControl } from '@boai/shared/domain/model-preferences'
 import { contextHash, contextSource, type ContextView } from '../../modules/contexts/context-repository'
-import { contextCapacity, ContextCapacityError, estimateTokens, type ContextModelSelection } from '../../modules/contexts/context-capacity'
+import { contextCapacity, ContextCapacityError, estimateTokens, estimatePromptTokens, type ContextModelSelection } from '../../modules/contexts/context-capacity'
 import { modelConfig, responseOutputTokens, thinkingProviderOptions } from './model-config'
 import { gatewayRouteObserver } from './gateway-route'
 import { assertStreamCompleted } from './stream-completion'
@@ -166,8 +167,8 @@ export function modelInputGuard(selection: ContextModelSelection, outputTokens: 
     processInputStep: args => { toolTokens = countToolDefinitions(args.tools); outputTokens = args.modelSettings?.maxOutputTokens ?? outputTokens },
     processLLMRequest: ({ prompt }) => {
       signal?.throwIfAborted()
-      const fixed = estimateTokens(prompt.filter(message => message.role === 'system')) + toolTokens
-      const capacity = contextCapacity(selection, outputTokens, fixed), inputTokens = estimateTokens(prompt) + toolTokens
+      const fixed = estimatePromptTokens(prompt.filter(message => message.role === 'system')) + toolTokens
+      const capacity = contextCapacity(selection, outputTokens, fixed), inputTokens = estimatePromptTokens(prompt) + toolTokens
       if (inputTokens > capacity.limit) throw new ContextCapacityError({ inputTokens, toolTokens, limit: capacity.limit })
     },
   }
@@ -206,12 +207,12 @@ export function contextCapacityProcessor(phase: string, context: EngineContext):
     processLLMRequest: async ({ prompt }) => {
       context.signal.throwIfAborted()
       const original = snapshotProviderPrompt(prompt)
-      const fixed = estimateTokens(original.filter(message => message.role === 'system')) + toolTokens
+      const fixed = estimatePromptTokens(original.filter(message => message.role === 'system')) + toolTokens
       const capacity = contextCapacity(context, outputTokens, fixed)
       // Legacy embedded engines without the host protocol retain their unknown-window contract.
       // AppService API executions always supply continuity; a declared window is enforced in either path.
       if (!context.continuity && capacity.window === undefined && (phase === 'chat' || phase === 'task')) return
-      const count = (value: Prompt) => estimateTokens(value) + toolTokens
+      const count = (value: Prompt) => estimatePromptTokens(value) + toolTokens
       if (count(original) <= capacity.soft) return
       if (!context.continuity || (phase !== 'chat' && phase !== 'task')) { if (count(original) > capacity.limit) throw new ContextCapacityError(); return }
       const system = original.filter(message => message.role === 'system'), units = toolUnits(original.filter(message => message.role !== 'system'))
@@ -219,7 +220,7 @@ export function contextCapacityProcessor(phase: string, context: EngineContext):
       for (const [index, unit] of units.entries()) if (unit.some(message => message.role === 'user')) lastUser = index
       const recent = new Set<number>(); let recentTokens = 0
       for (let index = units.length - 1; index >= 0 && recent.size < 4; index--) {
-        const tokens = estimateTokens(units[index])
+        const tokens = estimatePromptTokens(units[index]!)
         if (recentTokens + tokens > capacity.soft * .25) break
         recent.add(index); recentTokens += tokens
       }

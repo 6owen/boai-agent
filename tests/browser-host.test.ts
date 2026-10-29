@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 截图/快照无回执及截图后状态查询挂起均在实际页面退出后解除，后续任务新开窗、迟到回执不污染。
  * [OUTPUT]: 失效ref经真实CDP拒绝后可重新观察，未知写入仍保留核对。
  * [OUTPUT]: 连接断开与显式关闭同样终止挂起动作页面并核对unknown；空闲人工页面保持。
  * [OUTPUT]: 员工默认读取和交互当前网页，无审批时仍核对参数hash/页面版本/真实开始握手。
@@ -16,6 +17,7 @@ import { mkdtemp, mkdir, readFile, writeFile, rm, realpath } from 'node:fs/promi
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createHash } from 'node:crypto'
+import { EventEmitter } from 'node:events'
 import { BrowserService } from '../apps/electron/src/main/browser/browser-service'
 import { BrowserPaneManager } from '../apps/electron/src/main/browser/browser-pane-manager'
 import { parseBrowserSingleCommand } from '../packages/runtime/src/adapters/mastra/browser-tool-runtime'
@@ -32,7 +34,7 @@ function driver() {
  const instances=new Map<string,any>(), pages=new Map<string,any>()
  const manager:any={
   onStateChange:vi.fn(),onRemoved:vi.fn(),registerToolbarIpc:vi.fn(),
-  createInstance:vi.fn((id:string,options:any)=>{if(instances.has(id))return id;const page={url:'about:blank',title:'Test',html:'<main>fixture</main>',forms:[]};pages.set(id,page);instances.set(id,{id,currentUrl:page.url,title:page.title,toolbarReady:true,toolbarError:null,canGoBack:false,canGoForward:false,themeColor:null,partition:options.partition,downloadDirectory:options.downloadDirectory,window:{isDestroyed:()=>false,setTitle:vi.fn()},toolbarView:{webContents:{isDestroyed:()=>false,send:vi.fn()}},pageView:{webContents:{executeJavaScript:vi.fn(async()=>page)}},cdp:{invalidateRefs:vi.fn(),drain:vi.fn(async()=>{})}});return id}),
+  createInstance:vi.fn((id:string,options:any)=>{if(instances.has(id))return id;const page={url:'about:blank',title:'Test',html:'<main>fixture</main>',forms:[]};pages.set(id,page);instances.set(id,{id,currentUrl:page.url,title:page.title,toolbarReady:true,toolbarError:null,canGoBack:false,canGoForward:false,themeColor:null,partition:options.partition,downloadDirectory:options.downloadDirectory,window:{isDestroyed:()=>false,setTitle:vi.fn()},toolbarView:{webContents:{isDestroyed:()=>false,send:vi.fn()}},pageView:{webContents:Object.assign(new EventEmitter(),{isDestroyed:()=>!instances.has(id),executeJavaScript:vi.fn(async()=>page)})},cdp:{invalidateRefs:vi.fn(),drain:vi.fn(async()=>{})}});return id}),
   getInstance:vi.fn((id:string)=>instances.get(id)),ready:vi.fn(async()=>{}),
   getAccessibilitySnapshot:vi.fn(async(id:string)=>({url:pages.get(id).url,title:'Test',nodes:[{ref:'@e1',role:'button',name:'Save'}]})),
   navigate:vi.fn(async(id:string,url:string)=>{const page=pages.get(id);page.url=url;page.html='<main>actual-page</main>';const instance=instances.get(id);instance.currentUrl=url;return {url,title:page.title}}),
@@ -55,6 +57,57 @@ async function fixture() {
  return {root,service,lease,options,fake,clearPartition}
 }
 let actionSequence=0
+it.each(['screenshot', 'screenshot-region 0 0 100 100', 'snapshot'])('hung %s closes its page before releasing the next browser task', async command => {
+ const {service,lease,fake}=await fixture();await service.acquire(lease)
+ const request=await envelope(service,lease,command),oldId=service.list()[0].instanceId
+ const capture=deferred<any>(),exited=deferred<void>()
+ fake.mocks.screenshot.mockImplementation(()=>capture.promise)
+ fake.mocks.screenshotRegion=vi.fn(()=>capture.promise)
+ if(command==='snapshot')fake.mocks.getAccessibilitySnapshot.mockImplementationOnce(()=>capture.promise)
+ fake.mocks.destroyInstance.mockImplementation(async(id:string)=>{await exited.promise;fake.instances.delete(id);fake.pages.delete(id)})
+ const next={...lease,runId:'next-run',generation:'next-generation'}
+ vi.useFakeTimers()
+ try {
+  let settled=false
+  const result=service.executeSingle(request).then(reply=>{settled=true;return reply})
+  await vi.advanceTimersByTimeAsync(0)
+  expect(command==='snapshot'?fake.mocks.getAccessibilitySnapshot:command==='screenshot'?fake.mocks.screenshot:fake.mocks.screenshotRegion).toHaveBeenCalledOnce()
+  await vi.advanceTimersByTimeAsync(30_000)
+  expect(fake.mocks.destroyInstance).toHaveBeenCalledExactlyOnceWith(oldId)
+  expect(settled).toBe(false)
+  await expect(service.acquire(next)).rejects.toThrow('尚未实际退出')
+  exited.resolve();await vi.advanceTimersByTimeAsync(0)
+  expect(await result).toMatchObject({status:'unknown',error:expect.stringContaining(command==='snapshot'?'页面读取超时':'截图超时')})
+  await service.drain(lease);await service.acquire(next)
+  expect(service.list()[0].instanceId).not.toBe(oldId)
+  const snapshot=await service.executeSingle(await envelope(service,next,'snapshot'))
+  expect(snapshot.status).toBe('completed')
+  // A late capture cannot publish an old screenshot or close the replacement page.
+  capture.resolve({imageBuffer:Buffer.from('late-image'),imageFormat:'png'});await vi.advanceTimersByTimeAsync(0)
+  expect(service.currentLease()?.runId).toBe(next.runId)
+  expect(fake.mocks.destroyInstance).toHaveBeenCalledOnce()
+ } finally {vi.useRealTimers()}
+})
+it('a lost post-capture page check and concurrent inspection both settle after actual page destruction',async()=>{
+ const {service,lease,fake}=await fixture();await service.acquire(lease)
+ const request=await envelope(service,lease,'screenshot'),id=service.list()[0].instanceId,wc=fake.instances.get(id).pageView.webContents
+ const read=deferred<any>()
+ wc.executeJavaScript.mockResolvedValueOnce(fake.pages.get(id)).mockResolvedValueOnce(fake.pages.get(id)).mockImplementation(()=>read.promise)
+ fake.mocks.destroyInstance.mockImplementation(async()=>{fake.instances.delete(id);fake.pages.delete(id);wc.emit('destroyed')})
+ vi.useFakeTimers()
+ try{
+  const result=service.executeSingle(request)
+  await vi.advanceTimersByTimeAsync(0);expect(fake.mocks.screenshot).toHaveBeenCalledOnce()
+  const inspect=service.inspect(lease).catch(error=>error)
+  await vi.advanceTimersByTimeAsync(30_000)
+  expect(await result).toMatchObject({status:'unknown',error:expect.stringContaining('截图超时')})
+  expect((await inspect).message).toContain('页面已实际退出')
+  expect(wc.listenerCount('destroyed')).toBe(0)
+  await service.drain(lease)
+  await service.acquire({...lease,runId:'next-run',generation:'next-generation'})
+  expect(service.list()[0].instanceId).not.toBe(id)
+ }finally{read.resolve({url:'https://old.example',title:'late'});vi.useRealTimers()}
+})
 describe('实际窗口验证检测',()=>{
  it.each([
   {name:'只有一个链接的普通文章',nodes:[{role:'link'},...Array.from({length:499},()=>({role:'StaticText'}))],dom:[],title:'Example Domain',detected:false,provider:'none'},
@@ -424,7 +477,7 @@ function axFixture(nodes:any[],domUnavailable=false){
   if(method==='DOM.querySelectorAll')return {nodeIds:[]}
   throw new Error(`Unexpected page action ${method}`)
  })
- const cdp=new BrowserCDP({debugger:{attach:vi.fn(),detach:vi.fn(),on:vi.fn(),sendCommand:send},getURL:()=> 'https://example.com',getTitle:()=> 'Article'} as unknown as WebContents)
+ const cdp=new BrowserCDP(Object.assign(new EventEmitter(),{isDestroyed:()=>false,debugger:{attach:vi.fn(),detach:vi.fn(),on:vi.fn(),sendCommand:send},getURL:()=> 'https://example.com',getTitle:()=> 'Article'}) as unknown as WebContents)
  cdps.push(cdp);return {cdp,send}
 }
 describe('BrowserCDP 实际正文与秘密隔离',()=>{

@@ -1,12 +1,13 @@
 /*
  * [OUTPUT]: Codex公开summary增量进入思考块；原始reasoning正文仍不暴露。
- * [OUTPUT]: 网页工具原生事件不保留输入值，截图持久化仅存媒体摘要；模型内存结果保持完整媒体。
+ * [OUTPUT]: 网页工具事件保留实际命令并隐藏填写值，截图仅存媒体摘要；完成事件不覆盖已记录参数，模型内存结果保持完整媒体。
  * [INPUT]: Rovai codex.rs normalize_event / claude.rs normalize_claude_runtime_events @ f9acc239 (MIT)，真实原生事件。
  * [OUTPUT]: 相同执行语义的TypeScript移植；保留原参数/结果，按Rovai核验文件活动与提取公开文本，私有thinking不进入公开证据。
  * [POS]: 原生事件与直接迁入的Rovai呈现模块之间的协议接线；许可见shared/rovai/LICENSE。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
 import { summarizeMedia } from '../modules/browser/media'
+import { browserToolObservation } from './mastra/browser-tool-redaction'
 import type { ExecutionEvent } from '@boai/shared/domain/execution'
 import type { CanonicalRuntimeActivityView } from '@boai/shared/rovai/contracts'
 import { createHash } from 'node:crypto'
@@ -22,7 +23,10 @@ export function publicNativeToolResult(value: unknown): string | undefined {
 }
 export function nativeActivity(id: string, item: Record<string, any>, completed: boolean, parentId?: string): ExecutionEvent {
   const name = String(item.name ?? item.tool ?? item.type ?? 'tool')
-  if (/(^|__)browser_tool$/.test(name)) item={...item,input:{omitted:'网页输入不进入持久事件'},arguments:{omitted:'网页输入不进入持久事件'},result:summarizeMedia(item.result)}
+  if (/(^|__)browser_tool$/.test(name)) {
+    const input = item.input ?? item.arguments
+    item = { ...item, ...(input === undefined ? {} : { input: browserToolObservation(input), arguments: browserToolObservation(input) }), result: summarizeMedia(item.result) }
+  }
   const type = String(item.type ?? name), input = recordValue(item.input ?? item.arguments)
   const domain = /commandExecution|Bash|shell|exec_command/.test(type + name) ? 'shell'
     : /fileChange|Write|Edit|NotebookEdit/.test(type + name) || name === 'Read' ? 'file' : /webSearch|WebSearch|WebFetch/.test(type + name) ? 'web' : 'tool'

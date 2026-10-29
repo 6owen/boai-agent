@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 原生浏览器工具记录完整实际命令并脱敏填写值，执行仍使用原参数；与API详情共用观察投影。
  * [OUTPUT]: PPT复用同一工具schema和惰性任务运行时；纯目录/配置不创建Work，渲染审阅沿原执行与独立模型。
  * [OUTPUT]: 私聊相册元信息/删除使用员工固定身份工具；读取无需文件Work。
  * [OUTPUT]: 普通本机会话显式发现独立生图端口；检查零Work，生成沿原惰性认领和任务文件/交付。
@@ -57,6 +58,7 @@ import { imageToolRequestSchema } from '../modules/media/image-service'
 import { selfieRequestSchema } from '../modules/media/selfie-service'
 import { browserToolSchema, browserToolDescription } from './mastra/browser-tool'
 import { parseBrowserSingleCommand } from './mastra/browser-tool-runtime'
+import { browserToolObservation } from './mastra/browser-tool-redaction'
 import { summarizeMedia } from '../modules/browser/media'
 import { automationCommandSchema, automationCommandToolSchema, automationToolDescription } from '../modules/automations/automation-commands'
 
@@ -118,7 +120,7 @@ export function createNativeProducts(context: EngineContext) {
       context.signal.throwIfAborted()
       const parsed = schema.parse(input) as Record<string, unknown>, createdAt = new Date().toISOString()
       const emit = async (completed: boolean, result?: unknown, failed = false) => {
-        const observedInput=name === 'boai_call' ? applicationObservation(input) : ['manage_skills', 'manage_data_sources'].includes(name) ? catalogObservation(input) : name === 'create_data_source' ? sourceCreationObservation(input) : name==='browser_tool' ? {command:parseBrowserSingleCommand(String(parsed.command)).action,arguments:'[browser input omitted]'} : input
+        const observedInput=name === 'boai_call' ? applicationObservation(input) : ['manage_skills', 'manage_data_sources'].includes(name) ? catalogObservation(input) : name === 'create_data_source' ? sourceCreationObservation(input) : name==='browser_tool' ? browserToolObservation(parsed) : input
         if(name==='browser_tool' || name==='call_data_source') result=summarizeMedia(result)
         await context.onExecutionEvent?.(nativeActivity(callId, { type: 'dynamicToolCall', name, arguments: observedInput, ...(completed ? { result, status: failed ? 'failed' : 'completed' } : {}) }, completed))
         await context.onTool({ id: callId, name, status: completed ? failed ? 'failed' : 'completed' : 'running', createdAt, detail: JSON.stringify(completed ? result : observedInput) })
