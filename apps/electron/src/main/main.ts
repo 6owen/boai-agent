@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-29 Sparkle仅打包macOS主窗启用；宿主清理成功后安装，独立CLI附着时停用，失败恢复原退出入口。
  * [OUTPUT]: 2026-10-29 工作区目录/预览调用由官方file-explorer-plugin宿主处理，原终端resolver独立。
  * [OUTPUT]: 2026-10-28 语音模型操作透传显式modelId/action，由宿主唯一schema校验。
  * [OUTPUT]: 语音设置关闭/隐藏前等待自动保存，未结束写入不允许直接退出。
@@ -119,6 +120,7 @@ import { CliError, type ErrorCode } from '@boai/shared/cli/protocol'
 import { AttachedRuntime, findAttachedRuntime, waitForAttachedRuntime } from './attached-runtime'
 import { DesktopDiagnostics, diagnosticError, diagnosticRequest, writeDiagnosticsReport } from './diagnostics'
 import { DesktopLifecycleMonitor } from './desktop-lifecycle'
+import { AppUpdates } from './app-updates'
 import { setBrowserDiagnostic } from './browser/logger'
 
 declare const __BOAI_APPLICATION_BUILD__: { version: string; inputHash: string }
@@ -130,6 +132,19 @@ const legacyDataPath = app.getPath('userData')
 const dataPath = join(legacyDataPath, 'v2')
 const compiledApplication = typeof __BOAI_APPLICATION_BUILD__ === 'undefined' ? null : __BOAI_APPLICATION_BUILD__
 const diagnostics = new DesktopDiagnostics(join(legacyDataPath, 'diagnostics'), compiledApplication ? { ...compiledApplication, source: 'compiled-inputs' } : { version: null, inputHash: null, source: 'unknown' })
+const appUpdates = new AppUpdates(app.getVersion(), state => sendEvent({ type: 'app:update', state }), message => diagnostics.record('app-update-error', diagnosticError(new Error(message))))
+async function startAppUpdates() {
+  if (!app.isPackaged || process.platform !== 'darwin') return
+  try {
+    const metadata = JSON.parse(await readFile(join(app.getAppPath(), 'package.json'), 'utf8'))
+    const config = metadata.boaiRelease?.updates
+    if (!config) return
+    const { loadSparkleBridgeForApp } = await import('electron-sparkle-updater')
+    const bridge = await loadSparkleBridgeForApp(message => diagnostics.record('app-update-native', diagnosticError(new Error(message))))
+    if (!bridge) throw new Error('更新组件无法加载')
+    appUpdates.start(bridge, config)
+  } catch (error) { appUpdates.fail(error) }
+}
 const desktopLifecycle = new DesktopLifecycleMonitor((state, event) => {
   diagnostics.record(event)
   if (state.power === 'suspended' || state.locked) void voice.cancelAll().catch(() => {})
@@ -505,6 +520,13 @@ function registerIpc() {
       case 'refine': return voice.refine(input as Parameters<typeof voice.refine>[0])
       default: throw new Error('未知语音操作')
     }
+  })
+  ipcMain.handle('boai:updates', (event, method: unknown, input: unknown) => {
+    requireMainFrame(event)
+    if (method === 'snapshot') { z.undefined().parse(input); return appUpdates.snapshot() }
+    if (method === 'check') { z.undefined().parse(input); return appUpdates.check() }
+    if (method === 'install') { const version = z.string().min(1).max(80).parse(input); return appUpdates.requestInstall(version, () => app.quit()) }
+    throw new Error('未知更新操作')
   })
   ipcMain.handle('boai:desktop-lifecycle', event => { requireMainFrame(event); return desktopLifecycle.snapshot() })
   ipcMain.handle('boai:export-diagnostics', async event => {
@@ -922,12 +944,17 @@ else {
     try { await creatingWindow } finally { creatingWindow = null }
     await materialSources.recover()
     cliStarting = startRuntime().then(() => gatewayImportInbox.start()).catch(error => sendEvent({ type: 'runtime-error', error: error.message }))
+    // An externally owned CLI runtime may keep executing from this app bundle after the window exits.
+    void cliStarting.then(() => {
+      if (runtime instanceof AttachedRuntime) appUpdates.disable('命令行服务正在独立运行。退出该服务并重新打开应用后恢复更新。')
+      else return startAppUpdates()
+    })
     app.on('activate', () => { void showMainWindow() })
   }).catch((error) => { diagnostics.record('app-start-failed', diagnosticError(error)); dialog.showErrorBox('BoAI Agent 启动失败', error.message); app.quit() })
   app.on('window-all-closed', () => { if (process.platform !== 'darwin' && !background.shouldHide()) app.quit() })
   app.on('before-quit', (event) => {
     if (quitApproved) return
-    if (!quitting && hasUnsavedChanges()) { event.preventDefault(); void showMainWindow().then(() => confirmDiscard(() => app.quit())); return }
+    if (!quitting && hasUnsavedChanges()) { event.preventDefault(); void showMainWindow().then(() => confirmDiscard(() => app.quit())).finally(() => { if (!quitting) appUpdates.cancelInstall() }); return }
     event.preventDefault()
     if (quitting) return
     quitting = true
@@ -941,13 +968,23 @@ else {
     // A timeout may terminate the worker, but never counts as Chromium action exit.
     const cliExit = (cliStarting ?? Promise.resolve()).then(async () => { await cli?.close(); cli = undefined })
     const userTerminalExit = userTerminals.close()
-    void Promise.all([runtimeExit, cliExit, iconExit, userTerminalExit, voice.close(), browsers.shutdown(), materialSources.close(), desktopSettings.flush(), shortcutSettings.flush(), pluginSettings.flush(), cliInstaller.flush()]).then(() => { diagnostics.record('app-quit'); desktopLifecycle.stop(); background.destroy(); quitApproved = true; app.quit() }).catch(async error => {
+    void Promise.all([runtimeExit, cliExit, iconExit, userTerminalExit, voice.close(), browsers.shutdown(), materialSources.close(), desktopSettings.flush(), shortcutSettings.flush(), pluginSettings.flush(), cliInstaller.flush()]).then(async () => {
+      diagnostics.record('app-quit'); desktopLifecycle.stop(); background.destroy(); quitApproved = true
+      if (appUpdates.finishQuit()) {
+        // Native installation must terminate this process; a stalled handoff is a failure.
+        await new Promise<never>((_resolve, reject) => setTimeout(() => reject(new Error('更新安装未能接管退出，请重新启动应用后重试。')), 15_000))
+      } else app.quit()
+    }).catch(async error => {
+      quitApproved = false
+      appUpdates.quitFailed(error)
       diagnostics.record('app-quit-failed', diagnosticError(error))
       await userTerminalExit.catch(() => {})
       userTerminalShutdownInterrupted = true
       quitting = false
       await resumeUserTerminals().catch(recoveryError => sendEvent({ type: 'runtime-error', error: String(recoveryError) }))
       background.resumeIconUpdates()
+      background.init(appearance.snapshot().preferences.appIconId)
+      desktopLifecycle.start(powerMonitor)
       void appIconController.resume().catch(error => sendEvent({ type: 'runtime-error', error: String(error) }))
       void showMainWindow()
       dialog.showErrorBox('应用尚未退出', error instanceof Error ? error.message : String(error))
