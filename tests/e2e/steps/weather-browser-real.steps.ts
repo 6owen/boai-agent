@@ -18,6 +18,7 @@ const { Given, When, Then } = createBdd(test)
 Given('我准备隔离的真实DeepSeek天气定时任务', async ({ runtime, weather }) => {
   test.skip(process.env.BOAI_WEATHER_REAL !== '1', '真实模型仅显式启动')
   test.setTimeout(240000)
+  test.info().annotations.push({ type: 'model-mode', description: 'real-provider' })
   await prepareV2DataRoot(runtime.root)
   const connection = await prepareSavedModel(runtime)
   await runtime.start(await systemKeychainLaunch(runtime))
