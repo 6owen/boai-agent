@@ -1,5 +1,6 @@
 /*
  * [INPUT]: Cumora G0/G1 真实模型语义与成本验收要求。
+ * [OUTPUT]: 新增SG-v1五人组长监督正常/文件冲突开发题，原回归及留出不变。
  * [OUTPUT]: 版本化原九类回归集与独立 MD-v1 开发入口，输入和评分侧验收职责；冻结16题不变。
  * [POS]: tests/evaluation/cases.ts，基线和候选版本共用。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -39,4 +40,5 @@ export const regressionCases: EvaluationCase[] = legacyCases.map((scenario, inde
 export { businessCases, holdoutCases } from './datasets'
 import { businessCases, holdoutCases } from './datasets'
 import { materialDeliveryCase } from './material-delivery'
-export const cases: EvaluationCase[] = [...regressionCases, ...businessCases, ...holdoutCases, materialDeliveryCase]
+import { groupSupervisionCases } from './group-supervision'
+export const cases: EvaluationCase[] = [...regressionCases, ...businessCases, ...holdoutCases, materialDeliveryCase, ...groupSupervisionCases]

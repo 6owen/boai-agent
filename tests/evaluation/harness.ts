@@ -1,5 +1,6 @@
 /*
  * [INPUT]: 相同场景/模型配置、基线或候选 AppService/Mastra 和临时运行目录。
+ * [OUTPUT]: 支持题目员工职责和真实过程快照；不代替模型调度，不修改个人群。
  * [OUTPUT]: 调用前核对登记模型签名；员工隔离、原件hash、共享预算/冻结校验与人工待评审报告。
  * [POS]: tests/evaluation/harness.ts，手动供应商评估；不将自动检查替代语义复核。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -76,7 +77,7 @@ export async function runEvaluation(input: Input, constructors: { AppService: ty
       const emitted: { id: string; at: number; content: string; status: string }[] = [], runtimeErrors: string[] = [], events: EventEvidence[] = [], phases: NonNullable<EvaluationRecord['phases']> = []
       let applyEvent: (when: EventScript['when'], tool?: string) => Promise<void> = async () => {}, pendingEvents = Promise.resolve()
       const keys = new Map<string, string>()
-      const startedAt = Date.now(), requestStart = requests.length, engine = new constructors.MastraEngine({ runTimeoutMs: 90_000 })
+      const startedAt = Date.now(), requestStart = requests.length, engine = new constructors.MastraEngine(scenario.executionTimeoutMs === null ? {} : { runTimeoutMs: scenario.executionTimeoutMs ?? 90_000 })
       const phase = <T>(name: string, ctx: EngineContext, operation: () => Promise<T>) => context.run({ caseId: scenario.id, sample, phase: name, runId: ctx.runId, agentId: ctx.agent.id }, async () => {
         const entry = { phase: name, agentId: ctx.agent.id, runId: ctx.runId, startAt: Date.now(), endAt: undefined as number | undefined }; phases.push(entry)
         try { return await operation() } finally { entry.endAt = Date.now() }
@@ -119,7 +120,7 @@ export async function runEvaluation(input: Input, constructors: { AppService: ty
         for (let i = 0; i < (settings.team === 'single' ? 1 : scenario.members); i++) {
           const [name, role] = settings.team === 'single' ? ['综合员工', '独立完成资料读取、计算、复核与交付'] : (scenario.roles ?? employees)[i]
           const saved = savedConnections[i % savedConnections.length]
-          const definition: AgentInput = { name, role, instructions: `你是${name}，负责${role}。根据用户授权和实际资料做事，与群内其他员工独立协作，不编造已经执行的操作。回复简洁、具体。`, color: '#6c7c59', connectionId: saved.id, modelId: saved.defaultModel, skillIds: [], knowledgeIds: [], allowCommands: false, active: true }
+          const definition: AgentInput = { name, role, instructions: scenario.memberInstructions?.[i] ?? `你是${name}，负责${role}。根据用户授权和实际资料做事，与群内其他员工独立协作，不编造已经执行的操作。回复简洁、具体。`, color: '#6c7c59', connectionId: saved.id, modelId: saved.defaultModel, skillIds: [], knowledgeIds: [], allowCommands: false, active: true }
           if (defaults[i]) { definition.id = defaults[i].id }
           members.push(await service.handle('saveAgent', definition) as DigitalAgent)
         }
@@ -153,7 +154,10 @@ export async function runEvaluation(input: Input, constructors: { AppService: ty
           })
         } else {
           sentAt = Date.now(); await send(scenario.prompt, 'measure', true)
-          detail = await settle(service, conversation, scenario.timeoutMs, () => pendingEvents)
+          detail = await settle(service, conversation, scenario.timeoutMs, () => pendingEvents, async snapshot => {
+            await save(`${caseId}-live.json`, { at: Date.now(), detail: snapshot, phases, requests: requests.slice(requestStart) })
+            safeLog({ caseId, progress: true, requests: requests.length - requestStart, works: snapshot.workItems?.map(work => ({ owner: members.find(member => member.id === work.ownerAgentId)?.name, status: work.status })), runs: snapshot.runs.filter(run => !terminal.has(run.status)).map(run => ({ agent: run.agentName, phase: run.phase, status: run.status })) })
+          })
         }
       } catch (caught) {
         error = redact(caught instanceof Error ? caught.message : String(caught))
@@ -163,6 +167,14 @@ export async function runEvaluation(input: Input, constructors: { AppService: ty
         }
       } finally { await service.close(); active = undefined; cancelActive = undefined }
       if (stopped) error ??= 'EVALUATION_INTERRUPTED: active sample cancelled and retained'
+      const fixtureFiles: NonNullable<EvaluationRecord['fixtureFiles']> = []
+      if (conversation) for (const member of members) for (const file of scenario.files ?? []) {
+        const expectedHash = createHash('sha256').update(file.content).digest('hex')
+        try {
+          const bytes = await readFile(join(dataPath, member.workspaceRef!, 'sessions', conversation.id, 'work', file.path))
+          fixtureFiles.push({ agentId: member.id, path: file.path, expectedHash, actualHash: createHash('sha256').update(bytes).digest('hex') })
+        } catch (caught) { fixtureFiles.push({ agentId: member.id, path: file.path, expectedHash, error: redact(String(caught)) }) }
+      }
       const artifacts: ArtifactEvidence[] = []
       for (const artifact of detail?.artifacts ?? []) {
         try {
@@ -184,7 +196,7 @@ export async function runEvaluation(input: Input, constructors: { AppService: ty
         return { reported: usage, runsReportingEachField: known, totalRuns: items.length }
       }
       const measuredRequests = requests.slice(requestStart)
-      const result: EvaluationRecord = { caseId, scenario, datasetVersion: DATASET_VERSION, events, phases, criterion: scenario.criterion, prompt: scenario.prompt, seed: scenario.seed, startedAt, sentAt, elapsedMs: Date.now() - (sentAt || startedAt),
+      const result: EvaluationRecord = { caseId, scenario, datasetVersion: DATASET_VERSION, events, phases, fixtureFiles, criterion: scenario.criterion, prompt: scenario.prompt, seed: scenario.seed, startedAt, sentAt, elapsedMs: Date.now() - (sentAt || startedAt),
         metadata: { label: settings.label, revision: settings.revision, sourceHashes: settings.hashes, datasetHash: createHash('sha256').update(JSON.stringify({ version: DATASET_VERSION, scenario })).digest('hex'), team: settings.team ?? 'multi', requestLimit: settings.maxRequests, modelSignature: createHash('sha256').update(JSON.stringify(connections.map(({ connection: item }) => ({ provider: item.provider, baseUrl: item.baseUrl, model: item.defaultModel })))).digest('hex'), model: connections.map(item => item.connection.defaultModel).join(' + '), provider: connection.provider, members: members.map(({ id, name, role, instructions }) => ({ id, name, role, instructions })), promptHash: createHash('sha256').update(scenario.prompt).digest('hex') },
         metrics: { firstVisibleReplyMs: firstVisible === undefined ? null : firstVisible - sentAt, measuredRuns: runs.length, completedReplies: replies.length, decisionRuns: runs.filter(run => run.phase === 'decision').length, providerRequestsIncludingSeed: measuredRequests.length, providerRequestsAfterInput: measuredRequests.filter(call => call.startedAt >= sentAt).length, usage: sumUsage(runs), decisionUsage: sumUsage(runs.filter(run => run.phase === 'decision')), invalidDeliveries: detail?.deliveries?.filter(delivery => delivery.status === 'failed').length ?? 0 },
         error, runtimeErrors, requests: measuredRequests, detail, artifacts, emitted, ...(delivery ? { delivery } : {}) }
@@ -196,12 +208,13 @@ export async function runEvaluation(input: Input, constructors: { AppService: ty
   } finally { process.removeListener('SIGINT', interrupt); globalThis.fetch = originalFetch; await active?.close(); await writeReport(join(settings.output, 'report'), retained.map(record => ({ record, score: scoreRecord(record, record.scenario!) }))) }
 }
 
-async function settle(service: Service, conversation: Conversation, timeoutMs = 120_000, pending?: () => Promise<void>) {
+async function settle(service: Service, conversation: Conversation, timeoutMs = 120_000, pending?: () => Promise<void>, checkpoint?: (detail: ConversationDetail) => Promise<void>) {
   const deadline = Date.now() + timeoutMs
-  let stableSince = 0
+  let stableSince = 0, lastCheckpoint = 0
   while (Date.now() < deadline) {
     await pending?.()
     const detail = await service.handle('getConversation', { id: conversation.id }) as ConversationDetail
+    if (checkpoint && Date.now() - lastCheckpoint >= 15_000) { await checkpoint(detail); lastCheckpoint = Date.now() }
     const idle = detail.turns?.every(turn => turnTerminal.has(turn.status)) && detail.runs.every(run => terminal.has(run.status)) && !detail.workItems?.some(work => ['ready', 'running'].includes(work.status))
     if (idle) { stableSince ||= Date.now(); if (Date.now() - stableSince >= 500) return detail } else stableSince = 0
     await delay(100)

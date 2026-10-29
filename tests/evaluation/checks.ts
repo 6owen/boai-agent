@@ -1,6 +1,7 @@
 /*
  * [OUTPUT]: 2026-10-11 原生完整执行和只读后工作区hash纳入评分输入及样本身份；旧无此字段样本hash保持。
  * [INPUT]: 保存的完整样本、评分侧答案、可选独立评审。
+ * [OUTPUT]: SG-v1分工/字节读取链与故障检查；相关输入合同、阶段时间与夹具hash绑定评审身份，旧样本hash不变。
  * [OUTPUT]: 原确定性/语义评分及共享的合法评审引用ID；判分语义与旧样本hash不变，供judge明确引用合同。
  * [POS]: tests/evaluation/checks.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -10,7 +11,8 @@ import { relative } from 'node:path'
 import type { CheckResult, CheckSpec, EvaluationCase, EvaluationRecord, EvaluationScore, ExternalReview } from './schema'
 import { SCORER_VERSION } from './schema'
 import { checkMaterialDelivery } from './material-delivery'
-export const sampleHash = (record: EvaluationRecord) => createHash('sha256').update(JSON.stringify({ caseId: record.caseId, prompt: record.prompt, metadata: record.metadata, detail: record.detail, artifacts: record.artifacts, events: record.events, ...(record.nativeEvidence ? { nativeEvidence: record.nativeEvidence } : {}), ...(record.delivery ? { delivery: record.delivery, deliveryContract: { contract: record.scenario?.delivery, prompt: record.scenario?.prompt, checks: record.scenario?.checks, semantic: record.scenario?.semantic } } : {}) })).digest('hex')
+import { checkGroupSupervision } from './group-supervision'
+export const sampleHash = (record: EvaluationRecord) => createHash('sha256').update(JSON.stringify({ caseId: record.caseId, prompt: record.prompt, metadata: record.metadata, detail: record.detail, artifacts: record.artifacts, events: record.events, ...(record.nativeEvidence ? { nativeEvidence: record.nativeEvidence } : {}), ...(record.delivery ? { delivery: record.delivery, deliveryContract: { contract: record.scenario?.delivery, prompt: record.scenario?.prompt, checks: record.scenario?.checks, semantic: record.scenario?.semantic } } : {}), ...(record.scenario?.checks.some(check => check.kind === 'group-supervision') ? { supervision: { phases: record.phases, fixtureFiles: record.fixtureFiles, checks: record.scenario.checks, semantic: record.scenario.semantic, memberInstructions: record.scenario.memberInstructions } } : {}) })).digest('hex')
 export const reviewEvidenceIds = (record: EvaluationRecord) => new Set([...(record.detail?.messages.map(message => message.id) ?? []), ...record.artifacts.flatMap(artifact => [artifact.id, artifact.path].filter((id): id is string => !!id)), ...(record.detail?.runs.map(run => run.id) ?? []), ...(record.delivery?.materials.map(value => value.material.id) ?? []), ...(record.delivery?.beforeRestart?.revisionRequests.map(value => value.id) ?? []), ...(record.delivery?.beforeRestart?.previews.flatMap(value => value.adoption.events.map(event => event.id)) ?? [])])
 const result = (name: string, passed: boolean | undefined, reason: string, evidence: string[] = []): CheckResult => ({ name, status: passed === undefined ? 'incomplete' : passed ? 'passed' : 'failed', reason, evidence })
 function measured(record: EvaluationRecord) {
@@ -19,7 +21,7 @@ function measured(record: EvaluationRecord) {
   const ids = new Set(turns.map(turn => turn.id))
   return { turns, runs: record.detail?.runs.filter(run => run.turnId && ids.has(run.turnId)) ?? [], replies: record.detail?.messages.filter(message => message.senderType === 'agent' && message.status === 'completed' && message.turnId && ids.has(message.turnId)) ?? [], ids }
 }
-function check(record: EvaluationRecord, spec: Exclude<CheckSpec, { kind: 'material-delivery' }>): CheckResult {
+function check(record: EvaluationRecord, spec: Exclude<CheckSpec, { kind: 'material-delivery' | 'group-supervision' }>): CheckResult {
   const data = measured(record), detail = record.detail!
   const name = spec.kind + ('name' in spec ? `:${spec.name}` : '')
   if (spec.kind === 'first-opportunity') {
@@ -73,7 +75,7 @@ export function scoreRecord(record: EvaluationRecord, scenario: EvaluationCase, 
   record = { ...record, scenario }
   const data = measured(record), hash = sampleHash(record)
   const executionStatus = !record.sentAt || !record.detail || !data.turns.length ? 'incomplete' : record.error || data.turns.some(turn => ['failed', 'budget_exhausted', 'interrupted', 'cancelled'].includes(turn.status)) ? 'failed' : data.turns.every(turn => ['completed', 'waiting_user'].includes(turn.status)) ? 'completed' : 'incomplete'
-  const hardChecks = record.detail ? scenario.checks.flatMap(spec => { try { return spec.kind === 'material-delivery' ? scenario.delivery ? checkMaterialDelivery(record, scenario.delivery) : [result(spec.kind, undefined, '缺少专用交付合同')] : [check(record, spec)] } catch (error) { return [result(spec.kind, undefined, `评分器异常：${String(error)}`)] } }) : [result('evidence', undefined, '没有完整运行记录')]
+  const hardChecks = record.detail ? scenario.checks.flatMap(spec => { try { return spec.kind === 'group-supervision' ? checkGroupSupervision(record, spec.exportConflict) : spec.kind === 'material-delivery' ? scenario.delivery ? checkMaterialDelivery(record, scenario.delivery) : [result(spec.kind, undefined, '缺少专用交付合同')] : [check(record, spec)] } catch (error) { return [result(spec.kind, undefined, `评分器异常：${String(error)}`)] } }) : [result('evidence', undefined, '没有完整运行记录')]
   let judgeStatus: EvaluationScore['judgeStatus'] = scenario.semantic.length ? 'pending' : 'not-required'
   let semanticVerdict: EvaluationScore['goalVerdict'] = scenario.semantic.length ? 'review-needed' : 'passed'
   if (review && scenario.semantic.length) {

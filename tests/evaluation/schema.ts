@@ -1,6 +1,7 @@
 /*
  * [OUTPUT]: 2026-10-11 原生完整执行和只读后工作区hash纳入评分输入及样本身份；旧无此字段样本hash保持。
  * [INPUT]: 版本化业务题、固定素材、公开运行记录与外部评审。
+ * [OUTPUT]: SG-v1支持明确员工职责与组长交付/异常检查，旧样本合同保持。
  * [OUTPUT]: 员工输入和评分侧答案分离的数据合同、事件脚本及可重评分记录；可选独立版本 MD-v1 交付证据保留旧样本合同。
  * [POS]: tests/evaluation/schema.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -17,6 +18,7 @@ export type CheckSpec =
   | { kind: 'text-pattern'; pattern: string }
   | { kind: 'event-hit'; id: string }
   | { kind: 'material-delivery' }
+  | { kind: 'group-supervision'; exportConflict: boolean }
 export interface EventScript {
   id: string
   when: 'public-message' | 'tool-completed' | 'child-output'
@@ -28,8 +30,8 @@ export interface EventScript {
 export interface EvaluationCase {
   id: string; matrixId: string; members: number; prompt: string; mention?: number; seed?: string; criterion: string
   split: 'regression' | 'development' | 'holdout'; cluster: string; category: string
-  roles?: [string, string][]; files?: { path: string; content: string }[]; events?: EventScript[]
-  checks: CheckSpec[]; semantic: string[]; timeoutMs?: number; maxRequests?: number
+  roles?: [string, string][]; memberInstructions?: string[]; files?: { path: string; content: string }[]; events?: EventScript[]
+  checks: CheckSpec[]; semantic: string[]; timeoutMs?: number; maxRequests?: number; executionTimeoutMs?: number | null
   source?: string; comparableSingle?: boolean
   delivery?: MaterialDeliveryContract
 }
@@ -40,6 +42,7 @@ export interface EvaluationRecord {
   scenario?: EvaluationCase; datasetVersion?: string; error?: string; runtimeErrors: string[]
   metadata: { label: string; revision: string; sourceHashes: Record<string, string>; model: string; provider: string; members: { id: string; name: string; role: string; instructions?: string }[]; promptHash?: string; datasetHash?: string; modelSignature?: string; team?: 'single' | 'multi'; requestLimit?: number }
   detail?: ConversationDetail; artifacts: ArtifactEvidence[]; events?: EventEvidence[]
+  fixtureFiles?: { agentId: string; path: string; expectedHash: string; actualHash?: string; error?: string }[]
   nativeEvidence?: { items: import('../../packages/shared/src/domain/execution').ExecutionEvidence[]; completeRunIds: string[]; sourceFiles: { label: string; sha256: string; contentHashMatched: boolean }[] }
   delivery?: MaterialDeliveryEvidence
   phases?: { phase: string; agentId: string; runId: string; startAt: number; endAt?: number }[]
