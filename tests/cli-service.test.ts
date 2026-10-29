@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: CLI超时后等待原任务实际启动；补判断排队跨超时场景，保持同requestId完成与零重复发送。
  * [OUTPUT]: 按现行 Bobo 高权限预设区分核心明确权限与普通员工缺省，CLI 仅核对不改权。
  * [OUTPUT]: 实际owner RPC取消上传等待原准备，同时无关会话创建继续；零模型。
  * [OUTPUT]: CLI原问题回答必须保留问题版本和原Work/预算，查询与未知核对不重发。
@@ -300,19 +301,30 @@ it('send observes original completion and published output with no duplicate on 
   expect(f.runs).toBe(1)
 })
 
-it('client timeout detaches and preserves the original task, which later completes without resending', async () => {
-  let release!: () => void, started = false
+it.each([false, true])('client timeout detaches and preserves the original task, which later completes without resending (queued decision: %s)', async queuedDecision => {
+  let release!: () => void, releaseDecision!: () => void, calls = 0
   const gate = new Promise<void>(resolve => { release = resolve })
-  const f = await fixture({ run: async ctx => { started = true; await gate; await ctx.onDelta('超时后正常完成') } })
-  cleanup.push(release)
+  const decisionGate = new Promise<void>(resolve => { releaseDecision = resolve })
+  const f = await fixture({
+    decide: async ctx => { if (queuedDecision) await decisionGate; return { action: 'reply', responseKind: 'chat', observedThroughSequence: ctx.participation!.observedThroughSequence } },
+    run: async ctx => { calls++; await gate; await ctx.onDelta('超时后正常完成') },
+  })
+  cleanup.push(release, releaseDecision)
   const requestId = randomUUID(), events: ExecutionEvent[] = []
   expect(await executeMessage(f.client, { kind: 'send', conversationId: f.room.id, content: '等待', mentionIds: [] }, { requestId, waitTimeout: 150, emit: event => events.push(event) })).toBe(4)
-  expect(started).toBe(true)
   expect(events.at(-1)).toMatchObject({ requestId, type: 'result', exitCode: 4 })
+  if (queuedDecision) expect(calls).toBe(0)
+  releaseDecision()
+  // Client observation can expire before the accepted host task is scheduled.
+  await vi.waitFor(() => expect(calls).toBe(1), { timeout: 5000 })
   const pending = await f.client.invoke('getMessageExecution', { requestId }) as MessageExecution
   expect(pending.state).toBe('running'); expect(pending.activeRunIds.length).toBeGreaterThan(0)
   release()
   await vi.waitFor(async () => expect(await f.client.invoke('getMessageExecution', { requestId })).toMatchObject({ state: 'completed', activeRunIds: [] }))
+  expect(calls).toBe(1)
+  const detail = await f.app.handle('getConversation', { id: f.room.id }) as ConversationDetail
+  expect(detail.messages.filter(message => message.senderType === 'user')).toHaveLength(1)
+  expect(detail.messages.some(message => message.content === '超时后正常完成' && message.status === 'completed')).toBe(true)
 })
 
 it('cancel waits for actual adapter exit after the original run is already marked cancelled', async () => {
