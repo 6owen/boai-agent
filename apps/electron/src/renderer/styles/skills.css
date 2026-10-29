@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 提示词行菜单仅hover/focus/打开时显示；右侧编辑表单沿共享详情留白。
+ * [OUTPUT]: 提示词行菜单仅hover/focus/打开时显示；右侧只读正文/编辑表单共用详情留白。
  * [OUTPUT]: 技能行主体迁入共享ListRow，本页只保留操作按钮让位与来源标签样式。
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [OUTPUT]: 数据源编辑卡片仅本地收紧控件/标签/图标/行留白，保留模型连接其他使用者的原尺寸和外层贴边滚动。
@@ -226,7 +226,7 @@
 .source-row-actions { display:flex;align-items:center;gap:2px;flex-shrink:0;padding-right:8px;color:var(--muted-foreground) }
 .prompt-row-actions { opacity:0;pointer-events:none }
 .prompt-catalog-row:is(:hover,:focus-within) .prompt-row-actions,.prompt-row-actions:has([aria-expanded=true],[data-confirming]) { opacity:1;pointer-events:auto }
-.prompt-detail-form { display:flex;flex-direction:column;gap:20px;padding:0 24px 24px;min-width:0 }
+.prompt-detail-body { display:flex;flex-direction:column;gap:20px;padding:0 24px 24px;min-width:0 }
 @media (hover:none) { .prompt-row-actions { opacity:1;pointer-events:auto } }
 .source-tool-list>div { padding:10px 0;border-bottom:1px solid var(--border);overflow-wrap:anywhere }
 .source-tool-list strong { font-size:var(--text-ui-secondary);font-weight:500 }
