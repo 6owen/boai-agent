@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 侧栏分组复用skills-list-group的flow-root布局，阻止折叠内容卸载时标题外边距合并造成末帧跳位。
  * [OUTPUT]: 提示词读取就绪与空目录分离，分组页首帧保留结构并支持失败重读。
  * [OUTPUT]: 资源库新增全局提示词分类/默认收起分组，编辑/新建交给Shell右侧面板；修改广播同步Composer的$引用候选。
  * [OUTPUT]: 资源库左侧技能/MCP/API/本地文件夹分组默认全部收起，手动展开和搜索显示匹配项保持。
@@ -71,7 +72,7 @@ export function CustomizationWorkspace(props: Props) {
         const members = rows.filter(row => group === 'skills' ? row.kind === 'skill' : group === 'prompts' ? row.kind === 'prompt' : row.source?.type === group)
         if (!members.length) return null
         const label = { skills: '技能', mcp: 'MCP', api: 'API', local: '本地文件夹', prompts: '提示词' }[group]
-        return <Collapsible key={group} open={Boolean(query) || !collapsed.includes(group)} onOpenChange={open => { if (!query) setCollapsed(items => open ? items.filter(id => id !== group) : [...items, group]) }}>
+        return <Collapsible key={group} className="skills-list-group" open={Boolean(query) || !collapsed.includes(group)} onOpenChange={open => { if (!query) setCollapsed(items => open ? items.filter(id => id !== group) : [...items, group]) }}>
           <CollapsibleTrigger aria-label={`已安装的${label}`} render={<Button variant="ghost" size="content" className="conversation-section-heading" />}><span>{label}</span><ChevronRight /></CollapsibleTrigger>
           <CollapsibleContent><InstalledItems rows={members} scroll={scroll} selected={category === 'sources' ? sourceId : category === 'prompts' ? props.selectedPrompt : undefined} onSelect={row => row.kind === 'skill' ? openSkill(row.id) : row.kind === 'prompt' ? guard.navigate(() => { setCategory('prompts'); props.onOpenPrompt(row) }) : guard.navigate(() => { setCategory('sources'); props.onOpenSource(row) })} /></CollapsibleContent>
         </Collapsible>
