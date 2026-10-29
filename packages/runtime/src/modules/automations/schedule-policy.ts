@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 同员工/群成员任务互斥与持久FIFO顺序；等待输入释放计算槽，原生执行循环保持。
  * [OUTPUT]: 取消自动化固定执行时限；旧时间预算取消仅由本人显式继续恢复，原occurrence、预算计账、容量与人工停止门禁保持。
  * [OUTPUT]: 手动无时钟、小时按分钟、月按日期及开始日期共用预览与真实触发校验。
  * [INPUT]: 显式时区、周期规则、实际触发时刻与版本。
@@ -9,12 +10,19 @@
 import { createHash } from 'node:crypto'
 import { Cron } from 'croner'
 import { z } from 'zod'
-import type { AutomationDefinition, AutomationInput, OccurrenceStatus } from '@boai/shared/domain/automations'
+import type { AutomationDefinition, AutomationInput, AutomationOccurrence, OccurrenceStatus } from '@boai/shared/domain/automations'
 
 export const AUTOMATION_MISFIRE_MS = 10 * 60_000
 export const MAX_ACTIVE_AUTOMATIONS = 2
 export const activeOccurrence = new Set<OccurrenceStatus>(['admitted', 'running', 'waiting_approval', 'cancelling'])
-export const pendingOccurrence = new Set<OccurrenceStatus>([...activeOccurrence, 'waiting_user', 'waiting_work'])
+export const pendingOccurrence = new Set<OccurrenceStatus>([...activeOccurrence, 'queued', 'waiting_user', 'waiting_work'])
+/** A group assignment occupies each participating employee, but ordinary chats stay independent. */
+export function sharesTaskExecutor(a: AutomationOccurrence, b: AutomationOccurrence) {
+  return a.conversationId === b.conversationId || a.automationId === b.automationId || Boolean(a.plan?.employeeIds.some(id => b.plan?.employeeIds.includes(id)))
+}
+export function queuedOrder(a: AutomationOccurrence, b: AutomationOccurrence) {
+  return (a.queueOrder ?? 0) - (b.queueOrder ?? 0) || (a.admittedAt ?? a.startedAt).localeCompare(b.admittedAt ?? b.startedAt) || a.id.localeCompare(b.id)
+}
 const hash = (...parts: (string | number)[]) => createHash('sha256').update(JSON.stringify(parts)).digest('hex')
 
 export const scheduleSchema = z.object({ frequency: z.enum(['manual', 'hourly', 'daily', 'weekly', 'monthly']), startsOn: z.iso.date().optional(), dayOfMonth: z.number().int().min(1).max(31).optional(), time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, '请填写有效的执行时间'), weekday: z.number().int().min(0).max(6), daysOfWeek: z.array(z.number().int().min(0).max(6)).min(1, '请至少选择一个星期').max(7).optional(), timezone: z.string().min(1).max(100).refine(t => { try { new Intl.DateTimeFormat('en', { timeZone: t }); return true } catch { return false } }, '无效 IANA 时区') }).strict()

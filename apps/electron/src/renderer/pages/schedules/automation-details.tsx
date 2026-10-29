@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 普通任务显示手动加入队列，暂停仅针对未来定时计划。
  * [INPUT]: 已保存计划、通讯录快照及单次运行操作。
  * [OUTPUT]: 紧凑只读配置Card；底部固定40px透明操作行，避免CardFooter默认背景/圆角/内边距覆盖。
  * [POS]: 定时任务详情的只读配置卡片，独立于执行记录与创建草稿。
@@ -16,7 +17,7 @@ function DetailRow({ icon, title, children }: { icon: ReactNode; title: string; 
 }
 
 export function AutomationDetails({ definition, snapshot, action }: { definition: AutomationDefinition; snapshot: Snapshot; action: ReactNode }) {
-  const status = !definition.enabled ? '已暂停' : definition.sync === 'error' ? '同步失败' : definition.sync === 'pending' ? '等待同步' : definition.frequency === 'manual' ? '随时运行' : '已开启'
+  const status = definition.frequency === 'manual' ? '手动加入队列' : !definition.enabled ? '已暂停' : definition.sync === 'error' ? '同步失败' : definition.sync === 'pending' ? '等待同步' : '已开启'
   return <Card className="automation-details gap-0 bg-muted p-0" role="region" aria-label="计划摘要">
     <dl className="automation-detail-fields soft-divide-y">
       <DetailRow icon={<Pencil />} title="名称">{definition.name}</DetailRow>

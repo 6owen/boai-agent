@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工任务独立主区，复用原ChatView的补充/审批/成果交互；任务定位不切回日常聊天。
  * [OUTPUT]: 执行记录定位聊天后，右侧打开原occurrence/Run，跨页面导航保留同一次运行身份。
  * [OUTPUT]: 提示词新建/编辑使用资源库右侧标签和原bobo管理入口；保存更新名称，列表删除关闭对应标签。
  * [OUTPUT]: 用户要求暂时隐藏工作区入口与标签；既有终端关闭后不重建开始页。
@@ -195,7 +196,7 @@ interface Route { page: Page; conversationId: string | null; coreDraft?: true; f
 const EMPTY: Snapshot = { agents: [], conversations: [], connections: [], resources: [], approvals: [], dataPath: '' }
 const DEFAULT_LIST_WIDTH = 312
 const EMPTY_DRAFT: ChatDraft = { text: '', mentionIds: [] }
-const labels: Record<Page, string> = { conversations: '会话', contacts: '通讯录', schedules: '定时任务', skills: '资源库', settings: '设置', help: '帮助' }
+const labels: Record<Page, string> = { conversations: '会话', contacts: '通讯录', schedules: '任务', skills: '资源库', settings: '设置', help: '帮助' }
 function pref(key: string, fallback: number) { try { return Number(localStorage.getItem(`boai.v2.${key}`)) || fallback } catch { return fallback } }
 function initialRoute(): Route { try { const p = localStorage.getItem('boai.v2.page'); return { page: p === 'marketplace' ? 'skills' : p && p in labels ? p as Page : 'conversations', conversationId: null } } catch { return { page: 'conversations', conversationId: null } } }
 
@@ -229,6 +230,7 @@ export function AppShell() {
   const [skillsRevision, setSkillsRevision] = useState(0)
   const skillUpdated = useCallback(() => setSkillsRevision(value => value + 1), [])
   const skillsNavigation = route.page === 'skills'
+  const [taskContextId, setTaskContextId] = useState<string>()
   const [scheduleLocation, setScheduleLocation] = useState<ScheduleLocation>({ kind: 'overview' })
   const [detailWorkspaces, dispatchWorkspace] = useReducer(detailWorkspacesReducer, {} as DetailWorkspaces)
   const detailTabs = detailWorkspaces[route.page] ?? emptyDetailTabs
@@ -411,8 +413,8 @@ export function AppShell() {
     return Boolean(await refreshDetail(id, undefined, isCurrent))
   }
   const questionReplies = useChatQuestionReplies(api, {
-    conversationId: selectedId ?? undefined, active: route.page === 'conversations' && !conversationSearchOpen,
-    conversationIds: route.page === 'conversations' && !conversationSearchOpen ? [selectedId, panel?.type === 'channels' ? panel.conversationId : undefined].filter((id): id is string => Boolean(id)) : [],
+    conversationId: route.page === 'schedules' ? taskContextId : selectedId ?? undefined, active: route.page === 'schedules' || route.page === 'conversations' && !conversationSearchOpen,
+    conversationIds: route.page === 'schedules' ? [taskContextId].filter((id): id is string => Boolean(id)) : route.page === 'conversations' && !conversationSearchOpen ? [selectedId, panel?.type === 'channels' ? panel.conversationId : undefined].filter((id): id is string => Boolean(id)) : [],
     onSubmitted: (message, target) => {
       const current = drafts.current.get(message.conversationId)
       if (current?.questionReply?.itemId === target.itemId && current.questionReply.questionMessageId === target.questionMessageId && (current.questionReply.occurrenceId ? current.questionReply.occurrenceId === target.occurrenceId : current.questionReply.revision === target.revision)) {
@@ -628,9 +630,16 @@ export function AppShell() {
       else if (!withinKey) commit()
     })
   }
-  const navigateExecutionMessage: import('@/components/detail-panel/execution-message-button').ExecutionMessageNavigation = (id, messageId, current, execution) => selectConversation(id, true, messageId, current, () => {
-    openPanel(execution.occurrenceId ? { type: 'automation-occurrence', id: execution.occurrenceId } : { type: 'trace', id: execution.conversationId, runId: execution.runId, agentId: execution.agentId, requestId: crypto.randomUUID() }, 'conversations', current)
-  })
+  const navigateExecutionMessage: import('@/components/detail-panel/execution-message-button').ExecutionMessageNavigation = (id, messageId, current, execution) => {
+    const source = snapshot.conversations.find(room => room.id === id)
+    if (source?.purpose === 'automation' && source.occurrenceId) {
+      navigate(() => { if (current && !current()) return; setScheduleLocation({ kind: 'occurrence', id: source.occurrenceId!, requestId: crypto.randomUUID(), focusMessage: { id: messageId, requestId: crypto.randomUUID() } }); applyRoute({ ...routeRef.current, page: 'schedules' }) })
+      return
+    }
+    selectConversation(id, true, messageId, current, () => {
+      openPanel(execution.occurrenceId ? { type: 'automation-occurrence', id: execution.occurrenceId } : { type: 'trace', id: execution.conversationId, runId: execution.runId, agentId: execution.agentId, requestId: crypto.randomUUID() }, 'conversations', current)
+    })
+  }
   const openLocalSkill = (id: string) => navigate(() => {
     setSkillsSection('all'); setFocusedSkill({ id, requestId: crypto.randomUUID() }); applyRoute({ ...route, page: 'skills' })
   })
@@ -1033,7 +1042,7 @@ export function AppShell() {
           await refreshSnapshot()
         })
       } : undefined} onFiles={() => showPanel(channel || internal ? { type: 'channel-files', id } : { type: 'files', owner, id: ownerId })}
-      onChannels={room.kind === 'direct' && !channel && !internal ? () => { const agent = snapshot.agents.find(agent => agent.id === room.agentIds[0]); if (agent) openChannels(agent) } : undefined}
+      onChannels={room.kind === 'direct' && room.purpose !== 'automation' && !channel && !internal ? () => { const agent = snapshot.agents.find(agent => agent.id === room.agentIds[0]); if (agent) openChannels(agent) } : undefined}
       questionReplies={questionReplies} artifactActions={artifactActions}
       onOpenCatalog={openCatalogResult} onTeamGroup={id => selectConversation(id, true)} draft={drafts.current.get(id) ?? EMPTY_DRAFT} setDraft={value => { drafts.current.set(id, value); bumpDrafts() }} busy={busy || questionReplies.busy} onSend={(onDispatch, steer) => send(id, onDispatch, steer)}
       onDetails={() => {
@@ -1043,7 +1052,7 @@ export function AppShell() {
       onManageModels={agent => openContact(room.kind === 'group' && !channel ? { kind: 'group', id } : { kind: 'agent', id: agent.id })}
       onConfigureAgent={agent => openContact({ kind: 'agent', id: agent.id })} onProfile={openUserProfile}
       onEditTitle={setEditingTitle} onClear={clearConversationHistory}
-      onTrace={message => showPanel(message?.automationPublication ? { type: 'automation-occurrence', id: message.automationPublication.occurrenceId } : { type: 'trace', requestId: crypto.randomUUID(), id, runId: message?.nativeSteering?.runId, messageId: message?.id, turnId: message?.turnId, agentId: message?.senderType === 'agent' ? message.senderId : undefined })}
+      onTrace={message => showPanel(room.purpose === 'automation' && room.occurrenceId ? { type: 'automation-occurrence', id: room.occurrenceId } : message?.automationPublication ? { type: 'automation-occurrence', id: message.automationPublication.occurrenceId } : { type: 'trace', requestId: crypto.randomUUID(), id, runId: message?.nativeSteering?.runId, messageId: message?.id, turnId: message?.turnId, agentId: message?.senderType === 'agent' ? message.senderId : undefined })}
       onSettings={agent => { const originPanel = panelRef.current; openModelSettings(agent, () => !isChannelConversation(room) || panelRef.current === originPanel) }} onChangeAgent={changeComposerAgent} configurationLocked={anyDirty}
       onApprove={(approvalId, approved, always, allowSameKind) => { void action(async () => {
         try { await api!.request('approve', { id: approvalId, approved, always, allowSameKind }) }
@@ -1067,7 +1076,7 @@ export function AppShell() {
     <div className="app-body"><nav className="navigation-rail" aria-label="主导航"><div className="rail-top">{([
       {page:'conversations',icon:Home,label:'会话'},
       {page:'contacts',icon:Contact,label:'通讯录'},
-      {page:'schedules',icon:Clock,label:'定时任务'},
+      {page:'schedules',icon:Clock,label:'任务'},
     ] as const).map(item=><Button variant="ghost" size="content" className={`rail-item${route.page===item.page?' selected':''}`} key={item.page} aria-label={item.label} title={item.label} aria-current={route.page===item.page?'page':undefined} onClick={()=>goPage(item.page)}><item.icon size={16}/>{item.page==='conversations'&&snapshot.approvals.length>0&&<i className="attention-dot"/>}</Button>)}<SkillsNavigation page={route.page} onSkills={()=>goPage('skills')} /></div><div className="rail-bottom"><DropdownMenu actionsRef={userMenuActions} onOpenChange={open => { userMenuOpen.current = open }}>
       <DropdownMenuTrigger render={<Button variant={route.page === 'settings' ? 'secondary' : 'ghost'} size="icon-lg" className="rail-item" aria-label="我的菜单" title="我" />}><UserAvatar profile={snapshot.userProfile} /></DropdownMenuTrigger>
       <DropdownMenuContent side="right" align="end" sideOffset={10} className="w-[224px] data-open:duration-250 data-closed:duration-150 motion-reduce:animate-none">
@@ -1091,7 +1100,7 @@ export function AppShell() {
       </div></FloatingLayerScope>}
       {route.page==='contacts'&&<ContactsPage onWorkspace={id => openPanel({ type: 'employee-workspace', id })} onConversation={(id, messageId) => selectConversation(id, true, messageId)} active={route.page === 'contacts'} onCreateTeam={() => openCreation({ type: 'team' })} api={api} snapshot={snapshot} selected={contactSelection} onSelect={setContactSelection} onMessage={messageContact} onCreate={type=>openCreation({type})} refresh={refreshSnapshot} onAgentSaved={updateAgentSnapshot} onGroupSaved={updateGroupSnapshot} sidebarShown={effectiveList} divider={listResizer} generation={panelGeneration} busy={busy}/>}
       {route.page==='skills'&&<CustomizationWorkspace selectedPrompt={panel?.type === 'prompt' ? panel.id : undefined} onOpenPrompt={prompt => openPanel({ type: 'prompt', id: prompt.id, name: prompt.name, requestId: crypto.randomUUID() })} onCreatePrompt={() => openPanel({ type: 'prompt', id: crypto.randomUUID(), name: '新建提示词', requestId: crypto.randomUUID(), create: true })} onRemovePrompt={id => { for (const tab of allDetailTabs) if (tab.target.type === 'prompt' && tab.target.id === id) dispatchDetails({ type: 'close', key: tab.key }, tab.scope) }} onRemoveSource={id => { for (const tab of detailTabs.tabs) if (tab.target.type === 'source' && tab.target.id === id) dispatchDetails({ type: 'close', key: tab.key }) }} focusSource={focusedSource} selectedSource={panel?.type === 'source' ? panel.id : undefined} onOpenSource={source => openPanel({ type: 'source', id: source.id, name: source.name, requestId: crypto.randomUUID() })} onManage={openCatalogManagement} onOpenSkill={skill => openPanel({ type: 'local-skill', id: skill.id, name: skill.name, requestId: crypto.randomUUID() })} onOpenMarketplace={item => openPanel({ type: 'marketplace', provider: item.provider, id: item.id, name: item.name })} api={api} section={skillsSection} onSection={setSkillsSection} provider={skillProvider} onProvider={setSkillProvider} divider={listResizer} onCheckUpdates={()=>openPanel({type:'skill-updates'})} focusSkill={focusedSkill} revision={skillsRevision} />}
-      <SchedulePage onNavigateMessage={navigateExecutionMessage} api={api} snapshot={snapshot} active={route.page==='schedules'} sidebarShown={effectiveList} divider={listResizer} location={scheduleLocation} onLocation={setScheduleLocation} onCreateConversation={() => openCatalogManagement('automations')} selectedOccurrenceId={panel?.type === 'automation-occurrence' ? panel.id : undefined} onOccurrence={id => openPanel({ type: 'automation-occurrence', id }, 'schedules')}/>
+      <SchedulePage taskWorkspace={{ onContext: setTaskContextId, onMaterials: materialDrafts.reconcile, renderChat: (window, actions) => renderChat(window, 'schedules', undefined, actions) }} onNavigateMessage={navigateExecutionMessage} api={api} snapshot={snapshot} active={route.page==='schedules'} sidebarShown={effectiveList} divider={listResizer} location={scheduleLocation} onLocation={setScheduleLocation} onCreateConversation={() => openCatalogManagement('automations')} selectedOccurrenceId={panel?.type === 'automation-occurrence' ? panel.id : undefined} onOccurrence={id => openPanel({ type: 'automation-occurrence', id }, 'schedules')}/>
       {settingsMounted.current && <div style={{ display: route.page === 'settings' ? 'contents' : 'none' }}><SettingsPage key={panelGeneration} divider={listResizer} tab={settingsSection} setTab={tab => { setLocalAgentTarget(undefined); setSettingsSection(tab) }} localAgentTarget={localAgentTarget} active={route.page === 'settings'} onOpenSkills={() => navigate(() => { setFocusedSource(undefined); setFocusedSkill(undefined); setSkillsSection('all'); applyRoute({ ...routeRef.current, page: 'skills' }) })} api={api} snapshot={snapshot} refresh={refreshSnapshot}/></div>}
       {route.page==='help'&&<HelpPage/>}
       </div>

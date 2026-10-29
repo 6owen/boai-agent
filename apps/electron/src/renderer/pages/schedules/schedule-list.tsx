@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 普通任务和定时计划统一员工任务入口，标签顺序仅管理展示。
  * [INPUT]: 定时任务、独立列表偏好、提交状态、任务导航/删除及创建回调。
  * [OUTPUT]: 无检索框的折叠分组、任务与标签拖拽排序；加宽选项菜单，右键项目统一图标并提供危险色删除确认入口。
  * [POS]: 定时任务左栏，复用DragList与通讯录管理布局。
@@ -22,16 +23,16 @@ import type { useScheduleList } from './use-schedule-list'
 const stateKey = 'boai.schedules.list-state'
 function readCollapsed(): string[] { try { const value: unknown = JSON.parse(localStorage.getItem(stateKey) ?? '[]'); return Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : [] } catch { return [] } }
 type Row = { key: string; task: AutomationsView['definitions'][number]; tagId?: string }
-export function ScheduleList({ definitions, preferences, loading, busy, selectedId, onSelect, onHistory, onDelete, create }: {
+export function ScheduleList({ definitions, preferences, loading, busy, selectedId, onSelect, onHistory, onDelete, create, filters }: {
   definitions: AutomationsView['definitions']; preferences: ReturnType<typeof useScheduleList>; loading: boolean; busy: boolean; selectedId?: string
-  onSelect(id: string): void; onHistory(): void; onDelete(target: { id: string; name: string }): void; create: ReactNode
+  onSelect(id: string): void; onHistory(): void; onDelete(target: { id: string; name: string }): void; create: ReactNode; filters?: ReactNode
 }) {
   const [collapsed, setCollapsed] = useState(readCollapsed), [managerOpen, setManagerOpen] = useState(false)
   useEffect(() => { try { localStorage.setItem(stateKey, JSON.stringify(collapsed)) } catch { /* Optional local presentation preference. */ } }, [collapsed])
   const value = preferences.value, disabled = busy || preferences.busy || !value || loading
   const tags = value?.tags ?? []
   const tasks = sortedSchedules(definitions, value?.order ?? [])
-  const groups = [{ id: '', name: tags.length ? '无标签' : '全部定时任务' }, ...tags]
+  const groups = [{ id: '', name: tags.length ? '无标签' : '全部任务' }, ...tags]
   const rows: Row[] = groups.flatMap(group => tasks.filter(task => group.id ? scheduleTagIds(value, task.id).includes(group.id) : !scheduleTagIds(value, task.id).length).map(task => ({ key: JSON.stringify([group.id, task.id]), task, tagId: group.id || undefined })))
   const rowByKey = new Map(rows.map(row => [row.key, row]))
   const tagKey = (id: string) => `tag:${id}`
@@ -43,13 +44,14 @@ export function ScheduleList({ definitions, preferences, loading, busy, selected
     return <DragListGroupTarget key={group.id} id={group.id}><Collapsible open={!collapsed.includes(group.id)} onOpenChange={open => setCollapsed(current => open ? current.filter(id => id !== group.id) : [...current, group.id])}>
       {group.id ? <DragListItem id={tagKey(group.id)}>{({ dragProps }) => heading(dragProps)}</DragListItem> : heading()}
       <CollapsibleContent><div role="group" aria-label={group.name} className="schedule-items">{items.map(row => <DragListItem key={row.key} id={row.key}>{({ dragProps, dragging }) => <ContextMenu><ContextMenuTrigger render={<Button variant="ghost" size="content" className={`schedule-item${selectedId === row.task.id ? ' selected' : ''}${dragging ? ' drag-list-dragging' : ''}`} />} {...dragProps} aria-label={row.task.name} aria-current={selectedId === row.task.id ? 'page' : undefined} onClick={() => { if (!dragging) onSelect(row.task.id) }}>
-        <strong title={row.task.name}>{row.task.name}</strong><small>{!row.task.enabled ? '已暂停 · ' : ''}{scheduleSummary(row.task)}</small>
+        <strong title={row.task.name}>{row.task.name}</strong><small>{row.task.frequency !== 'manual' && !row.task.enabled ? '已暂停 · ' : ''}{scheduleSummary(row.task)}</small>
       </ContextMenuTrigger><ContextMenuContent className="min-w-48"><ContextMenuGroup>{groups.filter(target => target.id !== (row.tagId ?? '')).map(target => <ContextMenuItem key={target.id} disabled={disabled} onClick={() => moveTo(row, target.id)}><ArrowRight />移至 {target.name}</ContextMenuItem>)}<ContextMenuItem disabled={disabled} onClick={() => setManagerOpen(true)}><Settings />管理标签</ContextMenuItem></ContextMenuGroup><ContextMenuSeparator /><ContextMenuItem variant="destructive" disabled={disabled} onClick={() => onDelete({ id: row.task.id, name: row.task.name })}><Trash2 />删除</ContextMenuItem></ContextMenuContent></ContextMenu>}</DragListItem>)}</div></CollapsibleContent>
     </Collapsible></DragListGroupTarget>
   }
   return <>
-    <div className="list-heading"><div className="schedule-list-title"><h2>定时任务</h2><Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-xs" aria-label="定时任务说明" />}><CircleHelp /></TooltipTrigger><TooltipContent className="max-w-xs">应用打开或最小化时按计划执行；退出或休眠期间不执行。暂停计划不会停止当前执行，结果保留在原会话。</TooltipContent></Tooltip></div><DropdownMenu><DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="定时任务选项" />}><MoreHorizontal /></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-auto min-w-48 whitespace-nowrap"><DropdownMenuItem onClick={onHistory}><Clock />执行记录</DropdownMenuItem><DropdownMenuItem disabled={disabled} onClick={() => setManagerOpen(true)}><Settings />定时任务管理</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div>
+    <div className="list-heading"><div className="schedule-list-title"><h2>任务</h2><Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-xs" aria-label="任务说明" />}><CircleHelp /></TooltipTrigger><TooltipContent className="max-w-xs">任务按员工排队，过程和结果保留在独立任务上下文。定时计划需要应用运行；暂停计划不停止已受理的执行。</TooltipContent></Tooltip></div><DropdownMenu><DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="任务选项" />}><MoreHorizontal /></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-auto min-w-48 whitespace-nowrap"><DropdownMenuItem onClick={onHistory}><Clock />执行记录</DropdownMenuItem><DropdownMenuItem disabled={disabled} onClick={() => setManagerOpen(true)}><Settings />任务管理</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div>
     {create}
+    {filters}
     {preferences.error && <Banner>{preferences.error}</Banner>}
     <div className="contacts-sections"><DragList ids={[...tagByKey.keys(), ...rowByKey.keys()]} disabled={disabled || managerOpen}
       canMove={(id, targetId) => tagByKey.has(id) && tagByKey.has(targetId) || rowByKey.has(id) && rowByKey.has(targetId) && rowByKey.get(id)!.tagId === rowByKey.get(targetId)!.tagId}

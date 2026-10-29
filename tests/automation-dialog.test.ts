@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 新任务入口、加入队列后打开独立任务，以及旧聊天定位兼容。
  * [OUTPUT]: 对话创建允许独立读取列表偏好，仍不写入或执行计划。
  * [OUTPUT]: 手动本次查看按钮仅运行期间显示；历史/自动执行及完成/失败/取消/中断后的按钮均隐藏。
  * [OUTPUT]: 本轮覆盖复制/员工入口、定时运行防连点、失败过程、严格私有判断及保留原预算的显式继续；实际范围以各用例为准。
@@ -47,27 +48,27 @@ test.each(['completed', 'failed', 'cancelled', 'interrupted'] as const)('manual 
   expect(host.querySelector('[aria-label="查看本次执行过程"]')).toBeNull()
   expect(host.querySelector('[aria-label="定位聊天记录"]')).toBeNull()
   await render([historical])
-  await act(async () => { button('立即运行一次').click(); button('正在提交…')?.click() })
+  await act(async () => { button('加入执行队列').click(); button('正在提交…')?.click() })
   expect(request).toHaveBeenCalledOnce()
   expect(button('正在提交…').disabled).toBe(true)
   await act(async () => resolve(occurrence))
-  expect(open).not.toHaveBeenCalled()
+  expect(open).toHaveBeenCalledWith('once')
   expect(button('本次运行中').disabled).toBe(true)
   expect(host.querySelector<HTMLButtonElement>('[aria-label="定位聊天记录"]')!.disabled).toBe(true)
   await render([{ ...occurrence, runIds: ['run'] }])
   await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="查看本次执行过程"]')!.click())
   expect(open).toHaveBeenCalledWith('once')
   await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="定位聊天记录"]')!.click())
-  expect(navigate).toHaveBeenCalledWith('employee-chat', 'published-trigger', expect.any(Function))
+  expect(navigate).toHaveBeenCalledWith('employee-chat', 'published-trigger', expect.any(Function), expect.objectContaining({ occurrenceId: 'once', runId: 'run' }))
   await render([{ ...occurrence, status: terminalStatus, stateVersion: 2 }])
   expect(host.querySelector('[aria-label="查看本次执行过程"]')).toBeNull()
   expect(host.querySelector('[aria-label="定位聊天记录"]')).toBeNull()
-  expect(button('立即运行一次').disabled).toBe(false)
+  expect(button('加入执行队列').disabled).toBe(false)
   await render([{ ...historical, status: 'running' }])
   expect(host.querySelector('[aria-label="查看本次执行过程"]')).toBeNull()
   expect(host.querySelector('[aria-label="定位聊天记录"]')).toBeNull()
   await render([]) // History cleanup/eviction must not revive the accepted running receipt.
-  expect(button('立即运行一次').disabled).toBe(false)
+  expect(button('加入执行队列').disabled).toBe(false)
 })
 async function change(element: HTMLInputElement | HTMLTextAreaElement, value: string) {
   await act(async () => {
@@ -151,6 +152,7 @@ test('exiting a dirty schedule discards without saving', async () => {
 test('conversation creation delegates to the ordinary chat without creating a dialog or submitting', async () => {
   const request = vi.fn(async (method: string) => {
     if (method === 'getScheduleList') return { revision: 0, tags: [], tagIdsByAutomationId: {}, order: [] }
+    if (method === 'listAutomationHistory') return { occurrences: [] }
     if (method === 'listAutomations') return { definitions: [], occurrences: [], available: true }
     throw new Error(`Unexpected request: ${method}`)
   })
@@ -158,13 +160,22 @@ test('conversation creation delegates to the ordinary chat without creating a di
   const openConversation = vi.fn()
   function Page() {
     const [location, setLocation] = useState<ScheduleLocation>({ kind: 'overview' })
-    return h(SchedulePage, { api, snapshot, active: true, sidebarShown: true, divider: null, location, onLocation: setLocation, onCreateConversation: openConversation, onOccurrence() {}, onNavigateMessage() {} })
+    return h(SchedulePage, { taskWorkspace: { onContext() {}, onMaterials() {}, renderChat: () => null }, api, snapshot, active: true, sidebarShown: true, divider: null, location, onLocation: setLocation, onCreateConversation: openConversation, onOccurrence() {}, onNavigateMessage() {} })
   }
   await act(async () => root.render(h(Page)))
-  await act(async () => button('新建定时任务').click())
+  await act(async () => button('新建任务').click())
   await act(async () => [...document.querySelectorAll<HTMLElement>('[role=menuitem]')].find(item => item.textContent === '对话创建')!.click())
   expect(openConversation).toHaveBeenCalledOnce()
   expect(document.querySelector('[role=dialog]')).toBeNull()
   expect(host.querySelector('.schedule-assistant-chat')).toBeNull()
-  expect(request.mock.calls.every(([method]) => ['listAutomations', 'getScheduleList'].includes(method))).toBe(true)
+  expect(request.mock.calls.every(([method]) => ['listAutomations', 'getScheduleList', 'listAutomationHistory'].includes(method))).toBe(true)
+})
+
+
+test('ordinary tasks default to manual execution and do not submit or start from opening the editor', async () => {
+  const f = await fixture({ kind: 'task', key: 'new-task' })
+  expect(document.querySelector('[role=dialog]')?.textContent).toContain('新建任务')
+  expect(document.querySelector('[aria-label="频率"]')?.textContent).toContain('手动')
+  expect(f.request.mock.calls.find(([method]) => method === 'previewAutomation')?.[1]).toMatchObject({ frequency: 'manual' })
+  expect(f.request.mock.calls.some(([method]) => method === 'saveAutomation' || method === 'runAutomation')).toBe(false)
 })

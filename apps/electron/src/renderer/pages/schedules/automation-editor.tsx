@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 普通任务默认手动执行、独立草稿回执；保存后由用户加入员工队列。
  * [OUTPUT]: 全局编辑允许更换单员工任务的执行员工，归属与名单同次保存，沿原版本核验更新授权。
  * [OUTPUT]: Dialog复用同一表单并由外层提供标题；保存忙态同步弹窗，关闭/取消沿当前局部草稿守卫。
  * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
@@ -20,7 +21,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { MonitorEditor, newMonitorPolicy, validMonitorPolicy } from './monitor-editor'
 import { automationOwnerKey, automationOwnerLabel } from './automation-owner'
 
-export type AutomationEditorMode = 'manual' | 'assistant' | 'monitor'
+export type AutomationEditorMode = 'manual' | 'assistant' | 'monitor' | 'task'
 type Form = Omit<AutomationInput, 'id' | 'expectedRevision' | 'requestId'> & Required<Pick<AutomationInput, 'taskKind' | 'conversationPolicy' | 'notificationPolicy'>>
 type Props = { api: DesktopApi; snapshot: Snapshot; id?: string; owner?: AutomationOwner; mode?: AutomationEditorMode; hideTitle?: boolean; onBusyChange?(busy: boolean): void; onClose(): void; onSaved(value: AutomationDefinition, created: boolean): void }
 const pendingPrefix = 'boai:automation:pending-creation'
@@ -56,7 +57,7 @@ export function AutomationEditorTab(props: Props) {
   return <AutomationEditor {...props} definition={loaded.definition} />
 }
 function AutomationEditor({ api, snapshot, definition, owner, mode = 'manual', hideTitle, onBusyChange, onClose, onSaved }: Props & { definition?: AutomationDefinition }) {
-  const pendingKey = pendingPrefix + (owner ? ':' + automationOwnerKey(owner) : '')
+  const pendingKey = pendingPrefix + (owner ? ':' + automationOwnerKey(owner) : '') + (mode === 'task' ? ':task' : '')
   const [pending] = useState(() => definition ? undefined : pendingCreation(pendingKey))
   const [draftId] = useState(() => pending?.requestId ?? crypto.randomUUID())
   const submitting = useRef(false)
@@ -65,7 +66,7 @@ function AutomationEditor({ api, snapshot, definition, owner, mode = 'manual', h
     owner: definition?.owner ?? owner, collaboration: definition?.collaboration,
     taskKind: definition?.taskKind ?? (mode === 'monitor' ? 'monitor' : 'report'), monitor: definition?.monitor ?? (mode === 'monitor' ? newMonitorPolicy() : undefined),
     conversationPolicy: definition?.conversationPolicy ?? (mode === 'monitor' ? 'existing-conversation' : 'new-conversation'), conversationId: definition?.conversationId, employeeIds: definition?.employeeIds ?? (owner?.kind === 'employee' ? [owner.employeeId] : undefined),
-    frequency: definition?.frequency ?? 'daily', time: definition?.time ?? '09:00', weekday: definition?.weekday ?? 1,
+    frequency: definition?.frequency ?? (mode === 'task' ? 'manual' : 'daily'), time: definition?.time ?? '09:00', weekday: definition?.weekday ?? 1,
     daysOfWeek: definition?.frequency === 'weekly' ? definition.daysOfWeek ?? [definition.weekday] : [0, 1, 2, 3, 4, 5, 6],
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, enabled: definition?.enabled ?? true, notify: definition?.notify ?? true, notificationPolicy: definition?.notificationPolicy ?? (definition ? definition.notify ? 'all_results' : 'muted' : 'important_only') }))
   const [monitorOpen, setMonitorOpen] = useState(mode === 'monitor')
@@ -114,10 +115,10 @@ function AutomationEditor({ api, snapshot, definition, owner, mode = 'manual', h
   const valid = !!form.name.trim() && !!form.prompt.trim() && validTarget && (form.taskKind !== 'monitor' || validMonitorPolicy(form.monitor)) && (form.frequency === 'manual' || preview.nextTimes.length > 0) && !preview.error && preview.timezone === form.timezone && !preview.pending
   const finish = (value: AutomationDefinition) => { if (!definition) localStorage.removeItem(pendingKey); setUnknown(false); version.current = value.revision; clean(); onSaved(value, !definition); guard.saved() }
   const queryReceipt = async () => { const receipt = await api.request('getAutomationCreation', { requestId: draftId }); if (receipt) finish(receipt); else { setUnknown(false); localStorage.removeItem(pendingKey) } }
-  const targetLabel = form.owner ? `${automationOwnerLabel(form.owner, snapshot)} · ${form.conversationPolicy === 'new-conversation' ? '独立任务聊天' : '原聊天'}` : form.conversationPolicy === 'new-conversation' ? `新任务聊天 · ${snapshot.agents.find(a => a.id === form.employeeIds?.[0])?.name ?? '选择员工'}` : conversation?.title ?? (form.conversationId ? '聊天已不可用' : '指定聊天')
+  const targetLabel = form.owner ? `${automationOwnerLabel(form.owner, snapshot)} · ${form.conversationPolicy === 'new-conversation' ? '独立任务上下文' : '原聊天'}` : form.conversationPolicy === 'new-conversation' ? `任务上下文 · ${snapshot.agents.find(a => a.id === form.employeeIds?.[0])?.name ?? '选择员工'}` : conversation?.title ?? (form.conversationId ? '聊天已不可用' : '指定聊天')
   const multipleWeekdays = rule === 'weekly' && (form.daysOfWeek?.length ?? 0) > 1
   const singleEmployeeTarget = form.conversationPolicy === 'new-conversation' && !form.collaboration && form.taskKind !== 'monitor'
-  return <EditorFrame title={hideTitle ? undefined : definition ? '编辑定时任务' : '新建定时任务'} footer={<>
+  return <EditorFrame title={hideTitle ? undefined : definition ? '编辑任务' : mode === 'task' ? '新建任务' : '新建定时任务'} footer={<>
     <Button variant="secondary" disabled={busy} onClick={() => guard.navigate(onClose)}>{definition ? '关闭' : '取消'}</Button>
     <Button type="submit" form={formId} disabled={busy || !valid || unknown}>{busy ? '正在保存…' : definition ? '保存修改' : '创建'}</Button>
   </>}>
@@ -157,6 +158,7 @@ function AutomationEditor({ api, snapshot, definition, owner, mode = 'manual', h
         {preview.error && <Banner>{preview.error}</Banner>}
         {profileError && <Banner>本机连接读取失败：{profileError}</Banner>}
         {!singleEmployeeTarget && <div className="automation-setting"><span>运行于</span><span>{targetLabel}</span></div>}
+        {form.taskKind !== 'monitor' && form.conversationPolicy === 'existing-conversation' && memberIds.length === 1 && <Button variant="secondary" onClick={() => change({ conversationPolicy: 'new-conversation', conversationId: undefined, employeeIds: memberIds, owner: { kind: 'employee', employeeId: memberIds[0] } })}>改为独立任务上下文</Button>}
       </fieldset>
     </form>
   </EditorFrame>
