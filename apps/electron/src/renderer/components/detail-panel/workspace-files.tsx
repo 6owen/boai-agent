@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 2026-10-29 workspace-home仅显示已有授权目录；workspace-files接官方树和原预览；tabs-state区分员工workspace标签。
+ * [OUTPUT]: 2026-10-29 官方文件浏览器填满右侧面板，内部左预览右树；目录范围保持。
  * [INPUT]: Employee workspace or exact saved directory grants and official plugin availability.
  * [OUTPUT]: File tree and existing inline previews in the shared right panel; scoped read/open only.
  * [POS]: BOAI host for @boai/file-explorer-plugin; delivered conversation files remain separate.
@@ -57,7 +57,7 @@ export function WorkspaceFiles({ api, active, agent, conversationId, location, o
     const name = path.split('/').pop()!
     return <FilePreview key={path} name={name} active={active} {...('text' in content ? { file: content } : content.kind === 'image' ? { image: { url: content.url } } : { binary: content })} />
   }
-  return <div className="flex h-full min-h-0 min-w-0 flex-col">
+  return <div className="workspace-files flex h-full min-h-0 min-w-0 flex-col">
     {(onHome || location === 'authorized') && <div className="flex min-w-0 items-center gap-2 p-2">
       {onHome && <Button variant="ghost" size="icon-sm" aria-label="返回开始" onClick={onHome}><span className="i-solar-home-2-linear size-4" /></Button>}
       {location === 'authorized' && <SelectField className="min-w-0 flex-1" aria-label="授权目录" value={directory} options={grants.map(grant => ({ value: grant.path, label: `${grant.path.split(/[\\/]/).filter(Boolean).pop()} · ${grant.path}` }))} onValueChange={setSelected} />}

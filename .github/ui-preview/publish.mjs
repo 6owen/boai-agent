@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: File explorer plugin component/style changes trigger automatic UI recording.
  * [INPUT]: PR diff, isolated BOAI Electron and DeepSeek planning configuration.
  * [OUTPUT]: Screenshots and native GitHub video attachments in the PR description; upload failures stay visible.
  * [POS]: UI preview; upstream yetone/magpie@396e0e463805dd5ded971ade37ded08a52512ae5 (MIT).
@@ -31,8 +32,8 @@ const repo = process.env.GITHUB_REPOSITORY;
 const pr = Number(process.env.PR);
 const token = process.env.GITHUB_TOKEN;
 const runURL = process.env.RUN_URL || "";
-// What counts as BOAI UI: renderer, shared UI/tokens and app icons.
-export const isUiFile = (f) => /^(apps\/electron\/src\/renderer\/|packages\/(ui|tokens)\/|resources\/app-icons\/)/.test(f) || /^(vite|tailwind)\.config\./.test(f);
+// What counts as BOAI UI: renderer, shared UI/tokens, explorer UI and app icons.
+export const isUiFile = (f) => /^(apps\/electron\/src\/renderer\/|packages\/(ui|tokens)\/|resources\/app-icons\/)/.test(f) || /^packages\/file-explorer-plugin\/src\/explorer\.(tsx|css)$/.test(f) || /^(vite|tailwind)\.config\./.test(f);
 const UI = isUiFile;
 
 async function gh(p, init = {}) {

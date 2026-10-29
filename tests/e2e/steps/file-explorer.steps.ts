@@ -1,11 +1,11 @@
 /*
  * [OUTPUT]: 2026-10-29 文件浏览器入口/预览/启停与目录撤权回归，原终端生命周期断言保持。
  * [INPUT]: Isolated Electron profile, actual directory grants and real preview source files.
- * [OUTPUT]: UI entry/scope/tree/preview and plugin restart acceptance; no model or personal data.
+ * [OUTPUT]: Right-panel left-preview/right-tree geometry at wide/narrow widths, scope and plugin restart acceptance.
  * [POS]: Official file explorer BDD; runtime assertions use original public IPC only.
  * [PROTOCOL]: Update Header and owning .folder.md when changed.
  */
-import { expect } from '@playwright/test'
+import { expect, type Locator } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -14,6 +14,19 @@ import type { Desktop } from '../support/desktop'
 
 const { Given, When, Then } = createBdd(test)
 const groupTitle = '文件浏览器验收群'
+async function previewLeftTreeRight(panel: Locator) {
+  await expect(panel.getByRole('region', { name: '文件内容预览', exact: true })).toBeVisible()
+  await expect.poll(() => panel.evaluate(node => {
+    const preview = node.querySelector('.boai-explorer-preview')!.getBoundingClientRect()
+    const tree = node.querySelector('[role=tree]')!.getBoundingClientRect()
+    const detail = node.closest('.detail-panel')!.getBoundingClientRect()
+    return preview.width > tree.width && preview.right <= tree.left + 1
+      && Math.abs(preview.top - tree.top) < 1 && Math.abs(preview.height - tree.height) < 1
+      && preview.left >= detail.left && tree.right <= detail.right + 1
+      && tree.bottom >= detail.bottom - 8
+      && node.scrollWidth <= node.clientWidth + 1
+  })).toBe(true)
+}
 async function employee(runtime: Desktop) {
   return runtime.page.evaluate(async () => (await window.boai.request('snapshot', undefined)).agents.find(agent => agent.id === 'researcher')!)
 }
@@ -79,6 +92,7 @@ Then('右侧文件树展示员工工作区并能预览其中的文件', async ({
   await panel.getByRole('treeitem', { name: 'employee-note.md', exact: true }).click()
   await expect(panel.getByRole('heading', { name: '员工工作区文件', exact: true })).toBeVisible()
   await expect(panel.getByRole('tree')).toBeVisible()
+  await previewLeftTreeRight(panel)
   await test.info().attach('员工配置工作区', { body: await runtime.page.screenshot(), contentType: 'image/png' })
 })
 When('我在群会话开始页选择员工授权目录', async ({ runtime }) => {
@@ -104,16 +118,24 @@ Then('文件树展示授权项目并支持目录切换与文件预览', async ({
   await panel.getByRole('button', { name: '显示隐藏文件', exact: true }).click()
   await expect(panel.getByRole('treeitem', { name: '.hidden.txt', exact: true })).toBeVisible()
   await panel.getByRole('treeitem', { name: 'note.md', exact: true }).click()
+  const resize = page.getByRole('separator', { name: '调整详情宽度', exact: true })
+  for (let i = 0; i < 8; i++) await resize.press('Shift+ArrowLeft')
+  await expect.poll(async () => (await panel.boundingBox())!.width).toBeGreaterThan(480)
+  await previewLeftTreeRight(panel)
   await test.info().attach('授权目录文件树与预览', { body: await page.screenshot(), contentType: 'image/png' })
   await page.getByRole('combobox', { name: '授权目录', exact: true }).click()
   await page.getByRole('option', { name: /another-project$/ }).click()
   await panel.getByRole('treeitem', { name: 'other.txt', exact: true }).click()
   await expect(panel.locator('.boai-explorer-preview')).toContainText('这是第二个授权目录。')
-  // Shared panel adapts to a narrow viewport without losing the tree or preview.
+  // Narrow detail panels keep preview left/tree right instead of stacking.
+  await resize.press('Home')
   await page.setViewportSize({ width: 1000, height: 800 })
+  await expect.poll(async () => (await panel.boundingBox())!.width).toBeLessThanOrEqual(480)
   await expect(panel.getByRole('tree')).toBeVisible()
   await expect(panel.locator('.boai-explorer-preview')).toBeVisible()
   expect(await panel.evaluate(node => node.scrollWidth <= node.clientWidth + 1)).toBe(true)
+  await previewLeftTreeRight(panel)
+  await test.info().attach('窄面板左预览右文件树', { body: await page.screenshot(), contentType: 'image/png' })
 })
 When('我撤回这位员工的目录授权', async ({ runtime }) => { await grants(runtime, []) })
 Then('授权目录入口和已打开面板关闭且业务文件保留', async ({ runtime }) => {
