@@ -3,6 +3,7 @@ name: boai-dev-workflow
 description: BOAI 共享开发流程；沿 Magpie Test 和 DeepSeek UI preview 完成交付。
 ---
 <!--
+[OUTPUT]: 2026-10-29新增boai-release共享技能，覆盖bumpp、本机候选/Release、下载与自动更新；普通开发转入发布须符合本次请求。
 [OUTPUT]: 2026-10-29用户明确调用git cpf时允许临时管理员检查例外，恢复记录和实际合并核验必需；普通交付保持。
 [OUTPUT]: 2026-10-29 PR录屏采用原生视频附件，独立发布凭据、缺配置及失败不得称在线播放。
 [INPUT]: 当前用户任务、独立worktree及Magpie Test/UI preview源码。
@@ -49,3 +50,7 @@ description: BOAI 共享开发流程；沿 Magpie Test 和 DeepSeek UI preview �
 - 按AGENTS.md“worktree不遗留”收尾，包括subagent派生目录：最终提交实际合入main，或提交本任务改动并核对`archive/<worktree名>`归档标签后，移除worktree及本地任务分支，并清理经核实的专用cargo target。核对进程退出、CWD移出、未跟踪/ignored数据迁出及共享目录边界；编排会话负责子worktree。确需保留时，最终回复必须点名路径与原因。自动合并仍待检查时可先按归档路径回收本地worktree，不冒称已合并。
 
 现行上游与必要适配见 `.github/ui-preview/README.md`。版本Tag、Release、安装包发布不属于日常交付；本地`archive/*`标签仅用于任务收尾存档。
+
+## 本机版本发布
+
+用户要求升版本、准备安装包、发布Release，或查询下载/自动更新方式时，使用[boai-release](../boai-release/SKILL.md)。它复用bumpp和仓库`release:*`命令，负责main Test核对、本机打包/冒烟及Sparkle更新资产。普通开发、PR合并和`git cp`/`git cpf`不自动触发版本发布；用户已明确要求发版时沿该技能完成，不重复请求确认。

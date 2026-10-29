@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-29新增boai-release共享技能，覆盖bumpp、本机候选/Release、下载与自动更新；普通开发转入发布须符合本次请求。
 [OUTPUT]: 2026-10-29个人应用更新与本机发布接线；版本/更新/产物验证范围见22组11及03。
 [OUTPUT]: 2026-10-29 官方文件浏览器包、目录入口及相关构建/测试合同；JSON例外package.json增加包依赖及lint范围。
 [OUTPUT]: 根目录UI_TEST_CI.md提供日常UI修改、PR检查、合并与worktree收尾用法入口。
@@ -98,7 +99,7 @@ pnpm dev
 - [文档入口](ai-docs/README.md) · [功能规格](ai-docs/spec/README.md)
 - [BOAI CLI](ai-docs/spec/21.BOAI-CLI/README.md) · [外部插件开发](ai-docs/spec/26.Workspace工程结构重构/04-外部插件开发与接入.md)
 - [个人 macOS 更新与本机发布](ai-docs/spec/22.开发自动化与持续测试/11-个人应用更新与发布.md)：bumpp 管版本，Sparkle 后台下载、退出安装与差分更新。
-- [协作规约](AGENTS.md) · [开发流程](.agents/skills/boai-dev-workflow/SKILL.md) · [UI 测试与 CI 用法](UI_TEST_CI.md)
+- [协作规约](AGENTS.md) · [开发流程](.agents/skills/boai-dev-workflow/SKILL.md) · [发布技能](.agents/skills/boai-release/SKILL.md) · [UI 测试与 CI 用法](UI_TEST_CI.md)
 
 <details>
 <summary>源码结构与常用命令</summary>
