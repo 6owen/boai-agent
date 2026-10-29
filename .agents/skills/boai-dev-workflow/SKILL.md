@@ -3,6 +3,7 @@ name: boai-dev-workflow
 description: BOAI 共享开发流程；沿 Magpie Test 和 DeepSeek UI preview 完成交付。
 ---
 <!--
+[OUTPUT]: 2026-10-29 PR录屏采用原生视频附件，独立发布凭据、缺配置及失败不得称在线播放。
 [INPUT]: 当前用户任务、独立worktree及Magpie Test/UI preview源码。
 [OUTPUT]: 工程测试与自动界面预览；撤销固定截图基准更新作为PR前置。
 [OUTPUT]: 任务worktree完成即回收；实际合并或最终提交archive存档二选一，编排会话负责子worktree。
@@ -34,7 +35,7 @@ description: BOAI 共享开发流程；沿 Magpie Test 和 DeepSeek UI preview �
 
 - `Test` 沿 Magpie 的 PR/main/manual 触发与并发取消方式，用BOAI现有 typecheck、lint、build、Vitest 命令；CLI集成测试依赖dist/cli，因此先构建再测试。现阶段在已支持的macOS执行；Required checks只汇总工程测试结果，保持原分支保护名称。
 - `UI preview` 沿上游 detect → record → publish：UI文件变更或ui-preview标签触发；DeepSeek读取diff及真实页面，规划操作、截图，交互时录屏，在PR描述固定区域更新预览。已有DeepSeek配置通过ui-preview environment提供。
-- 执行PR代码的record任务没有仓库写权限；有写权限的publish任务不运行PR代码。预览是运行画面与规划说明，不冒充工程测试通过。
+- 执行PR代码的record任务没有仓库写权限；有写权限的publish任务不运行PR代码。视频通过固定版本GitHub CLI上传为PR原生附件，上传令牌仅存于独立ui-preview-publish环境；不得传给record或放进仓库级secret。缺配置或上传失败明确报错并保留下载，不能把raw下载称在线播放。预览不冒充工程测试通过。
 - 不要求用户先在本地确认效果；不运行基准candidate/accept/update，不以新旧PNG不同阻止正常UI开发。旧本地UI回归工具、测试源码及历史结果保留为按需工具，不属于PR门禁。
 - 没有UI变化时，preview检测后跳过录制；Test正常执行。不为通过CI修改产品UI、删除产品行为测试或伪造模型调用。
 - 用户明确要求执行试验时跟进本次实际结果；失败先定位再有针对性修复，不盲目重跑。

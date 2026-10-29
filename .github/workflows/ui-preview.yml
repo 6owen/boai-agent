@@ -1,5 +1,5 @@
 # [INPUT]: PR UI changes and DeepSeek planning credentials.
-# [OUTPUT]: Magpie detect/record/publish previews; does not update screenshot baselines.
+# [OUTPUT]: Magpie previews with native video attachments; upload credential isolated to publish.
 # [POS]: Upstream 396e0e463805dd5ded971ade37ded08a52512ae5 adapted to BOAI Electron.
 # [PROTOCOL]: Update .github/workflows/.folder.md and .github/ui-preview/README.md.
 name: UI preview
@@ -140,6 +140,7 @@ jobs:
     needs: [detect, record]
     if: always() && needs.detect.outputs.ui == 'true'
     runs-on: ubuntu-latest
+    environment: ui-preview-publish
     permissions:
       contents: write
       pull-requests: write
@@ -154,8 +155,21 @@ jobs:
         with:
           name: ui-preview
           path: out
+      - name: GitHub CLI with video attachment support
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh_dir="$RUNNER_TEMP/boai-gh"
+          mkdir -p "$gh_dir"
+          curl --fail --silent --show-error --location \
+            https://github.com/cli/cli/releases/download/v2.103.3/gh_2.103.3_linux_amd64.tar.gz \
+            --output "$gh_dir/gh.tar.gz"
+          printf '%s  %s\n' 4c806978ffce1cec70853302a56d70ac6da4f19bae7adca4e1a8ab00633dd91d "$gh_dir/gh.tar.gz" | sha256sum --check
+          tar -xzf "$gh_dir/gh.tar.gz" -C "$gh_dir"
+          echo "$gh_dir/gh_2.103.3_linux_amd64/bin" >> "$GITHUB_PATH"
       - env:
           GITHUB_TOKEN: ${{ github.token }}
+          UI_PREVIEW_UPLOAD_TOKEN: ${{ secrets.UI_PREVIEW_UPLOAD_TOKEN }}
           PR: ${{ needs.detect.outputs.number }}
           SHA: ${{ needs.detect.outputs.sha }}
           OUT_DIR: out
