@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-30 回归更新为Mastra官方记忆/原生归属合同；保留来源、调用预算和业务发布断言。
  * [OUTPUT]: 真实绑定脚本目录/相对文件清单与伴随文件变化、撤权检查，读取不执行脚本。
  * [OUTPUT]: 自我新增技能不中断回复，当前轮保持冻结能力、次轮加载；后续撤销或其他配置变更仍终止旧运行。
  * [OUTPUT]: 员工表情实际消息身份、去重、跨会话/清理拒绝与本机目录回归。
@@ -167,7 +168,9 @@ it('native ordinary conversations expose the same bound skill loader without cre
   await writeFile(join(skill, 'SKILL.md'), '---\nname: sample\ndescription: sample\n---\nRead before acting.')
   const ctx = { agent: { id: 'bobo', systemRole: 'core', skillIds: ['s'], knowledgeIds: [] }, conversation: { id: 'c', kind: 'direct' }, resources: [{ id: 's', name: 'sample', kind: 'skill', path: skill }], messages: [], signal: new AbortController().signal, onTool: async () => {}, recallMemory: async () => ({ entries: [], epoch: 1, namespace: 'employee:bobo' }) } as unknown as EngineContext
   const product = createNativeProducts(ctx)
-  expect(product.tools.map(t => t.name)).toEqual(expect.arrayContaining(['list_skills', 'read_skill', 'search_memory']))
+  expect(product.tools.map(t => t.name)).toEqual(expect.arrayContaining(['list_skills', 'read_skill']))
+  expect(product.tools.map(t => t.name)).not.toContain('search_memory')
+  expect(product.tools.map(t => t.name)).not.toContain('remember_memory')
   expect(await product.tools.find(t => t.name === 'read_skill')!.execute({ resourceId: 's' }, 'read-bound')).toMatchObject({ content: expect.stringContaining('Read before acting'), directory: skill,
     files: [expect.objectContaining({ path: 'SKILL.md' })] })
   await product.dispose()

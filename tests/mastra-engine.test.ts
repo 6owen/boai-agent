@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-30 回归更新为Mastra官方记忆/原生归属合同；保留来源、调用预算和业务发布断言。
  * [OUTPUT]: 独立浏览器插件经实际SDK发现/调用，原生产品桥保留同一工具结果及图片部件。
  * [OUTPUT]: 浏览器详情显示实际命令，后续真实SDK请求仍有页面原文，不注入omitted占位。
  * [OUTPUT]: Task SDK请求临时失败最多重试两次，逐请求预算/用量归属、取消/鉴权及已执行工具不重放。
@@ -54,6 +55,7 @@ import path from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { RequestContext } from '@mastra/core/request-context'
 import { noopObserve } from '@mastra/core/tools'
+import { memoryResourceId } from '../packages/runtime/src/adapters/mastra/conversation-memory'
 import { MastraEngine } from '../packages/runtime/src/adapters/mastra/engine'
 import { createTaskRuntime } from '../packages/runtime/src/adapters/mastra/task-runtime'
 import { thinkingProviderOptions, decisionProviderOptions } from '../packages/runtime/src/adapters/mastra/model-config'
@@ -163,6 +165,7 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
       bootstrap: { instructions: '原指令及记忆', baseInstructions: '只用获准记忆', memoryProjection: '长期偏好：简短回复；来源 old-user', hashes: {}, configVersion: 1, memoryVersion: 1, policyVersion: 2, sources: [] },
     })
     const engine = new MastraEngine({ memoryPath: path.join(f.directory, 'memory', 'bobo.db') })
+    f.ctx.memorySources = async () => ({ resourceId: memoryResourceId(f.ctx.agent.id), threads: [{ conversationId: f.ctx.conversation.id, title: f.ctx.conversation.title, messages: f.ctx.messages }], legacy: f.ctx.messages.some(message => message.id === 'old-user') ? [{ id: 'legacy-pref', content: '长期偏好：简短回复；来源 old-user' }] : [] })
     await engine.run(f.ctx)
     const first = allMessageText(model.requests[0]!)
     expect(first).toContain('历史偏好：简短回复')
@@ -178,7 +181,7 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     expect(second).not.toContain('我会简短回答')
     expect(second).not.toContain('old-user')
     expect(second).toContain('今天讨论什么？')
-    expect(second).toContain('尚无相关记忆。')
+    expect(second).not.toContain('长期偏好：简短回复')
   })
   it('runs a configured behavior through the real SDK tool loop with bounded calls and no public deltas', async () => {
     const result = { decision: 'apply', reason: '已核对真实回执', message: '计划已保存。', sourceMessageIds: ['message-1'] }
@@ -902,12 +905,12 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     expect(deltas.length).toBeGreaterThan(1)
     expect(mock.headers).toEqual(['Bearer fixture-secret'])
     expect(mock.requests[0].model).toBe('user-model-override')
-    expect(mock.requests[0].messages.filter(message => message.role === 'assistant').map(message => message.content)).toContain('My own answer')
+    expect(mock.requests[0].messages.find(message => JSON.stringify(message.content).includes('My own answer'))?.role).toBe('user')
     const projected = mock.requests[0].messages.find(message => JSON.stringify(message.content).includes('Bob found a source'))
     expect(projected?.role).toBe('user')
     expect(JSON.stringify(projected?.content)).toContain('Bob')
     expect(allMessageText(mock.requests[0])).not.toMatch(/Unrelated secret|Partial should not replay/)
-    expect(mock.requests[0].tools ?? []).toHaveLength(0)
+    expect(mock.requests[0].tools?.map(tool => tool.function.name)).toEqual(['recall'])
   })
 
   it('offers lazy bound-skill readers in chat without executing resources and uses the host bootstrap exactly once', async () => {
@@ -919,7 +922,7 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     ctx.resources = [{ id: 'missing-skill', kind: 'skill', name: 'Unavailable resource', description: '', path: '/no-such-skill', createdAt: '' }]
     ctx.bootstrap = { instructions: 'HOST_SYSTEM_FILE_RULE', hashes: {}, configVersion: 1, memoryVersion: 0, policyVersion: 1, sources: [] }
     await new MastraEngine().run(ctx)
-    expect(mock.requests[0].tools?.map((tool: any) => tool.function.name).sort()).toEqual(['list_skills', 'read_skill'])
+    expect(mock.requests[0].tools?.map((tool: any) => tool.function.name).sort()).toEqual(['list_skills', 'read_skill', 'recall'])
     expect(allMessageText(mock.requests[0]).match(/HOST_SYSTEM_FILE_RULE/g)).toHaveLength(1)
     expect(allMessageText(mock.requests[0])).not.toContain('LEGACY_INSTRUCTIONS_MUST_NOT_REPEAT')
     expect(allMessageText(mock.requests[0])).not.toContain('Unavailable resource')
@@ -928,26 +931,29 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     await expect(readdir(ctx.workspace!.root)).rejects.toThrow()
   })
 
-  it('runs memory tools in ordinary chat through the actual SDK and keeps tool prefaces out of the final reply', async () => {
-    const mock = await endpoint([{ name: 'remember_memory', args: { sourceMessageId: 'message-1', quote: '示例项目叫雾岛' }, preface: '准备保存' }, { name: 'search_memory', args: { query: '雾岛' } }, '已经记录，项目叫雾岛。'])
-    const { ctx, deltas, tools } = await context(mock.url, { responseKind: 'chat' })
-    ctx.rememberMemory = vi.fn(async () => ({ retained: true, id: 'memory-1', version: 1 }))
+  it('uses Mastra recall in ordinary chat and never invokes legacy memory operations', async () => {
+    const mock = await endpoint([{ name: 'recall', args: { mode: 'messages', detail: 'high' }, preface: '查看记忆' }, '项目叫雾岛。'])
+    const { ctx, deltas, tools } = await context(mock.url, { responseKind: 'chat', triggerMessageId: 'message-2', messages: [message('示例项目叫雾岛', 1), message('项目叫什么？', 2)] })
+    ctx.rememberMemory = vi.fn(async () => ({ retained: true }))
     ctx.recallMemory = vi.fn(async () => ({ entries: [], epoch: 1, namespace: 'employee:bobo' }))
     await new MastraEngine().run(ctx)
-    expect(ctx.rememberMemory).toHaveBeenCalledOnce()
-    expect(ctx.recallMemory).toHaveBeenCalledWith('雾岛')
-    expect(deltas.join('')).toBe('已经记录，项目叫雾岛。')
-    expect(tools.filter(item => item.status === 'completed' && item.name !== 'task_step').map(item => item.name)).toEqual(['remember_memory', 'search_memory'])
+    expect(ctx.rememberMemory).not.toHaveBeenCalled()
+    expect(ctx.recallMemory).not.toHaveBeenCalled()
+    expect(mock.requests[0].tools?.map(tool => tool.function.name)).toEqual(['recall'])
+    expect(toolResultText(mock.requests[1])).toContain('雾岛')
+    expect(deltas.join('')).toBe('项目叫雾岛。')
+    expect(tools.filter(item => item.status === 'completed' && item.name !== 'task_step').map(item => item.name)).toEqual(['recall'])
   })
 
-  it('bounds complete history messages while retaining the root request and exact newest sequence', async () => {
+  it('bounds private decision history but rejects an execution turn that cannot fit intact', async () => {
     const mock = await endpoint(['{"action":"pass","observedThroughSequence":120}', 'A brief answer.'])
     const { ctx } = await context(mock.url, { responseKind: 'chat' })
     ctx.messages = [message('CURRENT_ROOT_REQUEST', 1), ...Array.from({ length: 119 }, (_, index) => message(`${index === 118 ? 'LATEST_EVENT' : 'HISTORY_' + index}: ${'x'.repeat(1000)}`, index + 2, { senderType: 'agent', senderId: index % 2 ? 'agent-a' : 'agent-b' }))]
     ctx.triggerMessageId = 'message-1'
     const engine = new MastraEngine()
     expect(await engine.decide(ctx)).toMatchObject({ action: 'pass', observedThroughSequence: 120 })
-    await engine.run(ctx)
+    await expect(engine.run(ctx)).rejects.toThrow('当前必要输入超过上下文容量')
+    expect(mock.requests).toHaveLength(1)
     for (const [index, request] of mock.requests.entries()) {
       expect(allMessageText(request)).toContain('CURRENT_ROOT_REQUEST')
       expect(allMessageText(request)).toContain('LATEST_EVENT')
@@ -964,7 +970,7 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     const { ctx } = await context(mock.url, { responseKind: 'chat' })
     ctx.messages = [message('x'.repeat(48_001))]
     ctx.triggerMessageId = 'message-1'
-    await expect(new MastraEngine().run(ctx)).rejects.toThrow('上下文长度限制')
+    await expect(new MastraEngine().run(ctx)).rejects.toThrow('当前必要输入超过上下文容量')
     expect(mock.requests).toHaveLength(0)
   })
 
@@ -1246,7 +1252,7 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     f.ctx.callDataSource = async input => { expect(input.sourceId).toBe(sourceId); return session.call(input.tool, input.arguments, f.ctx.signal) }
     await new MastraEngine().run(f.ctx)
     expect(model.requests).toHaveLength(4); expect(f.additionalCalls).toHaveLength(3)
-    expect(model.requests[0].tools?.map(tool => tool.function.name).sort()).toEqual(['call_data_source', 'inspect_data_source'])
+    expect(model.requests[0].tools?.map(tool => tool.function.name).sort()).toEqual(['call_data_source', 'inspect_data_source', 'recall'])
     expect(toolResultText(model.requests[2])).toContain(resultUrl)
     expect(toolResultText(model.requests[3])).toContain(pageText)
     expect(mcp.calls.map(call => call.name)).toEqual(['tavily_search', 'tavily_extract'])
@@ -1277,7 +1283,7 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     f.ctx.callDataSource = async input => { assertSearchSelection(f.ctx, ref); return session.call(input.tool, input.arguments, f.ctx.signal) }
     await new MastraEngine().run(f.ctx)
     expect(model.requests).toHaveLength(5); expect(f.additionalCalls).toHaveLength(4)
-    expect(model.requests[0].tools?.map(tool => tool.function.name).sort()).toEqual(['call_data_source', 'inspect_data_source', 'select_web_search'])
+    expect(model.requests[0].tools?.map(tool => tool.function.name).sort()).toEqual(['call_data_source', 'inspect_data_source', 'recall', 'select_web_search'])
     expect(toolResultText(model.requests[1])).toContain(sourceId)
     expect(toolResultText(model.requests[4])).toContain(pageText)
     expect(mcp.calls.map(call => call.name)).toEqual(['tavily_search', 'tavily_extract'])
@@ -1293,7 +1299,7 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     const model = await endpoint(['请提供要查询的主题。']), inspect = vi.fn(), call = vi.fn()
     const f = await context(model.url, { responseKind: 'chat', inspectDataSource: inspect, callDataSource: call, dataSources: [{ id: randomUUID(), name: 'Source', description: '', type: 'mcp', revision: 1, ...(kind !== 'no-web-source' ? { webSearchProvider: 'tavily' as const } : {}) }], ...(kind !== 'no-web-source' ? { decision: { action: kind, observedThroughSequence: 1 } } : {}) })
     await new MastraEngine().run(f.ctx)
-    expect(model.requests).toHaveLength(1); expect(model.requests[0].tools?.length ?? 0).toBe(0)
+    expect(model.requests).toHaveLength(1); expect(model.requests[0].tools?.map(tool => tool.function.name) ?? []).toEqual(kind === 'no-web-source' ? ['recall'] : [])
     expect(inspect).not.toHaveBeenCalled(); expect(call).not.toHaveBeenCalled(); expect(f.ctx.work).toBeUndefined()
   })
 
@@ -1303,11 +1309,11 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     const call = vi.fn(async () => ({ content: 'Explicit source fact' }))
     const f = await context(model.url, { responseKind: 'chat', triggerMessageId: 'message-1', messages: [message('读取所选资料', 1, { composerReferences: [reference] })], inspectDataSource: vi.fn(), callDataSource: call, dataSources: [{ id: sourceId, name: 'Files', description: '', type: 'local', revision: 1 }] })
     await new MastraEngine().run(f.ctx)
-    expect(model.requests[0].tools?.map(tool => tool.function.name)).toEqual(['inspect_data_source', 'call_data_source'])
+    expect(model.requests[0].tools?.map(tool => tool.function.name)).toEqual(['inspect_data_source', 'call_data_source', 'recall'])
     expect(call).toHaveBeenCalledTimes(1); expect(toolResultText(model.requests[1])).toContain('Explicit source fact')
     f.ctx.messages.push(message('谢谢', 2)); f.ctx.triggerMessageId = 'message-2'
     await new MastraEngine().run(f.ctx)
-    expect(model.requests[2].tools?.length ?? 0).toBe(0); expect(call).toHaveBeenCalledTimes(1)
+    expect(model.requests[2].tools?.map(tool => tool.function.name)).toEqual(['recall']); expect(call).toHaveBeenCalledTimes(1)
   })
 
   it('feeds an actual MCP quota error to the model as failure without a successful source event or automatic retry', async () => {
@@ -1354,7 +1360,7 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     await new MastraEngine().run(ctx)
     expect(mock.requests).toHaveLength(4)
     expect(fixture.additionalCalls).toHaveLength(3)
-    expect(mock.requests[0].tools!.map(tool => tool.function.name).sort()).toEqual(['inspect_knowledge', 'read_knowledge', 'search_knowledge'])
+    expect(mock.requests[0].tools!.map(tool => tool.function.name).sort()).toEqual(['inspect_knowledge', 'read_knowledge', 'recall', 'search_knowledge'])
     expect(toolResultText(mock.requests[1])).toContain('Launch is Friday')
     expect(toolResultText(mock.requests[2])).toContain('nextOffset')
     expect(toolResultText(mock.requests[3])).toContain('负责员工：小波')
@@ -1615,10 +1621,10 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     ctx.messages = [message('详细介绍所有工具，再追问工作素材。', 1, { turnId: 'old-turn' }), message('OLD_VERBOSE_SELF_INTRODUCTION_AND_WORK_QUESTION', 2, { turnId: 'old-turn', senderType: 'agent', senderId: 'agent-a' }), message('你们好', 3, { turnId: 'new-turn' })]
     await new MastraEngine().run(ctx)
     expect(mock.requests[0].messages.filter(message => message.role === 'assistant')).toEqual([])
-    expect(allMessageText(mock.requests[0])).toContain('HISTORICAL BACKGROUND FROM OTHER TURNS')
+    expect(allMessageText(mock.requests[0])).toContain('Historical conversation record')
     expect(allMessageText(mock.requests[0])).toContain('CURRENT TURN USER REQUEST')
     expect(allMessageText(mock.requests[0])).toContain('OLD_VERBOSE_SELF_INTRODUCTION_AND_WORK_QUESTION')
-    expect(mock.requests[0].tools ?? []).toHaveLength(0)
+    expect(mock.requests[0].tools?.map(tool => tool.function.name)).toEqual(['recall'])
     expect(deltas.join('')).toBe('你好！')
   })
 
@@ -2184,7 +2190,7 @@ it('uses source inspection and writes through the actual SDK in ordinary bobo ch
   expect(inspectDataSource).toHaveBeenCalledWith(sourceId)
   expect(callDataSource).toHaveBeenCalledWith(request)
   expect(server.requests).toHaveLength(3)
-  expect(server.requests[0].tools?.map(tool => tool.function.name)).toEqual(expect.arrayContaining(['inspect_data_source', 'call_data_source']))
+  expect(server.requests[0].tools?.map(tool => tool.function.name)).toEqual(expect.arrayContaining(['inspect_data_source', 'call_data_source', 'recall']))
   expect(JSON.stringify(server.requests[2].messages)).toContain('written')
   expect(f.deltas.join('')).toBe('笔记已保存。')
   expect(f.ctx.work).toBeUndefined()
@@ -2225,7 +2231,7 @@ it('uses both global catalog tools through the actual SDK in ordinary chat', asy
   expect(manageSkills).toHaveBeenCalledWith(skillInput)
   expect(manageDataSources).toHaveBeenCalledWith(sourceInput)
   expect(service.requests).toHaveLength(3)
-  expect(service.requests[0].tools?.map(tool => tool.function.name)).toEqual(['manage_skills', 'manage_data_sources'])
+  expect(service.requests[0].tools?.map(tool => tool.function.name)).toEqual(['manage_skills', 'manage_data_sources', 'recall'])
   expect(JSON.stringify(service.requests[2].messages)).toContain('source-example')
   expect(f.deltas.join('')).toBe('找到本地技能与数据源。')
   expect(f.additionalCalls).toHaveLength(2)
@@ -2253,7 +2259,7 @@ it('does not advertise the setup browser in ordinary chat without source managem
   const execute = vi.fn(), drain = vi.fn(async () => {})
   const f = await context(service.url, { responseKind: 'chat', work: undefined, browserSession: { execute, drain } as unknown as BrowserSession })
   await new MastraEngine().run(f.ctx)
-  expect(service.requests[0].tools ?? []).toEqual([])
+  expect(service.requests[0].tools?.map(tool => tool.function.name)).toEqual(['recall'])
   expect(execute).not.toHaveBeenCalled()
 })
 
@@ -2265,7 +2271,7 @@ it('uses the actual SDK automation tool in chat and publishes only the final rec
   await new MastraEngine().run(f.ctx)
   expect(manageAutomation).toHaveBeenCalledWith({ action: 'list', limit: 20 })
   expect(service.requests).toHaveLength(2)
-  expect(service.requests[0].tools?.map(tool => tool.function.name)).toEqual(['manage_automation'])
+  expect(service.requests[0].tools?.map(tool => tool.function.name)).toEqual(['manage_automation', 'recall'])
   expect(JSON.stringify(service.requests[1].messages)).toContain('saved-plan')
   expect(f.deltas.join('')).toBe('找到已保存的日报。')
   expect(f.additionalCalls).toHaveLength(1)

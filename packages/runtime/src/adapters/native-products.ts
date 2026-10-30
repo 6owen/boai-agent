@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-30 原生产品桥不再提供search_memory/remember_memory；其余业务工具保持。
  * [OUTPUT]: 独立AgentBrowser/BrowserViewer插件接入；上游工具、启停与运行回收保持独立。
  * [OUTPUT]: 原生浏览器工具记录完整实际命令并脱敏填写值，执行仍使用原参数；与API详情共用观察投影。
  * [OUTPUT]: PPT复用同一工具schema和惰性任务运行时；纯目录/配置不创建Work，渲染审阅沿原执行与独立模型。
@@ -30,7 +31,6 @@ import { createSelfieOperations } from '../modules/media/selfie-tools'
 import { createReactionOperations } from '../modules/conversations/reaction-tools'
 import { mcpModelContent } from '../modules/sources/mcp-media'
 import { createBoundSkillOperations } from '../modules/resources/bound-skill-tools'
-import { createMemoryOperations } from '../modules/memory/memory-tools'
 import { createStateTools } from '../modules/agent-state/state-tools'
 import { createApplicationTools, applicationObservation } from '../modules/application/application-tools'
 import { createKnowledgeOperations } from '../modules/resources/knowledge-tools'
@@ -81,7 +81,7 @@ export function createNativeProducts(context: EngineContext) {
     { name: 'wait_for_work', description: 'Wait for actual delegated work IDs/results; finish this turn after calling. BOAI resumes your native session once the specified results are ready.', schema: workWaitSchema },
     { name: 'report_work', description: 'Optionally record the disposition of a real BOAI work item. Unnecessary for ordinary chat, clarification, or after publishing a file. For answer evidence, reference MUST be a short exact substring of your final public reply: include that same text verbatim in the reply. Do not place separate prose, URLs or timestamps in reference unless they also appear verbatim in the reply. A receipt only records your declaration; delivery is checked after the final reply. After wait_for_work, finish the turn without another report. Ask users as ordinary chat messages; there is no userQuestion workflow.', schema: z.object(reportShape).strict() },
   ]
-  const applicationTools = [...createApplicationTools(context), ...createStateTools(context), ...createBoundSkillOperations(context), ...createMemoryOperations(context), ...createReactionOperations(context), ...createSelfieOperations(context)]
+  const applicationTools = [...createApplicationTools(context), ...createStateTools(context), ...createBoundSkillOperations(context), ...createReactionOperations(context), ...createSelfieOperations(context)]
   definitions.push(...describePresentationTools(context))
   if (context.selfies) definitions.push(
     { name: 'save_selfie', description: 'Save an actual owner-approved image as your private persistent appearance reference. Owner private chat only; never auto-save or invent approval. path is an existing self:/ or authorized shared:/ PNG/JPEG/WebP, max 8 MiB. The host records the current owner message; native external inputs must first be copied into this employee workspace.', schema: z.object({ path: z.string().min(1), label: z.string().trim().max(100).default('') }).strict() },

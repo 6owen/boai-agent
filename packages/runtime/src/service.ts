@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-30 API来源/旧数据迁移接官方Memory；旧自动提取与关键词召回退出，原生保留自身记忆；管理、范围、忘记、备份与计量接线。
  * [OUTPUT]: 独立AgentBrowser/BrowserViewer插件接入；上游工具、启停与运行回收保持独立。
  * [OUTPUT]: 保留的定时运行缺失原会话时返回空过程供详情展示历史元数据；无关/缺失运行身份仍拒绝。
  * [OUTPUT]: 已登记依赖等待时私有汇报schema错误沿withhold保留等待及错误原文；不发布无效正文或重放操作。
@@ -363,6 +364,7 @@ import { scheduleListChangeSchema } from '@boai/shared/domain/schedule-list'
 import { ContactListRepository, contactListChangeSchema } from './modules/employees/contact-list'
 import { ContactDeletionService } from './modules/employees/contact-deletion'
 import { MemoryRepository } from './modules/memory/memory-repository'
+import { memoryResourceId } from './adapters/mastra/conversation-memory'
 import { recallMemory } from './modules/memory/memory-recall'
 import { memoryAllowed, memoryUseScope, type MemoryAccess } from './modules/memory/memory-policy'
 import type { MemoryContextRef, MemoryObservation } from '@boai/shared/domain/memory'
@@ -1636,6 +1638,7 @@ export class AppService {
         case 'removeResource': return this.removeResource(lookupSchema.parse(input).id)
         case 'retryRun': { const value = z.object({ id, requestId: id, continuation: z.boolean().optional() }).strict().parse(input); return this.retry(value.id, value.requestId, value.continuation) }
         case 'getAgentHome': case 'readAgentFile': case 'regenerateAgentViews': case 'saveAgentFile': return this.agentFiles(method, input)
+        case 'configureMemory': return this.configureMemory(input)
         case 'getMemory': case 'saveMemory': case 'deleteMemory': case 'clearMemory': return this.memoryOperation(method, input)
         default: fail('此操作必须由桌面主进程处理')
       }
@@ -2098,18 +2101,63 @@ export class AppService {
     this.validateMemoryQuery(query)
     if (method === 'readAgentFile') return this.homes.read(agent, (value as typeof value & { name: string }).name, value.conversationId)
     const projection = value.conversationId ? await this.recallEmployeeMemory(agent, this.getConversation(value.conversationId), this.conversationMessages(value.conversationId).filter(message => message.senderType === 'user').at(-1)?.content ?? '') : await this.memory.get({ agentId: agent.id, scope: 'employee', status: 'active' })
+    if (isNativeBackend(agent.executionBackend) || this.options.engine.memoryOwner === 'mastra') projection.entries = []
     await this.homes.regenerate(agent, projection, value.conversationId, method === 'regenerateAgentViews')
     return { ...await this.homes.inspect(agent, value.conversationId), environment: await this.homes.describeEnvironment(agent, this.resources.values()) }
   }
+  private async memorySettings(agentId: string): Promise<import('@boai/shared/domain/memory').EmployeeMemorySettings> {
+    return (await this.store.load<import('@boai/shared/domain/memory').EmployeeMemorySettings>('employeeMemorySettings')).find(value => value.agentId === agentId) ?? { agentId, revision: 0 }
+  }
+  private async configureMemory(input: unknown) {
+    const value = z.object({ agentId: id, expectedRevision: z.number().int().nonnegative(), embedding: z.object({ connectionId: id, modelId: text(1000) }).strict().nullable() }).strict().parse(input)
+    const agent = this.getAgent(value.agentId)
+    if (isNativeBackend(agent.executionBackend)) fail('本机 Agent 自行管理记忆')
+    const previous = await this.memorySettings(agent.id)
+    if (previous.revision !== value.expectedRevision) fail('记忆设置已变化，请刷新后再保存')
+    if (value.embedding) {
+      const connection = this.getConnection(value.embedding.connectionId)
+      if (connection.provider === 'anthropic' || connection.gateway?.protocol === 'messages') fail('语义检索需要支持 embeddings 接口的模型连接')
+    }
+    await this.cancelWhere(run => run.agentId === agent.id && !terminal.has(run.status), '记忆检索设置已更新')
+    const settings = { agentId: agent.id, revision: previous.revision + 1, ...(value.embedding ? { embedding: value.embedding } : {}) }
+    await this.store.write([{ collection: 'employeeMemorySettings', id: agent.id, value: settings }])
+    this.changed()
+    return settings
+  }
   private async memoryOperation(method: Method, input: unknown) {
     const version = { expectedEpoch: z.number().int().nonnegative(), requestId: id.optional() }
-    const extra = method === 'saveMemory' ? { ...version, id: id.optional(), content: text(4000), sourceMessageIds: ids.optional(), sourceResourceIds: ids.optional(), origin: z.enum(['user', 'import']).optional(),
+    const extra = method === 'saveMemory' ? { ...version, managed: z.object({ resourceId: id, expectedVersion: z.string().length(64) }).strict().optional(), id: id.optional(), content: z.string().max(64000), sourceMessageIds: ids.optional(), sourceResourceIds: ids.optional(), origin: z.enum(['user', 'import']).optional(),
       kind: z.enum(['long_term', 'experience', 'temporary']).optional(), evidence: z.enum(['fact', 'preference', 'decision', 'claim', 'inference']).optional(), useScope: z.enum(['employee', 'conversation', 'context']).optional(),
       contextRef: memoryContextSchema.nullable().optional(), expiresAt: z.iso.datetime().nullable().optional(), pinned: z.boolean().optional(), lifecycle: z.enum(['active', 'archived', 'expired']).optional(), promote: z.boolean().optional() }
       : method === 'deleteMemory' ? { ...version, id } : method === 'clearMemory' ? version : {}
     const value = memoryQuerySchema.extend(extra).strict().parse(input)
     const query = memoryQuerySchema.parse(Object.fromEntries(Object.entries(value).filter(([key]) => key in memoryQuerySchema.shape)))
     this.validateMemoryQuery(query)
+    const agent = this.getAgent(query.agentId)
+    const managed = isNativeBackend(agent.executionBackend) ? { backend: 'native' as const, documents: [], semanticRecall: false } : await this.options.engine.memoryView?.(agent.id)
+    if (managed) {
+      if (managed.backend === 'mastra') { managed.settings = await this.memorySettings(agent.id); managed.semanticRecall = !!managed.settings.embedding }
+      const legacy = await this.memory.get(query)
+      const result = async () => ({ ...await this.memory.get(query), entries: [], total: 0, nextCursor: undefined, managed: { ...await this.options.engine.memoryView!(agent.id), settings: managed.settings, semanticRecall: managed.semanticRecall } })
+      if (method === 'getMemory') return { ...legacy, entries: [], total: 0, nextCursor: undefined, managed }
+      if (managed.backend === 'native') fail('此员工的记忆由本机 Agent 管理')
+      const input = value as import('@boai/shared/domain/memory').MemoryInput
+      if (input.expectedEpoch !== legacy.epoch) fail('记忆已变化，请刷新后再保存')
+      await this.cancelWhere(run => run.agentId === agent.id && !terminal.has(run.status), '员工记忆正在修改，旧输入已停止')
+      if (method === 'saveMemory') {
+        if (!input.managed) fail('请使用 Mastra Working Memory 编辑入口')
+        await this.options.engine.saveWorkingMemory!(agent.id, input.managed!.resourceId, input.content, input.managed!.expectedVersion, [...this.conversations.values()].filter(room => room.agentIds.includes(agent.id)).map(room => ({ conversationId: room.id, sequence: Math.max(0, ...this.conversationMessages(room.id).map(message => message.sequence)) })))
+        await this.memory.clear(query, input.expectedEpoch, input.requestId)
+      } else if (method === 'clearMemory') {
+        const cutoffs = [...this.conversations.values()].filter(room => room.agentIds.includes(agent.id)).map(room => ({ conversationId: room.id, sequence: Math.max(0, ...this.conversationMessages(room.id).map(message => message.sequence)) }))
+        await this.memory.clear(query, input.expectedEpoch, input.requestId)
+        await this.options.engine.clearEmployeeMemory!(agent.id, cutoffs)
+      } else fail('Mastra 记忆请编辑 Working Memory 或清空，不再维护旧条目')
+      await this.contexts.forgetAgent(agent.id)
+      await this.homes.invalidateMemoryViews(agent.id)
+      this.changed(query.conversationId)
+      return result()
+    }
     if (method === 'getMemory') return this.memory.get(query)
     const expectedEpoch = z.number().int().nonnegative().parse((value as Record<string, unknown>).expectedEpoch)
     let result: MemoryView
@@ -2269,6 +2317,7 @@ export class AppService {
     }
     try {
       const currentCategory = category ? { ...category, expectedRevision: (await this.contactList.read()).revision } : undefined
+      for (const agentId of agentIds) await this.options.engine.deleteEmployeeMemory?.(agentId)
       await this.contactDeletion.delete({ agentIds, category: currentCategory })
     } finally {
       const [agents, resources, conversations] = await Promise.all([this.store.load<DigitalAgent>('agents'), this.store.load<Resource>('resources'), this.store.load<Conversation>('conversations')])
@@ -2333,7 +2382,7 @@ export class AppService {
     this.scheduler.forgetHistory(result.removals)
     this.memory.forgetHistory(result.removals.filter(item => item.collection === 'memory').map(item => item.id), result.memoryEpochs)
     if (conversation.purpose === 'core') {
-      const purge = this.options.engine.forgetAllConversationMemory?.() ?? this.options.engine.forgetConversationMemory?.(id)
+      const purge = this.options.engine.forgetConversationMemory ? this.options.engine.forgetConversationMemory(id) : this.options.engine.forgetAllConversationMemory?.()
       await purge?.catch(error => { this.emit({ type: 'runtime-error', error: `bobo 对话记忆投影清理未完成：${error instanceof Error ? error.message : String(error)}` }) })
     }
     // Raw input identities also need rechecking after the history deletion commits.
@@ -3363,7 +3412,7 @@ export class AppService {
 
   private authorizedResources(agent: DigitalAgent, conversation: Conversation): Resource[] {
     for (const id of agent.skillIds) this.skillUpdates.assertAvailable(id)
-    return authorizedResources(agent, conversation, this.resources.values())
+    return authorizedResources(agent, conversation, this.resources.values()).filter(resource => !(resource.kind === 'skill' && resource.name === 'boai-memory-management' && (isNativeBackend(agent.executionBackend) || this.options.engine.memoryOwner === 'mastra')))
   }
   private dataSourceSnapshotValid(snapshot: RunSnapshot) {
     const refs = snapshot.dataSourceRefs ?? [], owner = this.employees.find(snapshot.agent.id)
@@ -3618,6 +3667,7 @@ export class AppService {
   }
   private async recallEmployeeMemory(agent: DigitalAgent, conversation: Conversation, request: string, workId?: string): Promise<MemoryView> {
     const view = await this.memory.get({ agentId: agent.id, scope: 'employee' })
+    if (isNativeBackend(agent.executionBackend) || this.options.engine.memoryOwner === 'mastra') return { ...view, entries: [], nextCursor: undefined, total: undefined, recall: { authorityVersion: 1, agentId: agent.id, conversationId: conversation.id, contextRefs: this.memoryContexts(conversation, workId), versions: [], observationIds: [], observationVersions: [], tokenEstimate: 0 } }
     const profile = await this.agentProfiles.get(agent.id)
     return recallMemory({ view, observations: await this.memory.observations(agent.id), messages: this.messages, request,
       preferredIds: profile.features.growth ? await this.agentStates.growthMemoryIds(agent.id) : [],
@@ -4207,16 +4257,17 @@ export class AppService {
         signal.throwIfAborted()
         return randomUUID()
       }),
-      onModelCallStarted: (callId, phase, thinking) => this.serialize(async () => {
+      onModelCallStarted: (callId, phase, thinking, selection) => this.serialize(async () => {
         signal.throwIfAborted(); await this.assertMaterialRefs(context)
         if (terminal.has(run.status) || this.closing) fail('任务已结束，不能开始模型调用')
         if (!await this.memory.recallValid(context.memory!)) fail('记忆来源已失效，不能开始模型调用')
         if (run.phase === 'execution') this.organizationModelCalls.set(run.id, callId)
         if (isNativeBackend(run.backend)) { run.backend.externalInvocations++; await this.store.write([record('runs', run)]); return }
-        if (context.connection?.gateway) await this.observeActivity(run, async () => {
+        const selectedConnection = selection ? this.getConnection(selection.connectionId) : context.connection
+        if (selectedConnection?.gateway) await this.observeActivity(run, async () => {
           if (run.modelCalls?.some(call => call.callId === callId)) return
-          const source = context.connection!
-          const modelCalls = [...(run.modelCalls ?? []), { callId, connectionId: source.id, connectionRevision: source.revision ?? 1, phase, protocol: source.gateway!.protocol, selectedModelId: gatewaySelectedModel(source, context.agent.modelId), startedAt: now() }]
+          const source = selectedConnection!
+          const modelCalls = [...(run.modelCalls ?? []), { callId, connectionId: source.id, connectionRevision: source.revision ?? 1, phase, protocol: source.gateway!.protocol, selectedModelId: gatewaySelectedModel(source, selection?.modelId ?? context.agent.modelId), startedAt: now() }]
           await this.store.write([{ collection: 'runs', id: run.id, value: { ...run, modelCalls } }]); run.modelCalls = modelCalls; this.changed(run.conversationId)
         })
         await this.observeActivity(run, () => this.userProfile.start({ ...(runtimeProfile ? { callUnit: 'external-turn' as const } : {}), id: callId, runId: run.id, conversationId: run.conversationId, phase, startedAt: now(), budgetOwned: Boolean(run.origin || run.collaborationRequestId || context.workBudget?.sourceMessageId && run.workId), thinking }))
@@ -4383,9 +4434,51 @@ export class AppService {
       context.signal.throwIfAborted()
       return workingScene({ work, messages: sourceMessages, runs: previous, artifacts: files, executions })
     })
-    if (!runtimeProfile && run.phase === 'execution') context.continuity = this.contextContinuity(context, throughSequence)
+    context.memoryOwner = runtimeProfile ? 'native' : this.options.engine.memoryOwner
+    if (!runtimeProfile && run.phase === 'execution') {
+      context.continuity = this.contextContinuity(context, throughSequence)
+      if (this.options.engine.memoryOwner === 'mastra') context.memorySources = () => this.mastraMemorySources(context)
+    }
+    if (context.memoryOwner) { delete context.rememberMemory; delete context.recallMemory; delete context.externalMemory }
     this.activeEngineContexts.set(run.id, { context, definition: agent })
     return context
+    })
+  }
+  private mastraMemorySources(context: EngineContext) {
+    return this.serialize(async () => {
+      await this.assertExecutionAccess(context)
+      const agent = this.getAgent(context.agent.id), room = this.getConversation(context.conversation.id)
+      const isolated = room.kind !== 'direct' || !!room.channel || room.memoryScope === 'conversation' || !!room.memoryContextRef || !!context.materialRefs?.length
+      const resourceId = memoryResourceId(agent.id, isolated ? room.id : undefined)
+      const forgotten = await this.memory.forgottenMessageIds(agent.id), access = await this.employeeMemoryAccess(agent, room, context.work?.id)
+      const rooms = isolated ? [room] : [...this.conversations.values()].filter(item => item.agentIds.includes(agent.id) && item.kind === 'direct' && !item.channel && item.memoryScope !== 'conversation' && !item.memoryContextRef && !item.list?.hidden && !this.clearingConversations.has(item.id))
+      const threads: import('./adapters/mastra/conversation-memory').MemorySources['threads'] = []
+      for (const source of rooms) {
+        const rows = source.id === room.id ? context.messages : this.conversationMessages(source.id)
+        const messages: Message[] = []
+        for (const message of rows) {
+          if (forgotten.has(message.id) || message.status !== 'completed' || !message.content.trim()) continue
+          const refs = message.materialSources ?? this.snapshots.get(message.runId ?? '')?.materialRefs ?? []
+          if (!isolated && (refs.length || message.materialIds?.length || message.composerReferences?.length || message.channelReference)) continue
+          const sources = this.inheritedResources([message.id], [])
+          if (!access.sourceAllowed({ id: message.id, ownerAgentId: agent.id, scope: 'employee', content: message.content, origin: 'model', version: 1, createdAt: message.createdAt, updatedAt: message.createdAt, sourceMessageIds: [message.id], sourceResourceIds: sources, sourceConversationIds: [source.id] })) continue
+          messages.push(message)
+        }
+        threads.push({ conversationId: source.id, title: source.title, messages })
+      }
+      const legacy = (await this.memory.get({ agentId: agent.id, scope: 'employee' })).entries.filter(entry => memoryAllowed(entry, access) && (isolated ? entry.conversationId === room.id && memoryUseScope(entry) !== 'employee' : memoryUseScope(entry) === 'employee')).map(({ id, version, content, createdAt, sourceMessageIds, sourceConversationIds, sourceResourceIds }) => ({ id, version, content, createdAt, sourceMessageIds, sourceConversationIds, sourceResourceIds }))
+      const inputIds = [...new Set([...(context.memory?.recall?.inputMessageIds ?? []), ...threads.flatMap(thread => thread.messages.map(message => message.id))])]
+      if (context.memory?.recall) {
+        context.memory.recall.inputMessageIds = inputIds
+        context.memory.recall.versions = legacy.map(({ id, version }) => ({ id, version }))
+        const snapshot = this.snapshots.get(context.runId)!
+        snapshot.memoryRecall = clone({ namespace: context.memory.namespace, epoch: context.memory.epoch, invalidationEpoch: context.memory.invalidationEpoch, recall: context.memory.recall })
+        await this.store.write([record('snapshots', snapshot)])
+      }
+      context.signal.throwIfAborted()
+      const settings = await this.memorySettings(agent.id)
+      const embedding = settings.embedding ? { connection: this.getConnection(settings.embedding.connectionId), modelId: settings.embedding.modelId, apiKey: await this.apiKey(this.getConnection(settings.embedding.connectionId)) } : undefined
+      return { resourceId, threads, legacy, embedding }
     })
   }
   private contextContinuity(context: EngineContext, throughSequence: number): ContextPort {
@@ -4462,7 +4555,8 @@ export class AppService {
           await this.materials.validateRefs(snapshot.materialRefs ?? [], context.agent.id, context.conversation.id)
           completed.push({ runId, toolIds: previous.toolEvents.filter(tool => tool.status === 'completed').map(tool => tool.id) })
         }
-        return { ...view, resumedSteps: await this.contexts.resumedSteps(owner, completed, messages) }
+        context.messages = view.messages.map(message => enriched.get(message.id) ?? message)
+        return { ...view, messages: context.messages, resumedSteps: await this.contexts.resumedSteps(owner, completed, messages) }
       }),
       begin: (view, action) => this.serialize(async () => { await sources(); return this.contexts.begin(owner, context.runId, view, action) }),
       commit: (operation, summary, refs, metrics) => this.serialize(async () => {
@@ -5213,7 +5307,7 @@ export class AppService {
     }
   }
   private async updateMemories(turn: DiscussionTurn, participants: string[], signal: AbortSignal) {
-    if (this.closing) return
+    if (this.closing || this.options.engine.memoryOwner === 'mastra') return
     const workContinuation = this.messages.get(turn.triggerMessageId)?.inboxReply?.workId
     if ([...this.scheduler.decisions.values()].some(decision => decision.turnId === turn.id && decision.action === 'ask' && decision.responseKind === 'task')) return
     await Promise.all(participants.map(async agentId => {
@@ -5754,6 +5848,7 @@ export class AppService {
       await this.automations.beforeBackup()
       await this.desktopActivity.beforeBackup()
       if (this.scheduler.busy || this.runControllers.size || this.activeAdapters.size || this.externalTests.size || this.skills.busy || this.skillUpdates.busy || this.skillLibrary.busy || this.materialImports.size || this.materialUploads.busy || this.materials.busy || this.dataSources.busy || this.webSearch.connections.busy) fail('有任务、材料准备或资源管理操作正在执行或等待修复，请先停止或完成后备份')
+      await this.options.engine.closeMemory?.()
       await this.userMemoryProvider.close()
       await mkdir(destination, { recursive: true })
       if ((await readdir(destination)).length) fail('请选择空目录保存备份')
@@ -5801,9 +5896,10 @@ export class AppService {
         if (native) { nativeRuntimeHomes.add(join(this.dataPath, ...native.split('/'))); return false }
         return !legacyBrowserRuns.has(source) && !nativeRuntimeHomes.has(source)
       } })
+      await cp(join(this.dataPath, 'memory'), join(destination, 'memory'), { recursive: true }).catch(error => { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error })
       await writeFile(join(destination, 'backup.json'), JSON.stringify({ format: 'boai-agent-local-backup', version: 2, createdAt: now(), sourceDataPath: this.dataPath, credentialsIncluded: false, externalUserMemoryIncluded: false, automationRestorePolicy: 'paused', agentBehaviorRestorePolicy: 'paused', nativeAgentRestorePolicy: 'fresh-session', excludedNativeRuntimeHomes: [...nativeRuntimeHomes].map(directory => relative(this.dataPath, directory)), excludedLegacyBrowserRuns: [...legacyBrowserRuns].map(directory => relative(this.dataPath,directory)) }, null, 2))
       await writeFile(join(destination, 'data-version.json'), JSON.stringify({ schemaVersion: 2, restoredBackup: true, createdAt: now() }, null, 2))
-      await writeFile(join(destination, 'RESTORE.txt'), '退出 BoAI Agent 后，先备份目标应用现有数据，再将 boai.sqlite、data-version.json、skills、knowledge、workspaces、agents、external-workspaces、materials、appearance、activity-records 和 automation-mastra.sqlite（如存在）复制到目标应用 userData/v2 目录；不要与现有数据库混用。保留 v2 中的 data-version.json 版本标记后再启动新版应用。启动时会自动重定位受管资源、员工目录与产物路径。materials 仅包含已发送的聊天材料；草稿不恢复，也不重新读取外部来源。恢复后桌面活动记录、截图保存和键鼠监听默认关闭；定时任务、主动交流及情绪/成长/旅行自动行为默认暂停，员工提示词与疲劳设置保留；请在确认连接、授权和配置后逐项启用。渠道绑定与资料/检索连接也默认停用。旧备份没有 materials 或 appearance 时，请先移走目标目录对应旧文件夹，避免混入旧数据。API Key 与外部登录态未包含在备份中，需重新配置。Memmy 外部服务数据不包含在备份中，恢复后记忆提供方默认关闭；未确认的同步不会自动重发。Mastra bobo 会话投影在下次聊天时从仍有效的产品历史重建。本机 Agent 私有运行目录不包含在备份中，外部程序自己的历史也不由本备份恢复或删除；原会话引用只供核对，下一次发送消息时从获准聊天内容建立新会话，启动不会自动续行。未完成浏览器下载不包含在备份中；旧版浏览器运行目录缺少可信完成状态，原件保留在来源设备但不导出，具体目录见 backup.json。已发布的受管成果仍正常备份。\n')
+      await writeFile(join(destination, 'RESTORE.txt'), '退出 BoAI Agent 后，先备份目标应用现有数据，再将 boai.sqlite、data-version.json、skills、knowledge、workspaces、agents、external-workspaces、materials、appearance、activity-records、memory 和 automation-mastra.sqlite（如存在）复制到目标应用 userData/v2 目录；不要与现有数据库混用。保留 v2 中的 data-version.json 版本标记后再启动新版应用。启动时会自动重定位受管资源、员工目录与产物路径。materials 仅包含已发送的聊天材料；草稿不恢复，也不重新读取外部来源。恢复后桌面活动记录、截图保存和键鼠监听默认关闭；定时任务、主动交流及情绪/成长/旅行自动行为默认暂停，员工提示词与疲劳设置保留；请在确认连接、授权和配置后逐项启用。渠道绑定与资料/检索连接也默认停用。旧备份没有 materials 或 appearance 时，请先移走目标目录对应旧文件夹，避免混入旧数据。API Key 与外部登录态未包含在备份中，需重新配置。Memmy 外部服务数据不包含在备份中，恢复后记忆提供方默认关闭；未确认的同步不会自动重发。Mastra Memory 的 memory 目录包含 Working Memory、OM、来源遗忘屏障及向量索引，需一起恢复；启动后仍复核来源权限。本机 Agent 私有运行目录不包含在备份中，外部程序自己的历史也不由本备份恢复或删除；原会话引用只供核对，下一次发送消息时从获准聊天内容建立新会话，启动不会自动续行。未完成浏览器下载不包含在备份中；旧版浏览器运行目录缺少可信完成状态，原件保留在来源设备但不导出，具体目录见 backup.json。已发布的受管成果仍正常备份。\n')
     } finally {
       try { await this.automations.afterBackup() } finally { this.backingUp = false; this.desktopActivity.afterBackup(); for (const id of this.conversations.keys()) this.scheduleWork(id) }
       // A send acknowledged just before backup acquired the gate may have queued a job.
@@ -5857,6 +5953,7 @@ export class AppService {
     await this.options.browserHost?.request('disconnect',{})
     this.requestModelSecrets.clear()
     await this.application.drain()
+    await this.options.engine.closeMemory?.()
     await this.userMemoryProvider.close()
     await this.store.close()
   }
