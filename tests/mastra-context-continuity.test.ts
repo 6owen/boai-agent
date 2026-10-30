@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: DeepSeek自动档内部摘要关闭思考，受控长度耗尽不提交或重试；显式档位保持。
+ * [OUTPUT]: 摘要长度耗尽按原来源恢复一次并逐次计量，取消/预算拒绝/重复截断不提交；SDK内部副本过滤不影响真实工具JSON。
  * [OUTPUT]: 2026-10-27 本轮相关回归合同/源码更新；执行状态另行记录，不以源码存在判通过。
  * [INPUT]: Actual installed Mastra SDK, local streaming HTTP provider, real ProductStore and host-like authorization ports.
  * [OUTPUT]: Public checkpoint/rotation, final-prompt tool compaction, original budgets, Memory pruning, review regressions for provenance, legacy clipping and readonly-step recovery.
@@ -18,11 +18,11 @@ import { MastraEngine } from '../packages/runtime/src/adapters/mastra/engine'
 import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
 import { ContextRepository, type ContextPort } from '../packages/runtime/src/modules/contexts/context-repository'
 import { RunModelUsage } from '../packages/runtime/src/modules/profile/run-model-usage'
-import { summarizeContext, snapshotProviderPrompt } from '../packages/runtime/src/adapters/mastra/context-maintenance'
+import { summarizeContext, snapshotProviderPrompt, contextCapacityProcessor } from '../packages/runtime/src/adapters/mastra/context-maintenance'
 import { progressBoundary } from '../packages/runtime/src/adapters/mastra/progress-review'
 import { ProgressMonitor, ProgressStalledError } from '../packages/runtime/src/modules/contexts/progress-monitor'
 
-interface Body { messages: { role: string; content: unknown }[]; tools?: unknown[] }
+interface Body { max_tokens?: number; messages: { role: string; content: unknown }[]; tools?: unknown[] }
 const cleanup: (() => Promise<void>)[] = []
 afterEach(async () => { for (const close of cleanup.splice(0).reverse()) await close() })
 function send(response: ServerResponse, value: string | { tool: string; args: unknown }, index: number, usage = true) {
@@ -393,8 +393,87 @@ it.each([undefined, 'auto', 'off', 'high'])('completes bounded DeepSeek maintena
    await expect(request).rejects.toThrow('工作上下文摘要达到输出上限')
    expect(model.requests[0]).toMatchObject({thinking:{type:'enabled'},reasoning_effort:'high'})
   } else await expect(request).resolves.toContain('[weather-source]')
-  expect(model.requests).toHaveLength(1)
-  expect(f.started).toEqual(['extra-1']);expect(f.settled).toEqual(['extra-1']);expect(f.supplements).toEqual(['extra-1'])
+  const ids = thinkingLevel === 'high' ? ['extra-1', 'extra-2'] : ['extra-1']
+  expect(model.requests).toHaveLength(ids.length)
+  expect(f.started).toEqual(ids);expect(f.settled).toEqual(ids);expect(f.supplements).toEqual(ids)
   expect(f.ctx.agent.thinkingLevel).toBe(thinkingLevel)
  } finally {spy.mockRestore()}
+})
+
+function truncatedSummary(response: ServerResponse, tokens = 2000) {
+  response.writeHead(200, { 'Content-Type': 'text/event-stream' })
+  response.write(`data: ${JSON.stringify({ id: 'truncated-summary', choices: [{ index: 0, delta: { content: 'DISCARDED_PARTIAL_HANDOFF' }, finish_reason: null }] })}\n\n`)
+  response.write(`data: ${JSON.stringify({ id: 'truncated-summary', choices: [{ index: 0, delta: {}, finish_reason: 'length' }], usage: { prompt_tokens: 100, completion_tokens: tokens, total_tokens: 100 + tokens } })}\n\n`)
+  response.end('data: [DONE]\n\n')
+}
+it.each([undefined, 1024])('recovers a truncated summary from the original sources with separate usage and catalog ceiling %s', async ceiling => {
+  const model = await endpoint((body, response, index) => index ? send(response, '事实 617，下一步核对来源 [news-source]', index) : truncatedSummary(response, body.max_tokens))
+  const f = await fixture(model.url, [message(1, '整理新闻')])
+  if (ceiling) f.ctx.modelCatalog = { source: 'service-declared', fetchedAt: '', models: [{ id: 'fixture', contextWindow: 64000, maxOutputTokens: ceiling }] }
+  const usages: number[] = [], settle = f.ctx.onModelCallUsage!
+  f.ctx.onModelCallUsage = async (id, usage) => { usages.push(usage.outputTokens!); await settle(id, usage) }
+  await expect(summarizeContext(f.ctx, { id: 'news-source', fact: 617 }, '旧摘要')).resolves.toContain('[news-source]')
+  expect(model.requests.map(body => body.max_tokens)).toEqual(ceiling ? [1024, 1024] : [2000, 4000])
+  expect(model.requests[1]!.messages.filter(m => m.role === 'user')).toEqual(model.requests[0]!.messages.filter(m => m.role === 'user'))
+  expect(textOf(model.requests[1]!)).not.toContain('DISCARDED_PARTIAL_HANDOFF')
+  expect(textOf(model.requests[1]!)).toContain('shorter complete handoff')
+  expect(model.requests.every(body => !body.tools?.length)).toBe(true)
+  expect(usages).toEqual([ceiling ?? 2000, 20])
+  expect(f.started).toEqual(['extra-1', 'extra-2']); expect(f.settled).toEqual(f.started); expect(f.supplements).toEqual(f.started)
+})
+it.each(['exhausted', 'cancelled', 'budget', 'source-changed'] as const)('preserves original history when summary recovery is %s', async state => {
+  const initial = Array.from({ length: 81 }, (_, i) => message(i + 1))
+  const model = await endpoint((body, response, index) => {
+    if (index && state === 'source-changed') { initial[0] = message(1, 'Owner corrected the source'); return send(response, 'Obsolete handoff [m-1]', index) }
+    truncatedSummary(response, body.max_tokens)
+  })
+  const f = await fixture(model.url, initial), before = await f.port.read()
+  if (state === 'cancelled') {
+    const settle = f.ctx.onModelCallUsage!
+    f.ctx.onModelCallUsage = async (id, usage) => { await settle(id, usage); f.controller.abort(new Error('Owner stopped')) }
+  }
+  if (state === 'budget') {
+    const reserve = f.ctx.onAdditionalModelCall!
+    let count = 0
+    f.ctx.onAdditionalModelCall = async phase => { if (count++) throw new Error('Original budget exhausted'); return reserve(phase) }
+  }
+  await expect(new MastraEngine().run(f.ctx)).rejects.toThrow(state === 'exhausted' ? '摘要达到输出上限' : state === 'cancelled' ? '任务已取消' : state === 'budget' ? 'Original budget exhausted' : '来源或版本')
+  expect(model.requests).toHaveLength(state === 'exhausted' || state === 'source-changed' ? 2 : 1)
+  expect(model.requests.every(isSummary)).toBe(true)
+  expect(await f.store.load('contextCheckpoints')).toHaveLength(0)
+  expect((await f.store.load<{ activeSessionId: string }>('contextStreams'))[0]!.activeSessionId).toBe(before.stream.activeSessionId)
+  expect(await f.store.load('messages')).toHaveLength(81)
+})
+it('summarizes provider content without SDK duplicate copies while retaining nested tool JSON and vendor options', async () => {
+  const model = await endpoint((_body, response, index) => send(response, '新闻事实和下一步 [news-tool]', index))
+  const f = await fixture(model.url, [message(1, '继续总结新闻')]); await f.port.read()
+  const processor = contextCapacityProcessor('task', f.ctx)
+  const prompt = [
+    { role: 'user', content: [{ type: 'text', text: '较早请求' }] },
+    { role: 'assistant', content: [{ type: 'tool-call', toolCallId: 'news-tool', toolName: 'read_context_history', input: {} }] },
+    { role: 'tool', content: [{ type: 'tool-result', toolCallId: 'news-tool', toolName: 'read_context_history', output: { type: 'json', value: { facts: 'news fact '.repeat(16000), providerOptions: { mastra: { userData: 'KEEP_USER_JSON' } } } }, providerOptions: { mastra: { modelOutput: 'INTERNAL_DUPLICATE_'.repeat(18000) }, google: { thoughtSignature: 'KEEP_VENDOR_OPTION' } } }] },
+    { role: 'user', content: [{ type: 'text', text: '继续总结新闻' }] },
+  ]
+  await processor.processLLMRequest({ prompt } as Parameters<typeof processor.processLLMRequest>[0])
+  expect(model.requests.length).toBeGreaterThan(0)
+  const summaries = model.requests.map(textOf).join('\n')
+  expect(summaries).not.toContain('INTERNAL_DUPLICATE_')
+  expect(summaries).toContain('KEEP_USER_JSON'); expect(summaries).toContain('KEEP_VENDOR_OPTION')
+  expect(JSON.stringify(prompt)).toContain('INTERNAL_DUPLICATE_')
+})
+it('continues the same task after a truncated handoff without replaying its completed tools', async () => {
+  let reads = 0, summaries = 0
+  const model = await endpoint((body, response, index) => {
+    if (isSummary(body)) return summaries++ ? send(response, 'Read completed [tool-0]; continue from the existing result.', index) : truncatedSummary(response, body.max_tokens)
+    if (reads < 4) return send(response, { tool: 'read_context_history', args: { limit: 1 } }, index)
+    expect(textOf(body)).not.toContain('DISCARDED_PARTIAL_HANDOFF')
+    send(response, '新闻总结已完成', index)
+  })
+  const f = await fixture(model.url, [message(1, 'Read four original records and summarize.')])
+  f.port.history = async () => { reads++; return [message(1, 'original news source '.repeat(1800))] }
+  await new MastraEngine().run(f.ctx)
+  expect(reads).toBe(4); expect(model.requests.filter(body => !isSummary(body))).toHaveLength(5)
+  expect(summaries).toBeGreaterThan(1); expect(f.deltas).toEqual(['新闻总结已完成'])
+  expect(f.started.length).toBe(f.settled.length)
+  expect((await f.store.load<{ summary: string }>('contextStepCheckpoints'))[0]!.summary).not.toContain('DISCARDED_PARTIAL_HANDOFF')
 })
