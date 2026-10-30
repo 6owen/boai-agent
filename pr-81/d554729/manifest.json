@@ -1,0 +1,52 @@
+{
+  "summary": "本次改动把 API 员工的记忆面板改成 Mastra Memory 视图：展示 Working Memory 与 Observational Memory，新增「记忆范围」「语义检索（Embedding 连接/模型）」设置、Working Memory 编辑对话框与「清空记忆」确认框；本机 Agent 只显示记忆归属说明，后端同时退出旧的自动提取与关键词召回。",
+  "scenes": [
+    {
+      "title": "API 员工的 Mastra Memory 面板",
+      "shots": [
+        {
+          "file": "01-contact-detail.png",
+          "caption": "研究员详情打开后的通讯录页面",
+          "width": 1280
+        },
+        {
+          "file": "02-advanced-config.png",
+          "caption": "高级配置对话框打开后的状态",
+          "width": 1280
+        },
+        {
+          "file": "03-memory-pane.png",
+          "caption": "记忆页上的记忆范围、语义检索与 Mastra Memory 区域",
+          "width": 1280
+        }
+      ]
+    },
+    {
+      "title": "编辑与清空记忆的入口",
+      "shots": [
+        {
+          "file": "04-contact-memory-sections.png",
+          "caption": "员工详情向下滚动后的记忆相关区域",
+          "width": 1280
+        },
+        {
+          "file": "05-contact-memory-lower.png",
+          "caption": "员工详情更下方的记忆内容",
+          "width": 1280
+        }
+      ]
+    }
+  ],
+  "video": "preview.mp4",
+  "poster": "poster.png",
+  "errors": [
+    "API 员工的 Mastra Memory 面板 · click [role=\"tab\"], button: nothing visible matches [role=\"tab\"], button with \"记忆\" (0 in the page)",
+    "编辑与清空记忆的入口 · click [role=\"tab\"], button: nothing visible matches [role=\"tab\"], button with \"记忆\" (0 in the page)"
+  ],
+  "leak": false,
+  "skipped": null,
+  "mismatch": "",
+  "unseen": "真实的 Working Memory/观察记忆内容和向量检索命中需要已产生过 API 员工对话并配置好 embedding 连接；演示数据里可能只看到空状态提示，无法验证官方语义回查质量、OM 触发阈值与真实模型行为。本机 Agent 一侧只能看到「会话上下文和记忆由所选本机 Agent 管理」的说明。",
+  "interactive": true,
+  "pages": 1
+}

@@ -1,0 +1,66 @@
+{
+  "summary": "该 PR 在数字员工的直接会话标题栏新增「任务」入口，点击后先定位到该员工的主会话，再在会话右侧打开该员工的任务面板（当前任务、排队中、普通任务与历史，可新建普通任务）；通讯录里的员工详情也新增「任务」入口，统一走同一导航。定时任务页保持原名称、列表与「新建定时任务」入口，并新增「排队中」状态文案。",
+  "scenes": [
+    {
+      "title": "员工会话右侧任务面板",
+      "shots": [
+        {
+          "file": "01-direct-chat-header.png",
+          "caption": "直接会话标题栏右侧的「任务」入口",
+          "width": 1280
+        },
+        {
+          "file": "02-employee-task-panel.png",
+          "caption": "员工会话右侧打开的任务面板：当前任务、普通任务与历史",
+          "width": 1280
+        },
+        {
+          "file": "03-new-task-dialog.png",
+          "caption": "「新建任务」弹窗的表单",
+          "width": 1280
+        }
+      ]
+    },
+    {
+      "title": "通讯录员工详情进入任务",
+      "shots": [
+        {
+          "file": "04-contact-detail.png",
+          "caption": "通讯录里的研究员详情与左侧分类标签",
+          "width": 1280
+        },
+        {
+          "file": "05-contact-detail.png",
+          "caption": "员工详情左侧分类标签与「任务」入口",
+          "width": 1280
+        },
+        {
+          "file": "06-contacts-task-navigation.png",
+          "caption": "从员工详情点击「任务」后的页面：员工会话与其右侧任务面板",
+          "width": 1280
+        }
+      ]
+    },
+    {
+      "title": "定时任务页保持原样",
+      "shots": [
+        {
+          "file": "07-schedules-page.png",
+          "caption": "定时任务页面：原列表、暂停状态与「新建定时任务」入口",
+          "width": 1280
+        }
+      ]
+    }
+  ],
+  "video": "preview.mp4",
+  "poster": "poster.png",
+  "errors": [
+    "通讯录员工详情进入任务 · click [aria-label=\"员工详情分类\"] button: nothing visible matches [aria-label=\"员工详情分类\"] button with \"任务\" (0 in the page)"
+  ],
+  "leak": false,
+  "skipped": null,
+  "mismatch": "",
+  "unseen": "沙盒中该员工没有 purpose 为 employee-task 的普通任务定义，也没有排队中或执行中的 occurrence，故「当前任务」「排队中」「普通任务」的实际条目、「加入队列」「取消排队」「停止」按钮及任务详情的执行/审批/补充内容都无法展示；只能看到面板的空态与历史区。",
+  "interactive": true,
+  "pages": 3
+}

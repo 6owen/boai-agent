@@ -1,0 +1,16 @@
+<!doctype html><html lang="zh"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>#81 界面预览 · d554729</title>
+<style>:root{color-scheme:light dark;--bg:#f6f6f7;--fg:#1d1d1f;--muted:#6e6e73;--card:#fff;--line:#e5e5ea}
+@media (prefers-color-scheme:dark){:root{--bg:#111113;--fg:#f2f2f4;--muted:#9a9aa0;--card:#1c1c1f;--line:#2c2c30}}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 -apple-system,"Segoe UI","PingFang SC","Noto Sans CJK SC",sans-serif}
+main{max-width:1100px;margin:0 auto;padding:28px 16px 60px}h1{font-size:20px;margin:0 0 4px}.m{color:var(--muted);font-size:13px;margin:0 0 20px}
+video,img{display:block;width:100%;border-radius:10px;border:1px solid var(--line);background:var(--card)}figure{margin:0 0 28px}figcaption{color:var(--muted);font-size:13px;margin-top:8px}
+a{color:inherit}</style>
+<main><h1>#81 界面预览</h1><p class="m">commit d554729 · <a href="https://github.com/6owen/boai-agent/pull/81">回到 PR</a> · 本次改动把 API 员工的记忆面板改成 Mastra Memory 视图：展示 Working Memory 与 Observational Memory，新增「记忆范围」「语义检索（Embedding 连接/模型）」设置、Working Memory 编辑对话框与「清空记忆」确认框；本机 Agent 只显示记忆归属说明，后端同时退出旧的自动提取与关键词召回。</p>
+<figure><video src="preview.mp4" controls autoplay muted playsinline poster="poster.png"></video><figcaption>红线是鼠标走过的轨迹，红色圆环是一次点击；底部文字是这一步在做什么。空格暂停，← → 逐段查看。</figcaption></figure>
+<figure><img src="01-contact-detail.png" alt="研究员详情打开后的通讯录页面"><figcaption>API 员工的 Mastra Memory 面板 · 研究员详情打开后的通讯录页面</figcaption></figure>
+<figure><img src="02-advanced-config.png" alt="高级配置对话框打开后的状态"><figcaption>API 员工的 Mastra Memory 面板 · 高级配置对话框打开后的状态</figcaption></figure>
+<figure><img src="03-memory-pane.png" alt="记忆页上的记忆范围、语义检索与 Mastra Memory 区域"><figcaption>API 员工的 Mastra Memory 面板 · 记忆页上的记忆范围、语义检索与 Mastra Memory 区域</figcaption></figure>
+<figure><img src="04-contact-memory-sections.png" alt="员工详情向下滚动后的记忆相关区域"><figcaption>编辑与清空记忆的入口 · 员工详情向下滚动后的记忆相关区域</figcaption></figure>
+<figure><img src="05-contact-memory-lower.png" alt="员工详情更下方的记忆内容"><figcaption>编辑与清空记忆的入口 · 员工详情更下方的记忆内容</figcaption></figure>
+</main></html>
