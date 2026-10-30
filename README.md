@@ -1,4 +1,6 @@
 <!--
+[OUTPUT]: 2026-10-30Memory隔离源码接线及本地全量4960项通过；API用官方Memory/WM/OM/可选向量，本机归原生，原失败/真实质量与个人生效边界归5组17 §6。
+[OUTPUT]: 2026-10-30新增按执行内核归属的Memory设计入口；API转Mastra Memory、本机保留原生，本轮仅文档。
 [OUTPUT]: 2026-10-29新增boai-release共享技能，覆盖bumpp、本机候选/Release、下载与自动更新；普通开发转入发布须符合本次请求。
 [OUTPUT]: 2026-10-29个人应用更新与本机发布接线；版本/更新/产物验证范围见22组11及03。
 [OUTPUT]: 2026-10-29 官方文件浏览器包、目录入口及相关构建/测试合同；JSON例外package.json增加包依赖及lint范围。
@@ -97,6 +99,7 @@ pnpm dev
 基于 **Electron · React · TypeScript · Mastra** 构建，使用 pnpm workspace 管理桌面应用、CLI 和共享包。
 
 - [文档入口](ai-docs/README.md) · [功能规格](ai-docs/spec/README.md)
+- [记忆归属与迁移设计](ai-docs/spec/5.Mastra能力扩展/16-按执行内核归属的记忆架构.md)：API使用Mastra Memory，本机Agent保持原生记忆；隔离worktree已接线，验证与生效状态见第5组17 §6。
 - [BOAI CLI](ai-docs/spec/21.BOAI-CLI/README.md) · [外部插件开发](ai-docs/spec/26.Workspace工程结构重构/04-外部插件开发与接入.md)
 - [个人 macOS 更新与本机发布](ai-docs/spec/22.开发自动化与持续测试/11-个人应用更新与发布.md)：bumpp 管版本，Sparkle 后台下载、退出安装与差分更新。
 - [协作规约](AGENTS.md) · [开发流程](.agents/skills/boai-dev-workflow/SKILL.md) · [发布技能](.agents/skills/boai-release/SKILL.md) · [UI 测试与 CI 用法](UI_TEST_CI.md)

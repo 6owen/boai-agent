@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-30 公开configureMemory用于员工明确选择embedding连接与模型。
  * [OUTPUT]: 独立AgentBrowser/BrowserViewer插件接入；上游工具、启停与运行回收保持独立。
  * [OUTPUT]: 2026-10-29 workspace-files增加授权根及预览DTO，index/public-methods接可信桌面预览入口。
  * [OUTPUT]: 网页检索草稿测试进入原公共IPC准入，不开放任意请求地址。
@@ -87,6 +88,7 @@ const methods = {
   deleteSession: true,
   getSessionReceipt: true,
   clearMemory: true,
+  configureMemory: true,
   connectChannelBinding: true,
   createConversation: true,
   deleteAgent: true,

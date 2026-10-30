@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-30 记忆管理支持官方WM和版本化embedding配置。
  * [OUTPUT]: 独立AgentBrowser/BrowserViewer插件接入；上游工具、启停与运行回收保持独立。
  * [OUTPUT]: 2026-10-29 应用更新私有API与权威revision事件；通用Methods不包含安装更新。
  * [OUTPUT]: 2026-10-29 workspace-files增加授权根及预览DTO，index/public-methods接可信桌面预览入口。
@@ -406,6 +407,7 @@ export interface Methods {
   readAgentFile: { input: { agentId: string; name: string; conversationId?: string }; output: AgentFileContent }
   saveAgentFile: { input: { agentId: string; name: import('../domain/agent-profile').AgentSourceName; content: string; expectedHash: string; expectedConfigVersion: number }; output: AgentHome }
   regenerateAgentViews: { input: { agentId: string; conversationId?: string }; output: AgentHome }
+  configureMemory: { input: { agentId: string; expectedRevision: number; embedding: { connectionId: string; modelId: string } | null }; output: import('../domain/memory').EmployeeMemorySettings }
   getMemory: { input: MemoryQuery; output: MemoryView }
   saveMemory: { input: MemoryInput; output: MemoryView }
   deleteMemory: { input: MemoryQuery & { id: string; expectedEpoch: number; requestId?: string }; output: MemoryView }

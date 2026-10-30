@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-30 回归更新为Mastra官方记忆/原生归属合同；保留来源、调用预算和业务发布断言。
  * [INPUT]: Production AppService/Mastra/planner/SQLite and three-protocol HTTP fault injection.
  * [OUTPUT]: Durable EOF/cancel failures including naturally triggered report/group interpretation, positive publication controls, retained tools and restart zero replay.
  * [POS]: Model-gateway product fault acceptance; offline server, no external model requests or desktop claim.
@@ -94,12 +95,12 @@ function routes(detail: ConversationDetail, protocol: ModelProtocol, count: numb
     expect(call.route?.actualModelId).toBe('provider/actual')
   }
 }
-for (const phase of ['decision', 'chat', 'task', 'memory'] as const) test.each(protocols)(`product %s ${phase} EOF preserves durable failure and never replays on restart`, async protocol => {
+for (const phase of ['decision', 'chat', 'task'] as const) test.each(protocols)(`product %s ${phase} EOF preserves durable failure and never replays on restart`, async protocol => {
   const fixture = await setup(protocol, (response, index) => {
     if (index === 1) streamText(response, protocol, phase === 'task' ? taskDecision : chatDecision, phase === 'decision' ? 'eof' : 'complete')
     else if (index === 2 && phase === 'task') streamTool(response, protocol, 'write_file', { path: 'self:/work/effect.txt', content: 'WRITTEN_ONCE' })
-    else if (index === 2) streamText(response, protocol, 'CONFIRMED_REPLY', phase === 'memory' ? 'complete' : 'eof')
-    else streamText(response, protocol, phase === 'memory' ? '{"candidates":[]}' : 'UNCONFIRMED_TASK_REPLY', 'eof')
+    else if (index === 2) streamText(response, protocol, 'CONFIRMED_REPLY', 'eof')
+    else streamText(response, protocol, 'UNCONFIRMED_TASK_REPLY', 'eof')
   })
   const chat = await employee(fixture), detail = await settled(fixture, chat), count = phase === 'decision' ? 1 : phase === 'chat' ? 2 : 3
   expect(fixture.requests).toHaveLength(count); routes(detail, protocol, count)
@@ -107,8 +108,7 @@ for (const phase of ['decision', 'chat', 'task', 'memory'] as const) test.each(p
   expect(failed).toMatchObject({ phase: phase === 'chat' || phase === 'task' ? 'execution' : phase, error: expect.stringContaining('未确认正常完成') })
   expect(detail.artifacts).toHaveLength(0)
   const published = detail.messages.filter(message => message.senderType === 'agent' && message.status === 'completed')
-  if (phase === 'memory') expect(published.map(message => message.content)).toEqual(['CONFIRMED_REPLY'])
-  else { expect(published).toHaveLength(0); expect(detail.turns?.[0].status).not.toBe('completed') }
+  expect(published).toHaveLength(0); expect(detail.turns?.[0].status).not.toBe('completed')
   if (phase === 'task') {
     expect(detail.workItems).toHaveLength(1); expect(detail.workItems![0].status).not.toBe('delivered')
     expect(detail.runs.flatMap(run => run.toolEvents).filter(tool => tool.name === 'write_file')).toMatchObject([{ id: 'write-once', status: 'completed' }])
@@ -233,7 +233,8 @@ for (const mode of ['complete', 'eof', 'cancel'] as const) test.each(protocols)(
     expect(execution).toMatchObject({ status: 'completed', draft: { status: 'published', revisions: 1, text: '总和：60' } })
     expect(detail.workItems![0]).toMatchObject({ status: 'delivered', resultMessageIds: [published[0].id] })
     expect(published.map(message => message.content)).toEqual(['总和：60'])
-    expect(fixture.requests).toHaveLength(6)
+    expect(fixture.requests).toHaveLength(5)
+    expect(detail.runs.some(run => run.phase === 'memory')).toBe(false)
   } else {
     expect(execution).toMatchObject({ status: mode === 'eof' ? 'failed' : 'cancelled', draft: { status: 'withheld', revisions: 0, text: '总和为 **60**。' } })
     if (mode === 'eof') expect(execution.error).toContain('未确认正常完成')
@@ -278,4 +279,17 @@ for (const mode of ['complete', 'eof', 'cancel'] as const) test.each(protocols)(
   await fixture.restart()
   const restored = await fixture.service.handle('getConversation', { id: chat.id }) as ConversationDetail
   expect(restored.runs).toEqual(detail.runs); expect(restored.turns).toEqual(detail.turns)
+})
+
+// Post-turn custom extraction is retired. OM failure/cancellation boundaries are
+// exercised against the official observer in bobo-conversation-memory and context-continuity.
+test.each(protocols)('product %s completed chat has no second custom extraction call on restart', async protocol => {
+  const fixture = await setup(protocol, (response, index) => streamText(response, protocol, index === 1 ? chatDecision : 'CONFIRMED_REPLY', 'complete'))
+  const chat = await employee(fixture), detail = await settled(fixture, chat)
+  expect(fixture.requests).toHaveLength(2); routes(detail, protocol, 2)
+  expect(detail.runs.every(run => run.status === 'completed')).toBe(true)
+  expect(detail.runs.some(run => run.phase === 'memory')).toBe(false)
+  await fixture.restart()
+  expect(fixture.requests).toHaveLength(2)
+  expect((await fixture.service.handle('getConversation', { id: chat.id }) as ConversationDetail).messages).toEqual(detail.messages)
 })

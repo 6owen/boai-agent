@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-30 定义后端管理视图、WM乐观版本及员工embedding配置；旧条目只留兼容。
  * [INPUT]: 员工、会话和消息的稳定身份。
  * [OUTPUT]: 统一记忆及版本化来源召回；宿主日记保留原经历日期和活动身份，创建时间仍为真实写入时间。
  * [POS]: shared/domain/memory.ts；纯跨进程合同，不含存储或模型执行。
@@ -59,6 +60,7 @@ export interface MemoryQuery {
   search?: string
 }
 export interface MemoryView {
+  managed?: ManagedMemory
   entries: MemoryEntry[]
   epoch: number
   namespace: string
@@ -80,6 +82,13 @@ export interface MemoryView {
     inputMessageIds?: string[]
   }
 }
+/** Direct views of the execution backend's memory, never a second entry store. */
+export interface ManagedMemory {
+  backend: 'mastra' | 'native'
+  documents: { resourceId: string; version: string; workingMemory: string; observations: string; conversationIds: string[] }[]
+  semanticRecall: boolean
+  settings?: EmployeeMemorySettings
+}
 export interface MemoryCandidate {
   content: string
   sourceMessageIds: string[]
@@ -92,6 +101,7 @@ export interface MemoryCandidate {
   supersedes?: { id: string; version: number }[]
 }
 export interface MemoryInput extends MemoryQuery {
+  managed?: { resourceId: string; expectedVersion: string }
   id?: string
   content: string
   sourceMessageIds?: string[]
@@ -132,4 +142,10 @@ export interface MemoryForget {
   sourceMemoryIds: string[]
   fingerprint?: string
   createdAt: string
+}
+
+export interface EmployeeMemorySettings {
+  agentId: string
+  revision: number
+  embedding?: { connectionId: string; modelId: string }
 }

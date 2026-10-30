@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-30 回归更新为Mastra官方记忆/原生归属合同；保留来源、调用预算和业务发布断言。
  * [INPUT]: 官方 DeepSeek Chat 宿主公开历史、实际 Mastra SDK、本地 HTTP/SSE 工具轮与浏览器 PNG。
  * [OUTPUT]: 初始历史准确归属且不伪造思考/授权；普通chat带工具的实际HTTP回归，原多工具思考/PNG/无工具边界保持。
  * [POS]: 模型兼容业务不变量；全部离线协议调用，不计真实供应商或人工质量通过。
@@ -84,25 +85,26 @@ async function context(patch: Partial<EngineContext> = {}) {
 
 test('thinking group chat with advertised memory tools projects published history before its first HTTP request', async () => {
   const firstReasoning = 'Actual provider reasoning for an authorized memory lookup.'
-  const api = await endpoint([{ reasoning: firstReasoning, tool: { name: 'search_memory', args: { query: '已有分工' } } }, { reasoning: 'Actual provider reasoning for the final chat reply.', text: '按群里的原分工继续讨论。' }])
+  const api = await endpoint([{ reasoning: firstReasoning, tool: { name: 'recall', args: { mode: 'messages', detail: 'high' } } }, { reasoning: 'Actual provider reasoning for the final chat reply.', text: '按群里的原分工继续讨论。' }])
   let recalls = 0
   const run = await context({ responseKind: 'chat', workspace: undefined, recallMemory: async () => { recalls++; return { entries: [], epoch: 0, namespace: 'group-chat-fixture' } } })
   await new MastraEngine().run(run.ctx)
-  expect(api.requests).toHaveLength(2); expect(recalls).toBe(1)
-  expect(api.requests[0]!.tools.map(tool => tool.function.name)).toContain('search_memory')
+  expect(api.requests).toHaveLength(2); expect(recalls).toBe(0)
+  expect(api.requests[0]!.tools.map(tool => tool.function.name)).toContain('recall')
   expect(api.requests[0]!.messages.some(message => message.role === 'assistant')).toBe(false)
   expect(JSON.stringify(api.requests[0]!.messages)).toContain('actual-announcement')
   expect(api.requests[1]!.messages.find(message => message.role === 'assistant')?.reasoning_content).toBe(firstReasoning)
   expect(run.deltas.join('')).toBe('按群里的原分工继续讨论。')
 })
 
-test('thinking chat without tools keeps ordinary assistant history unchanged', async () => {
+test('thinking chat with official recall preserves historical attribution without inventing reasoning', async () => {
   const api = await endpoint([{ reasoning: 'Actual answer reasoning without tools.', text: '继续讨论。' }])
   const run = await context({ responseKind: 'chat', workspace: undefined })
   await new MastraEngine().run(run.ctx)
   expect(api.requests).toHaveLength(1)
-  expect(api.requests[0]!.tools ?? []).toEqual([])
-  expect(api.requests[0]!.messages.some(message => message.role === 'assistant')).toBe(true)
+  expect(api.requests[0]!.tools?.map(tool => tool.function.name)).toEqual(['recall'])
+  expect(api.requests[0]!.messages.some(message => message.role === 'assistant')).toBe(false)
+  expect(JSON.stringify(api.requests[0]!.messages)).toContain('actual-announcement')
   expect(run.deltas.join('')).toBe('继续讨论。')
 })
 

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-30 增加Mastra记忆归属/来源/管理接口和embedding实际模型记账选择；原生不接Mastra。
  * [OUTPUT]: 独立AgentBrowser/BrowserViewer插件接入；上游工具、启停与运行回收保持独立。
  * [OUTPUT]: onNativeProgram承接实际原生握手/线程的程序身份，不代表任务执行或人工连接验证。
  * [OUTPUT]: 当前轮次纯文本补充固定run/turn，原消息保存接受、原生确认与未知投递。
@@ -74,6 +75,9 @@ export interface SecretStore {
   delete(connectionId: string): Promise<void>
 }
 export interface EngineContext {
+  /** API memory sources are authorized by BOAI; storage, recall and observation belong to Mastra. */
+  memorySources?(): Promise<import('./adapters/mastra/conversation-memory').MemorySources>
+  memoryOwner?: 'mastra' | 'native'
   /** Register only while a native turn can accept explicit text steering. */
   registerNativeSteering?(send: (messageId: string, content: string) => Promise<void>): () => void
   /** Host-validated projection from original Work/Run/artifact records; no model call or replay. */
@@ -211,7 +215,7 @@ export interface EngineContext {
   onAdditionalModelCall?(phase?: 'report'): Promise<string | void>
   /** Host reservation for this adapter invocation's first request. */
   modelCallId?: string
-  onModelCallStarted?(callId: string, phase: 'chat' | 'task' | 'decision' | 'memory' | 'report', thinking?: string): Promise<void>
+  onModelCallStarted?(callId: string, phase: 'chat' | 'task' | 'decision' | 'memory' | 'report', thinking?: string, selection?: { connectionId: string; modelId: string }): Promise<void>
   onModelCallRoute?(callId: string, evidence: import('@boai/shared/domain/model-gateway').GatewayRouteEvidence): Promise<void>
   onSkillActivated?(toolCallId: string, skill: { id: string; name: string }): Promise<void>
   /** Raw per-request usage, never the SDK's zero-filled or cumulative aggregate. */
@@ -256,6 +260,13 @@ export interface AutomationDraftContext extends ModelCallObservation {
   onUsage(usage: ModelUsage): Promise<void>
 }
 export interface AgentEngine {
+  readonly memoryOwner?: 'mastra'
+  memoryView?(agentId: string): Promise<import('@boai/shared/domain/memory').ManagedMemory>
+  saveWorkingMemory?(agentId: string, resourceId: string, content: string, expectedVersion: string, cutoffs?: { conversationId: string; sequence: number }[]): Promise<void>
+  clearEmployeeMemory?(agentId: string, cutoffs: { conversationId: string; sequence: number }[]): Promise<void>
+  deleteEmployeeMemory?(agentId: string): Promise<void>
+  forgetEmployeeMemory?(agentId: string): Promise<void>
+  closeMemory?(): Promise<void>
   /** Discard a derived chat projection after the authoritative ProductStore clears it. */
   forgetConversationMemory?(conversationId: string): Promise<void>
   /** Drop every derived bobo thread after explicit memory correction/forget or source-chat clear. */

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-30 原生会话装配baseInstructions，退出BOAI额外记忆正文；原生session/工具/恢复保持。
  * [OUTPUT]: 程序版本观察记录不参与配置指纹，避免正常升级断开原会话；原来源与权限核验保持。
  * [OUTPUT]: 2026-10-27 默认持续执行、来源校验及工作现场/复核接线；沿原权限和账本。
  * [OUTPUT]: 本机反思共用保存前事实复核并累加两个阶段已返回的用量；第二阶段不提供产品工具，原生配置/实际内部调用数沿本机运行时。
@@ -71,7 +72,7 @@ export abstract class NativeConversationEngine {
     const { createWebSearchOperations } = await import('./mastra/web-search-tools')
     const tools = [...createApplicationTools(context), ...createWebSearchOperations(context)].map(tool => ({ name: tool.name, description: tool.description, inputSchema: { ...z.toJSONSchema(tool.schema, { io: 'input' }), type: 'object' }, execute: async (input: unknown) => tool.execute(input) }))
     const behaviorContext = behaviorModelContext(context)
-    const instructions = `${context.bootstrap?.instructions ?? context.agent.instructions}\n\n${context.bootstrap?.dynamicInstructions ?? ''}\n\nThis is an enabled employee behavior, not an owner message. ${input.instruction}\n\n${behaviorContext.instructions}\nReturn only JSON matching ${JSON.stringify(z.toJSONSchema(agentBehaviorResultSchema))}. Only supplied message IDs are valid evidence. Native configuration and permissions remain in force. Do not act outside the configured behavior. Choose skip when there is no useful update. A draft is not a sent message.`
+    const instructions = `${context.bootstrap?.baseInstructions ?? context.bootstrap?.instructions ?? context.agent.instructions}\n\n${context.bootstrap?.dynamicInstructions ?? ''}\n\nThis is an enabled employee behavior, not an owner message. ${input.instruction}\n\n${behaviorContext.instructions}\nReturn only JSON matching ${JSON.stringify(z.toJSONSchema(agentBehaviorResultSchema))}. Only supplied message IDs are valid evidence. Native configuration and permissions remain in force. Do not act outside the configured behavior. Choose skip when there is no useful update. A draft is not a sent message.`
     let draftUsage: ModelUsage = {}
     const draftContext: EngineContext = { ...context, onUsage: async usage => { draftUsage = { ...usage }; await context.onUsage?.(usage) } }
     const result = await this.conversation(draftContext, { instructions, nativeInstructions: instructions, prompt: behaviorContext.prompt, images: [], tools,
@@ -111,7 +112,7 @@ export abstract class NativeConversationEngine {
     try {
       if (context.modelCallId) await context.onModelCallStarted?.(context.modelCallId, 'chat', context.agent.nativeOptions?.effort)
       const newIds = new Set(messages.map(message => message.id))
-      const nativeInstructions = [context.personality ? stateToolInstructions : '', context.application ? applicationInstructions : '', !context.application && (context.manageSkills || context.manageDataSources) ? catalogManagementInstructions : '', (context.conversation.automationCreation || context.conversation.sourceCreation) ? boboResponseInstructions(context) : '', context.bootstrap?.instructions ?? `You are ${context.agent.name}. ${context.agent.role}\n${context.agent.instructions}`,
+      const nativeInstructions = [context.personality ? stateToolInstructions : '', context.application ? applicationInstructions : '', !context.application && (context.manageSkills || context.manageDataSources) ? catalogManagementInstructions : '', (context.conversation.automationCreation || context.conversation.sourceCreation) ? boboResponseInstructions(context) : '', context.bootstrap?.baseInstructions ?? context.bootstrap?.instructions ?? `You are ${context.agent.name}. ${context.agent.role}\n${context.agent.instructions}`,
         'You are an independent employee in BOAI, an IM collaboration product. Handle the current message using your native tools, skills, MCP servers, plugins and agents with the selected native permission policy. Ask clarification as an ordinary chat reply, and continue on the next message. Explain observable progress in commentary. Keep private reasoning private. Do not describe internal runtime IDs in public replies.',
         `Working directory: ${context.runtimeDirectory?.cwd ?? context.workspace?.workPath}. Bound resources (additional to native resources): ${JSON.stringify(context.resources.map(({ id, name, kind, path }) => ({ id, name, kind, path })))}`,
         hasKnowledge(context) ? knowledgeInstructions : '',
