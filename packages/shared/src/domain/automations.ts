@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 普通员工任务独立purpose，不将其配置/历史混入定时计划管理。
+ * [OUTPUT]: 员工任务排队及独立任务工作区身份，旧公开聊天历史兼容。
  * [OUTPUT]: 默认执行不按累计调用、工具步骤、用量或墙钟截断；保留真实用量、取消/权限和明确指定的预算。
  * [OUTPUT]: 自动化预算没有执行截止时间，旧持久账本保留兼容；普通工作期限合同不变。
  * [OUTPUT]: 已删除执行仅保留deletedAt最小触发墓碑，历史查询/统计不展示，旧触发不重跑。
@@ -33,7 +35,7 @@ export interface AutomationExecutionPlan {
   collaboration?: AutomationCollaboration
 }
 export interface AutomationCreationSource { conversationId: string; messageId: string; agentId: string }
-export interface AutomationListQuery { owner?: AutomationOwner; before?: { updatedAt: string; id: string }; limit?: number }
+export interface AutomationListQuery { purpose?: 'employee-task'; owner?: AutomationOwner; before?: { updatedAt: string; id: string }; limit?: number }
 export interface AutomationListPage { definitions: (AutomationDefinition & { nextTimes: string[]; latestOccurrence?: Pick<AutomationOccurrence, 'id' | 'status' | 'deliveryStatus' | 'startedAt' | 'finishedAt'> })[]; nextCursor?: { updatedAt: string; id: string } }
 
 export interface AutomationMonitorPolicy {
@@ -76,6 +78,8 @@ export interface AutomationMonitorCheckpoint {
 }
 
 export interface AutomationInput {
+  /** Ordinary employee assignments are not scheduled plans. */
+  purpose?: 'employee-task'
   owner?: AutomationOwner
   collaboration?: AutomationCollaboration
   /** Stable creation intent. Retries return the same persisted plan, including after restart. */
@@ -126,9 +130,14 @@ export interface AutomationDefinition extends Omit<AutomationInput, 'id' | 'expe
   updatedAt: string
 }
 
-export type OccurrenceStatus = 'admitted' | 'running' | 'waiting_approval' | 'waiting_user' | 'waiting_work' | 'cancelling' | 'completed' | 'failed' | 'skipped' | 'interrupted' | 'needs_review' | 'cancelled'
+export type OccurrenceStatus = 'queued' | 'admitted' | 'running' | 'waiting_approval' | 'waiting_user' | 'waiting_work' | 'cancelling' | 'completed' | 'failed' | 'skipped' | 'interrupted' | 'needs_review' | 'cancelled'
 export type AutomationDeliveryStatus = 'pending' | 'delivered' | 'no_change' | 'partial' | 'blocked' | 'unknown'
 export interface AutomationOccurrence {
+  purpose?: 'employee-task'
+  /** New executions are read in the task workspace; legacy chat publications remain readable. */
+  executionSurface?: 'task'
+  /** Admission order is persisted independently of the actual start time. */
+  queueOrder?: number
   /** Minimal trigger receipt retained after history/files were removed. */
   deletedAt?: string
   /** Immutable execution configuration; editing the definition cannot rewrite a running assignment. */
@@ -209,6 +218,7 @@ export interface AutomationsView {
 }
 
 export interface AutomationHistoryQuery {
+  employeeId?: string
   automationId?: string
   search?: string
   status?: 'all' | 'active' | 'completed' | 'attention'
@@ -217,7 +227,7 @@ export interface AutomationHistoryQuery {
   limit?: number
 }
 
-export const AUTOMATION_ONGOING_STATUSES = ['admitted', 'running', 'waiting_approval', 'waiting_user', 'waiting_work', 'cancelling'] as const
+export const AUTOMATION_ONGOING_STATUSES = ['queued', 'admitted', 'running', 'waiting_approval', 'waiting_user', 'waiting_work', 'cancelling'] as const
 
 export interface AutomationDraftRequest {
   draftId: string

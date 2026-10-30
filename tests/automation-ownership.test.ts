@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 新群任务交付保留在独立任务上下文，主群不镜像；原协作/依赖/交付/重启不重放断言保持。
  * [OUTPUT]: 群任务执行定位到原群公开指令，保持固定消息身份。
  * [OUTPUT]: 群任务公开消息即时进入原群；执行对象仍在独立任务会话，重启保留消息身份且不重放。
  * [OUTPUT]: 手动和真实Mastra到点分别核对完整AppService双采集→结果唤醒→计算汇总→重启去重与跨员工重复创建/恢复身份验证。
@@ -216,16 +217,10 @@ it.each(['manual', 'calendar'] as const)('completes the actual %s group dispatch
   const publicGroup = await service.handle('getConversation', { id: group.id }) as ConversationDetail
   expect(publicGroup.workItems).toEqual([])
   expect(publicGroup.runs).toEqual([])
-  expect(publicGroup.messages).toHaveLength(detail.messages.length)
+  expect(publicGroup.messages).toEqual([])
   const execution = detail.runs.find(run => run.phase === 'execution')!
-  const target = publicGroup.messages.find(message => message.automationPublication?.sourceMessageId === execution.triggerMessageId)!
-  expect(await service.handle('resolveExecutionMessage', { conversationId: occurrence.conversationId, runId: execution.id })).toEqual({ conversationId: group.id, messageId: target.id })
-  for (const source of detail.messages) {
-    const published = publicGroup.messages.find(message => message.automationPublication?.sourceMessageId === source.id)!
-    expect(published).toMatchObject({ conversationId: group.id, senderType: source.senderType, senderId: source.senderId,
-      content: source.content, status: source.status, automationPublication: { automationId: definition.id, occurrenceId: occurrence.id, sourceConversationId: occurrence.conversationId, sourceMessageId: source.id } })
-    expect(published.runId).toBeUndefined(); expect(published.turnId).toBeUndefined()
-  }
+  expect(await service.handle('resolveExecutionMessage', { conversationId: occurrence.conversationId, runId: execution.id })).toEqual({ conversationId: occurrence.conversationId, messageId: execution.triggerMessageId })
+  expect(detail.messages.every(message => !message.automationPublication)).toBe(true)
   const before = [...calls]
   await service.close(); const restored = await make()
   if (trigger === 'manual') expect(await restored.handle('runAutomation', { id: definition.id, requestId: 'actual-dispatch' })).toMatchObject({ id: occurrence.id })

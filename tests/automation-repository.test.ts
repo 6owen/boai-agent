@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 满容量或同上下文改为持久排队，重复同计划等待仍保留去重。
  * [OUTPUT]: 本轮覆盖复制/员工入口、定时运行防连点、失败过程、严格私有判断及保留原预算的显式继续；实际范围以各用例为准。
  * [INPUT]: 真实 SQLite、自动化事务账本、原生调度和固定时间策略。
  * [OUTPUT]: 系统时钟跳变不延长已启动预算、数日漏跑不补执行；独立连接的新任务聊天单次绑定与提交故障整体回滚；跨实例受理、版本/恢复/迁移、投递回滚、同步与 DST 不变量验证。
@@ -125,9 +126,9 @@ it('claims global and conversation capacity atomically and keeps waiting plans b
   const allowed = await Promise.all(plans.slice(1).map(d => repository.claim(manual(d), () => undefined)))
   expect(allowed.every(result => result.occurrence.status === 'admitted')).toBe(true)
   const fourth = await repository.save(input({ conversationId: 'd' }), 'allowed')
-  expect((await repository.claim(manual(fourth), () => undefined)).occurrence.reason).toContain('容量')
+  expect((await repository.claim(manual(fourth), () => undefined)).occurrence.status).toBe('queued')
   const sameChat = await repository.save(input({ conversationId: 'b' }), 'allowed')
-  expect((await repository.claim(manual(sameChat), () => undefined)).occurrence.reason).toContain('会话忙碌')
+  expect((await repository.claim(manual(sameChat), () => undefined)).occurrence.status).toBe('queued')
 })
 
 it('rolls back the occurrence and aliases if its dispatch intent cannot be committed', async () => {

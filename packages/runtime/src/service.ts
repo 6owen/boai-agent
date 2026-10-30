@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 新任务独立消息定位，启动后仅唤醒未开始的持久员工队列。
  * [OUTPUT]: 保留的定时运行缺失原会话时返回空过程供详情展示历史元数据；无关/缺失运行身份仍拒绝。
  * [OUTPUT]: 已登记依赖等待时私有汇报schema错误沿withhold保留等待及错误原文；不发布无效正文或重放操作。
  * [OUTPUT]: 2026-10-29 getWorkspaceRoot可解析精确已存目录授权，成员/撤权/根替换复核；执行cwd保持。
@@ -766,7 +767,7 @@ export class AppService {
     })
     this.automations=new AutomationService(this.store,this.dataPath,{
       behaviors: this.agentBehaviors,
-      critical:operation=>this.serialize(operation),validate:id=>this.automationFingerprint(id),busy:id=>this.conversationBusy(id),
+      critical:operation=>this.serialize(operation),validate:id=>this.automationFingerprint(id),busy:id=>this.closing||this.backingUp||this.conversationBusy(id),
       prepareConversation: (definition, occurrence) => this.prepareAutomationConversation(definition, occurrence),
       readMonitor: async (definition, signal) => {
         const source = definition.monitor?.source ?? fail('监控来源缺失')
@@ -936,6 +937,7 @@ export class AppService {
       this.installMessageReception(result)
     }
     await this.channels.init()
+    this.automations.observe()
     this.memoryTimer = setInterval(() => {
       if (this.closing || this.backingUp || this.runControllers.size || this.activeAdapters.size) return
       void this.serialize(async () => { if (await this.memory.maintain()) await this.memoryChanged([...this.employees.values()].map(agent => agent.id)) }).catch(() => this.emit({ type: 'runtime-error', error: '记忆整理未完成，将在空闲时重新核对；没有重新执行模型或工具。' }))
@@ -1430,7 +1432,8 @@ export class AppService {
           const query = z.object({ conversationId: id, runId: id }).strict().parse(input)
           const run = this.executionScope(query.conversationId, query.runId)
           const source = this.getConversation(run.conversationId)
-          const target = source.purpose === 'automation'
+          const occurrence = source.occurrenceId ? await this.store.get<AutomationOccurrence>('automationOccurrences', source.occurrenceId) : undefined
+          const target = source.purpose === 'automation' && occurrence?.executionSurface !== 'task'
             ? [...this.messages.values()].find(message => message.automationPublication?.sourceConversationId === source.id && message.automationPublication.sourceMessageId === run.triggerMessageId && message.automationPublication.occurrenceId === source.occurrenceId)
             : this.messages.get(run.triggerMessageId!)
           if (!target) fail('对应聊天记录已删除或不可用')

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 独立任务复用有界消息读取/原消息交互，不展示渠道选择或改写主聊天路由。
  * [OUTPUT]: 共享聊天发送可回到渠道最新窗口，清除旧定位/分页；迟到响应不能覆盖后续手动阅读位置。
  * [OUTPUT]: 共享ChatView允许主列表历史加载中保持固定布局，渠道ChatWindow仍显式要求真实ConversationView。
  * [OUTPUT]: 渠道列表Popover省略重复标题，清除外层padding/gap以统一紧凑8px内边距。
@@ -13,7 +14,7 @@
  */
 import { useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react'
 import type { DesktopApi } from '@boai/shared/ipc'
-import type { DigitalAgent, Message } from '@boai/shared/domain'
+import type { DigitalAgent, Message, Snapshot } from '@boai/shared/domain'
 import { isChannelConversation } from '@boai/shared/domain/conversation-list'
 import { READING_LIMITS, type ConversationView } from '@boai/shared/domain/reading'
 import { mergeMessagePages, mergeReadingState, updateLiveMessage } from '@/pages/conversations/reading-state'
@@ -31,15 +32,16 @@ import { List } from '@/components/icons'
 type ChatProps = ComponentProps<typeof ChatView>
 export type ChannelChatWindow = Pick<ChatProps, 'detail' | 'onReading' | 'onLocation' | 'onPage' | 'onLatest' | 'paging' | 'pageEdges' | 'restoreAnchor' | 'scrollPosition' | 'onScrollPosition' | 'pageActive' | 'focusMessage' | 'focusApproval'> & { detail: ConversationView }
 type Location = { initialized: boolean; messageId?: string; offset?: number; focusRequestId?: string; scrollPosition?: number }
-export function ChannelsTab({ api, agent, target, active, chatActive, listProps, renderChat, onMaterials, internal = false }: {
-  internal?: boolean
+export function ChannelsTab({ api, agent, target, active, chatActive, listProps, renderChat, onMaterials, internal = false, taskSnapshot }: {
+  internal?: boolean; taskSnapshot?: Snapshot
   api: DesktopApi; agent: DigitalAgent; target: Extract<DetailTarget, { type: 'channels' }>; active: boolean; chatActive: boolean
-  listProps: ComponentProps<typeof ConversationList>
+  listProps?: ComponentProps<typeof ConversationList>
   renderChat(window: ChannelChatWindow, headerActions: ReactNode): ReactNode
   onMaterials: (id: string, materials: NonNullable<ConversationView['materials']>) => void
 }) {
   const id = target.conversationId
-  const available = listProps.snapshot.conversations.some(room => room.id === id && (internal ? room.purpose === 'channel-internal' : isChannelConversation(room)) && !room.list?.hidden && room.agentIds.includes(agent.id))
+  const task = Boolean(taskSnapshot)
+  const available = (taskSnapshot ?? listProps!.snapshot).conversations.some(room => room.id === id && (task ? room.purpose === 'automation' : internal ? room.purpose === 'channel-internal' : isChannelConversation(room)) && !room.list?.hidden && room.agentIds.includes(agent.id))
   const [pickerOpen, setPickerOpen] = useState(false)
   useEffect(() => { setPickerOpen(false) }, [active, target.requestId])
   const [detail, setDetail] = useState<ConversationView | null>(null), [error, setError] = useState('')
@@ -134,9 +136,9 @@ export function ChannelsTab({ api, agent, target, active, chatActive, listProps,
     finally { if (flight.current === token) { flight.current = 0; setPaging(false) } }
   }
   const current = available && detail?.conversation.id === id ? detail : null
-  const picker = internal ? null : <PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label="选择渠道会话" title="渠道会话" />}><List /></PopoverTrigger>
+  const picker = internal || task ? null : <PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label="选择渠道会话" title="渠道会话" />}><List /></PopoverTrigger>
   return <Popover open={active && pickerOpen} onOpenChange={setPickerOpen}>
-    <div className="channel-workspace" aria-label={`${agent.name}的渠道面板`} hidden={!active}>
+    <div className="channel-workspace" aria-label={`${agent.name}的${task ? '任务' : '渠道'}面板`} hidden={!active}>
     <div className="conversation-stage channel-chat-stage">
       {current ? renderChat({ detail: current, pageActive: active && chatActive, focusMessage: target.focusMessage, focusApproval: target.focusApproval, paging, pageEdges,
         onReading: reading => setDetail(previous => previous?.conversation.id === reading.conversationId ? { ...previous, reading: mergeReadingState(previous.reading, reading) } : previous),
@@ -144,16 +146,16 @@ export function ChannelsTab({ api, agent, target, active, chatActive, listProps,
         onPage: direction => { void loadPage(direction) }, onLatest: showLatest, restoreAnchor: location()?.messageId ? { messageId: location()!.messageId!, offset: location()?.offset } : undefined,
         scrollPosition: location()?.scrollPosition, onScrollPosition: scrollPosition => { locations.current.set(current.conversation.id, { ...location(), initialized: true, scrollPosition }) },
       }, picker) : <div className="chat-panel channel-empty-panel">
-        <ConversationHeaderLayout title={`${agent.name}的渠道`}>{picker}</ConversationHeaderLayout>
+        <ConversationHeaderLayout title={`${agent.name}的${task ? '任务' : '渠道'}`}>{picker}</ConversationHeaderLayout>
         <ScrollArea className="channel-empty-scroll" viewportProps={{ className: 'scroll-fade-t scroll-fade-6', 'aria-label': '渠道内容' }} contentProps={{ className: 'flex flex-col' }}>
           {error && <div className="px-6 pt-8"><Banner>{error}</Banner></div>}
-          {available && !error ? <div className="flex flex-1 items-center justify-center"><Loading>正在载入渠道会话…</Loading></div> : <IllustratedEmpty kind="conversations" title={id ? '该渠道会话已不可用' : '暂无渠道会话'} />}
+          {available && !error ? <div className="flex flex-1 items-center justify-center"><Loading>正在载入工作记录…</Loading></div> : <IllustratedEmpty kind="conversations" title={task ? '该任务上下文已不可用' : id ? '该渠道会话已不可用' : '暂无渠道会话'} />}
         </ScrollArea>
       </div>}
       {current && error && <Banner>{error}</Banner>}
     </div>
     </div>
-    {!internal && <PopoverContent keepMounted align="end" className="channel-picker p-0 gap-0" aria-label="选择渠道会话" onKeyDown={event => { if (event.key === 'Escape') event.stopPropagation() }}>
+    {!internal && !task && listProps && <PopoverContent keepMounted align="end" className="channel-picker p-0 gap-0" aria-label="选择渠道会话" onKeyDown={event => { if (event.key === 'Escape') event.stopPropagation() }}>
       <ConversationList {...listProps} showHeading={false} onBack={undefined} channelAgent={agent} selectedId={id ?? null} selectionRequest={target.requestId}
         onSelect={id => { listProps.onSelect(id); setPickerOpen(false) }} />
     </PopoverContent>}

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 新任务消息仅进入独立任务工作区；旧任务聊天镜像按原回执继续兼容。
  * [OUTPUT]: 公开任务消息身份共用确定性函数，执行镜像按原消息直接核源，不扫描聊天历史。
  * [INPUT]: 公共消息写事务、真实会话/参与者/来源和原阅读事务。
  * [OUTPUT]: 任何新公开消息与对应IM入口可见性同事务；隔离任务按固定归属投影，原回执屏障/执行上下文保持。
@@ -45,6 +46,8 @@ export async function receiveConversationMessages(tx: RecordTransaction, changes
       }
     } else if (source.purpose === 'automation' && !message.automationPublication) {
       const occurrence = source.occurrenceId ? await tx.get<AutomationOccurrence>('automationOccurrences', source.occurrenceId) : undefined
+      // The task workspace owns new execution messages. Existing chat publications remain historical records.
+      if (occurrence?.executionSurface === 'task') continue
       const owner = occurrence?.plan?.owner
       const target = owner?.kind === 'group' ? await tx.get<Conversation>('conversations', owner.conversationId) : source.agentIds.length === 1 ? await mainPrivate(source.agentIds[0]) : undefined
       if (!target || await tx.get('conversationCleanup', target.id)) continue

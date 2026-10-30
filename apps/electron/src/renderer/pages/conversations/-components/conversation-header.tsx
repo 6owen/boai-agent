@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 数字员工主聊天标题提供任务入口，打开员工右侧面板。
  * [OUTPUT]: 标题栏随会话切换保持挂载，身份变化清理旧菜单动作与清空确认，避免把上一会话操作带入当前。
  * [OUTPUT]: 会话菜单移除网页预览入口，文件和执行过程入口保持。
  * [OUTPUT]: 文件收进标题下拉菜单，关闭菜单后打开右侧面板，与主聊天并行；无独立按钮或互斥Tabs。
@@ -34,6 +35,7 @@ interface Props {
   onConfigureAgent(agent: DigitalAgent): void
   onEditTitle(conversation: Conversation): void
   onClear(id: string, hide: boolean): Promise<void>
+  onTasks?(): void
   onFiles?(): void
   onChannels?(): void
   headerActions?: ReactNode
@@ -46,7 +48,7 @@ export function ConversationHeaderLayout({ title, description, children }: { tit
   </header>
 }
 
-export function ConversationHeader({ conversation, members, resources, busy, onDetails, onConfigureAgent, onEditTitle, onTrace, onClear, onChannels, headerActions, onFiles }: Props) {
+export function ConversationHeader({ conversation, members, resources, busy, onDetails, onConfigureAgent, onEditTitle, onTrace, onClear, onChannels, headerActions, onFiles, onTasks }: Props) {
   const [clearing, setClearing] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const pendingAction = useRef<(() => void) | null>(null)
@@ -65,6 +67,7 @@ export function ConversationHeader({ conversation, members, resources, busy, onD
   return <>
     <ConversationHeaderLayout title={conversation.title}>
         {headerActions}
+        {onTasks && <Button variant="ghost" size="sm" onClick={onTasks}>任务</Button>}
         {(conversation.kind === 'group' || channel) && <>
           <div className="chat-members" aria-label={channel ? '接入员工' : '群聊成员'}>
             {members.slice(0, 3).map(member => <AgentInfoPopover key={member.id} agent={member} resources={resources} placement="header" onConfigure={() => onConfigureAgent(member)} />)}

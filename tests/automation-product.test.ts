@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 旧任务镜像场景明确使用旧记录格式；新独立任务合同由employee-task-queue覆盖。
  * [OUTPUT]: 判断阶段失败的原Run可从单次定时详情读取；旧来源缺失时保留运行元数据且不重放。
  * [OUTPUT]: 真实AppService主聊历史读取定时原Run及证据，清理后撤销关联，不额外执行员工。
  * [OUTPUT]: 配置变更后的任务经明确编辑保存恢复执行；更换执行员工仅作用后续运行，历史归属/旧触发回执保持。
@@ -26,6 +27,7 @@ import { join } from 'node:path'
 import type { AgentEngine, EngineContext } from '../packages/runtime/src/contracts'
 import type { AutomationDefinition, AutomationHistoryPage, AutomationInput, AutomationOccurrence, AutomationsView, Connection, Conversation, ConversationDetail, Snapshot } from '../packages/shared/src/domain'
 import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { AutomationRepository } from '../packages/runtime/src/modules/automations/automation-repository'
 import { AppService } from '../packages/runtime/src/service'
 import { automationCron, matchesSchedule, nextTimes } from '../packages/runtime/src/modules/automations/schedule-policy'
 import { automationNeedsAttention } from '../packages/shared/src/domain/automations'
@@ -40,12 +42,24 @@ import { webSearchServer, webSourceConfig, resultUrl, pageText } from './fixture
 const disposers: (() => Promise<void>)[] = []
 afterEach(async () => { for (const dispose of disposers.splice(0).reverse()) await dispose() })
 async function until(check: () => Promise<boolean>) { const start = Date.now(); while (!await check()) { if (Date.now() - start > 8000) throw new Error('condition did not settle'); await new Promise(resolve => setTimeout(resolve, 20)) } }
-async function setup({ allowCommands = false, engine: customEngine, browserHost }: { allowCommands?: boolean; engine?: AgentEngine; browserHost?: BrowserHostBridge } = {}) {
+async function setup({ allowCommands = false, engine: customEngine, browserHost, legacyPublications = false }: { allowCommands?: boolean; legacyPublications?: boolean; engine?: AgentEngine; browserHost?: BrowserHostBridge } = {}) {
   const root = await mkdtemp(join(tmpdir(), 'boai-automation-product-')); disposers.push(() => rm(root, { recursive: true, force: true }))
   const contexts: EngineContext[] = []
   const events: AppEvent[] = []
   const engine: AgentEngine = customEngine ?? { test: async () => '', decide: async ctx => ({ action: ctx.participation?.hasRespondedInTurn ? 'pass' : 'reply', responseKind: 'chat', observedThroughSequence: Math.max(...ctx.messages.map(m => m.sequence)) }), run: async ctx => { contexts.push(ctx); await ctx.onDelta('当前聊天的回复') } }
-  const make = async () => { const service = new AppService({ dataPath: root, engine, browserHost, secrets: { get: async () => undefined, set: async () => {}, delete: async () => {} }, emit: event => events.push(event) }); disposers.push(() => service.close()); await service.init(); return service }
+  const make = async () => { const service = new AppService({ dataPath: root, engine, browserHost, secrets: { get: async () => undefined, set: async () => {}, delete: async () => {} }, emit: event => events.push(event) }); disposers.push(() => service.close()); await service.init()
+    if (legacyPublications) {
+      // Seed the pre-task-workspace record format to keep legacy publication/cleanup coverage.
+      // New task isolation is tested through the unmodified AppService in employee-task-queue.test.ts.
+      const host = service as unknown as { automations: { repository: AutomationRepository }; store: ProductStore }
+      const claim = host.automations.repository.claim.bind(host.automations.repository)
+      host.automations.repository.claim = async (...args) => {
+        const result = await claim(...args)
+        if (result.created) { delete result.occurrence.executionSurface; await host.store.write([{ collection: 'automationOccurrences', id: result.occurrence.id, value: result.occurrence }]) }
+        return result
+      }
+    }
+    return service }
   const service = await make()
   const connection = await service.handle('saveConnection', { name: 'local', provider: 'openai-compatible', baseUrl: 'http://127.0.0.1:1', defaultModel: 'local' }) as Connection
   const { configVersion, workspaceRef, memoryNamespace, policyVersion, ...agent } = (await service.handle('snapshot', undefined) as Snapshot).agents.find(a => a.id === 'researcher')!
@@ -109,8 +123,8 @@ it('retrieves public web facts in an automation with the executing employee bind
     if (process.env.BOAI_REVIEW_RUN_DIR) { const dir = join(process.env.BOAI_REVIEW_RUN_DIR, 'search-entries'); await mkdir(dir, { recursive: true }); await writeFile(join(dir, 'automation.json'), JSON.stringify({ executed, decisionDenied, calls: server.calls, detail, occurrence: await restored.handle('getAutomationOccurrence', { id: occurrence.id }), externalRequests: 0, trigger: 'manual-original-automation-path', modelMode: 'controlled-engine-real-MCP-SDK' }, null, 2)) }
   } finally { await server.close() }
 })
-it('deletes one completed execution and its private files while preserving the plan, other runs and IM messages', async () => {
-  const f = await setup(), plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
+it('legacy: deletes one completed execution and its private files while preserving the plan, other runs and IM messages', async () => {
+  const f = await setup({ legacyPublications: true }), plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
   const first = await f.service.handle('runAutomation', { id: plan.id, requestId: 'delete-first' }) as AutomationOccurrence
   await until(async () => (await f.view()).occurrences.find(o => o.id === first.id)?.status === 'completed')
   const second = await f.service.handle('runAutomation', { id: plan.id, requestId: 'keep-second' }) as AutomationOccurrence
@@ -227,8 +241,8 @@ it('runs after clearing the employee chat without scheduling archived conversati
   expect((await f.detail(run.conversationId)).messages.some(message => message.senderType === 'agent')).toBe(true)
   expect(f.events.filter(event => event.type === 'runtime-error')).toEqual([])
 })
-it('shows scheduled instructions and replies in the employee main chat after cleanup without inheriting its context or replaying cleared publications', async () => {
-  const f = await setup(), personal = await f.service.handle('createConversation', { kind: 'direct', title: '员工主私聊', agentIds: ['researcher'] }) as Conversation
+it('legacy: shows scheduled instructions and replies in the employee main chat after cleanup without inheriting its context or replaying cleared publications', async () => {
+  const f = await setup({ legacyPublications: true }), personal = await f.service.handle('createConversation', { kind: 'direct', title: '员工主私聊', agentIds: ['researcher'] }) as Conversation
   await f.service.handle('sendMessage', { conversationId: personal.id, content: '旧主私聊上下文', mentionIds: [], requestId: 'ordinary-context' })
   await until(async () => (await f.detail(personal.id)).turns?.every(turn => turn.status === 'completed') === true)
   const ordinary = (await f.detail(personal.id)).runs.find(run => run.phase === 'execution')!
@@ -269,10 +283,10 @@ it('shows scheduled instructions and replies in the employee main chat after cle
   expect(next.messages.every(message => message.automationPublication?.occurrenceId === second.id)).toBe(true)
   expect(f.contexts.filter(ctx => ctx.conversation.purpose === 'automation')).toHaveLength(2)
 })
-it('creates the employee main chat for public streaming task replies and updates the same published message', async () => {
+it('legacy: creates the employee main chat for public streaming task replies and updates the same published message', async () => {
   let release!: () => void
   const gate = new Promise<void>(resolve => { release = resolve })
-  const f = await setup({ engine: { test: async () => '', decide: async ctx => ({ action: ctx.participation?.hasRespondedInTurn ? 'pass' : 'reply', responseKind: 'chat', observedThroughSequence: Math.max(...ctx.messages.map(m => m.sequence)) }), run: async ctx => { await ctx.onDelta('正在整理'); await gate; await ctx.onDelta('，已完成') } } })
+  const f = await setup({ legacyPublications: true, engine: { test: async () => '', decide: async ctx => ({ action: ctx.participation?.hasRespondedInTurn ? 'pass' : 'reply', responseKind: 'chat', observedThroughSequence: Math.max(...ctx.messages.map(m => m.sequence)) }), run: async ctx => { await ctx.onDelta('正在整理'); await gate; await ctx.onDelta('，已完成') } } })
   disposers.push(async () => release())
   const plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
   await f.service.handle('runAutomation', { id: plan.id, requestId: 'stream-to-main' })
@@ -290,10 +304,10 @@ it('creates the employee main chat for public streaming task replies and updates
   expect(await f.service.handle('getConversationReading', { conversationId: main!.id })).toMatchObject({ completionCount: 1 })
   expect(f.events.filter(event => event.type === 'runtime-error')).toEqual([])
 })
-it('mirrors the original live task execution in IM before any public reply and revokes it after clearing', async () => {
+it('legacy: mirrors the original live task execution in IM before any public reply and revokes it after clearing', async () => {
   let release!: () => void, started = false, calls = 0
   const gate = new Promise<void>(resolve => { release = resolve })
-  const f = await setup({ engine: { test: async () => '', decide: async ctx => ({ action: 'reply', responseKind: 'chat', observedThroughSequence: Math.max(...ctx.messages.map(m => m.sequence)) }), run: async ctx => {
+  const f = await setup({ legacyPublications: true, engine: { test: async () => '', decide: async ctx => ({ action: 'reply', responseKind: 'chat', observedThroughSequence: Math.max(...ctx.messages.map(m => m.sequence)) }), run: async ctx => {
     calls++
     await ctx.onExecutionEvent?.({ id: 'reasoning', eventType: 'agent.reasoning.block', payload: { text: '核对天气来源', itemId: 'reasoning' } })
     started = true; await gate
@@ -323,10 +337,10 @@ it('mirrors the original live task execution in IM before any public reply and r
   expect(calls).toBe(1)
   release()
 })
-it('commits the task instruction to the IM conversation before the employee starts replying', async () => {
+it('legacy: commits the task instruction to the IM conversation before the employee starts replying', async () => {
   let release!: () => void, started = false
   const gate = new Promise<void>(resolve => { release = resolve })
-  const f = await setup({ engine: { test: async () => '', decide: async ctx => ({ action: 'reply', responseKind: 'chat', observedThroughSequence: Math.max(...ctx.messages.map(m => m.sequence)) }), run: async () => { started = true; await gate } } })
+  const f = await setup({ legacyPublications: true, engine: { test: async () => '', decide: async ctx => ({ action: 'reply', responseKind: 'chat', observedThroughSequence: Math.max(...ctx.messages.map(m => m.sequence)) }), run: async () => { started = true; await gate } } })
   disposers.push(async () => release())
   const plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
   const occurrence = await f.service.handle('runAutomation', { id: plan.id, requestId: 'receive-before-reply' }) as AutomationOccurrence
@@ -338,8 +352,8 @@ it('commits the task instruction to the IM conversation before the employee star
   expect(messages.some(message => message.senderType === 'agent' && message.status === 'completed')).toBe(false)
   release()
 })
-it('publishes existing isolated task results on startup without invoking the employee again', async () => {
-  const f = await setup(), plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
+it('legacy: publishes existing isolated task results on startup without invoking the employee again', async () => {
+  const f = await setup({ legacyPublications: true }), plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
   const occurrence = await f.service.handle('runAutomation', { id: plan.id, requestId: 'old-isolated-task' }) as AutomationOccurrence
   await until(async () => (await f.view()).occurrences[0]?.status === 'completed')
   await (f.service as unknown as { mutations: Promise<unknown> }).mutations

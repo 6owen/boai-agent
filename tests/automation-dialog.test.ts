@@ -58,7 +58,7 @@ test.each(['completed', 'failed', 'cancelled', 'interrupted'] as const)('manual 
   await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="查看本次执行过程"]')!.click())
   expect(open).toHaveBeenCalledWith('once')
   await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="定位聊天记录"]')!.click())
-  expect(navigate).toHaveBeenCalledWith('employee-chat', 'published-trigger', expect.any(Function))
+  expect(navigate).toHaveBeenCalledWith('employee-chat', 'published-trigger', expect.any(Function), expect.objectContaining({ occurrenceId: 'once', runId: 'run' }))
   await render([{ ...occurrence, status: terminalStatus, stateVersion: 2 }])
   expect(host.querySelector('[aria-label="查看本次执行过程"]')).toBeNull()
   expect(host.querySelector('[aria-label="定位聊天记录"]')).toBeNull()
@@ -167,4 +167,14 @@ test('conversation creation delegates to the ordinary chat without creating a di
   expect(document.querySelector('[role=dialog]')).toBeNull()
   expect(host.querySelector('.schedule-assistant-chat')).toBeNull()
   expect(request.mock.calls.every(([method]) => ['listAutomations', 'getScheduleList'].includes(method))).toBe(true)
+})
+
+
+test('ordinary employee tasks pin their owner and manual execution without changing the scheduled editor', async () => {
+  const f = await fixture({ kind: 'task', employeeId: 'employee', key: 'new-task' })
+  expect(document.querySelector('[role=dialog]')?.textContent).toContain('新建任务')
+  expect(document.querySelector('[aria-label="频率"]')).toBeNull()
+  expect(f.request.mock.calls.find(([method]) => method === 'previewAutomation')?.[1]).toMatchObject({ frequency: 'manual' })
+  expect((document.querySelector('[aria-label="执行员工"]') as HTMLButtonElement)?.disabled).toBe(true)
+  expect(f.request.mock.calls.some(([method]) => method === 'saveAutomation' || method === 'runAutomation')).toBe(false)
 })

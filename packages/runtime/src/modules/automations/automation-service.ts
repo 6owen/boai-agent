@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 普通员工任务固定归属和独立上下文；定时计划默认列表不混入普通任务。
+ * [OUTPUT]: 员工任务FIFO队列沿原事务认领/投递；取消未开始任务不调用Agent，恢复不重放已开始工作。
  * [OUTPUT]: 取消自动化固定执行时限；旧时间预算取消仅由本人显式继续恢复，原occurrence、预算计账、容量与人工停止门禁保持。
  * [OUTPUT]: 员工人格行为复用原Mastra时钟与同一日程同步队列，原用户自动化定义和Work保持。
  * [OUTPUT]: 删除历史后移除内存/时限，旧手动请求明确拒绝、原周期触发只核对不重放。
@@ -24,10 +26,10 @@ import { NativeSchedules, AUTOMATION_WORKFLOW, type NativeAutomationVersion } fr
 import { monitorPolicySchema } from './automation-monitor'
 import { AutomationRepository } from './automation-repository'
 import { automationCollaborationSchema, automationOwnerSchema } from './automation-plan'
-import { activeOccurrence, pendingOccurrence, nextTimes, scheduleSchema, automationCron } from './schedule-policy'
+import { activeOccurrence, pendingOccurrence, queuedOrder, sharesTaskExecutor, MAX_ACTIVE_AUTOMATIONS, nextTimes, scheduleSchema, automationCron } from './schedule-policy'
 export { calendarSlot, automationCron, nextTimes } from './schedule-policy'
 
-export const automationInputSchema = scheduleSchema.extend({ owner: automationOwnerSchema.optional(), collaboration: automationCollaborationSchema.optional(), requestId: z.string().min(1).max(200).optional(), id: z.string().max(200).optional(), expectedRevision: z.number().int().positive().optional(), name: z.string().trim().min(1).max(100), description: z.string().trim().max(1000).optional(), prompt: z.string().trim().min(1).max(40000), conversationPolicy: z.enum(['existing-conversation', 'new-conversation']).optional(), conversationId: z.string().min(1).max(200).optional(), employeeIds: z.array(z.string().min(1).max(200)).min(1).max(12).optional(), enabled: z.boolean(), notify: z.boolean(), notificationPolicy: z.enum(['all_results', 'important_only', 'muted']).optional(), taskKind: z.enum(['report', 'monitor']).optional(), monitor: monitorPolicySchema.optional() }).strict()
+export const automationInputSchema = scheduleSchema.extend({ purpose: z.literal('employee-task').optional(), owner: automationOwnerSchema.optional(), collaboration: automationCollaborationSchema.optional(), requestId: z.string().min(1).max(200).optional(), id: z.string().max(200).optional(), expectedRevision: z.number().int().positive().optional(), name: z.string().trim().min(1).max(100), description: z.string().trim().max(1000).optional(), prompt: z.string().trim().min(1).max(40000), conversationPolicy: z.enum(['existing-conversation', 'new-conversation']).optional(), conversationId: z.string().min(1).max(200).optional(), employeeIds: z.array(z.string().min(1).max(200)).min(1).max(12).optional(), enabled: z.boolean(), notify: z.boolean(), notificationPolicy: z.enum(['all_results', 'important_only', 'muted']).optional(), taskKind: z.enum(['report', 'monitor']).optional(), monitor: monitorPolicySchema.optional() }).strict()
 export const automationSchema = automationInputSchema.transform(value => {
   const conversationPolicy = value.conversationPolicy ?? (value.owner && value.taskKind !== 'monitor' ? 'new-conversation' : 'existing-conversation')
   const employeeIds = value.employeeIds ?? (conversationPolicy === 'new-conversation' ? value.owner?.kind === 'employee' ? [value.owner.employeeId] : value.collaboration?.assignments.map(item => item.employeeId) : undefined)
@@ -71,6 +73,7 @@ export class AutomationService {
   private monitors = new Map<string, { controller: AbortController; task: Promise<void> }>()
   private retryTimer?: ReturnType<typeof setTimeout>
   private retryCount = 0
+  private initialized = false
   private closing = false
   private backingUp = false
   private error?: string
@@ -90,6 +93,7 @@ export class AutomationService {
     await this.repository.migrate(); await this.repository.migrateOwners(); await this.repository.recover(); await this.refresh()
     await this.hooks.critical(() => this.reconcile(true))
     if (this.definitions.size || await this.hooks.behaviors?.hasSchedules()) await this.synchronize()
+    this.initialized = true
   }
   async assertExecutable(origin: AutomationOrigin, conversationId: string) {
     if (await this.hooks.validate(conversationId) !== origin.authorizedFingerprint) throw new Error('自动化授权的员工或会话配置已变更')
@@ -189,6 +193,7 @@ export class AutomationService {
     this.retryTimer.unref()
   }
   save(input: AutomationInput, authorize?: () => Promise<void>, creationSource?: AutomationCreationSource) {
+    if (input.purpose === 'employee-task' && (input.frequency !== 'manual' || input.owner?.kind !== 'employee' || input.conversationPolicy !== 'new-conversation')) throw new Error('员工任务必须归属单个员工并使用独立上下文')
     return this.serialize(async () => {
       if (this.closing || this.backingUp) throw new Error('调度服务正在关闭或备份')
       const value = automationSchema.parse(input)
@@ -203,7 +208,7 @@ export class AutomationService {
     if (request) { const prior = await this.hooks.critical(async () => { await authorize?.(); return this.repository.mutation(request.requestId, { id, expectedRevision: request.expectedRevision }) }); if (prior) return prior }
     const d = (await this.repository.view()).definitions.find(d => d.id === id && !d.deletedAt)
     if (!d) throw new Error('定时任务不存在')
-    return this.save({ id, expectedRevision: request?.expectedRevision ?? d.revision, requestId: request?.requestId, owner: d.owner, collaboration: d.collaboration, name: d.name, description: d.description, prompt: d.prompt, conversationPolicy: d.conversationPolicy, conversationId: d.conversationId, employeeIds: d.employeeIds, frequency: d.frequency, startsOn: d.startsOn, dayOfMonth: d.dayOfMonth, time: d.time, weekday: d.weekday, daysOfWeek: d.daysOfWeek, timezone: d.timezone, enabled: true, notify: d.notify, notificationPolicy: d.notificationPolicy, taskKind: d.taskKind, monitor: d.monitor }, authorize)
+    return this.save({ id, purpose: d.purpose, expectedRevision: request?.expectedRevision ?? d.revision, requestId: request?.requestId, owner: d.owner, collaboration: d.collaboration, name: d.name, description: d.description, prompt: d.prompt, conversationPolicy: d.conversationPolicy, conversationId: d.conversationId, employeeIds: d.employeeIds, frequency: d.frequency, startsOn: d.startsOn, dayOfMonth: d.dayOfMonth, time: d.time, weekday: d.weekday, daysOfWeek: d.daysOfWeek, timezone: d.timezone, enabled: true, notify: d.notify, notificationPolicy: d.notificationPolicy, taskKind: d.taskKind, monitor: d.monitor }, authorize)
   }
   pause(id: string, deleted = false, request?: { requestId: string; expectedRevision: number }, authorize?: () => Promise<void>) {
     return this.serialize(async () => {
@@ -240,9 +245,9 @@ export class AutomationService {
     for (const o of sorted) {
       const prior = latest.get(o.automationId)
       if (!prior || (o.finishedAt ?? o.startedAt) > (prior.finishedAt ?? prior.startedAt) || (o.finishedAt ?? o.startedAt) === (prior.finishedAt ?? prior.startedAt) && o.id > prior.id) latest.set(o.automationId, o)
-      if (automationNeedsAttention(o)) { attentionCount++; counts.set(o.automationId, (counts.get(o.automationId) ?? 0) + 1) }
+      if (o.purpose !== 'employee-task' && automationNeedsAttention(o)) { attentionCount++; counts.set(o.automationId, (counts.get(o.automationId) ?? 0) + 1) }
     }
-    return structuredClone({ definitions: definitions.filter(d => !d.deletedAt).map(d => ({ ...d, nextTimes: d.enabled && d.sync === 'synced' ? nextTimes(d) : [], latestOccurrence: latest.get(d.id), attentionCount: counts.get(d.id) ?? 0 })), occurrences: sorted.slice(0, 300), attentionCount, available: !this.closing && !this.error, error: this.error })
+    return structuredClone({ definitions: definitions.filter(d => !d.deletedAt && d.purpose !== 'employee-task').map(d => ({ ...d, nextTimes: d.enabled && d.sync === 'synced' ? nextTimes(d) : [], latestOccurrence: latest.get(d.id), attentionCount: counts.get(d.id) ?? 0 })), occurrences: sorted.filter(o => o.purpose !== 'employee-task').slice(0, 300), attentionCount, available: !this.closing && !this.error, error: this.error })
   }
   run(id: string, requestId: string, authorize?: () => Promise<void>) { return this.admit(id, undefined, 'manual', requestId, Date.now(), undefined, authorize) }
   async list(query: AutomationListQuery) {
@@ -251,7 +256,7 @@ export class AutomationService {
   }
   async occurrence(id: string) { const page = await this.store.automationHistory({ id, limit: 1 }); if (!page.occurrences[0]) throw new Error('本次执行记录不存在'); return page.occurrences[0] }
   history(input: unknown) {
-    const query = z.object({ automationId: z.string().min(1).max(200).optional(), attentionOnly: z.boolean().optional(), search: z.string().trim().max(200).optional(), status: z.enum(['all', 'active', 'completed', 'attention']).optional(), before: z.object({ startedAt: z.iso.datetime(), id: z.string().min(1).max(500) }).strict().optional(), limit: z.number().int().min(1).max(100).default(30) }).strict().parse(input)
+    const query = z.object({ employeeId: z.string().min(1).max(200).optional(), automationId: z.string().min(1).max(200).optional(), attentionOnly: z.boolean().optional(), search: z.string().trim().max(200).optional(), status: z.enum(['all', 'active', 'completed', 'attention']).optional(), before: z.object({ startedAt: z.iso.datetime(), id: z.string().min(1).max(500) }).strict().optional(), limit: z.number().int().min(1).max(100).default(30) }).strict().parse(input)
     return this.store.automationHistory(query)
   }
   preview(input: unknown) { const parsed = scheduleSchema.safeParse(input); if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? '请检查日程设置'); const value = parsed.data; return { nextTimes: nextTimes({ ...value, cron: automationCron(value) }) } }
@@ -260,8 +265,7 @@ export class AutomationService {
       const result = await this.hooks.critical(async () => { await authorize?.(); return this.repository.claim({ automationId: id, revision, source, key, scheduledAt: time, ...version }, async d => {
         if (this.closing || this.backingUp) return '应用正在退出或备份'
         try { if (await this.hooks.validate(d) !== d.authorizedFingerprint) return { reason: '员工或会话权限已变更，请编辑保存任务后重新启用', attention: 'authorization' as const } } catch (error) { return { reason: String(error), attention: 'authorization' as const } }
-        if (d.conversationId && this.hooks.busy(d.conversationId)) return '并发或会话忙碌，本次已跳过'
-      }, this.hooks.prepareConversation) })
+      }, this.hooks.prepareConversation, this.hooks.busy) })
       let o = result.occurrence
       if (o.deletedAt) {
         if (source === 'manual') throw new Error('本次执行记录已删除，请发起新的运行')
@@ -269,32 +273,52 @@ export class AutomationService {
       }
       this.occurrences.set(o.id, o)
       if (!result.created) return structuredClone(o)
-      const intent = result.dispatch
-      if (intent?.definition && intent.origin) {
-        try {
-          if (intent.definition.taskKind === 'monitor') {
-            if (!this.hooks.readMonitor) throw new Error('监控数据读取不可用')
-            o = await this.hooks.critical(async () => {
-              if (await this.hooks.validate(intent.definition!) !== intent.definition!.authorizedFingerprint) throw new Error('监控授权已变化')
-              return this.repository.beginMonitor(o.id)
-            })
-            this.occurrences.set(o.id, o)
-            const controller = new AbortController(), entry = { controller, task: Promise.resolve() }
-            this.monitors.set(o.id, entry)
-            entry.task = this.executeMonitor(o, intent.definition, controller.signal).catch(error => { this.error = String(error); this.observe() })
-          } else {
-            await this.hooks.dispatch(intent.definition, o, intent.origin, async (message, records) => {
-              o = await this.repository.commitDispatch(o.id, message, records); this.occurrences.set(o.id, o)
-            })
-            if (o.status !== 'running') throw new Error('自动化消息未完成事务投递')
-          }
-        } catch (error) {
-          o = await this.repository.updateOccurrence(o.id, o.stateVersion, { status: 'failed', deliveryStatus: 'unknown', reason: String(error), finishedAt: new Date().toISOString() }) ?? o
-          this.occurrences.set(o.id, o)
-        }
-      }
+      o = await this.dispatchOccurrence(o, result.dispatch)
       this.hooks.changed(); this.hooks.notify(); this.observe(); return structuredClone(o)
     })
+  }
+  private async dispatchOccurrence(o: AutomationOccurrence, intent?: import('@boai/shared/domain/automations').AutomationDispatch) {
+    if (o.status === 'admitted' && intent?.definition && intent.origin) {
+      try {
+        if (intent.definition.taskKind === 'monitor') {
+          if (!this.hooks.readMonitor) throw new Error('监控数据读取不可用')
+          o = await this.hooks.critical(async () => {
+            if (await this.hooks.validate(intent.definition!) !== intent.definition!.authorizedFingerprint) throw new Error('监控授权已变化')
+            return this.repository.beginMonitor(o.id)
+          })
+          this.occurrences.set(o.id, o)
+          const controller = new AbortController(), entry = { controller, task: Promise.resolve() }
+          this.monitors.set(o.id, entry)
+          entry.task = this.executeMonitor(o, intent.definition, controller.signal).catch(error => { this.error = String(error); this.observe() })
+        } else {
+          await this.hooks.dispatch(intent.definition, o, intent.origin, async (message, records) => {
+            o = await this.repository.commitDispatch(o.id, message, records); this.occurrences.set(o.id, o)
+          })
+          if ((o as AutomationOccurrence).status !== 'running') throw new Error('自动化消息未完成事务投递')
+        }
+      } catch (error) {
+        o = await this.repository.updateOccurrence(o.id, o.stateVersion, { status: 'failed', deliveryStatus: 'unknown', reason: String(error), finishedAt: new Date().toISOString() }) ?? o
+        this.occurrences.set(o.id, o)
+      }
+    }
+    return o
+  }
+  private async drainQueue() {
+    if (this.closing || this.backingUp) return
+    for (const queued of [...this.occurrences.values()].filter(o => o.status === 'queued').sort(queuedOrder)) {
+      if (this.closing || this.backingUp) break
+      const active = [...this.occurrences.values()].filter(o => activeOccurrence.has(o.status))
+      if (active.length >= MAX_ACTIVE_AUTOMATIONS) break
+      if (active.some(o => sharesTaskExecutor(o, queued)) || this.hooks.busy(queued.conversationId)) continue
+      // The transaction repeats every capacity check; this projection only avoids reads while busy.
+      const ready = await this.hooks.critical(() => this.repository.startQueued(queued.id, async d => {
+        if (await this.hooks.validate(d) !== d.authorizedFingerprint) throw new Error('员工或会话权限已变更，请核对任务')
+      }, this.hooks.busy))
+      if (!ready) continue
+      this.occurrences.set(ready.occurrence.id, ready.occurrence)
+      await this.dispatchOccurrence(ready.occurrence, ready.dispatch)
+      this.hooks.changed(); this.hooks.notify()
+    }
   }
   private async executeMonitor(started: AutomationOccurrence, definition: AutomationDefinition, signal: AbortSignal) {
     let read: AutomationMonitorRead
@@ -322,14 +346,16 @@ export class AutomationService {
   }
 
   observe() {
-    if (this.closing) return
+    // Startup changes cannot drain the queue before recovery has classified old dispatches.
+    if (!this.initialized || this.closing) return
     if (this.observing) { this.observeAgain = true; return }
     this.observing = true
-    void this.serialize(() => this.hooks.critical(() => this.reconcile())).catch(error => { this.error = String(error) }).finally(() => { this.observing = false; if (this.observeAgain) { this.observeAgain = false; this.observe() } })
+    void this.serialize(async () => { await this.hooks.critical(() => this.reconcile()); await this.drainQueue() }).catch(error => { this.error = String(error) }).finally(() => { this.observing = false; if (this.observeAgain) { this.observeAgain = false; this.observe() } })
   }
   private async reconcile(recovery = false) {
     await this.refresh()
     for (const o of this.occurrences.values()) {
+        if (o.status === 'queued') continue
         if (o.taskKind === 'monitor') {
           if (!pendingOccurrence.has(o.status) || this.monitors.has(o.id)) continue
           const saved = await this.repository.updateOccurrence(o.id, o.stateVersion, { status: o.cancellationRequestedAt ? 'cancelled' : 'needs_review', deliveryStatus: 'unknown', reason: o.reason ?? '监控读取已退出但结果未完成提交；需核对，不会自动重读', finishedAt: new Date().toISOString(), modelCalls: 0, usageIncomplete: false })
@@ -364,6 +390,11 @@ export class AutomationService {
         if (request && o.status !== 'cancelling' && o.stateVersion !== request.expectedStateVersion) throw new Error('本次执行已变化，请读取最新记录后停止')
         // Late callbacks from the retired elapsed-time limit cannot stop a run.
         if (expectedDeadline !== undefined) return
+        if (o.status === 'queued') {
+          const cancelled = await this.repository.updateOccurrence(id, o.stateVersion, { status: 'cancelled', cancellationCause: cause, cancellationRequestedAt: new Date().toISOString(), finishedAt: new Date().toISOString(), deliveryStatus: 'unknown', reason })
+          if (cancelled) this.occurrences.set(id, cancelled)
+          this.hooks.changed(); this.hooks.notify(); return
+        }
         const saved = await this.repository.updateOccurrence(id, o.stateVersion, { status: 'cancelling', cancellationCause: o.cancellationCause ?? cause, cancellationRequestedAt: o.cancellationRequestedAt ?? new Date().toISOString(), reason })
         if (!saved) return
         this.occurrences.set(id, saved)
@@ -380,6 +411,6 @@ export class AutomationService {
     this.backingUp = true; clearTimeout(this.retryTimer); this.retryTimer = undefined; await this.native?.stop()
   }
   async backup(path: string) { await this.native?.backup(join(path, 'automation-mastra.sqlite')) }
-  async afterBackup() { this.backingUp = false; if (!this.closing) { await this.native?.start(); if ([...this.definitions.values()].some(d => d.sync !== 'synced')) this.scheduleRetry() } }
+  async afterBackup() { this.backingUp = false; this.observe(); if (!this.closing) { await this.native?.start(); if ([...this.definitions.values()].some(d => d.sync !== 'synced')) this.scheduleRetry() } }
   async close() { this.closing = true; clearTimeout(this.retryTimer); for (const entry of this.monitors.values()) entry.controller.abort(new Error('应用正在退出')); await this.tail; await Promise.all([...this.monitors.values()].map(entry => entry.task)); await this.native?.close() }
 }
