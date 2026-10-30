@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 独立浏览器插件经实际SDK发现/调用，原生产品桥保留同一工具结果及图片部件。
  * [OUTPUT]: 浏览器详情显示实际命令，后续真实SDK请求仍有页面原文，不注入omitted占位。
  * [OUTPUT]: Task SDK请求临时失败最多重试两次，逐请求预算/用量归属、取消/鉴权及已执行工具不重放。
  * [OUTPUT]: 限字草稿沿原授权持续修订且只发布合格正文；长步骤回归使用真实变化的观测，重复轨迹复核另验。
@@ -2187,6 +2188,30 @@ it('uses source inspection and writes through the actual SDK in ordinary bobo ch
   expect(JSON.stringify(server.requests[2].messages)).toContain('written')
   expect(f.deltas.join('')).toBe('笔记已保存。')
   expect(f.ctx.work).toBeUndefined()
+})
+
+it('discovers and calls an independent browser through the actual SDK and native product bridge', async () => {
+  const input = { provider: 'agent-browser', tool: 'browser_snapshot', arguments: { interactiveOnly: true } }
+  const server = await endpoint([{ name: 'inspect_browser_plugin', args: { provider: 'agent-browser' } }, { name: 'call_browser_plugin', args: input }, '已读取独立浏览器。'])
+  const inspectBrowserPlugin = vi.fn(async () => ({ tools: [{ name: 'browser_snapshot', inputSchema: { type: 'object' } }] }))
+  const callBrowserPlugin = vi.fn(async () => ({ content: [{ type: 'text', text: 'independent-page-result' }] }))
+  const f = await context(server.url, { responseKind: 'chat', work: undefined, browserPluginProviders: ['agent-browser'], inspectBrowserPlugin, callBrowserPlugin })
+  await new MastraEngine().run(f.ctx)
+  expect(inspectBrowserPlugin).toHaveBeenCalledWith('agent-browser')
+  expect(callBrowserPlugin).toHaveBeenCalledWith(input)
+  expect(server.requests).toHaveLength(3)
+  expect(server.requests[0].tools?.map(tool => tool.function.name)).toEqual(expect.arrayContaining(['inspect_browser_plugin', 'call_browser_plugin']))
+  expect(JSON.stringify(server.requests[2].messages)).toContain('independent-page-result')
+  expect(f.deltas.join('')).toBe('已读取独立浏览器。')
+  const { createNativeProducts } = await import('../packages/runtime/src/adapters/native-products')
+  const native = createNativeProducts(f.ctx)
+  try {
+    const tool = native.tools.find(tool => tool.name === 'call_browser_plugin')!
+    expect(tool.inputSchema.type).toBe('object')
+    expect(await tool.execute(input, 'native-plugin-call')).toEqual({ content: [{ type: 'text', text: 'independent-page-result' }] })
+    const image = { type: 'image', data: 'fixture-image', mimeType: 'image/png' }
+    expect(tool.toModelContent!({ content: [image] })).toContainEqual(image)
+  } finally { await native.dispose() }
 })
 
 it('uses both global catalog tools through the actual SDK in ordinary chat', async () => {

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 独立AgentBrowser/BrowserViewer插件接入；上游工具、启停与运行回收保持独立。
  * [OUTPUT]: 2026-10-29 应用更新私有API与权威revision事件；通用Methods不包含安装更新。
  * [OUTPUT]: 2026-10-29 workspace-files增加授权根及预览DTO，index/public-methods接可信桌面预览入口。
  * [OUTPUT]: testWebSearchServiceDraft显式测试当前DeepSeek密钥，不保存配置。
@@ -148,6 +149,8 @@ export interface Methods {
   getApplicationCatalog: { input: import('../domain/application-protocol').ApplicationCatalogQuery; output: import('../domain/application-protocol').ApplicationCatalog }
   executeApplicationOperation: { input: import('../domain/application-protocol').ApplicationRequest; output: import('../domain/application-protocol').ApplicationResult }
   getApplicationReceipt: { input: import('../domain/application-protocol').ApplicationReceiptQuery; output: import('../domain/application-protocol').ApplicationResult | null }
+  getBrowserPluginSettings: { input: { provider: import('../plugins/browser-tools').BrowserPluginProvider }; output: import('../plugins/browser-tools').BrowserPluginSettings }
+  saveBrowserPluginSettings: { input: import('../plugins/browser-tools').SaveBrowserPluginSettings; output: import('../plugins/browser-tools').BrowserPluginSettings }
   getWebSearchSettings: { input: undefined; output: import('../domain/web-search').WebSearchSettings }
   saveWebSearchService: { input: import('../domain/web-search').SaveWebSearchService; output: import('../domain/web-search').WebSearchServiceConfig }
   saveWebSearchDefault: { input: import('../domain/web-search').SaveWebSearchDefault; output: import('../domain/web-search').WebSearchSettings }
