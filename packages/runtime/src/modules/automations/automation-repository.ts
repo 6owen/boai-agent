@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 执行记录保留普通员工任务用途，计划删除后仍可按来源分页。
  * [OUTPUT]: 忙碌任务持久排队、按员工FIFO认领；仅未投递队列可重启恢复，已开始执行不重放。
  * [OUTPUT]: 取消自动化固定执行时限；旧时间预算取消仅由本人显式继续恢复，原occurrence、预算计账、容量与人工停止门禁保持。
  * [OUTPUT]: 已删除历史保留原触发去重，公开视图排除墓碑；待清理来源不能继续执行。
@@ -278,7 +279,7 @@ export class AutomationRepository {
         return { created: false, occurrence: existing }
       }
       const now = timestamp()
-      const o: AutomationOccurrence = { schemaVersion: 1, ...(d.conversationPolicy === 'new-conversation' ? { executionSurface: 'task' as const } : {}), id, stateVersion: 1, automationId: d.id, revision: d.revision, executionRevision: d.executionRevision, scheduleGeneration: generation, ...(slot ? { logicalSlot: slot } : {}), name: d.name, source: trigger.source, taskKind: d.taskKind ?? 'report', scheduledFor: new Date(trigger.scheduledAt).toISOString(), admittedAt: now, startedAt: now, status: 'admitted', deliveryStatus: 'pending', conversationId: d.conversationPolicy === 'new-conversation' ? randomUUID() : d.conversationId!, runIds: [], resultMessageIds: [], usageIncomplete: true, ...(scheduled ? { nativeRunId: trigger.key } : { manualRequestId: trigger.key }) }
+      const o: AutomationOccurrence = { schemaVersion: 1, ...(d.purpose ? { purpose: d.purpose } : {}), ...(d.conversationPolicy === 'new-conversation' ? { executionSurface: 'task' as const } : {}), id, stateVersion: 1, automationId: d.id, revision: d.revision, executionRevision: d.executionRevision, scheduleGeneration: generation, ...(slot ? { logicalSlot: slot } : {}), name: d.name, source: trigger.source, taskKind: d.taskKind ?? 'report', scheduledFor: new Date(trigger.scheduledAt).toISOString(), admittedAt: now, startedAt: now, status: 'admitted', deliveryStatus: 'pending', conversationId: d.conversationPolicy === 'new-conversation' ? randomUUID() : d.conversationId!, runIds: [], resultMessageIds: [], usageIncomplete: true, ...(scheduled ? { nativeRunId: trigger.key } : { manualRequestId: trigger.key }) }
       if (d.owner) o.plan = structuredClone({ owner: d.owner, employeeIds: d.employeeIds ?? (await tx.get<Conversation>('conversations', d.conversationId!))?.agentIds ?? [], collaboration: d.collaboration })
       const stale = scheduled && (trigger.scheduleGeneration !== undefined ? trigger.scheduleGeneration !== d.scheduleGeneration || trigger.executionRevision !== d.executionRevision : trigger.revision !== d.revision && trigger.revision !== d.legacyRevision)
       let reason = d.deletedAt ? '任务已删除' : stale ? '旧版本触发已失效' : scheduled && !d.enabled ? '任务已暂停' : undefined
@@ -422,7 +423,7 @@ export class AutomationRepository {
       if (existing) return existing
       const d = await tx.get<AutomationDefinition>('automations', automationId)
       if (!d) return undefined
-      const o: AutomationOccurrence = { schemaVersion: 1, id: nativeAlias(runId), stateVersion: 1, automationId, name: d.name, source: 'schedule', scheduledFor: new Date(time).toISOString(), startedAt: timestamp(), status: 'needs_review', deliveryStatus: 'unknown', usageIncomplete: true, conversationId: d.conversationId ?? '', runIds: [], resultMessageIds: [], nativeRunId: runId, ...(triggerId ? { nativeTriggerId: triggerId } : {}), reason: '发现原生触发但没有产品记录；执行版本未知，不会自动重放' }
+      const o: AutomationOccurrence = { schemaVersion: 1, ...(d.purpose ? { purpose: d.purpose } : {}), id: nativeAlias(runId), stateVersion: 1, automationId, name: d.name, source: 'schedule', scheduledFor: new Date(time).toISOString(), startedAt: timestamp(), status: 'needs_review', deliveryStatus: 'unknown', usageIncomplete: true, conversationId: d.conversationId ?? '', runIds: [], resultMessageIds: [], nativeRunId: runId, ...(triggerId ? { nativeTriggerId: triggerId } : {}), reason: '发现原生触发但没有产品记录；执行版本未知，不会自动重放' }
       await tx.put(row('automationOccurrences', o)); await this.alias(tx, nativeAlias(runId), o.id)
       await queueAutomationNotice(tx, d, o)
       await this.alias(tx, historicalSlotAlias(d.id, d.timezone, calendarSlot(time, d.timezone)), o.id)

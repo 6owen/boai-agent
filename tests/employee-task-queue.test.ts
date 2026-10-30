@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 隔离AppService/SQLite与可控员工执行，不调用真实模型或个人数据。
- * [OUTPUT]: 员工FIFO、排队取消、实际退出前不放行、任务上下文隔离、重启和权限变化认领回归。
+ * [OUTPUT]: 员工FIFO、精确取消、退出围栏、重启/权限及普通任务与定时计划分流回归。
  * [POS]: 独立员工任务产品合同。
  * [PROTOCOL]: 变化同步Header与所属.folder.md。
  */
@@ -121,4 +121,26 @@ it('starts the durable queued task after an application restart without replayin
   const restarted = await f.restart()
   await vi.waitFor(async () => expect((await restarted.handle('getAutomationOccurrence', { id: queued.id }) as AutomationOccurrence).status).toBe('completed'), { timeout: 10000 })
   expect(entered).toEqual(['before restart', 'after restart'])
+})
+
+
+it('keeps ordinary employee assignments out of scheduled plans and retains both origins in the employee task history', async () => {
+  const f = await setup(async ctx => { await ctx.onDelta('done') })
+  const scheduled = await f.create('weather schedule')
+  const task = await f.service.handle('saveAutomation', { purpose: 'employee-task', owner: { kind: 'employee', employeeId: 'researcher' }, name: 'employee assignment', prompt: 'independent work', conversationPolicy: 'new-conversation', employeeIds: ['researcher'], frequency: 'manual', time: '09:00', weekday: 1, timezone: 'UTC', enabled: true, notify: false }) as AutomationDefinition
+  const run = await f.start(task)
+  await vi.waitFor(async () => expect((await f.read(run.id)).status).toBe('completed'), { timeout: 10000 })
+  const scheduledRun = await f.start(scheduled)
+  await vi.waitFor(async () => expect((await f.read(scheduledRun.id)).status).toBe('completed'), { timeout: 10000 })
+  const plans = await f.service.handle('listAutomations', undefined) as { definitions: AutomationDefinition[]; occurrences: AutomationOccurrence[] }
+  expect(plans.definitions.map(d => d.id)).toContain(scheduled.id)
+  expect(plans.definitions.map(d => d.id)).not.toContain(task.id)
+  expect(plans.occurrences.map(o => o.id)).not.toContain(run.id)
+  const history = await f.service.handle('listAutomationHistory', { limit: 100 }) as { occurrences: AutomationOccurrence[] }
+  expect(history.occurrences.map(o => o.id)).not.toContain(run.id)
+  const employeeHistory = await f.service.handle('listAutomationHistory', { employeeId: 'researcher', limit: 100 }) as { occurrences: AutomationOccurrence[] }
+  expect(employeeHistory.occurrences.map(o => o.id)).toEqual(expect.arrayContaining([run.id, scheduledRun.id]))
+  expect(await f.service.handle('listOwnerAutomations', { owner: { kind: 'employee', employeeId: 'researcher' }, purpose: 'employee-task', limit: 1 })).toMatchObject({ definitions: [{ id: task.id }] })
+  expect(await f.service.handle('listOwnerAutomations', { owner: { kind: 'employee', employeeId: 'writer' }, purpose: 'employee-task', limit: 1 })).toMatchObject({ definitions: [] })
+  await expect(f.service.handle('saveAutomation', { purpose: 'employee-task', owner: { kind: 'employee', employeeId: 'researcher' }, name: 'invalid', prompt: 'invalid', conversationPolicy: 'new-conversation', employeeIds: ['researcher'], frequency: 'daily', time: '09:00', weekday: 1, timezone: 'UTC', enabled: true, notify: false })).rejects.toThrow('员工任务必须归属单个员工并使用独立上下文')
 })

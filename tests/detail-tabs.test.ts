@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工任务按员工身份复用面板目标，定位另一执行不串到其他员工。
  * [OUTPUT]: 提示词固定身份复用，迟到保存不抢焦点、不重开已关闭标签；元数据更新保留隐藏状态。
  * [OUTPUT]: 旧terminal目标不可重开，预览目标仍沿原标签身份。
  * [OUTPUT]: 同一旧知识资源按员工隔离预览标签，避免授权身份串用。
@@ -306,4 +307,16 @@ it('rejects legacy terminal targets and keeps preview as the only public workspa
   expect(preview.tabs).toHaveLength(1)
   expect(reduce(preview, { type: 'open', target: legacy })).toBe(preview)
   expect(preview.tabs[0].target).toMatchObject({ view: 'preview' })
+})
+
+
+it('keeps employee task tabs separate and reopens the same employee at the requested execution', () => {
+  const first: DetailTarget = { type: 'employee-tasks', id: 'researcher', requestId: 'one', occurrenceId: 'weather' }
+  const opened = reduce(emptyDetailTabs, { type: 'open', target: first })
+  const another = reduce(opened, { type: 'open', target: { type: 'employee-tasks', id: 'writer', requestId: 'two' } })
+  const reopened = reduce(another, { type: 'open', target: { ...first, occurrenceId: 'news', requestId: 'three' } })
+  expect(reopened.tabs).toHaveLength(2)
+  expect(reopened.tabs[0].target).toMatchObject({ id: 'researcher', occurrenceId: 'news' })
+  expect(reopened.tabs[1].target).toMatchObject({ id: 'writer' })
+  expect(reopened.activeKey).toBe(opened.activeKey)
 })

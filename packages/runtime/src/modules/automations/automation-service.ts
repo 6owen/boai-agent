@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 普通员工任务固定归属和独立上下文；定时计划默认列表不混入普通任务。
  * [OUTPUT]: 员工任务FIFO队列沿原事务认领/投递；取消未开始任务不调用Agent，恢复不重放已开始工作。
  * [OUTPUT]: 取消自动化固定执行时限；旧时间预算取消仅由本人显式继续恢复，原occurrence、预算计账、容量与人工停止门禁保持。
  * [OUTPUT]: 员工人格行为复用原Mastra时钟与同一日程同步队列，原用户自动化定义和Work保持。
@@ -28,7 +29,7 @@ import { automationCollaborationSchema, automationOwnerSchema } from './automati
 import { activeOccurrence, pendingOccurrence, queuedOrder, sharesTaskExecutor, MAX_ACTIVE_AUTOMATIONS, nextTimes, scheduleSchema, automationCron } from './schedule-policy'
 export { calendarSlot, automationCron, nextTimes } from './schedule-policy'
 
-export const automationInputSchema = scheduleSchema.extend({ owner: automationOwnerSchema.optional(), collaboration: automationCollaborationSchema.optional(), requestId: z.string().min(1).max(200).optional(), id: z.string().max(200).optional(), expectedRevision: z.number().int().positive().optional(), name: z.string().trim().min(1).max(100), description: z.string().trim().max(1000).optional(), prompt: z.string().trim().min(1).max(40000), conversationPolicy: z.enum(['existing-conversation', 'new-conversation']).optional(), conversationId: z.string().min(1).max(200).optional(), employeeIds: z.array(z.string().min(1).max(200)).min(1).max(12).optional(), enabled: z.boolean(), notify: z.boolean(), notificationPolicy: z.enum(['all_results', 'important_only', 'muted']).optional(), taskKind: z.enum(['report', 'monitor']).optional(), monitor: monitorPolicySchema.optional() }).strict()
+export const automationInputSchema = scheduleSchema.extend({ purpose: z.literal('employee-task').optional(), owner: automationOwnerSchema.optional(), collaboration: automationCollaborationSchema.optional(), requestId: z.string().min(1).max(200).optional(), id: z.string().max(200).optional(), expectedRevision: z.number().int().positive().optional(), name: z.string().trim().min(1).max(100), description: z.string().trim().max(1000).optional(), prompt: z.string().trim().min(1).max(40000), conversationPolicy: z.enum(['existing-conversation', 'new-conversation']).optional(), conversationId: z.string().min(1).max(200).optional(), employeeIds: z.array(z.string().min(1).max(200)).min(1).max(12).optional(), enabled: z.boolean(), notify: z.boolean(), notificationPolicy: z.enum(['all_results', 'important_only', 'muted']).optional(), taskKind: z.enum(['report', 'monitor']).optional(), monitor: monitorPolicySchema.optional() }).strict()
 export const automationSchema = automationInputSchema.transform(value => {
   const conversationPolicy = value.conversationPolicy ?? (value.owner && value.taskKind !== 'monitor' ? 'new-conversation' : 'existing-conversation')
   const employeeIds = value.employeeIds ?? (conversationPolicy === 'new-conversation' ? value.owner?.kind === 'employee' ? [value.owner.employeeId] : value.collaboration?.assignments.map(item => item.employeeId) : undefined)
@@ -192,6 +193,7 @@ export class AutomationService {
     this.retryTimer.unref()
   }
   save(input: AutomationInput, authorize?: () => Promise<void>, creationSource?: AutomationCreationSource) {
+    if (input.purpose === 'employee-task' && (input.frequency !== 'manual' || input.owner?.kind !== 'employee' || input.conversationPolicy !== 'new-conversation')) throw new Error('员工任务必须归属单个员工并使用独立上下文')
     return this.serialize(async () => {
       if (this.closing || this.backingUp) throw new Error('调度服务正在关闭或备份')
       const value = automationSchema.parse(input)
@@ -206,7 +208,7 @@ export class AutomationService {
     if (request) { const prior = await this.hooks.critical(async () => { await authorize?.(); return this.repository.mutation(request.requestId, { id, expectedRevision: request.expectedRevision }) }); if (prior) return prior }
     const d = (await this.repository.view()).definitions.find(d => d.id === id && !d.deletedAt)
     if (!d) throw new Error('定时任务不存在')
-    return this.save({ id, expectedRevision: request?.expectedRevision ?? d.revision, requestId: request?.requestId, owner: d.owner, collaboration: d.collaboration, name: d.name, description: d.description, prompt: d.prompt, conversationPolicy: d.conversationPolicy, conversationId: d.conversationId, employeeIds: d.employeeIds, frequency: d.frequency, startsOn: d.startsOn, dayOfMonth: d.dayOfMonth, time: d.time, weekday: d.weekday, daysOfWeek: d.daysOfWeek, timezone: d.timezone, enabled: true, notify: d.notify, notificationPolicy: d.notificationPolicy, taskKind: d.taskKind, monitor: d.monitor }, authorize)
+    return this.save({ id, purpose: d.purpose, expectedRevision: request?.expectedRevision ?? d.revision, requestId: request?.requestId, owner: d.owner, collaboration: d.collaboration, name: d.name, description: d.description, prompt: d.prompt, conversationPolicy: d.conversationPolicy, conversationId: d.conversationId, employeeIds: d.employeeIds, frequency: d.frequency, startsOn: d.startsOn, dayOfMonth: d.dayOfMonth, time: d.time, weekday: d.weekday, daysOfWeek: d.daysOfWeek, timezone: d.timezone, enabled: true, notify: d.notify, notificationPolicy: d.notificationPolicy, taskKind: d.taskKind, monitor: d.monitor }, authorize)
   }
   pause(id: string, deleted = false, request?: { requestId: string; expectedRevision: number }, authorize?: () => Promise<void>) {
     return this.serialize(async () => {
@@ -243,9 +245,9 @@ export class AutomationService {
     for (const o of sorted) {
       const prior = latest.get(o.automationId)
       if (!prior || (o.finishedAt ?? o.startedAt) > (prior.finishedAt ?? prior.startedAt) || (o.finishedAt ?? o.startedAt) === (prior.finishedAt ?? prior.startedAt) && o.id > prior.id) latest.set(o.automationId, o)
-      if (automationNeedsAttention(o)) { attentionCount++; counts.set(o.automationId, (counts.get(o.automationId) ?? 0) + 1) }
+      if (o.purpose !== 'employee-task' && automationNeedsAttention(o)) { attentionCount++; counts.set(o.automationId, (counts.get(o.automationId) ?? 0) + 1) }
     }
-    return structuredClone({ definitions: definitions.filter(d => !d.deletedAt).map(d => ({ ...d, nextTimes: d.enabled && d.sync === 'synced' ? nextTimes(d) : [], latestOccurrence: latest.get(d.id), attentionCount: counts.get(d.id) ?? 0 })), occurrences: sorted.slice(0, 300), attentionCount, available: !this.closing && !this.error, error: this.error })
+    return structuredClone({ definitions: definitions.filter(d => !d.deletedAt && d.purpose !== 'employee-task').map(d => ({ ...d, nextTimes: d.enabled && d.sync === 'synced' ? nextTimes(d) : [], latestOccurrence: latest.get(d.id), attentionCount: counts.get(d.id) ?? 0 })), occurrences: sorted.filter(o => o.purpose !== 'employee-task').slice(0, 300), attentionCount, available: !this.closing && !this.error, error: this.error })
   }
   run(id: string, requestId: string, authorize?: () => Promise<void>) { return this.admit(id, undefined, 'manual', requestId, Date.now(), undefined, authorize) }
   async list(query: AutomationListQuery) {

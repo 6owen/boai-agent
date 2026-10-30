@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 员工任务独立主区，复用原ChatView的补充/审批/成果交互；任务定位不切回日常聊天。
+ * [OUTPUT]: 恢复定时任务主页面；所有员工任务入口先定位员工主会话，再在会话右侧面板读取，主聊天保持聊天。
  * [OUTPUT]: 执行记录定位聊天后，右侧打开原occurrence/Run，跨页面导航保留同一次运行身份。
  * [OUTPUT]: 提示词新建/编辑使用资源库右侧标签和原bobo管理入口；保存更新名称，列表删除关闭对应标签。
  * [OUTPUT]: 用户要求暂时隐藏工作区入口与标签；既有终端关闭后不重建开始页。
@@ -180,6 +180,8 @@ import { SkillMarketplaceDetail } from '@/pages/library/skill-marketplace'
 import { SkillUpdateBatchView } from '@/pages/library/skill-update-batch'
 import { ResourceDetail } from '@/pages/library/resource-detail'
 import { ScheduleNavigationContext } from '@/pages/schedules/owner-automations'
+import { isEmployeeTaskHost, resolveEmployeeTaskDestination, type EmployeeTaskTarget } from './employee-task-navigation'
+import { EmployeeTasksPanel, EmployeeTasksNavigation } from '@/components/detail-panel/employee-tasks-panel'
 import { ScheduleDetail, SchedulePage, type ScheduleLocation } from '@/pages/schedules'
 import { AutomationOccurrenceView } from '@/pages/schedules/automation-history'
 import { AutomationEditorTab } from '@/pages/schedules/automation-editor'
@@ -196,7 +198,7 @@ interface Route { page: Page; conversationId: string | null; coreDraft?: true; f
 const EMPTY: Snapshot = { agents: [], conversations: [], connections: [], resources: [], approvals: [], dataPath: '' }
 const DEFAULT_LIST_WIDTH = 312
 const EMPTY_DRAFT: ChatDraft = { text: '', mentionIds: [] }
-const labels: Record<Page, string> = { conversations: '会话', contacts: '通讯录', schedules: '任务', skills: '资源库', settings: '设置', help: '帮助' }
+const labels: Record<Page, string> = { conversations: '会话', contacts: '通讯录', schedules: '定时任务', skills: '资源库', settings: '设置', help: '帮助' }
 function pref(key: string, fallback: number) { try { return Number(localStorage.getItem(`boai.v2.${key}`)) || fallback } catch { return fallback } }
 function initialRoute(): Route { try { const p = localStorage.getItem('boai.v2.page'); return { page: p === 'marketplace' ? 'skills' : p && p in labels ? p as Page : 'conversations', conversationId: null } } catch { return { page: 'conversations', conversationId: null } } }
 
@@ -230,9 +232,13 @@ export function AppShell() {
   const [skillsRevision, setSkillsRevision] = useState(0)
   const skillUpdated = useCallback(() => setSkillsRevision(value => value + 1), [])
   const skillsNavigation = route.page === 'skills'
-  const [taskContextId, setTaskContextId] = useState<string>()
+  const taskNavigationRequest = useRef(0)
+  const taskLookupRequest = useRef(0)
+  const [taskContexts, setTaskContexts] = useState<Record<string, string | undefined>>({})
+  const setTaskContext = useCallback((employeeId: string, id?: string) => setTaskContexts(current => current[employeeId] === id ? current : { ...current, [employeeId]: id }), [])
   const [scheduleLocation, setScheduleLocation] = useState<ScheduleLocation>({ kind: 'overview' })
   const [detailWorkspaces, dispatchWorkspace] = useReducer(detailWorkspacesReducer, {} as DetailWorkspaces)
+  useEffect(() => { dispatchWorkspace({ type: 'remove-misplaced-employee-tasks' }) }, [])
   const detailTabs = detailWorkspaces[route.page] ?? emptyDetailTabs
   const allDetailTabs = Object.entries(detailWorkspaces).flatMap(([scope, state]) => state.tabs.map(tab => ({ scope, ...tab })))
   const dispatchDetails = (action: DetailTabsAction, scope: string = route.page) => dispatchWorkspace({ scope, action })
@@ -318,6 +324,7 @@ export function AppShell() {
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const activeTab = detailTabs.tabs.find(tab => tab.key === detailTabs.activeKey)
   const panel = detailTabs.shown ? activeTab?.detail ?? activeTab?.target : undefined, selectedId = route.conversationId
+  const taskContextId = panel?.type === 'employee-tasks' ? taskContexts[activeTab?.key ?? ''] : undefined
   const panelRef = useRef(panel); panelRef.current = panel
   const conversation = snapshot.conversations.find(c => c.id === selectedId)
   const currentDetail = detail?.conversation.id === selectedId ? detail : null
@@ -413,8 +420,8 @@ export function AppShell() {
     return Boolean(await refreshDetail(id, undefined, isCurrent))
   }
   const questionReplies = useChatQuestionReplies(api, {
-    conversationId: route.page === 'schedules' ? taskContextId : selectedId ?? undefined, active: route.page === 'schedules' || route.page === 'conversations' && !conversationSearchOpen,
-    conversationIds: route.page === 'schedules' ? [taskContextId].filter((id): id is string => Boolean(id)) : route.page === 'conversations' && !conversationSearchOpen ? [selectedId, panel?.type === 'channels' ? panel.conversationId : undefined].filter((id): id is string => Boolean(id)) : [],
+    conversationId: panel?.type === 'employee-tasks' ? taskContextId : selectedId ?? undefined, active: panel?.type === 'employee-tasks' || route.page === 'conversations' && !conversationSearchOpen,
+    conversationIds: [panel?.type === 'employee-tasks' ? taskContextId : undefined, ...(route.page === 'conversations' && !conversationSearchOpen ? [selectedId, panel?.type === 'channels' ? panel.conversationId : undefined] : [])].filter((id): id is string => Boolean(id)),
     onSubmitted: (message, target) => {
       const current = drafts.current.get(message.conversationId)
       if (current?.questionReply?.itemId === target.itemId && current.questionReply.questionMessageId === target.questionMessageId && (current.questionReply.occurrenceId ? current.questionReply.occurrenceId === target.occurrenceId : current.questionReply.revision === target.revision)) {
@@ -530,6 +537,7 @@ export function AppShell() {
     routeRef.current = next
     if (next.page !== 'skills') { setFocusedSkill(undefined); setFocusedSource(undefined) }
     if (next.page !== 'settings') setLocalAgentTarget(undefined)
+    if (panelRef.current?.type === 'employee-tasks' && next.page === 'conversations' && !isEmployeeTaskHost(target, panelRef.current.id)) dispatchDetails({ type: 'visibility', shown: false }, 'conversations')
     setRoute(next); setCreation(null); userMenuActions.current?.close(); navigated?.()
   }
   const goPage = (page: Page) => navigate(() => applyRoute({ ...route, page }))
@@ -614,7 +622,38 @@ export function AppShell() {
     } else if (selectedRef.current === id) await refreshDetail(id)
     await refreshSnapshot().catch(failure => toast.error(`会话清理已完成，列表刷新未完成：${errorText(failure)}`))
   }
+  const openEmployeeTask = (target: EmployeeTaskTarget, sourceCurrent: () => boolean = () => true, navigated?: () => void) => {
+    let pending: Promise<void> | undefined
+    navigate(() => {
+      if (!api || !sourceCurrent()) return
+      const origin = routeRef.current, token = ++taskNavigationRequest.current
+      const current = () => mounted.current && sourceCurrent() && taskNavigationRequest.current === token && routeRef.current === origin
+      pending = (async () => {
+        const destination = await resolveEmployeeTaskDestination({ api, snapshot: snapshotRef.current, target, current })
+        if (!destination || !current()) return
+        await refreshSnapshot()
+        if (!current()) return
+        applyRoute(destination.route, true, () => {
+          dispatchDetails({ type: 'open', target: destination.target }, destination.scope)
+          navigated?.()
+        })
+      })().catch(error => { if (current()) toast.error(errorText(error)) })
+    })
+    return pending
+  }
   const openPanel = (next: Panel, scope: string = route.page, current?: () => boolean, navigated?: () => void, withinKey?: string) => {
+    if (next.type === 'employee-tasks') return openEmployeeTask(next, current, navigated)
+    if (next.type === 'automation-occurrence' && scope !== 'conversations') {
+      if (!api) return
+      const origin = routeRef.current, token = ++taskLookupRequest.current
+      const live = () => mounted.current && (!current || current()) && taskLookupRequest.current === token && routeRef.current === origin
+      return api.request('getAutomationOccurrence', { id: next.id }).then(record => {
+        if (!live()) return
+        const employeeId = record.plan?.owner.kind === 'employee' ? record.plan.owner.employeeId : record.plan?.employeeIds[0] ?? snapshotRef.current.conversations.find(room => room.id === record.conversationId)?.agentIds[0]
+        if (!employeeId) throw new Error('本次执行没有可定位的员工')
+        return openEmployeeTask({ type: 'employee-tasks', id: employeeId, occurrenceId: record.id, requestId: crypto.randomUUID() }, live, navigated)
+      }).catch(error => { if (live()) toast.error(errorText(error)) })
+    }
     if (!WORKSPACE_UI_ENABLED && (next.type === 'employee-workspace' || next.type === 'user-workspace')) return
     const trigger = document.activeElement as HTMLElement | null
     const replacingKey = withinKey ?? (next.type === 'channels' ? `${scope}/${detailTargetKey(next)}` : undefined)
@@ -633,7 +672,8 @@ export function AppShell() {
   const navigateExecutionMessage: import('@/components/detail-panel/execution-message-button').ExecutionMessageNavigation = (id, messageId, current, execution) => {
     const source = snapshot.conversations.find(room => room.id === id)
     if (source?.purpose === 'automation' && source.occurrenceId) {
-      navigate(() => { if (current && !current()) return; setScheduleLocation({ kind: 'occurrence', id: source.occurrenceId!, requestId: crypto.randomUUID(), focusMessage: { id: messageId, requestId: crypto.randomUUID() } }); applyRoute({ ...routeRef.current, page: 'schedules' }) })
+      const employeeId = execution.agentId ?? source.agentIds[0]
+      if (employeeId) openPanel({ type: 'employee-tasks', id: employeeId, occurrenceId: source.occurrenceId, requestId: crypto.randomUUID(), focusMessage: { id: messageId, requestId: crypto.randomUUID() } }, routeRef.current.page, current)
       return
     }
     selectConversation(id, true, messageId, current, () => {
@@ -972,8 +1012,8 @@ export function AppShell() {
   }
   const title = route.page === 'conversations' ? conversation?.title ?? '会话' : labels[route.page]
   const describePanel = (item: Panel) => {
-    const title = item.type === 'employee-workspace' ? '工作区' : item.type === 'user-workspace' ? (item.view === 'start' ? '开始' : '授权目录') : item.type === 'user-terminal' ? '终端' : item.type === 'workspace' ? '网页预览' : item.type === 'files' ? '文件' : item.type === 'channel-discussion' ? '历史会话' : item.type === 'channel-publish' ? '发送到渠道' : item.type === 'channel-files' ? '渠道文件' : item.type === 'channels' ? '渠道会话' : item.type === 'artifact' ? '成果预览' : item.type === 'material' ? '材料原文' : item.type === 'skill-updates' ? '技能更新' : item.type === 'automation-editor' ? (item.id ? '编辑定时任务' : '新建定时任务') : item.type === 'agent' ? '数字员工' : item.type === 'group' ? (snapshot.conversations.some(room => room.id === item.id && isChannelConversation(room)) ? '渠道信息' : '群聊详情') : item.type === 'trace' || item.type === 'activity' || item.type === 'automation-occurrence' ? '执行过程' : item.type === 'prompt' ? '提示词详情' : item.type === 'source' ? '数据源详情' : item.type === 'local-skill' ? '技能详情' : item.type === 'resource' ? '资源详情' : item.type === 'marketplace' ? '商店详情' : '任务详情'
-    const name = item.type === 'employee-workspace' ? `${snapshot.agents.find(agent => agent.id === item.id)?.name ?? '员工'} · 工作区` : item.type === 'user-terminal' ? item.name ?? '终端' : item.type === 'user-workspace' && item.view === 'files' ? `${snapshot.agents.find(agent => agent.id === item.employeeId)?.name ?? '员工'} · 授权目录` : item.type === 'files' ? `${item.owner === 'employee' ? snapshot.agents.find(agent => agent.id === item.id)?.name ?? '员工' : snapshot.conversations.find(room => room.id === item.id)?.title ?? '会话'} · ${title}` : item.type === 'channels' ? `${snapshot.agents.find(a => a.id === item.id)?.name ?? '员工'}的渠道` : item.type === 'artifact' || item.type === 'material' ? item.name : item.type === 'automation-editor' ? item.name : item.type === 'marketplace' || item.type === 'local-skill' || item.type === 'source' || item.type === 'prompt' ? item.name : item.type === 'trace' ? '执行' : item.type === 'agent' ? snapshot.agents.find(a => a.id === item.id)?.name : item.type === 'group' ? snapshot.conversations.find(c => c.id === item.id)?.title : item.type === 'resource' ? snapshot.resources.find(r => r.id === item.id)?.name : undefined
+    const title = item.type === 'employee-tasks' ? '任务' : item.type === 'employee-workspace' ? '工作区' : item.type === 'user-workspace' ? (item.view === 'start' ? '开始' : '授权目录') : item.type === 'user-terminal' ? '终端' : item.type === 'workspace' ? '网页预览' : item.type === 'files' ? '文件' : item.type === 'channel-discussion' ? '历史会话' : item.type === 'channel-publish' ? '发送到渠道' : item.type === 'channel-files' ? '渠道文件' : item.type === 'channels' ? '渠道会话' : item.type === 'artifact' ? '成果预览' : item.type === 'material' ? '材料原文' : item.type === 'skill-updates' ? '技能更新' : item.type === 'automation-editor' ? (item.id ? '编辑定时任务' : '新建定时任务') : item.type === 'agent' ? '数字员工' : item.type === 'group' ? (snapshot.conversations.some(room => room.id === item.id && isChannelConversation(room)) ? '渠道信息' : '群聊详情') : item.type === 'trace' || item.type === 'activity' || item.type === 'automation-occurrence' ? '执行过程' : item.type === 'prompt' ? '提示词详情' : item.type === 'source' ? '数据源详情' : item.type === 'local-skill' ? '技能详情' : item.type === 'resource' ? '资源详情' : item.type === 'marketplace' ? '商店详情' : '任务详情'
+    const name = item.type === 'employee-tasks' ? `${snapshot.agents.find(agent => agent.id === item.id)?.name ?? '员工'} · 任务` : item.type === 'employee-workspace' ? `${snapshot.agents.find(agent => agent.id === item.id)?.name ?? '员工'} · 工作区` : item.type === 'user-terminal' ? item.name ?? '终端' : item.type === 'user-workspace' && item.view === 'files' ? `${snapshot.agents.find(agent => agent.id === item.employeeId)?.name ?? '员工'} · 授权目录` : item.type === 'files' ? `${item.owner === 'employee' ? snapshot.agents.find(agent => agent.id === item.id)?.name ?? '员工' : snapshot.conversations.find(room => room.id === item.id)?.title ?? '会话'} · ${title}` : item.type === 'channels' ? `${snapshot.agents.find(a => a.id === item.id)?.name ?? '员工'}的渠道` : item.type === 'artifact' || item.type === 'material' ? item.name : item.type === 'automation-editor' ? item.name : item.type === 'marketplace' || item.type === 'local-skill' || item.type === 'source' || item.type === 'prompt' ? item.name : item.type === 'trace' ? '执行' : item.type === 'agent' ? snapshot.agents.find(a => a.id === item.id)?.name : item.type === 'group' ? snapshot.conversations.find(c => c.id === item.id)?.title : item.type === 'resource' ? snapshot.resources.find(r => r.id === item.id)?.name : undefined
     const context = item.type === 'agent' || item.type === 'artifact' || item.type === 'material' ? snapshot.conversations.find(c => c.id === item.conversationId)?.title : (item.type === 'activity' || item.type === 'trace') ? snapshot.conversations.find(c => c.id === item.id)?.title : undefined
     const sameType = detailTabs.tabs.filter(tab => tab.target.type === item.type && (item.type !== 'agent' || (tab.target.type === 'agent' && tab.target.id === item.id))).length > 1
     const label = `${name ?? title}${sameType && context ? ` · ${context}` : ''}`
@@ -1042,6 +1082,7 @@ export function AppShell() {
           await refreshSnapshot()
         })
       } : undefined} onFiles={() => showPanel(channel || internal ? { type: 'channel-files', id } : { type: 'files', owner, id: ownerId })}
+      onTasks={room.kind === 'direct' && room.purpose !== 'automation' && !channel && !internal && room.agentIds[0] ? () => showPanel({ type: 'employee-tasks', id: room.agentIds[0], requestId: crypto.randomUUID() }) : undefined}
       onChannels={room.kind === 'direct' && room.purpose !== 'automation' && !channel && !internal ? () => { const agent = snapshot.agents.find(agent => agent.id === room.agentIds[0]); if (agent) openChannels(agent) } : undefined}
       questionReplies={questionReplies} artifactActions={artifactActions}
       onOpenCatalog={openCatalogResult} onTeamGroup={id => selectConversation(id, true)} draft={drafts.current.get(id) ?? EMPTY_DRAFT} setDraft={value => { drafts.current.set(id, value); bumpDrafts() }} busy={busy || questionReplies.busy} onSend={(onDispatch, steer) => send(id, onDispatch, steer)}
@@ -1071,12 +1112,12 @@ export function AppShell() {
     <DialogTrigger render={<Button className="titlebar-no-drag" variant="ghost" size="icon-sm" aria-label="搜索会话内容" title="搜索" />} onClick={openSearch}><Search /></DialogTrigger>
     <ConversationSearch api={api} active={conversationSearchOpen} snapshot={snapshot} selectedId={selectedId} request={searchRequest} onOpen={(result, current) => openSearchResult(result, current, () => setConversationSearchOpen(false))} onUnavailable={searchSourceUnavailable} />
   </Dialog></>
-  return <GuardContext.Provider value={guard}><ScheduleNavigationContext.Provider value={id => { setScheduleLocation({ kind: 'definition', id }); applyRoute({ ...routeRef.current, page: 'schedules' }) }}><EmployeeResourceNavigation.Provider value={target => target.kind === 'web-search-settings' ? (() => { setSettingsSection('web-search'); applyRoute({ ...routeRef.current, page: 'settings' }) })() : target.kind === 'knowledge-files' ? openPanel({ type: 'files', owner: 'employee', id: target.id, view: 'knowledge', requestId: crypto.randomUUID() }) : openCatalogResult(target.kind, target.id, target.name)}><EmployeeExecutionNavigation.Provider value={target => openPanel({ type: 'trace', id: target.conversationId, agentId: target.agentId, runId: target.runId, title: target.title })}><Tabs value={detailTabs.activeKey} onValueChange={value => { if (typeof value === 'string') dispatchDetails({ type: 'select', key: value }) }} className={`app-shell gap-0${effectiveList ? ' list-open' : ''}${skillsNavigation ? ' skills-navigation' : ''}`} data-page={route.page} data-panel-resizing={listResizing || detailLayout.resizing} style={{'--list-width':`${listWidth}px`,'--detail-width':`${detailLayout.width}px`} as CSSProperties}>
-    <DesktopToolbar title={title} browserAction={headerActions} detailHeader={panel && <DetailPanelHeader focusOnMount={!route.focusMessage && !route.focusApproval} tabs={detailTabs.tabs.map(tab => ({ key: tab.key, ...describePanel(tab.target), dirty: Boolean(tabDirty[tab.key]) }))} activeKey={detailTabs.activeKey} onClose={requestCloseTab} onMove={(key, targetKey, placement) => dispatchDetails({ type: 'move', key, targetKey, placement })} />} showListToggle={route.page === 'conversations' || route.page === 'contacts' || route.page === 'schedules'} listLabel={route.page === 'conversations' ? '显示或隐藏会话列表' : route.page === 'contacts' ? '显示或隐藏通讯录列表' : '显示或隐藏任务列表'} listShown={listShown} detailOpen={Boolean(panel)} canBack={historyIndex.current > 0} canForward={historyIndex.current < history.current.length - 1} detailDisabled={!detailTabs.tabs.length && !(conversation && route.page === 'conversations') && route.page !== 'schedules'} onBack={goBack} onForward={goForward} onToggleList={toggleList} onToggleDetails={toggleDetails} />
+  return <GuardContext.Provider value={guard}><ScheduleNavigationContext.Provider value={id => { setScheduleLocation({ kind: 'definition', id }); applyRoute({ ...routeRef.current, page: 'schedules' }) }}><EmployeeResourceNavigation.Provider value={target => target.kind === 'web-search-settings' ? (() => { setSettingsSection('web-search'); applyRoute({ ...routeRef.current, page: 'settings' }) })() : target.kind === 'knowledge-files' ? openPanel({ type: 'files', owner: 'employee', id: target.id, view: 'knowledge', requestId: crypto.randomUUID() }) : openCatalogResult(target.kind, target.id, target.name)}><EmployeeTasksNavigation.Provider value={id => openPanel({ type: 'employee-tasks', id, requestId: crypto.randomUUID() })}><EmployeeExecutionNavigation.Provider value={target => openPanel({ type: 'trace', id: target.conversationId, agentId: target.agentId, runId: target.runId, title: target.title })}><Tabs value={detailTabs.activeKey} onValueChange={value => { if (typeof value === 'string') { const task = detailTabs.tabs.find(tab => tab.key === value)?.target; if (task?.type === 'employee-tasks') void openEmployeeTask(task); else dispatchDetails({ type: 'select', key: value }) } }} className={`app-shell gap-0${effectiveList ? ' list-open' : ''}${skillsNavigation ? ' skills-navigation' : ''}`} data-page={route.page} data-panel-resizing={listResizing || detailLayout.resizing} style={{'--list-width':`${listWidth}px`,'--detail-width':`${detailLayout.width}px`} as CSSProperties}>
+    <DesktopToolbar title={title} browserAction={headerActions} detailHeader={panel && <DetailPanelHeader focusOnMount={!route.focusMessage && !route.focusApproval} tabs={detailTabs.tabs.map(tab => ({ key: tab.key, ...describePanel(tab.target), dirty: Boolean(tabDirty[tab.key]) }))} activeKey={detailTabs.activeKey} onClose={requestCloseTab} onMove={(key, targetKey, placement) => dispatchDetails({ type: 'move', key, targetKey, placement })} />} showListToggle={route.page === 'conversations' || route.page === 'contacts' || route.page === 'schedules'} listLabel={route.page === 'conversations' ? '显示或隐藏会话列表' : route.page === 'contacts' ? '显示或隐藏通讯录列表' : '显示或隐藏定时任务列表'} listShown={listShown} detailOpen={Boolean(panel)} canBack={historyIndex.current > 0} canForward={historyIndex.current < history.current.length - 1} detailDisabled={!detailTabs.tabs.length && !(conversation && route.page === 'conversations') && route.page !== 'schedules'} onBack={goBack} onForward={goForward} onToggleList={toggleList} onToggleDetails={toggleDetails} />
     <div className="app-body"><nav className="navigation-rail" aria-label="主导航"><div className="rail-top">{([
       {page:'conversations',icon:Home,label:'会话'},
       {page:'contacts',icon:Contact,label:'通讯录'},
-      {page:'schedules',icon:Clock,label:'任务'},
+      {page:'schedules',icon:Clock,label:'定时任务'},
     ] as const).map(item=><Button variant="ghost" size="content" className={`rail-item${route.page===item.page?' selected':''}`} key={item.page} aria-label={item.label} title={item.label} aria-current={route.page===item.page?'page':undefined} onClick={()=>goPage(item.page)}><item.icon size={16}/>{item.page==='conversations'&&snapshot.approvals.length>0&&<i className="attention-dot"/>}</Button>)}<SkillsNavigation page={route.page} onSkills={()=>goPage('skills')} /></div><div className="rail-bottom"><DropdownMenu actionsRef={userMenuActions} onOpenChange={open => { userMenuOpen.current = open }}>
       <DropdownMenuTrigger render={<Button variant={route.page === 'settings' ? 'secondary' : 'ghost'} size="icon-lg" className="rail-item" aria-label="我的菜单" title="我" />}><UserAvatar profile={snapshot.userProfile} /></DropdownMenuTrigger>
       <DropdownMenuContent side="right" align="end" sideOffset={10} className="w-[224px] data-open:duration-250 data-closed:duration-150 motion-reduce:animate-none">
@@ -1100,7 +1141,7 @@ export function AppShell() {
       </div></FloatingLayerScope>}
       {route.page==='contacts'&&<ContactsPage onWorkspace={id => openPanel({ type: 'employee-workspace', id })} onConversation={(id, messageId) => selectConversation(id, true, messageId)} active={route.page === 'contacts'} onCreateTeam={() => openCreation({ type: 'team' })} api={api} snapshot={snapshot} selected={contactSelection} onSelect={setContactSelection} onMessage={messageContact} onCreate={type=>openCreation({type})} refresh={refreshSnapshot} onAgentSaved={updateAgentSnapshot} onGroupSaved={updateGroupSnapshot} sidebarShown={effectiveList} divider={listResizer} generation={panelGeneration} busy={busy}/>}
       {route.page==='skills'&&<CustomizationWorkspace selectedPrompt={panel?.type === 'prompt' ? panel.id : undefined} onOpenPrompt={prompt => openPanel({ type: 'prompt', id: prompt.id, name: prompt.name, requestId: crypto.randomUUID() })} onCreatePrompt={() => openPanel({ type: 'prompt', id: crypto.randomUUID(), name: '新建提示词', requestId: crypto.randomUUID(), create: true })} onRemovePrompt={id => { for (const tab of allDetailTabs) if (tab.target.type === 'prompt' && tab.target.id === id) dispatchDetails({ type: 'close', key: tab.key }, tab.scope) }} onRemoveSource={id => { for (const tab of detailTabs.tabs) if (tab.target.type === 'source' && tab.target.id === id) dispatchDetails({ type: 'close', key: tab.key }) }} focusSource={focusedSource} selectedSource={panel?.type === 'source' ? panel.id : undefined} onOpenSource={source => openPanel({ type: 'source', id: source.id, name: source.name, requestId: crypto.randomUUID() })} onManage={openCatalogManagement} onOpenSkill={skill => openPanel({ type: 'local-skill', id: skill.id, name: skill.name, requestId: crypto.randomUUID() })} onOpenMarketplace={item => openPanel({ type: 'marketplace', provider: item.provider, id: item.id, name: item.name })} api={api} section={skillsSection} onSection={setSkillsSection} provider={skillProvider} onProvider={setSkillProvider} divider={listResizer} onCheckUpdates={()=>openPanel({type:'skill-updates'})} focusSkill={focusedSkill} revision={skillsRevision} />}
-      <SchedulePage taskWorkspace={{ onContext: setTaskContextId, onMaterials: materialDrafts.reconcile, renderChat: (window, actions) => renderChat(window, 'schedules', undefined, actions) }} onNavigateMessage={navigateExecutionMessage} api={api} snapshot={snapshot} active={route.page==='schedules'} sidebarShown={effectiveList} divider={listResizer} location={scheduleLocation} onLocation={setScheduleLocation} onCreateConversation={() => openCatalogManagement('automations')} selectedOccurrenceId={panel?.type === 'automation-occurrence' ? panel.id : undefined} onOccurrence={id => openPanel({ type: 'automation-occurrence', id }, 'schedules')}/>
+      <SchedulePage onNavigateMessage={navigateExecutionMessage} api={api} snapshot={snapshot} active={route.page==='schedules'} sidebarShown={effectiveList} divider={listResizer} location={scheduleLocation} onLocation={setScheduleLocation} onCreateConversation={() => openCatalogManagement('automations')} selectedOccurrenceId={panel?.type === 'automation-occurrence' ? panel.id : undefined} onOccurrence={id => openPanel({ type: 'automation-occurrence', id }, 'schedules')}/>
       {settingsMounted.current && <div style={{ display: route.page === 'settings' ? 'contents' : 'none' }}><SettingsPage key={panelGeneration} divider={listResizer} tab={settingsSection} setTab={tab => { setLocalAgentTarget(undefined); setSettingsSection(tab) }} localAgentTarget={localAgentTarget} active={route.page === 'settings'} onOpenSkills={() => navigate(() => { setFocusedSource(undefined); setFocusedSkill(undefined); setSkillsSection('all'); applyRoute({ ...routeRef.current, page: 'skills' }) })} api={api} snapshot={snapshot} refresh={refreshSnapshot}/></div>}
       {route.page==='help'&&<HelpPage/>}
       </div>
@@ -1138,6 +1179,7 @@ export function AppShell() {
             {target.type === 'local-skill' && <LocalSkillPanel api={api} id={target.id} requestId={target.requestId} revision={skillsRevision} active={active} onUpdated={skillUpdated} />}
             {target.type === 'marketplace' && <SkillMarketplaceDetail active={active} api={api} provider={target.provider} id={target.id} refresh={async () => { await refreshSnapshot(); skillUpdated() }} onResource={openLocalSkill} />}
             {target.type === 'skill-updates' && <div className="detail-section"><SkillUpdateBatchView api={api} active={active} autoStart localOnly onUpdated={skillUpdated} onResource={openLocalSkill} /></div>}
+            {tab.scope === 'conversations' && target.type === 'employee-tasks' && <EmployeeTasksPanel contextKey={tab.key} key={target.id} api={api} snapshot={snapshot} employeeId={target.id} target={target} active={active} onContext={setTaskContext} onMaterials={materialDrafts.reconcile} renderChat={(window, actions) => renderChat(window, tab.scope, undefined, actions)} onProcess={id => showPanel({ type: 'automation-occurrence', id })} />}
             {target.type === 'automation-occurrence' && <AutomationOccurrenceView onNavigateMessage={navigateExecutionMessage} api={api} snapshot={snapshot} id={target.id} active={active} />}
             {target.type === 'schedule' && <ScheduleDetail />}
             {target.type === 'automation-editor' && <AutomationEditorTab api={api} snapshot={snapshot} id={target.id} mode={target.mode} onClose={() => closeView()} onSaved={(value, created) => { setScheduleLocation({ kind: 'definition', id: value.id }); if (created) closeView(); else showPanel({ type: 'automation-editor', id: value.id, name: value.name }) }} />}
@@ -1162,5 +1204,5 @@ export function AppShell() {
       <TeamCreator open={creation?.type==='team'} api={api} snapshot={snapshot} onOpenChange={open=>{if(!open)setCreation(null)}} onStarted={coreConversationStarted} onConfigure={()=>{setSettingsSection('connections');goPage('settings')}}/>
       {confirmation}
     </div></div>
-  </Tabs></EmployeeExecutionNavigation.Provider></EmployeeResourceNavigation.Provider></ScheduleNavigationContext.Provider></GuardContext.Provider>
+  </Tabs></EmployeeExecutionNavigation.Provider></EmployeeTasksNavigation.Provider></EmployeeResourceNavigation.Provider></ScheduleNavigationContext.Provider></GuardContext.Provider>
 }

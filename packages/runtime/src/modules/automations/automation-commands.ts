@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 计划分页支持明确员工任务用途，默认仍读取定时计划。
  * [OUTPUT]: employeeId仅用于专用创建入口选归属；群内负责人沿collaboration.coordinatorId，误填时给出删除字段的纠错而不放松归属校验。
  * [OUTPUT]: 专用bobo会话可按明确employeeId保存单员工计划；普通员工仍只能管理本归属。
  * [OUTPUT]: 模型工具目录使用标准对象根；执行仍由discriminated union逐动作严格校验。
@@ -20,7 +21,7 @@ const id = z.string().min(1).max(200)
 const targetEmployeeId = id.describe('Only selects the owner in the dedicated bobo scheduled-task creation conversation. Omit in an existing employee/group conversation: the host fixes that owner. For group leadership use plan.collaboration.coordinatorId, never employeeId.')
 const key = z.string().trim().min(1).max(100)
 const cursor = z.object({ updatedAt: z.iso.datetime(), id }).strict()
-export const automationListSchema = z.object({ owner: automationOwnerSchema.optional(), before: cursor.optional(), limit: z.number().int().min(1).max(100).optional() }).strict()
+export const automationListSchema = z.object({ purpose: z.literal('employee-task').optional(), owner: automationOwnerSchema.optional(), before: cursor.optional(), limit: z.number().int().min(1).max(100).optional() }).strict()
 export const automationCommandSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('list'), before: cursor.optional(), limit: z.number().int().min(1).max(50).default(20) }).strict(),
   z.object({ action: z.literal('get'), id }).strict(),

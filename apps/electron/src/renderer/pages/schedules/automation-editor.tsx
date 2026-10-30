@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 普通任务固定员工和手动模式，定时编辑保持原表单。
  * [OUTPUT]: 普通任务默认手动执行、独立草稿回执；保存后由用户加入员工队列。
  * [OUTPUT]: 全局编辑允许更换单员工任务的执行员工，归属与名单同次保存，沿原版本核验更新授权。
  * [OUTPUT]: Dialog复用同一表单并由外层提供标题；保存忙态同步弹窗，关闭/取消沿当前局部草稿守卫。
@@ -63,7 +64,7 @@ function AutomationEditor({ api, snapshot, definition, owner, mode = 'manual', h
   const submitting = useRef(false)
   const formId = useId(), version = useRef(definition?.revision), title = useRef<HTMLInputElement>(null)
   const [form, setForm] = useState<Form>(() => pending?.form ?? ({ name: definition?.name ?? '', description: definition?.description ?? '', startsOn: definition?.startsOn, dayOfMonth: definition?.dayOfMonth ?? Number(definition?.startsOn?.slice(8) ?? 1), prompt: definition?.prompt ?? '',
-    owner: definition?.owner ?? owner, collaboration: definition?.collaboration,
+    ...(mode === 'task' ? { purpose: 'employee-task' as const } : definition?.purpose ? { purpose: definition.purpose } : {}), owner: definition?.owner ?? owner, collaboration: definition?.collaboration,
     taskKind: definition?.taskKind ?? (mode === 'monitor' ? 'monitor' : 'report'), monitor: definition?.monitor ?? (mode === 'monitor' ? newMonitorPolicy() : undefined),
     conversationPolicy: definition?.conversationPolicy ?? (mode === 'monitor' ? 'existing-conversation' : 'new-conversation'), conversationId: definition?.conversationId, employeeIds: definition?.employeeIds ?? (owner?.kind === 'employee' ? [owner.employeeId] : undefined),
     frequency: definition?.frequency ?? (mode === 'task' ? 'manual' : 'daily'), time: definition?.time ?? '09:00', weekday: definition?.weekday ?? 1,
@@ -118,7 +119,7 @@ function AutomationEditor({ api, snapshot, definition, owner, mode = 'manual', h
   const targetLabel = form.owner ? `${automationOwnerLabel(form.owner, snapshot)} · ${form.conversationPolicy === 'new-conversation' ? '独立任务上下文' : '原聊天'}` : form.conversationPolicy === 'new-conversation' ? `任务上下文 · ${snapshot.agents.find(a => a.id === form.employeeIds?.[0])?.name ?? '选择员工'}` : conversation?.title ?? (form.conversationId ? '聊天已不可用' : '指定聊天')
   const multipleWeekdays = rule === 'weekly' && (form.daysOfWeek?.length ?? 0) > 1
   const singleEmployeeTarget = form.conversationPolicy === 'new-conversation' && !form.collaboration && form.taskKind !== 'monitor'
-  return <EditorFrame title={hideTitle ? undefined : definition ? '编辑任务' : mode === 'task' ? '新建任务' : '新建定时任务'} footer={<>
+  return <EditorFrame title={hideTitle ? undefined : definition ? mode === 'task' ? '编辑任务' : '编辑定时任务' : mode === 'task' ? '新建任务' : '新建定时任务'} footer={<>
     <Button variant="secondary" disabled={busy} onClick={() => guard.navigate(onClose)}>{definition ? '关闭' : '取消'}</Button>
     <Button type="submit" form={formId} disabled={busy || !valid || unknown}>{busy ? '正在保存…' : definition ? '保存修改' : '创建'}</Button>
   </>}>
@@ -135,7 +136,7 @@ function AutomationEditor({ api, snapshot, definition, owner, mode = 'manual', h
         <Field label="任务指令" full><Textarea required maxLength={40000} rows={7} value={form.prompt} onChange={e => change({ prompt: e.target.value })} placeholder="告诉员工每次执行时要做什么，以及希望收到什么结果。" /></Field>
         {form.taskKind === 'monitor' && <section aria-label="监控规则"><Button variant="secondary" onClick={() => setMonitorOpen(!monitorOpen)}>{monitorOpen ? '收起监控规则' : '编辑监控规则'}</Button>{monitorOpen && form.monitor && <MonitorEditor policy={form.monitor} onChange={monitor => change({ monitor })} />}</section>}
         <div className="schedule-options-row">
-          <div className="schedule-frequency-row" role="group" aria-label="执行频率">
+          {mode !== 'task' && <div className="schedule-frequency-row" role="group" aria-label="执行频率">
             <span className="schedule-frequency-title">频率</span>
             <div className="schedule-frequency-controls">
               <SelectField className="schedule-frequency-select h-(--control-height)" aria-label="频率" value={rule} onValueChange={value => {
@@ -149,7 +150,7 @@ function AutomationEditor({ api, snapshot, definition, owner, mode = 'manual', h
               {!['manual', 'hourly'].includes(form.frequency) && <Input className="schedule-time" type="time" aria-label="执行时间" required value={form.time} onChange={e => change({ time: e.target.value })} />}
               {rule === 'weekly' && <SelectField className="schedule-weekday h-(--control-height)" aria-label="星期" value={multipleWeekdays ? form.daysOfWeek!.join(',') : String(form.weekday)} onValueChange={value => { if (!value.includes(',')) change({ weekday: Number(value), daysOfWeek: [Number(value)] }) }} options={[...(multipleWeekdays ? [{ value: form.daysOfWeek!.join(','), label: form.daysOfWeek!.map(day => `周${['日','一','二','三','四','五','六'][day]}`).join('、') }] : []), ...[0,1,2,3,4,5,6].map(day => ({ value: String(day), label: `星期${['日','一','二','三','四','五','六'][day]}` }))]} />}
             </div>
-          </div>
+          </div>}
           {singleEmployeeTarget && <div className="schedule-employee-control">
             <span>执行员工</span>
             <SelectField className="schedule-employee-select h-(--control-height)" aria-label="执行员工" value={form.employeeIds?.[0] ?? ''} disabled={!!owner} onValueChange={value => change({ owner: value ? { kind: 'employee', employeeId: value } : undefined, employeeIds: value ? [value] : undefined })} placeholder="从通讯录选择员工" options={snapshot.agents.filter(a => !isCoreAgent(a)).map(a => ({ value: a.id, label: a.name, disabled: !eligible(a.id) }))} />
@@ -158,7 +159,6 @@ function AutomationEditor({ api, snapshot, definition, owner, mode = 'manual', h
         {preview.error && <Banner>{preview.error}</Banner>}
         {profileError && <Banner>本机连接读取失败：{profileError}</Banner>}
         {!singleEmployeeTarget && <div className="automation-setting"><span>运行于</span><span>{targetLabel}</span></div>}
-        {form.taskKind !== 'monitor' && form.conversationPolicy === 'existing-conversation' && memberIds.length === 1 && <Button variant="secondary" onClick={() => change({ conversationPolicy: 'new-conversation', conversationId: undefined, employeeIds: memberIds, owner: { kind: 'employee', employeeId: memberIds[0] } })}>改为独立任务上下文</Button>}
       </fieldset>
     </form>
   </EditorFrame>

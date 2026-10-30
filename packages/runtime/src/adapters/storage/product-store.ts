@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工任务与定时计划在SQL分页前分流，员工历史包括其定时执行。
  * [OUTPUT]: 任务执行历史按原计划参与员工在SQL分页前筛选。
  * [OUTPUT]: 单次定时详情读取本次所有阶段；普通历史保留失败/中断的判断与协调，避免有原Run却显示空过程。
  * [OUTPUT]: 主聊天执行历史按已发布原消息关联定时私有Run，合并后统一分页；清理/撤权来源不再可见。
@@ -161,6 +162,7 @@ export class ProductStore {
   queryAutomationDefinitions(query: AutomationListQuery) {
     return this.enqueue(async () => {
       const args: (string | number)[] = [], filters = ["d.collection='automations'", "json_extract(d.value,'$.deletedAt') IS NULL"]
+      filters.push(query.purpose === 'employee-task' ? "json_extract(d.value,'$.purpose')='employee-task'" : "COALESCE(json_extract(d.value,'$.purpose'),'')!='employee-task'")
       if (query.owner) {
         filters.push("json_extract(d.value,'$.owner.kind')=?"); args.push(query.owner.kind)
         filters.push(`json_extract(d.value,'$.owner.${query.owner.kind === 'employee' ? 'employeeId' : 'conversationId'}')=?`)
@@ -342,6 +344,7 @@ export class ProductStore {
       const where = ["collection = 'automationOccurrences'", "json_extract(value, '$.deletedAt') IS NULL"], args: (string | number)[] = []
       if (query.id) { where.push('id = ?'); args.push(query.id) }
       if (query.automationId) { where.push("json_extract(value, '$.automationId') = ?"); args.push(query.automationId) }
+      if (!query.employeeId && !query.id && !query.automationId) where.push("COALESCE(json_extract(o.value,'$.purpose'),'')!='employee-task'")
       if (query.employeeId) { where.push("EXISTS (SELECT 1 FROM json_each(json_extract(o.value, '$.plan.employeeIds')) member WHERE member.value = ?)"); args.push(query.employeeId) }
       if (query.search?.trim()) { where.push("instr(lower(json_extract(value, '$.name')), lower(?)) > 0"); args.push(query.search.trim()) }
       if (query.status === 'active') { where.push(`json_extract(value, '$.status') IN (${AUTOMATION_ONGOING_STATUSES.map(() => '?').join(',')})`); args.push(...AUTOMATION_ONGOING_STATUSES) }

@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 通讯录任务入口先跳转员工主会话，再打开会话右侧面板。
+ * [OUTPUT]: 员工详情任务入口打开该员工右侧面板，原自动化分类保持。
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [OUTPUT]: 工作区技能复用资源库技能行；打开、配置及专属技能导入统一放在分区标题右侧，使用ghost/sm操作。
  * [OUTPUT]: 人格页源文件使用分区Card/说明Tooltip与开关编辑行；局部保存保留侧栏外观，原切页锁与文件Dialog守卫保持。
@@ -23,6 +25,7 @@
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
+import { EmployeeTasksNavigation } from '@/components/detail-panel/employee-tasks-panel'
 import { OwnerAutomations } from '@/pages/schedules/owner-automations'
 import { MemoryPane } from './memory-pane'
 import { EmployeeExecutionPane } from './execution-pane'
@@ -85,6 +88,7 @@ export function EmployeeDetail({ api, agent, snapshot, conversationId, configura
     }, { resetOnDiscard: false })
   }
   useEffect(() => { if (configurationRequest && configurationAvailable) selectTab('profile') }, [configurationRequest, configurationAvailable])
+  const openTasks = useContext(EmployeeTasksNavigation)
   const sidebar = navigation === 'sidebar'
   const categories = [
     ...(configurationAvailable ? [{ value: 'profile', label: '基础配置', icon: Settings }] : []),
@@ -97,6 +101,7 @@ export function EmployeeDetail({ api, agent, snapshot, conversationId, configura
   ]
   const menu = <TabsList aria-label="员工详情分类" className={sidebar ? 'employee-menu w-full gap-1 p-0' : undefined}>
     {categories.map(item => <TabsTrigger key={item.value} value={item.value} aria-disabled={personalityBusy} aria-label={item.label} className={sidebar ? 'group-data-vertical/tabs:h-[32px] text-[length:var(--text-ui-secondary)] aria-disabled:opacity-100' : 'aria-disabled:opacity-100'}>{sidebar && <item.icon size={14} />}<span className={sidebar ? 'employee-menu-label' : undefined}>{item.label}</span></TabsTrigger>)}
+    <Button variant="ghost" size="sm" disabled={personalityBusy} onClick={() => guard.navigate(() => openTasks(agent.id))}>任务</Button>
   </TabsList>
   const identity = <div ref={setIdentityTarget} className="employee-identity" />
   const panels = <>

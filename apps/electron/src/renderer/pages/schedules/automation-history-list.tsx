@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 员工筛选在服务端分页前执行，任务详情进入独立工作区。
+ * [OUTPUT]: 可按员工查询原执行记录，定时页面的布局和默认查询保持。
  * [OUTPUT]: 筛选复用公共FilterTabs及transitions-dev滑动层；实际新结果沿Panel reveal显现，后台刷新与分页不重播。
  * [OUTPUT]: 悬停/聚焦显示逐条删除；当前任务全部清空先分页冻结已结束记录，再按版本清理，活动/新记录保留。
  * [OUTPUT]: 每条已结束执行可经Popover确认删除；传所见版本，失败Sonner，运行/等待记录禁删。
@@ -64,7 +64,7 @@ export function AutomationHistory({ api, active, automationId, employeeId, atten
       if (live) { setHistory({ occurrences: occurrences.filter(o => !deletedIds.current.has(o.id)), nextCursor: before }); setLoaded(true); setError('') }
     })().catch(cause => { if (live) setError(errorText(cause)) }).finally(() => { if (live) setLoading(false) })
     return () => { live = false }
-  }, [api, active, employeeId, automationId, attentionOnly, pages, revision, search, status])
+  }, [api, active, automationId, employeeId, attentionOnly, pages, revision, search, status])
   const listReveal = usePanelReveal(`${status}:${search}:${attentionOnly}`, active && loaded)
   const results = <div ref={listReveal} className="schedule-content-transition t-panel-slide" data-open="true" data-settled="true" aria-busy={loading}>
     {error && <Banner>{error}</Banner>}
