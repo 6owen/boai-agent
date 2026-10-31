@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 任务排队状态及未开始取消入口。
  * [OUTPUT]: 查看历史不自动弹出当时失败原因；未启动/过程不可读时保留名称、时间、状态与历史原因。
  * [OUTPUT]: 立即运行只提交并全程loading防重复，两个图标分别打开过程和定位聊天；准备阶段保留等待提示。
  * [OUTPUT]: 单次过程无额外顶部操作栏；停止图标位于最新执行卡片的聊天定位左侧，冻结occurrence身份并锁定提交；只调用原stopAutomation。
@@ -21,7 +22,7 @@ import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ScheduleNavigationContext } from './owner-automations'
 
-export const occurrenceStatusLabels:Record<AutomationOccurrence['status'],string>={admitted:'已接收',running:'执行中',waiting_approval:'等待审批',waiting_user:'等待补充',waiting_work:'等待工作',cancelling:'正在停止',completed:'运行结束',failed:'失败',skipped:'已跳过',interrupted:'已中断',needs_review:'需核对',cancelled:'已停止'}
+export const occurrenceStatusLabels:Record<AutomationOccurrence['status'],string>={queued:'排队中',admitted:'已接收',running:'执行中',waiting_approval:'等待审批',waiting_user:'等待补充',waiting_work:'等待工作',cancelling:'正在停止',completed:'运行结束',failed:'失败',skipped:'已跳过',interrupted:'已中断',needs_review:'需核对',cancelled:'已停止'}
 export const deliveries: Record<AutomationOccurrence['deliveryStatus'], string> = { pending: '尚待交付', delivered: '已交付', no_change: '没有变化', partial: '部分结果', blocked: '未交付', unknown: '交付待核对' }
 
 export function AutomationOccurrenceView({ api, id, active, snapshot, onNavigateMessage }: { api: DesktopApi; id: string; active: boolean; snapshot: Snapshot; onNavigateMessage?: ExecutionMessageNavigation }) {

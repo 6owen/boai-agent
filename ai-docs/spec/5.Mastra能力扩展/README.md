@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-10-30员工任务队列与聊天分离现行增量归16。
 [OUTPUT]: 2026-10-30Memory隔离源码接线及本地全量4960项通过；API用官方Memory/WM/OM/可选向量，本机归原生，原失败/真实质量与个人生效边界归5组17 §6。
 [OUTPUT]: 2026-10-30Memory架构与新迁移入口转16/17：API直接Mastra Memory，本机沿原生；15保留旧实现与成绩，当前仅文档。
 [OUTPUT]: 2026-10-25源码链接随Workspace迁移更新，历史验证结论保持。
@@ -146,3 +147,7 @@ Mastra已有五类模型阶段；减少单聊额外判断、汇报和自动记�
 官方阅读入口：[Working Memory](https://mastra.ai/docs/memory/working-memory)、[Observational Memory](https://mastra.ai/docs/memory/observational-memory)、[Workflows](https://mastra.ai/docs/workflows/overview)、[Dynamic workflows](https://mastra.ai/docs/workflows/dynamic-workflows)。具体 API 与行为仍以本项目安装版本为准。
 
 本次新增核对：[Filesystem](https://mastra.ai/docs/sandbox/filesystem)、[Skills](https://mastra.ai/docs/skills)、[Browser](https://mastra.ai/docs/browser)、[ACP](https://mastra.ai/docs/connections/acp)、[A2A](https://mastra.ai/docs/connections/a2a)、[MCP](https://mastra.ai/docs/connections/mcp)、[SDK Agents](https://mastra.ai/docs/connections/sdk-agents)、[Scheduled workflows](https://mastra.ai/docs/workflows/scheduled-workflows)。各专题记录对应安装包依据和未安装的可选依赖，避免用线上示例冒充当前运行代码。
+
+## 员工任务、主聊天与任务会话
+
+2026-10-30最新要求：员工主聊天右侧看板/列表、五状态手动修改、每任务一个独立Dialog会话。sidebar与定时任务页面保持原样。现行合同及最终本地验证以[第16篇第1–3、8节](16-员工任务队列与聊天分离.md)为准；第6–7节保留历史阶段，不再决定当前session策略。

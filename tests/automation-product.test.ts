@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 五状态独立任务会话、原计划授权/工具schema与稳定消息回执按最新用户合同验证。
+ * [OUTPUT]: 新旧独立任务均公开到聊天，含旧task显示标记恢复、回执去重及原执行流。
+ * [OUTPUT]: 旧任务镜像场景明确使用旧记录格式；新独立任务合同由employee-task-queue覆盖。
  * [OUTPUT]: 判断阶段失败的原Run可从单次定时详情读取；旧来源缺失时保留运行元数据且不重放。
  * [OUTPUT]: 真实AppService主聊历史读取定时原Run及证据，清理后撤销关联，不额外执行员工。
  * [OUTPUT]: 配置变更后的任务经明确编辑保存恢复执行；更换执行员工仅作用后续运行，历史归属/旧触发回执保持。
@@ -45,7 +48,9 @@ async function setup({ allowCommands = false, engine: customEngine, browserHost 
   const contexts: EngineContext[] = []
   const events: AppEvent[] = []
   const engine: AgentEngine = customEngine ?? { test: async () => '', decide: async ctx => ({ action: ctx.participation?.hasRespondedInTurn ? 'pass' : 'reply', responseKind: 'chat', observedThroughSequence: Math.max(...ctx.messages.map(m => m.sequence)) }), run: async ctx => { contexts.push(ctx); await ctx.onDelta('当前聊天的回复') } }
-  const make = async () => { const service = new AppService({ dataPath: root, engine, browserHost, secrets: { get: async () => undefined, set: async () => {}, delete: async () => {} }, emit: event => events.push(event) }); disposers.push(() => service.close()); await service.init(); return service }
+  const make = async () => { const service = new AppService({ dataPath: root, engine, browserHost, secrets: { get: async () => undefined, set: async () => {}, delete: async () => {} }, emit: event => events.push(event) }); disposers.push(() => service.close()); await service.init()
+
+    return service }
   const service = await make()
   const connection = await service.handle('saveConnection', { name: 'local', provider: 'openai-compatible', baseUrl: 'http://127.0.0.1:1', defaultModel: 'local' }) as Connection
   const { configVersion, workspaceRef, memoryNamespace, policyVersion, ...agent } = (await service.handle('snapshot', undefined) as Snapshot).agents.find(a => a.id === 'researcher')!
@@ -109,8 +114,8 @@ it('retrieves public web facts in an automation with the executing employee bind
     if (process.env.BOAI_REVIEW_RUN_DIR) { const dir = join(process.env.BOAI_REVIEW_RUN_DIR, 'search-entries'); await mkdir(dir, { recursive: true }); await writeFile(join(dir, 'automation.json'), JSON.stringify({ executed, decisionDenied, calls: server.calls, detail, occurrence: await restored.handle('getAutomationOccurrence', { id: occurrence.id }), externalRequests: 0, trigger: 'manual-original-automation-path', modelMode: 'controlled-engine-real-MCP-SDK' }, null, 2)) }
   } finally { await server.close() }
 })
-it('deletes one completed execution and its private files while preserving the plan, other runs and IM messages', async () => {
-  const f = await setup(), plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
+it('deletes one legacy private execution and its files while preserving the plan, other runs and IM messages', async () => {
+  const f = await setup({}), plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
   const first = await f.service.handle('runAutomation', { id: plan.id, requestId: 'delete-first' }) as AutomationOccurrence
   await until(async () => (await f.view()).occurrences.find(o => o.id === first.id)?.status === 'completed')
   const second = await f.service.handle('runAutomation', { id: plan.id, requestId: 'keep-second' }) as AutomationOccurrence
@@ -122,6 +127,8 @@ it('deletes one completed execution and its private files while preserving the p
   const paths = [source.conversation.workspacePath, join(f.root, 'external-runtime', run.id), join(f.root, 'external-workspaces', run.agentId, first.conversationId)]
   for (const path of paths) { await mkdir(path, { recursive: true }); await writeFile(join(path, 'temporary.txt'), 'task temporary data') }
   await writeFile(join(other.conversation.workspacePath, 'keep.txt'), 'keep')
+  const legacyStore = (f.service as unknown as { store: ProductStore }).store
+  await legacyStore.write([{ collection: 'conversations', id: source.conversation.id, value: { ...source.conversation, employeeTaskId: undefined } }])
   const current = await f.service.handle('getAutomationOccurrence', { id: first.id }) as AutomationOccurrence
   await expect(f.service.handle('deleteAutomationOccurrence', { id: first.id, expectedVersion: current.stateVersion - 1 })).rejects.toThrow('已更新')
   await f.service.handle('deleteAutomationOccurrence', { id: first.id, expectedVersion: current.stateVersion })
@@ -151,6 +158,8 @@ it('resumes a failed history cleanup after restart without executing the task ag
   await until(async () => (await f.view()).occurrences[0]?.status === 'completed')
   const current = (await f.view()).occurrences[0]
   const host = f.service as unknown as { history: { remove(...args: unknown[]): Promise<unknown> }; store: ProductStore }
+  const legacy = (await f.detail(occurrence.conversationId)).conversation
+  await host.store.write([{ collection: 'conversations', id: legacy.id, value: { ...legacy, employeeTaskId: undefined } }])
   vi.spyOn(host.history, 'remove').mockRejectedValueOnce(new Error('fixture filesystem failure'))
   await expect(f.service.handle('deleteAutomationOccurrence', { id: occurrence.id, expectedVersion: current.stateVersion })).rejects.toThrow('fixture filesystem failure')
   expect(await host.store.get('automationHistoryCleanups', occurrence.id)).toBeDefined()
@@ -161,7 +170,7 @@ it('resumes a failed history cleanup after restart without executing the task ag
 })
 
 it('deletes shared-chat execution logs without removing the original messages, files or another run', async () => {
-  const f = await setup(), room = await f.service.handle('createConversation', { kind: 'direct', title: '共享聊天', agentIds: ['researcher'] }) as Conversation
+  const f = await setup(), room = await f.service.handle('createConversation', { kind: 'direct', title: '共享聊天', agentIds: ['researcher'], mode: 'natural' }) as Conversation
   await f.service.handle('sendMessage', { conversationId: room.id, content: '普通消息', requestId: 'ordinary-before-delete', mentionIds: [] })
   await until(async () => (await f.detail(room.id)).turns?.every(turn => turn.status === 'completed') === true)
   const ordinary = (await f.detail(room.id)).runs.map(run => run.id)
@@ -169,8 +178,8 @@ it('deletes shared-chat execution logs without removing the original messages, f
   const occurrence = await f.service.handle('runAutomation', { id: plan.id, requestId: 'shared-delete' }) as AutomationOccurrence
   await until(async () => (await f.view()).occurrences[0]?.status === 'completed')
   const before = await f.detail(room.id)
-  const taskRun = before.runs.find(run => run.origin?.occurrenceId === occurrence.id)!
-  const ownDownload = await stagedDownload(f, room.id, taskRun.id), otherDownload = await stagedDownload(f, room.id, ordinary[0])
+  const taskRun = (await f.detail(occurrence.conversationId)).runs.find(run => run.origin?.occurrenceId === occurrence.id)!
+  const ownDownload = await stagedDownload(f, occurrence.conversationId, taskRun.id), otherDownload = await stagedDownload(f, room.id, ordinary[0])
   await writeFile(join(room.workspacePath, 'shared.txt'), 'shared user file')
   await f.service.handle('deleteAutomationOccurrence', { id: occurrence.id, expectedVersion: (await f.view()).occurrences[0].stateVersion })
   const after = await f.detail(room.id)
@@ -228,7 +237,7 @@ it('runs after clearing the employee chat without scheduling archived conversati
   expect(f.events.filter(event => event.type === 'runtime-error')).toEqual([])
 })
 it('shows scheduled instructions and replies in the employee main chat after cleanup without inheriting its context or replaying cleared publications', async () => {
-  const f = await setup(), personal = await f.service.handle('createConversation', { kind: 'direct', title: '员工主私聊', agentIds: ['researcher'] }) as Conversation
+  const f = await setup({}), personal = await f.service.handle('createConversation', { kind: 'direct', title: '员工主私聊', agentIds: ['researcher'] }) as Conversation
   await f.service.handle('sendMessage', { conversationId: personal.id, content: '旧主私聊上下文', mentionIds: [], requestId: 'ordinary-context' })
   await until(async () => (await f.detail(personal.id)).turns?.every(turn => turn.status === 'completed') === true)
   const ordinary = (await f.detail(personal.id)).runs.find(run => run.phase === 'execution')!
@@ -339,7 +348,7 @@ it('commits the task instruction to the IM conversation before the employee star
   release()
 })
 it('publishes existing isolated task results on startup without invoking the employee again', async () => {
-  const f = await setup(), plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
+  const f = await setup({}), plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
   const occurrence = await f.service.handle('runAutomation', { id: plan.id, requestId: 'old-isolated-task' }) as AutomationOccurrence
   await until(async () => (await f.view()).occurrences[0]?.status === 'completed')
   await (f.service as unknown as { mutations: Promise<unknown> }).mutations
@@ -348,7 +357,10 @@ it('publishes existing isolated task results on startup without invoking the emp
   await f.service.close()
   const store = new ProductStore(join(f.root, 'boai.sqlite')); await store.init()
   // A pre-fix installation has the original task results but no chat publications or their receipts.
-  await store.write([{ collection: 'conversations', id: main.id, value: { ...main, list: { hidden: true } } }], [
+  await store.write([
+    { collection: 'conversations', id: main.id, value: { ...main, list: { hidden: true } } },
+    { collection: 'automationOccurrences', id: occurrence.id, value: { ...(await store.get<AutomationOccurrence>('automationOccurrences', occurrence.id))!, executionSurface: 'task' } },
+  ], [
     ...published.flatMap(message => ['messages', 'messageReceipts', 'conversationCompletions'].map(collection => ({ collection, id: message.id }))),
     ...['conversationCompletionClocks', 'conversationReadingStates'].map(collection => ({ collection, id: main.id })),
   ])
@@ -418,14 +430,14 @@ it('records a failed workspace initialization without dispatching or allocating 
     expect(await f.service.handle('runAutomation', { id: plan.id, requestId: 'bad-directory' })).toMatchObject({ id: o.id })
   } finally { await rm(path); await rename(backup, path) }
 })
-it('keeps old plans on their existing chat and rejects missing, ambiguous, or disallowed new-chat targets', async () => {
+it('retains old plan configuration while isolating new tasks and rejects missing, ambiguous, or disallowed new-chat targets', async () => {
   const f = await setup(), personal = await f.service.handle('createConversation', { kind: 'direct', title: '原聊天', agentIds: ['researcher'] }) as Conversation
   const { conversationPolicy, employeeIds, ...legacy } = f.input
   const old = await f.service.handle('saveAutomation', { ...legacy, conversationId: personal.id }) as AutomationDefinition
   expect(old).toMatchObject({ conversationPolicy: 'existing-conversation', conversationId: personal.id })
   const run = await f.service.handle('runAutomation', { id: old.id, requestId: 'old-plan' }) as AutomationOccurrence
   await until(async () => (await f.view()).occurrences[0]?.status === 'completed')
-  expect(run.conversationId).toBe(personal.id)
+  expect(run.conversationId).not.toBe(personal.id)
   await expect(f.service.handle('saveAutomation', { ...f.input, employeeIds: [] })).rejects.toThrow()
   await expect(f.service.handle('saveAutomation', { ...f.input, conversationId: personal.id })).rejects.toThrow()
   await expect(f.service.handle('saveAutomation', { ...f.input, employeeIds: ['unknown'] })).rejects.toThrow()

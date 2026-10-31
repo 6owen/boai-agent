@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 员工任务按身份过滤历史，原消息执行来源及任务列表为SQL有界投影。
+ * [OUTPUT]: 员工任务与定时计划在SQL分页前分流，员工历史包括其定时执行。
+ * [OUTPUT]: 任务执行历史按原计划参与员工在SQL分页前筛选。
  * [OUTPUT]: 单次定时详情读取本次所有阶段；普通历史保留失败/中断的判断与协调，避免有原Run却显示空过程。
  * [OUTPUT]: 主聊天执行历史按已发布原消息关联定时私有Run，合并后统一分页；清理/撤权来源不再可见。
  * [OUTPUT]: 任务结果Run在原事务内固定Work/会话/员工、有界SELECT并只投影公开状态与计数。
@@ -146,11 +149,22 @@ export class ProductStore {
       return result.rows[0] ? JSON.parse(String(result.rows[0].value)) as T : undefined
     })
   }
+  employeeTaskSource(employeeId: string, source: { conversationId: string; messageId: string }) {
+    return this.enqueue(async () => {
+      const available = await this.client.execute({ sql: "SELECT id FROM records WHERE collection='messages' AND id=? AND json_extract(value,'$.conversationId')=? LIMIT 1", args: [source.messageId, source.conversationId] })
+      if (!available.rows.length) return { available: false, runs: [] }
+      const result = await this.client.execute({ sql: "SELECT id,json_extract(value,'$.status') AS status,json_extract(value,'$.createdAt') AS createdAt FROM records WHERE collection='runs' AND json_extract(value,'$.conversationId')=? AND json_extract(value,'$.triggerMessageId')=? AND json_extract(value,'$.agentId')=? ORDER BY json_extract(value,'$.createdAt') DESC,id DESC LIMIT 30", args: [source.conversationId, source.messageId, employeeId] })
+      return { available: true, runs: result.rows.map(row => ({ id: String(row.id), status: String(row.status) as AgentRun['status'], createdAt: String(row.createdAt) })) }
+    })
+  }
   queryTrackedTaskPage(query: TaskPageSqlQuery): Promise<TrackedTaskListItem[]> {
     return this.enqueue(async () => {
       const result = await this.client.execute(taskPageSql(query))
       return result.rows.map(row => ({
         id: String(row.id), agentId: String(row.agentId), ...(row.conversationId == null ? {} : { conversationId: String(row.conversationId) }),
+        ...(row.sourceKind == null ? {} : { sourceKind: String(row.sourceKind) as TrackedTaskListItem['sourceKind'] }),
+        ...(row.latestOccurrenceId == null ? {} : { latestOccurrenceId: String(row.latestOccurrenceId) }),
+        ...(row.executionStatus == null ? {} : { executionStatus: String(row.executionStatus) as TrackedTaskListItem['executionStatus'] }),
         title: String(row.title), status: String(row.status) as TrackedTaskListItem['status'], revision: Number(row.revision),
         createdAt: String(row.createdAt), updatedAt: String(row.updatedAt), stepCount: Number(row.stepCount), completedStepCount: Number(row.completedStepCount),
         ...(row.nextStepTitle == null ? {} : { nextStepTitle: String(row.nextStepTitle) }), noteExcerpt: String(row.noteExcerpt), noteTruncated: Boolean(row.noteTruncated),
@@ -160,6 +174,7 @@ export class ProductStore {
   queryAutomationDefinitions(query: AutomationListQuery) {
     return this.enqueue(async () => {
       const args: (string | number)[] = [], filters = ["d.collection='automations'", "json_extract(d.value,'$.deletedAt') IS NULL"]
+      filters.push(query.purpose === 'employee-task' ? "json_extract(d.value,'$.purpose')='employee-task'" : "COALESCE(json_extract(d.value,'$.purpose'),'')!='employee-task'")
       if (query.owner) {
         filters.push("json_extract(d.value,'$.owner.kind')=?"); args.push(query.owner.kind)
         filters.push(`json_extract(d.value,'$.owner.${query.owner.kind === 'employee' ? 'employeeId' : 'conversationId'}')=?`)
@@ -340,7 +355,10 @@ export class ProductStore {
     return this.enqueue(async () => {
       const where = ["collection = 'automationOccurrences'", "json_extract(value, '$.deletedAt') IS NULL"], args: (string | number)[] = []
       if (query.id) { where.push('id = ?'); args.push(query.id) }
+      if (query.taskId) { where.push("json_extract(value, '$.taskId') = ?"); args.push(query.taskId) }
       if (query.automationId) { where.push("json_extract(value, '$.automationId') = ?"); args.push(query.automationId) }
+      if (!query.employeeId && !query.taskId && !query.id && !query.automationId) where.push("COALESCE(json_extract(o.value,'$.purpose'),'')!='employee-task'")
+      if (query.employeeId) { where.push("EXISTS (SELECT 1 FROM json_each(json_extract(o.value, '$.plan.employeeIds')) member WHERE member.value = ?)"); args.push(query.employeeId) }
       if (query.search?.trim()) { where.push("instr(lower(json_extract(value, '$.name')), lower(?)) > 0"); args.push(query.search.trim()) }
       if (query.status === 'active') { where.push(`json_extract(value, '$.status') IN (${AUTOMATION_ONGOING_STATUSES.map(() => '?').join(',')})`); args.push(...AUTOMATION_ONGOING_STATUSES) }
       if (query.status === 'completed') where.push("json_extract(value, '$.status') = 'completed'")

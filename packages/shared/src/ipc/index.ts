@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工任务创建、分页、详情、状态和续做公共合同独立于定时计划。
  * [OUTPUT]: 2026-10-30 记忆管理支持官方WM和版本化embedding配置。
  * [OUTPUT]: 独立AgentBrowser/BrowserViewer插件接入；上游工具、启停与运行回收保持独立。
  * [OUTPUT]: 2026-10-29 应用更新私有API与权威revision事件；通用Methods不包含安装更新。
@@ -86,6 +87,7 @@
  * [POS]: shared/ipc 的唯一方法与事件合同。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import type { EmployeeTaskMethods } from '../domain/employee-tasks'
 import type { ShortcutSnapshot, ShortcutUpdate, ShortcutReceipt } from '../shortcuts'
 import type { TeamCreationOperation, TeamGeneration, TeamDraft, TeamEditable, TeamDraftView, TeamRecovery } from '../domain/team-creation'
 import type { StartCoreConversationInput } from '../domain/core-agent'
@@ -137,7 +139,7 @@ export type AppEvent =
   | { type: 'message'; message: Message }
   | { type: 'runtime-error'; error: string }
 
-export interface Methods {
+export interface Methods extends EmployeeTaskMethods {
   closeUserWorkspace: { input: { employeeId: string; conversationId?: string } | { conversationId: string }; output: void }
   getWorkspaceRoot: { input: import('./workspace-files').WorkspaceFileScope; output: string }
   validateWorkspaceScope: { input: import('./workspace-files').WorkspaceFileScope; output: void }

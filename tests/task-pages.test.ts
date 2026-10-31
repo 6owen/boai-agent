@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 五状态独立任务会话、原计划授权/工具schema与稳定消息回执按最新用户合同验证。
  * [INPUT]: Real SQLite/ProductStore, original task mutations and authenticated application actors.
  * [OUTPUT]: Bounded task pages, filter-before-LIMIT access, stable cursors/reopen, honest projection and zero read-side mutation.
  * [POS]: Task-entry data contract integration; no models, GUI or personal profile.
@@ -109,9 +110,9 @@ it('rejects malformed or cross-filter/cross-viewer cursors and injected viewer f
 
 it('returns bounded note/step projections while original full records remain available', async () => {
   const f = await fixture(), note = 'N'.repeat(4000), steps = Array.from({ length: 50 }, (_, i) => ({ title: `${i}:` + 'S'.repeat(290), done: i < 17 }))
-  await f.store.write([record('agentTasks', task('large', { note, steps, status: 'blocked' }))])
+  await f.store.write([record('agentTasks', task('large', { note, steps, status: 'in_review' }))])
   const page = await f.page(), item = page.items[0]
-  expect(item).toMatchObject({ status: 'blocked', stepCount: 50, completedStepCount: 17, nextStepTitle: steps[17].title, noteExcerpt: note.slice(0, TASK_PAGE_LIMITS.noteCharacters), noteTruncated: true })
+  expect(item).toMatchObject({ status: 'in_review', stepCount: 50, completedStepCount: 17, nextStepTitle: steps[17].title, noteExcerpt: note.slice(0, TASK_PAGE_LIMITS.noteCharacters), noteTruncated: true })
   expect(item).not.toHaveProperty('steps'); expect(item).not.toHaveProperty('note'); expect(JSON.stringify(item).length).toBeLessThan(2500)
   expect(await f.call('tasks.get', { id: item.id })).toMatchObject({ status: 'succeeded', data: { note, steps } })
 })
