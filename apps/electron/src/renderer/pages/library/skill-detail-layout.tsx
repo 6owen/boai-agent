@@ -1,9 +1,11 @@
 /*
+ * [OUTPUT]: 技能与员工任务共用DetailPanelHeader，原技能正文与操作保持。
  * [INPUT]: 本地/商城的技能名称、元数据、正文与各自操作。
  * [OUTPUT]: 本地/商城技能和数据源共用标题栏、滚动容器、图标标题、元数据卡片和说明卡片。
  * [POS]: 技能详情纯表现层，不请求数据或执行安装。
  * [PROTOCOL]: 变化同步 Header 与 .folder.md。
  */
+import { DetailPanelHeader } from '@/components/common/detail-panel-header'
 import type { ReactNode } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { ScrollFade } from '@/components/ui/scroll-fade'
@@ -12,7 +14,7 @@ import { SkillMarkdown } from './skill-markdown'
 
 export function SkillDetailPanel({ name, actions, children, className = '', label = '技能详情' }: { name: string; actions?: ReactNode; children: ReactNode; className?: string; label?: string }) {
   return <section className={`skill-detail-panel ${className}`} aria-label={label}>
-    <header className="chat-header skill-detail-title"><h2 className="chat-title">{name}</h2><div className="chat-header-actions">{actions}</div></header>
+    <DetailPanelHeader title={name} actions={actions} />
     <ScrollFade className="skills-detail-content">{children}</ScrollFade>
   </section>
 }

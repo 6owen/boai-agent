@@ -1,5 +1,7 @@
 /*
- * [OUTPUT]: 普通员工任务固定归属和独立上下文；定时计划默认列表不混入普通任务。
+ * [OUTPUT]: 迁移旧任务状态到五状态，执行快照支持任务会话，公开工具不暴露内部消息。
+ * [OUTPUT]: 采用旧手动任务/执行记录的任务身份，不重新运行；手动续做按任务版本固定本次执行。
+ * [OUTPUT]: 新员工任务默认绑定主聊天，原计划保留明确策略；定时计划默认列表不混入普通任务。
  * [OUTPUT]: 员工任务FIFO队列沿原事务认领/投递；取消未开始任务不调用Agent，恢复不重放已开始工作。
  * [OUTPUT]: 取消自动化固定执行时限；旧时间预算取消仅由本人显式继续恢复，原occurrence、预算计账、容量与人工停止门禁保持。
  * [OUTPUT]: 员工人格行为复用原Mastra时钟与同一日程同步队列，原用户自动化定义和Work保持。
@@ -24,12 +26,13 @@ import type { Message } from '@boai/shared/domain'
 import { ProductStore, type RecordTransaction, type StoredRecord } from '../../adapters/storage/product-store'
 import { NativeSchedules, AUTOMATION_WORKFLOW, type NativeAutomationVersion } from './native-schedules'
 import { monitorPolicySchema } from './automation-monitor'
+import { linkEmployeeTask, taskIdentity } from './employee-task-records'
 import { AutomationRepository } from './automation-repository'
 import { automationCollaborationSchema, automationOwnerSchema } from './automation-plan'
 import { activeOccurrence, pendingOccurrence, queuedOrder, sharesTaskExecutor, MAX_ACTIVE_AUTOMATIONS, nextTimes, scheduleSchema, automationCron } from './schedule-policy'
 export { calendarSlot, automationCron, nextTimes } from './schedule-policy'
 
-export const automationInputSchema = scheduleSchema.extend({ purpose: z.literal('employee-task').optional(), owner: automationOwnerSchema.optional(), collaboration: automationCollaborationSchema.optional(), requestId: z.string().min(1).max(200).optional(), id: z.string().max(200).optional(), expectedRevision: z.number().int().positive().optional(), name: z.string().trim().min(1).max(100), description: z.string().trim().max(1000).optional(), prompt: z.string().trim().min(1).max(40000), conversationPolicy: z.enum(['existing-conversation', 'new-conversation']).optional(), conversationId: z.string().min(1).max(200).optional(), employeeIds: z.array(z.string().min(1).max(200)).min(1).max(12).optional(), enabled: z.boolean(), notify: z.boolean(), notificationPolicy: z.enum(['all_results', 'important_only', 'muted']).optional(), taskKind: z.enum(['report', 'monitor']).optional(), monitor: monitorPolicySchema.optional() }).strict()
+export const automationInputSchema = scheduleSchema.extend({ employeeTask: z.object({ id: z.string().min(1).max(200), expectedRevision: z.number().int().positive(), message: z.custom<import('@boai/shared/ipc').Methods['sendMessage']['input']>().optional() }).strict().optional(), purpose: z.literal('employee-task').optional(), owner: automationOwnerSchema.optional(), collaboration: automationCollaborationSchema.optional(), requestId: z.string().min(1).max(200).optional(), id: z.string().max(200).optional(), expectedRevision: z.number().int().positive().optional(), name: z.string().trim().min(1).max(100), description: z.string().trim().max(1000).optional(), prompt: z.string().trim().min(1).max(40000), conversationPolicy: z.enum(['existing-conversation', 'new-conversation']).optional(), conversationId: z.string().min(1).max(200).optional(), employeeIds: z.array(z.string().min(1).max(200)).min(1).max(12).optional(), enabled: z.boolean(), notify: z.boolean(), notificationPolicy: z.enum(['all_results', 'important_only', 'muted']).optional(), taskKind: z.enum(['report', 'monitor']).optional(), monitor: monitorPolicySchema.optional() }).strict()
 export const automationSchema = automationInputSchema.transform(value => {
   const conversationPolicy = value.conversationPolicy ?? (value.owner && value.taskKind !== 'monitor' ? 'new-conversation' : 'existing-conversation')
   const employeeIds = value.employeeIds ?? (conversationPolicy === 'new-conversation' ? value.owner?.kind === 'employee' ? [value.owner.employeeId] : value.collaboration?.assignments.map(item => item.employeeId) : undefined)
@@ -52,7 +55,9 @@ interface Hooks {
   behaviors?: Pick<import('./agent-behaviors').AgentBehaviorService, 'dispatch' | 'synchronize' | 'hasSchedules'>
   critical<T>(operation: () => Promise<T>): Promise<T>
   validate(target: string | AutomationInput): string | Promise<string>
-  busy(conversationId: string): boolean
+  busy(conversationId: string, employeeIds?: string[]): boolean
+  prepareInput?(input: AutomationInput): Promise<AutomationInput>
+  executionDefinition?(definition: AutomationDefinition): Promise<AutomationDefinition>
   prepareConversation?(definition: AutomationDefinition, occurrence: AutomationOccurrence): Promise<StoredRecord[]>
   dispatch(d: AutomationDefinition, o: AutomationOccurrence, origin: AutomationOrigin, commit: (message: Message, records: StoredRecord[]) => Promise<void>): Promise<Message>
   readMonitor?(definition: AutomationDefinition, signal: AbortSignal): Promise<AutomationMonitorRead>
@@ -90,7 +95,24 @@ export class AutomationService {
     return view
   }
   async init() {
-    await this.repository.migrate(); await this.repository.migrateOwners(); await this.repository.recover(); await this.refresh()
+    await this.repository.migrate(); await this.repository.migrateOwners();
+    await this.store.transaction(async tx => {
+      for (const task of await tx.list<import('@boai/shared/domain/tracked-tasks').TrackedTask>('agentTasks')) {
+        const latest = task.latestOccurrenceId ? await tx.get<AutomationOccurrence>('automationOccurrences', task.latestOccurrenceId) : undefined
+        if (['blocked', 'waiting_input'].includes(task.status) || task.status === 'in_progress' && task.statusSource !== 'manual' && latest && !['queued', 'admitted', 'running', 'waiting_user', 'waiting_work', 'waiting_approval', 'cancelling'].includes(latest.status)) await tx.put({ collection: 'agentTasks', id: task.id, value: { ...task, status: 'in_review', revision: task.revision + 1 } })
+      }
+      for (const d of await tx.list<AutomationDefinition>('automations')) {
+        if (d.purpose !== 'employee-task' || d.employeeTask || d.deletedAt || d.owner?.kind !== 'employee') continue
+        const id = taskIdentity(`definition:${d.id}`)
+        if (!await tx.get('employeeTaskMigrations', id) && !await tx.get('agentTasks', id)) await tx.put({ collection: 'agentTasks', id, value: { id, agentId: d.owner.employeeId, title: d.name, description: d.prompt, status: 'pending', steps: [], note: '', sourceKind: 'manual', revision: 1, createdAt: d.createdAt, updatedAt: d.updatedAt } })
+        await tx.put({ collection: 'employeeTaskMigrations', id, value: { id } })
+      }
+      for (const o of await tx.list<AutomationOccurrence>('automationOccurrences')) {
+        if (o.taskId) continue
+        const d = await tx.get<AutomationDefinition>('automations', o.automationId)
+        if (d) await linkEmployeeTask(tx, d, o, true)
+      }
+    }); await this.repository.recover(); await this.refresh()
     await this.hooks.critical(() => this.reconcile(true))
     if (this.definitions.size || await this.hooks.behaviors?.hasSchedules()) await this.synchronize()
     this.initialized = true
@@ -193,11 +215,18 @@ export class AutomationService {
     this.retryTimer.unref()
   }
   save(input: AutomationInput, authorize?: () => Promise<void>, creationSource?: AutomationCreationSource) {
-    if (input.purpose === 'employee-task' && (input.frequency !== 'manual' || input.owner?.kind !== 'employee' || input.conversationPolicy !== 'new-conversation')) throw new Error('员工任务必须归属单个员工并使用独立上下文')
+    if (input.employeeTask && input.purpose !== 'employee-task') throw new Error('任务执行必须归属员工任务')
+    if (input.purpose === 'employee-task' && (input.frequency !== 'manual' || input.owner?.kind !== 'employee')) throw new Error('员工任务必须归属单个员工并手动执行')
     return this.serialize(async () => {
       if (this.closing || this.backingUp) throw new Error('调度服务正在关闭或备份')
-      const value = automationSchema.parse(input)
-      const d = await this.hooks.critical(async () => { await authorize?.(); return (!value.id ? await this.repository.creation(value.requestId) : null) ?? await this.repository.save(value, await this.hooks.validate(value), creationSource) })
+      const submitted = automationInputSchema.parse(input)
+      const d = await this.hooks.critical(async () => {
+        await authorize?.()
+        const prior = !submitted.id ? await this.repository.creation(submitted.requestId) : null
+        if (prior) return prior
+        const value = automationSchema.parse(await this.hooks.prepareInput?.(submitted) ?? submitted)
+        return this.repository.save(value, await this.hooks.validate(value), creationSource)
+      })
       this.retryCount = 0; await this.synchronize(d.id); this.hooks.changed()
       const current = this.definitions.get(d.id)
       return structuredClone(current?.revision === d.revision ? current : d)
@@ -256,7 +285,7 @@ export class AutomationService {
   }
   async occurrence(id: string) { const page = await this.store.automationHistory({ id, limit: 1 }); if (!page.occurrences[0]) throw new Error('本次执行记录不存在'); return page.occurrences[0] }
   history(input: unknown) {
-    const query = z.object({ employeeId: z.string().min(1).max(200).optional(), automationId: z.string().min(1).max(200).optional(), attentionOnly: z.boolean().optional(), search: z.string().trim().max(200).optional(), status: z.enum(['all', 'active', 'completed', 'attention']).optional(), before: z.object({ startedAt: z.iso.datetime(), id: z.string().min(1).max(500) }).strict().optional(), limit: z.number().int().min(1).max(100).default(30) }).strict().parse(input)
+    const query = z.object({ taskId: z.string().min(1).max(200).optional(), employeeId: z.string().min(1).max(200).optional(), automationId: z.string().min(1).max(200).optional(), attentionOnly: z.boolean().optional(), search: z.string().trim().max(200).optional(), status: z.enum(['all', 'active', 'completed', 'attention']).optional(), before: z.object({ startedAt: z.iso.datetime(), id: z.string().min(1).max(500) }).strict().optional(), limit: z.number().int().min(1).max(100).default(30) }).strict().parse(input)
     return this.store.automationHistory(query)
   }
   preview(input: unknown) { const parsed = scheduleSchema.safeParse(input); if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? '请检查日程设置'); const value = parsed.data; return { nextTimes: nextTimes({ ...value, cron: automationCron(value) }) } }
@@ -265,7 +294,7 @@ export class AutomationService {
       const result = await this.hooks.critical(async () => { await authorize?.(); return this.repository.claim({ automationId: id, revision, source, key, scheduledAt: time, ...version }, async d => {
         if (this.closing || this.backingUp) return '应用正在退出或备份'
         try { if (await this.hooks.validate(d) !== d.authorizedFingerprint) return { reason: '员工或会话权限已变更，请编辑保存任务后重新启用', attention: 'authorization' as const } } catch (error) { return { reason: String(error), attention: 'authorization' as const } }
-      }, this.hooks.prepareConversation, this.hooks.busy) })
+      }, this.hooks.prepareConversation, this.hooks.busy, this.hooks.executionDefinition) })
       let o = result.occurrence
       if (o.deletedAt) {
         if (source === 'manual') throw new Error('本次执行记录已删除，请发起新的运行')

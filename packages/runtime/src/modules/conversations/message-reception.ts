@@ -1,5 +1,6 @@
 /*
- * [OUTPUT]: 新任务消息仅进入独立任务工作区；旧任务聊天镜像按原回执继续兼容。
+ * [OUTPUT]: 旧独立会话被同一员工任务继续使用时，按每条消息的真实occurrence投影，避免归到首轮执行。
+ * [OUTPUT]: 员工任务恢复进入主聊天；旧独立上下文沿原回执投影指令和回复，不重放执行。
  * [OUTPUT]: 公开任务消息身份共用确定性函数，执行镜像按原消息直接核源，不扫描聊天历史。
  * [INPUT]: 公共消息写事务、真实会话/参与者/来源和原阅读事务。
  * [OUTPUT]: 任何新公开消息与对应IM入口可见性同事务；隔离任务按固定归属投影，原回执屏障/执行上下文保持。
@@ -45,9 +46,9 @@ export async function receiveConversationMessages(tx: RecordTransaction, changes
         if (main?.list?.hidden) await save({ ...main, list: { ...main.list, hidden: false } })
       }
     } else if (source.purpose === 'automation' && !message.automationPublication) {
-      const occurrence = source.occurrenceId ? await tx.get<AutomationOccurrence>('automationOccurrences', source.occurrenceId) : undefined
-      // The task workspace owns new execution messages. Existing chat publications remain historical records.
-      if (occurrence?.executionSurface === 'task') continue
+      const occurrenceId = message.origin?.occurrenceId ?? source.occurrenceId
+      const occurrence = occurrenceId ? await tx.get<AutomationOccurrence>('automationOccurrences', occurrenceId) : undefined
+      if (occurrence && occurrence.conversationId !== source.id) continue
       const owner = occurrence?.plan?.owner
       const target = owner?.kind === 'group' ? await tx.get<Conversation>('conversations', owner.conversationId) : source.agentIds.length === 1 ? await mainPrivate(source.agentIds[0]) : undefined
       if (!target || await tx.get('conversationCleanup', target.id)) continue
@@ -82,7 +83,12 @@ async function publishTaskMessages(tx: RecordTransaction, source: Conversation, 
     const original = await tx.get<Message>('messages', candidate.id)
     if (!original || original.conversationId !== source.id || original.automationPublication
       || original.senderType === 'agent' && !source.agentIds.includes(original.senderId)) continue
-    const publication = { automationId: source.automationId, occurrenceId: source.occurrenceId, sourceConversationId: source.id, sourceMessageId: original.id }
+    const origin = original.origin
+    if (origin) {
+      const occurrence = await tx.get<AutomationOccurrence>('automationOccurrences', origin.occurrenceId)
+      if (!occurrence || occurrence.conversationId !== source.id || occurrence.automationId !== origin.automationId || occurrence.deletedAt) continue
+    }
+    const publication = { automationId: origin?.automationId ?? source.automationId, occurrenceId: origin?.occurrenceId ?? source.occurrenceId, sourceConversationId: source.id, sourceMessageId: original.id }
     const { id, fingerprint } = automationPublicationIdentity(publication)
     const receipt = await tx.get<Receipt>('messageReceipts', id)
     // Clearing the destination keeps this receipt. A refresh/restart must never restore the cleared text.

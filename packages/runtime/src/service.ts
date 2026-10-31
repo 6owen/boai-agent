@@ -1,4 +1,8 @@
 /*
+ * [OUTPUT]: 路由员工任务删除/重命名到原任务服务，保持任务归属/修订与原定时管理路径。
+ * [OUTPUT]: 任务Dialog共用原输入/审批/问答/Steer；每任务会话与原计划授权分别核验。
+ * [OUTPUT]: 员工持久任务五个公共入口及原消息关联回写；执行沿原AutomationService和主会话。
+ * [OUTPUT]: 员工任务默认绑定主聊天，旧独立任务恢复公开投递与原Run定位；原生session续接沿已有来源核验。
  * [OUTPUT]: 新任务独立消息定位，启动后仅唤醒未开始的持久员工队列。
  * [OUTPUT]: 保留的定时运行缺失原会话时返回空过程供详情展示历史元数据；无关/缺失运行身份仍拒绝。
  * [OUTPUT]: 已登记依赖等待时私有汇报schema错误沿withhold保留等待及错误原文；不发布无效正文或重放操作。
@@ -186,6 +190,7 @@
  * [POS]: packages/runtime/src/service.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { EmployeeTaskService } from './modules/automations/employee-task-service'
 import { workingScene } from './modules/contexts/working-scene'
 import { progressBoundary } from './adapters/mastra/progress-review'
 import { ProgressStalledError, type ProgressMonitor } from './modules/contexts/progress-monitor'
@@ -266,7 +271,7 @@ import { NativeSteering } from './modules/conversations/native-steering'
 import { recordNativeInput } from './adapters/native-sessions'
 import { createClient } from '@libsql/client'
 import { pathToFileURL } from 'node:url'
-import { AutomationService, automationSchema } from './modules/automations/automation-service'
+import { AutomationService, automationInputSchema } from './modules/automations/automation-service'
 import { automationDispatchPrompt } from './modules/automations/automation-plan'
 import { automationPublicationIdentity, receiveConversationMessages } from './modules/conversations/message-reception'
 import { messageExecutionScope, projectMessageExecution } from './modules/conversations/message-execution'
@@ -469,6 +474,7 @@ export class AppService {
   private readonly presentations: PresentationService
   private readonly images: ImageService
   private readonly selfies: SelfieService
+  private employeeTasks!: EmployeeTaskService
   private readonly automations: AutomationService
   readonly runtimePlugins: RuntimePlugins
   private readonly pluginEngines = new Map<string, PluginEmployeeEngine>()
@@ -767,8 +773,24 @@ export class AppService {
     })
     this.automations=new AutomationService(this.store,this.dataPath,{
       behaviors: this.agentBehaviors,
-      critical:operation=>this.serialize(operation),validate:id=>this.automationFingerprint(id),busy:id=>this.closing||this.backingUp||this.conversationBusy(id),
+      critical:operation=>this.serialize(operation),validate:id=>this.automationFingerprint(id),busy:(id, employees)=>this.closing||this.backingUp||this.conversationBusy(id)||[...this.runs.values()].some(run=>employees?.includes(run.agentId)&&(!terminal.has(run.status)&&!['waiting_approval', 'waiting_user'].includes(run.status)||this.activeAdapters.has(run.id))),
       prepareConversation: (definition, occurrence) => this.prepareAutomationConversation(definition, occurrence),
+      prepareInput: async input => {
+        if (input.employeeTask?.message) input = { ...input, employeeTask: { ...input.employeeTask, message: sendSchema.parse(input.employeeTask.message) } }
+        const employeeId = input.owner?.kind === 'employee' ? input.owner.employeeId : !input.owner && input.employeeIds?.length === 1 ? input.employeeIds[0] : undefined
+        if (input.conversationPolicy || input.taskKind === 'monitor' || !employeeId || input.collaboration) return input
+        if (input.conversationId || input.employeeIds?.some(id => id !== employeeId)) fail('员工任务的会话或参与员工不一致')
+        return { ...input, owner: { kind: 'employee', employeeId }, conversationPolicy: 'new-conversation', employeeIds: [employeeId] }
+      },
+      executionDefinition: async definition => {
+        // A plan stays a plan. Each new employee assignment receives its own session;
+        // original plan authorization is checked before and again when dequeued.
+        if (definition.employeeTask || definition.taskKind === 'monitor' || definition.owner?.kind !== 'employee' || definition.conversationPolicy === 'new-conversation') return definition
+        const room = this.getConversation(definition.conversationId!)
+        if (room.purpose === 'automation' || room.kind !== 'direct' || room.channel) return definition
+        const execution = { ...definition, conversationPolicy: 'new-conversation' as const, conversationId: undefined, employeeIds: [definition.owner.employeeId] }
+        return { ...execution, authorizedFingerprint: await this.automationFingerprint(execution) }
+      },
       readMonitor: async (definition, signal) => {
         const source = definition.monitor?.source ?? fail('监控来源缺失')
         const scope = await this.serialize(async () => {
@@ -783,14 +805,16 @@ export class AppService {
       },
       dispatch: (definition, occurrence, origin, commit) => this.serialize(async () => {
         if (this.closing || this.backingUp) fail('服务正在退出或备份')
-        if (definition.conversationPolicy === 'new-conversation') {
+        if (definition.conversationPolicy === 'new-conversation' || definition.employeeTask) {
           const conversation = (await this.store.load<Conversation>('conversations')).find(c => c.id === occurrence.conversationId)
-          if (!conversation || conversation.purpose !== 'automation' || conversation.occurrenceId !== occurrence.id || conversation.automationId !== definition.id) fail('本次任务聊天未完成事务初始化')
+          if (!conversation || conversation.purpose !== 'automation' || (definition.employeeTask ? conversation.employeeTaskId !== definition.employeeTask.id : conversation.occurrenceId !== occurrence.id || conversation.automationId !== definition.id)) fail('本次任务聊天未完成事务初始化')
           this.conversations.set(conversation!.id, conversation!)
         }
+        const source = await this.store.get<AutomationDefinition>('automations', definition.id)
+        if (source && source.authorizedFingerprint !== definition.authorizedFingerprint && await this.automationFingerprint(source) !== source.authorizedFingerprint) fail('原计划授权已变化')
         if (await this.automationFingerprint(occurrence.conversationId) !== definition.authorizedFingerprint) fail('自动化权限已变化')
         if (this.conversationBusy(occurrence.conversationId)) fail('会话忙碌')
-        return this.sendMessage({ conversationId: occurrence.conversationId, content: automationDispatchPrompt(definition), mentionIds: definition.collaboration ? [definition.collaboration.coordinatorId] : [], requestId: 'automation-' + occurrence.id }, origin, commit)
+        return this.sendMessage(sendSchema.parse({ ...definition.employeeTask?.message, conversationId: occurrence.conversationId, content: automationDispatchPrompt(definition), mentionIds: definition.collaboration ? [definition.collaboration.coordinatorId] : [], requestId: 'automation-' + occurrence.id }), origin, commit)
       }),
       inspect: occurrence => this.inspectAutomation(occurrence), cancel: (occurrence, options) => this.cancelAutomation(occurrence, options?.endWaiting),
       capacityAvailable: () => { for (const id of this.conversations.keys()) this.scheduleWork(id) },
@@ -925,6 +949,7 @@ export class AppService {
     })
     this.initialized = true
     await this.agentBehaviors.init()
+    this.employeeTasks = new EmployeeTaskService(this.store, this.automations, message => { if (message && this.messages.has(message.id)) this.messages.set(message.id, message); this.changed(message?.conversationId) }, this.dataPath, room => { this.conversations.set(room.id, room); this.emit({ type: 'changed' }) })
     await this.automations.init()
     for (const pending of await this.store.load<AutomationHistoryDeletion>('automationHistoryCleanups')) {
       try { await this.serialize(() => this.deleteAutomationOccurrence(pending.id, 0)) }
@@ -1233,12 +1258,23 @@ export class AppService {
     if (method === 'cancelSkillOperation') { const value = lookupSchema.parse(input); await this.skills.cancel(value.id); await this.skillUpdates.cancel(value.id); return this.skillLibrary.cancel(value.id) }
     if (method === 'getScheduleList') { z.undefined().parse(input); return this.scheduleList.read() }
     if (method === 'updateScheduleList') { const result = await this.scheduleList.update(scheduleListChangeSchema.parse(input)); this.emit({ type: 'schedule-list:changed' }); return result }
+    if (method === 'sendEmployeeTaskMessage') {
+      const value = sendSchema.parse(input), room = this.getConversation(value.conversationId)
+      if (!room.employeeTaskId || room.agentIds.length !== 1) fail('当前不是员工任务会话')
+      if (value.steer) return this.serialize(() => this.sendMessage(value))
+      return this.employeeTasks.sendMessage(value)
+    }
+    if (method === 'getEmployeeTaskMessageReceipt') {
+      const { requestId } = z.object({ requestId: id }).strict().parse(input)
+      return await this.handle('getMessageReceipt', { requestId }) ?? this.employeeTasks.messageReceipt(requestId)
+    }
+    if (method === 'openEmployeeTaskSession' || method === 'createEmployeeTask' || method === 'listEmployeeTasks' || method === 'getEmployeeTask' || method === 'updateEmployeeTask' || method === 'deleteEmployeeTask' || method === 'runEmployeeTask') return this.employeeTasks.handle(method, input)
     if(method==='listAutomations'){z.undefined().parse(input);return this.automations.view()}
     if(method==='getAutomation'){const {id}=z.object({id:z.string().min(1).max(200)}).strict().parse(input);const definition=await this.store.get<AutomationDefinition>('automations',id);return definition&&!definition.deletedAt?definition:null}
     if(method==='listOwnerAutomations')return this.automations.list(automationListSchema.parse(input))
     if(method==='listAutomationHistory')return this.automations.history(input)
     if(method==='getAutomationOccurrence')return this.automations.occurrence(lookupSchema.parse(input).id)
-    if(method==='saveAutomation')return this.automations.save(automationSchema.parse(input))
+    if(method==='saveAutomation')return this.automations.save(automationInputSchema.parse(input))
     if(method==='generateAutomationDraft')return this.generateAutomationDraft(input)
     if(method==='getAutomationCreation')return this.automations.creation(z.object({requestId:id}).strict().parse(input).requestId)
     if(method==='resumeAutomation')return this.automations.resumePlan(lookupSchema.parse(input).id)
@@ -1432,9 +1468,8 @@ export class AppService {
           const query = z.object({ conversationId: id, runId: id }).strict().parse(input)
           const run = this.executionScope(query.conversationId, query.runId)
           const source = this.getConversation(run.conversationId)
-          const occurrence = source.occurrenceId ? await this.store.get<AutomationOccurrence>('automationOccurrences', source.occurrenceId) : undefined
-          const target = source.purpose === 'automation' && occurrence?.executionSurface !== 'task'
-            ? [...this.messages.values()].find(message => message.automationPublication?.sourceConversationId === source.id && message.automationPublication.sourceMessageId === run.triggerMessageId && message.automationPublication.occurrenceId === source.occurrenceId)
+          const target = source.purpose === 'automation'
+            ? [...this.messages.values()].find(message => message.automationPublication?.sourceConversationId === source.id && message.automationPublication.sourceMessageId === run.triggerMessageId && message.automationPublication.occurrenceId === (run.origin?.occurrenceId ?? source.occurrenceId))
             : this.messages.get(run.triggerMessageId!)
           if (!target) fail('对应聊天记录已删除或不可用')
           return this.store.transaction(async tx => {
@@ -1664,7 +1699,7 @@ export class AppService {
         || !original || original.conversationId !== source.id || original.automationPublication
         || !source.agentIds.every(id => target.agentIds.includes(id)) || !target.agentIds.includes(run.agentId)) continue
       const published = (messageId: string) => {
-        const publication = { automationId: source.automationId!, occurrenceId: source.occurrenceId!, sourceConversationId: source.id, sourceMessageId: messageId }
+        const publication = { automationId: run.origin?.automationId ?? source.automationId!, occurrenceId: run.origin?.occurrenceId ?? source.occurrenceId!, sourceConversationId: source.id, sourceMessageId: messageId }
         const message = this.messages.get(automationPublicationIdentity(publication).id), actual = message?.automationPublication
         return message?.conversationId === target.id && actual && actual.automationId === publication.automationId && actual.occurrenceId === publication.occurrenceId && actual.sourceConversationId === source.id && actual.sourceMessageId === messageId ? message : undefined
       }

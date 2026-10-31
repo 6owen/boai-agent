@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 公开计划操作排除内部任务消息，避免自定义类型进入工具JSON Schema。
  * [OUTPUT]: prompts域复用提示词模板CRUD与版本前检，contacts/prompts操作指南纳入现有业务协议。
  * [OUTPUT]: application.guide 增加 PPT 独立配置说明，保留原执行与配置分离。
  * [OUTPUT]: 技能安装映射与独立副本详情提供只读协议，更新前可精确核对原员工绑定和内容，复用原服务。
@@ -136,8 +137,8 @@ export function applicationOperations(port: ApplicationPort, schemas: { connecti
   method('automations.list', 'listOwnerAutomations', '按员工或群列出定时任务及下一次时间。省略 owner 查看全部。', 'read', automationListSchema, 'AutomationListPage')
   method('automations.get', 'getAutomation', '读取计划及 revision，不执行任务。', 'read', lookup, 'AutomationDefinition | null')
   method('automations.preview', 'previewAutomation', '核对实际时区与未来执行时间。', 'read', scheduleSchema, '{ nextTimes: string[] }')
-  method('automations.create', 'saveAutomation', '创建定时计划，明确 owner/时间/时区/prompt；不会立即执行。单员工计划可使用 owner 与默认独立执行上下文。', 'write', automationInputSchema.omit({ id: true, expectedRevision: true, requestId: true }), 'AutomationDefinition', (input, requestId) => ({ ...input, requestId }))
-  method('automations.update', 'saveAutomation', '以当前 revision 保存完整计划；修改计划不手动运行。', 'write', automationInputSchema.omit({ requestId: true }).extend({ id, expectedRevision: version }), 'AutomationDefinition', (input, requestId) => ({ ...input, requestId }))
+  method('automations.create', 'saveAutomation', '创建定时计划，明确 owner/时间/时区/prompt；不会立即执行。单员工计划可使用 owner 与默认独立执行上下文。', 'write', automationInputSchema.omit({ employeeTask: true, id: true, expectedRevision: true, requestId: true }), 'AutomationDefinition', (input, requestId) => ({ ...input, requestId }))
+  method('automations.update', 'saveAutomation', '以当前 revision 保存完整计划；修改计划不手动运行。', 'write', automationInputSchema.omit({ employeeTask: true, requestId: true }).extend({ id, expectedRevision: version }), 'AutomationDefinition', (input, requestId) => ({ ...input, requestId }))
   method('automations.history', 'listAutomationHistory', '分页查询计划的真实执行历史。', 'read', z.object({ automationId: id.optional(), status: z.enum(['all', 'active', 'completed', 'attention']).optional(), search: z.string().max(200).optional(), before: z.object({ startedAt: z.iso.datetime(), id: z.string().min(1).max(500) }).strict().optional(), limit: z.number().int().min(1).max(100).default(30) }).strict(), 'AutomationHistoryPage')
   method('automations.occurrence', 'getAutomationOccurrence', '读取一个实际执行记录，id 为 occurrence ID。', 'read', lookup, 'AutomationOccurrence')
   method('automations.stop', 'stopAutomation', '停止指定实际执行记录；id 为 occurrence ID，不是计划 ID。', 'write', lookup, 'void')

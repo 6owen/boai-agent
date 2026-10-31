@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 普通聊天与两次员工任务沿兼容原生session续接，仅追加新输入。
  * [OUTPUT]: 已退出且确认接收的取消轮次只投递新消息；投递未知/会话错配/来源漂移/宿主中断仍重建。
  * [INPUT]: 实际SQLite、获准消息投影及原生会话公开终态。
  * [OUTPUT]: Codex/Claude逐个验证增量/来源/恢复和迟到提交；各自原生turn或宿主完成回执不可替代，分集合不互相续用。
@@ -60,6 +61,19 @@ it('appends only new authorized messages across multiple published turns and a n
   expect(third.session.inputMessageIds).toEqual(['third'])
   expect(third.session.sources.map(source => source.id)).toEqual(['first', first.reply.id, 'second', second.reply.id, 'third'])
   expect(JSON.stringify(await f.store.load(`${runtime}Sessions`))).not.toContain('Private message')
+})
+
+it('continues the same native session across ordinary chat and two employee task messages', async () => {
+  const f = await fixture(), firstMessage = message('chat', 1)
+  const first = await f.publish(context([firstMessage]))
+  const task = message('task-one', 3, { origin: { kind: 'automation', automationId: 'plan', occurrenceId: 'one', name: 'Daily news', authorizedFingerprint: 'allowed' } })
+  const second = await f.publish(context([firstMessage, first.reply, task], { runId: 'task-run-one' }))
+  expect(second.threadId).toBe(first.session.threadId ?? 'native-run-1')
+  expect(second.messages.map(m => m.id)).toEqual(['task-one'])
+  const next = message('task-two', 5, { origin: { ...task.origin!, occurrenceId: 'two' } as Message['origin'] })
+  const third = await f.sessions.begin(context([firstMessage, first.reply, task, second.reply, next], { runId: 'task-run-two' }), 'verified-config')
+  expect(third.threadId).toBe('native-run-1')
+  expect(third.messages.map(m => m.id)).toEqual(['task-two'])
 })
 
 it.each(['confirmed', 'pending', 'host-interrupted', 'unknown-input', 'wrong-session', 'wrong-turn', 'changed-source', 'changed-config', 'unknown-answer', 'unknown-approval', 'unanswered-input'] as const)('checks cancelled native session continuation: %s', async condition => {

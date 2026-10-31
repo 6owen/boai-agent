@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 默认任务列表排除完成和关闭，显式状态仍沿SQL分页。
+ * [OUTPUT]: 任务来源和最近执行状态投影不读取正文；任务筛选仍在LIMIT之前。
  * [INPUT]: Normalized explicit-task filters and trusted viewer scope.
  * [OUTPUT]: One fixed SQL query with source/identity checks before LIMIT and bounded list projection.
  * [POS]: Original records-table task read model; no state transitions or writes.
@@ -31,7 +33,7 @@ export function taskPageSql(query: TaskPageSqlQuery) {
   if (query.agentId) { filters.push("json_extract(t.value,'$.agentId')=?"); args.push(query.agentId) }
   if (query.conversationId) { filters.push("json_extract(t.value,'$.conversationId')=?"); args.push(query.conversationId) }
   if (query.status) { filters.push("json_extract(t.value,'$.status')=?"); args.push(query.status) }
-  else if (!query.includeDone) filters.push("json_extract(t.value,'$.status')<>'done'")
+  else if (!query.includeDone) filters.push("json_extract(t.value,'$.status') NOT IN ('done','closed')")
   if (query.viewer) {
     filters.push(`json_extract(t.value,'$.agentId')=? AND EXISTS (
       SELECT 1 FROM records current WHERE current.collection='conversations' AND current.id=?
@@ -52,6 +54,8 @@ export function taskPageSql(query: TaskPageSqlQuery) {
   }
   return {
     sql: `SELECT t.id, json_extract(t.value,'$.agentId') AS agentId, json_extract(t.value,'$.conversationId') AS conversationId,
+      json_extract(t.value,'$.sourceKind') AS sourceKind, json_extract(t.value,'$.latestOccurrenceId') AS latestOccurrenceId,
+      (SELECT json_extract(e.value,'$.status') FROM records e WHERE e.collection='automationOccurrences' AND e.id=json_extract(t.value,'$.latestOccurrenceId') AND json_extract(e.value,'$.deletedAt') IS NULL) AS executionStatus,
       json_extract(t.value,'$.title') AS title, json_extract(t.value,'$.status') AS status, json_extract(t.value,'$.revision') AS revision,
       json_extract(t.value,'$.createdAt') AS createdAt, json_extract(t.value,'$.updatedAt') AS updatedAt,
       COALESCE(json_array_length(t.value,'$.steps'),0) AS stepCount,

@@ -1,60 +1,95 @@
 /*
- * [OUTPUT]: 任务详情固定使用面板所属员工阅读，原任务身份与补充请求不变。
- * [INPUT]: 本次任务身份、原执行上下文和共享消息渲染/材料回调。
- * [OUTPUT]: 任务独立阅读、补充和结果入口；排队取消不启动员工，运行过程沿原occurrence。
- * [POS]: 员工右侧任务详情，不创建第二套Agent循环或复制聊天数据。
- * [PROTOCOL]: 变化同步Header与所属.folder.md。
+ * [INPUT]: One employee task, its dedicated conversation and original execution history.
+ * [OUTPUT]: Task Dialog with globally resizable panes; user close waits for the shared exit animation before unmounting.
+ * [POS]: Task session boundary; closing the dialog never stops an accepted execution.
+ * [PROTOCOL]: Update Header and owning .folder.md on change.
  */
-import { useEffect, useRef, useState, type ReactNode } from 'react'
-import type { AutomationOccurrence, Snapshot } from '@boai/shared/domain'
-import { AUTOMATION_ONGOING_STATUSES } from '@boai/shared/domain/automations'
+import { useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import type { Conversation, Message, Snapshot } from '@boai/shared/domain'
+import type { EmployeeTaskDetail as TaskDetail } from '@boai/shared/domain/employee-tasks'
+import type { TrackedTaskStatus } from '@boai/shared/domain/tracked-tasks'
 import type { ConversationView } from '@boai/shared/domain/reading'
+import { AUTOMATION_ONGOING_STATUSES } from '@boai/shared/domain/automations'
 import type { DesktopApi } from '@boai/shared/ipc'
-import { ChannelsTab, type ChannelChatWindow } from '@/components/detail-panel/channels-tab'
 import { Button } from '@/components/ui/button'
-import { Loading, showErrorToast, errorText } from '@/components/common'
-import { AutomationOccurrenceView, occurrenceStatusLabels } from '@/pages/schedules/automation-history'
-
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
+import { Avatar, Loading, showErrorToast, errorText, GuardContext } from '@/components/common'
+import { Markdown } from '@/components/common/markdown'
+import { EmployeeTaskStatus } from './employee-task-status'
+import { useConversationWindow } from './use-conversation-window'
+import type { ChannelChatWindow } from './channels-tab'
+import { TraceTab } from './trace-tab'
+export { taskStatusLabels } from './employee-task-status'
 export type EmployeeTaskDetailProps = {
-  api: DesktopApi; snapshot: Snapshot; id: string; employeeId?: string; active: boolean; focusMessage?: { id: string; requestId: string }
-  onContext(id?: string): void; onProcess(id: string): void; onBack(): void
+  api: DesktopApi; snapshot: Snapshot; id?: string; occurrenceId?: string; employeeId: string; active: boolean
+  onBack(): void
+  onSource(source: { conversationId: string; messageId: string }, process?: boolean): void
+  renderChat(window: ChannelChatWindow, onTrace: (message?: Message) => void, historyHeader?: ReactNode): ReactNode
   onMaterials(id: string, materials: NonNullable<ConversationView['materials']>): void
-  renderChat(window: ChannelChatWindow, headerActions: ReactNode): ReactNode
+  onContext(conversation: Conversation | undefined): void
 }
-export function EmployeeTaskDetail({ api, snapshot, id, employeeId, active, focusMessage, onContext, onProcess, onBack, onMaterials, renderChat }: EmployeeTaskDetailProps) {
-  const [record, setRecord] = useState<AutomationOccurrence>(), [failed, setFailed] = useState(false), [revision, setRevision] = useState(0), [stopping, setStopping] = useState(false)
-  const stopLocked = useRef(false)
+export function EmployeeTaskDetail({ api, snapshot, id, occurrenceId, employeeId, active, onBack, onSource, renderChat, onMaterials, onContext }: EmployeeTaskDetailProps) {
+  const [open, setOpen] = useState(true), visible = active && open
+  const [record, setRecord] = useState<TaskDetail>(), [room, setRoom] = useState<Conversation>(), [failed, setFailed] = useState(false), [revision, setRevision] = useState(0), [busy, setBusy] = useState(false)
+  const startRequest = useRef<import('@boai/shared/ipc').Methods['runEmployeeTask']['input'] | undefined>(undefined)
+  const [process, setProcess] = useState<{ conversationId: string; messageId?: string; occurrenceId?: string }>()
+  const guard = useContext(GuardContext), locked = useRef(false), contextCallback = useRef(onContext); contextCallback.current = onContext
   useEffect(() => {
-    if (!active) return
+    if (!visible) return
     let live = true, timer: ReturnType<typeof setTimeout> | undefined
-    void api.request('getAutomationOccurrence', { id }).then(value => { if (live) { setRecord(value); setFailed(false) } }).catch(error => { if (live) { setRecord(undefined); setFailed(true); showErrorToast(errorText(error)) } })
-    const unsubscribe = api.subscribe(event => { if (event.type === 'changed' && !timer) timer = setTimeout(() => setRevision(v => v + 1), 100) })
+    void (async () => {
+      const result = await api.request('getEmployeeTask', { employeeId, ...(id ? { id } : { occurrenceId }), before: undefined })
+      if (!live) return
+      if (result.task.agentId !== employeeId) throw new Error('此任务不属于当前员工')
+      setRecord(result); setFailed(false)
+      if (!room) { const session = await api.request('openEmployeeTaskSession', { employeeId, id: result.task.id }); if (live) setRoom(session) }
+    })().catch(error => { if (live) { setFailed(true); showErrorToast(errorText(error)) } })
+    const unsubscribe = api.subscribe(event => { if (event.type === 'changed' && !timer) timer = setTimeout(() => setRevision(v => v + 1), 150) })
     return () => { live = false; clearTimeout(timer); unsubscribe() }
-  }, [api, id, active, revision])
-  const belongs = !employeeId || record?.plan?.employeeIds.includes(employeeId) || !record?.plan && snapshot.conversations.some(room => room.id === record?.conversationId && room.agentIds.includes(employeeId))
-  const o = record?.id === id && belongs ? record : undefined
-  const contextId = o?.messageId ? o.conversationId : undefined
-  useEffect(() => { onContext(active ? contextId : undefined); return () => onContext(undefined) }, [active, contextId, onContext])
-  if (record?.id === id && !belongs) return <p className="empty-note">此任务不属于当前员工。</p>
-  if (!o) return <div className="p-6">{failed ? <Button onClick={() => setRevision(v => v + 1)}>重试读取</Button> : <Loading>正在读取任务…</Loading>}</div>
-  const agent = snapshot.agents.find(agent => (!employeeId || agent.id === employeeId) && (o.plan?.employeeIds ?? snapshot.conversations.find(c => c.id === o.conversationId)?.agentIds ?? []).includes(agent.id))
-  const canStop = (AUTOMATION_ONGOING_STATUSES as readonly string[]).includes(o.status)
-  const stop = async () => {
-    if (stopLocked.current) return
-    stopLocked.current = true; setStopping(true)
-    try { await api.request('stopAutomation', { id: o.id }); setRevision(v => v + 1) }
-    catch (error) { showErrorToast(errorText(error)) }
-    finally { stopLocked.current = false; setStopping(false) }
+  }, [api, id, occurrenceId, employeeId, visible, revision, room])
+  useEffect(() => { contextCallback.current(visible ? room : undefined); return () => contextCallback.current(undefined) }, [room, visible])
+  const { window, error } = useConversationWindow({ api, id: room?.id, active: visible, chatActive: !process, available: !!room && room.employeeTaskId === record?.task.id && room.agentIds[0] === employeeId, target: { requestId: id ?? occurrenceId ?? '' }, onMaterials })
+  useEffect(() => { if (error) showErrorToast(error) }, [error])
+  const act = async (operation: () => Promise<unknown>) => {
+    if (!visible || locked.current) return
+    locked.current = true; setBusy(true)
+    try { await operation(); setRevision(v => v + 1) } catch (error) { showErrorToast(errorText(error)); setRevision(v => v + 1) } finally { locked.current = false; setBusy(false) }
   }
-  return <section className="flex h-full min-h-0 flex-col" aria-label="员工任务详情" data-task-occurrence-id={o.id}>
-    <div className="flex flex-wrap items-center gap-3 border-b px-6 py-3">
-      <Button variant="ghost" size="sm" onClick={onBack}>返回任务</Button><strong className="min-w-0 truncate">{o.name}</strong>
-      <span className="text-sm text-muted-foreground">{occurrenceStatusLabels[o.status]}</span>
-      <div className="ml-auto flex items-center gap-2"><Button variant="secondary" size="sm" onClick={() => onProcess(o.id)}>执行过程</Button>
-        {canStop && <Button variant="secondary" size="sm" disabled={stopping || o.status === 'cancelling'} onClick={() => void stop()}>{o.status === 'queued' ? '取消排队' : stopping || o.status === 'cancelling' ? '正在停止…' : '停止'}</Button>}
-      </div>
-    </div>
-    {contextId && snapshot.conversations.find(c => c.id === contextId)?.purpose !== 'automation' ? <AutomationOccurrenceView api={api} snapshot={snapshot} id={o.id} active={active} /> : contextId && agent ? <div className="min-h-0 flex-1"><ChannelsTab api={api} agent={agent} taskSnapshot={snapshot} active={active} chatActive={active} target={{ type: 'channels', id: agent.id, conversationId: contextId, requestId: focusMessage?.requestId ?? o.id, focusMessage }} onMaterials={onMaterials} renderChat={renderChat} /></div>
-      : <div className="p-6 text-sm text-muted-foreground">{o.reason ?? (o.status === 'queued' ? '已加入员工队列，轮到本任务时自动开始。' : o.status === 'admitted' ? '正在准备本次执行。' : '本次任务没有开始执行。')}</div>}
-  </section>
+  const task = record?.task, employee = snapshot.agents.find(a => a.id === employeeId), ongoing = record?.executions.occurrences.find(o => (AUTOMATION_ONGOING_STATUSES as readonly string[]).includes(o.status))
+  const status = (value: TrackedTaskStatus) => task && void act(() => api.request('updateEmployeeTask', { employeeId, id: task.id, expectedRevision: task.revision, status: value }))
+  const start = () => task && void act(async () => { startRequest.current ??= { employeeId, id: task.id, expectedRevision: task.revision, requestId: crypto.randomUUID() }; await api.request('runEmployeeTask', startRequest.current); startRequest.current = undefined })
+  const introduction = task && <section className="mx-auto mb-8 w-full max-w-(--content-width)" aria-label="任务要求"><h2 className="m-0 mb-5 text-xl font-semibold">{task.title}</h2>{(task.description || task.note) && <div className="markdown text-sm"><Markdown>{task.description || task.note}</Markdown></div>}</section>
+  return <Dialog open={visible} onOpenChange={next => { if (visible && !next) guard.navigate(() => setOpen(false)) }} onOpenChangeComplete={next => { if (!next && !open) onBack() }}><DialogContent aria-describedby={undefined} className="flex h-[min(90dvh,1000px)] w-[min(1400px,calc(100vw-48px))] max-w-none gap-0 overflow-hidden p-0 sm:max-w-none [&>[data-slot=dialog-close]]:z-20" data-employee-task-dialog={task?.id}>
+    <ResizablePanelGroup orientation="horizontal" className="min-h-0 min-w-0">
+    {task && <><ResizablePanel defaultSize="300px" minSize="18%" maxSize="40%">
+    <aside aria-label="任务属性" className="relative flex h-full min-h-0 min-w-0 flex-col bg-muted/20">
+      <header className="chat-header pointer-events-none"><h3 className="chat-title">属性</h3></header>
+      <ScrollArea className="mt-[36px] min-h-0 flex-1" viewportProps={{ className: 'overscroll-contain scroll-fade-t scroll-fade-6', 'aria-label': '任务属性' }}>
+        <div className="flex flex-col gap-8 px-6 pb-6 pt-[36px]">
+          <dl className="m-0 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-5 text-sm">
+            <dt className="text-muted-foreground">状态</dt><dd className="m-0 min-w-0"><EmployeeTaskStatus status={task.status} disabled={busy} onChange={status} /></dd>
+            <dt className="text-muted-foreground">负责人</dt><dd className="m-0 flex min-w-0 items-center gap-2 [&_.avatar]:size-6">{employee && <Avatar small name={employee.name} seed={employee.id} avatar={employee.avatar} color={employee.color} />}<span className="truncate">{employee?.name}</span></dd>
+            {task.sourceKind && <><dt className="text-muted-foreground">来源</dt><dd className="m-0">{{ schedule: '定时任务', message: '聊天消息', manual: '手动创建' }[task.sourceKind]}</dd></>}
+          </dl>
+          {(ongoing || !['done', 'closed'].includes(task.status) && !record.executions.occurrences.length || task.source) && <div className="flex flex-col items-start gap-3">
+            {ongoing ? <Button variant="secondary" size="sm" disabled={busy || ongoing.status === 'cancelling'} onClick={() => void act(() => api.request('stopAutomation', { id: ongoing.id }))}>{ongoing.status === 'queued' ? '取消排队' : '停止本次执行'}</Button> : !['done', 'closed'].includes(task.status) && !record.executions.occurrences.length && <Button variant="secondary" size="sm" disabled={busy || !room} onClick={start}>开始执行</Button>}
+            {task.source && <Button variant="ghost" size="sm" onClick={() => guard.navigate(() => { onSource(task.source!); onBack() })}>原消息</Button>}
+          </div>}
+          <dl className="m-0 flex flex-col gap-3 text-xs"><div><dt className="text-muted-foreground">创建时间</dt><dd className="m-0 mt-1">{new Date(task.createdAt).toLocaleString('zh-CN')}</dd></div><div><dt className="text-muted-foreground">更新时间</dt><dd className="m-0 mt-1">{new Date(task.updatedAt).toLocaleString('zh-CN')}</dd></div></dl>
+        </div>
+      </ScrollArea>
+    </aside>
+    </ResizablePanel>
+    <ResizableHandle className="resize-handle bg-transparent hover:bg-ring data-[separator=hover]:bg-ring data-[separator=active]:bg-ring" aria-label="调整任务属性与会话宽度" />
+    </>}
+    <ResizablePanel minSize="60%">
+    <section className="relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden" aria-label="任务会话">
+      <DialogHeader className="chat-header flex-row pr-14"><DialogTitle className="chat-title">{employee?.name ?? '员工'} · 任务</DialogTitle>{process && <div className="chat-header-actions"><Button variant="ghost" size="sm" onClick={() => setProcess(undefined)}>返回任务会话</Button></div>}</DialogHeader>
+      {process ? <div className="flex min-h-0 flex-1 flex-col pt-[52px]"><TraceTab api={api} snapshot={snapshot} conversationId={process.conversationId} messageId={process.messageId} occurrenceId={process.occurrenceId} active={visible} agentId={employeeId} /></div> : window ? renderChat(window, message => setProcess({ conversationId: room!.id, messageId: message?.id }), introduction) : <ScrollArea className="mt-[36px] min-h-0 flex-1" viewportProps={{ className: 'scroll-fade-t scroll-fade-6' }}><div className="p-6 pt-[36px]">{introduction}{failed ? <Button onClick={() => setRevision(v => v + 1)}>重试读取任务</Button> : <Loading>正在读取会话…</Loading>}</div></ScrollArea>}
+    </section>
+    </ResizablePanel>
+    </ResizablePanelGroup>
+  </DialogContent></Dialog>
 }

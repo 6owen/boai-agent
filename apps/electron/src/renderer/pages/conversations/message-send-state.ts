@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 冻结和恢复employee-task消息类型，未知回执不自动重发。
  * [OUTPUT]: 补充目标随未决请求持久冻结，重启只核对原回执。
  * [OUTPUT]: 未决消息冻结资源引用并严格恢复，未知不重放。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
@@ -67,7 +68,7 @@ export function pendingMessageRequests(drafts: Map<string, ChatDraft>) {
     const request = draft.submission
     if (!request) return []
     if (!identity(id) || !identity(request.requestId)) throw invalid()
-    return [[id, { schemaVersion: 2, kind: request.kind === 'external' ? 'external' : 'message', requestId: request.requestId, input: messageInput(request.input) }]]
+    return [[id, { schemaVersion: 2, kind: request.kind ?? 'message', requestId: request.requestId, input: messageInput(request.input) }]]
   }))
 }
 
@@ -81,8 +82,8 @@ export function restorePendingMessageDrafts(value: unknown): Map<string, ChatDra
       if (!identity(id) || !identity(item.requestId) || typeof item.content !== 'string' || !item.content.trim() || item.content.length > 100_000) continue
       kind = 'external'; input = { content: item.content, mentionIds: [] }
     } else {
-      if (!identity(id) || !object(item) || !identity(item.requestId) || item.schemaVersion !== 2 || !['message', 'external'].includes(String(item.kind))) throw invalid()
-      kind = item.kind === 'external' ? 'external' : undefined
+      if (!identity(id) || !object(item) || !identity(item.requestId) || item.schemaVersion !== 2 || !['message', 'external', 'employee-task'].includes(String(item.kind))) throw invalid()
+      kind = item.kind === 'external' || item.kind === 'employee-task' ? item.kind : undefined
       input = messageInput(item.input)
       if (kind === 'external' && (input.steer || !input.content.trim() || input.mentionIds.length || input.materialSelections?.length || input.replyToMessageId || input.stopPrevious || input.materialReference || input.channelReference || input.composerReferences?.length)) throw invalid()
     }

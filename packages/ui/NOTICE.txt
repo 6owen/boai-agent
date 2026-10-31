@@ -26,3 +26,22 @@ These sources retain their original attribution. This private workspace change
 does not declare a new license for third-party assets or authorize publication.
 
 Tailwind state and scroll utilities are vendored unchanged from shadcn 4.21.0 dist/tailwind.css (MIT; SHADCN-LICENSE.txt).
+
+ReUI Base UI Kanban (MIT; see REUI-LICENSE.txt):
+- Upstream: https://github.com/keenthemes/reui
+- Commit: 067aa0dc7f8bbfec1cd76fc5ad31f842be5f569a
+- Path: registry-reui/bases/base/reui/kanban.tsx
+- Official registry: https://reui.io/r/base-nova/kanban.json
+- Documentation: https://reui.io/docs/components/base/kanban
+- Pinned upstream source SHA-256: 560fe9ad68233795669bf4b6f0eed3aa31369e6b21dcee6de0399ff77f5344f2
+The component is vendored through the shadcn-style registry, not an @reui npm dependency.
+BOAI adaptations: source/protocol header; omit an unavailable upstream ESLint
+rule directive; type-only browser-build process declaration; merge sortable DOM
+refs through Base UI useRender so ContextMenu does not replace them; limit pointer
+collision fallback to the root bounds and honor restoreOnCancel for outside drops.
+The upstream sensors, sorting strategies, preview/commit lifecycle, keyboard
+coordinates, auto-scroll and body-portaled drop animation are retained. Consumers
+supply BOAI's existing Card, ScrollArea and controls rather than the demo skin.
+The item handle's dragging context uses its own useSortable.isDragging instead
+of the board-wide item-drag flag, so unrelated handles do not switch appearance
+on every drag. The sortable algorithms and sensors remain upstream-owned.

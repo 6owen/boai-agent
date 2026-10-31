@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 内部任务消息保持原输入，执行快照携带原计划授权指纹。
+ * [OUTPUT]: 员工任务版本绑定与occurrence.taskId关联，执行记录独立于持久任务生命周期。
+ * [OUTPUT]: 旧executionSurface仅用于读取历史，任务继续关联聊天与原执行过程。
  * [OUTPUT]: 普通员工任务独立purpose，不将其配置/历史混入定时计划管理。
  * [OUTPUT]: 员工任务排队及独立任务工作区身份，旧公开聊天历史兼容。
  * [OUTPUT]: 默认执行不按累计调用、工具步骤、用量或墙钟截断；保留真实用量、取消/权限和明确指定的预算。
@@ -78,6 +81,8 @@ export interface AutomationMonitorCheckpoint {
 }
 
 export interface AutomationInput {
+  /** Host-accepted explicit task revision; execution remains in the original scheduler. */
+  employeeTask?: { id: string; expectedRevision: number; message?: import('../ipc').Methods['sendMessage']['input'] }
   /** Ordinary employee assignments are not scheduled plans. */
   purpose?: 'employee-task'
   owner?: AutomationOwner
@@ -133,8 +138,9 @@ export interface AutomationDefinition extends Omit<AutomationInput, 'id' | 'expe
 export type OccurrenceStatus = 'queued' | 'admitted' | 'running' | 'waiting_approval' | 'waiting_user' | 'waiting_work' | 'cancelling' | 'completed' | 'failed' | 'skipped' | 'interrupted' | 'needs_review' | 'cancelled'
 export type AutomationDeliveryStatus = 'pending' | 'delivered' | 'no_change' | 'partial' | 'blocked' | 'unknown'
 export interface AutomationOccurrence {
+  taskId?: string
   purpose?: 'employee-task'
-  /** New executions are read in the task workspace; legacy chat publications remain readable. */
+  /** Retired task-only display flag. Retained for old records; it no longer suppresses chat delivery. */
   executionSurface?: 'task'
   /** Admission order is persisted independently of the actual start time. */
   queueOrder?: number
@@ -204,6 +210,8 @@ export interface AutomationDispatch {
   requestId: string
   status: 'pending' | 'started' | 'completed' | 'interrupted' | 'failed' | 'cleared'
   definition?: AutomationDefinition
+  /** Original plan authority when a main-chat plan is projected into its task session. */
+  sourceAuthorizedFingerprint?: string
   origin?: AutomationOrigin
   messageId?: string
   turnId?: string
@@ -218,6 +226,7 @@ export interface AutomationsView {
 }
 
 export interface AutomationHistoryQuery {
+  taskId?: string
   employeeId?: string
   automationId?: string
   search?: string

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 五状态独立任务会话、原计划授权/工具schema与稳定消息回执按最新用户合同验证。
  * [OUTPUT]: 当前轮次补充目标随原请求冻结，混合输入拒绝，重启unknown不自动重发。
  * [OUTPUT]: 2026-10-15文件预览标注进入原聊天明确修改；成果固定版本修订、附件固定来源/权限和未知回执保持；实际结果归8组14。
  * [OUTPUT]: 技能/数据源/文件引用随原请求恢复，不能伪造本机路径或在重启后重绑来源。
@@ -12,7 +13,7 @@ import { draftFingerprint, pendingMessageRequests, restorePendingMessageDrafts }
 import type { ChatDraft } from '../apps/electron/src/renderer/pages/conversations/presentation'
 
 describe('pending message identity', () => {
-  it.each([undefined, 'external'] as const)('keeps the original %s request rather than later edits or unsent drafts', kind => {
+  it.each([undefined, 'external', 'employee-task'] as const)('keeps the original %s request rather than later edits or unsent drafts', kind => {
     const drafts = new Map<string, ChatDraft>([['chat', { text: '后来的编辑', mentionIds: [], submission: { kind, requestId: 'original', status: 'pending', fingerprint: 'frozen', input: { content: '原任务', mentionIds: [] } } }], ['unsent', { text: '未发送普通草稿', mentionIds: [] }]])
     const restored = restorePendingMessageDrafts(JSON.parse(JSON.stringify(pendingMessageRequests(drafts))))
     expect([...restored.keys()]).toEqual(['chat'])

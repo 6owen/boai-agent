@@ -315,6 +315,7 @@
       "development": "./src/domain/traces.ts",
       "default": "./src/domain/traces.ts"
     },
+    "./domain/employee-tasks": "./src/domain/employee-tasks.ts",
     "./domain/tracked-tasks": {
       "types": "./src/domain/tracked-tasks.ts",
       "development": "./src/domain/tracked-tasks.ts",

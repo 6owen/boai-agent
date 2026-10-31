@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 设置语义图标：调色盘、键盘、电源、显示器、插件，继续使用离线Carbon与统一尺寸。
  * [OUTPUT]: 2026-10-27 语音录入/还原所需本地图标，沿原主题和公共图标入口。
  * [OUTPUT]: 增加本地 Carbon 数据库图标供数据源入口共用。
  * [OUTPUT]: 2026-10-11 第13组原生员工与Rovai执行过程接线，沿用BOAI视觉组件；消息流程卡片退役，输入框工具栏保持。
@@ -32,6 +33,11 @@ const classes = {
   Contact: 'i-carbon-user-profile',
   Library: 'i-carbon-notebook',
   Sliders: 'i-carbon-settings-adjust',
+  Palette: 'i-carbon-color-palette',
+  Keyboard: 'i-carbon-keyboard',
+  Power: 'i-carbon-power',
+  Monitor: 'i-carbon-screen',
+  Plug: 'i-carbon-plug',
   Check: 'i-carbon-checkmark',
   ChevronDown: 'i-carbon-chevron-down',
   ChevronUp: 'i-carbon-chevron-up',
@@ -104,6 +110,11 @@ export const Home = component('Home')
 export const Contact = component('Contact')
 export const Library = component('Library')
 export const Sliders = component('Sliders')
+export const Palette = component('Palette')
+export const Keyboard = component('Keyboard')
+export const Power = component('Power')
+export const Monitor = component('Monitor')
+export const Plug = component('Plug')
 export const Check = component('Check')
 export const ChevronLeft = component('ChevronLeft')
 export const ChevronRight = component('ChevronRight')

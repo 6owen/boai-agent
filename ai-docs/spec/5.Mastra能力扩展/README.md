@@ -144,6 +144,6 @@ Mastra已有五类模型阶段；减少单聊额外判断、汇报和自动记�
 
 本次新增核对：[Filesystem](https://mastra.ai/docs/sandbox/filesystem)、[Skills](https://mastra.ai/docs/skills)、[Browser](https://mastra.ai/docs/browser)、[ACP](https://mastra.ai/docs/connections/acp)、[A2A](https://mastra.ai/docs/connections/a2a)、[MCP](https://mastra.ai/docs/connections/mcp)、[SDK Agents](https://mastra.ai/docs/connections/sdk-agents)、[Scheduled workflows](https://mastra.ai/docs/workflows/scheduled-workflows)。各专题记录对应安装包依据和未安装的可选依赖，避免用线上示例冒充当前运行代码。
 
-## 员工任务与聊天分离
+## 员工任务、主聊天与任务会话
 
-2026-10-30用户已授权独立worktree实施；现行合同、Mastra/Raft来源与实际进度见[16-员工任务队列与聊天分离](16-员工任务队列与聊天分离.md)。新独立任务不再自动向日常主聊天镜像过程，旧记录保留。
+2026-10-30最新要求：员工主聊天右侧看板/列表、五状态手动修改、每任务一个独立Dialog会话。sidebar与定时任务页面保持原样。现行合同及最终本地验证以[第16篇第1–3、8节](16-员工任务队列与聊天分离.md)为准；第6–7节保留历史阶段，不再决定当前session策略。

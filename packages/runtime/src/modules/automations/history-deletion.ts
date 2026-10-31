@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 单次日志删除保留持久任务会话；仅旧无任务绑定的私有执行可清理整个会话。
  * [INPUT]: 已结束的单次执行、所见版本和原任务会话/Run身份。
  * [OUTPUT]: 持久清理意图与最小触发去重墓碑；完成才移除可见记录，失败/重启沿同一清理继续。
  * [POS]: 定时执行记录删除账本，文件删除沿宿主原受管历史清理。
@@ -27,7 +28,7 @@ export async function prepareHistoryDeletion(store: ProductStore, id: string, ex
     const runs = (await tx.list<AgentRun>('runs')).filter(run => run.conversationId === occurrence.conversationId && (run.origin?.occurrenceId === id || occurrence.runIds.includes(run.id)))
     if (runs.some(run => ['queued', 'running', 'waiting_approval'].includes(run.status))) throw new Error('本次执行尚未结束，请稍后再删除')
     const conversation = await tx.get<Conversation>('conversations', occurrence.conversationId)
-    const exclusiveConversation = conversation?.purpose === 'automation' && conversation.occurrenceId === id
+    const exclusiveConversation = !conversation?.employeeTaskId && conversation?.purpose === 'automation' && conversation.occurrenceId === id
       && !(await tx.list<AutomationOccurrence>('automationOccurrences')).some(item => item.id !== id && !item.deletedAt && item.conversationId === conversation.id)
     const deletion: AutomationHistoryDeletion = { id, conversationId: occurrence.conversationId, runIds: runs.map(run => run.id), exclusiveConversation }
     await tx.put({ collection: 'automationHistoryCleanups', id, value: deletion })
