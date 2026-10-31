@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 定位聊天同时携带本次occurrence，右侧保留同一次执行过程。
  * [INPUT]: 已保存任务、本次真实记录和主聊天导航。
  * [OUTPUT]: 两枚查看图标只跟随本组件手动发起且尚未结束的occurrence，历史/自动触发不显示，结束后清除本次身份。
  * [OUTPUT]: 单次提交锁与整个运行期间loading；查看过程/定位聊天由用户点击，未知回执复用请求ID。
@@ -48,7 +49,7 @@ export function AutomationRunActions({ api, automationId, occurrences, active, o
   return <div className="flex items-center gap-1">
     {occurrence && <>
       <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-xs" aria-label="查看本次执行过程" disabled={!active} onClick={() => onOccurrence(occurrence.id)} />}><Workflow /></TooltipTrigger><TooltipContent>查看本次执行过程</TooltipContent></Tooltip>
-      <ExecutionMessageButton api={api} run={{ id: occurrence.runIds[0] ?? '', conversationId: occurrence.conversationId }} active={active && Boolean(occurrence.runIds.length)} onNavigate={onNavigateMessage} />
+      <ExecutionMessageButton api={api} run={{ id: occurrence.runIds[0] ?? '', conversationId: occurrence.conversationId }} occurrenceId={occurrence.id} active={active && Boolean(occurrence.runIds.length)} onNavigate={onNavigateMessage} />
     </>}
     <Button variant="secondary" size="sm" disabled={!active || running} aria-busy={running} onClick={() => void start()}>{running && <LoaderCircle className="animate-spin" />}{label}</Button>
   </div>

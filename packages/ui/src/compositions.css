@@ -1,6 +1,6 @@
 /*
  * [INPUT]: BOAI Tabs、Composer、共享ListRow与拖拽列表。
- * [OUTPUT]: 共享组合皮肤；宿主只负责业务布局。
+ * [OUTPUT]: 共享组合皮肤；折叠根容器隔离标题边距，避免面板卸载末帧跳动，宿主布局工具类可覆盖。
  * [POS]: @boai/ui组合样式。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header与所属目录.folder.md。
  */
@@ -103,6 +103,7 @@
 .soft-tabs-list[data-variant=window] .soft-tabs-trigger:focus-visible { color:var(--foreground) }
 .detail-tab-title { min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--text-ui-body);font-weight:550 }
 .detail-tab .dirty-label { flex-shrink:0;font-size:var(--text-ui-title);line-height:1 }
+[data-slot=collapsible] { display:flow-root }
 [data-slot=collapsible-trigger] { width:100%;text-align:left }
 [data-slot=collapsible-trigger]>.app-icon[class*=chevron],details>summary>.app-icon[class*=chevron],[data-slot=accordion-trigger-icon] { width:12px !important;height:12px !important;transition:transform .2s ease }
 [data-slot=collapsible-trigger][aria-expanded=true]>.app-icon[class*=chevron-right],details[open]>summary>.app-icon[class*=chevron-right] { transform:rotate(90deg) }

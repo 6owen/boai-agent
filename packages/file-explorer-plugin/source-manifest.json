@@ -1,0 +1,13 @@
+{
+  "repository": "https://github.com/Lanzgale/dsh-file-browser",
+  "commit": "4c1fa36d479833e1df36f4cf2cfde98c47887858",
+  "license": "MIT",
+  "upstreamFiles": [
+    "lib/client.js"
+  ],
+  "adaptedFiles": [
+    "src/tree.ts",
+    "src/explorer.tsx"
+  ],
+  "adaptation": "Port lazy expanded-directory/cache and tree row filename splitting into typed BOAI renderer; scoped IPC, virtual rows, accessibility, existing preview providers, no DSH global DOM injection or filesystem writes."
+}

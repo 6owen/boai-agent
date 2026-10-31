@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: SDK归一化截图按媒体估算；容量计数与摘要共用正文投影，不重复纳入Mastra内部副本，实际工具JSON/供应商选项保持。
  * [INPUT]: Effective model catalog, complete provider prompt, tool schemas and explicit output reserve.
  * [OUTPUT]: Conservative capacity estimates and an explicitly unknown-window input policy; never silently trims a request.
  * [POS]: Mastra capacity policy shared by public-history and per-step maintenance.
@@ -20,10 +21,28 @@ export function estimateTokens(value: unknown): number {
     const entry = value as Record<string, unknown>
     if (entry.type === 'image' || entry.type === 'image_url') return 4096
     if (entry.type === 'file' && (String(entry.mediaType ?? entry.mimeType).startsWith('image/'))) return 4096
+    if (['image-data', 'media'].includes(String(entry.type)) && String(entry.mediaType ?? entry.mimeType).startsWith('image/')) return 4096
     return Object.entries(entry).reduce((sum, [key, part]) => sum + estimateTokens(key) + estimateTokens(part) + 4, 0)
   }
   return 4
 }
+
+/** Mastra's internal message/part metadata is not model text. Leave tool JSON and provider options intact. */
+export function modelPromptData(prompt: readonly unknown[]): unknown[] {
+  const withoutInternalOptions = (value: unknown) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return value
+    const entry = value as Record<string, unknown>
+    if (!entry.providerOptions || typeof entry.providerOptions !== 'object' || Array.isArray(entry.providerOptions)) return entry
+    const { mastra: _internal, ...options } = entry.providerOptions as Record<string, unknown>
+    const { providerOptions: _original, ...rest } = entry
+    return { ...rest, ...(Object.keys(options).length ? { providerOptions: options } : {}) }
+  }
+  return prompt.map(message => {
+    const entry = withoutInternalOptions(message) as Record<string, unknown>
+    return entry && Array.isArray(entry.content) ? { ...entry, content: entry.content.map(withoutInternalOptions) } : entry
+  })
+}
+export const estimatePromptTokens = (prompt: readonly unknown[]): number => estimateTokens(modelPromptData(prompt))
 export type ContextModelSelection = Pick<EngineContext, 'connection' | 'modelCatalog'> & { agent: Pick<EngineContext['agent'], 'modelId'> }
 export function contextCapacity(context: ContextModelSelection, outputTokens: number, fixedInputTokens = 0) {
   const model = (context.agent.modelId || context.connection?.defaultModel || '').trim()

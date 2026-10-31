@@ -1,6 +1,7 @@
 <!--
+[OUTPUT]: 2026-10-29提供git cpf显式快速合并、暂存范围、管理员保护恢复与中断恢复说明。
 [INPUT]: BOAI共享开发skill、GitHub Test/UI preview工作流及任务worktree收尾规则。
-[OUTPUT]: 日常开发、UI修改、PR检查、合并与清理的使用说明。
+[OUTPUT]: 日常开发、PR检查、原生视频附件配置、合并与清理的使用说明。
 [POS]: 仓库根目录面向使用者的CI说明；执行依据为AGENTS、开发skill及实际workflow。
 [PROTOCOL]: 流程变化时同步开发skill、第22组06、本文件与根目录.folder.md。
 -->
@@ -15,6 +16,28 @@ BOAI 沿 Magpie 使用两条 GitHub Actions：**Test 检查工程是否通过，
 3. **Test 与 UI preview 分别执行。** Test 检查代码；UI preview 根据改动范围决定是否录制，并把预览更新到 PR 描述。
 4. **按本次授权合并。** 普通交付启用正常自动合并；明确只修改、只测试或不合并时按该要求执行。当前必须通过的 `Required checks` 只汇总工程 Test。
 5. **实际合并后同步 main，完成任务后回收 worktree。** main 收到合并提交还会再跑一次 Test，PR 通过与 main 这次复跑的结果分别查看。
+
+## 需要立即合并：git cpf
+
+本机每个clone安装一次，安装在该仓库的Git配置/公共Git目录，所有worktree共用，不修改全局alias：
+
+```bash
+node scripts/git-cpf.mjs --install
+git add -- path/to/file1 path/to/file2
+git cpf "fix: 修复说明"
+```
+
+已经commit的内容直接执行 `git cpf`。命令提交已暂存文件，推送当前功能分支（在main上则推到`cpf/<提交号>`），创建或复用PR，并按精确head立即合并到main。它不等待CI，也不先同步main到PR来触发一轮重复检查；未暂存文件保持原样。普通`git cp`及默认自动合并流程保持。
+
+需要`git`、Node和已登录的`gh`，账号须有仓库管理员权限。若GitHub对管理员也强制检查，命令只临时关闭`enforce_admins`，合并成功、失败或可捕获中断后恢复并核对；其他保护不变。真实合并冲突、GitHub Ruleset等额外限制仍可拒绝合并，不通过删规则或改写main历史绕过。
+
+网络故障、断电或`kill -9`可能让自动恢复未完成，恢复记录保留在Git公共目录的`boai/cpf-protection.json`。恢复时执行：
+
+```bash
+git cpf --restore-protection
+```
+
+恢复失败会明确报错并阻止下一次合并。命令不会关闭Actions或伪造绿色检查；PR/main仍可能后台跑检查。直接合并不代表测试通过，也不自动发布、重启应用或部署。
 
 ```mermaid
 flowchart LR
@@ -35,7 +58,7 @@ flowchart LR
 | **Test** | macOS runner、Node 22、pnpm 缓存；安装依赖后依次运行 `pnpm typecheck`、`pnpm lint:ui`、`pnpm build`、`pnpm test` | PR、main push 或手动触发；失败会使 `Required checks` 失败并阻止正常合并 |
 | **UI preview** | `detect` 检测 → `record` 构建真实 Electron 应用并截图录屏 → `publish` 更新 PR 描述中的预览区域 | PR 打开、更新、重开或添加 `ui-preview` 标签时触发，也可手动指定 PR；当前不属于必须通过的合并检查 |
 
-纯文档和后端 PR 也跑完整 Test；未命中 UI 路径时，UI preview 的 `record`、`publish` 显示 `skipped` 属于正常结果。UI 路径检测覆盖 renderer、共享 UI/tokens、图标及相关构建配置；必要时用 `ui-preview` 标签强制录制。
+纯文档和后端 PR 也跑完整 Test；未命中 UI 路径时，UI preview 的 `record`、`publish` 显示 `skipped` 属于正常结果。UI 路径检测覆盖 renderer、共享 UI/tokens、官方文件浏览器组件/样式、图标及相关构建配置；必要时用 `ui-preview` 标签强制录制。
 
 同一 PR 的新提交会取消尚未结束的旧 Test/UI preview，改跑最新提交。main 的 Test 不因后续 main 提交自动取消。
 
@@ -81,6 +104,14 @@ flowchart LR
 | Variable | `PLAN_MODEL` | 规划模型；当前默认 `deepseek-flash` |
 
 本机 `.env.ui-preview` 用于本地配置，保持 Git 忽略，不能提交密钥。GitHub 不会自动读取本机文件；需要使用云端 environment 中的配置。录制任务运行 PR 代码并使用模型密钥；发布任务拥有写权限，但不运行 PR 代码，沿 Magpie 分离。
+
+## PR 视频在线播放
+
+录屏以 GitHub 视频附件独立显示在 PR 描述中，可直接播放、暂停和拖动；原始 mp4 下载仍保留。截图继续由 `ui-previews` 分支提供，不需要启用 Pages。
+
+在单独的 **`ui-preview-publish` environment** 配置 **`UI_PREVIEW_UPLOAD_TOKEN`**，使用能向本仓库上传附件的专用 OAuth/PAT 凭据。GitHub 当前不允许 Actions 默认令牌上传视频附件；不要把上传凭据放进运行 PR 代码的 `ui-preview` 环境或仓库级 secret。发布任务固定 GitHub CLI 版本并核对下载校验和。
+
+凭据缺失、视频超出 GitHub 附件大小限制或上传失败时，发布步骤失败，PR 显示警告、已有截图与下载链接，不会显示假的播放入口。只有截图时不需要上传令牌。新流程合入 main 后才用于自动 PR 预览；配置完成与实际云端上传通过分开核验。
 
 ## 任务完成后的 worktree 收尾
 

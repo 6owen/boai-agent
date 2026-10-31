@@ -315,6 +315,7 @@
       "development": "./src/domain/traces.ts",
       "default": "./src/domain/traces.ts"
     },
+    "./domain/employee-tasks": "./src/domain/employee-tasks.ts",
     "./domain/tracked-tasks": {
       "types": "./src/domain/tracked-tasks.ts",
       "development": "./src/domain/tracked-tasks.ts",
@@ -449,6 +450,16 @@
       "types": "./src/domain/schedule-list.ts",
       "development": "./src/domain/schedule-list.ts",
       "default": "./src/domain/schedule-list.ts"
+    },
+    "./ipc/app-updates": {
+      "types": "./src/ipc/app-updates.ts",
+      "development": "./src/ipc/app-updates.ts",
+      "default": "./src/ipc/app-updates.ts"
+    },
+    "./plugins/browser-tools": {
+      "types": "./src/plugins/browser-tools.ts",
+      "development": "./src/plugins/browser-tools.ts",
+      "default": "./src/plugins/browser-tools.ts"
     }
   },
   "dependencies": {

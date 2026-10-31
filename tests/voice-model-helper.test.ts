@@ -1,14 +1,15 @@
 /*
  * [INPUT]: Registered local model identities and the production helper configuration factory.
- * [OUTPUT]: Per-engine configuration, advertised language coverage, rejection of unsupported input and safe segment context reads.
+ * [OUTPUT]: Per-engine configuration including Qwen3 tokenizer/language stream options, advertised languages and safe segment context.
  * [POS]: Local ASR adapter contract regression; real inference is validated separately with pinned public audio.
  * [PROTOCOL]: Update Header and tests/.folder.md when changed.
  */
-import { mkdtempSync, openSync, closeSync, readSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, openSync, closeSync, readSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
-import { expect, it } from 'vitest'
+import { runInNewContext } from 'node:vm'
+import { expect, it, vi } from 'vitest'
 import { voiceModelIds, voiceModelLanguages } from '../packages/shared/src/plugins/voice-input'
 import { getVoiceModel } from '../packages/voice-input-plugin/src/model-manifest'
 const { localRecognizerConfig } = createRequire(import.meta.url)('../packages/voice-input-plugin/src/local-recognizers.cjs')
@@ -16,10 +17,15 @@ const { localRecognizerConfig } = createRequire(import.meta.url)('../packages/vo
 it('dispatches each registered model to its actual engine and accepts every advertised language', () => {
   for (const id of voiceModelIds) {
     for (const language of voiceModelLanguages(id)) {
-      const { config: { modelConfig }, contextSamples } = localRecognizerConfig('/models', getVoiceModel(id).engine, language)
+      const { config: { modelConfig }, contextSamples, streamOptions } = localRecognizerConfig('/models', getVoiceModel(id).engine, language)
       expect(contextSamples).toBe(id === 'sensevoice-small' ? 0 : 3200)
-      expect(modelConfig.tokens).toBe(join('/models', 'tokens.txt'))
-      if (id === 'sensevoice-small') {
+      expect(modelConfig.tokens).toBe(id === 'qwen3-asr-0.6b' ? '' : join('/models', 'tokens.txt'))
+      if (id === 'qwen3-asr-0.6b') {
+        expect(modelConfig.qwen3Asr).toEqual({ convFrontend: join('/models', 'conv_frontend.onnx'), encoder: join('/models', 'encoder.int8.onnx'), decoder: join('/models', 'decoder.int8.onnx'), tokenizer: '/models' })
+        expect(modelConfig.senseVoice).toBeUndefined()
+        expect(modelConfig.whisper).toBeUndefined()
+        expect(streamOptions).toEqual(language === 'auto' ? {} : { language: expect.any(String) })
+      } else if (id === 'sensevoice-small') {
         expect(modelConfig.senseVoice).toEqual({ model: join('/models', 'model.int8.onnx'), language, useInverseTextNormalization: 1 })
         expect(modelConfig.whisper).toBeUndefined()
       } else {
@@ -33,6 +39,38 @@ it('rejects unregistered engines and unsupported languages before loading the na
   expect(() => localRecognizerConfig('/models', '../../foreign', 'auto')).toThrow('Unsupported engine')
   expect(() => localRecognizerConfig('/models', 'whisper', 'yue')).toThrow('Unsupported language')
   expect(() => localRecognizerConfig('/models', 'sensevoice', 'de')).toThrow('Unsupported language')
+  expect(() => localRecognizerConfig('/models', 'qwen3', 'uk')).toThrow('Unsupported language')
+})
+
+it.each([['auto', undefined], ['zh', 'Chinese'], ['yue', 'Cantonese'], ['fil', 'Filipino']])('applies Qwen3 %s language before decoding each helper segment', (language, expected) => {
+  const setOption = vi.fn(), decode = vi.fn(() => expect(setOption.mock.calls).toEqual(expected ? [['language', expected]] : []))
+  const postMessage = vi.fn(), exit = vi.fn()
+  let read = false, queued = false
+  const fakeSherpa = {
+    Vad: class {
+      acceptWaveform() { queued = true }
+      isEmpty() { return !queued }
+      front() { return { start: 0, samples: Float32Array.of(0.5) } }
+      pop() { queued = false }
+      flush() {}
+    },
+    OfflineRecognizer: class {
+      createStream() { return { setOption, acceptWaveform: vi.fn() } }
+      decode = decode
+      getResult() { return { text: 'fixture transcript' } }
+    },
+  }
+  const require = createRequire(import.meta.url)
+  runInNewContext(readFileSync(new URL('../packages/voice-input-plugin/src/local-helper.cjs', import.meta.url), 'utf8'), {
+    Buffer, Float32Array, setTimeout: vi.fn(), clearTimeout: vi.fn(),
+    process: { argv: ['node', 'helper', '/models', '/fixture.pcm', language, 'qwen3'], parentPort: { postMessage, on: vi.fn() }, exit },
+    require: (name: string) => name === 'sherpa-onnx-node' ? fakeSherpa : name === './local-recognizers.cjs' ? { localRecognizerConfig }
+      : name === './local-audio.cjs' ? require('../packages/voice-input-plugin/src/local-audio.cjs')
+      : name === 'node:fs' ? { openSync: () => 1, closeSync: vi.fn(), readSync: (_file: number, bytes: Buffer) => { if (read) return 0; read = true; bytes.writeInt16LE(16384); return 2 } } : require(name),
+  })
+  expect(decode).toHaveBeenCalledOnce()
+  expect(postMessage).toHaveBeenLastCalledWith({ type: 'done' })
+  expect(exit).not.toHaveBeenCalled()
 })
 
 const { withSegmentContext } = createRequire(import.meta.url)('../packages/voice-input-plugin/src/local-audio.cjs')

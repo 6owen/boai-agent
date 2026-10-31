@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 个人打包可显式继承网络代理；不因此继承Codex/API凭据，其他调用默认保持。
  * [INPUT]: 固定程序/参数、隔离目录、超时/取消、有界stdin及可选实时capture；本机Codex登录。
  * [OUTPUT]: 有界进程、退出前原始日志及Codex结构化补丁；保存回执核对实时原字节，模型建议不承担业务评分。
  * [POS]: tests/evaluation/repair-process.ts，开发自动化专用；不接产品本机员工运行时。
@@ -12,12 +13,12 @@ import { waitForProcessGroupExit } from '../../packages/runtime/src/adapters/mas
 import { proposalJsonSchema, proposalSchema, REPAIR_LIMITS, type RepairConfig, type RepairProposal } from './repair-contract'
 
 export interface ProcessReceipt { exitCode: number | null; stdout: string; stderr: string; failure?: string; elapsedMs: number }
-export async function repairProcess(input: { command: string; args: string[]; cwd: string; timeoutMs: number; signal: AbortSignal; stdin?: string; codex?: boolean; managed?: { guard: string; ledger: string }; capture?: { directory: string; prefix: string } }): Promise<ProcessReceipt> {
+export async function repairProcess(input: { command: string; args: string[]; cwd: string; timeoutMs: number; signal: AbortSignal; stdin?: string; codex?: boolean; networkProxy?: boolean; managed?: { guard: string; ledger: string }; capture?: { directory: string; prefix: string } }): Promise<ProcessReceipt> {
   input.signal.throwIfAborted()
   if (process.platform === 'win32') throw new Error('开发迭代的进程组收尾目前仅支持macOS/Linux')
   if (input.timeoutMs <= 0) throw new Error('迭代总期限已到')
   const env: NodeJS.ProcessEnv = { CI: '1', NO_COLOR: '1' }
-  for (const name of ['PATH', 'HOME', 'USER', 'LOGNAME', 'TMPDIR', 'TEMP', 'TMP', 'LANG', 'LC_ALL', ...(input.codex ? ['CODEX_HOME', 'CODEX_API_KEY', 'OPENAI_API_KEY', 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY', 'http_proxy', 'https_proxy', 'all_proxy', 'no_proxy'] : [])]) if (process.env[name]) env[name] = process.env[name]
+  for (const name of ['PATH', 'HOME', 'USER', 'LOGNAME', 'TMPDIR', 'TEMP', 'TMP', 'LANG', 'LC_ALL', ...(input.codex ? ['CODEX_HOME', 'CODEX_API_KEY', 'OPENAI_API_KEY'] : []), ...(input.codex || input.networkProxy ? ['HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY', 'http_proxy', 'https_proxy', 'all_proxy', 'no_proxy'] : [])]) if (process.env[name]) env[name] = process.env[name]
   const files: number[] = []
   try { if (input.capture) for (const stream of ['stdout', 'stderr']) files.push(openSync(join(input.capture.directory, `${input.capture.prefix}.${stream}.log`), 'wx', 0o600)) }
   catch (error) { for (const file of files) closeSync(file); throw error }

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-29 桌面设置增加应用更新Card，沿原缓存和Sonner反馈。
  * [OUTPUT]: 运行选项复用按DesktopApi隔离的设置缓存；事件/保存接受真实版本，切回直接显示，聚焦后台核实系统登录项。
  * [OUTPUT]: 页面无副标题或卡片下说明；后台/登录/隐藏启动说明归标签旁SettingsHelp，原保存保持。
  * [OUTPUT]: 桌面活动与日报迁至独立设置分类；本页保留后台运行与 CLI。
@@ -15,6 +16,7 @@ import { Banner } from '@/components/common'
 import type { DesktopApi } from '@boai/shared/ipc'
 import type { DesktopPatch, DesktopSettings } from '@boai/shared/ipc/desktop'
 import { CliInstallationCard } from './cli-installation'
+import { AppUpdatesCard } from './app-updates'
 import { getSettingsQuery, useSettingsQuery } from '@/stores/settings-query'
 
 const loginHints: Record<DesktopSettings['login']['status'], string> = {
@@ -53,6 +55,7 @@ export function DesktopSettingsPage({ api, active }: { api: DesktopApi; active: 
       <SettingsRow><div className="flex items-center gap-1 font-medium"><label htmlFor="desktop-login">开机启动</label><SettingsHelp label="开机启动说明">{settings ? loginHints[settings.login.status] : '正在读取运行设置…'}</SettingsHelp></div><Switch id="desktop-login" aria-label="开机启动" checked={settings?.login.enabled ?? false} disabled={disabled || !settings?.login.supported || settings.login.status === 'error'} onCheckedChange={value => { void update({ openAtLogin: value }) }} /></SettingsRow>
       <SettingsRow><div className="flex items-center gap-1 font-medium"><label htmlFor="desktop-hidden">登录后隐藏启动</label><SettingsHelp label="隐藏启动说明">登录后在后台运行，不自动打开窗口。需先开启“关闭窗口后继续运行”。</SettingsHelp></div><Switch id="desktop-hidden" aria-label="登录后隐藏启动" checked={settings?.preferences.startHidden ?? false} disabled={disabled || !settings?.preferences.runInBackground} onCheckedChange={value => { void update({ startHidden: value }) }} /></SettingsRow>
     </SettingsCard>
+    <AppUpdatesCard api={api} active={active} />
     <CliInstallationCard api={api} active={active} />
   </SettingsLayout>
 }

@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 2026-10-30 原生产品桥不再提供search_memory/remember_memory；其余业务工具保持。
+ * [OUTPUT]: 独立AgentBrowser/BrowserViewer插件接入；上游工具、启停与运行回收保持独立。
+ * [OUTPUT]: 原生浏览器工具记录完整实际命令并脱敏填写值，执行仍使用原参数；与API详情共用观察投影。
  * [OUTPUT]: PPT复用同一工具schema和惰性任务运行时；纯目录/配置不创建Work，渲染审阅沿原执行与独立模型。
  * [OUTPUT]: 私聊相册元信息/删除使用员工固定身份工具；读取无需文件Work。
  * [OUTPUT]: 普通本机会话显式发现独立生图端口；检查零Work，生成沿原惰性认领和任务文件/交付。
@@ -28,13 +31,13 @@ import { createSelfieOperations } from '../modules/media/selfie-tools'
 import { createReactionOperations } from '../modules/conversations/reaction-tools'
 import { mcpModelContent } from '../modules/sources/mcp-media'
 import { createBoundSkillOperations } from '../modules/resources/bound-skill-tools'
-import { createMemoryOperations } from '../modules/memory/memory-tools'
 import { createStateTools } from '../modules/agent-state/state-tools'
 import { createApplicationTools, applicationObservation } from '../modules/application/application-tools'
 import { createKnowledgeOperations } from '../modules/resources/knowledge-tools'
 import { createDirectoryRequestOperation } from '../modules/workspaces/directory-tool'
 import { manageSkillsSchema, manageSourcesSchema, manageSkillsDescription, manageSourcesDescription, catalogObservation } from '../modules/resources/catalog-commands'
 import { sourceCreationSchema, sourceCreationDescription, sourceCreationObservation } from '../modules/sources/source-commands'
+import { createBrowserPluginOperations } from './mastra/browser-plugin-tools'
 import { createWebSearchOperations } from './mastra/web-search-tools'
 import { z } from 'zod'
 import { sourceCallSchema } from '@boai/shared/domain/sources'
@@ -57,6 +60,7 @@ import { imageToolRequestSchema } from '../modules/media/image-service'
 import { selfieRequestSchema } from '../modules/media/selfie-service'
 import { browserToolSchema, browserToolDescription } from './mastra/browser-tool'
 import { parseBrowserSingleCommand } from './mastra/browser-tool-runtime'
+import { browserToolObservation } from './mastra/browser-tool-redaction'
 import { summarizeMedia } from '../modules/browser/media'
 import { automationCommandSchema, automationCommandToolSchema, automationToolDescription } from '../modules/automations/automation-commands'
 
@@ -68,7 +72,7 @@ export function createNativeProducts(context: EngineContext) {
   const knowledgeOperations = createKnowledgeOperations(context)
   const directoryRequest = createDirectoryRequestOperation(context)
   const searchChoice = createWebSearchSelectionOperation(context)
-  const webSearchOperations = createWebSearchOperations(context)
+  const webSearchOperations = [...createWebSearchOperations(context), ...createBrowserPluginOperations(context)]
   const definitions: { name: string; description: string; schema: z.ZodType }[] = [
     { name: 'send_message', description: 'Publish an ordinary public message in this employee conversation now, for example a clarification or progress update. No Work is created. Repeating the same final reply will not create a duplicate. Use delegate_work to assign an actionable task to a colleague.', schema: z.object({ content: z.string().trim().min(1) }).strict() },
     { name: 'read_messages', description: 'Read a page from this turn’s authorized conversation snapshot. beforeSequence reads older history. Later user messages are queued for the next turn. This does not read private conversations of other employees.', schema: z.object({ beforeSequence: z.number().int().positive().optional(), limit: z.number().int().min(1).max(100).default(50) }).strict() },
@@ -77,7 +81,7 @@ export function createNativeProducts(context: EngineContext) {
     { name: 'wait_for_work', description: 'Wait for actual delegated work IDs/results; finish this turn after calling. BOAI resumes your native session once the specified results are ready.', schema: workWaitSchema },
     { name: 'report_work', description: 'Optionally record the disposition of a real BOAI work item. Unnecessary for ordinary chat, clarification, or after publishing a file. For answer evidence, reference MUST be a short exact substring of your final public reply: include that same text verbatim in the reply. Do not place separate prose, URLs or timestamps in reference unless they also appear verbatim in the reply. A receipt only records your declaration; delivery is checked after the final reply. After wait_for_work, finish the turn without another report. Ask users as ordinary chat messages; there is no userQuestion workflow.', schema: z.object(reportShape).strict() },
   ]
-  const applicationTools = [...createApplicationTools(context), ...createStateTools(context), ...createBoundSkillOperations(context), ...createMemoryOperations(context), ...createReactionOperations(context), ...createSelfieOperations(context)]
+  const applicationTools = [...createApplicationTools(context), ...createStateTools(context), ...createBoundSkillOperations(context), ...createReactionOperations(context), ...createSelfieOperations(context)]
   definitions.push(...describePresentationTools(context))
   if (context.selfies) definitions.push(
     { name: 'save_selfie', description: 'Save an actual owner-approved image as your private persistent appearance reference. Owner private chat only; never auto-save or invent approval. path is an existing self:/ or authorized shared:/ PNG/JPEG/WebP, max 8 MiB. The host records the current owner message; native external inputs must first be copied into this employee workspace.', schema: z.object({ path: z.string().min(1), label: z.string().trim().max(100).default('') }).strict() },
@@ -109,7 +113,7 @@ export function createNativeProducts(context: EngineContext) {
   // Every product tool accepts an object. Discriminated unions emit only `oneOf`;
   // MCP requires an explicit root type or rejects the entire tools/list response.
   const tools: NativeTool[] = definitions.map(({ name, description, schema }) => ({ name, description, inputSchema: { ...z.toJSONSchema(schema, { io: 'input' }), type: 'object' },
-    ...(name==='call_data_source' ? {toModelContent:mcpModelContent} : {}),
+    ...(['call_data_source', 'call_browser_plugin'].includes(name) ? {toModelContent:mcpModelContent} : {}),
     ...(name==='browser_tool' ? {toModelContent:(value:unknown)=>{
       const result=value as {output?:string;source?:unknown;image?:{data:string;mimeType:string}}
       return [{type:'text' as const,text:`${result.output ?? ''}\nSource: ${JSON.stringify(result.source)}`},...(result.image ? [{type:'image' as const,data:result.image.data,mimeType:result.image.mimeType}]:[])]
@@ -118,8 +122,8 @@ export function createNativeProducts(context: EngineContext) {
       context.signal.throwIfAborted()
       const parsed = schema.parse(input) as Record<string, unknown>, createdAt = new Date().toISOString()
       const emit = async (completed: boolean, result?: unknown, failed = false) => {
-        const observedInput=name === 'boai_call' ? applicationObservation(input) : ['manage_skills', 'manage_data_sources'].includes(name) ? catalogObservation(input) : name === 'create_data_source' ? sourceCreationObservation(input) : name==='browser_tool' ? {command:parseBrowserSingleCommand(String(parsed.command)).action,arguments:'[browser input omitted]'} : input
-        if(name==='browser_tool' || name==='call_data_source') result=summarizeMedia(result)
+        const observedInput=name === 'call_browser_plugin' ? { provider: parsed.provider, tool: parsed.tool, arguments: '[browser input omitted]' } : name === 'boai_call' ? applicationObservation(input) : ['manage_skills', 'manage_data_sources'].includes(name) ? catalogObservation(input) : name === 'create_data_source' ? sourceCreationObservation(input) : name==='browser_tool' ? browserToolObservation(parsed) : input
+        if(name==='browser_tool' || name==='call_data_source' || name==='call_browser_plugin') result=summarizeMedia(result)
         await context.onExecutionEvent?.(nativeActivity(callId, { type: 'dynamicToolCall', name, arguments: observedInput, ...(completed ? { result, status: failed ? 'failed' : 'completed' } : {}) }, completed))
         await context.onTool({ id: callId, name, status: completed ? failed ? 'failed' : 'completed' : 'running', createdAt, detail: JSON.stringify(completed ? result : observedInput) })
       }

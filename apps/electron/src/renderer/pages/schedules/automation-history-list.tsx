@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 可按员工查询原执行记录，定时页面的布局和默认查询保持。
  * [OUTPUT]: 筛选复用公共FilterTabs及transitions-dev滑动层；实际新结果沿Panel reveal显现，后台刷新与分页不重播。
  * [OUTPUT]: 悬停/聚焦显示逐条删除；当前任务全部清空先分页冻结已结束记录，再按版本清理，活动/新记录保留。
  * [OUTPUT]: 每条已结束执行可经Popover确认删除；传所见版本，失败Sonner，运行/等待记录禁删。
@@ -24,8 +25,8 @@ import { occurrenceStatusLabels, deliveries } from './automation-history'
 
 const historyFilters = [{ value: 'all', label: '全部' }, { value: 'active', label: '进行中' }, { value: 'completed', label: '已完成' }, { value: 'attention', label: '需处理' }] as const
 
-export function AutomationHistory({ api, active, automationId, attentionOnly = false, selectedId, onOccurrence }: {
-  api: DesktopApi; active: boolean; automationId?: string; attentionOnly?: boolean; selectedId?: string; onOccurrence(id: string): void
+export function AutomationHistory({ api, active, automationId, employeeId, attentionOnly = false, selectedId, onOccurrence }: {
+  api: DesktopApi; active: boolean; automationId?: string; employeeId?: string; attentionOnly?: boolean; selectedId?: string; onOccurrence(id: string): void
 }) {
   const [search, setSearch] = useState(''), [status, setStatus] = useState<NonNullable<AutomationHistoryQuery['status']>>('all')
   const [pages, setPages] = useState(1), [revision, setRevision] = useState(0)
@@ -55,7 +56,7 @@ export function AutomationHistory({ api, active, automationId, attentionOnly = f
       const occurrences: AutomationHistoryPage['occurrences'] = []
       let before: AutomationHistoryPage['nextCursor']
       for (let page = 0; page < pages; page++) {
-        const result = await api.request('listAutomationHistory', { automationId, attentionOnly, search, status: attentionOnly ? 'attention' : status, before, limit: 30 })
+        const result = await api.request('listAutomationHistory', { automationId, employeeId, attentionOnly, search, status: attentionOnly ? 'attention' : status, before, limit: 30 })
         if (!live) return
         occurrences.push(...result.occurrences); before = result.nextCursor
         if (!before) break
@@ -63,7 +64,7 @@ export function AutomationHistory({ api, active, automationId, attentionOnly = f
       if (live) { setHistory({ occurrences: occurrences.filter(o => !deletedIds.current.has(o.id)), nextCursor: before }); setLoaded(true); setError('') }
     })().catch(cause => { if (live) setError(errorText(cause)) }).finally(() => { if (live) setLoading(false) })
     return () => { live = false }
-  }, [api, active, automationId, attentionOnly, pages, revision, search, status])
+  }, [api, active, automationId, employeeId, attentionOnly, pages, revision, search, status])
   const listReveal = usePanelReveal(`${status}:${search}:${attentionOnly}`, active && loaded)
   const results = <div ref={listReveal} className="schedule-content-transition t-panel-slide" data-open="true" data-settled="true" aria-busy={loading}>
     {error && <Banner>{error}</Banner>}

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 可选orientation控制纵/横/双轴；滚动条与Viewport同级，沿原语hovering/scrolling状态淡入淡出。
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
  * [OUTPUT]: ScrollArea共用滚动条，透传viewport原生属性/ref供阅读定位；Content观察异步正文及展开后的高度变化，支持内容布局属性以复用居中空态。
  * [POS]: @boai/ui共享实现；原归属： components/ui 的 scroll-area 源码；由 shadcn base-nova 安装，样式在此定制，不读取业务或外观 store。
@@ -13,8 +14,10 @@ function ScrollArea({
   children,
   viewportProps,
   contentProps,
+  orientation = "vertical",
   ...props
 }: ScrollAreaPrimitive.Root.Props & {
+  orientation?: "vertical" | "horizontal" | "both"
   viewportProps?: React.ComponentPropsWithRef<"div"> & { [attribute: `data-${string}`]: string | number | boolean | undefined }
   contentProps?: ScrollAreaPrimitive.Content.Props
 }) {
@@ -33,7 +36,8 @@ function ScrollArea({
           {children}
         </ScrollAreaPrimitive.Content>
       </ScrollAreaPrimitive.Viewport>
-      <ScrollBar className="z-20" />
+      {orientation !== "horizontal" && <ScrollBar className="z-20" />}
+      {orientation !== "vertical" && <ScrollBar orientation="horizontal" className="z-20" />}
       <ScrollAreaPrimitive.Corner />
     </ScrollAreaPrimitive.Root>
   )
@@ -50,14 +54,14 @@ function ScrollBar({
       data-orientation={orientation}
       orientation={orientation}
       className={cn(
-        "flex touch-none p-px transition-colors select-none data-horizontal:h-2.5 data-horizontal:flex-col data-horizontal:border-t data-horizontal:border-t-transparent data-vertical:h-full data-vertical:w-2.5 data-vertical:border-l data-vertical:border-l-transparent",
+        "flex touch-none p-0.5 select-none opacity-0 transition-opacity duration-150 data-hovering:opacity-100 data-scrolling:opacity-100 motion-reduce:transition-none data-horizontal:h-2.5 data-horizontal:flex-col data-horizontal:border-t data-horizontal:border-t-transparent data-vertical:h-full data-vertical:w-2.5 data-vertical:border-l data-vertical:border-l-transparent",
         className
       )}
       {...props}
     >
       <ScrollAreaPrimitive.Thumb
         data-slot="scroll-area-thumb"
-        className="relative flex-1 rounded-full bg-border"
+        className="relative flex-1 rounded-full bg-foreground/20 hover:bg-foreground/30"
       />
     </ScrollAreaPrimitive.Scrollbar>
   )

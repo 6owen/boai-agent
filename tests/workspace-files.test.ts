@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-29 文件浏览器入口/预览/启停与目录撤权回归，原终端生命周期断言保持。
  * [INPUT]: Real temporary employee directories and injected desktop openers.
  * [OUTPUT]: Directory pagination/source revocation, traversal/link rejection and original default-open regression.
  * [POS]: Workspace browser filesystem boundary tests; no GUI or personal files.
@@ -70,4 +71,39 @@ it('unknown applications cannot become arbitrary executable launchers', async ()
   const f = await fixture(); const applications = new WorkspaceApplications({ openPath: vi.fn(async () => ''), showItemInFolder: vi.fn() }, 'win32', f.root)
   expect(await applications.list()).toEqual([{ id: 'system', name: '系统默认', kind: 'system' }])
   await expect(applications.open(f.workspace, 'open', '/bin/sh')).rejects.toThrow('此应用不可用')
+})
+
+it('previews actual text, code, images and supported document bytes without external opening', async () => {
+  const f = await fixture()
+  await writeFile(join(f.workspace, 'note.md'), '# Preview\nActual file body')
+  await writeFile(join(f.workspace, 'code.ts'), 'export const value = 7')
+  await writeFile(join(f.workspace, 'unsafe.html'), '<script>throw new Error("must not execute")</script>')
+  await writeFile(join(f.workspace, 'photo.png'), Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jJ1kAAAAASUVORK5CYII=', 'base64'))
+  await writeFile(join(f.workspace, 'report.pdf'), '%PDF-1.4\n%%EOF')
+  expect(await f.files.preview({ scope: f.scope, relativePath: 'note.md' })).toEqual({ kind: 'markdown', text: '# Preview\nActual file body' })
+  expect(await f.files.preview({ scope: f.scope, relativePath: 'code.ts' })).toMatchObject({ kind: 'code', language: 'typescript', text: 'export const value = 7' })
+  expect(await f.files.preview({ scope: f.scope, relativePath: 'unsafe.html' })).toMatchObject({ kind: 'code', language: 'html' })
+  expect(await f.files.preview({ scope: f.scope, relativePath: 'photo.png' })).toMatchObject({ kind: 'image', url: expect.stringMatching(/^data:image\/png;base64,/) })
+  expect(await f.files.preview({ scope: f.scope, relativePath: 'report.pdf' })).toMatchObject({ kind: 'pdf', bytes: expect.any(Uint8Array) })
+  expect(f.open).not.toHaveBeenCalled()
+})
+
+it('rejects preview traversal and links, and limits unsupported binary/large files', async () => {
+  const f = await fixture()
+  await writeFile(join(f.workspace, 'binary.txt'), Buffer.from([0, 1, 2, 3]))
+  await writeFile(join(f.workspace, 'large.txt'), Buffer.alloc(1024 * 1024 + 1, 65))
+  await symlink('/etc/hosts', join(f.workspace, 'link'))
+  for (const relativePath of ['../outside', '/etc/hosts', 'link']) await expect(f.files.preview({ scope: f.scope, relativePath })).rejects.toThrow()
+  expect(await f.files.preview({ scope: f.scope, relativePath: 'binary.txt' })).toMatchObject({ kind: 'unsupported' })
+  expect(await f.files.preview({ scope: f.scope, relativePath: 'large.txt' })).toMatchObject({ kind: 'unsupported' })
+})
+
+it.each(['list', 'preview'] as const)('enforces plugin disablement for reads, previews and opens including a late %s response', async method => {
+  const f = await fixture(); await writeFile(join(f.workspace, 'note.txt'), 'private')
+  let enabled = true, checks = 0
+  const service = new WorkspaceFileService(async () => { if (++checks === 2) enabled = false; return f.workspace }, f.open, () => enabled)
+  await expect(method === 'list' ? service.list({ scope: f.scope }) : service.preview({ scope: f.scope, relativePath: 'note.txt' })).rejects.toThrow('停用')
+  await expect(service.list({ scope: f.scope })).rejects.toThrow('停用')
+  await expect(service.open({ scope: f.scope, relativePath: 'note.txt' })).rejects.toThrow('停用')
+  expect(f.open).not.toHaveBeenCalled()
 })

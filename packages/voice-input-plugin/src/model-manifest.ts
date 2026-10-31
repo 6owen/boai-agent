@@ -1,6 +1,7 @@
 /*
+ * [OUTPUT]: Qwen3-ASR-0.6B INT8固定ModelScope提交/上游SHA256与Apache许可，显式下载后才可选。
  * [OUTPUT]: 2026-10-28 SenseVoiceSmall、Whisper Tiny/Base多语言INT8目录及独立资源/许可固定校验。
- * [INPUT]: Pinned SenseVoice/Whisper INT8, Silero VAD and complete upstream license artifacts.
+ * [INPUT]: Pinned SenseVoice/Whisper/Qwen3 INT8, Silero VAD and complete upstream license artifacts.
  * [OUTPUT]: Explicit on-demand download sizes and SHA-256; no model bytes in the application bundle.
  * [POS]: Reviewed plugin asset manifest; changing assets requires a new revision.
  * [PROTOCOL]: Update Header and .folder.md when changed.
@@ -57,7 +58,7 @@ export interface VoiceModelDefinition {
   licenseUrl: string
   revision: string
   assets: readonly VoiceModelAsset[]
-  engine: 'sensevoice' | 'whisper'
+  engine: 'sensevoice' | 'whisper' | 'qwen3'
 }
 const whisperAssets = {
   tiny: [
@@ -150,10 +151,26 @@ const whisperAssets = {
   ],
 } as const
 
+// The converter linked by sherpa-onnx publishes hashes and sizes in ModelScope's file metadata.
+// Tokenizer files live at the installation root, which is passed as the tokenizer directory.
+const qwen3ModelSource = 'https://modelscope.cn/models/zengshuishui/Qwen3-ASR-onnx/resolve/de9e449eb376dcb472c1ce8141fbae8d524fabbd'
+const qwen3LicenseUrl = 'https://raw.githubusercontent.com/QwenLM/Qwen3-ASR/7c6daf77a2421100f5fb066495372c00129d39ff/LICENSE'
+const qwen3Assets: readonly VoiceModelAsset[] = [
+  { name: 'conv_frontend.onnx', url: `${qwen3ModelSource}/model_0.6B/conv_frontend.onnx`, bytes: 44148281, sha256: 'd22dc4423e0940e49884e903d2ea2f7e5567c14fc1aed97e4e26d6b8f208ef9e' },
+  { name: 'encoder.int8.onnx', url: `${qwen3ModelSource}/model_0.6B/encoder.int8.onnx`, bytes: 182491662, sha256: '60748d3e6744a57c9c91e1b17424a6c2990567e8adceb0783940c03ed98fa9d9' },
+  { name: 'decoder.int8.onnx', url: `${qwen3ModelSource}/model_0.6B/decoder.int8.onnx`, bytes: 755914231, sha256: '4f6885be5959ae26af3089d38ee7972c5fafbeeb1cf8d5e76eab6d8b61ca5771' },
+  { name: 'merges.txt', url: `${qwen3ModelSource}/tokenizer/merges.txt`, bytes: 1671853, sha256: '8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5' },
+  { name: 'vocab.json', url: `${qwen3ModelSource}/tokenizer/vocab.json`, bytes: 2776833, sha256: 'ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910' },
+  { name: 'tokenizer_config.json', url: `${qwen3ModelSource}/tokenizer/tokenizer_config.json`, bytes: 12487, sha256: '4942d005604266809309cabc9f4e9cb89ce855d59b14681fdc0e1cc62ea26c4c' },
+  { name: 'QWEN3-ASR-LICENSE.txt', url: qwen3LicenseUrl, bytes: 11343, sha256: 'a44a6081c73ad75f0255bb2bb5cab74ef1829565a895a24e53a4f11290ab7655' },
+  ...whisperAssets.tiny.filter(asset => ['silero-vad.onnx', 'SILERO-LICENSE.txt', 'SHERPA-ONNX-LICENSE.txt'].includes(asset.name)),
+]
+
 export const voiceModelCatalog: readonly VoiceModelDefinition[] = [
   { id: 'sensevoice-small', name: 'SenseVoiceSmall', languages: voiceModelLanguages('sensevoice-small'), engine: 'sensevoice', revision: voiceModelRevision, assets: voiceModelAssets, licenseUrl: 'https://github.com/modelscope/FunASR/blob/58830eca4012644aac0c3218c3ccc7d98f003fda/MODEL_LICENSE' },
   { id: 'whisper-tiny', name: 'Whisper Tiny', languages: voiceModelLanguages('whisper-tiny'), engine: 'whisper', revision: 'whisper-tiny-65176e2-silero-066409f3-v1', assets: whisperAssets.tiny, licenseUrl: 'https://github.com/openai/whisper/blob/86098128c0b4f24f0e2aa2994de830614b474227/LICENSE' },
   { id: 'whisper-base', name: 'Whisper Base', languages: voiceModelLanguages('whisper-base'), engine: 'whisper', revision: 'whisper-base-bb53ee2-silero-066409f3-v1', assets: whisperAssets.base, licenseUrl: 'https://github.com/openai/whisper/blob/86098128c0b4f24f0e2aa2994de830614b474227/LICENSE' },
+  { id: 'qwen3-asr-0.6b', name: 'Qwen3-ASR-0.6B', languages: voiceModelLanguages('qwen3-asr-0.6b'), engine: 'qwen3', revision: 'qwen3-asr-0.6b-de9e449-silero-066409f3-v1', assets: qwen3Assets, licenseUrl: qwen3LicenseUrl },
 ]
 export function getVoiceModel(id: VoiceModelId): VoiceModelDefinition {
   const model = voiceModelCatalog.find(model => model.id === id)

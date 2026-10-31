@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-29 更新器故障/原生加载采用既有脱敏error指纹，不记录更新正文或路径。
  * [OUTPUT]: 2026-10-27 有界宿主日志新增语音请求实际token或unknown；不记录音频/文字/密钥。
  * [INPUT]: Desktop lifecycle categories, process/request identities and compiled build provenance.
  * [OUTPUT]: Bounded journal with per-entry build identity, startup failures and canonical export protection; no payloads or raw errors.
@@ -14,7 +15,7 @@ import { z } from 'zod'
 const MAX_BYTES = 256 * 1024
 const MAX_MEMORY_RECORDS = 256
 const identifier = z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,199}$/)
-const events = ['app-start', 'app-start-failed', 'app-quit', 'app-quit-failed', 'runtime-start', 'runtime-ready', 'runtime-exit', 'runtime-start-failed', 'runtime-error', 'request-failed', 'request-timeout', 'renderer-gone', 'renderer-unresponsive', 'child-gone', 'suspend', 'resume', 'lock-screen', 'unlock-screen', 'browser-warning', 'browser-error', 'uncaught-exception', 'unhandled-rejection', 'voice-usage'] as const
+const events = ['app-update-error', 'app-update-native', 'app-start', 'app-start-failed', 'app-quit', 'app-quit-failed', 'runtime-start', 'runtime-ready', 'runtime-exit', 'runtime-start-failed', 'runtime-error', 'request-failed', 'request-timeout', 'renderer-gone', 'renderer-unresponsive', 'child-gone', 'suspend', 'resume', 'lock-screen', 'unlock-screen', 'browser-warning', 'browser-error', 'uncaught-exception', 'unhandled-rejection', 'voice-usage'] as const
 const applicationSchema = z.discriminatedUnion('source', [
   z.object({ version: z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9.+_-]{0,99}$/), inputHash: z.string().regex(/^[a-f0-9]{64}$/), source: z.literal('compiled-inputs') }).strict(),
   z.object({ version: z.null(), inputHash: z.null(), source: z.literal('unknown') }).strict(),

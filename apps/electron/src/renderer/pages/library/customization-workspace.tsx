@@ -1,6 +1,7 @@
 /*
+ * [OUTPUT]: 侧栏分组复用skills-list-group的flow-root布局，阻止折叠内容卸载时标题外边距合并造成末帧跳位。
  * [OUTPUT]: 提示词读取就绪与空目录分离，分组页首帧保留结构并支持失败重读。
- * [OUTPUT]: 资源库新增全局提示词分类/默认收起分组，CRUD沿原目录行与Dialog；修改广播同步Composer的$引用候选。
+ * [OUTPUT]: 资源库新增全局提示词分类/默认收起分组，编辑/新建交给Shell右侧面板；修改广播同步Composer的$引用候选。
  * [OUTPUT]: 资源库左侧技能/MCP/API/本地文件夹分组默认全部收起，手动展开和搜索显示匹配项保持。
  * [OUTPUT]: 数据源行内操作按回执更新原行并刷新目录，删除立即移除侧栏/目录并通知Shell关闭对应详情。
  * [OUTPUT]: 数据源选中与结果定位打开Shell右侧详情，主目录保持；技能与数据源共用全局面板。
@@ -27,11 +28,11 @@ import { SkillsWorkspace } from './skills-workspace'
 import { useLocalSkills } from './use-local-skills'
 import { SourceIcon, SourcesView } from '../sources/sources-view'
 
-type Props = ComponentProps<typeof SkillsWorkspace> & { focusSource?: { id: string; requestId: string }; selectedSource?: string; onOpenSource(source: { id: string; name: string }): void; onRemoveSource(id: string): void }
+type Props = ComponentProps<typeof SkillsWorkspace> & { focusSource?: { id: string; requestId: string }; selectedSource?: string; onOpenSource(source: { id: string; name: string }): void; onRemoveSource(id: string): void; selectedPrompt?: string; onOpenPrompt(prompt: { id: string; name: string }): void; onCreatePrompt(): void; onRemovePrompt(id: string): void }
 export function CustomizationWorkspace(props: Props) {
   const { api, divider, focusSkill, revision } = props
   const [category, setCategory] = useState<'skills' | 'sources' | 'prompts'>('skills')
-  const [prompts, setPrompts] = useState<PromptTemplate[]>([]), [promptFocus, setPromptFocus] = useState<{ id: string; requestId: string }>()
+  const [prompts, setPrompts] = useState<PromptTemplate[]>([])
   const [promptsReady, setPromptsReady] = useState(false)
   const sourceId = props.selectedSource
   const [skillFocus, setSkillFocus] = useState(focusSkill), [catalogKey, setCatalogKey] = useState(0)
@@ -71,13 +72,13 @@ export function CustomizationWorkspace(props: Props) {
         const members = rows.filter(row => group === 'skills' ? row.kind === 'skill' : group === 'prompts' ? row.kind === 'prompt' : row.source?.type === group)
         if (!members.length) return null
         const label = { skills: '技能', mcp: 'MCP', api: 'API', local: '本地文件夹', prompts: '提示词' }[group]
-        return <Collapsible key={group} open={Boolean(query) || !collapsed.includes(group)} onOpenChange={open => { if (!query) setCollapsed(items => open ? items.filter(id => id !== group) : [...items, group]) }}>
+        return <Collapsible key={group} className="skills-list-group" open={Boolean(query) || !collapsed.includes(group)} onOpenChange={open => { if (!query) setCollapsed(items => open ? items.filter(id => id !== group) : [...items, group]) }}>
           <CollapsibleTrigger aria-label={`已安装的${label}`} render={<Button variant="ghost" size="content" className="conversation-section-heading" />}><span>{label}</span><ChevronRight /></CollapsibleTrigger>
-          <CollapsibleContent><InstalledItems rows={members} scroll={scroll} selected={category === 'sources' ? sourceId : category === 'prompts' ? promptFocus?.id : undefined} onSelect={row => row.kind === 'skill' ? openSkill(row.id) : row.kind === 'prompt' ? guard.navigate(() => { setCategory('prompts'); setPromptFocus({ id: row.id, requestId: crypto.randomUUID() }) }) : guard.navigate(() => { setCategory('sources'); props.onOpenSource(row) })} /></CollapsibleContent>
+          <CollapsibleContent><InstalledItems rows={members} scroll={scroll} selected={category === 'sources' ? sourceId : category === 'prompts' ? props.selectedPrompt : undefined} onSelect={row => row.kind === 'skill' ? openSkill(row.id) : row.kind === 'prompt' ? guard.navigate(() => { setCategory('prompts'); props.onOpenPrompt(row) }) : guard.navigate(() => { setCategory('sources'); props.onOpenSource(row) })} /></CollapsibleContent>
         </Collapsible>
       })}</div>{!rows.length && <p className="field-hint">{query ? '没有匹配的项目' : '添加资源后，会显示在这里。'}</p>}</div>
     </aside>{divider}<main className="conversation-stage custom-content" aria-label="资源库内容">
-      {category === 'skills' ? <SkillsWorkspace {...props} key={catalogKey} divider={null} embedded focusSkill={skillFocus} onCatalogChange={setUpdatedCatalog} /> : category === 'prompts' ? <PromptTemplatesView api={api} prompts={prompts} loaded={promptsReady} onReload={() => { void reload() }} focus={promptFocus} onChanged={value => { setPrompts(items => [value, ...items.filter(item => item.id !== value.id)]); void reload() }} onRemoved={id => { setPrompts(items => items.filter(item => item.id !== id)); if (promptFocus?.id === id) setPromptFocus(undefined); void reload() }} /> : <SourcesView api={api} onManage={() => props.onManage?.('sources')} sources={sources} selected={sourceId} onSelect={props.onOpenSource} onChanged={source => void reload(source)} onRemoved={id => { setSources(items => items.filter(item => item.id !== id)); props.onRemoveSource(id); void reload() }} />}
+      {category === 'skills' ? <SkillsWorkspace {...props} key={catalogKey} divider={null} embedded focusSkill={skillFocus} onCatalogChange={setUpdatedCatalog} /> : category === 'prompts' ? <PromptTemplatesView api={api} prompts={prompts} loaded={promptsReady} onReload={() => { void reload() }} selected={props.selectedPrompt} onOpen={props.onOpenPrompt} onCreate={props.onCreatePrompt} onRemoved={id => { setPrompts(items => items.filter(item => item.id !== id)); props.onRemovePrompt(id); void reload() }} /> : <SourcesView api={api} onManage={() => props.onManage?.('sources')} sources={sources} selected={sourceId} onSelect={props.onOpenSource} onChanged={source => void reload(source)} onRemoved={id => { setSources(items => items.filter(item => item.id !== id)); props.onRemoveSource(id); void reload() }} />}
     </main>
   </div>
 }

@@ -1,6 +1,7 @@
 /*
+ * [OUTPUT]: File explorer plugin component/style changes trigger automatic UI recording.
  * [INPUT]: PR diff, isolated BOAI Electron and DeepSeek planning configuration.
- * [OUTPUT]: Magpie-derived screenshots and optional recording for the PR description.
+ * [OUTPUT]: Screenshots and native GitHub video attachments in the PR description; upload failures stay visible.
  * [POS]: UI preview; upstream yetone/magpie@396e0e463805dd5ded971ade37ded08a52512ae5 (MIT).
  * [PROTOCOL]: Update this header and .github/ui-preview/.folder.md when changed.
  */
@@ -10,14 +11,14 @@
 //                               sha, number) and, when it does, puts the
 //                               "recording" note in the PR's description
 //   node publish.mjs publish  — the recording (OUT_DIR, from record.mjs) onto
-//                               the ui-previews branch, served by Pages, and
-//                               the preview into the PR's description
+//                               the media branch and a native GitHub video
+//                               attachment in the PR's description
 //
 // The preview lives in one fixed block at the foot of the description,
 // between the markers below; each run replaces that block and leaves the
 // rest of the description as the author wrote it.
 //
-// env: GITHUB_TOKEN, GITHUB_REPOSITORY, PR, OUT_DIR, RECORD_RESULT, RUN_URL
+// env: GITHUB_TOKEN, UI_PREVIEW_UPLOAD_TOKEN, GITHUB_REPOSITORY, PR, OUT_DIR, RECORD_RESULT, RUN_URL
 import { execFileSync } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -31,8 +32,8 @@ const repo = process.env.GITHUB_REPOSITORY;
 const pr = Number(process.env.PR);
 const token = process.env.GITHUB_TOKEN;
 const runURL = process.env.RUN_URL || "";
-// What counts as BOAI UI: renderer, shared UI/tokens and app icons.
-export const isUiFile = (f) => /^(apps\/electron\/src\/renderer\/|packages\/(ui|tokens)\/|resources\/app-icons\/)/.test(f) || /^(vite|tailwind)\.config\./.test(f);
+// What counts as BOAI UI: renderer, shared UI/tokens, explorer UI and app icons.
+export const isUiFile = (f) => /^(apps\/electron\/src\/renderer\/|packages\/(ui|tokens)\/|resources\/app-icons\/)/.test(f) || /^packages\/file-explorer-plugin\/src\/explorer\.(tsx|css)$/.test(f) || /^(vite|tailwind)\.config\./.test(f);
 const UI = isUiFile;
 
 async function gh(p, init = {}) {
@@ -55,17 +56,35 @@ async function files() {
 }
 
 // the description with the block in place of the old one, or at its foot
-function withBlock(body, block) {
+export function withBlock(body, block) {
   body = body || "";
   const a = body.indexOf(BEGIN), b = body.indexOf(END);
   if (a >= 0 && b > a) return body.slice(0, a) + block + body.slice(b + END.length);
   return body.replace(/\s*$/, "") + "\n\n" + block;
 }
-async function setBlock(inner) {
+export async function setBlock(inner, videoPath) {
   // read just before writing, so an edit the author just made is kept
   const cur = await gh(`/repos/${repo}/pulls/${pr}`);
   const next = withBlock(cur.body, `${BEGIN}\n${inner.trim()}\n${END}`);
-  if (next !== cur.body) await gh(`/repos/${repo}/pulls/${pr}`, { method: "PATCH", body: JSON.stringify({ body: next }) });
+  if (videoPath) {
+    // Only this trusted publish process receives the upload credential. The
+    // Actions installation token cannot upload native GitHub attachments.
+    const uploadToken = process.env.UI_PREVIEW_UPLOAD_TOKEN;
+    if (!uploadToken) throw new Error("Set UI_PREVIEW_UPLOAD_TOKEN in the ui-preview-publish environment; GITHUB_TOKEN cannot upload video attachments");
+    execFileSync("gh", ["pr", "edit", String(pr), "--repo", repo, "--body-file", "-", "--attach", videoPath], {
+      input: next, encoding: "utf8", stdio: ["pipe", "pipe", "pipe"],
+      env: { ...process.env, GH_TOKEN: uploadToken, GITHUB_TOKEN: uploadToken, GH_PROMPT_DISABLED: "1" },
+    });
+  } else if (next !== cur.body) await gh(`/repos/${repo}/pulls/${pr}`, { method: "PATCH", body: JSON.stringify({ body: next }) });
+}
+
+export async function videoAttachment(dir, filename) {
+  // The artifact came from PR code. Never let its manifest select a host file
+  // (or symlink) for the privileged uploader to send to GitHub.
+  if (filename !== "preview.mp4") throw new Error("Unexpected recording filename; expected preview.mp4");
+  const file = path.resolve(dir, filename);
+  if (!(await fs.lstat(file)).isFile()) throw new Error("Recording must be a regular file");
+  return { file, markdown: `![](<${file}>)` };
 }
 
 const short = (sha) => sha.slice(0, 7);
@@ -132,7 +151,7 @@ async function pushMedia(sha, dir) {
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
-// the page the video plays on: GitHub shows no video it didn't host itself
+// Optional static index for existing Pages users; PR playback uses attachments.
 function player(sha, m) {
   const shots = m.scenes.flatMap((s) => s.shots.map((x) => ({ ...x, scene: s.title })));
   return `<!doctype html><html lang="zh"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -149,12 +168,7 @@ ${shots.map((x) => `<figure><img src="${esc(x.file)}" alt="${esc(x.caption)}"><f
 </main></html>`;
 }
 
-async function pagesURL() {
-  try { return (await gh(`/repos/${repo}/pages`)).html_url.replace(/\/?$/, "/"); }
-  catch { return null; }
-}
-
-async function publish() {
+export async function publish() {
   const p = await gh(`/repos/${repo}/pulls/${pr}`);
   const sha = process.env.SHA || p.head.sha;
   const dir = process.env.OUT_DIR;
@@ -170,17 +184,18 @@ async function publish() {
     await setBlock(`${head(sha)}\n${m?.summary ? `**改动**（按代码）：${m.summary}\n\n` : ""}${m?.mismatch ? `> [!WARNING]\n> **描述与代码不符**：${m.mismatch}\n\n` : ""}${why}。${runURL ? `详见[运行记录](${runURL})。` : ""}${errs}`);
     return;
   }
+  const video = m.video ? await videoAttachment(dir, m.video) : null;
   await pushMedia(sha, dir);
   const raw = `https://raw.githubusercontent.com/${repo}/${BRANCH}/pr-${pr}/${short(sha)}/`;
-  const pages = await pagesURL();
-  const site = pages ? `${pages}pr-${pr}/${short(sha)}/` : `${raw}${m.video}`;
   let md = `${head(sha)}\n`;
   if (m.summary) md += `**改动**（按代码）：${m.summary}\n\n`;
   if (m.mismatch) md += `> [!WARNING]\n> **描述与代码不符**：${m.mismatch}\n\n`;
   if (m.unseen) md += `> [!NOTE]\n> **沙盒里看不到**：${m.unseen}\n\n`;
-  if (m.video) {
-    md += `[![播放录屏](${raw}${m.poster})](${site})\n\n`;
-    md += `<sub>▶️ ${pages ? "点图打开录屏（可暂停、拖动）" : "点图打开 mp4"} · [直接下载 mp4](${raw}${m.video}) · 红线是鼠标轨迹，红色圆环是点击</sub>\n\n`;
+  if (video) {
+    // gh rewrites this standalone local reference to an attachment URL, which
+    // GitHub renders as a player. Linking a poster to a raw mp4 only downloads.
+    md += `${video.markdown}\n\n`;
+    md += `<sub>可直接播放、暂停和拖动进度 · [直接下载 mp4](${raw}${m.video}) · 红线是鼠标轨迹，红色圆环是点击</sub>\n\n`;
   }
   for (const s of m.scenes) {
     if (!s.shots.length) continue;
@@ -189,7 +204,18 @@ async function publish() {
     for (const x of s.shots) md += `<img src="${raw}${x.file}" width="${Math.min(760, Math.round((x.width || 1520) / 2))}" alt="${esc(x.caption)}">\n\n${x.caption}\n\n`;
   }
   if (m.errors?.length) md += `<details><summary>⚠️ 有 ${m.errors.length} 步没能照计划执行</summary>\n\n${m.errors.map((e) => "- " + e).join("\n")}\n</details>\n`;
-  await setBlock(md);
+  try {
+    await setBlock(md, video?.file);
+  } catch (error) {
+    if (video) {
+      // Keep screenshots and the original download available, without leaving
+      // a "recording" placeholder or claiming that the video can play inline.
+      const failed = md.replace(video.markdown, "> [!WARNING]\n> 视频附件发布失败，请查看运行记录；可通过下方链接下载原始录屏。")
+        .replace("可直接播放、暂停和拖动进度 · ", "");
+      await setBlock(failed);
+    }
+    throw error;
+  }
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

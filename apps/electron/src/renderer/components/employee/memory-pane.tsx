@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-30 API记忆页显示实际WM/OM，支持范围、编辑、清空和embedding；原生只说明归属。
  * [OUTPUT]: 记忆添加/编辑使用独立Dialog，保留底层列表与打开时的版本；局部草稿守卫、保存禁关和失败草稿保持，标题操作统一ghost/sm。
  * [INPUT]: 员工统一记忆 API、来源会话/资料、版本化结果及未保存守卫。
  * [OUTPUT]: 有界查询/分页、来源与生命周期、编辑/固定/忘记和旧范围显式升级；冲突保留草稿。
@@ -6,7 +7,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { useContext, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import type { DigitalAgent, MemoryEntry, MemoryInput, MemoryQuery, MemoryView, Snapshot } from '@boai/shared/domain'
+import type { DigitalAgent, ManagedMemory, MemoryEntry, MemoryInput, MemoryQuery, MemoryView, Snapshot } from '@boai/shared/domain'
 import type { DesktopApi } from '@boai/shared/ipc'
 import { Banner, errorText, GuardContext, Loading, useDirty, useMutation } from '@/components/common'
 import { Button } from '@/components/ui/button'
@@ -42,9 +43,13 @@ export function MemoryPane({ api, agent, snapshot, initialConversationId, active
     const current = ++token.current; setLoading(true); setError('')
     void api.request('getMemory', query).then(result => { if (token.current === current) setView(result) }).catch(error => { if (token.current === current) setError(errorText(error)) }).finally(() => { if (token.current === current) setLoading(false) })
     return () => { token.current++ }
-  }, [api, agent.id, source, kind, status, search, revision, active])
+  }, [api, agent.id, source, kind, status, search, revision, active, agent.executionBackend?.kind])
   const change = (fn: () => void) => guard.navigate(() => { setEditing(null); setForget(null); fn() }, { resetOnDiscard: false })
   const refreshed = () => { setEditing(null); setRevision(value => value + 1) }
+  if (view?.managed) return <>{error && <Banner>{error}</Banner>}<ManagedMemoryPane api={api} agent={agent} memory={view.managed} epoch={view.epoch} snapshot={snapshot} loading={loading} sourceSettings={<EmployeeFormSection title="记忆范围" hint="私聊可在本员工的获准私聊间共享；群聊、渠道和材料内容保持隔离。">
+    <Field label="来源聊天"><SelectField value={source} onValueChange={value => change(() => setSource(value))} options={[{ value: '', label: '全部来源' }, ...conversations.map(room => ({ value: room.id, label: room.title }))]} /></Field>
+    {sourceConversation?.kind === 'direct' && !sourceConversation.channel && <Field label="使用范围"><SelectField disabled={busy} value={sourceConversation.memoryScope ?? 'employee'} onValueChange={value => updateSource(value as 'employee' | 'conversation')} options={[{ value: 'employee', label: '本员工的获准私聊' }, { value: 'conversation', label: '仅此聊天' }]} /></Field>}
+  </EmployeeFormSection>} refresh={() => setRevision(value => value + 1)} /></>
   return <div className="detail-section employee-form-sections">
     <EmployeeFormSection title="记忆筛选" hint="同一员工默认记住新的交流，并在相关聊天中使用。仅此聊天、临时有效期和来源权限始终生效。私人记忆的使用不等于保密保证。">
       <Field label="来源聊天"><SelectField value={source} onValueChange={value => change(() => setSource(value))} options={[{ value: '', label: '全部来源' }, ...conversations.map(c => ({ value: c.id, label: c.title }))]} /></Field>
@@ -116,4 +121,58 @@ function MemoryEditor({ api, agent, conversations, source, entry, epoch, onSaved
     <DialogFooter variant="plain"><Button type="button" variant="ghost" disabled={busy} onClick={onCancel}>取消</Button><Button type="submit" disabled={busy || !content.trim() || promote && !confirmed || scope === 'conversation' && !sourceId || scope === 'context' && !contextId && !entry?.contextRef}>保存记忆</Button></DialogFooter>
     </fieldset>
   </form>
+}
+
+
+function ManagedMemoryPane({ api, agent, memory, epoch, snapshot, loading, sourceSettings, refresh }: { api: DesktopApi; agent: DigitalAgent; memory: ManagedMemory; epoch: number; snapshot: Snapshot; loading: boolean; sourceSettings: import('react').ReactNode; refresh(): void }) {
+  const [editing, setEditing] = useState<ManagedMemory['documents'][number] | null>(null), [clearing, setClearing] = useState(false)
+  const { busy, error, run } = useMutation(), guard = useContext(GuardContext)
+  if (memory.backend === 'native') return <EmployeeFormSection title="本机 Agent 记忆" hint="会话上下文和记忆由所选本机 Agent 管理。" />
+  return <div className="detail-section employee-form-sections">
+    {error && <Banner>{error}</Banner>}
+    {sourceSettings}
+    <MemoryRetrievalSettings api={api} agent={agent} memory={memory} snapshot={snapshot} saved={refresh} />
+    <ContactProfileSection title="Mastra Memory" actions={<div className="flex gap-2"><Button variant="ghost" size="sm" disabled={busy || loading} onClick={() => guard.navigate(refresh)}>刷新</Button><Button variant="ghost" size="sm" disabled={busy || loading || !memory.documents.length} onClick={() => setClearing(true)}>清空记忆</Button></div>}>
+      {!memory.documents.length && <p className="field-hint">开始 API 对话后，将在这里显示员工记忆。</p>}
+      {memory.documents.map(document => <ContactProfileCard key={document.resourceId} label={document.conversationIds.map(id => snapshot.conversations.find(room => room.id === id)?.title ?? '聊天').join('、')} fields={false}>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between"><span className="text-sm font-medium">Working Memory</span><Button variant="ghost" size="sm" disabled={busy || loading} onClick={() => setEditing(document)}>编辑</Button></div>
+          <p className="m-0 whitespace-pre-wrap break-words text-sm leading-6">{document.workingMemory || '尚无持久资料。'}</p>
+          <details><summary className="cursor-pointer text-sm">Observational Memory</summary><p className="whitespace-pre-wrap break-words text-sm leading-6">{document.observations || '尚未达到观察整理阈值，近期对话仍保留原文。'}</p></details>
+        </div>
+      </ContactProfileCard>)}
+    </ContactProfileSection>
+    <Dialog open={clearing} onOpenChange={open => { if (!busy) setClearing(open) }}><DialogContent><DialogTitle>清空员工记忆</DialogTitle><p>清除 Working Memory 和观察记忆。聊天记录保留，已有消息不会自动重新进入记忆。</p><DialogFooter><Button variant="ghost" disabled={busy} onClick={() => setClearing(false)}>取消</Button><Button variant="destructive" disabled={busy} onClick={() => { void run(async () => { await api.request('clearMemory', { agentId: agent.id, scope: 'employee', expectedEpoch: epoch, requestId: crypto.randomUUID() }); setClearing(false); refresh() }) }}>清空</Button></DialogFooter></DialogContent></Dialog>
+    {editing && <ManagedMemoryEditor api={api} agent={agent} document={editing} epoch={epoch} close={() => setEditing(null)} saved={() => { setEditing(null); refresh() }} />}
+  </div>
+}
+function ManagedMemoryEditor({ api, agent, document, epoch, close, saved }: { api: DesktopApi; agent: DigitalAgent; document: ManagedMemory['documents'][number]; epoch: number; close(): void; saved(): void }) {
+  const [content, setContent] = useState(document.workingMemory)
+  const { busy, error, run } = useMutation()
+  const { guard, navigate, confirmation } = useEditorGuard({ reset() {} })
+  return <GuardContext.Provider value={guard}>
+    <Dialog open onOpenChange={open => { if (!open && !busy) navigate(close) }}><DialogContent className="sm:max-w-[780px]"><DialogTitle>编辑 Working Memory</DialogTitle>
+      {error && <Banner>{error}</Banner>}
+      <ManagedMemoryDraft content={content} setContent={setContent} busy={busy} />
+      <DialogFooter><Button variant="ghost" disabled={busy} onClick={() => navigate(close)}>取消</Button><Button disabled={busy} onClick={() => { void run(async () => { await api.request('saveMemory', { agentId: agent.id, scope: 'employee', content, expectedEpoch: epoch, managed: { resourceId: document.resourceId, expectedVersion: document.version } }); guard.saved(); saved() }) }}>保存</Button></DialogFooter>
+    </DialogContent></Dialog>{confirmation}
+  </GuardContext.Provider>
+}
+function ManagedMemoryDraft({ content, setContent, busy }: { content: string; setContent(value: string): void; busy: boolean }) {
+  useDirty({ content })
+  return <Textarea aria-label="Working Memory" rows={14} maxLength={64000} value={content} disabled={busy} onChange={event => setContent(event.target.value)} />
+}
+
+function MemoryRetrievalSettings({ api, agent, memory, snapshot, saved }: { api: DesktopApi; agent: DigitalAgent; memory: ManagedMemory; snapshot: Snapshot; saved(): void }) {
+  const [connectionId, setConnectionId] = useState(memory.settings?.embedding?.connectionId ?? ''), [modelId, setModelId] = useState(memory.settings?.embedding?.modelId ?? '')
+  const { busy, error, run } = useMutation(), guard = useContext(GuardContext)
+  useEffect(() => { setConnectionId(memory.settings?.embedding?.connectionId ?? ''); setModelId(memory.settings?.embedding?.modelId ?? '') }, [memory.settings?.revision])
+  useDirty({ connectionId, modelId })
+  const connections = snapshot.connections.filter(connection => connection.provider !== 'anthropic' && connection.gateway?.protocol !== 'messages')
+  return <EmployeeFormSection title="语义检索" hint="选择支持 embeddings 的模型连接后，由 Mastra 建立向量索引。未配置时，OM 仍可整理和回查对话原文。">
+    {error && <Banner>{error}</Banner>}
+    <Field label="Embedding 连接"><SelectField disabled={busy} value={connectionId} onValueChange={setConnectionId} options={[{ value: '', label: '不使用向量检索' }, ...connections.map(connection => ({ value: connection.id, label: connection.name }))]} /></Field>
+    {connectionId && <Field label="Embedding 模型"><Input disabled={busy} value={modelId} onChange={event => setModelId(event.target.value)} placeholder="例如 text-embedding-3-small" /></Field>}
+    <div className="flex justify-end"><Button variant="ghost" size="sm" disabled={busy || !!connectionId && !modelId.trim()} onClick={() => { void run(async () => { await api.request('configureMemory', { agentId: agent.id, expectedRevision: memory.settings?.revision ?? 0, embedding: connectionId ? { connectionId, modelId: modelId.trim() } : null }); guard.saved(); saved() }) }}>保存</Button></div>
+  </EmployeeFormSection>
 }

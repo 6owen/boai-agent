@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 等待同事期间私有汇报的schema错误保持原依赖、预算和一次性副作用；无效正文不发布。
  * [OUTPUT]: 2026-10-27 普通/bobo聊天与重复反馈通过原决策链；执行工具仍限执行阶段，停止/改权后的旧进度回调拒绝。
  * [OUTPUT]: 2026-10-27 本轮相关回归合同/源码更新；执行状态另行记录，不以源码存在判通过。
  * [OUTPUT]: 判断追加请求超过旧12次仍完成；多轮定向群协作跨过旧发言和代数阈值，不改变停止与来源校验。
@@ -845,7 +846,7 @@ describe('local product service', () => {
     expect(engine.decisions.filter(context => result.turns?.some(turn => turn.wakeId && turn.id === context.turnId))).toHaveLength(0)
   })
 
-  it.each(['discard', 'unsupported', 'limit'])('preserves the original dependency wait when a stale private report is withheld by %s', async mode => {
+  it.each(['discard', 'unsupported', 'limit', 'schema-error'])('preserves the original dependency wait when a stale private report is withheld by %s', async mode => {
     const { service, engine } = await fixture(); await configure(service)
     const group = await conversation(service, true)
     let releaseParent!: () => void, releaseChild!: () => void, childId = '', effects = 0, reports = 0
@@ -855,6 +856,10 @@ describe('local product service', () => {
       reports++
       expect(context.pendingWorkWait).toEqual({ dependencies: [{ workId: childId, resultVersion: 1 }], nextStep: '根据检查结果汇总' })
       expect(context.delegateWork).toBeUndefined(); expect(context.waitForWork).toBeUndefined(); expect(context.beforeEffect).toBeUndefined()
+      if (mode === 'schema-error') {
+        const { z } = await import('zod')
+        z.object({ answerEvidence: z.never().optional() }).parse({ answerEvidence: true })
+      }
       return mode === 'discard' ? { action: 'discard' } : { action: 'publish', text: '错误的旧汇报', outcome: { disposition: 'progress', summary: '错误地解除等待' } }
     }
     engine.handler = async context => {
@@ -886,12 +891,13 @@ describe('local product service', () => {
       const waiting = await detail(service, group)
       expect(waiting.workItems!.find(work => work.id === original.id)).toMatchObject({ status: 'waiting', waitRevision: 1, requiresReview: false, requiredResults: [{ workId: childId, resultVersion: 1 }], resultVersion: 0, resultMessageIds: [], sourceMessageId: source.id })
       expect(waiting.runs.find(run => run.workId === original.id && run.phase === 'execution')).toMatchObject({ status: 'completed', disposition: 'waiting', draft: { status: 'withheld', text: mode === 'limit' ? '错误的旧汇报' : '基于旧输入的等待草稿', revisions: reports } })
+      if (mode === 'schema-error') expect(waiting.runs.find(run => run.workId === original.id && run.phase === 'execution')?.draft?.reason).toContain('answerEvidence')
       expect(waiting.messages.some(message => message.content === '基于旧输入的等待草稿' || message.content === '错误的旧汇报')).toBe(false)
       releaseChild(); await idle(service, group, 3)
       const result = await detail(service, group), parent = result.workItems!.find(work => work.id === original.id)!
       expect(parent).toMatchObject({ status: 'delivered', waitRevision: 1, resultVersion: 1, sourceMessageId: source.id, budgetId: budget.id, ownerAgentId: 'researcher' })
       expect(result.workBudgets).toHaveLength(1); expect(result.workBudgets![0]).toMatchObject({ id: budget.id, deadlineAt: budget.deadlineAt, runs: 3, workItems: 2, modelCalls: 3 + reports, reportRefreshes: reports })
-      expect(reports).toBe(mode === 'discard' ? 1 : mode === 'limit' ? 2 : 0); expect(effects).toBe(1)
+      expect(reports).toBe(['discard', 'schema-error'].includes(mode) ? 1 : mode === 'limit' ? 2 : 0); expect(effects).toBe(1)
       expect(engine.contexts.map(context => context.agent.id)).toEqual(['researcher', 'writer', 'researcher'])
       expect(result.messages.filter(message => message.senderType === 'agent').map(message => message.content)).toEqual(['检查结果为 42', '汇总：42'])
       expect(result.workWakes?.map(wake => wake.status)).toEqual(['consumed', 'consumed'])

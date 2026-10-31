@@ -1,8 +1,10 @@
 /*
+ * [OUTPUT]: 独立浏览器插件设置实际启停、CAS保存与跨重启保持；不调用模型。
+ * [OUTPUT]: 2026-10-29 文件浏览器入口/预览/启停与目录撤权回归，原终端生命周期断言保持。
  * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
  * [OUTPUT]: 2026-10-27 语音主要控件220px同宽、辅助操作居左和快捷键无箭头；自动保存、持久化及零下载合同保持。
 [OUTPUT]: 配色菜单先核实际打开及回退选项，再核禁用主题缺席与Escape关闭；不把尚未显示时按键当作关闭验证。
- * [OUTPUT]: 初始目录核对十项固定插件身份（含DeepSeek和双运行时），不从实现派生期望；原筛选/启停/重启断言保持。
+ * [OUTPUT]: 初始目录核对十二项固定插件身份（含双独立浏览器/DeepSeek/双运行时）；已暂停的文件浏览器仍隐藏。
  * [INPUT]: 插件平台中文场景、真实Electron与隔离固定配置文件。
  * [OUTPUT]: UI启停/同行筛选/窄窗/重启和主题真实token回退；未来配置零写入及开关动画结束后原生整幅截图。
  * [POS]: 内置插件平台BDD步骤，不调用真实模型。
@@ -29,6 +31,38 @@ async function start(runtime: Desktop) {
   await openPlugins(runtime)
 }
 const settings = (page: Page) => page.evaluate(() => window.boai.request('getPluginSettings', undefined))
+Given('独立浏览器插件设置在隔离桌面打开', async ({ runtime }) => {
+  await start(runtime)
+  await expect(runtime.page.getByRole('switch', { name: 'AgentBrowser', exact: true })).not.toBeChecked()
+  await expect(runtime.page.getByRole('switch', { name: 'BrowserViewer', exact: true })).not.toBeChecked()
+  await runtime.reviewCheckpoint('两种独立浏览器默认关闭')
+})
+When('用户启用AgentBrowser并保存后台启动配置', async ({ runtime }) => {
+  const page = runtime.page
+  await toggle(page, 'AgentBrowser', true)
+  await page.getByRole('button', { name: '配置 AgentBrowser', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'AgentBrowser', exact: true })
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole('switch', { name: '后台运行', exact: true }).click()
+  await runtime.reviewCheckpoint('独立浏览器启动配置')
+  await dialog.getByRole('button', { name: '保存', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  await expect.poll(() => page.evaluate(() => window.boai.request('getBrowserPluginSettings', { provider: 'agent-browser' }))).toEqual({ provider: 'agent-browser', revision: 1, config: { headless: true, executablePath: '' } })
+  await expect(page.getByRole('switch', { name: 'BrowserViewer', exact: true })).not.toBeChecked()
+  await page.getByRole('combobox', { name: '插件类型', exact: true }).click()
+  await page.getByRole('option', { name: '浏览器工具', exact: true }).click()
+  await expect(page.locator('[data-application-plugin]')).toHaveCount(2)
+})
+Then('重启后两个浏览器插件保持独立设置', async ({ runtime }) => {
+  await runtime.close(); await start(runtime)
+  await expect(runtime.page.getByRole('switch', { name: 'AgentBrowser', exact: true })).toBeChecked()
+  await expect(runtime.page.getByRole('switch', { name: 'BrowserViewer', exact: true })).not.toBeChecked()
+  await expect.poll(() => runtime.page.evaluate(() => window.boai.request('getBrowserPluginSettings', { provider: 'browser-viewer' }))).toEqual({ provider: 'browser-viewer', revision: 0, config: { headless: false, executablePath: '' } })
+  await expect.poll(() => runtime.page.evaluate(() => window.boai.request('getWebSearchSettings', undefined)).then(value => value.default)).toEqual({ mode: 'browser' })
+  await runtime.page.getByRole('button', { name: '配置 AgentBrowser', exact: true }).click()
+  await expect(runtime.page.getByRole('dialog', { name: 'AgentBrowser', exact: true }).getByRole('switch', { name: '后台运行', exact: true })).toBeChecked()
+  await runtime.reviewCheckpoint('重启后独立浏览器配置保持')
+})
 async function toggle(page: Page, name: string, checked: boolean) {
   const control = page.getByRole('switch', { name, exact: true })
   await expect(control).toBeEnabled(); await control.click()
@@ -37,7 +71,7 @@ async function toggle(page: Page, name: string, checked: boolean) {
 }
 Given('内置插件管理在独立桌面打开', async ({ runtime }) => {
   await start(runtime)
-  await expect.poll(() => runtime.page.locator('[data-application-plugin]').evaluateAll(elements => elements.map(element => element.getAttribute('data-application-plugin')).sort())).toEqual(['boai.preview.text', 'boai.preview.image', 'boai.preview.pdf', 'boai.preview.office', 'boai.theme.vscode-plus', 'boai.theme.base46', 'boai.search.deepseek', 'boai.runtime.pi', 'boai.runtime.opencode', 'boai.voice-input'].sort())
+  await expect.poll(() => runtime.page.locator('[data-application-plugin]').evaluateAll(elements => elements.map(element => element.getAttribute('data-application-plugin')).sort())).toEqual(['boai.preview.text', 'boai.preview.image', 'boai.preview.pdf', 'boai.preview.office', 'boai.theme.vscode-plus', 'boai.theme.base46', 'boai.search.deepseek', 'boai.runtime.pi', 'boai.runtime.opencode', 'boai.voice-input', 'boai.browser.agent-browser', 'boai.browser.browser-viewer'].sort())
   await expect.poll(() => settings(runtime.page)).toEqual({ revision: 0, disabledIds: [], enabledIds: [] })
   const filters = runtime.page.locator('[data-plugin-filters]')
   expect(await filters.evaluate(element => {

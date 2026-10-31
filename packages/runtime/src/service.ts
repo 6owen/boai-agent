@@ -1,4 +1,14 @@
 /*
+ * [OUTPUT]: 路由员工任务删除/重命名到原任务服务，保持任务归属/修订与原定时管理路径。
+ * [OUTPUT]: 任务Dialog共用原输入/审批/问答/Steer；每任务会话与原计划授权分别核验。
+ * [OUTPUT]: 员工持久任务五个公共入口及原消息关联回写；执行沿原AutomationService和主会话。
+ * [OUTPUT]: 员工任务默认绑定主聊天，旧独立任务恢复公开投递与原Run定位；原生session续接沿已有来源核验。
+ * [OUTPUT]: 新任务独立消息定位，启动后仅唤醒未开始的持久员工队列。
+ * [OUTPUT]: 2026-10-30 API来源/旧数据迁移接官方Memory；旧自动提取与关键词召回退出，原生保留自身记忆；管理、范围、忘记、备份与计量接线。
+ * [OUTPUT]: 独立AgentBrowser/BrowserViewer插件接入；上游工具、启停与运行回收保持独立。
+ * [OUTPUT]: 保留的定时运行缺失原会话时返回空过程供详情展示历史元数据；无关/缺失运行身份仍拒绝。
+ * [OUTPUT]: 已登记依赖等待时私有汇报schema错误沿withhold保留等待及错误原文；不发布无效正文或重放操作。
+ * [OUTPUT]: 2026-10-29 getWorkspaceRoot可解析精确已存目录授权，成员/撤权/根替换复核；执行cwd保持。
  * [OUTPUT]: 原生Codex握手观察沿原run权限与串行事务保存版本，不改变配置revision或自动重发输入。
  * [OUTPUT]: 网页检索草稿测试接现有externalTests/externalTasks退出取消与备份门禁，不保存连接。
  * [OUTPUT]: Codex当前轮次补充沿原消息事务/来源投影受理，原生RPC在服务串行区之外单次投递。
@@ -182,6 +192,7 @@
  * [POS]: packages/runtime/src/service.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { EmployeeTaskService } from './modules/automations/employee-task-service'
 import { workingScene } from './modules/contexts/working-scene'
 import { progressBoundary } from './adapters/mastra/progress-review'
 import { ProgressStalledError, type ProgressMonitor } from './modules/contexts/progress-monitor'
@@ -206,6 +217,8 @@ import { planOperations, activePlanInstructions } from './modules/application/pl
 import { referenceOperations, referenceScope, referenceInstructions, type LoadReferences } from './modules/application/reference-operations'
 import { collectReferenceSources } from './modules/application/reference-sources'
 import { applicationOperations } from './modules/application/operations'
+import { BrowserPluginService } from './modules/browser/plugins'
+import { browserPluginProviderSchema } from '@boai/shared/plugins/browser-tools'
 import { ImageService } from './modules/media/image-service'
 import { TerminalService } from './modules/workspace-tools/terminal-service'
 import { PreviewService } from './modules/workspace-tools/preview-service'
@@ -262,7 +275,7 @@ import { NativeSteering } from './modules/conversations/native-steering'
 import { recordNativeInput } from './adapters/native-sessions'
 import { createClient } from '@libsql/client'
 import { pathToFileURL } from 'node:url'
-import { AutomationService, automationSchema } from './modules/automations/automation-service'
+import { AutomationService, automationInputSchema } from './modules/automations/automation-service'
 import { automationDispatchPrompt } from './modules/automations/automation-plan'
 import { automationPublicationIdentity, receiveConversationMessages } from './modules/conversations/message-reception'
 import { messageExecutionScope, projectMessageExecution } from './modules/conversations/message-execution'
@@ -357,6 +370,7 @@ import { scheduleListChangeSchema } from '@boai/shared/domain/schedule-list'
 import { ContactListRepository, contactListChangeSchema } from './modules/employees/contact-list'
 import { ContactDeletionService } from './modules/employees/contact-deletion'
 import { MemoryRepository } from './modules/memory/memory-repository'
+import { memoryResourceId } from './adapters/mastra/conversation-memory'
 import { recallMemory } from './modules/memory/memory-recall'
 import { memoryAllowed, memoryUseScope, type MemoryAccess } from './modules/memory/memory-policy'
 import type { MemoryContextRef, MemoryObservation } from '@boai/shared/domain/memory'
@@ -425,6 +439,7 @@ const fail = (message: string): never => { throw new Error(message) }
 export class AppService {
   private readonly cliRunAccess = new RunCliAccess()
   runCliAccess(input: RunCliAccessRequest) { return this.cliRunAccess.request(input) }
+  private readonly browserPlugins: BrowserPluginService
   private readonly webSearch: WebSearchService
   private readonly dataSources: SourceService
   private readonly materialUploads: MaterialUploads
@@ -465,6 +480,7 @@ export class AppService {
   private readonly presentations: PresentationService
   private readonly images: ImageService
   private readonly selfies: SelfieService
+  private employeeTasks!: EmployeeTaskService
   private readonly automations: AutomationService
   readonly runtimePlugins: RuntimePlugins
   private readonly pluginEngines = new Map<string, PluginEmployeeEngine>()
@@ -526,6 +542,7 @@ export class AppService {
     this.dataPath = resolve(options.dataPath)
     this.store = new ProductStore(join(this.dataPath, 'boai.sqlite'))
     this.contexts = new ContextRepository(this.store)
+    this.browserPlugins = new BrowserPluginService(this.store, this.dataPath, action => this.serialize(async () => { if (this.closing || this.backingUp) fail('服务正在退出或备份'); return action() }))
     this.images = new ImageService(this.store, {
       connection: async id => this.connections.get(id),
       credential: connection => this.serialize(async () => {
@@ -763,8 +780,24 @@ export class AppService {
     })
     this.automations=new AutomationService(this.store,this.dataPath,{
       behaviors: this.agentBehaviors,
-      critical:operation=>this.serialize(operation),validate:id=>this.automationFingerprint(id),busy:id=>this.conversationBusy(id),
+      critical:operation=>this.serialize(operation),validate:id=>this.automationFingerprint(id),busy:(id, employees)=>this.closing||this.backingUp||this.conversationBusy(id)||[...this.runs.values()].some(run=>employees?.includes(run.agentId)&&(!terminal.has(run.status)&&!['waiting_approval', 'waiting_user'].includes(run.status)||this.activeAdapters.has(run.id))),
       prepareConversation: (definition, occurrence) => this.prepareAutomationConversation(definition, occurrence),
+      prepareInput: async input => {
+        if (input.employeeTask?.message) input = { ...input, employeeTask: { ...input.employeeTask, message: sendSchema.parse(input.employeeTask.message) } }
+        const employeeId = input.owner?.kind === 'employee' ? input.owner.employeeId : !input.owner && input.employeeIds?.length === 1 ? input.employeeIds[0] : undefined
+        if (input.conversationPolicy || input.taskKind === 'monitor' || !employeeId || input.collaboration) return input
+        if (input.conversationId || input.employeeIds?.some(id => id !== employeeId)) fail('员工任务的会话或参与员工不一致')
+        return { ...input, owner: { kind: 'employee', employeeId }, conversationPolicy: 'new-conversation', employeeIds: [employeeId] }
+      },
+      executionDefinition: async definition => {
+        // A plan stays a plan. Each new employee assignment receives its own session;
+        // original plan authorization is checked before and again when dequeued.
+        if (definition.employeeTask || definition.taskKind === 'monitor' || definition.owner?.kind !== 'employee' || definition.conversationPolicy === 'new-conversation') return definition
+        const room = this.getConversation(definition.conversationId!)
+        if (room.purpose === 'automation' || room.kind !== 'direct' || room.channel) return definition
+        const execution = { ...definition, conversationPolicy: 'new-conversation' as const, conversationId: undefined, employeeIds: [definition.owner.employeeId] }
+        return { ...execution, authorizedFingerprint: await this.automationFingerprint(execution) }
+      },
       readMonitor: async (definition, signal) => {
         const source = definition.monitor?.source ?? fail('监控来源缺失')
         const scope = await this.serialize(async () => {
@@ -779,14 +812,16 @@ export class AppService {
       },
       dispatch: (definition, occurrence, origin, commit) => this.serialize(async () => {
         if (this.closing || this.backingUp) fail('服务正在退出或备份')
-        if (definition.conversationPolicy === 'new-conversation') {
+        if (definition.conversationPolicy === 'new-conversation' || definition.employeeTask) {
           const conversation = (await this.store.load<Conversation>('conversations')).find(c => c.id === occurrence.conversationId)
-          if (!conversation || conversation.purpose !== 'automation' || conversation.occurrenceId !== occurrence.id || conversation.automationId !== definition.id) fail('本次任务聊天未完成事务初始化')
+          if (!conversation || conversation.purpose !== 'automation' || (definition.employeeTask ? conversation.employeeTaskId !== definition.employeeTask.id : conversation.occurrenceId !== occurrence.id || conversation.automationId !== definition.id)) fail('本次任务聊天未完成事务初始化')
           this.conversations.set(conversation!.id, conversation!)
         }
+        const source = await this.store.get<AutomationDefinition>('automations', definition.id)
+        if (source && source.authorizedFingerprint !== definition.authorizedFingerprint && await this.automationFingerprint(source) !== source.authorizedFingerprint) fail('原计划授权已变化')
         if (await this.automationFingerprint(occurrence.conversationId) !== definition.authorizedFingerprint) fail('自动化权限已变化')
         if (this.conversationBusy(occurrence.conversationId)) fail('会话忙碌')
-        return this.sendMessage({ conversationId: occurrence.conversationId, content: automationDispatchPrompt(definition), mentionIds: definition.collaboration ? [definition.collaboration.coordinatorId] : [], requestId: 'automation-' + occurrence.id }, origin, commit)
+        return this.sendMessage(sendSchema.parse({ ...definition.employeeTask?.message, conversationId: occurrence.conversationId, content: automationDispatchPrompt(definition), mentionIds: definition.collaboration ? [definition.collaboration.coordinatorId] : [], requestId: 'automation-' + occurrence.id }), origin, commit)
       }),
       inspect: occurrence => this.inspectAutomation(occurrence), cancel: (occurrence, options) => this.cancelAutomation(occurrence, options?.endWaiting),
       capacityAvailable: () => { for (const id of this.conversations.keys()) this.scheduleWork(id) },
@@ -921,6 +956,7 @@ export class AppService {
     })
     this.initialized = true
     await this.agentBehaviors.init()
+    this.employeeTasks = new EmployeeTaskService(this.store, this.automations, message => { if (message && this.messages.has(message.id)) this.messages.set(message.id, message); this.changed(message?.conversationId) }, this.dataPath, room => { this.conversations.set(room.id, room); this.emit({ type: 'changed' }) })
     await this.automations.init()
     for (const pending of await this.store.load<AutomationHistoryDeletion>('automationHistoryCleanups')) {
       try { await this.serialize(() => this.deleteAutomationOccurrence(pending.id, 0)) }
@@ -933,6 +969,7 @@ export class AppService {
       this.installMessageReception(result)
     }
     await this.channels.init()
+    this.automations.observe()
     this.memoryTimer = setInterval(() => {
       if (this.closing || this.backingUp || this.runControllers.size || this.activeAdapters.size) return
       void this.serialize(async () => { if (await this.memory.maintain()) await this.memoryChanged([...this.employees.values()].map(agent => agent.id)) }).catch(() => this.emit({ type: 'runtime-error', error: '记忆整理未完成，将在空闲时重新核对；没有重新执行模型或工具。' }))
@@ -983,16 +1020,21 @@ export class AppService {
       return this.options.applicationHost.request(method, input as never)
     }
     if (method === 'getWorkspaceRoot' || method === 'validateWorkspaceScope') {
-      const value = z.object({ employeeId: id, conversationId: id.optional() }).strict().parse(input)
+      const schema = z.object({ employeeId: id, conversationId: id.optional() }).strict()
+      const value = (method === 'getWorkspaceRoot' ? schema.extend({ directory: directoryGrantSchema.shape.path.optional() }) : schema).parse(input) as { employeeId: string; conversationId?: string; directory?: string }
       const assertCurrent = () => {
-        this.getAgent(value.employeeId)
+        const agent = this.getAgent(value.employeeId)
+        if (value.directory && !agent.directoryGrants?.some(grant => grant.path === value.directory)) fail('目录授权已失效，请重新打开')
         if (this.userWorkspaceClosures.has(`employee:${value.employeeId}`) || value.conversationId && (this.userWorkspaceClosures.has(`conversation:${value.conversationId}`) || this.userWorkspaceClosures.has(`scope:${JSON.stringify([value.employeeId, value.conversationId])}`))) fail('工作区正在关闭，请稍后重试')
         if (value.conversationId && !this.getConversation(value.conversationId).agentIds.includes(value.employeeId)) fail('员工不属于当前会话')
       }
       assertCurrent()
       if (method === 'validateWorkspaceScope') return
-      const root = await restrictedPath([this.dataPath], this.homes.root(value.employeeId))
+      const root = value.directory
+        ? (await workingDirectoryTarget(value.directory, [await realpath(this.dataPath)])).path
+        : await restrictedPath([this.dataPath], this.homes.root(value.employeeId))
       assertCurrent()
+      if (value.directory && root !== value.directory) fail('授权目录已变化，请重新核对')
       return root
     }
     if (method === 'getApplicationCatalog') return this.application.catalog(input as Methods['getApplicationCatalog']['input'])
@@ -1111,6 +1153,8 @@ export class AppService {
       }
       return mergeCatalogResults(result)
     }
+    if (method === 'getBrowserPluginSettings') return this.browserPlugins.settings(z.object({ provider: browserPluginProviderSchema }).strict().parse(input).provider)
+    if (method === 'saveBrowserPluginSettings') return this.browserPlugins.save(input)
     if (method === 'getWebSearchSettings') { z.undefined().parse(input); return this.webSearch.settings() }
     if (method === 'saveWebSearchService') return this.webSearch.save(input)
     if (method === 'saveWebSearchDefault') return this.webSearch.saveDefault(input)
@@ -1223,12 +1267,23 @@ export class AppService {
     if (method === 'cancelSkillOperation') { const value = lookupSchema.parse(input); await this.skills.cancel(value.id); await this.skillUpdates.cancel(value.id); return this.skillLibrary.cancel(value.id) }
     if (method === 'getScheduleList') { z.undefined().parse(input); return this.scheduleList.read() }
     if (method === 'updateScheduleList') { const result = await this.scheduleList.update(scheduleListChangeSchema.parse(input)); this.emit({ type: 'schedule-list:changed' }); return result }
+    if (method === 'sendEmployeeTaskMessage') {
+      const value = sendSchema.parse(input), room = this.getConversation(value.conversationId)
+      if (!room.employeeTaskId || room.agentIds.length !== 1) fail('当前不是员工任务会话')
+      if (value.steer) return this.serialize(() => this.sendMessage(value))
+      return this.employeeTasks.sendMessage(value)
+    }
+    if (method === 'getEmployeeTaskMessageReceipt') {
+      const { requestId } = z.object({ requestId: id }).strict().parse(input)
+      return await this.handle('getMessageReceipt', { requestId }) ?? this.employeeTasks.messageReceipt(requestId)
+    }
+    if (method === 'openEmployeeTaskSession' || method === 'createEmployeeTask' || method === 'listEmployeeTasks' || method === 'getEmployeeTask' || method === 'updateEmployeeTask' || method === 'deleteEmployeeTask' || method === 'runEmployeeTask') return this.employeeTasks.handle(method, input)
     if(method==='listAutomations'){z.undefined().parse(input);return this.automations.view()}
     if(method==='getAutomation'){const {id}=z.object({id:z.string().min(1).max(200)}).strict().parse(input);const definition=await this.store.get<AutomationDefinition>('automations',id);return definition&&!definition.deletedAt?definition:null}
     if(method==='listOwnerAutomations')return this.automations.list(automationListSchema.parse(input))
     if(method==='listAutomationHistory')return this.automations.history(input)
     if(method==='getAutomationOccurrence')return this.automations.occurrence(lookupSchema.parse(input).id)
-    if(method==='saveAutomation')return this.automations.save(automationSchema.parse(input))
+    if(method==='saveAutomation')return this.automations.save(automationInputSchema.parse(input))
     if(method==='generateAutomationDraft')return this.generateAutomationDraft(input)
     if(method==='getAutomationCreation')return this.automations.creation(z.object({requestId:id}).strict().parse(input).requestId)
     if(method==='resumeAutomation')return this.automations.resumePlan(lookupSchema.parse(input).id)
@@ -1423,7 +1478,7 @@ export class AppService {
           const run = this.executionScope(query.conversationId, query.runId)
           const source = this.getConversation(run.conversationId)
           const target = source.purpose === 'automation'
-            ? [...this.messages.values()].find(message => message.automationPublication?.sourceConversationId === source.id && message.automationPublication.sourceMessageId === run.triggerMessageId && message.automationPublication.occurrenceId === source.occurrenceId)
+            ? [...this.messages.values()].find(message => message.automationPublication?.sourceConversationId === source.id && message.automationPublication.sourceMessageId === run.triggerMessageId && message.automationPublication.occurrenceId === (run.origin?.occurrenceId ?? source.occurrenceId))
             : this.messages.get(run.triggerMessageId!)
           if (!target) fail('对应聊天记录已删除或不可用')
           return this.store.transaction(async tx => {
@@ -1436,6 +1491,10 @@ export class AppService {
         }
         case 'listExecutionHistory': {
           const query = z.object({ conversationId: id, agentId: id.optional(), occurrenceId: id.optional(), before: z.object({ createdAt: z.string(), id }).optional() }).strict().parse(input)
+          if (query.occurrenceId && !this.conversations.has(query.conversationId)) {
+            const occurrence = await this.store.get<AutomationOccurrence>('automationOccurrences', query.occurrenceId)
+            if (occurrence && !occurrence.deletedAt && occurrence.conversationId === query.conversationId) return { items: [] }
+          }
           const conversation = this.getConversation(query.conversationId)
           if (conversation.list?.hidden || this.clearingConversations.has(conversation.id)) return { items: [] }
           const rows = (await this.store.queryExecutionHistory(query)).filter(item => conversation.agentIds.includes(item.run.agentId))
@@ -1617,6 +1676,7 @@ export class AppService {
         case 'removeResource': return this.removeResource(lookupSchema.parse(input).id)
         case 'retryRun': { const value = z.object({ id, requestId: id, continuation: z.boolean().optional() }).strict().parse(input); return this.retry(value.id, value.requestId, value.continuation) }
         case 'getAgentHome': case 'readAgentFile': case 'regenerateAgentViews': case 'saveAgentFile': return this.agentFiles(method, input)
+        case 'configureMemory': return this.configureMemory(input)
         case 'getMemory': case 'saveMemory': case 'deleteMemory': case 'clearMemory': return this.memoryOperation(method, input)
         default: fail('此操作必须由桌面主进程处理')
       }
@@ -1649,7 +1709,7 @@ export class AppService {
         || !original || original.conversationId !== source.id || original.automationPublication
         || !source.agentIds.every(id => target.agentIds.includes(id)) || !target.agentIds.includes(run.agentId)) continue
       const published = (messageId: string) => {
-        const publication = { automationId: source.automationId!, occurrenceId: source.occurrenceId!, sourceConversationId: source.id, sourceMessageId: messageId }
+        const publication = { automationId: run.origin?.automationId ?? source.automationId!, occurrenceId: run.origin?.occurrenceId ?? source.occurrenceId!, sourceConversationId: source.id, sourceMessageId: messageId }
         const message = this.messages.get(automationPublicationIdentity(publication).id), actual = message?.automationPublication
         return message?.conversationId === target.id && actual && actual.automationId === publication.automationId && actual.occurrenceId === publication.occurrenceId && actual.sourceConversationId === source.id && actual.sourceMessageId === messageId ? message : undefined
       }
@@ -2079,18 +2139,63 @@ export class AppService {
     this.validateMemoryQuery(query)
     if (method === 'readAgentFile') return this.homes.read(agent, (value as typeof value & { name: string }).name, value.conversationId)
     const projection = value.conversationId ? await this.recallEmployeeMemory(agent, this.getConversation(value.conversationId), this.conversationMessages(value.conversationId).filter(message => message.senderType === 'user').at(-1)?.content ?? '') : await this.memory.get({ agentId: agent.id, scope: 'employee', status: 'active' })
+    if (isNativeBackend(agent.executionBackend) || this.options.engine.memoryOwner === 'mastra') projection.entries = []
     await this.homes.regenerate(agent, projection, value.conversationId, method === 'regenerateAgentViews')
     return { ...await this.homes.inspect(agent, value.conversationId), environment: await this.homes.describeEnvironment(agent, this.resources.values()) }
   }
+  private async memorySettings(agentId: string): Promise<import('@boai/shared/domain/memory').EmployeeMemorySettings> {
+    return (await this.store.load<import('@boai/shared/domain/memory').EmployeeMemorySettings>('employeeMemorySettings')).find(value => value.agentId === agentId) ?? { agentId, revision: 0 }
+  }
+  private async configureMemory(input: unknown) {
+    const value = z.object({ agentId: id, expectedRevision: z.number().int().nonnegative(), embedding: z.object({ connectionId: id, modelId: text(1000) }).strict().nullable() }).strict().parse(input)
+    const agent = this.getAgent(value.agentId)
+    if (isNativeBackend(agent.executionBackend)) fail('本机 Agent 自行管理记忆')
+    const previous = await this.memorySettings(agent.id)
+    if (previous.revision !== value.expectedRevision) fail('记忆设置已变化，请刷新后再保存')
+    if (value.embedding) {
+      const connection = this.getConnection(value.embedding.connectionId)
+      if (connection.provider === 'anthropic' || connection.gateway?.protocol === 'messages') fail('语义检索需要支持 embeddings 接口的模型连接')
+    }
+    await this.cancelWhere(run => run.agentId === agent.id && !terminal.has(run.status), '记忆检索设置已更新')
+    const settings = { agentId: agent.id, revision: previous.revision + 1, ...(value.embedding ? { embedding: value.embedding } : {}) }
+    await this.store.write([{ collection: 'employeeMemorySettings', id: agent.id, value: settings }])
+    this.changed()
+    return settings
+  }
   private async memoryOperation(method: Method, input: unknown) {
     const version = { expectedEpoch: z.number().int().nonnegative(), requestId: id.optional() }
-    const extra = method === 'saveMemory' ? { ...version, id: id.optional(), content: text(4000), sourceMessageIds: ids.optional(), sourceResourceIds: ids.optional(), origin: z.enum(['user', 'import']).optional(),
+    const extra = method === 'saveMemory' ? { ...version, managed: z.object({ resourceId: id, expectedVersion: z.string().length(64) }).strict().optional(), id: id.optional(), content: z.string().max(64000), sourceMessageIds: ids.optional(), sourceResourceIds: ids.optional(), origin: z.enum(['user', 'import']).optional(),
       kind: z.enum(['long_term', 'experience', 'temporary']).optional(), evidence: z.enum(['fact', 'preference', 'decision', 'claim', 'inference']).optional(), useScope: z.enum(['employee', 'conversation', 'context']).optional(),
       contextRef: memoryContextSchema.nullable().optional(), expiresAt: z.iso.datetime().nullable().optional(), pinned: z.boolean().optional(), lifecycle: z.enum(['active', 'archived', 'expired']).optional(), promote: z.boolean().optional() }
       : method === 'deleteMemory' ? { ...version, id } : method === 'clearMemory' ? version : {}
     const value = memoryQuerySchema.extend(extra).strict().parse(input)
     const query = memoryQuerySchema.parse(Object.fromEntries(Object.entries(value).filter(([key]) => key in memoryQuerySchema.shape)))
     this.validateMemoryQuery(query)
+    const agent = this.getAgent(query.agentId)
+    const managed = isNativeBackend(agent.executionBackend) ? { backend: 'native' as const, documents: [], semanticRecall: false } : await this.options.engine.memoryView?.(agent.id)
+    if (managed) {
+      if (managed.backend === 'mastra') { managed.settings = await this.memorySettings(agent.id); managed.semanticRecall = !!managed.settings.embedding }
+      const legacy = await this.memory.get(query)
+      const result = async () => ({ ...await this.memory.get(query), entries: [], total: 0, nextCursor: undefined, managed: { ...await this.options.engine.memoryView!(agent.id), settings: managed.settings, semanticRecall: managed.semanticRecall } })
+      if (method === 'getMemory') return { ...legacy, entries: [], total: 0, nextCursor: undefined, managed }
+      if (managed.backend === 'native') fail('此员工的记忆由本机 Agent 管理')
+      const input = value as import('@boai/shared/domain/memory').MemoryInput
+      if (input.expectedEpoch !== legacy.epoch) fail('记忆已变化，请刷新后再保存')
+      await this.cancelWhere(run => run.agentId === agent.id && !terminal.has(run.status), '员工记忆正在修改，旧输入已停止')
+      if (method === 'saveMemory') {
+        if (!input.managed) fail('请使用 Mastra Working Memory 编辑入口')
+        await this.options.engine.saveWorkingMemory!(agent.id, input.managed!.resourceId, input.content, input.managed!.expectedVersion, [...this.conversations.values()].filter(room => room.agentIds.includes(agent.id)).map(room => ({ conversationId: room.id, sequence: Math.max(0, ...this.conversationMessages(room.id).map(message => message.sequence)) })))
+        await this.memory.clear(query, input.expectedEpoch, input.requestId)
+      } else if (method === 'clearMemory') {
+        const cutoffs = [...this.conversations.values()].filter(room => room.agentIds.includes(agent.id)).map(room => ({ conversationId: room.id, sequence: Math.max(0, ...this.conversationMessages(room.id).map(message => message.sequence)) }))
+        await this.memory.clear(query, input.expectedEpoch, input.requestId)
+        await this.options.engine.clearEmployeeMemory!(agent.id, cutoffs)
+      } else fail('Mastra 记忆请编辑 Working Memory 或清空，不再维护旧条目')
+      await this.contexts.forgetAgent(agent.id)
+      await this.homes.invalidateMemoryViews(agent.id)
+      this.changed(query.conversationId)
+      return result()
+    }
     if (method === 'getMemory') return this.memory.get(query)
     const expectedEpoch = z.number().int().nonnegative().parse((value as Record<string, unknown>).expectedEpoch)
     let result: MemoryView
@@ -2250,6 +2355,7 @@ export class AppService {
     }
     try {
       const currentCategory = category ? { ...category, expectedRevision: (await this.contactList.read()).revision } : undefined
+      for (const agentId of agentIds) await this.options.engine.deleteEmployeeMemory?.(agentId)
       await this.contactDeletion.delete({ agentIds, category: currentCategory })
     } finally {
       const [agents, resources, conversations] = await Promise.all([this.store.load<DigitalAgent>('agents'), this.store.load<Resource>('resources'), this.store.load<Conversation>('conversations')])
@@ -2314,7 +2420,7 @@ export class AppService {
     this.scheduler.forgetHistory(result.removals)
     this.memory.forgetHistory(result.removals.filter(item => item.collection === 'memory').map(item => item.id), result.memoryEpochs)
     if (conversation.purpose === 'core') {
-      const purge = this.options.engine.forgetAllConversationMemory?.() ?? this.options.engine.forgetConversationMemory?.(id)
+      const purge = this.options.engine.forgetConversationMemory ? this.options.engine.forgetConversationMemory(id) : this.options.engine.forgetAllConversationMemory?.()
       await purge?.catch(error => { this.emit({ type: 'runtime-error', error: `bobo 对话记忆投影清理未完成：${error instanceof Error ? error.message : String(error)}` }) })
     }
     // Raw input identities also need rechecking after the history deletion commits.
@@ -3344,7 +3450,7 @@ export class AppService {
 
   private authorizedResources(agent: DigitalAgent, conversation: Conversation): Resource[] {
     for (const id of agent.skillIds) this.skillUpdates.assertAvailable(id)
-    return authorizedResources(agent, conversation, this.resources.values())
+    return authorizedResources(agent, conversation, this.resources.values()).filter(resource => !(resource.kind === 'skill' && resource.name === 'boai-memory-management' && (isNativeBackend(agent.executionBackend) || this.options.engine.memoryOwner === 'mastra')))
   }
   private dataSourceSnapshotValid(snapshot: RunSnapshot) {
     const refs = snapshot.dataSourceRefs ?? [], owner = this.employees.find(snapshot.agent.id)
@@ -3599,6 +3705,7 @@ export class AppService {
   }
   private async recallEmployeeMemory(agent: DigitalAgent, conversation: Conversation, request: string, workId?: string): Promise<MemoryView> {
     const view = await this.memory.get({ agentId: agent.id, scope: 'employee' })
+    if (isNativeBackend(agent.executionBackend) || this.options.engine.memoryOwner === 'mastra') return { ...view, entries: [], nextCursor: undefined, total: undefined, recall: { authorityVersion: 1, agentId: agent.id, conversationId: conversation.id, contextRefs: this.memoryContexts(conversation, workId), versions: [], observationIds: [], observationVersions: [], tokenEstimate: 0 } }
     const profile = await this.agentProfiles.get(agent.id)
     return recallMemory({ view, observations: await this.memory.observations(agent.id), messages: this.messages, request,
       preferredIds: profile.features.growth ? await this.agentStates.growthMemoryIds(agent.id) : [],
@@ -4063,6 +4170,9 @@ export class AppService {
         generate: (input, references) => this.images.generate(input, references, signal, () => this.serialize(async () => { await this.assertExecutionAccess(context) })),
         verify: async source => { await this.serialize(async () => { await this.assertExecutionAccess(context) }); await this.images.verify(source) },
       }, dataSources: isCoreAgent(agent) ? this.dataSources.allSummaries() : this.dataSources.summaries(agent.sourceIds),
+      browserPluginProviders: await this.browserPlugins.enabled(),
+      inspectBrowserPlugin: async provider => { await this.serialize(async () => { await this.assertExecutionAccess(context) }); return this.browserPlugins.inspect(provider, context) },
+      callBrowserPlugin: async input => { await this.serialize(async () => { await this.assertExecutionAccess(context) }); const result = await this.browserPlugins.call(input, context); await this.serialize(async () => { await this.assertExecutionAccess(context) }); return result },
       webSearchServices: await this.webSearch.summaries(agent), webSearchPreference: this.webSearch.effectivePreference(agent),
       inspectWebSearch: serviceId => this.useWebSearch(context, serviceId),
       callWebSearch: input => this.useWebSearch(context, input.sourceId, sourceCallSchema.parse(input)),
@@ -4185,16 +4295,17 @@ export class AppService {
         signal.throwIfAborted()
         return randomUUID()
       }),
-      onModelCallStarted: (callId, phase, thinking) => this.serialize(async () => {
+      onModelCallStarted: (callId, phase, thinking, selection) => this.serialize(async () => {
         signal.throwIfAborted(); await this.assertMaterialRefs(context)
         if (terminal.has(run.status) || this.closing) fail('任务已结束，不能开始模型调用')
         if (!await this.memory.recallValid(context.memory!)) fail('记忆来源已失效，不能开始模型调用')
         if (run.phase === 'execution') this.organizationModelCalls.set(run.id, callId)
         if (isNativeBackend(run.backend)) { run.backend.externalInvocations++; await this.store.write([record('runs', run)]); return }
-        if (context.connection?.gateway) await this.observeActivity(run, async () => {
+        const selectedConnection = selection ? this.getConnection(selection.connectionId) : context.connection
+        if (selectedConnection?.gateway) await this.observeActivity(run, async () => {
           if (run.modelCalls?.some(call => call.callId === callId)) return
-          const source = context.connection!
-          const modelCalls = [...(run.modelCalls ?? []), { callId, connectionId: source.id, connectionRevision: source.revision ?? 1, phase, protocol: source.gateway!.protocol, selectedModelId: gatewaySelectedModel(source, context.agent.modelId), startedAt: now() }]
+          const source = selectedConnection!
+          const modelCalls = [...(run.modelCalls ?? []), { callId, connectionId: source.id, connectionRevision: source.revision ?? 1, phase, protocol: source.gateway!.protocol, selectedModelId: gatewaySelectedModel(source, selection?.modelId ?? context.agent.modelId), startedAt: now() }]
           await this.store.write([{ collection: 'runs', id: run.id, value: { ...run, modelCalls } }]); run.modelCalls = modelCalls; this.changed(run.conversationId)
         })
         await this.observeActivity(run, () => this.userProfile.start({ ...(runtimeProfile ? { callUnit: 'external-turn' as const } : {}), id: callId, runId: run.id, conversationId: run.conversationId, phase, startedAt: now(), budgetOwned: Boolean(run.origin || run.collaborationRequestId || context.workBudget?.sourceMessageId && run.workId), thinking }))
@@ -4361,9 +4472,51 @@ export class AppService {
       context.signal.throwIfAborted()
       return workingScene({ work, messages: sourceMessages, runs: previous, artifacts: files, executions })
     })
-    if (!runtimeProfile && run.phase === 'execution') context.continuity = this.contextContinuity(context, throughSequence)
+    context.memoryOwner = runtimeProfile ? 'native' : this.options.engine.memoryOwner
+    if (!runtimeProfile && run.phase === 'execution') {
+      context.continuity = this.contextContinuity(context, throughSequence)
+      if (this.options.engine.memoryOwner === 'mastra') context.memorySources = () => this.mastraMemorySources(context)
+    }
+    if (context.memoryOwner) { delete context.rememberMemory; delete context.recallMemory; delete context.externalMemory }
     this.activeEngineContexts.set(run.id, { context, definition: agent })
     return context
+    })
+  }
+  private mastraMemorySources(context: EngineContext) {
+    return this.serialize(async () => {
+      await this.assertExecutionAccess(context)
+      const agent = this.getAgent(context.agent.id), room = this.getConversation(context.conversation.id)
+      const isolated = room.kind !== 'direct' || !!room.channel || room.memoryScope === 'conversation' || !!room.memoryContextRef || !!context.materialRefs?.length
+      const resourceId = memoryResourceId(agent.id, isolated ? room.id : undefined)
+      const forgotten = await this.memory.forgottenMessageIds(agent.id), access = await this.employeeMemoryAccess(agent, room, context.work?.id)
+      const rooms = isolated ? [room] : [...this.conversations.values()].filter(item => item.agentIds.includes(agent.id) && item.kind === 'direct' && !item.channel && item.memoryScope !== 'conversation' && !item.memoryContextRef && !item.list?.hidden && !this.clearingConversations.has(item.id))
+      const threads: import('./adapters/mastra/conversation-memory').MemorySources['threads'] = []
+      for (const source of rooms) {
+        const rows = source.id === room.id ? context.messages : this.conversationMessages(source.id)
+        const messages: Message[] = []
+        for (const message of rows) {
+          if (forgotten.has(message.id) || message.status !== 'completed' || !message.content.trim()) continue
+          const refs = message.materialSources ?? this.snapshots.get(message.runId ?? '')?.materialRefs ?? []
+          if (!isolated && (refs.length || message.materialIds?.length || message.composerReferences?.length || message.channelReference)) continue
+          const sources = this.inheritedResources([message.id], [])
+          if (!access.sourceAllowed({ id: message.id, ownerAgentId: agent.id, scope: 'employee', content: message.content, origin: 'model', version: 1, createdAt: message.createdAt, updatedAt: message.createdAt, sourceMessageIds: [message.id], sourceResourceIds: sources, sourceConversationIds: [source.id] })) continue
+          messages.push(message)
+        }
+        threads.push({ conversationId: source.id, title: source.title, messages })
+      }
+      const legacy = (await this.memory.get({ agentId: agent.id, scope: 'employee' })).entries.filter(entry => memoryAllowed(entry, access) && (isolated ? entry.conversationId === room.id && memoryUseScope(entry) !== 'employee' : memoryUseScope(entry) === 'employee')).map(({ id, version, content, createdAt, sourceMessageIds, sourceConversationIds, sourceResourceIds }) => ({ id, version, content, createdAt, sourceMessageIds, sourceConversationIds, sourceResourceIds }))
+      const inputIds = [...new Set([...(context.memory?.recall?.inputMessageIds ?? []), ...threads.flatMap(thread => thread.messages.map(message => message.id))])]
+      if (context.memory?.recall) {
+        context.memory.recall.inputMessageIds = inputIds
+        context.memory.recall.versions = legacy.map(({ id, version }) => ({ id, version }))
+        const snapshot = this.snapshots.get(context.runId)!
+        snapshot.memoryRecall = clone({ namespace: context.memory.namespace, epoch: context.memory.epoch, invalidationEpoch: context.memory.invalidationEpoch, recall: context.memory.recall })
+        await this.store.write([record('snapshots', snapshot)])
+      }
+      context.signal.throwIfAborted()
+      const settings = await this.memorySettings(agent.id)
+      const embedding = settings.embedding ? { connection: this.getConnection(settings.embedding.connectionId), modelId: settings.embedding.modelId, apiKey: await this.apiKey(this.getConnection(settings.embedding.connectionId)) } : undefined
+      return { resourceId, threads, legacy, embedding }
     })
   }
   private contextContinuity(context: EngineContext, throughSequence: number): ContextPort {
@@ -4440,7 +4593,8 @@ export class AppService {
           await this.materials.validateRefs(snapshot.materialRefs ?? [], context.agent.id, context.conversation.id)
           completed.push({ runId, toolIds: previous.toolEvents.filter(tool => tool.status === 'completed').map(tool => tool.id) })
         }
-        return { ...view, resumedSteps: await this.contexts.resumedSteps(owner, completed, messages) }
+        context.messages = view.messages.map(message => enriched.get(message.id) ?? message)
+        return { ...view, messages: context.messages, resumedSteps: await this.contexts.resumedSteps(owner, completed, messages) }
       }),
       begin: (view, action) => this.serialize(async () => { await sources(); return this.contexts.begin(owner, context.runId, view, action) }),
       commit: (operation, summary, refs, metrics) => this.serialize(async () => {
@@ -5149,7 +5303,23 @@ export class AppService {
               await context.onUsage?.(cumulative)
             },
           }
-          const report = await this.invokeModel(run, reportContext, ctx => this.engineFor(ctx).report!(ctx, run.draft!))
+          let invalidReport: z.ZodError | undefined
+          const report = await this.invokeModel(run, reportContext, async ctx => {
+            try { return await this.engineFor(ctx).report!(ctx, run.draft!) }
+            catch (error) {
+              // Only the report adapter's schema rejection is recoverable here.
+              // Access checks, cancellation and other failures retain their existing path.
+              if (!(error instanceof z.ZodError) || !context.pendingWorkWait) throw error
+              invalidReport = error; return undefined
+            }
+          })
+          if (invalidReport) {
+            // Reject the report, not the already registered wait; never replay effects.
+            effective.throwIfAborted(); run.draft!.revisions++
+            await withhold(`重新汇报格式无效，已保留原依赖等待且未发布草稿或重放操作：${this.redact(this.errorMessage(invalidReport), key)}`)
+            return 'deferred'
+          }
+          if (!report) throw new Error('重新汇报未返回结果')
           effective.throwIfAborted(); run.draft.revisions++
           if (report.action === 'discard') { await withhold('员工根据新信息决定暂不公开旧任务结果；已执行操作不会重放'); return 'deferred' }
           if (!report.text?.trim()) throw new Error('重新汇报没有返回可发布正文')
@@ -5168,14 +5338,14 @@ export class AppService {
       throw new Error(this.redact(this.errorMessage(error), key))
     } finally {
       try { await Promise.all([this.dataSources.closeRun(run.id), this.webSearch.connections.closeRun(run.id)]) } finally {
-        try { await this.browserSessions.get(run.id)?.session.drain(); this.browserSessions.delete(run.id) } finally {
+        try { await this.browserPlugins.closeRun(run.id) } finally { try { await this.browserSessions.get(run.id)?.session.drain(); this.browserSessions.delete(run.id) } finally {
           releaseTask?.(); if (workDeadline) clearTimeout(workDeadline); signal.removeEventListener('abort', abort); this.runControllers.delete(run.id); this.organizationModelCalls.delete(run.id); await this.clearApprovals(run.id)
-        }
+        } }
       }
     }
   }
   private async updateMemories(turn: DiscussionTurn, participants: string[], signal: AbortSignal) {
-    if (this.closing) return
+    if (this.closing || this.options.engine.memoryOwner === 'mastra') return
     const workContinuation = this.messages.get(turn.triggerMessageId)?.inboxReply?.workId
     if ([...this.scheduler.decisions.values()].some(decision => decision.turnId === turn.id && decision.action === 'ask' && decision.responseKind === 'task')) return
     await Promise.all(participants.map(async agentId => {
@@ -5716,6 +5886,7 @@ export class AppService {
       await this.automations.beforeBackup()
       await this.desktopActivity.beforeBackup()
       if (this.scheduler.busy || this.runControllers.size || this.activeAdapters.size || this.externalTests.size || this.skills.busy || this.skillUpdates.busy || this.skillLibrary.busy || this.materialImports.size || this.materialUploads.busy || this.materials.busy || this.dataSources.busy || this.webSearch.connections.busy) fail('有任务、材料准备或资源管理操作正在执行或等待修复，请先停止或完成后备份')
+      await this.options.engine.closeMemory?.()
       await this.userMemoryProvider.close()
       await mkdir(destination, { recursive: true })
       if ((await readdir(destination)).length) fail('请选择空目录保存备份')
@@ -5763,9 +5934,10 @@ export class AppService {
         if (native) { nativeRuntimeHomes.add(join(this.dataPath, ...native.split('/'))); return false }
         return !legacyBrowserRuns.has(source) && !nativeRuntimeHomes.has(source)
       } })
+      await cp(join(this.dataPath, 'memory'), join(destination, 'memory'), { recursive: true }).catch(error => { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error })
       await writeFile(join(destination, 'backup.json'), JSON.stringify({ format: 'boai-agent-local-backup', version: 2, createdAt: now(), sourceDataPath: this.dataPath, credentialsIncluded: false, externalUserMemoryIncluded: false, automationRestorePolicy: 'paused', agentBehaviorRestorePolicy: 'paused', nativeAgentRestorePolicy: 'fresh-session', excludedNativeRuntimeHomes: [...nativeRuntimeHomes].map(directory => relative(this.dataPath, directory)), excludedLegacyBrowserRuns: [...legacyBrowserRuns].map(directory => relative(this.dataPath,directory)) }, null, 2))
       await writeFile(join(destination, 'data-version.json'), JSON.stringify({ schemaVersion: 2, restoredBackup: true, createdAt: now() }, null, 2))
-      await writeFile(join(destination, 'RESTORE.txt'), '退出 BoAI Agent 后，先备份目标应用现有数据，再将 boai.sqlite、data-version.json、skills、knowledge、workspaces、agents、external-workspaces、materials、appearance、activity-records 和 automation-mastra.sqlite（如存在）复制到目标应用 userData/v2 目录；不要与现有数据库混用。保留 v2 中的 data-version.json 版本标记后再启动新版应用。启动时会自动重定位受管资源、员工目录与产物路径。materials 仅包含已发送的聊天材料；草稿不恢复，也不重新读取外部来源。恢复后桌面活动记录、截图保存和键鼠监听默认关闭；定时任务、主动交流及情绪/成长/旅行自动行为默认暂停，员工提示词与疲劳设置保留；请在确认连接、授权和配置后逐项启用。渠道绑定与资料/检索连接也默认停用。旧备份没有 materials 或 appearance 时，请先移走目标目录对应旧文件夹，避免混入旧数据。API Key 与外部登录态未包含在备份中，需重新配置。Memmy 外部服务数据不包含在备份中，恢复后记忆提供方默认关闭；未确认的同步不会自动重发。Mastra bobo 会话投影在下次聊天时从仍有效的产品历史重建。本机 Agent 私有运行目录不包含在备份中，外部程序自己的历史也不由本备份恢复或删除；原会话引用只供核对，下一次发送消息时从获准聊天内容建立新会话，启动不会自动续行。未完成浏览器下载不包含在备份中；旧版浏览器运行目录缺少可信完成状态，原件保留在来源设备但不导出，具体目录见 backup.json。已发布的受管成果仍正常备份。\n')
+      await writeFile(join(destination, 'RESTORE.txt'), '退出 BoAI Agent 后，先备份目标应用现有数据，再将 boai.sqlite、data-version.json、skills、knowledge、workspaces、agents、external-workspaces、materials、appearance、activity-records、memory 和 automation-mastra.sqlite（如存在）复制到目标应用 userData/v2 目录；不要与现有数据库混用。保留 v2 中的 data-version.json 版本标记后再启动新版应用。启动时会自动重定位受管资源、员工目录与产物路径。materials 仅包含已发送的聊天材料；草稿不恢复，也不重新读取外部来源。恢复后桌面活动记录、截图保存和键鼠监听默认关闭；定时任务、主动交流及情绪/成长/旅行自动行为默认暂停，员工提示词与疲劳设置保留；请在确认连接、授权和配置后逐项启用。渠道绑定与资料/检索连接也默认停用。旧备份没有 materials 或 appearance 时，请先移走目标目录对应旧文件夹，避免混入旧数据。API Key 与外部登录态未包含在备份中，需重新配置。Memmy 外部服务数据不包含在备份中，恢复后记忆提供方默认关闭；未确认的同步不会自动重发。Mastra Memory 的 memory 目录包含 Working Memory、OM、来源遗忘屏障及向量索引，需一起恢复；启动后仍复核来源权限。本机 Agent 私有运行目录不包含在备份中，外部程序自己的历史也不由本备份恢复或删除；原会话引用只供核对，下一次发送消息时从获准聊天内容建立新会话，启动不会自动续行。未完成浏览器下载不包含在备份中；旧版浏览器运行目录缺少可信完成状态，原件保留在来源设备但不导出，具体目录见 backup.json。已发布的受管成果仍正常备份。\n')
     } finally {
       try { await this.automations.afterBackup() } finally { this.backingUp = false; this.desktopActivity.afterBackup(); for (const id of this.conversations.keys()) this.scheduleWork(id) }
       // A send acknowledged just before backup acquired the gate may have queued a job.
@@ -5785,10 +5957,12 @@ export class AppService {
       return true
     })
   }
+  browserPluginsChanged() { return this.browserPlugins.refresh() }
   close() { return this.closeTask ??= this.drain() }
   private async drain() {
     this.closing = true
     await this.desktopActivity.close()
+    await this.browserPlugins.close()
     await this.previews.close()
     await this.terminals.close()
     await this.agentBehaviors.close()
@@ -5817,6 +5991,7 @@ export class AppService {
     await this.options.browserHost?.request('disconnect',{})
     this.requestModelSecrets.clear()
     await this.application.drain()
+    await this.options.engine.closeMemory?.()
     await this.userMemoryProvider.close()
     await this.store.close()
   }

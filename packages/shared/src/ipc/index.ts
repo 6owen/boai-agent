@@ -1,4 +1,9 @@
 /*
+ * [OUTPUT]: 员工任务创建、分页、详情、状态和续做公共合同独立于定时计划。
+ * [OUTPUT]: 2026-10-30 记忆管理支持官方WM和版本化embedding配置。
+ * [OUTPUT]: 独立AgentBrowser/BrowserViewer插件接入；上游工具、启停与运行回收保持独立。
+ * [OUTPUT]: 2026-10-29 应用更新私有API与权威revision事件；通用Methods不包含安装更新。
+ * [OUTPUT]: 2026-10-29 workspace-files增加授权根及预览DTO，index/public-methods接可信桌面预览入口。
  * [OUTPUT]: testWebSearchServiceDraft显式测试当前DeepSeek密钥，不保存配置。
  * [OUTPUT]: 当前轮次纯文本补充固定run/turn，原消息保存接受、原生确认与未知投递。
  * [OUTPUT]: 定时任务列表偏好独立 CAS 读写及变更事件，不改执行配置。
@@ -82,6 +87,7 @@
  * [POS]: shared/ipc 的唯一方法与事件合同。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import type { EmployeeTaskMethods } from '../domain/employee-tasks'
 import type { ShortcutSnapshot, ShortcutUpdate, ShortcutReceipt } from '../shortcuts'
 import type { TeamCreationOperation, TeamGeneration, TeamDraft, TeamEditable, TeamDraftView, TeamRecovery } from '../domain/team-creation'
 import type { StartCoreConversationInput } from '../domain/core-agent'
@@ -106,6 +112,7 @@ export const CLIPBOARD_MATERIAL_FILE_FORMATS = ['Files', 'text/uri-list', 'x-spe
 export type MaterialFileSourceInput = { path: string } | { name: string; bytes: Uint8Array }
 
 export type AppEvent =
+  | { type: 'app:update'; state: import('./app-updates').AppUpdateState }
   | { type: 'desktop:lifecycle'; state: import('./desktop').DesktopLifecycle }
   | { type: 'workspace:show'; employeeId: string; conversationId: string; view: 'terminal' | 'preview' }
   | { type: 'gateway-imports:changed' }
@@ -132,10 +139,11 @@ export type AppEvent =
   | { type: 'message'; message: Message }
   | { type: 'runtime-error'; error: string }
 
-export interface Methods {
+export interface Methods extends EmployeeTaskMethods {
   closeUserWorkspace: { input: { employeeId: string; conversationId?: string } | { conversationId: string }; output: void }
   getWorkspaceRoot: { input: import('./workspace-files').WorkspaceFileScope; output: string }
   validateWorkspaceScope: { input: import('./workspace-files').WorkspaceFileScope; output: void }
+  previewWorkspaceFile: { input: { scope: import('./workspace-files').FileExplorerScope; relativePath: string }; output: import('./workspace-files').WorkspaceFilePreview }
   listWorkspaceFiles: { input: import('./workspace-files').WorkspaceFilesQuery; output: import('./workspace-files').WorkspaceDirectoryPage }
   listWorkspaceApplications: { input: { refresh?: boolean }; output: import('./workspace-files').WorkspaceApplication[] }
   openWorkspacePath: { input: import('./workspace-files').WorkspaceOpenInput; output: void }
@@ -144,6 +152,8 @@ export interface Methods {
   getApplicationCatalog: { input: import('../domain/application-protocol').ApplicationCatalogQuery; output: import('../domain/application-protocol').ApplicationCatalog }
   executeApplicationOperation: { input: import('../domain/application-protocol').ApplicationRequest; output: import('../domain/application-protocol').ApplicationResult }
   getApplicationReceipt: { input: import('../domain/application-protocol').ApplicationReceiptQuery; output: import('../domain/application-protocol').ApplicationResult | null }
+  getBrowserPluginSettings: { input: { provider: import('../plugins/browser-tools').BrowserPluginProvider }; output: import('../plugins/browser-tools').BrowserPluginSettings }
+  saveBrowserPluginSettings: { input: import('../plugins/browser-tools').SaveBrowserPluginSettings; output: import('../plugins/browser-tools').BrowserPluginSettings }
   getWebSearchSettings: { input: undefined; output: import('../domain/web-search').WebSearchSettings }
   saveWebSearchService: { input: import('../domain/web-search').SaveWebSearchService; output: import('../domain/web-search').WebSearchServiceConfig }
   saveWebSearchDefault: { input: import('../domain/web-search').SaveWebSearchDefault; output: import('../domain/web-search').WebSearchSettings }
@@ -399,6 +409,7 @@ export interface Methods {
   readAgentFile: { input: { agentId: string; name: string; conversationId?: string }; output: AgentFileContent }
   saveAgentFile: { input: { agentId: string; name: import('../domain/agent-profile').AgentSourceName; content: string; expectedHash: string; expectedConfigVersion: number }; output: AgentHome }
   regenerateAgentViews: { input: { agentId: string; conversationId?: string }; output: AgentHome }
+  configureMemory: { input: { agentId: string; expectedRevision: number; embedding: { connectionId: string; modelId: string } | null }; output: import('../domain/memory').EmployeeMemorySettings }
   getMemory: { input: MemoryQuery; output: MemoryView }
   saveMemory: { input: MemoryInput; output: MemoryView }
   deleteMemory: { input: MemoryQuery & { id: string; expectedEpoch: number; requestId?: string }; output: MemoryView }
@@ -411,6 +422,7 @@ export interface Methods {
 }
 export type Method = keyof Methods
 export interface DesktopApi {
+  updates?: import('./app-updates').AppUpdatesApi
   /** Trusted main-window-only voice bridge; absent from employee and external RPC. */
   voice?: import('../plugins/voice-input').VoiceApi
   getDesktopLifecycle?(): Promise<import('./desktop').DesktopLifecycle>

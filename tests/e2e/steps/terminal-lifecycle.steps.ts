@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-29 文件浏览器入口/预览/启停与目录撤权回归，原终端生命周期断言保持。
  * [OUTPUT]: 用户终端真实输出/满高、十次切换保留屏幕；UI关闭后核实际shell PID消失和owner账本排空，不假设已关闭项仍在活跃列表。
  * [INPUT]: 原 Desktop、owner 预览协议、真实 PTY/native guard 和网页预览侧栏。
  * [OUTPUT]: 两员工服务进程、隐藏保活/定向退出、七轮 UI 启停与原资源门槛、真正退出/重启零重放。
@@ -137,18 +138,23 @@ Given('我打开两名员工群聊的工作区开始页', async ({ runtime, term
   await runtime.start()
   const page = runtime.page
   await expect(page.locator('.app-shell')).toBeVisible()
-  state.workspace = await page.evaluate(async () => {
+  const project = join(runtime.root, 'authorized-workspace-project')
+  await mkdir(project, { recursive: true })
+  state.workspace = await page.evaluate(async project => {
+    const agent = (await window.boai.request('snapshot', undefined)).agents.find(agent => agent.id === 'researcher')!
+    const { configVersion, directoryRevision, workspaceRef: _w, memoryNamespace: _m, policyVersion: _p, creationSource: _c, systemRole: _s, ...input } = agent
+    await window.boai.request('saveAgent', { ...input, expectedConfigVersion: configVersion, expectedDirectoryRevision: directoryRevision, directoryGrants: [{ path: project, access: 'read-only' }] })
     const room = await window.boai.request('createConversation', { title: '工作区浏览验收群', kind: 'group', agentIds: ['researcher', 'writer'] })
     const snapshot = await window.boai.request('snapshot', undefined)
     return { scope: { employeeId: 'researcher', conversationId: room.id }, employeeName: snapshot.agents.find(agent => agent.id === 'researcher')!.name }
-  })
+  }, project)
   await page.locator('.conversation-item').filter({ hasText: '工作区浏览验收群' }).click()
   await page.getByRole('button', { name: '打开工作区', exact: true }).click()
   await expect(page.getByRole('region', { name: '工作区开始', exact: true })).toBeVisible()
 })
 Then('群工作区要求选择员工且原会话文件入口保留', async ({ runtime }) => {
   const page = runtime.page, start = page.getByRole('region', { name: '工作区开始', exact: true })
-  await expect(start.getByRole('button', { name: /^工作区文件/ })).toBeDisabled()
+  await expect(start.getByRole('button', { name: /^授权目录/ })).toBeDisabled()
   await expect(start.getByRole('button', { name: /^新建终端/ })).toBeDisabled()
   await page.getByRole('button', { name: '会话操作', exact: true }).click()
   await page.getByRole('menuitem', { name: '文件', exact: true }).click()
@@ -162,15 +168,19 @@ When('我浏览员工工作区目录并新建用户终端', async ({ runtime, te
   expect(rel && !rel.startsWith('..') && !isAbsolute(rel), '文件夹具只能写本场隔离工作区').toBeTruthy()
   await mkdir(join(target, 'workspace-ui-fixture'), { recursive: true })
   await writeFile(join(target, 'workspace-ui-fixture', 'marker.txt'), 'workspace fixture')
+  const project = join(runtime.root, 'authorized-workspace-project')
+  await mkdir(join(project, 'workspace-ui-fixture'), { recursive: true })
+  await writeFile(join(project, 'workspace-ui-fixture', 'marker.txt'), 'authorized fixture')
   await page.getByRole('combobox', { name: '工作区员工', exact: true }).click()
   await page.getByRole('option', { name: current.employeeName, exact: true }).click()
-  await page.getByRole('region', { name: '工作区开始', exact: true }).getByRole('button', { name: /^工作区文件/ }).click()
-  const files = page.getByRole('region', { name: '工作区文件', exact: true })
+  await page.getByRole('region', { name: '工作区开始', exact: true }).getByRole('button', { name: /^授权目录/ }).click()
+  const files = page.getByRole('region', { name: '授权目录文件', exact: true })
   await expect(files).toBeVisible()
-  await files.getByRole('button', { name: 'workspace-ui-fixture', exact: true }).click()
-  await expect(files.getByRole('button', { name: 'marker.txt', exact: true })).toBeVisible()
-  await expect(files.locator('[title]').filter({ hasText: join(target, 'workspace-ui-fixture') })).toBeVisible()
-  await files.getByRole('button', { name: '新建工作区终端', exact: true }).click()
+  await files.getByRole('treeitem', { name: 'workspace-ui-fixture', exact: true }).click()
+  await expect(files.getByRole('treeitem', { name: 'marker.txt', exact: true })).toBeVisible()
+  await expect(files.locator('.boai-explorer-path')).toContainText('authorized-workspace-project')
+  await page.getByRole('button', { name: '返回开始', exact: true }).click()
+  await page.getByRole('region', { name: '工作区开始', exact: true }).getByRole('button', { name: /^新建终端/ }).click()
   await expect(page.getByLabel('终端屏幕', { exact: true })).toHaveAttribute('aria-busy', 'false')
   const listed = await page.evaluate(scope => window.boai.request('workspaceTerminal', { action: 'list', scope }), current.scope)
   expect(listed.kind).toBe('listed')
@@ -192,8 +202,8 @@ Then('切换文件标签后原终端仍运行且重开可读原输出', async ({
   if (!screen) throw new Error('终端屏幕未挂载')
   try {
     for (let index = 0; index < 10; index++) {
-      await tabs.getByRole('tab', { name: `${current.employeeName} · 文件`, exact: true }).click()
-      await expect(page.getByRole('region', { name: '工作区文件', exact: true }).getByRole('button', { name: 'marker.txt', exact: true })).toBeVisible()
+      await tabs.getByRole('tab', { name: `${current.employeeName} · 授权目录`, exact: true }).click()
+      await expect(page.getByRole('region', { name: '授权目录文件', exact: true }).getByRole('treeitem', { name: 'marker.txt', exact: true })).toBeVisible()
       expect(await screen.evaluate(node => node.isConnected), '隐藏不能销毁终端屏幕').toBe(true)
       await tabs.getByRole('tab', { name: current.terminalTitle!, exact: true }).click()
       await expect(page.getByLabel('终端屏幕', { exact: true })).toHaveAttribute('aria-busy', 'false')

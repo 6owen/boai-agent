@@ -1,4 +1,9 @@
 /*
+ * [OUTPUT]: 主聊天计划仅投影本次独立任务上下文，原计划授权与队列实际退出屏障保持。
+ * [OUTPUT]: 任务归属/版本与执行认领同事务，等待/失败/已交付定时任务状态跟随最新执行。
+ * [OUTPUT]: 新记录不再标记任务独占显示，聊天投递与持久FIFO身份保持。
+ * [OUTPUT]: 执行记录保留普通员工任务用途，计划删除后仍可按来源分页。
+ * [OUTPUT]: 忙碌任务持久排队、按员工FIFO认领；仅未投递队列可重启恢复，已开始执行不重放。
  * [OUTPUT]: 取消自动化固定执行时限；旧时间预算取消仅由本人显式继续恢复，原occurrence、预算计账、容量与人工停止门禁保持。
  * [OUTPUT]: 已删除历史保留原触发去重，公开视图排除墓碑；待清理来源不能继续执行。
  * [OUTPUT]: 开始日期和频率变化推进日程代际，过期原生触发不能绕过新规则。
@@ -12,6 +17,7 @@
  * [POS]: 自动化产品账本；内存与 Mastra 日程均为投影，不是认领权威。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { linkEmployeeTask, syncEmployeeTask } from './employee-task-records'
 import { isNativeBackend } from '@boai/shared/domain/backends'
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
@@ -23,7 +29,7 @@ import { compareMonitorObservation, monitorPolicyFingerprint, monitorPolicySchem
 import { inferAutomationOwner } from './automation-plan'
 import { automationQuestionStates, belongsToOccurrence, unansweredAutomationTurns } from './automation-results'
 import { notificationPolicy, queueAutomationNotice, recoverAutomationNotices } from './automation-notifications'
-import { activeOccurrence, AUTOMATION_MISFIRE_MS, automationCron, calendarSlot, historicalSlotAlias, manualIdentity, matchesSchedule, MAX_ACTIVE_AUTOMATIONS, nativeAlias, pendingOccurrence, scheduleIdentity, scheduleDays } from './schedule-policy'
+import { activeOccurrence, AUTOMATION_MISFIRE_MS, automationCron, calendarSlot, historicalSlotAlias, manualIdentity, matchesSchedule, MAX_ACTIVE_AUTOMATIONS, nativeAlias, pendingOccurrence, queuedOrder, sharesTaskExecutor, scheduleIdentity, scheduleDays } from './schedule-policy'
 
 const row = <T extends { id: string }>(collection: string, value: T): StoredRecord => ({ collection, id: value.id, value })
 const timestamp = () => new Date().toISOString()
@@ -56,9 +62,9 @@ export async function activateAutomationExecution(tx: RecordTransaction, origin:
   const o = await assertAutomationExecution(tx, origin, conversationId)
   if (activeOccurrence.has(o.status)) return o
   const active = (await tx.list<AutomationOccurrence>('automationOccurrences')).filter(item => item.id !== o.id && activeOccurrence.has(item.status))
-  if (active.length >= MAX_ACTIVE_AUTOMATIONS || active.some(item => item.conversationId === conversationId)) throw new WorkUnavailableError('等待自动化执行容量')
+  if (active.length >= MAX_ACTIVE_AUTOMATIONS || active.some(item => sharesTaskExecutor(item, o))) throw new WorkUnavailableError('等待自动化执行容量')
   o.status = 'running'; o.stateVersion++; delete o.finishedAt
-  await tx.put(row('automationOccurrences', o)); return o
+  await syncEmployeeTask(tx, o); await tx.put(row('automationOccurrences', o)); return o
 }
 /** Explicit safe retry shares the existing Work budget; stop/restart requires a separate reviewed request. */
 export async function resumeAutomationExecution(tx: RecordTransaction, origin: AutomationOrigin, conversationId: string, continuedByUser = false) {
@@ -70,11 +76,11 @@ export async function resumeAutomationExecution(tx: RecordTransaction, origin: A
   if (!budget || budget.accounting !== 'model-calls-v1') throw new Error('旧自动化没有可信的原始调用预算，请明确发起新一轮')
   if (!o.budgetScope) checkWorkBudget(budget)
   const others = (await tx.list<AutomationOccurrence>('automationOccurrences')).filter(item => item.id !== o.id && pendingOccurrence.has(item.status))
-  if (others.some(item => item.automationId === o.automationId || item.conversationId === conversationId && activeOccurrence.has(item.status)) || others.filter(item => activeOccurrence.has(item.status)).length >= MAX_ACTIVE_AUTOMATIONS) throw new Error('其他自动化正在执行或等待，不能继续本次运行')
+  if (others.some(item => activeOccurrence.has(item.status) && sharesTaskExecutor(item, o)) || others.filter(item => activeOccurrence.has(item.status)).length >= MAX_ACTIVE_AUTOMATIONS) throw new Error('其他自动化正在执行或等待，不能继续本次运行')
   if (elapsedLimit) { delete o.cancellationRequestedAt; delete o.cancellationCause }
   o.status = 'running'; o.stateVersion++; o.deliveryStatus = o.resultEvidence?.length ? 'partial' : 'pending'
   delete o.finishedAt; delete o.reason
-  await tx.put(row('automationOccurrences', o)); return o
+  await syncEmployeeTask(tx, o); await tx.put(row('automationOccurrences', o)); return o
 }
 
 export class AutomationRepository {
@@ -101,7 +107,7 @@ export class AutomationRepository {
       for (const old of await tx.list<AutomationOccurrence>('automationOccurrences')) {
         if (old.schemaVersion !== undefined && old.schemaVersion !== 1) throw new Error('不能读取未知版本的自动化记录')
         const o: AutomationOccurrence = old.schemaVersion ? old : { ...old, schemaVersion: 1, stateVersion: 1, deliveryStatus: 'unknown', usageIncomplete: true }
-        await tx.put(row('automationOccurrences', o))
+        await syncEmployeeTask(tx, o); await tx.put(row('automationOccurrences', o))
         if (o.manualRequestId) await this.alias(tx, manualIdentity(o.automationId, o.manualRequestId), o.id)
         if (o.nativeRunId) await this.alias(tx, nativeAlias(o.nativeRunId), o.id)
         const d = migrated.get(o.automationId), time = Date.parse(o.scheduledFor)
@@ -156,7 +162,7 @@ export class AutomationRepository {
       turn.replyToTurnIds = [answered.id]
       for (const record of records) await tx.put(record)
       next.waitingTurnIds = unansweredAutomationTurns(o, await tx.list<DiscussionTurn>('turns'), automationQuestionStates(await tx.list<Message>('messages'), await tx.list<WorkItem>('workItems'), await tx.list<DecisionRecord>('decisions'), await tx.list<AgentRun>('runs'))).map(turn => turn.id)
-      await tx.put(row('automationOccurrences', next))
+      await syncEmployeeTask(tx, next); await tx.put(row('automationOccurrences', next))
       return next
     })
   }
@@ -261,7 +267,7 @@ export class AutomationRepository {
     })
   }
 
-  claim(trigger: AutomationTrigger, validate: (definition: AutomationDefinition) => string | { reason: string; attention: 'authorization' } | undefined | Promise<string | { reason: string; attention: 'authorization' } | undefined>, prepareConversation?: (definition: AutomationDefinition, occurrence: AutomationOccurrence) => Promise<StoredRecord[]>) {
+  claim(trigger: AutomationTrigger, validate: (definition: AutomationDefinition) => string | { reason: string; attention: 'authorization' } | undefined | Promise<string | { reason: string; attention: 'authorization' } | undefined>, prepareConversation?: (definition: AutomationDefinition, occurrence: AutomationOccurrence) => Promise<StoredRecord[]>, busy: (conversationId: string, employeeIds?: string[]) => boolean = () => false, executionDefinition?: (definition: AutomationDefinition) => Promise<AutomationDefinition>) {
     if (!trigger.key || trigger.key.length > 300) throw new Error('无效触发身份')
     if (!Number.isSafeInteger(trigger.scheduledAt) || !Number.isFinite(new Date(trigger.scheduledAt).getTime())) throw new Error('无法验证调度触发时间')
     return this.store.transaction(async tx => {
@@ -277,7 +283,7 @@ export class AutomationRepository {
         return { created: false, occurrence: existing }
       }
       const now = timestamp()
-      const o: AutomationOccurrence = { schemaVersion: 1, id, stateVersion: 1, automationId: d.id, revision: d.revision, executionRevision: d.executionRevision, scheduleGeneration: generation, ...(slot ? { logicalSlot: slot } : {}), name: d.name, source: trigger.source, taskKind: d.taskKind ?? 'report', scheduledFor: new Date(trigger.scheduledAt).toISOString(), admittedAt: now, startedAt: now, status: 'admitted', deliveryStatus: 'pending', conversationId: d.conversationPolicy === 'new-conversation' ? randomUUID() : d.conversationId!, runIds: [], resultMessageIds: [], usageIncomplete: true, ...(scheduled ? { nativeRunId: trigger.key } : { manualRequestId: trigger.key }) }
+      const o: AutomationOccurrence = { schemaVersion: 1, ...(d.purpose ? { purpose: d.purpose } : {}), id, stateVersion: 1, automationId: d.id, revision: d.revision, executionRevision: d.executionRevision, scheduleGeneration: generation, ...(slot ? { logicalSlot: slot } : {}), name: d.name, source: trigger.source, taskKind: d.taskKind ?? 'report', scheduledFor: new Date(trigger.scheduledAt).toISOString(), admittedAt: now, startedAt: now, status: 'admitted', deliveryStatus: 'pending', conversationId: d.conversationPolicy === 'new-conversation' ? randomUUID() : d.conversationId!, runIds: [], resultMessageIds: [], usageIncomplete: true, ...(scheduled ? { nativeRunId: trigger.key } : { manualRequestId: trigger.key }) }
       if (d.owner) o.plan = structuredClone({ owner: d.owner, employeeIds: d.employeeIds ?? (await tx.get<Conversation>('conversations', d.conversationId!))?.agentIds ?? [], collaboration: d.collaboration })
       const stale = scheduled && (trigger.scheduleGeneration !== undefined ? trigger.scheduleGeneration !== d.scheduleGeneration || trigger.executionRevision !== d.executionRevision : trigger.revision !== d.revision && trigger.revision !== d.legacyRevision)
       let reason = d.deletedAt ? '任务已删除' : stale ? '旧版本触发已失效' : scheduled && !d.enabled ? '任务已暂停' : undefined
@@ -288,38 +294,69 @@ export class AutomationRepository {
           : !matchesSchedule(d, trigger.scheduledAt) ? '日历规则不匹配；夏令时跳过不存在的时间' : undefined
       }
       if (!reason) { const block = await validate(d); reason = typeof block === 'string' ? block : block?.reason; if (block && typeof block !== 'string') o.attentionReason = block.attention }
-      const running = (await tx.list<AutomationOccurrence>('automationOccurrences')).filter(item => pendingOccurrence.has(item.status))
+      const execution = !reason && executionDefinition ? await executionDefinition(d) : d
+      if (execution !== d) o.conversationId = execution.conversationPolicy === 'new-conversation' ? randomUUID() : execution.conversationId!
+      const priorOccurrences = await tx.list<AutomationOccurrence>('automationOccurrences')
+      const running = priorOccurrences.filter(item => pendingOccurrence.has(item.status))
       if (!reason && running.some(item => item.automationId === d.id)) reason = '并发或等待上次处理，本次已跳过'
-      if (!reason && running.some(item => item.conversationId === o.conversationId && activeOccurrence.has(item.status))) reason = '并发或会话忙碌，本次已跳过'
-      if (!reason && running.filter(item => activeOccurrence.has(item.status)).length >= MAX_ACTIVE_AUTOMATIONS) reason = '并发容量已满，本次已跳过'
+      o.queueOrder = 1 + Math.max(0, ...priorOccurrences.map(item => item.queueOrder ?? 0))
+      if (!reason && (busy(o.conversationId, o.plan?.employeeIds) || running.some(item => (activeOccurrence.has(item.status) || item.status === 'queued') && sharesTaskExecutor(item, o)) || running.filter(item => activeOccurrence.has(item.status)).length >= MAX_ACTIVE_AUTOMATIONS)) o.status = 'queued'
       if (reason) { o.status = 'skipped'; o.deliveryStatus = 'unknown'; o.reason = reason; o.finishedAt = now }
-      if (!reason && d.conversationPolicy === 'new-conversation') {
+      if (!reason && execution.conversationPolicy === 'new-conversation') {
         let records: StoredRecord[] = []
         try {
           if (!prepareConversation) throw new Error('独立任务聊天初始化不可用')
-          records = await prepareConversation(d, o)
+          records = await prepareConversation(execution, o)
           const conversation = records.find(record => record.collection === 'conversations' && record.id === o.conversationId)
           if (!conversation) throw new Error('初始化未返回对应任务聊天')
         } catch (error) { reason = `任务聊天初始化失败：${String(error)}`; o.status = 'failed'; o.deliveryStatus = 'unknown'; o.reason = reason; o.finishedAt = now }
         // Database faults still roll back the whole admission, never commit half an initialized chat.
         if (!reason) for (const record of records) await tx.put(record)
       }
-      await tx.put(row('automationOccurrences', o))
+      if (!reason) await linkEmployeeTask(tx, d, o)
+      await syncEmployeeTask(tx, o); await tx.put(row('automationOccurrences', o))
       await this.alias(tx, id, o.id)
       if (scheduled) await this.alias(tx, nativeAlias(trigger.key), o.id)
       let dispatch: AutomationDispatch | undefined
       if (!reason) {
-        dispatch = { schemaVersion: 1, id, requestId: `automation-${id}`, status: 'pending', definition: structuredClone(d), origin: { kind: 'automation', automationId: d.id, occurrenceId: id, name: d.name, authorizedFingerprint: d.authorizedFingerprint } }
+        dispatch = { schemaVersion: 1, id, requestId: `automation-${id}`, status: 'pending', definition: structuredClone(execution), ...(execution !== d ? { sourceAuthorizedFingerprint: d.authorizedFingerprint } : {}), origin: { kind: 'automation', automationId: d.id, occurrenceId: id, name: d.name, authorizedFingerprint: execution.authorizedFingerprint } }
         const conversation = await tx.get<Conversation>('conversations', o.conversationId)
         const members = await Promise.all((conversation?.agentIds ?? []).map(id => tx.get<DigitalAgent>('agents', id)))
         if (members.some(member => isNativeBackend(member?.executionBackend))) o.budgetScope = members.every(member => isNativeBackend(member?.executionBackend)) ? 'native' : 'mixed'
         const budget = newWorkBudget(`automation-budget-${id}`, { origin: dispatch.origin!, conversationId: o.conversationId })
         o.budgetId = budget.id; o.budget = { maxModelCalls: budget.maxModelCalls, maxRuns: budget.maxRuns, maxOutputTokens: budget.maxOutputTokens, runs: budget.runs }
-        await tx.put(row('workBudgets', budget)); await tx.put(row('automationOccurrences', o))
+        await tx.put(row('workBudgets', budget)); await syncEmployeeTask(tx, o); await tx.put(row('automationOccurrences', o))
         await tx.put(row('automationDispatches', dispatch))
       }
       await queueAutomationNotice(tx, d, o)
       return { created: true, occurrence: o, dispatch }
+    })
+  }
+
+  /** Only never-dispatched work can be acquired after waiting or a normal restart. */
+  startQueued(id: string, validate: (definition: AutomationDefinition) => Promise<void>, busy: (id: string, employeeIds?: string[]) => boolean) {
+    return this.store.transaction(async tx => {
+      const o = await tx.get<AutomationOccurrence>('automationOccurrences', id)
+      const intent = await tx.get<AutomationDispatch>('automationDispatches', id)
+      if (!o || o.status !== 'queued' || o.cancellationRequestedAt || intent?.status !== 'pending' || !intent.definition) return
+      const d = await tx.get<AutomationDefinition>('automations', o.automationId)
+      try {
+        if (!d || d.deletedAt || d.executionRevision !== intent.definition.executionRevision || d.authorizedFingerprint !== (intent.sourceAuthorizedFingerprint ?? intent.definition.authorizedFingerprint)) throw new Error('排队期间任务配置已变化，请核对后重新发起')
+        if (intent.sourceAuthorizedFingerprint) await validate(d)
+        await validate(intent.definition)
+      } catch (error) {
+        o.status = 'needs_review'; o.reason = String(error); o.deliveryStatus = 'unknown'; o.finishedAt = timestamp(); o.stateVersion++
+        intent.status = 'failed'
+        await syncEmployeeTask(tx, o); await tx.put(row('automationOccurrences', o)); await tx.put(row('automationDispatches', intent)); await queueAutomationNotice(tx, d, o)
+        return { occurrence: o }
+      }
+      const others = (await tx.list<AutomationOccurrence>('automationOccurrences')).filter(item => item.id !== id)
+      const active = others.filter(item => activeOccurrence.has(item.status))
+      if (o.taskId && others.some(item => item.taskId === o.taskId && ['waiting_user', 'waiting_work'].includes(item.status))) return
+      if (busy(o.conversationId, o.plan?.employeeIds) || active.length >= MAX_ACTIVE_AUTOMATIONS || active.some(item => sharesTaskExecutor(item, o)) || others.some(item => item.status === 'queued' && queuedOrder(item, o) < 0 && sharesTaskExecutor(item, o))) return
+      o.status = 'admitted'; o.startedAt = timestamp(); o.stateVersion++
+      await syncEmployeeTask(tx, o); await tx.put(row('automationOccurrences', o))
+      return { occurrence: o, dispatch: intent }
     })
   }
 
@@ -328,12 +365,12 @@ export class AutomationRepository {
       const o = await tx.get<AutomationOccurrence>('automationOccurrences', id), intent = await tx.get<AutomationDispatch>('automationDispatches', id)
       if (!o || o.status !== 'admitted' || intent?.status !== 'pending' || !intent.definition) throw new Error('本次投递已消费或中断，不会重新启动')
       const d = await tx.get<AutomationDefinition>('automations', o.automationId)
-      if (!d || d.deletedAt || d.executionRevision !== intent.definition.executionRevision || d.authorizedFingerprint !== intent.definition.authorizedFingerprint) throw new Error('自动化执行配置已变化，请重新发起')
+      if (!d || d.deletedAt || d.executionRevision !== intent.definition.executionRevision || d.authorizedFingerprint !== (intent.sourceAuthorizedFingerprint ?? intent.definition.authorizedFingerprint)) throw new Error('自动化执行配置已变化，请重新发起')
       if (message.origin?.occurrenceId !== id || message.conversationId !== o.conversationId || !message.turnId) throw new Error('自动化消息缺少匹配的来源或轮次')
       for (const value of records) await tx.put(value)
       o.messageId = message.id; o.turnId = message.turnId; o.status = 'running'; o.startedAt = timestamp(); o.stateVersion++
       intent.status = 'started'; intent.messageId = message.id; intent.turnId = message.turnId
-      await tx.put(row('automationOccurrences', o)); await tx.put(row('automationDispatches', intent)); return o
+      await syncEmployeeTask(tx, o); await tx.put(row('automationOccurrences', o)); await tx.put(row('automationDispatches', intent)); return o
     })
   }
 
@@ -347,7 +384,7 @@ export class AutomationRepository {
       if (!budget) throw new Error('监控缺少原始预算')
       checkWorkBudget(budget)
       o.status = 'running'; o.stateVersion++; o.taskKind = 'monitor'; intent.status = 'started'
-      await tx.put(row('automationOccurrences', o)); await tx.put(row('automationDispatches', intent)); return o
+      await syncEmployeeTask(tx, o); await tx.put(row('automationOccurrences', o)); await tx.put(row('automationDispatches', intent)); return o
     })
   }
 
@@ -369,7 +406,7 @@ export class AutomationRepository {
       o.usage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 }
       intent.status = result.outcome === 'data_error' ? 'failed' : 'completed'
       if (checkpoint) await tx.put(row('automationMonitorCheckpoints', checkpoint))
-      await tx.put(row('automationOccurrences', o)); await tx.put(row('automationDispatches', intent))
+      await syncEmployeeTask(tx, o); await tx.put(row('automationOccurrences', o)); await tx.put(row('automationDispatches', intent))
       await queueAutomationNotice(tx, d, o)
       return o
     })
@@ -380,10 +417,10 @@ export class AutomationRepository {
       const o = await tx.get<AutomationOccurrence>('automationOccurrences', id)
       if (!o || o.stateVersion !== stateVersion) return undefined
       const next = { ...o, ...patch, id: o.id, stateVersion: o.stateVersion + 1 }
-      await tx.put(row('automationOccurrences', next))
+      await syncEmployeeTask(tx, next); await tx.put(row('automationOccurrences', next))
       await queueAutomationNotice(tx, await tx.get<AutomationDefinition>('automations', o.automationId), next)
       const intent = await tx.get<AutomationDispatch>('automationDispatches', id)
-      if (intent?.status === 'pending' && !activeOccurrence.has(next.status)) { intent.status = 'failed'; await tx.put(row('automationDispatches', intent)) }
+      if (intent?.status === 'pending' && next.status !== 'queued' && !activeOccurrence.has(next.status)) { intent.status = 'failed'; await tx.put(row('automationDispatches', intent)) }
       return next
     })
   }
@@ -395,8 +432,8 @@ export class AutomationRepository {
       if (existing) return existing
       const d = await tx.get<AutomationDefinition>('automations', automationId)
       if (!d) return undefined
-      const o: AutomationOccurrence = { schemaVersion: 1, id: nativeAlias(runId), stateVersion: 1, automationId, name: d.name, source: 'schedule', scheduledFor: new Date(time).toISOString(), startedAt: timestamp(), status: 'needs_review', deliveryStatus: 'unknown', usageIncomplete: true, conversationId: d.conversationId ?? '', runIds: [], resultMessageIds: [], nativeRunId: runId, ...(triggerId ? { nativeTriggerId: triggerId } : {}), reason: '发现原生触发但没有产品记录；执行版本未知，不会自动重放' }
-      await tx.put(row('automationOccurrences', o)); await this.alias(tx, nativeAlias(runId), o.id)
+      const o: AutomationOccurrence = { schemaVersion: 1, ...(d.purpose ? { purpose: d.purpose } : {}), id: nativeAlias(runId), stateVersion: 1, automationId, name: d.name, source: 'schedule', scheduledFor: new Date(time).toISOString(), startedAt: timestamp(), status: 'needs_review', deliveryStatus: 'unknown', usageIncomplete: true, conversationId: d.conversationId ?? '', runIds: [], resultMessageIds: [], nativeRunId: runId, ...(triggerId ? { nativeTriggerId: triggerId } : {}), reason: '发现原生触发但没有产品记录；执行版本未知，不会自动重放' }
+      await syncEmployeeTask(tx, o); await tx.put(row('automationOccurrences', o)); await this.alias(tx, nativeAlias(runId), o.id)
       await queueAutomationNotice(tx, d, o)
       await this.alias(tx, historicalSlotAlias(d.id, d.timezone, calendarSlot(time, d.timezone)), o.id)
       return o
@@ -409,12 +446,14 @@ export class AutomationRepository {
       const restored = !!meta && (meta.root !== this.dataPath || meta.restorePending)
       await recoverAutomationNotices(tx, !!restored)
       for (const o of await tx.list<AutomationOccurrence>('automationOccurrences')) if (pendingOccurrence.has(o.status)) {
+        const dispatch = await tx.get<AutomationDispatch>('automationDispatches', o.id)
+        if (!restored && o.status === 'queued' && dispatch?.status === 'pending') continue
         o.reason = o.status === 'admitted' ? '产品已受理但未完成投递；需明确继续，不会自动重发任务' : '应用重启；原任务不会自动重放'
         o.status = o.status === 'admitted' ? 'needs_review' : 'interrupted'; o.deliveryStatus = 'unknown'; o.finishedAt = timestamp(); o.stateVersion++
-        await tx.put(row('automationOccurrences', o))
+        await syncEmployeeTask(tx, o); await tx.put(row('automationOccurrences', o))
         if (!restored) await queueAutomationNotice(tx, await tx.get<AutomationDefinition>('automations', o.automationId), o)
       }
-      for (const intent of await tx.list<AutomationDispatch>('automationDispatches')) if (intent.status === 'pending') { intent.status = 'interrupted'; await tx.put(row('automationDispatches', intent)) }
+      for (const intent of await tx.list<AutomationDispatch>('automationDispatches')) if (intent.status === 'pending' && (await tx.get<AutomationOccurrence>('automationOccurrences', intent.id))?.status !== 'queued') { intent.status = 'interrupted'; await tx.put(row('automationDispatches', intent)) }
       if (restored) for (const checkpoint of await tx.list<AutomationMonitorCheckpoint>('automationMonitorCheckpoints')) await tx.remove('automationMonitorCheckpoints', checkpoint.id)
       if (restored) for (const d of await tx.list<AutomationDefinition>('automations')) {
         d.enabled = false; d.revision++; d.updatedAt = timestamp(); d.sync = 'pending'; delete d.legacyRevision

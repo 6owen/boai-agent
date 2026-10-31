@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 2026-10-29 文件浏览器入口/预览/启停与目录撤权回归，原终端生命周期断言保持。
  * [OUTPUT]: 覆盖增大任务额度、真实继续消息或本次运行同类批准；各文件以具体用例限定验证范围。
  * [OUTPUT]: 网页检索独立能力沿全局服务配置保存；业务数据源解绑不重置检索，停用/迟到目录仍验证。
  * [OUTPUT]: 高级配置默认人格与行为，配置源文件/后台记录直接展示，主动交流即时保存；自动化仅展示员工任务；基础配置排除/草稿保护保持。
@@ -92,9 +93,9 @@ async function fixture(fullPage = false) {
     const reload = async () => { refresh(); setData(snapshot()) }
     return h(GuardContext.Provider, { value: guard }, fullPage ? h(ContactsPage, {
       api, snapshot: data, selected: { kind: 'agent', id: agent.id }, active: true, sidebarShown: true, divider: null, generation: epoch, busy: false,
-      refresh: reload, onAgentSaved, onGroupSaved() {}, onMessage, onSelect() {}, onCreate() {}, onCreateTeam() {}, onConversation() {},
+      refresh: reload, onAgentSaved, onGroupSaved() {}, onMessage, onSelect() {}, onCreate() {}, onCreateTeam() {}, onWorkspace() {}, onConversation() {},
     }) : h(EmployeeProfile, { key: epoch, api, snapshot: data, agent: data.agents[0]!, active: true, busy: false,
-      refresh: reload, onAgentSaved, onMessage, advancedOpen: advanced, onAdvancedChange: setAdvanced, onConversation() {}, onOpenAgent() {},
+      refresh: reload, onAgentSaved, onMessage, advancedOpen: advanced, onAdvancedChange: setAdvanced, onWorkspace() {}, onConversation() {}, onOpenAgent() {},
     }), confirmation)
   }
   await act(async () => root.render(h(Page)))
@@ -474,7 +475,7 @@ test('the contact context menu opens advanced settings after discarding the inli
     const { guard, confirmation } = useEditorGuard({ reset: () => setGeneration(value => value + 1) })
     return h(GuardContext.Provider, { value: guard }, h(ContactsPage, {
       api, snapshot: snapshot(), selected: { kind: 'agent', id: agent.id }, active: true, sidebarShown: true, divider: null, generation, busy: false,
-      onSelect() {}, onCreate() {}, onCreateTeam() {}, onMessage() {}, refresh: async () => {}, onAgentSaved() {}, onGroupSaved() {}, onConversation() {},
+      onSelect() {}, onCreate() {}, onCreateTeam() {}, onMessage() {}, refresh: async () => {}, onAgentSaved() {}, onGroupSaved() {}, onWorkspace() {}, onConversation() {},
     }), confirmation)
   }
   await act(async () => root.render(h(Page)))

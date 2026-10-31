@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: Conversation可绑定持久员工任务；同任务独立会话续接。
+ * [OUTPUT]: 消息可关联员工任务身份，设为任务不重新发送原消息。
  * [OUTPUT]: 当前轮次纯文本补充固定run/turn，原消息保存接受、原生确认与未知投递。
  * [OUTPUT]: Approval明确是否支持本次运行同类操作批准，原目录持久批准保持独立。
  * [OUTPUT]: BootstrapSnapshot区分静态人格与动态状态，保留实际模块/来源hash/配置版本证据。
@@ -146,6 +148,7 @@ export interface Resource {
   ownerAgentId?: string
 }
 export interface Conversation {
+  employeeTaskId?: string
   /** Core chat opened explicitly from the scheduled-task creation page. */
   automationCreation?: boolean
   sourceCreation?: boolean
@@ -193,6 +196,7 @@ export interface ConversationInput {
 }
 export type RunStatus = 'queued' | 'running' | 'waiting_approval' | 'completed' | 'failed' | 'cancelled' | 'interrupted'
 export interface Message {
+  employeeTaskId?: string
   nativeSteering?: import('./execution').NativeSteeringReceipt
   permissionExpectation?: import('./execution').MessagePermissionExpectation
   attachmentInputs?: Omit<import('./material-upload').SubmittedMaterial, 'selectionId'>[]

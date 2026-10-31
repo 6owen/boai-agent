@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-30 回归更新为Mastra官方记忆/原生归属合同；保留来源、调用预算和业务发布断言。
  * [INPUT]: 真实AppService/Mastra SDK/本地HTTP及固定组织阶段三工具、SQLite和受管员工文件准备故障。
  * [OUTPUT]: 原组织失败后的真实文件核对/新 holder 共原预算、零模型/零伪回复续完、原公告来源/效果确认和强幂等；忘记/过期旧快照与外改原件拒绝发布。
  * [POS]: bobo 组织恢复宿主合同；本地协议不计为真实供应商或人工质量通过。
@@ -70,7 +71,7 @@ async function fixture(options: { memory?: boolean; expiresAt?: string; checkpoi
     await service.handle('saveAgent', { ...input, connectionId: connection.id, modelId: 'bobo-recovery-fixture', expectedConfigVersion: configVersion })
   }
   let seeded: MemoryView | undefined
-  if (options.memory) seeded = await service.handle('saveMemory', { agentId: 'bobo', scope: 'employee', content: memoryContent, expectedEpoch: 0, requestId: 'original-editor-preference', kind: 'long_term', evidence: 'preference', pinned: true, ...(options.expiresAt ? { expiresAt: options.expiresAt } : {}) }) as MemoryView
+  if (options.memory) seeded = await service['memory'].save( { agentId: 'bobo', scope: 'employee', content: memoryContent, expectedEpoch: 0, requestId: 'original-editor-preference', kind: 'long_term', evidence: 'preference', pinned: true, ...(options.expiresAt ? { expiresAt: options.expiresAt } : {}) }) as MemoryView
   const before = await service.handle('snapshot', undefined) as Snapshot
   const core = await service.handle('startCoreConversation', { requestId: 'original-organization-user', content: prompt }) as Conversation
   const store = new ProductStore(join(path, 'boai.sqlite')); await store.init(); cleanup.push(() => store.close())
@@ -118,7 +119,7 @@ describe('AppService original organization file recovery', () => {
     const snapshot = (await f.store.load<{ id: string; memoryRecall: { recall?: MemoryView['recall'] } }>('snapshots')).find(snapshot => snapshot.id === f.operation.announcementSource.runId)!
     expect(snapshot.memoryRecall.recall?.versions).toContainEqual({ id: entry.id, version: entry.version })
     const memory = await f.service.handle('getMemory', { agentId: 'bobo', scope: 'employee' }) as MemoryView
-    await f.service.handle('deleteMemory', { agentId: 'bobo', scope: 'employee', id: entry.id, expectedEpoch: memory.epoch, requestId: 'forget-original-preference' })
+    await f.service.handle('clearMemory', { agentId: 'bobo', scope: 'employee', expectedEpoch: memory.epoch, requestId: 'forget-original-preference' })
     await expect(f.service.handle('resumeBoboCollaboration', { operationId: f.operation.id, expectedVersion: f.operation.version })).rejects.toThrow(/来源|记忆|失效/)
     expect(f.endpoint.requests).toHaveLength(calls); expect((await f.service.handle('snapshot', undefined) as Snapshot).agents.map(agent => agent.id)).toEqual(f.before.agents.map(agent => agent.id)); expect((await f.store.load<BoboCollaborationOperation>('boboCollaborations'))[0]?.status).not.toBe('committed')
     expect((await f.store.load<WorkExecution>('workExecutions')).find(execution => execution.id === f.operation.announcementSource.runId)?.pendingEffects).toBe(1)

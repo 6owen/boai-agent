@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 浏览器开始参数保留实际命令，完成事件不覆盖；原生结构化与JSON参数同合同。
  * [OUTPUT]: 执行未完成时的正文/思考增量回归，最终答复与私有协议字段保持分离。
  * [OUTPUT]: BOAI浏览器两种原生工具名均省略输入值和截图字节，保留媒体hash。
  * [INPUT]: Rovai公开工具结果/可核验文件操作语义与实际原生事件接线。
@@ -49,7 +50,17 @@ it('omits browser input from native events and stores only screenshot identity',
   const event=nativeActivity('browser',{type:'tool_use',name,input:{command:'fill @e1 password-secret'},result:[{type:'image',data,mimeType:'image/png'}]},true)
   const encoded=JSON.stringify(event)
   expect(encoded).not.toContain('password-secret');expect(encoded).not.toContain(data);expect(encoded).toContain('sha256')
+  expect(event.payload).toMatchObject({item:{input:{command:'fill @e1 "[input: 15 characters]"'}}})
  }
+})
+
+it('keeps actual browser commands from structured and serialized native input; completion does not replace them',()=>{
+ for(const input of [{command:'snapshot'},JSON.stringify({command:'snapshot'})]) {
+  expect(nativeActivity('b',{name:'browser_tool',arguments:input},false).payload).toMatchObject({item:{input:{command:'snapshot'},arguments:{command:'snapshot'}}})
+ }
+ const completed=nativeActivity('b',{name:'browser_tool',result:'page result'},true)
+ expect((completed.payload as any).item).not.toHaveProperty('input')
+ expect((completed.payload as any).item).not.toHaveProperty('arguments')
 })
 
 it('streams Codex public reasoning summaries while excluding private reasoning frames', () => {

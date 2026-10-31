@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工编辑分区的空态沿技能卡12px/14px留白，数据源未绑定时保持完整卡片高度。
  * [OUTPUT]: 定时任务侧栏移除检索框及其专属间距，保留管理弹窗与执行记录搜索。
  * [OUTPUT]: 定时任务标题Tooltip、标签分组侧栏与复用系统滑动层的透明筛选Tab。
  * [OUTPUT]: 语音选择器32px沿组件utilities约束，页面低层规则不再假设覆盖Select默认高度。
@@ -504,6 +505,7 @@
 .employee-form-layout .employee-identity { display:block;padding:0 }
 .employee-form-layout .employee-tabs-bar { padding:0;margin:20px 0;border:0;overflow-x:auto }
 .employee-form-fields { display:grid;gap:0;min-width:0;padding:2px 12px }
+.employee-form-fields>.contact-card-empty { padding:10px 2px }
 .employee-form-fields.connection-fields .connection-setting-row { grid-template-columns:132px minmax(0,1fr);gap:12px;min-width:0;padding:8px 0 }
 .employee-form-fields :is(.connection-setting-row>[data-slot=field-label],.connection-setting-label) { min-height:32px }
 .employee-form-fields .connection-setting-label { justify-content:flex-start;gap:6px }

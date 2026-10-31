@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 截图/快照/find观察30秒无回执时关闭原页面并等待实际退出后释放；下一任务可重建窗口，登录资料保持。
+ * [OUTPUT]: 明确未派发输入的失效ref按failed结算；未知动作仍保留核对、不重放。
  * [OUTPUT]: Cookie文件/浏览器profile导入经无值确认，原窗口/partition绑定；关闭取消副本读取并等待清理，保留逐项写回核验。
  * [OUTPUT]: 运行连接失联时立即关闭仍有员工动作的页面，再等待原CDP/队列真实退出；空闲窗口保持原drain。
  * [OUTPUT]: 有效员工租约默认允许HTTP(S)浏览和交互，无域名或逐次审批门禁；旧页面版本、真实开始握手、取消/退出及下载核验保持。
@@ -19,6 +21,8 @@ import { dialog, session, type BrowserWindow } from 'electron'
 import { CookieImports, type CookieImportPort } from './cookie-import'
 import { BrowserCookieSources, type CookieSourceProvider } from './cookie-sources'
 import { BrowserPaneManager } from './browser-pane-manager'
+import { BrowserInputNotStartedError } from './browser-cdp'
+import { untilPageDestroyed } from './browser-page-operation'
 import type { BrowserPaneFns } from '@boai/runtime/adapters/mastra/browser-tool-types'
 import { BROWSER_PAGE_METRICS_EXPRESSION, executeBrowserSingleCommand, parseBrowserSingleCommand } from '@boai/runtime/adapters/mastra/browser-tool-runtime'
 import { APPLICATION_BROWSER_SCOPE } from '@boai/shared/ipc/browser'
@@ -349,7 +353,8 @@ export class BrowserService {
   private async pageEvidence(scope: Scope, generation: string): Promise<BrowserPageEvidence | null> {
     const instance = this.manager.getInstance(scope.state.instanceId)
     if (!instance || instance.window.isDestroyed()) return null
-    const page = await instance.pageView.webContents.executeJavaScript(PAGE_STATE_EXPRESSION)
+    const contents = instance.pageView.webContents
+    const page = await untilPageDestroyed(contents, () => contents.executeJavaScript(PAGE_STATE_EXPRESSION))
     if (!page || typeof page.url !== 'string' || typeof page.title !== 'string') throw new Error('网页状态无法可靠核对')
     const digest = hash(JSON.stringify({documentRevision:instance.documentRevision ?? 0,page}))
     if (scope.pageHash !== digest) { scope.pageHash = digest; scope.pageCounter += 1; scope.state.pageVersion = `${scope.pageCounter}:${digest}`; instance.cdp.invalidateRefs() }
@@ -382,26 +387,30 @@ export class BrowserService {
     let started = false
     const action = scope.queue.then(async (): Promise<BrowserActionReply> => {
       try {
-        this.require(envelope.lease)
-        const current = await this.inspect(envelope.lease)
-        if (envelope.expectedPageVersion && current?.pageVersion !== envelope.expectedPageVersion) throw new Error('网页已变化，请重新获取页面后再操作')
-        await beforeStart?.()
-        this.require(envelope.lease)
-        if (current && (await this.inspect(envelope.lease))?.pageVersion !== current.pageVersion) throw new Error('持有者确认期间网页发生变化，请重新核对')
-        started = true
-        scope.performingAgentAction = true
-        const result = await executeBrowserSingleCommand({ command: envelope.command, fns: this.functions(scope), sessionId: envelope.lease.scopeKey, platform: process.platform })
-        if (result.image && result.image.sizeBytes > 8 * 1024 * 1024) throw new Error('浏览器截图超出 8 MiB 有界范围')
-        await this.manager.waitForLoads(scope.state.instanceId)
-        // Closing the acquisition gate does not erase the known result of an action
-        // which actually finished. The identity must still match the original lease.
-        const source = scope.state.control === 'closed' ? current : await this.readPageEvidence(envelope.lease, false)
-        const downloads = await this.completedDownloads(scope)
-        const refresh = source && current && source.pageVersion !== current.pageVersion ? '\nPage changed; previous element refs are invalid. Call browser_tool with command "snapshot" before any further @eN action.' : ''
-        const reply: BrowserActionReply = { actionId: envelope.actionId, generation: envelope.lease.generation, status: 'completed', result: { ...result, output: result.output.slice(0, 63000) + refresh }, ...(source ? { source } : {}), ...(downloads.length ? { downloads } : {}) }
-        return reply
+        const observe = async (): Promise<BrowserActionReply> => {
+          this.require(envelope.lease)
+          const current = await this.inspect(envelope.lease)
+          if (envelope.expectedPageVersion && current?.pageVersion !== envelope.expectedPageVersion) throw new Error('网页已变化，请重新获取页面后再操作')
+          await beforeStart?.()
+          this.require(envelope.lease)
+          if (current && (await this.inspect(envelope.lease))?.pageVersion !== current.pageVersion) throw new Error('持有者确认期间网页发生变化，请重新核对')
+          started = true
+          scope.performingAgentAction = true
+          const result = await executeBrowserSingleCommand({ command: envelope.command, fns: this.functions(scope), sessionId: envelope.lease.scopeKey, platform: process.platform })
+          if (result.image && result.image.sizeBytes > 8 * 1024 * 1024) throw new Error('浏览器截图超出 8 MiB 有界范围')
+          await this.manager.waitForLoads(scope.state.instanceId)
+          // Closing the acquisition gate does not erase the known result of an action
+          // which actually finished. The identity must still match the original lease.
+          const source = scope.state.control === 'closed' ? current : await this.readPageEvidence(envelope.lease, false)
+          const downloads = await this.completedDownloads(scope)
+          const refresh = source && current && source.pageVersion !== current.pageVersion ? '\nPage changed; previous element refs are invalid. Call browser_tool with command "snapshot" before any further @eN action.' : ''
+          const reply: BrowserActionReply = { actionId: envelope.actionId, generation: envelope.lease.generation, status: 'completed', result: { ...result, output: result.output.slice(0, 63000) + refresh }, ...(source ? { source } : {}), ...(downloads.length ? { downloads } : {}) }
+          return reply
+        }
+        return await (['snapshot', 'screenshot', 'screenshot-region', 'find'].includes(parsed.action)
+          ? this.captureWithDeadline(scope, observe, parsed.action.startsWith('screenshot') ? '截图' : '页面读取') : observe())
       } catch (error) {
-        return { actionId: envelope.actionId, generation: envelope.lease.generation, status: started ? 'unknown' : 'cancelled_before_start', error: error instanceof Error ? error.message : String(error) }
+        return { actionId: envelope.actionId, generation: envelope.lease.generation, status: !started ? 'cancelled_before_start' : error instanceof BrowserInputNotStartedError ? 'failed' : 'unknown', error: error instanceof Error ? error.message : String(error) }
       } finally {
         scope.performingAgentAction = false
         if (scope.releaseRequested) { scope.active = false; this.retiredRuns.add(`${envelope.lease.runId}:${envelope.lease.generation}`); this.emit(scope) }
@@ -465,6 +474,32 @@ export class BrowserService {
           return {...entry,url:url.href,method:entry.method.slice(0,12),resourceType:entry.resourceType.slice(0,40)}
         })
       }),
+    }
+  }
+  private async captureWithDeadline<T>(scope: Scope, capture: () => Promise<T>, action: string): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let closing: Promise<void> | undefined
+    const timeoutError = new Error(`浏览器${action}超时，已关闭无响应页面；请重新打开网页后继续，登录资料已保留`)
+    const expired = new Promise<never>((_resolve, reject) => {
+      timer = setTimeout(() => {
+        // Do not release the lease on a timer alone. Destroy the exact page and
+        // await its real exit, including pending CDP commands, before returning.
+        scope.active = false; scope.releaseRequested = true; scope.state.control = 'closing'; this.emit(scope)
+        closing = this.manager.destroyInstance(scope.state.instanceId).then(() => {
+          scope.state.control = 'closed'; scope.state.isVisible = false; this.emit(scope)
+        })
+        void closing.then(() => reject(timeoutError), reject)
+      }, 30_000)
+    })
+    try {
+      const result = await Promise.race([capture(), expired])
+      if (closing) { await closing; throw timeoutError }
+      return result
+    } catch (error) {
+      if (closing) { await closing; throw timeoutError }
+      throw error
+    } finally {
+      if (timer) clearTimeout(timer)
     }
   }
   private async completedDownloads(scope: Scope): Promise<BrowserCompletedDownload[]> {

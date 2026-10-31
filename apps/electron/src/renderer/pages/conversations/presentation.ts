@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 草稿区分任务消息回执，与普通消息/外部任务保持各自提交身份。
  * [OUTPUT]: 冻结消息可携带明确原生run/turn补充目标。
  * [OUTPUT]: 提示词标签携带所选正文快照，与成员/固定技能文件引用分开；发送正文展开沿原消息事务。
  * [OUTPUT]: 行内技能/文件标签保留固定来源，普通成员点名仍单独发送。
@@ -32,7 +33,7 @@ export interface ChatDraft {
   materialEdit?: { reference: import('@boai/shared/domain/materials').MaterialReadRef; name: string; targetAgentId: string; annotation?: import('@boai/shared/domain/file-edit').FileEditAnnotation }
   materials?: MaterialDraftItem[]
   submission?: {
-    kind?: 'external'
+    kind?: 'external' | 'employee-task'
     requestId: string; status: 'pending' | 'unknown' | 'not_accepted'; fingerprint: string
     input: { steer?: import('@boai/shared/domain/execution').NativeSteeringTarget; composerReferences?: import('@boai/shared/domain/composer-references').ComposerReference[]; channelReference?: import('@boai/shared/domain/channels').ChannelMessageReference; materialReference?: import('@boai/shared/domain/materials').MaterialReadRef; browserReference?: Pick<import('@boai/shared/ipc/browser').BrowserPageReference,'instanceId'|'pageVersion'>; content: string; mentionIds: string[]; materialSelections?: MaterialSelection[]; replyToMessageId?: string; stopPrevious?: boolean }
   }

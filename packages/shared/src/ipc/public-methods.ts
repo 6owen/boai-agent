@@ -1,4 +1,10 @@
 /*
+ * [OUTPUT]: 员工任务删除进入可信桌面公开IPC，重命名复用版本化更新接口。
+ * [OUTPUT]: 开放任务会话、任务消息及原受理回执接口。
+ * [OUTPUT]: 员工任务五个公共入口沿原宿主准入，未知内部方法继续拒绝。
+ * [OUTPUT]: 2026-10-30 公开configureMemory用于员工明确选择embedding连接与模型。
+ * [OUTPUT]: 独立AgentBrowser/BrowserViewer插件接入；上游工具、启停与运行回收保持独立。
+ * [OUTPUT]: 2026-10-29 workspace-files增加授权根及预览DTO，index/public-methods接可信桌面预览入口。
  * [OUTPUT]: 网页检索草稿测试进入原公共IPC准入，不开放任意请求地址。
  * [OUTPUT]: 定时任务列表偏好独立 CAS 读写及变更事件，不改执行配置。
  * [OUTPUT]: 允许可信桌面语音设置保存排空回执。
@@ -39,6 +45,8 @@ import type { Method } from './index'
 
 // Record makes a newly declared public method require an explicit host entry.
 const methods = {
+  openEmployeeTaskSession: true, sendEmployeeTaskMessage: true, getEmployeeTaskMessageReceipt: true,
+  createEmployeeTask: true, listEmployeeTasks: true, getEmployeeTask: true, updateEmployeeTask: true, deleteEmployeeTask: true, runEmployeeTask: true,
   captureDesktopActivity: false,
   transferMaterial: true,
   prepareUploadedMaterial: true,
@@ -85,6 +93,7 @@ const methods = {
   deleteSession: true,
   getSessionReceipt: true,
   clearMemory: true,
+  configureMemory: true,
   connectChannelBinding: true,
   createConversation: true,
   deleteAgent: true,
@@ -182,6 +191,8 @@ const methods = {
   probeModelGateway: true,
   discoverModelGateway: true,
   listConversationMessages: true,
+  getBrowserPluginSettings: true,
+  saveBrowserPluginSettings: true,
   getWebSearchSettings: true,
   saveWebSearchService: true,
   saveWebSearchDefault: true,
@@ -290,6 +301,7 @@ const methods = {
   getWorkspaceRoot: false,
   validateWorkspaceScope: false,
   listWorkspaceFiles: true,
+  previewWorkspaceFile: true,
   listWorkspaceApplications: true,
   openWorkspacePath: true,
   workspaceTerminal: true,

@@ -1,5 +1,8 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 恢复任务按钮仅请求右侧导航，主聊天编辑器/消息DOM与草稿保持。
+ * [OUTPUT]: 聊天/任务切换共用主区并保留编辑器/草稿/消息DOM；无任务能力的会话没有员工Tabs。
+ * [OUTPUT]: 任务标题/要求位于原消息ScrollArea内，不重建输入框或另一套会话滚动区。
  * [OUTPUT]: 当前轮次补充固定run/turn且不改变Enter发送；跨聊天/多人/材料/失效目标不提供补充入口。
  * [OUTPUT]: 补内容缩短不误翻页、拖动滚动条仍预取及StrictMode初始跟随回归。
  * [OUTPUT]: 使用真实use-stick-to-bottom；模拟浏览器ResizeObserver/rAF交付，覆盖流式阅读、双向滚动及同窗口刷新不重放旧锚点。
@@ -57,6 +60,29 @@ beforeEach(() => {
 })
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.clearAllTimers(); vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks() })
 const render = () => act(async () => root.render(h(ChatView, props)))
+it('opens employee tasks from the header without replacing the main chat or draft', async () => {
+  props.onTasks = vi.fn()
+  await render()
+  const editor = host.querySelector('[role=textbox]'), viewport = host.querySelector('.messages')
+  await act(async () => [...host.querySelectorAll('button')].find(node => node.textContent === '任务')!.click())
+  expect(props.onTasks).toHaveBeenCalledOnce()
+  expect(host.querySelector('[role=textbox]')).toBe(editor)
+  expect(editor?.textContent).toContain('A的草稿')
+  expect(host.querySelector('.messages')).toBe(viewport)
+  expect(host.querySelector('[aria-label="员工视图"]')).toBeNull()
+})
+it('keeps task introduction in the original message scroller and preserves the composer when it changes', async () => {
+  props.hideHeader = true
+  props.historyHeader = h('section', { 'data-task-summary': true }, '任务要求')
+  await render()
+  const viewport = host.querySelector('.messages'), editor = host.querySelector('[role=textbox]')
+  expect(viewport?.querySelector('[data-task-summary]')?.textContent).toBe('任务要求')
+  props.historyHeader = undefined
+  await render()
+  expect(host.querySelector('.messages')).toBe(viewport)
+  expect(host.querySelector('[role=textbox]')).toBe(editor)
+  expect(host.querySelector('[data-task-summary]')).toBeNull()
+})
 const finishReveal = (element: Element) => {
   const event = new Event('transitionend', { bubbles: true })
   Object.defineProperty(event, 'propertyName', { value: 'opacity' })

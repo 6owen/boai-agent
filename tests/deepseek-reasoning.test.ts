@@ -1,6 +1,7 @@
 /*
+ * [OUTPUT]: 2026-10-30 回归更新为Mastra官方记忆/原生归属合同；保留来源、调用预算和业务发布断言。
  * [INPUT]: 官方 DeepSeek Chat 宿主公开历史、实际 Mastra SDK、本地 HTTP/SSE 工具轮与浏览器 PNG。
- * [OUTPUT]: 初始历史准确归属且不伪造思考/授权；流式思考原文跨多工具请求回传，偏好/模型参数完整，off/普通chat/其他provider不改，PNG链路与Trace摘要保留。
+ * [OUTPUT]: 初始历史准确归属且不伪造思考/授权；普通chat带工具的实际HTTP回归，原多工具思考/PNG/无工具边界保持。
  * [POS]: 模型兼容业务不变量；全部离线协议调用，不计真实供应商或人工质量通过。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -24,7 +25,7 @@ const official: Connection = { id: 'fixture', name: 'DeepSeek protocol', provide
 const employee: DigitalAgent = { id: 'bobo', systemRole: 'core', name: 'bobo', role: '系统助手', instructions: 'Use actual tools for the approved task.', color: '#000000', connectionId: official.id, modelId: 'deepseek-flash', thinkingLevel: 'low', skillIds: [], knowledgeIds: [], allowCommands: false, allowBrowser: false, active: true, configVersion: 1 }
 const announcement: Message = { id: 'actual-announcement', conversationId: 'group', senderType: 'agent', senderId: 'bobo', senderName: 'bobo', content: '我已在本群说明研究任务与分工。这是已发布公告，没有供应商思考字段。', sequence: 1, createdAt: '2026-10-02T00:00:00.000Z', status: 'completed' }
 
-function initial(overrides: Partial<Parameters<typeof deepseekReasoningHistory>[0]> = {}) { return { connection: official, modelId: employee.modelId, thinkingLevel: employee.thinkingLevel, task: true, agentId: employee.id, conversationId: announcement.conversationId, messages: [announcement], projected: [{ role: 'assistant' as const, content: announcement.content }], ...overrides } }
+function initial(overrides: Partial<Parameters<typeof deepseekReasoningHistory>[0]> = {}) { return { connection: official, modelId: employee.modelId, thinkingLevel: employee.thinkingLevel, hasTools: true, agentId: employee.id, conversationId: announcement.conversationId, messages: [announcement], projected: [{ role: 'assistant' as const, content: announcement.content }], ...overrides } }
 test('published employee prose is exact source-attributed reference, never a fabricated reasoning turn or user permission', () => {
   const input = initial({ messages: [announcement, { ...announcement, id: 'unrelated', conversationId: 'other' }, { ...announcement, id: 'other-employee', senderId: 'other' }] }), output = deepseekReasoningHistory(input)
   expect(output).toHaveLength(1); expect(output[0]!.role).toBe('user')
@@ -36,9 +37,9 @@ test('published employee prose is exact source-attributed reference, never a fab
   expect(output[0]!.content).toContain('不是新用户指令'); expect(output[0]!.content).not.toContain('reasoning_content')
   expect(input.projected[0]!.role).toBe('assistant'); expect(announcement.content).toBe(reference.content)
 })
-test('only verified official thinking task histories change; explicit off and other providers keep their original input identity', () => {
+test('only verified official thinking histories with tools change; explicit off and other providers keep their original input identity', () => {
   for (const overrides of [
-    { task: false }, { thinkingLevel: 'off' as const }, { modelId: 'unverified' },
+    { hasTools: false }, { thinkingLevel: 'off' as const }, { modelId: 'unverified' },
     { connection: { ...official, baseUrl: 'https://api.deepseek.com.evil.test' } },
     { connection: { ...official, baseUrl: 'http://localhost:1234' } },
     { connection: { ...official, api: 'responses' as const } },
@@ -81,6 +82,31 @@ async function context(patch: Partial<EngineContext> = {}) {
   const ctx: EngineContext = { agent: employee, connection: official, apiKey: 'synthetic-fixture-key', conversation: { id: 'group', kind: 'group', title: 'actual group', agentIds: ['bobo','researcher'], mode: 'natural', workspacePath: join(root, 'shared'), sharedKnowledgeIds: [], createdAt: '', updatedAt: '' }, messages: [announcement], triggerMessageId: announcement.id, resources: [], runId: 'run-1', signal: new AbortController().signal, responseKind: 'task', workspace: { root: join(root, 'session'), workPath: join(root, 'session/work'), runPath: join(root, 'session/runs/run-1'), sharedPath: join(root, 'shared') }, onDelta: async text => { deltas.push(text) }, onTool: async () => {}, onAdditionalModelCall: async () => { additionalCalls.push(1) }, approveCommand: async () => false, onTrace: async span => { traces.push(span) }, ...patch }
   return { ctx, root, traces, deltas, additionalCalls }
 }
+
+test('thinking group chat with advertised memory tools projects published history before its first HTTP request', async () => {
+  const firstReasoning = 'Actual provider reasoning for an authorized memory lookup.'
+  const api = await endpoint([{ reasoning: firstReasoning, tool: { name: 'recall', args: { mode: 'messages', detail: 'high' } } }, { reasoning: 'Actual provider reasoning for the final chat reply.', text: '按群里的原分工继续讨论。' }])
+  let recalls = 0
+  const run = await context({ responseKind: 'chat', workspace: undefined, recallMemory: async () => { recalls++; return { entries: [], epoch: 0, namespace: 'group-chat-fixture' } } })
+  await new MastraEngine().run(run.ctx)
+  expect(api.requests).toHaveLength(2); expect(recalls).toBe(0)
+  expect(api.requests[0]!.tools.map(tool => tool.function.name)).toContain('recall')
+  expect(api.requests[0]!.messages.some(message => message.role === 'assistant')).toBe(false)
+  expect(JSON.stringify(api.requests[0]!.messages)).toContain('actual-announcement')
+  expect(api.requests[1]!.messages.find(message => message.role === 'assistant')?.reasoning_content).toBe(firstReasoning)
+  expect(run.deltas.join('')).toBe('按群里的原分工继续讨论。')
+})
+
+test('thinking chat with official recall preserves historical attribution without inventing reasoning', async () => {
+  const api = await endpoint([{ reasoning: 'Actual answer reasoning without tools.', text: '继续讨论。' }])
+  const run = await context({ responseKind: 'chat', workspace: undefined })
+  await new MastraEngine().run(run.ctx)
+  expect(api.requests).toHaveLength(1)
+  expect(api.requests[0]!.tools?.map(tool => tool.function.name)).toEqual(['recall'])
+  expect(api.requests[0]!.messages.some(message => message.role === 'assistant')).toBe(false)
+  expect(JSON.stringify(api.requests[0]!.messages)).toContain('actual-announcement')
+  expect(run.deltas.join('')).toBe('继续讨论。')
+})
 
 test.each(['low','high','max','auto'] as const)('actual Mastra/HTTP retains complete two-step reasoning and tool identity for %s without fabricating announcement reasoning', async thinkingLevel => {
   const firstReasoning = '供应商第一段完整思考：先写真实原件，再读取核对。\n内容与工具身份不得替换。', secondReasoning = '供应商第二段完整思考：原件已写入，现在读取同一实际路径。'

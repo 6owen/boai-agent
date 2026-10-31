@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 统一五状态和人工状态来源；进度声明不启动执行或取消已有运行。
+ * [OUTPUT]: 原任务工具保留进度声明语义，增加等待补充状态，与员工任务面板共用记录。
  * [OUTPUT]: Provides employee task records and SQL-bounded tasks.page; original mutations/list and receipt semantics remain compatible.
  * [INPUT]: Original ProductStore, authenticated application actor and explicit task tracking intent.
  * [OUTPUT]: Durable per-employee multi-step tracking with revision checks; no scheduler or Work execution.
@@ -15,7 +17,7 @@ import type { ProductStore, RecordTransaction } from '../../adapters/storage/pro
 import { ApplicationValidationError, type ApplicationOperation } from './application-service'
 export type { TrackedTask } from '@boai/shared/domain/tracked-tasks'
 
-const id = z.string().min(1).max(200), status = z.enum(['pending', 'in_progress', 'blocked', 'done'])
+const id = z.string().min(1).max(200), status = z.enum(['pending', 'in_progress', 'in_review', 'done', 'closed'])
 const step = z.object({ title: z.string().trim().min(1).max(300), done: z.boolean().default(false) }).strict()
 const fields = { title: z.string().trim().min(1).max(300), steps: z.array(step).max(50), status, note: z.string().max(4000) }
 const owner = z.object({ agentId: id }).strict()
@@ -43,7 +45,7 @@ export function taskOperations(store: ProductStore): ApplicationOperation[] {
     taskPageOperation(store),
     { name: 'tasks.list', description: '列出员工持久多步任务；默认未完成，跨会话仍核对来源。不会运行任务。', effect: 'read', input: owner.extend({ status: status.optional(), includeDone: z.boolean().default(false) }).strict(), resultType: 'TrackedTask[]', execute: (input, _, actor) => store.transaction(async tx => {
       const result: TrackedTask[] = []
-      for (const task of await tx.list<TrackedTask>(collection)) if (task.agentId === input.agentId && (input.status ? task.status === input.status : input.includeDone || task.status !== 'done') && await allowed(tx, task, actor)) result.push(task)
+      for (const task of await tx.list<TrackedTask>(collection)) if (task.agentId === input.agentId && (input.status ? task.status === input.status : input.includeDone || !['done', 'closed'].includes(task.status)) && await allowed(tx, task, actor)) result.push(task)
       return result.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
     }) },
     { name: 'tasks.get', description: '读取实际任务、步骤、状态和 revision。', effect: 'read', input: z.object({ id }).strict(), resultType: 'TrackedTask', execute: (input, _, actor) => store.transaction(tx => read(tx, input.id, actor)) },
@@ -57,12 +59,13 @@ export function taskOperations(store: ProductStore): ApplicationOperation[] {
       const value = update.parse(input), previous = await read(tx, value.id, actor)
       if (previous.revision !== value.expectedRevision) throw new ApplicationValidationError('REVISION_CONFLICT', '任务已经改变，请先读取当前版本')
       const { expectedRevision: _, ...changes } = value
-      const task = { ...previous, ...changes, revision: previous.revision + 1, updatedAt: new Date().toISOString() }
+      const task = { ...previous, ...changes, ...(value.status ? { statusSource: 'manual' as const } : {}), revision: previous.revision + 1, updatedAt: new Date().toISOString() }
       await tx.put({ collection, id: task.id, value: task }); return task
     }) },
     { name: 'tasks.delete', description: '删除指定进度记录；不取消执行 Work、不删除成果或自动化。', effect: 'write', input: z.object({ id, expectedRevision: z.number().int().positive() }).strict(), resultType: '{ deleted: true }', execute: (input, _, actor) => store.transaction(async tx => {
       const task = await read(tx, input.id, actor)
       if (task.revision !== input.expectedRevision) throw new ApplicationValidationError('REVISION_CONFLICT', '任务已经改变')
+      if (task.latestOccurrenceId) throw new Error('该员工任务已有执行记录，请标记完成以保留关联')
       await tx.remove(collection, task.id); return { deleted: true }
     }) },
   ]

@@ -3,6 +3,9 @@ name: boai-dev-workflow
 description: BOAI 共享开发流程；沿 Magpie Test 和 DeepSeek UI preview 完成交付。
 ---
 <!--
+[OUTPUT]: 2026-10-29新增boai-release共享技能，覆盖bumpp、本机候选/Release、下载与自动更新；普通开发转入发布须符合本次请求。
+[OUTPUT]: 2026-10-29用户明确调用git cpf时允许临时管理员检查例外，恢复记录和实际合并核验必需；普通交付保持。
+[OUTPUT]: 2026-10-29 PR录屏采用原生视频附件，独立发布凭据、缺配置及失败不得称在线播放。
 [INPUT]: 当前用户任务、独立worktree及Magpie Test/UI preview源码。
 [OUTPUT]: 工程测试与自动界面预览；撤销固定截图基准更新作为PR前置。
 [OUTPUT]: 任务worktree完成即回收；实际合并或最终提交archive存档二选一，编排会话负责子worktree。
@@ -34,7 +37,7 @@ description: BOAI 共享开发流程；沿 Magpie Test 和 DeepSeek UI preview �
 
 - `Test` 沿 Magpie 的 PR/main/manual 触发与并发取消方式，用BOAI现有 typecheck、lint、build、Vitest 命令；CLI集成测试依赖dist/cli，因此先构建再测试。现阶段在已支持的macOS执行；Required checks只汇总工程测试结果，保持原分支保护名称。
 - `UI preview` 沿上游 detect → record → publish：UI文件变更或ui-preview标签触发；DeepSeek读取diff及真实页面，规划操作、截图，交互时录屏，在PR描述固定区域更新预览。已有DeepSeek配置通过ui-preview environment提供。
-- 执行PR代码的record任务没有仓库写权限；有写权限的publish任务不运行PR代码。预览是运行画面与规划说明，不冒充工程测试通过。
+- 执行PR代码的record任务没有仓库写权限；有写权限的publish任务不运行PR代码。视频通过固定版本GitHub CLI上传为PR原生附件，上传令牌仅存于独立ui-preview-publish环境；不得传给record或放进仓库级secret。缺配置或上传失败明确报错并保留下载，不能把raw下载称在线播放。预览不冒充工程测试通过。
 - 不要求用户先在本地确认效果；不运行基准candidate/accept/update，不以新旧PNG不同阻止正常UI开发。旧本地UI回归工具、测试源码及历史结果保留为按需工具，不属于PR门禁。
 - 没有UI变化时，preview检测后跳过录制；Test正常执行。不为通过CI修改产品UI、删除产品行为测试或伪造模型调用。
 - 用户明确要求执行试验时跟进本次实际结果；失败先定位再有针对性修复，不盲目重跑。
@@ -43,7 +46,11 @@ description: BOAI 共享开发流程；沿 Magpie Test 和 DeepSeek UI preview �
 
 - 根据本次授权创建或更新同一PR。普通授权交付沿既有默认自动合并；用户明确只修改/测试或不合并时，不设置自动合并。
 - 允许合并时核对仓库/main与当前head，使用 `gh pr merge --auto --merge --match-head-commit <SHA>`，读回一次回执。只有明确要求等到通过或处理失败才持续跟进。
-- 不使用admin、强推或放宽分支保护。确认实际合并后才在干净main同步。
+- 普通交付不使用admin、强推或放宽分支保护。仅用户明确要求执行 `git cpf` 或本次跳过CI直接合并时，使用 `scripts/git-cpf.mjs` 的显式例外：只提交已暂存文件，推送分支并精确匹配head合并；必要时临时关闭classic protection的enforce_admins，结束时恢复并读回。不得关闭整个保护、伪造checks或强推main。保护恢复失败保留记录，沿 `git cpf --restore-protection` 处理。确认实际合并后才在干净main同步。
 - 按AGENTS.md“worktree不遗留”收尾，包括subagent派生目录：最终提交实际合入main，或提交本任务改动并核对`archive/<worktree名>`归档标签后，移除worktree及本地任务分支，并清理经核实的专用cargo target。核对进程退出、CWD移出、未跟踪/ignored数据迁出及共享目录边界；编排会话负责子worktree。确需保留时，最终回复必须点名路径与原因。自动合并仍待检查时可先按归档路径回收本地worktree，不冒称已合并。
 
 现行上游与必要适配见 `.github/ui-preview/README.md`。版本Tag、Release、安装包发布不属于日常交付；本地`archive/*`标签仅用于任务收尾存档。
+
+## 本机版本发布
+
+用户要求升版本、准备安装包、发布Release，或查询下载/自动更新方式时，使用[boai-release](../boai-release/SKILL.md)。它复用bumpp和仓库`release:*`命令，负责main Test核对、本机打包/冒烟及Sparkle更新资产。普通开发、PR合并和`git cp`/`git cpf`不自动触发版本发布；用户已明确要求发版时沿该技能完成，不重复请求确认。

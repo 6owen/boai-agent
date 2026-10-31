@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 个人分类与本人菜单共用语义图标映射，插件使用插头图标。
+ * [OUTPUT]: 插件页沿原桌面API配置独立浏览器。
  * [OUTPUT]: 语音页复用应用连接快照；插件页传递活跃状态以停止隐藏页面轮询。
  * [OUTPUT]: 十个设置页共用settings-layout；语音输入独立入口沿原导航草稿守卫，数据与备份同样使用共享文档视口留白。
  * [OUTPUT]: 桌面活动与日报独立设置分类；页面只提供采集/活动/确认清理，不提供日报入口。
@@ -15,6 +17,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { ProfileSettings } from './profile'
+import { personalSettingsShortcuts } from './settings-navigation'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
 import { Button } from '@/components/ui/button'
 import { AppearanceSettings } from './appearance'
@@ -26,7 +29,7 @@ import { WebSearchSettingsPage } from './web-search'
 import { PluginSettingsPage } from './plugins'
 import { VoiceInputSettingsPage } from './voice-input'
 import { useContext, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { LoaderCircle, HardDrive, Sparkles, Settings, Search, Contact, Mic } from '@/components/icons/index'
+import { LoaderCircle, HardDrive, Sparkles, Plug, Search, Contact, Mic } from '@/components/icons/index'
 import type { Snapshot } from '@boai/shared/domain'
 import type { DesktopApi } from '@boai/shared/ipc'
 import { Banner, GuardContext, useMutation } from '@/components/common/index'
@@ -61,8 +64,8 @@ export function SettingsPage({ api, snapshot, refresh, divider, tab, setTab, act
     }
   }, [tab, active])
   const groups = [
-    { label: '个人', items: [{ id: 'profile', label: '个人资料', icon: Contact }, { id: 'appearance', label: '外观', icon: Settings }, { id: 'shortcuts', label: '快捷键', icon: Settings }, { id: 'desktop', label: '运行选项', icon: Settings }, { id: 'desktop-activity', label: '桌面活动与日报', icon: Settings }] },
-    { label: '配置', items: [{ id: 'connections', label: '模型连接', icon: Sparkles }, { id: 'web-search', label: '网页检索', icon: Search }, { id: 'voice-input', label: '语音输入', icon: Mic }, { id: 'plugins', label: '插件', icon: Settings }, { id: 'data', label: '数据与备份', icon: HardDrive }] },
+    { label: '个人', items: [{ id: 'profile', label: '个人资料', icon: Contact }, ...personalSettingsShortcuts] },
+    { label: '配置', items: [{ id: 'connections', label: '模型连接', icon: Sparkles }, { id: 'web-search', label: '网页检索', icon: Search }, { id: 'voice-input', label: '语音输入', icon: Mic }, { id: 'plugins', label: '插件', icon: Plug }, { id: 'data', label: '数据与备份', icon: HardDrive }] },
   ] as const
   const matches = groups.flatMap(group => [...group.items]).filter(item => item.label.toLowerCase().includes(search.trim().toLowerCase()))
   return <div className="settings-page"><nav className="page-subnav" aria-label="设置分类">
@@ -84,7 +87,7 @@ export function SettingsPage({ api, snapshot, refresh, divider, tab, setTab, act
     {tab === 'desktop-activity' && <DesktopActivityPage api={api} active={active} />}
     {tab === 'web-search' && <WebSearchSettingsPage api={api} active={active} />}
     {tab === 'voice-input' && <VoiceInputSettingsPage active={active} connections={snapshot.connections} onOpenShortcuts={() => guard.navigate(() => setTab('shortcuts'))} />}
-    {tab === 'plugins' && <PluginSettingsPage active={active} onOpenVoice={() => guard.navigate(() => setTab('voice-input'))} />}
+    {tab === 'plugins' && <PluginSettingsPage api={api} active={active} onOpenVoice={() => guard.navigate(() => setTab('voice-input'))} />}
     {tab === 'data' && <DataSettings api={api} snapshot={snapshot} busy={busy} run={run} onNotice={setNotice} />}
     {busy && <p className="inline-loading"><LoaderCircle className="spinner" size={16} />正在处理…</p>}
   </div></div></div>

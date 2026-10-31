@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 五状态独立任务会话、原计划授权/工具schema与稳定消息回执按最新用户合同验证。
+ * [OUTPUT]: 员工默认计划绑定主会话，bobo创建来源仍独立保留。
  * [OUTPUT]: 群模型夹具在本人已回复后明确pass，避免无默认上限下无限互相回复；原计划纠错/幂等断言保持。
  * [OUTPUT]: 群计划误填employeeId须给出可执行纠错，拒绝期间零创建；同key省略归属字段后沿原群保存。
  * [OUTPUT]: bobo专用创建会话单员工保存、同请求幂等和普通核心/员工越权拒绝。
@@ -155,7 +157,9 @@ it('lets only dedicated bobo creation chats save a chosen employee plan with the
   const input = { requestId: 'bobo-create-monthly', content: '请让研究员每月15日整理报告', automationCreation: true }
   const conversation = await f.service.handle('startCoreConversation', input) as Conversation
   await expect.poll(() => saved?.id, { timeout: 8000 }).toBeTruthy()
-  expect(saved).toMatchObject({ owner: { kind: 'employee', employeeId: 'researcher' }, employeeIds: ['researcher'], conversationPolicy: 'new-conversation', creationSource: { conversationId: conversation.id, agentId: 'bobo' }, frequency: 'monthly', dayOfMonth: 15 })
+  expect(saved).toMatchObject({ owner: { kind: 'employee', employeeId: 'researcher' }, conversationPolicy: 'new-conversation', creationSource: { conversationId: conversation.id, agentId: 'bobo' }, frequency: 'monthly', dayOfMonth: 15 })
+  expect(saved!.conversationId).not.toBe(conversation.id)
+  expect(saved!.conversationId).toBeUndefined(); expect(saved!.employeeIds).toEqual(['researcher'])
   await expect.poll(async () => (await f.service.handle('getConversation', { id: conversation.id }) as ConversationDetail).turns?.every(t => t.status === 'completed'), { timeout: 8000 }).toBe(true)
   expect(await f.service.handle('startCoreConversation', input)).toMatchObject({ id: conversation.id })
   expect((await f.service.handle('listOwnerAutomations', { owner: { kind: 'employee', employeeId: 'researcher' } }) as AutomationListPage).definitions).toHaveLength(1)

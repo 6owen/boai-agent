@@ -1,4 +1,8 @@
 /*
+ * [OUTPUT]: 员工右侧任务标签按员工身份复用并保留原执行标签。
+ * [OUTPUT]: 员工任务不再创建右侧标签，拒绝打开时保留原执行标签。
+ * [OUTPUT]: 员工任务按员工身份复用面板目标，定位另一执行不串到其他员工。
+ * [OUTPUT]: 提示词固定身份复用，迟到保存不抢焦点、不重开已关闭标签；元数据更新保留隐藏状态。
  * [OUTPUT]: 旧terminal目标不可重开，预览目标仍沿原标签身份。
  * [OUTPUT]: 同一旧知识资源按员工隔离预览标签，避免授权身份串用。
  * [OUTPUT]: 同一会话不同Run分别打开过程标签，重复点击同Run去重，普通会话历史保持独立。
@@ -19,6 +23,21 @@ import { artifactPendingKey, artifactReceiptResult, artifactRequestAction, artif
 import type { Connection, DigitalAgent } from '../packages/shared/src/domain'
 
 describe('detail workspace tabs', () => {
+  it('reuses prompt tabs and updates saved metadata without reopening or stealing focus', () => {
+    const draft: DetailTarget = { type: 'prompt', id: 'prompt-a', name: '新建提示词', create: true, requestId: 'new' }
+    const opened = detailWorkspacesReducer({}, { scope: 'skills', action: { type: 'open', target: draft } })
+    const repeated = detailWorkspacesReducer(opened, { scope: 'skills', action: { type: 'open', target: draft } })
+    expect(repeated.skills.tabs).toHaveLength(1)
+    const other = detailWorkspacesReducer(repeated, { scope: 'skills', action: { type: 'open', target: { type: 'source', id: draft.id, name: '源', requestId: 'other' } } })
+    const hidden = detailWorkspacesReducer(other, { scope: 'skills', action: { type: 'visibility', shown: false } })
+    const saved: DetailTarget = { ...draft, name: '已命名', create: false, requestId: 'saved' }
+    const updated = detailWorkspacesReducer(hidden, { scope: 'skills', action: { type: 'update', target: saved } })
+    expect(updated.skills.activeKey).toBe(other.skills.activeKey); expect(updated.skills.shown).toBe(false)
+    expect(updated.skills.tabs[0].target).toEqual(saved); expect(updated.skills.tabs[1]).toBe(other.skills.tabs[1])
+    const closed = detailWorkspacesReducer(updated, { scope: 'skills', action: { type: 'close', key: opened.skills.tabs[0].key } })
+    expect(detailWorkspacesReducer(closed, { scope: 'skills', action: { type: 'update', target: saved } })).toBe(closed)
+    expect(detailWorkspacesReducer(updated, { scope: 'conversations', action: { type: 'update', target: saved } })).toBe(updated)
+  })
   it('keeps shared legacy knowledge preview scoped to the selected employee', () => {
     let state = emptyDetailTabs
     for (const agentId of ['a', 'b', 'a']) state = reduce(state, { type: 'open', target: { type: 'resource', id: 'shared', agentId } })
@@ -290,4 +309,16 @@ it('rejects legacy terminal targets and keeps preview as the only public workspa
   expect(preview.tabs).toHaveLength(1)
   expect(reduce(preview, { type: 'open', target: legacy })).toBe(preview)
   expect(preview.tabs[0].target).toMatchObject({ view: 'preview' })
+})
+
+
+it('reuses the employee right-side task tab while preserving execution tabs', () => {
+  const process = reduce(emptyDetailTabs, { type: 'open', target: { type: 'trace', id: 'employee-chat' } })
+  const target: DetailTarget = { type: 'employee-tasks', id: 'researcher', requestId: 'one', occurrenceId: 'weather' }
+  const tasks = reduce(process, { type: 'open', target })
+  const reopened = reduce(tasks, { type: 'open', target: { ...target, occurrenceId: 'news', requestId: 'two' } })
+  expect(reopened.tabs).toHaveLength(2)
+  expect(reopened.tabs[0]).toEqual(process.tabs[0])
+  expect(reopened.tabs[1].target).toMatchObject({ id: 'researcher', occurrenceId: 'news' })
+  expect(reopened.activeKey).toBe(tasks.activeKey)
 })

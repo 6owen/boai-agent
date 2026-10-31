@@ -1,4 +1,11 @@
 /*
+ * [OUTPUT]: 员工任务恢复按员工身份复用会话右侧标签；拒绝非会话页面并只清理旧错位标签。
+ * [OUTPUT]: 员工任务转为主区Tab；拒绝创建右侧任务标签，并仅清理旧任务标签，原执行/文件标签保持。
+ * [OUTPUT]: 员工任务目标区分长期taskId与历史occurrenceId，仍限定会话作用域。
+ * [OUTPUT]: 员工任务严格限定conversations作用域，并清除旧错误预览留下的其他页面标签。
+ * [OUTPUT]: 员工任务按员工ID复用右侧标签，重开定位原执行；定时任务页面保持独立。
+ * [OUTPUT]: 提示词按固定ID复用详情标签；保存仅更新目标元数据，不重开已关闭标签或抢占当前标签。
+ * [OUTPUT]: 2026-10-29 workspace-home仅显示已有授权目录；workspace-files接官方树和原预览；tabs-state区分员工workspace标签。
  * [OUTPUT]: 用户工作区开始/文件按员工与会话去重，独立交互终端按真实 terminalId 保留；旧员工 terminal 目标仍退役。
  * [OUTPUT]: 旧terminal目标仅保留类型兼容，拒绝重建已移除的交互终端标签。
  * [OUTPUT]: 会话终端与预览复用同一右侧标签，明确重开切换目标视图。
@@ -24,10 +31,10 @@
  */
 import type { SkillMarketplaceProvider } from '@boai/shared/domain/skill-marketplace'
 
-export type DetailTarget = { type: 'user-workspace'; id: string; employeeId?: string; view: 'start' | 'files' } | { type: 'user-terminal'; id: string; employeeId: string; conversationId: string; name?: string } | { type: 'workspace'; id: string; employeeId: string; view: 'terminal' | 'preview' } | { type: 'automation-occurrence'; id: string } | { type: 'source'; id: string; name: string; requestId: string } | { type: 'local-skill'; id: string; name: string; requestId: string } | { type: 'files'; owner: 'employee' | 'conversation'; id: string; view?: 'files' | 'knowledge'; requestId?: string } | { type: 'channel-discussion'; id: string; agentId: string; requestId: string; focusMessage?: { id: string; requestId: string } } | { type: 'channel-publish'; id: string; originMessageId?: string; sourceMessageId?: string; content?: string; artifact?: import('@boai/shared/domain/channels').ChannelArtifactReference; requestId: string } | { type: 'channel-files'; id: string } | { type: 'channels'; id: string; conversationId?: string; requestId: string; focusMessage?: { id: string; requestId: string }; focusApproval?: { id: string; requestId: string } } | { type: 'agent'; id: string; conversationId?: string; configurationRequest?: string } | { type: 'group'; id: string } | { type: 'resource'; id: string; agentId?: string; citation?: import('@boai/shared/domain/knowledge').KnowledgeCitationInput & { requestId: string } } | { type: 'activity'; id: string; workId?: string; requestId?: string } | { type: 'artifact'; id: string; logicalArtifactId: string; conversationId: string; name: string; contentHash: string; contentVersion?: number; requestId: string } | { type: 'material'; id: string; conversationId: string; name: string; revision: number; line?: number; requestId: string } | { type: 'trace'; runId?: string; title?: string; requestId?: string; id: string; messageId?: string; turnId?: string; agentId?: string } | { type: 'marketplace'; provider: SkillMarketplaceProvider; id: string; name: string } | { type: 'automation-editor'; id?: string; name?: string; mode?: 'manual' | 'assistant' | 'monitor' } | { type: 'schedule' } | { type: 'skill-updates' }
+export type DetailTarget = { type: 'employee-tasks'; id: string; taskId?: string; occurrenceId?: string; requestId: string; focusMessage?: { id: string; requestId: string } } | { type: 'prompt'; id: string; name: string; requestId: string; create?: boolean } | { type: 'employee-workspace'; id: string } | { type: 'user-workspace'; id: string; employeeId?: string; view: 'start' | 'files' } | { type: 'user-terminal'; id: string; employeeId: string; conversationId: string; name?: string } | { type: 'workspace'; id: string; employeeId: string; view: 'terminal' | 'preview' } | { type: 'automation-occurrence'; id: string } | { type: 'source'; id: string; name: string; requestId: string } | { type: 'local-skill'; id: string; name: string; requestId: string } | { type: 'files'; owner: 'employee' | 'conversation'; id: string; view?: 'files' | 'knowledge'; requestId?: string } | { type: 'channel-discussion'; id: string; agentId: string; requestId: string; focusMessage?: { id: string; requestId: string } } | { type: 'channel-publish'; id: string; originMessageId?: string; sourceMessageId?: string; content?: string; artifact?: import('@boai/shared/domain/channels').ChannelArtifactReference; requestId: string } | { type: 'channel-files'; id: string } | { type: 'channels'; id: string; conversationId?: string; requestId: string; focusMessage?: { id: string; requestId: string }; focusApproval?: { id: string; requestId: string } } | { type: 'agent'; id: string; conversationId?: string; configurationRequest?: string } | { type: 'group'; id: string } | { type: 'resource'; id: string; agentId?: string; citation?: import('@boai/shared/domain/knowledge').KnowledgeCitationInput & { requestId: string } } | { type: 'activity'; id: string; workId?: string; requestId?: string } | { type: 'artifact'; id: string; logicalArtifactId: string; conversationId: string; name: string; contentHash: string; contentVersion?: number; requestId: string } | { type: 'material'; id: string; conversationId: string; name: string; revision: number; line?: number; requestId: string } | { type: 'trace'; runId?: string; title?: string; requestId?: string; id: string; messageId?: string; turnId?: string; agentId?: string } | { type: 'marketplace'; provider: SkillMarketplaceProvider; id: string; name: string } | { type: 'automation-editor'; id?: string; name?: string; mode?: 'manual' | 'assistant' | 'monitor' } | { type: 'schedule' } | { type: 'skill-updates' }
 export interface DetailTab { key: string; target: DetailTarget; detail?: Exclude<DetailTarget, { type: 'channels' }> }
 export interface DetailTabsState { tabs: DetailTab[]; activeKey: string | null; shown: boolean }
-export type DetailTabsAction = { type: 'open'; target: DetailTarget; withinKey?: string } | { type: 'select' | 'back'; key: string } | { type: 'close'; key: string; keepWorkspace?: boolean } | { type: 'visibility'; shown: boolean } | { type: 'move'; key: string; targetKey: string; placement: 'before' | 'after' }
+export type DetailTabsAction = { type: 'update'; target: DetailTarget } | { type: 'open'; target: DetailTarget; withinKey?: string } | { type: 'select' | 'back'; key: string } | { type: 'close'; key: string; keepWorkspace?: boolean } | { type: 'visibility'; shown: boolean } | { type: 'move'; key: string; targetKey: string; placement: 'before' | 'after' }
 export const emptyDetailTabs: DetailTabsState = { tabs: [], activeKey: null, shown: false }
 export function detailTargetKey(target: DetailTarget): string {
   if (target.type === 'user-workspace') return target.view === 'start' ? `user-workspace:${target.id}:start` : `user-workspace:${target.id}:${target.employeeId ?? ''}:files`
@@ -42,7 +49,12 @@ export function detailTargetKey(target: DetailTarget): string {
   return target.type === 'schedule' ? 'schedule' : `${target.type}:${target.id}${target.type === 'agent' ? `:${target.conversationId ?? ''}` : ''}`
 }
 export function detailTabsReducer(state: DetailTabsState, action: DetailTabsAction, scope?: string): DetailTabsState {
+  if (action.type === 'open' && action.target.type === 'employee-tasks' && scope && scope !== 'conversations') return state
   if (action.type === 'visibility') return { ...state, shown: action.shown && state.tabs.length > 0 }
+  if (action.type === 'update') {
+    const key = `${scope ? `${scope}/` : ''}${detailTargetKey(action.target)}`
+    return state.tabs.some(tab => tab.key === key) ? { ...state, tabs: state.tabs.map(tab => tab.key === key ? { ...tab, target: action.target } : tab) } : state
+  }
   if (action.type === 'open') {
     if (action.target.type === 'workspace' && action.target.view === 'terminal') return state
     if (action.withinKey) {
@@ -52,7 +64,7 @@ export function detailTabsReducer(state: DetailTabsState, action: DetailTabsActi
       return { ...state, tabs: state.tabs.map(tab => tab === owner ? { ...tab, detail } : tab), activeKey: owner.key, shown: true }
     }
     const key = `${scope ? `${scope}/` : ''}${detailTargetKey(action.target)}`
-    return { tabs: state.tabs.some(tab => tab.key === key) ? (action.target.type === 'user-terminal' || action.target.type === 'workspace' || action.target.type === 'resource' || action.target.type === 'channels' || action.target.type === 'local-skill' || action.target.type === 'source' || action.target.type === 'artifact' || action.target.type === 'material' || action.target.type === 'trace' || action.target.type === 'automation-editor' || action.target.type === 'activity' && action.target.workId || action.target.type === 'agent' && action.target.configurationRequest ? state.tabs.map(tab => tab.key === key ? { key: tab.key, target: action.target } : tab) : state.tabs) : [...state.tabs, { key, target: action.target }], activeKey: key, shown: true }
+    return { tabs: state.tabs.some(tab => tab.key === key) ? (action.target.type === 'employee-tasks' || action.target.type === 'user-terminal' || action.target.type === 'workspace' || action.target.type === 'resource' || action.target.type === 'channels' || action.target.type === 'local-skill' || action.target.type === 'source' || action.target.type === 'prompt' || action.target.type === 'artifact' || action.target.type === 'material' || action.target.type === 'trace' || action.target.type === 'automation-editor' || action.target.type === 'activity' && action.target.workId || action.target.type === 'agent' && action.target.configurationRequest ? state.tabs.map(tab => tab.key === key ? { key: tab.key, target: action.target } : tab) : state.tabs) : [...state.tabs, { key, target: action.target }], activeKey: key, shown: true }
   }
   const index = state.tabs.findIndex(tab => tab.key === action.key)
   if (index < 0) return state
@@ -76,7 +88,8 @@ export function detailTabsReducer(state: DetailTabsState, action: DetailTabsActi
 }
 
 export type DetailWorkspaces = Record<string, DetailTabsState>
-export function detailWorkspacesReducer(state: DetailWorkspaces, event: { scope: string; action: DetailTabsAction } | { type: 'remove-automation-occurrence' | 'remove-workspace'; id: string }): DetailWorkspaces {
+export function detailWorkspacesReducer(state: DetailWorkspaces, event: { scope: string; action: DetailTabsAction } | { type: 'remove-automation-occurrence' | 'remove-workspace'; id: string } | { type: 'remove-misplaced-employee-tasks' }): DetailWorkspaces {
+  if ('type' in event && event.type === 'remove-misplaced-employee-tasks') return Object.fromEntries(Object.entries(state).map(([scope, value]) => [scope, scope === 'conversations' ? value : value.tabs.reduce((next, tab) => tab.target.type === 'employee-tasks' ? detailTabsReducer(next, { type: 'close', key: tab.key }, scope) : next, value)]))
   if ('type' in event) return Object.fromEntries(Object.entries(state).map(([scope, value]) => [scope, value.tabs.reduce((next, tab) => (event.type === 'remove-workspace' ? ((tab.target.type === 'workspace' || tab.target.type === 'user-workspace') && tab.target.id === event.id || tab.target.type === 'user-terminal' && tab.target.conversationId === event.id) : tab.target.type === 'automation-occurrence' && tab.target.id === event.id) ? detailTabsReducer(next, { type: 'close', key: tab.key }, scope) : next, value)]))
   const { scope, action } = event
   const previous = state[scope] ?? emptyDetailTabs

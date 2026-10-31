@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 2026-10-30 回归更新为Mastra官方记忆/原生归属合同；保留来源、调用预算和业务发布断言。
+ * [OUTPUT]: 摘要长度耗尽按原来源恢复一次并逐次计量，取消/预算拒绝/重复截断不提交；SDK内部副本过滤不影响真实工具JSON。
  * [OUTPUT]: 2026-10-27 本轮相关回归合同/源码更新；执行状态另行记录，不以源码存在判通过。
  * [INPUT]: Actual installed Mastra SDK, local streaming HTTP provider, real ProductStore and host-like authorization ports.
  * [OUTPUT]: Public checkpoint/rotation, final-prompt tool compaction, original budgets, Memory pruning, review regressions for provenance, legacy clipping and readonly-step recovery.
@@ -9,7 +11,7 @@ import { createServer, type ServerResponse } from 'node:http'
 import { mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { afterEach, expect, it } from 'vitest'
+import { afterEach, expect, it, vi } from 'vitest'
 import type { AutomationDefinition, AutomationOccurrence, Connection, Conversation, ConversationDetail, ConversationMaterial, DigitalAgent, MemoryView, Message, Snapshot } from '../packages/shared/src/domain'
 import type { AgentEngine, EngineContext } from '../packages/runtime/src/contracts'
 import { AppService } from '../packages/runtime/src/service'
@@ -17,14 +19,20 @@ import { MastraEngine } from '../packages/runtime/src/adapters/mastra/engine'
 import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
 import { ContextRepository, type ContextPort } from '../packages/runtime/src/modules/contexts/context-repository'
 import { RunModelUsage } from '../packages/runtime/src/modules/profile/run-model-usage'
-import { snapshotProviderPrompt } from '../packages/runtime/src/adapters/mastra/context-maintenance'
+import { summarizeContext, snapshotProviderPrompt, contextCapacityProcessor } from '../packages/runtime/src/adapters/mastra/context-maintenance'
 import { progressBoundary } from '../packages/runtime/src/adapters/mastra/progress-review'
 import { ProgressMonitor, ProgressStalledError } from '../packages/runtime/src/modules/contexts/progress-monitor'
 
-interface Body { messages: { role: string; content: unknown }[]; tools?: unknown[] }
+interface Body { max_tokens?: number; messages: { role: string; content: unknown }[]; tools?: unknown[] }
+const observationThread = new WeakMap<ServerResponse, string>()
+const summaryResponse = new WeakMap<ServerResponse, boolean>()
 const cleanup: (() => Promise<void>)[] = []
 afterEach(async () => { for (const close of cleanup.splice(0).reverse()) await close() })
 function send(response: ServerResponse, value: string | { tool: string; args: unknown }, index: number, usage = true) {
+  if (typeof value === 'string' && summaryResponse.get(response)) {
+    const thread = observationThread.get(response)
+    value = `<observations>\n${thread ? `<thread id="${thread}">\n- ${value}\n</thread>` : `- ${value}`}\n</observations>`
+  }
   response.writeHead(200, { 'Content-Type': 'text/event-stream' })
   const frame = (delta: unknown, finish_reason: string | null = null) => response.write(`data: ${JSON.stringify({ id: `call-${index}`, object: 'chat.completion.chunk', created: 1700000000, model: 'fixture', choices: [{ index: 0, delta, finish_reason }] })}\n\n`)
   frame({ role: 'assistant' })
@@ -37,13 +45,17 @@ async function endpoint(handler: (body: Body, response: ServerResponse, index: n
   const requests: Body[] = []
   const server = createServer(async (request, response) => {
     let text = ''; for await (const part of request) text += part
-    const body = JSON.parse(text) as Body; requests.push(body); handler(body, response, requests.length - 1)
+    const body = JSON.parse(text) as Body; requests.push(body)
+    summaryResponse.set(response, isSummary(body))
+    const thread = JSON.stringify(body.messages.filter(message => message.role === 'user')).match(/employee:(?:employee|bobo):thread:dm/)?.[0]
+    if (thread) observationThread.set(response, thread)
+    handler(body, response, requests.length - 1)
   })
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
   cleanup.push(async () => { server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve())) })
   return { requests, url: `http://127.0.0.1:${(server.address() as { port: number }).port}/v1` }
 }
-const isSummary = (body: Body) => body.messages.some(message => message.role === 'system' && JSON.stringify(message.content).includes('Distill the supplied historical data'))
+const isSummary = (body: Body) => body.messages.some(message => message.role === 'system' && JSON.stringify(message.content).includes('You are the memory consciousness'))
 const textOf = (body: Body) => JSON.stringify(body.messages)
 const message = (sequence: number, content = `Message ${sequence} ` + 'history '.repeat(30)): Message => ({ id: `m-${sequence}`, conversationId: 'dm', sequence, content, senderId: 'owner', senderName: 'Owner', senderType: 'user', status: 'completed', createdAt: '2026-10-24T00:00:00.000Z' })
 it('freezes provider media bytes while retaining native URL image values', () => {
@@ -78,7 +90,7 @@ async function fixture(url: string, initial: Message[], core = false) {
   }
   return { ctx, port, repository, store, controller, deltas, started, settled, supplements, root, append: async (next: Message[]) => { messages.push(...next); await store.write(next.map(value => ({ collection: 'messages', id: value.id, value }))); ctx.messages = messages.slice(-20); ctx.triggerMessageId = messages.at(-1)!.id; ctx.runId += '-next' } }
 }
-it('summarizes history outside the old 100-message window and uses three durable generations in the same visible chat', async () => {
+it('summarizes history outside the old 100-message window and uses durable Mastra observations across three turns in the same visible chat', async () => {
   const model = await endpoint((body, response, index) => send(response, isSummary(body) ? 'The early exact budget is 617 yuan [m-1]. Preserve the latest correction and unfinished work.' : 'Final result.', index))
   const messages = Array.from({ length: 81 }, (_, index) => message(index + 1)); messages[0] = message(1, 'The exact budget is 617 yuan.')
   const f = await fixture(model.url, messages), engine = new MastraEngine()
@@ -95,8 +107,9 @@ it('summarizes history outside the old 100-message window and uses three durable
   expect(f.supplements.length).toBeGreaterThanOrEqual(3)
   expect(f.supplements.every(id => f.started.includes(id) && f.settled.includes(id))).toBe(true)
   const state = await f.port.read()
-  expect(state.stream.revision).toBe(3)
-  expect(await f.store.load('contextSessions')).toHaveLength(3)
+  expect(state.stream.revision).toBe(0)
+  expect(await f.store.load('contextCheckpoints')).toHaveLength(0)
+  expect((await engine.memoryView(f.ctx.agent.id)).documents.some(document => document.observations.includes('617 yuan'))).toBe(true)
   expect(await f.store.load<Message>('messages')).toHaveLength(231)
   expect(f.ctx.conversation.id).toBe('dm')
 })
@@ -104,12 +117,12 @@ it('compacts completed tool steps at the actual provider boundary without execut
   let calls = 0
   const model = await endpoint((body, response, index) => {
     if (isSummary(body)) return send(response, 'Completed tool result [tool receipt]; next step remains pending. Never repeat it.', index)
-    if (calls++ < 4) return send(response, { tool: 'read_context_history', args: { limit: 1 } }, index)
+    if (calls++ < 4) return send(response, { tool: 'manage_skills', args: { command: { action: 'list', input: {} } } }, index)
     send(response, 'Finished after the four actual reads.', index)
   })
   const f = await fixture(model.url, [message(1, 'Read the existing historical results, then answer.')])
   let reads = 0
-  f.port.history = async () => { reads++; return [message(1, 'a factual old result '.repeat(1800))] }
+  f.ctx.manageSkills = async () => { reads++; return [message(1, 'a factual old result '.repeat(1800))] }
   await new MastraEngine().run(f.ctx)
   expect(reads).toBe(4)
   expect(f.deltas).toEqual(['Finished after the four actual reads.'])
@@ -150,7 +163,7 @@ it('does not reload checkpoint-covered history through Bobo Mastra Memory', asyn
   const main = model.requests.find(body => !isSummary(body))!
   expect(textOf(main)).toContain('617 yuan')
   expect(textOf(main)).not.toContain(marker)
-  expect(textOf(main)).toContain('Message 80')
+  expect(textOf(main)).toContain('Message 81')
   expect(f.deltas).toEqual(['Memory and handoff checked.'])
 })
 it('keeps the pointer unchanged on an unfinished summary stream and does not retry the request', async () => {
@@ -232,7 +245,8 @@ it.each([35000, 29000])('preserves a single historical message before the old pr
   const model = await endpoint((body, response, index) => send(response, isSummary(body) ? 'EARLY_FACT_617 [m-1]' : 'Reply', index))
   const f = await fixture(model.url, [message(1, 'EARLY_FACT_617 ' + 'a'.repeat(characters)), message(2, 'b'.repeat(20000))])
   await new MastraEngine().run(f.ctx)
-  expect({ summaries: model.requests.filter(isSummary).length, finalIncludesEarly: textOf(model.requests.filter(body => !isSummary(body)).at(-1)!).includes('EARLY_FACT_617') }).toEqual({ summaries: 1, finalIncludesEarly: true })
+  expect(textOf(model.requests.filter(body => !isSummary(body)).at(-1)!)).toContain('EARLY_FACT_617')
+  expect(await f.store.load('contextCheckpoints')).toHaveLength(0)
 })
 it.each(['summary', 'history'])('registers expanded %s inputs and propagates actual user forgetting', async mode => {
   const model = await endpoint((body, response, index) => send(response, isSummary(body) ? 'The protected early fact is PROVENANCE_617 [old-1].' : 'PROVENANCE_617 is remembered.', index))
@@ -245,7 +259,7 @@ it.each(['summary', 'history'])('registers expanded %s inputs and propagates act
     const detail = await service.handle('getConversation', { id: conversation.id }) as ConversationDetail
     return detail.runs.some(run => run.phase === 'execution' && run.status === 'completed')
   }, { timeout: 15000 }).toBe(true)
-  if (mode === 'summary') expect(model.requests.filter(isSummary).some(body => textOf(body).includes('PROVENANCE_617'))).toBe(true)
+  if (mode === 'summary') expect(model.requests.some(body => textOf(body).includes('PROVENANCE_617'))).toBe(true)
   const ctx = contexts[0]!
   const snapshot = service['snapshots'].get(ctx.runId)!
   const observation = (await service['store'].load<{ id: string; sourceMessageIds: string[] }>('memoryObservations')).find(row => row.id === ctx.runId)!
@@ -366,4 +380,91 @@ for (const state of ['stuck', 'unknown', 'bad-citations', 'changed-source'] as c
   expect(model.requests).toHaveLength(1)
   expect(model.requests[0]!.tools?.length ?? 0).toBe(0)
   expect(f.started).toEqual(['extra-1']); expect(f.settled).toContain('extra-1'); expect(f.supplements).toContain('extra-1')
+})
+
+it.each([undefined, 'auto', 'off', 'high'])('completes bounded DeepSeek maintenance instead of exhausting its budget on default reasoning (%s)', async thinkingLevel => {
+ const model=await endpoint((body,response,index)=>{
+  const request=body as Body & {thinking?:{type:string}; reasoning_effort?: string}
+  if(request.reasoning_effort!=='high') return send(response,'保留南京天气来源与未完成查询 [weather-source]',index)
+  response.writeHead(200,{'Content-Type':'text/event-stream'})
+  response.write(`data: ${JSON.stringify({id:'summary-length',choices:[{index:0,delta:{reasoning_content:'Provider reasoning filled the bounded output'},finish_reason:null}]})}\n\n`)
+  response.write(`data: ${JSON.stringify({id:'summary-length',choices:[{index:0,delta:{},finish_reason:'length'}],usage:{prompt_tokens:31269,completion_tokens:2000,total_tokens:33269}})}\n\n`)
+  response.end('data: [DONE]\n\n')
+ })
+ const f=await fixture(model.url,[message(1,'查询南京天气')])
+ f.ctx.connection={...f.ctx.connection!,baseUrl:'https://api.deepseek.com',defaultModel:'deepseek-flash'}
+ f.ctx.agent={...f.ctx.agent,modelId:'',thinkingLevel}
+ const nativeFetch=globalThis.fetch
+ const spy=vi.spyOn(globalThis,'fetch').mockImplementation((input,init)=>{
+  const target=new URL(input instanceof Request?input.url:input.toString())
+  if(target.hostname!=='api.deepseek.com') throw new Error('Unexpected external request')
+  return nativeFetch(new URL(target.pathname,model.url),init)
+ })
+ try {
+  const request=summarizeContext(f.ctx,{id:'weather-source',result:'南京今日多云，待核对气温'})
+  if(thinkingLevel==='high') {
+   await expect(request).rejects.toThrow()
+   expect(model.requests[0]).toMatchObject({thinking:{type:'enabled'},reasoning_effort:'high'})
+  } else await expect(request).resolves.toContain('[weather-source]')
+  const ids = ['extra-1']
+  expect(model.requests).toHaveLength(ids.length)
+  expect(f.started).toEqual(ids);expect(f.settled).toEqual(ids);expect(f.supplements).toEqual(ids)
+  expect(f.ctx.agent.thinkingLevel).toBe(thinkingLevel)
+ } finally {spy.mockRestore()}
+})
+
+function truncatedSummary(response: ServerResponse, tokens = 2000) {
+  response.writeHead(200, { 'Content-Type': 'text/event-stream' })
+  response.write(`data: ${JSON.stringify({ id: 'truncated-summary', choices: [{ index: 0, delta: { content: 'DISCARDED_PARTIAL_HANDOFF' }, finish_reason: null }] })}\n\n`)
+  response.write(`data: ${JSON.stringify({ id: 'truncated-summary', choices: [{ index: 0, delta: {}, finish_reason: 'length' }], usage: { prompt_tokens: 100, completion_tokens: tokens, total_tokens: 100 + tokens } })}\n\n`)
+  response.end('data: [DONE]\n\n')
+}
+it.each([undefined, 1024])('rejects truncated official observations without persisting candidates (ceiling %s)', async ceiling => {
+  const model = await endpoint((body, response) => truncatedSummary(response, body.max_tokens))
+  const f = await fixture(model.url, [message(1, '整理新闻')])
+  if (ceiling) f.ctx.modelCatalog = { source: 'service-declared', fetchedAt: '', models: [{ id: 'fixture', contextWindow: 64000, maxOutputTokens: ceiling }] }
+  await expect(summarizeContext(f.ctx, { id: 'news-source', fact: 617 })).rejects.toThrow()
+  expect(model.requests).toHaveLength(1)
+  expect(model.requests[0]!.max_tokens).toBeLessThanOrEqual(ceiling ?? 4000)
+  expect(f.started).toEqual(['extra-1']); expect(f.settled).toEqual(f.started); expect(f.supplements).toEqual(f.started)
+  expect(await f.store.load('contextCheckpoints')).toHaveLength(0)
+})
+it('refuses an OM call when the original run budget is exhausted', async () => {
+  const model = await endpoint((_body, response, index) => send(response, 'Must not call', index))
+  const f = await fixture(model.url, Array.from({ length: 81 }, (_, i) => message(i + 1)))
+  f.ctx.onAdditionalModelCall = async () => { throw new Error('Original budget exhausted') }
+  await expect(new MastraEngine().run(f.ctx)).rejects.toThrow('Original budget exhausted')
+  expect(model.requests).toHaveLength(0)
+  expect(await f.store.load('messages')).toHaveLength(81)
+})
+it('summarizes provider content without SDK duplicate copies while retaining nested tool JSON and vendor options', async () => {
+  const model = await endpoint((_body, response, index) => send(response, '新闻事实和下一步 [news-tool]', index))
+  const f = await fixture(model.url, [message(1, '继续总结新闻')]); await f.port.read()
+  const processor = contextCapacityProcessor('task', f.ctx)
+  const prompt = [
+    { role: 'user', content: [{ type: 'text', text: '较早请求' }] },
+    { role: 'assistant', content: [{ type: 'tool-call', toolCallId: 'news-tool', toolName: 'read_context_history', input: {} }] },
+    { role: 'tool', content: [{ type: 'tool-result', toolCallId: 'news-tool', toolName: 'read_context_history', output: { type: 'json', value: { facts: 'news fact '.repeat(16000), providerOptions: { mastra: { userData: 'KEEP_USER_JSON' } } } }, providerOptions: { mastra: { modelOutput: 'INTERNAL_DUPLICATE_'.repeat(18000) }, google: { thoughtSignature: 'KEEP_VENDOR_OPTION' } } }] },
+    { role: 'user', content: [{ type: 'text', text: '继续总结新闻' }] },
+  ]
+  await processor.processLLMRequest({ prompt } as Parameters<typeof processor.processLLMRequest>[0])
+  expect(model.requests.length).toBeGreaterThan(0)
+  const summaries = model.requests.map(textOf).join('\n')
+  expect(summaries).not.toContain('INTERNAL_DUPLICATE_')
+  expect(summaries).toContain('KEEP_USER_JSON'); expect(summaries).toContain('KEEP_VENDOR_OPTION')
+  expect(JSON.stringify(prompt)).toContain('INTERNAL_DUPLICATE_')
+})
+it('stops the same task on a truncated OM handoff and never replays completed tools', async () => {
+  let reads = 0
+  const model = await endpoint((body, response, index) => {
+    if (isSummary(body)) return truncatedSummary(response, body.max_tokens)
+    return send(response, { tool: 'manage_skills', args: { command: { action: 'list', input: {} } } }, index)
+  })
+  const f = await fixture(model.url, [message(1, 'Read four original records and summarize.')])
+  f.ctx.manageSkills = async () => { reads++; return [message(1, 'original news source '.repeat(1800))] }
+  await expect(new MastraEngine().run(f.ctx)).rejects.toThrow()
+  expect(reads).toBeGreaterThan(0); expect(reads).toBeLessThanOrEqual(4)
+  expect(model.requests.filter(isSummary)).toHaveLength(1)
+  expect(f.deltas).toEqual([])
+  expect(await f.store.load('contextStepCheckpoints')).toHaveLength(0)
 })

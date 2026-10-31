@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 按待办/进行中/待确认/完成/关闭过滤员工任务。
+ * [OUTPUT]: 任务分页兼容等待补充状态，普通读取不启动执行。
  * [INPUT]: Original task records, fixed SQL read model and trusted application actor.
  * [OUTPUT]: Read-only task pages with query-bound cursors and honest progress/list fields.
  * [POS]: Employee task record queries; does not turn plans, Work or ordinary chat into tasks.
@@ -12,7 +14,7 @@ import type { ProductStore } from '../../adapters/storage/product-store'
 import { ApplicationValidationError, type ApplicationOperation } from './application-service'
 
 const id = z.string().min(1).max(200)
-const query = z.object({ agentId: id.optional(), conversationId: id.optional(), status: z.enum(['pending', 'in_progress', 'blocked', 'done']).optional(), includeDone: z.boolean().default(false), limit: z.number().int().min(1).max(TASK_PAGE_LIMITS.maxPage).default(TASK_PAGE_LIMITS.page), cursor: z.string().min(1).max(2048).regex(/^[A-Za-z0-9_-]+$/).optional() }).strict()
+const query = z.object({ agentId: id.optional(), conversationId: id.optional(), status: z.enum(['pending', 'in_progress', 'in_review', 'done', 'closed']).optional(), includeDone: z.boolean().default(false), limit: z.number().int().min(1).max(TASK_PAGE_LIMITS.maxPage).default(TASK_PAGE_LIMITS.page), cursor: z.string().min(1).max(2048).regex(/^[A-Za-z0-9_-]+$/).optional() }).strict()
 const cursor = z.object({ version: z.literal(1), key: z.string().length(64), updatedAt: z.string().datetime(), id }).strict()
 const invalid = () => { throw new ApplicationValidationError('INVALID_INPUT', '任务分页游标已失效或不属于当前筛选，请从第一页重新读取') }
 

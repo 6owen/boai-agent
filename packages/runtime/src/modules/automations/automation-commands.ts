@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 计划工具排除内部employeeTask字段，单员工新执行使用独立任务会话。
+ * [OUTPUT]: 新单员工计划默认在归属员工主会话执行，创建来源与原回执独立保留。
+ * [OUTPUT]: 计划分页支持明确员工任务用途，默认仍读取定时计划。
  * [OUTPUT]: employeeId仅用于专用创建入口选归属；群内负责人沿collaboration.coordinatorId，误填时给出删除字段的纠错而不放松归属校验。
  * [OUTPUT]: 专用bobo会话可按明确employeeId保存单员工计划；普通员工仍只能管理本归属。
  * [OUTPUT]: 模型工具目录使用标准对象根；执行仍由discriminated union逐动作严格校验。
@@ -20,11 +23,11 @@ const id = z.string().min(1).max(200)
 const targetEmployeeId = id.describe('Only selects the owner in the dedicated bobo scheduled-task creation conversation. Omit in an existing employee/group conversation: the host fixes that owner. For group leadership use plan.collaboration.coordinatorId, never employeeId.')
 const key = z.string().trim().min(1).max(100)
 const cursor = z.object({ updatedAt: z.iso.datetime(), id }).strict()
-export const automationListSchema = z.object({ owner: automationOwnerSchema.optional(), before: cursor.optional(), limit: z.number().int().min(1).max(100).optional() }).strict()
+export const automationListSchema = z.object({ purpose: z.literal('employee-task').optional(), owner: automationOwnerSchema.optional(), before: cursor.optional(), limit: z.number().int().min(1).max(100).optional() }).strict()
 export const automationCommandSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('list'), before: cursor.optional(), limit: z.number().int().min(1).max(50).default(20) }).strict(),
   z.object({ action: z.literal('get'), id }).strict(),
-  z.object({ action: z.literal('save'), key, employeeId: targetEmployeeId.optional(), plan: automationInputSchema.omit({ requestId: true, owner: true, conversationId: true, employeeIds: true }) }).strict(),
+  z.object({ action: z.literal('save'), key, employeeId: targetEmployeeId.optional(), plan: automationInputSchema.omit({ employeeTask: true, requestId: true, owner: true, conversationId: true, employeeIds: true }) }).strict(),
   z.object({ action: z.enum(['pause', 'resume', 'delete']), id, expectedRevision: z.number().int().positive(), key }).strict(),
   z.object({ action: z.literal('run'), id, key }).strict(),
   z.object({ action: z.literal('stop'), id, occurrenceId: id, expectedStateVersion: z.number().int().positive(), key }).strict(),
@@ -35,7 +38,7 @@ export const automationCommandToolSchema = z.object({
   action: z.enum(['list', 'get', 'save', 'pause', 'resume', 'delete', 'run', 'stop']),
   before: cursor.optional(), limit: z.number().int().min(1).max(50).optional(),
   id: id.optional(), key: key.optional(), employeeId: targetEmployeeId.optional(),
-  plan: automationInputSchema.omit({ requestId: true, owner: true, conversationId: true, employeeIds: true }).optional(),
+  plan: automationInputSchema.omit({ employeeTask: true, requestId: true, owner: true, conversationId: true, employeeIds: true }).optional(),
   expectedRevision: z.number().int().positive().optional(), occurrenceId: id.optional(),
   expectedStateVersion: z.number().int().positive().optional(),
 }).strict()
@@ -69,7 +72,7 @@ export function automationCommands(service: AutomationService, store: ProductSto
       if (authority.owner && input.employeeId && (authority.owner.kind !== 'employee' || input.employeeId !== authority.owner.employeeId)) throw new Error(authority.owner.kind === 'group' ? '不能更改当前计划归属：本计划由宿主固定归属当前群。请删除 employeeId，负责人填写 plan.collaboration.coordinatorId；保持同一 key 后重试。' : '不能更改当前计划归属：请省略 employeeId，沿当前员工保存；如需其他员工，请到其对话或专用创建入口。')
       const owner = authority.owner ?? (definition?.owner?.kind === 'employee' ? definition.owner : input.employeeId ? { kind: 'employee' as const, employeeId: input.employeeId } : undefined)
       if (!owner || !authority.owner && (owner.kind !== 'employee' || owner.employeeId === authority.source.agentId || input.employeeId && input.employeeId !== owner.employeeId || input.plan.collaboration || input.plan.taskKind === 'monitor' || input.plan.conversationPolicy === 'existing-conversation')) throw new Error('请选择一名通讯录员工，以独立任务聊天执行')
-      const conversationPolicy = input.plan.conversationPolicy ?? definition?.conversationPolicy ?? 'new-conversation'
+      const conversationPolicy = input.plan.conversationPolicy ?? definition?.conversationPolicy ?? (owner.kind === 'employee' ? undefined : 'new-conversation')
       const conversationId = conversationPolicy === 'existing-conversation' ? definition?.conversationId ?? authority.source.conversationId : undefined
       const saved = await service.save({ ...input.plan, owner, conversationPolicy, conversationId, requestId }, validate, authority.source)
       return { ...saved, nextTimes: saved.enabled && saved.sync === 'synced' ? nextTimes(saved) : [] }

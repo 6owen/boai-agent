@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 消息工具栏提供设为员工任务或查看关联任务，原执行过程按钮保持。
+ * [OUTPUT]: 任务消息提供关联任务入口，与原执行过程工具并存。
  * [OUTPUT]: 系统复制写入成功后显示Sonner复制成功，失败不弹成功提示。
  * [OUTPUT]: 失败/取消/中断的执行过程及自动化镜像保留在聊天；支持显式继续、原生复制和员工配置右键入口。
  * [OUTPUT]: 消息复制使用仅主窗口可调用的系统剪贴板写入桥，浏览器预览保留Web回退；成功后才显示已复制。
@@ -15,7 +17,7 @@ import { defaultUserProfile, messageDisplayName, type LocalUserProfile } from '@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import type { Message } from '@boai/shared/domain'
 import { reactionEmojis, type ReactionEmoji } from '@boai/shared/domain/message-reactions'
-import { Check, Copy, Reply, Share, ThumbsUp, Workflow } from '@/components/icons'
+import { Check, Copy, Reply, Share, ThumbsUp, Clock, Workflow } from '@/components/icons'
 import { useMutation } from '@/components/common'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -37,7 +39,7 @@ function rememberReaction(emoji: ReactionEmoji) {
   try { const usage = reactionUsage(); usage[emoji] = Math.min((usage[emoji] ?? 0) + 1, 1_000_000); localStorage.setItem(REACTION_USAGE_KEY, JSON.stringify(usage)) } catch { /* Optional local presentation preference. */ }
 }
 
-export function MessageCard({ message, profile = defaultUserProfile, children, receipt, onReply, onTrace, onPublish, publishDisabled, publishDescription }: { message: Message; profile?: Pick<LocalUserProfile, 'displayName'>; children: ReactNode; receipt?: ReactNode; onReply(): void; onTrace(): void; onPublish?(): void; publishDisabled?: boolean; publishDescription?: string }) {
+export function MessageCard({ message, profile = defaultUserProfile, children, receipt, onReply, onTrace, onTask, onCreateTask, onPublish, publishDisabled, publishDescription }: { message: Message; profile?: Pick<LocalUserProfile, 'displayName'>; children: ReactNode; receipt?: ReactNode; onReply(): void; onTrace(): void; onTask?(): void; onCreateTask?(): void; onPublish?(): void; publishDisabled?: boolean; publishDescription?: string }) {
   const sender = messageDisplayName(message, profile)
   const space = useRef<HTMLDivElement>(null), content = useRef<HTMLDivElement>(null), toolbar = useRef<HTMLDivElement>(null)
   const reactionTrigger = useRef<HTMLButtonElement>(null)
@@ -104,6 +106,8 @@ export function MessageCard({ message, profile = defaultUserProfile, children, r
         <Button variant="ghost" size="icon-sm" className="reply-action" aria-label={`引用 ${sender} 的消息`} title="引用回复" onClick={onReply}><Reply /></Button>
         <Button variant="ghost" size="icon-sm" aria-label={`复制 ${sender} 的消息`} title={copied ? '已复制' : '复制消息'} onClick={copy}>{copied ? <Check /> : <Copy />}</Button>
         {onPublish && <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-sm" aria-label="发送到渠道" disabled={publishDisabled} focusableWhenDisabled onClick={onPublish} />}><Share /></TooltipTrigger><TooltipContent className="whitespace-pre-wrap">{publishDescription ?? '发送到渠道'}</TooltipContent></Tooltip>}
+        {onCreateTask && <Button variant="ghost" size="icon-sm" aria-label="设为员工任务" title="设为员工任务" onClick={onCreateTask}><Clock /></Button>}
+        {onTask && <Button variant="ghost" size="icon-sm" aria-label="查看关联任务" title="查看关联任务" onClick={onTask}><Clock /></Button>}
         {message.senderType === 'agent' && <Button variant="ghost" size="icon-sm" className="trace-action" aria-label={`查看 ${sender} 的执行过程`} title="查看执行过程" onClick={onTrace}><Workflow /></Button>}
       </div>
     </div>
