@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 /*
  * [OUTPUT]: 手动运行受理为queued时同样保留过程/聊天两个原图标，转running及终态仍按原规则。
+ * [OUTPUT]: 手动运行聊天导航核对原conversation/run/occurrence身份，四种终态仍移除查看按钮。
  * [OUTPUT]: 对话创建允许独立读取列表偏好，仍不写入或执行计划。
  * [OUTPUT]: 手动本次查看按钮仅运行期间显示；历史/自动执行及完成/失败/取消/中断后的按钮均隐藏。
  * [OUTPUT]: 本轮覆盖复制/员工入口、定时运行防连点、失败过程、严格私有判断及保留原预算的显式继续；实际范围以各用例为准。
@@ -60,7 +61,9 @@ test.each((['queued', 'running'] as const).flatMap(initial => (['completed', 'fa
   await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="查看本次执行过程"]')!.click())
   expect(open).toHaveBeenCalledWith('once')
   await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="定位聊天记录"]')!.click())
-  expect(navigate).toHaveBeenCalledWith('employee-chat', 'published-trigger', expect.any(Function), expect.objectContaining({ occurrenceId: 'once', runId: 'run' }))
+  expect(navigate).toHaveBeenCalledWith('employee-chat', 'published-trigger', expect.any(Function), {
+    conversationId: 'task-chat', runId: 'run', agentId: undefined, occurrenceId: 'once',
+  })
   await render([{ ...occurrence, status: terminalStatus, stateVersion: 2 }])
   expect(host.querySelector('[aria-label="查看本次执行过程"]')).toBeNull()
   expect(host.querySelector('[aria-label="定位聊天记录"]')).toBeNull()

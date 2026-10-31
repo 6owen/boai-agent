@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 独立AgentBrowser/BrowserViewer插件接入；上游工具、启停与运行回收保持独立。
  * [OUTPUT]: 2026-10-29 Sparkle仅打包macOS主窗启用；宿主清理成功后安装，独立CLI附着时停用，失败恢复原退出入口。
  * [OUTPUT]: 2026-10-29 工作区目录/预览调用由官方file-explorer-plugin宿主处理，原终端resolver独立。
  * [OUTPUT]: 2026-10-28 语音模型操作透传显式modelId/action，由宿主唯一schema校验。
@@ -226,6 +227,7 @@ const appIconController = new AppIconController(appIconAssets, join(__dirname, '
   snapshot: () => background.iconStatus(), apply: id => background.applyIcon(id), retry: id => background.retryIcon(id),
 })
 const pluginSettings = new PluginSettingsStore(join(legacyDataPath, 'application-plugins.json'), settings => {
+  if (runtime) void requestCurrentRuntime(runtime, '__browserPluginsChanged', undefined).catch(error => sendEvent({ type: 'runtime-error', error: String(error) }))
   if (pluginAvailability(applicationPlugins.find(plugin => plugin.id === 'boai.voice-input')!, settings) !== 'enabled') void voice.close().catch(() => {})
   sendEvent({ type: 'plugins:changed', settings })
   appearance.systemChanged()

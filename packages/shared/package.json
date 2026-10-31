@@ -455,6 +455,11 @@
       "types": "./src/ipc/app-updates.ts",
       "development": "./src/ipc/app-updates.ts",
       "default": "./src/ipc/app-updates.ts"
+    },
+    "./plugins/browser-tools": {
+      "types": "./src/plugins/browser-tools.ts",
+      "development": "./src/plugins/browser-tools.ts",
+      "default": "./src/plugins/browser-tools.ts"
     }
   },
   "dependencies": {

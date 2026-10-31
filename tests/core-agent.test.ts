@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-10-30 回归更新为Mastra官方记忆/原生归属合同；保留来源、调用预算和业务发布断言。
  * [OUTPUT]: 2026-10-19核心默认完全访问及可显式限制取代旧强制禁命令；固定身份/后端限制保持。
  * [OUTPUT]: API专用夹具保留明确connection前提，兼容运行时上下文的可选API连接。
  * [INPUT]: 核心员工身份、真实 SQLite/工作区与已安装 Mastra 工具和阶段工厂。
@@ -156,7 +157,7 @@ test('real Mastra SDK advertises and executes create_team only in the core task,
   expect(decision.responseKind).toBe('task')
   await engine.run({ ...ctx, agent: { ...ctx.agent, id: 'writer', systemRole: undefined }, conversation: { ...ctx.conversation, agentIds: ['writer'] } })
   expect(ctx.createTeam).not.toHaveBeenCalled()
-  expect(endpoint.requests[before].tools).toBeUndefined()
+  expect(endpoint.requests[before].tools).toEqual([expect.objectContaining({ function: expect.objectContaining({ name: 'recall' }) })])
   expect(endpoint.requests[before + 1].tools).toBeUndefined()
   expect(endpoint.requests[before + 2].tools).not.toEqual(expect.arrayContaining([expect.objectContaining({ function: expect.objectContaining({ name: 'create_team' }) })]))
 })

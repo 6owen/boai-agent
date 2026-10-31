@@ -144,7 +144,11 @@
     "@boai/voice-input-plugin": "workspace:*",
     "use-stick-to-bottom": "1.1.6",
     "@boai/file-explorer-plugin": "workspace:*",
-    "electron-sparkle-updater": "0.5.1"
+    "electron-sparkle-updater": "0.5.1",
+    "@boai/browser-plugins": "workspace:*",
+    "@mastra/agent-browser": "0.5.5",
+    "@mastra/browser-viewer": "0.2.6",
+    "agent-browser": "0.19.0"
   },
   "build": {
     "appId": "com.boai.agent",
@@ -167,7 +171,9 @@
       "dist/main/app-icons/**/*",
       "dist/runtime/plugins/**/*",
       "node_modules/sherpa-onnx*/**/*",
-      "dist/voice-input/**/*"
+      "dist/voice-input/**/*",
+      "node_modules/agent-browser/**/*",
+      "node_modules/playwright-core/**/*"
     ],
     "mac": {
       "category": "public.app-category.productivity",

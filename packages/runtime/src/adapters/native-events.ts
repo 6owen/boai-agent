@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 独立浏览器插件输入及截图沿原生媒体脱敏边界。
  * [OUTPUT]: Codex公开summary增量进入思考块；原始reasoning正文仍不暴露。
  * [OUTPUT]: 网页工具事件保留实际命令并隐藏填写值，截图仅存媒体摘要；完成事件不覆盖已记录参数，模型内存结果保持完整媒体。
  * [INPUT]: Rovai codex.rs normalize_event / claude.rs normalize_claude_runtime_events @ f9acc239 (MIT)，真实原生事件。
@@ -27,6 +28,7 @@ export function nativeActivity(id: string, item: Record<string, any>, completed:
     const input = item.input ?? item.arguments
     item = { ...item, ...(input === undefined ? {} : { input: browserToolObservation(input), arguments: browserToolObservation(input) }), result: summarizeMedia(item.result) }
   }
+  if (/(^|__)call_browser_plugin$/.test(name)) item={...item,input:{omitted:'网页输入不进入持久事件'},arguments:{omitted:'网页输入不进入持久事件'},result:summarizeMedia(item.result)}
   const type = String(item.type ?? name), input = recordValue(item.input ?? item.arguments)
   const domain = /commandExecution|Bash|shell|exec_command/.test(type + name) ? 'shell'
     : /fileChange|Write|Edit|NotebookEdit/.test(type + name) || name === 'Read' ? 'file' : /webSearch|WebSearch|WebFetch/.test(type + name) ? 'web' : 'tool'

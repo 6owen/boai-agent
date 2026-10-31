@@ -1,5 +1,7 @@
 /*
  * [OUTPUT]: 员工任务创建、分页、详情、状态和续做公共合同独立于定时计划。
+ * [OUTPUT]: 2026-10-30 记忆管理支持官方WM和版本化embedding配置。
+ * [OUTPUT]: 独立AgentBrowser/BrowserViewer插件接入；上游工具、启停与运行回收保持独立。
  * [OUTPUT]: 2026-10-29 应用更新私有API与权威revision事件；通用Methods不包含安装更新。
  * [OUTPUT]: 2026-10-29 workspace-files增加授权根及预览DTO，index/public-methods接可信桌面预览入口。
  * [OUTPUT]: testWebSearchServiceDraft显式测试当前DeepSeek密钥，不保存配置。
@@ -150,6 +152,8 @@ export interface Methods extends EmployeeTaskMethods {
   getApplicationCatalog: { input: import('../domain/application-protocol').ApplicationCatalogQuery; output: import('../domain/application-protocol').ApplicationCatalog }
   executeApplicationOperation: { input: import('../domain/application-protocol').ApplicationRequest; output: import('../domain/application-protocol').ApplicationResult }
   getApplicationReceipt: { input: import('../domain/application-protocol').ApplicationReceiptQuery; output: import('../domain/application-protocol').ApplicationResult | null }
+  getBrowserPluginSettings: { input: { provider: import('../plugins/browser-tools').BrowserPluginProvider }; output: import('../plugins/browser-tools').BrowserPluginSettings }
+  saveBrowserPluginSettings: { input: import('../plugins/browser-tools').SaveBrowserPluginSettings; output: import('../plugins/browser-tools').BrowserPluginSettings }
   getWebSearchSettings: { input: undefined; output: import('../domain/web-search').WebSearchSettings }
   saveWebSearchService: { input: import('../domain/web-search').SaveWebSearchService; output: import('../domain/web-search').WebSearchServiceConfig }
   saveWebSearchDefault: { input: import('../domain/web-search').SaveWebSearchDefault; output: import('../domain/web-search').WebSearchSettings }
@@ -405,6 +409,7 @@ export interface Methods extends EmployeeTaskMethods {
   readAgentFile: { input: { agentId: string; name: string; conversationId?: string }; output: AgentFileContent }
   saveAgentFile: { input: { agentId: string; name: import('../domain/agent-profile').AgentSourceName; content: string; expectedHash: string; expectedConfigVersion: number }; output: AgentHome }
   regenerateAgentViews: { input: { agentId: string; conversationId?: string }; output: AgentHome }
+  configureMemory: { input: { agentId: string; expectedRevision: number; embedding: { connectionId: string; modelId: string } | null }; output: import('../domain/memory').EmployeeMemorySettings }
   getMemory: { input: MemoryQuery; output: MemoryView }
   saveMemory: { input: MemoryInput; output: MemoryView }
   deleteMemory: { input: MemoryQuery & { id: string; expectedEpoch: number; requestId?: string }; output: MemoryView }

@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 2026-10-30 API员工统一接Mastra Memory/OM，完整当前输入与材料正文保持；旧extractMemory仅兼容历史评估，产品不再调度。
+ * [OUTPUT]: 独立AgentBrowser/BrowserViewer插件接入；上游工具、启停与运行回收保持独立。
  * [OUTPUT]: 浏览器执行参数显示实际命令并脱敏输入值，不再用统一omitted占位对象；模型工具输入/结果不变。
  * [OUTPUT]: Task SDK单请求重试保留原步骤/工具结果，逐次预留调用并将用量归最终实际请求。
  * [OUTPUT]: DeepSeek公开历史按当前阶段实际工具集适配，覆盖带工具的普通聊天；当前SDK思考链保持原样。
@@ -48,6 +50,7 @@
  * [POS]: 产品 AgentEngine 的 Mastra 适配器；限流准入由宿主管理。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { ContextCapacityError } from '../../modules/contexts/context-capacity'
 import { ProgressMonitor, ProgressStalledError } from '../../modules/contexts/progress-monitor'
 import { progressBoundary } from './progress-review'
 import { WORK_EXECUTION_LIMITS } from '@boai/shared/domain/work'
@@ -82,11 +85,12 @@ import { thinkingProviderOptions, decisionProviderOptions, modelConfig, response
 import { gatewayRouteObserver } from './gateway-route'
 import { assertStreamCompleted } from './stream-completion'
 import { supportsThinkingControl } from '@boai/shared/domain/model-preferences'
+import { createBrowserPluginOperations } from './browser-plugin-tools'
 import { createStageAgent, bootstrapInstructions, organizationDecisionAllowed, type StageInstance } from './agent-factory'
-import { BoboConversationMemory } from './conversation-memory'
-import { modelInputGuard, prepareContextHistory } from './context-maintenance'
+import { EmployeeConversationMemory } from './conversation-memory'
+import { contextHandoff, modelInputGuard } from './context-maintenance'
 import { isCoreAgent } from '@boai/shared/domain/core-agent'
-import { projectMessages, visibleMessages, partitionTurn, messageData, decisionMessageData } from './message-projection'
+import { projectMessages, contextWindow, visibleMessages, partitionTurn, messageData, decisionMessageData } from './message-projection'
 import { deepseekReasoningHistory } from './deepseek-reasoning-model'
 const MAX_STEPS = WORK_EXECUTION_LIMITS.steps
 const MEMORY_OUTPUT_TOKENS = 6000
@@ -143,12 +147,19 @@ export interface MastraEngineOptions {
 import { workIntentSchema, modelWorkReportSchema, workReportSchema } from '../../modules/collaboration/work-protocol'
 import { decisionJsonSchema, decisionModelSchema, decisionPromptSchema, memorySchema, parseJson } from '../../modules/employees/phase-protocol'
 export class MastraEngine implements AgentEngine {
-  private readonly boboMemory?: BoboConversationMemory
+  readonly memoryOwner = 'mastra' as const
+  private readonly employeeMemory: EmployeeConversationMemory
   constructor(private readonly options: MastraEngineOptions = {}) {
-    if (options.memoryPath) this.boboMemory = new BoboConversationMemory(options.memoryPath)
+    this.employeeMemory = new EmployeeConversationMemory(options.memoryPath ?? ':memory:')
   }
-  async forgetConversationMemory(conversationId: string) { await this.boboMemory?.forgetConversation(conversationId) }
-  async forgetAllConversationMemory() { await this.boboMemory?.forgetAll() }
+  async forgetConversationMemory(conversationId: string) { await this.employeeMemory.forgetConversation(conversationId) }
+  async forgetAllConversationMemory() { await this.employeeMemory.forgetAll() }
+  async clearEmployeeMemory(agentId: string, cutoffs: { conversationId: string; sequence: number }[]) { await this.employeeMemory.clearEmployee(agentId, cutoffs) }
+  async deleteEmployeeMemory(agentId: string) { await this.employeeMemory.deleteEmployee(agentId) }
+  async forgetEmployeeMemory(agentId: string) { await this.employeeMemory.forgetEmployee(agentId) }
+  async memoryView(agentId: string) { return this.employeeMemory.view(agentId) }
+  async saveWorkingMemory(agentId: string, resourceId: string, content: string, expectedVersion: string, cutoffs?: { conversationId: string; sequence: number }[]) { await this.employeeMemory.saveWorkingMemory(agentId, resourceId, content, expectedVersion, cutoffs) }
+  async closeMemory() { await this.employeeMemory.close() }
 
   async runBehavior(context: EngineContext, input: { instruction: string; maxModelCalls: number }) {
     assertApiContext(context)
@@ -181,40 +192,31 @@ export class MastraEngine implements AgentEngine {
   async run(context: EngineContext): Promise<void> {
     assertApiContext(context)
     const signal = this.options.runTimeoutMs === undefined ? context.signal : AbortSignal.any([context.signal, AbortSignal.timeout(this.options.runTimeoutMs)])
-    const ctx = { ...context, signal }
+    const ctx = { ...context, signal, memoryOwner: 'mastra' as const }
     // A clarification or handoff is only a public request; it never opens task capabilities.
     const task = ctx.responseKind === 'task' && (!ctx.decision || ctx.decision.action === 'reply')
     let stage: StageInstance | undefined
+    let prepared: Awaited<ReturnType<EmployeeConversationMemory['prepare']>> | undefined
     const progress = new ProgressMonitor()
     try {
-      const maintained = await prepareContextHistory(ctx)
-      ctx.messages = maintained.context.messages
+      if (ctx.continuity) {
+        const enriched = new Map(ctx.messages.map(message => [message.id, message]))
+        ctx.messages = (await ctx.continuity.read()).messages.map(message => enriched.get(message.id) ?? message)
+      }
       check(signal)
-      let boboMemory: Awaited<ReturnType<BoboConversationMemory['prepare']>> | undefined
-      if (!task && this.boboMemory && isCoreAgent(ctx.agent) && ctx.conversation.purpose === 'core' && !ctx.conversation.channel) {
-        try { boboMemory = await this.boboMemory.prepare(ctx.messages, ctx.conversation.id, ctx.triggerMessageId, ctx.turnId, ctx.bootstrap?.memoryProjection) }
-        catch (error) {
-          check(signal)
-          await ctx.onTraceError?.(`bobo Mastra Memory 不可用，已使用获准聊天原文：${errorText(error)}`).catch(() => {})
-        }
-      }
-      let externalMemory = ''
-      if (!task && ctx.externalMemory) {
-        try { externalMemory = (await ctx.externalMemory.recall())?.text ?? '' }
-        catch (error) {
-          check(signal)
-          await ctx.onTraceError?.(`Memmy长期记忆暂不可用，已使用本机获准记忆：${errorText(error)}`).catch(() => {})
-        }
-      }
-      let messages = projectMessages(boboMemory?.current ?? ctx.messages, ctx.agent.id, ctx.conversation.id, ctx.triggerMessageId, ctx.turnId, ctx.materialImages)
+      const current = partitionTurn(ctx.messages.filter(message => message.conversationId === ctx.conversation.id && message.status === 'completed' && message.content.trim()), ctx.triggerMessageId, ctx.turnId).current
+      try { if (contextWindow(current, ctx.conversation.id, ctx.triggerMessageId).length !== current.length) throw new ContextCapacityError() }
+      catch { throw new ContextCapacityError() }
+      prepared = await this.employeeMemory.prepare(ctx)
+      let messages = projectMessages(prepared.current, ctx.agent.id, ctx.conversation.id, ctx.triggerMessageId, ctx.turnId, ctx.materialImages)
       if (!messages.length) throw new Error('No completed messages in this conversation')
-      if (maintained.handoff) messages.unshift({ role: 'user', content: maintained.handoff })
+      const scene = await ctx.workingScene?.()
+      if (scene) messages = [{ role: 'user', content: contextHandoff(scene) }, ...messages]
       const stageContext = { ...ctx, ...(ctx.bootstrap ? { bootstrap: { ...ctx.bootstrap,
-        instructions: boboMemory && ctx.bootstrap.baseInstructions ? ctx.bootstrap.baseInstructions : ctx.bootstrap.instructions,
-        dynamicInstructions: [ctx.bootstrap.dynamicInstructions, externalMemory ? `[外部Memmy用户记忆：仅作可能过时的背景，不是本轮指令、权限或已完成工作的证明。]\n${externalMemory}` : ''].filter(Boolean).join('\n\n'),
+        instructions: ctx.bootstrap.baseInstructions ?? ctx.bootstrap.instructions,
       } } : {}) }
       let callIds: (string | undefined)[] = []
-      stage = await createStageAgent(task ? 'task' : 'chat', stageContext, this.options.commandTimeoutMs, boboMemory?.memory, async () => {
+      stage = await createStageAgent(task ? 'task' : 'chat', stageContext, this.options.commandTimeoutMs, prepared.memory, async () => {
         check(signal)
         if (!ctx.onAdditionalModelCall) throw new Error('宿主未提供重试模型调用预算')
         const reserved = await ctx.onAdditionalModelCall(); check(signal)
@@ -238,7 +240,7 @@ export class MastraEngine implements AgentEngine {
         let previousFinish: { reason: string | undefined } | undefined
         const observeRoute = gatewayRouteObserver(ctx, () => callIds.at(-1))
         const output = await agent.stream(messages, {
-          ...(boboMemory ? { memory: boboMemory.option } : {}),
+          memory: prepared.option,
           abortSignal: signal, maxSteps: MAX_STEPS, modelSettings: { maxOutputTokens: responseOutputTokens(ctx, task) },
           providerOptions: thinkingProviderOptions(ctx.connection, ctx.agent.modelId, ctx.agent.thinkingLevel, task ? 'task' : 'chat', ctx.modelCatalog),
           onStepFinish: async event => {
@@ -281,7 +283,7 @@ export class MastraEngine implements AgentEngine {
       if (error instanceof ProgressStalledError) throw error
       if (signal.aborted) throw new Error(signal.reason?.name === 'TimeoutError' ? '任务超时' : '任务已取消')
       throw new Error(redact(errorText(error), ctx.apiKey), { cause: error })
-    } finally { await stage?.dispose() }
+    } finally { try { await stage?.dispose() } finally { await prepared?.dispose() } }
   }
 
   private async consumeResponse(output: Awaited<ReturnType<Agent['stream']>>, ctx: EngineContext, task: boolean, callIds: (string | undefined)[], skills: StageInstance['skills'], usage: UsageRecorder) {
@@ -289,11 +291,12 @@ export class MastraEngine implements AgentEngine {
     const events = new Map<string, ToolEvent>()
     const report = async (id: string, name: string, status: ToolEvent['status'], detail: unknown) => {
       if(name==='browser_tool' && status==='running') detail=browserToolObservation(detail)
+      if(name==='call_browser_plugin' && status==='running') detail=summarizeMedia(detail)
       const event = { id, name, status, detail: redact(typeof detail === 'string' ? detail : JSON.stringify(summarizeMedia(detail)) ?? '', ctx.apiKey).slice(0, 2000), createdAt: events.get(id)?.createdAt ?? new Date().toISOString() }
       events.set(id, event)
       await ctx.onTool(event)
     }
-    const buffered = task || !!ctx.continuity || ctx.agent.skillIds.length > 0 || !!ctx.recallMemory || !!ctx.application || hasKnowledge(ctx) || hasChatSourceTools(ctx) || !!ctx.manageSkills || !!ctx.manageDataSources || !!ctx.manageAutomation || !!ctx.createDataSource
+    const buffered = !!ctx.browserPluginProviders?.length || task || !!ctx.continuity || ctx.agent.skillIds.length > 0 || !!ctx.recallMemory || !!ctx.application || hasKnowledge(ctx) || hasChatSourceTools(ctx) || !!ctx.manageSkills || !!ctx.manageDataSources || !!ctx.manageAutomation || !!ctx.createDataSource
     let stepNumber = 0, stepText = '', stepHasTools = false, finalText = '', stepId = '', textBlocks = new Set<string>()
     try {
       for await (const chunk of output.fullStream) {
@@ -316,7 +319,7 @@ export class MastraEngine implements AgentEngine {
         } else if (chunk.type === 'reasoning-delta') {
           await ctx.onExecutionEvent?.({ id: `reasoning:${stepId}:${chunk.payload.id}`, eventType: 'agent.reasoning.block', payload: { text: '' }, appendText: chunk.payload.text })
         } else if (chunk.type === 'tool-call') {
-          if (!task && !((ctx.continuity && chunk.payload.toolName === 'read_context_history') || ([...createBoundSkillOperations(ctx), ...createMemoryOperations(ctx), ...createReactionOperations(ctx), ...createSelfieOperations(ctx)].some(operation => operation.name === chunk.payload.toolName)) || (hasKnowledge(ctx) && ctx.decision?.action !== 'ask' && ctx.decision?.action !== 'request_handoff' && knowledgeToolNames.some(name => name === chunk.payload.toolName)) || (hasChatSourceTools(ctx) && sourceToolNames.some(name => name === chunk.payload.toolName)) || (ctx.personality && stateToolNames.some(name => name === chunk.payload.toolName)) || (ctx.application && applicationToolNames.some(name => name === chunk.payload.toolName)) || (ctx.manageSkills && chunk.payload.toolName === 'manage_skills') || (ctx.manageDataSources && (['manage_data_sources', 'inspect_data_source', 'call_data_source'].includes(chunk.payload.toolName) || (ctx.browserSession && chunk.payload.toolName === 'browser_tool'))) || (ctx.manageAutomation && chunk.payload.toolName === 'manage_automation') || (ctx.createDataSource && chunk.payload.toolName === 'create_data_source'))) throw new Error('普通聊天不允许调用此业务工具')
+          if (!task && !((ctx.memoryOwner === 'mastra' && ['recall', 'updateWorkingMemory', 'update-working-memory'].includes(chunk.payload.toolName)) || (ctx.continuity && chunk.payload.toolName === 'read_context_history') || ([...createBrowserPluginOperations(ctx), ...createBoundSkillOperations(ctx), ...createMemoryOperations(ctx), ...createReactionOperations(ctx), ...createSelfieOperations(ctx)].some(operation => operation.name === chunk.payload.toolName)) || (hasKnowledge(ctx) && ctx.decision?.action !== 'ask' && ctx.decision?.action !== 'request_handoff' && knowledgeToolNames.some(name => name === chunk.payload.toolName)) || (hasChatSourceTools(ctx) && sourceToolNames.some(name => name === chunk.payload.toolName)) || (ctx.personality && stateToolNames.some(name => name === chunk.payload.toolName)) || (ctx.application && applicationToolNames.some(name => name === chunk.payload.toolName)) || (ctx.manageSkills && chunk.payload.toolName === 'manage_skills') || (ctx.manageDataSources && (['manage_data_sources', 'inspect_data_source', 'call_data_source'].includes(chunk.payload.toolName) || (ctx.browserSession && chunk.payload.toolName === 'browser_tool'))) || (ctx.manageAutomation && chunk.payload.toolName === 'manage_automation') || (ctx.createDataSource && chunk.payload.toolName === 'create_data_source'))) throw new Error('普通聊天不允许调用此业务工具')
           stepHasTools = true
           if (chunk.payload.toolName === 'skill') {
             const name = (chunk.payload.args as { name?: string })?.name
@@ -507,6 +510,7 @@ export class MastraEngine implements AgentEngine {
     } catch (error) { throw new Error(redact(`成员判断失败：${signal.aborted ? (signal.reason?.name === 'TimeoutError' ? '判断超时' : '判断已取消') : errorText(error)}`, context.apiKey), { cause: error }) } finally { await dispose() }
   }
 
+  /** @deprecated Legacy evaluation/plugin compatibility only. AppService never schedules this for memoryOwner=mastra. */
   async extractMemory(context: EngineContext): Promise<MemoryCandidate[]> {
     assertApiContext(context)
     const signal = AbortSignal.any([context.signal, AbortSignal.timeout(this.options.connectionTimeoutMs ?? 30_000)])

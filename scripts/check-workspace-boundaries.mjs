@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 独立浏览器包只依赖上游，由runtime调用公开host入口。
  * [OUTPUT]: 2026-10-29 包边界纳入file-explorer-plugin；build分发固定来源和MIT许可。
  * [OUTPUT]: 2026-10-27 语音包分发、工作区依赖或静音诊断候选；不代表产品验收。
  * [INPUT]: Workspace manifests, public exports and TS/JS source imports.
@@ -19,8 +20,9 @@ const allowed = {
   '@boai/shared': ['@boai/tokens', '@boai/runtime-plugin-sdk'],
   '@boai/file-explorer-plugin': ['@boai/shared', '@boai/ui'],
   '@boai/voice-input-plugin': ['@boai/shared'],
+  '@boai/browser-plugins': [],
   '@boai/transport': ['@boai/shared'],
-  '@boai/runtime': ['@boai/shared', '@boai/transport', '@boai/tokens', '@boai/runtime-plugin-sdk', '@boai/runtime-plugins'],
+  '@boai/runtime': ['@boai/browser-plugins', '@boai/shared', '@boai/transport', '@boai/tokens', '@boai/runtime-plugin-sdk', '@boai/runtime-plugins'],
   '@boai/runtime-plugin-sdk': [],
   '@boai/runtime-plugins': ['@boai/shared', '@boai/runtime-plugin-sdk'],
   '@boai/ui': ['@boai/tokens'],
