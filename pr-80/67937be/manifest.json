@@ -1,0 +1,64 @@
+{
+  "summary": "该 PR 在员工直接会话右侧新增可切换看板/列表的任务面板，并加入创建任务、任务详情 Dialog（左属性右会话、可调分栏）、状态与拖拽排序等交互；同时替换了设置菜单的快捷项图标，并统一任务面板 header 与部分 Tabs 样式。",
+  "scenes": [
+    {
+      "title": "打开员工任务看板与列表",
+      "shots": [
+        {
+          "file": "01-employee-chat-header.png",
+          "caption": "直接会话头部，右侧可见任务入口",
+          "width": 1280
+        },
+        {
+          "file": "02-employee-task-board.png",
+          "caption": "员工任务面板的看板视图",
+          "width": 560
+        },
+        {
+          "file": "03-employee-task-list.png",
+          "caption": "任务列表视图的状态分组",
+          "width": 560
+        }
+      ]
+    },
+    {
+      "title": "创建任务并查看任务详情",
+      "shots": [
+        {
+          "file": "04-create-task-dialog.png",
+          "caption": "创建任务对话框",
+          "width": 808
+        },
+        {
+          "file": "05-task-detail-dialog.png",
+          "caption": "新建任务后的任务详情：左侧属性、右侧任务会话",
+          "width": 1280
+        },
+        {
+          "file": "06-task-board-after-create.png",
+          "caption": "关闭任务详情后回到任务看板",
+          "width": 560
+        }
+      ]
+    },
+    {
+      "title": "我的菜单设置图标",
+      "shots": [
+        {
+          "file": "07-user-menu-icons.png",
+          "caption": "我的菜单中的设置快捷项图标",
+          "width": 560
+        }
+      ]
+    }
+  ],
+  "video": "preview.mp4",
+  "poster": "poster.png",
+  "errors": [],
+  "leak": false,
+  "skipped": null,
+  "mismatch": "",
+  "unseen": "跨列拖拽、右键菜单中的状态二级菜单、重命名和删除确认需要拖拽/右键等指针操作，录制步骤未执行；演示数据未提供现成任务，任务详情通过新建任务展示。",
+  "interactive": true,
+  "pages": 1
+}
