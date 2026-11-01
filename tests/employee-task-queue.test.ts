@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 归属/修订重命名与删除、运行中拒绝删除、保留历史/计划及重启不恢复已删任务回归。
+ * [OUTPUT]: 员工显式推进/交付、问答不改状态、失败停止回待办及人工验收；原队列/定时来源回归保持。
  * [OUTPUT]: 五状态独立任务会话、原计划授权/工具schema与稳定消息回执按最新用户合同验证。
  * [OUTPUT]: 持久任务多次执行/完成重开/重启、消息转换不重跑与清空后来源失效保持任务。
  * [OUTPUT]: 覆盖主聊天连续工作、聊天忙碌排队与旧独立任务公开消息关联。
@@ -12,7 +12,8 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { AgentEngine } from '../packages/runtime/src/contracts'
+import type { AgentEngine, EngineContext } from '../packages/runtime/src/contracts'
+import type { TrackedTask } from '../packages/shared/src/domain/tracked-tasks'
 import type { AutomationDefinition, AutomationInput, AutomationOccurrence, Connection, ConversationDetail, Snapshot } from '../packages/shared/src/domain'
 import { AppService } from '../packages/runtime/src/service'
 import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
@@ -21,6 +22,14 @@ import { AutomationRepository } from '../packages/runtime/src/modules/automation
 const cleanup: (() => Promise<void> | void)[] = []
 afterEach(async () => { for (const dispose of cleanup.splice(0).reverse()) await dispose() })
 function gate() { let release!: () => void; const promise = new Promise<void>(resolve => { release = resolve }); return { promise, release } }
+async function employeeTaskStatus(ctx: EngineContext, status: 'in_progress' | 'in_review') {
+  const id = ctx.conversation.employeeTaskId!
+  const current = await ctx.application!.call({ operation: 'tasks.get', input: { id } })
+  expect(current.status).toBe('succeeded')
+  const task = current.data as TrackedTask
+  const result = await ctx.application!.call({ operation: 'tasks.update', requestId: `${ctx.runId}-${status}`, input: { id, expectedRevision: task.revision, status } })
+  expect(result.status).toBe('succeeded')
+}
 async function setup(run: AgentEngine['run'], decide?: AgentEngine['decide']) {
   const root = await mkdtemp(join(tmpdir(), 'boai-task-queue-')); cleanup.push(() => rm(root, { recursive: true, force: true }))
   const options: ConstructorParameters<typeof AppService>[0] = { dataPath: root, engine: { test: async () => '', decide: decide ?? (async ctx => ({ action: ctx.participation?.hasRespondedInTurn ? 'pass' : 'reply', responseKind: 'chat', observedThroughSequence: ctx.participation?.observedThroughSequence ?? 1 })), run }, secrets: { get: async () => undefined, set: async () => {}, delete: async () => {} }, emit() {} }
@@ -35,6 +44,86 @@ async function setup(run: AgentEngine['run'], decide?: AgentEngine['decide']) {
   const read = (id: string) => service.handle('getAutomationOccurrence', { id }) as Promise<AutomationOccurrence>
   return { service, create, start, read, restart: async () => { const next = new AppService(options); cleanup.push(() => next.close()); await next.init(); return next } }
 }
+it('keeps one assigned task through delivery and discussion and reserves acceptance for the user', async () => {
+  const outcomes: string[] = []
+  let calls = 0, other: TrackedTask
+  const f = await setup(async ctx => {
+    const id = ctx.conversation.employeeTaskId!
+    expect(ctx.bootstrap?.dynamicInstructions).toContain(id)
+    expect(ctx.bootstrap?.dynamicInstructions).toContain('A run ending does not prove delivery')
+    if (++calls === 1) {
+      const catalog = await ctx.application!.catalog({})
+      expect(catalog.operations.length).toBeGreaterThan(0)
+      expect(catalog.operations.every(operation => operation.name.startsWith('tasks.'))).toBe(true)
+      outcomes.push((await ctx.application!.call({ operation: 'employees.list', input: {} })).status)
+      outcomes.push((await ctx.application!.call({ operation: 'tasks.page', input: { agentId: ctx.agent.id } })).status)
+      outcomes.push((await ctx.application!.call({ operation: 'tasks.update', requestId: 'other-task', input: { id: other.id, expectedRevision: other.revision, status: 'in_review' } })).status)
+      const duplicate = await ctx.application!.call({ operation: 'tasks.create', requestId: 'duplicate-progress', input: { agentId: ctx.agent.id, title: '重复进度' } })
+      outcomes.push(duplicate.status)
+      await employeeTaskStatus(ctx, 'in_progress')
+      const current = await ctx.application!.call({ operation: 'tasks.get', input: { id } })
+      const premature = await ctx.application!.call({ operation: 'tasks.update', requestId: 'premature-acceptance', input: { id, expectedRevision: (current.data as TrackedTask).revision, status: 'done' } })
+      outcomes.push(premature.status)
+      await ctx.onDelta('已交付报告')
+      await employeeTaskStatus(ctx, 'in_review')
+    } else await ctx.onDelta('报告已经交付，等待你确认')
+  })
+  other = await f.service.handle('createEmployeeTask', { employeeId: 'researcher', description: '另一项工作', requestId: 'other-task-create' }) as TrackedTask
+  const task = await f.service.handle('createEmployeeTask', { employeeId: 'researcher', description: '整理报告', requestId: 'delivery-task' }) as TrackedTask
+  const room = await f.service.handle('openEmployeeTaskSession', { employeeId: task.agentId, id: task.id }) as import('../packages/shared/src/domain').Conversation
+  const send = (content: string, requestId: string) => f.service.handle('sendEmployeeTaskMessage', { conversationId: room.id, content, mentionIds: [], requestId }) as Promise<AutomationOccurrence>
+  const detail = () => f.service.handle('getEmployeeTask', { employeeId: task.agentId, id: task.id }) as Promise<import('../packages/shared/src/domain/employee-tasks').EmployeeTaskDetail>
+  const first = await send('开始', 'deliver-first')
+  await vi.waitFor(async () => expect((await f.read(first.id)).status).toBe('completed'))
+  expect(outcomes).toEqual(['rejected', 'rejected', 'rejected', 'rejected', 'rejected'])
+  expect((await detail()).task).toMatchObject({ status: 'in_review', statusSource: 'employee' })
+  const question = await send('现在进度如何？', 'progress-question')
+  await vi.waitFor(async () => expect((await f.read(question.id)).status).toBe('completed'))
+  expect((await detail()).task.status).toBe('in_review')
+  expect((await f.service.handle('listEmployeeTasks', { employeeId: task.agentId, includeDone: true }) as import('../packages/shared/src/domain/tracked-tasks').TrackedTaskPage).items).toHaveLength(2)
+  expect((await f.service.handle('getEmployeeTask', { employeeId: other.agentId, id: other.id }) as Awaited<ReturnType<typeof detail>>).task.status).toBe('pending')
+  await f.service.close()
+  const restarted = await f.restart()
+  const persisted = await restarted.handle('getEmployeeTask', { employeeId: task.agentId, id: task.id }) as Awaited<ReturnType<typeof detail>>
+  expect(persisted.task.status).toBe('in_review')
+  await restarted.handle('updateEmployeeTask', { employeeId: task.agentId, id: task.id, expectedRevision: persisted.task.revision, status: 'done' })
+  expect((await restarted.handle('getEmployeeTask', { employeeId: task.agentId, id: task.id }) as typeof persisted).task.status).toBe('done')
+})
+
+it.each(['failed', 'cancelled'] as const)('returns unfinished employee work to pending after %s without inventing a delivery', async outcome => {
+  let started = false
+  const f = await setup(async ctx => {
+    await employeeTaskStatus(ctx, 'in_progress'); started = true
+    if (outcome === 'cancelled') await new Promise<void>(resolve => {
+      if (ctx.signal.aborted) resolve()
+      else ctx.signal.addEventListener('abort', () => resolve(), { once: true })
+    })
+    throw new Error('controlled execution failure')
+  })
+  const task = await f.service.handle('createEmployeeTask', { employeeId: 'researcher', description: 'unfinished work', requestId: 'failure-task' }) as TrackedTask
+  const occurrence = await f.service.handle('runEmployeeTask', { employeeId: task.agentId, id: task.id, expectedRevision: task.revision, requestId: 'failure-start' }) as AutomationOccurrence
+  await vi.waitFor(() => expect(started).toBe(true))
+  if (outcome === 'cancelled') await f.service.handle('stopAutomation', { id: occurrence.id })
+  await vi.waitFor(async () => expect((await f.read(occurrence.id)).status).toBe(outcome))
+  const detail = await f.service.handle('getEmployeeTask', { employeeId: task.agentId, id: task.id }) as import('../packages/shared/src/domain/employee-tasks').EmployeeTaskDetail
+  expect(detail.task.status).toBe('pending')
+  expect(detail.executions.occurrences[0].status).toBe(outcome)
+})
+
+it('does not infer task delivery or in-progress work from a completed acknowledgement', async () => {
+  let calls = 0
+  const f = await setup(async ctx => { if (++calls > 1) await employeeTaskStatus(ctx, 'in_progress'); await ctx.onDelta('收到，先讨论要求') })
+  const task = await f.service.handle('createEmployeeTask', { employeeId: 'researcher', description: '稍后再做报告', requestId: 'acknowledgement-task' }) as TrackedTask
+  const occurrence = await f.service.handle('runEmployeeTask', { employeeId: task.agentId, id: task.id, expectedRevision: task.revision, requestId: 'acknowledgement-start' }) as AutomationOccurrence
+  await vi.waitFor(async () => expect((await f.read(occurrence.id)).status).toBe('completed'))
+  expect((await f.service.handle('getEmployeeTask', { employeeId: task.agentId, id: task.id }) as import('../packages/shared/src/domain/employee-tasks').EmployeeTaskDetail).task.status).toBe('pending')
+  const partial = await f.service.handle('sendEmployeeTaskMessage', { conversationId: occurrence.conversationId, content: '先做资料收集，报告稍后完成', mentionIds: [], requestId: 'partial-work' }) as AutomationOccurrence
+  await vi.waitFor(async () => expect((await f.read(partial.id)).status).toBe('completed'))
+  await f.service.close()
+  const restarted = await f.restart()
+  expect((await restarted.handle('getEmployeeTask', { employeeId: task.agentId, id: task.id }) as import('../packages/shared/src/domain/employee-tasks').EmployeeTaskDetail).task.status).toBe('in_progress')
+})
+
 it('executes separate tasks FIFO, cancels a queued task without invoking it, and continues after failure', async () => {
   const hold = gate(), calls: string[] = [], contexts: string[] = []
   const f = await setup(async ctx => {
@@ -196,7 +285,7 @@ it('queues a dedicated task while ordinary conversation is active and delivers i
 
 it('keeps one employee task through two executions, explicit completion and reopening, with idempotent admission', async () => {
   const inputs: { text: string; conversationId: string }[] = []
-  const f = await setup(async ctx => { inputs.push({ text: ctx.messages.at(-1)!.content, conversationId: ctx.conversation.id }); await ctx.onDelta('已整理报告') })
+  const f = await setup(async ctx => { await employeeTaskStatus(ctx, 'in_progress'); inputs.push({ text: ctx.messages.at(-1)!.content, conversationId: ctx.conversation.id }); await ctx.onDelta('已整理报告'); await employeeTaskStatus(ctx, 'in_review') })
   const create = { employeeId: 'researcher', requestId: 'task-report-create', title: '竞品报告', description: '整理竞品报告' }
   const task = await f.service.handle('createEmployeeTask', create) as import('../packages/shared/src/domain/tracked-tasks').TrackedTask
   expect(task.status).toBe('pending'); expect(inputs).toHaveLength(0)
@@ -362,7 +451,7 @@ it('keeps the task session and its conversation when a completed execution log i
 
 it('keeps a task question on the original reply protocol and does not dispatch queued follow-ups over it', async () => {
   const hold = gate(), calls: string[] = []
-  const f = await setup(async ctx => { const prompt = ctx.messages.find(m => m.id === ctx.triggerMessageId)!.content; calls.push(prompt); if (calls.length === 1) await hold.promise; await ctx.onDelta(ctx.responseKind === 'chat' ? '请确认城市' : '确认结果'); if (ctx.onWorkOutcome) await ctx.onWorkOutcome({ disposition: 'delivered', summary: '确认结果', evidence: [{ kind: 'answer', reference: '确认结果' }] }) }, async ctx => ({ action: ctx.participation?.hasRespondedInTurn ? 'pass' : ctx.messages.find(m => m.id === ctx.triggerMessageId)?.content.includes('初始') ? 'ask' : 'reply', responseKind: 'chat', observedThroughSequence: ctx.participation?.observedThroughSequence ?? 1 }))
+  const f = await setup(async ctx => { await employeeTaskStatus(ctx, 'in_progress'); const prompt = ctx.messages.find(m => m.id === ctx.triggerMessageId)!.content; calls.push(prompt); if (calls.length === 1) await hold.promise; await ctx.onDelta(ctx.responseKind === 'chat' ? '请确认城市' : '确认结果'); if (ctx.onWorkOutcome) await ctx.onWorkOutcome({ disposition: 'delivered', summary: '确认结果', evidence: [{ kind: 'answer', reference: '确认结果' }] }) }, async ctx => ({ action: ctx.participation?.hasRespondedInTurn ? 'pass' : ctx.messages.find(m => m.id === ctx.triggerMessageId)?.content.includes('初始') ? 'ask' : 'reply', responseKind: 'chat', observedThroughSequence: ctx.participation?.observedThroughSequence ?? 1 }))
   cleanup.push(hold.release)
   const task = await f.service.handle('createEmployeeTask', { employeeId: 'researcher', description: '初始要求', requestId: 'question-task' }) as import('../packages/shared/src/domain/tracked-tasks').TrackedTask
   const room = await f.service.handle('openEmployeeTaskSession', { employeeId: task.agentId, id: task.id }) as import('../packages/shared/src/domain').Conversation
@@ -373,7 +462,7 @@ it('keeps a task question on the original reply protocol and does not dispatch q
   expect(next.status).toBe('queued')
   hold.release(); await vi.waitFor(async () => expect((await f.read(first.id)).status).toBe('waiting_user'), { timeout: 10000 })
   expect((await f.read(next.id)).status).toBe('queued'); expect(calls).toHaveLength(1)
-  expect((await f.service.handle('getEmployeeTask', { employeeId: task.agentId, id: task.id }) as import('../packages/shared/src/domain/employee-tasks').EmployeeTaskDetail).task.status).toBe('in_review')
+  expect((await f.service.handle('getEmployeeTask', { employeeId: task.agentId, id: task.id }) as import('../packages/shared/src/domain/employee-tasks').EmployeeTaskDetail).task.status).toBe('in_progress')
   expect((await f.service.handle('sendEmployeeTaskMessage', input) as AutomationOccurrence).id).toBe(first.id)
   await expect(f.service.handle('sendEmployeeTaskMessage', { ...input, content: '不绑定原问题的回复', requestId: 'unbound-question' })).rejects.toThrow('原问题卡')
   expect(await f.service.handle('getEmployeeTaskMessageReceipt', { requestId: 'unbound-question' })).toBeNull()

@@ -4,7 +4,7 @@ description: "Track multi-step work durably across Bobo conversations using actu
 ---
 <!--
 [INPUT]: Alma bundled tasks/SKILL.md and current BOAI capability contracts.
-[OUTPUT]: Executable BOAI workflow, preserving source intent and explicit differences.
+[OUTPUT]: Five task states, existing assignment reuse, employee delivery and human acceptance; no run-lifecycle inference.
 [POS]: Bound product employee skill, not a developer tool or permission grant.
 [PROTOCOL]: Update parent .folder.md and migration ledger on change.
 -->
@@ -32,10 +32,17 @@ Read `boai_catalog` for domain `tasks`, then the exact operation's schema. Call 
 | Create tracking record | `tasks.create` with employee ID, concise title and ordered steps |
 | Read current state | `tasks.get` with actual returned ID |
 | Update progress | `tasks.update` with actual expectedRevision; each step has title and done |
-| Mark done/blocked | `tasks.update` status with the observed revision and an honest note |
+| Submit delivery | `tasks.update` status in_review with the observed revision and an honest note |
+| Record a blocker | Keep in_progress and update note with what is missing and the remaining work |
 | Delete tracking record | `tasks.delete` with ID and expectedRevision, when requested |
 
-Status values: pending, in_progress, blocked, done. Update completed steps as work advances. Mark done only when the user's deliverable actually exists; a model run ending or a successful tracking update proves no external effect. Preserve the blocker and the remaining work rather than falsely completing a task.
+Status values are exactly pending, in_progress, in_review, done, closed. blocked is not a valid status.
+
+When the host supplies a current task ID, read it with tasks.get and update that same task. Never create a second progress record for an existing assignment. Requirements, later corrections and results stay in the task's conversation. Read the current revision before every write; after a conflict, reread and respect the user's latest state.
+
+When advancing the task's own deliverable, set in_progress before doing the work. Submit the actual result in the conversation, then set in_review when the requested deliverable is ready for acceptance. Partial delivery, waiting for user input, waiting for approval and blockers stay in_progress; record the reason and remaining work in note and ask the needed question in the conversation. A progress question, discussion or acknowledgement that produces none of the task deliverable does not change status.
+
+For assigned employee tasks, done and closed are user decisions: submit in_review for acceptance and let the user complete, close or reopen the task. A model run ending or a successful tracking update proves no external effect and is not task acceptance. Status changes do not start or stop execution. A failed or stopped execution may return unfinished work to pending; inspect its actual execution record before continuing.
 
 ## Persistence and boundaries
 

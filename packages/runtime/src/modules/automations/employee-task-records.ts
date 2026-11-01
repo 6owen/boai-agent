@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 按任务汇总运行状态、尊重手动状态；历史采纳不恢复已删除的任务。
+ * [OUTPUT]: 员工指派状态由员工显式维护，运行失败退出兜底待办；人工覆盖及原定时来源映射保持。
  * [INPUT]: Accepted automation occurrence and explicit employee task, inside the original transaction.
  * [OUTPUT]: Durable task ownership and many execution links; historical adoption never dispatches work.
  * [POS]: Task metadata bridge; scheduler, Work and native sessions keep execution authority.
@@ -10,6 +10,7 @@ import type { AutomationDefinition, AutomationOccurrence, AutomationDispatch } f
 import { AUTOMATION_ONGOING_STATUSES } from '@boai/shared/domain/automations'
 import type { Message } from '@boai/shared/domain'
 import type { TrackedTask } from '@boai/shared/domain/tracked-tasks'
+import { isEmployeeTaskAssignment } from '@boai/shared/domain/tracked-tasks'
 import type { RecordTransaction } from '../../adapters/storage/product-store'
 
 export const taskIdentity = (source: string) => `task-${createHash('sha256').update(source).digest('hex').slice(0, 40)}`
@@ -39,7 +40,11 @@ export async function linkEmployeeTask(tx: RecordTransaction, d: AutomationDefin
   o.taskId = task.id
   const latest = task.latestOccurrenceId ? await tx.get<AutomationOccurrence>('automationOccurrences', task.latestOccurrenceId) : undefined
   if (!historical || !latest || o.startedAt > latest.startedAt || o.startedAt === latest.startedAt && o.id > latest.id) {
-    task = { ...task, latestOccurrenceId: o.id, statusSource: 'execution', ...(!historical || !task.latestOccurrenceId ? { status: await executionTaskStatus(tx, o, task) } : {}), revision: task.revision + 1, updatedAt: o.startedAt }
+    const executionState = isEmployeeTaskAssignment(task) ? {} : {
+      statusSource: 'execution' as const,
+      ...(!historical || !task.latestOccurrenceId ? { status: await executionTaskStatus(tx, o, task) } : {}),
+    }
+    task = { ...task, latestOccurrenceId: o.id, ...executionState, revision: task.revision + 1, updatedAt: o.startedAt }
     await tx.put({ collection: 'agentTasks', id: task.id, value: task })
   }
   const room = await tx.get<import('@boai/shared/domain').Conversation>('conversations', o.conversationId)
@@ -64,6 +69,13 @@ export async function syncEmployeeTask(tx: RecordTransaction, o: AutomationOccur
 async function executionTaskStatus(tx: RecordTransaction, o: AutomationOccurrence, task: TrackedTask): Promise<TrackedTask['status']> {
   const executions = (await tx.list<AutomationOccurrence>('automationOccurrences')).filter(item => item.taskId === task.id && item.id !== o.id && !item.deletedAt)
   executions.push(o)
+  if (isEmployeeTaskAssignment(task)) {
+    // A question, an approval wait or a successful run is not a task delivery.
+    // Only abandon in-progress work when its latest attempt failed and no work remains in flight.
+    const latest = executions.find(item => item.id === task.latestOccurrenceId)
+    if (task.status === 'in_progress' && latest && ['failed', 'cancelled', 'interrupted', 'skipped'].includes(latest.status) && !executions.some(ongoingTaskExecution)) return 'pending'
+    return task.status
+  }
   if (executions.some(item => ['admitted', 'running', 'waiting_work', 'cancelling'].includes(item.status))) return 'in_progress'
   if (executions.some(item => ['waiting_user', 'waiting_approval'].includes(item.status))) return 'in_review'
   if (executions.some(item => item.status === 'queued')) return 'pending'

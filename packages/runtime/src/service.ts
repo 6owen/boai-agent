@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工指派会话向API/native注入原任务身份和显式状态流转规则，不影响定时来源。
  * [OUTPUT]: 路由员工任务删除/重命名到原任务服务，保持任务归属/修订与原定时管理路径。
  * [OUTPUT]: 任务Dialog共用原输入/审批/问答/Steer；每任务会话与原计划授权分别核验。
  * [OUTPUT]: 员工持久任务五个公共入口及原消息关联回写；执行沿原AutomationService和主会话。
@@ -193,6 +194,8 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { EmployeeTaskService } from './modules/automations/employee-task-service'
+import { employeeTaskInstructions, employeeTaskOperations } from './modules/employees/employee-task-context'
+import { isEmployeeTaskAssignment, type TrackedTask } from '@boai/shared/domain/tracked-tasks'
 import { workingScene } from './modules/contexts/working-scene'
 import { progressBoundary } from './adapters/mastra/progress-review'
 import { ProgressStalledError, type ProgressMonitor } from './modules/contexts/progress-monitor'
@@ -596,6 +599,13 @@ export class AppService {
         return
       }
       const agent = this.getAgent(actor.employeeId), room = this.getConversation(actor.conversationId), source = this.messages.get(actor.messageId)
+      if (room.employeeTaskId && !room.channel && room.agentIds.length === 1 && room.agentIds[0] === agent.id && source?.conversationId === room.id && source.senderType === 'user') {
+        const task = await this.store.get<TrackedTask>('agentTasks', room.employeeTaskId)
+        if (task && isEmployeeTaskAssignment(task) && task.agentId === agent.id && task.sessionConversationId === room.id) {
+          if (operation && !employeeTaskOperations.has(operation.name)) fail('员工任务会话仅提供当前任务读取和更新，请沿原任务ID处理')
+          return
+        }
+      }
       if (!isCoreAgent(agent) || room.channel || !room.agentIds.includes(agent.id) || source?.conversationId !== room.id || source.senderType !== 'user' || source.senderId !== 'user' || source.channel || source.origin) fail('此应用管理操作需要本人或当前核心员工的真实会话授权')
     })
     this.gatewayCatalogs = new GatewayCatalogStore(this.store)
@@ -4087,6 +4097,8 @@ export class AppService {
     const loaded = await this.homes.load(agent, conversation, combined, run.id, { profile: personaProfile, state: personaState, scene: run.responseKind === 'task' ? 'task' : conversation.channel ? 'channel' : conversation.kind === 'group' ? 'group' : 'direct' })
     const planning = planningInstructions(await readPlanningState(this.store, agent.id, conversation.id))
     if (planning) loaded.bootstrap.dynamicInstructions = [loaded.bootstrap.dynamicInstructions, planning].filter(Boolean).join('\n\n')
+    const taskInstructions = run.phase === 'execution' ? await employeeTaskInstructions(this.store, agent.id, conversation) : ''
+    if (taskInstructions) loaded.bootstrap.dynamicInstructions = [loaded.bootstrap.dynamicInstructions, taskInstructions].filter(Boolean).join('\n\n')
     if (isCoreAgent(agent) && !conversation.channel) {
       const trigger = this.messages.get(turn.triggerMessageId)
       if (conversation.purpose === 'core' && conversation.kind === 'direct' && trigger?.senderType === 'user' && !trigger.channel) {
@@ -4478,6 +4490,24 @@ export class AppService {
       if (this.options.engine.memoryOwner === 'mastra') context.memorySources = () => this.mastraMemorySources(context)
     }
     if (context.memoryOwner) { delete context.rememberMemory; delete context.recallMemory; delete context.externalMemory }
+    if (taskInstructions && run.phase === 'execution') {
+      const actor = { kind: 'employee' as const, employeeId: agent.id, conversationId: conversation.id, messageId: turn.triggerMessageId }
+      const validate = async () => { signal.throwIfAborted(); await this.serialize(() => this.assertExecutionAccess(context)) }
+      context.application = {
+        catalog: async query => {
+          await validate()
+          const catalog = await this.application.catalog({ ...query, domain: 'tasks' }, actor)
+          return { ...catalog, operations: catalog.operations.filter(operation => employeeTaskOperations.has(operation.name)) }
+        },
+        receipt: async query => { await validate(); return this.application.receipt(query, actor) },
+        call: async input => {
+          await validate()
+          const result = await this.applicationAuthority.run({ validate, signal }, () => this.application.call(input, actor))
+          if (result.status === 'succeeded' && input.operation.startsWith('tasks.')) this.changed(conversation.id)
+          return result
+        },
+      }
+    }
     this.activeEngineContexts.set(run.id, { context, definition: agent })
     return context
     })
@@ -4813,7 +4843,7 @@ export class AppService {
         } })
         context.createDataSource = async input => { await authorizeExecution(context, { kind: 'configuration', description: '创建数据源' }); return createDataSource(input) }
       }
-      if (isCoreAgent(context.agent) && source?.senderType === 'user' && source.senderId === 'user' && !source.channel && !source.origin && decision.action === 'reply' && !conversation.channel) {
+      if (!context.application && isCoreAgent(context.agent) && source?.senderType === 'user' && source.senderId === 'user' && !source.channel && !source.origin && decision.action === 'reply' && !conversation.channel) {
         const validate = async () => {
           effective.throwIfAborted()
           const current = this.getConversation(conversation.id), employee = this.getAgent(run.agentId), original = this.messages.get(source.id)

@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 迁移旧任务状态到五状态，执行快照支持任务会话，公开工具不暴露内部消息。
+ * [OUTPUT]: 员工指派恢复不把运行结束解释为待确认；原定时来源迁移保持。
  * [OUTPUT]: 采用旧手动任务/执行记录的任务身份，不重新运行；手动续做按任务版本固定本次执行。
  * [OUTPUT]: 新员工任务默认绑定主聊天，原计划保留明确策略；定时计划默认列表不混入普通任务。
  * [OUTPUT]: 员工任务FIFO队列沿原事务认领/投递；取消未开始任务不调用Agent，恢复不重放已开始工作。
@@ -20,13 +20,14 @@
  */
 import { join } from 'node:path'
 import { z } from 'zod'
+import { isEmployeeTaskAssignment } from '@boai/shared/domain/tracked-tasks'
 import type { AutomationCreationSource, AutomationDefinition, AutomationInput, AutomationListQuery, AutomationOccurrence, AutomationsView, AutomationOrigin, AutomationMonitorRead } from '@boai/shared/domain/automations'
 import { automationNeedsAttention } from '@boai/shared/domain/automations'
 import type { Message } from '@boai/shared/domain'
 import { ProductStore, type RecordTransaction, type StoredRecord } from '../../adapters/storage/product-store'
 import { NativeSchedules, AUTOMATION_WORKFLOW, type NativeAutomationVersion } from './native-schedules'
 import { monitorPolicySchema } from './automation-monitor'
-import { linkEmployeeTask, taskIdentity } from './employee-task-records'
+import { linkEmployeeTask, ongoingTaskExecution, taskIdentity } from './employee-task-records'
 import { AutomationRepository } from './automation-repository'
 import { automationCollaborationSchema, automationOwnerSchema } from './automation-plan'
 import { activeOccurrence, pendingOccurrence, queuedOrder, sharesTaskExecutor, MAX_ACTIVE_AUTOMATIONS, nextTimes, scheduleSchema, automationCron } from './schedule-policy'
@@ -99,6 +100,10 @@ export class AutomationService {
     await this.store.transaction(async tx => {
       for (const task of await tx.list<import('@boai/shared/domain/tracked-tasks').TrackedTask>('agentTasks')) {
         const latest = task.latestOccurrenceId ? await tx.get<AutomationOccurrence>('automationOccurrences', task.latestOccurrenceId) : undefined
+        if (isEmployeeTaskAssignment(task)) {
+          if (['blocked', 'waiting_input'].includes(task.status) || task.status === 'in_progress' && task.statusSource === 'execution' && latest && !ongoingTaskExecution(latest)) await tx.put({ collection: 'agentTasks', id: task.id, value: { ...task, status: 'pending', revision: task.revision + 1 } })
+          continue
+        }
         if (['blocked', 'waiting_input'].includes(task.status) || task.status === 'in_progress' && task.statusSource !== 'manual' && latest && !['queued', 'admitted', 'running', 'waiting_user', 'waiting_work', 'waiting_approval', 'cancelling'].includes(latest.status)) await tx.put({ collection: 'agentTasks', id: task.id, value: { ...task, status: 'in_review', revision: task.revision + 1 } })
       }
       for (const d of await tx.list<AutomationDefinition>('automations')) {
