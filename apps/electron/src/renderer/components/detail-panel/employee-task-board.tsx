@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: Mouse dragging non-interactive board space pans the horizontal viewport; cards retain ReUI sorting.
+ * [OUTPUT]: Mouse dragging board space pans the viewport; portaled menu events cannot start panning or steal item clicks.
  * [OUTPUT]: 平级状态列均可新增任务或隐藏，显隐只控制展示，不改变任务状态或执行。
  * [INPUT]: Employee task pages, revision-aware status persistence and ReUI Kanban.
  * [OUTPUT]: ReUI sortable interaction with global Card/ScrollArea, local view order and confirmed status writes.
@@ -79,7 +79,7 @@ export function EmployeeTaskBoard({ employee, data, hidden, changing, changingTa
       'aria-label': '任务看板横向滚动区域', className: panning ? 'cursor-grabbing select-none' : 'cursor-grab',
       onPointerDown: event => {
         if (disabled || pan.current || event.pointerType !== 'mouse' || event.button !== 0 || !event.isPrimary) return
-        if (!(event.target instanceof Element) || event.target.closest('[data-employee-task-id], button, a, input, textarea, select, [role="button"], [contenteditable]:not([contenteditable="false"]), [data-slot="scroll-area-scrollbar"]')) return
+        if (!(event.target instanceof Element) || !event.currentTarget.contains(event.target) || event.target.closest('[data-employee-task-id], button, a, input, textarea, select, [role="button"], [contenteditable]:not([contenteditable="false"]), [data-slot="scroll-area-scrollbar"]')) return
         const viewport = event.currentTarget
         if (viewport.scrollWidth <= viewport.clientWidth) return
         event.preventDefault(); viewport.setPointerCapture(event.pointerId)

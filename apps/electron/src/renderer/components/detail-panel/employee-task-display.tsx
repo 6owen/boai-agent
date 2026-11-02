@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Employee-local hidden status labels and explicit view callbacks.
- * [OUTPUT]: Shared board/list visibility popover and column actions; changes only presentation.
+ * [OUTPUT]: Shared visibility controls; pressed tags use the global ghost selection background, hidden tags stay transparent.
  * [POS]: Employee task display controls; status labels have no transition hierarchy.
  * [PROTOCOL]: Update Header and owning .folder.md on change.
  */
@@ -20,7 +20,7 @@ export function readHiddenTaskColumns(employeeId: string): TrackedTaskStatus[] {
 export function EmployeeTaskDisplay({ hidden, disabled, onToggle }: { hidden: TrackedTaskStatus[]; disabled: boolean; onToggle(status: TrackedTaskStatus): void }) {
   return <Popover><PopoverTrigger render={<Button variant="secondary" size="sm" disabled={disabled} aria-label="显示任务列" />}><Sliders />显示</PopoverTrigger>
     <PopoverContent align="end" className="w-72 gap-3 p-4"><PopoverTitle className="text-xs text-muted-foreground">列</PopoverTitle><div className="flex flex-wrap gap-2">
-      {EMPLOYEE_TASK_STATUSES.map(status => <Button key={status} variant={hidden.includes(status) ? 'outline' : 'secondary'} size="sm" aria-pressed={!hidden.includes(status)} onClick={() => onToggle(status)}><TaskStatusIcon status={status} />{taskStatusLabels[status]}</Button>)}
+      {EMPLOYEE_TASK_STATUSES.map(status => <Button key={status} variant="ghost" size="sm" aria-pressed={!hidden.includes(status)} onClick={() => onToggle(status)}><TaskStatusIcon status={status} />{taskStatusLabels[status]}</Button>)}
     </div></PopoverContent>
   </Popover>
 }

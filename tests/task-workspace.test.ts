@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 创建状态只继承触发列且无header入口；溢出看板的Portal菜单指针不触发横拖，显示标签沿pressed状态。
  * [OUTPUT]: 平级列创建与共享显隐零执行、批量入口隐藏；会话创建以稳定身份建任务/执行并复用任务Dialog。
  * [OUTPUT]: 空白鼠标拖动横向滚动及松手/取消/丢失捕获收尾；卡片/控件/触摸手势不接管，任务要求仅在左侧属性展示。
  * [OUTPUT]: 任务详情关闭等待全局动画结束才回调卸载，退出时暂停读取且不停止执行；隐藏可恢复。
@@ -120,7 +121,7 @@ test.each(EMPLOYEE_TASK_STATUSES)('creates directly in the %s column without sta
   expect(host.querySelector('[aria-label="显示任务列"]')!.compareDocumentPosition(host.querySelector('[aria-label="任务视图"]')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   await act(async () => document.querySelector<HTMLButtonElement>(`[aria-label="创建${taskStatusLabels[status]}任务"]`)!.click())
   const dialog = document.querySelector('[role="dialog"]')!
-  expect(dialog.querySelector('[aria-label="任务状态"] [data-slot="select-value"]')?.textContent).toBe(taskStatusLabels[status])
+  expect(dialog.querySelector('[aria-label="任务状态"]')).toBeNull()
   await changeField(dialog.querySelector<HTMLInputElement>('#employee-task-title')!, '用户目标')
   await changeField(dialog.querySelector<HTMLTextAreaElement>('#employee-task-description')!, '验收标准')
   await act(async () => dialog.querySelector<HTMLButtonElement>('button[type="submit"]')!.click())
@@ -130,8 +131,15 @@ test.each(EMPLOYEE_TASK_STATUSES)('creates directly in the %s column without sta
 test('hides and restores peer columns across board/list and remount without changing tasks', async () => {
   const f = fixture(), props = { ...f.props, active: true, target: { type: 'employee-tasks' as const, id: task.agentId, requestId: 'visibility' } }
   await act(async () => root.render(h(EmployeeTasksPanel, props)))
+  const viewport = host.querySelector<HTMLDivElement>('[aria-label="任务看板横向滚动区域"]')!
+  Object.defineProperties(viewport, { scrollWidth: { value: 1500 }, clientWidth: { value: 600 } })
+  viewport.setPointerCapture = vi.fn()
+  viewport.hasPointerCapture = vi.fn(() => false)
   await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="待办列菜单"]')!.click())
-  await act(async () => document.querySelector<HTMLButtonElement>('[role="menuitem"]')!.click())
+  const hide = document.querySelector<HTMLButtonElement>('[role="menuitem"]')!
+  await act(async () => { pointer(hide, 'pointerdown', 400); pointer(hide, 'pointerup', 400) })
+  expect(viewport.setPointerCapture).not.toHaveBeenCalled()
+  await act(async () => hide.click())
   expect(host.querySelector('section[aria-label="待办任务"]')).toBeNull()
   await act(async () => button('列表').click())
   expect(host.querySelector('section[aria-label="待办任务"]')).toBeNull()
@@ -175,7 +183,7 @@ test('matches resource header, switches board/list and opens one task in a Dialo
   expect(host.querySelector('header.chat-header.skill-detail-title')?.textContent).toContain('DS · 任务')
   expect(host.querySelector('[aria-label="任务看板"]')).not.toBeNull()
   expect(f.request.mock.calls.filter(([m]) => m === 'listEmployeeTasks').map(([, input]) => input.status)).toEqual(['pending', 'in_progress', 'in_review', 'done', 'closed'])
-  expect(button('创建任务')).toBeTruthy()
+  expect(button('创建任务')).toBeUndefined()
   await act(async () => button('列表').click())
   expect(host.querySelector('[aria-label="任务列表"]')).not.toBeNull()
   await act(async () => (host.querySelector('[data-employee-task-id]') as HTMLButtonElement).click())
