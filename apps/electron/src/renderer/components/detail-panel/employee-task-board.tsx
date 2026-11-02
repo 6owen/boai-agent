@@ -1,5 +1,6 @@
 /*
  * [OUTPUT]: Mouse dragging non-interactive board space pans the horizontal viewport; cards retain ReUI sorting.
+ * [OUTPUT]: 平级状态列均可新增任务或隐藏，显隐只控制展示，不改变任务状态或执行。
  * [INPUT]: Employee task pages, revision-aware status persistence and ReUI Kanban.
  * [OUTPUT]: ReUI sortable interaction with global Card/ScrollArea, local view order and confirmed status writes.
  * [POS]: Employee right-side task board; schedules and execution FIFO retain their own authority.
@@ -12,21 +13,22 @@ import { AUTOMATION_ONGOING_STATUSES } from '@boai/shared/domain/automations'
 import { EMPLOYEE_TASK_STATUSES, type TrackedTaskListItem, type TrackedTaskPage, type TrackedTaskStatus } from '@boai/shared/domain/tracked-tasks'
 import { relativeTime } from '@boai/shared/rovai'
 import { Avatar, errorText, showErrorToast } from '@/components/common'
-import { Clock, FileText, MessageCircle, Plus } from '@/components/icons/index'
+import { Clock, FileText, MessageCircle } from '@/components/icons/index'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Kanban, KanbanBoard, KanbanColumn, KanbanColumnContent, KanbanItem, KanbanItemHandle, KanbanOverlay, type KanbanCommitMeta } from '@/components/ui/kanban'
 import { occurrenceStatusLabels } from '@/pages/schedules/automation-history'
 import { EmployeeTaskMenu } from './employee-task-menu'
 import { EmployeeTaskStatus, TaskStatusIcon, taskStatusLabels } from './employee-task-status'
 import { readTaskBoardOrder, orderedTaskColumns, commitTaskBoardOrder, type TaskColumns } from './employee-task-board-order'
+import { TaskColumnActions } from './employee-task-display'
 
 type TaskPages = Partial<Record<TrackedTaskStatus, TrackedTaskPage>>
 type Props = {
   employee: DigitalAgent; data: TaskPages; changing: boolean; changingTaskId?: string
-  onOpen(id: string): void; onCreate(): void; onLoadMore(status: TrackedTaskStatus): void
+  hidden: TrackedTaskStatus[]; onHide(status: TrackedTaskStatus): void
+  onOpen(id: string): void; onCreate(status: TrackedTaskStatus): void; onLoadMore(status: TrackedTaskStatus): void
   onStatus(task: TrackedTaskListItem, status: TrackedTaskStatus): Promise<boolean | void> | void
 }
 const laneColors: Record<TrackedTaskStatus, string> = {
@@ -43,7 +45,7 @@ export function projectTaskMove(pages: TaskPages, task: TrackedTaskListItem, sta
     return [lane, { ...page, items: lane === status ? [{ ...task, status }, ...items] : items }]
   }))
 }
-export function EmployeeTaskBoard({ employee, data, changing, changingTaskId, onOpen, onCreate, onStatus, onLoadMore }: Props) {
+export function EmployeeTaskBoard({ employee, data, hidden, changing, changingTaskId, onOpen, onCreate, onHide, onStatus, onLoadMore }: Props) {
   const [order, setOrder] = useState(() => readTaskBoardOrder(employee.id))
   const [preview, setPreview] = useState<TaskColumns>(), [dragged, setDragged] = useState<TrackedTaskListItem>(), [saving, setSaving] = useState<string>()
   const locked = useRef(false), draggedThisGesture = useRef(false)
@@ -90,10 +92,10 @@ export function EmployeeTaskBoard({ employee, data, changing, changingTaskId, on
       onPointerUp: finishPan, onPointerCancel: finishPan, onLostPointerCapture: finishPan,
     }} contentProps={{ className: 'h-full', style: { display: 'flex' } }}>
       <KanbanBoard inert={disabled} role="tabpanel" aria-label="任务看板" className="flex h-full min-w-full gap-4 p-3" onPointerDownCapture={() => { draggedThisGesture.current = false }} onKeyDownCapture={event => { if (event.key === 'Enter') draggedThisGesture.current = false }}>
-        {EMPLOYEE_TASK_STATUSES.map(status => <KanbanColumn key={status} value={status} render={<section />} aria-label={`${taskStatusLabels[status]}任务`} data-task-status={status} className={`h-full w-[280px] shrink-0 overflow-hidden rounded-md border border-transparent ${laneColors[status]} data-disabled:opacity-100`}>
+        {EMPLOYEE_TASK_STATUSES.filter(status => !hidden.includes(status)).map(status => <KanbanColumn key={status} value={status} render={<section />} aria-label={`${taskStatusLabels[status]}任务`} data-task-status={status} className={`h-full w-[280px] shrink-0 overflow-hidden rounded-md border border-transparent ${laneColors[status]} data-disabled:opacity-100`}>
           <div className="flex h-11 shrink-0 items-center justify-between gap-2 px-3.5">
             <h3 className="m-0 flex min-w-0 items-center gap-2 text-xs font-semibold"><TaskStatusIcon status={status} /><span>{taskStatusLabels[status]}</span><span className="font-normal tabular-nums text-muted-foreground">{displayed[status].length}{data[status]?.nextCursor ? '+' : ''}</span></h3>
-            {status === 'pending' && <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-xs" className="text-muted-foreground" aria-label="创建待办任务" onClick={onCreate}><Plus /></Button>} /><TooltipContent>创建任务</TooltipContent></Tooltip>}
+            <TaskColumnActions status={status} disabled={disabled} onCreate={onCreate} onHide={onHide} />
           </div>
           <ScrollArea className="min-h-0 flex-1" viewportProps={{ 'aria-label': `${taskStatusLabels[status]}任务滚动区域`, className: 'overscroll-y-contain [overflow-anchor:none] scroll-fade-t scroll-fade-6' }}>
             <KanbanColumnContent value={status} className="px-3 pb-3 pt-1">

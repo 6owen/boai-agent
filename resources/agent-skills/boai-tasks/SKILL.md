@@ -4,7 +4,7 @@ description: "Track multi-step work durably across Bobo conversations using actu
 ---
 <!--
 [INPUT]: Alma bundled tasks/SKILL.md and current BOAI capability contracts.
-[OUTPUT]: 持续任务会话与轻量状态，Agent交付待确认，用户验收后可继续提问、修改和再次执行；内部计划不进看板。
+[OUTPUT]: 持续任务会话与平级状态标签，会话创建沿原ID补全标题/目标/验收；内部计划不进看板。
 [POS]: Bound product employee skill, not a developer tool or permission grant.
 [PROTOCOL]: Update parent .folder.md and migration ledger on change.
 -->
@@ -41,6 +41,8 @@ Read `boai_catalog` for domain `tasks`, then the exact operation's schema. Call 
 | Delete tracking record | `tasks.delete` with ID and expectedRevision, when requested |
 
 Status values are exactly pending, in_progress, in_review, done, closed. blocked is not a valid status.
+
+These statuses are peer display labels, not a required sequence. The user may create in any status, drag between them or set them directly. Do not infer completed work or user acceptance from the label alone. When the current task has briefPending true, the user created it through conversation: read its original input, then update the same task's title and description with the goal, acceptance criteria and expected output supported by that input. Do not invent requirements or replace them with your internal plan. If the user has already cleared briefPending by editing the brief, preserve their newer content. Continue the requested work in the same conversation; ask there if essential information is missing.
 
 When the host supplies a current task ID, read it with tasks.get and update that same task. Never create a second progress record for an existing assignment. Requirements, later corrections and results stay in the task's conversation. Read the current revision before every write; after a conflict, reread and respect the user's latest state.
 

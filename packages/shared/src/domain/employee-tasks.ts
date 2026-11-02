@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 可持续任务会话、轻量状态、要求编辑及按选择顺序幂等批量派发；验收不锁住执行。
+ * [OUTPUT]: 平级状态可直接创建，支持自然语言会话创建后由原Agent补全内容；状态不控制执行。
  * [INPUT]: Explicit employee assignments, chat message provenance and execution history.
  * [OUTPUT]: Employee-owned task commands; task completion remains an explicit declaration.
  * [POS]: Product view of existing tracked tasks, independent of individual runs.
@@ -9,6 +9,7 @@ import type { TrackedTask, TrackedTaskPage, TrackedTaskStatus } from './tracked-
 import type { AutomationHistoryPage, AutomationOccurrence } from './automations'
 export interface EmployeeTaskCreate {
   employeeId: string; requestId: string; title?: string; description?: string
+  status?: TrackedTaskStatus; conversation?: boolean
   source?: { conversationId: string; messageId: string }
 }
 export interface EmployeeTaskQuery { employeeId: string; status?: TrackedTaskStatus; includeDone?: boolean; cursor?: string; limit?: number }

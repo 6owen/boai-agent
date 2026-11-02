@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 会话创建沿原任务工具补全标题/要求，事务提交后同步当前会话标题缓存。
  * [OUTPUT]: 员工任务支持编辑要求及批量派发，状态不阻止会话续用；API/native原任务身份保持。
  * [OUTPUT]: 路由员工任务删除/重命名到原任务服务，保持任务归属/修订与原定时管理路径。
  * [OUTPUT]: 任务Dialog共用原输入/审批/问答/Steer；每任务会话与原计划授权分别核验。
@@ -590,7 +591,7 @@ export class AppService {
       if (!isAbsolute(path)) fail('预览目录必须是绝对路径')
       if (!directory && !write) return path
       return realpath(path)
-    }, scope => this.emit({ type: 'workspace:show', ...scope }), () => !!options.applicationHost?.available), ...this.presentations.operations(), ...this.images.operations(), ...this.selfies.operations(), ...taskOperations(this.store), ...planningOperations(this.store), ...planOperations(this.store), ...referenceOperations(this.store, (...args) => this.serialize(() => this.referenceObjects(...args))), ...applicationOperations({ request: async (method, input) => await this.handle(method, input) as never, personality: (action, input) => this.agentPersonality(action, input) }, { connection: connectionSchema, conversation: conversationSchema, search: searchSchema }, options.applicationHost)], async (actor, operation) => {
+    }, scope => this.emit({ type: 'workspace:show', ...scope }), () => !!options.applicationHost?.available), ...this.presentations.operations(), ...this.images.operations(), ...this.selfies.operations(), ...taskOperations(this.store, room => { this.conversations.set(room.id, room) }), ...planningOperations(this.store), ...planOperations(this.store), ...referenceOperations(this.store, (...args) => this.serialize(() => this.referenceObjects(...args))), ...applicationOperations({ request: async (method, input) => await this.handle(method, input) as never, personality: (action, input) => this.agentPersonality(action, input) }, { connection: connectionSchema, conversation: conversationSchema, search: searchSchema }, options.applicationHost)], async (actor, operation) => {
       if (actor.kind === 'owner') return
       if (actor.kind === 'behavior') {
         const { run, behavior } = await this.agentBehaviors.assertActive(actor.behaviorRunId)

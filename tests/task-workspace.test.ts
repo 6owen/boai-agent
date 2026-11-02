@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 平级列创建与共享显隐零执行、批量入口隐藏；会话创建以稳定身份建任务/执行并复用任务Dialog。
  * [OUTPUT]: 空白鼠标拖动横向滚动及松手/取消/丢失捕获收尾；卡片/控件/触摸手势不接管，任务要求仅在左侧属性展示。
  * [OUTPUT]: 任务详情关闭等待全局动画结束才回调卸载，退出时暂停读取且不停止执行；隐藏可恢复。
  * [OUTPUT]: 已完成/关闭任务可再次执行；要求失焦保存不运行；批量选择顺序与稳定重试，原拖拽/关闭回归保持。
@@ -24,6 +25,10 @@ import type { ConversationReadingState } from '../packages/shared/src/domain/rea
 import type { DesktopApi } from '../packages/shared/src/ipc'
 import { EmployeeTasksPanel } from '../apps/electron/src/renderer/components/detail-panel/employee-tasks-panel'
 import { EmployeeTaskDetail } from '../apps/electron/src/renderer/components/detail-panel/employee-task-detail'
+import { EmployeeTaskForm } from '../apps/electron/src/renderer/components/detail-panel/employee-task-form'
+import { EmployeeTaskBatch } from '../apps/electron/src/renderer/components/detail-panel/employee-task-batch'
+import { taskStatusLabels } from '../apps/electron/src/renderer/components/detail-panel/employee-task-status'
+import { EMPLOYEE_TASK_STATUSES } from '../packages/shared/src/domain/tracked-tasks'
 import type { ChannelChatWindow } from '../apps/electron/src/renderer/components/detail-panel/channels-tab'
 let host: HTMLDivElement, root: Root
 const originalAnimations = Element.prototype.getAnimations
@@ -93,8 +98,7 @@ test('batch selection preserves click order and retries an unknown request with 
     if (method === 'runEmployeeTasks') { requests.push(input); if (requests.length === 1) throw new Error('受理回执连接中断'); return { items: input.tasks.map((value: any) => ({ id: value.id, execution: { ...occurrence, taskId: value.id } })) } }
     return original(method, input)
   })
-  await act(async () => root.render(h(EmployeeTasksPanel, { ...f.props, active: true, target: { type: 'employee-tasks', id: task.agentId, requestId: 'batch-panel' } })))
-  await act(async () => button('批量执行').click())
+  await act(async () => root.render(h(EmployeeTaskBatch, { api: f.props.api, employeeId: task.agentId, active: true, open: true, onClose() {}, onDispatched() {} })))
   expect(requests).toHaveLength(0)
   await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="选择任务：第二项任务"]')!.click())
   await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="选择任务：新闻总结"]')!.click())
@@ -102,6 +106,67 @@ test('batch selection preserves click order and retries an unknown request with 
   expect(requests[0].tasks).toEqual([{ id: other.id, expectedRevision: 4 }, { id: task.id, expectedRevision: 1 }])
   await act(async () => button('执行所选任务（2）').click())
   expect(requests).toHaveLength(2); expect(requests[1]).toEqual(requests[0])
+})
+
+const changeField = async (input: HTMLInputElement | HTMLTextAreaElement, value: string) => act(async () => {
+  Object.getOwnPropertyDescriptor(input instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype, 'value')!.set!.call(input, value)
+  input.dispatchEvent(new Event('input', { bubbles: true }))
+})
+test.each(EMPLOYEE_TASK_STATUSES)('creates directly in the %s column without starting work', async status => {
+  const f = fixture(), original = f.request.getMockImplementation()!
+  f.request.mockImplementation(async (method, input) => method === 'createEmployeeTask' ? { ...task, ...input } : original(method, input))
+  await act(async () => root.render(h(EmployeeTasksPanel, { ...f.props, active: true, target: { type: 'employee-tasks', id: task.agentId, requestId: 'create-column' } })))
+  expect(button('批量执行')).toBeUndefined()
+  expect(host.querySelector('[aria-label="显示任务列"]')!.compareDocumentPosition(host.querySelector('[aria-label="任务视图"]')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  await act(async () => document.querySelector<HTMLButtonElement>(`[aria-label="创建${taskStatusLabels[status]}任务"]`)!.click())
+  const dialog = document.querySelector('[role="dialog"]')!
+  expect(dialog.querySelector('[aria-label="任务状态"] [data-slot="select-value"]')?.textContent).toBe(taskStatusLabels[status])
+  await changeField(dialog.querySelector<HTMLInputElement>('#employee-task-title')!, '用户目标')
+  await changeField(dialog.querySelector<HTMLTextAreaElement>('#employee-task-description')!, '验收标准')
+  await act(async () => dialog.querySelector<HTMLButtonElement>('button[type="submit"]')!.click())
+  expect(f.request.mock.calls.find(([method]) => method === 'createEmployeeTask')?.[1]).toMatchObject({ status, title: '用户目标', description: '验收标准' })
+  expect(f.request.mock.calls.some(([method]) => ['runEmployeeTask', 'runEmployeeTasks', 'sendEmployeeTaskMessage'].includes(method))).toBe(false)
+})
+test('hides and restores peer columns across board/list and remount without changing tasks', async () => {
+  const f = fixture(), props = { ...f.props, active: true, target: { type: 'employee-tasks' as const, id: task.agentId, requestId: 'visibility' } }
+  await act(async () => root.render(h(EmployeeTasksPanel, props)))
+  await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="待办列菜单"]')!.click())
+  await act(async () => document.querySelector<HTMLButtonElement>('[role="menuitem"]')!.click())
+  expect(host.querySelector('section[aria-label="待办任务"]')).toBeNull()
+  await act(async () => button('列表').click())
+  expect(host.querySelector('section[aria-label="待办任务"]')).toBeNull()
+  expect(host.querySelectorAll('button[aria-label^="创建"][aria-label$="任务"]')).toHaveLength(4)
+  await act(async () => root.render(null))
+  await act(async () => root.render(h(EmployeeTasksPanel, props)))
+  expect(host.querySelector('section[aria-label="待办任务"]')).toBeNull()
+  await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="显示任务列"]')!.click())
+  const toggle = [...document.querySelectorAll<HTMLButtonElement>('[data-slot="popover-content"] button')].find(value => value.textContent === '待办')!
+  expect(toggle.getAttribute('aria-pressed')).toBe('false')
+  await act(async () => toggle.click())
+  expect(host.querySelector('section[aria-label="待办任务"]')).not.toBeNull()
+  expect(f.request.mock.calls.every(([method]) => method === 'listEmployeeTasks')).toBe(true)
+})
+test('conversation creation uses one raw prompt and retries the same accepted task execution', async () => {
+  const f = fixture(), original = f.request.getMockImplementation()!, saved = vi.fn(), requests: any[] = []
+  f.request.mockImplementation(async (method, input) => {
+    if (method === 'createEmployeeTask') return { ...task, ...input, revision: requests.length ? 5 : 1 }
+    if (method === 'runEmployeeTask') { requests.push(input); if (requests.length === 1) throw new Error('执行回执连接中断'); return occurrence }
+    return original(method, input)
+  })
+  await act(async () => root.render(h(EmployeeTaskForm, { api: f.props.api, employeeId: task.agentId, active: true, initialStatus: 'closed', onClose() {}, onSaved: saved })))
+  await act(async () => button('会话创建').click())
+  expect(document.querySelector('#employee-task-title')).toBeNull()
+  const input = document.querySelector<HTMLTextAreaElement>('#employee-task-prompt')!
+  await changeField(input, '请查南京天气，给出来源和穿衣建议')
+  await act(async () => button('创建会话').click())
+  expect(saved).not.toHaveBeenCalled()
+  expect(input.disabled).toBe(true)
+  await act(async () => button('核对本次提交').click())
+  const creations = f.request.mock.calls.filter(([method]) => method === 'createEmployeeTask').map(([, value]) => value)
+  expect(creations).toHaveLength(2); expect(creations[1]).toEqual(creations[0])
+  expect(creations[0]).toMatchObject({ status: 'closed', conversation: true, description: '请查南京天气，给出来源和穿衣建议' })
+  expect(requests).toHaveLength(2); expect(requests[1]).toEqual(requests[0]); expect(requests[0].expectedRevision).toBe(1)
+  expect(saved).toHaveBeenCalledExactlyOnceWith(task.id)
 })
 
 test('matches resource header, switches board/list and opens one task in a Dialog using its shared conversation', async () => {
