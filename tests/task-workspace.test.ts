@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 空白鼠标拖动横向滚动及松手/取消/丢失捕获收尾；卡片/控件/触摸手势不接管，任务要求仅在左侧属性展示。
  * [OUTPUT]: 任务详情关闭等待全局动画结束才回调卸载，退出时暂停读取且不停止执行；隐藏可恢复。
  * [OUTPUT]: 任务详情属性/会话沿全局Resizable分栏，原会话与精确取消行为保持。
  * [OUTPUT]: 菜单打开/重开后静止指针不高亮删除；真实移动与键盘导航沿原库。
@@ -73,7 +74,10 @@ test('matches resource header, switches board/list and opens one task in a Dialo
   expect(f.request.mock.calls.filter(([m]) => m === 'openEmployeeTaskSession')).toHaveLength(1)
   expect(f.request.mock.calls.some(([m]) => ['runEmployeeTask', 'sendMessage'].includes(m))).toBe(false)
   const dialog = document.querySelector('[role="dialog"]')!
-  expect(dialog.querySelector('[aria-label="任务会话"] [aria-label="任务要求"]')?.textContent).toContain('总结新闻')
+  expect(dialog.querySelector('[aria-label="任务会话"] [aria-label="任务要求"]')).toBeNull()
+  expect(dialog.querySelector('[data-shared-chat]')?.textContent).toBe('shared chat')
+  expect(dialog.querySelector('aside[aria-label="任务属性"] [aria-label="任务要求"]')?.textContent).toContain(task.title)
+  expect(dialog.querySelector('aside[aria-label="任务属性"] [aria-label="任务要求"]')?.textContent).toContain(task.description)
   expect(dialog.querySelector('aside[aria-label="任务属性"] [aria-label="任务状态"]')).not.toBeNull()
   expect(dialog.querySelector('aside[aria-label="任务属性"]')?.textContent).toContain('负责人')
   const properties = dialog.querySelector('aside[aria-label="任务属性"]')!
@@ -83,6 +87,51 @@ test('matches resource header, switches board/list and opens one task in a Dialo
   expect(properties.textContent).toContain('更新时间')
   expect(properties.textContent).not.toContain('执行记录')
   expect(properties.querySelector('[data-slot="collapsible"]')).toBeNull()
+})
+
+function pointer(target: Element, type: string, clientX: number, pointerType = 'mouse', button = 0) {
+  const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX, button })
+  Object.defineProperties(event, { pointerId: { value: 1 }, pointerType: { value: pointerType }, isPrimary: { value: true } })
+  target.dispatchEvent(event)
+  return event
+}
+
+test.each(['pointerup', 'pointercancel', 'lostpointercapture'])('mouse pans board space without task writes and stops on %s', async end => {
+  const f = fixture()
+  await act(async () => root.render(h(EmployeeTasksPanel, { ...f.props, active: true, target: { type: 'employee-tasks', id: task.agentId, requestId: 'pan' } })))
+  const viewport = host.querySelector<HTMLDivElement>('[aria-label="任务看板横向滚动区域"]')!
+  const blank = host.querySelector('[data-task-status="done"] h3')!
+  Object.defineProperties(viewport, { scrollWidth: { value: 1500 }, clientWidth: { value: 600 } })
+  let captured = false
+  viewport.setPointerCapture = vi.fn(() => { captured = true })
+  viewport.hasPointerCapture = () => captured
+  viewport.releasePointerCapture = vi.fn(() => { captured = false })
+  viewport.scrollLeft = 120
+  await act(async () => { pointer(blank, 'pointerdown', 400); pointer(viewport, 'pointermove', 250) })
+  expect(viewport.scrollLeft).toBe(270)
+  expect(viewport.classList.contains('cursor-grabbing')).toBe(true)
+  if (end === 'lostpointercapture') captured = false
+  await act(async () => { pointer(viewport, end, 250); pointer(viewport, 'pointermove', 200) })
+  expect(viewport.scrollLeft).toBe(270)
+  expect(captured).toBe(false)
+  expect(viewport.classList.contains('cursor-grabbing')).toBe(false)
+  expect(f.request.mock.calls.some(([m]) => ['updateEmployeeTask', 'runEmployeeTask', 'sendMessage', 'openEmployeeTaskSession'].includes(m))).toBe(false)
+  expect(document.querySelector('[data-task-drag-preview]')).toBeNull()
+})
+
+test('board panning leaves task cards, controls, secondary mouse buttons and touch gestures alone', async () => {
+  const f = fixture()
+  await act(async () => root.render(h(EmployeeTasksPanel, { ...f.props, active: true, target: { type: 'employee-tasks', id: task.agentId, requestId: 'pan-guards' } })))
+  const viewport = host.querySelector<HTMLDivElement>('[aria-label="任务看板横向滚动区域"]')!
+  Object.defineProperties(viewport, { scrollWidth: { value: 1500 }, clientWidth: { value: 600 } })
+  viewport.setPointerCapture = vi.fn()
+  const card = host.querySelector('[data-employee-task-id] h4')!, create = host.querySelector('[aria-label="创建待办任务"]')!, status = host.querySelector('[data-employee-task-id] [aria-label="任务状态"]')!
+  for (const target of [card, create, status]) expect(pointer(target, 'pointerdown', 400).defaultPrevented).toBe(false)
+  expect(pointer(viewport, 'pointerdown', 400, 'touch').defaultPrevented).toBe(false)
+  expect(pointer(viewport, 'pointerdown', 400, 'mouse', 2).defaultPrevented).toBe(false)
+  pointer(viewport, 'pointermove', 200)
+  expect(viewport.scrollLeft).toBe(0)
+  expect(viewport.setPointerCapture).not.toHaveBeenCalled()
 })
 
 // jsdom has no layout; give the real dnd-kit sensors/collision detector stable board rectangles.
