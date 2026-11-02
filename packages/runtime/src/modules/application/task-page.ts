@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 按待办/进行中/待确认/完成/关闭过滤员工任务。
+ * [OUTPUT]: 看板使用可信assignmentsOnly范围，SQL分页前排除内部进度；工具分页仍可读取原进度记录。
  * [OUTPUT]: 任务分页兼容等待补充状态，普通读取不启动执行。
  * [INPUT]: Original task records, fixed SQL read model and trusted application actor.
  * [OUTPUT]: Read-only task pages with query-bound cursors and honest progress/list fields.
@@ -18,12 +18,12 @@ const query = z.object({ agentId: id.optional(), conversationId: id.optional(), 
 const cursor = z.object({ version: z.literal(1), key: z.string().length(64), updatedAt: z.string().datetime(), id }).strict()
 const invalid = () => { throw new ApplicationValidationError('INVALID_INPUT', '任务分页游标已失效或不属于当前筛选，请从第一页重新读取') }
 
-export function taskPageOperation(store: ProductStore): ApplicationOperation {
+export function taskPageOperation(store: ProductStore, assignmentsOnly = false): ApplicationOperation {
   return { name: 'tasks.page', description: '分页读取明确登记的任务进度与来源；仅列表摘录，done不证明执行或成果验收。不会运行任务。', effect: 'read', input: query, resultType: 'TrackedTaskPage', execute: async (raw, _, actor: ApplicationActor): Promise<TrackedTaskPage> => {
     const input = query.parse(raw)
     if (actor.kind !== 'owner' && input.agentId && input.agentId !== actor.employeeId) throw new ApplicationValidationError('FORBIDDEN', '任务不属于当前员工可用范围')
     const viewer = actor.kind === 'owner' ? undefined : { employeeId: actor.employeeId, conversationId: actor.conversationId }
-    const filters = { agentId: input.agentId ?? viewer?.employeeId, conversationId: input.conversationId, status: input.status, includeDone: input.status ? false : input.includeDone }
+    const filters = { agentId: input.agentId ?? viewer?.employeeId, conversationId: input.conversationId, status: input.status, includeDone: input.status ? false : input.includeDone, assignmentsOnly }
     const key = createHash('sha256').update(JSON.stringify({ filters, viewer: viewer ?? 'owner' })).digest('hex')
     let before: { updatedAt: string; id: string } | undefined
     if (input.cursor) {

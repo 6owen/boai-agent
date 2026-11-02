@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: application.guide公开员工任务五状态及交付验收规则。
  * [OUTPUT]: 公开计划操作排除内部任务消息，避免自定义类型进入工具JSON Schema。
  * [OUTPUT]: prompts域复用提示词模板CRUD与版本前检，contacts/prompts操作指南纳入现有业务协议。
  * [OUTPUT]: application.guide 增加 PPT 独立配置说明，保留原执行与配置分离。
@@ -54,7 +55,7 @@ export function applicationOperations(port: ApplicationPort, schemas: { connecti
   function method<K extends Method>(name: string, method: K, description: string, effect: ApplicationOperation['effect'], input: z.ZodType, resultType: string, adapt: (input: any, requestId?: string) => Methods[K]['input'] = value => value) {
     operation(name, description, effect, input, resultType, (value, requestId) => port.request(method, adapt(value, requestId)))
   }
-  operation('application.guide', '按需读取 BOAI 内置产品操作技能。', 'read', z.object({ topic: z.enum(['overview', 'employees', 'groups', 'contacts', 'sources', 'automations', 'connections', 'skills', 'prompts', 'presentations']).default('overview') }).strict(), '{ topic: string; instructions: string }', async input => ({ topic: input.topic, instructions: applicationGuides[input.topic as keyof typeof applicationGuides] }))
+  operation('application.guide', '按需读取 BOAI 内置产品操作技能。', 'read', z.object({ topic: z.enum(['overview', 'employees', 'groups', 'contacts', 'sources', 'automations', 'connections', 'skills', 'prompts', 'presentations', 'tasks']).default('overview') }).strict(), '{ topic: string; instructions: string }', async input => ({ topic: input.topic, instructions: applicationGuides[input.topic as keyof typeof applicationGuides] }))
   const snapshot = () => port.request('snapshot', undefined)
   method('prompts.list', 'listPromptTemplates', '列出资源库提示词模板及当前 revision。', 'read', empty, 'PromptTemplate[]', () => undefined)
   operation('prompts.get', '读取一个提示词模板的完整正文和版本。', 'read', lookup, 'PromptTemplate', async input => {

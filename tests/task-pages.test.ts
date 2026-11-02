@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 五状态独立任务会话、原计划授权/工具schema与稳定消息回执按最新用户合同验证。
+ * [OUTPUT]: 人工委派看板在分页前隔离内部/旧进度，工具不能伪造或晋升委派；原只读分页与回执保持。
  * [INPUT]: Real SQLite/ProductStore, original task mutations and authenticated application actors.
  * [OUTPUT]: Bounded task pages, filter-before-LIMIT access, stable cursors/reopen, honest projection and zero read-side mutation.
  * [POS]: Task-entry data contract integration; no models, GUI or personal profile.
@@ -11,7 +11,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import type { ApplicationActor } from '../packages/shared/src/domain/application-protocol'
-import { TASK_PAGE_LIMITS, type TrackedTask, type TrackedTaskPage } from '../packages/shared/src/domain/tracked-tasks'
+import { TASK_PAGE_LIMITS, isEmployeeTaskAssignment, type TrackedTask, type TrackedTaskPage } from '../packages/shared/src/domain/tracked-tasks'
+import { taskPageOperation } from '../packages/runtime/src/modules/application/task-page'
 import { ProductStore, type StoredRecord } from '../packages/runtime/src/adapters/storage/product-store'
 import { ApplicationService } from '../packages/runtime/src/modules/application/application-service'
 import { taskOperations } from '../packages/runtime/src/modules/application/task-operations'
@@ -38,6 +39,41 @@ async function fixture() {
   }
   return { get store() { return store }, app, call, page, reopen: async () => { await app.drain(); await store.close(); store = new ProductStore(join(root, 'data.sqlite')); await store.init(); app = new ApplicationService(store, taskOperations(store), async () => {}) } }
 }
+
+it('filters internal progress before Kanban pagination and binds cursors to that boundary', async () => {
+  const f = await fixture()
+  const assignments = [task('a-explicit', { kind: 'assignment' }), task('b-manual', { sourceKind: 'manual' }), task('c-message', { sourceKind: 'message' })]
+  const internal = Array.from({ length: 45 }, (_, index) => task(`z-progress-${index}`, { kind: 'progress' }))
+  const legacy = [task('z-legacy'), task('z-fake-source', { kind: 'progress', sourceKind: 'manual' }), task('z-schedule', { sourceKind: 'schedule' })]
+  await f.store.write([...assignments, ...internal, ...legacy].map(value => record('agentTasks', value)))
+  const operation = taskPageOperation(f.store, true)
+  const board = (cursor?: string) => operation.execute({ agentId: 'a', limit: 2, cursor }, undefined, { kind: 'owner' }) as Promise<TrackedTaskPage>
+  const first = await board()
+  expect(first.items.map(item => item.id)).toEqual(['c-message', 'b-manual'])
+  expect(first.nextCursor).toBeTruthy()
+  const second = await board(first.nextCursor)
+  expect(second.items.map(item => item.id)).toEqual(['a-explicit'])
+  expect(second.nextCursor).toBeUndefined()
+  expect((await f.page({ includeDone: true, limit: 100 })).items).toHaveLength(51)
+  expect(await f.call('tasks.page', { agentId: 'a', limit: 2, cursor: first.nextCursor })).toMatchObject({ status: 'rejected', error: { code: 'INVALID_INPUT' } })
+  expect(isEmployeeTaskAssignment(legacy[1])).toBe(false)
+  await f.reopen()
+  expect((await taskPageOperation(f.store, true).execute({ agentId: 'a', limit: 100 }, undefined, { kind: 'owner' }) as TrackedTaskPage).items).toHaveLength(3)
+})
+
+it('marks agent-created records as internal progress and rejects assignment promotion', async () => {
+  const f = await fixture()
+  await f.store.write([record('messages', { id: 'progress-message' })])
+  const actor: ApplicationActor = { kind: 'employee', employeeId: 'a', conversationId: 'direct', messageId: 'progress-message' }
+  const created = await f.call('tasks.create', { agentId: 'a', title: 'Agent自己拆解的步骤', steps: [{ title: '定位CSS', done: false }] }, actor)
+  expect(created).toMatchObject({ status: 'succeeded', data: { kind: 'progress', status: 'pending' } })
+  const progress = created.data as TrackedTask
+  expect(await f.call('tasks.update', { id: progress.id, expectedRevision: progress.revision, kind: 'assignment' }, actor)).toMatchObject({ status: 'rejected', error: { code: 'INVALID_INPUT' } })
+  expect(await f.call('tasks.create', { agentId: 'a', title: '伪造委派', kind: 'assignment', sourceKind: 'manual' }, actor)).toMatchObject({ status: 'rejected', error: { code: 'INVALID_INPUT' } })
+  expect(await f.call('tasks.update', { id: progress.id, expectedRevision: progress.revision, status: 'done' }, actor)).toMatchObject({ status: 'succeeded', data: { kind: 'progress', status: 'done' } })
+  expect((await taskPageOperation(f.store, true).execute({ agentId: 'a', includeDone: true }, undefined, { kind: 'owner' }) as TrackedTaskPage).items).toEqual([])
+  expect(await f.call('tasks.get', { id: progress.id }, actor)).toMatchObject({ status: 'succeeded', data: { id: progress.id, kind: 'progress' } })
+})
 
 it('keeps original create/update/list/get/delete receipts and treats done only as recorded progress', async () => {
   const f = await fixture()
