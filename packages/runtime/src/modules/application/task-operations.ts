@@ -1,6 +1,6 @@
 /*
  * [OUTPUT]: 指派任务由员工更新进行中/待确认，完成/关闭由用户决定；任务会话禁止重复登记，人工与员工来源分开。
- * [OUTPUT]: 原任务工具与员工任务面板共用五状态及记录，等待/受阻原因保存在note。
+ * [OUTPUT]: tasks.create只登记内部progress，不创建看板委派；tasks.get/update按原身份维护当前委派或内部进度。
  * [OUTPUT]: Provides employee task records and SQL-bounded tasks.page; original mutations/list and receipt semantics remain compatible.
  * [INPUT]: Original ProductStore, authenticated application actor and explicit task tracking intent.
  * [OUTPUT]: Durable per-employee multi-step tracking with revision checks; no scheduler or Work execution.
@@ -52,14 +52,14 @@ export function taskOperations(store: ProductStore): ApplicationOperation[] {
       return result.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
     }) },
     { name: 'tasks.get', description: '读取实际任务、步骤、状态和 revision。', effect: 'read', input: z.object({ id }).strict(), resultType: 'TrackedTask', execute: (input, _, actor) => store.transaction(tx => read(tx, input.id, actor)) },
-    { name: 'tasks.create', description: '为用户要求的多步工作登记进度。与执行 Work、自动化和人格后台活动分开，不启动模型。', effect: 'write', input: create, resultType: 'TrackedTask', execute: (input, _, actor) => store.transaction(async tx => {
+    { name: 'tasks.create', description: '登记Agent内部多步进度（progress），不会创建或出现在人工委派看板，不启动执行。当前任务会话请沿已有ID更新，内部拆解使用实际可用的计划/待办工具。', effect: 'write', input: create, resultType: 'TrackedTask', execute: (input, _, actor) => store.transaction(async tx => {
       const value = create.parse(input), time = new Date().toISOString()
       if (actor.kind !== 'owner') {
         const room = await tx.get<Conversation>('conversations', actor.conversationId)
         const assigned = room?.employeeTaskId ? await tx.get<TrackedTask>(collection, room.employeeTaskId) : undefined
         if (assigned && isEmployeeTaskAssignment(assigned)) throw new ApplicationValidationError('INVALID_INPUT', `当前会话已有任务 ${assigned.id}，请用 tasks.get/update 更新原任务，不要重复创建`)
       }
-      const task: TrackedTask = { ...value, ...(actor.kind !== 'owner' ? { conversationId: actor.conversationId } : {}), id: randomUUID(), status: 'pending', revision: 1, createdAt: time, updatedAt: time }
+      const task: TrackedTask = { ...value, kind: 'progress', ...(actor.kind !== 'owner' ? { conversationId: actor.conversationId } : {}), id: randomUUID(), status: 'pending', revision: 1, createdAt: time, updatedAt: time }
       if (!await allowed(tx, task, actor)) throw new Error('任务员工或来源未授权')
       await tx.put({ collection, id: task.id, value: task }); return task
     }) },

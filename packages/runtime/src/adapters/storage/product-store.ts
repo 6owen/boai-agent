@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 任务有界列表返回assignment/progress种类，看板筛选在SQL LIMIT前执行。
  * [OUTPUT]: 员工任务按身份过滤历史，原消息执行来源及任务列表为SQL有界投影。
  * [OUTPUT]: 员工任务与定时计划在SQL分页前分流，员工历史包括其定时执行。
  * [OUTPUT]: 任务执行历史按原计划参与员工在SQL分页前筛选。
@@ -162,6 +163,7 @@ export class ProductStore {
       const result = await this.client.execute(taskPageSql(query))
       return result.rows.map(row => ({
         id: String(row.id), agentId: String(row.agentId), ...(row.conversationId == null ? {} : { conversationId: String(row.conversationId) }),
+        ...(row.kind == null ? {} : { kind: String(row.kind) as TrackedTaskListItem['kind'] }),
         ...(row.sourceKind == null ? {} : { sourceKind: String(row.sourceKind) as TrackedTaskListItem['sourceKind'] }),
         ...(row.latestOccurrenceId == null ? {} : { latestOccurrenceId: String(row.latestOccurrenceId) }),
         ...(row.executionStatus == null ? {} : { executionStatus: String(row.executionStatus) as TrackedTaskListItem['executionStatus'] }),

@@ -4,12 +4,16 @@ description: "Track multi-step work durably across Bobo conversations using actu
 ---
 <!--
 [INPUT]: Alma bundled tasks/SKILL.md and current BOAI capability contracts.
-[OUTPUT]: Five task states, existing assignment reuse, employee delivery and human acceptance; no run-lifecycle inference.
+[OUTPUT]: Human-assigned Kanban goals stay separate from internal progress; five states, original assignment reuse and user acceptance.
 [POS]: Bound product employee skill, not a developer tool or permission grant.
 [PROTOCOL]: Update parent .folder.md and migration ledger on change.
 -->
 
 # Tasks
+
+Kanban is the interface between the user and the agent: each assignment carries a user-defined goal, acceptance criteria and expected output. Only explicit user creation or confirmation defines these assignments. Keep separate user assignments separate, even when they touch the same files or commands. Read their requirements from the existing task; do not rewrite the goal into your internal plan.
+
+Your implementation plan, todos, tool steps and subagent work are internal execution details. Use the actual available planning/todo tools for them. `tasks.create` only stores an internal `progress` record; it never creates a Kanban assignment. Internal progress cannot be promoted into an assignment by changing its status or fields, and old progress records do not become assignments merely because they already exist.
 
 Track complex work that spans several steps or turns, and recover its progress after a restart. The tracking record is separate from a BOAI execution Work and from scheduled automation. It does not run by itself.
 
@@ -29,7 +33,7 @@ Read `boai_catalog` for domain `tasks`, then the exact operation's schema. Call 
 | --- | --- |
 | List current work | `tasks.list` with the current employee ID; defaults to unfinished |
 | Include finished work | `tasks.list` with includeDone true |
-| Create tracking record | `tasks.create` with employee ID, concise title and ordered steps |
+| Create internal progress outside an assigned task | `tasks.create` with employee ID, concise title and ordered steps; never creates a Kanban card |
 | Read current state | `tasks.get` with actual returned ID |
 | Update progress | `tasks.update` with actual expectedRevision; each step has title and done |
 | Submit delivery | `tasks.update` status in_review with the observed revision and an honest note |

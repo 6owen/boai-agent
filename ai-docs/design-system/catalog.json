@@ -1200,6 +1200,15 @@
       "types": []
     },
     {
+      "name": "Kanban",
+      "slug": "components/layout",
+      "status": "preview",
+      "exports": ["Kanban", "KanbanBoard", "KanbanColumn", "KanbanColumnHandle", "KanbanItem", "KanbanItemHandle", "KanbanColumnContent", "KanbanOverlay"],
+      "source": "packages/ui/src/components/kanban.tsx",
+      "import": "@boai/ui/kanban",
+      "types": ["KanbanMoveEvent", "KanbanCommitMeta", "KanbanRootProps", "KanbanBoardProps", "KanbanColumnProps", "KanbanColumnHandleProps", "KanbanItemProps", "KanbanItemHandleProps", "KanbanColumnContentProps", "KanbanOverlayProps"]
+    },
+    {
       "name": "ScrollArea",
       "slug": "components/layout",
       "status": "preview",

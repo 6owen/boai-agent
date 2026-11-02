@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 看板仅管理人工委派，旧内部进度不能经看板接口打开/执行；显式创建保留独立目标与要求。
  * [OUTPUT]: 每任务持久会话/回执；按归属和版本重命名/改状态/删除，删除保留执行历史且拒绝仍在执行的任务。
  * [INPUT]: Owner task commands, original tracked-task store and AutomationService.
  * [OUTPUT]: Explicit message conversion, durable lifecycle and repeat executions in the task-owned conversation.
@@ -12,6 +13,7 @@ import { join } from 'node:path'
 import type { Methods } from '@boai/shared/ipc'
 import type { Conversation, DigitalAgent, Message } from '@boai/shared/domain'
 import type { TrackedTask, TrackedTaskPage } from '@boai/shared/domain/tracked-tasks'
+import { isEmployeeTaskAssignment } from '@boai/shared/domain/tracked-tasks'
 import type { AutomationOccurrence } from '@boai/shared/domain/automations'
 import type { EmployeeTaskMethods } from '@boai/shared/domain/employee-tasks'
 import type { ProductStore, RecordTransaction } from '../../adapters/storage/product-store'
@@ -30,6 +32,7 @@ const run = owner.extend({ id, expectedRevision: z.number().int().positive(), re
 async function read(tx: RecordTransaction, employeeId: string, taskId: string) {
   const employee = await tx.get<DigitalAgent>('agents', employeeId), task = await tx.get<TrackedTask>('agentTasks', taskId)
   if (!employee || !task || task.agentId !== employeeId) throw new Error('任务不存在或不属于当前员工')
+  if (task.kind === 'progress' || !isEmployeeTaskAssignment(task) && task.sourceKind !== 'schedule') throw new Error('此记录是Agent内部进度，不是人工委派任务')
   return task
 }
 export class EmployeeTaskService {
@@ -83,7 +86,7 @@ export class EmployeeTaskService {
     if (method === 'listEmployeeTasks') {
       const v = owner.extend({ status: status.optional(), includeDone: z.boolean().optional(), cursor: z.string().optional(), limit: z.number().int().min(1).max(100).optional() }).strict().parse(raw)
       if (!await this.store.get('agents', v.employeeId)) throw new Error('员工不存在')
-      const operation = taskPageOperation(this.store)
+      const operation = taskPageOperation(this.store, true)
       return await operation.execute({ agentId: v.employeeId, status: v.status, includeDone: v.includeDone, cursor: v.cursor, limit: v.limit }, undefined, { kind: 'owner' }) as TrackedTaskPage
     }
     if (method === 'getEmployeeTask') {
@@ -121,7 +124,7 @@ export class EmployeeTaskService {
           if (previous) return remember(await read(tx, v.employeeId, taskId))
           const description = z.string().trim().min(1).max(40000).parse(v.description ?? source?.content)
           const now = new Date().toISOString()
-          const task: TrackedTask = { id: taskId, agentId: v.employeeId, title: v.title ?? description.split('\n')[0].slice(0, 100), description, status: 'pending', steps: [], note: '', revision: 1, createdAt: now, updatedAt: now, sourceKind: source ? 'message' : 'manual', ...(source ? { source: { conversationId: source.conversationId, messageId: source.id } } : {}) }
+          const task: TrackedTask = { id: taskId, agentId: v.employeeId, kind: 'assignment', title: v.title ?? description.split('\n')[0].slice(0, 100), description, status: 'pending', steps: [], note: '', revision: 1, createdAt: now, updatedAt: now, sourceKind: source ? 'message' : 'manual', ...(source ? { source: { conversationId: source.conversationId, messageId: source.id } } : {}) }
           await tx.put({ collection: 'agentTasks', id: task.id, value: task })
           await tx.put({ collection: 'employeeTaskReceipts', id: receiptId, value: { fingerprint, taskId } })
           if (source) { sourceMessage = { ...source, employeeTaskId: task.id }; await tx.put({ collection: 'messages', id: source.id, value: sourceMessage }) }

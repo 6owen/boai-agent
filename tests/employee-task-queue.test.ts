@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 员工显式推进/交付、问答不改状态、失败停止回待办及人工验收；原队列/定时来源回归保持。
+ * [OUTPUT]: 人定义的三项委派保持独立，内部进度不进看板且不能执行；原交付/状态/队列回归保持。
  * [OUTPUT]: 五状态独立任务会话、原计划授权/工具schema与稳定消息回执按最新用户合同验证。
  * [OUTPUT]: 持久任务多次执行/完成重开/重启、消息转换不重跑与清空后来源失效保持任务。
  * [OUTPUT]: 覆盖主聊天连续工作、聊天忙碌排队与旧独立任务公开消息关联。
@@ -44,6 +44,38 @@ async function setup(run: AgentEngine['run'], decide?: AgentEngine['decide']) {
   const read = (id: string) => service.handle('getAutomationOccurrence', { id }) as Promise<AutomationOccurrence>
   return { service, create, start, read, restart: async () => { const next = new AppService(options); cleanup.push(() => next.close()); await next.init(); return next } }
 }
+it('keeps three user-defined goals separate and never turns internal plans into Kanban assignments', async () => {
+  let calls = 0
+  const f = await setup(async ctx => { calls++; await employeeTaskStatus(ctx, 'in_progress'); await ctx.onDelta('已完成font-family修复'); await employeeTaskStatus(ctx, 'in_review') })
+  const goals = [
+    { title: '修复字体的font-family', description: '目标：修复font-family\n验收：指定字体在页面实际生效' },
+    { title: '修改好了重新build', description: '目标：修改后重新build\n验收：构建成功并保留结果' },
+    { title: '再修改font-size然后build', description: '目标：调整font-size然后build\n验收：字号符合要求且构建成功' },
+  ]
+  const tasks: TrackedTask[] = []
+  for (const [index, goal] of goals.entries()) tasks.push(await f.service.handle('createEmployeeTask', { employeeId: 'researcher', requestId: `human-goal-${index}`, ...goal }) as TrackedTask)
+  expect(new Set(tasks.map(task => task.id)).size).toBe(3)
+  expect(tasks.map(task => [task.title, task.description, task.kind])).toEqual(goals.map(goal => [goal.title, goal.description, 'assignment']))
+  const created = await f.service.handle('executeApplicationOperation', { operation: 'tasks.create', requestId: 'internal-plan', input: { agentId: 'researcher', title: '内部：找文件、编辑、验证', steps: [{ title: '定位CSS', done: false }] } }) as import('../packages/shared/src/domain/application-protocol').ApplicationResult
+  expect(created.status).toBe('succeeded')
+  const internal = created.data as TrackedTask
+  expect(internal.kind).toBe('progress')
+  const board = async () => (await f.service.handle('listEmployeeTasks', { employeeId: 'researcher', includeDone: true }) as import('../packages/shared/src/domain/tracked-tasks').TrackedTaskPage).items
+  expect((await board()).map(task => task.id).sort()).toEqual(tasks.map(task => task.id).sort())
+  await expect(f.service.handle('openEmployeeTaskSession', { employeeId: 'researcher', id: internal.id })).rejects.toThrow('内部进度')
+  await expect(f.service.handle('runEmployeeTask', { employeeId: 'researcher', id: internal.id, expectedRevision: internal.revision, requestId: 'cannot-run-progress' })).rejects.toThrow('内部进度')
+  expect(calls).toBe(0)
+  const execution = await f.service.handle('runEmployeeTask', { employeeId: 'researcher', id: tasks[0].id, expectedRevision: tasks[0].revision, requestId: 'human-first-start' }) as AutomationOccurrence
+  await vi.waitFor(async () => expect((await f.read(execution.id)).status).toBe('completed'))
+  expect(calls).toBe(1)
+  expect((await board()).find(task => task.id === tasks[0].id)?.status).toBe('in_review')
+  expect((await board()).filter(task => task.id !== tasks[0].id).every(task => task.status === 'pending')).toBe(true)
+  await f.service.close()
+  const restarted = await f.restart()
+  expect((await restarted.handle('listEmployeeTasks', { employeeId: 'researcher', includeDone: true }) as import('../packages/shared/src/domain/tracked-tasks').TrackedTaskPage).items).toHaveLength(3)
+  expect(await restarted.handle('executeApplicationOperation', { operation: 'tasks.get', input: { id: internal.id } })).toMatchObject({ status: 'succeeded', data: { kind: 'progress' } })
+})
+
 it('keeps one assigned task through delivery and discussion and reserves acceptance for the user', async () => {
   const outcomes: string[] = []
   let calls = 0, other: TrackedTask
@@ -508,7 +540,9 @@ it('deletes a finished employee task without deleting its plan/history and never
   const next = await restarted.handle('runAutomation', { id: plan.id, requestId: 'next-scheduled-run' }) as AutomationOccurrence
   await vi.waitFor(async () => expect((await restarted.handle('getAutomationOccurrence', { id: next.id }) as AutomationOccurrence).status).toBe('completed'), { timeout: 10000 })
   expect(next.taskId).not.toBe(first.taskId)
-  expect(await restarted.handle('listEmployeeTasks', { employeeId: 'researcher', includeDone: true })).toMatchObject({ items: [{ id: next.taskId }] })
+  expect(await restarted.handle('listEmployeeTasks', { employeeId: 'researcher', includeDone: true })).toMatchObject({ items: [] })
+  expect(await restarted.handle('getEmployeeTask', { employeeId: 'researcher', occurrenceId: next.id })).toMatchObject({ task: { id: next.taskId, sourceKind: 'schedule' } })
+  expect((await restarted.handle('listAutomationHistory', { automationId: plan.id, limit: 30 }) as { occurrences: AutomationOccurrence[] }).occurrences.map(item => item.id)).toEqual(expect.arrayContaining([first.id, next.id]))
 })
 it('rejects deletion of running or queued tasks even when their manual state is done', async () => {
   const hold = gate(), f = await setup(async ctx => { await hold.promise; await ctx.onDelta('done') }); cleanup.push(hold.release)

@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 默认任务列表排除完成和关闭，显式状态仍沿SQL分页。
+ * [OUTPUT]: 人工委派看板在LIMIT前按kind/可信旧来源筛选，内部progress及无来源旧进度不混入。
  * [OUTPUT]: 任务来源和最近执行状态投影不读取正文；任务筛选仍在LIMIT之前。
  * [INPUT]: Normalized explicit-task filters and trusted viewer scope.
  * [OUTPUT]: One fixed SQL query with source/identity checks before LIMIT and bounded list projection.
@@ -9,6 +9,7 @@
 import { TASK_PAGE_LIMITS, type TrackedTaskStatus } from '@boai/shared/domain/tracked-tasks'
 
 export interface TaskPageSqlQuery {
+  assignmentsOnly?: boolean
   agentId?: string
   conversationId?: string
   status?: TrackedTaskStatus
@@ -30,6 +31,7 @@ export function taskPageSql(query: TaskPageSqlQuery) {
       AND NOT EXISTS (SELECT 1 FROM records cleanup WHERE cleanup.collection='conversationCleanup' AND cleanup.id=c.id)
     ))`,
   ]
+  if (query.assignmentsOnly) filters.push("(json_extract(t.value,'$.kind')='assignment' OR (json_type(t.value,'$.kind') IS NULL AND json_extract(t.value,'$.sourceKind') IN ('manual','message')))")
   if (query.agentId) { filters.push("json_extract(t.value,'$.agentId')=?"); args.push(query.agentId) }
   if (query.conversationId) { filters.push("json_extract(t.value,'$.conversationId')=?"); args.push(query.conversationId) }
   if (query.status) { filters.push("json_extract(t.value,'$.status')=?"); args.push(query.status) }
@@ -53,7 +55,7 @@ export function taskPageSql(query: TaskPageSqlQuery) {
     args.push(query.before.updatedAt, query.before.updatedAt, query.before.id)
   }
   return {
-    sql: `SELECT t.id, json_extract(t.value,'$.agentId') AS agentId, json_extract(t.value,'$.conversationId') AS conversationId,
+    sql: `SELECT t.id, json_extract(t.value,'$.agentId') AS agentId, json_extract(t.value,'$.kind') AS kind, json_extract(t.value,'$.conversationId') AS conversationId,
       json_extract(t.value,'$.sourceKind') AS sourceKind, json_extract(t.value,'$.latestOccurrenceId') AS latestOccurrenceId,
       (SELECT json_extract(e.value,'$.status') FROM records e WHERE e.collection='automationOccurrences' AND e.id=json_extract(t.value,'$.latestOccurrenceId') AND json_extract(e.value,'$.deletedAt') IS NULL) AS executionStatus,
       json_extract(t.value,'$.title') AS title, json_extract(t.value,'$.status') AS status, json_extract(t.value,'$.revision') AS revision,

@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 五状态、人工/员工/执行来源和唯一任务会话标识；员工指派与旧进度记录明确区分。
+ * [OUTPUT]: assignment人工委派与progress内部进度明确分层，保留五状态及原任务会话标识。
  * [OUTPUT]: 原agentTasks扩展要求/消息来源/最近执行和等待补充状态，长期任务不随聊天清空删除。
  * [INPUT]: Original explicit task records and bounded application queries.
  * [OUTPUT]: Shared task progress/list projection; done is a declaration, not execution or artifact acceptance.
@@ -11,6 +11,8 @@ export type TrackedTaskStatus = typeof EMPLOYEE_TASK_STATUSES[number]
 export interface TrackedTask {
   id: string
   agentId: string
+  /** Assigned goals enter Kanban; agent-owned progress records never do. */
+  kind?: 'assignment' | 'progress'
   conversationId?: string
   /** Explicit assignment, retained independently of any individual execution. */
   description?: string
@@ -28,7 +30,7 @@ export interface TrackedTask {
   updatedAt: string
 }
 /** Explicit employee assignments use task-level delivery and human acceptance. */
-export const isEmployeeTaskAssignment = (task: Pick<TrackedTask, 'sourceKind'>) => task.sourceKind === 'manual' || task.sourceKind === 'message'
+export const isEmployeeTaskAssignment = (task: Pick<TrackedTask, 'kind' | 'sourceKind'>) => task.kind === 'assignment' || task.kind === undefined && (task.sourceKind === 'manual' || task.sourceKind === 'message')
 export const TASK_PAGE_LIMITS = { page: 30, maxPage: 100, noteCharacters: 1000, stepTitleCharacters: 300 } as const
 export interface TrackedTaskListItem extends Omit<TrackedTask, 'steps' | 'note' | 'description'> {
   executionStatus?: import('./automations').AutomationOccurrence['status']
