@@ -2,6 +2,7 @@
  * [INPUT]: One employee task, its dedicated conversation and original execution history.
  * [OUTPUT]: Resizable Task Dialog with title/requirements in properties and shared chat without an extra introduction; close waits for the shared exit animation.
  * [OUTPUT]: 持续任务会话支持再次执行，左侧要求失焦保存；完成/关闭只是协作提示，Dialog关闭不停止执行。
+ * [OUTPUT]: 属性区不展示手动/消息等创建方式分类；真实原消息定位仍独立保留。
  * [POS]: Task session boundary; closing the dialog never stops an accepted execution.
  * [PROTOCOL]: Update Header and owning .folder.md on change.
  */
@@ -78,7 +79,6 @@ export function EmployeeTaskDetail({ api, snapshot, id, occurrenceId, employeeId
           <dl className="m-0 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-5 text-sm">
             <dt className="text-muted-foreground">状态</dt><dd className="m-0 min-w-0"><EmployeeTaskStatus status={task.status} disabled={busy} onChange={status} /></dd>
             <dt className="text-muted-foreground">负责人</dt><dd className="m-0 flex min-w-0 items-center gap-2 [&_.avatar]:size-6">{employee && <Avatar small name={employee.name} seed={employee.id} avatar={employee.avatar} color={employee.color} />}<span className="truncate">{employee?.name}</span></dd>
-            {task.sourceKind && <><dt className="text-muted-foreground">来源</dt><dd className="m-0">{{ schedule: '定时任务', message: '聊天消息', manual: '手动创建' }[task.sourceKind]}</dd></>}
           </dl>
           <div className="flex flex-col items-start gap-3">
             {ongoing ? <Button variant="secondary" size="sm" disabled={busy || ongoing.status === 'cancelling'} onClick={() => void act(() => api.request('stopAutomation', { id: ongoing.id }))}>{ongoing.status === 'queued' ? '取消排队' : '停止本次执行'}</Button> : <Button variant="secondary" size="sm" disabled={busy || !room || editingRequirements} onClick={start}>{record.executions.occurrences.length ? '再次执行' : '开始执行'}</Button>}

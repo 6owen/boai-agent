@@ -1,6 +1,7 @@
 /*
  * [OUTPUT]: assignment人工委派与progress内部进度明确分层，保留五状态及原任务会话标识。
  * [OUTPUT]: briefPending仅标记会话创建的原始要求尚待整理，不参与状态流转或执行门禁。
+ * [OUTPUT]: 普通任务不保存创建方式分类；sourceKind的manual/message仅用于旧数据迁移，原定时来源保持。
  * [OUTPUT]: 原agentTasks扩展要求/消息来源/最近执行和等待补充状态，长期任务不随聊天清空删除。
  * [INPUT]: Original explicit task records and bounded application queries.
  * [OUTPUT]: Shared task progress/list projection; done is a declaration, not execution or artifact acceptance.
@@ -19,6 +20,7 @@ export interface TrackedTask {
   description?: string
   briefPending?: boolean
   source?: { conversationId: string; messageId: string }
+  /** New assignments omit this field; manual/message are legacy migration inputs only. */
   sourceKind?: 'message' | 'manual' | 'schedule'
   latestOccurrenceId?: string
   sessionConversationId?: string
