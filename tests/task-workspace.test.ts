@@ -2,6 +2,7 @@
 /*
  * [OUTPUT]: 空白鼠标拖动横向滚动及松手/取消/丢失捕获收尾；卡片/控件/触摸手势不接管，任务要求仅在左侧属性展示。
  * [OUTPUT]: 任务详情关闭等待全局动画结束才回调卸载，退出时暂停读取且不停止执行；隐藏可恢复。
+ * [OUTPUT]: 已完成/关闭任务可再次执行；要求失焦保存不运行；批量选择顺序与稳定重试，原拖拽/关闭回归保持。
  * [OUTPUT]: 任务详情属性/会话沿全局Resizable分栏，原会话与精确取消行为保持。
  * [OUTPUT]: 菜单打开/重开后静止指针不高亮删除；真实移动与键盘导航沿原库。
  * [OUTPUT]: 删除子菜单使用取消/确认删除两项，取消零写、确认固定员工/任务/修订。
@@ -26,7 +27,7 @@ import { EmployeeTaskDetail } from '../apps/electron/src/renderer/components/det
 import type { ChannelChatWindow } from '../apps/electron/src/renderer/components/detail-panel/channels-tab'
 let host: HTMLDivElement, root: Root
 const originalAnimations = Element.prototype.getAnimations
-beforeEach(() => { localStorage.clear(); Element.prototype.getAnimations = () => []; vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true); vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} }); vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener() {}, removeEventListener() {} })); host = document.createElement('div'); document.body.append(host); root = createRoot(host) })
+beforeEach(() => { localStorage.clear(); Element.prototype.getAnimations = () => []; vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true); vi.stubGlobal('PointerEvent', MouseEvent); vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} }); vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener() {}, removeEventListener() {} })); host = document.createElement('div'); document.body.append(host); root = createRoot(host) })
 afterEach(async () => {
   await act(async () => root.unmount())
   // dnd-kit intentionally keeps document click suppression for 50ms after drop.
@@ -43,11 +44,12 @@ function fixture(executions: AutomationOccurrence[] = []) {
   let value = task, deleted = false
   const request = vi.fn(async (method: string, input?: any): Promise<any> => {
     if (method === 'getEmployeeTask') return { task: value, executions: { occurrences: executions } }
-    if (method === 'listEmployeeTasks') return { items: !deleted && input.status === value.status ? [value] : [] }
+    if (method === 'listEmployeeTasks') return { items: !deleted && (!input.status || input.status === value.status) ? [value] : [] }
     if (method === 'openEmployeeTaskSession') return room
     if (method === 'getConversationReading') return reading
     if (method === 'getConversationView') return { conversation: room, reading, messagePage: { items: [] }, messages: [], runs: [], artifacts: [], approvals: [] }
-    if (method === 'updateEmployeeTask') { expect(input).toMatchObject({ employeeId: task.agentId, id: task.id, expectedRevision: value.revision }); value = { ...value, ...(input.status ? { status: input.status } : {}), ...(input.title ? { title: input.title } : {}), revision: value.revision + 1 }; return value }
+    if (method === 'updateEmployeeTask') { expect(input).toMatchObject({ employeeId: task.agentId, id: task.id, expectedRevision: value.revision }); value = { ...value, ...(input.status ? { status: input.status } : {}), ...(input.title ? { title: input.title } : {}), ...(input.description ? { description: input.description } : {}), revision: value.revision + 1 }; return value }
+    if (method === 'runEmployeeTask') return occurrence
     if (method === 'deleteEmployeeTask') { expect(input).toEqual({ employeeId: task.agentId, id: task.id, expectedRevision: value.revision }); deleted = true; return { deleted: true } }
     throw new Error('Unexpected request: ' + method)
   })
@@ -57,6 +59,50 @@ function fixture(executions: AutomationOccurrence[] = []) {
   return { request, unsubscribe, props }
 }
 const button = (label: string) => [...document.body.querySelectorAll('button')].find(b => b.textContent === label)!
+
+test.each(['done', 'closed'] as const)('can execute a %s task again in its original conversation', async status => {
+  const f = fixture([{ ...occurrence, status: 'completed' }])
+  await f.props.api.request('updateEmployeeTask', { employeeId: task.agentId, id: task.id, expectedRevision: 1, status })
+  await act(async () => root.render(h(EmployeeTaskDetail, { ...f.props, id: task.id, active: true })))
+  expect(button('再次执行')).toBeTruthy()
+  await act(async () => button('再次执行').click())
+  expect(f.request.mock.calls.filter(([method]) => method === 'runEmployeeTask')).toHaveLength(1)
+  expect(f.request.mock.calls.find(([method]) => method === 'runEmployeeTask')?.[1]).toMatchObject({ employeeId: task.agentId, id: task.id, expectedRevision: 2 })
+  expect(f.request.mock.calls.filter(([method]) => method === 'updateEmployeeTask')).toHaveLength(1)
+  expect(document.querySelector('[data-shared-chat]')?.getAttribute('data-shared-chat')).toBe(room.id)
+})
+
+test('edits requirements on blur without executing and keeps concurrent status updates', async () => {
+  const f = fixture()
+  await act(async () => root.render(h(EmployeeTaskDetail, { ...f.props, id: task.id, active: true })))
+  await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="编辑任务要求"]')!.click())
+  const input = document.querySelector<HTMLTextAreaElement>('textarea[aria-label="编辑任务要求"]')!
+  await act(async () => { Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(input, '修改后的目标与验收标准'); input.dispatchEvent(new Event('input', { bubbles: true })) })
+  await f.props.api.request('updateEmployeeTask', { employeeId: task.agentId, id: task.id, expectedRevision: 1, status: 'in_review' })
+  await act(async () => input.blur())
+  expect(f.request.mock.calls.find(([method, value]) => method === 'updateEmployeeTask' && value.description)?.[1]).toEqual({ employeeId: task.agentId, id: task.id, expectedRevision: 2, description: '修改后的目标与验收标准' })
+  expect(document.querySelector('[aria-label="任务要求"]')?.textContent).toContain('修改后的目标与验收标准')
+  expect(f.request.mock.calls.some(([method]) => ['runEmployeeTask', 'runEmployeeTasks', 'sendEmployeeTaskMessage'].includes(method))).toBe(false)
+})
+
+test('batch selection preserves click order and retries an unknown request with the same identity', async () => {
+  const f = fixture(), original = f.request.getMockImplementation()!, requests: any[] = []
+  const other = { ...task, id: 'other-task', title: '第二项任务', revision: 4, status: 'done' }
+  f.request.mockImplementation(async (method, input) => {
+    if (method === 'listEmployeeTasks' && !input.status) return { items: [{ ...task, executionStatus: 'completed' }, { ...other, executionStatus: 'completed' }] }
+    if (method === 'runEmployeeTasks') { requests.push(input); if (requests.length === 1) throw new Error('受理回执连接中断'); return { items: input.tasks.map((value: any) => ({ id: value.id, execution: { ...occurrence, taskId: value.id } })) } }
+    return original(method, input)
+  })
+  await act(async () => root.render(h(EmployeeTasksPanel, { ...f.props, active: true, target: { type: 'employee-tasks', id: task.agentId, requestId: 'batch-panel' } })))
+  await act(async () => button('批量执行').click())
+  expect(requests).toHaveLength(0)
+  await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="选择任务：第二项任务"]')!.click())
+  await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="选择任务：新闻总结"]')!.click())
+  await act(async () => button('执行所选任务（2）').click())
+  expect(requests[0].tasks).toEqual([{ id: other.id, expectedRevision: 4 }, { id: task.id, expectedRevision: 1 }])
+  await act(async () => button('执行所选任务（2）').click())
+  expect(requests).toHaveLength(2); expect(requests[1]).toEqual(requests[0])
+})
 
 test('matches resource header, switches board/list and opens one task in a Dialog using its shared conversation', async () => {
   const f = fixture()

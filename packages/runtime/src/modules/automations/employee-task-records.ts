@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 员工指派状态由员工显式维护，运行失败退出兜底待办；人工覆盖及原定时来源映射保持。
+ * [OUTPUT]: 显式执行设置协作提示进行中，任务消息按实际工作更新；完成/关闭不锁住人工委派，原定时来源映射保持。
  * [INPUT]: Accepted automation occurrence and explicit employee task, inside the original transaction.
  * [OUTPUT]: Durable task ownership and many execution links; historical adoption never dispatches work.
  * [POS]: Task metadata bridge; scheduler, Work and native sessions keep execution authority.
@@ -29,7 +29,7 @@ export async function linkEmployeeTask(tx: RecordTransaction, d: AutomationDefin
   if (d.employeeTask && !historical) {
     if (!task || task.agentId !== agentId) throw new Error('任务不存在或不属于当前员工')
     if (task.revision !== d.employeeTask.expectedRevision) throw new Error('任务已经改变，请刷新后重新提交')
-    if (task.status === 'done' || task.status === 'closed') throw new Error('请先重新打开已完成任务')
+    if (!isEmployeeTaskAssignment(task) && (task.status === 'done' || task.status === 'closed')) throw new Error('请先重新打开已完成任务')
     if (!d.employeeTask.message && task.latestOccurrenceId && ongoingTaskExecution(await tx.get<AutomationOccurrence>('automationOccurrences', task.latestOccurrenceId))) throw new Error('该任务还有执行或等待中的运行，请先处理本次运行')
   }
   if (!task) {
@@ -40,7 +40,8 @@ export async function linkEmployeeTask(tx: RecordTransaction, d: AutomationDefin
   o.taskId = task.id
   const latest = task.latestOccurrenceId ? await tx.get<AutomationOccurrence>('automationOccurrences', task.latestOccurrenceId) : undefined
   if (!historical || !latest || o.startedAt > latest.startedAt || o.startedAt === latest.startedAt && o.id > latest.id) {
-    const executionState = isEmployeeTaskAssignment(task) ? {} : {
+    const explicitTaskRun = !historical && d.employeeTask && !d.employeeTask.message
+    const executionState = isEmployeeTaskAssignment(task) ? (explicitTaskRun ? { status: 'in_progress' as const, statusSource: 'execution' as const } : {}) : {
       statusSource: 'execution' as const,
       ...(!historical || !task.latestOccurrenceId ? { status: await executionTaskStatus(tx, o, task) } : {}),
     }

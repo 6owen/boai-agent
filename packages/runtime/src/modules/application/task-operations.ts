@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 指派任务由员工更新进行中/待确认，完成/关闭由用户决定；任务会话禁止重复登记，人工与员工来源分开。
+ * [OUTPUT]: 状态是协作提示，员工按实际工作和用户明确验收更新，完成/关闭不锁住后续对话；任务范围保持。
  * [OUTPUT]: tasks.create只登记内部progress，不创建看板委派；tasks.get/update按原身份维护当前委派或内部进度。
  * [OUTPUT]: Provides employee task records and SQL-bounded tasks.page; original mutations/list and receipt semantics remain compatible.
  * [INPUT]: Original ProductStore, authenticated application actor and explicit task tracking intent.
@@ -63,13 +63,9 @@ export function taskOperations(store: ProductStore): ApplicationOperation[] {
       if (!await allowed(tx, task, actor)) throw new Error('任务员工或来源未授权')
       await tx.put({ collection, id: task.id, value: task }); return task
     }) },
-    { name: 'tasks.update', description: '按当前 revision 更新步骤、状态和原因；员工指派交付用 in_review，由用户验收完成/关闭。状态声明不证明工具副作用成功。', effect: 'write', input: update, resultType: 'TrackedTask', execute: (input, _, actor) => store.transaction(async tx => {
+    { name: 'tasks.update', description: '按当前 revision 更新步骤、协作状态和原因；交付用 in_review，用户明确验收通过后才用 done。完成/关闭仍可继续原任务。状态声明不证明工具副作用成功，也不控制执行。', effect: 'write', input: update, resultType: 'TrackedTask', execute: (input, _, actor) => store.transaction(async tx => {
       const value = update.parse(input), previous = await read(tx, value.id, actor)
       if (previous.revision !== value.expectedRevision) throw new ApplicationValidationError('REVISION_CONFLICT', '任务已经改变，请先读取当前版本')
-      if (actor.kind !== 'owner' && isEmployeeTaskAssignment(previous)) {
-        if (['done', 'closed'].includes(previous.status)) throw new ApplicationValidationError('FORBIDDEN', '任务已完成或关闭，请由用户重新打开后继续')
-        if (value.status === 'done' || value.status === 'closed') throw new ApplicationValidationError('FORBIDDEN', '交付任务请更新为 in_review，由用户验收完成或关闭')
-      }
       const { expectedRevision: _, ...changes } = value
       const task: TrackedTask = { ...previous, ...changes, ...(value.status ? { statusSource: actor.kind !== 'owner' && isEmployeeTaskAssignment(previous) ? 'employee' : 'manual' } : {}), revision: previous.revision + 1, updatedAt: new Date().toISOString() }
       await tx.put({ collection, id: task.id, value: task }); return task

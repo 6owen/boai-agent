@@ -1,6 +1,6 @@
 /*
  * [OUTPUT]: 旧独立会话被同一员工任务继续使用时，按每条消息的真实occurrence投影，避免归到首轮执行。
- * [OUTPUT]: 员工任务恢复进入主聊天；旧独立上下文沿原回执投影指令和回复，不重放执行。
+ * [OUTPUT]: 人工委派要求/回复只在任务会话接收，不回灌主聊天；原定时投递及清空屏障保持。
  * [OUTPUT]: 公开任务消息身份共用确定性函数，执行镜像按原消息直接核源，不扫描聊天历史。
  * [INPUT]: 公共消息写事务、真实会话/参与者/来源和原阅读事务。
  * [OUTPUT]: 任何新公开消息与对应IM入口可见性同事务；隔离任务按固定归属投影，原回执屏障/执行上下文保持。
@@ -14,6 +14,7 @@ import type { AutomationOccurrence, Conversation, DigitalAgent, Message } from '
 import type { MessageCommit, RecordTransaction } from '../../adapters/storage/product-store'
 import type { ConversationReadingRepository } from './reading-repository'
 import { isCoreAgent } from '@boai/shared/domain/core-agent'
+import { isEmployeeTaskAssignment, type TrackedTask } from '@boai/shared/domain/tracked-tasks'
 
 /** All public messages pass here once their owning transaction has prepared its records. */
 export async function receiveConversationMessages(tx: RecordTransaction, changes: MessageCommit[], dataPath: string, reading: ConversationReadingRepository) {
@@ -49,6 +50,9 @@ export async function receiveConversationMessages(tx: RecordTransaction, changes
       const occurrenceId = message.origin?.occurrenceId ?? source.occurrenceId
       const occurrence = occurrenceId ? await tx.get<AutomationOccurrence>('automationOccurrences', occurrenceId) : undefined
       if (occurrence && occurrence.conversationId !== source.id) continue
+      const taskId = source.employeeTaskId ?? occurrence?.taskId
+      const task = taskId ? await tx.get<TrackedTask>('agentTasks', taskId) : undefined
+      if (task && isEmployeeTaskAssignment(task)) continue
       const owner = occurrence?.plan?.owner
       const target = owner?.kind === 'group' ? await tx.get<Conversation>('conversations', owner.conversationId) : source.agentIds.length === 1 ? await mainPrivate(source.agentIds[0]) : undefined
       if (!target || await tx.get('conversationCleanup', target.id)) continue

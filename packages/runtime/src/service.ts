@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 员工指派会话向API/native注入原任务身份和显式状态流转规则，不影响定时来源。
+ * [OUTPUT]: 员工任务支持编辑要求及批量派发，状态不阻止会话续用；API/native原任务身份保持。
  * [OUTPUT]: 路由员工任务删除/重命名到原任务服务，保持任务归属/修订与原定时管理路径。
  * [OUTPUT]: 任务Dialog共用原输入/审批/问答/Steer；每任务会话与原计划授权分别核验。
  * [OUTPUT]: 员工持久任务五个公共入口及原消息关联回写；执行沿原AutomationService和主会话。
@@ -1287,7 +1287,7 @@ export class AppService {
       const { requestId } = z.object({ requestId: id }).strict().parse(input)
       return await this.handle('getMessageReceipt', { requestId }) ?? this.employeeTasks.messageReceipt(requestId)
     }
-    if (method === 'openEmployeeTaskSession' || method === 'createEmployeeTask' || method === 'listEmployeeTasks' || method === 'getEmployeeTask' || method === 'updateEmployeeTask' || method === 'deleteEmployeeTask' || method === 'runEmployeeTask') return this.employeeTasks.handle(method, input)
+    if (method === 'openEmployeeTaskSession' || method === 'createEmployeeTask' || method === 'listEmployeeTasks' || method === 'getEmployeeTask' || method === 'updateEmployeeTask' || method === 'deleteEmployeeTask' || method === 'runEmployeeTask' || method === 'runEmployeeTasks') return this.employeeTasks.handle(method, input)
     if(method==='listAutomations'){z.undefined().parse(input);return this.automations.view()}
     if(method==='getAutomation'){const {id}=z.object({id:z.string().min(1).max(200)}).strict().parse(input);const definition=await this.store.get<AutomationDefinition>('automations',id);return definition&&!definition.deletedAt?definition:null}
     if(method==='listOwnerAutomations')return this.automations.list(automationListSchema.parse(input))
@@ -4097,7 +4097,7 @@ export class AppService {
     const loaded = await this.homes.load(agent, conversation, combined, run.id, { profile: personaProfile, state: personaState, scene: run.responseKind === 'task' ? 'task' : conversation.channel ? 'channel' : conversation.kind === 'group' ? 'group' : 'direct' })
     const planning = planningInstructions(await readPlanningState(this.store, agent.id, conversation.id))
     if (planning) loaded.bootstrap.dynamicInstructions = [loaded.bootstrap.dynamicInstructions, planning].filter(Boolean).join('\n\n')
-    const taskInstructions = run.phase === 'execution' ? await employeeTaskInstructions(this.store, agent.id, conversation) : ''
+    const taskInstructions = run.phase === 'execution' ? await employeeTaskInstructions(this.store, agent.id, conversation, origin?.occurrenceId) : ''
     if (taskInstructions) loaded.bootstrap.dynamicInstructions = [loaded.bootstrap.dynamicInstructions, taskInstructions].filter(Boolean).join('\n\n')
     if (isCoreAgent(agent) && !conversation.channel) {
       const trigger = this.messages.get(turn.triggerMessageId)
