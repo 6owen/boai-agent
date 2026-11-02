@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 人工任务持续复用会话，状态不阻止执行；要求编辑零派发，批量按选择顺序沿原FIFO受理并保留逐项回执。
+ * [OUTPUT]: 人工任务可在任意平级状态创建，原始会话输入标记待整理；创建不自动派发，显式执行仍沿原FIFO。
  * [OUTPUT]: 每任务持久会话/回执；按归属和版本重命名/改状态/删除，删除保留执行历史且拒绝仍在执行的任务。
  * [INPUT]: Owner task commands, original tracked-task store and AutomationService.
  * [OUTPUT]: Explicit message conversion, durable lifecycle and repeat executions in the task-owned conversation.
@@ -23,7 +23,7 @@ import type { AutomationService } from './automation-service'
 const id = z.string().min(1).max(200)
 const status = z.enum(['pending', 'in_progress', 'in_review', 'done', 'closed'])
 const owner = z.object({ employeeId: id })
-const create = owner.extend({ requestId: id, title: z.string().trim().min(1).max(300).optional(), description: z.string().trim().min(1).max(40000).optional(), source: z.object({ conversationId: id, messageId: id }).strict().optional() }).strict()
+const create = owner.extend({ requestId: id, title: z.string().trim().min(1).max(300).optional(), description: z.string().trim().min(1).max(40000).optional(), status: status.optional(), conversation: z.boolean().optional(), source: z.object({ conversationId: id, messageId: id }).strict().optional() }).strict().refine(value => !value.conversation || !value.source, '会话创建请直接填写任务要求')
 const get = owner.extend({ id: id.optional(), occurrenceId: id.optional(), before: z.object({ startedAt: z.string().datetime(), id: z.string().min(1).max(500) }).strict().optional() }).strict().refine(v => !!v.id !== !!v.occurrenceId, '请选择一个任务')
 const mutation = owner.extend({ id, expectedRevision: z.number().int().positive() }).strict()
 const update = mutation.extend({ status: status.optional(), title: z.string().trim().min(1).max(300).optional(), description: z.string().trim().min(1).max(40000).optional() }).refine(v => v.status !== undefined || v.title !== undefined || v.description !== undefined, '请选择要修改的任务内容')
@@ -157,7 +157,7 @@ export class EmployeeTaskService {
           if (previous) return remember(await read(tx, v.employeeId, taskId))
           const description = z.string().trim().min(1).max(40000).parse(v.description ?? source?.content)
           const now = new Date().toISOString()
-          const task: TrackedTask = { id: taskId, agentId: v.employeeId, kind: 'assignment', title: v.title ?? description.split('\n')[0].slice(0, 100), description, status: 'pending', steps: [], note: '', revision: 1, createdAt: now, updatedAt: now, sourceKind: source ? 'message' : 'manual', ...(source ? { source: { conversationId: source.conversationId, messageId: source.id } } : {}) }
+          const task: TrackedTask = { id: taskId, agentId: v.employeeId, kind: 'assignment', title: v.title ?? description.split('\n')[0].slice(0, 100), description, status: v.status ?? 'pending', ...(v.status ? { statusSource: 'manual' as const } : {}), ...(v.conversation ? { briefPending: true } : {}), steps: [], note: '', revision: 1, createdAt: now, updatedAt: now, sourceKind: source ? 'message' : 'manual', ...(source ? { source: { conversationId: source.conversationId, messageId: source.id } } : {}) }
           await tx.put({ collection: 'agentTasks', id: task.id, value: task })
           await tx.put({ collection: 'employeeTaskReceipts', id: receiptId, value: { fingerprint, taskId } })
           if (source) { sourceMessage = { ...source, employeeTaskId: task.id }; await tx.put({ collection: 'messages', id: source.id, value: sourceMessage }) }
@@ -170,7 +170,7 @@ export class EmployeeTaskService {
         const task = await this.store.transaction(async tx => {
           const task = await read(tx, v.employeeId, v.id)
           if (task.revision !== v.expectedRevision) throw new Error('任务已经改变，请刷新后操作')
-          const next = { ...task, ...(v.status ? { status: v.status, statusSource: 'manual' as const } : {}), ...(v.title ? { title: v.title } : {}), ...(v.description ? { description: v.description } : {}), revision: task.revision + 1, updatedAt: new Date().toISOString() }
+          const next = { ...task, ...(v.status ? { status: v.status, statusSource: 'manual' as const } : {}), ...(v.title ? { title: v.title } : {}), ...(v.description ? { description: v.description, briefPending: false } : {}), revision: task.revision + 1, updatedAt: new Date().toISOString() }
           if (v.title && task.sessionConversationId) {
             const room = await tx.get<Conversation>('conversations', task.sessionConversationId)
             if (room?.employeeTaskId === task.id) await tx.put({ collection: 'conversations', id: room.id, value: { ...room, title: v.title, updatedAt: next.updatedAt } })

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 任意平级状态创建零执行，会话创建沿原任务补全标题/要求、稳定续做和重启，不进入主聊天。
  * [OUTPUT]: 持续任务会话、轻量状态、批量FIFO与重试快照；完成后继续问答/返工/再次执行，人工任务不回灌主聊天。
  * [OUTPUT]: 五状态独立任务会话、原计划授权/工具schema与稳定消息回执按最新用户合同验证。
  * [OUTPUT]: 持久任务多次执行/完成重开/重启、消息转换不重跑与清空后来源失效保持任务。
@@ -13,7 +14,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { AgentEngine, EngineContext } from '../packages/runtime/src/contracts'
-import type { TrackedTask } from '../packages/shared/src/domain/tracked-tasks'
+import { EMPLOYEE_TASK_STATUSES, type TrackedTask } from '../packages/shared/src/domain/tracked-tasks'
 import type { AutomationDefinition, AutomationInput, AutomationOccurrence, Connection, ConversationDetail, Snapshot } from '../packages/shared/src/domain'
 import { AppService } from '../packages/runtime/src/service'
 import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
@@ -44,6 +45,57 @@ async function setup(run: AgentEngine['run'], decide?: AgentEngine['decide']) {
   const read = (id: string) => service.handle('getAutomationOccurrence', { id }) as Promise<AutomationOccurrence>
   return { service, create, start, read, restart: async () => { const next = new AppService(options); cleanup.push(() => next.close()); await next.init(); return next } }
 }
+it('creates in every peer status and allows arbitrary manual transitions without execution', async () => {
+  const run = vi.fn(async () => {}), f = await setup(run)
+  for (const [index, status] of EMPLOYEE_TASK_STATUSES.entries()) {
+    const task = await f.service.handle('createEmployeeTask', { employeeId: 'researcher', description: `平级任务${index}`, status, requestId: `peer-${index}` }) as TrackedTask
+    expect(task).toMatchObject({ status, statusSource: 'manual' })
+    for (const next of [...EMPLOYEE_TASK_STATUSES].reverse()) {
+      const current = (await f.service.handle('getEmployeeTask', { employeeId: task.agentId, id: task.id }) as import('../packages/shared/src/domain/employee-tasks').EmployeeTaskDetail).task
+      expect(await f.service.handle('updateEmployeeTask', { employeeId: task.agentId, id: task.id, expectedRevision: current.revision, status: next })).toMatchObject({ status: next })
+    }
+  }
+  expect(run).not.toHaveBeenCalled()
+})
+it('conversation intake enriches the same task then continues normal work with stable creation/run receipts', async () => {
+  const contexts: EngineContext[] = [], hold = gate()
+  const f = await setup(async ctx => {
+    contexts.push(ctx)
+    if (contexts.length === 1) {
+      expect(ctx.bootstrap?.dynamicInstructions).toContain('explicitly created this task through conversation')
+      expect(ctx.bootstrap?.dynamicInstructions).toContain('同一个任务里查询南京天气')
+      const current = await ctx.application!.call({ operation: 'tasks.get', input: { id: ctx.conversation.employeeTaskId } })
+      const task = current.data as TrackedTask
+      const updated = await ctx.application!.call({ operation: 'tasks.update', requestId: 'enrich-current-brief', input: { id: task.id, expectedRevision: task.revision, title: '查询南京天气', description: '目标：查询南京天气。验收：提供查询结果和来源。' } })
+      expect(updated).toMatchObject({ status: 'succeeded', data: { id: task.id, kind: 'assignment', briefPending: false } })
+      await hold.promise
+      await ctx.onDelta('天气查询结果及来源')
+      await employeeTaskStatus(ctx, 'in_review')
+    } else { expect(ctx.bootstrap?.dynamicInstructions).not.toContain('explicitly created this task through conversation'); await ctx.onDelta('继续在同一个任务里回答') }
+  }); cleanup.push(hold.release)
+  const input = { employeeId: 'researcher', description: '同一个任务里查询南京天气，输出结果和来源', status: 'done' as const, conversation: true, requestId: 'create-conversation' }
+  const task = await f.service.handle('createEmployeeTask', input) as TrackedTask
+  expect(task.briefPending).toBe(true); expect(contexts).toHaveLength(0)
+  const runInput = { employeeId: task.agentId, id: task.id, expectedRevision: task.revision, requestId: input.requestId }
+  const first = await f.service.handle('runEmployeeTask', runInput) as AutomationOccurrence
+  await vi.waitFor(() => expect(contexts).toHaveLength(1))
+  await vi.waitFor(async () => expect((await f.service.handle('getEmployeeTask', { employeeId: task.agentId, id: task.id }) as import('../packages/shared/src/domain/employee-tasks').EmployeeTaskDetail).task.briefPending).toBe(false))
+  const enriched = await f.service.handle('createEmployeeTask', input) as TrackedTask
+  expect(enriched).toMatchObject({ id: task.id, title: '查询南京天气', description: '目标：查询南京天气。验收：提供查询结果和来源。', status: 'in_progress', briefPending: false })
+  expect((await f.service.handle('getConversation', { id: first.conversationId }) as ConversationDetail).conversation.title).toBe('查询南京天气')
+  expect(await f.service.handle('runEmployeeTask', runInput)).toMatchObject({ id: first.id })
+  hold.release()
+  await vi.waitFor(async () => expect((await f.read(first.id)).status).toBe('completed'))
+  const next = await f.service.handle('sendEmployeeTaskMessage', { conversationId: first.conversationId, content: '解释一下来源', mentionIds: [], requestId: 'intake-followup' }) as AutomationOccurrence
+  await vi.waitFor(async () => expect((await f.read(next.id)).status).toBe('completed'))
+  expect(next.conversationId).toBe(first.conversationId); expect(contexts).toHaveLength(2)
+  const main = (await f.service.handle('snapshot', undefined) as Snapshot).conversations.find(room => room.mainPrivate && room.agentIds[0] === task.agentId)!
+  expect((await f.service.handle('getConversation', { id: main.id }) as ConversationDetail).messages).toEqual([])
+  await f.service.close(); const restarted = await f.restart()
+  expect(await restarted.handle('createEmployeeTask', input)).toMatchObject({ id: task.id, title: '查询南京天气', briefPending: false })
+  expect(await restarted.handle('runEmployeeTask', runInput)).toMatchObject({ id: first.id })
+  expect(contexts).toHaveLength(2)
+})
 it('dispatches selected tasks FIFO without review gates, freezes briefs and reuses completed conversations', async () => {
   const hold = gate(), inputs: { id: string; room: string; context: string }[] = []
   const f = await setup(async ctx => {

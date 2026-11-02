@@ -1,5 +1,6 @@
 /*
  * [OUTPUT]: 状态是协作提示，员工按实际工作和用户明确验收更新，完成/关闭不锁住后续对话；任务范围保持。
+ * [OUTPUT]: tasks.update可沿当前人工任务补全要求正文，事务后同步会话标题缓存，保留revision和当前任务权限。
  * [OUTPUT]: tasks.create只登记内部progress，不创建看板委派；tasks.get/update按原身份维护当前委派或内部进度。
  * [OUTPUT]: Provides employee task records and SQL-bounded tasks.page; original mutations/list and receipt semantics remain compatible.
  * [INPUT]: Original ProductStore, authenticated application actor and explicit task tracking intent.
@@ -23,10 +24,10 @@ const step = z.object({ title: z.string().trim().min(1).max(300), done: z.boolea
 const fields = { title: z.string().trim().min(1).max(300), steps: z.array(step).max(50), status, note: z.string().max(4000) }
 const owner = z.object({ agentId: id }).strict()
 const create = owner.extend({ conversationId: id.optional(), title: fields.title, steps: fields.steps.default([]), note: fields.note.default('') }).strict()
-const update = z.object({ id, expectedRevision: z.number().int().positive(), title: fields.title.optional(), steps: fields.steps.optional(), status: status.optional(), note: fields.note.optional() }).strict()
+const update = z.object({ id, expectedRevision: z.number().int().positive(), title: fields.title.optional(), description: z.string().trim().min(1).max(40000).optional(), steps: fields.steps.optional(), status: status.optional(), note: fields.note.optional() }).strict()
 const collection = 'agentTasks'
 
-export function taskOperations(store: ProductStore): ApplicationOperation[] {
+export function taskOperations(store: ProductStore, conversationUpdated?: (conversation: Conversation) => void): ApplicationOperation[] {
   async function allowed(tx: RecordTransaction, task: Pick<TrackedTask, 'id' | 'agentId' | 'conversationId'>, actor: ApplicationActor) {
     if (!await tx.get<DigitalAgent>('agents', task.agentId)) return false
     const source = task.conversationId ? await tx.get<Conversation>('conversations', task.conversationId) : undefined
@@ -63,12 +64,23 @@ export function taskOperations(store: ProductStore): ApplicationOperation[] {
       if (!await allowed(tx, task, actor)) throw new Error('任务员工或来源未授权')
       await tx.put({ collection, id: task.id, value: task }); return task
     }) },
-    { name: 'tasks.update', description: '按当前 revision 更新步骤、协作状态和原因；交付用 in_review，用户明确验收通过后才用 done。完成/关闭仍可继续原任务。状态声明不证明工具副作用成功，也不控制执行。', effect: 'write', input: update, resultType: 'TrackedTask', execute: (input, _, actor) => store.transaction(async tx => {
+    { name: 'tasks.update', description: '按当前 revision 更新标题、人工任务目标/验收正文（description）、步骤、协作状态和原因；会话创建沿原ID补全内容，不另建任务。交付用 in_review，用户明确验收通过后才用 done。状态是平级标签，不控制执行。', effect: 'write', input: update, resultType: 'TrackedTask', execute: (input, _, actor) => store.transaction(async tx => {
       const value = update.parse(input), previous = await read(tx, value.id, actor)
       if (previous.revision !== value.expectedRevision) throw new ApplicationValidationError('REVISION_CONFLICT', '任务已经改变，请先读取当前版本')
       const { expectedRevision: _, ...changes } = value
-      const task: TrackedTask = { ...previous, ...changes, ...(value.status ? { statusSource: actor.kind !== 'owner' && isEmployeeTaskAssignment(previous) ? 'employee' : 'manual' } : {}), revision: previous.revision + 1, updatedAt: new Date().toISOString() }
+      if (value.description && !isEmployeeTaskAssignment(previous)) throw new ApplicationValidationError('INVALID_INPUT', '只有人工任务支持目标与验收正文')
+      const task: TrackedTask = { ...previous, ...changes, ...(value.description ? { briefPending: false } : {}), ...(value.status ? { statusSource: actor.kind !== 'owner' && isEmployeeTaskAssignment(previous) ? 'employee' : 'manual' } : {}), revision: previous.revision + 1, updatedAt: new Date().toISOString() }
+      if (value.title && previous.sessionConversationId) {
+        const room = await tx.get<Conversation>('conversations', previous.sessionConversationId)
+        if (room?.employeeTaskId === task.id) await tx.put({ collection: 'conversations', id: room.id, value: { ...room, title: value.title, updatedAt: task.updatedAt } })
+      }
       await tx.put({ collection, id: task.id, value: task }); return task
+    }).then(async task => {
+      if (input.title && task.sessionConversationId) {
+        const room = await store.get<Conversation>('conversations', task.sessionConversationId)
+        if (room?.employeeTaskId === task.id) conversationUpdated?.(room)
+      }
+      return task
     }) },
     { name: 'tasks.delete', description: '删除指定进度记录；不取消执行 Work、不删除成果或自动化。', effect: 'write', input: z.object({ id, expectedRevision: z.number().int().positive() }).strict(), resultType: '{ deleted: true }', execute: (input, _, actor) => store.transaction(async tx => {
       const task = await read(tx, input.id, actor)
