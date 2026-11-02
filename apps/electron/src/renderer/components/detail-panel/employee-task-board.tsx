@@ -1,11 +1,11 @@
 /*
- * [OUTPUT]: Busy interaction locks the board without dimming unrelated cards; source/overlay status slots share geometry.
+ * [OUTPUT]: Mouse dragging non-interactive board space pans the horizontal viewport; cards retain ReUI sorting.
  * [INPUT]: Employee task pages, revision-aware status persistence and ReUI Kanban.
  * [OUTPUT]: ReUI sortable interaction with global Card/ScrollArea, local view order and confirmed status writes.
  * [POS]: Employee right-side task board; schedules and execution FIFO retain their own authority.
  * [PROTOCOL]: Update Header and owning .folder.md on change; upstream source is recorded in @boai/ui NOTICE.
  */
-import { memo, useCallback, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useMemo, useRef, useState, type PointerEvent } from 'react'
 import { useReducedMotion } from 'motion/react'
 import type { DigitalAgent } from '@boai/shared/domain'
 import { AUTOMATION_ONGOING_STATUSES } from '@boai/shared/domain/automations'
@@ -47,9 +47,16 @@ export function EmployeeTaskBoard({ employee, data, changing, changingTaskId, on
   const [order, setOrder] = useState(() => readTaskBoardOrder(employee.id))
   const [preview, setPreview] = useState<TaskColumns>(), [dragged, setDragged] = useState<TrackedTaskListItem>(), [saving, setSaving] = useState<string>()
   const locked = useRef(false), draggedThisGesture = useRef(false)
+  const pan = useRef<{ pointerId: number; startX: number; scrollLeft: number } | undefined>(undefined)
+  const [panning, setPanning] = useState(false)
   const reducedMotion = useReducedMotion()
   const columns = useMemo(() => orderedTaskColumns(Object.fromEntries(EMPLOYEE_TASK_STATUSES.map(status => [status, data[status]?.items ?? []])), order), [data, order])
   const displayed = (dragged || saving ? preview : undefined) ?? columns, disabled = changing || !!saving, busyTaskId = saving ?? changingTaskId
+  const finishPan = (event: PointerEvent<HTMLDivElement>) => {
+    if (!pan.current || pan.current.pointerId !== event.pointerId) return
+    pan.current = undefined; setPanning(false)
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
+  }
   const commit = async (next: TaskColumns, meta: KanbanCommitMeta<TrackedTaskListItem>) => {
     const task = meta.previousValue[meta.activeContainer]?.find(item => item.id === meta.event.active.id)
     const status = meta.overContainer as TrackedTaskStatus
@@ -66,7 +73,22 @@ export function EmployeeTaskBoard({ employee, data, changing, changingTaskId, on
     onDragStart={({ active }) => { draggedThisGesture.current = true; setPreview(columns); setDragged(Object.values(columns).flat().find(task => task.id === active.id)) }}
     onDragEnd={() => { draggedThisGesture.current = true; setDragged(undefined); setPreview(undefined) }}
     onDragCancel={() => { draggedThisGesture.current = true; setDragged(undefined); setPreview(undefined) }}>
-    <ScrollArea orientation="horizontal" className="min-h-0 flex-1" viewportProps={{ 'aria-label': '任务看板横向滚动区域' }} contentProps={{ className: 'h-full', style: { display: 'flex' } }}>
+    <ScrollArea orientation="horizontal" className="min-h-0 flex-1" viewportProps={{
+      'aria-label': '任务看板横向滚动区域', className: panning ? 'cursor-grabbing select-none' : 'cursor-grab',
+      onPointerDown: event => {
+        if (disabled || pan.current || event.pointerType !== 'mouse' || event.button !== 0 || !event.isPrimary) return
+        if (!(event.target instanceof Element) || event.target.closest('[data-employee-task-id], button, a, input, textarea, select, [role="button"], [contenteditable]:not([contenteditable="false"]), [data-slot="scroll-area-scrollbar"]')) return
+        const viewport = event.currentTarget
+        if (viewport.scrollWidth <= viewport.clientWidth) return
+        event.preventDefault(); viewport.setPointerCapture(event.pointerId)
+        pan.current = { pointerId: event.pointerId, startX: event.clientX, scrollLeft: viewport.scrollLeft }; setPanning(true)
+      },
+      onPointerMove: event => {
+        if (!pan.current || pan.current.pointerId !== event.pointerId) return
+        event.currentTarget.scrollLeft = pan.current.scrollLeft + pan.current.startX - event.clientX
+      },
+      onPointerUp: finishPan, onPointerCancel: finishPan, onLostPointerCapture: finishPan,
+    }} contentProps={{ className: 'h-full', style: { display: 'flex' } }}>
       <KanbanBoard inert={disabled} role="tabpanel" aria-label="任务看板" className="flex h-full min-w-full gap-4 p-3" onPointerDownCapture={() => { draggedThisGesture.current = false }} onKeyDownCapture={event => { if (event.key === 'Enter') draggedThisGesture.current = false }}>
         {EMPLOYEE_TASK_STATUSES.map(status => <KanbanColumn key={status} value={status} render={<section />} aria-label={`${taskStatusLabels[status]}任务`} data-task-status={status} className={`h-full w-[280px] shrink-0 overflow-hidden rounded-md border border-transparent ${laneColors[status]} data-disabled:opacity-100`}>
           <div className="flex h-11 shrink-0 items-center justify-between gap-2 px-3.5">
