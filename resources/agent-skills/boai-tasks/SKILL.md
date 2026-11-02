@@ -4,7 +4,7 @@ description: "Track multi-step work durably across Bobo conversations using actu
 ---
 <!--
 [INPUT]: Alma bundled tasks/SKILL.md and current BOAI capability contracts.
-[OUTPUT]: Human-assigned Kanban goals stay separate from internal progress; five states, original assignment reuse and user acceptance.
+[OUTPUT]: 持续任务会话与轻量状态，Agent交付待确认，用户验收后可继续提问、修改和再次执行；内部计划不进看板。
 [POS]: Bound product employee skill, not a developer tool or permission grant.
 [PROTOCOL]: Update parent .folder.md and migration ledger on change.
 -->
@@ -46,7 +46,7 @@ When the host supplies a current task ID, read it with tasks.get and update that
 
 When advancing the task's own deliverable, set in_progress before doing the work. Submit the actual result in the conversation, then set in_review when the requested deliverable is ready for acceptance. Partial delivery, waiting for user input, waiting for approval and blockers stay in_progress; record the reason and remaining work in note and ask the needed question in the conversation. A progress question, discussion or acknowledgement that produces none of the task deliverable does not change status.
 
-For assigned employee tasks, done and closed are user decisions: submit in_review for acceptance and let the user complete, close or reopen the task. A model run ending or a successful tracking update proves no external effect and is not task acceptance. Status changes do not start or stop execution. A failed or stopped execution may return unfinished work to pending; inspect its actual execution record before continuing.
+Task status is a collaboration/notification label, not an execution gate. Submit in_review when the current requested output is ready. Set done only after the user explicitly accepts that output; set closed only when the user explicitly requests it. A completed or closed task keeps its conversation and outputs: answer follow-up questions without changing status, and when the user requests new work or revisions, set in_progress and continue in the same conversation without requiring a manual reopen. After delivering the new result, set in_review again. A model run ending or a successful tracking update proves no external effect and is not task acceptance. Status changes do not start, stop or block execution or other queued tasks. A failed or stopped execution may return unfinished work to pending; inspect its actual execution record before continuing.
 
 ## Persistence and boundaries
 

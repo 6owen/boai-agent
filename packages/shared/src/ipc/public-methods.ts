@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 员工任务删除进入可信桌面公开IPC，重命名复用版本化更新接口。
+ * [OUTPUT]: 员工任务批量派发进入可信桌面IPC，编辑要求与状态复用版本化更新接口。
  * [OUTPUT]: 开放任务会话、任务消息及原受理回执接口。
  * [OUTPUT]: 员工任务五个公共入口沿原宿主准入，未知内部方法继续拒绝。
  * [OUTPUT]: 2026-10-30 公开configureMemory用于员工明确选择embedding连接与模型。
@@ -46,7 +46,7 @@ import type { Method } from './index'
 // Record makes a newly declared public method require an explicit host entry.
 const methods = {
   openEmployeeTaskSession: true, sendEmployeeTaskMessage: true, getEmployeeTaskMessageReceipt: true,
-  createEmployeeTask: true, listEmployeeTasks: true, getEmployeeTask: true, updateEmployeeTask: true, deleteEmployeeTask: true, runEmployeeTask: true,
+  createEmployeeTask: true, listEmployeeTasks: true, getEmployeeTask: true, updateEmployeeTask: true, deleteEmployeeTask: true, runEmployeeTask: true, runEmployeeTasks: true,
   captureDesktopActivity: false,
   transferMaterial: true,
   prepareUploadedMaterial: true,

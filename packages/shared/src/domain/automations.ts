@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 人工任务私有元数据冻结本次要求，复用原dispatch快照；任务编辑不改写已受理执行。
  * [OUTPUT]: 内部任务消息保持原输入，执行快照携带原计划授权指纹。
  * [OUTPUT]: 员工任务版本绑定与occurrence.taskId关联，执行记录独立于持久任务生命周期。
  * [OUTPUT]: 旧executionSurface仅用于读取历史，任务继续关联聊天与原执行过程。
@@ -82,7 +83,7 @@ export interface AutomationMonitorCheckpoint {
 
 export interface AutomationInput {
   /** Host-accepted explicit task revision; execution remains in the original scheduler. */
-  employeeTask?: { id: string; expectedRevision: number; message?: import('../ipc').Methods['sendMessage']['input'] }
+  employeeTask?: { id: string; expectedRevision: number; requirements?: string; message?: import('../ipc').Methods['sendMessage']['input'] }
   /** Ordinary employee assignments are not scheduled plans. */
   purpose?: 'employee-task'
   owner?: AutomationOwner

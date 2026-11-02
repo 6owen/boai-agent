@@ -1,6 +1,7 @@
 /*
  * [INPUT]: One employee task, its dedicated conversation and original execution history.
  * [OUTPUT]: Resizable Task Dialog with title/requirements in properties and shared chat without an extra introduction; close waits for the shared exit animation.
+ * [OUTPUT]: 持续任务会话支持再次执行，左侧要求失焦保存；完成/关闭只是协作提示，Dialog关闭不停止执行。
  * [POS]: Task session boundary; closing the dialog never stops an accepted execution.
  * [PROTOCOL]: Update Header and owning .folder.md on change.
  */
@@ -21,6 +22,9 @@ import { EmployeeTaskStatus } from './employee-task-status'
 import { useConversationWindow } from './use-conversation-window'
 import type { ChannelChatWindow } from './channels-tab'
 import { TraceTab } from './trace-tab'
+import { Pencil } from '@/components/icons'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
+import { EmployeeTaskRequirements } from './employee-task-requirements'
 export { taskStatusLabels } from './employee-task-status'
 export type EmployeeTaskDetailProps = {
   api: DesktopApi; snapshot: Snapshot; id?: string; occurrenceId?: string; employeeId: string; active: boolean
@@ -31,7 +35,7 @@ export type EmployeeTaskDetailProps = {
   onContext(conversation: Conversation | undefined): void
 }
 export function EmployeeTaskDetail({ api, snapshot, id, occurrenceId, employeeId, active, onBack, onSource, renderChat, onMaterials, onContext }: EmployeeTaskDetailProps) {
-  const [open, setOpen] = useState(true), visible = active && open
+  const [open, setOpen] = useState(true), [editingRequirements, setEditingRequirements] = useState(false), visible = active && open
   const [record, setRecord] = useState<TaskDetail>(), [room, setRoom] = useState<Conversation>(), [failed, setFailed] = useState(false), [revision, setRevision] = useState(0), [busy, setBusy] = useState(false)
   const startRequest = useRef<import('@boai/shared/ipc').Methods['runEmployeeTask']['input'] | undefined>(undefined)
   const [process, setProcess] = useState<{ conversationId: string; messageId?: string; occurrenceId?: string }>()
@@ -59,7 +63,10 @@ export function EmployeeTaskDetail({ api, snapshot, id, occurrenceId, employeeId
   }
   const task = record?.task, employee = snapshot.agents.find(a => a.id === employeeId), ongoing = record?.executions.occurrences.find(o => (AUTOMATION_ONGOING_STATUSES as readonly string[]).includes(o.status))
   const status = (value: TrackedTaskStatus) => task && void act(() => api.request('updateEmployeeTask', { employeeId, id: task.id, expectedRevision: task.revision, status: value }))
-  const start = () => task && void act(async () => { startRequest.current ??= { employeeId, id: task.id, expectedRevision: task.revision, requestId: crypto.randomUUID() }; await api.request('runEmployeeTask', startRequest.current); startRequest.current = undefined })
+  const start = () => task && void act(async () => {
+    if (!startRequest.current) { const current = (await api.request('getEmployeeTask', { employeeId, id: task.id })).task; startRequest.current = { employeeId, id: task.id, expectedRevision: current.revision, requestId: crypto.randomUUID() } }
+    await api.request('runEmployeeTask', startRequest.current); startRequest.current = undefined
+  })
   return <Dialog open={visible} onOpenChange={next => { if (visible && !next) guard.navigate(() => setOpen(false)) }} onOpenChangeComplete={next => { if (!next && !open) onBack() }}><DialogContent aria-describedby={undefined} className="flex h-[min(90dvh,1000px)] w-[min(1400px,calc(100vw-48px))] max-w-none gap-0 overflow-hidden p-0 sm:max-w-none [&>[data-slot=dialog-close]]:z-20" data-employee-task-dialog={task?.id}>
     <ResizablePanelGroup orientation="horizontal" className="min-h-0 min-w-0">
     {task && <><ResizablePanel defaultSize="300px" minSize="18%" maxSize="40%">
@@ -67,16 +74,16 @@ export function EmployeeTaskDetail({ api, snapshot, id, occurrenceId, employeeId
       <header className="chat-header pointer-events-none"><h3 className="chat-title">属性</h3></header>
       <ScrollArea className="mt-[36px] min-h-0 flex-1" viewportProps={{ className: 'overscroll-contain scroll-fade-t scroll-fade-6', 'aria-label': '任务属性' }}>
         <div className="flex flex-col gap-8 px-6 pb-6 pt-[36px]">
-          <section aria-label="任务要求" className="min-w-0 break-words"><h2 className="m-0 text-base font-semibold">{task.title}</h2>{(task.description || task.note) && <div className="markdown mt-3 text-sm"><Markdown>{task.description || task.note}</Markdown></div>}</section>
+          <section aria-label="任务要求" className="min-w-0 break-words"><div className="flex items-start justify-between gap-3"><h2 className="m-0 text-base font-semibold">{task.title}</h2><Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-xs" aria-label="编辑任务要求" disabled={busy || editingRequirements} onClick={() => guard.navigate(() => setEditingRequirements(true))} />}><Pencil /></TooltipTrigger><TooltipContent>编辑任务要求</TooltipContent></Tooltip></div><div className="mt-3">{editingRequirements ? <EmployeeTaskRequirements api={api} task={task} active={visible} onClose={() => { setEditingRequirements(false); setRevision(value => value + 1) }} /> : (task.description || task.note) && <div className="markdown text-sm"><Markdown>{task.description || task.note}</Markdown></div>}</div></section>
           <dl className="m-0 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-5 text-sm">
             <dt className="text-muted-foreground">状态</dt><dd className="m-0 min-w-0"><EmployeeTaskStatus status={task.status} disabled={busy} onChange={status} /></dd>
             <dt className="text-muted-foreground">负责人</dt><dd className="m-0 flex min-w-0 items-center gap-2 [&_.avatar]:size-6">{employee && <Avatar small name={employee.name} seed={employee.id} avatar={employee.avatar} color={employee.color} />}<span className="truncate">{employee?.name}</span></dd>
             {task.sourceKind && <><dt className="text-muted-foreground">来源</dt><dd className="m-0">{{ schedule: '定时任务', message: '聊天消息', manual: '手动创建' }[task.sourceKind]}</dd></>}
           </dl>
-          {(ongoing || !['done', 'closed'].includes(task.status) && !record.executions.occurrences.length || task.source) && <div className="flex flex-col items-start gap-3">
-            {ongoing ? <Button variant="secondary" size="sm" disabled={busy || ongoing.status === 'cancelling'} onClick={() => void act(() => api.request('stopAutomation', { id: ongoing.id }))}>{ongoing.status === 'queued' ? '取消排队' : '停止本次执行'}</Button> : !['done', 'closed'].includes(task.status) && !record.executions.occurrences.length && <Button variant="secondary" size="sm" disabled={busy || !room} onClick={start}>开始执行</Button>}
+          <div className="flex flex-col items-start gap-3">
+            {ongoing ? <Button variant="secondary" size="sm" disabled={busy || ongoing.status === 'cancelling'} onClick={() => void act(() => api.request('stopAutomation', { id: ongoing.id }))}>{ongoing.status === 'queued' ? '取消排队' : '停止本次执行'}</Button> : <Button variant="secondary" size="sm" disabled={busy || !room || editingRequirements} onClick={start}>{record.executions.occurrences.length ? '再次执行' : '开始执行'}</Button>}
             {task.source && <Button variant="ghost" size="sm" onClick={() => guard.navigate(() => { onSource(task.source!); onBack() })}>原消息</Button>}
-          </div>}
+          </div>
           <dl className="m-0 flex flex-col gap-3 text-xs"><div><dt className="text-muted-foreground">创建时间</dt><dd className="m-0 mt-1">{new Date(task.createdAt).toLocaleString('zh-CN')}</dd></div><div><dt className="text-muted-foreground">更新时间</dt><dd className="m-0 mt-1">{new Date(task.updatedAt).toLocaleString('zh-CN')}</dd></div></dl>
         </div>
       </ScrollArea>

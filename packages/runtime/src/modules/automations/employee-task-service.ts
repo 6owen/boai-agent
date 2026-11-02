@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 看板仅管理人工委派，旧内部进度不能经看板接口打开/执行；显式创建保留独立目标与要求。
+ * [OUTPUT]: 人工任务持续复用会话，状态不阻止执行；要求编辑零派发，批量按选择顺序沿原FIFO受理并保留逐项回执。
  * [OUTPUT]: 每任务持久会话/回执；按归属和版本重命名/改状态/删除，删除保留执行历史且拒绝仍在执行的任务。
  * [INPUT]: Owner task commands, original tracked-task store and AutomationService.
  * [OUTPUT]: Explicit message conversion, durable lifecycle and repeat executions in the task-owned conversation.
@@ -26,8 +26,11 @@ const owner = z.object({ employeeId: id })
 const create = owner.extend({ requestId: id, title: z.string().trim().min(1).max(300).optional(), description: z.string().trim().min(1).max(40000).optional(), source: z.object({ conversationId: id, messageId: id }).strict().optional() }).strict()
 const get = owner.extend({ id: id.optional(), occurrenceId: id.optional(), before: z.object({ startedAt: z.string().datetime(), id: z.string().min(1).max(500) }).strict().optional() }).strict().refine(v => !!v.id !== !!v.occurrenceId, '请选择一个任务')
 const mutation = owner.extend({ id, expectedRevision: z.number().int().positive() }).strict()
-const update = mutation.extend({ status: status.optional(), title: z.string().trim().min(1).max(300).optional() }).refine(v => v.status !== undefined || v.title !== undefined, '请选择要修改的任务内容')
+const update = mutation.extend({ status: status.optional(), title: z.string().trim().min(1).max(300).optional(), description: z.string().trim().min(1).max(40000).optional() }).refine(v => v.status !== undefined || v.title !== undefined || v.description !== undefined, '请选择要修改的任务内容')
 const run = owner.extend({ id, expectedRevision: z.number().int().positive(), requestId: id, supplement: z.string().trim().max(20000).optional(), message: z.custom<Methods['sendMessage']['input']>().optional() }).strict()
+const batch = owner.extend({ requestId: id, tasks: z.array(z.object({ id, expectedRevision: z.number().int().positive() }).strict()).min(1).max(100) }).strict().refine(v => new Set(v.tasks.map(task => task.id)).size === v.tasks.length, '同一批次不能重复选择任务')
+type BatchResult = Methods['runEmployeeTasks']['output']
+type BatchReceipt = BatchResult & { fingerprint: string }
 
 async function read(tx: RecordTransaction, employeeId: string, taskId: string) {
   const employee = await tx.get<DigitalAgent>('agents', employeeId), task = await tx.get<TrackedTask>('agentTasks', taskId)
@@ -37,8 +40,37 @@ async function read(tx: RecordTransaction, employeeId: string, taskId: string) {
 }
 export class EmployeeTaskService {
   private tail: Promise<unknown> = Promise.resolve()
+  private batchTail: Promise<unknown> = Promise.resolve()
   constructor(private store: ProductStore, private automations: AutomationService, private changed: (message?: Message) => void, private dataPath: string, private sessionReady: (conversation: Conversation) => void) {}
   private serialize<T>(fn: () => Promise<T>) { const next = this.tail.then(fn); this.tail = next.catch(() => {}); return next }
+  private runBatch(raw: unknown): Promise<BatchResult> {
+    const next = this.batchTail.then(async () => {
+      const input = batch.parse(raw), key = taskIdentity(`batch:${input.requestId}`), fingerprint = JSON.stringify(input)
+      if (!await this.store.get('agents', input.employeeId)) throw new Error('员工不存在')
+      const receipt = await this.store.transaction(async tx => {
+        const previous = await tx.get<BatchReceipt>('employeeTaskBatches', key)
+        if (previous) { if (previous.fingerprint !== fingerprint) throw new Error('同一批次请求不能更换任务或顺序'); return previous }
+        const value: BatchReceipt = { fingerprint, items: [] }
+        await tx.put({ collection: 'employeeTaskBatches', id: key, value }); return value
+      })
+      for (const task of input.tasks) {
+        if (receipt.items.some(item => item.id === task.id)) continue
+        let result: BatchResult['items'][number]
+        try {
+          const current = await this.store.get<TrackedTask>('agentTasks', task.id)
+          if (!current || !isEmployeeTaskAssignment(current)) throw new Error('只能批量执行人工委派任务')
+          const execution = await this.handle('runEmployeeTask', { employeeId: input.employeeId, ...task, requestId: taskIdentity(`batch-item:${input.requestId}:${task.id}`) })
+          result = { id: task.id, execution: structuredClone(execution) }
+        }
+        catch (error) { result = { id: task.id, error: error instanceof Error ? error.message : String(error) } }
+        receipt.items.push(result)
+        await this.store.write([{ collection: 'employeeTaskBatches', id: key, value: receipt }])
+      }
+      return { items: receipt.items }
+    })
+    this.batchTail = next.catch(() => {})
+    return next
+  }
   private async session(employeeId: string, taskId: string) {
     const room = await this.store.transaction(async tx => {
       const task = await read(tx, employeeId, taskId)
@@ -82,6 +114,7 @@ export class EmployeeTaskService {
     return this.handle('runEmployeeTask', input)
   }
   async handle<K extends keyof EmployeeTaskMethods>(method: K, raw: unknown): Promise<EmployeeTaskMethods[K]['output']> {
+    if (method === 'runEmployeeTasks') return this.runBatch(raw)
     if (method === 'openEmployeeTaskSession') { const v = owner.extend({ id }).strict().parse(raw); return this.session(v.employeeId, v.id) }
     if (method === 'listEmployeeTasks') {
       const v = owner.extend({ status: status.optional(), includeDone: z.boolean().optional(), cursor: z.string().optional(), limit: z.number().int().min(1).max(100).optional() }).strict().parse(raw)
@@ -137,7 +170,7 @@ export class EmployeeTaskService {
         const task = await this.store.transaction(async tx => {
           const task = await read(tx, v.employeeId, v.id)
           if (task.revision !== v.expectedRevision) throw new Error('任务已经改变，请刷新后操作')
-          const next = { ...task, ...(v.status ? { status: v.status, statusSource: 'manual' as const } : {}), ...(v.title ? { title: v.title } : {}), revision: task.revision + 1, updatedAt: new Date().toISOString() }
+          const next = { ...task, ...(v.status ? { status: v.status, statusSource: 'manual' as const } : {}), ...(v.title ? { title: v.title } : {}), ...(v.description ? { description: v.description } : {}), revision: task.revision + 1, updatedAt: new Date().toISOString() }
           if (v.title && task.sessionConversationId) {
             const room = await tx.get<Conversation>('conversations', task.sessionConversationId)
             if (room?.employeeTaskId === task.id) await tx.put({ collection: 'conversations', id: room.id, value: { ...room, title: v.title, updatedAt: next.updatedAt } })
@@ -170,7 +203,7 @@ export class EmployeeTaskService {
         const receipt = await tx.get<{ fingerprint: string }>('employeeTaskReceipts', receiptId)
         if (receipt) { if (receipt.fingerprint !== fingerprint) throw new Error('同一提交不能更换任务或补充内容'); return task }
         if (task.revision !== v.expectedRevision) throw new Error('任务已经改变，请刷新后操作')
-        if (task.status === 'done' || task.status === 'closed') throw new Error('请先重新打开已完成任务')
+        if (!isEmployeeTaskAssignment(task) && (task.status === 'done' || task.status === 'closed')) throw new Error('请先重新打开已完成任务')
         if (!v.message && task.latestOccurrenceId && ongoingTaskExecution(await tx.get<AutomationOccurrence>('automationOccurrences', task.latestOccurrenceId))) throw new Error('该任务仍在执行或等待处理，请回到聊天处理本次运行')
         await tx.put({ collection: 'employeeTaskReceipts', id: receiptId, value: { fingerprint } }); return task
       })
@@ -179,7 +212,7 @@ export class EmployeeTaskService {
         if (!task.description && !task.note && !v.supplement && !v.message) throw new Error('原任务要求不可用，请补充本次要求')
         const context = await this.session(task.agentId, task.id)
         const prompt = v.message ? (!task.latestOccurrenceId ? [task.description ?? task.note, v.message.content].filter(Boolean).join('\n\n') : v.message.content) : [task.description ?? task.note, v.supplement ? `\n本次补充要求：\n${v.supplement}` : ''].join('')
-        definition = await this.automations.save({ conversationPolicy: 'existing-conversation', conversationId: context.id, requestId: receiptId, purpose: 'employee-task', employeeTask: { id: task.id, expectedRevision: v.expectedRevision, ...(v.message ? { message: { ...v.message, content: prompt } } : {}) }, owner: { kind: 'employee', employeeId: v.employeeId }, name: task.title.slice(0, 100), prompt: prompt || '处理本次任务材料', frequency: 'manual', time: '09:00', weekday: 1, timezone: 'UTC', enabled: true, notify: false })
+        definition = await this.automations.save({ conversationPolicy: 'existing-conversation', conversationId: context.id, requestId: receiptId, purpose: 'employee-task', employeeTask: { id: task.id, expectedRevision: v.expectedRevision, requirements: task.description ?? task.note, ...(v.message ? { message: { ...v.message, content: prompt } } : {}) }, owner: { kind: 'employee', employeeId: v.employeeId }, name: task.title.slice(0, 100), prompt: prompt || '处理本次任务材料', frequency: 'manual', time: '09:00', weekday: 1, timezone: 'UTC', enabled: true, notify: false })
       }
       return this.automations.run(definition.id, receiptId)
     })
