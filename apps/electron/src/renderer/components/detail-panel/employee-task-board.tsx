@@ -1,6 +1,7 @@
 /*
  * [OUTPUT]: Mouse dragging board space pans the viewport; portaled menu events cannot start panning or steal item clicks.
  * [OUTPUT]: 任务卡片不展示创建方式/来源分类tag，所有人工任务使用同一种任务卡片。
+ * [OUTPUT]: 描述与底部员工/更新时间行间距使用mt-4，增加卡片内容留白。
  * [OUTPUT]: 平级状态列均可新增任务或隐藏，显隐只控制展示，不改变任务状态或执行。
  * [INPUT]: Employee task pages, revision-aware status persistence and ReUI Kanban.
  * [OUTPUT]: ReUI sortable interaction with global Card/ScrollArea, local view order and confirmed status writes.
@@ -136,7 +137,7 @@ const TaskCardBody = memo(function TaskCardBody({ task, employee, disabled, over
       </div>
       <h4 className="m-0 mt-1 line-clamp-2 break-words text-sm font-medium leading-snug">{task.title}</h4>
       {summary && <p className="m-0 mt-1 truncate text-xs text-muted-foreground">{summary}</p>}
-      <div className="mt-2 flex items-center justify-between gap-2 text-xs">
+      <div className="mt-4 flex items-center justify-between gap-2 text-xs">
         <span className="flex min-w-0 items-center gap-1.5 [&_.avatar]:size-5"><Avatar small name={employee.name} seed={employee.id} avatar={employee.avatar} color={employee.color} /><span className="truncate">{employee.name}</span></span>
         <span className="flex shrink-0 items-center gap-2 text-muted-foreground">
           {task.stepCount > 0 && <span className="tabular-nums" title="已完成步骤">{task.completedStepCount}/{task.stepCount}</span>}
