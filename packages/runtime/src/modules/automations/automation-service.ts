@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 启动时将旧普通任务归一为assignment并清除manual/message创建方式；旧普通计划回填不再写创建方式。
  * [OUTPUT]: 员工指派私有元数据保留本次要求快照；恢复不推断任务交付，原定时规则保持。
  * [OUTPUT]: 采用旧手动任务/执行记录的任务身份，不重新运行；手动续做按任务版本固定本次执行。
  * [OUTPUT]: 新员工任务默认绑定主聊天，原计划保留明确策略；定时计划默认列表不混入普通任务。
@@ -98,7 +99,12 @@ export class AutomationService {
   async init() {
     await this.repository.migrate(); await this.repository.migrateOwners();
     await this.store.transaction(async tx => {
-      for (const task of await tx.list<import('@boai/shared/domain/tracked-tasks').TrackedTask>('agentTasks')) {
+      for (let task of await tx.list<import('@boai/shared/domain/tracked-tasks').TrackedTask>('agentTasks')) {
+        if (isEmployeeTaskAssignment(task) && (task.sourceKind === 'manual' || task.sourceKind === 'message')) {
+          task = { ...task, kind: 'assignment', revision: task.revision + 1 }
+          delete task.sourceKind
+          await tx.put({ collection: 'agentTasks', id: task.id, value: task })
+        }
         const latest = task.latestOccurrenceId ? await tx.get<AutomationOccurrence>('automationOccurrences', task.latestOccurrenceId) : undefined
         if (isEmployeeTaskAssignment(task)) {
           if (['blocked', 'waiting_input'].includes(task.status) || task.status === 'in_progress' && task.statusSource === 'execution' && latest && !ongoingTaskExecution(latest)) await tx.put({ collection: 'agentTasks', id: task.id, value: { ...task, status: 'pending', revision: task.revision + 1 } })
@@ -109,7 +115,7 @@ export class AutomationService {
       for (const d of await tx.list<AutomationDefinition>('automations')) {
         if (d.purpose !== 'employee-task' || d.employeeTask || d.deletedAt || d.owner?.kind !== 'employee') continue
         const id = taskIdentity(`definition:${d.id}`)
-        if (!await tx.get('employeeTaskMigrations', id) && !await tx.get('agentTasks', id)) await tx.put({ collection: 'agentTasks', id, value: { id, agentId: d.owner.employeeId, title: d.name, description: d.prompt, status: 'pending', steps: [], note: '', sourceKind: 'manual', revision: 1, createdAt: d.createdAt, updatedAt: d.updatedAt } })
+        if (!await tx.get('employeeTaskMigrations', id) && !await tx.get('agentTasks', id)) await tx.put({ collection: 'agentTasks', id, value: { id, agentId: d.owner.employeeId, kind: 'assignment', title: d.name, description: d.prompt, status: 'pending', steps: [], note: '', revision: 1, createdAt: d.createdAt, updatedAt: d.updatedAt } })
         await tx.put({ collection: 'employeeTaskMigrations', id, value: { id } })
       }
       for (const o of await tx.list<AutomationOccurrence>('automationOccurrences')) {

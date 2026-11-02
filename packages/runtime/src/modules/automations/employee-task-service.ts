@@ -1,5 +1,6 @@
 /*
  * [OUTPUT]: 人工任务可在任意平级状态创建，原始会话输入标记待整理；创建不自动派发，显式执行仍沿原FIFO。
+ * [OUTPUT]: 表单、会话和消息转换统一创建任务，不写手动/消息创建方式字段；真实消息ID关联保持。
  * [OUTPUT]: 每任务持久会话/回执；按归属和版本重命名/改状态/删除，删除保留执行历史且拒绝仍在执行的任务。
  * [INPUT]: Owner task commands, original tracked-task store and AutomationService.
  * [OUTPUT]: Explicit message conversion, durable lifecycle and repeat executions in the task-owned conversation.
@@ -157,7 +158,7 @@ export class EmployeeTaskService {
           if (previous) return remember(await read(tx, v.employeeId, taskId))
           const description = z.string().trim().min(1).max(40000).parse(v.description ?? source?.content)
           const now = new Date().toISOString()
-          const task: TrackedTask = { id: taskId, agentId: v.employeeId, kind: 'assignment', title: v.title ?? description.split('\n')[0].slice(0, 100), description, status: v.status ?? 'pending', ...(v.status ? { statusSource: 'manual' as const } : {}), ...(v.conversation ? { briefPending: true } : {}), steps: [], note: '', revision: 1, createdAt: now, updatedAt: now, sourceKind: source ? 'message' : 'manual', ...(source ? { source: { conversationId: source.conversationId, messageId: source.id } } : {}) }
+          const task: TrackedTask = { id: taskId, agentId: v.employeeId, kind: 'assignment', title: v.title ?? description.split('\n')[0].slice(0, 100), description, status: v.status ?? 'pending', ...(v.status ? { statusSource: 'manual' as const } : {}), ...(v.conversation ? { briefPending: true } : {}), steps: [], note: '', revision: 1, createdAt: now, updatedAt: now, ...(source ? { source: { conversationId: source.conversationId, messageId: source.id } } : {}) }
           await tx.put({ collection: 'agentTasks', id: task.id, value: task })
           await tx.put({ collection: 'employeeTaskReceipts', id: receiptId, value: { fingerprint, taskId } })
           if (source) { sourceMessage = { ...source, employeeTaskId: task.id }; await tx.put({ collection: 'messages', id: source.id, value: sourceMessage }) }

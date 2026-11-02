@@ -1,5 +1,6 @@
 /*
  * [OUTPUT]: Mouse dragging board space pans the viewport; portaled menu events cannot start panning or steal item clicks.
+ * [OUTPUT]: 任务卡片不展示创建方式/来源分类tag，所有人工任务使用同一种任务卡片。
  * [OUTPUT]: 平级状态列均可新增任务或隐藏，显隐只控制展示，不改变任务状态或执行。
  * [INPUT]: Employee task pages, revision-aware status persistence and ReUI Kanban.
  * [OUTPUT]: ReUI sortable interaction with global Card/ScrollArea, local view order and confirmed status writes.
@@ -13,7 +14,6 @@ import { AUTOMATION_ONGOING_STATUSES } from '@boai/shared/domain/automations'
 import { EMPLOYEE_TASK_STATUSES, type TrackedTaskListItem, type TrackedTaskPage, type TrackedTaskStatus } from '@boai/shared/domain/tracked-tasks'
 import { relativeTime } from '@boai/shared/rovai'
 import { Avatar, errorText, showErrorToast } from '@/components/common'
-import { Clock, FileText, MessageCircle } from '@/components/icons/index'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -34,7 +34,6 @@ type Props = {
 const laneColors: Record<TrackedTaskStatus, string> = {
   pending: 'bg-muted/40', in_progress: 'bg-chart-3/5', in_review: 'bg-chart-2/5', done: 'bg-chart-1/5', closed: 'bg-destructive/5',
 }
-const sourceLabels = { schedule: '定时任务', message: '聊天消息', manual: '手动创建' }
 const getItemValue = (task: TrackedTaskListItem) => task.id
 // Status menus use the same authoritative pages; preview ordering belongs to ReUI.
 export function projectTaskMove(pages: TaskPages, task: TrackedTaskListItem, status: TrackedTaskStatus): TaskPages {
@@ -125,7 +124,6 @@ function TaskCard({ task, employee, disabled, overlay, reducedMotion, onOpen, on
   return overlay ? card : <EmployeeTaskMenu task={task} surface="card"><KanbanItem value={task.id} disabled={disabled} data-slot="card" className="data-disabled:opacity-100" style={reducedMotion ? { transition: 'none' } : undefined} render={card} /></EmployeeTaskMenu>
 }
 const TaskCardBody = memo(function TaskCardBody({ task, employee, disabled, overlay, onStatus }: Pick<TaskCardProps, 'task' | 'employee' | 'disabled' | 'overlay' | 'onStatus'>) {
-  const SourceIcon = task.sourceKind === 'schedule' ? Clock : task.sourceKind === 'message' ? MessageCircle : FileText
   const summary = task.noteExcerpt || task.nextStepTitle
   const working = task.executionStatus && (AUTOMATION_ONGOING_STATUSES as readonly string[]).includes(task.executionStatus)
   return <CardContent className="pointer-events-none relative py-3">
@@ -138,7 +136,6 @@ const TaskCardBody = memo(function TaskCardBody({ task, employee, disabled, over
       </div>
       <h4 className="m-0 mt-1 line-clamp-2 break-words text-sm font-medium leading-snug">{task.title}</h4>
       {summary && <p className="m-0 mt-1 truncate text-xs text-muted-foreground">{summary}</p>}
-      {task.sourceKind && <div className="mt-1.5 flex"><span className="inline-flex max-w-full items-center gap-1 rounded-full bg-muted/60 px-1.5 py-0.5 text-xs text-muted-foreground"><SourceIcon size={12} /><span className="truncate">{sourceLabels[task.sourceKind]}</span></span></div>}
       <div className="mt-2 flex items-center justify-between gap-2 text-xs">
         <span className="flex min-w-0 items-center gap-1.5 [&_.avatar]:size-5"><Avatar small name={employee.name} seed={employee.id} avatar={employee.avatar} color={employee.color} /><span className="truncate">{employee.name}</span></span>
         <span className="flex shrink-0 items-center gap-2 text-muted-foreground">

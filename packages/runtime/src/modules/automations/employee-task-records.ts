@@ -1,5 +1,6 @@
 /*
  * [OUTPUT]: 显式执行设置协作提示进行中，任务消息按实际工作更新；完成/关闭不锁住人工委派，原定时来源映射保持。
+ * [OUTPUT]: 旧普通执行补回任务时登记assignment，不再写manual创建方式；定时记录的schedule来源保持。
  * [INPUT]: Accepted automation occurrence and explicit employee task, inside the original transaction.
  * [OUTPUT]: Durable task ownership and many execution links; historical adoption never dispatches work.
  * [POS]: Task metadata bridge; scheduler, Work and native sessions keep execution authority.
@@ -34,7 +35,7 @@ export async function linkEmployeeTask(tx: RecordTransaction, d: AutomationDefin
   }
   if (!task) {
     const description = historical ? (await tx.get<AutomationDispatch>('automationDispatches', o.id))?.definition?.prompt ?? (o.messageId ? (await tx.get<Message>('messages', o.messageId))?.content : undefined) : d.prompt
-    task = { id: taskId, agentId, title: o.name, description, steps: [], note: '', status: 'pending', sourceKind: d.purpose === 'employee-task' ? 'manual' : 'schedule', revision: 1, createdAt: o.startedAt, updatedAt: o.startedAt }
+    task = { id: taskId, agentId, title: o.name, description, steps: [], note: '', status: 'pending', ...(d.purpose === 'employee-task' ? { kind: 'assignment' as const } : { sourceKind: 'schedule' as const }), revision: 1, createdAt: o.startedAt, updatedAt: o.startedAt }
   }
   if (task.agentId !== agentId) throw new Error('任务归属不一致')
   o.taskId = task.id
