@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 看板/列表共享列显隐，每种状态可创建；仅展示单任务/会话创建，不挂载批量执行。
+ * [OUTPUT]: 仅从各列/分组新增任务并继承状态；header保留显示及视图切换，列隐藏动作幂等。
  * [OUTPUT]: Pending status identifies only its changed card; shared board DOM and unaffected pages remain mounted.
  * [INPUT]: Employee-owned task pages and shared task-session renderer.
  * [OUTPUT]: ReUI board commits receive status-save acknowledgments; local order remains a view preference.
@@ -60,15 +60,16 @@ export function EmployeeTasksPanel({ api, snapshot, employeeId, target, active, 
     finally { statusLocked.current = false; setChanging(undefined) }
   }
   const displayed = changing ? projectTaskMove(data, changing.task, changing.status) : data
-  const toggleColumn = (status: TrackedTaskStatus) => {
-    const next = hidden.includes(status) ? hidden.filter(value => value !== status) : [...hidden, status]
+  const saveVisibility = (next: TrackedTaskStatus[]) => {
     setVisibility(current => ({ ...current, [employeeId]: next }))
     try { localStorage.setItem(taskVisibilityKey(employeeId), JSON.stringify(next)) } catch (error) { showErrorToast(errorText(error)) }
   }
-  const controls = <><EmployeeTaskDisplay hidden={hidden} disabled={!active || !!changing} onToggle={toggleColumn} /><TabsList size="sm" aria-label="任务视图"><TabsTrigger value="board">看板</TabsTrigger><TabsTrigger value="list">列表</TabsTrigger></TabsList><Button variant="secondary" size="sm" onClick={() => setCreating('pending')}>创建任务</Button></>
+  const toggleColumn = (status: TrackedTaskStatus) => saveVisibility(hidden.includes(status) ? hidden.filter(value => value !== status) : [...hidden, status])
+  const hideColumn = (status: TrackedTaskStatus) => saveVisibility(hidden.includes(status) ? hidden : [...hidden, status])
+  const controls = <><EmployeeTaskDisplay hidden={hidden} disabled={!active || !!changing} onToggle={toggleColumn} /><TabsList size="sm" aria-label="任务视图"><TabsTrigger value="board">看板</TabsTrigger><TabsTrigger value="list">列表</TabsTrigger></TabsList></>
   return <EmployeeTaskActions api={api} employeeId={employeeId} active={active} disabled={!!changing} onStatus={(task, status) => void changeStatus(task, status)} onChanged={deletedId => { if (deletedId && selected?.id === deletedId) setSelected(undefined); setRevision(v => v + 1) }}><Tabs value={view} onValueChange={value => { if (value === 'board' || value === 'list') setView(value) }} className="skill-detail-panel h-full min-h-0 w-full gap-0" aria-label={`${employee.name}的任务`} data-employee-tasks={employeeId}>
     <DetailPanelHeader title={`${employee.name} · 任务`} actions={controls} />
-    {!data.pending && !failed ? <div className="mt-14 p-6"><Loading>正在读取任务…</Loading></div> : failed ? <div className="mt-14 p-6"><Button variant="secondary" onClick={() => setRevision(v => v + 1)}>重试读取任务</Button></div> : view === 'board' ? <EmployeeTaskBoard key={employee.id} employee={employee} data={displayed} hidden={hidden} changing={!!changing || !active} changingTaskId={changing?.task.id} onOpen={id => setSelected({ id })} onCreate={setCreating} onHide={toggleColumn} onStatus={changeStatus} onLoadMore={status => setPages(v => ({ ...v, [status]: (v[status] ?? 1) + 1 }))} /> : <EmployeeTaskList data={displayed} hidden={hidden} disabled={!!changing || !active} onOpen={id => setSelected({ id })} onCreate={setCreating} onHide={toggleColumn} onLoadMore={status => setPages(v => ({ ...v, [status]: (v[status] ?? 1) + 1 }))} />}
+    {!data.pending && !failed ? <div className="mt-14 p-6"><Loading>正在读取任务…</Loading></div> : failed ? <div className="mt-14 p-6"><Button variant="secondary" onClick={() => setRevision(v => v + 1)}>重试读取任务</Button></div> : view === 'board' ? <EmployeeTaskBoard key={employee.id} employee={employee} data={displayed} hidden={hidden} changing={!!changing || !active} changingTaskId={changing?.task.id} onOpen={id => setSelected({ id })} onCreate={setCreating} onHide={hideColumn} onStatus={changeStatus} onLoadMore={status => setPages(v => ({ ...v, [status]: (v[status] ?? 1) + 1 }))} /> : <EmployeeTaskList data={displayed} hidden={hidden} disabled={!!changing || !active} onOpen={id => setSelected({ id })} onCreate={setCreating} onHide={hideColumn} onLoadMore={status => setPages(v => ({ ...v, [status]: (v[status] ?? 1) + 1 }))} />}
     {selected && <EmployeeTaskDetail key={selected.id ?? selected.occurrenceId} {...detail} {...selected} api={api} snapshot={snapshot} employeeId={employeeId} active={active} onBack={() => { setSelected(undefined); setRevision(v => v + 1) }} />}
     {creating && <EmployeeTaskForm api={api} employeeId={employeeId} initialStatus={creating} active={active} onClose={() => setCreating(undefined)} onSaved={id => { setCreating(undefined); setSelected({ id }); setRevision(v => v + 1) }} />}
   </Tabs></EmployeeTaskActions>
