@@ -1,8 +1,9 @@
 /*
  * [INPUT]: One employee task, its dedicated conversation and original execution history.
  * [OUTPUT]: Resizable Task Dialog with title/requirements in properties and shared chat without an extra introduction; close waits for the shared exit animation.
- * [OUTPUT]: 持续任务会话支持再次执行，左侧要求失焦保存；完成/关闭只是协作提示，Dialog关闭不停止执行。
+ * [OUTPUT]: 属性标题右侧编辑打开紧凑标题/描述Dialog；无footer或折叠入口，正文顶部留白缩小，字段前保留细分隔线。
  * [OUTPUT]: 属性区不展示手动/消息等创建方式分类；真实原消息定位仍独立保留。
+ * [OUTPUT]: 标题/正文无label；属性使用较小的语义字号和弱化色，状态通过Popover选择。
  * [POS]: Task session boundary; closing the dialog never stops an accepted execution.
  * [PROTOCOL]: Update Header and owning .folder.md on change.
  */
@@ -17,14 +18,14 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
-import { Avatar, Loading, showErrorToast, errorText, GuardContext } from '@/components/common'
+import { Separator } from '@/components/ui/separator'
+import { Loading, showErrorToast, errorText, GuardContext } from '@/components/common'
 import { Markdown } from '@/components/common/markdown'
-import { EmployeeTaskStatus } from './employee-task-status'
+import { EmployeeTaskStatusPopover } from './employee-task-status'
 import { useConversationWindow } from './use-conversation-window'
 import type { ChannelChatWindow } from './channels-tab'
 import { TraceTab } from './trace-tab'
 import { Pencil } from '@/components/icons'
-import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { EmployeeTaskRequirements } from './employee-task-requirements'
 export { taskStatusLabels } from './employee-task-status'
 export type EmployeeTaskDetailProps = {
@@ -71,20 +72,25 @@ export function EmployeeTaskDetail({ api, snapshot, id, occurrenceId, employeeId
   return <Dialog open={visible} onOpenChange={next => { if (visible && !next) guard.navigate(() => setOpen(false)) }} onOpenChangeComplete={next => { if (!next && !open) onBack() }}><DialogContent aria-describedby={undefined} className="flex h-[min(90dvh,1000px)] w-[min(1400px,calc(100vw-48px))] max-w-none gap-0 overflow-hidden p-0 sm:max-w-none [&>[data-slot=dialog-close]]:z-20" data-employee-task-dialog={task?.id}>
     <ResizablePanelGroup orientation="horizontal" className="min-h-0 min-w-0">
     {task && <><ResizablePanel defaultSize="300px" minSize="18%" maxSize="40%">
-    <aside aria-label="任务属性" className="relative flex h-full min-h-0 min-w-0 flex-col bg-muted/20">
-      <header className="chat-header pointer-events-none"><h3 className="chat-title">属性</h3></header>
+    <aside aria-label="任务属性" className="relative flex h-full min-h-0 min-w-0 flex-col">
+      <header className="chat-header"><h3 className="chat-title">属性</h3><div className="chat-header-actions"><Button variant="ghost" size="icon-xs" className="text-muted-foreground" aria-label="编辑任务" title="编辑任务" disabled={busy || editingRequirements} onClick={() => guard.navigate(() => setEditingRequirements(true))}><Pencil /></Button></div></header>
       <ScrollArea className="mt-[36px] min-h-0 flex-1" viewportProps={{ className: 'overscroll-contain scroll-fade-t scroll-fade-6', 'aria-label': '任务属性' }}>
-        <div className="flex flex-col gap-8 px-6 pb-6 pt-[36px]">
-          <section aria-label="任务要求" className="min-w-0 break-words"><div className="flex items-start justify-between gap-3"><h2 className="m-0 text-base font-semibold">{task.title}</h2><Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-xs" aria-label="编辑任务要求" disabled={busy || editingRequirements} onClick={() => guard.navigate(() => setEditingRequirements(true))} />}><Pencil /></TooltipTrigger><TooltipContent>编辑任务要求</TooltipContent></Tooltip></div><div className="mt-3">{editingRequirements ? <EmployeeTaskRequirements api={api} task={task} active={visible} onClose={() => { setEditingRequirements(false); setRevision(value => value + 1) }} /> : (task.description || task.note) && <div className="markdown text-sm"><Markdown>{task.description || task.note}</Markdown></div>}</div></section>
-          <dl className="m-0 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-5 text-sm">
-            <dt className="text-muted-foreground">状态</dt><dd className="m-0 min-w-0"><EmployeeTaskStatus status={task.status} disabled={busy} onChange={status} /></dd>
-            <dt className="text-muted-foreground">负责人</dt><dd className="m-0 flex min-w-0 items-center gap-2 [&_.avatar]:size-6">{employee && <Avatar small name={employee.name} seed={employee.id} avatar={employee.avatar} color={employee.color} />}<span className="truncate">{employee?.name}</span></dd>
+        <div className="flex flex-col gap-8 px-6 pb-6 pt-6 text-[length:var(--text-ui-secondary)] leading-[var(--leading-ui-body)] text-foreground/80">
+          <section aria-label="任务要求" className="min-w-0">
+            <h2 className="m-0 min-w-0 break-words text-sm font-medium leading-relaxed">{task.title}</h2>
+            {(task.description || task.note) && <div className="markdown mt-2 min-w-0 break-words text-muted-foreground [--text-content-body:var(--text-ui-secondary)]"><Markdown>{task.description || task.note}</Markdown></div>}
+          </section>
+          <Separator />
+          <dl className="m-0 grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-4 gap-y-3">
+            <dt className="py-1 text-muted-foreground">状态</dt><dd className="m-0 min-w-0"><EmployeeTaskStatusPopover status={task.status} disabled={busy} onChange={status} /></dd>
+            <dt className="text-muted-foreground">负责人</dt><dd className="m-0 min-w-0 break-words">{employee?.name}</dd>
+            <dt className="text-muted-foreground">创建时间</dt><dd className="m-0 min-w-0 break-words text-muted-foreground">{new Date(task.createdAt).toLocaleString('zh-CN')}</dd>
+            <dt className="text-muted-foreground">更新时间</dt><dd className="m-0 min-w-0 break-words text-muted-foreground">{new Date(task.updatedAt).toLocaleString('zh-CN')}</dd>
           </dl>
-          <div className="flex flex-col items-start gap-3">
-            {ongoing ? <Button variant="secondary" size="sm" disabled={busy || ongoing.status === 'cancelling'} onClick={() => void act(() => api.request('stopAutomation', { id: ongoing.id }))}>{ongoing.status === 'queued' ? '取消排队' : '停止本次执行'}</Button> : <Button variant="secondary" size="sm" disabled={busy || !room || editingRequirements} onClick={start}>{record.executions.occurrences.length ? '再次执行' : '开始执行'}</Button>}
+          {(ongoing || !record.executions.occurrences.length || task.source) && <div className="flex flex-wrap items-center gap-2">
+            {ongoing ? <Button variant="secondary" size="sm" disabled={busy || ongoing.status === 'cancelling'} onClick={() => void act(() => api.request('stopAutomation', { id: ongoing.id }))}>{ongoing.status === 'queued' ? '取消排队' : '停止本次执行'}</Button> : !record.executions.occurrences.length && <Button variant="secondary" size="sm" disabled={busy || !room || editingRequirements} onClick={start}>开始执行</Button>}
             {task.source && <Button variant="ghost" size="sm" onClick={() => guard.navigate(() => { onSource(task.source!); onBack() })}>原消息</Button>}
-          </div>
-          <dl className="m-0 flex flex-col gap-3 text-xs"><div><dt className="text-muted-foreground">创建时间</dt><dd className="m-0 mt-1">{new Date(task.createdAt).toLocaleString('zh-CN')}</dd></div><div><dt className="text-muted-foreground">更新时间</dt><dd className="m-0 mt-1">{new Date(task.updatedAt).toLocaleString('zh-CN')}</dd></div></dl>
+          </div>}
         </div>
       </ScrollArea>
     </aside>
@@ -98,5 +104,6 @@ export function EmployeeTaskDetail({ api, snapshot, id, occurrenceId, employeeId
     </section>
     </ResizablePanel>
     </ResizablePanelGroup>
+    {task && editingRequirements && <EmployeeTaskRequirements api={api} task={task} active={visible} onClose={() => { setEditingRequirements(false); setRevision(value => value + 1) }} />}
   </DialogContent></Dialog>
 }

@@ -4,7 +4,7 @@
  * [OUTPUT]: 平级列创建与共享显隐零执行、批量入口隐藏；会话创建以稳定身份建任务/执行并复用任务Dialog。
  * [OUTPUT]: 空白鼠标拖动横向滚动及松手/取消/丢失捕获收尾；卡片/控件/触摸手势不接管，任务要求仅在左侧属性展示。
  * [OUTPUT]: 任务详情关闭等待全局动画结束才回调卸载，退出时暂停读取且不停止执行；隐藏可恢复。
- * [OUTPUT]: 已完成/关闭任务可再次执行；要求失焦保存不运行；批量选择顺序与稳定重试，原拖拽/关闭回归保持。
+ * [OUTPUT]: 已完成/关闭任务保留原会话且不展示再次执行；详情Popover改状态不执行；标题/描述显式保存、内部点击不关闭，批量重试及原拖拽/关闭回归保持。
  * [OUTPUT]: 任务详情属性/会话沿全局Resizable分栏，原会话与精确取消行为保持。
  * [OUTPUT]: 菜单打开/重开后静止指针不高亮删除；真实移动与键盘导航沿原库。
  * [OUTPUT]: 删除子菜单使用取消/确认删除两项，取消零写、确认固定员工/任务/修订。
@@ -13,6 +13,7 @@
  * [OUTPUT]: 列表分组折叠、列表/看板右键子菜单、重命名/删除确认及无误执行回归。
  * [OUTPUT]: 真实dnd-kit传感器覆盖跨列预览不写、跨列取消无误开、待决投影与失败回退，异步保存不重建滚动容器；任务属性左侧平铺。
  * [INPUT]: Real shared task panel/Dialog/Select and bounded conversation reader, with controlled IPC.
+ * [OUTPUT]: Property header opens a separate requirements Dialog; no property footer or collapse controls are rendered.
  * [OUTPUT]: Board drag persistence/cancellation, two-column task session, manual status, precise stop and hidden read guards.
  * [POS]: Renderer interaction contract; no Electron or model calls.
  * [PROTOCOL]: Update Header and owning .folder.md on change.
@@ -66,29 +67,73 @@ function fixture(executions: AutomationOccurrence[] = []) {
 }
 const button = (label: string) => [...document.body.querySelectorAll('button')].find(b => b.textContent === label)!
 
-test.each(['done', 'closed'] as const)('can execute a %s task again in its original conversation', async status => {
+test.each(['done', 'closed'] as const)('keeps a %s task in its original conversation without a rerun button', async status => {
   const f = fixture([{ ...occurrence, status: 'completed' }])
   await f.props.api.request('updateEmployeeTask', { employeeId: task.agentId, id: task.id, expectedRevision: 1, status })
   await act(async () => root.render(h(EmployeeTaskDetail, { ...f.props, id: task.id, active: true })))
-  expect(button('再次执行')).toBeTruthy()
-  await act(async () => button('再次执行').click())
-  expect(f.request.mock.calls.filter(([method]) => method === 'runEmployeeTask')).toHaveLength(1)
-  expect(f.request.mock.calls.find(([method]) => method === 'runEmployeeTask')?.[1]).toMatchObject({ employeeId: task.agentId, id: task.id, expectedRevision: 2 })
+  expect(button('再次执行')).toBeUndefined()
+  expect(button('开始执行')).toBeUndefined()
+  expect(f.request.mock.calls.filter(([method]) => method === 'runEmployeeTask')).toHaveLength(0)
   expect(f.request.mock.calls.filter(([method]) => method === 'updateEmployeeTask')).toHaveLength(1)
   expect(document.querySelector('[data-shared-chat]')?.getAttribute('data-shared-chat')).toBe(room.id)
 })
 
-test('edits requirements on blur without executing and keeps concurrent status updates', async () => {
+test('task properties choose status from a Popover without starting execution', async () => {
+  // jsdom has no layout/scrolling; cmdk scrolls the selected option on open.
+  const scrollIntoView = Element.prototype.scrollIntoView
+  Element.prototype.scrollIntoView = () => {}
+  try {
+    const f = fixture()
+    await act(async () => root.render(h(EmployeeTaskDetail, { ...f.props, id: task.id, active: true })))
+    await act(async () => document.querySelector<HTMLButtonElement>('aside [aria-label="任务状态"]')!.click())
+    const popup = document.querySelector('[data-slot="popover-content"]')!
+    expect(popup).not.toBeNull()
+    await act(async () => popup.querySelector<HTMLElement>('[data-slot="command-item"][data-value="done"]')!.click())
+    expect(f.request.mock.calls.filter(([method]) => method === 'updateEmployeeTask')).toEqual([['updateEmployeeTask', { employeeId: task.agentId, id: task.id, expectedRevision: 1, status: 'done' }]])
+    expect(document.querySelector('aside [aria-label="任务状态"]')?.textContent).toBe('完成')
+    expect(document.querySelector('[data-slot="popover-content"][data-open]')).toBeNull()
+    expect(f.request.mock.calls.some(([method]) => ['runEmployeeTask', 'sendMessage'].includes(method))).toBe(false)
+  } finally { if (scrollIntoView) Element.prototype.scrollIntoView = scrollIntoView; else Reflect.deleteProperty(Element.prototype, 'scrollIntoView') }
+})
+
+test('edits title and description only on save, keeps the dialog open through focus changes and preserves concurrent status', async () => {
   const f = fixture()
   await act(async () => root.render(h(EmployeeTaskDetail, { ...f.props, id: task.id, active: true })))
-  await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="编辑任务要求"]')!.click())
-  const input = document.querySelector<HTMLTextAreaElement>('textarea[aria-label="编辑任务要求"]')!
+  expect(document.querySelector('aside footer')).toBeNull()
+  expect(document.querySelector('aside header [aria-label="编辑任务"]')).not.toBeNull()
+  await act(async () => document.querySelector<HTMLButtonElement>('aside [aria-label="编辑任务"]')!.click())
+  const title = document.querySelector<HTMLInputElement>('#employee-task-edit-title')!, input = document.querySelector<HTMLTextAreaElement>('#employee-task-edit-description')!
+  const editor = input.closest('[role="dialog"]')!
+  expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(2)
+  expect(editor.querySelector('[data-slot="dialog-title"]')?.textContent).toBe('编辑任务')
+  expect(title.value).toBe(task.title)
+  expect(input.value).toBe(task.description)
+  await changeField(title, '修改后的任务标题')
+  await act(async () => input.focus())
   await act(async () => { Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(input, '修改后的目标与验收标准'); input.dispatchEvent(new Event('input', { bubbles: true })) })
+  await act(async () => { input.blur(); editor.querySelector<HTMLElement>('[data-slot="dialog-title"]')!.click() })
+  expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(2)
+  expect(f.request.mock.calls.filter(([method]) => method === 'updateEmployeeTask')).toHaveLength(0)
   await f.props.api.request('updateEmployeeTask', { employeeId: task.agentId, id: task.id, expectedRevision: 1, status: 'in_review' })
-  await act(async () => input.blur())
-  expect(f.request.mock.calls.find(([method, value]) => method === 'updateEmployeeTask' && value.description)?.[1]).toEqual({ employeeId: task.agentId, id: task.id, expectedRevision: 2, description: '修改后的目标与验收标准' })
+  await act(async () => [...editor.querySelectorAll('button')].find(button => button.textContent === '保存')!.click())
+  expect(f.request.mock.calls.find(([method, value]) => method === 'updateEmployeeTask' && value.description)?.[1]).toEqual({ employeeId: task.agentId, id: task.id, expectedRevision: 2, title: '修改后的任务标题', description: '修改后的目标与验收标准' })
+  expect(document.querySelector('[aria-label="任务要求"]')?.textContent).toContain('修改后的任务标题')
   expect(document.querySelector('[aria-label="任务要求"]')?.textContent).toContain('修改后的目标与验收标准')
+  expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(1)
   expect(f.request.mock.calls.some(([method]) => ['runEmployeeTask', 'runEmployeeTasks', 'sendEmployeeTaskMessage'].includes(method))).toBe(false)
+})
+
+test('clicking inside an unchanged edit dialog never closes it, and cancel writes nothing', async () => {
+  const f = fixture()
+  await act(async () => root.render(h(EmployeeTaskDetail, { ...f.props, id: task.id, active: true })))
+  await act(async () => document.querySelector<HTMLButtonElement>('aside [aria-label="编辑任务"]')!.click())
+  const title = document.querySelector<HTMLInputElement>('#employee-task-edit-title')!, input = document.querySelector<HTMLTextAreaElement>('#employee-task-edit-description')!, editor = title.closest('[role="dialog"]')!
+  await act(async () => { input.focus(); input.blur(); editor.querySelector<HTMLElement>('[data-slot="dialog-title"]')!.click() })
+  expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(2)
+  expect(title.value).toBe(task.title)
+  await act(async () => [...editor.querySelectorAll('button')].find(button => button.textContent === '取消')!.click())
+  expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(1)
+  expect(f.request.mock.calls.some(([method]) => ['updateEmployeeTask', 'runEmployeeTask', 'sendMessage'].includes(method))).toBe(false)
 })
 
 test('batch selection preserves click order and retries an unknown request with the same identity', async () => {
