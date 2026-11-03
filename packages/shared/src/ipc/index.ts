@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Agent Desktop 可选插件接线；默认关闭、独立于旧computer-use，调用沿员工权限及真实图片。
  * [OUTPUT]: 员工任务创建、分页、详情、状态和续做公共合同独立于定时计划。
  * [OUTPUT]: 2026-10-30 记忆管理支持官方WM和版本化embedding配置。
  * [OUTPUT]: 独立AgentBrowser/BrowserViewer插件接入；上游工具、启停与运行回收保持独立。
@@ -152,6 +153,9 @@ export interface Methods extends EmployeeTaskMethods {
   getApplicationCatalog: { input: import('../domain/application-protocol').ApplicationCatalogQuery; output: import('../domain/application-protocol').ApplicationCatalog }
   executeApplicationOperation: { input: import('../domain/application-protocol').ApplicationRequest; output: import('../domain/application-protocol').ApplicationResult }
   getApplicationReceipt: { input: import('../domain/application-protocol').ApplicationReceiptQuery; output: import('../domain/application-protocol').ApplicationResult | null }
+  getDesktopPluginSettings: { input: undefined; output: import('../plugins/desktop-tools').DesktopPluginSettings }
+  saveDesktopPluginSettings: { input: import('../plugins/desktop-tools').SaveDesktopPluginSettings; output: import('../plugins/desktop-tools').DesktopPluginSettings }
+  testDesktopPlugin: { input: undefined; output: { content: ({ type: 'text'; text: string } | { type: 'image'; data: string; mimeType: string })[] } }
   getBrowserPluginSettings: { input: { provider: import('../plugins/browser-tools').BrowserPluginProvider }; output: import('../plugins/browser-tools').BrowserPluginSettings }
   saveBrowserPluginSettings: { input: import('../plugins/browser-tools').SaveBrowserPluginSettings; output: import('../plugins/browser-tools').BrowserPluginSettings }
   getWebSearchSettings: { input: undefined; output: import('../domain/web-search').WebSearchSettings }

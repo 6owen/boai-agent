@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Agent Desktop 可选插件接线；默认关闭、独立于旧computer-use，调用沿员工权限及真实图片。
  * [OUTPUT]: bobo任务首次受理前复用原核心连接准备；任务仍沿员工独立会话、FIFO和状态协议，不新建核心主聊天。
  * [OUTPUT]: 会话创建沿原任务工具补全标题/要求，事务提交后同步当前会话标题缓存。
  * [OUTPUT]: 员工任务支持编辑要求及批量派发，状态不阻止会话续用；API/native原任务身份保持。
@@ -222,6 +223,7 @@ import { planOperations, activePlanInstructions } from './modules/application/pl
 import { referenceOperations, referenceScope, referenceInstructions, type LoadReferences } from './modules/application/reference-operations'
 import { collectReferenceSources } from './modules/application/reference-sources'
 import { applicationOperations } from './modules/application/operations'
+import { DesktopPluginService } from './modules/desktop-plugin/service'
 import { BrowserPluginService } from './modules/browser/plugins'
 import { browserPluginProviderSchema } from '@boai/shared/plugins/browser-tools'
 import { ImageService } from './modules/media/image-service'
@@ -444,6 +446,7 @@ const fail = (message: string): never => { throw new Error(message) }
 export class AppService {
   private readonly cliRunAccess = new RunCliAccess()
   runCliAccess(input: RunCliAccessRequest) { return this.cliRunAccess.request(input) }
+  private readonly desktopPlugin: DesktopPluginService
   private readonly browserPlugins: BrowserPluginService
   private readonly webSearch: WebSearchService
   private readonly dataSources: SourceService
@@ -547,6 +550,7 @@ export class AppService {
     this.dataPath = resolve(options.dataPath)
     this.store = new ProductStore(join(this.dataPath, 'boai.sqlite'))
     this.contexts = new ContextRepository(this.store)
+    this.desktopPlugin = new DesktopPluginService(this.store, this.dataPath, action => this.serialize(async () => { if (this.closing || this.backingUp) fail('服务正在退出或备份'); return action() }))
     this.browserPlugins = new BrowserPluginService(this.store, this.dataPath, action => this.serialize(async () => { if (this.closing || this.backingUp) fail('服务正在退出或备份'); return action() }))
     this.images = new ImageService(this.store, {
       connection: async id => this.connections.get(id),
@@ -1165,6 +1169,9 @@ export class AppService {
       }
       return mergeCatalogResults(result)
     }
+    if (method === 'getDesktopPluginSettings') { z.undefined().parse(input); return this.desktopPlugin.settings() }
+    if (method === 'saveDesktopPluginSettings') return this.desktopPlugin.save(input)
+    if (method === 'testDesktopPlugin') { z.undefined().parse(input); if (this.closing || this.backingUp) fail('服务正在退出或备份'); return this.desktopPlugin.test() }
     if (method === 'getBrowserPluginSettings') return this.browserPlugins.settings(z.object({ provider: browserPluginProviderSchema }).strict().parse(input).provider)
     if (method === 'saveBrowserPluginSettings') return this.browserPlugins.save(input)
     if (method === 'getWebSearchSettings') { z.undefined().parse(input); return this.webSearch.settings() }
@@ -4184,6 +4191,9 @@ export class AppService {
         generate: (input, references) => this.images.generate(input, references, signal, () => this.serialize(async () => { await this.assertExecutionAccess(context) })),
         verify: async source => { await this.serialize(async () => { await this.assertExecutionAccess(context) }); await this.images.verify(source) },
       }, dataSources: isCoreAgent(agent) ? this.dataSources.allSummaries() : this.dataSources.summaries(agent.sourceIds),
+      desktopPluginEnabled: await this.desktopPlugin.enabled(),
+      inspectDesktopPlugin: async () => { await this.serialize(async () => { await this.assertExecutionAccess(context) }); return this.desktopPlugin.inspect(context) },
+      callDesktopPlugin: async input => { await this.serialize(async () => { await this.assertExecutionAccess(context) }); const result = await this.desktopPlugin.call(input, context); await this.serialize(async () => { await this.assertExecutionAccess(context) }); return result },
       browserPluginProviders: await this.browserPlugins.enabled(),
       inspectBrowserPlugin: async provider => { await this.serialize(async () => { await this.assertExecutionAccess(context) }); return this.browserPlugins.inspect(provider, context) },
       callBrowserPlugin: async input => { await this.serialize(async () => { await this.assertExecutionAccess(context) }); const result = await this.browserPlugins.call(input, context); await this.serialize(async () => { await this.assertExecutionAccess(context) }); return result },
@@ -4193,7 +4203,7 @@ export class AppService {
       webSearchSelection: {}, selectWebSearch: input => this.selectWebSearch(context, input),
       inspectDataSource: sourceId => this.useDataSource(context, sourceId),
       callDataSource: input => this.useDataSource(context, input.sourceId, sourceCallSchema.parse(input)),
-      closeDataSources: async () => { await Promise.all([this.dataSources.closeRun(run.id), this.webSearch.connections.closeRun(run.id)]) }, groupCoordination, browserAvailable: !!this.options.browserHost && this.options.browserHost.available !== false && isBrowserCapableAgent(agent), artifactRevision: artifactRevision?.request, agent: clone(agent), connection: clone(connection), modelCatalog: connection ? this.gatewayCatalogs.get(connection) : undefined, runtimeProfile: clone(runtimeProfile), apiKey, conversation: clone(conversation), messages, materialRefs: materialContext.refs, materialImages: materialContext.images.filter(image => visibleMessageIds.has(image.messageId)), continuation, resources: clone(snapshot.resources), runId: run.id, signal, ...loaded, memory: combined, memoryContexts: this.memoryContexts(conversation, run.workId), members: conversation.agentIds.map(id => clone(this.getAgent(id))), contributions: await this.authorizedContributions(conversation, agent.id, turn.id, visibleMessageIds), triggerMessageId: turn.triggerMessageId, turnId: turn.id, onDelta: async () => {}, onTool: async () => {}, approveCommand: async () => false,
+      closeDataSources: async () => { await Promise.all([this.dataSources.closeRun(run.id), this.webSearch.connections.closeRun(run.id), this.desktopPlugin.closeRun(run.id)]) }, groupCoordination, browserAvailable: !!this.options.browserHost && this.options.browserHost.available !== false && isBrowserCapableAgent(agent), artifactRevision: artifactRevision?.request, agent: clone(agent), connection: clone(connection), modelCatalog: connection ? this.gatewayCatalogs.get(connection) : undefined, runtimeProfile: clone(runtimeProfile), apiKey, conversation: clone(conversation), messages, materialRefs: materialContext.refs, materialImages: materialContext.images.filter(image => visibleMessageIds.has(image.messageId)), continuation, resources: clone(snapshot.resources), runId: run.id, signal, ...loaded, memory: combined, memoryContexts: this.memoryContexts(conversation, run.workId), members: conversation.agentIds.map(id => clone(this.getAgent(id))), contributions: await this.authorizedContributions(conversation, agent.id, turn.id, visibleMessageIds), triggerMessageId: turn.triggerMessageId, turnId: turn.id, onDelta: async () => {}, onTool: async () => {}, approveCommand: async () => false,
       assertSkillAccess: ids => this.serialize(async () => {
         const { current, conversation } = await this.assertExecutionAccess(context)
         const allowed = this.authorizedResources(current, conversation)
@@ -5369,7 +5379,7 @@ export class AppService {
       if (error instanceof ProgressStalledError) throw error
       throw new Error(this.redact(this.errorMessage(error), key))
     } finally {
-      try { await Promise.all([this.dataSources.closeRun(run.id), this.webSearch.connections.closeRun(run.id)]) } finally {
+      try { await Promise.all([this.dataSources.closeRun(run.id), this.webSearch.connections.closeRun(run.id), this.desktopPlugin.closeRun(run.id)]) } finally {
         try { await this.browserPlugins.closeRun(run.id) } finally { try { await this.browserSessions.get(run.id)?.session.drain(); this.browserSessions.delete(run.id) } finally {
           releaseTask?.(); if (workDeadline) clearTimeout(workDeadline); signal.removeEventListener('abort', abort); this.runControllers.delete(run.id); this.organizationModelCalls.delete(run.id); await this.clearApprovals(run.id)
         } }
@@ -5917,7 +5927,7 @@ export class AppService {
       if (this.teamGeneration.busy) fail('团队方案仍在生成，请停止后备份')
       await this.automations.beforeBackup()
       await this.desktopActivity.beforeBackup()
-      if (this.scheduler.busy || this.runControllers.size || this.activeAdapters.size || this.externalTests.size || this.skills.busy || this.skillUpdates.busy || this.skillLibrary.busy || this.materialImports.size || this.materialUploads.busy || this.materials.busy || this.dataSources.busy || this.webSearch.connections.busy) fail('有任务、材料准备或资源管理操作正在执行或等待修复，请先停止或完成后备份')
+      if (this.scheduler.busy || this.runControllers.size || this.activeAdapters.size || this.externalTests.size || this.skills.busy || this.skillUpdates.busy || this.skillLibrary.busy || this.materialImports.size || this.materialUploads.busy || this.materials.busy || this.dataSources.busy || this.webSearch.connections.busy || this.desktopPlugin.busy) fail('有任务、材料准备或资源管理操作正在执行或等待修复，请先停止或完成后备份')
       await this.options.engine.closeMemory?.()
       await this.userMemoryProvider.close()
       await mkdir(destination, { recursive: true })
@@ -5978,7 +5988,7 @@ export class AppService {
   claimIdleShutdown(canClaim: () => boolean): Promise<boolean> {
     return this.serialize(async () => {
       if (!this.initialized || this.closing || this.backingUp) return false
-      const busy = () => this.agentBehaviors.busy || this.application.busy || this.scheduler.busy || this.runControllers.size > 0 || this.activeAdapters.size > 0 || this.adapterExits.size > 0 || this.externalTasks.size > 0 || this.externalTests.size > 0 || this.teamGeneration.busy || this.skills.busy || this.skillUpdates.busy || this.skillLibrary.busy || this.materialImports.size > 0 || this.materialUploads.busy || this.materials.busy || this.dataSources.busy || this.webSearch.connections.busy
+      const busy = () => this.agentBehaviors.busy || this.application.busy || this.scheduler.busy || this.runControllers.size > 0 || this.activeAdapters.size > 0 || this.adapterExits.size > 0 || this.externalTasks.size > 0 || this.externalTests.size > 0 || this.teamGeneration.busy || this.skills.busy || this.skillUpdates.busy || this.skillLibrary.busy || this.materialImports.size > 0 || this.materialUploads.busy || this.materials.busy || this.dataSources.busy || this.webSearch.connections.busy || this.desktopPlugin.busy
       if (busy()) return false
       try { await this.teamCreation.assertBackup(); await this.boboCollaboration.assertBackup() } catch { return false }
       const works = await this.store.load<WorkItem>('workItems')
@@ -5989,11 +5999,12 @@ export class AppService {
       return true
     })
   }
-  browserPluginsChanged() { return this.browserPlugins.refresh() }
+  async browserPluginsChanged() { await Promise.all([this.browserPlugins.refresh(), this.desktopPlugin.refresh()]) }
   close() { return this.closeTask ??= this.drain() }
   private async drain() {
     this.closing = true
     await this.desktopActivity.close()
+    await this.desktopPlugin.close()
     await this.browserPlugins.close()
     await this.previews.close()
     await this.terminals.close()

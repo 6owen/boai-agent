@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Agent Desktop 可选插件接线；默认关闭、独立于旧computer-use，调用沿员工权限及真实图片。
  * [OUTPUT]: 2026-10-30 原生产品桥不再提供search_memory/remember_memory；其余业务工具保持。
  * [OUTPUT]: 独立AgentBrowser/BrowserViewer插件接入；上游工具、启停与运行回收保持独立。
  * [OUTPUT]: 原生浏览器工具记录完整实际命令并脱敏填写值，执行仍使用原参数；与API详情共用观察投影。
@@ -37,6 +38,7 @@ import { createKnowledgeOperations } from '../modules/resources/knowledge-tools'
 import { createDirectoryRequestOperation } from '../modules/workspaces/directory-tool'
 import { manageSkillsSchema, manageSourcesSchema, manageSkillsDescription, manageSourcesDescription, catalogObservation } from '../modules/resources/catalog-commands'
 import { sourceCreationSchema, sourceCreationDescription, sourceCreationObservation } from '../modules/sources/source-commands'
+import { createDesktopPluginOperations } from './mastra/desktop-plugin-tools'
 import { createBrowserPluginOperations } from './mastra/browser-plugin-tools'
 import { createWebSearchOperations } from './mastra/web-search-tools'
 import { z } from 'zod'
@@ -72,7 +74,7 @@ export function createNativeProducts(context: EngineContext) {
   const knowledgeOperations = createKnowledgeOperations(context)
   const directoryRequest = createDirectoryRequestOperation(context)
   const searchChoice = createWebSearchSelectionOperation(context)
-  const webSearchOperations = [...createWebSearchOperations(context), ...createBrowserPluginOperations(context)]
+  const webSearchOperations = [...createWebSearchOperations(context), ...createBrowserPluginOperations(context), ...createDesktopPluginOperations(context)]
   const definitions: { name: string; description: string; schema: z.ZodType }[] = [
     { name: 'send_message', description: 'Publish an ordinary public message in this employee conversation now, for example a clarification or progress update. No Work is created. Repeating the same final reply will not create a duplicate. Use delegate_work to assign an actionable task to a colleague.', schema: z.object({ content: z.string().trim().min(1) }).strict() },
     { name: 'read_messages', description: 'Read a page from this turn’s authorized conversation snapshot. beforeSequence reads older history. Later user messages are queued for the next turn. This does not read private conversations of other employees.', schema: z.object({ beforeSequence: z.number().int().positive().optional(), limit: z.number().int().min(1).max(100).default(50) }).strict() },
@@ -113,7 +115,7 @@ export function createNativeProducts(context: EngineContext) {
   // Every product tool accepts an object. Discriminated unions emit only `oneOf`;
   // MCP requires an explicit root type or rejects the entire tools/list response.
   const tools: NativeTool[] = definitions.map(({ name, description, schema }) => ({ name, description, inputSchema: { ...z.toJSONSchema(schema, { io: 'input' }), type: 'object' },
-    ...(['call_data_source', 'call_browser_plugin'].includes(name) ? {toModelContent:mcpModelContent} : {}),
+    ...(['call_data_source', 'call_browser_plugin', 'call_desktop_plugin'].includes(name) ? {toModelContent:mcpModelContent} : {}),
     ...(name==='browser_tool' ? {toModelContent:(value:unknown)=>{
       const result=value as {output?:string;source?:unknown;image?:{data:string;mimeType:string}}
       return [{type:'text' as const,text:`${result.output ?? ''}\nSource: ${JSON.stringify(result.source)}`},...(result.image ? [{type:'image' as const,data:result.image.data,mimeType:result.image.mimeType}]:[])]
@@ -122,8 +124,8 @@ export function createNativeProducts(context: EngineContext) {
       context.signal.throwIfAborted()
       const parsed = schema.parse(input) as Record<string, unknown>, createdAt = new Date().toISOString()
       const emit = async (completed: boolean, result?: unknown, failed = false) => {
-        const observedInput=name === 'call_browser_plugin' ? { provider: parsed.provider, tool: parsed.tool, arguments: '[browser input omitted]' } : name === 'boai_call' ? applicationObservation(input) : ['manage_skills', 'manage_data_sources'].includes(name) ? catalogObservation(input) : name === 'create_data_source' ? sourceCreationObservation(input) : name==='browser_tool' ? browserToolObservation(parsed) : input
-        if(name==='browser_tool' || name==='call_data_source' || name==='call_browser_plugin') result=summarizeMedia(result)
+        const observedInput=name === 'call_desktop_plugin' ? { command: parsed.command, headed: parsed.headed, args: '[desktop input omitted]' } : name === 'call_browser_plugin' ? { provider: parsed.provider, tool: parsed.tool, arguments: '[browser input omitted]' } : name === 'boai_call' ? applicationObservation(input) : ['manage_skills', 'manage_data_sources'].includes(name) ? catalogObservation(input) : name === 'create_data_source' ? sourceCreationObservation(input) : name==='browser_tool' ? browserToolObservation(parsed) : input
+        if(name==='browser_tool' || name==='call_data_source' || name==='call_browser_plugin' || name==='call_desktop_plugin') result=summarizeMedia(result)
         await context.onExecutionEvent?.(nativeActivity(callId, { type: 'dynamicToolCall', name, arguments: observedInput, ...(completed ? { result, status: failed ? 'failed' : 'completed' } : {}) }, completed))
         await context.onTool({ id: callId, name, status: completed ? failed ? 'failed' : 'completed' : 'running', createdAt, detail: JSON.stringify(completed ? result : observedInput) })
       }

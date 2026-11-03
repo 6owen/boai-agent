@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Agent Desktop 可选插件接线；默认关闭、独立于旧computer-use，调用沿员工权限及真实图片。
  * [OUTPUT]: 独立浏览器插件参数在持久Trace/历史中隐藏，原始内存调用与工具名称保持。
  * [OUTPUT]: 持久观测同时脱敏网页fill/type命令，包括JSON嵌套和拒绝请求；模型内存参数不变。
  * [INPUT]: 真实工具/模型/Trace 的媒体值。
@@ -24,6 +25,7 @@ export function summarizeMedia(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(summarizeMedia)
   if (!value || typeof value !== 'object') return value
   let record = value as Record<string,unknown>
+  if (typeof record.command === 'string' && Array.isArray(record.args)) record = { ...record, args: '[desktop input omitted]' }
   if (['agent-browser', 'browser-viewer'].includes(String(record.provider)) && typeof record.tool === 'string' && 'arguments' in record) record = { ...record, arguments: '[browser input omitted]' }
   if (typeof record.command === 'string') record = { ...record, command: redactBrowserCommand(record.command) }
   const mime = typeof record.mimeType === 'string' ? record.mimeType : typeof record.mediaType === 'string' ? record.mediaType : undefined

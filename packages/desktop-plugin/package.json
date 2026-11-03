@@ -1,0 +1,12 @@
+{
+  "name": "@boai/desktop-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./host": "./src/host.ts"
+  },
+  "dependencies": {
+    "agent-desktop": "1.1.0"
+  }
+}

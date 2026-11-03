@@ -105,6 +105,7 @@
     "yaml": "2.9.1",
     "yauzl": "3.4.0",
     "zod": "4.6.5",
-    "@boai/browser-plugins": "workspace:*"
+    "@boai/browser-plugins": "workspace:*",
+    "@boai/desktop-plugin": "workspace:*"
   }
 }

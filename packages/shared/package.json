@@ -460,6 +460,11 @@
       "types": "./src/plugins/browser-tools.ts",
       "development": "./src/plugins/browser-tools.ts",
       "default": "./src/plugins/browser-tools.ts"
+    },
+    "./plugins/desktop-tools": {
+      "types": "./src/plugins/desktop-tools.ts",
+      "development": "./src/plugins/desktop-tools.ts",
+      "default": "./src/plugins/desktop-tools.ts"
     }
   },
   "dependencies": {
