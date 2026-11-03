@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 插件技能只读端口随实际启停提供，不创建绑定或改变原生循环。
  * [OUTPUT]: Bobo API私聊可主动查询宿主授权原文；原生后端不接入新的历史工具。
  * [OUTPUT]: Agent Desktop 可选插件接线；默认关闭、独立于旧computer-use，调用沿员工权限及真实图片。
  * [OUTPUT]: 2026-10-30 增加Mastra记忆归属/来源/管理接口和embedding实际模型记账选择；原生不接Mastra。
@@ -117,6 +118,8 @@ export interface EngineContext {
   /** Source-matched metadata only; refreshing it never changes employee or connection identity. */
   modelCatalog?: import('@boai/shared/domain/model-gateway').ModelCatalog
   desktopPluginEnabled?: boolean
+  /** Live plugin guide availability; reading never starts a desktop process or grants permission. */
+  readDesktopPluginSkill?(): Promise<import('@boai/shared/plugins/desktop-tools').DesktopPluginSkill | undefined>
   inspectDesktopPlugin?(): Promise<unknown>
   callDesktopPlugin?(input: import('@boai/shared/plugins/desktop-tools').DesktopPluginCall): Promise<unknown>
   browserPluginProviders?: import('@boai/shared/plugins/browser-tools').BrowserPluginProvider[]

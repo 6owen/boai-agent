@@ -13,7 +13,7 @@
 - 唯一内置电脑操作提供方为Agent Desktop，默认启用；已保存的停用选择保持，缺失配置按清单默认值，损坏/未知版本配置拒绝使用。员工权限与前台输入的单独开关保持。
 - 删除旧安装脚本、来源/许可目录及boai-computer-use技能源和默认分发项。新员工不再绑定，未完成的旧默认技能种子跳过退役项，其余未知项仍报错。
 - 启动升级沿原SourceService与资源删除协议移除固定旧安装器签名的连接，以及整份文件树匹配旧版本的绑定副本；自定义连接/技能保留并提示，不直接改SQL或覆写文件。全局技能源/旧二进制只在用户明确清理时处理。
-- API/native的电脑任务直接发现inspect_desktop_plugin/call_desktop_plugin，运行时读取agent-desktop自带desktop/platform技能。boai-screenshot保留独立截图、缩图及交付职责，应用操作转此插件。
+- API/native的电脑任务先通过list_skills/read_skill读取插件自带boai-agent-desktop，再发现inspect_desktop_plugin/call_desktop_plugin，运行时读取agent-desktop自带desktop/platform技能。boai-screenshot保留独立截图、缩图及交付职责，应用操作转此插件。
 - 插件停用或不可用时报告状态，不回退旧MCP；原生Agent自身循环及记忆保持。
 
 本轮验证和个人配置清理结果在文末记录。
@@ -57,3 +57,11 @@ API/Mastra和原生员工共用inspect_desktop_plugin/call_desktop_plugin，原�
 - boai-screenshot全局正文与Bobo副本均为原版，已沿原save/checkUpdate/update的hash、版本和回执流程更新并读回验证；独立截图/缩图能力保留。
 - 清理与恢复证据保存在本人应用数据目录的retired/computer-use-1793691477378/；原二进制只移出使用路径，未更改系统权限。Agent Desktop在本人的持久设置中本来已开启，未更改已保存的选择。
 - 未调用真实模型或操作用户桌面；日常成功率、个人安装版授权、跨平台与正式安装包分发未验收。本轮沿普通PR/自动合并流程，不复用上轮git cpf授权。
+
+## 2026-11-03插件技能入口补充
+
+用户要求与其他BOAI系统功能一样，提供明确的boai-xxxx技能入口。因此增加插件拥有的boai-agent-desktop：插件开启时所有员工（包括未绑定技能的旧员工）可由现有list_skills/read_skill发现和读取；停用后从列表消失，持有旧resourceId的读取也会拒绝。重新启用复用稳定身份，不创建skills安装记录、员工副本或配置版本更新。
+
+该技能只说明任务匹配、BOAI工具发现、上游文档加载和结果核验；原生命令细节仍读取固定agent-desktop版本自带的desktop/platform技能。插件技能源返回source/pluginId及正文hash，不伪造员工目录。正文在构建时嵌入CLI/worker运行时产物，不依赖开发机源目录。原生Agent保留自己的循环、会话、权限和记忆。
+
+本轮检查包括动态启停/取消/零进程读取、真实AppService中新员工绑定快照隔离、实际Mastra SDK及native桥读取同一正文。最初回归发现旧测试仍要求电脑技能文件存在且零绑定即零技能入口，已按新合同改为验证退役文件缺失、新绑定仍须下轮可见、当前插件指南可独立读取；未删除原权限/取消/绑定约束。5个相关测试文件249项通过，包含真实SDK/原生桥、动态启停与绑定隔离；typecheck（含workspace边界）、UI lint及完整Electron构建通过。直接以公开skill入口构建可重定位模块并读取到完整正文；CLI和worker产物中也核对到嵌入的正文。未调用真实模型或操作桌面，不将确定性工具桥检查当作真实任务成功率提升。

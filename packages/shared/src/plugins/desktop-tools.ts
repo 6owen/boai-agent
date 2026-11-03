@@ -1,12 +1,16 @@
 /*
  * [INPUT]: Explicit agent-desktop plugin enablement and upstream CLI arguments.
- * [OUTPUT]: Versioned desktop preferences and bounded calls; lifecycle flags stay host-owned.
+ * [OUTPUT]: Versioned desktop preferences, plugin-owned skill metadata and bounded calls; lifecycle flags stay host-owned.
  * [POS]: Optional desktop tool contract, independent of the legacy computer-use MCP.
  * [PROTOCOL]: Update Header and plugins/.folder.md on change.
  */
 import { z } from 'zod'
 
 export const DESKTOP_PLUGIN_ID = 'boai.desktop.agent-desktop'
+export interface DesktopPluginSkill {
+  resourceId: string; name: string; description: string; content: string; contentHash: string
+  source: 'plugin'; pluginId: typeof DESKTOP_PLUGIN_ID
+}
 export const desktopPluginConfigSchema = z.object({ allowHeaded: z.boolean().default(false) }).strict()
 export type DesktopPluginConfig = z.infer<typeof desktopPluginConfigSchema>
 export interface DesktopPluginSettings { revision: number; config: DesktopPluginConfig }

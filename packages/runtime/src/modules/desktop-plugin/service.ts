@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 读取插件技能不启动进程，停用/退出/配置变化不返回正文。
  * [INPUT]: Explicit application plugin enablement, employee permission and pinned upstream CLI.
  * [OUTPUT]: Desktop calls with shared admission, per-conversation refs, real images and cancellation fences.
  * [POS]: BOAI desktop provider; honors explicit plugin disablement and employee permissions.
@@ -15,6 +16,7 @@ import type { ProductStore } from '../../adapters/storage/product-store'
 import type { EngineContext } from '../../contracts'
 import { authorizeExecution } from '../employees/execution-permissions'
 import { TaskAdmission } from '../collaboration/task-admission'
+import { desktopPluginSkill } from './skill'
 
 const desktopAdmission = new TaskAdmission()
 const collection = 'desktopPluginSettings'
@@ -39,6 +41,12 @@ export class DesktopPluginService {
   async settings(): Promise<DesktopPluginSettings> {
     const saved = await this.store.get<DesktopPluginSettings>(collection, 'agent-desktop')
     return saved ? { revision: saved.revision, config: desktopPluginConfigSchema.parse(saved.config) } : { revision: 0, config: desktopPluginConfigSchema.parse({}) }
+  }
+  async skill(context: EngineContext) {
+    context.signal.throwIfAborted()
+    if (this.closing || this.updating || context.work?.organization || !await this.enabled()) return undefined
+    context.signal.throwIfAborted()
+    return { ...desktopPluginSkill }
   }
   async save(raw: unknown) {
     const input = saveDesktopPluginSettingsSchema.parse(raw)

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 插件技能读取沿当前执行身份核验和动态启停，已有员工自动获得可用入口。
  * [OUTPUT]: 2026-11-03在默认技能初始化前退役标准computer-use-mcp来源和未改动旧技能，保留定制副本。
  * [OUTPUT]: Bobo原文工具复用官方记忆来源授权/遗忘并在服务临界区查询现有SQLite，一次返回原文及邻近消息。
  * [OUTPUT]: Agent Desktop默认承接电脑操作，调用沿员工权限及真实图片，显式停用保持。
@@ -4197,6 +4198,7 @@ export class AppService {
         verify: async source => { await this.serialize(async () => { await this.assertExecutionAccess(context) }); await this.images.verify(source) },
       }, dataSources: isCoreAgent(agent) ? this.dataSources.allSummaries() : this.dataSources.summaries(agent.sourceIds),
       desktopPluginEnabled: await this.desktopPlugin.enabled(),
+      readDesktopPluginSkill: async () => { await this.serialize(async () => { await this.assertExecutionAccess(context) }); return this.desktopPlugin.skill(context) },
       inspectDesktopPlugin: async () => { await this.serialize(async () => { await this.assertExecutionAccess(context) }); return this.desktopPlugin.inspect(context) },
       callDesktopPlugin: async input => { await this.serialize(async () => { await this.assertExecutionAccess(context) }); const result = await this.desktopPlugin.call(input, context); await this.serialize(async () => { await this.assertExecutionAccess(context) }); return result },
       browserPluginProviders: await this.browserPlugins.enabled(),

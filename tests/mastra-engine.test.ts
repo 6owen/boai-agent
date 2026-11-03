@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 真实SDK及native工具桥先发现/读取插件技能源，再调用桌面工具。
  * [OUTPUT]: 新增Agent Desktop可选贡献及API/native共享工具真实SDK验证。
  * [OUTPUT]: 2026-10-30 回归更新为Mastra官方记忆/原生归属合同；保留来源、调用预算和业务发布断言。
  * [OUTPUT]: 独立浏览器插件经实际SDK发现/调用，原生产品桥保留同一工具结果及图片部件。
@@ -2222,19 +2223,26 @@ it('discovers and calls an independent browser through the actual SDK and native
 })
 
 it('calls Agent Desktop through the actual SDK and native bridge without routing to legacy sources', async () => {
+  const { desktopPluginSkill } = await import('../packages/runtime/src/modules/desktop-plugin/skill')
+  const readDesktopPluginSkill = vi.fn(async () => ({ ...desktopPluginSkill }))
   const input = { command: 'snapshot', args: ['--app', 'Notes', '-i'], headed: false }
-  const server = await endpoint([{ name: 'inspect_desktop_plugin', args: {} }, { name: 'call_desktop_plugin', args: input }, '已读取桌面插件。'])
+  const server = await endpoint([{ name: 'list_skills', args: {} }, { name: 'read_skill', args: { resourceId: desktopPluginSkill.resourceId } }, { name: 'inspect_desktop_plugin', args: {} }, { name: 'call_desktop_plugin', args: input }, '已读取桌面插件。'])
   const inspectDesktopPlugin = vi.fn(async () => ({ provider: 'agent-desktop' }))
   const callDesktopPlugin = vi.fn(async () => ({ content: [{ type: 'text', text: 'desktop-plugin-state' }] }))
-  const f = await context(server.url, { responseKind: 'chat', work: undefined, desktopPluginEnabled: true, inspectDesktopPlugin, callDesktopPlugin })
+  const f = await context(server.url, { responseKind: 'chat', work: undefined, desktopPluginEnabled: true, readDesktopPluginSkill, inspectDesktopPlugin, callDesktopPlugin })
   await new MastraEngine().run(f.ctx)
   expect(callDesktopPlugin).toHaveBeenCalledWith(input)
-  expect(server.requests).toHaveLength(3)
-  expect(server.requests[0].tools?.map(tool => tool.function.name)).toEqual(expect.arrayContaining(['inspect_desktop_plugin', 'call_desktop_plugin']))
-  expect(JSON.stringify(server.requests[2].messages)).toContain('desktop-plugin-state')
+  expect(server.requests).toHaveLength(5)
+  expect(server.requests[0].tools?.map(tool => tool.function.name)).toEqual(expect.arrayContaining(['list_skills', 'read_skill', 'inspect_desktop_plugin', 'call_desktop_plugin']))
+  expect(JSON.stringify(server.requests[4].messages)).toContain('desktop-plugin-state')
+  expect(JSON.stringify(server.requests[2].messages)).toContain('# BOAI Agent Desktop')
+  expect(JSON.stringify(server.requests[0].messages)).toContain('read boai-agent-desktop')
+  expect(readDesktopPluginSkill).toHaveBeenCalledTimes(2)
   const { createNativeProducts } = await import('../packages/runtime/src/adapters/native-products')
   const native = createNativeProducts(f.ctx)
   try {
+    expect(await native.tools.find(tool => tool.name === 'list_skills')!.execute({}, 'native-desktop-skill-list')).toMatchObject({ skills: expect.arrayContaining([expect.objectContaining({ name: 'boai-agent-desktop', source: 'plugin' })]) })
+    expect(await native.tools.find(tool => tool.name === 'read_skill')!.execute({ resourceId: desktopPluginSkill.resourceId }, 'native-desktop-skill-read')).toMatchObject({ content: desktopPluginSkill.content })
     const tool = native.tools.find(tool => tool.name === 'call_desktop_plugin')!
     expect(await tool.execute(input, 'native-desktop-call')).toEqual({ content: [{ type: 'text', text: 'desktop-plugin-state' }] })
     const image = { type: 'image', data: 'fixture-image', mimeType: 'image/png' }
