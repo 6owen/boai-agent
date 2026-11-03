@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: bobo任务入口保持当前核心会话，复用员工任务面板和消息显式转任务，不创建额外主私聊。
  * [OUTPUT]: 本人菜单与设置侧栏共用语义图标；其他配置使用滑杆，原导航守卫保持。
  * [OUTPUT]: 员工任务恢复与主聊天并列的右侧面板；撤回主区互斥Tabs，原定时过程/记录导航保持。
  * [OUTPUT]: 员工主区以聊天/任务Tabs切换；任务入口定位主会话任务视图，不再创建右侧任务标签，定时过程导航保持。
@@ -635,7 +636,7 @@ export function AppShell() {
       const origin = routeRef.current, token = ++taskNavigationRequest.current
       const current = () => mounted.current && sourceCurrent() && taskNavigationRequest.current === token && routeRef.current === origin
       pending = (async () => {
-        const destination = await resolveEmployeeTaskDestination({ api, snapshot: snapshotRef.current, target, current })
+        const destination = await resolveEmployeeTaskDestination({ api, snapshot: snapshotRef.current, target, current, conversationId: origin.conversationId })
         if (!destination || !current()) return
         await refreshSnapshot()
         if (!current()) return

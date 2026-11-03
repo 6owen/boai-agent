@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: bobo与普通员工共用任务创建、独立会话及执行；首次执行前沿宿主准备员工连接，不依赖先发送主聊天消息。
  * [OUTPUT]: 人工任务可在任意平级状态创建，原始会话输入标记待整理；创建不自动派发，显式执行仍沿原FIFO。
  * [OUTPUT]: 表单、会话和消息转换统一创建任务，不写手动/消息创建方式字段；真实消息ID关联保持。
  * [OUTPUT]: 每任务持久会话/回执；按归属和版本重命名/改状态/删除，删除保留执行历史且拒绝仍在执行的任务。
@@ -42,7 +43,7 @@ async function read(tx: RecordTransaction, employeeId: string, taskId: string) {
 export class EmployeeTaskService {
   private tail: Promise<unknown> = Promise.resolve()
   private batchTail: Promise<unknown> = Promise.resolve()
-  constructor(private store: ProductStore, private automations: AutomationService, private changed: (message?: Message) => void, private dataPath: string, private sessionReady: (conversation: Conversation) => void) {}
+  constructor(private store: ProductStore, private automations: AutomationService, private changed: (message?: Message) => void, private dataPath: string, private sessionReady: (conversation: Conversation) => void, private prepareEmployee?: (employeeId: string) => Promise<void>) {}
   private serialize<T>(fn: () => Promise<T>) { const next = this.tail.then(fn); this.tail = next.catch(() => {}); return next }
   private runBatch(raw: unknown): Promise<BatchResult> {
     const next = this.batchTail.then(async () => {
@@ -138,7 +139,7 @@ export class EmployeeTaskService {
         let sourceMessage: Message | undefined
         const task = await this.store.transaction(async tx => {
           const employee = await tx.get<DigitalAgent>('agents', v.employeeId)
-          if (!employee || employee.systemRole === 'core') throw new Error('请选择数字员工')
+          if (!employee) throw new Error('请选择数字员工')
           const receiptId = taskIdentity(`create:${v.requestId}`), receipt = await tx.get<{ fingerprint: string; taskId: string }>('employeeTaskReceipts', receiptId)
           if (receipt) { if (receipt.fingerprint !== fingerprint) throw new Error('同一请求不能提交不同任务'); return read(tx, v.employeeId, receipt.taskId) }
           const remember = async (task: TrackedTask) => {
@@ -211,6 +212,7 @@ export class EmployeeTaskService {
       let definition = await this.automations.creation(receiptId)
       if (!definition) {
         if (!task.description && !task.note && !v.supplement && !v.message) throw new Error('原任务要求不可用，请补充本次要求')
+        await this.prepareEmployee?.(task.agentId)
         const context = await this.session(task.agentId, task.id)
         const prompt = v.message ? (!task.latestOccurrenceId ? [task.description ?? task.note, v.message.content].filter(Boolean).join('\n\n') : v.message.content) : [task.description ?? task.note, v.supplement ? `\n本次补充要求：\n${v.supplement}` : ''].join('')
         definition = await this.automations.save({ conversationPolicy: 'existing-conversation', conversationId: context.id, requestId: receiptId, purpose: 'employee-task', employeeTask: { id: task.id, expectedRevision: v.expectedRevision, requirements: task.description ?? task.note, ...(v.message ? { message: { ...v.message, content: prompt } } : {}) }, owner: { kind: 'employee', employeeId: v.employeeId }, name: task.title.slice(0, 100), prompt: prompt || '处理本次任务材料', frequency: 'manual', time: '09:00', weekday: 1, timezone: 'UTC', enabled: true, notify: false })
