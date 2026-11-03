@@ -1,4 +1,6 @@
 <!--
+[OUTPUT]: 2026-11-03Agent Desktop自带boai-agent-desktop技能随启停动态提供，API/native共用list_skills/read_skill；不复制绑定、不维护上游命令，归19组20。
+[OUTPUT]: 2026-11-03电脑操作统一Agent Desktop，退役旧computer-use-mcp安装器/技能；标准配置与未改动副本沿原删除协议清理，定制保留，归19组20。
 [OUTPUT]: 2026-11-03新增默认关闭的Agent Desktop应用插件，固定上游正式包、API/native共用工具及取消/图片接线；旧computer-use保留，实际验证归19组20。
 [OUTPUT]: 2026-11-03 bobo作为核心员工复用任务看板/独立会话与状态；任务入口保持当前核心聊天、无历史不建空会话，首次执行复用连接准备，实际归5组16第32节。
 [OUTPUT]: 2026-11-02任务卡片/详情移除创建方式分类，普通任务不写manual/message来源，旧普通记录清理该字段；现行归5组16第30节。

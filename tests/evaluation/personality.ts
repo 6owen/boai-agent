@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Computer-use diagnostic reads Agent Desktop skills/status without importing the retired MCP.
  * [OUTPUT]: 持久终端/实际网页预览清理与空桌面日报的两项隔离真实能力样例。
  * [OUTPUT]: 完整冻结技能源沿真实默认绑定供模型调用；社交CLI只运行版本/帮助，账号操作独立验收。
  * [OUTPUT]: Long-term retention probes cover natural preference correction and one-off output formatting across actual conversations.
@@ -150,10 +151,10 @@ export const personalitySkillCases = [
   { id: 'skill-discovery', split: 'development', cluster: 'skills', turns: ['看一下你实际绑定的技能，读取定时任务和任务跟踪的技能说明，告诉我这两种功能分别干什么。这里只检查能力，不要新建任何任务。'], criteria: ['实际调用 list_skills/read_skill；不凭系统提示猜测。', '不创建任务或自动化。'] },
   { id: 'skill-task-tracking', split: 'development', cluster: 'skills', turns: ['帮我登记一个叫纸船研究的多步骤任务，三个步骤是查资料、比较方案、写结论。只登记，不执行。', '纸船研究的查资料已经完成，标记一下，其他步骤先保持未完成。'], criteria: ['实际创建一条持久 task，第二轮更新同一个 ID 和实际 revision。', '没有创建定时自动化或开始研究工作。'] },
   { id: 'skill-memory', split: 'development', cluster: 'skills', turns: ['请记住：我把这个示例项目叫做小橘灯。用你的记忆技能保存，别只是口头说记住了。', '用记忆检索查一下，我的示例项目叫什么？'], criteria: ['调用实际 remember_memory，保留真实当前消息来源。', '调用 search_memory 并回答已检索到的原信息。'] },
-  { id: 'skill-computer-health', split: 'development', cluster: 'skills', turns: ['读一下电脑操作技能，检查 BOAI Computer Use 连接的 health_report。只检查权限，不截图、不读取应用内容、不点击，也不要弹出权限申请。'], criteria: ['读取技能、检查实际 MCP 目录并调用 health_report。', '报告实际 macOS 权限，不声称已能控制电脑或要求反复批准。'] },
+  { id: 'skill-computer-health', split: 'development', cluster: 'skills', turns: ['使用 Agent Desktop 插件，先读取它自带的 desktop/platform 技能，再检查 status。只检查权限，不截图、不读取应用内容、不点击，也不要弹出权限申请。'], criteria: ['调用 inspect_desktop_plugin，读取上游自带技能，通过 call_desktop_plugin 调用 status。', '报告实际 macOS 权限，不声称已能控制电脑或要求反复批准。'] },
 ] as const
 
-interface Settings { webSearch?: { service: WebSearchServiceConfig; preference: WebSearchPreference; default: WebSearchSettings['default']; revision: number }; toolClientPath?: string; candidateReflectionText?: string; candidateReflection?: boolean; skillSourceRoot?: string; skills?: { name: string; content: string; hash: string }[]; computerSource?: import('../../packages/shared/src/domain/sources').DataSource; output: string; maxRequests: number; deadlineMs: number; label: string; caseIds?: string[]; currentConfiguration?: { agent: { modelId: string; configVersion: number }; profile: AgentProfile; files: { name: string; hash: string; content: string }[] } }
+interface Settings { webSearch?: { service: WebSearchServiceConfig; preference: WebSearchPreference; default: WebSearchSettings['default']; revision: number }; toolClientPath?: string; candidateReflectionText?: string; candidateReflection?: boolean; skillSourceRoot?: string; skills?: { name: string; content: string; hash: string }[]; output: string; maxRequests: number; deadlineMs: number; label: string; caseIds?: string[]; currentConfiguration?: { agent: { modelId: string; configVersion: number }; profile: AgentProfile; files: { name: string; hash: string; content: string }[] } }
 function selectPersonalityCases(caseIds?: string[]) {
   const allCases = [...personalityCases, ...personalityGroundingCases, ...personalityStateCases, ...personalitySkillCases]
   if (caseIds?.some(id => !allCases.some(example => example.id === id)) || caseIds && new Set(caseIds).size !== caseIds.length) throw new Error('Unknown or duplicate personality case')
@@ -247,11 +248,6 @@ export async function runPersonalityEvaluation({ settings, connection, apiKey, s
         if (operation.status !== 'running' || attempt > 100) throw new Error('评估技能绑定未完成')
         await new Promise(resolve => setTimeout(resolve, 100))
       }
-    }
-    if (settings.computerSource) {
-      const { id: _id, revision: _revision, createdAt: _created, updatedAt: _updated, hasCredential: _credential, test: _test, creationSource: _source, ...config } = settings.computerSource
-      const source = await call('sources.create', { config }, 'computer-source')
-      if (source.status !== 'succeeded') throw new Error('隔离电脑操作连接未保存')
     }
     for (const example of selected) {
       const stateCase = personalityStateCases.some(item => item.id === example.id)

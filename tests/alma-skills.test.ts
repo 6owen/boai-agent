@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 绑定快照仍隔离新技能，启用插件的系统技能源独立可读；退役旧电脑技能不再分发。
  * [OUTPUT]: 2026-10-30 回归更新为Mastra官方记忆/原生归属合同；保留来源、调用预算和业务发布断言。
  * [OUTPUT]: 真实绑定脚本目录/相对文件清单与伴随文件变化、撤权检查，读取不执行脚本。
  * [OUTPUT]: 自我新增技能不中断回复，当前轮保持冻结能力、次轮加载；后续撤销或其他配置变更仍终止旧运行。
@@ -62,7 +63,11 @@ it('can finish its own skill creation and binding, while only the next turn sees
         expect(context.agent.configVersion).toBe(first.beforeVersion + 1)
         expect(context.agent.skillIds).toEqual(original)
         expect(context.resources.some(item => item.id === first!.resourceId)).toBe(false)
-        expect(createBoundSkillOperations(context)).toEqual([])
+        const operations = createBoundSkillOperations(context)
+        const listed = await operations.find(tool => tool.name === 'list_skills')!.execute({}) as { skills: { resourceId: string; name: string; source?: string }[] }
+        expect(listed.skills).toContainEqual(expect.objectContaining({ name: 'boai-agent-desktop', source: 'plugin' }))
+        expect(listed.skills.some(skill => skill.resourceId === first!.resourceId)).toBe(false)
+        await expect(operations.find(tool => tool.name === 'read_skill')!.execute({ resourceId: first.resourceId })).rejects.toThrow('未绑定')
         await expect(context.assertSkillAccess!([first.resourceId])).rejects.toThrow('技能')
         await context.onDelta('技能已创建并绑定，下次可以使用。')
       } else {
@@ -200,12 +205,17 @@ it('preserves MCP screenshots as actual model media and summarizes persistent tr
   expect(messages).toHaveLength(2)
   expect(mcpModelOutput({ content: [{ type: 'image', mimeType: 'image/png', data: 'a'.repeat(9 * 1024 * 1024) }] }).value.every(item => item.type !== 'image-data')).toBe(true)
 })
-it('all seven integrations ship actual BOAI workflows without executable Alma CLI examples', async () => {
-  for (const name of ['web-fetch', 'web-search', 'scheduler', 'memory-management', 'browser', 'computer-use', 'tasks']) {
+it('six bound integrations and the desktop plugin ship real workflows without executable Alma CLI examples', async () => {
+  for (const name of ['web-fetch', 'web-search', 'scheduler', 'memory-management', 'browser', 'tasks']) {
     const content = await readFile(join('resources/agent-skills', `boai-${name}`, 'SKILL.md'), 'utf8')
     expect(content).toContain(`name: boai-${name}`)
     expect(content).not.toMatch(/^alma /m)
   }
+  const desktop = await readFile('packages/desktop-plugin/skills/boai-agent-desktop/SKILL.md', 'utf8')
+  expect(desktop).toContain('name: boai-agent-desktop')
+  expect(desktop).toContain('call_desktop_plugin')
+  expect(desktop).not.toMatch(/^alma /m)
+  await expect(readFile('resources/agent-skills/boai-computer-use/SKILL.md')).rejects.toMatchObject({ code: 'ENOENT' })
 })
 
 it('employee reactions persist as themselves, preserve user reactions and cannot escape the visible turn or revive after clear', async () => {

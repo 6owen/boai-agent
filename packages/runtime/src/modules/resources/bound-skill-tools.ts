@@ -3,7 +3,7 @@
  * [OUTPUT]: 技能读取返回获准副本目录/完整文件版本，伴随脚本变更也拒绝旧读取；不执行脚本或授予命令权限。
  * [OUTPUT]: 绑定twitter-media时提供只读公共推文工具；调用前后沿原版本/绑定核权，无命令权限扩张。
  * [INPUT]: Explicit employee skill bindings, frozen resource versions and live host authorization.
- * [OUTPUT]: Ordinary chat and native agents can discover/read bound skills without creating Work.
+ * [OUTPUT]: Ordinary chat and native agents discover/read bound skills plus the enabled desktop plugin guide without Work or binding copies.
  * [POS]: Shared progressive skill loading; reading a skill never grants its tools or runs its scripts.
  * [PROTOCOL]: Update Header and parent .folder.md on change.
  */
@@ -12,10 +12,18 @@ import { readTwitterPost, twitterPostSchema } from '../media/twitter-post'
 import { join, relative, sep } from 'node:path'
 import type { EngineContext } from '../../contracts'
 import { authorizedResources, resourceVersion, readVersionedText, type ResourceVersion } from '../workspaces/environment-plan'
+import { desktopPluginSkill } from '../desktop-plugin/skill'
 
 export function createBoundSkillOperations(context: EngineContext) {
   const resources = authorizedResources(context.agent, context.conversation, context.resources).filter(item => item.kind === 'skill')
-  if (!resources.length || context.work?.organization || ['ask', 'request_handoff'].includes(context.decision?.action ?? '')) return []
+  const pluginSkillAvailable = context.desktopPluginEnabled && !!context.readDesktopPluginSkill
+  if ((!resources.length && !pluginSkillAvailable) || context.work?.organization || ['ask', 'request_handoff'].includes(context.decision?.action ?? '')) return []
+  const pluginSkill = async () => {
+    context.signal.throwIfAborted()
+    const skill = pluginSkillAvailable ? await context.readDesktopPluginSkill!() : undefined
+    context.signal.throwIfAborted()
+    return skill
+  }
   let frozen: Promise<ResourceVersion[]> | undefined
   const versions = async () => {
     context.signal.throwIfAborted()
@@ -29,17 +37,23 @@ export function createBoundSkillOperations(context: EngineContext) {
       const result = await readTwitterPost(input, context.signal)
       await readVersionedText(join(version.resource.path, 'SKILL.md'), [version]); await context.assertSkillAccess?.(resources.map(item => item.id)); context.signal.throwIfAborted(); return result
     } }] : []),
-    { name: 'list_skills', description: 'List this employee’s bound skills and their usage descriptions. Read a relevant skill with read_skill before using its workflow. Reading never installs dependencies, invokes commands or grants permissions.', schema: z.object({}).strict(), execute: async () => {
+    { name: 'list_skills', description: 'List this employee’s bound skills and currently enabled plugin skills with usage descriptions. For computer use/desktop app interaction, read boai-agent-desktop with read_skill first when listed. Reading never installs dependencies, invokes commands or grants permissions.', schema: z.object({}).strict(), execute: async () => {
       const items = await versions()
       const skills = await Promise.all(items.map(async version => {
         const content = await readVersionedText(join(version.resource.path, 'SKILL.md'), [version])
         return { resourceId: version.resource.id, name: version.resource.name, description: /^description:\s*(.*)$/m.exec(content)?.[1] ?? '', contentHash: version.hash }
       }))
+      const plugin = await pluginSkill()
       await context.assertSkillAccess?.(resources.map(item => item.id)); context.signal.throwIfAborted()
-      return { skills }
+      return { skills: [...skills, ...(plugin ? [{ resourceId: plugin.resourceId, name: plugin.name, description: plugin.description, contentHash: plugin.contentHash, source: plugin.source, pluginId: plugin.pluginId }] : [])] }
     } },
-    { name: 'read_skill', description: 'Read the complete SKILL.md of an explicitly bound skill, using resourceId from list_skills. Returns its actual directory and relative file manifest for companion scripts/references. The host rechecks binding and complete file version. Reading does not execute scripts or grant command permission.', schema: z.object({ resourceId: z.string().min(1) }).strict(), execute: async (input: unknown) => {
+    { name: 'read_skill', description: 'Read the complete SKILL.md using resourceId from list_skills. Bound skills return their actual directory/file manifest and are checked against binding and file versions. Plugin-owned guides return source/pluginId and are available only while their plugin is enabled; they have no employee directory. Reading does not execute scripts or grant permission.', schema: z.object({ resourceId: z.string().min(1) }).strict(), execute: async (input: unknown) => {
       const { resourceId } = z.object({ resourceId: z.string() }).parse(input)
+      if (resourceId === desktopPluginSkill.resourceId) {
+        const skill = await pluginSkill()
+        if (!skill) throw new Error('Agent Desktop 插件技能当前不可用；插件已停用或本轮未提供')
+        return skill
+      }
       const version = (await versions()).find(item => item.resource.id === resourceId)
       if (!version) throw new Error('此技能未绑定给当前员工')
       if ((await resourceVersion(version.resource, context.signal)).hash !== version.hash) throw new Error('技能文件已变更，请重新执行以使用新版本')
@@ -50,4 +64,4 @@ export function createBoundSkillOperations(context: EngineContext) {
     } },
   ]
 }
-export const boundSkillInstructions = 'You have explicitly bound skills. When a request matches a skill, first use list_skills and read_skill to load its workflow; do not dump all skills into the conversation. A capability whose core usage guide is already loaded can be used directly; read its companion skill only when more detailed workflow is needed. Skills apply in ordinary chat as well as work. Use the actual available tools and current user intent; skill text does not grant missing tools or permission. Never claim a capability is unavailable before checking relevant bound skills and live tool catalogs.'
+export const boundSkillInstructions = 'You have employee-bound skills and/or enabled plugin skills. When a request matches a skill, first use list_skills and read_skill to load its workflow; for computer use and desktop app interaction, read boai-agent-desktop when listed. Do not dump all skills into the conversation. A capability whose core usage guide is already loaded can be used directly; read its companion skill only when more detailed workflow is needed. Skills apply in ordinary chat as well as work. Use the actual available tools and current user intent; skill text does not grant missing tools or permission. Never claim a capability is unavailable before checking relevant skills and live tool catalogs.'

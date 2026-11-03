@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./host": "./src/host.ts"
+    "./host": "./src/host.ts",
+    "./skill": "./src/skill.ts"
   },
   "dependencies": {
     "agent-desktop": "1.1.0"
