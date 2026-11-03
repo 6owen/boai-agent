@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Bobo冷启动通过官方stream.system补回忆指引，保留工具自主选择与原历史加载。
  * [OUTPUT]: 2026-10-30 API员工统一接Mastra Memory/OM，完整当前输入与材料正文保持；旧extractMemory仅兼容历史评估，产品不再调度。
  * [OUTPUT]: 独立AgentBrowser/BrowserViewer插件接入；上游工具、启停与运行回收保持独立。
  * [OUTPUT]: 浏览器执行参数显示实际命令并脱敏输入值，不再用统一omitted占位对象；模型工具输入/结果不变。
@@ -241,6 +242,7 @@ export class MastraEngine implements AgentEngine {
         const observeRoute = gatewayRouteObserver(ctx, () => callIds.at(-1))
         const output = await agent.stream(messages, {
           memory: prepared.option,
+          ...(prepared.recallInstructions ? { system: prepared.recallInstructions } : {}),
           abortSignal: signal, maxSteps: MAX_STEPS, modelSettings: { maxOutputTokens: responseOutputTokens(ctx, task) },
           providerOptions: thinkingProviderOptions(ctx.connection, ctx.agent.modelId, ctx.agent.thinkingLevel, task ? 'task' : 'chat', ctx.modelCatalog),
           onStepFinish: async event => {
