@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Agent Desktop 可选插件接线；默认关闭、独立于旧computer-use，调用沿员工权限及真实图片。
  * [OUTPUT]: 2026-10-30 增加Mastra记忆归属/来源/管理接口和embedding实际模型记账选择；原生不接Mastra。
  * [OUTPUT]: 独立AgentBrowser/BrowserViewer插件接入；上游工具、启停与运行回收保持独立。
  * [OUTPUT]: onNativeProgram承接实际原生握手/线程的程序身份，不代表任务执行或人工连接验证。
@@ -114,6 +115,9 @@ export interface EngineContext {
   nativeSourceFingerprint?: string
   /** Source-matched metadata only; refreshing it never changes employee or connection identity. */
   modelCatalog?: import('@boai/shared/domain/model-gateway').ModelCatalog
+  desktopPluginEnabled?: boolean
+  inspectDesktopPlugin?(): Promise<unknown>
+  callDesktopPlugin?(input: import('@boai/shared/plugins/desktop-tools').DesktopPluginCall): Promise<unknown>
   browserPluginProviders?: import('@boai/shared/plugins/browser-tools').BrowserPluginProvider[]
   inspectBrowserPlugin?(provider: import('@boai/shared/plugins/browser-tools').BrowserPluginProvider): Promise<unknown>
   callBrowserPlugin?(input: import('@boai/shared/plugins/browser-tools').BrowserPluginCall): Promise<unknown>

@@ -148,7 +148,9 @@
     "@boai/browser-plugins": "workspace:*",
     "@mastra/agent-browser": "0.5.5",
     "@mastra/browser-viewer": "0.2.6",
-    "agent-browser": "0.19.0"
+    "agent-browser": "0.19.0",
+    "@boai/desktop-plugin": "workspace:*",
+    "agent-desktop": "1.1.0"
   },
   "build": {
     "appId": "com.boai.agent",
@@ -173,6 +175,7 @@
       "node_modules/sherpa-onnx*/**/*",
       "dist/voice-input/**/*",
       "node_modules/agent-browser/**/*",
+      "node_modules/agent-desktop/**/*",
       "node_modules/playwright-core/**/*"
     ],
     "mac": {

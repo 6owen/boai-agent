@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Agent Desktop 可选插件接线；默认关闭、独立于旧computer-use，调用沿员工权限及真实图片。
  * [OUTPUT]: 独立AgentBrowser/BrowserViewer插件接入；上游工具、启停与运行回收保持独立。
  * [OUTPUT]: 2026-10-29 新增file-explorer贡献和boai.file-explorer内置清单。
  * [OUTPUT]: 2026-10-27 语音插件与显式执行额度的公共合同；不依赖可执行插件。
@@ -10,6 +11,7 @@
  * [PROTOCOL]: 变化同步Header及所属.folder.md。
  */
 import { z } from 'zod'
+import { DESKTOP_PLUGIN_ID } from './desktop-tools'
 import { browserPluginProviderSchema, browserPluginNames, browserPluginId } from './browser-tools'
 import { searchProviderSchema, searchProviderPresets, searchPluginId } from '../domain/web-search'
 import { runtimeContributionSchema } from './runtime-catalog'
@@ -21,6 +23,7 @@ const color = z.string().regex(/^#[0-9a-f]{6}$/i)
 const theme = z.object({ id, name: z.string().min(1).max(100), mode: z.enum(['light', 'dark']), background: color, surface: color, foreground: color, muted: color, border: color, accent: color }).strict()
 const contribution = z.discriminatedUnion('type', [
   runtimeContributionSchema,
+  z.object({ type: z.literal('desktop-tools') }).strict(),
   z.object({ type: z.literal('browser-tools'), provider: browserPluginProviderSchema }).strict(),
   z.object({ type: z.literal('file-explorer') }).strict(),
   z.object({ type: z.literal('voice-input') }).strict(),
@@ -61,6 +64,7 @@ export const applicationPlugins = definePluginCatalog([
   { id: 'boai.preview.pdf', name: 'PDF 预览', description: 'PDF 文档阅读、搜索和页面导航。', version: '1.0.0', apiVersion: APPLICATION_PLUGIN_API, contributions: [{ type: 'preview', kinds: ['pdf'] }] },
   { id: 'boai.preview.office', name: 'Office 预览', description: 'Word、Excel 和 PowerPoint 文档阅读。', version: '1.0.0', apiVersion: APPLICATION_PLUGIN_API, contributions: [{ type: 'preview', kinds: ['docx', 'xlsx', 'pptx'] }] },
   ...themePluginContributions,
+  { id: DESKTOP_PLUGIN_ID, name: 'Agent Desktop', description: '使用社区 agent-desktop 读取和操作本机应用，默认通过辅助功能在后台操作。', version: '0.1.0', apiVersion: APPLICATION_PLUGIN_API, defaultEnabled: false, contributions: [{ type: 'desktop-tools' }] },
   ...browserPluginProviderSchema.options.map(provider => ({ id: browserPluginId(provider), name: browserPluginNames[provider], description: provider === 'agent-browser' ? '使用独立浏览器浏览网页、操作页面和截图。' : '通过 agent-browser 命令行操作独立浏览器。', version: '0.1.0', apiVersion: APPLICATION_PLUGIN_API, defaultEnabled: false, contributions: [{ type: 'browser-tools' as const, provider }] })),
   ...searchProviderPresets.map(provider => ({ id: searchPluginId(provider.id), name: provider.name + ' 网页检索', description: provider.description, version: '1.0.0', apiVersion: APPLICATION_PLUGIN_API, contributions: [{ type: 'web-search' as const, provider: provider.id }] })),
   { id: FILE_EXPLORER_PLUGIN_ID, name: '文件浏览器', description: '浏览员工工作区和授权目录，展开文件树并预览文件。', version: '0.1.0', apiVersion: APPLICATION_PLUGIN_API, contributions: [{ type: 'file-explorer' }] },

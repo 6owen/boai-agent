@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 新增Agent Desktop可选贡献及API/native共享工具真实SDK验证。
  * [OUTPUT]: 插件目录增加两个默认关闭的独立浏览器；原检索和主题断言保持。
  * [OUTPUT]: 2026-10-29 文件浏览器入口/预览/启停与目录撤权回归，原终端生命周期断言保持。
  * [OUTPUT]: 2026-10-27 本轮相关回归合同/源码更新；执行状态另行记录，不以源码存在判通过。
@@ -30,7 +31,8 @@ async function setup() {
 afterEach(async () => { await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))) })
 
 test('one immutable catalog supplies preview and theme identities without mutating declarations', () => {
-  expect(applicationPlugins).toHaveLength(11)
+  expect(applicationPlugins).toHaveLength(12)
+  expect(applicationPlugins.find(plugin => plugin.id === 'boai.desktop.agent-desktop')).toMatchObject({ defaultEnabled: false, contributions: [{ type: 'desktop-tools' }] })
   expect(applicationPlugins.flatMap(plugin => plugin.contributions).filter(contribution => contribution.type === 'web-search').map(contribution => contribution.provider)).toEqual(['deepseek'])
   expect(themePluginId('nord')).toBe(themeId)
   expect(themePluginId('boai-dark')).toBeUndefined()

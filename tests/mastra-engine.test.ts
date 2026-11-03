@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 新增Agent Desktop可选贡献及API/native共享工具真实SDK验证。
  * [OUTPUT]: 2026-10-30 回归更新为Mastra官方记忆/原生归属合同；保留来源、调用预算和业务发布断言。
  * [OUTPUT]: 独立浏览器插件经实际SDK发现/调用，原生产品桥保留同一工具结果及图片部件。
  * [OUTPUT]: 浏览器详情显示实际命令，后续真实SDK请求仍有页面原文，不注入omitted占位。
@@ -2215,6 +2216,27 @@ it('discovers and calls an independent browser through the actual SDK and native
     const tool = native.tools.find(tool => tool.name === 'call_browser_plugin')!
     expect(tool.inputSchema.type).toBe('object')
     expect(await tool.execute(input, 'native-plugin-call')).toEqual({ content: [{ type: 'text', text: 'independent-page-result' }] })
+    const image = { type: 'image', data: 'fixture-image', mimeType: 'image/png' }
+    expect(tool.toModelContent!({ content: [image] })).toContainEqual(image)
+  } finally { await native.dispose() }
+})
+
+it('calls Agent Desktop through the actual SDK and native bridge without routing to legacy sources', async () => {
+  const input = { command: 'snapshot', args: ['--app', 'Notes', '-i'], headed: false }
+  const server = await endpoint([{ name: 'inspect_desktop_plugin', args: {} }, { name: 'call_desktop_plugin', args: input }, '已读取桌面插件。'])
+  const inspectDesktopPlugin = vi.fn(async () => ({ provider: 'agent-desktop' }))
+  const callDesktopPlugin = vi.fn(async () => ({ content: [{ type: 'text', text: 'desktop-plugin-state' }] }))
+  const f = await context(server.url, { responseKind: 'chat', work: undefined, desktopPluginEnabled: true, inspectDesktopPlugin, callDesktopPlugin })
+  await new MastraEngine().run(f.ctx)
+  expect(callDesktopPlugin).toHaveBeenCalledWith(input)
+  expect(server.requests).toHaveLength(3)
+  expect(server.requests[0].tools?.map(tool => tool.function.name)).toEqual(expect.arrayContaining(['inspect_desktop_plugin', 'call_desktop_plugin']))
+  expect(JSON.stringify(server.requests[2].messages)).toContain('desktop-plugin-state')
+  const { createNativeProducts } = await import('../packages/runtime/src/adapters/native-products')
+  const native = createNativeProducts(f.ctx)
+  try {
+    const tool = native.tools.find(tool => tool.name === 'call_desktop_plugin')!
+    expect(await tool.execute(input, 'native-desktop-call')).toEqual({ content: [{ type: 'text', text: 'desktop-plugin-state' }] })
     const image = { type: 'image', data: 'fixture-image', mimeType: 'image/png' }
     expect(tool.toModelContent!({ content: [image] })).toContainEqual(image)
   } finally { await native.dispose() }

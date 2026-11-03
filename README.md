@@ -137,3 +137,5 @@ ai-docs/             设计、规格与实施记录
 2026-10-28：开发CI按[第22组06](ai-docs/spec/22.开发自动化与持续测试/06-UI回归基准与PR门禁.md)运行Test与DeepSeek UI preview；固定PNG基准更新不再是PR前置。
 
 官方文件浏览器：`@boai/file-explorer-plugin` 提供员工工作区与授权目录的文件树和预览，沿插件设置启停；目录边界与实际验证见[第19组18](ai-docs/spec/19.应用插件架构/18-文件浏览器插件与目录入口.md)。
+
+Agent Desktop 可选插件的启用、权限和试用边界见[接入说明](ai-docs/spec/19.应用插件架构/20-Agent-Desktop可选插件接入.md)。
