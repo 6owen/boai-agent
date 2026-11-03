@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Bobo原文搜索延迟创建可重建FTS5索引，授权消息ID在LIMIT前筛选，短查询直接匹配原文。
  * [OUTPUT]: 任务有界列表返回assignment/progress种类，看板筛选在SQL LIMIT前执行。
  * [OUTPUT]: 员工任务按身份过滤历史，原消息执行来源及任务列表为SQL有界投影。
  * [OUTPUT]: 员工任务与定时计划在SQL分页前分流，员工历史包括其定时执行。
@@ -26,6 +27,8 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { createClient, type Client } from '@libsql/client'
+import { RawHistoryIndex } from './raw-history-index'
+import type { HistorySearchQuery } from '../../modules/conversations/history-search'
 import { taskPageSql, type TaskPageSqlQuery } from './task-page-sql'
 import type { TrackedTaskListItem } from '@boai/shared/domain/tracked-tasks'
 import { executionWindowPage } from '../../modules/conversations/execution-window'
@@ -99,6 +102,8 @@ export interface RecordTransaction {
 /** One local SQLite writer; every mutation is committed before it is acknowledged. */
 export class ProductStore {
   private client!: Client
+  private rawHistoryIndex?: RawHistoryIndex
+  searchRawHistory(query: HistorySearchQuery, messageIds: string[]) { return this.enqueue(() => (this.rawHistoryIndex ??= new RawHistoryIndex(this.client)).search(query, messageIds)) }
   private tail: Promise<unknown> = Promise.resolve()
   private messageCommit?: (tx: RecordTransaction, messages: MessageCommit[]) => Promise<() => void>
   /** Product reception is part of the original write transaction, before acknowledgement. */
@@ -512,6 +517,7 @@ export class ProductStore {
         // No transaction began and this store's reads/writes are queued, so discard that idle pool.
         this.client.close()
         this.client = createClient({ url: pathToFileURL(this.filename).href })
+        this.rawHistoryIndex = undefined
         if (attempt >= transactionAdmissionDelays.length) throw error
         // Only retry acquiring BEGIN. The callback and commit are never replayed, even on SQLITE_BUSY.
         await new Promise(resolve => setTimeout(resolve, transactionAdmissionDelays[attempt]))
