@@ -1,11 +1,12 @@
 /*
+ * [OUTPUT]: 覆盖插件拥有的动态技能、旧员工零副本、停用后旧读取拒绝及取消，读指南零进程。
  * [INPUT]: Real plugin settings/SQLite and controlled upstream process results.
- * [OUTPUT]: Opt-in, authority, namespace, cancellation, argument and image boundary checks.
+ * [OUTPUT]: Default desktop provider, explicit opt-out, authority, namespace, cancellation and image boundary checks.
  * [POS]: Desktop plugin integration tests; actual native smoke is recorded separately.
  * [PROTOCOL]: Update Header and tests/.folder.md on change.
  */
 import { afterEach, expect, it, vi } from 'vitest'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { EngineContext } from '../packages/runtime/src/contracts'
@@ -16,6 +17,8 @@ import { DESKTOP_PLUGIN_ID, desktopPluginCallSchema, validateDesktopPluginCall }
 import { createDesktopPluginOperations } from '../packages/runtime/src/adapters/mastra/desktop-plugin-tools'
 import { mcpModelContent } from '../packages/runtime/src/modules/sources/mcp-media'
 import { summarizeMedia } from '../packages/runtime/src/modules/browser/media'
+import { createBoundSkillOperations } from '../packages/runtime/src/modules/resources/bound-skill-tools'
+import { desktopPluginSkill } from '../packages/runtime/src/modules/desktop-plugin/skill'
 
 const upstream = vi.hoisted(() => ({ prepare: vi.fn(), run: vi.fn() }))
 vi.mock('@boai/desktop-plugin/host', async importOriginal => ({ ...await importOriginal<object>(), prepareDesktopExecutable: upstream.prepare, runDesktopCommand: upstream.run }))
@@ -32,13 +35,51 @@ async function fixture() {
   const enable = (enabled = true) => plugins.update({ id: DESKTOP_PLUGIN_ID, enabled, expectedRevision: plugins.snapshot().revision })
   return { root, service, plugins, context, controller, enable }
 }
-it('does not start any process until the new plugin is explicitly enabled', async () => {
+it('defaults to Agent Desktop without starting a process, and honors saved disablement', async () => {
   const f = await fixture()
+  expect(await f.service.enabled()).toBe(true)
+  expect(await f.service.inspect(f.context)).toMatchObject({ provider: 'agent-desktop', config: { allowHeaded: false } })
+  expect(upstream.prepare).not.toHaveBeenCalled()
+  await f.enable(false)
   expect(await f.service.enabled()).toBe(false)
   await expect(f.service.test()).rejects.toThrow('停用')
   expect(upstream.prepare).not.toHaveBeenCalled()
+})
+it('fails closed on malformed and unsupported plugin settings', async () => {
+  const f = await fixture()
+  for (const text of ['{', JSON.stringify({ schemaVersion: 99, revision: 0, disabledIds: [] })]) {
+    await writeFile(join(f.root, 'application-plugins.json'), text)
+    expect(await f.service.enabled()).toBe(false)
+  }
+  expect(upstream.prepare).not.toHaveBeenCalled()
+})
+it('supplies the live plugin skill to an existing employee without binding copies or starting the desktop', async () => {
+  const f = await fixture()
+  const context = { ...f.context, resources: [], desktopPluginEnabled: true, agent: { ...f.context.agent, skillIds: [], knowledgeIds: [] }, readDesktopPluginSkill: () => f.service.skill(f.context) } as unknown as EngineContext
+  const operations = createBoundSkillOperations(context)
+  const list = operations.find(value => value.name === 'list_skills')!, read = operations.find(value => value.name === 'read_skill')!
+  expect(await list.execute({})).toMatchObject({ skills: [{ name: 'boai-agent-desktop', source: 'plugin', pluginId: DESKTOP_PLUGIN_ID }] })
+  const guide = await read.execute({ resourceId: desktopPluginSkill.resourceId })
+  expect(guide).toMatchObject({ content: expect.stringContaining('inspect_desktop_plugin'), contentHash: desktopPluginSkill.contentHash })
+  expect(guide).not.toHaveProperty('directory')
+  expect(JSON.stringify(await list.execute({}))).not.toContain('# BOAI Agent Desktop')
+  await f.enable(false)
+  expect(await list.execute({})).toEqual({ skills: [] })
+  await expect(read.execute({ resourceId: desktopPluginSkill.resourceId })).rejects.toThrow('不可用')
+  expect(createBoundSkillOperations({ ...context, desktopPluginEnabled: false })).toEqual([])
   await f.enable()
-  expect(await f.service.inspect(f.context)).toMatchObject({ provider: 'agent-desktop', config: { allowHeaded: false } })
+  expect(await list.execute({})).toMatchObject({ skills: [{ resourceId: desktopPluginSkill.resourceId }] })
+  expect(context.agent.skillIds).toEqual([])
+  expect(upstream.prepare).not.toHaveBeenCalled(); expect(upstream.run).not.toHaveBeenCalled()
+})
+it('keeps plugin skill loading out of organization/private phases and stops cancelled reads', async () => {
+  const f = await fixture()
+  const context = { ...f.context, resources: [], desktopPluginEnabled: true, agent: { ...f.context.agent, skillIds: [], knowledgeIds: [] }, readDesktopPluginSkill: () => f.service.skill(f.context) } as unknown as EngineContext
+  expect(createBoundSkillOperations({ ...context, work: { organization: {} } } as EngineContext)).toEqual([])
+  expect(createBoundSkillOperations({ ...context, decision: { action: 'ask' } } as EngineContext)).toEqual([])
+  const read = createBoundSkillOperations(context).find(value => value.name === 'read_skill')!
+  f.controller.abort(new Error('cancelled guide read'))
+  await expect(read.execute({ resourceId: desktopPluginSkill.resourceId })).rejects.toThrow('cancelled guide read')
   expect(upstream.prepare).not.toHaveBeenCalled()
 })
 it('allows observation but refuses read-only writes and declined approval before dispatch', async () => {

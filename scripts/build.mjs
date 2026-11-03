@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Agent Desktop插件技能按运行时相对位置分发至dist/skills，源码Node/BDD加载保持兼容。
  * [OUTPUT]: 2026-10-29 主进程外置electron-sparkle-updater，保留原生模块按包内位置加载。
  * [OUTPUT]: 2026-10-29 包边界纳入file-explorer-plugin；build分发固定来源和MIT许可。
  * [OUTPUT]: 2026-10-28 本地语音helper及引擎适配器共同分发，模型权重仍按需下载。
@@ -60,6 +61,8 @@ async function buildRuntime(compile) {
   await mkdir('dist/agent-skills', { recursive: true })
   for (const name of skillManifest.skills) await cp(`resources/agent-skills/${name}`, `dist/agent-skills/${name}`, { recursive: true, filter: path => basename(path) !== '.folder.md' })
   await copyFile('resources/agent-skills/manifest.json', 'dist/agent-skills/manifest.json')
+  await mkdir('dist/skills/boai-agent-desktop', { recursive: true })
+  await copyFile('packages/desktop-plugin/skills/boai-agent-desktop/SKILL.md', 'dist/skills/boai-agent-desktop/SKILL.md')
   await cp('resources/capabilities/voice', 'dist/capabilities/voice', { recursive: true, filter: path => !['.folder.md', '__pycache__'].includes(basename(path)) })
   for (const [source, prefix] of [['packages/runtime/src/adapters/channels/rovai', 'rovai-channels'], ['packages/runtime/src/modules/workspaces/hermes', 'hermes-file-tools']]) {
     for (const name of ['LICENSE.txt', 'source-manifest.json']) await copyFile(`${source}/${name}`, `dist/runtime/${prefix}-${name}`)

@@ -1,5 +1,6 @@
 /*
  * [OUTPUT]: 预览技能旧受管副本沿原hash/版本/回执更新，自定义副本拒绝静默覆盖。
+ * [OUTPUT]: 旧computer-use副本和安装器连接沿原删除协议退役，自定义保留，旧种子跳过退役项。
  * [INPUT]: 隔离 AppService/SQLite、实际随包技能、原绑定/更新/删除协议。
  * [OUTPUT]: 新 Bobo 默认清单完整独立副本、重启/升级不覆盖、旧库不补绑及中断回执核对。
  * [POS]: 默认技能源分发集成回归；不调用模型或 Electron。
@@ -172,5 +173,40 @@ test.each([false, true])('sidebar source upgrade uses original receipt and prese
     expect(await next.api('updateSkill', input)).toEqual(receipt)
   }
   expect((await next.bobo()).skillIds).toEqual(bobo.skillIds)
+  expect(f.model).not.toHaveBeenCalled()
+})
+
+
+test.each(['unchanged', 'body', 'companion'])('upgrade retires unchanged old computer skill and managed source, preserves customized copies: %s', async customization => {
+  const custom = customization !== 'unchanged'
+  const f = await fixture(), directory = join(f.homeDir, '.agents/skills/boai-computer-use')
+  await mkdir(directory, { recursive: true })
+  const legacy = await readFile(resolve('tests/fixtures/retired-computer-use.txt'), 'utf8')
+  await writeFile(join(directory, 'SKILL.md'), legacy)
+  const app = await f.start(null), bobo = await app.bobo()
+  const catalog = await app.api('listLocalSkills', { refresh: true })
+  const localSkillId = catalog.skills.find(skill => skill.name === 'boai-computer-use')!.id
+  const plan = await app.api('prepareLocalSkillBinding', { agentId: bobo.id, localSkillId, expectedConfigVersion: bobo.configVersion })
+  await app.api('bindLocalSkill', { agentId: bobo.id, localSkillId, expectedConfigVersion: bobo.configVersion, requestId: 'old-computer-skill', planId: plan.id, contentHash: plan.contentHash })
+  const resource = (await app.store.load<Resource>('resources')).find(item => item.name === 'boai-computer-use')!
+  if (customization === 'body') await writeFile(join(resource.path, 'SKILL.md'), legacy + '\nMy custom instructions.\n')
+  if (customization === 'companion') await writeFile(join(resource.path, 'custom.txt'), 'My custom instructions.')
+  const legacyConfig = { name: 'BOAI Computer Use', description: '', guide: '', type: 'mcp' as const, enabled: true, mcp: { transport: 'stdio' as const, command: '/home/user/Library/Application Support/BoAI Agent/tools/computer-use/82dd8093e44819c51537f489059e172777d7f1d7/computer-use-mcp', args: ['serve'] } }
+  await app.api('saveDataSource', { config: legacyConfig, id: '00000000-0000-4000-8000-000000000001', expectedRevision: 0 })
+  await app.api('saveDataSource', { id: '00000000-0000-4000-8000-000000000002', expectedRevision: 0, config: { ...legacyConfig, mcp: { ...legacyConfig.mcp, command: '/my-custom-computer-use-mcp' } } })
+  const seed = (await app.store.load<any>('defaultSkillSeeds'))[0]
+  await app.store.write([{ collection: 'defaultSkillSeeds', id: 'bobo', value: { ...seed, names: ['boai-computer-use', 'boai-browser'], settled: [], status: 'pending' } }])
+  await app.close()
+  const next = await f.start()
+  expect((await next.api('listDataSources', undefined)).map(source => source.id)).toEqual(['00000000-0000-4000-8000-000000000002'])
+  expect((await next.bobo()).skillIds.includes(resource.id)).toBe(custom)
+  expect((await next.store.load<Resource>('resources')).some(item => item.id === resource.id)).toBe(custom)
+  if (custom) {
+    expect(await readFile(join(resource.path, customization === 'companion' ? 'custom.txt' : 'SKILL.md'), 'utf8')).toContain('My custom instructions.')
+    expect(next.events).toContainEqual(expect.objectContaining({ type: 'runtime-error', error: expect.stringContaining('自定义内容') }))
+  } else await expect(readFile(join(resource.path, 'SKILL.md'))).rejects.toMatchObject({ code: 'ENOENT' })
+  expect((await next.store.load<any>('defaultSkillSeeds'))[0]).toMatchObject({ status: 'completed', settled: ['boai-computer-use', 'boai-browser'] })
+  expect(bundledSkillNames).not.toContain('boai-computer-use')
+  expect((await next.api('listLocalSkills', { refresh: true })).skills.some(skill => skill.source === 'builtin' && skill.name === 'boai-computer-use')).toBe(false)
   expect(f.model).not.toHaveBeenCalled()
 })

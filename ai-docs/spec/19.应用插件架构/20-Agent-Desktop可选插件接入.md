@@ -1,12 +1,22 @@
 <!--
 [INPUT]: 上游agent-desktop v1.1.0与BOAI可选应用插件合同。
-[OUTPUT]: 插件接入、使用步骤、权限和真实验证边界。
+[OUTPUT]: 插件接入、正式切换、旧MCP退役与真实验证边界。
 [POS]: Agent Desktop可选工具插件说明。
 [PROTOCOL]: 变化同步Header与所属.folder.md。
 -->
 # Agent Desktop 可选插件接入
 
-用户要求先通过BOAI插件系统接入agent-desktop，自己调用评价效果，满意后再考虑移除旧computer use。此轮只新增可选提供方；不迁移或删除原MCP，不修改已绑定的旧技能。
+2026-11-03用户已明确改用Agent Desktop并移除旧computer-use-mcp及对应BOAI技能。以下正式切换合同取代最初试用的双提供方约定；后文试用记录保留历史事实。
+
+## 正式切换
+
+- 唯一内置电脑操作提供方为Agent Desktop，默认启用；已保存的停用选择保持，缺失配置按清单默认值，损坏/未知版本配置拒绝使用。员工权限与前台输入的单独开关保持。
+- 删除旧安装脚本、来源/许可目录及boai-computer-use技能源和默认分发项。新员工不再绑定，未完成的旧默认技能种子跳过退役项，其余未知项仍报错。
+- 启动升级沿原SourceService与资源删除协议移除固定旧安装器签名的连接，以及整份文件树匹配旧版本的绑定副本；自定义连接/技能保留并提示，不直接改SQL或覆写文件。全局技能源/旧二进制只在用户明确清理时处理。
+- API/native的电脑任务先通过list_skills/read_skill读取插件自带boai-agent-desktop，再发现inspect_desktop_plugin/call_desktop_plugin，运行时读取agent-desktop自带desktop/platform技能。boai-screenshot保留独立截图、缩图及交付职责，应用操作转此插件。
+- 插件停用或不可用时报告状态，不回退旧MCP；原生Agent自身循环及记忆保持。
+
+本轮验证和个人配置清理结果在文末记录。
 
 ## 使用
 
@@ -17,7 +27,7 @@
 
 ## 接线
 
-应用清单新增默认关闭的desktop-tools贡献`boai.desktop.agent-desktop`，沿原插件启停文件与CAS配置。独立包`packages/desktop-plugin`直接固定依赖`agent-desktop@1.1.0`，不维护OS自动化实现。官方npm包内本机二进制与helper复制至版本化私有目录；首版不要求用户安装全局CLI。
+应用清单提供默认启用（原试用版默认关闭）的desktop-tools贡献`boai.desktop.agent-desktop`，沿原插件启停文件与CAS配置。独立包`packages/desktop-plugin`直接固定依赖`agent-desktop@1.1.0`，不维护OS自动化实现。官方npm包内本机二进制与helper复制至版本化私有目录；首版不要求用户安装全局CLI。
 
 API/Mastra和原生员工共用inspect_desktop_plugin/call_desktop_plugin，原生Agent循环、会话、模型和工具保持原生。员工只读权限禁止写操作，请求审批模式沿已有审批卡。未配置整体权限的旧员工写入也须明确批准。插件开关不自动修改员工权限。
 
@@ -27,7 +37,7 @@ API/Mastra和原生员工共用inspect_desktop_plugin/call_desktop_plugin，原�
 
 ## 验证与交付状态
 
-实现包含默认关闭、启停/CAS、权限拒绝、前台模式与参数防覆盖、会话引用隔离、取消后迟到结果拒绝、真实图片转换及API/native共享桥检查。实际执行结果在本节追加。用户日常应用操作和效果比较尚未验收，旧computer use退役不属于本轮。
+实现包含默认关闭、启停/CAS、权限拒绝、前台模式与参数防覆盖、会话引用隔离、取消后迟到结果拒绝、真实图片转换及API/native共享桥检查。实际执行结果在本节追加。用户日常应用操作和效果比较尚未验收；以下为最初试用接入结果，正式退役按上方合同及文末进度。
 
 ### 本轮实际结果
 
@@ -36,4 +46,22 @@ API/Mastra和原生员工共用inspect_desktop_plugin/call_desktop_plugin，原�
 - 使用正式npm包中真实macOS arm64原生程序，通过BOAI适配器读取version、内置desktop技能和status：程序1.1.0、JSON协议2.6，技能正文6997字符。状态返回辅助功能和屏幕录制denied，Automation unknown；未替用户授权，未读取应用内容或截图。
 - 未调用真实模型或操作用户应用；未验证个人安装版授权、安装包分发、Windows/Linux、实际界面视觉与日常效果。用户仍需在试用窗口启用插件并按实际缺失权限授权，之后自己评价效果。
 
-隔离试用已启动：worktree `boai-agent-desktop-plugin`，分支 `feat/agent-desktop-plugin-20261103`，数据目录 `.local/dev-profile`；开发窗口有独立配置，未复制个人聊天/模型凭据。为用户试用保留此目录及预览进程；本轮按试用交付Draft，不合main、不发安装包。
+隔离试用已启动：worktree `boai-agent-desktop-plugin`，分支 `feat/agent-desktop-plugin-20261103`，数据目录 `.local/dev-profile`；开发窗口有独立配置，未复制个人聊天/模型凭据。为用户试用保留此目录及预览进程；该段记录最初试用交付；后续用户git cpf已将PR #95合入main（ecfa74c0），试用进程及数据继续保留；未发布安装包。
+
+## 2026-11-03正式切换实际进度
+
+- 已实现源码移除、默认提供方切换、标准旧连接与技能的升级清理、旧种子续接，以及评估/截图文档指向更新。
+- 定向测试覆盖默认提供方/显式停用、配置损坏、原来源删除、绑定资源清理、正文及附带文件定制保留、旧种子续接；另有数据源、应用协议和真实进程边界检查。共9个相关测试文件303项通过（29项插件/技能/清单，64项数据源/应用协议/进程边界，210项真实Mastra SDK/原生工具桥）。
+- typecheck（含workspace边界）、全量UI lint/字体规范、完整Electron构建通过。首轮新增测试夹具漏传config/UUID，第二轮漏传guide，按真实schema修正后通过；补充附带文件定制检查时误改旧夹具变量，恢复原断言后11项技能集成及typecheck再次通过；原产品约束未放宽。
+- 本人当前配置：旧MCP连接已沿sources.delete移除；Bobo旧技能已沿employees.update解绑；全局旧技能源沿skills.delete移出目录，Claude指向该目录的旧快捷链接也已核源移除；main生成目录中的旧技能及受管旧程序已核源归档。刷新目录后无全局/内置旧技能，所有员工均不绑定旧资源。原始资源记录及未绑定副本待加载新版时由升级清理完成，不声称当前旧进程已加载新代码。
+- boai-screenshot全局正文与Bobo副本均为原版，已沿原save/checkUpdate/update的hash、版本和回执流程更新并读回验证；独立截图/缩图能力保留。
+- 清理与恢复证据保存在本人应用数据目录的retired/computer-use-1793691477378/；原二进制只移出使用路径，未更改系统权限。Agent Desktop在本人的持久设置中本来已开启，未更改已保存的选择。
+- 未调用真实模型或操作用户桌面；日常成功率、个人安装版授权、跨平台与正式安装包分发未验收。本轮沿普通PR/自动合并流程，不复用上轮git cpf授权。
+
+## 2026-11-03插件技能入口补充
+
+用户要求与其他BOAI系统功能一样，提供明确的boai-xxxx技能入口。因此增加插件拥有的boai-agent-desktop：插件开启时所有员工（包括未绑定技能的旧员工）可由现有list_skills/read_skill发现和读取；停用后从列表消失，持有旧resourceId的读取也会拒绝。重新启用复用稳定身份，不创建skills安装记录、员工副本或配置版本更新。
+
+该技能只说明任务匹配、BOAI工具发现、上游文档加载和结果核验；原生命令细节仍读取固定agent-desktop版本自带的desktop/platform技能。插件技能源返回source/pluginId及正文hash，不伪造员工目录。正文随CLI/worker产物分发至dist/skills，按运行时位置读取，不依赖开发机源目录；开发/评估bundle可沿包的公开入口解析源资源。原生Agent保留自己的循环、会话、权限和记忆。
+
+本轮检查包括动态启停/取消/零进程读取、真实AppService中新员工绑定快照隔离、实际Mastra SDK及native桥读取同一正文。最初回归发现旧测试仍要求电脑技能文件存在且零绑定即零技能入口，已按新合同改为验证退役文件缺失、新绑定仍须下轮可见、当前插件指南可独立读取；未删除原权限/取消/绑定约束。5个相关测试文件249项通过，包含真实SDK/原生桥、动态启停与绑定隔离；typecheck（含workspace边界）、UI lint及完整Electron构建通过。补查BDD直接源码加载时发现raw Markdown导入不兼容，已改成源码/随包相对资源读取；BDD生成通过。实际检查开发bundle和移到仓库外的运行时/技能资源均读到相同完整正文，随包文件与源文件逐字节一致。未调用真实模型或操作桌面，不将确定性工具桥检查当作真实任务成功率提升。
