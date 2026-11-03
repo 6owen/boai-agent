@@ -1,5 +1,4 @@
 /*
- * [OUTPUT]: Markdown技能原文在构建时嵌入，开发raw读取与宿主产物无路径依赖。
  * [INPUT]: Current worktree package manifests and their explicit public exports.
  * [OUTPUT]: Source aliases for app/test builds; workspace packages stay local even when third-party packages are external.
  * [POS]: Shared workspace resolution; importing this module does not compile or start an application.
@@ -49,5 +48,5 @@ export function workspaceViteAliases(root = workspaceRoot) {
 /** Aliases are applied before packages:external, so only third-party dependencies remain external. */
 export async function buildWorkspace({ workspaceRoot: root = workspaceRoot, ...options }) {
   const { build } = await import('esbuild')
-  return build({ ...options, loader: { '.md': 'text', ...options.loader }, alias: { ...workspaceAliases(root), ...options.alias } })
+  return build({ ...options, alias: { ...workspaceAliases(root), ...options.alias } })
 }

@@ -62,6 +62,6 @@ API/Mastra和原生员工共用inspect_desktop_plugin/call_desktop_plugin，原�
 
 用户要求与其他BOAI系统功能一样，提供明确的boai-xxxx技能入口。因此增加插件拥有的boai-agent-desktop：插件开启时所有员工（包括未绑定技能的旧员工）可由现有list_skills/read_skill发现和读取；停用后从列表消失，持有旧resourceId的读取也会拒绝。重新启用复用稳定身份，不创建skills安装记录、员工副本或配置版本更新。
 
-该技能只说明任务匹配、BOAI工具发现、上游文档加载和结果核验；原生命令细节仍读取固定agent-desktop版本自带的desktop/platform技能。插件技能源返回source/pluginId及正文hash，不伪造员工目录。正文在构建时嵌入CLI/worker运行时产物，不依赖开发机源目录。原生Agent保留自己的循环、会话、权限和记忆。
+该技能只说明任务匹配、BOAI工具发现、上游文档加载和结果核验；原生命令细节仍读取固定agent-desktop版本自带的desktop/platform技能。插件技能源返回source/pluginId及正文hash，不伪造员工目录。正文随CLI/worker产物分发至dist/skills，按运行时位置读取，不依赖开发机源目录；开发/评估bundle可沿包的公开入口解析源资源。原生Agent保留自己的循环、会话、权限和记忆。
 
-本轮检查包括动态启停/取消/零进程读取、真实AppService中新员工绑定快照隔离、实际Mastra SDK及native桥读取同一正文。最初回归发现旧测试仍要求电脑技能文件存在且零绑定即零技能入口，已按新合同改为验证退役文件缺失、新绑定仍须下轮可见、当前插件指南可独立读取；未删除原权限/取消/绑定约束。5个相关测试文件249项通过，包含真实SDK/原生桥、动态启停与绑定隔离；typecheck（含workspace边界）、UI lint及完整Electron构建通过。直接以公开skill入口构建可重定位模块并读取到完整正文；CLI和worker产物中也核对到嵌入的正文。未调用真实模型或操作桌面，不将确定性工具桥检查当作真实任务成功率提升。
+本轮检查包括动态启停/取消/零进程读取、真实AppService中新员工绑定快照隔离、实际Mastra SDK及native桥读取同一正文。最初回归发现旧测试仍要求电脑技能文件存在且零绑定即零技能入口，已按新合同改为验证退役文件缺失、新绑定仍须下轮可见、当前插件指南可独立读取；未删除原权限/取消/绑定约束。5个相关测试文件249项通过，包含真实SDK/原生桥、动态启停与绑定隔离；typecheck（含workspace边界）、UI lint及完整Electron构建通过。补查BDD直接源码加载时发现raw Markdown导入不兼容，已改成源码/随包相对资源读取；BDD生成通过。实际检查开发bundle和移到仓库外的运行时/技能资源均读到相同完整正文，随包文件与源文件逐字节一致。未调用真实模型或操作桌面，不将确定性工具桥检查当作真实任务成功率提升。

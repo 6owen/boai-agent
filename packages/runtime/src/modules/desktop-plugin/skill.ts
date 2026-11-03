@@ -1,5 +1,5 @@
 /*
- * [INPUT]: The desktop plugin's bundled guide and shared skill document parser.
+ * [INPUT]: The desktop plugin's shipped guide and shared skill document parser.
  * [OUTPUT]: Stable plugin skill identity and the hash of its actual Markdown bytes.
  * [POS]: Runtime-only plugin skill descriptor; never persisted as an employee resource.
  * [PROTOCOL]: Update Header and desktop-plugin/.folder.md on change.
