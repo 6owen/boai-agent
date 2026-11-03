@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 单次日程共用确定性本地时间解析、预览和目标时刻匹配；cron仅为唯一原生时钟的内部映射。
  * [OUTPUT]: 同员工/群成员任务互斥与持久FIFO顺序；等待输入释放计算槽，原生执行循环保持。
  * [OUTPUT]: 取消自动化固定执行时限；旧时间预算取消仅由本人显式继续恢复，原occurrence、预算计账、容量与人工停止门禁保持。
  * [OUTPUT]: 手动无时钟、小时按分钟、月按日期及开始日期共用预览与真实触发校验。
@@ -10,6 +11,7 @@
 import { createHash } from 'node:crypto'
 import { Cron } from 'croner'
 import { z } from 'zod'
+import { ScheduleError, scheduleInstant } from '@boai/shared/domain/schedules'
 import type { AutomationDefinition, AutomationInput, AutomationOccurrence, OccurrenceStatus } from '@boai/shared/domain/automations'
 
 export const AUTOMATION_MISFIRE_MS = 10 * 60_000
@@ -25,8 +27,13 @@ export function queuedOrder(a: AutomationOccurrence, b: AutomationOccurrence) {
 }
 const hash = (...parts: (string | number)[]) => createHash('sha256').update(JSON.stringify(parts)).digest('hex')
 
-export const scheduleSchema = z.object({ frequency: z.enum(['manual', 'hourly', 'daily', 'weekly', 'monthly']), startsOn: z.iso.date().optional(), dayOfMonth: z.number().int().min(1).max(31).optional(), time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, '请填写有效的执行时间'), weekday: z.number().int().min(0).max(6), daysOfWeek: z.array(z.number().int().min(0).max(6)).min(1, '请至少选择一个星期').max(7).optional(), timezone: z.string().min(1).max(100).refine(t => { try { new Intl.DateTimeFormat('en', { timeZone: t }); return true } catch { return false } }, '无效 IANA 时区') }).strict()
-type Schedule = Pick<AutomationInput, 'time' | 'frequency' | 'weekday' | 'daysOfWeek' | 'timezone' | 'startsOn' | 'dayOfMonth'>
+export const scheduleSchema = z.object({ frequency: z.enum(['manual', 'once', 'hourly', 'daily', 'weekly', 'monthly']), onceAt: z.iso.datetime().optional(), startsOn: z.iso.date().optional(), dayOfMonth: z.number().int().min(1).max(31).optional(), time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, '请填写有效的执行时间'), weekday: z.number().int().min(0).max(6), daysOfWeek: z.array(z.number().int().min(0).max(6)).min(1, '请至少选择一个星期').max(7).optional(), timezone: z.string().min(1).max(100).refine(t => { try { new Intl.DateTimeFormat('en', { timeZone: t }); return true } catch { return false } }, '无效 IANA 时区') }).strict()
+type Schedule = Pick<AutomationInput, 'time' | 'frequency' | 'weekday' | 'daysOfWeek' | 'timezone' | 'startsOn' | 'dayOfMonth' | 'onceAt'>
+export function normalizeSchedule<T extends Schedule>(input: T): T {
+  if (input.frequency !== 'once') return { ...input, onceAt: undefined }
+  if (!input.startsOn) throw new ScheduleError('MISSING_FIELD', '单次定时请填写执行日期。', ['trigger.date'])
+  return { ...input, onceAt: new Date(scheduleInstant(input.startsOn, input.time, input.timezone)).toISOString() }
+}
 export function scheduleDays(input: Pick<AutomationInput, 'frequency' | 'weekday' | 'daysOfWeek'>) {
   return input.frequency !== 'weekly' ? [0, 1, 2, 3, 4, 5, 6] : [...new Set(input.daysOfWeek ?? [input.weekday])].sort((a, b) => a - b)
 }
@@ -35,6 +42,11 @@ export function automationCron(input: Pick<Schedule, 'time' | 'frequency' | 'wee
   const [hour, minute] = input.time.split(':').map(Number)
   if (input.frequency === 'hourly') return `${minute} * * * *`
   if (input.frequency === 'monthly') return `${minute} ${hour} ${input.dayOfMonth ?? Number(input.startsOn?.slice(8) ?? 1)} * *`
+  if (input.frequency === 'once') {
+    if (!input.startsOn) throw new ScheduleError('MISSING_FIELD', '单次定时请填写执行日期。', ['trigger.date'])
+    // The installed Mastra scheduler/Croner accepts seven parts, including the explicit year.
+    return `0 ${minute} ${hour} ${Number(input.startsOn.slice(8))} ${Number(input.startsOn.slice(5, 7))} * ${Number(input.startsOn.slice(0, 4))}`
+  }
   return `${minute} ${hour} * * ${input.frequency === 'daily' ? '*' : scheduleDays(input).join(',')}`
 }
 
@@ -46,6 +58,7 @@ export function calendarSlot(time: number, timezone: string) {
 
 export function matchesSchedule(d: Schedule, time: number) {
   if (d.frequency === 'manual') return false
+  if (d.frequency === 'once') return Date.parse(d.onceAt ?? '') === time
   const slot = calendarSlot(time, d.timezone)
   if (d.startsOn && slot.slice(0, 10) < d.startsOn) return false
   if (d.frequency === 'hourly') return slot.slice(-2) === d.time.slice(-2)
@@ -53,8 +66,12 @@ export function matchesSchedule(d: Schedule, time: number) {
   return slot.endsWith(d.time) && scheduleDays(d).includes(new Date(`${slot.slice(0, 10)}T00:00:00Z`).getUTCDay())
 }
 
-export function nextTimes(d: Schedule & Pick<AutomationDefinition, 'cron'>, count = 5, after = new Date()) {
+export function nextTimes(d: Schedule & Pick<AutomationDefinition, 'cron'> & { onceConsumedAt?: string }, count = 5, after = new Date()) {
   if (d.frequency === 'manual') return []
+  if (d.frequency === 'once') {
+    const at = Date.parse(d.onceAt ?? '')
+    return !d.onceConsumedAt && at > after.getTime() && count > 0 ? [new Date(at).toISOString()] : []
+  }
   const cron = new Cron(d.cron, { timezone: d.timezone, paused: true }), slots = new Set<string>(), result: string[] = []
   // Start at a safe UTC lower bound for the requested local date, including UTC+14.
   let previous = d.startsOn ? new Date(Math.max(after.getTime(), Date.parse(d.startsOn + 'T00:00:00Z') - 14 * 3600_000 - 1)) : after

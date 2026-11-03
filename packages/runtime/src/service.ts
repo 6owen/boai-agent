@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 定时工具与旧页面通过ScheduleApi共用领域校验/保存，bobo默认自身执行；重复无进展按原来源退出，不限制正常长任务。
  * [OUTPUT]: 插件技能读取沿当前执行身份核验和动态启停，已有员工自动获得可用入口。
  * [OUTPUT]: 2026-11-03在默认技能初始化前退役标准computer-use-mcp来源和未改动旧技能，保留定制副本。
  * [OUTPUT]: Bobo原文工具复用官方记忆来源授权/遗忘并在服务临界区查询现有SQLite，一次返回原文及邻近消息。
@@ -200,6 +201,8 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { EmployeeTaskService } from './modules/automations/employee-task-service'
+import { ScheduleApi } from './modules/automations/schedule-api'
+import { ScheduleError } from '@boai/shared/domain/schedules'
 import { employeeTaskInstructions, employeeTaskOperations } from './modules/employees/employee-task-context'
 import { isEmployeeTaskAssignment, type TrackedTask } from '@boai/shared/domain/tracked-tasks'
 import { workingScene } from './modules/contexts/working-scene'
@@ -495,6 +498,7 @@ export class AppService {
   private readonly selfies: SelfieService
   private employeeTasks!: EmployeeTaskService
   private readonly automations: AutomationService
+  private readonly schedules: ScheduleApi
   readonly runtimePlugins: RuntimePlugins
   private readonly pluginEngines = new Map<string, PluginEmployeeEngine>()
   private readonly codexEngine: CodexEmployeeEngine
@@ -601,7 +605,7 @@ export class AppService {
       if (!isAbsolute(path)) fail('预览目录必须是绝对路径')
       if (!directory && !write) return path
       return realpath(path)
-    }, scope => this.emit({ type: 'workspace:show', ...scope }), () => !!options.applicationHost?.available), ...this.presentations.operations(), ...this.images.operations(), ...this.selfies.operations(), ...taskOperations(this.store, room => { this.conversations.set(room.id, room) }), ...planningOperations(this.store), ...planOperations(this.store), ...referenceOperations(this.store, (...args) => this.serialize(() => this.referenceObjects(...args))), ...applicationOperations({ request: async (method, input) => await this.handle(method, input) as never, personality: (action, input) => this.agentPersonality(action, input) }, { connection: connectionSchema, conversation: conversationSchema, search: searchSchema }, options.applicationHost)], async (actor, operation) => {
+    }, scope => this.emit({ type: 'workspace:show', ...scope }), () => !!options.applicationHost?.available), ...this.presentations.operations(), ...this.images.operations(), ...this.selfies.operations(), ...taskOperations(this.store, room => { this.conversations.set(room.id, room) }), ...planningOperations(this.store), ...planOperations(this.store), ...referenceOperations(this.store, (...args) => this.serialize(() => this.referenceObjects(...args))), ...applicationOperations({ schedules: () => this.schedules, request: async (method, input) => await this.handle(method, input) as never, personality: (action, input) => this.agentPersonality(action, input) }, { connection: connectionSchema, conversation: conversationSchema, search: searchSchema }, options.applicationHost)], async (actor, operation) => {
       if (actor.kind === 'owner') return
       if (actor.kind === 'behavior') {
         const { run, behavior } = await this.agentBehaviors.assertActive(actor.behaviorRunId)
@@ -618,6 +622,9 @@ export class AppService {
         }
       }
       if (!isCoreAgent(agent) || room.channel || !room.agentIds.includes(agent.id) || source?.conversationId !== room.id || source.senderType !== 'user' || source.senderId !== 'user' || source.channel || source.origin) fail('此应用管理操作需要本人或当前核心员工的真实会话授权')
+    }, actor => {
+      if (actor.kind !== 'employee') return
+      for (const run of this.runs.values()) if (run.phase === 'execution' && run.agentId === actor.employeeId && run.conversationId === actor.conversationId && run.triggerMessageId === actor.messageId) this.runControllers.get(run.id)?.abort(new Error('定时任务操作连续重复且没有新进展，已停止本轮尝试；请核对原回执或补充缺失参数。'))
     })
     this.gatewayCatalogs = new GatewayCatalogStore(this.store)
     this.commandPermissions = new CommandPermissions(this.store)
@@ -847,6 +854,19 @@ export class AppService {
       inspect: occurrence => this.inspectAutomation(occurrence), cancel: (occurrence, options) => this.cancelAutomation(occurrence, options?.endWaiting),
       capacityAvailable: () => { for (const id of this.conversations.keys()) this.scheduleWork(id) },
       changed:()=>this.emit({type:'changed'}),notify:()=>this.emit({type:'automation:notice'}),
+    })
+    this.schedules = new ScheduleApi(this.store, this.automations, {
+      validate: async () => { if (this.closing || this.backingUp) fail('服务正在退出或备份'); await this.applicationAuthority.getStore()?.validate() },
+      prepareEmployee: async id => {
+        const agent = this.getAgent(id)
+        if (!isNativeBackend(agent.executionBackend)) {
+          const connection = id === CORE_AGENT_ID && !agent.connectionId
+            ? [...this.connections.values()].find(value => value.defaultModel.trim() && (value.provider !== 'openai-compatible' || value.baseUrl.trim()))
+            : this.connections.get(agent.connectionId)
+          if (!connection || !agent.modelId && !connection.defaultModel) throw new ScheduleError('MISSING_FIELD', '执行员工尚未配置可用模型，请先在设置中配置模型连接。', ['employeeId'])
+        }
+        if (id === CORE_AGENT_ID) await this.ensureCoreConnection()
+      },
     })
     this.channels = new EmployeeChannels(this.store, options.secrets, options.channelTransport ?? channelTransportFactory(this.dataPath, options.secrets), {
       critical: operation => this.serialize(() => { if (this.closing || this.backingUp) fail('服务正在退出或备份'); return operation() }),
@@ -1308,7 +1328,7 @@ export class AppService {
     if(method==='listOwnerAutomations')return this.automations.list(automationListSchema.parse(input))
     if(method==='listAutomationHistory')return this.automations.history(input)
     if(method==='getAutomationOccurrence')return this.automations.occurrence(lookupSchema.parse(input).id)
-    if(method==='saveAutomation')return this.automations.save(automationInputSchema.parse(input))
+    if(method==='saveAutomation')return this.schedules.saveLegacy(automationInputSchema.parse(input))
     if(method==='generateAutomationDraft')return this.generateAutomationDraft(input)
     if(method==='getAutomationCreation')return this.automations.creation(z.object({requestId:id}).strict().parse(input).requestId)
     if(method==='resumeAutomation')return this.automations.resumePlan(lookupSchema.parse(input).id)
@@ -1423,7 +1443,7 @@ export class AppService {
         case 'saveLaunchProfile': { const value=profileSchema.parse(input);const existing=!value.id&&value.localConfigId?this.profiles.list().find(p=>p.localConfigId===value.localConfigId&&(p.protocol??'acp')===(value.protocol??'acp')):undefined;if(existing)return existing;const p=await this.profiles.save(value);for(const a of this.employees.values())if(a.executionBackend&&a.executionBackend.kind!=='mastra-model'&&a.executionBackend.profileId===p.id)await this.cancelEmployee(a.id,'外部启动配置已更新');this.changed();return p }
         case 'getExternalTaskReceipt': { const value = z.object({ conversationId: id, requestId: id }).strict().parse(input); return this.externalTaskReceipt(value.conversationId, value.requestId) }
         case 'sendExternalTask': return this.sendExternalTask(z.object({conversationId:id,content:text(100000),requestId:id}).strict().parse(input))
-        case 'snapshot': z.undefined().parse(input); return this.snapshot()
+        case 'snapshot': z.undefined().parse(input); this.automations.observe(); return this.snapshot()
         case 'updateUserProfile': { const profile = await this.userProfile.update(input as import('@boai/shared/domain/profile').UserProfileInput); this.changed(); return profile }
         case 'getProfileActivity': return this.userProfile.activity(input)
         case 'saveAgent': {
@@ -4856,7 +4876,7 @@ export class AppService {
           const current = this.getConversation(conversation.id), employee = this.getAgent(run.agentId), original = this.messages.get(source.id)
           if (this.closing || this.backingUp || terminal.has(run.status) || this.clearingConversations.has(conversation.id) || current.configVersion !== conversation.configVersion || employee.configVersion !== context.agent.configVersion || !employee.active || !current.agentIds.includes(employee.id) || original?.senderId !== 'user' || original.channel || original.origin) fail('当前用户消息或员工/群授权已失效，不能管理计划')
           await this.assertMaterialRefs(context)
-        } })
+        } }, this.schedules.saveLegacy.bind(this.schedules))
         context.manageAutomation = async input => {
           if (input.action !== 'list' && input.action !== 'get') await authorizeExecution(context, { kind: 'configuration', description: `管理定时任务：${input.action}` })
           return manageAutomation(input)

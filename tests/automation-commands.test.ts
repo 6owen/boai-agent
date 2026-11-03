@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 专用兼容入口也允许bobo作为执行员工，保留固定归属及稳定回执断言；本轮未运行。
  * [OUTPUT]: 五状态独立任务会话、原计划授权/工具schema与稳定消息回执按最新用户合同验证。
  * [OUTPUT]: 员工默认计划绑定主会话，bobo创建来源仍独立保留。
  * [OUTPUT]: 群模型夹具在本人已回复后明确pass，避免无默认上限下无限互相回复；原计划纠错/幂等断言保持。
@@ -150,7 +151,7 @@ it('lets only dedicated bobo creation chats save a chosen employee plan with the
     expect(ctx.conversation.automationCreation).toBe(true)
     expect(ctx.manageAutomation).toBeTypeOf('function')
     await expect(ctx.manageAutomation!({ action: 'save', key: 'missing', plan })).rejects.toThrow('请选择')
-    await expect(ctx.manageAutomation!({ action: 'save', key: 'self', employeeId: 'bobo', plan })).rejects.toThrow('请选择')
+    expect(await ctx.manageAutomation!({ action: 'save', key: 'self', employeeId: 'bobo', plan })).toMatchObject({ owner: { kind: 'employee', employeeId: 'bobo' } })
     saved = await ctx.manageAutomation!({ action: 'save', key: 'monthly', employeeId: 'researcher', plan: { ...plan, frequency: 'monthly', dayOfMonth: 15, startsOn: '2027-01-01', description: '月度计划' } }) as AutomationDefinition
     expect(await ctx.manageAutomation!({ action: 'save', key: 'monthly', employeeId: 'researcher', plan: { ...plan, frequency: 'monthly', dayOfMonth: 15, startsOn: '2027-01-01', description: '月度计划' } })).toMatchObject({ id: saved.id, revision: 1 })
   })

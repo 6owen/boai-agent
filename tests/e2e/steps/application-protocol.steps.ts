@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: CLI定时创建使用公共instruction/trigger契约，保持原产品服务及回执验证。
  * [INPUT]: Real isolated Electron/pnpm dev and built CLI with no external model requests.
  * [OUTPUT]: Default model/persona UI, CLI group/schedule/theme and restart receipt evidence.
  * [POS]: Application protocol desktop integration; does not certify real model reasoning.
@@ -56,7 +57,7 @@ Then('CLI可以创建群和定时计划并更新同一桌面主题', async ({ ru
   business.group = await call('groups.create', { title: '协议验收群', agentIds: [business.employee!.id, 'researcher'] }, 'cli-group')
   expect(business.group.status).toBe('succeeded')
   expect(await call('groups.create', { title: '协议验收群', agentIds: [business.employee!.id, 'researcher'] }, 'cli-group')).toEqual(business.group)
-  expect(await call('automations.create', { name: '九点观察', prompt: '整理行业动态', owner: { kind: 'employee', employeeId: business.employee!.id }, frequency: 'daily', time: '09:00', weekday: 1, timezone: 'Asia/Shanghai', enabled: false, notify: false }, 'cli-plan')).toMatchObject({ status: 'succeeded' })
+  expect(await call('automations.create', { name: '九点观察', instruction: '整理行业动态', employeeId: business.employee!.id, trigger: { kind: 'daily', time: '09:00', timezone: 'Asia/Shanghai' }, enabled: false, notification: 'muted' }, 'cli-plan')).toMatchObject({ status: 'succeeded' })
   const appearance = await runtime.page.evaluate(() => window.boai.request('getAppearance', undefined))
   expect(await call('appearance.update', { patch: { mode: 'dark' }, expectedRevision: appearance.revision }, 'cli-theme')).toMatchObject({ status: 'succeeded', data: { preferences: { mode: 'dark' } } })
   await expect.poll(() => runtime.page.evaluate(async () => (await window.boai.request('getAppearance', undefined)).resolvedMode)).toBe('dark')

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 单次日期/时间沿原编辑器保存和预览，已保存时区保持；bobo可作为执行员工，消费后的计划仍可编辑说明。
  * [OUTPUT]: 普通任务固定员工和手动模式，定时编辑保持原表单。
  * [OUTPUT]: 普通任务默认手动执行、独立草稿回执；保存后由用户加入员工队列。
  * [OUTPUT]: 全局编辑允许更换单员工任务的执行员工，归属与名单同次保存，沿原版本核验更新授权。
@@ -69,7 +70,7 @@ function AutomationEditor({ api, snapshot, definition, owner, mode = 'manual', h
     conversationPolicy: definition?.conversationPolicy ?? (mode === 'monitor' ? 'existing-conversation' : 'new-conversation'), conversationId: definition?.conversationId, employeeIds: definition?.employeeIds ?? (owner?.kind === 'employee' ? [owner.employeeId] : undefined),
     frequency: definition?.frequency ?? (mode === 'task' ? 'manual' : 'daily'), time: definition?.time ?? '09:00', weekday: definition?.weekday ?? 1,
     daysOfWeek: definition?.frequency === 'weekly' ? definition.daysOfWeek ?? [definition.weekday] : [0, 1, 2, 3, 4, 5, 6],
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, enabled: definition?.enabled ?? true, notify: definition?.notify ?? true, notificationPolicy: definition?.notificationPolicy ?? (definition ? definition.notify ? 'all_results' : 'muted' : 'important_only') }))
+    timezone: definition?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone, enabled: definition?.enabled ?? true, notify: definition?.notify ?? true, notificationPolicy: definition?.notificationPolicy ?? (definition ? definition.notify ? 'all_results' : 'muted' : 'all_results') }))
   const [monitorOpen, setMonitorOpen] = useState(mode === 'monitor')
   const [unknown, setUnknown] = useState(!!pending)
   const [profiles, setProfiles] = useState<LaunchProfile[]>([])
@@ -101,7 +102,7 @@ function AutomationEditor({ api, snapshot, definition, owner, mode = 'manual', h
     return () => { live = false; clearTimeout(timer) }
   }, [api, form.frequency, form.time, form.weekday, daysKey, form.timezone, form.startsOn, form.dayOfMonth])
   const eligible = (id: string) => {
-    const a = snapshot.agents.find(a => a.id === id), c = snapshot.connections.find(c => c.id === a?.connectionId)
+    const a = snapshot.agents.find(a => a.id === id), c = snapshot.connections.find(c => c.id === a?.connectionId) ?? (isCoreAgent(a) ? snapshot.connections.find(c => c.defaultModel.trim() && (c.provider !== 'openai-compatible' || c.baseUrl.trim())) : undefined)
     if (!a?.active || a.executionBackend?.kind === 'acp-local') return false
     if (isNativeBackend(a.executionBackend)) {
       const { profileId, kind } = a.executionBackend
@@ -113,7 +114,8 @@ function AutomationEditor({ api, snapshot, definition, owner, mode = 'manual', h
   const conversation = snapshot.conversations.find(c => c.id === form.conversationId)
   const memberIds = form.conversationPolicy === 'new-conversation' ? form.employeeIds ?? [] : conversation?.agentIds ?? []
   const validTarget = memberIds.length > 0 && memberIds.every(eligible) && (!form.collaboration || form.collaboration.assignments.length >= 2 && form.collaboration.assignments.every(a => a.instruction.trim() && a.deliverable.trim()))
-  const valid = !!form.name.trim() && !!form.prompt.trim() && validTarget && (form.taskKind !== 'monitor' || validMonitorPolicy(form.monitor)) && (form.frequency === 'manual' || preview.nextTimes.length > 0) && !preview.error && preview.timezone === form.timezone && !preview.pending
+  const unchangedOnce = definition?.frequency === 'once' && form.frequency === 'once' && definition.startsOn === form.startsOn && definition.time === form.time && definition.timezone === form.timezone
+  const valid = !!form.name.trim() && !!form.prompt.trim() && validTarget && (form.taskKind !== 'monitor' || validMonitorPolicy(form.monitor)) && (form.frequency === 'manual' || unchangedOnce || preview.nextTimes.length > 0) && !preview.error && preview.timezone === form.timezone && !preview.pending
   const finish = (value: AutomationDefinition) => { if (!definition) localStorage.removeItem(pendingKey); setUnknown(false); version.current = value.revision; clean(); onSaved(value, !definition); guard.saved() }
   const queryReceipt = async () => { const receipt = await api.request('getAutomationCreation', { requestId: draftId }); if (receipt) finish(receipt); else { setUnknown(false); localStorage.removeItem(pendingKey) } }
   const targetLabel = form.owner ? `${automationOwnerLabel(form.owner, snapshot)} · ${form.conversationPolicy === 'new-conversation' ? '独立任务上下文' : '原聊天'}` : form.conversationPolicy === 'new-conversation' ? `任务上下文 · ${snapshot.agents.find(a => a.id === form.employeeIds?.[0])?.name ?? '选择员工'}` : conversation?.title ?? (form.conversationId ? '聊天已不可用' : '指定聊天')
@@ -140,12 +142,13 @@ function AutomationEditor({ api, snapshot, definition, owner, mode = 'manual', h
             <span className="schedule-frequency-title">频率</span>
             <div className="schedule-frequency-controls">
               <SelectField className="schedule-frequency-select h-(--control-height)" aria-label="频率" value={rule} onValueChange={value => {
-                const startsOn = value === 'monthly' ? form.startsOn ?? dateValue(new Date()) : undefined
+                const startsOn = value === 'monthly' || value === 'once' ? form.startsOn ?? dateValue(new Date()) : undefined
                 change({ frequency: value === 'workdays' ? 'weekly' : value as Form['frequency'], startsOn,
                   ...(value === 'monthly' ? { dayOfMonth: Number(startsOn!.slice(8)) } : {}),
                   time: value === 'hourly' ? '00:00' : form.frequency === 'hourly' ? '09:00' : form.time,
                   daysOfWeek: value === 'weekly' ? [form.weekday] : value === 'workdays' ? [1, 2, 3, 4, 5] : [0, 1, 2, 3, 4, 5, 6] })
-              }} options={[{ value: 'manual', label: '手动' }, { value: 'hourly', label: '每小时' }, { value: 'daily', label: '每天' }, { value: 'workdays', label: '工作日' }, { value: 'weekly', label: '每周' }, { value: 'monthly', label: '每月' }]} />
+              }} options={[{ value: 'manual', label: '手动' }, { value: 'once', label: '单次' }, { value: 'hourly', label: '每小时' }, { value: 'daily', label: '每天' }, { value: 'workdays', label: '工作日' }, { value: 'weekly', label: '每周' }, { value: 'monthly', label: '每月' }]} />
+              {form.frequency === 'once' && <Input className="schedule-date" type="date" aria-label="执行日期" required value={form.startsOn ?? ''} onChange={event => change({ startsOn: event.target.value || undefined })} />}
               {form.frequency === 'monthly' && <><span className="schedule-starts-on">开始于</span><Input className="schedule-date" type="date" aria-label="开始日期" required value={monthlyDate(form)} onChange={e => change({ startsOn: e.target.value || undefined, dayOfMonth: e.target.value ? Number(e.target.value.slice(8)) : undefined })} /></>}
               {!['manual', 'hourly'].includes(form.frequency) && <Input className="schedule-time" type="time" aria-label="执行时间" required value={form.time} onChange={e => change({ time: e.target.value })} />}
               {rule === 'weekly' && <SelectField className="schedule-weekday h-(--control-height)" aria-label="星期" value={multipleWeekdays ? form.daysOfWeek!.join(',') : String(form.weekday)} onValueChange={value => { if (!value.includes(',')) change({ weekday: Number(value), daysOfWeek: [Number(value)] }) }} options={[...(multipleWeekdays ? [{ value: form.daysOfWeek!.join(','), label: form.daysOfWeek!.map(day => `周${['日','一','二','三','四','五','六'][day]}`).join('、') }] : []), ...[0,1,2,3,4,5,6].map(day => ({ value: String(day), label: `星期${['日','一','二','三','四','五','六'][day]}` }))]} />}
@@ -153,7 +156,7 @@ function AutomationEditor({ api, snapshot, definition, owner, mode = 'manual', h
           </div>}
           {singleEmployeeTarget && <div className="schedule-employee-control">
             <span>执行员工</span>
-            <SelectField className="schedule-employee-select h-(--control-height)" aria-label="执行员工" value={form.employeeIds?.[0] ?? ''} disabled={!!owner} onValueChange={value => change({ owner: value ? { kind: 'employee', employeeId: value } : undefined, employeeIds: value ? [value] : undefined })} placeholder="从通讯录选择员工" options={snapshot.agents.filter(a => !isCoreAgent(a)).map(a => ({ value: a.id, label: a.name, disabled: !eligible(a.id) }))} />
+            <SelectField className="schedule-employee-select h-(--control-height)" aria-label="执行员工" value={form.employeeIds?.[0] ?? ''} disabled={!!owner} onValueChange={value => change({ owner: value ? { kind: 'employee', employeeId: value } : undefined, employeeIds: value ? [value] : undefined })} placeholder="从通讯录选择员工" options={snapshot.agents.map(a => ({ value: a.id, label: a.name, disabled: !eligible(a.id) }))} />
           </div>}
         </div>
         {preview.error && <Banner>{preview.error}</Banner>}

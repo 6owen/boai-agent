@@ -80,6 +80,11 @@
       "development": "./src/domain/automations.ts",
       "default": "./src/domain/automations.ts"
     },
+    "./domain/schedules": {
+      "types": "./src/domain/schedules.ts",
+      "development": "./src/domain/schedules.ts",
+      "default": "./src/domain/schedules.ts"
+    },
     "./domain/avatars": {
       "types": "./src/domain/avatars.ts",
       "development": "./src/domain/avatars.ts",

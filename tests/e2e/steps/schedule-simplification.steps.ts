@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 核心bobo可选为执行员工，单次新增日期/时间控件；原六种配置覆盖扩展为七种，本轮未运行。
  * [OUTPUT]: 对话创建转普通会话并预选管理标签，按原业务协议实际保存/编辑/重启零重放；本次未运行E2E。
  * [OUTPUT]: 手动新建/编辑保持Dialog；bobo对话创建进入会话页，原实际保存/重启零重放断言保持；本次不运行E2E。
  * [OUTPUT]: 详情配置Card沿真实编辑/暂停持久化流程核对；核对操作行实际高度/透明背景，保留宽窗与深色窄窗原生截图。
@@ -156,15 +157,16 @@ Then('六种频率显示各自配置且只选择单个员工', async ({ runtime,
   await create(page)
   await expect(page.getByRole('combobox', { name: '执行员工', exact: true })).toContainText('从通讯录选择员工')
   await page.getByRole('combobox', { name: '执行员工', exact: true }).click()
-  await expect(page.getByRole('option', { name: /群|bobo|从通讯录选择员工/ })).toHaveCount(0)
-  const employees = await page.evaluate(async () => (await window.boai.request('snapshot', undefined)).agents.filter(a => a.id !== 'bobo').map(a => a.name).sort())
+  await expect(page.getByRole('option', { name: /群|从通讯录选择员工/ })).toHaveCount(0)
+  const employees = await page.evaluate(async () => (await window.boai.request('snapshot', undefined)).agents.map(a => a.name).sort())
   expect((await page.getByRole('option').allTextContents()).sort()).toEqual(employees)
   await page.keyboard.press('Escape')
   await fill(page, '每月简报')
   await editor(page).getByText('频率', { exact: true }).click()
   await expect(editor(page).getByRole('combobox', { name: '频率', exact: true })).toHaveAttribute('aria-expanded', 'false')
-  for (const frequency of ['手动', '每小时', '每天', '工作日', '每周', '每月']) {
+  for (const frequency of ['手动', '单次', '每小时', '每天', '工作日', '每周', '每月']) {
     await choose(page, '频率', frequency)
+    await expect(editor(page).getByLabel('执行日期', { exact: true })).toHaveCount(frequency === '单次' ? 1 : 0)
     await expect(editor(page).getByLabel('开始日期', { exact: true })).toHaveCount(frequency === '每月' ? 1 : 0)
     await expect(editor(page).getByLabel('执行时间', { exact: true })).toHaveCount(['手动', '每小时'].includes(frequency) ? 0 : 1)
     await expect(editor(page).getByRole('combobox', { name: '每小时的第几分钟', exact: true })).toHaveCount(0)

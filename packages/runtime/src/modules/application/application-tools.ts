@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 定时指南使用公共trigger契约、当前员工/时区默认值和单次语义；未决写入只查原回执，明确时间不强制多步发现。
  * [OUTPUT]: tasks指南明确平级状态标签和会话创建补全，同一任务持续会话；人工委派与内部进度保持分层。
  * [OUTPUT]: 发现prompts增删改查并提供提示词/通讯录指南；技能标签沿当前授权业务协议执行。
  * [OUTPUT]: 发现持久终端、预览与桌面活动域；原应用回执与命令权限保持。
@@ -27,7 +28,7 @@ export function createApplicationTools(context: EngineContext) {
   const access = context.application
   return [
     { name: 'boai_catalog', description: 'Discover concise BOAI operation metadata by domain (employees/groups/connections/runtimes/sources/automations/sessions/tasks/planning/plans/refs/skills/prompts/appearance/plugins/knowledge/channels/webSearch/runtimePlugins/images/selfies/presentations/terminal/preview/workspace/activity/application). Pass an exact operation for its schemas; includeSchemas explicitly expands a list.', schema: applicationCatalogQuerySchema, execute: (input: unknown) => access.catalog(applicationCatalogQuerySchema.parse(input)) },
-    { name: 'boai_call', description: 'Call a discovered BOAI business operation. Writes require one stable requestId per intended change; current versions are required where specified. Returns succeeded/rejected/running/unknown. Configuration creates no model Work. Query an unknown original receipt instead of creating a new request.', schema: applicationRequestSchema, execute: (input: unknown) => access.call(applicationRequestSchema.parse(input)) },
+    { name: 'boai_call', description: 'Call a discovered BOAI business operation using its current catalog contract. Writes require one stable requestId per intended change; current object revisions are required where specified. Returns succeeded/rejected/running/unknown. Query an unknown original receipt instead of creating a new request.', schema: applicationRequestSchema.omit({ contractVersion: true }), execute: (input: unknown) => access.call(applicationRequestSchema.omit({ contractVersion: true }).parse(input)) },
     { name: 'boai_receipt', description: 'Read the original durable business-operation result by requestId in this user message, or the returned receiptId from an earlier turn in this same conversation; never executes or retries the action.', schema: applicationReceiptQuerySchema, execute: (input: unknown) => access.receipt(applicationReceiptQuerySchema.parse(input)) },
   ]
 }
@@ -47,7 +48,7 @@ export const applicationGuides = {
   employees: '读取 employees.presets 和 connections.list。简单创建只需 name，可填写 role；默认采用 bobo 当前 API 模型或唯一可用连接，多个候选且未选择时要明确询问。高级字段沿 employees.create/update 的准确 schema。人格使用 employees.readFile/writeFile 的 SOUL.md，工作规则使用 AGENTS.md，场景模块使用 prompts/*.md；保存需要文件 hash 和员工 configVersion。employees.profile/configure 管理独立人格版本、状态开关与行为计划；employees.state/updateState 管理持久状态；behaviorHistory/runBehavior/stopBehavior 管理真实行为记录和启停。配置启用行为会注册原时钟；立即执行需要独立 runBehavior 调用。',
   groups: '先 employees.list 取得真实成员 ID，再 groups.create。简单群只需要 title 和 agentIds；高级项包括 mode、teamSetup、sharedKnowledgeIds、memoryScope。员工人格独立；创建群不开始工作。创建团队并执行目标沿既有组织工具办理。',
   sources: '先读 sources 的实际 schema，区分 API/MCP/local。核实服务官方文档、连接地址、认证方式或明确目录；保存后再按用户任务调用 sources.test。保存不测试、不授权普通员工。bobo 已可使用全部启用源；其他员工以 sources.bind 按实际版本授权。网页检索使用独立 webSearch 域。',
-  automations: '先 employees.list/groups.list 取得实际 owner，必要时 automations.list 防止重复。收集名字、任务、频率、时间和 IANA 时区，调用 automations.preview 核对下一次时间，再 create。owner 为 employee 或 group；群需实际协作分工。单员工可用 new-conversation 策略。manual 不自动触发，hourly 使用 time 的分钟，monthly 使用 dayOfMonth。计划创建只配置未来执行；立即运行必须是用户当前意图并单独调用 automations.run。',
+  automations: '按当前目录的contractVersion和schema调用automations.create：input包含instruction、trigger及可选name/employeeId/enabled/notification。当前员工（包括bobo）和用户IANA时区可默认，目录context提供可信日期/时区，不必执行date或先列全部员工。一次提醒使用trigger={kind:"once",date:"YYYY-MM-DD",time:"HH:mm"}；没有明确几点且无已有约定时只补问时间，不能猜7点/8点，也不能用daily/weekly加自行删除模拟单次。每周用daysOfWeek（0周日至6周六），每小时用minute，每月用dayOfMonth；manual无日历触发。不要传purpose、owner、employeeIds、conversationPolicy、cron等内部字段。时间明确的创建只需一次写入，preview按需，成功回执已包含下一次时间。succeeded仅证明保存；activation=ready才表示调度生效，pending/failed如实说明。修改传id与expectedRevision及实际变更字段。unknown/running或UNRESOLVED_WRITE时仅用原receiptId核对，不换requestId、员工或时间重建；连续无进展应报告原因结束。只有用户明确要求才调用run；stop使用精确occurrenceId，删除未来计划不停止当前执行。旧群/监控/指定会话计划保留原定时页面兼容管理。',
   connections: '读取连接列表防止重复，按供应商协议和官方 endpoint 保存，凭据只来自用户明确提供。connections.create 只保存；connections.test 是可能计费的真实请求。更新先读 revision，不在正文复述密钥。',
   skills: '先查本地或市场，读技能说明、来源与预览；安装后查询 skills.operation，依据实际终态判断。技能方法不扩大当前用户授权。绑定需要 prepare plan、实际 contentHash 和员工版本；员工副本独立。修改共享源 skills.save 不会自动改员工副本。根据 employees.get 的 skillIds 与 skills.installations 的 localSkillId 找到准确副本，用 skills.boundDetail 核对正文和文件，再 skills.checkUpdate 生成所见计划，skills.update 显式更新并查询终态。未记录远程来源的绑定副本从原本机源检查；已有远程来源保持原远程更新。localModified 表示员工自定义，不得未获授权就 replaceLocalChanges；不存在或改名的源不能靠猜测换绑。',
 } as const

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 定时创建夹具使用独立instruction/trigger公共契约，旧内部owner/purpose不进入工具请求。
  * [OUTPUT]: 新增prompts域及同UI存储/版本/持久回执回归；公共目录明确核对28个域。
  * [OUTPUT]: 日期夹具只冻结Date，轮询沿真实计时；保留历史/追补精确时间断言，避免假时钟被poll推进。
  * [OUTPUT]: 公共目录固定核对28个明确业务域，包含memory.provider和prompts；不靠数量掩盖域替换，原拒绝/回执断言保持。
@@ -537,7 +538,7 @@ it('creates independent connection/employee/group/source/session/schedule with o
   const group = await f.call('groups.create', { title: '行业观察', agentIds: [agent.id, 'researcher'] }, 'group')
   expect(group).toMatchObject({ status: 'succeeded', data: { kind: 'group', title: '行业观察' } })
   expect(await f.call('sessions.create', { employeeId: agent.id }, 'session')).toMatchObject({ status: 'succeeded', data: { operation: 'create', employeeId: agent.id, state: 'completed' } })
-  expect(await f.call('automations.create', { name: '每日观察', prompt: '整理行业动态', owner: { kind: 'employee', employeeId: agent.id }, frequency: 'daily', time: '09:00', weekday: 1, timezone: 'Asia/Shanghai', enabled: false, notify: false }, 'schedule')).toMatchObject({ status: 'succeeded', data: { name: '每日观察', enabled: false } })
+  expect(await f.call('automations.create', { name: '每日观察', instruction: '整理行业动态', employeeId: agent.id, trigger: { kind: 'daily', time: '09:00', timezone: 'Asia/Shanghai' }, enabled: false, notification: 'muted' }, 'schedule')).toMatchObject({ status: 'succeeded', data: { name: '每日观察', enabled: false } })
   const source = await f.call('sources.create', { config: { type: 'local', name: '资料', description: '', guide: '', enabled: true, local: { path: f.root } } }, 'source')
   expect(source).toMatchObject({ status: 'succeeded', data: { type: 'local', name: '资料' } })
   const store = await ProductStore.openReadOnly(join(f.root, 'boai.sqlite')); cleanup.push(() => store.close())
@@ -611,7 +612,7 @@ it('runs real bobo host callbacks for independent employee and future schedule c
       expect(employee.status).toBe('succeeded')
       const receipt = await context.application.receipt({ receiptId: employee.receiptId! })
       expect(receipt).toEqual(employee)
-      const plan = await context.application.call({ operation: 'automations.create', input: { name: '九点研究', prompt: '整理行业动态', owner: { kind: 'employee', employeeId: (employee.data as DigitalAgent).id }, frequency: 'daily', time: '09:00', weekday: 1, timezone: 'Asia/Shanghai', enabled: false, notify: false }, requestId: 'plan' })
+      const plan = await context.application.call({ operation: 'automations.create', input: { name: '九点研究', instruction: '整理行业动态', employeeId: (employee.data as DigitalAgent).id, trigger: { kind: 'daily', time: '09:00', timezone: 'Asia/Shanghai' }, enabled: false, notification: 'muted' }, requestId: 'plan' })
       expect(plan.status).toBe('succeeded')
       await native.dispose()
       await context.onDelta('已创建小研和九点研究计划，计划暂未启用。')

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 定时创建按原消息原子保护未决写入，确定业务错误明确拒绝；已提交计划可只读恢复原回执，重复无进展通知宿主退出。
  * [OUTPUT]: 会话/员工清理同步擦除终端、预览回执正文，仅保留写入去重身份。
  * [OUTPUT]: 员工/会话清理同步移除手动引用关系与回执结果；关系回执不保存对象正文。
  * [OUTPUT]: Plan Weave状态/报告随来源清理；已知事务前置拒绝保留稳定rejected回执，未知副作用仍不重放。
@@ -13,10 +14,15 @@
  */
 import { createHash, randomUUID } from 'node:crypto'
 import { z } from 'zod'
+import { parseSchedule, ScheduleError } from '@boai/shared/domain/schedules'
 import { APPLICATION_PROTOCOL_VERSION, applicationResultSchema, applicationReceiptQuerySchema, type ApplicationReceiptQuery, applicationCatalogQuerySchema, applicationRequestSchema, type ApplicationActor, type ApplicationCatalogQuery, type ApplicationRequest, type ApplicationResult } from '@boai/shared/domain/application-protocol'
 import type { ProductStore, RecordTransaction } from '../../adapters/storage/product-store'
 
 export interface ApplicationOperation {
+  contractVersion?: number
+  exclusiveSource?: boolean
+  recover?(requestId: string, actor: ApplicationActor): Promise<unknown | undefined>
+  legacy?: { input: z.ZodType; execute: ApplicationOperation['execute']; recover?: ApplicationOperation['recover'] }
   name: string
   description: string
   effect: 'read' | 'write'
@@ -28,9 +34,10 @@ export interface ApplicationOperation {
   validate?(input: any, actor: ApplicationActor): Promise<void>
   execute(input: any, requestId: string | undefined, actor: ApplicationActor): Promise<unknown>
 }
-interface OperationReceipt { ownerAgentId?: string; runtimeId?: string; id: string; actor: ApplicationActor; fingerprint: string; result: ApplicationResult }
+interface OperationReceipt { contractVersion?: number; ownerAgentId?: string; runtimeId?: string; id: string; actor: ApplicationActor; fingerprint: string; result: ApplicationResult }
 /** Only throw before any effect, or from an atomic transaction that rolls back on failure. */
-export class ApplicationValidationError extends Error { constructor(readonly code: 'REVISION_CONFLICT' | 'NOT_FOUND' | 'INVALID_INPUT' | 'FORBIDDEN', message: string) { super(message) } }
+export class ApplicationValidationError extends Error { constructor(readonly code: NonNullable<ApplicationResult['error']>['code'], message: string, readonly fields?: string[]) { super(message) } }
+const businessError = (error: unknown): ApplicationResult['error'] | undefined => error instanceof ApplicationValidationError || error instanceof ScheduleError ? { code: error.code, message: error.message, ...(error.fields ? { fields: error.fields } : {}) } : undefined
 const collection = 'applicationOperations'
 const canonical = (value: unknown): string => {
   if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`
@@ -45,35 +52,75 @@ export class ApplicationService {
   private failures = new Set<string>()
   private operations: Map<string, ApplicationOperation>
   private pending = new Set<Promise<ApplicationResult>>()
+  private observations = new Map<string, { seen: Set<string>; repeats: number; halted: boolean }>()
   get busy() { return this.pending.size > 0 }
   async drain() { await Promise.allSettled([...this.pending]) }
-  constructor(private store: ProductStore, operations: ApplicationOperation[], private authorize: (actor: ApplicationActor, operation?: ApplicationOperation) => Promise<void>) {
+  private async finish(receipt: OperationReceipt) {
+    return this.store.transaction(async tx => {
+      const current = await tx.get<OperationReceipt>(collection, receipt.id)
+      // Recovery and source cleanup can finish while a slow original caller is still unwinding.
+      if (current?.result.status === 'succeeded' || current?.result.status === 'cleared') return current.result
+      if (receipt.actor.kind === 'employee' && !await tx.get('messages', receipt.actor.messageId) || receipt.actor.kind === 'behavior' && !await tx.get('agentBehaviorRuns', receipt.actor.behaviorRunId)) {
+        receipt.result.status = 'cleared'; delete receipt.result.data; delete receipt.result.error
+      }
+      await tx.put({ collection, id: receipt.id, value: receipt }); return receipt.result
+    })
+  }
+  constructor(private store: ProductStore, operations: ApplicationOperation[], private authorize: (actor: ApplicationActor, operation?: ApplicationOperation) => Promise<void>, private noProgress?: (actor: ApplicationActor) => void) {
     this.operations = new Map(operations.map(operation => [operation.name, operation]))
     if (this.operations.size !== operations.length) throw new Error('Duplicate application operation')
+  }
+  private observe(actor: ApplicationActor, operation: string, value: unknown) {
+    if (actor.kind !== 'employee' || !operation.startsWith('automations.')) return
+    const key = principal(actor), state = this.observations.get(key) ?? { seen: new Set<string>(), repeats: 0, halted: false }, signature = digest([operation, value])
+    if (state.seen.has(signature)) state.repeats++; else { state.repeats = 0; state.seen.add(signature) }
+    if (state.seen.size > 64) state.seen.delete(state.seen.values().next().value!)
+    if (this.observations.size >= 256 && !this.observations.has(key)) this.observations.delete(this.observations.keys().next().value!)
+    this.observations.set(key, state)
+    if (state.repeats >= 3 && !state.halted) { state.halted = true; this.noProgress?.(actor) }
   }
   async catalog(query: ApplicationCatalogQuery = {}, actor: ApplicationActor = { kind: 'owner' }) {
     await this.authorize(actor)
     const filter = applicationCatalogQuerySchema.parse(query)
-    return { protocolVersion: APPLICATION_PROTOCOL_VERSION, operations: [...this.operations.values()]
+    const result = { protocolVersion: APPLICATION_PROTOCOL_VERSION, operations: [...this.operations.values()]
       .filter(item => (actor.kind === 'owner' || !item.ownerOnly) && (!filter.domain || item.name.startsWith(`${filter.domain}.`)) && (!filter.operation || item.name === filter.operation))
       .map(item => ({ name: item.name, description: item.description, effect: item.effect, access: item.ownerOnly ? 'owner' as const : 'owner-or-core' as const, available: item.available?.() ?? true,
         ...(item.available && !item.available() ? { unavailableReason: item.unavailableReason ?? '当前宿主不提供此能力' } : {}),
-        resultType: item.resultType,
+        resultType: item.resultType, ...(item.contractVersion ? { contractVersion: item.contractVersion, schemaFingerprint: digest(z.toJSONSchema(item.input, { io: 'input', unrepresentable: 'any' })) } : {}),
         ...(filter.operation || filter.includeSchemas ? { inputSchema: z.toJSONSchema(item.input, { io: 'input', unrepresentable: 'any' }), outputSchema: z.toJSONSchema(applicationResultSchema, { unrepresentable: 'any' }) } : {}) })) }
+    if (filter.domain === 'automations' || filter.operation?.startsWith('automations.')) this.observe(actor, 'automations.catalog', result.operations)
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    return { ...result, context: { ...(actor.kind !== 'owner' ? { employeeId: actor.employeeId } : {}), timezone, localDate: new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()), now: new Date().toISOString() } }
   }
   async receipt(query: string | ApplicationReceiptQuery, actor: ApplicationActor = { kind: 'owner' }): Promise<ApplicationResult | null> {
     await this.authorize(actor)
     const input = applicationReceiptQuerySchema.parse(typeof query === 'string' ? { requestId: query } : query)
-    const receipt = await this.store.get<OperationReceipt>(collection, input.receiptId ?? digest([principal(actor), input.requestId]))
+    let receipt = await this.store.get<OperationReceipt>(collection, input.receiptId ?? digest([principal(actor), input.requestId]))
     if (!receipt) return null
     if (actor.kind !== 'owner' && (receipt.actor.kind === 'owner' || actor.employeeId !== receipt.actor.employeeId || actor.conversationId !== receipt.actor.conversationId || actor.kind === 'behavior' && (receipt.actor.kind !== 'behavior' || actor.behaviorRunId !== receipt.actor.behaviorRunId))) throw new Error('原回执不属于当前员工会话')
+    const operation = this.operations.get(receipt.result.operation), recover = (receipt.contractVersion ?? 1) === 1 && operation?.legacy ? operation.legacy.recover : operation?.recover
+    if (operation && recover && ['running', 'unknown'].includes(receipt.result.status)) {
+      await this.authorize(actor, operation)
+      const data = await recover(`application-${receipt.id}`, actor).catch(() => undefined)
+      if (data !== undefined) {
+        const id = receipt.id
+        receipt = await this.store.transaction(async tx => {
+          const current = await tx.get<OperationReceipt>(collection, id)
+          if (!current) return receipt!
+          if (!['running', 'unknown'].includes(current.result.status)) return current
+          const result: ApplicationResult = { ...current.result, status: 'succeeded', data, finishedAt: new Date().toISOString() }; delete result.error
+          const next = { ...current, result }; await tx.put({ collection, id, value: next }); return next
+        })
+      }
+    }
+    this.observe(actor, receipt.result.operation, { status: receipt.result.status, data: receipt.result.data, error: receipt.result.error })
     // A previous process may have committed the domain write but died before its receipt.
-    // Never promote that gap to success or invoke the operation again.
+    // Without a committed domain receipt, never promote that gap to success or invoke it again.
     if (receipt.result.status === 'running' && (receipt.runtimeId !== this.runtimeId || this.failures.has(receipt.id))) return { ...receipt.result, status: 'unknown', error: { code: 'OUTCOME_UNKNOWN', message: '原服务未留下完成回执，请核对目标对象；本请求不会自动重放。' } }
     return structuredClone(receipt.result)
   }
   call(raw: ApplicationRequest, actor: ApplicationActor = { kind: 'owner' }): Promise<ApplicationResult> {
-    const task = this.invoke(raw, actor)
+    const task = this.invoke(raw, actor).then(result => { this.observe(actor, raw.operation, { status: result.status, data: result.data, error: result.error }); return result })
     this.pending.add(task)
     void task.finally(() => this.pending.delete(task)).catch(() => {})
     return task
@@ -82,16 +129,22 @@ export class ApplicationService {
     const parsed = applicationRequestSchema.safeParse(raw)
     const reject = (operation: string, error: NonNullable<ApplicationResult['error']>, requestId?: string): ApplicationResult => ({ protocolVersion: APPLICATION_PROTOCOL_VERSION, operation, ...(requestId ? { requestId } : {}), status: 'rejected', error })
     if (!parsed.success) return reject('invalid', { code: 'INVALID_INPUT', message: '应用操作信封不符合协议。', fields: parsed.error.issues.map(issue => issue.path.join('.')) })
-    const request = parsed.data, operation = this.operations.get(request.operation)
-    if (!operation) return reject(request.operation, { code: 'UNKNOWN_OPERATION', message: '操作未注册，请先查询业务目录。' }, request.requestId)
+    const request = parsed.data, registered = this.operations.get(request.operation)
+    if (!registered) return reject(request.operation, { code: 'UNKNOWN_OPERATION', message: '操作未注册，请先查询业务目录。' }, request.requestId)
+    const contractVersion = request.contractVersion ?? registered.contractVersion ?? 1
+    if (contractVersion !== (registered.contractVersion ?? 1) && !(contractVersion === 1 && registered.legacy)) return reject(request.operation, { code: 'UNSUPPORTED_CONTRACT_VERSION', message: '该输入契约版本不受支持，请重新读取操作目录。' }, request.requestId)
+    const operation: ApplicationOperation = contractVersion === 1 && registered.legacy ? { ...registered, ...registered.legacy, contractVersion: 1 } : registered
     if (operation.ownerOnly && actor.kind !== 'owner') return reject(request.operation, { code: 'FORBIDDEN', message: '此操作仅面向本人入口，员工不能代冒本人身份调用。' }, request.requestId)
     try { await this.authorize(actor, operation) } catch { return reject(request.operation, { code: 'FORBIDDEN', message: '当前调用者没有此应用管理权限。' }, request.requestId) }
     const input = operation.input.safeParse(request.input)
-    if (!input.success) return reject(request.operation, { code: 'INVALID_INPUT', message: '业务参数不符合目录中的输入合同。', fields: input.error.issues.map(issue => issue.path.join('.')) }, request.requestId)
+    if (!input.success) {
+      if (operation.contractVersion === 2) { try { parseSchedule(operation.input, request.input) } catch (error) { return reject(request.operation, businessError(error)!, request.requestId) } }
+      return reject(request.operation, { code: 'INVALID_INPUT', message: '业务参数不符合目录中的输入合同。', fields: input.error.issues.map(issue => issue.path.join('.')) }, request.requestId)
+    }
     if (operation.effect === 'write' && !request.requestId) return reject(request.operation, { code: 'INVALID_INPUT', message: '写操作必须提供稳定的 requestId；重试同一意图请保留此 ID。' })
     const base: ApplicationResult = { protocolVersion: APPLICATION_PROTOCOL_VERSION, operation: request.operation, ...(request.requestId ? { requestId: request.requestId } : {}), status: 'running' }
     const key = request.requestId ? digest([principal(actor), request.requestId]) : undefined
-    const fingerprint = digest({ operation: request.operation, input: input.data })
+    const fingerprint = digest({ operation: request.operation, input: input.data, ...(contractVersion !== 1 ? { contractVersion } : {}) })
     if (operation.effect === 'write') {
       // Check an old receipt even when capability availability has since changed.
       const previous = await this.store.get<OperationReceipt>(collection, key!)
@@ -99,48 +152,62 @@ export class ApplicationService {
     }
     if (operation.available && !operation.available()) return reject(request.operation, { code: 'CAPABILITY_UNAVAILABLE', message: operation.unavailableReason ?? '当前宿主不提供此能力。' }, request.requestId)
     try { await operation.validate?.(input.data, actor) } catch (error) {
-      if (error instanceof ApplicationValidationError) return reject(request.operation, { code: error.code, message: error.message }, request.requestId)
+      if (businessError(error)) return reject(request.operation, businessError(error)!, request.requestId)
       return reject(request.operation, { code: 'INVALID_INPUT', message: '操作前核对未通过，未开始写入。' }, request.requestId)
     }
     if (operation.effect === 'read') {
       try { return { ...base, status: 'succeeded', data: (await operation.execute(input.data, request.requestId, actor)) ?? null } }
-      catch (error) { return reject(request.operation, error instanceof ApplicationValidationError ? { code: error.code, message: error.message } : { code: 'INVALID_INPUT', message: '读取未完成，请核对对象是否存在及当前访问条件。' }, request.requestId) }
+      catch (error) { return reject(request.operation, businessError(error) ?? { code: 'INVALID_INPUT', message: '读取未完成，请核对对象是否存在及当前访问条件。' }, request.requestId) }
     }
     const claimed = await this.store.transaction(async tx => {
       const prior = await tx.get<OperationReceipt>(collection, key!)
-      if (prior) return false
+      if (prior) return { prior: true }
+      if (operation.exclusiveSource && actor.kind !== 'owner') {
+        const blocker = (await tx.list<OperationReceipt>(collection)).find(item => principal(item.actor) === principal(actor) && item.result.operation === request.operation && ['running', 'unknown'].includes(item.result.status))
+        if (blocker) return { blocker: blocker.id }
+      }
       base.startedAt = new Date().toISOString()
       base.receiptId = key!
-      await tx.put({ collection, id: key!, value: { id: key!, runtimeId: this.runtimeId, actor, fingerprint, result: base } satisfies OperationReceipt })
-      return true
+      await tx.put({ collection, id: key!, value: { id: key!, runtimeId: this.runtimeId, actor, fingerprint, contractVersion, result: base } satisfies OperationReceipt })
+      return { claimed: true }
     })
-    if (!claimed) return this.invoke(raw, actor)
+    if ('prior' in claimed) return this.invoke(raw, actor)
+    if ('blocker' in claimed) {
+      const original = await this.receipt({ receiptId: claimed.blocker }, actor)
+      if (original && !['running', 'unknown'].includes(original.status)) return this.invoke(raw, actor)
+      return reject(request.operation, { code: 'UNRESOLVED_WRITE', message: '这条用户消息已有未确认的创建，请核对原回执，不要更换请求ID重新创建。', relatedReceiptId: claimed.blocker }, request.requestId)
+    }
     try {
       const data = await operation.execute(input.data, `application-${key}`, actor)
       const result: ApplicationResult = { ...base, status: 'succeeded', data: data ?? null, finishedAt: new Date().toISOString() }
       const ownerAgentId = (request.operation.startsWith('employees.') || request.operation.startsWith('tasks.') || request.operation.startsWith('planning.') || request.operation.startsWith('plans.') || request.operation.startsWith('refs.')) && data && typeof data === 'object' ? ((data as { agentId?: string; id?: string }).agentId ?? (data as { id?: string }).id) : undefined
       await this.store.transaction(async tx => {
+        const current = await tx.get<OperationReceipt>(collection, key!)
+        if (current?.result.status === 'succeeded' || current?.result.status === 'cleared') {
+          Object.assign(result, current.result)
+          if (current.result.status === 'cleared') delete result.data
+          delete result.error
+          return
+        }
         if ((ownerAgentId && !await tx.get('agents', ownerAgentId)) || (actor.kind === 'employee' && !await tx.get('messages', actor.messageId)) || (actor.kind === 'behavior' && !await tx.get('agentBehaviorRuns', actor.behaviorRunId))) { result.status = 'cleared'; delete result.data }
         if (request.operation === 'refs.link' && result.data && !await tx.get('agentReferenceLinks', (result.data as { id: string }).id)) { result.status = 'cleared'; delete result.data }
         if (request.operation.startsWith('plans.') && result.data && request.operation !== 'plans.delete') {
           const source = result.data as { id: string; epoch: string }, current = await tx.get<{ epoch: string }>('agentPlans', source.id)
           if (!current || current.epoch !== source.epoch) { result.status = 'cleared'; delete result.data }
         }
-        await tx.put({ collection, id: key!, value: { id: key!, runtimeId: this.runtimeId, actor, fingerprint, ...(ownerAgentId ? { ownerAgentId } : {}), result } satisfies OperationReceipt })
+        await tx.put({ collection, id: key!, value: { id: key!, runtimeId: this.runtimeId, actor, fingerprint, contractVersion, ...(ownerAgentId ? { ownerAgentId } : {}), result } satisfies OperationReceipt })
       })
       return result
     } catch (error) {
-      if (error instanceof ApplicationValidationError) {
-        const result: ApplicationResult = { ...base, status: 'rejected', error: { code: error.code, message: error.message }, finishedAt: new Date().toISOString() }
-        await this.store.write([{ collection, id: key!, value: { id: key!, runtimeId: this.runtimeId, actor, fingerprint, result } satisfies OperationReceipt }])
-        return result
+      if (businessError(error)) {
+        const result: ApplicationResult = { ...base, status: 'rejected', error: businessError(error), finishedAt: new Date().toISOString() }
+        return this.finish({ id: key!, runtimeId: this.runtimeId, actor, fingerprint, contractVersion, result })
       }
       this.failures.add(key!)
       // Existing domain methods can fail after a filesystem/credential/SQLite effect.
       // Do not store their raw errors or inputs: either may contain credentials.
       const result: ApplicationResult = { ...base, status: 'unknown', error: { code: 'OUTCOME_UNKNOWN', message: '操作未确认完成。请核对目标对象和原回执；未自动重试。' }, finishedAt: new Date().toISOString() }
-      await this.store.write([{ collection, id: key!, value: { id: key!, runtimeId: this.runtimeId, actor, fingerprint, ...(request.operation.startsWith('employees.') && result.data && typeof result.data === 'object' ? { ownerAgentId: ((result.data as { agentId?: string; id?: string }).agentId ?? (result.data as { id?: string }).id) } : {}), result } satisfies OperationReceipt }]).catch(() => {})
-      return result
+      return this.finish({ id: key!, runtimeId: this.runtimeId, actor, fingerprint, contractVersion, result }).catch(() => result)
     }
   }
 }

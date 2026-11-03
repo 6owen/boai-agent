@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-11-03定时任务统一业务API、薄工具适配、单次提醒和错误/幂等/收敛设计归5组18；用户已授权并接线v2业务入口/once/明确错误及原回执恢复；未跑本地测试，运行实例与验收边界见18§16。
 [OUTPUT]: 2026-11-03Agent Desktop自带boai-agent-desktop技能随启停动态提供，API/native共用list_skills/read_skill；不复制绑定、不维护上游命令，归19组20。
 [OUTPUT]: 2026-11-03电脑操作统一Agent Desktop，退役旧computer-use-mcp安装器/技能；标准配置与未改动副本沿原删除协议清理，定制保留，归19组20。
 [OUTPUT]: 2026-11-03新增默认关闭的Agent Desktop应用插件，固定上游正式包、API/native共用工具及取消/图片接线；旧computer-use保留，实际验证归19组20。

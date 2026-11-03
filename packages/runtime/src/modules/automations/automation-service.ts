@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 单次预约以原受理事务消费、暂停原生注册并保留历史；输入/跨字段错误明确拒绝，创建回执冻结原指纹。
  * [OUTPUT]: 启动时将旧普通任务归一为assignment并清除manual/message创建方式；旧普通计划回填不再写创建方式。
  * [OUTPUT]: 员工指派私有元数据保留本次要求快照；恢复不推断任务交付，原定时规则保持。
  * [OUTPUT]: 采用旧手动任务/执行记录的任务身份，不重新运行；手动续做按任务版本固定本次执行。
@@ -21,6 +22,7 @@
  */
 import { join } from 'node:path'
 import { z } from 'zod'
+import { parseSchedule, ScheduleError } from '@boai/shared/domain/schedules'
 import { isEmployeeTaskAssignment } from '@boai/shared/domain/tracked-tasks'
 import type { AutomationCreationSource, AutomationDefinition, AutomationInput, AutomationListQuery, AutomationOccurrence, AutomationsView, AutomationOrigin, AutomationMonitorRead } from '@boai/shared/domain/automations'
 import { automationNeedsAttention } from '@boai/shared/domain/automations'
@@ -31,7 +33,7 @@ import { monitorPolicySchema } from './automation-monitor'
 import { linkEmployeeTask, ongoingTaskExecution, taskIdentity } from './employee-task-records'
 import { AutomationRepository } from './automation-repository'
 import { automationCollaborationSchema, automationOwnerSchema } from './automation-plan'
-import { activeOccurrence, pendingOccurrence, queuedOrder, sharesTaskExecutor, MAX_ACTIVE_AUTOMATIONS, nextTimes, scheduleSchema, automationCron } from './schedule-policy'
+import { activeOccurrence, pendingOccurrence, queuedOrder, sharesTaskExecutor, MAX_ACTIVE_AUTOMATIONS, nextTimes, scheduleSchema, automationCron, normalizeSchedule } from './schedule-policy'
 export { calendarSlot, automationCron, nextTimes } from './schedule-policy'
 
 export const automationInputSchema = scheduleSchema.extend({ employeeTask: z.object({ id: z.string().min(1).max(200), expectedRevision: z.number().int().positive(), requirements: z.string().max(40000).optional(), message: z.custom<import('@boai/shared/ipc').Methods['sendMessage']['input']>().optional() }).strict().optional(), purpose: z.literal('employee-task').optional(), owner: automationOwnerSchema.optional(), collaboration: automationCollaborationSchema.optional(), requestId: z.string().min(1).max(200).optional(), id: z.string().max(200).optional(), expectedRevision: z.number().int().positive().optional(), name: z.string().trim().min(1).max(100), description: z.string().trim().max(1000).optional(), prompt: z.string().trim().min(1).max(40000), conversationPolicy: z.enum(['existing-conversation', 'new-conversation']).optional(), conversationId: z.string().min(1).max(200).optional(), employeeIds: z.array(z.string().min(1).max(200)).min(1).max(12).optional(), enabled: z.boolean(), notify: z.boolean(), notificationPolicy: z.enum(['all_results', 'important_only', 'muted']).optional(), taskKind: z.enum(['report', 'monitor']).optional(), monitor: monitorPolicySchema.optional() }).strict()
@@ -127,6 +129,7 @@ export class AutomationService {
     await this.hooks.critical(() => this.reconcile(true))
     if (this.definitions.size || await this.hooks.behaviors?.hasSchedules()) await this.synchronize()
     this.initialized = true
+    await this.serialize(() => this.recoverDueOnce())
   }
   async assertExecutable(origin: AutomationOrigin, conversationId: string) {
     if (await this.hooks.validate(conversationId) !== origin.authorizedFingerprint) throw new Error('自动化授权的员工或会话配置已变更')
@@ -186,9 +189,9 @@ export class AutomationService {
       let error: string | undefined
       try {
         const id = `schedule_boai-${d.id}`, existing = await this.native.mastra.schedules.get(id)
-        const status = d.enabled && !d.deletedAt ? 'active' : 'paused'
+        const status = d.enabled && !d.deletedAt && !d.onceConsumedAt ? 'active' : 'paused'
         const inputData = { automationId: d.id, revision: d.revision, executionRevision: d.executionRevision, scheduleGeneration: d.scheduleGeneration }
-        if (d.frequency === 'manual') { if (existing && existing.status !== 'paused') await this.native.mastra.schedules.pause(existing.id) }
+        if (d.frequency === 'manual' || d.frequency === 'once' && (d.onceConsumedAt || Date.parse(d.onceAt ?? '') <= Date.now())) { if (existing && existing.status !== 'paused') await this.native.mastra.schedules.pause(existing.id) }
         else if (!existing) await this.native.mastra.schedules.create({ id, workflowId: AUTOMATION_WORKFLOW, cron: d.cron, timezone: d.timezone, inputData, status })
         else if (existing.status !== status || existing.cron !== d.cron || existing.timezone !== d.timezone || JSON.stringify('inputData' in existing ? existing.inputData : null) !== JSON.stringify(inputData)) {
           // Supplying even an unchanged cron makes Mastra recompute nextFireAt and discard a retained due slot.
@@ -225,29 +228,32 @@ export class AutomationService {
     }, retryDelays[this.retryCount++])
     this.retryTimer.unref()
   }
-  save(input: AutomationInput, authorize?: () => Promise<void>, creationSource?: AutomationCreationSource) {
-    if (input.employeeTask && input.purpose !== 'employee-task') throw new Error('任务执行必须归属员工任务')
-    if (input.purpose === 'employee-task' && (input.frequency !== 'manual' || input.owner?.kind !== 'employee')) throw new Error('员工任务必须归属单个员工并手动执行')
+  save(input: AutomationInput, authorize?: () => Promise<void>, creationSource?: AutomationCreationSource, creationFingerprint?: string) {
+    if (input.employeeTask && input.purpose !== 'employee-task') throw new ScheduleError('INVALID_INPUT', '任务执行必须归属员工任务', ['purpose'])
+    if (input.purpose === 'employee-task' && (input.frequency !== 'manual' || input.owner?.kind !== 'employee')) throw new ScheduleError('INVALID_INPUT', '员工任务必须归属单个员工并手动执行', ['purpose', 'frequency'])
     return this.serialize(async () => {
       if (this.closing || this.backingUp) throw new Error('调度服务正在关闭或备份')
-      const submitted = automationInputSchema.parse(input)
+      const submitted = parseSchedule(automationInputSchema, input), fingerprint = creationFingerprint ?? JSON.stringify(submitted)
       const d = await this.hooks.critical(async () => {
         await authorize?.()
-        const prior = !submitted.id ? await this.repository.creation(submitted.requestId) : null
+        const prior = !submitted.id ? await this.repository.creation(submitted.requestId, fingerprint) : null
         if (prior) return prior
-        const value = automationSchema.parse(await this.hooks.prepareInput?.(submitted) ?? submitted)
-        return this.repository.save(value, await this.hooks.validate(value), creationSource)
+        const value = parseSchedule(automationSchema, normalizeSchedule(await this.hooks.prepareInput?.(submitted) ?? submitted))
+        const previous = value.id ? await this.store.get<AutomationDefinition>('automations', value.id) : undefined
+        if (value.frequency === 'once' && (!previous || previous.onceAt !== value.onceAt || !previous.enabled && value.enabled) && Date.parse(value.onceAt!) <= Date.now()) throw new ScheduleError('PAST_TRIGGER_TIME', '单次定时时间已过，请选择新的未来时间。', ['trigger'])
+        return this.repository.save(value, await this.hooks.validate(value), creationSource, fingerprint)
       })
       this.retryCount = 0; await this.synchronize(d.id); this.hooks.changed()
       const current = this.definitions.get(d.id)
       return structuredClone(current?.revision === d.revision ? current : d)
     })
   }
-  creation(requestId: string) { return this.repository.creation(requestId) }
+  creation(requestId: string, fingerprint?: string, includeDeleted = false) { return this.repository.creation(requestId, fingerprint, includeDeleted) }
+  mutationResult(requestId: string) { return this.repository.mutationResult(requestId) }
   async resumePlan(id: string, request?: { requestId: string; expectedRevision: number }, authorize?: () => Promise<void>) {
     if (request) { const prior = await this.hooks.critical(async () => { await authorize?.(); return this.repository.mutation(request.requestId, { id, expectedRevision: request.expectedRevision }) }); if (prior) return prior }
     const d = (await this.repository.view()).definitions.find(d => d.id === id && !d.deletedAt)
-    if (!d) throw new Error('定时任务不存在')
+    if (!d) throw new ScheduleError('NOT_FOUND', '定时任务不存在')
     return this.save({ id, purpose: d.purpose, expectedRevision: request?.expectedRevision ?? d.revision, requestId: request?.requestId, owner: d.owner, collaboration: d.collaboration, name: d.name, description: d.description, prompt: d.prompt, conversationPolicy: d.conversationPolicy, conversationId: d.conversationId, employeeIds: d.employeeIds, frequency: d.frequency, startsOn: d.startsOn, dayOfMonth: d.dayOfMonth, time: d.time, weekday: d.weekday, daysOfWeek: d.daysOfWeek, timezone: d.timezone, enabled: true, notify: d.notify, notificationPolicy: d.notificationPolicy, taskKind: d.taskKind, monitor: d.monitor }, authorize)
   }
   pause(id: string, deleted = false, request?: { requestId: string; expectedRevision: number }, authorize?: () => Promise<void>) {
@@ -299,9 +305,11 @@ export class AutomationService {
     const query = z.object({ taskId: z.string().min(1).max(200).optional(), employeeId: z.string().min(1).max(200).optional(), automationId: z.string().min(1).max(200).optional(), attentionOnly: z.boolean().optional(), search: z.string().trim().max(200).optional(), status: z.enum(['all', 'active', 'completed', 'attention']).optional(), before: z.object({ startedAt: z.iso.datetime(), id: z.string().min(1).max(500) }).strict().optional(), limit: z.number().int().min(1).max(100).default(30) }).strict().parse(input)
     return this.store.automationHistory(query)
   }
-  preview(input: unknown) { const parsed = scheduleSchema.safeParse(input); if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? '请检查日程设置'); const value = parsed.data; return { nextTimes: nextTimes({ ...value, cron: automationCron(value) }) } }
+  preview(input: unknown) { const value = normalizeSchedule(parseSchedule(scheduleSchema, input)); return { nextTimes: nextTimes({ ...value, cron: automationCron(value) }) } }
   admit(id: string, revision: number | undefined, source: 'manual' | 'schedule', key: string, time: number, version?: NativeAutomationVersion, authorize?: () => Promise<void>) {
-    return this.serialize(async () => {
+    return this.serialize(() => this.admitNow(id, revision, source, key, time, version, authorize))
+  }
+  private async admitNow(id: string, revision: number | undefined, source: 'manual' | 'schedule', key: string, time: number, version?: NativeAutomationVersion, authorize?: () => Promise<void>) {
       const result = await this.hooks.critical(async () => { await authorize?.(); return this.repository.claim({ automationId: id, revision, source, key, scheduledAt: time, ...version }, async d => {
         if (this.closing || this.backingUp) return '应用正在退出或备份'
         try { if (await this.hooks.validate(d) !== d.authorizedFingerprint) return { reason: '员工或会话权限已变更，请编辑保存任务后重新启用', attention: 'authorization' as const } } catch (error) { return { reason: String(error), attention: 'authorization' as const } }
@@ -312,10 +320,20 @@ export class AutomationService {
         return structuredClone(o)
       }
       this.occurrences.set(o.id, o)
+      const current = await this.store.get<AutomationDefinition>('automations', id)
+      if (current?.onceConsumedAt) { await this.sync(current); if (this.definitions.get(id)?.sync !== 'synced') this.scheduleRetry() }
       if (!result.created) return structuredClone(o)
       o = await this.dispatchOccurrence(o, result.dispatch)
       this.hooks.changed(); this.hooks.notify(); this.observe(); return structuredClone(o)
-    })
+  }
+  /** Existing startup/observation events share admission with the native clock; no second timer or business replay. */
+  private async recoverDueOnce() {
+    for (const d of this.definitions.values()) {
+      if (this.closing || this.backingUp) return
+      const at = Date.parse(d.onceAt ?? '')
+      if (d.frequency !== 'once' || !d.enabled || d.deletedAt || d.onceConsumedAt || !Number.isFinite(at) || at > Date.now()) continue
+      await this.admitNow(d.id, d.revision, 'schedule', `once-reconcile:${d.id}:${d.scheduleGeneration}`, at, { executionRevision: d.executionRevision, scheduleGeneration: d.scheduleGeneration })
+    }
   }
   private async dispatchOccurrence(o: AutomationOccurrence, intent?: import('@boai/shared/domain/automations').AutomationDispatch) {
     if (o.status === 'admitted' && intent?.definition && intent.origin) {
@@ -390,7 +408,7 @@ export class AutomationService {
     if (!this.initialized || this.closing) return
     if (this.observing) { this.observeAgain = true; return }
     this.observing = true
-    void this.serialize(async () => { await this.hooks.critical(() => this.reconcile()); await this.drainQueue() }).catch(error => { this.error = String(error) }).finally(() => { this.observing = false; if (this.observeAgain) { this.observeAgain = false; this.observe() } })
+    void this.serialize(async () => { await this.hooks.critical(() => this.reconcile()); await this.recoverDueOnce(); await this.drainQueue() }).catch(error => { this.error = String(error) }).finally(() => { this.observing = false; if (this.observeAgain) { this.observeAgain = false; this.observe() } })
   }
   private async reconcile(recovery = false) {
     await this.refresh()
