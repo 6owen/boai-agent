@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 定时工具与旧页面通过ScheduleApi共用领域校验/保存，bobo默认自身执行；重复无进展按原来源退出，不限制正常长任务。
+ * [OUTPUT]: 单员工定时执行进入可见员工任务及独立会话；旧计划指向执行聊天也按新任务隔离，任务执行定位原会话消息。
  * [OUTPUT]: 插件技能读取沿当前执行身份核验和动态启停，已有员工自动获得可用入口。
  * [OUTPUT]: 2026-11-03在默认技能初始化前退役标准computer-use-mcp来源和未改动旧技能，保留定制副本。
  * [OUTPUT]: Bobo原文工具复用官方记忆来源授权/遗忘并在服务临界区查询现有SQLite，一次返回原文及邻近消息。
@@ -825,7 +825,7 @@ export class AppService {
         // original plan authorization is checked before and again when dequeued.
         if (definition.employeeTask || definition.taskKind === 'monitor' || definition.owner?.kind !== 'employee' || definition.conversationPolicy === 'new-conversation') return definition
         const room = this.getConversation(definition.conversationId!)
-        if (room.purpose === 'automation' || room.kind !== 'direct' || room.channel) return definition
+        if (room.kind !== 'direct' || room.channel) return definition
         const execution = { ...definition, conversationPolicy: 'new-conversation' as const, conversationId: undefined, employeeIds: [definition.owner.employeeId] }
         return { ...execution, authorizedFingerprint: await this.automationFingerprint(execution) }
       },
@@ -1525,7 +1525,7 @@ export class AppService {
           const query = z.object({ conversationId: id, runId: id }).strict().parse(input)
           const run = this.executionScope(query.conversationId, query.runId)
           const source = this.getConversation(run.conversationId)
-          const target = source.purpose === 'automation'
+          const target = source.purpose === 'automation' && !source.employeeTaskId
             ? [...this.messages.values()].find(message => message.automationPublication?.sourceConversationId === source.id && message.automationPublication.sourceMessageId === run.triggerMessageId && message.automationPublication.occurrenceId === (run.origin?.occurrenceId ?? source.occurrenceId))
             : this.messages.get(run.triggerMessageId!)
           if (!target) fail('对应聊天记录已删除或不可用')

@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 显式执行设置协作提示进行中，任务消息按实际工作更新；完成/关闭不锁住人工委派，原定时来源映射保持。
+ * [OUTPUT]: 定时计划每次受理生成可见assignment及独立任务会话，沿同一协作/验收协议；内部进度不晋升为委派。
  * [OUTPUT]: 旧普通执行补回任务时登记assignment，不再写manual创建方式；定时记录的schedule来源保持。
  * [INPUT]: Accepted automation occurrence and explicit employee task, inside the original transaction.
  * [OUTPUT]: Durable task ownership and many execution links; historical adoption never dispatches work.
@@ -27,6 +27,7 @@ export async function linkEmployeeTask(tx: RecordTransaction, d: AutomationDefin
     return
   }
   let task = await tx.get<TrackedTask>('agentTasks', taskId)
+  const newScheduledTask = !task && d.purpose !== 'employee-task'
   if (d.employeeTask && !historical) {
     if (!task || task.agentId !== agentId) throw new Error('任务不存在或不属于当前员工')
     if (task.revision !== d.employeeTask.expectedRevision) throw new Error('任务已经改变，请刷新后重新提交')
@@ -35,13 +36,15 @@ export async function linkEmployeeTask(tx: RecordTransaction, d: AutomationDefin
   }
   if (!task) {
     const description = historical ? (await tx.get<AutomationDispatch>('automationDispatches', o.id))?.definition?.prompt ?? (o.messageId ? (await tx.get<Message>('messages', o.messageId))?.content : undefined) : d.prompt
-    task = { id: taskId, agentId, title: o.name, description, steps: [], note: '', status: 'pending', ...(d.purpose === 'employee-task' ? { kind: 'assignment' as const } : { sourceKind: 'schedule' as const }), revision: 1, createdAt: o.startedAt, updatedAt: o.startedAt }
+    task = { id: taskId, agentId, title: o.name, description, steps: [], note: '', status: 'pending', kind: 'assignment', ...(newScheduledTask ? { sourceKind: 'schedule' as const } : {}), revision: 1, createdAt: o.startedAt, updatedAt: o.startedAt }
+    // Adopt the old execution projection only when reconstructing missing history; new deliveries use the normal assignment protocol.
+    if (historical && newScheduledTask) task.status = await executionTaskStatus(tx, o, { ...task, kind: undefined })
   }
   if (task.agentId !== agentId) throw new Error('任务归属不一致')
   o.taskId = task.id
   const latest = task.latestOccurrenceId ? await tx.get<AutomationOccurrence>('automationOccurrences', task.latestOccurrenceId) : undefined
   if (!historical || !latest || o.startedAt > latest.startedAt || o.startedAt === latest.startedAt && o.id > latest.id) {
-    const explicitTaskRun = !historical && d.employeeTask && !d.employeeTask.message
+    const explicitTaskRun = !historical && (newScheduledTask || d.employeeTask && !d.employeeTask.message)
     const executionState = isEmployeeTaskAssignment(task) ? (explicitTaskRun ? { status: 'in_progress' as const, statusSource: 'execution' as const } : {}) : {
       statusSource: 'execution' as const,
       ...(!historical || !task.latestOccurrenceId ? { status: await executionTaskStatus(tx, o, task) } : {}),
