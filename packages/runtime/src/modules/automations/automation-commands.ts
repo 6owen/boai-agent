@@ -1,5 +1,6 @@
 /*
- * [OUTPUT]: 计划工具排除内部employeeTask字段，单员工新执行使用独立任务会话。
+ * [OUTPUT]: 旧manage_automation仅作兼容适配，保存进入同一ScheduleApi；核心bobo也可显式选为执行员工。
+ * [OUTPUT]: 兼容计划工具排除内部employeeTask/purpose/onceAt字段，单员工新执行使用独立任务会话。
  * [OUTPUT]: 新单员工计划默认在归属员工主会话执行，创建来源与原回执独立保留。
  * [OUTPUT]: 计划分页支持明确员工任务用途，默认仍读取定时计划。
  * [OUTPUT]: employeeId仅用于专用创建入口选归属；群内负责人沿collaboration.coordinatorId，误填时给出删除字段的纠错而不放松归属校验。
@@ -27,7 +28,7 @@ export const automationListSchema = z.object({ purpose: z.literal('employee-task
 export const automationCommandSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('list'), before: cursor.optional(), limit: z.number().int().min(1).max(50).default(20) }).strict(),
   z.object({ action: z.literal('get'), id }).strict(),
-  z.object({ action: z.literal('save'), key, employeeId: targetEmployeeId.optional(), plan: automationInputSchema.omit({ employeeTask: true, requestId: true, owner: true, conversationId: true, employeeIds: true }) }).strict(),
+  z.object({ action: z.literal('save'), key, employeeId: targetEmployeeId.optional(), plan: automationInputSchema.omit({ employeeTask: true, purpose: true, onceAt: true, requestId: true, owner: true, conversationId: true, employeeIds: true }) }).strict(),
   z.object({ action: z.enum(['pause', 'resume', 'delete']), id, expectedRevision: z.number().int().positive(), key }).strict(),
   z.object({ action: z.literal('run'), id, key }).strict(),
   z.object({ action: z.literal('stop'), id, occurrenceId: id, expectedStateVersion: z.number().int().positive(), key }).strict(),
@@ -38,14 +39,14 @@ export const automationCommandToolSchema = z.object({
   action: z.enum(['list', 'get', 'save', 'pause', 'resume', 'delete', 'run', 'stop']),
   before: cursor.optional(), limit: z.number().int().min(1).max(50).optional(),
   id: id.optional(), key: key.optional(), employeeId: targetEmployeeId.optional(),
-  plan: automationInputSchema.omit({ employeeTask: true, requestId: true, owner: true, conversationId: true, employeeIds: true }).optional(),
+  plan: automationInputSchema.omit({ employeeTask: true, purpose: true, onceAt: true, requestId: true, owner: true, conversationId: true, employeeIds: true }).optional(),
   expectedRevision: z.number().int().positive().optional(), occurrenceId: id.optional(),
   expectedStateVersion: z.number().int().positive().optional(),
 }).strict()
 export type AutomationCommand = z.infer<typeof automationCommandSchema>
 export const automationToolDescription = 'Manage BOAI automation plans. In the dedicated bobo scheduled-task conversation, save requires employeeId from the supplied employee directory and creates a single-employee plan; elsewhere omit employeeId because the host already fixes the current employee/group owner. A group coordinator is plan.collaboration.coordinatorId, not employeeId. An owner-field rejection is an argument error: remove employeeId and preserve the same key, do not change ownership or ask the user to re-authorize the same group. Use list/get to inspect actual IDs, revisions and history. Save only when the current user explicitly asks to create or change a plan; discussion of a possible plan is a draft, not permission to enable it. Ask for missing schedule/scope/coordinator details. Use one stable key per user intent, including repeated calls; never change it to bypass an unknown receipt. Edits require the actual expectedRevision. A group plan needs saved assignments with exact current member IDs, dependencies and a coordinator. New plans use isolated task contexts. Do not create cron jobs or timers yourself. Only the returned persisted definition proves a plan exists. Report its schedule/timezone, owner, participation and next execution plainly.'
 
-export function automationCommands(service: AutomationService, store: ProductStore, authority: { owner?: AutomationOwner; source: AutomationCreationSource; validate(): Promise<void> }) {
+export function automationCommands(service: AutomationService, store: ProductStore, authority: { owner?: AutomationOwner; source: AutomationCreationSource; validate(): Promise<void> }, save: AutomationService['save'] = service.save.bind(service)) {
   const authorize = async (definitionId?: string) => {
     await authority.validate()
     if (!definitionId) return
@@ -71,10 +72,10 @@ export function automationCommands(service: AutomationService, store: ProductSto
     if (input.action === 'save') {
       if (authority.owner && input.employeeId && (authority.owner.kind !== 'employee' || input.employeeId !== authority.owner.employeeId)) throw new Error(authority.owner.kind === 'group' ? '不能更改当前计划归属：本计划由宿主固定归属当前群。请删除 employeeId，负责人填写 plan.collaboration.coordinatorId；保持同一 key 后重试。' : '不能更改当前计划归属：请省略 employeeId，沿当前员工保存；如需其他员工，请到其对话或专用创建入口。')
       const owner = authority.owner ?? (definition?.owner?.kind === 'employee' ? definition.owner : input.employeeId ? { kind: 'employee' as const, employeeId: input.employeeId } : undefined)
-      if (!owner || !authority.owner && (owner.kind !== 'employee' || owner.employeeId === authority.source.agentId || input.employeeId && input.employeeId !== owner.employeeId || input.plan.collaboration || input.plan.taskKind === 'monitor' || input.plan.conversationPolicy === 'existing-conversation')) throw new Error('请选择一名通讯录员工，以独立任务聊天执行')
+      if (!owner || !authority.owner && (owner.kind !== 'employee' || input.employeeId && input.employeeId !== owner.employeeId || input.plan.collaboration || input.plan.taskKind === 'monitor' || input.plan.conversationPolicy === 'existing-conversation')) throw new Error('请选择一名通讯录员工，以独立任务聊天执行')
       const conversationPolicy = input.plan.conversationPolicy ?? definition?.conversationPolicy ?? (owner.kind === 'employee' ? undefined : 'new-conversation')
       const conversationId = conversationPolicy === 'existing-conversation' ? definition?.conversationId ?? authority.source.conversationId : undefined
-      const saved = await service.save({ ...input.plan, owner, conversationPolicy, conversationId, requestId }, validate, authority.source)
+      const saved = await save({ ...input.plan, owner, conversationPolicy, conversationId, requestId }, validate, authority.source)
       return { ...saved, nextTimes: saved.enabled && saved.sync === 'synced' ? nextTimes(saved) : [] }
     }
     if (input.action === 'run') return service.run(input.id, requestId, validate)

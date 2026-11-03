@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: automations公共CRUD/预览通过独立业务契约和ScheduleApi适配，内部purpose/会话/cron字段不再暴露。
  * [OUTPUT]: application.guide公开员工任务五状态及交付验收规则。
  * [OUTPUT]: 公开计划操作排除内部任务消息，避免自定义类型进入工具JSON Schema。
  * [OUTPUT]: prompts域复用提示词模板CRUD与版本前检，contacts/prompts操作指南纳入现有业务协议。
@@ -26,15 +27,14 @@ import { knowledgeSourceSchema, saveEmployeeKnowledgeSchema, knowledgeSharingSch
 import { randomUUID } from 'node:crypto'
 import { agentSourceNameSchema, saveAgentProfileSchema, updateAgentStateSchema, deleteAgentBehaviorHistorySchema, clearAgentBehaviorHistorySchema } from '@boai/shared/domain/agent-profile'
 import { z } from 'zod'
+import { scheduleOperations } from './schedule-operations'
+import type { ScheduleApi } from '../automations/schedule-api'
 import type { Method, Methods } from '@boai/shared/ipc'
 import { CONVERSATION_TITLE_MAX_LENGTH } from '@boai/shared/domain/conversation-list'
 import { agentSchema } from '../employees/employee-service'
 import { employeeCreationDefaults, EMPLOYEE_PRESETS } from '@boai/shared/domain/agent-presets'
 import { saveDataSourceSchema, dataSourceConfigSchema, dataSourceIdentitySchema, dataSourceBindingsSchema } from '@boai/shared/domain/sources'
 import { saveWebSearchDefaultSchema, saveWebSearchServiceSchema } from '@boai/shared/domain/web-search'
-import { automationInputSchema } from '../automations/automation-service'
-import { automationListSchema } from '../automations/automation-commands'
-import { scheduleSchema } from '../automations/schedule-policy'
 import { saveLocalSkillSchema, removeLocalSkillSchema } from '../resources/local-skill-editing'
 import { scanSkillSchema, installSkillsSchema, prepareLocalSkillBindingSchema, bindLocalSkillSchema } from '../resources/skill-management'
 import { updateSkillSchema } from '../resources/skill-updates'
@@ -43,7 +43,7 @@ import { collectionChangeSchema } from '../resources/skill-collections'
 import { ApplicationValidationError, type ApplicationOperation } from './application-service'
 import { savePromptTemplateSchema, removePromptTemplateSchema } from '@boai/shared/domain/prompt-templates'
 
-export interface ApplicationPort { request<K extends Method>(method: K, input: Methods[K]['input']): Promise<Methods[K]['output']>; personality?(action: 'profile' | 'configure' | 'state' | 'updateState' | 'behaviorHistory' | 'runBehavior' | 'stopBehavior' | 'validateHistoryDeletion' | 'deleteBehaviorHistory' | 'clearBehaviorHistory', input: any): Promise<unknown> }
+export interface ApplicationPort { schedules?(): ScheduleApi; request<K extends Method>(method: K, input: Methods[K]['input']): Promise<Methods[K]['output']>; personality?(action: 'profile' | 'configure' | 'state' | 'updateState' | 'behaviorHistory' | 'runBehavior' | 'stopBehavior' | 'validateHistoryDeletion' | 'deleteBehaviorHistory' | 'clearBehaviorHistory', input: any): Promise<unknown> }
 const id = z.string().trim().min(1).max(200), version = z.number().int().positive()
 const empty = z.object({}).strict(), lookup = z.object({ id }).strict()
 type Shape = z.ZodObject<any>
@@ -135,17 +135,10 @@ export function applicationOperations(port: ApplicationPort, schemas: { connecti
   method('sessions.send', 'sendMessage', '发送一条本人消息并启动实际员工响应；单独创建会话不会发送。渠道外发使用原明确渠道发布接口。', 'write', z.object({ conversationId: id, content: z.string().max(100000), mentionIds: z.array(id).max(100).default([]), replyToMessageId: id.optional() }).strict(), 'Message', (input, requestId) => ({ ...input, requestId: requestId! }))
   method('sessions.delete', 'deleteSession', '清空并隐藏原会话，保留原删除回执。', 'write', z.object({ conversationId: id }).strict(), 'SessionOperationReceipt', (input, requestId) => ({ ...input, requestId: requestId! }))
 
-  method('automations.list', 'listOwnerAutomations', '按员工或群列出定时任务及下一次时间。省略 owner 查看全部。', 'read', automationListSchema, 'AutomationListPage')
-  method('automations.get', 'getAutomation', '读取计划及 revision，不执行任务。', 'read', lookup, 'AutomationDefinition | null')
-  method('automations.preview', 'previewAutomation', '核对实际时区与未来执行时间。', 'read', scheduleSchema, '{ nextTimes: string[] }')
-  method('automations.create', 'saveAutomation', '创建定时计划，明确 owner/时间/时区/prompt；不会立即执行。单员工计划可使用 owner 与默认独立执行上下文。', 'write', automationInputSchema.omit({ employeeTask: true, id: true, expectedRevision: true, requestId: true }), 'AutomationDefinition', (input, requestId) => ({ ...input, requestId }))
-  method('automations.update', 'saveAutomation', '以当前 revision 保存完整计划；修改计划不手动运行。', 'write', automationInputSchema.omit({ employeeTask: true, requestId: true }).extend({ id, expectedRevision: version }), 'AutomationDefinition', (input, requestId) => ({ ...input, requestId }))
+  operations.push(...scheduleOperations(() => port.schedules?.(), port))
   method('automations.history', 'listAutomationHistory', '分页查询计划的真实执行历史。', 'read', z.object({ automationId: id.optional(), status: z.enum(['all', 'active', 'completed', 'attention']).optional(), search: z.string().max(200).optional(), before: z.object({ startedAt: z.iso.datetime(), id: z.string().min(1).max(500) }).strict().optional(), limit: z.number().int().min(1).max(100).default(30) }).strict(), 'AutomationHistoryPage')
   method('automations.occurrence', 'getAutomationOccurrence', '读取一个实际执行记录，id 为 occurrence ID。', 'read', lookup, 'AutomationOccurrence')
   method('automations.stop', 'stopAutomation', '停止指定实际执行记录；id 为 occurrence ID，不是计划 ID。', 'write', lookup, 'void')
-  method('automations.pause', 'pauseAutomation', '暂停计划未来调度。', 'write', lookup, 'void')
-  method('automations.resume', 'resumeAutomation', '恢复计划未来调度。', 'write', lookup, 'AutomationDefinition')
-  method('automations.delete', 'deleteAutomation', '删除计划，沿原调度和实际退出规则。', 'write', lookup, 'void')
   method('automations.run', 'runAutomation', '用户明确要求时立即运行一次已有计划，创建真实执行记录。', 'write', lookup, 'AutomationOccurrence', (input, requestId) => ({ ...input, requestId: requestId! }))
 
   method('skills.list', 'listLocalSkills', '发现已安装的技能，不执行技能内容。', 'read', z.object({ refresh: z.boolean().optional() }).strict(), 'LocalSkillCatalog')

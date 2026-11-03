@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: app call可显式--contract-version选择兼容输入契约；模型工具固定当前目录契约，版本不混入业务参数。
  * [OUTPUT]: task list/result读取真实执行Work及共享结果，无消息发送或重试副作用。
  * [OUTPUT]: 2026-10-20原生Node测试加载的package.json导入标注JSON类型；CLI业务协议与退出状态保持。
  * [OUTPUT]: 2026-10-19应用业务协议：增加app catalog/describe/call/receipt/receipt-id，写操作显式稳定请求ID及真实结果退出状态。
@@ -69,7 +70,7 @@ Usage: boai <command> [options]
   validate | --validate-server   Existing target: read-only; no target: isolated integration
   app catalog [DOMAIN]
   app describe OPERATION
-  app call OPERATION [JSON] --request-id ID
+  app call OPERATION [JSON] --request-id ID [--contract-version N]
   app receipt REQUEST_ID | app receipt-id RECEIPT_ID
   invoke CHANNEL [JSON]
   listen app|session:event [--session ID]
@@ -110,7 +111,7 @@ function defaultDataPath() {
 async function main() {
   const { values, positionals } = parseArgs({ strict: true, allowPositionals: true, options: {
     help: { type: 'boolean' }, version: { type: 'boolean' }, json: { type: 'boolean' }, url: { type: 'string' }, token: { type: 'string' }, 'data-dir': { type: 'string' }, workspace: { type: 'string' }, 'tls-ca': { type: 'string' }, timeout: { type: 'string' }, employee: { type: 'string' }, cursor: { type: 'string' }, limit: { type: 'string' }, session: { type: 'string' },
-    stdin: { type: 'boolean' }, 'request-id': { type: 'string' }, 'output-format': { type: 'string' }, 'send-timeout': { type: 'string' }, mention: { type: 'string', multiple: true }, source: { type: 'string', multiple: true }, attachment: { type: 'string', multiple: true }, cwd: { type: 'string' }, 'workspace-dir': { type: 'string' }, 'reply-to': { type: 'string' },
+    stdin: { type: 'boolean' }, 'request-id': { type: 'string' }, 'contract-version': { type: 'string' }, 'output-format': { type: 'string' }, 'send-timeout': { type: 'string' }, mention: { type: 'string', multiple: true }, source: { type: 'string', multiple: true }, attachment: { type: 'string', multiple: true }, cwd: { type: 'string' }, 'workspace-dir': { type: 'string' }, 'reply-to': { type: 'string' },
     verbose: { type: 'boolean', short: 'v' }, 'no-spinner': { type: 'boolean' }, 'disable-spinner': { type: 'boolean' }, 'no-cleanup': { type: 'boolean' }, 'server-entry': { type: 'string' }, mode: { type: 'string' }, provider: { type: 'string' }, model: { type: 'string' }, 'base-url': { type: 'string' }, 'api-key': { type: 'string' },
     run: { type: 'string' }, host: { type: 'string' }, port: { type: 'string' }, name: { type: 'string' }, direction: { type: 'string' }, follow: { type: 'boolean' },
     'validate-server': { type: 'boolean' }, 'validation-profile': { type: 'string' },
@@ -185,7 +186,7 @@ async function main() {
     let payload: unknown
     try { payload = args.length === 3 ? JSON.parse(args[2]) : {} } catch { throw new CliError('INVALID_REQUEST', 'app call 参数不是有效 JSON') }
     // Writes require a caller-chosen stable ID. Never silently generate one on retry.
-    input = { operation: args[1], input: payload, ...(values['request-id'] ? { requestId: values['request-id'] } : {}) }
+    input = { operation: args[1], input: payload, ...(values['request-id'] ? { requestId: values['request-id'] } : {}), ...(values['contract-version'] ? { contractVersion: Number(values['contract-version']) } : {}) }
   }
   else if (command === 'invoke' && args.length >= 1 && args.length <= 2) { channel = args[0]; try { input = args.length === 2 ? JSON.parse(args[1]) : undefined } catch { throw new CliError('INVALID_REQUEST', 'invoke 参数不是有效 JSON') } }
   else if (command === 'listen' && args.length === 1 && eventChannelSchema.safeParse(args[0]).success) { channel = 'events:subscribe'; input = { channel: args[0], conversationId: values.session } }
@@ -205,6 +206,7 @@ async function main() {
   if (workingDirectory !== undefined && (!['send', 'run'].includes(command) || !workingDirectory.length || workingDirectory.length > 4096 || /[\x00-\x1f\x7f]/u.test(workingDirectory))) throw new CliError('INVALID_REQUEST', '--cwd/--workspace-dir仅接受send/run的有效服务器目录路径')
   if (values.cwd !== undefined && values['workspace-dir'] !== undefined && values.cwd !== values['workspace-dir']) throw new CliError('INVALID_REQUEST', '--cwd与--workspace-dir不能指定不同目录')
   const executing = ['send', 'run', 'cancel'].includes(command) || following
+  if (values['contract-version'] !== undefined && (!(command === 'app' && args[0] === 'call') || !/^[1-9]\d*$/.test(values['contract-version']) || !Number.isSafeInteger(Number(values['contract-version'])))) throw new CliError('INVALID_REQUEST', '--contract-version仅适用于app call，且必须为正整数')
   if (following && values['request-id'] !== undefined) throw new CliError('INVALID_REQUEST', 'receipt使用原位置参数的requestId')
   if ((!executing && !sessionMutation && !(command === 'app' && args[0] === 'call') && values['request-id'] !== undefined) || (!executing && (values['output-format'] !== undefined || values['send-timeout'] !== undefined)) || (!['send', 'run'].includes(command) && values.stdin !== undefined) || (command !== 'send' && (values.mention !== undefined || values['reply-to'] !== undefined))) throw new CliError('INVALID_REQUEST', '该执行选项不适用于当前命令')
   if (values['output-format'] && !['text', 'stream-json'].includes(values['output-format']) || values.json && values['output-format'] === 'text') throw new CliError('INVALID_REQUEST', '输出格式无效或与 --json 冲突')

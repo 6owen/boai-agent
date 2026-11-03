@@ -5,6 +5,7 @@ description: "Create and manage actual BOAI employee or group automation tasks, 
 <!--
 [INPUT]: Alma bundled scheduler/SKILL.md and current BOAI capability contracts.
 [OUTPUT]: Executable BOAI workflow, preserving source intent and explicit differences.
+[OUTPUT]: Public trigger contract, one-time reminders, trusted actor/time defaults and bounded original-receipt recovery.
 [POS]: Bound product employee skill, not a developer tool or permission grant.
 [PROTOCOL]: Update parent .folder.md and migration ledger on change.
 -->
@@ -16,10 +17,10 @@ Use for reminders, scheduled employee work and recurring tasks. BOAI business au
 ## Workflow
 
 1. Use `boai_catalog` for `automations`, then the exact operation to read its schema. Alternatively use `manage_automation` if that is the supplied tool; its live schema governs.
-2. Discover the actual employee/group ID. Read existing plans before creating a likely duplicate. Resolve the date and IANA timezone from the runtime and the user's request; ask only for materially ambiguous details.
-3. Use `automations.preview` to check the real next trigger. Read the actual schedule schema: BOAI supports the frequencies it returns, not Alma's arbitrary cron/every flags.
-4. Create with `automations.create`, one stable requestId. A saved plan is not an executed task. Report its actual name, owner and next scheduled time.
-5. For uncertain results use `boai_receipt` with the same request identity. Do not submit a replacement request to bypass unknown status.
+2. Use the trusted date/timezone and current employee in catalog context. employeeId defaults to this employee, including bobo; timezone defaults to the user's actual IANA timezone. Discover another employee only when the user requests one. Do not run shell date or list all employees merely to create an ordinary reminder.
+3. Public create input uses instruction and trigger. One-time reminders use `{kind: "once", date: "YYYY-MM-DD", time: "HH:mm"}`. Ask for the time if it was not specified and no explicit prior default applies. Never guess a time, use manual as a future reminder, or emulate once by recurring daily/weekly and asking an Agent to delete the plan. Do not pass internal purpose, owner, conversationPolicy, employeeIds or cron fields.
+4. Create with one stable requestId. An unambiguous request normally needs one write; `automations.preview` is optional. The returned normalized trigger, nextTriggerAt and activation are the evidence. succeeded means saved, activation=ready means activated; pending/failed must be reported honestly. Creating does not execute the task now.
+5. For unknown/running or UNRESOLVED_WRITE, read the original boai_receipt by its receiptId. Do not submit replacement IDs, employees or times. If checks keep returning no new information, report the blocker and finish instead of repeatedly rediscovering schemas. Correct input only after a definite rejection.
 
 ## Operations
 
@@ -30,7 +31,7 @@ Use for reminders, scheduled employee work and recurring tasks. BOAI business au
 - `automations.history/occurrence`: inspect real executions and failures.
 - `automations.stop`: stop the specific active occurrence; a plan ID is not an occurrence ID.
 
-For an employee task, use the requested employee and conversation policy. For a group task, preserve actual members and dependency workflow. Do not invent a channel destination or imply external delivery from a BOAI-only plan. Existing CLI clients can use the same operations via `boai app describe/call/receipt`; discover the actual CLI invocation before shell use.
+Use only the current catalog schema. Old group/monitor/fixed-conversation plans remain managed through their existing UI compatibility path; do not recreate or convert them merely to fit the new create shape. Do not invent a channel destination or imply external delivery from a BOAI-only plan. Existing CLI clients can discover and use the public operations through `boai app describe/call/receipt`.
 
 ## Personality settings
 

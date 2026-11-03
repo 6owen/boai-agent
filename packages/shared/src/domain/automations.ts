@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 单次日程持久保存唯一UTC时间点与消费身份，计划保留历史且手动试运行不消费未来预约。
  * [OUTPUT]: 人工任务私有元数据冻结本次要求，复用原dispatch快照；任务编辑不改写已受理执行。
  * [OUTPUT]: 内部任务消息保持原输入，执行快照携带原计划授权指纹。
  * [OUTPUT]: 员工任务版本绑定与occurrence.taskId关联，执行记录独立于持久任务生命周期。
@@ -98,7 +99,9 @@ export interface AutomationInput {
   conversationPolicy?: 'existing-conversation' | 'new-conversation'
   conversationId?: string
   employeeIds?: string[]
-  frequency: 'manual' | 'hourly' | 'daily' | 'weekly' | 'monthly'
+  frequency: 'manual' | 'once' | 'hourly' | 'daily' | 'weekly' | 'monthly'
+  /** Internal resolved instant; public tools use the separate ScheduleTrigger contract. */
+  onceAt?: string
   startsOn?: string
   dayOfMonth?: number
   time: string
@@ -113,6 +116,8 @@ export interface AutomationInput {
 }
 
 export interface AutomationDefinition extends Omit<AutomationInput, 'id' | 'expectedRevision' | 'requestId'> {
+  onceConsumedAt?: string
+  onceOccurrenceId?: string
   creationSource?: AutomationCreationSource
   schemaVersion: 1
   id: string
