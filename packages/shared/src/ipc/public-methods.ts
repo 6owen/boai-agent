@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 新增Bobo历史设置公开宿主方法，配置与权限由服务端验证。
  * [OUTPUT]: Agent Desktop 可选插件接线；默认关闭、独立于旧computer-use，调用沿员工权限及真实图片。
  * [OUTPUT]: 员工任务批量派发进入可信桌面IPC，编辑要求与状态复用版本化更新接口。
  * [OUTPUT]: 开放任务会话、任务消息及原受理回执接口。
@@ -95,6 +96,8 @@ const methods = {
   getSessionReceipt: true,
   clearMemory: true,
   configureMemory: true,
+  configureHistorySearch: true,
+  getHistorySearchSettings: true,
   connectChannelBinding: true,
   createConversation: true,
   deleteAgent: true,

@@ -1,11 +1,12 @@
 /*
+ * [OUTPUT]: 词法存储端口转shared协议，原索引与授权ID过滤保持。
  * [INPUT]: Existing product records and host-selected authorized message IDs.
  * [OUTPUT]: Rebuildable FTS5 external-content index with stable IDs across VACUUM/backup, transactional updates and short-query fallback.
  * [POS]: Raw-message search cache only; no second transcript store, model calls or business authority.
  * [PROTOCOL]: Update Header and storage/.folder.md on change.
  */
 import type { Client } from '@libsql/client'
-import type { HistorySearchQuery, HistorySearchMatch, HistorySearchResult } from '../../modules/conversations/history-search'
+import type { HistorySearchQuery, HistorySearchMatch, HistorySearchResult } from '@boai/shared/domain/history-search'
 
 export class RawHistoryIndex {
   private ready?: Promise<void>

@@ -185,6 +185,7 @@
  * [OUTPUT]: 新聊天附件按当前会话成员投影和核读，无独立共享操作；历史显式名单兼容，准备不制造消息或工作。
  * [OUTPUT]: 图片/通用文件附件沿原授权与hash回执提交；图片仅以内存原生媒体供模型回答，通用文件不虚构文本，前端不依赖视觉能力。
  * [OUTPUT]: Independent employee profile/state and shared scene compilation; bobo management follows authenticated source beyond private chat.
+ * [OUTPUT]: Bobo原文检索设置按revision保存，工具与预检共享独立授权来源及原记忆失效登记。
  * [INPUT]: 领域类型、IPC 合同、可见核心会话的有界标题更新、自动化事务投递、技能库导出、工作认领/预算、协作模型容量与业务模块。
  * [OUTPUT]: 启用的内置模型员工（含 bobo）默认具备浏览器工具调用资格，旧 false/缺字段不再门禁；ACP/停用拒绝，组织阶段及原工作/范围/代际边界保留，定时任务沿原occurrence授权。
  * [OUTPUT]: 内置浏览器窗口/登录由应用统一管理，人工开窗零业务记录；工具调用按run独立审计，业务清理不关窗口或清登录；当前浏览器可用性随判断投影。召回按实际版本/获知/输入来源校验，无关历史清空不取消工作，相关失效沿真实运行来源传播；依赖文件只传宿主即时核验的原成果路径。
@@ -382,7 +383,9 @@ import { ContactListRepository, contactListChangeSchema } from './modules/employ
 import { ContactDeletionService } from './modules/employees/contact-deletion'
 import { MemoryRepository } from './modules/memory/memory-repository'
 import { memoryResourceId } from './adapters/mastra/conversation-memory'
-import { searchAuthorizedHistory } from './modules/conversations/history-search'
+import { searchAuthorizedHistory, type HistorySources } from './modules/conversations/history-search'
+import { createHistoryCapability } from './modules/conversations/history-capability'
+import { configureHistorySchema, configureHistorySettings, readHistorySettings } from './modules/conversations/history-settings'
 import { recallMemory } from './modules/memory/memory-recall'
 import { memoryAllowed, memoryUseScope, type MemoryAccess } from './modules/memory/memory-policy'
 import type { MemoryContextRef, MemoryObservation } from '@boai/shared/domain/memory'
@@ -1701,6 +1704,14 @@ export class AppService {
         case 'removeResource': return this.removeResource(lookupSchema.parse(input).id)
         case 'retryRun': { const value = z.object({ id, requestId: id, continuation: z.boolean().optional() }).strict().parse(input); return this.retry(value.id, value.requestId, value.continuation) }
         case 'getAgentHome': case 'readAgentFile': case 'regenerateAgentViews': case 'saveAgentFile': return this.agentFiles(method, input)
+        case 'getHistorySearchSettings': case 'configureHistorySearch': {
+          const value = method === 'configureHistorySearch' ? configureHistorySchema.parse(input) : z.object({ agentId: id }).strict().parse(input)
+          const agent = this.getAgent(value.agentId)
+          if (!isCoreAgent(agent) || isNativeBackend(agent.executionBackend)) fail('原文历史检索设置仅适用于 API Bobo')
+          if (method === 'getHistorySearchSettings') return readHistorySettings(this.store, agent.id)
+          const settings = await configureHistorySettings(this.store, value)
+          this.changed(); return settings
+        }
         case 'configureMemory': return this.configureMemory(input)
         case 'getMemory': case 'saveMemory': case 'deleteMemory': case 'clearMemory': return this.memoryOperation(method, input)
         default: fail('此操作必须由桌面主进程处理')
@@ -4508,12 +4519,17 @@ export class AppService {
       context.continuity = this.contextContinuity(context, throughSequence)
       if (this.options.engine.memoryOwner === 'mastra') {
         context.memorySources = () => this.mastraMemorySources(context)
-        if (isCoreAgent(agent) && conversation.kind === 'direct' && !conversation.channel) context.searchHistory = input => this.serialize(async () => {
-          const source = await this.collectMastraMemorySources(context, false)
-          const result = await searchAuthorizedHistory(context, source, input, (query, ids) => this.store.searchRawHistory(query, ids))
-          context.signal.throwIfAborted()
-          return result
-        })
+        if (isCoreAgent(agent) && conversation.kind === 'direct' && !conversation.channel) {
+          const settings = await readHistorySettings(this.store, agent.id)
+          context.historySearch = createHistoryCapability(settings, (input, options) => this.serialize(async () => {
+            if ((await readHistorySettings(this.store, agent.id)).mode === 'off') fail('原文历史检索已关闭')
+            const source = await this.collectHistorySources(context)
+            await this.registerHistorySources(context, source.threads)
+            const result = await searchAuthorizedHistory(context, source, input, (query, ids) => this.store.searchRawHistory(query, ids), options ? { ...settings, maxCharacters: Math.min(settings.maxCharacters, options.maxCharacters) } : settings, options?.excludeIds)
+            context.signal.throwIfAborted()
+            return result
+          }))
+        }
       }
     }
     if (context.memoryOwner) { delete context.rememberMemory; delete context.recallMemory; delete context.externalMemory }
@@ -4542,14 +4558,13 @@ export class AppService {
   private mastraMemorySources(context: EngineContext) {
     return this.serialize(() => this.collectMastraMemorySources(context))
   }
-  private async collectMastraMemorySources(context: EngineContext, includeMemoryConfiguration = true) {
+  private async collectHistorySources(context: EngineContext) {
       await this.assertExecutionAccess(context)
       const agent = this.getAgent(context.agent.id), room = this.getConversation(context.conversation.id)
       const isolated = room.kind !== 'direct' || !!room.channel || room.memoryScope === 'conversation' || !!room.memoryContextRef || !!context.materialRefs?.length
-      const resourceId = memoryResourceId(agent.id, isolated ? room.id : undefined)
       const forgotten = await this.memory.forgottenMessageIds(agent.id), access = await this.employeeMemoryAccess(agent, room, context.work?.id)
       const rooms = isolated ? [room] : [...this.conversations.values()].filter(item => item.agentIds.includes(agent.id) && item.kind === 'direct' && !item.channel && item.memoryScope !== 'conversation' && !item.memoryContextRef && !item.list?.hidden && !this.clearingConversations.has(item.id))
-      const threads: import('./adapters/mastra/conversation-memory').MemorySources['threads'] = []
+      const threads: HistorySources['threads'] = []
       for (const source of rooms) {
         const rows = source.id === room.id ? context.messages : this.conversationMessages(source.id)
         const messages: Message[] = []
@@ -4563,7 +4578,18 @@ export class AppService {
         }
         threads.push({ conversationId: source.id, title: source.title, messages })
       }
-      const legacy = includeMemoryConfiguration ? (await this.memory.get({ agentId: agent.id, scope: 'employee' })).entries.filter(entry => memoryAllowed(entry, access) && (isolated ? entry.conversationId === room.id && memoryUseScope(entry) !== 'employee' : memoryUseScope(entry) === 'employee')).map(({ id, version, content, createdAt, sourceMessageIds, sourceConversationIds, sourceResourceIds }) => ({ id, version, content, createdAt, sourceMessageIds, sourceConversationIds, sourceResourceIds })) : undefined
+      return { agent, room, isolated, access, threads }
+  }
+  private async collectMastraMemorySources(context: EngineContext) {
+      const { agent, room, isolated, access, threads } = await this.collectHistorySources(context)
+      const resourceId = memoryResourceId(agent.id, isolated ? room.id : undefined)
+      const legacy = (await this.memory.get({ agentId: agent.id, scope: 'employee' })).entries.filter(entry => memoryAllowed(entry, access) && (isolated ? entry.conversationId === room.id && memoryUseScope(entry) !== 'employee' : memoryUseScope(entry) === 'employee')).map(({ id, version, content, createdAt, sourceMessageIds, sourceConversationIds, sourceResourceIds }) => ({ id, version, content, createdAt, sourceMessageIds, sourceConversationIds, sourceResourceIds }))
+      await this.registerHistorySources(context, threads, legacy)
+      const settings = await this.memorySettings(agent.id)
+      const embedding = settings?.embedding ? { connection: this.getConnection(settings.embedding.connectionId), modelId: settings.embedding.modelId, apiKey: await this.apiKey(this.getConnection(settings.embedding.connectionId)) } : undefined
+      return { resourceId, threads, legacy, embedding }
+  }
+  private async registerHistorySources(context: EngineContext, threads: HistorySources['threads'], legacy?: { id: string; version: number }[]) {
       const inputIds = [...new Set([...(context.memory?.recall?.inputMessageIds ?? []), ...threads.flatMap(thread => thread.messages.map(message => message.id))])]
       if (context.memory?.recall) {
         context.memory.recall.inputMessageIds = inputIds
@@ -4573,9 +4599,6 @@ export class AppService {
         await this.store.write([record('snapshots', snapshot)])
       }
       context.signal.throwIfAborted()
-      const settings = includeMemoryConfiguration ? await this.memorySettings(agent.id) : undefined
-      const embedding = settings?.embedding ? { connection: this.getConnection(settings.embedding.connectionId), modelId: settings.embedding.modelId, apiKey: await this.apiKey(this.getConnection(settings.embedding.connectionId)) } : undefined
-      return { resourceId, threads, legacy, embedding }
   }
   private contextContinuity(context: EngineContext, throughSequence: number): ContextPort {
     const bound = Math.min(throughSequence, Math.max(...context.messages.map(message => message.sequence), 0))
