@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 单次预约以原受理事务消费、暂停原生注册并保留历史；输入/跨字段错误明确拒绝，创建回执冻结原指纹。
+ * [OUTPUT]: 单次预约经原生后继游标适配正常派发，原受理事务消费并暂停注册；业务预览仍只有目标时刻，原指纹及历史保持。
  * [OUTPUT]: 启动按真实员工执行关联补齐旧定时assignment，保留任务ID/会话/人工状态；孤立来源字段和内部progress不晋升。
  * [OUTPUT]: 员工指派私有元数据保留本次要求快照；恢复不推断任务交付，原定时规则保持。
  * [OUTPUT]: 采用旧手动任务/执行记录的任务身份，不重新运行；手动续做按任务版本固定本次执行。
@@ -28,7 +28,7 @@ import type { AutomationCreationSource, AutomationDefinition, AutomationInput, A
 import { automationNeedsAttention } from '@boai/shared/domain/automations'
 import type { Message } from '@boai/shared/domain'
 import { ProductStore, type RecordTransaction, type StoredRecord } from '../../adapters/storage/product-store'
-import { NativeSchedules, AUTOMATION_WORKFLOW, type NativeAutomationVersion } from './native-schedules'
+import { NativeSchedules, AUTOMATION_WORKFLOW, nativeScheduleCron, type NativeAutomationVersion } from './native-schedules'
 import { monitorPolicySchema } from './automation-monitor'
 import { linkEmployeeTask, ongoingTaskExecution, taskIdentity } from './employee-task-records'
 import { AutomationRepository } from './automation-repository'
@@ -199,13 +199,15 @@ export class AutomationService {
       let error: string | undefined
       try {
         const id = `schedule_boai-${d.id}`, existing = await this.native.mastra.schedules.get(id)
+        const dormant = d.frequency === 'manual' || d.frequency === 'once' && (d.onceConsumedAt || Date.parse(d.onceAt ?? '') <= Date.now())
+        const cron = dormant ? d.cron : nativeScheduleCron(d)
         const status = d.enabled && !d.deletedAt && !d.onceConsumedAt ? 'active' : 'paused'
         const inputData = { automationId: d.id, revision: d.revision, executionRevision: d.executionRevision, scheduleGeneration: d.scheduleGeneration }
-        if (d.frequency === 'manual' || d.frequency === 'once' && (d.onceConsumedAt || Date.parse(d.onceAt ?? '') <= Date.now())) { if (existing && existing.status !== 'paused') await this.native.mastra.schedules.pause(existing.id) }
-        else if (!existing) await this.native.mastra.schedules.create({ id, workflowId: AUTOMATION_WORKFLOW, cron: d.cron, timezone: d.timezone, inputData, status })
-        else if (existing.status !== status || existing.cron !== d.cron || existing.timezone !== d.timezone || JSON.stringify('inputData' in existing ? existing.inputData : null) !== JSON.stringify(inputData)) {
+        if (dormant) { if (existing && existing.status !== 'paused') await this.native.mastra.schedules.pause(existing.id) }
+        else if (!existing) await this.native.mastra.schedules.create({ id, workflowId: AUTOMATION_WORKFLOW, cron, timezone: d.timezone, inputData, status })
+        else if (existing.status !== status || existing.cron !== cron || existing.timezone !== d.timezone || JSON.stringify('inputData' in existing ? existing.inputData : null) !== JSON.stringify(inputData)) {
           // Supplying even an unchanged cron makes Mastra recompute nextFireAt and discard a retained due slot.
-          await this.native.mastra.schedules.update(existing.id, { ...(existing.cron !== d.cron ? { cron: d.cron } : {}), ...(existing.timezone !== d.timezone ? { timezone: d.timezone } : {}), inputData, status })
+          await this.native.mastra.schedules.update(existing.id, { ...(existing.cron !== cron ? { cron } : {}), ...(existing.timezone !== d.timezone ? { timezone: d.timezone } : {}), inputData, status })
         }
       } catch (cause) { error = String(cause) }
       const applied = await this.repository.acknowledgeSync(d.id, d.revision, error)

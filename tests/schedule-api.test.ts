@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Isolated AppService/SQLite, public schemas and the real schedule repository.
- * [OUTPUT]: Public/internal boundary, one-time calendar/consumption, clear errors, original receipt recovery and source-scoped unresolved-write invariants.
+ * [OUTPUT]: Public/internal boundary, native one-time cursor/consumption, original receipt recovery and one observation per actual Agent operation.
  * [POS]: Schedule contract regressions; no real model, user data or system notification.
  * [PROTOCOL]: Update Header and owning .folder.md when changed.
  */
@@ -17,6 +17,7 @@ import { ApplicationService } from '../packages/runtime/src/modules/application/
 import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
 import { AutomationRepository } from '../packages/runtime/src/modules/automations/automation-repository'
 import { automationCron, normalizeSchedule, nextTimes } from '../packages/runtime/src/modules/automations/schedule-policy'
+import { nativeScheduleCron, NativeSchedules, AUTOMATION_WORKFLOW } from '../packages/runtime/src/modules/automations/native-schedules'
 
 const cleanup: (() => Promise<unknown>)[] = []
 afterEach(async () => { vi.useRealTimers(); for (const dispose of cleanup.splice(0).reverse()) await dispose() })
@@ -33,6 +34,22 @@ it('exports a business-only discriminated schema and rejects invalid local times
   expect(new Date(scheduleInstant('2026-11-04', '09:00', 'Asia/Shanghai')).toISOString()).toBe('2026-11-04T01:00:00.000Z')
   expect(() => scheduleInstant('2026-03-08', '02:30', 'America/New_York')).toThrow(ScheduleError)
   expect(() => scheduleInstant('2026-11-01', '01:30', 'America/New_York')).toThrow('夏令时切换中重复')
+})
+it.each(['2028-02-29', '2096-02-29', '2099-11-04'])('lets the native clock advance after the once fire on %s while business preview stays single', async date => {
+  const { root } = await database(), native = new NativeSchedules(join(root, 'clock.sqlite'), async () => {})
+  await native.init(); cleanup.push(() => native.close())
+  const raw = normalizeSchedule({ frequency: 'once' as const, startsOn: date, time: '09:00', weekday: 0, timezone: 'UTC', onceAt: undefined as string | undefined })
+  const d = { ...raw, cron: automationCron(raw) }, at = Date.parse(raw.onceAt!)
+  vi.setSystemTime(at - 60_000)
+  // Exercise Mastra's pinned clock/parser; the root policy's Croner version has a different supported syntax.
+  const clock = await native.mastra.schedules.create({ id: 'once', workflowId: AUTOMATION_WORKFLOW, cron: nativeScheduleCron(d), timezone: 'UTC', status: 'paused', inputData: { automationId: 'once', revision: 1 } })
+  expect(new Date(clock.nextFireAt).toISOString()).toBe(raw.onceAt)
+  vi.setSystemTime(at)
+  const successor = await native.mastra.schedules.update(clock.id, { cron: nativeScheduleCron(d) })
+  expect(successor.nextFireAt).toBeGreaterThan(at)
+  expect(nextTimes(d, 5, new Date(at - 60_000))).toEqual([raw.onceAt])
+  expect(nextTimes({ ...d, onceConsumedAt: new Date(at).toISOString() }, 5, new Date(at - 60_000))).toEqual([])
+  if (date === '2096-02-29') expect(new Date(successor.nextFireAt).getUTCFullYear()).toBe(2104)
 })
 it('creates a one-time bobo plan through the real public adapter, shares legacy storage, and never starts model work', async () => {
   const { root, store } = await database()
@@ -117,4 +134,17 @@ it('halts repeated schedule observations without adding a wall-clock limit or af
   expect(halt).toHaveBeenCalledTimes(1)
   for (let i = 0; i < 5; i++) await app.call({ operation: 'automations.list', input: {} })
   expect(halt).toHaveBeenCalledTimes(1)
+})
+it('counts a public retry once, excluding its internal catalog and durable receipt reads', async () => {
+  const { store } = await database(), halt = vi.fn(), actor: ApplicationActor = { kind: 'employee', employeeId: 'bobo', conversationId: 'core', messageId: 'source' }
+  await store.write([{ collection: 'messages', id: 'source', value: { id: 'source' } }])
+  const execute = vi.fn(async () => ({ id: 'saved-plan' }))
+  const app = new ApplicationService(store, [{ name: 'automations.create', description: 'fixture', effect: 'write', input: z.object({}).strict(), resultType: 'object', execute }], async () => {}, halt)
+  const call = async () => { await app.catalog({ operation: 'automations.create' }, actor, false); return app.call({ operation: 'automations.create', input: {}, requestId: 'one-intent' }, actor) }
+  expect(await call()).toMatchObject({ status: 'succeeded' })
+  expect(await app.receipt('one-intent', actor)).toMatchObject({ status: 'succeeded' })
+  expect(await call()).toMatchObject({ status: 'succeeded' })
+  expect(halt).not.toHaveBeenCalled(); expect(execute).toHaveBeenCalledTimes(1)
+  await call()
+  expect(halt).toHaveBeenCalledTimes(1); expect(execute).toHaveBeenCalledTimes(1)
 })

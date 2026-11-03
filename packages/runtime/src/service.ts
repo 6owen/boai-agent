@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 单员工定时执行进入可见员工任务及独立会话；旧计划指向执行聊天也按新任务隔离，任务执行定位原会话消息。
+ * [OUTPUT]: 定时任务进入员工面板及独立会话；宿主内部操作元数据查询不计Agent无进展，正常创建后核对不误停。
  * [OUTPUT]: 插件技能读取沿当前执行身份核验和动态启停，已有员工自动获得可用入口。
  * [OUTPUT]: 2026-11-03在默认技能初始化前退役标准computer-use-mcp来源和未改动旧技能，保留定制副本。
  * [OUTPUT]: Bobo原文工具复用官方记忆来源授权/遗忘并在服务临界区查询现有SQLite，一次返回原文及邻近消息。
@@ -4927,7 +4927,7 @@ export class AppService {
           receipt: async query => { await validate(); return this.application.receipt(query, actor) },
           call: async input => {
             await validate()
-            const catalog = await this.application.catalog({ operation: input.operation }, actor)
+            const catalog = await this.application.catalog({ operation: input.operation }, actor, false)
             if (catalog.operations[0]?.effect === 'write') await authorizeExecution(context, { kind: 'configuration', description: `BOAI：${input.operation}` })
             await validate()
             const result = await this.applicationAuthority.run({ validate, signal: effective, directories: context.directoryAccess }, () => this.application.call(input, actor))
