@@ -1,11 +1,11 @@
 /*
  * [INPUT]: Real plugin settings/SQLite and controlled upstream process results.
- * [OUTPUT]: Opt-in, authority, namespace, cancellation, argument and image boundary checks.
+ * [OUTPUT]: Default desktop provider, explicit opt-out, authority, namespace, cancellation and image boundary checks.
  * [POS]: Desktop plugin integration tests; actual native smoke is recorded separately.
  * [PROTOCOL]: Update Header and tests/.folder.md on change.
  */
 import { afterEach, expect, it, vi } from 'vitest'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { EngineContext } from '../packages/runtime/src/contracts'
@@ -32,13 +32,22 @@ async function fixture() {
   const enable = (enabled = true) => plugins.update({ id: DESKTOP_PLUGIN_ID, enabled, expectedRevision: plugins.snapshot().revision })
   return { root, service, plugins, context, controller, enable }
 }
-it('does not start any process until the new plugin is explicitly enabled', async () => {
+it('defaults to Agent Desktop without starting a process, and honors saved disablement', async () => {
   const f = await fixture()
+  expect(await f.service.enabled()).toBe(true)
+  expect(await f.service.inspect(f.context)).toMatchObject({ provider: 'agent-desktop', config: { allowHeaded: false } })
+  expect(upstream.prepare).not.toHaveBeenCalled()
+  await f.enable(false)
   expect(await f.service.enabled()).toBe(false)
   await expect(f.service.test()).rejects.toThrow('停用')
   expect(upstream.prepare).not.toHaveBeenCalled()
-  await f.enable()
-  expect(await f.service.inspect(f.context)).toMatchObject({ provider: 'agent-desktop', config: { allowHeaded: false } })
+})
+it('fails closed on malformed and unsupported plugin settings', async () => {
+  const f = await fixture()
+  for (const text of ['{', JSON.stringify({ schemaVersion: 99, revision: 0, disabledIds: [] })]) {
+    await writeFile(join(f.root, 'application-plugins.json'), text)
+    expect(await f.service.enabled()).toBe(false)
+  }
   expect(upstream.prepare).not.toHaveBeenCalled()
 })
 it('allows observation but refuses read-only writes and declined approval before dispatch', async () => {

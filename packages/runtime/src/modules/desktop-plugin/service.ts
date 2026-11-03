@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Explicit application plugin enablement, employee permission and pinned upstream CLI.
  * [OUTPUT]: Desktop calls with shared admission, per-conversation refs, real images and cancellation fences.
- * [POS]: Optional desktop plugin host; the legacy computer-use data source is untouched.
+ * [POS]: BOAI desktop provider; honors explicit plugin disablement and employee permissions.
  * [PROTOCOL]: Update Header and desktop-plugin/.folder.md on change.
  */
 import { readFile } from 'node:fs/promises'
@@ -9,7 +9,8 @@ import { dirname, join } from 'node:path'
 import { createHash } from 'node:crypto'
 import { prepareDesktopExecutable, runDesktopCommand, DESKTOP_VERSION } from '@boai/desktop-plugin/host'
 import { DESKTOP_PLUGIN_ID, desktopPluginConfigSchema, desktopPluginCallSchema, desktopPluginWrites, validateDesktopPluginCall, saveDesktopPluginSettingsSchema, type DesktopPluginSettings, type DesktopPluginCall } from '@boai/shared/plugins/desktop-tools'
-import { readPluginSettingsSchema } from '@boai/shared/plugins/types'
+import { pluginAvailability, readPluginSettingsSchema } from '@boai/shared/plugins/types'
+import { applicationPlugins } from '@boai/shared/plugins/catalog'
 import type { ProductStore } from '../../adapters/storage/product-store'
 import type { EngineContext } from '../../contracts'
 import { authorizeExecution } from '../employees/execution-permissions'
@@ -17,6 +18,7 @@ import { TaskAdmission } from '../collaboration/task-admission'
 
 const desktopAdmission = new TaskAdmission()
 const collection = 'desktopPluginSettings'
+const plugin = applicationPlugins.find(value => value.id === DESKTOP_PLUGIN_ID)!
 export class DesktopPluginService {
   private executable?: Promise<string>
   private closing = false
@@ -29,8 +31,10 @@ export class DesktopPluginService {
       const text = await readFile(join(dirname(this.dataPath), 'application-plugins.json'), 'utf8')
       if (text.length > 32768) return false
       const settings = readPluginSettingsSchema.parse(JSON.parse(text))
-      return settings.enabledIds.includes(DESKTOP_PLUGIN_ID) && !settings.disabledIds.includes(DESKTOP_PLUGIN_ID)
-    } catch { return false }
+      return pluginAvailability(plugin, settings) === 'enabled'
+    } catch (error) {
+      return (error as NodeJS.ErrnoException).code === 'ENOENT' && pluginAvailability(plugin, { revision: 0, disabledIds: [] }) === 'enabled'
+    }
   }
   async settings(): Promise<DesktopPluginSettings> {
     const saved = await this.store.get<DesktopPluginSettings>(collection, 'agent-desktop')
@@ -64,7 +68,7 @@ export class DesktopPluginService {
     if (context.work?.organization) throw new Error('组织管理阶段不提供桌面操作')
     return { provider: 'agent-desktop', version: DESKTOP_VERSION, config: (await this.settings()).config,
       inputSchema: (await import('zod')).z.toJSONSchema(desktopPluginCallSchema),
-      instructions: 'Use call_desktop_plugin. First read skills get desktop and skills get platform, then status. Use snapshot → action → fresh snapshot to verify. Pass original CLI arguments as an array, and a qualified ref from this conversation. No shell command is accepted. Screenshots return actual image parts. Read error.disposition before retrying; an unknown result may already have taken effect. Headed mode and physical keyboard input require the owner setting. Do not use the legacy computer-use MCP for the same action when this plugin result is unknown.' }
+      instructions: 'Use call_desktop_plugin for BOAI computer use. First read skills get desktop and skills get platform, then status. Use snapshot → action → fresh snapshot to verify. Pass original CLI arguments as an array, and a qualified ref from this conversation. No shell command is accepted. Screenshots return actual image parts. Read error.disposition before retrying; an unknown result may already have taken effect. Headed mode and physical keyboard input require the owner setting. If this plugin is unavailable, report that state; do not fall back to a different desktop provider.' }
   }
   async call(raw: unknown, context: EngineContext) {
     const input = desktopPluginCallSchema.parse(raw)

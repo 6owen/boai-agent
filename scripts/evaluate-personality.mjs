@@ -9,6 +9,7 @@
  * [OUTPUT]: 可显式冻结独立反思候选文件，评估不改产品预设或当前员工配置。
  * [OUTPUT]: 反思较早漏日/当日笔记与来源失效、十技能绑定；实际与撤回候选归架构§11.22。
  * [OUTPUT]: 2026-10-20 Alma技能接线：普通聊天按需读绑定技能/有来源记忆，独立任务协议与MCP媒体保持实际授权；本轮证据归独立Agent架构§11.21。
+ * [OUTPUT]: Computer-use diagnostic uses Agent Desktop status; no legacy MCP configuration is copied.
  * [INPUT]: Explicit connection/data path and live or read-only stored Bobo snapshot; source freezes before calls.
  * [OUTPUT]: Zero-call sample preparation or isolated real AppService/Mastra evidence, at most 40 requests and 12 minutes; pending human review.
  * [POS]: Personality migration probe reusing tests/evaluation/host.ts; does not launch a product window or modify daily data.
@@ -90,8 +91,6 @@ if (includeSkills) {
     const content = await readFile(join(destination, 'SKILL.md'), 'utf8')
     settings.skills.push({ name, content, hash: createHash('sha256').update(content).digest('hex') })
   }
-  const response = JSON.parse(execFileSync(process.execPath, ['dist/cli/index.mjs', 'app', 'call', 'sources.list', '{}', '--json'], { encoding: 'utf8' }))
-  settings.computerSource = response.data?.find(source => source.name === 'BOAI Computer Use')
 }
 for (const directory of ['packages/runtime/src', 'packages/shared/src', 'packages/transport/src', 'packages/runtime-plugin-sdk/src', 'packages/runtime-plugins/src', 'apps/cli/src']) for (const file of (await readdir(directory, { recursive: true })).sort().filter(file => /\.(ts|tsx)$/.test(file))) {
   const path = join(directory, file); settings.hashes[path] = createHash('sha256').update(await readFile(path)).digest('hex')

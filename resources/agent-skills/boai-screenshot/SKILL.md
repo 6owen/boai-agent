@@ -4,14 +4,14 @@ description: "Capture a requested screen, window or region on macOS; create a sm
 ---
 <!--
 [INPUT]: Alma screenshot/SKILL.md, macOS screencapture/sips and BOAI command/publication tools.
-[OUTPUT]: Actual capture or existing-image preview with original bytes retained and truthful delivery.
+[OUTPUT]: Actual capture or existing-image preview; desktop app interaction uses Agent Desktop.
 [POS]: Bound product skill using existing host permissions; no separate screen-capture service.
 [PROTOCOL]: Update Header, parent .folder.md and migration ledger on change.
 -->
 
 # Screenshot
 
-Use the supplied `execute_command` (API employee) or native command tool. Follow its real command/directory permission flow. This skill does not grant macOS Screen Recording. For a BOAI browser page, prefer its actual `browser_tool` screenshot command; for an app accessibility task, follow `boai-computer-use` and the discovered provider schema.
+Use the supplied `execute_command` (API employee) or native command tool. Follow its real command/directory permission flow. This skill does not grant macOS Screen Recording. For a BOAI browser page, prefer its actual `browser_tool` screenshot command; for an app accessibility task, use `inspect_desktop_plugin`, then `call_desktop_plugin` with Agent Desktop’s own `skills get desktop` and `skills get platform` instructions. All BOAI desktop app interaction uses this plugin.
 
 ## Capture the requested surface
 
@@ -44,6 +44,6 @@ Quote actual paths, preserve the original, and check the new file's format, dime
 
 ## Inspect and deliver
 
-Use a real available image-reading/vision tool for visual inspection; native employees may have one. The computer-use MCP and browser tools can return their own screenshots as image parts when configured. Having `sips`, an image path or a file card does not give a text-only model sight. If no supported visual input is available, state that you verified the file rather than claiming to see its contents.
+Use a real available image-reading/vision tool for visual inspection; native employees may have one. Agent Desktop and browser tools can return their own screenshots as image parts when configured. Having `sips`, an image path or a file card does not give a text-only model sight. If no supported visual input is available, state that you verified the file rather than claiming to see its contents.
 
 Publish the requested original or preview with `publish_artifact`, following `boai-send-file`. Check its actual receipt before saying it was sent. A path in a reply is not an attachment. Do not claim Telegram or another external delivery merely because the BOAI file card exists.

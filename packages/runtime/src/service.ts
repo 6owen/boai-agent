@@ -1,6 +1,7 @@
 /*
+ * [OUTPUT]: 2026-11-03在默认技能初始化前退役标准computer-use-mcp来源和未改动旧技能，保留定制副本。
  * [OUTPUT]: Bobo原文工具复用官方记忆来源授权/遗忘并在服务临界区查询现有SQLite，一次返回原文及邻近消息。
- * [OUTPUT]: Agent Desktop 可选插件接线；默认关闭、独立于旧computer-use，调用沿员工权限及真实图片。
+ * [OUTPUT]: Agent Desktop默认承接电脑操作，调用沿员工权限及真实图片，显式停用保持。
  * [OUTPUT]: bobo任务首次受理前复用原核心连接准备；任务仍沿员工独立会话、FIFO和状态协议，不新建核心主聊天。
  * [OUTPUT]: 会话创建沿原任务工具补全标题/要求，事务提交后同步当前会话标题缓存。
  * [OUTPUT]: 员工任务支持编辑要求及批量派发，状态不阻止会话续用；API/native原任务身份保持。
@@ -204,6 +205,7 @@ import { workingScene } from './modules/contexts/working-scene'
 import { progressBoundary } from './adapters/mastra/progress-review'
 import { ProgressStalledError, type ProgressMonitor } from './modules/contexts/progress-monitor'
 import { initializeBundledSkills } from './modules/resources/bundled-skills'
+import { retireComputerUse } from './modules/resources/retire-computer-use'
 import { availableReactionEmojis, reactionInputSchema, type ReactionInput, type ReactionResult } from './modules/conversations/reaction-tools'
 import { AgentBehaviorService } from './modules/automations/agent-behaviors'
 import { quietTime, reflectionRooms, personalityDate } from './modules/automations/personality-policy'
@@ -965,6 +967,7 @@ export class AppService {
     if (provenance.length) await this.store.write(provenance)
     await Promise.all(['skills', 'knowledge', 'workspaces', 'agents', 'external-workspaces', 'materials'].map(folder => mkdir(join(this.dataPath, folder), { recursive: true })))
     await this.knowledge.init(); await this.resourceCleanups.init(); await this.skillUpdates.init(); await this.skillLibrary.init(); await this.skills.init()
+    await retireComputerUse({ sources: this.dataSources.list(), resources: [...this.resources.values()], removeSource: (id, expectedRevision) => this.dataSources.remove({ id, expectedRevision }), removeResource: id => this.removeResource(id), failed: error => this.emit({ type: 'runtime-error', error }) })
     if (this.options.skillDiscovery?.bundledRoot) await initializeBundledSkills({ store: this.store, catalog: this.localSkills, skills: this.skills, employee: () => this.employees.get(CORE_AGENT_ID), resources: () => [...this.resources.values()], failed: error => this.emit({ type: 'runtime-error', error }) })
     // Discover historical directory-only files before any new execution can copy an unpublished original.
     for (const conversation of this.conversations.values()) if (!conversation.mergedInto && !this.clearingConversations.has(conversation.id)) await this.conversationArtifacts(conversation, true)

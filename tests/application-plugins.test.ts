@@ -32,7 +32,7 @@ afterEach(async () => { await Promise.all(roots.splice(0).map(root => rm(root, {
 
 test('one immutable catalog supplies preview and theme identities without mutating declarations', () => {
   expect(applicationPlugins).toHaveLength(12)
-  expect(applicationPlugins.find(plugin => plugin.id === 'boai.desktop.agent-desktop')).toMatchObject({ defaultEnabled: false, contributions: [{ type: 'desktop-tools' }] })
+  expect(applicationPlugins.find(plugin => plugin.id === 'boai.desktop.agent-desktop')).toMatchObject({ defaultEnabled: true, contributions: [{ type: 'desktop-tools' }] })
   expect(applicationPlugins.flatMap(plugin => plugin.contributions).filter(contribution => contribution.type === 'web-search').map(contribution => contribution.provider)).toEqual(['deepseek'])
   expect(themePluginId('nord')).toBe(themeId)
   expect(themePluginId('boai-dark')).toBeUndefined()
