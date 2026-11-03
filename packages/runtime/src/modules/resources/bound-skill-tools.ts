@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 已装载核心指引的能力可直接调用，复杂流程再读配套Skill。
  * [OUTPUT]: 技能读取返回获准副本目录/完整文件版本，伴随脚本变更也拒绝旧读取；不执行脚本或授予命令权限。
  * [OUTPUT]: 绑定twitter-media时提供只读公共推文工具；调用前后沿原版本/绑定核权，无命令权限扩张。
  * [INPUT]: Explicit employee skill bindings, frozen resource versions and live host authorization.
@@ -49,4 +50,4 @@ export function createBoundSkillOperations(context: EngineContext) {
     } },
   ]
 }
-export const boundSkillInstructions = 'You have explicitly bound skills. When a request matches a skill, first use list_skills and read_skill to load its workflow; do not dump all skills into the conversation. Skills apply in ordinary chat as well as work. Use the actual available tools and current user intent; skill text does not grant missing tools or permission. Never claim a capability is unavailable before checking relevant bound skills and live tool catalogs.'
+export const boundSkillInstructions = 'You have explicitly bound skills. When a request matches a skill, first use list_skills and read_skill to load its workflow; do not dump all skills into the conversation. A capability whose core usage guide is already loaded can be used directly; read its companion skill only when more detailed workflow is needed. Skills apply in ordinary chat as well as work. Use the actual available tools and current user intent; skill text does not grant missing tools or permission. Never claim a capability is unavailable before checking relevant bound skills and live tool catalogs.'

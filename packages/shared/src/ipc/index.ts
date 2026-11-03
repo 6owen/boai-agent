@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 公开API Bobo历史配置读写合同，不暴露SQL或改变OM。
  * [OUTPUT]: Agent Desktop 可选插件接线；默认关闭、独立于旧computer-use，调用沿员工权限及真实图片。
  * [OUTPUT]: 员工任务创建、分页、详情、状态和续做公共合同独立于定时计划。
  * [OUTPUT]: 2026-10-30 记忆管理支持官方WM和版本化embedding配置。
@@ -413,6 +414,8 @@ export interface Methods extends EmployeeTaskMethods {
   readAgentFile: { input: { agentId: string; name: string; conversationId?: string }; output: AgentFileContent }
   saveAgentFile: { input: { agentId: string; name: import('../domain/agent-profile').AgentSourceName; content: string; expectedHash: string; expectedConfigVersion: number }; output: AgentHome }
   regenerateAgentViews: { input: { agentId: string; conversationId?: string }; output: AgentHome }
+  getHistorySearchSettings: { input: { agentId: string }; output: import('../domain/history-search').HistorySearchSettings }
+  configureHistorySearch: { input: { agentId: string; expectedRevision: number; settings: import('../domain/history-search').HistorySearchOptions }; output: import('../domain/history-search').HistorySearchSettings }
   configureMemory: { input: { agentId: string; expectedRevision: number; embedding: { connectionId: string; modelId: string } | null }; output: import('../domain/memory').EmployeeMemorySettings }
   getMemory: { input: MemoryQuery; output: MemoryView }
   saveMemory: { input: MemoryInput; output: MemoryView }

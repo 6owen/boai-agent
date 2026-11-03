@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Bobo原文能力生成唯一回忆指引，关闭停用显式检索；WM/OM阈值保持。
  * [OUTPUT]: 可用原文工具时优先考虑一次search_history，官方recall仍可展开已定位会话；OM阈值保持。
  * [OUTPUT]: Bobo通过官方retrieval.instructions主动回忆；无OM记录时只补同一段system指引，阈值、历史加载与自主工具选择保持。
  * [OUTPUT]: 2026-10-30 回归更新为Mastra官方记忆/原生归属合同；保留来源、调用预算和业务发布断言。
@@ -21,7 +22,6 @@ import { messageData, partitionTurn } from './message-projection'
 import { memoryEmbedder, memoryModel } from './memory-model'
 import { thinkingProviderOptions } from './model-config'
 import { isCoreAgent } from '@boai/shared/domain/core-agent'
-import { historySearchGuidance } from '../../modules/conversations/history-search'
 
 export interface MemorySources {
   /** Private employee scope never includes groups, channels or conversation-restricted materials. */
@@ -101,9 +101,9 @@ export class EmployeeConversationMemory {
     const storage = await this.store()
     const embedder = source.embedding ? await memoryEmbedder(context, source.embedding) : undefined
     const boboPrivate = isCoreAgent(context.agent) && context.conversation.kind === 'direct' && !context.conversation.channel
-    const retrievalEnabled = context.groupCoordination?.mode !== 'ordered' && !context.work?.organization && (!context.decision || context.decision.action === 'reply' || (boboPrivate && context.decision.action === 'ask'))
+    const retrievalEnabled = !(boboPrivate && context.historySearch?.settings.mode === 'off') && context.groupCoordination?.mode !== 'ordered' && !context.work?.organization && (!context.decision || context.decision.action === 'reply' || (boboPrivate && context.decision.action === 'ask'))
     const boboRecall = retrievalEnabled && boboPrivate
-    const recallGuidance = boboRecall ? `${sourceRules}\n\n${context.searchHistory ? historySearchGuidance + '\n\n' : ''}${boboRecallGuidance}` : sourceRules
+    const recallGuidance = boboRecall ? `${sourceRules}\n\n${context.historySearch?.guidance ?? boboRecallGuidance}` : sourceRules
     const memory = new Memory({ storage, vector: this.vector, ...(embedder ? { embedder, embedderOptions: { maxRetries: 0 } } : {}), options: {
       lastMessages: 100,
       // OM retrieval indexes observations and resolves their source ranges; no duplicate raw-message vector pipeline.

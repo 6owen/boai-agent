@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: API Bobo记忆页接原文设置，其他员工和原生记忆页保持。
  * [OUTPUT]: 2026-10-30 API记忆页显示实际WM/OM，支持范围、编辑、清空和embedding；原生只说明归属。
  * [OUTPUT]: 记忆添加/编辑使用独立Dialog，保留底层列表与打开时的版本；局部草稿守卫、保存禁关和失败草稿保持，标题操作统一ghost/sm。
  * [INPUT]: 员工统一记忆 API、来源会话/资料、版本化结果及未保存守卫。
@@ -20,6 +21,8 @@ import { X } from '@/components/icons'
 import { useEditorGuard } from '@/components/common/use-editor-guard'
 import { ConnectionSettingRow as Field } from '@/pages/settings/connection-layout'
 import { ContactProfileCard, ContactProfileSection, EmployeeFormSection } from './profile-card'
+import { isCoreAgent } from '@boai/shared/domain/core-agent'
+import { HistorySearchSettings } from './history-search-settings'
 const kinds = { long_term: '长期资料', experience: '经历', temporary: '临时记忆' }
 const scopes = { employee: '相关聊天可用', conversation: '仅此聊天', context: '仅关联事项' }
 const statuses = { active: '有效', superseded: '已纠正', archived: '已归档', expired: '已到期', deleted: '已忘记' }
@@ -46,7 +49,7 @@ export function MemoryPane({ api, agent, snapshot, initialConversationId, active
   }, [api, agent.id, source, kind, status, search, revision, active, agent.executionBackend?.kind])
   const change = (fn: () => void) => guard.navigate(() => { setEditing(null); setForget(null); fn() }, { resetOnDiscard: false })
   const refreshed = () => { setEditing(null); setRevision(value => value + 1) }
-  if (view?.managed) return <>{error && <Banner>{error}</Banner>}<ManagedMemoryPane api={api} agent={agent} memory={view.managed} epoch={view.epoch} snapshot={snapshot} loading={loading} sourceSettings={<EmployeeFormSection title="记忆范围" hint="私聊可在本员工的获准私聊间共享；群聊、渠道和材料内容保持隔离。">
+  if (view?.managed) return <>{error && <Banner>{error}</Banner>}<ManagedMemoryPane active={active} api={api} agent={agent} memory={view.managed} epoch={view.epoch} snapshot={snapshot} loading={loading} sourceSettings={<EmployeeFormSection title="记忆范围" hint="私聊可在本员工的获准私聊间共享；群聊、渠道和材料内容保持隔离。">
     <Field label="来源聊天"><SelectField value={source} onValueChange={value => change(() => setSource(value))} options={[{ value: '', label: '全部来源' }, ...conversations.map(room => ({ value: room.id, label: room.title }))]} /></Field>
     {sourceConversation?.kind === 'direct' && !sourceConversation.channel && <Field label="使用范围"><SelectField disabled={busy} value={sourceConversation.memoryScope ?? 'employee'} onValueChange={value => updateSource(value as 'employee' | 'conversation')} options={[{ value: 'employee', label: '本员工的获准私聊' }, { value: 'conversation', label: '仅此聊天' }]} /></Field>}
   </EmployeeFormSection>} refresh={() => setRevision(value => value + 1)} /></>
@@ -124,13 +127,14 @@ function MemoryEditor({ api, agent, conversations, source, entry, epoch, onSaved
 }
 
 
-function ManagedMemoryPane({ api, agent, memory, epoch, snapshot, loading, sourceSettings, refresh }: { api: DesktopApi; agent: DigitalAgent; memory: ManagedMemory; epoch: number; snapshot: Snapshot; loading: boolean; sourceSettings: import('react').ReactNode; refresh(): void }) {
+function ManagedMemoryPane({ active, api, agent, memory, epoch, snapshot, loading, sourceSettings, refresh }: { active: boolean; api: DesktopApi; agent: DigitalAgent; memory: ManagedMemory; epoch: number; snapshot: Snapshot; loading: boolean; sourceSettings: import('react').ReactNode; refresh(): void }) {
   const [editing, setEditing] = useState<ManagedMemory['documents'][number] | null>(null), [clearing, setClearing] = useState(false)
   const { busy, error, run } = useMutation(), guard = useContext(GuardContext)
   if (memory.backend === 'native') return <EmployeeFormSection title="本机 Agent 记忆" hint="会话上下文和记忆由所选本机 Agent 管理。" />
   return <div className="detail-section employee-form-sections">
     {error && <Banner>{error}</Banner>}
     {sourceSettings}
+    {isCoreAgent(agent) && <HistorySearchSettings key={agent.id} api={api} agentId={agent.id} active={active} />}
     <MemoryRetrievalSettings api={api} agent={agent} memory={memory} snapshot={snapshot} saved={refresh} />
     <ContactProfileSection title="Mastra Memory" actions={<div className="flex gap-2"><Button variant="ghost" size="sm" disabled={busy || loading} onClick={() => guard.navigate(refresh)}>刷新</Button><Button variant="ghost" size="sm" disabled={busy || loading || !memory.documents.length} onClick={() => setClearing(true)}>清空记忆</Button></div>}>
       {!memory.documents.length && <p className="field-hint">开始 API 对话后，将在这里显示员工记忆。</p>}

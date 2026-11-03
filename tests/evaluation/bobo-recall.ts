@@ -1,5 +1,6 @@
 /*
  * [OUTPUT]: 原文工具对照增加数据库纠正场景和宿主查询/SQL耗时，查询证据与模型往返分别记录。
+ * [OUTPUT]: historyMode对比同一代码按需/预检，记录真实预检耗时、首请求与事实检查，语义质量仍待独立评价。
  * [INPUT]: Frozen baseline/candidate sources, the selected existing Bobo API connection and synthetic cross-session/control questions.
  * [OUTPUT]: Isolated AppService/Mastra replies, real request/tool counts, timings and deterministic source-fact checks.
  * [POS]: Manual bounded recall comparison; never writes personal chats or stores credentials.
@@ -13,11 +14,11 @@ import { ProductStore } from '../../packages/runtime/src/adapters/storage/produc
 import type { AgentEngine, EngineContext } from '../../packages/runtime/src/contracts'
 import type { Connection, Conversation, ConversationDetail, Message, ModelUsage, Snapshot } from '../../packages/shared/src/domain'
 
-interface Settings { output: string; variant: string; maxRequests: number; maxOutputTokens: number; deadlineMs: number; repetitions: number; rawHistory?: boolean; modelId?: string; thinkingLevel?: import('../../packages/shared/src/domain').DigitalAgent['thinkingLevel'] }
+interface Settings { output: string; variant: string; maxRequests: number; maxOutputTokens: number; deadlineMs: number; repetitions: number; rawHistory?: boolean; historyMode?: 'agent' | 'prefetch'; modelId?: string; thinkingLevel?: import('../../packages/shared/src/domain').DigitalAgent['thinkingLevel'] }
 export async function runBoboRecallEvaluation({ settings, connection, apiKey }: { settings: Settings; connection: Connection; apiKey: string }) {
   const started = Date.now(), rows: unknown[] = [], calls = new Map<string, { caseId: string; phase: string; startedAt: number; usage?: ModelUsage }>()
   let caseId = '', service: AppService | undefined, base: MastraEngine | undefined, unknownUsage = false
-  const requests: unknown[] = [], historyReads: unknown[] = [], originalFetch = globalThis.fetch
+  const requests: unknown[] = [], historyReads: unknown[] = [], prefetchReads: { caseId: string; hits: number; elapsedMs: number; sqlMs: number; queries: string[] }[] = [], originalFetch = globalThis.fetch
   globalThis.fetch = async (input, init) => {
     if (typeof init?.body === 'string') {
       const body = JSON.parse(init.body), text = JSON.stringify(body.messages ?? [])
@@ -29,11 +30,11 @@ export async function runBoboRecallEvaluation({ settings, connection, apiKey }: 
   }
   await mkdir(settings.output, { recursive: true })
   const save = async () => {
-    const text = JSON.stringify({ variant: settings.variant, cases: rows, calls: [...calls.values()], requests, historyReads, actualRequests: calls.size, unknownUsage, credentialsSaved: false, humanQuality: 'not-assessed', elapsedMs: Date.now() - started }, null, 2)
+    const text = JSON.stringify({ variant: settings.variant, cases: rows, calls: [...calls.values()], requests, historyReads, prefetchReads, historyMode: settings.historyMode, actualRequests: calls.size, unknownUsage, credentialsSaved: false, humanQuality: 'not-assessed', elapsedMs: Date.now() - started }, null, 2)
     await writeFile(join(settings.output, 'result.json'), apiKey ? text.replaceAll(apiKey, '[redacted]') : text)
   }
   const wrap = (context: EngineContext): EngineContext => ({ ...context,
-    ...(context.searchHistory ? { searchHistory: async (input: Parameters<NonNullable<EngineContext['searchHistory']>>[0]) => { const start = performance.now(), result = await context.searchHistory!(input); historyReads.push({ caseId, query: input.query, matching: result.matching, hits: result.hits.length, sqlMs: result.sqlMs, queryMs: result.elapsedMs, hostMs: performance.now() - start }); return result } } : {}),
+    ...(context.historySearch ? { historySearch: { ...context.historySearch, prefetch: async (text, visibleIds) => { const result = await context.historySearch!.prefetch(text, visibleIds); prefetchReads.push({ caseId, hits: result.hits.length, elapsedMs: result.elapsedMs, sqlMs: result.sqlMs, queries: result.queries }); return result }, search: async (input: Parameters<NonNullable<EngineContext['historySearch']>['search']>[0]) => { const start = performance.now(), result = await context.historySearch!.search(input); historyReads.push({ caseId, query: input.query, matching: result.matching, hits: result.hits.length, sqlMs: result.sqlMs, queryMs: result.elapsedMs, hostMs: performance.now() - start }); return result } } } : {}),
     onModelCallStarted: async (id, phase, thinking) => {
       if (Date.now() - started >= settings.deadlineMs || calls.size >= settings.maxRequests || unknownUsage || [...calls.values()].reduce((n, c) => n + (c.usage?.outputTokens ?? 0), 0) >= settings.maxOutputTokens) throw new Error('Recall evaluation request/token/time budget reached')
       calls.set(`${context.runId}:${id}`, { caseId, phase, startedAt: Date.now() }); await context.onModelCallStarted?.(id, phase, thinking)
@@ -63,6 +64,7 @@ export async function runBoboRecallEvaluation({ settings, connection, apiKey }: 
       const agent = (await service.handle('snapshot', undefined) as Snapshot).agents.find(agent => agent.id === 'bobo')!
       const { configVersion, workspaceRef: _workspace, memoryNamespace: _memory, policyVersion: _policy, ...editable } = agent
       await service.handle('saveAgent', { ...editable, connectionId: configured.id, modelId: settings.modelId || configured.defaultModel, thinkingLevel: settings.thinkingLevel, allowCommands: false, allowBrowser: false, expectedConfigVersion: configVersion })
+      if (settings.historyMode) await service.handle('configureHistorySearch', { agentId: 'bobo', expectedRevision: 0, settings: { mode: settings.historyMode, window: { kind: 'messages', before: 1, after: 1 }, limit: 3, maxCharacters: 20000 } })
       const prompt = kind === 'history' ? databaseCase ? '之前我们最后决定数据库用什么？' : '你知道我什么时候体检吗？' : '17乘以6是多少？'
       const before = calls.size, start = Date.now()
       const room = await service.handle('startCoreConversation', { content: prompt, requestId: `recall-eval-${caseId}` }) as Conversation
@@ -78,7 +80,7 @@ export async function runBoboRecallEvaluation({ settings, connection, apiKey }: 
       const searchCalls = tools.filter(event => event.name === 'search_history' && event.status === 'completed').length
       const answerCorrect = kind === 'history' ? databaseCase ? /PostgreSQL/i.test(answer) : /周三|星期三|礼拜三/.test(answer) : /102/.test(answer)
       const complete = detail.runs.every(run => run.status === 'completed')
-      rows.push({ caseId, kind, prompt, source: messages, answer, answerCorrect, complete, passed: complete && answerCorrect && (kind === 'history' ? settings.rawHistory && settings.variant === 'candidate' ? searchCalls > 0 && recallCalls === 0 : recallCalls > 0 : recallCalls + searchCalls === 0), actualRequests: calls.size - before, recallCalls, searchCalls, elapsedMs,
+      rows.push({ caseId, kind, prompt, source: messages, answer, answerCorrect, complete, passed: complete && answerCorrect && (kind === 'history' ? settings.historyMode ? settings.historyMode === 'prefetch' ? prefetchReads.some(read => read.caseId === caseId && read.hits > 0) : searchCalls + recallCalls > 0 : settings.rawHistory && settings.variant === 'candidate' ? searchCalls > 0 && recallCalls === 0 : recallCalls > 0 : recallCalls + searchCalls === 0), actualRequests: calls.size - before, recallCalls, searchCalls, elapsedMs,
         tools: tools.map(({ name, status, input, detail }) => ({ name, status, input, detail })), runs: detail.runs.map(({ phase, status, error }) => ({ phase, status, error })) })
       await service.close(); service = undefined; base = undefined
       unknownUsage = [...calls.values()].some(call => !call.usage || call.usage.outputTokens === undefined)
