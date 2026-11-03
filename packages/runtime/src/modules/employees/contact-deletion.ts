@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 新增historySearchSettings随所属员工清理，设置以agentId补足记录ID。
  * [OUTPUT]: 2026-10-30删除员工时一并清理其embedding配置；官方记忆由宿主先完成清理，原生私人数据保持。
  * [OUTPUT]: 员工删除移除独立相册元信息；原agents根目录清理包含其私有形象文件，不清空其他员工相册。
  * [OUTPUT]: 2026-10-20 Alma技能接线：普通聊天按需读绑定技能/有来源记忆，独立任务协议与MCP媒体保持实际授权；本轮证据归独立Agent架构§11.21。
@@ -79,8 +80,8 @@ export class ContactDeletionService {
       await clearSelfieAlbums(tx, ids)
       const removals: { collection: string; id: string }[] = []
       const remove = async (collection: string, id: string) => { await tx.remove(collection, id); removals.push({ collection, id }) }
-      for (const collection of ['employeeCommandPermissions', 'employeeMemorySettings', 'memory', 'memoryObservations', 'memoryForgets', 'profileModelCalls', 'profileSkillActivations', 'profileExecutions']) {
-        for (const item of await tx.list<OwnedRecord>(collection)) if (ids.has(item.ownerAgentId ?? item.agentId ?? '')) await remove(collection, item.id)
+      for (const collection of ['employeeCommandPermissions', 'employeeMemorySettings', 'historySearchSettings', 'memory', 'memoryObservations', 'memoryForgets', 'profileModelCalls', 'profileSkillActivations', 'profileExecutions']) {
+        for (const item of await tx.list<OwnedRecord>(collection)) if (ids.has(item.ownerAgentId ?? item.agentId ?? '')) await remove(collection, item.id ?? item.agentId!)
       }
       for (const collection of ['memoryEpochs', 'memoryReceipts']) {
         for (const item of await tx.list<OwnedRecord>(collection)) if (input.agentIds.some(id => collection === 'memoryEpochs' ? item.id === `employee:${id}` || item.id.startsWith(`employee:${id}:`) : item.id.startsWith(`${id}:`))) await remove(collection, item.id)

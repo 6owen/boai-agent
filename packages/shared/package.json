@@ -220,6 +220,11 @@
       "development": "./src/domain/materials.ts",
       "default": "./src/domain/materials.ts"
     },
+    "./domain/history-search": {
+      "types": "./src/domain/history-search.ts",
+      "development": "./src/domain/history-search.ts",
+      "default": "./src/domain/history-search.ts"
+    },
     "./domain/memory": {
       "types": "./src/domain/memory.ts",
       "development": "./src/domain/memory.ts",

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 原文查询类型转shared协议，不耦合上层会话模块。
  * [OUTPUT]: Bobo原文搜索延迟创建可重建FTS5索引，授权消息ID在LIMIT前筛选，短查询直接匹配原文。
  * [OUTPUT]: 任务有界列表返回assignment/progress种类，看板筛选在SQL LIMIT前执行。
  * [OUTPUT]: 员工任务按身份过滤历史，原消息执行来源及任务列表为SQL有界投影。
@@ -28,7 +29,7 @@
  */
 import { createClient, type Client } from '@libsql/client'
 import { RawHistoryIndex } from './raw-history-index'
-import type { HistorySearchQuery } from '../../modules/conversations/history-search'
+import type { HistorySearchQuery } from '@boai/shared/domain/history-search'
 import { taskPageSql, type TaskPageSqlQuery } from './task-page-sql'
 import type { TrackedTaskListItem } from '@boai/shared/domain/tracked-tasks'
 import { executionWindowPage } from '../../modules/conversations/execution-window'

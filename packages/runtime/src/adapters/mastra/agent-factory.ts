@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Bobo原文工具由Mastra适配层挂载，检索核心及触发策略保持独立。
  * [OUTPUT]: 技能提示与工具按当前可用集合装配，零绑定员工也可发现插件技能。
  * [OUTPUT]: Bobo API私聊提供单次原文检索search_history；实际可读范围由宿主固定。
  * [OUTPUT]: Agent Desktop 可选插件接线；默认关闭、独立于旧computer-use，调用沿员工权限及真实图片。
@@ -41,7 +42,7 @@ import { createSelfieOperations } from '../../modules/media/selfie-tools'
 import { createReactionOperations } from '../../modules/conversations/reaction-tools'
 import { createBoundSkillOperations, boundSkillInstructions } from '../../modules/resources/bound-skill-tools'
 import { createMemoryOperations } from '../../modules/memory/memory-tools'
-import { createHistorySearchOperations } from '../../modules/conversations/history-search'
+import { createHistorySearchOperations } from './history-tools'
 import { createKnowledgeTools } from './knowledge-tools'
 import { hasKnowledge, knowledgeInstructions } from '../../modules/resources/knowledge-tools'
 import { createSourceTools, hasChatSourceTools, webSearchInstructions } from './source-tools'

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: historySearch能力统一提供当轮设置、指引、原文查询与可选预检。
  * [OUTPUT]: 插件技能只读端口随实际启停提供，不创建绑定或改变原生循环。
  * [OUTPUT]: Bobo API私聊可主动查询宿主授权原文；原生后端不接入新的历史工具。
  * [OUTPUT]: Agent Desktop 可选插件接线；默认关闭、独立于旧computer-use，调用沿员工权限及真实图片。
@@ -168,7 +169,7 @@ export interface EngineContext {
   /** Revalidate live employee/conversation/resource permission before and after knowledge reads. */
   assertSkillAccess?(resourceIds: string[]): Promise<void>
   recallMemory?(query: string): Promise<MemoryView>
-  searchHistory?(input: import('./modules/conversations/history-search').HistorySearchQuery): Promise<import('./modules/conversations/history-search').HistorySearchResult>
+  historySearch?: import('./modules/conversations/history-capability').HistorySearchCapability
   rememberMemory?(input: { sourceMessageId: string; quote: string }): Promise<{ retained: boolean; id?: string; version?: number }>
   assertKnowledgeAccess?(resourceIds: string[]): Promise<void>
   recordKnowledgeRead?(reference: import('@boai/shared/domain/knowledge').KnowledgeReadRef): void

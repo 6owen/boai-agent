@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Public schedule commands and trusted employee/timezone context.
- * [OUTPUT]: Strict business schemas, safe domain errors and unambiguous local-time resolution; no runtime or transport dependency.
+ * [OUTPUT]: Strict business schemas, actionable domain validation messages and unambiguous local-time resolution; no runtime or transport dependency.
  * [POS]: Shared schedule API contract, independent of internal automation/employee-task storage.
  * [PROTOCOL]: Update Header and owning .folder.md when changed.
  */
@@ -48,7 +48,9 @@ export function parseSchedule<T>(schema: z.ZodType<T>, value: unknown): T {
   if (parsed.success) return parsed.data
   const missing = parsed.error.issues.some(issue => issue.path.length && issue.path.reduce<unknown>((at, key) => at && typeof at === 'object' ? (at as Record<PropertyKey, unknown>)[key] : undefined, value) === undefined)
   const paths = parsed.error.issues.flatMap(issue => issue.code === 'unrecognized_keys' ? issue.keys.map(key => [...issue.path, key].join('.')) : [issue.path.join('.')])
-  throw new ScheduleError(missing ? 'MISSING_FIELD' : 'INVALID_INPUT', '请补齐或修正定时任务参数。', [...new Set(paths)])
+  // These schema-owned constraint messages contain no submitted values; retain useful corrections such as an empty weekday selection.
+  const feedback = parsed.error.issues.filter(issue => issue.code === 'too_small' || issue.code === 'custom').map(issue => issue.message)
+  throw new ScheduleError(missing ? 'MISSING_FIELD' : 'INVALID_INPUT', [...new Set(feedback)].join('；') || '请补齐或修正定时任务参数。', [...new Set(paths)])
 }
 /** Resolve a local wall clock without silently shifting DST gaps or choosing an overlap. */
 export function scheduleInstant(date: string, clock: string, zone: string): number {
