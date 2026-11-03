@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 定时创建按原消息原子保护未决写入，确定业务错误明确拒绝；已提交计划可只读恢复原回执，重复无进展通知宿主退出。
+ * [OUTPUT]: 定时创建按原消息保护未决写入，原回执只读恢复；无进展只计Agent可见操作，内部目录/回执核对不重复计数。
  * [OUTPUT]: 会话/员工清理同步擦除终端、预览回执正文，仅保留写入去重身份。
  * [OUTPUT]: 员工/会话清理同步移除手动引用关系与回执结果；关系回执不保存对象正文。
  * [OUTPUT]: Plan Weave状态/报告随来源清理；已知事务前置拒绝保留稳定rejected回执，未知副作用仍不重放。
@@ -79,7 +79,7 @@ export class ApplicationService {
     this.observations.set(key, state)
     if (state.repeats >= 3 && !state.halted) { state.halted = true; this.noProgress?.(actor) }
   }
-  async catalog(query: ApplicationCatalogQuery = {}, actor: ApplicationActor = { kind: 'owner' }) {
+  async catalog(query: ApplicationCatalogQuery = {}, actor: ApplicationActor = { kind: 'owner' }, trackObservation = true) {
     await this.authorize(actor)
     const filter = applicationCatalogQuerySchema.parse(query)
     const result = { protocolVersion: APPLICATION_PROTOCOL_VERSION, operations: [...this.operations.values()]
@@ -88,11 +88,11 @@ export class ApplicationService {
         ...(item.available && !item.available() ? { unavailableReason: item.unavailableReason ?? '当前宿主不提供此能力' } : {}),
         resultType: item.resultType, ...(item.contractVersion ? { contractVersion: item.contractVersion, schemaFingerprint: digest(z.toJSONSchema(item.input, { io: 'input', unrepresentable: 'any' })) } : {}),
         ...(filter.operation || filter.includeSchemas ? { inputSchema: z.toJSONSchema(item.input, { io: 'input', unrepresentable: 'any' }), outputSchema: z.toJSONSchema(applicationResultSchema, { unrepresentable: 'any' }) } : {}) })) }
-    if (filter.domain === 'automations' || filter.operation?.startsWith('automations.')) this.observe(actor, 'automations.catalog', result.operations)
+    if (trackObservation && (filter.domain === 'automations' || filter.operation?.startsWith('automations.'))) this.observe(actor, 'automations.catalog', result.operations)
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
     return { ...result, context: { ...(actor.kind !== 'owner' ? { employeeId: actor.employeeId } : {}), timezone, localDate: new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()), now: new Date().toISOString() } }
   }
-  async receipt(query: string | ApplicationReceiptQuery, actor: ApplicationActor = { kind: 'owner' }): Promise<ApplicationResult | null> {
+  async receipt(query: string | ApplicationReceiptQuery, actor: ApplicationActor = { kind: 'owner' }, trackObservation = true): Promise<ApplicationResult | null> {
     await this.authorize(actor)
     const input = applicationReceiptQuerySchema.parse(typeof query === 'string' ? { requestId: query } : query)
     let receipt = await this.store.get<OperationReceipt>(collection, input.receiptId ?? digest([principal(actor), input.requestId]))
@@ -113,7 +113,7 @@ export class ApplicationService {
         })
       }
     }
-    this.observe(actor, receipt.result.operation, { status: receipt.result.status, data: receipt.result.data, error: receipt.result.error })
+    if (trackObservation) this.observe(actor, receipt.result.operation, { status: receipt.result.status, data: receipt.result.data, error: receipt.result.error })
     // A previous process may have committed the domain write but died before its receipt.
     // Without a committed domain receipt, never promote that gap to success or invoke it again.
     if (receipt.result.status === 'running' && (receipt.runtimeId !== this.runtimeId || this.failures.has(receipt.id))) return { ...receipt.result, status: 'unknown', error: { code: 'OUTCOME_UNKNOWN', message: '原服务未留下完成回执，请核对目标对象；本请求不会自动重放。' } }
@@ -148,7 +148,7 @@ export class ApplicationService {
     if (operation.effect === 'write') {
       // Check an old receipt even when capability availability has since changed.
       const previous = await this.store.get<OperationReceipt>(collection, key!)
-      if (previous) return previous.fingerprint === fingerprint ? (await this.receipt(request.requestId!, actor))! : reject(request.operation, { code: 'REQUEST_CONFLICT', message: '同一 requestId 已用于不同参数或操作，请核对原回执。' }, request.requestId)
+      if (previous) return previous.fingerprint === fingerprint ? (await this.receipt(request.requestId!, actor, false))! : reject(request.operation, { code: 'REQUEST_CONFLICT', message: '同一 requestId 已用于不同参数或操作，请核对原回执。' }, request.requestId)
     }
     if (operation.available && !operation.available()) return reject(request.operation, { code: 'CAPABILITY_UNAVAILABLE', message: operation.unavailableReason ?? '当前宿主不提供此能力。' }, request.requestId)
     try { await operation.validate?.(input.data, actor) } catch (error) {
@@ -173,7 +173,7 @@ export class ApplicationService {
     })
     if ('prior' in claimed) return this.invoke(raw, actor)
     if ('blocker' in claimed) {
-      const original = await this.receipt({ receiptId: claimed.blocker }, actor)
+      const original = await this.receipt({ receiptId: claimed.blocker }, actor, false)
       if (original && !['running', 'unknown'].includes(original.status)) return this.invoke(raw, actor)
       return reject(request.operation, { code: 'UNRESOLVED_WRITE', message: '这条用户消息已有未确认的创建，请核对原回执，不要更换请求ID重新创建。', relatedReceiptId: claimed.blocker }, request.requestId)
     }

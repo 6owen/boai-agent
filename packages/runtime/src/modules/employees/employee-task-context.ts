@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Trusted task conversation, current employee and persisted assignment.
- * [OUTPUT]: API/native持续任务会话与平级状态标签；会话创建先沿原任务补全标题/目标/验收，不另建任务。
+ * [OUTPUT]: API/native持续任务会话与平级状态标签；定时生成任务同样使用本轮dispatch冻结要求，避免排队期间编辑改写本轮目标。
  * [POS]: Employee task context; grants no tools and does not dispatch execution.
  * [PROTOCOL]: Update Header and owning .folder.md when changed.
  */
@@ -17,7 +17,7 @@ export async function employeeTaskInstructions(store: ProductStore, employeeId: 
   if (!task || !isEmployeeTaskAssignment(task) || task.agentId !== employeeId || task.sessionConversationId !== conversation.id) return ''
   const dispatch = occurrenceId ? await store.get<AutomationDispatch>('automationDispatches', occurrenceId) : undefined
   const frozen = dispatch?.definition?.employeeTask
-  const requirements = frozen?.id === task.id ? frozen.requirements ?? task.description ?? task.note : task.description ?? task.note
+  const requirements = frozen?.id === task.id ? frozen.requirements ?? task.description ?? task.note : task.sourceKind === 'schedule' && dispatch?.definition ? dispatch.definition.prompt : task.description ?? task.note
   return `[Current employee task]\n${JSON.stringify({ id: task.id, status: task.status, revision: task.revision, requirements })}\n` +
     (task.briefPending ? 'The user explicitly created this task through conversation. The requirements above are their original input. First use tasks.get and tasks.update on this same ID to give it a concise title and a description with the goal, acceptance criteria and expected output supported by that input. Recheck briefPending: if it is already false, keep the user\'s newer brief rather than overwriting it. Do not invent requirements or turn this into your implementation plan. If essential details are missing, ask in this conversation and keep the uncertainty explicit. Then carry out the work the user requested in this same conversation. Do not create another task or a main-chat message.\n' : '') +
     'Kanban contains goals and acceptance criteria explicitly assigned or confirmed by the user. Keep distinct user assignments separate. Your own implementation plan, todos, tool steps and subagent work are internal execution details, not additional Kanban assignments. Do not replace, merge or split the user goal without their instruction.\n' +

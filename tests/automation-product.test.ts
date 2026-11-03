@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 定时派生assignment在任务会话内接收指令/流式回复/执行证据，主聊天清理不撤销任务；保留旧文件删除与重启不重放检查。
  * [OUTPUT]: 五状态独立任务会话、原计划授权/工具schema与稳定消息回执按最新用户合同验证。
  * [OUTPUT]: 新旧独立任务均公开到聊天，含旧task显示标记恢复、回执去重及原执行流。
  * [OUTPUT]: 旧任务镜像场景明确使用旧记录格式；新独立任务合同由employee-task-queue覆盖。
@@ -115,20 +116,23 @@ it('retrieves public web facts in an automation with the executing employee bind
   } finally { await server.close() }
 })
 it('deletes one legacy private execution and its files while preserving the plan, other runs and IM messages', async () => {
-  const f = await setup({}), plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
+  const f = await setup({}), main = await f.service.handle('createConversation', { kind: 'direct', title: '保留的主聊天', agentIds: ['researcher'] }) as Conversation
+  await f.service.handle('sendMessage', { conversationId: main.id, content: '保留普通消息', mentionIds: [], requestId: 'preserved-main-message' })
+  await until(async () => (await f.detail(main.id)).turns?.every(turn => turn.status === 'completed') === true)
+  const plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
   const first = await f.service.handle('runAutomation', { id: plan.id, requestId: 'delete-first' }) as AutomationOccurrence
   await until(async () => (await f.view()).occurrences.find(o => o.id === first.id)?.status === 'completed')
   const second = await f.service.handle('runAutomation', { id: plan.id, requestId: 'keep-second' }) as AutomationOccurrence
   await until(async () => (await f.view()).occurrences.find(o => o.id === second.id)?.status === 'completed')
   const source = await f.detail(first.conversationId), other = await f.detail(second.conversationId)
-  const main = mainConversations((await f.service.handle('snapshot', undefined) as Snapshot).conversations).find(room => room.kind === 'direct' && room.agentIds[0] === 'researcher')!
   const published = (await f.detail(main.id)).messages
   const run = source.runs.find(run => run.phase === 'execution')!
   const paths = [source.conversation.workspacePath, join(f.root, 'external-runtime', run.id), join(f.root, 'external-workspaces', run.agentId, first.conversationId)]
   for (const path of paths) { await mkdir(path, { recursive: true }); await writeFile(join(path, 'temporary.txt'), 'task temporary data') }
   await writeFile(join(other.conversation.workspacePath, 'keep.txt'), 'keep')
   const legacyStore = (f.service as unknown as { store: ProductStore }).store
-  await legacyStore.write([{ collection: 'conversations', id: source.conversation.id, value: { ...source.conversation, employeeTaskId: undefined } }])
+  // Model a private execution from before durable employee tasks existed.
+  await legacyStore.write([{ collection: 'conversations', id: source.conversation.id, value: { ...source.conversation, employeeTaskId: undefined } }], [{ collection: 'agentTasks', id: first.taskId! }])
   const current = await f.service.handle('getAutomationOccurrence', { id: first.id }) as AutomationOccurrence
   await expect(f.service.handle('deleteAutomationOccurrence', { id: first.id, expectedVersion: current.stateVersion - 1 })).rejects.toThrow('已更新')
   await f.service.handle('deleteAutomationOccurrence', { id: first.id, expectedVersion: current.stateVersion })
@@ -236,7 +240,7 @@ it('runs after clearing the employee chat without scheduling archived conversati
   expect((await f.detail(run.conversationId)).messages.some(message => message.senderType === 'agent')).toBe(true)
   expect(f.events.filter(event => event.type === 'runtime-error')).toEqual([])
 })
-it('shows scheduled instructions and replies in the employee main chat after cleanup without inheriting its context or replaying cleared publications', async () => {
+it('keeps scheduled task messages and execution navigation independent of clearing the employee main chat', async () => {
   const f = await setup({}), personal = await f.service.handle('createConversation', { kind: 'direct', title: '员工主私聊', agentIds: ['researcher'] }) as Conversation
   await f.service.handle('sendMessage', { conversationId: personal.id, content: '旧主私聊上下文', mentionIds: [], requestId: 'ordinary-context' })
   await until(async () => (await f.detail(personal.id)).turns?.every(turn => turn.status === 'completed') === true)
@@ -246,93 +250,80 @@ it('shows scheduled instructions and replies in the employee main chat after cle
   const plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
   const first = await f.service.handle('runAutomation', { id: plan.id, requestId: 'visible-task' }) as AutomationOccurrence
   await until(async () => (await f.view()).occurrences.find(o => o.id === first.id)?.status === 'completed')
-  await (f.service as unknown as { mutations: Promise<unknown> }).mutations
-  const visible = mainConversations((await f.service.handle('snapshot', undefined) as Snapshot).conversations)
-  expect(visible.some(room => room.id === personal.id)).toBe(true)
-  const messages = (await f.detail(personal.id)).messages
-  const execution = (await f.detail(first.conversationId)).runs.find(run => run.phase === 'execution')!
-  expect(await f.service.handle('resolveExecutionMessage', { conversationId: first.conversationId, runId: execution.id })).toEqual({ conversationId: personal.id, messageId: messages[0].id })
+  const source = await f.detail(first.conversationId), messages = source.messages
+  const execution = source.runs.find(run => run.phase === 'execution')!
+  const request = { conversationId: first.conversationId, runId: execution.id }
+  expect(await f.service.handle('resolveExecutionMessage', request)).toEqual({ conversationId: first.conversationId, messageId: execution.triggerMessageId })
   expect(messages.map(message => message.content)).toEqual([f.input.prompt, '当前聊天的回复'])
-  const chat = await f.service.handle('getConversationView', { conversationId: personal.id }) as import('../packages/shared/src/domain/reading').ConversationView
-  expect(chat.messages).toEqual(messages)
-  expect(chat.messagePage.items.every(item => item.status === 'available')).toBe(true)
-  expect(messages.every(message => message.automationPublication?.occurrenceId === first.id && !message.runId && !message.turnId)).toBe(true)
+  const chat = await f.service.handle('getConversationView', { conversationId: first.conversationId }) as ConversationView
+  expect(chat.messages).toEqual(messages); expect(chat.messagePage.items.every(item => item.status === 'available')).toBe(true)
+  expect(messages.every(message => !message.automationPublication)).toBe(true)
   expect(f.contexts.find(ctx => ctx.conversation.id === first.conversationId)!.messages.map(message => message.content)).toEqual([f.input.prompt])
   expect(first.conversationId).not.toBe(personal.id)
-  const calls = f.contexts.length
-  await f.service.close()
-  const restarted = await f.make()
-  expect((await restarted.handle('getConversation', { id: personal.id }) as ConversationDetail).messages).toEqual(messages)
+  expect((await f.detail(personal.id)).messages).toEqual([])
+  expect(mainConversations((await f.service.handle('snapshot', undefined) as Snapshot).conversations).some(room => room.id === personal.id)).toBe(false)
+  const calls = f.contexts.length; await f.service.close(); const restarted = await f.make()
+  expect((await restarted.handle('getConversation', { id: first.conversationId }) as ConversationDetail).messages).toEqual(messages)
   expect(f.contexts).toHaveLength(calls)
   await restarted.handle('clearConversationHistory', { id: personal.id, hide: true })
-  await expect(restarted.handle('resolveExecutionMessage', { conversationId: first.conversationId, runId: execution.id })).rejects.toThrow('对应聊天记录已删除或不可用')
-  await restarted.close()
-  const restored = await f.make()
+  expect(await restarted.handle('resolveExecutionMessage', request)).toEqual({ conversationId: first.conversationId, messageId: execution.triggerMessageId })
+  await restarted.handle('clearConversationHistory', { id: first.conversationId, hide: false })
+  await expect(restarted.handle('resolveExecutionMessage', request)).rejects.toThrow()
+  await restarted.close(); const restored = await f.make()
   expect((await restored.handle('getConversation', { id: personal.id }) as ConversationDetail).messages).toEqual([])
-  expect(mainConversations((await restored.handle('snapshot', undefined) as Snapshot).conversations).some(room => room.id === personal.id)).toBe(false)
   const second = await restored.handle('runAutomation', { id: plan.id, requestId: 'new-visible-task' }) as AutomationOccurrence
   await until(async () => (await restored.handle('getAutomationOccurrence', { id: second.id }) as AutomationOccurrence).status === 'completed')
-  await (restored as unknown as { mutations: Promise<unknown> }).mutations
-  const next = await restored.handle('getConversation', { id: personal.id }) as ConversationDetail
+  const next = await restored.handle('getConversation', { id: second.conversationId }) as ConversationDetail
   expect(next.messages.map(message => message.content)).toEqual([f.input.prompt, '当前聊天的回复'])
-  expect(next.messages.every(message => message.automationPublication?.occurrenceId === second.id)).toBe(true)
+  expect((await restored.handle('getConversation', { id: personal.id }) as ConversationDetail).messages).toEqual([])
   expect(f.contexts.filter(ctx => ctx.conversation.purpose === 'automation')).toHaveLength(2)
 })
-it('creates the employee main chat for public streaming task replies and updates the same published message', async () => {
+it('streams in the task conversation and updates the same private reply without creating a main chat', async () => {
   let release!: () => void
   const gate = new Promise<void>(resolve => { release = resolve })
   const f = await setup({ engine: { test: async () => '', decide: async ctx => ({ action: ctx.participation?.hasRespondedInTurn ? 'pass' : 'reply', responseKind: 'chat', observedThroughSequence: Math.max(...ctx.messages.map(m => m.sequence)) }), run: async ctx => { await ctx.onDelta('正在整理'); await gate; await ctx.onDelta('，已完成') } } })
   disposers.push(async () => release())
   const plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
-  await f.service.handle('runAutomation', { id: plan.id, requestId: 'stream-to-main' })
-  let main: Conversation | undefined
-  await until(async () => {
-    main = mainConversations((await f.service.handle('snapshot', undefined) as Snapshot).conversations).find(c => c.kind === 'direct' && c.agentIds[0] === 'researcher')
-    return !!main && (await f.detail(main.id)).messages.some(message => message.content === '正在整理' && message.status === 'streaming')
-  })
-  const streamed = (await f.detail(main!.id)).messages.find(message => message.senderType === 'agent')!
+  const occurrence = await f.service.handle('runAutomation', { id: plan.id, requestId: 'stream-in-task' }) as AutomationOccurrence
+  await until(async () => (await f.detail(occurrence.conversationId)).messages.some(message => message.content === '正在整理' && message.status === 'streaming'))
+  const streamed = (await f.detail(occurrence.conversationId)).messages.find(message => message.senderType === 'agent')!
   release()
-  await until(async () => (await f.detail(main!.id)).messages.some(message => message.id === streamed.id && message.status === 'completed'))
-  const complete = (await f.detail(main!.id)).messages
+  await until(async () => (await f.detail(occurrence.conversationId)).messages.some(message => message.id === streamed.id && message.status === 'completed'))
+  const complete = (await f.detail(occurrence.conversationId)).messages
   expect(complete.map(message => message.content)).toEqual([f.input.prompt, '正在整理，已完成'])
   expect(complete[1].id).toBe(streamed.id)
-  expect(await f.service.handle('getConversationReading', { conversationId: main!.id })).toMatchObject({ completionCount: 1 })
+  expect(await f.service.handle('getConversationReading', { conversationId: occurrence.conversationId })).toMatchObject({ completionCount: 1 })
+  expect(mainConversations((await f.service.handle('snapshot', undefined) as Snapshot).conversations).some(c => c.kind === 'direct' && c.agentIds[0] === 'researcher')).toBe(false)
   expect(f.events.filter(event => event.type === 'runtime-error')).toEqual([])
 })
-it('mirrors the original live task execution in IM before any public reply and revokes it after clearing', async () => {
+it('reads live execution evidence in its task without projecting it to the employee main chat', async () => {
   let release!: () => void, started = false, calls = 0
   const gate = new Promise<void>(resolve => { release = resolve })
   const f = await setup({ engine: { test: async () => '', decide: async ctx => ({ action: 'reply', responseKind: 'chat', observedThroughSequence: Math.max(...ctx.messages.map(m => m.sequence)) }), run: async ctx => {
-    calls++
-    await ctx.onExecutionEvent?.({ id: 'reasoning', eventType: 'agent.reasoning.block', payload: { text: '核对天气来源', itemId: 'reasoning' } })
-    started = true; await gate
+    calls++; await ctx.onExecutionEvent?.({ id: 'reasoning', eventType: 'agent.reasoning.block', payload: { text: '核对天气来源', itemId: 'reasoning' } }); started = true; await gate
   } } })
   disposers.push(async () => release())
+  const main = await f.service.handle('createConversation', { kind: 'direct', title: '普通主聊天', agentIds: ['researcher'] }) as Conversation
   const plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
-  const occurrence = await f.service.handle('runAutomation', { id: plan.id, requestId: 'mirror-live-run' }) as AutomationOccurrence
+  const occurrence = await f.service.handle('runAutomation', { id: plan.id, requestId: 'live-task-run' }) as AutomationOccurrence
   await until(async () => started)
-  const main = mainConversations((await f.service.handle('snapshot', undefined) as Snapshot).conversations).find(room => room.kind === 'direct' && room.agentIds[0] === 'researcher')!
-  const source = await f.detail(occurrence.conversationId)
-  const run = source.runs.find(run => run.phase === 'execution')!
-  const noHistoryScan = vi.spyOn(f.service as unknown as { conversationMessages(id: string): unknown[] }, 'conversationMessages').mockImplementation(() => { throw new Error('mirrors must not scan chat history') })
-  const view = await f.service.handle('getConversationView', { conversationId: main.id }) as ConversationView
+  const source = await f.detail(occurrence.conversationId), run = source.runs.find(run => run.phase === 'execution')!
+  const noHistoryScan = vi.spyOn(f.service as unknown as { conversationMessages(id: string): unknown[] }, 'conversationMessages').mockImplementation(() => { throw new Error('main chat must not scan task history') })
+  const mainView = await f.service.handle('getConversationView', { conversationId: main.id }) as ConversationView
   noHistoryScan.mockRestore()
-  expect(view.executionMirrors, '聊天必须有原执行的实时投影，不能只复制公开消息').toHaveLength(1)
-  expect(view.executionMirrors![0]).toMatchObject({ run: { id: run.id, conversationId: occurrence.conversationId, status: 'running' }, triggerMessage: { conversationId: main.id, automationPublication: { sourceMessageId: run.triggerMessageId } } })
-  expect(view.runs).toEqual([]); expect(view.workItems).toEqual([])
-  const history = await f.service.handle('listExecutionHistory', { conversationId: main.id }) as import('../packages/shared/src/domain/execution').ExecutionHistoryPage
-  expect(history.items).toHaveLength(1)
-  expect(history.items[0].run).toMatchObject({ id: run.id, conversationId: occurrence.conversationId, status: 'running' })
-  const evidence = await f.service.handle('listExecutionEvidence', { conversationId: view.executionMirrors![0].run.conversationId, runId: run.id })
-  expect(JSON.stringify(evidence)).toContain('核对天气来源')
+  expect(mainView.executionMirrors).toEqual([]); expect(mainView.runs).toEqual([]); expect(mainView.workItems).toEqual([])
+  const view = await f.service.handle('getConversationView', { conversationId: source.conversation.id }) as ConversationView
+  expect(view.runs.find(value => value.id === run.id)).toMatchObject({ id: run.id, conversationId: occurrence.conversationId, status: 'running' })
+  const history = await f.service.handle('listExecutionHistory', { conversationId: source.conversation.id }) as import('../packages/shared/src/domain/execution').ExecutionHistoryPage
+  expect(history.items).toHaveLength(1); expect(history.items[0].run).toMatchObject({ id: run.id, status: 'running' })
+  expect(JSON.stringify(await f.service.handle('listExecutionEvidence', { conversationId: source.conversation.id, runId: run.id }))).toContain('核对天气来源')
   await f.service.handle('clearConversationHistory', { id: main.id, hide: true })
   expect((await f.service.handle('getConversationView', { conversationId: main.id }) as ConversationView).executionMirrors).toEqual([])
   expect(await f.service.handle('listExecutionHistory', { conversationId: main.id })).toEqual({ items: [] })
   expect((await f.detail(occurrence.conversationId)).runs.find(value => value.id === run.id)?.status).toBe('running')
-  expect(calls).toBe(1)
-  release()
+  expect(calls).toBe(1); release()
 })
-it('commits the task instruction to the IM conversation before the employee starts replying', async () => {
+it('commits the instruction to the visible employee task before the employee starts replying', async () => {
   let release!: () => void, started = false
   const gate = new Promise<void>(resolve => { release = resolve })
   const f = await setup({ engine: { test: async () => '', decide: async ctx => ({ action: 'reply', responseKind: 'chat', observedThroughSequence: Math.max(...ctx.messages.map(m => m.sequence)) }), run: async () => { started = true; await gate } } })
@@ -340,36 +331,32 @@ it('commits the task instruction to the IM conversation before the employee star
   const plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
   const occurrence = await f.service.handle('runAutomation', { id: plan.id, requestId: 'receive-before-reply' }) as AutomationOccurrence
   await until(async () => started)
-  const main = mainConversations((await f.service.handle('snapshot', undefined) as Snapshot).conversations).find(room => room.kind === 'direct' && room.agentIds[0] === 'researcher')!
-  expect(main).toBeDefined()
-  const messages = (await f.detail(main.id)).messages
-  expect(messages.find(message => message.senderType === 'user')).toMatchObject({ content: f.input.prompt, automationPublication: { occurrenceId: occurrence.id } })
+  const messages = (await f.detail(occurrence.conversationId)).messages
+  expect(messages.find(message => message.senderType === 'user')).toMatchObject({ content: f.input.prompt, origin: { occurrenceId: occurrence.id } })
   expect(messages.some(message => message.senderType === 'agent' && message.status === 'completed')).toBe(false)
+  expect(await f.service.handle('listEmployeeTasks', { employeeId: 'researcher' })).toMatchObject({ items: [{ id: occurrence.taskId, kind: 'assignment', status: 'in_progress' }] })
+  expect(mainConversations((await f.service.handle('snapshot', undefined) as Snapshot).conversations).some(room => room.kind === 'direct' && room.agentIds[0] === 'researcher')).toBe(false)
   release()
 })
-it('publishes existing isolated task results on startup without invoking the employee again', async () => {
-  const f = await setup({}), plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
+it('adopts legacy isolated tasks on startup without publishing into main chat or invoking the employee again', async () => {
+  const f = await setup({}), main = await f.service.handle('createConversation', { kind: 'direct', title: '主聊天', agentIds: ['researcher'] }) as Conversation
+  const plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
   const occurrence = await f.service.handle('runAutomation', { id: plan.id, requestId: 'old-isolated-task' }) as AutomationOccurrence
   await until(async () => (await f.view()).occurrences[0]?.status === 'completed')
-  await (f.service as unknown as { mutations: Promise<unknown> }).mutations
-  const main = mainConversations((await f.service.handle('snapshot', undefined) as Snapshot).conversations).find(c => c.kind === 'direct' && c.agentIds[0] === 'researcher')!
-  const published = (await f.detail(main.id)).messages
+  const source = await f.detail(occurrence.conversationId)
   await f.service.close()
   const store = new ProductStore(join(f.root, 'boai.sqlite')); await store.init()
-  // A pre-fix installation has the original task results but no chat publications or their receipts.
+  const task = (await store.get<import('../packages/shared/src/domain/tracked-tasks').TrackedTask>('agentTasks', occurrence.taskId!))!
   await store.write([
     { collection: 'conversations', id: main.id, value: { ...main, list: { hidden: true } } },
     { collection: 'automationOccurrences', id: occurrence.id, value: { ...(await store.get<AutomationOccurrence>('automationOccurrences', occurrence.id))!, executionSurface: 'task' } },
-  ], [
-    ...published.flatMap(message => ['messages', 'messageReceipts', 'conversationCompletions'].map(collection => ({ collection, id: message.id }))),
-    ...['conversationCompletionClocks', 'conversationReadingStates'].map(collection => ({ collection, id: main.id })),
-  ])
-  await store.close()
+    { collection: 'agentTasks', id: task.id, value: { ...task, kind: undefined, status: 'in_review' } },
+  ]); await store.close()
   const restarted = await f.make()
-  expect(mainConversations((await restarted.handle('snapshot', undefined) as Snapshot).conversations).some(room => room.id === main.id)).toBe(true)
-  const restored = await restarted.handle('getConversation', { id: main.id }) as ConversationDetail
-  expect(restored.messages.map(message => message.content)).toEqual([f.input.prompt, '当前聊天的回复'])
-  expect(restored.messages.every(message => message.automationPublication?.occurrenceId === occurrence.id)).toBe(true)
+  expect(mainConversations((await restarted.handle('snapshot', undefined) as Snapshot).conversations).some(room => room.id === main.id)).toBe(false)
+  expect((await restarted.handle('getConversation', { id: main.id }) as ConversationDetail).messages).toEqual([])
+  expect((await restarted.handle('getConversation', { id: source.conversation.id }) as ConversationDetail).messages).toEqual(source.messages)
+  expect(await restarted.handle('listEmployeeTasks', { employeeId: 'researcher' })).toMatchObject({ items: [{ id: task.id, kind: 'assignment', status: 'in_review' }] })
   expect(f.contexts).toHaveLength(1)
 })
 it('creates two isolated task chats for one employee and still reuses the ordinary personal chat', async () => {

@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Mastra 原生日程、触发存储与产品受理回调。
  * [OUTPUT]: 员工行为与用户计划复用同一Mastra调度实例，独立workflow与真实触发身份。
- * [OUTPUT]: 唯一周期时钟、独立执行/日程版本和完整历史分页对账。
+ * [OUTPUT]: 唯一原生时钟、独立执行/日程版本和完整历史对账；单次投影保留内部后继游标，实际消费仍由产品受理事务决定。
  * [POS]: 自动化的原生适配边界；不运行员工工具、不重试业务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -11,10 +11,28 @@ import { LibSQLStore } from '@mastra/libsql'
 import { createClient } from '@libsql/client'
 import { pathToFileURL } from 'node:url'
 import { z } from 'zod'
+import type { AutomationDefinition } from '@boai/shared/domain/automations'
+import { ScheduleError } from '@boai/shared/domain/schedules'
 export interface NativeAutomationVersion { executionRevision: number; scheduleGeneration: number }
 export const BEHAVIOR_WORKFLOW = 'boai-agent-behavior-dispatch-v1'
 export interface NativeBehaviorInput { agentId: string; behaviorId: string; profileRevision: number; scheduleId: string }
 export const AUTOMATION_WORKFLOW='boai-automation-dispatch-v1'
+/** Mastra computes the successor before publishing the current fire. A finite cron alone loses its last fire. */
+export function nativeScheduleCron(d: Pick<AutomationDefinition, 'frequency' | 'cron' | 'startsOn' | 'time'>) {
+  if (d.frequency !== 'once') return d.cron
+  if (!d.startsOn) throw new ScheduleError('MISSING_FIELD', '单次预约缺少执行日期。', ['trigger.date'])
+  const year = Number(d.startsOn.slice(0, 4)), month = Number(d.startsOn.slice(5, 7)), day = Number(d.startsOn.slice(8))
+  const [hour, minute] = d.time.split(':').map(Number)
+  let successor = year + 1
+  // Feb 29 must survive non-leap centuries too. This slot is a clock cursor, never another business appointment.
+  while (successor <= 9999) {
+    const date = new Date(Date.UTC(successor, month - 1, day))
+    if (date.getUTCMonth() === month - 1 && date.getUTCDate() === day) break
+    successor++
+  }
+  if (successor > 9999) throw new ScheduleError('UNSUPPORTED_SCHEDULE', '执行日期超出原生调度可表示范围。', ['trigger.date'])
+  return `0 ${minute} ${hour} ${day} ${month} * ${year},${successor}`
+}
 /** The only recurring clock is Mastra's native scheduler, pinned to core 1.71.0. */
 export class NativeSchedules {
  readonly storage:LibSQLStore
