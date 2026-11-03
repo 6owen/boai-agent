@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: bobo任务首次受理前复用原核心连接准备；任务仍沿员工独立会话、FIFO和状态协议，不新建核心主聊天。
  * [OUTPUT]: 会话创建沿原任务工具补全标题/要求，事务提交后同步当前会话标题缓存。
  * [OUTPUT]: 员工任务支持编辑要求及批量派发，状态不阻止会话续用；API/native原任务身份保持。
  * [OUTPUT]: 路由员工任务删除/重命名到原任务服务，保持任务归属/修订与原定时管理路径。
@@ -967,7 +968,7 @@ export class AppService {
     })
     this.initialized = true
     await this.agentBehaviors.init()
-    this.employeeTasks = new EmployeeTaskService(this.store, this.automations, message => { if (message && this.messages.has(message.id)) this.messages.set(message.id, message); this.changed(message?.conversationId) }, this.dataPath, room => { this.conversations.set(room.id, room); this.emit({ type: 'changed' }) })
+    this.employeeTasks = new EmployeeTaskService(this.store, this.automations, message => { if (message && this.messages.has(message.id)) this.messages.set(message.id, message); this.changed(message?.conversationId) }, this.dataPath, room => { this.conversations.set(room.id, room); this.emit({ type: 'changed' }) }, async employeeId => { if (employeeId === CORE_AGENT_ID) await this.ensureCoreConnection() })
     await this.automations.init()
     for (const pending of await this.store.load<AutomationHistoryDeletion>('automationHistoryCleanups')) {
       try { await this.serialize(() => this.deleteAutomationOccurrence(pending.id, 0)) }

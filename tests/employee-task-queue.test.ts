@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: bobo无需先建核心聊天即可创建、执行及持续修改独立任务；共用连接、状态、验收和重启回执，不产生主聊天投影。
  * [OUTPUT]: 任意平级状态创建零执行，会话创建沿原任务补全标题/要求、稳定续做和重启，不进入主聊天。
  * [OUTPUT]: 持续任务会话、轻量状态、批量FIFO与重试快照；完成后继续问答/返工/再次执行，人工任务不回灌主聊天。
  * [OUTPUT]: 五状态独立任务会话、原计划授权/工具schema与稳定消息回执按最新用户合同验证。
@@ -45,6 +46,38 @@ async function setup(run: AgentEngine['run'], decide?: AgentEngine['decide']) {
   const read = (id: string) => service.handle('getAutomationOccurrence', { id }) as Promise<AutomationOccurrence>
   return { service, create, start, read, restart: async () => { const next = new AppService(options); cleanup.push(() => next.close()); await next.init(); return next } }
 }
+it('runs bobo assignments before its first core chat and continues revisions in the same task conversation', async () => {
+  const contexts: EngineContext[] = [], f = await setup(async ctx => {
+    contexts.push(ctx)
+    expect(ctx.agent.id).toBe('bobo')
+    await employeeTaskStatus(ctx, 'in_progress')
+    await ctx.onDelta('任务交付')
+    await employeeTaskStatus(ctx, 'in_review')
+  })
+  const initial = await f.service.handle('snapshot', undefined) as Snapshot
+  expect(initial.agents.find(agent => agent.id === 'bobo')?.connectionId).toBeFalsy()
+  const task = await f.service.handle('createEmployeeTask', { employeeId: 'bobo', title: '核心员工的任务', description: '输出结果供我验收', requestId: 'bobo-create' }) as TrackedTask
+  expect(task).toMatchObject({ agentId: 'bobo', kind: 'assignment', status: 'pending' })
+  expect(contexts).toHaveLength(0)
+  const input = { employeeId: 'bobo', id: task.id, expectedRevision: task.revision, requestId: 'bobo-run' }
+  const first = await f.service.handle('runEmployeeTask', input) as AutomationOccurrence
+  await vi.waitFor(async () => expect((await f.read(first.id)).status).toBe('completed'), { timeout: 10000 })
+  const detail = await f.service.handle('getEmployeeTask', { employeeId: 'bobo', id: task.id }) as import('../packages/shared/src/domain/employee-tasks').EmployeeTaskDetail
+  expect(detail.task).toMatchObject({ status: 'in_review', sessionConversationId: first.conversationId })
+  const accepted = await f.service.handle('updateEmployeeTask', { employeeId: 'bobo', id: task.id, expectedRevision: detail.task.revision, status: 'done' }) as TrackedTask
+  expect(accepted.status).toBe('done')
+  const next = await f.service.handle('sendEmployeeTaskMessage', { conversationId: first.conversationId, content: '继续修改结果', mentionIds: [], requestId: 'bobo-revise' }) as AutomationOccurrence
+  await vi.waitFor(async () => expect((await f.read(next.id)).status).toBe('completed'), { timeout: 10000 })
+  expect(next.conversationId).toBe(first.conversationId)
+  expect(contexts).toHaveLength(2)
+  expect((await f.service.handle('getEmployeeTask', { employeeId: 'bobo', id: task.id }) as typeof detail).task.status).toBe('in_review')
+  const state = await f.service.handle('snapshot', undefined) as Snapshot
+  expect(state.agents.find(agent => agent.id === 'bobo')?.connectionId).toBe(initial.connections[0].id)
+  expect(state.conversations.filter(room => room.agentIds.includes('bobo') && (room.purpose === 'core' || room.mainPrivate))).toEqual([])
+  await f.service.close(); const restarted = await f.restart()
+  expect(await restarted.handle('runEmployeeTask', input)).toMatchObject({ id: first.id, conversationId: first.conversationId })
+  expect(contexts).toHaveLength(2)
+})
 it('creates in every peer status and allows arbitrary manual transitions without execution', async () => {
   const run = vi.fn(async () => {}), f = await setup(run)
   for (const [index, status] of EMPLOYEE_TASK_STATUSES.entries()) {
