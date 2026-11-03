@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Bobo API私聊可主动查询宿主授权原文；原生后端不接入新的历史工具。
  * [OUTPUT]: 2026-10-30 增加Mastra记忆归属/来源/管理接口和embedding实际模型记账选择；原生不接Mastra。
  * [OUTPUT]: 独立AgentBrowser/BrowserViewer插件接入；上游工具、启停与运行回收保持独立。
  * [OUTPUT]: onNativeProgram承接实际原生握手/线程的程序身份，不代表任务执行或人工连接验证。
@@ -160,6 +161,7 @@ export interface EngineContext {
   /** Revalidate live employee/conversation/resource permission before and after knowledge reads. */
   assertSkillAccess?(resourceIds: string[]): Promise<void>
   recallMemory?(query: string): Promise<MemoryView>
+  searchHistory?(input: import('./modules/conversations/history-search').HistorySearchQuery): Promise<import('./modules/conversations/history-search').HistorySearchResult>
   rememberMemory?(input: { sourceMessageId: string; quote: string }): Promise<{ retained: boolean; id?: string; version?: number }>
   assertKnowledgeAccess?(resourceIds: string[]): Promise<void>
   recordKnowledgeRead?(reference: import('@boai/shared/domain/knowledge').KnowledgeReadRef): void

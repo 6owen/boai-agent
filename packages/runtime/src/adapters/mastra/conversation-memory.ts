@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 可用原文工具时优先考虑一次search_history，官方recall仍可展开已定位会话；OM阈值保持。
  * [OUTPUT]: Bobo通过官方retrieval.instructions主动回忆；无OM记录时只补同一段system指引，阈值、历史加载与自主工具选择保持。
  * [OUTPUT]: 2026-10-30 回归更新为Mastra官方记忆/原生归属合同；保留来源、调用预算和业务发布断言。
  * [INPUT]: Complete host-authorized public transcripts and the current API employee model.
@@ -20,6 +21,7 @@ import { messageData, partitionTurn } from './message-projection'
 import { memoryEmbedder, memoryModel } from './memory-model'
 import { thinkingProviderOptions } from './model-config'
 import { isCoreAgent } from '@boai/shared/domain/core-agent'
+import { historySearchGuidance } from '../../modules/conversations/history-search'
 
 export interface MemorySources {
   /** Private employee scope never includes groups, channels or conversation-restricted materials. */
@@ -101,13 +103,14 @@ export class EmployeeConversationMemory {
     const boboPrivate = isCoreAgent(context.agent) && context.conversation.kind === 'direct' && !context.conversation.channel
     const retrievalEnabled = context.groupCoordination?.mode !== 'ordered' && !context.work?.organization && (!context.decision || context.decision.action === 'reply' || (boboPrivate && context.decision.action === 'ask'))
     const boboRecall = retrievalEnabled && boboPrivate
+    const recallGuidance = boboRecall ? `${sourceRules}\n\n${context.searchHistory ? historySearchGuidance + '\n\n' : ''}${boboRecallGuidance}` : sourceRules
     const memory = new Memory({ storage, vector: this.vector, ...(embedder ? { embedder, embedderOptions: { maxRetries: 0 } } : {}), options: {
       lastMessages: 100,
       // OM retrieval indexes observations and resolves their source ranges; no duplicate raw-message vector pipeline.
       semanticRecall: false,
       workingMemory: { enabled: true, scope: 'resource', template },
       observationalMemory: {
-        model: await memoryModel(context), scope: 'resource', retrieval: retrievalEnabled ? { vector: !!embedder, scope: 'resource', instructions: boboRecall ? `${sourceRules}\n\n${boboRecallGuidance}` : sourceRules } : false,
+        model: await memoryModel(context), scope: 'resource', retrieval: retrievalEnabled ? { vector: !!embedder, scope: 'resource', instructions: recallGuidance } : false,
         observation: { instruction: sourceRules, messageTokens: this.observationMessageTokens, bufferTokens: false, manageWorkingMemory: true, continuationHints: false, modelSettings: { maxOutputTokens: 4000 }, providerOptions },
         reflection: { instruction: sourceRules, observationTokens: 12000, modelSettings: { maxOutputTokens: 4000 }, providerOptions },
         hooks: { beforeObservation: guard, afterObservation: guard, beforeReflection: guard, afterReflection: guard },
@@ -208,7 +211,7 @@ export class EmployeeConversationMemory {
       // memory@1.32.1 skips retrieval.instructions in readOnly cold starts.
       // Do not create a record just to inject guidance: that also loads all raw
       // resource history. Supply only the same custom guidance via Agent.system.
-      const recallInstructions = boboRecall && !await om.getRecord(currentThread, source.resourceId) ? `${sourceRules}\n\n${boboRecallGuidance}` : undefined
+      const recallInstructions = boboRecall && !await om.getRecord(currentThread, source.resourceId) ? recallGuidance : undefined
       guard()
       return { current, memory, recallInstructions, option: { thread: currentThread, resource: source.resourceId, options: { readOnly: true } } as const,
         dispose: () => memory.settled() }

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 原文工具对照增加数据库纠正场景和宿主查询/SQL耗时，查询证据与模型往返分别记录。
  * [INPUT]: Frozen baseline/candidate sources, the selected existing Bobo API connection and synthetic cross-session/control questions.
  * [OUTPUT]: Isolated AppService/Mastra replies, real request/tool counts, timings and deterministic source-fact checks.
  * [POS]: Manual bounded recall comparison; never writes personal chats or stores credentials.
@@ -12,26 +13,27 @@ import { ProductStore } from '../../packages/runtime/src/adapters/storage/produc
 import type { AgentEngine, EngineContext } from '../../packages/runtime/src/contracts'
 import type { Connection, Conversation, ConversationDetail, Message, ModelUsage, Snapshot } from '../../packages/shared/src/domain'
 
-interface Settings { output: string; variant: string; maxRequests: number; maxOutputTokens: number; deadlineMs: number; repetitions: number; modelId?: string; thinkingLevel?: import('../../packages/shared/src/domain').DigitalAgent['thinkingLevel'] }
+interface Settings { output: string; variant: string; maxRequests: number; maxOutputTokens: number; deadlineMs: number; repetitions: number; rawHistory?: boolean; modelId?: string; thinkingLevel?: import('../../packages/shared/src/domain').DigitalAgent['thinkingLevel'] }
 export async function runBoboRecallEvaluation({ settings, connection, apiKey }: { settings: Settings; connection: Connection; apiKey: string }) {
   const started = Date.now(), rows: unknown[] = [], calls = new Map<string, { caseId: string; phase: string; startedAt: number; usage?: ModelUsage }>()
   let caseId = '', service: AppService | undefined, base: MastraEngine | undefined, unknownUsage = false
-  const requests: unknown[] = [], originalFetch = globalThis.fetch
+  const requests: unknown[] = [], historyReads: unknown[] = [], originalFetch = globalThis.fetch
   globalThis.fetch = async (input, init) => {
     if (typeof init?.body === 'string') {
       const body = JSON.parse(init.body), text = JSON.stringify(body.messages ?? [])
       if (body.messages) requests.push({ caseId, model: body.model, toolChoice: body.tool_choice ?? 'auto', tools: body.tools?.map((tool: { function: { name: string } }) => tool.function.name),
-        officialGuidance: text.includes('Choosing a mode'), customGuidance: text.includes('主动结合相关的既往对话'), sourcePresent: text.includes('周三去体检'),
+        officialGuidance: text.includes('Choosing a mode'), customGuidance: text.includes('主动结合相关的既往对话'), sourcePresent: text.includes('周三去体检') || text.includes('最终改用 PostgreSQL'),
         messageRoles: body.messages.map((message: { role: string }) => message.role) })
     }
     return originalFetch(input, init)
   }
   await mkdir(settings.output, { recursive: true })
   const save = async () => {
-    const text = JSON.stringify({ variant: settings.variant, cases: rows, calls: [...calls.values()], requests, actualRequests: calls.size, unknownUsage, credentialsSaved: false, humanQuality: 'not-assessed', elapsedMs: Date.now() - started }, null, 2)
+    const text = JSON.stringify({ variant: settings.variant, cases: rows, calls: [...calls.values()], requests, historyReads, actualRequests: calls.size, unknownUsage, credentialsSaved: false, humanQuality: 'not-assessed', elapsedMs: Date.now() - started }, null, 2)
     await writeFile(join(settings.output, 'result.json'), apiKey ? text.replaceAll(apiKey, '[redacted]') : text)
   }
   const wrap = (context: EngineContext): EngineContext => ({ ...context,
+    ...(context.searchHistory ? { searchHistory: async (input: Parameters<NonNullable<EngineContext['searchHistory']>>[0]) => { const start = performance.now(), result = await context.searchHistory!(input); historyReads.push({ caseId, query: input.query, matching: result.matching, hits: result.hits.length, sqlMs: result.sqlMs, queryMs: result.elapsedMs, hostMs: performance.now() - start }); return result } } : {}),
     onModelCallStarted: async (id, phase, thinking) => {
       if (Date.now() - started >= settings.deadlineMs || calls.size >= settings.maxRequests || unknownUsage || [...calls.values()].reduce((n, c) => n + (c.usage?.outputTokens ?? 0), 0) >= settings.maxOutputTokens) throw new Error('Recall evaluation request/token/time budget reached')
       calls.set(`${context.runId}:${id}`, { caseId, phase, startedAt: Date.now() }); await context.onModelCallStarted?.(id, phase, thinking)
@@ -44,10 +46,15 @@ export async function runBoboRecallEvaluation({ settings, connection, apiKey }: 
       const dataPath = join(settings.output, caseId, 'data'), sourceId = 'prior-conversation', stamp = '2026-11-03T01:00:00.000Z'
       const store = new ProductStore(join(dataPath, 'boai.sqlite')); await store.init()
       const source: Conversation = { id: sourceId, kind: 'direct', purpose: 'core', memoryScope: 'employee', title: '日常交流', agentIds: ['bobo'], mode: 'natural', workspacePath: join(dataPath, 'workspaces', sourceId), sharedKnowledgeIds: [], createdAt: stamp, updatedAt: stamp }
+      const databaseCase = !!settings.rawHistory && repetition === 2
       const messages: Message[] = [
         { id: 'original-user', conversationId: sourceId, sequence: 1, senderType: 'user', senderId: 'user', senderName: '我', content: '周三去体检，周一晚上熬夜到3点，准备周二早点休息。', status: 'completed', createdAt: stamp },
         { id: 'original-reply', conversationId: sourceId, sequence: 2, senderType: 'agent', senderId: 'bobo', senderName: 'bobo', content: '知道了，按你的安排来。', status: 'completed', createdAt: '2026-11-03T01:00:01.000Z' },
       ]
+      if (databaseCase) messages.splice(0, messages.length,
+        { ...messages[0], content: '这个项目数据库先用 MySQL。' },
+        { ...messages[0], id: 'original-correction', sequence: 2, content: '修改一下，数据库最终改用 PostgreSQL。', createdAt: '2026-11-03T01:00:01.000Z' },
+        { ...messages[1], sequence: 3, content: '收到，按最终决定来。', createdAt: '2026-11-03T01:00:02.000Z' })
       await store.write([{ collection: 'conversations', id: source.id, value: source }, ...messages.map(message => ({ collection: 'messages', id: message.id, value: message }))]); await store.close()
       base = new MastraEngine({ memoryPath: join(dataPath, 'memory', 'bobo-mastra.db') })
       const engine: AgentEngine = { memoryOwner: 'mastra', test: (...args) => base!.test(...args), decide: context => base!.decide(wrap(context)), run: context => base!.run(wrap(context)), memoryView: id => base!.memoryView(id), closeMemory: () => base!.closeMemory() }
@@ -56,7 +63,7 @@ export async function runBoboRecallEvaluation({ settings, connection, apiKey }: 
       const agent = (await service.handle('snapshot', undefined) as Snapshot).agents.find(agent => agent.id === 'bobo')!
       const { configVersion, workspaceRef: _workspace, memoryNamespace: _memory, policyVersion: _policy, ...editable } = agent
       await service.handle('saveAgent', { ...editable, connectionId: configured.id, modelId: settings.modelId || configured.defaultModel, thinkingLevel: settings.thinkingLevel, allowCommands: false, allowBrowser: false, expectedConfigVersion: configVersion })
-      const prompt = kind === 'history' ? '你知道我什么时候体检吗？' : '17乘以6是多少？'
+      const prompt = kind === 'history' ? databaseCase ? '之前我们最后决定数据库用什么？' : '你知道我什么时候体检吗？' : '17乘以6是多少？'
       const before = calls.size, start = Date.now()
       const room = await service.handle('startCoreConversation', { content: prompt, requestId: `recall-eval-${caseId}` }) as Conversation
       let detail: ConversationDetail
@@ -68,9 +75,10 @@ export async function runBoboRecallEvaluation({ settings, connection, apiKey }: 
       }
       const elapsedMs = Date.now() - start, answer = detail.messages.filter(message => message.senderType === 'agent').map(message => message.content).join('\n')
       const tools = detail.runs.flatMap(run => run.toolEvents), recallCalls = tools.filter(event => event.name === 'recall' && event.status === 'completed').length
-      const answerCorrect = kind === 'history' ? /周三|星期三|礼拜三/.test(answer) : /102/.test(answer)
+      const searchCalls = tools.filter(event => event.name === 'search_history' && event.status === 'completed').length
+      const answerCorrect = kind === 'history' ? databaseCase ? /PostgreSQL/i.test(answer) : /周三|星期三|礼拜三/.test(answer) : /102/.test(answer)
       const complete = detail.runs.every(run => run.status === 'completed')
-      rows.push({ caseId, kind, prompt, source: messages, answer, answerCorrect, complete, passed: complete && answerCorrect && (kind === 'history' ? recallCalls > 0 : recallCalls === 0), actualRequests: calls.size - before, recallCalls, elapsedMs,
+      rows.push({ caseId, kind, prompt, source: messages, answer, answerCorrect, complete, passed: complete && answerCorrect && (kind === 'history' ? settings.rawHistory && settings.variant === 'candidate' ? searchCalls > 0 && recallCalls === 0 : recallCalls > 0 : recallCalls + searchCalls === 0), actualRequests: calls.size - before, recallCalls, searchCalls, elapsedMs,
         tools: tools.map(({ name, status, input, detail }) => ({ name, status, input, detail })), runs: detail.runs.map(({ phase, status, error }) => ({ phase, status, error })) })
       await service.close(); service = undefined; base = undefined
       unknownUsage = [...calls.values()].some(call => !call.usage || call.usage.outputTokens === undefined)

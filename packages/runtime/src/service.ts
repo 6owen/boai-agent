@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Bobo原文工具复用官方记忆来源授权/遗忘并在服务临界区查询现有SQLite，一次返回原文及邻近消息。
  * [OUTPUT]: bobo任务首次受理前复用原核心连接准备；任务仍沿员工独立会话、FIFO和状态协议，不新建核心主聊天。
  * [OUTPUT]: 会话创建沿原任务工具补全标题/要求，事务提交后同步当前会话标题缓存。
  * [OUTPUT]: 员工任务支持编辑要求及批量派发，状态不阻止会话续用；API/native原任务身份保持。
@@ -376,6 +377,7 @@ import { ContactListRepository, contactListChangeSchema } from './modules/employ
 import { ContactDeletionService } from './modules/employees/contact-deletion'
 import { MemoryRepository } from './modules/memory/memory-repository'
 import { memoryResourceId } from './adapters/mastra/conversation-memory'
+import { searchAuthorizedHistory } from './modules/conversations/history-search'
 import { recallMemory } from './modules/memory/memory-recall'
 import { memoryAllowed, memoryUseScope, type MemoryAccess } from './modules/memory/memory-policy'
 import type { MemoryContextRef, MemoryObservation } from '@boai/shared/domain/memory'
@@ -4489,7 +4491,15 @@ export class AppService {
     context.memoryOwner = runtimeProfile ? 'native' : this.options.engine.memoryOwner
     if (!runtimeProfile && run.phase === 'execution') {
       context.continuity = this.contextContinuity(context, throughSequence)
-      if (this.options.engine.memoryOwner === 'mastra') context.memorySources = () => this.mastraMemorySources(context)
+      if (this.options.engine.memoryOwner === 'mastra') {
+        context.memorySources = () => this.mastraMemorySources(context)
+        if (isCoreAgent(agent) && conversation.kind === 'direct' && !conversation.channel) context.searchHistory = input => this.serialize(async () => {
+          const source = await this.collectMastraMemorySources(context, false)
+          const result = await searchAuthorizedHistory(context, source, input, (query, ids) => this.store.searchRawHistory(query, ids))
+          context.signal.throwIfAborted()
+          return result
+        })
+      }
     }
     if (context.memoryOwner) { delete context.rememberMemory; delete context.recallMemory; delete context.externalMemory }
     if (taskInstructions && run.phase === 'execution') {
@@ -4515,7 +4525,9 @@ export class AppService {
     })
   }
   private mastraMemorySources(context: EngineContext) {
-    return this.serialize(async () => {
+    return this.serialize(() => this.collectMastraMemorySources(context))
+  }
+  private async collectMastraMemorySources(context: EngineContext, includeMemoryConfiguration = true) {
       await this.assertExecutionAccess(context)
       const agent = this.getAgent(context.agent.id), room = this.getConversation(context.conversation.id)
       const isolated = room.kind !== 'direct' || !!room.channel || room.memoryScope === 'conversation' || !!room.memoryContextRef || !!context.materialRefs?.length
@@ -4536,20 +4548,19 @@ export class AppService {
         }
         threads.push({ conversationId: source.id, title: source.title, messages })
       }
-      const legacy = (await this.memory.get({ agentId: agent.id, scope: 'employee' })).entries.filter(entry => memoryAllowed(entry, access) && (isolated ? entry.conversationId === room.id && memoryUseScope(entry) !== 'employee' : memoryUseScope(entry) === 'employee')).map(({ id, version, content, createdAt, sourceMessageIds, sourceConversationIds, sourceResourceIds }) => ({ id, version, content, createdAt, sourceMessageIds, sourceConversationIds, sourceResourceIds }))
+      const legacy = includeMemoryConfiguration ? (await this.memory.get({ agentId: agent.id, scope: 'employee' })).entries.filter(entry => memoryAllowed(entry, access) && (isolated ? entry.conversationId === room.id && memoryUseScope(entry) !== 'employee' : memoryUseScope(entry) === 'employee')).map(({ id, version, content, createdAt, sourceMessageIds, sourceConversationIds, sourceResourceIds }) => ({ id, version, content, createdAt, sourceMessageIds, sourceConversationIds, sourceResourceIds })) : undefined
       const inputIds = [...new Set([...(context.memory?.recall?.inputMessageIds ?? []), ...threads.flatMap(thread => thread.messages.map(message => message.id))])]
       if (context.memory?.recall) {
         context.memory.recall.inputMessageIds = inputIds
-        context.memory.recall.versions = legacy.map(({ id, version }) => ({ id, version }))
+        if (legacy) context.memory.recall.versions = legacy.map(({ id, version }) => ({ id, version }))
         const snapshot = this.snapshots.get(context.runId)!
         snapshot.memoryRecall = clone({ namespace: context.memory.namespace, epoch: context.memory.epoch, invalidationEpoch: context.memory.invalidationEpoch, recall: context.memory.recall })
         await this.store.write([record('snapshots', snapshot)])
       }
       context.signal.throwIfAborted()
-      const settings = await this.memorySettings(agent.id)
-      const embedding = settings.embedding ? { connection: this.getConnection(settings.embedding.connectionId), modelId: settings.embedding.modelId, apiKey: await this.apiKey(this.getConnection(settings.embedding.connectionId)) } : undefined
+      const settings = includeMemoryConfiguration ? await this.memorySettings(agent.id) : undefined
+      const embedding = settings?.embedding ? { connection: this.getConnection(settings.embedding.connectionId), modelId: settings.embedding.modelId, apiKey: await this.apiKey(this.getConnection(settings.embedding.connectionId)) } : undefined
       return { resourceId, threads, legacy, embedding }
-    })
   }
   private contextContinuity(context: EngineContext, throughSequence: number): ContextPort {
     const bound = Math.min(throughSequence, Math.max(...context.messages.map(message => message.sequence), 0))
