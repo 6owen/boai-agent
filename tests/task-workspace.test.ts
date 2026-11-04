@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 各状态统一快捷执行、composer队列展示/待决防重复/稳定请求重试及隐藏停读。
  * [OUTPUT]: 看板/列表列清空二级确认、取消零写、空列禁用与稳定请求重试。
  * [OUTPUT]: 创建状态只继承触发列且无header入口；溢出看板的Portal菜单指针不触发横拖，显示标签沿pressed状态。
  * [OUTPUT]: 平级列创建与共享显隐零执行、批量入口隐藏；会话创建以稳定身份建任务/执行并复用任务Dialog。
@@ -26,6 +27,7 @@ import type { AutomationOccurrence, Conversation, Snapshot } from '../packages/s
 import type { TrackedTask } from '../packages/shared/src/domain/tracked-tasks'
 import type { ConversationReadingState } from '../packages/shared/src/domain/reading'
 import type { DesktopApi } from '../packages/shared/src/ipc'
+import { ConversationQueue } from '../apps/electron/src/renderer/pages/conversations/-components/conversation-queue'
 import { EmployeeTasksPanel } from '../apps/electron/src/renderer/components/detail-panel/employee-tasks-panel'
 import { EmployeeTaskDetail } from '../apps/electron/src/renderer/components/detail-panel/employee-task-detail'
 import { EmployeeTaskForm } from '../apps/electron/src/renderer/components/detail-panel/employee-task-form'
@@ -621,4 +623,49 @@ test.each(['board', 'list'])('%s column clear confirms once, cancels without wri
   await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="待办列菜单"]')!.click())
   expect(menuItem('清空').getAttribute('aria-disabled')).toBe('true')
   expect(f.request.mock.calls.some(([method]) => ['deleteEmployeeTask', 'runEmployeeTask', 'deleteAutomation'].includes(method))).toBe(false)
+})
+
+test.each(EMPLOYEE_TASK_STATUSES)('offers the same quick-run action for %s tasks without opening the dialog', async status => {
+  const f = fixture()
+  await f.props.api.request('updateEmployeeTask', { employeeId: task.agentId, id: task.id, expectedRevision: 1, status })
+  await act(async () => root.render(h(EmployeeTasksPanel, { ...f.props, active: true, target: { type: 'employee-tasks', id: task.agentId, requestId: 'quick-run' } })))
+  await openTaskMenu()
+  expect(menuItem('执行任务')).toBeDefined()
+  await act(async () => { menuItem('执行任务').click(); menuItem('执行任务')?.click() })
+  expect(f.request.mock.calls.filter(([method]) => method === 'runEmployeeTask')).toEqual([['runEmployeeTask', { employeeId: task.agentId, id: task.id, expectedRevision: 2, requestId: expect.any(String) }]])
+  expect(f.request.mock.calls.some(([method]) => method === 'openEmployeeTaskSession')).toBe(false)
+})
+
+test('composer queue keeps an unknown send-now request stable, prevents duplicate clicks and removes only the selected item', async () => {
+  let items = [{ id: 'second', conversationId: 'room', revision: 1, content: '第二条', createdAt: stamp, attachmentCount: 0 }, { id: 'third', conversationId: 'room', revision: 2, content: '第三条', createdAt: stamp, attachmentCount: 2 }]
+  let release!: () => void, failOnce = true
+  const request = vi.fn(async (method: string, input: any) => {
+    if (method === 'listConversationQueue') return { items }
+    if (method === 'actOnConversationQueue') {
+      if (failOnce) { failOnce = false; throw new Error('回执暂时不可用') }
+      if (input.action === 'send-now') await new Promise<void>(resolve => { release = resolve })
+      items = items.filter(item => item.id !== input.id)
+      return { accepted: true }
+    }
+    throw new Error('unexpected ' + method)
+  })
+  const api = { request, subscribe: () => () => {} } as unknown as DesktopApi
+  await act(async () => root.render(h(ConversationQueue, { api, conversationId: 'room', active: true })))
+  expect(host.textContent).toContain('排队消息2')
+  expect(host.textContent).toContain('2 个附件')
+  const send = () => host.querySelector<HTMLButtonElement>('[data-queued-message-id="third"] [aria-label="立即发送"]')!
+  await act(async () => send().click())
+  const first = request.mock.calls.find(([method]) => method === 'actOnConversationQueue')![1]
+  await act(async () => { send().click(); send().click() })
+  expect(send().disabled).toBe(true)
+  expect(request.mock.calls.filter(([method]) => method === 'actOnConversationQueue')).toEqual([['actOnConversationQueue', first], ['actOnConversationQueue', first]])
+  await act(async () => release())
+  expect(host.textContent).not.toContain('第三条')
+  expect(host.textContent).toContain('第二条')
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="移除排队消息"]')!.click())
+  expect(request.mock.calls.at(-2)).toEqual(['actOnConversationQueue', expect.objectContaining({ id: 'second', action: 'remove', expectedRevision: 1 })])
+  expect(host.querySelector('[aria-label="待发送消息队列"]')).toBeNull()
+  const count = request.mock.calls.length
+  await act(async () => root.render(h(ConversationQueue, { api, conversationId: 'room', active: false })))
+  expect(request.mock.calls).toHaveLength(count)
 })

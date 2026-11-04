@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Composer消息队列按会话投影原轮次/任务队列；立即发送只中断固定原消息执行并保留其他排队项。
  * [OUTPUT]: 员工任务列清空转交EmployeeTaskService原事务与在途保护。
  * [OUTPUT]: 2026-11-04执行消息定位返回经存储核验的员工/taskId；任务删除或归属不符时拒绝导航，不回退到独立执行页。
  * [OUTPUT]: 定时任务进入员工面板及独立会话；宿主内部操作元数据查询不计Agent无进展，正常创建后核对不误停。
@@ -288,6 +289,8 @@ import { ConversationHistory } from './modules/conversations/history'
 import { RequestError } from '@agentclientprotocol/sdk'
 import { publishArtifact, restrictedPath } from './modules/workspaces/file-access'
 import { createHash } from 'node:crypto'
+import { listConversationQueue, queueActionSchema, prepareQueueAction, finishQueueAction } from './modules/conversations/message-queue'
+import type { ConversationQueueAction } from '@boai/shared/domain/message-queue'
 import { NativeSteering } from './modules/conversations/native-steering'
 import { recordNativeInput } from './adapters/native-sessions'
 import { createClient } from '@libsql/client'
@@ -808,6 +811,8 @@ export class AppService {
       decide: (turn, event, delivery, signal, progress) => this.executeDecision(turn, event, delivery, signal, progress),
       speak: (turn, event, decision, signal, publish, progress) => this.executeResponse(turn, event, decision, signal, publish, progress),
       settled: (turn, participants, signal) => this.updateMemories(turn, participants, signal),
+      queueBlocked: conversationId => [...this.activeAdapters].some(id => { const run = this.runs.get(id); return run?.conversationId === conversationId && terminal.has(run.status) }),
+      contextSequence: conversationId => Math.max(0, ...this.conversationContextMessages(conversationId).map(message => message.sequence)),
       executionBusy: (conversationId, agentId) => [...this.activeAdapters].some(id => { const run = this.runs.get(id); return run?.conversationId === conversationId && run.agentId === agentId && run.phase === 'execution' }),
       idle: id => this.scheduleWork(id), changed: id => this.changed(id), error: error => this.emit({ type: 'runtime-error', error: this.errorMessage(error) }),
     })
@@ -1326,6 +1331,14 @@ export class AppService {
     if (method === 'getEmployeeTaskMessageReceipt') {
       const { requestId } = z.object({ requestId: id }).strict().parse(input)
       return await this.handle('getMessageReceipt', { requestId }) ?? this.employeeTasks.messageReceipt(requestId)
+    }
+    if (method === 'listConversationQueue') return this.serialize(() => {
+      const value = z.object({ conversationId: id }).strict().parse(input)
+      return listConversationQueue(this.store, this.scheduler, this.queueConversation(value.conversationId))
+    })
+    if (method === 'actOnConversationQueue') {
+      const value = queueActionSchema.parse(input), room = this.queueConversation(value.conversationId)
+      return room.employeeTaskId ? this.automations.actOnMessageQueue(value) : this.serialize(() => this.actOnMessageQueue(value))
     }
     if (method === 'openEmployeeTaskSession' || method === 'createEmployeeTask' || method === 'listEmployeeTasks' || method === 'getEmployeeTask' || method === 'updateEmployeeTask' || method === 'deleteEmployeeTask' || method === 'clearEmployeeTasks' || method === 'runEmployeeTask' || method === 'runEmployeeTasks') return this.employeeTasks.handle(method, input)
     if(method==='listAutomations'){z.undefined().parse(input);return this.automations.view()}
@@ -1945,6 +1958,16 @@ export class AppService {
     for (const artifact of registered) this.artifacts.set(artifact.id, artifact)
     return [...registered, ...loose]
   }
+  private conversationContextMessages(id: string) {
+    return this.conversationMessages(id).filter(message => {
+      const turn = message.turnId ? this.scheduler.turns.get(message.turnId) : undefined
+      return !turn?.queueRemoved && !(message.senderType === 'user' && turn?.status === 'queued')
+    })
+  }
+  private latestConversationUserMessage(id: string) {
+    const order = (message: Message) => Math.max(message.sequence, message.turnId ? this.scheduler.turns.get(message.turnId)?.queueContextSequence ?? 0 : 0)
+    return this.conversationContextMessages(id).filter(message => message.senderType === 'user' && message.status === 'completed').sort((a, b) => order(a) - order(b) || a.sequence - b.sequence).at(-1)
+  }
   private conversationMessages(id: string) { return [...this.messages.values()].filter(message => message.conversationId === id).sort((a, b) => a.sequence - b.sequence) }
 
   private validateMemoryQuery(query: MemoryQuery) {
@@ -2003,7 +2026,7 @@ export class AppService {
         if (backend?.kind === 'runtime-plugin') { resolvePluginRuntime(agent, runtimeProfile, connection); this.runtimePlugins.resolve(runtimeProfile!.runtimePlugin!) }
         if (backend?.kind === 'acp-local') fail('此运行方式不支持员工行为')
         const apiKey = connection ? await this.apiKey(connection) : ''; key = apiKey
-        const lastMessage = this.conversationMessages(conversation.id).filter(message => message.status === 'completed').at(-1)
+        const lastMessage = this.conversationContextMessages(conversation.id).filter(message => message.status === 'completed').at(-1)
         if (behavior.kind === 'reflection') reflection = await this.reflectionInput(agent, conversation, run.reflectionDay ?? personalityDate(Date.parse(run.sourceMessageId ? this.messages.get(run.sourceMessageId)?.createdAt ?? run.startedAt : run.startedAt)))
         const material = reflection ? { messages: reflection.messages, refs: reflection.messages.flatMap(message => message.materialSources ?? this.snapshots.get(message.runId ?? '')?.materialRefs ?? []) } : lastMessage ? await this.materialMessages(conversation, lastMessage.id, agent.id) : { messages: [], refs: [] }
         const messages = reflection ? material.messages : material.messages.filter(message => message.status === 'completed').slice(-30)
@@ -3519,8 +3542,9 @@ export class AppService {
     try { this.dataSources.assertCurrent(refs); this.webSearch.connections.assertCurrent(snapshot.webSearchRefs ?? []); return true } catch { return false }
   }
   private async contextMessages(conversation: Conversation, triggerMessageId: string, throughSequence = Infinity): Promise<Message[]> {
-    const triggerSequence = this.messages.get(triggerMessageId)?.sequence ?? fail('触发消息不存在')
-    const messages = this.conversationMessages(conversation.id).filter(message => {
+    const trigger = this.messages.get(triggerMessageId) ?? fail('触发消息不存在')
+    const triggerSequence = Math.max(trigger.sequence, trigger.turnId ? this.scheduler.turns.get(trigger.turnId)?.queueContextSequence ?? 0 : 0)
+    const messages = this.conversationContextMessages(conversation.id).filter(message => {
       if (message.status !== 'completed' || message.sequence > throughSequence) return false
       if (!message.runId) return message.sequence <= triggerSequence
       const originatingTrigger = this.runs.get(message.runId)?.triggerMessageId
@@ -3776,7 +3800,7 @@ export class AppService {
     const scope = await this.store.transaction(tx => referenceScope(tx, input, actor))
     const agent = this.getAgent(scope.agentId), conversation = this.getConversation(scope.conversationId)
     if (this.clearingConversations.has(conversation.id)) fail('会话正在清理')
-    const trigger = actor.kind === 'employee' ? this.messages.get(actor.messageId) : this.conversationMessages(conversation.id).filter(message => message.status === 'completed').at(-1)
+    const trigger = actor.kind === 'employee' ? this.messages.get(actor.messageId) : this.conversationContextMessages(conversation.id).filter(message => message.status === 'completed').at(-1)
     return collectReferenceSources(this.store, {
       agent, conversation,
       messages: async () => {
@@ -4863,9 +4887,9 @@ export class AppService {
       }
       if (turn.wakeId) await this.serialize(async () => {
         effective.throwIfAborted()
-        const messages = this.conversationMessages(conversation.id).filter(message => message.status === 'completed')
+        const messages = this.conversationContextMessages(conversation.id).filter(message => message.status === 'completed')
         const wakeWork = turn.workId ? (await this.works.view(conversation.id)).workItems.find(work => work.id === turn.workId) : undefined
-        const latestUser = [...messages].reverse().find(message => message.senderType === 'user') ?? this.messages.get(wakeWork?.sourceMessageId ?? turn.triggerMessageId) ?? fail('原工作触发消息已失效')
+        const latestUser = this.latestConversationUserMessage(conversation.id) ?? this.messages.get(wakeWork?.sourceMessageId ?? turn.triggerMessageId) ?? fail('原工作触发消息已失效')
         turn.triggerMessageId = latestUser.id; run.triggerMessageId = latestUser.id
         decision = { ...decision, observedThroughSequence: messages.at(-1)!.sequence, replyToMessageId: latestUser.id }
         await this.store.write([record('turns', turn), record('runs', run), record('decisions', decision)])
@@ -5347,7 +5371,7 @@ export class AppService {
         for (;;) {
           const stale = await this.serialize(async () => {
             effective.throwIfAborted()
-            const latestUser = [...this.conversationMessages(conversation.id)].reverse().find(message => message.senderType === 'user' && message.status === 'completed') ?? this.messages.get(context.work?.sourceMessageId ?? turn.triggerMessageId) ?? fail('原工作触发消息已失效')
+            const latestUser = this.latestConversationUserMessage(conversation.id) ?? this.messages.get(context.work?.sourceMessageId ?? turn.triggerMessageId) ?? fail('原工作触发消息已失效')
             const current = (await this.materialMessages(this.getConversation(conversation.id), latestUser.id, run.agentId)).messages
             const latest = current.at(-1)?.sequence ?? 0
             const { workItems } = await this.works.view(conversation.id)
@@ -5590,7 +5614,7 @@ export class AppService {
         await this.observeActivity(run, () => this.userProfile.execution(run, 'finish')); this.activeAdapters.delete(run.id)
         if (timer) clearTimeout(timer)
         if (run.origin) this.changed(run.conversationId)
-        if (run.phase === 'execution') this.scheduler.executionFinished(run.conversationId)
+        this.scheduler.executionFinished(run.conversationId)
       }
     }, {
       retryRateLimit: readOnly && !context.runtimeProfile,
@@ -5863,8 +5887,8 @@ export class AppService {
           try { await this.materials.validateRefs(work.materialSources, work.ownerAgentId, conversationId) }
           catch { await this.works.cancelTree(work.id, '材料来源或负责人授权已失效，接续已停止'); continue }
         }
-        const latest = this.conversationMessages(conversationId).filter(message => message.status === 'completed')
-        const trigger = [...latest].reverse().find(message => message.senderType === 'user') ?? (work.collaborationRequestId ? this.messages.get(work.sourceMessageId) : undefined)
+        const latest = this.conversationContextMessages(conversationId).filter(message => message.status === 'completed')
+        const trigger = this.latestConversationUserMessage(conversationId) ?? (work.collaborationRequestId ? this.messages.get(work.sourceMessageId) : undefined)
         const visible = trigger && owner?.active ? new Set((await this.materialMessages(conversation, trigger.id, owner.id)).messages.map(message => message.id)) : undefined
         if (!owner?.active || !conversation.agentIds.includes(owner.id) || !trigger || !visible?.has(work.sourceMessageId) || !work.resultMessageIds.every(id => visible.has(id))) {
           await this.works.cancelTree(work.id, '接续的负责人或原始上下文权限已失效'); continue
@@ -5891,6 +5915,52 @@ export class AppService {
     }
     await this.scheduler.cancelWorks(ids)
     this.changed(conversationId)
+  }
+  private queueConversation(conversationId: string) {
+    if (this.closing || this.backingUp || this.clearingConversations.has(conversationId)) fail('会话当前不可操作')
+    const room = this.getConversation(conversationId)
+    if (room.mergedInto || room.channel || room.agentIds.some(id => this.getAgent(id).executionBackend?.kind === 'acp-local')) fail('此会话不支持消息队列')
+    return room
+  }
+  private async actOnMessageQueue(input: ConversationQueueAction) {
+    this.queueConversation(input.conversationId)
+    const release = this.scheduler.pauseQueue(input.conversationId)
+    try {
+      const receipt = await this.store.transaction(tx => prepareQueueAction(tx, input, async () => {
+        const turn = this.scheduler.turns.get(input.id)
+        const message = turn ? await tx.get<Message>('messages', turn.triggerMessageId) : undefined
+        if (!turn || turn.conversationId !== input.conversationId || turn.origin || turn.wakeId || turn.startIntentId || turn.status !== 'queued' || turn.epoch !== input.expectedRevision || message?.senderType !== 'user' || message.nativeSteering) throw new Error('消息已开始执行或队列已变化，请刷新后操作')
+        const requestFor = (messageId: string) => [...this.requests.values()].find(request => request.messageId === messageId)?.id ?? fail('原消息回执不可用，未停止其他消息')
+        if (input.action === 'remove') {
+          await tx.put({ collection: 'turns', id: turn.id, value: { ...turn, queueRemoved: true, status: 'cancelled', finishedAt: now(), reason: '用户移除排队消息', epoch: turn.epoch + 1 } })
+          for (const delivery of this.scheduler.deliveries.values()) if (delivery.turnId === turn.id) await tx.put({ collection: 'deliveries', id: delivery.id, value: { ...delivery, status: 'cancelled', updatedAt: now() } })
+          return []
+        }
+        const priority = Math.min(0, ...[...this.scheduler.turns.values()].filter(t => t.conversationId === input.conversationId && t.status === 'queued').map(t => t.queuePriority ?? 0)) - 1
+        await tx.put({ collection: 'turns', id: turn.id, value: { ...turn, queuePriority: priority, epoch: turn.epoch + 1 } })
+        const workById = new Map((await tx.list<WorkItem>('workItems')).filter(work => work.conversationId === input.conversationId).map(work => [work.id, work]))
+        const messages = new Set<string>()
+        const add = (workId: string | undefined, messageId: string) => {
+          const work = workId ? workById.get(workId) : undefined
+          messages.add(work ? workById.get(work.rootWorkId)?.sourceMessageId ?? work.sourceMessageId : messageId)
+        }
+        for (const current of this.scheduler.turns.values()) if (current.conversationId === input.conversationId && !current.origin && ['evaluating', 'responding', 'executing', 'waiting_user'].includes(current.status)) add(current.workId, current.triggerMessageId)
+        const active = this.activeRunIds()
+        for (const run of this.runs.values()) if (run.conversationId === input.conversationId && !run.origin && (active.has(run.id) || !terminal.has(run.status))) add(run.workId, run.triggerMessageId)
+        return [...messages].map(requestFor)
+      }))
+      if (receipt.applied) return { accepted: true as const }
+      const turn = await this.store.get<import('@boai/shared/domain').DiscussionTurn>('turns', input.id)
+      if (turn) this.scheduler.installRoomMigration([record('turns', turn)])
+      if (turn?.queueRemoved) for (const delivery of this.scheduler.deliveries.values()) if (delivery.turnId === turn.id) {
+        const stored = await this.store.get<AgentDelivery>('deliveries', delivery.id)
+        if (stored) this.scheduler.installRoomMigration([record('deliveries', stored)])
+      }
+      for (const requestId of receipt.targets) await this.cancelMessageExecution(requestId)
+      await finishQueueAction(this.store, input, receipt)
+      this.changed(input.conversationId)
+      return { accepted: true as const }
+    } finally { release() }
   }
   private async cancelConversation(conversationId: string) {
     if (!this.closing) for (const work of (await this.works.view(conversationId)).workItems.filter(work => !work.parentWorkId)) await this.works.cancelTree(work.id, '用户停止本轮讨论')

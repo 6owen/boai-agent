@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 会话消息队列统一读取、按版本移除或优先执行接口。
  * [OUTPUT]: 2026-11-04resolveExecutionMessage可返回已核验employeeTask，供任务面板导航；原conversation/message身份保持。
  * [OUTPUT]: 公开API Bobo历史配置读写合同，不暴露SQL或改变OM。
  * [OUTPUT]: Agent Desktop 可选插件接线；默认关闭、独立于旧computer-use，调用沿员工权限及真实图片。
@@ -90,6 +91,7 @@
  * [POS]: shared/ipc 的唯一方法与事件合同。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import type { MessageQueueMethods } from '../domain/message-queue'
 import type { EmployeeTaskMethods } from '../domain/employee-tasks'
 import type { ShortcutSnapshot, ShortcutUpdate, ShortcutReceipt } from '../shortcuts'
 import type { TeamCreationOperation, TeamGeneration, TeamDraft, TeamEditable, TeamDraftView, TeamRecovery } from '../domain/team-creation'
@@ -142,7 +144,7 @@ export type AppEvent =
   | { type: 'message'; message: Message }
   | { type: 'runtime-error'; error: string }
 
-export interface Methods extends EmployeeTaskMethods {
+export interface Methods extends EmployeeTaskMethods, MessageQueueMethods {
   closeUserWorkspace: { input: { employeeId: string; conversationId?: string } | { conversationId: string }; output: void }
   getWorkspaceRoot: { input: import('./workspace-files').WorkspaceFileScope; output: string }
   validateWorkspaceScope: { input: import('./workspace-files').WorkspaceFileScope; output: void }

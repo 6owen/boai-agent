@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Composer消息优先级持久化；队列操作暂缓认领，实际当前轮退出前不启动下一轮。
  * [OUTPUT]: 2026-10-27 移除判断/发言/接续代数上限，保留真实完成、等待与局部重复暂停。
  * [OUTPUT]: 群判断、主动发言和事件接续只累计计数，不按次数或代数截断；保留取消、来源/成员校验及真实依赖。
  * [OUTPUT]: 默认执行不按累计调用、工具步骤、用量或墙钟截断；保留真实用量、取消/权限和明确指定的预算。
@@ -37,7 +38,7 @@ export const decisionSchema = z.object({
   dependsOnContributions: z.array(z.object({ agentId: identifier, key: z.literal('main') }).strict()).max(12).optional(), observedThroughSequence: z.number().int().nonnegative(),
 }).strict()
 type EventRecord = ConversationEvent & { generation: number; sequence: number }
-type TurnRecord = DiscussionTurn & { cancelledAgentIds?: string[]; epoch: number; decisionCalls?: number; deliveryFailure?: boolean }
+type TurnRecord = DiscussionTurn & { queuePriority?: number; cancelledAgentIds?: string[]; epoch: number; decisionCalls?: number; deliveryFailure?: boolean }
 type DeliveryRecord = AgentDelivery & { failurePhase?: 'decision' | 'execution' }
 type Grant = { id: string; turnId: string; agentId: string; decisionId: string; contextVersion: number; status: 'active' | 'done' | 'expired' }
 type Active = { progressPaused: Set<string>; progress: Map<string, ProgressMonitor>; turn: TurnRecord; controller: AbortController; apiController: AbortController; employeeControllers: Map<string, AbortController>; pending: Map<string, AgentDelivery>; inflight: Map<string, Promise<void>>; ready: Map<string, DecisionRecord>; waiting: Map<string, DecisionRecord>; handled: Set<string>; contributions: Map<string, number>; retriedDependencies: Set<string>; invited: Set<string>; tasks: Map<string, Promise<void>>; deferredWork: Set<string>; awaitingExecution: Set<string>; chats: Map<string, Promise<void>>; wake: () => void; wakePromise: Promise<void>; promise: Promise<void>; yielded: boolean; asked: boolean; budgetLimited?: boolean; latestEvent: EventRecord; done: boolean }
@@ -55,6 +56,8 @@ export interface SchedulerHooks {
   decide(turn: DiscussionTurn, event: ConversationEvent, delivery: AgentDelivery, signal: AbortSignal, progress?: ProgressMonitor): Promise<ParticipationDecision>
   speak(turn: DiscussionTurn, event: ConversationEvent, decision: DecisionRecord, signal: AbortSignal, publish: PublishReply, progress?: ProgressMonitor): Promise<void | 'deferred'>
   settled(turn: DiscussionTurn, participants: string[], signal: AbortSignal): Promise<void>
+  queueBlocked?(conversationId: string): boolean
+  contextSequence?(conversationId: string): number
   executionBusy?(conversationId: string, agentId: string): boolean
   changed(conversationId: string): void
   idle?(conversationId: string): void
@@ -167,8 +170,19 @@ export class GroupScheduler {
   accept(prepared: ReturnType<GroupScheduler['prepare']>) {
     this.turns.set(prepared.turn.id, prepared.turn); this.events.set(prepared.event.id, prepared.event)
     for (const delivery of prepared.deliveries) this.deliveries.set(delivery.id, delivery)
-    if (!prepared.turn.wakeId) for (const previous of this.active.values()) if (previous.turn.conversationId === prepared.turn.conversationId) { previous.yielded = true; if (previous.done) previous.controller.abort(new Error('优先处理用户的新消息')); previous.wake() }
+    if (!prepared.turn.wakeId && prepared.turn.replyToTurnIds?.length) for (const previous of this.active.values()) if (previous.turn.conversationId === prepared.turn.conversationId) { previous.yielded = true; if (previous.done) previous.controller.abort(new Error('优先处理用户的新消息')); previous.wake() }
     this.kick(prepared.turn.conversationId)
+  }
+  pauseQueue(conversationId: string) {
+    this.cancelling.set(conversationId, (this.cancelling.get(conversationId) ?? 0) + 1)
+    let released = false
+    return () => {
+      if (released) return
+      released = true
+      const remaining = (this.cancelling.get(conversationId) ?? 1) - 1
+      if (remaining) this.cancelling.set(conversationId, remaining)
+      else { this.cancelling.delete(conversationId); this.kick(conversationId) }
+    }
   }
   hasActiveTurn(turnId: string) { return [...this.active.values()].some(active => active.turn.id === turnId) }
   canStartWork(turnId: string, agentId?: string) { return [...this.active.values()].some(active => active.turn.id === turnId && this.alive(active, agentId) && !active.yielded) }
@@ -244,9 +258,9 @@ export class GroupScheduler {
     this.kick(conversationId); this.hooks.idle?.(conversationId)
   }
   private kick(conversationId: string) {
-    if (this.closing || this.cancelling.has(conversationId)) return
+    if (this.closing || this.cancelling.has(conversationId) || this.hooks.queueBlocked?.(conversationId)) return
     const running = [...this.active.values()].filter(active => active.turn.conversationId === conversationId)
-    const queued = [...this.turns.values()].filter(turn => turn.conversationId === conversationId && turn.status === 'queued')
+    const queued = [...this.turns.values()].filter(turn => turn.conversationId === conversationId && turn.status === 'queued').sort((a, b) => (a.queuePriority ?? 0) - (b.queuePriority ?? 0))
     const opening = (turn: DiscussionTurn) => !!turn.startIntentId && !!turn.collaborationRequestId && [...this.events.values()].some(event => event.turnId === turn.id && event.type === 'collaboration_start' && event.collaborationRequestId === turn.collaborationRequestId)
     const userTurn = queued.find(turn => !turn.wakeId && !opening(turn))
     // Ordinary user input remains single-lane; only this opening's real directed work may overlap.
@@ -267,7 +281,19 @@ export class GroupScheduler {
     active.wake = wake
   }
   private async loop(active: Active) {
-    active.turn.status = 'evaluating'; await this.store.write([row('turns', active.turn)])
+    active.turn.status = 'evaluating'
+    const records = [row('turns', active.turn)]
+    if (!active.turn.origin && !active.turn.wakeId && active.latestEvent.type === 'user_message') {
+      const boundary = Math.max(active.latestEvent.sequence, this.hooks.contextSequence?.(active.turn.conversationId) ?? 0)
+      active.turn.queueContextSequence = boundary
+      active.latestEvent.sequence = boundary
+      records.push(row('events', active.latestEvent))
+      for (const delivery of this.deliveries.values()) if (delivery.turnId === active.turn.id && delivery.status === 'pending') {
+        delivery.observedThroughSequence = boundary
+        records.push(row('deliveries', delivery))
+      }
+    }
+    await this.store.write(records)
     const coordination = await this.hooks.interpretGroup?.(active.turn, active.controller.signal)
     if (coordination) await this.hooks.critical(async () => {
       if (!this.alive(active) || active.yielded) return

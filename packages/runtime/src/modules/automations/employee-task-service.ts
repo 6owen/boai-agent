@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 任意任务状态均可快捷执行；已有执行时同任务新要求进入原持久FIFO。
  * [OUTPUT]: 列清空在原事务内覆盖全部分页，仅移除指定员工/状态的委派任务；在途任务保留，删除墓碑和稳定回执同事务保存。
  * [OUTPUT]: bobo与普通员工共用任务创建、独立会话及执行；首次执行前沿宿主准备员工连接，不依赖先发送主聊天消息。
  * [OUTPUT]: 人工任务可在任意平级状态创建，原始会话输入标记待整理；创建不自动派发，显式执行仍沿原FIFO。
@@ -111,7 +112,6 @@ export class EmployeeTaskService {
       if (!room?.employeeTaskId || room.agentIds.length !== 1) throw new Error('请选择该员工的任务会话')
       const task = await read(tx, room.agentIds[0], room.employeeTaskId)
       if (task.sessionConversationId !== room.id) throw new Error('任务会话身份不一致')
-      if ((await tx.list<AutomationOccurrence>('automationOccurrences')).some(o => o.taskId === task.id && !o.deletedAt && o.status === 'waiting_user')) throw new Error('请从当前任务会话中的原问题卡回复，以保留问题身份和版本')
       const input = { employeeId: task.agentId, id: task.id, expectedRevision: task.revision, requestId: message.requestId, message }
       await tx.put({ collection: 'employeeTaskMessages', id: key, value: { fingerprint, input } }); return input
     })
@@ -230,9 +230,8 @@ export class EmployeeTaskService {
         const task = await read(tx, v.employeeId, v.id)
         const receipt = await tx.get<{ fingerprint: string }>('employeeTaskReceipts', receiptId)
         if (receipt) { if (receipt.fingerprint !== fingerprint) throw new Error('同一提交不能更换任务或补充内容'); return task }
-        if (task.revision !== v.expectedRevision) throw new Error('任务已经改变，请刷新后操作')
+        if (!v.message && task.revision !== v.expectedRevision) throw new Error('任务已经改变，请刷新后操作')
         if (!isEmployeeTaskAssignment(task) && (task.status === 'done' || task.status === 'closed')) throw new Error('请先重新打开已完成任务')
-        if (!v.message && task.latestOccurrenceId && ongoingTaskExecution(await tx.get<AutomationOccurrence>('automationOccurrences', task.latestOccurrenceId))) throw new Error('该任务仍在执行或等待处理，请回到聊天处理本次运行')
         await tx.put({ collection: 'employeeTaskReceipts', id: receiptId, value: { fingerprint } }); return task
       })
       let definition = await this.automations.creation(receiptId)

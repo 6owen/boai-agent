@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 主会话与独立任务composer共用待发消息队列；排队用户消息仅在队列展示，开始后进入记录。
  * [OUTPUT]: 主聊天恢复固定消息/输入布局；header任务按钮打开右侧面板，不再与聊天互斥。
  * [OUTPUT]: 员工主区共享聊天/任务Tabs；互斥显示且保留聊天DOM/草稿，隐藏视图停读并解除浮层。
  * [OUTPUT]: 任务Dialog可传入同一消息滚动区的任务标题/要求，顶部沿全局ScrollArea与Scroll Fade；普通聊天不变。
@@ -97,6 +98,7 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { PromptBar, type PromptBarHandle } from './prompt-bar'
 import { ExternalFiles } from './external-files'
+import { ConversationQueue } from './conversation-queue'
 import { ComposerToolbar, type ComposerAgentPatch, type ComposerAgentSaveResult } from './composer-toolbar'
 import { ConversationHeader } from './conversation-header'
 import { Fragment, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
@@ -190,6 +192,7 @@ function ChatLayout(props: ChatViewProps & { conversation: Conversation }) {
     <div className="composer-wrap" onDragEnter={event => { if (materialsAllowed && event.dataTransfer.types.includes('Files')) { event.preventDefault(); setDraggingFiles(true) } }} onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDraggingFiles(false) }} onDragOver={event => { if (event.dataTransfer.types.includes('Files')) { event.preventDefault(); event.stopPropagation(); event.dataTransfer.dropEffect = materialsAllowed && !busy && !draft.submission ? 'copy' : 'none' } }} onDropCapture={event => { if (!event.dataTransfer.types.includes('Files')) return; event.preventDefault(); event.stopPropagation(); setDraggingFiles(false); if (materialsAllowed && !busy && !draft.submission) onDropMaterials(Array.from(event.dataTransfer.files)) }}>
       {draggingFiles && materialsAllowed && <p role="status" className="field-hint">拖入这里，将材料添加到当前会话草稿。</p>}
       {draft.submission && draft.submission.status !== 'pending' && <div role="status" className="field-hint"><span>{draft.submission.status === 'unknown' ? '发送结果尚未确认，请先核对原消息。' : '原消息尚未受理，重试将提交原消息；之后的草稿修改会保留。'}</span>{!!draft.submission.input.materialSelections?.length && <span>本次发送包含 {draft.submission.input.materialSelections.length} 份材料。</span>}<Button variant="ghost" size="sm" disabled={busy} onClick={sendFromComposer}>{draft.submission.status === 'unknown' ? '核对发送结果' : '重试原消息'}</Button>{draft.submission.status === 'not_accepted' && <Button variant="ghost" size="sm" disabled={busy} onClick={onDiscardSubmission}>放弃未受理发送</Button>}</div>}
+      {!channel && !external && <ConversationQueue key={conversation.id} api={api} conversationId={conversation.id} active={pageActive} />}
       {draft.channelReference && <div className="reply-preview"><Button variant="ghost" size="icon-sm" aria-label="移除渠道引用" disabled={sendingLocked} onClick={() => setDraft({ ...draft, channelReference: undefined })}><X size={14} /></Button><span>已引用渠道消息</span></div>}
       {draft.artifactRevision && <div className="reply-preview flex flex-wrap items-center gap-2" aria-label="修改交付文件"><Button variant="ghost" size="icon-sm" aria-label="取消成果修改" disabled={sendingLocked} onClick={() => setDraft({ ...draft, artifactRevision: undefined })}><X size={14} /></Button><span>要求修改：{draft.artifactRevision.name}</span><SelectField aria-label="修改执行员工" className="w-auto max-w-48" size="sm" value={draft.artifactRevision.targetAgentId} disabled={sendingLocked} onValueChange={targetAgentId => setDraft({ ...draft, artifactRevision: { ...draft.artifactRevision!, targetAgentId } })} options={[{ value: '', label: '选择执行员工' }, ...members.map(member => ({ value: member.id, label: member.name, disabled: !artifactRevisionTarget(member, snapshot.connections) }))]} /></div>}
       {draft.questionReply ? <div className="reply-preview"><Button variant="ghost" size="icon-sm" aria-label="取消问题关联" disabled={sendingLocked} onClick={() => setDraft({ ...draft, replyId: undefined, questionReply: undefined })}><X size={14} /></Button><span>{draft.questionReply.occurrenceId ? '正在补充这一次定时任务' : '正在回复原问题'}{reply && `：${reply.content.trim().replace(/\s+/g, ' ').slice(0, 160)}`}</span></div> : reply && <div className="reply-preview"><Button variant="ghost" size="icon-sm" aria-label="取消引用" disabled={sendingLocked} onClick={() => setDraft({ ...draft, replyId: undefined })}><X size={14} /></Button><span>回复 {messageDisplayName(reply, snapshot.userProfile)}：{reply.content.trim().replace(/\s+/g, ' ').slice(0, 160)}</span></div>}
@@ -220,7 +223,8 @@ function ChatHistory({ historyHeader, api, onTasks, onEmployeeTask, onCreateTask
   const sendingLocked = busy || questionReplies.busy || questionPending || artifactRevisionPending || Boolean(draft.submission)
   const messages = groupMessages(detail)
   const messagesById = new Map(messages.map(message => [message.id, message]))
-  const messageRows = detail.messagePage.items.map(item => ({ item, message: messagesById.get(item.messageId) }))
+  const queuedIds = new Set((detail.turns ?? []).filter(turn => turn.queueRemoved || turn.status === 'queued' && !turn.origin && !turn.wakeId).map(turn => turn.triggerMessageId))
+  const messageRows = detail.messagePage.items.filter(item => !queuedIds.has(item.messageId)).map(item => ({ item, message: messagesById.get(item.messageId) }))
   const catalogItems = useCatalogResults(api, conversation.id, pageActive && isCoreConversation(conversation) && !!onOpenCatalog)
   const catalogByMessage = catalogResultsByMessage(catalogItems, detail)
   const files = artifactsByMessage(detail)
