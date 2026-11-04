@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-04定时记录实际点击定位进入所属员工主聊天的任务面板/原任务Dialog，单次同时覆盖系统提醒导航；不新增执行或会话。
  * [INPUT]: Natural-minute schedules, actual task-scoped SDK tools and isolated Electron UI.
  * [OUTPUT]: Bobo once creation/recovery, real clock and trial isolation, task UI acceptance/revision, cleanup and restart checks.
  * [POS]: Complete once/periodic employee-task workflow with a controlled provider and actual application/clock/storage.
@@ -108,9 +109,47 @@ When('计划自然触发并由员工交付任务文件', async ({ runtime, sched
 })
 Then('我能在任务面板打开该任务继续修改和验收', async ({ runtime, scheduledTask: state }) => {
   const page = runtime.page
-  await page.locator(`[data-employee-task-id="${state.task!.id}"]`).getByRole('button', { name: '打开任务：面板中的定时任务', exact: true }).click()
+  const conversations = (await page.evaluate(() => window.boai.request('snapshot', undefined))).conversations.map(c => c.id).sort()
+  const calls = state.fixture!.requests.length
+  await page.getByRole('button', { name: '定时任务', exact: true }).click()
+  await page.locator('.schedule-item').filter({ hasText: '面板中的定时任务' }).click()
+  await page.locator(`[data-occurrence-id="${state.occurrence!.id}"]`).click()
+  const process = page.locator(`[data-occurrence-detail-id="${state.occurrence!.id}"]`)
+  await expect(process).toBeVisible()
+  await process.getByRole('button', { name: '定位聊天记录', exact: true }).last().click()
   const dialog = page.locator(`[data-employee-task-dialog="${state.task!.id}"]`)
   await expect(dialog).toBeVisible(); await expect(dialog.locator('[aria-label="任务会话"]')).toContainText('SCHEDULE_PANEL_DELIVERED')
+  await expect(page.locator('[data-employee-tasks="researcher"]')).toBeVisible()
+  await expect(page.locator(`.conversation-stage [data-conversation-id="${state.mainId}"]`)).toBeVisible()
+  await expect(page.locator(`.conversation-stage [data-conversation-id="${state.occurrence!.conversationId}"]`)).toHaveCount(0)
+  await expect(page.locator('[data-occurrence-detail-id]:visible')).toHaveCount(0)
+  expect((await page.evaluate(() => window.boai.request('snapshot', undefined))).conversations.map(c => c.id).sort()).toEqual(conversations)
+  expect(state.fixture!.requests.length).toBe(calls)
+  await runtime.reviewNativeCheckpoint('定时记录定位到所属员工任务面板和原任务会话')
+  if (state.once) {
+    await page.keyboard.press('Escape'); await expect(dialog).toHaveCount(0)
+    await page.getByRole('button', { name: '定时任务', exact: true }).click()
+    // Simulate only the OS click's pending target; the renderer and runtime resolve the real persisted task.
+    await runtime.app.evaluate(({ ipcMain, BrowserWindow }, occurrence) => {
+      const handlers = (ipcMain as unknown as { _invokeHandlers: Map<string, (...args: any[]) => Promise<unknown>> })._invokeHandlers
+      const original = handlers.get('boai:request')!
+      ipcMain.removeHandler('boai:request')
+      ipcMain.handle('boai:request', async (event, payload) => {
+        if (payload.method === 'getPendingAutomationNavigation') {
+          ipcMain.removeHandler('boai:request'); ipcMain.handle('boai:request', original)
+          return { automationId: occurrence.automationId, occurrenceId: occurrence.id, conversationId: occurrence.conversationId, messageId: occurrence.messageId }
+        }
+        return original(event, payload)
+      })
+      BrowserWindow.getAllWindows()[0].webContents.send('boai:event', { type: 'automation:navigate' })
+    }, await page.evaluate(id => window.boai.request('getAutomationOccurrence', { id }), state.occurrence!.id))
+    await expect(dialog).toBeVisible()
+    await expect(page.locator('[data-employee-tasks="researcher"]')).toBeVisible()
+    await expect(page.locator(`.conversation-stage [data-conversation-id="${state.mainId}"]`)).toBeVisible()
+    await expect(page.locator('[data-occurrence-detail-id]:visible')).toHaveCount(0)
+    expect(state.fixture!.requests.length).toBe(calls)
+    await runtime.reviewNativeCheckpoint('系统提醒入口也定位同一员工任务且不另开执行页面')
+  }
   await dialog.getByRole('button', { name: '任务状态', exact: true }).click()
   await page.getByRole('option', { name: '完成', exact: true }).click()
   await expect.poll(async () => (await page.evaluate(id => window.boai.request('getEmployeeTask', { employeeId: 'researcher', id }), state.task!.id)).task.status).toBe('done')

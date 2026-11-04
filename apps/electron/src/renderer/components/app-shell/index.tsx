@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-04定时/任务执行定位及系统提醒进入所属员工任务面板和原任务Dialog，不另开执行会话页或右侧过程；旧群/监控保留原入口。
  * [OUTPUT]: bobo任务入口保持当前核心会话，复用员工任务面板和消息显式转任务，不创建额外主私聊。
  * [OUTPUT]: 本人菜单与设置侧栏共用语义图标；其他配置使用滑杆，原导航守卫保持。
  * [OUTPUT]: 员工任务恢复与主聊天并列的右侧面板；撤回主区互斥Tabs，原定时过程/记录导航保持。
@@ -460,9 +461,21 @@ export function AppShell() {
     const report = (e: unknown) => { if (mounted.current) { toast.error(errorText(e)); setLoading(false); setDetailLoading(false) } }
     void refreshSnapshot().catch(report)
     const schedule = () => { if (refreshTimer.current) return; refreshTimer.current = setTimeout(() => { refreshTimer.current = null; void refreshSnapshot().catch(report); if (selectedRef.current && routeRef.current.page === 'conversations') void refreshDetail(selectedRef.current, detailRef.current?.messagePage) }, 100) }
-    const openAutomationNotice = () => { void api.request('getPendingAutomationNavigation', undefined).then(target => {
+    const openAutomationNotice = () => { void api.request('getPendingAutomationNavigation', undefined).then(async target => {
       if (!target || !mounted.current) return
+      const origin = routeRef.current, current = () => mounted.current && routeRef.current === origin
+      const occurrence = await api.request('getAutomationOccurrence', { id: target.occurrenceId })
+      if (!current()) return
+      if (occurrence.taskId && occurrence.runIds[0]) {
+        const location = await api.request('resolveExecutionMessage', { conversationId: occurrence.conversationId, runId: occurrence.runIds[0] })
+        if (!current()) return
+        if (location.employeeTask) {
+          await openEmployeeTask({ type: 'employee-tasks', id: location.employeeTask.employeeId, taskId: location.employeeTask.taskId, requestId: crypto.randomUUID(), focusMessage: { id: target.messageId ?? location.messageId, requestId: crypto.randomUUID() } }, current)
+          return
+        }
+      }
       navigate(() => {
+        if (!current()) return
         if (target.conversationId && target.messageId) applyRoute({ page: 'conversations', conversationId: target.conversationId, focusMessage: { id: target.messageId, requestId: crypto.randomUUID() } })
         else { setScheduleLocation({ kind: 'occurrence', id: target.occurrenceId, requestId: crypto.randomUUID() }); applyRoute({ ...routeRef.current, page: 'schedules' }) }
       })
@@ -665,9 +678,12 @@ export function AppShell() {
       else if (!withinKey) commit()
     })
   }
-  const navigateExecutionMessage: import('@/components/detail-panel/execution-message-button').ExecutionMessageNavigation = (id, messageId, current, execution) => selectConversation(id, true, messageId, current, () => {
-    openPanel(execution.occurrenceId ? { type: 'automation-occurrence', id: execution.occurrenceId } : { type: 'trace', id: execution.conversationId, runId: execution.runId, agentId: execution.agentId, requestId: crypto.randomUUID() }, 'conversations', current)
-  })
+  const navigateExecutionMessage: import('@/components/detail-panel/execution-message-button').ExecutionMessageNavigation = (id, messageId, current, execution) => {
+    if (execution.employeeTask) return openEmployeeTask({ type: 'employee-tasks', id: execution.employeeTask.employeeId, taskId: execution.employeeTask.taskId, requestId: crypto.randomUUID(), focusMessage: { id: messageId, requestId: crypto.randomUUID() } }, current)
+    return selectConversation(id, true, messageId, current, () => {
+      openPanel(execution.occurrenceId ? { type: 'automation-occurrence', id: execution.occurrenceId } : { type: 'trace', id: execution.conversationId, runId: execution.runId, agentId: execution.agentId, requestId: crypto.randomUUID() }, 'conversations', current)
+    })
+  }
   const openLocalSkill = (id: string) => navigate(() => {
     setSkillsSection('all'); setFocusedSkill({ id, requestId: crypto.randomUUID() }); applyRoute({ ...route, page: 'skills' })
   })
