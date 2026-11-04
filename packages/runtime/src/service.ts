@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: Composer消息队列按会话投影原轮次/任务队列；立即发送只中断固定原消息执行并保留其他排队项。
+ * [OUTPUT]: 主聊天即时接收并展示消息，待发操作仅限任务会话；不同任务session与主聊天不再因员工相同互相占用。
  * [OUTPUT]: 会话删除在必要清理与提交后返回，不再同步VACUUM整库；已释放页面由SQLite复用，独立compact入口保持。
  * [OUTPUT]: 员工任务列清空转交EmployeeTaskService原事务与在途保护。
  * [OUTPUT]: 2026-11-04执行消息定位返回经存储核验的员工/taskId；任务删除或归属不符时拒绝导航，不回退到独立执行页。
@@ -290,8 +290,7 @@ import { ConversationHistory } from './modules/conversations/history'
 import { RequestError } from '@agentclientprotocol/sdk'
 import { publishArtifact, restrictedPath } from './modules/workspaces/file-access'
 import { createHash } from 'node:crypto'
-import { listConversationQueue, queueActionSchema, prepareQueueAction, finishQueueAction } from './modules/conversations/message-queue'
-import type { ConversationQueueAction } from '@boai/shared/domain/message-queue'
+import { listConversationQueue, queueActionSchema } from './modules/conversations/message-queue'
 import { NativeSteering } from './modules/conversations/native-steering'
 import { recordNativeInput } from './adapters/native-sessions'
 import { createClient } from '@libsql/client'
@@ -819,7 +818,7 @@ export class AppService {
     })
     this.automations=new AutomationService(this.store,this.dataPath,{
       behaviors: this.agentBehaviors,
-      critical:operation=>this.serialize(operation),validate:id=>this.automationFingerprint(id),busy:(id, employees)=>this.closing||this.backingUp||this.conversationBusy(id)||[...this.runs.values()].some(run=>employees?.includes(run.agentId)&&(!terminal.has(run.status)&&!['waiting_approval', 'waiting_user'].includes(run.status)||this.activeAdapters.has(run.id))),
+      critical:operation=>this.serialize(operation),validate:id=>this.automationFingerprint(id),busy:id=>this.closing||this.backingUp||this.conversationBusy(id),
       prepareConversation: (definition, occurrence) => this.prepareAutomationConversation(definition, occurrence),
       prepareInput: async input => {
         if (input.employeeTask?.message) input = { ...input, employeeTask: { ...input.employeeTask, message: sendSchema.parse(input.employeeTask.message) } }
@@ -1335,11 +1334,12 @@ export class AppService {
     }
     if (method === 'listConversationQueue') return this.serialize(() => {
       const value = z.object({ conversationId: id }).strict().parse(input)
-      return listConversationQueue(this.store, this.scheduler, this.queueConversation(value.conversationId))
+      return listConversationQueue(this.store, this.queueConversation(value.conversationId))
     })
     if (method === 'actOnConversationQueue') {
-      const value = queueActionSchema.parse(input), room = this.queueConversation(value.conversationId)
-      return room.employeeTaskId ? this.automations.actOnMessageQueue(value) : this.serialize(() => this.actOnMessageQueue(value))
+      const value = queueActionSchema.parse(input)
+      this.queueConversation(value.conversationId)
+      return this.automations.actOnMessageQueue(value)
     }
     if (method === 'openEmployeeTaskSession' || method === 'createEmployeeTask' || method === 'listEmployeeTasks' || method === 'getEmployeeTask' || method === 'updateEmployeeTask' || method === 'deleteEmployeeTask' || method === 'clearEmployeeTasks' || method === 'runEmployeeTask' || method === 'runEmployeeTasks') return this.employeeTasks.handle(method, input)
     if(method==='listAutomations'){z.undefined().parse(input);return this.automations.view()}
@@ -1962,7 +1962,7 @@ export class AppService {
   private conversationContextMessages(id: string) {
     return this.conversationMessages(id).filter(message => {
       const turn = message.turnId ? this.scheduler.turns.get(message.turnId) : undefined
-      return !turn?.queueRemoved && !(message.senderType === 'user' && turn?.status === 'queued')
+      return !turn?.queueRemoved
     })
   }
   private latestConversationUserMessage(id: string) {
@@ -5920,48 +5920,8 @@ export class AppService {
   private queueConversation(conversationId: string) {
     if (this.closing || this.backingUp || this.clearingConversations.has(conversationId)) fail('会话当前不可操作')
     const room = this.getConversation(conversationId)
-    if (room.mergedInto || room.channel || room.agentIds.some(id => this.getAgent(id).executionBackend?.kind === 'acp-local')) fail('此会话不支持消息队列')
+    if (!room.employeeTaskId || room.mergedInto || room.channel || room.agentIds.some(id => this.getAgent(id).executionBackend?.kind === 'acp-local')) fail('消息队列仅用于独立任务会话')
     return room
-  }
-  private async actOnMessageQueue(input: ConversationQueueAction) {
-    this.queueConversation(input.conversationId)
-    const release = this.scheduler.pauseQueue(input.conversationId)
-    try {
-      const receipt = await this.store.transaction(tx => prepareQueueAction(tx, input, async () => {
-        const turn = this.scheduler.turns.get(input.id)
-        const message = turn ? await tx.get<Message>('messages', turn.triggerMessageId) : undefined
-        if (!turn || turn.conversationId !== input.conversationId || turn.origin || turn.wakeId || turn.startIntentId || turn.status !== 'queued' || turn.epoch !== input.expectedRevision || message?.senderType !== 'user' || message.nativeSteering) throw new Error('消息已开始执行或队列已变化，请刷新后操作')
-        const requestFor = (messageId: string) => [...this.requests.values()].find(request => request.messageId === messageId)?.id ?? fail('原消息回执不可用，未停止其他消息')
-        if (input.action === 'remove') {
-          await tx.put({ collection: 'turns', id: turn.id, value: { ...turn, queueRemoved: true, status: 'cancelled', finishedAt: now(), reason: '用户移除排队消息', epoch: turn.epoch + 1 } })
-          for (const delivery of this.scheduler.deliveries.values()) if (delivery.turnId === turn.id) await tx.put({ collection: 'deliveries', id: delivery.id, value: { ...delivery, status: 'cancelled', updatedAt: now() } })
-          return []
-        }
-        const priority = Math.min(0, ...[...this.scheduler.turns.values()].filter(t => t.conversationId === input.conversationId && t.status === 'queued').map(t => t.queuePriority ?? 0)) - 1
-        await tx.put({ collection: 'turns', id: turn.id, value: { ...turn, queuePriority: priority, epoch: turn.epoch + 1 } })
-        const workById = new Map((await tx.list<WorkItem>('workItems')).filter(work => work.conversationId === input.conversationId).map(work => [work.id, work]))
-        const messages = new Set<string>()
-        const add = (workId: string | undefined, messageId: string) => {
-          const work = workId ? workById.get(workId) : undefined
-          messages.add(work ? workById.get(work.rootWorkId)?.sourceMessageId ?? work.sourceMessageId : messageId)
-        }
-        for (const current of this.scheduler.turns.values()) if (current.conversationId === input.conversationId && !current.origin && ['evaluating', 'responding', 'executing', 'waiting_user'].includes(current.status)) add(current.workId, current.triggerMessageId)
-        const active = this.activeRunIds()
-        for (const run of this.runs.values()) if (run.conversationId === input.conversationId && !run.origin && (active.has(run.id) || !terminal.has(run.status))) add(run.workId, run.triggerMessageId)
-        return [...messages].map(requestFor)
-      }))
-      if (receipt.applied) return { accepted: true as const }
-      const turn = await this.store.get<import('@boai/shared/domain').DiscussionTurn>('turns', input.id)
-      if (turn) this.scheduler.installRoomMigration([record('turns', turn)])
-      if (turn?.queueRemoved) for (const delivery of this.scheduler.deliveries.values()) if (delivery.turnId === turn.id) {
-        const stored = await this.store.get<AgentDelivery>('deliveries', delivery.id)
-        if (stored) this.scheduler.installRoomMigration([record('deliveries', stored)])
-      }
-      for (const requestId of receipt.targets) await this.cancelMessageExecution(requestId)
-      await finishQueueAction(this.store, input, receipt)
-      this.changed(input.conversationId)
-      return { accepted: true as const }
-    } finally { release() }
   }
   private async cancelConversation(conversationId: string) {
     if (!this.closing) for (const work of (await this.works.view(conversationId)).workItems.filter(work => !work.parentWorkId)) await this.works.cancelTree(work.id, '用户停止本轮讨论')

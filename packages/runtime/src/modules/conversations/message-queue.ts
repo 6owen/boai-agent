@@ -1,15 +1,14 @@
 /*
- * [INPUT]: Persisted turns/messages or task dispatches, exact conversation and action identity.
- * [OUTPUT]: Composer queue projection and durable fixed-target action receipts.
+ * [INPUT]: Persisted task dispatches, exact conversation and action identity.
+ * [OUTPUT]: Task-session composer queue projection and durable fixed-target action receipts; IM messages are already sent.
  * [POS]: Existing scheduler/automation queue adapter; no second execution loop.
  * [PROTOCOL]: Update Header and owning .folder.md on change.
  */
 import { z } from 'zod'
-import type { Conversation, Message } from '@boai/shared/domain'
+import type { Conversation } from '@boai/shared/domain'
 import type { AutomationDispatch, AutomationOccurrence } from '@boai/shared/domain/automations'
 import type { ConversationQueueAction, ConversationQueueItem } from '@boai/shared/domain/message-queue'
 import type { ProductStore, RecordTransaction } from '../../adapters/storage/product-store'
-import type { GroupScheduler } from '../../group-scheduler'
 import { queuedOrder } from '../automations/schedule-policy'
 
 const id = z.string().min(1).max(500)
@@ -30,7 +29,7 @@ export async function prepareQueueAction(tx: RecordTransaction, input: Conversat
 export async function finishQueueAction(store: ProductStore, input: ConversationQueueAction, receipt: QueueActionReceipt) {
   await store.write([{ collection: 'messageQueueActions', id: queueActionKey(input.requestId), value: { ...receipt, applied: true } }])
 }
-export async function listConversationQueue(store: ProductStore, scheduler: GroupScheduler, room: Conversation): Promise<{ items: ConversationQueueItem[] }> {
+export async function listConversationQueue(store: ProductStore, room: Conversation): Promise<{ items: ConversationQueueItem[] }> {
   if (room.employeeTaskId) return store.transaction(async tx => {
     const items: ConversationQueueItem[] = []
     const occurrences = (await tx.list<AutomationOccurrence>('automationOccurrences')).filter(o => o.conversationId === room.id && o.taskId === room.employeeTaskId && !o.deletedAt && o.status === 'queued').sort(queuedOrder)
@@ -42,11 +41,5 @@ export async function listConversationQueue(store: ProductStore, scheduler: Grou
     }
     return { items }
   })
-  const items: ConversationQueueItem[] = []
-  for (const turn of [...scheduler.turns.values()].filter(turn => turn.conversationId === room.id && turn.status === 'queued' && !turn.origin && !turn.wakeId && !turn.startIntentId).sort((a, b) => (a.queuePriority ?? 0) - (b.queuePriority ?? 0))) {
-    const message = await store.get<Message>('messages', turn.triggerMessageId)
-    if (message?.senderType !== 'user' || message.nativeSteering) continue
-    items.push({ id: turn.id, conversationId: room.id, revision: turn.epoch, content: message.content, createdAt: message.createdAt, attachmentCount: message.attachmentInputs?.length || message.materialSources?.length || 0 })
-  }
-  return { items }
+  throw new Error('消息队列仅用于独立任务会话')
 }

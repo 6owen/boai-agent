@@ -1,6 +1,6 @@
 /*
  * [OUTPUT]: 单次日程共用确定性本地时间解析、预览和目标时刻匹配；cron仅为唯一原生时钟的内部映射。
- * [OUTPUT]: 同员工/群成员任务互斥与持久FIFO顺序；等待输入释放计算槽，原生执行循环保持。
+ * [OUTPUT]: 只按同一任务session或同一定时计划互斥；同员工独立任务可并发，原总容量和原生循环保持。
  * [OUTPUT]: 取消自动化固定执行时限；旧时间预算取消仅由本人显式继续恢复，原occurrence、预算计账、容量与人工停止门禁保持。
  * [OUTPUT]: 手动无时钟、小时按分钟、月按日期及开始日期共用预览与真实触发校验。
  * [INPUT]: 显式时区、周期规则、实际触发时刻与版本。
@@ -18,9 +18,9 @@ export const AUTOMATION_MISFIRE_MS = 10 * 60_000
 export const MAX_ACTIVE_AUTOMATIONS = 2
 export const activeOccurrence = new Set<OccurrenceStatus>(['admitted', 'running', 'waiting_approval', 'cancelling'])
 export const pendingOccurrence = new Set<OccurrenceStatus>([...activeOccurrence, 'queued', 'waiting_user', 'waiting_work'])
-/** A group assignment occupies each participating employee, but ordinary chats stay independent. */
+/** Serialize a session or recurring plan, not every independent task owned by an employee. */
 export function sharesTaskExecutor(a: AutomationOccurrence, b: AutomationOccurrence) {
-  return a.conversationId === b.conversationId || a.automationId === b.automationId || Boolean(a.plan?.employeeIds.some(id => b.plan?.employeeIds.includes(id)))
+  return a.conversationId === b.conversationId || a.automationId === b.automationId
 }
 export function queuedOrder(a: AutomationOccurrence, b: AutomationOccurrence) {
   return (a.queueOrder ?? 0) - (b.queueOrder ?? 0) || (a.admittedAt ?? a.startedAt).localeCompare(b.admittedAt ?? b.startedAt) || a.id.localeCompare(b.id)

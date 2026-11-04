@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 等待问题隔离断言使用实际进入waiting_user后的轮次身份，不把早期受理回执误当完整执行记录。
  * [OUTPUT]: 验证默认无执行配额、旧默认精确迁移、显式预算仍执行以及用户取消；不调用真实供应商。
  * [OUTPUT]: 覆盖增大任务额度、真实继续消息或本次运行同类批准；各文件以具体用例限定验证范围。
  * [OUTPUT]: 本轮覆盖复制/员工入口、定时运行防连点、失败过程、严格私有判断及保留原预算的显式继续；实际范围以各用例为准。
@@ -245,6 +246,8 @@ it('replies to exactly one waiting occurrence, keeps its original budget/source,
   const plan2 = await f.service.handle('saveAutomation', { name: 'other', prompt: 'other request', conversationId: f.conversation.id, frequency: 'daily', time: '10:00', weekday: 1, timezone: 'UTC', enabled: false, notify: false }) as AutomationDefinition
   const second = await f.service.handle('runAutomation', { id: plan2.id, requestId: 'second' }) as AutomationOccurrence
   await until(async () => (await f.view()).occurrences.find(o => o.id === second.id)?.status === 'waiting_user')
+  const secondWaiting = (await f.view()).occurrences.find(o => o.id === second.id)!
+  expect(secondWaiting.turnId).toEqual(expect.any(String))
   const before = await f.detail(), budget = before.workBudgets!.find(b => b.id === first.budgetId)!
   expect(before.workItems).toEqual([])
   const human = await f.service.handle('sendMessage', { conversationId: f.conversation.id, content: 'context update', mentionIds: [], requestId: 'ordinary' }) as Message
@@ -265,7 +268,7 @@ it('replies to exactly one waiting occurrence, keeps its original budget/source,
   expect(after.workBudgets!.find(b => b.id === budget.id)).toMatchObject({ deadlineAt: budget.deadlineAt, maxModelCalls: budget.maxModelCalls })
   expect(after.workBudgets!.find(b => b.id === budget.id)!.modelCalls).toBeGreaterThan(budget.modelCalls)
   expect(view.occurrences.find(o => o.id === first.id)).toMatchObject({ status: 'completed', waitingTurnIds: [] })
-  expect(view.occurrences.find(o => o.id === second.id)).toMatchObject({ status: 'waiting_user', waitingTurnIds: [second.turnId] })
+  expect(view.occurrences.find(o => o.id === second.id)).toMatchObject({ status: 'waiting_user', waitingTurnIds: [secondWaiting.turnId] })
 })
 it('records each clarification cycle explicitly instead of leaving an old question permanently waiting', async () => {
   const f = await setup(clarificationEngine())
