@@ -1,11 +1,13 @@
 /*
+ * [OUTPUT]: 大Trace清理只传ID，关联/嵌套快照/空范围/大批运行ID及共享会话保留回归。
  * [OUTPUT]: 原清理恢复先处理关联讨论，保留其独立待决回执，最后完成父会话删除并保持共享资料。
  * [INPUT]: SQLite 清理用例与独立本地数据目录。
  * [OUTPUT]: T2 清理前来源屏障与后续历史清理各推进版本；待提交和提交中通知的清理/状态与引用不复活；无 Work 的自动化预算及调用回执清理验证；Trace 随会话删除；自动化跨工作证据清除/等待终结/去重保留、关联记录删除、共享数据保留、重启续清与符号链接边界验证。
  * [POS]: tests/conversation-history.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { afterEach, expect, it } from 'vitest'
+import { afterEach, expect, it, vi } from 'vitest'
+import type { Client } from '@libsql/client'
 import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -23,7 +25,74 @@ async function setup() {
   await store.write([row('conversations', 'c', conversation), row('agents', 'a', { name: '保留的联系人' }), row('resources', 'shared', { name: '共享知识' })])
   return { root, store, conversation, history: new ConversationHistory(store, root) }
 }
-afterEach(async () => { for (const { root, store } of fixtures.splice(0)) { await store.close(); await rm(root, { recursive: true, force: true }) } })
+afterEach(async () => { vi.restoreAllMocks(); for (const { root, store } of fixtures.splice(0)) { await store.close(); await rm(root, { recursive: true, force: true }) } })
+
+it('clears linked history without deserializing large trace bodies from any conversation', async () => {
+  const { store, conversation, history } = await setup()
+  const marker = 'cleanup-large-trace-payload', payload = marker + 'x'.repeat(256 * 1024)
+  const targetIds = ['by-conversation', 'by-run', 'by-turn', 'multiple-links']
+  await store.write([
+    row('runs', 'run', { conversationId: 'c' }), row('turns', 'turn', { conversationId: 'c' }),
+    row('traceSpans', targetIds[0], { conversationId: 'c', payload }),
+    row('traceSpans', targetIds[1], { runId: 'run', payload }),
+    row('traceSpans', targetIds[2], { turnId: 'turn', payload }),
+    row('traceSpans', targetIds[3], { conversationId: 'c', runId: 'run', turnId: 'turn', payload }),
+    ...Array.from({ length: 24 }, (_, index) => row('traceSpans', `unrelated-${index}`, { conversationId: 'other', runId: 'other-run', payload })),
+    row('snapshots', 'run', { conversation: { id: 'other' } }),
+    row('snapshots', 'nested', { conversation: { id: 'c' } }),
+    row('snapshots', 'keep', { conversation: { id: 'other' } }),
+  ])
+  const parse = JSON.parse, parsedBodies: string[] = []
+  const client = (store as unknown as { client: Client }).client
+  const transaction = client.transaction.bind(client), tracePlans: string[] = []
+  vi.spyOn(client, 'transaction').mockImplementation(async (...args) => {
+    const tx = await transaction(...args), execute = tx.execute.bind(tx)
+    vi.spyOn(tx, 'execute').mockImplementation(async statement => {
+      if (typeof statement !== 'string' && statement.sql.startsWith('SELECT records.id') && Array.isArray(statement.args) && statement.args.includes('traceSpans')) {
+        const plan = await execute({ ...statement, sql: `EXPLAIN QUERY PLAN ${statement.sql}` })
+        tracePlans.push(...plan.rows.map(row => String(row.detail)))
+      }
+      return execute(statement)
+    })
+    return tx
+  })
+  const parsing = vi.spyOn(JSON, 'parse').mockImplementation((text, reviver) => {
+    if (text.includes(marker)) parsedBodies.push(text.slice(0, 100))
+    return parse(text, reviver)
+  })
+  const result = await history.clear(conversation, true)
+  parsing.mockRestore()
+  expect(result.removals.filter(item => item.collection === 'traceSpans').map(item => item.id).sort()).toEqual(targetIds.sort())
+  expect(await store.load('traceSpans')).toHaveLength(24)
+  expect(await store.load('snapshots')).toEqual([{ id: 'keep', conversation: { id: 'other' } }])
+  expect(parsedBodies).toEqual([])
+  // Avoid flaky wall-clock limits: all three references must use indexed seeks,
+  // including the nonempty run/turn sets that an empty-room benchmark misses.
+  for (const index of ['trace_cleanup_conversation', 'trace_cleanup_run', 'trace_cleanup_turn']) expect(tracePlans.some(line => line.includes(`SEARCH records USING INDEX ${index} (`))).toBe(true)
+  expect(tracePlans.some(line => line.includes('sqlite_autoindex_records_1 (collection=?)'))).toBe(false)
+})
+
+it('clears only selected execution identities, including large ID batches and an empty selection', async () => {
+  const { store, history, conversation } = await setup()
+  const runIds = Array.from({ length: 1200 }, (_, index) => `run-${index}`)
+  await store.write([
+    row('runs', runIds[0], { conversationId: 'c' }), row('runs', 'keep', { conversationId: 'c' }),
+    row('snapshots', runIds[1199], { conversation: { id: 'c' } }),
+    row('traceSpans', 'selected', { conversationId: 'c', runId: runIds[1199] }),
+    row('traceSpans', 'keep', { conversationId: 'c', runId: 'keep' }),
+    row('messages', 'keep', { conversationId: 'c' }),
+  ])
+  expect(await history.removeExecutionRecords([])).toEqual([])
+  expect(await store.load('traceSpans')).toHaveLength(2)
+  const removed = await history.removeExecutionRecords(runIds)
+  expect(removed).toEqual(expect.arrayContaining([
+    { collection: 'runs', id: runIds[0] }, { collection: 'snapshots', id: runIds[1199] }, { collection: 'traceSpans', id: 'selected' },
+  ]))
+  expect(removed).toHaveLength(3)
+  expect(await store.load('traceSpans')).toEqual([{ id: 'keep', conversationId: 'c', runId: 'keep' }])
+  expect(await store.load('messages')).toEqual([{ id: 'keep', conversationId: 'c' }])
+  expect(await store.get('conversations', 'c')).toEqual(conversation)
+})
 
 it('recovers dependent discussion cleanup before completing the parent session receipt', async () => {
   const { root, store, conversation, history } = await setup()

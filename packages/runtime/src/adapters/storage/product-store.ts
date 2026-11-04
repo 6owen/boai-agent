@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 清理按固定会话/运行/轮次引用在SQL中筛选，Trace三项索引与UNION只处理ID，不排序或反序列化历史正文。
  * [OUTPUT]: 原文查询类型转shared协议，不耦合上层会话模块。
  * [OUTPUT]: Bobo原文搜索延迟创建可重建FTS5索引，授权消息ID在LIMIT前筛选，短查询直接匹配原文。
  * [OUTPUT]: 任务有界列表返回assignment/progress种类，看板筛选在SQL LIMIT前执行。
@@ -89,9 +90,19 @@ function invalidateSearchBodies(collection: string, id: string, value?: string) 
 
 export interface StoredRecord { collection: string; id: string; value: unknown }
 export interface MessageCommit { message: import('@boai/shared/domain').Message; inserted: boolean }
+/** Match any supplied identity; an empty scope matches nothing. */
+export interface RecordIdentityScope {
+  conversationId?: string
+  snapshotConversationId?: string
+  ids?: string[]
+  runIds?: string[]
+  turnIds?: string[]
+  workIds?: string[]
+}
 export interface RecordTransaction {
   taskResultRuns(work: Pick<WorkItem, 'id' | 'conversationId' | 'ownerAgentId'>, limit: number): Promise<{ items: import('@boai/shared/domain/task-results').TaskResultRun[]; total: number }>
   conversationRecords(ids: string[]): Promise<StoredRecord[]>
+  relatedIds(collection: string, scope: RecordIdentityScope): Promise<string[]>
   get<T>(collection: string, id: string): Promise<T | undefined>
   list<T>(collection: string, filter?: { status: string }): Promise<T[]>
   unreadCompletionCount(query: FirstUnreadCompletionSqlQuery): Promise<number>
@@ -140,6 +151,9 @@ export class ProductStore {
       { sql: "CREATE INDEX IF NOT EXISTS agent_task_owner_page ON records(json_extract(value,'$.agentId'),json_extract(value,'$.updatedAt') DESC,id DESC) WHERE collection='agentTasks'", args: [] },
       { sql: "CREATE INDEX IF NOT EXISTS employee_execution_scope ON records(json_extract(value,'$.agentId'),json_extract(value,'$.createdAt') DESC,id DESC) WHERE collection='runs'", args: [] },
       { sql: "CREATE INDEX IF NOT EXISTS execution_publication_source ON records(json_extract(value,'$.automationPublication.sourceConversationId'),json_extract(value,'$.automationPublication.sourceMessageId'),json_extract(value,'$.conversationId')) WHERE collection='messages'", args: [] },
+      { sql: "CREATE INDEX IF NOT EXISTS trace_cleanup_conversation ON records(json_extract(value,'$.conversationId'),id) WHERE collection='traceSpans'", args: [] },
+      { sql: "CREATE INDEX IF NOT EXISTS trace_cleanup_run ON records(json_extract(value,'$.runId'),id) WHERE collection='traceSpans'", args: [] },
+      { sql: "CREATE INDEX IF NOT EXISTS trace_cleanup_turn ON records(json_extract(value,'$.turnId'),id) WHERE collection='traceSpans'", args: [] },
     ], 'write')
     // A reopened or restored database never trusts old bytes before bounded source verification.
     await this.client.batch([{ sql: `UPDATE records SET value=json_remove(json_set(value,'$.status','pending'),'$.text') WHERE collection='${SEARCH_INDEX_COLLECTION}' AND json_extract(value,'$.status')='indexed'`, args: [] }, { sql: advanceSearchClockSql, args: [] }], 'write')
@@ -467,6 +481,29 @@ export class ProductStore {
           get: async <R>(collection: string, id: string) => {
             const result = await transaction.execute({ sql: 'SELECT value FROM records WHERE collection=? AND id=?', args: [collection, id] })
             return result.rows.length ? JSON.parse(String(result.rows[0].value)) as R : undefined
+          },
+          relatedIds: async (collection, scope) => {
+            const queries: string[] = [], args: string[] = []
+            // Expressions are fixed here, never supplied by a caller. JSON arrays
+            // avoid a bind-parameter limit when clearing a long-running conversation.
+            for (const [key, expression] of Object.entries({ conversationId: "json_extract(records.value,'$.conversationId')", snapshotConversationId: "json_extract(records.value,'$.conversation.id')", ids: 'records.id', runIds: "json_extract(records.value,'$.runId')", turnIds: "json_extract(records.value,'$.turnId')", workIds: "json_extract(records.value,'$.workId')" })) {
+              const identity = scope[key as keyof RecordIdentityScope]
+              if (identity === undefined || Array.isArray(identity) && !identity.length) continue
+              if (collection === 'traceSpans' && Array.isArray(identity) && (key === 'runIds' || key === 'turnIds')) {
+                // Drive the lookup from the small identity set. IN-subquery plans
+                // otherwise prefer scanning the collection over the expression index.
+                queries.push(`SELECT records.id FROM json_each(?) refs CROSS JOIN records WHERE records.collection=? AND ${expression}=refs.value`)
+                args.push(JSON.stringify(identity), collection)
+              } else {
+                queries.push(`SELECT records.id FROM records WHERE collection=? AND ${expression}${Array.isArray(identity) ? ' IN (SELECT value FROM json_each(?))' : '=?'}`)
+                args.push(collection, Array.isArray(identity) ? JSON.stringify(identity) : identity)
+              }
+            }
+            if (!queries.length) return []
+            // Separate lookups let SQLite use each reference index instead of
+            // scanning large JSON values for a combined OR. Only IDs are deduplicated.
+            const result = await transaction.execute({ sql: queries.join(' UNION '), args })
+            return result.rows.map(row => String(row.id))
           },
           list: async <R>(collection: string, filter?: { status: string }) => {
             const result = await transaction.execute({ sql: `SELECT value FROM records WHERE collection=?${filter ? " AND json_extract(value,'$.status')=?" : ''} ORDER BY rowid`, args: filter ? [collection, filter.status] : [collection] })
