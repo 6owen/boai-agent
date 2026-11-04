@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 按员工/状态清空全部分页任务，返回删除及在途保留ID；稳定请求回执防止重试扩大删除范围。
  * [OUTPUT]: 平级状态可直接创建，支持自然语言会话创建后由原Agent补全内容；状态不控制执行。
  * [INPUT]: Explicit employee assignments, chat message provenance and execution history.
  * [OUTPUT]: Employee-owned task commands; task completion remains an explicit declaration.
@@ -23,6 +24,7 @@ export interface EmployeeTaskMethods {
   getEmployeeTask: { input: { employeeId: string; id?: string; occurrenceId?: string; before?: { startedAt: string; id: string } }; output: EmployeeTaskDetail }
   updateEmployeeTask: { input: { employeeId: string; id: string; expectedRevision: number; status?: TrackedTaskStatus; title?: string; description?: string }; output: TrackedTask }
   deleteEmployeeTask: { input: { employeeId: string; id: string; expectedRevision: number }; output: { deleted: true } }
+  clearEmployeeTasks: { input: { employeeId: string; status: TrackedTaskStatus; requestId: string }; output: { deletedIds: string[]; skippedIds: string[] } }
   runEmployeeTask: { input: { employeeId: string; id: string; expectedRevision: number; requestId: string; supplement?: string; message?: import('../ipc').Methods['sendMessage']['input'] }; output: AutomationOccurrence }
   runEmployeeTasks: { input: { employeeId: string; tasks: { id: string; expectedRevision: number }[]; requestId: string }; output: { items: ({ id: string; execution: AutomationOccurrence } | { id: string; error: string })[] } }
 }

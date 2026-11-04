@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 看板/列表列清空二级确认、取消零写、空列禁用与稳定请求重试。
  * [OUTPUT]: 创建状态只继承触发列且无header入口；溢出看板的Portal菜单指针不触发横拖，显示标签沿pressed状态。
  * [OUTPUT]: 平级列创建与共享显隐零执行、批量入口隐藏；会话创建以稳定身份建任务/执行并复用任务Dialog。
  * [OUTPUT]: 空白鼠标拖动横向滚动及松手/取消/丢失捕获收尾；卡片/控件/触摸手势不接管，任务要求仅在左侧属性展示。
@@ -57,6 +58,7 @@ function fixture(executions: AutomationOccurrence[] = []) {
     if (method === 'getConversationView') return { conversation: room, reading, messagePage: { items: [] }, messages: [], runs: [], artifacts: [], approvals: [] }
     if (method === 'updateEmployeeTask') { expect(input).toMatchObject({ employeeId: task.agentId, id: task.id, expectedRevision: value.revision }); value = { ...value, ...(input.status ? { status: input.status } : {}), ...(input.title ? { title: input.title } : {}), ...(input.description ? { description: input.description } : {}), revision: value.revision + 1 }; return value }
     if (method === 'runEmployeeTask') return occurrence
+    if (method === 'clearEmployeeTasks') { expect(input).toMatchObject({ employeeId: task.agentId, status: value.status, requestId: expect.any(String) }); deleted = true; return { deletedIds: [task.id], skippedIds: [] } }
     if (method === 'deleteEmployeeTask') { expect(input).toEqual({ employeeId: task.agentId, id: task.id, expectedRevision: value.revision }); deleted = true; return { deleted: true } }
     throw new Error('Unexpected request: ' + method)
   })
@@ -593,4 +595,30 @@ test('board keyboard/context submenu saves status and right-side submenu confirm
   await act(async () => { await new Promise(resolve => setTimeout(resolve, 100)) })
   expect(document.querySelector('[role="alertdialog"]')).toBeNull()
   expect(f.request.mock.calls.some(([m]) => ['openEmployeeTaskSession', 'runEmployeeTask', 'deleteAutomation'].includes(m))).toBe(false)
+})
+
+test.each(['board', 'list'])('%s column clear confirms once, cancels without writes and disables empty columns', async view => {
+  const f = fixture()
+  await act(async () => root.render(h(EmployeeTasksPanel, { ...f.props, active: true, target: { type: 'employee-tasks', id: task.agentId, requestId: 'clear-column' } })))
+  if (view === 'list') await act(async () => button('列表').click())
+  const open = async () => { await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="待办列菜单"]')!.click()); await act(async () => menuItem('清空').click()) }
+  await open()
+  expect(f.request.mock.calls.some(([method]) => method === 'clearEmployeeTasks')).toBe(false)
+  expect([...document.querySelectorAll('[aria-label="清空待办任务确认"] [role="menuitem"]')].map(item => item.textContent)).toEqual(['取消', '确认清空'])
+  await act(async () => menuItem('取消').click())
+  expect(f.request.mock.calls.some(([method]) => method === 'clearEmployeeTasks')).toBe(false)
+  await open()
+  const original = f.request.getMockImplementation()!
+  f.request.mockImplementationOnce(async () => { throw new Error('回执暂时不可用') })
+  await act(async () => menuItem('确认清空').click())
+  const failed = f.request.mock.calls.find(([method]) => method === 'clearEmployeeTasks')![1]
+  f.request.mockImplementation(original)
+  await act(async () => { menuItem('确认清空').click(); menuItem('确认清空').click() })
+  const calls = f.request.mock.calls.filter(([method]) => method === 'clearEmployeeTasks')
+  expect(calls).toHaveLength(2)
+  expect(calls[1][1]).toEqual(failed)
+  expect(host.querySelector('[data-employee-task-id]')).toBeNull()
+  await act(async () => document.querySelector<HTMLButtonElement>('[aria-label="待办列菜单"]')!.click())
+  expect(menuItem('清空').getAttribute('aria-disabled')).toBe('true')
+  expect(f.request.mock.calls.some(([method]) => ['deleteEmployeeTask', 'runEmployeeTask', 'deleteAutomation'].includes(method))).toBe(false)
 })

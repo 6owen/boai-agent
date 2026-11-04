@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工任务列清空转交EmployeeTaskService原事务与在途保护。
  * [OUTPUT]: 2026-11-04执行消息定位返回经存储核验的员工/taskId；任务删除或归属不符时拒绝导航，不回退到独立执行页。
  * [OUTPUT]: 定时任务进入员工面板及独立会话；宿主内部操作元数据查询不计Agent无进展，正常创建后核对不误停。
  * [OUTPUT]: 插件技能读取沿当前执行身份核验和动态启停，已有员工自动获得可用入口。
@@ -1326,7 +1327,7 @@ export class AppService {
       const { requestId } = z.object({ requestId: id }).strict().parse(input)
       return await this.handle('getMessageReceipt', { requestId }) ?? this.employeeTasks.messageReceipt(requestId)
     }
-    if (method === 'openEmployeeTaskSession' || method === 'createEmployeeTask' || method === 'listEmployeeTasks' || method === 'getEmployeeTask' || method === 'updateEmployeeTask' || method === 'deleteEmployeeTask' || method === 'runEmployeeTask' || method === 'runEmployeeTasks') return this.employeeTasks.handle(method, input)
+    if (method === 'openEmployeeTaskSession' || method === 'createEmployeeTask' || method === 'listEmployeeTasks' || method === 'getEmployeeTask' || method === 'updateEmployeeTask' || method === 'deleteEmployeeTask' || method === 'clearEmployeeTasks' || method === 'runEmployeeTask' || method === 'runEmployeeTasks') return this.employeeTasks.handle(method, input)
     if(method==='listAutomations'){z.undefined().parse(input);return this.automations.view()}
     if(method==='getAutomation'){const {id}=z.object({id:z.string().min(1).max(200)}).strict().parse(input);const definition=await this.store.get<AutomationDefinition>('automations',id);return definition&&!definition.deletedAt?definition:null}
     if(method==='listOwnerAutomations')return this.automations.list(automationListSchema.parse(input))

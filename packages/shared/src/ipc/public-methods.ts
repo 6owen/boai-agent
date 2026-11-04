@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工任务列清空沿受信本人IPC公开方法分发，Agent内部工具不新增该操作。
  * [OUTPUT]: 新增Bobo历史设置公开宿主方法，配置与权限由服务端验证。
  * [OUTPUT]: Agent Desktop 可选插件接线；默认关闭、独立于旧computer-use，调用沿员工权限及真实图片。
  * [OUTPUT]: 员工任务批量派发进入可信桌面IPC，编辑要求与状态复用版本化更新接口。
@@ -48,7 +49,7 @@ import type { Method } from './index'
 // Record makes a newly declared public method require an explicit host entry.
 const methods = {
   openEmployeeTaskSession: true, sendEmployeeTaskMessage: true, getEmployeeTaskMessageReceipt: true,
-  createEmployeeTask: true, listEmployeeTasks: true, getEmployeeTask: true, updateEmployeeTask: true, deleteEmployeeTask: true, runEmployeeTask: true, runEmployeeTasks: true,
+  createEmployeeTask: true, listEmployeeTasks: true, getEmployeeTask: true, updateEmployeeTask: true, deleteEmployeeTask: true, clearEmployeeTasks: true, runEmployeeTask: true, runEmployeeTasks: true,
   captureDesktopActivity: false,
   transferMaterial: true,
   prepareUploadedMaterial: true,
