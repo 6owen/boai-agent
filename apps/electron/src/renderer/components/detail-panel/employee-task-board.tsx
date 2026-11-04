@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 各状态列菜单支持带二次确认的全列清空，与列表共用操作。
  * [OUTPUT]: Mouse dragging board space pans the viewport; portaled menu events cannot start panning or steal item clicks.
  * [OUTPUT]: 任务卡片不展示创建方式/来源分类tag，所有人工任务使用同一种任务卡片。
  * [OUTPUT]: 描述与底部员工/更新时间行间距使用mt-4，增加卡片内容留白。
@@ -23,12 +24,12 @@ import { occurrenceStatusLabels } from '@/pages/schedules/automation-history'
 import { EmployeeTaskMenu } from './employee-task-menu'
 import { EmployeeTaskStatus, TaskStatusIcon, taskStatusLabels } from './employee-task-status'
 import { readTaskBoardOrder, orderedTaskColumns, commitTaskBoardOrder, type TaskColumns } from './employee-task-board-order'
-import { TaskColumnActions } from './employee-task-display'
+import { TaskColumnActions, type TaskColumnClear } from './employee-task-display'
 
 type TaskPages = Partial<Record<TrackedTaskStatus, TrackedTaskPage>>
 type Props = {
   employee: DigitalAgent; data: TaskPages; changing: boolean; changingTaskId?: string
-  hidden: TrackedTaskStatus[]; onHide(status: TrackedTaskStatus): void
+  onClear: TaskColumnClear; hidden: TrackedTaskStatus[]; onHide(status: TrackedTaskStatus): void
   onOpen(id: string): void; onCreate(status: TrackedTaskStatus): void; onLoadMore(status: TrackedTaskStatus): void
   onStatus(task: TrackedTaskListItem, status: TrackedTaskStatus): Promise<boolean | void> | void
 }
@@ -45,7 +46,7 @@ export function projectTaskMove(pages: TaskPages, task: TrackedTaskListItem, sta
     return [lane, { ...page, items: lane === status ? [{ ...task, status }, ...items] : items }]
   }))
 }
-export function EmployeeTaskBoard({ employee, data, hidden, changing, changingTaskId, onOpen, onCreate, onHide, onStatus, onLoadMore }: Props) {
+export function EmployeeTaskBoard({ employee, data, hidden, changing, changingTaskId, onOpen, onCreate, onHide, onClear, onStatus, onLoadMore }: Props) {
   const [order, setOrder] = useState(() => readTaskBoardOrder(employee.id))
   const [preview, setPreview] = useState<TaskColumns>(), [dragged, setDragged] = useState<TrackedTaskListItem>(), [saving, setSaving] = useState<string>()
   const locked = useRef(false), draggedThisGesture = useRef(false)
@@ -95,7 +96,7 @@ export function EmployeeTaskBoard({ employee, data, hidden, changing, changingTa
         {EMPLOYEE_TASK_STATUSES.filter(status => !hidden.includes(status)).map(status => <KanbanColumn key={status} value={status} render={<section />} aria-label={`${taskStatusLabels[status]}任务`} data-task-status={status} className={`h-full w-[280px] shrink-0 overflow-hidden rounded-md border border-transparent ${laneColors[status]} data-disabled:opacity-100`}>
           <div className="flex h-11 shrink-0 items-center justify-between gap-2 px-3.5">
             <h3 className="m-0 flex min-w-0 items-center gap-2 text-xs font-semibold"><TaskStatusIcon status={status} /><span>{taskStatusLabels[status]}</span><span className="font-normal tabular-nums text-muted-foreground">{displayed[status].length}{data[status]?.nextCursor ? '+' : ''}</span></h3>
-            <TaskColumnActions status={status} disabled={disabled} onCreate={onCreate} onHide={onHide} />
+            <TaskColumnActions status={status} disabled={disabled} empty={!data[status]?.items.length} onClear={onClear} onCreate={onCreate} onHide={onHide} />
           </div>
           <ScrollArea className="min-h-0 flex-1" viewportProps={{ 'aria-label': `${taskStatusLabels[status]}任务滚动区域`, className: 'overscroll-y-contain [overflow-anchor:none] scroll-fade-t scroll-fade-6' }}>
             <KanbanColumnContent value={status} className="px-3 pb-3 pt-1">

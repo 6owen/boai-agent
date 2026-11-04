@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 列清空在原事务内覆盖全部分页，仅移除指定员工/状态的委派任务；在途任务保留，删除墓碑和稳定回执同事务保存。
  * [OUTPUT]: bobo与普通员工共用任务创建、独立会话及执行；首次执行前沿宿主准备员工连接，不依赖先发送主聊天消息。
  * [OUTPUT]: 人工任务可在任意平级状态创建，原始会话输入标记待整理；创建不自动派发，显式执行仍沿原FIFO。
  * [OUTPUT]: 表单、会话和消息转换统一创建任务，不写手动/消息创建方式字段；真实消息ID关联保持。
@@ -28,6 +29,7 @@ const owner = z.object({ employeeId: id })
 const create = owner.extend({ requestId: id, title: z.string().trim().min(1).max(300).optional(), description: z.string().trim().min(1).max(40000).optional(), status: status.optional(), conversation: z.boolean().optional(), source: z.object({ conversationId: id, messageId: id }).strict().optional() }).strict().refine(value => !value.conversation || !value.source, '会话创建请直接填写任务要求')
 const get = owner.extend({ id: id.optional(), occurrenceId: id.optional(), before: z.object({ startedAt: z.string().datetime(), id: z.string().min(1).max(500) }).strict().optional() }).strict().refine(v => !!v.id !== !!v.occurrenceId, '请选择一个任务')
 const mutation = owner.extend({ id, expectedRevision: z.number().int().positive() }).strict()
+const clear = owner.extend({ status, requestId: id }).strict()
 const update = mutation.extend({ status: status.optional(), title: z.string().trim().min(1).max(300).optional(), description: z.string().trim().min(1).max(40000).optional() }).refine(v => v.status !== undefined || v.title !== undefined || v.description !== undefined, '请选择要修改的任务内容')
 const run = owner.extend({ id, expectedRevision: z.number().int().positive(), requestId: id, supplement: z.string().trim().max(20000).optional(), message: z.custom<Methods['sendMessage']['input']>().optional() }).strict()
 const batch = owner.extend({ requestId: id, tasks: z.array(z.object({ id, expectedRevision: z.number().int().positive() }).strict()).min(1).max(100) }).strict().refine(v => new Set(v.tasks.map(task => task.id)).size === v.tasks.length, '同一批次不能重复选择任务')
@@ -134,6 +136,30 @@ export class EmployeeTaskService {
       return { task, executions: await this.store.automationHistory({ employeeId: v.employeeId, taskId: task.id, limit: 30, before: v.before }), ...(task.source ? { sourceExecution: await this.store.employeeTaskSource(task.agentId, task.source) } : {}) }
     }
     return this.serialize(async () => {
+      if (method === 'clearEmployeeTasks') {
+        const v = clear.parse(raw), fingerprint = JSON.stringify(v), receiptId = taskIdentity(`clear:${v.requestId}`)
+        const result = await this.store.transaction(async tx => {
+          if (!await tx.get('agents', v.employeeId)) throw new Error('员工不存在')
+          const receipt = await tx.get<Methods['clearEmployeeTasks']['output'] & { fingerprint: string }>('employeeTaskReceipts', receiptId)
+          if (receipt) {
+            if (receipt.fingerprint !== fingerprint) throw new Error('同一清空请求不能更换员工或状态')
+            return { deletedIds: receipt.deletedIds, skippedIds: receipt.skippedIds }
+          }
+          const tasks = (await tx.list<TrackedTask>('agentTasks')).filter(task => task.agentId === v.employeeId && task.status === v.status && isEmployeeTaskAssignment(task))
+          const ongoingIds = new Set((await tx.list<AutomationOccurrence>('automationOccurrences')).filter(o => !o.deletedAt && ongoingTaskExecution(o)).map(o => o.taskId))
+          const deletedIds: string[] = [], skippedIds: string[] = [], deletedAt = new Date().toISOString()
+          for (const task of tasks) {
+            if (ongoingIds.has(task.id)) { skippedIds.push(task.id); continue }
+            // Match single-task deletion: retain sessions/history and prevent historical re-adoption.
+            await tx.put({ collection: 'deletedEmployeeTasks', id: task.id, value: { agentId: task.agentId, revision: task.revision, deletedAt } })
+            await tx.remove('agentTasks', task.id)
+            deletedIds.push(task.id)
+          }
+          await tx.put({ collection: 'employeeTaskReceipts', id: receiptId, value: { fingerprint, deletedIds, skippedIds } })
+          return { deletedIds, skippedIds }
+        })
+        this.changed(); return result
+      }
       if (method === 'createEmployeeTask') {
         const v = create.parse(raw), fingerprint = JSON.stringify(v)
         let sourceMessage: Message | undefined

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 列清空覆盖跨分页/员工状态隔离/稳定回执/在途保护及定时任务重启不回填。
  * [OUTPUT]: bobo无需先建核心聊天即可创建、执行及持续修改独立任务；共用连接、状态、验收和重启回执，不产生主聊天投影。
  * [OUTPUT]: 任意平级状态创建零执行，会话创建沿原任务补全标题/要求、稳定续做和重启，不进入主聊天。
  * [OUTPUT]: 持续任务会话、轻量状态、批量FIFO与重试快照；完成后继续问答/返工/再次执行，人工任务不回灌主聊天。
@@ -792,6 +793,52 @@ it('rejects deletion of running or queued tasks even when their manual state is 
     const updated = await f.service.handle('updateEmployeeTask', { employeeId: task.agentId, id: task.id, expectedRevision: task.revision, status: 'done' }) as typeof task
     await expect(f.service.handle('deleteEmployeeTask', { employeeId: task.agentId, id: task.id, expectedRevision: updated.revision })).rejects.toThrow('请先停止')
   }
+  hold.release()
+  await vi.waitFor(async () => expect((await f.read(queued.id)).status).toBe('completed'), { timeout: 10000 })
+})
+
+it('clears all task pages in one employee status and replays the receipt without deleting newer tasks', async () => {
+  const f = await setup(async ctx => { await ctx.onDelta('保留定时结果') })
+  const first = await f.start(await f.create('保留定时计划'))
+  await vi.waitFor(async () => expect((await f.read(first.id)).status).toBe('completed'), { timeout: 10000 })
+  const { task: scheduled } = await f.service.handle('getEmployeeTask', { employeeId: 'researcher', occurrenceId: first.id }) as import('../packages/shared/src/domain/employee-tasks').EmployeeTaskDetail
+  await f.service.handle('updateEmployeeTask', { employeeId: scheduled.agentId, id: scheduled.id, expectedRevision: scheduled.revision, status: 'done' })
+  const create = (requestId: string, employeeId = 'researcher', status: TrackedTask['status'] = 'done') => f.service.handle('createEmployeeTask', { employeeId, requestId, title: requestId, description: '保留任务要求', status }) as Promise<TrackedTask>
+  const tasks: TrackedTask[] = []
+  for (let i = 0; i < 35; i++) tasks.push(await create(`clear-page-${i}`))
+  const otherStatus = await create('keep-pending', 'researcher', 'pending'), otherEmployee = await create('keep-writer', 'writer')
+  const page = await f.service.handle('listEmployeeTasks', { employeeId: 'researcher', status: 'done', limit: 30 }) as import('../packages/shared/src/domain/tracked-tasks').TrackedTaskPage
+  expect(page.items).toHaveLength(30); expect(page.nextCursor).toBeTruthy()
+  const input = { employeeId: 'researcher', status: 'done' as const, requestId: 'clear-all-done' }
+  const result = await f.service.handle('clearEmployeeTasks', input) as import('../packages/shared/src/domain/employee-tasks').EmployeeTaskMethods['clearEmployeeTasks']['output']
+  expect([...result.deletedIds].sort()).toEqual([scheduled.id, ...tasks.map(task => task.id)].sort())
+  expect(result.skippedIds).toEqual([])
+  expect(await f.service.handle('listEmployeeTasks', { employeeId: 'researcher', status: 'done' })).toEqual({ items: [] })
+  const newer = await create('created-after-clear')
+  expect(await f.service.handle('clearEmployeeTasks', input)).toEqual(result)
+  await expect(f.service.handle('clearEmployeeTasks', { ...input, status: 'pending' })).rejects.toThrow('同一清空请求')
+  await expect(f.service.handle('clearEmployeeTasks', { employeeId: 'researcher', requestId: 'no-status' })).rejects.toThrow()
+  await f.service.close(); const restarted = await f.restart()
+  expect(await restarted.handle('clearEmployeeTasks', input)).toEqual(result)
+  expect(await restarted.handle('listEmployeeTasks', { employeeId: 'researcher', status: 'done' })).toMatchObject({ items: [{ id: newer.id }] })
+  for (const task of [otherStatus, otherEmployee]) expect(await restarted.handle('getEmployeeTask', { employeeId: task.agentId, id: task.id })).toMatchObject({ task: { id: task.id } })
+  expect(await restarted.handle('getAutomationOccurrence', { id: first.id })).toMatchObject({ status: 'completed' })
+  expect((await restarted.handle('getConversation', { id: first.conversationId }) as ConversationDetail).messages.some(m => m.content === '保留定时结果')).toBe(true)
+  expect((await restarted.handle('listAutomations', undefined) as import('../packages/shared/src/domain/automations').AutomationsView).definitions.some(plan => plan.id === first.automationId)).toBe(true)
+})
+it('preserves running and queued tasks during column clear even when manually marked done', async () => {
+  const hold = gate(), f = await setup(async ctx => { await hold.promise; await ctx.onDelta('done') }); cleanup.push(hold.release)
+  const first = await f.start(await f.create('clear-busy')), queued = await f.start(await f.create('clear-queued'))
+  expect(queued.status).toBe('queued')
+  for (const occurrence of [first, queued]) {
+    const { task } = await f.service.handle('getEmployeeTask', { employeeId: 'researcher', occurrenceId: occurrence.id }) as import('../packages/shared/src/domain/employee-tasks').EmployeeTaskDetail
+    await f.service.handle('updateEmployeeTask', { employeeId: task.agentId, id: task.id, expectedRevision: task.revision, status: 'done' })
+  }
+  const idle = await f.service.handle('createEmployeeTask', { employeeId: 'researcher', requestId: 'clear-idle', title: '可清空任务', description: '已完成', status: 'done' }) as TrackedTask
+  const result = await f.service.handle('clearEmployeeTasks', { employeeId: 'researcher', status: 'done', requestId: 'clear-with-active' }) as import('../packages/shared/src/domain/employee-tasks').EmployeeTaskMethods['clearEmployeeTasks']['output']
+  expect(result.deletedIds).toEqual([idle.id])
+  expect(result.skippedIds.sort()).toEqual([first.taskId, queued.taskId].sort())
+  expect((await f.read(queued.id)).status).toBe('queued')
   hold.release()
   await vi.waitFor(async () => expect((await f.read(queued.id)).status).toBe('completed'), { timeout: 10000 })
 })
