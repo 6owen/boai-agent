@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-04外部任务定位保留消息身份交给原任务Dialog；手动选卡不携带其他任务的定位。
  * [OUTPUT]: 仅从各列/分组新增任务并继承状态；header保留显示及视图切换，列隐藏动作幂等。
  * [OUTPUT]: Pending status identifies only its changed card; shared board DOM and unaffected pages remain mounted.
  * [INPUT]: Employee-owned task pages and shared task-session renderer.
@@ -25,14 +26,14 @@ import type { DetailTarget } from './tabs-state'
 export const EmployeeTasksNavigation = createContext<(employeeId: string) => void>(() => {})
 type Props = Pick<EmployeeTaskDetailProps, 'onSource' | 'renderChat' | 'onMaterials' | 'onContext'> & { api: DesktopApi; snapshot: Snapshot; employeeId: string; active: boolean; target: Extract<DetailTarget, { type: 'employee-tasks' }> }
 export function EmployeeTasksPanel({ api, snapshot, employeeId, target, active, ...detail }: Props) {
-  const [selected, setSelected] = useState<{ id?: string; occurrenceId?: string } | undefined>(target.taskId ? { id: target.taskId } : target.occurrenceId ? { occurrenceId: target.occurrenceId } : undefined)
+  const [selected, setSelected] = useState<{ id?: string; occurrenceId?: string; focusMessage?: { id: string; requestId: string } } | undefined>(target.taskId || target.occurrenceId ? { id: target.taskId, occurrenceId: target.occurrenceId, focusMessage: target.focusMessage } : undefined)
   const [creating, setCreating] = useState<TrackedTaskStatus>(), [view, setView] = useState('board')
   const [visibility, setVisibility] = useState<Record<string, TrackedTaskStatus[]>>({})
   const hidden = visibility[employeeId] ?? readHiddenTaskColumns(employeeId)
   const [data, setData] = useState<Partial<Record<TrackedTaskStatus, TrackedTaskPage>>>({}), [pages, setPages] = useState<Partial<Record<TrackedTaskStatus, number>>>({}), [revision, setRevision] = useState(0), [failed, setFailed] = useState(false)
   const [changing, setChanging] = useState<{ task: TrackedTaskPage['items'][number]; status: TrackedTaskStatus }>()
   const statusLocked = useRef(false)
-  useEffect(() => { setSelected(target.taskId ? { id: target.taskId } : target.occurrenceId ? { occurrenceId: target.occurrenceId } : undefined) }, [target.requestId, target.taskId, target.occurrenceId])
+  useEffect(() => { setSelected(target.taskId || target.occurrenceId ? { id: target.taskId, occurrenceId: target.occurrenceId, focusMessage: target.focusMessage } : undefined) }, [target.requestId, target.taskId, target.occurrenceId, target.focusMessage])
   useEffect(() => {
     if (!active) return
     let live = true, timer: ReturnType<typeof setTimeout> | undefined

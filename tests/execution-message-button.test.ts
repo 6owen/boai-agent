@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 2026-11-04已核验员工/taskId传递到任务导航，普通执行定位和隐藏后迟到结果保护保持。
  * [INPUT]: 生产执行卡片定位按钮、受控IPC和Sonner。
  * [OUTPUT]: 固定消息导航保留原occurrence/Run，删除后toast和失效请求不跳页的组件回归。
  * [POS]: 执行过程到聊天记录定位；不启动E2E或外部模型。
@@ -40,6 +41,12 @@ it('only uses Sonner when the original chat message has been deleted', async () 
   expect(f.onNavigate).not.toHaveBeenCalled()
   expect(host.textContent).not.toContain('已删除')
   expect(button().disabled).toBe(false)
+})
+it('passes the verified employee and task identity to navigation instead of choosing the execution page', async () => {
+  const employeeTask = { employeeId: 'employee', taskId: 'scheduled-task' }
+  const f = await setup(vi.fn(async () => ({ conversationId: 'isolated-task', messageId: 'task-prompt', employeeTask })))
+  await act(async () => button().click())
+  expect(f.onNavigate).toHaveBeenCalledExactlyOnceWith('isolated-task', 'task-prompt', expect.any(Function), expect.objectContaining({ employeeTask, occurrenceId: 'original-occurrence' }))
 })
 it('ignores a late lookup after the execution panel becomes inactive', async () => {
   let resolve!: (target: { conversationId: string; messageId: string }) => void

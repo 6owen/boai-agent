@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-04执行消息定位返回经存储核验的员工/taskId；任务删除或归属不符时拒绝导航，不回退到独立执行页。
  * [OUTPUT]: 定时任务进入员工面板及独立会话；宿主内部操作元数据查询不计Agent无进展，正常创建后核对不误停。
  * [OUTPUT]: 插件技能读取沿当前执行身份核验和动态启停，已有员工自动获得可用入口。
  * [OUTPUT]: 2026-11-03在默认技能初始化前退役标准computer-use-mcp来源和未改动旧技能，保留定制副本。
@@ -1534,7 +1535,9 @@ export class AppService {
             const room = message && await tx.get<Conversation>('conversations', message.conversationId)
             const original = await tx.get<Message>('messages', run.triggerMessageId!)
             if (!message || !room || room.mergedInto || !room.agentIds.includes(run.agentId) || !original || original.conversationId !== source.id || await tx.get('conversationCleanup', room.id)) fail('对应聊天记录已删除或不可用')
-            return { conversationId: room!.id, messageId: message!.id }
+            const task = room!.employeeTaskId ? await tx.get<TrackedTask>('agentTasks', room!.employeeTaskId) : undefined
+            if (room!.employeeTaskId && (!task || !isEmployeeTaskAssignment(task) || task.agentId !== run.agentId || task.sessionConversationId !== room!.id)) fail('对应任务已删除或不可用')
+            return { conversationId: room!.id, messageId: message!.id, ...(task ? { employeeTask: { employeeId: task.agentId, taskId: task.id } } : {}) }
           })
         }
         case 'listExecutionHistory': {

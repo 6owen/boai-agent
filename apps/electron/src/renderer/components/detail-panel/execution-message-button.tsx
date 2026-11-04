@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-04消息定位传递运行时核验的员工任务身份，宿主据此打开任务面板；旧非任务执行仍沿原导航。
  * [INPUT]: 固定执行身份、消息定位IPC和主会话导航。
  * [OUTPUT]: 点击时核对实际聊天消息并携带原执行身份；清理后仅Sonner提示，隐藏/切换后的迟到结果不导航。
  * [POS]: 共用执行卡片的聊天定位按钮。
@@ -6,14 +7,14 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import type { DesktopApi } from '@boai/shared/ipc'
+import type { DesktopApi, Methods } from '@boai/shared/ipc'
 import type { AgentRun } from '@boai/shared/domain'
 import { errorText } from '@/components/common'
 import { MessageCircle } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
-export type ExecutionMessageNavigation = (conversationId: string, messageId: string, current: () => boolean, execution: { conversationId: string; runId: string; agentId?: string; occurrenceId?: string }) => void | Promise<void>
+export type ExecutionMessageNavigation = (conversationId: string, messageId: string, current: () => boolean, execution: { conversationId: string; runId: string; agentId?: string; occurrenceId?: string; employeeTask?: Methods['resolveExecutionMessage']['output']['employeeTask'] }) => void | Promise<void>
 export function ExecutionMessageButton({ api, run, active, onNavigate, occurrenceId = run.origin?.occurrenceId }: { api: DesktopApi; run: Pick<AgentRun, 'id' | 'conversationId'> & Partial<Pick<AgentRun, 'agentId' | 'origin'>>; active: boolean; onNavigate: ExecutionMessageNavigation; occurrenceId?: string }) {
   const [pending, setPending] = useState(false), generation = useRef(0)
   useEffect(() => { setPending(false); return () => { generation.current++ } }, [run.id, run.conversationId, active])
@@ -23,7 +24,7 @@ export function ExecutionMessageButton({ api, run, active, onNavigate, occurrenc
     setPending(true)
     try {
       const target = await api.request('resolveExecutionMessage', { conversationId: run.conversationId, runId: run.id })
-      if (current()) await onNavigate(target.conversationId, target.messageId, current, { conversationId: run.conversationId, runId: run.id, agentId: run.agentId, occurrenceId })
+      if (current()) await onNavigate(target.conversationId, target.messageId, current, { conversationId: run.conversationId, runId: run.id, agentId: run.agentId, occurrenceId, ...(target.employeeTask ? { employeeTask: target.employeeTask } : {}) })
     } catch (error) { if (current()) toast.error(errorText(error)) }
     finally { if (current()) setPending(false) }
   }

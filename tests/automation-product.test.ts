@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-04执行定位返回真实员工/任务归属，主聊天清理与重启后保持原任务身份。
  * [OUTPUT]: 定时派生assignment在任务会话内接收指令/流式回复/执行证据，主聊天清理不撤销任务；保留旧文件删除与重启不重放检查。
  * [OUTPUT]: 五状态独立任务会话、原计划授权/工具schema与稳定消息回执按最新用户合同验证。
  * [OUTPUT]: 新旧独立任务均公开到聊天，含旧task显示标记恢复、回执去重及原执行流。
@@ -253,7 +254,7 @@ it('keeps scheduled task messages and execution navigation independent of cleari
   const source = await f.detail(first.conversationId), messages = source.messages
   const execution = source.runs.find(run => run.phase === 'execution')!
   const request = { conversationId: first.conversationId, runId: execution.id }
-  expect(await f.service.handle('resolveExecutionMessage', request)).toEqual({ conversationId: first.conversationId, messageId: execution.triggerMessageId })
+  expect(await f.service.handle('resolveExecutionMessage', request)).toEqual({ conversationId: first.conversationId, messageId: execution.triggerMessageId, employeeTask: { employeeId: 'researcher', taskId: first.taskId } })
   expect(messages.map(message => message.content)).toEqual([f.input.prompt, '当前聊天的回复'])
   const chat = await f.service.handle('getConversationView', { conversationId: first.conversationId }) as ConversationView
   expect(chat.messages).toEqual(messages); expect(chat.messagePage.items.every(item => item.status === 'available')).toBe(true)
@@ -266,7 +267,7 @@ it('keeps scheduled task messages and execution navigation independent of cleari
   expect((await restarted.handle('getConversation', { id: first.conversationId }) as ConversationDetail).messages).toEqual(messages)
   expect(f.contexts).toHaveLength(calls)
   await restarted.handle('clearConversationHistory', { id: personal.id, hide: true })
-  expect(await restarted.handle('resolveExecutionMessage', request)).toEqual({ conversationId: first.conversationId, messageId: execution.triggerMessageId })
+  expect(await restarted.handle('resolveExecutionMessage', request)).toEqual({ conversationId: first.conversationId, messageId: execution.triggerMessageId, employeeTask: { employeeId: 'researcher', taskId: first.taskId } })
   await restarted.handle('clearConversationHistory', { id: first.conversationId, hide: false })
   await expect(restarted.handle('resolveExecutionMessage', request)).rejects.toThrow()
   await restarted.close(); const restored = await f.make()

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-04外部定位在任务Dialog内按原消息读取和滚动，复用既有任务会话。
  * [INPUT]: One employee task, its dedicated conversation and original execution history.
  * [OUTPUT]: Resizable Task Dialog with title/requirements in properties and shared chat without an extra introduction; close waits for the shared exit animation.
  * [OUTPUT]: 属性标题右侧编辑打开紧凑标题/描述Dialog；无footer或折叠入口，正文顶部留白缩小，字段前保留细分隔线。
@@ -30,13 +31,14 @@ import { EmployeeTaskRequirements } from './employee-task-requirements'
 export { taskStatusLabels } from './employee-task-status'
 export type EmployeeTaskDetailProps = {
   api: DesktopApi; snapshot: Snapshot; id?: string; occurrenceId?: string; employeeId: string; active: boolean
+  focusMessage?: { id: string; requestId: string }
   onBack(): void
   onSource(source: { conversationId: string; messageId: string }, process?: boolean): void
   renderChat(window: ChannelChatWindow, onTrace: (message?: Message) => void, historyHeader?: ReactNode): ReactNode
   onMaterials(id: string, materials: NonNullable<ConversationView['materials']>): void
   onContext(conversation: Conversation | undefined): void
 }
-export function EmployeeTaskDetail({ api, snapshot, id, occurrenceId, employeeId, active, onBack, onSource, renderChat, onMaterials, onContext }: EmployeeTaskDetailProps) {
+export function EmployeeTaskDetail({ api, snapshot, id, occurrenceId, employeeId, active, focusMessage, onBack, onSource, renderChat, onMaterials, onContext }: EmployeeTaskDetailProps) {
   const [open, setOpen] = useState(true), [editingRequirements, setEditingRequirements] = useState(false), visible = active && open
   const [record, setRecord] = useState<TaskDetail>(), [room, setRoom] = useState<Conversation>(), [failed, setFailed] = useState(false), [revision, setRevision] = useState(0), [busy, setBusy] = useState(false)
   const startRequest = useRef<import('@boai/shared/ipc').Methods['runEmployeeTask']['input'] | undefined>(undefined)
@@ -56,7 +58,7 @@ export function EmployeeTaskDetail({ api, snapshot, id, occurrenceId, employeeId
     return () => { live = false; clearTimeout(timer); unsubscribe() }
   }, [api, id, occurrenceId, employeeId, visible, revision, room])
   useEffect(() => { contextCallback.current(visible ? room : undefined); return () => contextCallback.current(undefined) }, [room, visible])
-  const { window, error } = useConversationWindow({ api, id: room?.id, active: visible, chatActive: !process, available: !!room && room.employeeTaskId === record?.task.id && room.agentIds[0] === employeeId, target: { requestId: id ?? occurrenceId ?? '' }, onMaterials })
+  const { window, error } = useConversationWindow({ api, id: room?.id, active: visible, chatActive: !process, available: !!room && room.employeeTaskId === record?.task.id && room.agentIds[0] === employeeId, target: { requestId: focusMessage?.requestId ?? id ?? occurrenceId ?? '', focusMessage }, onMaterials })
   useEffect(() => { if (error) showErrorToast(error) }, [error])
   const act = async (operation: () => Promise<unknown>) => {
     if (!visible || locked.current) return

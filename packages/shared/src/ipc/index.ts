@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-04resolveExecutionMessage可返回已核验employeeTask，供任务面板导航；原conversation/message身份保持。
  * [OUTPUT]: 公开API Bobo历史配置读写合同，不暴露SQL或改变OM。
  * [OUTPUT]: Agent Desktop 可选插件接线；默认关闭、独立于旧computer-use，调用沿员工权限及真实图片。
  * [OUTPUT]: 员工任务创建、分页、详情、状态和续做公共合同独立于定时计划。
@@ -204,7 +205,7 @@ export interface Methods extends EmployeeTaskMethods {
   removeChannelBinding: { input: import('../domain/channels').ChannelBindingAction; output: void }
   listChannelDeliveries: { input: { agentId: string }; output: import('../domain/channels').ChannelDelivery[] }
   listExecutionHistory: { input: import('../domain/execution').ExecutionHistoryQuery; output: import('../domain/execution').ExecutionHistoryPage }
-  resolveExecutionMessage: { input: { conversationId: string; runId: string }; output: { conversationId: string; messageId: string } }
+  resolveExecutionMessage: { input: { conversationId: string; runId: string }; output: { conversationId: string; messageId: string; employeeTask?: { employeeId: string; taskId: string } } }
   listExecutionEvidence: { input: import('../domain/execution').ExecutionEvidenceQuery; output: import('../domain/execution').ExecutionEvidencePage }
   listExecutionWindow: { input: import('../domain/execution').ExecutionWindowQuery; output: import('../rovai/contracts').AgentRunExecutionBlockPage | import('../rovai/contracts').AgentRunExecutionBlockChanges }
   getExecutionContent: { input: { conversationId: string; runId: string; evidenceId: string; offset: number }; output: { content: string; length: number; revision: number; next?: number } }
