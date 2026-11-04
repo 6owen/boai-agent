@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 会话/执行历史按SQL引用筛选ID，避免将无关Trace与执行正文载入内存；原事务失效与恢复范围保持。
  * [OUTPUT]: 会话清理在原事务内移除全部上下文派生集合；失败运行清理包含步骤checkpoint与维护记录。
  * [OUTPUT]: 聊天清理同步移除会话人格/成长/旅行来源与行为结果正文、暂停对应行为，保留最小去重。
  * [OUTPUT]: 2026-10-19应用业务协议：来源聊天清理同事务清除应用回执正文，保留防重放身份。
@@ -24,7 +25,7 @@ import { join, relative, sep } from 'node:path'
 import type { BudgetModelCall, ClearedBudgetModelCall, Conversation, MemoryEntry, WorkBudget, WorkItem } from '@boai/shared/domain'
 import type { ContactListPreferences } from '@boai/shared/domain/contact-list'
 import type { AutomationDispatch, AutomationNotice, AutomationOccurrence, AutomationMonitorCheckpoint } from '@boai/shared/domain/automations'
-import { ProductStore } from '../../adapters/storage/product-store'
+import { ProductStore, type RecordIdentityScope } from '../../adapters/storage/product-store'
 import type { MaterialRepository } from '../materials/material-repository'
 import type { ArtifactRepository } from '../workspaces/artifact-repository'
 import type { ConversationReadingRepository } from './reading-repository'
@@ -66,12 +67,11 @@ export class ConversationHistory {
   }
   remove(conversation: Conversation) { return this.clear(conversation, false, true) }
   async removeExecutionRecords(runIds: string[]) {
-    const ids = new Set(runIds)
     return this.store.transaction(async tx => {
       const removals: { collection: string; id: string }[] = []
       for (const collection of ['contextStepCheckpoints', 'contextMaintenance', 'runs', 'snapshots', 'executionEvidence', 'executionClocks', 'nativeActions', 'traceSpans', 'profileModelCalls', 'profileSkillActivations', 'profileExecutions']) {
-        for (const item of await tx.list<HistoryRecord>(collection)) if (ids.has(item.id) || item.runId && ids.has(item.runId)) {
-          await tx.remove(collection, item.id); removals.push({ collection, id: item.id })
+        for (const id of await tx.relatedIds(collection, { ids: runIds, runIds })) {
+          await tx.remove(collection, id); removals.push({ collection, id })
         }
       }
       return removals
@@ -80,7 +80,7 @@ export class ConversationHistory {
   async clear(conversation: Conversation, hide: boolean, remove = false, sessionReceipt?: SessionOperationRecord): Promise<HistoryClearResult> {
     const id = conversation.id
     if (!/^[a-zA-Z0-9_-]{1,200}$/.test(id)) throw new Error('无效会话标识')
-    const runs = (await this.store.load<HistoryRecord>('runs')).filter(item => item.conversationId === id)
+    const runs = await this.store.load<HistoryRecord>('runs', { conversationId: id })
     const agents = await this.store.load<{ id: string }>('agents')
     const paths = [join(this.dataPath, 'workspaces', id)]
     for (const agent of agents) {
@@ -141,22 +141,28 @@ export class ConversationHistory {
       await clearApplicationReceipts(tx, { conversationId: id })
       await clearAgentPersonality(tx, { conversationId: id })
       const removals: { collection: string; id: string }[] = []
+      const collectIds = async (collection: string, scope: RecordIdentityScope) => {
+        const ids = await tx.relatedIds(collection, scope)
+        removals.push(...ids.map(id => ({ collection, id })))
+        return ids
+      }
       const collect = async (collection: string, match: (item: HistoryRecord) => boolean) => {
         const items = (await tx.list<HistoryRecord>(collection)).filter(match)
         removals.push(...items.map(item => ({ collection, id: item.id })))
         return items
       }
       const owned = (item: HistoryRecord) => item.conversationId === id
-      const messages = new Set((await collect('messages', owned)).map(item => item.id))
-      await collect('catalogActivities', owned)
-      await collect('materials', owned)
-      const runIds = new Set((await collect('runs', owned)).map(item => item.id))
-      const turns = new Set((await collect('turns', owned)).map(item => item.id))
+      const messages = new Set(await collectIds('messages', { conversationId: id }))
+      await collectIds('catalogActivities', { conversationId: id })
+      await collectIds('materials', { conversationId: id })
+      const runIds = new Set(await collectIds('runs', { conversationId: id }))
+      const turns = new Set(await collectIds('turns', { conversationId: id }))
       const retainedBudgets = new Set((await tx.list<WorkItem>('workItems')).filter(item => item.conversationId !== id).map(item => item.budgetId))
       const sharedBudgets = new Set((await tx.list<WorkBudget>('workBudgets')).filter(item => item.collaborationRequestId && retainedBudgets.has(item.id)).map(item => item.id))
       const work = await collect('workItems', owned), workIds = new Set(work.map(item => item.id)), budgets = new Set(work.map(item => item.budgetId))
+      const executionScope = { conversationId: id, turnIds: [...turns], runIds: [...runIds] }
       for (const collection of [...contextCollections, 'executionEvidence', 'executionClocks', 'nativeActions', 'codexSessions', 'claudeSessions', 'pluginSessions', 'browserScopes', 'browserEvidence', 'browserCleanups', 'profileModelCalls', 'profileSkillActivations', 'profileExecutions', 'traceSpans', 'events', 'deliveries', 'decisions', 'contributions', 'grants', 'approvals', 'directoryApprovalReceipts', 'artifacts', 'jobs', 'workWakes']) {
-        await collect(collection, item => owned(item) || Boolean(item.turnId && turns.has(item.turnId)) || Boolean(item.runId && runIds.has(item.runId)))
+        await collectIds(collection, executionScope)
       }
       for (const call of await tx.list<BudgetModelCall | ClearedBudgetModelCall>('budgetModelCalls')) {
         if ('status' in call || !(call.conversationId === id || turns.has(call.turnId) || runIds.has(call.runId))) continue
@@ -165,8 +171,8 @@ export class ConversationHistory {
           await tx.put({ collection: 'budgetModelCalls', id: call.id, value: cleared })
         } else removals.push({ collection: 'budgetModelCalls', id: call.id })
       }
-      await collect('snapshots', item => item.conversation?.id === id || runIds.has(item.id))
-      await collect('workExecutions', item => Boolean(item.workId && workIds.has(item.workId)))
+      await collectIds('snapshots', { snapshotConversationId: id, ids: [...runIds] })
+      await collectIds('workExecutions', { workIds: [...workIds] })
       await collect('workBudgets', item => (budgets.has(item.id) || owned(item)) && !retainedBudgets.has(item.id))
       await collect('requests', item => {
         if (item.messageId && messages.has(item.messageId)) return true

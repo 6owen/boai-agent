@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 清理开始先于changed且守卫持续至完成；真正失败不伪造完成，提交后的compact故障不重报删除失败。
+ * [OUTPUT]: 清理开始先于changed且守卫持续至完成；真正失败不伪造完成，删除/清空完成不依赖整库compact。
  * [INPUT]: 真实 AppService/SQLite 发布事务、可控离线 Engine、材料原件与本机 ACP 协议夹具。
  * [OUTPUT]: 隐藏/显式恢复、真正清空与删除后的搜索/原目标门禁及重启零重放，隐藏仍允许原授权明确历史窗口但搜索 IPC 拒绝内部标记，清空保留可见配置名而旧正文不回流；名称/正文/文件统一搜索和原会话目标的真实 IPC 校验/零消息零模型零工作；历史轮次摘要80项/60字符、默认无摘要、真实来源外改失效和零全历史/零模型调用；无正文元信息的旧结果实际正文核对/材料撤权失效与零业务调用；chat/task/ACP 三条真实完成事务、开始/完成乱序与阅读缺口、来源失效无旧正文、清理同事务 epoch、独立锚点及异根备份重启零重放的宿主意图验收。
  * [POS]: D6 阅读/搜索服务集成测试；不调用商业模型，不替代 Electron 可见性验收。
@@ -467,13 +467,18 @@ describe('conversation cleanup feedback lifecycle', () => {
     await service.handle('clearConversationHistory', { id: conversation.id, hide: true })
     expect(events.filter(event => event.type === 'conversation:cleared')).toHaveLength(1)
   })
-  it('reports post-commit maintenance failure separately without making deletion retryable', async () => {
+  it.each([true, false])('completes cleanup without requiring a full database rewrite; hide=%s', async hide => {
     const { service, conversation, events } = await fixture()
-    vi.spyOn(storeOf(service), 'compact').mockRejectedValueOnce(new Error('整理故障'))
+    await send(service, conversation)
+    expect((await detail(service, conversation)).messages.length).toBeGreaterThan(0)
+    const compact = vi.spyOn(storeOf(service), 'compact').mockRejectedValue(new Error('整库重写不属于会话删除'))
     events.length = 0
-    await expect(service.handle('clearConversationHistory', { id: conversation.id, hide: true })).resolves.toBeUndefined()
-    expect((await detail(service, conversation)).conversation.list?.hidden).toBe(true)
-    expect(events).toContainEqual({ type: 'conversation:cleared', conversationId: conversation.id, hidden: true })
-    expect(events).toContainEqual({ type: 'runtime-error', error: '聊天记录已清理，但存储整理未完成：整理故障' })
+    await expect(service.handle('clearConversationHistory', { id: conversation.id, hide })).resolves.toBeUndefined()
+    const cleared = await detail(service, conversation)
+    expect(cleared.conversation.list?.hidden ?? false).toBe(hide)
+    expect(cleared.messages).toEqual([]); expect(cleared.runs).toEqual([])
+    expect(events.filter(event => event.type === 'conversation:cleared')).toEqual([{ type: 'conversation:cleared', conversationId: conversation.id, hidden: hide }])
+    expect(events.filter(event => event.type === 'runtime-error')).toEqual([])
+    expect(compact).not.toHaveBeenCalled()
   })
 })

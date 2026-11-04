@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 会话删除在必要清理与提交后返回，不再同步VACUUM整库；已释放页面由SQLite复用，独立compact入口保持。
  * [OUTPUT]: 员工任务列清空转交EmployeeTaskService原事务与在途保护。
  * [OUTPUT]: 2026-11-04执行消息定位返回经存储核验的员工/taskId；任务删除或归属不符时拒绝导航，不回退到独立执行页。
  * [OUTPUT]: 定时任务进入员工面板及独立会话；宿主内部操作元数据查询不计Agent无进展，正常创建后核对不误停。
@@ -36,7 +37,7 @@
  * [OUTPUT]: 聊天投影保留失败过程；显式继续核对来源/原工作并防重复接续；自动化不再启动工作期限计时器。
  * [OUTPUT]: 本人普通bobo消息核验内置管理技能身份，并为本轮及原生待补充回复装配随包操作文档；不改原业务权限或旧绑定副本。
  * [OUTPUT]: 提示词集合沿原串行写入/备份门禁接入，独立版本与changed刷新。
- * [OUTPUT]: 会话清理先广播停读状态，完成携带隐藏标记；已提交后的存储整理失败单独反馈，不重报删除失败。
+ * [OUTPUT]: 会话清理先广播停读状态，完成携带隐藏标记；必要清理提交后返回，不再等待整库整理。
  * [OUTPUT]: 备份清单和RESTORE明确标记定时/人格自动行为暂停策略及连接停用，避免恢复后配置状态误读；原恢复语义保持。
  * [OUTPUT]: bobo明确记忆修改/忘记或来源会话清理后，清除所有可重建的Mastra派生thread。
  * [OUTPUT]: 同会话 PTY/真实预览接原应用协议和退出清理；默认关闭的本机 OCR、活动查询及有来源日报。
@@ -2491,8 +2492,8 @@ export class AppService {
     this.emit(remove ? { type: 'conversation:deleted', conversationId: id } : { type: 'conversation:cleared', conversationId: id, hidden: hide })
     if (remove) this.changed()
     this.changed(id)
-    // Cleanup has committed; maintenance failure must not invite replaying deletion.
-    await this.store.compact().catch(error => this.emit({ type: 'runtime-error', error: `聊天记录已清理，但存储整理未完成：${error instanceof Error ? error.message : String(error)}` }))
+    // SQLite reuses freed pages. Rewriting the entire database is not part of
+    // deleting one conversation, including each child in a batch cleanup.
   }
 
   private async deleteAutomationOccurrence(id: string, expectedVersion: number) {
