@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 消息轮次保存队列移除及实际开始时的上下文边界，排队消息不提前执行或进入模型输入。
  * [OUTPUT]: Conversation可绑定持久员工任务；同任务独立会话续接。
  * [OUTPUT]: 消息可关联员工任务身份，设为任务不重新发送原消息。
  * [OUTPUT]: 当前轮次纯文本补充固定run/turn，原消息保存接受、原生确认与未知投递。
@@ -345,7 +346,7 @@ export interface ConversationDetail {
 }
 
 export type TurnStatus = 'queued' | 'evaluating' | 'responding' | 'executing' | 'waiting_user' | 'completed' | 'cancelled' | 'failed' | 'interrupted' | 'budget_exhausted'
-export interface DiscussionTurn { coordination?: import('./group-coordination').GroupCoordination; collaborationRequestId?: string; startIntentId?: string; origin?: AutomationOrigin; replyToTurnIds?: string[]; resumesTurnIds?: string[]; resumesRunIds?: string[]; id: string; conversationId: string; triggerMessageId: string; workId?: string; wakeId?: string; status: TurnStatus; generation: number; createdAt: string; finishedAt?: string; reason?: string; modelCalls: number; publicMessages: number; tokenEstimate?: number; apiTokenEstimate?: number }
+export interface DiscussionTurn { queueRemoved?: boolean; queueContextSequence?: number; coordination?: import('./group-coordination').GroupCoordination; collaborationRequestId?: string; startIntentId?: string; origin?: AutomationOrigin; replyToTurnIds?: string[]; resumesTurnIds?: string[]; resumesRunIds?: string[]; id: string; conversationId: string; triggerMessageId: string; workId?: string; wakeId?: string; status: TurnStatus; generation: number; createdAt: string; finishedAt?: string; reason?: string; modelCalls: number; publicMessages: number; tokenEstimate?: number; apiTokenEstimate?: number }
 export interface AgentDelivery { observedEventId?: string; id: string; turnId: string; conversationId: string; agentId: string; eventId: string; eventIds?: string[]; supersededByDeliveryId?: string; status: 'pending' | 'evaluating' | 'ready' | 'waiting' | 'passed' | 'responding' | 'completed' | 'failed' | 'cancelled' | 'interrupted' | 'skipped'; observedThroughSequence: number; error?: string; updatedAt: string }
 export interface ParticipationDecision {
   work?: WorkIntent

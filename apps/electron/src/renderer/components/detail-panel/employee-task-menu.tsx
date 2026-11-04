@@ -1,9 +1,11 @@
 /*
+ * [OUTPUT]: 任意状态右键统一执行任务，运行中沿原任务会话排队，稳定请求防止重复受理。
  * [INPUT]: Employee-owned task rows/cards and revision-aware IPC mutations.
  * [OUTPUT]: Neutral opening; deletion uses a standard right-side submenu with cancel/confirm items.
  * [POS]: Employee task actions only; schedule plans and execution history remain intact.
  * [PROTOCOL]: Update Header and owning .folder.md on change.
  */
+import { toast } from 'sonner'
 import { createContext, useContext, useRef, useState, type ReactElement, type ReactNode } from 'react'
 import type { DesktopApi } from '@boai/shared/ipc'
 import { EMPLOYEE_TASK_STATUSES, type TrackedTaskListItem, type TrackedTaskStatus } from '@boai/shared/domain/tracked-tasks'
@@ -16,7 +18,7 @@ import { errorText, showErrorToast } from '@/components/common'
 import { TaskStatusIcon, taskStatusLabels } from './employee-task-status'
 
 type Action = { kind: 'rename' | 'delete'; task: TrackedTaskListItem }
-type Actions = { disabled: boolean; action?: Action; pending: boolean; choose(action: Action): void; close(): void; confirm(): void; status(task: TrackedTaskListItem, value: TrackedTaskStatus): void }
+type Actions = { disabled: boolean; action?: Action; pending: boolean; choose(action: Action): void; close(): void; confirm(): void; run(task: TrackedTaskListItem): void; status(task: TrackedTaskListItem, value: TrackedTaskStatus): void }
 const ActionsContext = createContext<Actions | undefined>(undefined)
 export function EmployeeTaskMenu({ task, children, surface = 'button' }: { task: TrackedTaskListItem; children: ReactElement; surface?: 'card' | 'button' }) {
   const actions = useContext(ActionsContext), [menuOpen, setMenuOpen] = useState(false)
@@ -49,6 +51,7 @@ export function EmployeeTaskMenu({ task, children, surface = 'button' }: { task:
       const point = openingPoint.current
       if (!pointerMoved.current && (!point || Math.abs(event.clientX - point.x) > 1 || Math.abs(event.clientY - point.y) > 1)) pointerMoved.current = true
     }} onMouseMove={ignoreStationaryPointer}>
+      <ContextMenuItem disabled={actions.disabled} onMouseMove={ignoreStationaryPointer} onClick={() => actions.run(task)}>执行任务</ContextMenuItem>
       <ContextMenuItem disabled={actions.disabled} onMouseMove={ignoreStationaryPointer} onClick={() => actions.choose({ kind: 'rename', task })}>重命名任务</ContextMenuItem>
       <ContextMenuSub><ContextMenuSubTrigger disabled={actions.disabled} onMouseEnter={ignoreStationaryPointer} onMouseMove={ignoreStationaryPointer}>状态</ContextMenuSubTrigger><ContextMenuSubContent>
         <ContextMenuRadioGroup value={task.status} onValueChange={value => actions.status(task, value as TrackedTaskStatus)}>
@@ -76,7 +79,19 @@ export function EmployeeTaskActions({ api, employeeId, active, disabled, onStatu
   onChanged(deletedId?: string): void
 }) {
   const [action, setAction] = useState<Action>(), [title, setTitle] = useState(''), [busy, setBusy] = useState(false)
-  const locked = useRef(false)
+  const locked = useRef(false), runRequests = useRef(new Map<string, { employeeId: string; id: string; expectedRevision: number; requestId: string }>())
+  const run = async (task: TrackedTaskListItem) => {
+    if (!active || disabled || locked.current) return
+    locked.current = true; setBusy(true)
+    try {
+      let input = runRequests.current.get(task.id)
+      if (!input) { const current = (await api.request('getEmployeeTask', { employeeId, id: task.id })).task; input = { employeeId, id: task.id, expectedRevision: current.revision, requestId: crypto.randomUUID() }; runRequests.current.set(task.id, input) }
+      const result = await api.request('runEmployeeTask', input)
+      runRequests.current.delete(task.id); onChanged()
+      if (result.status === 'queued') toast.success('已加入任务会话队列')
+    } catch (error) { if (errorText(error).includes('任务已经改变')) runRequests.current.delete(task.id); showErrorToast(errorText(error)); onChanged() }
+    finally { locked.current = false; setBusy(false) }
+  }
   const close = () => { if (!locked.current) setAction(undefined) }
   const save = async () => {
     if (!active || disabled || locked.current || !action || (action.kind === 'rename' && !title.trim())) return
@@ -89,7 +104,7 @@ export function EmployeeTaskActions({ api, employeeId, active, disabled, onStatu
     } catch (error) { showErrorToast(errorText(error)); onChanged() }
     finally { locked.current = false; setBusy(false) }
   }
-  return <ActionsContext.Provider value={{ disabled: disabled || busy || !active, action: active ? action : undefined, pending: busy, close, confirm: () => { void save() }, choose: value => { setTitle(value.task.title); setAction(value) }, status: onStatus }}>
+  return <ActionsContext.Provider value={{ disabled: disabled || busy || !active, action: active ? action : undefined, pending: busy, close, run: task => { void run(task) }, confirm: () => { void save() }, choose: value => { setTitle(value.task.title); setAction(value) }, status: onStatus }}>
     {children}
     <Dialog open={active && action?.kind === 'rename'} onOpenChange={open => { if (!open) close() }}><DialogContent aria-describedby={undefined} className="w-[min(560px,calc(100vw-32px))] max-w-none gap-6 p-6 sm:max-w-none">
       <DialogHeader><DialogTitle>重命名任务</DialogTitle></DialogHeader>

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 任意任务状态均可快捷执行；已有执行时同任务新要求进入原持久FIFO。
  * [OUTPUT]: 定时计划每次受理生成可见assignment及独立任务会话，沿同一协作/验收协议；内部进度不晋升为委派。
  * [OUTPUT]: 旧普通执行补回任务时登记assignment，不再写manual创建方式；定时记录的schedule来源保持。
  * [INPUT]: Accepted automation occurrence and explicit employee task, inside the original transaction.
@@ -30,9 +31,8 @@ export async function linkEmployeeTask(tx: RecordTransaction, d: AutomationDefin
   const newScheduledTask = !task && d.purpose !== 'employee-task'
   if (d.employeeTask && !historical) {
     if (!task || task.agentId !== agentId) throw new Error('任务不存在或不属于当前员工')
-    if (task.revision !== d.employeeTask.expectedRevision) throw new Error('任务已经改变，请刷新后重新提交')
+    if (!d.employeeTask.message && task.revision !== d.employeeTask.expectedRevision) throw new Error('任务已经改变，请刷新后重新提交')
     if (!isEmployeeTaskAssignment(task) && (task.status === 'done' || task.status === 'closed')) throw new Error('请先重新打开已完成任务')
-    if (!d.employeeTask.message && task.latestOccurrenceId && ongoingTaskExecution(await tx.get<AutomationOccurrence>('automationOccurrences', task.latestOccurrenceId))) throw new Error('该任务还有执行或等待中的运行，请先处理本次运行')
   }
   if (!task) {
     const description = historical ? (await tx.get<AutomationDispatch>('automationDispatches', o.id))?.definition?.prompt ?? (o.messageId ? (await tx.get<Message>('messages', o.messageId))?.content : undefined) : d.prompt

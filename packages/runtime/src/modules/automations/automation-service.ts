@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 任务消息队列支持按版本移除和优先执行；固定当前会话的中断目标，保留其他队列并等待实际退出。
  * [OUTPUT]: 单次预约经原生后继游标适配正常派发，原受理事务消费并暂停注册；业务预览仍只有目标时刻，原指纹及历史保持。
  * [OUTPUT]: 启动按真实员工执行关联补齐旧定时assignment，保留任务ID/会话/人工状态；孤立来源字段和内部progress不晋升。
  * [OUTPUT]: 员工指派私有元数据保留本次要求快照；恢复不推断任务交付，原定时规则保持。
@@ -20,6 +21,9 @@
  * [POS]: 自动化用例入口，SQLite 为权威，内存仅供活跃状态查询。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import type { Conversation } from '@boai/shared/domain'
+import type { ConversationQueueAction } from '@boai/shared/domain/message-queue'
+import { prepareQueueAction, finishQueueAction } from '../conversations/message-queue'
 import { join } from 'node:path'
 import { z } from 'zod'
 import { parseSchedule, ScheduleError } from '@boai/shared/domain/schedules'
@@ -30,7 +34,7 @@ import type { Message } from '@boai/shared/domain'
 import { ProductStore, type RecordTransaction, type StoredRecord } from '../../adapters/storage/product-store'
 import { NativeSchedules, AUTOMATION_WORKFLOW, nativeScheduleCron, type NativeAutomationVersion } from './native-schedules'
 import { monitorPolicySchema } from './automation-monitor'
-import { linkEmployeeTask, ongoingTaskExecution, taskIdentity } from './employee-task-records'
+import { linkEmployeeTask, syncEmployeeTask, ongoingTaskExecution, taskIdentity } from './employee-task-records'
 import { AutomationRepository } from './automation-repository'
 import { automationCollaborationSchema, automationOwnerSchema } from './automation-plan'
 import { activeOccurrence, pendingOccurrence, queuedOrder, sharesTaskExecutor, MAX_ACTIVE_AUTOMATIONS, nextTimes, scheduleSchema, automationCron, normalizeSchedule } from './schedule-policy'
@@ -450,6 +454,46 @@ export class AutomationService {
         this.hooks.changed()
         this.hooks.notify()
     }
+  }
+  actOnMessageQueue(input: ConversationQueueAction) {
+    return this.serialize(async () => {
+      await this.hooks.critical(async () => {
+        if (this.closing || this.backingUp) throw new Error('服务正在退出或备份')
+        const receipt = await this.store.transaction(async tx => {
+          const room = await tx.get<Conversation>('conversations', input.conversationId)
+          if (!room?.employeeTaskId || room.mergedInto || room.channel || !await tx.get('agentTasks', room.employeeTaskId)) throw new Error('任务会话已不可用')
+          return prepareQueueAction(tx, input, async () => {
+            const o = await tx.get<AutomationOccurrence>('automationOccurrences', input.id)
+            const dispatch = await tx.get<import('@boai/shared/domain/automations').AutomationDispatch>('automationDispatches', input.id)
+            if (!o || o.deletedAt || o.conversationId !== room.id || o.taskId !== room.employeeTaskId || o.status !== 'queued' || o.stateVersion !== input.expectedRevision || dispatch?.status !== 'pending') throw new Error('消息已开始执行或队列已变化，请刷新后操作')
+            const all = await tx.list<AutomationOccurrence>('automationOccurrences')
+            const targets = input.action === 'send-now' ? all.filter(other => other.id !== o.id && other.conversationId === room.id && !other.deletedAt && other.status !== 'queued' && pendingOccurrence.has(other.status)).map(other => other.id) : []
+            const next = input.action === 'remove' ? { ...o, stateVersion: o.stateVersion + 1, status: 'cancelled' as const, cancellationCause: 'user' as const, cancellationRequestedAt: new Date().toISOString(), finishedAt: new Date().toISOString(), reason: '用户移除排队消息' } : { ...o, stateVersion: o.stateVersion + 1, queueOrder: Math.min(0, ...all.filter(other => other.status === 'queued').map(other => other.queueOrder ?? 0)) - 1 }
+            if (input.action === 'remove') {
+              await tx.put({ collection: 'automationDispatches', id: o.id, value: { ...dispatch, status: 'failed' } })
+              await syncEmployeeTask(tx, next)
+            }
+            await tx.put({ collection: 'automationOccurrences', id: o.id, value: next })
+            return targets
+          })
+        })
+        if (receipt.applied) return
+        await this.refresh()
+        for (const target of receipt.targets) {
+          const o = this.occurrences.get(target)
+          if (!o || !pendingOccurrence.has(o.status) || o.status === 'queued') continue
+          const stopped = await this.repository.updateOccurrence(o.id, o.stateVersion, { status: 'cancelling', cancellationCause: 'user', cancellationRequestedAt: o.cancellationRequestedAt ?? new Date().toISOString(), reason: '用户立即发送另一条排队消息' })
+          if (!stopped) throw new Error('当前执行已变化，请重试核对原操作')
+          this.occurrences.set(stopped.id, stopped)
+          await this.hooks.cancel(stopped, { endWaiting: true })
+        }
+        await this.reconcile()
+        await finishQueueAction(this.store, input, receipt)
+        this.hooks.changed(); this.hooks.notify()
+      })
+      this.observe()
+      return { accepted: true as const }
+    })
   }
   stop(id: string, reason = '用户停止本次执行', cause: 'user' | 'budget' = 'user', expectedDeadline?: number, request?: { authorize(): Promise<void>; expectedStateVersion: number }) {
     return this.serialize(async () => {

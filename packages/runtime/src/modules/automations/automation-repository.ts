@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 同任务等待补充/工作时新消息进入持久队列；显式立即发送才中断原等待并优先处理。
  * [OUTPUT]: 单次日程消费与原Occurrence/投递同事务，保留计划和未来回调围栏；创建指纹绑定原请求。
  * [OUTPUT]: 主聊天计划仅投影本次独立任务上下文，原计划授权与队列实际退出屏障保持。
  * [OUTPUT]: 任务归属/版本与执行认领同事务，等待/失败/已交付定时任务状态跟随最新执行。
@@ -310,7 +311,7 @@ export class AutomationRepository {
       const running = priorOccurrences.filter(item => pendingOccurrence.has(item.status))
       if (!reason && running.some(item => item.automationId === d.id)) reason = '并发或等待上次处理，本次已跳过'
       o.queueOrder = 1 + Math.max(0, ...priorOccurrences.map(item => item.queueOrder ?? 0))
-      if (!reason && (busy(o.conversationId, o.plan?.employeeIds) || running.some(item => (activeOccurrence.has(item.status) || item.status === 'queued') && sharesTaskExecutor(item, o)) || running.filter(item => activeOccurrence.has(item.status)).length >= MAX_ACTIVE_AUTOMATIONS)) o.status = 'queued'
+      if (!reason && (busy(o.conversationId, o.plan?.employeeIds) || running.some(item => (activeOccurrence.has(item.status) || item.status === 'queued' || d.employeeTask?.id === item.taskId && ['waiting_user', 'waiting_work'].includes(item.status)) && sharesTaskExecutor(item, o)) || running.filter(item => activeOccurrence.has(item.status)).length >= MAX_ACTIVE_AUTOMATIONS)) o.status = 'queued'
       if (reason) { o.status = 'skipped'; o.deliveryStatus = 'unknown'; o.reason = reason; o.finishedAt = now }
       if (!reason && execution.conversationPolicy === 'new-conversation') {
         let records: StoredRecord[] = []
