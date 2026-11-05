@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 本轮结束并有回复时兜底显示待确认；保留人工状态、后续排队和业务交付账本，启动仅校正旧显示。
  * [OUTPUT]: 任意任务状态均可快捷执行；已有执行时同任务新要求进入原持久FIFO。
  * [OUTPUT]: 定时计划每次受理生成可见assignment及独立任务会话，沿同一协作/验收协议；内部进度不晋升为委派。
  * [OUTPUT]: 旧普通执行补回任务时登记assignment，不再写manual创建方式；定时记录的schedule来源保持。
@@ -17,6 +18,11 @@ import type { RecordTransaction } from '../../adapters/storage/product-store'
 
 export const taskIdentity = (source: string) => `task-${createHash('sha256').update(source).digest('hex').slice(0, 40)}`
 export const ongoingTaskExecution = (o?: AutomationOccurrence) => !!o && (AUTOMATION_ONGOING_STATUSES as readonly string[]).includes(o.status)
+
+/** A finished reply is ready for human review, not proof of acceptance or Work delivery. */
+export function hasEmployeeTaskResult(o: AutomationOccurrence) {
+  return !!o.taskId && !o.deletedAt && o.status === 'completed' && o.resultMessageIds.length > 0
+}
 
 export async function linkEmployeeTask(tx: RecordTransaction, d: AutomationDefinition, o: AutomationOccurrence, historical = false) {
   const owner = o.plan?.owner ?? d.owner
@@ -61,12 +67,12 @@ export async function linkEmployeeTask(tx: RecordTransaction, d: AutomationDefin
 }
 
 /** Reflect the latest execution's waits/failures without letting an old run overwrite later user edits. */
-export async function syncEmployeeTask(tx: RecordTransaction, o: AutomationOccurrence) {
+export async function syncEmployeeTask(tx: RecordTransaction, o: AutomationOccurrence, recovery = false) {
   if (!o.taskId || o.deletedAt) return
   const task = await tx.get<TrackedTask>('agentTasks', o.taskId)
   if (!task || task.statusSource === 'manual') return
   const previous = await tx.get<AutomationOccurrence>('automationOccurrences', o.id)
-  if (previous?.status === o.status && previous.deliveryStatus === o.deliveryStatus) return
+  if (!recovery && previous?.status === o.status && previous.deliveryStatus === o.deliveryStatus && hasEmployeeTaskResult(previous) === hasEmployeeTaskResult(o)) return
   const status = await executionTaskStatus(tx, o, task)
   if (task.status !== status) await tx.put({ collection: 'agentTasks', id: task.id, value: { ...task, status, revision: task.revision + 1, updatedAt: o.finishedAt ?? new Date().toISOString() } })
 }
@@ -75,10 +81,12 @@ async function executionTaskStatus(tx: RecordTransaction, o: AutomationOccurrenc
   const executions = (await tx.list<AutomationOccurrence>('automationOccurrences')).filter(item => item.taskId === task.id && item.id !== o.id && !item.deletedAt)
   executions.push(o)
   if (isEmployeeTaskAssignment(task)) {
-    // A question, an approval wait or a successful run is not a task delivery.
-    // Only abandon in-progress work when its latest attempt failed and no work remains in flight.
+    // Review is a display hint for the latest finished reply. Human acceptance stays separate.
     const latest = executions.find(item => item.id === task.latestOccurrenceId)
-    if (task.status === 'in_progress' && latest && ['failed', 'cancelled', 'interrupted', 'skipped'].includes(latest.status) && !executions.some(ongoingTaskExecution)) return 'pending'
+    if (task.status === 'in_progress' && latest && !executions.some(ongoingTaskExecution)) {
+      if (hasEmployeeTaskResult(latest)) return 'in_review'
+      if (['failed', 'cancelled', 'interrupted', 'skipped'].includes(latest.status)) return 'pending'
+    }
     return task.status
   }
   if (executions.some(item => ['admitted', 'running', 'waiting_work', 'cancelling'].includes(item.status))) return 'in_progress'

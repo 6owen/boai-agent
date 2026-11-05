@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 全局订阅员工任务结果Sonner，查看直接打开原员工任务会话，卸载解除订阅。
  * [OUTPUT]: 2026-11-04定时/任务执行定位及系统提醒进入所属员工任务面板和原任务Dialog，不另开执行会话页或右侧过程；旧群/监控保留原入口。
  * [OUTPUT]: bobo任务入口保持当前核心会话，复用员工任务面板和消息显式转任务，不创建额外主私聊。
  * [OUTPUT]: 本人菜单与设置侧栏共用语义图标；其他配置使用滑杆，原导航守卫保持。
@@ -190,6 +191,7 @@ import { SkillMarketplaceDetail } from '@/pages/library/skill-marketplace'
 import { SkillUpdateBatchView } from '@/pages/library/skill-update-batch'
 import { ResourceDetail } from '@/pages/library/resource-detail'
 import { ScheduleNavigationContext } from '@/pages/schedules/owner-automations'
+import { subscribeEmployeeTaskResults } from './employee-task-notifications'
 import { isEmployeeTaskHost, resolveEmployeeTaskDestination, type EmployeeTaskTarget } from './employee-task-navigation'
 import { EmployeeTasksPanel, EmployeeTasksNavigation } from '@/components/detail-panel/employee-tasks-panel'
 import { ScheduleDetail, SchedulePage, type ScheduleLocation } from '@/pages/schedules'
@@ -480,6 +482,9 @@ export function AppShell() {
         else { setScheduleLocation({ kind: 'occurrence', id: target.occurrenceId, requestId: crypto.randomUUID() }); applyRoute({ ...routeRef.current, page: 'schedules' }) }
       })
     }).catch(report) }
+    const unsubscribeTaskResults = subscribeEmployeeTaskResults(api, target => {
+      void Promise.resolve(openEmployeeTask(target, () => mounted.current)).catch(report)
+    })
     const unsubscribe = api.subscribe((event: AppEvent) => {
       if (event.type === 'desktop:lifecycle') { if (event.state.power === 'awake' && !event.state.locked) schedule(); return }
       if (event.type === 'workspace:show') { if (event.view !== 'preview') return; dispatchDetails({ type: 'open', target: { type: 'workspace', id: event.conversationId, employeeId: event.employeeId, view: event.view } }, 'conversations'); return }
@@ -512,7 +517,7 @@ export function AppShell() {
       if (event.message.status !== 'streaming') { setPreviews(previous => ({ ...previous, [event.message.conversationId]: `${event.message.senderName}：${event.message.content.slice(0,90)}` })); schedule() }
     })
     openAutomationNotice()
-    return () => { mounted.current = false; liveMessages.current.clear(); unsubscribe(); if (refreshTimer.current) clearTimeout(refreshTimer.current); refreshTimer.current = null }
+    return () => { mounted.current = false; liveMessages.current.clear(); unsubscribe(); unsubscribeTaskResults(); if (refreshTimer.current) clearTimeout(refreshTimer.current); refreshTimer.current = null }
   }, [api, refreshSnapshot, refreshDetail, materialDrafts.invalidate, clearArtifactPending, clearConversationLocation])
   useEffect(() => {
     selectedRef.current = selectedId

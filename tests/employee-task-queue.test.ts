@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 覆盖无Agent状态调用的本轮结果待确认/事件、重复执行、旧记录修复及人工状态/失败保护。
  * [OUTPUT]: 主聊天查询自己的定时/人工任务与真实输出；在途不受手动done影响，禁止越权及删除后回填。
  * [OUTPUT]: 主聊天IM即时受理与任务session并发；队列/插队仅留在任务会话，退出屏障与原目标保持。
  * [OUTPUT]: 列清空覆盖跨分页/员工状态隔离/稳定回执/在途保护及定时任务重启不回填。
@@ -20,6 +21,7 @@ import { join } from 'node:path'
 import type { AgentEngine, EngineContext } from '../packages/runtime/src/contracts'
 import { EMPLOYEE_TASK_STATUSES, type TrackedTask } from '../packages/shared/src/domain/tracked-tasks'
 import type { AutomationDefinition, AutomationInput, AutomationOccurrence, Connection, ConversationDetail, Snapshot } from '../packages/shared/src/domain'
+import type { AppEvent } from '../packages/shared/src/ipc'
 import { AppService } from '../packages/runtime/src/service'
 import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
 import { AutomationRepository } from '../packages/runtime/src/modules/automations/automation-repository'
@@ -37,7 +39,8 @@ async function employeeTaskStatus(ctx: EngineContext, status: 'in_progress' | 'i
 }
 async function setup(run: AgentEngine['run'], decide?: AgentEngine['decide']) {
   const root = await mkdtemp(join(tmpdir(), 'boai-task-queue-')); cleanup.push(() => rm(root, { recursive: true, force: true }))
-  const options: ConstructorParameters<typeof AppService>[0] = { dataPath: root, engine: { test: async () => '', decide: decide ?? (async ctx => ({ action: ctx.participation?.hasRespondedInTurn ? 'pass' : 'reply', responseKind: 'chat', observedThroughSequence: ctx.participation?.observedThroughSequence ?? 1 })), run }, secrets: { get: async () => undefined, set: async () => {}, delete: async () => {} }, emit() {} }
+  const events: AppEvent[] = []
+  const options: ConstructorParameters<typeof AppService>[0] = { dataPath: root, engine: { test: async () => '', decide: decide ?? (async ctx => ({ action: ctx.participation?.hasRespondedInTurn ? 'pass' : 'reply', responseKind: 'chat', observedThroughSequence: ctx.participation?.observedThroughSequence ?? 1 })), run }, secrets: { get: async () => undefined, set: async () => {}, delete: async () => {} }, emit(event) { events.push(event) } }
   const service = new AppService(options)
   cleanup.push(() => service.close()); await service.init()
   const connection = await service.handle('saveConnection', { name: 'fixture', provider: 'openai-compatible', baseUrl: 'http://127.0.0.1:1', defaultModel: 'fixture' }) as Connection
@@ -47,8 +50,48 @@ async function setup(run: AgentEngine['run'], decide?: AgentEngine['decide']) {
   const create = (name: string, employeeId = 'researcher') => service.handle('saveAutomation', { name, prompt: name, conversationPolicy: 'new-conversation', employeeIds: [employeeId], frequency: 'manual', time: '09:00', weekday: 1, timezone: 'UTC', enabled: true, notify: false }) as Promise<AutomationDefinition>
   const start = (d: AutomationDefinition, key = d.id) => service.handle('runAutomation', { id: d.id, requestId: key }) as Promise<AutomationOccurrence>
   const read = (id: string) => service.handle('getAutomationOccurrence', { id }) as Promise<AutomationOccurrence>
-  return { service, create, start, read, restart: async () => { const next = new AppService(options); cleanup.push(() => next.close()); await next.init(); return next } }
+  return { service, create, start, read, events, root, restart: async () => { const next = new AppService(options); cleanup.push(() => next.close()); await next.init(); return next } }
 }
+it('finishes explicit task runs in review and emits one result per round without Agent state calls', async () => {
+  const hold = gate(), f = await setup(async ctx => { await hold.promise; await ctx.onDelta('天气结果，交给用户确认') }); cleanup.push(hold.release)
+  const task = await f.service.handle('createEmployeeTask', { employeeId: 'researcher', description: '查询天气', requestId: 'result-task' }) as TrackedTask
+  const readTask = async () => (await f.service.handle('getEmployeeTask', { employeeId: task.agentId, id: task.id }) as import('../packages/shared/src/domain/employee-tasks').EmployeeTaskDetail).task
+  const first = await f.service.handle('runEmployeeTask', { employeeId: task.agentId, id: task.id, expectedRevision: task.revision, requestId: 'result-first' }) as AutomationOccurrence
+  await vi.waitFor(async () => expect((await f.read(first.id)).status).toBe('running'))
+  expect((await readTask()).status).toBe('in_progress')
+  expect(f.events.filter(e => e.type === 'employee-task:result')).toEqual([])
+  hold.release()
+  await vi.waitFor(() => expect(f.events.filter(e => e.type === 'employee-task:result')).toHaveLength(1), { timeout: 10000 })
+  // A plain reply has no Work delivery ledger; review is a UI status, not business acceptance.
+  expect(await f.read(first.id)).toMatchObject({ status: 'completed', deliveryStatus: 'unknown', workIds: [] })
+  const ready = await readTask()
+  expect(ready.status).toBe('in_review')
+  expect(f.events.filter(e => e.type === 'employee-task:result')[0]).toMatchObject({ occurrenceId: first.id, taskId: task.id, employeeId: task.agentId, title: task.title, status: 'in_review' })
+  const accepted = await f.service.handle('updateEmployeeTask', { employeeId: task.agentId, id: task.id, expectedRevision: ready.revision, status: 'done' }) as TrackedTask
+  const again = { employeeId: task.agentId, id: task.id, expectedRevision: accepted.revision, requestId: 'result-again' }
+  const second = await f.service.handle('runEmployeeTask', again) as AutomationOccurrence
+  expect(second.conversationId).toBe(first.conversationId)
+  await vi.waitFor(() => expect(f.events.filter(e => e.type === 'employee-task:result')).toHaveLength(2), { timeout: 10000 })
+  expect((await readTask()).status).toBe('in_review')
+  expect((await f.service.handle('runEmployeeTask', again) as AutomationOccurrence).id).toBe(second.id)
+  await f.service.close(); await f.restart()
+  expect(f.events.filter(e => e.type === 'employee-task:result')).toHaveLength(2)
+})
+
+it('repairs a historical finished task on startup without replaying work or completion notifications', async () => {
+  const run = vi.fn(async (ctx: EngineContext) => { await ctx.onDelta('已查到天气') })
+  const f = await setup(run), occurrence = await f.start(await f.create('stale result'))
+  await vi.waitFor(() => expect(f.events.filter(e => e.type === 'employee-task:result')).toHaveLength(1), { timeout: 10000 })
+  const task = (await f.service.handle('getEmployeeTask', { employeeId: 'researcher', id: occurrence.taskId }) as import('../packages/shared/src/domain/employee-tasks').EmployeeTaskDetail).task
+  await f.service.close()
+  const store = new ProductStore(join(f.root, 'boai.sqlite')); await store.init()
+  await store.write([{ collection: 'agentTasks', id: task.id, value: { ...task, status: 'in_progress', statusSource: 'execution' } }]); await store.close()
+  const restarted = await f.restart()
+  expect((await restarted.handle('getEmployeeTask', { employeeId: task.agentId, id: task.id }) as import('../packages/shared/src/domain/employee-tasks').EmployeeTaskDetail).task.status).toBe('in_review')
+  expect(run).toHaveBeenCalledTimes(1)
+  expect(f.events.filter(e => e.type === 'employee-task:result')).toHaveLength(1)
+})
+
 it('runs bobo assignments before its first core chat and continues revisions in the same task conversation', async () => {
   const contexts: EngineContext[] = [], f = await setup(async ctx => {
     contexts.push(ctx)
@@ -85,9 +128,8 @@ it('shows each scheduled execution as an employee assignment and continues accep
   const contexts: EngineContext[] = [], f = await setup(async ctx => {
     contexts.push(ctx)
     expect(ctx.bootstrap?.dynamicInstructions).toContain('[Current employee task]')
-    await employeeTaskStatus(ctx, 'in_progress')
+    if (contexts.length > 1) await employeeTaskStatus(ctx, 'in_progress')
     await ctx.onDelta('scheduled assignment output')
-    await employeeTaskStatus(ctx, 'in_review')
   })
   const plan = await f.create('visible scheduled assignment'), first = await f.start(plan)
   await vi.waitFor(async () => expect((await f.read(first.id)).status).toBe('completed'), { timeout: 10000 })
@@ -379,9 +421,10 @@ it.each(['failed', 'cancelled'] as const)('returns unfinished employee work to p
   const detail = await f.service.handle('getEmployeeTask', { employeeId: task.agentId, id: task.id }) as import('../packages/shared/src/domain/employee-tasks').EmployeeTaskDetail
   expect(detail.task.status).toBe('pending')
   expect(detail.executions.occurrences[0].status).toBe(outcome)
+  expect(f.events.filter(e => e.type === 'employee-task:result')).toEqual([])
 })
 
-it('does not infer task delivery or in-progress work from a completed acknowledgement', async () => {
+it('keeps idle discussions pending and shows finished in-progress replies for review without accepting the task', async () => {
   let calls = 0
   const f = await setup(async ctx => { if (++calls > 1) await employeeTaskStatus(ctx, 'in_progress'); await ctx.onDelta('收到，先讨论要求') })
   const task = await f.service.handle('createEmployeeTask', { employeeId: 'researcher', description: '稍后再做报告', requestId: 'acknowledgement-task' }) as TrackedTask
@@ -393,7 +436,7 @@ it('does not infer task delivery or in-progress work from a completed acknowledg
   await vi.waitFor(async () => expect((await f.read(partial.id)).status).toBe('completed'))
   await f.service.close()
   const restarted = await f.restart()
-  expect((await restarted.handle('getEmployeeTask', { employeeId: task.agentId, id: task.id }) as import('../packages/shared/src/domain/employee-tasks').EmployeeTaskDetail).task.status).toBe('in_progress')
+  expect((await restarted.handle('getEmployeeTask', { employeeId: task.agentId, id: task.id }) as import('../packages/shared/src/domain/employee-tasks').EmployeeTaskDetail).task.status).toBe('in_review')
 })
 
 it('admits separate tasks FIFO up to capacity, cancels a queued task without invoking it, and continues after failure', async () => {
@@ -698,6 +741,7 @@ it('keeps manual task states after execution finishes and scopes all five status
   expect((await f.read(occurrence.id)).status).toBe('running')
   hold.release(); await vi.waitFor(async () => expect((await f.read(occurrence.id)).status).toBe('completed'), { timeout: 10000 })
   expect((await f.service.handle('getEmployeeTask', { employeeId: task.agentId, id: task.id }) as import('../packages/shared/src/domain/employee-tasks').EmployeeTaskDetail).task.status).toBe('closed')
+  await vi.waitFor(() => expect(f.events.filter(e => e.type === 'employee-task:result')).toEqual([expect.objectContaining({ taskId: task.id, status: 'closed' })]))
 })
 
 it('projects an existing main-chat schedule into a task session without editing its persisted plan', async () => {
