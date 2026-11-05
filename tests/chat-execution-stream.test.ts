@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 临时卡及内部思考/工具组默认收起，当前动作随原Run更新；手动展开选择跨正文/工具增量保持。
  * [OUTPUT]: 所有终态执行卡不再挂查看/继续/任务结果；执行与普通消息共用可打开的员工资料头像及rounded-md。
  * [OUTPUT]: 历史预取期间保留当前窗口的实时执行卡，窗口移出后才卸载；不以最新页标记提前清空思考。
  * [OUTPUT]: 运行卡无常驻查看；历史失败/自动化镜像仅回到原消息页，新终态不闪退。
@@ -39,6 +40,7 @@ type LoadedChatProps = ComponentProps<typeof ChatView> & { detail: NonNullable<C
 let host: HTMLDivElement, root: Root, props: LoadedChatProps
 beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
+  vi.stubGlobal('scrollTo', vi.fn())
   vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
   fixture.evidence = []
   Element.prototype.getAnimations = () => []
@@ -98,6 +100,8 @@ test.each([false, true])('mirrors scheduled reasoning and tools from the origina
   fixture.evidence = [{ ...textEvent('核对天气来源', 1), id: 'reason', conversationId: 'task-chat', eventType: 'agent.reasoning.block' }]
   await render()
   expect(host.querySelectorAll('[data-chat-execution-run="run"]')).toHaveLength(1)
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="展开处理过程"]')!.click())
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="思考过程"]')!.click())
   expect(host.textContent).toContain('核对天气来源')
   expect(host.textContent).not.toContain('正在查询')
   expect(fixture.source).toBe('task-chat')
@@ -137,7 +141,10 @@ test('shows the employee execution card immediately and streams updates before a
 test('streams returned reasoning through a retained disclosure and keeps it alongside subsequent tools', async () => {
   const reasoning = (text: string, revision: number): ExecutionEvidence => ({ ...textEvent(text, revision), id: 'reason', eventType: 'agent.reasoning.block' })
   fixture.evidence = [reasoning('先检查输入', 1)]; await render()
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="展开处理过程"]')!.click())
   const trigger = () => host.querySelector<HTMLButtonElement>('[aria-label="思考过程"]')!
+  expect(trigger().getAttribute('aria-expanded')).toBe('false')
+  await act(async () => trigger().click())
   expect(trigger().getAttribute('aria-expanded')).toBe('true')
   expect(trigger().textContent).toContain('思考中')
   expect(host.textContent).toContain('先检查输入')
@@ -154,6 +161,61 @@ test('streams returned reasoning through a retained disclosure and keeps it alon
   expect(host.textContent).toContain('cat input.txt')
   expect(host.textContent).toContain('先检查输入，再核对实际文件')
   expect(props.detail.messages).toHaveLength(0)
+})
+
+test('starts chat tool groups collapsed and keeps manual expansion across new steps', async () => {
+  const command = (id: string, sequence: number) => ({ ...textEvent('', 1), ...nativeActivity(id, { type: 'commandExecution', command: `cat ${id}.txt`, status: 'running' }, false), sequence } as ExecutionEvidence)
+  fixture.evidence = [command('first', 1), command('second', 2)]
+  await render()
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="展开处理过程"]')!.click())
+  const group = () => host.querySelector<HTMLButtonElement>('[data-slot="chat-execution-viewport"] [data-slot="collapsible-trigger"]')!
+  expect(group().getAttribute('aria-expanded')).toBe('false')
+  fixture.evidence = [...fixture.evidence, command('third', 3)]
+  await render()
+  expect(group().getAttribute('aria-expanded')).toBe('false')
+  await act(async () => group().click())
+  expect(group().getAttribute('aria-expanded')).toBe('true')
+  fixture.evidence = [...fixture.evidence, command('fourth', 4)]
+  await render()
+  expect(group().getAttribute('aria-expanded')).toBe('true')
+  expect(host.textContent).toContain('cat fourth.txt')
+})
+
+test('shows one header row with the current action and right-side timer, keeping the full process expandable', async () => {
+  fixture.evidence = [{ ...textEvent('先检查输入', 1), eventType: 'agent.reasoning.block' }]
+  await render()
+  const viewport = () => host.querySelector<HTMLElement>('[data-slot="chat-execution-viewport"]')!
+  const thinking = host.querySelector('[data-slot="thinking-state"]')
+  const card = host.querySelector('[data-chat-execution-run]')!
+  expect(card.querySelector('footer')).toBeNull()
+  expect(card.querySelector('header [aria-label="停止本次执行"]')?.textContent).toBe('')
+  expect(card.querySelector('header [aria-label="展开处理过程"]')).not.toBeNull()
+  expect(card.querySelector('header [role="status"]')?.textContent).toBe('正在处理')
+  expect(card.querySelector('[data-slot="execution-header-actions"] [data-slot="execution-elapsed"]')).not.toBeNull()
+  expect(card.querySelector('[data-slot="loading-state"] [data-slot="execution-elapsed"]')).toBeNull()
+  expect(viewport().style.height).toBe('0px')
+  expect(viewport().dataset.collapsed).toBe('true')
+  expect(viewport().firstElementChild?.hasAttribute('inert')).toBe(true)
+  props = { ...props, detail: { ...props.detail, runs: [{ ...run, toolEvents: [{ id: 'tool', name: 'browser_tool', status: 'running', detail: '', createdAt: run.createdAt }] }] } }
+  fixture.evidence = [...fixture.evidence, { ...textEvent('', 1), ...nativeActivity('command', { type: 'commandExecution', command: 'cat input.txt', status: 'completed', exitCode: 0 }, true), sequence: 2 } as ExecutionEvidence]
+  await render()
+  expect(card.querySelector('header [role="status"]')?.textContent).toBe('正在执行 · browser_tool')
+  expect(viewport().dataset.collapsed).toBe('true')
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="展开处理过程"]')!.click())
+  expect(viewport().dataset.collapsed).toBe('false')
+  expect(viewport().firstElementChild?.hasAttribute('inert')).toBe(false)
+  expect(host.querySelector('[data-slot="thinking-state"]')).toBe(thinking)
+  expect(host.textContent).toContain('cat input.txt')
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="收起处理过程"]')!.click())
+  expect(viewport().dataset.collapsed).toBe('true')
+  expect(host.querySelector('[data-slot="thinking-state"]')).toBe(thinking)
+  props = { ...props, detail: { ...props.detail, runs: [{ ...run, progress: [{ id: 'progress', kind: 'commentary', text: '正在核对结果', createdAt: run.createdAt, updatedAt: run.createdAt }] }] } }
+  await render()
+  expect(card.querySelector('header [role="status"]')?.textContent).toBe('正在核对结果')
+  for (let i = 0; i < 4; i++) {
+    await act(async () => card.querySelector<HTMLButtonElement>('header [aria-expanded]')!.click())
+    expect(viewport().dataset.collapsed).toBe(String(i % 2 !== 0))
+  }
 })
 
 test('does not insert current execution into a restored history window', async () => {
@@ -251,6 +313,8 @@ test('keeps the live execution card while an older page is in flight, then remov
   vi.spyOn(document, 'hasFocus').mockReturnValue(true)
   fixture.evidence = [{ ...textEvent('持续生成的思考过程', 1), eventType: 'agent.reasoning.block' }]
   await render()
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="展开处理过程"]')!.click())
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="思考过程"]')!.click())
   const card = host.querySelector('[data-chat-execution-run="run"]')!
   const viewport = host.querySelector<HTMLElement>('.messages')!
   Object.defineProperties(viewport, { clientHeight: { value: 300 }, scrollHeight: { value: 2000 }, scrollTop: { value: 100, writable: true } })
