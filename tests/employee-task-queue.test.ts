@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 主聊天/任务会话排队、选中优先、原执行退出屏障、固定回执重试及所有任务状态快捷执行。
+ * [OUTPUT]: 主聊天IM即时受理与任务session并发；队列/插队仅留在任务会话，退出屏障与原目标保持。
  * [OUTPUT]: 列清空覆盖跨分页/员工状态隔离/稳定回执/在途保护及定时任务重启不回填。
  * [OUTPUT]: bobo无需先建核心聊天即可创建、执行及持续修改独立任务；共用连接、状态、验收和重启回执，不产生主聊天投影。
  * [OUTPUT]: 任意平级状态创建零执行，会话创建沿原任务补全标题/要求、稳定续做和重启，不进入主聊天。
@@ -146,12 +146,14 @@ it('keeps the accepted schedule instruction frozen while a queued task brief is 
   const hold = gate(), contexts: EngineContext[] = []
   const f = await setup(async ctx => {
     contexts.push(ctx)
-    if (contexts.length === 1) await hold.promise
+    if (contexts.length <= 2) await hold.promise
     else expect(ctx.bootstrap?.dynamicInstructions).toContain('frozen scheduled instruction')
     await ctx.onDelta('delivered'); await employeeTaskStatus(ctx, 'in_review')
   }); cleanup.push(hold.release)
   const first = await f.start(await f.create('busy employee'))
   await vi.waitFor(() => expect(contexts).toHaveLength(1))
+  await f.start(await f.create('busy employee two'))
+  await vi.waitFor(() => expect(contexts).toHaveLength(2))
   const queued = await f.start(await f.create('frozen scheduled instruction'))
   expect(queued.status).toBe('queued')
   const task = (await f.service.handle('getEmployeeTask', { employeeId: 'researcher', id: queued.taskId }) as import('../packages/shared/src/domain/employee-tasks').EmployeeTaskDetail).task
@@ -212,12 +214,12 @@ it('conversation intake enriches the same task then continues normal work with s
   expect(await restarted.handle('runEmployeeTask', runInput)).toMatchObject({ id: first.id })
   expect(contexts).toHaveLength(2)
 })
-it('dispatches selected tasks FIFO without review gates, freezes briefs and reuses completed conversations', async () => {
+it('dispatches selected tasks up to capacity without review gates, freezes briefs and reuses completed conversations', async () => {
   const hold = gate(), inputs: { id: string; room: string; context: string }[] = []
   const f = await setup(async ctx => {
     inputs.push({ id: ctx.conversation.employeeTaskId!, room: ctx.conversation.id, context: ctx.bootstrap?.dynamicInstructions ?? '' })
     await employeeTaskStatus(ctx, 'in_progress')
-    if (inputs.length === 1) await hold.promise
+    if (inputs.length <= 2) await hold.promise
     await ctx.onDelta('已交付：' + ctx.conversation.employeeTaskId)
     await employeeTaskStatus(ctx, 'in_review')
   }); cleanup.push(hold.release)
@@ -231,23 +233,23 @@ it('dispatches selected tasks FIFO without review gates, freezes briefs and reus
   const batch = await f.service.handle('runEmployeeTasks', input) as Batch
   expect(batch.items.every(item => 'execution' in item)).toBe(true)
   const executions = batch.items.map(item => { if (!('execution' in item)) throw new Error(item.error); return item.execution })
-  await vi.waitFor(() => expect(inputs).toHaveLength(1))
-  expect((await f.read(executions[1].id)).status).toBe('queued')
+  await vi.waitFor(() => expect(inputs).toHaveLength(2))
+  expect((await f.read(executions[2].id)).status).toBe('queued')
   expect(await f.service.handle('runEmployeeTasks', input)).toEqual(batch)
   await expect(f.service.handle('runEmployeeTasks', { ...input, tasks: [...input.tasks].reverse() })).rejects.toThrow('同一批次')
-  const second = (await f.service.handle('getEmployeeTask', { employeeId: 'researcher', id: tasks[1].id }) as import('../packages/shared/src/domain/employee-tasks').EmployeeTaskDetail).task
+  const second = (await f.service.handle('getEmployeeTask', { employeeId: 'researcher', id: tasks[2].id }) as import('../packages/shared/src/domain/employee-tasks').EmployeeTaskDetail).task
   await f.service.handle('updateEmployeeTask', { employeeId: second.agentId, id: second.id, expectedRevision: second.revision, description: '重新build；验收版本2' })
-  expect(inputs).toHaveLength(1)
+  expect(inputs).toHaveLength(2)
   hold.release()
   await vi.waitFor(async () => expect((await f.read(executions[2].id)).status).toBe('completed'), { timeout: 10000 })
   expect(inputs.map(input => input.id)).toEqual(tasks.map(task => task.id))
-  expect(inputs[1].context).toContain('验收版本1'); expect(inputs[1].context).not.toContain('验收版本2')
+  expect(inputs[2].context).toContain('验收版本1'); expect(inputs[2].context).not.toContain('验收版本2')
   for (const task of tasks) expect((await f.service.handle('getEmployeeTask', { employeeId: task.agentId, id: task.id }) as import('../packages/shared/src/domain/employee-tasks').EmployeeTaskDetail).task.status).toBe('in_review')
-  const current = (await f.service.handle('getEmployeeTask', { employeeId: 'researcher', id: tasks[1].id }) as import('../packages/shared/src/domain/employee-tasks').EmployeeTaskDetail).task
+  const current = (await f.service.handle('getEmployeeTask', { employeeId: 'researcher', id: tasks[2].id }) as import('../packages/shared/src/domain/employee-tasks').EmployeeTaskDetail).task
   const accepted = await f.service.handle('updateEmployeeTask', { employeeId: current.agentId, id: current.id, expectedRevision: current.revision, status: 'done' }) as TrackedTask
   const again = await f.service.handle('runEmployeeTask', { employeeId: accepted.agentId, id: accepted.id, expectedRevision: accepted.revision, requestId: 'next-day-same-task' }) as AutomationOccurrence
   await vi.waitFor(async () => expect((await f.read(again.id)).status).toBe('completed'))
-  expect(inputs[3].context).toContain('验收版本2'); expect(inputs[3].room).toBe(inputs[1].room)
+  expect(inputs[3].context).toContain('验收版本2'); expect(inputs[3].room).toBe(inputs[2].room)
   const main = (await f.service.handle('snapshot', undefined) as Snapshot).conversations.find(room => room.mainPrivate && room.agentIds[0] === 'researcher')!
   expect((await f.service.handle('getConversation', { id: main.id }) as ConversationDetail).messages).toEqual([])
   await f.service.close(); const restarted = await f.restart()
@@ -393,25 +395,26 @@ it('does not infer task delivery or in-progress work from a completed acknowledg
   expect((await restarted.handle('getEmployeeTask', { employeeId: task.agentId, id: task.id }) as import('../packages/shared/src/domain/employee-tasks').EmployeeTaskDetail).task.status).toBe('in_progress')
 })
 
-it('executes separate tasks FIFO, cancels a queued task without invoking it, and continues after failure', async () => {
+it('admits separate tasks FIFO up to capacity, cancels a queued task without invoking it, and continues after failure', async () => {
   const hold = gate(), calls: string[] = [], contexts: string[] = []
   const f = await setup(async ctx => {
     const prompt = ctx.messages.find(m => m.senderType === 'user')!.content
     calls.push(prompt); contexts.push(ctx.conversation.id)
-    if (prompt === 'first') await hold.promise
+    if (prompt === 'first' || prompt === 'concurrent') await hold.promise
     if (prompt === 'second') throw new Error('controlled task failure')
     await ctx.onDelta('result: ' + prompt)
   }); cleanup.push(hold.release)
-  const defs = await Promise.all(['first', 'cancel me', 'second', 'last'].map(name => f.create(name)))
+  const defs = await Promise.all(['first', 'concurrent', 'cancel me', 'second', 'last'].map(name => f.create(name)))
   const first = await f.start(defs[0]); await vi.waitFor(() => expect(calls).toEqual(['first']))
-  const cancelled = await f.start(defs[1]), second = await f.start(defs[2]), last = await f.start(defs[3])
+  await f.start(defs[1]); await vi.waitFor(() => expect(calls).toEqual(['first', 'concurrent']))
+  const cancelled = await f.start(defs[2]), second = await f.start(defs[3]), last = await f.start(defs[4])
   expect([cancelled, second, last].map(o => o.status)).toEqual(['queued', 'queued', 'queued'])
-  expect((await f.start(defs[2])).id).toBe(second.id)
+  expect((await f.start(defs[3])).id).toBe(second.id)
   await f.service.handle('stopAutomation', { id: cancelled.id })
   expect((await f.read(cancelled.id)).status).toBe('cancelled')
   hold.release()
   await vi.waitFor(async () => expect((await f.read(last.id)).status).toBe('completed'), { timeout: 10000 })
-  expect(calls).toEqual(['first', 'second', 'last']); expect(new Set(contexts).size).toBe(3)
+  expect(calls).toEqual(['first', 'concurrent', 'second', 'last']); expect(new Set(contexts).size).toBe(4)
   expect((await f.read(second.id)).status).toBe('failed')
   const snapshot = await f.service.handle('snapshot', undefined) as Snapshot
   const main = snapshot.conversations.find(c => c.mainPrivate && c.agentIds[0] === 'researcher')!
@@ -425,11 +428,11 @@ it('executes separate tasks FIFO, cancels a queued task without invoking it, and
   expect(history.occurrences).toHaveLength(1); expect(history.nextCursor).toBeDefined()
   expect((await f.service.handle('listAutomationHistory', { employeeId: 'absent', limit: 1 }) as { occurrences: unknown[] }).occurrences).toEqual([])
 })
-it('does not start the next employee task until the cancelled adapter actually exits', async () => {
+it('does not start the next message in a task session until the cancelled adapter actually exits', async () => {
   const exit = gate(), entered: string[] = []
-  const f = await setup(async ctx => { const text = ctx.messages[0].content; entered.push(text); if (text === 'held') await exit.promise; else await ctx.onDelta('done') }); cleanup.push(exit.release)
+  const f = await setup(async ctx => { const text = ctx.messages.find(m => m.id === ctx.triggerMessageId)!.content; entered.push(text); if (text === 'held') await exit.promise; else await ctx.onDelta('done') }); cleanup.push(exit.release)
   const first = await f.start(await f.create('held')); await vi.waitFor(() => expect(entered).toEqual(['held']))
-  const second = await f.start(await f.create('next'))
+  const second = await f.service.handle('sendEmployeeTaskMessage', { conversationId: first.conversationId, content: 'next', mentionIds: [], requestId: 'next-after-exit' }) as AutomationOccurrence
   await f.service.handle('stopAutomation', { id: first.id })
   expect((await f.read(first.id)).status).toBe('cancelling'); expect((await f.read(second.id)).status).toBe('queued'); expect(entered).toEqual(['held'])
   exit.release()
@@ -441,10 +444,11 @@ it('recovers only never-started queue entries, fences changed permissions and re
   const store = new ProductStore(join(root, 'test.sqlite')); await store.init(); cleanup.push(() => store.close())
   const repo = new AutomationRepository(store, root); await repo.migrate(); await repo.recover()
   const input = (id: string): AutomationInput => ({ name: id, prompt: id, conversationPolicy: 'existing-conversation', conversationId: id, owner: { kind: 'employee', employeeId: 'employee' }, frequency: 'manual', time: '09:00', weekday: 1, timezone: 'UTC', enabled: true, notify: false })
-  for (const id of ['one', 'two', 'three']) await store.write([{ collection: 'conversations', id, value: { id, agentIds: ['employee'] } }])
-  const defs = await Promise.all(['one', 'two', 'three'].map(id => repo.save(input(id), 'allowed')))
+  for (const id of ['one', 'two', 'three', 'occupied']) await store.write([{ collection: 'conversations', id, value: { id, agentIds: ['employee'] } }])
+  const defs = await Promise.all(['one', 'two', 'three', 'occupied'].map(id => repo.save(input(id), 'allowed')))
   const claim = (d: AutomationDefinition) => repo.claim({ automationId: d.id, source: 'manual', key: d.id, scheduledAt: Date.now() }, () => undefined)
-  const first = await claim(defs[0]), second = await claim(defs[1]), third = await claim(defs[2])
+  const first = await claim(defs[0]), occupied = await claim(defs[3]), second = await claim(defs[1]), third = await claim(defs[2])
+  expect(occupied.occurrence.status).toBe('admitted')
   expect(second.occurrence.status).toBe('queued')
   await repo.recover()
   expect((await store.get<AutomationOccurrence>('automationOccurrences', first.occurrence.id))?.status).toBe('needs_review')
@@ -452,6 +456,8 @@ it('recovers only never-started queue entries, fences changed permissions and re
   expect((await repo.startQueued(second.occurrence.id, async () => { throw new Error('permission revoked') }, () => false))?.occurrence.status).toBe('needs_review')
   const ready = await repo.startQueued(third.occurrence.id, async () => {}, () => false)
   expect(ready?.occurrence.status).toBe('admitted'); expect(await repo.startQueued(third.occurrence.id, async () => {}, () => false)).toBeUndefined()
+  const other = await claim(defs[3]); expect(other.occurrence.status).toBe('needs_review')
+  await repo.claim({ automationId: defs[3].id, source: 'manual', key: 'occupy-again', scheduledAt: Date.now() }, () => undefined)
   const again = await repo.claim({ automationId: defs[1].id, source: 'manual', key: 'new', scheduledAt: Date.now() }, () => undefined)
   expect(again.occurrence.status).toBe('queued')
   await new AutomationRepository(store, root + '-restored').recover()
@@ -475,9 +481,9 @@ it('lets a different employee execute while the first employee queue is occupied
 
 it('starts the durable queued task after an application restart without replaying the previous execution', async () => {
   const hold = gate(), entered: string[] = []
-  const f = await setup(async ctx => { const name = ctx.messages[0].content; entered.push(name); if (name === 'before restart') await hold.promise; await ctx.onDelta(name) }); cleanup.push(hold.release)
-  await f.start(await f.create('before restart')); await vi.waitFor(() => expect(entered).toEqual(['before restart']))
-  const queued = await f.start(await f.create('after restart')); expect(queued.status).toBe('queued')
+  const f = await setup(async ctx => { const name = ctx.messages.find(m => m.id === ctx.triggerMessageId)!.content; entered.push(name); if (name === 'before restart') await hold.promise; await ctx.onDelta(name) }); cleanup.push(hold.release)
+  const first = await f.start(await f.create('before restart')); await vi.waitFor(() => expect(entered).toEqual(['before restart']))
+  const queued = await f.service.handle('sendEmployeeTaskMessage', { conversationId: first.conversationId, content: 'after restart', mentionIds: [], requestId: 'after-restart' }) as AutomationOccurrence; expect(queued.status).toBe('queued')
   const closing = f.service.close(); hold.release(); await closing
   expect(entered).toEqual(['before restart'])
   const restarted = await f.restart()
@@ -532,7 +538,7 @@ it('isolates scheduled employee tasks and their delivered results from the main 
   }
 })
 
-it('queues a dedicated task while ordinary conversation is active and delivers it once that execution exits', async () => {
+it('executes a dedicated task while the same employee is still replying in ordinary chat', async () => {
   const hold = gate(), calls: string[] = []
   const f = await setup(async ctx => {
     const prompt = ctx.messages.filter(m => m.senderType === 'user').at(-1)!.content
@@ -545,9 +551,9 @@ it('queues a dedicated task while ordinary conversation is active and delivers i
   await f.service.handle('sendMessage', { conversationId: main.id, content: 'ordinary chat', mentionIds: [], requestId: 'ordinary-busy' })
   await vi.waitFor(() => expect(calls).toEqual(['ordinary chat']))
   const queued = await f.start(task)
-  expect(queued.status).toBe('queued')
-  hold.release()
   await vi.waitFor(async () => expect((await f.read(queued.id)).status).toBe('completed'), { timeout: 10000 })
+  expect((await f.service.handle('getConversation', { id: main.id }) as ConversationDetail).messages.some(m => m.content === 'reply: ordinary chat')).toBe(false)
+  hold.release()
   expect(calls).toEqual(['ordinary chat', 'queued work'])
   expect((await f.read(queued.id)).conversationId).not.toBe(main.id)
 })
@@ -789,9 +795,9 @@ it('deletes a finished employee task without deleting its plan/history and never
 })
 it('rejects deletion of running or queued tasks even when their manual state is done', async () => {
   const hold = gate(), f = await setup(async ctx => { await hold.promise; await ctx.onDelta('done') }); cleanup.push(hold.release)
-  const first = await f.start(await f.create('busy')), queued = await f.start(await f.create('queued'))
+  const first = await f.start(await f.create('busy')), concurrent = await f.start(await f.create('second active')), queued = await f.start(await f.create('queued'))
   expect(queued.status).toBe('queued')
-  for (const occurrence of [first, queued]) {
+  for (const occurrence of [first, concurrent, queued]) {
     const { task } = await f.service.handle('getEmployeeTask', { employeeId: 'researcher', occurrenceId: occurrence.id }) as import('../packages/shared/src/domain/employee-tasks').EmployeeTaskDetail
     const updated = await f.service.handle('updateEmployeeTask', { employeeId: task.agentId, id: task.id, expectedRevision: task.revision, status: 'done' }) as typeof task
     await expect(f.service.handle('deleteEmployeeTask', { employeeId: task.agentId, id: task.id, expectedRevision: updated.revision })).rejects.toThrow('请先停止')
@@ -831,22 +837,22 @@ it('clears all task pages in one employee status and replays the receipt without
 })
 it('preserves running and queued tasks during column clear even when manually marked done', async () => {
   const hold = gate(), f = await setup(async ctx => { await hold.promise; await ctx.onDelta('done') }); cleanup.push(hold.release)
-  const first = await f.start(await f.create('clear-busy')), queued = await f.start(await f.create('clear-queued'))
+  const first = await f.start(await f.create('clear-busy')), concurrent = await f.start(await f.create('second active')), queued = await f.start(await f.create('clear-queued'))
   expect(queued.status).toBe('queued')
-  for (const occurrence of [first, queued]) {
+  for (const occurrence of [first, concurrent, queued]) {
     const { task } = await f.service.handle('getEmployeeTask', { employeeId: 'researcher', occurrenceId: occurrence.id }) as import('../packages/shared/src/domain/employee-tasks').EmployeeTaskDetail
     await f.service.handle('updateEmployeeTask', { employeeId: task.agentId, id: task.id, expectedRevision: task.revision, status: 'done' })
   }
   const idle = await f.service.handle('createEmployeeTask', { employeeId: 'researcher', requestId: 'clear-idle', title: '可清空任务', description: '已完成', status: 'done' }) as TrackedTask
   const result = await f.service.handle('clearEmployeeTasks', { employeeId: 'researcher', status: 'done', requestId: 'clear-with-active' }) as import('../packages/shared/src/domain/employee-tasks').EmployeeTaskMethods['clearEmployeeTasks']['output']
   expect(result.deletedIds).toEqual([idle.id])
-  expect(result.skippedIds.sort()).toEqual([first.taskId, queued.taskId].sort())
+  expect(result.skippedIds.sort()).toEqual([first.taskId, concurrent.taskId, queued.taskId].sort())
   expect((await f.read(queued.id)).status).toBe('queued')
   hold.release()
   await vi.waitFor(async () => expect((await f.read(queued.id)).status).toBe('completed'), { timeout: 10000 })
 })
 
-it.each(['main', 'task'] as const)('%s conversation queue promotes the selected message only after the interrupted adapter exits and preserves siblings', async kind => {
+it('task conversation queue promotes the selected message only after the interrupted adapter exits and preserves siblings', async () => {
   const exited = gate(), abortSeen = gate(), priority = gate(), calls: string[] = [], contexts: string[] = []
   const f = await setup(async ctx => {
     const prompt = ctx.messages.find(m => m.id === ctx.triggerMessageId)!.content
@@ -860,15 +866,11 @@ it.each(['main', 'task'] as const)('%s conversation queue promotes the selected 
     if (!ctx.signal.aborted) await ctx.onDelta('done: ' + prompt)
   })
   cleanup.push(exited.release, priority.release)
-  const snapshot = await f.service.handle('snapshot', undefined) as Snapshot
-  let conversationId = snapshot.conversations.find(room => room.mainPrivate && room.agentIds[0] === 'researcher')!.id
-  if (kind === 'task') {
-    const task = await f.service.handle('createEmployeeTask', { employeeId: 'researcher', title: 'queue task', description: 'first', status: 'done', requestId: 'queue-task' }) as TrackedTask
-    const first = await f.service.handle('runEmployeeTask', { employeeId: task.agentId, id: task.id, expectedRevision: task.revision, requestId: 'queue-task-first' }) as AutomationOccurrence
-    conversationId = first.conversationId
-  } else await f.service.handle('sendMessage', { conversationId, content: 'first', mentionIds: [], requestId: 'queue-main-first' })
+  const task = await f.service.handle('createEmployeeTask', { employeeId: 'researcher', title: 'queue task', description: 'first', status: 'done', requestId: 'queue-task' }) as TrackedTask
+  const first = await f.service.handle('runEmployeeTask', { employeeId: task.agentId, id: task.id, expectedRevision: task.revision, requestId: 'queue-task-first' }) as AutomationOccurrence
+  const conversationId = first.conversationId
   await vi.waitFor(() => expect(calls).toHaveLength(1))
-  const send = (content: string) => f.service.handle(kind === 'task' ? 'sendEmployeeTaskMessage' : 'sendMessage', { conversationId, content, mentionIds: [], requestId: 'queue-' + content })
+  const send = (content: string) => f.service.handle('sendEmployeeTaskMessage', { conversationId, content, mentionIds: [], requestId: 'queue-' + content })
   await send('second'); await send('third'); await send('remove me')
   const readQueue = () => f.service.handle('listConversationQueue', { conversationId }) as Promise<{ items: import('../packages/shared/src/domain/message-queue').ConversationQueueItem[] }>
   const initial = (await readQueue()).items
@@ -929,7 +931,7 @@ it('send-now interrupts the original task question while preserving another queu
   expect(calls).toEqual(['initial question', 'change direction', 'answer later'])
 })
 
-it('continues queued work against its actual request after a newer message was sent first', async () => {
+it('continues queued task-session work against its actual request after a newer message was sent first', async () => {
   const entered = gate(), finished = gate(), prompts: string[] = []
   const f = await setup(async ctx => {
     const prompt = ctx.messages.find(message => message.id === ctx.triggerMessageId)!.content
@@ -948,12 +950,46 @@ it('continues queued work against its actual request after a newer message was s
   const snapshot = await f.service.handle('snapshot', undefined) as Snapshot
   const { configVersion, workspaceRef, memoryNamespace, policyVersion, ...agent } = snapshot.agents.find(agent => agent.id === 'researcher')!
   await f.service.handle('saveAgent', { ...agent, executionPermission: 'full-access' })
-  const conversationId = snapshot.conversations.find(room => room.mainPrivate && room.agentIds[0] === agent.id)!.id
-  const send = (content: string) => f.service.handle('sendMessage', { conversationId, content, mentionIds: [], requestId: content })
-  await send('hold'); await entered.promise; await send('queued work'); await send('priority message')
+  const task = await f.service.handle('createEmployeeTask', { employeeId: agent.id, description: 'hold', requestId: 'work-order-task' }) as TrackedTask
+  const first = await f.service.handle('runEmployeeTask', { employeeId: agent.id, id: task.id, expectedRevision: task.revision, requestId: 'hold' }) as AutomationOccurrence
+  const conversationId = first.conversationId
+  const send = (content: string) => f.service.handle('sendEmployeeTaskMessage', { conversationId, content, mentionIds: [], requestId: content })
+  await entered.promise; await send('queued work'); await send('priority message')
   const { items } = await f.service.handle('listConversationQueue', { conversationId }) as { items: import('../packages/shared/src/domain/message-queue').ConversationQueueItem[] }
   await f.service.handle('actOnConversationQueue', { conversationId, id: items[1].id, expectedRevision: items[1].revision, action: 'send-now', requestId: 'priority-work-order' })
   await vi.waitFor(() => expect(prompts).toHaveLength(3), { timeout: 10000 })
   await finished.promise
   expect(prompts).toEqual(['queued work', 'queued work', 'queued work'])
+})
+
+
+it('receives IM messages immediately without a user-controlled send queue or interruption', async () => {
+  const hold = gate(), calls: string[] = [], aborted: boolean[] = []
+  const f = await setup(async ctx => { const prompt = ctx.messages.find(message => message.id === ctx.triggerMessageId)!.content; calls.push(prompt); if (prompt === 'hello') { await hold.promise; aborted.push(ctx.signal.aborted) }; await ctx.onDelta('reply: ' + prompt) }); cleanup.push(hold.release)
+  const main = (await f.service.handle('snapshot', undefined) as Snapshot).conversations.find(room => room.mainPrivate && room.agentIds[0] === 'researcher')!
+  await f.service.handle('sendMessage', { conversationId: main.id, content: 'hello', mentionIds: [], requestId: 'hello' })
+  await vi.waitFor(() => expect(calls).toEqual(['hello']))
+  const message = await f.service.handle('sendMessage', { conversationId: main.id, content: 'new IM message', mentionIds: [], requestId: 'new-im' }) as import('../packages/shared/src/domain').Message
+  expect(message).toMatchObject({ content: 'new IM message', status: 'completed', conversationId: main.id })
+  const detail = await f.service.handle('getConversation', { id: main.id }) as ConversationDetail
+  expect(detail.messages.some(item => item.id === message.id)).toBe(true)
+  await expect(f.service.handle('listConversationQueue', { conversationId: main.id })).rejects.toThrow('仅用于独立任务')
+  await expect(f.service.handle('actOnConversationQueue', { conversationId: main.id, id: message.turnId, expectedRevision: 1, requestId: 'not-unsent', action: 'remove' })).rejects.toThrow('仅用于独立任务')
+  hold.release(); await vi.waitFor(() => expect(calls).toEqual(['hello', 'new IM message']))
+  expect(aborted).toEqual([false])
+})
+
+it('runs two independent sessions of one employee concurrently while its main chat stays responsive', async () => {
+  const hold = gate(), calls: { room: string; prompt: string }[] = []
+  const f = await setup(async ctx => { const prompt = ctx.messages.find(message => message.id === ctx.triggerMessageId)!.content; calls.push({ room: ctx.conversation.id, prompt }); if (ctx.conversation.employeeTaskId) await hold.promise; await ctx.onDelta('done: ' + prompt) }); cleanup.push(hold.release)
+  const first = await f.start(await f.create('background one'))
+  const second = await f.start(await f.create('background two'))
+  await vi.waitFor(() => expect(calls).toHaveLength(2))
+  expect(first.conversationId).not.toBe(second.conversationId)
+  const main = (await f.service.handle('snapshot', undefined) as Snapshot).conversations.find(room => room.mainPrivate && room.agentIds[0] === 'researcher')!
+  await f.service.handle('sendMessage', { conversationId: main.id, content: 'hello while working', mentionIds: [], requestId: 'independent-chat' })
+  await vi.waitFor(async () => expect((await f.service.handle('getConversation', { id: main.id }) as ConversationDetail).messages.some(message => message.content === 'done: hello while working')).toBe(true))
+  expect((await f.read(first.id)).status).toBe('running'); expect((await f.read(second.id)).status).toBe('running')
+  expect(calls.map(call => call.prompt)).toEqual(['background one', 'background two', 'hello while working'])
+  hold.release()
 })

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 主聊天忙碌时消息立即展示且不挂载待发队列；仅任务会话提供队列操作。
  * [OUTPUT]: 恢复任务按钮仅请求右侧导航，主聊天编辑器/消息DOM与草稿保持。
  * [OUTPUT]: 聊天/任务切换共用主区并保留编辑器/草稿/消息DOM；无任务能力的会话没有员工Tabs。
  * [OUTPUT]: 任务标题/要求位于原消息ScrollArea内，不重建输入框或另一套会话滚动区。
@@ -60,6 +61,26 @@ beforeEach(() => {
 })
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.clearAllTimers(); vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks() })
 const render = () => act(async () => root.render(h(ChatView, props)))
+it.each([false, true])('shows queued turns as received IM messages only outside task sessions (task=%s)', async task => {
+  const detail = view('A')
+  if (task) detail.conversation.employeeTaskId = 'assignment'
+  const message = detail.messages[0]
+  message.turnId = 'queued-turn'
+  detail.turns = [{ id: 'queued-turn', conversationId: 'A', triggerMessageId: message.id, status: 'queued', generation: 0, createdAt: message.createdAt, modelCalls: 0, publicMessages: 0 }]
+  const request = vi.fn(async (method: string) => method === 'listConversationQueue' ? { items: [{ id: 'queued-turn', conversationId: 'A', revision: 0, content: message.content, createdAt: message.createdAt, attachmentCount: 0 }] } : [])
+  props = { ...props, detail, conversation: detail.conversation, api: { ...props.api, request } as unknown as DesktopApi, onSend: vi.fn() }
+  await render()
+  const queue = host.querySelector('[aria-label="待发送消息队列"]')
+  expect(Boolean(queue)).toBe(task)
+  expect(Boolean(host.querySelector(`[data-reading-message-id="${message.id}"]`))).toBe(!task)
+  expect(request.mock.calls.some(([method]) => method === 'listConversationQueue')).toBe(task)
+  if (task) {
+    expect(queue?.textContent).toContain(message.content)
+    expect(queue?.querySelector('[aria-label="立即发送"]')).not.toBeNull()
+  }
+  await act(async () => enter())
+  expect(props.onSend).toHaveBeenCalledOnce()
+})
 it('opens employee tasks from the header without replacing the main chat or draft', async () => {
   props.onTasks = vi.fn()
   await render()

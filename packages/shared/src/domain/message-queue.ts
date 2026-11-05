@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Original user turns and task-session dispatches waiting to execute.
- * [OUTPUT]: Conversation-scoped queue projection and revision-aware remove/send-now actions.
+ * [INPUT]: Original task-session dispatches waiting to execute.
+ * [OUTPUT]: Task-conversation-scoped queue projection and revision-aware remove/send-now actions.
  * [POS]: Composer queue contract; task status and internal Agent todos remain independent.
  * [PROTOCOL]: Update Header and owning .folder.md on change.
  */

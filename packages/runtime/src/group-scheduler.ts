@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: Composer消息优先级持久化；队列操作暂缓认领，实际当前轮退出前不启动下一轮。
+ * [OUTPUT]: 主聊天新消息沿IM接收并交接后续处理；任务会话按原轮次串行，取消后仍等真实执行退出。
  * [OUTPUT]: 2026-10-27 移除判断/发言/接续代数上限，保留真实完成、等待与局部重复暂停。
  * [OUTPUT]: 群判断、主动发言和事件接续只累计计数，不按次数或代数截断；保留取消、来源/成员校验及真实依赖。
  * [OUTPUT]: 默认执行不按累计调用、工具步骤、用量或墙钟截断；保留真实用量、取消/权限和明确指定的预算。
@@ -38,7 +38,7 @@ export const decisionSchema = z.object({
   dependsOnContributions: z.array(z.object({ agentId: identifier, key: z.literal('main') }).strict()).max(12).optional(), observedThroughSequence: z.number().int().nonnegative(),
 }).strict()
 type EventRecord = ConversationEvent & { generation: number; sequence: number }
-type TurnRecord = DiscussionTurn & { queuePriority?: number; cancelledAgentIds?: string[]; epoch: number; decisionCalls?: number; deliveryFailure?: boolean }
+type TurnRecord = DiscussionTurn & { cancelledAgentIds?: string[]; epoch: number; decisionCalls?: number; deliveryFailure?: boolean }
 type DeliveryRecord = AgentDelivery & { failurePhase?: 'decision' | 'execution' }
 type Grant = { id: string; turnId: string; agentId: string; decisionId: string; contextVersion: number; status: 'active' | 'done' | 'expired' }
 type Active = { progressPaused: Set<string>; progress: Map<string, ProgressMonitor>; turn: TurnRecord; controller: AbortController; apiController: AbortController; employeeControllers: Map<string, AbortController>; pending: Map<string, AgentDelivery>; inflight: Map<string, Promise<void>>; ready: Map<string, DecisionRecord>; waiting: Map<string, DecisionRecord>; handled: Set<string>; contributions: Map<string, number>; retriedDependencies: Set<string>; invited: Set<string>; tasks: Map<string, Promise<void>>; deferredWork: Set<string>; awaitingExecution: Set<string>; chats: Map<string, Promise<void>>; wake: () => void; wakePromise: Promise<void>; promise: Promise<void>; yielded: boolean; asked: boolean; budgetLimited?: boolean; latestEvent: EventRecord; done: boolean }
@@ -170,19 +170,8 @@ export class GroupScheduler {
   accept(prepared: ReturnType<GroupScheduler['prepare']>) {
     this.turns.set(prepared.turn.id, prepared.turn); this.events.set(prepared.event.id, prepared.event)
     for (const delivery of prepared.deliveries) this.deliveries.set(delivery.id, delivery)
-    if (!prepared.turn.wakeId && prepared.turn.replyToTurnIds?.length) for (const previous of this.active.values()) if (previous.turn.conversationId === prepared.turn.conversationId) { previous.yielded = true; if (previous.done) previous.controller.abort(new Error('优先处理用户的新消息')); previous.wake() }
+    if (!prepared.turn.wakeId && (!this.hooks.conversation(prepared.turn.conversationId).employeeTaskId || prepared.turn.replyToTurnIds?.length)) for (const previous of this.active.values()) if (previous.turn.conversationId === prepared.turn.conversationId) { previous.yielded = true; if (previous.done) previous.controller.abort(new Error('优先处理用户的新消息')); previous.wake() }
     this.kick(prepared.turn.conversationId)
-  }
-  pauseQueue(conversationId: string) {
-    this.cancelling.set(conversationId, (this.cancelling.get(conversationId) ?? 0) + 1)
-    let released = false
-    return () => {
-      if (released) return
-      released = true
-      const remaining = (this.cancelling.get(conversationId) ?? 1) - 1
-      if (remaining) this.cancelling.set(conversationId, remaining)
-      else { this.cancelling.delete(conversationId); this.kick(conversationId) }
-    }
   }
   hasActiveTurn(turnId: string) { return [...this.active.values()].some(active => active.turn.id === turnId) }
   canStartWork(turnId: string, agentId?: string) { return [...this.active.values()].some(active => active.turn.id === turnId && this.alive(active, agentId) && !active.yielded) }
@@ -260,7 +249,7 @@ export class GroupScheduler {
   private kick(conversationId: string) {
     if (this.closing || this.cancelling.has(conversationId) || this.hooks.queueBlocked?.(conversationId)) return
     const running = [...this.active.values()].filter(active => active.turn.conversationId === conversationId)
-    const queued = [...this.turns.values()].filter(turn => turn.conversationId === conversationId && turn.status === 'queued').sort((a, b) => (a.queuePriority ?? 0) - (b.queuePriority ?? 0))
+    const queued = [...this.turns.values()].filter(turn => turn.conversationId === conversationId && turn.status === 'queued')
     const opening = (turn: DiscussionTurn) => !!turn.startIntentId && !!turn.collaborationRequestId && [...this.events.values()].some(event => event.turnId === turn.id && event.type === 'collaboration_start' && event.collaborationRequestId === turn.collaborationRequestId)
     const userTurn = queued.find(turn => !turn.wakeId && !opening(turn))
     // Ordinary user input remains single-lane; only this opening's real directed work may overlap.
