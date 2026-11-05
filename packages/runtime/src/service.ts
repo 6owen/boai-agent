@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 已取消的记忆整理不阻塞主聊天新消息；真实执行退出屏障和模型容量占用保持。
  * [OUTPUT]: 员工主聊天共享本人任务活动/只读工具及API原文回忆；任务输出仍核对原来源并登记读取证据。
  * [OUTPUT]: 主聊天即时接收并展示消息，待发操作仅限任务会话；不同任务session与主聊天不再因员工相同互相占用。
  * [OUTPUT]: 会话删除在必要清理与提交后返回，不再同步VACUUM整库；已释放页面由SQLite复用，独立compact入口保持。
@@ -817,7 +818,11 @@ export class AppService {
       decide: (turn, event, delivery, signal, progress) => this.executeDecision(turn, event, delivery, signal, progress),
       speak: (turn, event, decision, signal, publish, progress) => this.executeResponse(turn, event, decision, signal, publish, progress),
       settled: (turn, participants, signal) => this.updateMemories(turn, participants, signal),
-      queueBlocked: conversationId => [...this.activeAdapters].some(id => { const run = this.runs.get(id); return run?.conversationId === conversationId && terminal.has(run.status) }),
+      queueBlocked: conversationId => [...this.activeAdapters].some(id => {
+        const run = this.runs.get(id)
+        // Cancelled memory reads cannot hold up chat; invokeModel retains their capacity until actual exit.
+        return run?.conversationId === conversationId && terminal.has(run.status) && !(run.phase === 'memory' && run.status === 'cancelled')
+      }),
       contextSequence: conversationId => Math.max(0, ...this.conversationContextMessages(conversationId).map(message => message.sequence)),
       executionBusy: (conversationId, agentId) => [...this.activeAdapters].some(id => { const run = this.runs.get(id); return run?.conversationId === conversationId && run.agentId === agentId && run.phase === 'execution' }),
       idle: id => this.scheduleWork(id), changed: id => this.changed(id), error: error => this.emit({ type: 'runtime-error', error: this.errorMessage(error) }),
