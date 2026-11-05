@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 新消息在已取消的后台记忆适配器实际退出前开始；原优先级断言保持，测试失败也释放挂起调用。
  * [OUTPUT]: 等待同事期间私有汇报的schema错误保持原依赖、预算和一次性副作用；无效正文不发布。
  * [OUTPUT]: 2026-10-27 普通/bobo聊天与重复反馈通过原决策链；执行工具仍限执行阶段，停止/改权后的旧进度回调拒绝。
  * [OUTPUT]: 2026-10-27 本轮相关回归合同/源码更新；执行状态另行记录，不以源码存在判通过。
@@ -2111,13 +2112,17 @@ describe('local product service', () => {
     const { service, engine } = await fixture(); await configure(service)
     const direct = await conversation(service)
     let release!: () => void, calls = 0; const held = new Promise<void>(resolve => { release = resolve })
-    engine.extractMemory = async () => { calls++; if (calls === 1) await held; return [] }
-    await send(service, direct, '第一条', 'memory-first'); await until(() => calls === 1)
-    await send(service, direct, '第二条', 'memory-next')
-    await until(() => engine.contexts.length === 2)
-    release(); await idle(service, direct, 2)
-    expect((await detail(service, direct)).runs.filter(run => run.phase === 'memory').map(run => run.status)).toEqual(['cancelled', 'completed'])
-    expect(engine.contexts[1].messages.some(message => message.content === '第二条')).toBe(true)
+    let memorySignal: AbortSignal | undefined
+    engine.extractMemory = async context => { calls++; if (calls === 1) { memorySignal = context.signal; await held }; return [] }
+    try {
+      await send(service, direct, '第一条', 'memory-first'); await until(() => calls === 1)
+      await send(service, direct, '第二条', 'memory-next')
+      await until(() => engine.contexts.length === 2)
+      expect(memorySignal?.aborted).toBe(true)
+      release(); await idle(service, direct, 2)
+      expect((await detail(service, direct)).runs.filter(run => run.phase === 'memory').map(run => run.status)).toEqual(['cancelled', 'completed'])
+      expect(engine.contexts[1].messages.some(message => message.content === '第二条')).toBe(true)
+    } finally { release() }
   })
 
   it('restores a missing source with an empty hash and snapshots an external edit once across groups', async () => {
