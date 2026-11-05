@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: employee-task:result承载已提交结果的员工、任务、执行身份及当前显示状态。
  * [OUTPUT]: 会话消息队列统一读取、按版本移除或优先执行接口。
  * [OUTPUT]: 2026-11-04resolveExecutionMessage可返回已核验employeeTask，供任务面板导航；原conversation/message身份保持。
  * [OUTPUT]: 公开API Bobo历史配置读写合同，不暴露SQL或改变OM。
@@ -131,6 +132,7 @@ export type AppEvent =
   | { type: 'appearance:flush' }
   | { type: 'appearance:changed'; appearance: AppearanceSnapshot }
   | { type: 'app-icon:changed'; status: AppIconStatus }
+  | { type: 'employee-task:result'; occurrenceId: string; taskId: string; employeeId: string; employeeName: string; title: string; status: import('../domain/tracked-tasks').TrackedTaskStatus }
   | { type: 'automation:notice' }
   | { type: 'automation:navigate' }
   | { type: 'focus-conversation'; conversationId: string; messageId?: string }

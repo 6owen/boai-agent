@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 已提交任务结果发一次瞬时通知；恢复只校正状态，不重放通知或执行。
  * [OUTPUT]: 任务消息队列支持按版本移除和优先执行；固定当前会话的中断目标，保留其他队列并等待实际退出。
  * [OUTPUT]: 单次预约经原生后继游标适配正常派发，原受理事务消费并暂停注册；业务预览仍只有目标时刻，原指纹及历史保持。
  * [OUTPUT]: 启动按真实员工执行关联补齐旧定时assignment，保留任务ID/会话/人工状态；孤立来源字段和内部progress不晋升。
@@ -34,7 +35,7 @@ import type { Message } from '@boai/shared/domain'
 import { ProductStore, type RecordTransaction, type StoredRecord } from '../../adapters/storage/product-store'
 import { NativeSchedules, AUTOMATION_WORKFLOW, nativeScheduleCron, type NativeAutomationVersion } from './native-schedules'
 import { monitorPolicySchema } from './automation-monitor'
-import { linkEmployeeTask, syncEmployeeTask, ongoingTaskExecution, taskIdentity } from './employee-task-records'
+import { linkEmployeeTask, syncEmployeeTask, ongoingTaskExecution, taskIdentity, hasEmployeeTaskResult } from './employee-task-records'
 import { AutomationRepository } from './automation-repository'
 import { automationCollaborationSchema, automationOwnerSchema } from './automation-plan'
 import { activeOccurrence, pendingOccurrence, queuedOrder, sharesTaskExecutor, MAX_ACTIVE_AUTOMATIONS, nextTimes, scheduleSchema, automationCron, normalizeSchedule } from './schedule-policy'
@@ -73,6 +74,7 @@ interface Hooks {
   cancel(o: AutomationOccurrence, options?: { endWaiting: boolean }): Promise<void>
   changed(): void
   notify(): void
+  taskResult?(occurrence: AutomationOccurrence): Promise<void>
   capacityAvailable?(): void
 }
 const retryDelays = [1000, 3000, 10000]
@@ -123,7 +125,8 @@ export class AutomationService {
         }
         const latest = task.latestOccurrenceId ? await tx.get<AutomationOccurrence>('automationOccurrences', task.latestOccurrenceId) : undefined
         if (isEmployeeTaskAssignment(task)) {
-          if (['blocked', 'waiting_input'].includes(task.status) || task.status === 'in_progress' && task.statusSource === 'execution' && latest && !ongoingTaskExecution(latest)) await tx.put({ collection: 'agentTasks', id: task.id, value: { ...task, status: 'pending', revision: task.revision + 1 } })
+          if (['blocked', 'waiting_input'].includes(task.status)) await tx.put({ collection: 'agentTasks', id: task.id, value: { ...task, status: 'pending', revision: task.revision + 1 } })
+          else if (task.status === 'in_progress' && latest) await syncEmployeeTask(tx, latest, true)
           continue
         }
         if (['blocked', 'waiting_input'].includes(task.status) || task.status === 'in_progress' && task.statusSource !== 'manual' && latest && !['queued', 'admitted', 'running', 'waiting_user', 'waiting_work', 'waiting_approval', 'cancelling'].includes(latest.status)) await tx.put({ collection: 'agentTasks', id: task.id, value: { ...task, status: 'in_review', revision: task.revision + 1 } })
@@ -453,6 +456,7 @@ export class AutomationService {
         if (activeOccurrence.has(o.status) && !activeOccurrence.has(saved.status)) this.hooks.capacityAvailable?.()
         this.hooks.changed()
         this.hooks.notify()
+        if (!recovery && hasEmployeeTaskResult(saved) && !hasEmployeeTaskResult(o)) await this.hooks.taskResult?.(saved)
     }
   }
   actOnMessageQueue(input: ConversationQueueAction) {

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工任务结果提交后发送所属员工/任务/执行ID事件供全局Sonner提示，不依赖系统通知偏好。
  * [OUTPUT]: 已取消的记忆整理不阻塞主聊天新消息；真实执行退出屏障和模型容量占用保持。
  * [OUTPUT]: 员工主聊天共享本人任务活动/只读工具及API原文回忆；任务输出仍核对原来源并登记读取证据。
  * [OUTPUT]: 主聊天即时接收并展示消息，待发操作仅限任务会话；不同任务session与主聊天不再因员工相同互相占用。
@@ -874,6 +875,11 @@ export class AppService {
       }),
       inspect: occurrence => this.inspectAutomation(occurrence), cancel: (occurrence, options) => this.cancelAutomation(occurrence, options?.endWaiting),
       capacityAvailable: () => { for (const id of this.conversations.keys()) this.scheduleWork(id) },
+      taskResult: async occurrence => {
+        const task = occurrence.taskId ? await this.store.get<TrackedTask>('agentTasks', occurrence.taskId) : undefined
+        if (!task || !isEmployeeTaskAssignment(task) || task.sessionConversationId !== occurrence.conversationId) return
+        this.emit({ type: 'employee-task:result', occurrenceId: occurrence.id, taskId: task.id, employeeId: task.agentId, employeeName: this.getAgent(task.agentId).name, title: task.title, status: task.status })
+      },
       changed:()=>this.emit({type:'changed'}),notify:()=>this.emit({type:'automation:notice'}),
     })
     this.schedules = new ScheduleApi(this.store, this.automations, {
