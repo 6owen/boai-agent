@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 关闭失败保留清理重试，阻止继续使用旧会话；其他提供方保持独立。
  * [INPUT]: Real settings/SQLite stores, independent browser sessions and the shared tool bridge.
  * [OUTPUT]: Opt-in isolation, revision conflicts, original arguments, approvals, cancellation and media contracts.
  * [POS]: Browser plugin integration boundaries; live upstream browser smoke is recorded separately.
@@ -7,6 +8,7 @@
 import { afterEach, expect, it, vi } from 'vitest'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
+import { getEventListeners } from 'node:events'
 import { join } from 'node:path'
 import type { EngineContext } from '../packages/runtime/src/contracts'
 import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
@@ -113,4 +115,40 @@ it('keeps independent browser inputs out of persistent traces without changing e
   expect(JSON.stringify(summarizeMedia(trace))).not.toContain('PRIVATE_FIELD_VALUE')
   expect(input.arguments.text).toBe('PRIVATE_FIELD_VALUE')
   expect(summarizeMedia(summarizeMedia(trace))).toEqual(summarizeMedia(trace))
+})
+
+it('retains a failed close for retry and never reuses that session for tools', async () => {
+  const f = await fixture(); await f.enable('agent-browser')
+  await f.service.inspect('agent-browser', f.context)
+  f.session.close.mockRejectedValueOnce(new Error('fixture cleanup failure'))
+  await expect(f.service.closeRun('run-a')).rejects.toThrow('fixture cleanup failure')
+  await expect(f.service.inspect('agent-browser', f.context)).rejects.toThrow('关闭')
+  await expect(f.service.call({ provider: 'agent-browser', tool: 'browser_snapshot', arguments: {} }, f.context)).rejects.toThrow('关闭')
+  expect(f.session.call).not.toHaveBeenCalled()
+  await f.service.closeRun('run-a')
+  expect(f.session.close).toHaveBeenCalledTimes(2)
+  await f.service.closeRun('run-a')
+  expect(f.session.close).toHaveBeenCalledTimes(2)
+})
+
+it('keeps other providers independently closable when one cleanup fails', async () => {
+  const f = await fixture(); await f.enable('agent-browser'); await f.enable('browser-viewer')
+  const other = { ...f.session, close: vi.fn(async () => {}) }
+  factory.mockResolvedValueOnce(f.session).mockResolvedValueOnce(other)
+  await f.service.inspect('agent-browser', f.context)
+  await f.service.inspect('browser-viewer', { ...f.context, runId: 'run-b' })
+  f.session.close.mockRejectedValueOnce(new Error('fixture cleanup failure'))
+  await expect(f.service.close()).rejects.toThrow('fixture cleanup failure')
+  await f.service.close()
+  expect(f.session.close).toHaveBeenCalledTimes(2)
+  expect(other.close).toHaveBeenCalledTimes(1)
+})
+
+it('detaches abort listeners when session construction fails', async () => {
+  const f = await fixture(); await f.enable('agent-browser')
+  factory.mockRejectedValueOnce(new Error('cannot create browser'))
+  await expect(f.service.inspect('agent-browser', f.context)).rejects.toThrow('cannot create browser')
+  expect(getEventListeners(f.controller.signal, 'abort')).toHaveLength(0)
+  await f.service.closeRun('run-a')
+  expect(f.session.close).not.toHaveBeenCalled()
 })

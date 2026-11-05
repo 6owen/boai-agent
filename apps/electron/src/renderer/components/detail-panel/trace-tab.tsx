@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 整份历史共享8MiB正文缓存；最多保留八个已折叠正文，移出列表/范围变化及卸载释放旧状态。
  * [OUTPUT]: 标识原判断/协调/执行阶段；无可读Run时允许显示保留的单次运行记录。
  * [OUTPUT]: 聊天历史包含已发布的定时执行；跟踪原来源更新/删除，并复用精确停止入口。
  * [OUTPUT]: 2026-10-27移除任务结果入口与弹窗，执行记录沿原详情展示。
@@ -15,7 +16,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
 import { isNativeBackend } from '@boai/shared/domain/backends'
-import { useEffect, useLayoutEffect, useState, useRef, useCallback, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useState, useRef, useCallback, useMemo, type ReactNode } from 'react'
 import type { DesktopApi } from '@boai/shared/ipc'
 import type { Snapshot, AgentRun, DigitalAgent } from '@boai/shared/domain'
 import type { ExecutionHistoryPage } from '@boai/shared/domain/execution'
@@ -37,6 +38,7 @@ import { ExecutionMessageButton, type ExecutionMessageNavigation } from './execu
 import { ExecutionStopButton } from './execution-stop-button'
 
 const labels: Record<AgentRun['status'], string> = { queued: '排队中', running: '执行中', completed: '已完成', failed: '失败', cancelled: '已停止', interrupted: '已中断', waiting_approval: '等待批准' }
+const RETAINED_RUN_CONTENT_LIMIT = 8
 export function TraceTab({ api, conversationId, messageId, agentId, active, snapshot, occurrenceId, runId, title, onNavigateMessage, stopAction, emptyContent, emptyMessage = '发送消息后，可在这里查看员工的执行过程。' }: {
   api: DesktopApi; conversationId: string; messageId?: string; agentId?: string; active: boolean; snapshot: Snapshot; busy?: boolean; onRetry?(id: string): void; onStop?(id: string): void
   occurrenceId?: string; runId?: string; title?: string; emptyMessage?: string; emptyContent?: ReactNode; onNavigateMessage?: ExecutionMessageNavigation; stopAction?: ReactNode
@@ -44,8 +46,18 @@ export function TraceTab({ api, conversationId, messageId, agentId, active, snap
   const [views, setViews] = useState<Record<string, ExecutionView>>({})
   const [employee, setEmployee] = useState(agentId ?? ''), [items, setItems] = useState<ExecutionHistoryPage['items']>([]), [next, setNext] = useState<ExecutionHistoryPage['next']>()
   const [error, setError] = useState(''), [loaded, setLoaded] = useState(false), [open, setOpen] = useState<Record<string, boolean>>({})
-  const historyScope = useRef(''), paged = useRef(false), caches = useRef(new Map<string, ExecutionContentCache>())
+  const historyScope = useRef(''), paged = useRef(false)
+  const cache = useMemo(() => new ExecutionContentCache(), [api, conversationId, employee, occurrenceId, runId])
+  const [retained, setRetained] = useState<string[]>([])
   const sourceRooms = useRef(new Set<string>())
+  useEffect(() => () => cache.clear(), [cache])
+  useEffect(() => {
+    const ids = new Set(items.map(item => item.run.id))
+    sourceRooms.current = new Set(items.map(item => item.run.conversationId))
+    setOpen(previous => Object.keys(previous).some(id => !ids.has(id)) ? Object.fromEntries(Object.entries(previous).filter(([id]) => ids.has(id))) : previous)
+    setViews(previous => Object.keys(previous).some(id => !ids.has(id)) ? Object.fromEntries(Object.entries(previous).filter(([id]) => ids.has(id))) : previous)
+    setRetained(previous => previous.some(id => !ids.has(id)) ? previous.filter(id => ids.has(id)) : previous)
+  }, [items])
   useEffect(() => { setEmployee(agentId ?? '') }, [agentId, messageId])
   useEffect(() => {
     if (!active) return
@@ -61,26 +73,25 @@ export function TraceTab({ api, conversationId, messageId, agentId, active, snap
           })
           : await api.request('listExecutionHistory', { conversationId, occurrenceId, agentId: employee || undefined })
         if (!disposed) {
-          for (const item of page.items) sourceRooms.current.add(item.run.conversationId)
           setItems(previous => [...page.items, ...(paged.current ? previous.filter(item => !page.items.some(current => current.run.id === item.run.id) && (!employee || item.run.agentId === employee)) : [])]); if (!paged.current) setNext(page.next); setError(''); setLoaded(true)
           if (messageId) { const target = page.items.find(item => item.run.triggerMessageId === messageId || item.run.messageId === messageId); if (target) setOpen(previous => ({ ...previous, [target.run.id]: true })) }
         }
-      } catch (error) { if (!disposed) { setError(errorText(error)); if (runId) { setItems([]); caches.current.clear(); setLoaded(true) } } }
+      } catch (error) { if (!disposed) { setError(errorText(error)); if (runId) { setItems([]); cache.clear(); setLoaded(true) } } }
       finally { inFlight = false; if (again && !disposed) { again = false; timer = setTimeout(() => void load(), 150) } }
     }
     const scope = `${conversationId}:${employee}:${occurrenceId ?? ''}:${runId ?? ''}`
     if (historyScope.current !== scope) { historyScope.current = scope; paged.current = false; sourceRooms.current.clear(); setItems([]); setNext(undefined); setLoaded(false) }
     void load()
     const unsubscribe = api.subscribe(event => {
-      if ((event.type === 'conversation:cleared' || event.type === 'conversation:deleted') && event.conversationId === conversationId) { disposed = true; caches.current.clear(); setItems([]); setNext(undefined); setLoaded(true); return }
-      if ((event.type === 'conversation:cleared' || event.type === 'conversation:deleted') && sourceRooms.current.has(event.conversationId)) { setItems(previous => previous.filter(item => item.run.conversationId !== event.conversationId)); caches.current.clear() }
-      if (event.type === 'automation:history-deleted') { setItems(previous => previous.filter(item => item.run.origin?.occurrenceId !== event.occurrenceId)); caches.current.clear() }
+      if ((event.type === 'conversation:cleared' || event.type === 'conversation:deleted') && event.conversationId === conversationId) { disposed = true; cache.clear(); setItems([]); setNext(undefined); setLoaded(true); return }
+      if ((event.type === 'conversation:cleared' || event.type === 'conversation:deleted') && sourceRooms.current.has(event.conversationId)) { setItems(previous => previous.filter(item => item.run.conversationId !== event.conversationId)); cache.clear() }
+      if (event.type === 'automation:history-deleted') { setItems(previous => previous.filter(item => item.run.origin?.occurrenceId !== event.occurrenceId)); cache.clear() }
       if (event.type === 'changed' && (!event.conversationId || event.conversationId === conversationId || sourceRooms.current.has(event.conversationId)) && !timer) timer = setTimeout(() => { timer = undefined; void load() }, 180)
     })
     return () => { disposed = true; unsubscribe(); clearTimeout(timer) }
-  }, [api, conversationId, employee, active, messageId, occurrenceId, runId, agentId, title])
+  }, [api, conversationId, employee, active, messageId, occurrenceId, runId, agentId, title, cache])
   const loadMore = async () => {
-    try { paged.current = true; const scope = historyScope.current; const page = await api.request('listExecutionHistory', { conversationId, occurrenceId, agentId: employee || undefined, before: next }); if (scope !== historyScope.current) return; for (const item of page.items) sourceRooms.current.add(item.run.conversationId); setItems(previous => [...previous, ...page.items.filter(item => !previous.some(current => current.run.id === item.run.id))]); setNext(page.next) }
+    try { paged.current = true; const scope = historyScope.current; const page = await api.request('listExecutionHistory', { conversationId, occurrenceId, agentId: employee || undefined, before: next }); if (scope !== historyScope.current) return; setItems(previous => [...previous, ...page.items.filter(item => !previous.some(current => current.run.id === item.run.id))]); setNext(page.next) }
     catch (error) { setError(errorText(error)) }
   }
   const conversation = snapshot.conversations.find(value => value.id === conversationId)
@@ -101,11 +112,12 @@ export function TraceTab({ api, conversationId, messageId, agentId, active, snap
         const live = ['running', 'queued', 'waiting_approval'].includes(run.status)
         const expanded = open[run.id] ?? (live || index === 0)
         const agent = members.find(value => value.id === run.agentId), name = agent?.name ?? run.agentName
-        if (!caches.current.has(run.id)) caches.current.set(run.id, new ExecutionContentCache())
-        const cache = caches.current.get(run.id)!
-        const opened = expanded || open[run.id] !== undefined
+        const opened = expanded || retained.includes(run.id)
         return <Card key={run.id} size="sm" className="min-w-0 shrink-0 gap-0 p-0" data-execution-run-id={run.id}>
-          <Collapsible open={expanded} onOpenChange={value => setOpen(previous => ({ ...previous, [run.id]: value }))}>
+          <Collapsible open={expanded} onOpenChange={value => {
+            setOpen(previous => ({ ...previous, [run.id]: value }))
+            setRetained(previous => [...previous.filter(id => id !== run.id), run.id].slice(-RETAINED_RUN_CONTENT_LIMIT))
+          }}>
           <CardHeader className="flex min-w-0 flex-row items-center gap-2 p-2">
           <Popover>
             <PopoverTrigger openOnHover render={<Button variant="ghost" size="content" className="shrink-0 p-1" aria-label={`查看 ${name} 的资料`} />}>

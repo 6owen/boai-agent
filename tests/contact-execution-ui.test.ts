@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 执行历史替换共享正文预算，已折叠正文最多八项且淘汰后可重新打开。
  * [OUTPUT]: 主聊天展示定时原执行、刷新原来源及停止原occurrence，删除后撤掉过程卡片。
  * [OUTPUT]: 五项反馈的调度额度/取消接续或历史展示回归；具体验证边界以本文件用例为准。
  * [OUTPUT]: 订阅夹具沿DesktopApi声明回调类型，保持严格类型检查。
@@ -16,9 +17,11 @@ import type { AgentRun, DigitalAgent, Snapshot } from '../packages/shared/src/do
 import type { AppEvent, DesktopApi } from '../packages/shared/src/ipc'
 import { EmployeeExecutionNavigation, EmployeeExecutionPane } from '../apps/electron/src/renderer/components/employee/execution-pane'
 import { TraceTab } from '../apps/electron/src/renderer/components/detail-panel/trace-tab'
+import type { ExecutionContentCache } from '../apps/electron/src/renderer/components/detail-panel/execution-content-cache'
 import { EmployeeResourceCards } from '../apps/electron/src/renderer/components/employee/resource-cards'
 
-vi.mock('../apps/electron/src/renderer/components/detail-panel/execution-feed', () => ({ ExecutionFeed: ({ run }: { run: AgentRun }) => h('div', { 'data-feed-run': run.id }, run.id) }))
+const feedCaches = vi.hoisted(() => new Map<string, ExecutionContentCache>())
+vi.mock('../apps/electron/src/renderer/components/detail-panel/execution-feed', () => ({ ExecutionFeed: ({ run, cache }: { run: AgentRun; cache: ExecutionContentCache }) => { feedCaches.set(run.id, cache); return h('div', { 'data-feed-run': run.id }, run.id) } }))
 const agent = { id: 'ds', name: 'DS', configVersion: 1 } as DigitalAgent
 const snapshot = { agents: [agent], conversations: [{ id: 'room', kind: 'group', title: '天气讨论', agentIds: ['ds'] }], resources: [] } as unknown as Snapshot
 const run: AgentRun = { id: 'run-older', agentId: 'ds', agentName: 'DS', conversationId: 'room', triggerMessageId: 'prompt', messageId: 'answer', createdAt: '2026-10-17T06:00:00Z', status: 'completed', phase: 'execution', toolEvents: [] }
@@ -29,6 +32,7 @@ beforeEach(() => {
   vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
   vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener() {}, removeEventListener() {} }))
   Element.prototype.getAnimations = () => []
+  feedCaches.clear()
   listeners = new Set()
   request = vi.fn(async (method: string) => {
     if (method === 'listEmployeeExecutions') return { items: [summary] }
@@ -161,4 +165,51 @@ it('shows the scheduled source in main-chat history, stops its occurrence and fo
   items = []
   await act(async () => { listeners.forEach(listener => listener({ type: 'automation:history-deleted', occurrenceId: 'original-occurrence' })) })
   expect(host.querySelector('[data-feed-run="scheduled-run"]')).toBeNull()
+})
+
+it('shares one bounded body cache as the latest history replaces old runs', async () => {
+  let current = 0
+  request.mockImplementation(async () => ({ items: [{ run: { ...run, id: `run-${current}` }, trigger: 'history' }] }))
+  await act(async () => root.render(h(TraceTab, { api, snapshot, active: true, conversationId: 'room' })))
+  for (current = 1; current <= 12; current++) {
+    await refresh()
+    feedCaches.get(`run-${current}`)!.set(`body:${current}`, 'x'.repeat(1024 * 1024))
+  }
+  expect(new Set(feedCaches.values()).size).toBe(1)
+  const cache = [...feedCaches.values()][0]
+  expect(cache.bytes).toBeLessThanOrEqual(8 * 1024 * 1024)
+  await act(async () => listeners.forEach(listener => listener({ type: 'conversation:cleared', conversationId: 'room', hidden: false } as AppEvent)))
+  expect(cache.bytes).toBe(0)
+})
+
+it('retains only eight explicitly collapsed run bodies and can reopen an evicted one', async () => {
+  request.mockImplementation(async () => ({ items: Array.from({ length: 12 }, (_, index) => ({ run: { ...run, id: `run-${index}` }, trigger: `history-${index}` })) }))
+  await act(async () => root.render(h(TraceTab, { api, snapshot, active: true, conversationId: 'room' })))
+  for (let index = 0; index < 12; index++) {
+    if (index !== 0) await click(`[data-execution-run-id="run-${index}"] [data-slot="collapsible-trigger"]`)
+    await click(`[data-execution-run-id="run-${index}"] [data-slot="collapsible-trigger"]`)
+  }
+  await act(async () => { await vi.advanceTimersByTimeAsync(500) })
+  expect(host.querySelectorAll('[data-feed-run]').length).toBeLessThanOrEqual(8)
+  expect(host.querySelector('[data-feed-run="run-0"]')).toBeNull()
+  await click('[data-execution-run-id="run-0"] [data-slot="collapsible-trigger"]')
+  expect(host.querySelector('[data-feed-run="run-0"]')).not.toBeNull()
+})
+
+it('releases the old scope and unmounted history without accepting late cached bodies', async () => {
+  request.mockImplementation(async (_method, query) => ({ ...summary, run: { ...run, id: query.runId }, spans: [], artifacts: [] }))
+  const render = async (runId: string) => act(async () => root.render(h(TraceTab, { api, snapshot, active: true, conversationId: 'room', agentId: 'ds', runId })))
+  await render('run-older')
+  const old = feedCaches.get('run-older')!
+  old.set('body', 'old scope')
+  let finish!: (value: string) => void
+  const late = old.load('late-body', () => new Promise<string>(resolve => { finish = resolve }))
+  await render('run-new')
+  expect(old.bytes).toBe(0)
+  finish('old late scope'); await late
+  expect(old.bytes).toBe(0)
+  const current = feedCaches.get('run-new')!
+  current.set('body', 'current scope')
+  await act(async () => root.render(null))
+  expect(current.bytes).toBe(0)
 })

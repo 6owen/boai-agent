@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 成功发布及暂缓结束同样释放活跃上下文；持久Run/历史和实际适配器容量屏障保持。
  * [OUTPUT]: 员工任务结果提交后发送所属员工/任务/执行ID事件供全局Sonner提示，不依赖系统通知偏好。
  * [OUTPUT]: 已取消的记忆整理不阻塞主聊天新消息；真实执行退出屏障和模型容量占用保持。
  * [OUTPUT]: 员工主聊天共享本人任务活动/只读工具及API原文回忆；任务输出仍核对原来源并登记读取证据。
@@ -5505,6 +5506,7 @@ export class AppService {
       if (error instanceof ProgressStalledError) throw error
       throw new Error(this.redact(this.errorMessage(error), key))
     } finally {
+      this.activeEngineContexts.delete(run.id)
       try { await Promise.all([this.dataSources.closeRun(run.id), this.webSearch.connections.closeRun(run.id), this.desktopPlugin.closeRun(run.id)]) } finally {
         try { await this.browserPlugins.closeRun(run.id) } finally { try { await this.browserSessions.get(run.id)?.session.drain(); this.browserSessions.delete(run.id) } finally {
           releaseTask?.(); if (workDeadline) clearTimeout(workDeadline); signal.removeEventListener('abort', abort); this.runControllers.delete(run.id); this.organizationModelCalls.delete(run.id); await this.clearApprovals(run.id)

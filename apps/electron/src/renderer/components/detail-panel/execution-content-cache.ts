@@ -1,13 +1,14 @@
 /*
  * [INPUT]: Rovai execution-content-cache.ts @ f9acc2395283d49f0ce247dc0af2207c155f6eb6 (MIT)。
- * [OUTPUT]: 直接迁入可变高度虚拟列表/正文缓存；不截断持久执行内容。
+ * [OUTPUT]: 有界正文缓存可供整份执行历史共享；清理隔离迟到读取，不截断持久执行内容。
  * [POS]: BOAI执行面板的阅读基础，许可见shared/rovai/LICENSE。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
-/** Shared by a retained Run; full bodies and row state have a separate byte budget. */
+/** Full bodies and row state share one byte budget across the owning view. */
 export class ExecutionContentCache {
   private entries = new Map<string, { value: unknown; bytes: number }>()
   private pending = new Map<string, Promise<unknown>>()
+  private generation = 0
   onChange: (() => void) | null = null
   bytes = 0
   async load<T>(key: string, request: () => Promise<T>): Promise<T> {
@@ -15,9 +16,14 @@ export class ExecutionContentCache {
     if (cached !== undefined) return cached
     const pending = this.pending.get(key)
     if (pending) return pending as Promise<T>
-    const promise = request().then(value => { this.set(key, value); return value })
+    const generation = this.generation
+    const promise = request().then(value => { if (generation === this.generation) this.set(key, value); return value })
     this.pending.set(key, promise)
     try { return await promise } finally { if (this.pending.get(key) === promise) this.pending.delete(key) }
+  }
+  clear(): void {
+    this.generation++; this.entries.clear(); this.pending.clear(); this.bytes = 0
+    this.onChange?.()
   }
   get<T>(key: string): T | undefined {
     const entry = this.entries.get(key)
