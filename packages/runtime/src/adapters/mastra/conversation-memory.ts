@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 所有API员工私聊共用回忆指引/冷启动提示，沿员工resource跨任务续接；Bobo原文设置保持。
  * [OUTPUT]: Bobo原文能力生成唯一回忆指引，关闭停用显式检索；WM/OM阈值保持。
  * [OUTPUT]: 可用原文工具时优先考虑一次search_history，官方recall仍可展开已定位会话；OM阈值保持。
  * [OUTPUT]: Bobo通过官方retrieval.instructions主动回忆；无OM记录时只补同一段system指引，阈值、历史加载与自主工具选择保持。
@@ -100,10 +101,11 @@ export class EmployeeConversationMemory {
     const providerOptions = thinkingProviderOptions(context.connection!, context.agent.modelId, context.agent.thinkingLevel, 'memory', context.modelCatalog)
     const storage = await this.store()
     const embedder = source.embedding ? await memoryEmbedder(context, source.embedding) : undefined
-    const boboPrivate = isCoreAgent(context.agent) && context.conversation.kind === 'direct' && !context.conversation.channel
-    const retrievalEnabled = !(boboPrivate && context.historySearch?.settings.mode === 'off') && context.groupCoordination?.mode !== 'ordered' && !context.work?.organization && (!context.decision || context.decision.action === 'reply' || (boboPrivate && context.decision.action === 'ask'))
-    const boboRecall = retrievalEnabled && boboPrivate
-    const recallGuidance = boboRecall ? `${sourceRules}\n\n${context.historySearch?.guidance ?? boboRecallGuidance}` : sourceRules
+    const privateEmployee = context.conversation.kind === 'direct' && !context.conversation.channel
+    const boboPrivate = isCoreAgent(context.agent) && privateEmployee
+    const retrievalEnabled = !(privateEmployee && context.historySearch?.settings.mode === 'off') && context.groupCoordination?.mode !== 'ordered' && !context.work?.organization && (!context.decision || context.decision.action === 'reply' || (boboPrivate && context.decision.action === 'ask'))
+    const employeeRecall = retrievalEnabled && privateEmployee
+    const recallGuidance = employeeRecall ? `${sourceRules}\n\n${context.historySearch?.guidance ?? boboRecallGuidance}` : sourceRules
     const memory = new Memory({ storage, vector: this.vector, ...(embedder ? { embedder, embedderOptions: { maxRetries: 0 } } : {}), options: {
       lastMessages: 100,
       // OM retrieval indexes observations and resolves their source ranges; no duplicate raw-message vector pipeline.
@@ -211,7 +213,7 @@ export class EmployeeConversationMemory {
       // memory@1.32.1 skips retrieval.instructions in readOnly cold starts.
       // Do not create a record just to inject guidance: that also loads all raw
       // resource history. Supply only the same custom guidance via Agent.system.
-      const recallInstructions = boboRecall && !await om.getRecord(currentThread, source.resourceId) ? recallGuidance : undefined
+      const recallInstructions = employeeRecall && !await om.getRecord(currentThread, source.resourceId) ? recallGuidance : undefined
       guard()
       return { current, memory, recallInstructions, option: { thread: currentThread, resource: source.resourceId, options: { readOnly: true } } as const,
         dispose: () => memory.settled() }

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 主聊天查询自己的定时/人工任务与真实输出；在途不受手动done影响，禁止越权及删除后回填。
  * [OUTPUT]: 主聊天IM即时受理与任务session并发；队列/插队仅留在任务会话，退出屏障与原目标保持。
  * [OUTPUT]: 列清空覆盖跨分页/员工状态隔离/稳定回执/在途保护及定时任务重启不回填。
  * [OUTPUT]: bobo无需先建核心聊天即可创建、执行及持续修改独立任务；共用连接、状态、验收和重启回执，不产生主聊天投影。
@@ -992,4 +993,56 @@ it('runs two independent sessions of one employee concurrently while its main ch
   expect((await f.read(first.id)).status).toBe('running'); expect((await f.read(second.id)).status).toBe('running')
   expect(calls.map(call => call.prompt)).toEqual(['background one', 'background two', 'hello while working'])
   hold.release()
+})
+
+it('keeps main chat aware of its employee task activity and sourced results', async () => {
+  const hold = gate(), reports: { bootstrap: string; all: any; active: any }[] = []
+  const f = await setup(async ctx => {
+    if (ctx.conversation.employeeTaskId) {
+      if (ctx.bootstrap?.dynamicInstructions?.includes('manual goal')) await hold.promise
+      await ctx.onDelta('task output: ' + ctx.conversation.title)
+      await employeeTaskStatus(ctx, 'in_review'); return
+    }
+    expect((await ctx.application!.catalog({})).operations.map(op => op.name).sort()).toEqual(['tasks.activity', 'tasks.get', 'tasks.list', 'tasks.page'])
+    const all = await ctx.application!.call({ operation: 'tasks.activity', input: { includeDone: true } })
+    const active = await ctx.application!.call({ operation: 'tasks.activity', input: { activeOnly: true, includeDone: true } })
+    expect(all.status).toBe('succeeded'); expect(active.status).toBe('succeeded')
+    for (const input of [
+      { operation: 'employees.list', input: {} },
+      { operation: 'tasks.activity', input: { agentId: 'writer' } },
+      { operation: 'tasks.create', requestId: 'not-manager', input: { agentId: ctx.agent.id, title: 'not authorized' } },
+    ]) expect((await ctx.application!.call(input)).status).toBe('rejected')
+    reports.push({ bootstrap: ctx.bootstrap?.dynamicInstructions ?? '', all: all.data, active: active.data })
+    await ctx.onDelta('task activity read')
+  }); cleanup.push(hold.release)
+  const scheduled = await f.start(await f.create('Hefei weather'))
+  await vi.waitFor(async () => expect((await f.read(scheduled.id)).status).toBe('completed'))
+  const task = await f.service.handle('createEmployeeTask', { employeeId: 'researcher', description: 'manual goal', requestId: 'aware-manual' }) as TrackedTask
+  const running = await f.service.handle('runEmployeeTask', { employeeId: task.agentId, id: task.id, expectedRevision: task.revision, requestId: 'aware-run' }) as AutomationOccurrence
+  await vi.waitFor(async () => expect((await f.read(running.id)).status).toBe('running'))
+  const readTask = async () => (await f.service.handle('getEmployeeTask', { employeeId: task.agentId, id: task.id }) as import('../packages/shared/src/domain/employee-tasks').EmployeeTaskDetail).task
+  await f.service.handle('updateEmployeeTask', { employeeId: task.agentId, id: task.id, expectedRevision: (await readTask()).revision, status: 'done' })
+  await f.service.handle('createEmployeeTask', { employeeId: 'writer', description: 'OTHER_EMPLOYEE_PRIVATE', requestId: 'aware-other' })
+  await f.service.handle('executeApplicationOperation', { operation: 'tasks.create', requestId: 'aware-internal', input: { agentId: 'researcher', title: 'INTERNAL_PLAN_NOT_CARD' } })
+  const main = (await f.service.handle('snapshot', undefined) as Snapshot).conversations.find(room => room.mainPrivate && room.agentIds[0] === 'researcher')!
+  const ask = async (index: number) => {
+    await f.service.handle('sendMessage', { conversationId: main.id, content: '有什么任务刚执行完？', mentionIds: [], requestId: `aware-ask-${index}` })
+    await vi.waitFor(() => expect(reports).toHaveLength(index))
+    await vi.waitFor(async () => expect((await f.service.handle('getConversation', { id: main.id }) as ConversationDetail).turns?.every(turn => turn.status === 'completed')).toBe(true))
+    return reports.at(-1)!
+  }
+  const first = await ask(1)
+  expect(first.bootstrap).toContain('Hefei weather'); expect(first.bootstrap).toContain('manual goal')
+  expect(JSON.stringify(first)).not.toContain('OTHER_EMPLOYEE_PRIVATE'); expect(JSON.stringify(first.all)).not.toContain('INTERNAL_PLAN_NOT_CARD')
+  expect(first.all.items).toHaveLength(2)
+  expect(first.all.items.find((item: any) => item.id === scheduled.taskId)).toMatchObject({ status: 'in_review', latestExecution: { id: scheduled.id, status: 'completed' }, latestOutput: { content: 'task output: ' + (await f.service.handle('getConversation', { id: scheduled.conversationId }) as ConversationDetail).conversation.title, conversationId: scheduled.conversationId } })
+  expect(first.active.items).toMatchObject([{ id: task.id, status: 'done', activeExecutions: [{ id: running.id, status: 'running' }] }])
+  expect((await f.service.handle('getConversation', { id: main.id }) as ConversationDetail).messages.some(message => message.content.startsWith('task output:'))).toBe(false)
+  hold.release(); await vi.waitFor(async () => expect((await f.read(running.id)).status).toBe('completed'))
+  const second = await ask(2)
+  expect(second.active.items).toEqual([])
+  expect(second.all.items.find((item: any) => item.id === task.id).latestOutput.content).toContain('task output:')
+  await f.service.handle('deleteEmployeeTask', { employeeId: task.agentId, id: task.id, expectedRevision: (await readTask()).revision })
+  const third = await ask(3)
+  expect(third.all.items.map((item: any) => item.id)).toEqual([scheduled.taskId]); expect(third.bootstrap).not.toContain(task.id)
 })

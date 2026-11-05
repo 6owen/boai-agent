@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工主聊天共享本人任务活动/只读工具及API原文回忆；任务输出仍核对原来源并登记读取证据。
  * [OUTPUT]: 主聊天即时接收并展示消息，待发操作仅限任务会话；不同任务session与主聊天不再因员工相同互相占用。
  * [OUTPUT]: 会话删除在必要清理与提交后返回，不再同步VACUUM整库；已释放页面由SQLite复用，独立compact入口保持。
  * [OUTPUT]: 员工任务列清空转交EmployeeTaskService原事务与在途保护。
@@ -208,7 +209,7 @@
 import { EmployeeTaskService } from './modules/automations/employee-task-service'
 import { ScheduleApi } from './modules/automations/schedule-api'
 import { ScheduleError } from '@boai/shared/domain/schedules'
-import { employeeTaskInstructions, employeeTaskOperations } from './modules/employees/employee-task-context'
+import { employeeTaskInstructions, employeeTaskOperations, employeeTaskReadOperations, employeeMainConversation, employeeTaskAwareness } from './modules/employees/employee-task-context'
 import { isEmployeeTaskAssignment, type TrackedTask } from '@boai/shared/domain/tracked-tasks'
 import { workingScene } from './modules/contexts/working-scene'
 import { progressBoundary } from './adapters/mastra/progress-review'
@@ -229,6 +230,7 @@ import { isApplicationHostMethod, type ApplicationHostPort } from '@boai/shared/
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { ApplicationService } from './modules/application/application-service'
 import { rememberMemorySchema } from './modules/memory/memory-tools'
+import { taskActivityOperation, type TaskOutputs } from './modules/application/task-activity'
 import { taskOperations } from './modules/application/task-operations'
 import { planningOperations, readPlanningState, planningInstructions } from './modules/application/planning-operations'
 import { planOperations, activePlanInstructions } from './modules/application/plan-operations'
@@ -613,7 +615,7 @@ export class AppService {
       if (!isAbsolute(path)) fail('预览目录必须是绝对路径')
       if (!directory && !write) return path
       return realpath(path)
-    }, scope => this.emit({ type: 'workspace:show', ...scope }), () => !!options.applicationHost?.available), ...this.presentations.operations(), ...this.images.operations(), ...this.selfies.operations(), ...taskOperations(this.store, room => { this.conversations.set(room.id, room) }), ...planningOperations(this.store), ...planOperations(this.store), ...referenceOperations(this.store, (...args) => this.serialize(() => this.referenceObjects(...args))), ...applicationOperations({ schedules: () => this.schedules, request: async (method, input) => await this.handle(method, input) as never, personality: (action, input) => this.agentPersonality(action, input) }, { connection: connectionSchema, conversation: conversationSchema, search: searchSchema }, options.applicationHost)], async (actor, operation) => {
+    }, scope => this.emit({ type: 'workspace:show', ...scope }), () => !!options.applicationHost?.available), ...this.presentations.operations(), ...this.images.operations(), ...this.selfies.operations(), taskActivityOperation(this.store, (tasks, actor) => this.employeeTaskOutputs(tasks, actor)), ...taskOperations(this.store, room => { this.conversations.set(room.id, room) }), ...planningOperations(this.store), ...planOperations(this.store), ...referenceOperations(this.store, (...args) => this.serialize(() => this.referenceObjects(...args))), ...applicationOperations({ schedules: () => this.schedules, request: async (method, input) => await this.handle(method, input) as never, personality: (action, input) => this.agentPersonality(action, input) }, { connection: connectionSchema, conversation: conversationSchema, search: searchSchema }, options.applicationHost)], async (actor, operation) => {
       if (actor.kind === 'owner') return
       if (actor.kind === 'behavior') {
         const { run, behavior } = await this.agentBehaviors.assertActive(actor.behaviorRunId)
@@ -628,6 +630,10 @@ export class AppService {
           if (operation && !employeeTaskOperations.has(operation.name)) fail('员工任务会话仅提供当前任务读取和更新，请沿原任务ID处理')
           return
         }
+      }
+      if (!isCoreAgent(agent) && employeeMainConversation(agent.id, room) && source?.conversationId === room.id && source.senderType === 'user' && source.senderId === 'user' && !source.channel && !source.origin) {
+        if (operation && !employeeTaskReadOperations.has(operation.name)) fail('员工主聊天仅提供自己的任务读取，不授予应用管理权限')
+        return
       }
       if (!isCoreAgent(agent) || room.channel || !room.agentIds.includes(agent.id) || source?.conversationId !== room.id || source.senderType !== 'user' || source.senderId !== 'user' || source.channel || source.origin) fail('此应用管理操作需要本人或当前核心员工的真实会话授权')
     }, actor => {
@@ -4173,6 +4179,8 @@ export class AppService {
     const planning = planningInstructions(await readPlanningState(this.store, agent.id, conversation.id))
     if (planning) loaded.bootstrap.dynamicInstructions = [loaded.bootstrap.dynamicInstructions, planning].filter(Boolean).join('\n\n')
     const taskInstructions = run.phase === 'execution' ? await employeeTaskInstructions(this.store, agent.id, conversation, origin?.occurrenceId) : ''
+    const taskAwareness = run.phase !== 'memory' ? await employeeTaskAwareness(this.store, agent.id, conversation) : ''
+    if (taskAwareness) loaded.bootstrap.dynamicInstructions = [loaded.bootstrap.dynamicInstructions, taskAwareness].filter(Boolean).join('\n\n')
     if (taskInstructions) loaded.bootstrap.dynamicInstructions = [loaded.bootstrap.dynamicInstructions, taskInstructions].filter(Boolean).join('\n\n')
     if (isCoreAgent(agent) && !conversation.channel) {
       const trigger = this.messages.get(turn.triggerMessageId)
@@ -4568,7 +4576,7 @@ export class AppService {
       context.continuity = this.contextContinuity(context, throughSequence)
       if (this.options.engine.memoryOwner === 'mastra') {
         context.memorySources = () => this.mastraMemorySources(context)
-        if (isCoreAgent(agent) && conversation.kind === 'direct' && !conversation.channel) {
+        if (conversation.kind === 'direct' && !conversation.channel) {
           const settings = await readHistorySettings(this.store, agent.id)
           context.historySearch = createHistoryCapability(settings, (input, options) => this.serialize(async () => {
             if ((await readHistorySettings(this.store, agent.id)).mode === 'off') fail('原文历史检索已关闭')
@@ -4582,14 +4590,15 @@ export class AppService {
       }
     }
     if (context.memoryOwner) { delete context.rememberMemory; delete context.recallMemory; delete context.externalMemory }
-    if (taskInstructions && run.phase === 'execution') {
+    if ((taskInstructions || taskAwareness && !isCoreAgent(agent)) && run.phase === 'execution') {
+      const taskOperations = taskInstructions ? employeeTaskOperations : employeeTaskReadOperations
       const actor = { kind: 'employee' as const, employeeId: agent.id, conversationId: conversation.id, messageId: turn.triggerMessageId }
       const validate = async () => { signal.throwIfAborted(); await this.serialize(() => this.assertExecutionAccess(context)) }
       context.application = {
         catalog: async query => {
           await validate()
           const catalog = await this.application.catalog({ ...query, domain: 'tasks' }, actor)
-          return { ...catalog, operations: catalog.operations.filter(operation => employeeTaskOperations.has(operation.name)) }
+          return { ...catalog, operations: catalog.operations.filter(operation => taskOperations.has(operation.name)) }
         },
         receipt: async query => { await validate(); return this.application.receipt(query, actor) },
         call: async input => {
@@ -4604,6 +4613,24 @@ export class AppService {
     return context
     })
   }
+  private employeeTaskOutputs: TaskOutputs = (tasks, actor) => this.serialize(async () => {
+    const result = new Map<string, Pick<Message, 'id' | 'conversationId' | 'content' | 'createdAt'>>()
+    if (actor.kind !== 'employee') return result
+    const active = [...this.activeEngineContexts.values()].find(({ context }) => context.agent.id === actor.employeeId && context.conversation.id === actor.conversationId && context.triggerMessageId === actor.messageId)
+    if (!active) return result
+    const context = active.context, sources = await this.collectHistorySources(context), evidence: HistorySources['threads'] = []
+    for (const item of tasks) {
+      const task = await this.store.get<TrackedTask>('agentTasks', item.id)
+      if (!task || task.agentId !== actor.employeeId || !isEmployeeTaskAssignment(task)) continue
+      const thread = sources.threads.find(thread => thread.conversationId === task.sessionConversationId)
+      const output = thread?.messages.filter(message => message.senderType === 'agent' && message.senderId === actor.employeeId).at(-1)
+      if (!thread || !output) continue
+      result.set(task.id, { id: output.id, conversationId: output.conversationId, content: output.content, createdAt: output.createdAt })
+      evidence.push({ ...thread, messages: [output] })
+    }
+    await this.registerHistorySources(context, evidence)
+    return result
+  })
   private mastraMemorySources(context: EngineContext) {
     return this.serialize(() => this.collectMastraMemorySources(context))
   }

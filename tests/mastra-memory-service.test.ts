@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 同员工主聊天与独立任务共用Mastra resource、各自thread，并可检索刚完成任务原文。
  * [INPUT]: Real AppService, Mastra Memory and ProductStore with an isolated API employee.
  * [OUTPUT]: Shared API memory wiring, source isolation, no legacy extraction/injection and management/backup continuity.
  * [POS]: Host integration; the response is controlled and no external model is invoked.
@@ -115,4 +116,30 @@ it.each(['codex', 'claude'] as const)('keeps %s native memory outside Mastra man
   await expect(f.service.handle('clearMemory', { ...query, expectedEpoch: view.epoch })).rejects.toThrow('本机 Agent')
   await expect(f.service.handle('configureMemory', { agentId: f.agent.id, expectedRevision: 0, embedding: null })).rejects.toThrow('本机 Agent')
   expect(memoryView).not.toHaveBeenCalled()
+})
+
+
+it('shares employee memory across main chat and task threads and retrieves a fresh task result', async () => {
+  const f = await setup(), sources: any[] = [], prepared: { resource: string; thread: string; guidance?: string }[] = [], searches: unknown[] = []
+  f.engine.run = async ctx => {
+    sources.push(await ctx.memorySources!())
+    const memory = await f.memory.prepare(ctx)
+    prepared.push({ ...memory.option, guidance: memory.recallInstructions })
+    if (!ctx.conversation.employeeTaskId) searches.push(await ctx.historySearch!.search({ query: 'MEMORY_TASK_RESULT' }))
+    await ctx.onDelta(ctx.conversation.employeeTaskId ? 'MEMORY_TASK_RESULT: Hefei weather delivered' : 'main reply')
+  }
+  await send(f.service, f.direct, '员工长期偏好：用中文回答。')
+  const task = await f.service.handle('createEmployeeTask', { employeeId: 'researcher', description: '查询合肥天气', requestId: 'memory-task' }) as import('../packages/shared/src/domain/tracked-tasks').TrackedTask
+  const run = await f.service.handle('runEmployeeTask', { employeeId: task.agentId, id: task.id, expectedRevision: task.revision, requestId: 'memory-task-run' }) as import('../packages/shared/src/domain/automations').AutomationOccurrence
+  await vi.waitFor(async () => expect((await f.service.handle('getAutomationOccurrence', { id: run.id }) as typeof run).status).toBe('completed'))
+  expect(JSON.stringify(sources.at(-1))).toContain('员工长期偏好')
+  await send(f.service, f.direct, '刚才查询任务的结果是什么？')
+  expect(prepared.map(value => value.resource)).toEqual(Array(3).fill('employee:researcher:private'))
+  expect(prepared[0].thread).toBe(prepared[2].thread); expect(prepared[1].thread).not.toBe(prepared[0].thread)
+  expect(prepared.every(value => value.guidance?.includes('search_history'))).toBe(true)
+  expect(JSON.stringify(sources.at(-1))).toContain('MEMORY_TASK_RESULT: Hefei weather delivered')
+  expect(JSON.stringify(searches.at(-1))).toContain('MEMORY_TASK_RESULT: Hefei weather delivered')
+  const documents = (await f.memory.view('researcher')).documents
+  expect(documents.find(item => item.resourceId === 'employee:researcher:private')!.conversationIds).toEqual(expect.arrayContaining([f.direct.id, run.conversationId]))
+  expect((await f.service.handle('getConversation', { id: f.direct.id }) as ConversationDetail).messages.some(message => message.content.startsWith('MEMORY_TASK_RESULT'))).toBe(false)
 })

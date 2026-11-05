@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 任务活动支持指定taskId与真实在途筛选；游标绑定同一员工/筛选范围。
  * [OUTPUT]: 看板使用可信assignmentsOnly范围，SQL分页前排除内部进度；工具分页仍可读取原进度记录。
  * [OUTPUT]: 任务分页兼容等待补充状态，普通读取不启动执行。
  * [INPUT]: Original task records, fixed SQL read model and trusted application actor.
@@ -14,16 +15,16 @@ import type { ProductStore } from '../../adapters/storage/product-store'
 import { ApplicationValidationError, type ApplicationOperation } from './application-service'
 
 const id = z.string().min(1).max(200)
-const query = z.object({ agentId: id.optional(), conversationId: id.optional(), status: z.enum(['pending', 'in_progress', 'in_review', 'done', 'closed']).optional(), includeDone: z.boolean().default(false), limit: z.number().int().min(1).max(TASK_PAGE_LIMITS.maxPage).default(TASK_PAGE_LIMITS.page), cursor: z.string().min(1).max(2048).regex(/^[A-Za-z0-9_-]+$/).optional() }).strict()
+export const taskPageQuery = z.object({ taskId: id.optional(), activeOnly: z.boolean().default(false), agentId: id.optional(), conversationId: id.optional(), status: z.enum(['pending', 'in_progress', 'in_review', 'done', 'closed']).optional(), includeDone: z.boolean().default(false), limit: z.number().int().min(1).max(TASK_PAGE_LIMITS.maxPage).default(TASK_PAGE_LIMITS.page), cursor: z.string().min(1).max(2048).regex(/^[A-Za-z0-9_-]+$/).optional() }).strict()
 const cursor = z.object({ version: z.literal(1), key: z.string().length(64), updatedAt: z.string().datetime(), id }).strict()
 const invalid = () => { throw new ApplicationValidationError('INVALID_INPUT', '任务分页游标已失效或不属于当前筛选，请从第一页重新读取') }
 
 export function taskPageOperation(store: ProductStore, assignmentsOnly = false): ApplicationOperation {
-  return { name: 'tasks.page', description: '分页读取明确登记的任务进度与来源；仅列表摘录，done不证明执行或成果验收。不会运行任务。', effect: 'read', input: query, resultType: 'TrackedTaskPage', execute: async (raw, _, actor: ApplicationActor): Promise<TrackedTaskPage> => {
-    const input = query.parse(raw)
+  return { name: 'tasks.page', description: '分页读取明确登记的任务进度与来源；仅列表摘录，done不证明执行或成果验收。不会运行任务。', effect: 'read', input: taskPageQuery, resultType: 'TrackedTaskPage', execute: async (raw, _, actor: ApplicationActor): Promise<TrackedTaskPage> => {
+    const input = taskPageQuery.parse(raw)
     if (actor.kind !== 'owner' && input.agentId && input.agentId !== actor.employeeId) throw new ApplicationValidationError('FORBIDDEN', '任务不属于当前员工可用范围')
     const viewer = actor.kind === 'owner' ? undefined : { employeeId: actor.employeeId, conversationId: actor.conversationId }
-    const filters = { agentId: input.agentId ?? viewer?.employeeId, conversationId: input.conversationId, status: input.status, includeDone: input.status ? false : input.includeDone, assignmentsOnly }
+    const filters = { taskId: input.taskId, activeOnly: input.activeOnly, agentId: input.agentId ?? viewer?.employeeId, conversationId: input.conversationId, status: input.status, includeDone: input.status ? false : input.activeOnly || input.includeDone, assignmentsOnly }
     const key = createHash('sha256').update(JSON.stringify({ filters, viewer: viewer ?? 'owner' })).digest('hex')
     let before: { updatedAt: string; id: string } | undefined
     if (input.cursor) {

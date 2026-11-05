@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 真实在途任务在LIMIT前筛选，不被新卡或手动done遮蔽；同任务多次执行及重启身份保持。
  * [OUTPUT]: 人工委派看板在分页前隔离内部/旧进度，工具不能伪造或晋升委派；原只读分页与回执保持。
  * [INPUT]: Real SQLite/ProductStore, original task mutations and authenticated application actors.
  * [OUTPUT]: Bounded task pages, filter-before-LIMIT access, stable cursors/reopen, honest projection and zero read-side mutation.
@@ -13,6 +14,7 @@ import { randomUUID } from 'node:crypto'
 import type { ApplicationActor } from '../packages/shared/src/domain/application-protocol'
 import { TASK_PAGE_LIMITS, isEmployeeTaskAssignment, type TrackedTask, type TrackedTaskPage } from '../packages/shared/src/domain/tracked-tasks'
 import { taskPageOperation } from '../packages/runtime/src/modules/application/task-page'
+import { readTaskActivity } from '../packages/runtime/src/modules/application/task-activity'
 import { ProductStore, type StoredRecord } from '../packages/runtime/src/adapters/storage/product-store'
 import { ApplicationService } from '../packages/runtime/src/modules/application/application-service'
 import { taskOperations } from '../packages/runtime/src/modules/application/task-operations'
@@ -39,6 +41,25 @@ async function fixture() {
   }
   return { get store() { return store }, app, call, page, reopen: async () => { await app.drain(); await store.close(); store = new ProductStore(join(root, 'data.sqlite')); await store.init(); app = new ApplicationService(store, taskOperations(store), async () => {}) } }
 }
+
+it('finds older live executions before LIMIT and independently of the card display status after restart', async () => {
+  const f = await fixture(), actor: ApplicationActor = { kind: 'employee', employeeId: 'a', conversationId: 'direct', messageId: 'question' }
+  await f.store.write([
+    record('agentTasks', task('old-active', { kind: 'assignment', status: 'done', latestOccurrenceId: 'queued-next' })),
+    ...Array.from({ length: 45 }, (_, index) => record('agentTasks', task(`new-${index}`, { kind: 'assignment', updatedAt: '2026-11-05T01:00:00.000Z' }))),
+    ...['running', 'queued'].map((status, index) => record('automationOccurrences', { id: index ? 'queued-next' : 'running-first', taskId: 'old-active', status, plan: { employeeIds: ['a'] }, startedAt: time } as any)),
+  ])
+  const first = await readTaskActivity(f.store, { activeOnly: true, limit: 1 }, actor)
+  expect(first.items).toHaveLength(1); expect(first.items[0]).toMatchObject({ id: 'old-active', status: 'done' })
+  expect(first.items[0].activeExecutions.map(item => item.status).sort()).toEqual(['queued', 'running'])
+  expect(first.nextCursor).toBeUndefined()
+  expect((await f.page({ activeOnly: true, limit: 1 }, actor)).items[0].id).toBe('old-active')
+  const recent = await readTaskActivity(f.store, { limit: 2 }, actor)
+  expect(recent.items).toHaveLength(2); expect(recent.nextCursor).toBeTruthy()
+  await expect(readTaskActivity(f.store, { activeOnly: true, cursor: recent.nextCursor }, actor)).rejects.toThrow('游标')
+  await f.reopen()
+  expect((await readTaskActivity(f.store, { activeOnly: true, taskId: 'old-active' }, actor)).items[0].activeExecutions).toEqual(first.items[0].activeExecutions)
+})
 
 it('filters internal progress before Kanban pagination and binds cursors to that boundary', async () => {
   const f = await fixture()
