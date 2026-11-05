@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Upstream Mastra browser packages, a run identity and a host command callback.
- * [OUTPUT]: Original upstream tool schemas/results and independently owned browser lifecycle.
+ * [OUTPUT]: Original tools and owned lifecycle; failed close retries only unfinished browser/CLI/directory cleanup stages.
  * [POS]: Thin community-browser adapter; never connects to BOAI's Electron browser or cookies.
  * [PROTOCOL]: Update Header and src/.folder.md on change.
  */
@@ -59,7 +59,7 @@ export async function createBrowserPluginSession(provider: Provider, config: Bro
     : new (await import('@mastra/browser-viewer')).BrowserViewer({ ...options, cli: 'agent-browser' })
   const tools = browser.getTools()
   const cli = new BrowserCliHandler()
-  let closed = false, cliStarted = false, closeTask: Promise<void> | undefined
+  let closed = false, browserClosed = false, cliStarted = false, closeTask: Promise<void> | undefined
   let socketDirectory: string | undefined
   const cliThread = `boai-${createHash('sha256').update(threadId).digest('hex').slice(0,16)}`
   const cliCommand = (command: string) => {
@@ -94,15 +94,16 @@ export async function createBrowserPluginSession(provider: Provider, config: Bro
       closed = true
       return closeTask ??= (async () => {
         // Close the browser first so a waiting CLI operation releases host command admission.
-        try { await browser.close() }
+        try { if (!browserClosed) { await browser.close(); browserClosed = true } }
         finally {
           if (cliStarted) {
             const result = await execute(cliCommand(`agent-browser --session ${quote(cliThread)} close`), true, [socketDirectory!]) as { exitCode?: number | null }
             if (result?.exitCode !== undefined && result.exitCode !== 0) throw new Error('BrowserViewer CLI 清理失败，临时会话目录已保留')
+            cliStarted = false
           }
-          if (socketDirectory) await rm(socketDirectory, { recursive: true, force: true })
+          if (browserClosed && socketDirectory) { await rm(socketDirectory, { recursive: true, force: true }); socketDirectory = undefined }
         }
-      })()
+      })().catch(error => { closeTask = undefined; throw error })
     },
   }
 }

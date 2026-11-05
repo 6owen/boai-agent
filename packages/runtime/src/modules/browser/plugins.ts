@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 关闭失败保留会话并允许重试，关闭请求后禁止新工具；实际关闭和在途调用结束后才解除登记。
  * [INPUT]: Application plugin enablement, saved launch settings and the original execution context.
  * [OUTPUT]: Independent upstream browser sessions with existing approvals, cancellation and shutdown.
  * [POS]: Browser plugin host; never acquires BOAI's embedded-browser lease or login partition.
@@ -18,7 +19,7 @@ import { employeeCommandScope } from '../workspaces/directory-command'
 
 const collection = 'browserPluginSettings'
 const readTools = new Set(['browser_goto', 'browser_snapshot', 'browser_screenshot', 'browser_wait', 'browser_scroll', 'browser_back', 'browser_close'])
-interface Entry { provider: BrowserPluginProvider; runId: string; session: Promise<BrowserPluginSession>; tail: Promise<unknown>; closing?: Promise<void>; detach?(): void }
+interface Entry { provider: BrowserPluginProvider; runId: string; session: Promise<BrowserPluginSession>; tail: Promise<unknown>; closeRequested?: boolean; closing?: Promise<void>; detach?(): void }
 
 export class BrowserPluginService {
   private entries = new Map<string, Entry>()
@@ -88,12 +89,12 @@ export class BrowserPluginService {
         this.entries.set(key, value); entry = value
         const abort = () => { void this.closeEntry(value).catch(() => {}) }
         context.signal.addEventListener('abort', abort, { once: true })
-        void value.session.catch(() => { this.entries.delete(key) })
+        void value.session.catch(() => { value.detach?.(); if (this.entries.get(key) === value) this.entries.delete(key) })
         // Detach after this run's browser is actually closed.
         value.detach = () => context.signal.removeEventListener('abort', abort)
       }
     }
-    if (entry.closing) throw new Error('浏览器插件会话正在关闭')
+    if (entry.closeRequested) throw new Error('浏览器插件会话正在关闭或等待清理重试')
     return entry
   }
   async inspect(raw: unknown, context: EngineContext) {
@@ -112,7 +113,7 @@ export class BrowserPluginService {
     }
     const entry = await this.entry(input.provider, context)
     const call = entry.tail.then(async () => {
-      if (entry.closing) throw new Error('浏览器插件会话正在关闭')
+      if (entry.closeRequested) throw new Error('浏览器插件会话正在关闭或等待清理重试')
       await this.assertEnabled(input.provider, context)
       if (mutating) await context.beforeEffect?.()
       const result = await (await entry.session).call(input.tool, input.arguments, randomUUID())
@@ -124,10 +125,13 @@ export class BrowserPluginService {
     return call
   }
   private closeEntry(entry: Entry) {
+    entry.closeRequested = true
     return entry.closing ??= (async () => {
-      try { await (await entry.session).close(); await entry.tail }
-      finally { entry.detach?.(); this.entries.delete(`${entry.runId}:${entry.provider}`) }
-    })()
+      await (await entry.session).close(); await entry.tail
+      entry.detach?.()
+      const key = `${entry.runId}:${entry.provider}`
+      if (this.entries.get(key) === entry) this.entries.delete(key)
+    })().catch(error => { entry.closing = undefined; throw error })
   }
   private async closeWhere(predicate: (entry: Entry) => boolean) { await Promise.all([...this.entries.values()].filter(predicate).map(entry => this.closeEntry(entry))) }
   async refresh() { const enabled = await this.enabled(); await this.closeWhere(entry => !enabled.includes(entry.provider)) }

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 连续成功聊天/任务与暂缓路径释放运行上下文，持久历史可查且清空后不残留活跃引用。
  * [OUTPUT]: 新消息在已取消的后台记忆适配器实际退出前开始；原优先级断言保持，测试失败也释放挂起调用。
  * [OUTPUT]: 等待同事期间私有汇报的schema错误保持原依赖、预算和一次性副作用；无效正文不发布。
  * [OUTPUT]: 2026-10-27 普通/bobo聊天与重复反馈通过原决策链；执行工具仍限执行阶段，停止/改权后的旧进度回调拒绝。
@@ -109,6 +110,25 @@ function waitForAbort(context: EngineContext) { return new Promise<void>(resolve
 afterEach(async () => {
   await Promise.all(services.splice(0).map(service => service.close()))
   await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true })))
+})
+
+describe('run context ownership', () => {
+  it.each(['chat', 'task'] as const)('releases successful %s contexts without deleting durable history', async responseKind => {
+    const { service, engine } = await fixture(); await configure(service, ['researcher'])
+    if (responseKind === 'chat') engine.decisionHandler = async context => ({ action: 'reply', responseKind, observedThroughSequence: Math.max(0, ...context.messages.map(message => message.sequence)) })
+    const room = await conversation(service)
+    const contexts = (service as unknown as { activeEngineContexts: Map<string, unknown> }).activeEngineContexts
+    for (let i = 1; i <= 3; i++) {
+      await send(service, room, `成功回复 ${i}`, `context-${responseKind}-${i}`)
+      await idle(service, room, i)
+      engine.contexts.length = 0; engine.decisions.length = 0
+      expect((await detail(service, room)).runs.filter(run => run.phase === 'execution').every(run => run.status === 'completed')).toBe(true)
+      expect(contexts.size).toBe(0)
+    }
+    expect((await detail(service, room)).messages).toHaveLength(6)
+    await service.handle('clearConversationHistory', { id: room.id, hide: false })
+    expect(contexts.size).toBe(0)
+  })
 })
 
 describe('local product service', () => {
@@ -895,6 +915,7 @@ describe('local product service', () => {
       if (mode === 'schema-error') expect(waiting.runs.find(run => run.workId === original.id && run.phase === 'execution')?.draft?.reason).toContain('answerEvidence')
       expect(waiting.messages.some(message => message.content === '基于旧输入的等待草稿' || message.content === '错误的旧汇报')).toBe(false)
       releaseChild(); await idle(service, group, 3)
+      expect((service as unknown as { activeEngineContexts: Map<string, unknown> }).activeEngineContexts.size).toBe(0)
       const result = await detail(service, group), parent = result.workItems!.find(work => work.id === original.id)!
       expect(parent).toMatchObject({ status: 'delivered', waitRevision: 1, resultVersion: 1, sourceMessageId: source.id, budgetId: budget.id, ownerAgentId: 'researcher' })
       expect(result.workBudgets).toHaveLength(1); expect(result.workBudgets![0]).toMatchObject({ id: budget.id, deadlineAt: budget.deadlineAt, runs: 3, workItems: 2, modelCalls: 3 + reports, reportRefreshes: reports })
