@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 任务活动查询在LIMIT前按真实在途执行过滤，不以看板状态推断运行。
  * [OUTPUT]: 人工委派看板在LIMIT前按kind/可信旧来源筛选，内部progress及无来源旧进度不混入。
  * [OUTPUT]: 任务来源和最近执行状态投影不读取正文；任务筛选仍在LIMIT之前。
  * [INPUT]: Normalized explicit-task filters and trusted viewer scope.
@@ -6,9 +7,12 @@
  * [POS]: Original records-table task read model; no state transitions or writes.
  * [PROTOCOL]: Update Header and storage/.folder.md on change.
  */
+import { AUTOMATION_ONGOING_STATUSES } from '@boai/shared/domain/automations'
 import { TASK_PAGE_LIMITS, type TrackedTaskStatus } from '@boai/shared/domain/tracked-tasks'
 
 export interface TaskPageSqlQuery {
+  taskId?: string
+  activeOnly?: boolean
   assignmentsOnly?: boolean
   agentId?: string
   conversationId?: string
@@ -31,6 +35,11 @@ export function taskPageSql(query: TaskPageSqlQuery) {
       AND NOT EXISTS (SELECT 1 FROM records cleanup WHERE cleanup.collection='conversationCleanup' AND cleanup.id=c.id)
     ))`,
   ]
+  if (query.taskId) { filters.push('t.id=?'); args.push(query.taskId) }
+  if (query.activeOnly) {
+    filters.push(`EXISTS(SELECT 1 FROM records running WHERE running.collection='automationOccurrences' AND json_extract(running.value,'$.taskId')=t.id AND json_extract(running.value,'$.deletedAt') IS NULL AND json_extract(running.value,'$.status') IN (${AUTOMATION_ONGOING_STATUSES.map(() => '?').join(',')}))`)
+    args.push(...AUTOMATION_ONGOING_STATUSES)
+  }
   if (query.assignmentsOnly) filters.push("(json_extract(t.value,'$.kind')='assignment' OR (json_type(t.value,'$.kind') IS NULL AND json_extract(t.value,'$.sourceKind') IN ('manual','message')))")
   if (query.agentId) { filters.push("json_extract(t.value,'$.agentId')=?"); args.push(query.agentId) }
   if (query.conversationId) { filters.push("json_extract(t.value,'$.conversationId')=?"); args.push(query.conversationId) }

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Installed Mastra/LibSQL, the production memory bridge and engine, isolated transcripts and a controlled HTTP provider.
- * [OUTPUT]: Cold-start official recall guidance, unchanged thresholds, cross-thread tool round trip and autonomous no-tool replies.
+ * [OUTPUT]: All private API employees receive cold-start recall guidance; disabled stages, thresholds and autonomous tool selection remain unchanged.
  * [POS]: Recall integration regressions; real-model behavioral comparisons are recorded separately.
  * [PROTOCOL]: Update this Header and tests/.folder.md on change.
  */
@@ -34,8 +34,8 @@ async function fixture(agentId = 'bobo') {
   return { root, context }
 }
 
-it('supplies cold-start guidance without creating OM or loading other threads and preserves thresholds and read-only tools', async () => {
-  const f = await fixture(), bridge = new EmployeeConversationMemory(join(f.root, 'memory.db'))
+it.each(['bobo', 'writer'])('supplies %s cold-start guidance without creating OM or loading other threads and preserves thresholds and read-only tools', async id => {
+  const f = await fixture(id), bridge = new EmployeeConversationMemory(join(f.root, 'memory.db'))
   cleanup.push(() => bridge.close())
   const prepared = await bridge.prepare(f.context), om = (await prepared.memory.omEngine)!
   const record = await om.getRecord(prepared.option.thread, prepared.option.resource)
@@ -52,15 +52,15 @@ it('supplies cold-start guidance without creating OM or loading other threads an
   expect(Object.keys(prepared.memory.listTools({ readOnly: true }))).toEqual(['recall'])
 })
 
-it('does not extend the Bobo bootstrap to ordinary employees or retrieval-disabled stages', async () => {
+it('does not extend employee recall to retrieval-disabled stages', async () => {
   for (const id of ['writer', 'bobo']) {
     const f = await fixture(id), bridge = new EmployeeConversationMemory(join(f.root, 'memory.db'))
     cleanup.push(() => bridge.close())
-    if (id === 'bobo') f.context.work = { organization: { mode: 'organize_only' } } as EngineContext['work']
+    f.context.work = { organization: { mode: 'organize_only' } } as EngineContext['work']
     const prepared = await bridge.prepare(f.context), om = (await prepared.memory.omEngine)!
     expect(await om.getRecord(prepared.option.thread, prepared.option.resource)).toBeNull()
     expect(prepared.recallInstructions).toBeUndefined()
-    if (id === 'bobo') expect(prepared.memory.listTools({ readOnly: true }).recall).toBeUndefined()
+    expect(prepared.memory.listTools({ readOnly: true }).recall).toBeUndefined()
   }
 })
 

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 普通员工使用同一历史工具，但不能读取Bobo历史；保留遗忘和范围验证。
  * [INPUT]: Real product SQLite/FTS5, authorized transcripts, AppService and a controlled Mastra HTTP provider.
  * [OUTPUT]: One-call evidence/late-match windows, Chinese short queries, index/backup lifecycle, source/forget fences and real SDK transport.
  * [POS]: Protocol/storage regressions; real-model latency comparisons are separate.
@@ -92,12 +93,12 @@ it('keeps insert, edit, delete and restart consistent without extracting memorie
   expect((await reopened.searchRawHistory({ query: '去体检' }, [value.id])).matches[0].id).toBe(value.id)
 })
 
-it('exposes the tool only to eligible Bobo API conversations, including clarification', async () => {
+it('exposes the tool to eligible employee API conversations, including clarification', async () => {
   const f = await fixture()
   expect(createHistorySearchOperations(f.context)).toHaveLength(1)
   expect(createHistorySearchOperations({ ...f.context, decision: { action: 'ask', observedThroughSequence: 1 } })).toHaveLength(1)
   expect(createHistorySearchOperations({ ...f.context, historySearch: undefined })).toEqual([])
-  expect(createHistorySearchOperations({ ...f.context, agent: { ...f.context.agent, id: 'writer', systemRole: undefined } })).toEqual([])
+  expect(createHistorySearchOperations({ ...f.context, agent: { ...f.context.agent, id: 'writer', systemRole: undefined } })).toHaveLength(1)
   expect(createHistorySearchOperations({ ...f.context, conversation: { ...f.context.conversation, kind: 'group' } })).toEqual([])
   expect(createHistorySearchOperations({ ...f.context, decision: { action: 'request_handoff', observedThroughSequence: 1 } })).toEqual([])
 })
@@ -133,7 +134,7 @@ it('runs the new tool through the actual Mastra SDK in two autonomous model step
   expect(answers.join('')).toContain('周三')
 })
 
-it('uses the real service source/forget fence for Bobo and never grants the tool to an ordinary employee', async () => {
+it('uses the real service source and forget fences for each employee without sharing Bobo history', async () => {
   const root = await mkdtemp(join(tmpdir(), 'boai-history-service-')); cleanup.push(() => rm(root, { recursive: true, force: true }))
   const seen: EngineContext[] = [], results: unknown[] = []
   const engine: AgentEngine = { memoryOwner: 'mastra', test: async () => 'ok', decide: async context => ({ action: 'reply', responseKind: 'chat', observedThroughSequence: context.participation!.observedThroughSequence }), run: async context => { seen.push(context); if (context.historySearch) results.push(await context.historySearch.search({ query: '体检' })); await context.onDelta('收到。') } }
@@ -151,7 +152,12 @@ it('uses the real service source/forget fence for Bobo and never grants the tool
   expect(JSON.stringify(results.at(-1))).toContain('我周三去体检。')
   const researcher = await service.handle('createConversation', { kind: 'direct', title: '私聊', agentIds: ['researcher'] }) as Conversation
   await send(researcher, '体检工具测试')
-  expect(seen.at(-1)!.historySearch).toBeUndefined()
+  expect(createHistorySearchOperations(seen.at(-1)!)).toHaveLength(1)
+  expect(JSON.stringify(results.at(-1))).not.toContain('我周三去体检。')
+  await send(researcher, '我的体检安排在周五。')
+  await send(researcher, '查询我的体检安排')
+  expect(JSON.stringify(results.at(-1))).toContain('我的体检安排在周五。')
+  expect(JSON.stringify(results.at(-1))).not.toContain('我周三去体检。')
   const query = { agentId: 'bobo', scope: 'employee' as const }, view = await service.handle('getMemory', query) as import('../packages/shared/src/domain').MemoryView
   await service.handle('clearMemory', { ...query, expectedEpoch: view.epoch, requestId: 'forget-history' })
   await send(next, '过去的安排呢？')
