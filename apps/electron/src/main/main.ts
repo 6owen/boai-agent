@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: macOS窗口按钮按共享toolbar-height与当前界面缩放垂直居中，创建/重载/缩放同步原生位置。
  * [OUTPUT]: 独立AgentBrowser/BrowserViewer插件接入；上游工具、启停与运行回收保持独立。
  * [OUTPUT]: 2026-10-29 Sparkle仅打包macOS主窗启用；宿主清理成功后安装，独立CLI附着时停用，失败恢复原退出入口。
  * [OUTPUT]: 2026-10-29 工作区目录/预览调用由官方file-explorer-plugin宿主处理，原终端resolver独立。
@@ -97,6 +98,7 @@ import { pathToFileURL } from 'node:url'
 import { AppearanceStore } from './appearance'
 import { AppIconController } from './app-icon'
 import { resolveTheme, zoomFactors } from '@boai/shared/appearance'
+import { softTokens } from '@boai/tokens'
 import { unsupportedRequestMessage, type Methods } from '@boai/shared/ipc'
 import { CredentialVault } from './vault'
 import { prepareV2DataRoot } from './migration'
@@ -216,7 +218,7 @@ let appearanceFlushed:(()=>void)|undefined
 const vault = new CredentialVault(join(dataPath, 'credentials.enc.json'))
 const appearance = new AppearanceStore(join(dataPath, 'appearance'), () => nativeTheme.shouldUseDarkColors, value => {
   nativeTheme.themeSource = value.preferences.mode
-  if (window && !window.isDestroyed()) window.webContents.setZoomFactor(value.preferences.zoomFactor)
+  if (window && !window.isDestroyed()) setMainWindowZoom(window, value.preferences.zoomFactor)
   sendEvent({ type: 'appearance:changed', appearance: appearance.snapshot() })
   if (appIconController.snapshot().requestedId !== value.preferences.appIconId) {
     void appIconController.apply(value.preferences.appIconId).catch(error => sendEvent({ type: 'runtime-error', error: String(error) }))
@@ -801,11 +803,21 @@ function installMenu() {
   Menu.setApplicationMenu(menu)
 }
 
+function mainWindowButtonPosition(zoomFactor: number) {
+  // Native traffic-light frames remain 16 DIP high while the web toolbar scales.
+  return { x: 20, y: Math.round((Number.parseFloat(softTokens['toolbar-height']!) * zoomFactor - 16) / 2) }
+}
+
+function setMainWindowZoom(mainWindow: BrowserWindow, zoomFactor: number) {
+  mainWindow.webContents.setZoomFactor(zoomFactor)
+  if (process.platform === 'darwin') mainWindow.setWindowButtonPosition(mainWindowButtonPosition(zoomFactor))
+}
+
 async function createWindow(show = true) {
   dirtySources.clear()
   window = new BrowserWindow({
     width: 1340, height: 900, minWidth: 760, minHeight: 640, title: 'BoAI Agent',
-    backgroundColor: resolveTheme(appearance.snapshot().resolvedMode, appearance.snapshot().resolvedThemeId).background, titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 20, y: 18 },
+    backgroundColor: resolveTheme(appearance.snapshot().resolvedMode, appearance.snapshot().resolvedThemeId).background, titleBarStyle: 'hiddenInset', trafficLightPosition: mainWindowButtonPosition(appearance.snapshot().preferences.zoomFactor),
     show: false,
     webPreferences: { preload: join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, zoomFactor: appearance.snapshot().preferences.zoomFactor },
   })
@@ -844,7 +856,7 @@ async function createWindow(show = true) {
     return { action: 'deny' }
   })
   window.webContents.on('will-navigate', (event) => event.preventDefault())
-  window.webContents.on('did-finish-load', () => window?.webContents.setZoomFactor(appearance.snapshot().preferences.zoomFactor))
+  mainWindow.webContents.on('did-finish-load', () => { if (!mainWindow.isDestroyed()) setMainWindowZoom(mainWindow, appearance.snapshot().preferences.zoomFactor) })
   window.webContents.on('zoom-changed', (_event, direction) => changeZoom(direction === 'in' ? 1 : -1))
   window.webContents.session.setPermissionCheckHandler((contents, permission, _origin, details) => permission === 'media' && contents === window?.webContents && details.isMainFrame && details.mediaType === 'audio' && details.requestingUrl === window?.webContents.getURL() && voice.canCapture())
   window.webContents.session.setPermissionRequestHandler((contents, permission, callback, details) => callback(permission === 'media' && contents === window?.webContents && details.isMainFrame && details.requestingUrl === window?.webContents.getURL() && 'mediaTypes' in details && details.mediaTypes?.length === 1 && details.mediaTypes[0] === 'audio' && voice.canCapture()))
