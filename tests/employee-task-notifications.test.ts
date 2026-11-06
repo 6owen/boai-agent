@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 员工任务结果 IPC 事件与 Sonner、导航回调。
- * [OUTPUT]: 一轮一次通知、同任务重复运行、人工状态文案与通知导航/卸载验证。
+ * [OUTPUT]: 简短单句且无description，一轮一次通知、重复运行、人工状态文案与通知导航/卸载验证。
  * [POS]: 全局任务结果提示合同，不挂载桌面或调用模型。
  * [PROTOCOL]: 变化同步 Header 与所属 .folder.md。
  */
@@ -24,8 +24,9 @@ it('notifies once per execution globally and opens the owning employee task', ()
   const f = setup()
   f.emit({ type: 'changed' }); f.emit(result); f.emit(result)
   expect(toast.success).toHaveBeenCalledTimes(1)
-  expect(toast.success).toHaveBeenCalledWith('DS · 查询天气：本轮已完成', expect.objectContaining({ id: 'employee-task:round-1', description: '结果已就绪，待你确认' }))
+  expect(toast.success).toHaveBeenCalledWith('DS 的任务待确认', expect.objectContaining({ id: 'employee-task:round-1' }))
   const options = vi.mocked(toast.success).mock.calls[0][1]!
+  expect(options).not.toHaveProperty('description')
   const action = options.action as unknown as { onClick: () => void }
   action.onClick()
   expect(f.openTask).toHaveBeenCalledWith({ type: 'employee-tasks', id: 'ds', taskId: 'weather', requestId: expect.any(String) })
@@ -38,6 +39,7 @@ it('notifies once per execution globally and opens the owning employee task', ()
 it('reports the result without claiming a manually changed card is awaiting review', () => {
   const f = setup()
   f.emit({ ...result, status: 'closed' })
+  expect(vi.mocked(toast.success).mock.calls[0][0]).toBe('DS 的任务有新结果')
   expect(vi.mocked(toast.success).mock.calls[0][1]).not.toHaveProperty('description')
   f.unsubscribe()
 })
