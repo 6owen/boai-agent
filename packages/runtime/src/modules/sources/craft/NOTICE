@@ -28,3 +28,5 @@ source-setup.ts: adapted from apps/electron/resources/docs/sources.md (Source Se
 2026-10-18 BOAI adapter guidance: adds official DeepSeek Search/Fetch API configuration and the explicit one-query test behavior; fixed tool implementation is BOAI-owned.
 
 2026-10-19 BOAI adaptation: source-setup routes web retrieval to independent settings and employee capabilities; removes the prior DeepSeek business-source setup instruction. Upstream request/auth code is unchanged.
+
+2026-11-07 BOAI adaptation: source-setup documents BOAI-owned MCP OAuth application operations, explicit client identity and local-only disconnect, and separates capability-package bindings from ordinary core-source access. No Craft OAuth account-flow implementation was copied.

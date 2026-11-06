@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: WT3冻结员工项目默认字段与WT2模板来源，创建输入不接受伪造来源记录。
  * [OUTPUT]: 消息轮次保存队列移除及实际开始时的上下文边界，排队消息不提前执行或进入模型输入。
  * [OUTPUT]: Conversation可绑定持久员工任务；同任务独立会话续接。
  * [OUTPUT]: 消息可关联员工任务身份，设为任务不重新发送原消息。
@@ -105,6 +106,10 @@ export interface ConnectionInput {
   apiKey?: string
 }
 export interface DigitalAgent {
+  /** Default for newly created chats/tasks; WT3 owns the execution snapshot semantics. */
+  defaultProjectDirectory?: string
+  /** Host-validated template provenance; never copied account or core authority. */
+  templateOrigin?: { templateId: string; version: string }
   /** Absent keeps legacy access; an explicit list opts into employee directory authorization. */
   directoryGrants?: import('./directory-access').DirectoryGrant[]
   /** Directory additions may advance without changing model/runtime configuration. */
@@ -137,7 +142,7 @@ export interface DigitalAgent {
   memoryNamespace?: string
   policyVersion?: number
 }
-export type AgentInput = Omit<DigitalAgent, 'id' | 'configVersion' | 'directoryRevision' | 'workspaceRef' | 'memoryNamespace' | 'policyVersion' | 'creationSource' | 'systemRole'> & { id?: string; expectedConfigVersion?: number; expectedDirectoryRevision?: number; initialSoul?: string }
+export type AgentInput = Omit<DigitalAgent, 'id' | 'configVersion' | 'directoryRevision' | 'workspaceRef' | 'memoryNamespace' | 'policyVersion' | 'creationSource' | 'systemRole' | 'templateOrigin'> & { id?: string; expectedConfigVersion?: number; expectedDirectoryRevision?: number; initialSoul?: string; templateId?: string; templateVersion?: string }
 export interface Resource {
   knowledge?: import('./knowledge').KnowledgeContent
   id: string

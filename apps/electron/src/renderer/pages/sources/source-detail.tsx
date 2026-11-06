@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 启停只写连接配置，保留应用/能力包来源字段并沿同一Source版本。
  * [OUTPUT]: 数据源元数据仅展示连接信息，移除API/本地访问范围。
  * [OUTPUT]: 删除通过更多按钮旁的Popover确认，取消不提交，删除期间锁定；确认成功后关闭详情，失败保留入口。
  * [OUTPUT]: 数据源详情不提供员工绑定入口或名单，绑定统一归员工配置；移除反向绑定弹窗。
@@ -18,15 +19,18 @@ import { Popover, PopoverContent, PopoverTitle } from '@/components/ui/popover'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { MessageCircle, RefreshCw, MoreHorizontal } from '@/components/icons'
 import { SkillDetailPanel, SkillDetailBody } from '../library/skill-detail-layout'
-import { SourceEditor } from './source-editor'
+import { SourceOAuthDialog, requestSourceOAuth, RejectedSourceAuthorization } from './source-oauth-dialog'
+import { SourceEditor, sourceConfiguration } from './source-editor'
 import { SourceIcon } from './sources-view'
 import { observeSourceDetail, type SourceDetailState } from './source-detail-state'
 
 export function SourceDetailPanel({ api, id, name, requestId, active, onManage, onRemoved }: { api: DesktopApi; id: string; name: string; requestId: string; active: boolean; onManage(item: { id: string; name: string }): void; onRemoved(): void }) {
+  const [authorizing, setAuthorizing] = useState(false)
   const [detail, setDetail] = useState<SourceDetailState>(), [readError, setReadError] = useState(''), [refresh, setRefresh] = useState(0)
   const [editing, setEditing] = useState<{ source: DataSource; credential: string }>(), [removing, setRemoving] = useState(false)
+  const disconnectRequest = useRef<string | undefined>(undefined)
   const mutation = useMutation(), editorRequest = useRef(0), menuAnchor = useRef<HTMLButtonElement>(null)
-  useEffect(() => { if (!active) { setEditing(undefined); setRemoving(false) } return () => { editorRequest.current++ } }, [active, id])
+  useEffect(() => { if (!active) { setEditing(undefined); setRemoving(false); setAuthorizing(false) } return () => { editorRequest.current++ } }, [active, id])
   useEffect(() => {
     if (!active) return
     setReadError('')
@@ -38,19 +42,22 @@ export function SourceDetailPanel({ api, id, name, requestId, active, onManage, 
     setRefresh(value => value + 1)
   }
   const run = (action: () => Promise<DataSource>) => { void mutation.run(async () => { saved(await action()) }) }
+  const oauth = source?.type === 'mcp' && source.mcp.transport !== 'stdio' && source.mcp.authType === 'oauth'
   const identity = source && { id: source.id, expectedRevision: source.revision }
   return <SkillDetailPanel name={source?.name ?? name} label="数据源详情" className="source-detail-panel" actions={source && <>
     <Button variant="secondary" size="sm" onClick={() => onManage(source)}><MessageCircle />AI 管理</Button>
     <DropdownMenu><DropdownMenuTrigger render={<Button ref={menuAnchor} variant="ghost" size="icon-sm" aria-label="数据源更多操作" disabled={mutation.busy} />}><MoreHorizontal /></DropdownMenuTrigger><DropdownMenuContent align="end" finalFocus={removing ? false : undefined}>
-      <DropdownMenuItem onClick={() => run(async () => { const { id, revision, createdAt: _created, updatedAt: _updated, hasCredential: _credential, test: _test, creationSource: _creation, ...config } = source; return api.request('saveDataSource', { id, expectedRevision: revision, config: { ...config, enabled: !source.enabled } }) })}>{source.enabled ? '停用数据源' : '启用数据源'}</DropdownMenuItem>
+      <DropdownMenuItem onClick={() => run(async () => { const { id, revision } = source, config = sourceConfiguration(source); return api.request('saveDataSource', { id, expectedRevision: revision, config: { ...config, enabled: !source.enabled } }) })}>{source.enabled ? '停用数据源' : '启用数据源'}</DropdownMenuItem>
+      {oauth && source.hasCredential && <DropdownMenuItem onClick={() => run(async () => { disconnectRequest.current ??= crypto.randomUUID(); try { const value = await requestSourceOAuth(api, { operation: 'sources.oauthDisconnect', requestId: disconnectRequest.current, input: { id: source.id, expectedRevision: source.revision } }) as DataSource; disconnectRequest.current = undefined; return value } catch (reason) { if (reason instanceof RejectedSourceAuthorization) disconnectRequest.current = undefined; throw reason } })}>删除本地授权</DropdownMenuItem>}
       <DropdownMenuItem variant="destructive" onClick={() => setRemoving(true)}>删除数据源</DropdownMenuItem>
     </DropdownMenuContent></DropdownMenu>
   </>}>
     {active && readError && <Banner>{readError}</Banner>}
-    {source && identity ? <SkillDetailBody name={source.name} description={source.description} icon={<SourceIcon type={source.type} />} metadata={sourceMetadata(source)} metadataActions={<div className="button-row"><Button variant="ghost" size="sm" disabled={mutation.busy || !source.enabled} onClick={() => run(() => api.request('testDataSource', identity))}><RefreshCw className={mutation.busy ? 'spinner' : ''} />测试连接</Button><Button variant="secondary" size="sm" disabled={mutation.busy} onClick={() => { const token = ++editorRequest.current; void mutation.run(async () => { const credential = await api.request('getDataSourceCredential', identity); if (token === editorRequest.current) setEditing({ source, credential }) }) }}>编辑配置</Button></div>} content={source.guide} emptyContent="尚未填写使用说明。">
+    {source && identity ? <SkillDetailBody name={source.name} description={source.description} icon={<SourceIcon type={source.type} />} metadata={sourceMetadata(source)} metadataActions={<div className="button-row">{oauth && <Button variant="secondary" size="sm" disabled={mutation.busy} onClick={() => setAuthorizing(true)}>{source.hasCredential ? '重新授权' : '授权连接'}</Button>}<Button variant="ghost" size="sm" disabled={mutation.busy || !source.enabled} onClick={() => run(() => api.request('testDataSource', identity))}><RefreshCw className={mutation.busy ? 'spinner' : ''} />测试连接</Button><Button variant="secondary" size="sm" disabled={mutation.busy} onClick={() => { const token = ++editorRequest.current; void mutation.run(async () => { const credential = oauth ? '' : await api.request('getDataSourceCredential', identity); if (token === editorRequest.current) setEditing({ source, credential }) }) }}>编辑配置</Button></div>} content={source.guide} emptyContent="尚未填写使用说明。">
       {source.test && <p className="field-hint" role="status">{source.test.message} · {new Date(source.test.checkedAt).toLocaleString()}</p>}
       {source.test?.tools && <><div className="skill-info-section-heading"><h3>可用工具</h3></div><div className="source-tool-list">{source.test.tools.map(tool => <div key={tool.name}><strong>{tool.name}</strong>{tool.description && <p>{tool.description}</p>}</div>)}{!source.test.tools.length && <p className="field-hint">服务未提供工具。</p>}</div></>}
     </SkillDetailBody> : <><IllustratedEmpty kind="skills" title={readError ? '暂时无法读取数据源' : undefined} />{readError && <Button variant="ghost" onClick={() => setRefresh(value => value + 1)}>重新读取</Button>}</>}
+    {active && authorizing && source && <SourceOAuthDialog key={source.id} api={api} source={source} onClose={() => setAuthorizing(false)} onAuthorized={() => setRefresh(value => value + 1)} />}
     {active && editing && <SourceEditor key={editing.source.id} api={api} source={editing.source} initialCredential={editing.credential} onClose={() => setEditing(undefined)} onSaved={saved} />}
     <Popover open={active && removing && Boolean(source)} onOpenChange={open => { if (!mutation.busy) setRemoving(open) }}>
       <PopoverContent anchor={menuAnchor} align="end" finalFocus={menuAnchor}>
@@ -66,7 +73,7 @@ export function SourceDetailPanel({ api, id, name, requestId, active, onManage, 
 
 function sourceMetadata(source: DataSource) {
   const rows = [{ label: '类型', value: DATA_SOURCE_LABELS[source.type] }, { label: '状态', value: !source.enabled ? '已停用' : source.test?.status === 'success' ? '连接正常' : source.test?.status === 'failed' ? '连接失败' : '未测试' }]
-  const auth = (type: string) => rows.push({ label: '认证方式', value: ({ none: '无需认证', bearer: 'Bearer Token', basic: '用户名与密码', header: '请求头', query: '查询参数' })[type] ?? type }, ...(type === 'none' ? [] : [{ label: '凭据', value: source.hasCredential ? '已配置' : '未配置' }]))
+  const auth = (type: string) => rows.push({ label: '认证方式', value: ({ none: '无需认证', bearer: 'Bearer Token', oauth: 'OAuth', basic: '用户名与密码', header: '请求头', query: '查询参数' })[type] ?? type }, ...(type === 'none' ? [] : [{ label: '凭据', value: source.hasCredential ? '已配置' : '未配置' }]))
   if (source.type === 'mcp') {
     rows.push({ label: '传输方式', value: source.mcp.transport === 'stdio' ? '标准输入输出（stdio）' : source.mcp.transport === 'http' ? 'Streamable HTTP' : 'SSE' })
     if (source.mcp.transport === 'stdio') rows.push({ label: '命令', value: source.mcp.command }, { label: '参数', value: source.mcp.args.join(' ') || '无' })

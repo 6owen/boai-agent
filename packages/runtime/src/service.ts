@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: WT2能力包沿原应用/Source/资源授权注册；按员工实际适配器退出排空，未证明原生单加载时拒绝绑定。
  * [OUTPUT]: Composer知识资料标签沿员工/会话授权及所选revision/hash核源，发送和执行均拒绝失效或外改内容。
  * [OUTPUT]: 定时执行记录删除不再逐条同步压缩整库，原事务、文件核验及恢复协议保持。
  * [OUTPUT]: 成功发布及暂缓结束同样释放活跃上下文；持久Run/历史和实际适配器容量屏障保持。
@@ -358,6 +359,7 @@ import { catalogCommands } from './modules/resources/catalog-commands'
 import { LocalSkillEditing } from './modules/resources/local-skill-editing'
 import { WebSearchService } from './modules/sources/web-search-service'
 import { SourceService } from './modules/sources/source-service'
+import { CapabilityPackageServices } from './modules/resources/capability-package-services'
 import { assertSearchSelection, searchSelection, selectWebSearchSchema, validateWebSearchChoice, type SelectWebSearch } from './modules/sources/search-selection'
 import { sourceCallSchema, type SourceSummary } from '@boai/shared/domain/sources'
 import { importLocalResource, isWithin, listArtifacts } from './modules/resources/local-resources'
@@ -472,6 +474,7 @@ export class AppService {
   private readonly desktopPlugin: DesktopPluginService
   private readonly browserPlugins: BrowserPluginService
   private readonly webSearch: WebSearchService
+  private readonly capabilities: CapabilityPackageServices
   private readonly dataSources: SourceService
   private readonly materialUploads: MaterialUploads
   private readonly materials: MaterialRepository
@@ -502,7 +505,7 @@ export class AppService {
   private readonly agentBehaviors: AgentBehaviorService
   private readonly agentProfiles: AgentProfileService
   private readonly agentStates: AgentStateService
-  private readonly applicationAuthority = new AsyncLocalStorage<{ validate(): Promise<void>; signal: AbortSignal; directories?: EngineContext['directoryAccess'] }>()
+  private readonly applicationAuthority = new AsyncLocalStorage<{ employeeId?: string; validate(): Promise<void>; signal: AbortSignal; directories?: EngineContext['directoryAccess'] }>()
   private readonly application: ApplicationService
   private readonly terminals: TerminalService
   private readonly previews: PreviewService
@@ -568,6 +571,8 @@ export class AppService {
   private backingUp = false
   private initialized = false
   private adapterExits = new Set<Promise<unknown>>()
+  private adapterExitsByRun = new Map<string, Set<Promise<unknown>>>()
+  private capabilityDrainingEmployees = new Set<string>()
   readonly dataPath: string
 
   constructor(private readonly options: { toolClientPath?: string; applicationHost?: ApplicationHostPort; channelTransport?: ChannelTransportFactory; browserHost?: BrowserHostBridge; dataPath: string; teamPlanner?: TeamPlanner; teamFileCheckpoint?: TeamFileCheckpoint; boboFileCheckpoint?: BoboCollaborationHooks['checkpoint']; skillDiscovery?: SkillDiscoveryOptions; skillDownloads?: DownloadTransport; skillMarketplaceFetch?: typeof fetch; engine: AgentEngine; secrets: SecretStore; emit: (event: AppEvent) => void }) {
@@ -600,7 +605,7 @@ export class AppService {
     })
     this.agentProfiles = new AgentProfileService(this.store)
     this.agentStates = new AgentStateService(this.store)
-    this.agentBehaviors = new AgentBehaviorService(this.store, { available: (agentId, conversationId) => !this.closing && !this.backingUp && this.initialized && !!this.employees.find(agentId)?.active && !!this.conversations.get(conversationId)?.agentIds.includes(agentId) && !this.conversationBusy(conversationId), execute: (run, behavior, signal) => this.runAgentBehavior(run, behavior, signal), changed: () => this.changed(), error: error => this.emit({ type: 'runtime-error', error: this.errorMessage(error) }) })
+    this.agentBehaviors = new AgentBehaviorService(this.store, { available: (agentId, conversationId) => !this.closing && !this.backingUp && !this.capabilityDrainingEmployees.has(agentId) && this.initialized && !!this.employees.find(agentId)?.active && !!this.conversations.get(conversationId)?.agentIds.includes(agentId) && !this.conversationBusy(conversationId), execute: (run, behavior, signal) => this.runAgentBehavior(run, behavior, signal), changed: () => this.changed(), error: error => this.emit({ type: 'runtime-error', error: this.errorMessage(error) }) })
     this.terminals = new TerminalService(this.dataPath)
     this.previews = new PreviewService(this.terminals)
     this.desktopActivity = new DesktopActivityService(this.store, {
@@ -609,6 +614,45 @@ export class AppService {
       changed: () => this.changed(),
     }, this.dataPath)
     this.userMemoryProvider = new UserMemoryProvider(this.store, options.secrets, () => this.changed())
+    this.dataSources = new SourceService(this.store, options.secrets, this.dataPath, {
+      authority: () => this.applicationAuthority.getStore(),
+      critical: action => this.serialize(() => { if (this.closing || this.backingUp) fail('服务正在退出或备份'); return action() }),
+      install: agents => this.employees.installBatch(agents),
+      changed: (id, agents) => this.dataSourcesChanged(id, agents),
+    })
+
+    this.capabilities = new CapabilityPackageServices({
+      store: this.store, dataPath: this.dataPath, sources: this.dataSources,
+      authority: () => this.applicationAuthority.getStore(),
+      critical: action => this.serialize(async () => { if (this.closing || this.backingUp) fail('服务正在退出或备份'); return action() }),
+      changed: () => this.serialize(async () => {
+        const agents = await this.store.load<DigitalAgent>('agents')
+        this.employees.installBatch(agents, true)
+        this.resources = new Map((await this.store.load<Resource>('resources')).map(resource => [resource.id, resource]))
+        for (const agent of agents) await this.homes.commit(agent)
+        this.changed()
+      }),
+      assertEmployeesIdle: employeeIds => this.serialize(async () => {
+        const ids = new Set(employeeIds)
+        if (this.agentBehaviors.activeFor(employeeIds) || [...this.runs.values()].some(run => ids.has(run.agentId) && (!terminal.has(run.status) || this.activeAdapters.has(run.id) || this.adapterExitsByRun.has(run.id)))) fail('能力包仍有员工执行，请先停止并等待实际退出')
+      }),
+      drainEmployees: async employeeIds => {
+        const ids = new Set(employeeIds), caller = this.applicationAuthority.getStore()?.employeeId
+        if (caller && ids.has(caller)) fail('不能在当前管理调用中等待自身退出，请由本人停用此能力包')
+        for (const id of ids) this.capabilityDrainingEmployees.add(id)
+        try {
+          const exits = await this.serialize(async () => {
+            for (const id of ids) await this.cancelEmployee(id, '能力包已停用或撤回绑定')
+            // Completed wrapper Runs can still own a live adapter/controller.
+            for (const [id, controller] of this.runControllers) if (ids.has(this.runs.get(id)?.agentId ?? '')) controller.abort(new Error('能力包已停用或撤回绑定'))
+            return [...this.adapterExitsByRun].filter(([id]) => ids.has(this.runs.get(id)?.agentId ?? '')).flatMap(([, exits]) => [...exits])
+          })
+          // Adapter/behavior callbacks need the original service queue while exiting.
+          await Promise.allSettled([...exits, this.agentBehaviors.drainEmployees(employeeIds)])
+        } finally { for (const id of ids) this.capabilityDrainingEmployees.delete(id) }
+      },
+      assertNativeOwnership: async () => { fail('当前原生执行配置尚未证明能力包只加载一次；此版本仅支持模型 API 员工绑定') },
+    })
     this.application = new ApplicationService(this.store, [...this.desktopActivity.operations(), ...this.userMemoryProvider.operations(), ...workspaceOperations(this.terminals, this.previews, async (scope, actor, write, directory) => {
       await this.applicationAuthority.getStore()?.validate()
       if (this.closing || this.backingUp || this.clearingConversations.has(scope.conversationId)) fail('会话正在清理或服务不可用')
@@ -620,7 +664,8 @@ export class AppService {
       if (!isAbsolute(path)) fail('预览目录必须是绝对路径')
       if (!directory && !write) return path
       return realpath(path)
-    }, scope => this.emit({ type: 'workspace:show', ...scope }), () => !!options.applicationHost?.available), ...this.presentations.operations(), ...this.images.operations(), ...this.selfies.operations(), taskActivityOperation(this.store, (tasks, actor) => this.employeeTaskOutputs(tasks, actor)), ...taskOperations(this.store, room => { this.conversations.set(room.id, room) }), ...planningOperations(this.store), ...planOperations(this.store), ...referenceOperations(this.store, (...args) => this.serialize(() => this.referenceObjects(...args))), ...applicationOperations({ schedules: () => this.schedules, request: async (method, input) => await this.handle(method, input) as never, personality: (action, input) => this.agentPersonality(action, input) }, { connection: connectionSchema, conversation: conversationSchema, search: searchSchema }, options.applicationHost)], async (actor, operation) => {
+    }, scope => this.emit({ type: 'workspace:show', ...scope }), () => !!options.applicationHost?.available), ...this.presentations.operations(), ...this.images.operations(), ...this.selfies.operations(), taskActivityOperation(this.store, (tasks, actor) => this.employeeTaskOutputs(tasks, actor)), ...taskOperations(this.store, room => { this.conversations.set(room.id, room) }), ...planningOperations(this.store), ...planOperations(this.store), ...referenceOperations(this.store, (...args) => this.serialize(() => this.referenceObjects(...args))), ...applicationOperations({ capabilities: () => this.capabilities, sources: () => this.dataSources, schedules: () => this.schedules, request: async (method, input) => await this.handle(method, input) as never, personality: (action, input) => this.agentPersonality(action, input) }, { connection: connectionSchema, conversation: conversationSchema, search: searchSchema }, options.applicationHost)], async (actor, operation) => {
+      if (operation?.effect === 'write' && (this.closing || this.backingUp)) fail('服务正在退出或备份')
       if (actor.kind === 'owner') return
       if (actor.kind === 'behavior') {
         const { run, behavior } = await this.agentBehaviors.assertActive(actor.behaviorRunId)
@@ -651,11 +696,7 @@ export class AppService {
       critical: action => this.serialize(() => { if (this.closing || this.backingUp) fail('服务正在退出或备份'); return action() }),
       changed: (id, defaultsChanged) => this.webSearchChanged(id, defaultsChanged),
     })
-    this.dataSources = new SourceService(this.store, options.secrets, this.dataPath, {
-      critical: action => this.serialize(() => { if (this.closing || this.backingUp) fail('服务正在退出或备份'); return action() }),
-      install: agents => this.employees.installBatch(agents),
-      changed: (id, agents) => this.dataSourcesChanged(id, agents),
-    })
+
     this.steering = new NativeSteering(this.store, message => { this.messages.set(message.id, message); this.emit({ type: 'message', message }); this.changed(message.conversationId) })
     this.executions = new ExecutionRepository(this.store, id => this.changed(id))
     this.materials = new MaterialRepository(this.store, this.dataPath)
@@ -943,6 +984,7 @@ export class AppService {
     })
     await this.webSearch.init()
     await this.dataSources.init()
+    await this.capabilities.init()
     await this.executions.recover()
     await this.steering.recover()
     await this.codexEngine.recover(this.dataPath)
@@ -1488,6 +1530,7 @@ export class AppService {
         case 'saveAgent': {
           const value = agentSchema.parse(input), previous = value.id ? this.getAgent(value.id) : undefined
           const backend = value.executionBackend ?? previous?.executionBackend ?? { kind: 'mastra-model' as const }
+          if (previous && backend.kind !== 'mastra-model') this.assertCapabilityRuntime({ ...previous, executionBackend: backend })
           this.dataSources.validateBindings(value.sourceIds ?? previous?.sourceIds ?? [], backend.kind)
           value.webSearch = this.webSearch.normalizePreference(value.webSearch, previous)
           if (backend.kind !== 'mastra-model') {
@@ -2128,7 +2171,7 @@ export class AppService {
         context.application = {
           catalog: async query => { await validate(); return this.application.catalog(query, actor) },
           receipt: async query => { await validate(); return this.application.receipt(query, actor) },
-          call: async input => { await validate(); if (input.operation === 'employees.stopBehavior' && input.input?.runId === run.id) throw new Error('结束当前行为请返回结构化结果；不能等待自身停止'); return this.applicationAuthority.run({ validate, signal }, () => this.application.call(input, actor)) },
+          call: async input => { await validate(); if (input.operation === 'employees.stopBehavior' && input.input?.runId === run.id) throw new Error('结束当前行为请返回结构化结果；不能等待自身停止'); this.assertCapabilityManagementInput(input, actor.employeeId); return this.applicationAuthority.run({ validate, signal, employeeId: actor.employeeId }, () => this.application.call(input, actor)) },
         }
       }
       await this.agentBehaviors.observe(run.id, { promptEvidence: context.bootstrap?.promptEvidence, sourceConversationIds: [...new Set([...context.messages.map(message => message.conversationId), ...reflection?.supportConversationIds ?? []])] })
@@ -3552,9 +3595,20 @@ export class AppService {
     finally{clearTimeout(deadline);await this.clearApprovals(run.id);this.runControllers.delete(run.id)}
   }
 
+  private assertCapabilityRuntime(agent: DigitalAgent) {
+    if (this.capabilityDrainingEmployees.has(agent.id)) fail('员工能力包正在等待实际退出')
+    if ((agent.executionBackend?.kind ?? 'mastra-model') !== 'mastra-model' && this.capabilities.packages.list().some(value => this.capabilities.packages.listBindings(value.id).some(binding => binding.employeeId === agent.id && binding.contributionIds.length))) fail('当前原生执行配置尚未证明能力包只加载一次，请先撤回包绑定')
+  }
+  private assertCapabilityManagementInput(input: Parameters<ApplicationService['call']>[0], employeeId: string) {
+    if (!['capabilityPackages.unbind', 'capabilityPackages.setEnabled', 'capabilityPackages.update', 'capabilityPackages.uninstall'].includes(input.operation)) return
+    const value = input.input as { installationId?: string; employeeId?: string }
+    if (!value?.installationId || value.employeeId && value.employeeId !== employeeId) return
+    if (this.capabilities.packages.listBindings(value.installationId).some(binding => binding.employeeId === employeeId && binding.contributionIds.length)) fail('此操作会停止当前管理调用者，请由本人在资源库操作')
+  }
   private authorizedResources(agent: DigitalAgent, conversation: Conversation): Resource[] {
+    this.assertCapabilityRuntime(agent)
     for (const id of agent.skillIds) this.skillUpdates.assertAvailable(id)
-    return authorizedResources(agent, conversation, this.resources.values()).filter(resource => !(resource.kind === 'skill' && resource.name === 'boai-memory-management' && (isNativeBackend(agent.executionBackend) || this.options.engine.memoryOwner === 'mastra')))
+    return authorizedResources(agent, conversation, this.resources.values()).filter(resource => this.capabilities.canUseResource(resource.id, agent.id) && !(resource.kind === 'skill' && resource.name === 'boai-memory-management' && (isNativeBackend(agent.executionBackend) || this.options.engine.memoryOwner === 'mastra')))
   }
   private dataSourceSnapshotValid(snapshot: RunSnapshot) {
     const refs = snapshot.dataSourceRefs ?? [], owner = this.employees.find(snapshot.agent.id)
@@ -4007,6 +4061,8 @@ export class AppService {
     const current = this.getAgent(context.agent.id), conversation = this.getConversation(context.conversation.id)
     const snapshot = this.snapshots.get(context.runId), run = this.runs.get(context.runId)
     if (this.closing || this.backingUp || !current.active || current.configVersion !== context.agent.configVersion || !conversation.agentIds.includes(current.id) || conversation.configVersion !== context.conversation.configVersion || !snapshot || snapshot.invalidated || !run || terminal.has(run.status) || run.phase !== phase) fail('当前执行已失去访问权限')
+    this.assertCapabilityRuntime(current)
+    this.capabilities.assertResourceAccess(context.resources.map(resource => resource.id), current.id)
     await this.assertMaterialRefs(context)
     if (context.memory && !await this.memory.recallValid(context.memory)) fail('材料或记忆来源已失效，不能继续访问')
     if (run!.origin) await this.automations.assertExecutable(run!.origin, conversation.id)
@@ -4066,9 +4122,10 @@ export class AppService {
     const validate = () => this.serialize(async () => {
       context.signal.throwIfAborted()
       const current = this.getAgent(context.agent.id), conversation = this.getConversation(context.conversation.id)
+      this.assertCapabilityRuntime(current)
       const snapshot = this.snapshots.get(context.runId), run = this.runs.get(context.runId)
       if (this.closing || this.backingUp || !current.active || current.configVersion !== context.agent.configVersion || (!isCoreAgent(current) && !current.sourceIds?.includes(sourceId)) || !conversation.agentIds.includes(current.id) || conversation.configVersion !== context.conversation.configVersion || !snapshot || snapshot.invalidated || !run || terminal.has(run.status) || run.phase !== 'execution' || context.work?.organization) fail('当前执行没有此数据源的访问权限')
-      const ref = (isCoreAgent(current) ? this.dataSources.summaries([sourceId])[0] : context.dataSources?.find(source => source.id === sourceId)) ?? fail('数据源不可用或未授权')
+      const ref = (isCoreAgent(current) ? this.dataSources.summaries([sourceId], current.id)[0] : context.dataSources?.find(source => source.id === sourceId)) ?? fail('数据源不可用或未授权')
       this.dataSources.assertCurrent([ref]); await this.assertMaterialRefs(context)
       if (!snapshot!.dataSourceRefs?.some(source => source.id === ref.id)) {
         snapshot!.dataSourceRefs = [...(snapshot!.dataSourceRefs ?? []), ref]
@@ -4093,7 +4150,7 @@ export class AppService {
         if (!context.work || !context.beforeEffect) fail('数据源写入需要当前获准工作')
         await context.beforeEffect!(); effectStarted = true; context.signal.throwIfAborted()
       }
-    }, webReadOnly ? 'web-read' : 'all', context.agent.directoryGrants !== undefined || context.agent.executionPermission === 'full-access' ? context.directoryAccess : undefined)
+    }, webReadOnly ? 'web-read' : 'all', context.agent.directoryGrants !== undefined || context.agent.executionPermission === 'full-access' ? context.directoryAccess : undefined, context.agent.id)
     await validate()
     if (effectStarted) await context.afterEffect?.()
     return result
@@ -4227,7 +4284,7 @@ export class AppService {
     const selectedSourceIds = [...new Set(messages.flatMap(message => (message.composerReferences ?? []).filter(ref => ref.kind === 'source' && ref.agentId === agent.id).map(ref => ref.id)))]
     const channelSource = await this.channelExecutionSource(run)
     if (channelSource) this.channels.executionBinding(channelSource, agent.id)
-    const snapshot: RunSnapshot = clone({ id: run.id, agent, connection, runtimeProfile, conversation, ...(selectedSourceIds.length ? { dataSourceRefs: this.dataSources.summaries(selectedSourceIds) } : {}), artifactRevisionRequestId: artifactRevision?.request.id, materialRefs: materialContext.refs, resources: this.authorizedResources(agent, conversation), memoryEntryIds: combined.recall!.versions.map(entry => entry.id), memoryRecall: { namespace: combined.namespace, epoch: combined.epoch, invalidationEpoch: combined.invalidationEpoch, recall: combined.recall } })
+    const snapshot: RunSnapshot = clone({ id: run.id, agent, connection, runtimeProfile, conversation, ...(selectedSourceIds.length ? { dataSourceRefs: this.dataSources.summaries(selectedSourceIds, agent.id) } : {}), artifactRevisionRequestId: artifactRevision?.request.id, materialRefs: materialContext.refs, resources: this.authorizedResources(agent, conversation), memoryEntryIds: combined.recall!.versions.map(entry => entry.id), memoryRecall: { namespace: combined.namespace, epoch: combined.epoch, invalidationEpoch: combined.invalidationEpoch, recall: combined.recall } })
     this.snapshots.set(run.id, snapshot); run.bootstrap = loaded.bootstrap; this.runDirectories.set(run.id, loaded.workspace.runPath)
     if (runtimeProfile && isNativeBackend(backend)) run.backend = { ...(backend.kind === 'runtime-plugin' ? {pluginId:backend.pluginId,providerId:backend.providerId} : {}), kind: backend.kind, profileId: runtimeProfile.id, profileRevision: runtimeProfile.revision,
       program: runtimeProfile.verified && { name: runtimeProfile.verified.name, version: runtimeProfile.verified.version, executableHash: runtimeProfile.executableHash },
@@ -4284,7 +4341,7 @@ export class AppService {
         settings: () => this.images.settings(),
         generate: (input, references) => this.images.generate(input, references, signal, () => this.serialize(async () => { await this.assertExecutionAccess(context) })),
         verify: async source => { await this.serialize(async () => { await this.assertExecutionAccess(context) }); await this.images.verify(source) },
-      }, dataSources: isCoreAgent(agent) ? this.dataSources.allSummaries() : this.dataSources.summaries(agent.sourceIds),
+      }, dataSources: isCoreAgent(agent) ? this.dataSources.allSummaries(agent.id) : this.dataSources.summaries(agent.sourceIds, agent.id),
       desktopPluginEnabled: await this.desktopPlugin.enabled(),
       readDesktopPluginSkill: async () => { await this.serialize(async () => { await this.assertExecutionAccess(context) }); return this.desktopPlugin.skill(context) },
       inspectDesktopPlugin: async () => { await this.serialize(async () => { await this.assertExecutionAccess(context) }); return this.desktopPlugin.inspect(context) },
@@ -4300,6 +4357,7 @@ export class AppService {
       callDataSource: input => this.useDataSource(context, input.sourceId, sourceCallSchema.parse(input)),
       closeDataSources: async () => { await Promise.all([this.dataSources.closeRun(run.id), this.webSearch.connections.closeRun(run.id), this.desktopPlugin.closeRun(run.id)]) }, groupCoordination, browserAvailable: !!this.options.browserHost && this.options.browserHost.available !== false && isBrowserCapableAgent(agent), artifactRevision: artifactRevision?.request, agent: clone(agent), connection: clone(connection), modelCatalog: connection ? this.gatewayCatalogs.get(connection) : undefined, runtimeProfile: clone(runtimeProfile), apiKey, conversation: clone(conversation), messages, materialRefs: materialContext.refs, materialImages: materialContext.images.filter(image => visibleMessageIds.has(image.messageId)), continuation, resources: clone(snapshot.resources), runId: run.id, signal, ...loaded, memory: combined, memoryContexts: this.memoryContexts(conversation, run.workId), members: conversation.agentIds.map(id => clone(this.getAgent(id))), contributions: await this.authorizedContributions(conversation, agent.id, turn.id, visibleMessageIds), triggerMessageId: turn.triggerMessageId, turnId: turn.id, onDelta: async () => {}, onTool: async () => {}, approveCommand: async () => false,
       assertSkillAccess: ids => this.serialize(async () => {
+        this.capabilities.assertResourceAccess(ids, context.agent.id)
         const { current, conversation } = await this.assertExecutionAccess(context)
         const allowed = this.authorizedResources(current, conversation)
         for (const id of ids) {
@@ -4623,7 +4681,8 @@ export class AppService {
         receipt: async query => { await validate(); return this.application.receipt(query, actor) },
         call: async input => {
           await validate()
-          const result = await this.applicationAuthority.run({ validate, signal }, () => this.application.call(input, actor))
+          this.assertCapabilityManagementInput(input, actor.employeeId)
+          const result = await this.applicationAuthority.run({ validate, signal, employeeId: actor.employeeId }, () => this.application.call(input, actor))
           if (result.status === 'succeeded' && input.operation.startsWith('tasks.')) this.changed(conversation.id)
           return result
         },
@@ -5006,7 +5065,8 @@ export class AppService {
             const catalog = await this.application.catalog({ operation: input.operation }, actor, false)
             if (catalog.operations[0]?.effect === 'write') await authorizeExecution(context, { kind: 'configuration', description: `BOAI：${input.operation}` })
             await validate()
-            const result = await this.applicationAuthority.run({ validate, signal: effective, directories: context.directoryAccess }, () => this.application.call(input, actor))
+            this.assertCapabilityManagementInput(input, actor.employeeId)
+            const result = await this.applicationAuthority.run({ validate, signal: effective, employeeId: actor.employeeId, directories: context.directoryAccess }, () => this.application.call(input, actor))
             if (result.status === 'succeeded') {
               const [domain, action] = input.operation.split('.')
               if (domain === 'sources' || domain === 'skills') {
@@ -5679,7 +5739,10 @@ export class AppService {
       },
     })
     this.adapterExits.add(execution)
-    void execution.then(() => this.adapterExits.delete(execution), () => this.adapterExits.delete(execution))
+    const runExits = this.adapterExitsByRun.get(run.id) ?? new Set<Promise<unknown>>()
+    runExits.add(execution); this.adapterExitsByRun.set(run.id, runExits)
+    const exited = () => { this.adapterExits.delete(execution); runExits.delete(execution); if (!runExits.size) this.adapterExitsByRun.delete(run.id) }
+    void execution.then(exited, exited)
     return withAbort(execution, signal)
   }
 
@@ -6069,7 +6132,7 @@ export class AppService {
       if (this.teamGeneration.busy) fail('团队方案仍在生成，请停止后备份')
       await this.automations.beforeBackup()
       await this.desktopActivity.beforeBackup()
-      if (this.scheduler.busy || this.runControllers.size || this.activeAdapters.size || this.externalTests.size || this.skills.busy || this.skillUpdates.busy || this.skillLibrary.busy || this.materialImports.size || this.materialUploads.busy || this.materials.busy || this.dataSources.busy || this.webSearch.connections.busy || this.desktopPlugin.busy) fail('有任务、材料准备或资源管理操作正在执行或等待修复，请先停止或完成后备份')
+      if (this.scheduler.busy || this.runControllers.size || this.activeAdapters.size || this.externalTests.size || this.skills.busy || this.skillUpdates.busy || this.skillLibrary.busy || this.materialImports.size || this.materialUploads.busy || this.materials.busy || this.capabilities.packages.busy || this.dataSources.busy || this.webSearch.connections.busy || this.desktopPlugin.busy) fail('有任务、材料准备或资源管理操作正在执行或等待修复，请先停止或完成后备份')
       await this.options.engine.closeMemory?.()
       await this.userMemoryProvider.close()
       await mkdir(destination, { recursive: true })
@@ -6130,7 +6193,7 @@ export class AppService {
   claimIdleShutdown(canClaim: () => boolean): Promise<boolean> {
     return this.serialize(async () => {
       if (!this.initialized || this.closing || this.backingUp) return false
-      const busy = () => this.agentBehaviors.busy || this.application.busy || this.scheduler.busy || this.runControllers.size > 0 || this.activeAdapters.size > 0 || this.adapterExits.size > 0 || this.externalTasks.size > 0 || this.externalTests.size > 0 || this.teamGeneration.busy || this.skills.busy || this.skillUpdates.busy || this.skillLibrary.busy || this.materialImports.size > 0 || this.materialUploads.busy || this.materials.busy || this.dataSources.busy || this.webSearch.connections.busy || this.desktopPlugin.busy
+      const busy = () => this.agentBehaviors.busy || this.application.busy || this.scheduler.busy || this.runControllers.size > 0 || this.activeAdapters.size > 0 || this.adapterExits.size > 0 || this.externalTasks.size > 0 || this.externalTests.size > 0 || this.teamGeneration.busy || this.skills.busy || this.skillUpdates.busy || this.skillLibrary.busy || this.materialImports.size > 0 || this.materialUploads.busy || this.materials.busy || this.capabilities.packages.busy || this.dataSources.busy || this.webSearch.connections.busy || this.desktopPlugin.busy
       if (busy()) return false
       try { await this.teamCreation.assertBackup(); await this.boboCollaboration.assertBackup() } catch { return false }
       const works = await this.store.load<WorkItem>('workItems')
@@ -6158,6 +6221,7 @@ export class AppService {
     await this.boboCollaboration.close()
     await this.teamCreation.close()
     await this.webSearch.connections.close()
+    await this.capabilities.packages.close()
     await this.dataSources.close()
     await this.teamGeneration.close()
     await this.materials.close()

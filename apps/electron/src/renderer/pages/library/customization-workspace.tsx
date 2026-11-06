@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 提示词后增加应用/助手，目录复用原Source投影与普通员工创建；不新增实例状态。
  * [OUTPUT]: 侧栏分组复用skills-list-group的flow-root布局，阻止折叠内容卸载时标题外边距合并造成末帧跳位。
  * [OUTPUT]: 提示词读取就绪与空目录分离，分组页首帧保留结构并支持失败重读。
  * [OUTPUT]: 资源库新增全局提示词分类/默认收起分组，编辑/新建交给Shell右侧面板；修改广播同步Composer的$引用候选。
@@ -15,6 +16,7 @@
  */
 import { useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type RefObject } from 'react'
 import { defaultRangeExtractor, useVirtualizer } from '@tanstack/react-virtual'
+import type { Conversation, Snapshot } from '@boai/shared/domain'
 import type { DataSource } from '@boai/shared/domain/sources'
 import type { LocalSkillCatalog } from '@boai/shared/domain/skills'
 import type { PromptTemplate } from '@boai/shared/domain/prompt-templates'
@@ -22,16 +24,18 @@ import { Banner, errorText, GuardContext } from '@/components/common'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
-import { Search, Zap, Database, ChevronRight, FileText } from '@/components/icons'
+import { Search, Zap, Database, ChevronRight, FileText, Plug, Contact } from '@/components/icons'
+import { ApplicationsView } from './applications-view'
+import { AssistantsView } from './assistants-view'
 import { PromptTemplatesView } from './prompt-templates-view'
 import { SkillsWorkspace } from './skills-workspace'
 import { useLocalSkills } from './use-local-skills'
 import { SourceIcon, SourcesView } from '../sources/sources-view'
 
-type Props = ComponentProps<typeof SkillsWorkspace> & { focusSource?: { id: string; requestId: string }; selectedSource?: string; onOpenSource(source: { id: string; name: string }): void; onRemoveSource(id: string): void; selectedPrompt?: string; onOpenPrompt(prompt: { id: string; name: string }): void; onCreatePrompt(): void; onRemovePrompt(id: string): void }
+type Props = ComponentProps<typeof SkillsWorkspace> & { snapshot: Snapshot; onEmployeeCreated(conversation: Conversation): Promise<void>; focusSource?: { id: string; requestId: string }; selectedSource?: string; onOpenSource(source: { id: string; name: string }): void; onRemoveSource(id: string): void; selectedPrompt?: string; onOpenPrompt(prompt: { id: string; name: string }): void; onCreatePrompt(): void; onRemovePrompt(id: string): void }
 export function CustomizationWorkspace(props: Props) {
   const { api, divider, focusSkill, revision } = props
-  const [category, setCategory] = useState<'skills' | 'sources' | 'prompts'>('skills')
+  const [category, setCategory] = useState<'skills' | 'sources' | 'prompts' | 'applications' | 'assistants'>('skills')
   const [prompts, setPrompts] = useState<PromptTemplate[]>([])
   const [promptsReady, setPromptsReady] = useState(false)
   const sourceId = props.selectedSource
@@ -65,7 +69,7 @@ export function CustomizationWorkspace(props: Props) {
   const [collapsed, setCollapsed] = useState<string[]>(['skills', 'mcp', 'api', 'local', 'prompts'])
   return <div className="conversation-layout customization-workspace">
     <aside className="conversation-list-container custom-sidebar" aria-label="资源库导航"><div className="conversation-list-panel custom-sidebar-heading"><div className="list-heading"><h2>资源库</h2></div></div>
-      <div className="custom-categories"><Button variant="ghost" size="content" aria-current={category === 'skills' ? 'page' : undefined} onClick={() => guard.navigate(() => { setCategory('skills'); setSkillFocus(undefined); setCatalogKey(key => key + 1) })}><Zap />技能</Button><Button variant="ghost" size="content" aria-current={category === 'sources' ? 'page' : undefined} onClick={() => guard.navigate(() => { setCategory('sources') })}><Database />数据源</Button><Button variant="ghost" size="content" aria-current={category === 'prompts' ? 'page' : undefined} onClick={() => guard.navigate(() => setCategory('prompts'))}><FileText />提示词</Button></div>
+      <div className="custom-categories"><Button variant="ghost" size="content" aria-current={category === 'skills' ? 'page' : undefined} onClick={() => guard.navigate(() => { setCategory('skills'); setSkillFocus(undefined); setCatalogKey(key => key + 1) })}><Zap />技能</Button><Button variant="ghost" size="content" aria-current={category === 'sources' ? 'page' : undefined} onClick={() => guard.navigate(() => { setCategory('sources') })}><Database />数据源</Button><Button variant="ghost" size="content" aria-current={category === 'prompts' ? 'page' : undefined} onClick={() => guard.navigate(() => setCategory('prompts'))}><FileText />提示词</Button><Button variant="ghost" size="content" aria-current={category === 'applications' ? 'page' : undefined} onClick={() => guard.navigate(() => setCategory('applications'))}><Plug />应用</Button><Button variant="ghost" size="content" aria-current={category === 'assistants' ? 'page' : undefined} onClick={() => guard.navigate(() => setCategory('assistants'))}><Contact />助手</Button></div>
       <div className="custom-installed-search"><InputGroup><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput aria-label="搜索技能、数据源和提示词" placeholder="搜索资源" value={query} onChange={event => { setQuery(event.target.value); scroll.current?.scrollTo(0, 0) }} /></InputGroup></div>
       {(error || skillError) && <Banner>{error || skillError}</Banner>}
       <div ref={scroll} className="custom-installed-list" aria-label="技能、数据源和提示词"><div>{(['skills', 'mcp', 'api', 'local', 'prompts'] as const).map(group => {
@@ -78,7 +82,7 @@ export function CustomizationWorkspace(props: Props) {
         </Collapsible>
       })}</div>{!rows.length && <p className="field-hint">{query ? '没有匹配的项目' : '添加资源后，会显示在这里。'}</p>}</div>
     </aside>{divider}<main className="conversation-stage custom-content" aria-label="资源库内容">
-      {category === 'skills' ? <SkillsWorkspace {...props} key={catalogKey} divider={null} embedded focusSkill={skillFocus} onCatalogChange={setUpdatedCatalog} /> : category === 'prompts' ? <PromptTemplatesView api={api} prompts={prompts} loaded={promptsReady} onReload={() => { void reload() }} selected={props.selectedPrompt} onOpen={props.onOpenPrompt} onCreate={props.onCreatePrompt} onRemoved={id => { setPrompts(items => items.filter(item => item.id !== id)); props.onRemovePrompt(id); void reload() }} /> : <SourcesView api={api} onManage={() => props.onManage?.('sources')} sources={sources} selected={sourceId} onSelect={props.onOpenSource} onChanged={source => void reload(source)} onRemoved={id => { setSources(items => items.filter(item => item.id !== id)); props.onRemoveSource(id); void reload() }} />}
+      {category === 'applications' ? <ApplicationsView api={api} sources={sources} onOpenSource={props.onOpenSource} onChanged={source => void reload(source)} /> : category === 'assistants' ? <AssistantsView api={api} snapshot={props.snapshot} onCreated={props.onEmployeeCreated} /> : category === 'skills' ? <SkillsWorkspace {...props} key={catalogKey} divider={null} embedded focusSkill={skillFocus} onCatalogChange={setUpdatedCatalog} /> : category === 'prompts' ? <PromptTemplatesView api={api} prompts={prompts} loaded={promptsReady} onReload={() => { void reload() }} selected={props.selectedPrompt} onOpen={props.onOpenPrompt} onCreate={props.onCreatePrompt} onRemoved={id => { setPrompts(items => items.filter(item => item.id !== id)); props.onRemovePrompt(id); void reload() }} /> : <SourcesView api={api} onManage={() => props.onManage?.('sources')} sources={sources} selected={sourceId} onSelect={props.onOpenSource} onChanged={source => void reload(source)} onRemoved={id => { setSources(items => items.filter(item => item.id !== id)); props.onRemoveSource(id); void reload() }} />}
     </main>
   </div>
 }

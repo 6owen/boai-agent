@@ -478,13 +478,7 @@
       "default": "./src/plugins/desktop-tools.ts"
     },
     "./domain/capability-packages": "./src/domain/capability-packages.ts",
-    "./domain/resource-catalog": "./src/domain/resource-catalog.ts",
-    "./domain/project-directory": "./src/domain/project-directory.ts",
-    "./appearance/commands": "./src/appearance/commands.ts",
-    "./appearance/options": "./src/appearance/options.ts",
-    "./ipc/desktop-diagnostics": "./src/ipc/desktop-diagnostics.ts",
-    "./domain/task-diagnosis": "./src/domain/task-diagnosis.ts",
-    "./domain/context-handoff": "./src/domain/context-handoff.ts"
+    "./domain/resource-catalog": "./src/domain/resource-catalog.ts"
   },
   "dependencies": {
     "@boai/runtime-plugin-sdk": "workspace:*",

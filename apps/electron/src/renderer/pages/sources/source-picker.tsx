@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 普通绑定候选排除能力包托管源；旧混入ID可显式移除，使用权限仍归能力包绑定。
  * [OUTPUT]: 无绑定时复用通讯录技能的contact-card-empty占位，不因存在可选数据源而返回空内容。
  * [OUTPUT]: 2026-10-19 数据源选择仅负责 MCP/API/本地文件夹业务绑定，网页检索迁至独立能力分区。
  * [OUTPUT]: 首选检索方式与绑定共用员工草稿；核心可选全局搜索候选，失效首选明确显示，不连接服务。
@@ -13,8 +14,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { DesktopApi } from '@boai/shared/ipc'
 import { DATA_SOURCE_LABELS, type DataSource } from '@boai/shared/domain/sources'
-import { Banner, errorText, Field } from '@/components/common'
-import { SelectField } from '@/components/ui/select-field'
+import { Banner, errorText } from '@/components/common'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverDescription, PopoverTitle } from '@/components/ui/popover'
@@ -37,10 +37,10 @@ export function SourcePicker({ api, ids, onChange, disabled, active, allSources 
   }, [api, active, allSources])
   const label = <span className={showLabel ? 'field-label' : 'sr-only'}>可访问的数据源</span>
   if (allSources) {
-    const content = <><div className="field full">{label}{error && <Banner>{error}</Banner>}<p className="field-hint">可读写全部已启用的数据源，无需单独绑定。</p></div></>
+    const content = <><div className="field full">{label}{error && <Banner>{error}</Banner>}<p className="field-hint">可读写全部已启用的普通数据源；能力包数据源由能力包绑定授权。</p></div></>
     return renderSection ? renderSection(content) : content
   }
-  const availableSources = sources.filter(source => !ids.includes(source.id))
+  const availableSources = sources.filter(source => !source.capabilityPackage && !ids.includes(source.id))
   const boundSources = sources.filter(source => ids.includes(source.id))
   const actions = <DropdownMenu>
     <DropdownMenuTrigger render={<Button type="button" variant="secondary" size="sm" disabled={disabled || !active || !availableSources.length} />}>添加数据源</DropdownMenuTrigger>
@@ -59,11 +59,11 @@ function SourceRow({ source, disabled, active, onOpen, onRemove }: {
   const [removing, setRemoving] = useState(false)
   const menuAnchor = useRef<HTMLButtonElement>(null)
   return <div className="flex min-w-0 items-center gap-1">
-    <div className="resource-option min-w-0 flex-1 cursor-default"><span><strong>{source.name}{!source.enabled ? '（已停用）' : ''}</strong><small>{DATA_SOURCE_LABELS[source.type]}{source.description ? ` · ${source.description}` : ''}</small></span></div>
+    <div className="resource-option min-w-0 flex-1 cursor-default"><span><strong>{source.name}{source.capabilityPackage ? '（由能力包管理）' : !source.enabled ? '（已停用）' : ''}</strong><small>{source.capabilityPackage ? '使用权限由能力包绑定控制，此处移除不影响能力包绑定。' : `${DATA_SOURCE_LABELS[source.type]}${source.description ? ` · ${source.description}` : ''}`}</small></span></div>
     <DropdownMenu>
       <DropdownMenuTrigger render={<Button ref={menuAnchor} type="button" variant="ghost" size="icon-xs" disabled={disabled} aria-label={`数据源操作 ${source.name}`} title="更多操作" />}><MoreHorizontal /></DropdownMenuTrigger>
       <DropdownMenuContent align="end" finalFocus={removing ? false : undefined}><DropdownMenuGroup>
-        {onOpen && <DropdownMenuItem disabled={disabled} onClick={() => onOpen(source)}>打开详情</DropdownMenuItem>}
+        {onOpen && !source.capabilityPackage && <DropdownMenuItem disabled={disabled} onClick={() => onOpen(source)}>打开详情</DropdownMenuItem>}
         <DropdownMenuItem variant="destructive" disabled={disabled} onClick={() => setRemoving(true)}>移除</DropdownMenuItem>
       </DropdownMenuGroup></DropdownMenuContent>
     </DropdownMenu>
