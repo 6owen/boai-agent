@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 定时任务标题复用员工表单分区的字体、字号及间距。
+ * [OUTPUT]: 定时任务标题复用员工表单分区样式；列表仅显示名称和执行日程，不显示暂停状态。
  * [OUTPUT]: 员工/群计划展示复用执行记录两行列表，点击仍定位唯一管理页。
  * [INPUT]: 员工/旧群归属、有界计划IPC与全局定时任务导航。
  * [OUTPUT]: 只读计划列表；点击回到唯一管理页，隐藏停读、迟到隔离、游标分页。
@@ -31,7 +31,7 @@ export function OwnerAutomations({ api, owner, active }: { api: DesktopApi; snap
   return <div className="employee-form-sections"><section className="contact-section" aria-label="员工定时任务">
     <div className="contact-section-heading"><h2 className="contact-section-title">定时任务</h2></div>
     <div className="automation-records">{(error || loadError) && <Banner>{error || loadError}</Banner>}
-    {!page ? !loadError && <Loading /> : !page.definitions.length ? <p className="field-hint">暂无定时任务</p> : page.definitions.map(definition => <Button key={definition.id} variant="ghost" size="content" className="conversation-item automation-record-row" onClick={() => guard.navigate(() => onOpen(definition.id))}><span className="skill-list-icon"><Clock /></span><span className="conversation-copy"><strong className="conversation-title">{definition.name}</strong><small className="conversation-preview">{!definition.enabled ? '已暂停 · ' : ''}{scheduleSummary(definition)}</small></span></Button>)}
+    {!page ? !loadError && <Loading /> : !page.definitions.length ? <p className="field-hint">暂无定时任务</p> : page.definitions.map(definition => <Button key={definition.id} variant="ghost" size="content" className="conversation-item automation-record-row" onClick={() => guard.navigate(() => onOpen(definition.id))}><span className="skill-list-icon"><Clock /></span><span className="conversation-copy"><strong className="conversation-title">{definition.name}</strong><small className="conversation-preview">{scheduleSummary(definition)}</small></span></Button>)}
     {page?.nextCursor && <Button variant="secondary" disabled={busy} onClick={() => void run(async () => { const token = generation.current; const next = await api.request('listOwnerAutomations', { owner, before: page.nextCursor, limit: 30 }); if (token === generation.current) setPage(current => ({ definitions: [...current!.definitions, ...next.definitions.filter(d => !current!.definitions.some(prior => prior.id === d.id))], nextCursor: next.nextCursor })) })}>更早的计划</Button>}
     </div>
   </section></div>
