@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 会话摘要只显示最新已发送消息，不接入composer草稿或执行状态；渠道入口仅提示真实未读回复。
  * [OUTPUT]: 员工配置与置顶共用同一右键菜单分组，清理操作独立分组。
  * [OUTPUT]: 失败/取消/中断的执行过程及自动化镜像保留在聊天；支持显式继续、原生复制和员工配置右键入口。
  * [OUTPUT]: 员工会话右键配置跳转现有通讯录选中项；定时运行按用户点击查看过程/聊天。
@@ -9,7 +10,7 @@
  * [OUTPUT]: 渠道列表可嵌入Popover；仅传入onBack时显示返回按钮，搜索/label折叠沿原状态。
  * [OUTPUT]: 2026-10-15渠道私聊/群聊复用会话label折叠；搜索临时展开，明确定位展开目标分组，取消横向筛选Tabs。
  * [OUTPUT]: 2026-10-14现行分离合同：主列表按员工/BOAI群显示，员工渠道页私聊/群筛选及真实新回复提示；渠道分组一次读取，避免逐员工重复排序。
- * [INPUT]: 会话/员工快照、草稿、列表更新回调与统一 UI 组件与共用清理确认弹窗。
+ * [INPUT]: 会话/员工快照、已发送消息摘要、列表更新回调与统一 UI 组件与共用清理确认弹窗。
  * [OUTPUT]: 渠道会话单列、显示接入员工身份，拖拽和置顶不影响普通/核心分类。
  * [OUTPUT]: 常驻会话名称输入与核心助手真实头像/名称的唯一折叠分组，右键管理与右侧新会话图标；核心历史紧凑小缩进、单一背景，默认标题占满行宽，更多/编辑随悬停、聚焦或菜单打开覆盖末尾且不改变标题宽度，行内图标/右键/更多共用编辑标题，普通会话保持头像和预览及置顶；标题右侧加号只保留员工/群聊，名称筛选临时展开分组并禁用拖拽，清除后保留原折叠；全局检索入口与 Dialog 由 Shell 承载。
  * [POS]: 会话列表交互；持久化通过 Shell 的类型化请求完成。
@@ -33,12 +34,11 @@ import { CHANNEL_NAMES } from '@boai/shared/domain/channels'
 import { Avatar, timeText } from '@/components/common'
 import { AddContactMenu } from '@/components/common/add-contact-menu'
 import { GroupAvatar } from '@/components/common/group-avatar'
-import { type ChatDraft } from '../presentation'
 import { ConversationHistoryDialog, type ConversationHistoryTarget } from './conversation-history-dialog'
 
 interface Props {
   snapshot: Snapshot; selectedId: string | null
-  previews: Record<string, string>; messageTimes: Record<string, string>; drafts: Map<string, ChatDraft>
+  previews: Record<string, string>; messageTimes: Record<string, string>
   onSelect(id: string): void; onCreate(kind: 'agent' | 'group'): void
   onCreateCore(): void
   onConfigureCore(): void
@@ -51,7 +51,7 @@ interface Props {
   onBack?(): void
   onOpenChannels?(agent: DigitalAgent, conversationId?: string): void
 }
-export function ConversationList({ snapshot, selectedId, previews, messageTimes, drafts, onSelect, onCreate, onCreateCore, onConfigureCore, onConfigureAgent, onEditTitle, onChange, onClear, busy, channelAgent, onBack, onOpenChannels, selectionRequest, showHeading = true }: Props) {
+export function ConversationList({ snapshot, selectedId, previews, messageTimes, onSelect, onCreate, onCreateCore, onConfigureCore, onConfigureAgent, onEditTitle, onChange, onClear, busy, channelAgent, onBack, onOpenChannels, selectionRequest, showHeading = true }: Props) {
   const [query, setQuery] = useState('')
   const [coreOpen, setCoreOpen] = useState(true)
   const [coreMenuOpen, setCoreMenuOpen] = useState(false)
@@ -88,7 +88,7 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
         const members = conversation.agentIds.map(id => snapshot.agents.find(a => a.id === id)).filter((agent): agent is DigitalAgent => Boolean(agent))
         const channels = !channelAgent && conversation.kind === 'direct' && agent ? channelsByAgent.get(agent.id) ?? [] : []
         const unread = channels.reduce((count, room) => count + (room.channelUnreadCount ?? 0), 0)
-        const notification = channels.find(room => (room.channelUnreadCount ?? 0) > 0) ?? channels.find(room => room.activity && room.activity !== 'idle')
+        const notification = channels.find(room => (room.channelUnreadCount ?? 0) > 0)
         return <DragListItem id={conversation.id} className="conversation-row relative" key={conversation.id}>{({ dragging, dragProps }) =>
           <ContextMenu onOpenChange={open => { if (coreConversation) setCoreHistoryMenuId(open ? conversation.id : null) }}>
             {coreConversation ? <ContextMenuTrigger render={<div className={cn('conversation-item conversation-core-item', { selected: selectedId === conversation.id, 'drag-list-dragging': dragging })} data-menu-open={coreHistoryMenuId === conversation.id || undefined} />} aria-label={conversation.title}>
@@ -107,9 +107,8 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
               onClick={() => { if (!dragging) onSelect(conversation.id) }}>
               {conversation.kind === 'group' && !isChannelConversation(conversation) ? <GroupAvatar members={members} /> : <Avatar name={agent?.name ?? conversation.title} seed={agent?.id} avatar={agent?.avatar} color={agent?.color} />}
               <span className="conversation-copy"><span className="conversation-title">{title(conversation)}
-                {conversation.activity && conversation.activity !== 'idle' && <span className={`list-activity ${conversation.activity}`}>{({ running: '处理中', waiting_approval: '待授权', queued: '排队', failed: '失败' } as const)[conversation.activity]}</span>}
                 {messageTime && <time dateTime={messageTime}>{timeText(messageTime)}</time>}
-              </span><span className={cn('conversation-preview', { 'pr-24': notification })}>{channelAgent && (conversation.channelUnreadCount ?? 0) > 0 && <em>[新回复 {conversation.channelUnreadCount}] </em>}{conversation.purpose === 'automation' && '定时任务 · '}{drafts.get(conversation.id)?.text ? <><em>[草稿]</em> {drafts.get(conversation.id)?.text}</> : previews[conversation.id] || conversation.lastMessagePreview || (conversation.kind === 'group' ? `${conversation.agentIds.length} 位数字员工` : agent?.role || '专属对话')}</span></span>
+              </span><span className={cn('conversation-preview', { 'pr-24': notification })}>{previews[conversation.id] || conversation.lastMessagePreview || ''}</span></span>
             </ContextMenuTrigger>}
             <ContextMenuContent className="w-40">{(!isChannelConversation(conversation) || !coreConversation && conversation.kind === 'direct' && agent && onConfigureAgent) && <><ContextMenuGroup>
               {!coreConversation && conversation.kind === 'direct' && agent && onConfigureAgent && <ContextMenuItem onClick={() => onConfigureAgent(agent)}><Settings />员工配置</ContextMenuItem>}
@@ -118,7 +117,7 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
               <ContextMenuItem disabled={busy} onClick={() => confirm(conversation, false)}><Trash2 />清空聊天记录</ContextMenuItem>
               <ContextMenuItem variant="destructive" disabled={busy} onClick={() => confirm(conversation, true)}><Trash2 />删除会话</ContextMenuItem>
             </ContextMenuGroup></ContextMenuContent>
-            {notification && agent && <Button variant="ghost" size="content" className="absolute bottom-2 right-3 text-xs text-primary" aria-label={`${agent.name}的渠道${unread ? `有${unread}条新回复` : '有处理动态'}`} onClick={() => onOpenChannels?.(agent, notification.id)}>{CHANNEL_NAMES[notification.channel!.platform]} · {unread ? `新回复 ${unread}` : notification.activity && ({ running: '处理中', waiting_approval: '待授权', queued: '排队', failed: '处理失败', idle: '' } as const)[notification.activity]}</Button>}
+            {notification && agent && <Button variant="ghost" size="content" className="absolute bottom-2 right-3 text-xs text-primary" aria-label={`${agent.name}的渠道有${unread}条新回复`} onClick={() => onOpenChannels?.(agent, notification.id)}>{CHANNEL_NAMES[notification.channel!.platform]} · 新回复 {unread}</Button>}
           </ContextMenu>
         }</DragListItem>
   }

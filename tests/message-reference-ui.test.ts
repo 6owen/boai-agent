@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 知识资料引用随消息还原原子标签及资料类型，不打开共享或预览。
  * [INPUT]: 生产MaterialMarkdown、固定资源引用和共用快捷命令目录。
  * [OUTPUT]: 用户消息还原技能/数据源/文件及命令行内标签，中文相邻/旧@引用/名称匹配与Markdown保持；字面未绑定资源、代码/链接/路径不误标，标签不触发操作。
  * [POS]: 消息展示组件回归，不运行Electron或E2E。
@@ -60,4 +61,10 @@ it('keeps Markdown formatting, code and link labels intact and leaves employee r
   expect(host.querySelector('a')?.textContent).toBe('$boai-travel /todo')
   await render('$boai-travel /todo', [skill], 'agent')
   expect(tags()).toHaveLength(0)
+})
+
+it('renders a selected knowledge reference with its resource identity', async () => {
+  const knowledge: ComposerReference = { kind: 'knowledge', id: 'knowledge-id', agentId: 'bobo', name: '品牌规范.txt', revision: 0, contentHash: 'c'.repeat(64) }
+  await render('请参考$品牌规范.txt写文案。', [knowledge])
+  expect(tags().map(tag => [tag.textContent, tag.dataset.referenceKind, tag.dataset.referenceId, tag.title])).toEqual([['$品牌规范.txt', 'knowledge', 'knowledge-id', '知识资料：品牌规范.txt']])
 })

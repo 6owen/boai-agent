@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 会话文件与知识资料按类型及员工独立去重、关闭和保留页面状态。
  * [OUTPUT]: 员工右侧任务标签按员工身份复用并保留原执行标签。
  * [OUTPUT]: 员工任务不再创建右侧标签，拒绝打开时保留原执行标签。
  * [OUTPUT]: 员工任务按员工身份复用面板目标，定位另一执行不串到其他员工。
@@ -23,6 +24,21 @@ import { artifactPendingKey, artifactReceiptResult, artifactRequestAction, artif
 import type { Connection, DigitalAgent } from '../packages/shared/src/domain'
 
 describe('detail workspace tabs', () => {
+  it('keeps conversation files and employee knowledge independently selectable and closeable', () => {
+    const files: DetailTarget = { type: 'files', owner: 'employee', id: 'a' }
+    const knowledge: DetailTarget = { type: 'knowledge', id: 'a' }
+    let state = reduce(emptyDetailTabs, { type: 'open', target: files })
+    state = reduce(state, { type: 'open', target: knowledge })
+    state = reduce(state, { type: 'open', target: { type: 'knowledge', id: 'b' } })
+    state = reduce(state, { type: 'open', target: files })
+    state = reduce(state, { type: 'open', target: knowledge })
+    expect(state.tabs.map(tab => tab.key)).toEqual(['files:employee:a', 'knowledge:a', 'knowledge:b'])
+    expect(state.activeKey).toBe('knowledge:a')
+    state = reduce(state, { type: 'close', key: 'knowledge:a' })
+    expect(state.tabs.map(tab => tab.target)).toEqual([files, { type: 'knowledge', id: 'b' }])
+    state = reduce(state, { type: 'select', key: 'files:employee:a' })
+    expect(state.activeKey).toBe('files:employee:a')
+  })
   it('reuses prompt tabs and updates saved metadata without reopening or stealing focus', () => {
     const draft: DetailTarget = { type: 'prompt', id: 'prompt-a', name: '新建提示词', create: true, requestId: 'new' }
     const opened = detailWorkspacesReducer({}, { scope: 'skills', action: { type: 'open', target: draft } })

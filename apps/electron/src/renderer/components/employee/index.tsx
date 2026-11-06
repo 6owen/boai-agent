@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 员工弹窗的自动化分类显示为定时任务，原分类标识及导航保持。
+ * [OUTPUT]: 高级设置侧栏隐藏任务/执行详情；记忆页保留挂载避免切回重建，记忆保存期间沿弹窗忙时锁。
  * [OUTPUT]: 通讯录任务入口先跳转员工主会话，再打开会话右侧面板。
  * [OUTPUT]: 员工详情任务入口打开该员工右侧面板，原自动化分类保持。
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
@@ -90,18 +92,19 @@ export function EmployeeDetail({ api, agent, snapshot, conversationId, configura
   useEffect(() => { if (configurationRequest && configurationAvailable) selectTab('profile') }, [configurationRequest, configurationAvailable])
   const openTasks = useContext(EmployeeTasksNavigation)
   const sidebar = navigation === 'sidebar'
+  const advancedSettings = sidebar && !configurationAvailable
   const categories = [
     ...(configurationAvailable ? [{ value: 'profile', label: '基础配置', icon: Settings }] : []),
     { value: 'personality', label: '人格与行为', icon: Settings },
     { value: 'workspace', label: '工作区', icon: FolderOpen },
     { value: 'memory', label: '记忆', icon: BookOpen },
-    { value: 'execution', label: '执行详情', icon: Clock },
+    ...(!advancedSettings ? [{ value: 'execution', label: '执行详情', icon: Clock }] : []),
     { value: 'channels', label: '渠道', icon: AtSign },
-    ...(onConversation ? [{ value: 'automations', label: '自动化', icon: CalendarClock }] : []),
+    ...(onConversation ? [{ value: 'automations', label: '定时任务', icon: CalendarClock }] : []),
   ]
   const menu = <TabsList aria-label="员工详情分类" className={sidebar ? 'employee-menu w-full gap-1 p-0' : undefined}>
     {categories.map(item => <TabsTrigger key={item.value} value={item.value} aria-disabled={personalityBusy} aria-label={item.label} className={sidebar ? 'group-data-vertical/tabs:h-[32px] text-[length:var(--text-ui-secondary)] aria-disabled:opacity-100' : 'aria-disabled:opacity-100'}>{sidebar && <item.icon size={14} />}<span className={sidebar ? 'employee-menu-label' : undefined}>{item.label}</span></TabsTrigger>)}
-    <Button variant="ghost" size="sm" disabled={personalityBusy} onClick={() => guard.navigate(() => openTasks(agent.id))}>任务</Button>
+    {!advancedSettings && <Button variant="ghost" size="sm" disabled={personalityBusy} onClick={() => guard.navigate(() => openTasks(agent.id))}>任务</Button>}
   </TabsList>
   const identity = <div ref={setIdentityTarget} className="employee-identity" />
   const panels = <>
@@ -125,8 +128,8 @@ export function EmployeeDetail({ api, agent, snapshot, conversationId, configura
     </TabsContent>
     {configurationAvailable && <TabsContent value="profile" keepMounted>{sidebar && identity}<AgentEditor key={configurationEpoch} api={api} snapshot={snapshot} agent={agent} identityTarget={identityTarget} footerTarget={footerTarget} actionsTarget={actionsTarget} configurationVisible={tab === 'profile'} identityDisabled={tab !== 'profile' && guard.dirty && !configurationDirty} onDirtyChange={configurationChanged} onRevealConfiguration={revealConfiguration} onBusyChange={onBusyChange} active={active} scope={scope} onSaved={async () => { await refresh(); await loadHome() }} onClose={onClose} /></TabsContent>}
     <TabsContent value="workspace"><fieldset className="contents" disabled={configurationDirty}><WorkspaceView api={api} snapshot={snapshot} onBusyChange={onBusyChange} agent={agent} home={home} active={active && tab === 'workspace'} conversation={currentConversation} onConfigure={() => configurationAvailable ? selectTab('profile') : guard.navigate(() => { onClose(); onConfigure?.() }, { resetOnDiscard: false })} onRefresh={async () => { await refresh(); await loadHome() }} /></fieldset></TabsContent>
-    <TabsContent value="memory"><fieldset className="contents" disabled={configurationDirty}><MemoryPane api={api} agent={agent} snapshot={snapshot} initialConversationId={contextId} active={active && tab === 'memory'} /></fieldset></TabsContent>
-    <TabsContent value="execution"><EmployeeExecutionPane key={`${agent.id}:${contextId ?? 'all'}`} api={api} agent={agent} snapshot={snapshot} conversationId={contextId} active={active && tab === 'execution'} /></TabsContent>
+    <TabsContent value="memory" keepMounted><fieldset className="contents" disabled={configurationDirty}><MemoryPane key={`${agent.id}:${contextId ?? 'all'}`} api={api} agent={agent} snapshot={snapshot} initialConversationId={contextId} active={active && tab === 'memory'} onBusyChange={personalityBusyChanged} /></fieldset></TabsContent>
+    {!advancedSettings && <TabsContent value="execution"><EmployeeExecutionPane key={`${agent.id}:${contextId ?? 'all'}`} api={api} agent={agent} snapshot={snapshot} conversationId={contextId} active={active && tab === 'execution'} /></TabsContent>}
     <TabsContent value="channels"><fieldset className="contents" disabled={configurationDirty}><EmployeeChannelPane key={agent.id} api={api} agent={agent} active={active && tab === 'channels'} /></fieldset></TabsContent>
     {onConversation && <TabsContent value="automations"><fieldset className="contents" disabled={configurationDirty}><OwnerAutomations key={agent.id} api={api} snapshot={snapshot} owner={{ kind: 'employee', employeeId: agent.id }} active={active && tab === 'automations'} onConversation={onConversation} /></fieldset></TabsContent>}
     {configurationAvailable && actionsTarget === undefined && <div ref={setFooterTarget} className="employee-identity-actions" />}
