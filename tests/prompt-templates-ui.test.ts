@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 原有$菜单的技能/会话文件/提示词选择保持；即使员工已绑定知识资料，也不将新增知识资料放进该菜单。
  * [OUTPUT]: 普通bobo首发提供五项管理命令，选择生成真实标签且零IPC；普通员工不显示核心管理命令。
  * [OUTPUT]: 详情默认只读、header菜单进入编辑、保存/取消返回阅读；AI入口及草稿保护、菜单删除冻结所见版本保持。
  * [INPUT]: 实际提示词目录/右侧表单/删除菜单、PromptBar/Tiptap与隔离IPC。
@@ -23,8 +24,8 @@ import { GuardContext } from '../apps/electron/src/renderer/components/common'
 import { useEditorGuard } from '@boai/ui/use-editor-guard'
 
 let host: HTMLDivElement, root: Root, latestDraft: ChatDraft
-const employee = { id: 'alice', name: 'Alice', role: '研究员', active: true, configVersion: 1, skillIds: ['skill-a'] } as DigitalAgent
-const resources = [{ id: 'skill-a', kind: 'skill', name: '检索资料', description: '' }] as Resource[]
+const employee = { id: 'alice', name: 'Alice', role: '研究员', active: true, configVersion: 1, skillIds: ['skill-a'], knowledgeIds: ['knowledge-a'] } as DigitalAgent
+const resources = [{ id: 'skill-a', kind: 'skill', name: '检索资料', description: '' }, { id: 'knowledge-a', kind: 'knowledge', name: '知识资料.txt', ownerAgentId: 'alice' }] as Resource[]
 const prompt: PromptTemplate = { id: '88c2c9dc-c012-4979-b3cc-f9e52b33cf3e', revision: 1, name: '清楚总结', description: '总结格式', content: '先给结论，再列事实。', createdAt: '', updatedAt: '' }
 const noop = () => {}
 function apiFor(request: (method: string, input: any) => unknown): DesktopApi { return { request: vi.fn(async (method, input) => request(method, input)), subscribe: () => () => {} } as unknown as DesktopApi }

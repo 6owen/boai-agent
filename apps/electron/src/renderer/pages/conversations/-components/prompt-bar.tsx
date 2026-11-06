@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 恢复原有$按钮/键入菜单的技能、会话文件和提示词；知识资料不加入候选，继续由右侧文件菜单添加到输入框。
+ * [OUTPUT]: 拖入文件时整个输入器覆盖模糊层，提示居中且不占布局空间。
  * [OUTPUT]: 当前轮次补充与普通发送共用录音取消，防止迟到转写写回已发送草稿。
  * [OUTPUT]: 2026-10-27 默认关闭语音插件接线、可信主窗口与原草稿/生命周期边界。
  * [OUTPUT]: bobo普通会话/首发的五类管理命令插入固定技能标签，选择时不发送消息或执行操作。
@@ -41,23 +43,25 @@ export interface PromptBarHandle { mention(id: string): void; focus(): void }
 interface Props {
   ref?: Ref<PromptBarHandle>; api?: DesktopApi; resources?: Resource[]; conversationId?: string
   draft: ChatDraft; setDraft(value: ChatDraft): void; members: DigitalAgent[]; group: boolean; external: boolean; placeholder: string
-  pageActive?: boolean; conversationReady?: boolean; mentionsAllowed?: boolean; disabled?: boolean
+  draggingFiles?: boolean; pageActive?: boolean; conversationReady?: boolean; mentionsAllowed?: boolean; disabled?: boolean
   onSend(): void; onActivity(): void; onOpenWorkspace(): void; onPasteMaterials?(files?: File[]): void
   attachments?: ReactNode; children(openMenu: (kind: Menu) => void, menu: Menu | null, reference: (value: ComposerReference) => void, voice: { controls: ReactNode; onSend(): void; cancel(): void }): ReactNode
 }
-export function PromptBar({ ref, api, resources = [], conversationId, draft, setDraft, members, group, external, placeholder, pageActive = true, conversationReady = true, mentionsAllowed = true, disabled = false, onSend: submit, onActivity, onOpenWorkspace, onPasteMaterials, attachments, children }: Props) {
+export function PromptBar({ ref, api, resources = [], conversationId, draft, setDraft, members, group, external, placeholder, draggingFiles = false, pageActive = true, conversationReady = true, mentionsAllowed = true, disabled = false, onSend: submit, onActivity, onOpenWorkspace, onPasteMaterials, attachments, children }: Props) {
   const anchor = useRef<HTMLDivElement>(null), list = useRef<HTMLDivElement>(null), richInput = useRef<MentionInputHandle>(null)
   const listId = useId(), primary = members.length === 1 ? members[0] : undefined
   const scope = `${conversationId ?? 'new'}:${primary?.id ?? 'group'}`
   const voice = useVoiceInput(api, richInput, scope, pageActive && !external, disabled || Boolean(draft.submission))
   const onSend = () => { voice.cancel(); submit() }
-  const current = useRef({ scope, text: draft.text, disabled }); current.current = { scope, text: draft.text, disabled }
+  const current = useRef({ scope, text: draft.text, disabled, pageActive }); current.current = { scope, text: draft.text, disabled, pageActive }
+  const pickGeneration = useRef(0)
   const mentions = draftMentions(draft)
   const [selection, setSelection] = useState({ start: draft.text.length, end: draft.text.length })
   const [manual, setManual] = useState<Menu | null>(null), [dismissed, setDismissed] = useState(false), [composing, setComposing] = useState(false)
   const [active, setActive] = useState(0), [files, setFiles] = useState<ConversationFileItem[]>([]), [loading, setLoading] = useState(false), [picking, setPicking] = useState(false), [error, setError] = useState('')
   const [nextCursor, setNextCursor] = useState<string>(), [cursor, setCursor] = useState<string>()
   const [prompts, setPrompts] = useState<PromptTemplate[]>([]), [loadingPrompts, setLoadingPrompts] = useState(false)
+  useLayoutEffect(() => { setPicking(false); return () => { pickGeneration.current++ } }, [scope, pageActive])
   const previousScope = useRef(scope)
   useLayoutEffect(() => {
     if (previousScope.current === scope) return
@@ -115,7 +119,7 @@ export function PromptBar({ ref, api, resources = [], conversationId, draft, set
       setDraft(next)
     }
   }, [draft, group, disabled, members, setDraft])
-  const close = () => { setManual(null); setDismissed(true) }
+  const close = () => { pickGeneration.current++; setPicking(false); setManual(null); setDismissed(true) }
   const focus = () => richInput.current?.focus()
   useImperativeHandle(ref, () => ({ focus, mention: id => {
     if (disabled || !mentionsAllowed) return
@@ -123,17 +127,17 @@ export function PromptBar({ ref, api, resources = [], conversationId, draft, set
     if (member) { richInput.current?.replace(richInput.current.selection(), '', member); close() }
   } }))
   const pick = async (id: string) => {
-    if (disabled || picking) return
+    if (disabled || picking || !pageActive) return
     const row = rows.find(item => item.id === id)
     if (!row) return
     const range = token?.kind === menu ? token : richInput.current?.selection() ?? selection
     if (row.file && api && row.resource && (row.resource.kind === 'artifact' || row.resource.kind === 'material')) {
-      const expected = current.current
+      const expected = current.current, generation = ++pickGeneration.current
       setPicking(true); setError('')
       try { await api.request('resolveConversationFileTarget', { id: row.file.id, conversationId: row.resource.conversationId, kind: row.file.kind, contentHash: row.file.contentHash, revision: row.file.revision }) }
-      catch (failure) { if (current.current.scope === expected.scope) setError(errorText(failure)); setPicking(false); return }
-      setPicking(false)
-      if (current.current.scope !== expected.scope || current.current.text !== expected.text || current.current.disabled) return
+      catch (failure) { if (pickGeneration.current === generation) setError(errorText(failure)); return }
+      finally { if (pickGeneration.current === generation) setPicking(false) }
+      if (pickGeneration.current !== generation || current.current.scope !== expected.scope || current.current.text !== expected.text || current.current.disabled || !current.current.pageActive) return
     }
     if (row.prompt) { const { id, name, content, revision } = row.prompt; richInput.current?.replace(range, '', { id: row.id, name, prompt: { id, name, content, revision } }) }
     else if (row.resource) richInput.current?.replace(range, '', { id: row.id, name: row.name, resource: row.resource })
@@ -173,7 +177,7 @@ export function PromptBar({ ref, api, resources = [], conversationId, draft, set
     event.preventDefault(); if (!disabled) onPasteMaterials(files.length ? files : undefined); return true
   }
   return <Popover open={Boolean(menu)} modal={false} onOpenChange={value => { if (!value) close() }}>
-    <ChatComposer ref={anchor}>{attachments}
+    <ChatComposer ref={anchor} className="relative">{attachments}
       <MentionInput scope={scope} ref={richInput} disabled={disabled} draft={draft} placeholder={placeholder} listId={menu ? listId : undefined} activeId={menu && rows.length ? `${listId}-${selected}` : undefined} onChange={value => { setDraft(value); setManual(null); setDismissed(false) }} onSelection={setSelection} onKeyDown={keyDown} onPaste={paste} onComposing={setComposing} />
       {voice.preview}
       {children(openMenu, menu, reference => {
@@ -181,6 +185,7 @@ export function PromptBar({ ref, api, resources = [], conversationId, draft, set
         richInput.current?.replace(richInput.current.selection(), '', { id: `${reference.kind}:${reference.id}`, name: reference.name, resource: reference })
         close()
       }, { controls: voice.controls, onSend, cancel: voice.cancel })}
+      {draggingFiles && <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-[inherit] bg-background/60 px-4 text-center text-sm text-foreground backdrop-blur-sm" role="status">松开文件，添加到当前会话</div>}
     </ChatComposer>
     <PopoverContent anchor={anchor} side="top" align="start" sideOffset={8} initialFocus={false} finalFocus={false} className="prompt-bar-menu w-[320px] max-w-[calc(100vw-24px)] gap-1.5 p-2">
       <PopoverTitle>{displayedMenu === 'at' ? '提及员工' : displayedMenu === 'dollar' ? '引用技能、文件和提示词' : '命令'}</PopoverTitle>
