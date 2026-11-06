@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Composer仅在已保存的语音配置/所选模型及引擎就绪时显示开始入口；共享设置回执更新，进行中的停止/取消保持。
  * [OUTPUT]: 2026-10-27 原Composer语音控件增加统一快捷键，限定当前输入焦点/窗口与非录入状态。
  * [INPUT]: Active Composer instance, plugin snapshot and trusted desktop voice API.
  * [OUTPUT]: Explicit recording controls and ephemeral transcription preview; navigation/lifecycle cancels.
@@ -13,6 +14,7 @@ import { applicationPlugins } from '@boai/shared/plugins/catalog'
 import { pluginAvailability } from '@boai/shared/plugins/types'
 import type { DesktopApi } from '@boai/shared/ipc'
 import { shortcuts } from '@/stores/shortcuts'
+import { useVoiceSettings, voiceSettings } from '@/stores/voice-settings'
 import { matchShortcut } from '@boai/shared/shortcuts'
 import { pluginUsage, usePlugins } from '@/stores/plugins'
 import { VoiceController, type VoiceUi } from '@boai/voice-input-plugin/controller'
@@ -20,9 +22,21 @@ import type { MentionInputHandle } from './mention-input'
 export function useVoiceInput(api: DesktopApi | undefined, editor: RefObject<MentionInputHandle | null>, scope: string, active: boolean, disabled: boolean) {
   const settings = usePlugins(value => value.settings), ready = usePlugins(value => value.ready)
   const enabled = ready && pluginAvailability(applicationPlugins.find(plugin => plugin.id === 'boai.voice-input')!, settings) === 'enabled'
+  const { snapshot, models } = useVoiceSettings()
+  const available = !!snapshot && !snapshot.readOnly && !snapshot.diagnostic && (snapshot.settings.mode === 'local'
+    ? snapshot.supported && (models ?? snapshot.models).some(model => model.id === snapshot.settings.localModelId && model.ready)
+    : snapshot.onlineKeyPresent)
   const instance = useRef(crypto.randomUUID()), owner = useRef<VoiceController | undefined>(undefined)
   const [state, setState] = useState<VoiceUi>({ phase: 'idle', preview: '' })
   const [seconds, setSeconds] = useState(0)
+  useEffect(() => {
+    if (!api?.voice || !enabled || !active) return
+    voiceSettings.initialize(api)
+    const stop = voiceSettings.activate()
+    const refresh = () => voiceSettings.invalidate()
+    window.addEventListener('focus', refresh)
+    return () => { stop(); window.removeEventListener('focus', refresh) }
+  }, [api, enabled, active])
   useEffect(() => {
     if (!api?.voice || !enabled || !active || disabled) return
     let mounted = true
@@ -45,7 +59,7 @@ export function useVoiceInput(api: DesktopApi | undefined, editor: RefObject<Men
       if (!controller || !document.hasFocus() || document.hidden || event.defaultPrevented || shortcut.capturing || shortcut.snapshot?.error || !shortcut.snapshot || matchShortcut(event, shortcut.snapshot) !== 'voiceInput') return
       const overlay = '[role="dialog"], [role="alertdialog"], [role="menu"], [data-slot="popover-content"], [data-slot="select-content"], [data-slot="context-menu-content"]'
       if ([...document.querySelectorAll(overlay)].some(node => node.getClientRects().length > 0)) return
-      if (controller.state.phase === 'idle' && !editor.current?.hasFocus()) return
+      if (controller.state.phase === 'idle' && (!available || !editor.current?.hasFocus())) return
       if (controller.state.phase !== 'idle' && controller.state.phase !== 'recording') return
       event.preventDefault()
       if (controller.state.phase === 'recording') void controller.finish()
@@ -53,7 +67,7 @@ export function useVoiceInput(api: DesktopApi | undefined, editor: RefObject<Men
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [enabled, active, disabled, editor])
+  }, [enabled, active, disabled, available, editor])
   useEffect(() => {
     if (state.phase !== 'recording') return
     setSeconds(0)
@@ -66,7 +80,7 @@ export function useVoiceInput(api: DesktopApi | undefined, editor: RefObject<Men
   const running = state.phase !== 'idle'
   return { cancel,
     controls: <>
-      <Button variant="ghost" size="icon-sm" round aria-label={state.phase === 'recording' ? '停止录音' : '语音输入'} title={state.phase === 'recording' ? '停止录音' : '语音输入'} disabled={disabled || state.phase === 'starting' || state.phase === 'finishing'} onMouseDown={event => event.preventDefault()} onClick={() => { if (state.phase === 'recording') void owner.current?.finish(); else void owner.current?.start(instance.current) }}>{state.phase === 'recording' ? <Square /> : <Mic />}</Button>
+      {(available || running) && <Button variant="ghost" size="icon-sm" round aria-label={state.phase === 'recording' ? '停止录音' : '语音输入'} title={state.phase === 'recording' ? '停止录音' : '语音输入'} disabled={disabled || state.phase === 'starting' || state.phase === 'finishing'} onMouseDown={event => event.preventDefault()} onClick={() => { if (state.phase === 'recording') void owner.current?.finish(); else if (available) void owner.current?.start(instance.current) }}>{state.phase === 'recording' ? <Square /> : <Mic />}</Button>}
       {state.canRestore && <Button variant="ghost" size="icon-sm" round aria-label="还原语音转写原文" onMouseDown={event => event.preventDefault()} onClick={() => owner.current?.restoreRaw()}><Undo2 /></Button>}
       {running && <><span className="text-xs tabular-nums" aria-label="录音时长">{Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')}</span><Button variant="ghost" size="icon-sm" round aria-label="取消语音输入" onClick={cancel}><X /></Button></>}
     </>,
