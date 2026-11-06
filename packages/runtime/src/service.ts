@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Composer知识资料标签沿员工/会话授权及所选revision/hash核源，发送和执行均拒绝失效或外改内容。
  * [OUTPUT]: 定时执行记录删除不再逐条同步压缩整库，原事务、文件核验及恢复协议保持。
  * [OUTPUT]: 成功发布及暂缓结束同样释放活跃上下文；持久Run/历史和实际适配器容量屏障保持。
  * [OUTPUT]: 员工任务结果提交后发送所属员工/任务/执行ID事件供全局Sonner提示，不依赖系统通知偏好。
@@ -329,7 +330,7 @@ import { gatewayModelCall, gatewaySelectedModel } from './adapters/mastra/gatewa
 import { GATEWAY_CATALOG_COLLECTION, GatewayCatalogStore, gatewayCatalogSource } from './adapters/mastra/gateway-catalog-store'
 import { gatewayApiKey, gatewayEndpoint, gatewayRoot, isLoopbackGateway } from '@boai/shared/domain/model-gateway'
 import { readMaterialSource } from '@boai/shared/node/material-files'
-import { authorizedResources } from './modules/workspaces/environment-plan'
+import { authorizedResources, resourceVersion } from './modules/workspaces/environment-plan'
 import { KnowledgeManagement, saveKnowledgeSchema, type KnowledgeRevocation } from './modules/resources/knowledge-management'
 import { knowledgeSharingSchema, removeEmployeeKnowledgeSchema } from '@boai/shared/domain/knowledge'
 import { knowledgePath } from './modules/resources/knowledge-files'
@@ -3659,6 +3660,12 @@ export class AppService {
       } else if (ref.kind === 'source') {
         const source = await tx.get<import('@boai/shared/domain/sources').DataSource>('dataSources', ref.id)
         if ((!isCoreAgent(agent) && !agent!.sourceIds?.includes(ref.id)) || !source?.enabled || source.revision !== ref.revision) fail('数据源配置或绑定已变化，请重新选择')
+      } else if (ref.kind === 'knowledge') {
+        const resource = await tx.get<Resource>('resources', ref.id)
+        if (!resource || resource.kind !== 'knowledge' || !authorizedResources(agent!, conversation, [resource]).length) fail('知识资料授权已变化，请重新选择')
+        if ((resource!.knowledge?.revision ?? 0) !== ref.revision || resource!.name !== ref.name) fail('知识资料已变化，请重新选择')
+        const version = await resourceVersion(resource!, new AbortController().signal)
+        if ((resource!.knowledge?.contentHash ?? version.hash) !== ref.contentHash) fail('知识资料内容已变化，请重新选择')
       } else {
         if (ref.conversationId !== conversation.id) fail('文件不属于当前会话')
         await this.workViewReading.resolveFileInTransaction(tx, { id: ref.id, conversationId: ref.conversationId, kind: ref.kind, contentHash: ref.contentHash, ...(ref.kind === 'material' ? { revision: ref.revision } : {}) })

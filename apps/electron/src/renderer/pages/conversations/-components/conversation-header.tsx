@@ -1,11 +1,12 @@
 /*
+ * [OUTPUT]: 2026-11-06 标题菜单拆分会话文件/知识资料，移除执行过程菜单项。
  * [OUTPUT]: 数字员工主聊天标题右侧任务按钮打开员工任务面板，与聊天并列。
  * [OUTPUT]: 标题栏随会话切换保持挂载，身份变化清理旧菜单动作与清空确认，避免把上一会话操作带入当前。
- * [OUTPUT]: 会话菜单移除网页预览入口，文件和执行过程入口保持。
+ * [OUTPUT]: 会话菜单移除网页预览与执行过程入口，会话文件和知识资料分别打开右侧面板。
  * [OUTPUT]: 文件收进标题下拉菜单，关闭菜单后打开右侧面板，与主聊天并行；无独立按钮或互斥Tabs。
- * [OUTPUT]: 删除任务与产物菜单；文件和执行过程各归独立入口。
+ * [OUTPUT]: 任务保留标题按钮；文件和知识资料使用独立菜单入口。
  * [OUTPUT]: 菜单动作等待真实关闭动画完成再导航或打开面板，避免原触发器隐藏后Portal退出动画失去定位；重新打开或来源隐藏取消旧动作。
- * [OUTPUT]: 配置定位通讯录当前员工/群；执行过程与渠道收进操作菜单，标题不再提供置顶或搜索本会话。
+ * [OUTPUT]: 配置定位通讯录当前员工/群；会话文件、知识资料与渠道收进操作菜单，标题不再提供置顶或搜索本会话。
  * [OUTPUT]: 渠道标题保持单行，取消重复的“渠道会话”副标题。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: 渠道镜像移除常驻三Tabs，文件和执行以Header入口进入同容器详情。
@@ -22,7 +23,7 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import type { Conversation, DigitalAgent, Resource } from '@boai/shared/domain'
 import { isChannelConversation } from '@boai/shared/domain/conversation-list'
 import { isCoreConversation } from '@boai/shared/domain/core-agent'
-import { Workflow, FolderOpen, MessageCircle, MoreHorizontal, Pencil, Settings, Trash2 } from '@/components/icons'
+import { BookOpen, FolderOpen, MessageCircle, MoreHorizontal, Pencil, Settings, Trash2 } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ConversationHistoryDialog } from './conversation-history-dialog'
@@ -31,12 +32,13 @@ import { AgentInfoPopover } from './agent-info-popover'
 interface Props {
   conversation: Conversation; busy: boolean
   members: DigitalAgent[]; resources: Resource[]
-  onDetails(): void; onTrace(): void
+  onDetails(): void
   onConfigureAgent(agent: DigitalAgent): void
   onEditTitle(conversation: Conversation): void
   onClear(id: string, hide: boolean): Promise<void>
   onTasks?(): void
   onFiles?(): void
+  onKnowledge?(): void
   onChannels?(): void
   headerActions?: ReactNode
 }
@@ -48,7 +50,7 @@ export function ConversationHeaderLayout({ title, description, children }: { tit
   </header>
 }
 
-export function ConversationHeader({ conversation, members, resources, busy, onDetails, onConfigureAgent, onEditTitle, onTrace, onClear, onChannels, headerActions, onFiles, onTasks }: Props) {
+export function ConversationHeader({ conversation, members, resources, busy, onDetails, onConfigureAgent, onEditTitle, onClear, onChannels, headerActions, onFiles, onKnowledge, onTasks }: Props) {
   const [clearing, setClearing] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const pendingAction = useRef<(() => void) | null>(null)
@@ -80,8 +82,8 @@ export function ConversationHeader({ conversation, members, resources, busy, onD
             <DropdownMenuGroup>
               <DropdownMenuItem onClick={() => afterMenuClose(onDetails)}><Settings />{channel ? '渠道信息' : '配置'}</DropdownMenuItem>
               {isCoreConversation(conversation) && <DropdownMenuItem disabled={busy} onClick={() => afterMenuClose(() => onEditTitle(conversation))}><Pencil />编辑标题</DropdownMenuItem>}
-              {onFiles && <DropdownMenuItem onClick={() => afterMenuClose(onFiles)}><FolderOpen />文件</DropdownMenuItem>}
-              <DropdownMenuItem onClick={() => afterMenuClose(onTrace)}><Workflow />执行过程</DropdownMenuItem>
+              {onFiles && <DropdownMenuItem onClick={() => afterMenuClose(onFiles)}><FolderOpen />会话文件</DropdownMenuItem>}
+              {onKnowledge && <DropdownMenuItem onClick={() => afterMenuClose(onKnowledge)}><BookOpen />知识资料</DropdownMenuItem>}
               {onChannels && <DropdownMenuItem onClick={() => afterMenuClose(onChannels)}><MessageCircle />渠道</DropdownMenuItem>}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
