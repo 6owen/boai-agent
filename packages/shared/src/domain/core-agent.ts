@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 核心首发冻结项目选择版本并沿原workingDirectory协议。
  * [OUTPUT]: 显式CLI权限仅核对员工已保存模式，受理后继续沿原审批和当前授权，不临时改权。
  * [OUTPUT]: 员工/核心首发接收固定附件摘要及短期上传选择，重复核对不依赖临时token。
  * [OUTPUT]: 本轮API模型覆盖沿原请求与执行，冻结来源且临时凭据不写入公开记录或默认配置。
@@ -19,7 +20,7 @@ export const CORE_TEAM_NAME_MAX_LENGTH = 80
 export const CORE_TEAM_REQUIREMENTS_MAX_LENGTH = 4000
 
 export type StartCoreConversationInput =
-  | { expectedExecutionPermission?: import('./execution').ExecutionPermission; materialUploads?: import('./material-upload').SubmittedMaterial[]; apiModel?: import('./model-source').ApiModelOverride; workingDirectory?: string; requestId: string; content: string; automationCreation?: boolean; sourceCreation?: boolean; composerReferences?: import('./composer-references').ComposerReference[]; team?: never }
+  | { expectedExecutionPermission?: import('./execution').ExecutionPermission; materialUploads?: import('./material-upload').SubmittedMaterial[]; apiModel?: import('./model-source').ApiModelOverride; expectedProjectRevision?: number; workingDirectory?: string; requestId: string; content: string; automationCreation?: boolean; sourceCreation?: boolean; composerReferences?: import('./composer-references').ComposerReference[]; team?: never }
   | { expectedExecutionPermission?: never; materialUploads?: never; apiModel?: never; workingDirectory?: never; requestId: string; team: { name: string; requirements: string }; content?: never; composerReferences?: never }
 
 export function isCoreAgent(agent: Pick<DigitalAgent, 'id' | 'systemRole'> | undefined): boolean {

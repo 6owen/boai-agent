@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 创建时固定项目选择，既有任务不动态读取员工默认。
  * [OUTPUT]: assignment人工委派与progress内部进度明确分层，保留五状态及原任务会话标识。
  * [OUTPUT]: briefPending仅标记会话创建的原始要求尚待整理，不参与状态流转或执行门禁。
  * [OUTPUT]: 普通任务不保存创建方式分类；sourceKind的manual/message仅用于旧数据迁移，原定时来源保持。
@@ -11,6 +12,7 @@
 export const EMPLOYEE_TASK_STATUSES = ['pending', 'in_progress', 'in_review', 'done', 'closed'] as const
 export type TrackedTaskStatus = typeof EMPLOYEE_TASK_STATUSES[number]
 export interface TrackedTask {
+  projectSelection?: import('./project-directory').ProjectSelection
   id: string
   agentId: string
   /** Assigned goals enter Kanban; agent-owned progress records never do. */
