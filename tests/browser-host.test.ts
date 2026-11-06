@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 宿主严格比较Runtime的有效执行版本；默认目录等价租约不重建窗口/refs，其他版本仍拒绝且升级不继承旧refs。
  * [OUTPUT]: 截图/快照无回执及截图后状态查询挂起均在实际页面退出后解除，后续任务新开窗、迟到回执不污染。
  * [OUTPUT]: 失效ref经真实CDP拒绝后可重新观察，未知写入仍保留核对。
  * [OUTPUT]: 连接断开与显式关闭同样终止挂起动作页面并核对unknown；空闲人工页面保持。
@@ -156,6 +157,21 @@ describe('BrowserService 内置浏览器与独立调用权限',()=>{
   await service.drain(writing)
   await service.acquire({...writing,runId:'another-run',generation:'another-generation'})
   expect(cdp.invalidateRefs).toHaveBeenCalledTimes(1)
+ })
+ it('keeps the runtime-normalized execution identity stable and refuses a different version while active',async()=>{
+  const {service,lease,fake}=await fixture()
+  const reading={...lease,workId:undefined,sourceMessageId:'original-user'}
+  await service.acquire(reading)
+  const instance=service.list()[0].instanceId,cdp=fake.instances.get(instance).cdp
+  cdp.invalidateRefs.mockClear();fake.mocks.createInstance.mockClear()
+  // Default edits have already been excluded from configVersion by Runtime.
+  await service.acquire({...reading})
+  expect(fake.mocks.createInstance).not.toHaveBeenCalled();expect(cdp.invalidateRefs).not.toHaveBeenCalled()
+  await expect(service.acquire({...reading,configVersion:reading.configVersion+1})).rejects.toThrow('另一任务')
+  expect(service.currentLease()).toEqual(reading)
+  await service.drain(reading)
+  await service.acquire({...reading,workId:'real-work',generation:'changed-config',configVersion:reading.configVersion+1})
+  expect(service.list()[0].instanceId).toBe(instance);expect(cdp.invalidateRefs).toHaveBeenCalledOnce()
  })
  it('员工默认可读取当前人工网页并导航到新网站',async()=>{
   const {service,lease,fake}=await fixture()

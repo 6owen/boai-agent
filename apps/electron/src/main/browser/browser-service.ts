@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 租约携带宿主核定的执行配置版本；默认项目单改保持原窗口/refs，其他身份或执行版本变化不复用。
  * [OUTPUT]: 截图/快照/find观察30秒无回执时关闭原页面并等待实际退出后释放；下一任务可重建窗口，登录资料保持。
  * [OUTPUT]: 明确未派发输入的失效ref按failed结算；未知动作仍保留核对、不重放。
  * [OUTPUT]: Cookie文件/浏览器profile导入经无值确认，原窗口/partition绑定；关闭取消副本读取并等待清理，保留逐项写回核验。
@@ -59,6 +60,8 @@ export interface BrowserServiceOptions {
 }
 const hash = (value: string) => createHash('sha256').update(value).digest('hex')
 const origin = (url: string) => { try { const value = new URL(url); return ['http:', 'https:'].includes(value.protocol) && !value.username && !value.password ? value.origin : undefined } catch { return undefined } }
+// Runtime already excludes default-project-only edits from this execution version.
+// Main must compare the supplied identity exactly, never normalize untrusted lease fields.
 const sameLease = (left: BrowserLease, right: BrowserLease) => left.scopeKey === right.scopeKey && left.scopeEpoch === right.scopeEpoch && left.agentId === right.agentId && left.conversationId === right.conversationId && left.workId === right.workId && left.sourceMessageId === right.sourceMessageId && left.runId === right.runId && left.generation === right.generation && left.configVersion === right.configVersion && left.downloadDirectory === right.downloadDirectory
 
 export class BrowserService {

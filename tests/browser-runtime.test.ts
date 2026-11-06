@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 已准备浏览器动作在单独默认目录变更后仍可开始和结算，其他员工配置变化继续阻止新动作。
  * [OUTPUT]: 原生产品桥保留导航命令和填写脱敏，原执行参数仍完整传递。
  * [OUTPUT]: 256KiB实际SDK截图在明确64K窗口内以媒体发送，不被base64或SDK元数据副本误计为超大文本。
  * [OUTPUT]: 未知写入允许新只读观察，但不解除原副作用或允许新写入。
@@ -131,6 +132,21 @@ describe('strict original browser command entry',()=>{
   })
 })
 describe('browser receipt authority shares the original SQLite Work transaction',()=>{
+  it('keeps an accepted action authorized across default project edits but rejects a later role change',async()=>{
+    const f=await fixture()
+    await f.repository.registerTask(f.lease)
+    const accepted=await f.repository.prepare(f.envelope('click @e1'),true)
+    expect(accepted.fresh).toBe(true)
+    await f.store.write([{collection:'agents',id:f.agent.id,value:{...f.agent,configVersion:2,projectDefaultChanges:1,defaultProjectDirectory:'/new/default'}}])
+    await expect(f.repository.registerTask({...f.lease,configVersion:2})).rejects.toThrow('授权已变化')
+    expect(await f.repository.start({actionId:'action',generation:f.lease.generation,runId:f.lease.runId,workId:f.lease.workId})).toEqual({started:true})
+    await f.repository.finish(f.lease,{actionId:'action',generation:f.lease.generation,status:'completed',result:{output:'clicked',appendReleaseHint:false}})
+    expect(await f.repository.get('action')).toMatchObject({status:'completed'})
+    expect((await f.store.get<WorkExecution>('workExecutions',f.lease.runId))?.pendingEffects).toBe(0)
+    await f.store.write([{collection:'agents',id:f.agent.id,value:{...f.agent,role:'职责变更',configVersion:3,projectDefaultChanges:1,defaultProjectDirectory:'/new/default'}}])
+    await expect(f.repository.prepare({...f.envelope('snapshot'),actionId:'after-role-change',toolCallId:'next-call'},false)).rejects.toThrow('授权已变化')
+    expect(await f.repository.get('after-role-change')).toBeUndefined()
+  })
   it.each([false,undefined])('accepts the current supported employee identity when legacy allowBrowser is %s',async allowBrowser=>{
     const {repository,envelope,store,lease,agent}=await fixture()
     const legacy={...agent,allowBrowser};if(allowBrowser===undefined)delete legacy.allowBrowser

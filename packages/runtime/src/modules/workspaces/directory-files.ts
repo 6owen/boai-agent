@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: API授权和原生当前项目核验共用固定字节暂存；业务原件始终不纳入受管清理。
  * [INPUT]: 当前运行的真实目录授权、明确文件操作、取消信号及原副作用登记回调。
  * [OUTPUT]: 移动两侧批准/独占目标与源保留、删除链接项、外部文件固定字节受管副本；不把业务原件登记为可清理产物。
  * [POS]: 目录授权的真实文件副作用，供原Mastra工具使用；目录权限归RunDirectoryAccess。
@@ -10,6 +11,7 @@ import { randomUUID } from 'node:crypto'
 import path from 'node:path'
 import type { EngineContext } from '../../contracts'
 import type { RunDirectoryAccess } from './directory-run'
+import type { DirectoryTarget } from './directory-access'
 import { assertTaskPathAccess, MAX_FILE_BYTES, RESERVED_SYSTEM_FILES, withFileMutationLocks, workspaceTarget } from './file-access'
 import { fileContentHash } from './file-editing'
 
@@ -105,28 +107,38 @@ export async function moveBusinessFile(context: MutationContext, from: string, t
 export async function stageBusinessArtifact(context: EngineContext, value: string, name?: string) {
   if (!context.directoryAccess || !context.workspace) throw new Error('当前运行缺少目录访问或工作区')
   const target = await context.directoryAccess.authorize(value, 'read', `交付文件 ${value}`, context.signal)
+  return stageVerifiedBusinessArtifact(context, target, () => context.directoryAccess!.verifyTarget(target, context.signal), name)
+}
+
+/** Caller owns authorization; every IO boundary rechecks the same frozen source identity. */
+export async function stageVerifiedBusinessArtifact(context: EngineContext, target: DirectoryTarget, verifyTarget: () => Promise<void>, name?: string) {
+  if (!context.workspace) throw new Error('当前运行缺少工作区')
   const filename = name ?? path.basename(target.path)
   if (!filename || filename === '.' || filename === '..' || /[\\/:\x00-\x1f\x7f]/u.test(filename) || RESERVED_SYSTEM_FILES.has(filename.toUpperCase())) throw new Error('无效的交付文件名')
-  await context.directoryAccess.verifyTarget(target, context.signal)
+  const relative = `runs/${context.runId}/deliveries/${randomUUID()}/${filename}`
+  const candidate = path.resolve(context.workspace.root, relative)
+  await assertTaskPathAccess(context, candidate, 'write')
+  await verifyTarget()
   const input = await open(target.path, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0))
-  let bytes: Buffer
+  let bytes: Buffer, sourceState: Stats
   try {
-    const before = await input.stat()
+    const before = sourceState = await input.stat()
     if (!before.isFile() || before.nlink !== 1 || before.size > 20 * MAX_FILE_BYTES) throw new Error('交付文件必须是最多20MiB的普通文件')
     const buffer = Buffer.alloc(before.size + 1), { bytesRead } = await input.read(buffer, 0, buffer.length, 0)
     if (bytesRead !== before.size || !sameBytes(before, await input.stat()) || !sameBytes(before, await lstat(target.path))) throw new Error('交付原件正在变化，请完成写入后再交付')
     bytes = buffer.subarray(0, bytesRead)
-    await context.directoryAccess.verifyTarget(target, context.signal)
+    await verifyTarget()
   } finally { await input.close() }
-  const relative = `runs/${context.runId}/deliveries/${randomUUID()}/${filename}`
-  const candidate = path.resolve(context.workspace.root, relative)
   await assertTaskPathAccess(context, candidate, 'write')
-  await context.beforeEffect?.(); await context.directoryAccess.verifyTarget(target, context.signal)
+  await context.beforeEffect?.(); await verifyTarget()
+  if (!sameBytes(sourceState, await lstat(target.path))) throw new Error('交付原件正在变化，请完成写入后再交付')
   const destination = await workspaceTarget(context.workspace.root, relative, true)
   await assertTaskPathAccess(context, destination, 'write')
   context.signal.throwIfAborted()
   const output = await open(destination, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | (constants.O_NOFOLLOW ?? 0), 0o600)
   try { await output.writeFile(bytes) } finally { await output.close() }
   context.signal.throwIfAborted()
+  await verifyTarget()
+  if (!sameBytes(sourceState, await lstat(target.path))) throw new Error('交付原件正在变化，请完成写入后再交付')
   return { source: `self:/${relative}`, contentHash: fileContentHash(bytes), originalName: filename }
 }

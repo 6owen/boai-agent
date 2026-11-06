@@ -110,6 +110,8 @@ export * from './context-handoff'
 export interface DigitalAgent {
   defaultProjectDirectory?: string
   defaultProjectDirectoryRequested?: string
+  /** Host-only count of default-location edits that do not change an existing execution configuration. */
+  projectDefaultChanges?: number
   templateOrigin?: { templateId: string; version: string }
   /** Absent keeps legacy access; an explicit list opts into employee directory authorization. */
   directoryGrants?: import('./directory-access').DirectoryGrant[]
@@ -143,7 +145,7 @@ export interface DigitalAgent {
   memoryNamespace?: string
   policyVersion?: number
 }
-export type AgentInput = Omit<DigitalAgent, 'id' | 'defaultProjectDirectoryRequested' | 'templateOrigin' | 'configVersion' | 'directoryRevision' | 'workspaceRef' | 'memoryNamespace' | 'policyVersion' | 'creationSource' | 'systemRole'> & { templateId?: string; templateVersion?: string; id?: string; expectedConfigVersion?: number; expectedDirectoryRevision?: number; initialSoul?: string }
+export type AgentInput = Omit<DigitalAgent, 'id' | 'defaultProjectDirectoryRequested' | 'projectDefaultChanges' | 'templateOrigin' | 'configVersion' | 'directoryRevision' | 'workspaceRef' | 'memoryNamespace' | 'policyVersion' | 'creationSource' | 'systemRole'> & { templateId?: string; templateVersion?: string; id?: string; expectedConfigVersion?: number; expectedDirectoryRevision?: number; initialSoul?: string }
 export interface Resource {
   knowledge?: import('./knowledge').KnowledgeContent
   id: string

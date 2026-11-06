@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: WT3显式项目目录跨后续消息保持；原生权限回归在当前项目核对真实新调用。
  * [OUTPUT]: 双待决输入先等待原请求真实消息就绪，保持原数量/目标/接续断言及总期限；追加延迟第二员工和缺问题终态负例。
  * [OUTPUT]: API状态配置进入真实Codex/Claude协议，动态情绪不重建线程，功能开关更新工具才重建。
  * [OUTPUT]: 本机配置优先：旧API目录保留、原生权限恢复、明确cwd和重启零重放。
@@ -85,7 +86,7 @@ it('preserves native configuration and explicit cwd when old API directory metad
  expect(inheritedAgain.executionPermission).toBeUndefined();expect(inheritedAgain.nativeOptions).toEqual({useNativePermissions:true})
  const third=await f.wait(await f.send('重新沿用本机配置'))
  expect(third.runs.every(run=>run.status==='completed'),JSON.stringify(third.runs)).toBe(true)
- const inheritedCalls=(await readFile(join(f.root,'agents',f.agent.id,'workspace','sessions',f.chat.id,'work','native-thread-requests.jsonl'),'utf8')).trim().split('\n').map(line=>JSON.parse(line))
+ const inheritedCalls=(await readFile(join(outside,'native-thread-requests.jsonl'),'utf8')).trim().split('\n').map(line=>JSON.parse(line))
  const last=inheritedCalls.at(-1).params
  if(runtime==='codex'){expect(last).not.toHaveProperty('sandbox');expect(last).not.toHaveProperty('approvalPolicy')}
  else {expect(last.argv).not.toContain('--permission-mode');expect(last.argv).not.toContain('--dangerously-skip-permissions');expect(last.argv).not.toContain('--settings')}

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 执行授权版本扣除默认项目单改计数，原配置CAS版本保持。
  * [OUTPUT]: Cookie来源只共享opaque id和浏览器/profile标签；预览/结果无值，不携带原路径或目标partition。
  * [OUTPUT]: 动态available标记独立服务当前是否有可信同机浏览器宿主。
  * [OUTPUT]: 有效员工默认拥有浏览器权限；旧approval/approvedOrigins仅保留历史输入兼容，不再触发人工审批。
@@ -23,6 +24,7 @@ export const APPLICATION_BROWSER_SCOPE = 'application-browser'
 /** Task authorization facts only; never a window or login-profile owner. */
 export interface BrowserTaskAuthorization {
   scopeKey: string; scopeEpoch: number; agentId: string; conversationId: string
+  /** Execution version: configVersion minus projectDefaultChanges. */
   configVersion: number; agentName: string; conversationTitle: string
 }
 export type BrowserManualOpenInput = Record<string, never>

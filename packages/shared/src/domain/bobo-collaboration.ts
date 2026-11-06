@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 执行授权版本扣除默认项目单改计数，原配置CAS版本保持。
  * [OUTPUT]: bobo可选择API或本机Codex；组织/具名团队按原运行配置创建独立员工，混合成员共原预算；本机自动化沿原时钟/预算接入，实际验证归第13组06。
  * [INPUT]: 宿主冻结的原核心请求、真实员工配置和 bobo 的有界组织方案。
  * [OUTPUT]: 既有/新员工、独立群与真实开场消息的组织账本和无私有配置的发现/回执；模式与预算只由原 Work 授权。
@@ -30,7 +31,7 @@ export interface EmployeeCandidate {
 export interface EmployeeCandidatePage { employees: EmployeeCandidate[]; revision: number; cursor?: string }
 /** All identities are captured from the actual active holder by the host, never model arguments. */
 export interface BoboOrganizationAuthority {
-  workId: string; runId: string; workVersion: number; sourceConversationId: string; sourceMessageId: string; agentConfigVersion: number
+  workId: string; runId: string; workVersion: number; sourceConversationId: string; sourceMessageId: string; /** Execution version: configVersion minus projectDefaultChanges. */ agentConfigVersion: number
 }
 export interface BoboCollaborationSource { kind: 'bobo-collaboration'; operationId: string; requestId: string }
 export interface BoboCollaborationOperation {

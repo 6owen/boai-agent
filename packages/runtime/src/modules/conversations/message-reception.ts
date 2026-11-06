@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 渠道接收首次建立员工主聊天时冻结默认项目选择；已有主聊天保持原选择或旧记录缺省。
  * [OUTPUT]: 旧独立会话被同一员工任务继续使用时，按每条消息的真实occurrence投影，避免归到首轮执行。
  * [OUTPUT]: 人工委派要求/回复只在任务会话接收，不回灌主聊天；原定时投递及清空屏障保持。
  * [OUTPUT]: 公开任务消息身份共用确定性函数，执行镜像按原消息直接核源，不扫描聊天历史。
@@ -15,6 +16,7 @@ import type { MessageCommit, RecordTransaction } from '../../adapters/storage/pr
 import type { ConversationReadingRepository } from './reading-repository'
 import { isCoreAgent } from '@boai/shared/domain/core-agent'
 import { isEmployeeTaskAssignment, type TrackedTask } from '@boai/shared/domain/tracked-tasks'
+import { initialProjectSelection } from '../workspaces/project-directory'
 
 /** All public messages pass here once their owning transaction has prepared its records. */
 export async function receiveConversationMessages(tx: RecordTransaction, changes: MessageCommit[], dataPath: string, reading: ConversationReadingRepository) {
@@ -31,7 +33,7 @@ export async function receiveConversationMessages(tx: RecordTransaction, changes
     const existing = (await tx.list<Conversation>('conversations')).find(room => !room.mergedInto && !room.channel && room.kind === 'direct' && (!room.purpose || room.purpose === 'personal') && room.agentIds.length === 1 && room.agentIds[0] === agentId)
     if (existing) return await tx.get('conversationCleanup', existing.id) ? undefined : existing
     const id = randomUUID(), timestamp = new Date().toISOString()
-    const room: Conversation = { id, kind: 'direct', mainPrivate: true, title: agent.name, agentIds: [agentId], mode: 'natural', workspacePath: join(dataPath, 'workspaces', id), sharedKnowledgeIds: [], configVersion: 1, createdAt: timestamp, updatedAt: timestamp }
+    const room: Conversation = { id, kind: 'direct', mainPrivate: true, title: agent.name, agentIds: [agentId], mode: 'natural', workspacePath: join(dataPath, 'workspaces', id), projectSelection: initialProjectSelection(agent), sharedKnowledgeIds: [], configVersion: 1, createdAt: timestamp, updatedAt: timestamp }
     await mkdir(room.workspacePath, { recursive: true }); await save(room)
     return room
   }

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 原生项目交付在原发布许可后调用固定项目暂存回调；API仍使用自身目录授权。
  * [OUTPUT]: 2026-10-27 默认持续执行、来源校验及工作现场/复核接线；沿原权限和账本。
  * [OUTPUT]: 实际宿主命令取得互斥位后重核工作和目录，等待审批不持有命令独占位。
  * [OUTPUT]: PPT工具接当前员工会话、授权字节/原文件队列与审批；专用审阅通过后才导出至原成果流程。
@@ -433,7 +434,7 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
           source = workingFilePath(ctx.workingDirectory, source)
           if (revisionRequestId !== undefined && (typeof revisionRequestId !== 'string' || ctx.artifactRevision?.id !== revisionRequestId)) throw new Error('修订发布身份不属于当前获准请求')
           await authorizeExecution(ctx, { kind: 'file', description: `发布文件 ${source}` })
-          const staged = path.isAbsolute(source) ? await stageBusinessArtifact(ctx, source, name) : undefined
+          const staged = path.isAbsolute(source) ? await (ctx.stageNativeProjectArtifact ? ctx.stageNativeProjectArtifact(source, name) : stageBusinessArtifact(ctx, source, name)) : undefined
           await ctx.beforeEffect?.(); check(signal)
           const result = await publishArtifact(ctx, scope, staged?.source ?? source, name ?? staged?.originalName, typeof revisionRequestId === 'string' ? revisionRequestId : undefined)
           await ctx.afterEffect?.()
