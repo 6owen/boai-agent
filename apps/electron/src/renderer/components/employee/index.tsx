@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工弹窗的自动化分类显示为定时任务，原分类标识及导航保持。
  * [OUTPUT]: 高级设置侧栏隐藏任务/执行详情；记忆页保留挂载避免切回重建，记忆保存期间沿弹窗忙时锁。
  * [OUTPUT]: 通讯录任务入口先跳转员工主会话，再打开会话右侧面板。
  * [OUTPUT]: 员工详情任务入口打开该员工右侧面板，原自动化分类保持。
@@ -99,7 +100,7 @@ export function EmployeeDetail({ api, agent, snapshot, conversationId, configura
     { value: 'memory', label: '记忆', icon: BookOpen },
     ...(!advancedSettings ? [{ value: 'execution', label: '执行详情', icon: Clock }] : []),
     { value: 'channels', label: '渠道', icon: AtSign },
-    ...(onConversation ? [{ value: 'automations', label: '自动化', icon: CalendarClock }] : []),
+    ...(onConversation ? [{ value: 'automations', label: '定时任务', icon: CalendarClock }] : []),
   ]
   const menu = <TabsList aria-label="员工详情分类" className={sidebar ? 'employee-menu w-full gap-1 p-0' : undefined}>
     {categories.map(item => <TabsTrigger key={item.value} value={item.value} aria-disabled={personalityBusy} aria-label={item.label} className={sidebar ? 'group-data-vertical/tabs:h-[32px] text-[length:var(--text-ui-secondary)] aria-disabled:opacity-100' : 'aria-disabled:opacity-100'}>{sidebar && <item.icon size={14} />}<span className={sidebar ? 'employee-menu-label' : undefined}>{item.label}</span></TabsTrigger>)}
