@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 高级设置按用户要求保留五项分类，暂不显示执行详情与任务入口。
  * [OUTPUT]: 2026-10-29 文件浏览器入口/预览/启停与目录撤权回归，原终端生命周期断言保持。
  * [OUTPUT]: 覆盖增大任务额度、真实继续消息或本次运行同类批准；各文件以具体用例限定验证范围。
  * [OUTPUT]: 网页检索独立能力沿全局服务配置保存；业务数据源解绑不重置检索，停用/迟到目录仍验证。
@@ -386,7 +387,8 @@ test('switching sections discards only after confirmation and advanced configura
   expect(document.querySelector('[role=dialog]')).toBeNull()
   await act(async () => button('退出').click())
   const dialog = document.querySelector('[role=dialog]')!
-  expect(dialog.querySelectorAll('[role=tab]')).toHaveLength(6)
+  expect([...dialog.querySelectorAll('[role=tab]')].map(item => item.textContent)).toEqual(['人格与行为', '工作区', '记忆', '渠道', '自动化'])
+  expect([...dialog.querySelectorAll('button')].some(item => item.textContent === '任务')).toBe(false)
   expect(dialog.querySelector('[aria-label="人格与行为"]')).not.toBeNull()
   expect(dialog.querySelector('[aria-label="基础配置"]')).toBeNull()
   expect(dialog.querySelector('[aria-label="人格与行为"]')?.getAttribute('aria-selected')).toBe('true')
@@ -422,6 +424,26 @@ test('employee automation only shows employee tasks and never loads personality 
   await act(async () => button('人格与行为').click())
   expect(dialog().querySelector('section[aria-label="状态与成长"]')).not.toBeNull()
   expect(dialog().textContent).not.toContain('添加行为')
+})
+
+test('advanced memory keeps loaded cards mounted when switching away and back during a refresh', async () => {
+  const original = request.getMockImplementation()!
+  const memory = { entries: [], epoch: 0, namespace: agent.id, managed: { backend: 'mastra', semanticRecall: false, settings: { agentId: agent.id, revision: 0 }, documents: [{ resourceId: agent.id, version: 'v1', workingMemory: '保留的记忆内容', observations: '观察内容', conversationIds: [] }] } }
+  let loads = 0, finish!: () => void
+  request.mockImplementation(async (method, input) => {
+    if (method === 'getMemory') { if (++loads === 1) return memory; return new Promise(resolve => { finish = () => resolve(memory) }) }
+    if (method === 'listOwnerAutomations') return { definitions: [] }
+    return original(method, input)
+  })
+  await fixture(); await act(async () => button('高级配置').click()); await act(async () => button('记忆').click())
+  const card = document.querySelector('[role="region"][aria-label="Working Memory"]')!
+  expect(card).not.toBeNull()
+  await act(async () => button('自动化').click()); expect(loads).toBe(1)
+  await act(async () => button('记忆').click()); expect(loads).toBe(2)
+  expect(document.querySelector('[role="region"][aria-label="Working Memory"]')).toBe(card)
+  expect(document.querySelector('[role="dialog"]')!.textContent).not.toContain('记忆筛选')
+  await act(async () => finish())
+  expect(document.querySelector('[role="region"][aria-label="Working Memory"]')).toBe(card)
 })
 
 test('native instruction edits preserve native model options and inherited permissions', async () => {
