@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 会话文件的搜索外框/输入组/图标统一28px，输入字号行高对齐小号Tab；其他目录搜索保持原尺寸。
  * [OUTPUT]: 提示词行菜单仅hover/focus/打开时显示；右侧只读正文/编辑表单共用详情留白。
  * [OUTPUT]: 技能行主体迁入共享ListRow，本页只保留操作按钮让位与来源标签样式。
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
@@ -270,6 +271,11 @@
 .catalog-search [data-slot=button] { flex:0 0 32px;z-index:1 }
 .catalog-search [data-slot=input-group-control] { width:calc(100% - 32px);min-width:0;flex:1;padding-left:0 }
 .catalog-search[data-open=false] [data-slot=input-group-control] { opacity:0;pointer-events:none }
+.conversation-files-panel .catalog-search { height:28px;min-width:28px }
+.conversation-files-panel .catalog-search[data-open=false] { width:28px }
+.conversation-files-panel .catalog-search>[data-slot=input-group] { height:28px }
+.conversation-files-panel .catalog-search [data-slot=button] { flex-basis:28px }
+.conversation-files-panel .catalog-search [data-slot=input-group-control] { width:calc(100% - 28px);font-size:var(--text-ui-caption);line-height:var(--text-xs--line-height) }
 .catalog-transition { display:flex;flex:1;flex-direction:column;min-height:0;min-width:0;--panel-translate-y:8px }
 @starting-style { .catalog-transition.t-panel-slide[data-open=true] { transform:translateY(var(--panel-translate-y));opacity:0;filter:blur(var(--panel-blur)) } }
 
