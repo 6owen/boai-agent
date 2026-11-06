@@ -1,7 +1,7 @@
 /*
  * [OUTPUT]: 列表右键删除固定所选任务，经统一AlertDialog确认后沿原删除接口提交；取消不提交，成功同步移除并退出已删任务详情。
  * [OUTPUT]: 定时任务侧栏委托独立标签/排序管理；说明移至标题Tooltip，原执行与详情行为保持。
- * [OUTPUT]: 立即运行只提交并全程loading防重复，两个图标分别打开过程和定位聊天；准备阶段保留等待提示。
+ * [OUTPUT]: 立即运行只提交并全程loading防重复，仅保留定位聊天图标；执行记录仍可沿原入口打开。
  * [OUTPUT]: 重回定时任务页及首次异步载入详情也播放Panel reveal，后台数据刷新不重播。
  * [OUTPUT]: 对话创建转到会话页并预选管理定时任务技能；本页只保留手动创建/编辑Dialog及任务详情/历史。
  * [OUTPUT]: 详情/历史内容切换沿设置页Panel reveal，后台刷新不重播；滚动条占位由真实滚动区保持。
@@ -96,7 +96,7 @@ export function SchedulePage({ api, snapshot, active, sidebarShown, divider, loc
           <Button variant="secondary" disabled={busy} onClick={() => void run(async () => { await api.request(definition.enabled ? 'pauseAutomation' : 'resumeAutomation', { id: definition.id }) })}>{definition.enabled ? '暂停' : '恢复'}</Button>
           <DeleteAutomationButton key={definition.id} name={definition.name} busy={busy} onConfirm={() => void run(async () => { await api.request('deleteAutomation', { id: definition.id }); onLocation({ kind: 'overview' }) })} />
         </div></div>
-        <AutomationDetails definition={definition} snapshot={snapshot} action={<AutomationRunActions key={definition.id} api={api} automationId={definition.id} occurrences={view.occurrences} active={active} onOccurrence={openOccurrence} onNavigateMessage={onNavigateMessage} />} />
+        <AutomationDetails definition={definition} snapshot={snapshot} action={<AutomationRunActions key={definition.id} api={api} automationId={definition.id} occurrences={view.occurrences} active={active} onNavigateMessage={onNavigateMessage} />} />
         {definition.syncError && <Banner>{definition.syncError}</Banner>}
         <AutomationHistory key={definition.id} api={api} active={active} automationId={definition.id} selectedId={selectedOccurrenceId} onOccurrence={openOccurrence} />
       </div> : !loading && <Banner>此任务已删除或不可用，留存结果仍可在执行记录中查看。</Banner>)}

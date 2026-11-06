@@ -1,8 +1,8 @@
 /*
  * [OUTPUT]: 定位聊天同时携带本次occurrence，右侧保留同一次执行过程。
  * [INPUT]: 已保存任务、本次真实记录和主聊天导航。
- * [OUTPUT]: 两枚查看图标只跟随本组件手动发起且尚未结束的occurrence，历史/自动触发不显示，结束后清除本次身份。
- * [OUTPUT]: 单次提交锁与整个运行期间loading；查看过程/定位聊天由用户点击，未知回执复用请求ID。
+ * [OUTPUT]: 隐藏查看本次执行过程按钮；定位聊天仅跟随本组件手动发起且尚未结束的occurrence，结束后清除本次身份。
+ * [OUTPUT]: 单次提交锁与整个运行期间loading；定位聊天由用户点击，未知回执复用请求ID。
  * [POS]: 定时任务详情底部操作行。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -11,14 +11,13 @@ import type { AutomationOccurrence } from '@boai/shared/domain'
 import { AUTOMATION_ONGOING_STATUSES } from '@boai/shared/domain/automations'
 import type { DesktopApi } from '@boai/shared/ipc'
 import { errorText, showErrorToast } from '@/components/common'
-import { LoaderCircle, Workflow } from '@/components/icons'
+import { LoaderCircle } from '@/components/icons'
 import { Button } from '@/components/ui/button'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ExecutionMessageButton, type ExecutionMessageNavigation } from '@/components/detail-panel/execution-message-button'
 
-export function AutomationRunActions({ api, automationId, occurrences, active, onOccurrence, onNavigateMessage }: {
+export function AutomationRunActions({ api, automationId, occurrences, active, onNavigateMessage }: {
   api: DesktopApi; automationId: string; occurrences: AutomationOccurrence[]; active: boolean
-  onOccurrence(id: string): void; onNavigateMessage: ExecutionMessageNavigation
+  onNavigateMessage: ExecutionMessageNavigation
 }) {
   const [accepted, setAccepted] = useState<AutomationOccurrence>(), [submitting, setSubmitting] = useState(false)
   const [unknown, setUnknown] = useState(false)
@@ -47,10 +46,7 @@ export function AutomationRunActions({ api, automationId, occurrences, active, o
   }
   const label = submitting ? '正在提交…' : ongoing ? '本次运行中' : unknown ? '核对本次运行' : '立即运行一次'
   return <div className="flex items-center gap-1">
-    {occurrence && <>
-      <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-xs" aria-label="查看本次执行过程" disabled={!active} onClick={() => onOccurrence(occurrence.id)} />}><Workflow /></TooltipTrigger><TooltipContent>查看本次执行过程</TooltipContent></Tooltip>
-      <ExecutionMessageButton api={api} run={{ id: occurrence.runIds[0] ?? '', conversationId: occurrence.conversationId }} occurrenceId={occurrence.id} active={active && Boolean(occurrence.runIds.length)} onNavigate={onNavigateMessage} />
-    </>}
+    {occurrence && <ExecutionMessageButton api={api} run={{ id: occurrence.runIds[0] ?? '', conversationId: occurrence.conversationId }} occurrenceId={occurrence.id} active={active && Boolean(occurrence.runIds.length)} onNavigate={onNavigateMessage} />}
     <Button variant="secondary" size="sm" disabled={!active || running} aria-busy={running} onClick={() => void start()}>{running && <LoaderCircle className="animate-spin" />}{label}</Button>
   </div>
 }
