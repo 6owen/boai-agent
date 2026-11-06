@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /*
- * [OUTPUT]: 手动运行受理为queued时同样保留过程/聊天两个原图标，转running及终态仍按原规则。
+ * [OUTPUT]: 手动运行queued/running均隐藏查看本次执行过程；定位聊天、原运行提交锁及终态清理保持。
  * [OUTPUT]: 手动运行聊天导航核对原conversation/run/occurrence身份，四种终态仍移除查看按钮。
  * [OUTPUT]: 对话创建允许独立读取列表偏好，仍不写入或执行计划。
  * [OUTPUT]: 手动本次查看按钮仅运行期间显示；历史/自动执行及完成/失败/取消/中断后的按钮均隐藏。
@@ -33,13 +33,13 @@ beforeEach(() => {
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); localStorage.clear(); toast.dismiss(); vi.unstubAllGlobals() })
 const button = (text: string) => [...document.querySelectorAll<HTMLButtonElement>('button')].find(value => value.textContent === text)!
 
-test.each((['queued', 'running'] as const).flatMap(initial => (['completed', 'failed', 'cancelled', 'interrupted'] as const).map(terminal => ({ initial, terminal }))))('manual $initial navigation preserves both original actions and disappears after $terminal', async ({ initial, terminal: terminalStatus }) => {
+test.each((['queued', 'running'] as const).flatMap(initial => (['completed', 'failed', 'cancelled', 'interrupted'] as const).map(terminal => ({ initial, terminal }))))('manual $initial hides the process action and keeps chat navigation until $terminal', async ({ initial, terminal: terminalStatus }) => {
   let resolve!: (o: AutomationOccurrence) => void
   const occurrence = { id: 'once', automationId: plan.id, conversationId: 'task-chat', startedAt: new Date().toISOString(), status: initial, stateVersion: 1, runIds: [] } as unknown as AutomationOccurrence
   const request = vi.fn(async (method: string) => method === 'runAutomation' ? new Promise<AutomationOccurrence>(done => { resolve = done }) : { conversationId: 'employee-chat', messageId: 'published-trigger' })
   const api = { request, subscribe: () => () => {} } as unknown as DesktopApi
-  const open = vi.fn(), navigate = vi.fn()
-  const render = async (occurrences: AutomationOccurrence[]) => act(async () => root.render(h(AutomationRunActions, { api, automationId: plan.id, occurrences, active: true, onOccurrence: open, onNavigateMessage: navigate })))
+  const navigate = vi.fn()
+  const render = async (occurrences: AutomationOccurrence[]) => act(async () => root.render(h(AutomationRunActions, { api, automationId: plan.id, occurrences, active: true, onNavigateMessage: navigate })))
   const historical = { ...occurrence, id: 'historical', status: 'completed', runIds: ['old-run'] } as AutomationOccurrence
   await render([historical])
   expect(host.querySelector('[aria-label="查看本次执行过程"]')).toBeNull()
@@ -53,13 +53,12 @@ test.each((['queued', 'running'] as const).flatMap(initial => (['completed', 'fa
   expect(request).toHaveBeenCalledOnce()
   expect(button('正在提交…').disabled).toBe(true)
   await act(async () => resolve(occurrence))
-  expect(open).not.toHaveBeenCalled()
+  expect(navigate).not.toHaveBeenCalled()
   expect(button('本次运行中').disabled).toBe(true)
-  expect(host.querySelector('[aria-label="查看本次执行过程"]')).not.toBeNull()
+  expect(host.querySelector('[aria-label="查看本次执行过程"]')).toBeNull()
   expect(host.querySelector<HTMLButtonElement>('[aria-label="定位聊天记录"]')!.disabled).toBe(true)
   await render([{ ...occurrence, status: 'running', runIds: ['run'] }])
-  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="查看本次执行过程"]')!.click())
-  expect(open).toHaveBeenCalledWith('once')
+  expect(host.querySelector('[aria-label="查看本次执行过程"]')).toBeNull()
   await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="定位聊天记录"]')!.click())
   expect(navigate).toHaveBeenCalledWith('employee-chat', 'published-trigger', expect.any(Function), {
     conversationId: 'task-chat', runId: 'run', agentId: undefined, occurrenceId: 'once',
