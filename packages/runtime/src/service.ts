@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 定时执行记录删除不再逐条同步压缩整库，原事务、文件核验及恢复协议保持。
  * [OUTPUT]: 成功发布及暂缓结束同样释放活跃上下文；持久Run/历史和实际适配器容量屏障保持。
  * [OUTPUT]: 员工任务结果提交后发送所属员工/任务/执行ID事件供全局Sonner提示，不依赖系统通知偏好。
  * [OUTPUT]: 已取消的记忆整理不阻塞主聊天新消息；真实执行退出屏障和模型容量占用保持。
@@ -2557,7 +2558,7 @@ export class AppService {
     this.automations.forgetHistory(id)
     this.emit({ type: 'automation:history-deleted', occurrenceId: id })
     this.changed(deletion.conversationId)
-    await this.store.compact()
+    // SQLite reuses freed pages; do not rewrite the whole database for each history item.
   }
 
   private async ensureCoreConnection() {
