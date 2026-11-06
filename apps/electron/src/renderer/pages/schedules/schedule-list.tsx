@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 侧栏任务仅显示名称和执行日程，不附加暂停等状态。
  * [INPUT]: 定时任务、独立列表偏好、提交状态、任务导航/删除及创建回调。
  * [OUTPUT]: 无检索框的折叠分组、任务与标签拖拽排序；加宽选项菜单，右键项目统一图标并提供危险色删除确认入口。
  * [POS]: 定时任务左栏，复用DragList与通讯录管理布局。
@@ -43,7 +44,7 @@ export function ScheduleList({ definitions, preferences, loading, busy, selected
     return <DragListGroupTarget key={group.id} id={group.id}><Collapsible open={!collapsed.includes(group.id)} onOpenChange={open => setCollapsed(current => open ? current.filter(id => id !== group.id) : [...current, group.id])}>
       {group.id ? <DragListItem id={tagKey(group.id)}>{({ dragProps }) => heading(dragProps)}</DragListItem> : heading()}
       <CollapsibleContent><div role="group" aria-label={group.name} className="schedule-items">{items.map(row => <DragListItem key={row.key} id={row.key}>{({ dragProps, dragging }) => <ContextMenu><ContextMenuTrigger render={<Button variant="ghost" size="content" className={`schedule-item${selectedId === row.task.id ? ' selected' : ''}${dragging ? ' drag-list-dragging' : ''}`} />} {...dragProps} aria-label={row.task.name} aria-current={selectedId === row.task.id ? 'page' : undefined} onClick={() => { if (!dragging) onSelect(row.task.id) }}>
-        <strong title={row.task.name}>{row.task.name}</strong><small>{!row.task.enabled ? '已暂停 · ' : ''}{scheduleSummary(row.task)}</small>
+        <strong title={row.task.name}>{row.task.name}</strong><small>{scheduleSummary(row.task)}</small>
       </ContextMenuTrigger><ContextMenuContent className="min-w-48"><ContextMenuGroup>{groups.filter(target => target.id !== (row.tagId ?? '')).map(target => <ContextMenuItem key={target.id} disabled={disabled} onClick={() => moveTo(row, target.id)}><ArrowRight />移至 {target.name}</ContextMenuItem>)}<ContextMenuItem disabled={disabled} onClick={() => setManagerOpen(true)}><Settings />管理标签</ContextMenuItem></ContextMenuGroup><ContextMenuSeparator /><ContextMenuItem variant="destructive" disabled={disabled} onClick={() => onDelete({ id: row.task.id, name: row.task.name })}><Trash2 />删除</ContextMenuItem></ContextMenuContent></ContextMenu>}</DragListItem>)}</div></CollapsibleContent>
     </Collapsible></DragListGroupTarget>
   }

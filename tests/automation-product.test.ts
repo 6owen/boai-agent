@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 定时执行删除在旧独占会话与共享会话两条路径均不压缩整库，原文件/回执/恢复保护保持。
  * [OUTPUT]: 2026-11-04执行定位返回真实员工/任务归属，主聊天清理与重启后保持原任务身份。
  * [OUTPUT]: 定时派生assignment在任务会话内接收指令/流式回复/执行证据，主聊天清理不撤销任务；保留旧文件删除与重启不重放检查。
  * [OUTPUT]: 五状态独立任务会话、原计划授权/工具schema与稳定消息回执按最新用户合同验证。
@@ -132,11 +133,14 @@ it('deletes one legacy private execution and its files while preserving the plan
   for (const path of paths) { await mkdir(path, { recursive: true }); await writeFile(join(path, 'temporary.txt'), 'task temporary data') }
   await writeFile(join(other.conversation.workspacePath, 'keep.txt'), 'keep')
   const legacyStore = (f.service as unknown as { store: ProductStore }).store
+  const compact = vi.spyOn(legacyStore, 'compact')
   // Model a private execution from before durable employee tasks existed.
   await legacyStore.write([{ collection: 'conversations', id: source.conversation.id, value: { ...source.conversation, employeeTaskId: undefined } }], [{ collection: 'agentTasks', id: first.taskId! }])
   const current = await f.service.handle('getAutomationOccurrence', { id: first.id }) as AutomationOccurrence
   await expect(f.service.handle('deleteAutomationOccurrence', { id: first.id, expectedVersion: current.stateVersion - 1 })).rejects.toThrow('已更新')
   await f.service.handle('deleteAutomationOccurrence', { id: first.id, expectedVersion: current.stateVersion })
+  expect(compact).not.toHaveBeenCalled()
+  compact.mockRestore()
   for (const path of paths) await expect(access(path)).rejects.toMatchObject({ code: 'ENOENT' })
   expect(await readFile(join(other.conversation.workspacePath, 'keep.txt'), 'utf8')).toBe('keep')
   expect((await f.detail(main.id)).messages).toEqual(published)
@@ -185,8 +189,11 @@ it('deletes shared-chat execution logs without removing the original messages, f
   const before = await f.detail(room.id)
   const taskRun = (await f.detail(occurrence.conversationId)).runs.find(run => run.origin?.occurrenceId === occurrence.id)!
   const ownDownload = await stagedDownload(f, occurrence.conversationId, taskRun.id), otherDownload = await stagedDownload(f, room.id, ordinary[0])
+  const compact = vi.spyOn((f.service as unknown as { store: ProductStore }).store, 'compact')
   await writeFile(join(room.workspacePath, 'shared.txt'), 'shared user file')
   await f.service.handle('deleteAutomationOccurrence', { id: occurrence.id, expectedVersion: (await f.view()).occurrences[0].stateVersion })
+  expect(compact).not.toHaveBeenCalled()
+  compact.mockRestore()
   const after = await f.detail(room.id)
   expect(after.messages).toEqual(before.messages)
   expect(after.runs.map(run => run.id)).toEqual(ordinary)
