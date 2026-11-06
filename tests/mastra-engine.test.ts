@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 实际SDK顺序群发言即使宿主提供管理能力也不广告或调用工具。
  * [OUTPUT]: 真实SDK及native工具桥先发现/读取插件技能源，再调用桌面工具。
  * [OUTPUT]: 新增Agent Desktop可选贡献及API/native共享工具真实SDK验证。
  * [OUTPUT]: 2026-10-30 回归更新为Mastra官方记忆/原生归属合同；保留来源、调用预算和业务发布断言。
@@ -315,12 +316,14 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
 
   it('supplies the shared ordered goal and actual completed predecessor to the no-tool chat model', async () => {
     const server = await endpoint(['2'])
-    const run = await context(server.url, { responseKind: 'chat', triggerMessageId: 'message-1', turnId: 'group-turn', messages: [message('依次报数', 1, { turnId: 'group-turn' }), message('1', 2, { turnId: 'group-turn', senderType: 'agent', senderId: 'agent-b', senderName: 'Bob' })], groupCoordination: { mode: 'ordered', instruction: '接着前一位递增报数', agentIds: ['agent-b', 'agent-a'], memberConfigVersions: { 'agent-a': 1, 'agent-b': 1 }, sourceRunId: 'interpretation', revision: 2, completed: [{ agentId: 'agent-b', messageId: 'message-2', eventId: 'event-2', contentHash: 'hash' }] } })
+    const manageAutomation = vi.fn()
+    const run = await context(server.url, { manageAutomation, responseKind: 'chat', triggerMessageId: 'message-1', turnId: 'group-turn', messages: [message('依次报数', 1, { turnId: 'group-turn' }), message('1', 2, { turnId: 'group-turn', senderType: 'agent', senderId: 'agent-b', senderName: 'Bob' })], groupCoordination: { mode: 'ordered', instruction: '接着前一位递增报数', agentIds: ['agent-b', 'agent-a'], memberConfigVersions: { 'agent-a': 1, 'agent-b': 1 }, sourceRunId: 'interpretation', revision: 2, completed: [{ agentId: 'agent-b', messageId: 'message-2', eventId: 'event-2', contentHash: 'hash' }] } })
     await new MastraEngine().run(run.ctx)
     expect(allMessageText(server.requests[0])).toContain('接着前一位递增报数')
     expect(allMessageText(server.requests[0])).toContain('do not restart the shared operation')
     expect(server.requests[0].tools ?? []).toEqual([])
     expect(run.deltas.join('')).toBe('2')
+    expect(manageAutomation).not.toHaveBeenCalled()
   })
 
   it('uses current host browser capability for a retry after an obsolete no-browser reply, without granting tools to the decision', async () => {

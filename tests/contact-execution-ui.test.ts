@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 后台jsdom验证群工作树按需读取、原workId停止、防连点及隐藏停读。
  * [OUTPUT]: 执行历史替换共享正文预算，已折叠正文最多八项且淘汰后可重新打开。
  * [OUTPUT]: 主聊天展示定时原执行、刷新原来源及停止原occurrence，删除后撤掉过程卡片。
  * [OUTPUT]: 五项反馈的调度额度/取消接续或历史展示回归；具体验证边界以本文件用例为准。
@@ -212,4 +213,33 @@ it('releases the old scope and unmounted history without accepting late cached b
   current.set('body', 'current scope')
   await act(async () => root.render(null))
   expect(current.bytes).toBe(0)
+})
+
+it('loads group work only when opened and stops the original work tree once', async () => {
+  const parent = { id: 'parent', ownerAgentId: 'ds', conversationId: 'room', status: 'waiting', deliverable: '协作汇总', requiredResults: [{ workId: 'child', resultVersion: 2 }], nextStep: '等待第二版', resultMessageIds: [], artifactIds: [] }
+  const child = { ...parent, id: 'child', parentWorkId: 'parent', status: 'cancelled', deliverable: '检查结果', requiredResults: [] }
+  let release!: () => void
+  const stopped = new Promise<void>(resolve => { release = resolve })
+  request.mockImplementation(async (method: string) => {
+    if (method === 'listExecutionHistory') return { items: [{ run, trigger: '协作汇总' }] }
+    if (method === 'getConversationMetadata') return { conversation: snapshot.conversations[0], workItems: [parent, child], messages: [], runs: [], artifacts: [], workWakes: [] }
+    if (method === 'cancelRun') { await stopped; parent.status = 'cancelled'; return }
+    throw Error(`unexpected ${method}`)
+  })
+  const render = async (active: boolean) => act(async () => root.render(h(TraceTab, { api, snapshot: { ...snapshot, approvals: [] }, active, conversationId: 'room' })))
+  await render(true)
+  expect(request.mock.calls.some(([method]) => method === 'getConversationMetadata')).toBe(false)
+  await act(async () => {
+    const disclosure = [...host.querySelectorAll('details')].find(element => element.querySelector('summary')?.textContent === '协作工作')!
+    disclosure.open = true; disclosure.dispatchEvent(new Event('toggle'))
+  })
+  expect(host.querySelector('[data-work-id="child"]')?.textContent).toContain('所属工作：协作汇总')
+  expect(host.querySelector('[data-work-id="parent"]')?.textContent).toContain('第 2 版起')
+  await act(async () => { const button = host.querySelector<HTMLButtonElement>('[data-work-id="parent"] button')!; button.click(); button.click() })
+  expect(request.mock.calls.filter(([method]) => method === 'cancelRun')).toEqual([['cancelRun', { conversationId: 'room', workId: 'parent' }]])
+  expect(host.querySelector<HTMLButtonElement>('[data-work-id="parent"] button')!.disabled).toBe(true)
+  await act(async () => release()); await refresh()
+  expect(host.querySelector('[data-work-id="parent"]')?.textContent).toContain('已停止')
+  await render(false); request.mockClear(); await refresh()
+  expect(request).not.toHaveBeenCalled()
 })

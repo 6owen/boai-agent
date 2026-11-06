@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 定时原生任务沿负责员工任务面板打开原独立会话，重启核对原调用/产物不重放。
  * [OUTPUT]: 执行分组先等实际加载后再展开，避免空all快照略过工具；原publish参数/结果与交付/重启断言保持。
  * [OUTPUT]: 聊天执行流沿Beautiful UI像素加载/真实计时与思考轨迹展示，验证折叠重开和原最终替换。
  * [OUTPUT]: 执行未完成时的正文/思考增量回归，最终答复与私有协议字段保持分离。
@@ -20,7 +21,19 @@ type State={runtime:'codex'|'claude';real:boolean;agent:DigitalAgent;chat:Conver
 export const test=base.extend<{nativeState:State}>({nativeState:async({},use)=>{await use({} as State)}})
 const {Given,When,Then,After}=createBdd(test)
 const request=async <T>(desktop:Desktop,method:string,input:unknown)=>desktop.page.evaluate(async({method,input})=>window.boai.request(method as never,input as never),{method,input}) as Promise<T>
-const openChat=async(d:Desktop,state:State)=>d.page.getByRole('navigation',{name:'会话列表',exact:true}).getByRole('button',state.chat.purpose==='core'?{name:state.chat.title,exact:true}:{name:new RegExp(state.chat.title)}).click()
+const openChat=async(d:Desktop,state:State)=>{
+ if(state.chat.employeeTaskId){
+  const snapshot=await request<import('../../../packages/shared/src/domain').Snapshot>(d,'snapshot',undefined)
+  const main=snapshot.conversations.find(chat=>chat.kind==='direct'&&!chat.employeeTaskId&&chat.agentIds.includes(state.agent.id))
+  if(!main)throw Error('任务缺少负责员工的主聊天')
+  await d.page.getByRole('navigation',{name:'会话列表',exact:true}).getByRole('button',{name:new RegExp(main.title)}).click()
+  await d.page.getByRole('button',{name:'任务',exact:true}).click()
+  await d.page.locator(`[data-employee-task-id="${state.chat.employeeTaskId}"]`).first().click()
+  await expect(d.page.locator(`[data-employee-task-dialog="${state.chat.employeeTaskId}"]`)).toBeVisible()
+  return
+ }
+ await d.page.getByRole('navigation',{name:'会话列表',exact:true}).getByRole('button',state.chat.purpose==='core'?{name:state.chat.title,exact:true}:{name:new RegExp(state.chat.title)}).click()
+}
 async function send(d:Desktop,state:State,content:string){
  await d.page.getByRole('textbox',{name:'消息内容',exact:true}).fill(content)
  await d.page.getByRole('button',{name:'发送消息',exact:true}).click()
@@ -276,10 +289,10 @@ When('发送消息并在执行结束前查看流式过程', async ({ runtime, na
  await expect(card.locator('[data-slot="loading-state"]')).toBeVisible()
  await expect(card).not.toContainText('等待员工输出')
  const thinking = card.getByRole('button', { name: '思考过程', exact: true })
- await expect(thinking).toHaveAttribute('aria-expanded', 'true')
- await thinking.click()
  await expect(thinking).toHaveAttribute('aria-expanded', 'false')
+ await expect(card.locator('[data-slot="reasoning-preview"]')).toBeVisible()
  await thinking.click()
+ await expect(thinking).toHaveAttribute('aria-expanded', 'true')
  await expect(card.getByText('先检查输入', { exact: true })).toBeVisible()
  const detail = await request<ConversationDetail>(runtime, 'getConversation', { id: state.chat.id })
  expect(detail.runs[0].status).toBe('running')

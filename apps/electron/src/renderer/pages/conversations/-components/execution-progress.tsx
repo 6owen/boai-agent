@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 收起处理过程保留两行思考预览，完整工具明细按需展开，最终回复替换沿原消息逻辑。
  * [OUTPUT]: 聊天处理卡默认单行：原logo及当前动作在左，计时/停止/展开在右；Motion过渡完整正文高度，收起后无正文残片。
  * [OUTPUT]: 顶部图标统一ghost样式；聊天内部思考/工具组默认收起，停止仅更新状态与计时，保留用户展开选择和展开入口。
  * [OUTPUT]: 补充指令回执区分宿主接受、原生当前轮次确认和未知，不以普通调度冒充生效。
@@ -95,10 +96,10 @@ export function ChatExecutionCard({ api, run, active }: { api: DesktopApi; run: 
           </Button>
         </div>
       </header>
-      <motion.div id={contentId} data-slot="chat-execution-viewport" data-collapsed={collapsed} initial={false} animate={{ height: collapsed ? 0 : 'auto' }} transition={{ duration: reducedMotion ? 0 : 0.24, ease: [0.25, 0.1, 0.25, 1] }} className="min-w-0 overflow-hidden text-[length:var(--text-ui-control)] leading-relaxed">
-        <div inert={collapsed} className="pt-2">
-          {!live && run.error && <div className="mb-2"><MarkdownContent size="compact">{failureSummary(run.error)}</MarkdownContent></div>}
-          <ExecutionFeed api={api} run={run} active={active} cache={cache} presentation="chat" defaultExpanded={false} />
+      <motion.div id={contentId} data-slot="chat-execution-viewport" data-collapsed={collapsed} initial={false} animate={{ height: 'auto' }} transition={{ duration: reducedMotion ? 0 : 0.24, ease: [0.25, 0.1, 0.25, 1] }} className="min-w-0 overflow-hidden text-[length:var(--text-ui-control)] leading-relaxed">
+        <div className="pt-2">
+          {!collapsed && !live && run.error && <div className="mb-2"><MarkdownContent size="compact">{failureSummary(run.error)}</MarkdownContent></div>}
+          <ExecutionFeed api={api} run={run} active={active} cache={cache} presentation="chat" defaultExpanded={false} compact={collapsed} />
         </div>
       </motion.div>
     </div>

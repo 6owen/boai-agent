@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 顺序群发言在SDK请求边界固定空工具集合，不影响记忆装配和聊天持久化。
  * [OUTPUT]: 按配置在首个回答请求前附带有界原文预检，不追加模型步骤；执行事件独立记录。
  * [OUTPUT]: search_history沿原工具事件/用量循环执行，允许Bobo用一次查询取得原文和前后文。
  * [OUTPUT]: Agent Desktop 可选插件接线；默认关闭、独立于旧computer-use，调用沿员工权限及真实图片。
@@ -253,6 +254,8 @@ export class MastraEngine implements AgentEngine {
         const observeRoute = gatewayRouteObserver(ctx, () => callIds.at(-1))
         const output = await agent.stream(messages, {
           memory: prepared.option,
+          // Apply after SDK memory/tool assembly as well as the factory boundary.
+          ...(!task && ctx.groupCoordination?.mode === 'ordered' ? { activeTools: [] } : {}),
           ...(prepared.recallInstructions ? { system: prepared.recallInstructions } : {}),
           abortSignal: signal, maxSteps: MAX_STEPS, modelSettings: { maxOutputTokens: responseOutputTokens(ctx, task) },
           providerOptions: thinkingProviderOptions(ctx.connection, ctx.agent.modelId, ctx.agent.thinkingLevel, task ? 'task' : 'chat', ctx.modelCatalog),

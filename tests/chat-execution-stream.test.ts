@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 聊天折叠仍可读两行真实思考，展开状态与证据节点保持，最终答复替换不变。
  * [OUTPUT]: 临时卡及内部思考/工具组默认收起，当前动作随原Run更新；手动展开选择跨正文/工具增量保持。
  * [OUTPUT]: 所有终态执行卡不再挂查看/继续/任务结果；执行与普通消息共用可打开的员工资料头像及rounded-md。
  * [OUTPUT]: 历史预取期间保留当前窗口的实时执行卡，窗口移出后才卸载；不以最新页标记提前清空思考。
@@ -65,6 +66,7 @@ test.each(['failed', 'cancelled', 'interrupted'] as const)('retains %s execution
   fixture.evidence = [textEvent('已经整理第一部分周报', 1)]
   await render()
   expect(host.querySelectorAll('[data-chat-execution-run]')).toHaveLength(1)
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="展开处理过程"]')!.click())
   expect(host.textContent).toContain('已经整理第一部分周报')
   expect(host.textContent).not.toContain('已有过程保留')
   expect(host.textContent).not.toContain('已取消 ·')
@@ -82,6 +84,7 @@ test('retains failed automation mirrors at a located public trigger', async () =
   fixture.evidence = [textEvent('已读取的周报统计过程', 1)]
   await render()
   expect(host.querySelector('[data-chat-execution-run]')).not.toBeNull()
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="展开处理过程"]')!.click())
   expect(host.textContent).toContain('已读取的周报统计过程')
   expect(fixture.source).toBe('task-chat')
   for (const label of ['继续', '查看', '任务结果']) expect([...host.querySelectorAll('button')].map(button => button.textContent)).not.toContain(label)
@@ -130,6 +133,7 @@ test('shows the employee execution card immediately and streams updates before a
   expect(host.querySelector('[data-slot="thinking-state"]')).toBeNull()
   expect(host.textContent).not.toContain('等待员工输出')
   fixture.evidence = [textEvent('正在读取文件', 1)]; await render()
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="展开处理过程"]')!.click())
   expect(host.textContent).toContain('正在读取文件')
   fixture.evidence = [textEvent('正在读取文件，已找到需要修改的位置', 2)]; await render()
   expect(host.textContent).toContain('正在读取文件，已找到需要修改的位置')
@@ -193,14 +197,17 @@ test('shows one header row with the current action and right-side timer, keeping
   expect(card.querySelector('header [role="status"]')?.textContent).toBe('正在处理')
   expect(card.querySelector('[data-slot="execution-header-actions"] [data-slot="execution-elapsed"]')).not.toBeNull()
   expect(card.querySelector('[data-slot="loading-state"] [data-slot="execution-elapsed"]')).toBeNull()
-  expect(viewport().style.height).toBe('0px')
+  expect(viewport().style.height).toBe('auto')
+  expect(card.querySelector('[data-slot="reasoning-preview"]')?.textContent).toBe('先检查输入')
+  expect(card.querySelector('[data-slot="reasoning-preview"]')?.classList.contains('line-clamp-2')).toBe(true)
   expect(viewport().dataset.collapsed).toBe('true')
-  expect(viewport().firstElementChild?.hasAttribute('inert')).toBe(true)
+  expect(viewport().firstElementChild?.hasAttribute('inert')).toBe(false)
   props = { ...props, detail: { ...props.detail, runs: [{ ...run, toolEvents: [{ id: 'tool', name: 'browser_tool', status: 'running', detail: '', createdAt: run.createdAt }] }] } }
   fixture.evidence = [...fixture.evidence, { ...textEvent('', 1), ...nativeActivity('command', { type: 'commandExecution', command: 'cat input.txt', status: 'completed', exitCode: 0 }, true), sequence: 2 } as ExecutionEvidence]
   await render()
   expect(card.querySelector('header [role="status"]')?.textContent).toBe('正在执行 · browser_tool')
   expect(viewport().dataset.collapsed).toBe('true')
+  expect(host.textContent).not.toContain('cat input.txt')
   await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="展开处理过程"]')!.click())
   expect(viewport().dataset.collapsed).toBe('false')
   expect(viewport().firstElementChild?.hasAttribute('inert')).toBe(false)
@@ -249,6 +256,7 @@ test('replaces the existing API streaming bubble with one execution card and res
   fixture.evidence = [textEvent(message.content, 1)]
   await render()
   expect(host.querySelectorAll('[data-chat-execution-run]')).toHaveLength(1)
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="展开处理过程"]')!.click())
   expect(host.textContent?.split('最终答复')).toHaveLength(2)
   const final = { ...message, status: 'completed' as const }
   props = { ...props, detail: { ...props.detail, runs: [{ ...run, status: 'completed' }], messages: [final], messagePage: { ...props.detail.messagePage, items: [{ messageId: final.id, sequence: 2, status: 'available', message: final }] } } }
