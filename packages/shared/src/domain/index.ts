@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 本人发给bobo的诊断目标作为真实消息来源持久化，不冒用跨会话reply或执行目标任务。
  * [OUTPUT]: 项目默认值与工作目录快照独立于workspace和目录授权。
  * [OUTPUT]: 消息轮次保存队列移除及实际开始时的上下文边界，排队消息不提前执行或进入模型输入。
  * [OUTPUT]: Conversation可绑定持久员工任务；同任务独立会话续接。
@@ -205,6 +206,7 @@ export interface ConversationInput {
 }
 export type RunStatus = 'queued' | 'running' | 'waiting_approval' | 'completed' | 'failed' | 'cancelled' | 'interrupted'
 export interface Message {
+  diagnosisTarget?: import('./task-diagnosis').TaskDiagnosisTarget
   projectSelection?: import('./project-directory').ProjectSelection
   projectSelections?: Record<string, import('./project-directory').ProjectSelection>
   employeeTaskId?: string

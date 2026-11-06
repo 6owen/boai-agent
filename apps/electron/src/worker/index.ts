@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-07 只读诊断请求5秒清理pending，配置写入不设超时且安全错误码沿原回执保留。
  * [OUTPUT]: 桌面宿主提供同包只读技能源路径，新 Bobo 沿原服务初始化默认绑定。
  * [OUTPUT]: 当前包的员工脚本工具库位置交给原AppService租约，不依赖全局boai安装或PATH。
  * [OUTPUT]: 2026-10-19应用业务协议：worker反向请求实际桌面外观/插件服务，沿原宿主边界。
@@ -22,8 +23,7 @@ import { MastraEngine } from '@boai/runtime/adapters/mastra/engine'
 import { dispatchRuntime } from '@boai/runtime/dispatch'
 import type { RpcRequest } from '@boai/shared/ipc'
 import type { BrowserHostBridge, BrowserHostMethods } from '@boai/shared/ipc/browser'
-import type { ApplicationHostPort, ApplicationHostMethod } from '@boai/shared/ipc/application-host'
-import type { Methods } from '@boai/shared/ipc'
+import { WorkerApplicationHost } from './application-host'
 import type { SecretStore } from '@boai/runtime/contracts'
 
 const port = process.parentPort
@@ -53,21 +53,13 @@ const browserHost:BrowserHostBridge = {
     port.postMessage({type:'browser-host',id,method,input})
   }),
 }
-const pendingApplication = new Map<string, { resolve(value: unknown): void; reject(error: Error): void }>()
-const applicationHost: ApplicationHostPort = {
-  available: true,
-  request: <K extends ApplicationHostMethod>(method: K, input: Methods[K]['input']) => new Promise<Methods[K]['output']>((resolve, reject) => {
-    const id = randomUUID()
-    pendingApplication.set(id, { resolve: value => resolve(value as Methods[K]['output']), reject })
-    port.postMessage({ type: 'application-host', id, method, input })
-  }),
-}
+const applicationHost = new WorkerApplicationHost(message => port.postMessage(message))
 process.env.BOAI_RUNTIME_PLUGIN_BUNDLE ??= fileURLToPath(new URL('./plugins/', import.meta.url)).replace(/app\.asar(?=[/\\])/, 'app.asar.unpacked')
 let starting: ReturnType<typeof startOwnedRuntime>
 let service: Awaited<ReturnType<typeof startOwnedRuntime>>['service']
 let shuttingDown = false
 port.on('message', async ({ data }) => {
-  if (data?.type === 'application-host-result') { const pending = pendingApplication.get(data.id); pendingApplication.delete(data.id); if (data.error) pending?.reject(new Error(data.error)); else pending?.resolve(data.result); return }
+  if (data?.type === 'application-host-result') { applicationHost.accept(data); return }
   if (data?.type === 'browser-host-result') {
     const pending=pendingBrowser.get(data.id); pendingBrowser.delete(data.id)
     if (data.error) pending?.reject(new Error(data.error)); else pending?.resolve(data.result)

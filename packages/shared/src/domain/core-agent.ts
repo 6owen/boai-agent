@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 核心首发可显式指定受宿主核验的只读诊断目标，复用原消息受理与请求身份。
  * [OUTPUT]: 核心首发冻结项目选择版本并沿原workingDirectory协议。
  * [OUTPUT]: 显式CLI权限仅核对员工已保存模式，受理后继续沿原审批和当前授权，不临时改权。
  * [OUTPUT]: 员工/核心首发接收固定附件摘要及短期上传选择，重复核对不依赖临时token。
@@ -20,8 +21,8 @@ export const CORE_TEAM_NAME_MAX_LENGTH = 80
 export const CORE_TEAM_REQUIREMENTS_MAX_LENGTH = 4000
 
 export type StartCoreConversationInput =
-  | { expectedExecutionPermission?: import('./execution').ExecutionPermission; materialUploads?: import('./material-upload').SubmittedMaterial[]; apiModel?: import('./model-source').ApiModelOverride; expectedProjectRevision?: number; workingDirectory?: string; requestId: string; content: string; automationCreation?: boolean; sourceCreation?: boolean; composerReferences?: import('./composer-references').ComposerReference[]; team?: never }
-  | { expectedExecutionPermission?: never; materialUploads?: never; apiModel?: never; workingDirectory?: never; requestId: string; team: { name: string; requirements: string }; content?: never; composerReferences?: never }
+  | { diagnosisTarget?: import('./task-diagnosis').TaskDiagnosisTarget; expectedExecutionPermission?: import('./execution').ExecutionPermission; materialUploads?: import('./material-upload').SubmittedMaterial[]; apiModel?: import('./model-source').ApiModelOverride; expectedProjectRevision?: number; workingDirectory?: string; requestId: string; content: string; automationCreation?: boolean; sourceCreation?: boolean; composerReferences?: import('./composer-references').ComposerReference[]; team?: never }
+  | { diagnosisTarget?: never; expectedExecutionPermission?: never; materialUploads?: never; apiModel?: never; workingDirectory?: never; requestId: string; team: { name: string; requirements: string }; content?: never; composerReferences?: never }
 
 export function isCoreAgent(agent: Pick<DigitalAgent, 'id' | 'systemRole'> | undefined): boolean {
   return agent?.id === CORE_AGENT_ID && agent.systemRole === 'core'

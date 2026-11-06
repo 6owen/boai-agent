@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 外观手动操作仅提交用户字段，主题/字号联动复用shared命令规则。
  * [OUTPUT]: 应用图标状态沿共享读取缓存与单调事件，切换设置不重复冷读，原外观预览保存保持。
  * [OUTPUT]: 页面布局复用settings-layout，标题/分组留白与卡片/设置行统一，原业务回调保持。
  * [OUTPUT]: 开发版与安装版均不显示图标状态文案；迟到状态不覆盖新选择，失败沿Sonner和原重试。
@@ -54,7 +55,7 @@ function FontSizeInput({ group, value }: { group: 'ui' | 'code'; value: number }
   return <NumberField className="w-32" inputId={`appearance-${group}-size`} aria-label={`${title}（像素）`}
     decrementAriaLabel={`减小${title}`} incrementAriaLabel={`增大${title}`}
     value={value} minValue={control.min} maxValue={control.max} step={control.step}
-    onChange={next => { if (Number.isInteger(next) && next >= control.min && next <= control.max) previewAppearance({ typography: group === 'ui' ? { ui: { sizePx: next }, content: { sizePx: next } } : { [group]: { sizePx: next } } }) }} />
+    onChange={next => { if (Number.isInteger(next) && next >= control.min && next <= control.max) previewAppearance({ typography: { [group]: { sizePx: next } } }) }} />
 }
 
 function ColorControl({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
@@ -96,7 +97,7 @@ export function AppearanceSettings({ active = true }: { active?: boolean }) {
           </div>
         </PopoverContent>
       </Popover>}>
-    {error && status === 'error' && <Button variant="secondary" size="sm" onClick={() => void flushAppearance()}>重试保存</Button>}
+    {error && status === 'error' && <Button variant="secondary" size="sm" onClick={() => void flushAppearance(true)}>重试保存</Button>}
     <fieldset disabled={preview.readOnly}>
       <legend className="settings-section-title">视觉风格</legend>
       <SettingsCard className="mb-4" contentClassName="appearance-mode-row mb-0">
@@ -111,7 +112,7 @@ export function AppearanceSettings({ active = true }: { active?: boolean }) {
       <SettingsCard>
         {(['light', 'dark'] as const).filter(value => p.mode === 'system' || p.mode === value).map(value => <SettingsRow key={value}>
           <label htmlFor={`theme-${value}`}>{p.mode === 'system' ? value === 'light' ? '浅色主题' : '深色主题' : '主题'}</label>
-          <SelectField id={`theme-${value}`} aria-label={value === 'light' ? '浅色配色' : '深色配色'} value={resolveTheme(value, p.themeIds[value], disabledIds).id} onValueChange={selectedValue => previewAppearance({ themeIds: { [value]: selectedValue }, customColors: { [value]: { accent: null, background: null, foreground: null } } })} options={themes.filter(t => t.mode === value).map(t => ({ value: t.id, label: t.name }))} />
+          <SelectField id={`theme-${value}`} aria-label={value === 'light' ? '浅色配色' : '深色配色'} value={resolveTheme(value, p.themeIds[value], disabledIds).id} onValueChange={selectedValue => previewAppearance({ themeIds: { [value]: selectedValue } })} options={themes.filter(t => t.mode === value).map(t => ({ value: t.id, label: t.name }))} />
         </SettingsRow>)}
         <SettingsRow>
           <span>强调色</span>

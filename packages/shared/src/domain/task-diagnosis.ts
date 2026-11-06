@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Persisted task, occurrence, Work, Run and host-observed identities.
- * [OUTPUT]: Strict bounded diagnosis input and metadata-only read projections; no repair command.
+ * [OUTPUT]: Strict bounded diagnosis input/read projections and identity-bound explanation admission; no repair command.
  * [POS]: Shared task diagnosis contract; existing domains retain their own state authority.
  * [PROTOCOL]: Update this Header and domain/.folder.md when this file changes.
  */
@@ -21,6 +21,14 @@ export const taskDiagnosisQuerySchema = z.object({
 }).strict()
 export type TaskDiagnosisTarget = z.infer<typeof taskDiagnosisTargetSchema>
 export type TaskDiagnosisQuery = z.input<typeof taskDiagnosisQuerySchema>
+export const taskDiagnosisExplanationRequestSchema = z.object({ requestId: id, diagnosisTarget: taskDiagnosisTargetSchema }).strict()
+export const taskDiagnosisExplanationResultSchema = z.discriminatedUnion('status', [
+  z.object({ status: z.literal('accepted'), requestId: id, conversationId: id }).strict(),
+  z.object({ status: z.literal('rejected'), requestId: id, code: z.literal('NOT_ACCEPTED'), message: z.literal('本次解释请求未受理，请检查当前配置后重新发送。') }).strict(),
+  z.object({ status: z.literal('unknown'), requestId: id }).strict(),
+])
+export type StartTaskDiagnosisExplanationInput = z.infer<typeof taskDiagnosisExplanationRequestSchema>
+export type StartTaskDiagnosisExplanationResult = z.infer<typeof taskDiagnosisExplanationResultSchema>
 export type DiagnosisFact = {
   id: string
   kind: 'task' | 'occurrence' | 'run' | 'approval' | 'input' | 'dependency' | 'tool' | 'receipt'
