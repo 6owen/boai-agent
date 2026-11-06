@@ -1,6 +1,7 @@
 /*
  * [INPUT]: Original SourceService, SkillBindingFiles, employee records and host cache/lifecycle callbacks.
  * [OUTPUT]: Package contributions use existing resources, per-employee skill copies and one source execution gate.
+ * [OUTPUT]: Native bindings require a fresh complete inventory before each input; package identity scopes sessions and managed copy paths survive restart/relocation.
  * [POS]: WT2 domain adapter; AppService registration remains owned by WT3.
  * [PROTOCOL]: 一旦本文件变化，必须同步Header并上浮检查所属目录.folder.md。
  */
@@ -15,8 +16,9 @@ import { SkillBindingFiles, type BindingFiles } from './skill-binding-files'
 import { inspectResourceTree } from './local-resources'
 import { CapabilityPackages } from './capability-packages'
 import type { CapabilityAuthority, CapabilityPackageHost } from './capability-package-host'
+import { assertNativeCapabilityOwnership, type NativeCapabilityInventory } from './capability-native-ownership'
 
-type OwnedSkill = { id: string; origin: SourcePackageOrigin; employeeId?: string; resource: Resource; files: BindingFiles }
+type OwnedSkill = { id: string; origin: SourcePackageOrigin; employeeId?: string; resource: Resource; files: BindingFiles; released?: true }
 const copiesCollection = 'capabilitySkillCopies'
 const originOf = (installation: CapabilityInstallation, contribution: CapabilityContribution): SourcePackageOrigin => ({ installationId: installation.id, contributionId: contribution.id, version: contribution.version })
 const stableId = (value: string) => { const hash = createHash('sha256').update(value).digest('hex'); return `${hash.slice(0, 8)}-${hash.slice(8, 12)}-4${hash.slice(13, 16)}-a${hash.slice(17, 20)}-${hash.slice(20, 32)}` }
@@ -30,7 +32,7 @@ export interface CapabilityServicesPort {
   /** Interrupt and await actual affected employee executions, including native sessions holding skill files. */
   drainEmployees(employeeIds: string[]): Promise<void>
   assertEmployeesIdle(employeeIds: string[]): Promise<void>
-  /** Must prove a native runtime is isolated from duplicate plugin loading; unknown combinations reject. */
+  /** Admit only backends with a mandatory before-input ownership guard; this is not runtime proof. */
   assertNativeOwnership(installation: CapabilityInstallation, employee: DigitalAgent): Promise<void>
 }
 
@@ -48,8 +50,26 @@ export class CapabilityPackageServices implements CapabilityPackageHost {
     })
   }
   async init() {
-    this.copies = new Map((await this.port.store.load<OwnedSkill>(copiesCollection)).map(value => [value.id, value]))
+    const copies = await this.port.store.load<OwnedSkill>(copiesCollection)
+    for (const copy of copies) {
+      const ownership = `capability:${copy.origin?.installationId}:${copy.origin?.contributionId}`
+      const owners = [`${ownership}:${copy.employeeId ?? 'catalog'}`, ...(copy.employeeId ? [`${ownership}:catalog:${copy.employeeId}`] : [])]
+      const valid = /^[a-f0-9-]{36}$/.test(copy.id) && copy.id === copy.resource?.id && copy.files?.resourceId === copy.id
+        && copy.resource.kind === 'skill' && copy.files.name === copy.resource.name && /^[a-z0-9][a-z0-9-]{0,63}$/.test(copy.files.name)
+        && copy.employeeId === copy.resource.ownerAgentId && owners.includes(copy.files.ownership)
+        && !!copy.origin?.installationId && !!copy.origin.contributionId && /^[a-f0-9]{64}$/.test(copy.origin.version)
+      if (!valid) throw new Error('能力包技能副本身份不一致，请核对数据')
+      copy.resource = { ...copy.resource, path: join(this.port.dataPath, 'skills', copy.id, copy.files.name) }
+    }
+    if (copies.length) await this.port.store.write(copies.map(value => ({ collection: copiesCollection, id: value.id, value })))
+    this.copies = new Map(copies.map(value => [value.id, value]))
     await this.packages.init()
+  }
+  managedResourcePath(resource: Resource): string | undefined {
+    const copy = this.copies.get(resource.id)
+    if (!copy) return undefined
+    if (resource.kind !== 'skill' || copy.resource.name !== resource.name || copy.employeeId !== resource.ownerAgentId) throw new Error('能力包技能副本身份不一致，请核对数据')
+    return copy.resource.path
   }
   authority() { return this.port.authority?.() }
   commit<T>(action: () => Promise<T>, authority?: CapabilityAuthority) {
@@ -74,10 +94,42 @@ export class CapabilityPackageServices implements CapabilityPackageHost {
   configureReceipt(requestId: string) { return this.port.sources.managedSaveReceipt(requestId) }
   canUseResource(resourceId: string, employeeId: string) {
     const copy = this.copies.get(resourceId)
-    return !copy || copy.employeeId === employeeId && this.packages.canUse({ ...copy.origin, employeeId })
+    return !copy || copy.released === true || copy.employeeId === employeeId && this.packages.canUse({ ...copy.origin, employeeId })
   }
   assertResourceAccess(resourceIds: string[], employeeId: string) {
     if (resourceIds.some(id => !this.canUseResource(id, employeeId))) throw new Error('能力包技能未启用、未绑定当前员工或版本已变化')
+  }
+  hasBindings(employeeId: string) {
+    return this.packages.list().some(value => this.packages.listBindings(value.id).some(binding => binding.employeeId === employeeId && binding.contributionIds.length))
+  }
+  private nativeSelection(employee: DigitalAgent) {
+    if ((employee.executionBackend?.kind ?? 'mastra-model') === 'mastra-model') return []
+    return this.packages.list().flatMap(installation => {
+      const binding = this.packages.listBindings(installation.id).find(value => value.employeeId === employee.id)
+      return installation.enabled && installation.status === 'installed' && binding?.contributionIds.length
+        ? [{ installation, binding }] : []
+    })
+  }
+  nativeFingerprint(employee: DigitalAgent): string | undefined {
+    const selected = this.nativeSelection(employee).map(({ installation, binding }) => ({ id: installation.id, version: installation.contentHash, bindingId: binding.id, employeeId: binding.employeeId, contributions: [...binding.contributionIds].sort() })).sort((a, b) => a.id.localeCompare(b.id))
+    // No package preserves the existing native session fingerprint byte for byte.
+    // Administrative revisions alone do not change which capabilities are loaded.
+    return selected.length ? createHash('sha256').update(JSON.stringify(selected)).digest('hex') : undefined
+  }
+  nativeGuard(employee: DigitalAgent, validate: () => Promise<void>): ((inventory: NativeCapabilityInventory) => Promise<void>) | undefined {
+    const selected = this.nativeSelection(employee)
+    if (!selected.length) return undefined
+    return async inventory => {
+      await validate()
+      for (const { installation, binding } of selected) {
+        const current = this.packages.get(installation.id)
+        const currentBinding = this.packages.listBindings(installation.id).find(value => value.employeeId === employee.id)
+        if (current.revision !== installation.revision || current.contentHash !== installation.contentHash || JSON.stringify(currentBinding) !== JSON.stringify(binding)) throw new Error('能力包或绑定已变化，未发送本轮原生输入')
+        for (const contributionId of binding.contributionIds) this.packages.authorize({ installationId: installation.id, employeeId: employee.id, contributionId, version: binding.version })
+        assertNativeCapabilityOwnership({ owner: employee.executionBackend!.kind, installation, selectedContributionIds: binding.contributionIds, inventory })
+      }
+      await validate()
+    }
   }
   private async prepareSkills(installation: CapabilityInstallation, directory: string, employeeId?: string) {
     for (const contribution of installation.contributions.filter(value => value.kind === 'skill')) {
@@ -190,21 +242,24 @@ export class CapabilityPackageServices implements CapabilityPackageHost {
   changed(_installationId: string) { return this.port.changed() }
   async retire(installation: CapabilityInstallation, contributions: CapabilityContribution[]) {
     const retained: string[] = [], ids = new Set(contributions.filter(value => value.ownership === 'owned').map(value => value.id))
+    for (const copy of this.copies.values()) if (copy.released && copy.origin.installationId === installation.id && copy.origin.version === installation.contentHash && ids.has(copy.origin.contributionId)) retained.push(copy.resource.path)
     // Deleted Source rows can still own a durable secret-cleanup intent; do not rely only on the live source list.
     for (const contribution of contributions.filter(value => value.kind === 'source' && ids.has(value.id))) await this.port.sources.reconcileManagedCleanup(originOf(installation, contribution))
     for (const source of this.port.sources.list().filter(value => value.capabilityPackage?.installationId === installation.id && value.capabilityPackage.version === installation.contentHash && ids.has(value.capabilityPackage.contributionId))) {
       await this.port.sources.removeManaged({ id: source.id, expectedRevision: source.revision }, source.capabilityPackage!)
     }
-    for (const copy of [...this.copies.values()].filter(value => value.origin.installationId === installation.id && value.origin.version === installation.contentHash && ids.has(value.origin.contributionId))) {
+    for (const copy of [...this.copies.values()].filter(value => !value.released && value.origin.installationId === installation.id && value.origin.version === installation.contentHash && ids.has(value.origin.contributionId))) {
       let preserve = (await this.port.store.load<DigitalAgent>('agents')).some(agent => agent.skillIds.includes(copy.id))
       if (!preserve) { try { await this.files.cleanup(copy.files) } catch { preserve = true } }
       if (preserve) retained.push(copy.resource.path)
       await this.port.store.transaction(async tx => {
         if (!preserve) { await tx.remove('resources', copy.id); await tx.remove('skillInstallations', copy.id) }
         else if (!await tx.get('resources', copy.id)) await tx.put({ collection: 'resources', id: copy.id, value: copy.resource })
-        await tx.remove(copiesCollection, copy.id)
+        if (preserve) await tx.put({ collection: copiesCollection, id: copy.id, value: { ...copy, released: true } })
+        else await tx.remove(copiesCollection, copy.id)
       })
-      this.copies.delete(copy.id)
+      if (preserve) this.copies.set(copy.id, { ...copy, released: true })
+      else this.copies.delete(copy.id)
     }
     return retained
   }

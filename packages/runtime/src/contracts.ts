@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 包绑定原生执行通过提交输入前的有效能力清单核验；普通无包员工不新增探测。
  * [OUTPUT]: historySearch能力统一提供当轮设置、指引、原文查询与可选预检。
  * [OUTPUT]: 插件技能只读端口随实际启停提供，不创建绑定或改变原生循环。
  * [OUTPUT]: Bobo API私聊可主动查询宿主授权原文；原生后端不接入新的历史工具。
@@ -79,6 +80,10 @@ export interface SecretStore {
   delete(connectionId: string): Promise<void>
 }
 export interface EngineContext {
+  /** Fresh effective native inventory, checked before any user/behavior input is submitted. */
+  assertNativeCapabilities?(inventory: import('./modules/resources/capability-native-ownership').NativeCapabilityInventory): Promise<void>
+  /** Stable authorized package identity for native session reuse; undefined preserves sessions without packages. */
+  capabilityPackageFingerprint?: string
   /** API memory sources are authorized by BOAI; storage, recall and observation belong to Mastra. */
   memorySources?(): Promise<import('./adapters/mastra/conversation-memory').MemorySources>
   memoryOwner?: 'mastra' | 'native'

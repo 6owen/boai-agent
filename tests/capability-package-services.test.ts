@@ -1,6 +1,7 @@
 /*
  * [INPUT]: Real SQLite, isolated package/employee files, original SourceService and HTTP MCP transport.
  * [OUTPUT]: Actual MCP binding/call, secret target isolation, frozen skill hashes, CAS admission, idle-run protection and safe lifecycle evidence.
+ * [OUTPUT]: Native package guards capture original bindings, revalidate authority and cannot survive lifecycle changes.
  * [POS]: WT2 domain integration; no live account/model or desktop acceptance.
  * [PROTOCOL]: 一旦本文件变化，必须同步Header并上浮检查所属目录.folder.md。
  */
@@ -15,6 +16,7 @@ import { SourceService } from '../packages/runtime/src/modules/sources/source-se
 import { CapabilityPackageServices, type CapabilityServicesPort } from '../packages/runtime/src/modules/resources/capability-package-services'
 import type { DigitalAgent, Resource } from '../packages/shared/src/domain'
 import type { CapabilityInstallation } from '../packages/shared/src/domain/capability-packages'
+import type { NativeCapabilityInventory } from '../packages/runtime/src/modules/resources/capability-native-ownership'
 const cleanups: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const cleanup of cleanups.splice(0).reverse()) await cleanup() })
 async function setup(auth = false, options: { skillOnly?: boolean; stdio?: boolean } = {}) {
@@ -51,6 +53,51 @@ async function setup(auth = false, options: { skillOnly?: boolean; stdio?: boole
   const enable = async () => { await services.packages.setEnabled({ installationId: installation.id, expectedRevision: services.packages.get(installation.id).revision, enabled: true, requestId: randomUUID() }); return services.packages.get(installation.id) }
   return { root, path, marker, store, sources, services, port, installation, bind, enable, requests: () => requests, calls: () => calls, vault }
 }
+const emptyNativeInventory: NativeCapabilityInventory = { owner: 'codex-local', skills: { complete: true, items: [] }, sources: { complete: true, items: [] } }
+it('checks native ownership only for the current employee active bindings and validates both sides of proof', async () => {
+  const f = await setup(false, { skillOnly: true })
+  const employee = { ...(await f.store.get<DigitalAgent>('agents', 'employee-a'))!, executionBackend: { kind: 'codex-local' as const, profileId: 'fixture-native' } }
+  await f.store.write([{ collection: 'agents', id: employee.id, value: employee }])
+  vi.mocked(f.port.assertNativeOwnership).mockResolvedValue(undefined)
+  await f.bind()
+  expect(f.services.hasBindings(employee.id)).toBe(true)
+  expect(f.services.nativeGuard(employee, async () => {})).toBeUndefined()
+  await f.enable()
+  const validate = vi.fn(async () => {})
+  const guard = f.services.nativeGuard(employee, validate)!
+  await guard(emptyNativeInventory)
+  expect(validate).toHaveBeenCalledTimes(2)
+  expect(f.services.nativeGuard({ ...employee, id: 'bobo' }, validate)).toBeUndefined()
+  const definition = f.installation.definitions.find(value => value.kind === 'skill')!
+  await expect(guard({ ...emptyNativeInventory, skills: { complete: true, items: [{ name: definition.kind === 'skill' ? definition.name : '', path: '/native/SKILL.md', contentHash: '0'.repeat(64) }] } })).rejects.toThrow(/重复|归属|加载/)
+})
+it('invalidates captured native proof on package lifecycle changes and does not reuse proof after restart', async () => {
+  const f = await setup(false, { skillOnly: true })
+  const employee = { ...(await f.store.get<DigitalAgent>('agents', 'employee-a'))!, executionBackend: { kind: 'codex-local' as const, profileId: 'fixture-native' } }
+  await f.store.write([{ collection: 'agents', id: employee.id, value: employee }])
+  vi.mocked(f.port.assertNativeOwnership).mockResolvedValue(undefined)
+  await f.bind(); const active = await f.enable()
+  const guard = f.services.nativeGuard(employee, async () => {})!
+  await guard(emptyNativeInventory)
+  await f.services.packages.setEnabled({ installationId: active.id, expectedRevision: active.revision, enabled: false, requestId: randomUUID() })
+  await expect(guard(emptyNativeInventory)).rejects.toThrow('已变化')
+  await f.enable()
+  await f.services.packages.close()
+  const restored = new CapabilityPackageServices(f.port); await restored.init()
+  cleanups.push(() => restored.packages.close())
+  const nextGuard = restored.nativeGuard(employee, async () => {})!
+  await expect(nextGuard({ ...emptyNativeInventory, skills: { complete: false, items: [] } })).rejects.toThrow()
+  await nextGuard(emptyNativeInventory)
+})
+it('never accepts native ownership after caller authority is revoked', async () => {
+  const f = await setup(false, { skillOnly: true })
+  const employee = { ...(await f.store.get<DigitalAgent>('agents', 'employee-a'))!, executionBackend: { kind: 'codex-local' as const, profileId: 'fixture-native' } }
+  await f.store.write([{ collection: 'agents', id: employee.id, value: employee }])
+  vi.mocked(f.port.assertNativeOwnership).mockResolvedValue(undefined)
+  await f.bind(); await f.enable()
+  const guard = f.services.nativeGuard(employee, async () => { throw new Error('original execution revoked') })!
+  await expect(guard(emptyNativeInventory)).rejects.toThrow('original execution revoked')
+})
 it('uses the original MCP transport only after employee binding, rejects bobo and drains before disable', async () => {
   const f = await setup(), contribution = f.installation.contributions.find(value => value.kind === 'source')!
   expect(f.requests()).toBe(0); expect(f.sources.allSummaries('bobo')).toEqual([])
@@ -106,6 +153,24 @@ it('keeps a customized employee skill as an independent object on uninstall', as
   expect(await f.store.get('resources', id)).toBeDefined()
   expect((await f.store.get<DigitalAgent>('agents', 'employee-a'))!.skillIds).toEqual([])
   expect(f.services.canUseResource(id, 'employee-a')).toBe(true)
+  await f.services.packages.close()
+  const restored = new CapabilityPackageServices(f.port); await restored.init()
+  cleanups.push(() => restored.packages.close())
+  expect(restored.managedResourcePath(resource!)).toBe(resource!.path)
+  expect(restored.canUseResource(id, 'employee-a')).toBe(true)
+  expect(await readFile(join(restored.managedResourcePath(resource!)!, 'SKILL.md'), 'utf8')).toBe('User customized this copy')
+})
+it('refuses mismatched managed copy ownership rather than relocating an unrelated employee resource', async () => {
+  const f = await setup(false, { skillOnly: true }); await f.bind()
+  const employee = (await f.store.get<DigitalAgent>('agents', 'employee-a'))!
+  const resource = (await f.store.get<Resource>('resources', employee.skillIds[0]))!
+  expect(() => f.services.managedResourcePath({ ...resource, ownerAgentId: 'bobo' })).toThrow('身份不一致')
+  const copies = await f.store.load<{ id: string; employeeId?: string; files: { resourceId: string } }>('capabilitySkillCopies')
+  const copy = copies.find(value => value.employeeId === employee.id)!
+  await f.services.packages.close()
+  await f.store.write([{ collection: 'capabilitySkillCopies', id: copy.id, value: { ...copy, files: { ...copy.files, resourceId: randomUUID() } } }])
+  const restored = new CapabilityPackageServices(f.port)
+  await expect(restored.init()).rejects.toThrow('身份不一致')
 })
 
 it('does not transfer a bearer credential to a changed endpoint and keeps the enabled original version usable after rejection', async () => {

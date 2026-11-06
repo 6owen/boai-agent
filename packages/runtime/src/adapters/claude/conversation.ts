@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 活动能力包在同一Claude进程初始化后核对技能/MCP归属；目录控制响应独立关联，取消/超时/未知不提交prompt，原生flags保持。
  * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
  * [OUTPUT]: 首条消息前核对实际permission rules及managed-only来源；原始设置包含已失效ask不再被接受。
  * [OUTPUT]: 已装配的request_directory可进入受核验产品桥，目录决定仍归宿主原审批；避免只读申请被通用原生批准先拒绝。
@@ -38,6 +39,7 @@ import { createClaudeToolBridge } from './tools'
 import { executionPermissionNativeOptions } from '@boai/shared/domain/execution'
 import { claudeInput } from './input'
 import type { NativeAgentInfo } from '@boai/shared/domain/execution'
+import { collectClaudeCapabilityInventory, createClaudeCapabilityControl } from './capability-inventory'
 
 /** Keep public directory fields only; account, PID and private extension data never reach BOAI. */
 export function claudePublicInfo(input: unknown): NativeAgentInfo {
@@ -93,6 +95,8 @@ export async function runClaudeConversation(context: EngineContext, input: Nativ
   const prepared = claudeInput(input.prompt, input.images)
   const prompt = prepared.format === 'stream-json' ? { ...JSON.parse(prepared.stdin), session_id: sessionId } : { type: 'user', session_id: sessionId, parent_tool_use_id: null, message: { role: 'user', content: input.prompt } }
   let write!: (line: string) => void, end!: () => void, initialized = false, hasResult = false, state: string | undefined, finalText = '', resultError: string | undefined
+  let promptWritten = false
+  const capabilityControl = context.assertNativeCapabilities ? createClaudeCapabilityControl(line => write(line), signal) : undefined
   const messageIds = new Map<string, string>()
   const blocks = new Map<string, Record<string, any>>(), tools = new Map<string, Record<string, any>>(), tasks = new Set<string>()
   const controls = new Map<string, AbortController>(), pending = new Set<Promise<void>>()
@@ -135,10 +139,12 @@ export async function runClaudeConversation(context: EngineContext, input: Nativ
         const frame = recordValue(JSON.parse(line))
         if (frame.type !== 'control_response') await submission
         if (frame.session_id && frame.session_id !== sessionId) throw new Error('Claude 事件不属于当前原生会话')
+        if (capabilityControl && !promptWritten && ['stream_event', 'assistant', 'result'].includes(frame.type)) throw new Error('Claude 在能力归属核对完成前返回了用户轮次事件')
         if (initialized && !inputAccepted && ['stream_event', 'assistant', 'result'].includes(frame.type)) {
           inputAccepted = true; await context.onNativeExecution?.({ sessionId, inputAccepted: true })
         }
         if (frame.type === 'control_response') {
+          if (capabilityControl?.accept(frame.response)) return
           if (frame.response?.request_id !== initializeId || initialized || frame.response?.subtype !== 'success') throw new Error('Claude 控制协议初始化失败')
           initialized = true; state = undefined
           nativeInfo = { ...nativeInfo, ...claudePublicInfo(frame.response.response) }
@@ -147,7 +153,13 @@ export async function runClaudeConversation(context: EngineContext, input: Nativ
           // request here would prevent its response from ever being processed.
           const preparation = (async () => {
             signal.throwIfAborted(); await assertClaudeNativeSource(context)
-            write(JSON.stringify(prompt) + '\n'); submission = input.onSubmitted(sessionId, context.runId); await submission
+            if (context.assertNativeCapabilities && capabilityControl) {
+              const inventory = await collectClaudeCapabilityInventory(capabilityControl.request, { initialization: frame.response.response, bridge: bridge.capabilityIdentity, signal })
+              await context.assertNativeCapabilities(inventory)
+              signal.throwIfAborted(); await assertClaudeNativeSource(context)
+            }
+            signal.throwIfAborted()
+            write(JSON.stringify(prompt) + '\n'); promptWritten = true; submission = input.onSubmitted(sessionId, context.runId); await submission
           })()
           pending.add(preparation)
           void preparation.catch(error => controller.abort(error)).finally(() => { pending.delete(preparation); maybeEnd() })
@@ -255,6 +267,7 @@ export async function runClaudeConversation(context: EngineContext, input: Nativ
     cli?.release()
     clearInterval(watchdog)
     controller.abort(new Error('Claude 原生会话已退出'))
+    capabilityControl?.close()
     await Promise.allSettled([...pending]); await bridge.close(); await unlink(bootstrap)
   }
 }

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Codex/Claude能力包绑定按每次普通/behavior输入前的有效清单证明单一归属；未知组合拒绝，实际退出屏障和重启副本路径保持。
  * [OUTPUT]: WT2能力包沿原应用/Source/资源授权注册；按员工实际适配器退出排空，未证明原生单加载时拒绝绑定。
  * [OUTPUT]: Composer知识资料标签沿员工/会话授权及所选revision/hash核源，发送和执行均拒绝失效或外改内容。
  * [OUTPUT]: 定时执行记录删除不再逐条同步压缩整库，原事务、文件核验及恢复协议保持。
@@ -651,7 +652,9 @@ export class AppService {
           await Promise.allSettled([...exits, this.agentBehaviors.drainEmployees(employeeIds)])
         } finally { for (const id of ids) this.capabilityDrainingEmployees.delete(id) }
       },
-      assertNativeOwnership: async () => { fail('当前原生执行配置尚未证明能力包只加载一次；此版本仅支持模型 API 员工绑定') },
+      assertNativeOwnership: async (_installation, employee) => {
+        if (!['codex-local', 'claude-local'].includes(employee.executionBackend?.kind ?? '')) fail('当前本机 Agent 尚未提供完整能力归属检查；请使用模型 API 或支持检查的 Codex / Claude')
+      },
     })
     this.application = new ApplicationService(this.store, [...this.desktopActivity.operations(), ...this.userMemoryProvider.operations(), ...workspaceOperations(this.terminals, this.previews, async (scope, actor, write, directory) => {
       await this.applicationAuthority.getStore()?.validate()
@@ -1029,7 +1032,7 @@ export class AppService {
     for (const resource of this.resources.values()) {
       const binding = skillInstallations.find(value => value.resourceId === resource.id)?.bindingCopy
       if (binding && (binding.resourceId !== resource.id || binding.name !== resource.name)) fail('技能绑定副本身份不一致，请核对数据')
-      resource.path = resource.knowledge ? knowledgePath(this.dataPath, resource.id, resource.knowledge) : binding ? join(this.dataPath, 'skills', resource.id, resource.name) : resource.ownerAgentId ? join(this.dataPath, 'agents', resource.ownerAgentId, 'workspace', 'skills', resource.name) : join(this.dataPath, resource.kind === 'skill' ? 'skills' : 'knowledge', resource.id, basename(resource.path))
+      resource.path = this.capabilities.managedResourcePath(resource) ?? (resource.knowledge ? knowledgePath(this.dataPath, resource.id, resource.knowledge) : binding ? join(this.dataPath, 'skills', resource.id, resource.name) : resource.ownerAgentId ? join(this.dataPath, 'agents', resource.ownerAgentId, 'workspace', 'skills', resource.name) : join(this.dataPath, resource.kind === 'skill' ? 'skills' : 'knowledge', resource.id, basename(resource.path)))
       updates.push(record('resources', resource))
     }
     for (const conversation of this.conversations.values()) {
@@ -2147,6 +2150,8 @@ export class AppService {
           if (reflection.emotions.some(event => !current.emotions.some(candidate => candidate.id === event.id && JSON.stringify(candidate) === JSON.stringify(event)))) fail('反思情绪记录来源范围或内容已变化')
         }
       }
+      context.assertNativeCapabilities = this.capabilities.nativeGuard(context.agent, () => this.serialize(validate))
+      context.capabilityPackageFingerprint = this.capabilities.nativeFingerprint(context.agent)
       if (behavior.kind === 'travel' && context.webSearchServices?.length) {
         const search = async (serviceId: string, request?: import('@boai/shared/domain/sources').SourceCall) => {
           const ref = context.webSearchServices!.find(item => item.id === serviceId) ?? fail('旅行检索服务未获授权')
@@ -3597,7 +3602,7 @@ export class AppService {
 
   private assertCapabilityRuntime(agent: DigitalAgent) {
     if (this.capabilityDrainingEmployees.has(agent.id)) fail('员工能力包正在等待实际退出')
-    if ((agent.executionBackend?.kind ?? 'mastra-model') !== 'mastra-model' && this.capabilities.packages.list().some(value => this.capabilities.packages.listBindings(value.id).some(binding => binding.employeeId === agent.id && binding.contributionIds.length))) fail('当前原生执行配置尚未证明能力包只加载一次，请先撤回包绑定')
+    if (!['mastra-model', 'codex-local', 'claude-local'].includes(agent.executionBackend?.kind ?? 'mastra-model') && this.capabilities.hasBindings(agent.id)) fail('当前本机 Agent 尚未提供完整能力归属检查，请先撤回包绑定')
   }
   private assertCapabilityManagementInput(input: Parameters<ApplicationService['call']>[0], employeeId: string) {
     if (!['capabilityPackages.unbind', 'capabilityPackages.setEnabled', 'capabilityPackages.update', 'capabilityPackages.uninstall'].includes(input.operation)) return
@@ -4304,6 +4309,8 @@ export class AppService {
       if (delta !== undefined) await this.scheduler.recordOutputUsage(turn.id, delta, isNativeBackend(run.backend) ? 'native' : 'api')
     })
     const context: EngineContext = { permissionExpectation, modelSource,
+      assertNativeCapabilities: this.capabilities.nativeGuard(agent, () => this.serialize(async () => { await this.assertExecutionAccess(context) })),
+      capabilityPackageFingerprint: this.capabilities.nativeFingerprint(agent),
       presentations: {
         verify: () => this.serialize(async () => { await this.assertExecutionAccess(context) }),
         settings: async () => { await this.serialize(() => this.assertExecutionAccess(context)); return this.presentations.settings() },
@@ -6151,6 +6158,14 @@ export class AppService {
       try {
         // Browser profiles and private page receipts are not part of a portable business backup.
         await backupClient.execute("UPDATE records SET value=json_remove(json_set(value,'$.enabled',json('false'),'$.revision',json_extract(value,'$.revision')+1),'$.credentialId','$.test') WHERE collection IN ('dataSources','webSearchServices')")
+        // The package gate is disabled on restore. Preserve only verified internal Source flags so
+        // the original package configure/enable path can restore them without granting ordinary edits.
+        for (const installation of this.capabilities.packages.list()) for (const contribution of installation.contributions.filter(value => value.kind === 'source')) {
+          const source = this.dataSources.get(contribution.objectId), origin = source.capabilityPackage
+          if (origin?.installationId !== installation.id || origin.contributionId !== contribution.id || origin.version !== installation.contentHash) fail('能力包数据源归属不一致，无法完成备份')
+          await backupClient.execute({ sql: "UPDATE records SET value=json_set(value,'$.enabled',json(?)) WHERE collection='dataSources' AND id=?", args: [JSON.stringify(source.enabled), source.id] })
+        }
+        await backupClient.execute("UPDATE records SET value=json_set(value,'$.enabled',json('false'),'$.revision',json_extract(value,'$.revision')+1) WHERE collection='capabilityPackages' AND json_extract(value,'$.status')='installed'")
         await backupClient.execute("UPDATE records SET value=json_set(value,'$.enabled',json('false')) WHERE collection='channelBindings'")
         await backupClient.execute("UPDATE records SET value=json_set(value,'$.enabled',json('false'),'$.enableInputMonitor',json('false'),'$.saveScreenshots',json('false'),'$.revision',COALESCE(json_extract(value,'$.revision'),0)+1) WHERE collection='desktopActivitySettings'")
         const profiles = await backupClient.execute("SELECT id,value FROM records WHERE collection='agentProfiles'")
@@ -6181,10 +6196,12 @@ export class AppService {
         if (native) { nativeRuntimeHomes.add(join(this.dataPath, ...native.split('/'))); return false }
         return !legacyBrowserRuns.has(source) && !nativeRuntimeHomes.has(source)
       } })
+      await cp(join(this.dataPath, 'capability-packages'), join(destination, 'capability-packages'), { recursive: true, dereference: false }).catch(error => { if ((error as NodeJS.ErrnoException).code !== 'ENOENT' || this.capabilities.packages.list().length) throw error })
+      await this.capabilities.packages.assertBackupComplete(destination)
       await cp(join(this.dataPath, 'memory'), join(destination, 'memory'), { recursive: true }).catch(error => { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error })
-      await writeFile(join(destination, 'backup.json'), JSON.stringify({ format: 'boai-agent-local-backup', version: 2, createdAt: now(), sourceDataPath: this.dataPath, credentialsIncluded: false, externalUserMemoryIncluded: false, automationRestorePolicy: 'paused', agentBehaviorRestorePolicy: 'paused', nativeAgentRestorePolicy: 'fresh-session', excludedNativeRuntimeHomes: [...nativeRuntimeHomes].map(directory => relative(this.dataPath, directory)), excludedLegacyBrowserRuns: [...legacyBrowserRuns].map(directory => relative(this.dataPath,directory)) }, null, 2))
+      await writeFile(join(destination, 'backup.json'), JSON.stringify({ format: 'boai-agent-local-backup', version: 2, createdAt: now(), sourceDataPath: this.dataPath, credentialsIncluded: false, externalUserMemoryIncluded: false, capabilityPackageRestorePolicy: 'disabled', automationRestorePolicy: 'paused', agentBehaviorRestorePolicy: 'paused', nativeAgentRestorePolicy: 'fresh-session', excludedNativeRuntimeHomes: [...nativeRuntimeHomes].map(directory => relative(this.dataPath, directory)), excludedLegacyBrowserRuns: [...legacyBrowserRuns].map(directory => relative(this.dataPath,directory)) }, null, 2))
       await writeFile(join(destination, 'data-version.json'), JSON.stringify({ schemaVersion: 2, restoredBackup: true, createdAt: now() }, null, 2))
-      await writeFile(join(destination, 'RESTORE.txt'), '退出 BoAI Agent 后，先备份目标应用现有数据，再将 boai.sqlite、data-version.json、skills、knowledge、workspaces、agents、external-workspaces、materials、appearance、activity-records、memory 和 automation-mastra.sqlite（如存在）复制到目标应用 userData/v2 目录；不要与现有数据库混用。保留 v2 中的 data-version.json 版本标记后再启动新版应用。启动时会自动重定位受管资源、员工目录与产物路径。materials 仅包含已发送的聊天材料；草稿不恢复，也不重新读取外部来源。恢复后桌面活动记录、截图保存和键鼠监听默认关闭；定时任务、主动交流及情绪/成长/旅行自动行为默认暂停，员工提示词与疲劳设置保留；请在确认连接、授权和配置后逐项启用。渠道绑定与资料/检索连接也默认停用。旧备份没有 materials 或 appearance 时，请先移走目标目录对应旧文件夹，避免混入旧数据。API Key 与外部登录态未包含在备份中，需重新配置。Memmy 外部服务数据不包含在备份中，恢复后记忆提供方默认关闭；未确认的同步不会自动重发。Mastra Memory 的 memory 目录包含 Working Memory、OM、来源遗忘屏障及向量索引，需一起恢复；启动后仍复核来源权限。本机 Agent 私有运行目录不包含在备份中，外部程序自己的历史也不由本备份恢复或删除；原会话引用只供核对，下一次发送消息时从获准聊天内容建立新会话，启动不会自动续行。未完成浏览器下载不包含在备份中；旧版浏览器运行目录缺少可信完成状态，原件保留在来源设备但不导出，具体目录见 backup.json。已发布的受管成果仍正常备份。\n')
+      await writeFile(join(destination, 'RESTORE.txt'), '退出 BoAI Agent 后，先备份目标应用现有数据，再将 boai.sqlite、data-version.json、skills、capability-packages（如存在）、knowledge、workspaces、agents、external-workspaces、materials、appearance、activity-records、memory 和 automation-mastra.sqlite（如存在）复制到目标应用 userData/v2 目录；不要与现有数据库混用。保留 v2 中的 data-version.json 版本标记后再启动新版应用。启动时会自动重定位受管资源、员工目录与产物路径。materials 仅包含已发送的聊天材料；草稿不恢复，也不重新读取外部来源。恢复后桌面活动记录、截图保存和键鼠监听默认关闭；定时任务、主动交流及情绪/成长/旅行自动行为默认暂停，员工提示词与疲劳设置保留；请在确认连接、授权和配置后逐项启用。渠道绑定与普通资料/检索连接也默认停用。能力包默认停用，冻结原件需连同capability-packages目录恢复；包数据源仍受员工绑定与包启用门禁，补回缺失凭据后再沿原包入口显式启用。旧备份没有 materials 或 appearance 时，请先移走目标目录对应旧文件夹，避免混入旧数据。API Key 与外部登录态未包含在备份中，需重新配置。Memmy 外部服务数据不包含在备份中，恢复后记忆提供方默认关闭；未确认的同步不会自动重发。Mastra Memory 的 memory 目录包含 Working Memory、OM、来源遗忘屏障及向量索引，需一起恢复；启动后仍复核来源权限。本机 Agent 私有运行目录不包含在备份中，外部程序自己的历史也不由本备份恢复或删除；原会话引用只供核对，下一次发送消息时从获准聊天内容建立新会话，启动不会自动续行。未完成浏览器下载不包含在备份中；旧版浏览器运行目录缺少可信完成状态，原件保留在来源设备但不导出，具体目录见 backup.json。已发布的受管成果仍正常备份。\n')
     } finally {
       try { await this.automations.afterBackup() } finally { this.backingUp = false; this.desktopActivity.afterBackup(); for (const id of this.conversations.keys()) this.scheduleWork(id) }
       // A send acknowledged just before backup acquired the gate may have queued a job.

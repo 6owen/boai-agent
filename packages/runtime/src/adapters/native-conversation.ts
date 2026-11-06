@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 当前获准包/贡献身份参与原生session续用；无包保留原指纹，启停/解绑或版本变化不续用旧能力上下文。
  * [OUTPUT]: 2026-10-30 原生会话装配baseInstructions，退出BOAI额外记忆正文；原生session/工具/恢复保持。
  * [OUTPUT]: 程序版本观察记录不参与配置指纹，避免正常升级断开原会话；原来源与权限核验保持。
  * [OUTPUT]: 2026-10-27 默认持续执行、来源校验及工作现场/复核接线；沿原权限和账本。
@@ -98,7 +99,7 @@ export abstract class NativeConversationEngine {
     }
     const nativeSourceFingerprint = await this.sourceFingerprint(context)
     if (nativeSourceFingerprint) context = { ...context, nativeSourceFingerprint }
-    const fingerprintFor = (source: string | undefined) => digest(['native-conversation-v2', ...(context.workingDirectory ? ['business-cwd-v1', context.runtimeDirectory?.cwd] : []), launchProfileConfiguration(context.runtimeProfile), context.connection, context.agent.modelId, context.agent.nativeOptions, context.agent.configVersion, context.bootstrap?.hashes, context.bootstrap?.promptEvidence?.capabilityHash, context.memory?.invalidationEpoch, context.environment?.knowledge.map(version => [version.resource.id, version.hash, version.resource.path, version.resource.knowledge?.copyId, version.resource.knowledge?.revision]), ...(source ? ['native-source-v1', source] : []), ...(this.runtime === 'claude' && !context.runtimeProfile?.useExistingLogin && context.connection?.gateway ? ['claude-magpie-source-v1'] : []), ...(this.runtime === 'codex' && context.connection?.gateway ? ['codex-magpie-source-v1'] : [])])
+    const fingerprintFor = (source: string | undefined) => digest(['native-conversation-v2', ...(context.capabilityPackageFingerprint ? ['capability-packages-v1', context.capabilityPackageFingerprint] : []), ...(context.workingDirectory ? ['business-cwd-v1', context.runtimeDirectory?.cwd] : []), launchProfileConfiguration(context.runtimeProfile), context.connection, context.agent.modelId, context.agent.nativeOptions, context.agent.configVersion, context.bootstrap?.hashes, context.bootstrap?.promptEvidence?.capabilityHash, context.memory?.invalidationEpoch, context.environment?.knowledge.map(version => [version.resource.id, version.hash, version.resource.path, version.resource.knowledge?.copyId, version.resource.knowledge?.revision]), ...(source ? ['native-source-v1', source] : []), ...(this.runtime === 'claude' && !context.runtimeProfile?.useExistingLogin && context.connection?.gateway ? ['claude-magpie-source-v1'] : []), ...(this.runtime === 'codex' && context.connection?.gateway ? ['codex-magpie-source-v1'] : [])])
     const fingerprint = fingerprintFor(nativeSourceFingerprint)
     const { session, threadId, messages, priorReply } = await this.sessions.begin(context, fingerprint)
     const publicReplies: { messageId: string; content: string }[] = []

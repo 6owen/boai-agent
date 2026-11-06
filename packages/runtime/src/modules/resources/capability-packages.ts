@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Original ProductStore, explicit versioned requests, verified local packages and existing capability services.
- * [OUTPUT]: Versioned grants and durable receipts separate committed state from finished cleanup; recovery attempts never replay unknown work.
+ * [OUTPUT]: Versioned grants and durable receipts separate commit from cleanup; backup verifies complete frozen originals and recovery never replays unknown work.
  * [POS]: Sole capability package lifecycle; employees keep native loops and Source/Skill services retain execution authority.
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -47,6 +47,10 @@ export class CapabilityPackages {
   list() { return structuredClone([...this.installations.values()].filter(value => value.status !== 'uninstalled')) }
   get(id: string) { const value = this.installations.get(id); if (!value) throw new Error('能力包不存在'); return structuredClone(value) }
   listBindings(installationId: string) { this.get(installationId); return structuredClone([...this.bindings.values()].filter(value => value.installationId === installationId)) }
+  async assertBackupComplete(dataPath: string) {
+    const files = new CapabilityPackageFiles(dataPath)
+    for (const installation of this.list()) await files.assertAvailable(installation)
+  }
   async getOperation(requestId: string): Promise<CapabilityOperation | undefined> {
     const value = await this.store.get<Journal>(operationsCollection, requestId)
     if (!value) return undefined
@@ -275,10 +279,10 @@ export class CapabilityPackages {
       const existing = await this.existing(input.requestId, 'setEnabled', input); if (existing) return existing
       const previous = this.check(input.installationId, input.expectedRevision)
       if (input.enabled && previous.status === 'draining') throw new Error('能力包退出尚未完成，请先停用核对')
+      if (input.enabled) await this.host.assertReady?.(previous, [...new Set(this.listBindings(previous.id).flatMap(value => value.contributionIds))])
       const operation = this.journal(input.requestId, 'setEnabled', input, previous.id)
       return this.recorded(operation, async () => {
-        if (input.enabled) await this.host.assertReady?.(previous, [...new Set(this.listBindings(previous.id).flatMap(value => value.contributionIds))])
-        else {
+        if (!input.enabled) {
           this.blocked.add(previous.id)
           const draining = { ...previous, status: 'draining' as const, enabled: false }
           await this.transaction(async tx => { await this.checkTx(tx, previous.id, previous.revision); await tx.put({ collection: installationsCollection, id: previous.id, value: draining }) })

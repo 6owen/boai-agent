@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Frozen package file manifest and a private application data root.
- * [OUTPUT]: Staged verified copies and ownership/hash protected local cleanup; changed files are preserved.
+ * [OUTPUT]: Staged verified copies, complete backup verification and ownership/hash protected cleanup; changed files are preserved.
  * [POS]: Capability package filesystem commit boundary; no installers or package code execute here.
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -24,6 +24,12 @@ export class CapabilityPackageFiles {
   }
   directory(value: CapabilityInstallation) { return join(this.root(value), 'package') }
   private owner(value: CapabilityInstallation) { return JSON.stringify({ installationId: value.id, contentHash: value.contentHash }) }
+  async assertAvailable(value: CapabilityInstallation) {
+    try {
+      const root = await restrictedPath([this.dataPath], this.root(value))
+      if (await readFile(join(root, ownerName), 'utf8') !== this.owner(value) || (await inspectResourceTree(join(root, 'package'))).hash !== value.contentHash) throw new Error('changed')
+    } catch { throw new Error('能力包冻结原件缺失或内容变化，不能确认完整备份') }
+  }
   async prepare(value: CapabilityInstallation) {
     const stage = this.root(value, true), destination = this.root(value)
     if (isWithin(value.source.path, destination)) throw new Error('不能把能力包复制到其自身目录')
