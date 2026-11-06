@@ -1,5 +1,6 @@
 /*
- * [OUTPUT]: 员工文件区切换知识资料管理；附件/成果更多菜单明确保留，固定来源与未知回执在文件视图保留。
+ * [OUTPUT]: 2026-11-06 会话文件移除知识资料切换，保留原文件范围、筛选、预览和留存操作。
+ * [OUTPUT]: 会话文件区仅展示附件/成果；更多菜单明确保留，固定来源与未知回执在文件视图保留。
  * [OUTPUT]: 剩余异步失败文案统一Sonner，原状态和操作保持。
  * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [OUTPUT]: 员工跨会话文件/附件与群渠道会话文件共用有界筛选；范围独立记忆，每行按原 conversationId 预览和定位。
@@ -9,7 +10,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import type { Resource, Snapshot } from '@boai/shared/domain'
+import type { Snapshot } from '@boai/shared/domain'
 import type { DesktopApi } from '@boai/shared/ipc'
 import type { ConversationFileItem, ConversationFilePage, ConversationFileQuery, ConversationFileTarget } from '@boai/shared/domain/work-views'
 import { Banner, Loading, errorText, sizeText } from '@/components/common'
@@ -19,18 +20,16 @@ import { Card, CardContent } from '@/components/ui/card'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
 import { SelectField } from '@/components/ui/select-field'
 import { ScrollFade } from '@/components/ui/scroll-fade'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { EmployeeKnowledge } from './employee-knowledge'
 import { RetainFile } from './retain-file'
 import { useKnowledgeOperation } from './use-knowledge-operation'
 import { DateFilter } from './filters'
 import { dateBoundary, fileRowTargetMatches, selectedFileMatches, type FileSelection } from './model'
 import { usePagedQuery } from './use-paged-query'
 
-export interface ConversationFilesState { view?: 'files' | 'knowledge'; name: string; kind: string; actorId: string; fileType: string; from: string; to: string; expanded: string[]; selected?: FileSelection }
+export interface ConversationFilesState { name: string; kind: string; actorId: string; fileType: string; from: string; to: string; expanded: string[]; selected?: FileSelection }
 export const emptyFilesState: ConversationFilesState = { name: '', kind: '', actorId: '', fileType: '', from: '', to: '', expanded: [] }
-export interface ConversationFilesProps { api: DesktopApi; snapshot: Snapshot; active: boolean; conversationId?: string; ownerAgentId?: string; viewRequest?: { view: 'files' | 'knowledge'; id: string }; onKnowledgePreview?(resource: Resource): void; state?: ConversationFilesState; onStateChange?(value: ConversationFilesState): void; onPreview(item: ConversationFileItem, current?: () => boolean): void; onNavigate(target: ConversationFileTarget, current?: () => boolean): void }
+export interface ConversationFilesProps { api: DesktopApi; snapshot: Snapshot; active: boolean; conversationId?: string; ownerAgentId?: string; state?: ConversationFilesState; onStateChange?(value: ConversationFilesState): void; onPreview(item: ConversationFileItem, current?: () => boolean): void; onNavigate(target: ConversationFileTarget, current?: () => boolean): void }
 const remembered = new Map<string, ConversationFilesState>(), positions = new Map<string, number>()
 const statusLabel: Record<ConversationFileItem['status'], string> = { ready: '', preparing: '正在准备', failed: '读取失败', unavailable: '原件不可用', removed: '来源已移除', unsupported: '预览格式不支持' }
 const fileTypes = [{ value: '', label: '全部类型' }, { value: 'md', label: 'Markdown' }, { value: 'txt', label: 'TXT' }, { value: 'ts', label: 'TypeScript' }, { value: 'tsx', label: 'TSX' }, { value: 'js', label: 'JavaScript' }, { value: 'jsx', label: 'JSX' }, { value: 'py', label: 'Python' }, { value: 'json', label: 'JSON' }, { value: 'html', label: 'HTML源码' }, { value: 'svg', label: 'SVG源码' }, { value: 'css', label: 'CSS' }, { value: 'yaml', label: 'YAML' }, { value: 'xml', label: 'XML' }, { value: 'csv', label: 'CSV' }, { value: 'sql', label: 'SQL' }, { value: 'go', label: 'Go' }, { value: 'rs', label: 'Rust' }, { value: 'java', label: 'Java' }, { value: 'kt', label: 'Kotlin' }, { value: 'sh', label: 'Shell' }, { value: 'png', label: 'PNG图片' }, { value: 'jpg', label: 'JPEG图片' }, { value: 'pdf', label: 'PDF' }, { value: 'binary', label: '无扩展二进制' }]
@@ -41,7 +40,6 @@ export function ConversationFiles({ state: controlled, onStateChange, snapshot, 
   const [local, setLocal] = useState(() => ({ id: scopeKey, value: remembered.get(scopeKey) ?? { ...emptyFilesState, expanded: [] } }))
   const state = controlled ?? (local.id === scopeKey ? local.value : remembered.get(scopeKey) ?? { ...emptyFilesState, expanded: [] })
   const change = (patch: Partial<ConversationFilesState>) => { const next = { ...state, ...patch }; remembered.set(scopeKey, next); setLocal({ id: scopeKey, value: next }); onStateChange?.(next) }
-  useEffect(() => { if (props.viewRequest) change({ view: props.viewRequest.view }) }, [props.viewRequest?.id])
   let query: ConversationFileQuery | undefined, invalid = ''
   try {
     if (state.from && state.to && state.from > state.to) throw new Error('开始日期不能晚于结束日期。')
@@ -49,9 +47,7 @@ export function ConversationFiles({ state: controlled, onStateChange, snapshot, 
   } catch (cause) { invalid = errorText(cause) }
   const filtered = Boolean(state.name || state.kind || state.actorId || state.fileType || state.from || state.to)
   const removedActor = Boolean(state.actorId && state.actorId !== 'user' && !snapshot.agents.some(item => item.id === state.actorId))
-  return <section className="flex h-full min-h-0 min-w-0 flex-col gap-3 p-4" aria-label={props.ownerAgentId ? '员工文件' : '会话文件'}>
-    {props.ownerAgentId && <ToggleGroup size="sm" value={[state.view ?? 'files']} onValueChange={value => { if (value[0]) change({ view: value[0] as 'files' | 'knowledge' }) }} aria-label="文件视图"><ToggleGroupItem value="files">会话文件</ToggleGroupItem><ToggleGroupItem value="knowledge">知识资料</ToggleGroupItem></ToggleGroup>}
-    {state.view === 'knowledge' && props.ownerAgentId ? <EmployeeKnowledge key={props.ownerAgentId} api={props.api} snapshot={snapshot} agentId={props.ownerAgentId} active={props.active} onPreview={resource => props.onKnowledgePreview?.(resource)} /> : <>
+  return <section className="flex h-full min-h-0 min-w-0 flex-col gap-3 p-4" aria-label="会话文件">
     {operation.pending && <Button size="sm" variant="secondary" disabled={operation.busy || !props.active} onClick={() => void operation.check()}>核对知识资料保存结果</Button>}
     <div className="flex flex-wrap items-center gap-2" aria-label="文件筛选">
       <InputGroup className="w-56"><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput aria-label="文件名称筛选" placeholder="查找文件名" maxLength={200} value={state.name} onChange={event => change({ name: event.target.value })} /></InputGroup>
@@ -63,7 +59,6 @@ export function ConversationFiles({ state: controlled, onStateChange, snapshot, 
     </div>
     {invalid && <Banner>{invalid}</Banner>}
     {query && !invalid && <FilesResults {...props} onRetain={setRetaining} active={props.active && !invalid} query={query} state={state} change={change} />}
-    </>}
     {retaining && <RetainFile key={retaining.id} api={props.api} snapshot={snapshot} item={retaining} ownerAgentId={props.ownerAgentId} active={props.active} operation={operation} onClose={() => setRetaining(undefined)} />}
   </section>
 }

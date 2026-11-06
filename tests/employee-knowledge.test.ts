@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Composer知识引用真实受理/持久化与工具读取；错误归属、旧版本/hash、未共享、解绑和外改在消息提交前拒绝。
  * [OUTPUT]: 自动化新会话跨重启沿员工知识授权，拒绝他人资料；移除使原计划失效，重新保存后无知识工具、旧触发不重放。
  * [OUTPUT]: 资料引用随异路径备份恢复仍按当前受管副本核验；旧路径不读、原授权不扩大、零模型重放。
  * [OUTPUT]: 实际知识读取引用持久化与重启，更新/同字节替换/外改/撤权/清空拒绝旧引用。
@@ -764,4 +765,56 @@ it('uses retained employee knowledge across automation conversations and restart
   expect((await final.service.handle('runAutomation', { id: plan.id, requestId: 'knowledge-stale-authorization' }) as AutomationOccurrence)).toEqual(skipped)
   expect(final.engine.calls).toBe(0)
   await writeFile(join(root, 'automation-knowledge-facts.json'), JSON.stringify({ observations, first, second, skipped, removed, externalRequests: 0, trigger: 'original-manual-automation', restartReplays: 0, sourceContent: added.content, sourceHash: hash(added.content), retainedResourceId: added.resource.id, otherResourceId: other.resource.id }, null, 2))
+})
+
+
+it('accepts composer knowledge references without changing sharing and rejects stale or unauthorized selections before sending', async () => {
+  const { service, root, engine } = await fixture(), added = await file(service, root), foreign = await file(service, root, '他人资料', 'writer')
+  const chat = await direct(service)
+  const reference = { kind: 'knowledge' as const, id: added.resource.id, agentId: 'researcher', name: added.resource.name, revision: added.resource.knowledge!.revision, contentHash: added.resource.knowledge!.contentHash }
+  let seen: unknown, content = ''
+  engine.handler = async context => {
+    seen = context.messages.find(message => message.id === context.triggerMessageId)?.composerReferences
+    const read = createKnowledgeOperations(context).find(operation => operation.name === 'read_knowledge')!
+    const result = await read.execute({ resourceId: reference.id, path: added.resource.path, contentHash: reference.contentHash }) as { content: string }
+    content = result.content
+    await context.onDelta('已读取所选资料。')
+  }
+  const request = { conversationId: chat.id, content: `$${reference.name} 请参考这份资料`, mentionIds: [], requestId: randomUUID(), composerReferences: [reference] }
+  const accepted = await service.handle('sendMessage', request) as { id: string }
+  await settled(service, chat)
+  expect(seen).toEqual([reference]); expect(content).toBe(added.content)
+  const stored = await detail(service, chat)
+  expect(stored.messages.find(message => message.id === accepted.id)?.composerReferences).toEqual([reference])
+  expect(stored.conversation.sharedKnowledgeIds).toEqual([])
+  expect(await service.handle('sendMessage', request)).toMatchObject({ id: accepted.id })
+  const before = stored.messages.length, calls = engine.calls
+  for (const patch of [{ revision: reference.revision + 1 }, { contentHash: '0'.repeat(64) }, { agentId: 'writer' }, { id: foreign.resource.id }, { path: added.resource.path }]) {
+    await expect(service.handle('sendMessage', { ...request, requestId: randomUUID(), composerReferences: [{ ...reference, ...patch }] })).rejects.toThrow()
+  }
+  const group = await service.handle('createConversation', { kind: 'group', title: '未共享范围', agentIds: ['researcher'], sharedKnowledgeIds: [] }) as Conversation
+  await expect(service.handle('sendMessage', { ...request, conversationId: group.id, requestId: randomUUID() })).rejects.toThrow('知识资料授权已变化')
+  expect((await detail(service, chat)).messages).toHaveLength(before)
+  expect((await detail(service, group)).messages).toHaveLength(0)
+  expect(engine.calls).toBe(calls)
+  await service.handle('removeEmployeeKnowledge', { requestId: randomUUID(), agentId: 'researcher', resourceId: reference.id, expectedConfigVersion: (await employee(service)).configVersion })
+  await expect(service.handle('sendMessage', { ...request, requestId: randomUUID() })).rejects.toThrow('知识资料授权已变化')
+  expect((await detail(service, chat)).messages).toHaveLength(before)
+})
+
+it('accepts legacy knowledge references and rejects an externally changed original before recording a new message', async () => {
+  const { service, root, engine } = await fixture(), path = join(root, 'legacy-composer.txt')
+  await writeFile(path, '旧资料的当前内容')
+  const resource = await service.handle('importResource', { kind: 'knowledge', path }) as Resource
+  const { configVersion, workspaceRef: _w, memoryNamespace: _m, policyVersion: _p, ...agent } = await employee(service)
+  await service.handle('saveAgent', { ...agent, expectedConfigVersion: configVersion, knowledgeIds: [resource.id] })
+  const chat = await direct(service), view = await service.handle('getEmployeeKnowledgeFiles', { agentId: agent.id, resourceId: resource.id }) as KnowledgeFilesView
+  expect(view.revision).toBe(0)
+  const reference = { kind: 'knowledge', id: resource.id, agentId: agent.id, name: resource.name, revision: view.revision, contentHash: view.contentHash }
+  const request = { conversationId: chat.id, content: `$${resource.name} 核对资料`, mentionIds: [], requestId: randomUUID(), composerReferences: [reference] }
+  await service.handle('sendMessage', request); await settled(service, chat)
+  const before = (await detail(service, chat)).messages.length, calls = engine.calls
+  await writeFile(resource.path, '已外改的不同正文')
+  await expect(service.handle('sendMessage', { ...request, requestId: randomUUID() })).rejects.toThrow('知识资料内容已变化')
+  expect((await detail(service, chat)).messages).toHaveLength(before); expect(engine.calls).toBe(calls)
 })
