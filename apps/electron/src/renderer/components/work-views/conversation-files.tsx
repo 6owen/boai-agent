@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 会话文件搜索使用与小号Tab一致的28px控件高度及caption字号，保留展开和文件名查询。
  * [OUTPUT]: 会话文件对齐知识资料的默认列表/卡片表格、浮动标题与滚动渐隐；仅文件名CatalogSearch，来源操作归行菜单，同范围刷新保留列表。
  * [OUTPUT]: 2026-11-06 会话文件移除知识资料切换，保留原文件范围、筛选、预览和留存操作。
  * [OUTPUT]: 会话文件区仅展示附件/成果；更多菜单明确保留，固定来源与未知回执在文件视图保留。
@@ -50,7 +51,7 @@ export function ConversationFiles({ state: controlled, onStateChange, snapshot, 
     {operation.pending && <Button size="sm" variant="secondary" disabled={operation.busy || !props.active} onClick={() => void operation.check()}>核对知识资料保存结果</Button>}
     <CatalogSearch label="搜索文件名" placeholder="搜索文件名" value={state.name} onChange={name => change({ name: name.slice(0, 200) })} />
   </>
-  return <Tabs value={state.view ?? 'list'} onValueChange={view => { if (view === 'table' || view === 'list') change({ view }) }} className="skill-detail-panel @container h-full min-h-0 w-full gap-0 [&_.catalog-search]:max-w-[40cqw]" aria-label="会话文件">
+  return <Tabs value={state.view ?? 'list'} onValueChange={view => { if (view === 'table' || view === 'list') change({ view }) }} className="conversation-files-panel skill-detail-panel @container h-full min-h-0 w-full gap-0 [&_.catalog-search]:max-w-[40cqw]" aria-label="会话文件">
     <DetailPanelHeader title="会话文件" actions={controls} />
     <FilesResults {...props} onRetain={setRetaining} operationsLocked={operation.busy || !!operation.pending} query={query} state={state} change={change} />
     {retaining && <RetainFile key={retaining.id} api={props.api} snapshot={snapshot} item={retaining} ownerAgentId={props.ownerAgentId} active={props.active} operation={operation} onClose={() => setRetaining(undefined)} />}
