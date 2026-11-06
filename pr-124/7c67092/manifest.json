@@ -1,0 +1,24 @@
+{
+  "summary": "员工任务完成后的全局 Sonner 通知文案被简化为「<员工名> 的任务待确认」或「<员工名> 的任务有新结果」，去掉了长任务标题和「结果已就绪，待你确认」的 description；「查看」跳转与按执行去重的逻辑未变。",
+  "scenes": [
+    {
+      "title": "任务结果提示所在的员工会话",
+      "shots": [
+        {
+          "file": "01-employee-conversation-toast-area.png",
+          "caption": "员工会话界面：任务结果提示会在右下角以该员工名出现",
+          "width": 1280
+        }
+      ]
+    }
+  ],
+  "video": "preview.mp4",
+  "poster": "poster.png",
+  "errors": [],
+  "leak": false,
+  "skipped": null,
+  "mismatch": "",
+  "unseen": "这条提示只由 IPC 事件 employee-task:result 触发；本次演示数据里的定时任务处于暂停状态，本地固定回复也不会产生有效的员工任务结果事件，因此无法在录屏中真正弹出改后的提示，只能展示它会出现的位置。",
+  "interactive": true,
+  "pages": 1
+}
