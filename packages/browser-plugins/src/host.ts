@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-06 首次调用的foreground覆盖保存偏好；发现不启动浏览器，已启动会话拒绝换模式并保留页面。
  * [INPUT]: Upstream Mastra browser packages, a run identity and a host command callback.
  * [OUTPUT]: Original tools and owned lifecycle; failed close retries only unfinished browser/CLI/directory cleanup stages.
  * [POS]: Thin community-browser adapter; never connects to BOAI's Electron browser or cookies.
@@ -36,7 +37,7 @@ async function executablePath(configured: string): Promise<string | undefined> {
 
 export interface BrowserPluginSession {
   inspect(): { name: string; description: string; inputSchema: unknown }[]
-  call(name: string, input: Record<string, unknown>, callId: string): Promise<{ content: BrowserContent[] }>
+  call(name: string, input: Record<string, unknown>, callId: string, foreground?: boolean): Promise<{ content: BrowserContent[] }>
   close(): Promise<void>
 }
 
@@ -54,10 +55,11 @@ function content(output: unknown, tool?: Tool<any, any>): BrowserContent[] {
 export async function createBrowserPluginSession(provider: Provider, config: BrowserConfig, threadId: string,
   execute: (command: string, cleanup?: boolean, runtimeWrites?: string[]) => Promise<unknown>): Promise<BrowserPluginSession> {
   const options = { headless: config.headless, executablePath: await executablePath(config.executablePath), scope: 'shared' as const }
-  const browser: MastraBrowser = provider === 'agent-browser'
-    ? new (await import('@mastra/agent-browser')).AgentBrowser(options)
-    : new (await import('@mastra/browser-viewer')).BrowserViewer({ ...options, cli: 'agent-browser' })
-  const tools = browser.getTools()
+  const createBrowser = provider === 'agent-browser'
+    ? (({ AgentBrowser }) => (headless: boolean): MastraBrowser => new AgentBrowser({ ...options, headless }))(await import('@mastra/agent-browser'))
+    : (({ BrowserViewer }) => (headless: boolean): MastraBrowser => new BrowserViewer({ ...options, headless, cli: 'agent-browser' }))(await import('@mastra/browser-viewer'))
+  let headless = config.headless, started = false
+  let browser = createBrowser(headless), tools = browser.getTools()
   const cli = new BrowserCliHandler()
   let closed = false, browserClosed = false, cliStarted = false, closeTask: Promise<void> | undefined
   let socketDirectory: string | undefined
@@ -69,11 +71,17 @@ export async function createBrowserPluginSession(provider: Provider, config: Bro
   return {
     inspect: () => provider === 'browser-viewer' ? [{ name: 'execute', description: 'Run the original agent-browser CLI against this BrowserViewer browser. Pass CLI arguments as an array, for example ["open", "https://example.com"], ["snapshot", "-i"], ["click", "@e1"]. Use ["--help"] for upstream commands. This browser is independent of BOAI and AgentBrowser.', inputSchema: z.toJSONSchema(cliInput) }]
       : Object.entries(tools).map(([name, tool]) => ({ name, description: tool.description ?? name, inputSchema: z.toJSONSchema(tool.inputSchema as z.ZodType, { io: 'input' }) })),
-    async call(name, input, callId) {
+    async call(name, input, callId, foreground) {
       if (closed) throw new Error('浏览器插件会话已关闭')
+      if (foreground !== undefined && !foreground !== headless) {
+        if (started) throw new Error('浏览器已经启动，请在新任务的首次浏览器调用中指定前台或后台；当前页面已保留')
+        // Upstream constructors/getTools are lazy: discovery has no browser, CLI or profile to discard.
+        headless = !foreground; browser = createBrowser(headless); tools = browser.getTools()
+      }
       if (provider === 'browser-viewer') {
         if (name !== 'execute') throw new Error('BrowserViewer 工具不存在，请先读取工具目录')
         const { args } = cliInput.parse(input)
+        started = true
         browser.setCurrentThread(threadId)
         await browser.ensureReady()
         if (closed) throw new Error('浏览器插件会话已关闭')
@@ -87,6 +95,7 @@ export async function createBrowserPluginSession(provider: Provider, config: Bro
       }
       const tool = tools[name]
       if (!tool?.execute) throw new Error('浏览器插件工具不存在，请先读取工具目录')
+      started = true
       const output = await tool.execute(input, { agent: { threadId, toolCallId: callId } } as never)
       return { content: content(output, tool) }
     },

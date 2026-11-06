@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-06覆盖浏览器模式优先级、保存兼容、会话保留或配置重启；本批实际结果归19组19第5节。
  * [OUTPUT]: 关闭失败保留清理重试，阻止继续使用旧会话；其他提供方保持独立。
  * [INPUT]: Real settings/SQLite stores, independent browser sessions and the shared tool bridge.
  * [OUTPUT]: Opt-in isolation, revision conflicts, original arguments, approvals, cancellation and media contracts.
@@ -57,14 +58,14 @@ it('saves launch settings by revision and never rewrites another provider config
   await f.enable('agent-browser'); await f.service.inspect('agent-browser', f.context)
   await expect(f.service.save({ provider: 'agent-browser', expectedRevision: 0, config: {} })).rejects.toThrow('已变化')
   expect(await f.service.settings('agent-browser')).toEqual(saved)
-  expect(await f.service.settings('browser-viewer')).toMatchObject({ revision: 0, config: { headless: false, executablePath: '' } })
+  expect(await f.service.settings('browser-viewer')).toMatchObject({ revision: 0, config: { headless: true, executablePath: '' } })
   expect(f.session.close).not.toHaveBeenCalled()
 })
 it('preserves upstream arguments and enforces approval before browser interactions', async () => {
   const f = await fixture(); await f.enable('agent-browser')
   f.context.agent.executionPermission = 'read-only'
   await f.service.call({ provider: 'agent-browser', tool: 'browser_snapshot', arguments: { interactiveOnly: true } }, f.context)
-  expect(f.session.call).toHaveBeenCalledWith('browser_snapshot', { interactiveOnly: true }, expect.any(String))
+  expect(f.session.call).toHaveBeenCalledWith('browser_snapshot', { interactiveOnly: true }, expect.any(String), undefined)
   await expect(f.service.call({ provider: 'agent-browser', tool: 'browser_click', arguments: { ref: '@e1' } }, f.context)).rejects.toThrow('只读')
   f.context.agent.executionPermission = 'ask'; f.context.approveOperation = vi.fn(async () => false)
   await expect(f.service.call({ provider: 'agent-browser', tool: 'browser_click', arguments: { ref: '@e1' } }, f.context)).rejects.toThrow('拒绝')
@@ -151,4 +152,23 @@ it('detaches abort listeners when session construction fails', async () => {
   expect(getEventListeners(f.controller.signal, 'abort')).toHaveLength(0)
   await f.service.closeRun('run-a')
   expect(f.session.close).not.toHaveBeenCalled()
+})
+
+it('defaults both browser plugins to background and preserves existing saved foreground preferences', async () => {
+  const f = await fixture()
+  for (const provider of ['agent-browser', 'browser-viewer']) {
+    expect(await f.service.settings(provider)).toMatchObject({ revision: 0, config: { headless: true } })
+  }
+  await f.store.write([{ collection: 'browserPluginSettings', id: 'agent-browser', value: { provider: 'agent-browser', revision: 4, config: { headless: false, executablePath: '' } } }])
+  expect(await f.service.settings('agent-browser')).toMatchObject({ revision: 4, config: { headless: false } })
+  expect(await f.service.settings('browser-viewer')).toMatchObject({ revision: 0, config: { headless: true } })
+  expect(await f.service.enabled()).toEqual([])
+})
+
+it('passes an explicit run override without overwriting the saved browser preference', async () => {
+  const f = await fixture(); await f.enable('agent-browser')
+  await f.service.inspect('agent-browser', f.context)
+  await f.service.call({ provider: 'agent-browser', tool: 'browser_snapshot', foreground: true }, f.context)
+  expect(f.session.call).toHaveBeenCalledWith('browser_snapshot', {}, expect.any(String), true)
+  expect(await f.service.settings('agent-browser')).toMatchObject({ revision: 0, config: { headless: true } })
 })

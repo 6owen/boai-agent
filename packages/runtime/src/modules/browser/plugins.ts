@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-06 两个独立浏览器沿原revision偏好存储；单次前台参数不写回配置。
  * [OUTPUT]: 关闭失败保留会话并允许重试，关闭请求后禁止新工具；实际关闭和在途调用结束后才解除登记。
  * [INPUT]: Application plugin enablement, saved launch settings and the original execution context.
  * [OUTPUT]: Independent upstream browser sessions with existing approvals, cancellation and shutdown.
@@ -116,7 +117,7 @@ export class BrowserPluginService {
       if (entry.closeRequested) throw new Error('浏览器插件会话正在关闭或等待清理重试')
       await this.assertEnabled(input.provider, context)
       if (mutating) await context.beforeEffect?.()
-      const result = await (await entry.session).call(input.tool, input.arguments, randomUUID())
+      const result = await (await entry.session).call(input.tool, input.arguments, randomUUID(), input.foreground)
       await this.assertEnabled(input.provider, context)
       if (mutating) await context.afterEffect?.()
       return result
