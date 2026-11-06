@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 会话文件对齐知识资料的默认列表/卡片表格、浮动标题与滚动渐隐；仅文件名CatalogSearch，来源操作归行菜单，同范围刷新保留列表。
  * [OUTPUT]: 2026-11-06 会话文件移除知识资料切换，保留原文件范围、筛选、预览和留存操作。
  * [OUTPUT]: 会话文件区仅展示附件/成果；更多菜单明确保留，固定来源与未知回执在文件视图保留。
  * [OUTPUT]: 剩余异步失败文案统一Sonner，原状态和操作保持。
@@ -14,90 +15,96 @@ import type { Snapshot } from '@boai/shared/domain'
 import type { DesktopApi } from '@boai/shared/ipc'
 import type { ConversationFileItem, ConversationFilePage, ConversationFileQuery, ConversationFileTarget } from '@boai/shared/domain/work-views'
 import { Banner, Loading, errorText, sizeText } from '@/components/common'
-import { FileText, MoreHorizontal, Search } from '@/components/icons'
+import { showErrorToast } from '@/components/common/error-feedback'
+import { CatalogSearch } from '@/components/common/catalog-search'
+import { DetailPanelHeader } from '@/components/common/detail-panel-header'
+import { FileText, MoreHorizontal } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
-import { SelectField } from '@/components/ui/select-field'
-import { ScrollFade } from '@/components/ui/scroll-fade'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { RetainFile } from './retain-file'
 import { useKnowledgeOperation } from './use-knowledge-operation'
-import { DateFilter } from './filters'
-import { dateBoundary, fileRowTargetMatches, selectedFileMatches, type FileSelection } from './model'
+import { fileRowTargetMatches, selectedFileMatches, type FileSelection } from './model'
 import { usePagedQuery } from './use-paged-query'
 
-export interface ConversationFilesState { name: string; kind: string; actorId: string; fileType: string; from: string; to: string; expanded: string[]; selected?: FileSelection }
-export const emptyFilesState: ConversationFilesState = { name: '', kind: '', actorId: '', fileType: '', from: '', to: '', expanded: [] }
+type FileView = 'table' | 'list'
+export interface ConversationFilesState { name: string; view?: FileView; selected?: FileSelection }
+export const emptyFilesState: ConversationFilesState = { name: '', view: 'list' }
 export interface ConversationFilesProps { api: DesktopApi; snapshot: Snapshot; active: boolean; conversationId?: string; ownerAgentId?: string; state?: ConversationFilesState; onStateChange?(value: ConversationFilesState): void; onPreview(item: ConversationFileItem, current?: () => boolean): void; onNavigate(target: ConversationFileTarget, current?: () => boolean): void }
 const remembered = new Map<string, ConversationFilesState>(), positions = new Map<string, number>()
 const statusLabel: Record<ConversationFileItem['status'], string> = { ready: '', preparing: '正在准备', failed: '读取失败', unavailable: '原件不可用', removed: '来源已移除', unsupported: '预览格式不支持' }
-const fileTypes = [{ value: '', label: '全部类型' }, { value: 'md', label: 'Markdown' }, { value: 'txt', label: 'TXT' }, { value: 'ts', label: 'TypeScript' }, { value: 'tsx', label: 'TSX' }, { value: 'js', label: 'JavaScript' }, { value: 'jsx', label: 'JSX' }, { value: 'py', label: 'Python' }, { value: 'json', label: 'JSON' }, { value: 'html', label: 'HTML源码' }, { value: 'svg', label: 'SVG源码' }, { value: 'css', label: 'CSS' }, { value: 'yaml', label: 'YAML' }, { value: 'xml', label: 'XML' }, { value: 'csv', label: 'CSV' }, { value: 'sql', label: 'SQL' }, { value: 'go', label: 'Go' }, { value: 'rs', label: 'Rust' }, { value: 'java', label: 'Java' }, { value: 'kt', label: 'Kotlin' }, { value: 'sh', label: 'Shell' }, { value: 'png', label: 'PNG图片' }, { value: 'jpg', label: 'JPEG图片' }, { value: 'pdf', label: 'PDF' }, { value: 'binary', label: '无扩展二进制' }]
 export function ConversationFiles({ state: controlled, onStateChange, snapshot, ...props }: ConversationFilesProps) {
   const scopeKey = props.ownerAgentId ? `employee:${props.ownerAgentId}` : `conversation:${props.conversationId}`
   const operation = useKnowledgeOperation(props.api, `files:${scopeKey}`)
   const [retaining, setRetaining] = useState<ConversationFileItem>()
-  const [local, setLocal] = useState(() => ({ id: scopeKey, value: remembered.get(scopeKey) ?? { ...emptyFilesState, expanded: [] } }))
-  const state = controlled ?? (local.id === scopeKey ? local.value : remembered.get(scopeKey) ?? { ...emptyFilesState, expanded: [] })
+  const [local, setLocal] = useState(() => ({ id: scopeKey, value: remembered.get(scopeKey) ?? { ...emptyFilesState } }))
+  const state = controlled ?? (local.id === scopeKey ? local.value : remembered.get(scopeKey) ?? { ...emptyFilesState })
   const change = (patch: Partial<ConversationFilesState>) => { const next = { ...state, ...patch }; remembered.set(scopeKey, next); setLocal({ id: scopeKey, value: next }); onStateChange?.(next) }
-  let query: ConversationFileQuery | undefined, invalid = ''
-  try {
-    if (state.from && state.to && state.from > state.to) throw new Error('开始日期不能晚于结束日期。')
-    query = { conversationId: props.conversationId, ownerAgentId: props.ownerAgentId, name: state.name.trim() || undefined, kind: (state.kind || undefined) as ConversationFileQuery['kind'], actorId: state.actorId || undefined, fileType: state.fileType.trim().toLowerCase() || undefined, from: dateBoundary(state.from), to: dateBoundary(state.to, true), limit: 30 }
-  } catch (cause) { invalid = errorText(cause) }
-  const filtered = Boolean(state.name || state.kind || state.actorId || state.fileType || state.from || state.to)
-  const removedActor = Boolean(state.actorId && state.actorId !== 'user' && !snapshot.agents.some(item => item.id === state.actorId))
-  return <section className="flex h-full min-h-0 min-w-0 flex-col gap-3 p-4" aria-label="会话文件">
+  const query: ConversationFileQuery = { conversationId: props.conversationId, ownerAgentId: props.ownerAgentId, name: state.name.trim() || undefined, limit: 30 }
+  const controls = <>
+    <TabsList size="sm" aria-label="会话文件视图"><TabsTrigger value="table">表格</TabsTrigger><TabsTrigger value="list">列表</TabsTrigger></TabsList>
     {operation.pending && <Button size="sm" variant="secondary" disabled={operation.busy || !props.active} onClick={() => void operation.check()}>核对知识资料保存结果</Button>}
-    <div className="flex flex-wrap items-center gap-2" aria-label="文件筛选">
-      <InputGroup className="w-56"><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput aria-label="文件名称筛选" placeholder="查找文件名" maxLength={200} value={state.name} onChange={event => change({ name: event.target.value })} /></InputGroup>
-      <SelectField size="sm" className="w-32" aria-label="文件来源种类" value={state.kind} onValueChange={kind => change({ kind })} options={[{ value: '', label: '全部文件' }, { value: 'material', label: '收到的附件' }, { value: 'artifact', label: '员工文件' }]} />
-      <SelectField size="sm" className="w-32" aria-label="文件发送或交付者" value={state.actorId} onValueChange={(actorId, details) => { if (removedActor && !actorId && details.reason === 'none') { details.cancel(); return } change({ actorId }) }} options={[{ value: '', label: '全部发送人' }, { value: 'user', label: snapshot.userProfile?.displayName || '本人' }, ...(removedActor ? [{ value: state.actorId, label: '已移除发送人', disabled: true }] : []), ...snapshot.agents.map(agent => ({ value: agent.id, label: agent.name }))]} />
-      <SelectField size="sm" className="w-32" aria-label="文件类型" value={state.fileType} onValueChange={fileType => change({ fileType })} options={[...fileTypes, ...(state.fileType && !fileTypes.some(item => item.value === state.fileType) ? [{ value: state.fileType, label: `${state.fileType.toUpperCase()} 文件` }] : [])]} />
-      <DateFilter from={state.from} to={state.to} onChange={(from, to) => change({ from, to })} />
-      {filtered && <Button variant="ghost" size="sm" onClick={() => change({ ...emptyFilesState, expanded: state.expanded, selected: state.selected })}>清除筛选</Button>}
-    </div>
-    {invalid && <Banner>{invalid}</Banner>}
-    {query && !invalid && <FilesResults {...props} onRetain={setRetaining} active={props.active && !invalid} query={query} state={state} change={change} />}
-    {retaining && <RetainFile key={retaining.id} api={props.api} snapshot={snapshot} item={retaining} ownerAgentId={props.ownerAgentId} active={props.active} operation={operation} onClose={() => setRetaining(undefined)} />}
-  </section>
-}
-function FilesResults({ query, state, change, ...props }: Omit<ConversationFilesProps, 'snapshot' | 'state' | 'onStateChange'> & { onRetain(item: ConversationFileItem): void; query: ConversationFileQuery; state: ConversationFilesState; change(patch: Partial<ConversationFilesState>): void }) {
-  const { page, loading, error, reload, loadMore } = usePagedQuery<ConversationFileItem, string, ConversationFilePage>({ api: props.api, active: props.active, queryKey: 'files:' + JSON.stringify(query), conversationId: props.conversationId, read: cursor => props.api.request('queryConversationFiles', { ...query, cursor }), identity: item => item.kind + ':' + item.id })
-  const scroller = useRef<HTMLDivElement>(null), positionKey = JSON.stringify(query)
-  useLayoutEffect(() => { if (props.active && page && scroller.current) scroller.current.scrollTop = positions.get(positionKey) ?? 0 }, [props.active, page, positionKey])
-  const preview = (item: ConversationFileItem, current?: () => boolean) => { if (!props.active || current && !current()) return; change({ selected: { id: item.id, kind: item.kind, contentHash: item.contentHash, revision: item.revision } }); props.onPreview(item, current) }
-  return <>
-    {page && <p className="m-0 text-xs text-muted-foreground">已加载 {page.items.length} / {page.total} 项 · 收到的附件与员工生成的文件</p>}
-    <ScrollFade ref={scroller} className="flex min-h-0 flex-1 flex-col gap-3 pb-1" onScroll={event => { if (props.active && page && !loading) positions.set(positionKey, event.currentTarget.scrollTop) }} aria-busy={loading}>
-      {page?.items.map(item => <FileRow key={item.kind + ':' + item.id} {...props} item={item} onPreview={preview} selected={selectedFileMatches(state.selected, item)} />)}
-      {loading && <Loading />}{error && <><Banner>{error}</Banner><Button size="sm" variant="ghost" onClick={reload}>重新读取</Button></>}
-      {page && !page.items.length && !loading && <p className="my-4 text-sm text-muted-foreground">暂无符合条件的文件。收到的附件和员工生成的文件会显示在这里。</p>}
-      {page?.nextCursor && <Button size="sm" variant="ghost" disabled={loading} onClick={() => void loadMore()}>加载更多 · 已显示 {page.items.length} / {page.total}</Button>}
-    </ScrollFade>
+    <CatalogSearch label="搜索文件名" placeholder="搜索文件名" value={state.name} onChange={name => change({ name: name.slice(0, 200) })} />
   </>
+  return <Tabs value={state.view ?? 'list'} onValueChange={view => { if (view === 'table' || view === 'list') change({ view }) }} className="skill-detail-panel @container h-full min-h-0 w-full gap-0 [&_.catalog-search]:max-w-[40cqw]" aria-label="会话文件">
+    <DetailPanelHeader title="会话文件" actions={controls} />
+    <FilesResults {...props} onRetain={setRetaining} operationsLocked={operation.busy || !!operation.pending} query={query} state={state} change={change} />
+    {retaining && <RetainFile key={retaining.id} api={props.api} snapshot={snapshot} item={retaining} ownerAgentId={props.ownerAgentId} active={props.active} operation={operation} onClose={() => setRetaining(undefined)} />}
+  </Tabs>
 }
-interface FileRowProps { onRetain(item: ConversationFileItem): void; api: DesktopApi; active: boolean; item: ConversationFileItem; selected?: boolean; onPreview(item: ConversationFileItem, current?: () => boolean): void; onNavigate(target: ConversationFileTarget, current?: () => boolean): void }
+function FilesResults({ query, state, change, operationsLocked, ...props }: Omit<ConversationFilesProps, 'snapshot' | 'state' | 'onStateChange'> & { operationsLocked: boolean; onRetain(item: ConversationFileItem): void; query: ConversationFileQuery; state: ConversationFilesState; change(patch: Partial<ConversationFilesState>): void }) {
+  const { page, loading, error, reload, loadMore } = usePagedQuery<ConversationFileItem, string, ConversationFilePage>({ api: props.api, active: props.active, keepPreviousPage: true, queryKey: 'files:' + JSON.stringify(query), conversationId: props.conversationId, read: cursor => props.api.request('queryConversationFiles', { ...query, cursor }), identity: item => item.kind + ':' + item.id })
+  const scroller = useRef<HTMLDivElement>(null), positionKey = JSON.stringify([query, state.view ?? 'list'])
+  useLayoutEffect(() => { if (props.active && page && scroller.current) scroller.current.scrollTop = positions.get(positionKey) ?? 0 }, [props.active, page, positionKey])
+  const enabled = props.active && !loading && !error && !operationsLocked
+  const preview = (item: ConversationFileItem, current?: () => boolean) => { if (!enabled || current && !current()) return; change({ selected: { id: item.id, kind: item.kind, contentHash: item.contentHash, revision: item.revision } }); props.onPreview(item, current) }
+  const rows = (view: FileView) => page?.items.map(item => <FileRow key={item.kind + ':' + item.id} {...props} view={view} active={Boolean(enabled)} item={item} onPreview={preview} selected={selectedFileMatches(state.selected, item)} />)
+  return <ScrollArea className="mt-14 min-h-0 flex-1" viewportProps={{ ref: scroller, className: 'scroll-fade-t scroll-fade-6', 'aria-label': '会话文件滚动区域', 'aria-busy': loading, onScroll: event => { if (props.active && page && !loading) positions.set(positionKey, event.currentTarget.scrollTop) } }}><div className="flex flex-col gap-2 p-3">
+    {error && <><Banner>{error}</Banner><Button size="sm" variant="ghost" className="self-start" onClick={reload}>重新读取</Button></>}
+    {props.active && !page && !error && <Loading />}
+    {page && !page.items.length && !loading && <p className="m-0 py-8 text-center text-sm text-muted-foreground">{query.name ? '未找到匹配的文件' : '暂无会话文件'}</p>}
+    {!!page?.items.length && <>
+      <TabsContent value="table">
+        <Card size="sm" className="gap-0 py-0"><CardContent className="p-0">
+          <Table className="min-w-[32rem] table-fixed text-[length:var(--text-ui-secondary)]" aria-label="会话文件表格">
+            <TableHeader className="bg-muted/50"><TableRow className="hover:bg-transparent"><TableHead className="px-3">名称</TableHead><TableHead className="w-24 px-3">大小</TableHead><TableHead className="w-40 px-3">添加时间</TableHead><TableHead className="w-12 px-3"><span className="sr-only">操作</span></TableHead></TableRow></TableHeader>
+            <TableBody>{rows('table')}</TableBody>
+          </Table>
+        </CardContent></Card>
+      </TabsContent>
+      <TabsContent value="list"><ul className="m-0 list-none space-y-0.5 p-0" aria-label="会话文件列表">{rows('list')}</ul></TabsContent>
+    </>}
+    {page?.nextCursor && <Button size="sm" variant="ghost" disabled={!enabled} onClick={() => void loadMore()}>加载更多 · 已显示 {page.items.length} / {page.total}</Button>}
+  </div></ScrollArea>
+}
+interface FileRowProps { view: FileView; onRetain(item: ConversationFileItem): void; api: DesktopApi; active: boolean; item: ConversationFileItem; selected?: boolean; onPreview(item: ConversationFileItem, current?: () => boolean): void; onNavigate(target: ConversationFileTarget, current?: () => boolean): void }
 function FileRow({ item, ...props }: FileRowProps) {
-  const [error, setError] = useState(''), [opening, setOpening] = useState(false), generation = useRef(0), current = useRef({ active: props.active, item }); current.current = { active: props.active, item }
-  useEffect(() => { current.current.active = props.active; setOpening(false); setError(''); return () => { current.current.active = false; generation.current++ } }, [props.active, item.id, item.contentHash, item.revision, item.status])
+  const [opening, setOpening] = useState(false), generation = useRef(0), current = useRef({ active: props.active, item }); current.current = { active: props.active, item }
+  useEffect(() => { current.current.active = props.active; setOpening(false); return () => { current.current.active = false; generation.current++ } }, [props.active, item.id, item.contentHash, item.revision, item.status])
   const visible = (token: number) => current.current.active && generation.current === token && fileRowTargetMatches(item, current.current.item)
-  const preview = () => { const token = ++generation.current; props.onPreview(item, () => visible(token)) }
+  const preview = () => { if (!props.active) return; const token = ++generation.current; props.onPreview(item, () => visible(token)) }
   const openSource = async () => {
-    const token = ++generation.current, id = item.id; setOpening(true); setError('')
-    try { const target = await props.api.request('resolveConversationFileTarget', { conversationId: item.conversationId, kind: item.kind, id, contentHash: item.contentHash, revision: item.revision }); if (visible(token)) props.onNavigate(target, () => visible(token)) }
-    catch (cause) { if (visible(token)) setError(errorText(cause)) }
+    if (!props.active || opening || !item.sourceMessageId) return
+    const token = ++generation.current; setOpening(true)
+    try { const target = await props.api.request('resolveConversationFileTarget', { conversationId: item.conversationId, kind: item.kind, id: item.id, contentHash: item.contentHash, revision: item.revision }); if (visible(token)) props.onNavigate(target, () => visible(token)) }
+    catch (cause) { if (visible(token)) showErrorToast(errorText(cause)) }
     finally { if (generation.current === token) setOpening(false) }
   }
-  return <Card size="sm" className={props.selected ? 'shrink-0 bg-muted/60' : 'shrink-0'} data-file-id={item.id} data-file-kind={item.kind}>
-    <CardContent className="flex flex-col gap-2">
-      <div className="flex items-start gap-2"><FileText className="mt-0.5 shrink-0 text-muted-foreground" /><Button variant="link" size="content" className="min-w-0 justify-start whitespace-normal break-all text-left font-medium" disabled={!props.active} onClick={preview}>{item.name}</Button></div>
-      <p className="m-0 flex flex-wrap gap-x-2 text-xs text-muted-foreground"><span>{item.kind === 'material' ? '收到的附件' : '员工文件'}</span><span>{item.actorName || '发送人未知'}</span><span>{item.fileType.toUpperCase()} · {sizeText(item.size)}</span><span>{new Date(item.createdAt).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></p>
-      {statusLabel[item.status] && <p role="status" className="m-0 text-sm text-muted-foreground">{statusLabel[item.status]}{item.error && <Banner>{item.error}</Banner>}</p>}
-      <div className="flex flex-wrap gap-1"><Button variant="secondary" size="sm" disabled={!props.active} onClick={preview}>预览</Button><Button variant="ghost" size="sm" disabled={!item.sourceMessageId || opening || !props.active} onClick={() => void openSource()}>查看原消息</Button>{!item.sourceMessageId && <span className="self-center text-xs text-muted-foreground">原消息未知</span>}
-        <DropdownMenu><DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" disabled={!props.active || !item.contentHash || item.kind === 'material' && !item.revision} aria-label={`文件操作 ${item.name}`} />}><MoreHorizontal /></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuGroup><DropdownMenuItem onClick={() => props.onRetain(item)}>添加到知识资料</DropdownMenuItem></DropdownMenuGroup></DropdownMenuContent></DropdownMenu>
-      </div>
-      {opening && <Loading>正在核对来源…</Loading>}{error && <Banner>{error}</Banner>}
-    </CardContent>
-  </Card>
+  const name = <Button variant="link" size="content" className="flex min-w-0 flex-1 justify-start gap-2 text-left font-normal text-foreground" title={item.name} disabled={!props.active} onClick={preview}><FileText size={16} className="shrink-0 text-muted-foreground" /><span className="truncate">{item.name}</span></Button>
+  const fileName = statusLabel[item.status] ? <Tooltip><TooltipTrigger delay={500} render={name} /><TooltipContent>{item.error || statusLabel[item.status]}</TooltipContent></Tooltip> : name
+  const actions = <DropdownMenu><DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" disabled={!props.active} aria-label={`文件操作 ${item.name}`} />}><MoreHorizontal /></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-max min-w-44"><DropdownMenuGroup>
+    <DropdownMenuItem disabled={!props.active} onClick={preview}>预览</DropdownMenuItem>
+    <DropdownMenuItem disabled={!props.active || opening || !item.sourceMessageId} onClick={() => void openSource()}>查看原消息</DropdownMenuItem>
+    <DropdownMenuItem disabled={!props.active || !item.contentHash || item.kind === 'material' && !item.revision} onClick={() => props.onRetain(item)}>添加到知识资料</DropdownMenuItem>
+  </DropdownMenuGroup></DropdownMenuContent></DropdownMenu>
+  if (props.view === 'table') return <TableRow data-file-id={item.id} data-file-kind={item.kind} data-state={props.selected ? 'selected' : undefined}>
+    <TableCell className="px-3">{fileName}</TableCell><TableCell className="px-3 tabular-nums text-muted-foreground">{sizeText(item.size)}</TableCell><TableCell className="px-3 text-muted-foreground">{new Date(item.createdAt).toLocaleString('zh-CN', { dateStyle: 'short', timeStyle: 'short' })}</TableCell><TableCell className="p-2">{actions}</TableCell>
+  </TableRow>
+  return <li data-file-id={item.id} data-file-kind={item.kind} className={`flex min-h-10 items-center gap-3 rounded-md px-2 py-1 hover:bg-muted/50${props.selected ? ' bg-muted/60' : ''}`}>
+    {fileName}<span className="shrink-0 text-xs tabular-nums text-muted-foreground">{sizeText(item.size)}</span>{actions}
+  </li>
 }
