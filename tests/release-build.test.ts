@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 旧guard以实际JSON账本就绪为起点，提前退出携带stderr失败；发布拒绝/零构建断言保持。
  * [INPUT]: 原构建配置、个人候选身份和临时真实文件/链接。
  * [OUTPUT]: 原配置/身份拒绝、实际链式链接外逃与旧guard未退出负例；不降低候选排他边界。
  * [OUTPUT]: 临时CLI复用真实workspace构建解析并提供登记版本协议输入，Node22工程测试进入旧进程守卫。
@@ -8,7 +9,7 @@
 import { expect, it } from 'vitest'
 import { mkdtemp, writeFile, mkdir, symlink, chmod, rm, readdir, copyFile, readFile } from 'node:fs/promises'
 import { once } from 'node:events'
-import { spawn } from 'node:child_process'
+import { spawn, type ChildProcess } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join, resolve, relative } from 'node:path'
 import { drainPendingProcesses } from '../scripts/development/recovery'
@@ -16,6 +17,20 @@ import { drainPendingProcesses } from '../scripts/development/recovery'
 import { personalMacConfiguration, assertPersonalBundle, releaseFile, bundleInventory, drainReleaseCandidates } from '../scripts/release-build.mjs'
 const sha = 'a'.repeat(40), version = '0.2.4'
 const metadata = { version, build: { buildVersion: version, appId: 'com.boai.agent', productName: 'BoAI Agent', directories: { output: 'release', buildResources: 'resources' }, files: ['dist/**/*', 'package.json'], asar: true, asarUnpack: ['dist/native/**/*'], npmRebuild: false, protocols: [{ schemes: ['boai'] }], electronDist: 'node_modules/electron/dist', mac: { icon: 'resources/app-icons/default.icns', category: 'public.app-category.productivity', target: ['dmg'] }, extraMetadata: { existing: 'keep' }, linux: { target: ['AppImage'] } } }
+async function guardReady(child: ChildProcess, ledger: string) {
+  let stderr = ''
+  child.stdout?.resume(); child.stderr?.on('data', bytes => { stderr += bytes })
+  // Wait for a committed fixture ledger before testing release refusal.
+  await expect.poll(async () => {
+    if (child.exitCode !== null || child.signalCode !== null) throw Error(`guard exited before ledger readiness: ${child.exitCode}/${child.signalCode} ${stderr}`)
+    for (const file of (await readdir(ledger)).filter(name => name.endsWith('.json'))) {
+      try { JSON.parse(await readFile(join(ledger, file), 'utf8')); return true }
+      catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT' && !(error instanceof SyntaxError)) throw error }
+    }
+    return false
+  }, { timeout: 5000, interval: 25 }).toBe(true)
+}
+
 it('个人配置只覆盖候选输出/签名/目标，保留原文件、原生助手、协议和现有metadata', () => {
   const before = structuredClone(metadata), config = personalMacConfiguration(metadata, { output: '/fixture/candidate', sha, version })
   expect(config).toMatchObject({ files: metadata.build.files, asar: true, asarUnpack: metadata.build.asarUnpack, npmRebuild: false, protocols: metadata.build.protocols, electronDist: metadata.build.electronDist, directories: { output: '/fixture/candidate', buildResources: 'resources' }, mac: { icon: metadata.build.mac.icon, category: metadata.build.mac.category, target: ['dmg', 'zip'], identity: '-', hardenedRuntime: false, notarize: false }, extraMetadata: { existing: 'keep', boaiRelease: { sha, arch: 'arm64', applicationVersion: version, channel: 'personal-macos-arm64' } }, linux: metadata.build.linux })
@@ -35,7 +50,7 @@ it('旧候选实际guard仍活跃时拒绝重建，实际退出后才可继续',
   await copyFile(guard, join(old, 'process-guard')); await chmod(join(old, 'process-guard'), 0o700)
   const child = spawn(guard, ['--ledger', ledger, process.execPath, '-e', 'setInterval(()=>{},1000)'], { stdio: ['pipe', 'pipe', 'pipe'] }), ended = once(child, 'close')
   try {
-    await expect.poll(async () => (await readdir(ledger)).some(name => name.endsWith('.json'))).toBe(true)
+    await guardReady(child, ledger)
     await expect(drainReleaseCandidates(directory, { drainPendingProcesses })).rejects.toThrow('未确认退出')
   } finally { child.kill('SIGTERM'); await ended }
   try { await expect(drainReleaseCandidates(directory, { drainPendingProcesses })).resolves.toBeUndefined() }
@@ -63,7 +78,7 @@ it('实际构建CLI遇到旧活跃账本时，零dist/构建写入并保留失�
     await writeFile(join(directory, 'scripts/resource-lock.mjs'), `import{basename,join}from'node:path';import{acquireResourceLock as actual}from ${JSON.stringify(join(source, 'scripts/resource-lock.mjs'))};export const acquireResourceLock=p=>actual(join(${JSON.stringify(join(directory, '.local'))},basename(p)))`)
     await writeFile(join(directory, 'scripts/build-process-guard.mjs'), `import{writeFile}from'node:fs/promises';export default async()=>{await writeFile(${JSON.stringify(join(directory, '.local/build-entered'))},'entered');throw Error('build must not start')}`)
     for (const [target, actual] of [['tests/evaluation/repair-process.ts', 'tests/evaluation/repair-process.ts'], ['scripts/development/recovery.ts', 'scripts/development/recovery.ts']]) await writeFile(join(directory, target!), `export * from ${JSON.stringify(join(source, actual!))}`)
-    await expect.poll(async () => (await readdir(ledger)).some(name => name.endsWith('.json'))).toBe(true)
+    await guardReady(oldProcess, ledger)
     const child = spawn(process.execPath, ['--import', './scripts/registered-runtime.mjs', 'scripts/release-build.mjs', '--version', version, '--sha', sha], { cwd: directory, stdio: ['ignore', 'pipe', 'pipe'] })
     let stderr = ''; child.stdout.resume(); child.stderr.on('data', bytes => { stderr += bytes }); const timer = setTimeout(() => child.kill('SIGKILL'), 10_000)
     let code: unknown

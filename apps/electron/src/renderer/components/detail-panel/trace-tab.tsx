@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 群执行历史提供原协作工作树及停止入口，保留父子关系/依赖/状态，不另开任务页面。
  * [OUTPUT]: 整份历史共享8MiB正文缓存；最多保留八个已折叠正文，移出列表/范围变化及卸载释放旧状态。
  * [OUTPUT]: 标识原判断/协调/执行阶段；无可读Run时允许显示保留的单次运行记录。
  * [OUTPUT]: 聊天历史包含已发布的定时执行；跟踪原来源更新/删除，并复用精确停止入口。
@@ -36,6 +37,8 @@ import { ExecutionReadingContext } from './useExecutionWindow'
 import { ExecutionContentCache } from './execution-content-cache'
 import { ExecutionMessageButton, type ExecutionMessageNavigation } from './execution-message-button'
 import { ExecutionStopButton } from './execution-stop-button'
+import { ActivityTab } from './activity-tab'
+import { toast } from 'sonner'
 
 const labels: Record<AgentRun['status'], string> = { queued: '排队中', running: '执行中', completed: '已完成', failed: '失败', cancelled: '已停止', interrupted: '已中断', waiting_approval: '等待批准' }
 const RETAINED_RUN_CONTENT_LIMIT = 8
@@ -43,6 +46,15 @@ export function TraceTab({ api, conversationId, messageId, agentId, active, snap
   api: DesktopApi; conversationId: string; messageId?: string; agentId?: string; active: boolean; snapshot: Snapshot; busy?: boolean; onRetry?(id: string): void; onStop?(id: string): void
   occurrenceId?: string; runId?: string; title?: string; emptyMessage?: string; emptyContent?: ReactNode; onNavigateMessage?: ExecutionMessageNavigation; stopAction?: ReactNode
 }) {
+  const [worksOpen, setWorksOpen] = useState(false), [stoppingWork, setStoppingWork] = useState(false)
+  const workStopLock = useRef(false)
+  const stopWork = async (id: string) => {
+    if (!active || workStopLock.current) return
+    workStopLock.current = true; setStoppingWork(true)
+    try { await api.request('cancelRun', { conversationId, workId: id }) }
+    catch (error) { toast.error(errorText(error)) }
+    finally { workStopLock.current = false; setStoppingWork(false) }
+  }
   const [views, setViews] = useState<Record<string, ExecutionView>>({})
   const [employee, setEmployee] = useState(agentId ?? ''), [items, setItems] = useState<ExecutionHistoryPage['items']>([]), [next, setNext] = useState<ExecutionHistoryPage['next']>()
   const [error, setError] = useState(''), [loaded, setLoaded] = useState(false), [open, setOpen] = useState<Record<string, boolean>>({})
@@ -107,6 +119,10 @@ export function TraceTab({ api, conversationId, messageId, agentId, active, snap
     <div className="flex min-w-0 flex-col gap-4 p-4">
       {error && <Banner>{error}</Banner>}{!loaded && !error && <Loading />}
       {!occurrenceId && !runId && <p className="m-0 text-sm text-muted-foreground">执行历史</p>}
+      {!occurrenceId && !runId && conversation?.kind === 'group' && <details open={worksOpen} onToggle={event => setWorksOpen(event.currentTarget.open)}>
+        <summary className="cursor-pointer text-sm text-muted-foreground">协作工作</summary>
+        <ActivityTab api={api} conversationId={conversationId} active={active && worksOpen} currentDetail={null} snapshot={snapshot} busy={!active || stoppingWork} worksOnly onOpenPath={path => { void api.request('openPath', { path }).catch(error => toast.error(errorText(error))) }} onStopWork={id => { void stopWork(id) }} />
+      </details>}
       {items.map(({ run, trigger }, index) => {
         const view = views[run.id] ?? 'rendered'
         const live = ['running', 'queued', 'waiting_approval'].includes(run.status)

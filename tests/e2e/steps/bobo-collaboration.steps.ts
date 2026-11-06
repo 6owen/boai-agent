@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 当前无限预算/contenteditable/Sonner合同，保留组织故障注入命中及原对象幂等断言。
  * [INPUT]: BC 业务中文场景、原生产 core/组织/群调度、真实 SQLite 与独立员工成果。
  * [OUTPUT]: 讨论零副作用、已有人/缺员/仅员工、原页入口、恢复核对、同预算/实际依赖交付和清理生命周期；重启不重放。
  * [POS]: 第12组 Electron 验收步骤；只控制本地模型协议与回执传输，不替代组织/任务/文件事务。
@@ -137,7 +138,7 @@ Then('组织与群工作使用同一累计预算和明确来源', async ({ runti
   const organization = records.works.find(work => work.organization)!, root = records.works.find(work => work.id === receipt.groupRootWorkId)!, budget = records.budgets.find(budget => budget.id === root.budgetId)!
   expect(root.budgetId).toBe(organization.budgetId); expect(root.parentWorkId).toBeUndefined(); expect(root.rootWorkId).toBe(root.id); expect(root.conversationId).toBe(receipt.groupConversationId)
   expect(records.works.every(work => work.budgetId === budget.id)).toBe(true); expect(records.budgets).toHaveLength(1)
-  expect(budget.modelCalls).toBeLessThanOrEqual(budget.maxModelCalls); expect(budget.modelCalls).toBeGreaterThan(8); expect(budget.usageIncomplete).toBe(false)
+  if (budget.maxModelCalls !== null) expect(budget.modelCalls).toBeLessThanOrEqual(budget.maxModelCalls); expect(budget.modelCalls).toBeGreaterThan(8); expect(budget.usageIncomplete).toBe(false)
   expect(records.starts).toHaveLength(1); expect(records.starts[0]).toMatchObject({ groupRootWorkId: root.id, budgetId: budget.id, status: 'consumed', announcementMessageId: receipt.announcementMessageId })
   expect(group.turns!.filter(turn => turn.startIntentId === receipt.startIntentId)).toHaveLength(1)
   expect(group.messages.every(message => message.senderType !== 'user')).toBe(true)
@@ -151,7 +152,7 @@ Then('原讨论页提供实际员工入口且没有新增群或群工作', async
   expect(records.starts).toEqual([]); expect(records.works).toHaveLength(1); expect(records.works[0].conversationId).toBe(fixture.state.coreId)
   await expect(resultsRegion(runtime).getByText('员工已创建', { exact: true })).toBeVisible(); await expect(resultsRegion(runtime).getByRole('button', { name: '进入群聊', exact: true })).toHaveCount(0)
   await resultsRegion(runtime).getByRole('button', { name: '查看 新建编辑 的员工资料', exact: true }).click()
-  await expect(runtime.page.getByRole('textbox', { name: '员工名称', exact: true })).toHaveValue('新建编辑')
+  await expect(runtime.page.getByRole('textbox', { name: '员工名称', exact: true })).toHaveText('新建编辑')
   expect(fixture.errors).toEqual([])
 })
 When('用户重启桌面并回到原 bobo 讨论', async ({ runtime, boboCollaboration: state }) => { state.calls = fixtureOf(state).endpoint.requests.length; await runtime.restart(); await openOriginal(runtime, state) })
@@ -168,19 +169,21 @@ Then('原群和员工入口仍绑定原身份且没有模型或工具重放', as
 When('原组织结果查询暂时失联', async ({ runtime, boboCollaboration: state }) => {
   await runtime.app.evaluate(({ ipcMain }) => {
     const handlers = (ipcMain as any)._invokeHandlers as Map<string, (...args:any[])=>Promise<unknown>>, original = handlers.get('boai:request')!
-    Object.assign(globalThis, { __boboReceiptUnavailable: true }); ipcMain.removeHandler('boai:request')
-    ipcMain.handle('boai:request', async (event, payload) => { const value = await original(event, payload); if ((globalThis as any).__boboReceiptUnavailable && payload.method === 'listBoboCollaborationOperations') throw new Error('验收：原组织回执暂不可读'); return value })
+    Object.assign(globalThis, { __boboReceiptUnavailable: true, __boboReceiptFailures: 0 }); ipcMain.removeHandler('boai:request')
+    ipcMain.handle('boai:request', async (event, payload) => { const value = await original(event, payload); if ((globalThis as any).__boboReceiptUnavailable && payload.method === 'listBoboCollaborationOperations') { (globalThis as any).__boboReceiptFailures++; throw new Error('验收：原组织回执暂不可读') } return value })
   })
   await runtime.page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '通讯录', exact: true }).click(); await openOriginal(runtime, state)
 })
 Then('原讨论页显示核对失败并保留已提交对象', async ({ runtime, boboCollaboration: state }) => {
-  await expect(resultsRegion(runtime).getByRole('alert')).toContainText('组织结果暂不可核对')
+  await expect(runtime.page.locator('[data-sonner-toast][data-type="error"]')).toContainText('组织结果暂不可核对')
+  expect(await runtime.app.evaluate(() => (globalThis as any).__boboReceiptFailures)).toBeGreaterThan(0)
+  await expect(resultsRegion(runtime).getByRole('button', { name: '核对组织结果', exact: true })).toBeVisible()
   expect(boboCollaborationRecords(fixtureOf(state).state.dataPath).operations.filter(operation => operation.status === 'committed')).toHaveLength(1)
   expect((await runtime.page.evaluate(() => window.boai.request('snapshot', undefined))).conversations.some(conversation => conversation.id === state.receipt!.groupConversationId)).toBe(true)
 })
 When('原组织结果恢复可读', async ({ runtime }) => { await runtime.app.evaluate(() => { (globalThis as any).__boboReceiptUnavailable = false }); await resultsRegion(runtime).getByRole('button', { name: '核对组织结果', exact: true }).click() })
 Then('结果核对原操作且群和员工数量保持不变', async ({ runtime, boboCollaboration: state }) => {
-  const fixture = fixtureOf(state); await expect(resultsRegion(runtime).getByRole('alert')).toHaveCount(0)
+  const fixture = fixtureOf(state); await expect(resultsRegion(runtime).getByRole('button', { name: '核对组织结果', exact: true })).toHaveCount(0)
   await expect(resultsRegion(runtime).locator(`[data-collaboration-operation="${state.receipt!.id}"]`)).toHaveCount(1)
   expect(boboCollaborationRecords(fixture.state.dataPath).operations).toHaveLength(1)
   const snapshot = await runtime.page.evaluate(() => window.boai.request('snapshot', undefined)); expect(snapshot.agents).toHaveLength(fixture.state.before!.agents.length); expect(snapshot.conversations.filter(conversation => conversation.kind === 'group')).toHaveLength(1)

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 并行前导正文沿真实执行证据确认，五路未结束前不要求正式消息；群工作树沿执行历史核对。
  * [OUTPUT]: 第14组API群请求解释与持久顺序接续；保留独立并行、原Work和本机旧路径，实际验收归第14组05。
  * [INPUT]: 中文协作场景、真实 Electron/Mastra 与隔离的本地模型协议。
  * [OUTPUT]: 实际五人问候无重复引用、手动引用镜像与发送/重启保留、原有渐隐/输入样式截图、并行流式、群聊慢判断并发、真实委派/接续/预算、会话菜单中的工作进度、停止 UI 和重启断言。
@@ -105,9 +106,13 @@ Then('五名员工的回复同时处于流式生成中', async ({ runtime, colla
   try {
     await expect.poll(async () => {
       state.detail = await runtime.page.evaluate(id => window.boai.request('getConversation', { id }), state.conversation!.id)
-      return state.detail.messages.filter(message => message.status === 'streaming' && message.content.endsWith('：')).length
+      const running = state.detail.runs.filter(run => run.phase === 'execution' && run.status === 'running')
+      if (running.length !== 5) return 0
+      const evidence = await Promise.all(running.map(run => runtime.page.evaluate(({ conversationId, runId }) => window.boai.request('listExecutionEvidence', { conversationId, runId }), { conversationId: state.conversation!.id, runId: run.id })))
+      return evidence.filter(page => page.items.some(event => event.eventType === 'agent.text.block' && JSON.stringify(event.payload).includes('：'))).length
     }).toBe(5)
-    for (const label of ['researcher：', 'writer：', 'reviewer：', 'member-3：', 'member-4：']) await expect(runtime.page.getByText(label, { exact: true })).toBeVisible()
+    await expect(runtime.page.locator('[data-chat-execution-run]')).toHaveCount(5)
+    expect(state.streams).toHaveLength(5)
     await expect(runtime.page.locator('.message-row.agent .quoted-message')).toHaveCount(0)
     expect(state.errors).toEqual([])
   } finally { state.streams?.forEach(release => release()); state.streams = undefined }
@@ -234,7 +239,8 @@ async function openProgress(page: import('@playwright/test').Page) {
   await page.reload()
   await page.getByRole('button', { name: /定向接续验证/ }).click()
   await page.getByRole('button', { name: '会话操作', exact: true }).click()
-  await page.getByRole('menuitem', { name: '任务与产物', exact: true }).click()
+  await page.getByRole('menuitem', { name: '执行过程', exact: true }).click()
+  await page.locator('#agent-execution-drawer').getByText('协作工作', { exact: true }).click()
 }
 Then('桌面显示父子工作及已交付状态', async ({ runtime, collaboration: state }) => {
   await openProgress(runtime.page)

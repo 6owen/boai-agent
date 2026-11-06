@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 聊天收起过程仍展示最新思考两行预览，点击按原证据读取全文；完整工具过程沿展开视图。
  * [OUTPUT]: 内部思考/工具组接受调用方默认展开值；聊天传false，详情保留原默认值与用户手动展开缓存。
  * [OUTPUT]: 历史Run无步骤但有失败原因时直接展开原原因，不将没有工具/思考事件说成没有执行记录。
  * [OUTPUT]: 空过程按queued明确展示等待其他任务释放执行资源，running才等待员工输出。
@@ -88,18 +89,20 @@ function ExecutionItem({ item, evidence, run, defaultExpanded }: { item: Grouped
   return null
 }
 
-function ReasoningRow({ api, run, event, working, active, defaultExpanded }: { api: DesktopApi; run: AgentRun; event: ExecutionEvidence; working: boolean; active: boolean; defaultExpanded: boolean }) {
+function ReasoningRow({ api, run, event, working, active, defaultExpanded, preview = false }: { api: DesktopApi; run: AgentRun; event: ExecutionEvidence; preview?: boolean; working: boolean; active: boolean; defaultExpanded: boolean }) {
   const [open, setOpen] = useExecutionRetainedState(`reasoning:${run.id}:${event.id}`, defaultExpanded)
-  return <ThinkingState open={open} onOpenChange={setOpen} working={working} active={active}>
+  return <div>
+  {preview && !open && <p data-slot="reasoning-preview" className="m-0 line-clamp-2 whitespace-pre-wrap break-words text-xs text-muted-foreground">{String(object(event.payload).text ?? '')}</p>}
+  <ThinkingState open={open} onOpenChange={setOpen} working={working} active={active}>
     <ExecutionNarration api={api} run={run} evidence={event.deferred ? event : undefined} preview={String(object(event.payload).text ?? '')} />
-  </ThinkingState>
+  </ThinkingState></div>
 }
 
-function EvidenceRow({ api, event, events, run, active, working, read, defaultExpanded }: { api: DesktopApi; event: ExecutionEvidence; events: ExecutionEvidence[]; run: AgentRun; active: boolean; working: boolean; read(event: ExecutionEvidence): Promise<void>; defaultExpanded: boolean }) {
+function EvidenceRow({ api, event, events, run, active, working, read, defaultExpanded, preview = false }: { preview?: boolean; api: DesktopApi; event: ExecutionEvidence; events: ExecutionEvidence[]; run: AgentRun; active: boolean; working: boolean; read(event: ExecutionEvidence): Promise<void>; defaultExpanded: boolean }) {
   const [retry, setRetry] = useState(0)
   const [expanded, setExpanded] = useExecutionRetainedState(`event:${run.id}:${event.id}`, false)
   useEffect(() => { if (event.deferred && !['agent.text.block', 'agent.reasoning.block'].includes(event.eventType)) void read(event) }, [event.id, event.revision, event.deferred, retry])
-  if (event.eventType === 'agent.reasoning.block') return <ReasoningRow api={api} run={run} event={event} working={working} active={active} defaultExpanded={defaultExpanded} />
+  if (event.eventType === 'agent.reasoning.block') return <ReasoningRow api={api} run={run} event={event} working={working} active={active} defaultExpanded={defaultExpanded} preview={preview} />
   if (event.deferred && event.eventType === 'agent.text.block') return <ExecutionNarration api={api} run={run} evidence={event} preview="" />
   if (event.deferred) return <Button variant="ghost" size="sm" onClick={() => setRetry(value => value + 1)}>读取完整执行内容 · {Math.ceil(event.contentLength / 1024)} KB</Button>
   const progress = groupConsecutiveToolItems(buildLiveExecutionProgress([event], run.id, { textMode: 'complete', includePublicResults: true }).items)
@@ -133,7 +136,7 @@ function NativeRequest({ action, api, run, view }: { action: NativeAction; api: 
 
 export type ExecutionView = 'rendered' | 'raw'
 
-export function ExecutionFeed({ api, run, active, cache, view = 'rendered', presentation = 'detail', defaultExpanded = true }: { api: DesktopApi; run: AgentRun; active: boolean; cache: ExecutionContentCache; view?: ExecutionView; presentation?: 'detail' | 'chat'; defaultExpanded?: boolean }) {
+export function ExecutionFeed({ api, run, active, cache, view = 'rendered', presentation = 'detail', defaultExpanded = true, compact = false }: { compact?: boolean; api: DesktopApi; run: AgentRun; active: boolean; cache: ExecutionContentCache; view?: ExecutionView; presentation?: 'detail' | 'chat'; defaultExpanded?: boolean }) {
   const [events, setEvents] = useState<ExecutionEvidence[]>([]), [actions, setActions] = useState<NativeAction[]>([]), [error, setError] = useState(''), [revision, changed] = useState(0)
   const window = useExecutionWindow(executionWindowClient(api), active, run.conversationId, { id: run.id, executionEpoch: 1, updatedAt: run.finishedAt ?? run.createdAt, executionEvidenceChangeSequence: revision, status: run.status === 'completed' ? 'succeeded' : run.status === 'waiting_approval' ? 'waiting' : run.status === 'interrupted' ? 'cancelled' : run.status }, revision, events)
   useEffect(() => {
@@ -173,13 +176,15 @@ export function ExecutionFeed({ api, run, active, cache, view = 'rendered', pres
     try { const full = await cache.load(`${event.id}:${event.revision}`, () => readExecutionEvidence(api, run, event)); setEvents(previous => previous.map(value => value.id === event.id && value.revision === event.revision ? full : value)) }
     catch (error) { setError(errorText(error)) }
   }
+  const latestReasoning = [...processEvents].reverse().find(event => event.eventType === 'agent.reasoning.block')
+  const visibleProgress = compact ? progress.filter(item => item.kind === 'evidence' && item.evidence.id === latestReasoning?.id) : progress
   return <ExecutionContentContext value={cache}><div ref={window.root} className="flex min-w-0 flex-col gap-4" data-execution-view={view}>
     {window.error && <><Banner>{window.error}</Banner><Button variant="link" size="sm" onClick={() => void window.move('retry')}>重试</Button></>}
     {error && <Banner>{error}</Banner>}
     {presentation === 'detail' && actions.map(action => action.kind === 'input' && !action.questions?.some(question => question.isSecret) ? <p key={action.id} className="m-0 text-sm text-muted-foreground">等待你的回复，可直接在聊天中回答。</p> : <NativeRequest key={action.id} action={action} api={api} run={run} view={view} />)}
     {view === 'raw' ? <ExecutionVirtualList key="raw" items={rawRecords} enabled={active} gap={8}>{item => <div key={item.key} data-execution-item-key={item.key}><ExecutionRawRecord event={item.evidence} read={read} /></div>}</ExecutionVirtualList>
-    : <ExecutionVirtualList key="rendered" items={progress} enabled={active} gap={8}>{item => <div key={item.key} data-execution-item-key={item.key}>{item.kind === 'evidence'
-      ? <EvidenceRow api={api} event={item.evidence} events={events} run={run} active={active} working={run.status === 'running' && processEvents.at(-1)?.id === item.evidence.id} read={read} defaultExpanded={defaultExpanded} />
+    : <ExecutionVirtualList key="rendered" items={visibleProgress} enabled={active} gap={8}>{item => <div key={item.key} data-execution-item-key={item.key}>{item.kind === 'evidence'
+      ? <EvidenceRow api={api} event={item.evidence} events={events} run={run} active={active} working={run.status === 'running' && processEvents.at(-1)?.id === item.evidence.id} read={read} defaultExpanded={defaultExpanded} preview={presentation === 'chat'} />
       : <ExecutionItem item={item} evidence={events} run={run} defaultExpanded={defaultExpanded} />}</div>}</ExecutionVirtualList>}
     {presentation === 'detail' && !events.length && !error && !run.error && <p className="m-0 text-sm text-muted-foreground">{run.status === 'queued' ? '等待其他任务释放执行资源…' : run.status === 'running' ? '等待员工输出…' : '本次运行未记录工具或思考步骤。'}</p>}
     {run.error && <details open={presentation === 'detail' && !events.length ? true : undefined} className="text-xs text-muted-foreground"><summary>错误详情</summary><pre className="whitespace-pre-wrap break-words">{run.error}</pre></details>}

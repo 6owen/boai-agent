@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 关闭期间拒绝迟到读写并等待原事务完成，重复关闭幂等且已提交内容仍可只读核对。
  * [INPUT]: 真实SQLite、持有中的写事务、已核验正文索引和独立取证连接。
  * [OUTPUT]: 取证不争写锁、不清正文/推进代际、不创建缺失库；读取仅看已提交事实。
  * [POS]: tests 的 ProductStore 只读取证边界回归；不替代 Electron 功能验收。
@@ -45,4 +46,24 @@ test('opening a missing evidence database cannot create or initialize it', async
   const file = join(root, 'absent.sqlite')
   await expect(ProductStore.openReadOnly(file)).rejects.toMatchObject({ code: 'ENOENT' })
   await expect(stat(file)).rejects.toMatchObject({ code: 'ENOENT' })
+})
+
+test('closing drains admitted transactions once and rejects later operations before they touch the client', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'boai-store-close-')); roots.push(root)
+  const store = new ProductStore(join(root, 'product.sqlite')); stores.push(store); await store.init()
+  let entered!: () => void, release!: () => void
+  const started = new Promise<void>(resolve => { entered = resolve }), held = new Promise<void>(resolve => { release = resolve })
+  const writing = store.transaction(async tx => { await tx.put({ collection: 'test', id: 'accepted', value: { id: 'accepted' } }); entered(); await held })
+  await started
+  const closing = store.close(), again = store.close()
+  try {
+    // This must reject while the accepted transaction still owns the database.
+    let failure: unknown
+    void store.write([{ collection: 'test', id: 'late', value: { id: 'late' } }]).catch(error => { failure = error })
+    await Promise.resolve()
+    expect(failure).toEqual(expect.objectContaining({ message: '存储正在关闭' }))
+  } finally { release(); await writing; await Promise.all([closing, again]) }
+  await expect(store.load('test')).rejects.toThrow('存储正在关闭')
+  const reader = await ProductStore.openReadOnly(store.filename); stores.push(reader)
+  expect(await reader.load('test')).toEqual([{ id: 'accepted' }])
 })

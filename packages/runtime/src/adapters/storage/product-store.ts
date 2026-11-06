@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 关闭前同步停止受理，等待已受理操作退出且原生client只关闭一次。
  * [OUTPUT]: 清理按固定会话/运行/轮次引用在SQL中筛选，Trace三项索引与UNION只处理ID，不排序或反序列化历史正文。
  * [OUTPUT]: 原文查询类型转shared协议，不耦合上层会话模块。
  * [OUTPUT]: Bobo原文搜索延迟创建可重建FTS5索引，授权消息ID在LIMIT前筛选，短查询直接匹配原文。
@@ -117,6 +118,7 @@ export class ProductStore {
   private rawHistoryIndex?: RawHistoryIndex
   searchRawHistory(query: HistorySearchQuery, messageIds: string[]) { return this.enqueue(() => (this.rawHistoryIndex ??= new RawHistoryIndex(this.client)).search(query, messageIds)) }
   private tail: Promise<unknown> = Promise.resolve()
+  private closeTask?: Promise<void>
   private messageCommit?: (tx: RecordTransaction, messages: MessageCommit[]) => Promise<() => void>
   /** Product reception is part of the original write transaction, before acknowledgement. */
   onMessageCommit(handler: (tx: RecordTransaction, messages: MessageCommit[]) => Promise<() => void>) { this.messageCommit = handler }
@@ -401,6 +403,7 @@ export class ProductStore {
     })
   }
   private enqueue<T>(operation: () => Promise<T>): Promise<T> {
+    if (this.closeTask) return Promise.reject(new Error('存储正在关闭'))
     const next = this.tail.then(operation)
     this.tail = next.catch(() => undefined)
     return next
@@ -573,5 +576,7 @@ export class ProductStore {
       await this.client.execute('PRAGMA wal_checkpoint(TRUNCATE)')
     })
   }
-  async close() { await this.tail; this.client.close() }
+  close(): Promise<void> {
+    return this.closeTask ??= this.tail.then(() => { this.client.close() })
+  }
 }
