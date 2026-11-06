@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-11-06 §31补确认清空即关闭Popover，后台处理和结果提示保持。
 [OUTPUT]: 2026-11-06 §31侧栏仅名称/日程，执行历史删除不逐条compact；临时副本计时及52项回归通过，个人应用需加载新宿主。
 [OUTPUT]: 2026-11-03新的公共API与工具边界目标转18；本篇共用内部AutomationInput的描述保留为现状，未实施切换。
 [OUTPUT]: 2026-10-28全部PR合main接续：保留旧CI失败，修正菜单动画测量时序，正式候选/基准/合并另验。
@@ -399,3 +400,5 @@
 - 旧独占会话和共享会话两条原产品验收增加零 compact 调用断言：修复前两项均因实际调用一次失败，修复后 `automation-product`、`automation-history-refresh`、`automation-dialog` 共 52 项通过（16.98 秒）。覆盖真实临时文件/SQLite、重启不重放、修改文件拒删、运行中拒删、分页失败不删、部分失败保留及离页停止后续请求；未调用外部模型。
 - `pnpm typecheck`、改动前端文件 ESLint、`git diff --check` 通过。未运行个人窗口 GUI 验收；旧 `pnpm dev` 进程需重启以编译加载宿主修改，前端热更新不代表后端生效。
 - 按用户调试要求保留 `/Users/wangwenbo/Desktop/demo/boai/boai-browser-display-20261106`；本轮日志和计时摘要位于其 `.local/schedules-cleanup-review-20261106/`。
+- 后续交互调整：点击“确认清空”即将 Popover 的 open 设为 false，沿共享组件退出动画关闭；分页读取和删除继续执行，触发按钮保持忙碌禁用，最终成功/部分失败/读取失败仍由 Sonner 反馈。关闭时机不再等待全部清理完成，后台任务不依赖浮层挂载。
+- 此交互调整复用原 `automation-history-refresh` 8 项测试全部通过，改动文件 ESLint、差异检查通过；未新增低影响展示测试，未运行个人窗口 GUI 验收。

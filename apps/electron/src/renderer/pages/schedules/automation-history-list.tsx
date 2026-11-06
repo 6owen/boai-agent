@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 确认全部清空后立即按原动画关闭Popover，后台清理期间保留提交锁及Sonner结果反馈。
  * [OUTPUT]: 可按员工查询原执行记录，定时页面的布局和默认查询保持。
  * [OUTPUT]: 筛选复用公共FilterTabs及transitions-dev滑动层；实际新结果沿Panel reveal显现，后台刷新与分页不重播。
  * [OUTPUT]: 悬停/聚焦显示逐条删除；当前任务全部清空先分页冻结已结束记录，再按版本清理，活动/新记录保留。
@@ -98,7 +99,7 @@ function ClearHistoryRecords({ api, automationId, active, onBusyChange, onDelete
   useEffect(() => { if (!active) setOpen(false); return () => { generation.current++ } }, [active, automationId])
   const clear = async () => {
     if (!active || locked.current) return
-    locked.current = true; setBusy(true); onBusyChange(true)
+    locked.current = true; setOpen(false); setBusy(true); onBusyChange(true)
     const current = generation.current, deleted: string[] = [], failures: string[] = []
     try {
       // Freeze every page before mutation: clearing ignores the visible search and never sweeps new runs.
@@ -123,7 +124,6 @@ function ClearHistoryRecords({ api, automationId, active, onBusyChange, onDelete
         catch (error) { failures.push(errorText(error)) }
       }
       if (generation.current !== current) return
-      setOpen(false)
       if (failures.length) toast.error(`已删除 ${deleted.length} 条，${failures.length} 条未能删除：${failures[0]}`)
       else if (deleted.length) toast.success(`已清空 ${deleted.length} 条执行记录`)
       else toast.info('没有可清空的已结束记录')
