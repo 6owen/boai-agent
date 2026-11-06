@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 会话列表只缓存completed消息摘要，不透传输入草稿；流式/失败状态仍沿原聊天刷新。
  * [OUTPUT]: 全局订阅员工任务结果Sonner，查看直接打开原员工任务会话，卸载解除订阅。
  * [OUTPUT]: 2026-11-04定时/任务执行定位及系统提醒进入所属员工任务面板和原任务Dialog，不另开执行会话页或右侧过程；旧群/监控保留原入口。
  * [OUTPUT]: bobo任务入口保持当前核心会话，复用员工任务面板和消息显式转任务，不创建额外主私聊。
@@ -410,7 +411,7 @@ export function AppShell() {
       if (previous?.conversation.id === id) updated.reading = mergeReadingState(previous.reading, updated.reading)
       materialDrafts.reconcile(id, result.materials ?? [])
       setDetail(updated); setDetailLoading(false); setPageEdges({ before: true, after: true })
-      const last = updated.messages.at(-1)
+      const last = updated.messages.filter(message => message.status === 'completed').at(-1)
       // An anchored reading window is not the conversation tail. Preserve the
       // latest list summary from the snapshot or live messages while browsing it.
       if (last && !aroundMessageId) {
@@ -514,7 +515,10 @@ export function AppShell() {
       setMessageTimes(previous => { const id = event.message.conversationId, time = event.message.createdAt; return previous[id] && previous[id] >= time ? previous : { ...previous, [id]: time } })
       liveMessages.current.add(event.message)
       if (event.message.conversationId === selectedRef.current && routeRef.current.page === 'conversations') setDetail(previous => { if (!previous || previous.conversation.id !== event.message.conversationId) return previous; const messagePage = updateLiveMessage(previous.messagePage, event.message, !viewLocations.current.get(event.message.conversationId)?.messageId); return { ...previous, messagePage, messages: messagePage.items.flatMap(item => item.message ? [item.message] : []) } })
-      if (event.message.status !== 'streaming') { setPreviews(previous => ({ ...previous, [event.message.conversationId]: `${event.message.senderName}：${event.message.content.slice(0,90)}` })); schedule() }
+      if (event.message.status !== 'streaming') {
+        if (event.message.status === 'completed') setPreviews(previous => ({ ...previous, [event.message.conversationId]: `${event.message.senderName}：${event.message.content.slice(0,90)}` }))
+        schedule()
+      }
     })
     openAutomationNotice()
     return () => { mounted.current = false; liveMessages.current.clear(); unsubscribe(); unsubscribeTaskResults(); if (refreshTimer.current) clearTimeout(refreshTimer.current); refreshTimer.current = null }
@@ -1149,7 +1153,7 @@ export function AppShell() {
     </DropdownMenu></div></nav>
     <div className={`content-frame${panel?' detail-open':''}${effectiveList?' list-open':''}`}>
       <div className="content-main">{messageStorageError && <Banner>{messageStorageError}</Banner>}{artifactStorageError&&<Banner onClose={()=>setArtifactStorageError('')}>{artifactStorageError}</Banner>}
-      {<FloatingLayerScope active={route.page === 'conversations'}><div className="conversation-layout" style={{ display: route.page === 'conversations' ? undefined : 'none' }}><PanelResize open={effectiveList} side="left" divider={listResizer}><aside className="conversation-list-container"><ConversationList onConfigureAgent={agent => openContact({ kind: 'agent', id: agent.id })} onOpenChannels={openChannels} snapshot={snapshot} selectedId={selectedId} previews={previews} messageTimes={messageTimes} drafts={drafts.current} onCreateCore={createCoreConversation} onConfigureCore={() => { const core = snapshot.agents.find(isCoreAgent); if (core) openContact({ kind: 'agent', id: core.id }) }} onSelect={selectConversation} onChange={changeConversationList} onEditTitle={setEditingTitle} onClear={clearConversationHistory} busy={busy} onCreate={type=>openCreation({type})}/></aside></PanelResize>
+      {<FloatingLayerScope active={route.page === 'conversations'}><div className="conversation-layout" style={{ display: route.page === 'conversations' ? undefined : 'none' }}><PanelResize open={effectiveList} side="left" divider={listResizer}><aside className="conversation-list-container"><ConversationList onConfigureAgent={agent => openContact({ kind: 'agent', id: agent.id })} onOpenChannels={openChannels} snapshot={snapshot} selectedId={selectedId} previews={previews} messageTimes={messageTimes} onCreateCore={createCoreConversation} onConfigureCore={() => { const core = snapshot.agents.find(isCoreAgent); if (core) openContact({ kind: 'agent', id: core.id }) }} onSelect={selectConversation} onChange={changeConversationList} onEditTitle={setEditingTitle} onClear={clearConversationHistory} busy={busy} onCreate={type=>openCreation({type})}/></aside></PanelResize>
         <div className="conversation-stage">{route.coreDraft?<CoreChatStart pageActive={route.page === 'conversations' && !conversationSearchOpen} api={api} snapshot={snapshot} draft={draft} setDraft={setDraft} busy={busy} onSend={send} onSettings={openModelSettings} onConfigureAgent={agent => openContact({ kind: 'agent', id: agent.id })} onChangeAgent={changeComposerAgent} configurationLocked={anyDirty}/>:conversation?renderChat({ detail: currentDetail, conversation, loading: !currentDetail && (loading || detailLoading), onRetry: () => { setDetailLoading(true); void refreshDetail(conversation.id) }, pageActive: route.page === 'conversations' && !conversationSearchOpen,
           onReading: updateReading, onLocation: (messageId, following, offset) => { const id = conversation.id; viewLocations.current.set(id, { initialized: true, messageId: following ? undefined : messageId, offset, focusRequestId: viewLocations.current.get(id)?.focusRequestId }) },
           onPage: direction => void loadMessagePage(direction), onLatest: isCurrent => showLatestMessages(conversation.id, isCurrent), paging, pageEdges, restoreAnchor: viewLocations.current.get(conversation.id)?.messageId ? { messageId: viewLocations.current.get(conversation.id)!.messageId!, offset: viewLocations.current.get(conversation.id)?.offset } : undefined,
@@ -1183,7 +1187,7 @@ export function AppShell() {
             </div>}
             {target.type === 'channel-files' && <ConversationFiles api={api} snapshot={snapshot} active={active} conversationId={target.id} onPreview={(row, current) => previewConversationFile(row, current, withinKey)} onNavigate={(source, current) => openFileSource(source, current, withinKey)} />}
             {target.type === 'channel-discussion' && snapshot.agents.find(agent => agent.id === target.agentId) && <ChannelsTab internal api={api} agent={snapshot.agents.find(agent => agent.id === target.agentId)!} target={{ type: 'channels', id: target.agentId, conversationId: target.id, requestId: target.requestId, focusMessage: target.focusMessage }} active={active} chatActive={!conversationSearchOpen} onMaterials={materialDrafts.reconcile}
-              listProps={{ snapshot, selectedId: target.id, previews, messageTimes, drafts: drafts.current, busy, onSelect: () => {}, onChange: changeConversationList, onClear: clearConversationHistory, onEditTitle: setEditingTitle, onCreate: type => openCreation({ type }), onCreateCore: createCoreConversation, onConfigureCore: () => {} }}
+              listProps={{ snapshot, selectedId: target.id, previews, messageTimes, busy, onSelect: () => {}, onChange: changeConversationList, onClear: clearConversationHistory, onEditTitle: setEditingTitle, onCreate: type => openCreation({ type }), onCreateCore: createCoreConversation, onConfigureCore: () => {} }}
               renderChat={window => renderChat(window, tab.scope, withinKey)} />}
             {target.type === 'agent' && (snapshot.agents.find(a => a.id === target.id) ? <EmployeeDetail onConversation={(id, messageId) => selectConversation(id, true, messageId)} api={api} snapshot={snapshot} agent={snapshot.agents.find(a => a.id === target.id)!} conversationId={target.conversationId} configurationRequest={target.configurationRequest} active={active} scope={tab.scope} refresh={refreshSnapshot} onClose={() => closeView()} /> : <p className="empty-note">该员工已不存在。</p>)}
             {target.type === 'group' && (targetRoom ? isChannelConversation(targetRoom) ? <ChannelConversationInfo conversation={targetRoom} snapshot={snapshot} onOpenAgent={id => showPanel({ type: 'agent', id, conversationId: target.id })} /> : <GroupEditor active={active} onConversation={(id, messageId) => selectConversation(id, true, messageId)} api={api} snapshot={snapshot} conversation={snapshot.conversations.find(c => c.id === target.id)} onOpenAgent={id => showPanel({ type: 'agent', id, conversationId: target.id })} onClose={() => closeView()} onSaved={async result => { await refreshSnapshot(); if (selectedRef.current === result.id) await refreshDetail(result.id) }} onDeleted={refreshSnapshot} /> : <p className="empty-note">该群聊已解散。</p>)}
@@ -1210,7 +1214,7 @@ export function AppShell() {
           </>
           return <DetailTabSession key={tab.key} tabKey={tab.key} active={active} ref={handle => { if (handle) tabHandles.current.set(tab.key, handle); else tabHandles.current.delete(tab.key) }} onClose={() => closeTab(tab.key, tab.scope)} onDirty={onTabDirty}>
             {root.type === 'channels' && (snapshot.agents.find(agent => agent.id === root.id) ? <ChannelsTab api={api} agent={snapshot.agents.find(agent => agent.id === root.id)!} target={root} active={active && !tab.detail} chatActive={!conversationSearchOpen} onMaterials={materialDrafts.reconcile}
-              listProps={{ snapshot, selectedId: root.conversationId ?? null, previews, messageTimes, drafts: drafts.current, busy,
+              listProps={{ snapshot, selectedId: root.conversationId ?? null, previews, messageTimes, busy,
                 onSelect: id => { openPanel({ ...root, conversationId: id, requestId: crypto.randomUUID(), focusMessage: undefined, focusApproval: undefined }, tab.scope) },
                 onChange: changeConversationList, onClear: clearConversationHistory, onEditTitle: setEditingTitle, onCreate: type => openCreation({ type }), onCreateCore: createCoreConversation, onConfigureCore: () => {},
               }} renderChat={(window, headerActions) => renderChat(window, tab.scope, tab.key, headerActions)} /> : <p className="empty-note">该员工已不存在。</p>)}
