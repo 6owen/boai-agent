@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Build the narrow hidden-canvas preload and preserve tldraw license/notice in distribution.
  * [OUTPUT]: Agent Desktop插件技能按运行时相对位置分发至dist/skills，源码Node/BDD加载保持兼容。
  * [OUTPUT]: 2026-10-29 主进程外置electron-sparkle-updater，保留原生模块按包内位置加载。
  * [OUTPUT]: 2026-10-29 包边界纳入file-explorer-plugin；build分发固定来源和MIT许可。
@@ -74,12 +75,15 @@ async function buildElectronHost(compile) {
   await buildAppIcon()
   await Promise.all([
     compile({ entryPoints: ['apps/electron/src/main/main.ts'], outfile: 'dist/main/main.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron', '@libsql/client', 'electron-sparkle-updater'], sourcemap: true }),
+    compile({ entryPoints: ['apps/electron/src/preload/canvas-renderer.ts'], outfile: 'dist/main/canvas-renderer-preload.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron'] }),
     compile({ entryPoints: ['apps/electron/src/preload/browser-toolbar.ts'], outfile: 'dist/main/browser-toolbar-preload.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron'] }),
     compile({ entryPoints: ['apps/electron/src/preload/index.ts'], outfile: 'dist/main/preload.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron'] }),
     compile({ entryPoints: ['apps/electron/src/worker/index.ts'], outfile: 'dist/runtime/worker.mjs', bundle: true, platform: 'node', format: 'esm', target: 'node22', packages: 'external', sourcemap: true }),
   ])
   await mkdir('dist/file-explorer', { recursive: true })
   for (const name of ['LICENSE.txt', 'source-manifest.json']) await copyFile(`packages/file-explorer-plugin/${name}`, `dist/file-explorer/${name}`)
+  await mkdir('dist/canvas', { recursive: true })
+  for (const name of ['TLDRAW-LICENSE.md', 'NOTICE.md']) await copyFile(`packages/canvas-plugin/${name}`, `dist/canvas/${name}`)
   await mkdir('dist/voice-input', { recursive: true })
   for (const name of ['local-helper.cjs', 'local-recognizers.cjs', 'local-audio.cjs']) await copyFile(`packages/voice-input-plugin/src/${name}`, `dist/voice-input/${name}`)
   await mkdir('dist/main/app-icons/tray', { recursive: true })

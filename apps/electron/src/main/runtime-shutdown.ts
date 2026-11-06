@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 退出期间保留停止桌面采集的清理请求，其他宿主请求拒绝；停止输入继续由原宿主schema校验。
+ * [OUTPUT]: 退出期间仅放行桌面采集stop和画板cancel清理；完整参数仍由原宿主schema校验。
  * [INPUT]: 原 utilityProcess 的 shutdown / stopped / exit 生命周期。
  * [OUTPUT]: 仅实际 exit 才完成退出，超时终止仍等 exit；未知退出拒绝批准应用结束。
  * [POS]: 主进程退出收尾；不启动或重放业务。
@@ -16,7 +16,8 @@ export function assertRuntimeHostRequest(quitting: boolean, method: string, inpu
   // AppService.drain must stop capture before it can acknowledge shutdown.
   // The host still validates the full payload before executing this cleanup.
   const stopsCapture = method === 'captureDesktopActivity' && input !== null && typeof input === 'object' && 'action' in input && input.action === 'stop'
-  if (quitting && !stopsCapture) throw new Error('应用正在退出')
+  const cancelsCanvas = method === 'canvasHost' && input !== null && typeof input === 'object' && 'type' in input && input.type === 'cancel'
+  if (quitting && !stopsCapture && !cancelsCanvas) throw new Error('应用正在退出')
 }
 export function stopRuntime(child: Child, timeoutMs = 8_000): Promise<void> {
   return new Promise((resolve, reject) => {

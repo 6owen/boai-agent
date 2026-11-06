@@ -150,7 +150,8 @@
     "@mastra/browser-viewer": "0.2.6",
     "agent-browser": "0.19.0",
     "@boai/desktop-plugin": "workspace:*",
-    "agent-desktop": "1.1.0"
+    "agent-desktop": "1.1.0",
+    "@boai/canvas-plugin": "workspace:*"
   },
   "build": {
     "appId": "com.boai.agent",

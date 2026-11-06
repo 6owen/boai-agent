@@ -6,7 +6,7 @@
  */
 import type { Methods } from './index'
 
-export const applicationHostMethods = ['closeUserWorkspace', 'captureDesktopActivity', 'getAppearance', 'updateAppearance', 'resetAppearance', 'removeAppearanceBackground', 'getPluginSettings', 'setPluginEnabled'] as const
+export const applicationHostMethods = ['canvasHost', 'closeUserWorkspace', 'captureDesktopActivity', 'getAppearance', 'updateAppearance', 'resetAppearance', 'removeAppearanceBackground', 'getPluginSettings', 'setPluginEnabled'] as const
 export type ApplicationHostMethod = typeof applicationHostMethods[number]
 export const isApplicationHostMethod = (value: string): value is ApplicationHostMethod => (applicationHostMethods as readonly string[]).includes(value)
 export interface ApplicationHostPort {

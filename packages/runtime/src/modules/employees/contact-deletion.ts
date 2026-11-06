@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工删除沿原持久日志派生固定画板清理身份，先确认员工已移除，失败重启继续而不扩大清单。
  * [OUTPUT]: 新增historySearchSettings随所属员工清理，设置以agentId补足记录ID。
  * [OUTPUT]: 2026-10-30删除员工时一并清理其embedding配置；官方记忆由宿主先完成清理，原生私人数据保持。
  * [OUTPUT]: 员工删除移除独立相册元信息；原agents根目录清理包含其私有形象文件，不清空其他员工相册。
@@ -16,7 +17,8 @@
 import { clearApplicationReceipts } from '../application/application-service'
 import { clearAgentPersonality } from '../agent-state/lifecycle'
 import { clearSelfieAlbums } from '../media/selfie-service'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
+import type { CanvasScopeFilter } from '@boai/canvas-plugin/protocol'
 import { lstat, rm } from 'node:fs/promises'
 import { join, relative, sep } from 'node:path'
 import type { DigitalAgent, Resource, Conversation } from '@boai/shared/domain'
@@ -35,7 +37,7 @@ interface Cleanup { id: string; agentIds: string[]; status: 'pending' | 'failed'
 interface OwnedRecord { id: string; ownerAgentId?: string; agentId?: string; resourceId?: string }
 
 export class ContactDeletionService {
-  constructor(private readonly store: ProductStore, private readonly dataPath: string, private readonly bindingCleanups?: Pick<ResourceCleanups, 'prepare' | 'prepareBindingCopy' | 'finish'>) {}
+  constructor(private readonly store: ProductStore, private readonly dataPath: string, private readonly bindingCleanups?: Pick<ResourceCleanups, 'prepare' | 'prepareBindingCopy' | 'finish'>, private readonly cleanupCanvas?: (filter: CanvasScopeFilter, cleanupId: string) => Promise<void>) {}
   private paths(agentIds: string[]) {
     if (new Set(agentIds).size !== agentIds.length || agentIds.some(id => !/^[a-zA-Z0-9_-]{1,200}$/.test(id))) throw new Error('无效或重复员工标识')
     return agentIds.flatMap(id => [join(this.dataPath, 'agents', id), join(this.dataPath, 'external-workspaces', id)])
@@ -151,6 +153,7 @@ export class ContactDeletionService {
       if (existing.some(agent => cleanup.agentIds.includes(agent.id))) throw new Error('员工身份仍存在，清理已停止')
       const paths = this.paths(cleanup.agentIds)
       for (const path of paths) await this.safe(path)
+      for (const employeeId of cleanup.agentIds) await this.cleanupCanvas?.({ employeeId }, `employee:${cleanup.id}:${createHash('sha256').update(employeeId).digest('hex')}`)
       for (const path of paths) await rm(path, { recursive: true, force: true })
       // Copy cleanup has its own visible, durable failure record; a conflict does not revive the employee.
       for (const id of cleanup.bindingResourceIds ?? []) {

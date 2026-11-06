@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 重复会话删除准备保留原画板清理身份与错误，不重新冻结后续文件。
  * [INPUT]: Original ProductStore transactions and explicit session request identity.
  * [OUTPUT]: Content-bound operation receipts in the same store as Conversation and cleanup journals.
  * [POS]: Business idempotence only; never creates an execution loop or CLI-side cache.
@@ -35,7 +36,7 @@ export async function prepareSessionDeletion(store: ProductStore, conversation: 
       const previous = await tx.get<{ sessionRequestId?: string }>('conversationCleanup', room.id)
       await tx.put({ collection: 'conversationCleanup', id: room.id, value: { ...previous, id: room.id, hide: false, remove: true } })
     }
-    await tx.put({ collection: 'conversationCleanup', id: conversation.id, value: { id: conversation.id, hide: true, sessionRequestId: receipt.requestId } })
+    await tx.put({ collection: 'conversationCleanup', id: conversation.id, value: { ...pending, id: conversation.id, hide: true, sessionRequestId: receipt.requestId } })
     return receipt.requestId
   })
 }

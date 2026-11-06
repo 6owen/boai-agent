@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Canvas私有宿主协议及人工草稿flush屏障，不开放公共CLI方法。
  * [OUTPUT]: employee-task:result承载已提交结果的员工、任务、执行身份及当前显示状态。
  * [OUTPUT]: 会话消息队列统一读取、按版本移除或优先执行接口。
  * [OUTPUT]: 2026-11-04resolveExecutionMessage可返回已核验employeeTask，供任务面板导航；原conversation/message身份保持。
@@ -118,6 +119,8 @@ export const CLIPBOARD_MATERIAL_FILE_FORMATS = ['Files', 'text/uri-list', 'x-spe
 export type MaterialFileSourceInput = { path: string } | { name: string; bytes: Uint8Array }
 
 export type AppEvent =
+  | { type: 'canvas:flush'; id: string; scope?: import('@boai/canvas-plugin/protocol').CanvasScope; boardId?: string; hold?: boolean }
+  | { type: 'canvas:resume'; id: string }
   | { type: 'app:update'; state: import('./app-updates').AppUpdateState }
   | { type: 'desktop:lifecycle'; state: import('./desktop').DesktopLifecycle }
   | { type: 'workspace:show'; employeeId: string; conversationId: string; view: 'terminal' | 'preview' }
@@ -147,6 +150,9 @@ export type AppEvent =
   | { type: 'runtime-error'; error: string }
 
 export interface Methods extends EmployeeTaskMethods, MessageQueueMethods {
+  canvasHost: { input: import('@boai/canvas-plugin/protocol').CanvasHostEnvelope; output: import('@boai/canvas-plugin/protocol').CanvasHostResponse }
+  canvasCommand: { input: { scope: import('@boai/canvas-plugin/protocol').CanvasScope; command: import('@boai/canvas-plugin/protocol').CanvasRequest }; output: import('@boai/canvas-plugin/protocol').CanvasResponse }
+  canvasFlushed: { input: { id: string; error?: string }; output: void }
   closeUserWorkspace: { input: { employeeId: string; conversationId?: string } | { conversationId: string }; output: void }
   getWorkspaceRoot: { input: import('./workspace-files').WorkspaceFileScope; output: string }
   validateWorkspaceScope: { input: import('./workspace-files').WorkspaceFileScope; output: void }

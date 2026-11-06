@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Canvas宿主和主窗口私有方法不进入公共准入。
  * [OUTPUT]: 本人会话消息队列读取/精确操作进入原IPC准入。
  * [OUTPUT]: 员工任务列清空沿受信本人IPC公开方法分发，Agent内部工具不新增该操作。
  * [OUTPUT]: 新增Bobo历史设置公开宿主方法，配置与权限由服务端验证。
@@ -49,6 +50,7 @@ import type { Method } from './index'
 
 // Record makes a newly declared public method require an explicit host entry.
 const methods = {
+  canvasHost: false, canvasCommand: false, canvasFlushed: false,
   openEmployeeTaskSession: true, sendEmployeeTaskMessage: true, getEmployeeTaskMessageReceipt: true,
   listConversationQueue: true, actOnConversationQueue: true,
   createEmployeeTask: true, listEmployeeTasks: true, getEmployeeTask: true, updateEmployeeTask: true, deleteEmployeeTask: true, clearEmployeeTasks: true, runEmployeeTask: true, runEmployeeTasks: true,

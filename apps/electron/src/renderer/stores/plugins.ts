@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-07 画板沿原插件快照提供启用门禁；未取得配置前不挂载编辑器。
  * [OUTPUT]: 2026-10-29 工作区界面暂时隐藏，原插件配置/文件与宿主能力保持。
  * [INPUT]: 主进程插件配置快照/事件、明确启停与实际视图生命周期。
  * [OUTPUT]: 单一配置订阅、单次CAS写入及失联只读复核；激活状态独立于启用配置。
@@ -6,7 +7,7 @@
  * [PROTOCOL]: 变化同步Header及所属.folder.md。
  */
 import { create } from 'zustand'
-import { applicationPlugins, FILE_EXPLORER_PLUGIN_ID } from '@boai/shared/plugins/catalog'
+import { applicationPlugins, CANVAS_PLUGIN_ID, FILE_EXPLORER_PLUGIN_ID } from '@boai/shared/plugins/catalog'
 import { PluginUsage } from '@boai/shared/plugins/usage'
 import { pluginAvailability, type PluginSettingsSnapshot } from '@boai/shared/plugins/types'
 import { getDesktopClient } from '@/services/request/desktop-client'
@@ -48,4 +49,8 @@ export async function setPluginEnabled(id: string, enabled: boolean) {
 
 export function useFileExplorerEnabled() {
   return usePlugins(state => WORKSPACE_UI_ENABLED && state.ready && pluginAvailability(applicationPlugins.find(plugin => plugin.id === FILE_EXPLORER_PLUGIN_ID)!, state.settings) === 'enabled')
+}
+
+export function useCanvasEnabled() {
+  return usePlugins(state => state.ready && pluginAvailability(applicationPlugins.find(plugin => plugin.id === CANVAS_PLUGIN_ID)!, state.settings) === 'enabled')
 }

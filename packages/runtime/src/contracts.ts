@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Scoped canvas capability supports API/native structured edits and exact-revision exports.
  * [OUTPUT]: historySearch能力统一提供当轮设置、指引、原文查询与可选预检。
  * [OUTPUT]: 插件技能只读端口随实际启停提供，不创建绑定或改变原生循环。
  * [OUTPUT]: Bobo API私聊可主动查询宿主授权原文；原生后端不接入新的历史工具。
@@ -118,6 +119,9 @@ export interface EngineContext {
   nativeSourceFingerprint?: string
   /** Source-matched metadata only; refreshing it never changes employee or connection identity. */
   modelCatalog?: import('@boai/shared/domain/model-gateway').ModelCatalog
+  canvasEnabled?: boolean
+  /** Host fixes employee/conversation, verifies the active run and drains actual canvas operations on cancellation. */
+  callCanvas?(input: import('./adapters/mastra/canvas-tools').CanvasAgentRequest): Promise<unknown>
   desktopPluginEnabled?: boolean
   /** Live plugin guide availability; reading never starts a desktop process or grants permission. */
   readDesktopPluginSkill?(): Promise<import('@boai/shared/plugins/desktop-tools').DesktopPluginSkill | undefined>
