@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 右侧嵌入沿原detail-session传递确定高度，避免SDK绘图区折叠为0。
  * [INPUT]: One host-owned board controller, active scope, independent container view IDs and desktop IPC.
  * [OUTPUT]: One CanvasView in three containers, saved migration, backup holds and confirmed draft reload.
  * [POS]: Thin BOAI canvas shell; placement never copies or owns the authoritative document.
@@ -20,6 +21,7 @@ import { pluginUsage } from '@/stores/plugins'
 import { toast } from 'sonner'
 import { downloadCanvasFile, requestCanvas } from './bridge'
 import type { CanvasWorkspaceHandle } from './host-barrier'
+import './workspace.css'
 export type { CanvasWorkspaceHandle } from './host-barrier'
 
 export type CanvasPlacement = 'right' | 'center' | 'dialog'
@@ -110,7 +112,7 @@ export function CanvasWorkspace({ api, target, enabled, active, placement, cente
   })
   if (!active || !enabled) return null
   const blocked = busy || hostBusy
-  const content = <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col" data-canvas-board={target.id} data-canvas-placement={placement}>
+  const content = <div className="canvas-workspace flex h-full min-h-0 min-w-0 flex-1 flex-col" data-canvas-board={target.id} data-canvas-placement={placement}>
     <div className="flex shrink-0 items-center gap-1 border-b px-2 py-1">
       <span className="mr-auto truncate text-sm">{state.board?.title ?? target.name}</span>
       <CanvasButton label="保存画板" icon="i-solar-diskette-linear" disabled={blocked || !state.board} onClick={() => void run(async () => { await controller.flush(); toast.success('画板已保存') })} />

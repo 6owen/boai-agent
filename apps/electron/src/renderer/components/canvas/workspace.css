@@ -1,0 +1,15 @@
+/*
+ * [INPUT]: The existing detail panel and the shared canvas workspace.
+ * [OUTPUT]: A definite flex height reaches the editor when embedded in the right panel.
+ * [POS]: Canvas host layout only; editor styling remains owned by tldraw.
+ * [PROTOCOL]: Update Header and canvas/.folder.md when changed.
+ */
+.detail-content:has(> .detail-session > .canvas-workspace):not([hidden]),
+.detail-session:has(> .canvas-workspace) {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
