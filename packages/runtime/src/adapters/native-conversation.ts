@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 原生受理身份仅核对投递，不覆盖onSession提供的续用引用；Pi持久文件与公共sessionId分别保留。
  * [OUTPUT]: 仅改默认项目不推进原生执行配置版本，已建立工作保持原生session；其他配置变化仍重建。
  * [OUTPUT]: 持久交接在原生投递前登记，按真实session/accepted回执核对；断连保留未知，不重复投递。
  * [OUTPUT]: 2026-10-30 原生会话装配baseInstructions，退出BOAI额外记忆正文；原生session/工具/恢复保持。
@@ -151,7 +152,7 @@ export abstract class NativeConversationEngine {
           await this.sessions.update(session, { threadId: id, ...(preparedSource ? { fingerprint: fingerprintFor(preparedSource) } : {}) })
           await context.nativeHandoff?.bindSession(id)
         }, onSubmitted: async (nativeThreadId, id) => {
-          await this.sessions.update(session, { threadId: nativeThreadId, turnId: id, deliveryState: 'submitted' })
+          await this.sessions.update(session, { turnId: id, deliveryState: 'submitted' })
           submittedThreadId = nativeThreadId; submittedTurnId = id; submitted = true
         },
       })

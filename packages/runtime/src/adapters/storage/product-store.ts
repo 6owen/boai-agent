@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 任务诊断只读SQL投影按原run/source限制回执、审批和输入，不取正文、不recover或写事务。
  * [OUTPUT]: 关闭前同步停止受理，等待已受理操作退出且原生client只关闭一次。
  * [OUTPUT]: 清理按固定会话/运行/轮次引用在SQL中筛选，Trace三项索引与UNION只处理ID，不排序或反序列化历史正文。
  * [OUTPUT]: 原文查询类型转shared协议，不耦合上层会话模块。
@@ -31,6 +32,7 @@
  */
 import { createClient, type Client } from '@libsql/client'
 import { RawHistoryIndex } from './raw-history-index'
+import { queryTaskDiagnosisRecords, type TaskDiagnosisRecordScope } from './task-diagnosis-records'
 import type { HistorySearchQuery } from '@boai/shared/domain/history-search'
 import { taskPageSql, type TaskPageSqlQuery } from './task-page-sql'
 import type { TrackedTaskListItem } from '@boai/shared/domain/tracked-tasks'
@@ -241,6 +243,9 @@ export class ProductStore {
       const result = await this.client.execute({ sql: `SELECT json_remove(r.value,'$.toolEvents','$.draft','$.progress') AS value, substr(json_extract(m.value,'$.content'),1,1000) AS trigger FROM records r JOIN records m ON m.collection='messages' AND m.id=json_extract(r.value,'$.triggerMessageId') AND json_extract(m.value,'$.conversationId')=json_extract(r.value,'$.conversationId') WHERE ${filters.join(' AND ')} ORDER BY json_extract(r.value,'$.createdAt') DESC,r.id DESC LIMIT 21`, args })
       return result.rows.map(row => ({ run: JSON.parse(String(row.value)) as AgentRun, trigger: String(row.trigger ?? '') }))
     })
+  }
+  queryTaskDiagnosisRecords(scope: TaskDiagnosisRecordScope, limit: number) {
+    return this.enqueue(() => queryTaskDiagnosisRecords(this.client, scope, limit))
   }
   queryExecutionEvidence(runId: string, after = 0) {
     return this.enqueue(async () => {

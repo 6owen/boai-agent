@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: v2命令/旧加载隔离、严格主题、CAS动作、导入并发清理、动态目录与重置冲突回归。
  * [OUTPUT]: 导入主题沿原持久化及插件回退，覆盖全部主题文字对比度；忽略已撤销的终端独立主题字段。
  * [INPUT]: AppearanceStore、共享外观合同和临时文件系统。
  * [OUTPUT]: Scenic图片遵循明暗模式；玻璃/遮罩/模糊独立校验、旧配置8px默认、零值重启/备份/换图保留及重置回归。
@@ -7,11 +8,13 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { it, expect, afterEach } from 'vitest'
-import { mkdtemp, rm, writeFile, readFile, symlink } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile, readFile, symlink, readdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { AppearanceStore } from '../apps/electron/src/main/appearance'
 import { themes, themeTokens, mergeAppearancePatch, maxBackgroundBlur, typographyControls, resolveTypography, defaultAppIconId, resolveTheme, terminalAnsiPalette } from '../packages/shared/src/appearance'
+import { appearanceCommandConflicts, normalizeAppearanceCommand } from '../packages/shared/src/appearance/commands'
+import { appearanceOptions } from '../packages/shared/src/appearance/options'
 const roots:string[]=[]
 afterEach(async()=>{await Promise.all(roots.splice(0).map(r=>rm(r,{recursive:true,force:true})))})
 async function setup(){const root=await mkdtemp(join(tmpdir(),'boai-appearance-'));roots.push(root);let dark=false;const store=new AppearanceStore(root,()=>dark,()=>{},()=>({width:1,height:1}));await store.init();return {root,store,dark:()=>{dark=true;store.systemChanged()}}}
@@ -195,4 +198,95 @@ it('falls back to the saved solid mode when the managed background is missing', 
   const reopened = new AppearanceStore(root, () => false, () => {}, () => ({ width: 1, height: 1 }))
   await reopened.init()
   expect(reopened.snapshot()).toMatchObject({ resolvedMode: 'light', preferences: { background: { assetId: null } }, diagnostic: '背景文件不可用，已使用纯色背景。' })
+})
+
+
+it('applies v2 theme and font intent atomically without changing legacy merge or restart semantics', async () => {
+  const { root, store } = await setup()
+  await store.update({ customColors: { dark: { accent: '#123456', background: '#222222' }, light: { accent: '#abcdef' } }, typography: { content: { sizePx: 19 } } }, 0)
+  const legacy = await store.update({ themeIds: { dark: 'nord' }, typography: { ui: { sizePx: 14 } } }, 1)
+  expect(legacy.preferences.customColors.dark.accent).toBe('#123456')
+  expect(legacy.preferences.typography.content.sizePx).toBe(19)
+  const reopened = new AppearanceStore(root, () => false, () => {}, () => ({ width: 1, height: 1 }))
+  await reopened.init()
+  expect(reopened.snapshot().preferences).toEqual(legacy.preferences)
+  const modern = await reopened.updateCommand({ themeIds: { dark: 'catppuccin' }, customColors: { dark: { accent: '#654321' } }, typography: { ui: { sizePx: 16 } } }, 2)
+  expect(modern.preferences.customColors).toMatchObject({ dark: { accent: '#654321', background: null, foreground: null }, light: { accent: '#abcdef' } })
+  expect(modern.preferences.typography).toMatchObject({ ui: { sizePx: 16 }, content: { sizePx: 16 }, code: legacy.preferences.typography.code })
+  const explicit = await reopened.updateCommand({ typography: { ui: { sizePx: 15 }, content: { sizePx: 20 } } }, 3)
+  expect(explicit.preferences.typography.content.sizePx).toBe(20)
+  expect(normalizeAppearanceCommand(normalizeAppearanceCommand({ themeIds: { dark: 'nord' }, typography: { ui: { sizePx: 16 } } }))).toEqual(normalizeAppearanceCommand({ themeIds: { dark: 'nord' }, typography: { ui: { sizePx: 16 } } }))
+})
+
+it('rejects unknown, wrong-mode and disabled themes as definite failures without partial writes', async () => {
+  const { root } = await setup()
+  let disabled: string[] = []
+  const store = new AppearanceStore(root, () => true, () => {}, () => ({ width: 1, height: 1 }), () => disabled)
+  await store.init()
+  await store.updateCommand({ themeIds: { dark: 'nord' } }, 0)
+  disabled = ['boai.theme.base46']
+  expect(store.snapshot().preferences.themeIds.dark).toBe('nord')
+  expect(store.snapshot().resolvedThemeId).toBe('boai-dark')
+  const before = store.snapshot()
+  for (const themeId of ['does-not-exist', 'boai-light', 'nord', '']) {
+    await expect(store.updateCommand({ mode: 'light', themeIds: { dark: themeId } }, before.revision)).rejects.toMatchObject({ code: 'INVALID_ARGUMENT' })
+    expect(store.snapshot()).toEqual(before)
+  }
+})
+
+it('requires a matching revision for reset, removal and manual image selection', async () => {
+  const { root, store } = await setup()
+  const file = join(root, 'source.png')
+  await writeFile(file, Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6MxsAAAAASUVORK5CYII=', 'base64'))
+  await store.updateCommand({ mode: 'dark' }, 0)
+  for (const action of [() => store.reset(0), () => store.remove(0), () => store.import(file, 0)]) await expect(action()).rejects.toMatchObject({ code: 'REVISION_CONFLICT' })
+  expect(store.snapshot()).toMatchObject({ revision: 1, preferences: { mode: 'dark' } })
+  expect(await readdir(join(root, 'assets'))).toEqual([])
+})
+
+it('lets a concurrent save invalidate slow decoding, removes the unused new asset and preserves the old image', async () => {
+  const { root, store } = await setup()
+  const file = join(root, 'source.png')
+  await writeFile(file, Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6MxsAAAAASUVORK5CYII=', 'base64'))
+  const previous = await store.import(file, 0)
+  let release!: (size: { width: number; height: number }) => void
+  let started!: () => void
+  const decoding = new Promise<void>(resolve => { started = resolve })
+  const delayed = new AppearanceStore(root, () => false, () => {}, () => { started(); return new Promise(resolve => { release = resolve }) })
+  await delayed.init()
+  const importing = delayed.import(file, previous.revision)
+  await decoding
+  await delayed.updateCommand({ mode: 'dark' }, previous.revision)
+  release({ width: 1, height: 1 })
+  await expect(importing).rejects.toMatchObject({ code: 'REVISION_CONFLICT' })
+  expect(delayed.snapshot()).toMatchObject({ revision: 2, preferences: { mode: 'dark', background: { assetId: previous.preferences.background.assetId } } })
+  expect(await readdir(join(root, 'assets'))).toEqual([previous.preferences.background.assetId])
+})
+
+it('detects linked-field conflicts and reset intent while permitting disjoint edits', async () => {
+  const { root, store } = await setup()
+  const initial = store.snapshot()
+  const colors = await store.updateCommand({ customColors: { dark: { accent: '#123456' } } }, 0)
+  expect(appearanceCommandConflicts({ themeIds: { dark: 'nord' } }, initial, colors)).toBe(true)
+  expect(appearanceCommandConflicts({ mode: 'dark' }, initial, colors)).toBe(false)
+  const theme = await store.updateCommand({ themeIds: { dark: 'nord' } }, 1)
+  expect(appearanceCommandConflicts({ customColors: { dark: { foreground: '#eeeeee' } } }, colors, theme)).toBe(true)
+  const size = await store.updateCommand({ typography: { content: { sizePx: 18 } } }, 2)
+  expect(appearanceCommandConflicts({ typography: { ui: { sizePx: 16 } } }, theme, size)).toBe(true)
+  const reset = await store.reset(3)
+  expect(appearanceCommandConflicts({ zoomFactor: 1.1 }, size, reset)).toBe(true)
+  const reopened = new AppearanceStore(root, () => false, () => {}, () => ({ width: 1, height: 1 }))
+  await reopened.init()
+  expect(appearanceCommandConflicts({ zoomFactor: 1.1 }, size, reopened.snapshot())).toBe(true)
+})
+
+it('describes active choices and compatibility fields from the current host catalogs', () => {
+  const options = appearanceOptions({ disabledPluginIds: ['boai.theme.base46'], platform: 'linux', hasBackground: false })
+  expect(options.themes.some(theme => theme.id === 'nord')).toBe(false)
+  expect(options.themes.some(theme => theme.id === 'boai-dark')).toBe(true)
+  expect(options.themes.every(theme => !('accent' in theme))).toBe(true)
+  expect(options.fields.find(field => field.path === 'appIconId')).toMatchObject({ supported: false })
+  expect(options.fields.find(field => field.path === 'background.blurRadius')).toMatchObject({ active: false, max: maxBackgroundBlur })
+  expect(options.fields.find(field => field.path === 'background.imageOpacity')).toMatchObject({ compatibility: true, active: false })
+  expect(options.fields.find(field => field.path === 'typography.ui.sizePx')).toMatchObject({ default: typographyControls.ui.defaultSize, min: typographyControls.ui.min, max: typographyControls.ui.max })
 })

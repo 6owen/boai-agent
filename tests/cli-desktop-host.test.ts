@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-07 owned/attached诊断deadline清pending、迟到拒绝、安全错误码及写入/真实退出无新增超时。
  * [INPUT]: Isolated original headless runtime, private host transport and worker-shaped desktop adapter.
  * [OUTPUT]: Ownership-loser discovery, quit/version refusal, immediate post-detach shutdown and stale recovery without business replay.
  * [POS]: C3 host module integration; actual Electron/browser evidence lives in BDD.
@@ -18,9 +19,11 @@ import { MAX_DESKTOP_MESSAGE_BYTES } from '../packages/shared/src/cli/protocol'
 import type { Connection } from '../packages/shared/src/domain'
 import type { BrowserLease } from '../packages/shared/src/ipc/browser'
 import type { DigitalAgent } from '../packages/shared/src/domain'
+import { ApplicationHostError } from '../packages/shared/src/ipc/application-host'
+import { WorkerApplicationHost } from '../apps/electron/src/worker/application-host'
 
 const cleanup: (() => unknown | Promise<unknown>)[] = []
-afterEach(async () => { for (const action of cleanup.splice(0).reverse()) await action() })
+afterEach(async () => { vi.useRealTimers(); for (const action of cleanup.splice(0).reverse()) await action() })
 async function root() { const path = await realpath(await mkdtemp(join(tmpdir(), 'boai-attached-'))); cleanup.push(() => rm(path, { recursive: true, force: true })); return path }
 function request(host: AttachedRuntime, method: string, input?: unknown) {
   const id = randomUUID()
@@ -166,4 +169,92 @@ it('removes a detached but still connected client from reverse-call subscription
   expect(await bridge.request('list', {})).toEqual(['new-host-only'])
   expect(oldCalls).toEqual([])
   await expect(old.invoke('runtime:request', { method: 'snapshot' })).rejects.toMatchObject({ code: 'AUTH_FAILED' })
+})
+
+it('owned diagnosis removes pending requests on its deadline and ignores a late reply without timing out writes', async () => {
+  vi.useFakeTimers()
+  const sent: { id: string; method: string }[] = []
+  const host = new WorkerApplicationHost(message => { sent.push(message) })
+  const diagnosis = host.request('getDiagnosticsSnapshot', undefined)
+  const rejected = expect(diagnosis).rejects.toMatchObject({ code: 'CAPABILITY_UNAVAILABLE' })
+  const write = host.request('updateAppearance', { expectedRevision: 0, patch: { mode: 'dark' } })
+  let writeSettled = false; void write.then(() => { writeSettled = true })
+  await vi.advanceTimersByTimeAsync(5000); await rejected
+  expect(host.accept({ id: sent[0].id, result: 'late-private-result' })).toBe(false)
+  expect(writeSettled).toBe(false)
+  expect(host.accept({ id: sent[1].id, result: 'saved' })).toBe(true)
+  expect(await write).toBe('saved')
+  expect(vi.getTimerCount()).toBe(0)
+  const next = host.request('getDiagnosticsSnapshot', undefined)
+  expect(host.accept({ id: sent[2].id, result: 'new-snapshot' })).toBe(true)
+  expect(await next).toBe('new-snapshot'); expect(vi.getTimerCount()).toBe(0)
+  expect(sent).toHaveLength(3)
+})
+
+it('owned reply settlement clears timers and reconstructs only the declared safe error codes', async () => {
+  vi.useFakeTimers()
+  const sent: { id: string }[] = []
+  const host = new WorkerApplicationHost(message => { sent.push(message) }, { diagnosisTimeoutMs: 20 })
+  const rejected = host.request('getDiagnosticsSnapshot', undefined)
+  const failure = expect(rejected).rejects.toBeInstanceOf(ApplicationHostError)
+  host.accept({ id: sent[0].id, error: 'revision conflict', errorCode: 'REVISION_CONFLICT' })
+  await failure; expect(vi.getTimerCount()).toBe(0)
+  const generic = host.request('getDiagnosticsSnapshot', undefined).catch(error => error)
+  host.accept({ id: sent[1].id, error: 'unknown outcome', errorCode: 'UNSAFE_CODE' })
+  const error = await generic
+  expect(error).toBeInstanceOf(Error); expect(error).not.toBeInstanceOf(ApplicationHostError); expect(error.code).toBeUndefined()
+  expect(vi.getTimerCount()).toBe(0)
+  const failedSend = new WorkerApplicationHost(() => { throw Error('send failed') }, { diagnosisTimeoutMs: 20 })
+  await expect(failedSend.request('getDiagnosticsSnapshot', undefined)).rejects.toThrow('send failed')
+  expect(vi.getTimerCount()).toBe(0)
+})
+
+it('attached application errors preserve safe revisions and settle generic or unrecognized codes as unknown', async () => {
+  const path = await root(), bridge = new DesktopHostBridge({ request: async () => undefined, detach: async () => {}, lost: () => {} })
+  await bridge.open(path, randomUUID(), 'test'); cleanup.push(() => bridge.close())
+  const host = (await findAttachedRuntime(path, 'test', randomUUID()))!; cleanup.push(() => host.detach())
+  const codes = ['REVISION_CONFLICT', undefined, 'UNSAFE_CODE']
+  host.on('message', message => {
+    if (message.type === 'application-host') host.postMessage({ type: 'application-host-result', id: message.id, error: 'fixture outcome', errorCode: codes.shift() })
+  })
+  await host.start()
+  const known = await bridge.application('updateAppearance', {}).catch(error => error)
+  expect(known).toBeInstanceOf(ApplicationHostError); expect(known).toMatchObject({ code: 'REVISION_CONFLICT' })
+  for (let index = 0; index < 2; index++) {
+    const unknown = await bridge.application('updateAppearance', {}).catch(error => error)
+    expect(unknown).toBeInstanceOf(Error); expect(unknown).not.toBeInstanceOf(ApplicationHostError); expect(unknown).not.toHaveProperty('code')
+  }
+  expect(codes).toHaveLength(0)
+})
+
+it('attached diagnosis deadlines release queue capacity, reject late replies and leave writes and browser drain pending', async () => {
+  const path = await root(), hooks = { request: vi.fn(async () => undefined), detach: vi.fn(async () => {}), lost: vi.fn() }
+  const bridge = new DesktopHostBridge(hooks, { diagnosisTimeoutMs: 40 })
+  await bridge.open(path, randomUUID(), 'test'); cleanup.push(() => bridge.close())
+  const metadata = await readLocalConnection(path, 'desktop.json')
+  const client = new CliRpcClient(metadata.url, { ...metadata, maxMessageBytes: MAX_DESKTOP_MESSAGE_BYTES })
+  await client.connect(); cleanup.push(async () => { await client.invoke('host:detach'); client.destroy() })
+  const calls: { id: string; method: string; type: string }[] = []
+  client.on('host', value => calls.push(value as typeof calls[number]))
+  await client.invoke('host:attach', { hostId: randomUUID(), pid: process.pid, drained: true })
+  let writeSettled = false, drainSettled = false
+  const write = bridge.application('updateAppearance', {}).then(value => { writeSettled = true; return value })
+  const drain = bridge.request('drain', {} as BrowserLease).then(value => { drainSettled = true; return value })
+  for (let wave = 0; wave < 2; wave++) {
+    const timedOut = await Promise.allSettled(Array.from({ length: 80 }, () => bridge.application('getDiagnosticsSnapshot', undefined)))
+    expect(timedOut.every(result => result.status === 'rejected' && result.reason instanceof ApplicationHostError && result.reason.code === 'CAPABILITY_UNAVAILABLE')).toBe(true)
+  }
+  expect(writeSettled).toBe(false); expect(drainSettled).toBe(false)
+  await vi.waitFor(() => expect(calls.filter(call => call.method === 'getDiagnosticsSnapshot')).toHaveLength(160))
+  const late = calls.find(call => call.method === 'getDiagnosticsSnapshot')!
+  expect(await client.invoke('host:result', { id: late.id, result: 'late-private-snapshot' })).toEqual({ accepted: false })
+  const next = bridge.application('getDiagnosticsSnapshot', undefined)
+  await vi.waitFor(() => expect(calls.filter(call => call.method === 'getDiagnosticsSnapshot')).toHaveLength(161), { interval: 1 })
+  expect(await client.invoke('host:result', { id: calls.at(-1)!.id, result: 'fresh-snapshot' })).toEqual({ accepted: true })
+  expect(await next).toBe('fresh-snapshot')
+  await client.invoke('host:result', { id: calls.find(call => call.method === 'updateAppearance')!.id, result: 'saved' })
+  await client.invoke('host:result', { id: calls.find(call => call.method === 'drain')!.id, result: { drained: true } })
+  expect(await write).toBe('saved'); expect(await drain).toEqual({ drained: true })
+  expect(hooks.request).not.toHaveBeenCalled(); expect(hooks.lost).not.toHaveBeenCalled()
+  expect(bridge.available).toBe(true)
 })

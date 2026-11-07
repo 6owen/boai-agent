@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 2026-11-06 两个独立浏览器沿原revision偏好存储；单次前台参数不写回配置。
+ * [OUTPUT]: 配置保存前CAS/退出门禁和关闭失败返回确定拒绝，保存事件沿原宿主广播；单次前台参数不写回配置。
  * [OUTPUT]: 关闭失败保留会话并允许重试，关闭请求后禁止新工具；实际关闭和在途调用结束后才解除登记。
  * [INPUT]: Application plugin enablement, saved launch settings and the original execution context.
  * [OUTPUT]: Independent upstream browser sessions with existing approvals, cancellation and shutdown.
@@ -10,7 +10,7 @@ import { readFile, realpath } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { createBrowserPluginSession, browserPluginRuntimeRoot, type BrowserPluginSession } from '@boai/browser-plugins/host'
-import { browserPluginProviderSchema, browserPluginConfigSchema, browserPluginId, browserPluginNames, browserPluginCallSchema, saveBrowserPluginSettingsSchema, type BrowserPluginProvider, type BrowserPluginSettings } from '@boai/shared/plugins/browser-tools'
+import { BrowserPluginSettingsError, browserPluginProviderSchema, browserPluginConfigSchema, browserPluginId, browserPluginNames, browserPluginCallSchema, saveBrowserPluginSettingsSchema, type BrowserPluginProvider, type BrowserPluginSettings } from '@boai/shared/plugins/browser-tools'
 import { readPluginSettingsSchema } from '@boai/shared/plugins/types'
 import type { ProductStore } from '../../adapters/storage/product-store'
 import type { EngineContext } from '../../contracts'
@@ -26,7 +26,7 @@ export class BrowserPluginService {
   private entries = new Map<string, Entry>()
   private closing = false
   private updating = new Set<BrowserPluginProvider>()
-  constructor(private store: ProductStore, private dataPath: string, private critical: <T>(action: () => Promise<T>) => Promise<T>) {}
+  constructor(private store: ProductStore, private dataPath: string, private critical: <T>(action: () => Promise<T>) => Promise<T>, private changed: () => void = () => {}) {}
   async enabled() {
     try {
       const text = await readFile(join(dirname(this.dataPath), 'application-plugins.json'), 'utf8')
@@ -45,18 +45,21 @@ export class BrowserPluginService {
   }
   async save(raw: unknown) {
     const input = saveBrowserPluginSettingsSchema.parse(raw)
-    if (this.updating.has(input.provider)) throw new Error('浏览器插件配置正在保存')
+    if (this.closing) throw new BrowserPluginSettingsError('CAPABILITY_UNAVAILABLE', '应用正在退出，配置未保存')
+    if (this.updating.has(input.provider)) throw new BrowserPluginSettingsError('REVISION_CONFLICT', '浏览器插件配置正在保存')
     this.updating.add(input.provider)
     try {
       const previous = await this.settings(input.provider)
-      if (previous.revision !== input.expectedRevision) throw new Error('浏览器插件配置已变化，请刷新后重试')
-      await this.closeWhere(entry => entry.provider === input.provider)
+      if (previous.revision !== input.expectedRevision) throw new BrowserPluginSettingsError('REVISION_CONFLICT', '浏览器插件配置已变化，请刷新后重试')
+      try { await this.closeWhere(entry => entry.provider === input.provider) }
+      catch { throw new BrowserPluginSettingsError('CAPABILITY_UNAVAILABLE', '浏览器会话尚未完成关闭，配置未保存；请检查原会话。') }
       return await this.critical(async () => {
-        if (this.closing) throw new Error('应用正在退出')
+        if (this.closing) throw new BrowserPluginSettingsError('CAPABILITY_UNAVAILABLE', '应用正在退出，配置未保存')
         const current = await this.settings(input.provider)
-        if (current.revision !== input.expectedRevision) throw new Error('浏览器插件配置已变化，请刷新后重试')
+        if (current.revision !== input.expectedRevision) throw new BrowserPluginSettingsError('REVISION_CONFLICT', '浏览器插件配置已变化，请刷新后重试')
         const next = { provider: input.provider, revision: current.revision + 1, config: input.config }
         await this.store.write([{ collection, id: input.provider, value: next }])
+        this.changed()
         return next
       })
     } finally { this.updating.delete(input.provider) }

@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 诊断解释窄入口沿原核心首发，明确区分未受理与提交后未知并绑定requestId。
+ * [OUTPUT]: sendMessage与核心首发接收本人明确选择的诊断目标，由宿主验证并持久化来源，不授权目标执行。
  * [OUTPUT]: 项目选择CAS与发送版本接入既有消息协议。
  * [OUTPUT]: employee-task:result承载已提交结果的员工、任务、执行身份及当前显示状态。
  * [OUTPUT]: 会话消息队列统一读取、按版本移除或优先执行接口。
@@ -257,6 +259,7 @@ export interface Methods extends EmployeeTaskMethods, MessageQueueMethods, Conte
   adoptArtifact: { input: import('../domain/artifacts').ArtifactAdoptionInput; output: import('../domain/artifacts').ArtifactAdoptionReceipt }
   getArtifactAdoptionReceipt: { input: { requestId: string }; output: import('../domain/artifacts').ArtifactAdoptionReceipt | null }
   startCoreConversation: { input: StartCoreConversationInput; output: Conversation }
+  startTaskDiagnosisExplanation: { input: import('../domain/task-diagnosis').StartTaskDiagnosisExplanationInput; output: import('../domain/task-diagnosis').StartTaskDiagnosisExplanationResult }
   getCoreConversationStart: { input: { requestId: string }; output: Conversation | null }
   updateUserProfile: { input: import('../domain/profile').UserProfileInput; output: import('../domain/profile').LocalUserProfile }
   getProfileActivity: { input: import('../domain/profile').ProfileActivityQuery; output: import('../domain/profile').ProfileActivity }
@@ -399,7 +402,7 @@ export interface Methods extends EmployeeTaskMethods, MessageQueueMethods, Conte
   getMessageExecution: { input: { requestId: string }; output: import('../domain/message-execution').MessageExecution | null }
   cancelMessageExecution: { input: { requestId: string }; output: import('../domain/message-execution').MessageExecution }
   referenceBrowserPage: { input: Record<string, never>; output: import('./browser').BrowserPageReference }
-  sendMessage: { input: { steer?: import('../domain/execution').NativeSteeringTarget; expectedExecutionPermission?: import('../domain/execution').ExecutionPermission; materialUploads?: import('../domain/material-upload').SubmittedMaterial[]; apiModel?: import('../domain/model-source').ApiModelOverride; expectedProjectRevision?: number; workingDirectory?: string; composerReferences?: import('../domain/composer-references').ComposerReference[]; channelReference?: import('../domain/channels').ChannelMessageReference; materialReference?: import('../domain/materials').MaterialReadRef; conversationId: string; content: string; browserReference?: Pick<import('./browser').BrowserPageReference, 'instanceId' | 'pageVersion'>; materialSelections?: MaterialSelection[]; mentionIds: string[]; requestId: string; replyToMessageId?: string; stopPrevious?: boolean }; output: Message }
+  sendMessage: { input: { diagnosisTarget?: import('../domain/task-diagnosis').TaskDiagnosisTarget; steer?: import('../domain/execution').NativeSteeringTarget; expectedExecutionPermission?: import('../domain/execution').ExecutionPermission; materialUploads?: import('../domain/material-upload').SubmittedMaterial[]; apiModel?: import('../domain/model-source').ApiModelOverride; expectedProjectRevision?: number; workingDirectory?: string; composerReferences?: import('../domain/composer-references').ComposerReference[]; channelReference?: import('../domain/channels').ChannelMessageReference; materialReference?: import('../domain/materials').MaterialReadRef; conversationId: string; content: string; browserReference?: Pick<import('./browser').BrowserPageReference, 'instanceId' | 'pageVersion'>; materialSelections?: MaterialSelection[]; mentionIds: string[]; requestId: string; replyToMessageId?: string; stopPrevious?: boolean }; output: Message }
   setMessageReaction: { input: { conversationId: string; messageId: string; emoji: string; active: boolean }; output: Message }
   getCancellationTargets: { input: { conversationId: string }; output: import('../domain/run-cancellation').CancellationTarget[] }
   getRunCancellation: { input: { conversationId: string; runId: string }; output: import('../domain/run-cancellation').RunCancellation }

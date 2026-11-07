@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 共享稳定ID助手目录含版本/分类，旧renderer数字模板只通过兼容映射解析；模板只预填普通员工。
  * [OUTPUT]: 基础人格使用完整适配来源，保留精确旧简化文本作为一次性迁移标记；普通员工不复制核心权限。
  * [INPUT]: Employee intent and the application's saved model connections.
  * [OUTPUT]: Alma-derived complete conversational bobo personality; preserved exact legacy migration and employee defaults and deterministic simple-creation configuration.
@@ -25,11 +26,25 @@ export const BOBO_RULES = `你是 BOAI 的核心数字员工 bobo，帮助用户
 普通对话自然回应；需要协作时复用已有员工，说明必要分工。仅在用户要求时创建新的员工、群聊或自动任务，不因为工具可用就自行组织团队。
 使用已有记忆能力保存获准偏好和约定，不把临时任务细节、敏感凭据或猜测当作长期事实。\n`
 export const EMPLOYEE_PRESETS = [
-  { id: 'general', name: '通用员工', role: '协助处理工作', instructions: '根据用户目标开展工作，必要时澄清，区分事实与推断，依据实际结果说明完成情况。' },
-  { id: 'researcher', name: '研究员', role: '查找资料、梳理事实', instructions: '根据可访问的资料进行研究，区分事实、推断与未知，并说明来源。' },
-  { id: 'writer', name: '写手', role: '整理思路、撰写内容', instructions: '根据用户目标与已确认的资料撰写清楚、具体的内容，不编造事实。' },
-  { id: 'reviewer', name: '审核员', role: '检查事实与论证', instructions: '检查事实、逻辑、遗漏与表达，给出具体的修订意见。' },
+  { id: 'general', version: '1', category: 'general', name: '通用员工', role: '协助处理工作', instructions: '根据用户目标开展工作，必要时澄清，区分事实与推断，依据实际结果说明完成情况。' },
+  { id: 'researcher', version: '1', category: 'research', name: '研究员', role: '查找资料、梳理事实', instructions: '根据可访问的资料进行研究，区分事实、推断与未知，并说明来源。' },
+  { id: 'writer', version: '1', category: 'writing', name: '写手', role: '整理思路、撰写内容', instructions: '根据用户目标与已确认的资料撰写清楚、具体的内容，不编造事实。' },
+  { id: 'reviewer', version: '1', category: 'review', name: '审核员', role: '检查事实与论证', instructions: '检查事实、逻辑、遗漏与表达，给出具体的修订意见。' },
 ] as const
+
+export type EmployeePreset = typeof EMPLOYEE_PRESETS[number]
+export type EmployeePresetId = EmployeePreset['id']
+const LEGACY_RENDERER_TEMPLATE_IDS = ['researcher', 'writer', 'reviewer'] as const
+/** Old renderer indices are an input compatibility adapter, never a persisted template identity. */
+export function resolveEmployeePreset(value: string | number | undefined): EmployeePreset | undefined {
+  const id = typeof value === 'number' ? LEGACY_RENDERER_TEMPLATE_IDS[value] : value
+  return EMPLOYEE_PRESETS.find(preset => preset.id === id)
+}
+export function employeeTemplateOrigin(id: string, version: string) {
+  const preset = resolveEmployeePreset(id)
+  if (!preset || preset.version !== version) throw new Error('助手模板已变化，请重新选择。')
+  return { templateId: preset.id, version: preset.version }
+}
 
 /** Copy only execution defaults, never bobo's authority, resource bindings or private memory. */
 export function employeeCreationDefaults(input: Pick<AgentInput, 'name'> & Partial<AgentInput>, connections: Connection[], agents: DigitalAgent[]): AgentInput {
