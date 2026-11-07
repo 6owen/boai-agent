@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 可信主窗口允许私有画板UI请求；公共CLI与canvasHost权限边界保持。
  * [OUTPUT]: WT1聚合独立画板宿主；可信主窗、私有工具、人工保存屏障和退出清理共用原生命周期。
  * [OUTPUT]: 项目目录选择使用独立主窗系统对话框，不添加目录授权；路径由运行时保存时规范核验。
  * [OUTPUT]: macOS窗口按钮按共享toolbar-height与当前界面缩放垂直居中，创建/重载/缩放同步原生位置。
@@ -119,7 +120,7 @@ import { DesktopSettingsStore } from './desktop-settings'
 import { BackgroundTray, hideMainWindow, cancelWindowHide } from './background'
 import { assertRuntimeHostRequest, stopRuntime } from './runtime-shutdown'
 import { acquireRuntimeProfileAccess } from '@boai/runtime/profile-access'
-import { isPublicMethod } from '@boai/shared/ipc/public-methods'
+import { isMainWindowMethod } from './main-window-methods'
 import { ApplicationHostError, isApplicationHostMethod, type ApplicationHostMethod } from '@boai/shared/ipc/application-host'
 import { appearanceHostRequest, appearanceRevisionInput } from './appearance-host'
 import { openDesktopCli, desktopCliConnection } from './cli-service'
@@ -592,7 +593,7 @@ function registerIpc() {
   ipcMain.handle('boai:request', async (event, payload: { method: Method; input: unknown }) => {
     if (!window || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) throw new Error('不允许的请求来源。')
     if (!payload || typeof payload.method !== 'string' || JSON.stringify(payload).length > 2_000_000) throw new Error('无效请求。')
-    if (!isPublicMethod(payload.method)) throw new Error(unsupportedRequestMessage)
+    if (!isMainWindowMethod(payload.method)) throw new Error(unsupportedRequestMessage)
     const { method, input } = payload
     if (quitting) throw new Error('应用正在退出，请稍后重新打开。')
     if (method === 'listGatewayImports') { importWindowReady = true; for (const error of importErrors.splice(0)) sendEvent({ type: 'runtime-error', error }) }
