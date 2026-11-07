@@ -6,6 +6,7 @@
  * [OUTPUT]: SourceSummary标识搜索候选提供方，仅用于按需发现，不宣称实际目录或业务已验证。
  * [OUTPUT]: SourceTool携带宿主核准的搜索/正文能力及实际schema/server版本；目录提示本身不授予只读权限。
  * [OUTPUT]: 公共数据源携带固定会话/消息/员工创建来源，配置只描述连接；目录DTO不带密钥，桌面编辑器沿专用版本化IPC回填。
+ * [OUTPUT]: 应用来源只含稳定目录身份；包来源由宿主登记，发现与执行共用绑定门禁。
  * [INPUT]: Connection-only API/MCP/local configuration; access authority belongs to the employee.
  * [OUTPUT]: Public source configuration, revision checks and bounded tool requests; catalog DTOs exclude credentials; explicit desktop editing uses a separate credential read.
  * [POS]: Shared data-source contract; separate from model connections and Skills.
@@ -19,15 +20,18 @@ const base = { name: text(100), description: z.string().max(1000), guide: z.stri
 export const dataSourceConfigSchema = z.discriminatedUnion('type', [
   z.object({ ...base, type: z.literal('api'), api: z.object({ baseUrl: httpUrl, authType: z.enum(['none', 'bearer', 'header', 'query', 'basic']), headerName: text(100).optional(), queryParam: text(100).optional(), authScheme: z.string().max(100).optional(), testPath: text(2000).default('/') }).strict() }).strict(),
   z.object({ ...base, type: z.literal('mcp'), mcp: z.discriminatedUnion('transport', [
-    z.object({ transport: z.enum(['http', 'sse']), url: httpUrl, authType: z.enum(['none', 'bearer']) }).strict(),
+    z.object({ transport: z.enum(['http', 'sse']), url: httpUrl, authType: z.enum(['none', 'bearer', 'oauth']) }).strict(),
     z.object({ transport: z.literal('stdio'), command: text(2000), args: z.array(z.string().max(4000)).max(100) }).strict(),
   ]) }).strict(),
   z.object({ ...base, type: z.literal('local'), local: z.object({ path: text(8000) }).strict() }).strict(),
 ])
 export type DataSourceConfig = z.infer<typeof dataSourceConfigSchema>
+export const sourceApplicationOriginSchema = z.object({ applicationId: text(100), version: text(100) }).strict()
+export type SourceApplicationOrigin = z.infer<typeof sourceApplicationOriginSchema>
+export type SourcePackageOrigin = { installationId: string; contributionId: string; version: string }
 export type DataSourceCreationSource = { conversationId: string; messageId: string; agentId: string }
-export type DataSource = DataSourceConfig & { id: string; revision: number; createdAt: string; updatedAt: string; hasCredential: boolean; creationSource?: DataSourceCreationSource; test?: { status: 'success' | 'failed'; checkedAt: string; message: string; tools?: { name: string; description?: string }[] } }
-export const saveDataSourceSchema = z.object({ id: z.string().uuid(), expectedRevision: z.number().int().nonnegative(), config: dataSourceConfigSchema, credential: z.string().max(32000).optional() }).strict()
+export type DataSource = DataSourceConfig & { id: string; revision: number; createdAt: string; updatedAt: string; hasCredential: boolean; applicationOrigin?: SourceApplicationOrigin; capabilityPackage?: SourcePackageOrigin; creationSource?: DataSourceCreationSource; test?: { status: 'success' | 'failed'; checkedAt: string; message: string; tools?: { name: string; description?: string }[] } }
+export const saveDataSourceSchema = z.object({ id: z.string().uuid(), expectedRevision: z.number().int().nonnegative(), config: dataSourceConfigSchema, applicationOrigin: sourceApplicationOriginSchema.optional(), credential: z.string().max(32000).optional() }).strict()
 export type SaveDataSourceInput = z.input<typeof saveDataSourceSchema>
 export const dataSourceIdentitySchema = z.object({ id: z.string().uuid(), expectedRevision: z.number().int().positive() }).strict()
 export type DataSourceIdentity = z.infer<typeof dataSourceIdentitySchema>
@@ -69,3 +73,6 @@ export const apiSourceRequestSchema = z.object({ path: z.string().max(4000), met
 export const localSourceRequestSchema = z.object({ operation: z.enum(['list', 'read', 'write']), path: z.string().max(8000).default('.'), content: z.string().max(1024 * 1024).optional(), offset: z.number().int().nonnegative().default(0), limit: z.number().int().min(1).max(48000).default(48000), expectedHash: z.string().regex(/^[a-f0-9]{64}$/).nullable().optional() }).strict()
 export const DATA_SOURCE_LABELS = { api: 'API', mcp: 'MCP', local: '本地文件夹' } as const
 export function supportsDataSources(kind?: string) { return !kind || ['mastra-model', 'codex-local', 'claude-local', 'runtime-plugin'].includes(kind) }
+
+export type SourceOAuthState = 'pending' | 'authorizing' | 'authorized' | 'cancelled' | 'expired' | 'failed'
+export interface SourceOAuthStatus { authorizationId: string; sourceId: string; revision: number; status: SourceOAuthState; expiresAt: string; url?: string; error?: string }

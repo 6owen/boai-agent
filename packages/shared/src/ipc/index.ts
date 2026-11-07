@@ -1,4 +1,7 @@
 /*
+ * [OUTPUT]: 诊断解释窄入口沿原核心首发，明确区分未受理与提交后未知并绑定requestId。
+ * [OUTPUT]: sendMessage与核心首发接收本人明确选择的诊断目标，由宿主验证并持久化来源，不授权目标执行。
+ * [OUTPUT]: 项目选择CAS与发送版本接入既有消息协议。
  * [OUTPUT]: employee-task:result承载已提交结果的员工、任务、执行身份及当前显示状态。
  * [OUTPUT]: 会话消息队列统一读取、按版本移除或优先执行接口。
  * [OUTPUT]: 2026-11-04resolveExecutionMessage可返回已核验employeeTask，供任务面板导航；原conversation/message身份保持。
@@ -146,7 +149,8 @@ export type AppEvent =
   | { type: 'message'; message: Message }
   | { type: 'runtime-error'; error: string }
 
-export interface Methods extends EmployeeTaskMethods, MessageQueueMethods {
+import type { ContextHandoffMethods } from '../domain/context-handoff'
+export interface Methods extends EmployeeTaskMethods, MessageQueueMethods, ContextHandoffMethods {
   closeUserWorkspace: { input: { employeeId: string; conversationId?: string } | { conversationId: string }; output: void }
   getWorkspaceRoot: { input: import('./workspace-files').WorkspaceFileScope; output: string }
   validateWorkspaceScope: { input: import('./workspace-files').WorkspaceFileScope; output: void }
@@ -255,6 +259,7 @@ export interface Methods extends EmployeeTaskMethods, MessageQueueMethods {
   adoptArtifact: { input: import('../domain/artifacts').ArtifactAdoptionInput; output: import('../domain/artifacts').ArtifactAdoptionReceipt }
   getArtifactAdoptionReceipt: { input: { requestId: string }; output: import('../domain/artifacts').ArtifactAdoptionReceipt | null }
   startCoreConversation: { input: StartCoreConversationInput; output: Conversation }
+  startTaskDiagnosisExplanation: { input: import('../domain/task-diagnosis').StartTaskDiagnosisExplanationInput; output: import('../domain/task-diagnosis').StartTaskDiagnosisExplanationResult }
   getCoreConversationStart: { input: { requestId: string }; output: Conversation | null }
   updateUserProfile: { input: import('../domain/profile').UserProfileInput; output: import('../domain/profile').LocalUserProfile }
   getProfileActivity: { input: import('../domain/profile').ProfileActivityQuery; output: import('../domain/profile').ProfileActivity }
@@ -349,10 +354,10 @@ export interface Methods extends EmployeeTaskMethods, MessageQueueMethods {
   installCli: { input: { expectedRevision: string }; output: CliInstallation | null }
   uninstallCli: { input: { expectedRevision: string }; output: CliInstallation }
   updateDesktopSettings: { input: { patch: DesktopPatch; expectedRevision: number }; output: DesktopSettings }
-  updateAppearance: { input: { patch: AppearancePatch; expectedRevision: number }; output: AppearanceSnapshot }
-  importAppearanceBackground: { input: undefined; output: AppearanceSnapshot | null }
-  removeAppearanceBackground: { input: undefined; output: AppearanceSnapshot }
-  resetAppearance: { input: undefined; output: AppearanceSnapshot }
+  updateAppearance: { input: { patch: AppearancePatch; expectedRevision: number; contractVersion?: 1 | 2 }; output: AppearanceSnapshot }
+  importAppearanceBackground: { input: { expectedRevision: number } | undefined; output: AppearanceSnapshot | null }
+  removeAppearanceBackground: { input: { expectedRevision: number } | undefined; output: AppearanceSnapshot }
+  resetAppearance: { input: { expectedRevision: number } | undefined; output: AppearanceSnapshot }
   snapshot: { input: undefined; output: Snapshot }
   saveAgent: { input: AgentInput; output: DigitalAgent }
   deleteAgent: { input: { id: string }; output: void }
@@ -375,7 +380,10 @@ export interface Methods extends EmployeeTaskMethods, MessageQueueMethods {
   createEmployeeSession: { input: { expectedExecutionPermission?: import('../domain/execution').ExecutionPermission; employeeId: string; name?: string; requestId: string }; output: import('../domain/session-operation').SessionOperationReceipt }
   deleteSession: { input: { conversationId: string; requestId: string }; output: import('../domain/session-operation').SessionOperationReceipt }
   getSessionReceipt: { input: { requestId: string }; output: import('../domain/session-operation').SessionOperationReceipt | null }
-  sendEmployeeMessage: { input: { expectedExecutionPermission?: import('../domain/execution').ExecutionPermission; materialUploads?: import('../domain/material-upload').SubmittedMaterial[]; materialSelections?: MaterialSelection[]; apiModel?: import('../domain/model-source').ApiModelOverride; workingDirectory?: string; composerReferences?: import('../domain/composer-references').ComposerReference[]; employeeId: string; content: string; requestId: string }; output: Message }
+  getDiagnosticsSnapshot: { input: import('./desktop-diagnostics').DesktopDiagnosticsQuery | undefined; output: import('./desktop-diagnostics').DesktopDiagnosticsSnapshot }
+  chooseProjectDirectory: { input: undefined; output: string | null }
+  updateConversationProject: { input: { conversationId: string; expectedRevision: number } & import('../domain/project-directory').ProjectChoice; output: Conversation }
+  sendEmployeeMessage: { input: { expectedExecutionPermission?: import('../domain/execution').ExecutionPermission; materialUploads?: import('../domain/material-upload').SubmittedMaterial[]; materialSelections?: MaterialSelection[]; apiModel?: import('../domain/model-source').ApiModelOverride; expectedProjectRevision?: number; workingDirectory?: string; composerReferences?: import('../domain/composer-references').ComposerReference[]; employeeId: string; content: string; requestId: string }; output: Message }
   deleteConversation: { input: { id: string }; output: void }
   updateConversationList: { input: ConversationListChange; output: void }
   clearConversationHistory: { input: { id: string; hide: boolean }; output: void }
@@ -394,7 +402,7 @@ export interface Methods extends EmployeeTaskMethods, MessageQueueMethods {
   getMessageExecution: { input: { requestId: string }; output: import('../domain/message-execution').MessageExecution | null }
   cancelMessageExecution: { input: { requestId: string }; output: import('../domain/message-execution').MessageExecution }
   referenceBrowserPage: { input: Record<string, never>; output: import('./browser').BrowserPageReference }
-  sendMessage: { input: { steer?: import('../domain/execution').NativeSteeringTarget; expectedExecutionPermission?: import('../domain/execution').ExecutionPermission; materialUploads?: import('../domain/material-upload').SubmittedMaterial[]; apiModel?: import('../domain/model-source').ApiModelOverride; workingDirectory?: string; composerReferences?: import('../domain/composer-references').ComposerReference[]; channelReference?: import('../domain/channels').ChannelMessageReference; materialReference?: import('../domain/materials').MaterialReadRef; conversationId: string; content: string; browserReference?: Pick<import('./browser').BrowserPageReference, 'instanceId' | 'pageVersion'>; materialSelections?: MaterialSelection[]; mentionIds: string[]; requestId: string; replyToMessageId?: string; stopPrevious?: boolean }; output: Message }
+  sendMessage: { input: { diagnosisTarget?: import('../domain/task-diagnosis').TaskDiagnosisTarget; steer?: import('../domain/execution').NativeSteeringTarget; expectedExecutionPermission?: import('../domain/execution').ExecutionPermission; materialUploads?: import('../domain/material-upload').SubmittedMaterial[]; apiModel?: import('../domain/model-source').ApiModelOverride; expectedProjectRevision?: number; workingDirectory?: string; composerReferences?: import('../domain/composer-references').ComposerReference[]; channelReference?: import('../domain/channels').ChannelMessageReference; materialReference?: import('../domain/materials').MaterialReadRef; conversationId: string; content: string; browserReference?: Pick<import('./browser').BrowserPageReference, 'instanceId' | 'pageVersion'>; materialSelections?: MaterialSelection[]; mentionIds: string[]; requestId: string; replyToMessageId?: string; stopPrevious?: boolean }; output: Message }
   setMessageReaction: { input: { conversationId: string; messageId: string; emoji: string; active: boolean }; output: Message }
   getCancellationTargets: { input: { conversationId: string }; output: import('../domain/run-cancellation').CancellationTarget[] }
   getRunCancellation: { input: { conversationId: string; runId: string }; output: import('../domain/run-cancellation').RunCancellation }
