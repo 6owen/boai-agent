@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Default-disabled tldraw canvas contribution; activation does not grant document access.
  * [OUTPUT]: Agent Desktop作为电脑操作提供方默认启用，显式停用与员工权限保持。
  * [OUTPUT]: 独立AgentBrowser/BrowserViewer插件接入；上游工具、启停与运行回收保持独立。
  * [OUTPUT]: 2026-10-29 新增file-explorer贡献和boai.file-explorer内置清单。
@@ -22,6 +23,7 @@ const id = z.string().min(1).max(100).regex(/^[a-z0-9][a-z0-9.-]*$/)
 const color = z.string().regex(/^#[0-9a-f]{6}$/i)
 const theme = z.object({ id, name: z.string().min(1).max(100), mode: z.enum(['light', 'dark']), background: color, surface: color, foreground: color, muted: color, border: color, accent: color }).strict()
 const contribution = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('canvas') }).strict(),
   runtimeContributionSchema,
   z.object({ type: z.literal('desktop-tools') }).strict(),
   z.object({ type: z.literal('browser-tools'), provider: browserPluginProviderSchema }).strict(),
@@ -58,7 +60,9 @@ export function definePluginCatalog(input: readonly ApplicationPluginManifest[])
 }
 
 export const FILE_EXPLORER_PLUGIN_ID = 'boai.file-explorer'
+export const CANVAS_PLUGIN_ID = 'boai.canvas.tldraw'
 export const applicationPlugins = definePluginCatalog([
+  { id: CANVAS_PLUGIN_ID, name: '画板', description: '使用 tldraw 编辑、保存和导出画板，支持员工协作。', version: '0.1.0', apiVersion: APPLICATION_PLUGIN_API, defaultEnabled: false, contributions: [{ type: 'canvas' }] },
   { id: 'boai.preview.text', name: '文本预览', description: 'Markdown、代码和纯文本，支持选区修改。', version: '1.0.0', apiVersion: APPLICATION_PLUGIN_API, contributions: [{ type: 'preview', kinds: ['markdown', 'code', 'text'] }] },
   { id: 'boai.preview.image', name: '图片预览', description: '查看已核验的聊天图片。', version: '1.0.0', apiVersion: APPLICATION_PLUGIN_API, contributions: [{ type: 'preview', kinds: ['image'] }] },
   { id: 'boai.preview.pdf', name: 'PDF 预览', description: 'PDF 文档阅读、搜索和页面导航。', version: '1.0.0', apiVersion: APPLICATION_PLUGIN_API, contributions: [{ type: 'preview', kinds: ['pdf'] }] },

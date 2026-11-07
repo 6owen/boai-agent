@@ -106,6 +106,7 @@
     "yauzl": "3.4.0",
     "zod": "4.6.5",
     "@boai/browser-plugins": "workspace:*",
-    "@boai/desktop-plugin": "workspace:*"
+    "@boai/desktop-plugin": "workspace:*",
+    "@boai/canvas-plugin": "workspace:*"
   }
 }

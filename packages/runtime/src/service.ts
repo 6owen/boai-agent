@@ -1,6 +1,9 @@
 /*
+ * [OUTPUT]: 能力包与画板保留各自实际退出/备份门禁；包Source按员工核权，备份同时保存两类原件与恢复策略。
  * [OUTPUT]: Codex/Claude能力包绑定按每次普通/behavior输入前的有效清单证明单一归属；未知组合拒绝，实际退出屏障和重启副本路径保持。
  * [OUTPUT]: WT2能力包沿原应用/Source/资源授权注册；按员工实际适配器退出排空，未证明原生单加载时拒绝绑定。
+ * [OUTPUT]: 画板按原清理事务ID回收；备份包含canvases文档及内嵌资产，协调flush由Main提供。
+ * [OUTPUT]: Canvas calls retain the current employee execution and actual host cancellation/exit boundary.
  * [OUTPUT]: 统一项目选择/消息执行快照及无活动CAS切换，默认值改变保持在途上下文。
  * [OUTPUT]: 固定诊断解释复用核心首发；仅两回执确认不存在且提交未开始的已终止调用返回安全rejected，其余错误保留unknown。
  * [OUTPUT]: 本人诊断目标仅随bobo真实消息受理，原事务重核归属/可读性并保存，不派发目标任务或伪造reply来源。
@@ -251,6 +254,7 @@ import { applicationOperations } from './modules/application/operations'
 import { taskDiagnosisOperation } from './modules/application/task-diagnosis'
 import { taskDiagnosisExplanationRequestSchema, taskDiagnosisTargetSchema, type StartTaskDiagnosisExplanationInput, type StartTaskDiagnosisExplanationResult, type TaskDiagnosisTarget } from '@boai/shared/domain/task-diagnosis'
 import { DesktopPluginService } from './modules/desktop-plugin/service'
+import { CanvasService } from './modules/canvas/service'
 import { BrowserPluginService } from './modules/browser/plugins'
 import { browserPluginProviderSchema } from '@boai/shared/plugins/browser-tools'
 import { ImageService } from './modules/media/image-service'
@@ -484,6 +488,7 @@ export class AppService {
   private readonly cliRunAccess = new RunCliAccess()
   runCliAccess(input: RunCliAccessRequest) { return this.cliRunAccess.request(input) }
   private readonly desktopPlugin: DesktopPluginService
+  private readonly canvas: CanvasService
   private readonly browserPlugins: BrowserPluginService
   private readonly webSearch: WebSearchService
   private readonly capabilities: CapabilityPackageServices
@@ -635,6 +640,7 @@ export class AppService {
     this.store = new ProductStore(join(this.dataPath, 'boai.sqlite'))
     this.contexts = new ContextRepository(this.store)
     this.desktopPlugin = new DesktopPluginService(this.store, this.dataPath, action => this.serialize(async () => { if (this.closing || this.backingUp) fail('服务正在退出或备份'); return action() }))
+    this.canvas = new CanvasService(this.dataPath, options.applicationHost ? input => options.applicationHost!.request('canvasHost', input) : undefined, context => this.serialize(async () => { await this.assertExecutionAccess(context) }), () => !!options.applicationHost?.available)
     this.browserPlugins = new BrowserPluginService(this.store, this.dataPath, action => this.serialize(async () => { if (this.closing || this.backingUp) fail('服务正在退出或备份'); return action() }), () => this.changed())
     this.images = new ImageService(this.store, {
       connection: async id => this.connections.get(id),
@@ -764,7 +770,7 @@ export class AppService {
     this.userProfile = new ProfileRepository(this.store)
     this.scheduleList = new ScheduleListRepository(this.store)
     this.contactList = new ContactListRepository(this.store)
-    this.contactDeletion = new ContactDeletionService(this.store, this.dataPath, { prepare: (tx, resource) => this.resourceCleanups.prepare(tx, resource), prepareBindingCopy: (tx, copy) => this.resourceCleanups.prepareBindingCopy(tx, copy), finish: id => this.resourceCleanups.finish(id) })
+    this.contactDeletion = new ContactDeletionService(this.store, this.dataPath, { prepare: (tx, resource) => this.resourceCleanups.prepare(tx, resource), prepareBindingCopy: (tx, copy) => this.resourceCleanups.prepareBindingCopy(tx, copy), finish: id => this.resourceCleanups.finish(id) }, (filter, cleanupId) => this.canvas.cleanup(filter, cleanupId))
     this.notifications = new AutomationNotifications(this.store)
     this.marketplace = new SkillMarketplace(options.skillMarketplaceFetch)
     this.localSkills = new LocalSkillCatalogService(options.skillDiscovery)
@@ -858,7 +864,7 @@ export class AppService {
       changed: () => this.changed(), failed: error => this.emit({ type: 'runtime-error', error }),
     })
     this.reading = new ConversationReadingRepository(this.store, { validateMessage: (tx, message) => this.validateReadingMessage(tx, message) })
-    this.history = new ConversationHistory(this.store, this.dataPath, this.materials, this.artifactRepository, this.reading)
+    this.history = new ConversationHistory(this.store, this.dataPath, this.materials, this.artifactRepository, this.reading, (filter, cleanupId) => this.canvas.cleanup(filter, cleanupId))
     this.works = new WorkRepository(this.store)
     this.browser = new BrowserRepository(this.store,this.works)
     this.runtimePlugins = new RuntimePlugins(join(this.dataPath, 'runtime-plugins'))
@@ -1195,18 +1201,19 @@ export class AppService {
     if (method === 'getWorkspaceRoot' || method === 'validateWorkspaceScope') {
       const schema = z.object({ employeeId: id, conversationId: id.optional() }).strict()
       const value = (method === 'getWorkspaceRoot' ? schema.extend({ directory: directoryGrantSchema.shape.path.optional() }) : schema).parse(input) as { employeeId: string; conversationId?: string; directory?: string }
-      const assertCurrent = () => {
+      const assertCurrent = async () => {
         const agent = this.getAgent(value.employeeId)
+        if (value.conversationId && (this.clearingConversations.has(value.conversationId) || await this.store.get('conversationCleanup', value.conversationId))) fail('会话清理尚未完成，请先完成原清理')
         if (value.directory && !agent.directoryGrants?.some(grant => grant.path === value.directory)) fail('目录授权已失效，请重新打开')
         if (this.userWorkspaceClosures.has(`employee:${value.employeeId}`) || value.conversationId && (this.userWorkspaceClosures.has(`conversation:${value.conversationId}`) || this.userWorkspaceClosures.has(`scope:${JSON.stringify([value.employeeId, value.conversationId])}`))) fail('工作区正在关闭，请稍后重试')
         if (value.conversationId && !this.getConversation(value.conversationId).agentIds.includes(value.employeeId)) fail('员工不属于当前会话')
       }
-      assertCurrent()
+      await assertCurrent()
       if (method === 'validateWorkspaceScope') return
       const root = value.directory
         ? (await workingDirectoryTarget(value.directory, [await realpath(this.dataPath)])).path
         : await restrictedPath([this.dataPath], this.homes.root(value.employeeId))
-      assertCurrent()
+      await assertCurrent()
       if (value.directory && root !== value.directory) fail('授权目录已变化，请重新核对')
       return root
     }
@@ -4473,6 +4480,8 @@ export class AppService {
         generate: (input, references) => this.images.generate(input, references, signal, () => this.serialize(async () => { await this.assertExecutionAccess(context) })),
         verify: async source => { await this.serialize(async () => { await this.assertExecutionAccess(context) }); await this.images.verify(source) },
       }, dataSources: isCoreAgent(agent) ? this.dataSources.allSummaries(agent.id) : this.dataSources.summaries(agent.sourceIds, agent.id),
+      canvasEnabled: await this.canvas.enabled(),
+      callCanvas: input => this.canvas.call(input, context),
       desktopPluginEnabled: await this.desktopPlugin.enabled(),
       readDesktopPluginSkill: async () => { await this.serialize(async () => { await this.assertExecutionAccess(context) }); return this.desktopPlugin.skill(context) },
       inspectDesktopPlugin: async () => { await this.serialize(async () => { await this.assertExecutionAccess(context) }); return this.desktopPlugin.inspect(context) },
@@ -4486,7 +4495,7 @@ export class AppService {
       webSearchSelection: {}, selectWebSearch: input => this.selectWebSearch(context, input),
       inspectDataSource: sourceId => this.useDataSource(context, sourceId),
       callDataSource: input => this.useDataSource(context, input.sourceId, sourceCallSchema.parse(input)),
-      closeDataSources: async () => { await Promise.all([this.dataSources.closeRun(run.id), this.webSearch.connections.closeRun(run.id), this.desktopPlugin.closeRun(run.id)]) }, groupCoordination, browserAvailable: !!this.options.browserHost && this.options.browserHost.available !== false && isBrowserCapableAgent(agent), artifactRevision: artifactRevision?.request, agent: clone(agent), connection: clone(connection), modelCatalog: connection ? this.gatewayCatalogs.get(connection) : undefined, runtimeProfile: clone(runtimeProfile), apiKey, conversation: clone(conversation), messages, materialRefs: materialContext.refs, materialImages: materialContext.images.filter(image => visibleMessageIds.has(image.messageId)), continuation, resources: clone(snapshot.resources), runId: run.id, signal, ...loaded, memory: combined, memoryContexts: this.memoryContexts(conversation, run.workId), members: conversation.agentIds.map(id => clone(this.getAgent(id))), contributions: await this.authorizedContributions(conversation, agent.id, turn.id, visibleMessageIds), triggerMessageId: turn.triggerMessageId, turnId: turn.id, onDelta: async () => {}, onTool: async () => {}, approveCommand: async () => false,
+      closeDataSources: async () => { await Promise.all([this.dataSources.closeRun(run.id), this.webSearch.connections.closeRun(run.id), this.desktopPlugin.closeRun(run.id), this.canvas.closeRun(run.id)]) }, groupCoordination, browserAvailable: !!this.options.browserHost && this.options.browserHost.available !== false && isBrowserCapableAgent(agent), artifactRevision: artifactRevision?.request, agent: clone(agent), connection: clone(connection), modelCatalog: connection ? this.gatewayCatalogs.get(connection) : undefined, runtimeProfile: clone(runtimeProfile), apiKey, conversation: clone(conversation), messages, materialRefs: materialContext.refs, materialImages: materialContext.images.filter(image => visibleMessageIds.has(image.messageId)), continuation, resources: clone(snapshot.resources), runId: run.id, signal, ...loaded, memory: combined, memoryContexts: this.memoryContexts(conversation, run.workId), members: conversation.agentIds.map(id => clone(this.getAgent(id))), contributions: await this.authorizedContributions(conversation, agent.id, turn.id, visibleMessageIds), triggerMessageId: turn.triggerMessageId, turnId: turn.id, onDelta: async () => {}, onTool: async () => {}, approveCommand: async () => false,
       assertSkillAccess: ids => this.serialize(async () => {
         this.capabilities.assertResourceAccess(ids, context.agent.id)
         const { current, conversation } = await this.assertExecutionAccess(context)
@@ -5664,7 +5673,7 @@ export class AppService {
           const organizationReceipt = context.work?.organization ? await this.boboCollaboration.lookup({ requestId: context.work.organization.requestId }) : null
           const committedCollaborationIds = organizationReceipt?.status === 'committed' && !organizationReceipt.sourceCleared ? [organizationReceipt.id] : []
           const reportContext: EngineContext = { ...context, ...stale, committedCollaborationIds, materialRefs: context.materialRefs, modelCallId: typeof reportCall === 'string' ? reportCall : undefined, resources: [], responseKind: 'chat',
-            workspace: undefined, environment: undefined, onArtifact: undefined, onWorkOutcome: undefined, beforeEffect: undefined, afterEffect: undefined, browserSession: undefined, createTeam: undefined, organizeCollaboration: undefined, findEmployees: undefined, delegateWork: undefined, waitForWork: undefined,
+            canvasEnabled: false, callCanvas: undefined, workspace: undefined, environment: undefined, onArtifact: undefined, onWorkOutcome: undefined, beforeEffect: undefined, afterEffect: undefined, browserSession: undefined, createTeam: undefined, organizeCollaboration: undefined, findEmployees: undefined, delegateWork: undefined, waitForWork: undefined,
             work: { ...context.work!, outcome, artifactIds: [...this.artifacts.values()].filter(artifact => artifact.runId === run.id).map(artifact => artifact.id) },
             onDelta: async () => {}, onTool: async () => { throw new Error('重新汇报不允许执行工具') }, approveCommand: async () => false,
             onUsage: async usage => {
@@ -5708,7 +5717,7 @@ export class AppService {
       throw new Error(this.redact(this.errorMessage(error), key))
     } finally {
       this.activeEngineContexts.delete(run.id)
-      try { await Promise.all([this.dataSources.closeRun(run.id), this.webSearch.connections.closeRun(run.id), this.desktopPlugin.closeRun(run.id)]) } finally {
+      try { await Promise.all([this.dataSources.closeRun(run.id), this.webSearch.connections.closeRun(run.id), this.desktopPlugin.closeRun(run.id), this.canvas.closeRun(run.id)]) } finally {
         try { await this.browserPlugins.closeRun(run.id) } finally { try { await this.browserSessions.get(run.id)?.session.drain(); this.browserSessions.delete(run.id) } finally {
           releaseTask?.(); if (workDeadline) clearTimeout(workDeadline); signal.removeEventListener('abort', abort); this.runControllers.delete(run.id); this.organizationModelCalls.delete(run.id); await this.clearApprovals(run.id)
         } }
@@ -6265,7 +6274,7 @@ export class AppService {
       if (this.teamGeneration.busy) fail('团队方案仍在生成，请停止后备份')
       await this.automations.beforeBackup()
       await this.desktopActivity.beforeBackup()
-      if (this.scheduler.busy || this.runControllers.size || this.activeAdapters.size || this.externalTests.size || this.skills.busy || this.skillUpdates.busy || this.skillLibrary.busy || this.materialImports.size || this.materialUploads.busy || this.materials.busy || this.capabilities.packages.busy || this.dataSources.busy || this.webSearch.connections.busy || this.desktopPlugin.busy) fail('有任务、材料准备或资源管理操作正在执行或等待修复，请先停止或完成后备份')
+      if (this.scheduler.busy || this.runControllers.size || this.activeAdapters.size || this.externalTests.size || this.skills.busy || this.skillUpdates.busy || this.skillLibrary.busy || this.materialImports.size || this.materialUploads.busy || this.materials.busy || this.capabilities.packages.busy || this.dataSources.busy || this.webSearch.connections.busy || this.desktopPlugin.busy || this.canvas.busy) fail('有任务、材料准备或资源管理操作正在执行或等待修复，请先停止或完成后备份')
       await this.options.engine.closeMemory?.()
       await this.userMemoryProvider.close()
       await mkdir(destination, { recursive: true })
@@ -6325,9 +6334,10 @@ export class AppService {
       await cp(join(this.dataPath, 'capability-packages'), join(destination, 'capability-packages'), { recursive: true, dereference: false }).catch(error => { if ((error as NodeJS.ErrnoException).code !== 'ENOENT' || this.capabilities.packages.list().length) throw error })
       await this.capabilities.packages.assertBackupComplete(destination)
       await cp(join(this.dataPath, 'memory'), join(destination, 'memory'), { recursive: true }).catch(error => { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error })
-      await writeFile(join(destination, 'backup.json'), JSON.stringify({ format: 'boai-agent-local-backup', version: 2, createdAt: now(), sourceDataPath: this.dataPath, credentialsIncluded: false, externalUserMemoryIncluded: false, capabilityPackageRestorePolicy: 'disabled', automationRestorePolicy: 'paused', agentBehaviorRestorePolicy: 'paused', nativeAgentRestorePolicy: 'fresh-session', excludedNativeRuntimeHomes: [...nativeRuntimeHomes].map(directory => relative(this.dataPath, directory)), excludedLegacyBrowserRuns: [...legacyBrowserRuns].map(directory => relative(this.dataPath,directory)) }, null, 2))
+      await cp(join(this.dataPath, 'canvases'), join(destination, 'canvases'), { recursive: true, dereference: false }).catch(error => { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error })
+      await writeFile(join(destination, 'backup.json'), JSON.stringify({ format: 'boai-agent-local-backup', version: 2, createdAt: now(), sourceDataPath: this.dataPath, canvasAssets: 'embedded-in-canvases', credentialsIncluded: false, externalUserMemoryIncluded: false, capabilityPackageRestorePolicy: 'disabled', automationRestorePolicy: 'paused', agentBehaviorRestorePolicy: 'paused', nativeAgentRestorePolicy: 'fresh-session', excludedNativeRuntimeHomes: [...nativeRuntimeHomes].map(directory => relative(this.dataPath, directory)), excludedLegacyBrowserRuns: [...legacyBrowserRuns].map(directory => relative(this.dataPath,directory)) }, null, 2))
       await writeFile(join(destination, 'data-version.json'), JSON.stringify({ schemaVersion: 2, restoredBackup: true, createdAt: now() }, null, 2))
-      await writeFile(join(destination, 'RESTORE.txt'), '退出 BoAI Agent 后，先备份目标应用现有数据，再将 boai.sqlite、data-version.json、skills、capability-packages（如存在）、knowledge、workspaces、agents、external-workspaces、materials、appearance、activity-records、memory 和 automation-mastra.sqlite（如存在）复制到目标应用 userData/v2 目录；不要与现有数据库混用。保留 v2 中的 data-version.json 版本标记后再启动新版应用。启动时会自动重定位受管资源、员工目录与产物路径。materials 仅包含已发送的聊天材料；草稿不恢复，也不重新读取外部来源。恢复后桌面活动记录、截图保存和键鼠监听默认关闭；定时任务、主动交流及情绪/成长/旅行自动行为默认暂停，员工提示词与疲劳设置保留；请在确认连接、授权和配置后逐项启用。渠道绑定与普通资料/检索连接也默认停用。能力包默认停用，冻结原件需连同capability-packages目录恢复；包数据源仍受员工绑定与包启用门禁，补回缺失凭据后再沿原包入口显式启用。旧备份没有 materials 或 appearance 时，请先移走目标目录对应旧文件夹，避免混入旧数据。API Key 与外部登录态未包含在备份中，需重新配置。Memmy 外部服务数据不包含在备份中，恢复后记忆提供方默认关闭；未确认的同步不会自动重发。Mastra Memory 的 memory 目录包含 Working Memory、OM、来源遗忘屏障及向量索引，需一起恢复；启动后仍复核来源权限。本机 Agent 私有运行目录不包含在备份中，外部程序自己的历史也不由本备份恢复或删除；原会话引用只供核对，下一次发送消息时从获准聊天内容建立新会话，启动不会自动续行。未完成浏览器下载不包含在备份中；旧版浏览器运行目录缺少可信完成状态，原件保留在来源设备但不导出，具体目录见 backup.json。已发布的受管成果仍正常备份。\n')
+      await writeFile(join(destination, 'RESTORE.txt'), '退出 BoAI Agent 后，先备份目标应用现有数据，再将 boai.sqlite、data-version.json、skills、capability-packages（如存在）、knowledge、workspaces、agents、external-workspaces、materials、appearance、activity-records、memory、canvases 和 automation-mastra.sqlite（如存在）复制到目标应用 userData/v2 目录；不要与现有数据库混用。保留 v2 中的 data-version.json 版本标记后再启动新版应用。启动时会自动重定位受管资源、员工目录与产物路径。canvases 包含画板文档及内嵌资产，需整个目录一起恢复。materials 仅包含已发送的聊天材料；草稿不恢复，也不重新读取外部来源。恢复后桌面活动记录、截图保存和键鼠监听默认关闭；定时任务、主动交流及情绪/成长/旅行自动行为默认暂停，员工提示词与疲劳设置保留；请在确认连接、授权和配置后逐项启用。渠道绑定与普通资料/检索连接也默认停用。能力包默认停用，冻结原件需连同capability-packages目录恢复；包数据源仍受员工绑定与包启用门禁，补回缺失凭据后再沿原包入口显式启用。旧备份没有 materials 或 appearance 时，请先移走目标目录对应旧文件夹，避免混入旧数据。API Key 与外部登录态未包含在备份中，需重新配置。Memmy 外部服务数据不包含在备份中，恢复后记忆提供方默认关闭；未确认的同步不会自动重发。Mastra Memory 的 memory 目录包含 Working Memory、OM、来源遗忘屏障及向量索引，需一起恢复；启动后仍复核来源权限。本机 Agent 私有运行目录不包含在备份中，外部程序自己的历史也不由本备份恢复或删除；原会话引用只供核对，下一次发送消息时从获准聊天内容建立新会话，启动不会自动续行。未完成浏览器下载不包含在备份中；旧版浏览器运行目录缺少可信完成状态，原件保留在来源设备但不导出，具体目录见 backup.json。已发布的受管成果仍正常备份。\n')
     } finally {
       try { await this.automations.afterBackup() } finally { this.backingUp = false; this.desktopActivity.afterBackup(); for (const id of this.conversations.keys()) this.scheduleWork(id) }
       // A send acknowledged just before backup acquired the gate may have queued a job.
@@ -6336,7 +6346,7 @@ export class AppService {
   claimIdleShutdown(canClaim: () => boolean): Promise<boolean> {
     return this.serialize(async () => {
       if (!this.initialized || this.closing || this.backingUp) return false
-      const busy = () => this.agentBehaviors.busy || this.application.busy || this.scheduler.busy || this.runControllers.size > 0 || this.activeAdapters.size > 0 || this.adapterExits.size > 0 || this.externalTasks.size > 0 || this.externalTests.size > 0 || this.teamGeneration.busy || this.skills.busy || this.skillUpdates.busy || this.skillLibrary.busy || this.materialImports.size > 0 || this.materialUploads.busy || this.materials.busy || this.capabilities.packages.busy || this.dataSources.busy || this.webSearch.connections.busy || this.desktopPlugin.busy
+      const busy = () => this.agentBehaviors.busy || this.application.busy || this.scheduler.busy || this.runControllers.size > 0 || this.activeAdapters.size > 0 || this.adapterExits.size > 0 || this.externalTasks.size > 0 || this.externalTests.size > 0 || this.teamGeneration.busy || this.skills.busy || this.skillUpdates.busy || this.skillLibrary.busy || this.materialImports.size > 0 || this.materialUploads.busy || this.materials.busy || this.capabilities.packages.busy || this.dataSources.busy || this.webSearch.connections.busy || this.desktopPlugin.busy || this.canvas.busy
       if (busy()) return false
       try { await this.teamCreation.assertBackup(); await this.boboCollaboration.assertBackup() } catch { return false }
       const works = await this.store.load<WorkItem>('workItems')
@@ -6347,11 +6357,12 @@ export class AppService {
       return true
     })
   }
-  async browserPluginsChanged() { await Promise.all([this.browserPlugins.refresh(), this.desktopPlugin.refresh()]) }
+  async browserPluginsChanged() { await Promise.all([this.browserPlugins.refresh(), this.desktopPlugin.refresh(), this.canvas.refresh()]) }
   close() { return this.closeTask ??= this.drain() }
   private async drain() {
     this.closing = true
     await this.desktopActivity.close()
+    await this.canvas.close()
     await this.desktopPlugin.close()
     await this.browserPlugins.close()
     await this.previews.close()

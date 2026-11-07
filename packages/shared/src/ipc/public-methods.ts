@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Canvas宿主和主窗口私有方法不进入公共准入。
  * [OUTPUT]: 本人诊断解释窄首发入口公开，固定正文与受理边界由原服务核对。
  * [OUTPUT]: 项目选择沿本人版本化会话入口。
  * [OUTPUT]: 本人会话消息队列读取/精确操作进入原IPC准入。
@@ -51,6 +52,7 @@ import type { Method } from './index'
 
 // Record makes a newly declared public method require an explicit host entry.
 const methods = {
+  canvasHost: false, canvasCommand: false, canvasFlushed: false,
   openEmployeeTaskSession: true, sendEmployeeTaskMessage: true, getEmployeeTaskMessageReceipt: true,
   listConversationQueue: true, actOnConversationQueue: true,
   createEmployeeTask: true, listEmployeeTasks: true, getEmployeeTask: true, updateEmployeeTask: true, deleteEmployeeTask: true, clearEmployeeTasks: true, runEmployeeTask: true, runEmployeeTasks: true,
