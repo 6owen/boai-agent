@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 画板源清理沿原conversationCleanup固定身份重试，外改冲突保留来源屏障与可见恢复错误。
  * [OUTPUT]: 交接材料在原会话清理屏障/运行删除事务内撤销正文，离线恢复沿同一逻辑且保留防重放身份。
  * [OUTPUT]: 原生会话切换记录沿原会话清理，不触及项目原件。
  * [OUTPUT]: 会话/执行历史按SQL引用筛选ID，避免将无关Trace与执行正文载入内存；原事务失效与恢复范围保持。
@@ -24,6 +25,7 @@ import { clearApplicationReceipts } from '../application/application-service'
 import { clearAgentPersonality } from '../agent-state/lifecycle'
 import { lstat, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { createHash, randomUUID } from 'node:crypto'
+import type { CanvasScopeFilter } from '@boai/canvas-plugin/protocol'
 import { join, relative, sep } from 'node:path'
 import type { BudgetModelCall, ClearedBudgetModelCall, Conversation, MemoryEntry, WorkBudget, WorkItem } from '@boai/shared/domain'
 import type { ContactListPreferences } from '@boai/shared/domain/contact-list'
@@ -37,10 +39,10 @@ import { MemoryRepository } from '../memory/memory-repository'
 import type { SessionOperationRecord } from './session-operations'
 
 interface HistoryRecord { id: string; conversationId?: string; turnId?: string; runId?: string; workId?: string; budgetId?: string; messageId?: string; conversation?: { id: string }; fingerprint?: string }
-interface Cleanup { id: string; hide: boolean; remove?: boolean; sessionRequestId?: string }
+interface Cleanup { id: string; hide: boolean; remove?: boolean; sessionRequestId?: string; canvasCleanupId?: string; canvasCleanupError?: string }
 interface HistoryClearResult { conversation: Conversation; removals: { collection: string; id: string }[]; memoryEpochs: { id: string; epoch: number }[]; occurrences: AutomationOccurrence[] }
 export class ConversationHistory {
-  constructor(private store: ProductStore, private dataPath: string, private materials?: MaterialRepository, private artifacts?: ArtifactRepository, private reading?: ConversationReadingRepository) {}
+  constructor(private store: ProductStore, private dataPath: string, private materials?: MaterialRepository, private artifacts?: ArtifactRepository, private reading?: ConversationReadingRepository, private cleanupCanvas?: (filter: CanvasScopeFilter, cleanupId: string) => Promise<void>) {}
   async recover() {
     const conflicts: { conversationId: string; error: string }[] = []
     const conversations = await this.store.load<Conversation>('conversations')
@@ -52,7 +54,8 @@ export class ConversationHistory {
       if ((await this.store.load<{conversationId:string}>('browserCleanups')).some(item=>item.conversationId===pending.id)) { conflicts.push({conversationId:pending.id,error:'浏览器存储尚未实际清理'}); continue }
       if (conversation) try { await this.clear(conversation, pending.hide, pending.remove) } catch (error) {
         const sourceConflicts = [...await this.store.load<{ conversationId: string; status: string }>('materialCleanups'), ...await this.store.load<{ conversationId: string; status: string }>('artifactCleanups')].some(item => item.conversationId === conversation.id && item.status === 'conflict')
-        if (!sourceConflicts) throw error
+        const canvasConflict = (await this.store.get<Cleanup>('conversationCleanup', conversation.id))?.canvasCleanupError
+        if (!sourceConflicts && !canvasConflict) throw error
         conflicts.push({ conversationId: conversation.id, error: error instanceof Error ? error.message : '材料或成果清理未完成' })
       }
     }
@@ -97,7 +100,7 @@ export class ConversationHistory {
     }
     // Validate every parent before deleting anything; never follow recorded artifact/source paths.
     for (const path of paths) await this.safe(path)
-    const sessionRequestId = await this.store.transaction(async tx => {
+    const { sessionRequestId, canvasCleanupId } = await this.store.transaction(async tx => {
       const pending = await tx.get<Cleanup>('conversationCleanup', id)
       if (sessionReceipt && pending && pending.sessionRequestId !== sessionReceipt.requestId) throw new Error('原会话清理尚未结束，请先核对原操作')
       const requestId = pending?.sessionRequestId ?? sessionReceipt?.requestId
@@ -106,13 +109,31 @@ export class ConversationHistory {
         if (previous && (previous.fingerprint !== sessionReceipt.fingerprint || previous.state !== 'pending')) throw new Error('会话操作身份或状态已变化')
         await tx.put({ collection: 'sessionReceipts', id: sessionReceipt.id, value: sessionReceipt })
       }
-      await tx.put({ collection: 'conversationCleanup', id, value: { id, hide, ...(remove ? { remove: true } : {}), ...(requestId ? { sessionRequestId: requestId } : {}) } })
+      const canvasCleanupId = pending?.canvasCleanupId ?? randomUUID()
+      await tx.put({ collection: 'conversationCleanup', id, value: { id, hide, ...(remove ? { remove: true } : {}), ...(requestId ? { sessionRequestId: requestId } : {}), canvasCleanupId, ...(pending?.canvasCleanupError ? { canvasCleanupError: pending.canvasCleanupError } : {}) } })
       await clearContextHandoffs(tx, { conversationId: id })
-      return requestId
+      return { sessionRequestId: requestId, canvasCleanupId }
     })
     // Revoke derived memory even if a later hash conflict preserves a private original.
     const memoryRepository = new MemoryRepository(this.store)
     for (const agent of agents) await memoryRepository.invalidateConversation(agent.id, id)
+    if (this.cleanupCanvas) {
+      try {
+        await this.cleanupCanvas({ conversationId: id }, canvasCleanupId)
+        await this.store.transaction(async tx => {
+          const pending = await tx.get<Cleanup>('conversationCleanup', id)
+          if (!pending || pending.canvasCleanupId !== canvasCleanupId) throw new Error('原画板清理身份已变化')
+          const { canvasCleanupError: _error, ...current } = pending
+          await tx.put({ collection: 'conversationCleanup', id, value: current })
+        })
+      } catch (error) {
+        await this.store.transaction(async tx => {
+          const pending = await tx.get<Cleanup>('conversationCleanup', id)
+          if (pending?.canvasCleanupId === canvasCleanupId) await tx.put({ collection: 'conversationCleanup', id, value: { ...pending, canvasCleanupError: error instanceof Error ? error.message : String(error) } })
+        })
+        throw error
+      }
+    }
     if (this.artifacts) {
       await this.store.transaction(tx => this.artifacts!.invalidateConversation(tx, id))
       await this.artifacts.cleanupConversation(id)

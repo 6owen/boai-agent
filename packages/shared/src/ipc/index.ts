@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Canvas私有宿主协议及人工草稿flush屏障，不开放公共CLI方法。
  * [OUTPUT]: 诊断解释窄入口沿原核心首发，明确区分未受理与提交后未知并绑定requestId。
  * [OUTPUT]: sendMessage与核心首发接收本人明确选择的诊断目标，由宿主验证并持久化来源，不授权目标执行。
  * [OUTPUT]: 项目选择CAS与发送版本接入既有消息协议。
@@ -121,6 +122,8 @@ export const CLIPBOARD_MATERIAL_FILE_FORMATS = ['Files', 'text/uri-list', 'x-spe
 export type MaterialFileSourceInput = { path: string } | { name: string; bytes: Uint8Array }
 
 export type AppEvent =
+  | { type: 'canvas:flush'; id: string; scope?: import('@boai/canvas-plugin/protocol').CanvasScope; boardId?: string; hold?: boolean }
+  | { type: 'canvas:resume'; id: string }
   | { type: 'app:update'; state: import('./app-updates').AppUpdateState }
   | { type: 'desktop:lifecycle'; state: import('./desktop').DesktopLifecycle }
   | { type: 'workspace:show'; employeeId: string; conversationId: string; view: 'terminal' | 'preview' }
@@ -151,6 +154,9 @@ export type AppEvent =
 
 import type { ContextHandoffMethods } from '../domain/context-handoff'
 export interface Methods extends EmployeeTaskMethods, MessageQueueMethods, ContextHandoffMethods {
+  canvasHost: { input: import('@boai/canvas-plugin/protocol').CanvasHostEnvelope; output: import('@boai/canvas-plugin/protocol').CanvasHostResponse }
+  canvasCommand: { input: { scope: import('@boai/canvas-plugin/protocol').CanvasScope; command: import('@boai/canvas-plugin/protocol').CanvasRequest }; output: import('@boai/canvas-plugin/protocol').CanvasResponse }
+  canvasFlushed: { input: { id: string; error?: string }; output: void }
   closeUserWorkspace: { input: { employeeId: string; conversationId?: string } | { conversationId: string }; output: void }
   getWorkspaceRoot: { input: import('./workspace-files').WorkspaceFileScope; output: string }
   validateWorkspaceScope: { input: import('./workspace-files').WorkspaceFileScope; output: void }

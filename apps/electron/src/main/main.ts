@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 可信主窗口允许私有画板UI请求；公共CLI与canvasHost权限边界保持。
+ * [OUTPUT]: WT1聚合独立画板宿主；可信主窗、私有工具、人工保存屏障和退出清理共用原生命周期。
  * [OUTPUT]: 项目目录选择使用独立主窗系统对话框，不添加目录授权；路径由运行时保存时规范核验。
  * [OUTPUT]: macOS窗口按钮按共享toolbar-height与当前界面缩放垂直居中，创建/重载/缩放同步原生位置。
  * [OUTPUT]: 外观v2及诊断安全宿主桥；请求固定原runtime代次/进程，无runtime本人摘要不启动服务。
@@ -98,6 +100,8 @@ import { mkdir, realpath, stat, rm, readFile, writeFile } from 'node:fs/promises
 import { extname, isAbsolute, join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { AppearanceStore } from './appearance'
+import { ElectronCanvasHost } from './canvas-host'
+import { CANVAS_PLUGIN_ID } from '@boai/shared/plugins/catalog'
 import { AppIconController } from './app-icon'
 import { resolveTheme, zoomFactors } from '@boai/shared/appearance'
 import { softTokens } from '@boai/tokens'
@@ -116,7 +120,7 @@ import { DesktopSettingsStore } from './desktop-settings'
 import { BackgroundTray, hideMainWindow, cancelWindowHide } from './background'
 import { assertRuntimeHostRequest, stopRuntime } from './runtime-shutdown'
 import { acquireRuntimeProfileAccess } from '@boai/runtime/profile-access'
-import { isPublicMethod } from '@boai/shared/ipc/public-methods'
+import { isMainWindowMethod } from './main-window-methods'
 import { ApplicationHostError, isApplicationHostMethod, type ApplicationHostMethod } from '@boai/shared/ipc/application-host'
 import { appearanceHostRequest, appearanceRevisionInput } from './appearance-host'
 import { openDesktopCli, desktopCliConnection } from './cli-service'
@@ -183,8 +187,10 @@ async function applicationHostRequest(method: ApplicationHostMethod, input: unkn
     if ('employeeId' in value && value.conversationId) await userTerminals.stopScope({ employeeId: value.employeeId, conversationId: value.conversationId })
     else if ('employeeId' in value) await userTerminals.stopEmployee(value.employeeId)
     else await userTerminals.clearConversation(value.conversationId)
+    await canvas.closeScope(value)
     return
   }
+  if (method === 'canvasHost') return canvas.call(input as Methods['canvasHost']['input'])
   if (method === 'captureDesktopActivity') return desktopActivityCapture(input)
   if (method === 'getAppearance' || method === 'updateAppearance' || method === 'resetAppearance' || method === 'removeAppearanceBackground') return appearanceHostRequest(appearance, method, input)
   if (method === 'getAppIconStatus') { z.undefined().parse(input); return appIconController.snapshot() }
@@ -237,6 +243,7 @@ const appIconController = new AppIconController(appIconAssets, join(__dirname, '
 const pluginSettings = new PluginSettingsStore(join(legacyDataPath, 'application-plugins.json'), settings => {
   if (runtime) void requestCurrentRuntime(runtime, '__browserPluginsChanged', undefined).catch(error => sendEvent({ type: 'runtime-error', error: String(error) }))
   if (pluginAvailability(applicationPlugins.find(plugin => plugin.id === 'boai.voice-input')!, settings) !== 'enabled') void voice.close().catch(() => {})
+  void canvas.refresh().catch(error => sendEvent({ type: 'runtime-error', error: String(error) }))
   sendEvent({ type: 'plugins:changed', settings })
   appearance.systemChanged()
 })
@@ -270,6 +277,13 @@ const resolveUserWorkspace = async (scope: WorkspaceFileScope) => {
   if (quitting) throw new Error('应用正在退出')
   return await requestRuntime('getWorkspaceRoot', scope) as string
 }
+const canvas = new ElectronCanvasHost({
+  rootDirectory: join(dataPath, 'canvases'), preloadPath: join(__dirname, 'canvas-renderer-preload.cjs'),
+  rendererFile: join(__dirname, '../renderer/canvas-renderer.html'),
+  rendererUrl: !app.isPackaged && process.env.BOAI_RENDERER_URL ? new URL('/canvas-renderer.html', process.env.BOAI_RENDERER_URL).href : undefined,
+  enabled: () => !quitting && pluginAvailability(applicationPlugins.find(plugin => plugin.id === CANVAS_PLUGIN_ID)!, pluginSettings.snapshot()) === 'enabled',
+  authorize: async scope => { await resolveUserWorkspace(scope) }, mainWindow: () => window,
+})
 const workspaceFiles = new WorkspaceFileService(resolveUserWorkspace, (path, action, applicationId) => workspaceApplications.open(path, action, applicationId), () => pluginAvailability(applicationPlugins.find(plugin => plugin.id === 'boai.file-explorer')!, pluginSettings.snapshot()) === 'enabled')
 const userTerminals = new WorkspaceTerminalService(dataPath, {
   resolveScope: resolveUserWorkspace,
@@ -579,12 +593,14 @@ function registerIpc() {
   ipcMain.handle('boai:request', async (event, payload: { method: Method; input: unknown }) => {
     if (!window || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) throw new Error('不允许的请求来源。')
     if (!payload || typeof payload.method !== 'string' || JSON.stringify(payload).length > 2_000_000) throw new Error('无效请求。')
-    if (!isPublicMethod(payload.method)) throw new Error(unsupportedRequestMessage)
+    if (!isMainWindowMethod(payload.method)) throw new Error(unsupportedRequestMessage)
     const { method, input } = payload
     if (quitting) throw new Error('应用正在退出，请稍后重新打开。')
     if (method === 'listGatewayImports') { importWindowReady = true; for (const error of importErrors.splice(0)) sendEvent({ type: 'runtime-error', error }) }
     if (method === 'discoverModelGateway') { z.undefined().parse(input); return discoverLocalMagpie(baseUrl => requestRuntime('probeModelGateway', { baseUrl }) as Promise<Methods['probeModelGateway']['output']>) }
     if (method === 'installRuntimePlugin') { const value = z.object({expectedRevision:z.number().int().nonnegative()}).strict().parse(input); const chosen = await dialog.showOpenDialog(window, { title: '安装受信任的运行时插件包', properties: ['openDirectory'] }); if (chosen.canceled || !chosen.filePaths[0]) return null; return requestRuntime('__installRuntimePlugin', {directory:await realpath(chosen.filePaths[0]),expectedRevision:value.expectedRevision}) }
+    if (method === 'canvasFlushed') { canvas.flushed(z.object({ id: z.string().uuid(), error: z.string().max(4000).optional() }).strict().parse(input)); return }
+    if (method === 'canvasCommand') return canvas.request(input as Methods['canvasCommand']['input'])
     if (isApplicationHostMethod(method)) return applicationHostRequest(method, input)
     if (method === 'executeApplicationOperation' && input && typeof input === 'object' && 'operation' in input && input.operation === 'diagnostics.task') {
       if (!runtime) throw new Error('运行服务未连接，任务证据当前不可读；可在数据设置查看宿主诊断摘要。')
@@ -776,7 +792,7 @@ function registerIpc() {
       const destination = join(result.filePaths[0], `boai-agent-backup-${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID().slice(0,8)}`)
       if (inside(await realpath(dataPath), resolve(destination))) throw new Error('请在应用数据目录之外保存备份。')
       try {
-        await appearance.coordinatedBackup(destination,()=>requestRuntime('__backup', { destination }))
+        await canvas.coordinatedBackup(() => appearance.coordinatedBackup(destination, () => requestRuntime('__backup', { destination })))
         const manifest=JSON.parse(await readFile(join(destination,'backup.json'),'utf8'));manifest.appearanceIncluded=true;manifest.automationRestorePolicy='paused';await writeFile(join(destination,'backup.json'),JSON.stringify(manifest,null,2))
       } catch(error){await rm(destination,{recursive:true,force:true});throw error}
       return destination
@@ -999,7 +1015,7 @@ else {
     // A timeout may terminate the worker, but never counts as Chromium action exit.
     const cliExit = (cliStarting ?? Promise.resolve()).then(async () => { await cli?.close(); cli = undefined })
     const userTerminalExit = userTerminals.close()
-    void Promise.all([runtimeExit, cliExit, iconExit, userTerminalExit, voice.close(), browsers.shutdown(), materialSources.close(), desktopSettings.flush(), shortcutSettings.flush(), pluginSettings.flush(), cliInstaller.flush()]).then(async () => {
+    void Promise.all([runtimeExit, cliExit, iconExit, userTerminalExit, canvas.close(), voice.close(), browsers.shutdown(), materialSources.close(), desktopSettings.flush(), shortcutSettings.flush(), pluginSettings.flush(), cliInstaller.flush()]).then(async () => {
       diagnostics.record('app-quit'); desktopLifecycle.stop(); background.destroy(); quitApproved = true
       if (appUpdates.finishQuit()) {
         // Native installation must terminate this process; a stalled handoff is a failure.

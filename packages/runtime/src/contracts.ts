@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Scoped canvas capability supports API/native structured edits and exact-revision exports.
  * [OUTPUT]: 显式持久交接通过原生准备/绑定/受理/未知回调接入，准备不启动任务。
  * [OUTPUT]: historySearch能力统一提供当轮设置、指引、原文查询与可选预检。
  * [OUTPUT]: 插件技能只读端口随实际启停提供，不创建绑定或改变原生循环。
@@ -131,6 +132,9 @@ export interface EngineContext {
   nativeSourceFingerprint?: string
   /** Source-matched metadata only; refreshing it never changes employee or connection identity. */
   modelCatalog?: import('@boai/shared/domain/model-gateway').ModelCatalog
+  canvasEnabled?: boolean
+  /** Host fixes employee/conversation, verifies the active run and drains actual canvas operations on cancellation. */
+  callCanvas?(input: import('./adapters/mastra/canvas-tools').CanvasAgentRequest): Promise<unknown>
   desktopPluginEnabled?: boolean
   /** Live plugin guide availability; reading never starts a desktop process or grants permission. */
   readDesktopPluginSkill?(): Promise<import('@boai/shared/plugins/desktop-tools').DesktopPluginSkill | undefined>

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Canvas package stays independent; shared imports only its platform-neutral protocol.
  * [OUTPUT]: Agent Desktop 可选插件接线；默认关闭、独立于旧computer-use，调用沿员工权限及真实图片。
  * [OUTPUT]: 独立浏览器包只依赖上游，由runtime调用公开host入口。
  * [OUTPUT]: 2026-10-29 包边界纳入file-explorer-plugin；build分发固定来源和MIT许可。
@@ -18,18 +19,19 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const sourceExtensions = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'])
 const builtins = new Set(builtinModules.flatMap(name => [name, `node:${name}`]))
 const allowed = {
-  '@boai/shared': ['@boai/tokens', '@boai/runtime-plugin-sdk'],
+  '@boai/canvas-plugin': [],
+  '@boai/shared': ['@boai/canvas-plugin', '@boai/tokens', '@boai/runtime-plugin-sdk'],
   '@boai/file-explorer-plugin': ['@boai/shared', '@boai/ui'],
   '@boai/voice-input-plugin': ['@boai/shared'],
   '@boai/browser-plugins': [],
   '@boai/desktop-plugin': [],
   '@boai/transport': ['@boai/shared'],
-  '@boai/runtime': ['@boai/desktop-plugin', '@boai/browser-plugins', '@boai/shared', '@boai/transport', '@boai/tokens', '@boai/runtime-plugin-sdk', '@boai/runtime-plugins'],
+  '@boai/runtime': ['@boai/canvas-plugin', '@boai/desktop-plugin', '@boai/browser-plugins', '@boai/shared', '@boai/transport', '@boai/tokens', '@boai/runtime-plugin-sdk', '@boai/runtime-plugins'],
   '@boai/runtime-plugin-sdk': [],
   '@boai/runtime-plugins': ['@boai/shared', '@boai/runtime-plugin-sdk'],
   '@boai/ui': ['@boai/tokens'],
   '@boai/tokens': [],
-  '@boai/electron': ['@boai/file-explorer-plugin', '@boai/voice-input-plugin', '@boai/runtime', '@boai/shared', '@boai/transport', '@boai/ui', '@boai/tokens', '@boai/runtime-plugin-sdk'],
+  '@boai/electron': ['@boai/canvas-plugin', '@boai/file-explorer-plugin', '@boai/voice-input-plugin', '@boai/runtime', '@boai/shared', '@boai/transport', '@boai/ui', '@boai/tokens', '@boai/runtime-plugin-sdk'],
   '@boai/cli': ['@boai/shared', '@boai/transport'],
   '@boai/design-docs': ['@boai/ui', '@boai/tokens'],
 }

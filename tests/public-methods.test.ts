@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 画板UI请求只从可信主窗口准入，公共CLI/transport仍拒绝，canvasHost两边均拒绝。
  * [OUTPUT]: 当前密钥草稿测试可达，仍拒绝任意内部方法。
  * [OUTPUT]: 工作区根读取及终端清理仅允许受信任宿主调用，不向renderer公开。
  * [OUTPUT]: 桌面 OCR 原始采集属于私有宿主入口，公共请求拒绝。
@@ -12,6 +13,19 @@
  */
 import { expect, it } from 'vitest'
 import { isPublicMethod } from '../packages/shared/src/ipc/public-methods'
+import { isMainWindowMethod } from '../apps/electron/src/main/main-window-methods'
+
+it('admits canvas UI operations only through the trusted main window, without exposing host or runtime internals', () => {
+  for (const method of ['canvasCommand', 'canvasFlushed']) {
+    expect(isMainWindowMethod(method), method).toBe(true)
+    expect(isPublicMethod(method), method).toBe(false)
+  }
+  expect(isMainWindowMethod('snapshot')).toBe(true)
+  for (const method of ['canvasHost', 'getWorkspaceRoot', 'closeUserWorkspace', '__installRuntimePlugin', 'constructor', '__proto__', 'nonexistent']) {
+    expect(isMainWindowMethod(method), method).toBe(false)
+    expect(isPublicMethod(method), method).toBe(false)
+  }
+})
 
 it('admits catalog result reads and shared skill changes alongside the source lifecycle', () => {
   expect(isPublicMethod('testWebSearchServiceDraft')).toBe(true)

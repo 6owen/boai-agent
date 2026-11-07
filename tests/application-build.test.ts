@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 画板隐藏执行preload及上游许可纳入完整Electron构建闭包。
  * [INPUT]: 真实应用编排与受控编译/资源复制边界。
  * [OUTPUT]: 客户端隔离、完整CLI资源闭包、Electron兼容输出和失败身份回归；不启动产品。
  * [POS]: 第26组应用独立构建合同。
@@ -67,7 +68,7 @@ it('完整CLI包含serve与插件/guard/PPT/技能/语音/许可闭包，不依�
 it('默认Electron构建保留完整闭包、原路径、许可与最终全量身份', async () => {
   await buildApplication()
   expect(outputs()).toEqual([
-    'dist/cli/employee-tools.mjs', 'dist/cli/index.mjs', 'dist/main/browser-toolbar-preload.cjs', 'dist/main/main.cjs', 'dist/main/preload.cjs', 'dist/runtime/serve.mjs', 'dist/runtime/worker.mjs',
+    'dist/cli/employee-tools.mjs', 'dist/cli/index.mjs', 'dist/main/browser-toolbar-preload.cjs', 'dist/main/canvas-renderer-preload.cjs', 'dist/main/main.cjs', 'dist/main/preload.cjs', 'dist/runtime/serve.mjs', 'dist/runtime/worker.mjs',
   ])
   for (const step of [steps.guard, steps.plugins, steps.desktop, steps.icon, steps.design, steps.renderer]) expect(step).toHaveBeenCalledOnce()
   expect(steps.renderer).toHaveBeenCalledWith({ configFile: '/fixture/workspace/vite.config.ts' })
@@ -75,6 +76,7 @@ it('默认Electron构建保留完整闭包、原路径、许可与最终全量�
     'dist/main/app-icons/avatar-blue.png', 'dist/main/app-icons/tray/avatar-blueTemplate.png', 'dist/main/app-icons/tray/avatar-blueTemplate@2x.png',
     'dist/main/local-configs-LICENSE.txt', 'dist/main/local-configs-NOTICE.txt', 'dist/main/browser-LICENSE.txt', 'dist/main/browser-NOTICE.txt', 'dist/main/browser-source-manifest.json',
     'dist/renderer/craft-scenic-LICENSE.txt', 'dist/renderer/craft-scenic-NOTICE.txt', 'dist/renderer/craft-scenic-source-manifest.json',
+    'dist/canvas/TLDRAW-LICENSE.md', 'dist/canvas/NOTICE.md',
     'dist/renderer/BASE46-LICENSE.txt', 'dist/renderer/Geist-OFL.txt', 'dist/renderer/LobeIcons-LICENSE.txt',
   ]))
   expect(steps.record).toHaveBeenCalledWith('same-input', '/fixture/workspace')

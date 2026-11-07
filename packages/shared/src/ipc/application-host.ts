@@ -7,7 +7,7 @@
 import type { Methods } from './index'
 import { z } from 'zod'
 
-export const applicationHostMethods = ['closeUserWorkspace', 'captureDesktopActivity', 'getAppearance', 'updateAppearance', 'resetAppearance', 'removeAppearanceBackground', 'getAppIconStatus', 'getDiagnosticsSnapshot', 'getPluginSettings', 'setPluginEnabled'] as const
+export const applicationHostMethods = ['canvasHost', 'closeUserWorkspace', 'captureDesktopActivity', 'getAppearance', 'updateAppearance', 'resetAppearance', 'removeAppearanceBackground', 'getAppIconStatus', 'getDiagnosticsSnapshot', 'getPluginSettings', 'setPluginEnabled'] as const
 export type ApplicationHostMethod = typeof applicationHostMethods[number]
 export const isApplicationHostMethod = (value: string): value is ApplicationHostMethod => (applicationHostMethods as readonly string[]).includes(value)
 export interface ApplicationHostPort {

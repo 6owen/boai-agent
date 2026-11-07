@@ -1,0 +1,25 @@
+{
+  "name": "@boai/canvas-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "BOAI managed tldraw documents, reusable editor and bounded employee operations",
+  "exports": {
+    "./protocol": "./src/protocol.ts",
+    "./document": "./src/document.ts",
+    "./editor": "./src/editor.tsx",
+    "./executor": "./src/executor.ts",
+    "./host": "./src/host.ts",
+    "./tools": "./src/tools.ts"
+  },
+  "dependencies": {
+    "@tldraw/assets": "5.6.0",
+    "@tldraw/tlschema": "5.6.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "tldraw": "5.6.0",
+    "zod": "4.6.5",
+    "@tiptap/core": "3.33.0",
+    "@tiptap/pm": "3.33.0"
+  }
+}
