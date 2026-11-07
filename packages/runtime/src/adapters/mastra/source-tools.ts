@@ -4,6 +4,7 @@
  * [OUTPUT]: 已配置API目录权限时说明本地源/MCP不因绑定扩权，程序依赖目录须先申请，新增许可仅用于后续新调用。
  * [OUTPUT]: API/本机共用本轮检索选择工具；候选始终可见，调用仍受选择/原权限约束。
  * [OUTPUT]: 普通来源工具公开检索选择，API问答候选按首选/本轮引用筛选。
+ * [OUTPUT]: 普通源保持bobo全源策略；包贡献仍需显式绑定与宿主执行门禁。
  * [INPUT]: Host-authorized source summaries and execution callbacks.
  * [OUTPUT]: Shared inspection/call tools; ordinary chat discovers bound web candidates and current explicit source selections, bobo/native/task retain original scope.
  * [POS]: Mastra and native product bridge share the same tool contract.

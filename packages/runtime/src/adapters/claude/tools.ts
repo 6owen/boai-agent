@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 向原生归属核验返回本次bridge的私有内存身份；随机认证不进入公开回执或持久证据。
  * [OUTPUT]: 原生取消后暂不回传普通工具错误，进程实际退出并关闭桥时再释放；已受理宿主操作仍等待真实退出。
  * [OUTPUT]: 显式宿主图片沿MCP原生image部件返回，普通JSON文本与原2MiB消息边界保持。
  * [OUTPUT]: 2026-10-11 持续原生Claude生产驱动支持本机登录/显式API、原生工具与公开过程；旧私有阶段仅作兼容回归。
@@ -167,7 +168,7 @@ export async function createClaudeToolBridge(input: {
     configBytes = Buffer.from(JSON.stringify({ mcpServers: { boai: { type: 'http', url: `http://${authority}/mcp`, headers: { Authorization: secret } } } }))
     await writeFile(configPath, configBytes, { flag: 'wx', mode: 0o600 })
     check()
-    return { configPath, toolNames: input.tools.map(tool => claudeToolName(tool.name)),
+    return { configPath, capabilityIdentity: { type: 'http' as const, url: `http://${authority}/mcp`, authorization: secret }, toolNames: input.tools.map(tool => claudeToolName(tool.name)),
       announce(id: unknown, name: unknown, args: unknown) {
         check()
         const nativeName = typeof name === 'string' && name.startsWith('mcp__boai__') ? name.slice('mcp__boai__'.length) : ''

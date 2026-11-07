@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 元数据夹具失败报告原命令名和stderr，不将启动失败混同复制结果。
  * [INPUT]: 实际Swift/ditto与隔离数据；完成阶段取消及明确局部文件系统故障注入。
  * [OUTPUT]: 缺目录按实际同卷身份恢复或拒绝异scope；成套数据/子scope互斥，取消/失败不完成。
  * [POS]: 升级备份模块合同；不运行Electron或模型，不代替安装/回滚/个人权限验收。
@@ -51,7 +52,10 @@ test('offline copy keeps encrypted credentials, login bytes, ACL/xattrs/flags, l
     ['xattr', '/usr/bin/xattr', ['-w', '-x', 'com.boai.snapshot-fixture', '0001FF7F', path]],
     ['acl', '/bin/chmod', ['+a', `user:${userInfo().username} allow read,readattr,readextattr,readsecurity`, path]],
     ['flags', '/usr/bin/chflags', ['nodump', path]],
-  ] as const) expect(await f.tools.execute(name, command, [...args])).toMatchObject({ exitCode: 0, failure: undefined })
+  ] as const) {
+    const receipt = await f.tools.execute(name, command, [...args])
+    expect(receipt, `${name}: ${JSON.stringify(receipt)}`).toMatchObject({ exitCode: 0, failure: undefined })
+  }
   const result = await createProfileSnapshot(f.maintenance, f.output, f.id, f.tools)
   const verified = await verifyProfileSnapshot(f.maintenance, f.output, join(f.root, 'verification'), f.tools)
   expect(verified.manifestSha256).toBe(result.manifestSha256)

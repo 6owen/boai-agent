@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 创建预填改用shared稳定ID助手目录，旧数字输入只通过兼容映射解析。
  * [OUTPUT]: 已有员工默认项目目录独立于授权目录编辑，API/native共用原版本草稿、保存与未知核对。
  * [OUTPUT]: 群高级配置的解散操作使用按钮旁Popover确认，保留删除范围说明、取消草稿及提交期间关闭锁。
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
@@ -61,7 +62,7 @@ import { Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverDescriptio
 import type { LaunchProfile } from '@boai/shared/domain'
 import { useCallback, useContext, useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { CalendarClock, FileText, LoaderCircle, Search, Settings, ShieldCheck } from '@/components/icons/index'
+import { CalendarClock, LoaderCircle, Settings } from '@/components/icons/index'
 import type { AgentInput, Conversation, DigitalAgent, Resource, Snapshot } from '@boai/shared/domain'
 import type { BindLocalSkillInput, SkillBindingReceipt } from '@boai/shared/domain/skills'
 import { isCoreAgent } from '@boai/shared/domain/core-agent'
@@ -81,14 +82,10 @@ import { BoundSkillList } from './bound-skill-list'
 import { committedSkillBindingAgent, mergeSkillBindingDraft } from './local-skill-binding-state'
 import { EmployeeResourceNavigation, type EmployeeResourceTarget } from './resource-navigation'
 import { ContactProfileSection, EmployeeFormSection } from './profile-card'
-export const templates = [
-  { name: '资料研究员', role: '查找资料，厘清事实', instructions: '你是一位细致的资料研究员。区分事实与推测，提供可追踪的来源。', icon: Search, color: colors[0] },
-  { name: '方案写手', role: '把想法写成清晰方案', instructions: '你是一位方案写手。理解目标与受众，基于获准资料撰写清楚自然的内容。', icon: FileText, color: colors[1] },
-  { name: '内容审核员', role: '检查逻辑，打磨细节', instructions: '你是一位内容审核员。核对事实、来源、逻辑与表达，给出具体修改建议。', icon: ShieldCheck, color: colors[2] },
-]
+import { resolveEmployeePreset } from '@boai/shared/domain/agent-presets'
 function savedAgentForm(agent: DigitalAgent): AgentInput { return { defaultProjectDirectory: agent.defaultProjectDirectory, webSearch: agent.webSearch, directoryGrants: agent.directoryGrants, expectedDirectoryRevision: agent.directoryRevision, executionPermission: agent.executionPermission, avatar: agent.avatar, executionBackend: agent.executionBackend, nativeOptions: agent.nativeOptions, id: agent.id, name: agent.name, role: agent.role, instructions: agent.instructions, color: agent.color, connectionId: agent.connectionId, modelId: agent.modelId, sourceIds: [...(agent.sourceIds ?? [])], skillIds: [...agent.skillIds], knowledgeIds: [...agent.knowledgeIds], allowCommands: agent.allowCommands, active: true } }
 export type AgentConfigurationSection = 'identity' | 'model' | 'instructions' | 'skills' | 'sources' | 'knowledge' | 'directories' | 'web-search'
-export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, onIdentitySaved, active = true, scope = 'creation', section, inlineIdentity = false, identityTarget, sectionTarget, footerTarget, actionsTarget, configurationVisible = true, identityDisabled = false, onDirtyChange, onRevealConfiguration, onBusyChange, onIdentityBusyChange }: { api: DesktopApi; snapshot: Snapshot; agent?: DigitalAgent; template?: number; onClose: () => void; onSaved: () => Promise<void>; onIdentitySaved?(agent: DigitalAgent): void; active?: boolean; scope?: string; section?: AgentConfigurationSection; inlineIdentity?: boolean; identityTarget?: HTMLElement | null; sectionTarget?: HTMLElement | null; footerTarget?: HTMLElement | null; actionsTarget?: HTMLElement | null; configurationVisible?: boolean; identityDisabled?: boolean; onDirtyChange?(dirty: boolean): void; onRevealConfiguration?(): void; onBusyChange?(busy: boolean): void; onIdentityBusyChange?(busy: boolean): void }) {
+export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, onIdentitySaved, active = true, scope = 'creation', section, inlineIdentity = false, identityTarget, sectionTarget, footerTarget, actionsTarget, configurationVisible = true, identityDisabled = false, onDirtyChange, onRevealConfiguration, onBusyChange, onIdentityBusyChange }: { api: DesktopApi; snapshot: Snapshot; agent?: DigitalAgent; template?: string | number; onClose: () => void; onSaved: () => Promise<void>; onIdentitySaved?(agent: DigitalAgent): void; active?: boolean; scope?: string; section?: AgentConfigurationSection; inlineIdentity?: boolean; identityTarget?: HTMLElement | null; sectionTarget?: HTMLElement | null; footerTarget?: HTMLElement | null; actionsTarget?: HTMLElement | null; configurationVisible?: boolean; identityDisabled?: boolean; onDirtyChange?(dirty: boolean): void; onRevealConfiguration?(): void; onBusyChange?(busy: boolean): void; onIdentityBusyChange?(busy: boolean): void }) {
   const core = isCoreAgent(agent)
   const formId = useId()
   const [uploading, setUploading] = useState(false), [choosingDirectory, setChoosingDirectory] = useState(false)
@@ -101,10 +98,10 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
     return () => { current = false }
   }, [api, active, section])
   const initialVersion = useRef(agent?.configVersion)
-  const preset = template === undefined ? undefined : templates[template]
+  const preset = resolveEmployeePreset(template)
   const [form, setForm] = useState<AgentInput>(() => {
     if (agent) return savedAgentForm(agent)
-    return { name: preset?.name ?? '', role: preset?.role ?? '', instructions: preset?.instructions ?? '', color: preset?.color ?? colors[0], connectionId: '', modelId: '', skillIds: [], knowledgeIds: [], allowCommands: true, active: true }
+    return { name: preset?.name ?? '', role: preset?.role ?? '', instructions: preset?.instructions ?? '', color: colors[0], connectionId: '', modelId: '', skillIds: [], knowledgeIds: [], allowCommands: true, active: true }
   })
   const { busy, error, run, setError } = useMutation()
   const guard = useContext(GuardContext)

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 能力包撤回按员工取消并等待实际行为退出，终态记录不替代任务Promise。
  * [OUTPUT]: 仅笔记日期可反思；沿真实版本化笔记来源保存日记/成长/心情，删除失效且不伪造聊天。
  * [OUTPUT]: 反思较早漏日/当日笔记与来源失效、十技能绑定；实际与撤回候选归架构§11.22。
  * [OUTPUT]: 任一实际来源聊天变化均取消活动； 人格反思准入汇集本人候选会话，宿主再核实际来源；记录多会话清理身份。
@@ -201,6 +202,8 @@ export class AgentBehaviorService {
     return { agentId: input.agentId, deletedCount }
   }
   async stop(id: string) { const active = this.active.get(id); active?.controller.abort(new Error('用户停止行为')); await active?.task }
+  activeFor(employeeIds: string[]) { const ids = new Set(employeeIds); return [...this.active.values()].some(value => ids.has(value.agentId)) }
+  async drainEmployees(employeeIds: string[]) { const ids = new Set(employeeIds), active = [...this.active.values()].filter(value => ids.has(value.agentId)); for (const value of active) value.controller.abort(new Error('员工能力包已撤回')); await Promise.allSettled(active.map(value => value.task)) }
   async cancelScope(scope: { agentId?: string; conversationId?: string }) {
     for (const run of await this.store.load<AgentBehaviorRun>('agentBehaviorRuns')) if (run.status === 'running' && (scope.agentId === run.agentId || scope.conversationId === run.conversationId || !!scope.conversationId && run.sourceConversationIds?.includes(scope.conversationId))) this.active.get(run.id)?.controller.abort(new Error('行为来源或配置已变化'))
   }

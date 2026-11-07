@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: BOAI自有MCP OAuth沿原application操作显式授权；普通源与能力包绑定语义分开。
  * [OUTPUT]: 网页检索指向独立设置及员工能力，退役原 DeepSeek 数据源创建建议。
  * [OUTPUT]: DeepSeek官方API配置自动提供搜索/正文工具，测试执行一次明确的公开搜索。
  * [OUTPUT]: BOAI适配按员工授权设置访问，删除上游API/local默认只读建议；bobo无需绑定。
@@ -32,15 +33,15 @@ Do not guess a token, account, project, URL or folder. Do not test credentials a
 Map the user's description, endpoint, OpenAPI text or JSON into the provided BOAI config schema.
 All types require name, description, guide and enabled. Use one stable key per source intent with create, and reuse it for an unknown creation result.
 - API: api.baseUrl and authType (none/bearer/header/query/basic); use headerName/queryParam when applicable. Choose a documented harmless GET testPath. Do not set an API access policy on the connection.
-- Remote MCP: mcp.transport is http (Streamable HTTP) or sse, with url and authType (none/bearer).
+- Remote MCP: mcp.transport is http (Streamable HTTP) or sse, with url and authType (none/bearer/oauth).
 - Local MCP: mcp.transport is stdio, with command and args preserved separately. A standard mcpServers JSON object may contain several named servers: configure each requested entry separately. Map type "streamable-http" to transport "http"; preserve an explicit SSE type. Never silently discard unsupported headers, cwd or other meaningful options: explain the missing capability before choosing an alternative.
 - For stdio env, submit the exact user-provided environment object as credential JSON; never put values in description/guide or echo them. A remote Authorization: Bearer header maps to the write-only credential and authType bearer.
 - Local folder: type local and local.path; no MCP server is needed. Use the actual user-supplied folder path.
 An omitted credential on update preserves the existing secret; empty string explicitly clears it. Basic auth credentials are JSON {username,password}. Saved secrets are not readable by the model.
-BOAI currently has no source OAuth authorization flow. If the service requires OAuth, explain that limitation and use a supported token-based option only when available; never claim to open an authorization flow or to be authenticated without a real result.
+For remote MCP OAuth, save authType oauth without a credential. Discover sources.oauthStart/Status/Cancel/Disconnect through the BOAI application catalog. Start only an explicit authorization intent with the saved Source ID/revision, then let the user open its returned authorization URL. Do not invent a client identity, use another app's client ID, or claim authorization before the original request reports it. Services requiring Client ID Metadata Documents need a real public HTTPS metadata URL controlled by the intended client. Authorization, a successful connection test and employee binding are separate results. Cancel uses the original authorization ID; disconnect removes local authorization and does not claim remote token revocation. API OAuth and private provider-specific login flows remain unsupported.
 
 ## 4. Employee access
-Resources store connection details, not read/write permissions. Do not add accessMode, allowWrites or read-only promises to the config, description or guide. Bobo has read/write access to all enabled global sources without binding, including sources just created in this chat. Use inspect_data_source and call_data_source when the user asks to use the business data. Remote credentials, server capabilities and operating-system permissions still determine what the service can actually do.
+Resources store connection details, not read/write permissions. Do not add accessMode, allowWrites or read-only promises to the config, description or guide. Bobo has read/write access to all enabled ordinary sources without binding, including ordinary sources just created in this chat. Capability-package contributions require explicit package binding even for bobo; manage them through capabilityPackages operations, not ordinary Source editing or binding. Use inspect_data_source and call_data_source when the user asks to use the business data. Remote credentials, server capabilities and operating-system permissions still determine what the service can actually do.
 Ordinary employees need resource bindings. Bind only the employees the user requested, using employees, the current expectedBindings and exact employee/source versions.
 
 ## 5. Write a useful guide

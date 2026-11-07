@@ -1,10 +1,12 @@
 /*
+ * [OUTPUT]: 启停仅投影连接配置，保留应用/能力包来源元数据，不传入strict config。
  * [OUTPUT]: 名称后同行显示真实测试/停用状态，每行独立测试及启停/删除操作；删除Popover确认，操作不触发详情导航。
  * [INPUT]: 全局数据源目录、当前选择和Shell右侧面板导航。
  * [OUTPUT]: 数据源沿技能列表的行、图标与文案样式；选择只打开右侧详情，目录/筛选保持。
  * [POS]: 资源库主目录，不持有配置编辑器或详情状态。
  * [PROTOCOL]: 变化同步Header与所属.folder.md。
  */
+import { sourceConfiguration } from './source-editor'
 import { useRef, useState } from 'react'
 import type { DesktopApi } from '@boai/shared/ipc'
 import { DATA_SOURCE_LABELS, type DataSource, type DataSourceConfig } from '@boai/shared/domain/sources'
@@ -41,7 +43,7 @@ function SourceRow({ api, source, selected, onSelect, onChanged, onRemoved }: So
     try { onChanged(await api.request('testDataSource', identity)) } finally { setTesting(false) }
   }) }
   const toggle = () => { void mutation.run(async () => {
-    const { id, revision, createdAt: _created, updatedAt: _updated, hasCredential: _credential, test: _test, creationSource: _creation, ...config } = source
+    const { id, revision } = source, config = sourceConfiguration(source)
     onChanged(await api.request('saveDataSource', { id, expectedRevision: revision, config: { ...config, enabled: !source.enabled } }))
   }) }
   return <div className={`skill-list-row source-catalog-row${selected ? ' selected' : ''}`}>

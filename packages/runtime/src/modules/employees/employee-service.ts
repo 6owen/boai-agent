@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 模板ID/版本首次创建由宿主核验；模板来源与版本化默认项目目录分别保留。
  * [OUTPUT]: 默认项目沿配置版本核验保存，单独改变默认值不取消既有工作。
  * [OUTPUT]: API命令开关独立保存；整体只读始终禁命令，原生权限映射保持，不因改名重新启用已关闭命令。
  * [OUTPUT]: 单独追加技能保留当前运行的冻结技能集合，通过宿主更新兼容版本；移除/替换及其他配置变更仍取消旧运行。
@@ -31,7 +32,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { defaultSkillSeedRecord } from '../resources/bundled-skills'
-import { BOBO_RULES, BOBO_SOUL, LEGACY_SIMPLIFIED_BOBO_SOUL, LEGACY_BOBO_RULES, DEFAULT_EMPLOYEE_SOUL } from '@boai/shared/domain/agent-presets'
+import { employeeTemplateOrigin, BOBO_RULES, BOBO_SOUL, LEGACY_SIMPLIFIED_BOBO_SOUL, LEGACY_BOBO_RULES, DEFAULT_EMPLOYEE_SOUL } from '@boai/shared/domain/agent-presets'
 import { previousPromptHashes, promptSourceDefaults } from '@boai/shared/domain/agent-prompts'
 import { previousBoboPersonaHashes } from '@boai/shared/domain/bobo-persona'
 import type { AgentSourceName } from '@boai/shared/domain/agent-profile'
@@ -62,7 +63,7 @@ const avatarSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('preset'), id: z.enum(avatarPresets.map(preset => preset.id)) }).strict(),
   z.object({ kind: z.literal('image'), dataUrl: z.string().max(AVATAR_IMAGE_MAX_LENGTH).regex(/^data:image\/png;base64,iVBORw0KGgo[A-Za-z0-9+/]*={0,2}$/, '头像必须是本地 PNG 图片') }).strict(),
 ])
-export const agentSchema = z.object({ projectDefaultChanges: z.number().int().nonnegative().optional(), defaultProjectDirectoryRequested: z.string().optional(), defaultProjectDirectory: z.string().trim().max(4096).optional(), initialSoul: z.string().max(64000).optional(), webSearch: webSearchPreferenceSchema.optional(), directoryGrants: directoryGrantsSchema.optional(), expectedDirectoryRevision: z.number().int().nonnegative().optional(), executionPermission: z.enum(['read-only','ask','full-access']).optional(), nativeOptions: z.object({ useNativePermissions: z.boolean().optional(), effort: z.string().max(40).optional(), codexApprovalPolicy: z.enum(['untrusted','on-request','never']).optional(), codexSandbox: z.enum(['read-only','workspace-write','danger-full-access']).optional(), claudePermissionMode: z.enum(['default','acceptEdits','plan','dontAsk','bypassPermissions']).optional() }).strict().optional(), systemRole: z.literal('core').optional(), avatar: avatarSchema.optional(), thinkingLevel: z.string().regex(thinkingLevelPattern).optional(), executionBackend: backendSchema.optional(), id: id.optional(), expectedConfigVersion: z.number().int().positive().optional(), name: text(100), role: z.string().max(1000), instructions: z.string().max(40000), color: z.string().regex(/^#[0-9a-f]{6}$/i), connectionId: z.string().max(200), modelId: z.string().trim().max(MODEL_ID_MAX_LENGTH).refine(value => validModelId(value, true), '无效的模型 ID'), sourceIds: ids.optional(), skillIds: ids, knowledgeIds: ids, allowBrowser: z.boolean().optional(), allowCommands: z.boolean(), active: z.boolean() }).strict()
+export const agentSchema = z.object({ templateId: id.optional(), templateVersion: id.optional(), projectDefaultChanges: z.number().int().nonnegative().optional(), defaultProjectDirectoryRequested: z.string().optional(), defaultProjectDirectory: z.string().trim().max(4096).optional(), initialSoul: z.string().max(64000).optional(), webSearch: webSearchPreferenceSchema.optional(), directoryGrants: directoryGrantsSchema.optional(), expectedDirectoryRevision: z.number().int().nonnegative().optional(), executionPermission: z.enum(['read-only','ask','full-access']).optional(), nativeOptions: z.object({ useNativePermissions: z.boolean().optional(), effort: z.string().max(40).optional(), codexApprovalPolicy: z.enum(['untrusted','on-request','never']).optional(), codexSandbox: z.enum(['read-only','workspace-write','danger-full-access']).optional(), claudePermissionMode: z.enum(['default','acceptEdits','plan','dontAsk','bypassPermissions']).optional() }).strict().optional(), systemRole: z.literal('core').optional(), avatar: avatarSchema.optional(), thinkingLevel: z.string().regex(thinkingLevelPattern).optional(), executionBackend: backendSchema.optional(), id: id.optional(), expectedConfigVersion: z.number().int().positive().optional(), name: text(100), role: z.string().max(1000), instructions: z.string().max(40000), color: z.string().regex(/^#[0-9a-f]{6}$/i), connectionId: z.string().max(200), modelId: z.string().trim().max(MODEL_ID_MAX_LENGTH).refine(value => validModelId(value, true), '无效的模型 ID'), sourceIds: ids.optional(), skillIds: ids, knowledgeIds: ids, allowBrowser: z.boolean().optional(), allowCommands: z.boolean(), active: z.boolean() }).strict()
 
 const clone = <T>(value: T): T => structuredClone(value)
 const record = (collection: string, value: { id: string }): StoredRecord => ({ collection, id: value.id, value })
@@ -215,6 +216,9 @@ export class EmployeeService {
   commitDirectoryGrant(agent: DigitalAgent) { this.install(agent.id, agent); this.hooks.changed() }
   async save(input: AgentInput & { systemRole?: 'core' }) {
     const previous = input.id ? this.get(input.id) : undefined
+    if ((input.templateId === undefined) !== (input.templateVersion === undefined)) fail('助手模板ID和版本必须一起提供')
+    if (previous && input.templateId !== undefined) fail('模板来源仅能在首次创建时选择')
+    const templateOrigin = previous?.templateOrigin ?? (input.templateId ? employeeTemplateOrigin(input.templateId, input.templateVersion!) : undefined)
     if (previous && input.initialSoul !== undefined) fail('已有员工的人格请使用带文件 hash 的保存接口')
     if (input.systemRole && !isCoreAgent(previous)) fail('系统核心身份只能由应用预置')
     if (previous && input.expectedConfigVersion !== undefined && previous.configVersion !== input.expectedConfigVersion) fail('员工配置已变更，请刷新后保存')
@@ -244,9 +248,9 @@ export class EmployeeService {
     if (new Set(skillNames).size !== skillNames.length) fail('同一员工不能绑定名称相同的 Skills，请修改技能名称后重新导入')
     if (input.skillIds.some(id => this.hooks.resource(id)?.ownerAgentId && this.hooks.resource(id)?.ownerAgentId !== previous?.id)) fail('不能绑定其他员工的专属技能')
     if (input.knowledgeIds.some(id => this.hooks.resource(id)?.ownerAgentId && this.hooks.resource(id)?.ownerAgentId !== previous?.id)) fail('不能绑定其他员工的知识资料，请明确为该员工添加独立资料')
-    const { expectedConfigVersion: _, expectedDirectoryRevision: _directoryRevision, systemRole: _systemRole, initialSoul, ...definition } = input
+    const { expectedConfigVersion: _, expectedDirectoryRevision: _directoryRevision, systemRole: _systemRole, initialSoul, templateId: _templateId, templateVersion: _templateVersion, ...definition } = input
     const allowCommands = executionBackend.kind === 'mastra-model' ? input.allowCommands && executionPermission !== 'read-only' : executionPermission ? executionPermission !== 'read-only' : input.allowCommands
-    const agent: DigitalAgent = { ...previous, ...definition, ...(defaultProjectDirectory ? { defaultProjectDirectory, defaultProjectDirectoryRequested } : {}), ...(isCoreAgent(previous) ? { systemRole: 'core' as const } : {}), executionBackend, executionPermission, directoryGrants, ...(directoryRevision !== undefined ? { directoryRevision } : {}), nativeOptions: executionPermissionNativeOptions(executionBackend.kind, input.nativeOptions, executionPermission), allowCommands, allowBrowser, id: previous?.id ?? randomUUID(), configVersion: (previous?.configVersion ?? 0) + 1 }
+    const agent: DigitalAgent = { ...previous, ...definition, ...(defaultProjectDirectory ? { defaultProjectDirectory, defaultProjectDirectoryRequested } : {}), ...(templateOrigin ? { templateOrigin } : {}), ...(isCoreAgent(previous) ? { systemRole: 'core' as const } : {}), executionBackend, executionPermission, directoryGrants, ...(directoryRevision !== undefined ? { directoryRevision } : {}), nativeOptions: executionPermissionNativeOptions(executionBackend.kind, input.nativeOptions, executionPermission), allowCommands, allowBrowser, id: previous?.id ?? randomUUID(), configVersion: (previous?.configVersion ?? 0) + 1 }
     if (!defaultProjectDirectory) { delete agent.defaultProjectDirectory; delete agent.defaultProjectDirectoryRequested }
     const comparable = (value: DigitalAgent) => { const { defaultProjectDirectory: _project, defaultProjectDirectoryRequested: _requested, projectDefaultChanges: _changes, configVersion: _version, ...rest } = value; return JSON.parse(JSON.stringify(rest)) }
     const defaultsOnly = !!previous && projectChanged && isDeepStrictEqual(comparable(previous), comparable(agent))

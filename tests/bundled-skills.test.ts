@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 普通方法提炼技能可发现但不进入默认绑定清单；旧Bobo不静默补绑。
  * [OUTPUT]: 预览技能旧受管副本沿原hash/版本/回执更新，自定义副本拒绝静默覆盖。
  * [OUTPUT]: 旧computer-use副本和安装器连接沿原删除协议退役，自定义保留，旧种子跳过退役项。
  * [INPUT]: 隔离 AppService/SQLite、实际随包技能、原绑定/更新/删除协议。
@@ -101,7 +102,8 @@ test('existing Bobo without initialization marker is not silently migrated', asy
   expect((await restarted.bobo()).skillIds).toEqual(original.skillIds)
   expect((await restarted.bobo()).configVersion).toBe(original.configVersion)
   expect(await restarted.store.load('skillOperations')).toEqual([])
-  expect((await restarted.api('listLocalSkills', {})).skills.filter(skill => skill.source === 'builtin')).toHaveLength(bundledSkillNames.length)
+  const available = (await restarted.api('listLocalSkills', {})).skills.filter(skill => skill.source === 'builtin')
+  expect(available.map(skill => skill.name).sort()).toEqual([...bundledSkillNames, 'boai-method-extraction'].sort())
 })
 
 test('restart reconciles committed and deleted receipts even if seed bookkeeping did not finish', async () => {

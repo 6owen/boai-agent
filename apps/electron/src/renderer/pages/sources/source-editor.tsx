@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 应用连接创建与既有编辑共用同一配置表单；来源元数据沿schema剥离，保存不等于测试通过。
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [OUTPUT]: API及本地文件夹编辑删除资源级读写设置，权限归员工。
  * [OUTPUT]: 数据源卡片独立紧凑尺寸：32px控件、12px标签/14px图标、10px行留白与sm操作按钮，其他连接表单保持。
@@ -15,10 +16,11 @@
  */
 import { useContext, useId, useRef, useState } from 'react'
 import type { DesktopApi } from '@boai/shared/ipc'
-import { DATA_SOURCE_LABELS, type DataSource, type DataSourceConfig } from '@boai/shared/domain/sources'
+import { DATA_SOURCE_LABELS, dataSourceConfigSchema, type DataSource, type DataSourceConfig } from '@boai/shared/domain/sources'
 import { Banner, GuardContext, useDirty, useMutation } from '@/components/common'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group'
 import { Database, Eye, EyeOff, FileText, FolderOpen, Key, Pencil, ShieldCheck, Terminal } from '@/components/icons'
 import { Textarea } from '@/components/ui/textarea'
@@ -27,36 +29,45 @@ import { Dialog } from '@/components/ui/dialog'
 import { ConnectionDialogLayout, ConnectionForm, ConnectionSettingRow } from '../settings/connection-layout'
 import { ConnectionIllustration } from '../settings/connection-illustration'
 
-function configuration(source: DataSource): DataSourceConfig {
-  const { id: _id, revision: _revision, createdAt: _created, updatedAt: _updated, hasCredential: _hasCredential, test: _test, creationSource: _creation, ...config } = source
-  return config
+export function sourceConfiguration(source: DataSource): DataSourceConfig {
+  // Parse the connection fields explicitly so future origin metadata cannot leak into strict config inputs.
+  const common = { name: source.name, description: source.description, guide: source.guide, enabled: source.enabled }
+  return dataSourceConfigSchema.parse(source.type === 'api' ? { ...common, type: source.type, api: source.api } : source.type === 'mcp' ? { ...common, type: source.type, mcp: source.mcp } : { ...common, type: source.type, local: source.local })
 }
 export function SourceEditor({ api, source, initialCredential, onClose, onSaved }: { api: DesktopApi; source: DataSource; initialCredential: string; onClose(): void; onSaved(source: DataSource): void }) {
-  const [config, setConfig] = useState<DataSourceConfig>(() => configuration(source))
+  return <SourceConfigurationDialog api={api} initialConfig={sourceConfiguration(source)} initialCredential={initialCredential} onClose={onClose} onSaved={onSaved}
+    onSave={(config, credential) => api.request('saveDataSource', { id: source.id, expectedRevision: source.revision, config, ...(config.type === 'mcp' && config.mcp.transport !== 'stdio' && config.mcp.authType === 'oauth' ? {} : { credential }) })} />
+}
+export function SourceConfigurationDialog({ api, initialConfig, initialCredential = '', creating = false, locked = false, confirmLabel, onClose, onSave, onSaved }: {
+  api: DesktopApi; initialConfig: DataSourceConfig; initialCredential?: string; creating?: boolean; locked?: boolean; confirmLabel?: string
+  onClose(): void; onSave(config: DataSourceConfig, credential: string): Promise<DataSource>; onSaved(source: DataSource): void
+}) {
+  const [config, setConfig] = useState<DataSourceConfig>(() => initialConfig)
   const [credential, setCredential] = useState(initialCredential), [showCredential, setShowCredential] = useState(false)
   const fieldId = useId(), nameInput = useRef<HTMLInputElement>(null)
-  const [args, setArgs] = useState(() => source.type === 'mcp' && source.mcp.transport === 'stdio' ? JSON.stringify(source.mcp.args, null, 2) : '[]')
+  const [args, setArgs] = useState(() => initialConfig.type === 'mcp' && initialConfig.mcp.transport === 'stdio' ? JSON.stringify(initialConfig.mcp.args, null, 2) : '[]')
   const mutation = useMutation(), guard = useContext(GuardContext)
   const close = () => guard.navigate(onClose, { resetOnDiscard: false })
   const resetDirty = useDirty({ config, credential, args })
   const set = (patch: Partial<Pick<DataSourceConfig, 'name' | 'description' | 'guide' | 'enabled'>>) => setConfig(value => ({ ...value, ...patch }))
-  const needsCredential = config.type === 'api' ? config.api.authType !== 'none' : config.type === 'mcp' && (config.mcp.transport === 'stdio' || config.mcp.authType !== 'none')
+  const needsCredential = config.type === 'api' ? config.api.authType !== 'none' : config.type === 'mcp' && (config.mcp.transport === 'stdio' || config.mcp.authType === 'bearer')
   const save = () => { void mutation.run(async () => {
     const current = config.type === 'mcp' && config.mcp.transport === 'stdio' ? { ...config, mcp: { ...config.mcp, args: JSON.parse(args) } } : config
-    const saved = await api.request('saveDataSource', { id: source.id, expectedRevision: source.revision, config: current, credential: needsCredential ? credential : '' })
+    const saved = await onSave(locked ? config : dataSourceConfigSchema.parse(current), needsCredential ? credential : '')
     resetDirty(); onSaved(saved); guard.saved(onClose)
   }) }
   const credentialLabel = config.type === 'mcp' && config.mcp.transport === 'stdio' ? '环境变量' : config.type === 'api' && config.api.authType === 'basic' ? '账号与密码' : '访问密钥'
   const nestedLine = <span className="connection-nested-line" aria-hidden="true" />
   return <Dialog open onOpenChange={open => { if (!open && !mutation.busy) close() }}>
-    <ConnectionDialogLayout choosing={false} scrollBody label="编辑数据源" title={`配置 ${DATA_SOURCE_LABELS[source.type]} 数据源`}
+    <ConnectionDialogLayout choosing={false} scrollBody label={creating ? '连接应用' : '编辑数据源'} title={`配置 ${DATA_SOURCE_LABELS[config.type]} 数据源`}
       illustration={<ConnectionIllustration configuring />} closeLabel="关闭数据源配置" working={mutation.busy}
       onClose={close} initialFocus={nameInput} finalFocus={undefined}>
-      <ConnectionForm data-source-editor disabled={mutation.busy} onSubmit={event => { event.preventDefault(); save() }} footer={<>
+      <ConnectionForm data-source-editor disabled={mutation.busy || locked} onSubmit={event => { event.preventDefault(); save() }} footer={<>
         <Button type="button" variant="ghost" size="sm" disabled={mutation.busy} onClick={close}>取消</Button>
-        <div className="connection-editor-actions"><Button type="submit" size="sm" disabled={mutation.busy}>{mutation.busy ? '保存中…' : '保存数据源'}</Button></div>
+        <div className="connection-editor-actions"><Button type="submit" size="sm" disabled={mutation.busy}>{confirmLabel ?? (creating ? '保存连接' : '保存数据源')}</Button></div>
       </>}>
         {mutation.error && <Banner>{mutation.error}</Banner>}
+        {creating && <ConnectionSettingRow label="启用连接" icon={<ShieldCheck />} hint="启用后 bobo 可以使用；普通员工仍需显式绑定。保存不会测试连接。"><Switch checked={config.enabled} onCheckedChange={enabled => set({ enabled })} aria-label="启用连接" /></ConnectionSettingRow>}
         <ConnectionSettingRow label="名称" icon={<Pencil />} htmlFor={`${fieldId}-name`}>
           <Input ref={nameInput} id={`${fieldId}-name`} required maxLength={100} value={config.name} onChange={e => set({ name: e.target.value })} placeholder="例如：项目资料" />
         </ConnectionSettingRow>
@@ -80,7 +91,7 @@ export function SourceEditor({ api, source, initialCredential, onClose, onSaved 
               <ConnectionSettingRow label="启动参数" icon={nestedLine} htmlFor={`${fieldId}-args`} hint="使用 JSON 数组填写启动参数。"><Textarea className="px-2 py-1.5 text-[length:var(--text-ui-secondary)] leading-[var(--leading-ui-body)] md:text-[length:var(--text-ui-secondary)]" id={`${fieldId}-args`} rows={3} value={args} onChange={e => setArgs(e.target.value)} placeholder={'["-y", "your-mcp-server"]'} /></ConnectionSettingRow>
             </> : <ConnectionSettingRow label="服务地址" icon={nestedLine} htmlFor={`${fieldId}-url`}><Input id={`${fieldId}-url`} required type="url" value={config.mcp.url} placeholder="https://example.com/mcp" onChange={e => setConfig({ ...config, mcp: { ...config.mcp as Extract<typeof config.mcp, { url: string }>, url: e.target.value } })} /></ConnectionSettingRow>}
           </div>
-          {config.mcp.transport !== 'stdio' && <ConnectionSettingRow label="认证方式" icon={<ShieldCheck />} htmlFor={`${fieldId}-auth`}><SelectField size="sm" className="h-[32px]" id={`${fieldId}-auth`} value={config.mcp.authType} options={[{ value: 'none', label: '无需认证' }, { value: 'bearer', label: 'Bearer token' }]} onValueChange={value => setConfig({ ...config, mcp: { ...config.mcp as Extract<typeof config.mcp, { url: string }>, authType: value as 'none' | 'bearer' } })} /></ConnectionSettingRow>}
+          {config.mcp.transport !== 'stdio' && <ConnectionSettingRow label="认证方式" icon={<ShieldCheck />} htmlFor={`${fieldId}-auth`}><SelectField size="sm" className="h-[32px]" id={`${fieldId}-auth`} value={config.mcp.authType} options={[{ value: 'none', label: '无需认证' }, { value: 'bearer', label: 'Bearer token' }, { value: 'oauth', label: 'OAuth' }]} onValueChange={value => setConfig({ ...config, mcp: { ...config.mcp as Extract<typeof config.mcp, { url: string }>, authType: value as 'none' | 'bearer' | 'oauth' } })} /></ConnectionSettingRow>}
         </>}
         {config.type === 'local' && <>
           <ConnectionSettingRow label="文件夹路径" icon={<FolderOpen />} htmlFor={`${fieldId}-path`}><div className="connection-setting-control">

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: WT1聚合WT2能力包与Source OAuth工厂，来源元数据沿原schema，原管理回执保持。
  * [OUTPUT]: 外观v2与浏览器配置沿独立薄适配注册；目录/版本/回执保持同一业务入口。
  * [OUTPUT]: application.guide公开员工任务五状态及交付验收规则。
  * [OUTPUT]: 公开计划操作排除内部任务消息，避免自定义类型进入工具JSON Schema。
@@ -30,7 +31,7 @@ import type { ScheduleApi } from '../automations/schedule-api'
 import type { Method, Methods } from '@boai/shared/ipc'
 import { CONVERSATION_TITLE_MAX_LENGTH } from '@boai/shared/domain/conversation-list'
 import { agentSchema } from '../employees/employee-service'
-import { employeeCreationDefaults, EMPLOYEE_PRESETS } from '@boai/shared/domain/agent-presets'
+import { employeeCreationDefaults, employeeTemplateOrigin, EMPLOYEE_PRESETS } from '@boai/shared/domain/agent-presets'
 import { saveDataSourceSchema, dataSourceIdentitySchema, dataSourceBindingsSchema } from '@boai/shared/domain/sources'
 import { saveWebSearchDefaultSchema, saveWebSearchServiceSchema } from '@boai/shared/domain/web-search'
 import { saveLocalSkillSchema, removeLocalSkillSchema } from '../resources/local-skill-editing'
@@ -43,12 +44,19 @@ import { savePromptTemplateSchema, removePromptTemplateSchema } from '@boai/shar
 import { appearanceOperations } from './appearance-operations'
 import { pluginConfigurationOperations } from './plugin-configuration'
 
-export interface ApplicationPort { schedules?(): ScheduleApi; request<K extends Method>(method: K, input: Methods[K]['input']): Promise<Methods[K]['output']>; personality?(action: 'profile' | 'configure' | 'state' | 'updateState' | 'behaviorHistory' | 'runBehavior' | 'stopBehavior' | 'validateHistoryDeletion' | 'deleteBehaviorHistory' | 'clearBehaviorHistory', input: any): Promise<unknown> }
+import { capabilityPackageOperations } from '../resources/capability-package-operations'
+import type { CapabilityPackageServices } from '../resources/capability-package-services'
+import { sourceOAuthOperations } from '../sources/source-oauth-operations'
+import type { SourceService } from '../sources/source-service'
+
+export interface ApplicationPort { capabilities?(): CapabilityPackageServices; sources?(): SourceService; schedules?(): ScheduleApi; request<K extends Method>(method: K, input: Methods[K]['input']): Promise<Methods[K]['output']>; personality?(action: 'profile' | 'configure' | 'state' | 'updateState' | 'behaviorHistory' | 'runBehavior' | 'stopBehavior' | 'validateHistoryDeletion' | 'deleteBehaviorHistory' | 'clearBehaviorHistory', input: any): Promise<unknown> }
 const id = z.string().trim().min(1).max(200), version = z.number().int().positive()
 const empty = z.object({}).strict(), lookup = z.object({ id }).strict()
 type Shape = z.ZodObject<any>
 export function applicationOperations(port: ApplicationPort, schemas: { connection: Shape; conversation: Shape; search: z.ZodType<Methods['searchConversations']['input']> }, host?: ApplicationHostPort): ApplicationOperation[] {
   const operations: ApplicationOperation[] = []
+  if (port.capabilities) operations.push(...capabilityPackageOperations(port.capabilities()))
+  if (port.sources) operations.push(...sourceOAuthOperations(port.sources()))
   function operation(name: string, description: string, effect: ApplicationOperation['effect'], input: z.ZodType, resultType: string, execute: ApplicationOperation['execute']) {
     operations.push({ name, description, effect, input, resultType, execute })
   }
@@ -92,6 +100,11 @@ export function applicationOperations(port: ApplicationPort, schemas: { connecti
     const current = await snapshot()
     return port.request('saveAgent', employeeCreationDefaults(input, current.connections, current.agents))
   })
+  operations.find(item => item.name === 'employees.create')!.validate = async input => {
+    if (input.templateId === undefined && input.templateVersion === undefined) return
+    try { employeeTemplateOrigin(input.templateId, input.templateVersion) }
+    catch { throw new ApplicationValidationError('INVALID_INPUT', '助手模板不存在、版本已变化或来源字段不完整，请重新读取模板。') }
+  }
   method('employees.update', 'saveAgent', '保存完整员工配置；先 get，使用原 configVersion。核心身份由宿主确定。', 'write', agentSchema.omit({ systemRole: true, initialSoul: true }).extend({ id, expectedConfigVersion: version }).strict(), 'DigitalAgent')
   method('employees.delete', 'deleteAgent', '删除指定普通员工及其关联资料；bobo 不能删除。', 'write', lookup, 'void')
   method('employees.files', 'getAgentHome', '查看员工工作区源文件与记忆视图。', 'read', z.object({ agentId: id }).strict(), 'AgentHome')

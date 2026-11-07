@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 包绑定原生执行通过提交输入前的有效能力清单核验；普通无包员工不新增探测。
  * [OUTPUT]: Scoped canvas capability supports API/native structured edits and exact-revision exports.
  * [OUTPUT]: 显式持久交接通过原生准备/绑定/受理/未知回调接入，准备不启动任务。
  * [OUTPUT]: historySearch能力统一提供当轮设置、指引、原文查询与可选预检。
@@ -81,6 +82,10 @@ export interface SecretStore {
   delete(connectionId: string): Promise<void>
 }
 export interface EngineContext {
+  /** Fresh effective native inventory, checked before any user/behavior input is submitted. */
+  assertNativeCapabilities?(inventory: import('./modules/resources/capability-native-ownership').NativeCapabilityInventory): Promise<void>
+  /** Stable authorized package identity for native session reuse; undefined preserves sessions without packages. */
+  capabilityPackageFingerprint?: string
   /** API memory sources are authorized by BOAI; storage, recall and observation belong to Mastra. */
   memorySources?(): Promise<import('./adapters/mastra/conversation-memory').MemorySources>
   memoryOwner?: 'mastra' | 'native'

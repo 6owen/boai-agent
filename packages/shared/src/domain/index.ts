@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: WT3冻结员工项目默认字段与WT2模板来源，创建输入不接受伪造来源记录。
  * [OUTPUT]: 本人发给bobo的诊断目标作为真实消息来源持久化，不冒用跨会话reply或执行目标任务。
  * [OUTPUT]: 项目默认值与工作目录快照独立于workspace和目录授权。
  * [OUTPUT]: 消息轮次保存队列移除及实际开始时的上下文边界，排队消息不提前执行或进入模型输入。
@@ -109,10 +110,12 @@ export interface ConnectionInput {
 export * from './project-directory'
 export * from './context-handoff'
 export interface DigitalAgent {
+  /** Default for newly created chats/tasks; WT3 owns the execution snapshot semantics. */
   defaultProjectDirectory?: string
   defaultProjectDirectoryRequested?: string
   /** Host-only count of default-location edits that do not change an existing execution configuration. */
   projectDefaultChanges?: number
+  /** Host-validated template provenance; never copied account or core authority. */
   templateOrigin?: { templateId: string; version: string }
   /** Absent keeps legacy access; an explicit list opts into employee directory authorization. */
   directoryGrants?: import('./directory-access').DirectoryGrant[]

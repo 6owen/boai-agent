@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 创建仅持久原请求/会话请求ID；关闭重开可核对已创建员工并继续打开原会话，未知不重复创建。
+ * [OUTPUT]: 助手创建使用shared稳定ID及版本，保留旧数字预填输入；原员工/会话回执与原生执行选择保持。
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [OUTPUT]: 发起群聊恢复纯成员选择，不展示群名称输入；群名由已选成员姓名生成，原公共创建回执保持。
  * [OUTPUT]: 新建员工恢复原头像/姓名/职责、常显模型与权限和工作方式；不添加高级折叠或人格输入，模型由用户明确选择，公共创建回执保持。
@@ -24,14 +26,15 @@ import type { Conversation, DigitalAgent, Snapshot, LaunchProfile, ExecutionBack
 import type { ApplicationRequest, ApplicationResult } from '@boai/shared/domain/application-protocol'
 import { isCoreAgent } from '@boai/shared/domain/core-agent'
 import type { DesktopApi } from '@boai/shared/ipc'
-import { Banner, colors, GuardContext, useDirty, useMutation } from '@/components/common'
+import { Banner, colors, GuardContext, ResourcePicker, useDirty, useMutation } from '@/components/common'
 import { LoaderCircle } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { GroupMemberSelection } from './group-member-selection'
-import { templates } from './editors'
+import { resolveEmployeePreset } from '@boai/shared/domain/agent-presets'
+import { SourcePicker } from '@/pages/sources/source-picker'
 import { AvatarPicker } from './avatar-picker'
 import { AgentModelFields, agentModelSelectionReady } from './agent-model-fields'
 import { AgentPermissionField } from './agent-permission-field'
@@ -43,14 +46,20 @@ import { ContactProfileSection, EmployeeFormSection } from './profile-card'
 interface Props {
   api: DesktopApi; snapshot: Snapshot; onClose(): void; onCreated(conversation: Conversation): Promise<void>
 }
+export const PENDING_EMPLOYEE_CREATION_KEY = 'boai.employee.pending-creation'
+type CreationIdentity = { requestId: string; sessionRequestId: string }
+function pendingEmployeeCreation(): CreationIdentity | null {
+  try { const value = JSON.parse(localStorage.getItem(PENDING_EMPLOYEE_CREATION_KEY) ?? 'null'); return value && typeof value.requestId === 'string' && typeof value.sessionRequestId === 'string' ? value : null } catch { return null }
+}
 const returnFocus = () => document.querySelector<HTMLElement>('.list-heading [aria-label="新建"]')
 
-export function CreateAgentDialog({ api, snapshot, template, onClose, onCreated }: Props & { template?: number }) {
-  const preset = template === undefined ? undefined : templates[template]
-  const [form, setForm] = useState({ name: preset?.name ?? '', role: preset?.role ?? '', instructions: preset?.instructions ?? '', connectionId: '', modelId: '', executionPermission: 'ask' as ExecutionPermission, allowCommands: true, executionBackend: { kind: 'mastra-model' } as ExecutionBackend, avatar: { kind: 'preset', id: avatarPresets[(template ?? snapshot.agents.length) % avatarPresets.length].id } as AgentAvatar })
-  const [unresolved, setUnresolved] = useState(false)
+export function CreateAgentDialog({ api, snapshot, template, onClose, onCreated }: Props & { template?: string | number }) {
+  const preset = resolveEmployeePreset(template)
+  const [form, setForm] = useState({ name: preset?.name ?? '', role: preset?.role ?? '', instructions: preset?.instructions ?? '', defaultProjectDirectory: '', skillIds: [] as string[], sourceIds: [] as string[], connectionId: '', modelId: '', executionPermission: 'ask' as ExecutionPermission, allowCommands: true, executionBackend: { kind: 'mastra-model' } as ExecutionBackend, avatar: { kind: 'preset', id: avatarPresets[(typeof template === 'number' ? template : snapshot.agents.length) % avatarPresets.length].id } as AgentAvatar })
+  const creationIdentity = useRef(pendingEmployeeCreation())
+  const [unresolved, setUnresolved] = useState(Boolean(creationIdentity.current))
   const pending = useRef<ApplicationRequest | null>(null)
-  const sessionRequest = useRef(crypto.randomUUID())
+  const sessionRequest = useRef(creationIdentity.current?.sessionRequestId ?? crypto.randomUUID())
   const [profiles, setProfiles] = useState<LaunchProfile[]>([])
   const [profileError, setProfileError] = useState('')
   useEffect(() => { let active = true; void api.request('listLaunchProfiles', undefined).then(value => { if (active) setProfiles(value) }, () => { if (active) setProfileError('本机连接读取失败，请重新打开员工创建窗口。') }); return () => { active = false } }, [api])
@@ -63,22 +72,34 @@ export function CreateAgentDialog({ api, snapshot, template, onClose, onCreated 
   const close = () => { if (!busy && !uploading) guard.navigate(onClose) }
   const submit = (event: FormEvent) => {
     event.preventDefault()
-    if (!form.name.trim() || uploading || (!created.current && !modelReady)) return
+    if (uploading || !unresolved && !created.current && (!form.name.trim() || !modelReady)) return
     void run(async () => {
       // Keep the saved employee if opening the conversation needs to be retried.
       if (!created.current) {
-        pending.current ??= { operation: 'employees.create', requestId: crypto.randomUUID(), input: { ...form, executionPermission: ['mastra-model', 'codex-local', 'claude-local'].includes(form.executionBackend.kind) ? form.executionPermission : undefined, name: form.name.trim(), role: form.role.trim(), color: preset?.color ?? colors[0], allowCommands: form.executionBackend.kind !== 'acp-local' && form.allowCommands } }
+        if (!creationIdentity.current) {
+          pending.current = { operation: 'employees.create', requestId: crypto.randomUUID(), input: { ...form, defaultProjectDirectory: form.defaultProjectDirectory.trim() || undefined, executionPermission: ['mastra-model', 'codex-local', 'claude-local'].includes(form.executionBackend.kind) ? form.executionPermission : undefined, name: form.name.trim(), role: form.role.trim(), color: colors[0], ...(preset ? { templateId: preset.id, templateVersion: preset.version } : {}), allowCommands: form.executionBackend.kind !== 'acp-local' && form.allowCommands } }
+          const identity = { requestId: pending.current.requestId!, sessionRequestId: sessionRequest.current }
+          // Persist only original request identities, never the form, private instructions or resource IDs.
+          localStorage.setItem(PENDING_EMPLOYEE_CREATION_KEY, JSON.stringify(identity))
+          creationIdentity.current = identity
+        }
         setUnresolved(true)
-        const result = await submitCreation(api, pending.current)
-        if (result.status === 'rejected') { pending.current = null; setUnresolved(false) }
+        const result = pending.current ? await submitCreation(api, pending.current) : await api.request('getApplicationReceipt', { requestId: creationIdentity.current.requestId })
+        if (!result) throw new Error('原员工创建结果尚未确认，请核对原请求；不会重复创建员工。')
+        if (result.status === 'rejected') { pending.current = null; creationIdentity.current = null; localStorage.removeItem(PENDING_EMPLOYEE_CREATION_KEY); setUnresolved(false) }
         if (result.status !== 'succeeded') throw new Error(result.error?.message ?? '创建结果尚未确认，请核对原请求。')
         created.current = result.data as DigitalAgent
         setUnresolved(false)
       }
       const receipt = await submitCreation(api, { operation: 'sessions.create', input: { employeeId: created.current.id }, requestId: sessionRequest.current })
+      if (receipt.status === 'rejected') {
+        sessionRequest.current = crypto.randomUUID()
+        if (creationIdentity.current) { creationIdentity.current = { ...creationIdentity.current, sessionRequestId: sessionRequest.current }; localStorage.setItem(PENDING_EMPLOYEE_CREATION_KEY, JSON.stringify(creationIdentity.current)) }
+      }
       if (receipt.status !== 'succeeded') throw new Error(receipt.error?.message ?? '员工已创建，打开会话的结果待核对。')
       const conversation = (await api.request('getConversation', { id: (receipt.data as { conversationId: string }).conversationId })).conversation
       await onCreated(conversation)
+      localStorage.removeItem(PENDING_EMPLOYEE_CREATION_KEY)
     })
   }
   return <Dialog open onOpenChange={open => { if (!open) close() }}>
@@ -97,9 +118,14 @@ export function CreateAgentDialog({ api, snapshot, template, onClose, onCreated 
             <AgentModelFields api={api} value={form} connections={snapshot.connections} profiles={profiles} profileError={profileError} disabled={busy || uploading || unresolved || Boolean(created.current)} onChange={selection => setForm(current => ({ ...current, ...selection, executionBackend: selection.executionBackend ?? { kind: 'mastra-model' } }))} />
             {form.executionBackend.kind === 'mastra-model' && <AgentPermissionField value={form.executionPermission} onChange={executionPermission => setForm(current => ({ ...current, executionPermission, allowCommands: executionPermission !== 'read-only' }))} disabled={busy || uploading || unresolved || Boolean(created.current)} />}
           </EmployeeFormSection>
+          <ContactProfileSection title="默认项目目录"><div className="flex gap-2"><Input aria-label="默认项目目录" value={form.defaultProjectDirectory} onChange={event => setForm(current => ({ ...current, defaultProjectDirectory: event.target.value }))} placeholder="未设置" /><Button type="button" variant="secondary" size="sm" onClick={() => { void run(async () => { const directory = await api.request('chooseEmployeeDirectory', undefined); if (directory) setForm(current => ({ ...current, defaultProjectDirectory: directory })) }) }}>选择</Button></div></ContactProfileSection>
           <ContactProfileSection title="工作方式"><Textarea aria-label="工作方式" id="create-agent-instructions" className="py-1.5 text-[length:var(--text-ui-secondary)] leading-[var(--leading-ui-body)] md:text-[length:var(--text-ui-secondary)]" rows={5} maxLength={64000} value={form.instructions} onChange={e => setForm({ ...form, instructions: e.target.value })} placeholder="你是一位……请按照这些规则工作。" /></ContactProfileSection>
+          {preset && form.executionBackend.kind !== 'acp-local' && <>
+            <SourcePicker api={api} active ids={form.sourceIds} onChange={sourceIds => setForm(current => ({ ...current, sourceIds }))} disabled={busy || uploading || unresolved || Boolean(created.current)} showLabel={false} renderSection={(content, actions) => <EmployeeFormSection title="数据源" actions={actions}>{content}</EmployeeFormSection>} />
+            {snapshot.resources.some(resource => resource.kind === 'skill' && !resource.ownerAgentId) && <EmployeeFormSection title="技能"><ResourcePicker resources={snapshot.resources.filter(resource => resource.kind === 'skill' && !resource.ownerAgentId)} selected={form.skillIds} onChange={skillIds => setForm(current => ({ ...current, skillIds }))} empty="" /></EmployeeFormSection>}
+          </>}
         </fieldset>
-        <footer className="employee-form-footer"><Button variant="ghost" size="sm" disabled={busy || uploading} onClick={close}>取消</Button><Button size="sm" type="submit" disabled={busy || uploading || !form.name.trim() || (!created.current && !modelReady)}>{busy && <LoaderCircle className="spinner" />}{unresolved ? '核对创建结果' : '创建员工'}</Button></footer>
+        <footer className="employee-form-footer"><Button variant="ghost" size="sm" disabled={busy || uploading} onClick={close}>取消</Button><Button size="sm" type="submit" disabled={busy || uploading || !unresolved && !created.current && (!form.name.trim() || !modelReady)}>{busy && <LoaderCircle className="spinner" />}{unresolved ? '核对创建结果' : created.current ? '打开员工会话' : '创建员工'}</Button></footer>
       </form>
     </ConnectionDialogLayout>
   </Dialog>

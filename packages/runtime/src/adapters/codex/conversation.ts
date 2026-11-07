@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 有包绑定时在thread start/resume后、turn/start前核对完整原生能力归属；重复或未知不提交输入，原生开关保持。
  * [OUTPUT]: 握手及原生线程成功后、用户输入前回传实际程序版本；网关最低版本按实际握手核对。
  * [OUTPUT]: 原生turn/steer固定expectedTurnId与用户消息ID，仅当前活动轮次注册，结束与退出撤销。
  * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
@@ -20,6 +21,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
 import { assertCodexNativeSource, prepareCodexNativeSource } from './native-source'
+import { collectCodexCapabilityInventory, readCodexCapabilityConfig, readCodexCapabilitySkills } from './capability-inventory'
 import { codexToolResult } from '../native-tool-result'
 import { randomUUID } from 'node:crypto'
 import type { EngineContext } from '../../contracts'
@@ -142,6 +144,8 @@ export async function runCodexConversation(context: EngineContext, input: Native
       ...(gateway ? { model: gateway.model, modelProvider: gateway.providerId } : context.agent.modelId ? { model: context.agent.modelId } : {}),
       dynamicTools: [{ type: 'namespace', name: 'boai', description: 'Employee collaboration and publishing in BOAI', tools: input.tools.map(({ name, description, inputSchema }) => ({ type: 'function', name, description, inputSchema, deferLoading: false })) }],
     }
+    const capabilityConfig = context.assertNativeCapabilities ? await readCodexCapabilityConfig(client, { cwd: directory.cwd, signal }) : undefined
+    const capabilitySkills = context.assertNativeCapabilities ? await readCodexCapabilitySkills(client, { cwd: directory.cwd, signal }) : undefined
     const thread = await client.request(input.threadId ? 'thread/resume' : 'thread/start', { ...threadOptions, ...(input.threadId ? { threadId: input.threadId, excludeTurns: true } : {}) })
     threadId = string(object(thread.thread).id, '原生会话身份')
     if (input.threadId && input.threadId !== threadId) throw new Error('原生会话身份发生变化')
@@ -153,6 +157,12 @@ export async function runCodexConversation(context: EngineContext, input: Native
     await input.onSession(threadId, preparedSource)
     await context.onNativeExecution?.({ sessionId: threadId, ...(typeof thread.model === 'string' ? { modelId: thread.model } : {}), ...(gateway ? { selectedModelId: gateway.model, modelSource: { mode: 'boai-connection' as const, connectionId: context.connection!.id, connectionRevision: context.connection!.revision ?? 1, protocol: 'responses' as const, selectedModelId: gateway.model } } : {}) })
     await assertCodexNativeSource(context)
+    if (context.assertNativeCapabilities) {
+      const inventory = await collectCodexCapabilityInventory(client, { cwd: directory.cwd, threadId, signal, configBeforeThread: capabilityConfig, skillsBeforeThread: capabilitySkills })
+      await context.assertNativeCapabilities(inventory)
+      signal.throwIfAborted()
+      await assertCodexNativeSource(context)
+    }
     const response = await client.request('turn/start', { threadId, clientUserMessageId: context.triggerMessageId || randomUUID(),
       input: [{ type: 'text', text: input.prompt, text_elements: [] }, ...input.images.map(url => ({ type: 'image', url }))],
       ...(options?.effort ? { effort: options.effort } : {}) })

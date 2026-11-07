@@ -6,6 +6,7 @@
  * [OUTPUT]: DeepSeek官方API复用Craft传输与vault，固定搜索/读取POST为只读，通用API保持原门禁。
  * [OUTPUT]: MCP目录变更通知使旧工具与进行中结果失效，重复工具名拒绝；不自动重连或重放。
  * [OUTPUT]: 官方Tavily免密模式及版本/schema分类；额度假成功/无正文显式失败，未知MCP提示不授予只读权限。
+ * [OUTPUT]: OAuth MCP沿独立Source授权提供方刷新，动态脱敏token并限制跨源请求。
  * [INPUT]: Frozen source definition, vault-only credentials and an owned abort signal.
  * [OUTPUT]: Craft API requests, MCP sessions and contained local reads/writes; employee authorization is checked by the host.
  * [POS]: Source transport adapter; no employee or configuration authority.
@@ -15,6 +16,7 @@ import { mcpImages } from './mcp-media'
 import { summarizeMedia } from '../browser/media'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StdioClientTransport, getDefaultEnvironment } from '@modelcontextprotocol/sdk/client/stdio.js'
+import type { OAuthClientProvider } from '@modelcontextprotocol/sdk/client/auth.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js'
 import { ToolListChangedNotificationSchema } from '@modelcontextprotocol/sdk/types.js'
@@ -71,7 +73,8 @@ function apiPath(source: Extract<DataSource, { type: 'api' }>, path: string) {
   const target = new URL(path.replace(/^\//, ''), base)
   if (target.origin !== base.origin || !target.pathname.startsWith(base.pathname)) throw new Error('API 端点超出了配置的 Base URL')
 }
-export async function openSourceSession(source: DataSource, credential: string, dataPath: string, signal: AbortSignal, directories?: RunDirectoryAccess): Promise<SourceSession> {
+export interface SourceOAuthConnection { authProvider: OAuthClientProvider; fetch: typeof fetch }
+export async function openSourceSession(source: DataSource, credential: string, dataPath: string, signal: AbortSignal, directories?: RunDirectoryAccess, oauth?: SourceOAuthConnection): Promise<SourceSession> {
   signal.throwIfAborted()
   if (source.type === 'api') {
     const generic: SourceSession = {
@@ -138,6 +141,17 @@ export async function openSourceSession(source: DataSource, credential: string, 
   }
   // Transport mapping follows Craft server-builder.ts. SDK/session ownership is BOAI's.
   const config = source.mcp
+  if (config.transport !== 'stdio' && config.authType === 'oauth' && !oauth) throw new Error('OAuth 数据源尚未授权')
+  const sessionSecrets = new Set<string>()
+  const remember = (value: string) => { if (!value || sessionSecrets.has(value)) return; if (sessionSecrets.size >= 64) throw new Error('OAuth凭据已多次更新，请重新建立连接'); sessionSecrets.add(value) }
+  const rememberTokens = async () => { if (oauth) for (const value of Object.values(await oauth.authProvider.tokens() ?? {})) if (typeof value === 'string') remember(value) }
+  await rememberTokens()
+  const oauthFetch: typeof fetch | undefined = oauth ? async (input, init) => {
+    const headers = new Headers(input instanceof Request ? input.headers : undefined); new Headers(init?.headers).forEach((value, key) => headers.set(key, value))
+    const bearer = /^Bearer (.+)$/i.exec(headers.get('authorization') ?? '')?.[1]; if (bearer) remember(bearer)
+    return oauth.fetch(input, init)
+  } : undefined
+  const redact = async (value: unknown) => { await rememberTokens(); return redactSourceValue(value, oauth ? JSON.stringify([...sessionSecrets]) : credential) }
   const headers: Record<string, string> | undefined = config.transport !== 'stdio' && config.authType === 'bearer' ? { Authorization: `Bearer ${credential}` } : isTavilySearchEndpoint(source) ? { 'X-Tavily-Access-Mode': 'keyless' } : undefined
   if (config.transport !== 'stdio' && config.authType === 'bearer' && !credential) throw new Error('MCP 尚未配置访问令牌')
   const scopedFetch: typeof fetch = (input, init) => {
@@ -169,8 +183,8 @@ export async function openSourceSession(source: DataSource, credential: string, 
   const transport = config.transport === 'stdio'
     ? new StdioClientTransport({ command: await assertNativeProcessGuard(), args: ['--ledger', ledger, processCommand!.command, ...processCommand!.args], env: processEnvironment, cwd: directories ? '/' : undefined, stderr: 'ignore', maxBufferSize: 4 * 1024 * 1024 })
     : config.transport === 'sse'
-      ? new SSEClientTransport(new URL(config.url), { requestInit: { headers }, fetch: scopedFetch, eventSourceInit: { fetch: scopedFetch } })
-      : new StreamableHTTPClientTransport(new URL(config.url), { requestInit: { headers }, fetch: scopedFetch, reconnectionOptions: { maxRetries: 0, initialReconnectionDelay: 1000, maxReconnectionDelay: 1000, reconnectionDelayGrowFactor: 1 } })
+      ? new SSEClientTransport(new URL(config.url), { requestInit: { headers }, authProvider: oauth?.authProvider, fetch: oauthFetch ?? scopedFetch, eventSourceInit: { fetch: oauthFetch ?? scopedFetch } })
+      : new StreamableHTTPClientTransport(new URL(config.url), { requestInit: { headers }, authProvider: oauth?.authProvider, fetch: oauthFetch ?? scopedFetch, reconnectionOptions: { maxRetries: 0, initialReconnectionDelay: 1000, maxReconnectionDelay: 1000, reconnectionDelayGrowFactor: 1 } })
   const client = new Client({ name: 'boai-sources', version: '1.0.0' })
   let catalogChanged = false
   client.setNotificationHandler(ToolListChangedNotificationSchema, () => { catalogChanged = true })
@@ -203,18 +217,20 @@ export async function openSourceSession(source: DataSource, credential: string, 
       if (cursor) cursors.add(cursor)
     } while (cursor)
     signal.throwIfAborted(); assertCatalog()
-    const publicTools = redactSourceValue(tools, credential)
+    const publicTools = await redact(tools)
     if (!Array.isArray(publicTools)) throw new Error('MCP 工具目录过大，请在服务端缩小范围')
     return { get tools() { assertCatalog(); return publicTools as SourceTool[] }, async call(name, args, signal) {
       assertCatalog()
       if (!tools.some(tool => tool.name === name)) throw new Error('MCP 工具不在当前目录中')
-      const result = await client.callTool({ name, arguments: args }, undefined, { signal, timeout: SOURCE_TIMEOUT, maxTotalTimeout: SOURCE_TIMEOUT })
+      let result
+      try { result = await client.callTool({ name, arguments: args }, undefined, { signal, timeout: SOURCE_TIMEOUT, maxTotalTimeout: SOURCE_TIMEOUT }) }
+      catch (error) { if (oauth) throw new Error('OAuth 数据源调用失败，请核对授权和连接'); throw error }
       assertCatalog()
       assertWebSearchResult(tools.find(tool => tool.name === name)?.webCapability, result)
       const images = mcpImages(result)
-      if (!images.length) return redactSourceValue(summarizeMedia(result), credential)
-      const safe = redactSourceValue(summarizeMedia(result), credential)
+      if (!images.length) return await redact(summarizeMedia(result))
+      const safe = await redact(summarizeMedia(result))
       return { ...(safe as Record<string, unknown>), content: [{ type: 'text', text: JSON.stringify(safe) }, ...images] }
     }, close: async () => { signal.removeEventListener('abort', abort); await close() } }
-  } catch (error) { signal.removeEventListener('abort', abort); await close(); throw error }
+  } catch (error) { signal.removeEventListener('abort', abort); await close(); if (oauth) throw new Error('OAuth 数据源连接失败，请核对授权和连接'); throw error }
 }
