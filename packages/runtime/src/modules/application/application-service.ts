@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 定时创建按原消息保护未决写入，原回执只读恢复；无进展只计Agent可见操作，内部目录/回执核对不重复计数。
+ * [OUTPUT]: v2参数错误按所属业务解释；定时专属校验不用于外观等配置合同。
  * [OUTPUT]: 会话/员工清理同步擦除终端、预览回执正文，仅保留写入去重身份。
  * [OUTPUT]: 员工/会话清理同步移除手动引用关系与回执结果；关系回执不保存对象正文。
  * [OUTPUT]: Plan Weave状态/报告随来源清理；已知事务前置拒绝保留稳定rejected回执，未知副作用仍不重放。
@@ -138,7 +138,7 @@ export class ApplicationService {
     try { await this.authorize(actor, operation) } catch { return reject(request.operation, { code: 'FORBIDDEN', message: '当前调用者没有此应用管理权限。' }, request.requestId) }
     const input = operation.input.safeParse(request.input)
     if (!input.success) {
-      if (operation.contractVersion === 2) { try { parseSchedule(operation.input, request.input) } catch (error) { return reject(request.operation, businessError(error)!, request.requestId) } }
+      if (operation.contractVersion === 2 && operation.name.startsWith('automations.')) { try { parseSchedule(operation.input, request.input) } catch (error) { return reject(request.operation, businessError(error)!, request.requestId) } }
       return reject(request.operation, { code: 'INVALID_INPUT', message: '业务参数不符合目录中的输入合同。', fields: input.error.issues.map(issue => issue.path.join('.')) }, request.requestId)
     }
     if (operation.effect === 'write' && !request.requestId) return reject(request.operation, { code: 'INVALID_INPUT', message: '写操作必须提供稳定的 requestId；重试同一意图请保留此 ID。' })

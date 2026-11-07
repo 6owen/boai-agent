@@ -1,6 +1,7 @@
 /*
  * [OUTPUT]: WT2新增capabilityPackages实际领域，精确目录断言保留。
  * [OUTPUT]: 定时创建夹具使用独立instruction/trigger公共契约，旧内部owner/purpose不进入工具请求。
+ * [OUTPUT]: 公共应用目录明确新增只读diagnostics域，原权限/输入/回执断言保持。
  * [OUTPUT]: 新增prompts域及同UI存储/版本/持久回执回归；公共目录明确核对28个域。
  * [OUTPUT]: 日期夹具只冻结Date，轮询沿真实计时；保留历史/追补精确时间断言，避免假时钟被poll推进。
  * [OUTPUT]: 公共目录固定核对28个明确业务域，包含memory.provider和prompts；不靠数量掩盖域替换，原拒绝/回执断言保持。
@@ -576,7 +577,7 @@ it('rejects absent identity, forged core ownership and unknown input before invo
   expect(described.operations).toHaveLength(1)
   expect(described.operations[0].inputSchema).toMatchObject({ type: 'object' })
   const complete = await f.owned.service.handle('getApplicationCatalog', { includeSchemas: true }) as { operations: { name: string; inputSchema: unknown; available: boolean }[] }
-  expect([...new Set(complete.operations.map(operation => operation.name.split('.')[0]))].sort()).toEqual(['activity', 'appearance', 'application', 'automations', 'capabilityPackages', 'channels', 'connections', 'employees', 'groups', 'images', 'knowledge', 'memory', 'planning', 'plans', 'plugins', 'presentations', 'preview', 'prompts', 'refs', 'runtimePlugins', 'runtimes', 'selfies', 'sessions', 'skills', 'sources', 'tasks', 'terminal', 'webSearch', 'workspace'])
+  expect([...new Set(complete.operations.map(operation => operation.name.split('.')[0]))].sort()).toEqual(['activity', 'appearance', 'application', 'automations', 'capabilityPackages', 'channels', 'connections', 'diagnostics', 'employees', 'groups', 'images', 'knowledge', 'memory', 'planning', 'plans', 'plugins', 'presentations', 'preview', 'prompts', 'refs', 'runtimePlugins', 'runtimes', 'selfies', 'sessions', 'skills', 'sources', 'tasks', 'terminal', 'webSearch', 'workspace'])
   expect(complete.operations.find(operation => operation.name === 'plans.set')?.inputSchema).toMatchObject({ type: 'object' })
   expect(complete.operations.find(operation => operation.name === 'presentations.configure')?.inputSchema).toMatchObject({ type: 'object' })
   expect(complete.operations.every(operation => !!operation.inputSchema)).toBe(true)

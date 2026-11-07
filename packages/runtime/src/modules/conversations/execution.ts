@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 首次明确started/terminal时刻独立持久化，重复事件保持原区间，旧证据不猜开始时间。
  * [OUTPUT]: 正文与思考块按稳定身份累积text，重复快照覆盖原块而非追加重复内容。
  * [OUTPUT]: 2026-10-12消息回答可组合原事务，接受/提交/未知分别记录；多候选和私密输入不误入普通等待队列，重启不重放。
  * [INPUT]: 真实运行事件、用户原生交互回应、产品SQLite事务。
@@ -41,7 +42,11 @@ export class ExecutionRepository {
       if (previousPayload.item && incomingPayload.item) payload.item = { ...(previousPayload.item as object), ...(incomingPayload.item as object) }
       if (event.appendOutput !== undefined) payload.item = { ...recordValue(payload.item), aggregatedOutput: String(recordValue(previousPayload.item).aggregatedOutput ?? '') + event.appendOutput }
       const timestamp = new Date().toISOString(), sequence = previous?.sequence ?? ++clock.sequence
+      const observedTiming = { ...previous?.observedTiming }
+      if ((event.canonical?.phase === 'started' || event.eventType === 'activity.started') && !observedTiming.startedAt && !observedTiming.finishedAt) observedTiming.startedAt = timestamp
+      if ((event.canonical?.phase === 'terminal' || event.eventType === 'activity.completed') && !observedTiming.finishedAt) observedTiming.finishedAt = timestamp
       const value: ExecutionEvidence = { id, runId: run.id, agentRunId: run.id, conversationId: run.conversationId, agentId: run.agentId,
+        ...(Object.keys(observedTiming).length ? { observedTiming } : {}),
         sequence, revision: clock.revision + 1, createdAt: previous?.createdAt ?? timestamp, updatedAt: timestamp, eventType: event.appendOutput !== undefined ? previous?.eventType ?? 'activity.started' : event.eventType, payload,
         canonical: event.canonical ?? previous?.canonical, parentId: event.parentId ?? previous?.parentId, contentLength: JSON.stringify(payload).length, deferred: false }
       if (value.canonical) Object.assign(value.canonical, { firstEvidenceSequence: sequence, lastEvidenceSequence: sequence, revision: clock.revision + 1 })

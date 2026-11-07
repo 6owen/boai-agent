@@ -1,5 +1,7 @@
 /*
  * [OUTPUT]: WT3冻结员工项目默认字段与WT2模板来源，创建输入不接受伪造来源记录。
+ * [OUTPUT]: 本人发给bobo的诊断目标作为真实消息来源持久化，不冒用跨会话reply或执行目标任务。
+ * [OUTPUT]: 项目默认值与工作目录快照独立于workspace和目录授权。
  * [OUTPUT]: 消息轮次保存队列移除及实际开始时的上下文边界，排队消息不提前执行或进入模型输入。
  * [OUTPUT]: Conversation可绑定持久员工任务；同任务独立会话续接。
  * [OUTPUT]: 消息可关联员工任务身份，设为任务不重新发送原消息。
@@ -105,9 +107,12 @@ export interface ConnectionInput {
   defaultModel: string
   apiKey?: string
 }
+export * from './project-directory'
+export * from './context-handoff'
 export interface DigitalAgent {
   /** Default for newly created chats/tasks; WT3 owns the execution snapshot semantics. */
   defaultProjectDirectory?: string
+  defaultProjectDirectoryRequested?: string
   /** Host-validated template provenance; never copied account or core authority. */
   templateOrigin?: { templateId: string; version: string }
   /** Absent keeps legacy access; an explicit list opts into employee directory authorization. */
@@ -142,7 +147,7 @@ export interface DigitalAgent {
   memoryNamespace?: string
   policyVersion?: number
 }
-export type AgentInput = Omit<DigitalAgent, 'id' | 'configVersion' | 'directoryRevision' | 'workspaceRef' | 'memoryNamespace' | 'policyVersion' | 'creationSource' | 'systemRole' | 'templateOrigin'> & { id?: string; expectedConfigVersion?: number; expectedDirectoryRevision?: number; initialSoul?: string; templateId?: string; templateVersion?: string }
+export type AgentInput = Omit<DigitalAgent, 'id' | 'defaultProjectDirectoryRequested' | 'templateOrigin' | 'configVersion' | 'directoryRevision' | 'workspaceRef' | 'memoryNamespace' | 'policyVersion' | 'creationSource' | 'systemRole'> & { templateId?: string; templateVersion?: string; id?: string; expectedConfigVersion?: number; expectedDirectoryRevision?: number; initialSoul?: string }
 export interface Resource {
   knowledge?: import('./knowledge').KnowledgeContent
   id: string
@@ -154,6 +159,8 @@ export interface Resource {
   ownerAgentId?: string
 }
 export interface Conversation {
+  projectSelection?: import('./project-directory').ProjectSelection
+  projectSelections?: Record<string, import('./project-directory').ProjectSelection>
   employeeTaskId?: string
   /** Core chat opened explicitly from the scheduled-task creation page. */
   automationCreation?: boolean
@@ -202,6 +209,9 @@ export interface ConversationInput {
 }
 export type RunStatus = 'queued' | 'running' | 'waiting_approval' | 'completed' | 'failed' | 'cancelled' | 'interrupted'
 export interface Message {
+  diagnosisTarget?: import('./task-diagnosis').TaskDiagnosisTarget
+  projectSelection?: import('./project-directory').ProjectSelection
+  projectSelections?: Record<string, import('./project-directory').ProjectSelection>
   employeeTaskId?: string
   nativeSteering?: import('./execution').NativeSteeringReceipt
   permissionExpectation?: import('./execution').MessagePermissionExpectation

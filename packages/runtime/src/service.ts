@@ -1,6 +1,9 @@
 /*
  * [OUTPUT]: Codex/Claude能力包绑定按每次普通/behavior输入前的有效清单证明单一归属；未知组合拒绝，实际退出屏障和重启副本路径保持。
  * [OUTPUT]: WT2能力包沿原应用/Source/资源授权注册；按员工实际适配器退出排空，未证明原生单加载时拒绝绑定。
+ * [OUTPUT]: 固定诊断解释复用核心首发；仅两回执确认不存在且提交未开始的已终止调用返回安全rejected，其余错误保留unknown。
+ * [OUTPUT]: 本人诊断目标仅随bobo真实消息受理，原事务重核归属/可读性并保存，不派发目标任务或伪造reply来源。
+ * [OUTPUT]: WT1诊断沿原ApplicationService注册；浏览器配置提交通知原状态刷新。
  * [OUTPUT]: Composer知识资料标签沿员工/会话授权及所选revision/hash核源，发送和执行均拒绝失效或外改内容。
  * [OUTPUT]: 定时执行记录删除不再逐条同步压缩整库，原事务、文件核验及恢复协议保持。
  * [OUTPUT]: 成功发布及暂缓结束同样释放活跃上下文；持久Run/历史和实际适配器容量屏障保持。
@@ -244,6 +247,8 @@ import { planOperations, activePlanInstructions } from './modules/application/pl
 import { referenceOperations, referenceScope, referenceInstructions, type LoadReferences } from './modules/application/reference-operations'
 import { collectReferenceSources } from './modules/application/reference-sources'
 import { applicationOperations } from './modules/application/operations'
+import { taskDiagnosisOperation } from './modules/application/task-diagnosis'
+import { taskDiagnosisExplanationRequestSchema, taskDiagnosisTargetSchema, type StartTaskDiagnosisExplanationInput, type StartTaskDiagnosisExplanationResult, type TaskDiagnosisTarget } from '@boai/shared/domain/task-diagnosis'
 import { DesktopPluginService } from './modules/desktop-plugin/service'
 import { BrowserPluginService } from './modules/browser/plugins'
 import { browserPluginProviderSchema } from '@boai/shared/plugins/browser-tools'
@@ -456,7 +461,7 @@ const artifactAdoptionSchema = z.object({ artifactId: id, contentHash: artifactH
 const artifactAcceptanceSchema = z.object({ artifactId: id, logicalArtifactId: id, contentVersion: z.number().int().positive(), contentHash: artifactHash, expectedAcceptanceRevision: z.number().int().nonnegative(), requestId: id }).strict()
 const materialReferenceSchema = z.object({ id, conversationId: id, revision: z.number().int().positive(), contentHash: artifactHash, parseVersion: z.enum(['text-v1', 'binary-v1']) }).strict()
 const channelReferenceSchema = z.object({ conversationId: id, messageId: id, contentHash: artifactHash }).strict()
-const sendSchema = z.object({ steer: z.object({ runId: id, turnId: id }).strict().optional(), expectedExecutionPermission: executionPermissionSchema.optional(), materialUploads: submittedMaterialsSchema.optional(), apiModel: apiModelOverrideSchema.optional(), workingDirectory: directoryGrantSchema.shape.path.optional(), composerReferences: composerReferencesSchema.optional(), channelReference: channelReferenceSchema.optional(), materialReference: materialReferenceSchema.optional(), conversationId: id, content: z.string().trim().max(100000), browserReference:z.object({instanceId:id,pageVersion:z.string().min(1).max(200)}).strict().optional(), artifactRevision: artifactRevisionSourceSchema.optional(), materialSelections: z.array(z.object({ id, revision: z.number().int().positive() }).strict()).max(MATERIAL_LIMITS.perMessage).optional(), mentionIds: ids, requestId: id, replyToMessageId: id.optional(), stopPrevious: z.boolean().optional() }).strict().refine(input => !!input.content || !!input.materialSelections?.length || !!input.materialUploads?.length, '请输入消息或添加就绪材料').refine(input => !(input.materialSelections?.length && input.materialUploads?.length), '材料选择和上传来源不能同时提供')
+const sendSchema = z.object({ diagnosisTarget: taskDiagnosisTargetSchema.optional(), steer: z.object({ runId: id, turnId: id }).strict().optional(), expectedExecutionPermission: executionPermissionSchema.optional(), materialUploads: submittedMaterialsSchema.optional(), apiModel: apiModelOverrideSchema.optional(), workingDirectory: directoryGrantSchema.shape.path.optional(), composerReferences: composerReferencesSchema.optional(), channelReference: channelReferenceSchema.optional(), materialReference: materialReferenceSchema.optional(), conversationId: id, content: z.string().trim().max(100000), browserReference:z.object({instanceId:id,pageVersion:z.string().min(1).max(200)}).strict().optional(), artifactRevision: artifactRevisionSourceSchema.optional(), materialSelections: z.array(z.object({ id, revision: z.number().int().positive() }).strict()).max(MATERIAL_LIMITS.perMessage).optional(), mentionIds: ids, requestId: id, replyToMessageId: id.optional(), stopPrevious: z.boolean().optional() }).strict().refine(input => !!input.content || !!input.materialSelections?.length || !!input.materialUploads?.length, '请输入消息或添加就绪材料').refine(input => !(input.materialSelections?.length && input.materialUploads?.length), '材料选择和上传来源不能同时提供')
 type MessageReceipt = { id: string; fingerprint: string; conversationId: string; messageId?: string; cleared?: true }
 const lookupSchema = z.object({ id }).strict()
 const memoryQuerySchema = z.object({ agentId: id, scope: z.enum(['profile', 'conversation', 'employee']), conversationId: id.optional(), kind: z.enum(['long_term', 'experience', 'temporary']).optional(), status: z.enum(['active', 'history', 'all']).optional(), sourceConversationId: id.optional(), before: z.object({ createdAt: z.string().max(100), id }).strict().optional(), limit: z.number().int().min(1).max(40).optional(), search: z.string().max(200).optional() }).strict()
@@ -581,7 +586,7 @@ export class AppService {
     this.store = new ProductStore(join(this.dataPath, 'boai.sqlite'))
     this.contexts = new ContextRepository(this.store)
     this.desktopPlugin = new DesktopPluginService(this.store, this.dataPath, action => this.serialize(async () => { if (this.closing || this.backingUp) fail('服务正在退出或备份'); return action() }))
-    this.browserPlugins = new BrowserPluginService(this.store, this.dataPath, action => this.serialize(async () => { if (this.closing || this.backingUp) fail('服务正在退出或备份'); return action() }))
+    this.browserPlugins = new BrowserPluginService(this.store, this.dataPath, action => this.serialize(async () => { if (this.closing || this.backingUp) fail('服务正在退出或备份'); return action() }), () => this.changed())
     this.images = new ImageService(this.store, {
       connection: async id => this.connections.get(id),
       credential: connection => this.serialize(async () => {
@@ -667,7 +672,7 @@ export class AppService {
       if (!isAbsolute(path)) fail('预览目录必须是绝对路径')
       if (!directory && !write) return path
       return realpath(path)
-    }, scope => this.emit({ type: 'workspace:show', ...scope }), () => !!options.applicationHost?.available), ...this.presentations.operations(), ...this.images.operations(), ...this.selfies.operations(), taskActivityOperation(this.store, (tasks, actor) => this.employeeTaskOutputs(tasks, actor)), ...taskOperations(this.store, room => { this.conversations.set(room.id, room) }), ...planningOperations(this.store), ...planOperations(this.store), ...referenceOperations(this.store, (...args) => this.serialize(() => this.referenceObjects(...args))), ...applicationOperations({ capabilities: () => this.capabilities, sources: () => this.dataSources, schedules: () => this.schedules, request: async (method, input) => await this.handle(method, input) as never, personality: (action, input) => this.agentPersonality(action, input) }, { connection: connectionSchema, conversation: conversationSchema, search: searchSchema }, options.applicationHost)], async (actor, operation) => {
+    }, scope => this.emit({ type: 'workspace:show', ...scope }), () => !!options.applicationHost?.available), ...this.presentations.operations(), ...this.images.operations(), ...this.selfies.operations(), taskDiagnosisOperation(this.store, { host: options.applicationHost }), taskActivityOperation(this.store, (tasks, actor) => this.employeeTaskOutputs(tasks, actor)), ...taskOperations(this.store, room => { this.conversations.set(room.id, room) }), ...planningOperations(this.store), ...planOperations(this.store), ...referenceOperations(this.store, (...args) => this.serialize(() => this.referenceObjects(...args))), ...applicationOperations({ capabilities: () => this.capabilities, sources: () => this.dataSources, schedules: () => this.schedules, request: async (method, input) => await this.handle(method, input) as never, personality: (action, input) => this.agentPersonality(action, input) }, { connection: connectionSchema, conversation: conversationSchema, search: searchSchema }, options.applicationHost)], async (actor, operation) => {
       if (operation?.effect === 'write' && (this.closing || this.backingUp)) fail('服务正在退出或备份')
       if (actor.kind === 'owner') return
       if (actor.kind === 'behavior') {
@@ -1595,9 +1600,10 @@ export class AppService {
         case 'sendEmployeeMessage': return this.sendEmployeeMessage(z.object({ expectedExecutionPermission: executionPermissionSchema.optional(), materialUploads: submittedMaterialsSchema.optional(), apiModel: apiModelOverrideSchema.optional(), workingDirectory: directoryGrantSchema.shape.path.optional(), composerReferences: composerReferencesSchema.optional(), materialSelections: z.array(z.object({ id, revision: z.number().int().positive() }).strict()).max(MATERIAL_LIMITS.perMessage).optional(), employeeId: id, content: z.string().trim().max(100000), requestId: id }).strict().parse(input))
         case 'deleteConversation': return this.deleteGroup(lookupSchema.parse(input).id)
         case 'startCoreConversation': return this.startCoreConversation(z.union([
-          z.object({ expectedExecutionPermission: executionPermissionSchema.optional(), materialUploads: submittedMaterialsSchema.optional(), apiModel: apiModelOverrideSchema.optional(), workingDirectory: directoryGrantSchema.shape.path.optional(), requestId: id, content: z.string().trim().max(100000), automationCreation: z.boolean().optional(), sourceCreation: z.boolean().optional(), composerReferences: composerReferencesSchema.optional() }).strict().refine(value => !!value.content || !!value.materialUploads?.length, '请输入消息或添加附件'),
+          z.object({ diagnosisTarget: taskDiagnosisTargetSchema.optional(), expectedExecutionPermission: executionPermissionSchema.optional(), materialUploads: submittedMaterialsSchema.optional(), apiModel: apiModelOverrideSchema.optional(), workingDirectory: directoryGrantSchema.shape.path.optional(), requestId: id, content: z.string().trim().max(100000), automationCreation: z.boolean().optional(), sourceCreation: z.boolean().optional(), composerReferences: composerReferencesSchema.optional() }).strict().refine(value => !!value.content || !!value.materialUploads?.length, '请输入消息或添加附件'),
           z.object({ requestId: id, team: z.object({ name: text(CORE_TEAM_NAME_MAX_LENGTH), requirements: text(CORE_TEAM_REQUIREMENTS_MAX_LENGTH) }).strict() }).strict(),
         ]).parse(input))
+        case 'startTaskDiagnosisExplanation': return this.startTaskDiagnosisExplanation(taskDiagnosisExplanationRequestSchema.parse(input))
         case 'getCoreConversationStart': return clone((await this.coreConversationStart(z.object({ requestId: id }).strict().parse(input).requestId))?.conversation ?? null)
         case 'updateConversationList': return this.updateConversationList(conversationListSchema.parse(input))
         case 'clearConversationHistory': { const value = z.object({ id, hide: z.boolean() }).strict().parse(input); return this.clearConversationHistory(value.id, value.hide) }
@@ -2643,7 +2649,48 @@ export class AppService {
     return selections
   }
 
-  private async startCoreConversation(input: StartCoreConversationInput) {
+  private async validateDiagnosisTarget(tx: RecordTransaction, target: TaskDiagnosisTarget) {
+    if (!await tx.get<DigitalAgent>('agents', target.employeeId)) fail('诊断目标员工已不存在')
+    const room = async (conversationId: string) => {
+      const value = await tx.get<Conversation>('conversations', conversationId)
+      if (!value || value.mergedInto || value.list?.hidden || !value.agentIds.includes(target.employeeId) || await tx.get('conversationCleanup', conversationId)) fail('诊断目标会话已清理、隐藏或不属于该员工')
+      return value!
+    }
+    if (target.kind === 'run') {
+      await room(target.conversationId)
+      const run = await tx.get<AgentRun>('runs', target.runId)
+      const source = run?.triggerMessageId ? await tx.get<Message>('messages', run.triggerMessageId) : undefined
+      if (!run || run.agentId !== target.employeeId || run.conversationId !== target.conversationId || !source || source.conversationId !== target.conversationId) fail('诊断目标运行已不存在或原来源已失效')
+      return
+    }
+    const task = await tx.get<TrackedTask>('agentTasks', target.taskId)
+    if (!task || task.agentId !== target.employeeId || await tx.get('deletedEmployeeTasks', target.taskId)) fail('诊断目标任务已不存在或不属于该员工')
+    if (task!.sessionConversationId) await room(task!.sessionConversationId)
+    if (target.occurrenceId) {
+      const occurrence = await tx.get<AutomationOccurrence>('automationOccurrences', target.occurrenceId)
+      if (!occurrence || occurrence.deletedAt || occurrence.taskId !== task!.id) fail('诊断目标执行已删除或不属于原任务')
+      await room(occurrence!.conversationId)
+    }
+  }
+
+  private async startTaskDiagnosisExplanation(input: StartTaskDiagnosisExplanationInput): Promise<StartTaskDiagnosisExplanationResult> {
+    // Called only from the existing serialized dispatch. A throw is definitive
+    // rejection only after both receipt reads succeeded and before commit began.
+    let preparing = false, committing = false
+    try {
+      const conversation = await this.startCoreConversation({
+        ...input,
+        content: '请只读解释我明确选择的任务或执行：当前状态、为什么停下，以及有证据的耗时。通过 diagnostics.task 核对原记录；区分事实与未知，缺少证据时明确说明，不执行重试、恢复、审批或修改任务。',
+      }, phase => { if (phase === 'preparing') preparing = true; else committing = true })
+      return { status: 'accepted', requestId: input.requestId, conversationId: conversation.id }
+    } catch {
+      if (preparing && !committing) return { status: 'rejected', requestId: input.requestId, code: 'NOT_ACCEPTED', message: '本次解释请求未受理，请检查当前配置后重新发送。' }
+      return { status: 'unknown', requestId: input.requestId }
+    }
+  }
+
+  private async startCoreConversation(input: StartCoreConversationInput, onAdmission?: (phase: 'preparing' | 'committing') => void) {
+    if (input.diagnosisTarget && (this.applicationAuthority.getStore() || input.automationCreation || input.sourceCreation)) fail('诊断目标仅接受本人发给bobo的普通消息')
     if (!input.team && !input.content.trim() && !input.materialUploads?.length) fail('请输入消息或添加附件')
     if (!input.team && input.automationCreation && input.sourceCreation) fail('创建会话不能同时配置计划与数据源')
     if (input.materialUploads?.length && input.content!.length > MATERIAL_LIMITS.messageTextCharacters) fail('带材料消息正文超过当前上限')
@@ -2654,6 +2701,7 @@ export class AppService {
       return clone(prior.conversation)
     }
     if (await this.store.get('messageReceipts', input.requestId)) fail('requestId 已用于其他消息')
+    onAdmission?.('preparing')
     assertExpectedExecutionPermission(this.getAgent(CORE_AGENT_ID), input.expectedExecutionPermission)
     const agent = input.apiModel ? this.getAgent(CORE_AGENT_ID) : await this.ensureCoreConnection()
     const conversationId = randomUUID(), timestamp = now()
@@ -2665,6 +2713,7 @@ export class AppService {
     if (preparedModel) message.apiModelSource = preparedModel.source
     if (input.materialUploads) message.attachmentInputs = input.materialUploads.map(({ selectionId: _temporary, ...file }) => file)
     if (input.workingDirectory) message.workingDirectory = (await workingDirectoryTarget(input.workingDirectory, [await realpath(this.dataPath)])).path
+    if (input.diagnosisTarget) message.diagnosisTarget = clone(input.diagnosisTarget)
     if (input.composerReferences?.length) message.composerReferences = input.composerReferences
     message.mentionIds = []; conversation.lastMessageAt = message.createdAt
     const receipt: CoreConversationStart = { id: input.requestId, fingerprint, conversationId, messageId: message.id, ...(input.team ? { teamName: input.team.name } : {}) }
@@ -2677,8 +2726,10 @@ export class AppService {
       const records = [record('conversations', conversation), record('coreConversationStarts', receipt), record('messageReceipts', { id: input.requestId, fingerprint, conversationId, messageId: message.id } as MessageReceipt), record('messages', message), ...prepared.records]
       await mkdir(join(this.dataPath, 'workspaces'), { recursive: true })
       await mkdir(conversation.workspacePath); workspaceCreated = true
+      onAdmission?.('committing')
       await this.store.transaction(async tx => {
         if (await tx.get('coreConversationStarts', input.requestId)) fail('核心会话请求已受理，请核对原会话')
+        if (input.diagnosisTarget) await this.validateDiagnosisTarget(tx, input.diagnosisTarget)
         if (input.composerReferences?.length) await this.validateComposerReferences(tx, conversation, input.composerReferences, true)
         await tx.put(record('conversations', conversation))
         if (selections?.length) await this.materials.attach(tx, conversation.id, message.id, selections)
@@ -3235,6 +3286,7 @@ export class AppService {
     const existing = this.requests.get(input.requestId)
     if (existing) { if (existing.fingerprint !== fingerprint) fail('requestId 已用于不同请求'); return clone(this.messages.get(existing.messageId!) ?? fail('原请求消息不存在')) }
     const conversation = clone(this.getConversation(input.conversationId))
+    if (input.diagnosisTarget && (this.applicationAuthority.getStore() || origin || commit || humanReply || questionReply || automationQuestionReply || channelSource || conversation.channel || conversation.kind !== 'direct' || conversation.purpose !== 'core' || conversation.agentIds.length !== 1 || conversation.agentIds[0] !== CORE_AGENT_ID || input.steer || input.stopPrevious || input.artifactRevision || input.materialReference || input.channelReference)) fail('诊断目标仅接受本人发给bobo的普通消息')
     if (input.steer) {
       if (origin || commit || humanReply || questionReply || channelSource || conversation.channel || input.stopPrevious || input.replyToMessageId || input.artifactRevision || input.materialReference || input.channelReference || input.browserReference || input.apiModel || input.workingDirectory || input.expectedExecutionPermission || input.composerReferences?.length || input.materialSelections?.length || input.materialUploads?.length || !input.content.trim()) fail('补充当前执行只接受本人纯文本，请使用普通消息发送材料或其他请求')
       await this.steering.validate(input.steer, conversation.id, input.mentionIds)
@@ -3266,6 +3318,7 @@ export class AppService {
     if (input.stopPrevious) await this.cancelConversation(conversation.id)
     const message = this.nextMessage(conversation.id, { senderType: 'user', senderId: 'user', senderName: (await this.userProfile.get()).displayName, content: input.content, status: 'completed' })
     if (permissionExpectation) message.permissionExpectation = permissionExpectation
+    if (input.diagnosisTarget) message.diagnosisTarget = clone(input.diagnosisTarget)
     if (channelSource) { message.channel = channelSource; message.senderId = 'channel-user:' + createHash('sha256').update(JSON.stringify([channelSource.platform, channelSource.tenantId, channelSource.userId])).digest('hex'); message.senderName = channelUserName || channelSource.userId }
     if(origin){message.origin=origin;if(!humanReply){message.senderName='定时任务 · '+origin.name;message.senderId='automation:'+origin.automationId}}
     if (input.channelReference) message.channelReference = input.channelReference
@@ -3281,7 +3334,7 @@ export class AppService {
     if (input.materialReference) { message.materialReference = input.materialReference; message.materialSources = [input.materialReference] }
     if (revision) message.artifactRevisionRequestId = revision.requestId
     if (relation) message.inboxReply = relation
-    const nativeInput = !input.steer && !origin && !commit && !revision && !input.materialReference && !questionReply ? await this.executions.inputForMessage(conversation.id, input.mentionIds.length ? input.mentionIds : conversation.kind === 'direct' ? conversation.agentIds : []) : undefined
+    const nativeInput = !input.diagnosisTarget && !input.steer && !origin && !commit && !revision && !input.materialReference && !questionReply ? await this.executions.inputForMessage(conversation.id, input.mentionIds.length ? input.mentionIds : conversation.kind === 'direct' ? conversation.agentIds : []) : undefined
     let nativeResponse: { deliver(): Promise<void>; rollback(): Promise<void> } | undefined
     const directedAutomation = origin && !humanReply && input.mentionIds.length ? { ...conversation, agentIds: input.mentionIds } : conversation
     const prepared = nativeInput || input.steer ? undefined : questionReply ? this.scheduler.prepareQuestionReply(conversation, message, questionReply.turn.id, questionReply.agentId, questionReply.work) : this.scheduler.prepare(revision ? { ...conversation, agentIds: [revision.targetAgentId] } : input.materialReference ? { ...conversation, agentIds: input.mentionIds } : directedAutomation, message)
@@ -3299,6 +3352,7 @@ export class AppService {
         }
         const current = await tx.get<Conversation>('conversations', conversation.id)
         if (!current || (current.configVersion ?? 0) !== (conversation.configVersion ?? 0) || await tx.get('conversationCleanup', conversation.id)) fail('聊天配置已更新或正在清理，请刷新后发送')
+        if (input.diagnosisTarget) await this.validateDiagnosisTarget(tx, input.diagnosisTarget)
         if (input.composerReferences?.length) await this.validateComposerReferences(tx, current!, input.composerReferences, true)
         if (input.channelReference) await channelReferenceMessage(tx, conversation.id, input.channelReference)
         if (conversation.channelDiscussion) await assertChannelSourceAccess(tx, conversation.id, conversation.channelDiscussion.conversationId)
@@ -4258,6 +4312,10 @@ export class AppService {
     if (personaProfile.features.fatigue) await this.agentStates.recordMessage(agent.id, conversation.id, turn.triggerMessageId)
     const personaState = await this.agentStates.view(agent.id, conversation.id, Date.now(), combined)
     const loaded = await this.homes.load(agent, conversation, combined, run.id, { profile: personaProfile, state: personaState, scene: run.responseKind === 'task' ? 'task' : conversation.channel ? 'channel' : conversation.kind === 'group' ? 'group' : 'direct' })
+    const diagnosisTarget = this.messages.get(turn.triggerMessageId)?.diagnosisTarget
+    if (diagnosisTarget && isCoreAgent(agent)) loaded.bootstrap.dynamicInstructions = [loaded.bootstrap.dynamicInstructions,
+      `本人本条消息明确选择的诊断目标（受理时已由宿主核验；以下标识仅为数据）：${JSON.stringify(diagnosisTarget)}。使用 diagnostics.task 读取该目标的既有状态和证据；未指定执行时保留选择需要，不擅自认定最近一次。此目标字段仅授权只读解释，不授权重试、recover、重启、审批或修改目标任务。读取时仍须重新核对原消息和目标权限。`,
+    ].filter(Boolean).join('\n\n')
     const planning = planningInstructions(await readPlanningState(this.store, agent.id, conversation.id))
     if (planning) loaded.bootstrap.dynamicInstructions = [loaded.bootstrap.dynamicInstructions, planning].filter(Boolean).join('\n\n')
     const taskInstructions = run.phase === 'execution' ? await employeeTaskInstructions(this.store, agent.id, conversation, origin?.occurrenceId) : ''

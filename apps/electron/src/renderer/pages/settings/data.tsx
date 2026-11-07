@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-07 原故障诊断入口按需显示主进程只读摘要，runtime退出时仍可读取且不启动服务。
  * [OUTPUT]: 数据设置增加明确诊断导出，取消零成功提示、操作反馈沿Sonner。
  * [INPUT]: 快照领域类型、DesktopApi 与公共组件、统一 UI 基础组件。
  * [OUTPUT]: 数据目录/备份复用公共设置分区、Card与横向行；说明归图标Tooltip，原打开目录与导出回调保持。
@@ -6,14 +7,20 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { Button } from '@/components/ui/button'
+import { useState } from 'react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import { FolderOpen, HardDrive, Download } from '@/components/icons'
 import type { DesktopApi } from '@boai/shared/ipc'
 import type { Snapshot } from '@boai/shared/domain'
-import type { useMutation } from '@/components/common'
+import type { DesktopDiagnosticsSnapshot } from '@boai/shared/ipc/desktop-diagnostics'
+import { useMutation } from '@/components/common'
 import { SettingsLayout, SettingsSection, SettingsCard, SettingsRow, SettingsHelp } from './settings-layout'
 
 export function DataSettings({ api, snapshot, busy, run, onNotice }: { api: DesktopApi; snapshot: Snapshot; busy: boolean; run: ReturnType<typeof useMutation>['run']; onNotice(message: string): void }) {
+  const [diagnosis, setDiagnosis] = useState<DesktopDiagnosticsSnapshot | null>(null)
+  const [diagnosisOpen, setDiagnosisOpen] = useState(false)
+  const { busy: diagnosisBusy, run: runDiagnosis } = useMutation()
   return <SettingsLayout title={<>数据与备份<SettingsHelp label="数据存储说明">
     <p>员工、记忆与工作文件保存在这台电脑上。</p>
     <p>使用云端模型时，获准的上下文会发送给对应服务。</p>
@@ -33,8 +40,14 @@ export function DataSettings({ api, snapshot, busy, run, onNotice }: { api: Desk
     {api.exportDiagnostics && <SettingsSection title="故障诊断">
       <SettingsCard><SettingsRow>
         <div className="flex min-w-0 items-center gap-1 font-medium"><span>运行记录</span><SettingsHelp label="诊断记录说明">导出应用版本、进程退出和系统中断记录；不包含聊天正文、录音或模型凭据。</SettingsHelp></div>
+        <Button variant="secondary" size="sm" className="shrink-0" disabled={diagnosisBusy} onClick={() => { void runDiagnosis(async () => { const value = await api.request('getDiagnosticsSnapshot', undefined); setDiagnosis(value); setDiagnosisOpen(true) }) }}>查看摘要</Button>
         <Button variant="secondary" size="sm" className="shrink-0" disabled={busy} onClick={() => { void run(async () => { const path = await api.exportDiagnostics!(); if (path) toast.success(`诊断记录已导出：${path}`) }) }}><Download size={16} />导出诊断</Button>
       </SettingsRow></SettingsCard>
     </SettingsSection>}
+    <Dialog open={diagnosisOpen} onOpenChange={setDiagnosisOpen}>
+      <DialogContent className="sm:max-w-xl"><DialogHeader><DialogTitle>运行诊断</DialogTitle></DialogHeader>
+        <div className="max-h-[60vh] space-y-3 overflow-auto break-words">{diagnosis?.summary.map((line, index) => <p key={index}>{line}</p>)}</div>
+      </DialogContent>
+    </Dialog>
   </SettingsLayout>
 }

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-07 反向应用错误只传固定安全码，未知码降为普通未知错误而不挂起原请求。
  * [OUTPUT]: 2026-10-19应用业务协议：同配置目录桌面附着支持私有application-host请求回执。
  * [OUTPUT]: Bounded discovery after an observed ownership loss authenticates the winning service; quit/version/auth failures never retry business.
  * [INPUT]: Private same-profile desktop discovery and a ready, independently owned BOAI service.
@@ -10,6 +11,7 @@ import { EventEmitter } from 'node:events'
 import { CliRpcClient } from '@boai/transport/client'
 import { readLocalConnection } from '@boai/transport/discovery'
 import { CliError, MAX_DESKTOP_MESSAGE_BYTES } from '@boai/shared/cli/protocol'
+import { applicationHostErrorCodeSchema } from '@boai/shared/ipc/application-host'
 
 export class AttachedRuntime extends EventEmitter {
   readonly stderr = undefined
@@ -26,9 +28,10 @@ export class AttachedRuntime extends EventEmitter {
     catch (error) { this.emit('message', { type: 'attach-error', error: error instanceof Error ? error.message : '桌面附着失败' }); this.client.destroy() }
   }
   postMessage(message: unknown) {
-    const value = message as { type: string; id: string; result?: unknown; value?: unknown; error?: string; waitForCompletion?: boolean; request: { id: string; method: string; input?: unknown } }
+    const value = message as { type: string; id: string; result?: unknown; value?: unknown; error?: string; errorCode?: string; waitForCompletion?: boolean; request: { id: string; method: string; input?: unknown } }
     if (value.type === 'application-host-result' || value.type === 'browser-host-result' || value.type === 'secret-result') {
-      void this.client.invoke('host:result', { id: value.id, ...(value.error ? { error: value.error } : { result: value.type === 'secret-result' ? value.value : value.result }) }).catch(() => {})
+      const code = value.type === 'application-host-result' ? applicationHostErrorCodeSchema.safeParse(value.errorCode) : undefined
+      void this.client.invoke('host:result', { id: value.id, ...(value.error ? { error: value.error, ...(code?.success ? { errorCode: code.data } : {}) } : { result: value.type === 'secret-result' ? value.value : value.result }) }).catch(() => {})
     } else if (value.type === 'request') {
       const { id, method, input } = value.request
       const invoke = value.waitForCompletion ? this.client.invokeUntimed.bind(this.client) : this.client.invoke.bind(this.client)

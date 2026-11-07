@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Independent community browser providers and owner configuration.
- * [OUTPUT]: Browser launch preferences default to background; explicit per-run mode overrides saved preferences.
+ * [OUTPUT]: Browser launch preferences, minimal foreground patches and per-field draft rebasing share one contract.
  * [POS]: Browser plugin protocol; BOAI's embedded browser and retrieval preferences stay separate.
  * [PROTOCOL]: Update Header and plugins/.folder.md on change.
  */
@@ -15,6 +15,33 @@ export const browserPluginConfigSchema = z.object({
   executablePath: z.string().trim().max(4096).default(''),
 }).strict()
 export type BrowserPluginConfig = z.infer<typeof browserPluginConfigSchema>
+export const browserPluginConfigurationPatchSchema = z.object({ defaultForeground: z.boolean().optional() }).strict()
+export const browserDefaultForeground = (config: BrowserPluginConfig) => !config.headless
+export const applyBrowserConfigurationPatch = (config: BrowserPluginConfig, patch: z.infer<typeof browserPluginConfigurationPatchSchema>): BrowserPluginConfig => ({ ...config, ...(patch.defaultForeground === undefined ? {} : { headless: !patch.defaultForeground }) })
+export class BrowserPluginSettingsError extends Error {
+  constructor(readonly code: 'REVISION_CONFLICT' | 'CAPABILITY_UNAVAILABLE', message: string) { super(message) }
+}
+/** Only fields edited since the dialog baseline are applied to the latest saved values. */
+export function mergeBrowserConfigurationDraft(base: BrowserPluginConfig, draft: BrowserPluginConfig, latest: BrowserPluginConfig) {
+  const config = { ...latest }, conflicts: (keyof BrowserPluginConfig)[] = []
+  for (const key of ['headless', 'executablePath'] as const) {
+    if (draft[key] === base[key]) continue
+    if (latest[key] !== base[key] && latest[key] !== draft[key]) conflicts.push(key)
+    if (key === 'headless') config.headless = draft.headless
+    else config.executablePath = draft.executablePath
+  }
+  return { config, conflicts }
+}
+/** External updates advance untouched baselines, without adopting a conflicting edit. */
+export function refreshBrowserConfigurationDraft(base: BrowserPluginConfig, draft: BrowserPluginConfig, latest: BrowserPluginConfig) {
+  const nextBase = { ...base }, nextDraft = { ...draft }
+  for (const key of ['headless', 'executablePath'] as const) {
+    if (draft[key] !== base[key] && draft[key] !== latest[key]) continue
+    if (key === 'headless') { nextBase.headless = latest.headless; nextDraft.headless = latest.headless }
+    else { nextBase.executablePath = latest.executablePath; nextDraft.executablePath = latest.executablePath }
+  }
+  return { base: nextBase, draft: nextDraft }
+}
 export interface BrowserPluginSettings { provider: BrowserPluginProvider; revision: number; config: BrowserPluginConfig }
 export const saveBrowserPluginSettingsSchema = z.object({ provider: browserPluginProviderSchema, expectedRevision: z.number().int().nonnegative(), config: browserPluginConfigSchema }).strict()
 export type SaveBrowserPluginSettings = z.infer<typeof saveBrowserPluginSettingsSchema>

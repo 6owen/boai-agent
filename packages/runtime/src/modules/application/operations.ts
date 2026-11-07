@@ -1,5 +1,6 @@
 /*
  * [OUTPUT]: WT1聚合WT2能力包与Source OAuth工厂，来源元数据沿原schema，原管理回执保持。
+ * [OUTPUT]: 外观v2与浏览器配置沿独立薄适配注册；目录/版本/回执保持同一业务入口。
  * [OUTPUT]: application.guide公开员工任务五状态及交付验收规则。
  * [OUTPUT]: 公开计划操作排除内部任务消息，避免自定义类型进入工具JSON Schema。
  * [OUTPUT]: prompts域复用提示词模板CRUD与版本前检，contacts/prompts操作指南纳入现有业务协议。
@@ -16,8 +17,6 @@
  * [PROTOCOL]: Changes must update this Header and the owning .folder.md.
  */
 import type { ApplicationHostPort } from '@boai/shared/ipc/application-host'
-import { appearancePatchSchema } from '@boai/shared/appearance/schema'
-import { availableThemes } from '@boai/shared/appearance'
 import { applicationPlugins } from '@boai/shared/plugins/catalog'
 import { profileSchema } from '../backends/profiles'
 import { DEFAULT_EMPLOYEE_SOUL } from '@boai/shared/domain/agent-presets'
@@ -42,6 +41,8 @@ import { marketplaceListSchema, marketplaceDetailSchema } from '../resources/ski
 import { collectionChangeSchema } from '../resources/skill-collections'
 import { ApplicationValidationError, type ApplicationOperation } from './application-service'
 import { savePromptTemplateSchema, removePromptTemplateSchema } from '@boai/shared/domain/prompt-templates'
+import { appearanceOperations } from './appearance-operations'
+import { pluginConfigurationOperations } from './plugin-configuration'
 
 import { capabilityPackageOperations } from '../resources/capability-package-operations'
 import type { CapabilityPackageServices } from '../resources/capability-package-services'
@@ -62,7 +63,7 @@ export function applicationOperations(port: ApplicationPort, schemas: { connecti
   function method<K extends Method>(name: string, method: K, description: string, effect: ApplicationOperation['effect'], input: z.ZodType, resultType: string, adapt: (input: any, requestId?: string) => Methods[K]['input'] = value => value) {
     operation(name, description, effect, input, resultType, (value, requestId) => port.request(method, adapt(value, requestId)))
   }
-  operation('application.guide', '按需读取 BOAI 内置产品操作技能。', 'read', z.object({ topic: z.enum(['overview', 'employees', 'groups', 'contacts', 'sources', 'automations', 'connections', 'skills', 'prompts', 'presentations', 'tasks']).default('overview') }).strict(), '{ topic: string; instructions: string }', async input => ({ topic: input.topic, instructions: applicationGuides[input.topic as keyof typeof applicationGuides] }))
+  operation('application.guide', '按需读取 BOAI 内置产品操作技能。', 'read', z.object({ topic: z.enum(['overview', 'employees', 'groups', 'contacts', 'sources', 'automations', 'connections', 'skills', 'prompts', 'presentations', 'tasks', 'appearance', 'plugins', 'diagnostics']).default('overview') }).strict(), '{ topic: string; instructions: string }', async input => ({ topic: input.topic, instructions: applicationGuides[input.topic as keyof typeof applicationGuides] }))
   const snapshot = () => port.request('snapshot', undefined)
   method('prompts.list', 'listPromptTemplates', '列出资源库提示词模板及当前 revision。', 'read', empty, 'PromptTemplate[]', () => undefined)
   operation('prompts.get', '读取一个提示词模板的完整正文和版本。', 'read', lookup, 'PromptTemplate', async input => {
@@ -210,11 +211,7 @@ export function applicationOperations(port: ApplicationPort, schemas: { connecti
     }
   }
   const hostStart = operations.length
-  method('appearance.get', 'getAppearance', '读取实际外观、主题选择和 revision。需要连接桌面宿主。', 'read', empty, 'AppearanceSnapshot', () => undefined)
-  operation('appearance.themes', '列出当前可选择的明暗主题。', 'read', empty, 'Theme[]', async () => availableThemes((await port.request('getPluginSettings', undefined)).disabledIds))
-  method('appearance.update', 'updateAppearance', '按当前 revision 更新主题/明暗模式/字体/缩放，立即沿原桌面事件生效。', 'write', z.object({ patch: appearancePatchSchema, expectedRevision: z.number().int().nonnegative() }).strict(), 'AppearanceSnapshot')
-  method('appearance.reset', 'resetAppearance', '明确恢复默认外观。', 'write', empty, 'AppearanceSnapshot', () => undefined)
-  method('appearance.removeBackground', 'removeAppearanceBackground', '移除应用背景图配置。', 'write', empty, 'AppearanceSnapshot', () => undefined)
+  operations.push(...appearanceOperations(port, host), ...pluginConfigurationOperations(port, host))
   operation('plugins.list', '读取内置插件清单与持久启停状态。', 'read', empty, '{ plugins: ApplicationPluginManifest[]; settings: PluginSettingsSnapshot }', async () => ({ plugins: applicationPlugins, settings: await port.request('getPluginSettings', undefined) }))
   method('plugins.setEnabled', 'setPluginEnabled', '按当前设置 revision 启停内置插件。', 'write', z.object({ id, enabled: z.boolean(), expectedRevision: z.number().int().nonnegative() }).strict(), 'PluginSettingsSnapshot')
   for (const operation of operations.slice(hostStart)) { operation.available = () => host?.available ?? false; operation.unavailableReason = '需要连接同一配置目录的 BOAI 桌面宿主；不会启动第二个设置写入器。' }

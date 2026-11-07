@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 外观写命令与加载合并分离；快照携带最近重置 revision 供并发意图核验。
  * [OUTPUT]: 终端ANSI色板复用当前应用主题，不新增外观偏好或保存字段。
  * [OUTPUT]: 统一导出TrayIconStatus与逐目标AppIconStatus，不新增托盘偏好。
  * [OUTPUT]: 保底配色与纯颜色解析迁入@boai/tokens；插件/偏好/资产协议仍归宿主。
@@ -25,7 +26,7 @@ export type ColorMode = 'light' | 'dark'
 export interface ThemeOverrides { accent: string | null; background: string | null; foreground: string | null }
 export const zoomFactors = [0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5] as const
 export interface AppearancePreferences { schemaVersion: 2; mode: ColorMode | 'system'; themeIds: { light: string; dark: string }; background: { assetId: string | null; imageOpacity: number; glassOpacity: number | null; overlayOpacity: number; blurRadius: number }; typography: TypographyPreferences; appIconId: AppIconId; zoomFactor: number; customColors: Record<ColorMode, ThemeOverrides> }
-export interface AppearanceSnapshot { preferences: AppearancePreferences; revision: number; sequence: number; resolvedMode: ColorMode; resolvedThemeId: string; diagnostic?: string; readOnly?: boolean }
+export interface AppearanceSnapshot { preferences: AppearancePreferences; revision: number; sequence: number; resetRevision?: number; resolvedMode: ColorMode; resolvedThemeId: string; diagnostic?: string; readOnly?: boolean }
 export interface AppearancePatch { mode?: AppearancePreferences['mode']; themeIds?: Partial<AppearancePreferences['themeIds']>; background?: { imageOpacity?: number; glassOpacity?: number | null; overlayOpacity?: number; blurRadius?: number }; typography?: { [G in keyof TypographyPreferences]?: Partial<TypographyPreferences[G]> }; fontFamily?: InterfaceFont; appIconId?: AppIconId; zoomFactor?: number; customColors?: Partial<Record<ColorMode, Partial<ThemeOverrides>>> }
 export const appearanceDefaults: AppearancePreferences = { schemaVersion: 2, mode: 'system', themeIds: { light: 'boai-light', dark: 'boai-dark' }, background: { assetId: null, imageOpacity: 1, glassOpacity: null, overlayOpacity: 0.4, blurRadius: 8 }, typography: typographyDefaults, appIconId: defaultAppIconId, zoomFactor: 1, customColors: { light: { accent: null, background: null, foreground: null }, dark: { accent: null, background: null, foreground: null } } }
 export const defaultGlassOpacity = { light: 0.72, dark: 0.55, card: 0.72 } as const
