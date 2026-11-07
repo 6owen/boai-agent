@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 新任务复制员工默认项目，任务会话固定同一选择且不继承后续默认变化。
  * [OUTPUT]: 任意任务状态均可快捷执行；已有执行时同任务新要求进入原持久FIFO。
  * [OUTPUT]: 列清空在原事务内覆盖全部分页，仅移除指定员工/状态的委派任务；在途任务保留，删除墓碑和稳定回执同事务保存。
  * [OUTPUT]: bobo与普通员工共用任务创建、独立会话及执行；首次执行前沿宿主准备员工连接，不依赖先发送主聊天消息。
@@ -22,6 +23,8 @@ import type { AutomationOccurrence } from '@boai/shared/domain/automations'
 import type { EmployeeTaskMethods } from '@boai/shared/domain/employee-tasks'
 import type { ProductStore, RecordTransaction } from '../../adapters/storage/product-store'
 import { taskPageOperation } from '../application/task-page'
+import { clearContextHandoffs } from '../contexts/context-handoff'
+import { initialProjectSelection, legacyProjectSelection } from '../workspaces/project-directory'
 import { taskIdentity, ongoingTaskExecution } from './employee-task-records'
 import type { AutomationService } from './automation-service'
 const id = z.string().min(1).max(200)
@@ -44,6 +47,8 @@ async function read(tx: RecordTransaction, employeeId: string, taskId: string) {
   return task
 }
 export class EmployeeTaskService {
+  private preparing = new Set<string>()
+  isPreparing(id: string) { return this.preparing.has(id) }
   private tail: Promise<unknown> = Promise.resolve()
   private batchTail: Promise<unknown> = Promise.resolve()
   constructor(private store: ProductStore, private automations: AutomationService, private changed: (message?: Message) => void, private dataPath: string, private sessionReady: (conversation: Conversation) => void, private prepareEmployee?: (employeeId: string) => Promise<void>) {}
@@ -89,9 +94,11 @@ export class EmployeeTaskService {
       const reusable = old?.purpose === 'automation' && !old.mergedInto && old.agentIds.length === 1 && old.agentIds[0] === employeeId && (!old.employeeTaskId || old.employeeTaskId === task.id)
       const conversationId = reusable ? old.id : randomUUID(), now = new Date().toISOString()
       const conversation: Conversation = reusable ? { ...old, employeeTaskId: task.id } : { id: conversationId, kind: 'direct', purpose: 'automation', employeeTaskId: task.id, title: task.title, agentIds: [employeeId], mode: 'natural', sharedKnowledgeIds: [], memoryScope: 'employee', configVersion: 1, workspacePath: join(this.dataPath, 'workspaces', conversationId), createdAt: now, updatedAt: now }
+      const priorMessage = reusable ? (await tx.list<Message>('messages')).filter(message => message.conversationId === conversation.id && message.senderType === 'user').sort((a, b) => b.sequence - a.sequence)[0] : task.source ? await tx.get<Message>('messages', task.source.messageId) : undefined
+      conversation.projectSelection = task.projectSelection ?? conversation.projectSelection ?? priorMessage?.projectSelections?.[employeeId] ?? priorMessage?.projectSelection ?? legacyProjectSelection(priorMessage?.workingDirectory)
       await mkdir(conversation.workspacePath, { recursive: true })
       await tx.put({ collection: 'conversations', id: conversation.id, value: conversation })
-      await tx.put({ collection: 'agentTasks', id: task.id, value: { ...task, sessionConversationId: conversation.id } })
+      await tx.put({ collection: 'agentTasks', id: task.id, value: { ...task, projectSelection: conversation.projectSelection, sessionConversationId: conversation.id } })
       return conversation
     })
     this.sessionReady(room); return room
@@ -152,6 +159,7 @@ export class EmployeeTaskService {
             if (ongoingIds.has(task.id)) { skippedIds.push(task.id); continue }
             // Match single-task deletion: retain sessions/history and prevent historical re-adoption.
             await tx.put({ collection: 'deletedEmployeeTasks', id: task.id, value: { agentId: task.agentId, revision: task.revision, deletedAt } })
+            await clearContextHandoffs(tx, { assignmentId: task.id })
             await tx.remove('agentTasks', task.id)
             deletedIds.push(task.id)
           }
@@ -185,7 +193,7 @@ export class EmployeeTaskService {
           if (previous) return remember(await read(tx, v.employeeId, taskId))
           const description = z.string().trim().min(1).max(40000).parse(v.description ?? source?.content)
           const now = new Date().toISOString()
-          const task: TrackedTask = { id: taskId, agentId: v.employeeId, kind: 'assignment', title: v.title ?? description.split('\n')[0].slice(0, 100), description, status: v.status ?? 'pending', ...(v.status ? { statusSource: 'manual' as const } : {}), ...(v.conversation ? { briefPending: true } : {}), steps: [], note: '', revision: 1, createdAt: now, updatedAt: now, ...(source ? { source: { conversationId: source.conversationId, messageId: source.id } } : {}) }
+          const task: TrackedTask = { projectSelection: source ? source.projectSelections?.[v.employeeId] ?? source.projectSelection ?? legacyProjectSelection(source.workingDirectory) : initialProjectSelection(employee), id: taskId, agentId: v.employeeId, kind: 'assignment', title: v.title ?? description.split('\n')[0].slice(0, 100), description, status: v.status ?? 'pending', ...(v.status ? { statusSource: 'manual' as const } : {}), ...(v.conversation ? { briefPending: true } : {}), steps: [], note: '', revision: 1, createdAt: now, updatedAt: now, ...(source ? { source: { conversationId: source.conversationId, messageId: source.id } } : {}) }
           await tx.put({ collection: 'agentTasks', id: task.id, value: task })
           await tx.put({ collection: 'employeeTaskReceipts', id: receiptId, value: { fingerprint, taskId } })
           if (source) { sourceMessage = { ...source, employeeTaskId: task.id }; await tx.put({ collection: 'messages', id: source.id, value: sourceMessage }) }
@@ -221,6 +229,7 @@ export class EmployeeTaskService {
           if ((await tx.list<AutomationOccurrence>('automationOccurrences')).some(o => o.taskId === task.id && !o.deletedAt && ongoingTaskExecution(o))) throw new Error('请先停止当前任务的执行，再删除任务')
           // Keep the historical occurrence/session intact. A tombstone prevents adoption on restart.
           await tx.put({ collection: 'deletedEmployeeTasks', id: task.id, value: { agentId: task.agentId, revision: task.revision, deletedAt: new Date().toISOString() } })
+          await clearContextHandoffs(tx, { assignmentId: task.id })
           await tx.remove('agentTasks', task.id)
         })
         this.changed(); return { deleted: true }
@@ -234,6 +243,8 @@ export class EmployeeTaskService {
         if (!isEmployeeTaskAssignment(task) && (task.status === 'done' || task.status === 'closed')) throw new Error('请先重新打开已完成任务')
         await tx.put({ collection: 'employeeTaskReceipts', id: receiptId, value: { fingerprint } }); return task
       })
+      this.preparing.add(task.id)
+      try {
       let definition = await this.automations.creation(receiptId)
       if (!definition) {
         if (!task.description && !task.note && !v.supplement && !v.message) throw new Error('原任务要求不可用，请补充本次要求')
@@ -242,7 +253,8 @@ export class EmployeeTaskService {
         const prompt = v.message ? (!task.latestOccurrenceId ? [task.description ?? task.note, v.message.content].filter(Boolean).join('\n\n') : v.message.content) : [task.description ?? task.note, v.supplement ? `\n本次补充要求：\n${v.supplement}` : ''].join('')
         definition = await this.automations.save({ conversationPolicy: 'existing-conversation', conversationId: context.id, requestId: receiptId, purpose: 'employee-task', employeeTask: { id: task.id, expectedRevision: v.expectedRevision, requirements: task.description ?? task.note, ...(v.message ? { message: { ...v.message, content: prompt } } : {}) }, owner: { kind: 'employee', employeeId: v.employeeId }, name: task.title.slice(0, 100), prompt: prompt || '处理本次任务材料', frequency: 'manual', time: '09:00', weekday: 1, timezone: 'UTC', enabled: true, notify: false })
       }
-      return this.automations.run(definition.id, receiptId)
+      return await this.automations.run(definition.id, receiptId)
+      } finally { this.preparing.delete(task.id) }
     })
   }
 }

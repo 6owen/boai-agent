@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 定时新任务在受理事务复制默认项目；旧历史不套用今天的默认值。
  * [OUTPUT]: 本轮结束并有回复时兜底显示待确认；保留人工状态、后续排队和业务交付账本，启动仅校正旧显示。
  * [OUTPUT]: 任意任务状态均可快捷执行；已有执行时同任务新要求进入原持久FIFO。
  * [OUTPUT]: 定时计划每次受理生成可见assignment及独立任务会话，沿同一协作/验收协议；内部进度不晋升为委派。
@@ -11,7 +12,8 @@
 import { createHash } from 'node:crypto'
 import type { AutomationDefinition, AutomationOccurrence, AutomationDispatch } from '@boai/shared/domain/automations'
 import { AUTOMATION_ONGOING_STATUSES } from '@boai/shared/domain/automations'
-import type { Message } from '@boai/shared/domain'
+import { initialProjectSelection, legacyProjectSelection } from '../workspaces/project-directory'
+import type { DigitalAgent, Message } from '@boai/shared/domain'
 import type { TrackedTask } from '@boai/shared/domain/tracked-tasks'
 import { isEmployeeTaskAssignment } from '@boai/shared/domain/tracked-tasks'
 import type { RecordTransaction } from '../../adapters/storage/product-store'
@@ -42,7 +44,9 @@ export async function linkEmployeeTask(tx: RecordTransaction, d: AutomationDefin
   }
   if (!task) {
     const description = historical ? (await tx.get<AutomationDispatch>('automationDispatches', o.id))?.definition?.prompt ?? (o.messageId ? (await tx.get<Message>('messages', o.messageId))?.content : undefined) : d.prompt
-    task = { id: taskId, agentId, title: o.name, description, steps: [], note: '', status: 'pending', kind: 'assignment', ...(newScheduledTask ? { sourceKind: 'schedule' as const } : {}), revision: 1, createdAt: o.startedAt, updatedAt: o.startedAt }
+    const source = o.messageId ? await tx.get<Message>('messages', o.messageId) : undefined
+    const projectSelection = source?.projectSelections?.[agentId] ?? source?.projectSelection ?? (source?.workingDirectory ? legacyProjectSelection(source.workingDirectory) : historical ? legacyProjectSelection() : initialProjectSelection(await tx.get<DigitalAgent>('agents', agentId)))
+    task = { projectSelection, id: taskId, agentId, title: o.name, description, steps: [], note: '', status: 'pending', kind: 'assignment', ...(newScheduledTask ? { sourceKind: 'schedule' as const } : {}), revision: 1, createdAt: o.startedAt, updatedAt: o.startedAt }
     // Adopt the old execution projection only when reconstructing missing history; new deliveries use the normal assignment protocol.
     if (historical && newScheduledTask) task.status = await executionTaskStatus(tx, o, { ...task, kind: undefined })
   }
@@ -60,7 +64,7 @@ export async function linkEmployeeTask(tx: RecordTransaction, d: AutomationDefin
   }
   const room = await tx.get<import('@boai/shared/domain').Conversation>('conversations', o.conversationId)
   if (room?.purpose === 'automation' && (!room.employeeTaskId || room.employeeTaskId === task.id)) {
-    await tx.put({ collection: 'conversations', id: room.id, value: { ...room, employeeTaskId: task.id, automationId: room.automationId ?? d.id, occurrenceId: room.occurrenceId ?? o.id } })
+    await tx.put({ collection: 'conversations', id: room.id, value: { ...room, projectSelection: task.projectSelection ?? room.projectSelection ?? legacyProjectSelection(), employeeTaskId: task.id, automationId: room.automationId ?? d.id, occurrenceId: room.occurrenceId ?? o.id } })
     await tx.put({ collection: 'agentTasks', id: task.id, value: { ...task, sessionConversationId: room.id } })
   }
   await tx.put({ collection: 'automationOccurrences', id: o.id, value: o })

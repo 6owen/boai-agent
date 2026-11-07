@@ -1,5 +1,7 @@
 /*
  * [OUTPUT]: 画板源清理沿原conversationCleanup固定身份重试，外改冲突保留来源屏障与可见恢复错误。
+ * [OUTPUT]: 交接材料在原会话清理屏障/运行删除事务内撤销正文，离线恢复沿同一逻辑且保留防重放身份。
+ * [OUTPUT]: 原生会话切换记录沿原会话清理，不触及项目原件。
  * [OUTPUT]: 会话/执行历史按SQL引用筛选ID，避免将无关Trace与执行正文载入内存；原事务失效与恢复范围保持。
  * [OUTPUT]: 会话清理在原事务内移除全部上下文派生集合；失败运行清理包含步骤checkpoint与维护记录。
  * [OUTPUT]: 聊天清理同步移除会话人格/成长/旅行来源与行为结果正文、暂停对应行为，保留最小去重。
@@ -18,6 +20,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { contextCollections } from '../contexts/context-repository'
+import { clearContextHandoffs } from '../contexts/context-handoff'
 import { clearApplicationReceipts } from '../application/application-service'
 import { clearAgentPersonality } from '../agent-state/lifecycle'
 import { lstat, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
@@ -71,6 +74,7 @@ export class ConversationHistory {
   remove(conversation: Conversation) { return this.clear(conversation, false, true) }
   async removeExecutionRecords(runIds: string[]) {
     return this.store.transaction(async tx => {
+      await clearContextHandoffs(tx, { runIds })
       const removals: { collection: string; id: string }[] = []
       for (const collection of ['contextStepCheckpoints', 'contextMaintenance', 'runs', 'snapshots', 'executionEvidence', 'executionClocks', 'nativeActions', 'traceSpans', 'profileModelCalls', 'profileSkillActivations', 'profileExecutions']) {
         for (const id of await tx.relatedIds(collection, { ids: runIds, runIds })) {
@@ -107,6 +111,7 @@ export class ConversationHistory {
       }
       const canvasCleanupId = pending?.canvasCleanupId ?? randomUUID()
       await tx.put({ collection: 'conversationCleanup', id, value: { id, hide, ...(remove ? { remove: true } : {}), ...(requestId ? { sessionRequestId: requestId } : {}), canvasCleanupId, ...(pending?.canvasCleanupError ? { canvasCleanupError: pending.canvasCleanupError } : {}) } })
+      await clearContextHandoffs(tx, { conversationId: id })
       return { sessionRequestId: requestId, canvasCleanupId }
     })
     // Revoke derived memory even if a later hash conflict preserves a private original.
@@ -182,7 +187,7 @@ export class ConversationHistory {
       const sharedBudgets = new Set((await tx.list<WorkBudget>('workBudgets')).filter(item => item.collaborationRequestId && retainedBudgets.has(item.id)).map(item => item.id))
       const work = await collect('workItems', owned), workIds = new Set(work.map(item => item.id)), budgets = new Set(work.map(item => item.budgetId))
       const executionScope = { conversationId: id, turnIds: [...turns], runIds: [...runIds] }
-      for (const collection of [...contextCollections, 'executionEvidence', 'executionClocks', 'nativeActions', 'codexSessions', 'claudeSessions', 'pluginSessions', 'browserScopes', 'browserEvidence', 'browserCleanups', 'profileModelCalls', 'profileSkillActivations', 'profileExecutions', 'traceSpans', 'events', 'deliveries', 'decisions', 'contributions', 'grants', 'approvals', 'directoryApprovalReceipts', 'artifacts', 'jobs', 'workWakes']) {
+      for (const collection of [...contextCollections, 'executionEvidence', 'executionClocks', 'nativeActions', 'nativeSessionTransitions', 'codexSessions', 'claudeSessions', 'pluginSessions', 'browserScopes', 'browserEvidence', 'browserCleanups', 'profileModelCalls', 'profileSkillActivations', 'profileExecutions', 'traceSpans', 'events', 'deliveries', 'decisions', 'contributions', 'grants', 'approvals', 'directoryApprovalReceipts', 'artifacts', 'jobs', 'workWakes']) {
         await collectIds(collection, executionScope)
       }
       for (const call of await tx.list<BudgetModelCall | ClearedBudgetModelCall>('budgetModelCalls')) {

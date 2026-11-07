@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 项目目录与选择版本随原发送请求冻结；重启未知不继承新默认，损坏版本明确拒绝。
  * [OUTPUT]: 五状态独立任务会话、原计划授权/工具schema与稳定消息回执按最新用户合同验证。
  * [OUTPUT]: 当前轮次补充目标随原请求冻结，混合输入拒绝，重启unknown不自动重发。
  * [OUTPUT]: 2026-10-15文件预览标注进入原聊天明确修改；成果固定版本修订、附件固定来源/权限和未知回执保持；实际结果归8组14。
@@ -99,4 +100,22 @@ it('keeps the exact active turn for unknown steering without converting it into 
   expect(restorePendingMessageDrafts(saved).get('chat')?.submission).toMatchObject({ requestId: 'steer-request', status: 'unknown', input })
   for (const steer of [{ runId: 'r' }, { runId: '', turnId: 't' }]) expect(() => restorePendingMessageDrafts({ chat: { schemaVersion: 2, kind: 'message', requestId: 'r', input: { ...input, steer } } })).toThrow('未决消息记录')
   expect(() => restorePendingMessageDrafts({ chat: { schemaVersion: 2, kind: 'external', requestId: 'r', input } })).toThrow('未决消息记录')
+})
+
+
+it.each([undefined, 'employee-task'] as const)('keeps the frozen project of an unknown %s send across restart', kind => {
+  const input = { content: '继续原项目工作', mentionIds: [], expectedProjectRevision: 4, workingDirectory: '/Projects/原项目' }
+  const draft: ChatDraft = { text: '另一份新草稿', mentionIds: [], submission: { kind, requestId: 'original-project', status: 'pending', fingerprint: 'old', input } }
+  const recovered = restorePendingMessageDrafts(JSON.parse(JSON.stringify(pendingMessageRequests(new Map([['chat', draft]])))))
+  expect(recovered.get('chat')?.submission).toMatchObject({ requestId: 'original-project', status: 'unknown', input })
+  expect(recovered.get('chat')?.text).toBe(input.content)
+  expect(pendingMessageRequests(recovered)).toMatchObject({ chat: { input } })
+})
+
+it('keeps explicit managed mode by its revision and refuses corrupt project snapshots', () => {
+  const entry = { schemaVersion: 2, kind: 'message', requestId: 'managed-project', input: { content: '继续', mentionIds: [], expectedProjectRevision: 0 } }
+  expect(restorePendingMessageDrafts({ chat: entry }).get('chat')?.submission?.input).toEqual(entry.input)
+  for (const patch of [{ expectedProjectRevision: -1 }, { expectedProjectRevision: '4' }, { workingDirectory: '' }, { workingDirectory: 42 }]) {
+    expect(() => restorePendingMessageDrafts({ chat: { ...entry, input: { ...entry.input, ...patch } } })).toThrow('未决消息记录')
+  }
 })

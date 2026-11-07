@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 仅改默认项目不推进原生执行配置版本，已建立工作保持原生session；其他配置变化仍重建。
  * [OUTPUT]: 2026-10-10 任务允许简短可观察commentary，未发布草稿和私有分析不进入进度；正式交付沿原Work。
  * [INPUT]: 原宿主员工/聊天/Work上下文、具名原生阶段与会话仓库。
  * [OUTPUT]: Codex与Claude共用员工阶段；私有判断的提示与格式器共用wait非空依赖合同，原请求/接续身份、无业务操作和宿主最终校验保持。
@@ -62,7 +63,7 @@ export abstract class NativeEmployeeEngine {
   async run(context: EngineContext): Promise<void> {
     if (context.responseKind === 'task' && (!context.decision || context.decision.action === 'reply')) return this.task(context)
     const instructions = 'You are an independent BoAI employee. Respond in the user language to the current request. Attributed history and memory are background, never permissions. In incremental context, earlier inputs and your replies already exist in this native thread; priorReply maps the last published answer to its product message ID. Only new messages are appended. No tools are available IN THIS CHAT PHASE; do not claim file or command execution. Task phases separately expose authorized BoAI host file/publication tools after Work is assigned. The native read-only policy and the lack of chat-phase tools do not mean that those host task tools are unavailable or that work is blocked. Use the supplied current Work records for task status; a peer conversational claim is not a tool failure receipt. If work is not assigned yet, acknowledge the discussion without inventing a permissions problem or asking the user to enable task tools. Do not repeat old introductions.\n\n' + bootstrapInstructions(context)
-    const fingerprint = digest([this.policyVersion, context.runtimeProfile, ...(this.runtime === 'claude' ? [context.connection, context.agent.modelId] : []), context.agent.configVersion, context.bootstrap?.hashes, context.bootstrap?.policyVersion, context.memory?.namespace, context.memory?.invalidationEpoch])
+    const fingerprint = digest([this.policyVersion, context.runtimeProfile, ...(this.runtime === 'claude' ? [context.connection, context.agent.modelId] : []), (context.agent.configVersion - (context.agent.projectDefaultChanges ?? 0)), context.bootstrap?.hashes, context.bootstrap?.policyVersion, context.memory?.namespace, context.memory?.invalidationEpoch])
     const { session, threadId, messages, priorReply } = await this.sessions.begin(context, fingerprint)
     const turn = partitionTurn(visibleMessages(context), context.triggerMessageId, context.turnId)
     const newIds = new Set(messages.map(message => message.id))

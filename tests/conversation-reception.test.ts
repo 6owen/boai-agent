@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 渠道来信新建主聊天冻结默认目录或受管目录，后续默认变化和旧主聊天不回填。
  * [INPUT]: 真实AppService/ProductStore与隔离员工、会话、公开消息。
  * [OUTPUT]: 所有入口的新消息与会话可见性同事务提交，失败/旧消息更新不恢复隐藏会话。
  * [POS]: IM公共消息受理回归；不访问外部模型或用户数据库。
@@ -10,7 +11,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { AppService } from '../packages/runtime/src/service'
 import type { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
-import type { Conversation, Message, Snapshot } from '../packages/shared/src/domain'
+import type { Conversation, DigitalAgent, Message, Snapshot } from '../packages/shared/src/domain'
 import { mainConversations } from '../packages/shared/src/domain/conversation-list'
 
 const dispose: (() => Promise<void>)[] = []
@@ -61,4 +62,36 @@ it('restores the employee entry on channel receipt while retaining the real chan
   expect(await f.host.store.get<Conversation>('conversations', channel.id)).toMatchObject({ list: { hidden: false } })
   expect((await f.host.store.load<Message>('messages')).filter(item => item.conversationId === f.room.id)).toEqual([])
   expect(await f.host.store.get<Message>('messages', message.id)).toMatchObject({ conversationId: channel.id, senderId: 'external-owner' })
+})
+
+it.each([false, true])('freezes the employee project choice when channel receipt creates a main chat (default=%s)', async hasDefault => {
+  const f = await setup(), employee = (await f.host.store.get<DigitalAgent>('agents', 'researcher'))!
+  await f.host.store.write([{ collection: 'agents', id: employee.id, value: { ...employee, ...(hasDefault ? { defaultProjectDirectory: '/project/resolved', defaultProjectDirectoryRequested: '/project/link' } : {}) } }])
+  await f.host.store.transaction(tx => tx.remove('conversations', f.room.id)); f.host.conversations.delete(f.room.id)
+  const channel: Conversation = { ...f.room, id: 'channel-project', mainPrivate: undefined, purpose: 'channel', channel: { platform: 'feishu', tenantId: 'tenant', bindingId: 'binding', chatId: 'external', kind: 'direct', userId: 'owner' } }
+  await f.host.store.write([{ collection: 'conversations', id: channel.id, value: channel }])
+  const message: Message = { id: 'channel-first', conversationId: channel.id, sequence: 1, senderType: 'user', senderId: 'external-owner', senderName: '外部来信', content: '来信', status: 'completed', createdAt: new Date().toISOString() }
+  await f.host.store.write([{ collection: 'messages', id: message.id, value: message }])
+  const mains = (await f.host.store.load<Conversation>('conversations')).filter(room => room.mainPrivate && !room.channel && room.agentIds[0] === employee.id)
+  expect(mains).toHaveLength(1)
+  const main = mains[0]!
+  expect(main.projectSelection).toEqual(hasDefault
+    ? { mode: 'directory', directory: '/project/resolved', requestedDirectory: '/project/link', source: 'employee-default', revision: 1 }
+    : { mode: 'managed', source: 'managed', revision: 1 })
+  await f.host.store.write([{ collection: 'agents', id: employee.id, value: { ...employee, defaultProjectDirectory: '/different-project' } }])
+  await f.host.store.write([{ collection: 'messages', id: 'channel-later', value: { ...message, id: 'channel-later', sequence: 2 } }])
+  expect((await f.host.store.get<Conversation>('conversations', main.id))?.projectSelection).toEqual(main.projectSelection)
+  expect((await f.host.store.load<Message>('messages')).filter(item => item.conversationId === main.id)).toEqual([])
+})
+
+it('does not backfill the current employee default into a legacy main chat on channel receipt', async () => {
+  const f = await setup(), employee = (await f.host.store.get<DigitalAgent>('agents', 'researcher'))!
+  await f.host.store.write([
+    { collection: 'agents', id: employee.id, value: { ...employee, defaultProjectDirectory: '/new-default' } },
+    { collection: 'conversations', id: f.room.id, value: { ...f.room, projectSelection: undefined } },
+    { collection: 'conversations', id: 'legacy-channel', value: { ...f.room, id: 'legacy-channel', mainPrivate: undefined, purpose: 'channel', channel: { platform: 'feishu', tenantId: 'tenant', bindingId: 'binding', chatId: 'external', kind: 'direct', userId: 'owner' } } },
+  ])
+  await f.host.store.write([{ collection: 'messages', id: 'legacy-channel-message', value: { id: 'legacy-channel-message', conversationId: 'legacy-channel', sequence: 1, senderType: 'user', senderId: 'external-owner', senderName: '来信', content: '来信', status: 'completed', createdAt: new Date().toISOString() } }])
+  expect((await f.host.store.get<Conversation>('conversations', f.room.id))?.projectSelection).toBeUndefined()
+  expect((await f.host.store.load<Conversation>('conversations')).filter(room => room.mainPrivate && !room.channel && room.agentIds[0] === employee.id)).toHaveLength(1)
 })
