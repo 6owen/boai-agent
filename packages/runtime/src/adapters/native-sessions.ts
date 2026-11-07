@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 目录/配置/显式交接重建保留最小原生映射和原因；未知投递阻止新线程绕过，源核验保持。
  * [OUTPUT]: 会话准备完成时可原子登记经适配器核验的来源指纹，保持pending/完成状态及原请求身份检查。
  * [OUTPUT]: 插件provider采用独立命名空间，复用原会话/来源/材料/退出边界。
  * [OUTPUT]: 2026-10-14 房间历史合并保守撤销原生线程续用资格，明确新消息才重建。
@@ -22,7 +23,10 @@ export const digest = (value: unknown) => createHash('sha256').update(JSON.strin
 const sourceHash = (message: Message | undefined) => digest(message ? { ...decisionMessageData(message), status: message.status, materialIds: message.materialIds, materialSources: message.materialSources } : null)
 interface Session {
   id: string; conversationId: string; agentId: string; fingerprint: string; runId: string
+  runtime?: string
   sourceVersion?: 2
+  workingDirectory?: string
+  deliveryState?: 'prepared' | 'submitted' | 'accepted' | 'unknown'
   resumeInvalidated?: 'restored-backup' | 'installation-changed' | 'unverified-installation' | 'room-merged'
   state: 'pending' | 'completed' | 'interrupted'; threadId?: string; turnId?: string; outputHash?: string; completedInvocationId?: string
   inputMessageIds: string[]
@@ -62,6 +66,19 @@ export class NativeSessions {
     const id = digest([context.agent.id, context.conversation.id, 'chat', ...(this.runtime.startsWith('plugin-') ? [this.runtime] : [])])
     return this.store.transaction(async tx => {
       const previous = await tx.get<Session>(collection, id)
+      let alternate: { session: Session; runtime: string; createdAt: string } | undefined
+      for (const otherCollection of ['codexSessions', 'claudeSessions', 'pluginSessions']) {
+        const candidates = await tx.relatedIds(otherCollection, { conversationId: context.conversation.id })
+        for (const candidateId of candidates) {
+          if (otherCollection === collection && candidateId === id) continue
+          const candidate = await tx.get<Session>(otherCollection, candidateId)
+          if (!candidate || candidate.agentId !== context.agent.id || candidate.conversationId !== context.conversation.id) continue
+          const run = await tx.get<import('@boai/shared/domain').AgentRun>('runs', candidate.runId)
+          if (candidate.deliveryState === 'unknown' || candidate.state === 'pending' && (candidate.deliveryState === 'submitted' || candidate.deliveryState === 'accepted' || run?.backend?.inputAccepted === true)) throw new Error('另一原生运行的输入投递或执行结果仍未知；不能通过切换执行能力重放')
+          if (run && ['running', 'waiting_approval', 'queued'].includes(run.status)) throw new Error('另一原生会话仍有活动执行，不能切换执行能力')
+          if (candidate.state === 'completed' && (!alternate || (run?.createdAt ?? '') > alternate.createdAt)) alternate = { session: candidate, runtime: candidate.runtime ?? otherCollection.replace(/Sessions$/, ''), createdAt: run?.createdAt ?? '' }
+        }
+      }
       const messages = context.nativeSourceIds ? context.messages.filter(message => message.status === 'completed' && message.content.trim()).sort((a, b) => a.sequence - b.sequence) : visibleMessages(context)
       // Hash the actual attributed input, not only prose: changing an author or
       // reply target invalidates the old transcript just like changing its text.
@@ -90,12 +107,34 @@ export class NativeSessions {
         && !!previous.turnId && (this.runtime !== 'codex' || previousRun.backend.turnId === previous.turnId)
         && runActions.every(action => action.status === 'answered' && action.delivery === 'submitted')
       const completed = previous?.state === 'completed' && (this.runtime === 'codex' ? !!previous.turnId : !!previous.completedInvocationId && previous.completedInvocationId === previous.runId) && !!previousReply
-      const valid = previous?.sourceVersion === 2 && !previous.resumeInvalidated && (completed || cancelled) && !!previous.threadId && previous.fingerprint === fingerprint
+      const valid = !context.nativeHandoff && previous?.sourceVersion === 2 && !previous.resumeInvalidated && (completed || cancelled) && !!previous.threadId && previous.fingerprint === fingerprint
         && previous.agentId === context.agent.id && previous.conversationId === context.conversation.id
         && (!!context.nativeSourceIds || (previous.memories ?? []).every(source => memories.some(memory => memory.id === source.id && memory.hash === source.hash)))
         && (oldMaterials ? oldMaterials.every(Boolean) : (previous.materials ?? []).every(source => materials.some(material => material.id === source.id && material.hash === source.hash)))
         && (oldRaw ? oldRaw.every(Boolean) : previous.sources.every(source => sources.some(current => current.id === source.id && current.hash === source.hash)))
         && previousActions.every(action => action.delivery === 'submitted')
+      // Changing cwd/provider or rebuilding context must never bypass a possibly
+      // consumed input. An explicitly stopped, accepted turn is handled above.
+      const unknown = previous && !cancelled && (previous.deliveryState === 'unknown'
+        || previous.state === 'pending' && (previous.deliveryState === 'submitted' || previous.deliveryState === 'accepted' || previousRun?.backend?.inputAccepted === true)
+        || runActions.some(action => action.delivery === 'unknown'))
+      if (!valid && unknown) throw new Error('原生输入投递或执行结果仍未知；请先核对原运行，不能通过切换目录或新会话重放')
+      if (previousRun && ['running', 'waiting_approval', 'queued'].includes(previousRun.status)) throw new Error('原生会话仍有活动执行，不能切换或重建')
+      const transitionSource = previous ?? alternate?.session
+      if (transitionSource && !valid) {
+        const reason = !previous ? 'runtime-changed' : context.nativeHandoff ? 'explicit-handoff'
+          : previous.workingDirectory !== context.workingDirectory ? 'working-directory-changed'
+          : previous.resumeInvalidated ?? (previous.fingerprint !== fingerprint ? 'configuration-changed' : 'source-or-completion-invalid')
+        const transitionId = digest([this.runtime, id, transitionSource.runId, context.runId])
+        // Only mapping metadata, never cached message bodies or private reasoning.
+        await tx.put({ collection: 'nativeSessionTransitions', id: transitionId, value: {
+          id: transitionId, runtime: this.runtime, agentId: context.agent.id, conversationId: context.conversation.id,
+          runId: context.runId, sourceRuntime: previous ? this.runtime : alternate!.runtime, sourceRunId: transitionSource.runId, sourceThreadId: transitionSource.threadId, sourceTurnId: transitionSource.turnId,
+          sourceFingerprint: transitionSource.fingerprint, targetFingerprint: fingerprint,
+          sourceWorkingDirectory: transitionSource.workingDirectory, targetWorkingDirectory: context.workingDirectory,
+          reason, createdAt: new Date().toISOString(),
+        } })
+      }
       // The previous reply is already the assistant output in the native thread.
       // Record its product identity without injecting its text as new user input.
       const knownIds = valid ? new Set([...previous.sources.map(source => source.id), ...(previousReply ? [previousReply.id] : [])]) : new Set<string>()
@@ -106,14 +145,14 @@ export class NativeSessions {
       }
       const added = messages.filter(message => !knownIds.has(message.id))
       const merge = <T extends { id: string }>(old: T[] | undefined, fresh: T[]) => [...new Map([...(valid ? old ?? [] : []), ...fresh].map(value => [value.id, value])).values()]
-      const session: Session = { id, conversationId: context.conversation.id, agentId: context.agent.id, sourceVersion: 2, fingerprint, runId: context.runId, state: 'pending', memories, materials: merge(previous?.materials, materials), sources: merge(previous?.sources, sources), rawSources: rawSources ? merge(previous?.rawSources, rawSources) : undefined, materialRefs: merge(previous?.materialRefs, context.materialRefs ?? []), inputMessageIds: added.map(message => message.id) }
+      const session: Session = { id, conversationId: context.conversation.id, agentId: context.agent.id, sourceVersion: 2, runtime: this.runtime, fingerprint, workingDirectory: context.workingDirectory, runId: context.runId, state: 'pending', deliveryState: 'prepared', memories, materials: merge(previous?.materials, materials), sources: merge(previous?.sources, sources), rawSources: rawSources ? merge(previous?.rawSources, rawSources) : undefined, materialRefs: merge(previous?.materialRefs, context.materialRefs ?? []), inputMessageIds: added.map(message => message.id) }
       await tx.put({ collection, id, value: session })
       return { session, threadId: valid ? previous.threadId : undefined,
         messages: added,
         priorReply: valid && previousReply ? { messageId: previousReply.id, ...(this.runtime === 'codex' ? { nativeTurnId: previous.turnId } : { hostRunId: previous.completedInvocationId }) } : undefined }
     })
   }
-  async update(session: Session, changes: Partial<Pick<Session, 'threadId' | 'turnId' | 'fingerprint' | 'outputHash' | 'state' | 'completedInvocationId'>>) {
+  async update(session: Session, changes: Partial<Pick<Session, 'threadId' | 'turnId' | 'fingerprint' | 'outputHash' | 'state' | 'completedInvocationId' | 'deliveryState'>>) {
     const collection = this.collection
     await this.store.transaction(async tx => {
       const current = await tx.get<Session>(collection, session.id)

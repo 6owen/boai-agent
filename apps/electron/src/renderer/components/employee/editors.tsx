@@ -1,5 +1,6 @@
 /*
  * [OUTPUT]: 创建预填改用shared稳定ID助手目录，旧数字输入只通过兼容映射解析。
+ * [OUTPUT]: 已有员工默认项目目录独立于授权目录编辑，API/native共用原版本草稿、保存与未知核对。
  * [OUTPUT]: 群高级配置的解散操作使用按钮旁Popover确认，保留删除范围说明、取消草稿及提交期间关闭锁。
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [OUTPUT]: 工作区目录添加/按需申请与载入操作放在分区标题右侧，目录分区取消/保存使用ghost/sm；原草稿和版本检查保持。
@@ -71,6 +72,7 @@ import { toast } from 'sonner'
 import { GroupConfigurationFields, groupConfigurationInput } from './group-configuration-fields'
 import { GroupMembers } from './group-members'
 import { DirectoryGrantFields } from './directory-grants'
+import { ProjectDirectoryPicker } from './project-directory-picker'
 import { AvatarPicker } from './avatar-picker'
 import { ProfileText } from './profile-text'
 import { AgentModelFields, agentModelSelectionReady } from './agent-model-fields'
@@ -81,7 +83,7 @@ import { committedSkillBindingAgent, mergeSkillBindingDraft } from './local-skil
 import { EmployeeResourceNavigation, type EmployeeResourceTarget } from './resource-navigation'
 import { ContactProfileSection, EmployeeFormSection } from './profile-card'
 import { resolveEmployeePreset } from '@boai/shared/domain/agent-presets'
-function savedAgentForm(agent: DigitalAgent): AgentInput { return { webSearch: agent.webSearch, directoryGrants: agent.directoryGrants, expectedDirectoryRevision: agent.directoryRevision, executionPermission: agent.executionPermission, avatar: agent.avatar, executionBackend: agent.executionBackend, nativeOptions: agent.nativeOptions, id: agent.id, name: agent.name, role: agent.role, instructions: agent.instructions, color: agent.color, connectionId: agent.connectionId, modelId: agent.modelId, sourceIds: [...(agent.sourceIds ?? [])], skillIds: [...agent.skillIds], knowledgeIds: [...agent.knowledgeIds], allowCommands: agent.allowCommands, active: true } }
+function savedAgentForm(agent: DigitalAgent): AgentInput { return { defaultProjectDirectory: agent.defaultProjectDirectory, webSearch: agent.webSearch, directoryGrants: agent.directoryGrants, expectedDirectoryRevision: agent.directoryRevision, executionPermission: agent.executionPermission, avatar: agent.avatar, executionBackend: agent.executionBackend, nativeOptions: agent.nativeOptions, id: agent.id, name: agent.name, role: agent.role, instructions: agent.instructions, color: agent.color, connectionId: agent.connectionId, modelId: agent.modelId, sourceIds: [...(agent.sourceIds ?? [])], skillIds: [...agent.skillIds], knowledgeIds: [...agent.knowledgeIds], allowCommands: agent.allowCommands, active: true } }
 export type AgentConfigurationSection = 'identity' | 'model' | 'instructions' | 'skills' | 'sources' | 'knowledge' | 'directories' | 'web-search'
 export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, onIdentitySaved, active = true, scope = 'creation', section, inlineIdentity = false, identityTarget, sectionTarget, footerTarget, actionsTarget, configurationVisible = true, identityDisabled = false, onDirtyChange, onRevealConfiguration, onBusyChange, onIdentityBusyChange }: { api: DesktopApi; snapshot: Snapshot; agent?: DigitalAgent; template?: string | number; onClose: () => void; onSaved: () => Promise<void>; onIdentitySaved?(agent: DigitalAgent): void; active?: boolean; scope?: string; section?: AgentConfigurationSection; inlineIdentity?: boolean; identityTarget?: HTMLElement | null; sectionTarget?: HTMLElement | null; footerTarget?: HTMLElement | null; actionsTarget?: HTMLElement | null; configurationVisible?: boolean; identityDisabled?: boolean; onDirtyChange?(dirty: boolean): void; onRevealConfiguration?(): void; onBusyChange?(busy: boolean): void; onIdentityBusyChange?(busy: boolean): void }) {
   const core = isCoreAgent(agent)
@@ -240,12 +242,13 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
       <AgentModelFields api={api} value={form} connections={snapshot.connections} profiles={profiles} profileError={profileError} allowTaskOnly={allowTaskOnly} disabled={locked} full onChange={selection => { if (!locked) setForm(current => ({ ...current, ...selection })) }} />
       {(form.executionBackend?.kind ?? 'mastra-model') === 'mastra-model' && <AgentPermissionField value={core ? form.executionPermission : form.executionPermission ?? (commandPermission ? 'full-access' : form.allowCommands ? 'ask' : 'read-only')} onChange={executionPermission => { if (!locked) setForm(current => ({ ...current, executionPermission, allowCommands: executionPermission !== 'read-only' })) }} disabled={locked} full />}
       </EmployeeFormSection>}
+      {agent && visible('directories') && <EmployeeFormSection title="默认项目目录" hint="只影响后续新建聊天和任务；不会添加访问授权或移动已有文件。" actions={inlineActions}><ProjectDirectoryPicker api={api} active={active && configurationVisible} directory={form.defaultProjectDirectory} label="默认项目目录" disabled={locked} onBusyChange={setChoosingDirectory} onChange={directory => setForm(current => ({ ...current, defaultProjectDirectory: directory ?? '' }))} /></EmployeeFormSection>}
       {visible('directories') && ((form.executionBackend?.kind ?? 'mastra-model') === 'mastra-model' ? <DirectoryGrantFields api={api} value={form.directoryGrants} fullAccess={form.executionPermission === 'full-access'} disabled={locked} onBusyChange={setChoosingDirectory} onChange={directoryGrants => setForm(current => ({ ...current, directoryGrants }))} renderSection={(content, directoryActions) => <EmployeeFormSection title="授权目录" actions={<div className="flex flex-wrap items-center gap-2">{directoryActions}
         {agent && (agent.directoryRevision ?? 0) > (form.expectedDirectoryRevision ?? 0) && <Button type="button" variant="ghost" size="sm" disabled={locked} onClick={() => {
           const authorization = { directoryGrants: agent.directoryGrants, expectedDirectoryRevision: agent.directoryRevision }
           baseline.current = JSON.stringify({ ...JSON.parse(baseline.current), ...authorization })
           setForm(current => ({ ...current, ...authorization }))
-        }}>载入已批准目录，保留其他草稿</Button>}{inlineActions}</div>}>{content}</EmployeeFormSection>} /> : <EmployeeFormSection title="目录访问"><p className="field-hint">本机 Agent 使用自身的目录、工具和审批配置，BOAI 不额外限制。</p></EmployeeFormSection>)}
+        }}>载入已批准目录，保留其他草稿</Button>}{!agent && inlineActions}</div>}>{content}</EmployeeFormSection>} /> : <EmployeeFormSection title="目录访问"><p className="field-hint">本机 Agent 使用自身的目录、工具和审批配置，BOAI 不额外限制。</p></EmployeeFormSection>)}
       {visible('instructions') && <ContactProfileSection title="工作方式" actions={inlineActions}><Textarea aria-label="工作方式" className="py-1.5 text-[length:var(--text-ui-secondary)] leading-[var(--leading-ui-body)] md:text-[length:var(--text-ui-secondary)]" rows={5} maxLength={64000} value={form.instructions} onChange={e => set('instructions', e.target.value)} placeholder="你是一位……请按照这些规则工作。" /></ContactProfileSection>}
       </fieldset>
       {(form.executionBackend?.kind!=='acp-local')&&<>{visible('skills') && <EmployeeFormSection title="技能" actions={<div className="flex flex-wrap items-center gap-2">{agent ? <LocalSkillBinding key={`${scope}:${agent.id}`} api={api} agent={agent} resources={availableResources} skillIds={form.skillIds} scope={scope} active={active && configurationVisible} expectedConfigVersion={initialVersion.current ?? agent.configVersion} configurationBusy={busy || uploading || saveUnconfirmed} onPendingChange={setBindingLocked} onBound={bindingCommitted} onChange={ids => set('skillIds', ids)} /> : <Button type="button" variant="secondary" size="sm" disabled>从本机技能选择</Button>}{inlineActions}</div>}>

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 发送草稿冻结已提交项目版本和目录，后续选择不能更改原请求。
  * [OUTPUT]: 草稿区分任务消息回执，与普通消息/外部任务保持各自提交身份。
  * [OUTPUT]: 冻结消息可携带明确原生run/turn补充目标。
  * [OUTPUT]: 提示词标签携带所选正文快照，与成员/固定技能文件引用分开；发送正文展开沿原消息事务。
@@ -35,7 +36,7 @@ export interface ChatDraft {
   submission?: {
     kind?: 'external' | 'employee-task'
     requestId: string; status: 'pending' | 'unknown' | 'not_accepted'; fingerprint: string
-    input: { steer?: import('@boai/shared/domain/execution').NativeSteeringTarget; composerReferences?: import('@boai/shared/domain/composer-references').ComposerReference[]; channelReference?: import('@boai/shared/domain/channels').ChannelMessageReference; materialReference?: import('@boai/shared/domain/materials').MaterialReadRef; browserReference?: Pick<import('@boai/shared/ipc/browser').BrowserPageReference,'instanceId'|'pageVersion'>; content: string; mentionIds: string[]; materialSelections?: MaterialSelection[]; replyToMessageId?: string; stopPrevious?: boolean }
+    input: { expectedProjectRevision?: number; workingDirectory?: string; steer?: import('@boai/shared/domain/execution').NativeSteeringTarget; composerReferences?: import('@boai/shared/domain/composer-references').ComposerReference[]; channelReference?: import('@boai/shared/domain/channels').ChannelMessageReference; materialReference?: import('@boai/shared/domain/materials').MaterialReadRef; browserReference?: Pick<import('@boai/shared/ipc/browser').BrowserPageReference,'instanceId'|'pageVersion'>; content: string; mentionIds: string[]; materialSelections?: MaterialSelection[]; replyToMessageId?: string; stopPrevious?: boolean }
   }
 }
 

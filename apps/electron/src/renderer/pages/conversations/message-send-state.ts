@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 未决消息持久保留项目版本及明确目录；重启仍只核对原请求，不改用新的默认目录。
  * [OUTPUT]: 冻结和恢复employee-task消息类型，未知回执不自动重发。
  * [OUTPUT]: 补充目标随未决请求持久冻结，重启只核对原回执。
  * [OUTPUT]: 未决消息冻结资源引用并严格恢复，未知不重放。
@@ -29,6 +30,14 @@ export function draftFingerprint(draft: ChatDraft) {
 function messageInput(value: unknown): Submission['input'] {
   if (!object(value) || typeof value.content !== 'string' || value.content.length > 100_000 || !Array.isArray(value.mentionIds) || value.mentionIds.length > 100 || !value.mentionIds.every(identity) || new Set(value.mentionIds).size !== value.mentionIds.length) throw invalid()
   const input: Submission['input'] = { content: value.content, mentionIds: [...value.mentionIds] }
+  if (value.expectedProjectRevision !== undefined) {
+    if (!Number.isSafeInteger(value.expectedProjectRevision) || Number(value.expectedProjectRevision) < 0) throw invalid()
+    input.expectedProjectRevision = Number(value.expectedProjectRevision)
+  }
+  if (value.workingDirectory !== undefined) {
+    if (typeof value.workingDirectory !== 'string' || !value.workingDirectory.trim() || value.workingDirectory.length > 4096) throw invalid()
+    input.workingDirectory = value.workingDirectory
+  }
   if (value.steer !== undefined) {
     if (!object(value.steer) || !identity(value.steer.runId) || !identity(value.steer.turnId)) throw invalid()
     input.steer = { runId: value.steer.runId, turnId: value.steer.turnId }

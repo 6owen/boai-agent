@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 当前显式项目文件经固定目录/源身份核验后复制到受管区发布；项目原件与原生权限保持。
  * [OUTPUT]: Agent Desktop 可选插件接线；默认关闭、独立于旧computer-use，调用沿员工权限及真实图片。
  * [OUTPUT]: 2026-10-30 原生产品桥不再提供search_memory/remember_memory；其余业务工具保持。
  * [OUTPUT]: 独立AgentBrowser/BrowserViewer插件接入；上游工具、启停与运行回收保持独立。
@@ -57,7 +58,10 @@ import { boboCollaborationPlanSchema, employeeCandidateQuerySchema } from '@boai
 import { isCoreAgent } from '@boai/shared/domain/core-agent'
 import { teamModelPlanSchema } from '@boai/shared/domain/team-creation'
 import { nativeActivity } from './native-events'
-import { contained } from '../modules/workspaces/file-access'
+import { contained, restrictedPath } from '../modules/workspaces/file-access'
+import { stageVerifiedBusinessArtifact } from '../modules/workspaces/directory-files'
+import { workingDirectoryTarget } from '../modules/workspaces/working-directory'
+import { assertDirectoryTargetCurrent, resolveDirectoryTarget } from '../modules/workspaces/directory-access'
 import { imageToolRequestSchema } from '../modules/media/image-service'
 import { selfieRequestSchema } from '../modules/media/selfie-service'
 import { browserToolSchema, browserToolDescription } from './mastra/browser-tool'
@@ -78,7 +82,7 @@ export function createNativeProducts(context: EngineContext) {
   const definitions: { name: string; description: string; schema: z.ZodType }[] = [
     { name: 'send_message', description: 'Publish an ordinary public message in this employee conversation now, for example a clarification or progress update. No Work is created. Repeating the same final reply will not create a duplicate. Use delegate_work to assign an actionable task to a colleague.', schema: z.object({ content: z.string().trim().min(1) }).strict() },
     { name: 'read_messages', description: 'Read a page from this turn’s authorized conversation snapshot. beforeSequence reads older history. Later user messages are queued for the next turn. This does not read private conversations of other employees.', schema: z.object({ beforeSequence: z.number().int().positive().optional(), limit: z.number().int().min(1).max(100).default(50) }).strict() },
-    { name: 'publish_artifact', description: 'Deliver an existing file from your employee conversation workspace as a BOAI chat attachment. path may be absolute or relative to cwd. When the current user asks to revise a previously delivered file, pass its actual replacesArtifactId to publish the next immutable version. Do not use replacement for unrelated new files. No separate report is required.', schema: z.object({ path: z.string(), name: z.string().max(150).optional(), replacesArtifactId: z.string().optional(), revisionRequestId: z.string().optional() }) },
+    { name: 'publish_artifact', description: 'Deliver an existing file from your employee conversation workspace or the selected project directory as a BOAI chat attachment. Project originals stay in place; BOAI publishes a verified managed copy. path may be absolute or relative to cwd. When the current user asks to revise a previously delivered file, pass its actual replacesArtifactId to publish the next immutable version. Do not use replacement for unrelated new files. No separate report is required.', schema: z.object({ path: z.string(), name: z.string().max(150).optional(), replacesArtifactId: z.string().optional(), revisionRequestId: z.string().optional() }) },
     { name: 'delegate_work', description: 'Assign a bounded task to another current BOAI employee using actual member IDs and a stable key. Repeated keys do not repeat work. Native subagents are distinct from employees.', schema: workDelegationSchema },
     { name: 'wait_for_work', description: 'Wait for actual delegated work IDs/results; finish this turn after calling. BOAI resumes your native session once the specified results are ready.', schema: workWaitSchema },
     { name: 'report_work', description: 'Optionally record the disposition of a real BOAI work item. Unnecessary for ordinary chat, clarification, or after publishing a file. For answer evidence, reference MUST be a short exact substring of your final public reply: include that same text verbatim in the reply. Do not place separate prose, URLs or timestamps in reference unless they also appear verbatim in the reply. A receipt only records your declaration; delivery is checked after the final reply. After wait_for_work, finish the turn without another report. Ask users as ordinary chat messages; there is no userQuestion workflow.', schema: z.object(reportShape).strict() },
@@ -180,7 +184,22 @@ export function createNativeProducts(context: EngineContext) {
         if (!runtime) runtime = (async () => {
           await context.ensureNativeWork?.(parsed.mode ? { key: 'bobo-organization', scope: String(parsed.goal), deliverable: '按用户要求发布组织', organization: { mode: parsed.mode as 'employee_creation', goal: String(parsed.goal) } } : undefined, typeof parsed.replacesArtifactId === 'string' ? parsed.replacesArtifactId : undefined)
           if (!context.work) throw new Error('产品工作未接入')
-          return createTaskRuntime({ ...context, responseKind: 'task' })
+          return createTaskRuntime({ ...context, responseKind: 'task', stageNativeProjectArtifact: async (absolute, name) => {
+            if (!context.workingDirectory) throw new Error('待交付文件必须位于当前员工会话工作区或已选择的项目目录')
+            const project = context.nativeProjectTarget ?? await workingDirectoryTarget(context.workingDirectory, context.protectedProjectRoots)
+            await assertDirectoryTargetCurrent(project)
+            // The publication boundary does not change native filesystem permissions.
+            const source = await restrictedPath([project.path], absolute)
+            const target = await resolveDirectoryTarget(source, 'read')
+            if (context.protectedProjectRoots?.some(root => contained(root, target.path))) throw new Error('BOAI受管文件必须通过原来源权限发布，项目目录不能扩大访问范围')
+            const verify = async () => {
+              context.signal.throwIfAborted()
+              await assertDirectoryTargetCurrent(project)
+              await restrictedPath([project.path], absolute)
+              await assertDirectoryTargetCurrent(target)
+            }
+            return stageVerifiedBusinessArtifact(context, target, verify, name)
+          } })
         })()
         const product = await runtime
         if (name === 'report_work') {
@@ -202,9 +221,14 @@ export function createNativeProducts(context: EngineContext) {
           // Resolve the root only: resolving the file here would hide symlinks
           // from the existing publication boundary's per-component checks.
           const matchedRoot = [root, await realpath(root)].find(candidate => contained(candidate, absolute))
-          if (!matchedRoot) throw new Error('请先将待交付文件保存到当前员工会话工作区，再发布附件')
-          const relative = path.relative(matchedRoot, absolute)
-          parsed.path = `self:/${relative.split(path.sep).join('/')}`
+          if (matchedRoot) {
+            const relative = path.relative(matchedRoot, absolute)
+            parsed.path = `self:/${relative.split(path.sep).join('/')}`
+          } else {
+            if (!context.workingDirectory) throw new Error('待交付文件必须位于当前员工会话工作区或已选择的项目目录')
+            // Preserve the original path for the staging callback after publication approval.
+            parsed.path = absolute
+          }
         }
         const result = await tool.execute!((tool.inputSchema as z.ZodType).parse(parsed) as never, { agent: { toolCallId: callId }, abortSignal: context.signal } as never)
         if (name === 'publish_artifact') {

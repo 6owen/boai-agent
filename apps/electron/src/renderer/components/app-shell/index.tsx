@@ -1,5 +1,6 @@
 /*
  * [OUTPUT]: 资源库助手目录沿原员工创建回执打开主会话，使用现有快照与创建回调。
+ * [OUTPUT]: 发送冻结当前项目版本与目录；项目保存回执立即更新原聊天/任务上下文，重启未决消息保留原选择。
  * [OUTPUT]: 2026-11-06 知识资料面板直接追加到当前同员工会话草稿并聚焦输入器，保留文字/附件且去重；不跨会话写入或自动发送。
  * [OUTPUT]: 2026-11-06 会话文件/知识资料使用独立菜单、面板身份与标签标题，员工配置入口复用知识资料面板。
  * [OUTPUT]: 会话列表只缓存completed消息摘要，不透传输入草稿；流式/失败状态仍沿原聊天刷新。
@@ -927,7 +928,7 @@ export function AppShell() {
       if (items.some(item => item.status !== 'ready' || item.material?.status !== 'ready' || item.busy)) { toast.error('请等待材料就绪；失败材料需要重试或移除后才能发送。'); return }
       if (items.reduce((total, item) => total + (item.material?.format === 'txt' || item.material?.format === 'markdown' ? item.material.characterCount ?? MATERIAL_LIMITS.messageCharacters + 1 : 0), 0) > MATERIAL_LIMITS.messageCharacters) { toast.error(`每条消息的材料正文最多 ${MATERIAL_LIMITS.messageCharacters} 字，请分批发送。`); return }
       if (items.length && sentText.length > MATERIAL_LIMITS.messageTextCharacters) { toast.error(`带材料消息的正文最多 ${MATERIAL_LIMITS.messageTextCharacters} 字，请拆分发送。`); return }
-      submission = { ...(conversation?.employeeTaskId && !steer ? { kind: 'employee-task' as const } : {}), requestId: crypto.randomUUID(), status: 'pending', fingerprint: draftFingerprint(sent), input: { ...(steer ? { steer } : {}), ...(draftResourceReferences(sent).length ? { composerReferences: draftResourceReferences(sent) } : {}), ...(sent.channelReference ? { channelReference: sent.channelReference } : {}), ...(sent.browserReference ? {browserReference:{instanceId:sent.browserReference.instanceId,pageVersion:sent.browserReference.pageVersion}}:{}), ...(sent.materialEdit ? { materialReference: sent.materialEdit.reference } : {}), content: sent.materialEdit ? fileEditContent(sentText, sent.materialEdit.annotation) : sentText, mentionIds: sent.materialEdit ? [sent.materialEdit.targetAgentId] : [...sent.mentionIds], replyToMessageId: sent.replyId, materialSelections: items.length ? items.map(item => ({ id: item.material!.id, revision: item.material!.revision })) : undefined } }
+      submission = { ...(conversation?.employeeTaskId && !steer ? { kind: 'employee-task' as const } : {}), requestId: crypto.randomUUID(), status: 'pending', fingerprint: draftFingerprint(sent), input: { ...(!steer && conversation?.kind === 'direct' ? { expectedProjectRevision: conversation.projectSelection?.revision ?? 0, ...(conversation.projectSelection?.mode === 'directory' ? { workingDirectory: conversation.projectSelection.directory } : {}) } : {}), ...(steer ? { steer } : {}), ...(draftResourceReferences(sent).length ? { composerReferences: draftResourceReferences(sent) } : {}), ...(sent.channelReference ? { channelReference: sent.channelReference } : {}), ...(sent.browserReference ? {browserReference:{instanceId:sent.browserReference.instanceId,pageVersion:sent.browserReference.pageVersion}}:{}), ...(sent.materialEdit ? { materialReference: sent.materialEdit.reference } : {}), content: sent.materialEdit ? fileEditContent(sentText, sent.materialEdit.annotation) : sentText, mentionIds: sent.materialEdit ? [sent.materialEdit.targetAgentId] : [...sent.mentionIds], replyToMessageId: sent.replyId, materialSelections: items.length ? items.map(item => ({ id: item.material!.id, revision: item.material!.revision })) : undefined } }
       drafts.current.set(id, { ...sent, submission }); bumpDrafts()
       if (!persistMessageRequests()) { updateSubmission(id, submission.requestId, 'not_accepted'); return }
     }
@@ -1096,12 +1097,18 @@ export function AppShell() {
   const renderChat = (window: Omit<ChannelChatWindow, 'detail'> & Pick<ChatViewProps, 'detail' | 'conversation' | 'loading' | 'onRetry'>, scope = 'conversations', withinKey?: string, headerActions?: ReactNode, taskTrace?: (message?: Message) => void, historyHeader?: ReactNode) => {
     const source = window.conversation ?? window.detail?.conversation
     if (!source) return null
-    const room = snapshot.conversations.find(room => room.id === source.id) ?? source
+    const savedRoom = snapshot.conversations.find(room => room.id === source.id) ?? Object.values(taskSessions).find(room => room?.id === source.id)
+    const room = savedRoom && (savedRoom.projectSelection?.revision ?? 0) >= (source.projectSelection?.revision ?? 0) ? savedRoom : source
     const showPanel = (target: Panel) => openPanel(target, scope, undefined, undefined, withinKey)
     const id = room.id, channel = isChannelConversation(room), internal = room.purpose === 'channel-internal'
     const owner = room.kind === 'group' || !room.agentIds[0] ? 'conversation' as const : 'employee' as const
     const ownerId = owner === 'employee' ? room.agentIds[0]! : id
-    return <FloatingLayerScope active={window.pageActive}><ChatView {...window} hideHeader={!!taskTrace} historyHeader={historyHeader} headerActions={headerActions} api={api!} snapshot={snapshot}
+    return <FloatingLayerScope active={window.pageActive}><ChatView {...window} conversation={room} onProjectSaved={committed => {
+      snapshotRequest.current++
+      setSnapshot(previous => ({ ...previous, conversations: previous.conversations.map(item => item.id === committed.id ? committed : item) }))
+      setDetail(previous => previous?.conversation.id === committed.id ? { ...previous, conversation: committed } : previous)
+      setTaskSessions(previous => Object.fromEntries(Object.entries(previous).map(([key, item]) => [key, item?.id === committed.id ? committed : item])))
+    }} hideHeader={!!taskTrace} historyHeader={historyHeader} headerActions={headerActions} api={api!} snapshot={snapshot}
       onPublish={channel ? message => {
         if (!message) return
         void action(async () => {
@@ -1220,7 +1227,7 @@ export function AppShell() {
             {target.type === 'skill-updates' && <div className="detail-section"><SkillUpdateBatchView api={api} active={active} autoStart localOnly onUpdated={skillUpdated} onResource={openLocalSkill} /></div>}
             {tab.scope === 'conversations' && target.type === 'employee-tasks' && <EmployeeTasksPanel key={target.id} api={api} snapshot={snapshot} employeeId={target.id} target={target} active={active}
               onMaterials={materialDrafts.reconcile}
-              onContext={conversation => setTaskSessions(previous => previous[target.id]?.id === conversation?.id ? previous : { ...previous, [target.id]: conversation })}
+              onContext={conversation => setTaskSessions(previous => previous[target.id]?.id === conversation?.id && (previous[target.id]?.projectSelection?.revision ?? 0) >= (conversation?.projectSelection?.revision ?? 0) ? previous : { ...previous, [target.id]: conversation })}
               renderChat={(window, onTrace, historyHeader) => renderChat(window, tab.scope, tab.key, undefined, onTrace, historyHeader)}
               onSource={(source, process) => {
                 if (process) showPanel({ type: 'trace', id: source.conversationId, messageId: source.messageId, agentId: target.id, requestId: crypto.randomUUID() })

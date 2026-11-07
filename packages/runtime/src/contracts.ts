@@ -1,5 +1,6 @@
 /*
  * [OUTPUT]: 包绑定原生执行通过提交输入前的有效能力清单核验；普通无包员工不新增探测。
+ * [OUTPUT]: 显式持久交接通过原生准备/绑定/受理/未知回调接入，准备不启动任务。
  * [OUTPUT]: historySearch能力统一提供当轮设置、指引、原文查询与可选预检。
  * [OUTPUT]: 插件技能只读端口随实际启停提供，不创建绑定或改变原生循环。
  * [OUTPUT]: Bobo API私聊可主动查询宿主授权原文；原生后端不接入新的历史工具。
@@ -119,6 +120,18 @@ export interface EngineContext {
   registerCliTools?(tools: import('@boai/shared/cli/run-access').RunCliTool[]): () => Promise<void>
   /** Host-owned directory scope; never supplied by model input or shared with another employee/run. */
   directoryAccess?: import('./modules/workspaces/directory-run').RunDirectoryAccess
+  /** Host-owned protected roots and frozen project identity; no directory permission is granted. */
+  protectedProjectRoots?: string[]
+  nativeProjectTarget?: import('./modules/workspaces/directory-access').DirectoryTarget
+  stageNativeProjectArtifact?(value: string, name?: string): Promise<{ source: string; contentHash: string; originalName: string }>
+  /** Host-authorized immutable handoff; callbacks persist intent before transport and exact acceptance evidence. */
+  nativeHandoff?: {
+    payload: string
+    prepare(target: { threadId?: string; runId: string }): Promise<void>
+    bindSession(threadId: string): Promise<void>
+    accepted(threadId: string, turnId: string): Promise<void>
+    unknown(reason: string): Promise<void>
+  }
   /** Private native configuration fence; never a provider URL/key or public capability claim. */
   nativeSourceFingerprint?: string
   /** Source-matched metadata only; refreshing it never changes employee or connection identity. */

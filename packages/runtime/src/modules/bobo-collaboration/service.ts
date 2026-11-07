@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 核心组织授权使用执行配置版本；单独默认项目修改不废弃原组织持有者，其他配置变更仍阻止发布。
+ * [OUTPUT]: 新组织群与首条公告在原受理事务复制成员各自默认项目，后继群工作沿同一来源快照执行。
  * [OUTPUT]: 2026-10-11 第13组员工执行来源/本机登录和运行选项沿原产品身份接线；持续原生合同见13组10/11，实际成绩唯一归06 §122。
  * [OUTPUT]: Claude核心与组织/具名团队沿已核对程序及明确API来源接线；新员工保留原运行绑定，发布前重核指纹，自动化门禁暂保留。
  * [OUTPUT]: bobo可选择API或本机Codex；组织/具名团队按原运行配置创建独立员工，混合成员共原预算；本机自动化沿原时钟/预算接入，实际验证归第13组06。
@@ -22,6 +24,7 @@ import { agentSchema } from '../employees/employee-service'
 import { TeamFiles, teamFileLog, type TeamFileCheckpoint, type TeamFileOperation } from '../teams/team-files'
 import { resolveEmployeeRuntime } from '../backends/runtime-config'
 import { WorkspaceService } from '../workspaces/workspace-service'
+import { initialProjectSelection } from '../workspaces/project-directory'
 import { collaborationReceipt } from './receipt'
 
 const collection = 'boboCollaborations'
@@ -94,7 +97,7 @@ export class BoboCollaborationService {
       if (!fingerprint || (await resolveEmployeeRuntime(tx, agent)).fingerprint !== fingerprint) fail('CONFIG_CHANGED', '既有员工的模型连接已变化')
     }
     const core = await tx.get<DigitalAgent>('agents', 'bobo')
-    if (!core || !isCoreAgent(core) || core.configVersion !== authority.agentConfigVersion) fail('CONFIG_CHANGED', 'bobo 的原运行配置已变化')
+    if (!core || !isCoreAgent(core) || core.configVersion - (core.projectDefaultChanges ?? 0) !== authority.agentConfigVersion) fail('CONFIG_CHANGED', 'bobo 的原运行配置已变化')
     const runtime = await resolveEmployeeRuntime(tx, core!)
     if (runtime.connectionId !== operation.connectionId || runtime.modelId !== operation.modelId || runtime.fingerprint !== operation.connectionFingerprint) fail('CONFIG_CHANGED', '原运行配置已变化')
     await this.hooks.validateSource?.(tx, operation)
@@ -134,7 +137,13 @@ export class BoboCollaborationService {
       const groupConversationId = organization.mode === 'employee_creation' ? undefined : randomUUID()
       const conversation: Conversation | undefined = groupConversationId ? { id: groupConversationId, kind: 'group', title: plan.groupTitle!, agentIds: ['bobo', ...existingMembers.map(member => member.agentId), ...agents.map(agent => agent.id)], mode: 'natural', workspacePath: join(this.dataPath, 'workspaces', groupConversationId), sharedKnowledgeIds: [], configVersion: 1, createdAt, updatedAt: createdAt, creationSource, teamSetup: { purpose: organization.goal.slice(0, 1000), collaborationGuide: plan.announcement!.slice(0, 2000), scenarioKind: 'work' } } : undefined
       const announcement: Message | undefined = groupConversationId ? { id: randomUUID(), conversationId: groupConversationId, senderType: 'agent', senderId: 'bobo', senderName: core!.name, content: plan.announcement!, status: 'completed', sequence: 1, createdAt, collaborationRequestId: organization.requestId, collaborationSource: { operationId: id, sourceRunId: authority.runId, modelCallId: provenance.modelCallId, toolCallId: provenance.toolCallId } } : undefined
-      if (conversation && announcement) { conversation.lastMessageAt = createdAt; conversation.lastMessagePreview = announcement.content.slice(0, 120) }
+      if (conversation && announcement) {
+        conversation.projectSelections = { [core!.id]: initialProjectSelection(core!) }
+        for (const member of existingMembers) conversation.projectSelections[member.agentId] = initialProjectSelection(await tx.get<DigitalAgent>('agents', member.agentId))
+        for (const agent of agents) conversation.projectSelections[agent.id] = initialProjectSelection(agent)
+        announcement.projectSelections = structuredClone(conversation.projectSelections)
+        conversation.lastMessageAt = createdAt; conversation.lastMessagePreview = announcement.content.slice(0, 120)
+      }
       const contacts = await tx.get<ContactListPreferences>('contactList', 'contacts') ?? emptyContactList()
       const operation: BoboCollaborationOperation = { id, schemaVersion: 1, requestId: organization.requestId, payloadHash, version: 1, organizationWorkId: authority.workId, sourceConversationId: authority.sourceConversationId, sourceMessageId: authority.sourceMessageId, sourceMessageHash: sourceHash(source!), mode: organization.mode, goal: organization.goal, budgetId: owner.budget.id, contactRevision: contacts.revision, authority: { ...authority }, existingMembers, existingConnectionFingerprints, agents, ...(model.executionBackend.kind !== 'mastra-model' ? { executionBackend: model.executionBackend } : {}), connectionId: model.connectionId, modelId: model.modelId, connectionFingerprint: model.fingerprint, groupConversationId, conversation, announcement, announcementSource: { ...provenance, runId: authority.runId }, status: 'accepted', createdAt, files: [], directories: [] }
       Object.assign(operation, teamFileLog(this.view(operation), this.homes))

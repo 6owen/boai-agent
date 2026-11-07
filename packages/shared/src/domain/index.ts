@@ -113,6 +113,8 @@ export interface DigitalAgent {
   /** Default for newly created chats/tasks; WT3 owns the execution snapshot semantics. */
   defaultProjectDirectory?: string
   defaultProjectDirectoryRequested?: string
+  /** Host-only count of default-location edits that do not change an existing execution configuration. */
+  projectDefaultChanges?: number
   /** Host-validated template provenance; never copied account or core authority. */
   templateOrigin?: { templateId: string; version: string }
   /** Absent keeps legacy access; an explicit list opts into employee directory authorization. */
@@ -147,7 +149,7 @@ export interface DigitalAgent {
   memoryNamespace?: string
   policyVersion?: number
 }
-export type AgentInput = Omit<DigitalAgent, 'id' | 'defaultProjectDirectoryRequested' | 'templateOrigin' | 'configVersion' | 'directoryRevision' | 'workspaceRef' | 'memoryNamespace' | 'policyVersion' | 'creationSource' | 'systemRole'> & { templateId?: string; templateVersion?: string; id?: string; expectedConfigVersion?: number; expectedDirectoryRevision?: number; initialSoul?: string }
+export type AgentInput = Omit<DigitalAgent, 'id' | 'defaultProjectDirectoryRequested' | 'projectDefaultChanges' | 'templateOrigin' | 'configVersion' | 'directoryRevision' | 'workspaceRef' | 'memoryNamespace' | 'policyVersion' | 'creationSource' | 'systemRole'> & { templateId?: string; templateVersion?: string; id?: string; expectedConfigVersion?: number; expectedDirectoryRevision?: number; initialSoul?: string }
 export interface Resource {
   knowledge?: import('./knowledge').KnowledgeContent
   id: string
