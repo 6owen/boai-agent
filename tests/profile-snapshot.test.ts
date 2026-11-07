@@ -54,7 +54,7 @@ test('offline copy keeps encrypted credentials, login bytes, ACL/xattrs/flags, l
     ['flags', '/usr/bin/chflags', ['nodump', path]],
   ] as const) {
     const receipt = await f.tools.execute(name, command, [...args])
-    expect(receipt, `${name}: ${receipt.stderr}`).toMatchObject({ exitCode: 0, failure: undefined })
+    expect(receipt, `${name}: ${JSON.stringify(receipt)}`).toMatchObject({ exitCode: 0, failure: undefined })
   }
   const result = await createProfileSnapshot(f.maintenance, f.output, f.id, f.tools)
   const verified = await verifyProfileSnapshot(f.maintenance, f.output, join(f.root, 'verification'), f.tools)
