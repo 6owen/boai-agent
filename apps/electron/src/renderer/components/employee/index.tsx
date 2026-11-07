@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 工作区的默认项目字段对API/native员工均可编辑，目录授权仍仅API处理。
  * [OUTPUT]: 员工弹窗的自动化分类显示为定时任务，原分类标识及导航保持。
  * [OUTPUT]: 高级设置侧栏隐藏任务/执行详情；记忆页保留挂载避免切回重建，记忆保存期间沿弹窗忙时锁。
  * [OUTPUT]: 通讯录任务入口先跳转员工主会话，再打开会话右侧面板。
@@ -154,7 +155,7 @@ function WorkspaceView({ api, snapshot, agent, home, active, conversation, onCon
     <ContactProfileSection title="独立工作区" hint={`这里属于 ${agent.name}。系统文件和会话内容在这里保存。${(agent.executionBackend?.kind ?? 'mastra-model') === 'mastra-model' ? '业务目录另行授权，群聊中沿用这位员工自己的许可。' : '本机 Agent 按自身配置访问业务目录，保留原生能力。'}`} actions={<Button variant="ghost" size="sm" disabled={busy} onClick={() => { void run(async () => { await api.request('openPath', { path: home.workspacePath }) }) }}><FolderOpen />打开员工工作区</Button>}><ContactProfileCard label="独立工作区" fields={false}>
       <p className="resource-path m-0 break-all">{home.workspacePath}</p>
     </ContactProfileCard></ContactProfileSection>
-    {(agent.executionBackend?.kind ?? 'mastra-model') === 'mastra-model' ? <AgentEditor key={`${agent.id}:directories:${directoryEpoch}`} api={api} snapshot={snapshot} agent={agent} section="directories" active={active} onBusyChange={onBusyChange} scope={`workspace:${agent.id}`} onSaved={onRefresh} onClose={() => setDirectoryEpoch(value => value + 1)} /> : <ContactProfileSection title="目录访问"><ContactProfileCard label="本机目录配置" fields={false}><p className="field-hint">本机 Agent 使用自身的目录、工具和审批配置，BOAI 不额外限制。</p></ContactProfileCard></ContactProfileSection>}
+    <AgentEditor key={`${agent.id}:directories:${directoryEpoch}`} api={api} snapshot={snapshot} agent={agent} section="directories" active={active} onBusyChange={onBusyChange} scope={`workspace:${agent.id}`} onSaved={onRefresh} onClose={() => setDirectoryEpoch(value => value + 1)} />
     {home.sessionPath && <ContactProfileSection title="当前会话空间" actions={<Button variant="ghost" size="sm" disabled={busy} onClick={() => { void run(async () => { await api.request('openPath', { path: home.sessionPath! }) }) }}><FolderOpen />打开会话空间</Button>}><ContactProfileCard label="当前会话空间" fields={false}>
       <p className="resource-path m-0 break-all">{home.sessionPath}</p>
     </ContactProfileCard></ContactProfileSection>}

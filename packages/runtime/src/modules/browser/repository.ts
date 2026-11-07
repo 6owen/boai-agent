@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 浏览器租约按执行配置版本核验；单独修改默认项目保持原动作授权，职责/权限等变更仍失效。
  * [OUTPUT]: 待核对写入只阻止新写入/控制操作；新snapshot/截图/find可观察，原unknown与副作用不变。
  * [OUTPUT]: 自动化浏览器沿原Work holder/occurrence/预算和动作事务核验，取消后不能取得新执行权。
  * [OUTPUT]: 受理前仅存网页输入摘要及原参数hash，执行命令仍以原内存信封发送。
@@ -37,7 +38,7 @@ export class BrowserRepository {
   private async identity(tx:RecordTransaction,lease:BrowserLease) {
     const agent=await tx.get<DigitalAgent>('agents',lease.agentId),conversation=await tx.get<Conversation>('conversations',lease.conversationId)
     const clock=await tx.get<{epoch:number}>('conversationCompletionClocks',lease.conversationId)
-    if (!agent || !isBrowserCapableAgent(agent) || agent.configVersion!==lease.configVersion || !conversation?.agentIds.includes(agent.id) || (clock?.epoch ?? 1)!==lease.scopeEpoch || APPLICATION_BROWSER_SCOPE!==lease.scopeKey || await tx.get('conversationCleanup',conversation.id) || await tx.get('browserCleanups',lease.runId)) throw new Error('浏览器工具调用的员工、会话或清理代际授权已变化')
+    if (!agent || !isBrowserCapableAgent(agent) || agent.configVersion-(agent.projectDefaultChanges ?? 0)!==lease.configVersion || !conversation?.agentIds.includes(agent.id) || (clock?.epoch ?? 1)!==lease.scopeEpoch || APPLICATION_BROWSER_SCOPE!==lease.scopeKey || await tx.get('conversationCleanup',conversation.id) || await tx.get('browserCleanups',lease.runId)) throw new Error('浏览器工具调用的员工、会话或清理代际授权已变化')
   }
   private transaction<T>(lease:BrowserLease,phase:'prepare'|'start'|'finish',action:(tx:RecordTransaction)=>Promise<{value:T;effect?:'start'|'confirm'}>) {
     if (lease.workId) return this.works.browserTransaction(lease.runId,phase,async(tx,{work,execution})=>{

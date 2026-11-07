@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 项目入口显示已保存位置，忙态阻止目录切换和新发送；不改变授权或输入草稿。
  * [OUTPUT]: 2026-11-06 加号直接上传文件并延迟500ms显示Tooltip，不再提供更多操作菜单。
  * [OUTPUT]: 当前执行补充使用独立图标Tooltip，沿当前输入草稿并保留普通发送。
  * [OUTPUT]: 2026-10-27 默认关闭语音插件接线、可信主窗口与原草稿/生命周期边界。
@@ -21,10 +22,11 @@ import { ComposerModelMenu } from './composer-model-menu'
 import { ComposerSourcePicker } from './composer-source-picker'
 
 export type ComposerAgentSaveResult = { status: 'saved'; agent: DigitalAgent } | { status: 'not-submitted' | 'unconfirmed' }
-export type ComposerAgentPatch = Partial<Pick<DigitalAgent, 'executionBackend' | 'connectionId' | 'modelId' | 'allowCommands' | 'thinkingLevel' | 'nativeOptions'>>
+export type ComposerAgentPatch = Partial<Pick<DigitalAgent, 'executionBackend' | 'connectionId' | 'modelId' | 'allowCommands' | 'thinkingLevel' | 'nativeOptions' | 'defaultProjectDirectory'>>
 interface Props {
   onSteer?(): void
   voice?: ReactNode
+  project?: ReactNode
   api: DesktopApi; members: DigitalAgent[]; snapshot: Snapshot; group: boolean; external: boolean; runs?: AgentRun[]
   conversationReady?: boolean; replyMode?: boolean
   busy: boolean; active: boolean; canSend: boolean; configurationLocked: boolean; mentionsVisible: boolean
@@ -49,6 +51,7 @@ export function ComposerToolbar(props: Props) {
       <Button variant="ghost" size="icon-sm" round aria-label="快捷命令" aria-expanded={props.commandsVisible} onClick={props.onCommands}><span aria-hidden="true">/</span></Button>
       {!external && <Button variant="ghost" size="icon-sm" round aria-label="引用技能、文件和提示词" aria-expanded={props.referencesVisible} disabled={props.replyMode} onClick={props.onReferences}><span aria-hidden="true">$</span></Button>}
       {!external && group && <Button variant="ghost" size="icon-sm" round aria-label="提及群聊成员" aria-expanded={props.mentionsVisible} disabled={props.replyMode} onClick={props.onMentions}><AtSign /></Button>}
+      {props.project}
       {/* 权限模式暂不展示；不修改员工已保存的权限，真实审批仍由原执行入口办理。 */}
     </ChatComposerActions>
     <ChatComposerActions align="end">

@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 组织发布期间核心默认目录单改保留原持有者和启动身份，职责变化仍原子阻止员工/群/公告发布。
+ * [OUTPUT]: 组织新群与真实公告持久化各成员的独立项目快照，默认未设的新员工沿明确受管模式。
  * [OUTPUT]: Runtime API v2私有模型来源按清单/握手/会话三次核对，Pi与OpenCode明确网关接入；v1原生来源兼容，凭据不进入公共配置或回执。
  * [OUTPUT]: 明确Codex/Claude网关候选在分页前接受本机公开认证，拒绝缺少远程密钥及已移除来源，源变化使原游标失效。
  * [OUTPUT]: Codex/Claude组织继承、既有员工保持、发布前程序与来源复核、SQL分页先过滤分别验证；bobo可选择API或本机Codex；组织/具名团队按原运行配置创建独立员工，混合成员共原预算；本机自动化沿原时钟/预算接入，实际验证归第13组06。
@@ -92,6 +94,31 @@ test('same source freezes one request and altered plan cannot duplicate employee
   expect(await f.service.lookup({ requestId: 'bobo-collaboration:source' })).toMatchObject({ id: results[0].id, status: 'committed' })
 })
 
+test('a newly organized group and its work source freeze each members own default project', async () => {
+  const f = await fixture(), core = (await f.store.get<DigitalAgent>('agents', 'bobo'))!
+  const projectRoot = await mkdtemp(join(tmpdir(), 'boai-org-project-')); cleanups.push(() => rm(projectRoot, { recursive: true, force: true }))
+  const coreProject = join(projectRoot, 'core-project'), writerProject = join(projectRoot, 'writer-project')
+  await mkdir(coreProject); await mkdir(writerProject)
+  await f.store.write([
+    { collection: 'agents', id: core.id, value: { ...core, defaultProjectDirectory: coreProject } },
+    { collection: 'agents', id: f.writer.id, value: { ...f.writer, defaultProjectDirectory: writerProject } },
+  ])
+  const receipt = await f.service.organize(plan, f.authority, f.provenance)
+  expect(receipt.status).toBe('committed')
+  const group = (await f.store.get<Conversation>('conversations', receipt.groupConversationId!))!
+  expect(group.projectSelections).toEqual({
+    bobo: { mode: 'directory', directory: coreProject, requestedDirectory: coreProject, source: 'employee-default', revision: 1 },
+    writer: { mode: 'directory', directory: writerProject, requestedDirectory: writerProject, source: 'employee-default', revision: 1 },
+    [receipt.agents[0].id]: { mode: 'managed', source: 'managed', revision: 1 },
+  })
+  const announcement = (await f.store.get<Message>('messages', receipt.announcementMessageId!))!
+  expect(announcement.projectSelections).toEqual(group.projectSelections)
+  expect((await f.store.get<WorkItem>('workItems', receipt.groupRootWorkId!))?.sourceMessageId).toBe(announcement.id)
+  await f.store.write([{ collection: 'agents', id: core.id, value: { ...core, configVersion: 2, projectDefaultChanges: 1, defaultProjectDirectory: writerProject } }])
+  expect((await f.store.get<Conversation>('conversations', group.id))?.projectSelections).toEqual(group.projectSelections)
+  expect((await f.store.get<Message>('messages', announcement.id))?.projectSelections).toEqual(group.projectSelections)
+})
+
 test('employee discovery filters in SQL, bounds capabilities and never reads rules/history/credentials', async () => {
   const f = await fixture(), all: {collection:string;id:string;value:unknown}[] = []
   for (let index = 0; index < 25; index++) { const id = `candidate-${String(index).padStart(2, '0')}`; all.push({ collection: 'agents', id, value: { ...f.writer, id, name: `员工${index}`, allowBrowser: index % 2 ? undefined : false, instructions: `PRIVATE_${index}` } }) }
@@ -117,6 +144,27 @@ test.each(['holder', 'source', 'contact', 'employee'])('a changed %s before publ
   } })
   const receipt = await f.service.organize(plan, f.authority, f.provenance)
   expect(receipt.status).toBe('needs_attention'); expect(await f.store.load('agents')).toHaveLength(2); expect(await f.store.load('messages')).toHaveLength(1); expect(await f.store.load('conversations')).toHaveLength(1); expect(await f.store.load('collaborationStarts')).toEqual([])
+})
+
+test.each(['default-project', 'role'] as const)('core %s changes use execution identity at the original publication boundary', async change => {
+  const f = await fixture(undefined, { checkpoint: async phase => {
+    if (phase !== 'before-commit') return
+    const core = (await f.store.get<DigitalAgent>('agents', 'bobo'))!
+    await f.store.write([{ collection: 'agents', id: core.id, value: { ...core, configVersion: core.configVersion + 1, ...(change === 'default-project' ? { defaultProjectDirectory: '/future/project', projectDefaultChanges: 1 } : { role: '新职责' }) } }])
+  } })
+  const receipt = await f.service.organize(plan, f.authority, f.provenance)
+  if (change === 'default-project') {
+    expect(receipt.status).toBe('committed')
+    expect(await f.store.load('agents')).toHaveLength(3)
+    expect(await f.store.load('collaborationStarts')).toHaveLength(1)
+    const operation = (await f.store.load<BoboCollaborationOperation>('boboCollaborations'))[0]
+    expect(operation.authority).toEqual(f.authority)
+    expect((await f.store.get<Message>('messages', receipt.announcementMessageId!))?.collaborationSource?.sourceRunId).toBe(f.authority.runId)
+  } else {
+    expect(receipt.status).toBe('needs_attention')
+    expect(await f.store.load('agents')).toHaveLength(2); expect(await f.store.load('messages')).toHaveLength(1)
+    expect(await f.store.load('conversations')).toHaveLength(1); expect(await f.store.load('collaborationStarts')).toEqual([])
+  }
 })
 
 test('announcement reading fault rolls back objects/start/budget and explicit resume uses original identities', async () => {

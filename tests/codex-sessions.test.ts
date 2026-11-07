@@ -1,6 +1,6 @@
 /*
  * [OUTPUT]: 普通聊天与两次员工任务沿兼容原生session续接，仅追加新输入。
- * [OUTPUT]: 已退出且确认接收的取消轮次只投递新消息；投递未知/会话错配/来源漂移/宿主中断仍重建。
+ * [OUTPUT]: 已退出且确认接收的取消轮次只投递新消息；投递未知拒绝重建且保留原映射，已确定退出的失效来源仍重建。
  * [INPUT]: 实际SQLite、获准消息投影及原生会话公开终态。
  * [OUTPUT]: Codex/Claude逐个验证增量/来源/恢复和迟到提交；各自原生turn或宿主完成回执不可替代，分集合不互相续用。
  * [POS]: 本机会话来源事务验收；真实协议与Electron分别留证。
@@ -84,7 +84,15 @@ it.each(['confirmed', 'pending', 'host-interrupted', 'unknown-input', 'wrong-ses
     backend: { kind: `${runtime}-local`, sessionId: condition === 'wrong-session' ? 'other' : 'native-cancelled', turnId: condition === 'wrong-turn' ? undefined : 'native-turn', inputAccepted: condition !== 'unknown-input' },
   } }])
   if (['unknown-answer', 'unknown-approval', 'unanswered-input'].includes(condition)) await f.store.write([{ collection: 'nativeActions', id: 'answer', value: { id: 'answer', runId: 'run-1', kind: condition === 'unknown-approval' ? 'approval' : 'input', status: condition === 'unanswered-input' ? 'interrupted' : 'answered', delivery: 'unknown' } }])
-  const next = await repository(f.store).begin(context([condition === 'changed-source' ? { ...source, content: 'edited source' } : source, message('followup', 2)], { runId: 'run-2' }), condition === 'changed-config' ? 'new-config' : 'verified-config')
+  const before = await f.store.load(`${runtime}Sessions`)
+  const starting = repository(f.store).begin(context([condition === 'changed-source' ? { ...source, content: 'edited source' } : source, message('followup', 2)], { runId: 'run-2' }), condition === 'changed-config' ? 'new-config' : 'verified-config')
+  if (['pending', 'unknown-answer', 'unknown-approval', 'unanswered-input'].includes(condition)) {
+    await expect(starting).rejects.toThrow('原生输入投递或执行结果仍未知')
+    expect(await f.store.load(`${runtime}Sessions`)).toEqual(before)
+    expect(await f.store.load('nativeSessionTransitions')).toEqual([])
+    return
+  }
+  const next = await starting
   const allowed = condition === 'confirmed' || condition === 'wrong-turn' && runtime === 'claude'
   expect(next.threadId).toBe(allowed ? 'native-cancelled' : undefined)
   expect(next.messages.map(value => value.id)).toEqual(allowed ? ['followup'] : ['cancelled-input', 'followup'])

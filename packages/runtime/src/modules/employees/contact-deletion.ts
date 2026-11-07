@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工删除同事务清除其作为来源或目标的交接正文，保留请求和投递防重放身份。
  * [OUTPUT]: 新增historySearchSettings随所属员工清理，设置以agentId补足记录ID。
  * [OUTPUT]: 2026-10-30删除员工时一并清理其embedding配置；官方记忆由宿主先完成清理，原生私人数据保持。
  * [OUTPUT]: 员工删除移除独立相册元信息；原agents根目录清理包含其私有形象文件，不清空其他员工相册。
@@ -14,6 +15,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { clearApplicationReceipts } from '../application/application-service'
+import { clearContextHandoffs } from '../contexts/context-handoff'
 import { clearAgentPersonality } from '../agent-state/lifecycle'
 import { clearSelfieAlbums } from '../media/selfie-service'
 import { randomUUID } from 'node:crypto'
@@ -77,6 +79,7 @@ export class ContactDeletionService {
       const preferences = await this.validate(tx, input), ids = new Set(input.agentIds)
       await clearApplicationReceipts(tx, { employeeIds: ids })
       await clearAgentPersonality(tx, { agentIds: ids })
+      for (const agentId of ids) await clearContextHandoffs(tx, { agentId })
       await clearSelfieAlbums(tx, ids)
       const removals: { collection: string; id: string }[] = []
       const remove = async (collection: string, id: string) => { await tx.remove(collection, id); removals.push({ collection, id }) }

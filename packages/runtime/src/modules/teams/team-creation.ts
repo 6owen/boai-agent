@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 新团队群在受理事务冻结各成员项目选择，发布/重启/重复请求沿同一快照，不追随后续员工默认目录。
  * [OUTPUT]: 模型ID共用1000字符/无控制符边界，完整供应商前缀及原生模型名不截断。
  * [OUTPUT]: 2026-10-11 第13组员工执行来源/本机登录和运行选项沿原产品身份接线；持续原生合同见13组10/11，实际成绩唯一归06 §122。
  * [OUTPUT]: Claude核心与组织/具名团队沿已核对程序及明确API来源接线；新员工保留原运行绑定，发布前重核指纹，自动化门禁暂保留。
@@ -18,6 +19,7 @@ import { TEAM_PLANNER_VERSION, teamCapabilityNotes, teamColors, teamId, teamMode
 import { agentSchema, backendSchema } from '../employees/employee-service'
 import { createTeamContactCategory } from '../employees/contact-list'
 import { WorkspaceService } from '../workspaces/workspace-service'
+import { initialProjectSelection } from '../workspaces/project-directory'
 import { TeamFiles, teamFileLog, type TeamFileCheckpoint } from './team-files'
 import { TeamRepository, editableTeamDraft, readTeamDraft, teamError, teamHash, teamInputHash, teamNow, teamRecord, teamVersionSchema, validateTeamDraft } from './team-repository'
 import { resolveEmployeeRuntime } from '../backends/runtime-config'
@@ -90,7 +92,7 @@ export class TeamCreationService {
       return { ...definition, id: agentId, configVersion: 1, workspaceRef: `agents/${agentId}/workspace`, memoryNamespace: `employee:${agentId}`, policyVersion: 2, creationSource: { kind: 'team-planner', operationId: id, memberKey: member.memberKey, plannerVersion: plan.plannerVersion } }
     })
     const conversationId = draft.createGroup ? randomUUID() : undefined
-    const conversation: Conversation | undefined = conversationId ? { id: conversationId, kind: 'group', title: draft.groupTitle, agentIds: agents.map(agent => agent.id), mode: 'natural', workspacePath: join(this.dataPath, 'workspaces', conversationId), sharedKnowledgeIds: [], configVersion: 1, createdAt, updatedAt: createdAt, creationSource: { kind: 'team-planner', operationId: id, plannerVersion: plan.plannerVersion }, teamSetup: { purpose: plan.purpose, collaborationGuide: plan.collaborationGuide, scenarioKind: plan.scenarioKind } } : undefined
+    const conversation: Conversation | undefined = conversationId ? { id: conversationId, kind: 'group', title: draft.groupTitle, agentIds: agents.map(agent => agent.id), projectSelections: Object.fromEntries(agents.map(agent => [agent.id, initialProjectSelection(agent)])), mode: 'natural', workspacePath: join(this.dataPath, 'workspaces', conversationId), sharedKnowledgeIds: [], configVersion: 1, createdAt, updatedAt: createdAt, creationSource: { kind: 'team-planner', operationId: id, plannerVersion: plan.plannerVersion }, teamSetup: { purpose: plan.purpose, collaborationGuide: plan.collaborationGuide, scenarioKind: plan.scenarioKind } } : undefined
     const operation: TeamCreationOperation = { id, requestId, requestHash, draftId: draft.id, acceptedDraftVersion: draft.version, payloadHash: draft.planHash!, version: 1, status: 'accepted', createdAt, ...(draft.executionBackend ? { executionBackend: draft.executionBackend } : {}), nativeOptions: draft.nativeOptions, connectionId: draft.selectedConnectionId, modelId: draft.resolvedModelId!, connectionFingerprint: draft.connectionFingerprint!, agents, conversation, memberIds, conversationId, files: [], directories: [] }
     await this.config(tx, operation)
     Object.assign(operation, teamFileLog(operation, this.homes))
