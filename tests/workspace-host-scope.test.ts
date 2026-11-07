@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 终端宿主夹具独立确认空画板清理回执，原等待/撤权/失败断言保持。
  * [OUTPUT]: 2026-10-29 文件浏览器入口/预览/启停与目录撤权回归，原终端生命周期断言保持。
  * [INPUT]: Actual private runtime dispatcher, AppService state and deferred desktop cleanup receipts.
  * [OUTPUT]: Private scope checks, clear/delete/member revocation and output-wait termination retain exact ownership.
@@ -9,6 +10,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { mkdir, mkdtemp, realpath, rename, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { canvasHostEnvelopeSchema } from '../packages/canvas-plugin/src/protocol'
 import { AppService } from '../packages/runtime/src/service'
 import { dispatchRuntime } from '../packages/runtime/src/dispatch'
 import { WorkspaceFileService } from '../apps/electron/src/main/workspace-files'
@@ -28,7 +30,13 @@ async function fixture() {
   const secrets: SecretStore = { get: async () => undefined, set: async () => {}, delete: async () => {} }
   const engine: AgentEngine = { decide: async () => ({ action: 'pass', observedThroughSequence: 0 }), run: async () => {}, test: async () => 'unused' }
   const host = vi.fn(async (_method: string, _input: unknown): Promise<unknown> => undefined)
-  const service = new AppService({ dataPath: root, secrets, engine, emit: () => {}, applicationHost: { available: true, request: host } as ApplicationHostPort }); cleanup.push(() => service.close())
+  const service = new AppService({ dataPath: root, secrets, engine, emit: () => {}, applicationHost: { available: true, request: async (method: string, input: unknown) => {
+    if (method === 'canvasHost') {
+      expect(canvasHostEnvelopeSchema.parse(input).type).toBe('discard')
+      return { deletedBoards: [], preserved: [] }
+    }
+    return host(method, input)
+  } } as ApplicationHostPort }); cleanup.push(() => service.close())
   await service.init()
   const room = await service.handle('createConversation', { kind: 'direct', title: '工作区', agentIds: ['researcher'], mode: 'mention', sharedKnowledgeIds: [] }) as Conversation
   const scope = { employeeId: 'researcher', conversationId: room.id }

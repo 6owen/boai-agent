@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 工具观察保存首次started/terminal时刻；旧记录不推算，重复terminal不延长已闭合区间。
  * [OUTPUT]: 当前轮次纯文本补充固定run/turn，原消息保存接受、原生确认与未知投递。
  * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
  * [OUTPUT]: 显式CLI权限仅核对员工已保存模式，受理后继续沿原审批和当前授权，不临时改权。
@@ -30,6 +31,8 @@ export type ExecutionEvent = Pick<LiveRuntimeEvent, 'eventType' | 'payload' | 'c
   parentId?: string
 }
 export type ExecutionEvidence = LiveRuntimeEvent & {
+  /** First explicit lifecycle observations; absent on legacy records or terminal-only evidence. */
+  observedTiming?: { startedAt?: string; finishedAt?: string }
   runId: string; conversationId: string; agentId: string; sequence: number; updatedAt: string
   parentId?: string; contentLength: number; deferred: boolean
 }

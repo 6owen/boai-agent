@@ -159,6 +159,9 @@ importers:
       '@tiptap/pm':
         specifier: 3.31.3
         version: 3.31.3
+      '@tldraw/tlschema':
+        specifier: 5.6.0
+        version: 5.6.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@xterm/addon-fit':
         specifier: 0.10.0
         version: 0.10.0(@xterm/xterm@5.5.0)

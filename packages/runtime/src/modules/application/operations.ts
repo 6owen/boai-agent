@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: automations公共CRUD/预览通过独立业务契约和ScheduleApi适配，内部purpose/会话/cron字段不再暴露。
+ * [OUTPUT]: 外观v2与浏览器配置沿独立薄适配注册；目录/版本/回执保持同一业务入口。
  * [OUTPUT]: application.guide公开员工任务五状态及交付验收规则。
  * [OUTPUT]: 公开计划操作排除内部任务消息，避免自定义类型进入工具JSON Schema。
  * [OUTPUT]: prompts域复用提示词模板CRUD与版本前检，contacts/prompts操作指南纳入现有业务协议。
@@ -16,8 +16,6 @@
  * [PROTOCOL]: Changes must update this Header and the owning .folder.md.
  */
 import type { ApplicationHostPort } from '@boai/shared/ipc/application-host'
-import { appearancePatchSchema } from '@boai/shared/appearance/schema'
-import { availableThemes } from '@boai/shared/appearance'
 import { applicationPlugins } from '@boai/shared/plugins/catalog'
 import { profileSchema } from '../backends/profiles'
 import { DEFAULT_EMPLOYEE_SOUL } from '@boai/shared/domain/agent-presets'
@@ -33,7 +31,7 @@ import type { Method, Methods } from '@boai/shared/ipc'
 import { CONVERSATION_TITLE_MAX_LENGTH } from '@boai/shared/domain/conversation-list'
 import { agentSchema } from '../employees/employee-service'
 import { employeeCreationDefaults, EMPLOYEE_PRESETS } from '@boai/shared/domain/agent-presets'
-import { saveDataSourceSchema, dataSourceConfigSchema, dataSourceIdentitySchema, dataSourceBindingsSchema } from '@boai/shared/domain/sources'
+import { saveDataSourceSchema, dataSourceIdentitySchema, dataSourceBindingsSchema } from '@boai/shared/domain/sources'
 import { saveWebSearchDefaultSchema, saveWebSearchServiceSchema } from '@boai/shared/domain/web-search'
 import { saveLocalSkillSchema, removeLocalSkillSchema } from '../resources/local-skill-editing'
 import { scanSkillSchema, installSkillsSchema, prepareLocalSkillBindingSchema, bindLocalSkillSchema } from '../resources/skill-management'
@@ -42,6 +40,8 @@ import { marketplaceListSchema, marketplaceDetailSchema } from '../resources/ski
 import { collectionChangeSchema } from '../resources/skill-collections'
 import { ApplicationValidationError, type ApplicationOperation } from './application-service'
 import { savePromptTemplateSchema, removePromptTemplateSchema } from '@boai/shared/domain/prompt-templates'
+import { appearanceOperations } from './appearance-operations'
+import { pluginConfigurationOperations } from './plugin-configuration'
 
 export interface ApplicationPort { schedules?(): ScheduleApi; request<K extends Method>(method: K, input: Methods[K]['input']): Promise<Methods[K]['output']>; personality?(action: 'profile' | 'configure' | 'state' | 'updateState' | 'behaviorHistory' | 'runBehavior' | 'stopBehavior' | 'validateHistoryDeletion' | 'deleteBehaviorHistory' | 'clearBehaviorHistory', input: any): Promise<unknown> }
 const id = z.string().trim().min(1).max(200), version = z.number().int().positive()
@@ -55,7 +55,7 @@ export function applicationOperations(port: ApplicationPort, schemas: { connecti
   function method<K extends Method>(name: string, method: K, description: string, effect: ApplicationOperation['effect'], input: z.ZodType, resultType: string, adapt: (input: any, requestId?: string) => Methods[K]['input'] = value => value) {
     operation(name, description, effect, input, resultType, (value, requestId) => port.request(method, adapt(value, requestId)))
   }
-  operation('application.guide', '按需读取 BOAI 内置产品操作技能。', 'read', z.object({ topic: z.enum(['overview', 'employees', 'groups', 'contacts', 'sources', 'automations', 'connections', 'skills', 'prompts', 'presentations', 'tasks']).default('overview') }).strict(), '{ topic: string; instructions: string }', async input => ({ topic: input.topic, instructions: applicationGuides[input.topic as keyof typeof applicationGuides] }))
+  operation('application.guide', '按需读取 BOAI 内置产品操作技能。', 'read', z.object({ topic: z.enum(['overview', 'employees', 'groups', 'contacts', 'sources', 'automations', 'connections', 'skills', 'prompts', 'presentations', 'tasks', 'appearance', 'plugins', 'diagnostics']).default('overview') }).strict(), '{ topic: string; instructions: string }', async input => ({ topic: input.topic, instructions: applicationGuides[input.topic as keyof typeof applicationGuides] }))
   const snapshot = () => port.request('snapshot', undefined)
   method('prompts.list', 'listPromptTemplates', '列出资源库提示词模板及当前 revision。', 'read', empty, 'PromptTemplate[]', () => undefined)
   operation('prompts.get', '读取一个提示词模板的完整正文和版本。', 'read', lookup, 'PromptTemplate', async input => {
@@ -116,7 +116,7 @@ export function applicationOperations(port: ApplicationPort, schemas: { connecti
 
   method('sources.list', 'listDataSources', '列出业务数据源，不含凭据。网页检索使用独立 webSearch 配置。', 'read', empty, 'DataSource[]', () => undefined)
   method('sources.get', 'getDataSource', '读取数据源配置、版本和测试状态，不含凭据。', 'read', lookup, 'DataSource')
-  operation('sources.create', '创建 API、MCP 或本地文件夹数据源。保存不会连接、测试或给普通员工绑定。', 'write', z.object({ config: dataSourceConfigSchema, credential: z.string().max(32000).optional() }).strict(), 'DataSource', input => port.request('saveDataSource', { ...input, id: randomUUID(), expectedRevision: 0 }))
+  operation('sources.create', '创建 API、MCP 或本地文件夹数据源。保存不会连接、测试或给普通员工绑定。', 'write', saveDataSourceSchema.omit({ id: true, expectedRevision: true }), 'DataSource', input => port.request('saveDataSource', { ...input, id: randomUUID(), expectedRevision: 0 }))
   method('sources.update', 'saveDataSource', '按当前 revision 保存完整数据源；省略凭据保留，空串清除。', 'write', saveDataSourceSchema.extend({ expectedRevision: version }), 'DataSource')
   method('sources.delete', 'removeDataSource', '删除连接与绑定，不删除源目录中的文件。', 'write', dataSourceIdentitySchema, 'void')
   method('sources.test', 'testDataSource', '明确测试已保存的连接；MCP 测试可能启动配置的服务程序。', 'write', dataSourceIdentitySchema, 'DataSource')
@@ -198,11 +198,7 @@ export function applicationOperations(port: ApplicationPort, schemas: { connecti
     }
   }
   const hostStart = operations.length
-  method('appearance.get', 'getAppearance', '读取实际外观、主题选择和 revision。需要连接桌面宿主。', 'read', empty, 'AppearanceSnapshot', () => undefined)
-  operation('appearance.themes', '列出当前可选择的明暗主题。', 'read', empty, 'Theme[]', async () => availableThemes((await port.request('getPluginSettings', undefined)).disabledIds))
-  method('appearance.update', 'updateAppearance', '按当前 revision 更新主题/明暗模式/字体/缩放，立即沿原桌面事件生效。', 'write', z.object({ patch: appearancePatchSchema, expectedRevision: z.number().int().nonnegative() }).strict(), 'AppearanceSnapshot')
-  method('appearance.reset', 'resetAppearance', '明确恢复默认外观。', 'write', empty, 'AppearanceSnapshot', () => undefined)
-  method('appearance.removeBackground', 'removeAppearanceBackground', '移除应用背景图配置。', 'write', empty, 'AppearanceSnapshot', () => undefined)
+  operations.push(...appearanceOperations(port, host), ...pluginConfigurationOperations(port, host))
   operation('plugins.list', '读取内置插件清单与持久启停状态。', 'read', empty, '{ plugins: ApplicationPluginManifest[]; settings: PluginSettingsSnapshot }', async () => ({ plugins: applicationPlugins, settings: await port.request('getPluginSettings', undefined) }))
   method('plugins.setEnabled', 'setPluginEnabled', '按当前设置 revision 启停内置插件。', 'write', z.object({ id, enabled: z.boolean(), expectedRevision: z.number().int().nonnegative() }).strict(), 'PluginSettingsSnapshot')
   for (const operation of operations.slice(hostStart)) { operation.available = () => host?.available ?? false; operation.unavailableReason = '需要连接同一配置目录的 BOAI 桌面宿主；不会启动第二个设置写入器。' }

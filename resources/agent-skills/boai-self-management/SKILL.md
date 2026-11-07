@@ -4,7 +4,7 @@ description: Read and change BOAI employee settings, personality files, model co
 ---
 <!--
 [INPUT]: Alma bundled self-management/SKILL.md and actual BOAI application/state protocols.
-[OUTPUT]: Read-before-write configuration workflow and verified receipts; unsupported Alma-only settings are excluded.
+[OUTPUT]: Read-before-write configuration workflow, appearance/plugins guides and read-only task diagnosis; original receipts stay authoritative.
 [POS]: Product employee skill; available to Bobo's existing authorized management tools.
 [PROTOCOL]: Update parent .folder.md and migration ledger when changed.
 -->
@@ -27,6 +27,10 @@ Use `boai_catalog` for the relevant domain and operation schema. Then call the r
 | Personality or working rules | `employees.files`, `employees.readFile` | `employees.writeFile` with the observed hash/config version |
 | Current mood, fatigue, travel | `agent_state` | `update_agent_state` with observed state revision and enabled feature |
 | Model connections, appearance, channels, schedules | Discover the relevant domain and actual current object | Use only the returned operation and schema |
+
+For appearance, read `application.guide` with topic `appearance`, then the live `appearance.options` and `appearance.get`. The current command contract needs the observed revision for update, reset and background removal. New background image import is not available to employees. Configuration saved and system icon applied are separate results; use `appearance.iconStatus` for the latter.
+
+For plugin settings, read the `plugins` guide and `plugins.describe/options/getConfig`. Only fields returned as writable may be configured. The first supported field is the two independent browsers' default foreground preference; saving closes their existing sessions but does not launch a browser. The `diagnostics` guide explains read-only `diagnostics.task`: a diagnosis never retries, recovers or changes a task, and missing evidence remains unknown.
 
 An example name in this table is not a substitute for reading its live input schema. A successful operation receipt establishes saving; creating a schedule does not establish that its task ran.
 

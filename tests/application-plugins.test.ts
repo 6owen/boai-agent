@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 默认关闭的画板贡献纳入目录；目录复制隔离按稳定插件ID核对。
  * [OUTPUT]: 新增Agent Desktop可选贡献及API/native共享工具真实SDK验证。
  * [OUTPUT]: 插件目录增加两个默认关闭的独立浏览器；原检索和主题断言保持。
  * [OUTPUT]: 2026-10-29 文件浏览器入口/预览/启停与目录撤权回归，原终端生命周期断言保持。
@@ -31,14 +32,16 @@ async function setup() {
 afterEach(async () => { await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))) })
 
 test('one immutable catalog supplies preview and theme identities without mutating declarations', () => {
-  expect(applicationPlugins).toHaveLength(12)
+  expect(applicationPlugins).toHaveLength(13)
+  expect(applicationPlugins.find(plugin => plugin.id === 'boai.canvas.tldraw')).toMatchObject({ defaultEnabled: false, contributions: [{ type: 'canvas' }] })
   expect(applicationPlugins.find(plugin => plugin.id === 'boai.desktop.agent-desktop')).toMatchObject({ defaultEnabled: true, contributions: [{ type: 'desktop-tools' }] })
   expect(applicationPlugins.flatMap(plugin => plugin.contributions).filter(contribution => contribution.type === 'web-search').map(contribution => contribution.provider)).toEqual(['deepseek'])
   expect(themePluginId('nord')).toBe(themeId)
   expect(themePluginId('boai-dark')).toBeUndefined()
   const input = structuredClone(applicationPlugins), catalog = definePluginCatalog(input)
-  Object.assign(input[0], { name: 'changed' })
-  expect(catalog[0].name).toBe('文本预览')
+  const textIndex = input.findIndex(plugin => plugin.id === textId)
+  Object.assign(input[textIndex], { name: 'changed' })
+  expect(catalog[textIndex].name).toBe('文本预览')
   expect(Object.isFrozen(catalog[0].contributions[0])).toBe(true)
   expect(() => definePluginCatalog([input[0], input[0]])).toThrow('Duplicate plugin')
   expect(() => definePluginCatalog([{ ...input[0], contributions: [input[0].contributions[0], input[0].contributions[0]] }])).toThrow('Duplicate contribution')

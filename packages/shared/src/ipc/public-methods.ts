@@ -1,5 +1,7 @@
 /*
  * [OUTPUT]: Canvas宿主和主窗口私有方法不进入公共准入。
+ * [OUTPUT]: 本人诊断解释窄首发入口公开，固定正文与受理边界由原服务核对。
+ * [OUTPUT]: 项目选择沿本人版本化会话入口。
  * [OUTPUT]: 本人会话消息队列读取/精确操作进入原IPC准入。
  * [OUTPUT]: 员工任务列清空沿受信本人IPC公开方法分发，Agent内部工具不新增该操作。
  * [OUTPUT]: 新增Bobo历史设置公开宿主方法，配置与权限由服务端验证。
@@ -57,6 +59,12 @@ const methods = {
   captureDesktopActivity: false,
   transferMaterial: true,
   prepareUploadedMaterial: true,
+  getDiagnosticsSnapshot: true,
+  chooseProjectDirectory: true,
+  prepareContextHandoff: true,
+  listContextHandoffs: true,
+  cancelContextHandoff: true,
+  updateConversationProject: true,
   sendEmployeeMessage: true,
   listGatewayImports: true,
   cancelGatewayImport: true,
@@ -319,6 +327,7 @@ const methods = {
   workspaceTerminal: true,
   snapshot: true,
   startCoreConversation: true,
+  startTaskDiagnosisExplanation: true,
   stopAutomation: true,
   stopNativeExecution: true,
   testConnection: true,

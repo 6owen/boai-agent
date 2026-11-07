@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 属性操作区按需读取诊断；显式让bobo解释沿稳定请求及原消息导航，不轮询或修复任务。
  * [OUTPUT]: 2026-11-04外部定位在任务Dialog内按原消息读取和滚动，复用既有任务会话。
  * [INPUT]: One employee task, its dedicated conversation and original execution history.
  * [OUTPUT]: Resizable Task Dialog with title/requirements in properties and shared chat without an extra introduction; close waits for the shared exit animation.
@@ -28,6 +29,7 @@ import type { ChannelChatWindow } from './channels-tab'
 import { TraceTab } from './trace-tab'
 import { Pencil } from '@/components/icons'
 import { EmployeeTaskRequirements } from './employee-task-requirements'
+import { EmployeeTaskDiagnosis } from './employee-task-diagnosis'
 export { taskStatusLabels } from './employee-task-status'
 export type EmployeeTaskDetailProps = {
   api: DesktopApi; snapshot: Snapshot; id?: string; occurrenceId?: string; employeeId: string; active: boolean
@@ -75,7 +77,7 @@ export function EmployeeTaskDetail({ api, snapshot, id, occurrenceId, employeeId
     <ResizablePanelGroup orientation="horizontal" className="min-h-0 min-w-0">
     {task && <><ResizablePanel defaultSize="300px" minSize="18%" maxSize="40%">
     <aside aria-label="任务属性" className="relative flex h-full min-h-0 min-w-0 flex-col">
-      <header className="chat-header"><h3 className="chat-title">属性</h3><div className="chat-header-actions"><Button variant="ghost" size="icon-xs" className="text-muted-foreground" aria-label="编辑任务" title="编辑任务" disabled={busy || editingRequirements} onClick={() => guard.navigate(() => setEditingRequirements(true))}><Pencil /></Button></div></header>
+      <header className="chat-header"><h3 className="chat-title">属性</h3><div className="chat-header-actions"><EmployeeTaskDiagnosis key={`${employeeId}:${task.id}`} api={api} employeeId={employeeId} taskId={task.id} active={visible && !failed && !!employee} onSource={source => guard.navigate(() => { onSource(source); onBack() })} /><Button variant="ghost" size="icon-xs" className="text-muted-foreground" aria-label="编辑任务" title="编辑任务" disabled={busy || editingRequirements} onClick={() => guard.navigate(() => setEditingRequirements(true))}><Pencil /></Button></div></header>
       <ScrollArea className="mt-[36px] min-h-0 flex-1" viewportProps={{ className: 'overscroll-contain scroll-fade-t scroll-fade-6', 'aria-label': '任务属性' }}>
         <div className="flex flex-col gap-8 px-6 pb-6 pt-6 text-[length:var(--text-ui-secondary)] leading-[var(--leading-ui-body)] text-foreground/80">
           <section aria-label="任务要求" className="min-w-0">

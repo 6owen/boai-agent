@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-11-07 WT1已启动A0–A4；shared/Main/Renderer命令与并发保护候选已落，定向结果及真实未验边界归第11节。
 [OUTPUT]: 2026-11-07关联第30组执行总计划；本篇继续拥有外观A阶段合同和实际进度。
 [INPUT]: 2026-11-07用户设计请求与首版仅支持bobo的确认；2efea140源码中的外观、宿主桥与应用工具。
 [OUTPUT]: 保留手动设置的统一配置合同、增量任务、验收标准与后续Agent执行入口；本轮仅设计。
@@ -9,7 +10,7 @@
 
 后续整体顺序见[第30组执行总计划](../30.配置开放与插件及上下文交接/README.md)；本篇仍是外观A阶段的唯一合同，第11节保留实际进度。
 
-日期：2026-11-07。状态：**设计完成，尚未实施**。源码核对基线：`2efea140`。后续执行前重新核对当前分支，本文路径按当前 Workspace 结构书写。
+日期：2026-11-07。状态：**WT1已启动，工程候选已落，外观模块定向验收通过；公共接线及真实验收另记**。原设计源码核对基线：`2efea140`；本轮实施基线：`3ec3ea711e8f3aa04d93682609c04248dd799453`。后续执行前重新核对当前分支，本文路径按当前 Workspace 结构书写。
 
 ## 1. 目标与范围
 
@@ -224,6 +225,29 @@ A5 输入优先使用当前已有的可信附件/资产引用；不得让模型�
 ## 11. 唯一实际进度
 
 - 2026-11-07：完成源码只读盘点、权限边界确认和本计划；用户选择首版仅支持 bobo。
-- A0–A5 均未开始实施；未修改产品代码、当前外观或个人数据，未调用外观写工具。
+- 设计当时 A0–A5 均未实施；该记录不覆盖下述后续明确启动。
 - 本轮只检查文档差异及相对链接；未运行测试、真实模型、桌面自动化、构建、安装或发布。
 - 本文是待用户后续使用的设计草案；不将早期外观/图标功能的已有成绩视为本计划已验收。
+
+
+### 11.1 2026-11-07 WT1工程候选
+
+用户明确启动第30组WT1，工作位于独立 `feat/config-diagnosis` / `boai-wt1-config-diagnosis`，起点固定为 `3ec3ea711e8f3aa04d93682609c04248dd799453`。本节只记录A阶段；C/D及公共接线整体结果由第30组04串行汇总。
+
+A0核对调用者：设置页→Renderer appearance store→现有typed IPC→Main；应用工具→application appearance操作→同profile host→同一Main；宿主快捷键缩放调用原store；既有模块测试显式调用低层store，旧桌面夹具使用原IPC。没有新增第二份外观设置。v2操作显式选择命令规范化；v1 update保留低层合并，原偏好schemaVersion仍为2。员工reset/remove的v2输入必须携带revision；本人兼容入口与固定UI调用者的接线由WT1统一整合。
+
+| 切片 | 本轮实现 | 验证边界 |
+| --- | --- | --- |
+| A1 | `appearance/options.ts`复用现有默认/字体/图标/动态主题，返回有界字段说明、兼容项、无图条件及平台支持 | 未复制色板或图片；发现入口的最终应用协议检查归第30组04 |
+| A2 Main/shared | `commands.ts`仅处理写命令；v2主题清色/显式新色及字号联动，旧加载/显式内容字号保持；严格拒绝未知/错模式/停用主题；结构化已知错误 | 偏好schema不升级；快照/保存封套新增最近resetRevision以检测reset与所有编辑的冲突 |
+| A2动作与Renderer | reset/remove/import核对选择时revision；解码可被其他保存作废、冲突新资产清理、flush等待本次导入；Renderer保存原编辑基准，仅互不相交字段重试一次 | 同字段旧inFlight丢弃；后来pending保留，同字段后来编辑暂停自动flush，由用户重试或重新编辑；Sonner沿原页面error反馈 |
+| A3 | application v2、options、iconStatus、guide及宿主桥由WT1统一整合 | API/native真实请求和系统图标实际结果另验 |
+| A4 | 新增对应持久化、并发、目录及隔离DOM场景，保留原测试 | 3文件40项不同检查通过：Main/shared26、Renderer7、application7；不将隔离DOM称为实际Electron显示验收 |
+
+首跑 `pnpm exec vitest run tests/appearance.test.ts tests/appearance-renderer.test.ts` 在业务断言前失败：新共享子路径尚未加入包导出，报 `@boai/shared/appearance/commands` 无法解析。公共导出负责人补齐显式出口后，同命令复验2文件33项全部通过；原解析失败保留，不删测试或改断言绕过。
+
+新增 `appearance-application.test.ts` 7项通过：真实Main外观存储与SQLite/ApplicationService，受控宿主错误序列化，覆盖v1/v2/旧回执、reset/remove严格CAS、确定失败与提交后unknown不重放、图标独立结果、无宿主及后台behavior拒绝。未使用整个AppService，不能代替生产来源授权或真实bobo执行。
+
+`pnpm exec tsc --noEmit --pretty false`、定向ESLint（Renderer store及外观页面）和本任务差异空白检查已通过。类型首轮发现await期间pending基准的控制流窄化错误，抽取局部重基准函数后复核及Renderer7项通过。共享合同以本地提交`48c372fb`交给公共IPC负责人整合；该提交不表示应用接线、合并或个人实例已生效。真实API/native bobo、桌面显示/重启、安装图标、个人运行、提交与合并均未由此验证。A5员工图片导入仍不在本次范围。
+
+图标能力按实际源码核对：`AppIconController`和`BackgroundTray`当前仅在darwin应用用户选择的图标，非darwin仅保留选择、对应状态unsupported；目录不把保存成功当作系统图标已应用。开发/安装环境与逐目标实际结果仍查`appearance.iconStatus`。

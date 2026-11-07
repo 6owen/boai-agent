@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: v2命令统一主题/字号联动、严格主题校验与已知错误；全部写动作CAS及导入冲突资产清理。
  * [OUTPUT]: 2026-10-20全局字体与应用图标设置接入原外观持久化和宿主协议。
  * [OUTPUT]: 2026-10-19应用业务协议：外观patch校验复用shared真源，原设置持久化保持。
  * [OUTPUT]: 插件停用只回退有效配色，不覆盖已保存主题选择；显式选择停用配色拒绝。
@@ -9,10 +10,11 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { randomUUID } from 'node:crypto'
-import { mkdir, readFile, rename, writeFile, copyFile, stat, lstat } from 'node:fs/promises'
+import { mkdir, readFile, rename, writeFile, copyFile, stat, lstat, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { appearancePatchSchema as patchSchema } from '@boai/shared/appearance/schema'
-import { appearanceDefaults, applyAppearancePatch, maxBackgroundBlur, resolveAppearanceMode, resolveTheme, type AppearancePatch, type AppearancePreferences, type AppearanceSnapshot, type ColorMode } from '@boai/shared/appearance'
+import { appearanceDefaults, applyAppearancePatch, availableThemes, resolveAppearanceMode, resolveTheme, type AppearancePatch, type AppearancePreferences, type AppearanceSnapshot, type ColorMode } from '@boai/shared/appearance'
+import { AppearanceError, normalizeAppearanceCommand } from '@boai/shared/appearance/commands'
 const validAsset = /^[0-9a-f-]{36}\.(png|jpg|webp)$/
 export function imageFormat(bytes: Buffer): 'png' | 'jpg' | 'webp' { if(bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))return 'png'; if(bytes[0]===255&&bytes[1]===216&&bytes[2]===255)return 'jpg'; if(bytes.toString('ascii',0,4)==='RIFF'&&bytes.toString('ascii',8,12)==='WEBP')return 'webp'; throw new Error('请选择 PNG、JPEG 或 WebP 图片。') }
 /** Inspect dimensions before invoking the native decoder, to reject decompression bombs. */
@@ -28,9 +30,11 @@ export class AppearanceStore {
  private preferences = structuredClone(appearanceDefaults)
  private revision = 0
  private sequence = 0
+ private resetRevision = 0
  private diagnostic?: string
  private readOnly = false
  private tail: Promise<unknown> = Promise.resolve()
+ private imports = new Set<Promise<AppearanceSnapshot>>()
  constructor(readonly root: string, private systemDark: () => boolean, private changed: (value: AppearanceSnapshot) => void, private decode: (data: Buffer) => { width: number; height: number } | Promise<{width:number;height:number}>, private disabledPlugins: () => readonly string[] = () => []) {}
  async init() {
   await mkdir(join(this.root,'assets'),{recursive:true})
@@ -59,27 +63,69 @@ export class AppearanceStore {
    }
    this.preferences.background.assetId=typeof p.background.assetId==='string'&&validAsset.test(p.background.assetId)?p.background.assetId:null
    this.revision=Number.isSafeInteger(saved.revision)&&saved.revision>=0?saved.revision:0
+   this.resetRevision=Number.isSafeInteger(saved.resetRevision)&&saved.resetRevision>=0&&saved.resetRevision<=this.revision?saved.resetRevision:0
    for(const mode of ['light','dark'] as const) if(this.preferences.themeIds[mode]!==resolveTheme(mode,this.preferences.themeIds[mode]).id){this.preferences.themeIds[mode]=`boai-${mode}`;this.diagnostic='未知主题已回退为 BoAI 默认主题。'}
    if(this.preferences.background.assetId) try { await this.asset(this.preferences.background.assetId) } catch { this.preferences.background.assetId=null;this.diagnostic='背景文件不可用，已使用纯色背景。' }
   } catch(error) { if((error as NodeJS.ErrnoException).code!=='ENOENT')this.diagnostic='外观配置无法读取，已使用默认外观；原文件保留。' }
  }
- snapshot(): AppearanceSnapshot { const resolvedMode:ColorMode=resolveAppearanceMode(this.preferences,this.systemDark()?'dark':'light');return structuredClone({preferences:this.preferences,revision:this.revision,sequence:this.sequence,resolvedMode,resolvedThemeId:resolveTheme(resolvedMode,this.preferences.themeIds[resolvedMode],this.disabledPlugins()).id,diagnostic:this.diagnostic,readOnly:this.readOnly}) }
+ snapshot(): AppearanceSnapshot { const resolvedMode:ColorMode=resolveAppearanceMode(this.preferences,this.systemDark()?'dark':'light');return structuredClone({preferences:this.preferences,revision:this.revision,sequence:this.sequence,resetRevision:this.resetRevision,resolvedMode,resolvedThemeId:resolveTheme(resolvedMode,this.preferences.themeIds[resolvedMode],this.disabledPlugins()).id,diagnostic:this.diagnostic,readOnly:this.readOnly}) }
  systemChanged() { this.sequence++; this.changed(this.snapshot()) }
  private serialize<T>(fn:()=>Promise<T>) { const next=this.tail.then(fn);this.tail=next.catch(()=>{});return next }
- private async commit(preferences:AppearancePreferences, expectedRevision:number) {
-  if(this.readOnly)throw new Error('新版外观配置为只读，请使用对应版本的应用。')
-  if(expectedRevision!==this.revision)throw new Error('APPEARANCE_CONFLICT')
-  const revision=this.revision+1,tmp=join(this.root,`${randomUUID()}.tmp`)
-  await writeFile(tmp,JSON.stringify({revision,preferences},null,2),{mode:0o600});await rename(tmp,join(this.root,'settings.json'))
-  this.preferences=preferences;this.revision=revision;this.sequence++;this.diagnostic=undefined;const result=this.snapshot();this.changed(result);return this.snapshot()
+ private assertWritable(expectedRevision: number) {
+  if(this.readOnly)throw new AppearanceError('READ_ONLY','新版外观配置为只读，请使用对应版本的应用。')
+  if(!Number.isSafeInteger(expectedRevision)||expectedRevision<0)throw new AppearanceError('INVALID_ARGUMENT','外观版本无效。')
+  if(expectedRevision!==this.revision)throw new AppearanceError('REVISION_CONFLICT','APPEARANCE_CONFLICT：外观已被其他操作修改，请重新读取后调整。')
  }
- update(patch:AppearancePatch,revision:number) { return this.serialize(async()=>{ const value=patchSchema.parse(patch);if(value.fontFamily&&value.typography?.ui?.family&&value.fontFamily!==value.typography.ui.family)throw new Error('界面字体设置冲突');const p=applyAppearancePatch(this.preferences,value);for(const mode of ['light','dark'] as const)if(value.themeIds?.[mode]) { const requested=resolveTheme(mode,value.themeIds[mode]);if(resolveTheme(mode,requested.id,this.disabledPlugins()).id!==requested.id)throw new Error('此主题插件已停用，请先启用。');p.themeIds[mode]=requested.id };return this.commit(p,revision) }) }
- import(path:string) { return this.serialize(async()=>{ if((await stat(path)).size>10*1024*1024)throw new Error('图片不能超过 10 MiB。');const bytes=await readFile(path);if(bytes.length>10*1024*1024)throw new Error('图片不能超过 10 MiB。');const format=imageFormat(bytes);imageDimensions(bytes,format);const size=await this.decode(bytes);if(!size.width||!size.height||size.width>8192||size.height>8192||size.width*size.height>32000000)throw new Error('图片尺寸无效或超过 8192 边长 / 3200 万像素。');const assetId=`${randomUUID()}.${format}`;await writeFile(join(this.root,'assets',assetId),bytes,{mode:0o600});return this.commit({...this.preferences,background:{...this.preferences.background,assetId}},this.revision) }) }
- remove() { return this.serialize(()=>this.commit({...this.preferences,background:{...this.preferences.background,assetId:null}},this.revision)) }
- reset() { return this.serialize(()=>this.commit(structuredClone(appearanceDefaults),this.revision)) }
+ private async commit(preferences:AppearancePreferences, expectedRevision:number, reset = false) {
+  this.assertWritable(expectedRevision)
+  const revision=this.revision+1,resetRevision=reset?revision:this.resetRevision,tmp=join(this.root,`${randomUUID()}.tmp`)
+  await writeFile(tmp,JSON.stringify({revision,resetRevision,preferences},null,2),{mode:0o600});await rename(tmp,join(this.root,'settings.json'))
+  this.preferences=preferences;this.revision=revision;this.resetRevision=resetRevision;this.sequence++;this.diagnostic=undefined;const result=this.snapshot();this.changed(result);return this.snapshot()
+ }
+ private parsePatch(patch: AppearancePatch) {
+  const parsed=patchSchema.safeParse(patch)
+  if(!parsed.success)throw new AppearanceError('INVALID_ARGUMENT','外观参数无效。')
+  const value=parsed.data
+  if(value.fontFamily&&value.typography?.ui?.family&&value.fontFamily!==value.typography.ui.family)throw new AppearanceError('INVALID_ARGUMENT','界面字体设置冲突。')
+  for(const mode of ['light','dark'] as const)if(value.themeIds?.[mode]!==undefined) {
+   const requested=availableThemes().find(theme=>theme.id===value.themeIds?.[mode]&&theme.mode===mode)
+   if(!requested)throw new AppearanceError('INVALID_ARGUMENT','未知主题或主题明暗模式不匹配。')
+   if(!availableThemes(this.disabledPlugins()).some(theme=>theme.id===requested.id&&theme.mode===mode))throw new AppearanceError('INVALID_ARGUMENT','此主题插件已停用，请先启用。')
+  }
+  return value
+ }
+ /** Explicit legacy v1: merge only, without v2 theme/typography command side effects. */
+ update(patch:AppearancePatch,revision:number) { return this.serialize(async()=>{this.assertWritable(revision);return this.commit(applyAppearancePatch(this.preferences,this.parsePatch(patch)),revision)}) }
+ updateCommand(patch:AppearancePatch,revision:number) { return this.serialize(async()=>{this.assertWritable(revision);return this.commit(applyAppearancePatch(this.preferences,normalizeAppearanceCommand(this.parsePatch(patch))),revision)}) }
+ import(path:string,expectedRevision=this.revision) {
+  const operation=this.importImage(path,expectedRevision)
+  this.imports.add(operation)
+  void operation.then(()=>this.imports.delete(operation),()=>this.imports.delete(operation))
+  return operation
+ }
+ private async importImage(path:string,expectedRevision:number) {
+  // Decoding is outside the writer queue: another user's save must be able to invalidate this selection.
+  this.assertWritable(expectedRevision)
+  if((await stat(path)).size>10*1024*1024)throw new AppearanceError('INVALID_ARGUMENT','图片不能超过 10 MiB。')
+  const bytes=await readFile(path)
+  if(bytes.length>10*1024*1024)throw new AppearanceError('INVALID_ARGUMENT','图片不能超过 10 MiB。')
+  let format:ReturnType<typeof imageFormat>
+  try { format=imageFormat(bytes);imageDimensions(bytes,format) } catch(error) { throw new AppearanceError('INVALID_ARGUMENT',error instanceof Error?error.message:'图片无效。') }
+  let size:{width:number;height:number}
+  try { size=await this.decode(bytes) } catch { throw new AppearanceError('INVALID_ARGUMENT','图片无法解码。') }
+  if(!size.width||!size.height||size.width>8192||size.height>8192||size.width*size.height>32000000)throw new AppearanceError('INVALID_ARGUMENT','图片尺寸无效或超过 8192 边长 / 3200 万像素。')
+  const assetId=`${randomUUID()}.${format}`,assetPath=join(this.root,'assets',assetId)
+  try {
+   await writeFile(assetPath,bytes,{mode:0o600})
+   return await this.serialize(()=>this.commit({...this.preferences,background:{...this.preferences.background,assetId}},expectedRevision))
+  }
+  catch(error) { if(this.preferences.background.assetId!==assetId)await rm(assetPath,{force:true});throw error }
+ }
+ remove(expectedRevision=this.revision) { return this.serialize(()=>this.commit({...this.preferences,background:{...this.preferences.background,assetId:null}},expectedRevision)) }
+ reset(expectedRevision=this.revision) { return this.serialize(()=>this.commit(structuredClone(appearanceDefaults),expectedRevision,true)) }
  async asset(assetId:string) { if(!validAsset.test(assetId))throw new Error('无效图片标识');const path=join(this.root,'assets',assetId);const info=await lstat(path);if(!info.isFile()||info.isSymbolicLink()||info.size>10*1024*1024)throw new Error('无效图片');return {bytes:await readFile(path),type:assetId.endsWith('.png')?'image/png':assetId.endsWith('.jpg')?'image/jpeg':'image/webp'} }
- private async copyBackup(destination:string) {if(this.readOnly)throw new Error('新版外观配置无法由当前版本备份。');await mkdir(join(destination,'appearance','assets'),{recursive:true});await writeFile(join(destination,'appearance','settings.json'),JSON.stringify({preferences:this.preferences,revision:this.revision},null,2));const id=this.preferences.background.assetId;if(id){await this.asset(id);await copyFile(join(this.root,'assets',id),join(destination,'appearance','assets',id))} }
+ private async copyBackup(destination:string) {if(this.readOnly)throw new Error('新版外观配置无法由当前版本备份。');await mkdir(join(destination,'appearance','assets'),{recursive:true});await writeFile(join(destination,'appearance','settings.json'),JSON.stringify({preferences:this.preferences,revision:this.revision,resetRevision:this.resetRevision},null,2));const id=this.preferences.background.assetId;if(id){await this.asset(id);await copyFile(join(this.root,'assets',id),join(destination,'appearance','assets',id))} }
  backup(destination:string){return this.serialize(()=>this.copyBackup(destination))}
  coordinatedBackup(destination:string,business:()=>Promise<unknown>){return this.serialize(async()=>{await business();await this.copyBackup(destination)})}
- async flush(){await this.tail}
+ async flush(){await Promise.allSettled([...this.imports]);await this.tail}
 }

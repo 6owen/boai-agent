@@ -1,6 +1,7 @@
 /*
  * [OUTPUT]: WT1聚合独立画板宿主；可信主窗、私有工具、人工保存屏障和退出清理共用原生命周期。
  * [OUTPUT]: macOS窗口按钮按共享toolbar-height与当前界面缩放垂直居中，创建/重载/缩放同步原生位置。
+ * [OUTPUT]: 外观v2及诊断安全宿主桥；请求固定原runtime代次/进程，无runtime本人摘要不启动服务。
  * [OUTPUT]: 独立AgentBrowser/BrowserViewer插件接入；上游工具、启停与运行回收保持独立。
  * [OUTPUT]: 2026-10-29 Sparkle仅打包macOS主窗启用；宿主清理成功后安装，独立CLI附着时停用，失败恢复原退出入口。
  * [OUTPUT]: 2026-10-29 工作区目录/预览调用由官方file-explorer-plugin宿主处理，原终端resolver独立。
@@ -118,8 +119,8 @@ import { BackgroundTray, hideMainWindow, cancelWindowHide } from './background'
 import { assertRuntimeHostRequest, stopRuntime } from './runtime-shutdown'
 import { acquireRuntimeProfileAccess } from '@boai/runtime/profile-access'
 import { isPublicMethod } from '@boai/shared/ipc/public-methods'
-import { isApplicationHostMethod, type ApplicationHostMethod } from '@boai/shared/ipc/application-host'
-import { appearancePatchSchema } from '@boai/shared/appearance/schema'
+import { ApplicationHostError, isApplicationHostMethod, type ApplicationHostMethod } from '@boai/shared/ipc/application-host'
+import { appearanceHostRequest, appearanceRevisionInput } from './appearance-host'
 import { openDesktopCli, desktopCliConnection } from './cli-service'
 import { CliInstaller } from './cli-installation'
 import { CliError, type ErrorCode } from '@boai/shared/cli/protocol'
@@ -177,7 +178,8 @@ let pendingAutomationNavigation: Methods['getPendingAutomationNavigation']['outp
 let ready: Promise<void> | null = null
 let cli: Awaited<ReturnType<typeof openDesktopCli>> | undefined
 async function applicationHostRequest(method: ApplicationHostMethod, input: unknown): Promise<unknown> {
-  assertRuntimeHostRequest(quitting, method, input)
+  try { assertRuntimeHostRequest(quitting, method, input) }
+  catch { throw new ApplicationHostError('CAPABILITY_UNAVAILABLE', '应用正在退出，未开始新的配置或诊断操作。') }
   if (method === 'closeUserWorkspace') {
     const value = z.union([z.object({ employeeId: z.string().min(1).max(200), conversationId: z.string().min(1).max(200).optional() }).strict(), z.object({ conversationId: z.string().min(1).max(200) }).strict()]).parse(input)
     if ('employeeId' in value && value.conversationId) await userTerminals.stopScope({ employeeId: value.employeeId, conversationId: value.conversationId })
@@ -188,13 +190,16 @@ async function applicationHostRequest(method: ApplicationHostMethod, input: unkn
   }
   if (method === 'canvasHost') return canvas.call(input as Methods['canvasHost']['input'])
   if (method === 'captureDesktopActivity') return desktopActivityCapture(input)
-  if (method === 'getAppearance') { z.undefined().parse(input); return appearance.snapshot() }
-  if (method === 'updateAppearance') { const value = z.object({ patch: appearancePatchSchema, expectedRevision: z.number().int().nonnegative() }).strict().parse(input); return appearance.update(value.patch, value.expectedRevision) }
+  if (method === 'getAppearance' || method === 'updateAppearance' || method === 'resetAppearance' || method === 'removeAppearanceBackground') return appearanceHostRequest(appearance, method, input)
+  if (method === 'getAppIconStatus') { z.undefined().parse(input); return appIconController.snapshot() }
+  if (method === 'getDiagnosticsSnapshot') return desktopDiagnosisSnapshot(input as Methods['getDiagnosticsSnapshot']['input'])
   if (method === 'getPluginSettings') { z.undefined().parse(input); return pluginSettings.snapshot() }
   if (method === 'setPluginEnabled') return pluginSettings.update(input as Methods['setPluginEnabled']['input'])
-  z.undefined().parse(input)
-  if (method === 'removeAppearanceBackground') return appearance.remove()
-  if (method === 'resetAppearance') return appearance.reset()
+}
+
+const runtimeGenerations = new WeakMap<RuntimeHandle, string>()
+function desktopDiagnosisSnapshot(input?: Methods['getDiagnosticsSnapshot']['input']) {
+  return diagnostics.snapshot({ mode: runtime instanceof AttachedRuntime ? 'attached' : runtime ? 'owned' : 'absent', pid: runtime && !(runtime instanceof AttachedRuntime) ? runtime.pid ?? null : null, serverId: runtime instanceof AttachedRuntime ? runtime.serverId : null, generation: runtime ? runtimeGenerations.get(runtime) ?? null : null }, input)
 }
 
 let cliStarting: Promise<void> | undefined
@@ -367,15 +372,17 @@ function connectRuntime(attached: AttachedRuntime | null) {
       serviceName: 'BoAI Agent Runtime', stdio: 'pipe', env: { ...env, BOAI_NATIVE_PROCESS_GUARD: join(__dirname,'../native/boai-process-guard').replace('app.asar/','app.asar.unpacked/') },
     })
     runtime = child
-    if (child instanceof AttachedRuntime) diagnostics.record('runtime-start', { serverId: child.serverId })
-    else child.once('spawn', () => { childPid = child.pid; diagnostics.record('runtime-start', { pid: childPid }) })
+    const runtimeGeneration = randomUUID()
+    runtimeGenerations.set(child, runtimeGeneration)
+    if (child instanceof AttachedRuntime) diagnostics.record('runtime-start', { serverId: child.serverId, runtimeGeneration })
+    else child.once('spawn', () => { childPid = child.pid; diagnostics.record('runtime-start', { pid: childPid, runtimeGeneration }) })
     const timer = setTimeout(() => { rejectReady(new Error('本地运行服务启动超时。')); child.kill() }, 90_000)
     child.on('message', async (message) => {
       if (runtime !== child) return
       if (message?.type === 'owner-busy' && !workerReady && !(child instanceof AttachedRuntime)) { ownershipRejected = true; child.kill(); return }
       if (message?.type === 'ready') {
         if (!(child instanceof AttachedRuntime)) childPid ??= child.pid
-        diagnostics.record('runtime-ready', { pid: childPid, ...(child instanceof AttachedRuntime ? { serverId: child.serverId } : {}) })
+        diagnostics.record('runtime-ready', { pid: childPid, runtimeGeneration, ...(child instanceof AttachedRuntime ? { serverId: child.serverId } : {}) })
         workerReady = true
         clearTimeout(timer)
         try {
@@ -409,7 +416,7 @@ function connectRuntime(attached: AttachedRuntime | null) {
           if (!isApplicationHostMethod(message.method)) throw new Error('未公开的桌面设置方法')
           const result = await applicationHostRequest(message.method, message.input)
           if (runtime === child) child.postMessage({ type: 'application-host-result', id: message.id, result })
-        } catch (error) { if (runtime === child) child.postMessage({ type: 'application-host-result', id: message.id, error: error instanceof Error ? error.message : '桌面设置结果未知' }) }
+        } catch (error) { if (runtime === child) child.postMessage({ type: 'application-host-result', id: message.id, error: error instanceof Error ? error.message : '桌面设置结果未知', ...(error instanceof ApplicationHostError ? { errorCode: error.code } : {}) }) }
       }
       else if (message?.type === 'browser-host') {
         try {
@@ -440,7 +447,7 @@ function connectRuntime(attached: AttachedRuntime | null) {
     child.on('exit', (code) => {
       clearTimeout(timer)
       // Electron clears child.pid before exit; preserve the PID observed at spawn/ready.
-      diagnostics.record('runtime-exit', { pid: childPid, ...(typeof code === 'number' ? { exitCode: code } : {}), ...(child instanceof AttachedRuntime ? { reason: 'disconnected', serverId: child.serverId } : {}) })
+      diagnostics.record('runtime-exit', { pid: childPid, runtimeGeneration, ...(typeof code === 'number' ? { exitCode: code } : {}), ...(child instanceof AttachedRuntime ? { reason: 'disconnected', serverId: child.serverId } : {}) })
       if (runtime !== child) return
       if (ownershipRejected && !workerReady) { runtime = null; rejectReady(new RuntimeStartupOwnedError('原运行服务已取得所有权')); return }
       // Replacing the connection cannot issue a new lease until old actions really exit.
@@ -493,13 +500,14 @@ async function requestRuntime(method: string, input?: unknown, waitForCompletion
 function requestCurrentRuntime(child: RuntimeHandle, method: string, input?: unknown, waitForCompletion = false) {
   if (!child || runtime !== child) return Promise.reject(new Error('原运行服务连接已失效。'))
   const id = randomUUID()
+  const runtimeIdentity = { runtimeGeneration: runtimeGenerations.get(child), ...(child instanceof AttachedRuntime ? { serverId: child.serverId } : { pid: child.pid }) }
   return new Promise<unknown>((resolveRequest, reject) => {
     // Temporary input files must remain until the importer responds or its worker really exits.
-    const timer = waitForCompletion ? undefined : setTimeout(() => { diagnostics.record('request-timeout', diagnosticRequest(method, id, input)); pending.delete(id); reject(new Error('操作超时，请查看任务状态。')) }, 120_000)
+    const timer = waitForCompletion ? undefined : setTimeout(() => { diagnostics.record('request-timeout', { ...diagnosticRequest(method, id, input), ...runtimeIdentity }); pending.delete(id); reject(new Error('操作超时，请查看任务状态。')) }, 120_000)
     pending.set(id, { resolve: resolveRequest, reject, timer })
     try { child.postMessage({ type: 'request', request: { id, method, input }, waitForCompletion }) }
     catch (error) { clearTimeout(timer); pending.delete(id); reject(error) }
-  }).catch(error => { diagnostics.record('request-failed', { ...diagnosticRequest(method, id, input), ...diagnosticError(error) }); throw error })
+  }).catch(error => { diagnostics.record('request-failed', { ...diagnosticRequest(method, id, input), ...diagnosticError(error), ...runtimeIdentity }); throw error })
 }
 
 function inside(root: string, target: string) {
@@ -550,7 +558,7 @@ function registerIpc() {
     requireMainFrame(event)
     const result = await dialog.showSaveDialog(window!, { title: '导出诊断记录', defaultPath: join(app.getPath('documents'), `boai-diagnostics-${new Date().toISOString().replace(/[:.]/g, '-')}.json`), filters: [{ name: 'JSON', extensions: ['json'] }] })
     if (result.canceled || !result.filePath) return null
-    return writeDiagnosticsReport(legacyDataPath, result.filePath, { ...diagnostics.report(), lifecycle: desktopLifecycle.snapshot(), runtime: { present: !!runtime, mode: runtime instanceof AttachedRuntime ? 'attached' : runtime ? 'owned' : 'absent', pid: runtime && !(runtime instanceof AttachedRuntime) ? runtime.pid ?? null : null } })
+    return writeDiagnosticsReport(legacyDataPath, result.filePath, { ...diagnostics.report(), summary: desktopDiagnosisSnapshot(), lifecycle: desktopLifecycle.snapshot(), runtime: { present: !!runtime, mode: runtime instanceof AttachedRuntime ? 'attached' : runtime ? 'owned' : 'absent', pid: runtime && !(runtime instanceof AttachedRuntime) ? runtime.pid ?? null : null } })
   })
   ipcMain.on('boai:plugins-initial', event => { if (window && event.sender === window.webContents && event.senderFrame === window.webContents.mainFrame) event.returnValue = pluginSettings.snapshot() })
   ipcMain.on('boai:appearance-initial', event => { if (window && event.sender === window.webContents && event.senderFrame === window.webContents.mainFrame) event.returnValue = appearance.snapshot() })
@@ -592,7 +600,10 @@ function registerIpc() {
     if (method === 'canvasFlushed') { canvas.flushed(z.object({ id: z.string().uuid(), error: z.string().max(4000).optional() }).strict().parse(input)); return }
     if (method === 'canvasCommand') return canvas.request(input as Methods['canvasCommand']['input'])
     if (isApplicationHostMethod(method)) return applicationHostRequest(method, input)
-    if (method === 'getAppIconStatus') { z.undefined().parse(input); return appIconController.snapshot() }
+    if (method === 'executeApplicationOperation' && input && typeof input === 'object' && 'operation' in input && input.operation === 'diagnostics.task') {
+      if (!runtime) throw new Error('运行服务未连接，任务证据当前不可读；可在数据设置查看宿主诊断摘要。')
+      return requestCurrentRuntime(runtime, method, input)
+    }
     if (method === 'retryAppIcon') { z.undefined().parse(input); return appIconController.retry() }
     if (method === 'getShortcutSettings') { z.undefined().parse(input); await shortcutSettings.flush(); return shortcutSettings.snapshot() }
     if (method === 'updateShortcutSettings') return shortcutSettings.update(input as Methods['updateShortcutSettings']['input'])
@@ -700,7 +711,11 @@ function registerIpc() {
       const selected = z.object({ configId: z.string().regex(/^[a-f0-9]{64}$/), hostAccessAcknowledged: z.literal(true) }).strict().parse(input)
       return requestRuntime('saveLaunchProfile', localConfigs.launchProfile(selected.configId))
     }
-    if (method === 'importAppearanceBackground') { const result=await dialog.showOpenDialog(window,{title:'选择背景图片',properties:['openFile'],filters:[{name:'图片',extensions:['png','jpg','jpeg','webp']}]}); return result.canceled||!result.filePaths[0]?null:appearance.import(result.filePaths[0]) }
+    if (method === 'importAppearanceBackground') {
+      const expectedRevision = appearanceRevisionInput.parse(input)?.expectedRevision ?? appearance.snapshot().revision
+      const result = await dialog.showOpenDialog(window, { title: '选择背景图片', properties: ['openFile'], filters: [{ name: '图片', extensions: ['png', 'jpg', 'jpeg', 'webp'] }] })
+      return result.canceled || !result.filePaths[0] ? null : appearance.import(result.filePaths[0], expectedRevision)
+    }
     if (method === 'setUnsavedChanges') {
       if (typeof (input as { dirty?: unknown })?.dirty !== 'boolean') throw new Error('无效编辑状态')
       const source=(input as {source?:string}).source??'business'; if(!['business','appearance','shortcuts','voice'].includes(source))throw new Error('无效编辑来源'); if((input as {dirty:boolean}).dirty)dirtySources.add(source);else{dirtySources.delete(source);if(source==='appearance')appearanceFlushed?.()}
