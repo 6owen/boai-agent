@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-09 bobo忽略项目配置；旧API员工从项目之外的明确批准可初始化授权目录列表。
  * [OUTPUT]: 模板ID/版本首次创建由宿主核验；模板来源与版本化默认项目目录分别保留。
  * [OUTPUT]: 默认项目沿配置版本核验保存，单独改变默认值不取消既有工作。
  * [OUTPUT]: API命令开关独立保存；整体只读始终禁命令，原生权限映射保持，不因改名重新启用已关闭命令。
@@ -200,11 +201,11 @@ export class EmployeeService {
   /** Only an additive, explicitly approved directory change; never changes model/session configuration. */
   async grantDirectoryInTransaction(tx: RecordTransaction, agentId: string, configVersion: number, grant: import('@boai/shared/domain/directory-access').DirectoryGrant): Promise<DigitalAgent> {
     const agent = await tx.get<DigitalAgent>('agents', agentId) ?? fail('员工不存在')
-    if (!agent.active || agent.configVersion !== configVersion || agent.directoryGrants === undefined) fail('员工目录策略已变化，原审批已失效')
+    if (!agent.active || agent.configVersion !== configVersion || agent.directoryGrants === undefined && !agent.defaultProjectDirectory) fail('员工目录策略已变化，原审批已失效')
     if (agent.executionPermission === 'read-only' && grant.access === 'read-write') fail('只读员工不能获得写入权限')
     const [canonical] = (await normalizeDirectoryGrants([grant]))!
     if (canonical.path !== grant.path) fail('目录实际目标已变化，原审批已失效')
-    const grants = clone(agent.directoryGrants!), existing = grants.find(item => item.path === grant.path)
+    const grants = clone(agent.directoryGrants ?? []), existing = grants.find(item => item.path === grant.path)
     if (existing?.access === 'read-write' || existing?.access === grant.access) return agent
     if (existing) existing.access = grant.access
     else grants.push(canonical)
@@ -222,10 +223,11 @@ export class EmployeeService {
     if (previous && input.initialSoul !== undefined) fail('已有员工的人格请使用带文件 hash 的保存接口')
     if (input.systemRole && !isCoreAgent(previous)) fail('系统核心身份只能由应用预置')
     if (previous && input.expectedConfigVersion !== undefined && previous.configVersion !== input.expectedConfigVersion) fail('员工配置已变更，请刷新后保存')
-    const projectChanged = input.defaultProjectDirectory !== undefined && input.defaultProjectDirectory !== previous?.defaultProjectDirectory
-    const project = projectChanged && input.defaultProjectDirectory ? await workingDirectoryTarget(input.defaultProjectDirectory, [await realpath(this.homes.dataPath)]) : undefined
-    const defaultProjectDirectory = projectChanged ? project?.path : previous?.defaultProjectDirectory
-    const defaultProjectDirectoryRequested = projectChanged ? (project ? resolve(input.defaultProjectDirectory!) : undefined) : previous?.defaultProjectDirectoryRequested
+    const core = isCoreAgent(previous)
+    const projectChanged = core ? !!previous?.defaultProjectDirectory : input.defaultProjectDirectory !== undefined && input.defaultProjectDirectory !== previous?.defaultProjectDirectory
+    const project = !core && projectChanged && input.defaultProjectDirectory ? await workingDirectoryTarget(input.defaultProjectDirectory, [await realpath(this.homes.dataPath)]) : undefined
+    const defaultProjectDirectory = core ? undefined : projectChanged ? project?.path : previous?.defaultProjectDirectory
+    const defaultProjectDirectoryRequested = core ? undefined : projectChanged ? (project ? resolve(input.defaultProjectDirectory!) : undefined) : previous?.defaultProjectDirectoryRequested
     const executionBackend=input.executionBackend??previous?.executionBackend??{kind:'mastra-model' as const}
     if (isCoreAgent(previous) && (!input.active || !['mastra-model','codex-local','claude-local','runtime-plugin'].includes(executionBackend.kind))) fail('系统核心 Agent 必须启用模型 API、本机 Codex 或 Claude，且不能启用旧 ACP 任务后端')
     const executionPermission = ['codex-local', 'claude-local'].includes(executionBackend.kind) && input.nativeOptions?.useNativePermissions ? undefined : ['mastra-model', 'codex-local', 'claude-local'].includes(executionBackend.kind) ? input.executionPermission ?? previous?.executionPermission : undefined

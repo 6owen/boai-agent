@@ -123,3 +123,19 @@ it.each(['codex-local','claude-local','runtime-plugin'] as const)('本机%s不�
  try {expect(products.tools.some(tool=>tool.name==='request_directory')).toBe(false)}finally{await products.dispose()}
  expect(f.request).not.toHaveBeenCalled()
 })
+
+
+it.each(['ask', 'read-only', 'full-access'] as const)('configured project access honors permission and symlink boundaries: %s', async permission => {
+  const f = await fixture(permission)
+  f.agent.directoryGrants = undefined
+  const access = new RunDirectoryAccess(f.agent, { projectDirectory: f.coding, signal: f.controller.signal, request: f.request, validate: f.validate, assertTarget: async () => {} })
+  expect(access.enabled).toBe(true)
+  expect(await access.allows(f.coding, 'read')).toBe(true)
+  expect(await access.allows(f.coding, 'write')).toBe(permission !== 'read-only')
+  await symlink(f.reports, join(f.coding, 'outside'))
+  expect(await access.allows(join(f.coding, 'outside/original.txt'), 'read')).toBe(permission === 'full-access')
+  expect(await access.allows(f.reports, 'read')).toBe(permission === 'full-access')
+  expect(f.request).not.toHaveBeenCalled()
+  access.close(); expect(access.temporaryGrants).toEqual([])
+  await expect(access.allows(f.coding, 'read')).rejects.toThrow('结束')
+})

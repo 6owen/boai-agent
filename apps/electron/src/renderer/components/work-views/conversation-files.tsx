@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 会话文件行菜单恢复系统默认/指定应用打开与定位，按材料/成果身份交给Main核验，不传路径。
  * [OUTPUT]: 会话文件搜索使用与小号Tab一致的28px控件高度及caption字号，保留展开和文件名查询。
  * [OUTPUT]: 会话文件对齐知识资料的默认列表/卡片表格、浮动标题与滚动渐隐；仅文件名CatalogSearch，来源操作归行菜单，同范围刷新保留列表。
  * [OUTPUT]: 2026-11-06 会话文件移除知识资料切换，保留原文件范围、筛选、预览和留存操作。
@@ -31,6 +32,7 @@ import { RetainFile } from './retain-file'
 import { useKnowledgeOperation } from './use-knowledge-operation'
 import { fileRowTargetMatches, selectedFileMatches, type FileSelection } from './model'
 import { usePagedQuery } from './use-paged-query'
+import { FileOpenMenuItems } from './file-open-menu'
 
 type FileView = 'table' | 'list'
 export interface ConversationFilesState { name: string; view?: FileView; selected?: FileSelection }
@@ -99,6 +101,7 @@ function FileRow({ item, ...props }: FileRowProps) {
   const fileName = statusLabel[item.status] ? <Tooltip><TooltipTrigger delay={500} render={name} /><TooltipContent>{item.error || statusLabel[item.status]}</TooltipContent></Tooltip> : name
   const actions = <DropdownMenu><DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" disabled={!props.active} aria-label={`文件操作 ${item.name}`} />}><MoreHorizontal /></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-max min-w-44"><DropdownMenuGroup>
     <DropdownMenuItem disabled={!props.active} onClick={preview}>预览</DropdownMenuItem>
+    <FileOpenMenuItems api={props.api} disabled={!props.active || !['ready', 'unsupported'].includes(item.status)} target={item.contentHash ? item.kind === 'material' ? item.revision ? { kind: 'material', conversationId: item.conversationId, id: item.id, contentHash: item.contentHash, revision: item.revision } : undefined : { kind: 'artifact', conversationId: item.conversationId, id: item.id, contentHash: item.contentHash } : undefined} />
     <DropdownMenuItem disabled={!props.active || opening || !item.sourceMessageId} onClick={() => void openSource()}>查看原消息</DropdownMenuItem>
     <DropdownMenuItem disabled={!props.active || !item.contentHash || item.kind === 'material' && !item.revision} onClick={() => props.onRetain(item)}>添加到知识资料</DropdownMenuItem>
   </DropdownMenuGroup></DropdownMenuContent></DropdownMenu>

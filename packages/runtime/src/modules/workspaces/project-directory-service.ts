@@ -1,7 +1,8 @@
 /*
+ * [OUTPUT]: 2026-11-09 无显式目录/版本的空闲主聊和群消息沿当前员工配置；已有任务、待决工作及历史消息保持原目录。
  * [INPUT]: Original conversations, assignments, messages and live execution fences.
  * [OUTPUT]: Versioned project changes and immutable per-message execution locations.
- * [POS]: Owner project selection service; does not grant filesystem permission or schedule work.
+ * [POS]: Owner execution-location snapshots; runtime derives project access separately and does not schedule work.
  * [PROTOCOL]: Update Header and owning .folder.md on change.
  */
 import { realpath } from 'node:fs/promises'
@@ -31,14 +32,25 @@ export class ProjectDirectoryService {
     const previous = messages.filter(message => message.conversationId === room.id && message.senderType === 'user').sort((a, b) => b.sequence - a.sequence)[0]
     return previous?.projectSelection ?? legacyProjectSelection(previous?.workingDirectory)
   }
-  private async assertIdle(tx: RecordTransaction, room: Conversation) {
-    if (this.hooks.busy(room.id) || room.employeeTaskId && this.hooks.preparing(room.employeeTaskId)) throw new Error('当前工作仍在执行或等待接续，请结束后再切换项目目录')
+  private async busyReason(tx: RecordTransaction, room: Conversation) {
+    if (this.hooks.busy(room.id) || room.employeeTaskId && this.hooks.preparing(room.employeeTaskId)) return '当前工作仍在执行或等待接续，请结束后再切换项目目录'
     const occurrences = await tx.list<AutomationOccurrence>('automationOccurrences')
-    if (occurrences.some(item => !item.deletedAt && (item.conversationId === room.id || !!room.employeeTaskId && item.taskId === room.employeeTaskId) && ongoingTaskExecution(item))) throw new Error('任务仍有待决执行，不能切换项目目录')
+    if (occurrences.some(item => !item.deletedAt && (item.conversationId === room.id || !!room.employeeTaskId && item.taskId === room.employeeTaskId) && ongoingTaskExecution(item))) return '任务仍有待决执行，不能切换项目目录'
     const works = await tx.list<{ conversationId: string; requiresReview?: boolean; status: string }>('workItems')
-    if (works.some(work => work.conversationId === room.id && (work.requiresReview || !['delivered', 'cancelled'].includes(work.status)))) throw new Error('原工作尚未结束或结果待核对，不能切换项目目录')
+    if (works.some(work => work.conversationId === room.id && (work.requiresReview || !['delivered', 'cancelled'].includes(work.status)))) return '原工作尚未结束或结果待核对，不能切换项目目录'
     const transfers = await tx.list<{ source: { conversationId: string }; target: { conversationId: string }; status: string }>('contextHandoffs')
-    if (transfers.some(item => item.target.conversationId === room.id && ['pending', 'unknown'].includes(item.status))) throw new Error('上下文交接投递仍待核对，不能切换目录绕过原投递')
+    if (transfers.some(item => item.target.conversationId === room.id && ['pending', 'unknown'].includes(item.status))) return '上下文交接投递仍待核对，不能切换目录绕过原投递'
+  }
+  private async assertIdle(tx: RecordTransaction, room: Conversation) {
+    const reason = await this.busyReason(tx, room)
+    if (reason) throw new Error(reason)
+  }
+  private async employeeDefault(agentId: string, previous: ProjectSelection) {
+    const agent = await this.store.get<DigitalAgent>('agents', agentId)
+    if (!agent) throw new Error('员工不存在')
+    const next = initialProjectSelection(agent)
+    return next.source === previous.source && next.mode === previous.mode && next.directory === previous.directory && next.requestedDirectory === previous.requestedDirectory
+      ? previous : { ...next, revision: previous.revision + 1 }
   }
   async update(input: { conversationId: string; expectedRevision: number } & ProjectChoice) {
     const next = await chooseProject(input.mode === 'managed' ? { mode: 'managed' } : { mode: 'directory', directory: input.directory }, input.expectedRevision + 1, [await realpath(this.dataPath)])
@@ -63,14 +75,29 @@ export class ProjectDirectoryService {
   }
   async prepareMessage(room: Conversation, input: { workingDirectory?: string; expectedProjectRevision?: number }, message: Message) {
     const roots = [await realpath(this.dataPath)]
+    // Owner UI no longer chooses a per-chat project. Refresh idle ordinary chats at admission;
+    // existing tasks and pending work keep their accepted location, including after restart.
+    const followDefault = !room.employeeTaskId && input.expectedProjectRevision === undefined && !input.workingDirectory
+    let idle: Promise<boolean> | undefined
+    const currentDefault = async (agentId: string, previous: ProjectSelection) => {
+      const next = await this.employeeDefault(agentId, previous)
+      if (next === previous) return previous
+      // Only inspect pending work when the configured location actually changed.
+      idle ??= this.store.transaction(async tx => !await this.busyReason(tx, room))
+      return await idle ? next : previous
+    }
     if (room.kind === 'group' && !input.workingDirectory) {
-      message.projectSelections = Object.fromEntries(room.agentIds.map(id => [id, room.projectSelections?.[id] ?? legacyProjectSelection()]))
+      message.projectSelections = Object.fromEntries(await Promise.all(room.agentIds.map(async id => {
+        const previous = room.projectSelections?.[id] ?? legacyProjectSelection()
+        return [id, followDefault ? await currentDefault(id, previous) : previous]
+      })))
+      room.projectSelections = message.projectSelections
       // Group membership is not permission to touch every member's project. Each actual run rechecks its own snapshot.
       return
     }
     const saved = await this.selection(room)
     if (input.expectedProjectRevision !== undefined && input.expectedProjectRevision !== saved.revision) throw new Error('项目目录已更新，请刷新后发送')
-    let selection = saved
+    let selection = followDefault ? await currentDefault(room.agentIds[0], saved) : saved
     if (input.workingDirectory) {
       const explicit = await chooseProject({ mode: 'directory', directory: input.workingDirectory }, saved.revision + 1, roots)
       if (explicit.directory !== saved.directory || saved.mode !== 'directory') {

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Real team creation, SQLite/filesystem, interrupted publication and later employee defaults.
- * [OUTPUT]: Team project snapshots survive explicit recovery/restart and stay fixed in later group messages.
+ * [OUTPUT]: Team project snapshots survive explicit recovery/restart and follow current employee defaults in later idle group messages.
  * [POS]: WT3 team creation directory boundary; no model calls or GUI.
  * [PROTOCOL]: Update Header and owning .folder.md on change.
  */
@@ -19,7 +19,7 @@ import { writingPlan } from './fixtures/team-planner'
 const cleanup: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const close of cleanup.splice(0).reverse()) await close() })
 
-test('team acceptance freezes each member location through recovery, restart and later default changes', async () => {
+test('team acceptance stays frozen through recovery while later idle messages follow employee defaults', async () => {
   const dataPath = await mkdtemp(join(tmpdir(), 'boai-team-project-'))
   cleanup.push(() => rm(dataPath, { recursive: true, force: true }))
   const store = new ProductStore(join(dataPath, 'boai.sqlite')); await store.init(); cleanup.push(() => store.close())
@@ -61,6 +61,6 @@ test('team acceptance freezes each member location through recovery, restart and
   const message: Message = { id: 'later-message', conversationId: rooms[0].id, senderId: 'user', senderName: '用户', senderType: 'user', content: '继续', sequence: 1, status: 'completed', createdAt: new Date().toISOString() }
   const projects = new ProjectDirectoryService(store, dataPath, { busy: () => false, preparing: () => false, changed: () => {} })
   await projects.prepareMessage(rooms[0], {}, message)
-  expect(message.projectSelections).toEqual(expected)
+  expect(message.projectSelections).toEqual(Object.fromEntries(accepted.agents.map(agent => [agent.id, { mode: 'directory', directory: '/later-default', requestedDirectory: '/later-default', source: 'employee-default', revision: 2 }])))
   for (const collection of ['messages', 'workItems', 'runs']) expect(await store.load(collection)).toEqual([])
 })

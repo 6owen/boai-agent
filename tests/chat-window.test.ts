@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 2026-11-09任务入口夹具改从标题菜单打开，继续保留主聊天/草稿断言；本轮按用户要求未运行。
  * [OUTPUT]: 主聊天忙碌时消息立即展示且不挂载待发队列；仅任务会话提供队列操作。
  * [OUTPUT]: 恢复任务按钮仅请求右侧导航，主聊天编辑器/消息DOM与草稿保持。
  * [OUTPUT]: 聊天/任务切换共用主区并保留编辑器/草稿/消息DOM；无任务能力的会话没有员工Tabs。
@@ -81,11 +82,17 @@ it.each([false, true])('shows queued turns as received IM messages only outside 
   await act(async () => enter())
   expect(props.onSend).toHaveBeenCalledOnce()
 })
-it('opens employee tasks from the header without replacing the main chat or draft', async () => {
+it('opens employee tasks from the header menu without replacing the main chat or draft', async () => {
   props.onTasks = vi.fn()
   await render()
   const editor = host.querySelector('[role=textbox]'), viewport = host.querySelector('.messages')
-  await act(async () => [...host.querySelectorAll('button')].find(node => node.textContent === '任务')!.click())
+  expect([...host.querySelectorAll('.chat-header button')].some(node => node.textContent === '任务')).toBe(false)
+  const trigger = host.querySelector<HTMLButtonElement>('[aria-label="会话操作"]')!
+  vi.spyOn(trigger, 'getClientRects').mockReturnValue([new DOMRect(0, 0, 28, 28)] as unknown as DOMRectList)
+  await act(async () => trigger.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 })))
+  await frames()
+  await act(async () => [...document.querySelectorAll<HTMLElement>('[role=menuitem]')].find(node => node.textContent === '任务')!.click())
+  await frames()
   expect(props.onTasks).toHaveBeenCalledOnce()
   expect(host.querySelector('[role=textbox]')).toBe(editor)
   expect(editor?.textContent).toContain('A的草稿')

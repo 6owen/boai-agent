@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 知识资料行菜单恢复系统默认/指定应用打开与定位，复核当前员工绑定和知识版本，原添加/移除保持。
  * [OUTPUT]: 知识资料默认列表视图，表格切换及当前面板选择保持。
  * [OUTPUT]: 上传/同员工刷新保留列表DOM与滚动位置，成功后替换数据；正常上传不插入核对按钮，未决恢复入口放标题栏，旧数据刷新期间锁定操作。
  * [OUTPUT]: 知识资料行菜单最小宽度176px并按内容扩展，添加到输入框保持单行。
@@ -32,6 +33,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem,
 import { FileText, MoreHorizontal, Plus } from '@/components/icons'
 import { usePagedQuery } from './use-paged-query'
 import { useKnowledgeOperation } from './use-knowledge-operation'
+import { FileOpenMenuItems } from './file-open-menu'
 
 export interface KnowledgeComposerTarget { id: string; add(reference: Extract<ComposerReference, { kind: 'knowledge' }>): void }
 
@@ -77,7 +79,7 @@ export function EmployeeKnowledge({ api, snapshot, agentId, active, composer }: 
     if (await operation.execute(requestId, () => api.request('removeEmployeeKnowledge', { requestId, agentId, resourceId: resource.id, expectedConfigVersion: agent.configVersion }))) reload()
   }
   const files = page?.items ?? []
-  const actions = (resource: Resource) => <KnowledgeActions resource={resource} disabled={disabled || referencing} composerAvailable={Boolean(composer)} onAddToComposer={() => void addToComposer(resource)} onRemove={() => void remove(resource)} />
+  const actions = (resource: Resource) => <KnowledgeActions api={api} agentId={agentId} resource={resource} disabled={disabled || referencing} composerAvailable={Boolean(composer)} onAddToComposer={() => void addToComposer(resource)} onRemove={() => void remove(resource)} />
   const controls = <>
     <TabsList size="sm" aria-label="知识资料视图"><TabsTrigger value="table">表格</TabsTrigger><TabsTrigger value="list">列表</TabsTrigger></TabsList>
     {operation.pending && !operation.busy && !choosing && <Button size="sm" variant="secondary" disabled={!active} onClick={() => void operation.check().then(() => reload())}>核对知识资料操作结果</Button>}
@@ -117,10 +119,11 @@ export function EmployeeKnowledge({ api, snapshot, agentId, active, composer }: 
 function KnowledgeFileName({ resource }: { resource: Resource }) {
   return <span className="flex min-w-0 flex-1 items-center gap-2" title={resource.name}><FileText size={16} className="shrink-0 text-muted-foreground" /><span className="truncate">{resource.name}</span></span>
 }
-function KnowledgeActions({ resource, disabled, composerAvailable, onAddToComposer, onRemove }: { resource: Resource; disabled: boolean; composerAvailable: boolean; onAddToComposer(): void; onRemove(): void }) {
+function KnowledgeActions({ api, agentId, resource, disabled, composerAvailable, onAddToComposer, onRemove }: { api: DesktopApi; agentId: string; resource: Resource; disabled: boolean; composerAvailable: boolean; onAddToComposer(): void; onRemove(): void }) {
   const [open, setOpen] = useState(false)
   return <DropdownMenu open={open} onOpenChange={setOpen}>
     <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" disabled={disabled} aria-label={`知识资料操作 ${resource.name}`} />}><MoreHorizontal /></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-max min-w-44"><DropdownMenuGroup>
+      <FileOpenMenuItems api={api} target={{ kind: 'knowledge', agentId, resourceId: resource.id, contentHash: resource.knowledge?.contentHash, revision: resource.knowledge?.revision }} disabled={disabled || !!resource.knowledge?.revoked} />
       <DropdownMenuItem disabled={disabled || !composerAvailable} onClick={() => { setOpen(false); onAddToComposer() }}>添加到输入框</DropdownMenuItem>
       <DropdownMenuSub><DropdownMenuSubTrigger disabled={disabled} className="text-destructive focus:text-destructive data-open:text-destructive">移除</DropdownMenuSubTrigger><DropdownMenuSubContent aria-label={`移除${resource.name}确认`}>
         <DropdownMenuItem onClick={() => setOpen(false)}>取消</DropdownMenuItem>

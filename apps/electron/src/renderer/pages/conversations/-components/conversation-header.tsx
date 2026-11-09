@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-09任务移入标题DropdownMenu，沿原关闭动画完成后导航，不再显示独立任务按钮。
  * [OUTPUT]: 2026-11-06 标题菜单拆分会话文件/知识资料，移除执行过程菜单项。
  * [OUTPUT]: 数字员工主聊天标题右侧任务按钮打开员工任务面板，与聊天并列。
  * [OUTPUT]: 标题栏随会话切换保持挂载，身份变化清理旧菜单动作与清空确认，避免把上一会话操作带入当前。
@@ -69,7 +70,6 @@ export function ConversationHeader({ conversation, members, resources, busy, onD
   return <>
     <ConversationHeaderLayout title={conversation.title}>
         {headerActions}
-        {onTasks && <Button variant="ghost" size="sm" onClick={onTasks}>任务</Button>}
         {(conversation.kind === 'group' || channel) && <>
           <div className="chat-members" aria-label={channel ? '接入员工' : '群聊成员'}>
             {members.slice(0, 3).map(member => <AgentInfoPopover key={member.id} agent={member} resources={resources} placement="header" onConfigure={() => onConfigureAgent(member)} />)}
@@ -82,6 +82,7 @@ export function ConversationHeader({ conversation, members, resources, busy, onD
             <DropdownMenuGroup>
               <DropdownMenuItem onClick={() => afterMenuClose(onDetails)}><Settings />{channel ? '渠道信息' : '配置'}</DropdownMenuItem>
               {isCoreConversation(conversation) && <DropdownMenuItem disabled={busy} onClick={() => afterMenuClose(() => onEditTitle(conversation))}><Pencil />编辑标题</DropdownMenuItem>}
+              {onTasks && <DropdownMenuItem onClick={() => afterMenuClose(onTasks)}><span className="app-icon i-carbon-task" />任务</DropdownMenuItem>}
               {onFiles && <DropdownMenuItem onClick={() => afterMenuClose(onFiles)}><FolderOpen />会话文件</DropdownMenuItem>}
               {onKnowledge && <DropdownMenuItem onClick={() => afterMenuClose(onKnowledge)}><BookOpen />知识资料</DropdownMenuItem>}
               {onChannels && <DropdownMenuItem onClick={() => afterMenuClose(onChannels)}><MessageCircle />渠道</DropdownMenuItem>}

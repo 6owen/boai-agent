@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: openFile按材料/成果/知识身份请求系统默认、指定应用打开或文件管理器定位，路径由Main核对。
  * [OUTPUT]: Canvas私有宿主协议及人工草稿flush屏障，不开放公共CLI方法。
  * [OUTPUT]: 诊断解释窄入口沿原核心首发，明确区分未受理与提交后未知并绑定requestId。
  * [OUTPUT]: sendMessage与核心首发接收本人明确选择的诊断目标，由宿主验证并持久化来源，不授权目标执行。
@@ -164,6 +165,7 @@ export interface Methods extends EmployeeTaskMethods, MessageQueueMethods, Conte
   listWorkspaceFiles: { input: import('./workspace-files').WorkspaceFilesQuery; output: import('./workspace-files').WorkspaceDirectoryPage }
   listWorkspaceApplications: { input: { refresh?: boolean }; output: import('./workspace-files').WorkspaceApplication[] }
   openWorkspacePath: { input: import('./workspace-files').WorkspaceOpenInput; output: void }
+  openFile: { input: import('./workspace-files').ExternalFileOpenInput; output: void }
   workspaceTerminal: { input: import('./workspace-terminal').WorkspaceTerminalRequest; output: import('./workspace-terminal').WorkspaceTerminalResponse }
   captureDesktopActivity: { input: { action: import('../domain/desktop-activity').ActivityCaptureAction; excludedApps?: string[]; options?: import('../domain/desktop-activity').ActivityCaptureOptions }; output: import('../domain/desktop-activity').ActivityCaptureResult }
   getApplicationCatalog: { input: import('../domain/application-protocol').ApplicationCatalogQuery; output: import('../domain/application-protocol').ApplicationCatalog }

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-09 员工配置项目生成运行内许可；CLI仅指定cwd不产生项目授权，内部资料权限保持。
  * [OUTPUT]: 能力包与画板保留各自实际退出/备份门禁；包Source按员工核权，备份同时保存两类原件与恢复策略。
  * [OUTPUT]: Codex/Claude能力包绑定按每次普通/behavior输入前的有效清单证明单一归属；未知组合拒绝，实际退出屏障和重启副本路径保持。
  * [OUTPUT]: WT2能力包沿原应用/Source/资源授权注册；按员工实际适配器退出排空，未证明原生单加载时拒绝绑定。
@@ -4282,7 +4283,7 @@ export class AppService {
         if (!context.work || !context.beforeEffect) fail('数据源写入需要当前获准工作')
         await context.beforeEffect!(); effectStarted = true; context.signal.throwIfAborted()
       }
-    }, webReadOnly ? 'web-read' : 'all', context.agent.directoryGrants !== undefined || context.agent.executionPermission === 'full-access' ? context.directoryAccess : undefined, context.agent.id)
+    }, webReadOnly ? 'web-read' : 'all', context.directoryAccess?.enabled ? context.directoryAccess : undefined, context.agent.id)
     await validate()
     if (effectStarted) await context.afterEffect?.()
     return result
@@ -4671,7 +4672,11 @@ export class AppService {
       await this.executions.append(run, JSON.parse(this.redact(JSON.stringify(summarizeMedia(event)), apiKey)))
     }
     if (run.phase === 'execution' && !isNativeBackend(run.backend)) {
+      const projectMessage = this.messages.get(context.work?.sourceMessageId ?? continuation?.originalRequestId ?? turn.triggerMessageId)
+      const project = projectMessage?.projectSelections?.[agent.id] ?? projectMessage?.projectSelection
       const access = new RunDirectoryAccess(context.agent, {
+        // Only the employee configuration grants project access; CLI cwd alone does not.
+        projectDirectory: project?.source === 'employee-default' ? context.workingDirectory : undefined,
         protectedRoots: [await realpath(this.dataPath)],
         signal,
         validate: () => this.serialize(() => this.assertDirectoryRun(context)),
@@ -5220,7 +5225,7 @@ export class AppService {
           },
         }
         const commands = catalogCommands({ sources: this.dataSources, files: this.localSkillEditing, source: { conversationId: conversation.id, messageId: source.id, agentId: run.agentId }, signal: effective, validate,
-          directories: context.agent.directoryGrants !== undefined || context.agent.executionPermission === 'full-access' ? context.directoryAccess : undefined,
+          directories: context.directoryAccess?.enabled ? context.directoryAccess : undefined,
           invoke: async (method, input) => { await validate(); return this.handle(method, input) },
           critical: action => this.serialize(async () => { await validate(); return action() }), employees: () => this.employees.values(),
         })

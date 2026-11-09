@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Current employee conversation, enabled plugin and host-owned board catalog.
- * [OUTPUT]: Scoped board menu with stable retries, explicit local import abandonment and late-read isolation.
+ * [OUTPUT]: Scoped board menu with a delayed header tooltip, stable retries, explicit local import abandonment and late-read isolation.
  * [POS]: BOAI titlebar canvas entry; editor and persisted documents remain in the canvas package.
  * [PROTOCOL]: Update Header and canvas/.folder.md when this file changes.
  */
@@ -9,6 +9,7 @@ import type { DesktopApi } from '@boai/shared/ipc'
 import type { CanvasBoardSummary, CanvasScope } from '@boai/canvas-plugin/protocol'
 import type { CanvasTarget } from '../detail-panel/tabs-state'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { errorText } from '@/components/common'
 import { toast } from 'sonner'
@@ -53,7 +54,7 @@ export function CanvasMenu({ api, scope, onOpen }: { api: DesktopApi; scope: Can
   const importOperation = importIntent.current()
   return <>
     <DropdownMenu onOpenChange={value => { if (value) void refresh() }}>
-      <DropdownMenuTrigger render={<Button className="titlebar-no-drag" variant="ghost" size="icon-sm" aria-label="画板" title="画板" />}><span className="i-solar-palette-round-linear size-4" /></DropdownMenuTrigger>
+      <Tooltip><TooltipTrigger delay={500} render={<DropdownMenuTrigger render={<Button className="titlebar-no-drag" variant="ghost" size="icon-sm" aria-label="画板" />} />}><span className="i-solar-palette-round-linear size-4" /></TooltipTrigger><TooltipContent side="bottom">画板</TooltipContent></Tooltip>
       <DropdownMenuContent align="end" className="max-h-96 min-w-48 overflow-y-auto">
         <DropdownMenuItem disabled={busy} onClick={() => void create()}><span className="i-solar-add-circle-linear size-4" />{createOperation.current ? '核对新建画板' : '新建画板'}</DropdownMenuItem>
         <DropdownMenuItem disabled={busy} onClick={() => importOperation ? void importFile() : input.current?.click()}><span className="i-solar-import-linear size-4" />{importOperation ? '核对导入画板' : '导入 .tldr'}</DropdownMenuItem>

@@ -169,8 +169,8 @@ test('assistant creation binds only an explicitly selected public skill and send
   expect(checkbox.getAttribute('aria-checked')).toBe('false')
   expect(request.mock.calls.some(args => args[0] === 'executeApplicationOperation')).toBe(false)
   await chooseCreationConnection(); await act(async () => checkbox.click()); await click('选择')
-  expect(document.querySelector<HTMLInputElement>('input[aria-label="默认项目目录"]')?.value).toBe('/fixtures/project')
-  await input('默认项目目录', '  /fixtures/project  '); await click('创建员工')
+  expect(document.querySelector<HTMLInputElement>('input[aria-label="项目目录"]')?.value).toBe('/fixtures/project')
+  await input('项目目录', '  /fixtures/project  '); await click('创建员工')
   const submitted = request.mock.calls.find(args => args[1]?.operation === 'employees.create')![1]
   expect(submitted.input).toMatchObject({ templateId: 'researcher', templateVersion: '1', skillIds: ['global-skill'], sourceIds: [], defaultProjectDirectory: '/fixtures/project', connectionId: 'api' })
   expect(submitted.input).not.toHaveProperty('directoryGrants')

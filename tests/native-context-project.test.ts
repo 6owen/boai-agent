@@ -81,7 +81,7 @@ describe.each(['codex', 'claude'] as const)('%s 项目与交接协议', runtime 
     } finally { await store.close() }
   })
 
-  it('keeps an existing native session when only the employee default project changes and still rebuilds on execution configuration changes', async () => {
+  it('uses a new native session at the updated employee project and rebuilds on execution configuration changes', async () => {
     const f = await nativeFixture(runtime, cleanup), firstCwd = await project(), secondCwd = await project()
     const first = await f.wait(await f.send('NATIVE_CWD'))
     const input = (agent: DigitalAgent, directory: string, instructions = agent.instructions) => ({ id: agent.id, expectedConfigVersion: agent.configVersion, name: agent.name, role: agent.role, instructions, color: agent.color, connectionId: agent.connectionId, modelId: agent.modelId, executionBackend: agent.executionBackend, nativeOptions: agent.nativeOptions, skillIds: agent.skillIds, knowledgeIds: agent.knowledgeIds, allowCommands: agent.allowCommands, active: agent.active, defaultProjectDirectory: directory })
@@ -89,17 +89,17 @@ describe.each(['codex', 'claude'] as const)('%s 项目与交接协议', runtime 
     expect(changed.projectDefaultChanges).toBe(1)
     const second = await f.wait(await f.send('NATIVE_CWD'))
     expect(second.runs.at(-1)?.status, second.runs.at(-1)?.error).toBe('completed')
-    expect(second.runs.at(-1)?.backend?.sessionId).toBe(first.runs[0].backend?.sessionId)
+    expect(second.runs.at(-1)?.backend?.sessionId).not.toBe(first.runs[0].backend?.sessionId)
     const changedAgain = await f.service.handle('saveAgent', input(changed, secondCwd)) as DigitalAgent
     expect(changedAgain.projectDefaultChanges).toBe(2)
     const third = await f.wait(await f.send('NATIVE_CWD'))
-    expect(third.runs.at(-1)?.backend?.sessionId).toBe(first.runs[0].backend?.sessionId)
+    expect(third.runs.at(-1)?.backend?.sessionId).not.toBe(second.runs.at(-1)?.backend?.sessionId)
     await f.service.handle('saveAgent', input(changedAgain, secondCwd, '增加一个明确的执行规则'))
     const configured = await f.wait(await f.send('NATIVE_CWD'))
     expect(configured.runs.at(-1)?.status, configured.runs.at(-1)?.error).toBe('completed')
-    expect(configured.runs.at(-1)?.backend?.sessionId).not.toBe(first.runs[0].backend?.sessionId)
-    const calls = (await readFile(join(f.root, 'agents', f.agent.id, 'workspace/sessions', f.chat.id, 'work/native-thread-requests.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line))
-    expect(calls.map(call => call.method)).toEqual(['thread/start', 'thread/resume', 'thread/resume', 'thread/start'])
+    expect(configured.runs.at(-1)?.backend?.sessionId).not.toBe(third.runs.at(-1)?.backend?.sessionId)
+    const calls = (await Promise.all([join(f.root, 'agents', f.agent.id, 'workspace/sessions', f.chat.id, 'work'), firstCwd, secondCwd].map(directory => readFile(join(directory, 'native-thread-requests.jsonl'), 'utf8')))).flatMap(text => text.trim().split('\n').map(line => JSON.parse(line)))
+    expect(calls.map(call => call.method)).toEqual(['thread/start', 'thread/start', 'thread/start', 'thread/start'])
   })
 
   it('keeps unknown native work fenced after restart and refuses a new project as a retry escape', async () => {

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 2026-11-09夹具移除已退役的通讯录工作区回调；本轮按用户要求未运行测试。
  * [OUTPUT]: 定时任务分类沿新显示名定位，保留原员工计划及切换检查。
  * [OUTPUT]: 高级设置按用户要求保留五项分类，暂不显示执行详情与任务入口。
  * [OUTPUT]: 2026-10-29 文件浏览器入口/预览/启停与目录撤权回归，原终端生命周期断言保持。
@@ -95,9 +96,9 @@ async function fixture(fullPage = false) {
     const reload = async () => { refresh(); setData(snapshot()) }
     return h(GuardContext.Provider, { value: guard }, fullPage ? h(ContactsPage, {
       api, snapshot: data, selected: { kind: 'agent', id: agent.id }, active: true, sidebarShown: true, divider: null, generation: epoch, busy: false,
-      refresh: reload, onAgentSaved, onGroupSaved() {}, onMessage, onSelect() {}, onCreate() {}, onCreateTeam() {}, onWorkspace() {}, onConversation() {},
+      refresh: reload, onAgentSaved, onGroupSaved() {}, onMessage, onSelect() {}, onCreate() {}, onCreateTeam() {}, onConversation() {},
     }) : h(EmployeeProfile, { key: epoch, api, snapshot: data, agent: data.agents[0]!, active: true, busy: false,
-      refresh: reload, onAgentSaved, onMessage, advancedOpen: advanced, onAdvancedChange: setAdvanced, onWorkspace() {}, onConversation() {}, onOpenAgent() {},
+      refresh: reload, onAgentSaved, onMessage, advancedOpen: advanced, onAdvancedChange: setAdvanced, onConversation() {}, onOpenAgent() {},
     }), confirmation)
   }
   await act(async () => root.render(h(Page)))
@@ -498,7 +499,7 @@ test('the contact context menu opens advanced settings after discarding the inli
     const { guard, confirmation } = useEditorGuard({ reset: () => setGeneration(value => value + 1) })
     return h(GuardContext.Provider, { value: guard }, h(ContactsPage, {
       api, snapshot: snapshot(), selected: { kind: 'agent', id: agent.id }, active: true, sidebarShown: true, divider: null, generation, busy: false,
-      onSelect() {}, onCreate() {}, onCreateTeam() {}, onMessage() {}, refresh: async () => {}, onAgentSaved() {}, onGroupSaved() {}, onWorkspace() {}, onConversation() {},
+      onSelect() {}, onCreate() {}, onCreateTeam() {}, onMessage() {}, refresh: async () => {}, onAgentSaved() {}, onGroupSaved() {}, onConversation() {},
     }), confirmation)
   }
   await act(async () => root.render(h(Page)))

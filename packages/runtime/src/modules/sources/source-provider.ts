@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-09 员工项目运行许可纳入本地源与MCP进程目录隔离。
  * [OUTPUT]: 2026-10-20 Alma技能接线：普通聊天按需读绑定技能/有来源记忆，独立任务协议与MCP媒体保持实际授权；本轮证据归独立Agent架构§11.21。
  * [OUTPUT]: 2026-10-19 Jina 固定搜索/Reader HTTP 适配接入共用传输，密钥仍在宿主。
  * [OUTPUT]: API本地源逐操作申请/复核目录；托管stdio MCP从启动起使用员工目录策略，原生及本人配置测试保持原路径。
@@ -165,7 +166,7 @@ export async function openSourceSession(source: DataSource, credential: string, 
   if (['NODE_OPTIONS', 'NODE_CHANNEL_FD', 'NODE_CHANNEL_SERIALIZATION_MODE', 'ELECTRON_RUN_AS_NODE'].some(key => key in env)) throw new Error('MCP 环境变量包含保留的宿主变量')
   const processEnvironment = { ...getDefaultEnvironment(), ...env }
   let processCommand = config.transport === 'stdio' ? { command: config.command, args: config.args } : undefined
-  if (processCommand && directories && directories.agent.directoryGrants !== undefined && directories.agent.executionPermission !== 'full-access') {
+  if (processCommand && directories && directories.enabled && directories.agent.executionPermission !== 'full-access') {
     // Only the configured executable is an implicit program input. Scripts,
     // dependencies and cache folders still need explicit employee/run grants.
     let executable: string | undefined

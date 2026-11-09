@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 详情标签栏加号悬停/键盘聚焦沿窗口标签相同的surface-detail和frame-border，默认透明边框保持尺寸。
  * [OUTPUT]: 基础Soft皮肤迁入@boai/ui，保留其后应用覆盖的原级联顺序。
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [OUTPUT]: NumberField 步进按钮间的竖线复用全局细分割线 token。
@@ -31,6 +32,8 @@
 .toolbar-detail { position:relative }
 .toolbar-detail::before { content:"";position:absolute;left:0;top:50%;width:1px;height:16px;background:var(--border);transform:translateY(-50%);pointer-events:none }
 .global-toolbar .detail-tab [data-slot=button] { width:24px;height:24px;flex-shrink:0 }
+.global-toolbar .detail-add-button { border:1px solid transparent;border-radius:10px;corner-shape:round }
+.global-toolbar .detail-add-button.soft-button-ghost:is(:hover,:focus-visible):not(:disabled):not([aria-disabled=true]) { background:var(--surface-detail);border-color:var(--frame-border);box-shadow:none }
 .detail-panel[hidden],.detail-content[hidden] { display:none }
 
 /* Group selection shares the conversation list's row metrics and surface. */
