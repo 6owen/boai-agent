@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 显式cwd仅固定当前消息；后续空闲主聊沿员工默认，原生权限回归读取该轮实际工作区日志并核对外部目录零追加。
  * [OUTPUT]: WT3显式项目目录跨后续消息保持；原生权限回归在当前项目核对真实新调用。
  * [OUTPUT]: 双待决输入先等待原请求真实消息就绪，保持原数量/目标/接续断言及总期限；追加延迟第二员工和缺问题终态负例。
  * [OUTPUT]: API状态配置进入真实Codex/Claude协议，动态情绪不重建线程，功能开关更新工具才重建。
@@ -52,7 +53,7 @@ it('keeps its native session across emotion changes but refreshes tools when per
  expect((await requests()).map(item => item.method)).toEqual(['thread/start', 'thread/resume', 'thread/start'])
 })
 
-it('preserves native configuration and explicit cwd when old API directory metadata exists', async () => {
+it('preserves native permissions and explicit message cwd, then follows the employee default', async () => {
  const f=await setup(), outside=await realpath(await mkdtemp(join(tmpdir(),'boai-native-cwd-')))
  disposals.push(()=>rm(outside,{recursive:true,force:true}))
  await f.service.close()
@@ -84,9 +85,14 @@ it('preserves native configuration and explicit cwd when old API directory metad
  }
  const inheritedAgain=await f.service.handle('saveAgent',{...definition,expectedConfigVersion:saved.configVersion,expectedDirectoryRevision:1,executionPermission:'full-access',nativeOptions:{...inherited.nativeOptions,useNativePermissions:true}}) as DigitalAgent
  expect(inheritedAgain.executionPermission).toBeUndefined();expect(inheritedAgain.nativeOptions).toEqual({useNativePermissions:true})
- const third=await f.wait(await f.send('重新沿用本机配置'))
+ const thirdMessage=await f.send('重新沿用本机配置')
+ expect(thirdMessage.projectSelection).toMatchObject({mode:'managed'})
+ expect(thirdMessage.workingDirectory).toBeUndefined()
+ const third=await f.wait(thirdMessage)
  expect(third.runs.every(run=>run.status==='completed'),JSON.stringify(third.runs)).toBe(true)
- const inheritedCalls=(await readFile(join(outside,'native-thread-requests.jsonl'),'utf8')).trim().split('\n').map(line=>JSON.parse(line))
+ const inheritedCalls=(await readFile(join(f.root,'agents',f.agent.id,'workspace','sessions',f.chat.id,'work','native-thread-requests.jsonl'),'utf8')).trim().split('\n').map(line=>JSON.parse(line))
+ expect(inheritedCalls).toHaveLength(2)
+ expect((await readFile(join(outside,'native-thread-requests.jsonl'),'utf8')).trim().split('\n')).toHaveLength(1)
  const last=inheritedCalls.at(-1).params
  if(runtime==='codex'){expect(last).not.toHaveProperty('sandbox');expect(last).not.toHaveProperty('approvalPolicy')}
  else {expect(last.argv).not.toContain('--permission-mode');expect(last.argv).not.toContain('--dangerously-skip-permissions');expect(last.argv).not.toContain('--settings')}
