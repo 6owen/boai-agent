@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /*
  * [INPUT]: 生产会话文件面板、CatalogSearch、真实行菜单及受控分页/来源回执。
- * [OUTPUT]: 仅文件名检索且不继承旧筛选；列表/表格保持来源身份、刷新DOM/滚动及迟到隔离。
+ * [OUTPUT]: 仅文件名检索且不继承旧筛选；列表/表格含打开方式菜单，保持来源身份、刷新DOM/滚动及迟到隔离。
  * [POS]: 后台组件回归，不启动Electron或外部模型。
  * [PROTOCOL]: 修改同步Header与tests/.folder.md。
  */
@@ -75,7 +75,7 @@ it.each(['list', 'table'])('keeps the original file identity for %s preview and 
   await act(async () => button(file.name).click())
   expect(props.onPreview).toHaveBeenCalledWith(file, expect.any(Function))
   await menu()
-  expect(Array.from(document.querySelectorAll('[role=menuitem]')).map(item => item.textContent)).toEqual(['预览', '查看原消息', '添加到知识资料'])
+  expect(Array.from(document.querySelectorAll('[role=menuitem]')).map(item => item.textContent)).toEqual(['预览', '打开方式', '查看原消息', '添加到知识资料'])
   await action('查看原消息')
   expect(request.mock.calls.filter(([method]) => method === 'resolveConversationFileTarget')).toEqual([['resolveConversationFileTarget', { conversationId: file.conversationId, kind: file.kind, id: file.id, contentHash: file.contentHash, revision: file.revision }]])
   expect(props.onNavigate).toHaveBeenCalledWith(target, expect.any(Function))

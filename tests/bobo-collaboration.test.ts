@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: bobo忽略遗留默认项目并使用工作区，普通员工的默认项目仍随新群公告固定。
  * [OUTPUT]: 组织发布期间核心默认目录单改保留原持有者和启动身份，职责变化仍原子阻止员工/群/公告发布。
  * [OUTPUT]: 组织新群与真实公告持久化各成员的独立项目快照，默认未设的新员工沿明确受管模式。
  * [OUTPUT]: Runtime API v2私有模型来源按清单/握手/会话三次核对，Pi与OpenCode明确网关接入；v1原生来源兼容，凭据不进入公共配置或回执。
@@ -94,7 +95,7 @@ test('same source freezes one request and altered plan cannot duplicate employee
   expect(await f.service.lookup({ requestId: 'bobo-collaboration:source' })).toMatchObject({ id: results[0].id, status: 'committed' })
 })
 
-test('a newly organized group and its work source freeze each members own default project', async () => {
+test('a newly organized group freezes employee defaults while bobo ignores legacy project settings', async () => {
   const f = await fixture(), core = (await f.store.get<DigitalAgent>('agents', 'bobo'))!
   const projectRoot = await mkdtemp(join(tmpdir(), 'boai-org-project-')); cleanups.push(() => rm(projectRoot, { recursive: true, force: true }))
   const coreProject = join(projectRoot, 'core-project'), writerProject = join(projectRoot, 'writer-project')
@@ -107,7 +108,7 @@ test('a newly organized group and its work source freeze each members own defaul
   expect(receipt.status).toBe('committed')
   const group = (await f.store.get<Conversation>('conversations', receipt.groupConversationId!))!
   expect(group.projectSelections).toEqual({
-    bobo: { mode: 'directory', directory: coreProject, requestedDirectory: coreProject, source: 'employee-default', revision: 1 },
+    bobo: { mode: 'managed', source: 'managed', revision: 1 },
     writer: { mode: 'directory', directory: writerProject, requestedDirectory: writerProject, source: 'employee-default', revision: 1 },
     [receipt.agents[0].id]: { mode: 'managed', source: 'managed', revision: 1 },
   })
