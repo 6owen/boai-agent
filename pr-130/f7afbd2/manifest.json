@@ -1,0 +1,67 @@
+{
+  "summary": "diff 将右侧工作区开始页改为「工具」标题下的任务、终端、知识资料、浏览器四张卡片，并把入口移到详情标签栏末尾的加号与 500ms Tooltip；同时在员工资料新增项目目录分区、把任务移入会话菜单，并为会话文件和知识资料的文件行增加「打开方式」外部打开子菜单。",
+  "scenes": [
+    {
+      "title": "工具开始页与标签栏加号",
+      "shots": [
+        {
+          "file": "01-conversation-menu.png",
+          "caption": "会话标题菜单中的任务与会话文件项",
+          "width": 1280
+        },
+        {
+          "file": "02-detail-add-tooltip.png",
+          "caption": "悬停加号后出现的提示",
+          "width": 1280
+        },
+        {
+          "file": "03-workspace-tools-home.png",
+          "caption": "工具开始页的四张工具卡片",
+          "width": 1280
+        }
+      ]
+    },
+    {
+      "title": "文件行的打开方式子菜单",
+      "shots": [
+        {
+          "file": "04-file-row-menu.png",
+          "caption": "会话文件行的操作菜单",
+          "width": 1280
+        },
+        {
+          "file": "05-file-open-submenu.png",
+          "caption": "「打开方式」子菜单",
+          "width": 1280
+        }
+      ]
+    },
+    {
+      "title": "员工资料的项目目录分区",
+      "shots": [
+        {
+          "file": "06-employee-project-directory.png",
+          "caption": "研究员资料中的项目目录分区",
+          "width": 1280
+        },
+        {
+          "file": "07-project-directory-tooltip.png",
+          "caption": "工作目录的路径提示",
+          "width": 1280
+        }
+      ]
+    }
+  ],
+  "video": "preview.mp4",
+  "poster": "poster.png",
+  "errors": [
+    "工具开始页与标签栏加号 · click button[aria-label=\"会话操作\"]: nothing visible matches button[aria-label=\"会话操作\"] (0 in the page)",
+    "员工资料的项目目录分区 · scroll : nothing visible matches [aria-label^=\"项目目录：\"] (0 in the page)"
+  ],
+  "leak": false,
+  "skipped": null,
+  "mismatch": "",
+  "unseen": "系统目录选择器、外部应用打开与文件管理器定位依赖原生主进程及本机已安装应用，录制中只展开菜单、不实际打开；Main 新增的 openFile 接口需重载主进程后才生效。composer 与任务详情移除目录选择、通讯录移除工作区按钮属于移除项，画面只能间接体现。",
+  "interactive": true,
+  "pages": 2
+}
