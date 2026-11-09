@@ -1,15 +1,17 @@
 /*
+ * [OUTPUT]: 2026-11-09 bobo默认使用工作区，普通员工沿配置生成项目快照。
  * [INPUT]: Saved project choices, employee defaults and legacy message locations.
  * [OUTPUT]: Fixed work-location snapshots and admission-time path identity checks.
  * [POS]: Shared directory semantics for task, chat and native/API execution.
  * [PROTOCOL]: Update Header and owning .folder.md on change.
  */
 import path from 'node:path'
+import { isCoreAgent } from '@boai/shared/domain/core-agent'
 import type { DigitalAgent, ProjectChoice, ProjectSelection } from '@boai/shared/domain'
 import { workingDirectoryTarget } from './working-directory'
 
-export function initialProjectSelection(agent?: Pick<DigitalAgent, 'defaultProjectDirectory' | 'defaultProjectDirectoryRequested'>): ProjectSelection {
-  return agent?.defaultProjectDirectory
+export function initialProjectSelection(agent?: Pick<DigitalAgent, 'defaultProjectDirectory' | 'defaultProjectDirectoryRequested'> & Partial<Pick<DigitalAgent, 'id' | 'systemRole'>>): ProjectSelection {
+  return agent?.defaultProjectDirectory && !isCoreAgent({ id: agent.id ?? '', systemRole: agent.systemRole })
     ? { mode: 'directory', directory: agent.defaultProjectDirectory, requestedDirectory: agent.defaultProjectDirectoryRequested ?? agent.defaultProjectDirectory, source: 'employee-default', revision: 1 }
     : { mode: 'managed', source: 'managed', revision: 1 }
 }

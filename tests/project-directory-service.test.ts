@@ -150,7 +150,7 @@ it.each(['main', 'task'] as const)('changing only the employee default preserves
     } finally { await runtime.dispose() }
   }
   if (task) await f.sendTask(room)
-  else await f.send(room)
+  else await f.service.handle('sendMessage', { conversationId: room.id, content: '保持在途项目', mentionIds: [], requestId: 'active-main-default' })
   await vi.waitFor(() => expect(ready).toBe(true), { timeout: 10000 })
   const running = f.contexts[0]
   const updated = await f.service.handle('saveAgent', agentInput(agent, { defaultProjectDirectory: f.b })) as DigitalAgent
@@ -198,16 +198,17 @@ it('keeps group members project snapshots independent and reconciles added and r
   const f = await fixture(), departed = await f.createAgent({ name: '离组员工', defaultProjectDirectory: f.a }), retained = await f.createAgent({ name: '保留员工', defaultProjectDirectory: f.b }), added = await f.createAgent({ name: '新增员工', defaultProjectDirectory: f.b })
   const room = await f.service.handle('createConversation', { kind: 'group', title: '独立项目群', agentIds: [departed.id, retained.id] }) as Conversation
   expect(room.projectSelections).toMatchObject({ [departed.id]: { directory: f.a }, [retained.id]: { directory: f.b } })
-  await f.service.handle('saveAgent', agentInput(retained, { defaultProjectDirectory: f.a }))
+  const nextProject = join(f.root, '新项目'); await mkdir(nextProject)
+  await f.service.handle('saveAgent', agentInput(retained, { defaultProjectDirectory: nextProject }))
   await rm(f.a, { recursive: true })
   const accepted = await f.service.handle('sendMessage', { conversationId: room.id, content: '请保留员工检查自己的项目', mentionIds: [retained.id], requestId: 'group-independent-project' }) as Message
-  expect(accepted.projectSelections?.[retained.id]?.directory).toBe(f.b)
+  expect(accepted.projectSelections?.[retained.id]?.directory).toBe(nextProject)
   await f.idle(room)
-  expect(f.contexts.filter(ctx => ctx.agent.id === retained.id).map(ctx => ctx.workingDirectory)).toEqual([f.b])
+  expect(f.contexts.filter(ctx => ctx.agent.id === retained.id).map(ctx => ctx.workingDirectory)).toEqual([nextProject])
   expect(f.contexts.some(ctx => ctx.agent.id === departed.id)).toBe(false)
   const changed = await f.service.handle('createConversation', { id: room.id, expectedConfigVersion: room.configVersion, kind: 'group', title: room.title, agentIds: [retained.id, added.id] }) as Conversation
   expect(Object.keys(changed.projectSelections!).sort()).toEqual([retained.id, added.id].sort())
-  expect(changed.projectSelections?.[retained.id]).toEqual(room.projectSelections?.[retained.id])
+  expect(changed.projectSelections?.[retained.id]).toEqual(accepted.projectSelections?.[retained.id])
   expect(changed.projectSelections?.[added.id]).toMatchObject({ directory: f.b, source: 'employee-default', revision: 1 })
   expect((await detail(f.service, changed)).conversation.projectSelections).toEqual(changed.projectSelections)
 })
@@ -278,26 +279,68 @@ it('uses the saved project for real API relative file writes, command cwd and pu
   expect((await snapshot(f.service)).agents.find(value => value.id === agent.id)?.directoryGrants).toEqual(agent.directoryGrants)
 }, 20000)
 
-it('selecting a project does not grant an API employee access and refusal never redirects the read', async () => {
+it('an extra directory still requires authorization and refusal never redirects the read', async () => {
   const f = await fixture(), agent = await f.createAgent({ defaultProjectDirectory: f.a, executionPermission: 'ask', directoryGrants: [] }), room = await f.createRoom(agent)
-  await writeFile(join(f.a, 'private.txt'), '需要批准的项目资料')
+  await writeFile(join(f.b, 'private.txt'), '需要批准的项目资料')
   f.control.task = true
   let received: unknown
   f.control.run = async ctx => {
     const runtime = await createTaskRuntime(ctx)
-    try { received = await runtime.tools.read_file.execute!({ path: 'private.txt' }, { requestContext: new RequestContext(), observe: noopObserve }) }
+    try { received = await runtime.tools.read_file.execute!({ path: join(f.b, 'private.txt') }, { requestContext: new RequestContext(), observe: noopObserve }) }
     finally { await runtime.dispose() }
   }
   await f.send(room)
   await vi.waitFor(async () => expect((await snapshot(f.service)).approvals).toHaveLength(1), { timeout: 10000 })
   expect(received).toBeUndefined()
   const before = await snapshot(f.service), approval = before.approvals[0]
-  expect(approval.directory).toMatchObject({ directory: f.a, access: 'read-only' })
+  expect(approval.directory).toMatchObject({ directory: f.b, access: 'read-only' })
   expect(before.agents.find(value => value.id === agent.id)?.directoryGrants).toEqual([])
   await f.service.handle('approve', { id: approval.id, approved: false })
   await f.idle(room)
   expect(received).toBeUndefined()
   expect((await detail(f.service, room)).conversation.projectSelection?.directory).toBe(f.a)
   expect((await snapshot(f.service)).agents.find(value => value.id === agent.id)?.directoryGrants).toEqual([])
-  expect(await readFile(join(f.a, 'private.txt'), 'utf8')).toBe('需要批准的项目资料')
+  expect(await readFile(join(f.b, 'private.txt'), 'utf8')).toBe('需要批准的项目资料')
+})
+
+
+it('ordinary owner messages follow employee configuration while accepted tasks keep their original project', async () => {
+  const f = await fixture(), agent = await f.createAgent(), room = await f.createRoom(agent)
+  const first = await f.service.handle('sendMessage', { conversationId: room.id, content: '工作区', mentionIds: [], requestId: 'default-workspace' }) as Message
+  await f.idle(room); expect(first.workingDirectory).toBeUndefined()
+  const updated = await f.service.handle('saveAgent', agentInput(agent, { defaultProjectDirectory: f.a })) as DigitalAgent
+  const second = await f.service.handle('sendMessage', { conversationId: room.id, content: '项目目录', mentionIds: [], requestId: 'default-project' }) as Message
+  await vi.waitFor(() => expect(f.contexts).toHaveLength(2)); await f.idle(room)
+  expect(second.workingDirectory).toBe(f.a); expect(f.contexts.at(-1)?.workingDirectory).toBe(f.a)
+  await f.service.handle('saveAgent', agentInput(updated, { defaultProjectDirectory: '' }))
+  const third = await f.service.handle('sendMessage', { conversationId: room.id, content: '回到工作区', mentionIds: [], requestId: 'default-cleared' }) as Message
+  await vi.waitFor(() => expect(f.contexts).toHaveLength(3)); await f.idle(room)
+  expect(third.workingDirectory).toBeUndefined(); expect(f.contexts.at(-1)?.workingDirectory).toBeUndefined()
+  expect((await detail(f.service, room)).messages.find(message => message.id === second.id)?.workingDirectory).toBe(f.a)
+})
+
+it('configured project reads need no extra grant, including legacy employees without a grants list', async () => {
+  const f = await fixture(), agent = await f.createAgent({ defaultProjectDirectory: f.a, executionPermission: 'ask' }), room = await f.createRoom(agent)
+  await writeFile(join(f.a, 'project.txt'), '项目资料')
+  let received: unknown
+  f.control.run = async ctx => {
+    const runtime = await createTaskRuntime(ctx)
+    try { received = await runtime.tools.read_file.execute!({ path: 'project.txt' }, { requestContext: new RequestContext(), observe: noopObserve }) }
+    finally { await runtime.dispose() }
+  }
+  await f.send(room); await f.idle(room)
+  expect(received).toBeDefined(); expect(received).not.toHaveProperty('error')
+  expect(JSON.stringify(received)).toContain('项目资料')
+  expect((await snapshot(f.service)).approvals).toHaveLength(0)
+  expect((await snapshot(f.service)).agents.find(value => value.id === agent.id)?.directoryGrants).toBeUndefined()
+})
+
+it('bobo ignores an old or newly supplied project default and starts in its default workspace', async () => {
+  const f = await fixture(), core = (await snapshot(f.service)).agents.find(agent => agent.systemRole === 'core')!
+  const saved = await f.service.handle('saveAgent', agentInput(core, { defaultProjectDirectory: f.a })) as DigitalAgent
+  expect(saved.defaultProjectDirectory).toBeUndefined()
+  const room = await f.service.handle('startCoreConversation', { requestId: 'core-default-directory', content: '默认目录工作' }) as Conversation
+  expect(room.projectSelection?.mode).toBe('managed')
+  await f.idle(room)
+  expect(f.contexts.at(-1)?.workingDirectory).toBeUndefined()
 })

@@ -1,6 +1,6 @@
 /*
  * [OUTPUT]: 2026-11-07 画板沿原插件快照提供启用门禁；未取得配置前不挂载编辑器。
- * [OUTPUT]: 2026-10-29 工作区界面暂时隐藏，原插件配置/文件与宿主能力保持。
+ * [OUTPUT]: 2026-11-09 恢复工作区开始页与文件目录入口，顶栏展开不再被旧隐藏开关静默拦截；插件仍沿已保存配置。
  * [INPUT]: 主进程插件配置快照/事件、明确启停与实际视图生命周期。
  * [OUTPUT]: 单一配置订阅、单次CAS写入及失联只读复核；激活状态独立于启用配置。
  * [POS]: renderer插件状态；正文不进入store，恢复不执行插件业务。
@@ -12,9 +12,9 @@ import { PluginUsage } from '@boai/shared/plugins/usage'
 import { pluginAvailability, type PluginSettingsSnapshot } from '@boai/shared/plugins/types'
 import { getDesktopClient } from '@/services/request/desktop-client'
 
-// Temporarily hidden at the user's request; restore this UI gate when workspace work resumes.
-// Do not migrate plugin preferences or disable the employee's actual execution workspace.
-export const WORKSPACE_UI_ENABLED = false
+// The workspace UI is available again; plugin preferences still control file browsing.
+// Opening the start page does not create a terminal or change execution permissions.
+export const WORKSPACE_UI_ENABLED = true
 
 export const pluginUsage = new PluginUsage(applicationPlugins.map(plugin => plugin.id))
 export const usePlugins = create<{ settings: PluginSettingsSnapshot; ready: boolean; busy?: string; error: string }>(() => ({ settings: { revision: 0, disabledIds: [] }, ready: false, error: '' }))

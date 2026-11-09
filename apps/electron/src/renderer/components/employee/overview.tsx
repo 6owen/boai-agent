@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-09项目目录查看/编辑共用同一左右行，完整路径单行截断，原版本化草稿保持。
  * [OUTPUT]: 2026-10-19 员工详情显示独立网页检索 Card，与数据源资源 Card 分开。
  * [OUTPUT]: 同一能力配置后台核对时保留已读内容，仅姓名/描述/头像变更不清空闪动；连接/权限/资源变化立即隔离旧状态，读取按原版本成组提交。
  * [OUTPUT]: 资料页展示与基础配置一致的模型与权限/工作方式/资源分区，标题右侧切换就地编辑；高级功能独立弹窗，不重复展示定时任务。
@@ -32,6 +33,7 @@ import { SkillContent } from '@/pages/library/skill-content'
 import { employeeCapabilityFacts } from './overview-state'
 import { EmployeeWebSearchCard } from './web-search'
 import { EmployeeResourceCards } from './resource-cards'
+import { ProjectDirectorySection } from './project-directory-picker'
 
 export function EmployeeOverview({ api, snapshot, agent, active, editing }: { api: DesktopApi; snapshot: Snapshot; agent: DigitalAgent; active: boolean; editing: EmployeeSectionEditing }) {
   const [checked, setChecked] = useState<{ key: string; agent: DigitalAgent; home: AgentHome | null; launchStatus?: LaunchProfileStatus } | null>(null)
@@ -102,6 +104,7 @@ export function EmployeeOverview({ api, snapshot, agent, active, editing }: { ap
       </ContactProfileCard>
     </ContactProfileSection>}
     {editing.section === 'instructions' ? editing.render('instructions') : <ContactProfileSection title="工作方式" actions={<EmployeeSectionEdit editing={editing} section="instructions" label="工作方式" />}><ContactProfileCard label="工作方式内容" fields={false}><p className="contact-card-copy">{agent.instructions || <span className="text-muted-foreground">未设置</span>}</p></ContactProfileCard></ContactProfileSection>}
+    {!core && (editing.section === 'project' ? editing.render('project') : <ProjectDirectorySection api={api} directory={agent.defaultProjectDirectory} actions={<EmployeeSectionEdit editing={editing} section="project" label="项目目录" />} />)}
     {resourcesAvailable && <EmployeeWebSearchCard api={api} agent={agent} active={active} editing={editing} />}
     {resourcesAvailable && <EmployeeResourceCards api={api} agent={agent} snapshot={snapshot} active={active} revision={revision} capabilities={capabilities} onOpenSkill={setSkillId} editing={editing} />}
     <Dialog open={active && Boolean(selectedSkill)} onOpenChange={value => { if (!value) setSkillId(undefined) }}><DialogContent className="sm:max-w-[620px]"><DialogHeader><DialogTitle>{selectedSkill?.name} · 来源与说明</DialogTitle><DialogDescription>当前员工已绑定的受管副本。说明可读取不表示执行依赖或交付效果已验证。</DialogDescription></DialogHeader><div className="max-h-[60vh] overflow-y-auto">{active && selectedSkill && <SkillContent key={selectedSkill.id} api={api} resourceId={selectedSkill.id} />}</div></DialogContent></Dialog>

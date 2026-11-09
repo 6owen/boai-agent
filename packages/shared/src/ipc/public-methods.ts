@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 公开本人按材料/成果/知识身份外部打开入口，Main沿原业务读取核源和固定应用清单处理。
  * [OUTPUT]: Canvas宿主和主窗口私有方法不进入公共准入。
  * [OUTPUT]: 本人诊断解释窄首发入口公开，固定正文与受理边界由原服务核对。
  * [OUTPUT]: 项目选择沿本人版本化会话入口。
@@ -324,6 +325,7 @@ const methods = {
   previewWorkspaceFile: true,
   listWorkspaceApplications: true,
   openWorkspacePath: true,
+  openFile: true,
   workspaceTerminal: true,
   snapshot: true,
   startCoreConversation: true,

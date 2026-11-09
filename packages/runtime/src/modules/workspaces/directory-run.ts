@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-09 配置项目在本运行内授权，额外目录单独申请；完整权限、只读上限、链接核验与关闭清理保持。
  * [OUTPUT]: 独立目录申请在审批队列内核对现存目录；文件/缺失目标不得扩大为父目录授权。
  * [OUTPUT]: 原生命令与精确文件/目录整组批准，保留原生身份；原生权限不依赖API宿主命令开关。
  * [OUTPUT]: 命令多目录先整组核对/批准再一次接续；与文件访问共用队列及本运行授权，拒绝整组不生效。
@@ -20,12 +21,17 @@ export class RunDirectoryAccess {
   constructor(readonly agent: DigitalAgent, private options: {
     signal: AbortSignal
     protectedRoots?: string[]
+    projectDirectory?: string
     validate(): Promise<void>
     assertTarget(target: DirectoryTarget): Promise<void>
     request(request: DirectoryAccessRequest, target: DirectoryTarget, signal: AbortSignal): Promise<boolean>
     requestCommand?(command: string, cwd: string, requests: DirectoryAccessRequest[], targets: DirectoryTarget[], signal: AbortSignal, origin?: DirectoryNativeOrigin): Promise<boolean>
   }) {}
-  get temporaryGrants() { return structuredClone(this.temporary) }
+  get enabled() { return this.agent.directoryGrants !== undefined || this.agent.executionPermission === 'full-access' || !!this.options.projectDirectory }
+  private grants(temporary = this.temporary): DirectoryGrant[] {
+    return this.closed.signal.aborted ? [] : [...temporary, ...(this.options.projectDirectory ? [{ path: this.options.projectDirectory, access: 'read-write' as const }] : [])]
+  }
+  get temporaryGrants() { return structuredClone(this.grants()) }
   get protectedRoots() { return [...this.options.protectedRoots ?? []] }
   close() { this.closed.abort(new Error('原目录授权运行已结束')); this.temporary = [] }
   acceptPersistent(agent: DigitalAgent) {
@@ -36,7 +42,7 @@ export class RunDirectoryAccess {
   /** Read-only authorization check, for filtered directory listing inside the host serializer. */
   async allows(value: string, operation: DirectoryOperation) {
     this.options.signal.throwIfAborted(); this.closed.signal.throwIfAborted()
-    const decision = await decideDirectoryAccess(this.agent, value, operation, this.temporary)
+    const decision = await decideDirectoryAccess(this.agent, value, operation, this.grants())
     if (decision.kind !== 'allowed') return false
     await this.options.assertTarget(decision.target)
     return true
@@ -54,7 +60,7 @@ export class RunDirectoryAccess {
       if (!origin && !this.agent.allowCommands || this.agent.executionPermission === 'read-only') throw new Error('当前员工不允许执行命令')
       const targets: DirectoryTarget[] = [], pending = new Map<string, { request: DirectoryAccessRequest; target: DirectoryTarget }>()
       for (const directory of directoryGrantsSchema.parse(directories)) {
-        const decision = await decideDirectoryAccess(this.agent, directory.path, directory.access === 'read-write' ? 'write' : 'read', this.temporary)
+        const decision = await decideDirectoryAccess(this.agent, directory.path, directory.access === 'read-write' ? 'write' : 'read', this.grants())
         if (decision.kind === 'legacy') throw new Error('请先为此员工配置目录授权，再申请命令目录')
         if (decision.kind === 'denied') throw new Error(decision.reason)
         const target = decision.target
@@ -79,7 +85,7 @@ export class RunDirectoryAccess {
         if (existing) { if (request.access === 'read-write') existing.access = request.access }
         else temporary.push({ path: request.directory, access: request.access })
       }
-      for (const target of targets) if ((await decideDirectoryAccess(this.agent, target.path, target.operation, temporary)).kind !== 'allowed') throw new Error('目录批准已失效，命令未执行')
+      for (const target of targets) if ((await decideDirectoryAccess(this.agent, target.path, target.operation, this.grants(temporary))).kind !== 'allowed') throw new Error('目录批准已失效，命令未执行')
       signal.throwIfAborted(); this.temporary = temporary
       return targets
     })
@@ -96,7 +102,7 @@ export class RunDirectoryAccess {
     const signal = AbortSignal.any([this.options.signal, this.closed.signal, ...(localSignal ? [localSignal] : [])])
     const actual = this.pending.then(async () => {
       signal.throwIfAborted(); await this.options.validate()
-      let decision = await decideDirectoryAccess(this.agent, value, operation, this.temporary)
+      let decision = await decideDirectoryAccess(this.agent, value, operation, this.grants())
       if (decision.kind === 'legacy') throw new Error('该员工尚未配置业务目录授权，请使用原受管文件路径或先配置授权目录')
       if (decision.kind === 'denied') throw new Error(decision.reason)
       if (directoryOnly && (!decision.target.exists || decision.target.path !== decision.target.directory)) throw new Error('请选择实际存在的绝对目录')
@@ -111,7 +117,7 @@ export class RunDirectoryAccess {
         const existing = this.temporary.find(grant => grant.path === target.directory)
         if (existing) { if (access === 'read-write') existing.access = access }
         else this.temporary.push({ path: target.directory, access })
-        decision = await decideDirectoryAccess(this.agent, target.path, operation, this.temporary)
+        decision = await decideDirectoryAccess(this.agent, target.path, operation, this.grants())
         if (decision.kind !== 'allowed') throw new Error('目录批准已失效，操作未执行')
       }
       signal.throwIfAborted()

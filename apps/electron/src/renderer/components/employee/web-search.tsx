@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 检索方式和全局默认的已保存内容显示在卡片右侧，标签保持左侧。
  * [INPUT]: Independent search settings and versioned employee preference draft.
  * [OUTPUT]: Employee retrieval method display/editing only; title tooltip directs service configuration to global settings, with no employee allow-list or configuration button.
  * [POS]: Employee capability UI; does not alter business data-source bindings.
@@ -19,8 +20,8 @@ export function EmployeeWebSearchCard({ api, agent, active, editing }: { api: De
   const { settings, failed, refresh } = useWebSearchSettings(api, active)
   if (editing.section === 'web-search') return editing.render('web-search')
   return <ContactProfileSection title="网页检索" hint={employeeWebSearchHint} actions={<EmployeeSectionEdit editing={editing} section="web-search" label="网页检索" />}>
-    <ContactProfileCard label="网页检索配置"><ContactProfileRow icon={<Search />} title="检索方式">{webSearchLabel(agent.webSearch, settings)}</ContactProfileRow>
-      {(!agent.webSearch || agent.webSearch.mode === 'auto') && <ContactProfileRow icon={<Search />} title="全局默认">{settings ? webSearchLabel(settings.default, settings) : '读取中…'}</ContactProfileRow>}
+    <ContactProfileCard label="网页检索配置"><ContactProfileRow icon={<Search />} title="检索方式"><span className="block text-right">{webSearchLabel(agent.webSearch, settings)}</span></ContactProfileRow>
+      {(!agent.webSearch || agent.webSearch.mode === 'auto') && <ContactProfileRow icon={<Search />} title="全局默认"><span className="block text-right">{settings ? webSearchLabel(settings.default, settings) : '读取中…'}</span></ContactProfileRow>}
     </ContactProfileCard>
     {failed && <Button type="button" variant="ghost" size="sm" onClick={() => void refresh()}>重新读取</Button>}
   </ContactProfileSection>

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-09 运行项目许可可启用旧员工目录策略，真实路径和只读上限保持。
  * [OUTPUT]: 移动创建目标与删除目录项不跟随叶子链接；审批保存原目录项身份，替换后拒绝旧批准。
  * [INPUT]: 当前员工目录配置、访问目的与真实文件系统元信息；不读取文件正文或执行命令。
  * [OUTPUT]: 规范目录保存、真实目标解析、员工只读上限和可追加授权判定；符号链接按实际目标授权，删除链接按目录项处理。
@@ -95,7 +96,7 @@ async function permits(grant: DirectoryGrant, target: string, write: boolean) {
 export async function decideDirectoryAccess(agent: Pick<DigitalAgent, 'executionPermission' | 'directoryGrants'>, value: string, operation: DirectoryOperation, runGrants: readonly DirectoryGrant[] = []): Promise<DirectoryDecision> {
   const write = operation !== 'read'
   if (write && agent.executionPermission === 'read-only') return { kind: 'denied', reason: '当前员工为只读权限，目录授权不能允许写入或删除' }
-  if (agent.directoryGrants === undefined && agent.executionPermission !== 'full-access') return { kind: 'legacy' }
+  if (agent.directoryGrants === undefined && agent.executionPermission !== 'full-access' && !runGrants.length) return { kind: 'legacy' }
   const target = await resolveDirectoryTarget(value, operation)
   if (agent.executionPermission === 'full-access') return { kind: 'allowed', target, source: 'full-access' }
   for (const grant of agent.directoryGrants ?? []) if (await permits(grant, target.path, write)) return { kind: 'allowed', target, source: 'employee' }

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-09 bobo首发不配置项目目录，使用默认工作区。
  * [OUTPUT]: 首发显示员工默认项目并沿原配置版本编辑；不提前创建空会话，首次发送由宿主固定目录。
  * [OUTPUT]: 2026-11-06 首发继续隐藏文件上传，不再向工具栏传递已移除的目录菜单回调。
  * [OUTPUT]: 2026-10-27 默认关闭语音插件接线、可信主窗口与原草稿/生命周期边界。
@@ -10,8 +11,6 @@
  * [POS]: 会话页首发入口；持久化及请求回执由 AppShell 和宿主负责。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { useState } from 'react'
-import { ProjectDirectoryPicker } from '@/components/employee/project-directory-picker'
 import type { Snapshot, DigitalAgent } from '@boai/shared/domain'
 import type { DesktopApi } from '@boai/shared/ipc'
 import { CORE_AGENT_DEFAULT_NAME, isCoreAgent } from '@boai/shared/domain/core-agent'
@@ -27,23 +26,18 @@ interface Props {
   onSend(): void; onSettings(agent?: DigitalAgent): void; onConfigureAgent(agent: DigitalAgent): void; onChangeAgent(agent: DigitalAgent, patch: ComposerAgentPatch): Promise<ComposerAgentSaveResult>
 }
 export function CoreChatStart({ pageActive, api, snapshot, draft, setDraft, busy, configurationLocked, onSend, onSettings, onConfigureAgent, onChangeAgent }: Props) {
-  const [projectBusy, setProjectBusy] = useState(false)
   const members = snapshot.agents.filter(isCoreAgent)
   const core = members[0]
   const name = core?.name ?? CORE_AGENT_DEFAULT_NAME
   const noConversation = () => undefined
-  const send = () => { if (!projectBusy) onSend() }
   return <div className="chat-panel core-chat-start">
     <header className="chat-header"><div className="chat-heading"><h2 className="chat-title">{name}</h2></div></header>
     <div className="messages"><div className="chat-empty">
       <div className="avatar-stack">{core && <Avatar name={core.name} seed={core.id} avatar={core.avatar} color={core.color} />}</div>
       <h2>与{name}聊一聊</h2><p>从日常交流到具体工作，都可以直接提出。</p>
     </div></div>
-    <div className="composer-wrap"><PromptBar pageActive={pageActive} api={api} resources={snapshot.resources} draft={draft} setDraft={setDraft} members={members} group={false} external={false} conversationReady={false} placeholder="说说你想完成什么，/ 查看命令…" onSend={send} onActivity={noConversation} onOpenWorkspace={noConversation}>
-      {(openMenu, menu, reference, voice) => <ComposerToolbar project={core ? <ProjectDirectoryPicker api={api} active={pageActive} directory={core.defaultProjectDirectory} label="默认项目目录" disabled={busy || configurationLocked || !pageActive} onBusyChange={setProjectBusy} onChange={async directory => {
-        const result = await onChangeAgent(core, { defaultProjectDirectory: directory ?? '' })
-        if (result.status !== 'saved') throw new Error(result.status === 'unconfirmed' ? '保存结果尚未确认，请在员工设置核对默认项目目录。' : '当前无法保存项目目录，请等待进行中的操作结束。')
-      }} /> : undefined} voice={voice.controls} api={api} members={members} snapshot={snapshot} group={false} external={false} conversationReady={false} busy={busy || projectBusy} active={false} canSend={!projectBusy && Boolean(draftContent(draft))} configurationLocked={configurationLocked} mentionsVisible={menu === 'at'} referencesVisible={menu === 'dollar'} onReferences={() => openMenu('dollar')} commandsVisible={menu === 'slash'} sourcesDisabled={Boolean(draft.submission)} onSelectSource={reference} onMentions={() => openMenu('at')} onCommands={() => openMenu('slash')} onSettings={onSettings} onConfigureAgent={onConfigureAgent} onChangeAgent={onChangeAgent} onSend={voice.onSend} />}
+    <div className="composer-wrap"><PromptBar pageActive={pageActive} api={api} resources={snapshot.resources} draft={draft} setDraft={setDraft} members={members} group={false} external={false} conversationReady={false} placeholder="说说你想完成什么，/ 查看命令…" onSend={onSend} onActivity={noConversation} onOpenWorkspace={noConversation}>
+      {(openMenu, menu, reference, voice) => <ComposerToolbar voice={voice.controls} api={api} members={members} snapshot={snapshot} group={false} external={false} conversationReady={false} busy={busy} active={false} canSend={Boolean(draftContent(draft))} configurationLocked={configurationLocked} mentionsVisible={menu === 'at'} referencesVisible={menu === 'dollar'} onReferences={() => openMenu('dollar')} commandsVisible={menu === 'slash'} sourcesDisabled={Boolean(draft.submission)} onSelectSource={reference} onMentions={() => openMenu('at')} onCommands={() => openMenu('slash')} onSettings={onSettings} onConfigureAgent={onConfigureAgent} onChangeAgent={onChangeAgent} onSend={voice.onSend} />}
     </PromptBar></div>
   </div>
 }

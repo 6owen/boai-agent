@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 项目目录控件纳入员工select/input统一尺寸，使用网页检索同一select-trigger皮肤；移除rem高度差异。
+ * [OUTPUT]: 项目目录标题、字段标签与图标沿系统默认样式，目录控件沿网页检索同一皮肤。
  * [OUTPUT]: 员工编辑分区的空态沿技能卡12px/14px留白，数据源未绑定时保持完整卡片高度。
  * [OUTPUT]: 定时任务侧栏移除检索框及其专属间距，保留管理弹窗与执行记录搜索。
  * [OUTPUT]: 定时任务标题Tooltip、标签分组侧栏与复用系统滑动层的透明筛选Tab。
@@ -513,7 +515,7 @@
 .employee-form-fields.connection-fields .connection-model-row { padding-top:4px }
 .employee-form-fields .connection-nested-line { width:12px;height:12px }
 .employee-form-sections .contact-section>[data-slot=textarea] { width:100%;max-height:200px;overflow-y:auto;resize:vertical }
-.employee-form-card :is([data-slot=input],[data-slot=input-group],[data-slot=select-trigger]) { min-height:32px;height:32px;font-size:var(--text-ui-secondary) }
+.employee-form-card :is([data-slot=input],[data-slot=input-group],[data-slot=select-trigger],.project-directory-control) { min-height:32px;height:32px;font-size:var(--text-ui-secondary) }
 .employee-identity-editor { display:flex;flex-direction:row;align-items:center;gap:14px;width:100% }
 .employee-form-layout .employee-identity-editor { padding:8px 0 }
 .employee-form-footer,.employee-form-layout .editor-footer { display:flex;position:static;align-items:center;justify-content:flex-end;flex-wrap:wrap;flex-basis:auto;gap:8px;height:auto;min-height:0;padding:20px 0 0;border:0;background:transparent }

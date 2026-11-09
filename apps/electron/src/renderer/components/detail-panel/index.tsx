@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 标签栏加号打开工具开始页，悬停沿左侧窗口标签同款表面/细边框；独立于标签选择/排序且窄面板保留操作。
  * [OUTPUT]: 详情标签显露仅局部调整列表scrollLeft；ResizeObserver按帧合并，避免展开时逐帧滚动祖先布局。
  * [OUTPUT]: 详情容器共用 PanelResize 展开/收起；拖动时关闭面板及顶栏过渡，原隐藏停读状态立即生效。
  * [OUTPUT]: 系统右侧容器统一持久宽度/窗口约束、拖拽/键盘复位；内容类型和主页面不参与尺寸选择，隐藏仍保留容器。
@@ -12,14 +13,16 @@
 import { Button } from '@/components/ui/button'
 import { useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react'
 import { cn } from 'cn'
-import { X } from '@/components/icons'
+import { Plus, X } from '@/components/icons'
 import { TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { PanelResize } from '@/components/common/panel-resize'
 
-export function DetailPanelHeader({ tabs, activeKey, onClose, onMove, focusOnMount = true }: {
+export function DetailPanelHeader({ tabs, activeKey, onClose, onMove, onOpenStart, focusOnMount = true }: {
   tabs: { key: string; label: string; description: string; icon: ReactNode; dirty: boolean }[]
   activeKey: string | null; onClose(key: string): void; focusOnMount?: boolean
   onMove(key: string, targetKey: string, placement: 'before' | 'after'): void
+  onOpenStart?(): void
 }) {
   const [dragged, setDragged] = useState<string | null>(null)
   const [drop, setDrop] = useState<{ key: string; placement: 'before' | 'after' } | null>(null)
@@ -54,7 +57,7 @@ export function DetailPanelHeader({ tabs, activeKey, onClose, onMove, focusOnMou
     return () => { resize.disconnect(); cancelAnimationFrame(frame) }
   }, [activeKey])
   return <div className="detail-header">
-    <TabsList variant="window" aria-label="详情标签" ref={list} onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDrop(null) }}>
+    <TabsList variant="window" className="min-w-0 shrink" aria-label="详情标签" ref={list} onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDrop(null) }}>
       {tabs.map(tab => <div className={cn('detail-tab min-w-[min(90px,100%)] max-w-[min(180px,100%)]', { dragging: dragged === tab.key })} key={tab.key} data-selected={activeKey === tab.key} data-drop={drop?.key === tab.key ? drop.placement : undefined}
         onDragOver={event => {
           const next = locate(event, tab.key); setDrop(next)
@@ -76,6 +79,7 @@ export function DetailPanelHeader({ tabs, activeKey, onClose, onMove, focusOnMou
         <Button variant="ghost" size="icon-sm" onClick={() => onClose(tab.key)} aria-label={activeKey === tab.key ? '关闭详情' : `关闭 ${tab.label}`} title={`关闭 ${tab.label}`}><X /></Button>
       </div>)}
     </TabsList>
+    {onOpenStart && <Tooltip><TooltipTrigger delay={500} render={<Button className="detail-add-button titlebar-no-drag shrink-0" variant="ghost" size="icon-sm" aria-label="打开工具开始页" onClick={onOpenStart} />}><Plus /></TooltipTrigger><TooltipContent side="bottom">打开工具开始页</TooltipContent></Tooltip>}
   </div>
 }
 

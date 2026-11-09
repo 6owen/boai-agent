@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-09 项目已启用目录策略的员工可申请额外目录，完全访问直接核验。
  * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
  * [INPUT]: 当前员工/运行的目录授权、取消信号与原宿主审批。
  * [OUTPUT]: API与本机共用的独立目录申请；不认领Work、不改变cwd或授予命令执行权。
@@ -13,7 +14,7 @@ const schema = z.object({ directory: z.string(), access: z.enum(['read-only', 'r
 export function createDirectoryRequestOperation(context: Pick<EngineContext, 'agent' | 'directoryAccess' | 'signal'>) {
   if (context.agent.executionBackend && context.agent.executionBackend.kind !== 'mastra-model') return undefined
   const access = context.directoryAccess
-  if (!access || context.agent.directoryGrants === undefined && context.agent.executionPermission !== 'full-access') return undefined
+  if (!access?.enabled) return undefined
   return {
     name: 'request_directory',
     description: 'Request this employee’s read-only or read-write access to an existing absolute business directory before using it. The owner chooses run-only or persistent permission; full-access employees are authorized automatically. A refusal is final; never retry previous command side effects. This does not change cwd, create Work, or grant command execution permission.',

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-09 完全访问无需添加业务目录授权；保留可选常用目录与原文件。
  * [INPUT]: 员工目录草稿、系统选择器与现有表单保存/忙时守卫。
  * [OUTPUT]: 多目录只读/读写配置及确认移除；添加/按需申请由宿主放在标题右侧，选择只更新原草稿，错误统一Sonner。
  * [POS]: 员工独立工作区的目录授权字段；真实保存和版本检查复用AgentEditor。
@@ -29,10 +30,10 @@ export function DirectoryGrantFields({ api, value, disabled, fullAccess, onChang
     finally { setChoosing(false); onBusyChange(false) }
   }
   const actions = <div className="flex flex-wrap items-center gap-2"><Button type="button" variant="ghost" size="sm" disabled={disabled || choosing || (value?.length ?? 0) >= 32} onClick={() => { void choose() }}><Plus />添加授权目录</Button>
-    {value === undefined && <Button type="button" variant="ghost" size="sm" disabled={disabled || choosing} onClick={() => onChange([])}>启用按需申请</Button>}
+    {value === undefined && !fullAccess && <Button type="button" variant="ghost" size="sm" disabled={disabled || choosing} onClick={() => onChange([])}>启用按需申请</Button>}
   </div>
   const content = <div className="flex min-w-0 flex-col gap-3">
-    <p className="field-hint">{fullAccess ? '其他目录自动授权。这里可以保留常用的业务目录。' : '已授权目录按许可访问，其他目录在使用前申请。群聊中仍使用这位员工自己的授权。'}</p>
+    <p className="field-hint">{fullAccess ? '完全访问无需添加授权目录，可直接访问其他业务目录。' : '已授权目录按许可访问，其他目录在使用前申请。群聊中仍使用这位员工自己的授权。'}</p>
     <div className="soft-divide-y">{(value ?? []).map(grant => <DirectoryGrantRow key={grant.path} grant={grant} disabled={disabled || choosing}
       onChange={access => onChange((value ?? []).map(item => item.path === grant.path ? { ...item, access } : item))}
       onRemove={() => onChange((value ?? []).filter(item => item.path !== grant.path))} />)}</div>

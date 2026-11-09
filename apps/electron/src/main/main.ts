@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 会话文件/知识资料按业务身份核源后复用系统应用打开；材料临时命名副本随退出清理且保留外改。
  * [OUTPUT]: 可信主窗口允许私有画板UI请求；公共CLI与canvasHost权限边界保持。
  * [OUTPUT]: WT1聚合独立画板宿主；可信主窗、私有工具、人工保存屏障和退出清理共用原生命周期。
  * [OUTPUT]: 项目目录选择使用独立主窗系统对话框，不添加目录授权；路径由运行时保存时规范核验。
@@ -84,6 +85,7 @@ import { AutomationNotificationConsumer } from './automation-notifications'
 import { BrowserService } from './browser/browser-service'
 import { WorkspaceFileService } from './workspace-files'
 import { WorkspaceApplications, openLocalResource } from './workspace-applications'
+import { FileOpening } from './file-opening'
 import { readMacApplicationIcon } from './workspace-application-icon'
 import { WorkspaceTerminalService } from './workspace-terminal/service'
 import type { WorkspaceFileScope } from '@boai/shared/ipc/workspace-files'
@@ -273,6 +275,7 @@ const workspaceApplications = new WorkspaceApplications({
     return icon.isEmpty() ? undefined : icon.toDataURL()
   },
 })
+const fileOpening = new FileOpening(<K extends Method>(method: K, input: Methods[K]['input']) => requestRuntime(method, input) as Promise<Methods[K]['output']>, workspaceApplications, dataPath)
 const resolveUserWorkspace = async (scope: WorkspaceFileScope) => {
   if (quitting) throw new Error('应用正在退出')
   return await requestRuntime('getWorkspaceRoot', scope) as string
@@ -767,6 +770,7 @@ function registerIpc() {
     if (method === 'previewWorkspaceFile') return workspaceFiles.preview(input)
     if (method === 'listWorkspaceFiles') return workspaceFiles.list(input)
     if (method === 'openWorkspacePath') return workspaceFiles.open(input)
+    if (method === 'openFile') return fileOpening.open(input)
     if (method === 'listWorkspaceApplications') {
       const value = z.object({ refresh: z.boolean().optional() }).strict().parse(input)
       return workspaceApplications.list(value.refresh)
@@ -1015,7 +1019,7 @@ else {
     // A timeout may terminate the worker, but never counts as Chromium action exit.
     const cliExit = (cliStarting ?? Promise.resolve()).then(async () => { await cli?.close(); cli = undefined })
     const userTerminalExit = userTerminals.close()
-    void Promise.all([runtimeExit, cliExit, iconExit, userTerminalExit, canvas.close(), voice.close(), browsers.shutdown(), materialSources.close(), desktopSettings.flush(), shortcutSettings.flush(), pluginSettings.flush(), cliInstaller.flush()]).then(async () => {
+    void Promise.all([runtimeExit, cliExit, iconExit, userTerminalExit, canvas.close(), voice.close(), browsers.shutdown(), materialSources.close(), fileOpening.close(), desktopSettings.flush(), shortcutSettings.flush(), pluginSettings.flush(), cliInstaller.flush()]).then(async () => {
       diagnostics.record('app-quit'); desktopLifecycle.stop(); background.destroy(); quitApproved = true
       if (appUpdates.finishQuit()) {
         // Native installation must terminate this process; a stalled handoff is a failure.

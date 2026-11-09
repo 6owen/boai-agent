@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 右侧面板开关使用500ms延迟Tooltip，按显隐状态提示展开/收起；原点击和无障碍状态保持。
  * [OUTPUT]: 详情标签区域常驻并随面板共用宽度过渡；开关按钮独立固定在右侧，跨页显隐不经过零宽裁切。
  * [INPUT]: 页面标题、导航历史、分栏显示状态、独立浏览器入口、详情标签及统一 UI 基础组件。
  * [OUTPUT]: 44px 原生标题栏导航、详情标签之前依次排列的浏览器/检索按钮、与右侧拖拽线对齐的内容宽度多标签栏及无选中底色的面板开关。
@@ -6,6 +7,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { ReactNode } from 'react'
 import { ArrowLeft, ArrowRight, PanelLeft, PanelRight } from '@/components/icons'
 
@@ -27,7 +29,7 @@ export function DesktopToolbar(props: Props) {
     {props.browserAction && <div className="ml-auto flex shrink-0 items-center">{props.browserAction}</div>}
     <div className="toolbar-right toolbar-detail" data-open={props.detailOpen} data-disabled={props.detailDisabled} style={props.browserAction ? { marginLeft: 0 } : undefined}>
       <div className="toolbar-detail-tabs t-resize">{props.detailHeader}</div>
-      {!props.detailDisabled && <Button className="toolbar-detail-toggle" variant="ghost" size="icon-sm" aria-label="显示或隐藏详情" aria-pressed={props.detailOpen} onClick={props.onToggleDetails}>{props.detailOpen ? <PanelLeft /> : <PanelRight />}</Button>}
+      {!props.detailDisabled && <Tooltip><TooltipTrigger delay={500} render={<Button className="toolbar-detail-toggle" variant="ghost" size="icon-sm" aria-label="显示或隐藏详情" aria-pressed={props.detailOpen} onClick={props.onToggleDetails} />}>{props.detailOpen ? <PanelLeft /> : <PanelRight />}</TooltipTrigger><TooltipContent side="bottom">{props.detailOpen ? '收起面板' : '展开面板'}</TooltipContent></Tooltip>}
     </div>
   </header>
 }

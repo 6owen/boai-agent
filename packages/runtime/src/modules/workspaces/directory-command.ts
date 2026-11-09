@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-09 运行项目许可纳入命令子进程范围；完全访问仍按宿主权限执行。
  * [OUTPUT]: 命令与BOAI托管MCP共用同一macOS文件策略；直接程序启动保留原argv，不经shell重新解释。
  * [OUTPUT]: 受限命令中业务目录许可排除BOAI受管存储，明确当前运行内部输入独立允许；完整权限保持宿主原行为。
  * [INPUT]: 员工当前目录许可与明确的受管输入/运行目录；安装平台与真实路径元信息。
@@ -28,8 +29,8 @@ async function pathRule(value: string, canonicalRequired = false) {
 
 /** Directory constraints are opt-in; full-access still runs with the user's actual OS permissions. */
 export async function employeeCommandScope(agent: Pick<DigitalAgent, 'directoryGrants' | 'executionPermission'>, internal: CommandDirectoryScope, temporary: readonly DirectoryGrant[] = [], protectedRoots: string[] = []): Promise<CommandDirectoryScope | undefined> {
-  if (agent.directoryGrants === undefined || agent.executionPermission === 'full-access') return undefined
-  const grants = [...agent.directoryGrants, ...temporary]
+  if (agent.directoryGrants === undefined && !temporary.length || agent.executionPermission === 'full-access') return undefined
+  const grants = [...agent.directoryGrants ?? [], ...temporary]
   for (const grant of grants) {
     if (await realpath(grant.path) !== grant.path || !(await stat(grant.path)).isDirectory()) throw new Error('已授权目录不可用或已变化，请重新核对目录')
   }

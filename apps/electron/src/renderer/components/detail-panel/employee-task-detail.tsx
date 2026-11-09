@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-09 任务详情不再提供项目切换；项目配置统一归员工，已有任务沿原目录续接。
  * [OUTPUT]: 任务属性显示独立项目目录，沿同会话CAS保存；执行中禁切换，保存回执更新原任务会话。
  * [OUTPUT]: 属性操作区按需读取诊断；显式让bobo解释沿稳定请求及原消息导航，不轮询或修复任务。
  * [OUTPUT]: 2026-11-04外部定位在任务Dialog内按原消息读取和滚动，复用既有任务会话。
@@ -29,7 +30,6 @@ import { useConversationWindow } from './use-conversation-window'
 import type { ChannelChatWindow } from './channels-tab'
 import { TraceTab } from './trace-tab'
 import { Pencil } from '@/components/icons'
-import { ConversationProjectPicker } from '@/components/employee/project-directory-picker'
 import { EmployeeTaskRequirements } from './employee-task-requirements'
 import { EmployeeTaskDiagnosis } from './employee-task-diagnosis'
 export { taskStatusLabels } from './employee-task-status'
@@ -70,8 +70,6 @@ export function EmployeeTaskDetail({ api, snapshot, id, occurrenceId, employeeId
     try { await operation(); setRevision(v => v + 1) } catch (error) { showErrorToast(errorText(error)); setRevision(v => v + 1) } finally { locked.current = false; setBusy(false) }
   }
   const task = record?.task, employee = snapshot.agents.find(a => a.id === employeeId), ongoing = record?.executions.occurrences.find(o => (AUTOMATION_ONGOING_STATUSES as readonly string[]).includes(o.status))
-  const projectRoom = window?.detail.conversation && (window.detail.conversation.projectSelection?.revision ?? 0) > (room?.projectSelection?.revision ?? 0) ? window.detail.conversation : room
-  const projectRunning = Boolean(ongoing || window?.detail.runs.some(run => ['queued', 'running', 'waiting_approval'].includes(run.status)))
   const status = (value: TrackedTaskStatus) => task && void act(() => api.request('updateEmployeeTask', { employeeId, id: task.id, expectedRevision: task.revision, status: value }))
   const start = () => task && void act(async () => {
     if (!startRequest.current) { const current = (await api.request('getEmployeeTask', { employeeId, id: task.id })).task; startRequest.current = { employeeId, id: task.id, expectedRevision: current.revision, requestId: crypto.randomUUID() } }
@@ -91,7 +89,6 @@ export function EmployeeTaskDetail({ api, snapshot, id, occurrenceId, employeeId
           <Separator />
           <dl className="m-0 grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-4 gap-y-3">
             <dt className="py-1 text-muted-foreground">状态</dt><dd className="m-0 min-w-0"><EmployeeTaskStatusPopover status={task.status} disabled={busy} onChange={status} /></dd>
-            {projectRoom && <><dt className="py-1 text-muted-foreground">项目目录</dt><dd className="m-0 min-w-0"><ConversationProjectPicker key={projectRoom.id} api={api} active={visible} conversation={projectRoom} disabled={busy || projectRunning || editingRequirements || !visible} onBusyChange={setBusy} onSaved={committed => { setRoom(committed); setRevision(value => value + 1) }} /></dd></>}
             <dt className="text-muted-foreground">负责人</dt><dd className="m-0 min-w-0 break-words">{employee?.name}</dd>
             <dt className="text-muted-foreground">创建时间</dt><dd className="m-0 min-w-0 break-words text-muted-foreground">{new Date(task.createdAt).toLocaleString('zh-CN')}</dd>
             <dt className="text-muted-foreground">更新时间</dt><dd className="m-0 min-w-0 break-words text-muted-foreground">{new Date(task.updatedAt).toLocaleString('zh-CN')}</dd>
