@@ -1,13 +1,13 @@
 /*
  * [OUTPUT]: 应用/开发编排外改使来源身份失效；部分构建清除旧全量资格且保留产物。
  * [INPUT]: 独立Git工作目录、源码/技能源和实际构建文件。
- * [OUTPUT]: 旧dist/外改拒绝；真实重复记录仅时间变化仍同字节，源码/输出/Node变化不相同。
+ * [OUTPUT]: 应用外改拒绝；顶层安装包不影响身份，其他同名/近似目录仍校验，保留路径拒绝链接/文件。
  * [POS]: 开发/CI产物身份的真实文件负例，不启动应用。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { execFileSync } from 'node:child_process'
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 // @ts-expect-error Plain Node ESM build helper intentionally has no declaration file.
@@ -35,6 +35,31 @@ it('构建后修改任一实际输出字节会失败', async () => {
   await recordBuildIdentity(await buildInputHash(root), root)
   await writeFile(join(root, 'dist/main.mjs'), 'export const wrong = true')
   await expect(verifyBuildIdentity(root)).rejects.toThrow(/字节已变化/)
+})
+it('安装包新增和更新不影响应用构建身份，应用文件外改仍失败', async () => {
+  const original = await recordBuildIdentity(await buildInputHash(root), root)
+  await mkdir(join(root, 'dist/releases/candidates/example/assets'), { recursive: true })
+  const asset = join(root, 'dist/releases/candidates/example/assets/app.zip')
+  await writeFile(asset, 'first installer')
+  expect(await verifyBuildIdentity(root)).toEqual(original)
+  await writeFile(asset, 'new installer bytes')
+  expect(await verifyBuildIdentity(root)).toEqual(original)
+  await writeFile(join(root, 'dist/main.mjs'), 'changed application')
+  await expect(verifyBuildIdentity(root)).rejects.toThrow(/字节已变化/)
+})
+it.each(['renderer/releases', 'releases-other'])('非保留目录 %s 的应用文件仍须校验', async directory => {
+  await mkdir(join(root, 'dist', directory), { recursive: true })
+  const file = join(root, 'dist', directory, 'asset')
+  await writeFile(file, 'original')
+  await recordBuildIdentity(await buildInputHash(root), root)
+  await writeFile(file, 'changed')
+  await expect(verifyBuildIdentity(root)).rejects.toThrow(/字节已变化/)
+})
+it.each(['file', 'symlink'])('保留的安装包目录被替换为 %s 时拒绝校验', async kind => {
+  await recordBuildIdentity(await buildInputHash(root), root)
+  if (kind === 'file') await writeFile(join(root, 'dist/releases'), 'unexpected app bytes')
+  else await symlink('main.mjs', join(root, 'dist/releases'))
+  await expect(verifyBuildIdentity(root)).rejects.toThrow(/实际安装包目录/)
 })
 it('技能源在构建期间变化不能登记构建完成', async () => {
   const initial = await buildInputHash(root)

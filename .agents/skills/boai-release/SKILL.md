@@ -3,6 +3,7 @@ name: boai-release
 description: BOAI macOS本机发版与安装版更新流程。用于升版本、准备安装包、发布GitHub Release，或查询下载和自动更新方式；复用bumpp与现有Sparkle发布脚本。
 ---
 <!--
+[OUTPUT]: 2026-11-10安装包统一到dist/releases，命令保持；.local保留候选控制/恢复记录，兼容旧资产，安装包不进入应用身份或包体。
 [OUTPUT]: 2026-11-10新增boai-agent-dev-skills统一入口，梳理实际dev/build/验证/打包/bumpp/tag/Release/Git/worktree命令；无参数release:build仍属未实现方案。
 [INPUT]: 用户本次发布范围、干净源码、main Test及本机更新配置。
 [OUTPUT]: 按授权完成版本准备、候选或正式Release，并准确报告下载及安装状态。
@@ -67,6 +68,8 @@ pnpm release:publish "更新目录" "冒烟目录"
 pnpm release:build --version X.Y.Z --sha 完整提交SHA
 pnpm release:smoke --candidate .local/release-candidates/实际候选ID
 ```
+
+新安装包在`dist/releases/candidates/<候选ID>/assets/`，更新资产在同一候选根目录的`updates/`，Electron暂存和上一版ZIP也归此候选产物目录。候选`candidate.json`、监督器、账本和日志仍在`.local/release-candidates/<候选ID>/`，上述冒烟参数保持；新记录通过`artifactDirectory`定位安装包，旧候选沿原路径兼容读取。`dist/`已被Git忽略，安装包不参与应用身份校验或包体；不要批量删除`.local`中的profile、归档和恢复记录。
 
 候选构建/冒烟不自动授予main发布资格。普通`pnpm dist:mac`不注入更新源，不能代替这条自动更新发布流程。
 

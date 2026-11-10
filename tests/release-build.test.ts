@@ -1,7 +1,7 @@
 /*
  * [OUTPUT]: 旧guard以实际JSON账本就绪为起点，提前退出携带stderr失败；发布拒绝/零构建断言保持。
  * [INPUT]: 原构建配置、个人候选身份和临时真实文件/链接。
- * [OUTPUT]: 原配置/身份拒绝、实际链式链接外逃与旧guard未退出负例；不降低候选排他边界。
+ * [OUTPUT]: 原配置保留/安装包排除、新旧产物路径及越界拒绝、实际链接与旧guard排他负例。
  * [OUTPUT]: 临时CLI复用真实workspace构建解析并提供登记版本协议输入，Node22工程测试进入旧进程守卫。
  * [POS]: 候选构建合同；不实际打包、不运行GUI或发布资产。
  * [PROTOCOL]: 修改同步Header与tests/.folder.md。
@@ -15,6 +15,8 @@ import { join, resolve, relative } from 'node:path'
 import { drainPendingProcesses } from '../scripts/development/recovery'
 // @ts-expect-error Node candidate builder has no declaration file.
 import { personalMacConfiguration, assertPersonalBundle, releaseFile, bundleInventory, drainReleaseCandidates } from '../scripts/release-build.mjs'
+// @ts-expect-error Plain Node build/release paths have no declaration file.
+import { candidateArtifactDirectory, releaseArtifactDirectory, withoutReleaseArtifacts, releaseFileExclusions } from '../scripts/build-output-paths.mjs'
 const sha = 'a'.repeat(40), version = '0.2.4'
 const metadata = { version, build: { buildVersion: version, appId: 'com.boai.agent', productName: 'BoAI Agent', directories: { output: 'release', buildResources: 'resources' }, files: ['dist/**/*', 'package.json'], asar: true, asarUnpack: ['dist/native/**/*'], npmRebuild: false, protocols: [{ schemes: ['boai'] }], electronDist: 'node_modules/electron/dist', mac: { icon: 'resources/app-icons/default.icns', category: 'public.app-category.productivity', target: ['dmg'] }, extraMetadata: { existing: 'keep' }, linux: { target: ['AppImage'] } } }
 async function guardReady(child: ChildProcess, ledger: string) {
@@ -33,8 +35,26 @@ async function guardReady(child: ChildProcess, ledger: string) {
 
 it('个人配置只覆盖候选输出/签名/目标，保留原文件、原生助手、协议和现有metadata', () => {
   const before = structuredClone(metadata), config = personalMacConfiguration(metadata, { output: '/fixture/candidate', sha, version })
-  expect(config).toMatchObject({ files: metadata.build.files, asar: true, asarUnpack: metadata.build.asarUnpack, npmRebuild: false, protocols: metadata.build.protocols, electronDist: metadata.build.electronDist, directories: { output: '/fixture/candidate', buildResources: 'resources' }, mac: { icon: metadata.build.mac.icon, category: metadata.build.mac.category, target: ['dmg', 'zip'], identity: '-', hardenedRuntime: false, notarize: false }, extraMetadata: { existing: 'keep', boaiRelease: { sha, arch: 'arm64', applicationVersion: version, channel: 'personal-macos-arm64' } }, linux: metadata.build.linux })
+  expect(config).toMatchObject({ files: [...metadata.build.files, ...releaseFileExclusions], asar: true, asarUnpack: metadata.build.asarUnpack, npmRebuild: false, protocols: metadata.build.protocols, electronDist: metadata.build.electronDist, directories: { output: '/fixture/candidate', buildResources: 'resources' }, mac: { icon: metadata.build.mac.icon, category: metadata.build.mac.category, target: ['dmg', 'zip'], identity: '-', hardenedRuntime: false, notarize: false }, extraMetadata: { existing: 'keep', boaiRelease: { sha, arch: 'arm64', applicationVersion: version, channel: 'personal-macos-arm64' } }, linux: metadata.build.linux })
   expect(metadata).toEqual(before)
+})
+it('新候选使用同ID的dist安装包目录，旧记录保持可读，任意路径和其他ID拒绝', () => {
+  const root = resolve('/fixture/repo'), directory = join(root, '.local/release-candidates/current')
+  const artifactDirectory = join(root, 'dist/releases/candidates/current')
+  expect(releaseArtifactDirectory(root, directory)).toBe(artifactDirectory)
+  expect(candidateArtifactDirectory(root, directory, {})).toBe(directory)
+  expect(candidateArtifactDirectory(root, directory, { artifactDirectory })).toBe(artifactDirectory)
+  for (const path of [directory, join(root, 'dist/releases/candidates/other'), '../outside', null, undefined]) {
+    expect(() => candidateArtifactDirectory(root, directory, { artifactDirectory: path })).toThrow('不匹配')
+  }
+  expect(() => releaseArtifactDirectory(root, '/another/repo/.local/release-candidates/current')).toThrow('本worktree')
+})
+it('文件排除保留FileSet并且重复应用不增加规则或修改原配置', () => {
+  const files = ['dist/**/*', { from: 'resources', to: 'resources', filter: ['**/*'] }], original = structuredClone(files)
+  const excluded = withoutReleaseArtifacts(files)
+  expect(excluded).toEqual([...original, ...releaseFileExclusions])
+  expect(withoutReleaseArtifacts(excluded)).toEqual(excluded)
+  expect(files).toEqual(original)
 })
 it('词法在包内的链式链接实际指向包外时仍拒绝', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'boai-release-link-chain-')), app = join(directory, 'app')
@@ -63,7 +83,7 @@ it('实际构建CLI遇到旧活跃账本时，零dist/构建写入并保留失�
   try {
     await mkdir(join(directory, 'scripts/development'), { recursive: true }); await mkdir(join(directory, 'tests/evaluation'), { recursive: true })
     await symlink(join(source, 'node_modules'), join(directory, 'node_modules')); await writeFile(join(directory, 'package.json'), JSON.stringify({ ...metadata, type: 'module' }))
-    for (const name of ['release-build.mjs', 'release-check.mjs']) await copyFile(join(source, 'scripts', name), join(directory, 'scripts', name))
+    for (const name of ['release-build.mjs', 'release-check.mjs', 'build-output-paths.mjs']) await copyFile(join(source, 'scripts', name), join(directory, 'scripts', name))
     await writeFile(join(directory, 'scripts/workspace-packages.mjs'), `export {buildWorkspace} from ${JSON.stringify(join(source, 'scripts/workspace-packages.mjs'))};\n`)
     // Keep the actual Node binary and OS; fix only the release host's registered
     // version input so this protocol test reaches real process recovery on CI.

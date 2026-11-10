@@ -1,7 +1,7 @@
 /*
  * [OUTPUT]: apps/packages及开发/构建编排纳入身份；任何部分构建先清旧全量身份，只有完整产物可登记通过。
- * [INPUT]: 实际源码/资源/构建配置和完整dist字节。
- * [OUTPUT]: 构建前后同源/全dist哈希核对；跨次构建按输入/输出/Node比身份，记录时间不充当字节差异。
+ * [INPUT]: 实际源码/资源/构建配置和dist应用字节，顶层releases保留给安装包。
+ * [OUTPUT]: 构建前后同源/应用哈希核对；仅排除顶层安装包目录，异常文件/链接拒绝。
  * [POS]: 构建与开发测试共用的产物身份，不进入产品运行协议。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -9,6 +9,7 @@ import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
 import { readFile, readdir, readlink, rm, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
+import { releaseOutputName } from './build-output-paths.mjs'
 
 export async function buildInputHash(root = process.cwd()) {
   const paths = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', 'apps', 'resources', 'packages', 'scripts/build.mjs', 'scripts/build-*.mjs', 'scripts/dev.mjs', 'scripts/dev-*.mjs', 'scripts/workspace-packages.mjs', 'scripts/workspace-packages.d.mts', 'scripts/design-packages.mjs', 'package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', 'vite.config.ts', 'tailwind.config.ts', 'tsconfig.json'], { cwd: root, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }).split('\0').filter(path => path && !path.endsWith('/.folder.md')).sort()
@@ -23,6 +24,10 @@ async function outputHash(directory) {
     for (const entry of (await readdir(directory, { withFileTypes: true })).sort((a, b) => a.name.localeCompare(b.name, 'en'))) {
       const path = join(directory, entry.name), key = prefix + entry.name
       if (key === 'build-identity.json') continue
+      if (key === releaseOutputName) {
+        if (!entry.isDirectory() || entry.isSymbolicLink()) throw Error('dist/releases须为实际安装包目录')
+        continue
+      }
       if (entry.isDirectory()) await walk(path, key + '/')
       else { digest.update(key + '\0'); digest.update(entry.isSymbolicLink() ? await readlink(path) : await readFile(path)) }
     }

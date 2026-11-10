@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Clean current main release version, local update configuration and explicit --publish.
- * [OUTPUT]: Local build/smoke, previous-release delta, signed feed; optional final publication.
+ * [OUTPUT]: Local build/smoke, dist/releases packages/delta/feed; .local retains recovery records.
  * [POS]: One local release workflow; no cloud packaging or installed-app mutation.
  * [PROTOCOL]: Update Header and scripts/.folder.md when changed.
  */
@@ -11,6 +11,7 @@ import { checkRelease } from './release-check.mjs'
 import { buildRelease, releaseFile } from './release-build.mjs'
 import { command, gh, api, releaseRepository, prepareUpdates, readUpdateConfig } from './release-updates.mjs'
 import { publishRelease } from './release-publish.mjs'
+import { releaseArtifactDirectory } from './build-output-paths.mjs'
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
 export async function localRelease(publish = false) {
   const metadata = JSON.parse(await readFile(join(root, 'package.json'), 'utf8')), sha = command('git', ['rev-parse', 'HEAD'])
@@ -30,7 +31,7 @@ export async function localRelease(publish = false) {
   if (previous) {
     const release = api(`releases/${previous.id}`), asset = release.assets.find(row => row.name === `BoAI-Agent-${previous.tag_name.slice(1)}-macos-arm64.zip`)
     if (asset) {
-      const cache = join(directory, 'previous'); await mkdir(cache)
+      const cache = join(releaseArtifactDirectory(root, directory), 'previous'); await mkdir(cache)
       command('gh', ['release', 'download', previous.tag_name, '--repo', releaseRepository, '--pattern', asset.name, '--dir', cache], { timeout: 600_000 })
       previousZip = join(cache, asset.name)
       const info = await releaseFile(previousZip)

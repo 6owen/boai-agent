@@ -1,6 +1,6 @@
 <!--
 [INPUT]: 根package.json、scripts/dev*.mjs、build*.mjs、release*.mjs、Git脚本及现行workflow。
-[OUTPUT]: 2026-11-10核对的可执行入口、参数前提、产物和未实现简化；执行前仍以源码复核。
+[OUTPUT]: 当前命令、dist/releases安装包与.local记录分布、前提及未实现简化。
 [POS]: boai-agent-dev-skills的命令参考；仅供开发Agent，不随应用绑定给员工。
 [PROTOCOL]: 实现变化时同步本文、SKILL.md及涉及的开发/发布技能和.folder.md。
 -->
@@ -50,8 +50,8 @@ renderer由Vite处理热更新；`dev.mjs`在启动时构建宿主，没有主�
 | `pnpm build:cli:client` | CLI客户端闭包 |
 | `pnpm build:design-packages` | 设计基础包分发 |
 | `pnpm build:design` | 独立设计文档站 |
-| `pnpm package` | 普通electron-builder目录包；不是现行带更新源的发布入口 |
-| `pnpm dist:mac` | 普通electron-builder DMG，输出根release目录；不注入现行Sparkle更新源 |
+| `pnpm package` | 普通electron-builder目录包，输出dist/releases；不是现行带更新源的发布入口 |
+| `pnpm dist:mac` | 普通electron-builder DMG，输出dist/releases目录；不注入现行Sparkle更新源 |
 
 编译不会生成应用安装动作，也不自动替换 `/Applications/BoAI Agent.app`。需要自用DMG/ZIP时走下一节的release候选入口；普通dist:mac不能代替含更新器的候选/发布合同。
 
@@ -85,14 +85,24 @@ pnpm release:build --version "$boai_release_version" --sha "$boai_release_sha"
 
 首次构建机需要 `pnpm release:setup` 准备Sparkle配置；已有配置复用。配置位于 `~/Library/Application Support/BoAI Release/settings.json`，签名私钥在macOS钥匙串，不输出或复制进仓库。收到钥匙串授权提示时由用户处理，不能把超时当成功。
 
-成功会输出 `.local/release-candidates/<候选ID>/`，其中：
+成功会同时输出安装包位置和候选控制目录；现有命令及参数保持：
 
 ```text
-assets/BoAI-Agent-X.Y.Z-macos-arm64.dmg
-assets/BoAI-Agent-X.Y.Z-macos-arm64.zip
-assets/mac-arm64/BoAI Agent.app
-candidate.json
+dist/releases/candidates/<候选ID>/
+  assets/BoAI-Agent-X.Y.Z-macos-arm64.dmg
+  assets/BoAI-Agent-X.Y.Z-macos-arm64.zip
+  assets/mac-arm64/BoAI Agent.app
+  electron-dist/              # 打包暂存
+  updates/                    # release:local准备的签名更新资产
+  previous/                   # 正式流程下载的上一版ZIP
+.local/release-candidates/<候选ID>/
+  candidate.json              # artifactDirectory记录上面的产物位置
+  process-guard               # 进程监督器、账本与日志继续留在.local
 ```
+
+`dist/`（含安装包）已加入`.gitignore`；旧`release/`忽略规则继续保留。新Electron下载缓存位于`dist/releases/cache/electron/`。`pnpm build`仍只编译，不生成DMG/ZIP；安装包由原打包命令生成。构建身份与打包文件清单均排除顶层`dist/releases/`，其余应用文件保持校验。旧候选缺少`artifactDirectory`时继续使用原`.local/.../assets`及`updates`，不自动搬移旧文件。
+
+`.local`不能整目录删除：可能有用户开发profile、研究原件、worktree归档和仍需恢复的进程账本。只按实际内容清理已确认可再生成、无活跃进程且不需保留的文件。删除`dist/releases`会使依赖这些资产的新候选无法继续冒烟或发布；`.local`里的记录并不是安装包备份。
 
 候选构建包含源码/架构/签名及文件身份核对，不等同真实桌面使用。用户授权产物冒烟时执行 `pnpm release:smoke --candidate .local/release-candidates/<候选ID>`；它会运行固定ZIP8/DMG2隔离桌面场景，不能在用户“不跑E2E”的范围内静默启动。
 
