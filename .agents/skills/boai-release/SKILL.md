@@ -3,6 +3,7 @@ name: boai-release
 description: BOAI macOS本机发版与安装版更新流程。用于升版本、准备安装包、发布GitHub Release，或查询下载和自动更新方式；复用bumpp与现有Sparkle发布脚本。
 ---
 <!--
+[OUTPUT]: 2026-11-10候选构建/冒烟取消Node24.16.0登记限制，统一沿package.engines。
 [OUTPUT]: 2026-11-10安装包统一到dist/releases，命令保持；.local保留候选控制/恢复记录，兼容旧资产，安装包不进入应用身份或包体。
 [OUTPUT]: 2026-11-10新增boai-agent-dev-skills统一入口，梳理实际dev/build/验证/打包/bumpp/tag/Release/Git/worktree命令；release:build现默认读取package版本与当前HEAD，显式参数仍可覆盖。
 [INPUT]: 用户本次发布范围、干净源码、main Test及本机更新配置。
@@ -26,7 +27,7 @@ description: BOAI macOS本机发版与安装版更新流程。用于升版本、
 ## 开始与一次性配置
 
 1. 核对当前仓库、分支、status、remote、worktrees及最新Release。源码改动和PR交付沿[boai-dev-workflow](../boai-dev-workflow/SKILL.md)，不把未提交开发改动带入候选。确认`package.json`已有本技能列出的命令；缺失时先核对实现分支是否已合并，不使用旧`dist:mac`替代。
-2. 当前支持macOS Apple Silicon本机打包；普通开发沿package.json的Node要求，但release-build.mjs另行固定Node `v24.16.0`，先核对实际脚本和终端版本。按仓库锁定的pnpm安装依赖；发布需要GitHub CLI登录并具备`6owen/boai-agent`发布权限。现行更新源使用公开Release，不把GitHub凭据放入应用。
+2. 当前支持macOS Apple Silicon本机打包；Node统一沿package.json.engines（目前`>=22.13.0`），候选构建与冒烟不另锁某个Node版本。按仓库锁定的pnpm安装依赖；发布需要GitHub CLI登录并具备`6owen/boai-agent`发布权限。现行更新源使用公开Release，不把GitHub凭据放入应用。
 3. 发布机首次执行`pnpm release:setup`。它重编译Sparkle组件，将私钥保存在钥匙串账号`com.boai.agent.updates`，公钥/feed配置存于`~/Library/Application Support/BoAI Release/settings.json`。已有配置复用；不输出/导出私钥，不静默轮换密钥。
 
 应用沿用ad-hoc签名，无需付费Developer ID或公证；更新包仍使用独立Ed25519签名校验。正式发布使用生产feed和原公钥，不能使用loopback测试配置或临时密钥候选。

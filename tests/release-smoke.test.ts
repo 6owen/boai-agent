@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 临时CLI复用真实workspace构建解析并提供登记版本协议输入，Node22工程测试进入原恢复守卫。
+ * [OUTPUT]: 临时CLI复用真实workspace构建解析，使用实际Node版本进入原恢复守卫。
  * [INPUT]: 新dist/旧.local候选路径、目录/报告夹具及真实Node/native guard；无实际应用包资格。
  * [OUTPUT]: 固定8/2、完整逐启动profile负例、真实bundle被改拒绝及实际CLI旧活跃账本拒绝；不运行GUI/模型/挂载。
  * [POS]: 个人产物冒烟编排合同；实际包/挂载故障演练另留原件。
@@ -97,7 +97,7 @@ it.each([['controller', false], ['zip', false], ['controller', true], ['zip', tr
   const source = process.cwd(), directory = await realpath(await mkdtemp(join(tmpdir(), 'boai-release-smoke-cli-'))), scripts = join(directory, 'scripts')
   const candidate = join(directory, '.local/release-candidates/current'), old = join(directory, '.local/release-asset-runs/old'), guard = join(old, 'process-guard')
   const output = relocated ? join(directory, 'dist/releases/candidates/current') : candidate
-  const sha = 'a'.repeat(40), version = '0.2.4', fixedSource = { commit: sha, sourceHash: 'b'.repeat(64), dirty: false }, built = { version: 1, inputHash: 'c'.repeat(64), outputHash: 'd'.repeat(64), node: 'v24.16.0' }
+  const sha = 'a'.repeat(40), version = '0.2.4', fixedSource = { commit: sha, sourceHash: 'b'.repeat(64), dirty: false }, built = { version: 1, inputHash: 'c'.repeat(64), outputHash: 'd'.repeat(64), node: process.version }
   let child: ReturnType<typeof spawn> | undefined, ended: Promise<unknown> | undefined
   try {
     for (const path of [scripts, join(directory, 'tests/evaluation'), join(scripts, 'development'), join(directory, '.locks'), join(old, 'controller'), join(old, location, 'processes'), join(output, 'assets/mac-arm64/BoAI Agent.app')]) await mkdir(path, { recursive: true })
@@ -105,10 +105,7 @@ it.each([['controller', false], ['zip', false], ['controller', true], ['zip', tr
     for (const name of ['release-smoke.mjs', 'build-output-paths.mjs']) await copyFile(join(source, 'scripts', name), join(scripts, name))
     await mkdir(candidate, { recursive: true })
     await writeFile(join(scripts, 'workspace-packages.mjs'), `export {buildWorkspace} from ${JSON.stringify(join(source, 'scripts/workspace-packages.mjs'))};\n`)
-    // Keep the actual Node binary and OS; only supply the registered-version
-    // protocol input before exercising real SQLite leases and process recovery.
-    // This does not qualify an actual Node24 release smoke run.
-    await writeFile(join(scripts, 'registered-runtime.mjs'), `Object.defineProperty(process,'version',{value:'v24.16.0'});\n`)
+    // Exercise the real Node version; no registered-version override is needed.
     for (const name of ['release-build', 'release-check', 'release-archive', 'desktop-plan', 'desktop-evidence', 'local-ci']) await symlink(join(source, 'scripts', name + '.mjs'), join(scripts, name + '.mjs'))
     await writeFile(join(directory, 'package.json'), JSON.stringify({ type: 'module', version, build: { buildVersion: version, appId: 'com.boai.agent', productName: 'BoAI Agent' } }))
     // Explicit fixed source/build protocol fixtures; no GUI/build/asset operation
@@ -131,7 +128,7 @@ it.each([['controller', false], ['zip', false], ['controller', true], ['zip', tr
     const ready = await Promise.race([once(child.stdout!, 'data').then(([bytes]) => bytes.toString()), ended.then(() => { throw Error('guard在就绪前退出：' + guardError) })])
     expect(ready).toBe('ledger-ready')
     expect((await readdir(ledger)).some(name => name.endsWith('.json'))).toBe(true)
-    const cli = spawn(process.execPath, ['--import', './scripts/registered-runtime.mjs', 'scripts/release-smoke.mjs', '--candidate', candidate], { cwd: directory, stdio: ['ignore', 'pipe', 'pipe'] })
+    const cli = spawn(process.execPath, ['scripts/release-smoke.mjs', '--candidate', candidate], { cwd: directory, stdio: ['ignore', 'pipe', 'pipe'] })
     let cliOutput = ''; cli.stdout.on('data', bytes => { cliOutput += bytes }); cli.stderr.on('data', bytes => { cliOutput += bytes })
     const timer = setTimeout(() => cli.kill('SIGKILL'), 15_000)
     try { const [code] = await once(cli, 'close'); expect(code, cliOutput).toBe(1) } finally { clearTimeout(timer) }

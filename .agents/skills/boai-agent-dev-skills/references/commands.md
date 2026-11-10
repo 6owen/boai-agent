@@ -1,6 +1,6 @@
 <!--
 [INPUT]: 根package.json、scripts/dev*.mjs、build*.mjs、release*.mjs、Git脚本及现行workflow。
-[OUTPUT]: 当前命令、安装包默认参数与dist/.local分布及运行前提。
+[OUTPUT]: 当前命令、安装包默认参数与dist/.local分布；Node统一沿engines，不另锁版本。
 [POS]: boai-agent-dev-skills的命令参考；仅供开发Agent，不随应用绑定给员工。
 [PROTOCOL]: 实现变化时同步本文、SKILL.md及涉及的开发/发布技能和.folder.md。
 -->
@@ -14,7 +14,7 @@
 | --- | --- |
 | 包管理器 | `package.json.packageManager`：`pnpm@10.13.1` |
 | 普通Node要求 | `package.json.engines.node`：`>=22.13.0`；当前GitHub Test使用Node 22 |
-| 自用安装包要求 | `scripts/release-build.mjs`：macOS、arm64、Node精确为 `v24.16.0` |
+| 自用安装包要求 | macOS arm64；Node沿`package.json.engines`（`>=22.13.0`），不另锁版本 |
 | 原生编译 | Mac宿主助手用 `swiftc`，进程guard用Cargo；见 `scripts/build-app-icon.mjs`、`build-desktop-activity.mjs`、`build-process-guard.mjs` |
 | 依赖安装 | `pnpm install --frozen-lockfile --prefer-offline`；独立node_modules，共用pnpm store |
 

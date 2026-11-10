@@ -4,7 +4,7 @@ description: BOAI Agent 项目的开发与交付统一入口。处理 dev/build�
 ---
 <!--
 [INPUT]: 本次用户请求、AGENTS.md、package.json、dev/build/release脚本和实际Git/运行进程状态。
-[OUTPUT]: 开发命令、安装包默认版本/HEAD与dist分布及.local边界；发布细则按需读取。
+[OUTPUT]: 开发命令、安装包默认身份与dist/.local分布；Node统一沿package.engines，不锁定单个版本。
 [POS]: BOAI项目开发技能统一入口，不是BOAI产品内的数字员工技能。
 [PROTOCOL]: 命令或执行行为变化时同步本技能、references/commands.md及所属.folder.md；不将计划写成已实现。
 -->
@@ -39,7 +39,7 @@ description: BOAI Agent 项目的开发与交付统一入口。处理 dev/build�
 
 ## 环境与构建约束
 
-以 `package.json.packageManager` / `engines` 和实际脚本为准。目前pnpm锁定 `10.13.1`，普通开发Node要求 `>=22.13.0`；`scripts/release-build.mjs` **另行硬编码macOS arm64及Node `v24.16.0`**。不能用普通开发Node要求推断安装包构建也能运行。执行前核对当前源码和环境，避免把本次机器版本写成永久偏好。
+Node与pnpm统一沿`package.json.engines`及`packageManager`，目前为Node `>=22.13.0`、pnpm `10.13.1`。`release:build`和`release:smoke`不再锁定单个Node版本，也不要求任何“已登记”运行时。当前安装包目标仍为macOS arm64。不要把某次验证使用的机器或Node版本写成构建入口的限制。
 
 新worktree需要运行代码时使用独立依赖树：
 
