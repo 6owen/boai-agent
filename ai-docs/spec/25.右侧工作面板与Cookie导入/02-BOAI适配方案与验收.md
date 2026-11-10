@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-11-10同步PR130/132已合main与v0.2.6源码发布事实；旧worktree日志迁至main/.local/worktree-cleanup-20261110-directory-scope，补交与回收实际结果沿receipt记录，本地未复跑。
 [OUTPUT]: 2026-11-09两类文件面板的默认/指定应用打开菜单与业务身份核源归§14；本批未检查测试，主进程需重载后生效。
 [OUTPUT]: 2026-11-09header工作区按钮移至右侧详情标签栏末尾加号；沿原开始页/会话和导航守卫，本轮未检查测试。
 [OUTPUT]: 2026-11-09工具卡片最新要求为60px，文字/图标使用共享Button default中号尺寸，保留normal；未检查测试。
@@ -436,7 +437,7 @@ RP2 与 Cookie 核心可独立交付，但完整终端和本机导入不能因�
 
 - 4个定向Vitest文件21项通过：新增工具页组件6项，原工作区标签6项、浏览器静态入口2项、员工任务导航7项。群聊选择首轮夹具只派发click，被Base UI的真实按下保护拒绝；补齐pointerdown后按原行为断言通过，产品选择逻辑未因此更改。
 - `pnpm typecheck`、5个修改的renderer组件ESLint及Git差异检查通过。静态预览从当前WorkspaceHome的SSR输出加载生产全局CSS，后台Chromium在420px与700px分别核对单列/双列、四个图标及无横向溢出；截图只证明该静态页面的布局，不代替实际Electron交互。预览脚本前置曾因未声明playwright直接导入和file URL跨源CSS失败，改用已有`@playwright/test`及临时loopback静态服务后通过。
-- 日志和静态预览归本worktree `.local/workspace-tools-home-20261109/`。未运行E2E、真实PTY/浏览器窗口或个人应用验收，未执行完整应用构建、重启、提交或合并。与本轮目录收敛共用`/Users/wangwenbo/Desktop/demo/boai/boai-directory-scope-20261109`，保留供审阅。
+- 原日志和静态预览已迁到main的[工具开始页归档](../../../.local/worktree-cleanup-20261110-directory-scope/preserved-local/workspace-tools-home-20261109/)。本阶段当时未运行E2E、真实PTY/浏览器窗口或个人应用验收，也未执行完整应用构建、重启、提交或合并；后续本批接线已通过PR #130/#132合入main，最后红绿灯改动及worktree回收实际结果见[清理回执](../../../.local/worktree-cleanup-20261110-directory-scope/receipt.json)。
 
 ### 同日用户五项反馈后的修改（未检查测试）
 
@@ -482,7 +483,7 @@ RP2 与 Cookie 核心可独立交付，但完整终端和本机导入不能因�
 - 内部材料原件无扩展名。系统默认/指定编辑器打开时从原hash核读字节，建立带原文件名的400权限临时副本；文件管理器定位则指向原受管材料。退出等待在途操作，只删除未改动的已知临时文件；外部替换/修改和额外文件保留。成果与知识按当前核验的原件/目录打开，不把资料登记为新成果或增加目录授权。
 - Main复用原应用扫描/PNG图标缓存、固定argv启动和不支持扩展名转定位行为，不新增应用安装或执行配置。
 
-本批按用户要求未运行测试、类型/lint检查、构建、预览或E2E；未重启个人应用。新Main接口需重新构建/重载主进程后才会在运行中的开发版生效，renderer热更新不能代替。改动仍位于`/Users/wangwenbo/Desktop/demo/boai/boai-directory-scope-20261109`供用户查看，未提交或合并。
+本批按用户要求未运行测试、类型/lint检查、构建、预览或E2E；未重启个人应用。新Main接口需重新构建/重载主进程后才会在运行中的开发版生效，renderer热更新不能代替。后续本批改动已通过PR #130/#132合入main，并包含在v0.2.6源码Release；原worktree按用户要求收尾，截图和日志沿[归档](../../../.local/worktree-cleanup-20261110-directory-scope/preserved-local/)保留，最后补交与回收结果见[清理回执](../../../.local/worktree-cleanup-20261110-directory-scope/receipt.json)。
 
 同日按用户截图将“系统默认打开”和“在文件管理器中显示”都收进“打开方式”二级菜单；一级仅显示无图标的“打开方式”，应用图标及刷新保留在子菜单。会话文件/知识资料共用同一组件同步生效；仅改renderer菜单结构，本批未检查测试或预览。
 
