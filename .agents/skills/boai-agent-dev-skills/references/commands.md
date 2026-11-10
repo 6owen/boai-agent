@@ -1,6 +1,6 @@
 <!--
 [INPUT]: 根package.json、scripts/dev*.mjs、build*.mjs、release*.mjs、Git脚本及现行workflow。
-[OUTPUT]: 当前命令、安装包默认参数与dist/.local分布；Node统一沿engines，不另锁版本。
+[OUTPUT]: 当前命令、默认参数与dist/.local分布；Node沿engines，下载失败可续传/重试。
 [POS]: boai-agent-dev-skills的命令参考；仅供开发Agent，不随应用绑定给员工。
 [PROTOCOL]: 实现变化时同步本文、SKILL.md及涉及的开发/发布技能和.folder.md。
 -->
@@ -105,6 +105,8 @@ dist/releases/candidates/<候选ID>/
 ```
 
 `dist/`（含安装包）已加入`.gitignore`；旧`release/`忽略规则继续保留。新Electron下载缓存位于`dist/releases/cache/electron/`。`pnpm build`仍只编译，不生成DMG/ZIP；安装包由原打包命令生成。构建身份与打包文件清单均排除顶层`dist/releases/`，其余应用文件保持校验。旧候选缺少`artifactDirectory`时继续使用原`.local/.../assets`及`updates`，不自动搬移旧文件。
+
+Electron完整ZIP按依赖自带SHA256核验后进入缓存；下载失败的`.part`保存在`dist/releases/cache/electron/partial/<SHA256>.part`，同次重试及再次运行`release:build`均可断点续传。没有原先300秒整段下载上限；连接超时或连续60秒低于1KB/s时重试，最多三次。服务端不支持Range时重新下载，校验失败的完整数据丢弃；取消会停止curl并保留断点。删除这个缓存会使下次构建重新下载。
 
 `.local`不能整目录删除：可能有用户开发profile、研究原件、worktree归档和仍需恢复的进程账本。只按实际内容清理已确认可再生成、无活跃进程且不需保留的文件。删除`dist/releases`会使依赖这些资产的新候选无法继续冒烟或发布；`.local`里的记录并不是安装包备份。
 

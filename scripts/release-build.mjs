@@ -2,7 +2,7 @@
  * [OUTPUT]: 2026-10-29 个人候选嵌入Sparkle与公钥；重编译桥接并从校验过的Electron ZIP保留framework链接。
  * [OUTPUT]: 应用与评估编译按当前工作区公开exports解析，保留原执行与分发合同。
  * [INPUT]: 默认package版本/当前HEAD或显式覆盖、干净源码及原构建配置；本机macOS arm64，Node沿package.engines。
- * [OUTPUT]: 旧进程排空后在dist/releases生成隔离候选；.local保留监督器/账本，仅built，不授发布或安装资格。
+ * [OUTPUT]: dist/releases隔离候选及可取消/续传Electron下载；.local保留监督器/账本，仅built。
  * [POS]: 个人候选构建；不创建Tag/Release、不替换应用或个人数据，产物冒烟另行核对。
  * [PROTOCOL]: 修改同步Header与scripts/.folder.md。
  */
@@ -113,7 +113,7 @@ export async function buildRelease(version, sha) {
     await rebuildSparkle()
     await mkdir(artifactDirectory, { recursive: true })
     const config = withSparkle(personalMacConfiguration(metadata, { output: join(artifactDirectory, 'assets'), version, sha }), updates), path = join(directory, 'builder.json')
-    config.electronDist = await prepareElectronDist(join(artifactDirectory, 'electron-dist'))
+    config.electronDist = await prepareElectronDist(join(artifactDirectory, 'electron-dist'), { signal: controller.signal })
     await save(path, config)
     await step('build', 'pnpm', ['build'], 10 * 60_000)
     result.built = await verifyBuildIdentity(root)
