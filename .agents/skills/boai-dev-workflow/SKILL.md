@@ -3,7 +3,7 @@ name: boai-dev-workflow
 description: BOAI 共享开发流程；沿 Magpie Test 和 DeepSeek UI preview 完成交付。
 ---
 <!--
-[OUTPUT]: 2026-11-10新增boai-agent-dev-skills统一入口，梳理实际dev/build/验证/打包/bumpp/tag/Release/Git/worktree命令；无参数release:build仍属未实现方案。
+[OUTPUT]: 2026-11-10新增boai-agent-dev-skills统一入口，梳理实际dev/build/验证/打包/bumpp/tag/Release/Git/worktree命令；release:build现默认读取package版本与当前HEAD，显式参数仍可覆盖。
 [OUTPUT]: 2026-10-29新增boai-release共享技能，覆盖bumpp、本机候选/Release、下载与自动更新；普通开发转入发布须符合本次请求。
 [OUTPUT]: 2026-10-29用户明确调用git cpf时允许临时管理员检查例外，恢复记录和实际合并核验必需；普通交付保持。
 [OUTPUT]: 2026-10-29 PR录屏采用原生视频附件，独立发布凭据、缺配置及失败不得称在线播放。

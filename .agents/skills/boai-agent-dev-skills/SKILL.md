@@ -4,7 +4,7 @@ description: BOAI Agent 项目的开发与交付统一入口。处理 dev/build�
 ---
 <!--
 [INPUT]: 本次用户请求、AGENTS.md、package.json、dev/build/release脚本和实际Git/运行进程状态。
-[OUTPUT]: 开发命令、dist编译/安装包分布与.local数据边界；Git/CI和发布细则按需读取。
+[OUTPUT]: 开发命令、安装包默认版本/HEAD与dist分布及.local边界；发布细则按需读取。
 [POS]: BOAI项目开发技能统一入口，不是BOAI产品内的数字员工技能。
 [PROTOCOL]: 命令或执行行为变化时同步本技能、references/commands.md及所属.folder.md；不将计划写成已实现。
 -->
@@ -31,7 +31,7 @@ description: BOAI Agent 项目的开发与交付统一入口。处理 dev/build�
 | 设计系统预览 | `pnpm dev:design` | 启动独立设计文档站 |
 | CLI开发 | `pnpm dev:cli` / `pnpm dev:cli:client` | 构建对应CLI范围并执行；无参数显示帮助 |
 | 编译应用 | `pnpm build` | 默认构建Electron应用闭包，生成dist等编译产物 |
-| 自用安装包 | `pnpm release:build --version X.Y.Z --sha 完整SHA` | 生成本机arm64 DMG和ZIP候选 |
+| 自用安装包 | `pnpm release:build` | 生成本机arm64 DMG和ZIP候选 |
 | 升应用版本 | `pnpm release:version` / `pnpm release:version patch` | bumpp更新应用version及buildVersion |
 | 正式安装包发布 | `pnpm release:local --publish` | 校验main/Test、构建、产物冒烟、签名更新资产、tag和GitHub Release |
 | 仅源码tag/Release | 按命令说明用Git与`gh` | 发布对应提交的源码，安装包另行处理 |
@@ -63,7 +63,7 @@ pnpm install --frozen-lockfile --prefer-offline
 
 Git tag、GitHub Release和DMG/ZIP是不同产物。bumpp支持Git提交/tag/推送；本项目GitHub Release及安装包上传由现有Git/`gh`发布脚本处理。源码Release中的源码ZIP/tar.gz不能当作应用安装包。
 
-**当前 `pnpm release:build` 无参数会报错。** 必须传入与当前干净检出一致的版本及完整SHA；这些参数用于身份核验，不会升版本或切换Git提交。自动读取版本/SHA、只执行 `pnpm release:build` 是待实现的简化，不得写成现成功能。当前 `release:local` 已在内部读取版本和HEAD，但它执行的是完整发布准备流程。
+`pnpm release:build`默认读取`package.json.version`和当前HEAD，无需手传参数；可用`--version X.Y.Z`、`--sha 完整SHA`单独或同时覆盖。自动取值后仍核对干净源码、版本/buildVersion及同一提交，显式错误值不会被默认值覆盖。构建不调用bumpp，不升版、提交、创建tag或发布。需要升版先用`release:version`，提交该版本后再构建。`release:local`会执行完整发布准备流程。
 
 个人候选可从干净功能提交构建；正式发布要求当前远程main同SHA最新一次push触发的Test成功。PR成功、旧main成功和 `git cpf` 已合并都不能代替。已有同名tag/Release时先核对身份及资产，不移动tag、覆盖Release或盲目重发。
 

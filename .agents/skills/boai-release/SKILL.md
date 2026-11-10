@@ -4,7 +4,7 @@ description: BOAI macOS本机发版与安装版更新流程。用于升版本、
 ---
 <!--
 [OUTPUT]: 2026-11-10安装包统一到dist/releases，命令保持；.local保留候选控制/恢复记录，兼容旧资产，安装包不进入应用身份或包体。
-[OUTPUT]: 2026-11-10新增boai-agent-dev-skills统一入口，梳理实际dev/build/验证/打包/bumpp/tag/Release/Git/worktree命令；无参数release:build仍属未实现方案。
+[OUTPUT]: 2026-11-10新增boai-agent-dev-skills统一入口，梳理实际dev/build/验证/打包/bumpp/tag/Release/Git/worktree命令；release:build现默认读取package版本与当前HEAD，显式参数仍可覆盖。
 [INPUT]: 用户本次发布范围、干净源码、main Test及本机更新配置。
 [OUTPUT]: 按授权完成版本准备、候选或正式Release，并准确报告下载及安装状态。
 [POS]: 开发Agent共享发布技能；本机macOS arm64打包，GitHub托管更新资产。
@@ -62,10 +62,10 @@ pnpm release:local --publish
 pnpm release:publish "更新目录" "冒烟目录"
 ```
 
-只需要本机安装包时，可从干净的main或功能提交构建。当前release:build仍要求显式传入`package.json`版本和完整HEAD SHA；无参数自动读取尚未实现，取值示例见[统一命令说明](../boai-agent-dev-skills/references/commands.md#5-自用安装包)：
+只需要本机安装包时，可从干净的main或功能提交构建。`release:build`默认读取`package.json.version`和当前HEAD，可选`--version`/`--sha`覆盖声明；仍核对源码干净且版本/提交一致，不自动升版。详见[统一命令说明](../boai-agent-dev-skills/references/commands.md#5-自用安装包)：
 
 ```sh
-pnpm release:build --version X.Y.Z --sha 完整提交SHA
+pnpm release:build
 pnpm release:smoke --candidate .local/release-candidates/实际候选ID
 ```
 
