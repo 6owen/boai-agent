@@ -1,7 +1,7 @@
 /*
  * [OUTPUT]: 2026-10-29 个人候选嵌入Sparkle与公钥；重编译桥接并从校验过的Electron ZIP保留framework链接。
  * [OUTPUT]: 应用与评估编译按当前工作区公开exports解析，保留原执行与分发合同。
- * [INPUT]: 明确版本/SHA、干净源码及完整原构建配置；本机macOS arm64，共用清单接受规范化路径。
+ * [INPUT]: 默认package版本/当前HEAD或显式覆盖、干净源码及原构建配置；本机macOS arm64。
  * [OUTPUT]: 旧进程排空后在dist/releases生成隔离候选；.local保留监督器/账本，仅built，不授发布或安装资格。
  * [POS]: 个人候选构建；不创建Tag/Release、不替换应用或个人数据，产物冒烟另行核对。
  * [PROTOCOL]: 修改同步Header与scripts/.folder.md。
@@ -81,6 +81,8 @@ export function assertPersonalBundle({ plist, architectures, signature, version 
 export async function buildRelease(version, sha) {
   if (process.platform !== 'darwin' || process.arch !== 'arm64' || process.version !== 'v24.16.0') throw new Error('个人候选仅支持已登记的macOS arm64/Node24.16.0')
   const source = await sourceIdentity(root), metadata = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
+  version ??= metadata.version
+  sha ??= source.commit
   const identity = verifyReleaseSource({ version, sha, current: { sha: source.commit, dirty: source.dirty }, metadata })
   // CI and watcher exclusion prevents a different checkout/build from taking the
   // same workspace while these bytes are assembled. No desktop app is stopped.
@@ -151,9 +153,8 @@ export async function buildRelease(version, sha) {
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const options = {}, args = process.argv.slice(2)
   for (let index = 0; index < args.length; index += 2) {
-    if (!['--version', '--sha'].includes(args[index]) || options[args[index]] || !args[index + 1]) throw new Error('用法：release-build.mjs --version X.Y.Z --sha 完整提交')
+    if (!['--version', '--sha'].includes(args[index]) || options[args[index]] || !args[index + 1]) throw new Error('用法：release-build.mjs [--version X.Y.Z] [--sha 完整提交]；默认使用package版本与当前HEAD')
     options[args[index]] = args[index + 1]
   }
-  if (!options['--version'] || !options['--sha']) throw new Error('必须明确候选版本与SHA')
   buildRelease(options['--version'], options['--sha']).catch(error => { console.error(String(error)); process.exitCode = 1 })
 }

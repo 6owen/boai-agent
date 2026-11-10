@@ -1,6 +1,6 @@
 <!--
 [INPUT]: 根package.json、scripts/dev*.mjs、build*.mjs、release*.mjs、Git脚本及现行workflow。
-[OUTPUT]: 当前命令、dist/releases安装包与.local记录分布、前提及未实现简化。
+[OUTPUT]: 当前命令、安装包默认参数与dist/.local分布及运行前提。
 [POS]: boai-agent-dev-skills的命令参考；仅供开发Agent，不随应用绑定给员工。
 [PROTOCOL]: 实现变化时同步本文、SKILL.md及涉及的开发/发布技能和.folder.md。
 -->
@@ -73,15 +73,19 @@ renderer由Vite处理热更新；`dev.mjs`在启动时构建宿主，没有主�
 
 ## 5. 自用安装包
 
-构建器要求干净检出、稳定版本X.Y.Z、与HEAD一致的完整40位SHA；根version/buildVersion必须一致。当前无参数 `pnpm release:build` 会报“必须明确候选版本与SHA”。使用当前源码自动取值，再显式传入：
+构建器要求干净检出、稳定版本X.Y.Z、与HEAD一致的完整40位SHA；根version/buildVersion必须一致。默认自动读取`package.json.version`与当前HEAD，直接执行：
 
 ```sh
-boai_release_version=$(node -p "require('./package.json').version")
-boai_release_sha=$(git rev-parse HEAD)
-pnpm release:build --version "$boai_release_version" --sha "$boai_release_sha"
+pnpm release:build
 ```
 
-`--version`声明待构建的应用版本，不自动升版；`--sha`声明当前源码提交，不切换Git检出。底层仍会核对声明值、源码和构建身份。将CLI改成无参数自动读取是**待实现方案**，本次技能整理不修改打包脚本。
+需要明确声明候选身份时仍支持可选参数，可单独或同时传入：
+
+```sh
+pnpm release:build --version X.Y.Z --sha 完整提交SHA
+```
+
+省略的参数使用当前版本/HEAD；显式传入的参数仍必须与当前检出一致，不会静默纠正。构建不会调用bumpp、升版本或切换Git提交。要升版先运行`pnpm release:version patch`（或minor/major/明确版本），提交版本修改后再构建；未提交的升版仍会因源码不干净被拒绝。
 
 首次构建机需要 `pnpm release:setup` 准备Sparkle配置；已有配置复用。配置位于 `~/Library/Application Support/BoAI Release/settings.json`，签名私钥在macOS钥匙串，不输出或复制进仓库。收到钥匙串授权提示时由用户处理，不能把超时当成功。
 

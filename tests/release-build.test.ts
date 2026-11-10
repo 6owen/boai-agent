@@ -1,6 +1,6 @@
 /*
  * [OUTPUT]: 旧guard以实际JSON账本就绪为起点，提前退出携带stderr失败；发布拒绝/零构建断言保持。
- * [INPUT]: 原构建配置、个人候选身份和临时真实文件/链接。
+ * [INPUT]: 无参数/部分/完整参数CLI、原构建配置、候选身份和真实文件/链接。
  * [OUTPUT]: 原配置保留/安装包排除、新旧产物路径及越界拒绝、实际链接与旧guard排他负例。
  * [OUTPUT]: 临时CLI复用真实workspace构建解析并提供登记版本协议输入，Node22工程测试进入旧进程守卫。
  * [POS]: 候选构建合同；不实际打包、不运行GUI或发布资产。
@@ -76,7 +76,12 @@ it('旧候选实际guard仍活跃时拒绝重建，实际退出后才可继续',
   try { await expect(drainReleaseCandidates(directory, { drainPendingProcesses })).resolves.toBeUndefined() }
   finally { await rm(directory, { recursive: true, force: true }) }
 })
-it('实际构建CLI遇到旧活跃账本时，零dist/构建写入并保留失败回执', async () => {
+it.each([
+  { name: '默认package版本与当前HEAD', args: [] },
+  { name: '仅覆盖版本', args: ['--version', version] },
+  { name: '仅覆盖SHA', args: ['--sha', sha] },
+  { name: '完整显式参数', args: ['--version', version, '--sha', sha] },
+])('构建CLI（$name）通过身份校验后仍被旧活跃账本拒绝，零构建写入', async ({ args }) => {
   const source = process.cwd(), directory = await mkdtemp(join(tmpdir(), 'boai-release-cli-')), old = join(directory, '.local/release-candidates/previous'), ledger = join(old, 'processes'), guard = join(old, 'process-guard')
   await mkdir(ledger, { recursive: true }); await copyFile(resolve('dist/native/boai-process-guard'), guard); await chmod(guard, 0o700)
   const oldProcess = spawn(guard, ['--ledger', ledger, process.execPath, '-e', 'setInterval(()=>{},1000)'], { stdio: ['pipe', 'pipe', 'pipe'] }), oldEnded = once(oldProcess, 'close')
@@ -99,7 +104,7 @@ it('实际构建CLI遇到旧活跃账本时，零dist/构建写入并保留失�
     await writeFile(join(directory, 'scripts/build-process-guard.mjs'), `import{writeFile}from'node:fs/promises';export default async()=>{await writeFile(${JSON.stringify(join(directory, '.local/build-entered'))},'entered');throw Error('build must not start')}`)
     for (const [target, actual] of [['tests/evaluation/repair-process.ts', 'tests/evaluation/repair-process.ts'], ['scripts/development/recovery.ts', 'scripts/development/recovery.ts']]) await writeFile(join(directory, target!), `export * from ${JSON.stringify(join(source, actual!))}`)
     await guardReady(oldProcess, ledger)
-    const child = spawn(process.execPath, ['--import', './scripts/registered-runtime.mjs', 'scripts/release-build.mjs', '--version', version, '--sha', sha], { cwd: directory, stdio: ['ignore', 'pipe', 'pipe'] })
+    const child = spawn(process.execPath, ['--import', './scripts/registered-runtime.mjs', 'scripts/release-build.mjs', ...args], { cwd: directory, stdio: ['ignore', 'pipe', 'pipe'] })
     let stderr = ''; child.stdout.resume(); child.stderr.on('data', bytes => { stderr += bytes }); const timer = setTimeout(() => child.kill('SIGKILL'), 10_000)
     let code: unknown
     try { [code] = await once(child, 'close') } finally { clearTimeout(timer) }
@@ -108,7 +113,7 @@ it('实际构建CLI遇到旧活跃账本时，零dist/构建写入并保留失�
     const fresh = (await readdir(join(directory, '.local/release-candidates'))).filter(name => name !== 'previous')
     expect(fresh).toHaveLength(1)
     const result = JSON.parse(await readFile(join(directory, '.local/release-candidates', fresh[0]!, 'candidate.json'), 'utf8'))
-    expect(result).toMatchObject({ status: 'failed' }); expect(result.errors.join()).toContain('未确认退出')
+    expect(result).toMatchObject({ status: 'failed', identity: { version, sha } }); expect(result.errors.join()).toContain('未确认退出')
   } finally { oldProcess.kill('SIGTERM'); await oldEnded; await rm(directory, { recursive: true, force: true }) }
 }, 20_000)
 it.each([{ version: '0.2.3' }, { sha: 'short' }, { version: 'v0.2.4' }])('配置本身也拒绝错版本或SHA：%j', patch => expect(() => personalMacConfiguration(metadata, { output: '/fixture', version, sha, ...patch })).toThrow())
