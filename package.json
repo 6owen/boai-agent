@@ -165,7 +165,12 @@
       "dist/**/*",
       "package.json",
       "!dist/releases",
-      "!dist/releases/**/*"
+      "!dist/releases/**/*",
+      "!**/*.map",
+      "!**/*.d.{ts,mts,cts}",
+      "!**/node_modules/**/{test,tests,__tests__,docs,examples,coverage}{,/**/*}",
+      "!**/node_modules/agent-{browser,desktop}/bin/*-{linux,win32}-*",
+      "!**/node_modules/agent-{browser,desktop}/bin/*-darwin-!(${arch}|${arch}.sha256)"
     ],
     "asar": true,
     "asarUnpack": [

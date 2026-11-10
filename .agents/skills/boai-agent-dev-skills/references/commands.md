@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-11-10macOS打包排除调试映射、类型声明及依赖测试文档；浏览器/桌面CLI按目标架构保留Mac程序、helper与校验文件。
 [INPUT]: 根package.json、scripts/dev*.mjs、build*.mjs、release*.mjs、Git脚本及现行workflow。
 [OUTPUT]: 当前命令、默认参数与dist/.local分布；Node沿engines，下载失败可续传/重试。
 [POS]: boai-agent-dev-skills的命令参考；仅供开发Agent，不随应用绑定给员工。
@@ -103,6 +104,8 @@ dist/releases/candidates/<候选ID>/
   candidate.json              # artifactDirectory记录上面的产物位置
   process-guard               # 进程监督器、账本与日志继续留在.local
 ```
+
+macOS普通打包与release候选共用根`package.json.build`过滤：包内排除`.map`调试映射、`.d.ts/.d.mts/.d.cts`声明和依赖的test/tests/__tests__/docs/examples/coverage目录；浏览器/桌面CLI只保留目标`${arch}`的Mac二进制、helper及SHA256，排除Linux/Windows及另一Mac架构。保留启动脚本、运行依赖、WASM、字体、技能及许可证；本地开发源码、测试和依赖树不裁剪。`pnpm build`继续生成原调试产物，只在打包时过滤。
 
 `dist/`（含安装包）已加入`.gitignore`；旧`release/`忽略规则继续保留。新Electron下载缓存位于`dist/releases/cache/electron/`。`pnpm build`仍只编译，不生成DMG/ZIP；安装包由原打包命令生成。构建身份与打包文件清单均排除顶层`dist/releases/`，其余应用文件保持校验。旧候选缺少`artifactDirectory`时继续使用原`.local/.../assets`及`updates`，不自动搬移旧文件。
 
