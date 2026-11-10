@@ -1,7 +1,7 @@
 /*
  * [OUTPUT]: 2026-10-29 原ZIP8/DMG2来源校验同时核对候选中的更新feed与公钥，原冒烟断言保持；返回已验DMG/ZIP字节身份供发布绑定。
  * [OUTPUT]: 应用与评估编译按当前工作区公开exports解析，保留原执行与分发合同。
- * [INPUT]: 当前干净源码对应的个人built候选、锁定BDD及隔离输出；已登录macOS arm64/Node24。
+ * [INPUT]: 当前built候选及dist/releases安装包（兼容旧.local资产）、锁定BDD；已登录macOS arm64/Node24。
  * [OUTPUT]: ZIP8/DMG2原场景、逐启动完整独立profile/包身份、实际执行墙钟窗口与bundle前后字节；受管worker配对挂载/封存，未知先恢复。
  * [POS]: 个人候选产物冒烟入口；不修改基线、创建Tag/Release或替换个人应用/数据。
  * [PROTOCOL]: 修改同步Header及scripts/.folder.md。
@@ -23,6 +23,7 @@ import { unpackPersonalArchive } from './release-archive.mjs'
 import { desktopPlanIdentity, desktopReportRows, selectDesktopCases, assertDesktopReport } from './desktop-plan.mjs'
 import { recordDesktopExecution, verifyDesktopEvidence } from './desktop-evidence.mjs'
 import { localCiFiles } from './local-ci.mjs'
+import { candidateArtifactDirectory, releaseArtifactDirectory } from './build-output-paths.mjs'
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url))), runs = join(root, '.local/release-asset-runs')
 const json = async path => JSON.parse(await readFile(path, 'utf8'))
@@ -87,15 +88,17 @@ async function candidateAt(directory, signal) {
   if (candidate.status !== 'built' || !equal(candidate.errors, []) || !equal(candidate.source, source) || !sameBuildBytes(candidate.built, await verifyBuildIdentity(root))) throw Error('候选不是当前干净源码和构建的built结果')
   const names = ['dmg', 'zip'].map(extension => `BoAI-Agent-${candidate.identity.version}-macos-arm64.${extension}`)
   if (candidate.assets?.length !== 2 || !equal(candidate.assets.map(row => row.name).sort(), names.sort())) throw Error('候选须含唯一DMG与ZIP')
-  for (const asset of candidate.assets) if (!equal(await releaseFile(join(directory, 'assets', asset.name), { signal }), { bytes: asset.bytes, sha256: asset.sha256 }) || !asset.bytes) throw Error('候选资产字节变化')
-  if (candidate.app !== join(directory, 'assets/mac-arm64/BoAI Agent.app') || !equal(await bundleInventory(candidate.app), await json(join(directory, 'bundle-files.json')))) throw Error('原builder应用字节变化')
-  return candidate
+  const outputDirectory = candidateArtifactDirectory(root, directory, candidate)
+  for (const asset of candidate.assets) if (!equal(await releaseFile(join(outputDirectory, 'assets', asset.name), { signal }), { bytes: asset.bytes, sha256: asset.sha256 }) || !asset.bytes) throw Error('候选资产字节变化')
+  if (candidate.app !== join(outputDirectory, 'assets/mac-arm64/BoAI Agent.app') || !equal(await bundleInventory(candidate.app), await json(join(directory, 'bundle-files.json')))) throw Error('原builder应用字节变化')
+  return { ...candidate, outputDirectory }
 }
 async function detachMount(directory) {
   const file = join(directory, 'dmg/mount.intent.json')
   if (!await exists(file)) return
   const intent = await json(file)
-  if (intent.mount !== join(directory, 'dmg/mounted') || dirname(dirname(intent.asset ?? '')) !== intent.candidate || dirname(intent.candidate ?? '') !== join(root, '.local/release-candidates') || !intent.asset.endsWith('.dmg')) throw Error('旧DMG意图不属于本批')
+  if (intent.mount !== join(directory, 'dmg/mounted') || dirname(intent.candidate ?? '') !== join(root, '.local/release-candidates') || typeof intent.asset !== 'string' || !intent.asset.endsWith('.dmg')) throw Error('旧DMG意图不属于本批')
+  if (![intent.candidate, releaseArtifactDirectory(root, intent.candidate)].includes(dirname(dirname(intent.asset)))) throw Error('旧DMG意图不属于本批')
   if (!ownedSmokeMount(diskInfo(), intent)) return
   if (!equal(await releaseFile(intent.asset), intent.archive)) throw Error('已挂载DMG原资产变化，保留现场')
   raw('/usr/bin/hdiutil', ['detach', intent.mount])
@@ -194,7 +197,7 @@ async function worker(directory) {
     await writeFile(join(directory, 'test-tiers.json'), planBytes, { flag: 'wx' })
     for (const kind of ['zip', 'dmg']) {
       const stage = join(directory, kind); await mkdir(stage)
-      const asset = candidate.assets.find(row => row.name.endsWith('.' + kind)), archive = join(intent.candidate, 'assets', asset.name)
+      const asset = candidate.assets.find(row => row.name.endsWith('.' + kind)), archive = join(candidate.outputDirectory, 'assets', asset.name)
       let app
       if (kind === 'zip') {
         const extracted = await unpackPersonalArchive(archive, join(stage, 'extracted'), { signal: controller.signal })

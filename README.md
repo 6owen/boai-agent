@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-11-10安装包统一到dist/releases，命令保持；.local保留候选控制/恢复记录，兼容旧资产，安装包不进入应用身份或包体。
 [OUTPUT]: 2026-11-10新增boai-agent-dev-skills统一入口，梳理实际dev/build/验证/打包/bumpp/tag/Release/Git/worktree命令；无参数release:build仍属未实现方案。
 [OUTPUT]: 2026-11-07九目标按四worktree规划：配置/诊断、能力/资源库及普通Skill、交接/项目目录、独立画板；公共文件唯一负责人归30组README第6节，用户授权本批文档git cpf。
 [OUTPUT]: 2026-11-07新增第9目标资源库应用与助手，位于提示词后，沿数据源连接与员工模板创建；08含Openbot固定源码及许可边界，共8项产品和1项Skill，仅计划。
@@ -130,7 +131,7 @@ tests/               单元、集成、桌面与评估用例
 ai-docs/             设计、规格与实施记录
 ```
 
-- `pnpm build` / `pnpm start`：构建并运行桌面应用。
+- `pnpm build` / `pnpm start`：构建并运行桌面应用。编译产物在`dist/`；现有打包命令的安装包统一到`dist/releases/`，均被Git忽略。候选控制/恢复记录继续留在`.local`；具体位置见[命令说明](.agents/skills/boai-agent-dev-skills/references/commands.md)。
 - `pnpm dev:cli --help`：查看 CLI 开发入口。
 - `pnpm dev:design`：启动独立设计文档站。
 - `pnpm plugin:create /绝对路径/新插件目录`：创建运行时插件示例。

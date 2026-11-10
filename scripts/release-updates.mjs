@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Local Sparkle toolchain, per-app Keychain key, verified candidate and previous release ZIP.
- * [OUTPUT]: Packaged update metadata and signed full/delta appcast; immutable publication manifest.
+ * [OUTPUT]: Update metadata and signed full/delta appcast under dist/releases; legacy candidates remain readable.
  * [POS]: Personal macOS update preparation; never replaces the installed application.
  * [PROTOCOL]: Update Header and scripts/.folder.md when changed.
  */
@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url'
 import { readFile, writeFile, mkdir, readdir, copyFile, lstat } from 'node:fs/promises'
 import { sparkleBuilderConfig } from 'electron-sparkle-updater/builder'
 import { releaseFile, bundleInventory } from './release-build.mjs'
+import { candidateArtifactDirectory, releaseOutputName } from './build-output-paths.mjs'
 
 export const releaseRepository = '6owen/boai-agent'
 export const releaseFeed = `https://github.com/${releaseRepository}/releases/latest/download/appcast.xml`
@@ -42,7 +43,7 @@ export async function prepareElectronDist(directory) {
   const electronRequire = createRequire(require.resolve('electron/package.json'))
   const { downloadArtifact } = electronRequire('@electron/get')
   const { version } = electronRequire('./package.json')
-  const archive = await downloadArtifact({ version, artifactName: 'electron', platform: 'darwin', arch: 'arm64', checksums: electronRequire('./checksums.json'), cacheRoot: join(root, '.local/electron-downloads'), downloader: {
+  const archive = await downloadArtifact({ version, artifactName: 'electron', platform: 'darwin', arch: 'arm64', checksums: electronRequire('./checksums.json'), cacheRoot: join(root, 'dist', releaseOutputName, 'cache/electron'), downloader: {
     download: (url, target) => new Promise((accept, reject) => execFile('/usr/bin/curl', ['--fail', '--location', '--silent', '--show-error', '--connect-timeout', '20', '--max-time', '300', '--output', target, url], { timeout: 310_000 }, error => error ? reject(error) : accept())),
   } })
   await mkdir(directory)
@@ -79,8 +80,9 @@ export function withSparkle(config, updates) {
 export async function verifyCandidate(directory) {
   const candidate = await json(join(directory, 'candidate.json'))
   if (candidate.status !== 'built' || !candidate.identity?.sha || !candidate.plist?.SUPublicEDKey) throw Error('候选尚未构建或未启用更新')
+  const outputDirectory = candidateArtifactDirectory(root, directory, candidate)
   for (const asset of candidate.assets) {
-    if (basename(asset.name) !== asset.name || JSON.stringify(await releaseFile(join(directory, 'assets', asset.name))) !== JSON.stringify({ bytes: asset.bytes, sha256: asset.sha256 })) throw Error('候选资产已变化')
+    if (basename(asset.name) !== asset.name || JSON.stringify(await releaseFile(join(outputDirectory, 'assets', asset.name))) !== JSON.stringify({ bytes: asset.bytes, sha256: asset.sha256 })) throw Error('候选资产已变化')
   }
   if (JSON.stringify(await bundleInventory(candidate.app)) !== await readFile(join(directory, 'bundle-files.json'), 'utf8').then(text => JSON.stringify(JSON.parse(text)))) throw Error('候选bundle已变化')
   return candidate
@@ -89,10 +91,10 @@ export async function prepareUpdates(directory, previousZip, { edKeyFile, notes,
   if (typeof notes !== 'string' || !notes.trim()) throw Error('发布须提供更新说明')
   directory = resolve(directory)
   const candidate = await verifyCandidate(directory), version = candidate.identity.version
-  const output = join(directory, 'updates')
+  const outputDirectory = candidateArtifactDirectory(root, directory, candidate), output = join(outputDirectory, 'updates')
   await mkdir(output) // a prepared version is never silently overwritten
   const zip = candidate.assets.find(asset => asset.name.endsWith('.zip'))
-  await copyFile(join(directory, 'assets', zip.name), join(output, zip.name))
+  await copyFile(join(outputDirectory, 'assets', zip.name), join(output, zip.name))
   if (previousZip) {
     if (!(await lstat(previousZip)).isFile() || !basename(previousZip).endsWith('.zip') || basename(previousZip) === zip.name) throw Error('增量基包须为不同版本的已发布ZIP')
     await copyFile(previousZip, join(output, basename(previousZip)))
@@ -106,7 +108,7 @@ export async function prepareUpdates(directory, previousZip, { edKeyFile, notes,
   const appcast = join(output, 'appcast.xml'), xml = await readFile(appcast, 'utf8')
   if (!xml.includes(`>${version}</sparkle:version>`) || !xml.includes('sparkle:edSignature=')) throw Error('生成的更新索引缺版本或签名')
   const names = (await readdir(output)).filter(name => name === 'appcast.xml' || name === zip.name || name.endsWith('.delta'))
-  for (const asset of candidate.assets.filter(asset => asset.name.endsWith('.dmg'))) { await copyFile(join(directory, 'assets', asset.name), join(output, asset.name)); names.push(asset.name) }
+  for (const asset of candidate.assets.filter(asset => asset.name.endsWith('.dmg'))) { await copyFile(join(outputDirectory, 'assets', asset.name), join(output, asset.name)); names.push(asset.name) }
   const assets = []
   for (const name of names.sort()) assets.push({ name, ...await releaseFile(join(output, name)) })
   await writeFile(join(output, 'update-manifest.json'), JSON.stringify({ version: 1, identity: candidate.identity, assets }, null, 2) + '\n')

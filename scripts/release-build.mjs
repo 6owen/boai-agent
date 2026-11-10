@@ -2,7 +2,7 @@
  * [OUTPUT]: 2026-10-29 个人候选嵌入Sparkle与公钥；重编译桥接并从校验过的Electron ZIP保留framework链接。
  * [OUTPUT]: 应用与评估编译按当前工作区公开exports解析，保留原执行与分发合同。
  * [INPUT]: 明确版本/SHA、干净源码及完整原构建配置；本机macOS arm64，共用清单接受规范化路径。
- * [OUTPUT]: 旧进程排空后隔离ad-hoc候选、实际链接与可取消hash/身份/签名；仅built，不授发布或安装资格。
+ * [OUTPUT]: 旧进程排空后在dist/releases生成隔离候选；.local保留监督器/账本，仅built，不授发布或安装资格。
  * [POS]: 个人候选构建；不创建Tag/Release、不替换应用或个人数据，产物冒烟另行核对。
  * [PROTOCOL]: 修改同步Header与scripts/.folder.md。
  */
@@ -19,6 +19,7 @@ import { sourceIdentity } from './ui-regression.mjs'
 import { verifyBuildIdentity } from './build-identity.mjs'
 import buildProcessGuard from './build-process-guard.mjs'
 import { acquireResourceLock } from './resource-lock.mjs'
+import { releaseArtifactDirectory, withoutReleaseArtifacts } from './build-output-paths.mjs'
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const save = (path, value) => writeFile(path, JSON.stringify(value, null, 2) + '\n', { flag: 'wx' })
@@ -26,6 +27,7 @@ export function personalMacConfiguration(metadata, { output, version, sha }) {
   verifyReleaseSource({ version, sha, metadata, current: { sha, dirty: false } })
   return {
     ...metadata.build, extends: null, directories: { ...metadata.build.directories, output },
+    files: withoutReleaseArtifacts(metadata.build.files),
     artifactName: 'BoAI-Agent-${version}-macos-${arch}.${ext}',
     mac: { ...metadata.build.mac, target: ['dmg', 'zip'], identity: '-', hardenedRuntime: false, notarize: false },
     extraMetadata: { ...metadata.build.extraMetadata, boaiRelease: { version: 1, channel: 'personal-macos-arm64', sha, applicationVersion: version, arch: 'arm64' } },
@@ -83,7 +85,8 @@ export async function buildRelease(version, sha) {
   // CI and watcher exclusion prevents a different checkout/build from taking the
   // same workspace while these bytes are assembled. No desktop app is stopped.
   const releases = [], controller = new AbortController(), cancel = () => controller.abort()
-  const directory = join(root, '.local/release-candidates', randomUUID()), result = { version: 1, status: 'failed', identity, source, startedAt: new Date().toISOString(), errors: [], authority: 'candidate only; smoke, main CI, tag, publication and installation not qualified' }
+  const directory = join(root, '.local/release-candidates', randomUUID()), artifactDirectory = releaseArtifactDirectory(root, directory)
+  const result = { version: 1, status: 'failed', identity, source, artifactDirectory, startedAt: new Date().toISOString(), errors: [], authority: 'candidate only; smoke, main CI, tag, publication and installation not qualified' }
   process.once('SIGTERM', cancel); process.once('SIGINT', cancel)
   try {
     releases.push(acquireResourceLock(join(tmpdir(), `boai-ci-watch-${userInfo().uid}.sqlite`)))
@@ -106,13 +109,14 @@ export async function buildRelease(version, sha) {
     const { readUpdateConfig, rebuildSparkle, withSparkle, prepareElectronDist } = await import('./release-updates.mjs')
     const updates = await readUpdateConfig()
     await rebuildSparkle()
-    const config = withSparkle(personalMacConfiguration(metadata, { output: join(directory, 'assets'), version, sha }), updates), path = join(directory, 'builder.json')
-    config.electronDist = await prepareElectronDist(join(directory, 'electron-dist'))
+    await mkdir(artifactDirectory, { recursive: true })
+    const config = withSparkle(personalMacConfiguration(metadata, { output: join(artifactDirectory, 'assets'), version, sha }), updates), path = join(directory, 'builder.json')
+    config.electronDist = await prepareElectronDist(join(artifactDirectory, 'electron-dist'))
     await save(path, config)
     await step('build', 'pnpm', ['build'], 10 * 60_000)
     result.built = await verifyBuildIdentity(root)
     await step('package', 'pnpm', ['exec', 'electron-builder', '--config', path, '--mac', 'dmg', 'zip', '--arm64', '--publish', 'never'], 30 * 60_000)
-    const app = join(directory, 'assets/mac-arm64/BoAI Agent.app')
+    const app = join(artifactDirectory, 'assets/mac-arm64/BoAI Agent.app')
     const plist = JSON.parse(execFileSync('plutil', ['-convert', 'json', '-o', '-', join(app, 'Contents/Info.plist')], { encoding: 'utf8', timeout: 10_000 }))
     if (!plist.CFBundleExecutable || /[/\\]/.test(plist.CFBundleExecutable)) throw new Error('候选可执行文件名称不合法')
     const architectures = execFileSync('lipo', ['-archs', join(app, 'Contents/MacOS', plist.CFBundleExecutable)], { encoding: 'utf8', timeout: 10_000 })
@@ -124,7 +128,7 @@ export async function buildRelease(version, sha) {
     assertPersonalBundle({ plist, architectures, signature: display.stdout + display.stderr, version })
     const assets = []
     for (const extension of ['dmg', 'zip']) {
-      const name = `BoAI-Agent-${version}-macos-arm64.${extension}`, info = await releaseFile(join(directory, 'assets', name))
+      const name = `BoAI-Agent-${version}-macos-arm64.${extension}`, info = await releaseFile(join(artifactDirectory, 'assets', name))
       if (!info.bytes) throw new Error('候选资产不能为空')
       assets.push({ name, ...info })
     }
@@ -139,6 +143,7 @@ export async function buildRelease(version, sha) {
     try { await mkdir(directory, { recursive: true }); await save(join(directory, 'candidate.json'), result) }
     finally { for (const release of releases.reverse()) release() }
     console.log(`个人候选 ${result.status}: ${directory}`)
+    console.log(`安装包目录: ${join(artifactDirectory, 'assets')}`)
   }
   if (result.status !== 'built') throw new Error(`候选构建${result.status}: ${result.errors.join("; ")}；${directory}`)
   return directory

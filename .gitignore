@@ -1,9 +1,11 @@
 # [INPUT]: 本地依赖、构建与测试产物。
-# [OUTPUT]: 不进入版本控制的构建、BDD 生成文件和独立 HTML 报告范围。
+# [OUTPUT]: 忽略编译输出与dist/releases安装包、BDD生成文件、报告及本地数据。
 # [POS]: 仓库忽略规则。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
 node_modules/
+# Compiled application and installers (dist/releases/).
 dist/
+# Legacy installer output; retained for existing local files.
 release/
 .env
 .env.*

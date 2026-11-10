@@ -1,6 +1,6 @@
 /*
  * [OUTPUT]: 临时CLI复用真实workspace构建解析并提供登记版本协议输入，Node22工程测试进入原恢复守卫。
- * [INPUT]: 明确的目录/报告协议夹具及真实Node/native guard；无实际应用包或DMG资格。
+ * [INPUT]: 新dist/旧.local候选路径、目录/报告夹具及真实Node/native guard；无实际应用包资格。
  * [OUTPUT]: 固定8/2、完整逐启动profile负例、真实bundle被改拒绝及实际CLI旧活跃账本拒绝；不运行GUI/模型/挂载。
  * [POS]: 个人产物冒烟编排合同；实际包/挂载故障演练另留原件。
  * [PROTOCOL]: 修改同步Header与tests/.folder.md。
@@ -93,15 +93,17 @@ it('同名但标题层级不同、重复CLI、预期失败和清单报错均不�
   expect(() => selectSmokeCases(f.bytes, expectedFailure, 'dmg')).toThrow('唯一CLI')
   expect(() => selectSmokeCases(f.bytes, { ...f.report, errors: [{}] }, 'zip')).toThrow('清单无效')
 })
-it.each(['controller', 'zip'])('真实CLI在旧%s监督器仍活跃时零worker/GUI启动且不修改原文件', async location => {
+it.each([['controller', false], ['zip', false], ['controller', true], ['zip', true]] as const)('真实CLI旧%s监督器活跃时零worker/GUI（dist安装包=%s）', async (location, relocated) => {
   const source = process.cwd(), directory = await realpath(await mkdtemp(join(tmpdir(), 'boai-release-smoke-cli-'))), scripts = join(directory, 'scripts')
   const candidate = join(directory, '.local/release-candidates/current'), old = join(directory, '.local/release-asset-runs/old'), guard = join(old, 'process-guard')
+  const output = relocated ? join(directory, 'dist/releases/candidates/current') : candidate
   const sha = 'a'.repeat(40), version = '0.2.4', fixedSource = { commit: sha, sourceHash: 'b'.repeat(64), dirty: false }, built = { version: 1, inputHash: 'c'.repeat(64), outputHash: 'd'.repeat(64), node: 'v24.16.0' }
   let child: ReturnType<typeof spawn> | undefined, ended: Promise<unknown> | undefined
   try {
-    for (const path of [scripts, join(directory, 'tests/evaluation'), join(scripts, 'development'), join(directory, '.locks'), join(old, 'controller'), join(old, location, 'processes'), join(candidate, 'assets/mac-arm64/BoAI Agent.app')]) await mkdir(path, { recursive: true })
+    for (const path of [scripts, join(directory, 'tests/evaluation'), join(scripts, 'development'), join(directory, '.locks'), join(old, 'controller'), join(old, location, 'processes'), join(output, 'assets/mac-arm64/BoAI Agent.app')]) await mkdir(path, { recursive: true })
     await symlink(join(source, 'node_modules'), join(directory, 'node_modules'))
-    await copyFile(join(source, 'scripts/release-smoke.mjs'), join(scripts, 'release-smoke.mjs'))
+    for (const name of ['release-smoke.mjs', 'build-output-paths.mjs']) await copyFile(join(source, 'scripts', name), join(scripts, name))
+    await mkdir(candidate, { recursive: true })
     await writeFile(join(scripts, 'workspace-packages.mjs'), `export {buildWorkspace} from ${JSON.stringify(join(source, 'scripts/workspace-packages.mjs'))};\n`)
     // Keep the actual Node binary and OS; only supply the registered-version
     // protocol input before exercising real SQLite leases and process recovery.
@@ -115,10 +117,10 @@ it.each(['controller', 'zip'])('真实CLI在旧%s监督器仍活跃时零worker/
     await writeFile(join(scripts, 'build-identity.mjs'), `export async function verifyBuildIdentity(){return ${JSON.stringify(built)}};export {sameBuildBytes} from ${JSON.stringify(join(source, 'scripts/build-identity.mjs'))}`)
     await writeFile(join(scripts, 'resource-lock.mjs'), `import{basename,join}from'node:path';import{acquireResourceLock as actual}from ${JSON.stringify(join(source, 'scripts/resource-lock.mjs'))};export const acquireResourceLock=p=>actual(join(${JSON.stringify(join(directory, '.locks'))},basename(p)))`)
     for (const path of ['tests/evaluation/repair-process.ts', 'scripts/development/recovery.ts']) await writeFile(join(directory, path), `export * from ${JSON.stringify(join(source, path))}`)
-    const app = join(candidate, 'assets/mac-arm64/BoAI Agent.app'); await writeFile(join(app, 'sentinel'), 'UNCHANGED')
+    const app = join(output, 'assets/mac-arm64/BoAI Agent.app'); await writeFile(join(app, 'sentinel'), 'UNCHANGED')
     const assets = []
-    for (const extension of ['dmg', 'zip']) { const name = `BoAI-Agent-${version}-macos-arm64.${extension}`; await writeFile(join(candidate, 'assets', name), 'PROTOCOL-ONLY-NOT-AN-APP'); assets.push({ name, ...await releaseFile(join(candidate, 'assets', name)) }) }
-    await writeFile(join(candidate, 'candidate.json'), JSON.stringify({ status: 'built', errors: [], identity: { sha, version }, source: fixedSource, built, assets, app }))
+    for (const extension of ['dmg', 'zip']) { const name = `BoAI-Agent-${version}-macos-arm64.${extension}`; await writeFile(join(output, 'assets', name), 'PROTOCOL-ONLY-NOT-AN-APP'); assets.push({ name, ...await releaseFile(join(output, 'assets', name)) }) }
+    await writeFile(join(candidate, 'candidate.json'), JSON.stringify({ status: 'built', errors: [], identity: { sha, version }, source: fixedSource, built, assets, app, ...(relocated ? { artifactDirectory: output } : {}) }))
     await writeFile(join(candidate, 'bundle-files.json'), JSON.stringify(await bundleInventory(app)))
     await copyFile(resolve('dist/native/boai-process-guard'), guard); await chmod(guard, 0o700)
     await writeFile(join(old, 'intent.json'), JSON.stringify({ version: 1, directory: old, guard: await releaseFile(guard) }))
@@ -130,11 +132,11 @@ it.each(['controller', 'zip'])('真实CLI在旧%s监督器仍活跃时零worker/
     expect(ready).toBe('ledger-ready')
     expect((await readdir(ledger)).some(name => name.endsWith('.json'))).toBe(true)
     const cli = spawn(process.execPath, ['--import', './scripts/registered-runtime.mjs', 'scripts/release-smoke.mjs', '--candidate', candidate], { cwd: directory, stdio: ['ignore', 'pipe', 'pipe'] })
-    let output = ''; cli.stdout.on('data', bytes => { output += bytes }); cli.stderr.on('data', bytes => { output += bytes })
+    let cliOutput = ''; cli.stdout.on('data', bytes => { cliOutput += bytes }); cli.stderr.on('data', bytes => { cliOutput += bytes })
     const timer = setTimeout(() => cli.kill('SIGKILL'), 15_000)
-    try { const [code] = await once(cli, 'close'); expect(code, output).toBe(1) } finally { clearTimeout(timer) }
-    expect(output).toContain('个人产物冒烟 failed')
-    expect(output).toContain('未确认退出')
+    try { const [code] = await once(cli, 'close'); expect(code, cliOutput).toBe(1) } finally { clearTimeout(timer) }
+    expect(cliOutput).toContain('个人产物冒烟 failed')
+    expect(cliOutput).toContain('未确认退出')
     expect(await readdir(join(directory, '.local/release-asset-runs'))).toEqual(['old'])
     expect(await readFile(join(app, 'sentinel'), 'utf8')).toBe('UNCHANGED')
     expect(() => process.kill(child!.pid!, 0)).not.toThrow()

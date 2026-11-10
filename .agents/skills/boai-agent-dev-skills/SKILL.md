@@ -4,7 +4,7 @@ description: BOAI Agent 项目的开发与交付统一入口。处理 dev/build�
 ---
 <!--
 [INPUT]: 本次用户请求、AGENTS.md、package.json、dev/build/release脚本和实际Git/运行进程状态。
-[OUTPUT]: 开发Agent共用的命令选择、流程边界和源码核对入口；已有Git/CI与发布细则按需读取。
+[OUTPUT]: 开发命令、dist编译/安装包分布与.local数据边界；Git/CI和发布细则按需读取。
 [POS]: BOAI项目开发技能统一入口，不是BOAI产品内的数字员工技能。
 [PROTOCOL]: 命令或执行行为变化时同步本技能、references/commands.md及所属.folder.md；不将计划写成已实现。
 -->
@@ -50,6 +50,12 @@ pnpm install --frozen-lockfile --prefer-offline
 同一pnpm store可以复用包内容；整个 `node_modules` / 虚拟依赖树不能软链接到main或其他worktree。纯文档任务不必安装依赖。
 
 `pnpm dev` 是按需预览入口，不是固定日常运行方式。需要独立预览时使用本worktree的数据目录及独立端口，先确认现有进程，不接管或关闭他人的窗口。renderer热更新、主进程重新编译、当前进程重启和安装版更新分别核对。
+
+## 产物与本地文件
+
+`pnpm build`保持只编译，应用产物位于`dist/`。`pnpm package`、`pnpm dist:mac`的默认输出改为`dist/releases/`；`release:build`的DMG、ZIP、展开应用和打包暂存位于`dist/releases/candidates/<候选ID>/`，正式更新资产位于其`updates/`。安装包目录从应用打包清单和构建身份哈希排除，避免旧安装包进入新包体；实际应用字节仍完整核验。`dist/`已在`.gitignore`中，旧`release/`忽略项保留。
+
+`.local/release-candidates/<候选ID>/`继续保存`candidate.json`、进程监督器、账本和日志，`release:smoke --candidate`仍传这个控制目录；新记录通过`artifactDirectory`定位dist安装包，旧候选沿原路径读取。`.local`还可能包含开发profile、研究原件及worktree归档，不能整目录当缓存删除。只清理已确认无进程使用、可重建且无需保留的具体产物；不要自动迁移或删除旧候选。清理`dist/releases`会删除对应新安装包，候选控制记录本身不能重建这些资产。
 
 ## 版本、tag、Release与安装包
 

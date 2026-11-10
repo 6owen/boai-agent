@@ -159,11 +159,13 @@
     "buildVersion": "0.2.6",
     "productName": "BoAI Agent",
     "directories": {
-      "output": "release"
+      "output": "dist/releases"
     },
     "files": [
       "dist/**/*",
-      "package.json"
+      "package.json",
+      "!dist/releases",
+      "!dist/releases/**/*"
     ],
     "asar": true,
     "asarUnpack": [
