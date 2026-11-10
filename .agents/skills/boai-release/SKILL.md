@@ -3,12 +3,15 @@ name: boai-release
 description: BOAI macOS本机发版与安装版更新流程。用于升版本、准备安装包、发布GitHub Release，或查询下载和自动更新方式；复用bumpp与现有Sparkle发布脚本。
 ---
 <!--
+[OUTPUT]: 2026-11-10新增boai-agent-dev-skills统一入口，梳理实际dev/build/验证/打包/bumpp/tag/Release/Git/worktree命令；无参数release:build仍属未实现方案。
 [INPUT]: 用户本次发布范围、干净源码、main Test及本机更新配置。
 [OUTPUT]: 按授权完成版本准备、候选或正式Release，并准确报告下载及安装状态。
 [POS]: 开发Agent共享发布技能；本机macOS arm64打包，GitHub托管更新资产。
 [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
 -->
 # BOAI 本机发布
+
+开发与构建命令先读 [boai-agent-dev-skills](../boai-agent-dev-skills/SKILL.md)；本篇负责本机候选、正式发布和安装版更新细则。
 
 使用仓库根目录的`release:*`命令；完整合同见[个人应用更新与发布](../../../ai-docs/spec/22.开发自动化与持续测试/11-个人应用更新与发布.md)，实际验证归[03第5节](../../../ai-docs/spec/22.开发自动化与持续测试/03-实施步骤与验收.md#5-唯一实际进度)。脚本变化时核对当前源码，不照搬历史候选的SHA或测试成绩。
 
@@ -22,7 +25,7 @@ description: BOAI macOS本机发版与安装版更新流程。用于升版本、
 ## 开始与一次性配置
 
 1. 核对当前仓库、分支、status、remote、worktrees及最新Release。源码改动和PR交付沿[boai-dev-workflow](../boai-dev-workflow/SKILL.md)，不把未提交开发改动带入候选。确认`package.json`已有本技能列出的命令；缺失时先核对实现分支是否已合并，不使用旧`dist:mac`替代。
-2. 当前支持macOS Apple Silicon本机打包；按仓库锁定的pnpm安装依赖，GitHub CLI需登录且能发布`6owen/boai-agent`。现行更新源使用公开Release，不把GitHub凭据放入应用。
+2. 当前支持macOS Apple Silicon本机打包；普通开发沿package.json的Node要求，但release-build.mjs另行固定Node `v24.16.0`，先核对实际脚本和终端版本。按仓库锁定的pnpm安装依赖；发布需要GitHub CLI登录并具备`6owen/boai-agent`发布权限。现行更新源使用公开Release，不把GitHub凭据放入应用。
 3. 发布机首次执行`pnpm release:setup`。它重编译Sparkle组件，将私钥保存在钥匙串账号`com.boai.agent.updates`，公钥/feed配置存于`~/Library/Application Support/BoAI Release/settings.json`。已有配置复用；不输出/导出私钥，不静默轮换密钥。
 
 应用沿用ad-hoc签名，无需付费Developer ID或公证；更新包仍使用独立Ed25519签名校验。正式发布使用生产feed和原公钥，不能使用loopback测试配置或临时密钥候选。
@@ -58,7 +61,7 @@ pnpm release:local --publish
 pnpm release:publish "更新目录" "冒烟目录"
 ```
 
-功能分支只需测试安装包时，使用当前`package.json`版本和完整HEAD SHA：
+只需要本机安装包时，可从干净的main或功能提交构建。当前release:build仍要求显式传入`package.json`版本和完整HEAD SHA；无参数自动读取尚未实现，取值示例见[统一命令说明](../boai-agent-dev-skills/references/commands.md#5-自用安装包)：
 
 ```sh
 pnpm release:build --version X.Y.Z --sha 完整提交SHA

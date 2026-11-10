@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-11-10新增boai-agent-dev-skills统一入口，梳理实际dev/build/验证/打包/bumpp/tag/Release/Git/worktree命令；无参数release:build仍属未实现方案。
 [OUTPUT]: 2026-11-07九目标按四worktree规划：配置/诊断、能力/资源库及普通Skill、交接/项目目录、独立画板；公共文件唯一负责人归30组README第6节，用户授权本批文档git cpf。
 [OUTPUT]: 2026-11-07新增第9目标资源库应用与助手，位于提示词后，沿数据源连接与员工模板创建；08含Openbot固定源码及许可边界，共8项产品和1项Skill，仅计划。
 [OUTPUT]: 2026-11-07新增第8目标tldraw独立画板工具包，支持多位置嵌入及员工读写；共7项产品开发和1项普通Skill，07计划/04进度，未实施。
@@ -113,7 +114,7 @@ pnpm dev
 - [员工任务与主聊天](ai-docs/spec/5.Mastra能力扩展/16-员工任务队列与聊天分离.md)：任务保留独立会话，主聊天读取员工自己的任务活动及获准结果；当前修复与验证见§38。
 - [BOAI CLI](ai-docs/spec/21.BOAI-CLI/README.md) · [外部插件开发](ai-docs/spec/26.Workspace工程结构重构/04-外部插件开发与接入.md)
 - [个人 macOS 更新与本机发布](ai-docs/spec/22.开发自动化与持续测试/11-个人应用更新与发布.md)：bumpp 管版本，Sparkle 后台下载、退出安装与差分更新。
-- [协作规约](AGENTS.md) · [开发流程](.agents/skills/boai-dev-workflow/SKILL.md) · [发布技能](.agents/skills/boai-release/SKILL.md) · [UI 测试与 CI 用法](UI_TEST_CI.md)
+- [协作规约](AGENTS.md) · [开发与构建统一技能](.agents/skills/boai-agent-dev-skills/SKILL.md) · [Git/CI细则](.agents/skills/boai-dev-workflow/SKILL.md) · [发布技能](.agents/skills/boai-release/SKILL.md) · [UI 测试与 CI 用法](UI_TEST_CI.md)
 
 <details>
 <summary>源码结构与常用命令</summary>

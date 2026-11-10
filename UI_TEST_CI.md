@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-11-10新增boai-agent-dev-skills统一入口，梳理实际dev/build/验证/打包/bumpp/tag/Release/Git/worktree命令；无参数release:build仍属未实现方案。
 [OUTPUT]: 2026-10-29提供git cpf显式快速合并、暂存范围、管理员保护恢复与中断恢复说明。
 [INPUT]: BOAI共享开发skill、GitHub Test/UI preview工作流及任务worktree收尾规则。
 [OUTPUT]: 日常开发、PR检查、原生视频附件配置、合并与清理的使用说明。
@@ -7,7 +8,7 @@
 -->
 # UI 测试与 CI 用法
 
-BOAI 沿 Magpie 使用两条 GitHub Actions：**Test 检查工程是否通过，UI preview 展示本次界面改动**。开发 Agent 统一读取 [开发 skill](.agents/skills/boai-dev-workflow/SKILL.md)，这里说明日常怎么用。
+BOAI 沿 Magpie 使用两条 GitHub Actions：**Test 检查工程是否通过，UI preview 展示本次界面改动**。开发 Agent 先读 [开发与构建统一技能](.agents/skills/boai-agent-dev-skills/SKILL.md)，Git/CI细则见 [开发交付技能](.agents/skills/boai-dev-workflow/SKILL.md)，这里说明日常怎么用。
 
 ## 日常开发怎么走
 

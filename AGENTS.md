@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-11-10新增boai-agent-dev-skills统一入口，梳理实际dev/build/验证/打包/bumpp/tag/Release/Git/worktree命令；无参数release:build仍属未实现方案。
 [OUTPUT]: 2026-11-09会话文件/知识资料行菜单补系统默认、指定应用打开与定位；按业务身份核源并复用原应用清单，材料带名临时副本退出清理；本批不检查测试，Main重启后生效，归25组02 §14。
 [OUTPUT]: 2026-11-09移除header独立打开工作区按钮，工具开始页入口移至右侧详情标签栏末尾加号，沿原会话/守卫及500ms Tooltip；未检查测试，归25组02 §13。
 [OUTPUT]: 2026-11-09用户再次纠正：工具卡片固定80px，局部文字normal/图标默认；项目目录编辑显示secondary按钮，点击直接选目录。未检查测试，归25组02 §13。
@@ -682,6 +683,8 @@
 - 自检结论只在有实际发现时输出，不为形式而输出。
 
 # BOAI开发流程
+
+- 本仓库开发、dev/build、验证、打包安装、版本/tag/Release、Git交付、worktree管理及相关命令解释，先读取统一入口 [boai-agent-dev-skills](.agents/skills/boai-agent-dev-skills/SKILL.md)。命令以package.json和实际脚本为准；交付前fetch/read origin/main最新流程，再按需读取下列专门技能。不得将讨论中的简化写成已实现命令。
 
 - 用户明确要求执行 `git cpf` 或本次跳过CI直接合并时，可按[UI_TEST_CI.md](UI_TEST_CI.md)的显式快速合并入口执行。命令只提交已暂存文件、不强推main，必要时临时解除管理员强制检查并在结束时恢复；普通 `git cp` 和默认开发不自动使用此例外。合并不等于测试通过、应用重启或部署。
 
