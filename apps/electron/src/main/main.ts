@@ -3,7 +3,7 @@
  * [OUTPUT]: 可信主窗口允许私有画板UI请求；公共CLI与canvasHost权限边界保持。
  * [OUTPUT]: WT1聚合独立画板宿主；可信主窗、私有工具、人工保存屏障和退出清理共用原生命周期。
  * [OUTPUT]: 项目目录选择使用独立主窗系统对话框，不添加目录授权；路径由运行时保存时规范核验。
- * [OUTPUT]: macOS窗口按钮按共享toolbar-height与当前界面缩放垂直居中，创建/重载/缩放同步原生位置。
+ * [OUTPUT]: macOS窗口按钮左边距与侧栏按钮的8px留白对齐并随界面缩放，按共享toolbar-height垂直居中；创建/重载/缩放同步原生位置。
  * [OUTPUT]: 外观v2及诊断安全宿主桥；请求固定原runtime代次/进程，无runtime本人摘要不启动服务。
  * [OUTPUT]: 独立AgentBrowser/BrowserViewer插件接入；上游工具、启停与运行回收保持独立。
  * [OUTPUT]: 2026-10-29 Sparkle仅打包macOS主窗启用；宿主清理成功后安装，独立CLI附着时停用，失败恢复原退出入口。
@@ -842,7 +842,7 @@ function installMenu() {
 
 function mainWindowButtonPosition(zoomFactor: number) {
   // Native traffic-light frames remain 16 DIP high while the web toolbar scales.
-  return { x: 20, y: Math.round((Number.parseFloat(softTokens['toolbar-height']!) * zoomFactor - 16) / 2) }
+  return { x: Math.round(8 * zoomFactor), y: Math.round((Number.parseFloat(softTokens['toolbar-height']!) * zoomFactor - 16) / 2) }
 }
 
 function setMainWindowZoom(mainWindow: BrowserWindow, zoomFactor: number) {
