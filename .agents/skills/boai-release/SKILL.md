@@ -3,6 +3,7 @@ name: boai-release
 description: BOAI macOS本机发版与安装版更新流程。用于升版本、准备安装包、发布GitHub Release，或查询下载和自动更新方式；复用bumpp与现有Sparkle发布脚本。
 ---
 <!--
+[OUTPUT]: Electron下载取消300秒总时限，按固定SHA缓存/断点续传，三次重试及取消；真实本地HTTP回归不运行E2E。
 [OUTPUT]: 2026-11-10候选构建/冒烟取消Node24.16.0登记限制，统一沿package.engines。
 [OUTPUT]: 2026-11-10安装包统一到dist/releases，命令保持；.local保留候选控制/恢复记录，兼容旧资产，安装包不进入应用身份或包体。
 [OUTPUT]: 2026-11-10新增boai-agent-dev-skills统一入口，梳理实际dev/build/验证/打包/bumpp/tag/Release/Git/worktree命令；release:build现默认读取package版本与当前HEAD，显式参数仍可覆盖。
@@ -73,6 +74,8 @@ pnpm release:smoke --candidate .local/release-candidates/实际候选ID
 新安装包在`dist/releases/candidates/<候选ID>/assets/`，更新资产在同一候选根目录的`updates/`，Electron暂存和上一版ZIP也归此候选产物目录。候选`candidate.json`、监督器、账本和日志仍在`.local/release-candidates/<候选ID>/`，上述冒烟参数保持；新记录通过`artifactDirectory`定位安装包，旧候选沿原路径兼容读取。`dist/`已被Git忽略，安装包不参与应用身份校验或包体；不要批量删除`.local`中的profile、归档和恢复记录。
 
 候选构建/冒烟不自动授予main发布资格。普通`pnpm dist:mac`不注入更新源，不能代替这条自动更新发布流程。
+
+Electron运行时下载优先命中校验过的缓存；未完成字节保存在`dist/releases/cache/electron/partial/`，重试/重新构建自动续传，不再受原300秒整段下载上限限制。下载有连接/持续低速检测、最多三次尝试和取消，SHA256不符的文件不进入打包。网络失败时保留断点，不删除整个缓存要求从零开始。
 
 ## 失败与交付
 

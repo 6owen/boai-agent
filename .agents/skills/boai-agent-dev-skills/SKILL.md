@@ -4,7 +4,7 @@ description: BOAI Agent 项目的开发与交付统一入口。处理 dev/build�
 ---
 <!--
 [INPUT]: 本次用户请求、AGENTS.md、package.json、dev/build/release脚本和实际Git/运行进程状态。
-[OUTPUT]: 开发命令、安装包默认身份与dist/.local分布；Node统一沿package.engines，不锁定单个版本。
+[OUTPUT]: 开发命令、默认身份与dist/.local分布；Node沿engines，Electron下载缓存/续传/重试。
 [POS]: BOAI项目开发技能统一入口，不是BOAI产品内的数字员工技能。
 [PROTOCOL]: 命令或执行行为变化时同步本技能、references/commands.md及所属.folder.md；不将计划写成已实现。
 -->
@@ -54,6 +54,8 @@ pnpm install --frozen-lockfile --prefer-offline
 ## 产物与本地文件
 
 `pnpm build`保持只编译，应用产物位于`dist/`。`pnpm package`、`pnpm dist:mac`的默认输出改为`dist/releases/`；`release:build`的DMG、ZIP、展开应用和打包暂存位于`dist/releases/candidates/<候选ID>/`，正式更新资产位于其`updates/`。安装包目录从应用打包清单和构建身份哈希排除，避免旧安装包进入新包体；实际应用字节仍完整核验。`dist/`已在`.gitignore`中，旧`release/`忽略项保留。
+
+Electron ZIP优先复用已校验缓存；下载断点保存在`dist/releases/cache/electron/partial/`，每次重试及下次构建从已有字节继续。移除原300秒整段下载上限；连接超时或连续60秒低于1KB/s会触发最多三次尝试。完成后按Electron依赖自带SHA256校验，不合格文件不用于打包；取消会结束下载子进程并保留断点。
 
 `.local/release-candidates/<候选ID>/`继续保存`candidate.json`、进程监督器、账本和日志，`release:smoke --candidate`仍传这个控制目录；新记录通过`artifactDirectory`定位dist安装包，旧候选沿原路径读取。`.local`还可能包含开发profile、研究原件及worktree归档，不能整目录当缓存删除。只清理已确认无进程使用、可重建且无需保留的具体产物；不要自动迁移或删除旧候选。清理`dist/releases`会删除对应新安装包，候选控制记录本身不能重建这些资产。
 

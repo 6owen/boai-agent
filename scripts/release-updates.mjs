@@ -1,10 +1,10 @@
 /*
  * [INPUT]: Local Sparkle toolchain, per-app Keychain key, verified candidate and previous release ZIP.
- * [OUTPUT]: Update metadata and signed full/delta appcast under dist/releases; legacy candidates remain readable.
+ * [OUTPUT]: Signed updates under dist/releases; Electron downloads resume/retry with pinned hashes and cancellation.
  * [POS]: Personal macOS update preparation; never replaces the installed application.
  * [PROTOCOL]: Update Header and scripts/.folder.md when changed.
  */
-import { execFile, execFileSync } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 import { createRequire } from 'node:module'
 import { homedir } from 'node:os'
 import { dirname, join, resolve, basename } from 'node:path'
@@ -13,6 +13,7 @@ import { readFile, writeFile, mkdir, readdir, copyFile, lstat } from 'node:fs/pr
 import { sparkleBuilderConfig } from 'electron-sparkle-updater/builder'
 import { releaseFile, bundleInventory } from './release-build.mjs'
 import { candidateArtifactDirectory, releaseOutputName } from './build-output-paths.mjs'
+import { downloadReleaseArtifact } from './release-download.mjs'
 
 export const releaseRepository = '6owen/boai-agent'
 export const releaseFeed = `https://github.com/${releaseRepository}/releases/latest/download/appcast.xml`
@@ -37,15 +38,18 @@ export async function rebuildSparkle() {
   const metadata = await json(join(root, 'package.json'))
   command('pnpm', ['exec', 'electron-sparkle-updater', 'rebuild', '--electron-version', metadata.devDependencies.electron, '--arch', 'arm64'], { stdio: 'inherit', timeout: 300_000 })
 }
-export async function prepareElectronDist(directory) {
+export async function prepareElectronDist(directory, { signal } = {}) {
   // pnpm side-effect caches can materialize framework symlinks as directories.
   // Build from Electron's checksum-pinned ZIP, preserving its canonical symlinks.
   const electronRequire = createRequire(require.resolve('electron/package.json'))
   const { downloadArtifact } = electronRequire('@electron/get')
   const { version } = electronRequire('./package.json')
-  const archive = await downloadArtifact({ version, artifactName: 'electron', platform: 'darwin', arch: 'arm64', checksums: electronRequire('./checksums.json'), cacheRoot: join(root, 'dist', releaseOutputName, 'cache/electron'), downloader: {
-    download: (url, target) => new Promise((accept, reject) => execFile('/usr/bin/curl', ['--fail', '--location', '--silent', '--show-error', '--connect-timeout', '20', '--max-time', '300', '--output', target, url], { timeout: 310_000 }, error => error ? reject(error) : accept())),
+  const checksums = electronRequire('./checksums.json'), cacheRoot = join(root, 'dist', releaseOutputName, 'cache/electron')
+  signal?.throwIfAborted()
+  const archive = await downloadArtifact({ version, artifactName: 'electron', platform: 'darwin', arch: 'arm64', checksums, cacheRoot, downloader: {
+    download: (url, target) => downloadReleaseArtifact(url, target, { cacheRoot, sha256: checksums[basename(target)], signal }),
   } })
+  signal?.throwIfAborted()
   await mkdir(directory)
   command('/usr/bin/ditto', ['-x', '-k', archive, directory], { timeout: 300_000 })
   return directory
