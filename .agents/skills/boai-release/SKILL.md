@@ -3,6 +3,7 @@ name: boai-release
 description: BOAI macOS本机发版与安装版更新流程。用于升版本、准备安装包、发布GitHub Release，或查询下载和自动更新方式；复用bumpp与现有Sparkle发布脚本。
 ---
 <!--
+[OUTPUT]: 2026-11-10macOS打包排除调试映射、类型声明及依赖测试文档；浏览器/桌面CLI按目标架构保留Mac程序、helper与校验文件。
 [OUTPUT]: Electron下载取消300秒总时限，按固定SHA缓存/断点续传，三次重试及取消；真实本地HTTP回归不运行E2E。
 [OUTPUT]: 2026-11-10候选构建/冒烟取消Node24.16.0登记限制，统一沿package.engines。
 [OUTPUT]: 2026-11-10安装包统一到dist/releases，命令保持；.local保留候选控制/恢复记录，兼容旧资产，安装包不进入应用身份或包体。
@@ -72,6 +73,8 @@ pnpm release:smoke --candidate .local/release-candidates/实际候选ID
 ```
 
 新安装包在`dist/releases/candidates/<候选ID>/assets/`，更新资产在同一候选根目录的`updates/`，Electron暂存和上一版ZIP也归此候选产物目录。候选`candidate.json`、监督器、账本和日志仍在`.local/release-candidates/<候选ID>/`，上述冒烟参数保持；新记录通过`artifactDirectory`定位安装包，旧候选沿原路径兼容读取。`dist/`已被Git忽略，安装包不参与应用身份校验或包体；不要批量删除`.local`中的profile、归档和恢复记录。
+
+macOS普通打包与release候选共用根`package.json.build`过滤：包内排除`.map`调试映射、`.d.ts/.d.mts/.d.cts`声明和依赖的test/tests/__tests__/docs/examples/coverage目录；浏览器/桌面CLI只保留目标`${arch}`的Mac二进制、helper及SHA256，排除Linux/Windows及另一Mac架构。保留启动脚本、运行依赖、WASM、字体、技能及许可证；本地开发源码、测试和依赖树不裁剪。`pnpm build`继续生成原调试产物，只在打包时过滤。
 
 候选构建/冒烟不自动授予main发布资格。普通`pnpm dist:mac`不注入更新源，不能代替这条自动更新发布流程。
 

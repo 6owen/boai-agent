@@ -3,6 +3,7 @@ name: boai-agent-dev-skills
 description: BOAI Agent 项目的开发与交付统一入口。处理 dev/build、验证、打包安装、bumpp 升版本、tag/GitHub Release、git cp/cpf、worktree 管理及相关命令解释时使用，按当前源码核对命令和执行范围。
 ---
 <!--
+[OUTPUT]: 2026-11-10macOS打包排除调试映射、类型声明及依赖测试文档；浏览器/桌面CLI按目标架构保留Mac程序、helper与校验文件。
 [INPUT]: 本次用户请求、AGENTS.md、package.json、dev/build/release脚本和实际Git/运行进程状态。
 [OUTPUT]: 开发命令、默认身份与dist/.local分布；Node沿engines，Electron下载缓存/续传/重试。
 [POS]: BOAI项目开发技能统一入口，不是BOAI产品内的数字员工技能。
@@ -52,6 +53,8 @@ pnpm install --frozen-lockfile --prefer-offline
 `pnpm dev` 是按需预览入口，不是固定日常运行方式。需要独立预览时使用本worktree的数据目录及独立端口，先确认现有进程，不接管或关闭他人的窗口。renderer热更新、主进程重新编译、当前进程重启和安装版更新分别核对。
 
 ## 产物与本地文件
+
+macOS普通打包与release候选共用根`package.json.build`过滤：包内排除`.map`调试映射、`.d.ts/.d.mts/.d.cts`声明和依赖的test/tests/__tests__/docs/examples/coverage目录；浏览器/桌面CLI只保留目标`${arch}`的Mac二进制、helper及SHA256，排除Linux/Windows及另一Mac架构。保留启动脚本、运行依赖、WASM、字体、技能及许可证；本地开发源码、测试和依赖树不裁剪。`pnpm build`继续生成原调试产物，只在打包时过滤。
 
 `pnpm build`保持只编译，应用产物位于`dist/`。`pnpm package`、`pnpm dist:mac`的默认输出改为`dist/releases/`；`release:build`的DMG、ZIP、展开应用和打包暂存位于`dist/releases/candidates/<候选ID>/`，正式更新资产位于其`updates/`。安装包目录从应用打包清单和构建身份哈希排除，避免旧安装包进入新包体；实际应用字节仍完整核验。`dist/`已在`.gitignore`中，旧`release/`忽略项保留。
 

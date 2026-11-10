@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-11-10macOS打包裁剪：根files统一过滤调试/类型/依赖测试文档和非目标CLI；33项定向、构建/类型及实际签名包通过，1086→814MiB约降25%，无GUI/安装。
 [OUTPUT]: 2026-11-10安装包统一到dist/releases，命令保持；.local保留候选控制/恢复记录，兼容旧资产，安装包不进入应用身份或包体。
 [OUTPUT]: 2026-11-10新增boai-agent-dev-skills统一入口，梳理实际dev/build/验证/打包/bumpp/tag/Release/Git/worktree命令；release:build现默认读取package版本与当前HEAD，显式参数仍可覆盖。
 [OUTPUT]: 2026-11-09会话文件/知识资料行菜单补系统默认、指定应用打开与定位；按业务身份核源并复用原应用清单，材料带名临时副本退出清理；本批不检查测试，Main重启后生效，归25组02 §14。
