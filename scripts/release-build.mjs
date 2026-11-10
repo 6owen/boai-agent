@@ -1,7 +1,7 @@
 /*
  * [OUTPUT]: 2026-10-29 个人候选嵌入Sparkle与公钥；重编译桥接并从校验过的Electron ZIP保留framework链接。
  * [OUTPUT]: 应用与评估编译按当前工作区公开exports解析，保留原执行与分发合同。
- * [INPUT]: 默认package版本/当前HEAD或显式覆盖、干净源码及原构建配置；本机macOS arm64。
+ * [INPUT]: 默认package版本/当前HEAD或显式覆盖、干净源码及原构建配置；本机macOS arm64，Node沿package.engines。
  * [OUTPUT]: 旧进程排空后在dist/releases生成隔离候选；.local保留监督器/账本，仅built，不授发布或安装资格。
  * [POS]: 个人候选构建；不创建Tag/Release、不替换应用或个人数据，产物冒烟另行核对。
  * [PROTOCOL]: 修改同步Header与scripts/.folder.md。
@@ -79,7 +79,7 @@ export function assertPersonalBundle({ plist, architectures, signature, version 
   if (architectures.trim() !== 'arm64' || !/^Signature=adhoc$/m.test(signature) || !/^TeamIdentifier=not set$/m.test(signature) || /^CodeDirectory.*\bruntime\b/m.test(signature)) throw new Error('候选须为arm64/ad-hoc且无hardened runtime，不冒充Developer ID')
 }
 export async function buildRelease(version, sha) {
-  if (process.platform !== 'darwin' || process.arch !== 'arm64' || process.version !== 'v24.16.0') throw new Error('个人候选仅支持已登记的macOS arm64/Node24.16.0')
+  if (process.platform !== 'darwin' || process.arch !== 'arm64') throw new Error('此命令构建macOS arm64安装包，请在Apple Silicon Mac上运行')
   const source = await sourceIdentity(root), metadata = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
   version ??= metadata.version
   sha ??= source.commit

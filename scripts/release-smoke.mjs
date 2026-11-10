@@ -1,7 +1,7 @@
 /*
  * [OUTPUT]: 2026-10-29 原ZIP8/DMG2来源校验同时核对候选中的更新feed与公钥，原冒烟断言保持；返回已验DMG/ZIP字节身份供发布绑定。
  * [OUTPUT]: 应用与评估编译按当前工作区公开exports解析，保留原执行与分发合同。
- * [INPUT]: 当前built候选及dist/releases安装包（兼容旧.local资产）、锁定BDD；已登录macOS arm64/Node24。
+ * [INPUT]: 当前built候选及dist/releases安装包（兼容旧.local资产）、锁定BDD；已登录macOS arm64；Node沿package.engines。
  * [OUTPUT]: ZIP8/DMG2原场景、逐启动完整独立profile/包身份、实际执行墙钟窗口与bundle前后字节；受管worker配对挂载/封存，未知先恢复。
  * [POS]: 个人候选产物冒烟入口；不修改基线、创建Tag/Release或替换个人应用/数据。
  * [PROTOCOL]: 修改同步Header及scripts/.folder.md。
@@ -257,7 +257,7 @@ async function worker(directory) {
   }
 }
 async function run(candidatePath) {
-  if (process.platform !== 'darwin' || process.arch !== 'arm64' || process.version !== 'v24.16.0') throw Error('个人产物冒烟须macOS arm64/Node24.16.0')
+  if (process.platform !== 'darwin' || process.arch !== 'arm64') throw Error('macOS arm64产物冒烟需要Apple Silicon Mac')
   const unlocks = [], controller = new AbortController(), stop = () => controller.abort(), directory = join(runs, randomUUID())
   const result = { version: 1, status: 'failed', errors: [], directory, authority: 'isolated candidate asset smoke only; no main CI, tag, publication or personal install qualification' }
   let h, guard
