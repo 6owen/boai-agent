@@ -1,6 +1,6 @@
 /*
  * [INPUT]: PR diff, isolated BOAI Electron and DeepSeek planning configuration.
- * [OUTPUT]: Magpie-derived screenshots and optional recording for the PR description.
+ * [OUTPUT]: Screenshots/video bound to source SHA and actual scene/step completion; partial recordings exit nonzero.
  * [POS]: UI preview; upstream yetone/magpie@396e0e463805dd5ded971ade37ded08a52512ae5 (MIT).
  * [PROTOCOL]: Update this header and .github/ui-preview/.folder.md when changed.
  */
@@ -23,6 +23,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { PREVIEW_VIEWS, previewOutcome, validatePlan } from "./result.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const env = (k, d) => process.env[k] ?? d;
@@ -40,7 +41,7 @@ let desktop;
 const LOCALE = env("UI_LOCALE", "zh-CN");
 const MODEL = env("PLAN_MODEL", "deepseek-flash");
 const VIEW = { width: 1280, height: 800 };
-const VIEWS = ["chat", "contacts", "schedules", "resources", "settings"];
+const VIEWS = PREVIEW_VIEWS;
 // never pressed: they end the run, reach out of the sandbox or throw away
 // what the recording needs
 const FORBIDDEN = /退出|quit|删除|delete|remove|移除|更新到|update to|restart|重启|sign out|登出|卸载|uninstall/i;
@@ -48,7 +49,7 @@ const secrets = env("SECRETS", "").split("\n").map((s) => s.trim()).filter((s) =
 
 const log = (...a) => console.log("[ui-preview]", ...a);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const manifest = { summary: "", scenes: [], video: null, poster: null, errors: [], leak: false, skipped: null };
+const manifest = { version: 1, sourceSha: env("SOURCE_SHA", ""), summary: "", plannedScenes: 0, scenes: [], video: null, poster: null, errors: [], leak: false, skipped: null, status: "failed" };
 
 // The page as a compact outline the planner can pick real selectors from:
 // visible elements, their tag, id, classes, a few data- attributes and
@@ -108,7 +109,7 @@ async function deepseek(messages) {
     const res = await fetch(`${env("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1").replace(/\/$/, "")}/chat/completions`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${env("DEEPSEEK_API_KEY")}` },
-      body: JSON.stringify({ model: MODEL, messages, response_format: { type: "json_object" }, max_tokens: 16000 }),
+      body: JSON.stringify({ model: MODEL, messages, thinking: { type: "disabled" }, response_format: { type: "json_object" }, max_tokens: 16000 }),
       signal: AbortSignal.timeout(240e3),
     });
     if (!res.ok) throw new Error(`DeepSeek ${res.status}: ${(await res.text()).slice(0, 300)}`);
@@ -199,7 +200,7 @@ Reply with JSON only:
   "mismatch": "Chinese, or empty: what the description says the UI gets that the diff doesn't do",
   "unseen": "Chinese, or empty: what of the change this sandbox can't show, and why",
   "scenes": [
-    { "title": "short Chinese title", "start": "agents",
+    { "title": "short Chinese title", "start": "chat",
       "steps": [
         { "do": "click", "target": "css selector", "text": "optional: only elements containing this text", "caption": "Chinese caption shown in the video" },
         { "do": "hover", "target": "…", "caption": "…" },
@@ -439,15 +440,10 @@ async function main() {
       Object.entries(outlines).map(([k, v]) => `=== outline: ${k} ===\n${v}`).join("\n\n") +
       (code ? `\n\n=== the page's code around the change (the PR's version), to see how to reach it ===\n${code}` : "") },
   ];
-  let plan;
-  try { plan = env("PLAN_FILE") ? JSON.parse(await fs.readFile(env("PLAN_FILE"), "utf8")) : await deepseek(ask); }
-  catch (e) { plan = null; manifest.errors.push(`plan: ${e.message}`); }
-  if (!plan || plan.ui_change === false || !plan.scenes?.length) {
-    manifest.summary = plan?.summary || "";
-    manifest.skipped = plan ? "no visible UI change found in the diff" : "no plan";
-    // still something to look at: the first place the diff seems to touch
-    plan = { summary: manifest.summary, scenes: plan ? [] : [{ title: "会话页", start: "chat", steps: [{ do: "shot", name: "agents", caption: "会话页" }] }] };
-  }
+  const plan = env("PLAN_FILE") ? JSON.parse(await fs.readFile(env("PLAN_FILE"), "utf8")) : await deepseek(ask);
+  validatePlan(plan);
+  if (plan.ui_change === false) manifest.skipped = "no visible UI change found in the diff";
+  manifest.plannedScenes = plan.scenes.length;
   manifest.summary = plan.summary || "";
   manifest.mismatch = plan.mismatch || "";
   manifest.unseen = plan.unseen || "";
@@ -461,7 +457,7 @@ async function main() {
     let at = null, repairs = 0, interactive = false, lead = 0;
     const places = new Set();
     for (const s of plan.scenes.slice(0, 5)) {
-      const scene = { title: s.title || "", shots: [] };
+      const scene = { title: s.title || "", start: s.start, plannedSteps: s.steps.length, completedSteps: 0, failedSteps: 0, status: "pending", shots: [] };
       manifest.scenes.push(scene);
       try {
         await caption(page, scene.title);
@@ -469,13 +465,14 @@ async function main() {
         if (!at) lead = Math.max(0, (Date.now() - began) / 1000 - 0.4);
         at = s.start || "chat";
         places.add(at);
-      } catch (e) { manifest.errors.push(`${scene.title}: open ${s.start}: ${e.message}`); if (manifest.leak) break; continue; }
+      } catch (e) { scene.status = "failed"; manifest.errors.push(`${scene.title}: open ${s.start}: ${e.message}`); if (manifest.leak) break; continue; }
       let steps = (s.steps || []).slice(0, 25);
       for (let i = 0; i < steps.length; i++) {
         const step = steps[i];
         if (["click", "hover", "type", "press", "scroll"].includes(step.do)) interactive = true;
-        try { await runStep(page, step, scene); }
+        try { await runStep(page, step, scene); scene.completedSteps++; }
         catch (e) {
+          scene.failedSteps++;
           if (manifest.leak) break;
           manifest.errors.push(`${scene.title} · ${step.do} ${step.target || step.name || ""}: ${e.message.split("\n")[0]}`);
           log("step failed:", e.message);
@@ -489,6 +486,7 @@ async function main() {
           } catch (e2) { manifest.errors.push(`repair: ${e2.message}`); }
         }
       }
+      scene.status = scene.failedSteps === 0 && scene.completedSteps === scene.plannedSteps && scene.shots.length ? "complete" : "failed";
       if (manifest.leak) break;
       await caption(page, "");
       await sleep(600);
@@ -513,8 +511,10 @@ async function main() {
     for (const f of await fs.readdir(OUT)) await fs.rm(path.join(OUT, f), { recursive: true, force: true });
     manifest.scenes = []; manifest.video = manifest.poster = null;
   }
+  manifest.status = previewOutcome(manifest);
   await fs.writeFile(path.join(OUT, "manifest.json"), JSON.stringify(manifest, null, 2));
-  log("done:", JSON.stringify({ shots: manifest.scenes.reduce((n, s) => n + s.shots.length, 0), video: manifest.video, errors: manifest.errors.length, leak: manifest.leak }));
+  log("done:", JSON.stringify({ status: manifest.status, shots: manifest.scenes.reduce((n, s) => n + s.shots.length, 0), video: manifest.video, errors: manifest.errors.length, leak: manifest.leak }));
+  if (["partial", "failed"].includes(manifest.status)) process.exitCode = 1;
 }
 
 // the video's still in the PR: a frame from the middle with a play button
@@ -539,6 +539,7 @@ main().catch(async (e) => {
   await desktop?.dispose().catch(() => {});
   console.error(e);
   manifest.errors.push(`recorder: ${e.message}`);
+  manifest.status = previewOutcome(manifest, "failure");
   await fs.mkdir(OUT, { recursive: true }).catch(() => {});
   await fs.writeFile(path.join(OUT, "manifest.json"), JSON.stringify(manifest, null, 2)).catch(() => {});
   process.exit(1);

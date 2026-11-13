@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-11-13 UI验证增量：Test固定三项行为、预览完成度及SHA核对；工程/真实GUI与当前PR状态归22组03。
 [OUTPUT]: 2026-11-10macOS打包裁剪：根files统一过滤调试/类型/依赖测试文档和非目标CLI；33项定向、构建/类型及实际签名包通过，1086→814MiB约降25%，无GUI/安装。
 [OUTPUT]: 2026-11-10安装包统一到dist/releases，命令保持；.local保留候选控制/恢复记录，兼容旧资产，安装包不进入应用身份或包体。
 [OUTPUT]: 2026-11-10新增boai-agent-dev-skills统一入口，梳理实际dev/build/验证/打包/bumpp/tag/Release/Git/worktree命令；release:build现默认读取package版本与当前HEAD，显式参数仍可覆盖。
@@ -690,7 +691,7 @@
 
 - 用户明确要求执行 `git cpf` 或本次跳过CI直接合并时，可按[UI_TEST_CI.md](UI_TEST_CI.md)的显式快速合并入口执行。命令只提交已暂存文件、不强推main，必要时临时解除管理员强制检查并在结束时恢复；普通 `git cp` 和默认开发不自动使用此例外。合并不等于测试通过、应用重启或部署。
 
-- 2026-10-28现行规则：直接迁用Magpie Test与DeepSeek UI preview；工程检查与界面预览自动运行，预览发布到PR。撤销本地效果确认前置、固定PNG基准门禁、独立候选与基准晋升流程。
+- 2026-11-13现行增量：沿Magpie Test与DeepSeek UI preview；Test构建后增加固定三项真实Electron行为（草稿隔离、外观重启持久化、工具切换），缺场/跳过/重试/错误均失败，不比较PNG。预览按实际场景/步骤显示完整/部分/失败，部分媒体保持失败；报告源码与当前PR head匹配才更新固定区块。源码、实际检查和云端生效分别归22组03。2026-10-28撤销的本地效果确认前置、固定PNG基准门禁、独立候选和基准晋升流程保持撤销。
 - 开发使用独立worktree，交付按本次用户授权；明确只修改/执行试验时不合并。旧UI工具和历史结果保留为本地按需入口。
 - 在本仓库开发、交付、CI或合并前，读取共享技能[boai-dev-workflow](.agents/skills/boai-dev-workflow/SKILL.md)，并fetch/read origin/main最新版本；旧worktree/Session也必须重新读取。本分支修订和最新用户指令优先核对。当前详细合同见第22组06。
 - 本机版本、安装包或Release发布及下载/自动更新说明使用共享技能[boai-release](.agents/skills/boai-release/SKILL.md)，复用bumpp与现有release脚本；发布范围按本次请求，普通开发提交/合并不隐含发版，实际状态归第22组03。

@@ -3,6 +3,7 @@ name: boai-dev-workflow
 description: BOAI 共享开发流程；沿 Magpie Test 和 DeepSeek UI preview 完成交付。
 ---
 <!--
+[OUTPUT]: 2026-11-13 Test固定三项UI行为；预览按实际完成度和当前SHA发布，部分结果保持失败。
 [OUTPUT]: 2026-11-10新增boai-agent-dev-skills统一入口，梳理实际dev/build/验证/打包/bumpp/tag/Release/Git/worktree命令；release:build现默认读取package版本与当前HEAD，显式参数仍可覆盖。
 [OUTPUT]: 2026-10-29新增boai-release共享技能，覆盖bumpp、本机候选/Release、下载与自动更新；普通开发转入发布须符合本次请求。
 [OUTPUT]: 2026-10-29用户明确调用git cpf时允许临时管理员检查例外，恢复记录和实际合并核验必需；普通交付保持。
@@ -38,8 +39,9 @@ description: BOAI 共享开发流程；沿 Magpie Test 和 DeepSeek UI preview �
 
 面向使用者的流程与常见状态说明见 [UI_TEST_CI.md](../../../UI_TEST_CI.md)；执行依据保持本技能、AGENTS.md及实际workflow，变化时同步该说明。
 
-- `Test` 沿 Magpie 的 PR/main/manual 触发与并发取消方式，用BOAI现有 typecheck、lint、build、Vitest 命令；CLI集成测试依赖dist/cli，因此先构建再测试。现阶段在已支持的macOS执行；Required checks只汇总工程测试结果，保持原分支保护名称。
+- `Test` 沿 Magpie 的 PR/main/manual 触发与并发取消方式，在macOS依次执行typecheck、lint、build、`test:ui:behavior`固定三项真实Electron行为及Vitest；运行时检查依赖dist，先构建再测试。固定行为只用隔离数据/离线夹具，缺场、跳过、重试、全局错误或失败均拒绝；截图/trace仅留证，不比较PNG。Required checks汇总此Test，保持原分支保护名称。
 - `UI preview` 沿上游 detect → record → publish：UI文件变更或ui-preview标签触发；DeepSeek读取diff及真实页面，规划操作、截图，交互时录屏，在PR描述固定区域更新预览。已有DeepSeek配置通过ui-preview environment提供。
+- PR预览按实际场景/步骤显示完整、部分完成、失败或无需录制；部分媒体仍使录制失败。报告source SHA须匹配当前开放PR，写入前再次核对head。功能正确性看Test，录制完成与人工效果审阅分开；本机仍按本次E2E/焦点范围，不自行启动GUI。
 - 执行PR代码的record任务没有仓库写权限；有写权限的publish任务不运行PR代码。视频通过固定版本GitHub CLI上传为PR原生附件，上传令牌仅存于独立ui-preview-publish环境；不得传给record或放进仓库级secret。缺配置或上传失败明确报错并保留下载，不能把raw下载称在线播放。预览不冒充工程测试通过。
 - 不要求用户先在本地确认效果；不运行基准candidate/accept/update，不以新旧PNG不同阻止正常UI开发。旧本地UI回归工具、测试源码及历史结果保留为按需工具，不属于PR门禁。
 - 没有UI变化时，preview检测后跳过录制；Test正常执行。不为通过CI修改产品UI、删除产品行为测试或伪造模型调用。

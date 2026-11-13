@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: Fixed UI behavior checks, actual recording completion and current-head publication; partial media remain failed.
 [INPUT]: Magpie Test/UI preview at 396e0e463805dd5ded971ade37ded08a52512ae5.
 [OUTPUT]: Source attribution, explorer UI detection, native attachment configuration and runnable preview instructions.
 [POS]: Development UI preview, separate from product employee skills.
@@ -13,8 +14,13 @@ Derived from [yetone/magpie](https://github.com/yetone/magpie/tree/396e0e463805d
 - `publish.mjs`: UI-path detection (including the file explorer component/CSS), media branch and fixed PR-description block. Recordings upload as native GitHub video attachments with `gh pr edit --attach`; a poster linking to raw mp4 is not a player.
 - `app.ts`: BOAI Electron lifecycle/navigation; reuses existing isolated conversation and schedule fixtures. Demo model traffic uses the fixture, DeepSeek plans actions.
 - `run.mjs`: builds the adapter, then invokes the recorder. Full application build remains an explicit preceding step.
+- `result.mjs`: validates recording plans and derives complete/partial/failed/skipped from actual scene/step results.
 
-`Test` (`.github/workflows/test.yml`) uses BOAI's typecheck/lint/build/Vitest on its supported macOS runtime. CLI integration tests need the built dist/cli entry, so build precedes Vitest. It retains the existing Required checks name so branch protection need not change. `UI preview` retains detect/record/publish permission separation and PR event handling. Neither workflow compares or updates PNG baselines.
+`Test` (`.github/workflows/test.yml`) uses BOAI's typecheck/lint/build, three fixed Electron BDD behaviors, and Vitest on its supported macOS runtime. Run `pnpm test:ui:behavior` after building; it records screenshots and traces in `.local/ui-behavior/` and rejects missing, duplicate, skipped, retried or failed scenarios. The fixed cases cover conversation draft isolation, appearance persistence and workspace tool navigation; they do not replace feature-specific tests. CLI integration tests need dist/cli, so build precedes all runtime checks. Required checks retains its existing name. Neither workflow compares or updates PNG baselines.
+
+The recorder uses DeepSeek without thinking, records the source checkout SHA and actual planned/completed/failed steps, and exits nonzero for incomplete recording. A partial recording is still published with an explicit warning and completed scene count. Invalid or empty UI plans cannot silently succeed with an unrelated fallback screenshot. Publishing requires matching artifact/current PR SHAs and an open PR, and checks the head again just before editing its generated block. Source summaries and previews leave the author's other text intact. Media for other commits of open PRs remain available so overlapping publishers cannot remove newer links; closed PR media are reclaimed on subsequent publications.
+
+All three trusted script checkouts use the workflow's immutable `github.sha`, keeping recorder and publisher versions together while main advances. For `pull_request_target` this is the event's default-branch commit; PR application code is checked out separately at the detected head ([GitHub event reference](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request_target)).
 
 ## Configuration
 

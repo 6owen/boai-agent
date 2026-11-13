@@ -34,6 +34,7 @@
     "eval:hillclimb": "node scripts/evaluation-experiment.mjs hillclimb",
     "cli": "node dist/cli/index.mjs",
     "test:ui": "pnpm build && node scripts/ui-regression.mjs check",
+    "test:ui:behavior": "node scripts/test-ui-behavior.mjs",
     "test:ui:candidate": "pnpm build && node scripts/ui-regression.mjs candidate",
     "test:ui:accept": "node scripts/ui-regression.mjs accept",
     "dev:task": "node scripts/dev-task.mjs",
