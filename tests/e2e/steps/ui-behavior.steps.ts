@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 固定中文行为场景、原 Desktop 生命周期和离线员工会话夹具。
- * [OUTPUT]: 真实点击/持久化/草稿断言和结束截图；零外部模型，不比较 PNG。
+ * [OUTPUT]: 真实点击/持久化/草稿断言和可直接查看的结束PNG；零外部模型，不比较 PNG。
  * [POS]: 日常 UI 行为验收，复用现有 Electron BDD。
  * [PROTOCOL]: 变化同步 Header 和所属 .folder.md。
  */
@@ -16,7 +16,9 @@ const { Given, Then } = createBdd(test)
 const navigation = (page: Page) => page.getByRole('navigation', { name: '主导航', exact: true })
 const composer = (page: Page) => page.getByRole('textbox', { name: '消息内容', exact: true })
 async function screenshot(page: Page, name: string) {
-  await test.info().attach(name, { body: await page.screenshot(), contentType: 'image/png' })
+  const file = test.info().outputPath('ui-behavior.png')
+  await page.screenshot({ path: file })
+  await test.info().attach(name, { path: file, contentType: 'image/png' })
 }
 async function appearance(page: Page) {
   await page.getByRole('button', { name: '我的菜单', exact: true }).click()
