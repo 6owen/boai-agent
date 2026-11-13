@@ -1,5 +1,5 @@
 # [INPUT]: PR/main commits and explicit manual runs.
-# [OUTPUT]: Magpie-style engineering Test; build CLI artifacts before their tests, no screenshot baseline gate.
+# [OUTPUT]: Engineering Test plus three fixed UI behavior scenarios; screenshot/trace evidence without PNG comparison.
 # [POS]: Engineering CI; Required checks retains the existing branch-protection name.
 # [PROTOCOL]: Update .github/workflows/.folder.md and the shared development skill.
 name: Test
@@ -29,6 +29,16 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm lint:ui
       - run: pnpm build
+      - name: UI behavior checks
+        run: pnpm test:ui:behavior
+      - name: UI behavior evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-behavior
+          path: .local/ui-behavior
+          retention-days: 7
+          if-no-files-found: ignore
       - run: pnpm test
   required:
     name: Required checks

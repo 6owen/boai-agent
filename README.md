@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-11-13 Test新增固定三项UI行为；预览报告显示实际完成度并核对当前源码提交，实际验证归22组03。
 [OUTPUT]: 2026-11-10安装包统一到dist/releases，命令保持；.local保留候选控制/恢复记录，兼容旧资产，安装包不进入应用身份或包体。
 [OUTPUT]: 2026-11-10新增boai-agent-dev-skills统一入口，梳理实际dev/build/验证/打包/bumpp/tag/Release/Git/worktree命令；release:build现默认读取package版本与当前HEAD，显式参数仍可覆盖。
 [OUTPUT]: 2026-11-07九目标按四worktree规划：配置/诊断、能力/资源库及普通Skill、交接/项目目录、独立画板；公共文件唯一负责人归30组README第6节，用户授权本批文档git cpf。
@@ -147,7 +148,7 @@ ai-docs/             设计、规格与实施记录
 
 </details>
 
-2026-10-28：开发CI按[第22组06](ai-docs/spec/22.开发自动化与持续测试/06-UI回归基准与PR门禁.md)运行Test与DeepSeek UI preview；固定PNG基准更新不再是PR前置。
+2026-11-13：开发CI按[第22组06](ai-docs/spec/22.开发自动化与持续测试/06-UI回归基准与PR门禁.md)运行Test工程检查、固定三项UI行为及DeepSeek UI preview；预览显示实际完成度并核对当前提交，截图/录屏供审阅。固定PNG基准更新不作为PR前置；实际验证归该组03末节。
 
 官方文件浏览器：`@boai/file-explorer-plugin` 提供员工工作区与授权目录的文件树和预览，沿插件设置启停；目录边界与实际验证见[第19组18](ai-docs/spec/19.应用插件架构/18-文件浏览器插件与目录入口.md)。
 

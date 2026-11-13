@@ -3,6 +3,7 @@ name: boai-agent-dev-skills
 description: BOAI Agent 项目的开发与交付统一入口。处理 dev/build、验证、打包安装、bumpp 升版本、tag/GitHub Release、git cp/cpf、worktree 管理及相关命令解释时使用，按当前源码核对命令和执行范围。
 ---
 <!--
+[OUTPUT]: 2026-11-13新增test:ui:behavior构建后三项UI行为入口，工程Test与预览完成度边界见Git/CI技能。
 [OUTPUT]: 2026-11-10macOS打包排除调试映射、类型声明及依赖测试文档；浏览器/桌面CLI按目标架构保留Mac程序、helper与校验文件。
 [INPUT]: 本次用户请求、AGENTS.md、package.json、dev/build/release脚本和实际Git/运行进程状态。
 [OUTPUT]: 开发命令、默认身份与dist/.local分布；Node沿engines，Electron下载缓存/续传/重试。

@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-11-13 test:ui:behavior在构建后验证固定三项UI行为，输出报告/截图/trace并接入Test。
 [OUTPUT]: 2026-11-10macOS打包排除调试映射、类型声明及依赖测试文档；浏览器/桌面CLI按目标架构保留Mac程序、helper与校验文件。
 [INPUT]: 根package.json、scripts/dev*.mjs、build*.mjs、release*.mjs、Git脚本及现行workflow。
 [OUTPUT]: 当前命令、默认参数与dist/.local分布；Node沿engines，下载失败可续传/重试。
@@ -67,10 +68,11 @@ renderer由Vite处理热更新；`dev.mjs`在启动时构建宿主，没有主�
 | `pnpm check:workspace` | workspace依赖边界检查 |
 | `pnpm test:electron` | 构建、生成BDD、运行Playwright桌面场景；按用户明确范围执行 |
 | `pnpm test:electron:list` | 生成并列出桌面场景；不代表场景已运行 |
+| `pnpm test:ui:behavior` | 构建后运行固定三项真实Electron BDD，保存原始JSON/汇总/截图/trace；缺场、跳过、重试和错误均失败；会启动窗口，按本次授权执行 |
 | `pnpm test:ui` / `pnpm test:ui:candidate` / `pnpm test:ui:accept` | 保留的本地截图检查/候选/接受工具，不是当前PR基准门禁；不自行晋升基准 |
 | `pnpm ci:local` / `pnpm ci:watch` | 保留的本机CI工具，当前不作为默认执行或常驻流程 |
 
-遵守本次用户对检查、测试、E2E和焦点的要求。只写文档不启动应用、真实模型或完整产品测试。当前云端 `Test` 会安装依赖并依次typecheck、lint、build、test；CLI相关测试依赖dist，所以构建顺序必须保持。`UI preview`按路径决定是否录制，不是业务验收或审美门禁。完整规则见 [UI_TEST_CI.md](../../../../UI_TEST_CI.md)。
+遵守本次用户对检查、测试、E2E和焦点的要求。只写文档不启动应用、真实模型或完整产品测试。当前云端 `Test` 会安装依赖并依次typecheck、lint、build、test:ui:behavior、test；运行时检查依赖dist，构建顺序必须保持。UI行为的无GUI选场检查沿`pnpm test:bddgen`及`pnpm exec playwright test --grep @ui-behavior --list`。`UI preview`按路径录制并显示实际完成度，部分结果失败；不作为业务或审美认证。完整规则见 [UI_TEST_CI.md](../../../../UI_TEST_CI.md)。
 
 ## 5. 自用安装包
 

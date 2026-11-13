@@ -1,5 +1,5 @@
 # [INPUT]: PR UI changes and DeepSeek planning credentials.
-# [OUTPUT]: Magpie previews with native video attachments; upload credential isolated to publish.
+# [OUTPUT]: Current-head recording reports; trusted detect/record/publish scripts pinned to the workflow commit.
 # [POS]: Upstream 396e0e463805dd5ded971ade37ded08a52512ae5 adapted to BOAI Electron.
 # [PROTOCOL]: Update .github/workflows/.folder.md and .github/ui-preview/README.md.
 name: UI preview
@@ -46,7 +46,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request_target' && github.event.repository.default_branch || github.sha }}
+          ref: ${{ github.sha }}
           sparse-checkout: .github/ui-preview
           persist-credentials: false
       - id: detect
@@ -85,7 +85,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request_target' && github.event.repository.default_branch || github.sha }}
+          ref: ${{ github.sha }}
           path: ci
           sparse-checkout: .github/ui-preview
           persist-credentials: false
@@ -147,7 +147,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request_target' && github.event.repository.default_branch || github.sha }}
+          ref: ${{ github.sha }}
           sparse-checkout: .github/ui-preview
           persist-credentials: false
       - uses: actions/download-artifact@v4
