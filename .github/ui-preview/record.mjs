@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-16记录器指导区分技能商城来源tab与button，安装入口展示不执行真实CLI。
  * [OUTPUT]: 预览导航说明识别其他配置二级菜单及个人快捷入口。
  * [INPUT]: PR diff, isolated BOAI Electron and DeepSeek planning configuration.
  * [OUTPUT]: Screenshots/video bound to source SHA and actual scene/step completion; partial recordings exit nonzero.
@@ -189,6 +190,7 @@ const GUIDE = `You plan a short screen recording of BOAI, an Electron desktop ap
 The diff is what the PR does. The title and description are the author's words and may be out of date or wrong: plan and summarise from the diff alone, and when the description claims something in the UI the diff doesn't do (a setting, a page, a button), don't look for it — say so in "mismatch".
 
 Places ("start" of a scene): chat, contacts, schedules, resources, settings. Main navigation is nav[aria-label="主导航"]. Settings opens from 我的菜单 → 其他配置 → 模型连接 (其他配置 is a submenu). Personal pages such as 外观 also have direct shortcuts in 我的菜单. Select controls from the provided BOAI page outlines.
+In the skill marketplace, skills.sh / ClawHub / SkillHub are tabs (role="tab"), not role="button". Open the 商城 tab before selecting a provider. Use the live outline to confirm tab labels and selection. Do not execute a real CLI installation during this isolated recording; show the available entry point and report that boundary in unseen.
 
 You get the PR's title, description and diff, and an outline of each place as it is rendered now: one element per line, indented by nesting, as tag#id.class[data-x="…"] attributes "own text". Elements marked (below the fold) are further down their page, out of sight until it is scrolled: a "shot" without a target shows only what's on screen, so bring them into view first ("scroll" with "to"), or give the shot that target. Click, hover, type and a shot's target scroll to their element themselves, on camera. Use only selectors you can build from what the outline shows, or, for what only appears after an interaction (a popover, menu, dialog, hover state), from the diff itself: the outlines show each place closed, so an element the diff styles or builds being missing from them means you must open it first, not that it isn't there.
 

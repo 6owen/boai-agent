@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 2026-11-16聊天窗口夹具补完整matchMedia订阅和独立WebGL播放器替身，原聊天/减少动态断言保持。
  * [OUTPUT]: 2026-11-09任务入口夹具改从标题菜单打开，继续保留主聊天/草稿断言；本轮按用户要求未运行。
  * [OUTPUT]: 主聊天忙碌时消息立即展示且不挂载待发队列；仅任务会话提供队列操作。
  * [OUTPUT]: 恢复任务按钮仅请求右侧导航，主聊天编辑器/消息DOM与草稿保持。
@@ -28,6 +29,16 @@ import type { ChatDraft } from '../apps/electron/src/renderer/pages/conversation
 import { ChannelsTab, type ChannelChatWindow } from '../apps/electron/src/renderer/components/detail-panel/channels-tab'
 
 vi.mock('../apps/electron/src/renderer/pages/conversations/-components/composer-toolbar', () => ({ ComposerToolbar: ({ onSteer }: { onSteer?: () => void }) => onSteer ? h('button', { onClick: onSteer, 'data-test-steer': true }, '补充到当前执行') : null }))
+vi.mock('@6owen/avatar-motion', () => ({
+  characters: { ox: {}, tiger: {}, rabbit: {} },
+  AvatarPlayer: class {
+    setInput() {}
+    setActive() {}
+    resize() {}
+    dispose() {}
+  },
+}))
+const mediaQuery = (matches = false) => ({ matches, addEventListener: vi.fn(), removeEventListener: vi.fn() })
 let host: HTMLDivElement, root: Root, props: ChatViewProps
 const resizeObservers = new Set<{ targets: Set<Element>; callback: ResizeObserverCallback }>()
 function resize(element: Element, height: number) {
@@ -43,6 +54,7 @@ function view(id: string, start = 1): ConversationView {
 beforeEach(() => {
   vi.useFakeTimers()
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
+  vi.stubGlobal('matchMedia', vi.fn(() => mediaQuery()))
   resizeObservers.clear()
   vi.stubGlobal('ResizeObserver', class {
     targets = new Set<Element>()
@@ -352,7 +364,7 @@ it('retains the editor DOM but clears undo history when its conversation scope c
 })
 
 it('uses the shared contact reveal without replay when reduced motion is requested', async () => {
-  vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true })))
+  vi.stubGlobal('matchMedia', vi.fn(() => mediaQuery(true)))
   await render()
   const content = host.querySelector('.chat-messages-content')!
   expect(content.getAttribute('data-open')).toBe('true')
