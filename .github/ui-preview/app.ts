@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 设置导航经过二级菜单；隔离预览员工使用首批支持的小牛角色，真实默认值及共享行为夹具保持。
  * [INPUT]: Built BOAI application and existing isolated conversation/schedule fixtures.
  * [OUTPUT]: A real Electron page, demo data and native recording lifecycle.
  * [POS]: BOAI-specific adapter for Magpie's UI preview recorder.
@@ -10,6 +11,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { prepareGroupChat } from '../../tests/e2e/support/group-chat'
 import { seedScheduleUi } from '../../tests/e2e/support/schedule-ui'
+import type { DigitalAgent } from '../../packages/shared/src/domain'
 import type { Desktop } from '../../tests/e2e/support/desktop'
 
 export async function createApp() {
@@ -49,6 +51,7 @@ export async function createApp() {
       if (where === 'settings') {
         await page.getByRole('button', { name: '我的菜单', exact: true }).click()
         await page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
+        await page.getByRole('menuitem', { name: '模型连接', exact: true }).click()
       } else {
         const name = { chat: '会话', contacts: '通讯录', schedules: '定时任务', resources: '资源库' }[where]!
         await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name, exact: true }).click()
@@ -68,7 +71,14 @@ export async function createApp() {
     console.log("[ui-preview] seeding demo conversations")
     await prepareGroupChat(runtime as unknown as Desktop, {
       seedBeforeLaunch: true, emulateViewport: false,
-      seedAdditional: (store, setup) => seedScheduleUi(store, setup.direct.id),
+      seedAdditional: async (store, setup) => {
+        await seedScheduleUi(store, setup.direct.id)
+        // This preview deliberately demonstrates the supported ox preset. Shared
+        // behavior fixtures and real employee defaults remain unchanged.
+        const researcher = (await store.load<DigitalAgent>('agents')).find(agent => agent.id === 'researcher')
+        if (!researcher) throw new Error('预览员工夹具缺失')
+        await store.write([{ collection: 'agents', id: researcher.id, value: { ...researcher, avatar: { kind: 'preset', id: 'fox' } } }])
+      },
     })
     console.log("[ui-preview] demo data ready")
     return runtime

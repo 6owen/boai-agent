@@ -47,3 +47,5 @@ GitHub's attachment limits still apply (10 MB video on Free plans, 100 MB on pai
 The new pull_request_target workflow becomes automatic after it reaches main. Test can be exercised on the feature branch by workflow_dispatch; the recorder can be exercised locally using the command above. No automatic merge is performed by these workflows.
 
 设置导航沿“我的菜单 → 其他配置 → 模型连接”二级菜单，外观等个人设置可走同名快捷入口。PR源码检出须初始化 `packages/avatar-motion` 固定子模块；修改此检出配置的首次PR可从该分支手动触发 workflow_dispatch，仍核对当前开放PR的真实head SHA。
+
+角色动画预览在隔离录制profile中给研究员使用首批支持的小牛（fox）预设；共享行为测试和实际产品默认头像不变。未支持的其他预设保持静态头像，不能把它们缺少动画入口视作已支持。
