@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 设置入口沿本人菜单的其他配置二级菜单选择模型连接，原业务断言保持。
  * [OUTPUT]: 语音页核对独立本地模型Card、三项真实目录和空安装Select；原默认关闭/控件/自动保存/快捷键断言保持。
  * [OUTPUT]: 菜单单行高度按同次DOM读取的布局尺寸比较，避免跨动画帧的缩放包围盒误判；等高及无溢出要求保持。
  * [OUTPUT]: 定时任务侧栏无搜索、选项文字单行；原截图后验证右键图标/危险色、取消不删、确认只删目标且历史保留。
@@ -84,6 +85,7 @@ When('用户打开UI基准场景 {string}', async ({ runtime, uiRegression }, ca
   } else if (scene === 'settings' || scene === 'shortcuts' || scene === 'voice-settings') {
     await page.getByRole('button', { name: '我的菜单', exact: true }).click()
     await page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
+    await page.getByRole('menuitem', { name: '模型连接', exact: true }).click()
     await page.getByRole('navigation', { name: '设置分类', exact: true }).getByRole('button', { name: scene === 'shortcuts' ? '快捷键' : scene === 'voice-settings' ? '语音输入' : '外观', exact: true }).click()
   } else if (scene === 'resources') {
     await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '资源库', exact: true }).click()
@@ -455,6 +457,7 @@ async function checkUserMenu(runtime: import('../support/desktop').Desktop) {
   await expect(menu.getByRole('menuitem', { name: /^(分享|设置|帮助)$/ })).toHaveCount(0)
   for (const label of destinations) {
     await menu.getByRole('menuitem', { name: label, exact: true }).click()
+    if (label === '其他配置') await page.getByRole('menuitem', { name: '模型连接', exact: true }).click()
     await expect(page.getByRole('navigation', { name: '设置分类', exact: true }).getByRole('button', { name: label === '其他配置' ? '模型连接' : label, exact: true })).toHaveAttribute('aria-current', 'page')
     await page.getByRole('button', { name: '我的菜单', exact: true }).click()
   }

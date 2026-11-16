@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 设置入口沿本人菜单的其他配置二级菜单选择模型连接，原业务断言保持。
  * [INPUT]: Real Electron, an isolated seeded profile, native clicks and CDP counters.
  * [OUTPUT]: Per-page click-to-frame/settled timing, long tasks, frames and real IPC duration.
  * [POS]: Opt-in diagnostics; timing batches exclude trace screenshots and use no remote models.
@@ -47,6 +48,7 @@ async function settingsPage(page: Page) {
   if (await page.locator('.app-shell').getAttribute('data-page') === 'settings') return
   await page.getByRole('button', { name: '我的菜单', exact: true }).click()
   await page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
+  await page.getByRole('menuitem', { name: '模型连接', exact: true }).click()
   await expect(page.locator('.app-shell')).toHaveAttribute('data-page', 'settings')
   await animations(page)
 }

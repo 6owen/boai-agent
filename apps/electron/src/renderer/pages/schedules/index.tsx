@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 执行记录入口及单次定位打开统一左右Dialog；任务内历史列表沿原查询。
  * [OUTPUT]: 列表右键删除固定所选任务，经统一AlertDialog确认后沿原删除接口提交；取消不提交，成功同步移除并退出已删任务详情。
  * [OUTPUT]: 定时任务侧栏委托独立标签/排序管理；说明移至标题Tooltip，原执行与详情行为保持。
  * [OUTPUT]: 立即运行只提交并全程loading防重复，仅保留定位聊天图标；执行记录仍可沿原入口打开。
@@ -20,6 +21,7 @@ import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFoo
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
+import { AutomationHistoryDialog } from './automation-history-dialog'
 import { AutomationHistory } from './automation-history-list'
 import { IllustratedEmpty } from '@/components/common/illustrated-empty'
 import { PanelResize } from '@/components/common/panel-resize'
@@ -36,8 +38,10 @@ export function SchedulePage({ api, snapshot, active, sidebarShown, divider, loc
   onOccurrence(id: string): void; onCreateConversation(): void; selectedOccurrenceId?: string
 }) {
   useEffect(() => {
-    if (active && location.kind === 'occurrence') { onOccurrence(location.id); onLocation({ kind: 'history' }) }
+    if (active && location.kind === 'occurrence') { setHistoryDialog({ id: location.id }); onLocation({ kind: 'overview' }) }
+    else if (active && location.kind === 'history') { setHistoryDialog({ attention: location.attention }); onLocation({ kind: 'overview' }) }
   }, [active, location, onOccurrence, onLocation])
+  const [historyDialog, setHistoryDialog] = useState<{ id?: string; attention?: boolean }>()
   const [view, setView] = useState<AutomationsView>({ definitions: [], occurrences: [], available: true })
   const [loading, setLoading] = useState(true), [loadError, setLoadError] = useState('')
   const [dialog, setDialog] = useState<AutomationDialogTarget>()
@@ -80,10 +84,10 @@ export function SchedulePage({ api, snapshot, active, sidebarShown, divider, loc
   const preferences = useScheduleList(api, active)
   const navigate = (value: ScheduleLocation) => guard.navigate(() => onLocation(value), { resetOnDiscard: false })
   const openDialog = (target: AutomationDialogTarget) => guard.navigate(() => setDialog(target), { resetOnDiscard: false })
-  const openOccurrence = onOccurrence
+  const openOccurrence = (id: string) => setHistoryDialog({ id })
   return <div className="schedule-page" style={active ? undefined : { display: 'none' }}>
     <PanelResize open={sidebarShown} side="left" divider={divider}><aside className="schedule-list conversation-list-panel" aria-label="定时任务列表">
-      <ScheduleList definitions={view.definitions} preferences={preferences} loading={loading} busy={busy} selectedId={location.kind === 'definition' ? location.id : undefined} onSelect={id => navigate({ kind: 'definition', id })} onHistory={() => navigate({ kind: 'history' })} onDelete={setDeleting} create={
+      <ScheduleList definitions={view.definitions} preferences={preferences} loading={loading} busy={busy} selectedId={location.kind === 'definition' ? location.id : undefined} onSelect={id => navigate({ kind: 'definition', id })} onHistory={() => guard.navigate(() => setHistoryDialog({}))} onDelete={setDeleting} create={
         <DropdownMenu><DropdownMenuTrigger render={<Button variant="secondary" className="schedule-create" aria-label="新建定时任务" />}><Plus /><span>新建定时任务</span></DropdownMenuTrigger><DropdownMenuContent align="start"><DropdownMenuItem onClick={() => openDialog({ kind: 'manual', key: crypto.randomUUID() })}><Pencil />手动创建</DropdownMenuItem><DropdownMenuItem onClick={onCreateConversation}><MessageCircle />对话创建</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
       } />
     </aside></PanelResize>
@@ -117,6 +121,7 @@ export function SchedulePage({ api, snapshot, active, sidebarShown, divider, loc
         }}>确认删除</Button></AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+    {historyDialog && <AutomationHistoryDialog api={api} snapshot={snapshot} active={active} initialId={historyDialog.id} attentionOnly={historyDialog.attention} onClose={() => setHistoryDialog(undefined)} onNavigateMessage={(...args) => { setHistoryDialog(undefined); onNavigateMessage(...args) }} />}
     {dialog && <AutomationDialog key={dialog.key} api={api} snapshot={snapshot} active={active} target={dialog} onClose={() => setDialog(undefined)} onSaved={value => {
       setView(current => ({ ...current, definitions: [{ ...value, nextTimes: [] }, ...current.definitions.filter(d => d.id !== value.id)] }))
       setDialog(undefined); onLocation({ kind: 'definition', id: value.id })

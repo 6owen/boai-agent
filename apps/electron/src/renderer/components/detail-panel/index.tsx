@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 标签条按内容宽度收缩并给加号保留空间，消除单个文件预览后加号的空白偏移。
  * [OUTPUT]: 标签栏加号打开工具开始页，悬停沿左侧窗口标签同款表面/细边框；独立于标签选择/排序且窄面板保留操作。
  * [OUTPUT]: 详情标签显露仅局部调整列表scrollLeft；ResizeObserver按帧合并，避免展开时逐帧滚动祖先布局。
  * [OUTPUT]: 详情容器共用 PanelResize 展开/收起；拖动时关闭面板及顶栏过渡，原隐藏停读状态立即生效。
@@ -57,8 +58,8 @@ export function DetailPanelHeader({ tabs, activeKey, onClose, onMove, onOpenStar
     return () => { resize.disconnect(); cancelAnimationFrame(frame) }
   }, [activeKey])
   return <div className="detail-header">
-    <TabsList variant="window" className="min-w-0 shrink" aria-label="详情标签" ref={list} onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDrop(null) }}>
-      {tabs.map(tab => <div className={cn('detail-tab min-w-[min(90px,100%)] max-w-[min(180px,100%)]', { dragging: dragged === tab.key })} key={tab.key} data-selected={activeKey === tab.key} data-drop={drop?.key === tab.key ? drop.placement : undefined}
+    <TabsList variant="window" className="min-w-0 shrink" style={{ width: 'max-content', flex: '0 1 auto', maxWidth: onOpenStart ? 'calc(100% - 34px)' : '100%' }} aria-label="详情标签" ref={list} onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDrop(null) }}>
+      {tabs.map(tab => <div className={cn('detail-tab min-w-0 max-w-[180px]', { dragging: dragged === tab.key })} key={tab.key} data-selected={activeKey === tab.key} data-drop={drop?.key === tab.key ? drop.placement : undefined}
         onDragOver={event => {
           const next = locate(event, tab.key); setDrop(next)
           if (next) { event.preventDefault(); event.dataTransfer.dropEffect = 'move' }

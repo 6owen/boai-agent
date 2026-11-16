@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 安装终端复用同一视图和私有通道；退出回调刷新本地技能目录。
  * [INPUT]: 用户显式创建的terminalId、宿主挂起读取/输入确认协议与标签可见性。
  * [OUTPUT]: 仅xterm屏幕、无顶部工具栏，1px竖线/原生行高；常驻实例跟随应用主题，隐藏停读，关闭先解除附着且失败恢复。
  * [POS]: 用户交互终端视图；实际进程归宿主，显隐不会重建或解除附着。
@@ -13,11 +14,19 @@ import { WorkspaceTerminalController } from './workspace-terminal-controller'
 import { terminalAppearance, WorkspaceTerminalTheme } from './workspace-terminal-theme'
 import { registerWorkspaceTerminal } from './workspace-terminal-sessions'
 
-export function WorkspaceTerminal({ api, active, terminalId }: { api: DesktopApi; active: boolean; terminalId: string }) {
+export function WorkspaceTerminal({ api, active, terminalId, channel = 'workspaceTerminal', onExit }: { api: DesktopApi; active: boolean; terminalId: string; channel?: 'workspaceTerminal' | 'skillInstallationTerminal'; onExit?(info: TerminalInfo): Promise<void> }) {
+  const exitCallback = useRef(onExit), reportedExit = useRef('')
+  exitCallback.current = onExit
   const container = useRef<HTMLDivElement>(null)
   const attachmentQueue = useRef<Promise<void>>(Promise.resolve())
   const visibility = useRef(active), session = useRef<{ setActive(value: boolean): void } | undefined>(undefined)
   const [terminal, setTerminal] = useState<TerminalInfo>(), [connected, setConnected] = useState(false), [revision, reconnect] = useState(0)
+  useEffect(() => {
+    if (terminal?.status === 'exited' && reportedExit.current !== terminal.id) {
+      reportedExit.current = terminal.id
+      void exitCallback.current?.(terminal).catch(error => toast.error(String(error)))
+    }
+  }, [terminal])
   useEffect(() => { visibility.current = active; session.current?.setActive(active) }, [active])
   useEffect(() => {
     setConnected(false); setTerminal(undefined)
@@ -30,7 +39,7 @@ export function WorkspaceTerminal({ api, active, terminalId }: { api: DesktopApi
     let observer: ResizeObserver | undefined, themeObserver: MutationObserver | undefined, attachPromise: Promise<void> | undefined
     let lastSize = '', desiredSize: { cols: number; rows: number } | undefined
     const subscriptions: { dispose(): void }[] = []
-    const request = (input: WorkspaceTerminalRequest) => api.request('workspaceTerminal', input)
+    const request = (input: WorkspaceTerminalRequest) => api.request(channel, input as never)
     const stop = async () => {
       disposed = true
       cancelAnimationFrame(resizeFrame)
@@ -137,7 +146,7 @@ export function WorkspaceTerminal({ api, active, terminalId }: { api: DesktopApi
       void stopped.then(release)
       screen?.dispose()
     }
-  }, [api, terminalId, revision])
+  }, [api, terminalId, revision, channel])
   return <section className="workspace-terminal flex h-full min-h-0 flex-col" aria-label="工作区终端">
     <div className="workspace-terminal-screen min-h-0 flex-1 overflow-hidden p-2" ref={container} aria-label="终端屏幕" onKeyDown={event => event.stopPropagation()} aria-busy={!connected && terminal?.status !== 'exited'} />
   </section>

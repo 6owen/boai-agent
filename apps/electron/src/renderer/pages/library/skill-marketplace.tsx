@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: skills.sh已选技能直开CLI终端；其他商店保留原来源检查流程。
  * [OUTPUT]: 来源/排序/检索返回结果沿Panel reveal渐入，刷新位于搜索左侧，安装按钮位于详情标题最右。
  * [OUTPUT]: 商城检索默认图标并平滑展开、安装操作最右；商城搜索挂入常驻目录栏；来源靠左、排序靠右，复用共享Tabs动画。
  * [OUTPUT]: 错误反馈统一Sonner，不渲染内联报错；现有动作和来源校验保持。
@@ -17,6 +18,7 @@ import { CatalogSearch } from '@/components/common/catalog-search'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Banner, errorText, Loading } from '@/components/common'
 import { Zap as ShieldCheck, RefreshCw } from '@/components/icons'
+import { SkillTerminalDialog } from './skill-terminal-dialog'
 import { SkillImportDialog } from './skill-import-dialog'
 import { useSkillInstallations } from './use-skill-installations'
 import { SkillDetailPanel, SkillDetailBody } from './skill-detail-layout'
@@ -107,11 +109,11 @@ export function SkillMarketplaceDetail({ api, provider, id, refresh, onResource,
       { label: '作者', value: item.owner ?? '未知' }, ...(item.version ? [{ label: '版本', value: item.version }] : []), { label: '来源', value: item.homepage }, ...(item.repository ? [{ label: '仓库', value: item.repository }] : []),
       { label: '统计', value: `下载：${item.downloads?.toLocaleString() ?? '未知'} · 安装：${item.installs?.toLocaleString() ?? '未知'} · 星标：${item.stars?.toLocaleString() ?? '未知'}` },
     ]}>
-      <p className="field-hint">{!item.install ? '提供方未给出支持的下载来源。' : result.stale ? '请刷新详情后再安装。' : '安装前将重新获取来源并展示实际包内容。'}安装位置：~/.agents/skills。</p>
+      <p className="field-hint">{!item.install ? '提供方未给出支持的下载来源。' : result.stale ? '请刷新详情后再安装。' : provider === 'skills-sh' ? '在终端执行安装命令。' : '安装前将重新获取来源并展示实际包内容。'}安装位置：~/.agents/skills。</p>
       {copies.map(copy => <Button key={copy.resourceId} variant="secondary" onClick={() => onResource(copy.resourceId)}>查看本地技能 · {item.name}</Button>)}
       {item.suspicious === true && <p className="field-hint">提供方已标记风险。</p>}
       {item.securityReports?.map(report => <p className="field-hint" key={report.provider}>{report.provider}：{report.statusText ?? report.status}</p>)}
     </SkillDetailBody>
-    {importing && <SkillImportDialog api={api} initialSource={{ kind: 'marketplace', provider, source: item.id }} onClose={() => setImporting(false)} onInstalled={refresh} onResource={onResource} />}
+    {importing && (provider === 'skills-sh' ? <SkillTerminalDialog api={api} source={item.id} onClose={() => setImporting(false)} onInstalled={refresh} /> : <SkillImportDialog api={api} initialSource={{ kind: 'marketplace', provider, source: item.id }} onClose={() => setImporting(false)} onInstalled={refresh} onResource={onResource} />)}
   </SkillDetailPanel>
 }

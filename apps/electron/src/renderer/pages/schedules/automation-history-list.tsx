@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 可复用为Dialog左侧按运行状态折叠的记录分组，原查询/分页/删除保持。
  * [OUTPUT]: 确认全部清空后立即按原动画关闭Popover，后台清理期间保留提交锁及Sonner结果反馈。
  * [OUTPUT]: 可按员工查询原执行记录，定时页面的布局和默认查询保持。
  * [OUTPUT]: 筛选复用公共FilterTabs及transitions-dev滑动层；实际新结果沿Panel reveal显现，后台刷新与分页不重播。
@@ -18,7 +19,8 @@ import { FilterTabs } from '@/components/common/filter-tabs'
 import { usePanelReveal } from '@/components/common/use-panel-reveal'
 import { CatalogSearch } from '@/components/common/catalog-search'
 import { Button } from '@/components/ui/button'
-import { Clock, Trash2 } from '@/components/icons'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Clock, Trash2, ChevronRight } from '@/components/icons'
 import { Popover, PopoverContent, PopoverDescription, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
 import { toast } from 'sonner'
 import { AUTOMATION_ONGOING_STATUSES } from '@boai/shared/domain/automations'
@@ -26,8 +28,8 @@ import { occurrenceStatusLabels, deliveries } from './automation-history'
 
 const historyFilters = [{ value: 'all', label: '全部' }, { value: 'active', label: '进行中' }, { value: 'completed', label: '已完成' }, { value: 'attention', label: '需处理' }] as const
 
-export function AutomationHistory({ api, active, automationId, employeeId, attentionOnly = false, selectedId, onOccurrence }: {
-  api: DesktopApi; active: boolean; automationId?: string; employeeId?: string; attentionOnly?: boolean; selectedId?: string; onOccurrence(id: string): void
+export function AutomationHistory({ api, active, automationId, employeeId, attentionOnly = false, selectedId, onOccurrence, grouped = false }: {
+  api: DesktopApi; active: boolean; automationId?: string; employeeId?: string; attentionOnly?: boolean; selectedId?: string; onOccurrence(id: string): void; grouped?: boolean
 }) {
   const [search, setSearch] = useState(''), [status, setStatus] = useState<NonNullable<AutomationHistoryQuery['status']>>('all')
   const [pages, setPages] = useState(1), [revision, setRevision] = useState(0)
@@ -67,22 +69,27 @@ export function AutomationHistory({ api, active, automationId, employeeId, atten
     return () => { live = false }
   }, [api, active, automationId, employeeId, attentionOnly, pages, revision, search, status])
   const listReveal = usePanelReveal(`${status}:${search}:${attentionOnly}`, active && loaded)
-  const results = <div ref={listReveal} className="schedule-content-transition t-panel-slide" data-open="true" data-settled="true" aria-busy={loading}>
-    {error && <Banner>{error}</Banner>}
-    <div className="automation-record-list">{history.occurrences.map(o => {
+  const renderRecord = (o: AutomationHistoryPage['occurrences'][number]) => {
       const date = new Date(o.startedAt).toLocaleString('zh-CN', { hour12: false })
       const subtitle = `${date} · ${o.source === 'manual' ? '手动触发' : '定时触发'} · ${occurrenceStatusLabels[o.status]} · ${deliveries[o.deliveryStatus]}`
       return <div key={o.id} className="automation-history-row relative min-w-0"><Button variant="ghost" size="content" className={`conversation-item automation-record-row${selectedId === o.id ? ' selected' : ''}`} style={{ paddingRight: 44 }} data-occurrence-id={o.id} aria-pressed={selectedId === o.id} onClick={() => onOccurrence(o.id)}>
         <span className="skill-list-icon"><Clock /></span><span className="conversation-copy"><strong className="conversation-title" title={o.name}>{o.name}</strong><small className="conversation-preview" title={subtitle}>{subtitle}</small></span>
       </Button><DeleteHistoryRecord api={api} occurrence={o} active={active && !clearing} onDeleted={() => removeRows([o.id])} /></div>
-    })}</div>
+      }
+  const results = <div ref={listReveal} className="schedule-content-transition t-panel-slide" data-open="true" data-settled="true" aria-busy={loading}>
+    {error && <Banner>{error}</Banner>}
+    <div className="automation-record-list">{grouped ? [
+      { label: '进行中', rows: history.occurrences.filter(o => (AUTOMATION_ONGOING_STATUSES as readonly string[]).includes(o.status)) },
+      { label: '已完成', rows: history.occurrences.filter(o => o.status === 'completed') },
+      { label: '需处理', rows: history.occurrences.filter(o => o.status !== 'completed' && !(AUTOMATION_ONGOING_STATUSES as readonly string[]).includes(o.status)) },
+    ].filter(group => group.rows.length).map(group => <Collapsible key={group.label} defaultOpen><CollapsibleTrigger render={<Button variant="ghost" size="content" className="conversation-section-heading contact-manager-filter-heading" />}><span>{group.label}</span><ChevronRight /><span className="ml-auto">{group.rows.length}</span></CollapsibleTrigger><CollapsibleContent>{group.rows.map(renderRecord)}</CollapsibleContent></Collapsible>) : history.occurrences.map(renderRecord)}</div>
     {loading && !loaded && <Loading>正在读取执行记录…</Loading>}
     {loaded && !error && !history.occurrences.length && <p className="field-hint">{search ? '没有匹配的执行记录' : '暂无执行记录'}</p>}
     {history.nextCursor && <Button variant="secondary" size="sm" disabled={loading} onClick={() => setPages(value => value + 1)}>加载更早记录</Button>}
     {error && <Button variant="secondary" size="sm" onClick={() => setRevision(value => value + 1)}>重试读取</Button>}
   </div>
   return <section className="automation-records" aria-label="执行记录" style={active ? undefined : { display: 'none' }}>
-    <div className="automation-records-heading"><h3>{attentionOnly ? '需处理记录' : '执行记录'}</h3><div className="automation-record-actions">
+    <div className="automation-records-heading">{!grouped && <h3>{attentionOnly ? '需处理记录' : '执行记录'}</h3>}<div className="automation-record-actions">
       {automationId && <ClearHistoryRecords api={api} automationId={automationId} active={active} onBusyChange={setClearing} onDeleted={removeRows} />}
       <CatalogSearch label="搜索执行记录" placeholder="搜索记录中的任务标题" value={search} onChange={value => { setSearch(value.slice(0, 200)); setPages(1); setLoaded(false); setHistory({ occurrences: [] }) }} />
     </div></div>

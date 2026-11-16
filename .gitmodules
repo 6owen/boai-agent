@@ -1,0 +1,7 @@
+# [INPUT]: 独立public工具仓库。
+# [OUTPUT]: 固定avatar-motion子模块位置；具体版本由gitlink记录。
+# [POS]: Workspace源码依赖。
+# [PROTOCOL]: 修改时同步根目录.folder.md及README。
+[submodule "packages/avatar-motion"]
+	path = packages/avatar-motion
+	url = https://github.com/6owen/avatar-motion.git

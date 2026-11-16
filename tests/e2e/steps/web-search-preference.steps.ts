@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 设置入口沿本人菜单的其他配置二级菜单选择模型连接，原业务断言保持。
  * [OUTPUT]: 使用真实宿主写入v2插件配置后仍可选DeepSeek；弹窗有草稿测试入口，列表测试不误禁用；配置统一沿本人菜单入口。
  * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
  * [INPUT]: Actual settings/employee UI, synthetic keys and isolated persisted state.
@@ -16,6 +17,7 @@ const { Given, When, Then } = createBdd(test)
 async function openSearchSettings(page: Page) {
   await page.getByRole('button', { name: '我的菜单', exact: true }).click()
   await page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
+  await page.getByRole('menuitem', { name: '模型连接', exact: true }).click()
   await page.getByRole('navigation', { name: '设置分类' }).getByRole('button', { name: '网页检索', exact: true }).click()
 }
 Given('从全局网页检索页面配置{string}', async ({ runtime, search }, provider: string) => {

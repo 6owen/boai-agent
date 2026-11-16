@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 独立角色协议检查纳入Test，源码检出必须初始化固定子模块；原UI三项与上传断言保持。
  * [INPUT]: 真实临时Git提交/事件、开发Markdown白名单及job结果协议。
  * [OUTPUT]: 实际 YAML 为工程/固定三项UI行为Test与独立预览；构建前置及原件上传，旧范围工具仍可独立验证。
  * [POS]: 历史范围工具与当前云端配置的本地 Vitest 合同；不开产品窗口。
@@ -87,7 +88,8 @@ it('GitHub Test执行工程和固定UI行为检查且不以截图基准作为合
   expect(Object.keys(workflow.jobs).sort()).toEqual(['required', 'test'])
   expect(workflow.jobs.required.needs).toEqual(['test'])
   // CLI integration tests launch dist/cli/index.mjs from the application build.
-  expect(workflow.jobs.test.steps.map((step: { run?: string }) => step.run).filter(Boolean)).toEqual(['pnpm install --frozen-lockfile --prefer-offline', 'pnpm typecheck', 'pnpm lint:ui', 'pnpm build', 'pnpm test:ui:behavior', 'pnpm test'])
+  expect(workflow.jobs.test.steps.map((step: { run?: string }) => step.run).filter(Boolean)).toEqual(['pnpm install --frozen-lockfile --prefer-offline', 'pnpm typecheck', 'pnpm lint:ui', 'pnpm build', 'pnpm test:ui:behavior', 'pnpm --filter @6owen/avatar-motion test', 'pnpm test'])
+  expect(workflow.jobs.test.steps.find((step: { uses?: string }) => step.uses === 'actions/checkout@v4').with.submodules).toBe('recursive')
   expect(metadata.scripts['test:ui:behavior']).toBe('node scripts/test-ui-behavior.mjs')
   const evidence = workflow.jobs.test.steps.find((step: { with?: { name?: string } }) => step.with?.name === 'ui-behavior')
   expect(evidence).toMatchObject({ if: 'always()', uses: 'actions/upload-artifact@v4', with: { path: '.local/ui-behavior' } })

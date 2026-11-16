@@ -1,3 +1,4 @@
+# [OUTPUT]: Checkout初始化独立角色子模块，另运行其协议测试。
 # [INPUT]: PR/main commits and explicit manual runs.
 # [OUTPUT]: Engineering Test plus three fixed UI behavior scenarios; screenshot/trace evidence without PNG comparison.
 # [POS]: Engineering CI; Required checks retains the existing branch-protection name.
@@ -20,6 +21,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -39,6 +42,7 @@ jobs:
           path: .local/ui-behavior
           retention-days: 7
           if-no-files-found: ignore
+      - run: pnpm --filter @6owen/avatar-motion test
       - run: pnpm test
   required:
     name: Required checks

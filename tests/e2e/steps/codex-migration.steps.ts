@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 设置入口沿本人菜单的其他配置二级菜单选择模型连接，原业务断言保持。
  * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
  * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
  * [OUTPUT]: 旧ACP显式任务提交前经底部准确配置往返，保留正文与发送语义；零业务调用核对后继续原交付、迁移和重启断言。
@@ -110,6 +111,7 @@ Then('旧式ACP记录经原界面切到本机Codex后保留原文件并只为新
   const native = await agent()
   await page.getByRole('button', { name: '我的菜单', exact: true }).click()
   await page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
+  await page.getByRole('menuitem', { name: '模型连接', exact: true }).click()
   await page.getByRole('button', { name: '扫描本机 Agent', exact: true }).click()
   await page.getByRole('button', { name: /手动添加 填写启动命令/ }).click()
   const dialog = page.getByRole('dialog', { name: '手动添加 Agent', exact: true })

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 设置入口沿本人菜单的其他配置二级菜单选择模型连接，原业务断言保持。
  * [INPUT]: Opt-in signed Sparkle fixtures and the existing BDD lifecycle.
  * [OUTPUT]: Real delta install, corrupt-delta full fallback/restart and corrupt-full rejection.
  * [POS]: Native update acceptance; no supplier calls or personal app mutation.
@@ -44,6 +45,7 @@ Then('独立BOAI安装包完成更新检查与主窗入口验收', async ({ runt
   expect(requests).toBeGreaterThan(0)
   await runtime.page.getByRole('button', { name: '我的菜单', exact: true }).click()
   await runtime.page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
+  await runtime.page.getByRole('menuitem', { name: '模型连接', exact: true }).click()
   await runtime.page.getByRole('button', { name: '运行选项', exact: true }).click()
   const card = runtime.page.locator('[aria-label="应用更新"]')
   await expect(card.getByText('当前版本', { exact: true })).toBeVisible()

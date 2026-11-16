@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 真实嵌套Git仓库覆盖子模块HEAD及未提交源码的身份变化。
  * [OUTPUT]: 应用/开发编排外改使来源身份失效；部分构建清除旧全量资格且保留产物。
  * [INPUT]: 独立Git工作目录、源码/技能源和实际构建文件。
  * [OUTPUT]: 应用外改拒绝；顶层安装包不影响身份，其他同名/近似目录仍校验，保留路径拒绝链接/文件。
@@ -127,4 +128,20 @@ it('CLI开发编排变化使旧构建身份失效', async () => {
   await recordBuildIdentity(await buildInputHash(root), root)
   await writeFile(join(root, 'scripts/dev-cli.mjs'), 'export const value = 2')
   await expect(verifyBuildIdentity(root)).rejects.toThrow(/源码/)
+})
+
+it('子模块提交和未提交源码均影响构建身份，目录不会作为文件读取', async () => {
+  const sub = join(root, 'packages', 'avatar-motion')
+  await mkdir(sub, { recursive: true })
+  execFileSync('git', ['init', '-q'], { cwd: sub })
+  await writeFile(join(sub, 'index.js'), 'export const value = 1')
+  execFileSync('git', ['add', '--', 'index.js'], { cwd: sub })
+  execFileSync('git', ['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'initial'], { cwd: sub })
+  const first = await buildInputHash(root)
+  await writeFile(join(sub, 'index.js'), 'export const value = 2')
+  const dirty = await buildInputHash(root)
+  expect(dirty).not.toBe(first)
+  execFileSync('git', ['add', '--', 'index.js'], { cwd: sub })
+  execFileSync('git', ['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'updated'], { cwd: sub })
+  expect(await buildInputHash(root)).not.toBe(dirty)
 })

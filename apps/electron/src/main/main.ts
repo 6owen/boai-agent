@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 主窗口默认1100×760；主进程终端监督器按应用分发路径定位，开发/安装后均不依赖cwd。
  * [OUTPUT]: 会话文件/知识资料按业务身份核源后复用系统应用打开；材料临时命名副本随退出清理且保留外改。
  * [OUTPUT]: 可信主窗口允许私有画板UI请求；公共CLI与canvasHost权限边界保持。
  * [OUTPUT]: WT1聚合独立画板宿主；可信主窗、私有工具、人工保存屏障和退出清理共用原生命周期。
@@ -87,6 +88,7 @@ import { WorkspaceFileService } from './workspace-files'
 import { WorkspaceApplications, openLocalResource } from './workspace-applications'
 import { FileOpening } from './file-opening'
 import { readMacApplicationIcon } from './workspace-application-icon'
+import { SkillInstallationTerminal } from './skill-installation-terminal'
 import { WorkspaceTerminalService } from './workspace-terminal/service'
 import type { WorkspaceFileScope } from '@boai/shared/ipc/workspace-files'
 import type { BrowserHostMethods, BrowserLease } from '@boai/shared/ipc/browser'
@@ -139,6 +141,8 @@ declare const __BOAI_APPLICATION_BUILD__: { version: string; inputHash: string }
 protocol.registerSchemesAsPrivileged([{ scheme: 'boai-asset', privileges: { standard: true, secure: true, supportFetchAPI: true } }])
 app.setName('BoAI Agent')
 if (process.env.BOAI_DATA_DIR) app.setPath('userData', resolve(process.env.BOAI_DATA_DIR))
+// Main-host PTYs must resolve the same bundled guard as the runtime, independent of launch cwd.
+process.env.BOAI_NATIVE_PROCESS_GUARD ??= join(__dirname, '../native/boai-process-guard').replace(/app\.asar(?=[/\\])/, 'app.asar.unpacked')
 const legacyDataPath = app.getPath('userData')
 const dataPath = join(legacyDataPath, 'v2')
 const compiledApplication = typeof __BOAI_APPLICATION_BUILD__ === 'undefined' ? null : __BOAI_APPLICATION_BUILD__
@@ -295,6 +299,7 @@ const userTerminals = new WorkspaceTerminalService(dataPath, {
     await requestRuntime('validateWorkspaceScope', scope)
   },
 })
+const skillInstallationTerminal = new SkillInstallationTerminal(dataPath)
 let userTerminalsReady: Promise<void> | undefined
 let workspaceDocumentEpoch = 0
 let userTerminalShutdownInterrupted = false
@@ -304,6 +309,8 @@ async function resumeUserTerminals() {
   userTerminalResuming ??= (async () => {
     await userTerminals.close()
     userTerminals.resumeAfterShutdown()
+    await skillInstallationTerminal.close()
+    skillInstallationTerminal.resumeAfterShutdown()
     userTerminalsReady = undefined
     userTerminalShutdownInterrupted = false
   })().finally(() => { userTerminalResuming = undefined })
@@ -775,6 +782,10 @@ function registerIpc() {
       const value = z.object({ refresh: z.boolean().optional() }).strict().parse(input)
       return workspaceApplications.list(value.refresh)
     }
+    if (method === 'skillInstallationTerminal') {
+      await resumeUserTerminals()
+      return skillInstallationTerminal.handle(event.sender.id, input as Methods['skillInstallationTerminal']['input'])
+    }
     if (method === 'workspaceTerminal') {
       const documentEpoch = workspaceDocumentEpoch
       await resumeUserTerminals()
@@ -853,7 +864,7 @@ function setMainWindowZoom(mainWindow: BrowserWindow, zoomFactor: number) {
 async function createWindow(show = true) {
   dirtySources.clear()
   window = new BrowserWindow({
-    width: 1340, height: 900, minWidth: 760, minHeight: 640, title: 'BoAI Agent',
+    width: 1100, height: 760, minWidth: 760, minHeight: 640, title: 'BoAI Agent',
     backgroundColor: resolveTheme(appearance.snapshot().resolvedMode, appearance.snapshot().resolvedThemeId).background, titleBarStyle: 'hiddenInset', trafficLightPosition: mainWindowButtonPosition(appearance.snapshot().preferences.zoomFactor),
     show: false,
     webPreferences: { preload: join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, zoomFactor: appearance.snapshot().preferences.zoomFactor },
@@ -873,7 +884,7 @@ async function createWindow(show = true) {
   mainWindow.webContents.on('did-start-loading', () => { void voice.cancelAll().catch(() => {}) })
   mainWindow.webContents.on('destroyed', () => { void voice.cancelAll().catch(() => {}) })
   const terminalClientId = mainWindow.webContents.id
-  const releaseUserTerminals = () => { workspaceDocumentEpoch++; userTerminals.releaseClient(terminalClientId) }
+  const releaseUserTerminals = () => { workspaceDocumentEpoch++; userTerminals.releaseClient(terminalClientId); skillInstallationTerminal.releaseClient(terminalClientId) }
   mainWindow.webContents.on('render-process-gone', releaseUserTerminals)
   mainWindow.webContents.on('render-process-gone', (_event, details) => { diagnostics.record('renderer-gone', { exitCode: details.exitCode, reason: details.reason }) })
   mainWindow.on('unresponsive', () => { diagnostics.record('renderer-unresponsive') })
@@ -1018,7 +1029,7 @@ else {
     })
     // A timeout may terminate the worker, but never counts as Chromium action exit.
     const cliExit = (cliStarting ?? Promise.resolve()).then(async () => { await cli?.close(); cli = undefined })
-    const userTerminalExit = userTerminals.close()
+    const userTerminalExit = Promise.all([userTerminals.close(), skillInstallationTerminal.close()])
     void Promise.all([runtimeExit, cliExit, iconExit, userTerminalExit, canvas.close(), voice.close(), browsers.shutdown(), materialSources.close(), fileOpening.close(), desktopSettings.flush(), shortcutSettings.flush(), pluginSettings.flush(), cliInstaller.flush()]).then(async () => {
       diagnostics.record('app-quit'); desktopLifecycle.stop(); background.destroy(); quitApproved = true
       if (appUpdates.finishQuit()) {

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 设置入口沿本人菜单的其他配置二级菜单选择模型连接，原业务断言保持。
  * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
  * [OUTPUT]: 现行分角色字体沿界面字体控件核对；富文本消息使用原messageDraft，保留字体/换肤/重启断言。
  * [INPUT]: 外观即时生效与原生窗口持久化的中文场景、Electron fixture 与现有产品 API。
@@ -49,6 +50,7 @@ async function prepareAppearance(runtime: Desktop) {
   const open = async () => {
     await runtime.page.getByRole('button', { name: '我的菜单', exact: true }).click()
     await runtime.page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
+    await runtime.page.getByRole('menuitem', { name: '模型连接', exact: true }).click()
     await runtime.page.getByRole('button', { name: '外观', exact: true }).click()
   }
   const zoom = () => runtime.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.getZoomFactor())
