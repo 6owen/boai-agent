@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 设置入口沿本人菜单的其他配置二级菜单选择模型连接，原业务断言保持。
  * [OUTPUT]: 2026-11-06覆盖浏览器模式优先级、保存兼容、会话保留或配置重启；本批实际结果归19组19第5节。
  * [OUTPUT]: 独立浏览器插件设置实际启停、CAS保存与跨重启保持；不调用模型。
  * [OUTPUT]: 2026-10-29 文件浏览器入口/预览/启停与目录撤权回归，原终端生命周期断言保持。
@@ -23,6 +24,7 @@ const futureBytes = JSON.stringify({ schemaVersion: 99, revision: 17, disabledId
 async function openPlugins(runtime: Desktop) {
   await runtime.page.getByRole('button', { name: '我的菜单', exact: true }).click()
   await runtime.page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
+  await runtime.page.getByRole('menuitem', { name: '模型连接', exact: true }).click()
   await runtime.page.getByRole('button', { name: '插件', exact: true }).click()
   await expect(runtime.page.getByRole('region', { name: '内置插件', exact: true })).toBeVisible()
 }

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 设置入口沿本人菜单的其他配置二级菜单选择模型连接，原业务断言保持。
  * [INPUT]: 固定中文行为场景、原 Desktop 生命周期和离线员工会话夹具。
  * [OUTPUT]: 真实点击/持久化/草稿断言和可直接查看的结束PNG；零外部模型，不比较 PNG。
  * [POS]: 日常 UI 行为验收，复用现有 Electron BDD。
@@ -23,6 +24,7 @@ async function screenshot(page: Page, name: string) {
 async function appearance(page: Page) {
   await page.getByRole('button', { name: '我的菜单', exact: true }).click()
   await page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
+  await page.getByRole('menuitem', { name: '模型连接', exact: true }).click()
   await page.getByRole('navigation', { name: '设置分类', exact: true }).getByRole('button', { name: '外观', exact: true }).click()
   await expect(page.getByRole('heading', { name: '外观', exact: true })).toBeVisible()
 }

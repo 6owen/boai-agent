@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 设置入口沿本人菜单的其他配置二级菜单选择模型连接，原业务断言保持。
  * [OUTPUT]: 2026-10-29 文件浏览器入口/预览/启停与目录撤权回归，原终端生命周期断言保持。
  * [INPUT]: Isolated Electron profile, actual directory grants and real preview source files.
  * [OUTPUT]: Right-panel left-preview/right-tree geometry at wide/narrow widths, scope and plugin restart acceptance.
@@ -51,6 +52,7 @@ async function plugins(runtime: Desktop) {
   const page = runtime.page
   await page.getByRole('button', { name: '我的菜单', exact: true }).click()
   await page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
+  await page.getByRole('menuitem', { name: '模型连接', exact: true }).click()
   await page.getByRole('button', { name: '插件', exact: true }).click()
   return page.getByRole('switch', { name: '文件浏览器', exact: true })
 }

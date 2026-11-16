@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 设置入口沿本人菜单的其他配置二级菜单选择模型连接，原业务断言保持。
  * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
  * [OUTPUT]: 第五场聚焦真实外观Select的关闭触发器，四组合不能误开搜索或改变原导航；原四场保持。
  * [OUTPUT]: 固定真实单聊ID、消息加载完成和原生contenteditable=true后填草稿，保留完整快捷键/阅读断言。
@@ -27,6 +28,7 @@ Given('快捷键验收已打开隔离群聊和原导航', async ({ runtime, shor
 When('用户在设置分类打开快捷键', async ({ runtime }) => {
   await runtime.page.getByRole('button', { name: '我的菜单', exact: true }).click()
   await runtime.page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
+  await runtime.page.getByRole('menuitem', { name: '模型连接', exact: true }).click()
   await runtime.page.getByRole('navigation', { name: '设置分类', exact: true }).getByRole('button', { name: '快捷键', exact: true }).click()
 })
 Then('设置列出搜索侧边栏后退和前进的实际组合', async ({ runtime, shortcuts }) => {
@@ -170,6 +172,7 @@ When('用户聚焦关闭的外观选择框再按应用组合键', async ({ runti
   const page = runtime.page
   await page.getByRole('button', { name: '我的菜单', exact: true }).click()
   await page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
+  await page.getByRole('menuitem', { name: '模型连接', exact: true }).click()
   await page.getByRole('navigation', { name: '设置分类', exact: true }).getByRole('button', { name: '外观', exact: true }).click()
   const trigger = page.locator('.settings-content [data-slot="select-trigger"]').first()
   await expect(trigger).toBeVisible()

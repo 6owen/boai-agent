@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 设置入口沿本人菜单的其他配置二级菜单选择模型连接，原业务断言保持。
  * [OUTPUT]: 连接状态说明沿现行Tooltip定位，保留安装/无系统Node/独立启动及数据保持断言。
  * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
  * [INPUT]: Real isolated Electron settings, native directory choice and installed launcher process.
@@ -31,6 +32,7 @@ Given('CLI安装验收已打开隔离桌面的运行设置', async ({ runtime, i
   await writeFile(join(runtime.root, 'business-original.txt'), 'KEEP_ORIGINAL_BUSINESS_FILE')
   await runtime.page.getByRole('button', { name: '我的菜单', exact: true }).click()
   await runtime.page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
+  await runtime.page.getByRole('menuitem', { name: '模型连接', exact: true }).click()
   await runtime.page.getByRole('button', { name: '运行选项', exact: true }).click()
   await expect(runtime.page.getByRole('region', { name: '命令行工具' }).getByRole('button', { name: '安装命令行工具', exact: true })).toBeEnabled()
 })
@@ -120,6 +122,7 @@ Then('重开桌面后可卸载命令而保留原业务数据', async ({ runtime,
   }
   await runtime.page.getByRole('button', { name: '我的菜单', exact: true }).click()
   await runtime.page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
+  await runtime.page.getByRole('menuitem', { name: '模型连接', exact: true }).click()
   await runtime.page.getByRole('button', { name: '运行选项', exact: true }).click()
   const card = runtime.page.getByRole('region', { name: '命令行工具' })
   if (relocated) {

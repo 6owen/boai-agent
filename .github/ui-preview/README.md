@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 设置导航说明支持其他配置二级菜单；初始化public子模块后再安装与构建预览。
 [OUTPUT]: Fixed UI behavior checks, actual recording completion and current-head publication; partial media remain failed.
 [INPUT]: Magpie Test/UI preview at 396e0e463805dd5ded971ade37ded08a52512ae5.
 [OUTPUT]: Source attribution, explorer UI detection, native attachment configuration and runnable preview instructions.
@@ -44,3 +45,5 @@ Create a **separate `ui-preview-publish` environment** and put `UI_PREVIEW_UPLOA
 GitHub's attachment limits still apply (10 MB video on Free plans, 100 MB on paid plans). Missing credentials or upload failure mark publication failed and leave a warning with screenshots and the original download, never a misleading “play” poster. Screenshot-only previews need no upload credential. The attachment URL stands alone in its paragraph, so GitHub renders its native player ([official CLI guide](https://docs.github.com/en/github-cli/github-cli/attaching-files-with-github-cli)).
 
 The new pull_request_target workflow becomes automatic after it reaches main. Test can be exercised on the feature branch by workflow_dispatch; the recorder can be exercised locally using the command above. No automatic merge is performed by these workflows.
+
+设置导航沿“我的菜单 → 其他配置 → 模型连接”二级菜单，外观等个人设置可走同名快捷入口。PR源码检出须初始化 `packages/avatar-motion` 固定子模块；修改此检出配置的首次PR可从该分支手动触发 workflow_dispatch，仍核对当前开放PR的真实head SHA。
