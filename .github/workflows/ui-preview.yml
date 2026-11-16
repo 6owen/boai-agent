@@ -1,3 +1,4 @@
+# [OUTPUT]: record的PR源码检出初始化独立public角色子模块；publish权限隔离保持。
 # [INPUT]: PR UI changes and DeepSeek planning credentials.
 # [OUTPUT]: Current-head recording reports; trusted detect/record/publish scripts pinned to the workflow commit.
 # [POS]: Upstream 396e0e463805dd5ded971ade37ded08a52512ae5 adapted to BOAI Electron.
@@ -95,6 +96,7 @@ jobs:
         with:
           ref: ${{ needs.detect.outputs.sha }}
           path: pr
+          submodules: recursive
           persist-credentials: false
           allow-unsafe-pr-checkout: true
       - uses: actions/download-artifact@v4

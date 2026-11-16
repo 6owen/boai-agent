@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 技能安装终端明确为非公开方法，仅由主窗口单独准入。
  * [OUTPUT]: 公开本人按材料/成果/知识身份外部打开入口，Main沿原业务读取核源和固定应用清单处理。
  * [OUTPUT]: Canvas宿主和主窗口私有方法不进入公共准入。
  * [OUTPUT]: 本人诊断解释窄首发入口公开，固定正文与受理边界由原服务核对。
@@ -53,6 +54,7 @@ import type { Method } from './index'
 
 // Record makes a newly declared public method require an explicit host entry.
 const methods = {
+  skillInstallationTerminal: false,
   canvasHost: false, canvasCommand: false, canvasFlushed: false,
   openEmployeeTaskSession: true, sendEmployeeTaskMessage: true, getEmployeeTaskMessageReceipt: true,
   listConversationQueue: true, actOnConversationQueue: true,

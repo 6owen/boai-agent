@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 暂停的内置TTS不进入API/native技能执行环境；绑定与文件保留以便恢复。
  * [OUTPUT]: 资源版本核验可由旧知识目录预览/替换复用，沿相同文件界限。
  * [OUTPUT]: 资源文本读取严格UTF-8并保留原字节hash，拒绝二进制替代字符。
  * [INPUT]: 当前员工/会话授权、资源身份及受管文件。
@@ -6,6 +7,7 @@
  * [POS]: API与本机运行共用的资源授权及文件版本边界。
  * [PROTOCOL]: 一旦本文件变化，必须同步Header与所属.folder.md。
  */
+import bundledManifest from '../../../../../resources/agent-skills/manifest.json' with { type: 'json' }
 import { createHash } from 'node:crypto'
 import { constants } from 'node:fs'
 import { lstat, open, readdir } from 'node:fs/promises'
@@ -41,7 +43,7 @@ const digest = (value: string) => createHash('sha256').update(value).digest('hex
 export function authorizedResources(agent: DigitalAgent, conversation: Conversation, resources: Iterable<Resource>): Resource[] {
   const skills = new Set(agent.skillIds)
   const knowledge = new Set(conversation.kind === 'group' || conversation.channel || conversation.purpose === 'channel-internal' ? agent.knowledgeIds.filter(id => conversation.sharedKnowledgeIds.includes(id)) : agent.knowledgeIds)
-  return [...resources].filter(resource => !resource.knowledge?.revoked && (!resource.ownerAgentId || resource.ownerAgentId === agent.id) && (resource.kind === 'skill' ? skills.has(resource.id) : knowledge.has(resource.id))).map(resource => structuredClone(resource))
+  return [...resources].filter(resource => !resource.knowledge?.revoked && (!resource.ownerAgentId || resource.ownerAgentId === agent.id) && (resource.kind === 'skill' ? !bundledManifest.disabledSkills.includes(resource.name) && skills.has(resource.id) : knowledge.has(resource.id))).map(resource => structuredClone(resource))
 }
 
 /** Hash bounded, ordinary files without following links. No executable content is run. */
@@ -127,6 +129,7 @@ export async function describeEnvironment(agent: DigitalAgent, resources: Iterab
   const bound = [...resources].filter(resource => resource.kind === 'skill' && agent.skillIds.includes(resource.id) && (!resource.ownerAgentId || resource.ownerAgentId === agent.id))
   const skills: SkillReadiness[] = []
   for (const resource of bound) {
+    if (bundledManifest.disabledSkills.includes(resource.name)) continue
     try {
       if (bound.filter(item => item.name === resource.name).length > 1) throw new Error('存在同名技能，请只绑定一个来源')
       const version = await resourceVersion(resource, new AbortController().signal)

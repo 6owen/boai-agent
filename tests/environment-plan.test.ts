@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 暂停TTS不进入API/native环境或显示为损坏绑定，原文件与绑定保持。
  * [INPUT]: 员工绑定资源、冻结环境及Mastra与本机Codex工具。
  * [OUTPUT]: 核对获准路径、资源版本及缓存后的外改拒绝；不把工具缓存当来源权威。
  * [POS]: 员工环境模块验证，真实桌面和供应商证据另行执行。
@@ -11,7 +12,7 @@ import path from 'node:path'
 import { Workspace } from '@mastra/core/workspace'
 import type { EngineContext } from '../packages/runtime/src/contracts'
 import type { Resource, WorkItem } from '../packages/shared/src/domain'
-import { assertEnvironmentScope, describeEnvironment, prepareEnvironment, readVersionedText } from '../packages/runtime/src/modules/workspaces/environment-plan'
+import { assertEnvironmentScope, authorizedResources, describeEnvironment, prepareEnvironment, readVersionedText } from '../packages/runtime/src/modules/workspaces/environment-plan'
 import { createStageAgent } from '../packages/runtime/src/adapters/mastra/agent-factory'
 import { createCodexTask } from '../packages/runtime/src/adapters/codex/task'
 
@@ -139,4 +140,15 @@ describe('authorized employee environments', () => {
     await expect(createStageAgent('task', ctx)).rejects.toThrow('API Key')
     expect(destroy).toHaveBeenCalledTimes(1)
   })
+})
+
+it('暂停TTS保留绑定及原文件，但API/native环境与就绪列表不再加载它', async () => {
+  const ctx = await context(), resource = await skill(ctx)
+  resource.name = 'boai-voice'
+  const original = await readFile(path.join(resource.path, 'SKILL.md'), 'utf8')
+  expect(authorizedResources(ctx.agent, ctx.conversation, ctx.resources)).toEqual([])
+  expect((await prepareEnvironment(ctx)).skills).toEqual([])
+  expect((await describeEnvironment(ctx.agent, ctx.resources)).skills).toEqual([])
+  expect(ctx.agent.skillIds).toContain(resource.id)
+  expect(await readFile(path.join(resource.path, 'SKILL.md'), 'utf8')).toBe(original)
 })

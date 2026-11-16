@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 暂停TTS默认分发，旧未完成种子跳过disabledSkills；实现与用户已保存副本保留。
  * [INPUT]: 随程序分发的固定技能清单、新 Bobo 初始化标记与原绑定服务。
  * [OUTPUT]: 首次创建的独立技能副本；旧computer-use种子跳过退役项，其他未知项继续报错；不覆盖自定义或恢复用户解绑。
  * [POS]: 默认配置装配，复用本机目录、SkillManagement 和 ProductStore，无第二安装器。
@@ -39,7 +40,7 @@ export async function initializeBundledSkills(input: {
   try {
     for (const name of seed.names) {
       if (seed.settled.includes(name)) continue
-      if (name === 'boai-computer-use') { seed.settled.push(name); await save(); continue }
+      if (name === 'boai-computer-use' || manifest.disabledSkills.includes(name)) { seed.settled.push(name); await save(); continue }
       if (!bundledSkillNames.includes(name)) throw new Error(`默认技能已不再分发：${name}`)
       const requestId = `bobo-default-skills-v${seed.version}-${name}`
       // The original transaction owns the outcome. A cleared receipt means a later explicit

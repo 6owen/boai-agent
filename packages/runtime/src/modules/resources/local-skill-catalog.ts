@@ -1,10 +1,12 @@
 /*
+ * [OUTPUT]: 旧分发目录中的暂停TTS也不出现在内置技能目录；其他来源仍独立发现。
  * [OUTPUT]: 程序内置技能源只读发现，稳定命名空间独立于安装路径和用户同名技能。
  * [INPUT]: 本机 Agent 技能根、共享 ~/.agents/skills、启用插件配置与 SKILL.md。
  * [OUTPUT]: 进程内目录缓存/扫描去重、显式刷新与安装后失效；稳定收藏身份、来源与可见诊断；详情始终复核文件和路径，不创建执行资源。
  * [POS]: resources 的本机技能发现；沿用 boai-app 来源优先级和插件命名空间。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import bundledManifest from '../../../../../resources/agent-skills/manifest.json' with { type: 'json' }
 import { createHash } from 'node:crypto'
 import { readdir, realpath, lstat } from 'node:fs/promises'
 import { homedir } from 'node:os'
@@ -97,6 +99,7 @@ export class LocalSkillCatalogService {
       let resolved = false
       try {
         if (root.source === 'builtin') await restrictedPath([root.path], directory)
+        if (root.source === 'builtin' && bundledManifest.disabledSkills.includes(slug)) return
         const canonical = await realpath(directory); resolved = true
         const identity = root.namespace ? `${root.namespace}:${slug}` : canonical
         if (seen.has(identity)) return

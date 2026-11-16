@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 宿主固定命令复用有界xterm会话和原生进程退出协议。
  * [INPUT]: Trusted workspace resolver, isolated native PTY transport and desktop client identity.
  * [OUTPUT]: Coalesced screens/acks, cancellable output waits, scope-safe ordered input and confirmed shutdown.
  * [POS]: User-operated terminal owner; no employee tools, preview PTYs or model credentials.
@@ -263,6 +264,14 @@ export class WorkspaceTerminalService {
       const settled = () => { if (attachment.read === state) attachment.read = undefined }
       void result.then(settled, settled)
     }
+    return result
+  }
+
+  /** Host-only commands; callers must supply validated fixed arguments, never renderer shell text. */
+  async startCommand(clientId: number, requestId: string, scope: TerminalScope, command: string): Promise<WorkspaceTerminalResponse> {
+    const result = await this.handle(clientId, { action: 'create', requestId, scope })
+    if (result.kind !== 'created') throw new Error('安装终端创建失败')
+    await this.processes.write(result.terminal.id, command + '\n')
     return result
   }
 

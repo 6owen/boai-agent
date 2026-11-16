@@ -50,7 +50,8 @@
     "@boai/voice-input-plugin": "workspace:*",
     "use-stick-to-bottom": "1.1.6",
     "@boai/file-explorer-plugin": "workspace:*",
-    "@boai/canvas-plugin": "workspace:*"
+    "@boai/canvas-plugin": "workspace:*",
+    "@6owen/avatar-motion": "workspace:*"
   },
   "devDependencies": {
     "electron": "39.2.7",

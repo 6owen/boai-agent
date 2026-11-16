@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-11-16开发检出需初始化固定版本avatar-motion子模块，之后沿原pnpm安装/构建。
 [OUTPUT]: 2026-11-13 test:ui:behavior在构建后验证固定三项UI行为，输出报告/截图/trace并接入Test。
 [OUTPUT]: 2026-11-10macOS打包排除调试映射、类型声明及依赖测试文档；浏览器/桌面CLI按目标架构保留Mac程序、helper与校验文件。
 [INPUT]: 根package.json、scripts/dev*.mjs、build*.mjs、release*.mjs、Git脚本及现行workflow。
@@ -11,6 +12,8 @@
 本文从对应worktree的仓库根目录使用。先判断用户要解释、开发、验证、自用包、源码发布、正式发包还是安装，不把一种请求扩大成另一种动作。
 
 ## 1. 环境和依赖
+
+首次检出或子模块提交变化后，先执行 `git submodule update --init --recursive`，取得固定版本的 `packages/avatar-motion` 独立public角色工具包，再安装依赖。
 
 | 内容 | 当前实现与核对位置 |
 | --- | --- |

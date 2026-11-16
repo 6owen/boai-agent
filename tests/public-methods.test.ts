@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 安装终端仅可信主窗口可达，不进入公共方法表。
  * [OUTPUT]: 画板UI请求只从可信主窗口准入，公共CLI/transport仍拒绝，canvasHost两边均拒绝。
  * [OUTPUT]: 当前密钥草稿测试可达，仍拒绝任意内部方法。
  * [OUTPUT]: 工作区根读取及终端清理仅允许受信任宿主调用，不向renderer公开。
@@ -16,7 +17,7 @@ import { isPublicMethod } from '../packages/shared/src/ipc/public-methods'
 import { isMainWindowMethod } from '../apps/electron/src/main/main-window-methods'
 
 it('admits canvas UI operations only through the trusted main window, without exposing host or runtime internals', () => {
-  for (const method of ['canvasCommand', 'canvasFlushed']) {
+  for (const method of ['canvasCommand', 'canvasFlushed', 'skillInstallationTerminal']) {
     expect(isMainWindowMethod(method), method).toBe(true)
     expect(isPublicMethod(method), method).toBe(false)
   }

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 浏览器按钮仅会话页可见；其他配置展开共用设置分类二级菜单，沿原导航守卫。
  * [OUTPUT]: 2026-11-09移除header独立工作区按钮，右侧标签栏加号复用原工具开始页入口。
  * [OUTPUT]: 2026-11-09通讯录不再传递工作区按钮入口，项目目录沿员工资料配置。
  * [OUTPUT]: 2026-11-09 工作区工具开始页接员工任务/知识资料，右侧顶栏图标统一500ms延迟Tooltip。
@@ -136,7 +137,7 @@ import type { TerminalInfo } from '@boai/shared/domain/workspace-tools'
 import { appendDraftReference, draftResourceReferences } from '@/pages/conversations/inline-mentions'
 import { managementSkillReference } from '@/pages/conversations/composer-commands'
 import type { ManagementSkillId } from '@boai/shared/domain/management-skills'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 import { FloatingLayerScope } from '@/components/ui/floating-layer-scope'
 import { Dialog, DialogTrigger } from '@/components/ui/dialog'
@@ -214,7 +215,7 @@ import { AutomationOccurrenceView } from '@/pages/schedules/automation-history'
 import { AutomationEditorTab } from '@/pages/schedules/automation-editor'
 import { UserAvatar } from '@/components/common/user-avatar'
 import { SettingsPage, type SettingsTab } from '@/pages/settings'
-import { personalSettingsShortcuts } from '@/pages/settings/settings-navigation'
+import { personalSettingsShortcuts, configurationSettingsShortcuts } from '@/pages/settings/settings-navigation'
 import type { LocalAgentTarget } from '@/pages/settings/local-agents'
 import { Avatar, Banner, errorText, GuardContext, Loading } from '@/components/common/index'
 import { toast } from 'sonner'
@@ -1194,7 +1195,7 @@ export function AppShell() {
       onRemoveMaterial={item => { void materialDrafts.remove(id, item) }} onRetryMaterial={item => { void materialDrafts.retry(id, item) }} onPreviewMaterial={(material, line) => previewMaterial(material, line, scope, undefined, undefined, withinKey)} onKnowledgePreview={(citation, reference, agentId) => dispatchDetails({ type: 'open', withinKey, target: { type: 'resource', id: reference.resourceId, agentId, citation: { ...citation, requestId: crypto.randomUUID() } } }, scope)} onDiscardSubmission={() => clearUnacceptedSubmission(id)} /></FloatingLayerScope>
   }
   if (!api) return <div className="unavailable-page"><MessageCircle size={34}/><h1>请在桌面应用打开</h1><p>当前浏览器没有本地运行接口，无法访问员工、文件或模型。</p></div>
-  const headerActions = <>{canvasEnabled && route.page === 'conversations' && conversation?.agentIds.length === 1 && <CanvasMenu key={`${conversation.agentIds[0]}:${conversation.id}`} api={api} scope={{ employeeId: conversation.agentIds[0]!, conversationId: conversation.id }} onOpen={target => openPanel(target, 'conversations')} />}<HeaderBrowser api={api} /><Dialog open={conversationSearchOpen} onOpenChange={setConversationSearchOpen}>
+  const headerActions = <>{canvasEnabled && route.page === 'conversations' && conversation?.agentIds.length === 1 && <CanvasMenu key={`${conversation.agentIds[0]}:${conversation.id}`} api={api} scope={{ employeeId: conversation.agentIds[0]!, conversationId: conversation.id }} onOpen={target => openPanel(target, 'conversations')} />}{route.page === 'conversations' && <HeaderBrowser api={api} />}<Dialog open={conversationSearchOpen} onOpenChange={setConversationSearchOpen}>
     <Tooltip><TooltipTrigger delay={500} render={<DialogTrigger render={<Button className="titlebar-no-drag" variant="ghost" size="icon-sm" aria-label="搜索会话内容" />} onClick={openSearch} />}><Search /></TooltipTrigger><TooltipContent side="bottom">搜索会话内容</TooltipContent></Tooltip>
     <ConversationSearch api={api} active={conversationSearchOpen} snapshot={snapshot} selectedId={selectedId} request={searchRequest} onOpen={(result, current) => openSearchResult(result, current, () => setConversationSearchOpen(false))} onUnavailable={searchSourceUnavailable} />
   </Dialog></>
@@ -1212,7 +1213,7 @@ export function AppShell() {
         <DropdownMenuGroup>
           {personalSettingsShortcuts.map(item => <DropdownMenuItem key={item.id} onClick={() => openSettings(item.id)}><item.icon />{item.label}</DropdownMenuItem>)}
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => openSettings('connections')}><Sliders />其他配置</DropdownMenuItem>
+          <DropdownMenuSub><DropdownMenuSubTrigger><Sliders />其他配置</DropdownMenuSubTrigger><DropdownMenuSubContent>{configurationSettingsShortcuts.map(item => <DropdownMenuItem key={item.id} onClick={() => openSettings(item.id)}><item.icon />{item.label}</DropdownMenuItem>)}</DropdownMenuSubContent></DropdownMenuSub>
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu></div></nav>

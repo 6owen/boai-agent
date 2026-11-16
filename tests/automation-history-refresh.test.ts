@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 覆盖Dialog左侧状态分组、折叠与固定记录选择，无执行副作用。
  * [OUTPUT]: 全部清空覆盖分页冻结/确认取消/重复提交、活动保留、部分失败及隐藏停发；不删除用户数据。
  * [OUTPUT]: 删除Popover须明确确认，取消不提交；运行中禁删、失败仅Sonner、迟到列表不能恢复已删行。
  * [INPUT]: 生产AutomationHistory、可控历史请求与连续changed事件。
@@ -197,4 +198,20 @@ test('hiding the task during a clear stops unsent deletion requests', async () =
   await render(false)
   await resolve({ occurrences: [{ ...record, status: 'completed', stateVersion: 7 }] })
   expect(vi.mocked(api.request).mock.calls.filter(([method]) => method === 'deleteAutomationOccurrence')).toHaveLength(0)
+})
+
+test('Dialog分组中的所选记录保持固定身份，折叠后不会触发其他记录或执行任务', async () => {
+  const onOccurrence = vi.fn()
+  await act(async () => root.render(createElement(AutomationHistory, { api, active: true, grouped: true, selectedId: 'done', onOccurrence })))
+  await resolve({ occurrences: [record, { ...record, id: 'done', status: 'completed' }, { ...record, id: 'failed', status: 'failed' }] })
+  expect(host.querySelectorAll('.automation-record-list [data-occurrence-id]')).toHaveLength(3)
+  expect(host.querySelector('[data-occurrence-id=done]')?.getAttribute('aria-pressed')).toBe('true')
+  await act(async () => (host.querySelector('[data-occurrence-id=failed]') as HTMLButtonElement).click())
+  expect(onOccurrence).toHaveBeenCalledExactlyOnceWith('failed')
+  const headings = [...host.querySelectorAll<HTMLButtonElement>('.contact-manager-filter-heading')]
+  expect(headings.map(item => item.textContent)).toEqual(['进行中1', '已完成1', '需处理1'])
+  await act(async () => headings[0].click())
+  expect(headings[0].getAttribute('aria-expanded')).toBe('false')
+  expect(onOccurrence).toHaveBeenCalledTimes(1)
+  expect(vi.mocked(api.request).mock.calls.every(([method]) => method === 'listAutomationHistory')).toBe(true)
 })

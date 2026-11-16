@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-11-16九项Issue源码接线及独立public角色包；实现/检查/未验边界见ai-docs/implementation/2026-11-16-issues-141-150.md，未发版或替换个人应用。
 [OUTPUT]: 2026-11-13 Test新增固定三项UI行为；预览报告显示实际完成度并核对当前源码提交，实际验证归22组03。
 [OUTPUT]: 2026-11-10安装包统一到dist/releases，命令保持；.local保留候选控制/恢复记录，兼容旧资产，安装包不进入应用身份或包体。
 [OUTPUT]: 2026-11-10新增boai-agent-dev-skills统一入口，梳理实际dev/build/验证/打包/bumpp/tag/Release/Git/worktree命令；release:build现默认读取package版本与当前HEAD，显式参数仍可覆盖。
@@ -91,7 +92,7 @@ BOAI 是一款本地优先的数字员工桌面应用。在熟悉的聊天界面
 准备 Node.js **22.13+**、pnpm **10**。macOS / Linux 源码构建还需要支持 Rust edition 2024 的 Rust / Cargo。
 
 ```sh
-git clone https://github.com/6owen/boai-agent.git
+git clone --recurse-submodules https://github.com/6owen/boai-agent.git
 cd boai-agent
 pnpm install
 pnpm dev
@@ -106,6 +107,10 @@ pnpm dev
 也可以先找 **bobo** 讨论需求，再组织协作。模型凭据与实际权限由你配置。
 
 ## 开发与文档
+
+角色动画包独立维护于 [6owen/avatar-motion](https://github.com/6owen/avatar-motion)，通过 `packages/avatar-motion` 子模块固定引用。首次检出或更新后先执行 `git submodule update --init --recursive`，再按下方流程安装依赖。
+
+本批 Issue 的实现与验证记录见 [2026-11-16 交付记录](ai-docs/implementation/2026-11-16-issues-141-150.md)。
 
 基于 **Electron · React · TypeScript · Mastra** 构建，使用 pnpm workspace 管理桌面应用、CLI 和共享包。
 

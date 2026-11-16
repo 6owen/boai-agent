@@ -28,7 +28,6 @@
     "boai-alchemy",
     "boai-plan-weave",
     "boai-references",
-    "boai-voice",
     "boai-image-gen",
     "boai-selfie",
     "boai-twitter-media",
@@ -42,5 +41,8 @@
     "boai-manage-sources",
     "boai-manage-prompts",
     "boai-manage-contacts"
+  ],
+  "disabledSkills": [
+    "boai-voice"
   ]
 }

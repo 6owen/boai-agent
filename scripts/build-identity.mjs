@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 子模块身份包含固定HEAD与当前源码字节，未初始化拒绝构建。
  * [OUTPUT]: apps/packages及开发/构建编排纳入身份；任何部分构建先清旧全量身份，只有完整产物可登记通过。
  * [INPUT]: 实际源码/资源/构建配置和dist应用字节，顶层releases保留给安装包。
  * [OUTPUT]: 构建前后同源/应用哈希核对；仅排除顶层安装包目录，异常文件/链接拒绝。
@@ -7,14 +8,30 @@
  */
 import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
-import { readFile, readdir, readlink, rm, writeFile } from 'node:fs/promises'
+import { readFile, readdir, readlink, rm, writeFile, lstat } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { releaseOutputName } from './build-output-paths.mjs'
 
 export async function buildInputHash(root = process.cwd()) {
-  const paths = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', 'apps', 'resources', 'packages', 'scripts/build.mjs', 'scripts/build-*.mjs', 'scripts/dev.mjs', 'scripts/dev-*.mjs', 'scripts/workspace-packages.mjs', 'scripts/workspace-packages.d.mts', 'scripts/design-packages.mjs', 'package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', 'vite.config.ts', 'tailwind.config.ts', 'tsconfig.json'], { cwd: root, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }).split('\0').filter(path => path && !path.endsWith('/.folder.md')).sort()
+  const paths = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', 'apps', 'resources', 'packages', 'scripts/build.mjs', 'scripts/build-*.mjs', 'scripts/dev.mjs', 'scripts/dev-*.mjs', 'scripts/workspace-packages.mjs', 'scripts/workspace-packages.d.mts', 'scripts/design-packages.mjs', '.gitmodules', 'package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', 'vite.config.ts', 'tailwind.config.ts', 'tsconfig.json'], { cwd: root, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }).split('\0').filter(path => path && !path.endsWith('/.folder.md')).sort()
   const digest = createHash('sha256')
-  for (const path of paths) { digest.update(path + '\0'); try { digest.update(await readFile(join(root, path))) } catch (error) { if (error.code !== 'ENOENT') throw error; digest.update('<deleted>') } }
+  const hashEntry = async (base, path, prefix = '') => {
+    const key = prefix + path
+    if (key.endsWith('/.folder.md')) return
+    digest.update(key + '\0')
+    try {
+      const absolute = join(base, path)
+      if ((await lstat(absolute)).isDirectory()) {
+        // Gitlinks are directories, not source files. Pin the checked-out commit AND
+        // hash its current source so dirty submodule edits cannot reuse stale dist.
+        try { await lstat(join(absolute, '.git')) } catch { throw Error(`未初始化的子模块：${key}；请运行 git submodule update --init --recursive`) }
+        digest.update(execFileSync('git', ['rev-parse', 'HEAD'], { cwd: absolute, encoding: 'utf8' }).trim())
+        const children = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], { cwd: absolute, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }).split('\0').filter(Boolean).sort()
+        for (const child of children) await hashEntry(absolute, child, key.replace(/\/$/, '') + '/')
+      } else digest.update(await readFile(absolute))
+    } catch (error) { if (error.code !== 'ENOENT') throw error; digest.update('<deleted>') }
+  }
+  for (const path of paths) await hashEntry(root, path)
   return digest.digest('hex')
 }
 

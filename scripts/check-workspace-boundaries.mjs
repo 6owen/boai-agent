@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 独立avatar-motion子模块可由Electron单向引用，无BOAI业务依赖。
  * [OUTPUT]: Canvas package stays independent; shared imports only its platform-neutral protocol.
  * [OUTPUT]: Agent Desktop 可选插件接线；默认关闭、独立于旧computer-use，调用沿员工权限及真实图片。
  * [OUTPUT]: 独立浏览器包只依赖上游，由runtime调用公开host入口。
@@ -19,6 +20,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const sourceExtensions = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'])
 const builtins = new Set(builtinModules.flatMap(name => [name, `node:${name}`]))
 const allowed = {
+  '@6owen/avatar-motion': [],
   '@boai/canvas-plugin': [],
   '@boai/shared': ['@boai/canvas-plugin', '@boai/tokens', '@boai/runtime-plugin-sdk'],
   '@boai/file-explorer-plugin': ['@boai/shared', '@boai/ui'],
@@ -31,7 +33,7 @@ const allowed = {
   '@boai/runtime-plugins': ['@boai/shared', '@boai/runtime-plugin-sdk'],
   '@boai/ui': ['@boai/tokens'],
   '@boai/tokens': [],
-  '@boai/electron': ['@boai/canvas-plugin', '@boai/file-explorer-plugin', '@boai/voice-input-plugin', '@boai/runtime', '@boai/shared', '@boai/transport', '@boai/ui', '@boai/tokens', '@boai/runtime-plugin-sdk'],
+  '@boai/electron': ['@6owen/avatar-motion', '@boai/canvas-plugin', '@boai/file-explorer-plugin', '@boai/voice-input-plugin', '@boai/runtime', '@boai/shared', '@boai/transport', '@boai/ui', '@boai/tokens', '@boai/runtime-plugin-sdk'],
   '@boai/cli': ['@boai/shared', '@boai/transport'],
   '@boai/design-docs': ['@boai/ui', '@boai/tokens'],
 }
