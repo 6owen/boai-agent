@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-16未注册插件不创建语音控制器或读取语音配置，旧启用/快捷键配置不生效。
  * [OUTPUT]: Composer仅在已保存的语音配置/所选模型及引擎就绪时显示开始入口；共享设置回执更新，进行中的停止/取消保持。
  * [OUTPUT]: 2026-10-27 原Composer语音控件增加统一快捷键，限定当前输入焦点/窗口与非录入状态。
  * [INPUT]: Active Composer instance, plugin snapshot and trusted desktop voice API.
@@ -21,7 +22,8 @@ import { VoiceController, type VoiceUi } from '@boai/voice-input-plugin/controll
 import type { MentionInputHandle } from './mention-input'
 export function useVoiceInput(api: DesktopApi | undefined, editor: RefObject<MentionInputHandle | null>, scope: string, active: boolean, disabled: boolean) {
   const settings = usePlugins(value => value.settings), ready = usePlugins(value => value.ready)
-  const enabled = ready && pluginAvailability(applicationPlugins.find(plugin => plugin.id === 'boai.voice-input')!, settings) === 'enabled'
+  const voicePlugin = applicationPlugins.find(plugin => plugin.id === 'boai.voice-input')
+  const enabled = ready && !!voicePlugin && pluginAvailability(voicePlugin, settings) === 'enabled'
   const { snapshot, models } = useVoiceSettings()
   const available = !!snapshot && !snapshot.readOnly && !snapshot.diagnostic && (snapshot.settings.mode === 'local'
     ? snapshot.supported && (models ?? snapshot.models).some(model => model.id === snapshot.settings.localModelId && model.ready)

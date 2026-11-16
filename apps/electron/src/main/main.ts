@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-16语音输入未注册时跳过初始化并拒绝IPC；已保存配置/模型不迁移、不删除。
  * [OUTPUT]: 主窗口默认1100×760；主进程终端监督器按应用分发路径定位，开发/安装后均不依赖cwd。
  * [OUTPUT]: 会话文件/知识资料按业务身份核源后复用系统应用打开；材料临时命名副本随退出清理且保留外改。
  * [OUTPUT]: 可信主窗口允许私有画板UI请求；公共CLI与canvasHost权限边界保持。
@@ -246,16 +247,17 @@ const appIconAssets = join(__dirname, 'app-icons').replace('app.asar/', 'app.asa
 const appIconController = new AppIconController(appIconAssets, join(__dirname, '../native/app-icon-helper').replace('app.asar/', 'app.asar.unpacked/'), status => sendEvent({ type: 'app-icon:changed', status }), {
   snapshot: () => background.iconStatus(), apply: id => background.applyIcon(id), retry: id => background.retryIcon(id),
 })
+const voicePlugin = applicationPlugins.find(plugin => plugin.id === 'boai.voice-input')
 const pluginSettings = new PluginSettingsStore(join(legacyDataPath, 'application-plugins.json'), settings => {
   if (runtime) void requestCurrentRuntime(runtime, '__browserPluginsChanged', undefined).catch(error => sendEvent({ type: 'runtime-error', error: String(error) }))
-  if (pluginAvailability(applicationPlugins.find(plugin => plugin.id === 'boai.voice-input')!, settings) !== 'enabled') void voice.close().catch(() => {})
+  if (!voicePlugin || pluginAvailability(voicePlugin, settings) !== 'enabled') void voice.close().catch(() => {})
   void canvas.refresh().catch(error => sendEvent({ type: 'runtime-error', error: String(error) }))
   sendEvent({ type: 'plugins:changed', settings })
   appearance.systemChanged()
 })
 const voice = createVoiceHost(join(legacyDataPath, 'voice-input'), join(__dirname, '../voice-input/local-helper.cjs').replace('app.asar/', 'app.asar.unpacked/'), {
   secrets: vault,
-  enabled: () => pluginAvailability(applicationPlugins.find(plugin => plugin.id === 'boai.voice-input')!, pluginSettings.snapshot()) === 'enabled',
+  enabled: () => !!voicePlugin && pluginAvailability(voicePlugin, pluginSettings.snapshot()) === 'enabled',
   allowed: () => !quitting && !!window && !window.isDestroyed() && window.isVisible() && desktopLifecycle.snapshot().power === 'awake' && !desktopLifecycle.snapshot().locked,
   emit: event => { if (window && !window.isDestroyed()) window.webContents.send('boai:voice-event', event) },
   usage: ({ stage, state, ...entry }) => diagnostics.record('voice-usage', { ...entry, method: stage, usageState: state }),
@@ -544,6 +546,7 @@ function registerIpc() {
   }
   ipcMain.handle('boai:voice', async (event, method: unknown, input: unknown) => {
     requireMainFrame(event)
+    if (!voicePlugin) throw new Error('语音输入暂未开放')
     if (quitting) throw new Error('应用正在退出')
     switch (method) {
       case 'microphoneAccess': return voice.microphoneAccess(input as Parameters<typeof voice.microphoneAccess>[0])
@@ -990,7 +993,7 @@ else {
     desktopLifecycle.start(powerMonitor)
     await prepareV2DataRoot(legacyDataPath)
     await pluginSettings.init()
-    await voice.init()
+    if (voicePlugin) await voice.init()
     await appearance.init()
     await desktopSettings.init()
     installMenu()

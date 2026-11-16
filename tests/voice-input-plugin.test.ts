@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-16生产目录暂停语音时旧启用配置只读保留、拒绝重新启用；原CAS恢复用例显式注入测试清单。
  * [OUTPUT]: 2026-10-28 v1/v2无写入迁移到v3；保留语言/规则、设备授权、草稿与单租约回归。
  * [INPUT]: Explicit plugin settings, controlled host lifecycle, helper exit and voice event streams.
  * [OUTPUT]: Opt-in migration, endpoint credentials, capture ownership, once-only drafts and late-result regressions.
@@ -11,7 +12,7 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { randomUUID } from 'node:crypto'
 import { PluginSettingsStore } from '../apps/electron/src/main/plugin-settings'
-import { applicationPlugins } from '../packages/shared/src/plugins/catalog'
+import { applicationPlugins, definePluginCatalog } from '../packages/shared/src/plugins/catalog'
 import { pluginAvailability } from '../packages/shared/src/plugins/types'
 import { VoiceSettingsStore } from '../packages/voice-input-plugin/src/settings'
 import { VoiceHost } from '../packages/voice-input-plugin/src/host'
@@ -27,14 +28,26 @@ const deferred = <T,>() => { let resolve!: (value: T) => void; const promise = n
 it('reads v1 without writing and keeps voice off until a CAS opt-in survives restart', async () => {
   const path = join(await directory(), 'plugins.json'), bytes = JSON.stringify({ schemaVersion: 1, revision: 7, disabledIds: ['unknown.plugin'] })
   await writeFile(path, bytes)
-  const store = new PluginSettingsStore(path, () => {}), plugin = applicationPlugins.find(plugin => plugin.id === 'boai.voice-input')!
+  const plugin = { id: 'boai.voice-input', name: '语音输入', description: 'Test-only voice plugin', version: '0.1.0', apiVersion: 1, defaultEnabled: false, contributions: [{ type: 'voice-input' as const }] }
+  const catalog = definePluginCatalog([...applicationPlugins, plugin])
+  const store = new PluginSettingsStore(path, () => {}, catalog)
   await store.init(); expect(await readFile(path, 'utf8')).toBe(bytes)
   expect(pluginAvailability(plugin, store.snapshot())).toBe('disabled')
   await store.update({ id: plugin.id, enabled: true, expectedRevision: 7 })
-  const reopened = new PluginSettingsStore(path, () => {}); await reopened.init()
+  const reopened = new PluginSettingsStore(path, () => {}, catalog); await reopened.init()
   expect(pluginAvailability(plugin, reopened.snapshot())).toBe('enabled')
   expect(reopened.snapshot().disabledIds).toEqual(['unknown.plugin'])
   expect(pluginAvailability(plugin, { ...reopened.snapshot(), disabledIds: [plugin.id] })).toBe('disabled')
+})
+it('preserves saved voice opt-in bytes while the production catalog rejects activation', async () => {
+  const path = join(await directory(), 'plugins.json')
+  const bytes = JSON.stringify({ schemaVersion: 2, revision: 7, disabledIds: [], enabledIds: ['boai.voice-input'] })
+  await writeFile(path, bytes)
+  const store = new PluginSettingsStore(path, () => {}); await store.init()
+  expect(store.snapshot()).toMatchObject({ revision: 7, enabledIds: ['boai.voice-input'] })
+  expect(applicationPlugins.some(plugin => plugin.id === 'boai.voice-input')).toBe(false)
+  await expect(store.update({ id: 'boai.voice-input', enabled: true, expectedRevision: 7 })).rejects.toThrow('找不到')
+  expect(await readFile(path, 'utf8')).toBe(bytes)
 })
 it('binds online credentials to the exact endpoint and preserves bad configuration bytes', async () => {
   const root = await directory(), vault = secrets(), path = join(root, 'voice.json'), store = new VoiceSettingsStore(path, vault)

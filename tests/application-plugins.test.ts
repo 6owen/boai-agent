@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-16目录暂不注册语音输入，原预览/主题/插件声明与持久化断言保持。
  * [OUTPUT]: 默认关闭的画板贡献纳入目录；目录复制隔离按稳定插件ID核对。
  * [OUTPUT]: 新增Agent Desktop可选贡献及API/native共享工具真实SDK验证。
  * [OUTPUT]: 插件目录增加两个默认关闭的独立浏览器；原检索和主题断言保持。
@@ -32,7 +33,8 @@ async function setup() {
 afterEach(async () => { await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))) })
 
 test('one immutable catalog supplies preview and theme identities without mutating declarations', () => {
-  expect(applicationPlugins).toHaveLength(13)
+  expect(applicationPlugins).toHaveLength(12)
+  expect(applicationPlugins.some(plugin => plugin.id === 'boai.voice-input')).toBe(false)
   expect(applicationPlugins.find(plugin => plugin.id === 'boai.canvas.tldraw')).toMatchObject({ defaultEnabled: false, contributions: [{ type: 'canvas' }] })
   expect(applicationPlugins.find(plugin => plugin.id === 'boai.desktop.agent-desktop')).toMatchObject({ defaultEnabled: true, contributions: [{ type: 'desktop-tools' }] })
   expect(applicationPlugins.flatMap(plugin => plugin.contributions).filter(contribution => contribution.type === 'web-search').map(contribution => contribution.provider)).toEqual(['deepseek'])

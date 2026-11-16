@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-16未注册的语音输入不展示快捷键行；保留已保存的快捷键配置。
  * [OUTPUT]: 页面布局复用settings-layout，标题/分组留白与卡片/设置行统一，原业务回调保持。
  * [INPUT]: Main 快照、页外保存队列、共用 Card/Switch/Button 和平台按键规则。
  * [OUTPUT]: 五项启停/录入（含语音输入）、clickoutside自动保存；不渲染保存/准备/错误状态文案，保存成功和失败由页外队列沿Sonner提示，保留原恢复动作。
@@ -12,6 +13,9 @@ import { Switch } from '@/components/ui/switch'
 import { Skeleton } from '@/components/ui/skeleton'
 import { shortcuts, useShortcuts } from '@/stores/shortcuts'
 import { bindingFromKey, shortcutIds, shortcutLabels, shortcutText } from '@boai/shared/shortcuts'
+import { applicationPlugins } from '@boai/shared/plugins/catalog'
+
+const visibleShortcutIds = shortcutIds.filter(id => id !== 'voiceInput' || applicationPlugins.some(plugin => plugin.id === 'boai.voice-input'))
 
 export function ShortcutSettings({ active = true }: { active?: boolean }) {
   const state = useShortcuts(value => value)
@@ -50,7 +54,7 @@ export function ShortcutSettings({ active = true }: { active?: boolean }) {
   const unavailable = !state.snapshot || Boolean(state.snapshot.error) || !active
   return <SettingsLayout title="快捷键" actions={<Button variant="ghost" size="sm" disabled={unavailable || state.busy.length > 0} onClick={() => { void shortcuts.reset() }}>恢复默认</Button>}>
     <SettingsCard>
-      {shortcutIds.map(id => {
+      {visibleShortcutIds.map(id => {
         const saved = state.snapshot?.preferences[id], draft = state.drafts[id], recording = state.capturing === id, busy = state.busy.includes(id)
         return <SettingsRow key={id} aria-busy={busy}>
           <div className="flex min-w-0 items-center gap-3"><span data-shortcut-switch={id}><Switch aria-label={shortcutLabels[id]} checked={saved?.enabled ?? false} disabled={unavailable || busy || state.unknown} onCheckedChange={value => shortcuts.toggle(id, value)} /></span><span>{shortcutLabels[id]}</span></div>
