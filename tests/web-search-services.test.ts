@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-16独立能力配置兼容用例改切换仍注册的浏览器插件，保留原检索启停与版本断言。
  * [OUTPUT]: 真实PluginSettingsStore写出的v2须保持DeepSeek可用；草稿测试不保存、只调用一次并保留停用/取消门禁。
  * [INPUT]: Independent search registry, legacy records, plugin settings and synthetic HTTP responses.
  * [OUTPUT]: Atomic credential-preserving migration, independent authorization/defaults and Jina wire/failure checks.
@@ -129,7 +130,7 @@ it('reads current host-written v2 settings so enabled DeepSeek can be tested and
   const source = await service.save({ id: randomUUID(), expectedRevision: 0, provider: 'deepseek', name: 'DeepSeek', enabled: true, credential: 'fixture' })
   const plugins = new PluginSettingsStore(join(f.root, 'application-plugins.json'), () => {}); await plugins.init()
   await plugins.update({ id: 'boai.preview.pdf', enabled: false, expectedRevision: 0 })
-  await plugins.update({ id: 'boai.voice-input', enabled: true, expectedRevision: 1 })
+  await plugins.update({ id: 'boai.browser.agent-browser', enabled: true, expectedRevision: 1 })
   expect((await service.settings()).services[0]).toMatchObject({ enabled: true, pluginEnabled: true, hasCredential: true })
   await expect(service.saveDefault({ expectedRevision: 0, default: { mode: 'service', serviceId: source.id } })).resolves.toMatchObject({ default: { mode: 'service', serviceId: source.id } })
   const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ results: [] })))

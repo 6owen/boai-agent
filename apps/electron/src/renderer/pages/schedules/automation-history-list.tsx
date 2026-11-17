@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 可复用为Dialog左侧按运行状态折叠的记录分组，原查询/分页/删除保持。
+ * [OUTPUT]: Dialog左侧沿管理菜单显示默认收起的状态分组，不展示检索和Tabs；其他列表保留原查询/分页/删除。
  * [OUTPUT]: 确认全部清空后立即按原动画关闭Popover，后台清理期间保留提交锁及Sonner结果反馈。
  * [OUTPUT]: 可按员工查询原执行记录，定时页面的布局和默认查询保持。
  * [OUTPUT]: 筛选复用公共FilterTabs及transitions-dev滑动层；实际新结果沿Panel reveal显现，后台刷新与分页不重播。
@@ -82,18 +82,18 @@ export function AutomationHistory({ api, active, automationId, employeeId, atten
       { label: '进行中', rows: history.occurrences.filter(o => (AUTOMATION_ONGOING_STATUSES as readonly string[]).includes(o.status)) },
       { label: '已完成', rows: history.occurrences.filter(o => o.status === 'completed') },
       { label: '需处理', rows: history.occurrences.filter(o => o.status !== 'completed' && !(AUTOMATION_ONGOING_STATUSES as readonly string[]).includes(o.status)) },
-    ].filter(group => group.rows.length).map(group => <Collapsible key={group.label} defaultOpen><CollapsibleTrigger render={<Button variant="ghost" size="content" className="conversation-section-heading contact-manager-filter-heading" />}><span>{group.label}</span><ChevronRight /><span className="ml-auto">{group.rows.length}</span></CollapsibleTrigger><CollapsibleContent>{group.rows.map(renderRecord)}</CollapsibleContent></Collapsible>) : history.occurrences.map(renderRecord)}</div>
+    ].filter(group => group.rows.length).map(group => <Collapsible key={group.label}><CollapsibleTrigger render={<Button variant="ghost" size="content" className="conversation-section-heading contact-manager-filter-heading contact-manager-menu" />}><Clock /><span className="truncate">{group.label}</span><span className="contacts-count">{group.rows.length}</span><ChevronRight style={{ marginLeft: 0 }} /></CollapsibleTrigger><CollapsibleContent><div className="contact-manager-submenu">{group.rows.map(renderRecord)}</div></CollapsibleContent></Collapsible>) : history.occurrences.map(renderRecord)}</div>
     {loading && !loaded && <Loading>正在读取执行记录…</Loading>}
     {loaded && !error && !history.occurrences.length && <p className="field-hint">{search ? '没有匹配的执行记录' : '暂无执行记录'}</p>}
     {history.nextCursor && <Button variant="secondary" size="sm" disabled={loading} onClick={() => setPages(value => value + 1)}>加载更早记录</Button>}
     {error && <Button variant="secondary" size="sm" onClick={() => setRevision(value => value + 1)}>重试读取</Button>}
   </div>
   return <section className="automation-records" aria-label="执行记录" style={active ? undefined : { display: 'none' }}>
-    <div className="automation-records-heading">{!grouped && <h3>{attentionOnly ? '需处理记录' : '执行记录'}</h3>}<div className="automation-record-actions">
+    {!grouped && <div className="automation-records-heading"><h3>{attentionOnly ? '需处理记录' : '执行记录'}</h3><div className="automation-record-actions">
       {automationId && <ClearHistoryRecords api={api} automationId={automationId} active={active} onBusyChange={setClearing} onDeleted={removeRows} />}
       <CatalogSearch label="搜索执行记录" placeholder="搜索记录中的任务标题" value={search} onChange={value => { setSearch(value.slice(0, 200)); setPages(1); setLoaded(false); setHistory({ occurrences: [] }) }} />
-    </div></div>
-    {!automationId && !attentionOnly ? <FilterTabs label="执行记录筛选" value={status} options={historyFilters} onValueChange={value => { setStatus(value); setPages(1); setLoaded(false); setHistory({ occurrences: [] }) }}>{results}</FilterTabs> : results}
+    </div></div>}
+    {!grouped && !automationId && !attentionOnly ? <FilterTabs label="执行记录筛选" value={status} options={historyFilters} onValueChange={value => { setStatus(value); setPages(1); setLoaded(false); setHistory({ occurrences: [] }) }}>{results}</FilterTabs> : results}
 
   </section>
 }

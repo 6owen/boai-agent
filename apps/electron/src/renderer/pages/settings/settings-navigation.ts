@@ -1,11 +1,12 @@
 /*
+ * [OUTPUT]: 2026-11-16暂时注释语音输入分类；设置侧栏与本人二级菜单同步隐藏。
  * [OUTPUT]: 配置设置分类与本人二级菜单共用名称和语义图标。
  * [INPUT]: Shared offline icons and personal settings destinations.
  * [OUTPUT]: One label/icon mapping for settings navigation and the user dropdown.
  * [POS]: Personal settings shortcut metadata; navigation remains with each caller.
  * [PROTOCOL]: Update Header and owning .folder.md on change.
  */
-import { Palette, Keyboard, Power, Monitor, Sparkles, Search, Mic, Plug, HardDrive } from '@/components/icons/index'
+import { Palette, Keyboard, Power, Monitor, Sparkles, Search, Plug, HardDrive } from '@/components/icons/index'
 export const personalSettingsShortcuts = [
   { id: 'appearance', label: '外观', icon: Palette },
   { id: 'shortcuts', label: '快捷键', icon: Keyboard },
@@ -16,7 +17,8 @@ export const personalSettingsShortcuts = [
 export const configurationSettingsShortcuts = [
   { id: 'connections', label: '模型连接', icon: Sparkles },
   { id: 'web-search', label: '网页检索', icon: Search },
-  { id: 'voice-input', label: '语音输入', icon: Mic },
+  // 暂缓开发：恢复时同时重新启用插件注册和设置页面。
+  // { id: 'voice-input', label: '语音输入', icon: Mic },
   { id: 'plugins', label: '插件', icon: Plug },
   { id: 'data', label: '数据与备份', icon: HardDrive },
 ] as const

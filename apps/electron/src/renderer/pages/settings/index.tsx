@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-16暂时注释语音输入页面；旧导航定位回退模型连接，不挂载语音配置。
  * [OUTPUT]: 配置分组复用与本人二级菜单相同的分类元数据。
  * [OUTPUT]: 个人分类与本人菜单共用语义图标映射，插件使用插头图标。
  * [OUTPUT]: 插件页沿原桌面API配置独立浏览器。
@@ -28,7 +29,8 @@ import { DesktopSettingsPage } from './desktop'
 import { DesktopActivityPage } from './desktop-activity'
 import { WebSearchSettingsPage } from './web-search'
 import { PluginSettingsPage } from './plugins'
-import { VoiceInputSettingsPage } from './voice-input'
+// 暂缓语音输入开发，保留页面源码。
+// import { VoiceInputSettingsPage } from './voice-input'
 import { useContext, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { LoaderCircle, Search, Contact } from '@/components/icons/index'
 import type { Snapshot } from '@boai/shared/domain'
@@ -37,7 +39,8 @@ import { Banner, GuardContext, useMutation } from '@/components/common/index'
 import { ConnectionSettings } from './connections'
 import type { LocalAgentTarget } from './local-agents'
 export type SettingsTab = 'profile' | 'connections' | 'data' | 'appearance' | 'shortcuts' | 'desktop' | 'desktop-activity' | 'plugins' | 'web-search' | 'voice-input'
-export function SettingsPage({ api, snapshot, refresh, divider, tab, setTab, active, onOpenSkills, localAgentTarget }: { api: DesktopApi; snapshot: Snapshot; refresh: () => Promise<void>; divider: ReactNode; tab: SettingsTab; setTab: (tab: SettingsTab) => void; active: boolean; onOpenSkills: () => void; localAgentTarget?: LocalAgentTarget }) {
+export function SettingsPage({ api, snapshot, refresh, divider, tab: requestedTab, setTab, active, onOpenSkills, localAgentTarget }: { api: DesktopApi; snapshot: Snapshot; refresh: () => Promise<void>; divider: ReactNode; tab: SettingsTab; setTab: (tab: SettingsTab) => void; active: boolean; onOpenSkills: () => void; localAgentTarget?: LocalAgentTarget }) {
+  const tab = requestedTab === 'voice-input' ? 'connections' : requestedTab
   const [search, setSearch] = useState('')
   const [notice, setNotice] = useState('')
   const guard = useContext(GuardContext)
@@ -87,8 +90,8 @@ export function SettingsPage({ api, snapshot, refresh, divider, tab, setTab, act
     {tab === 'desktop' && <DesktopSettingsPage api={api} active={active} />}
     {tab === 'desktop-activity' && <DesktopActivityPage api={api} active={active} />}
     {tab === 'web-search' && <WebSearchSettingsPage api={api} active={active} />}
-    {tab === 'voice-input' && <VoiceInputSettingsPage active={active} connections={snapshot.connections} onOpenShortcuts={() => guard.navigate(() => setTab('shortcuts'))} />}
-    {tab === 'plugins' && <PluginSettingsPage api={api} active={active} onOpenVoice={() => guard.navigate(() => setTab('voice-input'))} />}
+    {/* 暂缓开发：{tab === 'voice-input' && <VoiceInputSettingsPage active={active} connections={snapshot.connections} onOpenShortcuts={() => guard.navigate(() => setTab('shortcuts'))} />} */}
+    {tab === 'plugins' && <PluginSettingsPage api={api} active={active} />}
     {tab === 'data' && <DataSettings api={api} snapshot={snapshot} busy={busy} run={run} onNotice={setNotice} />}
     {busy && <p className="inline-loading"><LoaderCircle className="spinner" size={16} />正在处理…</p>}
   </div></div></div>

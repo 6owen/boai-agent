@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-16暂时注释语音输入注册；保留协议与实现供后续开发，旧启用配置不授予能力。
  * [OUTPUT]: Default-disabled tldraw canvas contribution; activation does not grant document access.
  * [OUTPUT]: Agent Desktop作为电脑操作提供方默认启用，显式停用与员工权限保持。
  * [OUTPUT]: 独立AgentBrowser/BrowserViewer插件接入；上游工具、启停与运行回收保持独立。
@@ -72,7 +73,8 @@ export const applicationPlugins = definePluginCatalog([
   ...browserPluginProviderSchema.options.map(provider => ({ id: browserPluginId(provider), name: browserPluginNames[provider], description: provider === 'agent-browser' ? '使用独立浏览器浏览网页、操作页面和截图。' : '通过 agent-browser 命令行操作独立浏览器。', version: '0.1.0', apiVersion: APPLICATION_PLUGIN_API, defaultEnabled: false, contributions: [{ type: 'browser-tools' as const, provider }] })),
   ...searchProviderPresets.map(provider => ({ id: searchPluginId(provider.id), name: provider.name + ' 网页检索', description: provider.description, version: '1.0.0', apiVersion: APPLICATION_PLUGIN_API, contributions: [{ type: 'web-search' as const, provider: provider.id }] })),
   { id: FILE_EXPLORER_PLUGIN_ID, name: '文件浏览器', description: '浏览员工工作区和授权目录，展开文件树并预览文件。', version: '0.1.0', apiVersion: APPLICATION_PLUGIN_API, contributions: [{ type: 'file-explorer' }] },
-  { id: 'boai.voice-input', name: '语音输入', description: '录音转为当前输入框中的文字；支持本地识别和可选在线识别。', version: '0.1.0', apiVersion: APPLICATION_PLUGIN_API, defaultEnabled: false, contributions: [{ type: 'voice-input' }] },
+  // 暂缓开发：恢复语音输入时，与设置导航/页面入口一起重新启用。
+  // { id: 'boai.voice-input', name: '语音输入', description: '录音转为当前输入框中的文字；支持本地识别和可选在线识别。', version: '0.1.0', apiVersion: APPLICATION_PLUGIN_API, defaultEnabled: false, contributions: [{ type: 'voice-input' }] },
 ])
 
 export function previewManifest(id: string) {

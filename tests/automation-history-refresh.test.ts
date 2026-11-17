@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 2026-11-17Dialog分组默认收起且不渲染搜索/Tabs，展开选择/再次收起仍固定原记录身份。
  * [OUTPUT]: 覆盖Dialog左侧状态分组、折叠与固定记录选择，无执行副作用。
  * [OUTPUT]: 全部清空覆盖分页冻结/确认取消/重复提交、活动保留、部分失败及隐藏停发；不删除用户数据。
  * [OUTPUT]: 删除Popover须明确确认，取消不提交；运行中禁删、失败仅Sonner、迟到列表不能恢复已删行。
@@ -204,14 +205,20 @@ test('Dialog分组中的所选记录保持固定身份，折叠后不会触发�
   const onOccurrence = vi.fn()
   await act(async () => root.render(createElement(AutomationHistory, { api, active: true, grouped: true, selectedId: 'done', onOccurrence })))
   await resolve({ occurrences: [record, { ...record, id: 'done', status: 'completed' }, { ...record, id: 'failed', status: 'failed' }] })
-  expect(host.querySelectorAll('.automation-record-list [data-occurrence-id]')).toHaveLength(3)
-  expect(host.querySelector('[data-occurrence-id=done]')?.getAttribute('aria-pressed')).toBe('true')
-  await act(async () => (host.querySelector('[data-occurrence-id=failed]') as HTMLButtonElement).click())
-  expect(onOccurrence).toHaveBeenCalledExactlyOnceWith('failed')
+  expect(host.querySelector('[aria-label="搜索执行记录"]')).toBeNull()
+  expect(host.querySelector('[aria-label="执行记录筛选"]')).toBeNull()
+  expect(host.querySelector('[role=tablist]')).toBeNull()
+  expect(host.querySelectorAll('.automation-record-list [data-occurrence-id]')).toHaveLength(0)
   const headings = [...host.querySelectorAll<HTMLButtonElement>('.contact-manager-filter-heading')]
   expect(headings.map(item => item.textContent)).toEqual(['进行中1', '已完成1', '需处理1'])
-  await act(async () => headings[0].click())
-  expect(headings[0].getAttribute('aria-expanded')).toBe('false')
+  expect(headings.every(item => item.getAttribute('aria-expanded') === 'false')).toBe(true)
+  await act(async () => headings[1].click())
+  expect(host.querySelector('[data-occurrence-id=done]')?.getAttribute('aria-pressed')).toBe('true')
+  await act(async () => headings[2].click())
+  await act(async () => (host.querySelector('[data-occurrence-id=failed]') as HTMLButtonElement).click())
+  expect(onOccurrence).toHaveBeenCalledExactlyOnceWith('failed')
+  await act(async () => headings[2].click())
+  expect(headings[2].getAttribute('aria-expanded')).toBe('false')
   expect(onOccurrence).toHaveBeenCalledTimes(1)
   expect(vi.mocked(api.request).mock.calls.every(([method]) => method === 'listAutomationHistory')).toBe(true)
 })

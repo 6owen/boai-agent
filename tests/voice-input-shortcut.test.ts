@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 2026-11-16原语音交互测试显式注入测试专用目录；生产暂停门禁由voice-input-paused独立验证。
  * [OUTPUT]: 未下载/引擎不可用隐藏开始入口及快捷键；下载、配置回执和窗口刷新恢复，录音中停止保持。
  * [INPUT]: Composer voice adapter, original shortcut store, controlled focus and key events.
  * [OUTPUT]: Only the active focused Composer starts; repeated/composing/captured/overlay keys do not start or send.
@@ -19,6 +20,13 @@ import type { DesktopApi } from '../packages/shared/src/ipc'
 import type { MentionInputHandle } from '../apps/electron/src/renderer/pages/conversations/-components/mention-input'
 import type { VoiceUi } from '../packages/voice-input-plugin/src/controller'
 const calls = vi.hoisted(() => ({ start: vi.fn(), finish: vi.fn(), cancel: vi.fn() }))
+// Keep the deferred implementation's behavior covered without registering it in production.
+vi.mock('@boai/shared/plugins/catalog', async importOriginal => {
+  const actual = await importOriginal<typeof import('../packages/shared/src/plugins/catalog')>()
+  return { ...actual, applicationPlugins: actual.definePluginCatalog([...actual.applicationPlugins, {
+    id: 'boai.voice-input', name: '语音输入', description: 'Test-only voice plugin', version: '0.1.0', apiVersion: 1, defaultEnabled: false, contributions: [{ type: 'voice-input' }],
+  }]) }
+})
 vi.mock('@boai/voice-input-plugin/controller', () => ({ VoiceController: class {
   state: VoiceUi = { phase: 'idle', preview: '' }
   constructor(_api: unknown, _draft: unknown, private change: (value: VoiceUi) => void) {}

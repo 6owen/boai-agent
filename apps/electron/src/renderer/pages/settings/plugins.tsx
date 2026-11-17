@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-16暂停语音输入，不提供配置按钮或插件类型入口，目录只列当前注册插件。
  * [OUTPUT]: 画板贡献按原插件目录提供分类和启停，不建立第二套配置。
  * [OUTPUT]: Agent Desktop 可选插件接线；默认关闭、独立于旧computer-use，调用沿员工权限及真实图片。
  * [OUTPUT]: 独立浏览器工具分类、可选启停和原位配置入口。
@@ -32,7 +33,7 @@ import { Input } from '@/components/ui/input'
 import { SelectField } from '@/components/ui/select-field'
 import { Switch } from '@/components/ui/switch'
 
-export function PluginSettingsPage({ api, onOpenVoice, active = true }: { api: DesktopApi; onOpenVoice(): void; active?: boolean }) {
+export function PluginSettingsPage({ api, active = true }: { api: DesktopApi; active?: boolean }) {
   const { settings, ready, busy, error } = usePlugins()
   const usage = useSyncExternalStore(pluginUsage.subscribe, pluginUsage.snapshot, pluginUsage.snapshot)
   const [desktopOpen, setDesktopOpen] = useState(false)
@@ -44,7 +45,7 @@ export function PluginSettingsPage({ api, onOpenVoice, active = true }: { api: D
     {(error || settings.diagnostic) && <Banner>{error || settings.diagnostic}</Banner>}
     <div className="mb-4 flex items-center gap-2" data-plugin-filters>
       <Input className="min-w-0 flex-1" aria-label="搜索插件" placeholder="搜索插件" value={query} onChange={event => setQuery(event.target.value)} />
-      <div className="w-32 shrink-0"><SelectField className="h-(--control-height)" aria-label="插件类型" value={kind} onValueChange={setKind} options={[{ value: 'all', label: '全部类型' }, ...(WORKSPACE_UI_ENABLED ? [{ value: 'file-explorer', label: '文件浏览器' }] : []), { value: 'canvas', label: '画板' }, { value: 'voice-input', label: '语音输入' }, { value: 'preview', label: '文件预览' }, { value: 'theme', label: '主题' }, { value: 'web-search', label: '网页检索' }, { value: 'browser-tools', label: '浏览器工具' }, { value: 'desktop-tools', label: '电脑操作' }, { value: 'agent-runtime', label: 'Agent 运行时' }]} /></div>
+      <div className="w-32 shrink-0"><SelectField className="h-(--control-height)" aria-label="插件类型" value={kind} onValueChange={setKind} options={[{ value: 'all', label: '全部类型' }, ...(WORKSPACE_UI_ENABLED ? [{ value: 'file-explorer', label: '文件浏览器' }] : []), { value: 'canvas', label: '画板' }, { value: 'preview', label: '文件预览' }, { value: 'theme', label: '主题' }, { value: 'web-search', label: '网页检索' }, { value: 'browser-tools', label: '浏览器工具' }, { value: 'desktop-tools', label: '电脑操作' }, { value: 'agent-runtime', label: 'Agent 运行时' }]} /></div>
     </div>
     <SettingsCard contentClassName="soft-divide-y px-4 py-0">
       {plugins.map(plugin => {
@@ -60,7 +61,6 @@ export function PluginSettingsPage({ api, onOpenVoice, active = true }: { api: D
           </div>
           {plugin.id === DESKTOP_PLUGIN_ID && <Button variant="ghost" size="icon-sm" aria-label="配置 Agent Desktop" onClick={() => setDesktopOpen(true)}><Settings /></Button>}
           {browser?.type === 'browser-tools' && <Button variant="ghost" size="icon-sm" aria-label={`配置 ${plugin.name}`} onClick={() => setBrowserProvider(browser.provider)}><Settings /></Button>}
-          {plugin.id === 'boai.voice-input' && <Button variant="ghost" size="icon-sm" aria-label="配置语音输入" onClick={onOpenVoice}><Settings /></Button>}
           <Switch id={`plugin-${plugin.id}`} aria-label={plugin.name} checked={availability === 'enabled'} disabled={!ready || Boolean(busy) || settings.readOnly || availability === 'incompatible'} onCheckedChange={enabled => { void setPluginEnabled(plugin.id, enabled) }} />
         </div>
       })}
