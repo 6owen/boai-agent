@@ -1,6 +1,6 @@
 <!--
 [INPUT]: 用户执行记录两张截图、现行定时任务管理侧栏与共享Resizable组件。
-[OUTPUT]: 执行记录窄侧栏、固定检索/清空工具栏、ScrollArea与记录行简化的实际验证和生效边界。
+[OUTPUT]: 执行记录对齐定时任务管理的标题/侧栏/筛选/小号清空及ScrollArea的实际验证与生效边界。
 [POS]: 执行记录界面增量交付记录；与原语音暂停PR一并交付。
 [PROTOCOL]: 实现或验证变化同步本文和所属.folder.md。
 -->
@@ -26,3 +26,11 @@
 - 后台Chromium使用真实组件、完整应用样式与60条隔离内存记录：长标题可用157px而正文宽348px，实际text-overflow为ellipsis；列表滚动300px时标题和工具栏位置差0，Viewport上下fade各19.5px。搜索、取消清空、确认后59条已结束记录删除且1条进行中记录保留，选中详情随删除关闭，窄窗无横向溢出，页面错误0。截图已检查。
 
 上述清空操作仅作用于隔离内存夹具；没有访问个人数据库/文件或执行个人定时任务，也没有启动本地可见Electron或模型。新提交沿boai-dev-workflow创建PR和自动合并，CI/合并/个人运行实例更新分别核对。
+
+## 后续纠正：逐项对齐定时任务管理（2026-11-17）
+
+- 直接沿ScheduleManager的`contact-manager-sidebar-heading`、`contact-manager-filter-label`、`conversation-section-heading contact-manager-filter-heading`及`contact-manager-header`。左标题用同款普通文本，右标题用同款DialogTitle；移除历史弹窗独立的字号、标题内边距和额外工具栏留白。默认左栏改为管理弹窗同款190px，原Resizable及180px下限继续保留。
+- 搜索行放在“全部”对应的位置，宽高与其相同；清空放在该输入行右端，使用24px按钮、12px图标和悬停危险色。下方新增“筛选”，再显示默认收起的进行中、已完成、需处理状态分组。无Tabs，记录仍无前置图标、标题省略且第二行仅时间。
+- 15项相关组件回归、类型检查、UI lint/字体规则及完整构建通过。后台Chromium对照渲染真实ScheduleManager和AutomationHistoryDialog及完整应用样式：左标题13px/600、右标题16px/600一致；190px默认侧栏及22px/12px留白一致；搜索与“全部”均166×36px且位置相同；筛选文字和首个折叠分组位置、字号与行高一致，右标题相对Header的位置一致。额外1px为可调分隔线。
+- 后台检查同时覆盖清空悬停色等于主题destructive、默认三组收起、长标题实际省略、原记录详情身份、滚动时标题/搜索位置不变、鼠标与键盘调宽、服务端搜索以及760px窄窗口；页面错误0。仅调用隔离夹具listAutomationHistory/getAutomationOccurrence，无删除或执行请求，截图已查看。
+- 首次预览脚本的精确无空格accessible name等待失败已保留；改为按状态分组定位后发现rem高度在13px根字号下不足36px，按“全部”实际像素高度修正，保留原相等断言后通过。没有改动定时任务管理、调度或清理业务，也没有启动可见Electron、模型或更新个人运行应用。

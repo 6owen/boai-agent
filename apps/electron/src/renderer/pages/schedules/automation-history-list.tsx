@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: Dialog固定检索/清空工具栏及带scroll fade的ScrollArea；默认收起状态分组、无图标省略标题和纯时间行，其他列表沿原查询/分页/删除。
+ * [OUTPUT]: Dialog直接复用管理侧栏的检索行/筛选分区/状态折叠样式，小号清空按钮悬停危险色；固定工具栏、ScrollArea渐隐及原查询/分页/删除保持。
  * [OUTPUT]: 确认全部清空后立即按原动画关闭Popover，后台清理期间保留提交锁及Sonner结果反馈。
  * [OUTPUT]: 可按员工查询原执行记录，定时页面的布局和默认查询保持。
  * [OUTPUT]: 筛选复用公共FilterTabs及transitions-dev滑动层；实际新结果沿Panel reveal显现，后台刷新与分页不重播。
@@ -80,11 +80,12 @@ export function AutomationHistory({ api, active, automationId, employeeId, atten
       }
   const results = <div ref={listReveal} className="schedule-content-transition t-panel-slide" data-open="true" data-settled="true" aria-busy={loading}>
     {error && <Banner>{error}</Banner>}
+    {grouped && <p className="contact-manager-filter-label">筛选</p>}
     <div className="automation-record-list">{grouped ? [
       { label: '进行中', rows: history.occurrences.filter(o => (AUTOMATION_ONGOING_STATUSES as readonly string[]).includes(o.status)) },
       { label: '已完成', rows: history.occurrences.filter(o => o.status === 'completed') },
       { label: '需处理', rows: history.occurrences.filter(o => o.status !== 'completed' && !(AUTOMATION_ONGOING_STATUSES as readonly string[]).includes(o.status)) },
-    ].filter(group => group.rows.length).map(group => <Collapsible key={group.label}><CollapsibleTrigger render={<Button variant="ghost" size="content" className="conversation-section-heading contact-manager-filter-heading contact-manager-menu" />}><Clock /><span className="truncate">{group.label}</span><span className="contacts-count">{group.rows.length}</span><ChevronRight style={{ marginLeft: 0 }} /></CollapsibleTrigger><CollapsibleContent><div className="contact-manager-submenu">{group.rows.map(renderRecord)}</div></CollapsibleContent></Collapsible>) : history.occurrences.map(renderRecord)}</div>
+    ].filter(group => group.rows.length).map(group => <Collapsible key={group.label}><CollapsibleTrigger render={<Button variant="ghost" size="content" className="conversation-section-heading contact-manager-filter-heading" />}><Clock /><span className="truncate">{group.label}</span><span className="contacts-count ml-auto">{group.rows.length}</span><ChevronRight style={{ marginLeft: 0 }} /></CollapsibleTrigger><CollapsibleContent><div className="contact-manager-submenu">{group.rows.map(renderRecord)}</div></CollapsibleContent></Collapsible>) : history.occurrences.map(renderRecord)}</div>
     {loading && !loaded && <Loading>正在读取执行记录…</Loading>}
     {loaded && !error && !history.occurrences.length && <p className="field-hint">{search ? '没有匹配的执行记录' : '暂无执行记录'}</p>}
     {history.nextCursor && <Button variant="secondary" size="sm" disabled={loading} onClick={() => setPages(value => value + 1)}>加载更早记录</Button>}
@@ -92,15 +93,12 @@ export function AutomationHistory({ api, active, automationId, employeeId, atten
   </div>
   const changeSearch = (value: string) => { setSearch(value.slice(0, 200)); setPages(1); setLoaded(false); setHistory({ occurrences: [] }) }
   return <section className={`automation-records${grouped ? ' min-h-0 flex-1 gap-0' : ''}`} aria-label="执行记录" style={active ? undefined : { display: 'none' }}>
-    {grouped && <div className="flex shrink-0 items-center gap-2 px-3 pb-3" aria-label="执行记录工具栏">
-      <InputGroup className="min-w-0 flex-1"><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput aria-label="搜索执行记录" placeholder="搜索记录" value={search} onChange={event => changeSearch(event.target.value)} /></InputGroup>
-      <ClearHistoryRecords api={api} automationId={automationId} employeeId={employeeId} attentionOnly={attentionOnly} active={active} onBusyChange={setClearing} onDeleted={removeRows} compact />
-    </div>}
+    {grouped && <InputGroup className="h-[36px] shrink-0" aria-label="执行记录工具栏"><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput className="h-full" aria-label="搜索执行记录" placeholder="搜索记录" value={search} onChange={event => changeSearch(event.target.value)} /><InputGroupAddon align="inline-end"><ClearHistoryRecords api={api} automationId={automationId} employeeId={employeeId} attentionOnly={attentionOnly} active={active} onBusyChange={setClearing} onDeleted={removeRows} compact /></InputGroupAddon></InputGroup>}
     {!grouped && <div className="automation-records-heading"><h3>{attentionOnly ? '需处理记录' : '执行记录'}</h3><div className="automation-record-actions">
       {automationId && <ClearHistoryRecords api={api} automationId={automationId} active={active} onBusyChange={setClearing} onDeleted={removeRows} />}
       <CatalogSearch label="搜索执行记录" placeholder="搜索记录中的任务标题" value={search} onChange={changeSearch} />
     </div></div>}
-    {grouped ? <ScrollArea className="min-h-0 flex-1" viewportProps={{ className: 'overscroll-contain scroll-fade-y scroll-fade-6', 'aria-label': '执行记录滚动列表' }}><div className="px-3 pb-3">{results}</div></ScrollArea> : !automationId && !attentionOnly ? <FilterTabs label="执行记录筛选" value={status} options={historyFilters} onValueChange={value => { setStatus(value); setPages(1); setLoaded(false); setHistory({ occurrences: [] }) }}>{results}</FilterTabs> : results}
+    {grouped ? <ScrollArea className="min-h-0 flex-1" viewportProps={{ className: 'overscroll-contain scroll-fade-y scroll-fade-6', 'aria-label': '执行记录滚动列表' }}>{results}</ScrollArea> : !automationId && !attentionOnly ? <FilterTabs label="执行记录筛选" value={status} options={historyFilters} onValueChange={value => { setStatus(value); setPages(1); setLoaded(false); setHistory({ occurrences: [] }) }}>{results}</FilterTabs> : results}
 
   </section>
 }
@@ -145,7 +143,7 @@ function ClearHistoryRecords({ api, automationId, employeeId, attentionOnly = fa
     finally { onDeleted(deleted); locked.current = false; setBusy(false); onBusyChange(false) }
   }
   return <Popover open={open} onOpenChange={value => { if (!locked.current) setOpen(value) }}>
-    <PopoverTrigger render={<Button variant="ghost" size={compact ? 'icon' : 'sm'} aria-label={compact ? '清空记录' : undefined} title={compact ? '清空记录' : undefined} disabled={!active || busy} />} >{compact ? <Trash2 /> : '全部清空'}</PopoverTrigger>
+    <PopoverTrigger render={<Button variant="ghost" size={compact ? 'icon-xs' : 'sm'} className={compact ? 'text-muted-foreground hover:text-destructive' : undefined} aria-label={compact ? '清空记录' : undefined} title={compact ? '清空记录' : undefined} disabled={!active || busy} />} >{compact ? <Trash2 /> : '全部清空'}</PopoverTrigger>
     <PopoverContent align="end"><PopoverTitle>{automationId ? '清空当前任务的执行记录及文件？' : employeeId ? '清空当前员工的执行记录及文件？' : attentionOnly ? '清空需处理的执行记录及文件？' : '清空全部执行记录及文件？'}</PopoverTitle><PopoverDescription>执行中和等待处理的记录会保留。</PopoverDescription><div className="button-row justify-end"><Button variant="secondary" size="sm" disabled={busy} onClick={() => setOpen(false)}>取消</Button><Button variant="destructive" size="sm" disabled={busy || !active} onClick={() => void clear()}>确认清空</Button></div></PopoverContent>
   </Popover>
 }
