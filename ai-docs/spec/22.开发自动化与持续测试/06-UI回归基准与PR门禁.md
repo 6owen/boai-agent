@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-11-17PR按文档/前端/完整分流，普通交付不等待CI；现行细则与耗时证据见UI_TEST_CI。
 [OUTPUT]: 2026-11-13 Test接固定三项UI行为与原件；预览完成度/source SHA/当前PR核对，部分媒体保持失败。
 [OUTPUT]: 2026-10-29用户要求git cpf显式快速合并入口，必要时临时解除并恢复管理员检查，不修改普通门禁。
 [OUTPUT]: 2026-10-29 PR视频使用原生附件，独立发布环境、固定CLI及上传失败边界与源码同步。
@@ -10,6 +11,8 @@
 [PROTOCOL]: 变化同步Header、.folder.md、开发skill及Actions。
 -->
 # Test 与 UI preview
+
+**2026-11-17现行增量：** 小样式修改本地按影响做定向检查，不默认完整构建、全量Vitest或Electron E2E。PR Test分documentation/frontend/full；前端保留工程/固定三项UI行为，Vitest按依赖图及源码合同选场，CSS/共享UI扩大前端集合，空选择回退或失败。后端/共享协议/依赖/CI等混合修改、main push及手动Test保持完整。普通授权交付推送并读回状态后结束，不等待CI/main复跑/UI preview；明确要求等结果或修复CI时再跟进。分支保护及Required checks名称保持。完整规则、边界和原17–22分钟耗时见[UI_TEST_CI.md](../../../UI_TEST_CI.md)，执行归[开发技能](../../../.agents/skills/boai-dev-workflow/SKILL.md)。下方早期“所有PR全量”的表述被此增量替代；原运行结果保留。
 
 日常使用、常见状态与配置入口见 [UI_TEST_CI.md](../../../UI_TEST_CI.md)，与开发skill和本合同同步维护。
 
