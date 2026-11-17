@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: Dialog左侧沿管理菜单显示默认收起的状态分组，不展示检索和Tabs；其他列表保留原查询/分页/删除。
+ * [OUTPUT]: Dialog固定检索/清空工具栏及带scroll fade的ScrollArea；默认收起状态分组、无图标省略标题和纯时间行，其他列表沿原查询/分页/删除。
  * [OUTPUT]: 确认全部清空后立即按原动画关闭Popover，后台清理期间保留提交锁及Sonner结果反馈。
  * [OUTPUT]: 可按员工查询原执行记录，定时页面的布局和默认查询保持。
  * [OUTPUT]: 筛选复用公共FilterTabs及transitions-dev滑动层；实际新结果沿Panel reveal显现，后台刷新与分页不重播。
@@ -19,8 +19,10 @@ import { FilterTabs } from '@/components/common/filter-tabs'
 import { usePanelReveal } from '@/components/common/use-panel-reveal'
 import { CatalogSearch } from '@/components/common/catalog-search'
 import { Button } from '@/components/ui/button'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { Clock, Trash2, ChevronRight } from '@/components/icons'
+import { Clock, Trash2, ChevronRight, Search } from '@/components/icons'
 import { Popover, PopoverContent, PopoverDescription, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
 import { toast } from 'sonner'
 import { AUTOMATION_ONGOING_STATUSES } from '@boai/shared/domain/automations'
@@ -71,9 +73,9 @@ export function AutomationHistory({ api, active, automationId, employeeId, atten
   const listReveal = usePanelReveal(`${status}:${search}:${attentionOnly}`, active && loaded)
   const renderRecord = (o: AutomationHistoryPage['occurrences'][number]) => {
       const date = new Date(o.startedAt).toLocaleString('zh-CN', { hour12: false })
-      const subtitle = `${date} · ${o.source === 'manual' ? '手动触发' : '定时触发'} · ${occurrenceStatusLabels[o.status]} · ${deliveries[o.deliveryStatus]}`
+      const subtitle = grouped ? date : `${date} · ${o.source === 'manual' ? '手动触发' : '定时触发'} · ${occurrenceStatusLabels[o.status]} · ${deliveries[o.deliveryStatus]}`
       return <div key={o.id} className="automation-history-row relative min-w-0"><Button variant="ghost" size="content" className={`conversation-item automation-record-row${selectedId === o.id ? ' selected' : ''}`} style={{ paddingRight: 44 }} data-occurrence-id={o.id} aria-pressed={selectedId === o.id} onClick={() => onOccurrence(o.id)}>
-        <span className="skill-list-icon"><Clock /></span><span className="conversation-copy"><strong className="conversation-title" title={o.name}>{o.name}</strong><small className="conversation-preview" title={subtitle}>{subtitle}</small></span>
+        {!grouped && <span className="skill-list-icon"><Clock /></span>}<span className="conversation-copy"><strong className={`conversation-title${grouped ? ' block truncate' : ''}`} title={o.name}>{o.name}</strong><small className="conversation-preview" title={subtitle}>{grouped ? <time dateTime={o.startedAt}>{date}</time> : subtitle}</small></span>
       </Button><DeleteHistoryRecord api={api} occurrence={o} active={active && !clearing} onDeleted={() => removeRows([o.id])} /></div>
       }
   const results = <div ref={listReveal} className="schedule-content-transition t-panel-slide" data-open="true" data-settled="true" aria-busy={loading}>
@@ -88,22 +90,27 @@ export function AutomationHistory({ api, active, automationId, employeeId, atten
     {history.nextCursor && <Button variant="secondary" size="sm" disabled={loading} onClick={() => setPages(value => value + 1)}>加载更早记录</Button>}
     {error && <Button variant="secondary" size="sm" onClick={() => setRevision(value => value + 1)}>重试读取</Button>}
   </div>
-  return <section className="automation-records" aria-label="执行记录" style={active ? undefined : { display: 'none' }}>
+  const changeSearch = (value: string) => { setSearch(value.slice(0, 200)); setPages(1); setLoaded(false); setHistory({ occurrences: [] }) }
+  return <section className={`automation-records${grouped ? ' min-h-0 flex-1 gap-0' : ''}`} aria-label="执行记录" style={active ? undefined : { display: 'none' }}>
+    {grouped && <div className="flex shrink-0 items-center gap-2 px-3 pb-3" aria-label="执行记录工具栏">
+      <InputGroup className="min-w-0 flex-1"><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput aria-label="搜索执行记录" placeholder="搜索记录" value={search} onChange={event => changeSearch(event.target.value)} /></InputGroup>
+      <ClearHistoryRecords api={api} automationId={automationId} employeeId={employeeId} attentionOnly={attentionOnly} active={active} onBusyChange={setClearing} onDeleted={removeRows} compact />
+    </div>}
     {!grouped && <div className="automation-records-heading"><h3>{attentionOnly ? '需处理记录' : '执行记录'}</h3><div className="automation-record-actions">
       {automationId && <ClearHistoryRecords api={api} automationId={automationId} active={active} onBusyChange={setClearing} onDeleted={removeRows} />}
-      <CatalogSearch label="搜索执行记录" placeholder="搜索记录中的任务标题" value={search} onChange={value => { setSearch(value.slice(0, 200)); setPages(1); setLoaded(false); setHistory({ occurrences: [] }) }} />
+      <CatalogSearch label="搜索执行记录" placeholder="搜索记录中的任务标题" value={search} onChange={changeSearch} />
     </div></div>}
-    {!grouped && !automationId && !attentionOnly ? <FilterTabs label="执行记录筛选" value={status} options={historyFilters} onValueChange={value => { setStatus(value); setPages(1); setLoaded(false); setHistory({ occurrences: [] }) }}>{results}</FilterTabs> : results}
+    {grouped ? <ScrollArea className="min-h-0 flex-1" viewportProps={{ className: 'overscroll-contain scroll-fade-y scroll-fade-6', 'aria-label': '执行记录滚动列表' }}><div className="px-3 pb-3">{results}</div></ScrollArea> : !automationId && !attentionOnly ? <FilterTabs label="执行记录筛选" value={status} options={historyFilters} onValueChange={value => { setStatus(value); setPages(1); setLoaded(false); setHistory({ occurrences: [] }) }}>{results}</FilterTabs> : results}
 
   </section>
 }
 
-function ClearHistoryRecords({ api, automationId, active, onBusyChange, onDeleted }: {
-  api: DesktopApi; automationId: string; active: boolean; onBusyChange(busy: boolean): void; onDeleted(ids: string[]): void
+function ClearHistoryRecords({ api, automationId, employeeId, attentionOnly = false, active, onBusyChange, onDeleted, compact = false }: {
+  api: DesktopApi; automationId?: string; employeeId?: string; attentionOnly?: boolean; active: boolean; onBusyChange(busy: boolean): void; onDeleted(ids: string[]): void; compact?: boolean
 }) {
   const [open, setOpen] = useState(false), [busy, setBusy] = useState(false)
   const locked = useRef(false), generation = useRef(0)
-  useEffect(() => { if (!active) setOpen(false); return () => { generation.current++ } }, [active, automationId])
+  useEffect(() => { if (!active) setOpen(false); return () => { generation.current++ } }, [active, automationId, employeeId, attentionOnly])
   const clear = async () => {
     if (!active || locked.current) return
     locked.current = true; setOpen(false); setBusy(true); onBusyChange(true)
@@ -113,7 +120,7 @@ function ClearHistoryRecords({ api, automationId, active, onBusyChange, onDelete
       const records = new Map<string, number>(), cursors = new Set<string>()
       let before: AutomationHistoryPage['nextCursor']
       do {
-        const page = await api.request('listAutomationHistory', { automationId, status: 'all', limit: 100, before })
+        const page = await api.request('listAutomationHistory', { ...(automationId ? { automationId } : {}), ...(employeeId ? { employeeId } : {}), ...(attentionOnly ? { attentionOnly: true } : {}), status: attentionOnly ? 'attention' : 'all', limit: 100, before })
         if (generation.current !== current) return
         for (const record of page.occurrences) {
           if (!(AUTOMATION_ONGOING_STATUSES as readonly string[]).includes(record.status) && !records.has(record.id)) records.set(record.id, record.stateVersion)
@@ -138,8 +145,8 @@ function ClearHistoryRecords({ api, automationId, active, onBusyChange, onDelete
     finally { onDeleted(deleted); locked.current = false; setBusy(false); onBusyChange(false) }
   }
   return <Popover open={open} onOpenChange={value => { if (!locked.current) setOpen(value) }}>
-    <PopoverTrigger render={<Button variant="ghost" size="sm" disabled={!active || busy} />} >{busy ? '正在清空…' : '全部清空'}</PopoverTrigger>
-    <PopoverContent align="end"><PopoverTitle>清空当前任务的执行记录及文件？</PopoverTitle><PopoverDescription>执行中和等待处理的记录会保留。</PopoverDescription><div className="button-row justify-end"><Button variant="secondary" size="sm" disabled={busy} onClick={() => setOpen(false)}>取消</Button><Button variant="destructive" size="sm" disabled={busy || !active} onClick={() => void clear()}>{busy ? '正在清空…' : '确认清空'}</Button></div></PopoverContent>
+    <PopoverTrigger render={<Button variant="ghost" size={compact ? 'icon' : 'sm'} aria-label={compact ? '清空记录' : undefined} title={compact ? '清空记录' : undefined} disabled={!active || busy} />} >{compact ? <Trash2 /> : '全部清空'}</PopoverTrigger>
+    <PopoverContent align="end"><PopoverTitle>{automationId ? '清空当前任务的执行记录及文件？' : employeeId ? '清空当前员工的执行记录及文件？' : attentionOnly ? '清空需处理的执行记录及文件？' : '清空全部执行记录及文件？'}</PopoverTitle><PopoverDescription>执行中和等待处理的记录会保留。</PopoverDescription><div className="button-row justify-end"><Button variant="secondary" size="sm" disabled={busy} onClick={() => setOpen(false)}>取消</Button><Button variant="destructive" size="sm" disabled={busy || !active} onClick={() => void clear()}>确认清空</Button></div></PopoverContent>
   </Popover>
 }
 
