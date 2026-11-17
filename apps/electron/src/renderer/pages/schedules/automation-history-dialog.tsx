@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Fixed occurrence identity, current snapshot and existing history/detail readers.
- * [OUTPUT]: Resizable history dialog using the schedule manager's sidebar/title/header styles; fixed sidebar controls and independently scrolling status groups, with hidden readers stopped.
+ * [OUTPUT]: Resizable history dialog with manager titles, fixed inset controls and an edge-to-edge scrolling sidebar; hidden readers stop.
  * [POS]: Schedule execution history presentation; no scheduling or execution mutations.
  * [PROTOCOL]: Update Header and owning .folder.md when changed.
  */
@@ -29,8 +29,8 @@ export function AutomationHistoryDialog({ api, snapshot, active, initialId, atte
       <DialogDescription className="sr-only">在左侧选择执行记录，在右侧查看本次运行信息。</DialogDescription>
       <ResizablePanelGroup orientation="horizontal" className="min-h-0 min-w-0 flex-1">
       <ResizablePanel defaultSize="190px" minSize="180px" maxSize="45%">
-      <aside className="contact-manager-sidebar flex h-full min-w-0 flex-col overflow-hidden" style={{ width: '100%' }} aria-label="执行记录列表">
-        <div className="contact-manager-sidebar-heading shrink-0"><Clock /><span>执行记录</span></div>
+      <aside className="contact-manager-sidebar flex h-full min-w-0 flex-col overflow-hidden p-0" style={{ width: '100%' }} aria-label="执行记录列表">
+        <div className="shrink-0 px-[12px] pt-[22px]"><div className="contact-manager-sidebar-heading"><Clock /><span>执行记录</span></div></div>
         <AutomationHistory api={api} active={active} attentionOnly={attentionOnly} selectedId={selected} onOccurrence={setSelected} grouped />
       </aside>
       </ResizablePanel>
