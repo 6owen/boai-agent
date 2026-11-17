@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 资源库标题显示菜单持久保存分类显隐，同步下方分组/搜索；当前分类隐藏沿草稿守卫切换，外部技能详情仍可打开。
  * [OUTPUT]: 提示词后增加应用/助手，目录复用原Source投影与普通员工创建；不新增实例状态。
  * [OUTPUT]: 侧栏分组复用skills-list-group的flow-root布局，阻止折叠内容卸载时标题外边距合并造成末帧跳位。
  * [OUTPUT]: 提示词读取就绪与空目录分离，分组页首帧保留结构并支持失败重读。
@@ -24,7 +25,8 @@ import { Banner, errorText, GuardContext } from '@/components/common'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
-import { Search, Zap, Database, ChevronRight, FileText, Plug, Contact } from '@/components/icons'
+import { Search, Zap, ChevronRight, FileText } from '@/components/icons'
+import { LibraryDisplayMenu, libraryCategories, libraryVisibilityKey, readHiddenLibraryCategories, type LibraryCategory } from './library-display-menu'
 import { ApplicationsView } from './applications-view'
 import { AssistantsView } from './assistants-view'
 import { PromptTemplatesView } from './prompt-templates-view'
@@ -35,7 +37,14 @@ import { SourceIcon, SourcesView } from '../sources/sources-view'
 type Props = ComponentProps<typeof SkillsWorkspace> & { snapshot: Snapshot; onEmployeeCreated(conversation: Conversation): Promise<void>; focusSource?: { id: string; requestId: string }; selectedSource?: string; onOpenSource(source: { id: string; name: string }): void; onRemoveSource(id: string): void; selectedPrompt?: string; onOpenPrompt(prompt: { id: string; name: string }): void; onCreatePrompt(): void; onRemovePrompt(id: string): void }
 export function CustomizationWorkspace(props: Props) {
   const { api, divider, focusSkill, revision } = props
-  const [category, setCategory] = useState<'skills' | 'sources' | 'prompts' | 'applications' | 'assistants'>('skills')
+  const [hiddenCategories, setHiddenCategories] = useState(readHiddenLibraryCategories)
+  const [requestedCategory, setCategory] = useState<LibraryCategory>('skills')
+  const visibleCategories = libraryCategories.filter(item => !hiddenCategories.includes(item.id))
+  const category = visibleCategories.find(item => item.id === requestedCategory)?.id ?? visibleCategories[0].id
+  const resourceCategories = visibleCategories.filter(item => item.id === 'skills' || item.id === 'sources' || item.id === 'prompts')
+  const installedLabel = resourceCategories.map(item => item.label).join('、')
+  useEffect(() => { if (category !== requestedCategory) setCategory(category) }, [category, requestedCategory])
+  useEffect(() => { try { localStorage.setItem(libraryVisibilityKey, JSON.stringify(hiddenCategories)) } catch { /* Optional local display preference. */ } }, [hiddenCategories])
   const [prompts, setPrompts] = useState<PromptTemplate[]>([])
   const [promptsReady, setPromptsReady] = useState(false)
   const sourceId = props.selectedSource
@@ -43,6 +52,11 @@ export function CustomizationWorkspace(props: Props) {
   const [sources, setSources] = useState<DataSource[]>([]), [error, setError] = useState(''), [query, setQuery] = useState('')
   const { catalog, error: skillError } = useLocalSkills(api, revision), [updatedCatalog, setUpdatedCatalog] = useState<LocalSkillCatalog | null>(null)
   const guard = useContext(GuardContext), scroll = useRef<HTMLDivElement>(null), generation = useRef(0)
+  const changeVisibility = (id: LibraryCategory, visible: boolean) => {
+    const change = () => setHiddenCategories(previous => visible ? previous.filter(item => item !== id) : previous.includes(id) || previous.length === libraryCategories.length - 1 ? previous : [...previous, id])
+    if (!visible && category === id) guard.navigate(change)
+    else change()
+  }
   const reload = useCallback(async (saved?: DataSource) => {
     const request = ++generation.current
     if (saved) setSources(items => items.map(item => item.id === saved.id && item.revision <= saved.revision ? saved : item))
@@ -59,20 +73,27 @@ export function CustomizationWorkspace(props: Props) {
   }, [api, reload])
   useEffect(() => { if (props.focusSource) { setCategory('sources') } }, [props.focusSource])
   useEffect(() => { if (focusSkill) { setCategory('skills'); setSkillFocus(focusSkill) } }, [focusSkill])
+  const openedExternalSkill = useRef<string | undefined>(undefined)
+  useEffect(() => {
+    if (!focusSkill || openedExternalSkill.current === focusSkill.requestId) return
+    if (!hiddenCategories.includes('skills')) { openedExternalSkill.current = focusSkill.requestId; return }
+    const skill = (updatedCatalog ?? catalog)?.skills.find(item => item.id === focusSkill.id)
+    if (skill) { openedExternalSkill.current = focusSkill.requestId; props.onOpenSkill(skill) }
+  }, [focusSkill, hiddenCategories, catalog, updatedCatalog, props.onOpenSkill])
   useEffect(() => { setUpdatedCatalog(null) }, [revision])
   const openSkill = (id: string) => guard.navigate(() => { setCategory('skills'); props.onSection('all'); setSkillFocus({ id, requestId: crypto.randomUUID() }) })
   const rows = useMemo<InstalledRow[]>(() => [
-    ...sources.map(source => ({ id: source.id, kind: 'source' as const, name: source.name, source })),
-    ...((updatedCatalog ?? catalog)?.skills ?? []).map(skill => ({ id: skill.id, kind: 'skill' as const, name: skill.name, source: undefined })),
-    ...prompts.map(prompt => ({ id: prompt.id, kind: 'prompt' as const, name: prompt.name, source: undefined })),
-  ].filter(item => item.name.toLowerCase().includes(query.trim().toLowerCase())).sort((a, b) => a.name.localeCompare(b.name)), [sources, catalog, updatedCatalog, prompts, query])
+    ...(hiddenCategories.includes('sources') ? [] : sources.map(source => ({ id: source.id, kind: 'source' as const, name: source.name, source }))),
+    ...(hiddenCategories.includes('skills') ? [] : ((updatedCatalog ?? catalog)?.skills ?? []).map(skill => ({ id: skill.id, kind: 'skill' as const, name: skill.name, source: undefined }))),
+    ...(hiddenCategories.includes('prompts') ? [] : prompts.map(prompt => ({ id: prompt.id, kind: 'prompt' as const, name: prompt.name, source: undefined }))),
+  ].filter(item => item.name.toLowerCase().includes(query.trim().toLowerCase())).sort((a, b) => a.name.localeCompare(b.name)), [sources, catalog, updatedCatalog, prompts, query, hiddenCategories])
   const [collapsed, setCollapsed] = useState<string[]>(['skills', 'mcp', 'api', 'local', 'prompts'])
   return <div className="conversation-layout customization-workspace">
-    <aside className="conversation-list-container custom-sidebar" aria-label="资源库导航"><div className="conversation-list-panel custom-sidebar-heading"><div className="list-heading"><h2>资源库</h2></div></div>
-      <div className="custom-categories"><Button variant="ghost" size="content" aria-current={category === 'skills' ? 'page' : undefined} onClick={() => guard.navigate(() => { setCategory('skills'); setSkillFocus(undefined); setCatalogKey(key => key + 1) })}><Zap />技能</Button><Button variant="ghost" size="content" aria-current={category === 'sources' ? 'page' : undefined} onClick={() => guard.navigate(() => { setCategory('sources') })}><Database />数据源</Button><Button variant="ghost" size="content" aria-current={category === 'prompts' ? 'page' : undefined} onClick={() => guard.navigate(() => setCategory('prompts'))}><FileText />提示词</Button><Button variant="ghost" size="content" aria-current={category === 'applications' ? 'page' : undefined} onClick={() => guard.navigate(() => setCategory('applications'))}><Plug />应用</Button><Button variant="ghost" size="content" aria-current={category === 'assistants' ? 'page' : undefined} onClick={() => guard.navigate(() => setCategory('assistants'))}><Contact />助手</Button></div>
-      <div className="custom-installed-search"><InputGroup><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput aria-label="搜索技能、数据源和提示词" placeholder="搜索资源" value={query} onChange={event => { setQuery(event.target.value); scroll.current?.scrollTo(0, 0) }} /></InputGroup></div>
+    <aside className="conversation-list-container custom-sidebar" aria-label="资源库导航"><div className="conversation-list-panel custom-sidebar-heading"><div className="list-heading"><h2>资源库</h2><LibraryDisplayMenu hidden={hiddenCategories} onChange={changeVisibility} /></div></div>
+      <div className="custom-categories">{visibleCategories.map(item => <Button key={item.id} variant="ghost" size="content" aria-current={category === item.id ? 'page' : undefined} onClick={() => guard.navigate(() => { setCategory(item.id); if (item.id === 'skills') { setSkillFocus(undefined); setCatalogKey(key => key + 1) } })}><item.icon />{item.label}</Button>)}</div>
+      {resourceCategories.length > 0 && <div className="custom-installed-search"><InputGroup><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput aria-label={`搜索${installedLabel}`} placeholder="搜索资源" value={query} onChange={event => { setQuery(event.target.value); scroll.current?.scrollTo(0, 0) }} /></InputGroup></div>}
       {(error || skillError) && <Banner>{error || skillError}</Banner>}
-      <div ref={scroll} className="custom-installed-list" aria-label="技能、数据源和提示词"><div>{(['skills', 'mcp', 'api', 'local', 'prompts'] as const).map(group => {
+      {resourceCategories.length > 0 && <div ref={scroll} className="custom-installed-list" aria-label={installedLabel}><div>{(['skills', 'mcp', 'api', 'local', 'prompts'] as const).map(group => {
         const members = rows.filter(row => group === 'skills' ? row.kind === 'skill' : group === 'prompts' ? row.kind === 'prompt' : row.source?.type === group)
         if (!members.length) return null
         const label = { skills: '技能', mcp: 'MCP', api: 'API', local: '本地文件夹', prompts: '提示词' }[group]
@@ -80,7 +101,7 @@ export function CustomizationWorkspace(props: Props) {
           <CollapsibleTrigger aria-label={`已安装的${label}`} render={<Button variant="ghost" size="content" className="conversation-section-heading" />}><span>{label}</span><ChevronRight /></CollapsibleTrigger>
           <CollapsibleContent><InstalledItems rows={members} scroll={scroll} selected={category === 'sources' ? sourceId : category === 'prompts' ? props.selectedPrompt : undefined} onSelect={row => row.kind === 'skill' ? openSkill(row.id) : row.kind === 'prompt' ? guard.navigate(() => { setCategory('prompts'); props.onOpenPrompt(row) }) : guard.navigate(() => { setCategory('sources'); props.onOpenSource(row) })} /></CollapsibleContent>
         </Collapsible>
-      })}</div>{!rows.length && <p className="field-hint">{query ? '没有匹配的项目' : '添加资源后，会显示在这里。'}</p>}</div>
+      })}</div>{!rows.length && <p className="field-hint">{query ? '没有匹配的项目' : '添加资源后，会显示在这里。'}</p>}</div>}
     </aside>{divider}<main className="conversation-stage custom-content" aria-label="资源库内容">
       {category === 'applications' ? <ApplicationsView api={api} sources={sources} onOpenSource={props.onOpenSource} onChanged={source => void reload(source)} /> : category === 'assistants' ? <AssistantsView api={api} snapshot={props.snapshot} onCreated={props.onEmployeeCreated} /> : category === 'skills' ? <SkillsWorkspace {...props} key={catalogKey} divider={null} embedded focusSkill={skillFocus} onCatalogChange={setUpdatedCatalog} /> : category === 'prompts' ? <PromptTemplatesView api={api} prompts={prompts} loaded={promptsReady} onReload={() => { void reload() }} selected={props.selectedPrompt} onOpen={props.onOpenPrompt} onCreate={props.onCreatePrompt} onRemoved={id => { setPrompts(items => items.filter(item => item.id !== id)); props.onRemovePrompt(id); void reload() }} /> : <SourcesView api={api} onManage={() => props.onManage?.('sources')} sources={sources} selected={sourceId} onSelect={props.onOpenSource} onChanged={source => void reload(source)} onRemoved={id => { setSources(items => items.filter(item => item.id !== id)); props.onRemoveSource(id); void reload() }} />}
     </main>
