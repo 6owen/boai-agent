@@ -1,8 +1,9 @@
 ---
 name: boai-dev-workflow
-description: BOAI 共享开发流程；沿 Magpie Test 和 DeepSeek UI preview 完成交付。
+description: BOAI 日常开发、样式调整、Bug 修复和 PR 交付。按实际改动选择最小有效验证，使用分范围 CI，避免小改动触发本地全量测试或阻塞等待。
 ---
 <!--
+[OUTPUT]: 2026-11-17按改动分层验证；前端PR运行相关测试，main保留全量；普通交付不阻塞等CI。
 [OUTPUT]: 2026-11-13 Test固定三项UI行为；预览按实际完成度和当前SHA发布，部分结果保持失败。
 [OUTPUT]: 2026-11-10新增boai-agent-dev-skills统一入口，梳理实际dev/build/验证/打包/bumpp/tag/Release/Git/worktree命令；release:build现默认读取package版本与当前HEAD，显式参数仍可覆盖。
 [OUTPUT]: 2026-10-29新增boai-release共享技能，覆盖bumpp、本机候选/Release、下载与自动更新；普通开发转入发布须符合本次请求。
@@ -17,45 +18,50 @@ description: BOAI 共享开发流程；沿 Magpie Test 和 DeepSeek UI preview �
 -->
 # BOAI 开发与交付
 
-项目开发、构建和命令选择统一从 [boai-agent-dev-skills](../boai-agent-dev-skills/SKILL.md) 进入。本篇保留Git/CI、PR与worktree交付细则，不重复维护完整命令表。
+按实际 diff 选择验证，完成本次需求后继续交付。**小样式修改不默认跑本地全量 Vitest、完整 build、Electron E2E 或整套录屏；普通 PR 交付不默认等待 CI。** 本次明确的“不测试”“不跑 E2E”“不抢焦点”或“等 CI 通过”优先。
 
-## 开始与范围
+命令和环境说明按需读 [开发统一入口](../boai-agent-dev-skills/SKILL.md)；CI 的真实分流见 [UI_TEST_CI.md](../../../UI_TEST_CI.md)。不要为了简单任务预先加载所有发布、评估或历史验收规范。
 
-- 每次开始和交付前读取当前用户指令、AGENTS.md、本技能，并fetch/read origin/main的最新技能；当前用户指令优先。
-- 核对分支、status、remote和worktrees，使用对应独立功能worktree。只修改、暂存本任务文件；保留其他任务改动和进程。main只同步实际已合并提交。
+## 按改动选择验证
 
-## Worktree 依赖与预览
+| 改动 | 本地验证 | PR 的 Test |
+| --- | --- | --- |
+| 文档、Skill、目录说明 | diff/格式/链接；修改Skill时校验frontmatter | documentation：差异检查，不装产品依赖 |
+| 页面样式、间距、颜色、图标、文案 | 查看diff；相关lint，涉及类型/组件接口时typecheck；已有相关组件测试按需运行 | frontend：工程检查、固定UI行为、相关Vitest |
+| 页面交互或前端状态 | 相关组件/状态测试；改变真实桌面交互时补对应BDD并定向执行 | frontend；混入后端/协议/配置则full |
+| 后端、IPC/共享协议、依赖、构建/CI、发布 | 相关模块测试及必要构建；按具体风险扩展 | full：完整工程、固定UI行为、全量Vitest |
 
-- main 和所有功能 worktree 使用仓库锁定的 pnpm 版本及同一 pnpm store。各 worktree 保留独立 node_modules/虚拟依赖树，由 pnpm 通过硬链接或写时复制共享包内容；禁止把整个 node_modules 或虚拟依赖树软链接到 main/另一个 worktree。
-- 需要运行的功能 worktree 首次安装：`pnpm install --frozen-lockfile --prefer-offline`。包已缓存时复用，仅补缺失内容；依赖输入未变化且安装有效时不重复安装。纯文档任务不必安装。新增依赖正常更新清单/锁文件。
-- 发现旧的跨 worktree node_modules 软链接时，先检查本任务进程，再只解除本 worktree 的链接并正常安装；不得删除链接目标，也不得改其他任务的依赖。
-- 用户要求看效果时，直接在功能 worktree 启动预览，不必先合 main：`BOAI_DATA_DIR="$PWD/.local/dev-profile" BOAI_DEV_PORT=0 pnpm dev`。数据目录独立于个人应用，端口0由系统分配；报告 worktree、分支/提交和实际启动结果。不要关闭或接管 main 的运行进程。
-- `pnpm dev` 是按需预览，不是固定日常运行方式。预览启动会编译开发宿主，但不等于跑完整构建、GUI测试或业务验收。不得借预览自行启动本机自动CI、全量测试或模型调用。
-- 清理时保留可能含用户录入的预览数据，不能仅因位于.local就视为可删除缓存。
+这是按影响选择范围，不是按文件数量或PR标题判断。修改测试时保留未变化的行为断言；需求变化须说明旧新期望及依据，产品和测试在同一PR验证。不得用删断言、跳过失败场景或伪造结果换绿灯。
 
-## Test 与 UI preview
+## 开发与本地效果
 
-开发完成 → 提交功能分支/PR → Test 与 UI preview 自动运行 → 查看实际检查和PR预览 → 按本次授权交付。
+- 开始时核对用户要求、分支、status、remote、worktree；在独立功能worktree修改。main只同步实际合并提交，保留其他任务及未提交数据。
+- 需要运行代码才初始化子模块并安装独立依赖树：`git submodule update --init --recursive`、`pnpm install --frozen-lockfile --prefer-offline`。有效依赖直接复用；不把整个node_modules链接到另一worktree。纯文档不安装。
+- 组件/模块回归用 `pnpm exec vitest run <相关测试文件>`。先核对构建前提：依赖dist的测试须先构建；不能因为某条CLI需要build就把所有小改动都升级为完整应用构建。
+- 需要确认页面效果时，复用本任务已有预览或定向组件预览，截取受影响状态并实际看图。动画/连续交互按需短录屏；不为一个间距变化启动完整桌面流程、调用真实模型或反复录制无关页面。没有实际截图就不要声称看过效果。
+- BDD沿 `tests/e2e/features/`、`steps/`、`support/`，先生成再按标签/场景名选场，`--list`核对范围；不手改 `.features-gen/` 或新增平行 `.spec.ts`。不默认运行覆盖整个桌面的 `pnpm test:electron`。
+- 确需启动独立应用时用 `BOAI_DATA_DIR="$PWD/.local/dev-profile" BOAI_DEV_PORT=0 pnpm dev`，不接管个人应用或其他会话进程；`pnpm dev`是按需工具。
 
-面向使用者的流程与常见状态说明见 [UI_TEST_CI.md](../../../UI_TEST_CI.md)；执行依据保持本技能、AGENTS.md及实际workflow，变化时同步该说明。
+## 提交前审查
 
-- `Test` 沿 Magpie 的 PR/main/manual 触发与并发取消方式，在macOS依次执行typecheck、lint、build、`test:ui:behavior`固定三项真实Electron行为及Vitest；运行时检查依赖dist，先构建再测试。固定行为只用隔离数据/离线夹具，缺场、跳过、重试、全局错误或失败均拒绝；截图/trace仅留证，不比较PNG。Required checks汇总此Test，保持原分支保护名称。
-- `UI preview` 沿上游 detect → record → publish：UI文件变更或ui-preview标签触发；DeepSeek读取diff及真实页面，规划操作、截图，交互时录屏，在PR描述固定区域更新预览。已有DeepSeek配置通过ui-preview environment提供。
-- PR预览按实际场景/步骤显示完整、部分完成、失败或无需录制；部分媒体仍使录制失败。报告source SHA须匹配当前开放PR，写入前再次核对head。功能正确性看Test，录制完成与人工效果审阅分开；本机仍按本次E2E/焦点范围，不自行启动GUI。
-- 执行PR代码的record任务没有仓库写权限；有写权限的publish任务不运行PR代码。视频通过固定版本GitHub CLI上传为PR原生附件，上传令牌仅存于独立ui-preview-publish环境；不得传给record或放进仓库级secret。缺配置或上传失败明确报错并保留下载，不能把raw下载称在线播放。预览不冒充工程测试通过。
-- 不要求用户先在本地确认效果；不运行基准candidate/accept/update，不以新旧PNG不同阻止正常UI开发。旧本地UI回归工具、测试源码及历史结果保留为按需工具，不属于PR门禁。
-- 没有UI变化时，preview检测后跳过录制；Test正常执行。不为通过CI修改产品UI、删除产品行为测试或伪造模型调用。
-- 用户明确要求执行试验时跟进本次实际结果；失败先定位再有针对性修复，不盲目重跑。
+读需求、产品/测试diff和实际检查结果；有视觉证据时一起核对。简短记录改了什么、检查了什么及未验范围，不生成与任务无关的长审查报告，不为可逆样式调整新增形式化测试。
 
-## PR、合并与回收
+明确缺陷直接修复并重跑受影响检查；质量审查失败后的自动修复最多两轮。同一问题不能靠新push或重启会话重置次数。仍失败或确实需要用户决定时，展示具体问题、证据和选择。正常通过不追加例行人工确认。
 
-- 根据本次授权创建或更新同一PR。普通授权交付沿既有默认自动合并；用户明确只修改/测试或不合并时，不设置自动合并。
-- 允许合并时核对仓库/main与当前head，使用 `gh pr merge --auto --merge --match-head-commit <SHA>`，读回一次回执。只有明确要求等到通过或处理失败才持续跟进。
-- 普通交付不使用admin、强推或放宽分支保护。仅用户明确要求执行 `git cpf` 或本次跳过CI直接合并时，使用 `scripts/git-cpf.mjs` 的显式例外：只提交已暂存文件，推送分支并精确匹配head合并；必要时临时关闭classic protection的enforce_admins，结束时恢复并读回。不得关闭整个保护、伪造checks或强推main。保护恢复失败保留记录，沿 `git cpf --restore-protection` 处理。确认实际合并后才在干净main同步。
-- 按AGENTS.md“worktree不遗留”收尾，包括subagent派生目录：最终提交实际合入main，或提交本任务改动并核对`archive/<worktree名>`归档标签后，移除worktree及本地任务分支，并清理经核实的专用cargo target。核对进程退出、CWD移出、未跟踪/ignored数据迁出及共享目录边界；编排会话负责子worktree。确需保留时，最终回复必须点名路径与原因。自动合并仍待检查时可先按归档路径回收本地worktree，不冒称已合并。
+## PR 和 CI
 
-现行上游与必要适配见 `.github/ui-preview/README.md`。版本Tag、Release、安装包发布不属于日常交付；本地`archive/*`标签仅用于任务收尾存档。
+- 按本次授权创建/更新同一PR，标题和正文围绕最终问题与结果，列出实际验证及未验范围。CI尚未结束就写“运行中”，不能用上次提交的结果冒充当前结果。
+- 当前 `Test` 自动按完整Git差异分 `documentation / frontend / full`。前端用Vitest依赖图选择相关测试，并补选读取源码的合同测试；全局CSS/共享UI扩大到前端回归集合，空选择回退，仍无测试则失败。后端、依赖、CI等混合改动走full。main push和手动Test始终full，发布核验保持完整main Test。
+- `Required checks`名称及分支保护保持。`UI preview`独立异步生成截图/适用录屏，不是合并门禁，也不是质量评分。编辑正文前读最新内容，保留 `<!-- boai-ui-preview:begin -->` 与 `<!-- boai-ui-preview:end -->` 自动区块。
+- **普通交付：提交/推送、按授权设置自动合并、读回一次PR状态，然后报告并结束本轮；不轮询二十分钟，不等main复跑或UI preview。** 这不等于取消CI或已经合并。只有用户要求“等到通过/合并”“处理CI失败”时才持续跟进；此时先读失败日志，再定向修复同一PR。
+- 需要强制完整PR检查时，添加 `ci:full` 后在下一次PR push执行，或手动运行Test。手动main Test、PR检查和合并后main push的结果分别报告；发布仍要求对应main push成功。
 
-## 本机版本发布
+## Git、回收与发布边界
 
-用户要求升版本、准备安装包、发布Release，或查询下载/自动更新方式时，使用[boai-release](../boai-release/SKILL.md)。它复用bumpp和仓库`release:*`命令，负责main Test核对、本机打包/冒烟及Sparkle更新资产。普通开发、PR合并和`git cp`/`git cpf`不自动触发版本发布；用户已明确要求发版时沿该技能完成，不重复请求确认。
+只暂存本任务路径，使用 `git add -- <路径>`。普通授权交付沿既有自动合并规则；明确只修改/测试或不合并时不自动合并。允许时按确切head运行 `gh pr merge --auto --merge --match-head-commit <SHA>` 并读回；不借优化CI关闭保护、强推或使用admin。
+
+只有用户明确 `git cpf` 或跳过CI直接合并，才按 [快速合并说明](../../../UI_TEST_CI.md#需要立即合并git-cpf) 使用现有脚本并核对管理员保护恢复。普通改动不自动采用此例外。
+
+任务worktree在已合并或最终提交已archive存档后回收；删除前核对进程、dirty/untracked/ignored数据及共享依赖，保留用户数据和必要证据。不额外等CI才清理已归档的本地副本；实际合并以GitHub回执为准。确需保留时写明路径和原因。
+
+只有发布请求才转 [boai-release](../boai-release/SKILL.md)。日常开发和PR不自动升版、发布、重启个人应用或安装更新。本技能在当前Agent会话执行，不是常驻worker。

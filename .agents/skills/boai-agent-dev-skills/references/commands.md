@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-11-17本地按影响验证；PR Test分文档/前端/完整，普通交付不等待CI。
 [OUTPUT]: 2026-11-16开发检出需初始化固定版本avatar-motion子模块，之后沿原pnpm安装/构建。
 [OUTPUT]: 2026-11-13 test:ui:behavior在构建后验证固定三项UI行为，输出报告/截图/trace并接入Test。
 [OUTPUT]: 2026-11-10macOS打包排除调试映射、类型声明及依赖测试文档；浏览器/桌面CLI按目标架构保留Mac程序、helper与校验文件。
@@ -75,7 +76,7 @@ renderer由Vite处理热更新；`dev.mjs`在启动时构建宿主，没有主�
 | `pnpm test:ui` / `pnpm test:ui:candidate` / `pnpm test:ui:accept` | 保留的本地截图检查/候选/接受工具，不是当前PR基准门禁；不自行晋升基准 |
 | `pnpm ci:local` / `pnpm ci:watch` | 保留的本机CI工具，当前不作为默认执行或常驻流程 |
 
-遵守本次用户对检查、测试、E2E和焦点的要求。只写文档不启动应用、真实模型或完整产品测试。当前云端 `Test` 会安装依赖并依次typecheck、lint、build、test:ui:behavior、test；运行时检查依赖dist，构建顺序必须保持。UI行为的无GUI选场检查沿`pnpm test:bddgen`及`pnpm exec playwright test --grep @ui-behavior --list`。`UI preview`按路径录制并显示实际完成度，部分结果失败；不作为业务或审美认证。完整规则见 [UI_TEST_CI.md](../../../../UI_TEST_CI.md)。
+遵守本次用户对检查、测试、E2E和焦点的要求。只写文档不启动应用、真实模型或完整产品测试。当前云端 `Test` 在安装前按完整diff分流：文档只检查差异；前端执行typecheck、lint、build、test:ui:behavior及相关Vitest；混合/后端、main push和手动运行保持全量。运行时检查依赖dist，构建顺序必须保持。普通交付推送后读回一次状态，不默认等待CI；具体范围与回退规则沿开发流程技能。UI行为的无GUI选场检查沿`pnpm test:bddgen`及`pnpm exec playwright test --grep @ui-behavior --list`。`UI preview`按路径录制并显示实际完成度，部分结果失败；不作为业务或审美认证。完整规则见 [UI_TEST_CI.md](../../../../UI_TEST_CI.md)。
 
 ## 5. 自用安装包
 
