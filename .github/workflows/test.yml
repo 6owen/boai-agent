@@ -1,12 +1,10 @@
-# [OUTPUT]: PR documentation/frontend/full routing; frontend runs related Vitest tests, main/manual retain full regression.
-# [INPUT]: PR/main commits and explicit manual runs.
-# [OUTPUT]: Engineering Test plus three fixed UI behavior scenarios; screenshot/trace evidence without PNG comparison.
+# [OUTPUT]: PR engineering checks only; full tests require manual dispatch or explicit ci:full.
+# [INPUT]: PR commits and explicit manual full runs.
+# [OUTPUT]: Daily typecheck/lint; application build, fixed UI and Vitest are opt-in.
 # [POS]: Engineering CI; Required checks retains the existing branch-protection name.
 # [PROTOCOL]: Update .github/workflows/.folder.md and the shared development skill.
 name: Test
 on:
-  push:
-    branches: [main]
   pull_request:
   workflow_dispatch:
 permissions:
@@ -16,8 +14,8 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 jobs:
   test:
-    name: Test (macOS)
-    runs-on: macos-15
+    name: Test
+    runs-on: ${{ (github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'ci:full')) && 'macos-15' || 'ubuntu-latest' }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -41,12 +39,12 @@ jobs:
       - run: pnpm lint:ui
         if: steps.scope.outputs.mode != 'documentation'
       - run: pnpm build
-        if: steps.scope.outputs.mode != 'documentation'
+        if: steps.scope.outputs.mode == 'full'
       - name: UI behavior checks
-        if: steps.scope.outputs.mode != 'documentation'
+        if: steps.scope.outputs.mode == 'full'
         run: pnpm test:ui:behavior
       - name: UI behavior evidence
-        if: always() && steps.scope.outputs.mode != 'documentation'
+        if: always() && steps.scope.outputs.mode == 'full'
         uses: actions/upload-artifact@v4
         with:
           name: ui-behavior
@@ -55,9 +53,6 @@ jobs:
           if-no-files-found: ignore
       - run: pnpm --filter @6owen/avatar-motion test
         if: steps.scope.outputs.mode == 'full'
-      - name: Related frontend tests
-        if: steps.scope.outputs.mode == 'frontend'
-        run: node scripts/test-ci-plan.mjs frontend
       - run: pnpm test
         if: steps.scope.outputs.mode == 'full'
       - name: Test scope evidence

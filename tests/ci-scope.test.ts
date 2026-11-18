@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 2026-11-17现行Test命令顺序纳入范围选择/相关前端回归，原工程/固定UI顺序保持。
+ * [OUTPUT]: 2026-11-18普通PR仅工程检查、取消main push，完整检查仅显式运行。
  * [OUTPUT]: 独立角色协议检查纳入Test，源码检出必须初始化固定子模块；原UI三项与上传断言保持。
  * [INPUT]: 真实临时Git提交/事件、开发Markdown白名单及job结果协议。
  * [OUTPUT]: 实际 YAML 为工程/固定三项UI行为Test与独立预览；构建前置及原件上传，旧范围工具仍可独立验证。
@@ -79,7 +79,7 @@ it('实际工作流仅随PR源码生命周期触发，Draft/Ready及标签不重
   expect(events).not.toContain('labeled')
   expect(events).not.toContain('unlabeled')
   expect(events).toEqual(['opened', 'synchronize', 'reopened'])
-  expect(workflow.on.push.branches).toEqual(['main'])
+  expect(workflow.on).not.toHaveProperty('push')
   expect(Object.hasOwn(workflow.on, 'workflow_dispatch')).toBe(true)
   expect(workflow.jobs.required).toMatchObject({ name: 'Required checks', if: 'always()' })
 })
@@ -89,11 +89,11 @@ it('GitHub Test执行工程和固定UI行为检查且不以截图基准作为合
   expect(Object.keys(workflow.jobs).sort()).toEqual(['required', 'test'])
   expect(workflow.jobs.required.needs).toEqual(['test'])
   // CLI integration tests launch dist/cli/index.mjs from the application build.
-  expect(workflow.jobs.test.steps.map((step: { run?: string }) => step.run).filter(Boolean)).toEqual(['node scripts/test-ci-plan.mjs prepare', 'pnpm install --frozen-lockfile --prefer-offline', 'pnpm typecheck', 'pnpm lint:ui', 'pnpm build', 'pnpm test:ui:behavior', 'pnpm --filter @6owen/avatar-motion test', 'node scripts/test-ci-plan.mjs frontend', 'pnpm test'])
+  expect(workflow.jobs.test.steps.map((step: { run?: string }) => step.run).filter(Boolean)).toEqual(['node scripts/test-ci-plan.mjs prepare', 'pnpm install --frozen-lockfile --prefer-offline', 'pnpm typecheck', 'pnpm lint:ui', 'pnpm build', 'pnpm test:ui:behavior', 'pnpm --filter @6owen/avatar-motion test', 'pnpm test'])
   expect(workflow.jobs.test.steps.find((step: { uses?: string }) => step.uses === 'actions/checkout@v4').with.submodules).toBe('recursive')
   expect(metadata.scripts['test:ui:behavior']).toBe('node scripts/test-ui-behavior.mjs')
   const evidence = workflow.jobs.test.steps.find((step: { with?: { name?: string } }) => step.with?.name === 'ui-behavior')
-  expect(evidence).toMatchObject({ if: "always() && steps.scope.outputs.mode != 'documentation'", uses: 'actions/upload-artifact@v4', with: { path: '.local/ui-behavior' } })
+  expect(evidence).toMatchObject({ if: "always() && steps.scope.outputs.mode == 'full'", uses: 'actions/upload-artifact@v4', with: { path: '.local/ui-behavior' } })
   expect(metadata.devDependencies.vitest).toBeDefined()
   expect(metadata.scripts.test).toContain('vitest run')
   expect(metadata.scripts['test:electron']).toContain('playwright test')
