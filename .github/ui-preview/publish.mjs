@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: Recording requires ui-preview opt-in or manual dispatch; ordinary UI changes do not launch a recorder.
+ * [OUTPUT]: UI changes automatically record; same-head merged PRs receive previews and retain their media.
  * [INPUT]: PR diff, isolated BOAI Electron and DeepSeek planning configuration.
  * [OUTPUT]: Current-head previews with explicit recording completion; partial/failed runs stay visible and fail publication.
  * [POS]: UI preview; upstream yetone/magpie@396e0e463805dd5ded971ade37ded08a52512ae5 (MIT).
@@ -63,11 +63,14 @@ export function withBlock(body, block) {
   if (a >= 0 && b > a) return body.slice(0, a) + block + body.slice(b + END.length);
   return body.replace(/\s*$/, "") + "\n\n" + block;
 }
+// Fast engineering checks can merge a PR while its recording is in flight.
+// The same head remains a valid preview target after merge, but not abandonment.
+const canPublish = (p, sha) => (p.state === "open" || p.merged === true) && p.head.sha === sha;
 export async function setBlock(inner, videoPath, expectedSha) {
   // read just before writing, so an edit the author just made is kept
   const cur = await gh(`/repos/${repo}/pulls/${pr}`);
-  if (expectedSha && (cur.state !== "open" || cur.head.sha !== expectedSha)) {
-    console.log("Skipping an outdated or closed PR preview");
+  if (expectedSha && !canPublish(cur, expectedSha)) {
+    console.log("Skipping an outdated or abandoned PR preview");
     return false;
   }
   const next = withBlock(cur.body, `${BEGIN}\n${inner.trim()}\n${END}`);
@@ -100,32 +103,26 @@ export async function detect() {
   const p = await gh(`/repos/${repo}/pulls/${pr}`);
   const changed = await files();
   const forced = p.labels.some((l) => l.name === "ui-preview");
-  const ui = forced || process.env.GITHUB_EVENT_NAME === "workflow_dispatch";
+  const ui = changed.some(UI) || forced || process.env.GITHUB_EVENT_NAME === "workflow_dispatch";
   const out = process.env.GITHUB_OUTPUT;
   const lines = [`ui=${ui}`, `sha=${p.head.sha}`, `number=${pr}`];
   if (out) await fs.appendFile(out, lines.join("\n") + "\n");
   console.log(lines.join(" "), "·", changed.filter(UI).join(", ") || "no UI files");
-  if (p.state === "open" && (ui || p.body?.includes(BEGIN))) await setBlock(`${head(p.head.sha)}\n${ui ? "⏳ 正在录制这次提交的界面改动…" : (changed.some(UI) ? "本次未请求 UI preview，已跳过录制。" : "当前提交没有 UI 变更，已跳过录制。")}`, undefined, p.head.sha);
+  if (canPublish(p, p.head.sha) && (ui || p.body?.includes(BEGIN))) await setBlock(`${head(p.head.sha)}\n${ui ? "⏳ 正在录制这次提交的界面改动…" : "当前提交没有 UI 变更，已跳过录制。"}`, undefined, p.head.sha);
 }
 
 function git(args, cwd) {
   return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
 }
 
-// The media branch keeps one commit. Retain other SHAs of open PRs so an
-// older in-flight publisher cannot remove media a newer PR block links to.
+// The media branch keeps one commit. Retain published PR/SHA directories:
+// merged PRs and overlapping publishers must not lose linked screenshots.
 async function pushMedia(sha, dir) {
   const work = await fs.mkdtemp(path.join(os.tmpdir(), "ui-previews-"));
   const remote = `https://x-access-token:${token}@github.com/${repo}.git`;
   git(["init", "-q"], work);
   git(["config", "user.name", "github-actions[bot]"], work);
   git(["config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"], work);
-  const open = new Set();
-  for (let page = 1; ; page++) {
-    const batch = await gh(`/repos/${repo}/pulls?state=open&per_page=100&page=${page}`);
-    for (const item of batch) open.add(item.number);
-    if (batch.length < 100) break;
-  }
   for (let attempt = 0; attempt < 6; attempt++) {
     let base = "";
     try {
@@ -133,11 +130,6 @@ async function pushMedia(sha, dir) {
       base = git(["rev-parse", "FETCH_HEAD"], work);
       git(["checkout", "-q", "-f", "--detach", "FETCH_HEAD"], work);
     } catch { /* the first one */ }
-    // Closed PRs can be reclaimed; open PRs may still reference another SHA.
-    for (const d of await fs.readdir(work).catch(() => [])) {
-      const m = /^pr-(\d+)$/.exec(d);
-      if (m && !open.has(Number(m[1]))) await fs.rm(path.join(work, d), { recursive: true, force: true });
-    }
     const to = path.join(work, `pr-${pr}`, short(sha));
     await fs.mkdir(to, { recursive: true });
     for (const f of await fs.readdir(dir)) await fs.copyFile(path.join(dir, f), path.join(to, f));
@@ -181,8 +173,8 @@ ${shots.map((x) => `<figure><img src="${esc(x.file)}" alt="${esc(x.caption)}"><f
 export async function publish() {
   const p = await gh(`/repos/${repo}/pulls/${pr}`);
   const sha = process.env.SHA || p.head.sha;
-  if (p.state !== "open" || p.head.sha !== sha) {
-    console.log("Skipping an outdated or closed PR preview");
+  if (!canPublish(p, sha)) {
+    console.log("Skipping an outdated or abandoned PR preview");
     return;
   }
   const dir = process.env.OUT_DIR;

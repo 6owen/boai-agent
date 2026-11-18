@@ -1,6 +1,7 @@
 /*
  * [INPUT]: 录制计划、实际场景/步骤计数及 Actions 录制结果。
  * [OUTPUT]: 明确的完整、部分、失败或跳过；截图存在不等于计划完成。
+ * [OUTPUT]: 预览文案不把日常轻量Test称为固定UI行为测试。
  * [POS]: 录制与发布共用的纯结果规则。
  * [PROTOCOL]: 变化同步 Header 和所属 .folder.md。
  */
@@ -35,5 +36,5 @@ export function recordingSummary(manifest, recordResult) {
   const scenes = Array.isArray(manifest?.scenes) ? manifest.scenes.filter(Boolean) : [];
   const completed = scenes.filter(scene => scene.status === 'complete').length;
   const counts = manifest?.plannedScenes ? ` · ${completed}/${manifest.plannedScenes} 个场景完成` : '';
-  return `**录制：${labels[status]}**${counts}。固定 UI 行为断言见 Test，本预览供效果审阅。`;
+  return `**录制：${labels[status]}**${counts}。本预览供效果审阅，不代表行为测试或视觉质量通过。`;
 }

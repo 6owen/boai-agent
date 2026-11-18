@@ -1,5 +1,5 @@
 <!--
-[OUTPUT]: 2026-11-18普通PR仅类型/lint，main无自动Test；完整验证和预览改显式请求。
+[OUTPUT]: 2026-11-18 UI PR自动截图/适用录屏并写回正文；同SHA合并后继续发布，Agent接续，无需点击Run。
 [OUTPUT]: 2026-11-17本地按影响验证；PR Test分文档/前端/完整，普通交付不等待CI。
 [OUTPUT]: 2026-11-16开发检出需初始化固定版本avatar-motion子模块，之后沿原pnpm安装/构建。
 [OUTPUT]: 2026-11-13 test:ui:behavior在构建后验证固定三项UI行为，输出报告/截图/trace并接入Test。
@@ -77,7 +77,7 @@ renderer由Vite处理热更新；`dev.mjs`在启动时构建宿主，没有主�
 | `pnpm test:ui` / `pnpm test:ui:candidate` / `pnpm test:ui:accept` | 保留的本地截图检查/候选/接受工具，不是当前PR基准门禁；不自行晋升基准 |
 | `pnpm ci:local` / `pnpm ci:watch` | 保留的本机CI工具，当前不作为默认执行或常驻流程 |
 
-遵守本次用户对检查、测试、E2E和焦点的要求。只写文档不启动应用、真实模型或完整产品测试。当前云端 `Test` 只随PR或手动运行：文档仅diff检查，普通PR在Linux仅typecheck/lint。应用build、固定UI行为和全量Vitest只在手动Test或显式ci:full的PR中执行，沿macOS；main push不再触发Test。相关模块/组件测试留在本地按需执行。完整入口为 `gh workflow run test.yml --ref <分支>`，正式发布先指定main并等待同SHA结果。普通开发不自动调用完整入口。UI行为的无GUI选场检查沿`pnpm test:bddgen`及`pnpm exec playwright test --grep @ui-behavior --list`。`UI preview`仅ui-preview标签或手动请求录制并显示实际完成度，部分结果失败；不作为业务或审美认证。完整规则见 [UI_TEST_CI.md](../../../../UI_TEST_CI.md)。
+遵守本次用户对检查、测试、E2E和焦点的要求。只写文档不启动应用、真实模型或完整产品测试。当前云端 `Test` 只随PR事件或Agent命令运行：文档仅diff检查，普通PR在Linux仅typecheck/lint。应用build、固定UI行为和全量Vitest只在Agent命令触发的Test或显式ci:full的PR中执行，沿macOS；main push不再触发Test。相关模块/组件测试留在本地按需执行。完整入口为 `gh workflow run test.yml --ref <分支>`，正式发布先指定main并等待同SHA结果。普通开发不自动调用完整入口。UI行为的无GUI选场检查沿`pnpm test:bddgen`及`pnpm exec playwright test --grep @ui-behavior --list`。`UI preview`在UI PR创建/更新后自动构建界面、截图与适用录屏并更新PR；不运行全量Vitest/固定BDD，也不需要用户点击Run或加标签。Agent核对触发，路径遗漏时用 `gh workflow run ui-preview.yml --ref main -f pr=<编号>` 补触发。PR先合并仍补发同head结果；显示实际完成度，部分结果失败；不作为业务或审美认证。完整规则见 [UI_TEST_CI.md](../../../../UI_TEST_CI.md)。
 
 ## 5. 自用安装包
 
@@ -138,7 +138,7 @@ pnpm release:version patch    # 也支持minor、major、明确稳定X.Y.Z
 源码发布和安装包发布分别按用户范围选择：
 
 - **只要源码tag/Release**：先确认待发版本、远程main、对应Test及同名tag/Release状态。用Git对准确提交创建并推送tag，再用 `gh release create <tag> --verify-tag --title <标题> --notes-file <说明文件>` 创建源码Release。GitHub生成的源码ZIP/tar.gz不含可安装应用，不运行release:local来冒充源码发布。
-- **完整安装包发布**：版本已递增并合入main，当前main同SHA最新手动完整Test成功、发布配置有效后，执行 `pnpm release:local --publish`。它自动读取版本/HEAD，构建、固定产物冒烟、准备差分/appcast及签名清单，创建tag/draft Release，上传校验后发布Latest。这个入口会运行桌面冒烟；与用户测试约束冲突时先把具体冲突说清，不能跳过门槛或静默扩大范围。
+- **完整安装包发布**：版本已递增并合入main，当前main同SHA最新命令触发的完整Test成功、发布配置有效后，执行 `pnpm release:local --publish`。它自动读取版本/HEAD，构建、固定产物冒烟、准备差分/appcast及签名清单，创建tag/draft Release，上传校验后发布Latest。这个入口会运行桌面冒烟；与用户测试约束冲突时先把具体冲突说清，不能跳过门槛或静默扩大范围。
 - **准备完整发布但先不公开**：`pnpm release:local` 同样要求main/Test并运行构建和冒烟。它不会创建远程Release，最后输出 `pnpm release:publish <更新目录> <冒烟目录>` 的实际命令。
 - **只构建自用包**：使用上一节 `release:build`，无需把它误写成必须先公开Release；它也不自动安装应用。
 
