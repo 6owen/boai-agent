@@ -1,22 +1,5 @@
-# [OUTPUT]: UI PR creation/updates automatically record previews; labels/dispatch are optional Agent overrides.
-# [OUTPUT]: record的PR源码检出初始化独立public角色子模块；publish权限隔离保持。
-# [INPUT]: PR UI changes and DeepSeek planning credentials.
-# [OUTPUT]: Current-head recording reports; trusted detect/record/publish scripts pinned to the workflow commit.
-# [POS]: Upstream 396e0e463805dd5ded971ade37ded08a52512ae5 adapted to BOAI Electron.
-# [PROTOCOL]: Update .github/workflows/.folder.md and .github/ui-preview/README.md.
+# [OUTPUT]: One PNG of the current PR from an isolated Playwright-BDD scenario.
 name: UI preview
-
-# A pull request changing UI gets screenshots — and a screen
-# recording, the mouse drawn in, when the change spans pages or needs
-# clicking to see — of the real app built from it, in a fixed block at the
-# foot of its description. See .github/ui-preview/.
-#
-# Pull requests come from forks, so this runs on pull_request_target with
-# the scripts from main. The PR's code is only built and run in the record
-# job, which holds the DeepSeek key (environment ui-preview, no approval
-# asked: any PR's code can read it, so the key there is one with a low
-# limit) and nothing that can write to the repo. The publish job, which can
-# write, never runs the PR's code.
 
 on:
   pull_request_target:
@@ -45,6 +28,7 @@ jobs:
       ui: ${{ steps.detect.outputs.ui }}
       sha: ${{ steps.detect.outputs.sha }}
       number: ${{ steps.detect.outputs.number }}
+      target: ${{ steps.detect.outputs.target }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -57,39 +41,21 @@ jobs:
           PR: ${{ github.event.pull_request.number || inputs.pr }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: node .github/ui-preview/publish.mjs detect
-      # what the recorder reads of the PR, handed over so its job needs no token
-      - if: steps.detect.outputs.ui == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR: ${{ steps.detect.outputs.number }}
-        run: |
-          mkdir pr-info
-          gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" -H "Accept: application/vnd.github.diff" > pr-info/pr.diff
-          gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" --jq .title > pr-info/title.txt
-          gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" --jq '.body // ""' > pr-info/body.txt
-      - if: steps.detect.outputs.ui == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: pr-info
-          path: pr-info
-          retention-days: 3
-
   record:
     needs: detect
     if: needs.detect.outputs.ui == 'true'
     runs-on: macos-15
     timeout-minutes: 30
-    environment: ui-preview
     permissions:
       contents: read
-    env:
-      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.pw
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
           path: ci
-          sparse-checkout: .github/ui-preview
+          sparse-checkout: |
+            tests/e2e/features
+            tests/e2e/steps
           persist-credentials: false
       # the fork's code, on purpose: this job is the one meant to run it,
       # with a read-only token and no credentials left in the checkout
@@ -100,10 +66,6 @@ jobs:
           submodules: recursive
           persist-credentials: false
           allow-unsafe-pr-checkout: true
-      - uses: actions/download-artifact@v4
-        with:
-          name: pr-info
-          path: pr-info
       - uses: pnpm/action-setup@v4
         with:
           package_json_file: pr/package.json
@@ -118,26 +80,27 @@ jobs:
       - name: Build BOAI
         working-directory: pr
         run: pnpm build
-      - name: Recording tools
+      - name: Capture one PR screenshot
         working-directory: pr
-        run: |
-          command -v ffmpeg >/dev/null || brew install ffmpeg
-          pnpm exec playwright install chromium ffmpeg
-      - name: Record
         env:
-          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-          DEEPSEEK_BASE_URL: ${{ vars.DEEPSEEK_BASE_URL || 'https://api.deepseek.com/v1' }}
-          PLAN_MODEL: ${{ vars.PLAN_MODEL || 'deepseek-flash' }}
-          DIFF_FILE: ${{ github.workspace }}/pr-info/pr.diff
-          PR_BODY_FILE: ${{ github.workspace }}/pr-info/body.txt
-        run: PR_TITLE="$(cat pr-info/title.txt)" node ci/.github/ui-preview/run.mjs pr out
-      - if: always()
-        uses: actions/upload-artifact@v4
+          BOAI_SCREENSHOT_TARGET: ${{ needs.detect.outputs.target }}
+          BOAI_SCREENSHOT_DIR: ${{ github.workspace }}/out
+        run: |
+          # Use this workflow's capture steps even when replaying an older PR.
+          cp ../ci/tests/e2e/features/ci-screenshot.feature tests/e2e/features/
+          cp ../ci/tests/e2e/steps/ci-screenshot.steps.ts tests/e2e/steps/
+          pnpm test:bddgen
+          pnpm exec playwright test --grep @pr-screenshot --reporter=line
+          test -s ../out/preview.png
+          git rev-parse HEAD > ../out/source-sha
+      - uses: actions/upload-artifact@v4
         with:
           name: ui-preview
-          path: out
+          path: |
+            out/preview.png
+            out/source-sha
           retention-days: 7
-          if-no-files-found: ignore
+          if-no-files-found: error
 
   publish:
     needs: [detect, record]
@@ -158,24 +121,11 @@ jobs:
         with:
           name: ui-preview
           path: out
-      - name: GitHub CLI with video attachment support
-        shell: bash
-        run: |
-          set -euo pipefail
-          gh_dir="$RUNNER_TEMP/boai-gh"
-          mkdir -p "$gh_dir"
-          curl --fail --silent --show-error --location \
-            https://github.com/cli/cli/releases/download/v2.103.3/gh_2.103.3_linux_amd64.tar.gz \
-            --output "$gh_dir/gh.tar.gz"
-          printf '%s  %s\n' 4c806978ffce1cec70853302a56d70ac6da4f19bae7adca4e1a8ab00633dd91d "$gh_dir/gh.tar.gz" | sha256sum --check
-          tar -xzf "$gh_dir/gh.tar.gz" -C "$gh_dir"
-          echo "$gh_dir/gh_2.103.3_linux_amd64/bin" >> "$GITHUB_PATH"
       - env:
           GITHUB_TOKEN: ${{ github.token }}
-          UI_PREVIEW_UPLOAD_TOKEN: ${{ secrets.UI_PREVIEW_UPLOAD_TOKEN }}
           PR: ${{ needs.detect.outputs.number }}
           SHA: ${{ needs.detect.outputs.sha }}
           OUT_DIR: out
           RECORD_RESULT: ${{ needs.record.result }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: node .github/ui-preview/publish.mjs publish
+        run: node .github/ui-preview/publish.mjs screenshot

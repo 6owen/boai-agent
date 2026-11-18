@@ -46,15 +46,15 @@ it('keeps untrusted PR execution apart from the trusted writer and engineering g
   expect(workflow.permissions).toEqual({})
   expect(workflow.jobs.record.permissions).toEqual({ contents: 'read' })
   expect(workflow.jobs.publish.permissions).toEqual({ contents: 'write', 'pull-requests': 'write' })
-  expect(workflow.jobs.record.environment).toBe('ui-preview')
+  expect(JSON.stringify(workflow.jobs.record)).not.toMatch(/secrets\.|ffmpeg|playwright install/)
+  expect(JSON.stringify(workflow.jobs.record)).toContain('--grep @pr-screenshot')
   expect(workflow.jobs.publish.environment).toBe('ui-preview-publish')
   expect(JSON.stringify(workflow.jobs.record)).not.toContain('UI_PREVIEW_UPLOAD_TOKEN')
   for (const job of ['detect', 'record', 'publish']) expect(workflow.jobs[job].steps[0].with.ref).toBe('${{ github.sha }}')
-  const publisher = workflow.jobs.publish.steps.find((step: { env?: Record<string, string> }) => step.env?.UI_PREVIEW_UPLOAD_TOKEN)
-  expect(publisher.env.UI_PREVIEW_UPLOAD_TOKEN).toBe('${{ secrets.UI_PREVIEW_UPLOAD_TOKEN }}')
+  expect(JSON.stringify(workflow.jobs.publish)).not.toContain('UI_PREVIEW_UPLOAD_TOKEN')
   const writer = workflow.jobs.publish.steps.map((step: { run?: string }) => step.run || '').join('\n')
   expect(writer).not.toContain('pnpm')
-  expect(writer).toContain('publish.mjs publish')
+  expect(writer).toContain('publish.mjs screenshot')
   const test = parse(await readFile('.github/workflows/test.yml', 'utf8'))
   expect(test.jobs.required.needs).toEqual(['test'])
   expect(test.jobs.test.steps.some((step: { run?: string }) => step.run === 'pnpm test')).toBe(true)
@@ -316,4 +316,16 @@ export async function createApp() {
     expect(recorded.sourceSha).toBe(sha)
     expect(recorded.scenes[0]).toMatchObject({ plannedSteps: 1, completedSteps: 1, failedSteps: 0, status: 'complete' })
   } finally { await rm(root, { recursive: true, force: true }) }
+})
+
+it('opens the changed dialog before taking the single PR screenshot, with an explicit target for new UI', async () => {
+  // @ts-expect-error Plain Node detector.
+  const { screenshotTarget } = await import('../.github/ui-preview/screenshot-target.mjs')
+  const files = ['apps/electron/src/renderer/pages/schedules/automation-history-dialog.tsx']
+  const target = screenshotTarget(files)
+  expect(target.clicks.at(-1)).toContain('menuitem')
+  expect(target.visible).toBe('role=dialog[name="执行记录"]')
+  const custom = { clicks: ['#open'], visible: '[role=dialog]' }
+  expect(screenshotTarget(files, `<!-- boai-screenshot ${JSON.stringify(custom)} -->`)).toEqual(custom)
+  expect(() => screenshotTarget(files, '<!-- boai-screenshot {"clicks":[]} -->')).toThrow()
 })

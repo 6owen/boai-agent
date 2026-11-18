@@ -3,7 +3,7 @@ name: boai-agent-dev-skills
 description: BOAI Agent 项目的开发与交付统一入口。处理 dev/build、验证、打包安装、bumpp 升版本、tag/GitHub Release、git cp/cpf、worktree 管理及相关命令解释时使用，按当前源码核对命令和执行范围。
 ---
 <!--
-[OUTPUT]: 2026-11-18 UI PR自动截图/适用录屏并写回正文；同SHA合并后继续发布，Agent接续，无需点击Run。
+[OUTPUT]: 单张 PR 截图与单张全局启动截图分开，云端全量 Vitest 仅在 release 的 main 验证中执行。
 [OUTPUT]: 2026-11-17小改动按影响验证，普通PR交付不默认等待CI；实际分流归boai-dev-workflow与test-ci-plan。
 [OUTPUT]: 2026-11-16开发检出需初始化固定版本avatar-motion子模块，之后沿原pnpm安装/构建。
 [OUTPUT]: 2026-11-13新增test:ui:behavior构建后三项UI行为入口，工程Test与预览完成度边界见Git/CI技能。
@@ -83,7 +83,7 @@ Git tag、GitHub Release和DMG/ZIP是不同产物。bumpp支持Git提交/tag/推
 
 用户明确“不检查测试”“不跑E2E”或“不抢焦点”时遵守本次范围；不要因为本技能列出了验证命令就自动执行。其他情况按修改选择对应检查；界面预览、工程检查、真实业务验收和个人安装使用分别报告。当前CI实际定义见 `.github/workflows/test.yml` 与 `ui-preview.yml`；保留的本机CI和旧截图基准工具不是默认启动项。
 
-小样式修改按[开发流程技能](../boai-dev-workflow/SKILL.md)选择相关lint/组件检查及必要截图，不默认执行完整build、全量Vitest或Electron E2E。普通PR的Test仅做类型/lint，main不复跑；相关Vitest在本地定向执行，完整测试由Agent按需命令触发；UI PR创建/更新自动截图和适用录屏写回PR，无需用户点击Run或加标签。普通PR交付读回一次状态后报告，不轮询等待CI/main复跑/预览；只有本次要求等通过、等合并或处理失败才持续跟进。
+小样式本地按影响选择检查。普通 PR 在 Linux 运行类型和 lint，文档只检查 diff。UI PR 自动运行一个 Playwright-BDD 场景，将目标可见时的一张 PNG 写回正文。合并 main 后不复跑。准备正式 release 时由 Agent 在 main 触发完整 Test，运行全量 Vitest，并保存一张全局启动截图供审阅。 [执行细则](../boai-dev-workflow/SKILL.md)。
 
 普通交付按Git/CI细则走PR；只有本次授权包含 `git cpf` 或跳过CI直接合并时，才使用其管理员例外并核对保护恢复。只暂存任务文件，使用 `git add -- <路径>`。
 

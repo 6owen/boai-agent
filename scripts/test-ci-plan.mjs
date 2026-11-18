@@ -14,10 +14,9 @@ const shaPattern = /^[a-f0-9]{40}$/
 const git = (root, args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }).trimEnd()
 const planPath = root => resolve(root, '.local/test-ci/plan.json')
 const documentationPath = path => developmentMarkdown(path) || ['UI_TEST_CI.md', 'DESIGN.md'].includes(path) || /^ai-docs\/.+\.(?:svg|png|webp|tldraw)$/.test(path)
-export function testMode(paths, { eventName = 'pull_request', forceFull = false } = {}) {
+export function testMode(paths, { eventName = 'pull_request' } = {}) {
   if (eventName === 'workflow_dispatch') return 'full'
   if (eventName !== 'pull_request') throw Error('Test only supports PR checks or explicit full runs')
-  if (forceFull) return 'full'
   return paths.length && paths.every(documentationPath) ? 'documentation' : 'checks'
 }
 
@@ -34,8 +33,7 @@ export function preparePlan(root, eventName, event, sha) {
     paths = git(root, ['diff', '--name-only', '--no-renames', '-z', base, sha, '--']).split('\0').filter(Boolean)
     git(root, ['diff', '--check', base, sha, '--'])
   }
-  const forceFull = event.pull_request?.labels?.some(label => label.name === 'ci:full') === true
-  const mode = testMode(paths, { eventName, forceFull })
+  const mode = testMode(paths, { eventName })
   return { version: 1, sha, base, eventName, mode, paths }
 }
 
@@ -47,7 +45,7 @@ async function main() {
     mkdirSync(resolve(root, '.local/test-ci'), { recursive: true })
     writeFileSync(planPath(root), JSON.stringify(plan, null, 2) + '\n')
     if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `mode=${plan.mode}\n`)
-    const text = plan.mode === 'documentation' ? 'Documentation diff checks only; no product tests run.' : plan.mode === 'checks' ? 'Typecheck and lint only. Build, Vitest and Electron UI tests were NOT run; targeted local validation is reported in the PR.' : 'Explicit full run: engineering, application build, UI behavior and all Vitest tests.'
+    const text = plan.mode === 'documentation' ? 'Documentation diff checks only; no product tests run.' : plan.mode === 'checks' ? 'Typecheck and lint only. Build, Vitest and Electron UI tests were NOT run; targeted local validation is reported in the PR.' : 'Explicit full run: engineering, application build, informational screenshot and all Vitest tests.'
     if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### Test: ${plan.mode}\n\n${text}\n\nCommit: \`${plan.sha}\`; changed paths: ${plan.paths.length}.\n`)
     console.log(JSON.stringify({ ...plan, description: text }))
   } else throw Error('Usage: test-ci-plan.mjs prepare')

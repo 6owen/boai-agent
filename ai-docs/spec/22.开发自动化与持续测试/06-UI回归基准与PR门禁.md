@@ -1,5 +1,5 @@
 <!--
-[OUTPUT]: 2026-11-18 UI PR自动截图/适用录屏并写回正文；同SHA合并后继续发布，Agent接续，无需点击Run。
+[OUTPUT]: 单张 PR 截图与单张全局启动截图分开，云端全量 Vitest 仅在 release 的 main 验证中执行。
 [OUTPUT]: 2026-11-17PR按文档/前端/完整分流，普通交付不等待CI；现行细则与耗时证据见UI_TEST_CI。
 [OUTPUT]: 2026-11-13 Test接固定三项UI行为与原件；预览完成度/source SHA/当前PR核对，部分媒体保持失败。
 [OUTPUT]: 2026-10-29用户要求git cpf显式快速合并入口，必要时临时解除并恢复管理员检查，不修改普通门禁。
@@ -13,7 +13,7 @@
 -->
 # Test 与 UI preview
 
-**2026-11-18现行流程：** 日常PR仅Linux类型/lint（文档仅diff），main合并后不复跑；相关Vitest/BDD由本地按影响执行。完整macOS构建/UI/Vitest由Agent按需命令触发Test或显式ci:full请求；UI PR创建/更新自动截图、适用录屏并更新PR，同head合并后仍补发。无需用户点击Run或加标签。正式发布由Agent触发并核对当前main同SHA最新完整Test成功。现行细则归[UI_TEST_CI.md](../../../UI_TEST_CI.md)和[开发技能](../../../.agents/skills/boai-dev-workflow/SKILL.md)。下文为历史实施记录；其自动全量与固定UI门禁规则已被替代；UI自动预览按本段及当前workflow执行。
+**现行流程**　普通 PR 在 Linux 运行类型和 lint，文档只检查 diff。UI PR 自动运行一个 Playwright-BDD 场景，将目标可见时的一张 PNG 写回正文。合并 main 后不复跑。准备正式 release 时由 Agent 在 main 触发完整 Test，运行全量 Vitest，并保存一张全局启动截图供审阅。 [CI 说明](../../../UI_TEST_CI.md)。下文保留历史实施记录。
 
 日常使用、常见状态与配置入口见 [UI_TEST_CI.md](../../../UI_TEST_CI.md)，与开发skill和本合同同步维护。
 

@@ -30,7 +30,7 @@ description: BOAI 日常开发、样式调整、Bug 修复和 PR 交付。按实
 | 文档、Skill、目录说明 | diff/格式/链接；修改Skill时校验frontmatter | documentation：差异检查，不装产品依赖 |
 | 页面样式、间距、颜色、图标、文案 | 查看diff；相关lint，涉及类型/组件接口时typecheck；已有相关组件测试按需运行 | checks：类型和lint |
 | 页面交互或前端状态 | 相关组件/状态测试；改变真实桌面交互时补对应BDD并定向执行 | checks：类型和lint |
-| 后端、IPC/共享协议、依赖、构建/CI、发布 | 相关模块测试及必要构建；按具体风险扩展 | checks：类型和lint；只有显式完整验证才full |
+| 后端、IPC/共享协议、依赖、构建/CI、发布 | 相关模块测试及必要构建；按具体风险扩展 | checks：类型和lint；全量只在 release 的 main 运行 |
 
 这是按影响选择范围，不是按文件数量或PR标题判断。修改测试时保留未变化的行为断言；需求变化须说明旧新期望及依据，产品和测试在同一PR验证。不得用删断言、跳过失败场景或伪造结果换绿灯。
 
@@ -53,11 +53,11 @@ description: BOAI 日常开发、样式调整、Bug 修复和 PR 交付。按实
 
 - 按本次授权创建/更新同一PR，标题和正文围绕最终问题与结果，列出实际验证及未验范围。CI尚未结束就写“运行中”，不能用上次提交的结果冒充当前结果。
 - 当前 `Test` 随PR事件或Agent命令触发。普通PR在Linux上做类型/lint（文档仅差异检查），不运行应用build、Vitest或Electron。main合并后不再重复Test；后端/依赖/CI改动也不自动升级为全量。相关Vitest/BDD由本地Agent按本次影响选择，不机械复制到云端重复执行。
-- `Required checks`名称及分支保护保持，绿色表示所选工程检查通过，不能写成全量产品测试通过。**UI PR创建、重新打开或推送新提交后，`UI preview`自动按diff构建真实界面、截图，交互需要时录屏，并更新PR正文。无需用户点Run或加标签。** 纯文档/后端改动跳过录制。此预览构建独立于Test，不运行整套Vitest或固定BDD。
-- Agent创建/更新PR后核对预览是否已启动；已启动就由CI异步接续。路径检测遗漏但确有可见改动时，Agent用 `gh workflow run ui-preview.yml --ref main -f pr=<编号>` 补触发，不交给用户操作。`ui-preview`标签只是强制预览的可选入口，不是普通UI PR的前置条件。
+- `Required checks` 汇总工程 Test。UI PR 创建、重开或推送后自动截一张 PNG，异步写回当前提交的 PR 正文。全局截图和 PR 截图均不做像素比较。
+- Agent 创建 UI PR 时，若改动位于弹窗、抽屉或二级页面，用 [截图目标说明](../../../UI_TEST_CI.md#pr-截图目标) 指定导航和可见元素。UI 文件自动触发；路径漏检时由 Agent 执行 `gh workflow run ui-preview.yml --ref main -f pr=<编号>` 补录。
 - 预览按当前head核对源码与媒体；即使PR先自动合并，也继续补发同一head的结果，已有PR媒体继续保留。正文更新保留 `<!-- boai-ui-preview:begin -->` 与 `<!-- boai-ui-preview:end -->` 自动区块。运行中如实说明截图待生成；失败写回原因，不能把触发成功称为已有截图或视觉质量通过。
 - **普通交付：提交/推送、按授权设置自动合并、读回一次PR状态，然后报告并结束本轮；不轮询二十分钟，不等main复跑或UI preview。** 这不等于取消CI或已经合并。只有用户要求“等到通过/合并”“处理CI失败”时才持续跟进；此时先读失败日志，再定向修复同一PR。
-- 本次需求需要完整验证、正式发布或用户指定时，由Agent执行 `gh workflow run test.yml --ref <分支>`（macOS构建、固定UI及全量Vitest），无需用户操作Actions页面。`ci:full`标签让下一次PR push走完整检查，添加标签本身不启动Test。不得为了小样式改动自动加这些标签或调用完整入口。
+- 云端全量 Vitest 只随正式 release 的 main 验证运行，PR 标签不会升级测试范围。新场景按实际业务风险本地定向验证。
 - 已获授权的正式发布由Agent先执行 `gh workflow run test.yml --ref main` 并核对当前main同SHA最新命令触发的完整Test成功；旧push/PR绿色不授予发布资格。日常开发不触发发布验证。
 
 ## Git、回收与发布边界

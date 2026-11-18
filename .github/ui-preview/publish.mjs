@@ -24,6 +24,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
+import { screenshotTarget } from "./screenshot-target.mjs";
 import { previewOutcome, recordingSummary } from "./result.mjs";
 
 const BEGIN = "<!-- boai-ui-preview:begin -->";
@@ -106,9 +107,17 @@ export async function detect() {
   const ui = changed.some(UI) || forced || process.env.GITHUB_EVENT_NAME === "workflow_dispatch";
   const out = process.env.GITHUB_OUTPUT;
   const lines = [`ui=${ui}`, `sha=${p.head.sha}`, `number=${pr}`];
+  if (ui) {
+    try {
+      lines.push(`target=${JSON.stringify(screenshotTarget(changed, p.body))}`);
+    } catch (error) {
+      await setBlock(`${head(p.head.sha)}\n**截图失败**，PR 正文中的 boai-screenshot 定位说明无效。`, undefined, p.head.sha);
+      throw error;
+    }
+  }
   if (out) await fs.appendFile(out, lines.join("\n") + "\n");
   console.log(lines.join(" "), "·", changed.filter(UI).join(", ") || "no UI files");
-  if (canPublish(p, p.head.sha) && (ui || p.body?.includes(BEGIN))) await setBlock(`${head(p.head.sha)}\n${ui ? "⏳ 正在录制这次提交的界面改动…" : "当前提交没有 UI 变更，已跳过录制。"}`, undefined, p.head.sha);
+  if (canPublish(p, p.head.sha) && (ui || p.body?.includes(BEGIN))) await setBlock(`${head(p.head.sha)}\n${ui ? "⏳ 正在截取这次提交的界面…" : "当前提交没有 UI 变更，已跳过录制。"}`, undefined, p.head.sha);
 }
 
 function git(args, cwd) {
@@ -117,7 +126,7 @@ function git(args, cwd) {
 
 // The media branch keeps one commit. Retain published PR/SHA directories:
 // merged PRs and overlapping publishers must not lose linked screenshots.
-async function pushMedia(sha, dir) {
+async function pushMedia(sha, dir, onlyScreenshot = false) {
   const work = await fs.mkdtemp(path.join(os.tmpdir(), "ui-previews-"));
   const remote = `https://x-access-token:${token}@github.com/${repo}.git`;
   git(["init", "-q"], work);
@@ -132,8 +141,8 @@ async function pushMedia(sha, dir) {
     } catch { /* the first one */ }
     const to = path.join(work, `pr-${pr}`, short(sha));
     await fs.mkdir(to, { recursive: true });
-    for (const f of await fs.readdir(dir)) await fs.copyFile(path.join(dir, f), path.join(to, f));
-    await fs.writeFile(path.join(to, "index.html"), player(sha, JSON.parse(await fs.readFile(path.join(dir, "manifest.json"), "utf8"))));
+    for (const f of onlyScreenshot ? ["preview.png"] : await fs.readdir(dir)) await fs.copyFile(path.join(dir, f), path.join(to, f));
+    if (!onlyScreenshot) await fs.writeFile(path.join(to, "index.html"), player(sha, JSON.parse(await fs.readFile(path.join(dir, "manifest.json"), "utf8"))));
     await fs.writeFile(path.join(work, ".nojekyll"), "");
     await fs.writeFile(path.join(work, "index.html"), `<!doctype html><meta charset="utf-8"><title>BOAI UI previews</title><p>Screenshots and recordings of <a href="https://github.com/${repo}/pulls">${repo}</a> pull requests, made by .github/workflows/ui-preview.yml.</p>`);
     git(["checkout", "-q", "--orphan", `tmp-${attempt}`], work);
@@ -144,7 +153,7 @@ async function pushMedia(sha, dir) {
       await fs.rm(work, { recursive: true, force: true });
       return;
     } catch (e) {
-      console.log(`push lost a race (${e.message.split("\n")[0]}), again`);
+      console.log("Media branch changed or push failed; retrying");
       await new Promise((r) => setTimeout(r, 2000 + Math.random() * 4000));
     }
   }
@@ -168,6 +177,27 @@ a{color:inherit}</style>
 ${m.video ? `<figure><video src="${m.video}" controls autoplay muted playsinline poster="${m.poster || ""}"></video><figcaption>红线是鼠标走过的轨迹，红色圆环是一次点击；底部文字是这一步在做什么。空格暂停，← → 逐段查看。</figcaption></figure>` : ""}
 ${shots.map((x) => `<figure><img src="${esc(x.file)}" alt="${esc(x.caption)}"><figcaption>${esc(x.scene)} · ${esc(x.caption)}</figcaption></figure>`).join("\n")}
 </main></html>`;
+}
+
+// CI accepts only the fixed PNG and its checkout SHA from the read-only job.
+export async function publishScreenshot() {
+  const sha = process.env.SHA;
+  const p = await gh(`/repos/${repo}/pulls/${pr}`);
+  if (!canPublish(p, sha)) return;
+  try {
+    const dir = process.env.OUT_DIR;
+    if (process.env.RECORD_RESULT !== "success") throw Error("Screenshot job did not succeed");
+    const source = path.join(dir, "source-sha"), file = path.join(dir, "preview.png");
+    if (!(await fs.lstat(source)).isFile() || (await fs.readFile(source, "utf8")).trim() !== sha) throw Error("Screenshot source SHA mismatch");
+    const stat = await fs.lstat(file);
+    if (!stat.isFile() || stat.size > 16 * 1024 * 1024 || !(await fs.readFile(file)).subarray(0, 8).equals(Buffer.from("89504e470d0a1a0a", "hex"))) throw Error("Invalid screenshot PNG");
+    await pushMedia(sha, dir, true);
+    const url = `https://raw.githubusercontent.com/${repo}/${BRANCH}/pr-${pr}/${short(sha)}/preview.png`;
+    await setBlock(`${head(sha)}\n<img src="${url}" width="760" alt="本次 PR 的界面截图">`, undefined, sha);
+  } catch (error) {
+    await setBlock(`${head(sha)}\n**截图失败**，请查看运行记录。`, undefined, sha);
+    throw error;
+  }
 }
 
 export async function publish() {
@@ -251,6 +281,6 @@ export async function publish() {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const cmd = process.argv[2];
-  (cmd === "detect" ? detect() : cmd === "publish" ? publish() : Promise.reject(new Error("detect | publish")))
+  (cmd === "detect" ? detect() : cmd === "screenshot" ? publishScreenshot() : cmd === "publish" ? publish() : Promise.reject(new Error("detect | publish")))
     .catch((e) => { console.error(e); process.exit(1); });
 }

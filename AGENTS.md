@@ -1,5 +1,5 @@
 <!--
-[OUTPUT]: 2026-11-18 UI PR自动截图/适用录屏并写回正文；同SHA合并后继续发布，Agent接续，无需点击Run。
+[OUTPUT]: 单张 PR 截图与单张全局启动截图分开，云端全量 Vitest 仅在 release 的 main 验证中执行。
 [OUTPUT]: 2026-11-17开发验证按实际影响分层；PR文档/前端/完整Test分流，小样式不默认全量本地验证或阻塞等CI。
 [OUTPUT]: 2026-11-16按用户补充暂停语音输入：注释插件注册和设置入口，隐藏菜单/插件/快捷键，旧配置不激活；64项定向及类型/lint/构建通过，生效与交付归本批实施记录。
 [OUTPUT]: 2026-11-16九项Issue源码接线及独立public角色包；实现/检查/未验边界见ai-docs/implementation/2026-11-16-issues-141-150.md，未发版或替换个人应用。
@@ -695,7 +695,7 @@
 
 - 用户明确要求执行 `git cpf` 或本次跳过CI直接合并时，可按[UI_TEST_CI.md](UI_TEST_CI.md)的显式快速合并入口执行。命令只提交已暂存文件、不强推main，必要时临时解除管理员强制检查并在结束时恢复；普通 `git cp` 和默认开发不自动使用此例外。合并不等于测试通过、应用重启或部署。
 
-- 2026-11-18现行流程：本地按实际diff做最小有效验证，小样式不默认完整build/全量Vitest/Electron E2E；相关测试及必要截图按本次影响选择。普通PR仅Linux类型/lint（文档仅diff），main合并后不重复CI。Agent命令触发Test或显式ci:full才运行macOS完整构建、固定UI及全量Vitest；不得为小改动自动触发。UI PR创建/更新自动运行UI preview，截图及适用录屏写回PR；Agent核对触发，路径遗漏时自行命令补触发，不让用户点Run或加标签。Required checks保持，绿色不冒充全量产品通过；正式发布须显式运行并核对当前main同SHA最新命令触发的完整Test。见[UI_TEST_CI.md](UI_TEST_CI.md)。
+- 普通 PR 在 Linux 运行类型和 lint，文档只检查 diff。UI PR 自动运行一个 Playwright-BDD 场景，将目标可见时的一张 PNG 写回正文。合并 main 后不复跑。准备正式 release 时由 Agent 在 main 触发完整 Test，运行全量 Vitest，并保存一张全局启动截图供审阅。 具体命令见 [UI_TEST_CI.md](UI_TEST_CI.md)。
 - 普通授权交付提交/推送、按范围设置自动合并并读回一次状态后报告，不轮询等待CI、main复跑或UI preview；只有本次要求等通过、等合并或处理CI失败才持续跟进。UI preview随UI PR自动异步发布实际媒体；同head即使已合并也继续补发并保留媒体，不作为合并或审美门禁。当前结果未出就标运行中，不把自动合并已启用写成已合并。
 - 开发使用独立worktree，交付按本次用户授权；明确只修改/执行试验时不合并。旧UI工具和历史结果保留为本地按需入口。
 - 在本仓库开发、交付、CI或合并前，读取共享技能[boai-dev-workflow](.agents/skills/boai-dev-workflow/SKILL.md)，并fetch/read origin/main最新版本；旧worktree/Session也必须重新读取。本分支修订和最新用户指令优先核对。当前详细合同见第22组06。
@@ -703,7 +703,7 @@
 - worktree独立node_modules复用pnpm store；普通pnpm i即可复用缓存，首次冻结安装可加--prefer-offline。main只同步实际已合并提交，预览和产品开发均不复制回main。
 - **worktree 不遗留：** 在任务worktree（含subagent的`.claude/worktrees/agent-*`）里做的任务，完成时必须删除该worktree及其本地任务分支，已核实专属于它的cargo target目录一并删除。删除前二选一：确认最终提交已实际合并进main；或不合并时先把本任务应保留的未提交改动（含未跟踪源码）提交到该分支，再打`archive/<worktree名>`标签存档并核对指向最终提交；同名标签已存在时加唯一后缀，不覆盖旧档。随后执行`git worktree remove`，已合并分支用`git branch -d`，已归档的未合并分支用`git branch -D`。编排subagent的会话负责收尾它派生的worktree。确需保留的（待用户裁决、有冲突待解等）必须在最终回复点名路径与原因，不得默默留下。
 - 删除前确认本任务及子任务进程已退出、会话工作目录已移出目标，核对未跟踪及ignored文件；tag只保存提交内容，需要保留的数据先迁出，密钥不得提交。只删该worktree专用的构建产物，不删共享cargo target、pnpm store或符号链接指向的共享目录；不得借收尾清理其他会话的任务分支。
-- Codex、Claude、Pi共用该技能，客户端不自动发现时按路径读取。技能不扩大任务授权，本机自动CI保持停用。GitHub沿Magpie执行Test与DeepSeek UI preview；固定PNG基准不再作为PR门禁，本地BDD/评估保留。
+- Codex、Claude、Pi共用该技能，客户端不自动发现时按路径读取。技能不扩大任务授权，本机自动CI保持停用。GitHub执行工程Test与单张BDD截图；固定PNG基准不再作为PR门禁，本地BDD/评估保留。
 
 # BOAI业务评估与Codex优化
 
@@ -723,7 +723,7 @@
 - `pnpm test:electron` 先构建、再执行 `bddgen` 和 Playwright；`.features-gen/` 是忽略的生成文件，禁止手工维护。
 - 场景数据必须隔离；重启沿用该场景目录；升级场景先准备旧数据再启动；G4 交付前保持重启中断、不自动重放工具。
 - 修改场景不得减少原有业务断言；中文步骤描述业务意图，协议服务与进程清理留在 TypeScript 支撑层。
-- `.github/workflows/test.yml`执行BOAI工程Test；`ui-preview.yml`沿Magpie用DeepSeek规划操作并发布截图/录屏。旧candidate/accept/update不再属于PR交付流程，不要求本地效果确认；当前合同见第22组06。
+- `.github/workflows/test.yml`执行BOAI工程Test；`ui-preview.yml`自动选取PR目标并发布一张BDD截图。旧candidate/accept/update不再属于PR交付流程，不要求本地效果确认；当前合同见第22组06。
 
 # Desktop Collaboration Boundaries
 

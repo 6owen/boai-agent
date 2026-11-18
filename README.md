@@ -1,5 +1,5 @@
 <!--
-[OUTPUT]: 2026-11-18 UI PR自动截图/适用录屏并写回正文；同SHA合并后继续发布，Agent接续，无需点击Run。
+[OUTPUT]: 单张 PR 截图与单张全局启动截图分开，云端全量 Vitest 仅在 release 的 main 验证中执行。
 [OUTPUT]: 2026-11-17开发交付按影响验证，PR分范围Test及非阻塞交付说明见UI_TEST_CI。
 [OUTPUT]: 2026-11-16按用户补充暂停语音输入：注释插件注册和设置入口，隐藏菜单/插件/快捷键，旧配置不激活；64项定向及类型/lint/构建通过，生效与交付归本批实施记录。
 [OUTPUT]: 2026-11-16九项Issue源码接线及独立public角色包；实现/检查/未验边界见ai-docs/implementation/2026-11-16-issues-141-150.md，未发版或替换个人应用。
@@ -156,7 +156,7 @@ ai-docs/             设计、规格与实施记录
 
 </details>
 
-2026-11-18：日常PR只类型/lint、main不复跑；完整测试由Agent按需命令触发，UI PR创建/更新自动截图及适用录屏写回PR，无需用户点Run。当前流程见[UI_TEST_CI.md](UI_TEST_CI.md)。早期记录：开发CI按[第22组06](ai-docs/spec/22.开发自动化与持续测试/06-UI回归基准与PR门禁.md)运行Test工程检查、固定三项UI行为及DeepSeek UI preview；预览显示实际完成度并核对当前提交，截图/录屏供审阅。固定PNG基准更新不作为PR前置；实际验证归该组03末节。
+当前 CI 流程见 [UI_TEST_CI.md](UI_TEST_CI.md)。普通 PR 在 Linux 运行类型和 lint，文档只检查 diff。UI PR 自动运行一个 Playwright-BDD 场景，将目标可见时的一张 PNG 写回正文。合并 main 后不复跑。准备正式 release 时由 Agent 在 main 触发完整 Test，运行全量 Vitest，并保存一张全局启动截图供审阅。
 
 官方文件浏览器：`@boai/file-explorer-plugin` 提供员工工作区与授权目录的文件树和预览，沿插件设置启停；目录边界与实际验证见[第19组18](ai-docs/spec/19.应用插件架构/18-文件浏览器插件与目录入口.md)。
 
