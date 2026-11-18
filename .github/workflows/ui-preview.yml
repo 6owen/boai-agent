@@ -1,3 +1,4 @@
+# [OUTPUT]: Preview is opt-in via ui-preview label or manual dispatch; stale blocks can be cleared without recording.
 # [OUTPUT]: record的PR源码检出初始化独立public角色子模块；publish权限隔离保持。
 # [INPUT]: PR UI changes and DeepSeek planning credentials.
 # [OUTPUT]: Current-head recording reports; trusted detect/record/publish scripts pinned to the workflow commit.
@@ -5,7 +6,7 @@
 # [PROTOCOL]: Update .github/workflows/.folder.md and .github/ui-preview/README.md.
 name: UI preview
 
-# A pull request that changes the UI gets screenshots — and a screen
+# A pull request labeled ui-preview gets screenshots — and a screen
 # recording, the mouse drawn in, when the change spans pages or needs
 # clicking to see — of the real app built from it, in a fixed block at the
 # foot of its description. See .github/ui-preview/.
@@ -19,7 +20,7 @@ name: UI preview
 
 on:
   pull_request_target:
-    types: [opened, synchronize, reopened, labeled]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
   workflow_dispatch:
     inputs:
       pr:
@@ -35,7 +36,7 @@ permissions: {}
 
 jobs:
   detect:
-    if: github.event.action != 'labeled' || github.event.label.name == 'ui-preview'
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'ui-preview') || contains(github.event.pull_request.body, '<!-- boai-ui-preview:begin -->')
     runs-on: ubuntu-latest
     permissions:
       contents: read

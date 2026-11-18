@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Clean stable application version/SHA and latest main push of the current GitHub Test workflow.
+ * [INPUT]: Clean stable application version/SHA and latest explicitly dispatched full main Test of the current GitHub Test workflow.
  * [OUTPUT]: Read-only release identity; PR, old success, pending and changed attempts cannot qualify.
  * [POS]: Shared local-build identity and publication check; no local-CI dependency.
  * [PROTOCOL]: Update Header and scripts/.folder.md when changed.
@@ -20,7 +20,7 @@ export function verifyReleaseSource({ version, sha, current, metadata }) {
 export function verifyReleaseIdentity({ version, sha, current, metadata, mainSha, run }) {
   const identity = verifyReleaseSource({ version, sha, current, metadata })
   if (mainSha !== sha) throw Error('发布必须来自远程main当前提交')
-  if (run?.repository?.full_name !== releaseRepository || run.path !== '.github/workflows/test.yml' || run.head_branch !== 'main' || run.event !== 'push' || run.head_sha !== sha || !Number.isSafeInteger(run.id) || run.id < 1 || !Number.isSafeInteger(run.run_attempt) || run.run_attempt < 1 || run.status !== 'completed' || run.conclusion !== 'success') throw Error('当前main同SHA的最新Test尚未成功')
+  if (run?.repository?.full_name !== releaseRepository || run.path !== '.github/workflows/test.yml' || run.head_branch !== 'main' || run.event !== 'workflow_dispatch' || run.head_sha !== sha || !Number.isSafeInteger(run.id) || run.id < 1 || !Number.isSafeInteger(run.run_attempt) || run.run_attempt < 1 || run.status !== 'completed' || run.conclusion !== 'success') throw Error('当前main同SHA的最新完整Test尚未成功；请运行 gh workflow run test.yml --ref main')
   return { ...identity, validation: { source: 'github-actions', runId: run.id, attempt: run.run_attempt } }
 }
 export async function checkRelease(version, sha, { directory = root, api, git } = {}) {
@@ -31,7 +31,7 @@ export async function checkRelease(version, sha, { directory = root, api, git } 
   verifyReleaseSource({ version, sha, ...source })
   const readRemote = () => {
     const mainSha = api('git/ref/heads/main').object?.sha
-    const rows = api(`actions/workflows/test.yml/runs?branch=main&event=push&head_sha=${sha}&per_page=100`).workflow_runs ?? []
+    const rows = api(`actions/workflows/test.yml/runs?branch=main&event=workflow_dispatch&head_sha=${sha}&per_page=100`).workflow_runs ?? []
     const latest = rows.sort((a, b) => b.run_number - a.run_number || b.id - a.id)[0]
     const run = latest ? api(`actions/runs/${latest.id}`) : null
     return { mainSha, run }

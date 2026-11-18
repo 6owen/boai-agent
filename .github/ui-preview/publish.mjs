@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: File explorer plugin component/style changes trigger automatic UI recording.
+ * [OUTPUT]: Recording requires ui-preview opt-in or manual dispatch; ordinary UI changes do not launch a recorder.
  * [INPUT]: PR diff, isolated BOAI Electron and DeepSeek planning configuration.
  * [OUTPUT]: Current-head previews with explicit recording completion; partial/failed runs stay visible and fail publication.
  * [POS]: UI preview; upstream yetone/magpie@396e0e463805dd5ded971ade37ded08a52512ae5 (MIT).
@@ -100,12 +100,12 @@ export async function detect() {
   const p = await gh(`/repos/${repo}/pulls/${pr}`);
   const changed = await files();
   const forced = p.labels.some((l) => l.name === "ui-preview");
-  const ui = forced || changed.some(UI);
+  const ui = forced || process.env.GITHUB_EVENT_NAME === "workflow_dispatch";
   const out = process.env.GITHUB_OUTPUT;
   const lines = [`ui=${ui}`, `sha=${p.head.sha}`, `number=${pr}`];
   if (out) await fs.appendFile(out, lines.join("\n") + "\n");
   console.log(lines.join(" "), "·", changed.filter(UI).join(", ") || "no UI files");
-  if (p.state === "open" && (ui || p.body?.includes(BEGIN))) await setBlock(`${head(p.head.sha)}\n${ui ? "⏳ 正在录制这次提交的界面改动…" : "当前提交没有 UI 变更，已跳过录制。"}`, undefined, p.head.sha);
+  if (p.state === "open" && (ui || p.body?.includes(BEGIN))) await setBlock(`${head(p.head.sha)}\n${ui ? "⏳ 正在录制这次提交的界面改动…" : (changed.some(UI) ? "本次未请求 UI preview，已跳过录制。" : "当前提交没有 UI 变更，已跳过录制。")}`, undefined, p.head.sha);
 }
 
 function git(args, cwd) {

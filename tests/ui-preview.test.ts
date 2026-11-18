@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: File explorer UI triggers recording while its filesystem host remains backend-only.
+ * [OUTPUT]: UI recording is opt-in; changing UI alone never launches the recorder.
  * [INPUT]: Real UI detector, preview entry and Actions definitions.
  * [OUTPUT]: Actual recording exit status, partial evidence, current-head publication and video/body preservation; no GUI or model calls.
  * [POS]: Magpie preview integration regressions, no model calls.
@@ -233,6 +233,24 @@ it('replaces an old preview when the current diff no longer contains UI changes'
   expect(next).not.toContain('old recording')
   expect(next).not.toContain('真实运行')
   expect(next).toContain('Review notes')
+})
+
+
+it.each([
+  { event: 'pull_request_target', labels: [], expected: false },
+  { event: 'pull_request_target', labels: [{ name: 'ui-preview' }], expected: true },
+  { event: 'workflow_dispatch', labels: [], expected: true },
+])('only explicit preview requests record: %j', async ({ event, labels, expected }) => {
+  const { detect } = await publisher()
+  const dir = await mkdtemp(join(tmpdir(), 'boai-preview-opt-in-'))
+  vi.stubEnv('GITHUB_OUTPUT', join(dir, 'output')); vi.stubEnv('GITHUB_EVENT_NAME', event)
+  const request = vi.fn(async (url: string, init: RequestInit) => new Response(JSON.stringify(url.includes('/files?') ? [{ filename: 'apps/electron/src/renderer/app.tsx' }] : init.method === 'PATCH' ? {} : { state: 'open', head: { sha }, labels, body: 'Author text' })))
+  vi.stubGlobal('fetch', request)
+  try {
+    await detect()
+    expect(await readFile(join(dir, 'output'), 'utf8')).toContain(`ui=${expected}`)
+    expect(request.mock.calls.some(([, init]) => init.method === 'PATCH')).toBe(expected)
+  } finally { await rm(dir, { recursive: true, force: true }) }
 })
 
 it.each([false, true])('the recorder exits truthfully with a controlled non-GUI adapter (partial=%s)', async partial => {

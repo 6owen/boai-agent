@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-11-18仅标签/手动请求录制，普通PR只类型/lint，完整测试按需。
 [OUTPUT]: 设置导航说明支持其他配置二级菜单；初始化public子模块后再安装与构建预览。
 [OUTPUT]: Fixed UI behavior checks, actual recording completion and current-head publication; partial media remain failed.
 [INPUT]: Magpie Test/UI preview at 396e0e463805dd5ded971ade37ded08a52512ae5.
@@ -17,7 +18,7 @@ Derived from [yetone/magpie](https://github.com/yetone/magpie/tree/396e0e463805d
 - `run.mjs`: builds the adapter, then invokes the recorder. Full application build remains an explicit preceding step.
 - `result.mjs`: validates recording plans and derives complete/partial/failed/skipped from actual scene/step results.
 
-`Test` (`.github/workflows/test.yml`) uses BOAI's typecheck/lint/build, three fixed Electron BDD behaviors, and Vitest on its supported macOS runtime. Run `pnpm test:ui:behavior` after building; it records screenshots and traces in `.local/ui-behavior/` and rejects missing, duplicate, skipped, retried or failed scenarios. The fixed cases cover conversation draft isolation, appearance persistence and workspace tool navigation; they do not replace feature-specific tests. CLI integration tests need dist/cli, so build precedes all runtime checks. Required checks retains its existing name. Neither workflow compares or updates PNG baselines.
+Ordinary PR `Test` runs only typecheck/lint on Linux; main push does not rerun it. Manual Test or an explicit `ci:full` PR runs the full macOS build, three fixed UI behaviors and Vitest. UI recording is separate and opt-in. Tests and local recording commands remain available. Required checks keeps its name; neither workflow compares PNG baselines.
 
 The recorder uses DeepSeek without thinking, records the source checkout SHA and actual planned/completed/failed steps, and exits nonzero for incomplete recording. A partial recording is still published with an explicit warning and completed scene count. Invalid or empty UI plans cannot silently succeed with an unrelated fallback screenshot. Publishing requires matching artifact/current PR SHAs and an open PR, and checks the head again just before editing its generated block. Source summaries and previews leave the author's other text intact. Media for other commits of open PRs remain available so overlapping publishers cannot remove newer links; closed PR media are reclaimed on subsequent publications.
 
@@ -38,7 +39,7 @@ DIFF_FILE="$PWD/.local/preview.diff" PR_TITLE="UI change" node --env-file=/absol
 
 No plan supplied means a real DeepSeek planning request. `PLAN_FILE` is upstream's optional deterministic diagnostic input and does not prove DeepSeek works.
 
-Regular UI PRs automatically get screenshots and interactive changes get an inline video player in their description. `ui-previews` still hosts screenshots and the original mp4 download. The recorder already produces H.264/yuv420p with faststart. Videos upload once per publication, using GitHub CLI 2.103.3 pinned with its release SHA256; no Pages configuration is needed or changed.
+PRs with the `ui-preview` label, or manually requested previews, get screenshots and applicable inline video. Ordinary UI PRs do not launch recording. Remove the label to stop subsequent automatic recordings; old preview blocks are cleared on the next detection event. `ui-previews` still hosts screenshots and the original mp4 download. The recorder already produces H.264/yuv420p with faststart. Videos upload once per publication, using GitHub CLI 2.103.3 pinned with its release SHA256; no Pages configuration is needed or changed.
 
 Create a **separate `ui-preview-publish` environment** and put `UI_PREVIEW_UPLOAD_TOKEN` there. Use a dedicated GitHub OAuth/PAT credential that can write to this repository and upload attachments; the Actions `GITHUB_TOKEN` cannot upload them ([upstream limitation](https://github.com/cli/cli/issues/14309)). Do not put the credential in the `ui-preview` recording environment or expose it as a repository-wide secret: that job runs PR code. The privileged publisher checks out trusted workflow code and only uploads the artifact's regular `preview.mp4`, refusing paths and symlinks.
 
