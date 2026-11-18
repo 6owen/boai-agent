@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: UI recording is opt-in; changing UI alone never launches the recorder.
+ * [OUTPUT]: Automatic UI detection and same-head post-merge publication keep PR screenshots available.
  * [INPUT]: Real UI detector, preview entry and Actions definitions.
  * [OUTPUT]: Actual recording exit status, partial evidence, current-head publication and video/body preservation; no GUI or model calls.
  * [POS]: Magpie preview integration regressions, no model calls.
@@ -7,6 +7,7 @@
  */
 import { afterEach, expect, it, vi } from 'vitest'
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { execFileSync, spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -23,9 +24,9 @@ const manifest = () => ({
 })
 
 vi.mock('node:child_process', async (original) => ({
-  ...await original<typeof import('node:child_process')>(), execFileSync: vi.fn(),
+  ...await original<typeof import('node:child_process')>(), execFileSync: vi.fn(() => ''),
 }))
-afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.clearAllMocks() })
+afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.clearAllMocks(); vi.mocked(execFileSync).mockReset().mockReturnValue('') })
 
 it('detects BOAI pages and shared styling without recording backend-only changes', () => {
   for (const file of ['apps/electron/src/renderer/app.tsx', 'packages/ui/src/dialog.tsx', 'packages/tokens/src/colors.css', 'packages/file-explorer-plugin/src/explorer.tsx', 'packages/file-explorer-plugin/src/explorer.css', 'vite.config.ts']) expect(isUiFile(file)).toBe(true)
@@ -39,6 +40,9 @@ it('missing model credentials stop before launching the app or claiming a previe
 })
 it('keeps untrusted PR execution apart from the trusted writer and engineering gate', async () => {
   const workflow = parse(await readFile('.github/workflows/ui-preview.yml', 'utf8'))
+  expect(workflow.on.pull_request_target.types).toEqual(expect.arrayContaining(['opened', 'synchronize', 'reopened']))
+  expect(workflow.jobs.detect.if).not.toContain('pull_request.labels')
+  expect(workflow.jobs.detect.if).not.toContain('pull_request.body')
   expect(workflow.permissions).toEqual({})
   expect(workflow.jobs.record.permissions).toEqual({ contents: 'read' })
   expect(workflow.jobs.publish.permissions).toEqual({ contents: 'write', 'pull-requests': 'write' })
@@ -176,13 +180,46 @@ it('rejects empty UI plans, invented pages and scenes with no screenshot', () =>
   expect(() => validatePlan({ ui_change: false, scenes: [] })).not.toThrow()
 })
 
-it.each(['new-head', 'closed'])('does not publish %s evidence or replace current PR text', async kind => {
+it.each(['new-head', 'closed', 'merged-new-head'])('does not publish %s evidence or replace current PR text', async kind => {
   const { publish, setBlock } = await publisher()
-  vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ state: kind === 'closed' ? 'closed' : 'open', body: 'New author edits', head: { sha: kind === 'new-head' ? 'f'.repeat(40) : sha } }))))
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ state: kind === 'new-head' ? 'open' : 'closed', merged: kind === 'merged-new-head', body: 'New author edits', head: { sha: kind === 'closed' ? sha : 'f'.repeat(40) } }))))
   await publish()
   expect(await setBlock('old recording', undefined, sha)).toBe(false)
   expect(execFileSync).not.toHaveBeenCalled()
   expect(vi.mocked(fetch).mock.calls.every(([, init]) => !init?.method)).toBe(true)
+})
+
+it.each([false, true])('publishes the same head after auto-merge and retains previous PR media (merged before start=%s)', async mergedBeforeStart => {
+  const dir = await mkdtemp(join(tmpdir(), 'boai-preview-merged-'))
+  try {
+    const { publish } = await publisher()
+    vi.stubEnv('OUT_DIR', dir)
+    await writeFile(join(dir, 'files.png'), 'fixture')
+    await writeFile(join(dir, 'manifest.json'), JSON.stringify(manifest()))
+    let mediaRetained = false, reads = 0
+    vi.mocked(execFileSync).mockImplementation((_command, args, options) => {
+      const cwd = String((options as { cwd: string }).cwd)
+      if (args?.[0] === 'init') {
+        mkdirSync(join(cwd, 'pr-59', 'old-sha'), { recursive: true })
+        writeFileSync(join(cwd, 'pr-59', 'old-sha', 'previous.png'), 'published evidence')
+      }
+      if (args?.[0] === 'add') mediaRetained = existsSync(join(cwd, 'pr-59', 'old-sha', 'previous.png'))
+      return ''
+    })
+    const request = vi.fn(async (_url: string, init: RequestInit) => {
+      if (init.method === 'PATCH') return new Response('{}')
+      const merged = mergedBeforeStart || ++reads > 1
+      return new Response(JSON.stringify({ state: merged ? 'closed' : 'open', merged, head: { sha }, body: 'Latest author edits' }))
+    })
+    vi.stubGlobal('fetch', request)
+    await publish()
+    const patch = request.mock.calls.find(([, init]) => init.method === 'PATCH')!
+    const body = JSON.parse(patch[1].body as string).body
+    expect(body).toContain('Latest author edits')
+    expect(body).toContain(`ui-previews/pr-60/${sha.slice(0, 7)}/files.png`)
+    expect(body).toContain('录制：完整')
+    expect(mediaRetained).toBe(true)
+  } finally { await rm(dir, { recursive: true, force: true }) }
 })
 
 it('shows partial screenshots and fails publication rather than claiming completion', async () => {
@@ -237,14 +274,18 @@ it('replaces an old preview when the current diff no longer contains UI changes'
 
 
 it.each([
-  { event: 'pull_request_target', labels: [], expected: false },
-  { event: 'pull_request_target', labels: [{ name: 'ui-preview' }], expected: true },
-  { event: 'workflow_dispatch', labels: [], expected: true },
-])('only explicit preview requests record: %j', async ({ event, labels, expected }) => {
+  { event: 'pull_request_target', labels: [], files: [{ filename: 'apps/electron/src/renderer/app.tsx' }], expected: true },
+  { event: 'pull_request_target', labels: [], files: [{ filename: 'packages/ui/src/button.tsx' }], expected: true },
+  { event: 'pull_request_target', labels: [], files: [{ filename: 'retired.tsx', previous_filename: 'apps/electron/src/renderer/old.tsx' }], expected: true },
+  { event: 'pull_request_target', labels: [], files: [{ filename: 'packages/runtime/src/app-service.ts' }], expected: false },
+  { event: 'pull_request_target', labels: [], files: [{ filename: 'README.md' }], expected: false },
+  { event: 'pull_request_target', labels: [{ name: 'ui-preview' }], files: [], expected: true },
+  { event: 'workflow_dispatch', labels: [], files: [], expected: true },
+])('automatically records UI diffs, with Agent overrides for other paths: %j', async ({ event, labels, files, expected }) => {
   const { detect } = await publisher()
-  const dir = await mkdtemp(join(tmpdir(), 'boai-preview-opt-in-'))
+  const dir = await mkdtemp(join(tmpdir(), 'boai-preview-auto-'))
   vi.stubEnv('GITHUB_OUTPUT', join(dir, 'output')); vi.stubEnv('GITHUB_EVENT_NAME', event)
-  const request = vi.fn(async (url: string, init: RequestInit) => new Response(JSON.stringify(url.includes('/files?') ? [{ filename: 'apps/electron/src/renderer/app.tsx' }] : init.method === 'PATCH' ? {} : { state: 'open', head: { sha }, labels, body: 'Author text' })))
+  const request = vi.fn(async (url: string, init: RequestInit) => new Response(JSON.stringify(url.includes('/files?') ? files : init.method === 'PATCH' ? {} : { state: 'open', head: { sha }, labels, body: 'Author text' })))
   vi.stubGlobal('fetch', request)
   try {
     await detect()

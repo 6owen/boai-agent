@@ -3,7 +3,7 @@ name: boai-dev-workflow
 description: BOAI 日常开发、样式调整、Bug 修复和 PR 交付。按实际改动选择最小有效验证，使用分范围 CI，避免小改动触发本地全量测试或阻塞等待。
 ---
 <!--
-[OUTPUT]: 2026-11-18日常PR仅类型/lint；main不复跑；完整测试和预览仅显式请求。
+[OUTPUT]: 2026-11-18 UI PR创建/更新自动截图与适用录屏，合并后同SHA继续补发；Agent接续，无需用户点Run。
 [OUTPUT]: 2026-11-17按改动分层验证；前端PR运行相关测试，main保留全量；普通交付不阻塞等CI。
 [OUTPUT]: 2026-11-13 Test固定三项UI行为；预览按实际完成度和当前SHA发布，部分结果保持失败。
 [OUTPUT]: 2026-11-10新增boai-agent-dev-skills统一入口，梳理实际dev/build/验证/打包/bumpp/tag/Release/Git/worktree命令；release:build现默认读取package版本与当前HEAD，显式参数仍可覆盖。
@@ -52,11 +52,13 @@ description: BOAI 日常开发、样式调整、Bug 修复和 PR 交付。按实
 ## PR 和 CI
 
 - 按本次授权创建/更新同一PR，标题和正文围绕最终问题与结果，列出实际验证及未验范围。CI尚未结束就写“运行中”，不能用上次提交的结果冒充当前结果。
-- 当前 `Test` 只有PR和手动触发。普通PR在Linux上做类型/lint（文档仅差异检查），不运行应用build、Vitest或Electron。main合并后不再重复Test；后端/依赖/CI改动也不自动升级为全量。相关Vitest/BDD由本地Agent按本次影响选择，不机械复制到云端重复执行。
-- `Required checks`名称及分支保护保持，绿色表示所选工程检查通过，不能写成全量产品测试通过。`UI preview`只在PR带`ui-preview`标签或手动指定PR时录制；普通UI改动不自动截图录屏。有旧预览的PR更新或取消标签时，轻量检测会移除过期结果。编辑正文保留 `<!-- boai-ui-preview:begin -->` 与 `<!-- boai-ui-preview:end -->` 自动区块。
+- 当前 `Test` 随PR事件或Agent命令触发。普通PR在Linux上做类型/lint（文档仅差异检查），不运行应用build、Vitest或Electron。main合并后不再重复Test；后端/依赖/CI改动也不自动升级为全量。相关Vitest/BDD由本地Agent按本次影响选择，不机械复制到云端重复执行。
+- `Required checks`名称及分支保护保持，绿色表示所选工程检查通过，不能写成全量产品测试通过。**UI PR创建、重新打开或推送新提交后，`UI preview`自动按diff构建真实界面、截图，交互需要时录屏，并更新PR正文。无需用户点Run或加标签。** 纯文档/后端改动跳过录制。此预览构建独立于Test，不运行整套Vitest或固定BDD。
+- Agent创建/更新PR后核对预览是否已启动；已启动就由CI异步接续。路径检测遗漏但确有可见改动时，Agent用 `gh workflow run ui-preview.yml --ref main -f pr=<编号>` 补触发，不交给用户操作。`ui-preview`标签只是强制预览的可选入口，不是普通UI PR的前置条件。
+- 预览按当前head核对源码与媒体；即使PR先自动合并，也继续补发同一head的结果，已有PR媒体继续保留。正文更新保留 `<!-- boai-ui-preview:begin -->` 与 `<!-- boai-ui-preview:end -->` 自动区块。运行中如实说明截图待生成；失败写回原因，不能把触发成功称为已有截图或视觉质量通过。
 - **普通交付：提交/推送、按授权设置自动合并、读回一次PR状态，然后报告并结束本轮；不轮询二十分钟，不等main复跑或UI preview。** 这不等于取消CI或已经合并。只有用户要求“等到通过/合并”“处理CI失败”时才持续跟进；此时先读失败日志，再定向修复同一PR。
-- 只有本次明确需要完整验证、正式发布或用户指定时，才运行 `gh workflow run test.yml --ref <分支>`（macOS构建、固定UI及全量Vitest）。`ci:full`标签让下一次PR push走完整检查，添加标签本身不启动Test。不得为了小样式改动自动加这些标签或调用完整入口。
-- 正式发布先 `gh workflow run test.yml --ref main` 并核对当前main同SHA最新手动完整Test成功；旧push/PR绿色不授予发布资格。日常开发不触发发布验证。
+- 本次需求需要完整验证、正式发布或用户指定时，由Agent执行 `gh workflow run test.yml --ref <分支>`（macOS构建、固定UI及全量Vitest），无需用户操作Actions页面。`ci:full`标签让下一次PR push走完整检查，添加标签本身不启动Test。不得为了小样式改动自动加这些标签或调用完整入口。
+- 已获授权的正式发布由Agent先执行 `gh workflow run test.yml --ref main` 并核对当前main同SHA最新命令触发的完整Test成功；旧push/PR绿色不授予发布资格。日常开发不触发发布验证。
 
 ## Git、回收与发布边界
 

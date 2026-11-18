@@ -3,7 +3,7 @@ name: boai-release
 description: BOAI macOS本机发版与安装版更新流程。用于升版本、准备安装包、发布GitHub Release，或查询下载和自动更新方式；复用bumpp与现有Sparkle发布脚本。
 ---
 <!--
-[OUTPUT]: 2026-11-18发布前显式运行main完整Test，前检只接受同SHA最新workflow_dispatch成功。
+[OUTPUT]: 2026-11-18 UI PR自动截图/适用录屏并写回正文；同SHA合并后继续发布，Agent接续，无需点击Run。
 [OUTPUT]: 2026-11-10macOS打包排除调试映射、类型声明及依赖测试文档；浏览器/桌面CLI按目标架构保留Mac程序、helper与校验文件。
 [OUTPUT]: Electron下载取消300秒总时限，按固定SHA缓存/断点续传，三次重试及取消；真实本地HTTP回归不运行E2E。
 [OUTPUT]: 2026-11-10候选构建/冒烟取消Node24.16.0登记限制，统一沿package.engines。
@@ -46,7 +46,7 @@ pnpm release:version patch
 
 遵从用户给定的版本或升版幅度；未给定时核对当前版本、已发布版本及本次改动，说明选用的递增稳定版本。有交互提示时用终端交互完成。若当前已有待发布的更高版本，先确认它是否就是本次版本，避免重复升号。
 
-bumpp只同步根`package.json.version`与`build.buildVersion`，内部workspace包保持独立版本，不自动commit/tag/push。提交本次版本变更并随正常PR合入main。发布资格要求**当前远程main同SHA最新一次手动触发的完整Test成功**；先执行 `gh workflow run test.yml --ref main`，核对该次完整检查通过；PR检查、旧main成绩和`git cpf`直接合并均不能替代。main push已不自动启动Test。
+bumpp只同步根`package.json.version`与`build.buildVersion`，内部workspace包保持独立版本，不自动commit/tag/push。提交本次版本变更并随正常PR合入main。发布资格要求**当前远程main同SHA最新一次由Agent命令触发的完整Test成功**；发布Agent先执行 `gh workflow run test.yml --ref main`，无需用户点击Run，核对该次完整检查通过；PR检查、旧main成绩和`git cpf`直接合并均不能替代。main push已不自动启动Test。
 
 用户要求完成发版时，检查仍在运行就跟进到结果；失败则报告具体原因并按授权范围处理。共享开发技能中普通交付“不等待CI”的默认不等于可以跳过发版所需的main Test。
 

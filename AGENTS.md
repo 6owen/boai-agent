@@ -1,5 +1,5 @@
 <!--
-[OUTPUT]: 2026-11-18按用户要求缩减日常CI：PR类型/lint，main不复跑，完整测试与预览仅显式请求。
+[OUTPUT]: 2026-11-18 UI PR自动截图/适用录屏并写回正文；同SHA合并后继续发布，Agent接续，无需点击Run。
 [OUTPUT]: 2026-11-17开发验证按实际影响分层；PR文档/前端/完整Test分流，小样式不默认全量本地验证或阻塞等CI。
 [OUTPUT]: 2026-11-16按用户补充暂停语音输入：注释插件注册和设置入口，隐藏菜单/插件/快捷键，旧配置不激活；64项定向及类型/lint/构建通过，生效与交付归本批实施记录。
 [OUTPUT]: 2026-11-16九项Issue源码接线及独立public角色包；实现/检查/未验边界见ai-docs/implementation/2026-11-16-issues-141-150.md，未发版或替换个人应用。
@@ -695,8 +695,8 @@
 
 - 用户明确要求执行 `git cpf` 或本次跳过CI直接合并时，可按[UI_TEST_CI.md](UI_TEST_CI.md)的显式快速合并入口执行。命令只提交已暂存文件、不强推main，必要时临时解除管理员强制检查并在结束时恢复；普通 `git cp` 和默认开发不自动使用此例外。合并不等于测试通过、应用重启或部署。
 
-- 2026-11-18现行流程：本地按实际diff做最小有效验证，小样式不默认完整build/全量Vitest/Electron E2E；相关测试及必要截图按本次影响选择。普通PR仅Linux类型/lint（文档仅diff），main合并后不重复CI。手动Test或显式ci:full才运行macOS完整构建、固定UI及全量Vitest；不得为小改动自动触发。UI preview仅ui-preview标签或手动请求。Required checks保持，绿色不冒充全量产品通过；正式发布须显式运行并核对当前main同SHA最新手动完整Test。见[UI_TEST_CI.md](UI_TEST_CI.md)。
-- 普通授权交付提交/推送、按范围设置自动合并并读回一次状态后报告，不轮询等待CI、main复跑或UI preview；只有本次要求等通过、等合并或处理CI失败才持续跟进。UI preview在显式请求后独立异步发布实际媒体，不作为合并或审美门禁。当前结果未出就标运行中，不把自动合并已启用写成已合并。
+- 2026-11-18现行流程：本地按实际diff做最小有效验证，小样式不默认完整build/全量Vitest/Electron E2E；相关测试及必要截图按本次影响选择。普通PR仅Linux类型/lint（文档仅diff），main合并后不重复CI。Agent命令触发Test或显式ci:full才运行macOS完整构建、固定UI及全量Vitest；不得为小改动自动触发。UI PR创建/更新自动运行UI preview，截图及适用录屏写回PR；Agent核对触发，路径遗漏时自行命令补触发，不让用户点Run或加标签。Required checks保持，绿色不冒充全量产品通过；正式发布须显式运行并核对当前main同SHA最新命令触发的完整Test。见[UI_TEST_CI.md](UI_TEST_CI.md)。
+- 普通授权交付提交/推送、按范围设置自动合并并读回一次状态后报告，不轮询等待CI、main复跑或UI preview；只有本次要求等通过、等合并或处理CI失败才持续跟进。UI preview随UI PR自动异步发布实际媒体；同head即使已合并也继续补发并保留媒体，不作为合并或审美门禁。当前结果未出就标运行中，不把自动合并已启用写成已合并。
 - 开发使用独立worktree，交付按本次用户授权；明确只修改/执行试验时不合并。旧UI工具和历史结果保留为本地按需入口。
 - 在本仓库开发、交付、CI或合并前，读取共享技能[boai-dev-workflow](.agents/skills/boai-dev-workflow/SKILL.md)，并fetch/read origin/main最新版本；旧worktree/Session也必须重新读取。本分支修订和最新用户指令优先核对。当前详细合同见第22组06。
 - 本机版本、安装包或Release发布及下载/自动更新说明使用共享技能[boai-release](.agents/skills/boai-release/SKILL.md)，复用bumpp与现有release脚本；发布范围按本次请求，普通开发提交/合并不隐含发版，实际状态归第22组03。

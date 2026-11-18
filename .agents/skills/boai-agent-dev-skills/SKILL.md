@@ -3,7 +3,7 @@ name: boai-agent-dev-skills
 description: BOAI Agent 项目的开发与交付统一入口。处理 dev/build、验证、打包安装、bumpp 升版本、tag/GitHub Release、git cp/cpf、worktree 管理及相关命令解释时使用，按当前源码核对命令和执行范围。
 ---
 <!--
-[OUTPUT]: 2026-11-18日常CI只类型/lint、main不复跑；完整main Test在发布前显式运行。
+[OUTPUT]: 2026-11-18 UI PR自动截图/适用录屏并写回正文；同SHA合并后继续发布，Agent接续，无需点击Run。
 [OUTPUT]: 2026-11-17小改动按影响验证，普通PR交付不默认等待CI；实际分流归boai-dev-workflow与test-ci-plan。
 [OUTPUT]: 2026-11-16开发检出需初始化固定版本avatar-motion子模块，之后沿原pnpm安装/构建。
 [OUTPUT]: 2026-11-13新增test:ui:behavior构建后三项UI行为入口，工程Test与预览完成度边界见Git/CI技能。
@@ -75,7 +75,7 @@ Git tag、GitHub Release和DMG/ZIP是不同产物。bumpp支持Git提交/tag/推
 
 `pnpm release:build`默认读取`package.json.version`和当前HEAD，无需手传参数；可用`--version X.Y.Z`、`--sha 完整SHA`单独或同时覆盖。自动取值后仍核对干净源码、版本/buildVersion及同一提交，显式错误值不会被默认值覆盖。构建不调用bumpp，不升版、提交、创建tag或发布。需要升版先用`release:version`，提交该版本后再构建。`release:local`会执行完整发布准备流程。
 
-个人候选可从干净功能提交构建；正式发布要求当前远程main同SHA最新一次手动触发的完整Test成功。PR成功、旧main成功和 `git cpf` 已合并都不能代替。已有同名tag/Release时先核对身份及资产，不移动tag、覆盖Release或盲目重发。
+个人候选可从干净功能提交构建；正式发布要求当前远程main同SHA最新一次由Agent命令触发的完整Test成功。PR成功、旧main成功和 `git cpf` 已合并都不能代替。已有同名tag/Release时先核对身份及资产，不移动tag、覆盖Release或盲目重发。
 
 安装版更新依赖已发布且签名有效的更新资产；本地Git提交、`pnpm build`、源码tag或源码Release不会直接升级 `/Applications` 中的应用。
 
@@ -83,7 +83,7 @@ Git tag、GitHub Release和DMG/ZIP是不同产物。bumpp支持Git提交/tag/推
 
 用户明确“不检查测试”“不跑E2E”或“不抢焦点”时遵守本次范围；不要因为本技能列出了验证命令就自动执行。其他情况按修改选择对应检查；界面预览、工程检查、真实业务验收和个人安装使用分别报告。当前CI实际定义见 `.github/workflows/test.yml` 与 `ui-preview.yml`；保留的本机CI和旧截图基准工具不是默认启动项。
 
-小样式修改按[开发流程技能](../boai-dev-workflow/SKILL.md)选择相关lint/组件检查及必要截图，不默认执行完整build、全量Vitest或Electron E2E。普通PR的Test仅做类型/lint，main不复跑；相关Vitest在本地定向执行，完整测试和UI预览显式按需运行。普通PR交付读回一次状态后报告，不轮询等待CI/main复跑/预览；只有本次要求等通过、等合并或处理失败才持续跟进。
+小样式修改按[开发流程技能](../boai-dev-workflow/SKILL.md)选择相关lint/组件检查及必要截图，不默认执行完整build、全量Vitest或Electron E2E。普通PR的Test仅做类型/lint，main不复跑；相关Vitest在本地定向执行，完整测试由Agent按需命令触发；UI PR创建/更新自动截图和适用录屏写回PR，无需用户点击Run或加标签。普通PR交付读回一次状态后报告，不轮询等待CI/main复跑/预览；只有本次要求等通过、等合并或处理失败才持续跟进。
 
 普通交付按Git/CI细则走PR；只有本次授权包含 `git cpf` 或跳过CI直接合并时，才使用其管理员例外并核对保护恢复。只暂存任务文件，使用 `git add -- <路径>`。
 
