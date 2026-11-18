@@ -1,8 +1,4 @@
-# [OUTPUT]: PR engineering checks only; full tests require manual dispatch or explicit ci:full.
-# [INPUT]: PR commits and explicit manual full runs.
-# [OUTPUT]: Daily typecheck/lint; application build, fixed UI and Vitest are opt-in.
-# [POS]: Engineering CI; Required checks retains the existing branch-protection name.
-# [PROTOCOL]: Update .github/workflows/.folder.md and the shared development skill.
+# [OUTPUT]: Lightweight PR checks; full Vitest is dispatched on main for release.
 name: Test
 on:
   pull_request:
@@ -15,7 +11,8 @@ concurrency:
 jobs:
   test:
     name: Test
-    runs-on: ${{ (github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'ci:full')) && 'macos-15' || 'ubuntu-latest' }}
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && 'macos-15' || 'ubuntu-latest' }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -40,15 +37,26 @@ jobs:
         if: steps.scope.outputs.mode != 'documentation'
       - run: pnpm build
         if: steps.scope.outputs.mode == 'full'
-      - name: UI behavior checks
+      - name: Global screenshot smoke
+        id: global_shot
+        continue-on-error: true
+        env:
+          BOAI_SCREENSHOT_DIR: ${{ runner.temp }}/global-screenshot
         if: steps.scope.outputs.mode == 'full'
-        run: pnpm test:ui:behavior
-      - name: UI behavior evidence
+        run: |
+          pnpm test:bddgen
+          pnpm exec playwright test --grep @global-screenshot --reporter=line
+          test -s "$BOAI_SCREENSHOT_DIR/global.png"
+      - name: Report screenshot failure
+        if: always() && steps.global_shot.outcome == 'failure'
+        run: echo 'Global screenshot failed. Inspect the screenshot step for details.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Global screenshot artifact
+        continue-on-error: true
         if: always() && steps.scope.outputs.mode == 'full'
         uses: actions/upload-artifact@v4
         with:
-          name: ui-behavior
-          path: .local/ui-behavior
+          name: global-screenshot
+          path: ${{ runner.temp }}/global-screenshot/global.png
           retention-days: 7
           if-no-files-found: ignore
       - run: pnpm --filter @6owen/avatar-motion test

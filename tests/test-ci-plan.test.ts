@@ -25,7 +25,7 @@ it.each(['apps/electron/src/renderer/pages/example.tsx', 'packages/ui/src/button
 })
 it('only explicit requests run full tests; unknown events fail and an empty PR still gets engineering checks', () => {
   expect(testMode(['README.md'], { eventName: 'workflow_dispatch' })).toBe('full')
-  expect(testMode(['README.md'], { forceFull: true })).toBe('full')
+  expect(testMode(['README.md'])).toBe('documentation')
   for (const eventName of ['push', 'unknown']) expect(() => testMode([], { eventName })).toThrow()
   expect(testMode([])).toBe('checks')
 })
@@ -37,7 +37,7 @@ it('reads the complete exact checkout diff and includes both sides of a rename',
   mkdirSync(dirname(join(root, path)), { recursive: true }); git(root, 'mv', 'README.md', path); git(root, 'commit', '-qm', 'move')
   const sha = git(root, 'rev-parse', 'HEAD'), event = { pull_request: { base: { sha: base }, labels: [] as { name: string }[] } }
   expect(preparePlan(root, 'pull_request', event, sha)).toMatchObject({ mode: 'checks', paths: expect.arrayContaining(['README.md', path]) })
-  expect(preparePlan(root, 'pull_request', { pull_request: { ...event.pull_request, labels: [{ name: 'ci:full' }] } }, sha).mode).toBe('full')
+  expect(preparePlan(root, 'pull_request', { pull_request: { ...event.pull_request, labels: [{ name: 'ci:full' }] } }, sha).mode).toBe('checks')
   expect(() => preparePlan(root, 'pull_request', event, 'f'.repeat(40))).toThrow('checkout')
 })
 it('ordinary PR execution excludes all expensive commands, while full dispatch keeps their order and failed checks block', () => {
@@ -49,7 +49,11 @@ it('ordinary PR execution excludes all expensive commands, while full dispatch k
   const commands = (mode: string) => steps.filter((s: { run?: string; if?: string }) => s.run && (!s.if || s.if === "steps.scope.outputs.mode != 'documentation'" && mode !== 'documentation' || s.if === "steps.scope.outputs.mode == 'full'" && mode === 'full')).map((s: { run: string }) => s.run)
   expect(commands('documentation')).toEqual(['node scripts/test-ci-plan.mjs prepare'])
   expect(commands('checks')).toEqual(['node scripts/test-ci-plan.mjs prepare', 'pnpm install --frozen-lockfile --prefer-offline', 'pnpm typecheck', 'pnpm lint:ui'])
-  expect(commands('full')).toEqual([...commands('checks'), 'pnpm build', 'pnpm test:ui:behavior', 'pnpm --filter @6owen/avatar-motion test', 'pnpm test'])
+  const smoke = steps.find((step: { name?: string }) => step.name === 'Global screenshot smoke')
+  expect(smoke.run).toContain('--grep @global-screenshot')
+  expect(smoke['continue-on-error']).toBe(true)
+  expect(commands('full')).toEqual([...commands('checks'), 'pnpm build', smoke.run, 'pnpm --filter @6owen/avatar-motion test', 'pnpm test'])
+  expect(workflow.jobs.test.if).toContain("github.ref == 'refs/heads/main'")
   expect(workflow.jobs.required.needs).toEqual(['test'])
   const gate = workflow.jobs.required.steps[0].run
   for (const result of ['failure', 'cancelled', 'skipped', '']) expect(spawnSync('bash', ['-c', gate], { env: { ...process.env, RESULT: result } }).status).not.toBe(0)

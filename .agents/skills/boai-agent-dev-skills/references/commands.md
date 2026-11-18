@@ -1,5 +1,5 @@
 <!--
-[OUTPUT]: 2026-11-18 UI PR自动截图/适用录屏并写回正文；同SHA合并后继续发布，Agent接续，无需点击Run。
+[OUTPUT]: 每个 UI PR 回填改动页面和全局主界面各一张截图，云端全量 Vitest 仅在 release 的 main 验证中执行。
 [OUTPUT]: 2026-11-17本地按影响验证；PR Test分文档/前端/完整，普通交付不等待CI。
 [OUTPUT]: 2026-11-16开发检出需初始化固定版本avatar-motion子模块，之后沿原pnpm安装/构建。
 [OUTPUT]: 2026-11-13 test:ui:behavior在构建后验证固定三项UI行为，输出报告/截图/trace并接入Test。
@@ -77,7 +77,7 @@ renderer由Vite处理热更新；`dev.mjs`在启动时构建宿主，没有主�
 | `pnpm test:ui` / `pnpm test:ui:candidate` / `pnpm test:ui:accept` | 保留的本地截图检查/候选/接受工具，不是当前PR基准门禁；不自行晋升基准 |
 | `pnpm ci:local` / `pnpm ci:watch` | 保留的本机CI工具，当前不作为默认执行或常驻流程 |
 
-遵守本次用户对检查、测试、E2E和焦点的要求。只写文档不启动应用、真实模型或完整产品测试。当前云端 `Test` 只随PR事件或Agent命令运行：文档仅diff检查，普通PR在Linux仅typecheck/lint。应用build、固定UI行为和全量Vitest只在Agent命令触发的Test或显式ci:full的PR中执行，沿macOS；main push不再触发Test。相关模块/组件测试留在本地按需执行。完整入口为 `gh workflow run test.yml --ref <分支>`，正式发布先指定main并等待同SHA结果。普通开发不自动调用完整入口。UI行为的无GUI选场检查沿`pnpm test:bddgen`及`pnpm exec playwright test --grep @ui-behavior --list`。`UI preview`在UI PR创建/更新后自动构建界面、截图与适用录屏并更新PR；不运行全量Vitest/固定BDD，也不需要用户点击Run或加标签。Agent核对触发，路径遗漏时用 `gh workflow run ui-preview.yml --ref main -f pr=<编号>` 补触发。PR先合并仍补发同head结果；显示实际完成度，部分结果失败；不作为业务或审美认证。完整规则见 [UI_TEST_CI.md](../../../../UI_TEST_CI.md)。
+按实际影响选择本地验证。普通 PR 在 Linux 运行类型和 lint，文档只检查 diff。UI PR 一次构建后运行两个 Playwright-BDD 场景，将本次改动页面和全局主界面的两张 PNG 一起写回正文。合并 main 后不复跑。准备正式 release 时由 Agent 在 main 触发完整 Test，运行全量 Vitest，并保存一张全局启动截图供审阅。 入口是 `gh workflow run test.yml --ref main`。[CI 说明](../../../../UI_TEST_CI.md)。
 
 ## 5. 自用安装包
 
