@@ -17,7 +17,7 @@
 CI 根据变动路径选取页面。已登记的执行记录弹窗会自动打开并等待弹窗出现。共享样式默认展示应用主界面。若需求涉及更具体的状态，Agent 在初次创建 PR 的正文内加入一行定位说明；后续正常推送也会重新读取。例：
 
 ```html
-<!-- boai-screenshot {"clicks": ["role=button[name=\"定时任务\"]", "role=button[name=\"定时任务选项\"]", "role=menuitem[name=\"执行记录\"]"], "visible": "role=dialog[name=\"执行记录\"]"} -->
+<!-- boai-screenshot {"clicks": ["role=button[name=\"定时任务\"]", "role=button[name=\"定时任务选项\"]", "role=menuitem[name=\"执行记录\"]"], "visible": "role=dialog >> role=textbox[name=\"搜索执行记录\"]"} -->
 ```
 
 `clicks` 是 Playwright 定位器序列，`visible` 是截图时必须出现的元素。目标打不开会显示失败。Agent 递交截图时核对实际图片。仅编辑 PR 正文不会触发录制，需要重截时由 Agent 运行 `gh workflow run ui-preview.yml --ref main -f pr=<编号>`。保存正文时保留自动预览区块。

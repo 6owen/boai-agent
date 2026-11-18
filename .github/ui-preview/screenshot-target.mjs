@@ -10,7 +10,7 @@ export function screenshotTarget(paths, body = '') {
   }
   const nav = name => `nav[aria-label="主导航"] button[aria-label="${name}"]`
   if (paths.some(p => /\/schedules\/automation-history-(dialog|list)\.tsx$/.test(p))) {
-    return { clicks: [nav('定时任务'), 'role=button[name="定时任务选项"]', 'role=menuitem[name="执行记录"]'], visible: 'role=dialog[name="执行记录"]' }
+    return { clicks: [nav('定时任务'), 'role=button[name="定时任务选项"]', 'role=menuitem[name="执行记录"]'], visible: 'role=dialog >> role=textbox[name="搜索执行记录"]' }
   }
   for (const [folder, name] of [['schedules', '定时任务'], ['contacts', '通讯录'], ['library', '资源库'], ['sources', '资源库'], ['conversations', '会话']]) {
     if (paths.some(p => p.includes(`/renderer/pages/${folder}/`))) return { clicks: [nav(name)], visible: nav(name) + '[aria-current="page"]' }

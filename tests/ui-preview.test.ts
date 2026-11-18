@@ -324,7 +324,7 @@ it('opens the changed dialog before taking the single PR screenshot, with an exp
   const files = ['apps/electron/src/renderer/pages/schedules/automation-history-dialog.tsx']
   const target = screenshotTarget(files)
   expect(target.clicks.at(-1)).toContain('menuitem')
-  expect(target.visible).toBe('role=dialog[name="执行记录"]')
+  expect(target.visible).toBe('role=dialog >> role=textbox[name="搜索执行记录"]')
   const custom = { clicks: ['#open'], visible: '[role=dialog]' }
   expect(screenshotTarget(files, `<!-- boai-screenshot ${JSON.stringify(custom)} -->`)).toEqual(custom)
   expect(() => screenshotTarget(files, '<!-- boai-screenshot {"clicks":[]} -->')).toThrow()
