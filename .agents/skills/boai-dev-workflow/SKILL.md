@@ -53,7 +53,7 @@ description: BOAI 日常开发、样式调整、Bug 修复和 PR 交付。按实
 
 - 按本次授权创建/更新同一PR，标题和正文围绕最终问题与结果，列出实际验证及未验范围。CI尚未结束就写“运行中”，不能用上次提交的结果冒充当前结果。
 - 当前 `Test` 随PR事件或Agent命令触发。普通PR在Linux上做类型/lint（文档仅差异检查），不运行应用build、Vitest或Electron。main合并后不再重复Test；后端/依赖/CI改动也不自动升级为全量。相关Vitest/BDD由本地Agent按本次影响选择，不机械复制到云端重复执行。
-- `Required checks` 汇总工程 Test。UI PR 创建、重开或推送后自动截一张 PNG，异步写回当前提交的 PR 正文。全局截图和 PR 截图均不做像素比较。
+- `Required checks` 汇总工程 Test。UI PR 创建、重开或推送后共用一次构建，自动将改动页面和全局主界面两张 PNG 写回当前提交的 PR 正文。全局截图和 PR 截图均不做像素比较。
 - Agent 创建 UI PR 时，若改动位于弹窗、抽屉或二级页面，用 [截图目标说明](../../../UI_TEST_CI.md#pr-截图目标) 指定导航和可见元素。UI 文件自动触发；路径漏检时由 Agent 执行 `gh workflow run ui-preview.yml --ref main -f pr=<编号>` 补录。
 - 预览按当前head核对源码与媒体；即使PR先自动合并，也继续补发同一head的结果，已有PR媒体继续保留。正文更新保留 `<!-- boai-ui-preview:begin -->` 与 `<!-- boai-ui-preview:end -->` 自动区块。运行中如实说明截图待生成；失败写回原因，不能把触发成功称为已有截图或视觉质量通过。
 - **普通交付：提交/推送、按授权设置自动合并、读回一次PR状态，然后报告并结束本轮；不轮询二十分钟，不等main复跑或UI preview。** 这不等于取消CI或已经合并。只有用户要求“等到通过/合并”“处理CI失败”时才持续跟进；此时先读失败日志，再定向修复同一PR。

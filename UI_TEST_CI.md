@@ -5,7 +5,7 @@
 | --- | --- | --- |
 | 本地开发 | 在独立 worktree 改动，按实际风险选择模块或组件测试。纯样式查看 diff 和必要效果 | 提交本次文件 |
 | 创建或更新 PR | Agent push 后创建 PR，后续 push 更新同一 PR。Test 执行 diff 检查，代码 PR 加 typecheck 和 lint | 合并门禁为 Required checks |
-| UI PR 预览 | GitHub 自动构建该 PR 的 Electron，在隔离数据中运行一个 Playwright-BDD 场景，向 PR 正文写入一张 PNG | 异步。若先合并，仍向同一提交的 PR 补图 |
+| UI PR 预览 | GitHub 自动构建该 PR 的 Electron，在同一 macOS job 运行两个隔离的 Playwright-BDD 场景。PR 正文展示改动页面和全局主界面各一张 PNG | 异步。若先合并，仍向同一提交的 PR 补图 |
 | 合并 main | GitHub 按分支保护合并 | main push 不重复启动 Test |
 | 正式 release | 版本提交合入后，Agent 运行 `gh workflow run test.yml --ref main`。macOS 执行类型/lint、构建、角色包和全量 Vitest；全局 BDD 打开应用、确认主导航可见并截一张图 | 完整 Test 成功，全局截图失败单独报告，不做像素比较 |
 | 发布 | Agent 从同一远程 main 提交的干净 worktree 运行 `pnpm release:local --publish`，打包、冒烟、签名、上传并核对 Release | 详见[发布技能](.agents/skills/boai-release/SKILL.md) |

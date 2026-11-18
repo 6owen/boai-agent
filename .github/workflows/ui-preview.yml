@@ -1,4 +1,4 @@
-# [OUTPUT]: One PNG of the current PR from an isolated Playwright-BDD scenario.
+# [OUTPUT]: Two PNGs per UI PR, one build: changed screen and fixed application smoke.
 name: UI preview
 
 on:
@@ -80,7 +80,8 @@ jobs:
       - name: Build BOAI
         working-directory: pr
         run: pnpm build
-      - name: Capture one PR screenshot
+      - name: Capture PR and global screenshots
+        id: capture
         working-directory: pr
         env:
           BOAI_SCREENSHOT_TARGET: ${{ needs.detect.outputs.target }}
@@ -89,15 +90,18 @@ jobs:
           # Use this workflow's capture steps even when replaying an older PR.
           cp ../ci/tests/e2e/features/ci-screenshot.feature tests/e2e/features/
           cp ../ci/tests/e2e/steps/ci-screenshot.steps.ts tests/e2e/steps/
-          pnpm test:bddgen
-          pnpm exec playwright test --grep @pr-screenshot --reporter=line
-          test -s ../out/preview.png
+          mkdir -p ../out
           git rev-parse HEAD > ../out/source-sha
-      - uses: actions/upload-artifact@v4
+          pnpm test:bddgen
+          pnpm exec playwright test --grep '@pr-screenshot|@global-screenshot' --reporter=line
+          test -s ../out/preview.png && test -s ../out/global.png
+      - if: always() && steps.capture.outcome != 'skipped'
+        uses: actions/upload-artifact@v4
         with:
           name: ui-preview
           path: |
             out/preview.png
+            out/global.png
             out/source-sha
           retention-days: 7
           if-no-files-found: error

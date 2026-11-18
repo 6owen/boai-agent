@@ -126,7 +126,7 @@ function git(args, cwd) {
 
 // The media branch keeps one commit. Retain published PR/SHA directories:
 // merged PRs and overlapping publishers must not lose linked screenshots.
-async function pushMedia(sha, dir, onlyScreenshot = false) {
+async function pushMedia(sha, dir, screenshotFiles) {
   const work = await fs.mkdtemp(path.join(os.tmpdir(), "ui-previews-"));
   const remote = `https://x-access-token:${token}@github.com/${repo}.git`;
   git(["init", "-q"], work);
@@ -141,8 +141,8 @@ async function pushMedia(sha, dir, onlyScreenshot = false) {
     } catch { /* the first one */ }
     const to = path.join(work, `pr-${pr}`, short(sha));
     await fs.mkdir(to, { recursive: true });
-    for (const f of onlyScreenshot ? ["preview.png"] : await fs.readdir(dir)) await fs.copyFile(path.join(dir, f), path.join(to, f));
-    if (!onlyScreenshot) await fs.writeFile(path.join(to, "index.html"), player(sha, JSON.parse(await fs.readFile(path.join(dir, "manifest.json"), "utf8"))));
+    for (const f of screenshotFiles ?? await fs.readdir(dir)) await fs.copyFile(path.join(dir, f), path.join(to, f));
+    if (!screenshotFiles) await fs.writeFile(path.join(to, "index.html"), player(sha, JSON.parse(await fs.readFile(path.join(dir, "manifest.json"), "utf8"))));
     await fs.writeFile(path.join(work, ".nojekyll"), "");
     await fs.writeFile(path.join(work, "index.html"), `<!doctype html><meta charset="utf-8"><title>BOAI UI previews</title><p>Screenshots and recordings of <a href="https://github.com/${repo}/pulls">${repo}</a> pull requests, made by .github/workflows/ui-preview.yml.</p>`);
     git(["checkout", "-q", "--orphan", `tmp-${attempt}`], work);
@@ -179,25 +179,37 @@ ${shots.map((x) => `<figure><img src="${esc(x.file)}" alt="${esc(x.caption)}"><f
 </main></html>`;
 }
 
-// CI accepts only the fixed PNG and its checkout SHA from the read-only job.
+// The read-only job supplies two fixed PNG names and the source checkout SHA.
 export async function publishScreenshot() {
   const sha = process.env.SHA;
   const p = await gh(`/repos/${repo}/pulls/${pr}`);
   if (!canPublish(p, sha)) return;
+  const dir = process.env.OUT_DIR;
+  const files = [];
+  const sections = [];
   try {
-    const dir = process.env.OUT_DIR;
-    if (process.env.RECORD_RESULT !== "success") throw Error("Screenshot job did not succeed");
-    const source = path.join(dir, "source-sha"), file = path.join(dir, "preview.png");
+    const source = path.join(dir, "source-sha");
     if (!(await fs.lstat(source)).isFile() || (await fs.readFile(source, "utf8")).trim() !== sha) throw Error("Screenshot source SHA mismatch");
-    const stat = await fs.lstat(file);
-    if (!stat.isFile() || stat.size > 16 * 1024 * 1024 || !(await fs.readFile(file)).subarray(0, 8).equals(Buffer.from("89504e470d0a1a0a", "hex"))) throw Error("Invalid screenshot PNG");
-    await pushMedia(sha, dir, true);
-    const url = `https://raw.githubusercontent.com/${repo}/${BRANCH}/pr-${pr}/${short(sha)}/preview.png`;
-    await setBlock(`${head(sha)}\n<img src="${url}" width="760" alt="本次 PR 的界面截图">`, undefined, sha);
+    const base = `https://raw.githubusercontent.com/${repo}/${BRANCH}/pr-${pr}/${short(sha)}`;
+    for (const [file, label] of [["preview.png", "本次改动页面"], ["global.png", "全局主界面"]]) {
+      const local = path.join(dir, file);
+      const stat = await fs.lstat(local).catch(() => null);
+      const valid = stat?.isFile() && stat.size <= 16 * 1024 * 1024 &&
+        (await fs.readFile(local)).subarray(0, 8).equals(Buffer.from("89504e470d0a1a0a", "hex"));
+      if (valid) {
+        files.push(file);
+        sections.push(`#### ${label}\n\n<img src="${base}/${file}" width="760" alt="${label}">`);
+      } else sections.push(`#### ${label}\n\n未取得有效截图。`);
+    }
+    if (files.length) await pushMedia(sha, dir, files);
   } catch (error) {
-    await setBlock(`${head(sha)}\n**截图失败**，请查看运行记录。`, undefined, sha);
+    await setBlock(`${head(sha)}\n**截图发布失败**，请查看运行记录。`, undefined, sha);
     throw error;
   }
+  const complete = files.length === 2 && process.env.RECORD_RESULT === "success";
+  if (!complete) sections.unshift("**截图验证未完成**，请查看运行记录。");
+  if (!await setBlock([head(sha), ...sections].join("\n\n"), undefined, sha)) return;
+  if (!complete) throw Error("PR screenshot run incomplete");
 }
 
 export async function publish() {

@@ -47,7 +47,7 @@ it('keeps untrusted PR execution apart from the trusted writer and engineering g
   expect(workflow.jobs.record.permissions).toEqual({ contents: 'read' })
   expect(workflow.jobs.publish.permissions).toEqual({ contents: 'write', 'pull-requests': 'write' })
   expect(JSON.stringify(workflow.jobs.record)).not.toMatch(/secrets\.|ffmpeg|playwright install/)
-  expect(JSON.stringify(workflow.jobs.record)).toContain('--grep @pr-screenshot')
+  expect(JSON.stringify(workflow.jobs.record)).toContain('@pr-screenshot|@global-screenshot')
   expect(workflow.jobs.publish.environment).toBe('ui-preview-publish')
   expect(JSON.stringify(workflow.jobs.record)).not.toContain('UI_PREVIEW_UPLOAD_TOKEN')
   for (const job of ['detect', 'record', 'publish']) expect(workflow.jobs[job].steps[0].with.ref).toBe('${{ github.sha }}')
@@ -328,4 +328,30 @@ it('opens the changed dialog before taking the single PR screenshot, with an exp
   const custom = { clicks: ['#open'], visible: '[role=dialog]' }
   expect(screenshotTarget(files, `<!-- boai-screenshot ${JSON.stringify(custom)} -->`)).toEqual(custom)
   expect(() => screenshotTarget(files, '<!-- boai-screenshot {"clicks":[]} -->')).toThrow()
+})
+
+it.each([true, false])('writes one section per screenshot and preserves partial evidence (target captured=%s)', async targetCaptured => {
+  const { publishScreenshot } = await publisher()
+  const dir = await mkdtemp(join(tmpdir(), 'boai-ci-shots-'))
+  try {
+    vi.stubEnv('OUT_DIR', dir)
+    vi.stubEnv('RECORD_RESULT', targetCaptured ? 'success' : 'failure')
+    await writeFile(join(dir, 'source-sha'), sha)
+    for (const name of targetCaptured ? ['preview.png', 'global.png'] : ['global.png']) {
+      await writeFile(join(dir, name), Buffer.from('89504e470d0a1a0a', 'hex'))
+    }
+    const request = vi.fn(async (_url: string, init: RequestInit) => new Response(JSON.stringify(
+      init.method === 'PATCH' ? {} : { state: 'closed', merged: true, head: { sha }, body: 'Author text' },
+    )))
+    vi.stubGlobal('fetch', request)
+    if (targetCaptured) await publishScreenshot()
+    else await expect(publishScreenshot()).rejects.toThrow('incomplete')
+    const patch = request.mock.calls.find(([, init]) => init.method === 'PATCH')!
+    const body = JSON.parse(patch[1].body as string).body as string
+    expect(body).toContain('Author text')
+    expect(body).toContain('/global.png')
+    expect(body.includes('/preview.png')).toBe(targetCaptured)
+    expect(body.includes('未取得有效截图')).toBe(!targetCaptured)
+    expect(body).not.toContain('.mp4')
+  } finally { await rm(dir, { recursive: true, force: true }) }
 })

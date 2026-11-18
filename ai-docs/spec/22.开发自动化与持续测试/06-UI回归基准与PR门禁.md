@@ -1,5 +1,5 @@
 <!--
-[OUTPUT]: 单张 PR 截图与单张全局启动截图分开，云端全量 Vitest 仅在 release 的 main 验证中执行。
+[OUTPUT]: 每个 UI PR 回填改动页面和全局主界面各一张截图，云端全量 Vitest 仅在 release 的 main 验证中执行。
 [OUTPUT]: 2026-11-17PR按文档/前端/完整分流，普通交付不等待CI；现行细则与耗时证据见UI_TEST_CI。
 [OUTPUT]: 2026-11-13 Test接固定三项UI行为与原件；预览完成度/source SHA/当前PR核对，部分媒体保持失败。
 [OUTPUT]: 2026-10-29用户要求git cpf显式快速合并入口，必要时临时解除并恢复管理员检查，不修改普通门禁。
@@ -13,7 +13,7 @@
 -->
 # Test 与 UI preview
 
-**现行流程**　普通 PR 在 Linux 运行类型和 lint，文档只检查 diff。UI PR 自动运行一个 Playwright-BDD 场景，将目标可见时的一张 PNG 写回正文。合并 main 后不复跑。准备正式 release 时由 Agent 在 main 触发完整 Test，运行全量 Vitest，并保存一张全局启动截图供审阅。 [CI 说明](../../../UI_TEST_CI.md)。下文保留历史实施记录。
+**现行流程**　普通 PR 在 Linux 运行类型和 lint，文档只检查 diff。UI PR 一次构建后运行两个 Playwright-BDD 场景，将本次改动页面和全局主界面的两张 PNG 一起写回正文。合并 main 后不复跑。准备正式 release 时由 Agent 在 main 触发完整 Test，运行全量 Vitest，并保存一张全局启动截图供审阅。 [CI 说明](../../../UI_TEST_CI.md)。下文保留历史实施记录。
 
 日常使用、常见状态与配置入口见 [UI_TEST_CI.md](../../../UI_TEST_CI.md)，与开发skill和本合同同步维护。
 
