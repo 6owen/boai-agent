@@ -17,6 +17,8 @@ async function capture(page: Page, name: string) {
 Then('启动隔离应用并保存一张主界面截图', async ({ runtime }) => {
   await runtime.start()
   await expect(runtime.page.getByRole('navigation', { name: '主导航' })).toBeVisible()
+  const home = runtime.page.locator('.conversation-layout .conversation-stage')
+  await expect(home.getByRole('img', { name: '等你开聊的小伙伴' })).toBeVisible()
   await capture(runtime.page, 'global.png')
 })
 
