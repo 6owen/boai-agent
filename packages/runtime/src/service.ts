@@ -207,6 +207,7 @@
  * [OUTPUT]: 图片/通用文件附件沿原授权与hash回执提交；图片仅以内存原生媒体供模型回答，通用文件不虚构文本，前端不依赖视觉能力。
  * [OUTPUT]: Independent employee profile/state and shared scene compilation; bobo management follows authenticated source beyond private chat.
  * [OUTPUT]: Bobo原文检索设置按revision保存，工具与预检共享独立授权来源及原记忆失效登记。
+ * [OUTPUT]: 员工入口固定主聊天，显式新话题的首发与回执同事务；旧bobo会话保留原ID与历史。
  * [INPUT]: 领域类型、IPC 合同、可见核心会话的有界标题更新、自动化事务投递、技能库导出、工作认领/预算、协作模型容量与业务模块。
  * [OUTPUT]: 启用的内置模型员工（含 bobo）默认具备浏览器工具调用资格，旧 false/缺字段不再门禁；ACP/停用拒绝，组织阶段及原工作/范围/代际边界保留，定时任务沿原occurrence授权。
  * [OUTPUT]: 内置浏览器窗口/登录由应用统一管理，人工开窗零业务记录；工具调用按run独立审计，业务清理不关窗口或清登录；当前浏览器可用性随判断投影。召回按实际版本/获知/输入来源校验，无关历史清空不取消工作，相关失效沿真实运行来源传播；依赖文件只传宿主即时核验的原成果路径。
@@ -304,7 +305,7 @@ import { reactionEmojis, type ReactionEmoji } from '@boai/shared/domain/message-
 import { AutomationNotifications } from './modules/automations/automation-notifications'
 import type { AutomationNoticeReceipt } from '@boai/shared/domain/automations'
 import type { StoredTraceSpan } from '@boai/shared/domain/traces'
-import { CONVERSATION_TITLE_MAX_LENGTH, conversationListUpdates, isChannelConversation, type ConversationListChange } from '@boai/shared/domain/conversation-list'
+import { CONVERSATION_TITLE_MAX_LENGTH, conversationListUpdates, isChannelConversation, isEmployeeMainChat, type ConversationListChange } from '@boai/shared/domain/conversation-list'
 import { contactTagIds } from '@boai/shared/domain/contact-list'
 import { ConversationHistory } from './modules/conversations/history'
 import { RequestError } from '@agentclientprotocol/sdk'
@@ -1081,6 +1082,7 @@ export class AppService {
       ;(this[name] as Map<string, { id: string }>) = new Map(values.map(value => [value.id, value]))
     }
     const updates: StoredRecord[] = []
+    await this.classifyLegacyCoreChats()
     for (const job of await this.store.load<{ id: string; status: string; error?: string }>('jobs')) if (['queued', 'running', 'waiting_approval'].includes(job.status)) { job.status = 'interrupted'; job.error = '旧版任务已中断，不会在升级后重放'; updates.push(record('jobs', job)) }
     for (const artifact of this.artifacts.values()) {
       const oldWorkspace = this.conversations.get(artifact.conversationId)?.workspacePath
@@ -1665,6 +1667,7 @@ export class AppService {
         case 'deleteSession': return this.deleteSession(z.object({ conversationId: id, requestId: id }).strict().parse(input))
         case 'getSessionReceipt': { const receipt = await sessionOperation(this.store, z.object({ requestId: id }).strict().parse(input).requestId); return receipt ? publicSessionReceipt(receipt) : null }
         case 'sendEmployeeMessage': return this.sendEmployeeMessage(z.object({ expectedExecutionPermission: executionPermissionSchema.optional(), materialUploads: submittedMaterialsSchema.optional(), apiModel: apiModelOverrideSchema.optional(), expectedProjectRevision: z.number().int().nonnegative().optional(), workingDirectory: directoryGrantSchema.shape.path.optional(), composerReferences: composerReferencesSchema.optional(), materialSelections: z.array(z.object({ id, revision: z.number().int().positive() }).strict()).max(MATERIAL_LIMITS.perMessage).optional(), employeeId: id, content: z.string().trim().max(100000), requestId: id }).strict().parse(input))
+        case 'startEmployeeTopic': return this.startEmployeeTopic(z.object({ requestId: id, employeeId: id, content: z.string().trim().min(1).max(100000), composerReferences: composerReferencesSchema.optional() }).strict().parse(input))
         case 'deleteConversation': return this.deleteGroup(lookupSchema.parse(input).id)
         case 'startCoreConversation': return this.startCoreConversation(z.union([
           z.object({ diagnosisTarget: taskDiagnosisTargetSchema.optional(), expectedExecutionPermission: executionPermissionSchema.optional(), materialUploads: submittedMaterialsSchema.optional(), apiModel: apiModelOverrideSchema.optional(), expectedProjectRevision: z.number().int().nonnegative().optional(), workingDirectory: directoryGrantSchema.shape.path.optional(), requestId: id, content: z.string().trim().max(100000), automationCreation: z.boolean().optional(), sourceCreation: z.boolean().optional(), composerReferences: composerReferencesSchema.optional() }).strict().refine(value => !!value.content || !!value.materialUploads?.length, '请输入消息或添加附件'),
@@ -1913,7 +1916,7 @@ export class AppService {
     return clone({ conversation, executionMirrors: this.conversationExecutionMirrors(conversation), materials: await this.materials.list(id), messages: pageMessages ?? this.conversationMessages(id), runs: [...this.runs.values()].filter(run => run.conversationId === id).sort((a, b) => a.createdAt.localeCompare(b.createdAt)), artifacts, ...this.scheduler.detail(id), ...await this.works.view(id) })
   }
   private conversationExecutionMirrors(target: Conversation): NonNullable<ConversationDetail['executionMirrors']> {
-    if (target.channel || target.mergedInto || target.purpose && target.purpose !== 'personal') return []
+    if (target.employeeChat === 'topic' || target.channel || target.mergedInto || target.purpose && target.purpose !== 'personal') return []
     const mirrors: NonNullable<ConversationDetail['executionMirrors']> = []
     for (const run of this.runs.values()) {
       if (!['execution', 'decision'].includes(run.phase ?? '') || run.status === 'completed' || run.phase === 'decision' && !['failed', 'cancelled', 'interrupted'].includes(run.status) || !run.triggerMessageId) continue
@@ -2757,24 +2760,73 @@ export class AppService {
     }
   }
 
-  private async startCoreConversation(input: StartCoreConversationInput, onAdmission?: (phase: 'preparing' | 'committing') => void) {
+  private async classifyLegacyCoreChats() {
+    const legacy = [...this.conversations.values()].filter(room => room.kind === 'direct' && room.purpose === 'core' &&
+      room.agentIds.length === 1 && room.agentIds[0] === CORE_AGENT_ID && !room.employeeChat && !room.mergedInto && !room.channel && !room.employeeTaskId)
+    if (!legacy.length) return
+    const teamChats = new Set((await this.store.load<CoreConversationStart>('coreConversationStarts')).filter(receipt => receipt.teamName).map(receipt => receipt.conversationId))
+    const ids = new Set(legacy.map(room => room.id))
+    const firstUserMessages = new Map<string, Message>()
+    const lastUserMessages = new Map<string, string>()
+    for (const message of this.messages.values()) {
+      if (!ids.has(message.conversationId) || message.senderType !== 'user' || message.channel || message.senderId !== 'user') continue
+      const first = firstUserMessages.get(message.conversationId)
+      if (!first || message.sequence < first.sequence) firstUserMessages.set(message.conversationId, message)
+      const last = lastUserMessages.get(message.conversationId) ?? ''
+      if (message.createdAt > last) lastUserMessages.set(message.conversationId, message.createdAt)
+    }
+    const ordinary = legacy.filter(room => {
+      if (room.automationCreation || room.sourceCreation || room.teamSetup || teamChats.has(room.id) || firstUserMessages.get(room.id)?.diagnosisTarget) {
+        room.employeeChat = 'special'
+        return false
+      }
+      return true
+    })
+    ordinary.sort((a, b) => Number(Boolean(a.list?.hidden)) - Number(Boolean(b.list?.hidden)) ||
+      (lastUserMessages.get(b.id) ?? '').localeCompare(lastUserMessages.get(a.id) ?? '') ||
+      b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id))
+    const main = [...this.conversations.values()].find(room => isEmployeeMainChat(room, CORE_AGENT_ID)) ?? ordinary[0]
+    for (const room of ordinary) room.employeeChat = room === main ? 'main' : 'topic'
+  }
+
+  private startCoreConversation(input: StartCoreConversationInput, onAdmission?: (phase: 'preparing' | 'committing') => void, role?: 'main') {
+    return this.startChatWithMessage(input, CORE_AGENT_ID, role, onAdmission)
+  }
+
+  private async startEmployeeTopic({ employeeId, requestId, content, composerReferences }: Methods['startEmployeeTopic']['input']) {
+    await this.startChatWithMessage({ requestId, content, ...(composerReferences ? { composerReferences } : {}) }, employeeId, 'topic')
+    return (await this.messageReceipt(requestId))!
+  }
+
+  private async startChatWithMessage(input: StartCoreConversationInput, employeeId: string, role?: 'main' | 'topic', onAdmission?: (phase: 'preparing' | 'committing') => void) {
     if (input.diagnosisTarget && (this.applicationAuthority.getStore() || input.automationCreation || input.sourceCreation)) fail('诊断目标仅接受本人发给bobo的普通消息')
     if (!input.team && !input.content.trim() && !input.materialUploads?.length) fail('请输入消息或添加附件')
     if (!input.team && input.automationCreation && input.sourceCreation) fail('创建会话不能同时配置计划与数据源')
     if (input.materialUploads?.length && input.content!.length > MATERIAL_LIMITS.messageTextCharacters) fail('带材料消息正文超过当前上限')
-    const fingerprint = createHash('sha256').update(JSON.stringify(submissionIdentity(input))).digest('hex')
+    const owner = this.getAgent(employeeId)
+    const core = isCoreAgent(owner)
+    const identity = submissionIdentity(input)
+    const fingerprint = createHash('sha256').update(JSON.stringify(role === 'topic' ? { employeeId, role, input: identity } : identity)).digest('hex')
     const prior = await this.coreConversationStart(input.requestId)
     if (prior) {
-      if (prior.receipt.fingerprint !== fingerprint) fail('requestId 已用于不同核心会话请求')
+      if (!core || prior.receipt.fingerprint !== fingerprint) fail('requestId 已用于不同核心会话请求')
       return clone(prior.conversation)
     }
-    if (await this.store.get('messageReceipts', input.requestId)) fail('requestId 已用于其他消息')
+    const messageStart = await this.store.get<MessageReceipt>('messageReceipts', input.requestId)
+    if (messageStart) {
+      if (core || messageStart.fingerprint !== fingerprint) fail('requestId 已用于其他消息')
+      const accepted = await this.messageReceipt(input.requestId)
+      return clone(this.getConversation(accepted!.conversationId))
+    }
     onAdmission?.('preparing')
-    assertExpectedExecutionPermission(this.getAgent(CORE_AGENT_ID), input.expectedExecutionPermission)
-    const agent = input.apiModel ? this.getAgent(CORE_AGENT_ID) : await this.ensureCoreConnection()
+    assertExpectedExecutionPermission(owner, input.expectedExecutionPermission)
+    if (!core && (!owner.active || owner.executionBackend?.kind === 'acp-local')) fail('此员工当前不支持开启聊天话题')
+    if (!core && ![...this.conversations.values()].some(room => isEmployeeMainChat(room, employeeId))) fail('请先打开员工主聊天，再新建话题')
+    const agent = core && !input.apiModel ? await this.ensureCoreConnection() : owner
     const conversationId = randomUUID(), timestamp = now()
     const content = input.team ? `请根据以下团队需求创建团队，并创建群聊。团队与群名称必须使用「${input.team.name}」。\n\n团队需求：\n${input.team.requirements}` : input.content!
-    const conversation: Conversation = { id: conversationId, kind: 'direct', purpose: 'core', ...(!input.team && input.automationCreation ? { automationCreation: true } : {}), ...(!input.team && input.sourceCreation ? { sourceCreation: true } : {}), title: input.team?.name ?? (input.content!.slice(0, 40) || input.materialUploads?.[0].name || '附件'), agentIds: [agent.id], sharedKnowledgeIds: [], mode: 'natural', memoryScope: 'employee', configVersion: 1, workspacePath: join(this.dataPath, 'workspaces', conversationId), createdAt: timestamp, updatedAt: timestamp }
+    const employeeChat = role ?? (input.team || input.automationCreation || input.sourceCreation || input.diagnosisTarget ? 'special' : 'topic')
+    const conversation: Conversation = { id: conversationId, kind: 'direct', purpose: core ? 'core' : 'personal', employeeChat, ...(!input.team && input.automationCreation ? { automationCreation: true } : {}), ...(!input.team && input.sourceCreation ? { sourceCreation: true } : {}), title: role === 'main' ? agent.name : input.team?.name ?? (input.content!.slice(0, 40) || input.materialUploads?.[0].name || '附件'), agentIds: [agent.id], sharedKnowledgeIds: [], mode: 'natural', memoryScope: 'employee', configVersion: 1, workspacePath: join(this.dataPath, 'workspaces', conversationId), createdAt: timestamp, updatedAt: timestamp }
     this.projectDirectories.initialize(conversation, [agent])
     const message = this.nextMessage(conversationId, { senderType: 'user', senderId: 'user', senderName: (await this.userProfile.get()).displayName, content, status: 'completed' })
     if (input.expectedExecutionPermission) message.permissionExpectation = this.prepareMessagePermission(input.expectedExecutionPermission, conversation, [])
@@ -2792,12 +2844,12 @@ export class AppService {
       const selections = input.materialUploads ? await this.prepareSubmittedMaterials(conversation, input.materialUploads, input.requestId, true) : undefined
       if (selections?.length) message.materialIds = selections.map(value => value.id)
       prepared = this.scheduler.prepare(conversation, message)
-      const records = [record('conversations', conversation), record('coreConversationStarts', receipt), record('messageReceipts', { id: input.requestId, fingerprint, conversationId, messageId: message.id } as MessageReceipt), record('messages', message), ...prepared.records]
+      const records = [...(core ? [record('coreConversationStarts', receipt)] : []), record('messageReceipts', { id: input.requestId, fingerprint, conversationId, messageId: message.id } as MessageReceipt), record('messages', message), ...prepared.records]
       await mkdir(join(this.dataPath, 'workspaces'), { recursive: true })
       await mkdir(conversation.workspacePath); workspaceCreated = true
       onAdmission?.('committing')
       await this.store.transaction(async tx => {
-        if (await tx.get('coreConversationStarts', input.requestId)) fail('核心会话请求已受理，请核对原会话')
+        if (await tx.get('coreConversationStarts', input.requestId) || await tx.get('messageReceipts', input.requestId)) fail('会话请求已受理，请核对原会话')
         if (input.diagnosisTarget) await this.validateDiagnosisTarget(tx, input.diagnosisTarget)
         if (input.composerReferences?.length) await this.validateComposerReferences(tx, conversation, input.composerReferences, true)
         await tx.put(record('conversations', conversation))
@@ -2806,7 +2858,7 @@ export class AppService {
       })
     } catch (error) {
       try {
-        const absent = await this.store.transaction(async tx => !await tx.get('conversations', conversationId) && !await tx.get('coreConversationStarts', input.requestId))
+        const absent = await this.store.transaction(async tx => !await tx.get('conversations', conversationId) && !await tx.get('messageReceipts', input.requestId))
         if (absent) {
           await this.store.transaction(tx => this.materials.invalidateConversation(tx, conversationId))
           await this.materials.cleanupConversation(conversationId)
@@ -2906,7 +2958,7 @@ export class AppService {
     }
     try {
       if (isCoreAgent(agent)) {
-        const existing = [...this.conversations.values()].filter(room => room.purpose === 'core' && !room.mergedInto && !room.automationCreation && !room.sourceCreation && !room.teamSetup).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.id.localeCompare(b.id))[0]
+        const existing = [...this.conversations.values()].find(room => isEmployeeMainChat(room, agent.id))
         if (!existing) fail('请先向核心助手发送首条消息建立会话；session create 不创建空的核心会话')
         await commit(this.getConversation(existing!.id), false)
       } else await this.saveConversation(conversationSchema.parse({ kind: 'direct', title: input.name ?? agent.name, agentIds: [agent.id] }), commit)
@@ -2957,9 +3009,10 @@ export class AppService {
     if (previous && input.expectedConfigVersion !== undefined && (previous.configVersion ?? 1) !== input.expectedConfigVersion) fail('群设置已更新，请刷新后保存')
     if (previous && previous.kind !== input.kind) fail('不能修改会话类型')
     if (previous?.purpose === 'core' && (input.agentIds.length !== 1 || input.agentIds[0] !== CORE_AGENT_ID)) fail('核心会话不能改绑其他员工')
+    if (previous?.employeeChat === 'topic' && (input.agentIds.length !== 1 || input.agentIds[0] !== previous.agentIds[0])) fail('独立话题不能改绑其他员工')
     if (!previous && input.kind === 'direct' && input.agentIds[0] === CORE_AGENT_ID) fail('请在核心助手中发送非空首条消息，再建立会话')
     if (!previous && input.kind === 'direct') {
-      const existing = [...this.conversations.values()].find(conversation => !conversation.mergedInto && conversation.kind === 'direct' && (conversation.mainPrivate || !conversation.channel) && conversation.purpose !== 'automation' && conversation.purpose !== 'core' && conversation.purpose !== 'channel-internal' && conversation.agentIds[0] === input.agentIds[0])
+      const existing = [...this.conversations.values()].find(conversation => isEmployeeMainChat(conversation, input.agentIds[0]))
       if (existing) { if (commit) await commit(this.getConversation(existing.id), false); return clone(existing) }
     }
     const conversationId = previous?.id ?? randomUUID()
@@ -2969,7 +3022,7 @@ export class AppService {
     if (!previous) this.projectDirectories.initialize(conversation, input.agentIds.map(id => this.getAgent(id)))
     else if (conversation.kind === 'group') conversation.projectSelections = Object.fromEntries(conversation.agentIds.map(id => [id, previous.agentIds.includes(id) ? previous.projectSelections?.[id] ?? legacyProjectSelection() : initialProjectSelection(this.getAgent(id))]))
     await mkdir(conversation.workspacePath, { recursive: true })
-    if (conversation.kind === 'direct' && !previous?.channel && conversation.purpose !== 'automation' && conversation.purpose !== 'core' && conversation.purpose !== 'channel-internal') conversation.mainPrivate = true
+    if (conversation.kind === 'direct' && conversation.employeeChat !== 'topic' && !previous?.channel && conversation.purpose !== 'automation' && conversation.purpose !== 'core' && conversation.purpose !== 'channel-internal') conversation.mainPrivate = true
     const removedMembers = previous?.agentIds.filter(id => !conversation.agentIds.includes(id)) ?? []
     const closingScopes = removedMembers.map(employeeId => `scope:${JSON.stringify([employeeId, conversation.id])}`)
     for (const scope of closingScopes) this.userWorkspaceClosures.add(scope)
@@ -3204,10 +3257,10 @@ export class AppService {
     let room = prior ? this.getConversation(prior.conversationId) : undefined
     if (room && (room.kind !== 'direct' || room.agentIds.length !== 1 || room.agentIds[0] !== agent.id)) fail('原请求属于其他员工或群聊')
     if (!room && isCoreAgent(agent)) {
-      room = [...this.conversations.values()].filter(value => value.purpose === 'core' && !value.mergedInto && !value.automationCreation && !value.sourceCreation && !value.teamSetup).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.id.localeCompare(b.id))[0]
+      room = [...this.conversations.values()].find(room => isEmployeeMainChat(room, agent.id))
       if (!room) {
         if (input.materialSelections?.length) fail('请先创建核心会话再发送附件')
-        await this.startCoreConversation({ requestId: input.requestId, content: input.content, ...(input.expectedExecutionPermission ? { expectedExecutionPermission: input.expectedExecutionPermission } : {}), ...(input.materialUploads ? { materialUploads: input.materialUploads } : {}), ...(input.composerReferences ? { composerReferences: input.composerReferences } : {}), ...(input.expectedProjectRevision !== undefined ? { expectedProjectRevision: input.expectedProjectRevision } : {}), ...(input.workingDirectory ? { workingDirectory: input.workingDirectory } : {}), ...(input.apiModel ? { apiModel: input.apiModel } : {}) })
+        await this.startCoreConversation({ requestId: input.requestId, content: input.content, ...(input.expectedExecutionPermission ? { expectedExecutionPermission: input.expectedExecutionPermission } : {}), ...(input.materialUploads ? { materialUploads: input.materialUploads } : {}), ...(input.composerReferences ? { composerReferences: input.composerReferences } : {}), ...(input.expectedProjectRevision !== undefined ? { expectedProjectRevision: input.expectedProjectRevision } : {}), ...(input.workingDirectory ? { workingDirectory: input.workingDirectory } : {}), ...(input.apiModel ? { apiModel: input.apiModel } : {}) }, undefined, 'main')
         return (await this.messageReceipt(input.requestId))!
       }
     }

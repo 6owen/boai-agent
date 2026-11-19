@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工明确新话题的首发沿消息请求与原受理回执。
  * [OUTPUT]: 增加主窗专用技能安装终端合同，不接受任意shell命令。
  * [OUTPUT]: openFile按材料/成果/知识身份请求系统默认、指定应用打开或文件管理器定位，路径由Main核对。
  * [OUTPUT]: Canvas私有宿主协议及人工草稿flush屏障，不开放公共CLI方法。
@@ -394,6 +395,7 @@ export interface Methods extends EmployeeTaskMethods, MessageQueueMethods, Conte
   chooseProjectDirectory: { input: undefined; output: string | null }
   updateConversationProject: { input: { conversationId: string; expectedRevision: number } & import('../domain/project-directory').ProjectChoice; output: Conversation }
   sendEmployeeMessage: { input: { expectedExecutionPermission?: import('../domain/execution').ExecutionPermission; materialUploads?: import('../domain/material-upload').SubmittedMaterial[]; materialSelections?: MaterialSelection[]; apiModel?: import('../domain/model-source').ApiModelOverride; expectedProjectRevision?: number; workingDirectory?: string; composerReferences?: import('../domain/composer-references').ComposerReference[]; employeeId: string; content: string; requestId: string }; output: Message }
+  startEmployeeTopic: { input: Pick<Methods['sendEmployeeMessage']['input'], 'employeeId' | 'content' | 'requestId' | 'composerReferences'>; output: Message }
   deleteConversation: { input: { id: string }; output: void }
   updateConversationList: { input: ConversationListChange; output: void }
   clearConversationHistory: { input: { id: string; hide: boolean }; output: void }

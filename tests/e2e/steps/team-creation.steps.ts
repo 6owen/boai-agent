@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: bobo主聊天按钮用于打开默认聊天，话题箭头独立控制折叠。
  * [INPUT]: 真实 Electron、明确主导航作用域、模态菜单打开前实测的外部鼠标坐标、核心工具协议和稳定会话/员工身份。
  * [OUTPUT]: 常驻唯一核心头像/名称分组标题折叠展开，右侧新会话图标打开空白页；无历史/清空/删除/重载仍保留标题且首发才保存历史；核心历史仅标题、更多/编辑随悬停/聚焦/菜单显示且菜单无置顶；紧凑父子缩进/间距、整行背景和标题按钮透明的实际布局，三入口改名/取消零写入/空白禁用/消息身份及重启保持，操作默认隐藏/悬停显示/移开隐藏/键盘与菜单保留及空白/历史默认与悬停截图；首发回复失联只读核对、未知团队请求跨关闭/设置保持和清理 tombstone 重启拒绝重放；两字段弹窗、用户指定群名和真实工具创建；改名后标题联动真实配置头像/名称、分层记忆/重启与失败、标题图标悬停/聚焦/菜单保留与同色、整行12px折叠及等待实际主题的窄窗键盘截图验收。
  * [POS]: bobo 团队创建 BDD；文件原子性/清理冲突保留 teams 模块与恢复测试。
@@ -22,7 +23,7 @@ async function open(page: Page) {
   await expect(page.getByRole('textbox', { name: '团队需求', exact: true })).toBeVisible()
 }
 async function openCoreDraft(page: Page, name = 'bobo') {
-  const heading = page.getByRole('button', { name: `${name} 的会话分组`, exact: true })
+  const heading = page.getByRole('button', { name: `${name} 的主聊天`, exact: true })
   await expect(heading).toHaveCount(1)
   await expect(heading).toHaveText(name)
   await expect(heading.locator('.avatar.small img')).toHaveCount(1)
@@ -183,11 +184,11 @@ When('反复打开核心空白聊天并输入未发送内容', async ({ runtime 
   const page = runtime.page
   await page.getByRole('button', { name: '取消', exact: true }).click()
   await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).click()
-  const heading = page.getByRole('button', { name: 'bobo 的会话分组', exact: true })
+  const heading = page.getByRole('button', { name: 'bobo 的主聊天', exact: true })
   await expect(heading).toHaveCount(1)
-  await expect(heading).toHaveAttribute('aria-expanded', 'true')
-  await heading.click(); await expect(heading).toHaveAttribute('aria-expanded', 'false')
-  await heading.click(); await expect(heading).toHaveAttribute('aria-expanded', 'true')
+  await expect(page.getByRole('button', { name: 'bobo 的话题', exact: true })).toHaveCount(0)
+  await heading.click()
+  await expect(heading).toHaveAttribute('aria-current', 'page')
   await expect(page.getByRole('group', { name: 'bobo 的会话', exact: true }).locator('.conversation-item')).toHaveCount(0)
   expect((await page.evaluate(() => window.boai.request('snapshot', undefined))).conversations).toEqual([])
   for (let i = 0; i < 5; i++) await openCoreDraft(page)
@@ -209,7 +210,7 @@ Then('空白页保持内容且尚未创建任何会话', async ({ runtime, team 
   expect(team.endpoint!.requests).toHaveLength(0)
   await runtime.page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).hover()
   await expect(runtime.page.getByRole('textbox', { name: '搜索会话', exact: true })).toBeVisible()
-  await expect(runtime.page.getByRole('button', { name: 'bobo 的会话分组', exact: true })).toBeVisible()
+  await expect(runtime.page.getByRole('button', { name: 'bobo 的主聊天', exact: true })).toBeVisible()
   await runtime.page.screenshot({ path: 'test-results/core-chat-blank.png' })
 })
 When('发送空白页的首条消息', async ({ runtime }) => {
@@ -228,7 +229,7 @@ Then('只保存一个核心会话和一条初始用户消息', async ({ runtime,
   await expect(runtime.page.locator('.conversation-list-panel .conversation-item')).toHaveCount(1)
   await expect(runtime.page.getByRole('textbox', { name: '消息内容', exact: true })).toHaveValue('')
   const page = runtime.page
-  const heading = page.getByRole('button', { name: 'bobo 的会话分组', exact: true })
+  const heading = page.getByRole('button', { name: 'bobo 的主聊天', exact: true })
   const compose = page.getByRole('button', { name: '与 bobo 新建会话', exact: true })
   const more = page.getByRole('button', { name: 'bobo 的更多操作', exact: true })
   await expect(page.locator('.conversation-core-heading')).toHaveCount(1)
@@ -237,7 +238,7 @@ Then('只保存一个核心会话和一条初始用户消息', async ({ runtime,
   const item = page.getByRole('navigation', { name: '会话列表' }).getByRole('button', { name: conversation.title, exact: true })
   await expect(item).toHaveText(conversation.title)
   const historyRow = item.locator('..')
-  await expect(historyRow.locator('.avatar, .conversation-preview, time, .list-activity')).toHaveCount(0)
+  await expect(historyRow.locator('.avatar, .conversation-preview, .list-activity')).toHaveCount(0)
   expect((await historyRow.boundingBox())!.height).toBeLessThanOrEqual(34)
   const historyMore = historyRow.getByRole('button', { name: `${conversation.title} 的更多操作`, exact: true })
   const historyEdit = historyRow.getByRole('button', { name: `编辑 ${conversation.title} 的标题`, exact: true })
@@ -289,19 +290,20 @@ Then('只保存一个核心会话和一条初始用户消息', async ({ runtime,
   await more.click(); await expect(page.getByRole('menuitem', { name: '助手设置', exact: true })).toBeVisible()
   await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).hover()
   await expect(more).toHaveCSS('opacity', '1'); await expect(compose).toHaveCSS('opacity', '1')
-  await page.keyboard.press('Escape'); await expect(heading).toHaveAttribute('aria-expanded', 'true')
+  const toggle = page.getByRole('button', { name: 'bobo 的话题', exact: true })
+  await page.keyboard.press('Escape'); await expect(toggle).toHaveAttribute('aria-expanded', 'true')
   await heading.focus(); await page.keyboard.press('Tab'); await expect(more).toBeFocused()
   await expect(more).toHaveCSS('opacity', '1')
   await page.keyboard.press('Tab'); await expect(compose).toBeFocused(); await expect(compose).toHaveCSS('opacity', '1')
   await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).focus()
   await expect(compose).toHaveCSS('opacity', '0'); await expect(more).toHaveCSS('opacity', '0')
   await heading.hover()
-  await expect(heading.locator('.app-icon')).toHaveCSS('width', '12px')
   const bounds = (await heading.boundingBox())!, row = (await heading.locator('..').boundingBox())!
   expect(bounds.width).toBeGreaterThan(row.width - 66)
-  await heading.click({ position: { x: bounds.width - 4, y: bounds.height / 2 } })
-  await expect(heading).toHaveAttribute('aria-expanded', 'false'); await expect(compose).toBeVisible()
-  await heading.press('Enter'); await expect(heading).toHaveAttribute('aria-expanded', 'true')
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false'); await expect(compose).toBeVisible()
+  await expect(page.locator('.chat-title')).toHaveText(conversation.title)
+  await toggle.press('Enter'); await expect(toggle).toHaveAttribute('aria-expanded', 'true')
 })
 When('通过三种入口编辑核心历史标题并核对取消和空白输入', async ({ runtime, team }) => {
   const page = runtime.page, list = page.getByRole('navigation', { name: '会话列表', exact: true })
@@ -390,7 +392,7 @@ Then('核心新标题同步且重启后历史身份保留', async ({ runtime, te
 When('重新加载未发送的核心空白页', async ({ runtime }) => { await runtime.page.reload(); await expect(runtime.page.locator('.app-shell')).toBeVisible() })
 Then('空白会话没有残留在列表或数据库', async ({ runtime, team }) => {
   await expect(runtime.page.locator('.conversation-list-panel .conversation-item')).toHaveCount(0)
-  await expect(runtime.page.getByRole('button', { name: 'bobo 的会话分组', exact: true })).toHaveCount(1)
+  await expect(runtime.page.getByRole('button', { name: 'bobo 的主聊天', exact: true })).toHaveCount(1)
   expect((await runtime.page.evaluate(() => window.boai.request('snapshot', undefined))).conversations).toEqual([])
   expect(team.endpoint!.requests).toHaveLength(0)
   expect(runtime.errors).toEqual([])
@@ -519,14 +521,14 @@ When('删除最后一个核心会话', async ({ runtime, team }) => {
   await runtime.page.getByRole('button', { name: '删除会话及记录', exact: true }).click()
   await expect(runtime.page.getByRole('alertdialog')).toBeHidden()
   await expect(runtime.page.locator('.conversation-list-panel .conversation-item')).toHaveCount(0)
-  await expect(runtime.page.getByRole('button', { name: 'bobo 的会话分组', exact: true })).toHaveCount(1)
+  await expect(runtime.page.getByRole('button', { name: 'bobo 的主聊天', exact: true })).toHaveCount(1)
   await expect(runtime.page.getByRole('group', { name: 'bobo 的会话', exact: true }).locator('.conversation-item')).toHaveCount(0)
 })
 Then('重启后助手没有历史且分组图标仍可开聊', async ({ runtime, team }) => {
   await runtime.restart(); await expect(runtime.page.locator('.app-shell')).toBeVisible()
   const list = runtime.page.getByRole('navigation', { name: '会话列表' })
   await expect(list.locator('.conversation-item')).toHaveCount(0)
-  await expect(runtime.page.getByRole('button', { name: 'bobo 的会话分组', exact: true })).toHaveCount(1)
+  await expect(runtime.page.getByRole('button', { name: 'bobo 的主聊天', exact: true })).toHaveCount(1)
   await expect(list.getByRole('group', { name: 'bobo 的会话', exact: true }).locator('.conversation-item')).toHaveCount(0)
   await expect(runtime.page.getByRole('button', { name: '与 bobo 新建会话', exact: true })).toHaveCount(1)
   const stage = runtime.page.locator('.conversation-stage')

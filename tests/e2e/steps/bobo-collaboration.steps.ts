@@ -29,7 +29,7 @@ export const test = base.extend<{ boboCollaboration: State }>({ boboCollaboratio
 const { Given, When, Then } = createBdd(test)
 const fixtureOf = (state: State) => state.fixture!
 async function start(runtime: Desktop, state: State, content: string) {
-  await runtime.page.getByRole('button', { name: 'bobo 的会话分组', exact: true }).hover()
+  await runtime.page.getByRole('button', { name: 'bobo 的主聊天', exact: true }).hover()
   await runtime.page.getByRole('button', { name: '与 bobo 新建会话', exact: true }).click()
   const composer = runtime.page.getByRole('textbox', { name: '消息内容', exact: true })
   await composer.fill(content); await composer.press('Enter')

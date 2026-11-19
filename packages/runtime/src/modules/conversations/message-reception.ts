@@ -3,6 +3,7 @@
  * [OUTPUT]: 旧独立会话被同一员工任务继续使用时，按每条消息的真实occurrence投影，避免归到首轮执行。
  * [OUTPUT]: 人工委派要求/回复只在任务会话接收，不回灌主聊天；原定时投递及清空屏障保持。
  * [OUTPUT]: 公开任务消息身份共用确定性函数，执行镜像按原消息直接核源，不扫描聊天历史。
+ * [OUTPUT]: 隐藏或展开的话题独立收信，定时公开投影沿员工主聊天。
  * [INPUT]: 公共消息写事务、真实会话/参与者/来源和原阅读事务。
  * [OUTPUT]: 任何新公开消息与对应IM入口可见性同事务；隔离任务按固定归属投影，原回执屏障/执行上下文保持。
  * [POS]: 会话公共消息接收规则，不依赖页面/运行后端或模型是否回答。
@@ -15,6 +16,7 @@ import type { AutomationOccurrence, Conversation, DigitalAgent, Message } from '
 import type { MessageCommit, RecordTransaction } from '../../adapters/storage/product-store'
 import type { ConversationReadingRepository } from './reading-repository'
 import { isCoreAgent } from '@boai/shared/domain/core-agent'
+import { isEmployeeMainChat } from '@boai/shared/domain/conversation-list'
 import { isEmployeeTaskAssignment, type TrackedTask } from '@boai/shared/domain/tracked-tasks'
 import { initialProjectSelection } from '../workspaces/project-directory'
 
@@ -30,7 +32,7 @@ export async function receiveConversationMessages(tx: RecordTransaction, changes
   const mainPrivate = async (agentId: string) => {
     const agent = await tx.get<DigitalAgent>('agents', agentId)
     if (!agent || isCoreAgent(agent)) return
-    const existing = (await tx.list<Conversation>('conversations')).find(room => !room.mergedInto && !room.channel && room.kind === 'direct' && (!room.purpose || room.purpose === 'personal') && room.agentIds.length === 1 && room.agentIds[0] === agentId)
+    const existing = (await tx.list<Conversation>('conversations')).find(room => !room.channel && isEmployeeMainChat(room, agentId))
     if (existing) return await tx.get('conversationCleanup', existing.id) ? undefined : existing
     const id = randomUUID(), timestamp = new Date().toISOString()
     const room: Conversation = { id, kind: 'direct', mainPrivate: true, title: agent.name, agentIds: [agentId], mode: 'natural', workspacePath: join(dataPath, 'workspaces', id), projectSelection: initialProjectSelection(agent), sharedKnowledgeIds: [], configVersion: 1, createdAt: timestamp, updatedAt: timestamp }

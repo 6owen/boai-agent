@@ -16,13 +16,13 @@ const room = (id: string, extra: Partial<Conversation> = {}) => ({ id, kind: 'di
 const snapshot = (conversations: Conversation[]) => ({ agents: [{ id: 'codex', name: 'Codex' }], conversations }) as Snapshot
 it('opens bobo tasks alongside the current core chat without switching to another core conversation or creating one', async () => {
   const request = vi.fn(), coreTarget: EmployeeTaskTarget = { type: 'employee-tasks', id: 'bobo', requestId: 'open-core-tasks' }
-  const rooms = [room('newer-core', { purpose: 'core', agentIds: ['bobo'], updatedAt: '2026-11-03T08:00:00Z' }), room('current-core', { purpose: 'core', agentIds: ['bobo'], updatedAt: '2026-11-02T08:00:00Z' })]
+  const rooms = [room('primary-core', { purpose: 'core', employeeChat: 'main', agentIds: ['bobo'], updatedAt: '2026-11-03T08:00:00Z' }), room('current-core', { purpose: 'core', employeeChat: 'topic', agentIds: ['bobo'], updatedAt: '2026-11-02T08:00:00Z' })]
   const state = { agents: [{ id: 'bobo', systemRole: 'core', name: 'bobo' }], conversations: rooms } as Snapshot
   expect(isEmployeeTaskHost(rooms[1], 'bobo')).toBe(true)
   const result = await resolveEmployeeTaskDestination({ api: { request } as unknown as DesktopApi, snapshot: state, target: coreTarget, conversationId: 'current-core', current: () => true })
   expect(result).toEqual({ route: { page: 'conversations', conversationId: 'current-core' }, scope: 'conversations', target: coreTarget })
   expect(request).not.toHaveBeenCalled()
-  expect((await resolveEmployeeTaskDestination({ api: { request } as unknown as DesktopApi, snapshot: state, target: coreTarget, current: () => true }))?.route.conversationId).toBe('newer-core')
+  expect((await resolveEmployeeTaskDestination({ api: { request } as unknown as DesktopApi, snapshot: state, target: coreTarget, current: () => true }))?.route.conversationId).toBe('primary-core')
   expect(request).not.toHaveBeenCalled()
 })
 it('keeps bobo tasks available before the first core chat without manufacturing an empty conversation', async () => {
@@ -30,7 +30,7 @@ it('keeps bobo tasks available before the first core chat without manufacturing 
   const rooms = [room('task-context', { purpose: 'automation', agentIds: ['bobo'] }), room('internal', { purpose: 'channel-internal', agentIds: ['bobo'] }), room('group', { kind: 'group', purpose: 'core', agentIds: ['bobo'] })]
   const state = { agents: [{ id: 'bobo', systemRole: 'core', name: 'bobo' }], conversations: rooms } as Snapshot
   const result = await resolveEmployeeTaskDestination({ api: { request } as unknown as DesktopApi, snapshot: state, target: coreTarget, current: () => true })
-  expect(result).toEqual({ route: { page: 'conversations', conversationId: null, coreDraft: true }, scope: 'conversations', target: coreTarget })
+  expect(result).toEqual({ route: { page: 'conversations', conversationId: null, employeeChatDraft: { employeeId: 'bobo', role: 'main' } }, scope: 'conversations', target: coreTarget })
   expect(request).not.toHaveBeenCalled()
   for (const candidate of rooms) expect(isEmployeeTaskHost(candidate, 'bobo')).toBe(false)
 })

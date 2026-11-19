@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 独立话题首发进入受信本人请求分发。
  * [OUTPUT]: 技能安装终端明确为非公开方法，仅由主窗口单独准入。
  * [OUTPUT]: 公开本人按材料/成果/知识身份外部打开入口，Main沿原业务读取核源和固定应用清单处理。
  * [OUTPUT]: Canvas宿主和主窗口私有方法不进入公共准入。
@@ -69,6 +70,7 @@ const methods = {
   cancelContextHandoff: true,
   updateConversationProject: true,
   sendEmployeeMessage: true,
+  startEmployeeTopic: true,
   listGatewayImports: true,
   cancelGatewayImport: true,
   confirmGatewayImport: true,

@@ -329,7 +329,7 @@ Then('背景覆盖窗口且聊天与设置保持可操作', async ({ runtime, sc
   await expect(page.getByText('请选择 PNG、JPEG 或 WebP 图片。', { exact: false })).toBeVisible()
   expect((await page.evaluate(() => window.boai.request('getAppearance', undefined))).preferences.background.assetId).toBe(scenario.scenicAsset)
   await page.locator('.navigation-rail').getByRole('button', { name: '会话', exact: true }).click()
-  await page.getByRole('button', { name: 'bobo 的会话分组', exact: true }).hover()
+  await page.getByRole('button', { name: 'bobo 的主聊天', exact: true }).hover()
   await page.getByRole('button', { name: '与 bobo 新建会话', exact: true }).click()
   await expect(page.locator('.chat-composer')).toBeVisible()
   await page.getByRole('textbox', { name: '消息内容', exact: true }).fill('背景换肤验收：输入框仍可编辑。')

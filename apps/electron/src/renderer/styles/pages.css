@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工主聊天独立选中，行尾箭头展开话题，原聊天行组件与主题表面继续共用。
  * [OUTPUT]: 项目目录控件纳入员工select/input统一尺寸，使用网页检索同一select-trigger皮肤；移除rem高度差异。
  * [OUTPUT]: 项目目录标题、字段标签与图标沿系统默认样式，目录控件沿网页检索同一皮肤。
  * [OUTPUT]: 员工编辑分区的空态沿技能卡12px/14px留白，数据源未绑定时保持完整卡片高度。
@@ -345,16 +346,23 @@
 .conversation-section-row.conversation-core-section-row { position:relative;flex-shrink:0;margin:10px 0 3px }
 .conversation-core-section-row:is(:hover,:focus-within,[data-menu-open=true]) { background:transparent }
 .conversation-core-section-row>.conversation-core-heading { flex:1;min-width:0;width:auto;margin:0 }
-.conversation-core-heading>.conversation-copy { margin-right:34px }
-.conversation-core-section-row>.conversation-core-heading.soft-button-ghost:not(:disabled):not([aria-disabled=true]) { background:transparent }
-.conversation-section-row.conversation-core-section-row>.conversation-section-action { position:absolute;inset-block:0;right:28px;margin-block:auto;color:var(--muted-foreground) }
+.conversation-core-heading>.conversation-copy { padding-right:28px }
+.conversation-core-section-row.conversation-core-section-row>.conversation-section-action { position:absolute;inset-block:0;right:30px;margin-block:auto;z-index:1 }
+.conversation-employee-row { position:relative }
+.conversation-employee-row .conversation-copy { padding-right:28px }
+.conversation-topic-toggle.soft-button { color:var(--muted-foreground) }
+.conversation-employee-row>.conversation-topic-toggle { position:absolute;right:4px;top:10px }
+.conversation-topic-toggle>.app-icon { transition:transform .2s ease }
+.conversation-topic-toggle[aria-expanded=true]>.app-icon { transform:rotate(90deg) }
+@media (prefers-reduced-motion: reduce) { .conversation-topic-toggle>.app-icon { transition:none } }
 .conversation-list-panel .conversation-list { margin-top:0 }
 .conversation-list .conversation-section-heading { margin-top:4px }
 .conversation-core-history { padding-left:12px }
 .conversation-item.conversation-core-item { --core-action-surface:var(--list);position:relative;min-height:32px;gap:2px;margin-bottom:0;padding:2px 4px 2px 8px }
 .conversation-item.conversation-core-item:hover { --core-action-surface:var(--accent) }
 .conversation-item.conversation-core-item.selected { --core-action-surface:var(--selection);background:var(--selection) }
-.conversation-core-title { display:flex;flex:1;min-width:0;min-height:28px;align-items:center;text-align:left;background:transparent;font-size:var(--text-ui-secondary) }
+.conversation-core-title { display:flex;flex:1;min-width:0;min-height:28px;align-items:center;justify-content:space-between;gap:6px;text-align:left;background:transparent;font-size:var(--text-ui-secondary) }
+.conversation-core-title time { flex-shrink:0;color:var(--muted-foreground);font-size:var(--text-ui-caption) }
 .conversation-item.conversation-core-item>.conversation-core-title.soft-button:is(:hover,:active,:focus-visible,[aria-current=page]) { background:transparent }
 .conversation-core-actions { position:absolute;top:2px;right:4px;bottom:2px;display:flex;align-items:center;gap:2px;background:var(--core-action-surface);opacity:0;pointer-events:none }
 .conversation-core-actions::before { content:'';position:absolute;top:0;bottom:0;right:100%;width:12px;background:linear-gradient(to right,transparent,var(--core-action-surface));pointer-events:none }
