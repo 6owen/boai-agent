@@ -11,6 +11,7 @@
  * [OUTPUT]: 2026-10-15渠道私聊/群聊复用会话label折叠；搜索临时展开，明确定位展开目标分组，取消横向筛选Tabs。
  * [OUTPUT]: 2026-10-14现行分离合同：主列表按员工/BOAI群显示，员工渠道页私聊/群筛选及真实新回复提示；渠道分组一次读取，避免逐员工重复排序。
  * [OUTPUT]: 员工行打开固定主聊天，独立箭头展开该员工的话题；话题可搜索和编辑标题。
+ * [OUTPUT]: 员工行尾话题箭头共用 icon-xs，群组选中仍打开原群聊。
  * [INPUT]: 会话/员工快照、已发送消息摘要、列表更新回调与统一 UI 组件与共用清理确认弹窗。
  * [OUTPUT]: 渠道会话单列、显示接入员工身份，拖拽和置顶不影响普通/核心分类。
  * [OUTPUT]: 常驻会话名称输入与核心助手真实头像/名称的唯一折叠分组，右键管理与右侧新会话图标；核心历史紧凑小缩进、单一背景，默认标题占满行宽，更多/编辑随悬停、聚焦或菜单打开覆盖末尾且不改变标题宽度，行内图标/右键/更多共用编辑标题，普通会话保持头像和预览及置顶；标题右侧加号只保留员工/群聊，名称筛选临时展开分组并禁用拖拽，清除后保留原折叠；全局检索入口与 Dialog 由 Shell 承载。
@@ -166,7 +167,7 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
     return <Collapsible key={conversation.id} open={open} onOpenChange={value => { if (!search) setOpenEmployeeTopics(previous => ({ ...previous, [employeeId]: value })) }}>
       <div className="conversation-employee-row">
         {renderConversation(conversation)}
-        <CollapsibleTrigger render={<Button variant="ghost" size="icon-sm" className="conversation-topic-toggle" aria-label={`${conversation.title} 的话题`} title="展开或收起话题" />}><ChevronRight /></CollapsibleTrigger>
+        <CollapsibleTrigger render={<Button variant="ghost" size="icon-xs" className="conversation-topic-toggle" aria-label={`${conversation.title} 的话题`} title="展开或收起话题" />}><ChevronRight /></CollapsibleTrigger>
       </div>
       <CollapsibleContent><div className="conversation-core-history" role="group" aria-label={`${conversation.title} 的话题列表`}>{shownTopics.map(renderConversation)}</div></CollapsibleContent>
     </Collapsible>
@@ -184,7 +185,7 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
           <span className="conversation-copy"><span className="conversation-title">{coreName}</span><span className="conversation-preview">{(coreMain && (previews[coreMain.id] || coreMain.lastMessagePreview)) || coreAgent?.role || '数字员工'}</span></span>
         </Button>
         <Button variant="ghost" size="icon-sm" className="conversation-section-action" disabled={busy} aria-label={`与 ${coreName} 新建会话`} title="新话题" onClick={onCreateCore}><SquarePen /></Button>
-        {core.length > 0 && <CollapsibleTrigger render={<Button variant="ghost" size="icon-sm" className="conversation-topic-toggle" aria-label={`${coreName} 的话题`} title="展开或收起话题" />}><ChevronRight /></CollapsibleTrigger>}
+        {core.length > 0 && <CollapsibleTrigger render={<Button variant="ghost" size="icon-xs" className="conversation-topic-toggle" aria-label={`${coreName} 的话题`} title="展开或收起话题" />}><ChevronRight /></CollapsibleTrigger>}
       </ContextMenuTrigger><ContextMenuContent className="w-40"><ContextMenuGroup>
         <ContextMenuItem disabled={busy} onClick={onCreateCore}><SquarePen />新话题</ContextMenuItem>
         <ContextMenuItem onClick={onConfigureCore}><Settings />助手设置</ContextMenuItem>

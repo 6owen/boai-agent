@@ -4,6 +4,7 @@
  * [OUTPUT]: 员工配置与置顶共组、清理独立，导航仍沿明确员工身份。
  * [OUTPUT]: 本轮覆盖复制/员工入口、定时运行防连点、失败过程、严格私有判断及保留原预算的显式继续；实际范围以各用例为准。
  * [OUTPUT]: 员工行点击与折叠动作分离，展开后可进入独立话题。
+ * [OUTPUT]: 群组侧栏直达原会话，话题展开只出现在员工行。
  * [INPUT]: 生产ConversationList/清理确认弹窗、隔离快照与清理回调。
  * [OUTPUT]: 核心助手右键菜单新增/设置入口及无渠道入口；批量确认固定完整核心分组、不受搜索影响，删除/清空标记、失败停止/继续和空分组禁用回归。
  * [POS]: 会话列表前端交互回归，不读取用户数据、不运行Electron或E2E。
@@ -131,5 +132,7 @@ it('keeps main chat navigation and topic expansion independent for bobo and ordi
   expect(props.onSelect).not.toHaveBeenCalled()
   await act(async () => byName('天气话题').click())
   await act(async () => byName('employee').click())
-  expect(vi.mocked(props.onSelect).mock.calls).toEqual([['天气话题'], ['employee']])
+  expect(host.querySelector('button[aria-label="group 的话题"]')).toBeNull()
+  await act(async () => byName('group').click())
+  expect(vi.mocked(props.onSelect).mock.calls).toEqual([['天气话题'], ['employee'], ['group']])
 })
