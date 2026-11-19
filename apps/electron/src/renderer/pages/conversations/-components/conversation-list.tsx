@@ -12,6 +12,7 @@
  * [OUTPUT]: 2026-10-14现行分离合同：主列表按员工/BOAI群显示，员工渠道页私聊/群筛选及真实新回复提示；渠道分组一次读取，避免逐员工重复排序。
  * [OUTPUT]: 员工行打开固定主聊天，独立箭头展开该员工的话题；话题可搜索和编辑标题。
  * [OUTPUT]: 员工行尾话题箭头共用 icon-xs，群组选中仍打开原群聊。
+ * [OUTPUT]: 当前会话为子话题时标记所属员工，收起话题列表后保持归属提示。
  * [INPUT]: 会话/员工快照、已发送消息摘要、列表更新回调与统一 UI 组件与共用清理确认弹窗。
  * [OUTPUT]: 渠道会话单列、显示接入员工身份，拖拽和置顶不影响普通/核心分类。
  * [OUTPUT]: 常驻会话名称输入与核心助手真实头像/名称的唯一折叠分组，右键管理与右侧新会话图标；核心历史紧凑小缩进、单一背景，默认标题占满行宽，更多/编辑随悬停、聚焦或菜单打开覆盖末尾且不改变标题宽度，行内图标/右键/更多共用编辑标题，普通会话保持头像和预览及置顶；标题右侧加号只保留员工/群聊，名称筛选临时展开分组并禁用拖拽，清除后保留原折叠；全局检索入口与 Dialog 由 Shell 承载。
@@ -84,6 +85,7 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
   const [confirmation, setConfirmation] = useState<ConversationHistoryTarget | null>(null)
   const confirm = (conversation: Conversation, hide: boolean) => setConfirmation({ conversation, hide })
   const visible = sortedConversations(snapshot.conversations, messageTimes)
+  const selectedTopic = visible.find(room => room.id === selectedId && room.employeeChat === 'topic')
   const channelsByAgent = new Map<string, Conversation[]>()
   const topicsByAgent = new Map<string, Conversation[]>()
   for (const room of visible) {
@@ -106,6 +108,7 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
   const coreAgent = snapshot.agents.find(isCoreAgent), coreName = coreAgent?.name ?? CORE_AGENT_DEFAULT_NAME
   const coreMain = snapshot.conversations.find(room => isEmployeeMainChat(room, CORE_AGENT_ID))
   const allCore = visible.filter(room => isCoreConversation(room) && !isChannelConversation(room))
+  const coreTopicActive = selectedId !== coreMain?.id && allCore.some(room => room.id === selectedId)
   const core = allCore.filter(room => room.id !== coreMain?.id && matches(room))
   const ordinary = visibleConversations.filter(room => !isCoreConversation(room) && !isChannelConversation(room))
   for (const id of topicsByAgent.keys()) {
@@ -118,6 +121,7 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
   const renderConversation = (conversation: Conversation) => {
         const coreConversation = isCoreConversation(conversation)
         const compact = coreConversation || conversation.employeeChat === 'topic'
+        const topicActive = !channelAgent && selectedTopic && isEmployeeMainChat(conversation, selectedTopic.agentIds[0])
         const pin = () => onChange({ id: conversation.id, action: 'pin', pinned: !conversation.list?.pinned })
         const agent = snapshot.agents.find(a => a.id === conversation.agentIds[0])
         const messageTime = [messageTimes[conversation.id] ?? '', conversation.lastMessageAt ?? ''].sort().at(-1)!
@@ -138,8 +142,8 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
               </DropdownMenu>
               <Button variant="ghost" size="icon-sm" className="conversation-core-action" disabled={busy} aria-label={`编辑 ${conversation.title} 的标题`} title="编辑标题" onClick={() => onEditTitle(conversation)}><Pencil /></Button>
               </div>
-            </ContextMenuTrigger> : <ContextMenuTrigger render={<Button variant="ghost" size="content" className={cn('conversation-item', { selected: selectedId === conversation.id, 'drag-list-dragging': dragging })} />} aria-label={title(conversation)}
-              {...dragProps} aria-current={selectedId === conversation.id ? 'page' : undefined} aria-description={`${conversation.list?.pinned ? '已置顶。' : ''}可拖拽排序，或按 Alt 加上下方向键移动。右键打开菜单。`}
+            </ContextMenuTrigger> : <ContextMenuTrigger render={<Button variant="ghost" size="content" className={cn('conversation-item', { selected: selectedId === conversation.id, 'drag-list-dragging': dragging })} data-active-topic={topicActive || undefined} />} aria-label={title(conversation)}
+              {...dragProps} aria-current={selectedId === conversation.id ? 'page' : undefined} aria-description={`${topicActive ? '当前会话是此员工的话题。' : ''}${conversation.list?.pinned ? '已置顶。' : ''}可拖拽排序，或按 Alt 加上下方向键移动。右键打开菜单。`}
               onClick={() => { if (!dragging) onSelect(conversation.id) }}>
               {conversation.kind === 'group' && !isChannelConversation(conversation) ? <GroupAvatar members={members} /> : <Avatar name={agent?.name ?? conversation.title} seed={agent?.id} avatar={agent?.avatar} color={agent?.color} />}
               <span className="conversation-copy"><span className="conversation-title">{title(conversation)}
@@ -180,7 +184,7 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
     <InputGroup><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput aria-label="搜索会话" placeholder="搜索会话名称" value={query} onChange={event => setQuery(event.target.value)} /></InputGroup>
     <Collapsible className="flex min-h-0 flex-1 flex-col" open={Boolean(search) || coreOpen} onOpenChange={open => { if (!search) setCoreOpen(open) }}>
       {!channelAgent && <ContextMenu onOpenChange={setCoreMenuOpen}><ContextMenuTrigger render={<div className="conversation-section-row conversation-core-section-row" data-menu-open={coreMenuOpen || undefined} />}>
-        <Button variant="ghost" size="content" className={cn('conversation-item conversation-core-heading', { selected: coreMain?.id === selectedId || !coreMain && coreMainDraft })} aria-label={`${coreName} 的主聊天`} aria-current={coreMain?.id === selectedId || !coreMain && coreMainDraft ? 'page' : undefined} onClick={onOpenCore}>
+        <Button variant="ghost" size="content" className={cn('conversation-item conversation-core-heading', { selected: coreMain?.id === selectedId || !coreMain && coreMainDraft })} aria-label={`${coreName} 的主聊天`} aria-current={coreMain?.id === selectedId || !coreMain && coreMainDraft ? 'page' : undefined} data-active-topic={coreTopicActive || undefined} aria-description={coreTopicActive ? '当前会话是此员工的话题。' : undefined} onClick={onOpenCore}>
           <Avatar name={coreName} seed={coreAgent?.id} avatar={coreAgent?.avatar} color={coreAgent?.color} />
           <span className="conversation-copy"><span className="conversation-title">{coreName}</span><span className="conversation-preview">{(coreMain && (previews[coreMain.id] || coreMain.lastMessagePreview)) || coreAgent?.role || '数字员工'}</span></span>
         </Button>
