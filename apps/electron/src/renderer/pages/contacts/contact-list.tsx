@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 通讯录检索复用技能页CatalogSearch，标题右侧按剩余宽度展开，新增菜单仍位于最右。
  * [OUTPUT]: 员工和群聊右键菜单统一使用高级配置，基础配置在资料页就地编辑。
  * [INPUT]: 员工/群聊快照、独立通讯录偏好与资料/编辑/发消息回调。
  * [OUTPUT]: 通讯录群聊只列BOAI群，外部渠道在会话页管理查看，不提供本地群成员编辑。
@@ -15,15 +16,15 @@ import { isChannelConversation } from '@boai/shared/domain/conversation-list'
 import type { DesktopApi } from '@boai/shared/ipc'
 import { Avatar, Banner, useMutation } from '@/components/common'
 import { AddContactMenu } from '@/components/common/add-contact-menu'
+import { CatalogSearch } from '@/components/common/catalog-search'
 import { DragList, DragListItem } from '@/components/common/drag-list'
 import { GroupAvatar } from '@/components/common/group-avatar'
-import { ChevronRight, Contact, MessageCircle, Search, Settings, Trash2 } from '@/components/icons'
+import { ChevronRight, Contact, MessageCircle, Settings, Trash2 } from '@/components/icons'
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { ContextMenu, ContextMenuContent, ContextMenuGroup, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from '@/components/ui/context-menu'
 import { DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
-import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
 import { ContactManagerDialog } from './contact-manager'
 import { useContactList } from './use-contact-list'
 
@@ -82,13 +83,12 @@ export function ContactList({ api, snapshot, selected, busy, onSelect, onMessage
   </ContextMenu>}</DragListItem>
   const renderAgents = (agents: DigitalAgent[]) => agents.map(agent => row({ kind: 'agent', id: agent.id }, agent.name, agent.role || '数字员工', <Avatar name={agent.name} seed={agent.id} avatar={agent.avatar} color={agent.color} />))
   return <aside className="contacts-list" aria-label="通讯录列表">
-    <div className="list-heading"><h2>通讯录</h2><div className="list-heading-actions">
+    <div className="list-heading sidebar-search-heading"><h2>通讯录</h2><CatalogSearch label="搜索通讯录" placeholder="搜索联系人或群聊" value={query} onChange={setQuery} /><div className="list-heading-actions">
       <AddContactMenu onCreate={onCreate} onCreateTeam={onCreateTeam}>
         <DropdownMenuSeparator />
         <DropdownMenuItem disabled={disabled} onClick={() => setManagerOpen(true)}><Contact />通讯录管理</DropdownMenuItem>
       </AddContactMenu>
     </div></div>
-    <InputGroup><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput aria-label="搜索通讯录" placeholder="搜索联系人或群聊" value={query} onChange={event => setQuery(event.target.value)} /></InputGroup>
     {preferences.error && <Banner>{preferences.error}</Banner>}
     {mutation.error && !deleting && <Banner>{mutation.error}</Banner>}
     <div className="contacts-sections">

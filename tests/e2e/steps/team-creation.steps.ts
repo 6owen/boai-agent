@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 空白页验证会话标题搜索入口，默认不展开输入；原零会话/草稿/模型请求断言保持。
  * [INPUT]: 真实 Electron、明确主导航作用域、模态菜单打开前实测的外部鼠标坐标、核心工具协议和稳定会话/员工身份。
  * [OUTPUT]: 常驻唯一核心头像/名称分组标题折叠展开，右侧新会话图标打开空白页；无历史/清空/删除/重载仍保留标题且首发才保存历史；核心历史仅标题、更多/编辑随悬停/聚焦/菜单显示且菜单无置顶；紧凑父子缩进/间距、整行背景和标题按钮透明的实际布局，三入口改名/取消零写入/空白禁用/消息身份及重启保持，操作默认隐藏/悬停显示/移开隐藏/键盘与菜单保留及空白/历史默认与悬停截图；首发回复失联只读核对、未知团队请求跨关闭/设置保持和清理 tombstone 重启拒绝重放；两字段弹窗、用户指定群名和真实工具创建；改名后标题联动真实配置头像/名称、分层记忆/重启与失败、标题图标悬停/聚焦/菜单保留与同色、整行12px折叠及等待实际主题的窄窗键盘截图验收。
  * [POS]: bobo 团队创建 BDD；文件原子性/清理冲突保留 teams 模块与恢复测试。
@@ -208,7 +209,7 @@ Then('空白页保持内容且尚未创建任何会话', async ({ runtime, team 
   expect((await runtime.page.evaluate(() => window.boai.request('snapshot', undefined))).conversations).toEqual([])
   expect(team.endpoint!.requests).toHaveLength(0)
   await runtime.page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).hover()
-  await expect(runtime.page.getByRole('textbox', { name: '搜索会话', exact: true })).toBeVisible()
+  await expect(runtime.page.getByRole('button', { name: '搜索会话', exact: true })).toHaveAttribute('aria-expanded', 'false')
   await expect(runtime.page.getByRole('button', { name: 'bobo 的会话分组', exact: true })).toBeVisible()
   await runtime.page.screenshot({ path: 'test-results/core-chat-blank.png' })
 })
