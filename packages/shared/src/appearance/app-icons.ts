@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Preset avatar identities and the JSON-typed icon manifest, loadable by Node 24 as well as the renderer build.
+ * [INPUT]: Preset avatar identities and the JSON manifest with named brand logos.
  * [OUTPUT]: Stable icon choices and explicit tray asset mapping; independent Dock/tray/installed status with monotonic sequence.
  * [POS]: Appearance app icon catalog; the binary assets live in resources/app-icons.
  * [PROTOCOL]: Update this Header and the owning .folder.md when this file changes.
@@ -9,11 +9,14 @@ import manifest from './app-icon-manifest.json' with { type: 'json' }
 
 const available = new Set(manifest.icons.map(icon => icon.id))
 export const defaultAppIconId = manifest.defaultId
-export const appIconPresets = avatarPresets.map(avatar => ({
-  id: `avatar-${avatar.id}`,
-  avatarId: avatar.id,
-  name: avatar.name,
-})).filter(icon => available.has(icon.id))
+export const appIconPresets = [
+  ...avatarPresets.map(avatar => ({
+    id: `avatar-${avatar.id}`,
+    avatarId: avatar.id,
+    name: avatar.name,
+  })).filter(icon => available.has(icon.id)),
+  ...manifest.icons.flatMap(icon => icon.name === undefined ? [] : [{ id: icon.id, name: icon.name }]),
+]
 export type AppIconId = string
 export function isAppIconId(value: unknown): value is AppIconId {
   return typeof value === 'string' && available.has(value)
