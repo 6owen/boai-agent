@@ -1,5 +1,4 @@
 /*
- * [OUTPUT]: 搜索通讯录/会话通过标题图标展开后输入，沿原过滤、详情身份、草稿和会话复用断言。
  * [OUTPUT]: 群配置解散按标题定位Popover确认；原取消保留草稿、清理范围及终态断言保持。
  * [OUTPUT]: 原会话草稿使用共享messageDraft精确读富文本正文，兼容当前群/单聊编辑器而不降低内容断言。
  * [OUTPUT]: 所有已选详情按指定员工/群名精确核验，保留身份边界，不以通用名称控件可见代替。
@@ -69,10 +68,6 @@ async function openContacts(runtime: Desktop) {
   const people = list.getByRole('group', { name: '联系人', exact: true })
   const groups = list.getByRole('group', { name: '群聊', exact: true })
   await expect(groups.getByRole('button', { name: '内容协作群' })).toBeVisible()
-  const searchButton = list.getByRole('button', { name: '搜索通讯录', exact: true })
-  await expect(searchButton).toHaveAttribute('aria-expanded', 'false')
-  await searchButton.click()
-  await expect(list.getByRole('textbox', { name: '搜索通讯录' })).toBeFocused()
   expect((await page.evaluate(() => window.boai.request('getContactList', undefined))).categories).toEqual([])
   await expectFlatContacts(list)
   await expect(people.locator('.conversation-item')).toHaveCount(3)
@@ -176,8 +171,7 @@ async function reuseDirectConversation(previous: Awaited<ReturnType<typeof editC
   await detail.getByRole('button', { name: '发消息', exact: true }).click()
   await expect.poll(() => messageDraft(input)).toBe('通讯录往返后保留这份草稿')
   await expect(search).toHaveCount(0)
-  await page.getByRole('button', { name: '搜索会话', exact: true }).click()
-  await expect(page.getByRole('textbox', { name: '搜索会话', exact: true })).toBeFocused()
+  await expect(page.getByRole('textbox', { name: '搜索会话', exact: true })).toBeVisible()
   await expect(page.getByRole('textbox', { name: '搜索会话', exact: true })).toHaveValue('')
   await expect(page.locator('.conversation-item.selected')).toContainText('研究员')
   expect((await snapshot()).conversations).toHaveLength(2)

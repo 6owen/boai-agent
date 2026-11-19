@@ -1,5 +1,4 @@
 /*
- * [OUTPUT]: 标题搜索先点击展开并聚焦，空值失焦收起；原名称过滤、折叠恢复与排序/身份断言保持。
  * [INPUT]: 会话管理中文场景、普通检索 Dialog、隔离 Electron fixture 与产品 IPC。
  * [OUTPUT]: 侧栏标题只保留添加入口，检索位于全局顶栏浏览器右侧，侧栏收起及跨页仍能检索并回到确切会话，加号仅员工/群聊，常驻名称输入与唯一核心头像/名称分组标题与右侧新会话图标；名称筛选暂时展开且禁止子集重排、清除恢复原折叠；Dialog 搜索折叠会话不改变原折叠选择、定位后键盘换序保留非匹配会话；会话行计数/键盘排序排除核心分类导航按钮；无核心历史时仍保留分组标题；整行折叠触发器与12px过渡箭头；单聊文本框和群聊真实编辑器保持同一草稿断言；空态仅保留透明毛绒伙伴图片并验证加载与背景透明；启动/重载忽略旧选中偏好、删除当前后空态与删除其他会话保留当前；原生鼠标排序先等待分组实际展开且高度过渡结束，避免自动悬停滚动改变取点；忽略无限光标动画的稳定截图、置顶/普通组折叠与按实际成员查询的搜索可见性、右键管理、清理后旧请求不可重放且新请求仍可交流、重启保留删除结果、通讯录创建与头像布局验证。
  * [POS]: 会话列表 BDD 步骤；进程生命周期复用 Desktop。
@@ -74,14 +73,10 @@ Given('三个群聊出现在会话列表且全局顶栏提供检索入口', asyn
   await expect(runtime.page.getByRole('menu')).toBeHidden()
   await expect(runtime.page.getByRole('button', { name: '新建', exact: true })).toBeFocused()
 })
-When('标题搜索展开筛选会话且清除恢复折叠', async ({ runtime }) => {
+When('常驻名称输入筛选会话且清除恢复折叠', async ({ runtime }) => {
   const page = runtime.page, panel = page.locator('.conversation-list-panel')
-  const searchButton = panel.getByRole('button', { name: '搜索会话', exact: true })
-  await expect(searchButton).toHaveAttribute('aria-expanded', 'false')
-  await searchButton.click()
   const input = panel.getByRole('textbox', { name: '搜索会话', exact: true })
   await expect(input).toBeVisible()
-  await expect(input).toBeFocused()
   await expect(input).toHaveAttribute('placeholder', '搜索会话名称')
   const core = (await snapshot(runtime)).agents.find(agent => agent.id === 'bobo' && agent.systemRole === 'core')!
   const entry = panel.getByRole('button', { name: `${core.name} 的会话分组`, exact: true })
@@ -93,7 +88,6 @@ When('标题搜索展开筛选会话且清除恢复折叠', async ({ runtime }) 
   const group = list(runtime).getByRole('group', { name: '普通会话', exact: true })
   const before = await titles(runtime)
   await heading.click(); await expect(group).toBeHidden()
-  await searchButton.click()
   await input.fill('协作')
   await expect(group).toBeVisible()
   await expect.poll(() => titles(runtime)).toEqual(before.filter(title => title.includes('协作')))
@@ -108,7 +102,6 @@ When('标题搜索展开筛选会话且清除恢复折叠', async ({ runtime }) 
   expect((await snapshot(runtime)).conversations).toHaveLength(3)
   await input.fill(''); await expect(group).toBeHidden()
   await heading.click(); await expect(group).toBeVisible()
-  await expect(searchButton).toHaveAttribute('aria-expanded', 'false')
   await expect.poll(() => titles(runtime)).toEqual(before)
 })
 When('把最后一个会话拖到首位并置顶另一个会话', async ({ runtime, listScenario }) => {

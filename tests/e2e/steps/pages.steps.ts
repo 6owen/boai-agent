@@ -1,5 +1,4 @@
 /*
- * [OUTPUT]: 通讯录从标题搜索图标展开并聚焦，保留同员工筛选与配置/新增菜单断言。
  * [OUTPUT]: 设置入口沿本人菜单的其他配置二级菜单选择模型连接，原业务断言保持。
  * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
  * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
@@ -110,7 +109,7 @@ async function searchEmployee(previous: Awaited<ReturnType<typeof saveEmployeeCo
   let { page, errors, dialog, revisedRole } = previous
   await page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '通讯录', exact: true }).click()
   const search = page.getByRole('textbox', { name: '搜索通讯录' })
-  await page.getByRole('button', { name: '搜索通讯录', exact: true }).click()
+  await search.focus()
   await expect(search).toBeFocused()
   await search.fill('组件联调员工')
   const list = page.getByRole('complementary', { name: '通讯录列表' })
