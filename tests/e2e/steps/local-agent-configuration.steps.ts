@@ -65,7 +65,7 @@ Then('本机核心助手未知保存保持首发草稿并在两次重启后只�
   const kind = employee.executionBackend!.kind, real = test.info().annotations.some(a => a.type === 'model-mode' && a.description === 'real-provider')
   const core = async () => (await snapshot()).agents.find(a => a.id === 'bobo')!
   await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).click()
-  await page.getByRole('button', { name: 'bobo 的会话分组', exact: true }).hover()
+  await page.getByRole('button', { name: 'bobo 的主聊天', exact: true }).hover()
   await page.getByRole('button', { name: 'bobo 的更多操作', exact: true }).click()
   await page.getByRole('menuitem', { name: '助手设置', exact: true }).click()
   await page.getByRole('combobox', { name: '执行后端', exact: true }).click()
@@ -83,7 +83,7 @@ Then('本机核心助手未知保存保持首发草稿并在两次重启后只�
   const editor = () => page.locator('.detail-content:visible')
   const blank = async () => {
     await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).click()
-    await page.getByRole('button', { name: 'bobo 的会话分组', exact: true }).hover()
+    await page.getByRole('button', { name: 'bobo 的主聊天', exact: true }).hover()
     await page.getByRole('button', { name: '与 bobo 新建会话', exact: true }).click()
     await page.getByRole('textbox', { name: '消息内容', exact: true }).fill(draft)
   }

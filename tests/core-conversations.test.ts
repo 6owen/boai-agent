@@ -2,6 +2,7 @@
  * [OUTPUT]: 旧库管理技能夹具预先绑定模型，版本断言仅检查管理标签不改员工配置。
  * [OUTPUT]: 旧库夹具移除新版初始化标记，发送参数受IPC类型约束；核对绑定及版本保持、按轮管理文档、版本伪造/普通员工拒绝。
  * [OUTPUT]: 核心首发技能引用必须已绑定，拒绝时不创建会话或请求回执。
+ * [OUTPUT]: 主聊天和独立话题首发、回执、旧bobo主聊天选定及重启续接回归。
  * [INPUT]: 真实 AppService、SQLite、工作区与可控核心助手执行。
  * [OUTPUT]: 非空首发/具名团队请求同事务与空输入零对象、权威回执只读核对、可靠回滚空目录清理/未知提交保留、清空/删除最小回执不重放；并发/重启幂等和用户名称不可被模型覆盖；文件准备阻塞时停止及时持久受理、实际退出前容量不释放且不发布；原子团队发布与跨会话分层记忆的业务不变量。
  * [POS]: bobo 宿主集成验收，不替代 Mastra 协议和 Electron BDD。
@@ -15,7 +16,7 @@ import { AppService } from '../packages/runtime/src/service'
 import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
 import { ConversationHistory } from '../packages/runtime/src/modules/conversations/history'
 import type { AgentEngine, EngineContext } from '../packages/runtime/src/contracts'
-import type { Conversation, ConversationDetail, MemoryView, Snapshot } from '../packages/shared/src/domain'
+import type { Conversation, ConversationDetail, DigitalAgent, MemoryView, Message, Snapshot } from '../packages/shared/src/domain'
 import type { Methods } from '../packages/shared/src/ipc'
 import { writingPlan } from './fixtures/team-planner'
 
@@ -163,6 +164,64 @@ test('普通非空首发按用户正文创建会话；并发/重启同请求只�
   expect(await restarted.service.handle('startCoreConversation', input)).toMatchObject({ id: conversation.id })
   expect(restarted.engine.contexts).toEqual([])
   await expect(restarted.service.handle('startCoreConversation', { ...input, content: '不同内容' })).rejects.toThrow('requestId')
+})
+
+
+test('bobo 和普通员工按固定主聊天收信，显式话题独立首发并按原请求重试', async () => {
+  const { service, root } = await setup()
+  const connection = (await snapshot(service)).connections[0]
+  const employee = await service.handle('saveAgent', {
+    name: '天气助手', role: '', instructions: '', color: '#aabbcc', connectionId: connection.id, modelId: 'fixture',
+    skillIds: [], knowledgeIds: [], allowCommands: false, active: true,
+  }) as DigitalAgent
+  for (const employeeId of ['bobo', employee.id]) {
+    const input = { employeeId, content: '主聊天第一条', requestId: `${employeeId}-main-start` }
+    const first = await service.handle('sendEmployeeMessage', input) as Message
+    expect(await service.handle('sendEmployeeMessage', input)).toMatchObject({ id: first.id })
+    const topicInput = { employeeId, content: '独立话题第一条', requestId: `${employeeId}-topic-start` }
+    const [topic, duplicate] = await Promise.all([service.handle('startEmployeeTopic', topicInput), service.handle('startEmployeeTopic', topicInput)]) as Message[]
+    expect(topic.id).toBe(duplicate.id)
+    expect(topic.conversationId).not.toBe(first.conversationId)
+    await expect(service.handle('startEmployeeTopic', { ...topicInput, content: '换了正文' })).rejects.toThrow('requestId')
+    expect(await service.handle('sendMessage', { conversationId: topic.conversationId, mentionIds: [], requestId: `${employeeId}-topic-next`, content: '继续原话题' })).toMatchObject({ conversationId: topic.conversationId })
+    expect(await service.handle('sendEmployeeMessage', { ...input, requestId: `${employeeId}-main-next`, content: '回到主聊天' })).toMatchObject({ conversationId: first.conversationId })
+    const rooms = (await snapshot(service)).conversations.filter(room => room.agentIds[0] === employeeId)
+    expect(rooms).toHaveLength(2)
+    expect(rooms.find(room => room.id === topic.conversationId)).toMatchObject({ employeeChat: 'topic' })
+    for (const room of rooms) await settled(service, room)
+    expect((await detail(service, rooms.find(room => room.id === first.conversationId)!)).messages.filter(message => message.senderType === 'user').map(message => message.content)).toEqual(['主聊天第一条', '回到主聊天'])
+  }
+  await service.close()
+  const restarted = await open(root)
+  for (const employeeId of ['bobo', employee.id]) {
+    const first = await restarted.service.handle('getMessageReceipt', { requestId: `${employeeId}-main-start` }) as Message
+    expect(await restarted.service.handle('sendEmployeeMessage', { employeeId, requestId: `${employeeId}-after-restart`, content: '重启后继续主聊天' })).toMatchObject({ conversationId: first.conversationId })
+  }
+})
+
+test('旧 bobo 普通对话按实际发言选定主聊天，有历史的专用流程独立保留', async () => {
+  const { service, root } = await setup()
+  const ordinary = await service.handle('startCoreConversation', { requestId: 'legacy-ordinary', content: '日常主聊天' }) as Conversation
+  const other = await service.handle('startCoreConversation', { requestId: 'legacy-other', content: '旧话题' }) as Conversation
+  const team = await service.handle('startCoreConversation', { requestId: 'legacy-team', team: { name: '历史团队', requirements: '创建工作团队' } }) as Conversation
+  for (const room of [ordinary, other, team]) await settled(service, room)
+  const sent = await service.handle('sendMessage', { requestId: 'legacy-later', conversationId: ordinary.id, content: '最后实际发言', mentionIds: [] }) as Message
+  await settled(service, ordinary)
+  await service.close()
+  const store = new ProductStore(join(root, 'boai.sqlite')); await store.init()
+  try {
+    const rooms = await store.load<Conversation>('conversations')
+    await store.write(rooms.map(room => ({ collection: 'conversations', id: room.id, value: { ...room, employeeChat: undefined, ...(room.id === other.id ? { updatedAt: '2099-01-01T00:00:00Z' } : {}) } })))
+  } finally { await store.close() }
+  const restarted = await open(root)
+  const rooms = (await snapshot(restarted.service)).conversations
+  expect(rooms).toEqual(expect.arrayContaining([
+    expect.objectContaining({ id: ordinary.id, employeeChat: 'main' }),
+    expect.objectContaining({ id: other.id, employeeChat: 'topic' }),
+    expect.objectContaining({ id: team.id, employeeChat: 'special' }),
+  ]))
+  expect((await detail(restarted.service, ordinary)).messages.some(message => message.id === sent.id)).toBe(true)
+  expect(await restarted.service.handle('sendEmployeeMessage', { employeeId: 'bobo', requestId: 'legacy-continue', content: '续接旧主聊天' })).toMatchObject({ conversationId: ordinary.id })
 })
 
 test('首发事务写入失败同时回滚会话、消息与受理回执；同请求可明确重试且名称留在权威回执', async () => {

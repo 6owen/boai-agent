@@ -52,7 +52,7 @@ Then('真实活动Claude核心从底部{string}后保留原组织子成果并两
   const editor = () => runtime.page.locator('.detail-content:visible')
   const initial = await snapshot(), existing = initial.agents.find(agent => agent.id === state.employeeId)!
   await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).click()
-  await page.getByRole('button', { name: 'bobo 的会话分组', exact: true }).hover()
+  await page.getByRole('button', { name: 'bobo 的主聊天', exact: true }).hover()
   await page.getByRole('button', { name: 'bobo 的更多操作', exact: true }).click()
   await page.getByRole('menuitem', { name: '助手设置', exact: true }).click()
   await editor().getByRole('combobox', { name: '执行后端', exact: true }).click()
@@ -104,7 +104,7 @@ Then('真实活动Claude核心从底部{string}后保留原组织子成果并两
   let installed = false, scenarioFailure: unknown, prepared: OriginalFile | undefined, childOriginal: OriginalFile | undefined
   const completedNotes: OriginalFile[] = []
   try {
-    await page.getByRole('button', { name: 'bobo 的会话分组', exact: true }).hover()
+    await page.getByRole('button', { name: 'bobo 的主聊天', exact: true }).hover()
     await page.getByRole('button', { name: '与 bobo 新建会话', exact: true }).click()
     await page.getByRole('textbox', { name: '消息内容', exact: true }).fill(request)
     await page.getByRole('button', { name: '发送消息', exact: true }).click()
@@ -288,7 +288,7 @@ Then('真实活动Claude核心从底部{string}后保留原组织子成果并两
       for (const file of completedNotes) await unchanged(file)
       await runtime.reviewData(`真实活动核心保存第${index}次受控重启零重放`, { index, records: await records() })
     }
-    await runtime.page.getByRole('button', { name: 'bobo 的会话分组', exact: true }).hover()
+    await runtime.page.getByRole('button', { name: 'bobo 的主聊天', exact: true }).hover()
     await runtime.page.getByRole('button', { name: '与 bobo 新建会话', exact: true }).click()
     const explicit = `这是两次重启后明确发送的新普通交流。只复述“${state.token}”并简短确认当前职责，不执行工具、不继续之前的组织工作、不保存长期记忆。`
     await runtime.page.getByRole('textbox', { name: '消息内容', exact: true }).fill(explicit)

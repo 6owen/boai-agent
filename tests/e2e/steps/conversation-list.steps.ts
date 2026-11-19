@@ -79,7 +79,7 @@ When('常驻名称输入筛选会话且清除恢复折叠', async ({ runtime }) 
   await expect(input).toBeVisible()
   await expect(input).toHaveAttribute('placeholder', '搜索会话名称')
   const core = (await snapshot(runtime)).agents.find(agent => agent.id === 'bobo' && agent.systemRole === 'core')!
-  const entry = panel.getByRole('button', { name: `${core.name} 的会话分组`, exact: true })
+  const entry = panel.getByRole('button', { name: `${core.name} 的主聊天`, exact: true })
   await expect(entry).toHaveText(core.name)
   await expect(entry.locator('.avatar.small img')).toHaveCount(1)
   await expect.poll(() => entry.locator('img').evaluate(image => (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0)).toBe(true)
@@ -317,7 +317,7 @@ When('选中会话后重新加载页面', async ({ runtime }) => {
 })
 Then('会话默认未选中并显示伙伴插画', async ({ runtime }) => {
   await expect(list(runtime).locator('[aria-current=page]')).toHaveCount(0)
-  await expect(runtime.page.getByRole('button', { name: 'bobo 的会话分组', exact: true })).toHaveCount(1)
+  await expect(runtime.page.getByRole('button', { name: 'bobo 的主聊天', exact: true })).toHaveCount(1)
   await expect(list(runtime).getByRole('group', { name: 'bobo 的会话', exact: true }).locator('.conversation-item')).toHaveCount(0)
   const stage = runtime.page.locator('.conversation-stage')
   await expect(stage).toHaveText('')

@@ -48,7 +48,7 @@ async function mixedCoreMembers(runtime: Desktop, state: { employeeId?: string; 
   expect(codex).toMatchObject({ executionBackend: { kind: 'codex-local', profileId: codexProfile.id }, connectionId: '', allowCommands: false })
   const childEmployee = coreKind === 'Claude' ? codex : claude
   await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).click()
-  await page.getByRole('button', { name: 'bobo 的会话分组', exact: true }).hover()
+  await page.getByRole('button', { name: 'bobo 的主聊天', exact: true }).hover()
   await page.getByRole('button', { name: 'bobo 的更多操作', exact: true }).click()
   await page.getByRole('menuitem', { name: '助手设置', exact: true }).click()
   await page.getByRole('combobox', { name: '执行后端', exact: true }).click()
@@ -74,7 +74,7 @@ Then('用户让{string}核心助手组织另一种已保存本机员工并核对
   const { page, codexProfile, claude, codex, childEmployee, configured, core } = await mixedCoreMembers(runtime, state, coreKind)
   const request = `请复用通讯录中现有的“${childEmployee.name}”，保持他的原运行方式和独立身份，不新建或更改员工。只把你和他加入“本机混合组织群”，现在组织并执行：你用宿主委派工具让他创建并发布 child.md，正文包含“${state.token}”；随后用依赖工具等待，结束等待回合。接续后实际读取核对子文件，再创建并发布 summary.md，包含同一核对码和子文件名。只需这两个短文件，不联网、不执行命令、不向用户提问，不重复已完成的委派或写入，不把本场内容记为长期偏好。`
   await runtime.reviewData('混合本机核心原请求及独立绑定', { coreKind, request, core, claude, codex, childEmployeeId: childEmployee.id, codexProfile, modelMode: 'real-provider', humanReview: 'pending' })
-  await page.getByRole('button', { name: 'bobo 的会话分组', exact: true }).hover()
+  await page.getByRole('button', { name: 'bobo 的主聊天', exact: true }).hover()
   await page.getByRole('button', { name: '与 bobo 新建会话', exact: true }).click()
   await page.getByRole('textbox', { name: '消息内容', exact: true }).fill(request)
   await verifyLocalAgentNavigation(runtime, { employeeId: core.id, label: '混合'+coreKind+'核心空白页' })
@@ -169,7 +169,7 @@ Then('真实混合本机{string}核心委派子工作实际写入后以{string}�
   const { page, codexProfile, claude, codex, childEmployee, configured, core } = await mixedCoreMembers(runtime, state, coreKind)
   const request = `请复用通讯录中现有的“${childEmployee.name}”，保持他的原运行方式和独立身份，不新建或更改员工。只把你和他加入“本机混合父子工作群”，现在组织并执行：你用宿主 delegate_work 正式委派唯一子工作，让他先用 write_file 在 self:/work/child-proof.md 写入核对码“${state.token}”与本人明确获派的文件目标及尚未正式发布的准备状态；再依次用 write_file 创建 self:/work/status-01.md 至 status-04.md 四篇有具体内容的状态说明，每篇600–650中文字符、四篇正文合计不超过2600中文字符，依次说明文件目标与核读依据、独立员工的职责及原件来源、准备原件与正式交付的区别、停止和重启时应核对的已有事实。每篇包含编号和同一核对码，只依据公开请求与本人本轮真实工具回执写说明，不虚构未发生操作或未知同事状态，不用重复句或占位文凑字数，每篇只用一次 write_file，不追加、不重写、不创建额外文件。四篇完成前不要发布任何文件，完成后只用 publish_artifact 正式发布 child-proof.md 并汇报真实交付。你收到真实子工作ID后用 wait_for_work 等待其第1版结果，结束本等待回合，不重复委派。只有子文件真实交付后才接续读取核对原文件、创建并发布 summary.md，包含同一核对码和子文件名。保持原共享48次调用、16000输出token和绝对期限，不申请增加预算，不通过等待、延迟或循环写入扩大工作时长；不联网、不运行命令或脚本、不另建独立工作、不向用户提问、不保存长期记忆。`
   await runtime.reviewData('混合核心父子中断原请求与独立配置', { coreKind, ending, request, core, claude, codex, childEmployee, codexProfile, modelMode: 'real-provider', gateMode: 'actual-single-SQL-snapshot-no-artificial-hold', humanReview: 'pending' })
-  await page.getByRole('button', { name: 'bobo 的会话分组', exact: true }).hover()
+  await page.getByRole('button', { name: 'bobo 的主聊天', exact: true }).hover()
   await page.getByRole('button', { name: '与 bobo 新建会话', exact: true }).click()
   await page.getByRole('textbox', { name: '消息内容', exact: true }).fill(request)
   await verifyLocalAgentNavigation(runtime, { employeeId: core.id, label: '混合核心父子中断空白页' })

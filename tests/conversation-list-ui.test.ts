@@ -3,6 +3,9 @@
  * [OUTPUT]: 列表夹具沿仅已发送消息的Props，不再向列表传入composer草稿。
  * [OUTPUT]: 员工配置与置顶共组、清理独立，导航仍沿明确员工身份。
  * [OUTPUT]: 本轮覆盖复制/员工入口、定时运行防连点、失败过程、严格私有判断及保留原预算的显式继续；实际范围以各用例为准。
+ * [OUTPUT]: 员工行点击与折叠动作分离，展开后可进入独立话题。
+ * [OUTPUT]: 群组侧栏直达原会话，话题展开只出现在员工行。
+ * [OUTPUT]: 收起所选话题时，归属提示留在员工行，返回主聊天时恢复主聊天选中状态。
  * [INPUT]: 生产ConversationList/清理确认弹窗、隔离快照与清理回调。
  * [OUTPUT]: 核心助手右键菜单新增/设置入口及无渠道入口；批量确认固定完整核心分组、不受搜索影响，删除/清空标记、失败停止/继续和空分组禁用回归。
  * [POS]: 会话列表前端交互回归，不读取用户数据、不运行Electron或E2E。
@@ -26,7 +29,7 @@ beforeEach(() => {
   vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
   Element.prototype.getAnimations = () => []
   const conversations = [room('A'), room('B'), room('hidden', { list: { hidden: true } }), room('employee', { purpose: undefined, agentIds: ['employee'], mainPrivate: true }), room('group', { purpose: undefined, kind: 'group', agentIds: ['employee'] }), room('channel', { channel: { platform: 'feishu', tenantId: 'tenant', chatId: 'p2p', kind: 'direct', bindingId: 'bot' } })]
-  props = { snapshot: { agents: [coreAgent], conversations, resources: [], connections: [] } as unknown as Snapshot, selectedId: null, previews: {}, messageTimes: {}, busy: false, onSelect: vi.fn(), onCreate: vi.fn(), onCreateCore: vi.fn(), onConfigureCore: vi.fn(), onEditTitle: vi.fn(), onChange: vi.fn(), onClear: vi.fn(async () => {}), onOpenChannels: vi.fn() }
+  props = { snapshot: { agents: [coreAgent], conversations, resources: [], connections: [] } as unknown as Snapshot, selectedId: null, previews: {}, messageTimes: {}, busy: false, onSelect: vi.fn(), onCreate: vi.fn(), onOpenCore: vi.fn(), onCreateCore: vi.fn(), onConfigureCore: vi.fn(), onEditTitle: vi.fn(), onChange: vi.fn(), onClear: vi.fn(async () => {}), onOpenChannels: vi.fn() }
   host = document.createElement('div'); document.body.append(host); root = createRoot(host)
 })
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals(); vi.restoreAllMocks(); vi.clearAllMocks() })
@@ -51,8 +54,8 @@ it('opens the selected employee configuration from its conversation context menu
 
 it('offers create and settings on the Bobo row without a channel entry', async () => {
   await render(); await openMenu()
-  expect([...document.querySelectorAll('[role="menuitem"]')].map(item => item.textContent)).toEqual(['新增会话', '助手设置', '清空所有记录', '删除所有会话'])
-  await choose('新增会话')
+  expect([...document.querySelectorAll('[role="menuitem"]')].map(item => item.textContent)).toEqual(['新话题', '助手设置', '清空所有记录', '删除所有会话'])
+  await choose('新话题')
   expect(props.onCreateCore).toHaveBeenCalledTimes(1)
   await openMenu(); await choose('助手设置')
   expect(props.onConfigureCore).toHaveBeenCalledTimes(1)
@@ -104,5 +107,61 @@ it('disables bulk operations for an empty Bobo group while keeping creation avai
   await render(); await openMenu()
   expect(menuItem('清空所有记录').getAttribute('aria-disabled')).toBe('true')
   expect(menuItem('删除所有会话').getAttribute('aria-disabled')).toBe('true')
-  expect(menuItem('新增会话').getAttribute('aria-disabled')).not.toBe('true')
+  expect(menuItem('新话题').getAttribute('aria-disabled')).not.toBe('true')
+})
+
+
+it('keeps main chat navigation and topic expansion independent for bobo and ordinary employees', async () => {
+  props.snapshot.conversations.push(
+    room('bobo-main', { employeeChat: 'main' }),
+    room('天气话题', { employeeChat: 'topic', purpose: 'personal', agentIds: ['employee'] }),
+  )
+  await render()
+  const byName = (name: string) => host.querySelector<HTMLButtonElement>(`button[aria-label="${name}"]`)!
+  await act(async () => byName('Bobo 的主聊天').click())
+  expect(props.onOpenCore).toHaveBeenCalledOnce()
+  const boboToggle = byName('Bobo 的话题')
+  expect(boboToggle.getAttribute('aria-expanded')).toBe('true')
+  await act(async () => boboToggle.click())
+  expect(boboToggle.getAttribute('aria-expanded')).toBe('false')
+  expect(props.onOpenCore).toHaveBeenCalledOnce()
+  expect(props.onSelect).not.toHaveBeenCalled()
+  const employeeToggle = byName('employee 的话题')
+  expect(employeeToggle.getAttribute('aria-expanded')).toBe('false')
+  await act(async () => employeeToggle.click())
+  expect(employeeToggle.getAttribute('aria-expanded')).toBe('true')
+  expect(props.onSelect).not.toHaveBeenCalled()
+  await act(async () => byName('天气话题').click())
+  await act(async () => byName('employee').click())
+  expect(host.querySelector('button[aria-label="group 的话题"]')).toBeNull()
+  await act(async () => byName('group').click())
+  expect(vi.mocked(props.onSelect).mock.calls).toEqual([['天气话题'], ['employee'], ['group']])
+})
+
+
+it.each([
+  { main: 'bobo-main', topic: 'core-topic', employeeLabel: 'Bobo 的主聊天', toggleLabel: 'Bobo 的话题' },
+  { main: 'employee', topic: 'weather-topic', employeeLabel: 'employee', toggleLabel: 'employee 的话题' },
+])('keeps the owner of $topic marked when its list is collapsed', async ({ main, topic, employeeLabel, toggleLabel }) => {
+  props.snapshot.conversations.push(
+    room('bobo-main', { employeeChat: 'main' }),
+    room('core-topic', { employeeChat: 'topic' }),
+    room('weather-topic', { employeeChat: 'topic', purpose: 'personal', agentIds: ['employee'] }),
+  )
+  await render()
+  const buttonByName = (label: string) => host.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)
+  props = { ...props, selectedId: topic }
+  await render()
+  expect(buttonByName(employeeLabel)?.getAttribute('data-active-topic')).toBe('true')
+  expect(buttonByName(employeeLabel)?.getAttribute('aria-current')).toBeNull()
+  expect(buttonByName(topic)?.getAttribute('aria-current')).toBe('page')
+  expect(buttonByName('group')?.getAttribute('data-active-topic')).toBeNull()
+  await act(async () => buttonByName(toggleLabel)!.click())
+  expect(buttonByName(toggleLabel)?.getAttribute('aria-expanded')).toBe('false')
+  expect(buttonByName(employeeLabel)?.getAttribute('data-active-topic')).toBe('true')
+  expect(props.onSelect).not.toHaveBeenCalled()
+  props = { ...props, selectedId: main }
+  await render()
+  expect(buttonByName(employeeLabel)?.getAttribute('data-active-topic')).toBeNull()
+  expect(buttonByName(employeeLabel)?.getAttribute('aria-current')).toBe('page')
 })

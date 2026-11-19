@@ -16,6 +16,7 @@
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 2026-10-13高原生用量的最终发布/重启及同run材料回答回归；原接线合同保持，协议夹具不认证真实模型。
  * [OUTPUT]: 明确停止并实际退出后的新消息沿同一原生会话接续，重启不重放已取消消息。
+ * [OUTPUT]: 固定主聊天和独立话题使用不同原生session，重启后分别续接。
  * [INPUT]: 第13组原生员工规范和隔离stdio协议进程。
  * [OUTPUT]: 连续会话、真实文件登记、普通消息回答、权限拒绝与完整大输出；不把夹具视为真实模型评测。
  * [POS]: 生产AppService/本机驱动集成合同。
@@ -336,6 +337,39 @@ it('keeps native tools and a persistent session; no private decision/report/memo
  await f.restart();expect((await f.detail()).runs).toHaveLength(second.runs.length)
  expect((await readFile(join(cwd,'native-turn-requests.jsonl'),'utf8')).trim().split('\n')).toHaveLength(2)
  expect(first.workItems).toHaveLength(0)
+})
+
+it('keeps separate resumable native sessions for the main chat and an explicit topic', async () => {
+  const f = await setup()
+  const main = await f.wait(await f.send('主聊天第一轮'))
+  const topicMessage = await f.service.handle('startEmployeeTopic', {
+    employeeId: f.agent.id, content: '新话题第一轮', requestId: 'native-topic-start',
+  }) as Message
+  expect(topicMessage.conversationId).not.toBe(f.chat.id)
+  const waitRun = async (message: Message) => {
+    await expect.poll(async () => {
+      const view = await f.service.handle('getConversation', { id: message.conversationId }) as ConversationDetail
+      return view.runs.find(run => run.triggerMessageId === message.id)?.status
+    }).toBe('completed')
+    const view = await f.service.handle('getConversation', { id: message.conversationId }) as ConversationDetail
+    return view.runs.find(run => run.triggerMessageId === message.id)!.backend?.sessionId
+  }
+  const topicSession = await waitRun(topicMessage)
+  const mainSession = main.runs[0].backend?.sessionId
+  expect(topicSession).toBeTruthy()
+  expect(mainSession).toBeTruthy()
+  expect(topicSession).not.toBe(mainSession)
+
+  await f.restart()
+  const nextMain = await f.service.handle('sendEmployeeMessage', {
+    employeeId: f.agent.id, content: '重启后继续主聊天', requestId: 'native-main-next',
+  }) as Message
+  expect(nextMain.conversationId).toBe(f.chat.id)
+  expect(await waitRun(nextMain)).toBe(mainSession)
+  const nextTopic = await f.service.handle('sendMessage', {
+    conversationId: topicMessage.conversationId, content: '重启后继续原话题', mentionIds: [], requestId: 'native-topic-next',
+  }) as Message
+  expect(await waitRun(nextTopic)).toBe(topicSession)
 })
 it('publishes an actual file without a synthetic decision and deduplicates native tool requests',async()=>{
  const f=await setup(),d=await f.wait(await f.send('NATIVE_PUBLISH'))

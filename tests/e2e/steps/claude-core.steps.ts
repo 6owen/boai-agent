@@ -34,7 +34,7 @@ Then('用户通过Claude核心助手完成{string}并在重启后核对原结果
   const before = await page.evaluate(() => window.boai.request('snapshot', undefined))
   const existing = before.agents.find(a => a.id === state.employeeId)!
   await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).click()
-  await page.getByRole('button', { name: 'bobo 的会话分组', exact: true }).hover()
+  await page.getByRole('button', { name: 'bobo 的主聊天', exact: true }).hover()
   await page.getByRole('button', { name: 'bobo 的更多操作', exact: true }).click()
   await page.getByRole('menuitem', { name: '助手设置', exact: true }).click()
   await page.getByRole('combobox', { name: '执行后端', exact: true }).click()
@@ -63,7 +63,7 @@ Then('用户通过Claude核心助手完成{string}并在重启后核对原结果
     await runtime.reviewNativeCheckpoint('原两项团队表单保持用户指定名称')
     await page.getByRole('button', { name: '生成', exact: true }).click()
   } else {
-    await page.getByRole('button', { name: 'bobo 的会话分组', exact: true }).hover()
+    await page.getByRole('button', { name: 'bobo 的主聊天', exact: true }).hover()
     await page.getByRole('button', { name: '与 bobo 新建会话', exact: true }).click()
     await page.getByRole('textbox', { name: '消息内容', exact: true }).fill(request)
     await verifyLocalAgentNavigation(runtime, { employeeId: core.id, label: 'Claude核心空白页' })

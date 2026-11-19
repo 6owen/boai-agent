@@ -48,7 +48,7 @@ Then('活动Claude核心组织从底部{string}后保留子成果且两次重启
   try {
     const initial = await snapshot(), employee = initial.agents.find(a => a.id === state.employeeId)!
     await runtime.page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).click()
-    await runtime.page.getByRole('button', { name: 'bobo 的会话分组', exact: true }).hover()
+    await runtime.page.getByRole('button', { name: 'bobo 的主聊天', exact: true }).hover()
     await runtime.page.getByRole('button', { name: 'bobo 的更多操作', exact: true }).click()
     await runtime.page.getByRole('menuitem', { name: '助手设置', exact: true }).click()
     await editor().getByRole('combobox', { name: '执行后端', exact: true }).click()
@@ -61,7 +61,7 @@ Then('活动Claude核心组织从底部{string}后保留子成果且两次重启
     expect(configured).toMatchObject({ systemRole: 'core', active: true, allowCommands: false, connectionId: state.connectionId })
     // Only this explicit offline scenario enables the original protocol's hold after real child delivery.
     await writeFile(markers[0], 'offline-active-core-config-save')
-    await runtime.page.getByRole('button', { name: 'bobo 的会话分组', exact: true }).hover()
+    await runtime.page.getByRole('button', { name: 'bobo 的主聊天', exact: true }).hover()
     await runtime.page.getByRole('button', { name: '与 bobo 新建会话', exact: true }).click()
     const request = 'CLAUDE_BOBO_EXECUTE empty-memory 创建一名同事，组织群并实际分工交付。'
     await runtime.page.getByRole('textbox', { name: '消息内容', exact: true }).fill(request)
@@ -173,7 +173,7 @@ Then('活动Claude核心组织从底部{string}后保留子成果且两次重启
       expect(await core()).toEqual(saved)
       await runtime.reviewData(`活动核心保存第${restart}次受控重启零重放`, { restart, records: await records() })
     }
-    await runtime.page.getByRole('button', { name: 'bobo 的会话分组', exact: true }).hover()
+    await runtime.page.getByRole('button', { name: 'bobo 的主聊天', exact: true }).hover()
     await runtime.page.getByRole('button', { name: '与 bobo 新建会话', exact: true }).click()
     const explicit = 'empty-memory 这是两次重启后明确发送的新普通交流，不执行工具，不继续之前的组织工作。'
     await runtime.page.getByRole('textbox', { name: '消息内容', exact: true }).fill(explicit)
