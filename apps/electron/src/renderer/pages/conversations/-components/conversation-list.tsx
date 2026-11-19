@@ -1,5 +1,4 @@
 /*
- * [OUTPUT]: 主列表检索复用技能页CatalogSearch，移至标题右侧并按剩余宽度展开；无标题的渠道嵌入保留原检索。
  * [OUTPUT]: 会话摘要只显示最新已发送消息，不接入composer草稿或执行状态；渠道入口仅提示真实未读回复。
  * [OUTPUT]: 员工配置与置顶共用同一右键菜单分组，清理操作独立分组。
  * [OUTPUT]: 失败/取消/中断的执行过程及自动化镜像保留在聊天；支持显式继续、原生复制和员工配置右键入口。
@@ -21,7 +20,6 @@ import { useEffect, useRef, useState } from 'react'
 import { DragList, DragListItem } from '@/components/common/drag-list'
 import { cn } from 'cn'
 import { Button } from '@/components/ui/button'
-import { CatalogSearch } from '@/components/common/catalog-search'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
 import { Empty, EmptyHeader, EmptyMedia, EmptyDescription } from '@/components/ui/empty'
 import conversationCompanions from '@/assets/conversation-companions.webp'
@@ -128,8 +126,8 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
   const channel = conversations.filter(isChannelConversation)
   const pinned = ordinary.filter(item => item.list?.pinned), regular = ordinary.filter(item => !item.list?.pinned)
   return <div className="conversation-list-panel">
-    {showHeading ? <div className="list-heading sidebar-search-heading"><h2>{channelAgent ? `${channelAgent.name}的渠道` : '会话'}</h2><CatalogSearch label="搜索会话" placeholder="搜索会话名称" value={query} onChange={setQuery} /><div className="list-heading-actions">{channelAgent ? onBack && <Button variant="ghost" size="icon-sm" aria-label="返回员工主聊天" onClick={onBack}><ChevronLeft /></Button> : <AddContactMenu onCreate={onCreate} />}</div></div>
-      : <InputGroup><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput aria-label="搜索会话" placeholder="搜索会话名称" value={query} onChange={event => setQuery(event.target.value)} /></InputGroup>}
+    {showHeading && <div className="list-heading"><h2>{channelAgent ? `${channelAgent.name}的渠道` : '会话'}</h2><div className="list-heading-actions">{channelAgent ? onBack && <Button variant="ghost" size="icon-sm" aria-label="返回员工主聊天" onClick={onBack}><ChevronLeft /></Button> : <AddContactMenu onCreate={onCreate} />}</div></div>}
+    <InputGroup><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput aria-label="搜索会话" placeholder="搜索会话名称" value={query} onChange={event => setQuery(event.target.value)} /></InputGroup>
     <Collapsible className="flex min-h-0 flex-1 flex-col" open={Boolean(search) || coreOpen} onOpenChange={open => { if (!search) setCoreOpen(open) }}>
       {!channelAgent && <ContextMenu onOpenChange={setCoreMenuOpen}><ContextMenuTrigger render={<div className="conversation-section-row conversation-core-section-row" data-menu-open={coreMenuOpen || undefined} />}>
         <CollapsibleTrigger render={<Button variant="ghost" size="content" className="conversation-item conversation-core-heading" aria-label={`${coreName} 的会话分组`} />}><Avatar name={coreName} seed={coreAgent?.id} avatar={coreAgent?.avatar} color={coreAgent?.color} /><span className="conversation-copy"><span className="conversation-title">{coreName}</span><span className="conversation-preview">{coreAgent?.role || '数字员工'}</span></span><ChevronRight className="shrink-0 text-muted-foreground" /></CollapsibleTrigger>
