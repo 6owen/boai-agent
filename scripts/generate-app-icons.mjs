@@ -1,7 +1,7 @@
 /*
  * [OUTPUT]: Workspace源码路径迁至apps/packages，保留既有输出与业务合同。
  * [INPUT]: Transparent avatar WebPs, a square logo SVG and the shared app icon manifest.
- * [OUTPUT]: 512px app icons with the same macOS-size tile, plus the default avatar .icns.
+ * [OUTPUT]: 512px app icons with the same macOS-size tile, plus the manifest default as .icns.
  * [POS]: Explicit offline asset generation; build copies the generated results.
  * [PROTOCOL]: Update this Header and scripts/.folder.md when this file changes.
  */
@@ -101,7 +101,7 @@ try {
     if (logo && image.width !== image.height) throw new Error(`Logo needs a square source: ${icon.id}`)
     const bounds = avatar ? visibleBounds(image) : null
     await writeFile(output, renderIcon(image, bounds, 512))
-    if (icon.id === manifest.defaultId && avatar) defaultMaster = renderIcon(image, bounds, canvasSize)
+    if (icon.id === manifest.defaultId) defaultMaster = renderIcon(image, bounds, canvasSize)
   }
   if (!defaultMaster || manifest.icons.filter(icon => icon.avatarId).length !== 21) {
     throw new Error('Icon manifest must contain all 21 avatar choices and its default.')
