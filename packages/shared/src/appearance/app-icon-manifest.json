@@ -215,6 +215,16 @@
         "oneX": "tray/avatar-purple-scarfTemplate.png",
         "twoX": "tray/avatar-purple-scarfTemplate@2x.png"
       }
+    },
+    {
+      "id": "logo-boai-uppercase",
+      "name": "BOAI 大写",
+      "file": "output/logo-svg/BOAI-uppercase.svg",
+      "tray": {
+        "source": "tray/logo-boai-uppercase.svg",
+        "oneX": "tray/logo-boai-uppercaseTemplate.png",
+        "twoX": "tray/logo-boai-uppercaseTemplate@2x.png"
+      }
     }
   ],
   "tray": {
