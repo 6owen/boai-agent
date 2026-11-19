@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 局部名称搜索先展开再核对空值，全局检索/历史阅读与材料来源断言保持。
  * [OUTPUT]: DS02在原万条历史场景核最新侧栏摘要；定位旧页及真实重启不得用旧阅读页尾替换最新消息，保持原分页/锚点/清空与期限。
  * [OUTPUT]: 流式阅读核对真实占位消息与执行卡；分页等待期间追加并完成API正文，再核对公开消息不被旧快照覆盖及80条窗口。
  * [OUTPUT]: 文件预览正文采用统一名称，不展示版本标记。
@@ -139,6 +140,7 @@ Given('不同会话已保存同词名称正文和同名材料成果', async ({ r
 })
 When('用户从全局顶栏检索图标输入关键词而不选择筛选', async ({ runtime }) => {
   await expect(runtime.page.locator('[aria-label="会话搜索类型"]')).toHaveCount(0)
+  await runtime.page.getByRole('button', { name: '搜索会话', exact: true }).click()
   await expect(runtime.page.getByRole('textbox', { name: '搜索会话', exact: true })).toBeVisible()
   await expect(runtime.page.getByRole('textbox', { name: '搜索会话', exact: true })).toHaveValue('')
   const dialog = await search(runtime, '全部类型', '交付报告')
