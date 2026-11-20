@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /*
  * [INPUT]: Real library navigation/display menu, local preferences and isolated catalog fixtures.
- * [OUTPUT]: Visibility persistence, category guard and fallback, and external details alongside the skill command contract.
+ * [OUTPUT]: Visibility persistence, category guard and fallback, and external details with an idle skill command fixture.
  * [POS]: Renderer feature regression; no resource or binding mutations, Electron or external services.
  * [PROTOCOL]: Update Header and tests/.folder.md when changed.
  */
@@ -44,7 +44,7 @@ beforeEach(() => {
       throw Error('Unexpected request: ' + method)
     }), subscribe: () => () => {} } as unknown as DesktopApi,
     section: 'all', onSection: vi.fn(), provider: 'skills-sh', onProvider: vi.fn(), divider: null,
-    updates: { available: new Set(), busy: false }, onSkillCommand: vi.fn(), revision: 0, onOpenSkill: vi.fn(), onOpenMarketplace: vi.fn(),
+    updates: { available: new Set(), busy: false, stopping: false, command: undefined, progress: undefined, globalProgress: undefined, execute: vi.fn(), stopCheck: vi.fn() }, revision: 0, onOpenSkill: vi.fn(), onOpenMarketplace: vi.fn(),
     snapshot: { agents: [], conversations: [], resources: [], connections: [] } as unknown as Snapshot,
     onEmployeeCreated: async () => {}, onOpenSource: vi.fn(), onRemoveSource: vi.fn(),
     onOpenPrompt: vi.fn(), onCreatePrompt: vi.fn(), onRemovePrompt: vi.fn(),

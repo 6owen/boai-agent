@@ -1,5 +1,4 @@
 /*
- * [OUTPUT]: 检查命中的全局技能标题旁显示独立更新按钮。
  * [INPUT]: 已筛选技能、收藏顺序/分组、选择与全局 DragList 保存回调。
  * [OUTPUT]: 收藏直接沿会话Collapsible内自然布局列表，展开不重测虚拟高度或自动滚动；保留关闭组落点及跨组键盘排序。
  * [OUTPUT]: 仅本地完整目录使用TanStack Virtual；本地/收藏和员工选择共用SkillListItem，原拖拽/聚焦/菜单保持。
@@ -15,13 +14,11 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ChevronRight, MoreHorizontal } from '@/components/icons'
 import { SkillListItem } from './skill-list-item'
-import { SkillUpdateIcon } from './local-skill-cli'
 
 export type SkillEntry = { id: string; name: string; description: string; source: string; searchText: string; local: LocalSkill }
 type Props = {
   entries: SkillEntry[]; selected?: string; own: boolean; searching: boolean; collapsed: string[]
-  collection: SkillCollections | null; favorites: ReadonlySet<string>; busy: boolean; availableUpdates: ReadonlySet<string>; updating: boolean
-  onUpdate(id: string): void
+  collection: SkillCollections | null; favorites: ReadonlySet<string>; busy: boolean
   onSelect(id: string): void; onToggle(entry: SkillEntry): void; onReveal(id: string): void
   onCollapse(id: string): void; onChange(action: SkillCollectionAction): void
 }
@@ -77,11 +74,9 @@ function VirtualSkillRows(props: Props & { scroll: RefObject<HTMLDivElement | nu
   </div>
 }
 
-function SkillRow({ entry, selected, collection, favorites, busy, onSelect, onToggle, onReveal, onMenu, availableUpdates, updating, onUpdate }: Props & { entry: SkillEntry; onMenu(id: string | null): void }) {
-  const canUpdate = entry.local.source === 'global' && availableUpdates.has(entry.local.slug.toLowerCase())
-  const titleAction = canUpdate && <Button variant="ghost" size="icon-xs" aria-label={`更新 ${entry.name}`} title={`更新 ${entry.name}`} disabled={updating} onClick={() => onUpdate(entry.id)}><SkillUpdateIcon /></Button>
+function SkillRow({ entry, selected, collection, favorites, busy, onSelect, onToggle, onReveal, onMenu }: Props & { entry: SkillEntry; onMenu(id: string | null): void }) {
   return <DragListItem id={entry.id} className={`skill-list-row${entry.id === selected ? ' selected' : ''}`}>{({ dragging, dragProps }) => <>
-          <SkillListItem entry={entry} titleAction={titleAction} selected={entry.id === selected} dragging={dragging} {...dragProps} onClick={() => { if (!dragging) onSelect(entry.id) }} />
+          <SkillListItem entry={entry} selected={entry.id === selected} dragging={dragging} {...dragProps} onClick={() => { if (!dragging) onSelect(entry.id) }} />
           <DropdownMenu onOpenChange={open => onMenu(open ? entry.id : null)}><DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" className="skill-row-menu" aria-label={`${entry.name} 的操作`} />}><MoreHorizontal /></DropdownMenuTrigger><DropdownMenuContent side="right" align="start" className="w-[240px] p-2"><DropdownMenuItem className="px-2.5 py-2" disabled={busy || !collection} onClick={() => onToggle(entry)}>{favorites.has(entry.id) ? '取消收藏' : '加入收藏'}</DropdownMenuItem><DropdownMenuItem className="whitespace-nowrap px-2.5 py-2" onClick={() => onReveal(entry.id)}>在文件夹中显示</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
   </>}</DragListItem>
 }
