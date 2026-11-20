@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: Carbon 更新图标置于本地与收藏工具栏，点击打开全局技能检查。
+ * [OUTPUT]: 本地与收藏的 Carbon 更新按钮紧靠搜索左侧，沿用搜索按钮前景色。
  * [OUTPUT]: 共享本机技能详情标题栏直接调用 skills CLI 检查与更新，退出后刷新技能正文和目录。
  * [OUTPUT]: 技能标题增加能力包管理入口，原本地技能导入/收藏/商城保持；包管理沿原应用回执。
  * [OUTPUT]: 随包内置技能源只读显示，不提供外部编辑器修改入口。
@@ -79,9 +79,10 @@ export function SkillsWorkspace({ api, section, onSection, provider, onProvider,
       <div className="custom-catalog-toolbar">{navigation}<div className="custom-catalog-search" ref={setMarketToolbar}>
         {section !== 'marketplace' && <><div className="skills-search-actions">
           {section === 'own' && <SkillGroups value={collection.value ? { ...collection.value, favoriteResourceIds: favorites } : null} change={collection.change} busy={collection.busy} />}
-          <Button variant="ghost" size="icon-sm" aria-label="检查技能更新" title="检查技能更新" onClick={onCheckUpdates}><SkillUpdateIcon /></Button>
           <SkillActionsMenu api={api} onInstalled={installed} onLibraryInstalled={libraryInstalled} onResource={openResource} allowImport={section === 'all'} onRescan={() => { void reload(true) }} onExport={() => setExporting(true)} scanning={loading} canExport={favorites.length > 0} />
-        </div><CatalogSearch label="搜索本机技能" placeholder="搜索技能" value={query} onChange={value => { setQuery(value); setSelected('') }} /></>}
+        </div>
+          <Button variant="ghost" size="icon-sm" aria-label="检查技能更新" title="检查技能更新" onClick={onCheckUpdates}><SkillUpdateIcon /></Button>
+          <CatalogSearch label="搜索本机技能" placeholder="搜索技能" value={query} onChange={value => { setQuery(value); setSelected('') }} /></>}
       </div></div>
       <CatalogTransition key={section}>
       {section === 'marketplace' ? <SkillMarketplaceView api={api} provider={provider} onProviderChange={onProvider} compact toolbarTarget={marketToolbar} selectedId={marketSelection?.provider === provider ? marketSelection.id : undefined} onSelect={item => { setMarketSelection({ provider: item.provider, id: item.id }); onOpenMarketplace(item) }} /> : <>
