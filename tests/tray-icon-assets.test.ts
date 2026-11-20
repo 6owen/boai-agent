@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 实际头像与品牌Logo的manifest/PNG/SVG和生产NativeImage装配器。
- * [OUTPUT]: 全映射、两分辨率、黑色/alpha/边缘与孔洞、缺图/损坏及模板scale装配回归。
+ * [OUTPUT]: 默认和首项Logo、全映射、双分辨率、透明边缘/孔洞及模板装配回归。
  * [POS]: 离线图标素材与加载合同；真实菜单栏观感需另行验收。
  * [PROTOCOL]: 变化同步Header和tests/.folder.md。
  */
@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os'
 import { resolve, join } from 'node:path'
 import { createHash } from 'node:crypto'
 import manifest from '../packages/shared/src/appearance/app-icon-manifest.json'
-import { appIconPresets } from '../packages/shared/src/appearance/app-icons'
+import { appIconPresets, defaultAppIconId } from '../packages/shared/src/appearance/app-icons'
 import { loadTrayIcon } from '../apps/electron/src/main/tray-icon'
 const fake = vi.hoisted(() => ({ empty: false, representations: [] as Array<{ scaleFactor: number; dataURL: string }>, templates: [] as boolean[] }))
 vi.mock('electron', () => ({ nativeImage: { createFromBuffer: (bytes: Buffer) => ({ isEmpty: () => fake.empty, getSize: () => ({ width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) }), addRepresentation(value: { scaleFactor: number; dataURL: string }) { fake.representations.push(value) }, setTemplateImage(value: boolean) { fake.templates.push(value) } }) } }))
@@ -22,7 +22,8 @@ test('头像和品牌Logo有唯一模板映射，PNG两尺寸有透明留白且�
   expect(manifest.icons.map(icon => icon.id)).toEqual(appIconPresets.map(icon => icon.id))
   expect(manifest.icons.filter(icon => icon.id.startsWith('avatar-'))).toHaveLength(21)
   expect(appIconPresets).toHaveLength(22)
-  expect(appIconPresets.at(-1)).toEqual({ id: 'logo-boai-uppercase', name: 'BOAI 大写' })
+  expect(defaultAppIconId).toBe('logo-boai-uppercase')
+  expect(appIconPresets[0]).toEqual({ id: defaultAppIconId, name: 'BOAI 大写' })
   const hashes = new Set<string>()
   for (const icon of manifest.icons) {
     expect(await readFile(join(directory, icon.tray.source), 'utf8')).toContain('viewBox="0 0 22 22"')

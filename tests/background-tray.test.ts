@@ -8,6 +8,7 @@
 import { EventEmitter } from 'node:events'
 import { afterEach, expect, it, vi } from 'vitest'
 import type { BrowserWindow } from 'electron'
+import { defaultAppIconId } from '../packages/shared/src/appearance'
 import { BackgroundTray, cancelWindowHide, hideMainWindow } from '../apps/electron/src/main/background'
 import type { DesktopSettingsStore } from '../apps/electron/src/main/desktop-settings'
 const fake = vi.hoisted(() => ({ fail: false, replaceFail: false, bad: new Set<string>(), loads: [] as string[], instances: [] as { menu: any[]; handlers: Record<string, () => void>; destroy: ReturnType<typeof vi.fn>; image: { id?: string }; updates: number }[] }))
@@ -74,8 +75,8 @@ it.runIf(process.platform === 'darwin')('缺图和setImage失败保留原可用�
 it.runIf(process.platform === 'darwin')('首次缺图先用默认模板，再用B兜底且不伪造已应用ID', () => {
   fake.bad.add('avatar-bear')
   const first = new BackgroundTray(settings() as unknown as DesktopSettingsStore, vi.fn(), vi.fn(), vi.fn(), '/assets')
-  expect(first.init('avatar-bear')).toMatchObject({ appliedId: 'avatar-cat', fallback: 'default', state: 'failed', available: true })
-  fake.bad.add('avatar-cat')
+  expect(first.init('avatar-bear')).toMatchObject({ appliedId: defaultAppIconId, fallback: 'default', state: 'failed', available: true })
+  fake.bad.add(defaultAppIconId)
   const second = new BackgroundTray(settings() as unknown as DesktopSettingsStore, vi.fn(), vi.fn(), vi.fn(), '/assets')
   expect(second.init('avatar-bear')).toMatchObject({ appliedId: null, fallback: 'builtin', state: 'failed', available: true })
   expect(first.shouldHide()).toBe(true); expect(second.shouldHide()).toBe(true)
