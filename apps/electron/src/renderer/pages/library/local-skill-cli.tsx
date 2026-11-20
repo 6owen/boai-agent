@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Local skill identity and trusted desktop CLI progress and results.
- * [OUTPUT]: Actual command and live terminal output for single-skill operations and global checks.
+ * [OUTPUT]: Shared Shiki command display, live output and one header action for local skill operations.
  * [POS]: Local library UI for npx skills.
  * [PROTOCOL]: Update Header and library/.folder.md when changed.
  */
@@ -8,6 +8,8 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import type { DesktopApi, LocalSkillCliProgress, Methods } from '@boai/shared/ipc'
 import { useMutation } from '@/components/common'
 import { Button } from '@/components/ui/button'
+import { CodeBlock } from '@/components/ui/code-block'
+import { Popconfirm } from '@/components/ui/popconfirm'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
 import { ArrowUp, LoaderCircle, RefreshCw } from '@/components/icons'
 
@@ -16,7 +18,7 @@ type Command = { action: 'check'; id?: string } | { action: 'update'; id: string
 
 function useSkillCommand(api: DesktopApi, onUpdated?: () => Promise<void>) {
   const [progress, setProgress] = useState<LocalSkillCliProgress>()
-  const [result, setResult] = useState<{ action: Command['action']; value: Result }>()
+  const [result, setResult] = useState<Result['status']>()
   const { busy, run } = useMutation()
   const execute = useCallback((input: Command) => run(async () => {
     const requestId = crypto.randomUUID()
@@ -27,7 +29,7 @@ function useSkillCommand(api: DesktopApi, onUpdated?: () => Promise<void>) {
     })
     try {
       const value = await api.request('localSkillCli', { ...input, requestId })
-      setResult({ action: input.action, value })
+      setResult(value.status)
       if (value.command) setProgress({ command: value.command, output: value.output })
     } finally {
       unsubscribe()
@@ -37,6 +39,8 @@ function useSkillCommand(api: DesktopApi, onUpdated?: () => Promise<void>) {
   return { busy, execute, progress, result }
 }
 
+const terminalCode = 'rounded-none shadow-none [&>code]:min-w-0 [&>code]:whitespace-pre-wrap [&>code]:[overflow-wrap:anywhere]'
+
 function SkillCliTerminal({ progress, busy }: { progress?: LocalSkillCliProgress; busy: boolean }) {
   const scroll = useRef<HTMLDivElement>(null)
   const follow = useRef(true)
@@ -44,62 +48,47 @@ function SkillCliTerminal({ progress, busy }: { progress?: LocalSkillCliProgress
     const node = scroll.current
     if (node && follow.current) node.scrollTop = node.scrollHeight
   }, [progress?.output])
-  return <section aria-label="技能命令终端" aria-busy={busy} className="min-w-0 overflow-hidden rounded-md border bg-muted/50 [font-family:var(--font-code-family)] text-xs leading-relaxed">
-    <div className="flex items-start gap-2 px-3 py-2.5">
-      <span className="select-none text-muted-foreground" aria-hidden>$</span>
-      <code className="min-w-0 flex-1 whitespace-pre-wrap [overflow-wrap:anywhere]">{progress?.command}</code>
-      {busy && <LoaderCircle size={14} className="spinner shrink-0 text-muted-foreground" aria-label="命令执行中" />}
-    </div>
-    <div ref={scroll} tabIndex={0} aria-label="命令输出" className="max-h-56 min-h-20 overflow-y-auto px-3 pb-3" onScroll={event => {
+  return <section aria-label="技能命令终端" aria-busy={busy} className="min-w-0 overflow-hidden rounded-(--radius-control) border border-border bg-[var(--code-background)]">
+    {progress?.command && <CodeBlock code={progress.command} language="bash" density="compact" className={terminalCode} />}
+    <div ref={scroll} tabIndex={0} aria-label="命令输出" className="max-h-56 min-h-12 overflow-y-auto" onScroll={event => {
       const node = event.currentTarget
       follow.current = node.scrollHeight - node.scrollTop - node.clientHeight < 12
     }}>
-      <pre className="whitespace-pre-wrap [overflow-wrap:anywhere]">{progress?.output}</pre>
+      <CodeBlock code={progress?.output ?? ''} density="compact" className={terminalCode} />
     </div>
   </section>
-}
-
-function SkillCliResult({ status, completed }: { status: Result['status']; completed: string }) {
-  const label = {
-    completed,
-    available: '有可用更新',
-    unsupported: '此技能没有可用的 CLI 更新来源',
-    failed: 'skills CLI 执行失败',
-    cancelled: '检查已停止',
-  }[status]
-  return <p className="field-hint" role="status">{label}</p>
 }
 
 export function LocalSkillUpdate({ api, id, onUpdated }: { api: DesktopApi; id: string; onUpdated(): Promise<void> }) {
   const [confirm, setConfirm] = useState(false)
   const { busy, execute, progress, result } = useSkillCommand(api, onUpdated)
-  const check = () => {
-    setConfirm(false)
-    void execute({ action: 'check', id })
-  }
+  const canUpdate = !busy && result === 'available'
+  const check = () => void execute({ action: 'check', id })
+  const checkLabel = busy ? '正在执行技能命令' : '检查更新'
 
   return <Popover onOpenChange={open => {
     if (!open) setConfirm(false)
     else if (!busy && !result) check()
   }}>
     <PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label="查看技能更新" title="查看技能更新" aria-busy={busy} />}>
-      {busy ? <LoaderCircle className="spinner" /> : result?.value.status === 'available' ? <ArrowUp /> : <RefreshCw />}
+      {busy ? <LoaderCircle className="spinner" /> : canUpdate ? <ArrowUp /> : <RefreshCw />}
     </PopoverTrigger>
     <PopoverContent align="end" className="w-[480px] max-w-[calc(100vw-24px)] gap-3 p-4">
-      <PopoverTitle>技能更新</PopoverTitle>
-      <div className="button-row">
-        <Button variant="secondary" size="sm" disabled={busy} onClick={check}><RefreshCw />检查更新</Button>
-        <Button variant="ghost" size="sm" disabled={busy || confirm || result?.value.status === 'unsupported'} onClick={() => setConfirm(true)}><ArrowUp />更新技能</Button>
+      <div className="skill-update-popover-heading">
+        <PopoverTitle>技能更新</PopoverTitle>
+        {canUpdate ? <Popconfirm
+          trigger={<Button variant="ghost" size="icon-sm" aria-label="更新技能" title="更新技能"><ArrowUp /></Button>}
+          title="更新技能"
+          description="更新可能覆盖这个技能的本地修改。"
+          confirmLabel="确认更新"
+          open={confirm}
+          onOpenChange={setConfirm}
+          onConfirm={() => { setConfirm(false); void execute({ action: 'update', id }) }}
+        /> : <Button variant="ghost" size="icon-sm" aria-label={checkLabel} title={checkLabel} disabled={busy} onClick={check}>
+          {busy ? <LoaderCircle className="spinner" /> : <RefreshCw />}
+        </Button>}
       </div>
-      {confirm && <div className="space-y-2">
-        <p className="field-hint">更新可能覆盖这个技能的本地修改。</p>
-        <div className="button-row">
-          <Button size="sm" onClick={() => { setConfirm(false); void execute({ action: 'update', id }) }}>确认更新</Button>
-          <Button variant="ghost" size="sm" onClick={() => setConfirm(false)}>取消</Button>
-        </div>
-      </div>}
-      {(busy || progress) && <SkillCliTerminal progress={progress} busy={busy} />}
-      {result && <SkillCliResult status={result.value.status} completed={result.action === 'check' ? '检查完成' : '更新命令已完成'} />}
+      <SkillCliTerminal progress={progress} busy={busy} />
     </PopoverContent>
   </Popover>
 }
@@ -119,6 +108,5 @@ export function LocalSkillsCheck({ api, active }: { api: DesktopApi; active: boo
       {busy && <Button variant="ghost" disabled={stop.busy} onClick={() => void stop.run(async () => { await api.request('localSkillCli', { action: 'stop' }) })}>停止检查</Button>}
     </div>
     {(busy || progress) && <SkillCliTerminal progress={progress} busy={busy} />}
-    {result && <SkillCliResult status={result.value.status} completed="全局检查完成" />}
   </section>
 }
