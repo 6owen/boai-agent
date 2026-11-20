@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: ListRow 支持独立标题操作按钮，保留整行选择与正文的语义，避免嵌套按钮。
  * [OUTPUT]: ListRow共用资源库图标/两行文字；displayOnly提供无按钮语义的展示行，操作交给行外菜单。
  * [OUTPUT]: 字号和默认行高使用同一工具类，宿主字号覆盖时保持原cn合并语义。
  * [INPUT]: React、shadcn Base UI 原语与全局语义样式。
@@ -15,21 +16,32 @@ import { cn } from "cn"
 import { Separator } from "./separator"
 import { Button } from "./button"
 
-function ListRow({ label, description, icon, selected, displayOnly = false, className, ...props }: Omit<React.ComponentProps<typeof Button>, 'children' | 'variant' | 'size'> & {
+function ListRow({ label, description, icon, titleAction, selected, displayOnly = false, className, ...props }: Omit<React.ComponentProps<typeof Button>, 'children' | 'variant' | 'size'> & {
   label: string
   description?: React.ReactNode
   icon?: React.ReactNode
+  titleAction?: React.ReactNode
   selected?: boolean
   displayOnly?: boolean
 }) {
+  const id = React.useId()
   const rowClassName = cn('soft-list-row', !displayOnly && selected && 'selected', className)
-  const content = <>
-    {icon && <span className="soft-list-row-icon [&_:is(svg,.app-icon)]:size-[16px]">{icon}</span>}
+  const media = icon && <span className="soft-list-row-icon [&_:is(svg,.app-icon)]:size-[16px]">{icon}</span>
+  const title = <strong id={`${id}-title`} className="soft-list-row-title" title={label}>{label}</strong>
+  const detail = description && <small id={`${id}-description`} className="soft-list-row-description">{description}</small>
+  if (titleAction && !displayOnly) return <div className={cn(rowClassName, 'relative soft-button-ghost')}>
+    {media}
     <span className="soft-list-row-copy">
-      <strong className="soft-list-row-title" title={label}>{label}</strong>
-      {description && <small className="soft-list-row-description">{description}</small>}
+      <span className="flex min-w-0 items-center gap-1 pr-7 [&_.soft-list-row-title]:pr-0">
+        <Button type="button" variant="ghost" size="content" {...props} aria-pressed={selected}
+          aria-labelledby={props['aria-labelledby'] ?? (props['aria-label'] ? undefined : `${id}-title${description ? ` ${id}-description` : ''}`)}
+          className="min-w-0 justify-start hover:bg-transparent before:absolute before:inset-0 before:content-['']">{title}</Button>
+        <span className="relative z-10 shrink-0">{titleAction}</span>
+      </span>
+      {detail}
     </span>
-  </>
+  </div>
+  const content = <>{media}<span className="soft-list-row-copy">{title}{detail}</span></>
   if (displayOnly) return <div className={cn('soft-button-ghost', props.disabled && 'opacity-50', rowClassName)} title={props.title}>{content}</div>
   return <Button type="button" variant="ghost" size="content" {...props} className={rowClassName} aria-pressed={selected}>{content}</Button>
 }

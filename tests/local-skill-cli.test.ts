@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Desktop local skill requests and an isolated npx stand-in.
- * [OUTPUT]: CLI argument scope, exact skill targeting, exit-code interpretation, cancellation and progress before exit.
+ * [OUTPUT]: CLI argument scope, exact skill targeting, exit-code interpretation, available names, bulk update scope, cancellation and live progress.
  * [POS]: Regression coverage for the desktop skills CLI host.
  * [PROTOCOL]: Update Header and tests/.folder.md when changed.
  */
@@ -19,6 +19,8 @@ test('local skill execution is main-window-only and takes catalog IDs rather tha
   const requestId = randomUUID()
   expect(localSkillCliRequest.safeParse({ action: 'check', requestId }).success).toBe(true)
   expect(localSkillCliRequest.safeParse({ action: 'update', requestId }).success).toBe(false)
+  expect(localSkillCliRequest.safeParse({ action: 'update-all', requestId }).success).toBe(true)
+  expect(localSkillCliRequest.safeParse({ action: 'update-all', requestId, id: 'local:' + 'a'.repeat(64) }).success).toBe(false)
   expect(localSkillCliRequest.safeParse({ action: 'update', requestId, id: '--all' }).success).toBe(false)
   expect(localSkillCliRequest.safeParse({ action: 'check', requestId, command: 'whoami' }).success).toBe(false)
 })
@@ -34,6 +36,10 @@ if [ "$3" = check ] && [ -z "$7" ]; then
   printf '↑ report has an update\\n1 skill(s) can be updated; run npx skills update to install\\n'
   exit 1
 fi
+if [ "$3" = update ] && [ -z "$7" ]; then
+  printf '  ✓ Updated report\\n✓ Updated 1 skill(s)\\n'
+  exit 0
+fi
 if [ "$7" = unavailable ]; then
   printf 'No installed skills found matching: unavailable\\n'
 elif [ "$7" = failed ]; then
@@ -44,11 +50,12 @@ fi
 `, { mode: 0o755 })
     const checking = cli.run('check')
     expect(cli.run('check')).toBe(checking)
-    expect(await checking).toMatchObject({ status: 'available', output: expect.stringContaining('--yes\nskills@1.9.0\ncheck\n--global\n--yes\n↑ report') })
+    expect(await checking).toMatchObject({ status: 'available', availableSkills: ['report'], output: expect.stringContaining('--yes\nskills@1.9.0\ncheck\n--global\n--yes\n↑ report') })
     expect(await cli.run('check', 'report')).toMatchObject({ status: 'completed', output: expect.stringContaining('check\n--global\n--yes\n--\nreport') })
     expect(await cli.run('check', 'unavailable')).toMatchObject({ status: 'unsupported' })
     expect(await cli.run('check', 'failed')).toMatchObject({ status: 'failed' })
     expect(await cli.run('update', 'report')).toMatchObject({ status: 'completed', output: expect.stringContaining('update\n--global\n--yes\n--\nreport\n✓ Updated 1 skill(s)') })
+    expect(await cli.run('update-all')).toMatchObject({ status: 'completed', command: 'npx --yes skills@1.9.0 update --global --yes', updatedSkills: ['report'] })
     expect(() => cli.run('update', '--all')).toThrow('技能目录名')
 
     await writeFile(join(home, 'npx'), `#!/bin/sh

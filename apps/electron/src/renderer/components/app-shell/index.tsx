@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 技能全局检查、单项及全局更新共用 Shell 的终端运行状态，目录行同步显示可用更新。
  * [OUTPUT]: 技能更新标签直接运行 skills CLI 全局检查并显示命令输出。
  * [OUTPUT]: 浏览器按钮仅会话页可见；其他配置展开共用设置分类二级菜单，沿原导航守卫。
  * [OUTPUT]: 2026-11-09移除header独立工作区按钮，右侧标签栏加号复用原工具开始页入口。
@@ -172,7 +173,7 @@ import { DetailPanel, DetailPanelHeader, useDetailPanelLayout } from '../detail-
 import { lazy, Suspense, useCallback, useEffect, useReducer, useRef, useState, type ReactNode, type CSSProperties, type PointerEvent, type KeyboardEvent } from 'react'
 import { ArrowLeft, Clock, Home, Contact, MessageCircle, Users, FileText, Workflow, RefreshCw, Search, Sliders, Plus } from '@/components/icons/index'
 import { channelConversations, isEmployeeMainChat, isChannelConversation, type ConversationListChange } from '@boai/shared/domain/conversation-list'
-import type { AppEvent, Methods } from '@boai/shared/ipc'
+import type { LocalSkillCliCommand, AppEvent, Methods } from '@boai/shared/ipc'
 import type { Artifact, DigitalAgent, Conversation, Message, Snapshot } from '@boai/shared/domain'
 import { READING_LIMITS, type ConversationReadingState, type ConversationSearchResult, type ConversationSearchTarget, type ConversationView } from '@boai/shared/domain/reading'
 import { mergeMessagePages, mergeReadingState, readingSourceKey, sameSearchTarget, updateLiveMessage } from '@/pages/conversations/reading-state'
@@ -206,7 +207,7 @@ import { LocalSkillPanel } from '@/pages/library/skills-workspace'
 import { CustomizationWorkspace } from '@/pages/library/customization-workspace'
 import type { SkillMarketplaceProvider } from '@boai/shared/domain/skill-marketplace'
 import { SkillMarketplaceDetail } from '@/pages/library/skill-marketplace'
-import { LocalSkillsCheck } from '@/pages/library/local-skill-cli'
+import { LocalSkillCommands, useLocalSkillUpdates } from '@/pages/library/local-skill-cli'
 import { ResourceDetail } from '@/pages/library/resource-detail'
 import { ScheduleNavigationContext } from '@/pages/schedules/owner-automations'
 import { subscribeEmployeeTaskResults } from './employee-task-notifications'
@@ -267,6 +268,7 @@ export function AppShell() {
   const [focusedSource, setFocusedSource] = useState<{ id: string; requestId: string }>()
   const [skillsRevision, setSkillsRevision] = useState(0)
   const skillUpdated = useCallback(() => setSkillsRevision(value => value + 1), [])
+  const skillUpdates = useLocalSkillUpdates(api, skillUpdated)
   const skillsNavigation = route.page === 'skills'
   const taskNavigationRequest = useRef(0)
   const [scheduleLocation, setScheduleLocation] = useState<ScheduleLocation>({ kind: 'overview' })
@@ -733,6 +735,7 @@ export function AppShell() {
       else if (!withinKey) commit()
     })
   }
+  const runSkillCommand = (command: LocalSkillCliCommand) => openPanel({ type: 'skill-updates' }, 'skills', undefined, () => { void skillUpdates.execute(command) })
   const navigateExecutionMessage: import('@/components/detail-panel/execution-message-button').ExecutionMessageNavigation = (id, messageId, current, execution) => {
     if (execution.employeeTask) return openEmployeeTask({ type: 'employee-tasks', id: execution.employeeTask.employeeId, taskId: execution.employeeTask.taskId, requestId: crypto.randomUUID(), focusMessage: { id: messageId, requestId: crypto.randomUUID() } }, current)
     return selectConversation(id, true, messageId, current, () => {
@@ -1301,7 +1304,7 @@ export function AppShell() {
          }):loading||detailLoading?<Loading>正在载入工作空间…</Loading>:<IllustratedEmpty kind="conversations" />}</div></div>
       </div></FloatingLayerScope>}
       {route.page==='contacts'&&<ContactsPage onConversation={(id, messageId) => selectConversation(id, true, messageId)} active={route.page === 'contacts'} onCreateTeam={() => openCreation({ type: 'team' })} api={api} snapshot={snapshot} selected={contactSelection} onSelect={setContactSelection} onMessage={messageContact} onCreate={type=>openCreation({type})} refresh={refreshSnapshot} onAgentSaved={updateAgentSnapshot} onGroupSaved={updateGroupSnapshot} sidebarShown={effectiveList} divider={listResizer} generation={panelGeneration} busy={busy}/>}
-      {route.page==='skills'&&<CustomizationWorkspace snapshot={snapshot} onEmployeeCreated={createdConversation} selectedPrompt={panel?.type === 'prompt' ? panel.id : undefined} onOpenPrompt={prompt => openPanel({ type: 'prompt', id: prompt.id, name: prompt.name, requestId: crypto.randomUUID() })} onCreatePrompt={() => openPanel({ type: 'prompt', id: crypto.randomUUID(), name: '新建提示词', requestId: crypto.randomUUID(), create: true })} onRemovePrompt={id => { for (const tab of allDetailTabs) if (tab.target.type === 'prompt' && tab.target.id === id) dispatchDetails({ type: 'close', key: tab.key }, tab.scope) }} onRemoveSource={id => { for (const tab of detailTabs.tabs) if (tab.target.type === 'source' && tab.target.id === id) dispatchDetails({ type: 'close', key: tab.key }) }} focusSource={focusedSource} selectedSource={panel?.type === 'source' ? panel.id : undefined} onOpenSource={source => openPanel({ type: 'source', id: source.id, name: source.name, requestId: crypto.randomUUID() })} onManage={openCatalogManagement} onOpenSkill={skill => openPanel({ type: 'local-skill', id: skill.id, name: skill.name, requestId: crypto.randomUUID() })} onOpenMarketplace={item => openPanel({ type: 'marketplace', provider: item.provider, id: item.id, name: item.name })} api={api} section={skillsSection} onSection={setSkillsSection} provider={skillProvider} onProvider={setSkillProvider} divider={listResizer} onCheckUpdates={()=>openPanel({type:'skill-updates'})} focusSkill={focusedSkill} revision={skillsRevision} />}
+      {route.page==='skills'&&<CustomizationWorkspace snapshot={snapshot} onEmployeeCreated={createdConversation} selectedPrompt={panel?.type === 'prompt' ? panel.id : undefined} onOpenPrompt={prompt => openPanel({ type: 'prompt', id: prompt.id, name: prompt.name, requestId: crypto.randomUUID() })} onCreatePrompt={() => openPanel({ type: 'prompt', id: crypto.randomUUID(), name: '新建提示词', requestId: crypto.randomUUID(), create: true })} onRemovePrompt={id => { for (const tab of allDetailTabs) if (tab.target.type === 'prompt' && tab.target.id === id) dispatchDetails({ type: 'close', key: tab.key }, tab.scope) }} onRemoveSource={id => { for (const tab of detailTabs.tabs) if (tab.target.type === 'source' && tab.target.id === id) dispatchDetails({ type: 'close', key: tab.key }) }} focusSource={focusedSource} selectedSource={panel?.type === 'source' ? panel.id : undefined} onOpenSource={source => openPanel({ type: 'source', id: source.id, name: source.name, requestId: crypto.randomUUID() })} onManage={openCatalogManagement} onOpenSkill={skill => openPanel({ type: 'local-skill', id: skill.id, name: skill.name, requestId: crypto.randomUUID() })} onOpenMarketplace={item => openPanel({ type: 'marketplace', provider: item.provider, id: item.id, name: item.name })} api={api} section={skillsSection} onSection={setSkillsSection} provider={skillProvider} onProvider={setSkillProvider} divider={listResizer} updates={skillUpdates} onSkillCommand={runSkillCommand} focusSkill={focusedSkill} revision={skillsRevision} />}
       <SchedulePage onNavigateMessage={navigateExecutionMessage} api={api} snapshot={snapshot} active={route.page==='schedules'} sidebarShown={effectiveList} divider={listResizer} location={scheduleLocation} onLocation={setScheduleLocation} onCreateConversation={() => openCatalogManagement('automations')} selectedOccurrenceId={panel?.type === 'automation-occurrence' ? panel.id : undefined} onOccurrence={id => openPanel({ type: 'automation-occurrence', id }, 'schedules')}/>
       {settingsMounted.current && <div style={{ display: route.page === 'settings' ? 'contents' : 'none' }}><SettingsPage key={panelGeneration} divider={listResizer} tab={settingsSection} setTab={tab => { setLocalAgentTarget(undefined); setSettingsSection(tab) }} localAgentTarget={localAgentTarget} active={route.page === 'settings'} onOpenSkills={() => navigate(() => { setFocusedSource(undefined); setFocusedSkill(undefined); setSkillsSection('all'); applyRoute({ ...routeRef.current, page: 'skills' }) })} api={api} snapshot={snapshot} refresh={refreshSnapshot}/></div>}
       {route.page==='help'&&<HelpPage/>}
@@ -1347,9 +1350,9 @@ export function AppShell() {
             {target.type === 'resource' && (target.citation ? <KnowledgeCitationPane api={api} active={active} target={target.citation} /> : target.agentId && !snapshot.agents.find(agent => agent.id === target.agentId)?.knowledgeIds.includes(target.id) ? <p className="empty-note">该员工已移除此资料。</p> : snapshot.resources.find(r => r.id === target.id) ? snapshot.resources.find(r => r.id === target.id)?.knowledge || target.agentId ? <KnowledgePreviewPane api={api} resource={snapshot.resources.find(r => r.id === target.id)!} active={active} agentId={target.agentId} /> : <ResourceDetail api={api} resource={snapshot.resources.find(r => r.id === target.id)!} snapshot={snapshot} refresh={refreshSnapshot} onRemoved={() => closeView()} onAgent={agent => showPanel({ type: 'agent', id: agent.id })} /> : <p className="empty-note">该资源已被移除。</p>)}
             {target.type === 'prompt' && <PromptDetailPanel api={api} id={target.id} name={target.name} requestId={target.requestId} create={target.create} active={active} onManage={item => openCatalogManagement('prompts', item)} onSaved={value => dispatchDetails({ type: 'update', target: { type: 'prompt', id: value.id, name: value.name, requestId: crypto.randomUUID() } }, tab.scope)} onClose={closeView} />}
             {target.type === 'source' && <SourceDetailPanel api={api} id={target.id} name={target.name} requestId={target.requestId} active={active} onManage={item => openCatalogManagement('sources', item)} onRemoved={closeView} />}
-            {target.type === 'local-skill' && <LocalSkillPanel api={api} id={target.id} requestId={target.requestId} revision={skillsRevision} active={active} onUpdated={skillUpdated} />}
+            {target.type === 'local-skill' && <LocalSkillPanel api={api} id={target.id} requestId={target.requestId} revision={skillsRevision} active={active} updates={skillUpdates} />}
             {target.type === 'marketplace' && <SkillMarketplaceDetail active={active} api={api} provider={target.provider} id={target.id} refresh={async () => { await refreshSnapshot(); skillUpdated() }} onResource={openLocalSkill} />}
-            {target.type === 'skill-updates' && <div className="detail-section"><LocalSkillsCheck api={api} active={active} /></div>}
+            {target.type === 'skill-updates' && <div className="detail-section"><LocalSkillCommands updates={skillUpdates} /></div>}
             {tab.scope === 'conversations' && target.type === 'employee-tasks' && <EmployeeTasksPanel key={target.id} api={api} snapshot={snapshot} employeeId={target.id} target={target} active={active}
               onMaterials={materialDrafts.reconcile}
               onContext={conversation => setTaskSessions(previous => previous[target.id]?.id === conversation?.id && (previous[target.id]?.projectSelection?.revision ?? 0) >= (conversation?.projectSelection?.revision ?? 0) ? previous : { ...previous, [target.id]: conversation })}

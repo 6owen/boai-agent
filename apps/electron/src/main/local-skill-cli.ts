@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Trusted window requests, catalog-verified skill folder names and the local npm executable.
- * [OUTPUT]: Direct npx skills checks and targeted updates with live command output and real exit status.
+ * [OUTPUT]: Direct CLI checks and selected/all updates with live output and reported skill names.
  * [POS]: Desktop host for local skill updates.
  * [PROTOCOL]: Update Header and main/.folder.md when changed.
  */
@@ -18,6 +18,7 @@ const skillId = z.string().regex(/^local:[a-f0-9]{64}$/)
 export const localSkillCliRequest = z.discriminatedUnion('action', [
   z.object({ action: z.literal('check'), requestId, id: skillId.optional() }).strict(),
   z.object({ action: z.literal('update'), requestId, id: skillId }).strict(),
+  z.object({ action: z.literal('update-all'), requestId }).strict(),
   z.object({ action: z.literal('stop') }).strict(),
 ])
 type Result = Methods['localSkillCli']['output']
@@ -30,8 +31,10 @@ export class LocalSkillCli {
   private readonly running = new Map<string, { action: Command; result: Promise<Result>; stop: () => void; observe: (listener: ProgressListener) => void }>()
   constructor(private readonly home = homedir()) {}
 
-  run(action: Command, name?: string, onProgress?: ProgressListener): Promise<Result> {
-    if ((action === 'update' || name !== undefined) && !/^[a-z0-9][a-z0-9._-]{0,254}$/i.test(name ?? '')) {
+  run(operation: Command | 'update-all', name?: string, onProgress?: ProgressListener): Promise<Result> {
+    const action = operation === 'update-all' ? 'update' : operation
+    if (operation === 'update-all' && name !== undefined) throw new Error('全局更新不接收技能目录名')
+    if ((operation === 'update' || name !== undefined) && !/^[a-z0-9][a-z0-9._-]{0,254}$/i.test(name ?? '')) {
       throw new Error('技能目录名不符合 skills CLI 的名称格式')
     }
     const key = name?.toLowerCase() ?? ''
@@ -107,7 +110,13 @@ export class LocalSkillCli {
       this.running.delete(key)
       const text = terminalOutput().trim()
       const details = [text, truncated ? '（命令输出已截断）' : '', timedOut ? 'skills CLI 检查或更新超时。' : failure?.message].filter(Boolean).join('\n')
-      const available = action === 'check' && exitCode === 1 && /^↑ .+ has an update$/m.test(text) && /\d+ skill\(s\) can be updated;/m.test(text)
+      const availableSkills = action === 'check' && /\d+ skill\(s\) can be updated;/m.test(text)
+        ? [...new Set(Array.from(text.matchAll(/^↑ ([a-z0-9][a-z0-9._-]{0,254}) has an update$/gim), match => match[1]))]
+        : []
+      const updatedSkills = action === 'update'
+        ? [...new Set(Array.from(text.matchAll(/^[ \t]*✓ Updated ([a-z0-9][a-z0-9._-]{0,254})$/gim), match => match[1]))]
+        : []
+      const available = exitCode === 1 && availableSkills.length > 0
       const unsupported = /^No installed skills found matching:|^\d+ skill\(s\) cannot be checked automatically:/m.test(text) && !!name
       const failed = timedOut || !!failure || /^\s*✗ |^Failed to update \d+ skill\(s\)/m.test(text)
       let status: Result['status'] = 'completed'
@@ -115,7 +124,7 @@ export class LocalSkillCli {
       else if (failed || (!available && exitCode !== 0)) status = 'failed'
       else if (available) status = 'available'
       else if (unsupported) status = 'unsupported'
-      resolve({ command, output: details, status })
+      resolve({ command, output: details, status, skillName: name, availableSkills, updatedSkills })
     }))
     this.running.set(key, { action, result, observe, stop: () => { stopped = true; kill() } })
     if (onProgress) observe(onProgress)
@@ -124,8 +133,8 @@ export class LocalSkillCli {
 
   async stopCheck(): Promise<Result> {
     const check = this.running.get('')
-    check?.stop()
-    return check?.result ?? { status: 'cancelled', output: '' }
+    if (check?.action === 'check') { check.stop(); return check.result }
+    return { status: 'cancelled', output: '' }
   }
 
   async close() {
