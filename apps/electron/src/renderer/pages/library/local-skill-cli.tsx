@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Local skill identity and trusted desktop CLI progress and results.
- * [OUTPUT]: Shared Shiki command display, live output and one header action for local skill operations.
+ * [OUTPUT]: Shared Shiki command display with the Button hairline and md corners, live output and one header action.
  * [POS]: Local library UI for npx skills.
  * [PROTOCOL]: Update Header and library/.folder.md when changed.
  */
@@ -39,7 +39,7 @@ function useSkillCommand(api: DesktopApi, onUpdated?: () => Promise<void>) {
   return { busy, execute, progress, result }
 }
 
-const terminalCode = 'rounded-none shadow-none [&>code]:min-w-0 [&>code]:whitespace-pre-wrap [&>code]:[overflow-wrap:anywhere]'
+const terminalCode = 'rounded-none bg-transparent shadow-none [&>code]:min-w-0 [&>code]:whitespace-pre-wrap [&>code]:[overflow-wrap:anywhere]'
 
 function SkillCliTerminal({ progress, busy }: { progress?: LocalSkillCliProgress; busy: boolean }) {
   const scroll = useRef<HTMLDivElement>(null)
@@ -48,7 +48,7 @@ function SkillCliTerminal({ progress, busy }: { progress?: LocalSkillCliProgress
     const node = scroll.current
     if (node && follow.current) node.scrollTop = node.scrollHeight
   }, [progress?.output])
-  return <section aria-label="技能命令终端" aria-busy={busy} className="min-w-0 overflow-hidden rounded-(--radius-control) border border-border bg-[var(--code-background)]">
+  return <section aria-label="技能命令终端" aria-busy={busy} className="min-w-0 overflow-hidden rounded-md bg-[var(--code-background)] [box-shadow:var(--shadow-input)]">
     {progress?.command && <CodeBlock code={progress.command} language="bash" density="compact" className={terminalCode} />}
     <div ref={scroll} tabIndex={0} aria-label="命令输出" className="max-h-56 min-h-12 overflow-y-auto" onScroll={event => {
       const node = event.currentTarget
