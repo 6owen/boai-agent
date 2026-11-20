@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 技能更新标签直接运行 skills CLI 全局检查并显示命令输出。
  * [OUTPUT]: 浏览器按钮仅会话页可见；其他配置展开共用设置分类二级菜单，沿原导航守卫。
  * [OUTPUT]: 2026-11-09移除header独立工作区按钮，右侧标签栏加号复用原工具开始页入口。
  * [OUTPUT]: 2026-11-09通讯录不再传递工作区按钮入口，项目目录沿员工资料配置。
@@ -205,7 +206,7 @@ import { LocalSkillPanel } from '@/pages/library/skills-workspace'
 import { CustomizationWorkspace } from '@/pages/library/customization-workspace'
 import type { SkillMarketplaceProvider } from '@boai/shared/domain/skill-marketplace'
 import { SkillMarketplaceDetail } from '@/pages/library/skill-marketplace'
-import { SkillUpdateBatchView } from '@/pages/library/skill-update-batch'
+import { LocalSkillsCheck } from '@/pages/library/local-skill-cli'
 import { ResourceDetail } from '@/pages/library/resource-detail'
 import { ScheduleNavigationContext } from '@/pages/schedules/owner-automations'
 import { subscribeEmployeeTaskResults } from './employee-task-notifications'
@@ -1348,7 +1349,7 @@ export function AppShell() {
             {target.type === 'source' && <SourceDetailPanel api={api} id={target.id} name={target.name} requestId={target.requestId} active={active} onManage={item => openCatalogManagement('sources', item)} onRemoved={closeView} />}
             {target.type === 'local-skill' && <LocalSkillPanel api={api} id={target.id} requestId={target.requestId} revision={skillsRevision} active={active} onUpdated={skillUpdated} />}
             {target.type === 'marketplace' && <SkillMarketplaceDetail active={active} api={api} provider={target.provider} id={target.id} refresh={async () => { await refreshSnapshot(); skillUpdated() }} onResource={openLocalSkill} />}
-            {target.type === 'skill-updates' && <div className="detail-section"><SkillUpdateBatchView api={api} active={active} autoStart localOnly onUpdated={skillUpdated} onResource={openLocalSkill} /></div>}
+            {target.type === 'skill-updates' && <div className="detail-section"><LocalSkillsCheck api={api} active={active} /></div>}
             {tab.scope === 'conversations' && target.type === 'employee-tasks' && <EmployeeTasksPanel key={target.id} api={api} snapshot={snapshot} employeeId={target.id} target={target} active={active}
               onMaterials={materialDrafts.reconcile}
               onContext={conversation => setTaskSessions(previous => previous[target.id]?.id === conversation?.id && (previous[target.id]?.projectSelection?.revision ?? 0) >= (conversation?.projectSelection?.revision ?? 0) ? previous : { ...previous, [target.id]: conversation })}

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 共享本机技能详情标题栏直接调用 skills CLI 检查与更新，退出后刷新技能正文和目录。
  * [OUTPUT]: 技能标题增加能力包管理入口，原本地技能导入/收藏/商城保持；包管理沿原应用回执。
  * [OUTPUT]: 随包内置技能源只读显示，不提供外部编辑器修改入口。
  * [OUTPUT]: 技能标题AI管理沿Shell进入普通bobo会话，目录/详情/原Tabs状态保持。
@@ -15,7 +16,7 @@ import type { LocalSkill, LocalSkillCatalog, LocalSkillDetail, SkillCollectionAc
 import { type SkillMarketplaceItem, type SkillMarketplaceProvider } from '@boai/shared/domain/skill-marketplace'
 import { Banner, errorText, Loading, useMutation } from '@/components/common'
 import { Button } from '@/components/ui/button'
-import { SkillUpdate } from './skill-update'
+import { LocalSkillUpdate } from './local-skill-cli'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { CatalogSearch } from '@/components/common/catalog-search'
 import { CatalogTransition } from './catalog-transition'
@@ -121,9 +122,9 @@ export function LocalSkillPanel({ api, id, revision, requestId, active, onUpdate
   if (error) return <Banner>{error}</Banner>
   if (!skill) return <IllustratedEmpty kind="skills" title={catalog ? '该技能已不可用' : undefined} />
   const favorite = Boolean(collection.value?.favoriteResourceIds.includes(id))
-  const detail = ({ actions }: { actions?: ReactNode } = {}) => <SkillDetailPanel name={skill.name} className="local-skill-panel" actions={<>{actions}<DropdownMenu><DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="当前技能操作" />}><MoreHorizontal /></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem disabled={!collection.value || collection.busy} onClick={() => { void collection.change({ kind: 'favorite', resourceId: id, favorite: !favorite }) }}>{favorite ? '取消收藏' : '加入收藏'}</DropdownMenuItem></DropdownMenuContent></DropdownMenu></>}>
+  const updateAction = skill.source === 'global' && <LocalSkillUpdate key={id} api={api} id={id} onUpdated={async () => { await reload(true); await onUpdated() }} />
+  return <SkillDetailPanel name={skill.name} className="local-skill-panel" actions={<>{updateAction}<DropdownMenu><DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="当前技能操作" />}><MoreHorizontal /></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem disabled={!collection.value || collection.busy} onClick={() => { void collection.change({ kind: 'favorite', resourceId: id, favorite: !favorite }) }}>{favorite ? '取消收藏' : '加入收藏'}</DropdownMenuItem></DropdownMenuContent></DropdownMenu></>}>
     {collection.error && <Banner>{collection.error}</Banner>}
     <LocalSkillInfo api={api} skill={skill} active={active} refreshKey={requestId} favorite={favorite} collection={collection.value} busy={collection.busy} assign={groupId => { void collection.change({ kind: 'assign-group', resourceId: id, groupId }) }} />
   </SkillDetailPanel>
-  return skill.source === 'global' ? <SkillUpdate api={api} resourceId={id} onUpdated={async () => { await reload(true); await onUpdated() }} popover>{detail}</SkillUpdate> : detail()
 }

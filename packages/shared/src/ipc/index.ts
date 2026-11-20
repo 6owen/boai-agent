@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: localSkillCli 定义主窗专用的本机技能检查、指定更新和停止全局检查。
  * [OUTPUT]: 员工明确新话题的首发沿消息请求与原受理回执。
  * [OUTPUT]: 增加主窗专用技能安装终端合同，不接受任意shell命令。
  * [OUTPUT]: openFile按材料/成果/知识身份请求系统默认、指定应用打开或文件管理器定位，路径由Main核对。
@@ -291,6 +292,10 @@ export interface Methods extends EmployeeTaskMethods, MessageQueueMethods, Conte
   saveLocalSkill: { input: { id?: string; name?: string; content: string; expectedHash: string | null }; output: LocalSkillDetail & { contentHash: string; treeHash: string } }
   removeLocalSkill: { input: { id: string; expectedHash: string }; output: { removed: boolean; id: string } }
   listLocalSkills: { input: { refresh?: boolean } | undefined; output: LocalSkillCatalog }
+  localSkillCli: {
+    input: { action: 'check'; id?: string } | { action: 'update'; id: string } | { action: 'stop' }
+    output: { status: 'completed' | 'available' | 'unsupported' | 'failed' | 'cancelled'; output: string }
+  }
   getLocalSkillDetail: { input: { id: string }; output: LocalSkillDetail }
   scanLocalSkill: { input: { id: string; ownerAgentId?: string; requestId?: string }; output: SkillScan }
   openLocalSkill: { input: { id: string; action: 'edit' | 'reveal' }; output: void }
