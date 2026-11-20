@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Local skill identity and trusted desktop CLI progress and results.
- * [OUTPUT]: Fixed-height update popover with a scrolling Shiki transcript and one bottom-right Button.
+ * [OUTPUT]: Fixed-height update popover using the shared ScrollArea, Shiki transcript and Carbon action icons.
  * [POS]: Local library UI for npx skills.
  * [PROTOCOL]: Update Header and library/.folder.md when changed.
  */
@@ -11,7 +11,8 @@ import { Button } from '@/components/ui/button'
 import { CodeBlock } from '@/components/ui/code-block'
 import { Popconfirm } from '@/components/ui/popconfirm'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { ArrowUp, LoaderCircle, RefreshCw } from '@/components/icons'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { LoaderCircle, RefreshCw } from '@/components/icons'
 
 type Result = Methods['localSkillCli']['output']
 type Command = { action: 'check'; id?: string } | { action: 'update'; id: string }
@@ -42,7 +43,7 @@ function useSkillCommand(api: DesktopApi, onUpdated?: () => Promise<void>) {
 }
 
 function SkillCliTerminal({ progress, busy, className = 'max-h-56 min-h-12' }: { progress?: LocalSkillCliProgress; busy: boolean; className?: string }) {
-  const scroll = useRef<HTMLPreElement>(null)
+  const scroll = useRef<HTMLDivElement>(null)
   const follow = useRef(true)
   const transcript = progress ? `${progress.command}\n${progress.output}` : ''
   useLayoutEffect(() => {
@@ -50,21 +51,31 @@ function SkillCliTerminal({ progress, busy, className = 'max-h-56 min-h-12' }: {
     if (!transcript) follow.current = true
     if (node && follow.current) node.scrollTop = node.scrollHeight
   }, [transcript])
-  return <CodeBlock
-    ref={scroll}
-    code={transcript}
-    language="command-log"
-    density="compact"
+  return <ScrollArea
     role="region"
     aria-label="技能命令终端"
     aria-busy={busy}
-    tabIndex={0}
-    className={`${className} overflow-auto rounded-sm [box-shadow:var(--shadow-input)] [&>code]:min-w-0 [&>code]:whitespace-pre-wrap [&>code]:[overflow-wrap:anywhere]`}
-    onScroll={event => {
-      const node = event.currentTarget
-      follow.current = node.scrollHeight - node.scrollTop - node.clientHeight < 12
+    className={`${className} min-w-0 overflow-hidden rounded-sm bg-[var(--code-background)] [box-shadow:var(--shadow-input)]`}
+    viewportProps={{
+      ref: scroll,
+      className: 'max-h-[inherit] overscroll-contain',
+      onScroll: event => {
+        const node = event.currentTarget
+        follow.current = node.scrollHeight - node.scrollTop - node.clientHeight < 12
+      },
     }}
-  />
+  >
+    <CodeBlock
+      code={transcript}
+      language="command-log"
+      density="compact"
+      className="overflow-visible rounded-none bg-transparent shadow-none [&>code]:min-w-0 [&>code]:whitespace-pre-wrap [&>code]:[overflow-wrap:anywhere]"
+    />
+  </ScrollArea>
+}
+
+function SkillUpdateIcon() {
+  return <i className="app-icon i-carbon-update-now" aria-hidden="true" />
 }
 
 export function LocalSkillUpdate({ api, id, onUpdated }: { api: DesktopApi; id: string; onUpdated(): Promise<void> }) {
@@ -79,20 +90,20 @@ export function LocalSkillUpdate({ api, id, onUpdated }: { api: DesktopApi; id: 
     else if (!busy && !result) check()
   }}>
     <PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label="查看技能更新" title="查看技能更新" aria-busy={busy} />}>
-      {busy ? <LoaderCircle className="spinner" /> : canUpdate ? <ArrowUp /> : <RefreshCw />}
+      {busy ? <LoaderCircle className="spinner" /> : canUpdate ? <SkillUpdateIcon /> : <RefreshCw />}
     </PopoverTrigger>
     <PopoverContent aria-label="技能更新" align="end" className="h-[296px] max-h-(--available-height) w-[480px] max-w-[calc(100vw-24px)] gap-3 p-4">
       <SkillCliTerminal progress={progress} busy={busy} className="min-h-0 flex-1" />
       <div className="flex shrink-0 justify-end">
         {canUpdate ? <Popconfirm
-          trigger={<Button size="sm">现在更新</Button>}
+          trigger={<Button size="sm"><SkillUpdateIcon />现在更新</Button>}
           title="更新技能"
           description="更新可能覆盖这个技能的本地修改。"
           confirmLabel="确认更新"
           open={confirm}
           onOpenChange={setConfirm}
           onConfirm={() => { setConfirm(false); void execute({ action: 'update', id }) }}
-        /> : <Button variant="secondary" size="sm" disabled={busy} onClick={check}>{buttonLabel}</Button>}
+        /> : <Button variant="secondary" size="sm" disabled={busy} onClick={check}>{busy ? <LoaderCircle className="spinner" /> : <RefreshCw />}{buttonLabel}</Button>}
       </div>
     </PopoverContent>
   </Popover>
