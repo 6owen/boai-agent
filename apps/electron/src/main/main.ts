@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 本机技能页的检查与指定技能更新由可信主窗交给 npx skills，更新前重核目录身份。
+ * [OUTPUT]: 本机技能页的检查与指定技能更新由可信主窗交给 npx skills，更新前重核目录身份，命令进度只发回原窗口页面。
  * [OUTPUT]: 2026-11-16语音输入未注册时跳过初始化并拒绝IPC；已保存配置/模型不迁移、不删除。
  * [OUTPUT]: 主窗口默认1100×760；主进程终端监督器按应用分发路径定位，开发/安装后均不依赖cwd。
  * [OUTPUT]: 会话文件/知识资料按业务身份核源后复用系统应用打开；材料临时命名副本随退出清理且保留外改。
@@ -791,14 +791,19 @@ function registerIpc() {
     if (method === 'localSkillCli') {
       const value = localSkillCliRequest.parse(input)
       if (value.action === 'stop') return localSkillCli.stopCheck()
-      if (!value.id) return localSkillCli.run('check')
       const epoch = workspaceDocumentEpoch
+      const onProgress = (progress: import('@boai/shared/ipc').LocalSkillCliProgress) => {
+        if (epoch === workspaceDocumentEpoch && !event.sender.isDestroyed()) {
+          event.sender.send('boai:event', { type: 'local-skill-cli:progress', requestId: value.requestId, ...progress })
+        }
+      }
+      if (!value.id) return localSkillCli.run('check', undefined, onProgress)
       const { skill } = await requestRuntime('getLocalSkillDetail', { id: value.id }) as Methods['getLocalSkillDetail']['output']
       if (quitting || epoch !== workspaceDocumentEpoch) throw new Error('原技能页面已失效，请重新打开')
       if (skill.source !== 'global') throw new Error('请选择共享目录中的全局技能')
       const name = basename(skill.path)
       if (resolve(skill.path) !== join(app.getPath('home'), '.agents', 'skills', name)) throw new Error('请选择 skills CLI 管理目录中的技能')
-      return localSkillCli.run(value.action, name)
+      return localSkillCli.run(value.action, name, onProgress)
     }
     if (method === 'skillInstallationTerminal') {
       await resumeUserTerminals()

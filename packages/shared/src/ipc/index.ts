@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: localSkillCli 定义主窗专用的本机技能检查、指定更新和停止全局检查。
+ * [OUTPUT]: localSkillCli 定义主窗专用的本机技能检查、指定更新和停止全局检查，并以请求 ID 关联终端进度。
  * [OUTPUT]: 员工明确新话题的首发沿消息请求与原受理回执。
  * [OUTPUT]: 增加主窗专用技能安装终端合同，不接受任意shell命令。
  * [OUTPUT]: openFile按材料/成果/知识身份请求系统默认、指定应用打开或文件管理器定位，路径由Main核对。
@@ -125,7 +125,10 @@ export const unsupportedRequestMessage = '当前运行版本尚未加载此功�
 export const CLIPBOARD_MATERIAL_FILE_FORMATS = ['Files', 'text/uri-list', 'x-special/gnome-copied-files', 'public.file-url', 'NSFilenamesPboardType', 'CF_HDROP', 'FileNameW', 'FileName'] as const
 export type MaterialFileSourceInput = { path: string } | { name: string; bytes: Uint8Array }
 
+export type LocalSkillCliProgress = { command: string; output: string }
+
 export type AppEvent =
+  | ({ type: 'local-skill-cli:progress'; requestId: string } & LocalSkillCliProgress)
   | { type: 'canvas:flush'; id: string; scope?: import('@boai/canvas-plugin/protocol').CanvasScope; boardId?: string; hold?: boolean }
   | { type: 'canvas:resume'; id: string }
   | { type: 'app:update'; state: import('./app-updates').AppUpdateState }
@@ -293,8 +296,8 @@ export interface Methods extends EmployeeTaskMethods, MessageQueueMethods, Conte
   removeLocalSkill: { input: { id: string; expectedHash: string }; output: { removed: boolean; id: string } }
   listLocalSkills: { input: { refresh?: boolean } | undefined; output: LocalSkillCatalog }
   localSkillCli: {
-    input: { action: 'check'; id?: string } | { action: 'update'; id: string } | { action: 'stop' }
-    output: { status: 'completed' | 'available' | 'unsupported' | 'failed' | 'cancelled'; output: string }
+    input: { action: 'check'; requestId: string; id?: string } | { action: 'update'; requestId: string; id: string } | { action: 'stop' }
+    output: { status: 'completed' | 'available' | 'unsupported' | 'failed' | 'cancelled'; command?: string; output: string }
   }
   getLocalSkillDetail: { input: { id: string }; output: LocalSkillDetail }
   scanLocalSkill: { input: { id: string; ownerAgentId?: string; requestId?: string }; output: SkillScan }

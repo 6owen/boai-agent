@@ -1,9 +1,10 @@
 /*
  * [INPUT]: Desktop local skill requests and an isolated npx stand-in.
- * [OUTPUT]: CLI argument scope, exact skill targeting, exit-code interpretation and cancellation.
+ * [OUTPUT]: CLI argument scope, exact skill targeting, exit-code interpretation, cancellation and progress before exit.
  * [POS]: Regression coverage for the desktop skills CLI host.
  * [PROTOCOL]: Update Header and tests/.folder.md when changed.
  */
+import { randomUUID } from 'node:crypto'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { delimiter, join } from 'node:path'
@@ -15,9 +16,11 @@ import { isPublicMethod } from '@boai/shared/ipc/public-methods'
 test('local skill execution is main-window-only and takes catalog IDs rather than shell text', () => {
   expect(isMainWindowMethod('localSkillCli')).toBe(true)
   expect(isPublicMethod('localSkillCli')).toBe(false)
-  expect(localSkillCliRequest.safeParse({ action: 'update' }).success).toBe(false)
-  expect(localSkillCliRequest.safeParse({ action: 'update', id: '--all' }).success).toBe(false)
-  expect(localSkillCliRequest.safeParse({ action: 'check', command: 'whoami' }).success).toBe(false)
+  const requestId = randomUUID()
+  expect(localSkillCliRequest.safeParse({ action: 'check', requestId }).success).toBe(true)
+  expect(localSkillCliRequest.safeParse({ action: 'update', requestId }).success).toBe(false)
+  expect(localSkillCliRequest.safeParse({ action: 'update', requestId, id: '--all' }).success).toBe(false)
+  expect(localSkillCliRequest.safeParse({ action: 'check', requestId, command: 'whoami' }).success).toBe(false)
 })
 
 test.skipIf(process.platform === 'win32')('runs one global command or the exact selected skill and keeps CLI outcomes distinct', async () => {
@@ -47,6 +50,23 @@ fi
     expect(await cli.run('check', 'failed')).toMatchObject({ status: 'failed' })
     expect(await cli.run('update', 'report')).toMatchObject({ status: 'completed', output: expect.stringContaining('update\n--global\n--yes\n--\nreport\n✓ Updated 1 skill(s)') })
     expect(() => cli.run('update', '--all')).toThrow('技能目录名')
+
+    await writeFile(join(home, 'npx'), `#!/bin/sh
+printf 'Fetching\\r\\n'
+printf 'Checking source\\n' >&2
+while [ ! -f release ]; do sleep 0.05; done
+printf 'Finished\\n'
+`)
+    const progress = vi.fn()
+    const inProgress = cli.run('check', 'report', progress)
+    const command = 'npx --yes skills@1.9.0 check --global --yes -- report'
+    expect(progress).toHaveBeenCalledWith({ command, output: '' })
+    await vi.waitFor(() => expect(progress).toHaveBeenCalledWith({ command, output: expect.stringContaining('Checking source\n') }))
+    const joined = vi.fn()
+    expect(cli.run('check', 'report', joined)).toBe(inProgress)
+    expect(joined).toHaveBeenCalledWith({ command, output: expect.stringContaining('Fetching\n') })
+    await writeFile(join(home, 'release'), '')
+    expect(await inProgress).toMatchObject({ command, status: 'completed', output: expect.stringContaining('Finished') })
 
     await writeFile(join(home, 'npx'), '#!/bin/sh\nexec sleep 30\n')
     const stopped = cli.run('check')
