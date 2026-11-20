@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Local skill identity and trusted desktop CLI progress and results.
- * [OUTPUT]: Shared Shiki command display with the Button hairline and md corners, live output and one header action.
+ * [OUTPUT]: One scrolling Shiki transcript with the Button hairline and sm corners, plus one header action.
  * [POS]: Local library UI for npx skills.
  * [PROTOCOL]: Update Header and library/.folder.md when changed.
  */
@@ -39,24 +39,30 @@ function useSkillCommand(api: DesktopApi, onUpdated?: () => Promise<void>) {
   return { busy, execute, progress, result }
 }
 
-const terminalCode = 'rounded-none bg-transparent shadow-none [&>code]:min-w-0 [&>code]:whitespace-pre-wrap [&>code]:[overflow-wrap:anywhere]'
-
 function SkillCliTerminal({ progress, busy }: { progress?: LocalSkillCliProgress; busy: boolean }) {
-  const scroll = useRef<HTMLDivElement>(null)
+  const scroll = useRef<HTMLPreElement>(null)
   const follow = useRef(true)
+  const transcript = progress ? `${progress.command}\n${progress.output}` : ''
   useLayoutEffect(() => {
     const node = scroll.current
+    if (!transcript) follow.current = true
     if (node && follow.current) node.scrollTop = node.scrollHeight
-  }, [progress?.output])
-  return <section aria-label="技能命令终端" aria-busy={busy} className="min-w-0 overflow-hidden rounded-md bg-[var(--code-background)] [box-shadow:var(--shadow-input)]">
-    {progress?.command && <CodeBlock code={progress.command} language="bash" density="compact" className={terminalCode} />}
-    <div ref={scroll} tabIndex={0} aria-label="命令输出" className="max-h-56 min-h-12 overflow-y-auto" onScroll={event => {
+  }, [transcript])
+  return <CodeBlock
+    ref={scroll}
+    code={transcript}
+    language="command-log"
+    density="compact"
+    role="region"
+    aria-label="技能命令终端"
+    aria-busy={busy}
+    tabIndex={0}
+    className="max-h-56 min-h-12 overflow-auto rounded-sm [box-shadow:var(--shadow-input)] [&>code]:min-w-0 [&>code]:whitespace-pre-wrap [&>code]:[overflow-wrap:anywhere]"
+    onScroll={event => {
       const node = event.currentTarget
       follow.current = node.scrollHeight - node.scrollTop - node.clientHeight < 12
-    }}>
-      <CodeBlock code={progress?.output ?? ''} density="compact" className={terminalCode} />
-    </div>
-  </section>
+    }}
+  />
 }
 
 export function LocalSkillUpdate({ api, id, onUpdated }: { api: DesktopApi; id: string; onUpdated(): Promise<void> }) {
