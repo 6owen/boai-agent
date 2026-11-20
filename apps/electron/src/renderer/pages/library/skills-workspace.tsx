@@ -1,11 +1,13 @@
 /*
+ * [OUTPUT]: 全局检查、批量更新与单项更新共用固定终端浮层，分别从工具栏及技能详情打开。
+ * [OUTPUT]: 共享本机技能详情标题栏直接调用 skills CLI 检查与更新，退出后刷新技能正文和目录。
  * [OUTPUT]: 技能标题增加能力包管理入口，原本地技能导入/收藏/商城保持；包管理沿原应用回执。
  * [OUTPUT]: 随包内置技能源只读显示，不提供外部编辑器修改入口。
  * [OUTPUT]: 技能标题AI管理沿Shell进入普通bobo会话，目录/详情/原Tabs状态保持。
  * [OUTPUT]: 最右图标检索展开；本地/收藏/商城内容共用CatalogTransition，导航Tabs保持挂载。
  * [OUTPUT]: 本地/收藏/商城持续挂载同一Tabs滑动层，搜索图标展开，内容区复用transitions-dev Panel reveal；选中技能打开Shell右侧独立详情，主目录保持。
- * [INPUT]: 跨页面缓存的本机技能目录、收藏分组与商店 API、TanStack 虚拟列表；技能库导入完成回调；Shell 更新标签入口、技能定位与升级刷新信号；共享 Card/分割线与 ScrollFade；旧 boai-app SkillsListPanel / SkillInfoPage 交互。
- * [OUTPUT]: 本地/收藏/商城未选中时共用无标题且不可选中/拖拽的猫头鹰书本 SVG 空态；下拉字段统一使用 shadcn Select；本地目录缓存、手动扫描、打开独立技能更新标签且保留主详情、详情标题栏单项更新图标/浮层，移除正文状态卡片、说明刷新和底部重复收藏； 同页本地/收藏/商城顶部 Tabs，左栏搜索工具栏/列表，右栏共用卡片皮肤、悬浮标题与顶部渐隐详情或居中空占位，切换技能从顶部阅读；保留可拖动分栏、搜索刷新、会话式收藏分类/全局拖放、可见分组导航与持久顺序、来源元数据/正文、本机技能导出、右侧单图标菜单合并导入/扫描/导出及本地安装浮层，不提供统计页。
+ * [INPUT]: 跨页面缓存的本机技能目录、收藏分组与商店 API、TanStack 虚拟列表；技能库导入完成回调；Shell 技能定位与升级刷新信号；共享 Card/分割线与 ScrollFade；旧 boai-app SkillsListPanel / SkillInfoPage 交互。
+ * [OUTPUT]: 本地/收藏/商城未选中时共用无标题且不可选中/拖拽的猫头鹰书本 SVG 空态；下拉字段统一使用 shadcn Select；本地目录缓存、手动扫描、工具栏全局更新浮层和详情标题栏单项更新浮层，移除正文状态卡片、说明刷新和底部重复收藏； 同页本地/收藏/商城顶部 Tabs，左栏搜索工具栏/列表，右栏共用卡片皮肤、悬浮标题与顶部渐隐详情或居中空占位，切换技能从顶部阅读；保留可拖动分栏、搜索刷新、会话式收藏分类/全局拖放、可见分组导航与持久顺序、来源元数据/正文、本机技能导出、右侧单图标菜单合并导入/扫描/导出及本地安装浮层，不提供统计页。
  * [POS]: 单一侧栏入口的 Skills 管理与商城工作区；不读取员工资源、不展示或操作员工绑定。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -15,7 +17,7 @@ import type { LocalSkill, LocalSkillCatalog, LocalSkillDetail, SkillCollectionAc
 import { type SkillMarketplaceItem, type SkillMarketplaceProvider } from '@boai/shared/domain/skill-marketplace'
 import { Banner, errorText, Loading, useMutation } from '@/components/common'
 import { Button } from '@/components/ui/button'
-import { SkillUpdate } from './skill-update'
+import { GlobalSkillUpdate, LocalSkillUpdate, type LocalSkillUpdates } from './local-skill-cli'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { CatalogSearch } from '@/components/common/catalog-search'
 import { CatalogTransition } from './catalog-transition'
@@ -36,7 +38,7 @@ import { SkillMarketplaceView } from './skill-marketplace'
 export type SkillsSection = 'all' | 'own' | 'marketplace'
 const stored = <T,>(key: string, fallback: T): T => { try { return JSON.parse(localStorage.getItem(`boai.skills.${key}`) ?? 'null') ?? fallback } catch { return fallback } }
 
-export function SkillsWorkspace({ api, section, onSection, provider, onProvider, onCheckUpdates, focusSkill, revision, embedded = false, onCatalogChange, onOpenSkill, onOpenMarketplace, onManage }: { api: DesktopApi; section: SkillsSection; onSection: (section: SkillsSection) => void; provider: SkillMarketplaceProvider; onProvider: (provider: SkillMarketplaceProvider) => void; divider: ReactNode; onCheckUpdates: () => void; focusSkill?: { id: string; requestId: string }; revision: number; embedded?: boolean; onCatalogChange?(catalog: LocalSkillCatalog): void; onOpenSkill(skill: LocalSkill): void; onOpenMarketplace(item: SkillMarketplaceItem): void; onManage?(kind: 'skills' | 'sources', item?: { id: string; name: string }): void }) {
+export function SkillsWorkspace({ api, section, onSection, provider, onProvider, updates, focusSkill, revision, embedded = false, onCatalogChange, onOpenSkill, onOpenMarketplace, onManage }: { api: DesktopApi; section: SkillsSection; onSection: (section: SkillsSection) => void; provider: SkillMarketplaceProvider; onProvider: (provider: SkillMarketplaceProvider) => void; divider: ReactNode; updates: LocalSkillUpdates; focusSkill?: { id: string; requestId: string }; revision: number; embedded?: boolean; onCatalogChange?(catalog: LocalSkillCatalog): void; onOpenSkill(skill: LocalSkill): void; onOpenMarketplace(item: SkillMarketplaceItem): void; onManage?(kind: 'skills' | 'sources', item?: { id: string; name: string }): void }) {
   const { catalog, loading, error: loadError, reload } = useLocalSkills(api, revision)
   useEffect(() => { if (catalog) onCatalogChange?.(catalog) }, [catalog, onCatalogChange])
   const [packagesOpen, setPackagesOpen] = useState(false)
@@ -77,8 +79,10 @@ export function SkillsWorkspace({ api, section, onSection, provider, onProvider,
       <div className="custom-catalog-toolbar">{navigation}<div className="custom-catalog-search" ref={setMarketToolbar}>
         {section !== 'marketplace' && <><div className="skills-search-actions">
           {section === 'own' && <SkillGroups value={collection.value ? { ...collection.value, favoriteResourceIds: favorites } : null} change={collection.change} busy={collection.busy} />}
-          <SkillActionsMenu api={api} onInstalled={installed} onLibraryInstalled={libraryInstalled} onResource={openResource} allowImport={section === 'all'} onRescan={() => { void reload(true) }} onCheckUpdates={onCheckUpdates} onExport={() => setExporting(true)} scanning={loading} canExport={favorites.length > 0} />
-        </div><CatalogSearch label="搜索本机技能" placeholder="搜索技能" value={query} onChange={value => { setQuery(value); setSelected('') }} /></>}
+          <SkillActionsMenu api={api} onInstalled={installed} onLibraryInstalled={libraryInstalled} onResource={openResource} allowImport={section === 'all'} onRescan={() => { void reload(true) }} onExport={() => setExporting(true)} scanning={loading} canExport={favorites.length > 0} />
+        </div>
+          <GlobalSkillUpdate updates={updates} />
+          <CatalogSearch label="搜索本机技能" placeholder="搜索技能" value={query} onChange={value => { setQuery(value); setSelected('') }} /></>}
       </div></div>
       <CatalogTransition key={section}>
       {section === 'marketplace' ? <SkillMarketplaceView api={api} provider={provider} onProviderChange={onProvider} compact toolbarTarget={marketToolbar} selectedId={marketSelection?.provider === provider ? marketSelection.id : undefined} onSelect={item => { setMarketSelection({ provider: item.provider, id: item.id }); onOpenMarketplace(item) }} /> : <>
@@ -113,7 +117,7 @@ function LocalSkillInfo({ api, skill, favorite, collection, busy, assign, active
   </SkillDetailBody>
 }
 
-export function LocalSkillPanel({ api, id, revision, requestId, active, onUpdated }: { api: DesktopApi; id: string; revision: number; requestId: string; active: boolean; onUpdated(): void | Promise<void> }) {
+export function LocalSkillPanel({ api, id, revision, requestId, active, updates }: { api: DesktopApi; id: string; revision: number; requestId: string; active: boolean; updates: LocalSkillUpdates }) {
   const { catalog, reload, error } = useLocalSkills(api, revision)
   const collection = useSkillCollections(api)
   useEffect(() => { if (active) void reload() }, [active, requestId, reload])
@@ -121,9 +125,9 @@ export function LocalSkillPanel({ api, id, revision, requestId, active, onUpdate
   if (error) return <Banner>{error}</Banner>
   if (!skill) return <IllustratedEmpty kind="skills" title={catalog ? '该技能已不可用' : undefined} />
   const favorite = Boolean(collection.value?.favoriteResourceIds.includes(id))
-  const detail = ({ actions }: { actions?: ReactNode } = {}) => <SkillDetailPanel name={skill.name} className="local-skill-panel" actions={<>{actions}<DropdownMenu><DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="当前技能操作" />}><MoreHorizontal /></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem disabled={!collection.value || collection.busy} onClick={() => { void collection.change({ kind: 'favorite', resourceId: id, favorite: !favorite }) }}>{favorite ? '取消收藏' : '加入收藏'}</DropdownMenuItem></DropdownMenuContent></DropdownMenu></>}>
+  const updateAction = skill.source === 'global' && <LocalSkillUpdate key={id} id={id} slug={skill.slug} updates={updates} />
+  return <SkillDetailPanel name={skill.name} className="local-skill-panel" actions={<>{updateAction}<DropdownMenu><DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="当前技能操作" />}><MoreHorizontal /></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem disabled={!collection.value || collection.busy} onClick={() => { void collection.change({ kind: 'favorite', resourceId: id, favorite: !favorite }) }}>{favorite ? '取消收藏' : '加入收藏'}</DropdownMenuItem></DropdownMenuContent></DropdownMenu></>}>
     {collection.error && <Banner>{collection.error}</Banner>}
     <LocalSkillInfo api={api} skill={skill} active={active} refreshKey={requestId} favorite={favorite} collection={collection.value} busy={collection.busy} assign={groupId => { void collection.change({ kind: 'assign-group', resourceId: id, groupId }) }} />
   </SkillDetailPanel>
-  return skill.source === 'global' ? <SkillUpdate api={api} resourceId={id} onUpdated={async () => { await reload(true); await onUpdated() }} popover>{detail}</SkillUpdate> : detail()
 }

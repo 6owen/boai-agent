@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 本机技能 CLI 入口只开放给主窗口，公共 CLI/Agent 不可调用。
  * [OUTPUT]: 独立话题首发进入受信本人请求分发。
  * [OUTPUT]: 技能安装终端明确为非公开方法，仅由主窗口单独准入。
  * [OUTPUT]: 公开本人按材料/成果/知识身份外部打开入口，Main沿原业务读取核源和固定应用清单处理。
@@ -56,6 +57,7 @@ import type { Method } from './index'
 // Record makes a newly declared public method require an explicit host entry.
 const methods = {
   skillInstallationTerminal: false,
+  localSkillCli: false,
   canvasHost: false, canvasCommand: false, canvasFlushed: false,
   openEmployeeTaskSession: true, sendEmployeeTaskMessage: true, getEmployeeTaskMessageReceipt: true,
   listConversationQueue: true, actOnConversationQueue: true,
