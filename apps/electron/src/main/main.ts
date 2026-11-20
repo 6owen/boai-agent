@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 语音文字整理按运行时连接读取已提交的凭据版本。
  * [OUTPUT]: 2026-11-16语音输入未注册时跳过初始化并拒绝IPC；已保存配置/模型不迁移、不删除。
  * [OUTPUT]: 主窗口默认1100×760；主进程终端监督器按应用分发路径定位，开发/安装后均不依赖cwd。
  * [OUTPUT]: 会话文件/知识资料按业务身份核源后复用系统应用打开；材料临时命名副本随退出清理且保留外改。
@@ -261,6 +262,7 @@ const voice = createVoiceHost(join(legacyDataPath, 'voice-input'), join(__dirnam
   allowed: () => !quitting && !!window && !window.isDestroyed() && window.isVisible() && desktopLifecycle.snapshot().power === 'awake' && !desktopLifecycle.snapshot().locked,
   emit: event => { if (window && !window.isDestroyed()) window.webContents.send('boai:voice-event', event) },
   usage: ({ stage, state, ...entry }) => diagnostics.record('voice-usage', { ...entry, method: stage, usageState: state }),
+  connectionKey: async id => await requestRuntime('getConnectionApiKey', { id }) as string,
   connection: async id => (await requestRuntime('snapshot') as Snapshot).connections.find(connection => connection.id === id),
 })
 const localConfigs = new LocalConfigDiscovery()
