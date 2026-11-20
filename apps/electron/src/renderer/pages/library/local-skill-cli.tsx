@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Local skill identity and trusted desktop CLI progress and results.
- * [OUTPUT]: Fixed-height update popover using the shared ScrollArea, Shiki transcript and Carbon action icons.
+ * [OUTPUT]: Fixed-height update popover using the shared ScrollArea, Shiki transcript and a Carbon update icon shared with the library toolbar.
  * [POS]: Local library UI for npx skills.
  * [PROTOCOL]: Update Header and library/.folder.md when changed.
  */
@@ -74,7 +74,7 @@ function SkillCliTerminal({ progress, busy, className = 'max-h-56 min-h-12' }: {
   </ScrollArea>
 }
 
-function SkillUpdateIcon() {
+export function SkillUpdateIcon() {
   return <i className="app-icon i-carbon-update-now" aria-hidden="true" />
 }
 
