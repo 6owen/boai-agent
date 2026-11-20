@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工清理失败逐条反馈；模型设置与生效凭据引用同事务切换，退役引用可重启清理。
  * [OUTPUT]: 2026-11-09 员工配置项目生成运行内许可；CLI仅指定cwd不产生项目授权，内部资料权限保持。
  * [OUTPUT]: 能力包与画板保留各自实际退出/备份门禁；包Source按员工核权，备份同时保存两类原件与恢复策略。
  * [OUTPUT]: Codex/Claude能力包绑定按每次普通/behavior输入前的有效清单证明单一归属；未知组合拒绝，实际退出屏障和重启副本路径保持。
@@ -341,7 +342,8 @@ import { listCodexModels, listCodexModelCatalog, testCodexConnection } from './a
 import { EMPLOYEE_EXECUTION_LIMITS, type EmployeeExecutionDetail, type EmployeeExecutionSummary } from '@boai/shared/domain/employee-executions'
 import { listModelCatalog, modelCatalogUrl, probeMagpie } from './adapters/mastra/model-catalog'
 import { gatewayModelCall, gatewaySelectedModel } from './adapters/mastra/gateway-route'
-import { GATEWAY_CATALOG_COLLECTION, GatewayCatalogStore, gatewayCatalogSource } from './adapters/mastra/gateway-catalog-store'
+import { ConnectionCredentials } from './modules/backends/connection-credentials'
+import { GatewayCatalogStore, gatewayCatalogSource } from './adapters/mastra/gateway-catalog-store'
 import { gatewayApiKey, gatewayEndpoint, gatewayRoot, isLoopbackGateway } from '@boai/shared/domain/model-gateway'
 import { readMaterialSource } from '@boai/shared/node/material-files'
 import { authorizedResources, resourceVersion } from './modules/workspaces/environment-plan'
@@ -552,6 +554,7 @@ export class AppService {
   private readonly scheduleList: ScheduleListRepository
   private readonly contactList: ContactListRepository
   private readonly contactDeletion: ContactDeletionService
+  private readonly connectionCredentials: ConnectionCredentials
   private connections = new Map<string, Connection>()
   private readonly gatewayCatalogs: GatewayCatalogStore
   private get contextHandoffs() {
@@ -640,6 +643,7 @@ export class AppService {
   constructor(private readonly options: { toolClientPath?: string; applicationHost?: ApplicationHostPort; channelTransport?: ChannelTransportFactory; browserHost?: BrowserHostBridge; dataPath: string; teamPlanner?: TeamPlanner; teamFileCheckpoint?: TeamFileCheckpoint; boboFileCheckpoint?: BoboCollaborationHooks['checkpoint']; skillDiscovery?: SkillDiscoveryOptions; skillDownloads?: DownloadTransport; skillMarketplaceFetch?: typeof fetch; engine: AgentEngine; secrets: SecretStore; emit: (event: AppEvent) => void }) {
     this.dataPath = resolve(options.dataPath)
     this.store = new ProductStore(join(this.dataPath, 'boai.sqlite'))
+    this.connectionCredentials = new ConnectionCredentials(this.store, options.secrets)
     this.contexts = new ContextRepository(this.store)
     this.desktopPlugin = new DesktopPluginService(this.store, this.dataPath, action => this.serialize(async () => { if (this.closing || this.backingUp) fail('服务正在退出或备份'); return action() }))
     this.canvas = new CanvasService(this.dataPath, options.applicationHost ? input => options.applicationHost!.request('canvasHost', input) : undefined, context => this.serialize(async () => { await this.assertExecutionAccess(context) }), () => !!options.applicationHost?.available)
@@ -768,7 +772,7 @@ export class AppService {
     this.materialUploads = new MaterialUploads(join(this.dataPath, '.cli-material-sources'), error => this.emit({ type: 'runtime-error', error: this.errorMessage(error) }))
     this.artifactRepository = new ArtifactRepository(this.store, this.dataPath, { validateSources: (refs, agentId, conversationId, tx) => this.materials.validateRefsInTransaction(tx, refs, agentId, conversationId) })
     this.teams = new TeamRepository(this.store)
-    this.teamGeneration = new TeamGenerationService(this.teams, this.modelCapacity, options.teamPlanner ?? planTeam, { key: id => options.secrets.get(id), changed: () => this.changed() })
+    this.teamGeneration = new TeamGenerationService(this.teams, this.modelCapacity, options.teamPlanner ?? planTeam, { key: id => this.connectionCredentials.get(id), changed: () => this.changed() })
     this.userProfile = new ProfileRepository(this.store)
     this.scheduleList = new ScheduleListRepository(this.store)
     this.contactList = new ContactListRepository(this.store)
@@ -1070,7 +1074,10 @@ export class AppService {
     await this.materials.recover()
     await this.materialUploads.init()
     await this.artifactRepository.recover()
-    await this.contactDeletion.recover()
+    for (const failure of await this.contactDeletion.recover()) {
+      this.emit({ type: 'runtime-error', error: failure })
+    }
+    await this.connectionCredentials.init()
     await this.runtimePlugins.init()
     await new PluginEmployeeEngine(this.store, 'plugin-initial', this.runtimePlugins).recover(this.dataPath)
     await this.profiles.init()
@@ -1653,7 +1660,7 @@ export class AppService {
           this.options.emit({ type: 'gateway-imports:changed' }); this.changed(); return receipt
         }
         case 'saveConnection': return this.saveConnection(connectionSchema.parse(input))
-        case 'getConnectionApiKey': return await this.options.secrets.get(this.getConnection(lookupSchema.parse(input).id).id) ?? ''
+        case 'getConnectionApiKey': return await this.connectionCredentials.get(this.getConnection(lookupSchema.parse(input).id).id) ?? ''
         case 'deleteConnection': return this.deleteConnection(lookupSchema.parse(input).id)
         case 'prepareContextHandoff': return this.contextHandoffs.prepare(handoffPrepareSchema.parse(input))
         case 'listContextHandoffs': return this.contextHandoffs.list(handoffQuerySchema.parse(input))
@@ -1900,7 +1907,7 @@ export class AppService {
   }
 
   private async snapshot(): Promise<Snapshot> {
-    const connections = await Promise.all([...this.connections.values()].map(async connection => ({ ...connection, hasApiKey: this.options.secrets.has ? await this.options.secrets.has(connection.id) : !!await this.options.secrets.get(connection.id) })))
+    const connections = await Promise.all([...this.connections.values()].map(async connection => ({ ...connection, hasApiKey: await this.connectionCredentials.has(connection.id) })))
     const channelUnread = [...this.conversations.values()].some(isChannelConversation) ? await this.reading.unreadCounts([...this.conversations.values()].filter(isChannelConversation).map(room => room.id)) : new Map<string, number>()
     const conversations = (await Promise.all([...this.conversations.values()].map(async conversation => {
       const runs = [...this.runs.values()].filter(run => run.conversationId === conversation.id).sort((a, b) => a.createdAt.localeCompare(b.createdAt)), turns = [...this.scheduler.turns.values()].filter(turn => turn.conversationId === conversation.id).sort((a, b) => a.createdAt.localeCompare(b.createdAt))
@@ -2464,7 +2471,23 @@ export class AppService {
     this.changed(query.conversationId); return result
   }
 
-  private async saveConnection(input: z.infer<typeof connectionSchema>) {
+  connectionCredentialSlots() {
+    return new Map([...this.connections.keys()].map(id => [id, this.connectionCredentials.key(id)]))
+  }
+
+  async bindConnectionCredential(id: string, expectedRevision: number, value: string, stage: (key: string) => Promise<void>) {
+    return this.serialize(async () => {
+      if (!this.initialized || this.closing || this.backingUp) fail('运行服务尚未就绪或正在退出、备份')
+      const connection = this.connections.get(id)
+      if (!connection) return undefined
+      if (connection.gateway?.auth === 'local') fail('本机免密网关无需绑定凭据')
+      if (!value.trim()) fail('指定的服务端凭据变量不可用')
+      const { revision: _revision, hasApiKey: _hasApiKey, ...definition } = connection
+      return this.saveConnection(connectionSchema.parse({ ...definition, expectedRevision, apiKey: value }), stage)
+    })
+  }
+
+  private async saveConnection(input: z.infer<typeof connectionSchema>, stage?: (key: string) => Promise<void>) {
     const imported = !input.id && input.localConfigId ? [...this.connections.values()].find(item => item.localConfigId === input.localConfigId) : undefined
     if (imported) return clone(imported)
     const previous = input.id ? this.getConnection(input.id) : undefined
@@ -2478,17 +2501,19 @@ export class AppService {
     }
     assertModelEndpoint(input.provider, input.baseUrl)
     const connection: Connection = { id: previous?.id ?? randomUUID(), revision: previous ? (previous.revision ?? 1) + 1 : 1, name: input.name, provider: input.provider, baseUrl: input.baseUrl, defaultModel: input.defaultModel, hasApiKey: false, ...(input.gateway ? { gateway: input.gateway } : {}), ...((input.gateway ? input.api : input.api ?? previous?.api) ? { api: input.gateway ? input.api : input.api ?? previous?.api } : {}), ...((input.localConfigId ?? previous?.localConfigId) ? { localConfigId: input.localConfigId ?? previous?.localConfigId } : {}) }
-    // A planner can read credentials between attempts; stop it before replacing them.
+    // Planner retries read the key on demand. Drain them before publishing a replacement.
     if (previous) await this.teamGeneration.cancelConnection(previous.id)
-    if (input.gateway?.auth === 'local') await this.options.secrets.delete(connection.id)
-    else if (input.apiKey !== undefined) {
-      if (input.apiKey.trim()) await this.options.secrets.set(connection.id, input.apiKey.trim())
-      else await this.options.secrets.delete(connection.id)
+    const change = await this.connectionCredentials.save(connection, !!previous, input.gateway?.auth === 'local' ? '' : input.apiKey?.trim(), stage)
+    this.connectionCredentials.install(connection.id, change.key)
+    this.connections.set(connection.id, connection)
+    this.gatewayCatalogs.forget(connection.id)
+    if (previous) {
+      await this.afterConnectionCommit(() => this.cancelConnectionCalls(previous.id))
+      for (const agent of this.employees.values()) if (agent.connectionId === previous.id) {
+        await this.afterConnectionCommit(() => this.cancelEmployee(agent.id, '模型连接已变更'))
+      }
     }
-    connection.hasApiKey = !!await this.options.secrets.get(connection.id)
-    await this.store.write([record('connections', connection)], [{ collection: GATEWAY_CATALOG_COLLECTION, id: connection.id }]); this.gatewayCatalogs.forget(connection.id); this.connections.set(connection.id, connection)
-    if (previous) await this.cancelConnectionCalls(connection.id)
-    if (previous) for (const agent of this.employees.values()) if (agent.connectionId === connection.id) await this.cancelEmployee(agent.id, '模型连接已变更')
+    await this.connectionCredentials.cleanRetired(change.retired)
     this.changed(); return clone(connection)
   }
   private async deleteLaunchProfile(id: string) {
@@ -2505,14 +2530,26 @@ export class AppService {
     this.getConnection(id)
     await this.cancelConnectionCalls(id)
     for (const agent of this.employees.values()) if (agent.connectionId === id) await this.cancelEmployee(agent.id, '模型连接已删除')
-    await this.options.secrets.delete(id)
-    const updates: StoredRecord[] = []
-    for (const agent of this.employees.values()) if (agent.connectionId === id) { agent.connectionId = ''; agent.configVersion++; updates.push(record('agents', agent)) }
-    await this.store.write(updates, [{ collection: 'connections', id }, { collection: GATEWAY_CATALOG_COLLECTION, id }]); this.gatewayCatalogs.forget(id); for (const update of updates) this.employees.install(update.id, update.value as DigitalAgent); this.connections.delete(id); this.changed()
-    await this.cancelConnectionCalls(id)
+    const updates = this.employees.values().filter(agent => agent.connectionId === id)
+      .map(agent => ({ ...agent, connectionId: '', configVersion: agent.configVersion + 1 }))
+    const retired = await this.connectionCredentials.remove(id, updates.map(agent => record('agents', agent)))
+    this.connections.delete(id)
+    this.gatewayCatalogs.forget(id)
+    for (const agent of updates) this.employees.install(agent.id, agent)
+    await this.connectionCredentials.cleanRetired(retired)
+    this.changed()
+    await this.afterConnectionCommit(() => this.cancelConnectionCalls(id))
   }
+
+  private async afterConnectionCommit(cancel: () => Promise<void>) {
+    try { await cancel() } catch (error) {
+      this.emit({ type: 'runtime-error', error: '连接变更已保存，停止旧任务时出错：' + this.errorMessage(error) })
+    }
+  }
+
   private async apiKey(connection: Connection): Promise<string> {
-    const key = await this.options.secrets.get(connection.id)
+    if (connection.revision !== this.getConnection(connection.id).revision) fail('模型连接已变更，请按当前版本重试')
+    const key = await this.connectionCredentials.get(connection.id)
     if (connection.gateway) return gatewayApiKey(connection, key ?? '')
     if (!key && connection.provider !== 'openai-compatible') fail('该模型连接尚未设置 API Key')
     return key ?? ''
@@ -2525,7 +2562,7 @@ export class AppService {
     const endpoint = draft.baseUrl.trim(), savedEndpoint = previous.baseUrl.trim()
     const sameEndpoint = endpoint === savedEndpoint || (endpoint && savedEndpoint && modelCatalogUrl(endpoint) === modelCatalogUrl(savedEndpoint))
     if ((!previous.gateway || !draft.gateway) && previous.provider !== draft.provider || !!previous.gateway !== !!draft.gateway || !sameEndpoint) fail('接口地址或服务已变更，请重新输入 API Key')
-    return gatewayApiKey(draft, await this.options.secrets.get(previous.id) ?? '')
+    return gatewayApiKey(draft, await this.connectionCredentials.get(previous.id) ?? '')
   }
 
   private async updateConversationList(change: ConversationListChange) {
@@ -6349,6 +6386,7 @@ export class AppService {
       await this.desktopActivity.backup(destination)
       const backupClient = createClient({ url: pathToFileURL(databaseFile).href })
       try {
+        await backupClient.execute("DELETE FROM records WHERE collection IN ('connectionCredentialCleanup','connectionCredentialRefs')")
         // Browser profiles and private page receipts are not part of a portable business backup.
         await backupClient.execute("UPDATE records SET value=json_remove(json_set(value,'$.enabled',json('false'),'$.revision',json_extract(value,'$.revision')+1),'$.credentialId','$.test') WHERE collection IN ('dataSources','webSearchServices')")
         // The package gate is disabled on restore. Preserve only verified internal Source flags so

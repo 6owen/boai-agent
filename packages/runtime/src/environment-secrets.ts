@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 连接环境引用先写入候选槽；绑定与清理不会覆盖生效版本。
  * [INPUT]: Explicit BOAI_SECRET_* values, a private environment-reference map and optional desktop vault metadata.
  * [OUTPUT]: Environment/session secrets plus authenticated desktop vault fallback; explicit desktop edits use that vault.
  * [POS]: Headless credential provider. Never decrypts or rewrites Electron's credential vault.
@@ -66,11 +67,12 @@ export class EnvironmentSecrets implements SecretStore {
     return this.mutate(refs => { refs[id] = environmentVariable }, () => { this.session.delete(id) })
   }
   environmentValue(name: string) { variable.parse(name); return this.environment[name] || (() => { throw new Error('指定的服务端凭据变量不可用') })() }
-  async set(id: string, value: string) {
+  async set(id: string, value: string, previousKey = id) {
     credentialId.parse(id)
     if (this.desktopContext.getStore() && this.host?.connected()) {
       await this.queue
-      if (this.refs[id] && this.value(id) === value) return
+      const prior = this.refs[previousKey]
+      if (prior && this.value(previousKey) === value) return this.bind(id, prior)
       await this.host.set(id, value)
       return this.mutate(refs => { delete refs[id] }, () => { this.session.delete(id); this.vaultKeys.add(id) })
     }
@@ -81,10 +83,23 @@ export class EnvironmentSecrets implements SecretStore {
     if (this.desktopContext.getStore() && this.host?.connected()) await this.host.delete(id)
     return this.mutate(refs => { refs[id] = null }, () => { this.session.delete(id); this.vaultKeys.delete(id) })
   }
-  async status() {
+  // Only retired connection slots use this path. Keep the cleanup receipt when
+  // the original desktop vault exists but cannot currently be reached.
+  async retire(id: string) {
+    credentialId.parse(id)
     await this.queue
-    return Promise.all([...new Set([...Object.keys(this.refs), ...this.session.keys(), ...this.vaultKeys])].sort().map(async id => ({
-      id, available: await this.has(id), mode: this.session.has(id) ? 'session' : this.refs[id] ? 'environment' : Object.hasOwn(this.refs, id) ? 'none' : this.host?.connected() ? 'desktop-vault' : 'desktop-vault-unavailable',
+    if (this.vaultKeys.has(id) && !this.host?.connected()) throw new Error('桌面凭据宿主尚未连接')
+    if (this.host?.connected()) await this.host.delete(id)
+    await this.mutate(refs => { delete refs[id] }, () => { this.session.delete(id); this.vaultKeys.delete(id) })
+  }
+  async status(slots?: ReadonlyMap<string, string | null>) {
+    await this.queue
+    const owners = new Map<string, string>()
+    for (const [id, key] of slots ?? []) if (key) owners.set(key, id)
+    const ids = [...new Set([...Object.keys(this.refs), ...this.session.keys(), ...this.vaultKeys])].filter(key =>
+      !slots || owners.has(key) || !key.startsWith('connection-key-') && !slots.has(key))
+    return Promise.all(ids.sort().map(async id => ({
+      id: owners.get(id) ?? id, available: await this.has(id), mode: this.session.has(id) ? 'session' : this.refs[id] ? 'environment' : Object.hasOwn(this.refs, id) ? 'none' : this.host?.connected() ? 'desktop-vault' : 'desktop-vault-unavailable',
       ...(this.refs[id] ? { environmentVariable: this.refs[id] } : {}),
     })))
   }

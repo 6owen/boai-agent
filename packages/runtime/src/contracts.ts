@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 连接轮换可向凭据提供方传入旧引用，以保留环境绑定并回收私有槽。
  * [OUTPUT]: 包绑定原生执行通过提交输入前的有效能力清单核验；普通无包员工不新增探测。
  * [OUTPUT]: Scoped canvas capability supports API/native structured edits and exact-revision exports.
  * [OUTPUT]: 显式持久交接通过原生准备/绑定/受理/未知回调接入，准备不启动任务。
@@ -78,7 +79,10 @@ export interface SecretStore {
   /** Metadata can remain readable when a headless host cannot decrypt desktop credentials. */
   has?(connectionId: string): Promise<boolean>
   get(connectionId: string): Promise<string | undefined>
-  set(connectionId: string, value: string): Promise<void>
+  /** A replacement can inherit the previous slot’s environment binding. */
+  set(connectionId: string, value: string, previousKey?: string): Promise<void>
+  /** Permanently remove a retired slot from its owning provider. */
+  retire?(connectionId: string): Promise<void>
   delete(connectionId: string): Promise<void>
 }
 export interface EngineContext {

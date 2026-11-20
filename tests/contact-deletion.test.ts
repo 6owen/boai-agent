@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 持续清理冲突不会阻断真实 AppService 重启、健康员工访问或后续记录。
  * [INPUT]: 真实 SQLite 员工删除用例及隔离受管/外部文件目录。
  * [OUTPUT]: 选中员工/多标签完整成员及记忆/专属资源原子删除、共享群历史保留、偏好版本/成员变化与未知身份整批拒绝、符号链接边界和本地清理日志重启恢复验证。
  * [POS]: tests/contact-deletion.test.ts。
@@ -8,7 +9,8 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { DigitalAgent } from '../packages/shared/src/domain'
+import { AppService } from '../packages/runtime/src/service'
+import type { DigitalAgent, Snapshot } from '../packages/shared/src/domain'
 import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
 import { ContactDeletionService } from '../packages/runtime/src/modules/employees/contact-deletion'
 import { ConversationHistory } from '../packages/runtime/src/modules/conversations/history'
@@ -126,6 +128,53 @@ it('recovers only local cleanup after a committed deletion loses its final clean
   expect(await store.load('contactDeletions')).toEqual([])
   await expect(readFile(join(root, 'agents/a/workspace/private.txt'))).rejects.toMatchObject({ code: 'ENOENT' })
   expect((await store.load<DigitalAgent>('agents')).map(agent => agent.id)).toEqual(['b', 'c'])
+})
+
+it('starts twice with one persistent cleanup conflict and finishes later records', async () => {
+  const { root, store } = await setup()
+  const target = join(root, 'protected-workspace')
+  await mkdir(target)
+  await writeFile(join(target, 'keep'), 'original')
+  await mkdir(join(root, 'agents'), { recursive: true })
+  await symlink(target, join(root, 'agents/deleted-a'))
+  await mkdir(join(root, 'agents/deleted-b'))
+  await store.write([
+    row('contactDeletions', 'first', { agentIds: ['deleted-a'], status: 'pending' }),
+    row('contactDeletions', 'second', { agentIds: ['deleted-b'], status: 'pending' }),
+  ])
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const emit = vi.fn()
+    const service = new AppService({
+      dataPath: root, emit, engine: { run: async () => {}, test: async () => '' },
+      secrets: { get: async () => undefined, set: async () => {}, delete: async () => {} },
+    })
+    try {
+      await service.init()
+      const state = await service.handle('snapshot', undefined) as Snapshot
+      expect(state.agents.map(agent => agent.id)).toContain('c')
+      await expect(service.handle('createConversation', { kind: 'direct', title: '健康员工', agentIds: ['c'] }))
+        .resolves.toMatchObject({ kind: 'direct', agentIds: ['c'] })
+      expect(await store.load('contactDeletions')).toEqual([
+        expect.objectContaining({ id: 'first', status: 'failed', error: expect.stringContaining('符号链接') }),
+      ])
+      expect(emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'runtime-error', error: expect.stringContaining('first') }))
+      await expect(readFile(join(root, 'agents/deleted-b'))).rejects.toMatchObject({ code: 'ENOENT' })
+      expect(await readFile(join(target, 'keep'), 'utf8')).toBe('original')
+    } finally { await service.close() }
+  }
+  await rm(join(root, 'agents/deleted-a'))
+  await new ContactDeletionService(store, root).recover()
+  expect(await store.load('contactDeletions')).toEqual([])
+})
+
+it('propagates a cleanup ledger read failure during recovery', async () => {
+  const { store, deletion } = await setup()
+  const load = store.load.bind(store)
+  vi.spyOn(store, 'load').mockImplementation(collection => {
+    if (collection === 'contactDeletions') throw new Error('fixture ledger unreadable')
+    return load(collection)
+  })
+  await expect(deletion.recover()).rejects.toThrow('fixture ledger unreadable')
 })
 
 it('dissolves a group without recreating its workspace and resumes a pending dissolution after restart', async () => {
