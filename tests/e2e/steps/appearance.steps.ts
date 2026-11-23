@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: bobo 新话题沿会话行右键菜单打开。
  * [OUTPUT]: 设置入口沿本人菜单的其他配置二级菜单选择模型连接，原业务断言保持。
  * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
  * [OUTPUT]: 现行分角色字体沿界面字体控件核对；富文本消息使用原messageDraft，保留字体/换肤/重启断言。
@@ -8,6 +9,7 @@
  * [POS]: tests/e2e/steps/appearance.steps.ts；场景状态仅在本次测试内共享。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { openBoboTopic } from '../support/bobo-topic'
 import { expect, type Page, type ElectronApplication } from '@playwright/test'
 import { writeFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -329,8 +331,7 @@ Then('背景覆盖窗口且聊天与设置保持可操作', async ({ runtime, sc
   await expect(page.getByText('请选择 PNG、JPEG 或 WebP 图片。', { exact: false })).toBeVisible()
   expect((await page.evaluate(() => window.boai.request('getAppearance', undefined))).preferences.background.assetId).toBe(scenario.scenicAsset)
   await page.locator('.navigation-rail').getByRole('button', { name: '会话', exact: true }).click()
-  await page.getByRole('button', { name: 'bobo 的主聊天', exact: true }).hover()
-  await page.getByRole('button', { name: '与 bobo 新建会话', exact: true }).click()
+  await openBoboTopic(page)
   await expect(page.locator('.chat-composer')).toBeVisible()
   await page.getByRole('textbox', { name: '消息内容', exact: true }).fill('背景换肤验收：输入框仍可编辑。')
   await expect.poll(() => messageDraft(page.getByRole('textbox', { name: '消息内容', exact: true }))).toBe('背景换肤验收：输入框仍可编辑。')

@@ -2,7 +2,7 @@
  * [OUTPUT]: bobo主聊天按钮用于打开默认聊天，话题箭头独立控制折叠。
  * [OUTPUT]: 核对员工操作栏淡入淡出与隐藏后零宽。
  * [INPUT]: 真实 Electron、明确主导航作用域、模态菜单打开前实测的外部鼠标坐标、核心工具协议和稳定会话/员工身份。
- * [OUTPUT]: 常驻唯一核心头像/名称分组标题折叠展开，右侧新会话图标打开空白页；无历史/清空/删除/重载仍保留标题且首发才保存历史；核心历史仅标题、更多/编辑随悬停/聚焦/菜单显示且菜单无置顶；紧凑父子缩进/间距、整行背景和标题按钮透明的实际布局，三入口改名/取消零写入/空白禁用/消息身份及重启保持，操作默认隐藏/悬停显示/移开隐藏/键盘与菜单保留及空白/历史默认与悬停截图；首发回复失联只读核对、未知团队请求跨关闭/设置保持和清理 tombstone 重启拒绝重放；两字段弹窗、用户指定群名和真实工具创建；改名后标题联动真实配置头像/名称、分层记忆/重启与失败、标题图标悬停/聚焦/菜单保留与同色、整行12px折叠及等待实际主题的窄窗键盘截图验收。
+ * [OUTPUT]: 常驻唯一核心头像/名称分组标题折叠展开，右键新话题打开空白页；无历史/清空/删除/重载仍保留标题且首发才保存历史；核心历史仅标题、更多/编辑随悬停/聚焦/菜单显示且菜单无置顶；紧凑父子缩进/间距、整行背景和标题按钮透明的实际布局，三入口改名/取消零写入/空白禁用/消息身份及重启保持，操作默认隐藏/悬停显示/移开隐藏/键盘与菜单保留及空白/历史默认与悬停截图；首发回复失联只读核对、未知团队请求跨关闭/设置保持和清理 tombstone 重启拒绝重放；两字段弹窗、用户指定群名和真实工具创建；改名后标题联动真实配置头像/名称、分层记忆/重启与失败、标题图标悬停/聚焦/菜单保留与同色、整行12px折叠及等待实际主题的窄窗键盘截图验收。
  * [POS]: bobo 团队创建 BDD；文件原子性/清理冲突保留 teams 模块与恢复测试。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -11,6 +11,7 @@ import { createBdd } from 'playwright-bdd'
 import { test as base } from '../support/test'
 import { coreEndpoint } from '../../fixtures/core-model'
 import { coreReplyFault, coreStartReceipts, interruptTeamRuntime } from '../support/teams'
+import { openBoboTopic } from '../support/bobo-topic'
 import type { Message, Snapshot } from '../../../packages/shared/src/domain'
 interface State { before?: Snapshot; endpoint?: Awaited<ReturnType<typeof coreEndpoint>>; calls?: number; created?: Snapshot; coreId?: string; renamedTitle?: string; renamedMessages?: Message[]; replyFault?: Awaited<ReturnType<typeof coreReplyFault>> }
 export const test = base.extend<{ team: State }>({ team: async ({}, use) => use({}) })
@@ -26,10 +27,9 @@ async function open(page: Page) {
 async function openCoreDraft(page: Page, name = 'bobo') {
   const heading = page.getByRole('button', { name: `${name} 的主聊天`, exact: true })
   await expect(heading).toHaveCount(1)
-  await expect(heading).toHaveText(name)
+  await expect(heading.locator('.conversation-title')).toHaveText(name)
   await expect(heading.locator('.avatar.small img')).toHaveCount(1)
-  await heading.hover()
-  await page.getByRole('button', { name: `与 ${name} 新建会话`, exact: true }).click()
+  await openBoboTopic(page, name)
 }
 for (const [name, options] of [['bobo 已连接离线工具协议模型', {}], ['bobo 的模型认证失败', { unauthorized: true }], ['bobo 的模型响应被挂起', { hold: true }]] as const) Given(name, async ({ runtime, team }) => {
   team.endpoint = await coreEndpoint(options); runtime.trackServer(team.endpoint.server)
@@ -231,11 +231,8 @@ Then('只保存一个核心会话和一条初始用户消息', async ({ runtime,
   await expect(runtime.page.getByRole('textbox', { name: '消息内容', exact: true })).toHaveValue('')
   const page = runtime.page
   const heading = page.getByRole('button', { name: 'bobo 的主聊天', exact: true })
-  const compose = page.getByRole('button', { name: '与 bobo 新建会话', exact: true })
-  const actions = compose.locator('..')
-  const more = page.getByRole('button', { name: 'bobo 的更多操作', exact: true })
   await expect(page.locator('.conversation-core-heading')).toHaveCount(1)
-  await expect(heading).toHaveText('bobo')
+  await expect(heading.locator('.conversation-title')).toHaveText('bobo')
   await expect(heading.locator('.avatar.small img')).toHaveCount(1)
   const item = page.getByRole('navigation', { name: '会话列表' }).getByRole('button', { name: conversation.title, exact: true })
   await expect(item).toHaveText(conversation.title)
@@ -283,27 +280,28 @@ Then('只保存一个核心会话和一条初始用户消息', async ({ runtime,
   await expect(item).toHaveCSS('background-image', 'none')
   expect(await historyRow.evaluate(element => getComputedStyle(element).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)')
   await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).hover()
-  await expect(compose).toHaveText(''); await expect(more).toHaveText('')
-  await expect(actions).toHaveCSS('width', '0px'); await expect(actions).toHaveCSS('opacity', '0'); await expect(more).toHaveCSS('opacity', '0')
+  const row = heading.locator('..')
+  const actions = row.locator('.conversation-employee-actions')
+  const toggle = row.getByRole('button', { name: 'bobo 的话题', exact: true })
+  await expect(actions).toHaveCSS('width', '0px'); await expect(actions).toHaveCSS('opacity', '0')
   await heading.hover()
-  await expect(actions).toHaveCSS('opacity', '1'); await expect(more).toHaveCSS('opacity', '1')
-  const labelColor = await heading.evaluate(element => getComputedStyle(element).color)
-  await expect(compose).toHaveCSS('color', labelColor); await expect(more).toHaveCSS('color', labelColor)
-  await more.click(); await expect(page.getByRole('menuitem', { name: '助手设置', exact: true })).toBeVisible()
-  await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).hover()
-  await expect(more).toHaveCSS('opacity', '1'); await expect(actions).toHaveCSS('opacity', '1')
-  const toggle = page.getByRole('button', { name: 'bobo 的话题', exact: true })
-  await page.keyboard.press('Escape'); await expect(toggle).toHaveAttribute('aria-expanded', 'true')
-  await heading.focus(); await page.keyboard.press('Tab'); await expect(more).toBeFocused()
-  await expect(more).toHaveCSS('opacity', '1')
-  await page.keyboard.press('Tab'); await expect(compose).toBeFocused(); await expect(actions).toHaveCSS('opacity', '1')
-  await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).focus()
-  await expect(actions).toHaveCSS('width', '0px'); await expect(actions).toHaveCSS('opacity', '0'); await expect(more).toHaveCSS('opacity', '0')
+  await expect(actions).toHaveCSS('opacity', '1')
+  await expect(actions.getByRole('button')).toHaveCount(1)
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  await heading.click({ button: 'right' })
+  await expect(page.getByRole('menuitem', { name: '新话题', exact: true })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: '助手设置', exact: true })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await outside.hover()
+  await heading.focus(); await page.keyboard.press('Tab')
+  await expect(toggle).toBeFocused()
+  await expect(actions).toHaveCSS('opacity', '1')
+  await outside.focus()
+  await expect(actions).toHaveCSS('width', '0px'); await expect(actions).toHaveCSS('opacity', '0')
   await heading.hover()
-  const bounds = (await heading.boundingBox())!, row = (await heading.locator('..').boundingBox())!
-  expect(bounds.width).toBeGreaterThan(row.width - 66)
+  expect((await heading.boundingBox())!.width).toBeGreaterThan((await row.boundingBox())!.width - 36)
   await toggle.click()
-  await expect(toggle).toHaveAttribute('aria-expanded', 'false'); await expect(compose).toBeVisible()
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false')
   await expect(page.locator('.chat-title')).toHaveText(conversation.title)
   await toggle.press('Enter'); await expect(toggle).toHaveAttribute('aria-expanded', 'true')
 })
@@ -526,13 +524,13 @@ When('删除最后一个核心会话', async ({ runtime, team }) => {
   await expect(runtime.page.getByRole('button', { name: 'bobo 的主聊天', exact: true })).toHaveCount(1)
   await expect(runtime.page.getByRole('group', { name: 'bobo 的会话', exact: true }).locator('.conversation-item')).toHaveCount(0)
 })
-Then('重启后助手没有历史且分组图标仍可开聊', async ({ runtime, team }) => {
+Then('重启后助手没有历史且右键仍可新开话题', async ({ runtime, team }) => {
   await runtime.restart(); await expect(runtime.page.locator('.app-shell')).toBeVisible()
   const list = runtime.page.getByRole('navigation', { name: '会话列表' })
   await expect(list.locator('.conversation-item')).toHaveCount(0)
   await expect(runtime.page.getByRole('button', { name: 'bobo 的主聊天', exact: true })).toHaveCount(1)
   await expect(list.getByRole('group', { name: 'bobo 的会话', exact: true }).locator('.conversation-item')).toHaveCount(0)
-  await expect(runtime.page.getByRole('button', { name: '与 bobo 新建会话', exact: true })).toHaveCount(1)
+  await expect(runtime.page.locator('.conversation-core-section-row').getByRole('button')).toHaveCount(1)
   const stage = runtime.page.locator('.conversation-stage')
   await expect(stage.locator('img.empty-illustration')).toBeVisible()
   await expect(stage).toHaveText('')
@@ -540,7 +538,7 @@ Then('重启后助手没有历史且分组图标仍可开聊', async ({ runtime,
   await expect(stage.locator('.starter-cards')).toHaveCount(0)
   await runtime.page.getByRole('button', { name: '新建', exact: true }).click()
   await expect(runtime.page.getByRole('menuitem')).toHaveCount(2)
-  await expect(runtime.page.getByRole('menuitem', { name: '与 bobo 新建会话', exact: true })).toHaveCount(0)
+  await expect(runtime.page.getByRole('menuitem', { name: '新话题', exact: true })).toHaveCount(0)
   await runtime.page.keyboard.press('Escape')
   await openCoreDraft(runtime.page)
   await expect(runtime.page.getByRole('textbox', { name: '消息内容', exact: true })).toHaveValue('')

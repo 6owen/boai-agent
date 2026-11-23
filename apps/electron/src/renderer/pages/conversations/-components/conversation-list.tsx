@@ -4,7 +4,7 @@
  * [OUTPUT]: 失败/取消/中断的执行过程及自动化镜像保留在聊天；支持显式继续、原生复制和员工配置右键入口。
  * [OUTPUT]: 员工会话右键配置跳转现有通讯录选中项；定时运行按用户点击查看过程/聊天。
  * [OUTPUT]: 核心助手整行右键提供新增会话/助手设置/清空所有记录/删除所有会话；批量固定全部可见核心会话且不受名称搜索影响，确认后沿原清理回调执行，无渠道入口。
- * [OUTPUT]: 核心助手折叠按钮直接复用通讯录conversation-item的行高、内边距、头像与名称/角色两行排版，整行占满列表且无悬停底色；箭头固定最右，新会话按钮位于其左，各操作与原折叠独立。
+ * [OUTPUT]: 核心助手行复用通讯录的头像、名称及摘要排版；右侧箭头独立折叠话题，新话题通过右键菜单创建。
  * [OUTPUT]: 渠道列表不显示置顶标记或右键置顶入口，普通会话保持。
  * [OUTPUT]: showHeading允许Popover省略列表标题，普通主列表默认保持。
  * [OUTPUT]: 渠道列表可嵌入Popover；仅传入onBack时显示返回按钮，搜索/label折叠沿原状态。
@@ -16,7 +16,7 @@
  * [OUTPUT]: 员工操作栏通过 Motion 从零宽展开，保留键盘聚焦和减少动态效果设置。
  * [INPUT]: 会话/员工快照、已发送消息摘要、列表更新回调与统一 UI 组件与共用清理确认弹窗。
  * [OUTPUT]: 渠道会话单列、显示接入员工身份，拖拽和置顶不影响普通/核心分类。
- * [OUTPUT]: 常驻会话名称输入与核心助手真实头像/名称的唯一折叠分组，右键管理与右侧新会话图标；核心历史紧凑小缩进、单一背景，默认标题占满行宽，更多/编辑随悬停、聚焦或菜单打开覆盖末尾且不改变标题宽度，行内图标/右键/更多共用编辑标题，普通会话保持头像和预览及置顶；标题右侧加号只保留员工/群聊，名称筛选临时展开分组并禁用拖拽，清除后保留原折叠；全局检索入口与 Dialog 由 Shell 承载。
+ * [OUTPUT]: 常驻会话名称输入与核心助手真实头像/名称的唯一折叠分组，右键管理；核心历史紧凑小缩进、单一背景，默认标题占满行宽，更多/编辑随悬停、聚焦或菜单打开覆盖末尾且不改变标题宽度，行内图标/右键/更多共用编辑标题，普通会话保持头像和预览及置顶；标题右侧加号只保留员工/群聊，名称筛选临时展开分组并禁用拖拽，清除后保留原折叠；全局检索入口与 Dialog 由 Shell 承载。
  * [POS]: 会话列表交互；持久化通过 Shell 的类型化请求完成。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -50,7 +50,7 @@ function EmployeeConversationRow({ actions, children, className, ...props }: Omi
   return <motion.div {...props} className={cn('conversation-employee-row', className)}
     onHoverStart={() => setHovered(true)} onHoverEnd={() => setHovered(false)}>
     {children}
-    <motion.div
+    {actions && <motion.div
       className="conversation-employee-actions"
       data-interactive={revealed}
       initial={false}
@@ -60,7 +60,7 @@ function EmployeeConversationRow({ actions, children, className, ...props }: Omi
       onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setActionsFocused(false) }}
     >
       {actions}
-    </motion.div>
+    </motion.div>}
   </motion.div>
 }
 
@@ -208,10 +208,9 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
     {showHeading && <div className="list-heading"><h2>{channelAgent ? `${channelAgent.name}的渠道` : '会话'}</h2><div className="list-heading-actions">{channelAgent ? onBack && <Button variant="ghost" size="icon-sm" aria-label="返回员工主聊天" onClick={onBack}><ChevronLeft /></Button> : <AddContactMenu onCreate={onCreate} />}</div></div>}
     <InputGroup><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput aria-label="搜索会话" placeholder="搜索会话名称" value={query} onChange={event => setQuery(event.target.value)} /></InputGroup>
     <Collapsible className="flex min-h-0 flex-1 flex-col" open={Boolean(search) || coreOpen} onOpenChange={open => { if (!search) setCoreOpen(open) }}>
-      {!channelAgent && <ContextMenu><ContextMenuTrigger render={<EmployeeConversationRow className="conversation-core-section-row" actions={<>
-        <Button variant="ghost" size="icon-sm" className="conversation-employee-action" disabled={busy} aria-label={`与 ${coreName} 新建会话`} title="新话题" onClick={onCreateCore}><SquarePen /></Button>
-        {core.length > 0 && <CollapsibleTrigger render={<Button variant="ghost" size="icon-xs" className="conversation-employee-action conversation-topic-toggle" aria-label={`${coreName} 的话题`} title="展开或收起话题" />}><ChevronRight /></CollapsibleTrigger>}
-      </>} />}>
+      {!channelAgent && <ContextMenu><ContextMenuTrigger render={<EmployeeConversationRow className="conversation-core-section-row" actions={
+        core.length > 0 && <CollapsibleTrigger render={<Button variant="ghost" size="icon-xs" className="conversation-employee-action conversation-topic-toggle" aria-label={`${coreName} 的话题`} title="展开或收起话题" />}><ChevronRight /></CollapsibleTrigger>
+      } />}>
         <Button variant="ghost" size="content" className={cn('conversation-item conversation-core-heading', { selected: coreMain?.id === selectedId || !coreMain && coreMainDraft })} aria-label={`${coreName} 的主聊天`} aria-current={coreMain?.id === selectedId || !coreMain && coreMainDraft ? 'page' : undefined} data-active-topic={coreTopicActive || undefined} aria-description={coreTopicActive ? '当前会话是此员工的话题。' : undefined} onClick={onOpenCore}>
           <Avatar name={coreName} seed={coreAgent?.id} avatar={coreAgent?.avatar} color={coreAgent?.color} />
           <span className="conversation-copy"><span className="conversation-title">{coreName}</span><span className="conversation-preview">{(coreMain && (previews[coreMain.id] || coreMain.lastMessagePreview)) || coreAgent?.role || '数字员工'}</span></span>
