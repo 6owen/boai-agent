@@ -10,6 +10,7 @@
  * [OUTPUT]: 补内容缩短不误翻页、拖动滚动条仍预取及StrictMode初始跟随回归。
  * [OUTPUT]: 使用真实use-stick-to-bottom；模拟浏览器ResizeObserver/rAF交付，覆盖流式阅读、双向滚动及同窗口刷新不重放旧锚点。
  * [OUTPUT]: 补发送后贴底/内容增长/手动滚动/跨会话迟到发送及渠道旧分页竞态回归；组件用例待运行，不代表Electron或E2E验证。
+ * [OUTPUT]: 发送文件在独立一行预览，保留原消息定位、文字和操作。
  * [INPUT]: 生产ChatView/PromptBar/MentionInput、真实分页消息与隔离IPC。
  * [OUTPUT]: 同一真实编辑器在会话切换加载/就绪时，contenteditable与无障碍禁用状态必须同步，草稿与DOM保持。
  * [OUTPUT]: 切换/加载保持header/composer节点，旧会话正文立即卸下且不渲染骨架；历史游标去重，草稿撤销不跨会话，保留原消息入场及减少动态效果行为，补页不重播。
@@ -21,6 +22,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import type { Conversation, DigitalAgent, Message } from '../packages/shared/src/domain'
 import type { ConversationView } from '../packages/shared/src/domain/reading'
+import type { ConversationMaterial } from '../packages/shared/src/domain/materials'
 import type { DesktopApi } from '../packages/shared/src/ipc'
 import { defaultUserProfile } from '../packages/shared/src/domain/profile'
 import { ChatView, type ChatViewProps } from '../apps/electron/src/renderer/pages/conversations/-components/chat-view'
@@ -74,6 +76,28 @@ beforeEach(() => {
 })
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.clearAllTimers(); vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks() })
 const render = () => act(async () => root.render(h(ChatView, props)))
+
+it('places sent files below the text with one message anchor and opens the original preview', async () => {
+  const detail = props.detail!
+  const message = detail.messages[0]
+  const file: ConversationMaterial = { id: 'file-a', conversationId: 'A', messageId: message.id, name: '笔记.md', format: 'markdown', size: 800, status: 'ready', authorizedAgentIds: [], revision: 1, parseVersion: 'text-v1', createdAt: message.createdAt }
+  detail.materials = [file]
+  message.materialIds = [file.id]
+  props.onPreviewMaterial = vi.fn()
+  await render()
+  const row = host.querySelector(`[data-reading-message-id="${message.id}"]`)!
+  const text = row.querySelector('.message-card')!
+  expect(text.textContent).toContain(message.content)
+  expect(text.nextElementSibling?.getAttribute('aria-label')).toBe('消息材料')
+  await act(async () => row.querySelector<HTMLButtonElement>('[aria-label="预览材料 笔记.md"]')!.click())
+  expect(props.onPreviewMaterial).toHaveBeenCalledWith(detail.materials[0])
+  expect(row.querySelectorAll('[role="toolbar"]')).toHaveLength(1)
+  message.content = ''
+  props = { ...props, detail: { ...detail, messages: [...detail.messages], messagePage: { ...detail.messagePage, items: [...detail.messagePage.items] } } }
+  await render()
+  expect(row.querySelector('.message-bubble')).toBeNull()
+  expect(row.querySelector('[data-material-id="file-a"]')).not.toBeNull()
+})
 it.each([false, true])('shows queued turns as received IM messages only outside task sessions (task=%s)', async task => {
   const detail = view('A')
   if (task) detail.conversation.employeeTaskId = 'assignment'

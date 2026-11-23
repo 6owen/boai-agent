@@ -1,6 +1,6 @@
 /*
  * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
- * [OUTPUT]: Composer 文件卡整卡预览，底栏显示文件名，悬停或键盘聚焦时显示右上角移除按钮。
+ * [OUTPUT]: Composer 文件卡与图片缩略图等高，整卡预览，底栏显示文件名，悬停或键盘聚焦时显示右上角移除按钮。
  * [INPUT]: 草稿条目、已发送附件回执、页面活跃状态及宿主预览/移除/重试回调。
  * [OUTPUT]: 附件随当前聊天消息发送；未发送附件的真实导入状态、显性失败/未知回执核对与局部忙碌锁定；已发送文件整行可打开右侧预览，无单独收件人设置。
  * [OUTPUT]: 图片准备期即固定为composer内部缩略图，不先挂通用文件卡或等待文字，准备完成保持同一节点/尺寸；hover/focus右上角可删除，点击和已发图片打开全屏Dialog，图片不显示常驻文件名/预览横条；图片使用宿主核对的data URI缩略图；当前版本/清理/授权变化隔离旧图片和迟到读取，文件保持真实卡片，不持久化二进制正文或创建object URL，流式消息仅后台复核而不反复清空缩略图。
@@ -44,13 +44,13 @@ export function MaterialDraftBar({ api, pageActive = true, items, disabled, onRe
       const retryLabel = item.preparationState === 'unknown' ? '核对' : '重试'
       const description = [materialFormatLabel(material?.format), material && sizeText(material.size), materialStatusLabels[status]].filter(Boolean).join(' · ')
       return <div key={item.id} className="group/draft-file relative w-[160px] max-w-full" data-material-draft-id={item.id} data-material-status={status}>
-        <Button variant="ghost" size="content" className="block w-full overflow-hidden rounded-sm border border-border bg-muted p-0 text-left" disabled={locked || (!ready && !failed)}
+        <Button variant="ghost" size="content" className="flex h-28 w-full flex-col items-stretch overflow-hidden rounded-sm border border-border bg-muted p-0 text-left" disabled={locked || (!ready && !failed)}
           title={`${name} · ${description}`} aria-label={`${failed ? retryLabel : '预览'}材料 ${name}`} aria-description={description}
           onClick={() => { if (failed) onRetry(item); else if (ready && material) onPreview(material) }}>
-          <span className="flex h-[88px] items-center justify-center gap-1.5 bg-[var(--selection)] text-muted-foreground">
+          <span className="flex min-h-0 flex-1 items-center justify-center gap-1.5 bg-[var(--selection)] text-muted-foreground">
             {failed ? <><RefreshCw />{retryLabel}</> : status === 'preparing' ? <LoaderCircle className="spinner" /> : <i aria-hidden="true" className="app-icon i-carbon-document-blank size-5" />}
           </span>
-          <span className="flex h-[32px] items-center gap-1.5 px-2 text-[length:var(--text-ui-secondary)] font-medium"><FileText className="size-3.5 text-primary" /><span className="truncate">{name}</span></span>
+          <span className="flex h-[32px] shrink-0 items-center gap-1.5 px-2 text-[length:var(--text-ui-secondary)] font-medium"><FileText className="size-3.5 text-primary" /><span className="truncate">{name}</span></span>
         </Button>
         <Button variant="ink" size="icon-2xs" round className="pointer-events-none absolute -right-1 -top-1 size-[20px] border-2 border-card opacity-0 group-hover/draft-file:pointer-events-auto group-hover/draft-file:opacity-100 group-focus-within/draft-file:pointer-events-auto group-focus-within/draft-file:opacity-100 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100"
           disabled={locked} aria-label={`移除材料 ${name}`} onClick={() => onRemove(item)}><X /></Button>
@@ -72,16 +72,16 @@ export function SentMaterialList({ api, pageActive = true, materials, onPreview 
   const [image, setImage] = useState<ConversationMaterial>()
   const selectedImage = materials.find(material => material.id === image?.id)
   if (!materials.length) return null
-  return <section className="mt-2 flex min-w-0 flex-wrap items-start gap-3" aria-label="消息材料">
+  return <section className="sent-materials mt-2 flex min-w-0 flex-wrap items-start gap-3" aria-label="消息材料">
     {materials.map(material => {
       const name = materialDisplayName(material.name), ready = material.status === 'ready'
       const failed = ['failed', 'unavailable', 'removed'].includes(material.status)
       if (material.format === 'image') return <div key={material.id} className="min-w-0" data-material-id={material.id} data-material-status={material.status}>
         <MaterialImageTile api={api} material={material} active={pageActive} onOpen={() => setImage(material)} error={failed ? materialErrorText(material.error) : undefined} />
       </div>
-      return <div key={material.id} className="w-full min-w-0 rounded-xl bg-card p-2 text-card-foreground soft-card" data-material-id={material.id} data-material-status={material.status}>
-        <Button variant="ghost" size="content" className="w-full min-w-0 text-left" disabled={!ready} aria-label={`预览材料 ${name}`} onClick={() => onPreview(material)}>
-        <Attachment className="w-full border-0 bg-transparent" size="sm" state={material.status === 'preparing' ? 'processing' : failed ? 'error' : 'done'}>
+      return <div key={material.id} className="flex min-w-0 basis-full [justify-content:inherit]" data-material-id={material.id} data-material-status={material.status}>
+        <Button variant="ghost" size="content" className="soft-card min-w-0 max-w-[min(320px,100%)] rounded-xl bg-card p-2 text-left text-card-foreground" disabled={!ready} aria-label={`预览材料 ${name}`} onClick={() => onPreview(material)}>
+        <Attachment className="min-w-0 flex-nowrap border-0 bg-transparent" size="sm" state={material.status === 'preparing' ? 'processing' : failed ? 'error' : 'done'}>
           <MaterialMedia preparing={material.status === 'preparing'} />
           <AttachmentContent>
             <AttachmentTitle>{name}</AttachmentTitle>
