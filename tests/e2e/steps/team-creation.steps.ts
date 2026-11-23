@@ -1,6 +1,6 @@
 /*
  * [OUTPUT]: bobo主聊天按钮用于打开默认聊天，话题箭头独立控制折叠。
- * [OUTPUT]: 核对员工操作栏淡入淡出与隐藏后零宽。
+ * [OUTPUT]: 核对行尾箭头原位显现，按钮单独悬停时有底色。
  * [INPUT]: 真实 Electron、明确主导航作用域、模态菜单打开前实测的外部鼠标坐标、核心工具协议和稳定会话/员工身份。
  * [OUTPUT]: 常驻唯一核心头像/名称分组标题折叠展开，右键新话题打开空白页；无历史/清空/删除/重载仍保留标题且首发才保存历史；核心历史仅标题、更多/编辑随悬停/聚焦/菜单显示且菜单无置顶；紧凑父子缩进/间距、整行背景和标题按钮透明的实际布局，三入口改名/取消零写入/空白禁用/消息身份及重启保持，操作默认隐藏/悬停显示/移开隐藏/键盘与菜单保留及空白/历史默认与悬停截图；首发回复失联只读核对、未知团队请求跨关闭/设置保持和清理 tombstone 重启拒绝重放；两字段弹窗、用户指定群名和真实工具创建；改名后标题联动真实配置头像/名称、分层记忆/重启与失败、标题图标悬停/聚焦/菜单保留与同色、整行12px折叠及等待实际主题的窄窗键盘截图验收。
  * [POS]: bobo 团队创建 BDD；文件原子性/清理冲突保留 teams 模块与恢复测试。
@@ -281,13 +281,19 @@ Then('只保存一个核心会话和一条初始用户消息', async ({ runtime,
   expect(await historyRow.evaluate(element => getComputedStyle(element).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)')
   await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).hover()
   const row = heading.locator('..')
-  const actions = row.locator('.conversation-employee-actions')
   const toggle = row.getByRole('button', { name: 'bobo 的话题', exact: true })
-  await expect(actions).toHaveCSS('width', '0px'); await expect(actions).toHaveCSS('opacity', '0')
+  await expect(toggle).toHaveCSS('opacity', '0')
+  const toggleBounds = await toggle.boundingBox()
   await heading.hover()
-  await expect(actions).toHaveCSS('opacity', '1')
-  await expect(actions.getByRole('button')).toHaveCount(1)
+  await expect(row.getByRole('button')).toHaveCount(2)
+  await expect(toggle).toHaveCSS('opacity', '1')
+  expect(await toggle.boundingBox()).toEqual(toggleBounds)
   await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  await expect(toggle).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+  await toggle.hover()
+  await toggle.evaluate(async element => { await Promise.all(element.getAnimations().map(animation => animation.finished)) })
+  await expect(toggle).not.toHaveCSS('background-color', /^(?:transparent|rgba\(0, 0, 0, 0\)|.* \/ 0\))$/)
+  await expect(toggle).not.toHaveCSS('background-color', await row.evaluate(element => getComputedStyle(element).backgroundColor))
   await heading.click({ button: 'right' })
   await expect(page.getByRole('menuitem', { name: '新话题', exact: true })).toBeVisible()
   await expect(page.getByRole('menuitem', { name: '助手设置', exact: true })).toBeVisible()
@@ -295,9 +301,9 @@ Then('只保存一个核心会话和一条初始用户消息', async ({ runtime,
   await outside.hover()
   await heading.focus(); await page.keyboard.press('Tab')
   await expect(toggle).toBeFocused()
-  await expect(actions).toHaveCSS('opacity', '1')
+  await expect(toggle).toHaveCSS('opacity', '1')
   await outside.focus()
-  await expect(actions).toHaveCSS('width', '0px'); await expect(actions).toHaveCSS('opacity', '0')
+  await expect(toggle).toHaveCSS('opacity', '0')
   await heading.hover()
   expect((await heading.boundingBox())!.width).toBeGreaterThan((await row.boundingBox())!.width - 36)
   await toggle.click()
