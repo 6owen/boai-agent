@@ -1,11 +1,12 @@
 /*
  * [INPUT]: 生产图标协调器、可控Electron/安装辅助进程与Tray端口。
- * [OUTPUT]: Dock/托盘不等待安装写入、最新选择/返回旧ID竞态、分目标失败重试及退出排空。
+ * [OUTPUT]: 恢复内置安装图标、Dock/托盘即时更新、换图竞态、重试及退出排空。
  * [POS]: macOS图标生命周期模块回归；不操作用户Dock或安装副本。
  * [PROTOCOL]: 变化同步Header与tests/.folder.md。
  */
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { AppIconController, type TrayIconPort } from '../apps/electron/src/main/app-icon'
+import { defaultAppIconId } from '../packages/shared/src/appearance'
 import type { AppIconStatus, TrayIconStatus } from '../packages/shared/src/appearance'
 const fake = vi.hoisted(() => ({
   packaged: false, dock: [] as string[], missing: new Set<string>(), dockFailure: new Set<string>(),
@@ -19,7 +20,7 @@ vi.mock('node:fs/promises', () => ({ realpath: async () => '/isolated/BoAI.app/C
 vi.mock('node:child_process', () => ({ execFile: (_file: string, args: string[], _options: unknown, callback: (error: Error | null, stdout: string, stderr: string) => void) => { fake.helpers.push({ args, finish: error => callback(error ?? null, '', '') }); return {} } }))
 afterEach(() => { fake.packaged = false; fake.dock.length = 0; fake.helpers.length = 0; fake.missing.clear(); fake.dockFailure.clear() })
 function fixture() {
-  let status: TrayIconStatus = { supported: true, available: true, state: 'applied', appliedId: 'avatar-cat', fallback: null, error: null }
+  let status: TrayIconStatus = { supported: true, available: true, state: 'applied', appliedId: defaultAppIconId, fallback: null, error: null }
   const fail = new Set<string>(), events: AppIconStatus[] = [], applied: string[] = []
   const apply = (id: string) => { applied.push(id); status = fail.has(id) ? { ...status, state: 'failed', error: '托盘失败' } : { ...status, state: 'applied', appliedId: id, fallback: null, error: null }; return { ...status } }
   const port: TrayIconPort = { snapshot: () => ({ ...status }), apply: vi.fn(apply), retry: vi.fn(apply) }
@@ -29,6 +30,22 @@ function fixture() {
 const waitHelpers = async (count: number) => vi.waitFor(() => expect(fake.helpers).toHaveLength(count))
 
 describe.runIf(process.platform === 'darwin')('macOS three target application', () => {
+  test('选择头像后恢复默认，安装版清除自定义图标并使用内置Logo', async () => {
+    fake.packaged = true; const f = fixture()
+    const custom = f.controller.apply('avatar-cat')
+    await waitHelpers(1)
+    expect(fake.helpers[0].args).toEqual(['set', '/isolated/BoAI.app', '/icons/avatar-cat.png'])
+    fake.helpers[0].finish(); await custom
+    const reset = f.controller.apply(defaultAppIconId)
+    await waitHelpers(2)
+    expect(fake.helpers[1].args).toEqual(['reset', '/isolated/BoAI.app'])
+    fake.helpers[1].finish(); await reset
+    expect(f.controller.snapshot()).toMatchObject({
+      dock: { appliedId: defaultAppIconId },
+      tray: { appliedId: defaultAppIconId },
+      installed: { appliedId: defaultAppIconId, error: null },
+    })
+  })
   test('开发版只应用运行态；相同成功ID不重复触碰Tray或Dock', async () => {
     const f = fixture(); await f.controller.apply('avatar-bear')
     expect(f.controller.snapshot()).toMatchObject({ requestedId: 'avatar-bear', pending: false, dock: { appliedId: 'avatar-bear', error: null }, tray: { appliedId: 'avatar-bear', state: 'applied' }, installed: { available: false } })
@@ -61,7 +78,7 @@ describe.runIf(process.platform === 'darwin')('macOS three target application', 
   })
   test('Dock成功不会跳过Tray失败；重试只触碰未成功目标', async () => {
     const f = fixture(); f.fail.add('avatar-bear'); await f.controller.apply('avatar-bear')
-    expect(f.controller.snapshot()).toMatchObject({ dock: { appliedId: 'avatar-bear', error: null }, tray: { appliedId: 'avatar-cat', error: '托盘失败' } })
+    expect(f.controller.snapshot()).toMatchObject({ dock: { appliedId: 'avatar-bear', error: null }, tray: { appliedId: defaultAppIconId, error: '托盘失败' } })
     f.fail.clear(); await f.controller.retry()
     expect(fake.dock).toEqual(['avatar-bear']); expect(f.port.retry).toHaveBeenCalledWith('avatar-bear')
     expect(f.controller.snapshot().tray).toMatchObject({ appliedId: 'avatar-bear', error: null })
@@ -69,7 +86,7 @@ describe.runIf(process.platform === 'darwin')('macOS three target application', 
   test('Dock缺图/原生失败仍应用Tray，安装失败不把运行态回滚', async () => {
     fake.packaged = true; const f = fixture(); fake.missing.add('avatar-bear')
     const first = f.controller.apply('avatar-bear'); await waitHelpers(1); fake.helpers[0].finish(new Error('安装图标失败')); await first
-    expect(f.controller.snapshot()).toMatchObject({ requestedId: 'avatar-bear', dock: { appliedId: 'avatar-cat', error: expect.any(String) }, tray: { appliedId: 'avatar-bear', error: null }, installed: { error: '安装图标失败' } })
+    expect(f.controller.snapshot()).toMatchObject({ requestedId: 'avatar-bear', dock: { appliedId: defaultAppIconId, error: expect.any(String) }, tray: { appliedId: 'avatar-bear', error: null }, installed: { error: '安装图标失败' } })
     fake.missing.clear(); const retry = f.controller.retry(); await waitHelpers(2); fake.helpers[1].finish(); await retry
     expect(f.applied).toEqual(['avatar-bear']); expect(f.controller.snapshot().dock).toEqual({ appliedId: 'avatar-bear', error: null })
   })

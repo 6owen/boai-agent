@@ -1,7 +1,7 @@
 /*
  * [OUTPUT]: Workspace源码路径迁至apps/packages，保留既有输出与业务合同。
- * [INPUT]: Checked-in transparent avatar WebP files and packages/shared/src/appearance/app-icon-manifest.json.
- * [OUTPUT]: 21 PNG app icons with a centered mascot on a pure-white macOS-size rounded tile and the matching default macOS .icns; no baked gradient or shadow.
+ * [INPUT]: Transparent avatar WebPs, a square logo SVG and the shared app icon manifest.
+ * [OUTPUT]: 512px app icons with the same macOS-size tile, plus the manifest default as .icns.
  * [POS]: Explicit offline asset generation; build copies the generated results.
  * [PROTOCOL]: Update this Header and scripts/.folder.md when this file changes.
  */
@@ -61,7 +61,7 @@ function roundedTile(context, x, y, size, radius) {
   context.closePath()
 }
 
-function renderIcon(image, bounds, pixels, background) {
+function renderIcon(image, bounds, pixels) {
   const canvas = createCanvas(pixels, pixels)
   const context = canvas.getContext('2d')
   context.imageSmoothingEnabled = true
@@ -70,6 +70,11 @@ function renderIcon(image, bounds, pixels, background) {
   const inset = (pixels - tile) / 2
   const radius = pixels * tileCornerRadius / canvasSize
   roundedTile(context, inset, inset, tile, radius)
+  if (!bounds) {
+    context.clip()
+    context.drawImage(image, inset, inset, tile, tile)
+    return canvas.toBuffer('image/png')
+  }
   context.fillStyle = background
   context.fill()
   const maximum = pixels * artworkMaxSize / canvasSize
@@ -86,16 +91,21 @@ try {
   const ids = new Set()
   let defaultMaster
   for (const icon of manifest.icons) {
-    if (!/^avatar-[a-z-]+$/.test(icon.id) || !/^[a-z-]+\.webp$/.test(icon.file) || ids.has(icon.id)) throw new Error(`Invalid icon entry: ${icon.id}`)
+    const avatar = /^avatar-[a-z-]+$/.test(icon.id) && /^[a-z-]+\.webp$/.test(icon.file)
+    const logo = /^logo-[a-z-]+$/.test(icon.id) && /^output\/logo-svg\/[A-Za-z-]+\.svg$/.test(icon.file)
+    if ((!avatar && !logo) || ids.has(icon.id)) throw new Error(`Invalid icon entry: ${icon.id}`)
     ids.add(icon.id)
-    const input = join(source, icon.file)
+    const input = join(avatar ? source : root, icon.file)
     const output = join(target, `${icon.id}.png`)
     const image = await loadImage(input)
-    const bounds = visibleBounds(image)
-    await writeFile(output, renderIcon(image, bounds, 512, background))
-    if (icon.id === manifest.defaultId) defaultMaster = renderIcon(image, bounds, canvasSize, background)
+    if (logo && image.width !== image.height) throw new Error(`Logo needs a square source: ${icon.id}`)
+    const bounds = avatar ? visibleBounds(image) : null
+    await writeFile(output, renderIcon(image, bounds, 512))
+    if (icon.id === manifest.defaultId) defaultMaster = renderIcon(image, bounds, canvasSize)
   }
-  if (ids.size !== 21 || !ids.has(manifest.defaultId)) throw new Error('Icon manifest must contain all 21 avatar choices and its default.')
+  if (!defaultMaster || manifest.icons.filter(icon => icon.avatarId).length !== 21) {
+    throw new Error('Icon manifest must contain all 21 avatar choices and its default.')
+  }
   const iconset = join(temporary, 'default.iconset')
   await mkdir(iconset)
   const master = join(temporary, 'default-1024.png')

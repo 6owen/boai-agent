@@ -1,6 +1,6 @@
 /*
  * [OUTPUT]: 图标清单读取shared包真源，PNG/SVG输出目录保持resources。
- * [INPUT]: 应用图标manifest与手工绘制的22点SVG模板；既有canvas依赖。
+ * [INPUT]: 应用图标manifest与头像、品牌Logo的22点SVG模板。
  * [OUTPUT]: 离线生成22/44像素模板和可选审阅图，不修改Dock PNG或默认icns。
  * [POS]: 托盘资源生成入口；构建只复制已登记产物。
  * [PROTOCOL]: 修改同步Header和scripts/.folder.md。
@@ -18,11 +18,11 @@ const selected = args.only ? new Set(args.only.split(',')) : undefined
 const icons = manifest.icons.filter(icon => !selected || selected.has(icon.id))
 if (!icons.length || (selected && icons.length !== selected.size)) throw new Error('Unknown tray icon selection')
 for (const icon of icons) {
-  if (!icon.tray || !/^tray\/avatar-[a-z-]+\.svg$/.test(icon.tray.source)) throw new Error(`Missing tray source: ${icon.id}`)
+  if (!icon.tray || !/^tray\/(?:avatar|logo)-[a-z-]+\.svg$/.test(icon.tray.source)) throw new Error(`Missing tray source: ${icon.id}`)
   const svg = await readFile(join(directory, icon.tray.source), 'utf8')
   if (!svg.includes('viewBox="0 0 22 22"') || /<(script|image|foreignObject)\b/i.test(svg)) throw new Error(`Unsafe or invalid SVG: ${icon.id}`)
   for (const [size, name] of [[22, icon.tray.oneX], [44, icon.tray.twoX]]) {
-    if (!/^tray\/avatar-[a-z-]+Template(?:@2x)?\.png$/.test(name)) throw new Error('Invalid output path')
+    if (!/^tray\/(?:avatar|logo)-[a-z-]+Template(?:@2x)?\.png$/.test(name)) throw new Error('Invalid output path')
     const canvas = createCanvas(size, size), context = canvas.getContext('2d')
     const image = await loadImage(Buffer.from(svg.replace('width="22" height="22"', `width="${size}" height="${size}"`)))
     context.drawImage(image, 0, 0, size, size)

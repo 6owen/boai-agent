@@ -1,5 +1,6 @@
 /*
  * [OUTPUT]: Build the narrow hidden-canvas preload and preserve tldraw license/notice in distribution.
+ * [OUTPUT]: Copy the avatar and logo Dock/tray assets listed in the shared icon manifest.
  * [OUTPUT]: Agent Desktop插件技能按运行时相对位置分发至dist/skills，源码Node/BDD加载保持兼容。
  * [OUTPUT]: 2026-10-29 主进程外置electron-sparkle-updater，保留原生模块按包内位置加载。
  * [OUTPUT]: 2026-10-29 包边界纳入file-explorer-plugin；build分发固定来源和MIT许可。
@@ -91,7 +92,7 @@ async function buildElectronHost(compile) {
   for (const icon of appIconManifest.icons) {
     await copyFile(`resources/app-icons/${icon.id}.png`, `dist/main/app-icons/${icon.id}.png`)
     for (const file of [icon.tray.oneX, icon.tray.twoX]) {
-      if (!/^tray\/avatar-[a-z-]+Template(?:@2x)?\.png$/.test(file)) throw new Error(`Invalid tray asset: ${icon.id}`)
+      if (!/^tray\/(?:avatar|logo)-[a-z-]+Template(?:@2x)?\.png$/.test(file)) throw new Error(`Invalid tray asset: ${icon.id}`)
       await copyFile(`resources/app-icons/${file}`, `dist/main/app-icons/${file}`)
     }
   }

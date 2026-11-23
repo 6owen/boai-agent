@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 本机技能全局检查图标紧靠搜索左侧并沿用前景色，导入/重新扫描留在更多菜单。
  * [OUTPUT]: 收藏分组展开与收起采样真实中间高度，并在拖拽/键盘移动后检查内容及重启顺序。
  * [OUTPUT]: 检索改为先点击图标展开，再沿原本地技能扫描/收藏/分组操作。
  * [OUTPUT]: 技能选中保留主目录，并使用Shell右侧详情/关闭入口；原收藏和本地扫描流程保持。
@@ -45,8 +46,15 @@ Then('会话式两栏显示本机技能来源和正文且没有授予员工权�
   await separator.focus(); await page.keyboard.press('ArrowRight')
   await expect(separator).toHaveAttribute('aria-valuenow', String(initialWidth + 10)); await page.keyboard.press('ArrowLeft')
   await page.getByRole('button', { name: '关闭详情', exact: true }).click()
+  const toolbar = page.locator('.custom-catalog-search')
+  const check = toolbar.getByRole('button', { name: '检查技能更新', exact: true })
+  const search = toolbar.getByRole('button', { name: '搜索本机技能', exact: true })
+  await expect(check).toBeVisible()
+  expect(await check.evaluate(button => button.nextElementSibling?.classList.contains('catalog-search'))).toBe(true)
+  await expect(check).toHaveCSS('color', await search.evaluate(button => getComputedStyle(button).color))
   await page.getByRole('button', { name: '技能操作', exact: true }).click()
-  for (const name of ['重新扫描技能', '检查技能更新', '导入文件夹、ZIP 或链接']) await expect(page.getByRole('menuitem', { name, exact: true })).toBeVisible()
+  for (const name of ['重新扫描技能', '导入文件夹、ZIP 或链接']) await expect(page.getByRole('menuitem', { name, exact: true })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: '检查技能更新', exact: true })).toHaveCount(0)
   await expect(page.getByRole('menuitem', { name: '安装记录', exact: true })).toHaveCount(0)
   await page.screenshot({ path: 'test-results/local-skills-popover.png' }); await page.keyboard.press('Escape')
   await expect(page.getByRole('button', { name: '技能操作', exact: true })).toBeFocused()

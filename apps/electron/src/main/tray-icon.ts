@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Explicit manifest paths and bounded 22/44px local PNGs.
+ * [INPUT]: Manifest paths for bounded 22/44px avatar and logo template PNGs.
  * [OUTPUT]: Decoded 1x/2x macOS template image; missing/invalid assets reject before touching a live Tray.
  * [POS]: Tray asset loader; no preference owner or Tray creation.
  * [PROTOCOL]: Update this Header and apps/electron/src/main/.folder.md when this file changes.
@@ -10,7 +10,7 @@ import { nativeImage } from 'electron'
 import { appIconTrayAssets, type AppIconId } from '@boai/shared/appearance/app-icons'
 
 function png(root: string, name: string, size: number) {
-  if (!/^tray\/avatar-[a-z-]+Template(?:@2x)?\.png$/.test(name)) throw new Error('托盘图标路径无效。')
+  if (!/^tray\/(?:avatar|logo)-[a-z-]+Template(?:@2x)?\.png$/.test(name)) throw new Error('托盘图标路径无效。')
   const path = join(root, name)
   if (statSync(path).size > 65_536) throw new Error('托盘图标文件过大。')
   const bytes = readFileSync(path)

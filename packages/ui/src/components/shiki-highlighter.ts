@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Command transcripts use the standard Shiki shell grammar for the first line and log grammar for the output.
  * [INPUT]: 代码文本、语言标识与 Shiki 的本地语言/主题模块。
  * [OUTPUT]: 单例JS引擎及按需语言/双色tokens，默认文字色允许通过CSS变量继承次级色而保留语法高亮；未知/超长代码保留原文。
  * [POS]: UI CodeBlock 的延迟加载高亮实现，不读取业务状态、不请求 CDN。
@@ -19,6 +20,19 @@ const languages: { id: string; aliases?: string[]; load: DynamicImportLanguageRe
   { id: 'yaml', aliases: ['yml'], load: () => import('shiki/langs/yaml.mjs') },
   { id: 'toml', load: () => import('shiki/langs/toml.mjs') },
   { id: 'shellscript', aliases: ['bash', 'sh', 'shell', 'zsh'], load: () => import('shiki/langs/shellscript.mjs') },
+  { id: 'command-log', load: async () => {
+    const [shell, log] = await Promise.all([import('shiki/langs/shellscript.mjs'), import('shiki/langs/log.mjs')])
+    return { default: [...shell.default, ...log.default, {
+      name: 'command-log',
+      scopeName: 'text.command-log',
+      repository: {},
+      embeddedLangs: ['shellscript', 'log'],
+      patterns: [
+        { match: '\\A(.*)$', captures: { 1: { patterns: [{ include: 'source.shell' }] } } },
+        { include: 'text.log' },
+      ],
+    }] }
+  } },
   { id: 'powershell', aliases: ['ps1', 'pwsh'], load: () => import('shiki/langs/powershell.mjs') },
   { id: 'python', aliases: ['py'], load: () => import('shiki/langs/python.mjs') },
   { id: 'go', load: () => import('shiki/langs/go.mjs') },
