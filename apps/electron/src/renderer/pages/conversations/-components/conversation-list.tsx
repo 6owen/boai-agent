@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 侧栏话题标题在生成期间复用 shadcn shimmer。
  * [OUTPUT]: 会话摘要只显示最新已发送消息，不接入composer草稿或执行状态；渠道入口仅提示真实未读回复。
  * [OUTPUT]: 员工配置与置顶共用同一右键菜单分组，清理操作独立分组。
  * [OUTPUT]: 失败/取消/中断的执行过程及自动化镜像保留在聊天；支持显式继续、原生复制和员工配置右键入口。
@@ -139,7 +140,7 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
         return <DragListItem id={conversation.id} className="conversation-row relative" key={conversation.id}>{({ dragging, dragProps }) =>
           <ContextMenu onOpenChange={open => { if (compact) setCoreHistoryMenuId(open ? conversation.id : null) }}>
             {compact ? <ContextMenuTrigger render={<div className={cn('conversation-item conversation-core-item', { selected: selectedId === conversation.id, 'drag-list-dragging': dragging })} data-menu-open={coreHistoryMenuId === conversation.id || undefined} />} aria-label={conversation.title}>
-              <Button variant="ghost" size="content" className="conversation-core-title" aria-label={conversation.title} {...dragProps} aria-current={selectedId === conversation.id ? 'page' : undefined} onClick={() => { if (!dragging) onSelect(conversation.id) }}><span className="truncate">{conversation.title}</span>{messageTime && <time dateTime={messageTime}>{timeText(messageTime)}</time>}</Button>
+              <Button variant="ghost" size="content" className="conversation-core-title" aria-label={conversation.title} {...dragProps} aria-current={selectedId === conversation.id ? 'page' : undefined} onClick={() => { if (!dragging) onSelect(conversation.id) }}><span className={cn('truncate', conversation.titleGenerating && 'shimmer')} aria-busy={conversation.titleGenerating || undefined}>{conversation.title}</span>{messageTime && <time dateTime={messageTime}>{timeText(messageTime)}</time>}</Button>
               <div className="conversation-core-actions">
               <DropdownMenu onOpenChange={open => setCoreHistoryMenuId(open ? conversation.id : null)}><DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" className="conversation-core-action" disabled={busy} aria-label={`${conversation.title} 的更多操作`} title="更多操作" />}><MoreHorizontal /></DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-40"><DropdownMenuGroup><DropdownMenuItem disabled={busy} onClick={() => onEditTitle(conversation)}><Pencil />编辑标题</DropdownMenuItem></DropdownMenuGroup><DropdownMenuSeparator /><DropdownMenuGroup>

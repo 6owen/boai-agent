@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 会话视图可标记当前确有标题生成活动。
  * [OUTPUT]: 新话题保留待自动命名的首条消息身份。
  * [OUTPUT]: Conversation保留员工固定主聊天、独立话题及核心专用聊天的角色。
  * [OUTPUT]: WT3冻结员工项目默认字段与WT2模板来源，创建输入不接受伪造来源记录。
@@ -166,6 +167,8 @@ export interface Conversation {
   /** Saved role of a local employee conversation. */
   employeeChat?: 'main' | 'topic' | 'special'
   pendingTitleMessageId?: string
+  /** Snapshot/view only. The saved first message may outlive the active title job. */
+  titleGenerating?: boolean
   projectSelection?: import('./project-directory').ProjectSelection
   projectSelections?: Record<string, import('./project-directory').ProjectSelection>
   employeeTaskId?: string
