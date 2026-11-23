@@ -2,7 +2,7 @@
  * [OUTPUT]: 技能列表与详情菜单复用公共系统打开方式与文件管理器定位，内置与插件技能打开只读副本。
  * [OUTPUT]: 全局检查、批量更新与单项更新共用固定终端浮层，分别从工具栏及技能详情打开。
  * [OUTPUT]: 共享本机技能详情标题栏直接调用 skills CLI 检查与更新，退出后刷新技能正文和目录。
- * [OUTPUT]: 技能标题增加能力包管理入口，原本地技能导入/收藏/商城保持；包管理沿原应用回执。
+ * [OUTPUT]: 技能页标题保留 AI 管理，技能导入和更新位于目录工具栏。
  * [OUTPUT]: 随包内置技能源只读显示，不提供外部编辑器修改入口。
  * [OUTPUT]: 技能标题AI管理沿Shell进入普通bobo会话，目录/详情/原Tabs状态保持。
  * [OUTPUT]: 最右图标检索展开；本地/收藏/商城内容共用CatalogTransition，导航Tabs保持挂载。
@@ -33,7 +33,6 @@ import { SkillList, type SkillEntry } from './skill-list'
 import { SkillGroups } from './skill-groups'
 import { SkillDetailPanel, SkillDetailBody } from './skill-detail-layout'
 import { SkillImportDialog, SkillActionsMenu } from './skill-import-dialog'
-import { CapabilityPackagesDialog } from './capability-packages-dialog'
 import { SkillExportDialog } from './skill-export-dialog'
 import { SkillMarketplaceView } from './skill-marketplace'
 
@@ -43,7 +42,6 @@ const stored = <T,>(key: string, fallback: T): T => { try { return JSON.parse(lo
 export function SkillsWorkspace({ api, section, onSection, provider, onProvider, updates, focusSkill, revision, embedded = false, onCatalogChange, onOpenSkill, onOpenMarketplace, onManage }: { api: DesktopApi; section: SkillsSection; onSection: (section: SkillsSection) => void; provider: SkillMarketplaceProvider; onProvider: (provider: SkillMarketplaceProvider) => void; divider: ReactNode; updates: LocalSkillUpdates; focusSkill?: { id: string; requestId: string }; revision: number; embedded?: boolean; onCatalogChange?(catalog: LocalSkillCatalog): void; onOpenSkill(skill: LocalSkill): void; onOpenMarketplace(item: SkillMarketplaceItem): void; onManage?(kind: 'skills' | 'sources', item?: { id: string; name: string }): void }) {
   const { catalog, loading, error: loadError, reload } = useLocalSkills(api, revision)
   useEffect(() => { if (catalog) onCatalogChange?.(catalog) }, [catalog, onCatalogChange])
-  const [packagesOpen, setPackagesOpen] = useState(false)
   const [query, setQuery] = useState(''), [selected, setSelected] = useState('')
   const search = useDeferredValue(query.trim().toLowerCase())
   const [collapsed, setCollapsed] = useState<string[]>(() => stored('collapsed', []))
@@ -76,7 +74,7 @@ export function SkillsWorkspace({ api, section, onSection, provider, onProvider,
   const navigation = <Tabs value={section} onValueChange={value => { setSelected(''); setQuery(''); onSection(value as SkillsSection) }}><TabsList aria-label="技能分类"><TabsTrigger value="all">本地</TabsTrigger><TabsTrigger value="own">收藏</TabsTrigger><TabsTrigger value="marketplace">商城</TabsTrigger></TabsList></Tabs>
   return <div className={`conversation-layout skills-workspace${embedded ? ' embedded-skills' : ''}`} aria-label="技能管理">
     <section className="skills-list-pane"><div className="conversation-list-panel skills-list-panel">
-      <header className="custom-content-heading"><h1>技能</h1><div className="button-row"><Button variant="secondary" size="sm" onClick={() => setPackagesOpen(true)}>能力包</Button>{onManage && <Button variant="secondary" size="sm" onClick={() => onManage('skills')}><MessageCircle />AI 管理</Button>}</div></header>
+      <header className="custom-content-heading"><h1>技能</h1>{onManage && <Button variant="secondary" size="sm" onClick={() => onManage('skills')}><MessageCircle />AI 管理</Button>}</header>
       <div className="custom-catalog-toolbar">{navigation}<div className="custom-catalog-search" ref={setMarketToolbar}>
         {section !== 'marketplace' && <><div className="skills-search-actions">
           {section === 'own' && <SkillGroups value={collection.value ? { ...collection.value, favoriteResourceIds: favorites } : null} change={collection.change} busy={collection.busy} />}
@@ -94,7 +92,6 @@ export function SkillsWorkspace({ api, section, onSection, provider, onProvider,
       </CatalogTransition>
       </div>
     </section>
-    {packagesOpen && <CapabilityPackagesDialog api={api} onClose={() => setPackagesOpen(false)} onChanged={() => { void reload(true) }} />}
     {importing && <SkillImportDialog api={api} operationId={operationId} onClose={() => setImporting(false)} onInstalled={installed} onResource={openResource} />}
     {exporting && <SkillExportDialog api={api} resources={entries.map(entry => ({ id: entry.id, name: entry.name, description: entry.description, sourceLabel: entry.local?.sourceLabel }))} favoriteIds={favorites} onClose={() => setExporting(false)} onOperation={id => { setExporting(false); setOperationId(id); setImporting(true) }} />}
   </div>

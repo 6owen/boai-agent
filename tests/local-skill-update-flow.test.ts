@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /*
  * [INPUT]: Real catalog and terminal components with controlled native CLI receipts.
- * [OUTPUT]: Updates use the toolbar and skill-detail popovers, and available updates leave skill rows unchanged.
+ * [OUTPUT]: The skills header exposes AI management without the package dialog. Updates use the toolbar and skill-detail popovers, and available updates leave skill rows unchanged.
  * [POS]: Desktop library interaction regression without network or user profile writes.
  * [PROTOCOL]: Update Header and tests/.folder.md when changed.
  */
@@ -42,7 +42,7 @@ test('keeps skill rows simple and uses popovers for individual and confirmed bul
     return h(Fragment, {},
       h(SkillsWorkspace, {
         api, section: 'own', onSection: () => {}, provider: 'skills-sh', onProvider: () => {}, divider: null,
-        updates, revision: 0, onOpenSkill: setSelected, onOpenMarketplace: () => {},
+        updates, revision: 0, onManage: () => {}, onOpenSkill: setSelected, onOpenMarketplace: () => {},
       }),
       selected && h(LocalSkillUpdate, { id: selected.id, slug: selected.slug, updates }),
     )
@@ -53,6 +53,8 @@ test('keeps skill rows simple and uses popovers for individual and confirmed bul
   const terminal = (parent: ParentNode = document) => parent.querySelector('[aria-label="技能命令终端"]')
   try {
     await act(async () => root.render(h(Fixture)))
+    expect(button('能力包')).toBeUndefined()
+    expect(button('AI 管理')).toBeDefined()
     await act(async () => button('检查技能更新')!.click())
     expect(calls()).toEqual([expect.objectContaining({ action: 'check' })])
     const popup = globalPopup()!

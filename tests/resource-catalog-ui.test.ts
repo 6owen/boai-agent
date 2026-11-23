@@ -2,9 +2,6 @@
 /*
  * [INPUT]: Production application and source OAuth UI, isolated DOM and controlled application receipts.
  * [OUTPUT]: Real menu/checkbox selection excludes managed/employee-owned resources; directory and unknown-close recovery preserve the original creation intent.
- * [OUTPUT]: Capability recovery clicks resolve running/unknown application receipts and never reconcile preparing or replay the original write.
- * [OUTPUT]: Cleanup attempts survive lost receipts/reopen with one identity; a settled retained result permits a new explicit attempt only.
- * [OUTPUT]: Committed update/uninstall receipts remain pending until cleanup settles; only an unknown application permits mid-commit reconciliation.
  * [POS]: WT2 focused renderer tests; no Electron, personal accounts or real network.
  * [PROTOCOL]: Changes must update this Header and the owning .folder.md.
  */
@@ -13,13 +10,11 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import type { DesktopApi } from '@boai/shared/ipc'
 import type { DataSource, SourceOAuthStatus } from '@boai/shared/domain/sources'
-import type { CapabilityInspection, CapabilityOperation } from '@boai/shared/domain/capability-packages'
 import { applicationSourceDefaults } from '@boai/shared/domain/resource-catalog'
 import { ApplicationsView } from '../apps/electron/src/renderer/pages/library/applications-view'
 import { SourceOAuthDialog } from '../apps/electron/src/renderer/pages/sources/source-oauth-dialog'
 import { PENDING_SOURCE_CREATION_KEY } from '../apps/electron/src/renderer/pages/library/source-creation-request'
 import { SourcePicker } from '../apps/electron/src/renderer/pages/sources/source-picker'
-import { CapabilityPackagesDialog } from '../apps/electron/src/renderer/pages/library/capability-packages-dialog'
 
 let root: Root, host: HTMLDivElement, request: ReturnType<typeof vi.fn>, api: DesktopApi
 const source: DataSource = { ...applicationSourceDefaults('github'), id: 'source-1', revision: 1, createdAt: '2026-11-07T00:00:00Z', updatedAt: '2026-11-07T00:00:00Z', hasCredential: true, applicationOrigin: { applicationId: 'github', version: '1' } }
@@ -204,157 +199,4 @@ test('closing an unknown employee creation and reopening never repeats it, then 
   expect(request.mock.calls.find(args => args[1]?.operation === 'sessions.create')?.[1]).toEqual({ operation: 'sessions.create', requestId: identity.sessionRequestId, input: { employeeId: employee.id } })
   expect(created).toHaveBeenCalledExactlyOnceWith(conversation)
   expect(localStorage.getItem(PENDING_EMPLOYEE_CREATION_KEY)).toBeNull()
-})
-
-const capabilityPendingKey = 'boai.library.pending-capability-request'
-const capabilityRecoveryKey = 'boai.library.pending-capability-recovery'
-const capabilityReceiptId = 'a'.repeat(64)
-const packageInspection: CapabilityInspection = { format: 'portable', specVersion: 'agent-plugins/1.0.0', packageId: 'fixture-package', name: '测试能力包', version: '1', description: '', source: { kind: 'local', path: '/fixtures/package', origin: 'local' }, contentHash: 'b'.repeat(64), files: [], bytes: 0, definitions: [], unsupported: [], warnings: [], partialAllowed: false }
-async function pendingPackageFixture(applicationStatus: 'running' | 'unknown', domainStatus: CapabilityOperation['status'], recoveredStatus: 'completed' | 'failed' = 'completed') {
-  let operation: CapabilityOperation = { requestId: `application-${capabilityReceiptId}`, fingerprint: 'fingerprint', action: 'install', installationId: 'installation-1', status: domainStatus, phase: 'prepare' }
-  const changed = vi.fn(), props = { api, onClose: vi.fn(), onChanged: changed }
-  request.mockImplementation(async (method: string, value: any) => {
-    if (method === 'snapshot') return { agents: [] }
-    if (method === 'getApplicationReceipt') return { status: applicationStatus, receiptId: capabilityReceiptId }
-    if (method === 'executeApplicationOperation') {
-      if (value.operation === 'capabilityPackages.list') return { status: 'succeeded', data: [] }
-      if (value.operation === 'capabilityPackages.inspect') return { status: 'succeeded', data: packageInspection }
-      if (value.operation === 'capabilityPackages.install') throw new Error('lost original response')
-      if (value.operation === 'capabilityPackages.receipt') return { status: 'succeeded', data: operation }
-      if (value.operation === 'capabilityPackages.recover') {
-        expect(operation.status).toBe('interrupted')
-        operation = { ...operation, status: recoveredStatus, phase: 'reconciled' }
-        return { status: 'succeeded', data: operation }
-      }
-    }
-    throw new Error(`Unexpected ${method} ${value?.operation}`)
-  })
-  await act(async () => root.render(h(CapabilityPackagesDialog, props)))
-  await input('能力包目录', packageInspection.source.path); await click('预检'); await click('导入能力包')
-  const original = request.mock.calls.find(args => args[1]?.operation === 'capabilityPackages.install')![1]
-  expect(localStorage.getItem(capabilityPendingKey)).toBe(original.requestId)
-  return { changed, original, props, setStatus(status: CapabilityOperation['status']) { operation = { ...operation, status } } }
-}
-test.each(['running', 'unknown'] as const)('a %s application receipt recovers its package result by receipt identity without reconciling preparing work', async status => {
-  const fixture = await pendingPackageFixture(status, 'preparing')
-  await click('核对原操作'); await click('核对原操作')
-  expect(request.mock.calls.filter(args => args[1]?.operation === 'capabilityPackages.receipt').map(args => args[1].input)).toEqual([{ applicationReceiptId: capabilityReceiptId }, { applicationReceiptId: capabilityReceiptId }])
-  expect(request.mock.calls.some(args => args[1]?.operation === 'capabilityPackages.recover')).toBe(false)
-  expect(fixture.changed).not.toHaveBeenCalled()
-  expect(localStorage.getItem(capabilityPendingKey)).toBe(fixture.original.requestId)
-  fixture.setStatus('completed'); await click('核对原操作')
-  expect(request.mock.calls.filter(args => args[1]?.operation === 'capabilityPackages.install')).toHaveLength(1)
-  expect(fixture.changed).toHaveBeenCalledOnce()
-  expect(localStorage.getItem(capabilityPendingKey)).toBeNull()
-})
-test.each(['completed', 'failed'] as const)('reopening an interrupted package request reconciles its original domain identity to %s without replaying installation', async finalStatus => {
-  const fixture = await pendingPackageFixture('unknown', 'interrupted', finalStatus)
-  await act(async () => root.render(null))
-  await act(async () => root.render(h(CapabilityPackagesDialog, fixture.props)))
-  await click('核对原操作')
-  expect(request).toHaveBeenCalledWith('getApplicationReceipt', { requestId: fixture.original.requestId })
-  const recovery = request.mock.calls.filter(args => args[1]?.operation === 'capabilityPackages.recover')
-  expect(recovery).toHaveLength(1)
-  expect(recovery[0][1]).toEqual({ operation: 'capabilityPackages.recover', requestId: expect.any(String), input: { originalRequestId: `application-${capabilityReceiptId}` } })
-  expect(recovery[0][1].requestId).not.toBe(fixture.original.requestId)
-  expect(request.mock.calls.filter(args => args[1]?.operation === 'capabilityPackages.install')).toHaveLength(1)
-  expect(fixture.changed).toHaveBeenCalledTimes(finalStatus === 'completed' ? 1 : 0)
-  expect(localStorage.getItem(capabilityPendingKey)).toBeNull()
-})
-
-test('a settled cleanup with retained content permits a new explicit attempt against the same original operation', async () => {
-  const fixture = await pendingPackageFixture('unknown', 'interrupted')
-  const originalImplementation = request.getMockImplementation()! as (method: string, value: unknown) => Promise<unknown>
-  let attempts = 0
-  request.mockImplementation(async (method: string, value: any) => {
-    if (method === 'executeApplicationOperation' && value.operation === 'capabilityPackages.recover') {
-      attempts++
-      return { status: 'succeeded', data: { requestId: `application-${capabilityReceiptId}`, status: attempts === 1 ? 'interrupted' : 'completed', retained: attempts === 1 ? ['/fixtures/customized-skill'] : [] } }
-    }
-    return originalImplementation(method, value)
-  })
-  await click('核对原操作')
-  expect(attempts).toBe(1)
-  expect(localStorage.getItem(capabilityRecoveryKey)).toBeNull()
-  expect(localStorage.getItem(capabilityPendingKey)).toBe(fixture.original.requestId)
-  expect(fixture.changed).not.toHaveBeenCalled()
-  await click('核对原操作')
-  const recoveries = request.mock.calls.filter(args => args[1]?.operation === 'capabilityPackages.recover').map(args => args[1])
-  expect(recoveries).toHaveLength(2)
-  expect(new Set(recoveries.map(item => item.requestId)).size).toBe(2)
-  expect(recoveries.map(item => item.input)).toEqual([{ originalRequestId: `application-${capabilityReceiptId}` }, { originalRequestId: `application-${capabilityReceiptId}` }])
-  expect(request.mock.calls.filter(args => args[1]?.operation === 'capabilityPackages.install')).toHaveLength(1)
-  expect(fixture.changed).toHaveBeenCalledOnce()
-  expect(localStorage.getItem(capabilityPendingKey)).toBeNull()
-  expect(localStorage.getItem(capabilityRecoveryKey)).toBeNull()
-})
-
-test('a lost cleanup response survives reopen and reads the same attempt through unknown and running until completion', async () => {
-  const fixture = await pendingPackageFixture('unknown', 'interrupted')
-  const originalImplementation = request.getMockImplementation()! as (method: string, value: unknown) => Promise<unknown>
-  let attemptId = '', attemptStatus: 'unknown' | 'running' | 'succeeded' = 'unknown'
-  request.mockImplementation(async (method: string, value: any) => {
-    if (method === 'executeApplicationOperation' && value.operation === 'capabilityPackages.recover') { attemptId = value.requestId; throw new Error('lost cleanup response') }
-    if (method === 'getApplicationReceipt' && value.requestId === attemptId) return { status: attemptStatus, ...(attemptStatus === 'succeeded' ? { data: { requestId: `application-${capabilityReceiptId}`, status: 'completed' } } : {}) }
-    return originalImplementation(method, value)
-  })
-  await click('核对原操作')
-  expect(JSON.parse(localStorage.getItem(capabilityRecoveryKey)!)).toEqual({ pendingId: fixture.original.requestId, requestId: attemptId })
-  await act(async () => root.render(null))
-  await act(async () => root.render(h(CapabilityPackagesDialog, fixture.props)))
-  const originalLookups = request.mock.calls.filter(args => args[0] === 'getApplicationReceipt' && args[1].requestId === fixture.original.requestId).length
-  await click('核对原操作'); attemptStatus = 'running'; await click('核对原操作')
-  expect(request.mock.calls.filter(args => args[1]?.operation === 'capabilityPackages.recover')).toHaveLength(1)
-  expect(request.mock.calls.filter(args => args[0] === 'getApplicationReceipt' && args[1].requestId === fixture.original.requestId)).toHaveLength(originalLookups)
-  expect(request.mock.calls.filter(args => args[0] === 'getApplicationReceipt' && args[1].requestId === attemptId)).toHaveLength(2)
-  expect(JSON.parse(localStorage.getItem(capabilityRecoveryKey)!)).toEqual({ pendingId: fixture.original.requestId, requestId: attemptId })
-  expect(fixture.changed).not.toHaveBeenCalled()
-  attemptStatus = 'succeeded'; await click('核对原操作')
-  expect(request.mock.calls.filter(args => args[1]?.operation === 'capabilityPackages.recover')).toHaveLength(1)
-  expect(request.mock.calls.filter(args => args[1]?.operation === 'capabilityPackages.install')).toHaveLength(1)
-  expect(fixture.changed).toHaveBeenCalledOnce()
-  expect(localStorage.getItem(capabilityPendingKey)).toBeNull()
-  expect(localStorage.getItem(capabilityRecoveryKey)).toBeNull()
-})
-
-async function committedCleanupFixture(action: 'update' | 'uninstall', applicationStatus: 'running' | 'unknown') {
-  const originalRequestId = `original-${action}-request`
-  localStorage.setItem(capabilityPendingKey, originalRequestId)
-  let operation: CapabilityOperation = { requestId: `application-${capabilityReceiptId}`, fingerprint: 'fingerprint', action, installationId: 'installation-1', status: 'completed', phase: 'committed' }
-  request.mockImplementation(async (method: string, value: any) => {
-    if (method === 'snapshot') return { agents: [] }
-    if (method === 'getApplicationReceipt') return { status: applicationStatus, receiptId: capabilityReceiptId }
-    if (method === 'executeApplicationOperation') {
-      if (value.operation === 'capabilityPackages.list') return { status: 'succeeded', data: [] }
-      if (value.operation === 'capabilityPackages.receipt') return { status: 'succeeded', data: operation }
-      if (value.operation === 'capabilityPackages.recover') { operation = { ...operation, phase: 'committed-cleaned' }; return { status: 'succeeded', data: operation } }
-    }
-    throw new Error(`Unexpected ${method} ${value?.operation}`)
-  })
-  const changed = vi.fn()
-  await act(async () => root.render(h(CapabilityPackagesDialog, { api, onClose: vi.fn(), onChanged: changed })))
-  return { changed, originalRequestId, finishWithRetained() { operation = { ...operation, phase: 'committed-cleanup-required', retained: ['/fixtures/customized-skill'] } } }
-}
-test('a running committed update remains pending until cleanup finishes, including a settled result with retained content', async () => {
-  const fixture = await committedCleanupFixture('update', 'running')
-  await click('核对原操作'); await click('核对原操作')
-  expect(fixture.changed).not.toHaveBeenCalled()
-  expect(localStorage.getItem(capabilityPendingKey)).toBe(fixture.originalRequestId)
-  expect(request.mock.calls.some(args => args[1]?.operation === 'capabilityPackages.recover')).toBe(false)
-  fixture.finishWithRetained(); await click('核对原操作')
-  expect(fixture.changed).toHaveBeenCalledOnce()
-  expect(localStorage.getItem(capabilityPendingKey)).toBeNull()
-  expect(localStorage.getItem(capabilityRecoveryKey)).toBeNull()
-  expect(request.mock.calls.some(args => ['capabilityPackages.update', 'capabilityPackages.recover'].includes(args[1]?.operation))).toBe(false)
-})
-test('an unknown application permits explicit reconciliation of a committed uninstall against its original identity', async () => {
-  const fixture = await committedCleanupFixture('uninstall', 'unknown')
-  await click('核对原操作')
-  const recoveries = request.mock.calls.filter(args => args[1]?.operation === 'capabilityPackages.recover')
-  expect(recoveries).toHaveLength(1)
-  expect(recoveries[0][1].input).toEqual({ originalRequestId: `application-${capabilityReceiptId}` })
-  expect(request.mock.calls.some(args => args[1]?.operation === 'capabilityPackages.uninstall')).toBe(false)
-  expect(fixture.changed).toHaveBeenCalledOnce()
-  expect(localStorage.getItem(capabilityPendingKey)).toBeNull()
-  expect(localStorage.getItem(capabilityRecoveryKey)).toBeNull()
 })

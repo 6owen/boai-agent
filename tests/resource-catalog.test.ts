@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Public catalog, explicit resource mapping and receipt-first source creation helper.
  * [OUTPUT]: Provenance, private-binding and duplicate-create regression coverage without external services.
- * [POS]: WT2 resource-library contract tests.
+ * [POS]: Resource catalog and source creation contract tests.
  * [PROTOCOL]: Changes must update this Header and the owning .folder.md.
  */
 import { describe, expect, it, vi } from 'vitest'
@@ -74,16 +74,4 @@ describe('source creation recovery', () => {
     await expect(recoverSourceCreation({ request: call } as unknown as DesktopApi, 'different', request)).rejects.toThrow('不会重复创建')
     expect(call).toHaveBeenCalledTimes(1)
   })
-})
-
-import { capabilityUpdateReview } from '../apps/electron/src/renderer/pages/library/capability-update-review'
-it('package update never pre-approves newly added or changed executable contributions', () => {
-  const original = { key: 'tools', kind: 'source' as const, config: applicationSourceDefaults('github'), requiredSecrets: ['TOKEN'] }
-  const next = { ...original, requiredSecrets: ['TOKEN', 'ADMIN_TOKEN'] }
-  const added = { ...original, key: 'admin' }
-  const review = capabilityUpdateReview([original], [next, added])
-  expect(review.approved).toEqual([])
-  expect(review.rows.map(item => item.change)).toEqual(['changed', 'added'])
-  expect(capabilityUpdateReview([original], [original]).approved).toEqual(['tools'])
-  expect(capabilityUpdateReview([original], []).removed).toEqual(['tools'])
 })
