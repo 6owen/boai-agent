@@ -1,14 +1,17 @@
 /*
  * [INPUT]: Isolated installed-application filesystem and injected native icon reader.
- * [OUTPUT]: Native icon caching/refresh, concurrent scan reuse and optional-icon failure/size boundaries; no Electron or application launch.
+ * [OUTPUT]: Native icon caching, refresh, failure boundaries and skill file opening by catalog identity with read-only enforcement.
  * [POS]: Workspace open-with catalog regression.
  * [PROTOCOL]: Update Header and tests/.folder.md when changed.
  */
 import { expect, it, vi } from 'vitest'
+import { FileOpening } from '../apps/electron/src/main/file-opening'
 import { WorkspaceApplications } from '../apps/electron/src/main/workspace-applications'
 
+const skillFile = '/test-home/.agents/skills/example/SKILL.md'
 vi.mock('node:fs/promises', () => ({
   stat: async (path: string) => {
+    if (path === skillFile) return { isDirectory: () => false, isFile: () => true }
     if (!['/Applications/Visual Studio Code.app', '/System/Applications/Utilities/Terminal.app'].includes(path)) throw new Error('missing')
     return { isDirectory: () => true, isFile: () => false }
   },
@@ -51,4 +54,38 @@ it.each(['file:///Applications/icon.png', `data:image/png;base64,${'A'.repeat(12
   const applications = await fixture(async () => data).list()
   expect(applications).toHaveLength(3)
   expect(applications.every(item => !item.iconDataUrl)).toBe(true)
+})
+
+it('opens and reveals the catalog-resolved skill file and forwards the selected editor ID', async () => {
+  const desktop = { openPath: vi.fn(async () => ''), showItemInFolder: vi.fn() }
+  const applications = new WorkspaceApplications(desktop, 'darwin', '/test-home')
+  const request = vi.fn().mockResolvedValue({ skill: { source: 'global' }, filePath: skillFile })
+  const files = new FileOpening(request, applications, '/test-data')
+  const target = { kind: 'local-skill', id: 'skill-example' }
+
+  await files.open({ target })
+  expect(desktop.openPath).toHaveBeenCalledExactlyOnceWith(skillFile)
+  await files.open({ target, action: 'reveal' })
+  expect(desktop.showItemInFolder).toHaveBeenCalledExactlyOnceWith(skillFile)
+
+  const openEditor = vi.spyOn(applications, 'open').mockResolvedValueOnce(undefined)
+  await files.open({ target, applicationId: 'vscode' })
+  expect(openEditor).toHaveBeenCalledExactlyOnceWith(skillFile, 'open', 'vscode')
+  expect(request.mock.calls).toEqual(Array(3).fill(['getLocalSkillDetail', { id: target.id }]))
+  await expect(files.open({ target: { ...target, path: '/tmp/other.md' } })).rejects.toThrow()
+  expect(request).toHaveBeenCalledTimes(3)
+})
+
+it.each(['builtin', 'plugin'])('allows revealing a %s skill and keeps it read-only', async source => {
+  const desktop = { openPath: vi.fn(async () => ''), showItemInFolder: vi.fn() }
+  const applications = new WorkspaceApplications(desktop, 'darwin', '/test-home')
+  const request = vi.fn().mockResolvedValue({ skill: { source }, filePath: skillFile })
+  const files = new FileOpening(request, applications, '/test-data')
+  const target = { kind: 'local-skill', id: 'skill-example' }
+
+  await expect(files.open({ target })).rejects.toThrow('只读')
+  await expect(files.open({ target, applicationId: 'vscode' })).rejects.toThrow('只读')
+  expect(desktop.openPath).not.toHaveBeenCalled()
+  await files.open({ target, action: 'reveal' })
+  expect(desktop.showItemInFolder).toHaveBeenCalledExactlyOnceWith(skillFile)
 })

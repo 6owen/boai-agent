@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 技能详情菜单复用系统打开方式与文件管理器定位，内置与插件技能可定位文件。
  * [OUTPUT]: 全局检查、批量更新与单项更新共用固定终端浮层，分别从工具栏及技能详情打开。
  * [OUTPUT]: 共享本机技能详情标题栏直接调用 skills CLI 检查与更新，退出后刷新技能正文和目录。
  * [OUTPUT]: 技能标题增加能力包管理入口，原本地技能导入/收藏/商城保持；包管理沿原应用回执。
@@ -24,6 +25,7 @@ import { CatalogTransition } from './catalog-transition'
 import { IllustratedEmpty } from '@/components/common/illustrated-empty'
 import { SelectField } from '@/components/ui/select-field'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { FileOpenMenuItems } from '@/components/work-views/file-open-menu'
 import { MoreHorizontal, MessageCircle } from '@/components/icons'
 import { useSkillCollections } from './use-skill-collections'
 import { useLocalSkills } from './use-local-skills'
@@ -126,7 +128,10 @@ export function LocalSkillPanel({ api, id, revision, requestId, active, updates 
   if (!skill) return <IllustratedEmpty kind="skills" title={catalog ? '该技能已不可用' : undefined} />
   const favorite = Boolean(collection.value?.favoriteResourceIds.includes(id))
   const updateAction = skill.source === 'global' && <LocalSkillUpdate key={id} id={id} slug={skill.slug} updates={updates} />
-  return <SkillDetailPanel name={skill.name} className="local-skill-panel" actions={<>{updateAction}<DropdownMenu><DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="当前技能操作" />}><MoreHorizontal /></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem disabled={!collection.value || collection.busy} onClick={() => { void collection.change({ kind: 'favorite', resourceId: id, favorite: !favorite }) }}>{favorite ? '取消收藏' : '加入收藏'}</DropdownMenuItem></DropdownMenuContent></DropdownMenu></>}>
+  return <SkillDetailPanel name={skill.name} className="local-skill-panel" actions={<>{updateAction}<DropdownMenu><DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="当前技能操作" />}><MoreHorizontal /></DropdownMenuTrigger><DropdownMenuContent align="end">
+    <FileOpenMenuItems api={api} target={{ kind: 'local-skill', id }} disabled={!active} revealOnly={skill.source === 'builtin' || skill.source === 'plugin'} />
+    <DropdownMenuItem disabled={!collection.value || collection.busy} onClick={() => { void collection.change({ kind: 'favorite', resourceId: id, favorite: !favorite }) }}>{favorite ? '取消收藏' : '加入收藏'}</DropdownMenuItem>
+  </DropdownMenuContent></DropdownMenu></>}>
     {collection.error && <Banner>{collection.error}</Banner>}
     <LocalSkillInfo api={api} skill={skill} active={active} refreshKey={requestId} favorite={favorite} collection={collection.value} busy={collection.busy} assign={groupId => { void collection.change({ kind: 'assign-group', resourceId: id, groupId }) }} />
   </SkillDetailPanel>
