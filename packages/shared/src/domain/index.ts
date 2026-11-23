@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 新话题保留待自动命名的首条消息身份。
  * [OUTPUT]: Conversation保留员工固定主聊天、独立话题及核心专用聊天的角色。
  * [OUTPUT]: WT3冻结员工项目默认字段与WT2模板来源，创建输入不接受伪造来源记录。
  * [OUTPUT]: 本人发给bobo的诊断目标作为真实消息来源持久化，不冒用跨会话reply或执行目标任务。
@@ -164,6 +165,7 @@ export interface Resource {
 export interface Conversation {
   /** Saved role of a local employee conversation. */
   employeeChat?: 'main' | 'topic' | 'special'
+  pendingTitleMessageId?: string
   projectSelection?: import('./project-directory').ProjectSelection
   projectSelections?: Record<string, import('./project-directory').ProjectSelection>
   employeeTaskId?: string
