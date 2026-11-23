@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 开发验证后默认自动提交PR；用户要求先看截图时，返回实际图片的绝对路径并等待确认。
 [OUTPUT]: 2026-11-23本地Vitest按Git变更选测，开发Agent从PR diff登记截图目标，资源库分类和悬停状态接线。
 [OUTPUT]: 2026-11-19员工行续接固定主聊天并可显式开启独立话题，旧bobo历史原位兼容；归29组01/03。
 [OUTPUT]: 每个 UI PR 回填改动页面和全局主界面各一张截图，云端全量 Vitest 仅在 release 的 main 验证中执行。
@@ -699,7 +700,7 @@
 
 - 普通 PR 在 Linux 运行类型和 lint，文档只检查 diff。UI PR 一次构建后运行两个 Playwright-BDD 场景，将本次改动页面和全局主界面的两张 PNG 一起写回正文。合并 main 后不复跑。准备正式 release 时由 Agent 在 main 触发完整 Test，运行全量 Vitest，并保存一张全局启动截图供审阅。 具体命令见 [UI_TEST_CI.md](UI_TEST_CI.md)。
 - 本地需要 Vitest 时使用 `pnpm test:changed` 按 Git 变更选测，静态依赖图漏掉的关联用例由 Agent 补跑。创建或更新 UI PR 时，Agent 从完整 diff 核对并在正文登记实际截图目标。详见 [BOAI 开发技能](.agents/skills/boai-dev-workflow/SKILL.md)。
-- 普通授权交付提交/推送、按范围设置自动合并并读回一次状态后报告，不轮询等待CI、main复跑或UI preview；只有本次要求等通过、等合并或处理CI失败才持续跟进。UI preview随UI PR自动异步发布实际媒体；同head即使已合并也继续补发并保留媒体，不作为合并或审美门禁。当前结果未出就标运行中，不把自动合并已启用写成已合并。
+- 开发完成且相关验证通过后，默认提交、推送并创建或更新 PR。用户要求「改好后截图给我看」时，先交付实际图片的绝对路径，确认后再推送或更新 PR。合并按本次授权执行。普通交付读回一次 PR 状态；本次要求等通过、等合并或处理 CI 失败时持续跟进。UI preview 随 UI PR 自动异步发布，同 head 合并后继续补图。
 - 开发使用独立worktree，交付按本次用户授权；明确只修改/执行试验时不合并。旧UI工具和历史结果保留为本地按需入口。
 - 在本仓库开发、交付、CI或合并前，读取共享技能[boai-dev-workflow](.agents/skills/boai-dev-workflow/SKILL.md)，并fetch/read origin/main最新版本；旧worktree/Session也必须重新读取。本分支修订和最新用户指令优先核对。当前详细合同见第22组06。
 - 本机版本、安装包或Release发布及下载/自动更新说明使用共享技能[boai-release](.agents/skills/boai-release/SKILL.md)，复用bumpp与现有release脚本；发布范围按本次请求，普通开发提交/合并不隐含发版，实际状态归第22组03。

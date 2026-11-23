@@ -3,6 +3,7 @@ name: boai-agent-dev-skills
 description: BOAI Agent 项目的开发与交付统一入口。处理 dev/build、验证、打包安装、bumpp 升版本、tag/GitHub Release、git cp/cpf、worktree 管理及相关命令解释时使用，按当前源码核对命令和执行范围。
 ---
 <!--
+[OUTPUT]: 开发完成默认自动提 PR；用户要求看图时先给实际 PNG 的绝对路径。
 [OUTPUT]: test:changed 按 Git 变更选择本地 Vitest；开发 Agent 在 UI PR 正文指定受影响的界面状态。
 [OUTPUT]: 每个 UI PR 回填改动页面和全局主界面各一张截图，云端全量 Vitest 仅在 release 的 main 验证中执行。
 [OUTPUT]: 2026-11-17小改动按影响验证，普通PR交付不默认等待CI；实际分流归boai-dev-workflow与test-ci-plan。
@@ -42,7 +43,8 @@ description: BOAI Agent 项目的开发与交付统一入口。处理 dev/build�
 | 升应用版本 | `pnpm release:version` / `pnpm release:version patch` | bumpp更新应用version及buildVersion |
 | 正式安装包发布 | `pnpm release:local --publish` | 校验main/Test、构建、产物冒烟、签名更新资产、tag和GitHub Release |
 | 仅源码tag/Release | 按命令说明用Git与`gh` | 发布对应提交的源码，安装包另行处理 |
-| 提交/推送/合并 | 按本次 `git cp` / `git cpf` 请求 | 采用Git/CI细则，不由本技能扩大授权 |
+| 开发交付 | 默认提交、推送并创建或更新 PR | 用户要求先看截图时，先交付实际图片的绝对路径，确认后再提交 PR |
+| 显式 Git 操作 | 按本次 `git cp` / `git cpf` 请求 | 采用 Git/CI 细则，合并按本次授权执行 |
 
 ## 环境与构建约束
 
@@ -87,7 +89,7 @@ Git tag、GitHub Release和DMG/ZIP是不同产物。bumpp支持Git提交/tag/推
 
 本地用 `pnpm test:changed` 按 Git 变更选测，必要时补跑静态依赖无法发现的相关测试。普通 PR 在 Linux 运行类型和 lint，文档只检查 diff。开发 Agent 从 PR diff 确定目标并在正文登记 `boai-screenshot`。UI PR 一次构建后运行两个 Playwright-BDD 场景，把目标状态和全局主界面各一张 PNG 写回正文。合并 main 后不复跑。准备正式 release 时由 Agent 在 main 触发完整 Test，运行全量 Vitest，并保存一张全局启动截图供审阅。[执行细则](../boai-dev-workflow/SKILL.md)。
 
-普通交付按Git/CI细则走PR；只有本次授权包含 `git cpf` 或跳过CI直接合并时，才使用其管理员例外并核对保护恢复。只暂存任务文件，使用 `git add -- <路径>`。
+开发完成后默认按 Git/CI 细则自动提 PR。用户要求改好先给截图时，先保存实际效果并返回图片的绝对路径，等确认后再推送和创建或更新 PR。合并按本次授权执行。`git cpf` 或跳过 CI 直接合并才走管理员例外并核对保护恢复。只暂存任务文件，使用 `git add -- <路径>`。
 
 main只同步已实际合并的提交。任务结束按根规约回收worktree及本地任务分支：先核对提交可达、dirty/untracked/ignored文件、运行进程/CWD和共享依赖，迁出用户数据及原始证据。已合并或已提交并archive存档后再删除；不因“已合并”直接删除活跃目录。确需保留时报告具体路径和原因。
 

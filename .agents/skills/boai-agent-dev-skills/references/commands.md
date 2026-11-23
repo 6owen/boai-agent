@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 开发默认提 PR；先看截图时保存实际文件并返回绝对路径。
 [OUTPUT]: 本地按 Git 变更运行 Vitest，UI PR 回填目标状态和全局主界面截图。
 [OUTPUT]: 2026-11-17本地按影响验证；PR Test分文档/前端/完整，普通交付不等待CI。
 [OUTPUT]: 2026-11-16开发检出需初始化固定版本avatar-motion子模块，之后沿原pnpm安装/构建。
@@ -79,6 +80,8 @@ renderer由Vite处理热更新；`dev.mjs`在启动时构建宿主，没有主�
 | `pnpm ci:local` / `pnpm ci:watch` | 保留的本机CI工具，当前不作为默认执行或常驻流程 |
 
 选测依赖 Vitest 的静态依赖图。空列表代表没有匹配用例，按实际影响手选需要的测试，依赖 dist 的用例先执行对应构建。普通 PR 在 Linux 运行类型和 lint，文档只检查 diff。UI PR 根据 Agent 在正文登记的 `boai-screenshot` 和路径规则执行两个 BDD 场景，将目标状态和全局主界面的截图写回。准备正式 release 时运行 `gh workflow run test.yml --ref main` 执行完整 Test。[CI 说明](../../../../UI_TEST_CI.md)。
+
+开发完成后默认提交、推送并创建或更新 PR。用户要求先看截图时，在隔离预览截取实际改动状态，保存到主检出下 `.local/review-screenshots/<任务>/` 等持久目录，交付图片绝对路径。用户确认后再推送或更新 PR。[交付细则](../../boai-dev-workflow/SKILL.md#用户要求先看截图)。
 
 ## 5. 自用安装包
 

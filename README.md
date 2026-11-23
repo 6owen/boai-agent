@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 默认自动提 PR，用户要求先看图时先交付实际截图的绝对路径。
 [OUTPUT]: 开发验证提供 test:changed；UI PR 由开发 Agent 指定实际截图状态。
 [OUTPUT]: 每个 UI PR 回填改动页面和全局主界面各一张截图，云端全量 Vitest 仅在 release 的 main 验证中执行。
 [OUTPUT]: 2026-11-17开发交付按影响验证，PR分范围Test及非阻塞交付说明见UI_TEST_CI。
@@ -157,7 +158,7 @@ ai-docs/             设计、规格与实施记录
 
 </details>
 
-本地用 `pnpm test:changed` 按 Git 变更运行相关 Vitest。普通 PR 在 Linux 运行类型和 lint，文档只检查 diff。开发 Agent 从 UI PR diff 指定目标，CI 运行两个 Playwright-BDD 场景，把目标状态与全局主界面的两张 PNG 写回正文。正式 release 在 main 手动触发完整 Test。详见 [UI 测试与 CI 用法](UI_TEST_CI.md)。
+本地用 `pnpm test:changed` 按 Git 变更运行相关 Vitest。开发完成后默认提 PR，用户要求先看图时先返回实际截图的绝对路径。普通 PR 在 Linux 运行类型和 lint，文档只检查 diff。开发 Agent 从 UI PR diff 指定目标，CI 将目标状态和全局主界面两张 PNG 写回正文。正式 release 在 main 手动触发完整 Test。详见 [UI 测试与 CI 用法](UI_TEST_CI.md)。
 
 官方文件浏览器：`@boai/file-explorer-plugin` 提供员工工作区与授权目录的文件树和预览，沿插件设置启停；目录边界与实际验证见[第19组18](ai-docs/spec/19.应用插件架构/18-文件浏览器插件与目录入口.md)。
 
