@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Trusted window requests, catalog-verified skill folder names and the local npm executable.
+ * [INPUT]: Trusted window requests, catalog-verified skill folder names and the pinned CLI archive for the local npm executable.
  * [OUTPUT]: Direct CLI checks and selected/all updates with live output and reported skill names.
  * [POS]: Desktop host for local skill updates.
  * [PROTOCOL]: Update Header and main/.folder.md when changed.
@@ -29,7 +29,7 @@ const progressIntervalMs = 100
 
 export class LocalSkillCli {
   private readonly running = new Map<string, { action: Command; result: Promise<Result>; stop: () => void; observe: (listener: ProgressListener) => void }>()
-  constructor(private readonly home = homedir()) {}
+  constructor(private readonly archive: string, private readonly home = homedir()) {}
 
   run(operation: Command | 'update-all', name?: string, onProgress?: ProgressListener): Promise<Result> {
     const action = operation === 'update-all' ? 'update' : operation
@@ -56,14 +56,16 @@ export class LocalSkillCli {
       } else program = resolveProgram('npx', paths).path
     } catch { throw new Error('找不到 npx，请安装包含 npm 的 Node.js 22.20 或更高版本') }
 
-    const cliArgs = ['--yes', 'skills@1.9.0', action, '--global', '--yes']
+    const cliArgs = ['--yes', 'skills', action, '--global', '--yes']
     if (name) cliArgs.push('--', name)
     const command = ['npx', ...cliArgs].join(' ')
     args.push(...cliArgs)
     const posix = process.platform !== 'win32'
     const child = spawn(program, args, {
       cwd: this.home, detached: posix, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'],
-      env: { ...process.env, HOME: this.home, USERPROFILE: this.home, PATH: paths.join(delimiter), DISABLE_TELEMETRY: '1', NO_COLOR: '1', GIT_TERMINAL_PROMPT: '0' },
+      // npm's --package setting selects the distributed CLI while keeping its working directory at home.
+      env: { ...process.env, npm_config_package: this.archive, npm_config_prefer_offline: 'true',
+        HOME: this.home, USERPROFILE: this.home, PATH: paths.join(delimiter), DISABLE_TELEMETRY: '1', NO_COLOR: '1', GIT_TERMINAL_PROMPT: '0' },
     })
     let output = ''
     let truncated = false

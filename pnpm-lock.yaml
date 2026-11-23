@@ -31,6 +31,9 @@ patchedDependencies:
   react-aria@3.53.1:
     hash: 83c459db55839595f6215d24b8f5757cbd5726450a4446c8a634464f9611547a
     path: apps/electron/src/renderer/components/ui/react-aria@3.53.1.patch
+  skills@1.9.0:
+    hash: f480aa60ba72bcf69c3097a374d2b853c2d41840d656f27a096fc31b5479c14a
+    path: apps/electron/src/main/skills@1.9.0.patch
 
 importers:
 
@@ -364,9 +367,15 @@ importers:
       shadcn:
         specifier: 4.21.0
         version: 4.21.0(typescript@7.0.2)
+      skills:
+        specifier: 1.9.0
+        version: 1.9.0(patch_hash=f480aa60ba72bcf69c3097a374d2b853c2d41840d656f27a096fc31b5479c14a)
       tailwindcss:
         specifier: 4.3.3
         version: 4.3.3
+      tar:
+        specifier: 7.5.22
+        version: 7.5.22
       tw-animate-css:
         specifier: 1.4.0
         version: 1.4.0
@@ -6593,6 +6602,9 @@ packages:
     resolution: {integrity: sha512-DlL+XwOy3NxAQ8xuC0okPgK46iuVNAK01YN7RueYBqqFeGsBjV9XmCAzAdgt+667bCl5kPh9EqKKDwnaPG1I7A==}
     engines: {node: '>=10'}
 
+  nostics@1.4.0:
+    resolution: {integrity: sha512-WjXHOuNuzY3MPKOoCT2zL1Sa3cS2mOUe4o8F94JvBOH2cGfyNItbQmCb2pNHIxoodd5O+vtmmHq7PoSZVGgCHA==}
+
   npm-run-path@4.0.1:
     resolution: {integrity: sha512-S48WzZW777zhNIrn7gxOlISNAqi9ZC/uQFnRdbeIHhZhCA6UqpkOT8T1G7BvfdgP4Er8gF4sUbaS0i7QvIfCWw==}
     engines: {node: '>=8'}
@@ -7568,6 +7580,11 @@ packages:
 
   sisteransi@1.0.5:
     resolution: {integrity: sha512-bLGGlR1QxBcynn2d5YmDX4MGjlZvy2MRBDRNHLJ8VI6l6+9FUiyTFNJ0IveOSP0bcXgVDPRcfGqA0pjaqUpfVg==}
+
+  skills@1.9.0:
+    resolution: {integrity: sha512-8p27fa6SnpDLrGIpqbhNIHg8+uukR2lg/0qDoKPk85pU3/zyXiU67tEjvXHLrzybBefIAWpWZ2Oc+enlvSSVqg==}
+    engines: {node: '>=22.20.0'}
+    hasBin: true
 
   smart-buffer@4.2.0:
     resolution: {integrity: sha512-94hK0Hh8rPqQl2xXc3HsaBoOXKV20MToPkcXvwbISWLEs+64sBq5kFgn2kJDHb1Pry9yrP0dxrCI9RRci7RXKg==}
@@ -14519,6 +14536,8 @@ snapshots:
 
   normalize-url@6.1.0: {}
 
+  nostics@1.4.0: {}
+
   npm-run-path@4.0.1:
     dependencies:
       path-key: 3.1.1
@@ -15746,6 +15765,12 @@ snapshots:
       semver: 7.8.5
 
   sisteransi@1.0.5: {}
+
+  skills@1.9.0(patch_hash=f480aa60ba72bcf69c3097a374d2b853c2d41840d656f27a096fc31b5479c14a):
+    dependencies:
+      nostics: 1.4.0
+      tar: 7.5.22
+      yaml: 2.9.1
 
   smart-buffer@4.2.0: {}
 

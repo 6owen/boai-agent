@@ -1,5 +1,5 @@
 # [INPUT]: BOAI pnpm workspace与Lody固定diff依赖及补丁。
-# [OUTPUT]: Electron/CLI/设计站与shared/runtime/transport/插件/UI工作区；保留原构建白名单和固定补丁。
+# [OUTPUT]: 固定 skills CLI 名称清点补丁。Electron/CLI/设计站与shared/runtime/transport/插件/UI工作区；保留原构建白名单和固定补丁。
 # [POS]: 仓库依赖配置。
 # [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
 packages:
@@ -11,6 +11,7 @@ onlyBuiltDependencies:
   - esbuild
 
 patchedDependencies:
+  skills@1.9.0: apps/electron/src/main/skills@1.9.0.patch
   '@pierre/diffs@1.0.10': apps/electron/src/renderer/components/common/lody/pierre-diffs-host.patch
   'react-aria@3.53.1': apps/electron/src/renderer/components/ui/react-aria@3.53.1.patch
 

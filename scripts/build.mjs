@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Electron 分发带本地清点优化的上游 skills CLI，供系统 npx 运行。
  * [OUTPUT]: Build the narrow hidden-canvas preload and preserve tldraw license/notice in distribution.
  * [OUTPUT]: Copy the avatar and logo Dock/tray assets listed in the shared icon manifest.
  * [OUTPUT]: Agent Desktop插件技能按运行时相对位置分发至dist/skills，源码Node/BDD加载保持兼容。
@@ -16,7 +17,7 @@ import buildDesktopActivity from './build-desktop-activity.mjs'
 import buildProcessGuard from './build-process-guard.mjs'
 import buildAppIcon from './build-app-icon.mjs'
 import { copyFile, cp, readFile, rm, mkdir } from 'node:fs/promises'
-import { basename, resolve } from 'node:path'
+import { basename, dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { buildWorkspace as build, workspaceRoot } from './workspace-packages.mjs'
 import { buildInputHash, invalidateBuildIdentity, recordBuildIdentity } from './build-identity.mjs'
@@ -71,10 +72,22 @@ async function buildRuntime(compile) {
   }
 }
 
+export async function buildSkillsCli() {
+  const { create } = await import('tar')
+  const source = dirname(fileURLToPath(import.meta.resolve('skills/package.json')))
+  const { files } = JSON.parse(await readFile(resolve(source, 'package.json'), 'utf8'))
+  await mkdir('dist/skills-cli', { recursive: true })
+  await create({
+    cwd: source, prefix: 'package', file: 'dist/skills-cli/skills-1.9.0-boai.1.tgz',
+    gzip: true, portable: true, noMtime: true,
+  }, ['package.json', 'LICENSE', ...files])
+}
+
 async function buildElectronHost(compile) {
   await buildDesktopActivity()
   await buildAppIcon()
   await Promise.all([
+    buildSkillsCli(),
     compile({ entryPoints: ['apps/electron/src/main/main.ts'], outfile: 'dist/main/main.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron', '@libsql/client', 'electron-sparkle-updater'], sourcemap: true }),
     compile({ entryPoints: ['apps/electron/src/preload/canvas-renderer.ts'], outfile: 'dist/main/canvas-renderer-preload.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron'] }),
     compile({ entryPoints: ['apps/electron/src/preload/browser-toolbar.ts'], outfile: 'dist/main/browser-toolbar-preload.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron'] }),

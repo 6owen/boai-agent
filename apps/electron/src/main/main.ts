@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 为本地技能检查和更新提供开发版及安装版可读的 CLI 归档。
  * [OUTPUT]: 本机技能页的检查、指定技能更新与明确全局更新由可信主窗交给 npx skills，更新前重核目录身份，命令进度只发回原窗口页面。
  * [OUTPUT]: 语音文字整理按运行时连接读取已提交的凭据版本。
  * [OUTPUT]: 2026-11-16语音输入未注册时跳过初始化并拒绝IPC；已保存配置/模型不迁移、不删除。
@@ -306,7 +307,7 @@ const userTerminals = new WorkspaceTerminalService(dataPath, {
   },
 })
 const skillInstallationTerminal = new SkillInstallationTerminal(dataPath)
-const localSkillCli = new LocalSkillCli()
+const localSkillCli = new LocalSkillCli(join(__dirname, '../skills-cli/skills-1.9.0-boai.1.tgz').replace(/app\.asar(?=[/\\])/, 'app.asar.unpacked'))
 let userTerminalsReady: Promise<void> | undefined
 let workspaceDocumentEpoch = 0
 let userTerminalShutdownInterrupted = false

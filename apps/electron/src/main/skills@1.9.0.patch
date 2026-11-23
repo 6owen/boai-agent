@@ -1,0 +1,19 @@
+--- a/dist/cli.mjs
++++ b/dist/cli.mjs
+@@ -1562 +1562 @@
+-	return new Set((await listInstalledSkills({ global })).map((skill) => skill.name));
++	return new Set((await listInstalledSkills({ global, includeAgentMemberships: false })).map((skill) => skill.name));
+@@ -2034 +2034,2 @@
+-	const checkouts = await mapConcurrent(groups, (itemsForSource) => {
++	let finishedSources = 0;
++	const checkouts = await mapConcurrent(groups, async (itemsForSource) => {
+@@ -2036 +2037,3 @@
+-		return fetchGlobalSource(firstEntry, lockedNamesFor(firstEntry).map((name) => lock.skills[name]?.skillPath));
++		const checkout = await fetchGlobalSource(firstEntry, lockedNamesFor(firstEntry).map((name) => lock.skills[name]?.skillPath));
++		if (options.reportOutdated) console.log(`${DIM}[${++finishedSources}/${groups.length}] ${sanitizeMetadata(firstEntry.source)}: ${"error" in checkout ? "fetch failed" : "fetched"}${RESET}`);
++		return checkout;
+--- a/dist/_chunks/remove.mjs
++++ b/dist/_chunks/remove.mjs
+@@ -3397 +3397 @@
+-			for (const agentType of agentsToCheck) {
++			for (const agentType of options.includeAgentMemberships === false ? [] : agentsToCheck) {
