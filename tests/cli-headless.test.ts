@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 环境变量绑定失败保留原配置及引用，重启继续使用固定连接身份。
  * [OUTPUT]: 员工私聊/核心首发去重及空闲release拒绝其他客户端和实际活动。
  * [INPUT]: Real standalone assembly, SQLite owner/credential files and controlled original employee engine.
  * [OUTPUT]: Single owner, credential persistence boundaries, original sends and drain-before-release.
@@ -76,13 +77,29 @@ it('binds only environment references via original connection CAS and never pers
   expect(references).toContain('BOAI_SECRET_FIXTURE'); expect(references).not.toContain('only-service-secret')
   expect(JSON.stringify(await f.client.invoke('connections'))).not.toContain('only-service-secret')
   expect(await f.client.invoke('credentials:status')).toEqual([{ id: connection.id, mode: 'environment', environmentVariable: 'BOAI_SECRET_FIXTURE', available: true }])
+  const broken = vi.spyOn(EnvironmentSecrets.prototype, 'bind').mockRejectedValueOnce(new Error('fixture reference write'))
+  try {
+    await expect(f.client.invoke('credentials:bind', { id: connection.id, expectedRevision: bound.revision, environmentVariable: 'BOAI_SECRET_FIXTURE' })).rejects.toThrow('fixture reference write')
+  } finally { broken.mockRestore() }
+  expect(await f.client.invoke('connections')).toContainEqual(expect.objectContaining({ id: connection.id, revision: bound.revision }))
+  expect(await readFile(join(f.path, '.cli/credential-refs.json'), 'utf8')).toBe(references)
   await f.server.close()
+  const rotated = await startHeadlessServer({ dataPath: f.path, version: 'test', skillHome: f.path, engine, secretEnvironment: { BOAI_SECRET_FIXTURE: 'rotated-in-environment' } })
+  try {
+    const meta = await readLocalConnection(f.path)
+    const client = new CliRpcClient(meta.url, meta)
+    try {
+      await client.connect()
+      expect(await client.invoke('credentials:status')).toEqual([{ id: connection.id, mode: 'environment', environmentVariable: 'BOAI_SECRET_FIXTURE', available: true }])
+    } finally { client.destroy() }
+  } finally { await rotated.close() }
   const next = new EnvironmentSecrets(f.path, { BOAI_SECRET_FIXTURE: 'rotated-in-environment' }); await next.init()
-  expect(await next.get(connection.id)).toBe('rotated-in-environment')
-  await next.set(connection.id, 'session-only')
+  const persistedKey = Object.entries(JSON.parse(references)).find(([, value]) => value === 'BOAI_SECRET_FIXTURE')![0]
+  expect(await next.get(persistedKey)).toBe('rotated-in-environment')
+  await next.set(persistedKey, 'session-only')
   expect(await readFile(join(f.path, '.cli/credential-refs.json'), 'utf8')).not.toContain('session-only')
   const reopened = new EnvironmentSecrets(f.path, { BOAI_SECRET_FIXTURE: 'rotated-in-environment' }); await reopened.init()
-  expect(await reopened.get(connection.id)).toBeUndefined()
+  expect(await reopened.get(persistedKey)).toBeUndefined()
 })
 
 it('keeps desktop vault metadata visible while refusing to use or decrypt its value', async () => {

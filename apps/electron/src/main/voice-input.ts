@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 文字整理经运行时读取连接当前生效的凭据引用。
  * [OUTPUT]: 2026-10-28 本地helper按已选择模型清单传递引擎及语言；公共隔离进程协议保持。
  * [INPUT]: Trusted host lifecycle, encrypted vault and selected text-model connection.
  * [OUTPUT]: Isolated utility-process ASR and opt-in tool-free text correction; secrets stay in main.
@@ -14,7 +15,7 @@ import { VoiceHost, type VoiceHostPorts } from '@boai/voice-input-plugin/host'
 import { getVoiceModel } from '@boai/voice-input-plugin/model-manifest'
 import type { Connection } from '@boai/shared/domain'
 
-export function createVoiceHost(root: string, helperPath: string, ports: Omit<VoiceHostPorts, 'helper' | 'supported' | 'refine'> & { connection(id: string): Promise<Connection | undefined> }) {
+export function createVoiceHost(root: string, helperPath: string, ports: Omit<VoiceHostPorts, 'helper' | 'supported' | 'refine'> & { connection(id: string): Promise<Connection | undefined>; connectionKey(id: string): Promise<string> }) {
   return new VoiceHost(root, { ...ports,
     supported: () => { try { if (!existsSync(helperPath)) return false; createRequire(helperPath).resolve('sherpa-onnx-node'); return true } catch { return false } },
     helper: (models, audio, segment, language, modelId) => {
@@ -45,7 +46,7 @@ export function createVoiceHost(root: string, helperPath: string, ports: Omit<Vo
       if (!connection || connection.provider === 'anthropic' || connection.api === 'responses' || connection.gateway || !model) throw new Error('文字整理需要明确选择兼容 Chat Completions 的连接和模型')
       const endpoint = new URL(connection.baseUrl)
       if (endpoint.username || endpoint.password || endpoint.search || endpoint.hash || endpoint.protocol !== 'https:' && !(['127.0.0.1', 'localhost', '[::1]'].includes(endpoint.hostname) && endpoint.protocol === 'http:')) throw new Error('文字整理地址无效')
-      const key = await ports.secrets.get(connectionId)
+      const key = await ports.connectionKey(connectionId)
       const original = JSON.stringify(connection)
       const chunks = text.match(/[\s\S]{1,4000}/g) ?? [], output: string[] = []
       for (const chunk of chunks) {

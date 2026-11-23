@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 连接保存、清空、解绑和重启跨存储故障保持已提交配置与凭据。
  * [OUTPUT]: 连接测试保留原凭据断言，并核对新增callId/取消signal/路由观察上下文与草稿独立来源。
  * [INPUT]: 模型目录 HTTP 适配、AppService、隔离的本地协议服务、测试引擎与内存凭据。
  * [OUTPUT]: 编辑时读取当前连接密钥、显式清空与省略凭据的区分、根地址/版本前缀模型目录、草稿连接测试不持久化、凭据同地址复用与脱敏、模型 ID 归一化、认证/格式/超时错误与不阻塞产品操作的回归。
@@ -11,6 +12,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { listCompatibleModels, modelCatalogUrl } from '../packages/runtime/src/adapters/mastra/model-catalog'
+import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
 import { AppService } from '../packages/runtime/src/service'
 import type { Connection, ConnectionInput, Snapshot } from '../packages/shared/src/domain'
 import type { AgentEngine } from '../packages/runtime/src/contracts'
@@ -35,16 +37,116 @@ async function serviceFixture(test: AgentEngine['test'] = async () => 'OK') {
   const root = await mkdtemp(join(tmpdir(), 'boai-model-catalog-'))
   cleanup.push(() => rm(root, { recursive: true, force: true }))
   const keys = new Map<string, string>()
-  const service = new AppService({
+  const emit = vi.fn()
+  const create = () => new AppService({
     dataPath: root,
     engine: { run: async () => {}, test },
     secrets: { get: async id => keys.get(id), set: async (id, key) => { keys.set(id, key) }, delete: async id => { keys.delete(id) } },
-    emit: () => {},
+    emit,
   })
+  const service = create()
   cleanup.push(() => service.close())
   await service.init()
-  return { service, keys }
+  return { service, keys, create, emit }
 }
+
+it('preserves a legacy key through failed rotation, clear and delete, and switches it once on success', async () => {
+  const model = vi.fn<AgentEngine['test']>(async () => 'OK')
+  const { service, keys, create } = await serviceFixture(model)
+  const store = (service as unknown as { store: ProductStore }).store
+  const draft = { name: 'old config', provider: 'openai-compatible', baseUrl: 'http://127.0.0.1:1', defaultModel: 'fixture' }
+  const saved = await service.handle('saveConnection', { ...draft, apiKey: 'fixture-old' }) as Connection
+  // Previous versions have the vault slot under the connection ID and no SQLite reference.
+  await store.write([], [{ collection: 'connectionCredentialRefs', id: saved.id }])
+  await service.close()
+  const app = create()
+  cleanup.push(() => app.close())
+  await app.init()
+  const current = (app as unknown as { store: ProductStore }).store
+  const write = current.write.bind(current)
+  const setKey = keys.set.bind(keys)
+  vi.spyOn(keys, 'set').mockImplementationOnce((id, value) => {
+    setKey(id, value)
+    throw new Error('fixture vault write failure')
+  })
+  await expect(app.handle('saveConnection', { ...draft, id: saved.id, expectedRevision: 1, apiKey: 'staged' })).rejects.toThrow('fixture vault write failure')
+  expect([...keys.values()]).toEqual(['fixture-old'])
+  const failCommit = vi.spyOn(current, 'write').mockImplementation(async (records, removals) => {
+    if ([...records, ...(removals ?? [])].some(row => row.collection === 'connections')) throw new Error('fixture commit failure')
+    return write(records, removals)
+  })
+  for (const value of ['fixture-new', '']) {
+    await expect(app.handle('saveConnection', { ...draft, id: saved.id, name: 'new config', expectedRevision: 1, apiKey: value })).rejects.toThrow('fixture commit failure')
+    expect(await app.handle('getConnectionApiKey', { id: saved.id })).toBe('fixture-old')
+    expect((await app.handle('snapshot', undefined) as Snapshot).connections).toEqual([saved])
+  }
+  await expect(app.handle('deleteConnection', { id: saved.id })).rejects.toThrow('fixture commit failure')
+  expect([...keys.values()]).toEqual(['fixture-old'])
+  failCommit.mockRestore()
+  await app.close()
+  const recovered = create()
+  cleanup.push(() => recovered.close())
+  await recovered.init()
+  expect((await recovered.handle('snapshot', undefined) as Snapshot).connections).toEqual([saved])
+  await expect(recovered.handle('getConnectionApiKey', { id: saved.id })).resolves.toBe('fixture-old')
+  await recovered.handle('testConnection', { id: saved.id })
+  expect(model.mock.lastCall?.[1]).toBe('fixture-old')
+  const edited = await recovered.handle('saveConnection', { ...draft, name: 'new config', id: saved.id, expectedRevision: 1, apiKey: 'fixture-new' }) as Connection
+  expect(edited.revision).toBe(2)
+  expect([...keys.values()]).toEqual(['fixture-new'])
+  await recovered.close()
+  const reopened = create()
+  cleanup.push(() => reopened.close())
+  await reopened.init()
+  expect((await reopened.handle('snapshot', undefined) as Snapshot).connections).toEqual([edited])
+  expect(await reopened.handle('getConnectionApiKey', { id: edited.id })).toBe('fixture-new')
+  await reopened.handle('testConnection', { id: edited.id })
+  expect(model.mock.lastCall?.[1]).toBe('fixture-new')
+  await reopened.handle('deleteConnection', { id: edited.id })
+  expect(keys.size).toBe(0)
+})
+
+it('reports a failure stopping old work separately from the committed connection edit', async () => {
+  const { service, emit } = await serviceFixture()
+  const draft = { name: 'fixture', provider: 'openai-compatible', baseUrl: 'http://127.0.0.1:1', defaultModel: 'm' }
+  const initial = await service.handle('saveConnection', { ...draft, apiKey: 'old' }) as Connection
+  vi.spyOn(service as unknown as { cancelConnectionCalls(id: string): Promise<void> }, 'cancelConnectionCalls')
+    .mockRejectedValueOnce(new Error('fixture cancellation failure'))
+  const saved = await service.handle('saveConnection', { ...draft, id: initial.id, expectedRevision: 1, apiKey: 'new' }) as Connection
+  expect(saved.revision).toBe(2)
+  await expect(service.handle('getConnectionApiKey', { id: saved.id })).resolves.toBe('new')
+  expect(emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'runtime-error', error: expect.stringContaining('fixture cancellation failure') }))
+})
+
+it('reconciles a lost SQLite acknowledgement and reclaims an abandoned credential after restart', async () => {
+  const { service, keys, create } = await serviceFixture()
+  const saved = await service.handle('saveConnection', { name: 'fixture', provider: 'openai-compatible', defaultModel: 'm', baseUrl: 'http://127.0.0.1:1', apiKey: 'old' }) as Connection
+  const store = (service as unknown as { store: ProductStore }).store
+  const write = store.write.bind(store)
+  const lostAck = vi.spyOn(store, 'write').mockImplementation(async (records, removals) => {
+    await write(records, removals)
+    if ([...records, ...(removals ?? [])].some(row => row.collection === 'connections')) throw new Error('fixture lost acknowledgement')
+  })
+  const { hasApiKey: _hasApiKey, revision, ...draft } = saved
+  const rotated = await service.handle('saveConnection', { ...draft, expectedRevision: revision, apiKey: 'new' }) as Connection
+  expect(rotated.revision).toBe(2)
+  await expect(service.handle('getConnectionApiKey', { id: saved.id })).resolves.toBe('new')
+  await service.handle('deleteConnection', { id: saved.id })
+  expect((await service.handle('snapshot', undefined) as Snapshot).connections).toEqual([])
+  expect(keys.size).toBe(0)
+  lostAck.mockRestore()
+  const active = await service.handle('saveConnection', { ...draft, id: undefined, apiKey: 'active' }) as Connection
+  // Simulate termination between preparing a fresh vault slot and committing the connection.
+  const orphan = 'connection-key-fixture-orphan'
+  await write([{ collection: 'connectionCredentialCleanup', id: orphan, value: { id: orphan } }])
+  keys.set(orphan, 'abandoned')
+  await service.close()
+  const restarted = create()
+  cleanup.push(() => restarted.close())
+  await restarted.init()
+  expect([...keys]).toEqual([[active.id, 'active']])
+  await expect(restarted.handle('getConnectionApiKey', { id: active.id })).resolves.toBe('active')
+})
 
 describe('compatible model catalog', () => {
   it('loads the saved key for editing without adding it to snapshots or changing the connection', async () => {

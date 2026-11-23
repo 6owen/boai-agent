@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 环境绑定在原连接 CAS 内准备私有槽并原子切换，外部状态沿业务连接 ID。
  * [OUTPUT]: 同profile共享访问覆盖原服务排空、宿主/RPC退出与发现文件删除，维护锁不在中途释放。
  * [OUTPUT]: 独立服务与桌面共用随包技能源及首次绑定；可显式注入受信分发根。
  * [OUTPUT]: 独立服务提供同包员工脚本工具库，身份/生命周期沿原run租约。
@@ -89,18 +90,15 @@ export async function startHeadlessServer(options: HeadlessOptions) {
   const register = (name: string, input: z.ZodType, effect: RpcChannel['effect'], handle: RpcChannel['handle']) => channels.set(name, { input, effect, handle })
   // Trusted owner configuration uses exactly the original service schemas and CAS checks.
   for (const [name, schema] of [['saveConnection', connectionSchema], ['saveAgent', agentSchema], ['createConversation', conversationSchema]] as const) register(name, schema, 'write', input => port.request(name, input))
-  register('credentials:status', z.undefined(), 'read', () => secrets.status())
+  register('credentials:status', z.undefined(), 'read', () => secrets.status(owned.service.connectionCredentialSlots()))
   register('credentials:bind', z.object({ id: z.string().min(1).max(200), expectedRevision: z.number().int().positive(), environmentVariable: z.string().regex(/^BOAI_SECRET_[A-Z0-9_]+$/).max(200) }).strict(), 'write', input => {
     if (state !== 'ready') throw new CliError('SERVER_BUSY', '服务正在退出')
     const operation = (async () => {
-    const { id, environmentVariable, expectedRevision } = input as { id: string; environmentVariable: string; expectedRevision: number }
-    const connections = (await owned.service.handle('snapshot', undefined) as import('@boai/shared/domain').Snapshot).connections
-    const connection = connections.find(connection => connection.id === id)
-    if (!connection) throw new CliError('INVALID_REQUEST', '只能为当前已有模型连接绑定环境凭据')
-    // Credential changes pass the original connection CAS/cancellation, then persist only the reference.
-    const { revision: _revision, hasApiKey: _key, ...definition } = connection
-    const saved = await port.request('saveConnection', { ...definition, expectedRevision, apiKey: secrets.environmentValue(environmentVariable) }) as import('@boai/shared/domain').Connection
-    await secrets.bind(id, environmentVariable); return { id, revision: saved.revision, mode: 'environment', available: true }
+      const { id, environmentVariable, expectedRevision } = input as { id: string; environmentVariable: string; expectedRevision: number }
+      const saved = await owned.service.bindConnectionCredential(id, expectedRevision, secrets.environmentValue(environmentVariable),
+        key => secrets.bind(key, environmentVariable))
+      if (!saved) throw new CliError('INVALID_REQUEST', '只能为当前已有模型连接绑定环境凭据')
+      return { id, revision: saved.revision, mode: 'environment', available: true }
     })()
     credentialChanges.add(operation)
     return operation.finally(() => { credentialChanges.delete(operation) })
