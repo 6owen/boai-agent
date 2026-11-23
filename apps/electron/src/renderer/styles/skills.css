@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 可更新技能的行按钮在标题末尾按文字行高中线定位。
  * [OUTPUT]: 会话文件搜索用局部control-height和字体变量驱动输入组/输入原语，内外实际28px，避免高优先级工具类撑到32px后被裁边。
  * [OUTPUT]: 会话文件的搜索外框/输入组/图标统一28px，输入字号行高对齐小号Tab；其他目录搜索保持原尺寸。
  * [OUTPUT]: 提示词行菜单仅hover/focus/打开时显示；右侧只读正文/编辑表单共用详情留白。
@@ -47,6 +48,9 @@
 .skill-list-select[data-slot=button] { font-weight:400 }
 .skill-list-icon { width:30px;height:30px;display:grid;place-items:center;flex-shrink:0;border-radius:var(--radius-control);background:var(--muted);color:var(--muted-foreground) }
 .skill-list-select :is(.conversation-title,.soft-list-row-title) { padding-right:16px;display:block }
+.skill-list-row:has(.skill-row-update) { anchor-scope:--skill-row-title }
+.skill-list-row:has(.skill-row-update) .soft-list-row-title { anchor-name:--skill-row-title;width:fit-content;max-width:calc(100% - 56px);padding-right:0 }
+.skill-row-update { position:absolute;position-anchor:--skill-row-title;left:calc(anchor(right) + 3px);top:anchor(center);translate:0 -50% }
 .skill-source-badge { font-size:var(--text-ui-tiny);margin-right:5px }
 .skill-row-menu { position:absolute;right:2px;top:8px;opacity:0;background:var(--list) }
 .skill-list-row:hover .skill-row-menu,.skill-list-row:focus-within .skill-row-menu { opacity:1 }

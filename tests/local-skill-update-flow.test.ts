@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /*
  * [INPUT]: Real catalog and terminal components with controlled native CLI receipts.
- * [OUTPUT]: The skills header exposes AI management without the package dialog. Updates use the toolbar and skill-detail popovers, and available updates leave skill rows unchanged.
+ * [OUTPUT]: The skills header exposes AI management without the package dialog. Updates use the toolbar, skill-detail popover, and title rockets for outdated global skill rows.
  * [POS]: Desktop library interaction regression without network or user profile writes.
  * [PROTOCOL]: Update Header and tests/.folder.md when changed.
  */
@@ -13,7 +13,7 @@ import type { AppEvent, DesktopApi, Methods } from '@boai/shared/ipc'
 import { LocalSkillUpdate, useLocalSkillUpdates } from '../apps/electron/src/renderer/pages/library/local-skill-cli'
 import { SkillsWorkspace } from '../apps/electron/src/renderer/pages/library/skills-workspace'
 
-test('keeps skill rows simple and uses popovers for individual and confirmed bulk updates', async () => {
+test('updates the exact global skill from its title rocket or detail, and confirms bulk updates', async () => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
   vi.stubGlobal('PointerEvent', MouseEvent)
   vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
@@ -24,6 +24,8 @@ test('keeps skill rows simple and uses popovers for individual and confirmed bul
   const skills: LocalSkill[] = [
     { id: 'one', name: 'Report', slug: 'report', path: '/home/.agents/skills/report', source: 'global', sourceLabel: '全局', description: 'report body' },
     { id: 'two', name: 'Helper', slug: 'helper', path: '/home/.agents/skills/helper', source: 'global', sourceLabel: '全局', description: '' },
+    { id: 'three', name: 'Notes', slug: 'notes-cli', path: '/home/.agents/skills/notes-cli', source: 'global', sourceLabel: '全局', description: '' },
+    { id: 'copy', name: 'Notes', slug: 'notes-cli', path: '/agent/skills/notes-cli', source: 'agent', sourceLabel: 'Agent', description: '' },
     { id: 'plugin', name: 'Plugin Report', slug: 'vercel:report', path: '/plugins/vercel/report', source: 'plugin', sourceLabel: '插件', description: '', pluginName: 'vercel' },
   ]
   type Result = Methods['localSkillCli']['output']
@@ -55,6 +57,7 @@ test('keeps skill rows simple and uses popovers for individual and confirmed bul
     await act(async () => root.render(h(Fixture)))
     expect(button('能力包')).toBeUndefined()
     expect(button('AI 管理')).toBeDefined()
+    expect(host.querySelector('.skill-row-update')).toBeNull()
     await act(async () => button('检查技能更新')!.click())
     expect(calls()).toEqual([expect.objectContaining({ action: 'check' })])
     const popup = globalPopup()!
@@ -64,13 +67,30 @@ test('keeps skill rows simple and uses popovers for individual and confirmed bul
     expect(button('确认更新')).toBeUndefined()
     await act(async () => receive({ type: 'local-skill-cli:progress', requestId: calls()[0].requestId, command: 'npx skills check', output: 'Checking for skill updates' }))
     expect(terminal(popup)?.textContent).toContain('Checking for skill updates')
-    await act(async () => finish({ status: 'available', command: 'npx skills check', output: 'updates', availableSkills: ['report', 'helper'] }))
-    expect(host.querySelector('[aria-label^="更新 "]')).toBeNull()
-
+    await act(async () => finish({ status: 'available', command: 'npx skills check', output: 'updates', availableSkills: ['report', 'helper', 'notes-cli'] }))
+    const notes = button('更新 Notes')!
+    expect(notes.querySelector('.i-solar-rocket-outline')).not.toBeNull()
+    expect(notes.closest('[data-skill-row]')?.getAttribute('data-skill-row')).toBe('three')
+    expect(host.querySelector('[data-skill-row="copy"] .skill-row-update')).toBeNull()
+    expect(host.querySelector('[data-skill-row="plugin"] .skill-row-update')).toBeNull()
+    expect(notes.parentElement?.closest('button')).toBeNull()
     await act(async () => button('更新全部技能')!.click())
+    await act(async () => notes.click())
+    expect(calls()).toHaveLength(2)
+    expect(calls()[1]).toMatchObject({ action: 'update', id: 'three' })
+    expect(button('查看技能更新')).toBeUndefined()
+    expect(button('确认更新')).toBeUndefined()
+    expect(button('更新 Helper')?.disabled).toBe(true)
+    await act(async () => receive({ type: 'local-skill-cli:progress', requestId: calls()[1].requestId, command: 'npx skills update notes-cli', output: 'Updating notes-cli' }))
+    expect(terminal()?.textContent).toContain('Updating notes-cli')
+    await act(async () => finish({ status: 'completed', command: 'npx skills update notes-cli', output: '✓ Updated notes-cli', skillName: 'notes-cli' }))
+    expect(terminal()?.textContent).toContain('✓ Updated notes-cli')
+    await act(async () => button('查看 Notes 更新结果')!.click())
+    expect(button('更新 Notes')).toBeUndefined()
+
     await act(async () => host.querySelector<HTMLButtonElement>('button:has([title="Report"])')!.click())
     await act(async () => button('查看技能更新')!.click())
-    expect(calls()).toHaveLength(1)
+    expect(calls()).toHaveLength(2)
     const detailPopup = document.querySelector('[role="dialog"][aria-label="技能更新"]')!
     expect(detailPopup.classList.contains('h-[296px]')).toBe(true)
     await act(async () => button('现在更新')!.click())
@@ -87,7 +107,7 @@ test('keeps skill rows simple and uses popovers for individual and confirmed bul
     const bulkPopup = globalPopup()!
     expect(terminal(bulkPopup)?.textContent).toContain('npx skills check')
     await act(async () => button('现在更新')!.click())
-    expect(calls()).toHaveLength(2)
+    expect(calls()).toHaveLength(3)
     await act(async () => button('确认更新')!.click())
     expect(calls().at(-1)).toMatchObject({ action: 'update-all' })
     expect(calls().at(-1)).not.toHaveProperty('id')

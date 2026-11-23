@@ -1,6 +1,6 @@
 /*
  * [OUTPUT]: 技能列表与详情菜单复用公共系统打开方式与文件管理器定位，内置与插件技能打开只读副本。
- * [OUTPUT]: 全局检查、批量更新与单项更新共用固定终端浮层，分别从工具栏及技能详情打开。
+ * [OUTPUT]: 全局检查、批量更新与单项更新共用固定终端浮层，可从工具栏、可更新技能行及技能详情打开。
  * [OUTPUT]: 共享本机技能详情标题栏直接调用 skills CLI 检查与更新，退出后刷新技能正文和目录。
  * [OUTPUT]: 技能页标题保留 AI 管理，技能导入和更新位于目录工具栏。
  * [OUTPUT]: 随包内置技能源只读显示，不提供外部编辑器修改入口。
@@ -87,7 +87,7 @@ export function SkillsWorkspace({ api, section, onSection, provider, onProvider,
       {section === 'marketplace' ? <SkillMarketplaceView api={api} provider={provider} onProviderChange={onProvider} compact toolbarTarget={marketToolbar} selectedId={marketSelection?.provider === provider ? marketSelection.id : undefined} onSelect={item => { setMarketSelection({ provider: item.provider, id: item.id }); onOpenMarketplace(item) }} /> : <>
       {(loadError || collection.error) && <Banner>{loadError || collection.error}</Banner>}
       {!!catalog?.issues.length && <details className="skill-scan-issues"><summary>有 {catalog.issues.length} 项读取问题</summary>{catalog.issues.map((issue, index) => <p key={index}>{issue.path}<br />{issue.message}</p>)}</details>}
-      {loading && !catalog ? <Loading>正在扫描本机技能…</Loading> : visible.length ? <SkillList api={api} entries={visible} selected={selected} own={section === 'own'} searching={Boolean(search)} collapsed={collapsed} collection={collection.value} favorites={favoriteIds} busy={collection.busy} onSelect={selectSkill} onToggle={toggle} onCollapse={collapse} onChange={changeCollection} /> : <IllustratedEmpty kind="skills" title={query ? '没有匹配的技能' : section === 'own' ? '还没有收藏的技能' : undefined} />}
+      {loading && !catalog ? <Loading>正在扫描本机技能…</Loading> : visible.length ? <SkillList api={api} updates={updates} entries={visible} selected={selected} own={section === 'own'} searching={Boolean(search)} collapsed={collapsed} collection={collection.value} favorites={favoriteIds} busy={collection.busy} onSelect={selectSkill} onToggle={toggle} onCollapse={collapse} onChange={changeCollection} /> : <IllustratedEmpty kind="skills" title={query ? '没有匹配的技能' : section === 'own' ? '还没有收藏的技能' : undefined} />}
       </>}
       </CatalogTransition>
       </div>
