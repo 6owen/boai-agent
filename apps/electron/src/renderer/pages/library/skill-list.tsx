@@ -2,11 +2,11 @@
  * [OUTPUT]: 本地与收藏行共用文件打开方式；仅可更新的全局技能在标题后显示单项更新。
  * [INPUT]: 已筛选技能、收藏顺序/分组、选择与全局 DragList 保存回调。
  * [OUTPUT]: 收藏直接沿会话Collapsible内自然布局列表，展开不重测虚拟高度或自动滚动；保留关闭组落点及跨组键盘排序。
- * [OUTPUT]: 仅本地完整目录使用TanStack Virtual；本地/收藏和员工选择共用SkillListItem，原拖拽/聚焦/菜单保持。
+ * [OUTPUT]: 本地目录在滚动容器挂载后测量首屏，使用TanStack Virtual；本地/收藏和员工选择共用SkillListItem，原拖拽/聚焦/菜单保持。
  * [POS]: library 的本地/收藏列表；复用会话行皮肤与全局拖拽协议。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { defaultRangeExtractor, useVirtualizer, type Range } from '@tanstack/react-virtual'
 import type { LocalSkill, SkillCollectionAction, SkillCollections } from '@boai/shared/domain/skills'
 import type { DesktopApi } from '@boai/shared/ipc'
@@ -31,7 +31,7 @@ type Props = {
 
 export const SkillList = memo(function SkillList(props: Props) {
   const { entries, selected, own, searching, collapsed, collection, busy, onSelect, onCollapse, onChange } = props
-  const scroll = useRef<HTMLDivElement>(null)
+  const [scroll, setScroll] = useState<HTMLDivElement | null>(null)
   const [dragged, setDragged] = useState<string | null>(null), [focused, setFocused] = useState<string | null>(null), [menu, setMenu] = useState<string | null>(null)
   const groups = useMemo(() => {
     const grouped = new Map<string, SkillEntry[]>()
@@ -40,7 +40,7 @@ export const SkillList = memo(function SkillList(props: Props) {
   }, [entries, collection, collapsed, searching])
   const ids = useMemo(() => own ? groups.flatMap(group => group.open ? group.entries.map(entry => entry.id) : []) : entries.map(entry => entry.id), [entries, groups, own])
   const rowKey = (target: EventTarget | null) => target instanceof Element ? target.closest<HTMLElement>('[data-skill-row]')?.dataset.skillRow ?? null : null
-  return <div ref={scroll} className="conversation-list skills-list-scroll skills-browser-list" role="navigation" aria-label="技能列表"
+  return <div ref={setScroll} className="conversation-list skills-list-scroll skills-browser-list" role="navigation" aria-label="技能列表"
     onDragStartCapture={event => setDragged(rowKey(event.target))} onDragEndCapture={() => setDragged(null)} onDropCapture={() => setDragged(null)}
     onFocusCapture={event => setFocused(rowKey(event.target))} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocused(null) }}
     onKeyDown={event => {
@@ -48,7 +48,7 @@ export const SkillList = memo(function SkillList(props: Props) {
       const current = ids.indexOf(selected ?? ''), next = ids[Math.max(0, Math.min(ids.length - 1, current + (event.key === 'ArrowDown' ? 1 : -1)))]
       if (next) {
         event.preventDefault(); onSelect(next)
-        if (own) scroll.current?.querySelector<HTMLElement>(`[data-skill-row="${CSS.escape(next)}"]`)?.scrollIntoView({ block: 'nearest' })
+        if (own) scroll?.querySelector<HTMLElement>(`[data-skill-row="${CSS.escape(next)}"]`)?.scrollIntoView({ block: 'nearest' })
       }
     }}>
     <DragList ids={ids} disabled={!own || busy || !collection} onMove={({ id, targetId, placement }) => onChange({ kind: 'move-skill', resourceId: id, targetId, placement })} onGroupDrop={(resourceId, groupId) => onChange({ kind: 'assign-group', resourceId, groupId: groupId || undefined })}>
@@ -62,7 +62,7 @@ export const SkillList = memo(function SkillList(props: Props) {
   </div>
 })
 
-function VirtualSkillRows(props: Props & { scroll: RefObject<HTMLDivElement | null>; pinned: (string | null)[]; onMenu(id: string | null): void }) {
+function VirtualSkillRows(props: Props & { scroll: HTMLDivElement | null; pinned: (string | null)[]; onMenu(id: string | null): void }) {
   const { entries, selected, scroll, pinned } = props
   const indices = useMemo(() => new Map(entries.map((entry, index) => [entry.id, index])), [entries])
   const rangeExtractor = useCallback((range: Range) => {
@@ -70,7 +70,7 @@ function VirtualSkillRows(props: Props & { scroll: RefObject<HTMLDivElement | nu
     for (const key of pinned) { const index = key ? indices.get(key) : undefined; if (index !== undefined) items.add(index) }
     return [...items].sort((a, b) => a - b)
   }, [pinned, indices])
-  const virtual = useVirtualizer({ count: entries.length, getScrollElement: () => scroll.current, estimateSize: () => 58, getItemKey: index => entries[index]!.id, rangeExtractor, overscan: 6 })
+  const virtual = useVirtualizer({ count: entries.length, getScrollElement: () => scroll, estimateSize: () => 58, getItemKey: index => entries[index]!.id, rangeExtractor, overscan: 6 })
   useEffect(() => { const index = selected ? indices.get(selected) : undefined; if (index !== undefined) virtual.scrollToIndex(index, { align: 'auto' }) }, [selected, indices, virtual])
   return <div className="skill-virtual-space" style={{ height: virtual.getTotalSize() }}>
     {virtual.getVirtualItems().map(item => {

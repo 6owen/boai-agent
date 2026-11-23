@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 本地更新时间取全局 CLI 安装记录，其他技能或记录缺失时取 SKILL.md 修改时间。
  * [OUTPUT]: 旧分发目录中的暂停TTS也不出现在内置技能目录；其他来源仍独立发现。
  * [OUTPUT]: 程序内置技能源只读发现，稳定命名空间独立于安装路径和用户同名技能。
  * [INPUT]: 本机 Agent 技能根、共享 ~/.agents/skills、启用插件配置与 SKILL.md。
@@ -14,6 +15,7 @@ import { basename, join, resolve } from 'node:path'
 import { parse as parseToml } from 'smol-toml'
 import type { LocalSkill, LocalSkillCatalog, LocalSkillDetail } from '@boai/shared/domain/skills'
 import { boundedRead, restrictedPath } from '../workspaces/file-access'
+import { readLocalSkillLock } from './local-skill-lock'
 import { parseSkillDocument } from './local-resources'
 
 export interface SkillDiscoveryOptions { homeDir?: string; codexHome?: string; bundledRoot?: string }
@@ -92,6 +94,7 @@ export class LocalSkillCatalogService {
         } catch (error) { if (!missing(error)) issue(pluginRoot, '无法读取插件技能声明') }
       }
     }
+    const lockEntry = await readLocalSkillLock(this.home).catch(() => undefined)
     const bySlug = new Map<string, { skill: LocalSkill; canonical: string }>()
     let visited = 0
     const seen = new Set<string>()
@@ -111,7 +114,10 @@ export class LocalSkillCatalogService {
         const metadata = parseSkillDocument(document, { strictName: false })
         const qualified = root.source === 'builtin' ? `boai-bundled:${slug}` : root.pluginName ? `${root.pluginName}:${slug}` : slug
         const id = localSkillId(root.namespace ? `${root.namespace}:${slug}` : canonical)
-        const skill: LocalSkill = { id, slug: qualified, name: metadata.name, description: metadata.description, path: directory, source: root.source, sourceLabel: root.source === 'agent' ? `Agent (${root.label})` : root.label, ...(root.pluginName ? { pluginName: root.pluginName } : {}) }
+        const recorded = root.source === 'global' ? lockEntry?.(slug)?.updatedAt : undefined
+        const timestamp = typeof recorded === 'string' ? Date.parse(recorded) : NaN
+        const updatedAt = Number.isFinite(timestamp) ? timestamp : (await lstat(file)).mtimeMs
+        const skill: LocalSkill = { id, updatedAt, slug: qualified, name: metadata.name, description: metadata.description, path: directory, source: root.source, sourceLabel: root.source === 'agent' ? `Agent (${root.label})` : root.label, ...(root.pluginName ? { pluginName: root.pluginName } : {}) }
         if (root.source !== 'agent' || !bySlug.has(qualified)) bySlug.set(qualified, { skill, canonical })
       } catch (error) { if (!missing(error) || !resolved) issue(directory, error instanceof Error && !directory.endsWith('config.toml') ? error.message : '无法读取技能') }
     }

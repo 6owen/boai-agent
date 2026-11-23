@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 本地列表默认按名称浏览，可记住最近更新或待更新优先的排序。
  * [OUTPUT]: 技能列表与详情菜单复用公共系统打开方式与文件管理器定位，内置与插件技能打开只读副本。
  * [OUTPUT]: 全局检查、批量更新与单项更新共用固定终端浮层，可从工具栏、可更新技能行及技能详情打开。
  * [OUTPUT]: 共享本机技能详情标题栏直接调用 skills CLI 检查与更新，退出后刷新技能正文和目录。
@@ -24,7 +25,7 @@ import { CatalogSearch } from '@/components/common/catalog-search'
 import { CatalogTransition } from './catalog-transition'
 import { IllustratedEmpty } from '@/components/common/illustrated-empty'
 import { SelectField } from '@/components/ui/select-field'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { FileOpenMenuItems } from '@/components/common/file-open-menu'
 import { MoreHorizontal, MessageCircle } from '@/components/icons'
 import { useSkillCollections } from './use-skill-collections'
@@ -37,6 +38,12 @@ import { SkillExportDialog } from './skill-export-dialog'
 import { SkillMarketplaceView } from './skill-marketplace'
 
 export type SkillsSection = 'all' | 'own' | 'marketplace'
+const skillSortOptions = [
+  { value: 'name', label: '名称' },
+  { value: 'updated', label: '最近更新' },
+  { value: 'pending', label: '待更新优先' },
+] as const
+type SkillSort = (typeof skillSortOptions)[number]['value']
 const stored = <T,>(key: string, fallback: T): T => { try { return JSON.parse(localStorage.getItem(`boai.skills.${key}`) ?? 'null') ?? fallback } catch { return fallback } }
 
 export function SkillsWorkspace({ api, section, onSection, provider, onProvider, updates, focusSkill, revision, embedded = false, onCatalogChange, onOpenSkill, onOpenMarketplace, onManage }: { api: DesktopApi; section: SkillsSection; onSection: (section: SkillsSection) => void; provider: SkillMarketplaceProvider; onProvider: (provider: SkillMarketplaceProvider) => void; divider: ReactNode; updates: LocalSkillUpdates; focusSkill?: { id: string; requestId: string }; revision: number; embedded?: boolean; onCatalogChange?(catalog: LocalSkillCatalog): void; onOpenSkill(skill: LocalSkill): void; onOpenMarketplace(item: SkillMarketplaceItem): void; onManage?(kind: 'skills' | 'sources', item?: { id: string; name: string }): void }) {
@@ -44,6 +51,10 @@ export function SkillsWorkspace({ api, section, onSection, provider, onProvider,
   useEffect(() => { if (catalog) onCatalogChange?.(catalog) }, [catalog, onCatalogChange])
   const [query, setQuery] = useState(''), [selected, setSelected] = useState('')
   const search = useDeferredValue(query.trim().toLowerCase())
+  const [sort, setSort] = useState<SkillSort>(() => {
+    const saved = stored<unknown>('sort', 'name')
+    return skillSortOptions.find(option => option.value === saved)?.value ?? 'name'
+  })
   const [collapsed, setCollapsed] = useState<string[]>(() => stored('collapsed', []))
   const [marketSelection, setMarketSelection] = useState<{ provider: SkillMarketplaceProvider; id: string }>()
   const [importing, setImporting] = useState(false), [operationId, setOperationId] = useState<string>(), [exporting, setExporting] = useState(false)
@@ -51,6 +62,7 @@ export function SkillsWorkspace({ api, section, onSection, provider, onProvider,
   const openedFocus = useRef<string | undefined>(undefined)
   useEffect(() => { const skill = catalog?.skills.find(item => item.id === focusSkill?.id); if (skill && focusSkill && openedFocus.current !== focusSkill.requestId) { openedFocus.current = focusSkill.requestId; setSelected(skill.id); setQuery(''); onOpenSkill(skill) } }, [focusSkill, catalog, onOpenSkill])
   useEffect(() => { try { localStorage.setItem('boai.skills.collapsed', JSON.stringify(collapsed)) } catch { /* Optional presentation preferences. */ } }, [collapsed])
+  useEffect(() => { try { localStorage.setItem('boai.skills.sort', JSON.stringify(sort)) } catch { /* Optional presentation preferences. */ } }, [sort])
   const entries = useMemo<SkillEntry[]>(() => (catalog?.skills ?? []).map(local => ({ id: local.id, name: local.name, description: local.description, source: local.pluginName ?? (local.source === 'global' ? '' : local.sourceLabel), searchText: `${local.name} ${local.description} ${local.slug} ${local.pluginName ?? local.sourceLabel}`.toLowerCase(), local })).sort((a, b) => a.name.localeCompare(b.name)), [catalog])
   const localIds = useMemo(() => new Set(entries.map(entry => entry.id)), [entries])
   const favorites = useMemo(() => collection.value?.favoriteResourceIds.filter(id => localIds.has(id)) ?? [], [collection.value, localIds])
@@ -58,8 +70,15 @@ export function SkillsWorkspace({ api, section, onSection, provider, onProvider,
   const visible = useMemo(() => {
     const items = entries.filter(entry => (section !== 'own' || favoriteIds.has(entry.id)) && entry.searchText.includes(search))
     if (section === 'own') { const order = new Map(favorites.map((id, index) => [id, index])); items.sort((a, b) => order.get(a.id)! - order.get(b.id)!) }
+    if (section === 'all' && sort === 'updated') {
+      items.sort((a, b) => (b.local.updatedAt ?? Number.MIN_SAFE_INTEGER) - (a.local.updatedAt ?? Number.MIN_SAFE_INTEGER))
+    }
+    if (section === 'all' && sort === 'pending') {
+      const pending = (entry: SkillEntry) => entry.local.source === 'global' && updates.available.has(entry.local.slug.toLowerCase())
+      items.sort((a, b) => Number(pending(b)) - Number(pending(a)))
+    }
     return items
-  }, [entries, section, search, favoriteIds, favorites])
+  }, [entries, section, search, favoriteIds, favorites, sort, updates.available])
   const selectSkill = (id: string) => { setSelected(id); const skill = entries.find(entry => entry.id === id)?.local; if (skill) onOpenSkill(skill) }
   const openResource = (id: string) => { selectSkill(id); setQuery(''); onSection('all') }
   const installed = useCallback(() => reload(true), [reload])
@@ -77,6 +96,16 @@ export function SkillsWorkspace({ api, section, onSection, provider, onProvider,
       <header className="custom-content-heading"><h1>技能</h1>{onManage && <Button variant="secondary" size="sm" onClick={() => onManage('skills')}><MessageCircle />AI 管理</Button>}</header>
       <div className="custom-catalog-toolbar">{navigation}<div className="custom-catalog-search" ref={setMarketToolbar}>
         {section !== 'marketplace' && <><div className="skills-search-actions">
+          {section === 'all' && <DropdownMenu>
+            <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="技能排序" title="技能排序" />}>
+              <i className="app-icon i-carbon-sort-ascending" aria-hidden="true" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" aria-label="技能排序" className="min-w-36">
+              <DropdownMenuRadioGroup value={sort} onValueChange={setSort}>
+                {skillSortOptions.map(option => <DropdownMenuRadioItem key={option.value} value={option.value} closeOnClick>{option.label}</DropdownMenuRadioItem>)}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>}
           {section === 'own' && <SkillGroups value={collection.value ? { ...collection.value, favoriteResourceIds: favorites } : null} change={collection.change} busy={collection.busy} />}
           <SkillActionsMenu api={api} onInstalled={installed} onLibraryInstalled={libraryInstalled} onResource={openResource} allowImport={section === 'all'} onRescan={() => { void reload(true) }} onExport={() => setExporting(true)} scanning={loading} canExport={favorites.length > 0} />
         </div>
