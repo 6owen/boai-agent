@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /*
  * [INPUT]: Real catalog and terminal components with controlled native CLI receipts.
- * [OUTPUT]: The skills header exposes AI management without the package dialog. Updates use the toolbar, skill-detail popover, and title rockets for outdated global skill rows.
+ * [OUTPUT]: The skills header exposes AI management without the package dialog. Updates use the toolbar, skill-detail popover, and same-size idle and busy title rockets for outdated global skill rows.
  * [POS]: Desktop library interaction regression without network or user profile writes.
  * [PROTOCOL]: Update Header and tests/.folder.md when changed.
  */
@@ -69,7 +69,7 @@ test('updates the exact global skill from its title rocket or detail, and confir
     expect(terminal(popup)?.textContent).toContain('Checking for skill updates')
     await act(async () => finish({ status: 'available', command: 'npx skills check', output: 'updates', availableSkills: ['report', 'helper', 'notes-cli'] }))
     const notes = button('更新 Notes')!
-    expect(notes.querySelector('.i-solar-rocket-outline')).not.toBeNull()
+    expect(notes.querySelector('.i-solar-rocket-outline')?.classList.contains('size-[10px]')).toBe(true)
     expect(notes.closest('[data-skill-row]')?.getAttribute('data-skill-row')).toBe('three')
     expect(host.querySelector('[data-skill-row="copy"] .skill-row-update')).toBeNull()
     expect(host.querySelector('[data-skill-row="plugin"] .skill-row-update')).toBeNull()
@@ -80,6 +80,7 @@ test('updates the exact global skill from its title rocket or detail, and confir
     expect(calls()[1]).toMatchObject({ action: 'update', id: 'three' })
     expect(button('查看技能更新')).toBeUndefined()
     expect(button('确认更新')).toBeUndefined()
+    expect(notes.querySelector('.i-solar-rocket-2-outline')?.classList.contains('size-[10px]')).toBe(true)
     expect(button('更新 Helper')?.disabled).toBe(true)
     await act(async () => receive({ type: 'local-skill-cli:progress', requestId: calls()[1].requestId, command: 'npx skills update notes-cli', output: 'Updating notes-cli' }))
     expect(terminal()?.textContent).toContain('Updating notes-cli')

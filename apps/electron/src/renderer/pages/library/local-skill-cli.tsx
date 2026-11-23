@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Local skill identity and trusted desktop CLI progress and results.
- * [OUTPUT]: Row, detail and global skill updates share the same fixed terminal popover.
+ * [OUTPUT]: Row, detail and global skill updates share the same fixed terminal popover. Both row rocket icons use the same size.
  * [POS]: Local library UI for npx skills.
  * [PROTOCOL]: Update Header and library/.folder.md when changed.
  */
@@ -126,7 +126,9 @@ export function LocalSkillUpdate({ id, slug, updates, row }: {
   }}>
     <PopoverTrigger render={<Button variant="ghost" size={row ? 'icon-xs' : 'icon-sm'} className={row ? 'skill-row-update border-4 border-transparent bg-clip-padding text-primary enabled:hover:bg-primary/10 enabled:focus-visible:bg-primary/10' : undefined}
       disabled={!!row && updates.busy && !busy} aria-label={label} title={label} aria-busy={busy} />}>
-      {busy ? <LoaderCircle className="spinner" /> : row ? <i aria-hidden="true" className="app-icon i-solar-rocket-outline size-[10px]" /> : available ? <SkillUpdateIcon /> : <RefreshCw />}
+      {row
+        ? <i aria-hidden="true" className={`app-icon size-[10px] ${busy ? 'i-solar-rocket-2-outline' : 'i-solar-rocket-outline'}`} />
+        : busy ? <LoaderCircle className="spinner" /> : available ? <SkillUpdateIcon /> : <RefreshCw />}
     </PopoverTrigger>
     <SkillCommandPopoverContent label="技能更新" progress={current ? updates.progress : undefined} busy={busy}>
       <Button variant={available ? 'default' : 'secondary'} size="sm" disabled={updates.busy}
