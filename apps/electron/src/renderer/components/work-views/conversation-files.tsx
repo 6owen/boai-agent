@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 会话文件行菜单恢复系统默认/指定应用打开与定位，按材料/成果身份交给Main核验，不传路径。
+ * [OUTPUT]: 会话文件行菜单共用公共打开方式组件，支持系统默认/指定应用打开与定位，按材料/成果身份交给Main核验，不传路径。
  * [OUTPUT]: 会话文件搜索使用与小号Tab一致的28px控件高度及caption字号，保留展开和文件名查询。
  * [OUTPUT]: 会话文件对齐知识资料的默认列表/卡片表格、浮动标题与滚动渐隐；仅文件名CatalogSearch，来源操作归行菜单，同范围刷新保留列表。
  * [OUTPUT]: 2026-11-06 会话文件移除知识资料切换，保留原文件范围、筛选、预览和留存操作。
@@ -32,7 +32,7 @@ import { RetainFile } from './retain-file'
 import { useKnowledgeOperation } from './use-knowledge-operation'
 import { fileRowTargetMatches, selectedFileMatches, type FileSelection } from './model'
 import { usePagedQuery } from './use-paged-query'
-import { FileOpenMenuItems } from './file-open-menu'
+import { FileOpenMenuItems } from '@/components/common/file-open-menu'
 
 type FileView = 'table' | 'list'
 export interface ConversationFilesState { name: string; view?: FileView; selected?: FileSelection }

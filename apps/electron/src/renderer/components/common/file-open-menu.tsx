@@ -1,8 +1,8 @@
 /*
  * [INPUT]: 材料/成果/知识资料/技能身份、页面可用状态与Main的固定系统应用清单。
- * [OUTPUT]: 系统默认、应用及文件管理器定位共用打开方式子菜单；只读技能可定位文件。
- * [POS]: 文件与技能详情的外部打开菜单，不读取或拼接宿主文件路径。
- * [PROTOCOL]: 变化同步Header与work-views/.folder.md。
+ * [OUTPUT]: 系统默认、应用及文件管理器定位共用打开方式子菜单。
+ * [POS]: 跨页面复用的外部打开菜单，不读取或拼接宿主文件路径。
+ * [PROTOCOL]: 变化同步Header与common/.folder.md。
  */
 import { useEffect, useRef, useState } from 'react'
 import type { DesktopApi } from '@boai/shared/ipc'
@@ -18,7 +18,7 @@ function ApplicationIcon({ application }: { application?: WorkspaceApplication }
   return application?.kind === 'editor' ? <FileText /> : <FolderOpen />
 }
 
-export function FileOpenMenuItems({ api, target, disabled, revealOnly = false }: { api: DesktopApi; target?: ExternalFileTarget; disabled: boolean; revealOnly?: boolean }) {
+export function FileOpenMenuItems({ api, target, disabled = false }: { api: DesktopApi; target?: ExternalFileTarget; disabled?: boolean }) {
   const [applications, setApplications] = useState<WorkspaceApplication[]>([])
   const [opening, setOpening] = useState(false), [loading, setLoading] = useState(false)
   const alive = useRef(true), listing = useRef(false), flight = useRef(false)
@@ -44,14 +44,12 @@ export function FileOpenMenuItems({ api, target, disabled, revealOnly = false }:
   return <DropdownMenuSub onOpenChange={value => { if (value) void load() }}>
     <DropdownMenuSubTrigger disabled={locked}>打开方式</DropdownMenuSubTrigger>
     <DropdownMenuSubContent className="min-w-44">
-      {!revealOnly && <DropdownMenuItem disabled={locked} onClick={() => void open()}><ApplicationIcon application={system} />系统默认打开</DropdownMenuItem>}
+      <DropdownMenuItem disabled={locked} onClick={() => void open()}><ApplicationIcon application={system} />系统默认打开</DropdownMenuItem>
       <DropdownMenuItem disabled={locked} onClick={() => void open({ action: 'reveal' })}><ApplicationIcon application={system} />在文件管理器中显示</DropdownMenuItem>
-      {!revealOnly && <>
-        <DropdownMenuSeparator />
-        {applications.filter(application => application.kind === 'editor').map(application => <DropdownMenuItem key={application.id} disabled={locked} onClick={() => void open({ applicationId: application.id })}><ApplicationIcon application={application} />{application.name}</DropdownMenuItem>)}
-        {applications.some(application => application.kind === 'editor') && <DropdownMenuSeparator />}
-        <DropdownMenuItem disabled={locked || loading} onClick={() => void load(true)}><RefreshCw />刷新打开方式</DropdownMenuItem>
-      </>}
+      <DropdownMenuSeparator />
+      {applications.filter(application => application.kind === 'editor').map(application => <DropdownMenuItem key={application.id} disabled={locked} onClick={() => void open({ applicationId: application.id })}><ApplicationIcon application={application} />{application.name}</DropdownMenuItem>)}
+      {applications.some(application => application.kind === 'editor') && <DropdownMenuSeparator />}
+      <DropdownMenuItem disabled={locked || loading} onClick={() => void load(true)}><RefreshCw />刷新打开方式</DropdownMenuItem>
     </DropdownMenuSubContent>
   </DropdownMenuSub>
 }

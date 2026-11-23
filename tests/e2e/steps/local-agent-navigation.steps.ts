@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 草稿文件卡悬停后移除。
  * [INPUT]: 原界面创建的本机员工、正式成果、独立Electron与解析真实路径后的原生文件选择。
  * [OUTPUT]: 原交付及记忆真实结束、侧栏不再处理中后，附件草稿/固定修订分别核对准确配置和零新增模型/零保存；实际动画结束留证，只读IPC故障不替换业务状态或真实运行时。
  * [POS]: 本机员工配置导航BDD，共用Codex/Claude原场景；故障仅限本场读取回执并在finally恢复。
@@ -106,6 +107,7 @@ Then('用户从聊天底部准确配置本机员工并保留原草稿与成果�
       await runtime.reviewNativeCheckpoint(`${label}设置往返后保持原输入`)
     }
     await settingsRoundTrip('附件草稿')
+    await page.locator('[data-material-draft-id]').filter({ hasText: '导航草稿.txt' }).hover()
     await page.getByRole('button', { name: '移除材料 导航草稿.txt', exact: true }).click()
     await expect(material).toHaveCount(0); materialRetained = false
     await page.locator('.chat-panel:visible').getByRole('button', { name: '要求修改', exact: true }).last().click()

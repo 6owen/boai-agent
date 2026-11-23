@@ -69,8 +69,11 @@ Then('会话式两栏显示本机技能来源和正文且没有授予员工权�
   await page.screenshot({ path: 'test-results/local-skills-popover.png' }); await page.keyboard.press('Escape')
   await expect(page.getByRole('button', { name: '技能操作', exact: true })).toBeFocused()
   await page.getByRole('button', { name: 'agents-sdk 的操作', exact: true }).click()
-  const reveal = page.getByRole('menuitem', { name: '在文件夹中显示', exact: true })
-  await expect(reveal).toBeVisible(); await expect(reveal).toHaveCSS('white-space', 'nowrap'); await page.keyboard.press('Escape')
+  await page.getByRole('menuitem', { name: '打开方式', exact: true }).press('ArrowRight')
+  for (const name of ['系统默认打开', '在文件管理器中显示', '刷新打开方式']) {
+    await expect(page.getByRole('menuitem', { name, exact: true })).toBeVisible()
+  }
+  await page.keyboard.press('Escape'); await page.keyboard.press('Escape')
   await writeFile(join(localSkills.source!, 'SKILL.md'), `${localSkills.document}\n\n外部保存后的新说明。\n`)
   await page.getByRole('button', { name: '技能操作', exact: true }).click(); await page.getByRole('menuitem', { name: '重新扫描技能', exact: true }).click()
   await page.getByRole('button', { name: /agents-sdk Build AI/ }).click(); await expect(page.getByText('外部保存后的新说明。', { exact: true })).toBeVisible()
