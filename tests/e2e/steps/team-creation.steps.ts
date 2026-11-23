@@ -1,5 +1,6 @@
 /*
  * [OUTPUT]: bobo主聊天按钮用于打开默认聊天，话题箭头独立控制折叠。
+ * [OUTPUT]: 核对员工操作栏淡入淡出与隐藏后零宽。
  * [INPUT]: 真实 Electron、明确主导航作用域、模态菜单打开前实测的外部鼠标坐标、核心工具协议和稳定会话/员工身份。
  * [OUTPUT]: 常驻唯一核心头像/名称分组标题折叠展开，右侧新会话图标打开空白页；无历史/清空/删除/重载仍保留标题且首发才保存历史；核心历史仅标题、更多/编辑随悬停/聚焦/菜单显示且菜单无置顶；紧凑父子缩进/间距、整行背景和标题按钮透明的实际布局，三入口改名/取消零写入/空白禁用/消息身份及重启保持，操作默认隐藏/悬停显示/移开隐藏/键盘与菜单保留及空白/历史默认与悬停截图；首发回复失联只读核对、未知团队请求跨关闭/设置保持和清理 tombstone 重启拒绝重放；两字段弹窗、用户指定群名和真实工具创建；改名后标题联动真实配置头像/名称、分层记忆/重启与失败、标题图标悬停/聚焦/菜单保留与同色、整行12px折叠及等待实际主题的窄窗键盘截图验收。
  * [POS]: bobo 团队创建 BDD；文件原子性/清理冲突保留 teams 模块与恢复测试。
@@ -231,6 +232,7 @@ Then('只保存一个核心会话和一条初始用户消息', async ({ runtime,
   const page = runtime.page
   const heading = page.getByRole('button', { name: 'bobo 的主聊天', exact: true })
   const compose = page.getByRole('button', { name: '与 bobo 新建会话', exact: true })
+  const actions = compose.locator('..')
   const more = page.getByRole('button', { name: 'bobo 的更多操作', exact: true })
   await expect(page.locator('.conversation-core-heading')).toHaveCount(1)
   await expect(heading).toHaveText('bobo')
@@ -282,21 +284,21 @@ Then('只保存一个核心会话和一条初始用户消息', async ({ runtime,
   expect(await historyRow.evaluate(element => getComputedStyle(element).backgroundColor)).not.toBe('rgba(0, 0, 0, 0)')
   await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).hover()
   await expect(compose).toHaveText(''); await expect(more).toHaveText('')
-  await expect(compose).toHaveCSS('opacity', '0'); await expect(more).toHaveCSS('opacity', '0')
+  await expect(actions).toHaveCSS('width', '0px'); await expect(actions).toHaveCSS('opacity', '0'); await expect(more).toHaveCSS('opacity', '0')
   await heading.hover()
-  await expect(compose).toHaveCSS('opacity', '1'); await expect(more).toHaveCSS('opacity', '1')
+  await expect(actions).toHaveCSS('opacity', '1'); await expect(more).toHaveCSS('opacity', '1')
   const labelColor = await heading.evaluate(element => getComputedStyle(element).color)
   await expect(compose).toHaveCSS('color', labelColor); await expect(more).toHaveCSS('color', labelColor)
   await more.click(); await expect(page.getByRole('menuitem', { name: '助手设置', exact: true })).toBeVisible()
   await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).hover()
-  await expect(more).toHaveCSS('opacity', '1'); await expect(compose).toHaveCSS('opacity', '1')
+  await expect(more).toHaveCSS('opacity', '1'); await expect(actions).toHaveCSS('opacity', '1')
   const toggle = page.getByRole('button', { name: 'bobo 的话题', exact: true })
   await page.keyboard.press('Escape'); await expect(toggle).toHaveAttribute('aria-expanded', 'true')
   await heading.focus(); await page.keyboard.press('Tab'); await expect(more).toBeFocused()
   await expect(more).toHaveCSS('opacity', '1')
-  await page.keyboard.press('Tab'); await expect(compose).toBeFocused(); await expect(compose).toHaveCSS('opacity', '1')
+  await page.keyboard.press('Tab'); await expect(compose).toBeFocused(); await expect(actions).toHaveCSS('opacity', '1')
   await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).focus()
-  await expect(compose).toHaveCSS('opacity', '0'); await expect(more).toHaveCSS('opacity', '0')
+  await expect(actions).toHaveCSS('width', '0px'); await expect(actions).toHaveCSS('opacity', '0'); await expect(more).toHaveCSS('opacity', '0')
   await heading.hover()
   const bounds = (await heading.boundingBox())!, row = (await heading.locator('..').boundingBox())!
   expect(bounds.width).toBeGreaterThan(row.width - 66)

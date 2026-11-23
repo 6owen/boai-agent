@@ -3,7 +3,7 @@
  * [OUTPUT]: 剩余异步失败文案统一Sonner，原状态和操作保持。
  * [OUTPUT]: 错误反馈统一Sonner，不渲染内联报错；现有动作和来源校验保持。
  * [INPUT]: 本地/远程来源、扫描预览/当前操作 IPC、技能刷新/导出回调与共享 DropdownMenu/Popover。
- * [OUTPUT]: 单图标右侧菜单合并普通导入/技能库导入/扫描/检查更新/导出；技能库专属弹窗校验 BoAI ZIP/目录，所选项固定加入收藏并恢复分组；普通导入保留 400×420 浮层和当前结果，均固定 ~/.agents/skills，无安装记录入口。
+ * [OUTPUT]: 单图标右侧菜单合并普通导入/技能库导入/扫描/导出；技能库专属弹窗校验 BoAI ZIP/目录，所选项固定加入收藏并恢复分组；普通导入保留 400×420 浮层和当前结果，均固定 ~/.agents/skills，无安装记录入口。
  * [POS]: library 的统一技能操作菜单、本地导入内容与商城安装对话框。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -25,7 +25,7 @@ const statuses = { pending: '等待处理', installed: '已安装', updated: '�
 const installPanelClassName = 'flex h-[420px] w-[400px] max-h-[calc(100dvh-24px)] max-w-[calc(100vw-24px)] flex-col gap-0 overflow-hidden rounded-xl p-0'
 type ImportProps = { api: DesktopApi; initialSource?: ScanSkillSourceInput; operationId?: string; onClose: () => void; onInstalled: () => Promise<void>; onResource?: (id: string) => void }
 
-export function SkillActionsMenu({ api, onInstalled, onResource, onLibraryInstalled, allowImport, onRescan, onCheckUpdates, onExport, scanning, canExport }: Pick<ImportProps, 'api' | 'onInstalled' | 'onResource'> & { onLibraryInstalled: () => Promise<void>; allowImport: boolean; onRescan: () => void; onCheckUpdates: () => void; onExport: () => void; scanning: boolean; canExport: boolean }) {
+export function SkillActionsMenu({ api, onInstalled, onResource, onLibraryInstalled, allowImport, onRescan, onExport, scanning, canExport }: Pick<ImportProps, 'api' | 'onInstalled' | 'onResource'> & { onLibraryInstalled: () => Promise<void>; allowImport: boolean; onRescan: () => void; onExport: () => void; scanning: boolean; canExport: boolean }) {
   const [panel, setPanel] = useState<'local' | 'github' | null>(null), [busy, setBusy] = useState(false)
   const [libraryImporting, setLibraryImporting] = useState(false)
   const anchor = useRef<HTMLButtonElement>(null)
@@ -36,7 +36,6 @@ export function SkillActionsMenu({ api, onInstalled, onResource, onLibraryInstal
       <DropdownMenuContent side="right" align="start" sideOffset={8} finalFocus={panel || libraryImporting ? false : undefined} className="w-[248px] p-2">
         {allowImport && <><DropdownMenuItem className="gap-2 px-2.5 py-2" onClick={() => setPanel('local')}><FolderOpen />导入文件夹、ZIP 或链接</DropdownMenuItem><DropdownMenuItem className="gap-2 px-2.5 py-2" onClick={() => setPanel('github')}><i className="app-icon i-carbon-branch" aria-hidden="true" />从 Git 仓库导入</DropdownMenuItem><DropdownMenuSeparator className="my-1.5" /></>}
         <DropdownMenuItem className="gap-2 px-2.5 py-2" disabled={scanning} onClick={onRescan}><RefreshCw />重新扫描技能</DropdownMenuItem>
-        <DropdownMenuItem className="gap-2 px-2.5 py-2" onClick={onCheckUpdates}><i className="app-icon i-carbon-update-now" aria-hidden="true" />检查技能更新</DropdownMenuItem>
         <DropdownMenuSeparator className="my-1.5" />
         <DropdownMenuItem className="gap-2 px-2.5 py-2" onClick={() => setLibraryImporting(true)}><i className="app-icon i-carbon-import-export" aria-hidden="true" />导入技能库</DropdownMenuItem>
         <DropdownMenuItem className="gap-2 px-2.5 py-2" disabled={!canExport} onClick={onExport}><i className="app-icon i-carbon-export" aria-hidden="true" />导出技能库</DropdownMenuItem>

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 宿主文件预览与共享 Markdown/CodeBlock 的实际 React 渲染和本地 Shiki 引擎。
- * [OUTPUT]: 共用文件入口安全文本渲染；源码无行号但保留来源行、隐藏正文停渲染、大文本有界及双色高亮。
+ * [OUTPUT]: 共用文件入口安全文本渲染；源码无行号但保留来源行、隐藏正文停渲染、大文本有界、双色高亮及单块命令与日志高亮。
  * [POS]: 文件预览展示边界测试；真实聊天入口、切换与动作由Electron BDD验证。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -66,4 +66,16 @@ test.each([
   expect(tokens).not.toBeNull()
   expect(tokens!.map(line => line.map(token => token.content).join('')).join('\n')).toBe(code)
   expect(tokens!.flat().some(token => token.variants.light.color && token.variants.dark.color)).toBe(true)
+})
+
+test('command log highlights shell arguments and warning output in one token stream', async () => {
+  const transcript = 'npx --yes skills check\nWarning: Fetching 1 source'
+  const lines = await highlightCode(transcript, 'command-log')
+  expect(lines?.map(line => line.map(token => token.content).join('')).join('\n')).toBe(transcript)
+  const argument = lines?.[0]?.find(token => token.content === '--yes')
+  const warning = lines?.[1]?.find(token => token.content === 'Warning:')
+  for (const token of [argument, warning]) {
+    expect(token?.variants.light.color).toMatch(/^#/)
+    expect(token?.variants.dark.color).toMatch(/^#/)
+  }
 })

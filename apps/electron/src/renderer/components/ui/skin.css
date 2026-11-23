@@ -7,6 +7,7 @@
  * [OUTPUT]: 员工头像选择按钮及头像使用全局md圆角，取消全圆裁切，新建/编辑共用。
  * [OUTPUT]: Composer 模型按钮悬停和菜单展开使用主题 selection 背景，增强触发器反馈，禁用时不生效。
  * [OUTPUT]: 输入聚焦不再重新施加边缘阴影，所有组合输入内层始终无框；透明/圆角输入保持原形状，默认表面与错误态保持。
+ * [OUTPUT]: 通用折叠皮肤保留分组标题；员工行操作显隐归聊天页面样式。
  * [INPUT]: colors.css 的主题、Soft 表面/分割线 token 与基础组件的 data-slot、Sonner 通知、soft-table 和语义变体。
  * [OUTPUT]: Tabs 共用选中滑动层承载原 Soft/线形/窗口/技能样式并沿用系统 squircle 方圆角（窗口原 round 保持），文字与关闭按钮保持上层；不改变布局、焦点或业务选择。
  * [OUTPUT]: Sonner 中性卡片与 Button secondary 共用 shadow-control 的内侧细边缘/高光/小阴影；32px圆形状态图标/弹性正文/20px中性纯 X；12px正文/11px说明、长内容和折叠后层保持，明暗主题复用现有 token。
@@ -61,10 +62,6 @@ label.creation-member:has([data-disabled]) { cursor:not-allowed;opacity:.5 }
 .conversation-section-heading>.app-icon { width:12px !important;height:12px !important;opacity:.75;transition:transform .2s ease,opacity .2s ease }
 .conversation-section-heading:is(:hover,:focus-visible)>.app-icon { opacity:1 }
 .conversation-section-heading[aria-expanded=true]>.app-icon { transform:rotate(90deg) }
-.conversation-section-row { display:flex;align-items:center;gap:2px;margin:8px 0 3px }
-.conversation-section-row>.conversation-section-heading { flex:1;min-width:0;width:auto;margin:0 }
-.conversation-section-row>.conversation-section-action { color:var(--muted-foreground);opacity:0;pointer-events:none;transition-property:background-color,box-shadow,transform,color,opacity }
-.conversation-section-row:is(:hover,:focus-within,[data-menu-open=true])>.conversation-section-action { opacity:1;pointer-events:auto }
 [data-execution-run-id] [data-slot=collapsible-trigger].soft-button-ghost:not(:disabled):not([aria-disabled=true]) { background:transparent }
 /* ToolChip badges are part of the disclosure trigger; detail surfaces remain unchanged. */
 [data-execution-run-id] [data-slot=collapsible-trigger] [data-slot=badge] { background:transparent !important }
@@ -78,7 +75,7 @@ details>summary::marker { font-size:var(--text-ui-secondary) }
   details[open]::details-content { block-size:auto }
 }
 @media (prefers-reduced-motion:reduce) {
-  .conversation-section-heading>.app-icon,.conversation-section-action,[data-slot=collapsible-trigger]>.app-icon[class*=chevron],details>summary>.app-icon[class*=chevron],[data-slot=collapsible-content],[data-slot=accordion-content],details::details-content { transition:none }
+  .conversation-section-heading>.app-icon,[data-slot=collapsible-trigger]>.app-icon[class*=chevron],details>summary>.app-icon[class*=chevron],[data-slot=collapsible-content],[data-slot=accordion-content],details::details-content { transition:none }
 }
 .detail-tab.dragging { opacity:.4 }
 .detail-tab[data-drop]::after { content:"";position:absolute;top:4px;bottom:4px;width:2px;background:var(--primary);pointer-events:none }

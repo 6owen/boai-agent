@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 本机技能页的检查、指定技能更新与明确全局更新由可信主窗交给 npx skills，更新前重核目录身份，命令进度只发回原窗口页面。
  * [OUTPUT]: 语音文字整理按运行时连接读取已提交的凭据版本。
  * [OUTPUT]: 2026-11-16语音输入未注册时跳过初始化并拒绝IPC；已保存配置/模型不迁移、不删除。
  * [OUTPUT]: 主窗口默认1100×760；主进程终端监督器按应用分发路径定位，开发/安装后均不依赖cwd。
@@ -91,6 +92,7 @@ import { WorkspaceApplications, openLocalResource } from './workspace-applicatio
 import { FileOpening } from './file-opening'
 import { readMacApplicationIcon } from './workspace-application-icon'
 import { SkillInstallationTerminal } from './skill-installation-terminal'
+import { LocalSkillCli, localSkillCliRequest } from './local-skill-cli'
 import { WorkspaceTerminalService } from './workspace-terminal/service'
 import type { WorkspaceFileScope } from '@boai/shared/ipc/workspace-files'
 import type { BrowserHostMethods, BrowserLease } from '@boai/shared/ipc/browser'
@@ -103,7 +105,7 @@ import { app, BrowserWindow, dialog, ipcMain, shell, utilityProcess, nativeTheme
 import type { UtilityProcess } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { mkdir, realpath, stat, rm, readFile, writeFile } from 'node:fs/promises'
-import { extname, isAbsolute, join, relative, resolve } from 'node:path'
+import { basename, extname, isAbsolute, join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { AppearanceStore } from './appearance'
 import { ElectronCanvasHost } from './canvas-host'
@@ -304,6 +306,7 @@ const userTerminals = new WorkspaceTerminalService(dataPath, {
   },
 })
 const skillInstallationTerminal = new SkillInstallationTerminal(dataPath)
+const localSkillCli = new LocalSkillCli()
 let userTerminalsReady: Promise<void> | undefined
 let workspaceDocumentEpoch = 0
 let userTerminalShutdownInterrupted = false
@@ -787,6 +790,24 @@ function registerIpc() {
       const value = z.object({ refresh: z.boolean().optional() }).strict().parse(input)
       return workspaceApplications.list(value.refresh)
     }
+    if (method === 'localSkillCli') {
+      const value = localSkillCliRequest.parse(input)
+      if (value.action === 'stop') return localSkillCli.stopCheck()
+      const epoch = workspaceDocumentEpoch
+      const onProgress = (progress: import('@boai/shared/ipc').LocalSkillCliProgress) => {
+        if (epoch === workspaceDocumentEpoch && !event.sender.isDestroyed()) {
+          event.sender.send('boai:event', { type: 'local-skill-cli:progress', requestId: value.requestId, ...progress })
+        }
+      }
+      if (value.action === 'update-all') return localSkillCli.run('update-all', undefined, onProgress)
+      if (!value.id) return localSkillCli.run('check', undefined, onProgress)
+      const { skill } = await requestRuntime('getLocalSkillDetail', { id: value.id }) as Methods['getLocalSkillDetail']['output']
+      if (quitting || epoch !== workspaceDocumentEpoch) throw new Error('原技能页面已失效，请重新打开')
+      if (skill.source !== 'global') throw new Error('请选择共享目录中的全局技能')
+      const name = basename(skill.path)
+      if (resolve(skill.path) !== join(app.getPath('home'), '.agents', 'skills', name)) throw new Error('请选择 skills CLI 管理目录中的技能')
+      return localSkillCli.run(value.action, name, onProgress)
+    }
     if (method === 'skillInstallationTerminal') {
       await resumeUserTerminals()
       return skillInstallationTerminal.handle(event.sender.id, input as Methods['skillInstallationTerminal']['input'])
@@ -1035,7 +1056,7 @@ else {
     // A timeout may terminate the worker, but never counts as Chromium action exit.
     const cliExit = (cliStarting ?? Promise.resolve()).then(async () => { await cli?.close(); cli = undefined })
     const userTerminalExit = Promise.all([userTerminals.close(), skillInstallationTerminal.close()])
-    void Promise.all([runtimeExit, cliExit, iconExit, userTerminalExit, canvas.close(), voice.close(), browsers.shutdown(), materialSources.close(), fileOpening.close(), desktopSettings.flush(), shortcutSettings.flush(), pluginSettings.flush(), cliInstaller.flush()]).then(async () => {
+    void Promise.all([runtimeExit, cliExit, iconExit, userTerminalExit, localSkillCli.close(), canvas.close(), voice.close(), browsers.shutdown(), materialSources.close(), fileOpening.close(), desktopSettings.flush(), shortcutSettings.flush(), pluginSettings.flush(), cliInstaller.flush()]).then(async () => {
       diagnostics.record('app-quit'); desktopLifecycle.stop(); background.destroy(); quitApproved = true
       if (appUpdates.finishQuit()) {
         // Native installation must terminate this process; a stalled handoff is a failure.
