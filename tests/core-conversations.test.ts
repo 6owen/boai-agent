@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 新 API 话题首轮标题异步保存并可重启读回，手动改名拦截迟到结果。
  * [OUTPUT]: 旧库管理技能夹具预先绑定模型，版本断言仅检查管理标签不改员工配置。
  * [OUTPUT]: 旧库夹具移除新版初始化标记，发送参数受IPC类型约束；核对绑定及版本保持、按轮管理文档、版本伪造/普通员工拒绝。
  * [OUTPUT]: 核心首发技能引用必须已绑定，拒绝时不创建会话或请求回执。
@@ -64,6 +65,69 @@ async function settled(service: AppService, conversation: Conversation) {
     expect(view.turns?.every(turn => ['completed', 'failed', 'cancelled', 'interrupted', 'budget_exhausted'].includes(turn.status))).toBe(true)
   }, { timeout: 5000, interval: 10 })
 }
+
+function pendingTitle() {
+  let resolve!: (title: string) => void
+  const promise = new Promise<string>(done => { resolve = done })
+  return { promise, resolve }
+}
+
+test('bobo 和普通 API 员工的新话题在首轮回复发布后异步命名并可重启读回', async () => {
+  const { service, engine, root } = await setup()
+  const pending = pendingTitle()
+  const generate = vi.fn<NonNullable<AgentEngine['generateConversationTitle']>>(input => {
+    input.signal.addEventListener('abort', () => pending.resolve(''), { once: true })
+    return pending.promise
+  })
+  Object.assign(engine, { generateConversationTitle: generate })
+  const connection = (await snapshot(service)).connections[0]
+  const employee = await service.handle('saveAgent', {
+    name: '写作员工', role: '', instructions: '', color: '#aabbcc', connectionId: connection.id, modelId: 'fixture',
+    skillIds: [], knowledgeIds: [], allowCommands: false, active: true,
+  }) as DigitalAgent
+  const core = await service.handle('startCoreConversation', { requestId: 'title-core', content: '给新员工设计一份入职清单' }) as Conversation
+  const main = await service.handle('sendEmployeeMessage', { employeeId: employee.id, requestId: 'title-main', content: '先打开主聊天' }) as Message
+  const topic = await service.handle('startEmployeeTopic', { employeeId: employee.id, requestId: 'title-topic', content: '把入职清单分为三天' }) as Message
+  await settled(service, core)
+  const rooms = (await snapshot(service)).conversations
+  await settled(service, rooms.find(room => room.id === topic.conversationId)!)
+  await settled(service, rooms.find(room => room.id === main.conversationId)!)
+  await vi.waitFor(() => expect(generate).toHaveBeenCalledTimes(2))
+  expect(generate).toHaveBeenCalledWith(expect.objectContaining({ messages: [
+    { role: 'user', content: '给新员工设计一份入职清单' },
+    { role: 'assistant', content: '记下了当前偏好。' },
+  ] }))
+  expect((await detail(service, core)).messages.some(message => message.senderType === 'agent' && message.status === 'completed')).toBe(true)
+  expect(rooms.find(room => room.id === core.id)?.title).toBe('给新员工设计一份入职清单')
+  pending.resolve(' 新员工入职计划\n ')
+  await vi.waitFor(async () => {
+    const result = (await snapshot(service)).conversations
+    expect(result.filter(room => room.title === '新员工入职计划').map(room => room.id).sort()).toEqual([core.id, topic.conversationId].sort())
+    expect(result.find(room => room.id === main.conversationId)?.title).toBe('写作员工')
+  })
+  await service.close()
+  const restarted = await open(root)
+  expect((await snapshot(restarted.service)).conversations.find(room => room.id === core.id)?.title).toBe('新员工入职计划')
+})
+
+test('手动保存当前标题会撤销正在生成的标题', async () => {
+  const { service, engine, root } = await setup()
+  const pending = pendingTitle()
+  const generate = vi.fn<NonNullable<AgentEngine['generateConversationTitle']>>(() => pending.promise)
+  Object.assign(engine, { generateConversationTitle: generate })
+  const conversation = await service.handle('startCoreConversation', { requestId: 'title-manual', content: '我希望保留这个标题' }) as Conversation
+  try {
+    await settled(service, conversation)
+    await vi.waitFor(() => expect(generate).toHaveBeenCalledTimes(1))
+    await service.handle('updateConversationList', { id: conversation.id, action: 'rename', title: conversation.title })
+    expect(generate.mock.calls[0][0].signal.aborted).toBe(true)
+  } finally {
+    pending.resolve('迟到的模型标题')
+  }
+  await service.close()
+  const restarted = await open(root)
+  expect((await snapshot(restarted.service)).conversations.find(room => room.id === conversation.id)?.title).toBe(conversation.title)
+})
 
 test('生成受理一次创建新核心会话和原始需求；重入与重启均不重发模型', async () => {
   const { service, engine, root } = await setup()
