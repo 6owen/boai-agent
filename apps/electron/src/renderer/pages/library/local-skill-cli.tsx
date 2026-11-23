@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Local skill identity and trusted desktop CLI progress and results.
- * [OUTPUT]: Single-skill and global updates share the same fixed terminal popover.
+ * [OUTPUT]: Row, detail and global skill updates share the same fixed terminal popover.
  * [POS]: Local library UI for npx skills.
  * [PROTOCOL]: Update Header and library/.folder.md when changed.
  */
@@ -104,18 +104,29 @@ function SkillUpdateIcon() {
   return <i className="app-icon i-carbon-update-now" aria-hidden="true" />
 }
 
-export function LocalSkillUpdate({ id, slug, updates }: { id: string; slug: string; updates: LocalSkillUpdates }) {
+export function LocalSkillUpdate({ id, slug, updates, row }: {
+  id: string; slug: string; updates: LocalSkillUpdates
+  row?: { name: string; onOpenChange(id: string | null): void }
+}) {
+  const [open, setOpen] = useState(false)
   const current = updates.command && 'id' in updates.command && updates.command.id === id
   const busy = !!current && updates.busy
   const available = updates.available.has(slug.toLowerCase())
   const check = () => void updates.execute({ action: 'check', id })
   const buttonLabel = busy ? (updates.command?.action === 'update' ? '正在更新' : '正在检查') : available ? '现在更新' : '检查更新'
 
-  return <Popover onOpenChange={open => {
-    if (open && !updates.busy && !current && !available) check()
+  if (row && !available && !open) return null
+  const label = row ? (available ? `更新 ${row.name}` : `查看 ${row.name} 更新结果`) : '查看技能更新'
+  return <Popover open={open} onOpenChange={next => {
+    setOpen(next)
+    row?.onOpenChange(next ? id : null)
+    if (!next || updates.busy) return
+    if (row && available) void updates.execute({ action: 'update', id })
+    else if (!row && !current && !available) check()
   }}>
-    <PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label="查看技能更新" title="查看技能更新" aria-busy={busy} />}>
-      {busy ? <LoaderCircle className="spinner" /> : available ? <SkillUpdateIcon /> : <RefreshCw />}
+    <PopoverTrigger render={<Button variant="ghost" size={row ? 'icon-xs' : 'icon-sm'} className={row ? 'skill-row-update' : undefined}
+      disabled={!!row && updates.busy && !busy} aria-label={label} title={label} aria-busy={busy} />}>
+      {busy ? <LoaderCircle className="spinner" /> : row ? <i aria-hidden="true" className="app-icon i-solar-rocket-outline size-3.5" /> : available ? <SkillUpdateIcon /> : <RefreshCw />}
     </PopoverTrigger>
     <SkillCommandPopoverContent label="技能更新" progress={current ? updates.progress : undefined} busy={busy}>
       <Button variant={available ? 'default' : 'secondary'} size="sm" disabled={updates.busy}
