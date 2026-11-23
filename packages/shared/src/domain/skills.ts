@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 本机技能可携带更新时间（Unix 毫秒），供目录排序。
  * [OUTPUT]: 只读 builtin 来源与共享/插件来源分开，员工绑定仍使用原 local 身份。
  * [INPUT]: 受管技能、用户收藏、扫描计划、已保存员工和管理操作。
  * [OUTPUT]: 本机来源/hash 与员工版本冻结的单技能绑定计划，原子绑定结果和只读请求回执；本机来源身份与运行副本独立。
@@ -141,6 +142,7 @@ export interface SkillLibraryExportPlan {
 }
 
 export interface LocalSkill {
+  updatedAt?: number
   id: string
   slug: string
   name: string

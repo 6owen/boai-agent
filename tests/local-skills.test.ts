@@ -1,11 +1,12 @@
 /*
  * [INPUT]: 真实 AppService 与隔离的 Agent/全局/插件技能目录。
+ * [OUTPUT]: 本地更新时间采用 CLI 安装记录，覆盖缺失或无效记录的文件时间回退。
  * [OUTPUT]: 显式刷新缓存后核对外部变化；首次打开即发现本机技能、链接去重、插件开关、错误可见、刷新/重启及收藏不授权回归。
  * [POS]: tests 的本机技能发现集成验证。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { afterEach, expect, test } from 'vitest'
-import { mkdtemp, mkdir, writeFile, symlink, rm } from 'node:fs/promises'
+import { mkdtemp, mkdir, writeFile, symlink, utimes, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { AppService } from '../packages/runtime/src/service'
@@ -44,6 +45,23 @@ test('a fresh library discovers existing shared, linked Agent and enabled plugin
   expect(collection.favoriteResourceIds).toEqual([report.id])
   const snapshot = await api('snapshot', undefined)
   expect(snapshot.resources).toEqual([]); expect(snapshot.agents.every(agent => !agent.skillIds.length)).toBe(true)
+})
+test('uses the global CLI update time and falls back to SKILL.md for other sources or invalid records', async () => {
+  const { api, homeDir, global, codexHome } = await setup()
+  const lockFile = join(homeDir, '.agents/.skill-lock.json')
+  const fileTime = new Date('2025-02-01T00:00:00Z')
+  const updated = '2026-03-01T00:00:00Z'
+  await utimes(join(global, 'SKILL.md'), fileTime, fileTime)
+  await utimes(join(codexHome, 'skills/.system/helper/SKILL.md'), fileTime, fileTime)
+  await writeFile(lockFile, JSON.stringify({ skills: { Report: { updatedAt: updated }, helper: { updatedAt: updated } } }))
+  const list = async () => (await api('listLocalSkills', { refresh: true })).skills
+  const skills = await list()
+  expect(skills.find(skill => skill.slug === 'report')?.updatedAt).toBe(Date.parse(updated))
+  expect(skills.find(skill => skill.slug === 'helper')?.updatedAt).toBe(fileTime.getTime())
+  for (const lock of [JSON.stringify({ skills: { report: { updatedAt: 'unknown' } } }), '{']) {
+    await writeFile(lockFile, lock)
+    expect((await list()).find(skill => skill.slug === 'report')?.updatedAt).toBe(fileTime.getTime())
+  }
 })
 test('refresh and restart retain favorite identities, exclude disabled plugins and expose malformed files', async () => {
   const { api, service, start, homeDir, codexHome, skill } = await setup()
