@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 知识资料行菜单恢复系统默认/指定应用打开与定位，复核当前员工绑定和知识版本，原添加/移除保持。
+ * [OUTPUT]: 知识资料行菜单共用公共打开方式组件，支持系统默认/指定应用打开与定位，复核当前员工绑定和知识版本，原添加/移除保持。
  * [OUTPUT]: 知识资料默认列表视图，表格切换及当前面板选择保持。
  * [OUTPUT]: 上传/同员工刷新保留列表DOM与滚动位置，成功后替换数据；正常上传不插入核对按钮，未决恢复入口放标题栏，旧数据刷新期间锁定操作。
  * [OUTPUT]: 知识资料行菜单最小宽度176px并按内容扩展，添加到输入框保持单行。
@@ -33,7 +33,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem,
 import { FileText, MoreHorizontal, Plus } from '@/components/icons'
 import { usePagedQuery } from './use-paged-query'
 import { useKnowledgeOperation } from './use-knowledge-operation'
-import { FileOpenMenuItems } from './file-open-menu'
+import { FileOpenMenuItems } from '@/components/common/file-open-menu'
 
 export interface KnowledgeComposerTarget { id: string; add(reference: Extract<ComposerReference, { kind: 'knowledge' }>): void }
 

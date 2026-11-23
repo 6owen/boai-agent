@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 右侧技能详情菜单提供共享打开方式和文件管理器定位。
  * [OUTPUT]: 本机技能全局检查图标紧靠搜索左侧并沿用前景色，导入/重新扫描留在更多菜单。
  * [OUTPUT]: 收藏分组展开与收起采样真实中间高度，并在拖拽/键盘移动后检查内容及重启顺序。
  * [OUTPUT]: 检索改为先点击图标展开，再沿原本地技能扫描/收藏/分组操作。
@@ -30,6 +31,15 @@ Given('本机已有全局技能和插件但尚未向 BoAI 导入', async ({ runt
 When('从侧栏打开技能管理', async ({ runtime }) => {
   await selectSkillsSection(runtime.page, '全部技能')
 })
+Then('技能详情菜单可选择系统打开方式和文件定位', async ({ runtime }) => {
+  const page = runtime.page
+  await page.getByRole('button', { name: /agents-sdk Build AI/ }).click()
+  await page.getByRole('button', { name: '当前技能操作', exact: true }).click()
+  await page.getByRole('menuitem', { name: '打开方式', exact: true }).press('ArrowRight')
+  for (const name of ['系统默认打开', '在文件管理器中显示', '刷新打开方式']) {
+    await expect(page.getByRole('menuitem', { name, exact: true })).toBeVisible()
+  }
+})
 Then('会话式两栏显示本机技能来源和正文且没有授予员工权限', async ({ runtime, localSkills }) => {
   const page = runtime.page, nav = page.getByRole('navigation', { name: '主导航' })
   for (const name of ['本地', '收藏', '商城']) await expect(page.getByRole('tab', { name, exact: true })).toBeVisible()
@@ -59,8 +69,11 @@ Then('会话式两栏显示本机技能来源和正文且没有授予员工权�
   await page.screenshot({ path: 'test-results/local-skills-popover.png' }); await page.keyboard.press('Escape')
   await expect(page.getByRole('button', { name: '技能操作', exact: true })).toBeFocused()
   await page.getByRole('button', { name: 'agents-sdk 的操作', exact: true }).click()
-  const reveal = page.getByRole('menuitem', { name: '在文件夹中显示', exact: true })
-  await expect(reveal).toBeVisible(); await expect(reveal).toHaveCSS('white-space', 'nowrap'); await page.keyboard.press('Escape')
+  await page.getByRole('menuitem', { name: '打开方式', exact: true }).press('ArrowRight')
+  for (const name of ['系统默认打开', '在文件管理器中显示', '刷新打开方式']) {
+    await expect(page.getByRole('menuitem', { name, exact: true })).toBeVisible()
+  }
+  await page.keyboard.press('Escape'); await page.keyboard.press('Escape')
   await writeFile(join(localSkills.source!, 'SKILL.md'), `${localSkills.document}\n\n外部保存后的新说明。\n`)
   await page.getByRole('button', { name: '技能操作', exact: true }).click(); await page.getByRole('menuitem', { name: '重新扫描技能', exact: true }).click()
   await page.getByRole('button', { name: /agents-sdk Build AI/ }).click(); await expect(page.getByText('外部保存后的新说明。', { exact: true })).toBeVisible()

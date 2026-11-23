@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 技能列表与详情菜单复用公共系统打开方式与文件管理器定位，内置与插件技能打开只读副本。
  * [OUTPUT]: 全局检查、批量更新与单项更新共用固定终端浮层，分别从工具栏及技能详情打开。
  * [OUTPUT]: 共享本机技能详情标题栏直接调用 skills CLI 检查与更新，退出后刷新技能正文和目录。
  * [OUTPUT]: 技能标题增加能力包管理入口，原本地技能导入/收藏/商城保持；包管理沿原应用回执。
@@ -24,6 +25,7 @@ import { CatalogTransition } from './catalog-transition'
 import { IllustratedEmpty } from '@/components/common/illustrated-empty'
 import { SelectField } from '@/components/ui/select-field'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { FileOpenMenuItems } from '@/components/common/file-open-menu'
 import { MoreHorizontal, MessageCircle } from '@/components/icons'
 import { useSkillCollections } from './use-skill-collections'
 import { useLocalSkills } from './use-local-skills'
@@ -42,7 +44,7 @@ export function SkillsWorkspace({ api, section, onSection, provider, onProvider,
   const { catalog, loading, error: loadError, reload } = useLocalSkills(api, revision)
   useEffect(() => { if (catalog) onCatalogChange?.(catalog) }, [catalog, onCatalogChange])
   const [packagesOpen, setPackagesOpen] = useState(false)
-  const [error, setError] = useState(''), [query, setQuery] = useState(''), [selected, setSelected] = useState('')
+  const [query, setQuery] = useState(''), [selected, setSelected] = useState('')
   const search = useDeferredValue(query.trim().toLowerCase())
   const [collapsed, setCollapsed] = useState<string[]>(() => stored('collapsed', []))
   const [marketSelection, setMarketSelection] = useState<{ provider: SkillMarketplaceProvider; id: string }>()
@@ -68,7 +70,6 @@ export function SkillsWorkspace({ api, section, onSection, provider, onProvider,
     setSelected(''); setQuery(''); onSection('own')
   }, [reload, collection.reload, onSection])
   const toggle = useCallback((entry: SkillEntry) => { void collection.change({ kind: 'favorite', resourceId: entry.id, favorite: !favoriteIds.has(entry.id) }) }, [collection.change, favoriteIds])
-  const reveal = useCallback((id: string) => { void api.request('openLocalSkill', { id, action: 'reveal' }).catch(error => setError(errorText(error))) }, [api])
   const changeCollection = useCallback((action: SkillCollectionAction) => { void collection.change(action) }, [collection.change])
   const collapse = useCallback((id: string) => setCollapsed(values => values.includes(id) ? values.filter(value => value !== id) : [...values, id]), [])
   const [marketToolbar, setMarketToolbar] = useState<HTMLDivElement | null>(null)
@@ -86,9 +87,9 @@ export function SkillsWorkspace({ api, section, onSection, provider, onProvider,
       </div></div>
       <CatalogTransition key={section}>
       {section === 'marketplace' ? <SkillMarketplaceView api={api} provider={provider} onProviderChange={onProvider} compact toolbarTarget={marketToolbar} selectedId={marketSelection?.provider === provider ? marketSelection.id : undefined} onSelect={item => { setMarketSelection({ provider: item.provider, id: item.id }); onOpenMarketplace(item) }} /> : <>
-      {(error || loadError || collection.error) && <Banner>{error || loadError || collection.error}</Banner>}
+      {(loadError || collection.error) && <Banner>{loadError || collection.error}</Banner>}
       {!!catalog?.issues.length && <details className="skill-scan-issues"><summary>有 {catalog.issues.length} 项读取问题</summary>{catalog.issues.map((issue, index) => <p key={index}>{issue.path}<br />{issue.message}</p>)}</details>}
-      {loading && !catalog ? <Loading>正在扫描本机技能…</Loading> : visible.length ? <SkillList entries={visible} selected={selected} own={section === 'own'} searching={Boolean(search)} collapsed={collapsed} collection={collection.value} favorites={favoriteIds} busy={collection.busy} onSelect={selectSkill} onToggle={toggle} onReveal={reveal} onCollapse={collapse} onChange={changeCollection} /> : <IllustratedEmpty kind="skills" title={query ? '没有匹配的技能' : section === 'own' ? '还没有收藏的技能' : undefined} />}
+      {loading && !catalog ? <Loading>正在扫描本机技能…</Loading> : visible.length ? <SkillList api={api} entries={visible} selected={selected} own={section === 'own'} searching={Boolean(search)} collapsed={collapsed} collection={collection.value} favorites={favoriteIds} busy={collection.busy} onSelect={selectSkill} onToggle={toggle} onCollapse={collapse} onChange={changeCollection} /> : <IllustratedEmpty kind="skills" title={query ? '没有匹配的技能' : section === 'own' ? '还没有收藏的技能' : undefined} />}
       </>}
       </CatalogTransition>
       </div>
@@ -126,7 +127,10 @@ export function LocalSkillPanel({ api, id, revision, requestId, active, updates 
   if (!skill) return <IllustratedEmpty kind="skills" title={catalog ? '该技能已不可用' : undefined} />
   const favorite = Boolean(collection.value?.favoriteResourceIds.includes(id))
   const updateAction = skill.source === 'global' && <LocalSkillUpdate key={id} id={id} slug={skill.slug} updates={updates} />
-  return <SkillDetailPanel name={skill.name} className="local-skill-panel" actions={<>{updateAction}<DropdownMenu><DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="当前技能操作" />}><MoreHorizontal /></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem disabled={!collection.value || collection.busy} onClick={() => { void collection.change({ kind: 'favorite', resourceId: id, favorite: !favorite }) }}>{favorite ? '取消收藏' : '加入收藏'}</DropdownMenuItem></DropdownMenuContent></DropdownMenu></>}>
+  return <SkillDetailPanel name={skill.name} className="local-skill-panel" actions={<>{updateAction}<DropdownMenu><DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="当前技能操作" />}><MoreHorizontal /></DropdownMenuTrigger><DropdownMenuContent align="end">
+    <FileOpenMenuItems api={api} target={{ kind: 'local-skill', id }} disabled={!active} />
+    <DropdownMenuItem disabled={!collection.value || collection.busy} onClick={() => { void collection.change({ kind: 'favorite', resourceId: id, favorite: !favorite }) }}>{favorite ? '取消收藏' : '加入收藏'}</DropdownMenuItem>
+  </DropdownMenuContent></DropdownMenu></>}>
     {collection.error && <Banner>{collection.error}</Banner>}
     <LocalSkillInfo api={api} skill={skill} active={active} refreshKey={requestId} favorite={favorite} collection={collection.value} busy={collection.busy} assign={groupId => { void collection.change({ kind: 'assign-group', resourceId: id, groupId }) }} />
   </SkillDetailPanel>

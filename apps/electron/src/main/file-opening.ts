@@ -1,7 +1,7 @@
 /*
- * [INPUT]: 固定材料/成果/知识资料身份、原运行时读取与已安装应用适配器。
- * [OUTPUT]: 核对当前原件后默认/指定应用打开或定位；无扩展名材料使用带原文件名的只读临时副本，退出仅清理未修改副本。
- * [POS]: 两类文件面板的Main外部打开边界，不接受任意宿主路径或建立目录授权。
+ * [INPUT]: 固定材料/成果/知识资料/本机技能身份、原运行时读取与已安装应用适配器。
+ * [OUTPUT]: 核对当前原件后默认/指定应用打开或定位；无扩展名材料及只读技能使用带原文件名的只读临时副本，退出仅清理未修改副本。
+ * [POS]: 文件与技能详情的Main外部打开边界，不接受任意宿主路径或建立目录授权。
  * [PROTOCOL]: 变化同步Header与main/.folder.md。
  */
 import { createHash } from 'node:crypto'
@@ -19,6 +19,7 @@ const inputSchema = z.object({
     z.object({ kind: z.literal('material'), conversationId: id, id, contentHash: hash, revision: z.number().int().positive() }).strict(),
     z.object({ kind: z.literal('artifact'), conversationId: id, id, contentHash: hash }).strict(),
     z.object({ kind: z.literal('knowledge'), agentId: id, resourceId: id, contentHash: hash.optional(), revision: z.number().int().nonnegative().optional() }).strict(),
+    z.object({ kind: z.literal('local-skill'), id }).strict(),
   ]),
   action: z.enum(['open', 'reveal']).default('open'), applicationId: id.optional(),
 }).strict()
@@ -39,7 +40,13 @@ export class FileOpening {
     // Complete the potentially slow application scan before rechecking the source.
     if (applicationId && applicationId !== 'system') await this.applications.list()
     let path: string
-    if (target.kind === 'knowledge') {
+    if (target.kind === 'local-skill') {
+      const { skill, filePath, content } = await this.request('getLocalSkillDetail', { id: target.id })
+      const readOnly = skill.source === 'builtin' || skill.source === 'plugin'
+      path = readOnly && action === 'open'
+        ? await this.readOnlyCopy('SKILL.md', Buffer.from(content, 'utf8'))
+        : await realpath(filePath)
+    } else if (target.kind === 'knowledge') {
       const view = await this.request('getEmployeeKnowledgeFiles', { agentId: target.agentId, resourceId: target.resourceId })
       if (target.contentHash !== undefined && target.contentHash !== view.contentHash || target.revision !== undefined && target.revision !== view.revision) throw new Error('知识资料已变化，请刷新后重新打开')
       path = await realpath(view.resource.path)
@@ -52,16 +59,20 @@ export class FileOpening {
       if (material.conversationId !== target.conversationId || material.contentHash !== target.contentHash || !material.messageId) throw new Error('材料来源已变化，请刷新后重新打开')
       const actual = await readMaterialOriginal(this.dataPath, target.conversationId, target.id, target.contentHash)
       if (action === 'reveal') path = join(materialDirectory(await realpath(this.dataPath), target.conversationId, target.id), 'original')
-      else {
-        const directory = await realpath(await mkdtemp(join(tmpdir(), 'boai-file-open-')))
-        const name = material.name.replace(/[\\/\x00-\x1f]/g, '_')
-        path = join(directory, !name || name === '.' || name === '..' ? '附件' : name)
-        this.copies.set(directory, { file: path, hash: actual.contentHash })
-        await writeFile(path, actual.bytes, { flag: 'wx', mode: 0o400 })
-      }
+      else path = await this.readOnlyCopy(material.name, actual.bytes, actual.contentHash)
     }
     await this.applications.open(path, action, applicationId)
   }
+
+  private async readOnlyCopy(originalName: string, bytes: Uint8Array, hash = digest(bytes)) {
+    const directory = await realpath(await mkdtemp(join(tmpdir(), 'boai-file-open-')))
+    const name = originalName.replace(/[\\/\x00-\x1f]/g, '_')
+    const path = join(directory, !name || name === '.' || name === '..' ? '附件' : name)
+    this.copies.set(directory, { file: path, hash })
+    await writeFile(path, bytes, { flag: 'wx', mode: 0o400 })
+    return path
+  }
+
   async close() {
     await Promise.allSettled([...this.pending])
     await Promise.all([...this.copies].map(async ([directory, copy]) => {

@@ -7,6 +7,7 @@
  * [OUTPUT]: 文件源码/预览使用header图标切换；原阅读/来源和无业务写入断言保持。
  * [OUTPUT]: Lody原PDF/Office真实发送/核源/阅读，延迟预览后的文件切换、隐藏停读与清理隔离，零新增模型调用。
  * [OUTPUT]: 可选审阅模式保留Markdown排版/源码、TypeScript/HTML关键帧及已发送原件与身份，不改变业务断言。
+ * [OUTPUT]: 待发送文件卡整卡预览，移除按钮随悬停和键盘聚焦显示。
  * [INPUT]: D1 中文材料场景、生产 Electron UI/IPC、隔离原件与共享协议 fixture。
  * [OUTPUT]: 聊天Markdown/代码在右侧安全预览与Shiki高亮，来源行保持；新材料随当前成员授权、通用PDF不虚构正文、同字节恢复/未知回执与重启不重放。
  * [POS]: tests/e2e/steps/materials.steps.ts；准备文件和故障注入只在 support 层。
@@ -153,6 +154,17 @@ When('用户向材料协作组添加两份同名报告', async ({ runtime, mater
   await expect(drafts(runtime.page)).toHaveCount(1); await expect(drafts(runtime.page).first()).toHaveAttribute('data-material-status', 'ready')
   await addMaterial(runtime, fixture.files.second)
   await expect(drafts(runtime.page)).toHaveCount(2); await expect(drafts(runtime.page).nth(1)).toHaveAttribute('data-material-status', 'ready')
+  const firstCard = drafts(runtime.page).first()
+  const remove = firstCard.getByRole('button', { name: '移除材料 报告.md' })
+  await runtime.page.getByRole('textbox', { name: '消息内容', exact: true }).hover()
+  await expect(remove).toHaveCSS('opacity', '0')
+  await firstCard.hover()
+  await expect(remove).toHaveCSS('opacity', '1')
+  await runtime.page.getByRole('textbox', { name: '消息内容', exact: true }).hover()
+  await firstCard.getByRole('button', { name: '预览材料 报告.md' }).focus()
+  await runtime.page.keyboard.press('Tab')
+  await expect(remove).toBeFocused()
+  await expect(remove).toHaveCSS('opacity', '1')
   materialsState.materials = (await detail(runtime, fixture.group.id)).materials!
 })
 Then('两份报告有独立原文行号和来源身份', async ({ runtime, materialsState }) => {
@@ -230,6 +242,7 @@ When('用户在私聊核对通用文件并逐项添加坏编码和超限材料',
   const generic = (await detail(runtime, fixture.direct.id)).materials!.find(material => material.name === '通用资料.pdf')!
   expect(generic).toMatchObject({ format: 'file', parseVersion: 'binary-v1', status: 'ready' })
   expect(generic.lineCount).toBeUndefined(); expect(generic.characterCount).toBeUndefined()
+  await drafts(page).nth(1).hover()
   await drafts(page).nth(1).getByRole('button', { name: '移除材料 通用资料.pdf', exact: true }).click()
   materialsState.failed = []
   for (const [path, name, reason] of [[fixture.files.encoding, '坏编码.txt', 'UTF-8'], [fixture.files.large, '超限.txt', '128 KiB'], [fixture.files.oversized, '超限文件.pdf', '20 MiB']]) {
@@ -242,7 +255,7 @@ When('用户在私聊核对通用文件并逐项添加坏编码和超限材料',
     expect(await messageDraft(page.getByRole('textbox', { name: '消息内容', exact: true }))).toBe('只处理保留的有效材料')
     const stored = (await detail(runtime, fixture.direct.id)).materials!.find(material => material.name === name)!
     materialsState.failed.push({ name, reason, id: stored.id })
-    if (name !== '超限文件.pdf') { await failure.getByRole('button', { name: `移除材料 ${name}`, exact: true }).click(); await expect(drafts(page)).toHaveCount(1) }
+    if (name !== '超限文件.pdf') { await failure.hover(); await failure.getByRole('button', { name: `移除材料 ${name}`, exact: true }).click(); await expect(drafts(page)).toHaveCount(1) }
   }
 })
 Then('每份失败都有明确原因且其他原文和正文草稿保持', async ({ runtime, materialsState }) => {
@@ -258,6 +271,7 @@ Then('每份失败都有明确原因且其他原文和正文草稿保持', async
 })
 When('用户移除失败材料并发送保留的有效材料', async ({ runtime, materialsState }) => {
   const fixture = materialsState.fixture!, page = runtime.page
+  await drafts(page).nth(1).hover()
   await drafts(page).nth(1).getByRole('button', { name: '移除材料 超限文件.pdf', exact: true }).click()
   await expect(drafts(page)).toHaveCount(1)
   await expect(page.getByRole('button', { name: '发送消息', exact: true })).toBeEnabled()
