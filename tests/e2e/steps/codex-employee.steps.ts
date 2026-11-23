@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: bobo 新话题沿会话行右键菜单打开。
  * [OUTPUT]: 设置入口沿本人菜单的其他配置二级菜单选择模型连接，原业务断言保持。
  * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
  * [OUTPUT]: 两轮/重启发送沿原可编辑等待，随后直接核contenteditable与aria-disabled均就绪，不增加第二套等待或放宽业务断言。
@@ -31,6 +32,7 @@
  * [POS]: 本机员工桌面 BDD；不替换产品运行时或复制用户登录凭据。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { openBoboTopic } from '../support/bobo-topic'
 import { expect } from '@playwright/test'
 import { addCodexConnection, selectNativeEmployee } from '../support/native-connection'
 import { createBdd } from 'playwright-bdd'
@@ -67,8 +69,7 @@ When('用户在设置添加并测试本机 Codex', async ({ runtime, codexEmploy
 Then('用户将 bobo 配置为本机并组织员工完成真实文件交付', async ({ runtime, codexEmployee }) => {
   const page = runtime.page
   await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).click()
-  await page.getByRole('button', { name: 'bobo 的主聊天', exact: true }).hover()
-  await page.getByRole('button', { name: 'bobo 的更多操作', exact: true }).click()
+  await page.getByRole('button', { name: 'bobo 的主聊天', exact: true }).click({ button: 'right' })
   await page.getByRole('menuitem', { name: '助手设置', exact: true }).click()
   await page.getByRole('combobox', { name: '执行后端', exact: true }).click()
   await expect(page.getByRole('option', { name: '外部 ACP · 仅显式任务', exact: true })).toHaveCount(0)
@@ -79,8 +80,7 @@ Then('用户将 bobo 配置为本机并组织员工完成真实文件交付', as
   await expect.poll(async () => (await page.evaluate(() => window.boai.request('snapshot', undefined))).agents.find(agent => agent.id === 'bobo')?.executionBackend?.kind).toBe('codex-local')
   const configured = await page.evaluate(() => window.boai.request('snapshot', undefined)), core = configured.agents.find(agent => agent.id === 'bobo')!
   expect(configured.connections).toEqual([])
-  await page.getByRole('button', { name: 'bobo 的主聊天', exact: true }).hover()
-  await page.getByRole('button', { name: '与 bobo 新建会话', exact: true }).click()
+  await openBoboTopic(page)
   const request = codexEmployee.real
     ? `请创建一位独立员工“本机新同事”，职责是制作简单文件；建一个有你和他的“本机组织群”，并现在分工让他创建并发布 codex-proof.md，正文为“${codexEmployee.token}”。请在他实际交付后检查文件内容并用一句话确认完成。这是完整组织并执行请求。只有这个简单文件任务，无需研究或联网。员工使用你当前的本机 Codex 运行方式，不用 API 模型。`
     : 'NATIVE_BOBO_EXECUTE 创建一位本机新同事，建群并分工交付文件后汇总。'

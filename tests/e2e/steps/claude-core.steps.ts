@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: bobo 新话题沿会话行右键菜单打开。
  * [OUTPUT]: 真实核心与新员工的私有decision按各自当前来源/模型核对off，原完整交付、账本及重启断言保持。
  * [OUTPUT]: 核心留证保存原turn/event/delivery/decision，判断sourceDecisionRunId沿真实投递定位触发事件；原公告triggerMessageId不冒充后续触发消息，重启核对已提交派发记录。
  * [OUTPUT]: 保留原场景错误及退出前状态/画面；正常关闭并核对本场实际进程退出后，再读取最终SQLite与严格导出固定hash原件。
@@ -11,6 +12,7 @@
  * [POS]: Claude核心产品BDD，不替代自动化或完整故障矩阵。
  * [PROTOCOL]: 一旦本文件变化，必须同步Header与所属.folder.md。
  */
+import { openBoboTopic } from '../support/bobo-topic'
 import { expect } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 import { createHash } from 'node:crypto'
@@ -34,8 +36,7 @@ Then('用户通过Claude核心助手完成{string}并在重启后核对原结果
   const before = await page.evaluate(() => window.boai.request('snapshot', undefined))
   const existing = before.agents.find(a => a.id === state.employeeId)!
   await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).click()
-  await page.getByRole('button', { name: 'bobo 的主聊天', exact: true }).hover()
-  await page.getByRole('button', { name: 'bobo 的更多操作', exact: true }).click()
+  await page.getByRole('button', { name: 'bobo 的主聊天', exact: true }).click({ button: 'right' })
   await page.getByRole('menuitem', { name: '助手设置', exact: true }).click()
   await page.getByRole('combobox', { name: '执行后端', exact: true }).click()
   await expect(page.getByRole('option', { name: '外部 ACP · 仅显式任务', exact: true })).toHaveCount(0)
@@ -63,8 +64,7 @@ Then('用户通过Claude核心助手完成{string}并在重启后核对原结果
     await runtime.reviewNativeCheckpoint('原两项团队表单保持用户指定名称')
     await page.getByRole('button', { name: '生成', exact: true }).click()
   } else {
-    await page.getByRole('button', { name: 'bobo 的主聊天', exact: true }).hover()
-    await page.getByRole('button', { name: '与 bobo 新建会话', exact: true }).click()
+    await openBoboTopic(page)
     await page.getByRole('textbox', { name: '消息内容', exact: true }).fill(request)
     await verifyLocalAgentNavigation(runtime, { employeeId: core.id, label: 'Claude核心空白页' })
     await page.getByRole('button', { name: '发送消息', exact: true }).click()

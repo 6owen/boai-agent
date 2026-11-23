@@ -1,10 +1,12 @@
 /*
+ * [OUTPUT]: bobo 新话题沿会话行右键菜单打开。
  * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
  * [INPUT]: 原Claude创建、核心组织工具、48共享预算、实际子文件与明确离线负责人屏障。
  * [OUTPUT]: 活动核心从原底部正常/受理前后未知职责保存，未受理不取消，受理后按原服务取消实际执行；子成果/组织身份/原期限保持，两次重启零重放，仅明确新消息执行。
  * [POS]: Claude活动核心配置保存的离线BDD，不代替真实模型、组织树故障或原生关闭验证。
  * [PROTOCOL]: 一旦本文件变化，必须同步Header与所属.folder.md。
  */
+import { openBoboTopic } from '../support/bobo-topic'
 import { expect } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 import { createHash } from 'node:crypto'
@@ -48,8 +50,7 @@ Then('活动Claude核心组织从底部{string}后保留子成果且两次重启
   try {
     const initial = await snapshot(), employee = initial.agents.find(a => a.id === state.employeeId)!
     await runtime.page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).click()
-    await runtime.page.getByRole('button', { name: 'bobo 的主聊天', exact: true }).hover()
-    await runtime.page.getByRole('button', { name: 'bobo 的更多操作', exact: true }).click()
+    await runtime.page.getByRole('button', { name: 'bobo 的主聊天', exact: true }).click({ button: 'right' })
     await runtime.page.getByRole('menuitem', { name: '助手设置', exact: true }).click()
     await editor().getByRole('combobox', { name: '执行后端', exact: true }).click()
     await runtime.page.getByRole('option', { name: '本机 Claude · 聊天与协作', exact: true }).click()
@@ -61,8 +62,7 @@ Then('活动Claude核心组织从底部{string}后保留子成果且两次重启
     expect(configured).toMatchObject({ systemRole: 'core', active: true, allowCommands: false, connectionId: state.connectionId })
     // Only this explicit offline scenario enables the original protocol's hold after real child delivery.
     await writeFile(markers[0], 'offline-active-core-config-save')
-    await runtime.page.getByRole('button', { name: 'bobo 的主聊天', exact: true }).hover()
-    await runtime.page.getByRole('button', { name: '与 bobo 新建会话', exact: true }).click()
+    await openBoboTopic(runtime.page)
     const request = 'CLAUDE_BOBO_EXECUTE empty-memory 创建一名同事，组织群并实际分工交付。'
     await runtime.page.getByRole('textbox', { name: '消息内容', exact: true }).fill(request)
     await runtime.page.getByRole('button', { name: '发送消息', exact: true }).click()
@@ -173,8 +173,7 @@ Then('活动Claude核心组织从底部{string}后保留子成果且两次重启
       expect(await core()).toEqual(saved)
       await runtime.reviewData(`活动核心保存第${restart}次受控重启零重放`, { restart, records: await records() })
     }
-    await runtime.page.getByRole('button', { name: 'bobo 的主聊天', exact: true }).hover()
-    await runtime.page.getByRole('button', { name: '与 bobo 新建会话', exact: true }).click()
+    await openBoboTopic(runtime.page)
     const explicit = 'empty-memory 这是两次重启后明确发送的新普通交流，不执行工具，不继续之前的组织工作。'
     await runtime.page.getByRole('textbox', { name: '消息内容', exact: true }).fill(explicit)
     expect(await records()).toEqual(settled)

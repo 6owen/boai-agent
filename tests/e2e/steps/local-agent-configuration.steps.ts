@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: bobo 新话题沿会话行右键菜单打开。
  * [OUTPUT]: 设置入口沿本人菜单的其他配置二级菜单选择模型连接，原业务断言保持。
  * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
  * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
@@ -14,6 +15,7 @@
  * [POS]: 本机底部配置保存BDD；故障只作用于本场IPC答复，不替换员工保存、模型或业务事务。
  * [PROTOCOL]: 一旦本文件变化，必须同步Header与所属.folder.md。
  */
+import { openBoboTopic } from '../support/bobo-topic'
 import { expect, type Page } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 import { createHash, randomUUID } from 'node:crypto'
@@ -65,8 +67,7 @@ Then('本机核心助手未知保存保持首发草稿并在两次重启后只�
   const kind = employee.executionBackend!.kind, real = test.info().annotations.some(a => a.type === 'model-mode' && a.description === 'real-provider')
   const core = async () => (await snapshot()).agents.find(a => a.id === 'bobo')!
   await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).click()
-  await page.getByRole('button', { name: 'bobo 的主聊天', exact: true }).hover()
-  await page.getByRole('button', { name: 'bobo 的更多操作', exact: true }).click()
+  await page.getByRole('button', { name: 'bobo 的主聊天', exact: true }).click({ button: 'right' })
   await page.getByRole('menuitem', { name: '助手设置', exact: true }).click()
   await page.getByRole('combobox', { name: '执行后端', exact: true }).click()
   await expect(page.getByRole('option', { name: '外部 ACP · 仅显式任务', exact: true })).toHaveCount(0)
@@ -83,8 +84,7 @@ Then('本机核心助手未知保存保持首发草稿并在两次重启后只�
   const editor = () => page.locator('.detail-content:visible')
   const blank = async () => {
     await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).click()
-    await page.getByRole('button', { name: 'bobo 的主聊天', exact: true }).hover()
-    await page.getByRole('button', { name: '与 bobo 新建会话', exact: true }).click()
+    await openBoboTopic(page)
     await page.getByRole('textbox', { name: '消息内容', exact: true }).fill(draft)
   }
   const open = async () => {

@@ -7,7 +7,7 @@
  * [OUTPUT]: 群组侧栏直达原会话，话题展开只出现在员工行。
  * [OUTPUT]: 收起所选话题时，归属提示留在员工行，返回主聊天时恢复主聊天选中状态。
  * [INPUT]: 生产ConversationList/清理确认弹窗、隔离快照与清理回调。
- * [OUTPUT]: 核心助手右键菜单新增/设置入口及无渠道入口；批量确认固定完整核心分组、不受搜索影响，删除/清空标记、失败停止/继续和空分组禁用回归。
+ * [OUTPUT]: 核心助手行无悬停新话题按钮，右键菜单提供新增/设置及批量操作；搜索范围、删除/清空、失败停止/继续和空分组禁用回归。
  * [POS]: 会话列表前端交互回归，不读取用户数据、不运行Electron或E2E。
  * [PROTOCOL]: 修改同步Header与tests/.folder.md。
  */
@@ -52,8 +52,10 @@ it('opens the selected employee configuration from its conversation context menu
   expect(props.onSelect).not.toHaveBeenCalled()
 })
 
-it('offers create and settings on the Bobo row without a channel entry', async () => {
-  await render(); await openMenu()
+it('opens new topics and settings from the Bobo context menu without an inline compose button', async () => {
+  await render()
+  expect(host.querySelector('button[aria-label="与 Bobo 新建会话"]')).toBeNull()
+  await openMenu()
   expect([...document.querySelectorAll('[role="menuitem"]')].map(item => item.textContent)).toEqual(['新话题', '助手设置', '清空所有记录', '删除所有会话'])
   await choose('新话题')
   expect(props.onCreateCore).toHaveBeenCalledTimes(1)

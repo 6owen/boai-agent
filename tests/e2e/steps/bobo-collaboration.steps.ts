@@ -1,10 +1,12 @@
 /*
+ * [OUTPUT]: bobo 新话题沿会话行右键菜单打开。
  * [OUTPUT]: 当前无限预算/contenteditable/Sonner合同，保留组织故障注入命中及原对象幂等断言。
  * [INPUT]: BC 业务中文场景、原生产 core/组织/群调度、真实 SQLite 与独立员工成果。
  * [OUTPUT]: 讨论零副作用、已有人/缺员/仅员工、原页入口、恢复核对、同预算/实际依赖交付和清理生命周期；重启不重放。
  * [POS]: 第12组 Electron 验收步骤；只控制本地模型协议与回执传输，不替代组织/任务/文件事务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { openBoboTopic } from '../support/bobo-topic'
 import { expect } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 import { readFile, writeFile } from 'node:fs/promises'
@@ -29,8 +31,7 @@ export const test = base.extend<{ boboCollaboration: State }>({ boboCollaboratio
 const { Given, When, Then } = createBdd(test)
 const fixtureOf = (state: State) => state.fixture!
 async function start(runtime: Desktop, state: State, content: string) {
-  await runtime.page.getByRole('button', { name: 'bobo 的主聊天', exact: true }).hover()
-  await runtime.page.getByRole('button', { name: '与 bobo 新建会话', exact: true }).click()
+  await openBoboTopic(runtime.page)
   const composer = runtime.page.getByRole('textbox', { name: '消息内容', exact: true })
   await composer.fill(content); await composer.press('Enter')
   await expect.poll(async () => (await runtime.page.evaluate(() => window.boai.request('snapshot', undefined))).conversations.filter(conversation => conversation.purpose === 'core').length).toBe(1)
