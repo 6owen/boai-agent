@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 用户手动改名同时撤销待生成标题。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: 内部讨论不加入主列表或渠道列表，员工和原外部房间身份保持。
  * [OUTPUT]: 2026-10-14现行分离合同：BOAI主列表每员工一个入口，渠道私聊/群归员工页面；排序、隐藏与核心历史边界保持。
@@ -77,7 +78,8 @@ export function conversationListUpdates(conversations: Conversation[], change: C
     if (!isCoreConversation(item) && item.employeeChat !== 'topic') throw new Error('仅核心助手会话和独立话题可编辑标题')
     const title = change.title.trim()
     if (!title || title.length > CONVERSATION_TITLE_MAX_LENGTH) throw new Error(`会话标题应为 1–${CONVERSATION_TITLE_MAX_LENGTH} 个字符`)
-    return [{ ...item, title }]
+    const { pendingTitleMessageId: _pendingTitle, ...current } = item
+    return [{ ...current, title }]
   }
   if (change.action === 'pin') return putFirst(change.pinned)
   const target = visible.find(item => item.id === change.targetId)

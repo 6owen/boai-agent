@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 真实 Mastra 标题 API 使用选定模型和首轮文字，无工具且仅一次请求。
  * [OUTPUT]: 实际SDK顺序群发言即使宿主提供管理能力也不广告或调用工具。
  * [OUTPUT]: 真实SDK及native工具桥先发现/读取插件技能源，再调用桌面工具。
  * [OUTPUT]: 新增Agent Desktop可选贡献及API/native共享工具真实SDK验证。
@@ -159,6 +160,29 @@ function redirectDeepSeekTo(url: string) {
 }
 
 describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => {
+  it('generates a conversation title with the selected model and first exchange in one tool-free request', async () => {
+    const model = await endpoint((_body, response) => {
+      response.writeHead(200, { 'Content-Type': 'application/json' })
+      response.end(JSON.stringify({
+        id: 'title-response', model: 'employee-model', created: 1700000000,
+        choices: [{ index: 0, message: { role: 'assistant', content: '员工入职清单' }, finish_reason: 'stop' }],
+        usage: { prompt_tokens: 20, completion_tokens: 5, total_tokens: 25 },
+      }))
+    })
+    const title = await new MastraEngine().generateConversationTitle({
+      connection: connection(model.url), apiKey: 'fixture-secret', modelId: 'employee-model',
+      signal: new AbortController().signal,
+      messages: [{ role: 'user', content: '帮我准备入职资料' }, { role: 'assistant', content: '整理三个入职事项' }],
+    })
+    expect(title).toBe('员工入职清单')
+    expect(model.requests).toHaveLength(1)
+    expect(model.requests[0].model).toBe('employee-model')
+    expect(model.requests[0].max_tokens ?? model.requests[0].max_completion_tokens).toBe(256)
+    expect(model.requests[0].tools ?? []).toEqual([])
+    expect(allMessageText(model.requests[0])).toContain('帮我准备入职资料')
+    expect(allMessageText(model.requests[0])).toContain('整理三个入职事项')
+  })
+
   it('projects host-authorized bobo history into the actual Mastra request and prunes stale sources', async () => {
     const model = await endpoint(['第一轮答复。', '第二轮答复。'])
     const f = await context(model.url, { responseKind: 'chat', agent: employee({ id: 'bobo', systemRole: 'core' }),
