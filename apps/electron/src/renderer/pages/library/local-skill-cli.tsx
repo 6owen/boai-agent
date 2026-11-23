@@ -124,7 +124,7 @@ export function LocalSkillUpdate({ id, slug, updates, row }: {
     if (row && available) void updates.execute({ action: 'update', id })
     else if (!row && !current && !available) check()
   }}>
-    <PopoverTrigger render={<Button variant="ghost" size={row ? 'icon-xs' : 'icon-sm'} className={row ? 'skill-row-update text-primary enabled:hover:bg-primary/10 enabled:focus-visible:bg-primary/10' : undefined}
+    <PopoverTrigger render={<Button variant="ghost" size={row ? 'icon-xs' : 'icon-sm'} className={row ? 'skill-row-update border-4 border-transparent bg-clip-padding text-primary enabled:hover:bg-primary/10 enabled:focus-visible:bg-primary/10' : undefined}
       disabled={!!row && updates.busy && !busy} aria-label={label} title={label} aria-busy={busy} />}>
       {busy ? <LoaderCircle className="spinner" /> : row ? <i aria-hidden="true" className="app-icon i-solar-rocket-outline size-[10px]" /> : available ? <SkillUpdateIcon /> : <RefreshCw />}
     </PopoverTrigger>
