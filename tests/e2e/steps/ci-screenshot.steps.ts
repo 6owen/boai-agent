@@ -1,4 +1,8 @@
-/* [OUTPUT]: 两种截图复用隔离桌面，每种各输出一张 PNG。 */
+/*
+ * [INPUT]: 隔离桌面与 CI 选定的导航、悬停及可见元素。
+ * [OUTPUT]: 截取目标状态和独立主界面各一张 PNG。
+ * [PROTOCOL]: 变化同步 Header、所属 .folder.md 和 UI_TEST_CI.md。
+ */
 import { mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { expect, type Page } from '@playwright/test'
@@ -23,13 +27,17 @@ Then('启动隔离应用并保存一张主界面截图', async ({ runtime }) => 
 })
 
 Then('打开本次 PR 的目标并保存一张截图', async ({ runtime }) => {
-  const target: { clicks: string[]; visible: string } = JSON.parse(
+  const target: { clicks: string[]; hover?: string; visible: string } = JSON.parse(
     process.env.BOAI_SCREENSHOT_TARGET || '{"clicks":[],"visible":"nav[aria-label=主导航]"}',
   )
   await prepareGroupChat(runtime, { seedBeforeLaunch: true, emulateViewport: false,
     seedAdditional: (store, setup) => seedScheduleUi(store, setup.direct.id),
   })
   for (const selector of target.clicks) await runtime.page.locator(selector).click()
-  await expect(runtime.page.locator(target.visible)).toBeVisible()
+  if (target.hover) await runtime.page.locator(target.hover).hover()
+  const visible = runtime.page.locator(target.visible)
+  await expect(visible).toBeVisible()
+  if (!target.hover) await visible.scrollIntoViewIfNeeded()
+  await expect(visible).toBeInViewport()
   await capture(runtime.page, 'preview.png')
 })

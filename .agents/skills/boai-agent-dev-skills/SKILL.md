@@ -3,6 +3,7 @@ name: boai-agent-dev-skills
 description: BOAI Agent 项目的开发与交付统一入口。处理 dev/build、验证、打包安装、bumpp 升版本、tag/GitHub Release、git cp/cpf、worktree 管理及相关命令解释时使用，按当前源码核对命令和执行范围。
 ---
 <!--
+[OUTPUT]: test:changed 按 Git 变更选择本地 Vitest；开发 Agent 在 UI PR 正文指定受影响的界面状态。
 [OUTPUT]: 每个 UI PR 回填改动页面和全局主界面各一张截图，云端全量 Vitest 仅在 release 的 main 验证中执行。
 [OUTPUT]: 2026-11-17小改动按影响验证，普通PR交付不默认等待CI；实际分流归boai-dev-workflow与test-ci-plan。
 [OUTPUT]: 2026-11-16开发检出需初始化固定版本avatar-motion子模块，之后沿原pnpm安装/构建。
@@ -22,7 +23,7 @@ description: BOAI Agent 项目的开发与交付统一入口。处理 dev/build�
 核对当前仓库、分支、改动、remote、worktrees及相关进程；交付前fetch并读取 `origin/main` 的最新流程。按需读取：
 
 - [命令与操作说明](references/commands.md)：环境、启动、构建、验证、打包、升版、源码发布和安装。
-- [Git/CI与worktree细则](../boai-dev-workflow/SKILL.md)：分支、PR、Magpie Test、DeepSeek UI preview、`git cp` / `git cpf`及回收。
+- [Git/CI与worktree细则](../boai-dev-workflow/SKILL.md)：分支、PR、按 Git 变更选测、BDD 截图、`git cp` / `git cpf`及回收。
 - [本机发布细则](../boai-release/SKILL.md)：候选、正式安装包、Sparkle及安装版更新。
 - [业务评估](../boai-evals/SKILL.md)：用户要求真实业务eval时读取，普通开发不自动开展模型评估。
 
@@ -36,6 +37,7 @@ description: BOAI Agent 项目的开发与交付统一入口。处理 dev/build�
 | 设计系统预览 | `pnpm dev:design` | 启动独立设计文档站 |
 | CLI开发 | `pnpm dev:cli` / `pnpm dev:cli:client` | 构建对应CLI范围并执行；无参数显示帮助 |
 | 编译应用 | `pnpm build` | 默认构建Electron应用闭包，生成dist等编译产物 |
+| 本地变更回归 | `pnpm test:changed --list` / `pnpm test:changed` | 列出或运行当前改动关联的 Vitest |
 | 自用安装包 | `pnpm release:build` | 生成本机arm64 DMG和ZIP候选 |
 | 升应用版本 | `pnpm release:version` / `pnpm release:version patch` | bumpp更新应用version及buildVersion |
 | 正式安装包发布 | `pnpm release:local --publish` | 校验main/Test、构建、产物冒烟、签名更新资产、tag和GitHub Release |
@@ -83,7 +85,7 @@ Git tag、GitHub Release和DMG/ZIP是不同产物。bumpp支持Git提交/tag/推
 
 用户明确“不检查测试”“不跑E2E”或“不抢焦点”时遵守本次范围；不要因为本技能列出了验证命令就自动执行。其他情况按修改选择对应检查；界面预览、工程检查、真实业务验收和个人安装使用分别报告。当前CI实际定义见 `.github/workflows/test.yml` 与 `ui-preview.yml`；保留的本机CI和旧截图基准工具不是默认启动项。
 
-小样式本地按影响选择检查。普通 PR 在 Linux 运行类型和 lint，文档只检查 diff。UI PR 一次构建后运行两个 Playwright-BDD 场景，将本次改动页面和全局主界面的两张 PNG 一起写回正文。合并 main 后不复跑。准备正式 release 时由 Agent 在 main 触发完整 Test，运行全量 Vitest，并保存一张全局启动截图供审阅。 [执行细则](../boai-dev-workflow/SKILL.md)。
+本地用 `pnpm test:changed` 按 Git 变更选测，必要时补跑静态依赖无法发现的相关测试。普通 PR 在 Linux 运行类型和 lint，文档只检查 diff。开发 Agent 从 PR diff 确定目标并在正文登记 `boai-screenshot`。UI PR 一次构建后运行两个 Playwright-BDD 场景，把目标状态和全局主界面各一张 PNG 写回正文。合并 main 后不复跑。准备正式 release 时由 Agent 在 main 触发完整 Test，运行全量 Vitest，并保存一张全局启动截图供审阅。[执行细则](../boai-dev-workflow/SKILL.md)。
 
 普通交付按Git/CI细则走PR；只有本次授权包含 `git cpf` 或跳过CI直接合并时，才使用其管理员例外并核对保护恢复。只暂存任务文件，使用 `git add -- <路径>`。
 

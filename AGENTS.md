@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-11-23本地Vitest按Git变更选测，开发Agent从PR diff登记截图目标，资源库分类和悬停状态接线。
 [OUTPUT]: 2026-11-19员工行续接固定主聊天并可显式开启独立话题，旧bobo历史原位兼容；归29组01/03。
 [OUTPUT]: 每个 UI PR 回填改动页面和全局主界面各一张截图，云端全量 Vitest 仅在 release 的 main 验证中执行。
 [OUTPUT]: 2026-11-17开发验证按实际影响分层；PR文档/前端/完整Test分流，小样式不默认全量本地验证或阻塞等CI。
@@ -697,6 +698,7 @@
 - 用户明确要求执行 `git cpf` 或本次跳过CI直接合并时，可按[UI_TEST_CI.md](UI_TEST_CI.md)的显式快速合并入口执行。命令只提交已暂存文件、不强推main，必要时临时解除管理员强制检查并在结束时恢复；普通 `git cp` 和默认开发不自动使用此例外。合并不等于测试通过、应用重启或部署。
 
 - 普通 PR 在 Linux 运行类型和 lint，文档只检查 diff。UI PR 一次构建后运行两个 Playwright-BDD 场景，将本次改动页面和全局主界面的两张 PNG 一起写回正文。合并 main 后不复跑。准备正式 release 时由 Agent 在 main 触发完整 Test，运行全量 Vitest，并保存一张全局启动截图供审阅。 具体命令见 [UI_TEST_CI.md](UI_TEST_CI.md)。
+- 本地需要 Vitest 时使用 `pnpm test:changed` 按 Git 变更选测，静态依赖图漏掉的关联用例由 Agent 补跑。创建或更新 UI PR 时，Agent 从完整 diff 核对并在正文登记实际截图目标。详见 [BOAI 开发技能](.agents/skills/boai-dev-workflow/SKILL.md)。
 - 普通授权交付提交/推送、按范围设置自动合并并读回一次状态后报告，不轮询等待CI、main复跑或UI preview；只有本次要求等通过、等合并或处理CI失败才持续跟进。UI preview随UI PR自动异步发布实际媒体；同head即使已合并也继续补发并保留媒体，不作为合并或审美门禁。当前结果未出就标运行中，不把自动合并已启用写成已合并。
 - 开发使用独立worktree，交付按本次用户授权；明确只修改/执行试验时不合并。旧UI工具和历史结果保留为本地按需入口。
 - 在本仓库开发、交付、CI或合并前，读取共享技能[boai-dev-workflow](.agents/skills/boai-dev-workflow/SKILL.md)，并fetch/read origin/main最新版本；旧worktree/Session也必须重新读取。本分支修订和最新用户指令优先核对。当前详细合同见第22组06。

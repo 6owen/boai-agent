@@ -1,9 +1,9 @@
-<!-- [OUTPUT]: 当前 PR 和 release 的命令、检查范围与截图。 -->
+<!-- [OUTPUT]: 本地按 Git 变更选测、PR 截图目标及完整发布检查。 -->
 # BOAI 开发与 CI
 
 | 事件 | Agent / GitHub 执行 | 等待条件 |
 | --- | --- | --- |
-| 本地开发 | 在独立 worktree 改动，按实际风险选择模块或组件测试。纯样式查看 diff 和必要效果 | 提交本次文件 |
+| 本地开发 | 在独立 worktree 改动。需要 Vitest 时用 `pnpm test:changed` 跑改动关联的测试，按实际影响补测 | 提交本次文件 |
 | 创建或更新 PR | Agent push 后创建 PR，后续 push 更新同一 PR。Test 执行 diff 检查，代码 PR 加 typecheck 和 lint | 合并门禁为 Required checks |
 | UI PR 预览 | GitHub 自动构建该 PR 的 Electron，在同一 macOS job 运行两个隔离的 Playwright-BDD 场景。PR 正文展示改动页面和全局主界面各一张 PNG | 异步。若先合并，仍向同一提交的 PR 补图 |
 | 合并 main | GitHub 按分支保护合并 | main push 不重复启动 Test |
@@ -12,15 +12,21 @@
 
 普通 PR 和合并 main 不运行全量 Vitest。`ci:full` 标签不会扩大 PR 范围。云端截图无需模型、视频、基准图更新或用户点击 Run。固定三项行为仍可在需要时本地用 `pnpm test:ui:behavior` 验证。
 
+## 本地按变更选测
+
+本地开发先用 `pnpm test:changed --list` 看测试范围，再用 `pnpm test:changed` 执行。默认 Git 基准是与 `origin/main` 的共同提交，计入分支提交、已暂存及工作区改动。可传目标引用覆盖默认值。静态依赖图查不到的 CSS、字符串源码合同和动态引用测试由开发 Agent 定向补选，空选测不计为测试通过。
+
 ## PR 截图目标
 
-CI 根据变动路径选取页面。已登记的执行记录弹窗会自动打开并等待弹窗出现。共享样式默认展示应用主界面。若需求涉及更具体的状态，Agent 在初次创建 PR 的正文内加入一行定位说明；后续正常推送也会重新读取。例：
+CI 从 PR 获取改动文件。资源库目录自动打开资源库，已识别的提示词、数据源、应用和助手文件会再进入对应分类，分类显示菜单文件会打开菜单。共享样式等没有页面归属的文件默认拍主界面。
+
+开发 Agent 根据 PR diff 核实控件和界面状态，在 PR 正文加入 `boai-screenshot` 定位。入口、弹窗、抽屉或悬停样式需要定位到实际受影响的控件。在更新已有 UI PR 时应先更新定位再推送。下面的定位会打开资源库分类菜单并等「技能」选项出现。
 
 ```html
-<!-- boai-screenshot {"clicks": ["role=button[name=\"定时任务\"]", "role=button[name=\"定时任务选项\"]", "role=menuitem[name=\"执行记录\"]"], "visible": "role=dialog >> role=textbox[name=\"搜索执行记录\"]"} -->
+<!-- boai-screenshot {"clicks":["role=button[name=\"资源库\"]","role=button[name=\"显示资源库分类\"]"],"visible":"role=menuitemcheckbox[name=\"技能\"]"} -->
 ```
 
-`clicks` 是 Playwright 定位器序列，`visible` 是截图时必须出现的元素。目标打不开会显示失败。Agent 递交截图时核对实际图片。仅编辑 PR 正文不会触发录制，需要重截时由 Agent 运行 `gh workflow run ui-preview.yml --ref main -f pr=<编号>`。保存正文时保留自动预览区块。
+`clicks` 是打开目标的点击序列，`hover` 可指定点击之后需要悬停的元素，`visible` 指定截图时必须出现在窗口里的元素。截图覆盖应用窗口，每个 UI PR 各拍一张目标状态和全局主界面。目标无法打开或没有出现在窗口内时，预览报告失败。Agent 递交截图时核对实际图片。仅编辑 PR 正文不会触发截图，需要补拍时由 Agent 运行 `gh workflow run ui-preview.yml --ref main -f pr=<编号>`。保存正文时保留自动预览区块。
 
 ## Git交付与回收
 

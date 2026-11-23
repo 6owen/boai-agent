@@ -3,6 +3,7 @@ name: boai-dev-workflow
 description: BOAI 日常开发、样式调整、Bug 修复和 PR 交付。按实际改动选择最小有效验证，使用分范围 CI，避免小改动触发本地全量测试或阻塞等待。
 ---
 <!--
+[OUTPUT]: 本地 Vitest 按 Git 变更选测；UI PR 由开发 Agent 写入实际截图目标，支持悬停状态。
 [OUTPUT]: 2026-11-18 UI PR创建/更新自动截图与适用录屏，合并后同SHA继续补发；Agent接续，无需用户点Run。
 [OUTPUT]: 2026-11-17按改动分层验证；前端PR运行相关测试，main保留全量；普通交付不阻塞等CI。
 [OUTPUT]: 2026-11-13 Test固定三项UI行为；预览按实际完成度和当前SHA发布，部分结果保持失败。
@@ -38,7 +39,8 @@ description: BOAI 日常开发、样式调整、Bug 修复和 PR 交付。按实
 
 - 开始时核对用户要求、分支、status、remote、worktree；在独立功能worktree修改。main只同步实际合并提交，保留其他任务及未提交数据。
 - 需要运行代码才初始化子模块并安装独立依赖树：`git submodule update --init --recursive`、`pnpm install --frozen-lockfile --prefer-offline`。有效依赖直接复用；不把整个node_modules链接到另一worktree。纯文档不安装。
-- 组件/模块回归用 `pnpm exec vitest run <相关测试文件>`。先核对构建前提：依赖dist的测试须先构建；不能因为某条CLI需要build就把所有小改动都升级为完整应用构建。
+- 产品代码需要 Vitest 时，先运行 `pnpm test:changed --list` 确认选中的文件，再运行 `pnpm test:changed`。默认对比与 `origin/main` 的共同祖先，计入已提交、暂存和未暂存的改动，包括新文件。PR 目标分支不同则传对应基准引用。纯文档按上表检查。
+- 测试通过静态依赖关联。若样式、字符串读源码、动态加载或共享配置的测试漏选，用 `pnpm exec vitest run <相关测试文件>` 补跑并记录。选测为空要写清楚实际未执行；依赖 dist 的用例按对应构建前提准备。
 - 需要确认页面效果时，复用本任务已有预览或定向组件预览，截取受影响状态并实际看图。动画/连续交互按需短录屏；不为一个间距变化启动完整桌面流程、调用真实模型或反复录制无关页面。没有实际截图就不要声称看过效果。
 - BDD沿 `tests/e2e/features/`、`steps/`、`support/`，先生成再按标签/场景名选场，`--list`核对范围；不手改 `.features-gen/` 或新增平行 `.spec.ts`。不默认运行覆盖整个桌面的 `pnpm test:electron`。
 - 确需启动独立应用时用 `BOAI_DATA_DIR="$PWD/.local/dev-profile" BOAI_DEV_PORT=0 pnpm dev`，不接管个人应用或其他会话进程；`pnpm dev`是按需工具。
@@ -54,7 +56,8 @@ description: BOAI 日常开发、样式调整、Bug 修复和 PR 交付。按实
 - 按本次授权创建/更新同一PR，标题和正文围绕最终问题与结果，列出实际验证及未验范围。CI尚未结束就写“运行中”，不能用上次提交的结果冒充当前结果。
 - 当前 `Test` 随PR事件或Agent命令触发。普通PR在Linux上做类型/lint（文档仅差异检查），不运行应用build、Vitest或Electron。main合并后不再重复Test；后端/依赖/CI改动也不自动升级为全量。相关Vitest/BDD由本地Agent按本次影响选择，不机械复制到云端重复执行。
 - `Required checks` 汇总工程 Test。UI PR 创建、重开或推送后共用一次构建，自动将改动页面和全局主界面两张 PNG 写回当前提交的 PR 正文。全局截图和 PR 截图均不做像素比较。
-- Agent 创建 UI PR 时，若改动位于弹窗、抽屉或二级页面，用 [截图目标说明](../../../UI_TEST_CI.md#pr-截图目标) 指定导航和可见元素。UI 文件自动触发；路径漏检时由 Agent 执行 `gh workflow run ui-preview.yml --ref main -f pr=<编号>` 补录。
+- 开发 Agent 根据本次 PR 的完整 diff 确定 UI 截图目标，并在创建 PR 时写入 `boai-screenshot`。更新 UI PR 时先核对并更新该定位，再推送新提交。用页面源码或已有 BDD 核实定位器。在共享 CSS、弹窗、抽屉、二级页或悬停状态，指定实际影响的组件或内容，并给出让它可见的点击与悬停步骤。多个区域改动时选最能说明本次改动的状态。见 [截图目标说明](../../../UI_TEST_CI.md#pr-截图目标)。
+- UI 文件自动触发截图。只修改正文定位或路径漏检时，由 Agent 执行 `gh workflow run ui-preview.yml --ref main -f pr=<编号>` 补拍。若目标未拍到，依据日志和源码校正定位；已有隔离夹具无法呈现目标时，在 PR 记录具体限制。
 - 预览按当前head核对源码与媒体；即使PR先自动合并，也继续补发同一head的结果，已有PR媒体继续保留。正文更新保留 `<!-- boai-ui-preview:begin -->` 与 `<!-- boai-ui-preview:end -->` 自动区块。运行中如实说明截图待生成；失败写回原因，不能把触发成功称为已有截图或视觉质量通过。
 - **普通交付：提交/推送、按授权设置自动合并、读回一次PR状态，然后报告并结束本轮；不轮询二十分钟，不等main复跑或UI preview。** 这不等于取消CI或已经合并。只有用户要求“等到通过/合并”“处理CI失败”时才持续跟进；此时先读失败日志，再定向修复同一PR。
 - 云端全量 Vitest 只随正式 release 的 main 验证运行，PR 标签不会升级测试范围。新场景按实际业务风险本地定向验证。

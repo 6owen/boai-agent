@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 开发验证提供 test:changed；UI PR 由开发 Agent 指定实际截图状态。
 [OUTPUT]: 每个 UI PR 回填改动页面和全局主界面各一张截图，云端全量 Vitest 仅在 release 的 main 验证中执行。
 [OUTPUT]: 2026-11-17开发交付按影响验证，PR分范围Test及非阻塞交付说明见UI_TEST_CI。
 [OUTPUT]: 2026-11-16按用户补充暂停语音输入：注释插件注册和设置入口，隐藏菜单/插件/快捷键，旧配置不激活；64项定向及类型/lint/构建通过，生效与交付归本批实施记录。
@@ -156,7 +157,7 @@ ai-docs/             设计、规格与实施记录
 
 </details>
 
-当前 CI 流程见 [UI_TEST_CI.md](UI_TEST_CI.md)。普通 PR 在 Linux 运行类型和 lint，文档只检查 diff。UI PR 一次构建后运行两个 Playwright-BDD 场景，将本次改动页面和全局主界面的两张 PNG 一起写回正文。合并 main 后不复跑。准备正式 release 时由 Agent 在 main 触发完整 Test，运行全量 Vitest，并保存一张全局启动截图供审阅。
+本地用 `pnpm test:changed` 按 Git 变更运行相关 Vitest。普通 PR 在 Linux 运行类型和 lint，文档只检查 diff。开发 Agent 从 UI PR diff 指定目标，CI 运行两个 Playwright-BDD 场景，把目标状态与全局主界面的两张 PNG 写回正文。正式 release 在 main 手动触发完整 Test。详见 [UI 测试与 CI 用法](UI_TEST_CI.md)。
 
 官方文件浏览器：`@boai/file-explorer-plugin` 提供员工工作区与授权目录的文件树和预览，沿插件设置启停；目录边界与实际验证见[第19组18](ai-docs/spec/19.应用插件架构/18-文件浏览器插件与目录入口.md)。
 

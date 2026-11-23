@@ -1,5 +1,5 @@
 <!--
-[OUTPUT]: 每个 UI PR 回填改动页面和全局主界面各一张截图，云端全量 Vitest 仅在 release 的 main 验证中执行。
+[OUTPUT]: 本地按 Git 变更运行 Vitest，UI PR 回填目标状态和全局主界面截图。
 [OUTPUT]: 2026-11-17本地按影响验证；PR Test分文档/前端/完整，普通交付不等待CI。
 [OUTPUT]: 2026-11-16开发检出需初始化固定版本avatar-motion子模块，之后沿原pnpm安装/构建。
 [OUTPUT]: 2026-11-13 test:ui:behavior在构建后验证固定三项UI行为，输出报告/截图/trace并接入Test。
@@ -68,6 +68,7 @@ renderer由Vite处理热更新；`dev.mjs`在启动时构建宿主，没有主�
 | --- | --- |
 | `pnpm typecheck` | workspace边界、设计包准备和TypeScript检查 |
 | `pnpm lint:ui` | 现有UI ESLint范围及typography检查 |
+| `pnpm test:changed [基准引用] [--list]` | 从与目标分支的共同提交开始选测，覆盖分支提交和未提交改动。默认目标为 `origin/main`；加 `--list` 只列测试文件 |
 | `pnpm test tests/<目标文件>.test.ts` | 先准备设计包，再让Vitest过滤对应测试文件 |
 | `pnpm test` | 完整Vitest，不默认用于每次小修改 |
 | `pnpm check:workspace` | workspace依赖边界检查 |
@@ -77,7 +78,7 @@ renderer由Vite处理热更新；`dev.mjs`在启动时构建宿主，没有主�
 | `pnpm test:ui` / `pnpm test:ui:candidate` / `pnpm test:ui:accept` | 保留的本地截图检查/候选/接受工具，不是当前PR基准门禁；不自行晋升基准 |
 | `pnpm ci:local` / `pnpm ci:watch` | 保留的本机CI工具，当前不作为默认执行或常驻流程 |
 
-按实际影响选择本地验证。普通 PR 在 Linux 运行类型和 lint，文档只检查 diff。UI PR 一次构建后运行两个 Playwright-BDD 场景，将本次改动页面和全局主界面的两张 PNG 一起写回正文。合并 main 后不复跑。准备正式 release 时由 Agent 在 main 触发完整 Test，运行全量 Vitest，并保存一张全局启动截图供审阅。 入口是 `gh workflow run test.yml --ref main`。[CI 说明](../../../../UI_TEST_CI.md)。
+选测依赖 Vitest 的静态依赖图。空列表代表没有匹配用例，按实际影响手选需要的测试，依赖 dist 的用例先执行对应构建。普通 PR 在 Linux 运行类型和 lint，文档只检查 diff。UI PR 根据 Agent 在正文登记的 `boai-screenshot` 和路径规则执行两个 BDD 场景，将目标状态和全局主界面的截图写回。准备正式 release 时运行 `gh workflow run test.yml --ref main` 执行完整 Test。[CI 说明](../../../../UI_TEST_CI.md)。
 
 ## 5. 自用安装包
 
