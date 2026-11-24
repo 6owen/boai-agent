@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 按官方Controller/Session历史与自动OM验证，保留业务权限、来源、取消、真实工具和用量断言。
  * [OUTPUT]: 真实 Mastra 标题 API 使用选定模型和首轮文字，无工具且仅一次请求。
  * [OUTPUT]: 实际SDK顺序群发言即使宿主提供管理能力也不广告或调用工具。
  * [OUTPUT]: 真实SDK及native工具桥先发现/读取插件技能源，再调用桌面工具。
@@ -431,7 +432,12 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
 
   it.each(['referenced','no-reference','host-budget-exhausted'])('runs past former step limits until completion or an explicit host budget: %s',async mode=>{
     const steps = mode === 'no-reference' ? 260 : 13
-    const server=await endpoint([...Array.from({length:steps},()=>({name:'browser_tool',args:{command:'snapshot'}})),'页面操作已核对。'])
+    let primary = 0
+    const isObservation = (body: RequestBody) => body.messages.some(message => message.role === 'system' && JSON.stringify(message.content).includes('You are the memory consciousness'))
+    const server=await endpoint((body, response, index) => {
+      if (isObservation(body)) return send(response, '<observations>\n- 🔴 Completed browser snapshots. Continue the remaining requested work.\n</observations>', index)
+      send(response, primary++ < steps ? { name: 'browser_tool', args: { command: 'snapshot' } } : '页面操作已核对。', index)
+    })
     // Changing observations exercise sustained progress; identical snapshots also invoke the separate progress reviewer.
     let snapshot = 0
     const execute=vi.fn(async()=>({result:{output:`当前实际页面内容 ${++snapshot}`,appendReleaseHint:false}})),drain=vi.fn(async()=>{})
@@ -445,13 +451,13 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     run.ctx.work={id:'claimed-browser-task',sourceMessageId:'message-1',conversationId:run.ctx.conversation.id,ownerAgentId:run.ctx.agent.id,status:'running'} as WorkItem
     const pending=new MastraEngine().run(run.ctx)
     if(mode!=='host-budget-exhausted'){
-      await pending;expect(server.requests).toHaveLength(steps+1);expect(execute).toHaveBeenCalledTimes(steps);expect(run.deltas.join('')).toBe('页面操作已核对。')
+      await pending;expect(server.requests.filter(body => !isObservation(body))).toHaveLength(steps+1);expect(execute).toHaveBeenCalledTimes(steps);expect(run.deltas.join('')).toBe('页面操作已核对。')
     }else{
       await expect(pending).rejects.toThrow('ORIGINAL_HOST_BUDGET_EXHAUSTED')
       expect(server.requests).toHaveLength(12);expect(run.deltas).toEqual([])
     }
     expect(run.ctx.workBudget?.maxModelCalls).toBeNull();expect(drain).toHaveBeenCalledOnce()
-  })
+  }, 60_000)
 
   it.each(['inactive','acp','organization','chat','no-work'] as const)('keeps the task browser unavailable for %s even when a session and legacy true flag are supplied',async kind=>{
     const execute=vi.fn(async()=>undefined),drain=vi.fn(async()=>{})
@@ -886,7 +892,7 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
   it('completes a material answer above the former chat ceiling in one accounted SDK request', async () => {
     const required = 3200, complete = '资料问答的各项结论及来源均已完整返回。'
     const model = await endpoint((body, response, index) => {
-      const limit = body.max_tokens ?? body.max_completion_tokens ?? 0, finished = limit >= required
+      const limit = body.max_tokens ?? body.max_completion_tokens ?? 16384, finished = limit >= required
       const used = Math.min(limit, required)
       send(response, finished ? complete : '未完成的资料答复', index, { prompt_tokens: 100, completion_tokens: used, total_tokens: 100 + used }, finished ? 'stop' : 'length')
     })
@@ -895,13 +901,13 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     expect(run.deltas.join('')).toBe(complete)
     expect(model.requests).toHaveLength(1); expect(run.additionalCalls).toEqual([])
     const requested = model.requests[0].max_tokens ?? model.requests[0].max_completion_tokens
-    expect(requested).toBeGreaterThanOrEqual(required); expect(requested).toBeLessThanOrEqual(8192)
+    expect(requested).toBeUndefined()
   })
 
   it.each([
     { name: 'effective model ceiling', id: 'user-model-override', cap: 3000, expected: 3000 },
-    { name: 'another model is not authority', id: 'unselected-model', cap: 512, expected: 8192 },
-    { name: 'invalid ceiling is not sent', id: 'user-model-override', cap: 0, expected: 8192 },
+    { name: 'another model is not authority', id: 'unselected-model', cap: 512, expected: undefined },
+    { name: 'invalid ceiling is not sent', id: 'user-model-override', cap: 0, expected: undefined },
   ])('honors material output capacity with $name', async ({ id, cap, expected }) => {
     const model = await endpoint(['完整答复。'])
     const run = await context(model.url, { responseKind: 'chat', materialRefs: [{ id: 'material', revision: 1, contentHash: 'hash', parseVersion: 'text-v1', conversationId: 'conversation' }], modelCatalog: { source: 'service-declared', fetchedAt: '', models: [{ id: 'user-specified-model', maxOutputTokens: 256 }, { id, maxOutputTokens: cap }] } })
@@ -910,17 +916,17 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     expect(model.requests[0].max_tokens ?? model.requests[0].max_completion_tokens).toBe(expected)
   })
 
-  it('keeps the ordinary chat ceiling when there are no material inputs', async () => {
+  it('uses the provider default without an arbitrary ordinary chat output ceiling', async () => {
     const model = await endpoint(['你好。']), run = await context(model.url, { responseKind: 'chat', materialRefs: [], materialImages: [] })
     await new MastraEngine().run(run.ctx)
-    expect(model.requests[0].max_tokens ?? model.requests[0].max_completion_tokens).toBe(2500)
+    expect(model.requests[0].max_tokens ?? model.requests[0].max_completion_tokens).toBeUndefined()
     expect(model.requests).toHaveLength(1); expect(run.additionalCalls).toEqual([])
   })
 
   it('still rejects a length-truncated material answer without retrying or publishing its buffered draft', async () => {
     const model = await endpoint((_body, response, index) => send(response, '不可发布的未完成答复', index, { prompt_tokens: 100, completion_tokens: 8192, total_tokens: 8292 }, 'length'))
     const run = await context(model.url, { responseKind: 'chat', materialRefs: [{ id: 'material', revision: 1, contentHash: 'hash', parseVersion: 'text-v1', conversationId: 'conversation' }], recallMemory: async () => ({ entries: [], epoch: 1, namespace: 'employee:agent-a' }) })
-    await expect(new MastraEngine().run(run.ctx)).rejects.toThrow('模型回复超过输出限制')
+    await expect(new MastraEngine().run(run.ctx)).rejects.toThrow('模型服务返回了输出截断')
     expect(run.deltas).toEqual([]); expect(model.requests).toHaveLength(1); expect(run.additionalCalls).toEqual([])
   })
 
@@ -2177,7 +2183,7 @@ it('sends a real user image through the SDK without a model capability gate and 
   })
   await new MastraEngine().run(ctx)
   expect(mock.requests).toHaveLength(1)
-  const input = mock.requests[0].messages.find(item => item.role === 'user')
+  const input = mock.requests[0].messages.find(item => item.role === 'user' && Array.isArray(item.content))
   expect(input?.content).toEqual(expect.arrayContaining([
     { type: 'text', text: '看一下这张图片' },
     { type: 'image_url', image_url: { url: dataUrl } },

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 按官方Controller/Session历史与自动OM验证，保留业务权限、来源、取消、真实工具和用量断言。
  * [OUTPUT]: 2026-10-30 回归更新为Mastra官方记忆/原生归属合同；保留来源、调用预算和业务发布断言。
  * [INPUT]: Installed Mastra Memory/LibSQL and authorized product transcripts.
  * [OUTPUT]: API employee isolation, full history, durable WM, source withdrawal and irreversible forget fences.
@@ -26,7 +27,7 @@ it('persists all authorized history beyond the old 100-message window, with stab
   const messages = Array.from({ length: 121 }, (_, index) => message(`m${index}`, index + 1, index === 0 ? '使用 AgentBrowser' : `note ${index}`))
   const first = await value.prepare(context(messages))
   expect(first.current.map(message => message.id)).toEqual(['m120'])
-  expect(first.option.options.readOnly).toBe(true)
+  expect(first.option).not.toHaveProperty('options.readOnly')
   const rows = await first.memory.recall({ threadId: first.option.thread, perPage: false })
   expect(rows.messages).toHaveLength(120)
   expect(text(rows.messages)).toContain('使用 AgentBrowser')
@@ -84,7 +85,7 @@ it('runs the installed OM observer on the selected API model, persists observati
   })
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
   try {
-    const { value } = await adapter()
+    const { value } = await adapter(6000)
     const messages = [...Array.from({ length: 45 }, (_, i) => message(`history-${i}`, i + 1, `Database decision ${i}: PostgreSQL, not MySQL. ` + 'authorized detail '.repeat(100))), message('now', 46, '数据库定哪种？')]
     const ctx = context(messages), calls: string[] = [], usage: string[] = []
     ctx.connection!.baseUrl = `http://127.0.0.1:${(server.address() as { port: number }).port}/v1`
@@ -92,6 +93,8 @@ it('runs the installed OM observer on the selected API model, persists observati
     ctx.onAdditionalModelCall = async () => { const id = `om-${calls.length + 1}`; calls.push(id); return id }
     ctx.onModelCallUsage = async id => { usage.push(id) }
     const prepared = await value.prepare(ctx)
+    expect(requests).toHaveLength(0)
+    await (await prepared.memory.omEngine)!.observe({ threadId: prepared.option.thread, resourceId: prepared.option.resource })
     expect(requests.length).toBeGreaterThan(0)
     expect(requests.every(request => request.model === 'test')).toBe(true)
     expect(calls).toHaveLength(requests.length + embeddings.length)
@@ -139,12 +142,14 @@ it.each(['withdraw', 'cancel'] as const)('does not retain a late observation aft
   })
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
   try {
-    const { value } = await adapter(1), controller = new AbortController()
+    const { value } = await adapter(100), controller = new AbortController()
     const ctx = context([message('old', 1, 'Withdraw this source'), message('now', 2, 'Continue')])
     ctx.signal = controller.signal
     ctx.connection!.baseUrl = `http://127.0.0.1:${(server.address() as { port: number }).port}/v1`
     ctx.onAdditionalModelCall = async () => 'om'
-    const pending = value.prepare(ctx)
+    const prepared = await value.prepare(ctx)
+    prepared.activate()
+    const pending = (async () => { try { await (await prepared.memory.omEngine)!.observe({ threadId: prepared.option.thread, resourceId: prepared.option.resource }) } finally { await prepared.dispose() } })()
     const rejected = expect(pending).rejects.toThrow()
     await received
     if (action === 'withdraw') await value.forgetEmployee('ds')
@@ -207,15 +212,17 @@ it.each([401, 503])('preserves official retry classification and redacts credent
   })
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
   try {
-    const { value } = await adapter(1), ctx = context([message('old', 1, 'Retained source'), message('now', 2, 'Current request')])
+    const { value } = await adapter(100), ctx = context([message('old', 1, 'Retained source'), message('now', 2, 'Current request')])
     ctx.apiKey = key; ctx.connection!.baseUrl = `http://127.0.0.1:${(server.address() as { port: number }).port}/v1`
     ctx.onAdditionalModelCall = async () => `attempt-${++reserved}`
+    const prepared = await value.prepare(ctx)
+    const observe = async () => (await prepared.memory.omEngine)!.observe({ threadId: prepared.option.thread, resourceId: prepared.option.resource })
     if (status === 401) {
-      const failure = await value.prepare(ctx).catch(error => error as Error)
+      const failure = await observe().catch(error => error as Error)
       expect(failure).toBeInstanceOf(Error)
       expect(String(failure)).not.toContain(key)
       expect(requests).toBe(1)
-    } else { await value.prepare(ctx); expect(requests).toBe(2) }
+    } else { await observe(); expect(requests).toBe(2) }
     expect(reserved).toBe(requests)
   } finally { server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve())) }
 })

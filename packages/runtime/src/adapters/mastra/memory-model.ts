@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 不追加固定摘要输出上限；真实截断/缺失结束帧仍不保存，用量、取消与来源授权沿宿主接口。
  * [INPUT]: The employee's resolved Mastra model and original run accounting/cancellation.
  * [OUTPUT]: Every OM model attempt uses the selected connection, reserves a call and reports actual usage.
  * [POS]: Thin model transport boundary; observation, reflection and retries remain Mastra-owned.
@@ -7,7 +8,7 @@
 import { Agent } from '@mastra/core/agent'
 import type { EngineContext } from '../../contracts'
 import type { ModelUsage } from '@boai/shared/domain'
-import { modelConfig, responseOutputTokens, thinkingProviderOptions } from './model-config'
+import { modelConfig, sessionModelSettings, thinkingProviderOptions } from './model-config'
 import { gatewayRouteObserver } from './gateway-route'
 
 function safeError(error: unknown, key: string) {
@@ -19,9 +20,10 @@ function safeError(error: unknown, key: string) {
   }
   return clean
 }
-function completed(reason: unknown) {
+
+function assertMemoryResponseComplete(reason: unknown) {
   const value = reason && typeof reason === 'object' ? (reason as { unified?: string }).unified : reason
-  if (value !== 'stop') throw new Error('Mastra 记忆观察未完整结束，候选未保存')
+  if (value !== 'stop') throw new Error(`记忆模型未返回完整结果（${String(value ?? 'unknown')}），原始记录仍保留`)
 }
 
 function usageOf(value: Record<string, unknown>): ModelUsage {
@@ -48,21 +50,26 @@ export async function memoryModel(context: EngineContext) {
       context.signal.throwIfAborted()
       const abortSignal = options.abortSignal instanceof AbortSignal ? AbortSignal.any([context.signal, options.abortSignal]) : context.signal
       const selected = thinkingProviderOptions(context.connection!, context.agent.modelId, context.agent.thinkingLevel, 'memory', context.modelCatalog)
-      const maxOutputTokens = Math.min(typeof options.maxOutputTokens === 'number' ? options.maxOutputTokens : 4000, responseOutputTokens(context, true), 4000)
-      const result = await Promise.resolve(Reflect.apply(value, target, [{ ...options, maxOutputTokens, providerOptions: { ...selected, ...options.providerOptions as object }, abortSignal }])).catch(error => { throw safeError(error, context.apiKey) }) as { response?: import('./gateway-route').GatewayResponse; usage?: Record<string, unknown>; finishReason?: unknown; stream: ReadableStream<{ type: string; usage?: Record<string, unknown>; finishReason?: unknown; error?: unknown }> }
+      const declaredMaximum = sessionModelSettings(context).maxOutputTokens
+      const maxOutputTokens = declaredMaximum === undefined ? undefined : Math.min(typeof options.maxOutputTokens === 'number' ? options.maxOutputTokens : declaredMaximum, declaredMaximum)
+      // OM's built-in 100000 default targets its default Gemini model. An
+      // arbitrary user connection must use its own declared cap or provider
+      // default, rather than inheriting another model's requested output size.
+      const { maxOutputTokens: _defaultOutput, ...request } = options
+      const result = await Promise.resolve(Reflect.apply(value, target, [{ ...request, ...(maxOutputTokens === undefined ? {} : { maxOutputTokens }), providerOptions: { ...selected, ...options.providerOptions as object }, abortSignal }])).catch(error => { throw safeError(error, context.apiKey) }) as { response?: import('./gateway-route').GatewayResponse; usage?: Record<string, unknown>; finishReason?: unknown; stream: ReadableStream<{ type: string; usage?: Record<string, unknown>; finishReason?: unknown; error?: unknown }> }
       const report = async (raw: Record<string, unknown>) => {
         const usage = usageOf(raw)
         await context.onModelCallUsage?.(callId, usage)
         await context.onSupplementalUsage?.(callId, usage)
       }
       await gatewayRouteObserver(context, () => callId)({ response: result.response ?? {} })
-      if (key === 'doGenerate') { if (result.usage) await report(result.usage); context.signal.throwIfAborted(); completed(result.finishReason); return result }
+      if (key === 'doGenerate') { if (result.usage) await report(result.usage); context.signal.throwIfAborted(); assertMemoryResponseComplete(result.finishReason); return result }
       let finished = false
       return { ...result, stream: result.stream.pipeThrough(new TransformStream({ async transform(chunk, controller) {
         if (chunk.type === 'finish' && chunk.usage) await report(chunk.usage)
         context.signal.throwIfAborted()
         if (chunk.type === 'error') throw safeError(chunk.error, context.apiKey)
-        if (chunk.type === 'finish') { completed(chunk.finishReason); finished = true }
+        if (chunk.type === 'finish') { assertMemoryResponseComplete(chunk.finishReason); finished = true }
         controller.enqueue(chunk)
       }, flush() { if (!finished) throw new Error('Mastra 记忆观察流未完整结束') } })) }
     }

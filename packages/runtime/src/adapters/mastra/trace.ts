@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Controller 和单次阶段共享官方 observability 配置与宿主脱敏导出，不重复注册 Agent。
  * [INPUT]: 阶段 Agent、Mastra 原生追踪事件与宿主持久化回调。
  * [OUTPUT]: 媒体只记录 MIME/字节数/hash，不保存截图到模型请求/工具Trace；本地调用树及模型边界输入；逐阶段刷盘、密钥脱敏，观测失败不重放业务。
  * [POS]: Mastra 阶段观测适配器，不改变工具权限或工作交付状态。
@@ -41,7 +42,7 @@ export function traceModelRequest(model: ProcessInputStepArgs['model']): Process
   return wrapped
 }
 
-export function observeAgent(agent: Agent, context: EngineContext, phase: string) {
+export function createAgentObservation(context: EngineContext, phase: string) {
   const exporter: ObservabilityExporter = {
     name: 'boai-local-traces',
     async exportTracingEvent({ exportedSpan: span }) {
@@ -65,10 +66,14 @@ export function observeAgent(agent: Agent, context: EngineContext, phase: string
     serviceName: 'boai-agent', exporters: [exporter], logging: { enabled: false },
     excludeSpanTypes: [SpanType.MODEL_CHUNK, SpanType.PROCESSOR_RUN],
   } } })
-  // A short-lived registration keeps simultaneous stages of the same employee isolated.
-  new Mastra({ agents: { employee: agent }, observability, logger: false })
-  return async () => {
+  return { observability, flush: async () => {
     try { await observability.shutdown() }
     catch (error) { await context.onTraceError?.(error instanceof Error ? error.message : String(error)) }
-  }
+  } }
+}
+
+export function observeAgent(agent: Agent, context: EngineContext, phase: string) {
+  const observation = createAgentObservation(context, phase)
+  new Mastra({ agents: { employee: agent }, observability: observation.observability, logger: false })
+  return observation.flush
 }

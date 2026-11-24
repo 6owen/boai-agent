@@ -3,6 +3,7 @@ name: boai-agent-dev-skills
 description: BOAI Agent 项目的开发与交付统一入口。处理 dev/build、验证、打包安装、bumpp 升版本、tag/GitHub Release、git cp/cpf、worktree 管理及相关命令解释时使用，按当前源码核对命令和执行范围。
 ---
 <!--
+[OUTPUT]: 2026-11-24补官方AgentController主执行改动的定向验证边界，防止重新叠加自建压缩。
 [OUTPUT]: 开发完成默认自动提 PR；用户要求看图时先给实际 PNG 的绝对路径。
 [OUTPUT]: test:changed 按 Git 变更选择本地 Vitest；开发 Agent 在 UI PR 正文指定受影响的界面状态。
 [OUTPUT]: 每个 UI PR 回填改动页面和全局主界面各一张截图，云端全量 Vitest 仅在 release 的 main 验证中执行。
@@ -98,3 +99,9 @@ main只同步已实际合并的提交。任务结束按根规约回收worktree�
 ## 维护规则
 
 命令真源为根 `package.json` 及其实际指向的 `scripts/`，配置真源为现行workflow和构建配置。讨论过的方案只有合入对应实现后才更新为可执行命令。改变dev/build/release行为时，在同一任务同步命令说明及涉及的专门技能；根 `AGENTS.md` 与README应继续指向本入口，让后续会话能够发现。
+
+## API 会话执行改动
+
+API聊天和任务的执行入口为`controller-session.ts`，采用官方AgentController/Session；宿主只适配身份、权限、输入/事件、用量和发布。主执行不能恢复readOnly Memory、自建分批摘要或默认输出硬限制。本机Agent仍走自己的原生循环。
+
+涉及此入口时按Git变更选测，并确认相关覆盖包括工具结果触发官方OM后继续、跨运行及重启历史不重复导入、取消/撤权后真实退出、图片和Trace、宿主显式预算、已完成工具不重放。使用受控本地模型与独立数据库；真实模型效果、个人窗口生效、CI和合并分别报告。仅源码或协议通过不能称已修好个人应用。实现及当前边界见[迁移记录](../../../ai-docs/implementation/2026-11-24-mastra-agent-controller.md)。

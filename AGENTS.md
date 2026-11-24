@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-11-24 API主执行迁至官方AgentController/Session与自动OM；旧readOnly/自建分批摘要退役，实施验证归implementation/2026-11-24-mastra-agent-controller.md。
 [OUTPUT]: 开发验证后默认自动提交PR；用户要求先看截图时，返回实际图片的绝对路径并等待确认。
 [OUTPUT]: 2026-11-23本地Vitest按Git变更选测，开发Agent从PR diff登记截图目标，资源库分类和悬停状态接线。
 [OUTPUT]: 2026-11-19员工行续接固定主聊天并可显式开启独立话题，旧bobo历史原位兼容；归29组01/03。
@@ -810,6 +811,8 @@
 - 删除须等待实际执行器退出；先暂停关联定时计划并定向终结未完成等待，再清理来源/授权。员工撤权和群成员/标签变更同事务，目录清理日志用于失败和重启续清，不重放模型或工具。
 
 # Employee Memory Boundaries
+
+**2026-11-24执行接入：** API聊天/任务统一通过官方AgentController/Session运行。官方Memory持有完整执行历史和逐步骤thread OM；员工resource WM/召回及来源隔离保持。产品消息是对外发布记录，不再把它重复导入SDK自己生成的回复。禁止恢复主执行readOnly、BOAI分批摘要循环或默认聊天/任务/摘要输出硬上限。宿主仍负责明确预算、实际工具权限、用量、失效屏障、取消排空和产品发布；结构化判断/连接测试等单次调用保留Agent。会话运行实例随授权快照创建，持久thread复用；尚未接Durable Agents，不承诺进程重启自动续跑。实际结果见[迁移记录](ai-docs/implementation/2026-11-24-mastra-agent-controller.md)。
 
 **2026-11-06当前目标：** 员工级长期memory归属员工及其workspace，跨主聊天、任务、群聊和群任务按来源/权限使用；执行能力变化不改变员工归属。厂商私有session/context保留，员工级memory接入是需验证的独立适配。现有API与native分路只是实现基线，不能据此取消本组统一员工记忆目标；完整要求见第29组01，差距与验证见03。
 

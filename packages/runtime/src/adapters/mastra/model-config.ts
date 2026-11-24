@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Session 主执行只采用当前模型声明的输出能力，不加聊天/任务默认硬上限。
  * [OUTPUT]: DeepSeek私有JSON判断自动档关闭思考，格式修复明确关闭思考；自动化执行不设引擎整体时限，调用计量与严格JSON校验保持。
  * [OUTPUT]: DeepSeek私有判断自动档使用非思考JSON；格式修复关闭思考，保留单对象严格校验、原预算与真实参数观测。
  * [OUTPUT]: Material-backed replies share the existing bounded task output capacity, capped by the selected model's valid catalog ceiling; ordinary chat retains its default.
@@ -22,6 +23,13 @@ export function responseOutputTokens(context: Pick<EngineContext, 'agent' | 'con
   const modelId = (context.agent.modelId || context.connection?.defaultModel || '').trim()
   const maximum = context.modelCatalog?.models.find(model => model.id === modelId)?.maxOutputTokens
   return typeof maximum === 'number' && Number.isSafeInteger(maximum) && maximum > 0 ? Math.min(desired, maximum) : desired
+}
+
+/** Use the selected provider's declared capability; no BOAI chat/task output ceiling. */
+export function sessionModelSettings(context: Pick<EngineContext, 'agent' | 'connection' | 'modelCatalog'>) {
+  const modelId = (context.agent.modelId || context.connection?.defaultModel || '').trim()
+  const maxOutputTokens = context.modelCatalog?.models.find(model => model.id === modelId)?.maxOutputTokens
+  return typeof maxOutputTokens === 'number' && Number.isSafeInteger(maxOutputTokens) && maxOutputTokens > 0 ? { maxOutputTokens } : {}
 }
 
 type ModelProviderOptions = { openai: { thinking?: { type: 'disabled' | 'enabled' }; reasoningEffort?: string; forceReasoning?: boolean; response_format?: { type: 'json_object' } } }

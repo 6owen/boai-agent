@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 按官方Controller/Session历史与自动OM验证，保留业务权限、来源、取消、真实工具和用量断言。
  * [INPUT]: MD-v1 固定开发合同、真实 AppService/Mastra/SQLite 与本地兼容模型协议。
  * [OUTPUT]: 附件到成果/修订/采用/重启、共享预算和失败保存的离线贯通；证据hash/身份篡改拒绝、冻结兼容与人工pending。
  * [POS]: D3 评估入口 Vitest 验收；受控模型只检验流程，不证明商业模型质量。
@@ -52,7 +53,12 @@ async function fixture(options: { noArtifact?: boolean } = {}) {
       if (!revision && !materialInputs.includes(source)) materialInputs.push(source)
       const materialIds = [...new Set([...source.matchAll(/"materialId":"([0-9a-f-]{36})"/g), ...source.matchAll(/material:([0-9a-f-]{36}):text-v1:L/g)].map(value => value[1]))]
       const content = `# 订单核对报告\n\n成交笔数：3\n成交总额：250\n退款额：20\n净额：230\n\n${materialIds.map(id => `材料依据：material:${id}:text-v1:L2`).join('\n')}\n${revision ? '\n## 处理说明\n重复的 O2 只计算一次，已取消的 O4 排除。\n' : ''}`
-      const path = `self:/runs/${runId}/report.md`, called = messages.flatMap(message => message.tool_calls ?? []).map(value => value.function.name)
+      // Controller retains prior runs' real tool transcript. Only this user turn's
+      // receipts prove that the current revision has executed.
+      let currentStart = 0
+      for (let i = 0; i < messages.length; i++) if (messages[i].role === 'user' && text(messages[i].content).includes('[CURRENT TURN USER REQUEST;')) currentStart = i
+      const current = messages.slice(currentStart)
+      const path = `self:/runs/${runId}/report.md`, called = current.flatMap(message => message.tool_calls ?? []).map(value => value.function.name)
       if (options.noArtifact) {
         if (!called.includes('report_work')) tool(response, 'report_work', { disposition: 'delivered', summary: '只有回答，没有报告文件', evidence: [{ kind: 'answer', reference: '只有回答，没有报告文件' }] }, index)
         else sendTeamOutput(response, '只有回答，没有报告文件', false)
@@ -60,7 +66,7 @@ async function fixture(options: { noArtifact?: boolean } = {}) {
       }
       if (!called.includes('write_file')) { tool(response, 'write_file', { path, content }, index); return }
       if (!called.includes('publish_artifact')) { tool(response, 'publish_artifact', { path, name: 'report.md', ...(revision ? { revisionRequestId: revision } : {}) }, index); return }
-      const artifactId = messages.filter(message => message.role === 'tool').map(message => { try { return JSON.parse(text(message.content))?.artifact?.id as string | undefined } catch { return undefined } }).find(Boolean)
+      const artifactId = current.filter(message => message.role === 'tool').map(message => { try { return JSON.parse(text(message.content))?.artifact?.id as string | undefined } catch { return undefined } }).find(Boolean)
       if (!artifactId) throw new Error('Missing production publication receipt')
       if (!called.includes('report_work')) { tool(response, 'report_work', { disposition: 'delivered', summary: '实际报告已发布', evidence: [{ kind: 'artifact', reference: artifactId }] }, index); return }
       sendTeamOutput(response, '实际报告已发布', false)

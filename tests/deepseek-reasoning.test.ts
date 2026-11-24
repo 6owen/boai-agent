@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 按官方Controller/Session历史与自动OM验证，保留业务权限、来源、取消、真实工具和用量断言。
  * [OUTPUT]: 2026-10-30 回归更新为Mastra官方记忆/原生归属合同；保留来源、调用预算和业务发布断言。
  * [INPUT]: 官方 DeepSeek Chat 宿主公开历史、实际 Mastra SDK、本地 HTTP/SSE 工具轮与浏览器 PNG。
  * [OUTPUT]: 初始历史准确归属且不伪造思考/授权；普通chat带工具的实际HTTP回归，原多工具思考/PNG/无工具边界保持。
@@ -114,7 +115,7 @@ test.each(['low','high','max','auto'] as const)('actual Mastra/HTTP retains comp
   const run = await context({ agent: { ...employee, thinkingLevel } }); await new MastraEngine().run(run.ctx)
   expect(endpointFixture.requests).toHaveLength(3); expect(run.additionalCalls).toHaveLength(2)
   expect(await readFile(join(run.ctx.workspace!.runPath, 'data.md'), 'utf8')).toBe('ACTUAL_DEEPSEEK_FILE_79')
-  for (const request of endpointFixture.requests) { expect(request.model).toBe('deepseek-flash'); expect(request.max_tokens).toBe(8192); expect(request.tools.some(tool => tool.function.name === 'write_file')).toBe(true); expect(request.thinking).toEqual(thinkingLevel === 'auto' ? undefined : { type: 'enabled' }); expect(request.reasoning_effort).toBe(thinkingLevel === 'auto' ? undefined : thinkingLevel); expect(request.messages.some(message => message.role === 'user' && typeof message.content === 'string' && message.content.includes('actual-announcement'))).toBe(true) }
+  for (const request of endpointFixture.requests) { expect(request.model).toBe('deepseek-flash'); expect(request.max_tokens).toBeUndefined(); expect(request.tools.some(tool => tool.function.name === 'write_file')).toBe(true); expect(request.thinking).toEqual(thinkingLevel === 'auto' ? undefined : { type: 'enabled' }); expect(request.reasoning_effort).toBe(thinkingLevel === 'auto' ? undefined : thinkingLevel); expect(request.messages.some(message => message.role === 'user' && typeof message.content === 'string' && message.content.includes('actual-announcement'))).toBe(true) }
   const assistant1 = endpointFixture.requests[1]!.messages.filter(message => message.role === 'assistant')
   expect(assistant1).toHaveLength(1); expect(assistant1[0]!.reasoning_content).toBe(firstReasoning); expect(assistant1[0]!.tool_calls).toEqual([{ id: 'actual-call-0', type: 'function', function: { name: 'write_file', arguments: JSON.stringify({ path: 'self:/runs/run-1/data.md', content: 'ACTUAL_DEEPSEEK_FILE_79' }) } }])
   const assistant2 = endpointFixture.requests[2]!.messages.filter(message => message.role === 'assistant')
