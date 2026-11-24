@@ -98,6 +98,7 @@ test('bobo 和普通 API 员工的新话题能在首轮回复发布前命名并�
     await vi.waitFor(() => expect(generate).toHaveBeenCalledTimes(2))
     expect(generate).toHaveBeenCalledWith(expect.objectContaining({
       modelId: 'first-turn-model', messages: [{ role: 'user', content: '给新员工设计一份入职清单' }],
+      identity: { conversationId: core.id, agentId: core.agentIds[0], runId: expect.any(String) },
     }))
     expect((await detail(service, core)).conversation).toMatchObject({ title: '给新员工设计一份入职清单', titleGenerating: true })
     expect((await snapshot(service)).conversations.find(room => room.id === core.id)?.titleGenerating).toBe(true)
