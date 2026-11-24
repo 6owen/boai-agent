@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 带文件的消息分行排列，悬停时操作栏贴近所在行。
+ * [OUTPUT]: 带文件的消息分行排列，独立文件行与侧边操作栏顶对齐。
  * [OUTPUT]: 独立权限卡移除额外上下外边距，与消息头像顶部对齐；附在正文后的权限卡保留内容间距。
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [OUTPUT]: 消息技能/数据源/文件与命令标签复用输入框Soft Button皮肤，原位行内排版、基线对齐与正常文本选择。
@@ -103,7 +103,8 @@
 .chat-panel .message-content[data-with-files] { display:flex;flex-direction:column;align-items:flex-start;gap:8px }
 .chat-panel .message-row.user .message-content[data-with-files] { align-items:flex-end }
 .chat-panel .message-content[data-with-files]>.message-card:empty { display:none }
-.chat-panel .message-content[data-with-files]>.sent-materials { margin:0;max-width:100% }
+.chat-panel .sent-materials { margin-top:calc(var(--spacing) * 2) }
+.chat-panel .message-content[data-with-files]>.sent-materials { margin-top:0;max-width:100% }
 .chat-panel .message-row.user .message-content[data-with-files]>.sent-materials { justify-content:flex-end }
 .chat-panel .message-tools { position:absolute;z-index:2;display:flex;align-items:center;gap:2px;padding:3px;top:0;left:calc(100% + 8px);width:max-content;overflow:hidden;opacity:0;pointer-events:none }
 .chat-panel .message-tools .soft-button { flex:none }
