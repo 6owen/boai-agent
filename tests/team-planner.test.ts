@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 独立团队生成通过官方 Metrics 计入 utility，保持无工具与预算合同。
  * [INPUT]: 真实 Mastra SDK、本地 SSE、团队生成宿主与 SQLite。
  * [OUTPUT]: 模型或编辑不得改写 T2 统一记忆/T3 未支持能力事实；无工具调用、结构修复预算、版本去重、停止/放弃的迟到用量与重启不重发验收。
  * [POS]: T1.2 协议回归；离线返回不作为人工质量成绩。
@@ -146,4 +147,13 @@ test('abandon waits for generation exit, scrubs private content and retains late
   const store = new ProductStore(join(dataPath, 'boai.sqlite')); await store.init(); cleanup.push(() => store.close())
   const generations = await store.load<import('../packages/shared/src/domain/team-creation').TeamGeneration>('teamGenerations')
   expect(generations[0].attempts[0].usage).toEqual({ inputTokens: 3, outputTokens: 6 })
+})
+
+
+test('records independent team planning in official utility metrics', async () => {
+  const { MastraEngine } = await import('../packages/runtime/src/adapters/mastra/engine')
+  const endpoint = await teamEndpoint(); cleanup.push(endpoint.close)
+  const engine = new MastraEngine(); cleanup.push(() => engine.closeMemory())
+  await engine.planTeam({ connection: { id: 'team', name: 'fixture', provider: 'openai-compatible', baseUrl: endpoint.url, defaultModel: 'fixture', hasApiKey: true }, modelId: 'fixture', apiKey: 'fixture-key', prompt: '写作团队', signal: new AbortController().signal, usage: async () => {} })
+  expect(await engine.modelMetrics([])).toMatchObject([{ scope: 'utility', phase: 'team-plan', usage: { totalTokens: 300 } }])
 })

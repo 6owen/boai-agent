@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 跨三轮核对主模型与 OM 的官方 Token 总量等于真实 HTTP 用量。
+ * [OUTPUT]: 2026-11-24 按官方Controller/Session历史与自动OM验证，保留业务权限、来源、取消、真实工具和用量断言。
  * [OUTPUT]: 2026-10-30 回归更新为Mastra官方记忆/原生归属合同；保留来源、调用预算和业务发布断言。
  * [OUTPUT]: 摘要长度耗尽按原来源恢复一次并逐次计量，取消/预算拒绝/重复截断不提交；SDK内部副本过滤不影响真实工具JSON。
  * [OUTPUT]: 2026-10-27 本轮相关回归合同/源码更新；执行状态另行记录，不以源码存在判通过。
@@ -19,9 +21,18 @@ import { MastraEngine } from '../packages/runtime/src/adapters/mastra/engine'
 import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
 import { ContextRepository, type ContextPort } from '../packages/runtime/src/modules/contexts/context-repository'
 import { RunModelUsage } from '../packages/runtime/src/modules/profile/run-model-usage'
-import { summarizeContext, snapshotProviderPrompt, contextCapacityProcessor } from '../packages/runtime/src/adapters/mastra/context-maintenance'
+import { summarizeConversation } from '@mastra/memory'
+import { memoryModel } from '../packages/runtime/src/adapters/mastra/memory-model'
 import { progressBoundary } from '../packages/runtime/src/adapters/mastra/progress-review'
 import { ProgressMonitor, ProgressStalledError } from '../packages/runtime/src/modules/contexts/progress-monitor'
+
+async function summarizeContext(context: EngineContext, data: unknown) {
+  const result = await summarizeConversation({ model: await memoryModel(context), abortSignal: context.signal,
+    messages: [{ id: 'fixture-source', threadId: context.conversation.id, resourceId: context.agent.id, role: 'user', createdAt: new Date(), content: { format: 2, parts: [{ type: 'text', text: JSON.stringify(data) }] } }],
+  })
+  if (!result.summary.trim()) throw new Error('Empty observation')
+  return result.summary
+}
 
 interface Body { max_tokens?: number; messages: { role: string; content: unknown }[]; tools?: unknown[] }
 const observationThread = new WeakMap<ServerResponse, string>()
@@ -58,12 +69,6 @@ async function endpoint(handler: (body: Body, response: ServerResponse, index: n
 const isSummary = (body: Body) => body.messages.some(message => message.role === 'system' && JSON.stringify(message.content).includes('You are the memory consciousness'))
 const textOf = (body: Body) => JSON.stringify(body.messages)
 const message = (sequence: number, content = `Message ${sequence} ` + 'history '.repeat(30)): Message => ({ id: `m-${sequence}`, conversationId: 'dm', sequence, content, senderId: 'owner', senderName: 'Owner', senderType: 'user', status: 'completed', createdAt: '2026-10-24T00:00:00.000Z' })
-it('freezes provider media bytes while retaining native URL image values', () => {
-  const bytes = new Uint8Array([1, 2, 3]), url = new URL('https://example.test/image.png')
-  const copy = snapshotProviderPrompt([{ role: 'user', content: [{ type: 'file', data: bytes, mediaType: 'image/png' }, { type: 'file', data: url, mediaType: 'image/png' }] }])
-  bytes[0] = 9; url.pathname = '/changed'
-  expect(copy[0]).toMatchObject({ role: 'user', content: [{ data: new Uint8Array([1, 2, 3]) }, { data: new URL('https://example.test/image.png') }] })
-})
 async function fixture(url: string, initial: Message[], core = false) {
   const root = await mkdtemp(join(tmpdir(), 'boai-context-sdk-')), store = new ProductStore(join(root, 'db.sqlite'))
   await store.init(); cleanup.push(async () => { await store.close(); await rm(root, { recursive: true, force: true }) })
@@ -112,6 +117,9 @@ it('summarizes history outside the old 100-message window and uses durable Mastr
   expect((await engine.memoryView(f.ctx.agent.id)).documents.some(document => document.observations.includes('617 yuan'))).toBe(true)
   expect(await f.store.load<Message>('messages')).toHaveLength(231)
   expect(f.ctx.conversation.id).toBe('dm')
+  const metrics = await engine.modelMetrics()
+  expect(metrics.reduce((sum, call) => sum + (call.usage.totalTokens ?? 0), 0)).toBe(model.requests.length * 120)
+  await engine.closeMemory()
 })
 it('compacts completed tool steps at the actual provider boundary without executing a tool twice', async () => {
   let calls = 0
@@ -127,17 +135,46 @@ it('compacts completed tool steps at the actual provider boundary without execut
   expect(reads).toBe(4)
   expect(f.deltas).toEqual(['Finished after the four actual reads.'])
   expect(model.requests.some(isSummary)).toBe(true)
-  expect(model.requests.filter(isSummary).some(body => textOf(body).includes('tool-0') && textOf(body).includes('a factual old result'))).toBe(true)
+  expect(model.requests.filter(isSummary).some(body => textOf(body).includes('manage_skills') && textOf(body).includes('a factual old result'))).toBe(true)
   const main = model.requests.filter(body => !isSummary(body))
   expect(main).toHaveLength(5)
   expect(main.some(body => textOf(body).includes('Completed tool result'))).toBe(true)
   expect(f.started.length).toBe(f.settled.length)
-  expect((await f.store.load<{ tools: { toolCallId: string }[] }>('contextStepCheckpoints'))[0]!.tools.length).toBeGreaterThan(0)
+  expect(await f.store.load('contextStepCheckpoints')).toHaveLength(0)
 })
+it('persists the official tool transcript across host runs and restart without reimporting its public answer', async () => {
+  let primary = 0, reads = 0
+  const model = await endpoint((body, response, index) => {
+    if (isSummary(body)) throw new Error('The small transcript must not need observation')
+    primary++
+    if (primary === 1) return send(response, { tool: 'manage_skills', args: { command: { action: 'list', input: {} } } }, index)
+    send(response, ['ANSWER_FIRST', 'ANSWER_SECOND', 'ANSWER_THIRD'][primary - 2]!, index)
+  })
+  const f = await fixture(model.url, [message(1, 'QUESTION_FIRST')])
+  f.ctx.manageSkills = async () => { reads++; return [{ receipt: 'ORIGINAL_TOOL_RECEIPT' }] }
+  const memoryPath = join(f.root, 'controller-history.sqlite')
+  let engine = new MastraEngine({ memoryPath })
+  cleanup.push(() => engine.closeMemory())
+  await engine.run(f.ctx)
+  await f.append([{ ...message(2, 'ANSWER_FIRST'), senderId: 'employee', senderType: 'agent', senderName: 'Alice' }, message(3, 'QUESTION_SECOND')])
+  await engine.run(f.ctx)
+  await engine.closeMemory()
+  engine = new MastraEngine({ memoryPath })
+  await f.append([{ ...message(4, 'ANSWER_SECOND'), senderId: 'employee', senderType: 'agent', senderName: 'Alice' }, message(5, 'QUESTION_THIRD')])
+  await engine.run(f.ctx)
+  expect(reads).toBe(1)
+  expect(f.deltas).toEqual(['ANSWER_FIRST', 'ANSWER_SECOND', 'ANSWER_THIRD'])
+  const last = textOf(model.requests.at(-1)!)
+  for (const marker of ['QUESTION_FIRST', 'QUESTION_SECOND', 'QUESTION_THIRD', 'ANSWER_FIRST', 'ANSWER_SECOND', 'ORIGINAL_TOOL_RECEIPT']) {
+    expect(last.split(marker).length - 1, marker).toBe(1)
+  }
+  expect(await f.store.load('contextStepCheckpoints')).toHaveLength(0)
+})
+
 it('cancellation during summary never changes the active pointer or calls the primary model', async () => {
   let cancel = () => {}
   const model = await endpoint((body, response, index) => { expect(isSummary(body)).toBe(true); cancel(); send(response, 'Late summary', index) })
-  const f = await fixture(model.url, Array.from({ length: 81 }, (_, index) => message(index + 1)))
+  const f = await fixture(model.url, Array.from({ length: 81 }, (_, index) => message(index + 1, `Message ${index + 1} ` + 'approved original history '.repeat(250))))
   cancel = () => f.controller.abort(new Error('Owner stopped'))
   const before = await f.port.read()
   await expect(new MastraEngine().run(f.ctx)).rejects.toThrow()
@@ -157,7 +194,7 @@ it('rejects required input over a known window without discarding the original r
 it('does not reload checkpoint-covered history through Bobo Mastra Memory', async () => {
   const marker = 'EARLY_RAW_HISTORY_ONLY_9971'
   const model = await endpoint((body, response, index) => send(response, isSummary(body) ? 'The earlier approved budget is 617 yuan [m-1].' : 'Memory and handoff checked.', index))
-  const messages = Array.from({ length: 81 }, (_, index) => message(index + 1)); messages[0] = message(1, marker)
+  const messages = Array.from({ length: 81 }, (_, index) => message(index + 1, `Message ${index + 1} ` + 'approved original history '.repeat(250))); messages[0] = message(1, marker)
   const f = await fixture(model.url, messages, true)
   await new MastraEngine({ memoryPath: join(f.root, 'bobo.sqlite') }).run(f.ctx)
   const main = model.requests.find(body => !isSummary(body))!
@@ -168,7 +205,7 @@ it('does not reload checkpoint-covered history through Bobo Mastra Memory', asyn
 })
 it('keeps the pointer unchanged on an unfinished summary stream and does not retry the request', async () => {
   const model = await endpoint((_body, response) => { response.writeHead(200, { 'Content-Type': 'text/event-stream' }); response.end('data: [DONE]\n\n') })
-  const f = await fixture(model.url, Array.from({ length: 81 }, (_, index) => message(index + 1)))
+  const f = await fixture(model.url, Array.from({ length: 81 }, (_, index) => message(index + 1, 'approved original history '.repeat(250))))
   await expect(new MastraEngine().run(f.ctx)).rejects.toThrow()
   expect(model.requests).toHaveLength(1)
   expect(await f.store.load('contextCheckpoints')).toHaveLength(0)
@@ -425,7 +462,8 @@ it.each([undefined, 1024])('rejects truncated official observations without pers
   if (ceiling) f.ctx.modelCatalog = { source: 'service-declared', fetchedAt: '', models: [{ id: 'fixture', contextWindow: 64000, maxOutputTokens: ceiling }] }
   await expect(summarizeContext(f.ctx, { id: 'news-source', fact: 617 })).rejects.toThrow()
   expect(model.requests).toHaveLength(1)
-  expect(model.requests[0]!.max_tokens).toBeLessThanOrEqual(ceiling ?? 4000)
+  if (ceiling) expect(model.requests[0]!.max_tokens).toBe(ceiling)
+  else expect(model.requests[0]!.max_tokens).toBeUndefined()
   expect(f.started).toEqual(['extra-1']); expect(f.settled).toEqual(f.started); expect(f.supplements).toEqual(f.started)
   expect(await f.store.load('contextCheckpoints')).toHaveLength(0)
 })
@@ -437,24 +475,8 @@ it('refuses an OM call when the original run budget is exhausted', async () => {
   expect(model.requests).toHaveLength(0)
   expect(await f.store.load('messages')).toHaveLength(81)
 })
-it('summarizes provider content without SDK duplicate copies while retaining nested tool JSON and vendor options', async () => {
-  const model = await endpoint((_body, response, index) => send(response, '新闻事实和下一步 [news-tool]', index))
-  const f = await fixture(model.url, [message(1, '继续总结新闻')]); await f.port.read()
-  const processor = contextCapacityProcessor('task', f.ctx)
-  const prompt = [
-    { role: 'user', content: [{ type: 'text', text: '较早请求' }] },
-    { role: 'assistant', content: [{ type: 'tool-call', toolCallId: 'news-tool', toolName: 'read_context_history', input: {} }] },
-    { role: 'tool', content: [{ type: 'tool-result', toolCallId: 'news-tool', toolName: 'read_context_history', output: { type: 'json', value: { facts: 'news fact '.repeat(16000), providerOptions: { mastra: { userData: 'KEEP_USER_JSON' } } } }, providerOptions: { mastra: { modelOutput: 'INTERNAL_DUPLICATE_'.repeat(18000) }, google: { thoughtSignature: 'KEEP_VENDOR_OPTION' } } }] },
-    { role: 'user', content: [{ type: 'text', text: '继续总结新闻' }] },
-  ]
-  await processor.processLLMRequest({ prompt } as Parameters<typeof processor.processLLMRequest>[0])
-  expect(model.requests.length).toBeGreaterThan(0)
-  const summaries = model.requests.map(textOf).join('\n')
-  expect(summaries).not.toContain('INTERNAL_DUPLICATE_')
-  expect(summaries).toContain('KEEP_USER_JSON'); expect(summaries).toContain('KEEP_VENDOR_OPTION')
-  expect(JSON.stringify(prompt)).toContain('INTERNAL_DUPLICATE_')
-})
 it('stops the same task on a truncated OM handoff and never replays completed tools', async () => {
+  const calls = new Set<string>()
   let reads = 0
   const model = await endpoint((body, response, index) => {
     if (isSummary(body)) return truncatedSummary(response, body.max_tokens)
@@ -462,9 +484,10 @@ it('stops the same task on a truncated OM handoff and never replays completed to
   })
   const f = await fixture(model.url, [message(1, 'Read four original records and summarize.')])
   f.ctx.manageSkills = async () => { reads++; return [message(1, 'original news source '.repeat(1800))] }
+  f.ctx.onTool = async event => { if (event.name === 'manage_skills' && event.status === 'running') { expect(calls.has(event.id)).toBe(false); calls.add(event.id) } }
   await expect(new MastraEngine().run(f.ctx)).rejects.toThrow()
-  expect(reads).toBeGreaterThan(0); expect(reads).toBeLessThanOrEqual(4)
-  expect(model.requests.filter(isSummary)).toHaveLength(1)
+  expect(reads).toBeGreaterThan(0); expect(reads).toBe(calls.size)
+  expect(model.requests.filter(isSummary).length).toBeGreaterThan(0)
   expect(f.deltas).toEqual([])
   expect(await f.store.load('contextStepCheckpoints')).toHaveLength(0)
 })

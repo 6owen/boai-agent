@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 2026-11-24 官方 Metrics 与脱敏 Trace 共用观测；仅指标时不导出逐步全文，存储失败不重放任务。
+ * [OUTPUT]: Controller 和单次阶段共享官方 observability 配置与宿主脱敏导出，不重复注册 Agent。
  * [INPUT]: 阶段 Agent、Mastra 原生追踪事件与宿主持久化回调。
  * [OUTPUT]: 媒体只记录 MIME/字节数/hash，不保存截图到模型请求/工具Trace；本地调用树及模型边界输入；逐阶段刷盘、密钥脱敏，观测失败不重放业务。
  * [POS]: Mastra 阶段观测适配器，不改变工具权限或工作交付状态。
@@ -11,7 +13,8 @@ import { SpanType, type ObservabilityExporter } from '@mastra/core/observability
 import { getCurrentSpan } from '@mastra/core/observability/context-storage'
 import type { ProcessInputStepArgs } from '@mastra/core/processors'
 import { Observability } from '@mastra/observability'
-import type { EngineContext } from '../../contracts'
+import { contextMetrics, type MetricContext } from './metrics'
+import type { MastraCompositeStore } from '@mastra/core/storage'
 import type { TraceSpan } from '@boai/shared/domain/traces'
 
 const tracedModels = new WeakSet<object>()
@@ -41,10 +44,17 @@ export function traceModelRequest(model: ProcessInputStepArgs['model']): Process
   return wrapped
 }
 
-export function observeAgent(agent: Agent, context: EngineContext, phase: string) {
+export async function createAgentObservation(context: MetricContext, phase: string, fallback?: MastraCompositeStore) {
+  let metrics = contextMetrics(context), storage = fallback
+  try { storage = await metrics?.storage(fallback) ?? fallback }
+  catch (error) {
+    await context.onTraceError?.(`模型指标存储不可用：${error instanceof Error ? error.message : String(error)}`)
+    metrics = undefined
+  }
   const exporter: ObservabilityExporter = {
     name: 'boai-local-traces',
     async exportTracingEvent({ exportedSpan: span }) {
+      if (!context.onTrace) return
       try {
         const value: TraceSpan = {
           id: `${span.traceId}:${span.id}`, traceId: span.traceId, spanId: span.id, parentSpanId: span.parentSpanId,
@@ -62,13 +72,18 @@ export function observeAgent(agent: Agent, context: EngineContext, phase: string
     async shutdown() {},
   }
   const observability = new Observability({ configs: { default: {
-    serviceName: 'boai-agent', exporters: [exporter], logging: { enabled: false },
-    excludeSpanTypes: [SpanType.MODEL_CHUNK, SpanType.PROCESSOR_RUN],
+    serviceName: 'boai-agent', exporters: [exporter, ...(metrics ? [metrics.exporter(context, phase)] : [])], logging: { enabled: false },
+    includeInternalSpans: true,
+    excludeSpanTypes: context.onTrace ? [SpanType.MODEL_CHUNK, SpanType.PROCESSOR_RUN] : Object.values(SpanType).filter(type => type !== SpanType.MODEL_GENERATION),
   } } })
-  // A short-lived registration keeps simultaneous stages of the same employee isolated.
-  new Mastra({ agents: { employee: agent }, observability, logger: false })
-  return async () => {
+  return { observability, storage, flush: async () => {
     try { await observability.shutdown() }
     catch (error) { await context.onTraceError?.(error instanceof Error ? error.message : String(error)) }
-  }
+  } }
+}
+
+export async function observeAgent(agent: Agent, context: MetricContext, phase: string) {
+  const observation = await createAgentObservation(context, phase)
+  new Mastra({ storage: observation.storage, agents: { employee: agent }, observability: observation.observability, logger: false })
+  return Object.assign(observation.flush, { observability: observation.observability })
 }

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 官方生成指标替换同运行旧显示回执，费用仅加总官方总量，原生用量与已删运行排除。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 个人用量只聚合API回执；本机历史回执不参与token或未知计量统计，活动时间/技能记录保持。
  * [INPUT]: 保留的调用回执、运行、本人消息、工作执行区间和技能激活。
@@ -9,7 +10,7 @@
 import { isNativeBackend } from '@boai/shared/domain/backends'
 import { createHash } from 'node:crypto'
 import type { AgentRun, BudgetModelCall, Message, ModelUsage, Resource, WorkItem } from '@boai/shared/domain'
-import { isPersonalMessage, type ProfileActivity, type ProfileActivityQuery } from '@boai/shared/domain/profile'
+import { isPersonalMessage, type ProfileActivity, type ProfileActivityQuery, type ModelMetricCall } from '@boai/shared/domain/profile'
 
 export interface ProfileModelCall {
   callUnit?: 'external-turn'
@@ -18,7 +19,7 @@ export interface ProfileModelCall {
 }
 export interface SkillActivation { id: string; runId: string; conversationId: string; skillId: string; name: string; createdAt: string }
 export interface ExecutionIntervals { id: string; runId: string; conversationId: string; workId: string; intervals: { from: string; to: string }[]; openAt?: string; complete: boolean }
-export interface ActivityEvidence { calls: ProfileModelCall[]; budgets: BudgetModelCall[]; messages: Message[]; runs: AgentRun[]; works: WorkItem[]; intervals: ExecutionIntervals[]; skills: SkillActivation[]; resources: Resource[] }
+export interface ActivityEvidence { metrics?: ModelMetricCall[]; calls: ProfileModelCall[]; budgets: BudgetModelCall[]; messages: Message[]; runs: AgentRun[]; works: WorkItem[]; intervals: ExecutionIntervals[]; skills: SkillActivation[]; resources: Resource[] }
 export function dayAt(instant: string, timezone: string): string | null {
   if (!Number.isFinite(Date.parse(instant))) return null
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(instant))
@@ -47,6 +48,19 @@ export function aggregateActivity(evidence: ActivityEvidence, range: ProfileActi
     const metadata = calls.get(call.id)
     calls.set(call.id, { ...metadata, ...(call.callUnit ? { callUnit: call.callUnit } : {}), id: call.id, runId: call.runId, conversationId: call.conversationId, phase: call.phase, startedAt: metadata?.startedAt ?? '', budgetOwned: true, usageComplete: call.usageComplete, usage: call.settledAt && (call.callUnit !== 'external-turn' || call.usageComplete) ? call.usage : undefined })
   }
+  // A native generation can cover several tool steps. Replace the whole run's
+  // legacy display receipts instead of adding it to those same token totals.
+  // Explicit budget receipts remain independently authoritative for enforcement.
+  const metrics = (evidence.metrics ?? []).filter(call => call.scope === 'utility' || apiRunIds.has(call.runId))
+  const metricRuns = new Set(metrics.map(call => call.runId))
+  const preferences = new Map([...calls.values()].filter(call => call.thinking).map(call => [call.runId, call.thinking]))
+  for (const [id, call] of calls) if (metricRuns.has(call.runId)) calls.delete(id)
+  const modelCosts = new Map<string, number>()
+  for (const metric of metrics) {
+    calls.set(`mastra:${metric.id}`, { ...metric, budgetOwned: false, thinking: preferences.get(metric.runId) })
+    for (const cost of metric.costs) modelCosts.set(cost.currency, (modelCosts.get(cost.currency) ?? 0) + cost.amount)
+  }
+  const unpricedCalls = metrics.filter(call => !call.costComplete).length + [...calls.values()].filter(call => !metricRuns.has(call.runId)).length
   const recordedRuns = new Set([...calls.values()].map(call => call.runId))
   const missing = evidence.runs.filter(run => apiRunIds.has(run.id) && (!recordedRuns.has(run.id) || run.activityError))
   const buckets = new Map<string, { tokens: number; known: number; unknownCalls: number; calls: number }>()
@@ -94,8 +108,8 @@ export function aggregateActivity(evidence: ActivityEvidence, range: ProfileActi
     days.push({ date, tokens: value ? value.known ? value.tokens : null : null, unknownCalls: value?.unknownCalls ?? 0, calls: value?.calls ?? 0 })
   }
   return { schemaVersion: 1, scope: 'retained-local', dataVersion: createHash('sha256').update(JSON.stringify(evidence)).digest('hex'), generatedAt: now, range,
-    totalTokens: knownCalls ? totalTokens : null, peak, longestTaskMs, currentStreak: unknownDates ? null : current, longestStreak: unknownDates ? null : longest, days,
+    totalTokens: knownCalls ? totalTokens : null, modelCosts: [...modelCosts].map(([currency, amount]) => ({ currency, amount })), unpricedCalls, peak, longestTaskMs, currentStreak: unknownDates ? null : current, longestStreak: unknownDates ? null : longest, days,
     unknownCalls, unrecordedRuns: missing.length, incomplete: !!(unknownCalls || missing.length || undated), chats: chats.size, exploredSkills: skills.size, skillActivations: ranked.reduce((sum, item) => sum + item.count, 0),
     thinking: thinking ? { level: thinking[0], count: thinking[1], samples: [...thinkingCounts.values()].reduce((a, b) => a + b, 0) } : null, skills: ranked.slice(0, 5),
-    limitations: ['基于本机保留记录；连接测试、独立草稿生成及 ACP 自有调用未记录。', ...([...calls.values()].some(call => call.callUnit === 'external-turn') ? ['本机 Agent 按外部请求记录供应商累计用量；内部模型调用次数未知。'] : []), ...(unknownCalls || missing.length || undated ? ['部分用量或调用日期未记录；已知值不代表完整用量。'] : []), ...(missingIntervals ? ['部分任务缺少可信执行区间。'] : []), ...(unknownDates ? ['部分本人消息缺少可信日期，连续天数不可用。'] : [])] }
+    limitations: ['基于本机保留的 API 生成指标与旧回执；连接测试和独立草稿从接入官方指标后计入，本机 Agent 自有调用不计入。', ...([...calls.values()].some(call => call.callUnit === 'external-turn') ? ['本机 Agent 按外部请求记录供应商累计用量；内部模型调用次数未知。'] : []), ...(unknownCalls || missing.length || undated ? ['部分用量或调用日期未记录；已知值不代表完整用量。'] : []), ...(missingIntervals ? ['部分任务缺少可信执行区间。'] : []), ...(unknownDates ? ['部分本人消息缺少可信日期，连续天数不可用。'] : [])] }
 }

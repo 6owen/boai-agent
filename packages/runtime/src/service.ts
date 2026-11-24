@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 接入官方用量投影和辅助模型入口；消费精确工具批准，目录、撤权和原生审批保持。
  * [OUTPUT]: 会话视图仅在实际标题任务进行时闪烁；超时、退出和历史残留不会持续闪烁。
  * [OUTPUT]: 新 API 话题的首条消息开始处理时并行生成标题，手动改名及清理可废止待生成标题。
  * [OUTPUT]: 员工清理失败逐条反馈；模型设置与生效凭据引用同事务切换，退役引用可重启清理。
@@ -415,6 +416,7 @@ import { GroupScheduler, type PublishReply } from './group-scheduler'
 import { WorkspaceService } from './modules/workspaces/workspace-service'
 import { EmployeeService, agentSchema } from './modules/employees/employee-service'
 import { CommandPermissions, canRememberCommands } from './modules/employees/command-permissions'
+import { hasToolAuthorization } from './modules/employees/tool-authorization'
 import { memoryEvidenceMessages } from './modules/employees/memory-extraction'
 import { ScheduleListRepository } from './modules/automations/schedule-list'
 import { scheduleListChangeSchema } from '@boai/shared/domain/schedule-list'
@@ -667,7 +669,7 @@ export class AppService {
         return this.apiKey(connection)
       }),
       critical: action => this.serialize(async () => { if (this.closing || this.backingUp) fail('服务正在退出或备份'); await this.applicationAuthority.getStore()?.validate(); return action() }),
-      changed: () => this.changed(), generate: generatePresentationReview,
+      changed: () => this.changed(), generate: options.engine.reviewPresentation?.bind(options.engine) ?? generatePresentationReview,
     })
     this.selfies = new SelfieService(this.store, this.dataPath, this.images, {
       critical: action => this.serialize(async () => { if (this.closing || this.backingUp) fail('服务正在退出或备份'); await this.applicationAuthority.getStore()?.validate(); return action() }),
@@ -775,8 +777,8 @@ export class AppService {
     this.materialUploads = new MaterialUploads(join(this.dataPath, '.cli-material-sources'), error => this.emit({ type: 'runtime-error', error: this.errorMessage(error) }))
     this.artifactRepository = new ArtifactRepository(this.store, this.dataPath, { validateSources: (refs, agentId, conversationId, tx) => this.materials.validateRefsInTransaction(tx, refs, agentId, conversationId) })
     this.teams = new TeamRepository(this.store)
-    this.teamGeneration = new TeamGenerationService(this.teams, this.modelCapacity, options.teamPlanner ?? planTeam, { key: id => this.connectionCredentials.get(id), changed: () => this.changed() })
-    this.userProfile = new ProfileRepository(this.store)
+    this.teamGeneration = new TeamGenerationService(this.teams, this.modelCapacity, options.teamPlanner ?? options.engine.planTeam?.bind(options.engine) ?? planTeam, { key: id => this.connectionCredentials.get(id), changed: () => this.changed() })
+    this.userProfile = new ProfileRepository(this.store, options.engine.modelMetrics?.bind(options.engine))
     this.scheduleList = new ScheduleListRepository(this.store)
     this.contactList = new ContactListRepository(this.store)
     this.contactDeletion = new ContactDeletionService(this.store, this.dataPath, { prepare: (tx, resource) => this.resourceCleanups.prepare(tx, resource), prepareBindingCopy: (tx, copy) => this.resourceCleanups.prepareBindingCopy(tx, copy), finish: id => this.resourceCleanups.finish(id) }, (filter, cleanupId) => this.canvas.cleanup(filter, cleanupId))
@@ -2613,6 +2615,7 @@ export class AppService {
       if (!currentTitleSource()) return
       return engine.generateConversationTitle!({
         connection, apiKey: context.apiKey, modelId: context.agent.modelId, signal,
+        identity: { runId: context.runId, conversationId: id, agentId: context.agent.id },
         messages: [{ role: 'user', content: this.redact(source.content, context.apiKey).slice(0, 2000) }],
       })
     })
@@ -4602,6 +4605,7 @@ export class AppService {
         settings: async () => { await this.serialize(() => this.assertExecutionAccess(context)); return this.presentations.settings() },
         renderer: () => this.presentations.rendererLease(signal, async () => { await this.serialize(() => this.assertExecutionAccess(context)) }),
         lease: () => this.presentations.lease(signal, async () => { await this.serialize(() => this.assertExecutionAccess(context)) }, {
+          identity: { runId: context.runId, conversationId: context.conversation.id, agentId: context.agent.id },
           begin: async source => {
             const callId = await context.onAdditionalModelCall!('report')
             if (!callId) fail('PPT 审阅未取得原执行的调用身份')
@@ -6076,6 +6080,7 @@ export class AppService {
     const agent = this.getAgent(run.agentId)
     if (!agent.active || agent.configVersion !== (expectedAgentVersion ?? this.snapshots.get(run.id)?.agent.configVersion)) fail('员工权限配置已变化，本次操作未执行')
     if (agent.executionPermission === 'read-only' && !(kind === 'directory' && directory?.requests.every(request => request.access === 'read-only'))) fail('当前员工为只读权限，本次操作未执行')
+    if (!nativeOrigin && !directory && kind !== 'directory' && hasToolAuthorization(run.id, kind)) return true
     const sameKindAllowed = !nativeOrigin && !isNativeBackend(agent.executionBackend) && agent.executionBackend?.kind !== 'acp-local' && kind !== 'directory'
     if (sameKindAllowed && !directory && this.runOperationPermissions.get(run.id)?.has(kind)) return !signal.aborted && !terminal.has(run.status)
     const rememberAllowed = !!directory || !nativeOrigin && kind === 'command' && canRememberCommands(agent)

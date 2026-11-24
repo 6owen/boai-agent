@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 视觉调用的官方指标与原任务逐调用用量一致，不计成无关 utility。
  * [OUTPUT]: Actual employee Run verifies dedicated-source receipts, cumulative usage, cancellation and expired leases.
  * [INPUT]: Actual SQLite/application settings, Mastra SDK and local three-protocol provider fixtures.
  * [OUTPUT]: Explicit source/renderer selection, native PNG transport, receipts, revocation and no replay on restart/failure.
@@ -330,3 +331,18 @@ test.skipIf(!process.env.BOAI_PPT_RENDERER).each(['codex', 'claude'] as const)('
     expect((await store.load<{ modelCalls: number; usage: ModelUsage }>('workBudgets')).every(budget => budget.modelCalls === 0 && !Object.keys(budget.usage).length)).toBe(true)
   } finally { await store.close() }
 }, 120000)
+
+
+test('attributes official presentation metrics to the original employee run', async () => {
+  const { MastraEngine } = await import('../packages/runtime/src/adapters/mastra/engine')
+  const f = await fixture(), engine = new MastraEngine(); clean.push(() => engine.closeMemory())
+  f.host.generate = input => engine.reviewPresentation(input)
+  await f.configure()
+  const identity = { runId: 'review-run', conversationId: 'review-chat', agentId: 'review-agent' }
+  const lease = await f.lease(undefined, undefined, { ...f.observer, identity })
+  await lease.reviewer.generate({ prompt: 'Review slides.', images })
+  const metrics = await engine.modelMetrics([identity.runId])
+  expect(metrics).toHaveLength(1)
+  expect(metrics[0]).toMatchObject({ runId: identity.runId, conversationId: identity.conversationId, phase: 'presentation-review' })
+  expect(metrics[0].usage.totalTokens).toBe(f.settles[0].usage.totalTokens)
+})

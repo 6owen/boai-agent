@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 个人资料展示 Mastra 官方估算费用和缺价说明；金额与未知状态分开。
  * [OUTPUT]: 活动聚合按API与日期时区保留Zustand快照，切页复用新鲜数据；变更合并刷新及跨日换键不清空后台已确认内容。
  * [OUTPUT]: 推理强度样本说明使用共享SettingsHelp图标Tooltip，洞察dl仅保留等高数据行。
  * [OUTPUT]: 页面布局复用settings-layout，标题/分组留白与卡片/设置行统一，原业务回调保持。
@@ -70,6 +71,7 @@ export function ProfileSettings({ api, profile: committedProfile, active, refres
     <Card className="profile-metrics grid gap-0 p-0" aria-label="个人活动摘要" aria-busy={pendingActivity}>{metrics.map(metric => <div key={metric.label} title={metric.hint}><div className="profile-metric-value">{metric.value === undefined && pendingActivity ? <Skeleton className="h-[1em] w-16" aria-hidden="true" /> : <strong>{metric.value ?? '—'}</strong>}</div><span>{metric.label}</span></div>)}</Card>
     <ActivityChart activity={activity} loading={pendingActivity} />
     <div className="profile-insights"><section><h3>活动洞察</h3><Card className="profile-insight-card"><CardContent><dl className="soft-divide-y" aria-busy={pendingActivity}>
+        <div><dt>模型估算费用<SettingsHelp label="模型估算费用说明">由 Mastra 官方指标和模型价格计算，供应商账单为准；{activity?.unpricedCalls ?? 0} 次生成缺少完整价格。旧记录不回填估价。</SettingsHelp></dt><dd>{activityValue(activity ? activity.modelCosts?.length ? activity.modelCosts.map(cost => `${cost.currency} ${cost.amount.toLocaleString(undefined, { maximumFractionDigits: 6 })}`).join(' · ') : '暂无价格记录' : undefined)}</dd></div>
         <div><dt>快速模式</dt><dd>暂不支持</dd></div>
         <div><dt>最常用的推理强度{activity?.thinking && <SettingsHelp label="推理强度统计说明">基于 {activity.thinking.samples} 次已记录实际强度的调用</SettingsHelp>}</dt><dd>{activityValue(activity ? activity.thinking ? `${({ off: '关闭', low: '低', high: '高', max: '最高' } as Record<string, string>)[activity.thinking.level] ?? activity.thinking.level} · ${Math.round(activity.thinking.count / activity.thinking.samples * 100)}%` : '暂无记录' : undefined)}</dd></div>
         <div><dt>已探索技能数</dt><dd>{activityValue(activity?.exploredSkills)}</dd></div><div><dt>使用的技能总数</dt><dd>{activityValue(activity ? `${activity.skillActivations} 次` : undefined)}</dd></div><div><dt>聊天总数</dt><dd>{activityValue(activity?.chats)}</dd></div>

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 向视觉观测传递原任务归属；调用预约与结算不变。
  * [INPUT]: Original settings store, selected connection/vault, explicit renderer and host request accounting.
  * [OUTPUT]: Revisioned presentation settings and revocable renderer/vision leases; no implicit chat-model fallback.
  * [POS]: Presentation capability service; employee tools must supply their own live authorization and request ledger.
@@ -20,6 +21,7 @@ const updateSchema = z.object({ expectedRevision: z.number().int().nonnegative()
 export interface PresentationSettings { revision: number; renderer: { path: string; sha256: string } | null; vision: z.infer<typeof visionSchema> | null }
 export interface PresentationReviewSource { settingsRevision: number; connectionId: string; connectionRevision: number; model: string; protocol: ModelProtocol }
 export interface PresentationReviewObserver {
+  identity?: { runId: string; conversationId: string; agentId: string }
   /** Must authorize and reserve this exact additional request before the provider is called. */
   begin(source: PresentationReviewSource): Promise<string>
   /** Missing usage remains unknown; completed only confirms the model transport finished normally. */
@@ -27,6 +29,7 @@ export interface PresentationReviewObserver {
   route?(requestId: string, evidence: GatewayRouteEvidence): Promise<void>
 }
 export interface PresentationModelInput {
+  identity?: PresentationReviewObserver['identity']
   connection: Connection; apiKey: string; model: string; maxOutputTokens?: number
   prompt: string; images: RenderedSlide[]; signal: AbortSignal
   usage(value: ModelUsage): Promise<void>
@@ -134,7 +137,7 @@ export class PresentationService {
           requestId = await observer.begin(source)
           if (!requestId) throw new Error('PPT 审阅没有取得原任务的模型调用回执')
           await verify(); effective.throwIfAborted()
-          const text = await this.host.generate({ ...input, connection, apiKey, model: selected.model, maxOutputTokens: selected.maxOutputTokens, signal: effective,
+          const text = await this.host.generate({ ...input, identity: observer.identity, connection, apiKey, model: selected.model, maxOutputTokens: selected.maxOutputTokens, signal: effective,
             usage: async value => { usage = value }, route: async evidence => { if (observer.route) await observer.route(requestId!, evidence) },
           })
           completed = true

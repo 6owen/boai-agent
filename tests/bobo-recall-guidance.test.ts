@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 按官方Controller/Session历史与自动OM验证，保留业务权限、来源、取消、真实工具和用量断言。
  * [INPUT]: Installed Mastra/LibSQL, the production memory bridge and engine, isolated transcripts and a controlled HTTP provider.
  * [OUTPUT]: All private API employees receive cold-start recall guidance; disabled stages, thresholds and autonomous tool selection remain unchanged.
  * [POS]: Recall integration regressions; real-model behavioral comparisons are recorded separately.
@@ -34,21 +35,21 @@ async function fixture(agentId = 'bobo') {
   return { root, context }
 }
 
-it.each(['bobo', 'writer'])('supplies %s cold-start guidance without creating OM or loading other threads and preserves thresholds and read-only tools', async id => {
+it.each(['bobo', 'writer'])('supplies %s cold-start guidance through native thread OM without loading other threads', async id => {
   const f = await fixture(id), bridge = new EmployeeConversationMemory(join(f.root, 'memory.db'))
   cleanup.push(() => bridge.close())
   const prepared = await bridge.prepare(f.context), om = (await prepared.memory.omEngine)!
   const record = await om.getRecord(prepared.option.thread, prepared.option.resource)
   expect(record).toBeNull()
-  expect(prepared.recallInstructions).toContain(boboRecallGuidance)
+  expect(prepared.memory.getMergedThreadConfig({}).observationalMemory).toMatchObject({ retrieval: { instructions: expect.stringContaining(boboRecallGuidance) } })
   expect((await prepared.memory.getContext({ threadId: prepared.option.thread, resourceId: prepared.option.resource })).hasObservations).toBe(false)
   expect(JSON.stringify((await prepared.memory.getContext({ threadId: prepared.option.thread, resourceId: prepared.option.resource })).messages)).not.toContain('周三上午九点半')
   await om.getOrCreateRecord(prepared.option.thread, prepared.option.resource)
   const warm = await bridge.prepare(f.context)
-  expect(warm.recallInstructions).toBeUndefined()
+  expect(warm.option.thread).toBe(prepared.option.thread)
   expect(await om.buildContextSystemMessage({ threadId: prepared.option.thread, resourceId: prepared.option.resource })).toContain(boboRecallGuidance)
-  expect(prepared.memory.getMergedThreadConfig({}).observationalMemory).toMatchObject({ observation: { messageTokens: 6000 }, reflection: { observationTokens: 12000 } })
-  expect(prepared.option.options.readOnly).toBe(true)
+  expect(prepared.memory.getMergedThreadConfig({}).observationalMemory).toMatchObject({ scope: 'thread', observation: { messageTokens: 30000 } })
+  expect(prepared.option).not.toHaveProperty('options.readOnly')
   expect(Object.keys(prepared.memory.listTools({ readOnly: true }))).toEqual(['recall'])
 })
 
@@ -59,7 +60,7 @@ it('does not extend employee recall to retrieval-disabled stages', async () => {
     f.context.work = { organization: { mode: 'organize_only' } } as EngineContext['work']
     const prepared = await bridge.prepare(f.context), om = (await prepared.memory.omEngine)!
     expect(await om.getRecord(prepared.option.thread, prepared.option.resource)).toBeNull()
-    expect(prepared.recallInstructions).toBeUndefined()
+    expect(prepared.memory.getMergedThreadConfig({}).observationalMemory).toMatchObject({ retrieval: false })
     expect(prepared.memory.listTools({ readOnly: true }).recall).toBeUndefined()
   }
 })

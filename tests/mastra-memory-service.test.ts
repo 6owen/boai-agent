@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 按官方Controller/Session历史与自动OM验证，保留业务权限、来源、取消、真实工具和用量断言。
  * [OUTPUT]: 同员工主聊天与独立任务共用Mastra resource、各自thread，并可检索刚完成任务原文。
  * [INPUT]: Real AppService, Mastra Memory and ProductStore with an isolated API employee.
  * [OUTPUT]: Shared API memory wiring, source isolation, no legacy extraction/injection and management/backup continuity.
@@ -124,7 +125,9 @@ it('shares employee memory across main chat and task threads and retrieves a fre
   f.engine.run = async ctx => {
     sources.push(await ctx.memorySources!())
     const memory = await f.memory.prepare(ctx)
-    prepared.push({ ...memory.option, guidance: memory.recallInstructions })
+    const config = memory.memory.getMergedThreadConfig({}).observationalMemory
+    const retrieval = typeof config === 'object' ? config.retrieval : undefined
+    prepared.push({ ...memory.option, guidance: typeof retrieval === 'object' ? retrieval.instructions : undefined })
     if (!ctx.conversation.employeeTaskId) searches.push(await ctx.historySearch!.search({ query: 'MEMORY_TASK_RESULT' }))
     await ctx.onDelta(ctx.conversation.employeeTaskId ? 'MEMORY_TASK_RESULT: Hefei weather delivered' : 'main reply')
   }

@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 真实 SDK 审批等待/拒绝/取消/只读、官方用量持久化/清理与辅助调用验证。
+ * [OUTPUT]: 2026-11-24 按官方Controller/Session历史与自动OM验证，保留业务权限、来源、取消、真实工具和用量断言。
  * [OUTPUT]: 真实 Mastra 标题 API 使用选定模型和首条用户消息，无工具且仅一次请求。
  * [OUTPUT]: 实际SDK顺序群发言即使宿主提供管理能力也不广告或调用工具。
  * [OUTPUT]: 真实SDK及native工具桥先发现/读取插件技能源，再调用桌面工具。
@@ -430,7 +432,12 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
 
   it.each(['referenced','no-reference','host-budget-exhausted'])('runs past former step limits until completion or an explicit host budget: %s',async mode=>{
     const steps = mode === 'no-reference' ? 260 : 13
-    const server=await endpoint([...Array.from({length:steps},()=>({name:'browser_tool',args:{command:'snapshot'}})),'页面操作已核对。'])
+    let primary = 0
+    const isObservation = (body: RequestBody) => body.messages.some(message => message.role === 'system' && JSON.stringify(message.content).includes('You are the memory consciousness'))
+    const server=await endpoint((body, response, index) => {
+      if (isObservation(body)) return send(response, '<observations>\n- 🔴 Completed browser snapshots. Continue the remaining requested work.\n</observations>', index)
+      send(response, primary++ < steps ? { name: 'browser_tool', args: { command: 'snapshot' } } : '页面操作已核对。', index)
+    })
     // Changing observations exercise sustained progress; identical snapshots also invoke the separate progress reviewer.
     let snapshot = 0
     const execute=vi.fn(async()=>({result:{output:`当前实际页面内容 ${++snapshot}`,appendReleaseHint:false}})),drain=vi.fn(async()=>{})
@@ -444,13 +451,13 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     run.ctx.work={id:'claimed-browser-task',sourceMessageId:'message-1',conversationId:run.ctx.conversation.id,ownerAgentId:run.ctx.agent.id,status:'running'} as WorkItem
     const pending=new MastraEngine().run(run.ctx)
     if(mode!=='host-budget-exhausted'){
-      await pending;expect(server.requests).toHaveLength(steps+1);expect(execute).toHaveBeenCalledTimes(steps);expect(run.deltas.join('')).toBe('页面操作已核对。')
+      await pending;expect(server.requests.filter(body => !isObservation(body))).toHaveLength(steps+1);expect(execute).toHaveBeenCalledTimes(steps);expect(run.deltas.join('')).toBe('页面操作已核对。')
     }else{
       await expect(pending).rejects.toThrow('ORIGINAL_HOST_BUDGET_EXHAUSTED')
       expect(server.requests).toHaveLength(12);expect(run.deltas).toEqual([])
     }
     expect(run.ctx.workBudget?.maxModelCalls).toBeNull();expect(drain).toHaveBeenCalledOnce()
-  })
+  }, 60_000)
 
   it.each(['inactive','acp','organization','chat','no-work'] as const)('keeps the task browser unavailable for %s even when a session and legacy true flag are supplied',async kind=>{
     const execute=vi.fn(async()=>undefined),drain=vi.fn(async()=>{})
@@ -885,7 +892,7 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
   it('completes a material answer above the former chat ceiling in one accounted SDK request', async () => {
     const required = 3200, complete = '资料问答的各项结论及来源均已完整返回。'
     const model = await endpoint((body, response, index) => {
-      const limit = body.max_tokens ?? body.max_completion_tokens ?? 0, finished = limit >= required
+      const limit = body.max_tokens ?? body.max_completion_tokens ?? 16384, finished = limit >= required
       const used = Math.min(limit, required)
       send(response, finished ? complete : '未完成的资料答复', index, { prompt_tokens: 100, completion_tokens: used, total_tokens: 100 + used }, finished ? 'stop' : 'length')
     })
@@ -894,13 +901,13 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     expect(run.deltas.join('')).toBe(complete)
     expect(model.requests).toHaveLength(1); expect(run.additionalCalls).toEqual([])
     const requested = model.requests[0].max_tokens ?? model.requests[0].max_completion_tokens
-    expect(requested).toBeGreaterThanOrEqual(required); expect(requested).toBeLessThanOrEqual(8192)
+    expect(requested).toBeUndefined()
   })
 
   it.each([
     { name: 'effective model ceiling', id: 'user-model-override', cap: 3000, expected: 3000 },
-    { name: 'another model is not authority', id: 'unselected-model', cap: 512, expected: 8192 },
-    { name: 'invalid ceiling is not sent', id: 'user-model-override', cap: 0, expected: 8192 },
+    { name: 'another model is not authority', id: 'unselected-model', cap: 512, expected: undefined },
+    { name: 'invalid ceiling is not sent', id: 'user-model-override', cap: 0, expected: undefined },
   ])('honors material output capacity with $name', async ({ id, cap, expected }) => {
     const model = await endpoint(['完整答复。'])
     const run = await context(model.url, { responseKind: 'chat', materialRefs: [{ id: 'material', revision: 1, contentHash: 'hash', parseVersion: 'text-v1', conversationId: 'conversation' }], modelCatalog: { source: 'service-declared', fetchedAt: '', models: [{ id: 'user-specified-model', maxOutputTokens: 256 }, { id, maxOutputTokens: cap }] } })
@@ -909,17 +916,17 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     expect(model.requests[0].max_tokens ?? model.requests[0].max_completion_tokens).toBe(expected)
   })
 
-  it('keeps the ordinary chat ceiling when there are no material inputs', async () => {
+  it('uses the provider default without an arbitrary ordinary chat output ceiling', async () => {
     const model = await endpoint(['你好。']), run = await context(model.url, { responseKind: 'chat', materialRefs: [], materialImages: [] })
     await new MastraEngine().run(run.ctx)
-    expect(model.requests[0].max_tokens ?? model.requests[0].max_completion_tokens).toBe(2500)
+    expect(model.requests[0].max_tokens ?? model.requests[0].max_completion_tokens).toBeUndefined()
     expect(model.requests).toHaveLength(1); expect(run.additionalCalls).toEqual([])
   })
 
   it('still rejects a length-truncated material answer without retrying or publishing its buffered draft', async () => {
     const model = await endpoint((_body, response, index) => send(response, '不可发布的未完成答复', index, { prompt_tokens: 100, completion_tokens: 8192, total_tokens: 8292 }, 'length'))
     const run = await context(model.url, { responseKind: 'chat', materialRefs: [{ id: 'material', revision: 1, contentHash: 'hash', parseVersion: 'text-v1', conversationId: 'conversation' }], recallMemory: async () => ({ entries: [], epoch: 1, namespace: 'employee:agent-a' }) })
-    await expect(new MastraEngine().run(run.ctx)).rejects.toThrow('模型回复超过输出限制')
+    await expect(new MastraEngine().run(run.ctx)).rejects.toThrow('模型服务返回了输出截断')
     expect(run.deltas).toEqual([]); expect(model.requests).toHaveLength(1); expect(run.additionalCalls).toEqual([])
   })
 
@@ -1493,7 +1500,7 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     const { ctx } = await context(mock.url, { approveCommand: async () => false })
     ctx.agent.allowCommands = true
     await new MastraEngine().run(ctx)
-    expect(toolResultText(mock.requests[1])).toContain('User declined')
+    expect(toolResultText(mock.requests[1])).toContain('not approved by the user')
     await expect(readFile(path.join(ctx.workspace!.root, 'runs/run-1/refused.txt'))).rejects.toThrow()
   })
 
@@ -2176,7 +2183,7 @@ it('sends a real user image through the SDK without a model capability gate and 
   })
   await new MastraEngine().run(ctx)
   expect(mock.requests).toHaveLength(1)
-  const input = mock.requests[0].messages.find(item => item.role === 'user')
+  const input = mock.requests[0].messages.find(item => item.role === 'user' && Array.isArray(item.content))
   expect(input?.content).toEqual(expect.arrayContaining([
     { type: 'text', text: '看一下这张图片' },
     { type: 'image_url', image_url: { url: dataUrl } },
@@ -2544,5 +2551,107 @@ describe('workspace image reading', () => {
     await writeFile(path.join(f.ctx.workspace!.runPath, 'preview.png'), workspaceImageBytes)
     await expect(f.runtime.tools.read_image.execute!({ path: 'self:/runs/run-1/preview.png' }, f.invocation)).rejects.toThrow('not authorized')
     expect(reads).toBe(2)
+  })
+})
+
+
+describe('native Controller permissions and metrics', () => {
+  it('uses native catalog pricing for a supported model without BOAI price formulas', async () => {
+    const mock = await endpoint((_body, response, index) => send(response, 'Done.', index, { prompt_tokens: 100, completion_tokens: 10, total_tokens: 110 }))
+    const f = await context(mock.url, { agent: employee({ modelId: 'gpt-4o' }) })
+    const engine = new MastraEngine()
+    cleanup.push(() => engine.closeMemory())
+    await engine.run(f.ctx)
+    const calls = await engine.modelMetrics([f.ctx.runId])
+    expect(calls).toHaveLength(1)
+    expect(calls[0]).toMatchObject({ costComplete: true, usage: { totalTokens: 110 } })
+    expect(calls[0].costs).toEqual([{ currency: 'USD', amount: expect.any(Number) }])
+    expect(calls[0].costs[0].amount).toBeGreaterThan(0)
+  })
+
+  it('keeps read-only tools available while the SDK denies writes without prompting', async () => {
+    const mock = await endpoint([{ name: 'write_file', args: { path: 'self:/work/denied.txt', content: 'forbidden' } }, { name: 'read_file', args: { path: 'self:/work/source.txt' } }, 'Done.'])
+    const approveOperation = vi.fn(async () => true)
+    const f = await context(mock.url, { agent: employee({ executionPermission: 'read-only' }), approveOperation })
+    await mkdir(f.ctx.workspace!.workPath, { recursive: true })
+    await writeFile(path.join(f.ctx.workspace!.workPath, 'source.txt'), 'read allowed')
+    const engine = new MastraEngine()
+    cleanup.push(() => engine.closeMemory())
+    await engine.run(f.ctx)
+    expect(approveOperation).not.toHaveBeenCalled()
+    expect(toolResultText(mock.requests[2])).toContain('read allowed')
+    await expect(readFile(path.join(f.ctx.workspace!.workPath, 'denied.txt'))).rejects.toMatchObject({ code: 'ENOENT' })
+  })
+
+  it('retains unknown usage and tracks connection-test and title costs through official metrics', async () => {
+    const mock = await endpoint((_body, response, index) => {
+      if (!index) return send(response, 'OK', index, { prompt_tokens: 30, completion_tokens: 2, total_tokens: 32 })
+      response.writeHead(200, { 'Content-Type': 'application/json' })
+      response.end(JSON.stringify({ id: 'title', object: 'chat.completion', created: 1700000000, model: 'fixture', choices: [{ index: 0, finish_reason: 'stop', message: { role: 'assistant', content: 'Short title' } }] }))
+    })
+    const engine = new MastraEngine()
+    cleanup.push(() => engine.closeMemory())
+    await engine.test(connection(mock.url), 'fixture-secret')
+    await engine.generateConversationTitle({ connection: connection(mock.url), apiKey: 'fixture-secret', messages: [{ role: 'user', content: 'Hello' }], signal: new AbortController().signal })
+    const metrics = await engine.modelMetrics([])
+    expect(metrics.some(call => call.phase === 'connection-test' && call.usage.totalTokens === 32)).toBe(true)
+    expect(metrics.find(call => call.phase === 'title')?.usage).toEqual({})
+    expect(metrics.every(call => call.scope === 'utility' && !call.costComplete)).toBe(true)
+  })
+
+  it.each([true, false])('waits at the SDK gate and executes the approved tool exactly once: %s', async approved => {
+    const mock = await endpoint([{ name: 'write_file', args: { path: 'self:/work/native-gate.txt', content: 'once' } }, 'Finished.'])
+    let decide!: (value: boolean) => void
+    const approveOperation = vi.fn(() => new Promise<boolean>(resolve => { decide = resolve }))
+    const f = await context(mock.url, { agent: employee({ executionPermission: 'ask' }), approveOperation })
+    const engine = new MastraEngine()
+    cleanup.push(() => engine.closeMemory())
+    const running = engine.run(f.ctx)
+    await vi.waitFor(() => expect(approveOperation).toHaveBeenCalledOnce())
+    const target = path.join(f.ctx.workspace!.workPath, 'native-gate.txt')
+    await expect(readFile(target)).rejects.toMatchObject({ code: 'ENOENT' })
+    decide(approved)
+    await running
+    expect(approveOperation).toHaveBeenCalledOnce()
+    if (approved) expect(await readFile(target, 'utf8')).toBe('once')
+    else await expect(readFile(target)).rejects.toMatchObject({ code: 'ENOENT' })
+    expect(mock.requests).toHaveLength(2)
+  })
+
+  it('cancels a pending native approval without executing after a late grant', async () => {
+    const mock = await endpoint([{ name: 'write_file', args: { path: 'self:/work/cancelled.txt', content: 'forbidden' } }])
+    let decide!: (value: boolean) => void
+    const approveOperation = vi.fn(() => new Promise<boolean>(resolve => { decide = resolve }))
+    const f = await context(mock.url, { agent: employee({ executionPermission: 'ask' }), approveOperation })
+    const engine = new MastraEngine()
+    cleanup.push(() => engine.closeMemory())
+    const running = engine.run(f.ctx)
+    const rejected = expect(running).rejects.toThrow()
+    await vi.waitFor(() => expect(approveOperation).toHaveBeenCalledOnce())
+    f.controller.abort(new Error('user cancelled'))
+    await rejected
+    decide(true)
+    await new Promise(resolve => setImmediate(resolve))
+    await expect(readFile(path.join(f.ctx.workspace!.workPath, 'cancelled.txt'))).rejects.toMatchObject({ code: 'ENOENT' })
+    expect(mock.requests).toHaveLength(1)
+  })
+
+  it('persists official model metrics across restart, including all tool steps', async () => {
+    const mock = await endpoint((_body, response, index) => send(response, index === 0 ? { name: 'write_file', args: { path: 'self:/work/usage.txt', content: 'ok' } } : 'Done.', index, { prompt_tokens: 100, completion_tokens: 10, total_tokens: 110 }))
+    const f = await context(mock.url, { agent: employee({ executionPermission: 'full-access' }) })
+    const memoryPath = path.join(f.directory, 'memory.db')
+    const engine = new MastraEngine({ memoryPath })
+    await engine.run(f.ctx)
+    const calls = await engine.modelMetrics([f.ctx.runId])
+    expect(calls.length).toBeGreaterThan(0)
+    expect(calls.reduce((sum, call) => sum + (call.usage.totalTokens ?? 0), 0)).toBe(220)
+    expect(calls.every(call => call.conversationId === f.ctx.conversation.id && !call.costComplete && call.costs.length === 0)).toBe(true)
+    await engine.closeMemory()
+    const reopened = new MastraEngine({ memoryPath })
+    cleanup.push(() => reopened.closeMemory())
+    expect(await reopened.modelMetrics([f.ctx.runId])).toEqual(calls)
+    expect(await reopened.modelMetrics(['other-run'])).toEqual([])
+    await reopened.forgetConversationMemory(f.ctx.conversation.id)
+    expect(await reopened.modelMetrics()).toEqual([])
   })
 })

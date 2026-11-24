@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 宿主与 Controller 共用浏览器插件读写判定，保留截图写盘与 CLI 权限边界。
  * [INPUT]: Independent community browser providers and owner configuration.
  * [OUTPUT]: Browser launch preferences, minimal foreground patches and per-field draft rebasing share one contract.
  * [POS]: Browser plugin protocol; BOAI's embedded browser and retrieval preferences stay separate.
@@ -47,3 +48,10 @@ export const saveBrowserPluginSettingsSchema = z.object({ provider: browserPlugi
 export type SaveBrowserPluginSettings = z.infer<typeof saveBrowserPluginSettingsSchema>
 export const browserPluginCallSchema = z.object({ provider: browserPluginProviderSchema, tool: z.string().min(1).max(100), arguments: z.record(z.string(), z.unknown()).default({}), foreground: z.boolean().optional().describe('Explicit mode for this run, selected before the first browser action. Omit to follow the browser configuration (background by default).') }).strict()
 export type BrowserPluginCall = z.infer<typeof browserPluginCallSchema>
+
+
+/** The host and the native approval adapter share the exact browser side-effect boundary. */
+export function browserPluginWrites(input: BrowserPluginCall) {
+  const readTools = new Set(['browser_goto', 'browser_snapshot', 'browser_screenshot', 'browser_wait', 'browser_scroll', 'browser_back', 'browser_close'])
+  return input.provider === 'browser-viewer' || !readTools.has(input.tool) || !!input.arguments.path
+}
