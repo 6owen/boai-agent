@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 文件随文字分行显示，整条消息共用一组回执与操作。
+ * [OUTPUT]: 正文与文件分别按自身宽度定位操作栏，共用消息身份，回执和表情汇总显示一次。
  * [OUTPUT]: 消息工具栏提供设为员工任务或查看关联任务，原执行过程按钮保持。
  * [OUTPUT]: 任务消息提供关联任务入口，与原执行过程工具并存。
  * [OUTPUT]: 系统复制写入成功后显示Sonner复制成功，失败不弹成功提示。
@@ -40,7 +40,30 @@ function rememberReaction(emoji: ReactionEmoji) {
   try { const usage = reactionUsage(); usage[emoji] = Math.min((usage[emoji] ?? 0) + 1, 1_000_000); localStorage.setItem(REACTION_USAGE_KEY, JSON.stringify(usage)) } catch { /* Optional local presentation preference. */ }
 }
 
-export function MessageCard({ message, profile = defaultUserProfile, children, attachments, receipt, onReply, onTrace, onTask, onCreateTask, onPublish, publishDisabled, publishDescription }: { message: Message; profile?: Pick<LocalUserProfile, 'displayName'>; children: ReactNode; attachments?: ReactNode; receipt?: ReactNode; onReply(): void; onTrace(): void; onTask?(): void; onCreateTask?(): void; onPublish?(): void; publishDisabled?: boolean; publishDescription?: string }) {
+type MessageCardProps = {
+  message: Message
+  profile?: Pick<LocalUserProfile, 'displayName'>
+  children?: ReactNode
+  attachments?: ReactNode
+  receipt?: ReactNode
+  onReply(): void
+  onTrace(): void
+  onTask?(): void
+  onCreateTask?(): void
+  onPublish?(): void
+  publishDisabled?: boolean
+  publishDescription?: string
+}
+
+export function MessageCard({ separateAttachments, children, attachments, receipt, ...actions }: MessageCardProps & { separateAttachments?: boolean }) {
+  if (!separateAttachments || !attachments) return <MessageCardPart {...actions} attachments={attachments} receipt={receipt}>{children}</MessageCardPart>
+  return <div className="message-parts">
+    <MessageCardPart {...actions} showReactions={false}>{children}</MessageCardPart>
+    <MessageCardPart {...actions} attachments={attachments} receipt={receipt} />
+  </div>
+}
+
+function MessageCardPart({ message, profile = defaultUserProfile, children, attachments, receipt, showReactions = true, onReply, onTrace, onTask, onCreateTask, onPublish, publishDisabled, publishDescription }: MessageCardProps & { showReactions?: boolean }) {
   const sender = messageDisplayName(message, profile)
   const space = useRef<HTMLDivElement>(null), content = useRef<HTMLDivElement>(null), toolbar = useRef<HTMLDivElement>(null)
   const reactionTrigger = useRef<HTMLButtonElement>(null)
@@ -88,13 +111,13 @@ export function MessageCard({ message, profile = defaultUserProfile, children, a
     toast.success('复制成功')
   })
   const pick = ([emoji, label]: typeof reactionEmojis[number]) => <Button key={emoji} variant="ghost" size="icon" className="reaction-choice" aria-label={`回应：${label}`} title={label} aria-pressed={reactions.some(item => item.emoji === emoji && item.senderId === 'user')} disabled={busy} focusableWhenDisabled onClick={() => react(emoji)}><span className="reaction-emoji" aria-hidden="true">{emoji}</span></Button>
-  const reactionsBar = !!groups.length && <div className="message-reactions" aria-label="消息表情回应" aria-busy={busy}>{groups.map(({ emoji, label, names, selected }) => <Button variant="ghost" size="content" className="message-reaction" key={emoji} aria-label={`${selected ? '取消' : '添加'}${label}回应，${names}`} aria-pressed={selected} disabled={busy} focusableWhenDisabled onClick={() => react(emoji)}><span className="reaction-emoji" aria-hidden="true">{emoji}</span><span className="reaction-people">{names}</span></Button>)}</div>
+  const reactionsBar = showReactions && !!groups.length && <div className="message-reactions" aria-label="消息表情回应" aria-busy={busy}>{groups.map(({ emoji, label, names, selected }) => <Button variant="ghost" size="content" className="message-reaction" key={emoji} aria-label={`${selected ? '取消' : '添加'}${label}回应，${names}`} aria-pressed={selected} disabled={busy} focusableWhenDisabled onClick={() => react(emoji)}><span className="reaction-emoji" aria-hidden="true">{emoji}</span><span className="reaction-people">{names}</span></Button>)}</div>
   return <div className="message-content-space" ref={space}>
     <div className="message-content" ref={content} data-toolbar-placement={placement} data-with-files={attachments ? true : undefined}>
-      <div className="message-card soft-card">
+      {children && <div className="message-card soft-card">
         {children}
         {!attachments && reactionsBar}
-      </div>
+      </div>}
       {attachments}
       {attachments && reactionsBar}
       {receipt}

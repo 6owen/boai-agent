@@ -1,7 +1,7 @@
 /*
  * [OUTPUT]: 2026-11-24 接入官方用量投影和辅助模型入口；消费精确工具批准，目录、撤权和原生审批保持。
- * [OUTPUT]: 会话视图从原首轮和实际标题任务投影生成状态；失败、退出和历史残留不会持续闪烁。
- * [OUTPUT]: 新 API 话题首轮回复后异步生成产品标题，手动改名及清理可废止待生成标题。
+ * [OUTPUT]: 会话视图仅在实际标题任务进行时闪烁；超时、退出和历史残留不会持续闪烁。
+ * [OUTPUT]: 新 API 话题的首条消息开始处理时并行生成标题，手动改名及清理可废止待生成标题。
  * [OUTPUT]: 员工清理失败逐条反馈；模型设置与生效凭据引用同事务切换，退役引用可重启清理。
  * [OUTPUT]: 2026-11-09 员工配置项目生成运行内许可；CLI仅指定cwd不产生项目授权，内部资料权限保持。
  * [OUTPUT]: 能力包与画板保留各自实际退出/备份门禁；包Source按员工核权，备份同时保存两类原件与恢复策略。
@@ -2583,54 +2583,60 @@ export class AppService {
   private withConversationTitleState(conversation: Conversation): Conversation {
     const { id, pendingTitleMessageId } = conversation
     if (!pendingTitleMessageId || this.closing || conversation.list?.hidden || this.clearingConversations.has(id)) return conversation
-    const job = this.titleControllers.get(id)
-    if (job) return job.signal.aborted ? conversation : { ...conversation, titleGenerating: true }
-    const turnId = this.messages.get(pendingTitleMessageId)?.turnId
-    const status = turnId ? this.scheduler.turns.get(turnId)?.status : undefined
-    return status === 'queued' || status === 'evaluating' || status === 'responding' || status === 'executing'
-      ? { ...conversation, titleGenerating: true } : conversation
+    return this.titleControllers.get(id)?.signal.aborted === false ? { ...conversation, titleGenerating: true } : conversation
   }
 
-  private scheduleConversationTitle(context: EngineContext, source: Message | undefined, reply: Message) {
+  private scheduleConversationTitle(context: EngineContext, sourceId: string) {
     const connection = context.connection, id = context.conversation.id
+    if (this.conversations.get(id)?.pendingTitleMessageId !== sourceId) return
+    const source = this.messages.get(sourceId)
     if (!connection || !source || this.titleControllers.has(id)) return
     const engine = this.engineFor(context)
     if (!engine.generateConversationTitle) return
+    const modelSource = context.modelSource
     const currentTitleSource = () => {
       const current = this.conversations.get(id)
-      const activeConnection = this.connections.get(connection.id)
       if (!current || this.closing || this.backingUp || current.list?.hidden || this.clearingConversations.has(id) ||
-        !activeConnection || activeConnection.revision !== connection.revision ||
-        current.pendingTitleMessageId !== source.id || !this.messages.has(source.id) || !this.messages.has(reply.id)) return
+        current.pendingTitleMessageId !== sourceId || !this.messages.has(sourceId)) return
+      if (modelSource) {
+        try { this.requestModelSecrets.resolve(modelSource, this.getAgent(context.agent.id), this.connections) }
+        catch { return }
+      } else {
+        const activeConnection = this.connections.get(connection.id)
+        if (!activeConnection || activeConnection.revision !== connection.revision) return
+      }
       return current
     }
     if (!currentTitleSource()) return
     const controller = new AbortController()
     this.titleControllers.set(id, controller)
     const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(15_000)])
-    const execution = this.modelCapacity.run(connection.id, signal, async () => {
+    const call = this.modelCapacity.run(modelSource?.inheritedConnection?.id ?? connection.id, signal, async () => {
       if (!currentTitleSource()) return
       return engine.generateConversationTitle!({
         connection, apiKey: context.apiKey, modelId: context.agent.modelId, signal,
         identity: { runId: context.runId, conversationId: id, agentId: context.agent.id },
-        messages: [
-          { role: 'user', content: this.redact(source.content.slice(0, 2000), context.apiKey) },
-          { role: 'assistant', content: this.redact(reply.content.slice(0, 2000), context.apiKey) },
-        ],
+        messages: [{ role: 'user', content: this.redact(source.content, context.apiKey).slice(0, 2000) }],
       })
-    }).catch(() => undefined).then(title => this.serialize(async () => {
+    })
+    // End the visible job at the deadline while holding capacity until the adapter exits.
+    this.adapterExits.add(call)
+    const exited = () => this.adapterExits.delete(call)
+    void call.then(exited, exited)
+    const execution = withAbort(call, signal).catch(() => undefined).then(title => this.serialize(async () => {
       const current = currentTitleSource()
       if (!current || controller.signal.aborted) return
       const generated = !signal.aborted && title ? this.redact(title, context.apiKey).replace(/\s+/g, ' ').trim().slice(0, CONVERSATION_TITLE_MAX_LENGTH) : ''
       const saved = { ...current, title: generated || current.title, pendingTitleMessageId: undefined }
       await this.store.write([record('conversations', saved)])
       this.conversations.set(id, saved)
-    })).catch(() => { /* A title failure leaves the initial title and the published reply intact. */ }).finally(() => {
+    })).catch(() => { /* A title failure leaves the initial title and the main turn intact. */ }).finally(() => {
       this.titleControllers.delete(id)
       this.adapterExits.delete(execution)
       if (!this.closing && this.conversations.has(id)) this.changed(id)
     })
     this.adapterExits.add(execution)
+    this.changed(id)
   }
 
   private assertConversationIdle(id: string) {
@@ -5867,7 +5873,6 @@ export class AppService {
         }
       } else await this.serialize(commit)
       this.emit({ type: 'message', message }); this.changed(conversation.id)
-      this.scheduleConversationTitle(context, source, message)
     } catch (error) {
       if (!terminal.has(run.status)) await this.finishRun(run, effective.aborted ? (this.closing ? 'interrupted' : 'cancelled') : error instanceof ProgressStalledError ? 'interrupted' : error instanceof WorkUnavailableError ? 'cancelled' : 'failed', this.redact(this.errorMessage(error), key))
       if (error instanceof WorkUnavailableError || (run.workId && controller.signal.aborted && !signal.aborted)) return 'deferred'
@@ -6005,6 +6010,7 @@ export class AppService {
         return this.works.reserveAutomationCall(run, randomUUID(), run.phase ?? 'execution')
       })
       const modelCallId = reservedCallId ?? randomUUID(); reservedCallId = undefined
+      if (run.phase === 'decision' || run.phase === 'execution') this.scheduleConversationTitle(context, run.triggerMessageId)
       // Queueing is governed by turn cancellation; the phase deadline starts after admission.
       const timer = timeoutMs ? setTimeout(() => deadline.abort(new DOMException('模型阶段超时', 'TimeoutError')), timeoutMs) : undefined
       timer?.unref()

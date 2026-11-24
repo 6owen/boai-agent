@@ -1,6 +1,6 @@
 /*
- * [OUTPUT]: 会话快照和详情的标题生成状态随首轮和后台任务关闭。
- * [OUTPUT]: 新 API 话题首轮标题异步保存并可重启读回，手动改名拦截迟到结果。
+ * [OUTPUT]: 标题后台请求可在首轮仍执行时完成，超时后快照和详情停止闪烁。
+ * [OUTPUT]: 新 API 话题标题异步保存并可重启读回，手动改名拦截迟到结果。
  * [OUTPUT]: 旧库管理技能夹具预先绑定模型，版本断言仅检查管理标签不改员工配置。
  * [OUTPUT]: 旧库夹具移除新版初始化标记，发送参数受IPC类型约束；核对绑定及版本保持、按轮管理文档、版本伪造/普通员工拒绝。
  * [OUTPUT]: 核心首发技能引用必须已绑定，拒绝时不创建会话或请求回执。
@@ -73,60 +73,85 @@ function pendingTitle() {
   return { promise, resolve }
 }
 
-test('bobo 和普通 API 员工的新话题在首轮回复发布后异步命名并可重启读回', async () => {
+test('bobo 和普通 API 员工的新话题能在首轮回复发布前命名并可重启读回', async () => {
   const { service, engine, root } = await setup()
   const pending = pendingTitle()
+  const reply = pendingTitle()
   const generate = vi.fn<NonNullable<AgentEngine['generateConversationTitle']>>(input => {
     input.signal.addEventListener('abort', () => pending.resolve(''), { once: true })
     return pending.promise
   })
   Object.assign(engine, { generateConversationTitle: generate })
+  vi.spyOn(engine, 'run').mockImplementation(async context => { await context.onDelta(await reply.promise) })
   const connection = (await snapshot(service)).connections[0]
   const employee = await service.handle('saveAgent', {
     name: '写作员工', role: '', instructions: '', color: '#aabbcc', connectionId: connection.id, modelId: 'fixture',
     skillIds: [], knowledgeIds: [], allowCommands: false, active: true,
   }) as DigitalAgent
-  const core = await service.handle('startCoreConversation', { requestId: 'title-core', content: '给新员工设计一份入职清单' }) as Conversation
+  const core = await service.handle('startCoreConversation', {
+    requestId: 'title-core', content: '给新员工设计一份入职清单',
+    apiModel: { provider: 'openai-compatible', baseUrl: connection.baseUrl, model: 'first-turn-model' },
+  }) as Conversation
   const main = await service.handle('sendEmployeeMessage', { employeeId: employee.id, requestId: 'title-main', content: '先打开主聊天' }) as Message
   const topic = await service.handle('startEmployeeTopic', { employeeId: employee.id, requestId: 'title-topic', content: '把入职清单分为三天' }) as Message
-  await settled(service, core)
+  try {
+    await vi.waitFor(() => expect(generate).toHaveBeenCalledTimes(2))
+    expect(generate).toHaveBeenCalledWith(expect.objectContaining({
+      modelId: 'first-turn-model', messages: [{ role: 'user', content: '给新员工设计一份入职清单' }],
+      identity: { conversationId: core.id, agentId: core.agentIds[0], runId: expect.any(String) },
+    }))
+    expect((await detail(service, core)).conversation).toMatchObject({ title: '给新员工设计一份入职清单', titleGenerating: true })
+    expect((await snapshot(service)).conversations.find(room => room.id === core.id)?.titleGenerating).toBe(true)
+    pending.resolve(' 新员工入职计划\n ')
+    await vi.waitFor(async () => {
+      const result = (await snapshot(service)).conversations
+      expect(result.filter(room => room.title === '新员工入职计划').map(room => room.id).sort()).toEqual([core.id, topic.conversationId].sort())
+      expect(result.some(room => room.titleGenerating)).toBe(false)
+      expect(result.find(room => room.id === main.conversationId)?.title).toBe('写作员工')
+    })
+    expect((await detail(service, core)).messages.some(message => message.senderType === 'agent' && message.status === 'completed')).toBe(false)
+  } finally {
+    pending.resolve('')
+    reply.resolve('记下了当前偏好。')
+  }
   const rooms = (await snapshot(service)).conversations
+  await settled(service, core)
   await settled(service, rooms.find(room => room.id === topic.conversationId)!)
   await settled(service, rooms.find(room => room.id === main.conversationId)!)
-  await vi.waitFor(() => expect(generate).toHaveBeenCalledTimes(2))
-  expect(generate).toHaveBeenCalledWith(expect.objectContaining({ messages: [
-    { role: 'user', content: '给新员工设计一份入职清单' },
-    { role: 'assistant', content: '记下了当前偏好。' },
-  ] }))
-  const awaitingTitle = await detail(service, core)
-  expect(awaitingTitle.messages.some(message => message.senderType === 'agent' && message.status === 'completed')).toBe(true)
-  expect(awaitingTitle.conversation).toMatchObject({ title: '给新员工设计一份入职清单', titleGenerating: true })
-  expect(rooms.find(room => room.id === core.id)).toMatchObject({ title: '给新员工设计一份入职清单', titleGenerating: true })
-  pending.resolve(' 新员工入职计划\n ')
-  await vi.waitFor(async () => {
-    const result = (await snapshot(service)).conversations
-    expect(result.filter(room => room.title === '新员工入职计划').map(room => room.id).sort()).toEqual([core.id, topic.conversationId].sort())
-    expect(result.some(room => room.titleGenerating)).toBe(false)
-    expect(result.find(room => room.id === main.conversationId)?.title).toBe('写作员工')
-  })
+  expect(generate).toHaveBeenCalledTimes(2)
   await service.close()
   const restarted = await open(root)
   expect((await snapshot(restarted.service)).conversations.find(room => room.id === core.id)?.title).toBe('新员工入职计划')
 })
 
-test.each(['首轮', '生成标题'])('%s失败后保留首句，停止标题生成状态', async failure => {
+test.each(['请求失败', '超时'])('标题%s后保留首句并停止提示，首轮正常发布', async failure => {
   const { service, engine } = await setup()
-  const generate = vi.fn<NonNullable<AgentEngine['generateConversationTitle']>>().mockRejectedValue(new Error('标题请求失败'))
+  const pending = pendingTitle()
+  const deadline = new AbortController()
+  const timeout = AbortSignal.timeout.bind(AbortSignal)
+  vi.spyOn(AbortSignal, 'timeout').mockImplementation(ms => ms === 15_000 ? deadline.signal : timeout(ms))
+  const generate = vi.fn<NonNullable<AgentEngine['generateConversationTitle']>>(() => failure === '超时' ? pending.promise : Promise.reject(new Error('标题请求失败')))
   Object.assign(engine, { generateConversationTitle: generate })
-  if (failure === '首轮') vi.spyOn(engine, 'run').mockRejectedValueOnce(new Error('首轮失败'))
   const conversation = await service.handle('startCoreConversation', { requestId: 'title-failure', content: '保留原占位文字' }) as Conversation
-  await settled(service, conversation)
-  await vi.waitFor(async () => {
-    const room = (await snapshot(service)).conversations.find(room => room.id === conversation.id)!
-    expect(room.title).toBe('保留原占位文字')
-    expect(room.titleGenerating).toBeUndefined()
-    expect(generate).toHaveBeenCalledTimes(failure === '首轮' ? 0 : 1)
-  })
+  try {
+    await vi.waitFor(() => expect(generate).toHaveBeenCalledTimes(1))
+    if (failure === '超时') {
+      expect((await detail(service, conversation)).conversation.titleGenerating).toBe(true)
+      deadline.abort(new DOMException('标题超时', 'TimeoutError'))
+    }
+    await vi.waitFor(async () => {
+      const { conversation: room } = await detail(service, conversation)
+      expect(room.title).toBe('保留原占位文字')
+      expect(room.titleGenerating).toBeUndefined()
+      expect(room.pendingTitleMessageId).toBeUndefined()
+    })
+    await settled(service, conversation)
+    expect((await detail(service, conversation)).messages.some(message => message.senderType === 'agent' && message.status === 'completed')).toBe(true)
+  } finally {
+    pending.resolve('迟到的模型标题')
+  }
+  await service.close()
+  expect(generate).toHaveBeenCalledTimes(1)
 })
 
 test('手动保存当前标题会撤销正在生成的标题', async () => {
