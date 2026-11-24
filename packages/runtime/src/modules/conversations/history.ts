@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 清空会话时移除旧首条消息的标题候选。
  * [OUTPUT]: 画板源清理沿原conversationCleanup固定身份重试，外改冲突保留来源屏障与可见恢复错误。
  * [OUTPUT]: 交接材料在原会话清理屏障/运行删除事务内撤销正文，离线恢复沿同一逻辑且保留防重放身份。
  * [OUTPUT]: 原生会话切换记录沿原会话清理，不触及项目原件。
@@ -241,7 +242,7 @@ export class ConversationHistory {
       for (const intent of await tx.list<AutomationDispatch>('automationDispatches')) if (occurrenceIds.has(intent.id)) {
         await tx.put({ collection: 'automationDispatches', id: intent.id, value: { schemaVersion: 1, id: intent.id, requestId: intent.requestId, status: 'cleared' } })
       }
-      const cleared = { ...conversation, workspacePath: join(this.dataPath, 'workspaces', id), lastMessageAt: undefined, lastMessagePreview: undefined, activity: 'idle' as const, ...(hide ? { list: { hidden: true, pinned: false } } : {}) }
+      const cleared = { ...conversation, pendingTitleMessageId: undefined, workspacePath: join(this.dataPath, 'workspaces', id), lastMessageAt: undefined, lastMessagePreview: undefined, activity: 'idle' as const, ...(hide ? { list: { hidden: true, pinned: false } } : {}) }
       if (remove) {
         removals.push({ collection: 'conversations', id })
         const preferences = await tx.get<ContactListPreferences>('contactList', 'contacts')

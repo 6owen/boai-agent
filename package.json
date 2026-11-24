@@ -231,6 +231,7 @@
     "@babel/plugin-syntax-typescript": "7.29.7",
     "@egoist/tailwindcss-icons": "1.9.2",
     "@iconify-json/carbon": "1.2.28",
+    "@iconify-json/devicon": "1.2.84",
     "@iconify-json/solar": "1.2.13",
     "@playwright/test": "1.63.0",
     "@tailwindcss/vite": "4.3.3",

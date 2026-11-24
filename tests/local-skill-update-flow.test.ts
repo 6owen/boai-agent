@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: Local rows render on first mount and follow name, update time and CLI availability ordering.
  * [INPUT]: Real catalog and terminal components with controlled native CLI receipts.
- * [OUTPUT]: The skills header exposes AI management without the package dialog. Updates use the toolbar, skill-detail popover, and title rockets for outdated global skill rows.
+ * [OUTPUT]: The skills header exposes AI management without the package dialog. Updates use the toolbar, skill-detail popover, and same-size idle and busy title rockets for outdated global skill rows.
  * [POS]: Desktop library interaction regression without network or user profile writes.
  * [PROTOCOL]: Update Header and tests/.folder.md when changed.
  */
@@ -69,7 +70,7 @@ test('updates the exact global skill from its title rocket or detail, and confir
     expect(terminal(popup)?.textContent).toContain('Checking for skill updates')
     await act(async () => finish({ status: 'available', command: 'npx skills check', output: 'updates', availableSkills: ['report', 'helper', 'notes-cli'] }))
     const notes = button('更新 Notes')!
-    expect(notes.querySelector('.i-solar-rocket-outline')).not.toBeNull()
+    expect(notes.querySelector('.i-solar-rocket-outline')?.classList.contains('size-[10px]')).toBe(true)
     expect(notes.closest('[data-skill-row]')?.getAttribute('data-skill-row')).toBe('three')
     expect(host.querySelector('[data-skill-row="copy"] .skill-row-update')).toBeNull()
     expect(host.querySelector('[data-skill-row="plugin"] .skill-row-update')).toBeNull()
@@ -80,6 +81,7 @@ test('updates the exact global skill from its title rocket or detail, and confir
     expect(calls()[1]).toMatchObject({ action: 'update', id: 'three' })
     expect(button('查看技能更新')).toBeUndefined()
     expect(button('确认更新')).toBeUndefined()
+    expect(notes.querySelector('.i-solar-rocket-2-outline')?.classList.contains('size-[10px]')).toBe(true)
     expect(button('更新 Helper')?.disabled).toBe(true)
     await act(async () => receive({ type: 'local-skill-cli:progress', requestId: calls()[1].requestId, command: 'npx skills update notes-cli', output: 'Updating notes-cli' }))
     expect(terminal()?.textContent).toContain('Updating notes-cli')
@@ -121,6 +123,59 @@ test('updates the exact global skill from its title rocket or detail, and confir
   } finally {
     await act(async () => root.unmount())
     host.remove()
+    vi.unstubAllGlobals()
+  }
+})
+
+test('renders the initial local list, orders by the selected preference and reacts to update results', async () => {
+  vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
+  vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
+  vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(400)
+  Element.prototype.getAnimations = () => []
+  const host = document.body.appendChild(document.createElement('div'))
+  const root = createRoot(host)
+  const skills: LocalSkill[] = [
+    { id: 'alpha', name: 'Alpha', slug: 'alpha', source: 'global', updatedAt: 1 },
+    { id: 'bravo', name: 'Bravo', slug: 'delta', source: 'agent', updatedAt: 3 },
+    { id: 'charlie', name: 'Charlie', slug: 'charlie', source: 'global' },
+    { id: 'delta', name: 'Delta', slug: 'delta', source: 'global', updatedAt: 3 },
+  ].map(skill => ({ ...skill, source: skill.source as LocalSkill['source'], sourceLabel: '', description: '', path: '/fixture/' + skill.id }))
+  const api = { subscribe: () => () => {}, request: async (method: string) => {
+    if (method === 'listLocalSkills') return { skills: [...skills].reverse(), issues: [] }
+    if (method === 'getSkillCollections') return { revision: 0, groups: [], favoriteResourceIds: [], groupByResourceId: {} }
+    throw Error(method)
+  } } as unknown as DesktopApi
+  function Fixture({ available }: { available: Set<string> }) {
+    const updates = useLocalSkillUpdates(api, () => {})
+    return h(SkillsWorkspace, { api, section: 'all', onSection: () => {}, provider: 'skills-sh', onProvider: () => {},
+      divider: null, updates: { ...updates, available }, revision: 0, onOpenSkill: () => {}, onOpenMarketplace: () => {} })
+  }
+  const order = () => [...host.querySelectorAll<HTMLElement>('[data-skill-row]')].map(row => row.dataset.skillRow)
+  const render = (slugs: string[]) => act(async () => root.render(h(Fixture, { available: new Set(slugs) })))
+  const chooseSort = async (label: string) => {
+    const trigger = host.querySelector<HTMLButtonElement>('button[aria-label="技能排序"]')!
+    await act(async () => { trigger.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true })) })
+    const item = [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')].find(node => node.textContent === label)
+    expect(item).toBeDefined()
+    await act(async () => item!.click())
+  }
+  try {
+    localStorage.removeItem('boai.skills.sort')
+    await render([])
+    expect(order()).toEqual(['alpha', 'bravo', 'charlie', 'delta'])
+    await chooseSort('最近更新')
+    expect(order()).toEqual(['bravo', 'delta', 'alpha', 'charlie'])
+    await chooseSort('待更新优先')
+    await render(['delta'])
+    expect(order()).toEqual(['delta', 'alpha', 'bravo', 'charlie'])
+    await render([])
+    expect(order()).toEqual(['alpha', 'bravo', 'charlie', 'delta'])
+    expect(JSON.parse(localStorage.getItem('boai.skills.sort')!)).toBe('pending')
+  } finally {
+    await act(async () => root.unmount())
+    host.remove()
+    localStorage.removeItem('boai.skills.sort')
+    vi.restoreAllMocks()
     vi.unstubAllGlobals()
   }
 })

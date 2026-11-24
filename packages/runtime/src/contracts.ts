@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: API 引擎可为当前会话的首轮文本生成标题。
  * [OUTPUT]: 连接轮换可向凭据提供方传入旧引用，以保留环境绑定并回收私有槽。
  * [OUTPUT]: 包绑定原生执行通过提交输入前的有效能力清单核验；普通无包员工不新增探测。
  * [OUTPUT]: Scoped canvas capability supports API/native structured edits and exact-revision exports.
@@ -297,6 +298,14 @@ export interface AutomationDraftContext extends ModelCallObservation {
 }
 export interface AgentEngine {
   readonly memoryOwner?: 'mastra'
+  /** Host-owned display metadata, separate from the message and Work lifecycle. */
+  generateConversationTitle?(input: {
+    connection: Connection
+    apiKey: string
+    modelId?: string
+    messages: { role: 'user' | 'assistant'; content: string }[]
+    signal: AbortSignal
+  }): Promise<string | undefined>
   memoryView?(agentId: string): Promise<import('@boai/shared/domain/memory').ManagedMemory>
   saveWorkingMemory?(agentId: string, resourceId: string, content: string, expectedVersion: string, cutoffs?: { conversationId: string; sequence: number }[]): Promise<void>
   clearEmployeeMemory?(agentId: string, cutoffs: { conversationId: string; sequence: number }[]): Promise<void>

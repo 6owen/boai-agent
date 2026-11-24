@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 新 API 话题首轮回复后异步生成产品标题，手动改名及清理可废止待生成标题。
  * [OUTPUT]: 员工清理失败逐条反馈；模型设置与生效凭据引用同事务切换，退役引用可重启清理。
  * [OUTPUT]: 2026-11-09 员工配置项目生成运行内许可；CLI仅指定cwd不产生项目授权，内部资料权限保持。
  * [OUTPUT]: 能力包与画板保留各自实际退出/备份门禁；包Source按员工核权，备份同时保存两类原件与恢复策略。
@@ -601,6 +602,7 @@ export class AppService {
     })
   }
   private conversations = new Map<string, Conversation>()
+  private titleControllers = new Map<string, AbortController>()
   private readonly steering: NativeSteering
   private readonly executions: ExecutionRepository
   private readonly channels: EmployeeChannels
@@ -2571,7 +2573,49 @@ export class AppService {
     const updates = conversationListUpdates([...this.conversations.values()], change, times).map(item => change.action === 'rename' ? { ...item, updatedAt: now() } : item)
     await this.store.write(updates.map(item => record('conversations', item)))
     for (const item of updates) this.conversations.set(item.id, item)
+    if (change.action === 'rename' || change.action === 'hide') this.titleControllers.get(change.id)?.abort()
     if (updates.length) this.changed(change.id)
+  }
+
+  private scheduleConversationTitle(context: EngineContext, source: Message | undefined, reply: Message) {
+    const connection = context.connection, id = context.conversation.id
+    if (!connection || !source || this.titleControllers.has(id)) return
+    const engine = this.engineFor(context)
+    if (!engine.generateConversationTitle) return
+    const currentTitleSource = () => {
+      const current = this.conversations.get(id)
+      const activeConnection = this.connections.get(connection.id)
+      if (!current || this.closing || this.backingUp || current.list?.hidden || this.clearingConversations.has(id) ||
+        !activeConnection || activeConnection.revision !== connection.revision ||
+        current.pendingTitleMessageId !== source.id || !this.messages.has(source.id) || !this.messages.has(reply.id)) return
+      return current
+    }
+    if (!currentTitleSource()) return
+    const controller = new AbortController()
+    this.titleControllers.set(id, controller)
+    const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(15_000)])
+    const execution = this.modelCapacity.run(connection.id, signal, async () => {
+      if (!currentTitleSource()) return
+      return engine.generateConversationTitle!({
+        connection, apiKey: context.apiKey, modelId: context.agent.modelId, signal,
+        messages: [
+          { role: 'user', content: this.redact(source.content.slice(0, 2000), context.apiKey) },
+          { role: 'assistant', content: this.redact(reply.content.slice(0, 2000), context.apiKey) },
+        ],
+      })
+    }).catch(() => undefined).then(title => this.serialize(async () => {
+      const current = currentTitleSource()
+      if (!current || controller.signal.aborted) return
+      const generated = !signal.aborted && title ? this.redact(title, context.apiKey).replace(/\s+/g, ' ').trim().slice(0, CONVERSATION_TITLE_MAX_LENGTH) : ''
+      const saved = { ...current, title: generated || current.title, pendingTitleMessageId: undefined }
+      await this.store.write([record('conversations', saved)])
+      this.conversations.set(id, saved)
+      if (generated) this.changed(id)
+    })).catch(() => { /* A title failure leaves the initial title and the published reply intact. */ }).finally(() => {
+      this.titleControllers.delete(id)
+      this.adapterExits.delete(execution)
+    })
+    this.adapterExits.add(execution)
   }
 
   private assertConversationIdle(id: string) {
@@ -2639,6 +2683,7 @@ export class AppService {
   }
 
   private async clearConversationRecords(id: string, hide: boolean, remove = false, sessionReceipt?: SessionOperationRecord) {
+    this.titleControllers.get(id)?.abort()
     await this.agentBehaviors.cancelScope({ conversationId: id })
     const conversation = this.conversations.get(id) ?? fail('会话不存在')
     this.assertConversationIdle(id)
@@ -2866,6 +2911,7 @@ export class AppService {
     const conversation: Conversation = { id: conversationId, kind: 'direct', purpose: core ? 'core' : 'personal', employeeChat, ...(!input.team && input.automationCreation ? { automationCreation: true } : {}), ...(!input.team && input.sourceCreation ? { sourceCreation: true } : {}), title: role === 'main' ? agent.name : input.team?.name ?? (input.content!.slice(0, 40) || input.materialUploads?.[0].name || '附件'), agentIds: [agent.id], sharedKnowledgeIds: [], mode: 'natural', memoryScope: 'employee', configVersion: 1, workspacePath: join(this.dataPath, 'workspaces', conversationId), createdAt: timestamp, updatedAt: timestamp }
     this.projectDirectories.initialize(conversation, [agent])
     const message = this.nextMessage(conversationId, { senderType: 'user', senderId: 'user', senderName: (await this.userProfile.get()).displayName, content, status: 'completed' })
+    if (employeeChat === 'topic' && content.trim() && !isNativeBackend(agent.executionBackend)) conversation.pendingTitleMessageId = message.id
     if (input.expectedExecutionPermission) message.permissionExpectation = this.prepareMessagePermission(input.expectedExecutionPermission, conversation, [])
     const preparedModel = input.apiModel ? await this.prepareMessageModel(input.apiModel, conversation, []) : undefined
     if (preparedModel) message.apiModelSource = preparedModel.source
@@ -5805,6 +5851,7 @@ export class AppService {
         }
       } else await this.serialize(commit)
       this.emit({ type: 'message', message }); this.changed(conversation.id)
+      this.scheduleConversationTitle(context, source, message)
     } catch (error) {
       if (!terminal.has(run.status)) await this.finishRun(run, effective.aborted ? (this.closing ? 'interrupted' : 'cancelled') : error instanceof ProgressStalledError ? 'interrupted' : error instanceof WorkUnavailableError ? 'cancelled' : 'failed', this.redact(this.errorMessage(error), key))
       if (error instanceof WorkUnavailableError || (run.workId && controller.signal.aborted && !signal.aborted)) return 'deferred'
@@ -6457,6 +6504,7 @@ export class AppService {
   close() { return this.closeTask ??= this.drain() }
   private async drain() {
     this.closing = true
+    for (const controller of this.titleControllers.values()) controller.abort()
     await this.desktopActivity.close()
     await this.canvas.close()
     await this.desktopPlugin.close()
