@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 第三阶段：官方 Durable Agent/Session.steer、Workspace 文件工具、LocalSandbox 进程和原生 Trace；授权及发布保留业务适配。
  * [OUTPUT]: 无Run的连接测试/团队规划/自动化草稿沿原操作身份保存逐请求网关路由；不制造Work或更改原预算。
  * [INPUT]: One SDK step's response headers/model metadata, selected gateway and private credential.
  * [OUTPUT]: Bounded per-response route evidence; body model remains separate and missing headers stay unknown.
@@ -8,6 +9,7 @@
 import type { Connection } from '@boai/shared/domain'
 import type { GatewayModelCall, GatewayRouteEvidence } from '@boai/shared/domain/model-gateway'
 import type { EngineContext } from '../../contracts'
+import type { ProcessInputStepArgs } from '@mastra/core/processors'
 
 export interface GatewayResponse { headers?: Record<string, string>; modelId?: string; id?: string }
 function label(value: unknown, key: string, max = 1000): string | undefined {
@@ -27,6 +29,22 @@ export function gatewayRouteObserver(context: Pick<EngineContext, 'connection' |
     if (!id || !context.connection?.gateway || !context.onModelCallRoute) return
     try { await context.onModelCallRoute(id, gatewayRouteEvidence(response, context.apiKey)) } catch { /* Business output remains authoritative. */ }
   }
+}
+/** Durable's step callback omits response headers. Observe the selected SDK
+ * model's response at its public processor boundary, without reading the stream. */
+export function gatewayRouteModel(model: ProcessInputStepArgs['model'], context: Pick<EngineContext, 'connection' | 'apiKey' | 'onModelCallRoute'>, callId: () => string | undefined, onRequestError?: () => void): ProcessInputStepArgs['model'] {
+  if ((!context.connection?.gateway || !context.onModelCallRoute) && !onRequestError) return model
+  return new Proxy(model, { get(target, key) {
+    const value = Reflect.get(target, key, target)
+    if (key !== 'doStream' && key !== 'doGenerate') return typeof value === 'function' ? value.bind(target) : value
+    return async (...args: unknown[]) => {
+      let result: { response?: GatewayResponse }
+      try { result = await Reflect.apply(value, target, args) }
+      catch (error) { onRequestError?.(); throw error }
+      await gatewayRouteObserver(context, callId)({ response: result.response ?? {} })
+      return result
+    }
+  } })
 }
 export function gatewaySelectedModel(connection: Connection, override?: string) { return (override || connection.defaultModel).trim() }
 /** The caller owns this identity; observation never creates a business Run or Work. */

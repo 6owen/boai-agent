@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 第三阶段：API 执行补充交给 Session.steer；Trace 从官方存储查询，兼容既有业务历史。
  * [OUTPUT]: 2026-11-24 提供官方指标投影及团队/PPT辅助模型端口，原生后端不强制实现。
  * [OUTPUT]: API 引擎可为当前会话的首轮文本生成标题。
  * [OUTPUT]: 连接轮换可向凭据提供方传入旧引用，以保留环境绑定并回收私有槽。
@@ -95,6 +96,8 @@ export interface EngineContext {
   /** API memory sources are authorized by BOAI; storage, recall and observation belong to Mastra. */
   memorySources?(): Promise<import('./adapters/mastra/conversation-memory').MemorySources>
   memoryOwner?: 'mastra' | 'native'
+  /** Live API input is delivered by the official Controller Session. */
+  registerControllerInput?(send: (messageId: string, content: string) => Promise<void>): Promise<() => Promise<void>>
   /** Register only while a native turn can accept explicit text steering. */
   registerNativeSteering?(send: (messageId: string, content: string) => Promise<void>): () => void
   /** Host-validated projection from original Work/Run/artifact records; no model call or replay. */
@@ -300,6 +303,7 @@ export interface AutomationDraftContext extends ModelCallObservation {
 export interface AgentEngine {
   planTeam?: import('./adapters/mastra/team-planner').TeamPlanner
   reviewPresentation?(input: import('./modules/presentations/presentation-service').PresentationModelInput): Promise<string>
+  modelTraces?(conversationId: string, runIds: string[]): Promise<import('@boai/shared/domain/traces').StoredTraceSpan[]>
   modelMetrics?(runIds?: string[]): Promise<import('@boai/shared/domain/profile').ModelMetricCall[]>
   readonly memoryOwner?: 'mastra'
   /** Host-owned display metadata, separate from the message and Work lifecycle. */

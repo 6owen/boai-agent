@@ -1,15 +1,16 @@
 /*
+ * [OUTPUT]: 2026-11-24 第三阶段：官方 Durable Agent/Session.steer、Workspace 文件工具、LocalSandbox 进程和原生 Trace；授权及发布保留业务适配。
  * [OUTPUT]: 宿主命令仅在批准后到实际进程组退出期间互斥；排队支持取消，启动前重核副作用授权。
  * [OUTPUT]: 员工进程使用原run短期环境租约，剥离owner/服务密钥变量，实际退出后撤回；不可用时禁止CLI用户配置回退。
  * [OUTPUT]: 员工目录策略启用时通过macOS Seatbelt限制命令及继承后代的实际读写；原取消/进程组退出保持，旧配置和完全访问沿原宿主执行。
- * [OUTPUT]: stdout/stderr 分别增量解码 UTF-8，管道拆包不会损坏中文/emoji；原字节上限和实际退出保持。
+ * [OUTPUT]: Mastra LocalSandbox/ProcessManager执行；默认无墙钟上限，输出按SDK保留窗口裁剪而不终止进程。
+ * [OUTPUT]: stdout/stderr 解码及保留窗口归 SDK；启动失败同样释放 Sandbox，宿主保留实际退出屏障。
  * [INPUT]: 宿主逐次批准的命令、受管工作目录和取消信号。
  * [OUTPUT]: 有界命令结果与可复用POSIX进程组退出核对；取消/超时期间保留执行占用，Windows等待taskkill回执。
  * [POS]: API与本机员工共用的宿主命令执行器；可选员工目录隔离，其他宿主能力仍沿原授权。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
-import { spawn } from 'node:child_process'
-import { StringDecoder } from 'node:string_decoder'
+import { LocalSandbox } from '@mastra/core/workspace'
 import { directoryCommandBoundary, type CommandDirectoryScope } from '../../modules/workspaces/directory-command'
 import { employeeEnvironment } from '@boai/shared/cli/employee-environment'
 import type { RunCliEnvironment } from '@boai/shared/cli/run-access'
@@ -19,7 +20,6 @@ export async function withHostCommandAdmission<T>(signal: AbortSignal, operation
   const release = await hostCommands.acquire(true, signal)
   try { signal.throwIfAborted(); return await operation() } finally { release() }
 }
-const MAX_TOOL_OUTPUT = 48_000
 const EXIT_CHECK_INTERVAL_MS = 10
 const check = (signal: AbortSignal) => signal.throwIfAborted()
 
@@ -47,7 +47,7 @@ export function abortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<
 }
 
 /** Optional employee filesystem policy; lifetime, output and process-group ownership stay shared. */
-export async function executeCommand(command: string, cwd: string, signal: AbortSignal, timeoutMs: number, directories?: CommandDirectoryScope, cli?: RunCliEnvironment, beforeStart?: () => Promise<void>) {
+export async function executeCommand(command: string, cwd: string, signal: AbortSignal, timeoutMs = 0, directories?: CommandDirectoryScope, cli?: RunCliEnvironment, beforeStart?: () => Promise<void>) {
   return withHostCommandAdmission(signal, async () => {
     await beforeStart?.(); check(signal)
     return executeAdmittedCommand(command, cwd, signal, timeoutMs, directories, cli)
@@ -63,54 +63,29 @@ async function executeAdmittedCommand(command: string, cwd: string, signal: Abor
   }
   env.BOAI_RUN_DIR = cwd
   if (directories) env.TMPDIR = env.TMP = env.TEMP = cwd
-  return new Promise<{ exitCode: number | null; stdout: string; stderr: string; truncated: boolean }>((resolve, reject) => {
-    const child = process.platform === 'win32'
-      ? spawn(process.env.COMSPEC || 'cmd.exe', ['/d', '/s', '/c', command], { cwd, env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] })
-      : spawn(boundary?.command ?? '/bin/sh', boundary?.args ?? ['-c', command], { cwd, env, detached: true, stdio: ['ignore', 'pipe', 'pipe'] })
-    let stdout = '', stderr = '', size = 0, truncated = false, failure: Error | undefined
-    const decoders = { stdout: new StringDecoder('utf8'), stderr: new StringDecoder('utf8') }
-    const killers = new Set<Promise<void>>()
-    const kill = () => {
-      if (!child.pid) return
-      try {
-        if (process.platform === 'win32') {
-          const killer = spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' })
-          const completion = new Promise<void>(resolve => {
-            killer.once('error', error => { failure ??= error; child.kill('SIGKILL') })
-            killer.once('close', () => resolve())
-          })
-          killers.add(completion); void completion.finally(() => killers.delete(completion))
-        }
-        else process.kill(-child.pid, 'SIGKILL')
-      } catch { child.kill('SIGKILL') }
+  const sandbox = new LocalSandbox({ workingDirectory: cwd, env, timeout: timeoutMs })
+  // BOAI only adapts the approved OS policy; Mastra owns spawning, decoding,
+  // bounded output, cancellation and timeout. Zero means no default deadline.
+  const quote = (value: string) => "'" + value.replaceAll("'", "'\\''") + "'"
+  const script = boundary ? [boundary.command, ...boundary.args].map(quote).join(' ') : command
+  try {
+    await sandbox.start()
+    const handle = await sandbox.processes.spawn(script, { timeout: timeoutMs, abortSignal: signal, stdinMode: 'ignore' })
+    try {
+      const result = await handle.wait({ abortSignal: signal })
+      check(signal)
+      if (result.timedOut) throw new Error('Command timed out')
+      return { exitCode: result.exitCode, stdout: result.stdout, stderr: result.stderr, truncated: !!(result.stdoutTruncated || result.stderrTruncated) }
+    } finally {
+      await handle.kill()
+      // LocalSandbox 1.71 only kills live handles. Keep the product's exit
+      // barrier for pipe-free descendants after the parent has already exited.
+      const pid = Number(handle.pid)
+      if (process.platform !== 'win32' && Number.isSafeInteger(pid) && pid > 0) {
+        try { process.kill(-pid, 'SIGKILL') }
+        catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error }
+        await waitForProcessGroupExit(pid)
+      }
     }
-    const stop = (error: Error) => { failure ??= error; kill() }
-    const onAbort = () => stop(signal.reason instanceof Error ? signal.reason : new Error('Command cancelled'))
-    const timer = setTimeout(() => stop(new Error('Command timed out')), timeoutMs)
-    signal.addEventListener('abort', onAbort, { once: true })
-    if (signal.aborted) onAbort()
-    const append = (data: Buffer, target: 'stdout' | 'stderr') => {
-      const remaining = Math.max(0, MAX_TOOL_OUTPUT - size)
-      const value = decoders[target].write(data.subarray(0, remaining))
-      if (target === 'stdout') stdout += value; else stderr += value
-      size += Math.min(data.length, remaining)
-      if (data.length > remaining) { truncated = true; stop(new Error('Command output exceeded 48 KB; process stopped')) }
-    }
-    child.stdout?.on('data', (data: Buffer) => append(data, 'stdout'))
-    child.stderr?.on('data', (data: Buffer) => append(data, 'stderr'))
-    const clean = () => { clearTimeout(timer); signal.removeEventListener('abort', onAbort) }
-    child.once('error', error => { failure ??= error; kill() })
-    child.once('close', async exitCode => {
-      stdout += decoders.stdout.end(); stderr += decoders.stderr.end()
-      // Reap detached descendants, including a background process that inherited no output pipes.
-      kill()
-      try {
-        if (child.pid && process.platform !== 'win32') await waitForProcessGroupExit(child.pid)
-        else await Promise.all(killers)
-        if (failure) reject(failure)
-        else resolve({ exitCode, stdout, stderr, truncated })
-      } catch (error) { reject(error) }
-      finally { clean() }
-    })
-  })
+  } finally { await sandbox.destroy() }
 }

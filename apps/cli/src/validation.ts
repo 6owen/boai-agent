@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 第三阶段：验证命令消费官方 Workspace 带行号的文本结果。
  * Copyright 2026 Craft Docs Ltd. Licensed under Apache-2.0; see ../shared/cli/LICENSE.txt and NOTICE.txt.
  * Modified for BOAI: read-only existing services, exclusive validation profiles and original business receipts.
  * [INPUT]: Craft validation step/elapsed/result loop @ 22c9f0414ab63e0a22814c9a2ada740206e09091 and explicit BOAI connection.
@@ -106,7 +107,7 @@ export async function validateServer(options: ValidationOptions): Promise<Valida
         const file = found[0], info = await lstat(file); check(info.isFile() && !info.isSymbolicLink() && info.size < 1024 * 1024 && await realpath(file) === file, '验证文件身份无效'); originalFile = file
         const bytes = await readFile(file); check(bytes.toString('utf8') === marker, '实际文件内容与指定原文不一致')
         await writeFile(join(report.directory!, 'file-evidence.txt'), bytes, { flag: 'wx', mode: 0o600 })
-        if (fixture) check(fixture.receipts.some(row => row.name === 'read_file' && (row.result as { content?: string })?.content === marker), '原文件读取工具未返回实际内容')
+        if (fixture) check(fixture.receipts.some(row => row.name === 'read_file' && typeof row.result === 'string' && row.result.split('\n').some(line => line.replace(/^\s*\d+→/, '') === marker)), '原文件读取工具未返回实际内容')
         artifactExported = true; return `实际文件sha256=${createHash('sha256').update(bytes).digest('hex')}`
       }, connected() && executionComplete)
       await step('history', async () => { const page = await rpc<ConversationMessagePage>('listConversationMessages', { conversationId, limit: 80 }); check(page.items.some(row => row.message?.id === message!.id) && page.items.some(row => row.message?.senderType === 'agent' && row.message.content.includes(marker)), '历史缺少原请求或实际答复'); return '历史中保留同一请求和答复' }, connected() && executionComplete)

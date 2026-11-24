@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 第三阶段：MCPClient 接管连接/目录/执行/关闭；固定版本兼容层阻止未知副作用重放及重复目录。
  * [OUTPUT]: MCP版本核验仅覆盖实际MCP提供方；DeepSeek固定HTTP工具不套用MCP身份或结果解析。
  * [INPUT]: Configured MCP endpoint, actual server identity and current tool schema.
  * [OUTPUT]: Verified Tavily/Exa search/read capabilities; source/body checks distinguish Exa result headers from Markdown separators inside excerpts.
@@ -35,8 +36,15 @@ export function verifiedWebCapability(source: DataSource, server: { name: string
   if (!provider || provider === 'deepseek' || !server || (provider === 'tavily' ? server.name !== 'tavily-mcp' || server.version !== '4.1.0' : server.name !== 'exa-search-server' || server.version !== '3.5.0')) return undefined
   const profile = Object.entries(provider === 'tavily' ? TAVILY_TOOLS : EXA_TOOLS).find(([name]) => name === tool.name)?.[1]
   if (!profile) return undefined
-  const schemaHash = createHash('sha256').update(JSON.stringify(canonical(tool.inputSchema))).digest('hex')
-  if (schemaHash !== profile.hash) return undefined
+  // Mastra's public Standard Schema conversion adds the draft-07 declaration.
+  // Accept that annotation only; every actual input constraint remains pinned.
+  const schemas = [tool.inputSchema]
+  if (tool.inputSchema.$schema === 'http://json-schema.org/draft-07/schema#') {
+    const { $schema: _draft, ...original } = tool.inputSchema
+    schemas.push(original)
+  }
+  const schemaHash = schemas.map(schema => createHash('sha256').update(JSON.stringify(canonical(schema))).digest('hex')).find(hash => hash === profile.hash)
+  if (!schemaHash) return undefined
   return { provider, kind: profile.kind, serverVersion: server.version, schemaHash }
 }
 

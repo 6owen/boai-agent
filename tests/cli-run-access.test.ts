@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 第三阶段：Mastra 第三阶段回归覆盖原生文件/MCP/快照/Trace、实时补充、断流及 OM 致命失败退出；完整结果见实施记录。
  * [OUTPUT]: 实际Node脚本通过原员工RPC循环读写/聚合；原目录隔离、执行记录、禁止终态内嵌和作用域排空验证。
  * [OUTPUT]: 渠道明确发送/发送回执的owner公开项不出现在员工运行凭据目录，调用拒绝。
  * [OUTPUT]: 员工运行凭据不能使用本人附件上传/准备/全局准备回执。
@@ -60,7 +61,7 @@ await withEmployeeTools(async ({ listTools, boaiTool }) => {
     await boaiTool('write_file', write, 'script-write-' + index)
     await boaiTool('write_file', write, 'script-write-' + index)
     const file = await boaiTool('read_file', { path }, 'script-read-' + index)
-    total += JSON.parse(file.content).value
+    total += JSON.parse(file.split('\\n').filter(line => /^\\s*\\d+→/.test(line)).map(line => line.replace(/^\\s*\\d+→/, '')).join('\\n')).value
   }
   try { await boaiTool('report_work', {}, 'script-final'); throw new Error('accepted hidden completion') }
   catch (error) { if (error.code !== 'CAPABILITY_UNAVAILABLE') throw error }

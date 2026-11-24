@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 第三阶段：Mastra 第三阶段回归覆盖原生文件/MCP/快照/Trace、实时补充、断流及 OM 致命失败退出；完整结果见实施记录。
  * [OUTPUT]: 真实 SDK 审批等待/拒绝/取消/只读、官方用量持久化/清理与辅助调用验证。
  * [OUTPUT]: 2026-11-24 按官方Controller/Session历史与自动OM验证，保留业务权限、来源、取消、真实工具和用量断言。
  * [OUTPUT]: 真实 Mastra 标题 API 使用选定模型和首条用户消息，无工具且仅一次请求。
@@ -542,8 +543,8 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     expect(decisionProviderOptions(official, 'employee-override', 'high')).toBeUndefined()
   })
 
-  it('repairs duplicate management decisions with non-thinking JSON while keeping strict parsing and both call receipts', async () => {
-    const duplicate = '{"action":"ask","responseKind":"chat"}{"action":"reply","responseKind":"task"}'
+  it('repairs schema-invalid management decisions through native structured output with both call receipts', async () => {
+    const duplicate = '{"action":"invalid-action","responseKind":"task"}'
     const server = await endpoint((_body, response, index) => send(response, index ? '{"action":"ask","responseKind":"chat"}' : duplicate, index, { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 }))
     redirectDeepSeekTo(server.url)
     const run = await context('https://api.deepseek.com', { agent: employee({ modelId: 'deepseek-flash', thinkingLevel: 'high' }), messages: [message('你能不能给我新建一个数字员工？$管理通讯录')], modelCallId: 'first', onAdditionalModelCall: async () => 'repair' })
@@ -582,8 +583,8 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     expect(run.deltas).toEqual([]); expect(run.tools).toEqual([])
   })
 
-  it('rejects visible prose even in JSON mode and stops after one repair while preserving unknown usage and call identity', async () => {
-    const server = await endpoint((_body, response, index) => send(response, index ? 'Kind task sufficient.\n{"action":"reply","responseKind":"task"}' : 'Kind: "task" }', index, index ? undefined : { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 }))
+  it('rejects schema violations even in JSON mode and stops after one repair while preserving unknown usage and call identity', async () => {
+    const server = await endpoint((_body, response, index) => send(response, index ? '{"action":"invalid-action","responseKind":"task"}' : 'Kind: "task" }', index, index ? undefined : { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 }))
     redirectDeepSeekTo(server.url)
     const started: string[] = [], receipts: { id: string; usage: ModelUsage }[] = [], reserved: string[] = []
     const run = await context('https://api.deepseek.com/v1', {
@@ -980,33 +981,28 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     expect(tools.filter(item => item.status === 'completed' && item.name !== 'task_step').map(item => item.name)).toEqual(['recall'])
   })
 
-  it('bounds private decision history but rejects an execution turn that cannot fit intact', async () => {
-    const mock = await endpoint(['{"action":"pass","observedThroughSequence":120}', 'A brief answer.'])
-    const { ctx } = await context(mock.url, { responseKind: 'chat' })
-    ctx.messages = [message('CURRENT_ROOT_REQUEST', 1), ...Array.from({ length: 119 }, (_, index) => message(`${index === 118 ? 'LATEST_EVENT' : 'HISTORY_' + index}: ${'x'.repeat(1000)}`, index + 2, { senderType: 'agent', senderId: index % 2 ? 'agent-a' : 'agent-b' }))]
+  it('passes authorized history to the SDK without the former 100-message window', async () => {
+    let primary = 0
+    const observation = (body: RequestBody) => body.messages.some(message => message.role === 'system' && JSON.stringify(message.content).includes('You are the memory consciousness'))
+    const mock = await endpoint((body, response, index) => send(response, observation(body) ? '<observations>\n- Current request and all authorized events are retained.\n</observations>' : primary++ ? 'A brief answer.' : '{"action":"pass"}', index))
+    const { ctx } = await context(mock.url, { responseKind: 'chat', modelCallId: 'initial', onAdditionalModelCall: async () => randomUUID() })
+    ctx.messages = [message('CURRENT_ROOT_REQUEST', 1), ...Array.from({ length: 119 }, (_, index) => message(`${index === 118 ? 'LATEST_EVENT' : 'HISTORY_' + index}: ${'x'.repeat(100)}`, index + 2, { senderType: 'agent', senderId: 'agent-b' }))]
     ctx.triggerMessageId = 'message-1'
     const engine = new MastraEngine()
     expect(await engine.decide(ctx)).toMatchObject({ action: 'pass', observedThroughSequence: 120 })
-    await expect(engine.run(ctx)).rejects.toThrow('当前必要输入超过上下文容量')
-    expect(mock.requests).toHaveLength(1)
-    for (const [index, request] of mock.requests.entries()) {
-      expect(allMessageText(request)).toContain('CURRENT_ROOT_REQUEST')
-      expect(allMessageText(request)).toContain('LATEST_EVENT')
-      expect(allMessageText(request)).not.toContain('HISTORY_0:')
-      const payload = index === 0 ? JSON.parse(request.messages.find(message => message.role === 'user')!.content as string).data : undefined
-      const transcript = payload ? [...payload.historicalBackground, ...payload.currentTurnMessages] : request.messages.filter(message => message.role !== 'system')
-      expect(transcript.length).toBeLessThan(100)
-      expect(transcript.reduce((total: number, message: { content: unknown }) => total + JSON.stringify(message.content).length, 0)).toBeLessThan(48_000)
-    }
+    await engine.run(ctx)
+    expect(mock.requests.filter(body => !observation(body))).toHaveLength(2)
+    for (const text of ['CURRENT_ROOT_REQUEST', 'LATEST_EVENT', 'HISTORY_0:']) expect(allMessageText(mock.requests[0])).toContain(text)
   })
 
-  it('rejects oversized initiating requests instead of silently truncating their instructions', async () => {
-    const mock = await endpoint(['Should not be called'])
+  it('passes an intact request beyond the former 48000-character guard to the SDK', async () => {
+    const mock = await endpoint(['Received intact.'])
     const { ctx } = await context(mock.url, { responseKind: 'chat' })
     ctx.messages = [message('x'.repeat(48_001))]
     ctx.triggerMessageId = 'message-1'
-    await expect(new MastraEngine().run(ctx)).rejects.toThrow('当前必要输入超过上下文容量')
-    expect(mock.requests).toHaveLength(0)
+    await new MastraEngine().run(ctx)
+    expect(mock.requests).toHaveLength(1)
+    expect(allMessageText(mock.requests[0])).toContain('x'.repeat(48_001))
   })
 
   it('keeps task step text in activity and publishes only the final SDK step, excluding reasoning', async () => {
@@ -1765,40 +1761,32 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     expect(requestedModel).toBe(config.defaultModel)
   })
 
-  it('stops an approved command that exceeds its output bound', async () => {
-    const mock = await endpoint([{ name: 'execute_command', args: { command: 'yes output' } }, 'Output limit reached.'])
-    const { ctx } = await context(mock.url)
-    ctx.agent.allowCommands = true
-    await new MastraEngine().run(ctx)
-    expect(toolResultText(mock.requests[1])).toContain('output exceeded')
-    expect(toolResultText(mock.requests[1]).length).toBeLessThan(5000)
+  it('lets an approved command finish after truncating retained output', async () => {
+    const f = await nativeTask({ agent: employee({ allowCommands: true, executionPermission: 'full-access' }) })
+    const result = await f.runtime.tools.execute_command!.execute!({ command: "node -e 'process.stdout.write(\"x\".repeat(1200000)); process.stdout.write(\"finished\")'" }, f.invocation) as { stdout: string; truncated: boolean; exitCode: number }
+    expect(result.stdout).toContain('finished')
+    expect(result).toMatchObject({ exitCode: 0, truncated: true })
   })
 })
 
-describe('measured file text in API tool receipts', () => {
-  it('returns exact written paragraph lengths through the SDK so a claimed 108-character summary cannot hide 157 characters', async () => {
-    const summary = '周六早上，电脑开着，文档却还是空白，收藏夹里的写作工具越攒越多。文章想说的是：问题不在工具不够，而是把“再准备一下”当成了迟迟不写的理由。给你自己90分钟，拆成三小段——前15分钟只想定一句话、中间45分钟一口气写初稿、最后30分钟只改不重写。结尾附三条行动清单，分别对应这三段时间。改完就停，先让第一篇真的落地。'
-    const content = `## 发布摘要\n\n${summary}`
-    const server = await endpoint([{ name: 'write_file', args: { path: 'self:/runs/run-1/copy.md', content } }, { name: 'read_file', args: { path: 'self:/runs/run-1/copy.md' } }, '这是私有草稿，摘要超长，尚未交付。'])
+describe('official Workspace file receipts', () => {
+  it('writes exact bytes and returns the official line-numbered read result', async () => {
+    const content = '## 发布摘要\n\n中 😀 12。\n第二段!'
+    const server = await endpoint([{ name: 'write_file', args: { path: 'self:/runs/run-1/copy.md', content } }, { name: 'read_file', args: { path: 'self:/runs/run-1/copy.md' } }, '已写入私有草稿。'])
     const fixture = await context(server.url)
     await new MastraEngine().run(fixture.ctx)
-    const results = fixture.tools.filter(t => ['read_file', 'write_file'].includes(t.name) && t.status === 'completed').map(t => JSON.parse(t.detail))
-    expect(results).toHaveLength(2)
-    for (const result of results) expect(result.textMetrics).toEqual({ nonWhitespaceCharacters: 163, paragraphCharacters: [6, 157], omittedParagraphs: 0 })
-    expect(toolResultText(server.requests[1])).toContain('157'); expect(toolResultText(server.requests[2])).toContain('paragraphCharacters')
+    expect(toolResultText(server.requests[1])).toContain('Wrote')
+    expect(toolResultText(server.requests[2])).toContain('中 😀 12。')
     expect(await readFile(path.join(fixture.ctx.workspace!.runPath, 'copy.md'), 'utf8')).toBe(content)
     expect(fixture.artifacts).toEqual([])
   })
-  it('counts Unicode code points and marks bounded read statistics without claiming to have measured the unread tail', async () => {
+  it('pages by lines while preserving Unicode', async () => {
     const { ctx, runtime, invocation } = await nativeTask()
-    const file = path.join(ctx.workspace!.workPath, 'length.md')
-    await writeFile(file, '中 😀 12。\r\n\r\n第二段\t!')
-    expect(await runtime.tools.read_file.execute!({ path: 'self:/work/length.md' }, invocation)).toMatchObject({ truncated: false, textMetrics: { nonWhitespaceCharacters: 9, paragraphCharacters: [5, 4], omittedParagraphs: 0 } })
-    await writeFile(file, '甲'.repeat(48_001))
-    expect(await runtime.tools.read_file.execute!({ path: 'self:/work/length.md' }, invocation)).toMatchObject({ truncated: true, textMetrics: { nonWhitespaceCharacters: 48_000, paragraphCharacters: [48_000], omittedParagraphs: 0 } })
-    await writeFile(file, Array(105).fill('甲').join('\n\n'))
-    const result = await runtime.tools.read_file.execute!({ path: 'self:/work/length.md' }, invocation)
-    expect(result).toMatchObject({ textMetrics: { nonWhitespaceCharacters: 105, paragraphCharacters: Array(100).fill(1), omittedParagraphs: 5 } })
+    await writeFile(path.join(ctx.workspace!.workPath, 'length.md'), '中 😀 12。\n第二段!\n尾部')
+    const first = await runtime.tools.read_file.execute!({ path: 'self:/work/length.md', limit: 1 }, invocation)
+    expect(first).toContain('中 😀 12。'); expect(first).not.toContain('第二段!')
+    const second = await runtime.tools.read_file.execute!({ path: 'self:/work/length.md', offset: 2, limit: 1 }, invocation)
+    expect(second).toContain('第二段!'); expect(second).not.toContain('尾部')
   })
 })
 
@@ -1817,13 +1805,13 @@ describe('native task file source authorization', () => {
     await writeFile(path.join(shared, 'public.md'), 'Public result')
     const denied = [hidden, hiddenDirectory, previous, ctx.workspace!.workPath]
     ctx.canAccessTaskPath = async target => !denied.some(root => target === root || target.startsWith(root + path.sep))
-    expect(await runtime.tools.list_files.execute!({ path: 'shared:/' }, invocation)).toEqual([{ name: 'public.md', type: 'file' }])
-    expect(await runtime.tools.list_files.execute!({ path: 'self:/' }, invocation)).toEqual([{ name: 'runs', type: 'directory' }])
-    expect(await runtime.tools.list_files.execute!({ path: 'self:/runs/' }, invocation)).toEqual([{ name: 'run-1', type: 'directory' }])
+    expect(await runtime.tools.list_files.execute!({ path: 'shared:/' }, invocation)).toBe('.\npublic.md\n\n0 directories, 1 file')
+    expect(await runtime.tools.list_files.execute!({ path: 'self:/' }, invocation)).toContain('runs')
+    expect(await runtime.tools.list_files.execute!({ path: 'self:/runs/' }, invocation)).toContain('run-1')
     await expect(runtime.tools.read_file.execute!({ path: 'shared:/confidential-name.md' }, invocation)).rejects.toThrow('not authorized')
     await expect(runtime.tools.list_files.execute!({ path: 'shared:/confidential-directory' }, invocation)).rejects.toThrow('not authorized')
     await expect(runtime.tools.read_file.execute!({ path: 'self:/runs/run-previous/report.md' }, invocation)).rejects.toThrow('not authorized')
-    expect(await runtime.tools.read_file.execute!({ path: 'shared:/public.md' }, invocation)).toEqual({ path: 'shared:/public.md', content: 'Public result', offset: 0, nextOffset: null, totalCharacters: 13, contentHash: createHash('sha256').update('Public result').digest('hex'), truncated: false, textMetrics: { nonWhitespaceCharacters: 12, paragraphCharacters: [12], omittedParagraphs: 0 } })
+    expect(await runtime.tools.read_file.execute!({ path: 'shared:/public.md' }, invocation)).toContain('Public result')
   })
 
   it('honors provenance acquired by a read before later writes and limits material-backed outputs to the current run', async () => {
@@ -1840,6 +1828,8 @@ describe('native task file source authorization', () => {
     }
     await runtime.tools.read_file.execute!({ path: 'shared:/authorized.md' }, invocation)
     expect(ctx.materialRefs).toEqual([materialRef])
+    await runtime.tools.read_file.execute!({ path: 'self:/work/notes.md' }, invocation)
+    await runtime.tools.read_file.execute!({ path: 'self:/runs/run-previous/notes.md' }, invocation)
     await expect(runtime.tools.write_file.execute!({ path: 'self:/work/notes.md', content: 'Private overwrite' }, invocation)).rejects.toThrow('not authorized')
     await expect(runtime.tools.write_file.execute!({ path: 'self:/runs/run-previous/notes.md', content: 'Private overwrite' }, invocation)).rejects.toThrow('not authorized')
     await runtime.tools.write_file.execute!({ path: 'self:/runs/run-1/report.md', content: 'Private result' }, invocation)
@@ -1877,9 +1867,9 @@ describe('native task file source authorization', () => {
     expect(calls).toContainEqual({ target: source, operation: 'publish' })
     expect(calls).toContainEqual({ target: artifacts[0].path, operation: 'publish' })
     expect(await readFile(artifacts[0].path, 'utf8')).toBe('Approved result')
-    expect(await runtime.tools.list_files.execute!({ path: 'shared:/artifacts' }, invocation)).toEqual([{ name: path.basename(artifacts[0].path), type: 'file' }])
+    expect(await runtime.tools.list_files.execute!({ path: 'shared:/artifacts' }, invocation)).toContain(path.basename(artifacts[0].path))
     await expect(runtime.tools.read_file.execute!({ path: 'shared:/artifacts/unregistered-secret.md' }, invocation)).rejects.toThrow('not authorized')
-    expect(await runtime.tools.read_file.execute!({ path: `shared:/artifacts/${path.basename(artifacts[0].path)}` }, invocation)).toMatchObject({ content: 'Approved result' })
+    expect(await runtime.tools.read_file.execute!({ path: `shared:/artifacts/${path.basename(artifacts[0].path)}` }, invocation)).toContain('Approved result')
   })
 
   it('fails closed when a material-backed context has no host file gate', async () => {
@@ -2342,18 +2332,17 @@ it('uses the actual SDK automation tool in chat and publishes only the final rec
 })
 
 
-describe('Hermes-inspired API file editing', () => {
-  it('pages a long Unicode file losslessly and permits a whole overwrite only after every page', async () => {
+describe('official Workspace file editing', () => {
+  it('uses native line paging and requires a successful read before overwriting', async () => {
     const { ctx, runtime, invocation } = await nativeTask()
     const target = path.join(ctx.workspace!.workPath, 'long.md'), logical = 'self:/work/long.md'
-    const content = '😀'.repeat(48_000) + '\r\n结尾必须保留'
+    const content = Array.from({ length: 3000 }, (_, index) => `😀第${index + 1}行`).join('\n') + '\n结尾必须保留'
     await writeFile(target, content)
-    const first = await runtime.tools.read_file.execute!({ path: logical }, invocation)
-    expect(first).toMatchObject({ content: '😀'.repeat(48_000), offset: 0, nextOffset: 48_000, truncated: true })
-    await expect(runtime.tools.write_file.execute!({ path: logical, content: 'incomplete overwrite' }, invocation)).rejects.toThrow('Only part')
-    expect(await readFile(target, 'utf8')).toBe(content)
-    const second = await runtime.tools.read_file.execute!({ path: logical, offset: 48_000 }, invocation)
-    expect(second).toMatchObject({ content: '\r\n结尾必须保留', nextOffset: null })
+    await expect(runtime.tools.write_file.execute!({ path: logical, content: 'blind overwrite' }, invocation)).rejects.toThrow('not been read')
+    const first = await runtime.tools.read_file.execute!({ path: logical, limit: 2 }, invocation)
+    expect(first).toContain('😀第1行'); expect(first).toContain('😀第2行'); expect(first).not.toContain('结尾必须保留')
+    const second = await runtime.tools.read_file.execute!({ path: logical, offset: 3001, limit: 1 }, invocation)
+    expect(second).toContain('结尾必须保留')
     await runtime.tools.write_file.execute!({ path: logical, content: content + '\n完整修订' }, invocation)
     expect(await readFile(target, 'utf8')).toBe(content + '\n完整修订')
   })
@@ -2363,10 +2352,10 @@ describe('Hermes-inspired API file editing', () => {
     const content = '\ufeff日期：十一月一日\r\n' + '未读正文。'.repeat(12_000)
     await writeFile(target, content)
     await runtime.tools.read_file.execute!({ path: logical, limit: 10 }, invocation)
-    const receipt = await runtime.tools.edit_file!.execute!({ path: logical, oldText: '十一月一日', newText: '十一月八日' }, invocation)
-    expect(receipt).toMatchObject({ replacements: 1, published: false })
+    const receipt = await runtime.tools.edit_file!.execute!({ path: logical, old_string: '十一月一日', new_string: '十一月八日' }, invocation)
+    expect(receipt).toContain('Replaced 1 occurrence')
     expect(await readFile(target, 'utf8')).toBe(content.replace('十一月一日', '十一月八日'))
-    await expect(runtime.tools.write_file.execute!({ path: logical, content: 'tail lost' }, invocation)).rejects.toThrow('Only part')
+    await expect(runtime.tools.write_file.execute!({ path: logical, content: 'tail lost' }, invocation)).rejects.toThrow('not been read')
   })
   it('refuses unread, ambiguous and externally changed files without modifying bytes', async () => {
     const { ctx, runtime, invocation } = await nativeTask()
@@ -2374,14 +2363,15 @@ describe('Hermes-inspired API file editing', () => {
     await writeFile(target, '日期：旧\n日期：旧')
     await expect(runtime.tools.write_file.execute!({ path: logical, content: 'blind overwrite' }, invocation)).rejects.toThrow('not been read')
     await runtime.tools.read_file.execute!({ path: logical }, invocation)
-    await expect(runtime.tools.edit_file!.execute!({ path: logical, oldText: '旧', newText: '新' }, invocation)).rejects.toThrow('2 locations')
+    await expect(runtime.tools.edit_file!.execute!({ path: logical, old_string: '旧', new_string: '新' }, invocation)).resolves.toContain('appears 2 times')
     expect(await readFile(target, 'utf8')).toBe('日期：旧\n日期：旧')
+    await runtime.tools.read_file.execute!({ path: logical }, invocation)
     await writeFile(target, '人工新增：保留\n日期：旧')
-    await expect(runtime.tools.edit_file!.execute!({ path: logical, oldText: '旧', newText: '新' }, invocation)).rejects.toThrow('changed since')
-    await expect(runtime.tools.write_file.execute!({ path: logical, content: 'stale overwrite' }, invocation)).rejects.toThrow('changed since')
+    await expect(runtime.tools.edit_file!.execute!({ path: logical, old_string: '旧', new_string: '新' }, invocation)).rejects.toThrow(/modified|changed/)
+    await expect(runtime.tools.write_file.execute!({ path: logical, content: 'stale overwrite' }, invocation)).rejects.toThrow(/modified|changed/)
     expect(await readFile(target, 'utf8')).toBe('人工新增：保留\n日期：旧')
     await runtime.tools.read_file.execute!({ path: logical }, invocation)
-    await runtime.tools.edit_file!.execute!({ path: logical, oldText: '旧', newText: '新' }, invocation)
+    await runtime.tools.edit_file!.execute!({ path: logical, old_string: '旧', new_string: '新' }, invocation)
     expect(await readFile(target, 'utf8')).toBe('人工新增：保留\n日期：新')
   })
   it('checks the same source permissions and the hash again after the effect gate', async () => {
@@ -2390,10 +2380,10 @@ describe('Hermes-inspired API file editing', () => {
     await writeFile(target, 'old')
     await runtime.tools.read_file.execute!({ path: logical }, invocation)
     ctx.canAccessTaskPath = async () => false
-    await expect(runtime.tools.edit_file!.execute!({ path: logical, oldText: 'old', newText: 'new' }, invocation)).rejects.toThrow('not authorized')
+    await expect(runtime.tools.edit_file!.execute!({ path: logical, old_string: 'old', new_string: 'new' }, invocation)).rejects.toThrow('not authorized')
     ctx.canAccessTaskPath = async () => true
     ctx.beforeEffect = async () => { await writeFile(target, 'external edit during effect gate') }
-    await expect(runtime.tools.edit_file!.execute!({ path: logical, oldText: 'old', newText: 'new' }, invocation)).rejects.toThrow('changed before')
+    await expect(runtime.tools.edit_file!.execute!({ path: logical, old_string: 'old', new_string: 'new' }, invocation)).rejects.toThrow(/modified|changed/)
     expect(await readFile(target, 'utf8')).toBe('external edit during effect gate')
   })
   it('refuses invalid UTF-8 reads without poisoning the file or its baseline', async () => {
@@ -2401,14 +2391,14 @@ describe('Hermes-inspired API file editing', () => {
     const target = path.join(ctx.workspace!.workPath, 'invalid.txt'), bytes = Buffer.from([0xff, 0xfe, 0, 65])
     await writeFile(target, bytes)
     await expect(runtime.tools.read_file.execute!({ path: 'self:/work/invalid.txt' }, invocation)).rejects.toThrow('not UTF-8')
-    await expect(runtime.tools.write_file.execute!({ path: 'self:/work/invalid.txt', content: 'corrupted decode' }, invocation)).rejects.toThrow('not UTF-8')
+    await expect(runtime.tools.write_file.execute!({ path: 'self:/work/invalid.txt', content: 'corrupted decode' }, invocation)).rejects.toThrow('not been read')
     expect(await readFile(target)).toEqual(bytes)
   })
   it('runs read/edit/publish through the real Mastra SDK and preserves the untouched document', async () => {
     const logical = 'self:/work/plan.md'
     const server = await endpoint([
       { name: 'read_file', args: { path: logical } },
-      { name: 'edit_file', args: { path: logical, oldText: '截止日期：十一月一日', newText: '截止日期：十一月八日' } },
+      { name: 'edit_file', args: { path: logical, old_string: '截止日期：十一月一日', new_string: '截止日期：十一月八日' } },
       { name: 'publish_artifact', args: { path: logical, name: '修订计划.md' } },
       '已修改日期并交付修订计划。',
     ])
@@ -2420,7 +2410,7 @@ describe('Hermes-inspired API file editing', () => {
     expect(tools.filter(tool => tool.status === 'completed').map(tool => tool.name)).toEqual(['read_file', 'edit_file', 'publish_artifact'])
     expect(artifacts).toHaveLength(1)
     expect(await readFile(artifacts[0].path, 'utf8')).toBe(original.replace('十一月一日', '十一月八日'))
-    expect(toolResultText(server.requests[2])).toContain('replacements')
+    expect(toolResultText(server.requests[2])).toContain('Replaced 1 occurrence')
   })
 })
 
@@ -2432,7 +2422,7 @@ describe.each(['mastra-model', 'codex-local', 'claude-local'] as const)('%s empl
     await writeFile(path.join(f.ctx.workspace!.workPath, 'original.txt'), 'original')
     expect(JSON.stringify(await f.runtime.tools.read_file.execute!({ path: 'self:/work/original.txt' }, f.invocation))).toContain('original')
     await expect(f.runtime.tools.write_file.execute!({ path: 'self:/work/forbidden.txt', content: 'changed' }, f.invocation)).rejects.toThrow('只读')
-    if (kind === 'mastra-model') await expect(f.runtime.tools.edit_file!.execute!({ path: 'self:/work/original.txt', oldText: 'original', newText: 'changed' }, f.invocation)).rejects.toThrow('只读')
+    if (kind === 'mastra-model') await expect(f.runtime.tools.edit_file!.execute!({ path: 'self:/work/original.txt', old_string: 'original', new_string: 'changed' }, f.invocation)).rejects.toThrow('只读')
     else expect(f.runtime.tools.edit_file).toBeUndefined()
     await expect(f.runtime.tools.publish_artifact.execute!({ path: 'self:/work/original.txt' }, f.invocation)).rejects.toThrow('只读')
     expect(f.runtime.tools.execute_command).toBeUndefined()
@@ -2654,4 +2644,60 @@ describe('native Controller permissions and metrics', () => {
     await reopened.forgetConversationMemory(f.ctx.conversation.id)
     expect(await reopened.modelMetrics()).toEqual([])
   })
+})
+
+it('delivers live API supplements through the official Session without losing the original input', async () => {
+  const server = await endpoint((_body, response, index) => {
+    if (index === 0) { response.writeHead(200, { 'Content-Type': 'text/event-stream' }); return }
+    send(response, '已按补充完成。', index)
+  })
+  let supplement!: (messageId: string, content: string) => Promise<void>
+  const released = vi.fn(async () => {})
+  const f = await context(server.url, { responseKind: 'chat', registerControllerInput: async send => { supplement = send; return released } })
+  const engine = new MastraEngine()
+  const running = engine.run(f.ctx)
+  await vi.waitFor(() => expect(server.requests).toHaveLength(1))
+  await supplement('supplement', '请补充具体日期')
+  await running
+  expect(server.requests).toHaveLength(2)
+  expect(allMessageText(server.requests[1])).toContain('请补充具体日期')
+  expect(f.deltas.join('')).toBe('已按补充完成。')
+  expect(released).toHaveBeenCalledOnce()
+})
+
+it('persists native approval snapshots without credentials and clears them with forgotten memory', async () => {
+  const model = await endpoint([{ name: 'write_file', args: { path: 'self:/work/durable.txt', content: 'once' } }, 'Done.'])
+  let approve!: (value: boolean) => void
+  const f = await context(model.url, { apiKey: 'checkpoint-secret-canary', agent: employee({ executionPermission: 'ask' }), approveOperation: async () => new Promise<boolean>(resolve => { approve = resolve }) })
+  const engine = new MastraEngine({ memoryPath: path.join(f.directory, 'checkpoint.db') })
+  cleanup.push(() => engine.closeMemory())
+  const running = engine.run(f.ctx)
+  try {
+    await vi.waitFor(() => expect(approve).toBeTypeOf('function'))
+    const workflows = (await (await engine['employeeMemory']['store']()).getStore('workflows'))!
+    const stored = (await workflows.listWorkflowRuns({ perPage: false })).runs
+    expect(stored.length).toBeGreaterThan(0)
+    expect(JSON.stringify(stored)).not.toContain('checkpoint-secret-canary')
+    expect(stored.some(run => JSON.stringify(run.snapshot).includes('durable.txt'))).toBe(true)
+    approve(true)
+    await running
+    expect(await readFile(path.join(f.ctx.workspace!.workPath, 'durable.txt'), 'utf8')).toBe('once')
+    await engine.forgetConversationMemory(f.ctx.conversation.id)
+    expect((await workflows.listWorkflowRuns({ perPage: false })).runs).toEqual([])
+    expect(model.requests).toHaveLength(2)
+  } finally { f.controller.abort(); approve?.(false); await running.catch(() => {}) }
+})
+
+it('queries and deletes traces through official observability storage with product identity and redaction', async () => {
+  const server = await endpoint(['Trace result.'])
+  const f = await context(server.url, { responseKind: 'chat', turnId: 'turn-a', onTrace: async () => {} })
+  const engine = new MastraEngine()
+  await engine.run(f.ctx)
+  const spans = await engine.modelTraces(f.ctx.conversation.id, [f.ctx.runId])
+  expect(spans.length).toBeGreaterThan(0)
+  expect(spans.every(span => span.agentId === f.ctx.agent.id && span.turnId === 'turn-a')).toBe(true)
+  expect(JSON.stringify(spans)).not.toContain('fixture-secret')
+  expect(await engine.modelTraces('other-chat', [f.ctx.runId])).toEqual([])
+  await engine.forgetConversationMemory(f.ctx.conversation.id)
+  expect(await engine.modelTraces(f.ctx.conversation.id, [f.ctx.runId])).toEqual([])
 })

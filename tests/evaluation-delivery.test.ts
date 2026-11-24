@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 第三阶段：Mastra 第三阶段回归覆盖原生文件/MCP/快照/Trace、实时补充、断流及 OM 致命失败退出；完整结果见实施记录。
  * [OUTPUT]: 2026-11-24 按官方Controller/Session历史与自动OM验证，保留业务权限、来源、取消、真实工具和用量断言。
  * [INPUT]: MD-v1 固定开发合同、真实 AppService/Mastra/SQLite 与本地兼容模型协议。
  * [OUTPUT]: 附件到成果/修订/采用/重启、共享预算和失败保存的离线贯通；证据hash/身份篡改拒绝、冻结兼容与人工pending。
@@ -45,7 +46,7 @@ async function fixture(options: { noArtifact?: boolean } = {}) {
       if (system.includes('Read the actual new conversation facts. Publish a relevant, updated report')) { sendTeamOutput(response, { action: 'publish', text: JSON.parse(text(messages.at(-1)!.content)).data.draft.text }, false); return }
       const tools = body.tools as { function: { name: string; description?: string } }[] | undefined, writer = tools?.find(value => value.function.name === 'write_file')
       if (!writer) { sendTeamOutput(response, 'connected', false); return }
-      const runId = writer.function.description?.match(/self:\/runs\/([a-zA-Z0-9_-]+)\//)?.[1]
+      const runId = system.match(/self:\/runs\/([a-zA-Z0-9_-]+)\//)?.[1]
       if (!runId) throw new Error('Missing real private run path')
       const revision = tools!.find(value => value.function.name === 'publish_artifact')!.function.description?.match(/revisionRequestId=([a-zA-Z0-9_-]+)/)?.[1]
       if (revision && !replacements.includes(revision)) replacements.push(revision)

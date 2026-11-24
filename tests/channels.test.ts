@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 第三阶段：Mastra 第三阶段回归覆盖原生文件/MCP/快照/Trace、实时补充、断流及 OM 致命失败退出；完整结果见实施记录。
  * [OUTPUT]: 渠道搜索使用员工独立webSearch service及原可用范围，业务数据源为空仍能检索且不外借其他员工服务。
  * [OUTPUT]: 回应来源、未知不重试、旧回执不覆盖新状态与BOAI续聊不外发。
  * [OUTPUT]: 渠道私聊/群沿当前API员工目录批准，另一员工授权不外借，临时许可不跨来源续聊。
@@ -17,6 +18,7 @@
  * [POS]: 第16组离线集成验证；不冒充真实平台或真实供应商通过。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
+import { workspaceFileText } from './fixtures/workspace-output'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -119,8 +121,8 @@ describe('employee channel business connection', () => {
       expect(context.agent.id).toBe('writer')
       const runtime = await createTaskRuntime(context)
       try {
-        const result = await runtime.tools.read_file.execute!({ path }, { requestContext: new RequestContext(), observe: noopObserve }) as { content: string }
-        reads.push(result.content); await context.onDelta(result.content)
+        const result = await runtime.tools.read_file.execute!({ path }, { requestContext: new RequestContext(), observe: noopObserve })
+        reads.push(workspaceFileText(result)); await context.onDelta(workspaceFileText(result))
       } catch (error) { failures.push(String(error)); throw error }
       finally { await runtime.dispose() }
     }

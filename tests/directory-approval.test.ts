@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 第三阶段：Mastra 第三阶段回归覆盖原生文件/MCP/快照/Trace、实时补充、断流及 OM 致命失败退出；完整结果见实施记录。
  * [OUTPUT]: 目录读取/等待审批不占命令独占位，两员工均可等待各自审批；批准第一人不扩展第二人权限。
  * [OUTPUT]: 覆盖增大任务额度、真实继续消息或本次运行同类批准；各文件以具体用例限定验证范围。
  * [OUTPUT]: 核心员工现行默认完全权限；显式配置不改变普通员工原审批权限。
@@ -14,6 +15,7 @@
  * [POS]: WS1/WS2目录批准端到端服务回归；不冒充模型或Electron实际验收。
  * [PROTOCOL]: 一旦本文件变化，必须同步Header与所属.folder.md。
  */
+import { workspaceFileText } from './fixtures/workspace-output'
 import { afterEach, describe, expect, it } from 'vitest'
 import { mkdtemp, mkdir, readFile, readlink, realpath, rename, rm, symlink, writeFile, cp, readdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -101,8 +103,8 @@ describe('目录许可跨原业务生命周期', () => {
     f.engine.decide = async context => context.participation?.hasRespondedInTurn ? { action: 'pass', observedThroughSequence: context.participation.observedThroughSequence } : { action: 'reply', responseKind: 'task', work: { key: `directory-${context.agent.id}`, scope: `${context.agent.name}独立核对本人目录许可`, deliverable: `${context.agent.name}的读取结果` }, observedThroughSequence: context.participation!.observedThroughSequence }
     f.engine.handler = context => task(context, async call => {
       const own = context.agent.id === f.agent.id ? f.a : f.b, other = own === f.a ? f.b : f.a
-      reads[context.agent.id] = [(await call('read_file', { path: join(own, 'original.txt') })).content]
-      reads[context.agent.id].push((await call('read_file', { path: join(other, 'original.txt') })).content)
+      reads[context.agent.id] = [workspaceFileText(await call('read_file', { path: join(own, 'original.txt') }))]
+      reads[context.agent.id].push(workspaceFileText(await call('read_file', { path: join(other, 'original.txt') })))
       await context.onWorkOutcome!({ disposition: 'delivered', summary: '已完成目录操作', evidence: [{ kind: 'answer', reference: '已完成目录操作' }] })
     })
     await f.send(f.service, group)
@@ -136,7 +138,7 @@ describe('目录许可跨原业务生命周期', () => {
     const plan = await f.service.handle('saveAutomation', { name: '目录定时核对', prompt: '读取报告目录原件', conversationPolicy: 'new-conversation', employeeIds: [f.agent.id], frequency: 'daily', time: '09:00', weekday: 1, timezone: 'Asia/Singapore', enabled: false, notify: false }) as AutomationDefinition
     f.engine.handler = context => task(context, async call => {
       const result = await call('read_file', { path: join(f.b, 'original.txt') })
-      observed.push({ runId: context.runId, occurrenceId: context.work!.origin!.occurrenceId, content: result.content })
+      observed.push({ runId: context.runId, occurrenceId: context.work!.origin!.occurrenceId, content: workspaceFileText(result) })
       await context.onWorkOutcome!({ disposition: 'delivered', summary: '已完成目录操作', evidence: [{ kind: 'answer', reference: '已完成目录操作' }] })
     })
     const first = await f.service.handle('runAutomation', { id: plan.id, requestId: 'directory-auto-first' }) as AutomationOccurrence
@@ -394,11 +396,11 @@ describe('真实目录审批与文件接续', () => {
   it('预授权目录直接读写；B批准前不建父目录，批准后同一运行读写不重复询问', async () => {
     const f = await fixture(), target = join(f.b, 'new/result.txt'), observed: string[] = []
     f.engine.handler = context => task(context, async call => {
-      observed.push((await call('read_file', { path: join(f.a, 'original.txt') })).content)
+      observed.push(workspaceFileText(await call('read_file', { path: join(f.a, 'original.txt') })))
       await call('write_file', { path: join(f.a, 'new.txt'), content: 'LOCAL' })
       await call('write_file', { path: target, content: 'APPROVED' })
-      observed.push((await call('read_file', { path: target })).content)
-      await call('edit_file', { path: target, oldText: 'APPROVED', newText: 'DONE' })
+      observed.push(workspaceFileText(await call('read_file', { path: target })))
+      await call('edit_file', { path: target, old_string: 'APPROVED', new_string: 'DONE' })
     })
     await f.send(); const approval = await f.pending()
     expect(approval).toMatchObject({ kind: 'directory', directory: { directory: f.b, target, access: 'read-write' } })
@@ -414,7 +416,7 @@ describe('真实目录审批与文件接续', () => {
   })
   it('永久批准不改变执行配置或中止原任务，重启后可用，旧目录草稿不能覆盖新许可', async () => {
     const f = await fixture(), target = join(f.b, 'original.txt'), observed: string[] = []
-    f.engine.handler = context => task(context, async call => { observed.push((await call('read_file', { path: target })).content) })
+    f.engine.handler = context => task(context, async call => { observed.push(workspaceFileText(await call('read_file', { path: target }))) })
     await f.send(); const approval = await f.pending(); await f.approve(approval, true, true); await f.idle(1)
     expect(f.engine.errors).toEqual([]); expect(observed).toEqual(['B'])
     const updated = (await snapshot(f.service)).agents.find(a => a.id === f.agent.id)!
@@ -444,7 +446,7 @@ describe('真实目录审批与文件接续', () => {
   it('只读员工可申请读取，但目录许可不能允许写入', async () => {
     const f = await fixture('read-only'), results: string[] = []
     f.engine.handler = context => task(context, async call => {
-      results.push((await call('read_file', { path: join(f.b, 'original.txt') })).content)
+      results.push(workspaceFileText(await call('read_file', { path: join(f.b, 'original.txt') })))
       await call('write_file', { path: join(f.a, 'new.txt'), content: 'NO' })
     })
     await f.send(); const approval = await f.pending(); expect(approval.directory?.access).toBe('read-only')
@@ -478,17 +480,17 @@ describe('真实目录审批与文件接续', () => {
     await expect(f.approve(approval)).rejects.toThrow()
     await expect(readFile(target)).rejects.toMatchObject({ code: 'ENOENT' }); expect(await readFile(join(f.a, 'original.txt'), 'utf8')).toBe('A')
   })
-  it('搜索先授权实际目录，返回真实行号/hash并跳过链接，不把摘录当完整阅读', async () => {
+  it('搜索先授权实际目录，返回官方行号并跳过链接，不把摘录当完整阅读', async () => {
     const f = await fixture(), found: any[] = []
     await writeFile(join(f.b, 'notes.md'), '标题\n这是需求说明\n附录需求')
     await symlink(f.a, join(f.b, 'linked-coding'))
     f.engine.handler = context => task(context, async call => {
-      found.push(await call('search_files', { path: f.b, query: '需求', recursive: true, caseSensitive: false }))
+      found.push(await call('search_files', { path: f.b, pattern: '需求', caseSensitive: false }))
     })
     await f.send(); const approval = await f.pending(); expect(found).toEqual([]); expect(approval.directory?.access).toBe('read-only')
     await f.approve(approval); await f.idle(1); expect(f.engine.errors).toEqual([])
-    expect(found[0]).toMatchObject({ scannedFiles: 2, skippedSymlinks: 1, truncated: false, matches: [{ path: join(f.b, 'notes.md'), line: 2, excerpt: '这是需求说明' }, { line: 3 }] })
-    expect(found[0].matches[0].contentHash).toMatch(/^[a-f0-9]{64}$/)
+    expect(found[0]).toContain('这是需求说明'); expect(found[0]).toContain('附录需求')
+    expect(found[0]).toMatch(/2.*这是需求说明/); expect(found[0]).not.toContain('linked-coding')
   })
   it('跨目录移动在目标批准前保留源，批准后不覆盖其他文件', async () => {
     const f = await fixture(), source = join(f.a, 'original.txt'), target = join(f.b, 'nested/moved.txt'), moved: any[] = []
@@ -628,7 +630,7 @@ it('所选cwd的相对文件仍需目录批准，临时批准不影响后续运�
   const f = await fixture(), target = join(f.b, 'relative.txt')
   f.engine.handler = context => task(context, async call => {
     await call('write_file', { path: 'relative.txt', content: 'RELATIVE' })
-    expect((await call('read_file', { path: 'relative.txt' })).content).toBe('RELATIVE')
+    expect(workspaceFileText(await call('read_file', { path: 'relative.txt' }))).toBe('RELATIVE')
     await call('report_work', { disposition: 'delivered', summary: '已完成目录操作', evidence: [{ kind: 'answer', reference: '已完成目录操作' }] })
   })
   const send = (requestId: string) => f.service.handle('sendMessage', { conversationId: f.conversation.id, content: '写入指定位置', workingDirectory: f.b, requestId, mentionIds: [] })

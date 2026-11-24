@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 第三阶段：官方 Durable Agent/Session.steer、Workspace 文件工具、LocalSandbox 进程和原生 Trace；授权及发布保留业务适配。
  * [OUTPUT]: 2026-11-24 Controller 工具接原生审批策略，所有阶段共用官方 Metrics。
  * [OUTPUT]: Controller 主阶段使用官方自动记忆与错误恢复，不再叠加宿主逐步骤摘要。
  * [OUTPUT]: API employees use the shared canvas operation factory and actual PNG model content.
@@ -59,7 +60,7 @@ import { groupInterpretationInstructions, orderedResponseInstruction } from '../
 import type { InputProcessor, ProcessInputStepArgs } from '@mastra/core/processors'
 import { Agent, type AgentExecutionOptions } from '@mastra/core/agent'
 import { StreamErrorRetryProcessor } from '@mastra/core/processors'
-import { contextHistoryTools, modelInputGuard } from './context-maintenance'
+import { contextHistoryTools } from './context-maintenance'
 import type { Memory } from '@mastra/memory'
 import { createTool } from '@mastra/core/tools'
 import { mastraCliTools } from './cli-tools'
@@ -95,8 +96,7 @@ async function createStageInstance(phase: AgentPhase, context: EngineContext, co
   assertApiContext(context)
   context.signal.throwIfAborted()
   const adaptMedia=!!(phase === 'task' || context.browserSession || context.callDataSource || context.callBrowserPlugin || context.callDesktopPlugin || context.callCanvas) && context.connection.provider!=='anthropic' && (context.connection.api ?? 'chat')==='chat'
-  const inputProcessors: InputProcessor[] = [...(context.onTrace || adaptMedia ? [{ id: 'model-request-boundary', processInputStep: ({ model }: ProcessInputStepArgs) => { const actual=adaptMedia ? browserChatModel(model):model;return {model:context.onTrace ? traceModelRequest(actual):actual} } }] : []), ...(controller ? [controller.input] : [modelInputGuard(context, responseOutputTokens(context, phase === 'task'), context.signal)])]
-  if (controller && context.modelCatalog?.models.some(model => model.id === (context.agent.modelId || context.connection.defaultModel) && model.contextWindow)) inputProcessors.push(modelInputGuard(context, 0, context.signal))
+  const inputProcessors: InputProcessor[] = [...(context.onTrace || adaptMedia ? [{ id: 'model-request-boundary', processInputStep: ({ model }: ProcessInputStepArgs) => { const actual=adaptMedia ? browserChatModel(model):model;return {model:context.onTrace ? traceModelRequest(actual):actual} } }] : []), ...(controller ? [controller.input] : [])]
   if (phase === 'coordination') {
     const agent = new Agent({ inputProcessors, id: context.agent.id, name: context.agent.name, model: modelConfig(context.connection, context.apiKey, context.agent.modelId), maxRetries: 0, instructions: groupInterpretationInstructions })
     return { agent, task: false, hasTools: false, dispose: async () => {} }

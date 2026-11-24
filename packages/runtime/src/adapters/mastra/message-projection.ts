@@ -1,37 +1,19 @@
 /*
+ * [OUTPUT]: 2026-11-24 第三阶段：官方 Durable Agent/Session.steer、Workspace 文件工具、LocalSandbox 进程和原生 Trace；授权及发布保留业务适配。
  * [OUTPUT]: 模型消息明确携带用户选择的工作位置；该位置不授予目录访问权。
  * [OUTPUT]: 模型接收用户明确的技能/文件引用，原始可见正文不增加技术字段。
  * [OUTPUT]: 2026-10-14员工浏览器共用宿主；原生只读不认领Work，实际写入惰性认领，引用核源且模型图片与持久摘要分离。
  * [INPUT]: 宿主授权后的公开消息、当前轮次与员工身份。
- * [OUTPUT]: 有界历史/当前轮次投影，以及只省略空值的判断消息表示；当前获准图片以原生媒体部件传输，不进入持久正文；bobo有Memory时只投影当前轮次。
+ * [OUTPUT]: 完整获准历史/当前轮次投影，以及只省略空值的判断消息表示；当前获准图片以原生媒体部件传输，不进入持久正文；bobo有Memory时只投影当前轮次。
  * [POS]: Mastra 消息装配；不通过压缩正文丢弃用户输入。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import type { Message } from '@boai/shared/domain'
 import type { EngineContext } from '../../contracts'
 
-const MAX_CONTEXT_CHARACTERS = 48_000
-const MAX_CONTEXT_MESSAGES = 100
-/** Keep complete messages, including the initiating user request and newest event, within a bounded window. */
-export function contextWindow(messages: Message[], conversationId: string, triggerMessageId?: string) {
-  const visible = messages.filter(message => message.conversationId === conversationId && message.status === 'completed' && message.content.trim()).sort((a, b) => a.sequence - b.sequence)
-  const latest = visible.at(-1)
-  if (!latest) return []
-  const trigger = visible.find(message => message.id === triggerMessageId) ?? [...visible].reverse().find(message => message.senderType === 'user') ?? latest
-  const selected = new Map<string, Message>()
-  let characters = 0
-  const cost = (message: Message) => message.content.length + message.id.length + message.senderName.length + 128
-  for (const message of [trigger, latest]) {
-    if (selected.has(message.id)) continue
-    characters += cost(message); selected.set(message.id, message)
-  }
-  if (characters > MAX_CONTEXT_CHARACTERS) throw new Error('本轮请求或最新消息超过上下文长度限制，请缩短消息或拆分任务')
-  for (const message of [...visible].reverse()) {
-    if (selected.has(message.id) || selected.size >= MAX_CONTEXT_MESSAGES) continue
-    if (characters + cost(message) > MAX_CONTEXT_CHARACTERS) continue
-    selected.set(message.id, message); characters += cost(message)
-  }
-  return [...selected.values()].sort((a, b) => a.sequence - b.sequence)
+/** Project all authorized messages; the official Memory processors own capacity. */
+export function contextWindow(messages: Message[], conversationId: string, _triggerMessageId?: string) {
+  return messages.filter(message => message.conversationId === conversationId && message.status === 'completed' && message.content.trim()).sort((a, b) => a.sequence - b.sequence)
 }
 
 export function partitionTurn(messages: Message[], triggerMessageId?: string, turnId?: string) {

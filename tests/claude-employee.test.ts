@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 第三阶段：Mastra 第三阶段回归覆盖原生文件/MCP/快照/Trace、实时补充、断流及 OM 致命失败退出；完整结果见实施记录。
  * [OUTPUT]: 2026-10-11 第13组原生生产合同回归与旧阶段兼容分开；夹具成功不冒充真实模型验收。
  * [OUTPUT]: policy10完整聊天映射夹具在两次recover中零调用且原记录不改；明确新消息按当前策略重建，无resume，新会话实际完成后才允许后续增量；不代替旧应用升级证据。
  * [OUTPUT]: 私有decision/memory/report拒绝非布尔格式完成标记，即使后续success/结构相等；缺省/false成功与true拒绝后新ID纠正保持，无公开私有文本或业务工具。
@@ -156,7 +157,7 @@ it.each(['owned-delivery','another-owner','another-conversation','undelivered','
  expect(prepared.data.currentTurn.rootMessageId).toBe('update')
  const ids=prepared.data.currentTurnMessages.map(m=>m.id)
  expect(ids).not.toContain('unrelated')
- if(variant==='owned-delivery'){
+ if(variant==='owned-delivery'||variant==='outside-window'){
   expect(ids).toEqual(['source','update','reply'])
   expect(prepared.data.completedWorkRequestId).toBe('source')
   expect(prepared.validate([{content:'用户偏好简短答复',sourceMessageIds:['source']}])).toMatchObject([{sourceMessageIds:['source']}])

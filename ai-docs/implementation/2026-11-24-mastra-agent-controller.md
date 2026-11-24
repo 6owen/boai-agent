@@ -1,6 +1,6 @@
 <!--
 [INPUT]: 用户授权将 Mastra/API 执行迁移到官方 AgentController；当前 core 1.71.0、memory 1.32.1。
-[OUTPUT]: 两阶段迁移：Session/Memory、官方审批及 Metrics/费用估算；实际验证和预览版本分别记录。
+[OUTPUT]: 三阶段迁移：Session/Memory、审批/指标及 Durable/Workspace/MCP/Trace；实际验证和预览版本分别记录。
 [POS]: AgentController 迁移的源码、验证和交付记录；不代表个人应用已切换。
 [PROTOCOL]: 实施变化同步本记录、对应源码 Header 和 .folder.md。
 -->
@@ -12,7 +12,7 @@
 
 第一阶段源码迁移已完成，提交为`ec3f1009`：改动集中在9个后端执行/记忆文件（含新增`controller-session.ts`、删除`model-request-attempts.ts`），该阶段没有Renderer改动或依赖升级。用户在隔离预览中试用后，继续授权第二阶段原生审批与计量迁移。第二阶段在同一PR #187追加，新增官方DuckDB指标存储和个人资料中的费用估算；各阶段验证见下文。
 
-官方Controller负责会话运行；现有工具捕获每次宿主授权快照，因此Controller/Session运行实例随宿主run创建并排空回收，持久thread按员工/会话复用。尚未将整个产品改成常驻共享Controller，也未接Durable Agents；不能据此宣称跨进程自动续跑。
+官方Controller负责会话运行；现有工具捕获每次宿主授权快照，因此Controller/Session运行实例随宿主run创建并排空回收，持久thread按员工/会话复用。第三阶段已接 Durable Agents 默认快照与 Session.steer；仍非整个产品常驻共享 Controller，跨进程自动续跑没有接线。
 
 ## 已核实的官方能力
 
@@ -126,7 +126,7 @@
 
 第二阶段日志以`phase2-`前缀保存在主检出`.local/review-artifacts/agent-controller-20261124/`，保留初轮失败及最终复验。没有把重复通过次数相加为独立测试数量。
 
-当前个人预览仍来自第一阶段`ec3f1009`，目录为`/Users/wangwenbo/Desktop/demo/boai/boai-agent-agent-controller`；本阶段未重启该窗口、未安装或合并。PR截图目标为“个人资料 → 模型估算费用”，由现有CI生成目标页及全局主界面两张图；截图尚未运行时不称已验视觉。
+第二阶段交付时个人预览仍来自第一阶段`ec3f1009`，目录为`/Users/wangwenbo/Desktop/demo/boai/boai-agent-agent-controller`；本阶段未重启该窗口、未安装或合并。PR截图目标为“个人资料 → 模型估算费用”，由现有CI生成目标页及全局主界面两张图；截图尚未运行时不称已验视觉。
 
 官方依据（并核对已安装版本的声明及实现）：
 
@@ -134,3 +134,56 @@
 - https://mastra.ai/docs/observability/metrics/overview
 - https://mastra.ai/reference/observability/metrics/automatic-metrics
 - https://mastra.ai/reference/processors/token-cost-control
+
+## 第三阶段：统一官方基础设施
+
+用户明确要求“全给我迁移过来，不要自己维护了”。沿同一分支追加；基线合入 main `0688c635`。执行包保持 core 1.71.0、memory 1.32.1、observability 1.18.1、duckdb 1.15.0、libsql 1.23.3，新增兼容的 `@mastra/mcp@1.18.0`。没有把在线最新 API 当作已安装能力。
+
+| 范围 | 当前归属与删除内容 |
+| --- | --- |
+| 执行/实时补充 | createDurableAgent + AgentController/Session；API 补充沿已有入口调用 Session.steer，保留输入身份/授权回执 |
+| 上下文 | 删除 context-capacity 与 100 条/48000 字符历史滑窗；将全部获准已完成历史交给 Memory/OM，不另写压缩器 |
+| 文件 | 官方 createWorkspaceTools 的 read/write/edit/list/GREP；删除 FileReadBaselines、replaceFileText 和 file-search；workspace-filesystem 只适配业务权限/冻结字节 |
+| 命令 | LocalSandbox/ProcessManager 接管启动、UTF-8 解码、输出保留与超时；默认无墙钟限制，输出裁剪不杀进程；保留批准和实际进程组退出屏障 |
+| 知识 | Workspace BM25 + 中文分词；仅索引获准冻结版本，保留业务引用和受限扫描提示 |
+| MCP | MCPClient 接管 stdio/HTTP/SSE、工具发现/调用/关闭；删除自建分页和 200 工具/20 页/64 次凭据更新限制 |
+| 结构化结果 | structuredOutput + output.object；业务 schema/结果权限仍核验 |
+| Trace/用量 | 脱敏 span 与指标同归官方 DuckDB Observability；按真实 run/thread 查询、会话删除同步清理；旧历史/native 兼容读取保留 |
+
+文件协议随官方工具：读取使用行 offset/limit，编辑使用 old_string/new_string，结果为官方文本。测试及 CLI 同步消费新协议，没有给产品保留第二套旧工具。发布、材料来源、员工目录和本机 Agent 原生循环仍是业务边界。
+
+### 固定版本的兼容边界
+
+- Durable + Controller 同一 chunk 对象可能经默认回调投递两次，按对象身份只投影一次，不按内容删重。
+- 独立纯 SDK 合成模型证实：没有 finish 帧的流在普通 Agent 中 finishReason 未知，Durable 却返回 stop。当前完成判定读取原始 step-finish，缺失终态不能发布成功；0 usage 合成值仍保持未知。具体官方反馈回执另保存。
+- Durable 的 onStepFinish 不保留原 response headers，使用公开模型 InputProcessor 包装 doStream/doGenerate 观察原网关响应头，不消费或重放流。
+- 1.18 MCPClient 断流后会重试工具，且目录映射会覆盖重复名称；通过公开 logger 回调的固定版本兼容点阻止第二次派发、拒绝重复目录。真实本机 HTTP 断流用例核对工具实际只执行一次；升级必须复验并优先删除该兼容点。
+- Memory 模型缺少/无效终态或显式预算拒绝时，将致命错误传给本 run 的 AbortController；正常瞬态错误重试仍归 SDK。避免等待永不结束的 OM 后台任务。
+- 默认 Durable 快照策略保留；曾强制每步写入造成长任务变慢，已撤掉该自定义策略，保持原 260 步与 60 秒测试期限。
+
+### 持久化与未迁移的业务责任
+
+原生暂停快照按真实 resource 保存，受控测试核对存在审批路径而没有 API key；批准只写一次。忘记会话/修改工作记忆时删除对应官方 workflow run，清理 Trace/指标同样通过官方存储。每个宿主 run 绑定不可变授权，不把旧快照直接套到新权限。
+
+产品业务队列仍负责 IM/员工任务的持久受理和来源校验，实时 API 输入交给 Session.steer。未接 Session.followUp 替换业务队列；进程重启仍沿中断记录和显式继续，未实现自动 restore/recover。费用页面的时区、日分组和历史合并属于展示计算，没有接官方 aggregate API，也没有新增模型价格表。这些边界不能称为“全部产品逻辑由 Mastra 接管”。
+
+### 第三阶段验证
+
+使用真实已安装 SDK、隔离数据库和本地 HTTP/stdio 模型夹具，没有调用商业模型或启动 GUI。最终基线同步 main `16f5d6a7`（前两阶段 PR #187 已由其他操作合入）；与此前检出产品代码一致，仅多一条标题 identity 测试断言。第三阶段另提新 PR。
+
+| 检查 | 实际结果 |
+| --- | --- |
+| `test:changed --list` / `test:changed` | Git 选中 255 文件；221 通过、8 失败、26 跳过，3713 项通过、30 失败、135 跳过。保留原始失败日志 |
+| 失败归因及修复 | 11 项在未修改 main `0688c635` 复现；9 项为网关/评估等待超时；10 项暴露原始完成守卫误拦合法私有修订及 HTTP 重试，已修复输入阶段识别 |
+| 核心定向复验 | engine/context-continuity/gateway-product-faults/evaluation/core-conversations 五文件共 351 项通过，1 项 OM 取消断言失败；其中全部 216 engine、72 网关及完整任务评估通过 |
+| OM 取消复验 | 更新调用宣布与实际执行的区别：每次实际执行唯一，未执行的调用必须终态失败，全部调用必须终结；该项复验通过。没有放宽期限或删除禁止重放断言 |
+| 持久化/MCP | 审批快照无密钥、忘记后删除快照、Trace 核权/脱敏/删除、旧辅助指标、MCP 未知副作用只执行一次均通过，纳入变更选测及定向日志 |
+| 工程 | `pnpm typecheck`、`pnpm lint:ui`、`pnpm build`、`pnpm build:cli`、diff、Skill frontmatter 和截图目标解析通过；既有 bundle 大小提示保留 |
+
+没有把上述复验称为一次并发选测全绿，未对已经通过的数千项重复全量运行。HTTP 重试仍由 SDK 决定；公开模型方法只记录请求抛错，区别于正常关闭但缺少 finish 的 EOF。私有修订沿前次明确 stop 开始新输入。原测试期限保持，260 步/实时补充、来源失效、实际退出、文件权限与原生 CLI 协议通过。
+
+纯 SDK EOF 复现已按 Mastra skill 向官方反馈，HTTP 201，回执 `e81dfb47-1017-4522-b02a-b592ad954275`；仅合成代码和版本，不含本仓库源码、路径、密钥或用户数据。最新版本未测试，不宣称最新版本也存在相同问题。
+
+原始日志以 `phase3-` 前缀归档到主检出 `.local/review-artifacts/agent-controller-20261124/`，保留初轮失败、最终选测及定向复验。截图目标为会话输入器，CI 仅确认该区域与主界面；没有把静态截图冒充活跃 Session.steer 行为验证。
+
+个人预览仍为独立目录 `boai-agent-agent-controller` 的 `c6894163`，本批未重启、未安装，也没有自动合并新 PR。持久快照已接入，跨进程自动续跑仍未接；生产模型速度、质量和 GUI 行为没有在本轮验收。

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 第三阶段：补充输入回执共用原业务仲裁，API 的实际投递由官方 Session 执行。
  * [INPUT]: Explicit owner message, exact active native run/turn and original message transaction.
  * [OUTPUT]: One native submission per accepted message; durable receipt and unknown recovery without replay.
  * [POS]: Live input delivery only; native execution and business scheduling remain with their original owners.
@@ -29,7 +30,7 @@ export class NativeSteering {
   }
   private current(target: NativeSteeringTarget, conversationId: string, recipients: string[] = []) {
     const binding = this.bindings.get(target.runId), run = binding?.run
-    if (!binding || binding.signal.aborted || !run || run.status !== 'running' || run.conversationId !== conversationId || run.backend?.kind !== 'codex-local' || run.backend.turnId !== target.turnId || !run.backend.inputAccepted || run.origin || recipients.some(id => id !== run.agentId)) throw new Error('此原生轮次已结束、正在等待或不支持补充，请查看当前执行')
+    if (!binding || binding.signal.aborted || !run || run.status !== 'running' || run.conversationId !== conversationId || !(run.controller?.canSteer && run.controller.turnId === target.turnId || run.backend?.kind === 'codex-local' && run.backend.turnId === target.turnId && run.backend.inputAccepted) || run.origin || recipients.some(id => id !== run.agentId)) throw new Error('此原生轮次已结束、正在等待或不支持补充，请查看当前执行')
     return binding
   }
   async validate(target: NativeSteeringTarget, conversationId: string, recipients: string[]) {

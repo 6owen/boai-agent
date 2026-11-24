@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-11-24补官方 Mastra 基础设施接线验证及个人进程生效边界。
 [OUTPUT]: 2026-11-24新增AgentController审批和官方Metrics改动的定向验证入口、独立数据及PR截图目标。
 [OUTPUT]: 开发默认提 PR；先看截图时保存实际文件并返回绝对路径。
 [OUTPUT]: 本地按 Git 变更运行 Vitest，UI PR 回填目标状态和全局主界面截图。
@@ -174,3 +175,9 @@ node scripts/git-cpf.mjs "提交说明"
 需要修复中断留下的临时保护状态时，沿原记录运行 `node scripts/git-cpf.mjs --restore-protection`。普通开发不能把该例外当默认策略。
 
 实际合并、CI、部署、Release和应用重启分别报告。回收前保留原成功/失败日志、截图及需要的本地数据，记录迁移路径和哈希；删除后复核main、worktrees、归档及可用空间。不要把空闲终端的当前目录、活跃开发依赖或用户profile留在将删除的路径下，也不要为清理关闭无关终端或个人应用。细则见 [boai-dev-workflow](../../boai-dev-workflow/SKILL.md)。
+
+## Mastra 第三阶段验证
+
+仍先 `pnpm test:changed --list`、`pnpm test:changed`；失败修复后按关联文件复验。执行/记忆重点为 `tests/mastra-engine.test.ts`、`tests/mastra-context-continuity.test.ts`、`tests/mastra-metrics.test.ts`；MCP 为 `tests/sources.test.ts`；文件/命令沿 `tests/workspace-file-editing.test.ts`、`tests/directory-approval.test.ts` 和 host-command 用例。CLI 协议验证先 `pnpm build:cli`。这些受控测试不等于商业模型任务或个人预览通过。
+
+运行路径为官方 AgentController/Durable → Memory/OM、Workspace、LocalSandbox、MCPClient 和 Observability；无需新增专用启动命令。Main 编译后须重启对应开发进程才能生效，不自动替换别的 worktree 预览。固定 SDK 兼容点和当前可恢复范围见[实施记录](../../../../ai-docs/implementation/2026-11-24-mastra-agent-controller.md)。

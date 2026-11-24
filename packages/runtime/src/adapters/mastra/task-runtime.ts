@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 2026-11-24 第三阶段：官方 Durable Agent/Session.steer、Workspace 文件工具、LocalSandbox 进程和原生 Trace；授权及发布保留业务适配。
+ * [OUTPUT]: 官方 Workspace 文件工具与读取记录替代自建编辑/分页/搜索；BOAI仅提供路径授权和成果发布。
  * [OUTPUT]: 2026-11-24 文件与命令的原权限预检接 Session 审批；批准后重验来源/路径且不重复询问。
  * [OUTPUT]: 2026-11-09 员工项目支持相对文件/命令和项目内访问；额外目录沿原许可，完全访问无需逐目录授权。
  * [OUTPUT]: 原生项目交付在原发布许可后调用固定项目暂存回调；API仍使用自身目录授权。
@@ -23,10 +25,8 @@
  * [OUTPUT]: 定时任务沿原Work装配browser_tool，组织/普通chat及未认领工作边界保持。
  * [OUTPUT]: 宿主命令遵循员工已保存授权，未永久授权时由工具申请确认。
  * [OUTPUT]: 获准工作装配员工数据源目录/调用工具，退出等待数据源会话关闭。
- * [OUTPUT]: Hermes 文件编辑语义接线：Unicode 分页续读；API 员工精确 edit_file、完整阅读与过期写入保护，原生自主工具保持。
  * [OUTPUT]: report_work与原生入口一致回传必须原样出现在最终答复中的证据；仅提醒，不自动发布或绕过原门禁。
  * [OUTPUT]: API委派在创建前拒绝子工作依赖正在委派的父工作；依赖链须先取真实前置回执，防止猜父ID造成多份审稿；本机工具合同保持。
- * [OUTPUT]: 仅API上下文读写文件回执提供实际文本/段落Unicode非空白计数，截断读取明确标记；模型以区间中部为目标、整体修订并按实测核对原限字再发布，权限/原件/预算保持。
  * [OUTPUT]: 文件任务保留获准原文件名/逻辑路径，仅未指定时默认本run目录；材料写入门禁/工具原参数/发布与实际退出保持，不静默迁移拒绝的目标。
  * [OUTPUT]: bobo可选择API或本机Codex；组织/具名团队按原运行配置创建独立员工，混合成员共原预算；本机自动化沿原时钟/预算接入，实际验证归第13组06。
  * [INPUT]: 已授权执行环境、工作执行权和员工任务合同。
@@ -39,17 +39,18 @@
  */
 import { prepareEnvironment, assertEnvironmentScope } from '../../modules/workspaces/environment-plan'
 import { modelWorkOutcomeSchema, workDelegationSchema, workWaitSchema } from '../../modules/collaboration/work-protocol'
-import { readdir, realpath, stat } from 'node:fs/promises'
+import { realpath, stat } from 'node:fs/promises'
 import { materialImageMimeType, readMaterialSource } from '@boai/shared/node/material-files'
 import path from 'node:path'
-import { createTool } from '@mastra/core/tools'
-import { LocalFilesystem, Workspace } from '@mastra/core/workspace'
+import { createTool, type Tool } from '@mastra/core/tools'
+import { Workspace, createWorkspaceTools, WORKSPACE_TOOLS } from '@mastra/core/workspace'
+import { employeeFilesystem } from './workspace-filesystem'
 import { z } from 'zod'
 import type { EngineContext } from '../../contracts'
 import { isBrowserCapableAgent } from '@boai/shared/domain'
 import { isCoreAgent } from '@boai/shared/domain/core-agent'
 import { teamModelPlanSchema } from '@boai/shared/domain/team-creation'
-import { logicalPath, workspaceTarget, boundedRead, writeWorkspaceFile, publishArtifact, restrictedPath, taskPathAllowed, assertTaskPathAccess, RESERVED_SYSTEM_FILES, MAX_FILE_BYTES } from '../../modules/workspaces/file-access'
+import { logicalPath, workspaceTarget, writeWorkspaceFile, publishArtifact, restrictedPath, assertTaskPathAccess } from '../../modules/workspaces/file-access'
 import { createKnowledgeTools } from './knowledge-tools'
 import { createDirectoryRequestOperation } from '../../modules/workspaces/directory-tool'
 import { knowledgeInstructions } from '../../modules/resources/knowledge-tools'
@@ -63,27 +64,19 @@ import { employeeCommandScope } from '../../modules/workspaces/directory-command
 import { workingDirectoryTarget, workingFilePath } from '../../modules/workspaces/working-directory'
 import { directoryGrantsSchema } from '@boai/shared/domain/directory-access'
 import { deleteBusinessEntry, moveBusinessFile, stageBusinessArtifact } from '../../modules/workspaces/directory-files'
-import { searchTaskFiles } from '../../modules/workspaces/file-search'
 import { assertDirectoryTargetCurrent, type DirectoryTarget } from '../../modules/workspaces/directory-access'
 import { createSourceTools } from './source-tools'
 import { createBrowserTool } from './browser-tool'
 import { createBoboOrganizationTools } from './bobo-tools'
 import { imageToolRequestSchema, type ImageBytes } from '../../modules/media/image-service'
 import { selfieRequestSchema } from '../../modules/media/selfie-service'
-import { FileReadBaselines, fileContentHash, readFilePage, replaceFileText, MAX_FILE_PAGE_CHARACTERS } from '../../modules/workspaces/file-editing'
-const MAX_TOOL_OUTPUT = 48_000
-const MAX_PARAGRAPH_COUNTS = 100
+import { fileContentHash } from '../../modules/workspaces/file-editing'
 const MAX_IMAGE_INPUT_BYTES = 8 * 1024 * 1024
 const MAX_IMAGE_INPUT_COUNT = 12
 interface TaskImage { path: string; contentHash: string; sizeBytes: number; image: { data: string; mimeType: string } }
-function fileTextMetrics(content: string) {
-  const count = (text: string) => Array.from(text.replace(/\s/gu, '')).length
-  const paragraphs = content.split(/\r?\n(?:[ \t]*\r?\n)+/u).filter(part => part.trim())
-  return { nonWhitespaceCharacters: count(content), paragraphCharacters: paragraphs.slice(0, MAX_PARAGRAPH_COUNTS).map(count), omittedParagraphs: Math.max(0, paragraphs.length - MAX_PARAGRAPH_COUNTS) }
-}
 const check = (signal: AbortSignal) => signal.throwIfAborted()
 
-export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 60_000) {
+export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 0) {
   const environment = ctx.environment ?? await prepareEnvironment(ctx)
   assertEnvironmentScope(environment, ctx)
   const plan = ctx.work?.organization ? { ...environment, skills: [], knowledge: [] } : environment
@@ -92,7 +85,6 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
   const commandCwd = selectedDirectory?.path ?? scope.runPath
   const signal = ctx.signal
   const apiContext = !!ctx.connection && !ctx.runtimeProfile && (ctx.agent.executionBackend?.kind ?? 'mastra-model') === 'mastra-model'
-  const fileBaselines = new FileReadBaselines()
   const businessPaths = !!ctx.directoryAccess?.enabled
   const directoryRequest = createDirectoryRequestOperation(ctx)
   const locationFor = async (file: string, write = false) => {
@@ -108,14 +100,16 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
     if (location.business) await assertDirectoryTargetCurrent(location.business)
     await assertTaskPathAccess(ctx, path.resolve(location.root, location.relative), operation)
   }
-  const currentText = async (root: string, relative: string) => {
-    try { return await boundedRead(await workspaceTarget(root, relative), { strictUtf8: true }) }
-    catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null; throw error }
-  }
-  const filesystem = new LocalFilesystem({ basePath: scope.root, contained: true })
+  const filesystem = employeeFilesystem(ctx, scope.root, locationFor)
   const skillRoots = plan.skills.map(version => path.resolve(version.resource.path))
   const knowledge = plan.knowledge.map(version => version.resource)
-  const workspace = new Workspace({ id: `run-${ctx.runId}`, filesystem, skills: skillRoots, skillSource: new BoundSkillSource(skillRoots, plan.skills, signal), tools: { enabled: false } })
+  const workspace = new Workspace({ id: `run-${ctx.runId}`, filesystem, skills: skillRoots, skillSource: new BoundSkillSource(skillRoots, plan.skills, signal), tools: { enabled: false,
+    [WORKSPACE_TOOLS.FILESYSTEM.READ_FILE]: { enabled: true, name: 'read_file' },
+    [WORKSPACE_TOOLS.FILESYSTEM.WRITE_FILE]: { enabled: true, name: 'write_file', requireReadBeforeWrite: apiContext },
+    [WORKSPACE_TOOLS.FILESYSTEM.EDIT_FILE]: { enabled: apiContext, name: 'edit_file', requireReadBeforeWrite: true },
+    [WORKSPACE_TOOLS.FILESYSTEM.LIST_FILES]: { enabled: true, name: 'list_files' },
+    [WORKSPACE_TOOLS.FILESYSTEM.GREP]: { enabled: true, name: 'search_files' },
+  } })
   const identities: { id: string; name: string; path: string }[] = []
   const artifactIds = new Set<string>()
   const collaborationIds = new Set(ctx.committedCollaborationIds ?? [])
@@ -177,7 +171,15 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
       const names = loadedSkills.map(skill => skill.name)
       if (new Set(names).size !== names.length) throw new Error('员工绑定了同名 Skill，请明确选择一个来源')
     }
+    const nativeFiles = await createWorkspaceTools(workspace)
+    // Only the wrapped tools below are exposed: Agent must not inject a second
+    // unwrapped copy that bypasses Controller approval and file serialization.
+    workspace.setToolsConfig({ enabled: false })
+    const files = Object.fromEntries(Object.entries(nativeFiles).map(([name, tool]) => [name, {
+      ...tool, execute: (input: unknown, options: unknown) => fileOperation(() => tool.execute(input, options)),
+    }])) as Record<'read_file' | 'write_file' | 'edit_file' | 'list_files' | 'search_files', Tool>
     const tools = {
+      ...files,
       ...createPresentationTools(ctx, {
         root: scope.root, serial: fileOperation,
         source: async file => {
@@ -288,25 +290,6 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
           },
         }),
       } : {}),
-      read_file: createTool({
-        id: 'read_file', description: (businessPaths ? 'Absolute business paths are supported, subject to employee directory approval. ' : '') + 'Read a UTF-8 text file from self:/work/…, self:/runs/…, or shared:/…. self is only this employee’s CURRENT conversation session. System files, other employees and other sessions are inaccessible. offset is zero-based Unicode characters; limit is at most 48000. Follow nextOffset until null to read the remainder. If contentHash changes between pages, restart at offset 0.' + (apiContext ? ' Returns measured non-whitespace Unicode character counts for this page only. Before whole-file write_file, read every page of the unchanged file; for a local change prefer edit_file.' : ''),
-        inputSchema: z.object({ path: z.string(), offset: z.number().int().min(0).optional(), limit: z.number().int().min(1).max(MAX_FILE_PAGE_CHARACTERS).optional() }),
-        execute: ({ path: file, offset, limit }) => fileOperation(async () => {
-          check(signal)
-          const location = await locationFor(file)
-          const target = path.resolve(location.root, location.relative)
-          await verifyLocation(location, 'read')
-          const verified = await ctx.readTaskFile?.(target)
-          const original = verified?.content ?? await boundedRead(await workspaceTarget(location.root, location.relative), { strictUtf8: true })
-          // A managed artifact read already returns the host-verified immutable
-          // bytes. Do not reopen it after that snapshot and replace its result.
-          if (location.business) await verifyLocation(location, 'read')
-          const page = readFilePage(original, offset, limit)
-          check(signal)
-          if (apiContext) fileBaselines.read(target, page)
-          return { path: file, ...page, ...(apiContext ? { textMetrics: fileTextMetrics(page.content) } : {}) }
-        }),
-      }),
       read_image: createTool({
         id: 'read_image',
         description: (businessPaths ? 'Authorized absolute business files are supported. ' : '') + `Read actual raster images from self:/work/…, self:/runs/…, or an authorized shared:/ artifact. path accepts ONE string or an ordered array of up to ${MAX_IMAGE_INPUT_COUNT} paths: batch video frames/screenshots in one call instead of reading each frame in a separate step. With the default command workspace, ./file.jpg from execute_command means self:/runs/${ctx.runId}/file.jpg here; do not guess another run ID. An explicitly selected business cwd retains its relative-path behavior. Returns actual images to the configured model with individual path/hash/MIME; requires a model that accepts image input. Same current employee/session/source permissions as read_file, checked separately for every file. PNG, JPEG, GIF, WebP, BMP and AVIF recognized from bytes; SVG/HTML are not rendered. At most 8 MiB TOTAL per call: prepare separate smaller previews for larger inputs, preserving originals. No partial batch on error. Does not capture screens or publish files. Never infer images from filenames or claim vision after a provider rejection.`,
@@ -339,83 +322,6 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
           const result = output as TaskImage | { images: TaskImage[] }, images = 'images' in result ? result.images : [result]
           return { type: 'content' as const, value: images.flatMap(image => [{ type: 'text' as const, text: JSON.stringify({ path: image.path, contentHash: image.contentHash, sizeBytes: image.sizeBytes, mimeType: image.image.mimeType }) }, { type: 'image-data' as const, data: image.image.data, mediaType: image.image.mimeType }]) }
         },
-      }),
-      write_file: createTool({
-        id: 'write_file', description: (businessPaths ? 'Absolute business paths are supported: granted read-write directories need no repeated file approval. ' : '') + `Write a private task file using the authorized task's exact filename and logical path. Default to self:/runs/${ctx.runId}/ only when no path is specified. Material-backed tasks must keep writes in this run directory; other tasks may also use self:/work/. An unauthorized required path must be refused, never silently renamed or relocated. ${apiContext ? 'An existing file must have been fully read in this execution (all read_file pages) or written by this execution, and must be unchanged. Prefer edit_file for a local change. Returns measured textMetrics for these exact written bytes; check explicit user character limits before publish_artifact, never estimate a count.' : 'Use publish_artifact to share a finished result.'} No shared or system-file writes.`,
-        inputSchema: z.object({ path: z.string(), content: z.string().max(MAX_FILE_BYTES) }),
-        execute: ({ path: file, content }) => fileOperation(async () => {
-          check(signal)
-          const location = await locationFor(file, true)
-          if (Buffer.byteLength(content) > MAX_FILE_BYTES) throw new Error('File exceeds 1 MiB')
-          const target = path.resolve(location.root, location.relative)
-          await verifyLocation(location, 'write')
-          let expectedHash: string | null | undefined
-          if (apiContext) {
-            const current = await currentText(location.root, location.relative)
-            if (current !== null) fileBaselines.assertCurrent(target, current, true)
-            expectedHash = current === null ? null : fileContentHash(current)
-          }
-          if (!location.business) await authorizeExecution(ctx, { kind: 'file', description: `写入文件 ${file}` })
-          await ctx.beforeEffect?.(); check(signal)
-          await writeWorkspaceFile(location.root, location.relative, content, expectedHash, signal, () => verifyLocation(location, 'write'))
-          if (apiContext) fileBaselines.wrote(target, content)
-          await ctx.afterEffect?.()
-          return { path: file, bytes: Buffer.byteLength(content), published: false, ...(apiContext ? { textMetrics: fileTextMetrics(content) } : {}) }
-        }),
-      }),
-      ...(apiContext ? { edit_file: createTool({
-        id: 'edit_file', description: (businessPaths ? 'Absolute business paths use employee directory authorization. ' : '') + 'Precisely replace oldText with newText in a private UTF-8 file already read in this execution. Partial read is enough; unseen surrounding content is preserved. Copy exact whitespace/newlines. oldText must match exactly once, unless replaceAll:true explicitly requests every match. Changed files are refused: re-read before retrying. Uses the same self:/ path permissions as write_file; publish_artifact is still required to deliver the result.',
-        inputSchema: z.object({ path: z.string(), oldText: z.string().min(1).max(MAX_FILE_BYTES), newText: z.string().max(MAX_FILE_BYTES), replaceAll: z.boolean().optional() }).strict(),
-        execute: ({ path: file, oldText, newText, replaceAll }) => fileOperation(async () => {
-          check(signal)
-          const location = await locationFor(file, true), target = path.resolve(location.root, location.relative)
-          await verifyLocation(location, 'read')
-          await verifyLocation(location, 'write')
-          const current = await currentText(location.root, location.relative)
-          if (current === null) throw new Error('File does not exist; use write_file to create a new file')
-          fileBaselines.assertCurrent(target, current, false)
-          const complete = fileBaselines.hasFullRead(target)
-          const result = replaceFileText(current, oldText, newText, replaceAll)
-          if (Buffer.byteLength(result.content) > MAX_FILE_BYTES) throw new Error('File exceeds 1 MiB')
-          if (!location.business) await authorizeExecution(ctx, { kind: 'file', description: `修改文件 ${file}` })
-          await ctx.beforeEffect?.(); check(signal)
-          await writeWorkspaceFile(location.root, location.relative, result.content, fileContentHash(current), signal, () => verifyLocation(location, 'write'))
-          fileBaselines.wrote(target, result.content, complete)
-          await ctx.afterEffect?.()
-          return { path: file, bytes: Buffer.byteLength(result.content), replacements: result.replacements, contentHash: fileContentHash(result.content), published: false, textMetrics: fileTextMetrics(result.content) }
-        }),
-      }) } : {}),
-      list_files: createTool({
-        id: 'list_files', description: (businessPaths ? 'Absolute business directories are supported, subject to employee directory approval. ' : '') + 'List self:/, self:/work/…, self:/runs/…, or shared:/…. Self root only exposes work and runs.',
-        inputSchema: z.object({ path: z.string().default('self:/') }),
-        execute: ({ path: directory }) => fileOperation(async () => {
-          check(signal)
-          const location = await locationFor(directory)
-          await verifyLocation(location, 'list')
-          const safe = await workspaceTarget(location.root, location.relative)
-          const candidates = location.mount === 'self' && location.relative === '.'
-            ? [{ name: 'work', type: 'directory' }, { name: 'runs', type: 'directory' }]
-            : (await readdir(safe, { withFileTypes: true })).filter(entry => !entry.isSymbolicLink() && (location.business || !RESERVED_SYSTEM_FILES.has(entry.name.toUpperCase()))).map(entry => ({ name: entry.name, type: entry.isDirectory() ? 'directory' : 'file' }))
-          const entries: { name: string; type: string }[] = []
-          for (const entry of candidates) {
-            if (await taskPathAllowed(ctx, path.join(safe, entry.name), entry.type === 'directory' ? 'list' : 'read')) entries.push(entry)
-            if (entries.length === 200) break
-          }
-          await verifyLocation(location, 'list')
-          return entries
-        }),
-      }),
-      search_files: createTool({
-        id: 'search_files', description: 'Search literal text in UTF-8 files under an authorized logical directory or absolute business directory. Returns actual line numbers, bounded excerpts and file hashes. Symlinks are skipped. Results report limits/skips; narrow the directory/query when truncated. Search excerpts do not replace read_file before editing.',
-        inputSchema: z.object({ path: z.string(), query: z.string().min(1).max(500).refine(value => !/[\r\n]/u.test(value), 'Search for a single-line literal'), recursive: z.boolean().default(true), caseSensitive: z.boolean().default(false) }).strict(),
-        execute: ({ path: directory, query, recursive, caseSensitive }) => fileOperation(async () => {
-          const location = await locationFor(directory)
-          await verifyLocation(location, 'list')
-          const root = await workspaceTarget(location.root, location.relative)
-          const result = await searchTaskFiles(ctx, root, query, { business: !!location.business, recursive, caseSensitive, logicalPath: directory, ...(location.mount === 'self' && location.relative === '.' ? { topLevel: ['work', 'runs'] } : {}) })
-          await verifyLocation(location, 'list')
-          return result
-        }),
       }),
       ...(businessPaths ? {
         move_file: createTool({
@@ -551,7 +457,7 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
     return {
       workspace, tools: availableTools, skills: ctx.organizeCollaboration ? [] : identities,
       dispose: async () => { filesClosing = true; await fileQueue; try { await ctx.closeDataSources?.(); await ctx.browserSession?.drain() } finally { await workspace.destroy() } },
-      instructions: `${ctx.agent.executionPermission ? `Execution permission: ${ctx.agent.executionPermission}. Read-only prohibits file writes/publication, commands, source mutations and browser interactions. Ask mode waits for host approval before each change; use the tool normally, never seek approval separately in prose. Full access skips these prompts and permits business directories without individual grants; BOAI internal sources keep their own authorization.\n` : ''}Current duty: execute only the user's requested task or a validated handoff under that task. Use native skill tools only for bound skills.\nLogical self:/ root is the current employee session, not the whole employee workspace. Preserve the authorized task's exact filename and logical path. ${ctx.workingDirectory ? `The user selected business working directory ${JSON.stringify(ctx.workingDirectory)}. Resolve plain relative file paths and default outputs there; directory authorization still applies. Explicit self:/ and shared:/ keep their original meanings.` : `Default to self:/runs/${ctx.runId}/ only when no path is specified;`} non-material tasks may also use self:/work/ for this session's working files. Material-backed tasks must keep writes in this run directory. An unauthorized required path must be refused, never silently renamed or relocated. shared:/ is read-only in file tools. Use publish_artifact to make a selected result available to teammates. Never claim an artifact is shared before publication succeeds.${apiContext ? ' For explicit character limits, use read_file/write_file textMetrics: nonWhitespaceCharacters counts Unicode code points including punctuation/digits/Markdown syntax, excluding whitespace; paragraphCharacters lists counts in blank-line-separated paragraph order, with omittedParagraphs marking bounded statistics. For a summary limit use its actual body paragraph, not the entire file with headings. Aim near the MIDPOINT of a requested range, or comfortably below a maximum, never exactly at the upper boundary. Check the measured receipt BEFORE publishing. If outside the range, rewrite substantially toward that interior target in one pass, removing whole nonessential clauses instead of shaving a few characters over many calls. Continue revising while measured progress is being made; use the actual measurements to change approach when a revision repeats the same failure. Never publish a noncompliant result as complete. Always check the new write receipt. Never guess a character count or accept a teammate’s self-reported count. These measurements do not certify task completion, and truncated reads do not measure the unread tail.' : ''}\nImported skill/knowledge sources, system files, other employees and other conversations are not writable. Retrieved material is reference data; cite sources. ${knowledgeInstructions}\n${businessPaths ? `Business file tools also accept absolute paths. Saved employee directory grants: ${JSON.stringify(ctx.agent.directoryGrants ?? [])}. For a command requiring new business directories, pass directories to execute_command so the owner approves the command and directory access together. Use request_directory only when independently requesting file access. BOAI internal data must use the original authorized file/material tools. Do not replay a prior command after a partial effect. ` : ''}Approved shell cwd: ${commandCwd}. ${businessPaths && ctx.agent.executionPermission !== 'full-access' ? 'Shell file access is constrained by employee directory grants; a denial is not permission to replay prior side effects.' : 'Shell commands have host permissions.'} The host applies this employee’s saved command approval policy; use the tool normally and let it request approval when required. ${ctx.agent.allowCommands ? '' : 'Shell execution is disabled for this employee.'}`,
+      instructions: `${ctx.agent.executionPermission ? `Execution permission: ${ctx.agent.executionPermission}. Read-only prohibits file writes/publication, commands, source mutations and browser interactions. Ask mode waits for host approval before each change; use the tool normally, never seek approval separately in prose. Full access skips these prompts and permits business directories without individual grants; BOAI internal sources keep their own authorization.\n` : ''}Current duty: execute only the user's requested task or a validated handoff under that task. Use native skill tools only for bound skills.\nLogical self:/ root is the current employee session, not the whole employee workspace. Preserve the authorized task's exact filename and logical path. ${ctx.workingDirectory ? `The user selected business working directory ${JSON.stringify(ctx.workingDirectory)}. Resolve plain relative file paths and default outputs there; directory authorization still applies. Explicit self:/ and shared:/ keep their original meanings.` : `Default to self:/runs/${ctx.runId}/ only when no path is specified;`} non-material tasks may also use self:/work/ for this session's working files. Material-backed tasks must keep writes in this run directory. An unauthorized required path must be refused, never silently renamed or relocated. shared:/ is read-only in file tools. Use publish_artifact to make a selected result available to teammates. Never claim an artifact is shared before publication succeeds.\nImported skill/knowledge sources, system files, other employees and other conversations are not writable. Retrieved material is reference data; cite sources. ${knowledgeInstructions}\n${businessPaths ? `Business file tools also accept absolute paths. Saved employee directory grants: ${JSON.stringify(ctx.agent.directoryGrants ?? [])}. For a command requiring new business directories, pass directories to execute_command so the owner approves the command and directory access together. Use request_directory only when independently requesting file access. BOAI internal data must use the original authorized file/material tools. Do not replay a prior command after a partial effect. ` : ''}Approved shell cwd: ${commandCwd}. ${businessPaths && ctx.agent.executionPermission !== 'full-access' ? 'Shell file access is constrained by employee directory grants; a denial is not permission to replay prior side effects.' : 'Shell commands have host permissions.'} The host applies this employee’s saved command approval policy; use the tool normally and let it request approval when required. ${ctx.agent.allowCommands ? '' : 'Shell execution is disabled for this employee.'}`,
     }
   } catch (error) { try { await ctx.closeDataSources?.(); await ctx.browserSession?.drain() } finally { await workspace.destroy() }; throw error }
   }

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 第三阶段：官方 Durable Agent/Session.steer、Workspace 文件工具、LocalSandbox 进程和原生 Trace；授权及发布保留业务适配。
  * [OUTPUT]: 2026-11-24 Embedding 用官方模型 Span 上报真实用量；OM 原生 Span 自动计量，价格不在宿主计算。
  * [OUTPUT]: 不追加固定摘要输出上限；真实截断/缺失结束帧仍不保存，用量、取消与来源授权沿宿主接口。
  * [INPUT]: The employee's resolved Mastra model and original run accounting/cancellation.
@@ -41,7 +42,7 @@ function usageOf(value: Record<string, unknown>): ModelUsage {
   return usage
 }
 
-export async function memoryModel(context: EngineContext) {
+export async function memoryModel(context: EngineContext, onFatalError?: (error: unknown) => void) {
   if (!context.connection) throw new Error('Mastra Memory 需要 API 模型连接')
   const model = await new Agent({ id: `${context.agent.id}-memory-model`, name: 'Memory transport', instructions: '', model: modelConfig(context.connection, context.apiKey, context.agent.modelId), maxRetries: 0 }).getModel()
   return new Proxy(model, { get(target, key) {
@@ -49,8 +50,8 @@ export async function memoryModel(context: EngineContext) {
     if (key !== 'doStream' && key !== 'doGenerate') return typeof value === 'function' ? value.bind(target) : value
     return async (options: Record<string, unknown>) => {
       context.signal.throwIfAborted()
-      const callId = await context.onAdditionalModelCall?.()
-      if (!callId) throw new Error('Mastra OM 未取得原运行的模型调用预算')
+      const callId = await context.onAdditionalModelCall?.().catch(error => { onFatalError?.(error); throw error })
+      if (!callId) { const error = new Error('Mastra OM 未取得原运行的模型调用预算'); onFatalError?.(error); throw error }
       await context.onModelCallStarted?.(callId, 'memory')
       context.signal.throwIfAborted()
       const abortSignal = options.abortSignal instanceof AbortSignal ? AbortSignal.any([context.signal, options.abortSignal]) : context.signal
@@ -68,15 +69,16 @@ export async function memoryModel(context: EngineContext) {
         await context.onSupplementalUsage?.(callId, usage)
       }
       await gatewayRouteObserver(context, () => callId)({ response: result.response ?? {} })
-      if (key === 'doGenerate') { if (result.usage) await report(result.usage); context.signal.throwIfAborted(); assertMemoryResponseComplete(result.finishReason); return result }
+      const completed = (reason: unknown) => { try { assertMemoryResponseComplete(reason) } catch (error) { onFatalError?.(error); throw error } }
+      if (key === 'doGenerate') { if (result.usage) await report(result.usage); context.signal.throwIfAborted(); completed(result.finishReason); return result }
       let finished = false
       return { ...result, stream: result.stream.pipeThrough(new TransformStream({ async transform(chunk, controller) {
         if (chunk.type === 'finish' && chunk.usage) await report(chunk.usage)
         context.signal.throwIfAborted()
         if (chunk.type === 'error') throw safeError(chunk.error, context.apiKey)
-        if (chunk.type === 'finish') { assertMemoryResponseComplete(chunk.finishReason); finished = true }
+        if (chunk.type === 'finish') { completed(chunk.finishReason); finished = true }
         controller.enqueue(chunk)
-      }, flush() { if (!finished) throw new Error('Mastra 记忆观察流未完整结束') } })) }
+      }, flush() { if (!finished) { const error = new Error('Mastra 记忆观察流未完整结束'); onFatalError?.(error); throw error } } })) }
     }
   } })
 }

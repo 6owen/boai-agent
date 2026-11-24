@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 第三阶段：Mastra 第三阶段回归覆盖原生文件/MCP/快照/Trace、实时补充、断流及 OM 致命失败退出；完整结果见实施记录。
  * [INPUT]: 实际业务文件与RunDirectoryAccess、确定性IO故障/取消注入、原文件工具锁。
  * [OUTPUT]: 移动的独占目标、取消/外改后源保留、链接原件隔离与搜索上限；不重放副作用。
  * [POS]: 目录文件操作的负例回归，服务/发布生命周期另见directory-approval。
@@ -11,7 +12,7 @@ import { tmpdir } from 'node:os'
 import type { DigitalAgent } from '../packages/shared/src/domain'
 import { RunDirectoryAccess } from '../packages/runtime/src/modules/workspaces/directory-run'
 import { moveBusinessFile } from '../packages/runtime/src/modules/workspaces/directory-files'
-import { searchTaskFiles } from '../packages/runtime/src/modules/workspaces/file-search'
+import { searchWorkspace } from './fixtures/workspace-search'
 
 const hooks = vi.hoisted(() => ({ beforeOpen: undefined as ((path: string) => Promise<void>) | undefined, afterWrite: undefined as ((path: string) => Promise<void>) | undefined }))
 vi.mock('node:fs/promises', async importOriginal => {
@@ -83,16 +84,16 @@ describe('业务文件移动不覆盖或盲删原件', () => {
         return { content: 'needle TRUSTED' }
       },
     }
-    const result = await searchTaskFiles(context, f.allowed, 'needle', { business: false, recursive: true, caseSensitive: false, logicalPath: 'shared:/artifacts' })
-    expect(result.matches).toMatchObject([{ path: 'shared:/artifacts/artifact.txt', excerpt: 'needle TRUSTED' }])
+    const result = await searchWorkspace(context, f.allowed, 'needle')
+    expect(result).toContain('artifact.txt'); expect(result).toContain('needle TRUSTED')
     expect(JSON.stringify(result)).not.toContain('UNTRUSTED'); expect(await readFile(file, 'utf8')).toBe('needle UNTRUSTED')
   })
   it('搜索报告真实截断/二进制跳过且不绕过逐路径授权', async () => {
     const f = await fixture(); await writeFile(join(f.allowed, 'matches.md'), Array.from({ length: 120 }, (_, index) => `needle ${index}`).join('\n'))
     await writeFile(join(f.allowed, 'binary.bin'), Buffer.from([0, 255, 10])); await writeFile(join(f.allowed, 'denied.md'), 'needle PRIVATE')
     const context = { signal: f.controller.signal, canAccessTaskPath: async (path: string) => !path.endsWith('/denied.md') }
-    const result = await searchTaskFiles(context, f.allowed, 'needle', { business: true, recursive: true, caseSensitive: false, logicalPath: f.allowed })
-    expect(result).toMatchObject({ truncated: true, skippedFiles: 1, skippedUnauthorized: 1 }); expect(result.matches).toHaveLength(100)
-    expect(result.matches.some(match => match.excerpt.includes('PRIVATE'))).toBe(false)
+    const result = await searchWorkspace(context, f.allowed, 'needle')
+    expect(result).toContain('needle 99'); expect(result).not.toContain('needle 100')
+    expect(result).not.toContain('PRIVATE'); expect(result).not.toContain('denied.md')
   })
 })
