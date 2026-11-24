@@ -10,7 +10,7 @@
  * [OUTPUT]: 补内容缩短不误翻页、拖动滚动条仍预取及StrictMode初始跟随回归。
  * [OUTPUT]: 使用真实use-stick-to-bottom；模拟浏览器ResizeObserver/rAF交付，覆盖流式阅读、双向滚动及同窗口刷新不重放旧锚点。
  * [OUTPUT]: 补发送后贴底/内容增长/手动滚动/跨会话迟到发送及渠道旧分页竞态回归；组件用例待运行，不代表Electron或E2E验证。
- * [OUTPUT]: 发送文件在独立一行预览，保留原消息定位、文字和操作。
+ * [OUTPUT]: 发送文件只显示名称、格式和大小，整卡预览保留原消息定位。
  * [INPUT]: 生产ChatView/PromptBar/MentionInput、真实分页消息与隔离IPC。
  * [OUTPUT]: 同一真实编辑器在会话切换加载/就绪时，contenteditable与无障碍禁用状态必须同步，草稿与DOM保持。
  * [OUTPUT]: 切换/加载保持header/composer节点，旧会话正文立即卸下且不渲染骨架；历史游标去重，草稿撤销不跨会话，保留原消息入场及减少动态效果行为，补页不重播。
@@ -89,7 +89,11 @@ it('places sent files below the text with one message anchor and opens the origi
   const text = row.querySelector('.message-card')!
   expect(text.textContent).toContain(message.content)
   expect(text.nextElementSibling?.getAttribute('aria-label')).toBe('消息材料')
-  await act(async () => row.querySelector<HTMLButtonElement>('[aria-label="预览材料 笔记.md"]')!.click())
+  const card = row.querySelector<HTMLButtonElement>('[aria-label="预览材料 笔记.md"]')!
+  expect(card.querySelector('[data-slot="attachment-title"]')?.textContent).toBe('笔记.md')
+  expect(card.querySelector('[data-slot="attachment-description"]')?.textContent).toBe('Markdown · 800 B')
+  expect(card.textContent).toBe('笔记.mdMarkdown · 800 B')
+  await act(async () => card.click())
   expect(props.onPreviewMaterial).toHaveBeenCalledWith(detail.materials[0])
   expect(row.querySelectorAll('[role="toolbar"]')).toHaveLength(1)
   message.content = ''
