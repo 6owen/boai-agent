@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 第三阶段：Mastra 第三阶段回归覆盖原生文件/MCP/快照/Trace、实时补充、断流及 OM 致命失败退出；完整结果见实施记录。
  * [OUTPUT]: 指定另一员工修订时按修订员工目录批准，原作者许可不外借，旧成果和外部原件保持。
  * [OUTPUT]: 2026-10-11 第13组原生生产合同回归与旧阶段兼容分开；夹具成功不冒充真实模型验收。
  * [INPUT]: 真实 AppService/SQLite/受管成果原件、受控模型判断与原生 createTaskRuntime 文件发布。
@@ -6,6 +7,7 @@
  * [POS]: D2 成果宿主集成验收；不调用真实模型，不替代 renderer 交互或 Electron BDD。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { workspaceFileText } from './fixtures/workspace-output'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createHash } from 'node:crypto'
 import { cp, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises'
@@ -131,8 +133,8 @@ describe('service artifact delivery boundaries', () => {
       expect(context.agent.id).toBe('writer'); expect(context.artifactRevision?.id).toBe(input.requestId)
       const runtime = await createTaskRuntime(context)
       try {
-        const result = await runtime.tools.read_file.execute!({ path }, { requestContext: new RequestContext(), observe: noopObserve }) as { content: string }
-        reads.push(result.content)
+        const result = await runtime.tools.read_file.execute!({ path }, { requestContext: new RequestContext(), observe: noopObserve })
+        reads.push(workspaceFileText(result))
       } finally { await runtime.dispose() }
       await publish(f.service, context, [{ text: V2, replacement: true }])
     }
@@ -225,18 +227,18 @@ describe('service artifact delivery boundaries', () => {
     engine.work = () => ({ key: 'read-verified-artifact', scope: '检查已发布原件的可信读取', deliverable: '报告读取是否保留已核对正文' })
     let verifiedReads = 0
     engine.handler = async context => {
-      const hostRead = context.readTaskFile!
+      const hostRead = context.readTaskBytes!
       expect(hostRead).toBeTypeOf('function')
-      context.readTaskFile = async path => {
+      context.readTaskBytes = async path => {
         const verified = await hostRead(path)
-        expect(verified?.content).toBe(V1); verifiedReads++
+        expect(Buffer.from(verified!.bytes).toString('utf8')).toBe(V1); verifiedReads++
         await writeFile(first.artifact.path, canary)
         return verified
       }
       const runtime = await createTaskRuntime(context), invocation = { requestContext: new RequestContext(), observe: noopObserve }, path = `shared:/${first.artifact.managedRelativePath}`
       try {
         const result = await runtime.tools.read_file.execute!({ path }, invocation)
-        expect(result).toMatchObject({ path, content: V1 }); expect(JSON.stringify(result)).not.toContain(canary)
+        expect(workspaceFileText(result)).toBe(V1); expect(JSON.stringify(result)).not.toContain(canary)
         expect(await readFile(first.artifact.path, 'utf8')).toBe(canary)
         await expect(runtime.tools.read_file.execute!({ path }, invocation)).rejects.toThrow()
         await context.onDelta('已核对正文保持完整，后改原件的再次读取已拒绝。')

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 第三阶段：Mastra 第三阶段回归覆盖原生文件/MCP/快照/Trace、实时补充、断流及 OM 致命失败退出；完整结果见实施记录。
  * [OUTPUT]: 图片工具读取真实已发布成果及其材料父来源，未登记路径/外改拒绝并保留原件。
  * [OUTPUT]: 2026-10-15文件预览标注进入原聊天明确修改；成果固定版本修订、附件固定来源/权限和未知回执保持；实际结果归8组14。
  * [OUTPUT]: Composer固定文件引用在API/原生输入共用来源核验，失效或跨会话引用零受理。
@@ -8,6 +9,7 @@
  * [POS]: D1 材料宿主集成验收；不调用真实模型，不替代 renderer 文件选择或 Electron BDD。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { workspaceFileText } from './fixtures/workspace-output'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cp, mkdtemp, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -369,7 +371,7 @@ describe('service material delivery boundaries', () => {
     await send(service, group, request(group, undefined, { mentionIds: ['writer'] }))
     await service.handle('setMaterialAuthorization', { id: material.id, expectedRevision: material.revision, authorizedAgentIds: ['writer'] })
     await send(service, group, request(group, undefined, { mentionIds: ['researcher'] }))
-    expect(denials).toEqual(['Task file read access is not authorized', 'Task file read access is not authorized']); expect(listings).toEqual([[], []])
+    expect(denials).toEqual(['Task file read access is not authorized', 'Task file read access is not authorized']); expect(listings).toEqual(['.\n\n0 directories, 0 files', '.\n\n0 directories, 0 files'])
     expect((await detail(service, group)).artifacts).toEqual([expect.objectContaining({ id: artifactId, materialSources: [expect.objectContaining({ id: material.id })] })])
   })
 
@@ -382,9 +384,9 @@ describe('service material delivery boundaries', () => {
       const runtime = await createTaskRuntime(context)
       try {
         if (context.agent.id === 'writer') {
-          expect(context.materialRefs).toEqual([]); expect(body(context)).not.toContain('DYNAMIC_FILE_CANARY')
+          expect(context.materialRefs).toEqual([expect.objectContaining({ id: material.id, revision: material.revision })]); expect(body(context)).toContain('DYNAMIC_FILE_CANARY')
           const read = await runtime.tools.read_file.execute!({ path: sourceFile }, invocation)
-          expect(read).toMatchObject({ content: 'DYNAMIC_FILE_CANARY' })
+          expect(workspaceFileText(read)).toBe('DYNAMIC_FILE_CANARY')
           expect(context.materialRefs).toEqual([expect.objectContaining({ id: material.id, revision: material.revision })])
           secondRun = context.runId
         }
@@ -397,7 +399,7 @@ describe('service material delivery boundaries', () => {
       } finally { await runtime.workspace.destroy() }
     }
     await send(service, group, request(group, material, { mentionIds: ['researcher'] }))
-    // Fill the bounded message window with the actual new user request so the source is acquired by the file read.
+    // A long later request no longer drops authorized material provenance; the file read must retain the same source exactly once.
     await send(service, group, request(group, undefined, { content: '普通任务内容'.repeat(8000).slice(0, 47800), mentionIds: ['writer'] }))
     const view = await detail(service, group)
     expect(secondRun, JSON.stringify(view.runs.map(run => ({ agentId: run.agentId, phase: run.phase, status: run.status, error: run.error })))).not.toBe('')

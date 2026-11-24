@@ -3,6 +3,7 @@ name: boai-agent-dev-skills
 description: BOAI Agent 项目的开发与交付统一入口。处理 dev/build、验证、打包安装、bumpp 升版本、tag/GitHub Release、git cp/cpf、worktree 管理及相关命令解释时使用，按当前源码核对命令和执行范围。
 ---
 <!--
+[OUTPUT]: 2026-11-24新增官方基础设施归属及第三阶段兼容回归要求。
 [OUTPUT]: 2026-11-24原生Session审批、官方Metrics/费用估算及定向验证；业务授权与显式预算继续归宿主。
 [OUTPUT]: 2026-11-24补官方AgentController主执行改动的定向验证边界，防止重新叠加自建压缩。
 [OUTPUT]: 开发完成默认自动提 PR；用户要求看图时先给实际 PNG 的绝对路径。
@@ -111,4 +112,12 @@ API用量与费用展示以官方Observability/Metrics为准；旧回执仅兼�
 
 涉及此入口时按Git变更选测，并确认相关覆盖包括工具结果触发官方OM后继续、跨运行及重启历史不重复导入、取消/撤权后真实退出、图片和Trace、宿主显式预算、已完成工具不重放。使用受控本地模型与独立数据库；真实模型效果、个人窗口生效、CI和合并分别报告。仅源码或协议通过不能称已修好个人应用。实现及当前边界见[迁移记录](../../../ai-docs/implementation/2026-11-24-mastra-agent-controller.md)。
 
-审批/计量变更另核对批准/拒绝/只读/迟到批准、技能交付、跨工具步骤与OM/辅助调用计量、原生存储重启/删除以及缺价/去重。无Trace消费者时使用官方span类型过滤，只采模型指标，防止逐步骤全文观测放大耗时。UI费用行在PR正文给出个人资料的明确截图目标。
+审批/计量变更另核对批准/拒绝/只读/迟到批准、技能交付、跨工具步骤与OM/辅助调用计量、原生存储重启/删除以及缺价/去重。Trace与指标使用官方存储；无Trace消费者时按需过滤span。保存前脱敏，查询/删除按真实会话和run归属；禁止恢复第二套API Trace写库。UI费用行在PR正文给出个人资料的明确截图目标。
+
+## Mastra 基础设施归属
+
+开发 API Agent 前先读 `$mastra` 并核对已安装版本的公开文档/类型。执行使用 AgentController + Durable Agent；实时补充使用 Session.steer；历史/压缩使用 Memory/OM；文件工具使用 Workspace/LocalFilesystem；命令使用 LocalSandbox/ProcessManager；知识排名使用 Workspace BM25；MCP 使用 MCPClient；结构化结果使用 structuredOutput；用量、价格估算和 Trace 使用 Observability 原生存储。不要另写同职责的循环、压缩器、文件编辑器、MCP transport 或 JSON 解析器。
+
+BOAI 保留员工/来源身份、目录授权、受管材料冻结字节、业务队列、成果发布及用户显式预算。授权适配层不得额外暴露未经审批的自动 Workspace 工具。官方 API 确有缺口时，仅在公开扩展点做最小适配，写明固定版本和可删除条件并补回归，不深导入 SDK 私有实现。MCP 断流不能自动重放未知副作用；没有原始完成帧不能把 Durable 的默认 stop 当作完成；OM 致命失败必须让出运行并完成退出。
+
+Durable 的默认快照策略用于原生暂停记录；不为每个运行步骤强制落盘。当前产品重启仍显式继续，不能将持久 thread/快照表述为已接通跨进程自动续跑。清空记忆同步删除相同 resource 的官方运行快照，验证快照无密钥。按改动运行 `test:changed`，必要时定向补验 MCP 未知结果、原生文件授权、steer、长任务、OM 失败、审批快照及 Trace 删除；不默认使用真实模型或抢占个人窗口。

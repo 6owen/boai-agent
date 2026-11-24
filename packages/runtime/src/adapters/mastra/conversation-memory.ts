@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 第三阶段：官方 Durable Agent/Session.steer、Workspace 文件工具、LocalSandbox 进程和原生 Trace；授权及发布保留业务适配。
  * [OUTPUT]: 官方 Session 持有执行历史与逐步骤 OM；产品原文只做迁移和来源核验，thread OM 与员工 resource WM/recall 分离。
  * [OUTPUT]: 所有API员工私聊共用回忆指引/冷启动提示，沿员工resource跨任务续接；Bobo原文设置保持。
  * [OUTPUT]: Bobo原文能力生成唯一回忆指引，关闭停用显式检索；WM/OM阈值保持。
@@ -75,7 +76,13 @@ export class EmployeeConversationMemory {
   private async basic() {
     return new Memory({ storage: await this.store(), vector: this.vector, options: { lastMessages: 100, workingMemory: { enabled: true, scope: 'resource', template } } })
   }
+  private async clearDurableRuns(resourceId: string) {
+    const workflows = (await (await this.store()).getStore('workflows'))!
+    const runs = (await workflows.listWorkflowRuns({ resourceId, perPage: false })).runs
+    for (const run of runs) if (run.resourceId === resourceId) await workflows.deleteWorkflowRunById({ workflowName: run.workflowName, runId: run.runId })
+  }
   private async resetResource(memory: Memory, resourceId: string) {
+    await this.clearDurableRuns(resourceId)
     const store = await (await this.store()).getStore('memory')
     await store!.clearObservationalMemory(null, resourceId)
     const resource = await store!.getResourceById({ resourceId })
@@ -122,7 +129,7 @@ export class EmployeeConversationMemory {
       semanticRecall: false,
       workingMemory: { enabled: true, scope: 'resource', template },
       observationalMemory: {
-        model: await memoryModel(context), scope: 'thread', retrieval: retrievalEnabled ? { vector: !!embedder, scope: 'resource', instructions: recallGuidance } : false,
+        model: await memoryModel(context, error => runAbort.abort(error)), scope: 'thread', retrieval: retrievalEnabled ? { vector: !!embedder, scope: 'resource', instructions: recallGuidance } : false,
         observation: { instruction: sourceRules, messageTokens: this.observationMessageTokens, manageWorkingMemory: true, continuationHints: false, providerOptions },
         reflection: { instruction: sourceRules, providerOptions },
         hooks: { beforeObservation: guard, afterObservation: guard, beforeReflection: guard, afterReflection: guard },
@@ -254,6 +261,7 @@ export class EmployeeConversationMemory {
     const document = (await this.view(agentId)).documents.find(document => document.resourceId === resourceId)
     if (!document || document.version !== expectedVersion) throw new Error('记忆已变化，请刷新后再保存')
     if (this.observing.has(resourceId) || [...this.active].some(run => run.resourceId === resourceId)) throw new Error('记忆正在整理，请稍后重试')
+    await this.clearDurableRuns(resourceId)
     const store = await (await this.store()).getStore('memory')
     await store!.clearObservationalMemory(null, resourceId)
     const memory = await this.basic()

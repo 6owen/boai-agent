@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 第三阶段：API 执行补充交给 Session.steer；Trace 从官方存储查询，兼容既有业务历史。
  * [OUTPUT]: 2026-11-24 接入官方用量投影和辅助模型入口；消费精确工具批准，目录、撤权和原生审批保持。
  * [OUTPUT]: 会话视图仅在实际标题任务进行时闪烁；超时、退出和历史残留不会持续闪烁。
  * [OUTPUT]: 新 API 话题的首条消息开始处理时并行生成标题，手动改名及清理可废止待生成标题。
@@ -1775,6 +1776,10 @@ export class AppService {
           if (!item) fail('执行记录已清理或员工已不属于原会话')
           this.getConversation(item!.run.conversationId)
           const trace = await this.store.queryExecutionTrace(query.runId, query.agentId, item!.run.conversationId)
+          const native = await this.options.engine.modelTraces?.(item!.run.conversationId, [query.runId]) ?? []
+          const combined = [...new Map([...trace.spans, ...native.filter(span => span.agentId === query.agentId)].map(span => [span.id, span])).values()].sort((a, b) => a.startedAt.localeCompare(b.startedAt))
+          trace.spans = combined.slice(0, EMPLOYEE_EXECUTION_LIMITS.traceSpans)
+          trace.truncated ||= combined.length > EMPLOYEE_EXECUTION_LIMITS.traceSpans
           const work = item!.run.workId ? await this.store.get<WorkItem>('workItems', item!.run.workId!) : undefined
           const published = [...this.artifacts.values()].filter(artifact => artifact.runId === query.runId && artifact.ownerAgentId === query.agentId && artifact.conversationId === item!.run.conversationId && artifact.registrationSource)
           const artifacts = published.slice(0, EMPLOYEE_EXECUTION_LIMITS.artifacts).map(({ id, name, contentHash, contentVersion }) => ({ id, name, contentHash, contentVersion }))
@@ -1792,7 +1797,9 @@ export class AppService {
             if (!turn || turn.conversationId !== query.conversationId || (anchor.turnId !== turnId && turn.triggerMessageId !== anchor.id)) fail('轮次不属于此消息')
           }
           const runIds = new Set([...this.runs.values()].filter(run => run.conversationId === query.conversationId && (turnId ? run.turnId === turnId : run.triggerMessageId === (this.runs.get(anchor.runId ?? '')?.triggerMessageId ?? anchor.id))).map(run => run.id))
-          return (await this.store.load<StoredTraceSpan>('traceSpans', { conversationId: query.conversationId })).filter(span => runIds.has(span.runId))
+          const legacy = (await this.store.load<StoredTraceSpan>('traceSpans', { conversationId: query.conversationId })).filter(span => runIds.has(span.runId))
+          const native = await this.options.engine.modelTraces?.(query.conversationId, [...runIds]) ?? []
+          return [...new Map([...legacy, ...native].map(span => [span.id, span])).values()]
         }
         case 'publishChannelReply': return this.publishChannelReply(channelReplySchema.parse(input))
         case 'publishChannelMessage': return this.publishChannelMessage(channelPublishSchema.parse(input))
@@ -4749,7 +4756,7 @@ export class AppService {
       onTrace: async span => {
         if (!this.runs.has(run.id) || this.clearingConversations.has(run.conversationId)) return
         const value: StoredTraceSpan = { ...span, conversationId: run.conversationId, runId: run.id, agentId: run.agentId, turnId: run.turnId }
-        await this.store.write([record('traceSpans', value)])
+        if (runtimeProfile || !this.options.engine.modelTraces) await this.store.write([record('traceSpans', value)])
         this.changed(run.conversationId)
       },
       onTraceError: async error => {
@@ -4846,6 +4853,30 @@ export class AppService {
       })
       context.directoryAccess = access
       this.directoryRuns.set(run.id, { access, context })
+    }
+    if (!runtimeProfile && !origin && run.turnId) context.registerControllerInput = async send => {
+      const unregister = this.steering.register(run, signal, {
+        validate: () => this.assertRunAccess(context, run.phase), send,
+        fail: error => this.runControllers.get(run.id)?.abort(error),
+        prepare: async (tx, message) => {
+          signal.throwIfAborted()
+          const saved = await tx.get<RunSnapshot>('snapshots', run.id)
+          if (!saved || saved.invalidated || saved.agent.configVersion !== agent.configVersion) fail('执行或来源已失效')
+          // The existing supplement UI accepts text only. New source grants
+          // require their own host turn, never a replacement authorization snapshot.
+          if (message.materialIds?.length || message.materialSources?.length || message.attachmentInputs?.length) fail('带材料的消息请作为新消息发送')
+          let content = message.content
+          if (isCoreAgent(agent) && conversation.purpose === 'core') {
+            const instructions = await managementSkillInstructions(message.composerReferences ?? [], this.options.skillDiscovery?.bundledRoot)
+            if (instructions) content += '\n\n' + instructions
+          }
+          return { content, rollback: async () => {}, commit: () => { context.messages.push({ ...message, content }) } }
+        },
+      })
+      run.controller = { turnId: run.turnId!, canSteer: true }
+      try { await this.store.write([record('runs', run)]); this.changed(run.conversationId) }
+      catch (error) { unregister(); run.controller.canSteer = false; throw error }
+      return async () => { unregister(); if (run.controller) run.controller.canSteer = false; await this.store.write([record('runs', run)]); this.changed(run.conversationId) }
     }
     if (runtimeProfile) {
       context.nativeSourceIds = (await this.contextMessages(conversation, turn.triggerMessageId, throughSequence)).filter(message => !forgotten.has(message.id)).map(message => message.id)

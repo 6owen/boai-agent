@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 第三阶段：已有补充入口支持 API Controller 活跃轮次，仍按当前配置和授权开放。
  * [OUTPUT]: 一条消息的正文与文件分别显示为可独立悬停的两行，共用原消息锚点和回执。
  * [OUTPUT]: 单员工首批预置角色由当前消息流/执行/输入状态驱动，隐藏暂停并可预览协议动作。
  * [OUTPUT]: 2026-11-09 输入框移除项目选择与相关忙态，目录由员工配置及宿主受理决定。
@@ -171,9 +172,9 @@ function ChatLayout(props: ChatViewProps & { conversation: Conversation }) {
     })
   }
   const active = Boolean(detail?.runs.some(run => ['queued','running','waiting_approval'].includes(run.status)) || detail?.turns?.some(turn => liveTurn(turn.status)))
-  const steeringRuns = detail?.runs.filter(run => run.status === 'running' && run.backend?.kind === 'codex-local' && run.backend.canSteer && run.backend.turnId && !run.origin && draft.mentionIds.every(id => id === run.agentId)) ?? []
+  const steeringRuns = detail?.runs.filter(run => run.status === 'running' && (run.controller?.canSteer || run.backend?.kind === 'codex-local' && run.backend.canSteer && run.backend.turnId) && !run.origin && draft.mentionIds.every(id => id === run.agentId)) ?? []
   const canSteer = !channel && !replyMode && !draft.replyId && !draft.browserReference && !draft.channelReference && !draft.mentions?.length && !materialDrafts.length && !sendingLocked && steeringRuns.length === 1 && Boolean(draftContent(draft))
-  const steer = canSteer ? () => onSend(() => historyRef.current?.followLatest(), { runId: steeringRuns[0].id, turnId: steeringRuns[0].backend!.turnId! }) : undefined
+  const steer = canSteer ? () => onSend(() => historyRef.current?.followLatest(), { runId: steeringRuns[0].id, turnId: steeringRuns[0].controller?.turnId ?? steeringRuns[0].backend!.turnId! }) : undefined
   const reply = detail?.messages.find(message => message.id === draft.replyId)
   const external = conversation.kind === 'direct' && members[0]?.executionBackend?.kind === 'acp-local'
   useLayoutEffect(() => { setDraggingFiles(false) }, [conversation.id, pageActive])

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 第三阶段：MCPClient 接管连接/目录/执行/关闭；固定版本兼容层阻止未知副作用重放及重复目录。
  * [OUTPUT]: 2026-11-09 员工项目运行许可纳入本地源与MCP进程目录隔离。
  * [OUTPUT]: 2026-10-20 Alma技能接线：普通聊天按需读绑定技能/有来源记忆，独立任务协议与MCP媒体保持实际授权；本轮证据归独立Agent架构§11.21。
  * [OUTPUT]: 2026-10-19 Jina 固定搜索/Reader HTTP 适配接入共用传输，密钥仍在宿主。
@@ -9,25 +10,26 @@
  * [OUTPUT]: 官方Tavily免密模式及版本/schema分类；额度假成功/无正文显式失败，未知MCP提示不授予只读权限。
  * [OUTPUT]: OAuth MCP沿独立Source授权提供方刷新，动态脱敏token并限制跨源请求。
  * [INPUT]: Frozen source definition, vault-only credentials and an owned abort signal.
+ * [OUTPUT]: 官方 MCPClient 管理连接/工具目录/调用；保留版本、脱敏和未知副作用不重放。
  * [OUTPUT]: Craft API requests, MCP sessions and contained local reads/writes; employee authorization is checked by the host.
  * [POS]: Source transport adapter; no employee or configuration authority.
  * [PROTOCOL]: 一旦本文件变化，必须同步Header与所属.folder.md。
  */
 import { mcpImages } from './mcp-media'
 import { summarizeMedia } from '../browser/media'
-import { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import { StdioClientTransport, getDefaultEnvironment } from '@modelcontextprotocol/sdk/client/stdio.js'
+import { noopObserve } from '@mastra/core/tools'
+import { standardSchemaToJSONSchema } from '@mastra/core/schema'
+import { MCPClient, getMcpCallToolContent, getMcpCallToolMeta } from '@mastra/mcp'
+import { AsyncLocalStorage } from 'node:async_hooks'
+import { randomUUID } from 'node:crypto'
+import { getDefaultEnvironment } from '@modelcontextprotocol/sdk/client/stdio.js'
 import type { OAuthClientProvider } from '@modelcontextprotocol/sdk/client/auth.js'
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
-import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js'
-import { ToolListChangedNotificationSchema } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
 import { opendir, lstat, realpath, mkdir, access } from 'node:fs/promises'
 import { constants } from 'node:fs'
 import { join, resolve, isAbsolute, delimiter } from 'node:path'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { setTimeout as delay } from 'node:timers/promises'
 import { apiSourceRequestSchema, localSourceRequestSchema, webSearchProvider, type DataSource, type SourceTool } from '@boai/shared/domain/sources'
 import { apiAuthSpecFromConfig, parseStoredApiCredential } from './craft/api-auth'
 import { executeApiRequest } from './craft/api-request'
@@ -45,7 +47,6 @@ const execute = promisify(execFile)
 export const SOURCE_TIMEOUT = 30_000
 const MAX_RESULT_CHARACTERS = 128_000
 export interface SourceSession { tools: SourceTool[]; call(name: string, args: Record<string, unknown>, signal: AbortSignal): Promise<unknown>; close(): Promise<void> }
-const alive = (pid: number) => { try { process.kill(pid, 0); return true } catch (error) { if ((error as NodeJS.ErrnoException).code === 'ESRCH') return false; throw error } }
 export async function recoverSourceProcesses(dataPath: string) {
   if (process.platform !== 'darwin') return
   const ledger = join(dataPath, 'source-processes')
@@ -144,7 +145,7 @@ export async function openSourceSession(source: DataSource, credential: string, 
   const config = source.mcp
   if (config.transport !== 'stdio' && config.authType === 'oauth' && !oauth) throw new Error('OAuth 数据源尚未授权')
   const sessionSecrets = new Set<string>()
-  const remember = (value: string) => { if (!value || sessionSecrets.has(value)) return; if (sessionSecrets.size >= 64) throw new Error('OAuth凭据已多次更新，请重新建立连接'); sessionSecrets.add(value) }
+  const remember = (value: string) => { if (value) sessionSecrets.add(value) }
   const rememberTokens = async () => { if (oauth) for (const value of Object.values(await oauth.authProvider.tokens() ?? {})) if (typeof value === 'string') remember(value) }
   await rememberTokens()
   const oauthFetch: typeof fetch | undefined = oauth ? async (input, init) => {
@@ -158,7 +159,7 @@ export async function openSourceSession(source: DataSource, credential: string, 
   const scopedFetch: typeof fetch = (input, init) => {
     const url = new URL(input instanceof Request ? input.url : String(input))
     if (config.transport === 'stdio' || url.origin !== new URL(config.url).origin) throw new Error('MCP 请求不能离开配置的服务地址')
-    return fetch(input, { ...init, redirect: 'error', signal: AbortSignal.any([signal, AbortSignal.timeout(SOURCE_TIMEOUT), ...(init?.signal ? [init.signal] : [])]) })
+    return fetch(input, { ...init, redirect: 'error', signal: AbortSignal.any([signal, ...(init?.signal ? [init.signal] : [])]) })
   }
   const ledger = join(dataPath, 'source-processes')
   let env: Record<string, string> = {}
@@ -181,52 +182,64 @@ export async function openSourceSession(source: DataSource, credential: string, 
     processCommand = await directoryProcessBoundary(executable, processCommand.args, scope!)
   }
   if (config.transport === 'stdio') await mkdir(ledger, { recursive: true, mode: 0o700 })
-  const transport = config.transport === 'stdio'
-    ? new StdioClientTransport({ command: await assertNativeProcessGuard(), args: ['--ledger', ledger, processCommand!.command, ...processCommand!.args], env: processEnvironment, cwd: directories ? '/' : undefined, stderr: 'ignore', maxBufferSize: 4 * 1024 * 1024 })
-    : config.transport === 'sse'
-      ? new SSEClientTransport(new URL(config.url), { requestInit: { headers }, authProvider: oauth?.authProvider, fetch: oauthFetch ?? scopedFetch, eventSourceInit: { fetch: oauthFetch ?? scopedFetch } })
-      : new StreamableHTTPClientTransport(new URL(config.url), { requestInit: { headers }, authProvider: oauth?.authProvider, fetch: oauthFetch ?? scopedFetch, reconnectionOptions: { maxRetries: 0, initialReconnectionDelay: 1000, maxReconnectionDelay: 1000, reconnectionDelayGrowFactor: 1 } })
-  const client = new Client({ name: 'boai-sources', version: '1.0.0' })
+  // The SDK owns both transports, discovery, pagination and close. Preserve the
+  // application's no-replay contract across the SDK's reconnect-and-retry path.
+  const invocation = new AsyncLocalStorage<{ sends: number }>()
+  const catalogNames = new Set<string>()
+  const client = new MCPClient({ id: `source:${source.id}:${randomUUID()}`, servers: { source: {
+    ...(config.transport === 'stdio'
+      ? { command: await assertNativeProcessGuard(), args: ['--ledger', ledger, processCommand!.command, ...processCommand!.args], env: processEnvironment, inheritDefaultEnv: false, cwd: directories ? '/' : undefined, stderr: 'ignore' as const }
+      : { url: new URL(config.url), requestInit: { headers }, authProvider: oauth?.authProvider, fetch: oauthFetch ?? scopedFetch, eventSourceInit: { fetch: oauthFetch ?? scopedFetch }, reconnectionOptions: { maxRetries: 0, initialReconnectionDelay: 1000, maxReconnectionDelay: 1000, reconnectionDelayGrowFactor: 1 } }),
+    // Version-pinned compatibility boundary: this public callback runs before
+    // each 1.18 tool dispatch, including automatic replay after transport loss.
+    logger: event => {
+      if (event.message.endsWith('Requesting tools from MCP server')) catalogNames.clear()
+      if (event.message.startsWith('[source] Processing tool: ')) {
+        const name = event.message.slice('[source] Processing tool: '.length)
+        if (catalogNames.has(name)) throw new Error('MCP 工具目录含重复名称')
+        catalogNames.add(name)
+      }
+      if (event.message.includes('Executing tool:') && invocation.getStore()) {
+        if (invocation.getStore()!.sends++ > 0) throw new Error('MCP 操作结果未知，未自动重放，请核对原操作')
+      }
+    },
+  } } })
   let catalogChanged = false
-  client.setNotificationHandler(ToolListChangedNotificationSchema, () => { catalogChanged = true })
   const assertCatalog = () => { if (catalogChanged) throw new Error('MCP 工具目录已变化，请重新发起查询') }
   let closing: Promise<void> | undefined
-  const close = () => closing ??= (async () => {
-    const pid = transport instanceof StdioClientTransport ? transport.pid : null
-    await client.close()
-    if (pid) {
-      const deadline = Date.now() + 15_000
-      while (alive(pid) && Date.now() < deadline) await delay(25)
-      if (alive(pid)) throw new Error('MCP 进程尚未退出，请关闭应用后核对')
-    }
-  })()
+  const close = () => closing ??= client.disconnect()
   const abort = () => { void close().catch(() => {}) }
   signal.addEventListener('abort', abort, { once: true })
   try {
-    await client.connect(transport, { signal, timeout: SOURCE_TIMEOUT })
-    const tools: SourceTool[] = [], cursors = new Set<string>(); let cursor: string | undefined
-    do {
-      const result = await client.listTools(cursor ? { cursor } : {}, { signal, timeout: SOURCE_TIMEOUT })
-      for (const tool of result.tools) {
-        if (tools.some(existing => existing.name === tool.name)) throw new Error('MCP 工具目录存在重复名称')
-        const webCapability = verifiedWebCapability(source, client.getServerVersion(), tool)
-        tools.push({ name: tool.name, description: tool.description?.slice(0, 4000), inputSchema: tool.inputSchema, readOnly: !!webCapability, ...(webCapability ? { webCapability } : {}) })
-      }
-      if (tools.length > 200) throw new Error('MCP 工具目录超过 200 项，请在服务端缩小范围')
-      cursor = result.nextCursor
-      if (cursor && (cursors.has(cursor) || cursors.size >= 20)) throw new Error('MCP 工具目录分页异常')
-      if (cursor) cursors.add(cursor)
-    } while (cursor)
+    // Native definitions are keyed by name; verify identity before that map
+    // can collapse duplicates. This compatibility hook is pinned/tested at 1.18.
+    const checked = await client.listToolsetsWithErrors()
+    if (checked.errors.source) throw new Error(checked.errors.source)
+    await client.tools.onListChanged('source', () => { catalogChanged = true })
+    const executable = checked.toolsets.source ?? {}
+    const definitions = Object.entries(executable).map(([name, tool]) => ({ name, description: tool.description, inputSchema: tool.inputSchema ? standardSchemaToJSONSchema(tool.inputSchema) : {}, server: { version: tool.mcpMetadata?.serverVersion } }))
+    const tools: SourceTool[] = definitions.map(definition => {
+      const tool = { name: definition.name, description: definition.description?.slice(0, 4000), inputSchema: definition.inputSchema as unknown as Record<string, unknown> }
+      // Mastra exposes the reported version. The fixed HTTPS provider endpoint
+      // plus the frozen schema hash supplies the provider identity.
+      const provider = webSearchProvider(source)
+      const webCapability = verifiedWebCapability(source, definition.server.version ? { name: provider === 'tavily' ? 'tavily-mcp' : provider === 'exa' ? 'exa-search-server' : '', version: definition.server.version } : undefined, tool)
+      return { ...tool, readOnly: !!webCapability, ...(webCapability ? { webCapability } : {}) }
+    })
     signal.throwIfAborted(); assertCatalog()
     const publicTools = await redact(tools)
     if (!Array.isArray(publicTools)) throw new Error('MCP 工具目录过大，请在服务端缩小范围')
-    return { get tools() { assertCatalog(); return publicTools as SourceTool[] }, async call(name, args, signal) {
+    return { get tools() { assertCatalog(); return publicTools as SourceTool[] }, async call(name, args, callSignal) {
+      assertCatalog(); callSignal.throwIfAborted()
+      const tool = executable[name]
+      if (!tool?.execute) throw new Error('MCP 工具不在当前目录中')
+      let result: unknown
+      try {
+        result = await invocation.run({ sends: 0 }, () => tool.execute!(args, { observe: noopObserve, abortSignal: AbortSignal.any([signal, callSignal]) }))
+      } catch (error) { if (oauth) throw new Error('OAuth 数据源调用失败，请核对授权和连接'); throw error }
       assertCatalog()
-      if (!tools.some(tool => tool.name === name)) throw new Error('MCP 工具不在当前目录中')
-      let result
-      try { result = await client.callTool({ name, arguments: args }, undefined, { signal, timeout: SOURCE_TIMEOUT, maxTotalTimeout: SOURCE_TIMEOUT }) }
-      catch (error) { if (oauth) throw new Error('OAuth 数据源调用失败，请核对授权和连接'); throw error }
-      assertCatalog()
+      const content = getMcpCallToolContent(result)
+      if (content) result = { structuredContent: result, content, _meta: getMcpCallToolMeta(result) }
       assertWebSearchResult(tools.find(tool => tool.name === name)?.webCapability, result)
       const images = mcpImages(result)
       if (!images.length) return await redact(summarizeMedia(result))

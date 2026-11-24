@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: SDK截图媒体与内部重复元数据不造成虚假容量超限，模型正文JSON和供应商选项仍计入。
+ * [OUTPUT]: 2026-11-24 第三阶段：Mastra 第三阶段回归覆盖原生文件/MCP/快照/Trace、实时补充、断流及 OM 致命失败退出；完整结果见实施记录。
  * [INPUT]: Real temporary ProductStore databases, authorized sources and injected commit failures.
  * [OUTPUT]: Context CAS, one maintainer, atomic rotation, source invalidation, crash recovery and employee isolation checks.
  * [POS]: Context persistence regression; no model or desktop requests.
@@ -12,7 +12,6 @@ import { afterEach, expect, it, vi } from 'vitest'
 import type { Message } from '../packages/shared/src/domain'
 import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
 import { ContextRepository, contextSource, contextCollections, type ContextOwner } from '../packages/runtime/src/modules/contexts/context-repository'
-import { contextCapacity, estimateTokens, estimatePromptTokens } from '../packages/runtime/src/modules/contexts/context-capacity'
 
 const cleanups: (() => Promise<void>)[] = []
 afterEach(async () => { vi.restoreAllMocks(); for (const cleanup of cleanups.splice(0).reverse()) await cleanup() })
@@ -128,26 +127,4 @@ it('isolates employees and blocks a cleared conversation from reviving context',
   for (const collection of contextCollections) expect((await store.load<{ agentId: string }>(collection)).some(row => row.agentId === owner.agentId)).toBe(false)
   await store.write([{ collection: 'conversationCleanup', id: owner.conversationId, value: { id: owner.conversationId } }])
   await expect(repository.read(owner, messages)).rejects.toThrow('来源或版本')
-})
-it('uses only selected model window metadata and labels the unknown input ceiling honestly', () => {
-  const agent = { modelId: 'small' } as import('../packages/shared/src/domain').DigitalAgent
-  expect(contextCapacity({ agent }, 2000)).toMatchObject({ window: undefined, source: 'unknown-policy', limit: 48000 })
-  expect(contextCapacity({ agent, modelCatalog: { models: [{ id: 'small', contextWindow: 8000 }, { id: 'large', contextWindow: 100000 }], source: 'service-declared', fetchedAt: '' } }, 2000)).toMatchObject({ window: 8000, limit: 4976 })
-  expect(contextCapacity({ agent }, 2000, 50000)).toMatchObject({ window: undefined, source: 'unknown-policy', limit: 98000 })
-  expect(estimateTokens([{ type: 'image', image: 'data:image/png;base64,' + 'a'.repeat(100000) }])).toBeLessThan(5000)
-  expect(estimateTokens('中文'.repeat(100))).toBeGreaterThan(estimateTokens('ab'.repeat(100)))
-})
-
-it('counts SDK image parts as media, not base64 text, and excludes only internal prompt metadata', () => {
-  const text='页面事实'.repeat(8000)
-  const part={type:'tool-result',toolCallId:'page',toolName:'browser_tool',output:{type:'text',value:text}}
-  const prompt=[{role:'tool',content:[part]}]
-  const internal=[{...prompt[0],providerOptions:{mastra:{createdAt:'internal'}},content:[{...part,providerOptions:{mastra:{modelOutput:part.output}}}]}]
-  expect(estimatePromptTokens(internal)).toBe(estimatePromptTokens(prompt))
-  expect(internal[0].content[0].providerOptions.mastra.modelOutput).toEqual(part.output)
-  for(const type of ['image-data','media'])expect(estimateTokens({type,mediaType:'image/png',data:'A'.repeat(600_000)})).toBe(4096)
-  const provider=[{role:'user',content:[{type:'text',text:'short',providerOptions:{vendor:{text}}}]}]
-  expect(estimatePromptTokens(provider)).toBeGreaterThan(40_000)
-  const json=[{role:'tool',content:[{type:'tool-result',output:{type:'json',value:{providerOptions:{mastra:{text}}}}}]}]
-  expect(estimatePromptTokens(json)).toBeGreaterThan(40_000)
 })

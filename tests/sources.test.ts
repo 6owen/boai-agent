@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 第三阶段：Mastra 第三阶段回归覆盖原生文件/MCP/快照/Trace、实时补充、断流及 OM 致命失败退出；完整结果见实施记录。
  * [OUTPUT]: 普通问答仅核准搜索/正文，拒绝本地/未知工具；目录变化阻止旧工具及迟到响应。
  * [OUTPUT]: 未核准MCP提示不放宽权限；实际HTTP协议重放官方额度响应，核准搜索按只读门禁且业务失败不冒充成功。
  * [OUTPUT]: 验证退休权限字段迁移保留身份/版本/凭据，API与本地授权读写及目录/hash边界。
@@ -266,6 +267,25 @@ it('rejects duplicate MCP tool identities before any tool call', async () => {
   server.catalog.catalog.tools.push(server.catalog.catalog.tools[0])
   await expect(openSourceSession(dto(webSourceConfig), '', await folder(), signal())).rejects.toThrow('重复名称')
   expect(server.calls).toEqual([])
+})
+
+it('does not replay an MCP side effect after the server drops its response', async () => {
+  let calls = 0
+  const url = await http((request, response) => { void (async () => {
+    if (request.method !== 'POST') { response.writeHead(405); response.end(); return }
+    let raw = ''; for await (const chunk of request) raw += chunk
+    const input = JSON.parse(raw)
+    if (input.method === 'tools/call') { calls++; response.destroy(); return }
+    if (!('id' in input)) { response.writeHead(202); response.end(); return }
+    const result = input.method === 'initialize'
+      ? { protocolVersion: '2025-03-26', capabilities: { tools: {} }, serverInfo: { name: 'local-receipt-test', version: '1.0' } }
+      : { tools: [{ name: 'write', inputSchema: { type: 'object', properties: {} } }] }
+    response.writeHead(200, { 'Content-Type': 'application/json' })
+    response.end(JSON.stringify({ jsonrpc: '2.0', id: input.id, result }))
+  })().catch(error => response.destroy(error)) })
+  const session = await openSourceSession(dto({ ...base, type: 'mcp', mcp: { transport: 'http', url, authType: 'none' } }), '', await folder(), signal())
+  try { await expect(session.call('write', {}, signal())).rejects.toThrow(); expect(calls).toBe(1) }
+  finally { await session.close() }
 })
 
 it('creates all source kinds with durable receipts, preserving credentials and rejecting changed, removed or revoked requests', async () => {

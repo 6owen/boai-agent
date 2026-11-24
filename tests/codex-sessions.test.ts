@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 第三阶段：Mastra 第三阶段回归覆盖原生文件/MCP/快照/Trace、实时补充、断流及 OM 致命失败退出；完整结果见实施记录。
  * [OUTPUT]: 普通聊天与两次员工任务沿兼容原生session续接，仅追加新输入。
  * [OUTPUT]: 已退出且确认接收的取消轮次只投递新消息；投递未知拒绝重建且保留原映射，已确定退出的失效来源仍重建。
  * [INPUT]: 实际SQLite、获准消息投影及原生会话公开终态。
@@ -139,7 +140,7 @@ it.each(['unpublished', 'changed-reply', 'incomplete-reply', 'changed-config', '
   expect(next.messages.some(value => value.id === 'first')).toBe(true)
 })
 
-it.each(['material', 'memory', 'bounded-history'] as const)('never continues after prior %s leaves the authorized context', async removed => {
+it.each(['material', 'memory', 'removed-history'] as const)('never continues after prior %s leaves the authorized context', async removed => {
   const f = await fixture(), source = message('first', 1)
   const memory: MemoryEntry = { id: 'memory', ownerAgentId: 'employee-a', scope: 'conversation', conversationId: 'chat-a', content: 'Private preference', sourceMessageIds: [source.id], sourceResourceIds: [], origin: 'model', version: 1, createdAt, updatedAt: createdAt }
   const current = context([source], { memory: { entries: [memory], namespace: 'employee-a', epoch: 1 }, materialRefs: [{ id: 'material', revision: 1, contentHash: 'image-hash', parseVersion: MATERIAL_PARSE_VERSION, conversationId: 'chat-a' }] })
@@ -147,10 +148,10 @@ it.each(['material', 'memory', 'bounded-history'] as const)('never continues aft
   const nextContext = { ...current, runId: 'next', messages: [source, first.reply, message('new', 3)], triggerMessageId: 'new' }
   if (removed === 'material') nextContext.materialRefs = []
   if (removed === 'memory') nextContext.memory = { ...current.memory!, entries: [] }
-  if (removed === 'bounded-history') nextContext.messages = [first.reply, ...Array.from({ length: 105 }, (_, index) => message(`history-${index}`, index + 3)), message('new', 108)]
+  if (removed === 'removed-history') nextContext.messages = [first.reply, ...Array.from({ length: 105 }, (_, index) => message(`history-${index}`, index + 3)), message('new', 108)]
   const next = await f.sessions.begin(nextContext, 'verified-config')
   expect(next.threadId).toBeUndefined()
-  expect(next.messages).toHaveLength(removed === 'bounded-history' ? 100 : 3)
+  expect(next.messages).toHaveLength(removed === 'removed-history' ? 107 : 3)
 })
 
 it('does not let a replaced run or a cleared mapping accept a late completion', async () => {

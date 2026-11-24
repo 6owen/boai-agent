@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 第三阶段：AgentRun 增加官方 Controller 当前轮补充能力的展示元信息。
  * [OUTPUT]: 会话视图可标记当前确有标题生成活动。
  * [OUTPUT]: 新话题保留待自动命名的首条消息身份。
  * [OUTPUT]: Conversation保留员工固定主聊天、独立话题及核心专用聊天的角色。
@@ -280,6 +281,8 @@ export interface ExecutionProgressEvent {
 }
 export const EXECUTION_PROGRESS_LIMITS = { events: 24, text: 2000 } as const
 export interface AgentRun {
+  /** Live Controller capability; the host turn owns message receipts. */
+  controller?: { turnId: string; canSteer: boolean }
   /** Frozen original identities only; never select a later resumed run when cancellation is repeated. */
   cancellation?: import('./run-cancellation').RunCancellationScope
   /** Gateway observations by request, not a single inferred model for the whole Work. */

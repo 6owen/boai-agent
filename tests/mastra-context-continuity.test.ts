@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 第三阶段：Mastra 第三阶段回归覆盖原生文件/MCP/快照/Trace、实时补充、断流及 OM 致命失败退出；完整结果见实施记录。
  * [OUTPUT]: 跨三轮核对主模型与 OM 的官方 Token 总量等于真实 HTTP 用量。
  * [OUTPUT]: 2026-11-24 按官方Controller/Session历史与自动OM验证，保留业务权限、来源、取消、真实工具和用量断言。
  * [OUTPUT]: 2026-10-30 回归更新为Mastra官方记忆/原生归属合同；保留来源、调用预算和业务发布断言。
@@ -183,12 +184,13 @@ it('cancellation during summary never changes the active pointer or calls the pr
   expect(await f.store.load('contextCheckpoints')).toHaveLength(0)
   expect(model.requests).toHaveLength(1)
 })
-it('rejects required input over a known window without discarding the original request', async () => {
-  const model = await endpoint((_body, response, index) => send(response, 'Must not be requested', index))
+it('delegates input capacity to the SDK without rejecting a required request by estimated characters', async () => {
+  const model = await endpoint((_body, response, index) => send(response, 'Received intact', index))
   const f = await fixture(model.url, [message(1, 'required text '.repeat(800))])
   f.ctx.modelCatalog = { source: 'service-declared', fetchedAt: '', models: [{ id: 'fixture', contextWindow: 4000 }] }
-  await expect(new MastraEngine().run(f.ctx)).rejects.toThrow('容量')
-  expect(model.requests).toHaveLength(0)
+  await new MastraEngine().run(f.ctx)
+  expect(model.requests).toHaveLength(1)
+  expect(textOf(model.requests[0])).toContain(f.ctx.messages[0]!.content)
   expect((await f.store.load<Message>('messages'))[0]?.content).toBe(f.ctx.messages[0]!.content)
 })
 it('does not reload checkpoint-covered history through Bobo Mastra Memory', async () => {
@@ -300,7 +302,7 @@ it.each(['summary', 'history'])('registers expanded %s inputs and propagates act
   const ctx = contexts[0]!
   const snapshot = service['snapshots'].get(ctx.runId)!
   const observation = (await service['store'].load<{ id: string; sourceMessageIds: string[] }>('memoryObservations')).find(row => row.id === ctx.runId)!
-  if (mode === 'history') expect(snapshot.memoryRecall?.recall?.inputMessageIds).not.toContain('old-2')
+  if (mode === 'history') expect(snapshot.memoryRecall?.recall?.inputMessageIds).toContain('old-2')
   const query = { agentId: 'researcher', scope: 'employee' as const }
   const before = await service.handle('getMemory', query) as MemoryView
   const saved = await service.handle('saveMemory', { ...query, content: 'PROVENANCE_617 early fact', sourceMessageIds: ['old-1'], expectedEpoch: before.epoch }) as MemoryView
@@ -356,13 +358,14 @@ it.each([false, true])('does not discard an unsummarized large recent tail (Bobo
   expect({ summarizedTailFact: summaries.some(body => textOf(body).includes('TAIL_FACT_617')), rawTailFact: textOf(main).includes('TAIL_FACT_617') }).not.toEqual({ summarizedTailFact: false, rawTailFact: false })
 })
 
-it('rejects a current turn that cannot fit intact before summaries or primary requests', async () => {
-  const model = await endpoint((_body, response, index) => send(response, 'Must not be requested', index))
+it('passes a current turn beyond the former character window intact to the SDK', async () => {
+  const model = await endpoint((_body, response, index) => send(response, 'Received intact', index))
   const messages = [1, 2, 3].map(sequence => ({ ...message(sequence, 'x'.repeat(20000)), turnId: 'current-turn' }))
   const f = await fixture(model.url, messages)
   f.ctx.triggerMessageId = messages[0]!.id; f.ctx.turnId = 'current-turn'
-  await expect(new MastraEngine().run(f.ctx)).rejects.toThrow('当前必要输入超过上下文容量')
-  expect(model.requests).toHaveLength(0)
+  await new MastraEngine().run(f.ctx)
+  expect(model.requests.filter(body => !isSummary(body))).toHaveLength(1)
+  for (const message of messages) expect(model.requests.some(body => textOf(body).includes(message.content))).toBe(true)
   expect(await f.store.load('contextCheckpoints')).toHaveLength(0)
   expect(await f.store.load('messages')).toEqual(messages)
 })
@@ -373,7 +376,7 @@ it('inherits old material sources into snapshot, reply and Work before data use,
     decide: async context => ({ action: 'reply', responseKind: 'task', work: { key: 'material-context', scope: 'Continue material analysis', deliverable: 'Result' }, observedThroughSequence: context.participation!.observedThroughSequence }),
     run: async context => {
       contexts.push(context)
-      expect(context.materialRefs).toHaveLength(0)
+      expect(context.materialRefs).toHaveLength(1)
       const view = await context.continuity!.read()
       expect(view.messages.some(message => message.id === 'old-1')).toBe(true)
       expect(context.materialRefs).toHaveLength(1)
@@ -477,16 +480,30 @@ it('refuses an OM call when the original run budget is exhausted', async () => {
 })
 it('stops the same task on a truncated OM handoff and never replays completed tools', async () => {
   const calls = new Set<string>()
+  const executed = new Set<string>(), outcomes = new Map<string, string>()
   let reads = 0
   const model = await endpoint((body, response, index) => {
     if (isSummary(body)) return truncatedSummary(response, body.max_tokens)
     return send(response, { tool: 'manage_skills', args: { command: { action: 'list', input: {} } } }, index)
   })
   const f = await fixture(model.url, [message(1, 'Read four original records and summarize.')])
-  f.ctx.manageSkills = async () => { reads++; return [message(1, 'original news source '.repeat(1800))] }
-  f.ctx.onTool = async event => { if (event.name === 'manage_skills' && event.status === 'running') { expect(calls.has(event.id)).toBe(false); calls.add(event.id) } }
+  f.ctx.manageSkills = async () => {
+    const id = [...calls].at(-1)!
+    expect(id).toBeDefined(); expect(executed.has(id)).toBe(false)
+    executed.add(id); reads++
+    return [message(1, 'original news source '.repeat(1800))]
+  }
+  f.ctx.onTool = async event => {
+    if (event.name !== 'manage_skills') return
+    if (event.status === 'running') { expect(calls.has(event.id)).toBe(false); calls.add(event.id) }
+    else outcomes.set(event.id, event.status)
+  }
   await expect(new MastraEngine().run(f.ctx)).rejects.toThrow()
-  expect(reads).toBeGreaterThan(0); expect(reads).toBe(calls.size)
+  // OM can abort after the SDK announces a call but before its actual effect.
+  // Every executed call remains unique; unexecuted calls must finish as failed.
+  expect(reads).toBeGreaterThan(0); expect(reads).toBe(executed.size)
+  expect([...outcomes.keys()].sort()).toEqual([...calls].sort())
+  for (const id of calls) if (!executed.has(id)) expect(outcomes.get(id)).toBe('failed')
   expect(model.requests.filter(isSummary).length).toBeGreaterThan(0)
   expect(f.deltas).toEqual([])
   expect(await f.store.load('contextStepCheckpoints')).toHaveLength(0)

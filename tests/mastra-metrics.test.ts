@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 第三阶段：Mastra 第三阶段回归覆盖原生文件/MCP/快照/Trace、实时补充、断流及 OM 致命失败退出；完整结果见实施记录。
  * [INPUT]: Official metric records and historical activity receipts.
  * [OUTPUT]: Cache/reasoning cost deduplication, provider totals, unknown/partial pricing and legacy/native isolation.
  * [POS]: Metrics-to-product projection acceptance; does not duplicate Mastra pricing formulas.
@@ -61,4 +62,18 @@ it('expires an exact-call approval receipt before detached work can reuse it', a
   })
   release()
   expect(await late).toBe(false)
+})
+
+it('filters native metrics by requested runs while retaining pre-label utility calls', async () => {
+  const { MastraMetrics } = await import('../packages/runtime/src/adapters/mastra/metrics')
+  const metrics = new MastraMetrics()
+  try {
+    const store = (await (await metrics.storage()).getStore('observability'))!
+    await store.batchCreateMetrics({ metrics: [
+      metric('total_input_tokens', 10),
+      metric('total_input_tokens', 20, { metricId: 'other', runId: 'other', spanId: 'other' }),
+      metric('total_input_tokens', 30, { metricId: 'utility', runId: 'utility', spanId: 'utility', threadId: '', metadata: { metricScope: 'utility' } }),
+    ] })
+    expect((await metrics.calls(['run'])).map(call => call.runId).sort()).toEqual(['run', 'utility'])
+  } finally { await metrics.close() }
 })
