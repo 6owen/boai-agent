@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 Embedding 用官方模型 Span 上报真实用量；OM 原生 Span 自动计量，价格不在宿主计算。
  * [OUTPUT]: 不追加固定摘要输出上限；真实截断/缺失结束帧仍不保存，用量、取消与来源授权沿宿主接口。
  * [INPUT]: The employee's resolved Mastra model and original run accounting/cancellation.
  * [OUTPUT]: Every OM model attempt uses the selected connection, reserves a call and reports actual usage.
@@ -6,6 +7,10 @@
  * [PROTOCOL]: Update Header and mastra/.folder.md when changed.
  */
 import { Agent } from '@mastra/core/agent'
+import { Mastra } from '@mastra/core/mastra'
+import { SpanType } from '@mastra/core/observability'
+import { contextMetrics } from './metrics'
+import { createAgentObservation } from './trace'
 import type { EngineContext } from '../../contracts'
 import type { ModelUsage } from '@boai/shared/domain'
 import { modelConfig, sessionModelSettings, thinkingProviderOptions } from './model-config'
@@ -92,12 +97,21 @@ export async function memoryEmbedder(context: EngineContext, selection: { connec
       if (!callId) throw new Error('语义检索未取得原运行的调用预算')
       await context.onModelCallStarted?.(callId, 'memory', undefined, { connectionId: selection.connection.id, modelId: selection.modelId })
       const abortSignal = options.abortSignal ? AbortSignal.any([context.signal, options.abortSignal]) : context.signal
+      // Direct embedding transports do not create Agent model-generation spans.
+      // Supply the official span/usage contract so native Metrics owns pricing.
+      const observation = contextMetrics(context) ? await createAgentObservation({ ...context, apiKey: selection.apiKey }, 'embedding') : undefined
+      if (observation) new Mastra({ storage: observation.storage, observability: observation.observability, logger: false })
+      const span = observation?.observability.getDefaultInstance()?.startSpan({ type: SpanType.MODEL_GENERATION, name: 'memory embedding', attributes: { model: selection.modelId, provider: target.provider } })
+      try {
       const result = await target.doEmbed({ ...options, abortSignal }).catch(error => { throw safeError(error, selection.apiKey) })
+      span?.end({ attributes: { usage: { inputTokens: result.usage?.tokens, outputTokens: 0 } } })
       const usage = result.usage ? { inputTokens: result.usage.tokens, totalTokens: result.usage.tokens } : {}
       await context.onModelCallUsage?.(callId, usage)
       await context.onSupplementalUsage?.(callId, usage)
       context.signal.throwIfAborted()
       return result
+      } catch (error) { span?.error({ error: safeError(error, selection.apiKey), endSpan: true }); throw error }
+      finally { await observation?.flush() }
     }
   } })
 }

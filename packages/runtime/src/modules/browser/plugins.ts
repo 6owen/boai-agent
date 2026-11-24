@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 与官方 Controller 共用插件读写判定，宿主仍执行能力/路径/来源验证。
  * [OUTPUT]: 配置保存前CAS/退出门禁和关闭失败返回确定拒绝，保存事件沿原宿主广播；单次前台参数不写回配置。
  * [OUTPUT]: 关闭失败保留会话并允许重试，关闭请求后禁止新工具；实际关闭和在途调用结束后才解除登记。
  * [INPUT]: Application plugin enablement, saved launch settings and the original execution context.
@@ -10,7 +11,7 @@ import { readFile, realpath } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { createBrowserPluginSession, browserPluginRuntimeRoot, type BrowserPluginSession } from '@boai/browser-plugins/host'
-import { BrowserPluginSettingsError, browserPluginProviderSchema, browserPluginConfigSchema, browserPluginId, browserPluginNames, browserPluginCallSchema, saveBrowserPluginSettingsSchema, type BrowserPluginProvider, type BrowserPluginSettings } from '@boai/shared/plugins/browser-tools'
+import { browserPluginWrites, BrowserPluginSettingsError, browserPluginProviderSchema, browserPluginConfigSchema, browserPluginId, browserPluginNames, browserPluginCallSchema, saveBrowserPluginSettingsSchema, type BrowserPluginProvider, type BrowserPluginSettings } from '@boai/shared/plugins/browser-tools'
 import { readPluginSettingsSchema } from '@boai/shared/plugins/types'
 import type { ProductStore } from '../../adapters/storage/product-store'
 import type { EngineContext } from '../../contracts'
@@ -19,7 +20,6 @@ import { executeCommand } from '../../adapters/mastra/host-command'
 import { employeeCommandScope } from '../workspaces/directory-command'
 
 const collection = 'browserPluginSettings'
-const readTools = new Set(['browser_goto', 'browser_snapshot', 'browser_screenshot', 'browser_wait', 'browser_scroll', 'browser_back', 'browser_close'])
 interface Entry { provider: BrowserPluginProvider; runId: string; session: Promise<BrowserPluginSession>; tail: Promise<unknown>; closeRequested?: boolean; closing?: Promise<void>; detach?(): void }
 
 export class BrowserPluginService {
@@ -109,7 +109,7 @@ export class BrowserPluginService {
     const input = browserPluginCallSchema.parse(raw)
     await this.assertEnabled(input.provider, context)
     if (input.provider === 'browser-viewer' && !context.agent.allowCommands) throw new Error('当前员工未启用命令执行，无法使用 BrowserViewer CLI')
-    const mutating = input.provider === 'browser-viewer' || !readTools.has(input.tool) || !!input.arguments.path
+    const mutating = browserPluginWrites(input)
     if (mutating) {
       if (!context.work && context.ensureNativeWork) await context.ensureNativeWork.call(context)
       if (!context.work) throw new Error('请在任务执行阶段调用浏览器交互工具')

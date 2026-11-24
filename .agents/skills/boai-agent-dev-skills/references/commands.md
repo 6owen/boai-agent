@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-11-24新增AgentController审批和官方Metrics改动的定向验证入口、独立数据及PR截图目标。
 [OUTPUT]: 开发默认提 PR；先看截图时保存实际文件并返回绝对路径。
 [OUTPUT]: 本地按 Git 变更运行 Vitest，UI PR 回填目标状态和全局主界面截图。
 [OUTPUT]: 2026-11-17本地按影响验证；PR Test分文档/前端/完整，普通交付不等待CI。
@@ -80,6 +81,8 @@ renderer由Vite处理热更新；`dev.mjs`在启动时构建宿主，没有主�
 | `pnpm ci:local` / `pnpm ci:watch` | 保留的本机CI工具，当前不作为默认执行或常驻流程 |
 
 选测依赖 Vitest 的静态依赖图。空列表代表没有匹配用例，按实际影响手选需要的测试，依赖 dist 的用例先执行对应构建。普通 PR 在 Linux 运行类型和 lint，文档只检查 diff。UI PR 根据 Agent 在正文登记的 `boai-screenshot` 和路径规则执行两个 BDD 场景，将目标状态和全局主界面的截图写回。准备正式 release 时运行 `gh workflow run test.yml --ref main` 执行完整 Test。[CI 说明](../../../../UI_TEST_CI.md)。
+
+AgentController审批/计量变更可补跑`pnpm exec vitest run tests/mastra-engine.test.ts tests/mastra-context-continuity.test.ts tests/mastra-metrics.test.ts`，工具交付或辅助模型接线还需对应的skills-delivery、team-planner、presentation-capability、gateway-product-faults场景。仍先用`test:changed`确定范围，不能把这条补验命令当作全部业务验收。测试使用临时数据及受控HTTP模型，不指向个人memory或metrics数据库。费用界面PR目标使用“我的菜单 → 个人资料 → 模型估算费用”；本地GUI仍按用户明确范围执行。
 
 开发完成后默认提交、推送并创建或更新 PR。用户要求先看截图时，在隔离预览截取实际改动状态，保存到主检出下 `.local/review-screenshots/<任务>/` 等持久目录，交付图片绝对路径。用户确认后再推送或更新 PR。[交付细则](../../boai-dev-workflow/SKILL.md#用户要求先看截图)。
 

@@ -1,6 +1,6 @@
 <!--
 [INPUT]: 用户授权将 Mastra/API 执行迁移到官方 AgentController；当前 core 1.71.0、memory 1.32.1。
-[OUTPUT]: 迁移范围、官方能力与现行接入差异、实施进度和实际验证边界。
+[OUTPUT]: 两阶段迁移：Session/Memory、官方审批及 Metrics/费用估算；实际验证和预览版本分别记录。
 [POS]: AgentController 迁移的源码、验证和交付记录；不代表个人应用已切换。
 [PROTOCOL]: 实施变化同步本记录、对应源码 Header 和 .folder.md。
 -->
@@ -10,7 +10,7 @@
 
 用户于 2026-11-24 授权将当前 Mastra/API 员工执行改用官方 AgentController，并核对改造规模。工作分支为 `refactor/mastra-agent-controller`。这是执行适配层与记忆生命周期的较大改造，产品界面、员工身份、业务权限和原生 Codex/Claude/Pi 运行方式保持其现有职责。
 
-源码迁移已完成。改动集中在9个后端执行/记忆文件（含新增`controller-session.ts`、删除`model-request-attempts.ts`），不涉及Renderer或IPC重做，也没有升级依赖。属于后端执行核心的中等规模重构，主要工作量是已有权限、历史、取消、媒体、Trace和用量合同的衔接。
+第一阶段源码迁移已完成，提交为`ec3f1009`：改动集中在9个后端执行/记忆文件（含新增`controller-session.ts`、删除`model-request-attempts.ts`），该阶段没有Renderer改动或依赖升级。用户在隔离预览中试用后，继续授权第二阶段原生审批与计量迁移。第二阶段在同一PR #187追加，新增官方DuckDB指标存储和个人资料中的费用估算；各阶段验证见下文。
 
 官方Controller负责会话运行；现有工具捕获每次宿主授权快照，因此Controller/Session运行实例随宿主run创建并排空回收，持久thread按员工/会话复用。尚未将整个产品改成常驻共享Controller，也未接Durable Agents；不能据此宣称跨进程自动续跑。
 
@@ -70,9 +70,9 @@
 - 移除主会话默认2500/8192输出限制和摘要4000限制。已选择模型声明了输出能力时使用其能力；未声明时用供应商默认值。官方OM自带的100000是其默认Gemini模型请求值，不传给能力未知的自定义连接。
 - 真实截断、缺失结束帧、拒绝预算或失效来源仍不能发布为完成。官方Controller本身在本版本有1000步运行上限；本次没有修改SDK或承诺无限步骤。已验证超过原256工具调用边界。
 - 产品历史迁移采用稳定输入ID；SDK生成的工具和助手历史不再从公开回复重复导入。来源失效停止活动运行，等待其退出后清理派生数据；SQL批次只限制单次绑定参数数量，不截断迁移历史。
-- 既有工作区和业务工具继续处理真实文件/命令审批；Controller不再为同一次操作发出第二套审批，未注册新的通用执行工具。原生Codex/Claude/Pi不进入此链。
+- 第一阶段由既有工作区和业务工具处理真实文件/命令审批。第二阶段改为Controller原生审批等待与恢复，复用原业务授权策略和界面，避免同一操作重复询问；未注册额外通用执行工具。原生Codex/Claude/Pi不进入此链。
 
-## 本地验证记录
+## 第一阶段本地验证记录
 
 使用已安装的真实SDK、隔离SQLite、本地HTTP模拟模型和原产品工具；没有调用商业模型或打开Electron窗口。
 
@@ -93,3 +93,44 @@
 260步骤用例保持真实步骤数及工具次数断言；官方持久化和OM增加实际执行时间，原30秒测试进程期限不够，单例改60秒，未改变产品执行预算。跨运行/重启用例核对每条原始问题、助手答复和工具回执只出现一次。取消/撤权用例等待实际运行和记忆退出，不把中止请求发送当作已退出。
 
 原始日志保存到主检出`.local/review-artifacts/agent-controller-20261124/`。本地协议/受控业务通过不代表真实DeepSeek任务耗时、模型决策或记忆语义质量通过；当前个人应用未重启、未安装、未合并。CI、PR状态以交付回执为准。
+
+## 第二阶段：原生审批与用量
+
+用户在试用第一阶段后授权“全部按Mastra官方推荐的来做，开始迁移”。本阶段继续使用core 1.71.0、memory 1.32.1、observability 1.18.1，新增与当前core兼容的`@mastra/duckdb@1.15.0`，没有同时升级执行框架。
+
+### 审批归属
+
+- 工具使用官方`requireApproval`，Session通过`tool_approval_required`暂停，宿主将原审批卡结果交回`respondToToolApproval`。只读/询问/完全访问沿员工保存的设置，拒绝不会执行工具，取消后迟到批准不会恢复执行。
+- 文件与命令先执行已有路径/命令授权预检。批准后仅当前run、当前工具调用、当前操作种类取得临时凭据，工具返回即失效；工具仍重验来源、路径、员工配置及取消信号。后台脱离工具的异步工作不能复用批准。
+- 业务目录授权、来源失效、永久命令/目录许可和本轮同类批准仍是BOAI的产品政策。原生Session负责等待和恢复，不替代这些业务规则，也不把批准解释为额外目录授权。
+- SDK技能读取、工具发现及产品只读工具直接放行。混合工具按实际参数和数据源目录的readOnly声明判断；浏览器和桌面插件复用宿主读写判定。既有Codex/Claude/Pi审批保持原生。
+
+### 指标与费用
+
+- 使用官方Observability、`MODEL_GENERATION`指标、`MastraStorageExporter`和DuckDB Observability domain；通过`MastraCompositeStore`与原LibSQL Memory组合。统计不另建token价格表，也不把估算值作为供应商账单。
+- 主会话/任务、OM观察/反思、embedding、标题、参与判断、群解释、内部报告、行为/反思审阅、连接测试、自动化草稿、团队草稿和PPT模型审阅接入同一指标库。直接embedding传输补官方模型span；标题沿官方生成API的tracingContext。独立辅助调用标记utility，有真实run的调用关联原身份。
+- 只相加官方input/output总成本，不再叠加缓存和推理明细；供应商query-total按官方carrier计入。缺usage或缺价格保留未知，部分价格明确不完整。SDK一次generation可能覆盖多个工具步骤，不把它称为精确HTTP请求数。
+- 个人资料以官方指标替换同run的旧展示回执，避免双计；旧历史无指标时保留原用量、不回填虚构费用。本机Agent自有用量仍不计入。图片生成供应商独立计费不冒充模型token费用。
+- 指标文件为原memoryPath追加`.metrics.duckdb`，例如`memory/bobo-mastra.db.metrics.duckdb`。仅存原生指标，脱敏Trace仍用原存储；不在第二个库复制完整提示词。查询遍历全部分页，删除会话使用官方`batchDeleteTraces`同步清理指标，关闭时排空并关闭数据库。
+- 原显式执行预算回执保留，用于用户已配置的约束；不启用默认TokenCostControl或额外默认金额上限。观测失败记录错误，不因指标写入失败重放业务。
+
+### 第二阶段验证与发现
+
+使用真实SDK、独立数据库、本地HTTP受控模型，不启动Electron或调用商业模型。新增回归覆盖原生批准/拒绝/只读/取消、批准失效、真实DuckDB重启与删除、官方价格、缓存/推理费用去重、缺价、151条指标分页、辅助调用身份和跨轮OM计量。
+
+初轮发现仅需指标时仍采集全部步骤span，260步骤用例超过原60秒期限。已使用官方span类型过滤，在无Trace消费者时仅保留MODEL_GENERATION；相同步数、工具次数和60秒期限下复验约4秒通过。另发现SDK技能读取误入审批，补齐官方只读工具类别后原技能交付用例通过。两项均修复接线，未放宽业务断言。
+
+最终变更选测为211文件（179通过、6失败、26跳过），2873项通过、17项失败、134项跳过。11项为已在未修改main `bf66c575`复现的失败：第一阶段的10项，以及本阶段扩展范围发现的canvas-source-cleanup旧删除期望1项；后者与gateway-product-faults、skills-delivery在main对照为79通过/1失败。另6项为gateway-product-faults在并发选测中的5000ms等待超时（阶段结束及第5次请求）；保持原期限、业务断言和源码，单worker定向复验该文件72项及metrics5项共77项全部通过。这证明独立复验通过，不能据此称并发选测全绿。
+
+最后文件/命令预检及插件读写接线包含在上述211文件选测中，新的原生审批、计量、分页、辅助模型身份、跨轮OM和技能交付场景通过。`pnpm typecheck`、`pnpm lint:ui`、`pnpm build:cli`、`pnpm build`通过，保留原bundle大小提示。Electron 39.2.7使用`ELECTRON_RUN_AS_NODE=1`加载真实DuckDB原生模块、初始化指标域、查询并关闭成功，无窗口；这不是安装包或GUI验证。Skill frontmatter和PR截图目标解析通过。未删除断言或调大本阶段测试期限。
+
+第二阶段日志以`phase2-`前缀保存在主检出`.local/review-artifacts/agent-controller-20261124/`，保留初轮失败及最终复验。没有把重复通过次数相加为独立测试数量。
+
+当前个人预览仍来自第一阶段`ec3f1009`，目录为`/Users/wangwenbo/Desktop/demo/boai/boai-agent-agent-controller`；本阶段未重启该窗口、未安装或合并。PR截图目标为“个人资料 → 模型估算费用”，由现有CI生成目标页及全局主界面两张图；截图尚未运行时不称已验视觉。
+
+官方依据（并核对已安装版本的声明及实现）：
+
+- https://mastra.ai/reference/agent-controller/session
+- https://mastra.ai/docs/observability/metrics/overview
+- https://mastra.ai/reference/observability/metrics/automatic-metrics
+- https://mastra.ai/reference/processors/token-cost-control

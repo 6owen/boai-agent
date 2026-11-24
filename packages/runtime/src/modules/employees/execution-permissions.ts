@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 消费当前工具的短期原生批准凭据，保留只读与真实资源授权。
  * [OUTPUT]: 显式CLI权限仅核对员工已保存模式，受理后继续沿原审批和当前授权，不临时改权。
  * [INPUT]: 已冻结员工执行权限、具体操作和宿主审批/取消信号。
  * [OUTPUT]: API与本机员工的宿主操作沿同一整体权限，只读拒绝副作用、审批等待、完全访问跳过；旧未配置定义保持。
@@ -8,12 +9,14 @@
 import type { EngineContext } from '../../contracts'
 import type { DigitalAgent } from '@boai/shared/domain'
 import type { ExecutionPermission, ExecutionOperation } from '@boai/shared/domain/execution'
+import { hasToolAuthorization } from './tool-authorization'
 
-export async function authorizeExecution(context: Pick<EngineContext, 'agent' | 'signal' | 'approveOperation'>, operation: ExecutionOperation) {
+export async function authorizeExecution(context: Pick<EngineContext, 'agent' | 'signal' | 'approveOperation'> & Partial<Pick<EngineContext, 'runId'>>, operation: ExecutionOperation) {
   context.signal.throwIfAborted()
   const permission = context.agent.executionPermission
   if (!permission) return
   if (permission === 'read-only') throw new Error(`当前员工为只读权限，不能${operation.description}`)
+  if (context.runId && hasToolAuthorization(context.runId, operation.kind)) return
   if (permission === 'ask') {
     if (!context.approveOperation) throw new Error('执行审批不可用，操作未执行')
     if (!await context.approveOperation(operation)) throw new Error('用户已拒绝本次操作，请勿重试或绕过审批')

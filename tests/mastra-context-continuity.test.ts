@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 跨三轮核对主模型与 OM 的官方 Token 总量等于真实 HTTP 用量。
  * [OUTPUT]: 2026-11-24 按官方Controller/Session历史与自动OM验证，保留业务权限、来源、取消、真实工具和用量断言。
  * [OUTPUT]: 2026-10-30 回归更新为Mastra官方记忆/原生归属合同；保留来源、调用预算和业务发布断言。
  * [OUTPUT]: 摘要长度耗尽按原来源恢复一次并逐次计量，取消/预算拒绝/重复截断不提交；SDK内部副本过滤不影响真实工具JSON。
@@ -116,6 +117,9 @@ it('summarizes history outside the old 100-message window and uses durable Mastr
   expect((await engine.memoryView(f.ctx.agent.id)).documents.some(document => document.observations.includes('617 yuan'))).toBe(true)
   expect(await f.store.load<Message>('messages')).toHaveLength(231)
   expect(f.ctx.conversation.id).toBe('dm')
+  const metrics = await engine.modelMetrics()
+  expect(metrics.reduce((sum, call) => sum + (call.usage.totalTokens ?? 0), 0)).toBe(model.requests.length * 120)
+  await engine.closeMemory()
 })
 it('compacts completed tool steps at the actual provider boundary without executing a tool twice', async () => {
   let calls = 0

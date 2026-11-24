@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 文件与命令的原权限预检接 Session 审批；批准后重验来源/路径且不重复询问。
  * [OUTPUT]: 2026-11-09 员工项目支持相对文件/命令和项目内访问；额外目录沿原许可，完全访问无需逐目录授权。
  * [OUTPUT]: 原生项目交付在原发布许可后调用固定项目暂存回调；API仍使用自身目录授权。
  * [OUTPUT]: 2026-10-27 默认持续执行、来源校验及工作现场/复核接线；沿原权限和账本。
@@ -56,6 +57,8 @@ import { BoundSkillSource } from './bound-skill-source'
 import { createPresentationTools } from './presentation-tools'
 import { abortable, executeCommand } from './host-command'
 import { authorizeExecution } from '../../modules/employees/execution-permissions'
+import { hasToolAuthorization } from '../../modules/employees/tool-authorization'
+import { toolPermission } from './controller-permissions'
 import { employeeCommandScope } from '../../modules/workspaces/directory-command'
 import { workingDirectoryTarget, workingFilePath } from '../../modules/workspaces/working-directory'
 import { directoryGrantsSchema } from '@boai/shared/domain/directory-access'
@@ -488,7 +491,7 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
             const targets = requestedDirectories?.length ? await ctx.directoryAccess!.authorizeCommand(command, commandCwd, requestedDirectories, signal) : undefined
             const approved = targets !== undefined ? targets !== null : ctx.agent.executionPermission
               ? await authorizeExecution(ctx, { kind: 'command', description: command }).then(() => true)
-              : await abortable(ctx.approveCommand(command, commandCwd), signal)
+              : hasToolAuthorization(ctx.runId, 'command') || await abortable(ctx.approveCommand(command, commandCwd), signal)
             check(signal)
             if (!approved) return { approved: false, error: 'User declined command. Do not retry or bypass this refusal.' }
             await restrictedPath([scope.root], scope.runPath)
@@ -509,6 +512,35 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 6
         }),
       } : {}),
     }
+    for (const name of ['write_file', 'edit_file'] as const) if (tools[name]) toolPermission(tools[name], { kind: 'file', approve: async raw => {
+      const { path: file } = z.object({ path: z.string() }).parse(raw)
+      const location = await locationFor(file, true)
+      if (!location.business) await authorizeExecution(ctx, { kind: 'file', description: `${name} ${file}` })
+      return true
+    } })
+    if (tools.delete_file) toolPermission(tools.delete_file, { kind: 'file', approve: async raw => {
+      const { path: file } = z.object({ path: z.string() }).parse(raw)
+      await ctx.directoryAccess!.authorize(workingFilePath(ctx.workingDirectory, file), 'delete-entry', `删除文件 ${file}`, signal)
+      return true
+    } })
+    if (tools.move_file) toolPermission(tools.move_file, { kind: 'file', approve: async raw => {
+      const { from, to } = z.object({ from: z.string(), to: z.string() }).parse(raw)
+      await ctx.directoryAccess!.authorize(workingFilePath(ctx.workingDirectory, from), 'delete-entry', `移动文件 ${from} → ${to}`, signal)
+      await ctx.directoryAccess!.authorize(workingFilePath(ctx.workingDirectory, to), 'create-entry', `移动文件 ${from} → ${to}`, signal)
+      return true
+    } })
+    if (tools.execute_command) toolPermission(tools.execute_command, { kind: 'command', approve: async raw => {
+      const input = z.object({ command: z.string(), directories: directoryGrantsSchema.optional() }).parse(raw)
+      if (selectedDirectory) await assertDirectoryTargetCurrent(selectedDirectory)
+      const directories = [...input.directories ?? []]
+      if (selectedDirectory && !directories.some(grant => grant.path === commandCwd)) directories.push({ path: commandCwd, access: 'read-only' })
+      if (directories.length) {
+        if (!businessPaths) throw new Error('该员工的业务目录授权尚未配置，命令未执行')
+        return await ctx.directoryAccess!.authorizeCommand(input.command, commandCwd, directories, signal) !== null
+      }
+      if (ctx.agent.executionPermission) { await authorizeExecution(ctx, { kind: 'command', description: input.command }); return true }
+      return abortable(ctx.approveCommand(input.command, commandCwd), signal)
+    } })
     const organizationContext = { ...ctx, ...(ctx.organizeCollaboration ? { organizeCollaboration: async (...input: Parameters<NonNullable<EngineContext['organizeCollaboration']>>) => {
       const receipt = await ctx.organizeCollaboration!(...input)
       if (receipt.status === 'committed') collaborationIds.add(receipt.id)

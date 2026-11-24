@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 Controller 工具接原生审批策略，所有阶段共用官方 Metrics。
  * [OUTPUT]: Controller 主阶段使用官方自动记忆与错误恢复，不再叠加宿主逐步骤摘要。
  * [OUTPUT]: API employees use the shared canvas operation factory and actual PNG model content.
  * [OUTPUT]: 顺序群发言不装配业务工具；记忆读取和持久化仍由原记忆层负责。
@@ -73,17 +74,19 @@ import { createBrowserPluginOperations } from './browser-plugin-tools'
 import { mcpModelOutput } from '../../modules/sources/mcp-media'
 import { createBrowserTool } from './browser-tool'
 import { createTaskRuntime } from './task-runtime'
+import { contextMetrics } from './metrics'
+import { ControllerPermissions } from './controller-permissions'
 import { bootstrapInstructions, organizationDecisionAllowed, boboResponseInstructions, collaborationResponseInstructions, decisionInstructions, memoryInstructions } from '../../modules/employees/phase-instructions'
 export { bootstrapInstructions, organizationDecisionAllowed } from '../../modules/employees/phase-instructions'
 
 export type AgentPhase = 'coordination' | 'chat' | 'task' | 'decision' | 'memory' | 'report'
-export interface StageInstance { agent: Agent; task: boolean; hasTools: boolean; skills?: { id: string; name: string; path: string }[]; dispose(): Promise<void> }
+export interface StageInstance { agent: Agent; task: boolean; hasTools: boolean; permissions?: ControllerPermissions; skills?: { id: string; name: string; path: string }[]; dispose(): Promise<void> }
 /** Stateless factory. Every phase has its own SDK instance and explicit resource owner. */
 export async function createStageAgent(phase: AgentPhase, context: EngineContext, commandTimeoutMs?: number, memory?: Memory, controller?: { options: AgentExecutionOptions<undefined>; input: InputProcessor }): Promise<StageInstance> {
   const stage = await createStageInstance(phase, context, commandTimeoutMs, memory, controller)
-  if (!context.onTrace || controller) return stage
+  if ((!context.onTrace && !contextMetrics(context)) || controller) return stage
   try {
-    const flush = observeAgent(stage.agent, context, phase)
+    const flush = await observeAgent(stage.agent, context, phase)
     return { ...stage, dispose: async () => { try { await stage.dispose() } finally { await flush() } } }
   } catch (error) { await stage.dispose(); throw error }
 }
@@ -143,6 +146,7 @@ async function createStageInstance(phase: AgentPhase, context: EngineContext, co
     assertApiContext(context)
   context.signal.throwIfAborted()
       const tools = !task && ctx.groupCoordination?.mode === 'ordered' ? {} : ctx.work?.organization ? { ...taskRuntime?.tools } : { ...contextHistoryTools(ctx), ...Object.fromEntries([...createBrowserPluginOperations(ctx), ...createDesktopPluginOperations(ctx), ...createCanvasOperations(ctx)].map(operation => [operation.name, createTool({ id: operation.name, description: operation.description, inputSchema: operation.schema, toModelOutput: mcpModelOutput, execute: input => operation.execute(input) })])), ...taskRuntime?.tools, ...Object.fromEntries([...createApplicationTools(ctx), ...createStateTools(ctx), ...createHistorySearchOperations(ctx), ...createBoundSkillOperations(ctx), ...(ctx.memoryOwner === 'mastra' ? [] : createMemoryOperations(ctx)), ...createReactionOperations(ctx), ...createSelfieOperations(ctx)].map(operation => [operation.name, createTool({ id: operation.name, description: operation.description, inputSchema: operation.schema, execute: input => operation.execute(input) })])), ...(!task && ctx.decision?.action !== 'ask' && ctx.decision?.action !== 'request_handoff' ? createKnowledgeTools(ctx) : {}), ...(!task && hasChatSourceTools(ctx) ? createSourceTools(ctx, !ctx.manageDataSources) : {}), ...(setupBrowser ? { browser_tool: createBrowserTool(setupBrowser) } : {}), ...(ctx.manageSkills ? { manage_skills: createTool({ id: 'manage_skills', description: manageSkillsDescription, inputSchema: manageSkillsSchema, execute: input => ctx.manageSkills!(input) }) } : {}), ...(ctx.manageDataSources ? { manage_data_sources: createTool({ id: 'manage_data_sources', description: manageSourcesDescription, inputSchema: manageSourcesSchema, execute: input => ctx.manageDataSources!(input) }) } : {}), ...(ctx.createDataSource ? { create_data_source: createTool({ id: 'create_data_source', description: sourceCreationDescription, inputSchema: sourceCreationSchema, execute: input => ctx.createDataSource!(input) }) } : {}), ...(ctx.manageAutomation ? { manage_automation: createTool({ id: 'manage_automation', description: automationToolDescription, inputSchema: automationCommandToolSchema, execute: input => ctx.manageAutomation!(automationCommandSchema.parse(input)) }) } : {}) }
+      const permissions = controller ? new ControllerPermissions(ctx) : undefined
       const agent = new Agent({
       inputProcessors,
         ...(memory ? { memory } : {}),
@@ -170,10 +174,10 @@ async function createStageInstance(phase: AgentPhase, context: EngineContext, co
           bootstrapInstructions(ctx),
         ].filter(Boolean).join('\n\n'),
         ...(taskRuntime ? { workspace: taskRuntime.workspace } : {}),
-        tools,
+        tools: permissions ? permissions.wrap(tools) : tools,
       })
     releaseCliTools = ctx.registerCliTools?.(mastraCliTools(ctx, tools))
     let disposed = false
-    return { agent, task, hasTools: Object.keys(tools).length > 0 || !!memory && Object.keys(memory.listTools({ readOnly: true })).length > 0, skills: taskRuntime?.skills, dispose: async () => { if (!disposed) { disposed = true; try { await releaseCliTools?.() } finally { toolController.abort(new Error('原工具阶段已结束')); await taskRuntime?.dispose(); await setupBrowser?.drain() } } } }
+    return { agent, task, permissions, hasTools: Object.keys(tools).length > 0 || !!memory && Object.keys(memory.listTools({ readOnly: true })).length > 0, skills: taskRuntime?.skills, dispose: async () => { if (!disposed) { disposed = true; try { await releaseCliTools?.() } finally { toolController.abort(new Error('原工具阶段已结束')); await taskRuntime?.dispose(); await setupBrowser?.drain() } } } }
   } catch (error) { toolController.abort(error); try { await releaseCliTools?.() } finally { await taskRuntime?.dispose(); await setupBrowser?.drain() }; throw error }
 }

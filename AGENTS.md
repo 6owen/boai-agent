@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-11-24 Session原生工具审批/取消、官方Metrics与DuckDB费用估算接入；宿主路径/来源授权及显式预算保留，验证和预览版本见ai-docs/implementation/2026-11-24-mastra-agent-controller.md。
 [OUTPUT]: 2026-11-24 API主执行迁至官方AgentController/Session与自动OM；旧readOnly/自建分批摘要退役，实施验证归implementation/2026-11-24-mastra-agent-controller.md。
 [OUTPUT]: 开发验证后默认自动提交PR；用户要求先看截图时，返回实际图片的绝对路径并等待确认。
 [OUTPUT]: 2026-11-23本地Vitest按Git变更选测，开发Agent从PR diff登记截图目标，资源库分类和悬停状态接线。

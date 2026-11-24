@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 活动读取保留运行与官方指标，旧回执兼容且不双计。
  * [OUTPUT]: 实际外部阶段退出补齐普通调用结束时间；缺少终态计量保持未知，已知部分不清空，完整回执/预算归属/API观测不改。
  * [INPUT]: ProductStore、资料草稿与宿主调用/技能/执行观测。
  * [OUTPUT]: 版本化原子资料保存、幂等调用观察与一致活动快照。
@@ -8,7 +9,7 @@
 import { z } from 'zod'
 import type { AgentRun, BudgetModelCall, Message, ModelUsage, Resource, WorkItem } from '@boai/shared/domain'
 import { avatarPresets, AVATAR_IMAGE_MAX_LENGTH } from '@boai/shared/domain/avatars'
-import { defaultUserProfile, type LocalUserProfile, type UserProfileInput } from '@boai/shared/domain/profile'
+import { defaultUserProfile, type LocalUserProfile, type UserProfileInput, type ModelMetricCall } from '@boai/shared/domain/profile'
 import { ProductStore } from '../../adapters/storage/product-store'
 import { validateAvatarImage } from './avatar-image'
 import { aggregateActivity, type ExecutionIntervals, type ProfileModelCall, type SkillActivation } from './profile-activity'
@@ -18,7 +19,7 @@ export const userProfileSchema = z.object({ expectedRevision: z.number().int().n
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value, '无效日期')
 export const activityQuerySchema = z.object({ from: date, to: date, timezone: z.string().max(100).refine(value => { try { new Intl.DateTimeFormat('en', { timeZone: value }); return true } catch { return false } }, '无效时区') }).strict().refine(value => value.to >= value.from && Date.parse(value.to) - Date.parse(value.from) <= 366 * 86_400_000, '日期范围最多 367 天')
 export class ProfileRepository {
-  constructor(private readonly store: ProductStore) {}
+  constructor(private readonly store: ProductStore, private readonly modelMetrics?: (runIds: string[]) => Promise<ModelMetricCall[]>) {}
   async get(): Promise<LocalUserProfile> {
     const profile = (await this.store.load<LocalUserProfile>('userProfiles'))[0]
     if (profile && profile.schemaVersion !== 1) throw new Error('资料来自较新版本，请升级应用后查看。')
@@ -77,6 +78,7 @@ export class ProfileRepository {
   }
   async activity(input: unknown) {
     const query = activityQuerySchema.parse(input)
-    return this.store.transaction(async tx => aggregateActivity({ calls: await tx.list<ProfileModelCall>('profileModelCalls'), budgets: await tx.list<BudgetModelCall>('budgetModelCalls'), messages: await tx.list<Message>('messages'), runs: await tx.list<AgentRun>('runs'), works: await tx.list<WorkItem>('workItems'), intervals: await tx.list<ExecutionIntervals>('profileExecutions'), skills: await tx.list<SkillActivation>('profileSkillActivations'), resources: await tx.list<Resource>('resources') }, query))
+    const evidence = await this.store.transaction(async tx => ({ calls: await tx.list<ProfileModelCall>('profileModelCalls'), budgets: await tx.list<BudgetModelCall>('budgetModelCalls'), messages: await tx.list<Message>('messages'), runs: await tx.list<AgentRun>('runs'), works: await tx.list<WorkItem>('workItems'), intervals: await tx.list<ExecutionIntervals>('profileExecutions'), skills: await tx.list<SkillActivation>('profileSkillActivations'), resources: await tx.list<Resource>('resources') }))
+    return aggregateActivity({ ...evidence, metrics: await this.modelMetrics?.(evidence.runs.map(run => run.id)) }, query)
   }
 }

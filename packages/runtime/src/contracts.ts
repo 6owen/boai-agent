@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-24 提供官方指标投影及团队/PPT辅助模型端口，原生后端不强制实现。
  * [OUTPUT]: API 引擎可为当前会话的首轮文本生成标题。
  * [OUTPUT]: 连接轮换可向凭据提供方传入旧引用，以保留环境绑定并回收私有槽。
  * [OUTPUT]: 包绑定原生执行通过提交输入前的有效能力清单核验；普通无包员工不新增探测。
@@ -297,9 +298,13 @@ export interface AutomationDraftContext extends ModelCallObservation {
   onUsage(usage: ModelUsage): Promise<void>
 }
 export interface AgentEngine {
+  planTeam?: import('./adapters/mastra/team-planner').TeamPlanner
+  reviewPresentation?(input: import('./modules/presentations/presentation-service').PresentationModelInput): Promise<string>
+  modelMetrics?(runIds?: string[]): Promise<import('@boai/shared/domain/profile').ModelMetricCall[]>
   readonly memoryOwner?: 'mastra'
   /** Host-owned display metadata, separate from the message and Work lifecycle. */
   generateConversationTitle?(input: {
+    identity?: { runId: string; conversationId: string; agentId: string }
     connection: Connection
     apiKey: string
     modelId?: string

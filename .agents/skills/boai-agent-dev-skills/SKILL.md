@@ -3,6 +3,7 @@ name: boai-agent-dev-skills
 description: BOAI Agent 项目的开发与交付统一入口。处理 dev/build、验证、打包安装、bumpp 升版本、tag/GitHub Release、git cp/cpf、worktree 管理及相关命令解释时使用，按当前源码核对命令和执行范围。
 ---
 <!--
+[OUTPUT]: 2026-11-24原生Session审批、官方Metrics/费用估算及定向验证；业务授权与显式预算继续归宿主。
 [OUTPUT]: 2026-11-24补官方AgentController主执行改动的定向验证边界，防止重新叠加自建压缩。
 [OUTPUT]: 开发完成默认自动提 PR；用户要求看图时先给实际 PNG 的绝对路径。
 [OUTPUT]: test:changed 按 Git 变更选择本地 Vitest；开发 Agent 在 UI PR 正文指定受影响的界面状态。
@@ -104,4 +105,10 @@ main只同步已实际合并的提交。任务结束按根规约回收worktree�
 
 API聊天和任务的执行入口为`controller-session.ts`，采用官方AgentController/Session；宿主只适配身份、权限、输入/事件、用量和发布。主执行不能恢复readOnly Memory、自建分批摘要或默认输出硬限制。本机Agent仍走自己的原生循环。
 
+工具审批采用官方`requireApproval`和Session暂停/恢复，批准后仅当前工具执行期消费宿主授权；业务目录、来源与员工配置仍须检查。新增工具应声明准确的读写政策，混合工具按参数判断，不能让技能读取或只读查询进入等待批准，也不能给获批工具额外目录权限。
+
+API用量与费用展示以官方Observability/Metrics为准；旧回执仅兼容历史和既有显式预算，不能与同run的官方指标双计。新增模型入口需覆盖指标身份及结束刷盘，成本只加官方总量，缓存/推理明细不能重复相加，未知价格不能显示为零。指标库位于memoryPath旁的`.metrics.duckdb`，需保留真实数据、关闭和会话删除合同；不得为迁移再引入默认金额/请求上限。
+
 涉及此入口时按Git变更选测，并确认相关覆盖包括工具结果触发官方OM后继续、跨运行及重启历史不重复导入、取消/撤权后真实退出、图片和Trace、宿主显式预算、已完成工具不重放。使用受控本地模型与独立数据库；真实模型效果、个人窗口生效、CI和合并分别报告。仅源码或协议通过不能称已修好个人应用。实现及当前边界见[迁移记录](../../../ai-docs/implementation/2026-11-24-mastra-agent-controller.md)。
+
+审批/计量变更另核对批准/拒绝/只读/迟到批准、技能交付、跨工具步骤与OM/辅助调用计量、原生存储重启/删除以及缺价/去重。无Trace消费者时使用官方span类型过滤，只采模型指标，防止逐步骤全文观测放大耗时。UI费用行在PR正文给出个人资料的明确截图目标。
