@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 会话快照和详情的标题生成状态随首轮和后台任务关闭。
  * [OUTPUT]: 新 API 话题首轮标题异步保存并可重启读回，手动改名拦截迟到结果。
  * [OUTPUT]: 旧库管理技能夹具预先绑定模型，版本断言仅检查管理标签不改员工配置。
  * [OUTPUT]: 旧库夹具移除新版初始化标记，发送参数受IPC类型约束；核对绑定及版本保持、按轮管理文档、版本伪造/普通员工拒绝。
@@ -97,17 +98,35 @@ test('bobo 和普通 API 员工的新话题在首轮回复发布后异步命名�
     { role: 'user', content: '给新员工设计一份入职清单' },
     { role: 'assistant', content: '记下了当前偏好。' },
   ] }))
-  expect((await detail(service, core)).messages.some(message => message.senderType === 'agent' && message.status === 'completed')).toBe(true)
-  expect(rooms.find(room => room.id === core.id)?.title).toBe('给新员工设计一份入职清单')
+  const awaitingTitle = await detail(service, core)
+  expect(awaitingTitle.messages.some(message => message.senderType === 'agent' && message.status === 'completed')).toBe(true)
+  expect(awaitingTitle.conversation).toMatchObject({ title: '给新员工设计一份入职清单', titleGenerating: true })
+  expect(rooms.find(room => room.id === core.id)).toMatchObject({ title: '给新员工设计一份入职清单', titleGenerating: true })
   pending.resolve(' 新员工入职计划\n ')
   await vi.waitFor(async () => {
     const result = (await snapshot(service)).conversations
     expect(result.filter(room => room.title === '新员工入职计划').map(room => room.id).sort()).toEqual([core.id, topic.conversationId].sort())
+    expect(result.some(room => room.titleGenerating)).toBe(false)
     expect(result.find(room => room.id === main.conversationId)?.title).toBe('写作员工')
   })
   await service.close()
   const restarted = await open(root)
   expect((await snapshot(restarted.service)).conversations.find(room => room.id === core.id)?.title).toBe('新员工入职计划')
+})
+
+test.each(['首轮', '生成标题'])('%s失败后保留首句，停止标题生成状态', async failure => {
+  const { service, engine } = await setup()
+  const generate = vi.fn<NonNullable<AgentEngine['generateConversationTitle']>>().mockRejectedValue(new Error('标题请求失败'))
+  Object.assign(engine, { generateConversationTitle: generate })
+  if (failure === '首轮') vi.spyOn(engine, 'run').mockRejectedValueOnce(new Error('首轮失败'))
+  const conversation = await service.handle('startCoreConversation', { requestId: 'title-failure', content: '保留原占位文字' }) as Conversation
+  await settled(service, conversation)
+  await vi.waitFor(async () => {
+    const room = (await snapshot(service)).conversations.find(room => room.id === conversation.id)!
+    expect(room.title).toBe('保留原占位文字')
+    expect(room.titleGenerating).toBeUndefined()
+    expect(generate).toHaveBeenCalledTimes(failure === '首轮' ? 0 : 1)
+  })
 })
 
 test('手动保存当前标题会撤销正在生成的标题', async () => {
@@ -121,6 +140,7 @@ test('手动保存当前标题会撤销正在生成的标题', async () => {
     await vi.waitFor(() => expect(generate).toHaveBeenCalledTimes(1))
     await service.handle('updateConversationList', { id: conversation.id, action: 'rename', title: conversation.title })
     expect(generate.mock.calls[0][0].signal.aborted).toBe(true)
+    expect((await detail(service, conversation)).conversation.titleGenerating).toBeUndefined()
   } finally {
     pending.resolve('迟到的模型标题')
   }

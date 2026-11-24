@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 会话视图从原首轮和实际标题任务投影生成状态；失败、退出和历史残留不会持续闪烁。
  * [OUTPUT]: 新 API 话题首轮回复后异步生成产品标题，手动改名及清理可废止待生成标题。
  * [OUTPUT]: 员工清理失败逐条反馈；模型设置与生效凭据引用同事务切换，退役引用可重启清理。
  * [OUTPUT]: 2026-11-09 员工配置项目生成运行内许可；CLI仅指定cwd不产生项目授权，内部资料权限保持。
@@ -1915,14 +1916,14 @@ export class AppService {
       const runs = [...this.runs.values()].filter(run => run.conversationId === conversation.id).sort((a, b) => a.createdAt.localeCompare(b.createdAt)), turns = [...this.scheduler.turns.values()].filter(turn => turn.conversationId === conversation.id).sort((a, b) => a.createdAt.localeCompare(b.createdAt))
       const messages = isChannelConversation(conversation) ? (await this.store.conversationMessageRows({ conversationId: conversation.id, limit: 2 })).map(row => JSON.parse(row.source) as Message).sort((a, b) => a.sequence - b.sequence) : this.conversationMessages(conversation.id)
       const activity: Conversation['activity'] = runs.some(run => run.status === 'waiting_approval') ? 'waiting_approval' : runs.some(run => run.status === 'running') ? 'running' : runs.some(run => run.status === 'queued') || turns.some(turn => turn.status === 'queued') ? 'queued' : turns.at(-1)?.status === 'failed' || runs.at(-1)?.status === 'failed' ? 'failed' : 'idle'
-      return { ...conversation, ...(isChannelConversation(conversation) ? { channelUnreadCount: channelUnread.get(conversation.id) ?? 0 } : {}), activity, lastMessageAt: messages.at(-1)?.createdAt, lastMessagePreview: messages.filter(message => message.status === 'completed').at(-1)?.content.slice(0, 120) ?? '' }
+      return { ...this.withConversationTitleState(conversation), ...(isChannelConversation(conversation) ? { channelUnreadCount: channelUnread.get(conversation.id) ?? 0 } : {}), activity, lastMessageAt: messages.at(-1)?.createdAt, lastMessagePreview: messages.filter(message => message.status === 'completed').at(-1)?.content.slice(0, 120) ?? '' }
     }))).sort((a, b) => (b.lastMessageAt ?? '').localeCompare(a.lastMessageAt ?? '') || b.createdAt.localeCompare(a.createdAt))
     return clone({ userProfile: await this.userProfile.get(), agents: [...this.employees.values()], commandPermissions: await this.commandPermissions.list(), conversations, connections, resources: [...this.resources.values()], approvals: [...this.approvals.values()], dataPath: this.dataPath })
   }
   private async detail(id: string, pageMessages?: Message[]): Promise<ConversationDetail> {
     const conversation = this.getConversation(id)
     const artifacts = await this.conversationArtifacts(conversation)
-    return clone({ conversation, executionMirrors: this.conversationExecutionMirrors(conversation), materials: await this.materials.list(id), messages: pageMessages ?? this.conversationMessages(id), runs: [...this.runs.values()].filter(run => run.conversationId === id).sort((a, b) => a.createdAt.localeCompare(b.createdAt)), artifacts, ...this.scheduler.detail(id), ...await this.works.view(id) })
+    return clone({ conversation: this.withConversationTitleState(conversation), executionMirrors: this.conversationExecutionMirrors(conversation), materials: await this.materials.list(id), messages: pageMessages ?? this.conversationMessages(id), runs: [...this.runs.values()].filter(run => run.conversationId === id).sort((a, b) => a.createdAt.localeCompare(b.createdAt)), artifacts, ...this.scheduler.detail(id), ...await this.works.view(id) })
   }
   private conversationExecutionMirrors(target: Conversation): NonNullable<ConversationDetail['executionMirrors']> {
     if (target.employeeChat === 'topic' || target.channel || target.mergedInto || target.purpose && target.purpose !== 'personal') return []
@@ -2577,6 +2578,17 @@ export class AppService {
     if (updates.length) this.changed(change.id)
   }
 
+  private withConversationTitleState(conversation: Conversation): Conversation {
+    const { id, pendingTitleMessageId } = conversation
+    if (!pendingTitleMessageId || this.closing || conversation.list?.hidden || this.clearingConversations.has(id)) return conversation
+    const job = this.titleControllers.get(id)
+    if (job) return job.signal.aborted ? conversation : { ...conversation, titleGenerating: true }
+    const turnId = this.messages.get(pendingTitleMessageId)?.turnId
+    const status = turnId ? this.scheduler.turns.get(turnId)?.status : undefined
+    return status === 'queued' || status === 'evaluating' || status === 'responding' || status === 'executing'
+      ? { ...conversation, titleGenerating: true } : conversation
+  }
+
   private scheduleConversationTitle(context: EngineContext, source: Message | undefined, reply: Message) {
     const connection = context.connection, id = context.conversation.id
     if (!connection || !source || this.titleControllers.has(id)) return
@@ -2610,10 +2622,10 @@ export class AppService {
       const saved = { ...current, title: generated || current.title, pendingTitleMessageId: undefined }
       await this.store.write([record('conversations', saved)])
       this.conversations.set(id, saved)
-      if (generated) this.changed(id)
     })).catch(() => { /* A title failure leaves the initial title and the published reply intact. */ }).finally(() => {
       this.titleControllers.delete(id)
       this.adapterExits.delete(execution)
+      if (!this.closing && this.conversations.has(id)) this.changed(id)
     })
     this.adapterExits.add(execution)
   }
