@@ -1,4 +1,6 @@
 <!--
+[OUTPUT]: 开发完成默认提 PR，用户要求先看截图时先交付绝对路径并等待确认。
+[OUTPUT]: 本地按 Git 变更选测，开发 Agent 将具体 UI 状态交给 PR 双图场景。
 [OUTPUT]: 每个 UI PR 回填改动页面和全局主界面各一张截图，云端全量 Vitest 仅在 release 的 main 验证中执行。
 [OUTPUT]: 2026-11-17PR按文档/前端/完整分流，普通交付不等待CI；现行细则与耗时证据见UI_TEST_CI。
 [OUTPUT]: 2026-11-13 Test接固定三项UI行为与原件；预览完成度/source SHA/当前PR核对，部分媒体保持失败。
@@ -16,6 +18,10 @@
 **现行流程**　普通 PR 在 Linux 运行类型和 lint，文档只检查 diff。UI PR 一次构建后运行两个 Playwright-BDD 场景，将本次改动页面和全局主界面的两张 PNG 一起写回正文。合并 main 后不复跑。准备正式 release 时由 Agent 在 main 触发完整 Test，运行全量 Vitest，并保存一张全局启动截图供审阅。 [CI 说明](../../../UI_TEST_CI.md)。下文保留历史实施记录。
 
 日常使用、常见状态与配置入口见 [UI_TEST_CI.md](../../../UI_TEST_CI.md)，与开发skill和本合同同步维护。
+
+开发完成后默认提交、推送并创建 PR。用户要求先看截图时，交付实际 PNG 的绝对路径并等待确认，再创建或更新 PR。该流程使用当前改动的隔离预览，截图文件需要保留在任务 worktree 外。
+
+本地 `pnpm test:changed` 用目标分支的共同 Git 基准选测，静态依赖外的相关用例由 Agent 定向补跑。CI 从 PR 文件路径选页，资源库可自动进入已识别的分类或分类显示菜单。开发 Agent 依据完整 diff 更新 PR 正文中的 `boai-screenshot`，指定实际受影响状态，BDD 依次点击、按需悬停并确认目标进入视口后截图。显式定位优先于路径规则。普通 PR 工程检查仍按现有 Test 范围执行。
 
 2026-10-29用户明确要求 `git cpf` 作为紧急合并命令。`scripts/git-cpf.mjs`提交已暂存改动（或使用已有提交），通过分支/PR和精确head合并，不等待CI。当前clone安装local alias，main调用时生成专用远程分支；不强推、不自动暂存、不复制未提交内容。普通开发仍遵循下述Test/UI preview合同，不因CI失败自动调用此入口。
 

@@ -16,6 +16,7 @@
     "lint:typography": "node scripts/check-typography.mjs",
     "typecheck": "pnpm check:workspace && node scripts/build-design.mjs && tsc --noEmit",
     "test": "node scripts/build-design.mjs && vitest run",
+    "test:changed": "node scripts/test-changed.mjs",
     "test:collaboration": "node scripts/test-group-collaboration.mjs",
     "test:electron": "pnpm build && pnpm test:bddgen && playwright test",
     "start": "electron .",

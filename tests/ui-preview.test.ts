@@ -1,5 +1,6 @@
 /*
  * [OUTPUT]: Automatic UI detection and same-head post-merge publication keep PR screenshots available.
+ * [OUTPUT]: Changed resource library paths select a visible catalog or display menu, with explicit targets taking priority.
  * [INPUT]: Real UI detector, preview entry and Actions definitions.
  * [OUTPUT]: Actual recording exit status, partial evidence, current-head publication and video/body preservation; no GUI or model calls.
  * [POS]: Magpie preview integration regressions, no model calls.
@@ -325,9 +326,35 @@ it('opens the changed dialog before taking the single PR screenshot, with an exp
   const target = screenshotTarget(files)
   expect(target.clicks.at(-1)).toContain('menuitem')
   expect(target.visible).toBe('role=dialog >> role=textbox[name="搜索执行记录"]')
-  const custom = { clicks: ['#open'], visible: '[role=dialog]' }
+  const custom = { clicks: ['#open'], hover: '#trigger', visible: '[role=dialog]' }
   expect(screenshotTarget(files, `<!-- boai-screenshot ${JSON.stringify(custom)} -->`)).toEqual(custom)
   expect(() => screenshotTarget(files, '<!-- boai-screenshot {"clicks":[]} -->')).toThrow()
+  expect(() => screenshotTarget(files, '<!-- boai-screenshot {"clicks":[],"hover":[],"visible":"#target"} -->')).toThrow()
+})
+
+it.each([
+  ['library/prompt-detail-panel.tsx', '提示词', '提示词管理'],
+  ['library/applications-view.tsx', '应用', '应用目录'],
+  ['library/assistants-view.tsx', '助手', '助手目录'],
+  ['sources/source-editor.tsx', '数据源', '数据源管理'],
+])('opens the resource library catalog for %s', async (path, category, label) => {
+  // @ts-expect-error Plain Node detector.
+  const { screenshotTarget } = await import('../.github/ui-preview/screenshot-target.mjs')
+  const target = screenshotTarget([`apps/electron/src/renderer/pages/${path}`])
+  expect(target.clicks).toEqual([
+    'nav[aria-label="主导航"] button[aria-label="资源库"]',
+    `role=complementary[name="资源库导航"] >> role=button[name="${category}"s]`,
+  ])
+  expect(target.visible).toBe(`main[aria-label="资源库内容"] section[aria-label="${label}"]`)
+})
+
+it('opens the resource library display menu only for its own file', async () => {
+  // @ts-expect-error Plain Node detector.
+  const { screenshotTarget } = await import('../.github/ui-preview/screenshot-target.mjs')
+  const library = 'apps/electron/src/renderer/pages/library/'
+  expect(screenshotTarget([`${library}library-display-menu.tsx`]).visible).toBe('role=menuitemcheckbox[name="技能"]')
+  expect(screenshotTarget([`${library}skills-workspace.tsx`]).visible).toBe('main[aria-label="资源库内容"]')
+  expect(screenshotTarget(['apps/electron/src/renderer/styles/pages.css']).clicks).toEqual([])
 })
 
 it.each([true, false])('writes one section per screenshot and preserves partial evidence (target captured=%s)', async targetCaptured => {
