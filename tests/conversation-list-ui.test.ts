@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 聊天顶部和侧栏只让真正等待标题的首句闪烁。
  * [OUTPUT]: 列表夹具沿仅已发送消息的Props，不再向列表传入composer草稿。
  * [OUTPUT]: 员工配置与置顶共组、清理独立，导航仍沿明确员工身份。
  * [OUTPUT]: 本轮覆盖复制/员工入口、定时运行防连点、失败过程、严格私有判断及保留原预算的显式继续；实际范围以各用例为准。
@@ -16,6 +17,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import type { Conversation, DigitalAgent, Snapshot } from '../packages/shared/src/domain'
 import { ConversationList } from '../apps/electron/src/renderer/pages/conversations/-components/conversation-list'
+import { ConversationHeader } from '../apps/electron/src/renderer/pages/conversations/-components/conversation-header'
 import { showErrorToast } from '../apps/electron/src/renderer/components/common/error-feedback'
 
 vi.mock('../apps/electron/src/renderer/components/common/error-feedback', () => ({ ErrorToast: () => null, showErrorToast: vi.fn() }))
@@ -39,6 +41,22 @@ const button = (label: string) => [...document.querySelectorAll<HTMLButtonElemen
 const openMenu = () => act(async () => host.querySelector('.conversation-core-section-row')!.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 20, clientY: 20 })))
 const choose = (label: string) => act(async () => menuItem(label).click())
 const confirm = (label: string) => act(async () => button(label).click())
+
+it('uses shimmer on the title placeholder in both surfaces and removes it on the next title', async () => {
+  const draft = room('topic', { employeeChat: 'topic', title: '你知道今天星期几吗？', titleGenerating: true })
+  const display = (conversation: Conversation) => act(async () => root.render([
+    h(ConversationList, { ...props, key: 'list', snapshot: { ...props.snapshot, conversations: [conversation] } }),
+    h(ConversationHeader, { key: 'header', conversation, members: [coreAgent], resources: [], busy: false,
+      onDetails: vi.fn(), onConfigureAgent: vi.fn(), onEditTitle: vi.fn(), onClear: async () => {} }),
+  ]))
+  await display(draft)
+  expect(host.querySelector('h2.chat-title.shimmer')?.textContent).toBe(draft.title)
+  expect(host.querySelector('.conversation-core-title .shimmer')?.textContent).toBe(draft.title)
+  await display({ ...draft, title: '查询今天是星期几', titleGenerating: undefined })
+  expect(host.querySelectorAll('.shimmer')).toHaveLength(0)
+  expect(host.querySelector('.chat-title')?.textContent).toBe('查询今天是星期几')
+  expect(host.querySelector('.conversation-core-title .truncate')?.textContent).toBe('查询今天是星期几')
+})
 
 it('opens the selected employee configuration from its conversation context menu', async () => {
   const employee = { ...coreAgent, id: 'weekly-employee', name: '周报统计', systemRole: undefined }

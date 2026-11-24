@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 首句占位标题在生成期间复用 shadcn shimmer。
  * [OUTPUT]: 2026-11-09任务移入标题DropdownMenu，沿原关闭动画完成后导航，不再显示独立任务按钮。
  * [OUTPUT]: 2026-11-06 标题菜单拆分会话文件/知识资料，移除执行过程菜单项。
  * [OUTPUT]: 数字员工主聊天标题右侧任务按钮打开员工任务面板，与聊天并列。
@@ -22,6 +23,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { cn } from 'cn'
 import type { Conversation, DigitalAgent, Resource } from '@boai/shared/domain'
 import { isChannelConversation } from '@boai/shared/domain/conversation-list'
 import { isCoreConversation } from '@boai/shared/domain/core-agent'
@@ -45,9 +47,9 @@ interface Props {
   headerActions?: ReactNode
 }
 
-export function ConversationHeaderLayout({ title, description, children }: { title: string; description?: string; children?: ReactNode }) {
+export function ConversationHeaderLayout({ title, titleGenerating, description, children }: { title: string; titleGenerating?: boolean; description?: string; children?: ReactNode }) {
   return <header className="chat-header">
-    <div className="chat-header-main"><div className="chat-heading"><h2 className="chat-title">{title}</h2>{description && <span className="field-hint">{description}</span>}</div></div>
+    <div className="chat-header-main"><div className="chat-heading"><h2 className={cn('chat-title', titleGenerating && 'w-fit shimmer')} aria-busy={titleGenerating || undefined}>{title}</h2>{description && <span className="field-hint">{description}</span>}</div></div>
     <div className="chat-header-actions">{children}</div>
   </header>
 }
@@ -70,7 +72,7 @@ export function ConversationHeader({ conversation, members, resources, busy, onD
   }
   const title = isCoreConversation(conversation) && conversation.employeeChat === 'main' ? members[0]?.name ?? conversation.title : conversation.title
   return <>
-    <ConversationHeaderLayout title={title}>
+    <ConversationHeaderLayout title={title} titleGenerating={conversation.titleGenerating}>
         {headerActions}
         {(conversation.kind === 'group' || channel) && <>
           <div className="chat-members" aria-label={channel ? '接入员工' : '群聊成员'}>
