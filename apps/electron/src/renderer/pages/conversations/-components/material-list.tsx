@@ -1,5 +1,6 @@
 /*
  * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
+ * [OUTPUT]: 已发送附件列表的外边距由消息布局控制。
  * [OUTPUT]: Composer 文件卡与图片缩略图共用高度与圆角，整卡预览，底栏显示文件名，悬停或键盘聚焦时显示右上角移除按钮。
  * [INPUT]: 草稿条目、已发送附件回执、页面活跃状态及宿主预览/移除/重试回调。
  * [OUTPUT]: 附件随当前聊天消息发送；未发送附件的真实导入状态、显性失败/未知回执核对与局部忙碌锁定；草稿与已发送文件按格式显示 Devicon 标识，已发送文件只显示名称、格式和大小，整卡打开右侧预览。
@@ -73,7 +74,7 @@ export function SentMaterialList({ api, pageActive = true, materials, onPreview 
   const [image, setImage] = useState<ConversationMaterial>()
   const selectedImage = materials.find(material => material.id === image?.id)
   if (!materials.length) return null
-  return <section className="sent-materials mt-2 flex min-w-0 flex-wrap items-start gap-3" aria-label="消息材料">
+  return <section className="sent-materials flex min-w-0 flex-wrap items-start gap-3" aria-label="消息材料">
     {materials.map(material => {
       const name = materialDisplayName(material.name), ready = material.status === 'ready'
       const failed = ['failed', 'unavailable', 'removed'].includes(material.status)

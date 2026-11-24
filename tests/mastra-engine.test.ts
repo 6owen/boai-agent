@@ -1,7 +1,7 @@
 /*
  * [OUTPUT]: 真实 SDK 审批等待/拒绝/取消/只读、官方用量持久化/清理与辅助调用验证。
  * [OUTPUT]: 2026-11-24 按官方Controller/Session历史与自动OM验证，保留业务权限、来源、取消、真实工具和用量断言。
- * [OUTPUT]: 真实 Mastra 标题 API 使用选定模型和首轮文字，无工具且仅一次请求。
+ * [OUTPUT]: 真实 Mastra 标题 API 使用选定模型和首条用户消息，无工具且仅一次请求。
  * [OUTPUT]: 实际SDK顺序群发言即使宿主提供管理能力也不广告或调用工具。
  * [OUTPUT]: 真实SDK及native工具桥先发现/读取插件技能源，再调用桌面工具。
  * [OUTPUT]: 新增Agent Desktop可选贡献及API/native共享工具真实SDK验证。
@@ -162,7 +162,7 @@ function redirectDeepSeekTo(url: string) {
 }
 
 describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => {
-  it('generates a conversation title with the selected model and first exchange in one tool-free request', async () => {
+  it('generates a conversation title with the selected model and first user message in one tool-free request', async () => {
     const model = await endpoint((_body, response) => {
       response.writeHead(200, { 'Content-Type': 'application/json' })
       response.end(JSON.stringify({
@@ -174,7 +174,7 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     const title = await new MastraEngine().generateConversationTitle({
       connection: connection(model.url), apiKey: 'fixture-secret', modelId: 'employee-model',
       signal: new AbortController().signal,
-      messages: [{ role: 'user', content: '帮我准备入职资料' }, { role: 'assistant', content: '整理三个入职事项' }],
+      messages: [{ role: 'user', content: '帮我准备入职资料' }],
     })
     expect(title).toBe('员工入职清单')
     expect(model.requests).toHaveLength(1)
@@ -182,7 +182,6 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     expect(model.requests[0].max_tokens ?? model.requests[0].max_completion_tokens).toBe(256)
     expect(model.requests[0].tools ?? []).toEqual([])
     expect(allMessageText(model.requests[0])).toContain('帮我准备入职资料')
-    expect(allMessageText(model.requests[0])).toContain('整理三个入职事项')
   })
 
   it('projects host-authorized bobo history into the actual Mastra request and prunes stale sources', async () => {
