@@ -4,7 +4,7 @@ export default {
   content: ['./src/renderer/**/*.{html,ts,tsx}'],
   plugins: [
     iconsPlugin({
-      collections: getIconCollections(['carbon', 'solar']),
+      collections: getIconCollections(['carbon', 'solar', 'devicon']),
     })
   ],
 }

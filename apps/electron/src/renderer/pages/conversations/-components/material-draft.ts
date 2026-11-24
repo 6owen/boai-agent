@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 宿主材料回执与当前会话中的未发送材料状态。
- * [OUTPUT]: 草稿条目、仅供准备期占位的图片提示、未知准备回执/局部忙碌合同和文本/图片/文件格式、名称、错误的安全展示；去除Electron错误包装以和持久材料错误去重，原原因及路径脱敏保持；只接受宿主核对的静态图片data URI，不保存文件路径或固定员工名单。
+ * [OUTPUT]: 草稿条目、仅供准备期占位的图片提示、未知准备回执/局部忙碌合同和文件类型图标、文本/图片/文件格式、名称、错误的安全展示；去除Electron错误包装以和持久材料错误去重，原原因及路径脱敏保持；只接受宿主核对的静态图片data URI，不保存文件路径或固定员工名单。
  * [POS]: 会话材料列表与可信原文预览共用的无副作用展示辅助。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -25,6 +25,24 @@ export const materialStatusLabels: Record<ConversationMaterial['status'], string
 
 export function materialDisplayName(name: string): string {
   return name.split(/[\\/]/).at(-1)?.replace(/\0/g, '').trim() || '未命名材料'
+}
+
+const markdownIcon = 'i-devicon-markdown dark:invert'
+const fileIcons: Record<string, string> = {
+  md: markdownIcon, markdown: markdownIcon, mdown: markdownIcon, mkd: markdownIcon,
+  js: 'i-devicon-javascript', mjs: 'i-devicon-javascript', cjs: 'i-devicon-javascript',
+  ts: 'i-devicon-typescript', mts: 'i-devicon-typescript', cts: 'i-devicon-typescript',
+  jsx: 'i-devicon-react', tsx: 'i-devicon-react', vue: 'i-devicon-vuejs',
+  html: 'i-devicon-html5', htm: 'i-devicon-html5', css: 'i-devicon-css3',
+  json: 'i-devicon-json', jsonc: 'i-devicon-json', yaml: 'i-devicon-yaml', yml: 'i-devicon-yaml',
+  py: 'i-devicon-python', go: 'i-devicon-go', rs: 'i-devicon-rust dark:invert',
+  java: 'i-devicon-java', sh: 'i-devicon-bash', bash: 'i-devicon-bash',
+}
+
+export function materialFileIcon(name: string, format?: ConversationMaterial['format']) {
+  if (format === 'markdown') return markdownIcon
+  const extension = /\.([^.]+)$/.exec(name)?.[1]?.toLowerCase()
+  return extension && Object.hasOwn(fileIcons, extension) ? fileIcons[extension] : undefined
 }
 
 export function materialFormatLabel(format?: ConversationMaterial['format']): string {
