@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 主窗通知收件箱及私有 Agent 更新进度。
  * [OUTPUT]: localSkillCli 定义主窗专用的本机技能检查、单项/全局更新及停止检查，回传可更新技能与实时终端进度。
  * [OUTPUT]: 员工明确新话题的首发沿消息请求与原受理回执。
  * [OUTPUT]: 增加主窗专用技能安装终端合同，不接受任意shell命令。
@@ -135,6 +136,8 @@ export type AppEvent =
   | ({ type: 'local-skill-cli:progress'; requestId: string } & LocalSkillCliProgress)
   | { type: 'canvas:flush'; id: string; scope?: import('@boai/canvas-plugin/protocol').CanvasScope; boardId?: string; hold?: boolean }
   | { type: 'canvas:resume'; id: string }
+  | { type: 'notifications:changed'; state: import('./notifications').NotificationSnapshot }
+  | { type: 'agent-update:verifying'; profileId: string }
   | { type: 'app:update'; state: import('./app-updates').AppUpdateState }
   | { type: 'desktop:lifecycle'; state: import('./desktop').DesktopLifecycle }
   | { type: 'workspace:show'; employeeId: string; conversationId: string; view: 'terminal' | 'preview' }
@@ -467,6 +470,7 @@ export interface Methods extends EmployeeTaskMethods, MessageQueueMethods, Conte
 export type Method = keyof Methods
 export interface DesktopApi {
   updates?: import('./app-updates').AppUpdatesApi
+  notifications?: import('./notifications').NotificationsApi
   /** Trusted main-window-only voice bridge; absent from employee and external RPC. */
   voice?: import('../plugins/voice-input').VoiceApi
   getDesktopLifecycle?(): Promise<import('./desktop').DesktopLifecycle>

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 共享通知中心图标。
  * [OUTPUT]: 设置语义图标：调色盘、键盘、电源、显示器、插件，继续使用离线Carbon与统一尺寸。
  * [OUTPUT]: 2026-10-27 语音录入/还原所需本地图标，沿原主题和公共图标入口。
  * [OUTPUT]: 增加本地 Carbon 数据库图标供数据源入口共用。
@@ -26,6 +27,7 @@ const classes = {
   ArrowRight: 'i-carbon-arrow-right',
   ArrowUp: 'i-carbon-arrow-up',
   AtSign: 'i-carbon-at',
+  Bell: 'i-carbon-notification',
   BookOpen: 'i-carbon-book',
   CalendarClock: 'i-carbon-calendar',
   Clock: 'i-carbon-time',
@@ -103,6 +105,7 @@ export const ArrowLeft = component('ArrowLeft')
 export const ArrowRight = component('ArrowRight')
 export const ArrowUp = component('ArrowUp')
 export const AtSign = component('AtSign')
+export const Bell = component('Bell')
 export const BookOpen = component('BookOpen')
 export const CalendarClock = component('CalendarClock')
 export const Clock = component('Clock')

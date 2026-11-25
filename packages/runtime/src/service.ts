@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 可信桌面检查第三方 Agent 版本，隔离安装并在连接核验和退出检查后切换原配置。
  * [OUTPUT]: 2026-11-24 第三阶段：API 执行补充交给 Session.steer；Trace 从官方存储查询，兼容既有业务历史。
  * [OUTPUT]: 2026-11-24 接入官方用量投影和辅助模型入口；消费精确工具批准，目录、撤权和原生审批保持。
  * [OUTPUT]: 会话视图仅在实际标题任务进行时闪烁；超时、退出和历史残留不会持续闪烁。
@@ -332,6 +333,9 @@ import { aggregateAutomation, belongsToOccurrence } from './modules/automations/
 import type { AutomationInput, AutomationDefinition, AutomationOrigin, AutomationOccurrence, AutomationBudgetRenewalInput } from '@boai/shared/domain/automations'
 import { resolveClaudeRuntime, resolveCodexRuntime, resolveEmployeeRuntime } from './modules/backends/runtime-config'
 import { LaunchProfiles, profileSchema } from './modules/backends/profiles'
+import { agentUpdateProvider, installedAgentVersion, isNewerAgentVersion, latestAgentVersion, stageAgentUpdate, supportsAgentInstallation, type AgentUpdateProvider } from './modules/backends/agent-updates'
+import type { LaunchProfile } from '@boai/shared/domain/backends'
+import type { AgentUpdate, AgentUpdateRequest } from '@boai/shared/ipc/notifications'
 import { runAcp } from './adapters/acp/client'
 import { summarizeMedia } from './modules/browser/media'
 import { nativeActivity } from './adapters/native-events'
@@ -1035,6 +1039,106 @@ export class AppService {
       this.options.emit({ type: 'gateway-imports:changed' }); return draft
     })
   }
+  private agentUpdateEmployees(profileId: string) {
+    return [...this.employees.values()].filter(employee => employee.executionBackend && 'profileId' in employee.executionBackend && employee.executionBackend.profileId === profileId)
+  }
+
+  private assertAgentUpdateIdle(profileId: string) {
+    const employeeIds = new Set(this.agentUpdateEmployees(profileId).map(employee => employee.id))
+    const active = this.activeRunIds()
+    if ([...this.runs.values()].some(run => (employeeIds.has(run.agentId) || run.backend?.profileId === profileId) && (!terminal.has(run.status) || active.has(run.id)))) fail('员工仍在使用此 Agent，请等任务结束后重试')
+  }
+
+  private agentUpdateBlock(profileId: string, provider: AgentUpdateProvider) {
+    if (!supportsAgentInstallation()) return '当前平台请通过原安装渠道更新'
+    if ((provider === 'pi' || provider === 'opencode') && this.agentUpdateEmployees(profileId).some(employee => employee.connectionId)) return '此连接使用网关兼容版本'
+    return undefined
+  }
+
+  async checkAgentUpdates() {
+    const requests = new Map<AgentUpdateProvider, Promise<string | undefined>>()
+    const entries = await Promise.all(this.profiles.list().map(async (profile): Promise<AgentUpdate | undefined> => {
+      const provider = agentUpdateProvider(profile)
+      if (!provider) return
+      const currentVersion = installedAgentVersion(profile)
+      if (!currentVersion) return
+      let request = requests.get(provider)
+      if (!request) {
+        request = latestAgentVersion(provider).catch(() => undefined)
+        requests.set(provider, request)
+      }
+      const latest = await request
+      const latestVersion = latest && isNewerAgentVersion(latest, currentVersion) ? latest : undefined
+      return { profileId: profile.id, profileRevision: profile.revision, name: profile.name, currentVersion,
+        latestVersion, blocked: latestVersion ? this.agentUpdateBlock(profile.id, provider) : undefined }
+    }))
+    const unavailable = new Set<AgentUpdateProvider>()
+    for (const [provider, request] of requests) if (!(await request)) unavailable.add(provider)
+    const updates = entries.filter(value => value !== undefined)
+    const providers = new Map(this.profiles.list().map(profile => [profile.id, agentUpdateProvider(profile)] as const))
+    return { updates, unavailableProfileIds: updates.filter(update => unavailable.has(providers.get(update.profileId)!)).map(update => update.profileId) }
+  }
+
+  async installAgentUpdate(input: AgentUpdateRequest) {
+    const controller = new AbortController()
+    const profile = await this.serialize(async () => {
+      if (this.closing || this.backingUp) fail('服务正在退出或备份')
+      const value = this.profiles.get(input.profileId)
+      const provider = agentUpdateProvider(value) ?? fail('此 Agent 暂无内置更新渠道')
+      const current = installedAgentVersion(value)
+      if (value.revision !== input.profileRevision || !current || !isNewerAgentVersion(input.version, current)) fail('Agent 版本或连接已变化，请重新检查')
+      const blocked = this.agentUpdateBlock(value.id, provider)
+      if (blocked) fail(blocked)
+      this.assertAgentUpdateIdle(value.id)
+      if ([...this.externalProfileTests.values()].includes(value.id)) fail('此 Agent 正在核对或更新，请稍后重试')
+      this.externalTests.add(controller)
+      this.externalProfileTests.set(controller, value.id)
+      return { value, provider }
+    })
+    let stage: Awaited<ReturnType<typeof stageAgentUpdate>> | undefined
+    const probe = join(this.dataPath, 'external-probes', `update-${randomUUID()}`)
+    try {
+      stage = await stageAgentUpdate(join(this.dataPath, 'agent-programs'), profile.provider, input.version, controller.signal)
+      this.emit({ type: 'agent-update:verifying', profileId: input.profileId })
+      const { value } = profile
+      const next: LaunchProfile = { ...value, executable: stage.file.path, executableHash: stage.file.hash,
+        runtime: stage.file.runtime, observedProgram: undefined, revision: value.revision + 1 }
+      await mkdir(probe, { recursive: true, mode: 0o700 })
+      const context = { profile: next, cwd: probe, privateHome: join(probe, 'home'), signal: controller.signal }
+      // Probe with a temporary home so the candidate does not use the real login or model.
+      next.verified = profile.provider === 'codex'
+        ? await testCodexConnection({ ...context, profile: { ...next, useExistingLogin: false, codexHome: undefined } })
+        : profile.provider === 'claude' ? await testClaudeProgram(context)
+        : (await runPlugin(this.runtimePlugins, { ...next, useExistingLogin: false }, context, controller.signal)).verified
+      if (next.verified.version.replace(/^v/, '') !== input.version) fail('新程序返回的版本与目标不一致')
+      const verified = await this.serialize(async () => {
+        controller.signal.throwIfAborted()
+        if (this.closing || this.backingUp) fail('服务正在退出或备份')
+        this.assertAgentUpdateIdle(value.id)
+        if ([...this.externalProfileTests].some(([other, id]) => other !== controller && id === value.id)) fail('此 Agent 正在核对，请稍后重试')
+        const blocked = this.agentUpdateBlock(value.id, profile.provider)
+        if (blocked) fail(blocked)
+        for (const employee of this.agentUpdateEmployees(value.id)) {
+          const connection = this.connections.get(employee.connectionId)
+          if (profile.provider === 'codex') await resolveCodexRuntime(employee, next, connection)
+          else if (profile.provider === 'claude') resolveClaudeRuntime(employee, next, connection)
+          else resolvePluginRuntime(employee, next, connection)
+        }
+        const installed = installedAgentVersion(this.profiles.get(value.id))
+        if (!installed || !isNewerAgentVersion(input.version, installed)) fail('原 Agent 程序或版本已变化，请重新检查')
+        await this.profiles.activateAgentUpdate(value, next)
+        stage = undefined
+        this.changed()
+        return { profileId: next.id, profileRevision: next.revision, name: next.name, currentVersion: input.version }
+      })
+      return verified satisfies AgentUpdate
+    } finally {
+      try {
+        await Promise.allSettled([rm(probe, { recursive: true, force: true }), stage && rm(stage.directory, { recursive: true, force: true })])
+      } finally { this.externalTests.delete(controller); this.externalProfileTests.delete(controller) }
+    }
+  }
+
   takeAutomationNotice() { return this.notifications.take() }
   async settleAutomationNotice(input: AutomationNoticeReceipt) {
     const value = z.object({ id: z.string().min(1).max(500), attemptId: z.string().uuid(), status: z.enum(['submitted', 'failed', 'unknown']), error: z.string().max(2000).optional() }).strict().parse(input)
