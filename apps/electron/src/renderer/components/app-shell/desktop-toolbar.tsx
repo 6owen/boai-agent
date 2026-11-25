@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 通知铃固定在全局标题栏右侧。
+ * [OUTPUT]: 浏览器、检索和通知共用详情标签前的标题栏操作区。
  * [OUTPUT]: 右侧面板开关使用500ms延迟Tooltip，按显隐状态提示展开/收起；原点击和无障碍状态保持。
  * [OUTPUT]: 详情标签区域常驻并随面板共用宽度过渡；开关按钮独立固定在右侧，跨页显隐不经过零宽裁切。
  * [INPUT]: 页面标题、导航历史、分栏显示状态、独立浏览器入口、详情标签及统一 UI 基础组件。
@@ -17,7 +17,6 @@ interface Props {
   canBack: boolean; canForward: boolean; detailDisabled: boolean
   detailHeader?: ReactNode
   browserAction?: ReactNode
-  notificationAction?: ReactNode
   onBack(): void; onForward(): void; onToggleList(): void; onToggleDetails(): void
 }
 export function DesktopToolbar(props: Props) {
@@ -32,7 +31,6 @@ export function DesktopToolbar(props: Props) {
     <div className="toolbar-right toolbar-detail" data-open={props.detailOpen} data-disabled={props.detailDisabled} style={props.browserAction ? { marginLeft: 0 } : undefined}>
       <div className="toolbar-detail-tabs t-resize">{props.detailHeader}</div>
       {!props.detailDisabled && <Tooltip><TooltipTrigger delay={500} render={<Button className="toolbar-detail-toggle" variant="ghost" size="icon-sm" aria-label="显示或隐藏详情" aria-pressed={props.detailOpen} onClick={props.onToggleDetails} />}>{props.detailOpen ? <PanelLeft /> : <PanelRight />}</TooltipTrigger><TooltipContent side="bottom">{props.detailOpen ? '收起面板' : '展开面板'}</TooltipContent></Tooltip>}
-      {props.notificationAction}
     </div>
   </header>
 }
