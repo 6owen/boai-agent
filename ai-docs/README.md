@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-11-25新增OpenBot服务商源码与BOAI设置设计索引，详情归第19组21。
 [OUTPUT]: code-review/docs/README.md 收录 2026-11-20 项目模块审查与验证。
 [OUTPUT]: 2026-11-07九目标按四worktree规划：配置/诊断、能力/资源库及普通Skill、交接/项目目录、独立画板；公共文件唯一负责人归30组README第6节，用户授权本批文档git cpf。
 [OUTPUT]: 2026-11-07新增第9目标资源库应用与助手，位于提示词后，沿数据源连接与员工模板创建；08含Openbot固定源码及许可边界，共8项产品和1项Skill，仅计划。
@@ -215,6 +216,8 @@ Todos文档目录对照见[第13组09](./spec/13.本机Agent员工运行时/09-T
 BoAI Agent 是 Electron + React + Mastra 的本地数字员工应用。当前代码版本 v0.2.2；源码、现有数据行为与后续计划分开记录。启动说明见 [项目 README](../README.md)。
 
 ## 现在读什么
+
+- [OpenBot 服务商源码与 BOAI 设置设计](./spec/19.应用插件架构/21-OpenBot服务商源码与BOAI设置设计.md)从源码追踪多 Agent 接入和 Claude 详情，把列表、默认绑定、运行时版本及账号映射到 BOAI。
 
 - [Bobo 会话历史检索插件](./Bobo会话历史检索插件/README.md)：05为统一检索配置、时间窗口、按需/预检/关闭及Skill；04为Bobo内置原文工具、FTS5及短中文匹配、真实调用/SQL/模型延迟；01–03保留原提案、诊断和官方recall指引改进。
 
