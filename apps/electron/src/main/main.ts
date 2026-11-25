@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 主窗聚合任务、应用和 Agent 更新；Agent 版本只在应用启动时自动检查一次，之后由用户手动检查及安装。
+ * [OUTPUT]: 主窗聚合任务、应用和 Agent 更新；Agent 版本只在应用启动时检查一次，安装由用户确认。
  * [OUTPUT]: 为本地技能检查和更新提供开发版及安装版可读的 CLI 归档。
  * [OUTPUT]: 本机技能页的检查、指定技能更新与明确全局更新由可信主窗交给 npx skills，更新前重核目录身份，命令进度只发回原窗口页面。
  * [OUTPUT]: 语音文字整理按运行时连接读取已提交的凭据版本。
@@ -590,7 +590,6 @@ function registerIpc() {
     if (method === 'snapshot') { z.undefined().parse(input); return notifications.snapshot() }
     if (quitting) throw new Error('应用正在退出')
     if (method === 'read') return notifications.read(z.array(z.string().min(1).max(500)).max(200).parse(input))
-    if (method === 'check') { z.undefined().parse(input); return notifications.check(true) }
     if (method === 'install') return notifications.install(z.object({
       profileId: z.string().min(1).max(200), profileRevision: z.number().int().positive(), version: z.string().max(29),
     }).strict().parse(input))

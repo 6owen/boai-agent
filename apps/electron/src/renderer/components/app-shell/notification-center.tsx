@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Typed desktop inbox, live Agent updates and shell navigation callbacks.
- * [OUTPUT]: Fixed-height toolbar inbox with a compact header, scroll fade, read actions and the shared upgrade flow.
+ * [OUTPUT]: Spaced bell, unread-only mark-all action, scroll fade and the shared upgrade flow.
  * [POS]: Application-wide notification and Agent update controls.
  * [PROTOCOL]: Update Header and .folder.md when changed.
  */
@@ -9,14 +9,14 @@ import { toast } from 'sonner'
 import type { DesktopApi } from '@boai/shared/ipc'
 import type { AgentUpdate, NotificationSnapshot, NotificationTarget } from '@boai/shared/ipc/notifications'
 import { errorText, showErrorToast } from '@/components/common'
-import { Bell, ChevronRight, Download, LoaderCircle, RefreshCw } from '@/components/icons'
+import { Bell, ChevronRight, Download, LoaderCircle } from '@/components/icons'
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
 import { ScrollFade } from '@/components/ui/scroll-fade'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
-type Inbox = { state?: NotificationSnapshot; check(): void; update(item: AgentUpdate): void; read(ids: string[]): void }
+type Inbox = { state?: NotificationSnapshot; update(item: AgentUpdate): void; read(ids: string[]): void }
 const InboxContext = createContext<Inbox | null>(null)
 export const useDesktopNotifications = () => useContext(InboxContext)
 
@@ -36,7 +36,6 @@ export function DesktopNotificationProvider({ api, children }: { api: DesktopApi
   const actions = api.notifications
   if (!actions) return children
   const report = (error: unknown) => showErrorToast(errorText(error))
-  const check = () => { void actions.checkAgentUpdates().catch(report) }
   const read = (ids: string[]) => { void actions.read(ids).catch(report) }
   const confirm = () => {
     if (!target?.latestVersion) return
@@ -47,7 +46,7 @@ export function DesktopNotificationProvider({ api, children }: { api: DesktopApi
       error => { toast.dismiss(progress); report(error) },
     )
   }
-  return <InboxContext.Provider value={{ state, check, update: setTarget, read }}>
+  return <InboxContext.Provider value={{ state, update: setTarget, read }}>
     {children}
     <AlertDialog open={!!target} onOpenChange={open => { if (!open) setTarget(undefined) }}>
       <AlertDialogContent>
@@ -70,14 +69,6 @@ const updating = (item?: AgentUpdate) => item?.phase === 'installing' || item?.p
 const isBusy = (state?: NotificationSnapshot) => !!(state?.checking || state?.agentUpdates.some(updating))
 const time = new Intl.DateTimeFormat('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 
-export function AgentUpdateCheckButton() {
-  const inbox = useDesktopNotifications()
-  if (!inbox) return null
-  return <Button variant="secondary" size="sm" disabled={isBusy(inbox.state)} onClick={inbox.check}>
-    {inbox.state?.checking ? <LoaderCircle className="spinner" /> : <RefreshCw />}检查 Agent 更新
-  </Button>
-}
-
 export function AgentUpdateButton({ item, showProgress = false }: { item: AgentUpdate; showProgress?: boolean }) {
   const inbox = useDesktopNotifications()
   if (!inbox || !item.latestVersion || item.blocked) return null
@@ -98,7 +89,7 @@ export function NotificationCenter({ onOpen }: { onOpen(target: NotificationTarg
   const unread = items.filter(item => !item.read).map(item => item.id)
   return <Popover open={open} onOpenChange={setOpen}>
     <Tooltip>
-      <TooltipTrigger delay={500} render={<PopoverTrigger render={<Button variant="ghost" size="icon-sm" className="titlebar-no-drag relative shrink-0" aria-label="通知中心" aria-description={unread.length ? `${unread.length} 条未读` : undefined} />} />}>
+      <TooltipTrigger delay={500} render={<PopoverTrigger render={<Button variant="ghost" size="icon-sm" className="titlebar-no-drag relative ml-[6px] shrink-0" aria-label="通知中心" aria-description={unread.length ? `${unread.length} 条未读` : undefined} />} />}>
         <Bell />{unread.length > 0 && <i aria-hidden="true" className="absolute top-1 right-1 size-2 rounded-full bg-primary ring-2 ring-background" />}
       </TooltipTrigger>
       <TooltipContent side="bottom">通知中心</TooltipContent>
@@ -106,7 +97,7 @@ export function NotificationCenter({ onOpen }: { onOpen(target: NotificationTarg
     <PopoverContent align="end" sideOffset={9} className="h-[360px] max-h-(--available-height) w-[min(23rem,calc(100vw-1.5rem))] gap-0 overflow-hidden p-0">
       <div className="flex h-[32px] shrink-0 items-center justify-between gap-2 px-3">
         <PopoverTitle>通知中心</PopoverTitle>
-        <Button variant="ghost" size="xs" disabled={!unread.length} onClick={() => inbox.read(unread)}>全部已读</Button>
+        {unread.length > 0 && <Button variant="ghost" size="xs" onClick={() => inbox.read(unread)}>全部已读</Button>}
       </div>
       <ScrollFade className="flex-1 overscroll-contain" aria-label="通知列表">
         {items.length ? <ul className="soft-divide-y m-0 p-0">
