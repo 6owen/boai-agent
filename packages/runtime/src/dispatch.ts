@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 仅可信桌面内部检查和安装 Agent 更新。
  * [OUTPUT]: 独立AgentBrowser/BrowserViewer插件接入；上游工具、启停与运行回收保持独立。
  * [OUTPUT]: Private workspace-root and lightweight scope queries reach original validation without exposing them to renderers.
  * [OUTPUT]: Private run-credential bridge preserves structured errors and is never a public owner/run method.
@@ -10,6 +11,7 @@
 import { z } from 'zod'
 import { isPublicMethod } from '@boai/shared/ipc/public-methods'
 import type { AppService } from './service'
+import { stableAgentVersion } from './modules/backends/agent-updates'
 import type { AutomationNoticeReceipt } from '@boai/shared/domain/automations'
 import { CliError } from '@boai/shared/cli/protocol'
 import type { RunCliAccessRequest } from '@boai/shared/cli/run-access'
@@ -24,6 +26,8 @@ export async function dispatchRuntime(service: AppService, method: string, input
     case '__receiveGatewayImport': return service.receiveGatewayImport(input)
     case '__installRuntimePlugin': { const value = z.object({ directory: z.string().min(1), expectedRevision: z.number().int().nonnegative() }).strict().parse(input); return service.installRuntimePlugin(value.directory, value.expectedRevision) }
     case '__startBrowserAction': return service.startBrowserAction(z.object({ actionId: z.string().min(1), generation: z.string().min(1), runId: z.string().min(1), workId: z.string().min(1).optional() }).strict().parse(input))
+    case '__checkAgentUpdates': z.undefined().parse(input); return service.checkAgentUpdates()
+    case '__installAgentUpdate': return service.installAgentUpdate(z.object({ profileId: z.string().min(1).max(200), profileRevision: z.number().int().positive(), version: z.string().regex(stableAgentVersion) }).strict().parse(input))
     case '__takeAutomationNotice': return service.takeAutomationNotice()
     case '__settleAutomationNotice': return service.settleAutomationNotice(input as AutomationNoticeReceipt)
     case '__backup': return service.backup(z.object({ destination: z.string().min(1) }).strict().parse(input).destination)

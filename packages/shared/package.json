@@ -462,6 +462,7 @@
       "development": "./src/domain/schedule-list.ts",
       "default": "./src/domain/schedule-list.ts"
     },
+    "./ipc/notifications": "./src/ipc/notifications.ts",
     "./ipc/app-updates": {
       "types": "./src/ipc/app-updates.ts",
       "development": "./src/ipc/app-updates.ts",
