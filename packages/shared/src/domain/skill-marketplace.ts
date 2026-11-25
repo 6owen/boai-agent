@@ -16,6 +16,15 @@ export type SkillMarketplaceSort =
   | 'hot'
   | 'updated'
 
+export function skillMarketplacePage(provider: SkillMarketplaceProvider, id: string): string {
+  const parts = id.split('/').map(encodeURIComponent)
+  const slug = parts.at(-1)!
+  if (provider === 'skills-sh') return `https://skills.sh/${parts.join('/')}`
+  if (provider === 'skillhub') return `https://skillhub.cn/skills/${slug}`
+  const owner = parts.slice(0, -1).join('%2F')
+  return owner ? `https://clawhub.ai/${owner}/skills/${slug}` : `https://clawhub.ai/skills/${slug}`
+}
+
 export interface SkillMarketplaceListRequest {
   provider: SkillMarketplaceProvider
   query?: string

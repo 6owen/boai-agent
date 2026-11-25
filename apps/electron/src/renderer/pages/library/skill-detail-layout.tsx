@@ -19,12 +19,15 @@ export function SkillDetailPanel({ name, actions, children, className = '', labe
   </section>
 }
 
-export function SkillDetailBody({ name, description, metadata, metadataActions, content, contentActions, children, notice, icon, emptyContent = '提供方未提供正文，安装前需要检查实际技能包。' }: { name: string; description?: string; metadata: { label: string; value: ReactNode }[]; metadataActions?: ReactNode; content?: string; contentActions?: ReactNode; notice?: ReactNode; children?: ReactNode; icon?: ReactNode; emptyContent?: string }) {
+export function SkillDetailBody({ name, description, metadata, metadataActions, sourceUrl, content, contentActions, children, notice, icon, emptyContent = '提供方未提供正文，安装前需要检查实际技能包。' }: { name: string; description?: string; metadata: { label: string; value: ReactNode }[]; metadataActions?: ReactNode; sourceUrl?: string; content?: string; contentActions?: ReactNode; notice?: ReactNode; children?: ReactNode; icon?: ReactNode; emptyContent?: string }) {
   return <article className="skill-info-page">
     {notice}
     <div className="skill-info-heading"><span className="skill-info-icon">{icon ?? <Zap size={30} />}</span><div><h2>{name}</h2><p title={description}>{description}</p></div></div>
     <div className="skill-info-section-heading"><h3>元数据</h3>{metadataActions}</div>
-    <Card className="gap-0 p-0"><CardContent className="p-0"><dl className="skill-metadata soft-divide-y">{metadata.map(row => <div key={row.label}><dt>{row.label}</dt><dd>{row.value}</dd></div>)}</dl></CardContent></Card>
+    <Card className="gap-0 p-0"><CardContent className="p-0"><dl className="skill-metadata soft-divide-y">
+      {metadata.map(row => <div key={row.label}><dt>{row.label}</dt><dd>{row.value}</dd></div>)}
+      {sourceUrl && <div><dt>线上地址</dt><dd><a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{sourceUrl}</a></dd></div>}
+    </dl></CardContent></Card>
     <div className="skill-info-section-heading"><h3>说明</h3>{contentActions}</div>
     <Card className="skill-document-card gap-0 p-4"><CardContent className="p-0">{content ? <SkillMarkdown content={content} /> : <p className="field-hint">{emptyContent}</p>}</CardContent></Card>
     {children}

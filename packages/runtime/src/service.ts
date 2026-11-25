@@ -392,9 +392,10 @@ import { assertSearchSelection, searchSelection, selectWebSearchSchema, validate
 import { sourceCallSchema, type SourceSummary } from '@boai/shared/domain/sources'
 import { importLocalResource, isWithin, listArtifacts } from './modules/resources/local-resources'
 import { LocalSkillUpdateTargets } from './modules/resources/local-skill-updates'
+import type { SkillInstallation } from '@boai/shared/domain/skills'
 import { LocalSkillCatalogService, type SkillDiscoveryOptions } from './modules/resources/local-skill-catalog'
 import { SkillMarketplace, marketplaceProviderSchema } from './modules/resources/skill-marketplace'
-import { SkillSources } from './adapters/skills/source'
+import { installedSkillWebUrl, SkillSources } from './adapters/skills/source'
 import type { DownloadTransport } from './adapters/skills/download'
 import { SkillManagement, scanSkillSchema, installSkillsSchema, prepareLocalSkillBindingSchema, bindLocalSkillSchema } from './modules/resources/skill-management'
 import type { BindingFiles } from './modules/resources/skill-binding-files'
@@ -1210,7 +1211,7 @@ export class AppService {
       updates.push(record('artifacts', artifact))
     }
     // All imported assets are managed copies, so a backup can move to a new data directory.
-    const skillInstallations = await this.store.load<import('@boai/shared/domain/skills').SkillInstallation & { bindingCopy?: BindingFiles }>('skillInstallations')
+    const skillInstallations = await this.store.load<SkillInstallation & { bindingCopy?: BindingFiles }>('skillInstallations')
     for (const resource of this.resources.values()) {
       const binding = skillInstallations.find(value => value.resourceId === resource.id)?.bindingCopy
       if (binding && (binding.resourceId !== resource.id || binding.name !== resource.name)) fail('技能绑定副本身份不一致，请核对数据')
@@ -1494,7 +1495,13 @@ export class AppService {
     if (method === 'listLocalSkills') { const value = z.object({ refresh: z.boolean().optional() }).strict().optional().parse(input); return this.localSkills.list(value?.refresh) }
     if (method === 'saveLocalSkill') return this.serialize(() => this.localSkillEditing.save(input))
     if (method === 'removeLocalSkill') return this.serialize(() => this.localSkillEditing.remove(input))
-    if (method === 'getLocalSkillDetail') { const value = lookupSchema.parse(input); this.skillUpdates.assertAvailable(value.id); return this.localSkills.detail(value.id) }
+    if (method === 'getLocalSkillDetail') {
+      const { id } = lookupSchema.parse(input)
+      this.skillUpdates.assertAvailable(id)
+      const detail = await this.localSkills.detail(id)
+      const installed = await this.store.get<SkillInstallation>('skillInstallations', id)
+      return installed ? { ...detail, sourceUrl: installedSkillWebUrl(installed.source) } : detail
+    }
     if (method === 'scanLocalSkill') {
       const value = z.object({ id, ownerAgentId: id.optional(), requestId: id.optional() }).strict().parse(input)
       return this.skills.scan({ source: await this.localSkills.source(value.id), kind: 'folder', ownerAgentId: value.ownerAgentId, requestId: value.requestId })

@@ -133,10 +133,10 @@ function LocalSkillInfo({ api, skill, favorite, collection, busy, assign, active
   useEffect(() => { if (!active) return; const refresh = () => setRevision(value => value + 1); window.addEventListener('focus', refresh); return () => window.removeEventListener('focus', refresh) }, [active])
   const open = (action: 'edit' | 'reveal') => { void mutation.run(() => api.request('openLocalSkill', { id: skill.id, action })) }
   if (error) return <div className="skill-info-page"><Banner>{error}</Banner><Button variant="secondary" onClick={() => setRevision(value => value + 1)}>重试</Button></div>
-  if (!detail) return <Loading>正在读取技能…</Loading>
+  if (!detail || detail.skill.id !== skill.id) return <Loading>正在读取技能…</Loading>
   const current = detail.skill
   const edit = current.source !== 'plugin' && current.source !== 'builtin' && <Button variant="secondary" size="sm" disabled={mutation.busy} onClick={() => open('edit')}>编辑</Button>
-  return <SkillDetailBody name={current.name} description={current.description} content={detail.content} metadataActions={edit} contentActions={edit} notice={mutation.error && <Banner>{mutation.error}</Banner>} metadata={[
+  return <SkillDetailBody sourceUrl={detail.sourceUrl} name={current.name} description={current.description} content={detail.content} metadataActions={edit} contentActions={edit} notice={mutation.error && <Banner>{mutation.error}</Banner>} metadata={[
     { label: '标识符', value: current.slug }, { label: '名称', value: current.name }, { label: '描述', value: current.description || '未填写' }, { label: '数据源', value: current.sourceLabel },
     { label: '位置', value: <Button variant="ghost" size="content" className="skill-path-link" onClick={() => open('reveal')}>{current.path}</Button> },
   ]}>

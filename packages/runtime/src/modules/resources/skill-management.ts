@@ -12,7 +12,7 @@ import { isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { z } from 'zod'
 import type { DigitalAgent, Resource } from '@boai/shared/domain'
 import type { BindLocalSkillInput, InstallSkillsInput, LocalSkill, PrepareLocalSkillBindingInput, SkillBindingPlan, SkillBindingReceipt, SkillCandidate, SkillDetail, SkillFileContent, SkillInstallation, SkillOperation, SkillScan, ScanSkillSourceInput, SkillSource } from '@boai/shared/domain/skills'
-import { SkillSources, type PreparedSkillSource } from '../../adapters/skills/source'
+import { installedSkillWebUrl, SkillSources, type PreparedSkillSource } from '../../adapters/skills/source'
 import { prepareSkillLibrary } from '../../adapters/skills/library-format'
 export { scanSkillSchema } from '../../adapters/skills/source'
 import type { ProductStore, RecordTransaction } from '../../adapters/storage/product-store'
@@ -119,7 +119,7 @@ export class SkillManagement {
     const installed = (await this.store.load<SkillInstallation & { bindingCopy?: BindingFiles }>('skillInstallations')).find(value => value.resourceId === resourceId)
     const installation = installed ? (({ bindingCopy: _, ...value }) => value)(installed) : undefined
     this.resource(resourceId)
-    return { resource, installation, content, contentHash: tree.hash, files: tree.files, warnings: metadata.warnings }
+    return { resource, installation, sourceUrl: installation && installedSkillWebUrl(installation.source), content, contentHash: tree.hash, files: tree.files, warnings: metadata.warnings }
   }
   async readFile(resourceId: string, name: string): Promise<SkillFileContent> {
     const resource = this.resource(resourceId)

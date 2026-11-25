@@ -13,6 +13,7 @@ import type {
   SkillMarketplaceSort,
 } from '@boai/shared/domain/skill-marketplace'
 
+import { skillMarketplacePage } from '@boai/shared/domain/skill-marketplace'
 import { fetchJson, fetchResponse } from './marketplace-http'
 
 const DEFAULT_LIMIT = 30
@@ -75,7 +76,7 @@ function mapSkillsShItem(skill: SkillsShRawSkill): SkillMarketplaceItem | null {
     name: (skill.name || slug).trim(),
     owner,
     source,
-    homepage: skill.url || `https://skills.sh/${id}`,
+    homepage: skill.url || skillMarketplacePage('skills-sh', id),
     repository: skill.installUrl || `https://github.com/${source}`,
     installs: numberValue(skill.installs),
     verified: skill.isOfficial,
@@ -155,12 +156,6 @@ interface ClawHubSearchSkill {
   official?: boolean
 }
 
-function clawHubHomepage(owner: string | undefined, slug: string): string {
-  return owner
-    ? `https://clawhub.ai/${encodeURIComponent(owner)}/skills/${encodeURIComponent(slug)}`
-    : `https://clawhub.ai/skills/${encodeURIComponent(slug)}`
-}
-
 function mapClawHubListItem(skill: ClawHubListSkill): SkillMarketplaceItem | null {
   const slug = skill.slug?.trim() ?? ''
   if (!slug) return null
@@ -172,7 +167,7 @@ function mapClawHubListItem(skill: ClawHubListSkill): SkillMarketplaceItem | nul
     slug,
     name: skill.displayName?.trim() || slug,
     description: skill.summary || skill.description,
-    homepage: clawHubHomepage(skill.ownerHandle, slug),
+    homepage: skillMarketplacePage('clawhub', skill.ownerHandle ? `${skill.ownerHandle}/${slug}` : slug),
     iconUrl: skill.icon || undefined,
     version: skill.latestVersion?.version,
     installs: numberValue(skill.stats?.installs),
@@ -195,7 +190,7 @@ function mapClawHubSearchItem(result: ClawHubSearchSkill): SkillMarketplaceItem 
     owner,
     source: owner,
     description: result.summary || native?.summary || native?.description,
-    homepage: clawHubHomepage(owner, slug),
+    homepage: skillMarketplacePage('clawhub', `${owner}/${slug}`),
     iconUrl: result.icon || result.owner?.image || result.native?.owner?.image || undefined,
     installs: numberValue(native?.stats?.installs),
     downloads: numberValue(result.downloads) ?? numberValue(native?.stats?.downloads),
@@ -287,7 +282,7 @@ function mapSkillHubItem(skill: SkillHubListSkill): SkillMarketplaceItem | null 
     owner,
     source: skill.source,
     description: skill.description_zh || skill.summary || skill.description,
-    homepage: skill.homepage || `https://skillhub.cn/skills/${encodeURIComponent(slug)}`,
+    homepage: skill.homepage || skillMarketplacePage('skillhub', slug),
     iconUrl: skill.iconUrl || skill.icon_url || undefined,
     version: skill.version,
     installs: numberValue(skill.installs),
