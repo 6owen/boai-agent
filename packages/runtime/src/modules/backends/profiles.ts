@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 受管 Agent 更新按原配置、程序身份和验证结果整体切换。
  * [OUTPUT]: Codex实际版本观察独立保存并核对配置revision/程序身份，不覆盖人工验证；失败验证清除观察。
  * [OUTPUT]: 受信运行时包登记/内容hash/CAS/租约、通用连接验证与配置指纹。
  * [OUTPUT]: 插件连接固定包hash与严格配置，测试/保存沿原草稿身份核对。
@@ -48,6 +49,13 @@ export class LaunchProfiles {
  forgetDraftVerification(profile:LaunchProfile){this.draftVerifications.delete(this.draftKey(profile))}
  async save(input:LaunchProfileInput){const prepared=await this.prepare(input),key=this.draftKey(prepared),verified=this.draftVerifications.get(key);const p:LaunchProfile={...prepared,id:prepared.id||randomUUID(),...(verified?{verified}: {})};await this.persist(p);this.draftVerifications.delete(key);return structuredClone(p)}
  async verified(id:string,revision:number,verified:LaunchProfile['verified']){const p=this.get(id);if(p.revision!==revision)throw new Error('测试期间启动项已更新，请重新测试');p.verified=verified;await this.persist(p);return p}
+ async activateAgentUpdate(expected: LaunchProfile, next: LaunchProfile) {
+  const current = this.get(expected.id)
+  if (current.revision !== expected.revision || current.executable !== expected.executable || current.executableHash !== expected.executableHash || current.verified?.checkedAt !== expected.verified?.checkedAt) throw new Error('Agent 连接已变化，请重新检查更新')
+  const file = inspectProgram(next.executable, next.protocol === 'claude-cli' ? CLAUDE_PROGRAM_LIMIT : undefined)
+  if (file.path !== next.executable || file.hash !== next.executableHash) throw new Error('新版本程序已变化，请重试')
+  await this.persist(next)
+ }
  async observedProgram(expected: LaunchProfile, verified: NonNullable<LaunchProfile['observedProgram']>) {
   const current = this.get(expected.id)
   if (current.protocol !== 'codex-app-server' || !current.verified || current.revision !== expected.revision || current.executable !== expected.executable || current.executableHash !== expected.executableHash) throw new Error('原生握手期间连接配置已变化')

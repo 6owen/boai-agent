@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 本机 Agent 同行显示当前和可用版本，检查和更新复用全局通知状态。
  * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [OUTPUT]: 逐项测试进度/成功/失败复用连接标题同行反馈；菜单支持删除本机配置并刷新列表和员工能力，保留外部程序与登录文件。
  * [OUTPUT]: 消费Shell核对的具体本机配置导航，复用原编辑向导；失效绑定显示原列表，隐藏停止读取并关闭弹窗，迟到读取不更新界面。
@@ -19,11 +20,14 @@ import { Card } from '@/components/ui/card'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { LocalConnections } from './local-connections'
 import { AgentBrandIcon } from './local-agent-visuals'
+import { AgentUpdateButton, AgentUpdateCheckButton, useDesktopNotifications } from '@/components/app-shell/notification-center'
+import { SettingsHelp } from './settings-layout'
 
 export interface LocalAgentTarget { profileId: string; requestId: string; profiles: LaunchProfile[] }
 type ProfileFeedback = { status: 'testing' | 'success' | 'error'; message: string }
 
 export function LocalAgents({ api, refresh, active, target }: { api: DesktopApi; refresh: () => Promise<void>; active: boolean; target?: LocalAgentTarget }) {
+  const inbox = useDesktopNotifications()
   const [profiles, setProfiles] = useState<LaunchProfile[]>([])
   const [editing, setEditing] = useState<LaunchProfile | 'scan' | null>(null)
   const [notice, setNotice] = useState('')
@@ -32,6 +36,13 @@ export function LocalAgents({ api, refresh, active, target }: { api: DesktopApi;
   const [loading, setLoading] = useState(false)
   const openedTarget = useRef<string | undefined>(undefined)
   const trigger = useRef<HTMLButtonElement>(null)
+  const profileChanged = profiles.some(profile => inbox?.state?.agentUpdates.some(item => item.profileId === profile.id && item.profileRevision > profile.revision))
+  useEffect(() => {
+    if (!active || !profileChanged) return
+    let current = true
+    void api.request('listLaunchProfiles', undefined).then(items => { if (current) setProfiles(items) }, error => { if (current) setError(errorText(error)) })
+    return () => { current = false }
+  }, [api, active, profileChanged, setError])
   const reload = async () => setProfiles(await api.request('listLaunchProfiles', undefined))
   const testProfile = (profile: LaunchProfile) => void run(async () => {
     setNotice('')
@@ -60,12 +71,13 @@ export function LocalAgents({ api, refresh, active, target }: { api: DesktopApi;
     return () => { current = false }
   }, [api, active, target, setError])
   return <section aria-label="本机 Agent" className="connection-agent-settings">
-    <div className="connection-section-heading"><h3 className="settings-section-title">本机 Agent</h3><Button ref={trigger} variant="secondary" aria-label="扫描本机 Agent" disabled={busy || loading} onClick={() => setEditing('scan')}><Search />扫描</Button></div>
+    <div className="connection-section-heading"><h3 className="settings-section-title">本机 Agent</h3><div className="flex items-center gap-2"><AgentUpdateCheckButton /><Button ref={trigger} variant="secondary" aria-label="扫描本机 Agent" disabled={busy || loading} onClick={() => setEditing('scan')}><Search />扫描</Button></div></div>
     {error && <Banner>{error}</Banner>}
     {notice && <p className="connection-feedback" role="status">{notice}</p>}
     <Card className="connection-rows soft-divide-y gap-0 p-0">
       {profiles.length ? profiles.map(profile => {
         const result = feedback[profile.id]
+        const update = inbox?.state?.agentUpdates.find(item => item.profileId === profile.id && item.profileRevision >= profile.revision)
         return <div className="connection-row" key={profile.id}>
         <AgentBrandIcon name={`${profile.name} ${profile.verified?.name ?? ''}`} executable={profile.executable} />
         <div className="connection-row-body">
@@ -73,10 +85,13 @@ export function LocalAgents({ api, refresh, active, target }: { api: DesktopApi;
             <strong title={profile.name}>{profile.name}</strong><span className="connection-state" data-ready={!!profile.verified}>{profile.verified ? profile.protocol === 'claude-cli' ? '程序已核对' : '已验证' : '尚未测试'}</span>
             {result?.status === 'error' ? <ErrorToast>{result.message}</ErrorToast> : result && <p className="connection-feedback connection-inline-feedback" title={result.message} data-status={result.status} role="status">{result.status === 'testing' ? <LoaderCircle className="spinner" size={13} /> : result.status === 'success' ? <Check size={13} /> : null}<span>{result.message}</span></p>}
           </div>
-          {profile.verified && <p className="connection-row-description">{profile.verified.name} {profile.verified.version}</p>}
+          {profile.verified && <p className="connection-row-description">{profile.verified.name} {update ? `v${update.currentVersion}` : profile.verified.version}
+            {update?.latestVersion && <> <span aria-label="可用版本">→ v{update.latestVersion}</span>{update.blocked && <SettingsHelp label="更新说明">{update.blocked}</SettingsHelp>}</>}
+          </p>}
           <p className="connection-endpoint" title={profile.executable}>{profile.executable}</p>
           {profile.codexHome && <p className="connection-endpoint" title={profile.codexHome}>登录目录：{profile.codexHome}</p>}
         </div>
+        {update && <AgentUpdateButton item={update} />}
         <DropdownMenu>
           <DropdownMenuTrigger render={<Button variant="ghost" size="icon" disabled={busy || loading} aria-label={`管理 ${profile.name}`} />}><MoreHorizontal /></DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-52 whitespace-nowrap"><DropdownMenuGroup>

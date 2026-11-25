@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 主窗通知收件箱聚合任务、应用和 Agent 更新；仅显式操作启动受管安装。
  * [OUTPUT]: 为本地技能检查和更新提供开发版及安装版可读的 CLI 归档。
  * [OUTPUT]: 本机技能页的检查、指定技能更新与明确全局更新由可信主窗交给 npx skills，更新前重核目录身份，命令进度只发回原窗口页面。
  * [OUTPUT]: 语音文字整理按运行时连接读取已提交的凭据版本。
@@ -139,6 +140,8 @@ import { AttachedRuntime, findAttachedRuntime, waitForAttachedRuntime } from './
 import { DesktopDiagnostics, diagnosticError, diagnosticRequest, writeDiagnosticsReport } from './diagnostics'
 import { DesktopLifecycleMonitor } from './desktop-lifecycle'
 import { AppUpdates } from './app-updates'
+import { DesktopNotifications } from './notifications'
+import type { AgentUpdate, AgentUpdateRequest } from '@boai/shared/ipc/notifications'
 import { setBrowserDiagnostic } from './browser/logger'
 
 declare const __BOAI_APPLICATION_BUILD__: { version: string; inputHash: string }
@@ -153,6 +156,10 @@ const dataPath = join(legacyDataPath, 'v2')
 const compiledApplication = typeof __BOAI_APPLICATION_BUILD__ === 'undefined' ? null : __BOAI_APPLICATION_BUILD__
 const diagnostics = new DesktopDiagnostics(join(legacyDataPath, 'diagnostics'), compiledApplication ? { ...compiledApplication, source: 'compiled-inputs' } : { version: null, inputHash: null, source: 'unknown' })
 const appUpdates = new AppUpdates(app.getVersion(), state => sendEvent({ type: 'app:update', state }), message => diagnostics.record('app-update-error', diagnosticError(new Error(message))))
+const notifications = new DesktopNotifications(join(legacyDataPath, 'notifications.json'), {
+  check: () => requestRuntime('__checkAgentUpdates') as Promise<{ updates: AgentUpdate[]; unavailableProfileIds: string[] }>,
+  install: (input: AgentUpdateRequest) => requestRuntime('__installAgentUpdate', input, true) as Promise<AgentUpdate>,
+}, state => sendEvent({ type: 'notifications:changed', state }), error => diagnostics.record('notifications-error', diagnosticError(error)))
 async function startAppUpdates() {
   if (!app.isPackaged || process.platform !== 'darwin') return
   try {
@@ -344,7 +351,9 @@ const browsers = new BrowserService({
 
 function sendEvent(event: unknown) {
   if (event && typeof event === 'object' && 'type' in event && event.type === 'runtime-error') diagnostics.record('runtime-error', diagnosticError('error' in event ? event.error : undefined))
+  if (event && typeof event === 'object' && 'type' in event) notifications.observe(event as AppEvent)
   if (window && !window.isDestroyed()) window.webContents.send('boai:event', event)
+  if (event && typeof event === 'object' && 'type' in event && (event.type === 'notifications:changed' || event.type === 'agent-update:verifying')) return
   cli?.publish(event as AppEvent)
 }
 
@@ -353,6 +362,8 @@ const automationNotifications = new AutomationNotificationConsumer({
   settle: async receipt => { if (quitting || !runtime) throw new Error('运行服务已退出，通知提交状态未知'); await requestRuntime('__settleAutomationNotice', receipt) },
   error: error => sendEvent({ type: 'runtime-error', error: `通知回执保存失败：${String(error)}` }),
   submit: (record, failed) => {
+    void notifications.record({ id: `automation:${record.id}`, title: record.kind === 'attention' ? '定时任务需要处理' : '定时任务已有结果',
+      target: { kind: 'automation', occurrenceId: record.occurrenceId } }).catch(() => {})
     if (!Notification.isSupported()) throw new Error('此设备不支持系统通知，结果仍保存在应用内')
     const notice = new Notification({ title: 'BoAI 定时任务', body: record.kind === 'attention' ? '本次运行需要处理，点击查看记录。' : '本次运行已有结果，点击查看记录。' })
     notice.on('failed', (_event, error) => failed(error))
@@ -573,6 +584,17 @@ function registerIpc() {
     if (method === 'check') { z.undefined().parse(input); return appUpdates.check() }
     if (method === 'install') { const version = z.string().min(1).max(80).parse(input); return appUpdates.requestInstall(version, () => app.quit()) }
     throw new Error('未知更新操作')
+  })
+  ipcMain.handle('boai:notifications', (event, method: unknown, input: unknown) => {
+    requireMainFrame(event)
+    if (method === 'snapshot') { z.undefined().parse(input); return notifications.snapshot() }
+    if (quitting) throw new Error('应用正在退出')
+    if (method === 'read') return notifications.read(z.array(z.string().min(1).max(500)).max(200).parse(input))
+    if (method === 'check') { z.undefined().parse(input); return notifications.check(true) }
+    if (method === 'install') return notifications.install(z.object({
+      profileId: z.string().min(1).max(200), profileRevision: z.number().int().positive(), version: z.string().max(29),
+    }).strict().parse(input))
+    throw new Error('未知通知操作')
   })
   ipcMain.handle('boai:desktop-lifecycle', event => { requireMainFrame(event); return desktopLifecycle.snapshot() })
   ipcMain.handle('boai:export-diagnostics', async event => {
@@ -839,6 +861,11 @@ function registerIpc() {
       } catch(error){await rm(destination,{recursive:true,force:true});throw error}
       return destination
     }
+    if (method === 'saveLaunchProfile' || method === 'deleteLaunchProfile' || method === 'testLaunchProfile') {
+      const result = await requestRuntime(method, input)
+      void notifications.profilesChanged(() => !quitting)
+      return result
+    }
     return requestRuntime(method, input)
   })
 }
@@ -1020,6 +1047,7 @@ else {
     if (voicePlugin) await voice.init()
     await appearance.init()
     await desktopSettings.init()
+    await notifications.init(app.getVersion())
     installMenu()
     await shortcutSettings.init()
     nativeTheme.themeSource=appearance.snapshot().preferences.mode
@@ -1038,6 +1066,8 @@ else {
       if (runtime instanceof AttachedRuntime) appUpdates.disable('命令行服务正在独立运行。退出该服务并重新打开应用后恢复更新。')
       else return startAppUpdates()
     })
+    void cliStarting.then(() => { if (runtime && !quitting) return notifications.check(false) })
+    setInterval(() => { if (runtime && !quitting) void notifications.check(false) }, 6 * 60 * 60_000).unref()
     app.on('activate', () => { void showMainWindow() })
   }).catch((error) => { diagnostics.record('app-start-failed', diagnosticError(error)); dialog.showErrorBox('BoAI Agent 启动失败', error.message); app.quit() })
   app.on('window-all-closed', () => { if (process.platform !== 'darwin' && !background.shouldHide()) app.quit() })
@@ -1057,7 +1087,7 @@ else {
     // A timeout may terminate the worker, but never counts as Chromium action exit.
     const cliExit = (cliStarting ?? Promise.resolve()).then(async () => { await cli?.close(); cli = undefined })
     const userTerminalExit = Promise.all([userTerminals.close(), skillInstallationTerminal.close()])
-    void Promise.all([runtimeExit, cliExit, iconExit, userTerminalExit, localSkillCli.close(), canvas.close(), voice.close(), browsers.shutdown(), materialSources.close(), fileOpening.close(), desktopSettings.flush(), shortcutSettings.flush(), pluginSettings.flush(), cliInstaller.flush()]).then(async () => {
+    void Promise.all([runtimeExit, cliExit, iconExit, userTerminalExit, localSkillCli.close(), canvas.close(), voice.close(), runtimeExit.then(() => notifications.flush()), browsers.shutdown(), materialSources.close(), fileOpening.close(), desktopSettings.flush(), shortcutSettings.flush(), pluginSettings.flush(), cliInstaller.flush()]).then(async () => {
       diagnostics.record('app-quit'); desktopLifecycle.stop(); background.destroy(); quitApproved = true
       if (appUpdates.finishQuit()) {
         // Native installation must terminate this process; a stalled handoff is a failure.

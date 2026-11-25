@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 通知收件箱持久化失败类别。
  * [INPUT]: Fixed host lifecycle categories and an already-authorized task identity.
  * [OUTPUT]: Bounded, payload-free desktop diagnosis snapshots with immutable provenance and explicit coverage.
  * [POS]: Private host diagnosis and direct owner summary contract; no runtime startup or log-file access.
@@ -7,7 +8,7 @@
 import { z } from 'zod'
 
 const identifier = z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,199}$/)
-export const desktopDiagnosticEvents = ['app-update-error', 'app-update-native', 'app-start', 'app-start-failed', 'app-quit', 'app-quit-failed', 'runtime-start', 'runtime-ready', 'runtime-exit', 'runtime-start-failed', 'runtime-error', 'request-failed', 'request-timeout', 'renderer-gone', 'renderer-unresponsive', 'child-gone', 'suspend', 'resume', 'lock-screen', 'unlock-screen', 'browser-warning', 'browser-error', 'uncaught-exception', 'unhandled-rejection', 'voice-usage'] as const
+export const desktopDiagnosticEvents = ['notifications-error', 'app-update-error', 'app-update-native', 'app-start', 'app-start-failed', 'app-quit', 'app-quit-failed', 'runtime-start', 'runtime-ready', 'runtime-exit', 'runtime-start-failed', 'runtime-error', 'request-failed', 'request-timeout', 'renderer-gone', 'renderer-unresponsive', 'child-gone', 'suspend', 'resume', 'lock-screen', 'unlock-screen', 'browser-warning', 'browser-error', 'uncaught-exception', 'unhandled-rejection', 'voice-usage'] as const
 export const desktopApplicationSchema = z.discriminatedUnion('source', [
   z.object({ version: z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9.+_-]{0,99}$/), inputHash: z.string().regex(/^[a-f0-9]{64}$/), source: z.literal('compiled-inputs') }).strict(),
   z.object({ version: z.null(), inputHash: z.null(), source: z.literal('unknown') }).strict(),
