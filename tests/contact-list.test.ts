@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 删除员工同时清理其定时话题，保留其他员工群历史。
  * [OUTPUT]: 自动化等待按现行无默认期限/调用上限核对，员工删除后原预算计数与触发身份保持。
  * [INPUT]: 真实 AppService/SQLite 与隔离通讯录数据。
  * [OUTPUT]: 标签提交仅通知通讯录且员工删除仍使关联页面失效，版本冲突不广播；旧分类无损转多标签、原子批量标签/选中员工删除、统一排序和核心/未知身份整批拒绝；标签错误文案及未分类/无标签保留名；员工删除清空全部单聊/记忆/专属文件且保留其他群历史；关联员工新任务聊天/群计划暂停；保留群中的自动化等待随员工删除终结并保留原预算/触发身份；群目录链接失败可修复重试且外部文件保留；空群/明确群解散持久删除；完整多标签成员删除及过期版本拒绝；核心身份和运行/取消待退出保护；标签排序/归属/搜索顺序及重启隔离验证。
@@ -300,7 +301,7 @@ test('deleting an employee erases hidden and automatic direct chats, owned memor
   const plan = await api('saveAutomation', { name: '自动任务私聊', prompt: '留下应删除的自动任务历史', conversationPolicy: 'new-conversation', employeeIds: ['researcher'], frequency: 'daily', time: '09:00', weekday: 1, timezone: 'Asia/Singapore', enabled: false, notify: false })
   const occurrence = await api('runAutomation', { id: plan.id, requestId: 'automatic-history' })
   await until(async () => (await api('listAutomations', undefined)).occurrences.find(item => item.id === occurrence.id)?.status === 'completed')
-  expect((await api('getConversation', { id: occurrence.conversationId })).conversation).toMatchObject({ kind: 'direct', purpose: 'automation', agentIds: ['researcher'] })
+  expect((await api('getConversation', { id: occurrence.conversationId })).conversation).toMatchObject({ kind: 'direct', purpose: 'personal', employeeChat: 'topic', agentIds: ['researcher'] })
   for (const query of [
     { agentId: 'researcher', scope: 'profile' as const },
     { agentId: 'researcher', scope: 'conversation' as const, conversationId: direct.id },

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-25 隐藏员工详情的旧任务入口；定时任务配置保持。
  * [OUTPUT]: 工作区的默认项目字段对API/native员工均可编辑，目录授权仍仅API处理。
  * [OUTPUT]: 员工弹窗的自动化分类显示为定时任务，原分类标识及导航保持。
  * [OUTPUT]: 高级设置侧栏隐藏任务/执行详情；记忆页保留挂载避免切回重建，记忆保存期间沿弹窗忙时锁。
@@ -28,7 +29,7 @@
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
-import { EmployeeTasksNavigation } from '@/components/detail-panel/employee-tasks-panel'
+import { EmployeeTasksNavigation, EMPLOYEE_TASK_BOARD_ENABLED } from '@/components/detail-panel/employee-tasks-panel'
 import { OwnerAutomations } from '@/pages/schedules/owner-automations'
 import { MemoryPane } from './memory-pane'
 import { EmployeeExecutionPane } from './execution-pane'
@@ -105,7 +106,7 @@ export function EmployeeDetail({ api, agent, snapshot, conversationId, configura
   ]
   const menu = <TabsList aria-label="员工详情分类" className={sidebar ? 'employee-menu w-full gap-1 p-0' : undefined}>
     {categories.map(item => <TabsTrigger key={item.value} value={item.value} aria-disabled={personalityBusy} aria-label={item.label} className={sidebar ? 'group-data-vertical/tabs:h-[32px] text-[length:var(--text-ui-secondary)] aria-disabled:opacity-100' : 'aria-disabled:opacity-100'}>{sidebar && <item.icon size={14} />}<span className={sidebar ? 'employee-menu-label' : undefined}>{item.label}</span></TabsTrigger>)}
-    {!advancedSettings && <Button variant="ghost" size="sm" disabled={personalityBusy} onClick={() => guard.navigate(() => openTasks(agent.id))}>任务</Button>}
+    {EMPLOYEE_TASK_BOARD_ENABLED && !advancedSettings && <Button variant="ghost" size="sm" disabled={personalityBusy} onClick={() => guard.navigate(() => openTasks(agent.id))}>任务</Button>}
   </TabsList>
   const identity = <div ref={setIdentityTarget} className="employee-identity" />
   const panels = <>

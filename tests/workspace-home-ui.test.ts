@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /*
  * [INPUT]: 工具开始页、真实共享控件与受控桌面回执。
- * [OUTPUT]: 四项入口使用当前员工；群聊明确选择，浏览器去重/失败恢复，隐藏或成员移除不接受迟到终端导航。
+ * [OUTPUT]: 隐藏旧看板入口，其余工具使用当前员工；群聊明确选择，浏览器去重/失败恢复，隐藏或成员移除不接受迟到终端导航。
  * [POS]: 工作区工具入口组件回归，不创建真实终端或浏览器窗口。
  * [PROTOCOL]: 一旦本文件变化，必须同步Header与tests/.folder.md。
  */
@@ -42,30 +42,30 @@ function setup(group = false, respond?: (method: string, input: Record<string, u
   return { props, request }
 }
 
-it('opens tasks and knowledge for the chat employee without creating terminals or browser windows on mount', async () => {
+it('hides the task board and opens knowledge for the chat employee without creating terminals or browser windows on mount', async () => {
   const { props, request } = setup()
   await render(props)
-  expect([...host.querySelectorAll('.workspace-home-actions button')].map(item => item.textContent)).toEqual(['任务', '终端', '知识资料', '浏览器'])
+  expect([...host.querySelectorAll('.workspace-home-actions button')].map(item => item.textContent)).toEqual(['终端', '知识资料', '浏览器'])
   expect(request.mock.calls).toEqual([['workspaceTerminal', { action: 'list', scope: { employeeId: 'a', conversationId: 'room' } }]])
-  await act(async () => { button('任务').click(); button('知识资料').click() })
-  expect(props.onTasks.mock.calls).toEqual([['a']])
+  await act(async () => { button('知识资料').click() })
+  expect(props.onTasks).not.toHaveBeenCalled()
   expect(props.onKnowledge.mock.calls).toEqual([['a']])
   expect(props.onTerminal).not.toHaveBeenCalled()
   expect(request).toHaveBeenCalledTimes(1)
 })
 
-it('requires a group employee for employee tools, then routes both entries to the explicitly selected member', async () => {
+it('requires a group employee for employee tools, then routes knowledge to the explicitly selected member', async () => {
   const { props, request } = setup(true)
   await render(props)
-  for (const label of ['任务', '终端', '知识资料']) expect(button(label).disabled).toBe(true)
+  for (const label of ['终端', '知识资料']) expect(button(label).disabled).toBe(true)
   expect(button('浏览器').disabled).toBe(false)
   expect(request).not.toHaveBeenCalled()
   await act(async () => host.querySelector<HTMLButtonElement>('[role=combobox]')!.click())
   const option = [...document.querySelectorAll<HTMLElement>('[role=option]')].find(item => item.textContent === '员工乙')!
   expect(option).toBeDefined()
   await act(async () => { option.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); option.click() })
-  await act(async () => { button('任务').click(); button('知识资料').click() })
-  expect(props.onTasks.mock.calls).toEqual([['b']])
+  await act(async () => { button('知识资料').click() })
+  expect(props.onTasks).not.toHaveBeenCalled()
   expect(props.onKnowledge.mock.calls).toEqual([['b']])
   expect(request.mock.calls).toEqual([['workspaceTerminal', { action: 'list', scope: { employeeId: 'b', conversationId: 'room' } }]])
 })

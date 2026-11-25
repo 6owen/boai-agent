@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-25 员工话题只接收原会话消息，并保证员工列表入口可见；不投影到主聊天或看板。
  * [OUTPUT]: 渠道接收首次建立员工主聊天时冻结默认项目选择；已有主聊天保持原选择或旧记录缺省。
  * [OUTPUT]: 旧独立会话被同一员工任务继续使用时，按每条消息的真实occurrence投影，避免归到首轮执行。
  * [OUTPUT]: 人工委派要求/回复只在任务会话接收，不回灌主聊天；原定时投递及清空屏障保持。
@@ -44,11 +45,11 @@ export async function receiveConversationMessages(tx: RecordTransaction, changes
     if (!source || source.mergedInto || await tx.get('conversationCleanup', source.id)) continue
     // Updates, including stream deltas/reactions/recovery, are not a new receipt.
     if (inserted) await show(source, message)
-    if (source.channel || source.channelDiscussion) {
-      if (inserted) for (const agentId of source.agentIds) {
+    if (source.channel || source.channelDiscussion || source.employeeChat === 'topic') {
+      if (inserted || source.employeeChat === 'topic' && !source.list?.hidden) for (const agentId of source.agentIds) {
         const main = await mainPrivate(agentId)
-        // Channel history stays in its own room. Only restore its employee entry here.
-        if (main?.list?.hidden) await save({ ...main, list: { ...main.list, hidden: false } })
+        // Channel and topic history stay in their own rooms. Only restore its employee entry here.
+        if (inserted && main?.list?.hidden) await save({ ...main, list: { ...main.list, hidden: false } })
       }
     } else if (source.purpose === 'automation' && !message.automationPublication) {
       const occurrenceId = message.origin?.occurrenceId ?? source.occurrenceId

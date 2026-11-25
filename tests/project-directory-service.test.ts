@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 真实AppService/ProductStore、隔离目录与仅替换模型层的可控Engine。
- * [OUTPUT]: 默认复制与群成员隔离、定时occurrence/任务/主聊快照、活动默认修改不取消、发送CAS与执行门禁、重启/旧记录、路径失效及真实Mastra文件和命令落点验收。
+ * [OUTPUT]: 默认复制与群成员隔离、定时话题/旧人工任务/主聊快照、活动默认修改不取消、发送CAS与执行门禁、重启/旧记录、路径失效及真实Mastra文件和命令落点验收。
  * [POS]: WT3 W1/W3服务定向验收；不调用外部模型、个人数据或Electron。
  * [PROTOCOL]: 修改同步Header与tests/.folder.md。
  */
@@ -97,32 +97,32 @@ it('keeps managed work independent of directory grants and lets a task override 
   expect((await f.service.handle('getEmployeeTask', { employeeId: agent.id, id: oldTask.id }) as EmployeeTaskDetail).task.projectSelection?.mode).toBe('managed')
 })
 
-it('snapshots each scheduled occurrence default and keeps the original task location and receipt after restart without replay', async () => {
+it('snapshots each scheduled occurrence default and keeps the original topic location and receipt after restart without replay', async () => {
   const f = await fixture(), agent = await f.createAgent({ defaultProjectDirectory: f.a })
   const plan = await f.service.handle('saveAutomation', { name: '每日项目检查', prompt: '检查项目文件', conversationPolicy: 'new-conversation', employeeIds: [agent.id], frequency: 'daily', time: '09:00', weekday: 1, timezone: 'UTC', enabled: false, notify: false }) as AutomationDefinition
   const originalInput = { id: plan.id, requestId: 'scheduled-original' }
   const first = await f.service.handle('runAutomation', originalInput) as AutomationOccurrence
   await f.taskIdle(first)
-  const oldTask = (await f.service.handle('getEmployeeTask', { employeeId: agent.id, occurrenceId: first.id }) as EmployeeTaskDetail).task
-  const firstRoom = await f.service.handle('openEmployeeTaskSession', { employeeId: agent.id, id: oldTask.id }) as Conversation
-  expect(oldTask).toMatchObject({ sourceKind: 'schedule', projectSelection: { directory: f.a, source: 'employee-default' } })
-  expect((await detail(f.service, firstRoom)).messages.filter(message => message.senderType === 'user')).toEqual(expect.arrayContaining([expect.objectContaining({ workingDirectory: f.a, projectSelection: oldTask.projectSelection })]))
+  const firstRoom = (await f.service.handle('getConversation', { id: first.conversationId }) as ConversationDetail).conversation
+  expect(first.taskId).toBeUndefined()
+  expect(firstRoom).toMatchObject({ employeeChat: 'topic', projectSelection: { directory: f.a, source: 'employee-default' } })
+  expect((await detail(f.service, firstRoom)).messages.filter(message => message.senderType === 'user')).toEqual(expect.arrayContaining([expect.objectContaining({ workingDirectory: f.a, projectSelection: firstRoom.projectSelection })]))
   expect(f.contexts.at(-1)?.workingDirectory).toBe(f.a)
   await f.service.handle('saveAgent', agentInput(agent, { defaultProjectDirectory: f.b }))
   await f.service.close()
   const count = f.contexts.length, restarted = await f.open()
   const replayed = await restarted.handle('runAutomation', originalInput) as AutomationOccurrence
-  expect(replayed).toMatchObject({ id: first.id, taskId: oldTask.id, conversationId: firstRoom.id, status: 'completed' })
+  expect(replayed).toMatchObject({ id: first.id, conversationId: firstRoom.id, status: 'completed' })
   expect(f.contexts).toHaveLength(count)
-  const restored = await restarted.handle('openEmployeeTaskSession', { employeeId: agent.id, id: oldTask.id }) as Conversation
+  const restored = (await restarted.handle('getConversation', { id: firstRoom.id }) as ConversationDetail).conversation
   expect(restored.id).toBe(firstRoom.id); expect(restored.projectSelection).toEqual(firstRoom.projectSelection)
-  const continued = await f.sendTask(restored, restarted); await f.taskIdle(continued, restarted)
-  expect(continued.taskId).toBe(oldTask.id); expect(f.contexts.at(-1)?.workingDirectory).toBe(f.a)
+  await f.send(restored, restarted); await f.idle(restored, restarted)
+  expect(f.contexts.at(-1)?.workingDirectory).toBe(f.a)
   const next = await restarted.handle('runAutomation', { id: plan.id, requestId: 'scheduled-next' }) as AutomationOccurrence
   expect(next.status, next.reason).not.toBe('skipped')
   await f.taskIdle(next, restarted)
-  expect(next.taskId).not.toBe(oldTask.id); expect(next.conversationId).not.toBe(firstRoom.id)
-  expect((await restarted.handle('getEmployeeTask', { employeeId: agent.id, occurrenceId: next.id }) as EmployeeTaskDetail).task.projectSelection).toMatchObject({ directory: f.b, source: 'employee-default' })
+  expect(next.taskId).toBeUndefined(); expect(next.conversationId).not.toBe(firstRoom.id)
+  expect((await restarted.handle('getConversation', { id: next.conversationId }) as ConversationDetail).conversation.projectSelection).toMatchObject({ directory: f.b, source: 'employee-default' })
   expect(f.contexts.at(-1)?.workingDirectory).toBe(f.b)
   expect(f.contexts).toHaveLength(count + 2)
   const current = (await snapshot(restarted)).agents.find(value => value.id === agent.id)!

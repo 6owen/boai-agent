@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-11-25定时执行直达员工话题，与旧看板后台解耦；看板入口隐藏、前端保留，定时页面布局保持。
 [OUTPUT]: 右上角通知中心与模型连接中的本机 Agent 版本和安装。
 [OUTPUT]: 2026-11-24官方Session审批与Metrics费用估算接入，验证和个人预览生效见迁移记录。
 [OUTPUT]: 2026-11-24补API主执行AgentController迁移入口，SDK循环与记忆归属、实际验证及未验范围独立记录。
@@ -128,7 +129,8 @@ pnpm dev
 - [通知中心与本机 Agent 更新](ai-docs/implementation/2026-11-25-agent-updates-notifications.md)：从右上角查看通知，在「设置 → 模型连接 → 本机 Agent」查看版本并安装可用更新。
 - [AgentController执行迁移](ai-docs/implementation/2026-11-24-mastra-agent-controller.md)：API聊天/任务采用官方Session、自动观察记忆、原生工具审批及Metrics费用估算；业务授权和本机后端各自保持原归属。
 - [既有记忆实现与迁移记录](ai-docs/spec/5.Mastra能力扩展/16-按执行内核归属的记忆架构.md)：保留API/Mastra与本机原生记忆的历史接线及验证；新的员工级memory目标以第29组为准。
-- [员工任务与主聊天](ai-docs/spec/5.Mastra能力扩展/16-员工任务队列与聊天分离.md)：任务保留独立会话，主聊天读取员工自己的任务活动及获准结果；当前修复与验证见§38。
+- [定时执行与员工话题](ai-docs/implementation/2026-11-25-scheduled-employee-topics.md)：定时运行直接进入负责员工的话题；旧任务看板隐藏，前端组件保留复用。
+- [旧员工任务与主聊天](ai-docs/spec/5.Mastra能力扩展/16-员工任务队列与聊天分离.md)：旧看板的历史实现与兼容记录；现行定时执行使用上面的员工话题合同。
 - [BOAI CLI](ai-docs/spec/21.BOAI-CLI/README.md) · [外部插件开发](ai-docs/spec/26.Workspace工程结构重构/04-外部插件开发与接入.md)
 - [个人 macOS 更新与本机发布](ai-docs/spec/22.开发自动化与持续测试/11-个人应用更新与发布.md)：bumpp 管版本，Sparkle 后台下载、退出安装与差分更新。
 - [协作规约](AGENTS.md) · [开发与构建统一技能](.agents/skills/boai-agent-dev-skills/SKILL.md) · [Git/CI细则](.agents/skills/boai-dev-workflow/SKILL.md) · [发布技能](.agents/skills/boai-release/SKILL.md) · [UI 测试与 CI 用法](UI_TEST_CI.md)

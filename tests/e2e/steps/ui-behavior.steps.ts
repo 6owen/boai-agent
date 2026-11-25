@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 任务入口暂时隐藏；工具开始页与知识资料往返保留原聊天草稿。
  * [OUTPUT]: 设置入口沿本人菜单的其他配置二级菜单选择模型连接，原业务断言保持。
  * [INPUT]: 固定中文行为场景、原 Desktop 生命周期和离线员工会话夹具。
  * [OUTPUT]: 真实点击/持久化/草稿断言和可直接查看的结束PNG；零外部模型，不比较 PNG。
@@ -68,24 +69,21 @@ Then('明暗设置保存后重启仍使用所选模式', async ({ runtime, uiBeh
   await screenshot(runtime.page, '重启后的浅色外观设置')
 })
 
-Then('工具开始页可切换任务和知识资料且聊天草稿保留', async ({ runtime, uiBehavior }) => {
+Then('工具开始页隐藏任务并可切换知识资料且聊天草稿保留', async ({ runtime, uiBehavior }) => {
   const page = runtime.page
   await page.getByRole('button', { name: /与研究员对话/ }).click()
   await composer(page).fill('查看工具时保留的草稿')
   await page.getByRole('button', { name: '显示或隐藏详情', exact: true }).click()
   const home = page.getByRole('region', { name: '工作区开始', exact: true })
   await expect(home).toBeVisible()
-  for (const name of ['任务', '终端', '知识资料', '浏览器']) await expect(home.getByRole('button', { name, exact: true })).toBeEnabled()
-  await home.getByRole('button', { name: '任务', exact: true }).click()
-  const taskViews = page.getByRole('tablist', { name: '任务视图', exact: true })
-  await expect(taskViews).toBeVisible()
-  await taskViews.getByRole('tab', { name: '列表', exact: true }).click()
-  await expect(taskViews.getByRole('tab', { name: '列表', exact: true })).toHaveAttribute('aria-selected', 'true')
-  await page.getByRole('button', { name: '打开工具开始页', exact: true }).click()
-  await expect(home).toBeVisible()
+  await expect(home.getByRole('button', { name: '任务', exact: true })).toHaveCount(0)
+  for (const name of ['终端', '知识资料', '浏览器']) await expect(home.getByRole('button', { name, exact: true })).toBeEnabled()
   await home.getByRole('button', { name: '知识资料', exact: true }).click()
   await expect(page.getByLabel('员工知识资料', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: '打开工具开始页', exact: true }).click()
+  await expect(home).toBeVisible()
+  await expect(page.locator('[data-employee-tasks]')).toHaveCount(0)
   await expect(composer(page)).toHaveText('查看工具时保留的草稿')
   expect(uiBehavior.fixture!.state.calls).toBe(0)
-  await screenshot(page, '知识资料与原会话草稿')
+  await screenshot(page, '隐藏任务入口的工具开始页与原会话草稿')
 })
