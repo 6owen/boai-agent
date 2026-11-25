@@ -81,6 +81,7 @@ export interface SkillUpdateBatch {
 export interface ResourceCleanup { id: string; name: string; kind: Resource['kind']; status: 'pending' | 'failed'; error?: string; createdAt: string }
 export interface SkillFile { path: string; size: number; hash: string }
 export interface SkillDetail {
+  sourceUrl?: string
   resource: Resource
   installation?: SkillInstallation
   content: string
@@ -153,7 +154,7 @@ export interface LocalSkill {
   pluginName?: string
 }
 export interface LocalSkillCatalog { skills: LocalSkill[]; issues: { path: string; message: string }[] }
-export interface LocalSkillDetail { skill: LocalSkill; content: string; filePath: string }
+export interface LocalSkillDetail { sourceUrl?: string; skill: LocalSkill; content: string; filePath: string }
 
 /** 只对已保存员工准备；扫描/准备不授予权限，也不执行脚本。 */
 export interface PrepareLocalSkillBindingInput { localSkillId: string; agentId: string; expectedConfigVersion: number }

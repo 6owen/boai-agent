@@ -63,6 +63,26 @@ test('uses the global CLI update time and falls back to SKILL.md for other sourc
     expect((await list()).find(skill => skill.slug === 'report')?.updatedAt).toBe(fileTime.getTime())
   }
 })
+test('shows the recorded online address only for the matching installed copy', async () => {
+  const { api, homeDir, global } = await setup()
+  const source = join(homeDir, '.agents/.skill-lock.json')
+  const read = async (slug: string) => {
+    const { skills } = await api('listLocalSkills', { refresh: true })
+    return api('getLocalSkillDetail', { id: skills.find(skill => skill.slug === slug)!.id })
+  }
+  await writeFile(source, JSON.stringify({ skills: {
+    Report: { sourceType: 'github', sourceUrl: 'https://github.com/example/report.git' },
+    helper: { sourceType: 'github', source: 'example/helper' },
+  } }))
+  expect((await read('report')).sourceUrl).toBe('https://github.com/example/report')
+  expect((await read('helper')).sourceUrl).toBeUndefined()
+  for (const address of ['https://skills.example.org/report', 'file://' + global, 'https://skills.example.org/report?token=secret']) {
+    await writeFile(source, JSON.stringify({ skills: { report: { sourceType: 'well-known', sourceUrl: address } } }))
+    expect((await read('report')).sourceUrl).toBe(address === 'https://skills.example.org/report' ? address : undefined)
+  }
+  await rm(source)
+  expect((await read('report')).sourceUrl).toBeUndefined()
+})
 test('refresh and restart retain favorite identities, exclude disabled plugins and expose malformed files', async () => {
   const { api, service, start, homeDir, codexHome, skill } = await setup()
   const report = (await api('listLocalSkills', undefined)).skills.find(skill => skill.slug === 'report')!

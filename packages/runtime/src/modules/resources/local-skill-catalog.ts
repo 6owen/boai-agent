@@ -15,11 +15,13 @@ import { basename, join, resolve } from 'node:path'
 import { parse as parseToml } from 'smol-toml'
 import type { LocalSkill, LocalSkillCatalog, LocalSkillDetail } from '@boai/shared/domain/skills'
 import { boundedRead, restrictedPath } from '../workspaces/file-access'
-import { readLocalSkillLock } from './local-skill-lock'
+import { skillWebUrl } from '../../adapters/skills/source'
+import { lockSourceUrl, readLocalSkillLock } from './local-skill-lock'
 import { parseSkillDocument } from './local-resources'
 
 export interface SkillDiscoveryOptions { homeDir?: string; codexHome?: string; bundledRoot?: string }
-type Root = { path: string; source: LocalSkill['source']; label: string; pluginName?: string; namespace?: string }
+type Root = { path: string; source: LocalSkill['source']; label: string; pluginName?: string; namespace?: string; sourceUrl?: string }
+type CatalogEntry = { skill: LocalSkill; canonical: string; sourceUrl?: string }
 const MAX_ENTRIES = 5000
 const agentPaths = ['.claude/skills', '.cursor/skills', '.gemini/skills', '.gemini/antigravity/skills', '.gemini/antigravity-cli/skills', '.openclaw/skills', '.clawdbot/skills', '.moltbot/skills', '.copilot/skills', '.factory/skills', '.continue/skills', '.codeium/windsurf/skills', '.aider-desk/skills', '.astrbot/data/skills', '.autohand/skills', '.augment/skills', '.bob/skills', '.codeartsdoer/skills', '.codebuddy/skills', '.codemaker/skills', '.codestudio/skills', '.commandcode/skills', '.snowflake/cortex/skills', '.deepagents/agent/skills', '.firebender/skills', '.forge/skills', '.grok/skills', '.hermes/skills', '.inferencesh/skills', '.jazz/skills', '.junie/skills', '.iflow/skills', '.kilocode/skills', '.kiro/skills', '.kode/skills', '.lingma/skills', '.mcpjam/skills', '.minimax/skills', '.vibe/skills', '.moxby/skills', '.mux/skills', '.openhands/skills', '.ona/skills', '.pi/agent/skills', '.qoder/skills', '.qoder-cn/skills', '.qwen/skills', '.reasonix/skills', '.rovodev/skills', '.roo/skills', '.tabnine/agent/skills', '.terramind/skills', '.tinycloud/skills', '.trae/skills', '.zcode/skills', '.zencoder/skills', '.neovate/skills', '.pochi/skills', '.adal/skills']
 const configPaths = ['agents/skills', 'crush/skills', 'devin/skills', 'goose/skills', 'kimchi/harness/skills', 'opencode/skills']
@@ -28,7 +30,7 @@ const missing = (error: unknown) => (error as NodeJS.ErrnoException).code === 'E
 export const localSkillId = (identity: string) => `local:${createHash('sha256').update(identity).digest('hex')}`
 
 export class LocalSkillCatalogService {
-  private entries = new Map<string, { skill: LocalSkill; canonical: string }>()
+  private entries = new Map<string, CatalogEntry>()
   private loading?: Promise<LocalSkillCatalog>
   private cached?: LocalSkillCatalog
   private revision = 0
@@ -88,14 +90,14 @@ export class LocalSkillCatalogService {
             const canonicalPlugin = await realpath(pluginRoot)
             const skillsRoot = resolve(canonicalPlugin, path)
             await restrictedPath([canonicalPlugin], skillsRoot)
-            roots.push({ path: skillsRoot, source: 'plugin', label: `插件 (${name})`, pluginName: name, namespace: identity })
+            roots.push({ path: skillsRoot, source: 'plugin', label: `插件 (${name})`, pluginName: name, namespace: identity, sourceUrl: skillWebUrl(manifest.repository) ?? skillWebUrl(manifest.homepage) })
           }
           break
         } catch (error) { if (!missing(error)) issue(pluginRoot, '无法读取插件技能声明') }
       }
     }
     const lockEntry = await readLocalSkillLock(this.home).catch(() => undefined)
-    const bySlug = new Map<string, { skill: LocalSkill; canonical: string }>()
+    const bySlug = new Map<string, CatalogEntry>()
     let visited = 0
     const seen = new Set<string>()
     const load = async (root: Root, directory: string, slug: string) => {
@@ -114,11 +116,12 @@ export class LocalSkillCatalogService {
         const metadata = parseSkillDocument(document, { strictName: false })
         const qualified = root.source === 'builtin' ? `boai-bundled:${slug}` : root.pluginName ? `${root.pluginName}:${slug}` : slug
         const id = localSkillId(root.namespace ? `${root.namespace}:${slug}` : canonical)
-        const recorded = root.source === 'global' ? lockEntry?.(slug)?.updatedAt : undefined
+        const installation = root.source === 'global' ? lockEntry?.(slug) : undefined
+        const recorded = installation?.updatedAt
         const timestamp = typeof recorded === 'string' ? Date.parse(recorded) : NaN
         const updatedAt = Number.isFinite(timestamp) ? timestamp : (await lstat(file)).mtimeMs
         const skill: LocalSkill = { id, updatedAt, slug: qualified, name: metadata.name, description: metadata.description, path: directory, source: root.source, sourceLabel: root.source === 'agent' ? `Agent (${root.label})` : root.label, ...(root.pluginName ? { pluginName: root.pluginName } : {}) }
-        if (root.source !== 'agent' || !bySlug.has(qualified)) bySlug.set(qualified, { skill, canonical })
+        if (root.source !== 'agent' || !bySlug.has(qualified)) bySlug.set(qualified, { skill, canonical, sourceUrl: installation ? lockSourceUrl(installation) : root.sourceUrl })
       } catch (error) { if (!missing(error) || !resolved) issue(directory, error instanceof Error && !directory.endsWith('config.toml') ? error.message : '无法读取技能') }
     }
     const priority = { global: 0, plugin: 1, agent: 2, builtin: 3 }
@@ -146,7 +149,7 @@ export class LocalSkillCatalogService {
     await restrictedPath([entry.canonical], join(entry.canonical, 'SKILL.md'))
     const content = await boundedRead(join(entry.canonical, 'SKILL.md'))
     const metadata = parseSkillDocument(content, { strictName: false })
-    return { skill: { ...entry.skill, name: metadata.name, description: metadata.description }, content, filePath: join(entry.canonical, 'SKILL.md') }
+    return { sourceUrl: entry.sourceUrl, skill: { ...entry.skill, name: metadata.name, description: metadata.description }, content, filePath: join(entry.canonical, 'SKILL.md') }
   }
   async source(id: string) { await this.detail(id); return this.entries.get(id)!.canonical }
   async has(id: string) { try { await this.detail(id); return true } catch { return false } }

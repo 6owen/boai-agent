@@ -10,7 +10,7 @@ import { lstat, open, readdir, rm } from 'node:fs/promises'
 import { isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { z } from 'zod'
 import type { ScanSkillSourceInput, SkillScan, SkillSource } from '@boai/shared/domain/skills'
-import type { SkillMarketplaceDetailRequest, SkillMarketplaceItem } from '@boai/shared/domain/skill-marketplace'
+import { skillMarketplacePage, type SkillMarketplaceDetailRequest, type SkillMarketplaceItem } from '@boai/shared/domain/skill-marketplace'
 import { restrictedPath } from '../../modules/workspaces/file-access'
 import { archivePath, extractSkillArchive } from './archive'
 import { downloadBytes, downloadUrl, SKILL_DOWNLOAD_LIMITS, type DownloadTransport } from './download'
@@ -41,9 +41,31 @@ export function githubRepository(value: string) {
   if (url.hostname !== 'github.com' || url.search || url.hash || !/^\/[a-z0-9_.-]+\/[a-z0-9_.-]+\/?$/i.test(url.pathname)) throw new Error('请填写公开 GitHub 仓库地址；分支和子目录请分别填写')
   return `https://github.com/${url.pathname.split('/').filter(Boolean).join('/').toLowerCase()}`
 }
-export function portableUrl(value: string) {
-  const url = downloadUrl(value)
+function withoutAccessTokens(url: URL) {
   return [...url.searchParams.keys()].some(key => /token|secret|password|signature|credential|authorization|api.?key|^sig$|^expires$|^x-amz-/i.test(key)) ? undefined : url.href
+}
+
+export function portableUrl(value: string) {
+  return withoutAccessTokens(downloadUrl(value))
+}
+
+/** Display the recorded HTTP(S) location without exposing installation credentials. */
+export function skillWebUrl(value: unknown): string | undefined {
+  if (typeof value !== 'string') return
+  try {
+    const url = new URL(value)
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return
+    return withoutAccessTokens(url)
+  } catch { return undefined }
+}
+
+export function installedSkillWebUrl(source: SkillSource): string | undefined {
+  switch (source.kind) {
+    case 'git': return skillWebUrl(source.repository)
+    case 'url': return skillWebUrl(source.url)
+    case 'marketplace': return skillMarketplacePage(source.provider, source.providerItemId)
+    default: return undefined
+  }
 }
 
 export class SkillSources {

@@ -7,10 +7,23 @@
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { z } from 'zod'
+import { githubRepository, skillWebUrl } from '../../adapters/skills/source'
 import { boundedRead } from '../workspaces/file-access'
 
 const normalizedName = (name: string) => name.toLowerCase().replace(/[^a-z0-9._]+/g, '-').replace(/^[.\-]+|[.\-]+$/g, '').slice(0, 255) || 'unnamed-skill'
 const lockSchema = z.object({ skills: z.record(z.string(), z.object({ sourceType: z.string().optional(), source: z.string().optional(), sourceUrl: z.string().optional(), ref: z.string().optional(), skillPath: z.string().optional(), updatedAt: z.unknown().optional() })) })
+
+export function lockSourceUrl(entry: z.infer<typeof lockSchema>['skills'][string]): string | undefined {
+  if (entry.sourceType === 'local') return undefined
+  if (entry.sourceType === 'github') {
+    for (const value of [entry.source, entry.sourceUrl]) {
+      if (!value) continue
+      try { return githubRepository(value) } catch { /* Older CLI entries can use either field. */ }
+    }
+    return undefined
+  }
+  return skillWebUrl(entry.sourceUrl) ?? skillWebUrl(entry.source)
+}
 
 export async function readLocalSkillLock(home: string) {
   const path = home === homedir() && process.env.XDG_STATE_HOME

@@ -412,6 +412,7 @@ test.each([false, true])('an explicit remote update synchronizes only D4 copy ha
   const install = await fixture.api('installSkills', { requestId: 'actual-local-install', scanId: scan.id, candidateIds: [scan.candidates[0].id], addToFavorites: false })
   await vi.waitFor(async () => expect((await fixture.api('getSkillOperation', { id: install.id })).status).toBe('completed'))
   const selected = await prepare(fixture, 'researcher', join(fixture.homeDir, '.agents/skills/report-helper'))
+  expect((await fixture.api('getLocalSkillDetail', { id: selected.input.localSkillId })).sourceUrl).toBe('https://example.com/report-helper.zip')
   const bound = await fixture.api('bindLocalSkill', selected.input), resource = bound.resource!
   const before = await fixture.store.transaction(tx => tx.get<SkillInstallation & { bindingCopy: BindingFiles }>('skillInstallations', resource.id))
   expect(before!.source.kind).toBe('url')
