@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Typed desktop inbox, live Agent updates and shell navigation callbacks.
- * [OUTPUT]: Spaced bell, unread-only mark-all action, scroll fade and the shared upgrade flow.
+ * [OUTPUT]: Standard toolbar bell, unread-only mark-all action, scroll fade and the shared upgrade flow.
  * [POS]: Application-wide notification and Agent update controls.
  * [PROTOCOL]: Update Header and .folder.md when changed.
  */
@@ -89,7 +89,7 @@ export function NotificationCenter({ onOpen }: { onOpen(target: NotificationTarg
   const unread = items.filter(item => !item.read).map(item => item.id)
   return <Popover open={open} onOpenChange={setOpen}>
     <Tooltip>
-      <TooltipTrigger delay={500} render={<PopoverTrigger render={<Button variant="ghost" size="icon-sm" className="titlebar-no-drag relative ml-[6px] shrink-0" aria-label="通知中心" aria-description={unread.length ? `${unread.length} 条未读` : undefined} />} />}>
+      <TooltipTrigger delay={500} render={<PopoverTrigger render={<Button variant="ghost" size="icon-sm" className="titlebar-no-drag relative shrink-0" aria-label="通知中心" aria-description={unread.length ? `${unread.length} 条未读` : undefined} />} />}>
         <Bell />{unread.length > 0 && <i aria-hidden="true" className="absolute top-1 right-1 size-2 rounded-full bg-primary ring-2 ring-background" />}
       </TooltipTrigger>
       <TooltipContent side="bottom">通知中心</TooltipContent>
