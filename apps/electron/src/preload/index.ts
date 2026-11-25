@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 通知与 Agent 更新仅经主窗专用 IPC。
+ * [OUTPUT]: 主窗专用通知读取、已读与显式安装 Agent 更新。
  * [OUTPUT]: 2026-10-29 主窗专用updates桥接与事件，不扩大员工通用RPC。
  * [OUTPUT]: 2026-10-28 模型下载/取消/移除传递显式modelId及action。
  * [OUTPUT]: 2026-10-27 增加可信主窗口语音设备授权租约；原默认关闭与草稿边界保持。
@@ -24,7 +24,6 @@ const api: DesktopApi = {
   notifications: {
     snapshot: () => ipcRenderer.invoke('boai:notifications', 'snapshot'),
     read: ids => ipcRenderer.invoke('boai:notifications', 'read', ids),
-    checkAgentUpdates: () => ipcRenderer.invoke('boai:notifications', 'check'),
     installAgentUpdate: input => ipcRenderer.invoke('boai:notifications', 'install', input),
   },
   updates: {

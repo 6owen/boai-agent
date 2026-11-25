@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Trusted desktop notification and Agent update actions.
+ * [INPUT]: Trusted desktop notifications and explicit Agent upgrade actions.
  * [OUTPUT]: Inbox records and exact saved-profile/version update requests.
  * [POS]: Private desktop IPC; no public runtime or employee operation.
  * [PROTOCOL]: Update Header and .folder.md when changed.
@@ -45,6 +45,5 @@ export interface NotificationSnapshot {
 export interface NotificationsApi {
   snapshot(): Promise<NotificationSnapshot>
   read(ids: string[]): Promise<void>
-  checkAgentUpdates(): Promise<void>
   installAgentUpdate(input: AgentUpdateRequest): Promise<void>
 }
