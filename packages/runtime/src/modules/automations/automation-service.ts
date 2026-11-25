@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-25 定时历史不再回填或更新旧看板；旧人工记录兼容尊重删除墓碑。
  * [OUTPUT]: 已提交任务结果发一次瞬时通知；恢复只校正状态，不重放通知或执行。
  * [OUTPUT]: 任务消息队列支持按版本移除和优先执行；固定当前会话的中断目标，保留其他队列并等待实际退出。
  * [OUTPUT]: 单次预约经原生后继游标适配正常派发，原受理事务消费并暂停注册；业务预览仍只有目标时刻，原指纹及历史保持。
@@ -108,16 +109,7 @@ export class AutomationService {
     await this.repository.migrate(); await this.repository.migrateOwners();
     await this.store.transaction(async tx => {
       for (let task of await tx.list<import('@boai/shared/domain/tracked-tasks').TrackedTask>('agentTasks')) {
-        if (!task.kind && task.sourceKind === 'schedule') {
-          const occurrence = task.latestOccurrenceId ? await tx.get<AutomationOccurrence>('automationOccurrences', task.latestOccurrenceId) : undefined
-          const room = task.sessionConversationId ? await tx.get<import('@boai/shared/domain').Conversation>('conversations', task.sessionConversationId) : undefined
-          const ownedExecution = occurrence?.taskId === task.id && !occurrence.deletedAt && occurrence.taskKind !== 'monitor' && occurrence.plan?.owner.kind === 'employee' && occurrence.plan.owner.employeeId === task.agentId
-          const ownedSession = room?.purpose === 'automation' && room.employeeTaskId === task.id && room.agentIds.length === 1 && room.agentIds[0] === task.agentId && !room.mergedInto
-          if (ownedExecution || ownedSession) {
-            task = { ...task, kind: 'assignment', revision: task.revision + 1 }
-            await tx.put({ collection: 'agentTasks', id: task.id, value: task })
-          }
-        }
+        if (task.sourceKind === 'schedule') continue
         if (isEmployeeTaskAssignment(task) && (task.sourceKind === 'manual' || task.sourceKind === 'message')) {
           task = { ...task, kind: 'assignment', revision: task.revision + 1 }
           delete task.sourceKind
@@ -134,11 +126,11 @@ export class AutomationService {
       for (const d of await tx.list<AutomationDefinition>('automations')) {
         if (d.purpose !== 'employee-task' || d.employeeTask || d.deletedAt || d.owner?.kind !== 'employee') continue
         const id = taskIdentity(`definition:${d.id}`)
-        if (!await tx.get('employeeTaskMigrations', id) && !await tx.get('agentTasks', id)) await tx.put({ collection: 'agentTasks', id, value: { id, agentId: d.owner.employeeId, kind: 'assignment', title: d.name, description: d.prompt, status: 'pending', steps: [], note: '', revision: 1, createdAt: d.createdAt, updatedAt: d.updatedAt } })
+        if (!await tx.get('deletedEmployeeTasks', id) && !await tx.get('employeeTaskMigrations', id) && !await tx.get('agentTasks', id)) await tx.put({ collection: 'agentTasks', id, value: { id, agentId: d.owner.employeeId, kind: 'assignment', title: d.name, description: d.prompt, status: 'pending', steps: [], note: '', revision: 1, createdAt: d.createdAt, updatedAt: d.updatedAt } })
         await tx.put({ collection: 'employeeTaskMigrations', id, value: { id } })
       }
       for (const o of await tx.list<AutomationOccurrence>('automationOccurrences')) {
-        if (o.taskId) continue
+        if (o.purpose !== 'employee-task' || o.taskId) continue
         const d = await tx.get<AutomationDefinition>('automations', o.automationId)
         if (d) await linkEmployeeTask(tx, d, o, true)
       }

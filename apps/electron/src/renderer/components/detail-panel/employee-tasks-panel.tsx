@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-25 保留看板组件供未来复用，默认关闭所有产品入口与挂载。
  * [OUTPUT]: 清空按员工/状态调用原子全分页接口，刷新卡片与分页；在途保留及清空数量沿Sonner反馈。
  * [OUTPUT]: 2026-11-04外部任务定位保留消息身份交给原任务Dialog；手动选卡不携带其他任务的定位。
  * [OUTPUT]: 仅从各列/分组新增任务并继承状态；header保留显示及视图切换，列隐藏动作幂等。
@@ -26,6 +27,8 @@ import { EmployeeTaskActions } from './employee-task-menu'
 import { EmployeeTaskDisplay, readHiddenTaskColumns, taskVisibilityKey } from './employee-task-display'
 import type { TaskColumnClear } from './employee-task-display'
 import type { DetailTarget } from './tabs-state'
+// Retain the board components for later reuse; they no longer provide an execution entry.
+export const EMPLOYEE_TASK_BOARD_ENABLED = false
 export const EmployeeTasksNavigation = createContext<(employeeId: string) => void>(() => {})
 type Props = Pick<EmployeeTaskDetailProps, 'onSource' | 'renderChat' | 'onMaterials' | 'onContext'> & { api: DesktopApi; snapshot: Snapshot; employeeId: string; active: boolean; target: Extract<DetailTarget, { type: 'employee-tasks' }> }
 export function EmployeeTasksPanel({ api, snapshot, employeeId, target, active, ...detail }: Props) {

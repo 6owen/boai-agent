@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-25 独立话题不注入旧看板活动和任务状态指令。
  * [OUTPUT]: 待确认可由宿主按本轮回复兜底更新，仅作通知，不等于人工验收或Work交付认证。
  * [OUTPUT]: 主聊天按员工读取实时任务活动；独立任务仍使用原要求和续聊上下文。
  * [INPUT]: Trusted task conversation, current employee and persisted assignment.
@@ -13,7 +14,7 @@ import { readTaskActivity } from '../application/task-activity'
 import type { ProductStore } from '../../adapters/storage/product-store'
 
 export const employeeTaskReadOperations = new Set(['tasks.list', 'tasks.get', 'tasks.page', 'tasks.activity'])
-export const employeeMainConversation = (employeeId: string, room: Conversation) => room.kind === 'direct' && room.agentIds.length === 1 && room.agentIds[0] === employeeId && !room.employeeTaskId && room.purpose !== 'automation' && !room.channel && !room.mergedInto && !room.list?.hidden && room.memoryScope !== 'conversation' && !room.memoryContextRef
+export const employeeMainConversation = (employeeId: string, room: Conversation) => room.kind === 'direct' && room.agentIds.length === 1 && room.agentIds[0] === employeeId && !room.employeeTaskId && room.employeeChat !== 'topic' && room.purpose !== 'automation' && !room.channel && !room.mergedInto && !room.list?.hidden && room.memoryScope !== 'conversation' && !room.memoryContextRef
 export async function employeeTaskAwareness(store: ProductStore, employeeId: string, room: Conversation) {
   if (!employeeMainConversation(employeeId, room)) return ''
   const actor = { kind: 'employee' as const, employeeId, conversationId: room.id, messageId: '' }
