@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Controlled registry and installer ports plus a real local inbox file.
- * [OUTPUT]: Unread history across restart, duplicate suppression, exact version and restart-safe retry.
+ * [OUTPUT]: Unread history across restart, duplicate suppression, exact version and local-only version offer invalidation.
  * [POS]: Electron notification store regression without opening a window.
  * [PROTOCOL]: Update Header and tests/.folder.md when changed.
  */
@@ -73,4 +73,20 @@ it('preserves the last result on network failure and clears superseded offers af
   ports.check.mockResolvedValueOnce({ updates: [{ ...update, latestVersion: '1.7.0' }], unavailableProfileIds: [] })
   await store.check(true)
   expect(store.snapshot().items.map(item => item.id)).toEqual(['agent:pi-personal:1.7.0'])
+})
+
+it('drops stale offers when a profile changes without starting another registry check', async () => {
+  const { store, ports } = await inbox()
+  let finish!: (result: Awaited<ReturnType<typeof ports.check>>) => void
+  ports.check.mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+  const starting = store.check(false)
+  const invalidation = store.invalidateAgentOffer(update.profileId, { profileRevision: update.profileRevision + 1 })
+  finish({ updates: [update], unavailableProfileIds: [] })
+  await Promise.all([starting, invalidation])
+  expect(store.snapshot()).toMatchObject({ items: [], agentUpdates: [] })
+  expect(ports.check).toHaveBeenCalledTimes(1)
+  await store.check(true)
+  await store.invalidateAgentOffer(update.profileId, update)
+  expect(store.snapshot().items).toHaveLength(1)
+  expect(ports.check).toHaveBeenCalledTimes(2)
 })

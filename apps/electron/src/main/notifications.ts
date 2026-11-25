@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Desktop event receipts, installed Agent checks and explicit user actions.
- * [OUTPUT]: Bounded profile-local inbox with persisted read state and live update progress.
+ * [OUTPUT]: Profile-local inbox, persisted read state and update progress. Profile changes only invalidate cached offers.
  * [POS]: Electron main owns storage and the desktop-only update ticket.
  * [PROTOCOL]: Update Header and .folder.md when changed.
  */
@@ -111,9 +111,18 @@ export class DesktopNotifications {
     return manual ? this.checking : this.checking.catch(() => {})
   }
 
-  async profilesChanged(current: () => boolean) {
+  async invalidateAgentOffer(profileId: string, identity?: { profileRevision: number; currentVersion?: string }) {
     await (this.checking ?? this.installing)?.catch(() => {})
-    if (current()) await this.check(false)
+    const offer = this.state.agentUpdates.find(item => item.profileId === profileId)
+    if (offer && offer.profileRevision === identity?.profileRevision && offer.currentVersion === identity.currentVersion) return
+    if (offer) {
+      this.state.agentUpdates = this.state.agentUpdates.filter(item => item.profileId !== profileId)
+      this.publish()
+    }
+    await this.persist(items => {
+      const retained = items.filter(item => !(item.id.startsWith('agent:') && item.target.kind === 'agent-update' && item.target.profileId === profileId))
+      return retained.length === items.length ? items : retained
+    })
   }
 
   private async runCheck() {

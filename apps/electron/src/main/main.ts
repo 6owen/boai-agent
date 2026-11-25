@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 主窗通知收件箱聚合任务、应用和 Agent 更新；仅显式操作启动受管安装。
+ * [OUTPUT]: 主窗聚合任务、应用和 Agent 更新；Agent 版本只在应用启动时自动检查一次，之后由用户手动检查及安装。
  * [OUTPUT]: 为本地技能检查和更新提供开发版及安装版可读的 CLI 归档。
  * [OUTPUT]: 本机技能页的检查、指定技能更新与明确全局更新由可信主窗交给 npx skills，更新前重核目录身份，命令进度只发回原窗口页面。
  * [OUTPUT]: 语音文字整理按运行时连接读取已提交的凭据版本。
@@ -863,7 +863,13 @@ function registerIpc() {
     }
     if (method === 'saveLaunchProfile' || method === 'deleteLaunchProfile' || method === 'testLaunchProfile') {
       const result = await requestRuntime(method, input)
-      void notifications.profilesChanged(() => !quitting)
+      if (method === 'deleteLaunchProfile') {
+        void notifications.invalidateAgentOffer((input as Methods['deleteLaunchProfile']['input']).id).catch(() => {})
+      } else {
+        const profile = result as Methods['saveLaunchProfile']['output']
+        const version = profile.verified?.version.replace(/^v/, '')
+        void notifications.invalidateAgentOffer(profile.id, { profileRevision: profile.revision, currentVersion: version }).catch(() => {})
+      }
       return result
     }
     return requestRuntime(method, input)
@@ -1060,14 +1066,14 @@ else {
     creatingWindow = createWindow(!desktopSettings.hiddenAtLogin(process.argv))
     try { await creatingWindow } finally { creatingWindow = null }
     await materialSources.recover()
-    cliStarting = startRuntime().then(() => gatewayImportInbox.start()).catch(error => sendEvent({ type: 'runtime-error', error: error.message }))
+    const runtimeStarting = startRuntime()
+    cliStarting = runtimeStarting.then(() => gatewayImportInbox.start()).catch(error => sendEvent({ type: 'runtime-error', error: error.message }))
     // An externally owned CLI runtime may keep executing from this app bundle after the window exits.
     void cliStarting.then(() => {
       if (runtime instanceof AttachedRuntime) appUpdates.disable('命令行服务正在独立运行。退出该服务并重新打开应用后恢复更新。')
       else return startAppUpdates()
     })
-    void cliStarting.then(() => { if (runtime && !quitting) return notifications.check(false) })
-    setInterval(() => { if (runtime && !quitting) void notifications.check(false) }, 6 * 60 * 60_000).unref()
+    void runtimeStarting.then(() => { if (!quitting) return notifications.check(false) }, () => {})
     app.on('activate', () => { void showMainWindow() })
   }).catch((error) => { diagnostics.record('app-start-failed', diagnosticError(error)); dialog.showErrorBox('BoAI Agent 启动失败', error.message); app.quit() })
   app.on('window-all-closed', () => { if (process.platform !== 'darwin' && !background.shouldHide()) app.quit() })

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Typed desktop inbox, live Agent updates and shell navigation callbacks.
- * [OUTPUT]: Toolbar inbox, read actions and the shared Settings/notification upgrade flow.
+ * [OUTPUT]: Fixed-height toolbar inbox with a compact header, scroll fade, read actions and the shared upgrade flow.
  * [POS]: Application-wide notification and Agent update controls.
  * [PROTOCOL]: Update Header and .folder.md when changed.
  */
@@ -13,6 +13,7 @@ import { Bell, ChevronRight, Download, LoaderCircle, RefreshCw } from '@/compone
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
+import { ScrollFade } from '@/components/ui/scroll-fade'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 type Inbox = { state?: NotificationSnapshot; check(): void; update(item: AgentUpdate): void; read(ids: string[]): void }
@@ -102,32 +103,34 @@ export function NotificationCenter({ onOpen }: { onOpen(target: NotificationTarg
       </TooltipTrigger>
       <TooltipContent side="bottom">通知中心</TooltipContent>
     </Tooltip>
-    <PopoverContent align="end" sideOffset={9} className="w-[min(23rem,calc(100vw-1.5rem))] gap-0 overflow-hidden p-0">
-      <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
+    <PopoverContent align="end" sideOffset={9} className="h-[360px] max-h-(--available-height) w-[min(23rem,calc(100vw-1.5rem))] gap-0 overflow-hidden p-0">
+      <div className="flex h-[32px] shrink-0 items-center justify-between gap-2 px-3">
         <PopoverTitle>通知中心</PopoverTitle>
         <Button variant="ghost" size="xs" disabled={!unread.length} onClick={() => inbox.read(unread)}>全部已读</Button>
       </div>
-      {items.length ? <ul className="soft-divide-y m-0 max-h-[min(26rem,65vh)] overflow-y-auto p-0">
-        {items.map(item => {
-          const update = item.target.kind === 'agent-update' && item.id.startsWith('agent:') ? updates.get(item.target.profileId) : undefined
-          return <li key={item.id} className="flex items-center gap-1 px-2 py-1.5">
-            <Button variant="ghost" size="content" className="min-w-0 flex-1 justify-start px-2 py-2 text-left" onClick={() => {
-              inbox.read([item.id]); setOpen(false); onOpen(item.target)
-            }}>
-              <span className="flex items-center gap-2">
-                <span aria-hidden="true" className={`size-1.5 shrink-0 rounded-full ${item.read ? 'bg-transparent' : 'bg-primary'}`} />
-                <span className="flex min-w-0 flex-1 flex-col gap-1">
-                  <span className="truncate font-medium">{item.title}</span>
-                  {item.detail && <span className="truncate text-xs text-muted-foreground">{item.detail}</span>}
-                  <time dateTime={item.createdAt} className="text-xs text-muted-foreground">{time.format(new Date(item.createdAt))}</time>
+      <ScrollFade className="flex-1 overscroll-contain" aria-label="通知列表">
+        {items.length ? <ul className="soft-divide-y m-0 p-0">
+          {items.map(item => {
+            const update = item.target.kind === 'agent-update' && item.id.startsWith('agent:') ? updates.get(item.target.profileId) : undefined
+            return <li key={item.id} className="flex items-center gap-1 px-2 py-1.5">
+              <Button variant="ghost" size="content" className="min-w-0 flex-1 justify-start px-2 py-2 text-left" onClick={() => {
+                inbox.read([item.id]); setOpen(false); onOpen(item.target)
+              }}>
+                <span className="flex items-center gap-2">
+                  <span aria-hidden="true" className={`size-1.5 shrink-0 rounded-full ${item.read ? 'bg-transparent' : 'bg-primary'}`} />
+                  <span className="flex min-w-0 flex-1 flex-col gap-1">
+                    <span className="truncate font-medium">{item.title}</span>
+                    {item.detail && <span className="truncate text-xs text-muted-foreground">{item.detail}</span>}
+                    <time dateTime={item.createdAt} className="text-xs text-muted-foreground">{time.format(new Date(item.createdAt))}</time>
+                  </span>
+                  {!update?.latestVersion && <ChevronRight className="text-muted-foreground" />}
                 </span>
-                {!update?.latestVersion && <ChevronRight className="text-muted-foreground" />}
-              </span>
-            </Button>
-            {update && <AgentUpdateButton item={update} showProgress />}
-          </li>
-        })}
-      </ul> : <div className="flex flex-col items-center gap-2 p-8 text-muted-foreground"><Bell aria-hidden="true" size={22} />暂无通知</div>}
+              </Button>
+              {update && <AgentUpdateButton item={update} showProgress />}
+            </li>
+          })}
+        </ul> : <div className="flex h-full flex-col items-center justify-center gap-2 p-4 text-muted-foreground"><Bell aria-hidden="true" size={22} />暂无通知</div>}
+      </ScrollFade>
     </PopoverContent>
   </Popover>
 }
