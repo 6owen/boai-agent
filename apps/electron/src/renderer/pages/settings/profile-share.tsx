@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 复制图片后通过全局 Sonner 反馈。
  * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [INPUT]: 已提交资料、已有活动快照或独立只读活动请求、离线头像与当前全局主题/圆角 token。
  * [OUTPUT]: 页面/头像菜单共用全屏分享；内容从首帧隐藏，Canvas 就绪后交给内部点阵渐显，错误时正常展示；弹窗背景稳定，关闭清理且不修改 Canvas/PNG；独立加载/错误重试、圆角方形本人头像及统一小牛默认/损坏头像回退、同一预览的 PNG 复制和下载；不创建公开链接或自动发布。
@@ -10,6 +11,7 @@ import type { LocalUserProfile, ProfileActivity } from '@boai/shared/domain/prof
 import { defaultUserProfile } from '@boai/shared/domain/profile'
 import type { DesktopApi } from '@boai/shared/ipc'
 import { userAvatarSource } from '@/assets/avatars'
+import { notify as toast } from '@boai/ui/sonner'
 import { Banner, errorText, useMutation } from '@/components/common'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -70,7 +72,7 @@ async function paintShareCard(canvas: HTMLCanvasElement, profile: LocalUserProfi
 }
 
 export function ProfileShare({ api, profile = defaultUserProfile, activity: providedActivity, onClose, finalFocus }: { api: DesktopApi; profile?: LocalUserProfile; activity?: ProfileActivity; onClose: () => void; finalFocus: RefObject<HTMLButtonElement | null> }) {
-  const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null), [blob, setBlob] = useState<Blob>(), [imageError, setImageError] = useState(''), [notice, setNotice] = useState('')
+  const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null), [blob, setBlob] = useState<Blob>(), [imageError, setImageError] = useState('')
   const [loadedActivity, setLoadedActivity] = useState<ProfileActivity>(), [loadError, setLoadError] = useState(''), [retry, setRetry] = useState(0)
   const generation = useShareGeneration(Boolean(blob))
   const activity = providedActivity ?? loadedActivity
@@ -84,7 +86,7 @@ export function ProfileShare({ api, profile = defaultUserProfile, activity: prov
   }, [api, providedActivity, retry])
   useEffect(() => {
     let current = true
-    setBlob(undefined); setImageError(''); setNotice('')
+    setBlob(undefined); setImageError('')
     if (!activity || !canvas) return
     const render = async () => {
       try {
@@ -102,7 +104,7 @@ export function ProfileShare({ api, profile = defaultUserProfile, activity: prov
   })
   const copy = () => void run(async () => {
     if (!blob) return
-    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); setNotice('图片已复制')
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); toast.success('图片已复制')
   })
   return <Dialog open onOpenChange={open => { if (!open) onClose() }}>
     <DialogContent className="profile-share-dialog bg-background fixed top-0 left-0 flex h-dvh w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 rounded-none p-0 sm:max-w-none" style={{ animation: 'none' }} showCloseButton={false} finalFocus={finalFocus}>
@@ -115,7 +117,6 @@ export function ProfileShare({ api, profile = defaultUserProfile, activity: prov
           <div><Button variant="ink" size="icon-lg" disabled={!blob || busy} aria-label="复制活动图片" onClick={copy}><Copy size={22} /></Button><span>复制图片</span></div>
           <div><Button variant="ink" size="icon-lg" disabled={!blob || busy} aria-label="保存活动图片" onClick={save}><Download size={22} /></Button><span>保存图片</span></div>
         </div>
-        <p className="profile-share-notice" role="status">{notice}</p>
       </div>
     </DialogContent>
   </Dialog>

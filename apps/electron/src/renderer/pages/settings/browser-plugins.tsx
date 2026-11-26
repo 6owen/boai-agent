@@ -5,7 +5,7 @@
  * [PROTOCOL]: Update Header and settings/.folder.md on change.
  */
 import { useEffect, useState } from 'react'
-import { toast } from 'sonner'
+import { notify as toast } from '@boai/ui/sonner'
 import type { DesktopApi } from '@boai/shared/ipc'
 import { browserPluginNames, browserDefaultForeground, mergeBrowserConfigurationDraft, refreshBrowserConfigurationDraft, type BrowserPluginConfig, type BrowserPluginProvider, type BrowserPluginSettings } from '@boai/shared/plugins/browser-tools'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'

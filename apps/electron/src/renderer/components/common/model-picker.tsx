@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 模型目录成功、空列表与失败通过全局 Sonner 反馈。
  * [OUTPUT]: 有默认选项时空值显式保留继承，手动输入可清空恢复连接默认模型。
  * [OUTPUT]: row布局复用连接设置的模型标题/操作及横向模型ID行，保留员工可选模型和原控件名称/必填语义。
  * [OUTPUT]: 手动模型输入与宿主共用1000字符上限，不截断目录原ID。
@@ -11,6 +12,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { MODEL_ID_MAX_LENGTH } from '@boai/shared/domain/model-id'
+import { notify as toast } from '@boai/ui/sonner'
 import { useEffect, useId, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { ButtonGroup, ButtonGroupSeparator } from '@/components/ui/button-group'
@@ -41,7 +43,6 @@ export function ModelPicker({ api, draft, onChange, disabled = false, catalogAva
   const current = catalog?.source === source ? catalog : null
   const loading = current?.status === 'loading'
   const models = current?.models ?? []
-  const feedback = current?.status === 'error' ? current.error : current?.status === 'success' ? (models.length ? `已获取 ${models.length} 个模型` : '该服务未返回可用模型，可点击铅笔手动填写模型 ID。') : undefined
   const options = [...new Set([...models, draft.defaultModel, fallbackModel].filter(Boolean))]
   useEffect(() => () => { requestId.current++ }, [source])
 
@@ -53,14 +54,17 @@ export function ModelPicker({ api, draft, onChange, disabled = false, catalogAva
       const result = fetchModels ? await fetchModels() : await api.request('listConnectionModels', { id: draft.id, baseUrl: draft.baseUrl.trim(), apiKey: draft.apiKey?.trim(), ...(draft.gateway ? { gateway: draft.gateway, expectedRevision: draft.expectedRevision } : {}) })
       if (request !== requestId.current) return
       setCatalog({ source, status: 'success', models: result })
-      if (result.length) setManual(false)
+      if (result.length) {
+        setManual(false)
+        toast.success(`已获取 ${result.length} 个模型`)
+      } else toast.info('该服务未返回可用模型，可点击铅笔手动填写模型 ID。')
     } catch (cause) {
       const message = errorText(cause)
       if (request === requestId.current) setCatalog({ source, status: 'error', models, error: message === '无效请求。' ? unsupportedRequestMessage : message })
     }
   }
   const actions = <div className="connection-model-actions">
-    {current?.status === 'error' ? <ErrorToast>{feedback}</ErrorToast> : feedback && <p className="connection-model-message connection-inline-feedback" title={feedback} role="status"><span>{feedback}</span></p>}
+    {current?.status === 'error' && <ErrorToast>{current.error}</ErrorToast>}
     <ButtonGroup aria-label="模型列表操作">
       <Button type="button" variant="outline" size="sm" aria-busy={loading} disabled={disabled || loading || !canLoad} onClick={() => { void loadModels() }}><RefreshCw className={loading ? 'spinner' : undefined} />获取模型列表</Button>
       <ButtonGroupSeparator />

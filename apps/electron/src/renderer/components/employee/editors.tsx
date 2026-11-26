@@ -70,7 +70,7 @@ import type { BindLocalSkillInput, SkillBindingReceipt } from '@boai/shared/doma
 import { isCoreAgent } from '@boai/shared/domain/core-agent'
 import type { DesktopApi } from '@boai/shared/ipc'
 import { Banner, colors, EditorFrame, errorText, GuardContext, ResourcePicker, showErrorToast, useDirty, useMutation } from '@/components/common/index'
-import { toast } from 'sonner'
+import { notify as toast } from '@boai/ui/sonner'
 import { GroupConfigurationFields, groupConfigurationInput } from './group-configuration-fields'
 import { GroupMembers } from './group-members'
 import { DirectoryGrantFields } from './directory-grants'

@@ -525,6 +525,7 @@ When('删除最后一个核心会话', async ({ runtime, team }) => {
   await runtime.page.getByRole('navigation', { name: '会话列表' }).getByRole('button', { name: conversation.title, exact: true }).click({ button: 'right' })
   await runtime.page.getByRole('menuitem', { name: '删除会话', exact: true }).click()
   await runtime.page.getByRole('button', { name: '删除会话及记录', exact: true }).click()
+  await expect(runtime.page.locator('[data-sonner-toaster][data-x-position=right] [data-sonner-toast][data-type=success]').filter({ hasText: '会话已删除' })).toBeVisible()
   await expect(runtime.page.getByRole('alertdialog')).toBeHidden()
   await expect(runtime.page.locator('.conversation-list-panel .conversation-item')).toHaveCount(0)
   await expect(runtime.page.getByRole('button', { name: 'bobo 的主聊天', exact: true })).toHaveCount(1)

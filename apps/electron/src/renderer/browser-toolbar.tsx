@@ -3,7 +3,7 @@
  * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [INPUT]: 原工具栏布局、专用 preload 与主进程网页事实。
  * [OUTPUT]: 内置浏览器工具栏不显示员工/会话归属，正常导航与直接关闭保留。
- * [OUTPUT]: 普通地址栏/返回/前进/刷新/停止加载与X关闭保持；Cookie菜单按需展开原工具栏覆盖，错误沿Sonner。
+ * [OUTPUT]: 普通地址栏/返回/前进/刷新/停止加载与X关闭保持；Cookie菜单按需展开原工具栏覆盖，错误显示在右上角 Sonner。
  * [POS]: apps/electron/src/renderer/browser-toolbar.tsx。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -82,6 +82,6 @@ function BrowserToolbarApp() {
         <DropdownMenuGroup><DropdownMenuItem disabled={loadingSources} closeOnClick={false} onClick={()=>void loadSources(true)}><i aria-hidden="true" className="app-icon i-solar-refresh-linear size-4" />刷新浏览器列表</DropdownMenuItem></DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
-    <Button variant="ghost" size="icon-sm" aria-label="关闭浏览器" title="关闭浏览器" onClick={()=>void run(api.closeWindowEntirely)}><X className="size-3.5" /></Button></div>} /><Toaster position="top-center" offset={4} theme={state.isDark ? 'dark' : 'light'} /></>
+    <Button variant="ghost" size="icon-sm" aria-label="关闭浏览器" title="关闭浏览器" onClick={()=>void run(api.closeWindowEntirely)}><X className="size-3.5" /></Button></div>} /><Toaster offset={4} theme={state.isDark ? 'dark' : 'light'} /></>
 }
 createRoot(document.getElementById('root')!).render(<React.StrictMode><BrowserToolbarApp /></React.StrictMode>)

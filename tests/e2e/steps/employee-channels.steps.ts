@@ -543,7 +543,7 @@ When('打开员工渠道并模拟保存响应失联', async ({ runtime }) => {
 Then('核对原渠道保存回执后只有一份飞书绑定', async ({ runtime }) => {
   const page = runtime.page, pane = page.getByRole('tabpanel', { name: '渠道', exact: true })
   await pane.getByRole('button', { name: '核对保存结果', exact: true }).click()
-  await expect(pane).toContainText('渠道绑定已保存')
+  await expect(page.locator('[data-sonner-toaster][data-x-position=right] [data-sonner-toast]')).toContainText('渠道绑定已保存')
   await expect(pane.getByRole('button', { name: '添加绑定', exact: true })).toHaveCount(0)
   const values = await page.evaluate(async () => ({ bindings: await window.boai.request('listChannelBindings', { agentId: 'researcher' }), snapshot: await window.boai.request('snapshot', undefined) }))
   expect(values.bindings).toHaveLength(1); expect(values.bindings[0]).toMatchObject({ platform: 'feishu', appId: 'fixture-feishu-app', enabled: false, hasCredential: true })

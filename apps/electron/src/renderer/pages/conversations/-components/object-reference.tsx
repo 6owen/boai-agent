@@ -5,7 +5,7 @@
  * [PROTOCOL]: Update Header and -components/.folder.md on change.
  */
 import { useEffect, useState, type ReactNode } from 'react'
-import { toast } from 'sonner'
+import { notify as toast } from '@boai/ui/sonner'
 import type { ReferenceResolution, ReferenceScope } from '@boai/shared/domain/references'
 import { getDesktopClient } from '@/services/request/desktop-client'
 import { Button } from '@/components/ui/button'

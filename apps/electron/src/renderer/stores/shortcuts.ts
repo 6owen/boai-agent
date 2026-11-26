@@ -6,7 +6,7 @@
  */
 import { createStore } from 'zustand/vanilla'
 import { useStore } from 'zustand'
-import { toast } from 'sonner'
+import { notify as toast } from '@boai/ui/sonner'
 import type { DesktopApi } from '@boai/shared/ipc'
 import { sameShortcut, shortcutDefaults, shortcutIds, shortcutLabels, validateShortcuts, type ShortcutBinding, type ShortcutEntry, type ShortcutId, type ShortcutSnapshot, type ShortcutUpdate } from '@boai/shared/shortcuts'
 import { getDesktopClient } from '@/services/request/desktop-client'

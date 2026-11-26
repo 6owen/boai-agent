@@ -5,7 +5,7 @@
  * [POS]: Employee task actions only; schedule plans and execution history remain intact.
  * [PROTOCOL]: Update Header and owning .folder.md on change.
  */
-import { toast } from 'sonner'
+import { notify as toast } from '@boai/ui/sonner'
 import { createContext, useContext, useRef, useState, type ReactElement, type ReactNode } from 'react'
 import type { DesktopApi } from '@boai/shared/ipc'
 import { EMPLOYEE_TASK_STATUSES, type TrackedTaskListItem, type TrackedTaskStatus } from '@boai/shared/domain/tracked-tasks'

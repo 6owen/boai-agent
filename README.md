@@ -1,6 +1,6 @@
 <!--
 [OUTPUT]: 2026-11-25定时执行直达员工话题，与旧看板后台解耦；看板入口隐藏、前端保留，定时页面布局保持。
-[OUTPUT]: 右上角通知中心与模型连接中的本机 Agent 版本和安装。
+[OUTPUT]: 全局通知通过右上角 Sonner 显示，本机 Agent 版本与安装入口位于模型连接。
 [OUTPUT]: 2026-11-24官方Session审批与Metrics费用估算接入，验证和个人预览生效见迁移记录。
 [OUTPUT]: 2026-11-24补API主执行AgentController迁移入口，SDK循环与记忆归属、实际验证及未验范围独立记录。
 [OUTPUT]: 默认自动提 PR，用户要求先看图时先交付实际截图的绝对路径。
@@ -126,7 +126,7 @@ pnpm dev
 - [文档入口](ai-docs/README.md) · [功能规格](ai-docs/spec/README.md)
 - [当前核心设计与完整验收](ai-docs/spec/29.员工核心模型与完整验收/README.md)：员工、workspace与长期memory归属；单员工、执行能力、群组和交接五阶段。已有实现、待对齐部分和实际测试分别记录。
 - [后续执行计划](ai-docs/spec/30.配置开放与插件及上下文交接/README.md)：外观与插件配置开放、通用能力包、T3上下文交接、bobo任务自诊断、项目目录、tldraw画板及资源库应用/助手；共9目标，方法沉淀仅为普通Skill工作；保留手动设置，首版配置由bobo管理，普通员工可使用获准画板，当前仅设计。
-- [通知中心与本机 Agent 更新](ai-docs/implementation/2026-11-25-agent-updates-notifications.md)：从右上角查看通知，在「设置 → 模型连接 → 本机 Agent」查看版本并安装可用更新。
+- [通知中心与本机 Agent 更新](ai-docs/implementation/2026-11-25-agent-updates-notifications.md)：操作结果、任务和更新即时显示在右上角，在「设置 → 模型连接 → 本机 Agent」查看版本并安装可用更新。
 - [AgentController执行迁移](ai-docs/implementation/2026-11-24-mastra-agent-controller.md)：API聊天/任务采用官方Session、自动观察记忆、原生工具审批及Metrics费用估算；业务授权和本机后端各自保持原归属。
 - [既有记忆实现与迁移记录](ai-docs/spec/5.Mastra能力扩展/16-按执行内核归属的记忆架构.md)：保留API/Mastra与本机原生记忆的历史接线及验证；新的员工级memory目标以第29组为准。
 - [定时执行与员工话题](ai-docs/implementation/2026-11-25-scheduled-employee-topics.md)：定时运行直接进入负责员工的话题；旧任务看板隐藏，前端组件保留复用。

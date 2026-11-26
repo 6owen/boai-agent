@@ -5,7 +5,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
 import { Children, isValidElement, useEffect, useRef, type ReactNode } from 'react'
-import { toast } from 'sonner'
+import { notify as toast } from './sonner'
 
 function messageText(children: ReactNode): string {
   return Children.toArray(children).map(child => isValidElement<{ children?: ReactNode }>(child)

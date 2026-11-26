@@ -8,7 +8,7 @@
  * [PROTOCOL]: Update Header and settings/.folder.md when changed.
  */
 import { useContext, useEffect, useRef, useState } from 'react'
-import { toast } from 'sonner'
+import { notify as toast } from '@boai/ui/sonner'
 import type { Connection } from '@boai/shared/domain'
 import type { VoiceModelId, VoiceSettings } from '@boai/voice-input-plugin/protocol'
 import { getDesktopClient } from '@/services/request/desktop-client'

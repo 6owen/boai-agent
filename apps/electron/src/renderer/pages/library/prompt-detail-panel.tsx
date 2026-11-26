@@ -5,7 +5,7 @@
  * [PROTOCOL]: 修改同步Header与所属.folder.md。
  */
 import { useContext, useEffect, useReducer, useState } from 'react'
-import { toast } from 'sonner'
+import { notify as toast } from '@boai/ui/sonner'
 import type { DesktopApi } from '@boai/shared/ipc'
 import type { PromptTemplate } from '@boai/shared/domain/prompt-templates'
 import { Banner, Field, GuardContext, errorText, useMutation } from '@/components/common'

@@ -363,6 +363,7 @@ const automationNotifications = new AutomationNotificationConsumer({
   error: error => sendEvent({ type: 'runtime-error', error: `通知回执保存失败：${String(error)}` }),
   submit: (record, failed) => {
     void notifications.record({ id: `automation:${record.id}`, title: record.kind === 'attention' ? '定时任务需要处理' : '定时任务已有结果',
+      level: record.kind === 'attention' ? 'warning' : 'success',
       target: { kind: 'automation', occurrenceId: record.occurrenceId } }).catch(() => {})
     if (!Notification.isSupported()) throw new Error('此设备不支持系统通知，结果仍保存在应用内')
     const notice = new Notification({ title: 'BoAI 定时任务', body: record.kind === 'attention' ? '本次运行需要处理，点击查看记录。' : '本次运行已有结果，点击查看记录。' })

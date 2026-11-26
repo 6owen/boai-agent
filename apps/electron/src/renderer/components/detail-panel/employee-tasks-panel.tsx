@@ -11,7 +11,7 @@
  * [PROTOCOL]: Update Header and owning .folder.md on change.
  */
 import { createContext, useEffect, useRef, useState } from 'react'
-import { toast } from 'sonner'
+import { notify as toast } from '@boai/ui/sonner'
 import type { Snapshot } from '@boai/shared/domain'
 import { EMPLOYEE_TASK_STATUSES, type TrackedTaskPage, type TrackedTaskStatus } from '@boai/shared/domain/tracked-tasks'
 import type { DesktopApi } from '@boai/shared/ipc'

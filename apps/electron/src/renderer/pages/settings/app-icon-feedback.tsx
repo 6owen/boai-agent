@@ -5,7 +5,7 @@
  * [PROTOCOL]: 变化同步 Header 与所属 .folder.md。
  */
 import { useEffect, useRef } from 'react'
-import { toast } from 'sonner'
+import { notify as toast } from '@boai/ui/sonner'
 import { Button } from '@/components/ui/button'
 import type { AppIconStatus } from '@boai/shared/appearance'
 

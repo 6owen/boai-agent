@@ -24,7 +24,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Clock, Trash2, ChevronRight, Search } from '@/components/icons'
 import { Popover, PopoverContent, PopoverDescription, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
-import { toast } from 'sonner'
+import { notify as toast } from '@boai/ui/sonner'
 import { AUTOMATION_ONGOING_STATUSES } from '@boai/shared/domain/automations'
 import { occurrenceStatusLabels, deliveries } from './automation-history'
 

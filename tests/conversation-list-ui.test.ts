@@ -115,8 +115,8 @@ it('stops on a failed item and resumes only the remaining items on an explicit c
   props = { ...props, onClear: clear, snapshot: { ...props.snapshot, conversations: [...props.snapshot.conversations, room('C')] } }
   await render(); await openMenu(); await choose('清空所有记录'); await confirm('确认清空')
   expect(clear.mock.calls).toEqual([['A', false], ['B', false]])
-  expect(showErrorToast).toHaveBeenCalledWith('清理失败')
-  expect(document.querySelector('[role="status"]')?.textContent).toContain('已清理 1 / 3')
+  expect(showErrorToast).toHaveBeenCalledWith('已清理 1 / 3 个会话。 清理失败')
+  expect(document.querySelector('[role="alertdialog"]')?.textContent).not.toContain('已清理 1 / 3')
   await confirm('继续清理剩余会话')
   expect(clear.mock.calls).toEqual([['A', false], ['B', false], ['B', false], ['C', false]])
   expect(document.querySelector('[role="alertdialog"][data-open]')).toBeNull()

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 备份与诊断导出结果使用全局 Sonner。
  * [OUTPUT]: 2026-11-07 原故障诊断入口按需显示主进程只读摘要，runtime退出时仍可读取且不启动服务。
  * [OUTPUT]: 数据设置增加明确诊断导出，取消零成功提示、操作反馈沿Sonner。
  * [INPUT]: 快照领域类型、DesktopApi 与公共组件、统一 UI 基础组件。
@@ -9,7 +10,7 @@
 import { Button } from '@/components/ui/button'
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { toast } from 'sonner'
+import { notify as toast } from '@boai/ui/sonner'
 import { FolderOpen, HardDrive, Download } from '@/components/icons'
 import type { DesktopApi } from '@boai/shared/ipc'
 import type { Snapshot } from '@boai/shared/domain'
@@ -17,7 +18,7 @@ import type { DesktopDiagnosticsSnapshot } from '@boai/shared/ipc/desktop-diagno
 import { useMutation } from '@/components/common'
 import { SettingsLayout, SettingsSection, SettingsCard, SettingsRow, SettingsHelp } from './settings-layout'
 
-export function DataSettings({ api, snapshot, busy, run, onNotice }: { api: DesktopApi; snapshot: Snapshot; busy: boolean; run: ReturnType<typeof useMutation>['run']; onNotice(message: string): void }) {
+export function DataSettings({ api, snapshot, busy, run }: { api: DesktopApi; snapshot: Snapshot; busy: boolean; run: ReturnType<typeof useMutation>['run'] }) {
   const [diagnosis, setDiagnosis] = useState<DesktopDiagnosticsSnapshot | null>(null)
   const [diagnosisOpen, setDiagnosisOpen] = useState(false)
   const { busy: diagnosisBusy, run: runDiagnosis } = useMutation()
@@ -34,7 +35,7 @@ export function DataSettings({ api, snapshot, busy, run, onNotice }: { api: Desk
     <SettingsSection title="备份">
       <SettingsCard><SettingsRow>
         <div className="flex min-w-0 items-center gap-1 font-medium"><span>本地备份</span><SettingsHelp label="备份说明">保存本地数据、员工系统文件与工作产物。导出不包含模型凭据。</SettingsHelp></div>
-        <Button size="sm" className="shrink-0" disabled={busy} onClick={() => { void run(async () => { const path = await api.request('exportBackup', undefined); if (path) onNotice(`备份已导出：${path}`) }) }}><HardDrive size={16} />导出备份</Button>
+        <Button size="sm" className="shrink-0" disabled={busy} onClick={() => { void run(async () => { const path = await api.request('exportBackup', undefined); if (path) toast.success(`备份已导出：${path}`) }) }}><HardDrive size={16} />导出备份</Button>
       </SettingsRow></SettingsCard>
     </SettingsSection>
     {api.exportDiagnostics && <SettingsSection title="故障诊断">

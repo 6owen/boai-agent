@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 活动分享不预留操作提示的行高。
  * [OUTPUT]: 活动洞察采用等高网格行，推理强度说明沿行内图标Tooltip，字号放大/窄窗仍按最大行高对齐。
  * [OUTPUT]: 最常用技能仅维护列表容器，行与占位结构统一复用共享ListRow排版。
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
@@ -103,7 +104,6 @@
 .profile-share-actions { display:flex;justify-content:center;gap:32px }
 .profile-share-actions>div { display:flex;flex-direction:column;align-items:center;gap:12px;color:var(--muted-foreground) }
 .profile-share-actions button { width:56px;height:56px;border-radius:50%;corner-shape:round }
-.profile-share-notice { color:var(--muted-foreground);min-height:20px;margin:0 }
 @media (max-width:600px) {
   .profile-share-body { gap:28px;padding:76px 16px 24px }
   .profile-share-card { border-radius:16px }

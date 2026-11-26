@@ -6,7 +6,7 @@
  * [PROTOCOL]: 变化同步Header与所属.folder.md。
  */
 import { useEffect, useRef, useState } from 'react'
-import { toast } from 'sonner'
+import { notify as toast } from '@boai/ui/sonner'
 import type { DesktopApi, Methods } from '@boai/shared/ipc'
 import type { AgentRun } from '@boai/shared/domain'
 import { errorText } from '@/components/common'

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Controlled registry and installer ports plus a real local inbox file.
- * [OUTPUT]: Unread history across restart, duplicate suppression, exact version and local-only version offer invalidation.
+ * [OUTPUT]: Live delivery, history without replay, duplicate suppression, exact version and stale offer invalidation.
  * [POS]: Electron notification store regression without opening a window.
  * [PROTOCOL]: Update Header and tests/.folder.md when changed.
  */
@@ -38,10 +38,13 @@ it('keeps task and release notices read across restart and does not duplicate th
   await store.check(true)
   const ids = store.snapshot().items.map(item => item.id)
   expect(ids).toEqual(['agent:pi-personal:1.6.0', 'app:1.0.1', 'task:round-1'])
-  await store.read(ids)
+  expect(store.snapshot().pendingIds).toEqual([...ids].reverse())
+  await store.read(ids.slice(1))
+  expect(store.snapshot().pendingIds).toEqual(ids.slice(0, 1))
   const restored = await open()
   await restored.check(true)
-  expect(restored.snapshot().items).toMatchObject(ids.map(id => ({ id, read: true })))
+  expect(restored.snapshot().items).toMatchObject(ids.map((id, index) => ({ id, read: index > 0 })))
+  expect(restored.snapshot().pendingIds).toEqual([])
 })
 
 it('keeps retry available after failure and uses the exact offered version', async () => {
@@ -56,7 +59,8 @@ it('keeps retry available after failure and uses the exact offered version', asy
   expect(store.snapshot().agentUpdates[0].phase).toBe('verifying')
   finish({ ...update, profileRevision: 2, currentVersion: '1.6.0', latestVersion: undefined })
   await installing
-  expect(store.snapshot().items).toMatchObject([{ id: 'agent-installed:pi-personal:1.6.0' }])
+  expect(store.snapshot().items).toMatchObject([{ id: 'agent-installed:pi-personal:1.6.0', read: true }])
+  expect(store.snapshot().pendingIds).toEqual([])
   await store.check(true)
   ports.install.mockRejectedValueOnce(new Error('probe failed'))
   await expect(store.install(key)).rejects.toThrow('probe failed')
