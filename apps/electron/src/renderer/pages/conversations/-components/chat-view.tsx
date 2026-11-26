@@ -2,7 +2,7 @@
  * [OUTPUT]: 会话仅在有待发送材料时向 Composer 提供附件区。
  * [OUTPUT]: 2026-11-24 第三阶段：已有补充入口支持 API Controller 活跃轮次，仍按当前配置和授权开放。
  * [OUTPUT]: 一条消息的正文与文件分别显示为可独立悬停的两行，共用原消息锚点和回执。
- * [OUTPUT]: 单员工首批预置角色由当前消息流/执行/输入状态驱动，隐藏暂停并可预览协议动作。
+ * [OUTPUT]: 暂停挂载单员工角色动画与预览入口，保留恢复接线。
  * [OUTPUT]: 2026-11-09 输入框移除项目选择与相关忙态，目录由员工配置及宿主受理决定。
  * [OUTPUT]: 聊天和任务输入区共用已提交项目选择/CAS回执，活动执行或未决消息时禁止切换；草稿保持。
  * [OUTPUT]: 2026-11-06 会话输入器恢复原有$菜单及技能/会话文件/提示词候选，新增知识资料仅走右侧面板添加。
@@ -106,7 +106,7 @@ import { PromptBar, type PromptBarHandle } from './prompt-bar'
 import { ExternalFiles } from './external-files'
 import { ConversationQueue } from './conversation-queue'
 import { ComposerToolbar, type ComposerAgentPatch, type ComposerAgentSaveResult } from './composer-toolbar'
-import { ConversationAvatar } from './conversation-avatar'
+// import { ConversationAvatar } from './conversation-avatar'
 import { ConversationHeader } from './conversation-header'
 import { Fragment, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { LoaderCircle, Reply, ShieldCheck, X } from '@/components/icons/index'
@@ -180,7 +180,14 @@ function ChatLayout(props: ChatViewProps & { conversation: Conversation }) {
   const external = conversation.kind === 'direct' && members[0]?.executionBackend?.kind === 'acp-local'
   useLayoutEffect(() => { setDraggingFiles(false) }, [conversation.id, pageActive])
   return <div data-conversation-view="chat" data-conversation-id={conversation.id} className={`chat-panel${group ? ' group-chat' : ''}`} onDragOver={event => { if (event.dataTransfer.types.includes('Files')) event.preventDefault() }} onDrop={event => { if (event.dataTransfer.types.includes('Files')) event.preventDefault() }}>
-    {!props.hideHeader && <ConversationHeader onTasks={props.onTasks ? () => props.onTasks!() : undefined} onFiles={onFiles} onKnowledge={props.onKnowledge} headerActions={<>{members.length === 1 && <ConversationAvatar key={conversation.id} employee={members[0]} active={pageActive} input={{ state: detail?.messages.some(message => message.status === 'streaming' && message.senderType === 'agent') ? 'speaking' : active ? 'thinking' : draftContent(draft) ? 'listening' : 'idle', activity: detail?.runs.some(run => run.status === 'waiting_approval') ? 'waiting' : active ? 'working' : null, userActivity: draftContent(draft) ? 'writing' : null }} />}{headerActions}</>} onChannels={onChannels} members={members} resources={snapshot.resources} conversation={snapshot.conversations.find(item => item.id === conversation.id) ?? conversation} busy={busy} onDetails={onDetails} onConfigureAgent={onConfigureAgent} onEditTitle={onEditTitle} onClear={onClear} />}
+    {/* 角色动画暂时下线。恢复时将这段渲染放回 ConversationHeader 的 headerActions。
+    {members.length === 1 && <ConversationAvatar key={conversation.id} employee={members[0]} active={pageActive} input={{
+      state: detail?.messages.some(message => message.status === 'streaming' && message.senderType === 'agent') ? 'speaking' : active ? 'thinking' : draftContent(draft) ? 'listening' : 'idle',
+      activity: detail?.runs.some(run => run.status === 'waiting_approval') ? 'waiting' : active ? 'working' : null,
+      userActivity: draftContent(draft) ? 'writing' : null,
+    }} />}
+    */}
+    {!props.hideHeader && <ConversationHeader onTasks={props.onTasks ? () => props.onTasks!() : undefined} onFiles={onFiles} onKnowledge={props.onKnowledge} headerActions={headerActions} onChannels={onChannels} members={members} resources={snapshot.resources} conversation={snapshot.conversations.find(item => item.id === conversation.id) ?? conversation} busy={busy} onDetails={onDetails} onConfigureAgent={onConfigureAgent} onEditTitle={onEditTitle} onClear={onClear} />}
     <div className="conversation-chat-body">
       <ChatMessagesTransition conversationId={conversation.id} loading={!detail && loading} active={pageActive}>
         {detail ? <ChatHistory {...props} key={conversation.id} detail={detail} composerRef={composerRef} historyRef={historyRef} /> : !loading && <div className="chat-history-retry"><Button variant="ghost" onClick={onRetry}>重新载入消息</Button></div>}

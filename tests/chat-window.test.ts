@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 单聊预置角色的动画画布与预览入口已下线，静态头像与会话操作仍可用。
  * [OUTPUT]: 2026-11-16聊天窗口夹具补完整matchMedia订阅和独立WebGL播放器替身，原聊天/减少动态断言保持。
  * [OUTPUT]: 2026-11-09任务入口夹具改从标题菜单打开，继续保留主聊天/草稿断言；本轮按用户要求未运行。
  * [OUTPUT]: 主聊天忙碌时消息立即展示且不挂载待发队列；仅任务会话提供队列操作。
@@ -76,6 +77,19 @@ beforeEach(() => {
 })
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.clearAllTimers(); vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks() })
 const render = () => act(async () => root.render(h(ChatView, props)))
+
+it('keeps the static avatar and chat actions while character animation is offline', async () => {
+  props.snapshot.agents[0].avatar = { kind: 'preset', id: 'fox' }
+  const message = props.detail!.messages[0]
+  message.senderType = 'agent'
+  message.senderId = props.snapshot.agents[0].id
+  await render()
+
+  expect(host.querySelector('.chat-header [aria-label="会话操作"]')).not.toBeNull()
+  expect(host.querySelector('[aria-label="预览角色动画"]')).toBeNull()
+  expect(host.querySelector('canvas[aria-label="角色动画"]')).toBeNull()
+  expect(host.querySelector('.messages img[src*="ox"]')).not.toBeNull()
+})
 
 it('gives text and files separate toolbar anchors on a single message and opens the original preview', async () => {
   const detail = props.detail!
