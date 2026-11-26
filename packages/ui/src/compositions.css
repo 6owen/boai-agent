@@ -1,6 +1,6 @@
 /*
  * [INPUT]: BOAI Tabs、Composer、共享ListRow与拖拽列表。
- * [OUTPUT]: 自适应 Composer 紧凑态令操作组与编辑器同行，尺寸过渡由 Motion layout 负责。
+ * [OUTPUT]: Composer 主容器无额外子项间距，自适应紧凑态令操作组与编辑器同行，尺寸过渡由 Motion layout 负责。
  * [OUTPUT]: 共享组合皮肤；折叠根容器隔离标题边距，避免面板卸载末帧跳动，宿主布局工具类可覆盖。
  * [POS]: @boai/ui组合样式。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header与所属目录.folder.md。
@@ -28,7 +28,7 @@
   display:flex;
   flex-direction:column;
   align-items:stretch;
-  gap:8px;
+  gap:0;
   width:100%;
   height:auto;
   min-width:0;

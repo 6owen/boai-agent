@@ -3,7 +3,7 @@
  * [OUTPUT]: 当前员工的Magpie三协议目录沿保存版本读取，模型展示名与推理原值来自结构化目录。
  * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
  * [INPUT]: 当前员工、原连接快照、原生目录和已提交配置保存回调。
- * [OUTPUT]: 当前连接内模型与推理菜单；保留目录/顺序且无顶部或读取提示，保存不插入锁定说明；管理入口在关闭动画完成后跳转通讯录。
+ * [OUTPUT]: 当前连接内模型与推理菜单，模型面板宽 180px；保留目录顺序，管理入口在关闭动画完成后跳转通讯录。
  * [POS]: Composer轻量模型菜单；交互参考Craft ComposerModelMenu（22c9f041），使用BOAI组件。
  * [PROTOCOL]: 变化同步Header与所属.folder.md。
  */
@@ -90,7 +90,7 @@ export function ComposerModelMenu({ api, agent, snapshot, locked, runs, onSave, 
     trigger.current.focus({ preventScroll: true }); onConfigure(committed)
   }}>
     <DropdownMenuTrigger render={<ChatComposerSelect ref={trigger} kind="model" aria-label="选择模型" title={effective || '本机默认模型'} />}><span>{effective || (native ? '本机默认模型' : '选择模型')}</span><ChevronDownIcon /></DropdownMenuTrigger>
-    <DropdownMenuContent side="top" align="end" sideOffset={8} className="chat-composer-menu w-[280px] max-w-[calc(100vw-32px)]" aria-label="选择模型">
+    <DropdownMenuContent side="top" align="end" sideOffset={8} className="chat-composer-menu w-[180px] max-w-[calc(100vw-32px)]" aria-label="选择模型">
       <DropdownMenuGroup>
         <DropdownMenuRadioGroup value={native ? committed.modelId : effective} onValueChange={value => { const model = options.find(item => item.value === value); if (model && value !== (native ? committed.modelId : effective)) void save(composerModelPatch(committed, model)) }} className="max-h-64 overflow-y-auto">
           {options.map(model => <DropdownMenuRadioItem key={model.value} value={model.value} disabled={disabled} closeOnClick={false}><span className="min-w-0 truncate" title={model.displayName ?? model.value}>{model.displayName ?? model.value}</span></DropdownMenuRadioItem>)}
