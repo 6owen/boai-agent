@@ -38,7 +38,7 @@ Then('已读材料出现{string}后旧上下文不可续用且同字节恢复需
     await runtime.reviewFile('首次发送的实际材料原件', source.path)
     await nextMaterialDialog(runtime, { path: source.path })
     await runtime.page.getByRole('button', { name: '添加或更多操作', exact: true }).click()
-    await runtime.page.getByRole('menuitem', { name: '添加文件', exact: true }).click()
+    await runtime.page.getByRole('menuitem', { name: '插入图片或文件', exact: true }).click()
     await expect(runtime.page.locator('[data-material-status="ready"]')).toHaveCount(1)
     const before = await send('这是普通聊天，不执行工具。NATIVE_MEMORY 请读取本条附件，只回复其中的完整暗号。附件也记录了我明确的长期写作偏好，请记住。')
     const material = before.materials![0], reply = before.messages.find(message => message.senderType === 'agent')!

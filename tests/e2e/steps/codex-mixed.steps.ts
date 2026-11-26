@@ -4,6 +4,7 @@
  * [POS]: LR5 双真实供应商桌面验收；不使用 API 模型替身，也不改产品调度或凭据来源。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { openComposerMentions } from '../support/composer'
 import { expect } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 import { readFile } from 'node:fs/promises'
@@ -56,7 +57,7 @@ Then('用户以真实 API 和 Codex 由{string}负责双向协作并保持原工
   const owner = ownerKind === 'API 员工' ? api : native, other = owner.id === api.id ? native : api
   const read = () => runtime.page.evaluate(id => window.boai.request('getConversation', { id }), chat.id)
   const request = `这是明确的文件协作任务。仅由被点名的${owner.name}负责主工作；${other.name}不要另建根工作，等待负责人正式委派。负责人请用 delegate_work 委派${other.name}创建并发布 mixed-child.md，正文包含“${codexEmployee.token}”。然后使用 wait_for_work 等待该子工作的实际结果。接续后核对真实子成果，再创建并发布 mixed-summary.md，正文包含同一暗号和子成果文件名，完成主工作。只需这两个短文件，不联网、不执行命令、不要求用户补充，不重复已经完成的委派或写入。`
-  await page.getByRole('button', { name: '提及群聊成员', exact: true }).click()
+  await openComposerMentions(page)
   await page.getByRole('option', { name: `@${owner.name}`, exact: true }).click()
   const memoryRequest = request + ' 另外，请两位记住本群今后的固定汇报偏好：先给结论，再列依据，使用简短中文。只保存这条偏好，不把文件核对码保存为长期记忆。'
   await page.getByRole('textbox', { name: '消息内容', exact: true }).pressSequentially(memoryRequest)

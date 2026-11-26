@@ -189,7 +189,7 @@ Then('右侧显示Shiki高亮原代码且预览不代表采用', async ({ runtim
 When('用户用真实文本材料要求发布第一版报告', async ({ runtime, artifactsState }) => {
   const fixture = artifactsState.fixture!
   await selectChat(runtime, fixture.group.title); await nextMaterialDialog(runtime, { path: fixture.source })
-  await runtime.page.getByRole('button', { name: '添加或更多操作', exact: true }).click(); await runtime.page.getByRole('menuitem', { name: '添加文件', exact: true }).click()
+  await runtime.page.getByRole('button', { name: '添加或更多操作', exact: true }).click(); await runtime.page.getByRole('menuitem', { name: '插入图片或文件', exact: true }).click()
   await expect(runtime.page.locator('[data-material-draft-id]')).toHaveAttribute('data-material-status', 'ready')
   artifactsState.material = (await artifactDetail(runtime, fixture.group.id)).materials![0]
   await initial(runtime, artifactsState)

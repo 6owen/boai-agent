@@ -53,7 +53,7 @@ Then('对照评估窗口能够准备三种原件附件而不发送消息',async(
   const folder=join(await realpath(d.root),'precheck-materials'),scenario=parityCase('inputs','ZERO-MODEL-PRECHECK');await seedParity(folder,scenario)
   await d.page.getByRole('navigation',{name:'会话列表',exact:true}).getByRole('button',{name:new RegExp(chat.title)}).click()
   for(const [index,name] of ['project.md','payload.json','one.png'].entries()){
-    await nextMaterialDialog(d,{path:join(folder,name)});await d.page.getByRole('button',{name:'添加或更多操作',exact:true}).click();await d.page.getByRole('menuitem',{name:'添加文件',exact:true}).click()
+    await nextMaterialDialog(d,{path:join(folder,name)});await d.page.getByRole('button',{name:'添加或更多操作',exact:true}).click();await d.page.getByRole('menuitem',{name:'插入图片或文件',exact:true}).click()
     await expect(d.page.locator('[data-material-draft-id][data-material-status="ready"]')).toHaveCount(index+1)
   }
   const detail=await request<ConversationDetail>(d,'getConversation',{id:chat.id});expect(detail.runs).toHaveLength(0);expect(detail.messages).toHaveLength(0)
@@ -125,7 +125,7 @@ When('通过BOAI执行相同任务及重启后的后续消息', async ({ runtime
       await d.page.getByRole('navigation', { name: '会话列表', exact: true }).getByRole('button', { name: new RegExp(s.chat.title) }).click()
       for(const [position,name] of (s.scenario.attachments?.[index]??[]).entries()){
         await nextMaterialDialog(d,{path:join(s.inputRoot!,name)})
-        await d.page.getByRole('button',{name:'添加或更多操作',exact:true}).click();await d.page.getByRole('menuitem',{name:'添加文件',exact:true}).click()
+        await d.page.getByRole('button',{name:'添加或更多操作',exact:true}).click();await d.page.getByRole('menuitem',{name:'插入图片或文件',exact:true}).click()
         await expect(d.page.locator('[data-material-draft-id][data-material-status="ready"]')).toHaveCount(position+1)
       }
       await new EvaluationBudget(budgetFile(), externalTurnLimit()).reserve('boai-' + s.runtime)

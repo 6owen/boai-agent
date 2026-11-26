@@ -10,6 +10,7 @@
  * [POS]: Claude普通群BDD；离线协议与真实供应商独立运行，不替代核心组织或自动化验收。
  * [PROTOCOL]: 一旦本文件变化，必须同步Header与所属.folder.md。
  */
+import { openComposerMentions } from '../support/composer'
 import { expect } from '@playwright/test'
 import { addCodexConnection } from '../support/native-connection'
 import { createBdd } from 'playwright-bdd'
@@ -79,7 +80,7 @@ Then('用户让Claude与{string}同事组成普通群并由{string}负责文件�
     : `${state.withholdWait ? 'CLAUDE_WITHHOLD_WAIT ' : ''}CLAUDE_GROUP_TASK 负责人正式委派同事，然后等待并交付汇总文件。请两位记住，我的长期偏好是简短答复。`
   const preparation = state.waitUpdate ? ' 补充执行顺序：负责人在delegate_work成功返回后，先用write_file把“等待同事实际交付”写入自己的self:/work/coordination-note.txt，再用read_file核读同一文件，然后调用wait_for_work。以上工具按这个顺序逐个办理；这个私有备注不用发布，不代替子成果或正式汇总。' : ''
   const memoryRequest = state.real ? request + preparation + ' 另外，请两位记住本群今后的固定汇报偏好：先给结论，再列依据，使用简短中文。只保存这条偏好，不把文件核对码保存为长期记忆。' : request
-  await page.getByRole('button', { name: '提及群聊成员', exact: true }).click()
+  await openComposerMentions(page)
   await page.getByRole('option', { name: `@${owner.name}`, exact: true }).click()
   await page.getByRole('textbox', { name: '消息内容', exact: true }).pressSequentially(memoryRequest)
   await runtime.reviewData('Claude普通群本次输入和运行来源', { request: memoryRequest, ownerId: owner.id, childOwnerId: childOwner.id, otherKind, modelMode: state.real ? 'real-provider' : 'offline-protocol', humanReview: 'pending' })

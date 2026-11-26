@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 首发草稿通过既有传输协议随首条消息提交图片或文件，选取不创建会话。
  * [OUTPUT]: 宿主通知经全局 Sonner 展示，查看动作沿原员工任务、定时结果与更新导航。
  * [OUTPUT]: 2026-11-25 任务面板暂时隐藏并清除残留标签；新定时结果定位原话题，旧任务链接仅兼容打开原会话。
  * [OUTPUT]: 全局通知入口紧随检索按钮，复用员工任务、定时记录及设置导航。
@@ -163,6 +164,7 @@ import { fileEditContent } from '@boai/shared/domain/file-edit'
 import { artifactRevisionTarget } from '../detail-panel/artifact-state'
 import { ARTIFACT_PENDING_KEY, restoreArtifactPending, updateArtifactPending, type ArtifactPending, type ArtifactPendingMap } from '../detail-panel/artifact-state'
 import { useChatMaterials } from './use-chat-materials'
+import { withFirstMessageUploads } from './first-message-uploads'
 import { getDesktopClient } from '@/services/request/desktop-client'
 import { DesktopToolbar } from './desktop-toolbar'
 import { DesktopNotificationProvider } from './notification-center'
@@ -232,7 +234,8 @@ const CanvasWorkspace = lazy(() => import('../canvas/workspace').then(module => 
 type Page = 'conversations' | 'contacts' | 'schedules' | 'skills' | 'settings' | 'help'
 type Creation = { type: 'agent'; template?: number } | { type: 'group' | 'team' }
 type EmployeeChatDraft = { employeeId: string; role: 'main' | 'topic' }
-type EmployeeChatDraftRequest = Methods['startEmployeeTopic']['input']
+type CoreChatDraftRequest = Pick<Methods['sendEmployeeMessage']['input'], 'requestId' | 'content' | 'composerReferences'> & { files: readonly File[] }
+type EmployeeChatDraftRequest = CoreChatDraftRequest & Pick<Methods['startEmployeeTopic']['input'], 'employeeId'>
 const employeeChatDraftKey = (target?: EmployeeChatDraft) => target ? `${target.role}:${target.employeeId}` : undefined
 interface Route { employeeChatDraft?: EmployeeChatDraft; page: Page; conversationId: string | null; coreDraft?: true; focusMessage?: { id: string; requestId: string }; focusApproval?: { id: string; requestId: string } }
 const EMPTY: Snapshot = { agents: [], conversations: [], connections: [], resources: [], approvals: [], dataPath: '' }
@@ -376,7 +379,7 @@ export function AppShell() {
   const detailTrigger = useRef<{ scope: string; element: HTMLElement | null } | null>(null)
   const history = useRef<Route[]>([route]), historyIndex = useRef(0)
   const mounted = useRef(true), selectedRef = useRef<string | null>(route.conversationId), snapshotRequest = useRef(0), detailRequest = useRef(0)
-  const coreConversationRequest = useRef<{ requestId: string; content: string; composerReferences?: import('@boai/shared/domain/composer-references').ComposerReference[] } | undefined>(undefined)
+  const coreConversationRequest = useRef<CoreChatDraftRequest | undefined>(undefined)
   const coreDraft = useRef<ChatDraft>(EMPTY_DRAFT)
   const employeeChatDrafts = useRef(new Map<string, ChatDraft>())
   const employeeChatRequests = useRef(new Map<string, EmployeeChatDraftRequest>())
@@ -910,20 +913,22 @@ export function AppShell() {
     if (!api || busyRef.current || questionReplies.busy) return
     if (route.employeeChatDraft && employeeDraftKey && !conversationId) {
       const { employeeId, role } = route.employeeChatDraft
-      if (!text) return
+      if (!text && !sendingDraft.firstMessageFiles?.length) return
       void action(async () => {
         const references = draftResourceReferences(sendingDraft)
         const request = employeeChatRequests.current.get(employeeDraftKey) ?? {
-          requestId: crypto.randomUUID(), employeeId, content: text, ...(references.length ? { composerReferences: references } : {}),
+          requestId: crypto.randomUUID(), employeeId, content: text, files: sendingDraft.firstMessageFiles ?? [], ...(references.length ? { composerReferences: references } : {}),
         }
         employeeChatRequests.current.set(employeeDraftKey, request)
         const coreTopic = role === 'topic' && employeeId === CORE_AGENT_ID
         let id: string | null | undefined
         try {
-          if (coreTopic) {
-            const { employeeId: _owner, ...input } = request
-            id = (await api.request('startCoreConversation', input)).id
-          } else id = (await api.request(role === 'topic' ? 'startEmployeeTopic' : 'sendEmployeeMessage', request)).conversationId
+          const { employeeId, files, ...input } = request
+          id = await withFirstMessageUploads(api, files, async materialUploads => {
+            if (coreTopic) return (await api.request('startCoreConversation', { ...input, materialUploads })).id
+            if (role === 'topic') return (await api.request('startEmployeeTopic', { ...input, employeeId })).conversationId
+            return (await api.request('sendEmployeeMessage', { ...input, employeeId, materialUploads })).conversationId
+          })
         } catch (failure) {
           try {
             const receipt = { requestId: request.requestId }
@@ -937,7 +942,7 @@ export function AppShell() {
         }
         const conversationId = id
         const currentDraft = employeeChatDrafts.current.get(employeeDraftKey)
-        if (currentDraft && draftContent(currentDraft) !== request.content) drafts.current.set(conversationId, currentDraft)
+        if (currentDraft && draftContent(currentDraft) !== request.content) drafts.current.set(conversationId, { ...currentDraft, firstMessageFiles: undefined })
         employeeChatDrafts.current.delete(employeeDraftKey)
         employeeChatRequests.current.delete(employeeDraftKey)
         const admittedRoute = (entry: Route) => employeeChatDraftKey(entry.employeeChatDraft) === employeeDraftKey ? { ...entry, employeeChatDraft: undefined, conversationId } : entry
@@ -950,20 +955,23 @@ export function AppShell() {
       return
     }
     if (route.coreDraft && !conversationId) {
-      if (!text) return
+      if (!text && !sendingDraft.firstMessageFiles?.length) return
       void action(async () => {
         // Keep the original request until its receipt is known, including after a lost response.
-        coreConversationRequest.current ??= { requestId: crypto.randomUUID(), content: text, ...(draftResourceReferences(sendingDraft).length ? { composerReferences: draftResourceReferences(sendingDraft) } : {}) }
+        coreConversationRequest.current ??= { requestId: crypto.randomUUID(), content: text, files: sendingDraft.firstMessageFiles ?? [], ...(draftResourceReferences(sendingDraft).length ? { composerReferences: draftResourceReferences(sendingDraft) } : {}) }
         const request = coreConversationRequest.current
         let result: Conversation
-        try { result = await api.request('startCoreConversation', request) }
+        try {
+          const { files, ...input } = request
+          result = await withFirstMessageUploads(api, files, materialUploads => api.request('startCoreConversation', { ...input, materialUploads }))
+        }
         catch (failure) {
           let accepted: Conversation | null | undefined
           try { accepted = await api.request('getCoreConversationStart', { requestId: request.requestId }) } catch { /* Preserve the request when its receipt cannot be checked. */ }
           if (!accepted) { if (accepted === null) coreConversationRequest.current = undefined; throw failure }
           result = accepted
         }
-        if (draftContent(coreDraft.current) !== request.content) drafts.current.set(result.id, coreDraft.current)
+        if (draftContent(coreDraft.current) !== request.content) drafts.current.set(result.id, { ...coreDraft.current, firstMessageFiles: undefined })
         coreDraft.current = EMPTY_DRAFT; coreConversationRequest.current = undefined
         setSnapshot(previous => ({ ...previous, conversations: previous.conversations.some(item => item.id === result.id) ? previous.conversations : [...previous.conversations, result] }))
         history.current = history.current.map(entry => entry.coreDraft ? { ...entry, coreDraft: undefined, conversationId: result.id } : entry)
@@ -1318,7 +1326,7 @@ export function AppShell() {
     <div className={`content-frame${panel?' detail-open':''}${effectiveList?' list-open':''}`}>
       <div className="content-main">{messageStorageError && <Banner>{messageStorageError}</Banner>}{artifactStorageError&&<Banner onClose={()=>setArtifactStorageError('')}>{artifactStorageError}</Banner>}
       {<FloatingLayerScope active={route.page === 'conversations'}><div className="conversation-layout" style={{ display: route.page === 'conversations' ? undefined : 'none' }}><PanelResize open={effectiveList} side="left" divider={listResizer}><aside className="conversation-list-container"><ConversationList coreMainDraft={route.employeeChatDraft?.role === "main"} onOpenCore={() => { const core = snapshot.agents.find(isCoreAgent); if (core) openDirect(core) }} onConfigureAgent={agent => openContact({ kind: 'agent', id: agent.id })} onOpenChannels={openChannels} snapshot={snapshot} selectedId={selectedId} previews={previews} messageTimes={messageTimes} onCreateCore={createCoreConversation} onConfigureCore={() => { const core = snapshot.agents.find(isCoreAgent); if (core) openContact({ kind: 'agent', id: core.id }) }} onSelect={selectConversation} onChange={changeConversationList} onEditTitle={setEditingTitle} onClear={clearConversationHistory} busy={busy} onCreate={type=>openCreation({type})}/></aside></PanelResize>
-        <div className="conversation-stage"><div ref={setCanvasCenterHost} className="min-h-0 flex-1 flex-col" style={{ display: canvasCentered ? 'flex' : 'none' }} /><div className="min-h-0 flex-1 flex-col" style={{ display: canvasCentered ? 'none' : 'flex' }} inert={canvasCentered || undefined}>{route.coreDraft || route.employeeChatDraft ? <CoreChatStart employeeId={route.employeeChatDraft?.employeeId} topic={route.employeeChatDraft?.role === "topic"} pageActive={route.page === 'conversations' && !conversationSearchOpen && !canvasCentered} api={api} snapshot={snapshot} draft={draft} setDraft={setDraft} busy={busy} onSend={send} onSettings={openModelSettings} onConfigureAgent={agent => openContact({ kind: 'agent', id: agent.id })} onChangeAgent={changeComposerAgent} configurationLocked={anyDirty}/>:conversation?renderChat({ detail: currentDetail, conversation, loading: !currentDetail && (loading || detailLoading), onRetry: () => { setDetailLoading(true); void refreshDetail(conversation.id) }, pageActive: route.page === 'conversations' && !conversationSearchOpen && !canvasCentered,
+        <div className="conversation-stage"><div ref={setCanvasCenterHost} className="min-h-0 flex-1 flex-col" style={{ display: canvasCentered ? 'flex' : 'none' }} /><div className="min-h-0 flex-1 flex-col" style={{ display: canvasCentered ? 'none' : 'flex' }} inert={canvasCentered || undefined}>{route.coreDraft || route.employeeChatDraft ? <CoreChatStart employeeId={route.employeeChatDraft?.employeeId} topic={route.employeeChatDraft?.role === "topic"} pageActive={route.page === 'conversations' && !conversationSearchOpen && !canvasCentered} api={api} snapshot={snapshot} draft={draft} setDraft={setDraft} busy={busy} materialsLocked={route.coreDraft ? Boolean(coreConversationRequest.current) : Boolean(employeeDraftKey && employeeChatRequests.current.get(employeeDraftKey))} onSend={send} onSettings={openModelSettings} onConfigureAgent={agent => openContact({ kind: 'agent', id: agent.id })} onChangeAgent={changeComposerAgent} configurationLocked={anyDirty}/>:conversation?renderChat({ detail: currentDetail, conversation, loading: !currentDetail && (loading || detailLoading), onRetry: () => { setDetailLoading(true); void refreshDetail(conversation.id) }, pageActive: route.page === 'conversations' && !conversationSearchOpen && !canvasCentered,
           onReading: updateReading, onLocation: (messageId, following, offset) => { const id = conversation.id; viewLocations.current.set(id, { initialized: true, messageId: following ? undefined : messageId, offset, focusRequestId: viewLocations.current.get(id)?.focusRequestId }) },
           onPage: direction => void loadMessagePage(direction), onLatest: isCurrent => showLatestMessages(conversation.id, isCurrent), paging, pageEdges, restoreAnchor: viewLocations.current.get(conversation.id)?.messageId ? { messageId: viewLocations.current.get(conversation.id)!.messageId!, offset: viewLocations.current.get(conversation.id)?.offset } : undefined,
           focusMessage: route.focusMessage, focusApproval: route.focusApproval, scrollPosition: scrollPositions.current.get(conversation.id), onScrollPosition: position => scrollPositions.current.set(conversation.id, position),

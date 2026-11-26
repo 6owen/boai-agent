@@ -127,7 +127,7 @@ Given('不同会话已保存同词名称正文和同名材料成果', async ({ r
     return conversations
   })
   await openConversation(runtime, fixture.group.title); await nextMaterialDialog(runtime, { path: source.path })
-  await runtime.page.getByRole('button', { name: '添加或更多操作', exact: true }).click(); await runtime.page.getByRole('menuitem', { name: '添加文件', exact: true }).click()
+  await runtime.page.getByRole('button', { name: '添加或更多操作', exact: true }).click(); await runtime.page.getByRole('menuitem', { name: '插入图片或文件', exact: true }).click()
   await expect(runtime.page.locator('[data-material-draft-id]')).toHaveAttribute('data-material-status', 'ready')
   await runtime.page.getByRole('textbox', { name: '消息内容', exact: true }).fill('请根据材料发布交付报告，保留可检查的原件与来源。')
   await runtime.page.getByRole('button', { name: '发送消息', exact: true }).click()

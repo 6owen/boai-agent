@@ -195,7 +195,7 @@ Given('工作视图布局已有真实材料五份交付和一个等待工作', a
   await runtime.page.getByRole('navigation', { name: '会话列表', exact: true }).getByRole('button', { name: new RegExp(`^${fixture.group.title}`) }).click()
   await nextMaterialDialog(runtime, { path: fixture.source })
   await keyboardActivate(runtime.page, runtime.page.getByRole('button', { name: '添加或更多操作', exact: true }))
-  await runtime.page.getByRole('menuitem', { name: '添加文件', exact: true }).click()
+  await runtime.page.getByRole('menuitem', { name: '插入图片或文件', exact: true }).click()
   await expect(runtime.page.locator('[data-material-draft-id]')).toHaveAttribute('data-material-status', 'ready')
   for (let index = 1; index <= 5; index++) {
     await runtime.page.getByRole('textbox', { name: '消息内容', exact: true }).fill(`第${index}份明确独立文件任务：发布可检查的工作视图长报告。`)

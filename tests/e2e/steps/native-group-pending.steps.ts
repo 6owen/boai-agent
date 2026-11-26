@@ -7,6 +7,7 @@
  * [POS]: DS03新的4场真实Electron场景，180秒测试期限含三次启动，不改变原用例或产品本机预算。
  * [PROTOCOL]: 变化同步Header及所属.folder.md。
  */
+import { openComposerMentions } from '../support/composer'
 import { expect } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 import { readFile, stat } from 'node:fs/promises'
@@ -122,7 +123,7 @@ When('未指定员工的回答被拒绝后我分别点名回答两人', async ({
   for (const [index, agent] of group.agents.entries()) {
     const content = `NATIVE_UI_REPLY_${index + 1}`
     await (await composer(runtime, group)).fill(content)
-    await runtime.page.getByRole('button', { name: '提及群聊成员', exact: true }).click()
+    await openComposerMentions(runtime.page)
     await runtime.page.getByRole('option', { name: '@' + agent.name, exact: true }).click()
     await expect(runtime.page.locator('.chat-composer .composer-mention-tag')).toHaveText('@' + agent.name)
     await runtime.page.getByRole('button', { name: '发送消息', exact: true }).click()

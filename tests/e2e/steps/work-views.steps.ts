@@ -55,7 +55,7 @@ async function prepare(runtime: Desktop, state: State, withMaterial: boolean, wi
   if (withMaterial) {
     await nextMaterialDialog(runtime, { path: fixture.source })
     await runtime.page.getByRole('button', { name: '添加或更多操作', exact: true }).click()
-    await runtime.page.getByRole('menuitem', { name: '添加文件', exact: true }).click()
+    await runtime.page.getByRole('menuitem', { name: '插入图片或文件', exact: true }).click()
     await expect(runtime.page.locator('[data-material-draft-id]')).toHaveAttribute('data-material-status', 'ready')
   }
   await runtime.page.getByRole('textbox', { name: '消息内容', exact: true }).fill('请执行文件任务，发布可检查的交付报告。')

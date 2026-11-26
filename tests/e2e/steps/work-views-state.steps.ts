@@ -58,7 +58,7 @@ async function pane(runtime: Desktop, label: '聊天' | '任务' | '文件') {
 }
 async function addDraft(runtime: Desktop, path: string) {
   const before = await chat(runtime.page).locator('[data-material-draft-id]').count()
-  await nextMaterialDialog(runtime, { path }); await chat(runtime.page).getByRole('button', { name: '添加或更多操作', exact: true }).click(); await runtime.page.getByRole('menuitem', { name: '添加文件', exact: true }).click()
+  await nextMaterialDialog(runtime, { path }); await chat(runtime.page).getByRole('button', { name: '添加或更多操作', exact: true }).click(); await runtime.page.getByRole('menuitem', { name: '插入图片或文件', exact: true }).click()
   await expect(chat(runtime.page).locator('[data-material-draft-id]')).toHaveCount(before + 1)
   await expect(chat(runtime.page).locator('[data-material-draft-id][data-material-status="ready"]')).toHaveCount(before + 1)
 }

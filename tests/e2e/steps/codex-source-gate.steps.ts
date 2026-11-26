@@ -35,7 +35,7 @@ Then('本机任务待批准时材料出现{string}仍拒绝副作用且恢复不
   await runtime.reviewFile('任务原始材料', source.path)
   await nextMaterialDialog(runtime, { path: source.path })
   await page.getByRole('button', { name: '添加或更多操作', exact: true }).click()
-  await page.getByRole('menuitem', { name: '添加文件', exact: true }).click()
+  await page.getByRole('menuitem', { name: '插入图片或文件', exact: true }).click()
   await expect(page.locator('[data-material-status="ready"]')).toHaveCount(1)
   const request = `NATIVE_FILE_TASK NATIVE_COMMAND NATIVE_APPROVAL_PROBE：这是明确工作。读取本条附件，先通过 execute_command 请求原聊天批准并原样执行以下命令一次：\n${command}\n批准且成功后，在本次获准 runs 目录创建并正式发布 codex-proof.md，正文写附件中的完整暗号，以真实文件证据报告 delivered。如果工具失败或用户拒绝，立即停止，不再请求或改用文件工具绕过，不执行其他命令。`
   await runtime.reviewData('活动材料任务原始输入', { request, fault, realSupplier: !!codexEmployee.real })

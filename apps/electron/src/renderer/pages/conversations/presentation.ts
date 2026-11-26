@@ -33,6 +33,7 @@ export interface ChatDraft {
   artifactRevision?: ChatArtifactRevisionTarget
   materialEdit?: { reference: import('@boai/shared/domain/materials').MaterialReadRef; name: string; targetAgentId: string; annotation?: import('@boai/shared/domain/file-edit').FileEditAnnotation }
   materials?: MaterialDraftItem[]
+  firstMessageFiles?: File[]
   submission?: {
     kind?: 'external' | 'employee-task'
     requestId: string; status: 'pending' | 'unknown' | 'not_accepted'; fingerprint: string

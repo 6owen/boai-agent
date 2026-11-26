@@ -54,7 +54,7 @@ Given('原生发送材料和真实工具已发布两版同名成果且关键词�
   await selectGroup(runtime, fixture.group.title)
   await nextMaterialDialog(runtime, { path: fixture.source })
   await runtime.page.getByRole('button', { name: '添加或更多操作', exact: true }).click()
-  await runtime.page.getByRole('menuitem', { name: '添加文件', exact: true }).click()
+  await runtime.page.getByRole('menuitem', { name: '插入图片或文件', exact: true }).click()
   await expect(runtime.page.locator('[data-material-draft-id]')).toHaveAttribute('data-material-status', 'ready')
   await runtime.page.getByRole('textbox', { name: '消息内容', exact: true }).fill('请发布可检查的报告。')
   await runtime.page.getByRole('button', { name: '发送消息', exact: true }).click()

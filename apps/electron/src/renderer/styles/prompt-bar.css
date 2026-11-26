@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 紧凑 Composer 的富文本编辑器使用单行高度，较长占位文案截断。
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [INPUT]: 全局 Soft token、Prompt Bar 的真实成员标签、原子编辑节点与命令列表。
  * [OUTPUT]: composer 标签外层与内层 Soft Button 分离，原生光标在背景外侧按文字高度绘制；整个标签不拆行，光标占位图片保持零尺寸行内节点；同宽候选浮层，复用共享主题。
@@ -6,11 +7,12 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 .mention-editor { min-width:0;width:100% }
-.chat-composer .mention-editor-input { position:relative;min-height:44px;max-height:240px;overflow-y:auto;padding:1px 4px;white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--font-content-family);font-size:var(--text-content-body);line-height:1.6;caret-color:var(--foreground);cursor:text }
+.chat-composer .mention-editor-input { --composer-input-block-padding:2px;position:relative;min-height:44px;max-height:240px;overflow-y:auto;padding:1px 4px;white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--font-content-family);font-size:var(--text-content-body);line-height:1.6;caret-color:var(--foreground);cursor:text }
 .mention-editor-input p { margin:0 }
 /* ProseMirror's caret separator must not inherit Preflight's block image layout. */
 .mention-editor-input img.ProseMirror-separator { display:inline;width:0;height:0;border:0;margin:0 }
 .mention-editor-input[data-empty=true]::before { content:attr(data-placeholder);position:absolute;color:var(--muted-foreground);pointer-events:none }
+.chat-composer[data-compact] .mention-editor-input[data-empty=true]::before { inset-inline:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
 .mention-editor-input .composer-mention-node { white-space:nowrap }
 .mention-editor-input .composer-mention-tag { vertical-align:baseline;margin:0 2px;cursor:text;user-select:all;box-decoration-break:clone }
 .mention-editor-input .composer-mention-node.ProseMirror-selectednode .composer-mention-tag { background-color:var(--selection);color:var(--foreground) }

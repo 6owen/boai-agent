@@ -9,6 +9,7 @@
  * [POS]: LR3/5本机群成员授权 BDD；不调用旧式逐材料授权接口。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
+import { openComposerMentions } from '../support/composer'
 import { expect } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 import { join, resolve } from 'node:path'
@@ -79,7 +80,7 @@ Then('群移除本机员工后留群成员仍能读材料且离群员工私聊�
     await runtime.reviewFile('群当前成员共享的实际材料', source.path)
     await nextMaterialDialog(runtime, { path: source.path })
     await page.getByRole('button', { name: '添加或更多操作', exact: true }).click()
-    await page.getByRole('menuitem', { name: '添加文件', exact: true }).click()
+    await page.getByRole('menuitem', { name: '插入图片或文件', exact: true }).click()
     await expect(page.locator('[data-material-status="ready"]')).toHaveCount(1)
     const before = await send(group.id, '这是普通聊天，不执行工具。请群里的每位员工分别读取本条附件，只回复附件中的完整暗号。', 2)
     const material = before.materials![0]
@@ -167,7 +168,7 @@ Then('本机群旧附件保留显式名单且新成员仅能读取当前群共�
   const attach = async (path: string) => {
     await nextMaterialDialog(runtime, { path })
     await runtime.page.getByRole('button', { name: '添加或更多操作', exact: true }).click()
-    await runtime.page.getByRole('menuitem', { name: '添加文件', exact: true }).click()
+    await runtime.page.getByRole('menuitem', { name: '插入图片或文件', exact: true }).click()
     await expect(runtime.page.locator('[data-material-draft-id][data-material-status="ready"]')).toHaveCount(1)
   }
   const request = (codexEmployee.real ? '' : 'NATIVE_CLEARED_CONTEXT ') + '这是普通聊天，不执行工具。请当前群里的每位员工分别回看本群历史中实际提供给自己的附件原文，包括先前轮次的原文。只回复自己当前有权读取的、最早一份附件中的完整暗号；如果从未收到可读的附件原文，只回复“没有可用暗号”。不要猜测或从其他员工回复中推测。'
@@ -284,7 +285,7 @@ Then('本机群任务在{string}移出负责人后实际退出且重新加入不
   await navigate(group.title)
   const request = `NATIVE_FILE_TASK NATIVE_CANCEL_COMMAND：这是明确工作，仅被点名的员工负责，其他群成员不执行、不接手、不回复。请实际执行以下命令，这是我要通过移出群成员停止的长任务。仅在原聊天请求批准，通过 execute_command 原样执行一次；不要提前结束，不运行其他工具或发布成果。命令只在本次工作目录保存PID和计数。\n\n${command}`
   await runtime.reviewData('群任务原始请求及移除阶段', { stage, request, realSupplier: !!codexEmployee.real })
-  await page.getByRole('button', { name: '提及群聊成员', exact: true }).click()
+  await openComposerMentions(page)
   await page.getByRole('option', { name: `@${names[0]}`, exact: true }).click()
   const composer = page.getByRole('textbox', { name: '消息内容', exact: true })
   for (const [index, line] of request.split('\n').entries()) {
@@ -410,7 +411,7 @@ Then('新加入的本机员工只从当前获准群历史读取原附件', async
     await runtime.reviewFile('新成员加入之前发送的群材料', source.path)
     await nextMaterialDialog(runtime, { path: source.path })
     await page.getByRole('button', { name: '添加或更多操作', exact: true }).click()
-    await page.getByRole('menuitem', { name: '添加文件', exact: true }).click()
+    await page.getByRole('menuitem', { name: '插入图片或文件', exact: true }).click()
     await expect(page.locator('[data-material-status="ready"]')).toHaveCount(1)
     const original = await send(group.id, '这是普通聊天，不执行工具。请当前两位群成员分别读取本条附件，只回复其中的完整暗号。', 2)
     const material = original.materials![0]
@@ -460,7 +461,7 @@ Then('本机员工流式中移除后实际退出且重新加入不恢复旧运�
   const sessions = () => store.load<{ agentId: string; conversationId: string; threadId: string; runId: string; state: string }>('codexSessions')
   try {
     await navigate(group.title)
-    await page.getByRole('button', { name: '提及群聊成员', exact: true }).click()
+    await openComposerMentions(page)
     await page.getByRole('option', { name: `@${names[0]}`, exact: true }).click()
     await page.getByRole('textbox', { name: '消息内容', exact: true }).pressSequentially(`这是普通聊天，不是任务，不使用工具，仅被点名的员工回复，其他人不回复。本群临时暗号是 ${code}。${codexEmployee.real ? `请先回复包含暗号的开场白，然后逐行给出001至200这200个编号，每行一句不同的简短问候，完整写完后最后一行只写 ${end}。` : 'NATIVE_STREAM_HOLD 请在原聊天流式回复暗号。'}`)
     await page.getByRole('button', { name: '发送消息', exact: true }).click()
@@ -493,7 +494,7 @@ Then('本机员工流式中移除后实际退出且重新加入不恢复旧运�
     await includeMember(runtime, names[0])
     expect(await store.load('runs')).toEqual(runs); expect(await sessions()).toEqual(all)
     const currentPage = runtime.page
-    await currentPage.getByRole('button', { name: '提及群聊成员', exact: true }).click()
+    await openComposerMentions(currentPage)
     await currentPage.getByRole('option', { name: `@${names[0]}`, exact: true }).click()
     await currentPage.getByRole('textbox', { name: '消息内容', exact: true }).pressSequentially('这是新的普通聊天，不执行工具。只回复本群之前用户给出的完整暗号，不继续之前被取消的长回复。其他员工不用回复。')
     await currentPage.getByRole('button', { name: '发送消息', exact: true }).click()

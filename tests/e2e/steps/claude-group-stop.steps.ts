@@ -4,6 +4,7 @@
  * [POS]: Claude普通群中断BDD；离线协议与真实供应商分场，不替代自动化或核心组织故障。
  * [PROTOCOL]: 一旦本文件变化，必须同步Header，并上浮检查所属.folder.md。
  */
+import { openComposerMentions } from '../support/composer'
 import { expect } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 import { createHash } from 'node:crypto'
@@ -68,7 +69,7 @@ Then('Claude普通群文件工作在{string}后保留同事交付并重启不续
     await runtime.page.getByRole('navigation', { name: '会话列表', exact: true }).getByRole('button', { name: chat.title, exact: true }).click()
   }
   const send = async (name: string, content: string) => {
-    await runtime.page.getByRole('button', { name: '提及群聊成员', exact: true }).click()
+    await openComposerMentions(runtime.page)
     await runtime.page.getByRole('option', { name: `@${name}`, exact: true }).click()
     await runtime.page.getByRole('textbox', { name: '消息内容', exact: true }).pressSequentially(content)
     await runtime.page.getByRole('button', { name: '发送消息', exact: true }).click()

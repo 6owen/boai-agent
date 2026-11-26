@@ -205,7 +205,11 @@ When('反复打开核心空白聊天并输入未发送内容', async ({ runtime 
 Then('空白页保持内容且尚未创建任何会话', async ({ runtime, team }) => {
   await expect(runtime.page.getByRole('textbox', { name: '消息内容', exact: true })).toHaveValue('你好，保留这条未发送消息')
   await expect(runtime.page.locator('.conversation-list-panel .conversation-item')).toHaveCount(0)
-  await expect(runtime.page.getByRole('button', { name: '添加或更多操作', exact: true })).toHaveCount(0)
+  await runtime.page.getByRole('button', { name: '添加或更多操作', exact: true }).click()
+  const composerMenu = runtime.page.getByRole('menu', { name: '添加或更多操作', exact: true })
+  await expect(composerMenu).toBeVisible()
+  await expect(composerMenu.getByRole('menuitem', { name: '插入图片或文件', exact: true })).toBeEnabled()
+  await runtime.page.keyboard.press('Escape')
   await expect(runtime.page.getByRole('button', { name: '会话操作', exact: true })).toHaveCount(0)
   expect((await runtime.page.evaluate(() => window.boai.request('snapshot', undefined))).conversations).toEqual([])
   expect(team.endpoint!.requests).toHaveLength(0)
