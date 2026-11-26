@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 共享面板样式。
- * [OUTPUT]: 主内容随右侧宽度连续伸缩，展开和收起共用原分栏过渡，不延迟主内容恢复宽度。
+ * [OUTPUT]: 手动操作保留分栏过渡，侧栏切页直接应用目标页的面板尺寸与标签显隐。
  * [POS]: src/renderer/components/common/panel-resize.css
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header与所属目录.folder.md。
  */
@@ -19,6 +19,7 @@
 .toolbar-detail[data-disabled=true][data-open=false] { padding:0 }
 .toolbar-detail-toggle { flex-shrink:0;margin-left:auto }
 .app-shell[data-panel-resizing=true] .t-resize { transition:none }
+.app-shell[data-detail-motion=none] :is(.panel-resize[data-side=right], .panel-resize[data-side=right] > .panel-resize-content, .toolbar-detail-tabs, .detail-content.t-panel-slide) { transition:none }
 
 .detail-content.t-panel-slide {
   --panel-open-dur:var(--resize-dur);

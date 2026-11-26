@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 侧栏往返直接恢复同一聊天与右侧标签，保持草稿及原内容节点。
  * [OUTPUT]: 任务入口暂时隐藏；工具开始页与知识资料往返保留原聊天草稿。
  * [OUTPUT]: 设置入口沿本人菜单的其他配置二级菜单选择模型连接，原业务断言保持。
  * [INPUT]: 固定中文行为场景、原 Desktop 生命周期和离线员工会话夹具。
@@ -43,11 +44,23 @@ Then('草稿经过页面和会话往返仍属于原会话', async ({ runtime, ui
   await composer(page).fill('未发送的单聊草稿')
   await page.getByRole('button', { name: /产品讨论组/ }).click()
   await expect(composer(page)).toHaveText('未发送的群聊草稿')
+  await page.getByRole('button', { name: '会话操作', exact: true }).click()
+  await page.getByRole('menuitem', { name: '会话文件', exact: true }).click()
+  const content = page.locator('.conversation-stage .chat-messages-content')
+  const detail = page.locator('.detail-content:not([hidden])')
+  await expect(content).toHaveAttribute('data-settled', 'true')
+  await expect(detail).toBeVisible()
+  const originalDetail = await detail.elementHandle()
   await navigation(page).getByRole('button', { name: '通讯录', exact: true }).click()
   await expect(page.getByRole('complementary', { name: '通讯录列表', exact: true })).toBeVisible()
+  await expect(detail).toHaveCount(0)
   await navigation(page).getByRole('button', { name: '会话', exact: true }).click()
-  await page.getByRole('button', { name: /产品讨论组/ }).click()
   await expect(composer(page)).toHaveText('未发送的群聊草稿')
+  await expect(content).toHaveAttribute('data-settled', 'true')
+  await expect(page.getByRole('tab', { name: '产品讨论组 · 会话文件', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await expect(detail).toHaveCSS('transition-property', 'none')
+  await expect(page.locator('.panel-resize[data-side=right]')).toHaveCSS('transition-property', 'none')
+  expect(await detail.evaluate((element, original) => element === original, originalDetail)).toBe(true)
   await page.getByRole('button', { name: /与研究员对话/ }).click()
   await expect(composer(page)).toHaveText('未发送的单聊草稿')
   expect(uiBehavior.fixture!.state.calls).toBe(0)

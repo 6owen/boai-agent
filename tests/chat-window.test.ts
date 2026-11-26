@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 恢复已挂载的同一会话时跳过消息入场，新会话就绪仍有过渡。
  * [OUTPUT]: 单聊预置角色的动画画布与预览入口已下线，静态头像与会话操作仍可用。
  * [OUTPUT]: 2026-11-16聊天窗口夹具补完整matchMedia订阅和独立WebGL播放器替身，原聊天/减少动态断言保持。
  * [OUTPUT]: 2026-11-09任务入口夹具改从标题菜单打开，继续保留主聊天/草稿断言；本轮按用户要求未运行。
@@ -345,6 +346,31 @@ it('keeps header, composer and editor nodes through switching and loading withou
   expect(content.classList.contains('t-panel-slide')).toBe(true)
   expect(content.getAttribute('data-open')).toBe('true')
   await act(async () => vi.advanceTimersByTimeAsync(1000))
+  expect(content.getAttribute('data-settled')).toBe('false')
+  finishReveal(content)
+  expect(content.getAttribute('data-settled')).toBe('true')
+})
+
+it('restores the same chat without replaying its message reveal', async () => {
+  await render()
+  const content = host.querySelector('.chat-messages-content')!
+  const editor = host.querySelector('[role=textbox]')!
+  expect(content.getAttribute('data-settled')).toBe('false')
+
+  props = { ...props, pageActive: false }
+  await render()
+  expect(content.getAttribute('data-settled')).toBe('true')
+  props = { ...props, pageActive: true, detail: view('A') }
+  await render()
+  expect(host.querySelector('.chat-messages-content')).toBe(content)
+  expect(host.querySelector('[role=textbox]')).toBe(editor)
+  expect(editor.textContent).toBe('A的草稿')
+  expect(content.getAttribute('data-settled')).toBe('true')
+
+  props = { ...props, conversation: room('B'), detail: null, loading: true }
+  await render()
+  props = { ...props, detail: view('B'), loading: false }
+  await render()
   expect(content.getAttribute('data-settled')).toBe('false')
   finishReveal(content)
   expect(content.getAttribute('data-settled')).toBe('true')
