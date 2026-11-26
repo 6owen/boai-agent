@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-26 执行历史所有记录默认收起，刷新不覆盖手动选择；明确打开的单次执行详情保持原默认。
  * [OUTPUT]: 群执行历史提供原协作工作树及停止入口，保留父子关系/依赖/状态，不另开任务页面。
  * [OUTPUT]: 整份历史共享8MiB正文缓存；最多保留八个已折叠正文，移出列表/范围变化及卸载释放旧状态。
  * [OUTPUT]: 标识原判断/协调/执行阶段；无可读Run时允许显示保留的单次运行记录。
@@ -86,7 +87,6 @@ export function TraceTab({ api, conversationId, messageId, agentId, active, snap
           : await api.request('listExecutionHistory', { conversationId, occurrenceId, agentId: employee || undefined })
         if (!disposed) {
           setItems(previous => [...page.items, ...(paged.current ? previous.filter(item => !page.items.some(current => current.run.id === item.run.id) && (!employee || item.run.agentId === employee)) : [])]); if (!paged.current) setNext(page.next); setError(''); setLoaded(true)
-          if (messageId) { const target = page.items.find(item => item.run.triggerMessageId === messageId || item.run.messageId === messageId); if (target) setOpen(previous => ({ ...previous, [target.run.id]: true })) }
         }
       } catch (error) { if (!disposed) { setError(errorText(error)); if (runId) { setItems([]); cache.clear(); setLoaded(true) } } }
       finally { inFlight = false; if (again && !disposed) { again = false; timer = setTimeout(() => void load(), 150) } }
@@ -126,7 +126,7 @@ export function TraceTab({ api, conversationId, messageId, agentId, active, snap
       {items.map(({ run, trigger }, index) => {
         const view = views[run.id] ?? 'rendered'
         const live = ['running', 'queued', 'waiting_approval'].includes(run.status)
-        const expanded = open[run.id] ?? (live || index === 0)
+        const expanded = open[run.id] ?? Boolean((occurrenceId || runId) && (live || index === 0))
         const agent = members.find(value => value.id === run.agentId), name = agent?.name ?? run.agentName
         const opened = expanded || retained.includes(run.id)
         return <Card key={run.id} size="sm" className="min-w-0 shrink-0 gap-0 p-0" data-execution-run-id={run.id}>

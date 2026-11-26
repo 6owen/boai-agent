@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 执行历史默认全部收起；含匹配消息/运行中记录，手动展开后刷新保持，正文只在展开后读取。
  * [OUTPUT]: 后台jsdom验证群工作树按需读取、原workId停止、防连点及隐藏停读。
  * [OUTPUT]: 执行历史替换共享正文预算，已折叠正文最多八项且淘汰后可重新打开。
  * [OUTPUT]: 主聊天展示定时原执行、刷新原来源及停止原occurrence，删除后撤掉过程卡片。
@@ -145,6 +146,24 @@ it.each(['failed', 'cancelled', 'interrupted'] as const)('execution history neve
   expect(request.mock.calls.some(([method]) => method === 'sendMessage' || method === 'retryRun')).toBe(false)
 })
 
+it('starts all history rows collapsed and preserves explicit toggles across message-matched refreshes', async () => {
+  let items = ['completed', 'running', 'queued', 'waiting_approval', 'failed'].map((status, index) => ({ run: { ...run, id: `history-${index}`, status: status as AgentRun['status'] }, trigger: `history-${index}` }))
+  request.mockImplementation(async () => ({ items }))
+  await act(async () => root.render(h(TraceTab, { api, snapshot, active: true, conversationId: 'room', messageId: 'prompt' })))
+  const triggers = () => [...host.querySelectorAll('[data-execution-run-id] [data-slot="collapsible-trigger"]')]
+  expect(triggers()).toHaveLength(5)
+  expect(triggers().every(button => button.getAttribute('aria-expanded') === 'false')).toBe(true)
+  expect(host.querySelector('[data-feed-run]')).toBeNull()
+  await click('[data-execution-run-id="history-1"] [data-slot="collapsible-trigger"]')
+  await refresh()
+  expect(triggers()[1].getAttribute('aria-expanded')).toBe('true')
+  await click('[data-execution-run-id="history-1"] [data-slot="collapsible-trigger"]')
+  items = [...items, { run: { ...run, id: 'new-run', status: 'running' }, trigger: 'new arrival' }]
+  await refresh()
+  expect(triggers()).toHaveLength(6)
+  expect(triggers().every(button => button.getAttribute('aria-expanded') === 'false')).toBe(true)
+})
+
 it('shows the scheduled source in main-chat history, stops its occurrence and follows source updates', async () => {
   const scheduled = { ...run, id: 'scheduled-run', conversationId: 'private-automation', status: 'running', origin: { kind: 'automation', occurrenceId: 'original-occurrence', automationId: 'plan' } } as AgentRun
   let items = [{ run: scheduled, trigger: '本次定时天气' }]
@@ -156,6 +175,7 @@ it('shows the scheduled source in main-chat history, stops its occurrence and fo
   await act(async () => root.render(h(TraceTab, { api, snapshot, active: true, conversationId: 'room' })))
   expect(host.textContent).toContain('本次定时天气')
   expect(host.textContent).not.toContain('发送消息后')
+  await click('[data-execution-run-id="scheduled-run"] [data-slot="collapsible-trigger"]')
   expect(host.querySelector('[data-feed-run="scheduled-run"]')).not.toBeNull()
   await click('[aria-label="停止本次执行"]')
   expect(request).toHaveBeenCalledWith('stopAutomation', { id: 'original-occurrence' })
@@ -174,6 +194,7 @@ it('shares one bounded body cache as the latest history replaces old runs', asyn
   await act(async () => root.render(h(TraceTab, { api, snapshot, active: true, conversationId: 'room' })))
   for (current = 1; current <= 12; current++) {
     await refresh()
+    await click(`[data-execution-run-id="run-${current}"] [data-slot="collapsible-trigger"]`)
     feedCaches.get(`run-${current}`)!.set(`body:${current}`, 'x'.repeat(1024 * 1024))
   }
   expect(new Set(feedCaches.values()).size).toBe(1)
@@ -187,7 +208,7 @@ it('retains only eight explicitly collapsed run bodies and can reopen an evicted
   request.mockImplementation(async () => ({ items: Array.from({ length: 12 }, (_, index) => ({ run: { ...run, id: `run-${index}` }, trigger: `history-${index}` })) }))
   await act(async () => root.render(h(TraceTab, { api, snapshot, active: true, conversationId: 'room' })))
   for (let index = 0; index < 12; index++) {
-    if (index !== 0) await click(`[data-execution-run-id="run-${index}"] [data-slot="collapsible-trigger"]`)
+    await click(`[data-execution-run-id="run-${index}"] [data-slot="collapsible-trigger"]`)
     await click(`[data-execution-run-id="run-${index}"] [data-slot="collapsible-trigger"]`)
   }
   await act(async () => { await vi.advanceTimersByTimeAsync(500) })
