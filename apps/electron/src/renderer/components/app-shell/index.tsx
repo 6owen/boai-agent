@@ -1,5 +1,6 @@
 /*
- * [OUTPUT]: 全局通知入口复用员工任务、定时记录及设置导航。
+ * [OUTPUT]: 2026-11-25 任务面板暂时隐藏并清除残留标签；新定时结果定位原话题，旧任务链接仅兼容打开原会话。
+ * [OUTPUT]: 全局通知入口紧随检索按钮，复用员工任务、定时记录及设置导航。
  * [OUTPUT]: 技能全局检查、单项和批量更新由 Shell 共享 CLI 运行状态，目录工具栏和技能详情各使用终端浮层。
  * [OUTPUT]: 浏览器按钮仅会话页可见；其他配置展开共用设置分类二级菜单，沿原导航守卫。
  * [OUTPUT]: 2026-11-09移除header独立工作区按钮，右侧标签栏加号复用原工具开始页入口。
@@ -214,7 +215,7 @@ import { ResourceDetail } from '@/pages/library/resource-detail'
 import { ScheduleNavigationContext } from '@/pages/schedules/owner-automations'
 import { subscribeEmployeeTaskResults } from './employee-task-notifications'
 import { isEmployeeTaskHost, resolveEmployeeTaskDestination, type EmployeeTaskTarget } from './employee-task-navigation'
-import { EmployeeTasksPanel, EmployeeTasksNavigation } from '@/components/detail-panel/employee-tasks-panel'
+import { EmployeeTasksPanel, EmployeeTasksNavigation, EMPLOYEE_TASK_BOARD_ENABLED } from '@/components/detail-panel/employee-tasks-panel'
 import { ScheduleDetail, SchedulePage, type ScheduleLocation } from '@/pages/schedules'
 import { AutomationOccurrenceView } from '@/pages/schedules/automation-history'
 import { AutomationEditorTab } from '@/pages/schedules/automation-editor'
@@ -300,7 +301,7 @@ export function AppShell() {
     if (!snapshotReady) return
     for (const tab of allDetailTabs) {
       const target = tab.target
-      if (!WORKSPACE_UI_ENABLED && (target.type === 'employee-workspace' || target.type === 'user-workspace')) {
+      if (!EMPLOYEE_TASK_BOARD_ENABLED && target.type === 'employee-tasks' || !WORKSPACE_UI_ENABLED && (target.type === 'employee-workspace' || target.type === 'user-workspace')) {
         dispatchWorkspace({ scope: tab.scope, action: { type: 'close', key: tab.key } })
         continue
       }
@@ -702,6 +703,15 @@ export function AppShell() {
     await refreshSnapshot().catch(failure => toast.error(`会话清理已完成，列表刷新未完成：${errorText(failure)}`))
   }
   const openEmployeeTask = (target: EmployeeTaskTarget, sourceCurrent: () => boolean = () => true, navigated?: () => void) => {
+    if (!EMPLOYEE_TASK_BOARD_ENABLED) {
+      if (!api || !sourceCurrent() || !target.taskId && !target.occurrenceId) return
+      return api.request('getEmployeeTask', { employeeId: target.id, ...(target.taskId ? { id: target.taskId } : { occurrenceId: target.occurrenceId }) }).then(record => {
+        if (!sourceCurrent()) return
+        const id = record.task.sessionConversationId
+        if (!id) throw new Error('原工作尚未建立会话')
+        return selectConversation(id, true, target.focusMessage?.id, sourceCurrent, navigated)
+      }).catch(error => { if (sourceCurrent()) toast.error(errorText(error)) })
+    }
     let pending: Promise<void> | undefined
     navigate(() => {
       if (!api || !sourceCurrent()) return
@@ -1239,15 +1249,15 @@ export function AppShell() {
         })
       } : undefined} onFiles={() => showPanel(channel || internal ? { type: 'channel-files', id } : { type: 'files', owner, id: ownerId })}
       onKnowledge={owner === 'employee' && !channel && !internal ? () => showPanel({ type: 'knowledge', id: ownerId }) : undefined}
-      onEmployeeTask={isEmployeeTaskHost(room, room.agentIds[0]) ? taskId => showPanel({ type: 'employee-tasks', id: room.agentIds[0], taskId, requestId: crypto.randomUUID() }) : undefined}
-      onCreateTask={isEmployeeTaskHost(room, room.agentIds[0]) ? message => {
+      onEmployeeTask={EMPLOYEE_TASK_BOARD_ENABLED && isEmployeeTaskHost(room, room.agentIds[0]) ? taskId => showPanel({ type: 'employee-tasks', id: room.agentIds[0], taskId, requestId: crypto.randomUUID() }) : undefined}
+      onCreateTask={EMPLOYEE_TASK_BOARD_ENABLED && isEmployeeTaskHost(room, room.agentIds[0]) ? message => {
         const origin = routeRef.current
         void action(async () => {
           const task = await api!.request('createEmployeeTask', { employeeId: room.agentIds[0], requestId: `message-task-${message.id}`, source: { conversationId: room.id, messageId: message.id } })
           if (routeRef.current === origin) showPanel({ type: 'employee-tasks', id: room.agentIds[0], taskId: task.id, requestId: crypto.randomUUID() })
         })
       } : undefined}
-      onTasks={room.kind === 'direct' && room.purpose !== 'automation' && !channel && !internal && room.agentIds[0] ? occurrenceId => showPanel({ type: 'employee-tasks', id: room.agentIds[0], occurrenceId, requestId: crypto.randomUUID() }) : undefined}
+      onTasks={EMPLOYEE_TASK_BOARD_ENABLED && room.kind === 'direct' && room.purpose !== 'automation' && !channel && !internal && room.agentIds[0] ? occurrenceId => showPanel({ type: 'employee-tasks', id: room.agentIds[0], occurrenceId, requestId: crypto.randomUUID() }) : undefined}
       onChannels={room.kind === 'direct' && room.purpose !== 'automation' && !channel && !internal ? () => { const agent = snapshot.agents.find(agent => agent.id === room.agentIds[0]); if (agent) openChannels(agent) } : undefined}
       questionReplies={questionReplies} artifactActions={artifactActions}
       onOpenCatalog={openCatalogResult} onTeamGroup={id => selectConversation(id, true)} draft={drafts.current.get(id) ?? EMPTY_DRAFT} setDraft={value => { drafts.current.set(id, value); bumpDrafts() }} busy={busy || questionReplies.busy} onSend={(onDispatch, steer) => send(id, onDispatch, steer)}
@@ -1287,9 +1297,9 @@ export function AppShell() {
   const headerActions = <>{canvasEnabled && route.page === 'conversations' && conversation?.agentIds.length === 1 && <CanvasMenu key={`${conversation.agentIds[0]}:${conversation.id}`} api={api} scope={{ employeeId: conversation.agentIds[0]!, conversationId: conversation.id }} onOpen={target => openPanel(target, 'conversations')} />}{route.page === 'conversations' && <HeaderBrowser api={api} />}<Dialog open={conversationSearchOpen} onOpenChange={setConversationSearchOpen}>
     <Tooltip><TooltipTrigger delay={500} render={<DialogTrigger render={<Button className="titlebar-no-drag" variant="ghost" size="icon-sm" aria-label="搜索会话内容" />} onClick={openSearch} />}><Search /></TooltipTrigger><TooltipContent side="bottom">搜索会话内容</TooltipContent></Tooltip>
     <ConversationSearch api={api} active={conversationSearchOpen} snapshot={snapshot} selectedId={selectedId} request={searchRequest} onOpen={(result, current) => openSearchResult(result, current, () => setConversationSearchOpen(false))} onUnavailable={searchSourceUnavailable} />
-  </Dialog></>
+  </Dialog><NotificationCenter onOpen={openNotification} /></>
   return <DesktopNotificationProvider api={api}><GuardContext.Provider value={guard}><ScheduleNavigationContext.Provider value={id => { setScheduleLocation({ kind: 'definition', id }); applyRoute({ ...routeRef.current, page: 'schedules' }) }}><EmployeeResourceNavigation.Provider value={target => target.kind === 'web-search-settings' ? (() => { setSettingsSection('web-search'); applyRoute({ ...routeRef.current, page: 'settings' }) })() : target.kind === 'knowledge-files' ? openPanel({ type: 'knowledge', id: target.id }) : openCatalogResult(target.kind, target.id, target.name)}><EmployeeTasksNavigation.Provider value={id => openPanel({ type: 'employee-tasks', id, requestId: crypto.randomUUID() })}><EmployeeExecutionNavigation.Provider value={target => openPanel({ type: 'trace', id: target.conversationId, agentId: target.agentId, runId: target.runId, title: target.title })}><Tabs value={detailTabs.activeKey} onValueChange={value => { if (typeof value === 'string') { const task = detailTabs.tabs.find(tab => tab.key === value)?.target; if (task?.type === 'employee-tasks') void openEmployeeTask(task); else dispatchDetails({ type: 'select', key: value }) } }} className={`app-shell gap-0${effectiveList ? ' list-open' : ''}${skillsNavigation ? ' skills-navigation' : ''}`} data-page={route.page} data-panel-resizing={listResizing || detailLayout.resizing} style={{'--list-width':`${listWidth}px`,'--detail-width':`${detailLayout.width}px`} as CSSProperties}>
-    <DesktopToolbar title={title} browserAction={headerActions} notificationAction={<NotificationCenter onOpen={openNotification} />} detailHeader={panel && <DetailPanelHeader focusOnMount={!route.focusMessage && !route.focusApproval} tabs={detailTabs.tabs.map(tab => ({ key: tab.key, ...describePanel(tab.target), dirty: Boolean(tabDirty[tab.key]) }))} activeKey={detailTabs.activeKey} onClose={requestCloseTab} onOpenStart={WORKSPACE_UI_ENABLED && route.page === 'conversations' && conversation ? () => openPanel({ type: 'user-workspace', id: conversation.id, view: 'start' }, 'conversations') : undefined} onMove={(key, targetKey, placement) => dispatchDetails({ type: 'move', key, targetKey, placement })} />} showListToggle={route.page === 'conversations' || route.page === 'contacts' || route.page === 'schedules'} listLabel={route.page === 'conversations' ? '显示或隐藏会话列表' : route.page === 'contacts' ? '显示或隐藏通讯录列表' : '显示或隐藏定时任务列表'} listShown={listShown} detailOpen={Boolean(panel)} canBack={historyIndex.current > 0} canForward={historyIndex.current < history.current.length - 1} detailDisabled={!detailTabs.tabs.length && !(conversation && route.page === 'conversations') && route.page !== 'schedules'} onBack={goBack} onForward={goForward} onToggleList={toggleList} onToggleDetails={toggleDetails} />
+    <DesktopToolbar title={title} browserAction={headerActions} detailHeader={panel && <DetailPanelHeader focusOnMount={!route.focusMessage && !route.focusApproval} tabs={detailTabs.tabs.map(tab => ({ key: tab.key, ...describePanel(tab.target), dirty: Boolean(tabDirty[tab.key]) }))} activeKey={detailTabs.activeKey} onClose={requestCloseTab} onOpenStart={WORKSPACE_UI_ENABLED && route.page === 'conversations' && conversation ? () => openPanel({ type: 'user-workspace', id: conversation.id, view: 'start' }, 'conversations') : undefined} onMove={(key, targetKey, placement) => dispatchDetails({ type: 'move', key, targetKey, placement })} />} showListToggle={route.page === 'conversations' || route.page === 'contacts' || route.page === 'schedules'} listLabel={route.page === 'conversations' ? '显示或隐藏会话列表' : route.page === 'contacts' ? '显示或隐藏通讯录列表' : '显示或隐藏定时任务列表'} listShown={listShown} detailOpen={Boolean(panel)} canBack={historyIndex.current > 0} canForward={historyIndex.current < history.current.length - 1} detailDisabled={!detailTabs.tabs.length && !(conversation && route.page === 'conversations') && route.page !== 'schedules'} onBack={goBack} onForward={goForward} onToggleList={toggleList} onToggleDetails={toggleDetails} />
     <div className="app-body"><nav className="navigation-rail" aria-label="主导航"><div className="rail-top">{([
       {page:'conversations',icon:Home,label:'会话'},
       {page:'contacts',icon:Contact,label:'通讯录'},
@@ -1364,7 +1374,7 @@ export function AppShell() {
             {target.type === 'source' && <SourceDetailPanel api={api} id={target.id} name={target.name} requestId={target.requestId} active={active} onManage={item => openCatalogManagement('sources', item)} onRemoved={closeView} />}
             {target.type === 'local-skill' && <LocalSkillPanel api={api} id={target.id} requestId={target.requestId} revision={skillsRevision} active={active} updates={skillUpdates} />}
             {target.type === 'marketplace' && <SkillMarketplaceDetail active={active} api={api} provider={target.provider} id={target.id} refresh={async () => { await refreshSnapshot(); skillUpdated() }} onResource={openLocalSkill} />}
-            {tab.scope === 'conversations' && target.type === 'employee-tasks' && <EmployeeTasksPanel key={target.id} api={api} snapshot={snapshot} employeeId={target.id} target={target} active={active}
+            {EMPLOYEE_TASK_BOARD_ENABLED && tab.scope === 'conversations' && target.type === 'employee-tasks' && <EmployeeTasksPanel key={target.id} api={api} snapshot={snapshot} employeeId={target.id} target={target} active={active}
               onMaterials={materialDrafts.reconcile}
               onContext={conversation => setTaskSessions(previous => previous[target.id]?.id === conversation?.id && (previous[target.id]?.projectSelection?.revision ?? 0) >= (conversation?.projectSelection?.revision ?? 0) ? previous : { ...previous, [target.id]: conversation })}
               renderChat={(window, onTrace, historyHeader) => renderChat(window, tab.scope, tab.key, undefined, onTrace, historyHeader)}

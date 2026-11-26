@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-25 定时执行创建普通员工话题，原会话身份迁移与授权指纹保持；不派生看板任务。
  * [OUTPUT]: 可信桌面检查第三方 Agent 版本，隔离安装并在连接核验和退出检查后切换原配置。
  * [OUTPUT]: 2026-11-24 第三阶段：API 执行补充交给 Session.steer；Trace 从官方存储查询，兼容既有业务历史。
  * [OUTPUT]: 2026-11-24 接入官方用量投影和辅助模型入口；消费精确工具批准，目录、撤权和原生审批保持。
@@ -228,6 +229,7 @@
  * [POS]: packages/runtime/src/service.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { asEmployeeTopic, isScheduledEmployeeTopic, migrateScheduledEmployeeTopics } from './modules/automations/employee-topics'
 import { EmployeeTaskService } from './modules/automations/employee-task-service'
 import { ScheduleApi } from './modules/automations/schedule-api'
 import { ScheduleError } from '@boai/shared/domain/schedules'
@@ -989,7 +991,7 @@ export class AppService {
         if (this.closing || this.backingUp) fail('服务正在退出或备份')
         if (definition.conversationPolicy === 'new-conversation' || definition.employeeTask) {
           const conversation = (await this.store.load<Conversation>('conversations')).find(c => c.id === occurrence.conversationId)
-          if (!conversation || conversation.purpose !== 'automation' || (definition.employeeTask ? conversation.employeeTaskId !== definition.employeeTask.id : conversation.occurrenceId !== occurrence.id || conversation.automationId !== definition.id)) fail('本次任务聊天未完成事务初始化')
+          if (!conversation || conversation.purpose !== 'automation' && !isScheduledEmployeeTopic(conversation) || (definition.employeeTask ? conversation.employeeTaskId !== definition.employeeTask.id : conversation.occurrenceId !== occurrence.id || conversation.automationId !== definition.id)) fail('本次任务聊天未完成事务初始化')
           this.conversations.set(conversation!.id, conversation!)
         }
         const source = await this.store.get<AutomationDefinition>('automations', definition.id)
@@ -1148,6 +1150,7 @@ export class AppService {
   async init() {
     if (this.initialized) return
     await this.store.init()
+    await migrateScheduledEmployeeTopics(this.store)
     await this.contexts.recover()
     await this.contextHandoffs.repository.recover()
     if (['darwin', 'linux'].includes(process.platform)) await this.terminals.recover()
@@ -1264,7 +1267,7 @@ export class AppService {
     }
     // Backfill retained isolated history through the same reception rules, without executing it.
     for (const conversation of [...this.conversations.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt))) {
-      if (conversation.purpose !== 'automation') continue
+      if (conversation.purpose !== 'automation' && !isScheduledEmployeeTopic(conversation)) continue
       const result = await this.store.transaction(tx => receiveConversationMessages(tx, this.conversationMessages(conversation.id).map(message => ({ message, inserted: false })), this.dataPath, this.reading))
       this.installMessageReception(result)
     }
@@ -3870,7 +3873,7 @@ export class AppService {
   private async automationFingerprint(target: string | AutomationInput) {
     const c = typeof target === 'string' ? this.getConversation(target) : target.conversationPolicy !== 'new-conversation' ? this.getConversation(target.conversationId!) : undefined
     const agentIds = c?.agentIds ?? (typeof target !== 'string' ? target.employeeIds! : [])
-    const plan = typeof target === 'string' ? c?.purpose === 'automation' && c.occurrenceId ? (await this.store.get<AutomationOccurrence>('automationOccurrences', c.occurrenceId))?.plan : undefined : target
+    const plan = typeof target === 'string' ? c && (c.purpose === 'automation' || isScheduledEmployeeTopic(c)) && c.occurrenceId ? (await this.store.get<AutomationOccurrence>('automationOccurrences', c.occurrenceId))?.plan : undefined : target
     const owner = plan?.owner
     const ownerGroup = owner?.kind === 'group' ? this.getConversation(owner.conversationId) : undefined
     if (ownerGroup && (ownerGroup.kind !== 'group' || ownerGroup.channel || ownerGroup.purpose === 'automation' || ownerGroup.purpose === 'core' || ownerGroup.purpose === 'channel' || ownerGroup.mergedInto || agentIds.some(id => !ownerGroup.agentIds.includes(id)))) fail('计划归属须为当前BOAI员工群，所有参与员工必须仍在群内')
@@ -3885,7 +3888,7 @@ export class AppService {
       }
     }
     // Task chats use the reviewed member/profile scope; their freshly allocated ID cannot be part of a plan fingerprint.
-    const scope = !c || c.purpose === 'automation' ? { purpose: 'automation', version: c?.configVersion ?? 1, members: agentIds, shared: c?.sharedKnowledgeIds ?? [], ...(ownerGroup ? { ownerGroup: { id: ownerGroup.id, version: ownerGroup.configVersion } } : {}) } : { id: c.id, version: c.configVersion, members: c.agentIds, shared: c.sharedKnowledgeIds }
+    const scope = !c || c.purpose === 'automation' || isScheduledEmployeeTopic(c) ? { purpose: 'automation', version: c?.configVersion ?? 1, members: agentIds, shared: c?.sharedKnowledgeIds ?? [], ...(ownerGroup ? { ownerGroup: { id: ownerGroup.id, version: ownerGroup.configVersion } } : {}) } : { id: c.id, version: c.configVersion, members: c.agentIds, shared: c.sharedKnowledgeIds }
     const runtimeAgents = await Promise.all(agents.map(async a => isNativeBackend(a.executionBackend)
       ? { id: a.id, version: a.configVersion - (a.projectDefaultChanges ?? 0), runtime: (a.executionBackend.kind === 'runtime-plugin' ? resolvePluginRuntime(a, this.profiles.get(a.executionBackend.profileId), this.connections.get(a.connectionId)) : a.executionBackend.kind === 'claude-local'
         ? resolveClaudeRuntime(a, this.profiles.get(a.executionBackend.profileId), this.connections.get(a.connectionId))
@@ -3899,7 +3902,7 @@ export class AppService {
     const conversation: Conversation = { ...input, memoryContextRef: undefined, teamSetup: undefined, id: o.conversationId, mode: 'natural', configVersion: 1, purpose: 'automation', automationId: d.id, occurrenceId: o.id, sharedKnowledgeIds: [], workspacePath: join(this.dataPath, 'workspaces', o.conversationId), createdAt: now(), updatedAt: now() }
     this.projectDirectories.initialize(conversation, input.agentIds.map(id => this.getAgent(id)))
     await mkdir(conversation.workspacePath, { recursive: true })
-    return [record('conversations', conversation)]
+    return [record('conversations', d.owner?.kind === 'employee' && d.purpose !== 'employee-task' ? asEmployeeTopic(conversation) : conversation)]
   }
   private async inspectAutomation(o: AutomationOccurrence): Promise<Partial<AutomationOccurrence> | undefined> {
     const { workItems, workWakes, workBudgets } = await this.works.view(o.conversationId)

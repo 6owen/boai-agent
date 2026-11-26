@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-25 仅兼容 purpose=employee-task 的旧人工任务；定时运行不读写看板、不发任务结果事件。
  * [OUTPUT]: 定时新任务在受理事务复制默认项目；旧历史不套用今天的默认值。
  * [OUTPUT]: 本轮结束并有回复时兜底显示待确认；保留人工状态、后续排队和业务交付账本，启动仅校正旧显示。
  * [OUTPUT]: 任意任务状态均可快捷执行；已有执行时同任务新要求进入原持久FIFO。
@@ -23,20 +24,21 @@ export const ongoingTaskExecution = (o?: AutomationOccurrence) => !!o && (AUTOMA
 
 /** A finished reply is ready for human review, not proof of acceptance or Work delivery. */
 export function hasEmployeeTaskResult(o: AutomationOccurrence) {
-  return !!o.taskId && !o.deletedAt && o.status === 'completed' && o.resultMessageIds.length > 0
+  return o.purpose === 'employee-task' && !!o.taskId && !o.deletedAt && o.status === 'completed' && o.resultMessageIds.length > 0
 }
 
 export async function linkEmployeeTask(tx: RecordTransaction, d: AutomationDefinition, o: AutomationOccurrence, historical = false) {
+  // Retained only for legacy manual assignments. Scheduled runs never enter the board.
+  if (d.purpose !== 'employee-task') return
   const owner = o.plan?.owner ?? d.owner
   if (o.deletedAt || o.status === 'skipped' || o.taskKind === 'monitor' || owner?.kind !== 'employee') return
   const agentId = owner.employeeId
-  const taskId = o.taskId ?? d.employeeTask?.id ?? taskIdentity(d.purpose === 'employee-task' ? `definition:${d.id}` : `occurrence:${o.id}`)
+  const taskId = o.taskId ?? d.employeeTask?.id ?? taskIdentity(`definition:${d.id}`)
   if (await tx.get('deletedEmployeeTasks', taskId)) {
     if (d.employeeTask && !historical) throw new Error('任务已删除')
     return
   }
   let task = await tx.get<TrackedTask>('agentTasks', taskId)
-  const newScheduledTask = !task && d.purpose !== 'employee-task'
   if (d.employeeTask && !historical) {
     if (!task || task.agentId !== agentId) throw new Error('任务不存在或不属于当前员工')
     if (!d.employeeTask.message && task.revision !== d.employeeTask.expectedRevision) throw new Error('任务已经改变，请刷新后重新提交')
@@ -46,15 +48,13 @@ export async function linkEmployeeTask(tx: RecordTransaction, d: AutomationDefin
     const description = historical ? (await tx.get<AutomationDispatch>('automationDispatches', o.id))?.definition?.prompt ?? (o.messageId ? (await tx.get<Message>('messages', o.messageId))?.content : undefined) : d.prompt
     const source = o.messageId ? await tx.get<Message>('messages', o.messageId) : undefined
     const projectSelection = source?.projectSelections?.[agentId] ?? source?.projectSelection ?? (source?.workingDirectory ? legacyProjectSelection(source.workingDirectory) : historical ? legacyProjectSelection() : initialProjectSelection(await tx.get<DigitalAgent>('agents', agentId)))
-    task = { projectSelection, id: taskId, agentId, title: o.name, description, steps: [], note: '', status: 'pending', kind: 'assignment', ...(newScheduledTask ? { sourceKind: 'schedule' as const } : {}), revision: 1, createdAt: o.startedAt, updatedAt: o.startedAt }
-    // Adopt the old execution projection only when reconstructing missing history; new deliveries use the normal assignment protocol.
-    if (historical && newScheduledTask) task.status = await executionTaskStatus(tx, o, { ...task, kind: undefined })
+    task = { projectSelection, id: taskId, agentId, title: o.name, description, steps: [], note: '', status: 'pending', kind: 'assignment', revision: 1, createdAt: o.startedAt, updatedAt: o.startedAt }
   }
   if (task.agentId !== agentId) throw new Error('任务归属不一致')
   o.taskId = task.id
   const latest = task.latestOccurrenceId ? await tx.get<AutomationOccurrence>('automationOccurrences', task.latestOccurrenceId) : undefined
   if (!historical || !latest || o.startedAt > latest.startedAt || o.startedAt === latest.startedAt && o.id > latest.id) {
-    const explicitTaskRun = !historical && (newScheduledTask || d.employeeTask && !d.employeeTask.message)
+    const explicitTaskRun = !historical && (d.employeeTask && !d.employeeTask.message)
     const executionState = isEmployeeTaskAssignment(task) ? (explicitTaskRun ? { status: 'in_progress' as const, statusSource: 'execution' as const } : {}) : {
       statusSource: 'execution' as const,
       ...(!historical || !task.latestOccurrenceId ? { status: await executionTaskStatus(tx, o, task) } : {}),
@@ -72,6 +72,7 @@ export async function linkEmployeeTask(tx: RecordTransaction, d: AutomationDefin
 
 /** Reflect the latest execution's waits/failures without letting an old run overwrite later user edits. */
 export async function syncEmployeeTask(tx: RecordTransaction, o: AutomationOccurrence, recovery = false) {
+  if (o.purpose !== 'employee-task') return
   if (!o.taskId || o.deletedAt) return
   const task = await tx.get<TrackedTask>('agentTasks', o.taskId)
   if (!task || task.statusSource === 'manual') return

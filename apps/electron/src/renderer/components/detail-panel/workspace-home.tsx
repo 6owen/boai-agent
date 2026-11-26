@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-25 隐藏旧任务工具卡片，保留终端、知识资料和浏览器入口。
  * [INPUT]: 原会话成员、明确员工选择、原任务/知识导航及终端/浏览器宿主接口。
  * [OUTPUT]: 工具卡片固定60px，文字/图标使用共享Button default中号尺寸且字重normal；沿全局Card细边缘，原终端创建与迟到隔离保持。
  * [POS]: 右侧工作区开始页，复用原任务、知识资料、终端和内置浏览器。
@@ -14,6 +15,7 @@ import { SelectField } from '@/components/ui/select-field'
 import { ContactProfileSection } from '@/components/employee/profile-card'
 import { errorText } from '@/components/common'
 import { toast } from 'sonner'
+import { EMPLOYEE_TASK_BOARD_ENABLED } from './employee-tasks-panel'
 
 export function WorkspaceHome({ api, snapshot, active, conversationId, employeeId, onTasks, onKnowledge, onTerminal }: {
   api: DesktopApi; snapshot: Snapshot; active: boolean; conversationId: string; employeeId?: string
@@ -63,9 +65,9 @@ export function WorkspaceHome({ api, snapshot, active, conversationId, employeeI
       <ContactProfileSection title="工具">
       {(employees.length > 1 || room?.kind === 'group') && <SelectField className="mb-3" aria-label="工作区员工" placeholder="选择员工" value={selected} disabled={!active || creating} options={employees.map(agent => ({ value: agent.id, label: agent.name }))} onValueChange={select} />}
       <div className="workspace-home-actions">
-        <Card size="sm" className="h-[60px] gap-0 p-0"><Button variant="ghost" size="default" className="workspace-home-action h-full w-full justify-start rounded-[inherit] font-normal" disabled={employeeDisabled} onClick={() => owner && onTasks(owner.id)}>
+        {EMPLOYEE_TASK_BOARD_ENABLED && <Card size="sm" className="h-[60px] gap-0 p-0"><Button variant="ghost" size="default" className="workspace-home-action h-full w-full justify-start rounded-[inherit] font-normal" disabled={employeeDisabled} onClick={() => owner && onTasks(owner.id)}>
           <span className="app-icon i-carbon-task" aria-hidden="true" /><span>任务</span>
-        </Button></Card>
+        </Button></Card>}
         <Card size="sm" className="h-[60px] gap-0 p-0"><Button variant="ghost" size="default" className="workspace-home-action h-full w-full justify-start rounded-[inherit] font-normal" disabled={employeeDisabled} aria-busy={creating} onClick={() => void create()}>
           <span className="app-icon i-carbon-terminal" aria-hidden="true" /><span>终端</span>
         </Button></Card>

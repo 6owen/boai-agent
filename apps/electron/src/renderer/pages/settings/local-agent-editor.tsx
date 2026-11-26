@@ -3,7 +3,7 @@
  * [OUTPUT]: 2026-10-11 第13组原生员工与Rovai执行过程接线，沿用BOAI视觉组件；消息流程卡片退役，输入框工具栏保持。
  * [OUTPUT]: 本机运行许可归入高级设置并默认勾选；折叠箭头仅使用共享展开旋转，收起向右、展开向下。
  * [OUTPUT]: 单个手动入口按精确命令名识别已接入协议；未知程序需明确兼容协议，原扫描/保存协议优先，不能自动冒充ACP。
- * [OUTPUT]: Claude受管参数和无个人登录；测试只显示程序核对，不冒充供应商认证或实际调用成功。
+ * [OUTPUT]: Claude 受管参数保持；草稿测试通过 Sonner 返回实际程序与版本。
  * [OUTPUT]: 保留原生Codex协议身份和固定启动参数，复用测试/保存和明确本机授权。
  * [INPUT]: 扫描预填或已有ACP/明确原生配置草稿、目录加载/来源详情插槽、DesktopApi、未保存守卫和统一兼容接口表单布局。
  * [OUTPUT]: 手动添加仅名称/命令/可选参数列表；扫描配置默认折叠启动信息，登录/来源归入高级设置；自动运行方式、简短显式授权与草稿测试/保存。
@@ -15,8 +15,9 @@ import type { RuntimePluginSummary } from '@boai/shared/plugins/runtime-catalog'
 import type { LaunchProfileInput } from '@boai/shared/domain'
 import { localAgentProtocol } from '@boai/shared/domain/local-configs'
 import type { DesktopApi } from '@boai/shared/ipc'
-import { Banner, GuardContext, useDirty, useMutation } from '@/components/common'
-import { ArrowLeft, Check, ChevronRight, FolderOpen, InfoIcon, Key, List, LoaderCircle, Pencil, Plus, Terminal, X } from '@/components/icons'
+import { toast } from 'sonner'
+import { GuardContext, useDirty, useMutation } from '@/components/common'
+import { ArrowLeft, ChevronRight, FolderOpen, InfoIcon, Key, List, LoaderCircle, Pencil, Plus, Terminal, X } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
@@ -40,13 +41,12 @@ export function LocalAgentEditor({ api, initial, onBack, onSaved, onWorking, lea
   const protocol = (plugin || form.protocol.startsWith('plugin:') ? 'runtime-plugin' : form.protocol === 'auto' ? localAgentProtocol(form.executable) : form.protocol) as LaunchProfileInput['protocol']
   const codexConfig = protocol !== 'claude-cli' && (!!form.codexHome || protocol === 'codex-app-server' || localAgentProtocol(form.executable) === 'codex-app-server')
   const [operation, setOperation] = useState<'test' | 'save' | null>(null)
-  const [feedback, setFeedback] = useState('')
-  const { busy, error, run, setError } = useMutation(), guard = useContext(GuardContext)
+  const { busy, run } = useMutation(), guard = useContext(GuardContext)
   const working = busy || pending
   const editor = useRef<HTMLFormElement>(null), fieldId = useId()
   useDirty(form)
   useEffect(() => { onWorking(busy); return () => onWorking(false) }, [busy, onWorking])
-  const set = <K extends keyof typeof form>(key: K, value: typeof form[K]) => { setFeedback(''); setError(''); setForm(current => ({ ...current, [key]: value })) }
+  const set = <K extends keyof typeof form>(key: K, value: typeof form[K]) => setForm(current => ({ ...current, [key]: value }))
   const input = (): LaunchProfileInput => {
     if (!form.executable.trim()) { setAdvanced(true); throw new Error('请填写启动命令。') }
     if (!form.acknowledged) throw new Error('请先确认允许此 Agent 在本机运行。')
@@ -58,12 +58,12 @@ export function LocalAgentEditor({ api, initial, onBack, onSaved, onWorking, lea
   const submit = (operation: 'test' | 'save') => {
     if (working || !editor.current?.reportValidity()) return
     void run(async () => {
-      setOperation(operation); setFeedback('')
+      setOperation(operation)
       try {
         const draft = input()
         if (operation === 'test') {
           const verified = await api.request('testLaunchProfileDraft', draft)
-          setFeedback(`${draft.protocol === 'claude-cli' ? '程序已核对' : '测试成功'} · ${verified.name} ${verified.version}`)
+          toast.success(`${draft.protocol === 'claude-cli' ? '程序已核对' : '测试成功'} · ${verified.name} ${verified.version}`)
         } else {
           await api.request('saveLaunchProfile', draft)
           await onSaved()
@@ -86,13 +86,11 @@ export function LocalAgentEditor({ api, initial, onBack, onSaved, onWorking, lea
   return <ConnectionForm ref={editor} disabled={working} onSubmit={event => { event.preventDefault(); submit('save') }} footer={<>
       <Button type="button" variant="ghost" disabled={working} onClick={() => guard.navigate(onBack, { resetOnDiscard: false })}><ArrowLeft />返回</Button>
       <div className="connection-editor-actions">
-        {feedback && <p className="connection-feedback connection-draft-feedback connection-inline-feedback" data-status="success" role="status" title={feedback}><Check /><span>{feedback}</span></p>}
         <Button type="button" variant="outline" className="relative" aria-label="测试" aria-busy={operation === 'test'} disabled={working || !form.acknowledged} onClick={() => submit('test')}><span className={operation === 'test' ? 'invisible' : undefined}>测试</span>{operation === 'test' && <span className="absolute inset-0 flex items-center justify-center"><LoaderCircle className="spinner" /></span>}</Button>
-        <Button type="submit" disabled={working || !form.acknowledged}>{operation === 'save' && <LoaderCircle className="spinner" />}保存</Button>
+        <Button type="submit" aria-busy={operation === 'save'} disabled={working || !form.acknowledged}>{operation === 'save' && <LoaderCircle className="spinner" />}保存</Button>
       </div>
     </>}>
     {leading}
-    {error && <Banner>{error}</Banner>}
     <ConnectionSettingRow label="Agent 名称" htmlFor={`${fieldId}-name`} icon={<Pencil />}><Input id={`${fieldId}-name`} autoFocus required maxLength={100} value={form.name} onChange={event => set('name', event.target.value)} placeholder="为这个 Agent 起个名字" /></ConnectionSettingRow>
     {showCommand && commandFields}
     <Collapsible open={advanced} onOpenChange={setAdvanced}>

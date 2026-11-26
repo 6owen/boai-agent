@@ -1,7 +1,7 @@
 /*
- * [OUTPUT]: 2026-11-04定时记录实际点击定位进入所属员工主聊天的任务面板/原任务Dialog，单次同时覆盖系统提醒导航；不新增执行或会话。
- * [INPUT]: Natural-minute schedules, actual task-scoped SDK tools and isolated Electron UI.
- * [OUTPUT]: Bobo once creation/recovery, real clock and trial isolation, task UI acceptance/revision, cleanup and restart checks.
+ * [OUTPUT]: 2026-11-25 定时自然触发、历史定位和通知直达员工话题；普通消息续改、原计划删除及重启不重放。
+ * [INPUT]: Natural-minute schedules, actual session-scoped SDK tools and isolated Electron UI.
+ * [OUTPUT]: Bobo once creation/recovery, real clock and trial isolation, topic navigation/revision, cleanup and restart checks.
  * [POS]: Complete once/periodic employee-task workflow with a controlled provider and actual application/clock/storage.
  * [PROTOCOL]: Changes update Header and owning .folder.md.
  */
@@ -10,20 +10,19 @@ import { createBdd } from 'playwright-bdd'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { AutomationOccurrence, ConversationDetail } from '../../../packages/shared/src/domain'
-import type { EmployeeTaskDetail } from '../../../packages/shared/src/domain/employee-tasks'
 import { test as base } from '../support/test'
 import { scheduledTaskWorker } from '../support/scheduled-task-worker'
 import type { Desktop } from '../support/desktop'
 
-type State = { fixture?: Awaited<ReturnType<typeof scheduledTaskWorker>>; planId?: string; mainId?: string; occurrence?: AutomationOccurrence; task?: EmployeeTaskDetail['task']; dueAt?: string; second?: AutomationOccurrence; trial?: AutomationOccurrence; once?: boolean; file?: string }
+type State = { fixture?: Awaited<ReturnType<typeof scheduledTaskWorker>>; planId?: string; mainId?: string; occurrence?: AutomationOccurrence; topic?: ConversationDetail['conversation']; dueAt?: string; second?: AutomationOccurrence; trial?: AutomationOccurrence; once?: boolean; file?: string }
 export const test = base.extend<{ scheduledTask: State }>({ scheduledTask: async ({}, use) => use({}) })
 const { Given, When, Then } = createBdd(test)
-async function openTaskPanel(runtime: Desktop) {
+async function openEmployee(runtime: Desktop) {
   const page = runtime.page
   await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).click()
   await page.getByRole('navigation', { name: '会话列表' }).getByRole('button', { name: '研究员', exact: true }).click()
-  if (!await page.locator('[data-employee-tasks="researcher"]').isVisible()) await page.getByRole('button', { name: '任务', exact: true }).click()
-  await expect(page.locator('[data-employee-tasks="researcher"]')).toBeVisible()
+  await expect(page.getByRole('button', { name: '任务', exact: true })).toHaveCount(0)
+  await expect(page.locator('[data-employee-tasks]')).toHaveCount(0)
 }
 Given('Bobo会话已创建并核对一个即将到期的单次计划', async ({ runtime, scheduledTask: state }) => {
   test.setTimeout(240_000); state.once = true
@@ -57,10 +56,10 @@ Given('Bobo会话已创建并核对一个即将到期的单次计划', async ({ 
   await expect.poll(async () => (await page.evaluate(id => window.boai.request('getAutomationOccurrence', { id }), state.trial!.id)).status, { timeout: 30_000 }).toBe('completed')
   expect((await page.evaluate(id => window.boai.request('getAutomation', { id }), plan.id))?.onceConsumedAt).toBeUndefined()
   expect(Date.now()).toBeLessThan(Date.parse(state.dueAt))
-  await openTaskPanel(runtime)
+  await openEmployee(runtime)
   await runtime.reviewData('Bobo创建、原回执核对、同请求重试及到期前试跑', { plan, creationIssued: state.fixture.creationIssued, creationResults: state.fixture.creationResults(), trial: state.trial, fakeClock: false, externalProvider: false })
 })
-Given('员工任务面板已有一个即将自然到期的计划', async ({ runtime, scheduledTask: state }) => {
+Given('数字员工已有一个即将自然到期的计划', async ({ runtime, scheduledTask: state }) => {
   test.setTimeout(210_000)
   state.fixture = await scheduledTaskWorker(runtime); await runtime.start()
   const setup = await runtime.page.evaluate(async url => {
@@ -68,9 +67,8 @@ Given('员工任务面板已有一个即将自然到期的计划', async ({ runt
     const { configVersion, workspaceRef, memoryNamespace, policyVersion, ...agent } = (await window.boai.request('snapshot', undefined)).agents.find(a => a.id === 'researcher')!
     await window.boai.request('saveAgent', { ...agent, connectionId: connection.id, modelId: 'task-panel-fixture', executionPermission: 'full-access', expectedConfigVersion: configVersion })
     const main = await window.boai.request('createConversation', { kind: 'direct', title: '研究员', agentIds: ['researcher'] })
-    await window.boai.request('executeApplicationOperation', { operation: 'tasks.create', requestId: 'internal-progress', input: { agentId: 'researcher', title: '内部步骤不能进入看板' } })
     const dueAt = new Date(Math.ceil((Date.now() + 15_000) / 60_000) * 60_000).toISOString()
-    const result = await window.boai.request('executeApplicationOperation', { operation: 'automations.create', requestId: 'panel-periodic-plan', input: { name: '面板中的定时任务', employeeId: 'researcher', instruction: '写出panel-receipt.txt，交付后设为待确认，供用户验收。', trigger: { kind: 'hourly', minute: Number(dueAt.slice(14, 16)), timezone: 'UTC' }, notification: 'muted' } })
+    const result = await window.boai.request('executeApplicationOperation', { operation: 'automations.create', requestId: 'panel-periodic-plan', input: { name: '面板中的定时任务', employeeId: 'researcher', instruction: '写出panel-receipt.txt，在本话题交付文件。', trigger: { kind: 'hourly', minute: Number(dueAt.slice(14, 16)), timezone: 'UTC' }, notification: 'muted' } })
     if (result.status !== 'succeeded') throw Error(JSON.stringify(result))
     return { plan: result.data as { id: string; nextTriggerAt: string }, mainId: main.id, dueAt }
   }, state.fixture.url)
@@ -79,8 +77,7 @@ Given('员工任务面板已有一个即将自然到期的计划', async ({ runt
   const page = runtime.page
   await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).click()
   await page.getByRole('navigation', { name: '会话列表' }).getByRole('button', { name: '研究员', exact: true }).click()
-  await page.getByRole('button', { name: '任务', exact: true }).click()
-  await expect(page.locator('[data-employee-tasks="researcher"]')).toBeVisible()
+  await expect(page.getByRole('button', { name: '任务', exact: true })).toHaveCount(0)
   expect((await page.evaluate(() => window.boai.request('listEmployeeTasks', { employeeId: 'researcher', includeDone: true }))).items).toEqual([])
   await runtime.reviewData('计划真实分钟到期之前', { ...setup, fakeClock: false, manualTrigger: false, externalProvider: false })
 })
@@ -90,10 +87,12 @@ When('计划自然触发并由员工交付任务文件', async ({ runtime, sched
   expect(state.occurrence.source).toBe('schedule'); expect(state.occurrence.scheduledFor).toBe(state.dueAt)
   expect(state.occurrence.nativeRunId).toBe(`sched_schedule_boai-${state.planId}_${Date.parse(state.dueAt!)}`)
   await expect.poll(async () => (await runtime.page.evaluate(id => window.boai.request('getAutomationOccurrence', { id }), state.occurrence!.id)).status, { timeout: 30_000 }).toBe('completed')
-  const detail = await runtime.page.evaluate(id => window.boai.request('getEmployeeTask', { employeeId: 'researcher', id }), state.occurrence.taskId!)
-  state.task = detail.task
-  expect(state.task).toMatchObject({ kind: 'assignment', sourceKind: 'schedule', status: 'in_review', statusSource: 'employee', sessionConversationId: state.occurrence.conversationId })
+  expect(state.occurrence.taskId).toBeUndefined()
   const view = await runtime.page.evaluate(id => window.boai.request('getConversation', { id }), state.occurrence.conversationId)
+  state.topic = view.conversation
+  expect(state.topic).toMatchObject({ employeeChat: 'topic', purpose: 'personal', agentIds: ['researcher'] })
+  expect(state.topic.employeeTaskId).toBeUndefined()
+  expect((await runtime.page.evaluate(() => window.boai.request('listEmployeeTasks', { employeeId: 'researcher', includeDone: true }))).items).toEqual([])
   const run = view.runs.find(run => run.phase === 'execution')!
   state.file = join(runtime.root, 'v2', 'agents', 'researcher', 'workspace', 'sessions', view.conversation.id, 'runs', run.id, 'panel-receipt.txt')
   expect(await readFile(state.file, 'utf8')).toBe('SCHEDULE_PANEL_DELIVERED\n')
@@ -102,12 +101,15 @@ When('计划自然触发并由员工交付任务文件', async ({ runtime, sched
   if (state.once) {
     expect(plan).toMatchObject({ onceConsumedAt: expect.any(String), onceOccurrenceId: state.occurrence.id, enabled: true, sync: 'synced' })
     expect(await runtime.page.evaluate(id => window.boai.request('executeApplicationOperation', { operation: 'automations.get', input: { id } }), state.planId!)).toMatchObject({ status: 'succeeded', data: { state: 'finished', nextTimes: [] } })
-    expect(state.task.id).not.toBe(state.trial!.taskId); expect(state.occurrence.conversationId).not.toBe(state.trial!.conversationId)
+    expect(state.trial!.taskId).toBeUndefined(); expect(state.occurrence.conversationId).not.toBe(state.trial!.conversationId)
   } else expect(await runtime.page.evaluate(plan => window.boai.request('executeApplicationOperation', { operation: 'automations.pause', requestId: 'pause-after-first-fire', input: { id: plan.id, expectedRevision: plan.revision } }), plan)).toMatchObject({ status: 'succeeded' })
-  await expect(runtime.page.locator(`[data-employee-task-id="${state.task.id}"]`)).toBeVisible()
-  await runtime.reviewNativeCheckpoint('自然触发后任务卡片进入待确认列')
+  const topics = runtime.page.getByRole('button', { name: '研究员 的话题', exact: true })
+  const topicEntry = runtime.page.getByRole('button', { name: state.topic.title, exact: true }).first()
+  if (!await topicEntry.isVisible()) await topics.click()
+  await expect(topicEntry).toBeVisible()
+  await runtime.reviewNativeCheckpoint('自然触发后员工话题可见，看板没有创建任务')
 })
-Then('我能在任务面板打开该任务继续修改和验收', async ({ runtime, scheduledTask: state }) => {
+Then('我能从定时记录定位员工话题并继续修改', async ({ runtime, scheduledTask: state }) => {
   const page = runtime.page
   const conversations = (await page.evaluate(() => window.boai.request('snapshot', undefined))).conversations.map(c => c.id).sort()
   const calls = state.fixture!.requests.length
@@ -117,19 +119,15 @@ Then('我能在任务面板打开该任务继续修改和验收', async ({ runti
   const process = page.locator(`[data-occurrence-detail-id="${state.occurrence!.id}"]`)
   await expect(process).toBeVisible()
   await process.getByRole('button', { name: '定位聊天记录', exact: true }).last().click()
-  const dialog = page.locator(`[data-employee-task-dialog="${state.task!.id}"]`)
-  await expect(dialog).toBeVisible(); await expect(dialog.locator('[aria-label="任务会话"]')).toContainText('SCHEDULE_PANEL_DELIVERED')
-  await expect(page.locator('[data-employee-tasks="researcher"]')).toBeVisible()
-  await expect(page.locator(`.conversation-stage [data-conversation-id="${state.mainId}"]`)).toBeVisible()
-  await expect(page.locator(`.conversation-stage [data-conversation-id="${state.occurrence!.conversationId}"]`)).toHaveCount(0)
-  await expect(page.locator('[data-occurrence-detail-id]:visible')).toHaveCount(0)
+  const chat = page.locator(`.conversation-stage [data-conversation-id="${state.occurrence!.conversationId}"]`)
+  await expect(chat).toBeVisible(); await expect(chat).toContainText('SCHEDULE_PANEL_DELIVERED')
+  await expect(page.locator('[data-employee-tasks], [data-employee-task-dialog]')).toHaveCount(0)
   expect((await page.evaluate(() => window.boai.request('snapshot', undefined))).conversations.map(c => c.id).sort()).toEqual(conversations)
   expect(state.fixture!.requests.length).toBe(calls)
-  await runtime.reviewNativeCheckpoint('定时记录定位到所属员工任务面板和原任务会话')
+  await runtime.reviewNativeCheckpoint('定时记录直接定位原员工话题')
   if (state.once) {
-    await page.keyboard.press('Escape'); await expect(dialog).toHaveCount(0)
     await page.getByRole('button', { name: '定时任务', exact: true }).click()
-    // Simulate only the OS click's pending target; the renderer and runtime resolve the real persisted task.
+    // Simulate only the OS click's pending target; the renderer and runtime resolve the real persisted topic.
     await runtime.app.evaluate(({ ipcMain, BrowserWindow }, occurrence) => {
       const handlers = (ipcMain as unknown as { _invokeHandlers: Map<string, (...args: any[]) => Promise<unknown>> })._invokeHandlers
       const original = handlers.get('boai:request')!
@@ -143,53 +141,43 @@ Then('我能在任务面板打开该任务继续修改和验收', async ({ runti
       })
       BrowserWindow.getAllWindows()[0].webContents.send('boai:event', { type: 'automation:navigate' })
     }, await page.evaluate(id => window.boai.request('getAutomationOccurrence', { id }), state.occurrence!.id))
-    await expect(dialog).toBeVisible()
-    await expect(page.locator('[data-employee-tasks="researcher"]')).toBeVisible()
-    await expect(page.locator(`.conversation-stage [data-conversation-id="${state.mainId}"]`)).toBeVisible()
-    await expect(page.locator('[data-occurrence-detail-id]:visible')).toHaveCount(0)
+    await expect(chat).toBeVisible()
+    await expect(page.locator('[data-employee-tasks], [data-employee-task-dialog]')).toHaveCount(0)
     expect(state.fixture!.requests.length).toBe(calls)
-    await runtime.reviewNativeCheckpoint('系统提醒入口也定位同一员工任务且不另开执行页面')
+    await runtime.reviewNativeCheckpoint('系统提醒入口也定位同一员工话题')
   }
-  await dialog.getByRole('button', { name: '任务状态', exact: true }).click()
-  await page.getByRole('option', { name: '完成', exact: true }).click()
-  await expect.poll(async () => (await page.evaluate(id => window.boai.request('getEmployeeTask', { employeeId: 'researcher', id }), state.task!.id)).task.status).toBe('done')
-  await dialog.locator('[aria-label="消息内容"]').fill('请在这个任务里继续修改并交付下一版文件。')
-  await dialog.getByRole('button', { name: '发送消息', exact: true }).click()
-  await expect.poll(async () => (await page.evaluate(id => window.boai.request('getEmployeeTask', { employeeId: 'researcher', id }), state.task!.id)).executions.occurrences.filter(o => o.status === 'completed').length, { timeout: 30_000 }).toBe(2)
-  const current = await page.evaluate(id => window.boai.request('getEmployeeTask', { employeeId: 'researcher', id }), state.task!.id)
-  expect(current.task).toMatchObject({ id: state.task!.id, sessionConversationId: state.occurrence!.conversationId, status: 'in_review' })
-  expect(new Set(current.executions.occurrences.map(o => o.conversationId)).size).toBe(1)
-  await runtime.reviewData('完成后直接在原任务会话续改', current)
-  await runtime.reviewNativeCheckpoint('员工任务Dialog中的独立对话和待确认状态')
-  await page.keyboard.press('Escape'); await expect(dialog).toHaveCount(0)
+  await chat.locator('[aria-label="消息内容"]').fill('请在这个话题里继续修改并交付下一版文件。')
+  await chat.getByRole('button', { name: '发送消息', exact: true }).click()
+  await expect.poll(async () => (await page.evaluate(id => window.boai.request('getConversation', { id }), state.topic!.id)).runs.filter(run => run.phase === 'execution' && run.status === 'completed').length, { timeout: 30_000 }).toBe(2)
+  const current = await page.evaluate(id => window.boai.request('getConversation', { id }), state.topic!.id)
+  expect(current.conversation.id).toBe(state.occurrence!.conversationId)
+  expect(current.conversation.employeeTaskId).toBeUndefined()
+  expect((await page.evaluate(id => window.boai.request('listAutomationHistory', { automationId: id }), state.planId!)).occurrences).toHaveLength(state.trial ? 2 : 1)
+  await runtime.reviewData('原话题普通消息续改，不创建新的看板任务或定时记录', current)
+  await runtime.reviewNativeCheckpoint('员工话题中的后续交付')
 })
-Then('再次运行产生独立任务且两次重启不重放', async ({ runtime, scheduledTask: state }) => {
+
+Then('再次运行产生独立话题且两次重启不重放', async ({ runtime, scheduledTask: state }) => {
   const result = await runtime.page.evaluate(id => window.boai.request('executeApplicationOperation', { operation: 'automations.run', requestId: 'second-explicit-employee-task', input: { id } }), state.planId!)
   expect(result.status).toBe('succeeded'); state.second = result.data as AutomationOccurrence
   await expect.poll(async () => (await runtime.page.evaluate(id => window.boai.request('getAutomationOccurrence', { id }), state.second!.id)).status, { timeout: 30_000 }).toBe('completed')
-  expect(state.second.taskId).not.toBe(state.task!.id); expect(state.second.conversationId).not.toBe(state.occurrence!.conversationId)
-  await expect(runtime.page.locator(`[data-employee-task-id="${state.second.taskId}"]`)).toBeVisible()
+  expect(state.second.taskId).toBeUndefined(); expect(state.second.conversationId).not.toBe(state.occurrence!.conversationId)
+  expect((await runtime.page.evaluate(id => window.boai.request('getConversation', { id }), state.second.conversationId)).conversation.employeeChat).toBe('topic')
   const main = await runtime.page.evaluate(id => window.boai.request('getConversation', { id }), state.mainId!) as ConversationDetail
   expect(main.messages.some(m => m.content.includes('SCHEDULE_PANEL_DELIVERED'))).toBe(false)
   const calls = state.fixture!.requests.length
   for (let i = 0; i < 2; i++) {
     await runtime.restart()
     const tasks = await runtime.page.evaluate(() => window.boai.request('listEmployeeTasks', { employeeId: 'researcher', includeDone: true }))
-    expect(tasks.items.map(t => t.id).sort()).toEqual([state.task!.id, state.second.taskId!, ...(state.trial ? [state.trial.taskId!] : [])].sort())
+    expect(tasks.items).toEqual([])
     expect((await runtime.page.evaluate(id => window.boai.request('listAutomationHistory', { automationId: id, limit: 20 }), state.planId!)).occurrences).toHaveLength(state.trial ? 3 : 2)
-    expect((await runtime.page.evaluate(id => window.boai.request('getEmployeeTask', { employeeId: 'researcher', id }), state.task!.id)).executions.occurrences).toHaveLength(2)
+    expect((await runtime.page.evaluate(id => window.boai.request('getConversation', { id }), state.topic!.id)).runs.filter(run => run.phase === 'execution' && run.status === 'completed')).toHaveLength(2)
   }
   expect(state.fixture!.requests.length).toBe(calls); expect(state.fixture!.errors).toEqual([]); expect(runtime.errors).toEqual([])
-  await runtime.reviewData('同一计划不同任务及两次重启零重放', { firstTask: state.task, secondExecution: state.second, issued: state.fixture!.issued, modelRequests: calls })
+  await runtime.reviewData('同一计划不同任务及两次重启零重放', { firstTopic: state.topic, secondExecution: state.second, issued: state.fixture!.issued, modelRequests: calls })
 })
-Then('清理任务与计划后历史保留且重启不复活', async ({ runtime, scheduledTask: state }) => {
-  await openTaskPanel(runtime)
-  const page = runtime.page, card = page.locator(`[data-employee-task-id="${state.task!.id}"]`)
-  await card.click({ button: 'right' })
-  await page.getByRole('menuitem', { name: '删除任务', exact: true }).click()
-  await page.getByRole('menuitem', { name: '确认删除', exact: true }).click()
-  await expect(card).toHaveCount(0)
-  expect((await page.evaluate(() => window.boai.request('listEmployeeTasks', { employeeId: 'researcher', includeDone: true }))).items.map(t => t.id)).toContain(state.second!.taskId)
+Then('删除定时计划后话题和历史保留且重启不重放', async ({ runtime, scheduledTask: state }) => {
+  const page = runtime.page
   await page.getByRole('button', { name: '定时任务', exact: true }).click()
   await page.locator('.schedule-item').filter({ hasText: '面板中的定时任务' }).click()
   await page.getByRole('group', { name: '定时任务操作', exact: true }).getByRole('button', { name: '删除', exact: true }).click()
@@ -202,9 +190,10 @@ Then('清理任务与计划后历史保留且重启不复活', async ({ runtime,
   await runtime.restart()
   expect((await runtime.page.evaluate(() => window.boai.request('listAutomations', undefined))).definitions).toEqual([])
   const tasks = await runtime.page.evaluate(() => window.boai.request('listEmployeeTasks', { employeeId: 'researcher', includeDone: true }))
-  expect(tasks.items.some(t => t.id === state.task!.id)).toBe(false); expect(tasks.items.map(t => t.id)).toContain(state.second!.taskId)
+  expect(tasks.items).toEqual([])
+  expect((await runtime.page.evaluate(id => window.boai.request('getConversation', { id }), state.topic!.id)).conversation.employeeChat).toBe('topic')
   expect((await runtime.page.evaluate(id => window.boai.request('listAutomationHistory', { automationId: id, limit: 20 }), state.planId!)).occurrences.map(o => o.id).sort()).toEqual(before.occurrences.map(o => o.id).sort())
   expect(state.fixture!.requests.length).toBe(calls)
   expect(state.fixture!.errors).toEqual([]); expect(runtime.errors).toEqual([])
-  await runtime.reviewData('任务和计划分别清理，历史保留且重启不复活', { deletedTaskId: state.task!.id, retainedTaskId: state.second!.taskId, history: before, modelRequests: calls })
+  await runtime.reviewData('任务和计划分别清理，历史保留且重启不复活', { retainedTopicId: state.topic!.id, secondTopicId: state.second!.conversationId, history: before, modelRequests: calls })
 })
