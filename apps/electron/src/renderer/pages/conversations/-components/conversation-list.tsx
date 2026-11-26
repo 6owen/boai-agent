@@ -11,13 +11,13 @@
  * [OUTPUT]: 渠道列表可嵌入Popover；仅传入onBack时显示返回按钮，搜索/label折叠沿原状态。
  * [OUTPUT]: 2026-10-15渠道私聊/群聊复用会话label折叠；搜索临时展开，明确定位展开目标分组，取消横向筛选Tabs。
  * [OUTPUT]: 2026-10-14现行分离合同：主列表按员工/BOAI群显示，员工渠道页私聊/群筛选及真实新回复提示；渠道分组一次读取，避免逐员工重复排序。
- * [OUTPUT]: 员工行打开固定主聊天，独立箭头展开该员工的话题；话题可搜索，行尾先显示编辑标题，再显示更多操作。
+ * [OUTPUT]: 员工行打开固定主聊天，独立箭头展开话题；话题行尾只显示更多操作，编辑标题通过菜单进入。
  * [OUTPUT]: 员工行尾话题箭头共用 icon-xs，群组选中仍打开原群聊。
  * [OUTPUT]: 当前会话为子话题时标记所属员工，收起话题列表后保持归属提示。
  * [OUTPUT]: 话题箭头在行尾原位显现，支持悬停和键盘聚焦。
  * [INPUT]: 会话/员工快照、已发送消息摘要、列表更新回调与统一 UI 组件与共用清理确认弹窗。
  * [OUTPUT]: 渠道会话单列、显示接入员工身份，拖拽和置顶不影响普通/核心分类。
- * [OUTPUT]: 常驻会话名称输入与核心助手真实头像/名称的唯一折叠分组，右键管理；核心历史紧凑小缩进、单一背景，默认标题占满行宽，更多/编辑随悬停、聚焦或菜单打开覆盖末尾且不改变标题宽度，行内图标/右键/更多共用编辑标题，普通会话保持头像和预览及置顶；标题右侧加号只保留员工/群聊，名称筛选临时展开分组并禁用拖拽，清除后保留原折叠；全局检索入口与 Dialog 由 Shell 承载。
+ * [OUTPUT]: 常驻会话名称输入与核心助手真实头像/名称的唯一折叠分组，右键管理；核心历史紧凑小缩进、单一背景，默认标题占满行宽，更多按钮随悬停、聚焦或菜单打开覆盖末尾且不改变标题宽度，右键和更多菜单共用编辑标题，普通会话保持头像和预览及置顶；标题右侧加号只保留员工/群聊，名称筛选临时展开分组并禁用拖拽，清除后保留原折叠；全局检索入口与 Dialog 由 Shell 承载。
  * [POS]: 会话列表交互；持久化通过 Shell 的类型化请求完成。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -142,7 +142,6 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
             {compact ? <ContextMenuTrigger render={<div className={cn('conversation-item conversation-core-item', { selected: selectedId === conversation.id, 'drag-list-dragging': dragging })} data-menu-open={coreHistoryMenuId === conversation.id || undefined} />} aria-label={conversation.title}>
               <Button variant="ghost" size="content" className="conversation-core-title" aria-label={conversation.title} {...dragProps} aria-current={selectedId === conversation.id ? 'page' : undefined} onClick={() => { if (!dragging) onSelect(conversation.id) }}><span className={cn('truncate', conversation.titleGenerating && 'shimmer')} aria-busy={conversation.titleGenerating || undefined}>{conversation.title}</span>{messageTime && <time dateTime={messageTime}>{timeText(messageTime)}</time>}</Button>
               <div className="conversation-core-actions">
-              <Button variant="ghost" size="icon-sm" className="conversation-core-action" disabled={busy} aria-label={`编辑 ${conversation.title} 的标题`} title="编辑标题" onClick={() => onEditTitle(conversation)}><Pencil /></Button>
               <DropdownMenu onOpenChange={open => setCoreHistoryMenuId(open ? conversation.id : null)}><DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" className="conversation-core-action" disabled={busy} aria-label={`${conversation.title} 的更多操作`} title="更多操作" />}><MoreHorizontal /></DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-40"><DropdownMenuGroup><DropdownMenuItem disabled={busy} onClick={() => onEditTitle(conversation)}><Pencil />编辑标题</DropdownMenuItem></DropdownMenuGroup><DropdownMenuSeparator /><DropdownMenuGroup>
                   <DropdownMenuItem disabled={busy} onClick={() => confirm(conversation, false)}><Trash2 />清空聊天记录</DropdownMenuItem>

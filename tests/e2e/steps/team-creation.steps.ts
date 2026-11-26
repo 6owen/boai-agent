@@ -2,7 +2,7 @@
  * [OUTPUT]: bobo主聊天按钮用于打开默认聊天，话题箭头独立控制折叠。
  * [OUTPUT]: 核对行尾箭头原位显现，按钮单独悬停时有底色。
  * [INPUT]: 真实 Electron、明确主导航作用域、模态菜单打开前实测的外部鼠标坐标、核心工具协议和稳定会话/员工身份。
- * [OUTPUT]: 常驻唯一核心头像/名称分组标题折叠展开，右键新话题打开空白页；无历史/清空/删除/重载仍保留标题且首发才保存历史；核心历史仅标题、更多/编辑随悬停/聚焦/菜单显示且菜单无置顶；紧凑父子缩进/间距、整行背景和标题按钮透明的实际布局，三入口改名/取消零写入/空白禁用/消息身份及重启保持，操作默认隐藏/悬停显示/移开隐藏/键盘与菜单保留及空白/历史默认与悬停截图；首发回复失联只读核对、未知团队请求跨关闭/设置保持和清理 tombstone 重启拒绝重放；两字段弹窗、用户指定群名和真实工具创建；改名后标题联动真实配置头像/名称、分层记忆/重启与失败、标题图标悬停/聚焦/菜单保留与同色、整行12px折叠及等待实际主题的窄窗键盘截图验收。
+ * [OUTPUT]: 常驻唯一核心头像/名称分组标题折叠展开，右键新话题打开空白页；无历史/清空/删除/重载仍保留标题且首发才保存历史；核心历史仅标题、行尾更多按钮随悬停/聚焦/菜单显示且菜单无置顶；紧凑父子缩进/间距、整行背景和标题按钮透明的实际布局，右键和更多菜单改名/取消零写入/空白禁用/消息身份及重启保持，操作默认隐藏/悬停显示/移开隐藏/键盘与菜单保留及空白/历史默认与悬停截图；首发回复失联只读核对、未知团队请求跨关闭/设置保持和清理 tombstone 重启拒绝重放；两字段弹窗、用户指定群名和真实工具创建；改名后标题联动真实配置头像/名称、分层记忆/重启与失败、标题图标悬停/聚焦/菜单保留与同色、整行12px折叠及等待实际主题的窄窗键盘截图验收。
  * [POS]: bobo 团队创建 BDD；文件原子性/清理冲突保留 teams 模块与恢复测试。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -246,31 +246,31 @@ Then('只保存一个核心会话和一条初始用户消息', async ({ runtime,
   const historyMore = historyRow.getByRole('button', { name: `${conversation.title} 的更多操作`, exact: true })
   const historyEdit = historyRow.getByRole('button', { name: `编辑 ${conversation.title} 的标题`, exact: true })
   const outside = page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true })
-  await expect(historyMore).toHaveCount(1); await expect(historyEdit).toHaveCount(1)
+  await expect(historyMore).toHaveCount(1)
+  await expect(historyEdit).toHaveCount(0)
   await outside.focus(); await outside.hover()
-  await expect(historyMore).toHaveCSS('opacity', '0'); await expect(historyEdit).toHaveCSS('opacity', '0')
+  await expect(historyMore).toHaveCSS('opacity', '0')
   await page.screenshot({ path: 'test-results/core-chat-history.png', animations: 'disabled' })
   await historyRow.hover()
-  await expect(historyMore).toHaveCSS('opacity', '1'); await expect(historyEdit).toHaveCSS('opacity', '1')
+  await expect(historyMore).toHaveCSS('opacity', '1')
+  await expect(historyEdit).toHaveCount(0)
   await page.screenshot({ path: 'test-results/core-chat-history-hover.png', animations: 'disabled' })
   await outside.hover()
-  await expect(historyMore).toHaveCSS('opacity', '0'); await expect(historyEdit).toHaveCSS('opacity', '0')
+  await expect(historyMore).toHaveCSS('opacity', '0')
   await historyRow.hover()
   await historyMore.click()
   await expect(page.getByRole('menuitem', { name: /^(取消置顶|置顶)$/ })).toHaveCount(0)
   await expect(page.getByRole('menuitem', { name: '清空聊天记录', exact: true })).toBeVisible()
   await expect(page.getByRole('menuitem', { name: '删除会话', exact: true })).toBeVisible()
   await outside.hover()
-  await expect(historyMore).toHaveCSS('opacity', '1'); await expect(historyEdit).toHaveCSS('opacity', '1')
+  await expect(historyMore).toHaveCSS('opacity', '1')
   await page.keyboard.press('Escape')
   await outside.focus()
-  await expect(historyMore).toHaveCSS('opacity', '0'); await expect(historyEdit).toHaveCSS('opacity', '0')
+  await expect(historyMore).toHaveCSS('opacity', '0')
   await item.focus(); await page.keyboard.press('Tab'); await expect(historyMore).toBeFocused()
-  await expect(historyMore).toHaveCSS('opacity', '1'); await expect(historyEdit).toHaveCSS('opacity', '1')
-  await page.keyboard.press('Tab'); await expect(historyEdit).toBeFocused()
-  await expect(historyEdit).toHaveCSS('opacity', '1')
+  await expect(historyMore).toHaveCSS('opacity', '1')
   await outside.focus()
-  await expect(historyMore).toHaveCSS('opacity', '0'); await expect(historyEdit).toHaveCSS('opacity', '0')
+  await expect(historyMore).toHaveCSS('opacity', '0')
   const parentBounds = (await heading.boundingBox())!, childBounds = (await item.boundingBox())!
   expect(childBounds.x).toBeGreaterThan(parentBounds.x + 8)
   expect(childBounds.x - parentBounds.x).toBeLessThanOrEqual(24)
@@ -315,7 +315,7 @@ Then('只保存一个核心会话和一条初始用户消息', async ({ runtime,
   await expect(page.locator('.chat-title')).toHaveText(conversation.title)
   await toggle.press('Enter'); await expect(toggle).toHaveAttribute('aria-expanded', 'true')
 })
-When('通过三种入口编辑核心历史标题并核对取消和空白输入', async ({ runtime, team }) => {
+When('通过右键和更多菜单编辑核心历史标题并核对取消和空白输入', async ({ runtime, team }) => {
   const page = runtime.page, list = page.getByRole('navigation', { name: '会话列表', exact: true })
   const read = () => page.evaluate(id => window.boai.request('getConversation', { id }), team.coreId!)
   await expect.poll(async () => (await read()).turns?.every(turn => turn.status === 'completed')).toBe(true)
@@ -323,32 +323,28 @@ When('通过三种入口编辑核心历史标题并核对取消和空白输入',
   let title = original.conversation.title
   team.calls = team.endpoint!.requests.length
   const dialog = () => page.getByRole('dialog', { name: '编辑标题', exact: true })
-  const openEdit = async (entry: 'icon' | 'context' | 'more') => {
+  const openEdit = async (entry: 'context' | 'more') => {
     const item = list.getByRole('button', { name: title, exact: true })
     const historyRow = item.locator('..')
     await historyRow.hover()
-    if (entry === 'icon') await historyRow.getByRole('button', { name: `编辑 ${title} 的标题`, exact: true }).click()
-    else {
-      const outsideBounds = (await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).boundingBox())!
-      if (entry === 'context') await item.click({ button: 'right' })
-      else await historyRow.getByRole('button', { name: `${title} 的更多操作`, exact: true }).click()
-      await expect(page.getByRole('menuitem', { name: /^(取消置顶|置顶)$/ })).toHaveCount(0)
-      await expect(page.getByRole('menuitem', { name: '清空聊天记录', exact: true })).toBeVisible()
-      await expect(page.getByRole('menuitem', { name: '删除会话', exact: true })).toBeVisible()
-      await page.mouse.move(outsideBounds.x + outsideBounds.width / 2, outsideBounds.y + outsideBounds.height / 2)
-      const menuHistoryRow = page.locator('.conversation-core-item').filter({ has: page.getByRole('button', { name: title, exact: true, includeHidden: true }) })
-      await expect(menuHistoryRow.getByRole('button', { name: `${title} 的更多操作`, exact: true, includeHidden: true })).toHaveCSS('opacity', '1')
-      await expect(menuHistoryRow.getByRole('button', { name: `编辑 ${title} 的标题`, exact: true, includeHidden: true })).toHaveCSS('opacity', '1')
-      await expect(page.getByRole('menuitem', { name: '编辑标题', exact: true })).toBeVisible()
-      await page.getByRole('menuitem', { name: '编辑标题', exact: true }).click()
-    }
+    const outsideBounds = (await page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).boundingBox())!
+    if (entry === 'context') await item.click({ button: 'right' })
+    else await historyRow.getByRole('button', { name: `${title} 的更多操作`, exact: true }).click()
+    await expect(page.getByRole('menuitem', { name: /^(取消置顶|置顶)$/ })).toHaveCount(0)
+    await expect(page.getByRole('menuitem', { name: '清空聊天记录', exact: true })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: '删除会话', exact: true })).toBeVisible()
+    await page.mouse.move(outsideBounds.x + outsideBounds.width / 2, outsideBounds.y + outsideBounds.height / 2)
+    const menuHistoryRow = page.locator('.conversation-core-item').filter({ has: page.getByRole('button', { name: title, exact: true, includeHidden: true }) })
+    await expect(menuHistoryRow.getByRole('button', { name: `${title} 的更多操作`, exact: true, includeHidden: true })).toHaveCSS('opacity', '1')
+    await expect(page.getByRole('menuitem', { name: '编辑标题', exact: true })).toBeVisible()
+    await page.getByRole('menuitem', { name: '编辑标题', exact: true }).click()
     await expect(dialog().getByRole('textbox', { name: '会话标题', exact: true })).toHaveValue(title)
     await expect(dialog().getByRole('textbox', { name: '会话标题', exact: true })).toHaveAttribute('maxlength', '200')
   }
-  for (const [entry, next] of [['icon', '核心历史 · 图标改名'], ['context', '核心历史 · 右键改名'], ['more', '核心历史 · 更多改名']] as const) {
+  for (const [entry, next] of [['context', '核心历史 · 右键改名'], ['more', '核心历史 · 更多改名']] as const) {
     await openEdit(entry)
     const input = dialog().getByRole('textbox', { name: '会话标题', exact: true })
-    if (entry === 'icon') {
+    if (entry === 'context') {
       const beforeCancel = (await read()).conversation
       await input.fill('这条标题不应保存')
       await dialog().getByRole('button', { name: '取消', exact: true }).click()
@@ -357,8 +353,6 @@ When('通过三种入口编辑核心历史标题并核对取消和空白输入',
       await expect(list.getByRole('button', { name: title, exact: true })).toBeVisible()
       await expect(page.locator('.chat-header .chat-title')).toHaveText(title)
       await openEdit(entry)
-    }
-    if (entry === 'context') {
       await input.fill('   ')
       await expect(dialog().getByRole('button', { name: '保存', exact: true })).toBeDisabled()
       expect((await read()).conversation.title).toBe(title)

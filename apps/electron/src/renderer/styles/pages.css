@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 话题行显示更多操作时暂藏时间，避免时间被按钮遮断。
  * [OUTPUT]: 员工主聊天独立选中，行尾箭头展开话题，原聊天行组件与主题表面继续共用。
  * [OUTPUT]: 项目目录控件纳入员工select/input统一尺寸，使用网页检索同一select-trigger皮肤；移除rem高度差异。
  * [OUTPUT]: 项目目录标题、字段标签与图标沿系统默认样式，目录控件沿网页检索同一皮肤。
@@ -376,6 +377,7 @@
 .conversation-core-actions::before { content:'';position:absolute;top:0;bottom:0;right:100%;width:12px;background:linear-gradient(to right,transparent,var(--core-action-surface));pointer-events:none }
 .conversation-core-item>.conversation-core-actions>.conversation-core-action { color:var(--muted-foreground);flex-shrink:0;opacity:inherit }
 .conversation-core-item:is(:hover,:focus-within,[data-menu-open=true])>.conversation-core-actions { opacity:1;pointer-events:auto }
+.conversation-core-item:is(:hover,:focus-within,[data-menu-open=true])>.conversation-core-title time { visibility:hidden }
 
 .contacts-page { display:flex;flex:1;min-height:0;min-width:0 }
 .contacts-list { display:flex;flex-direction:column;flex-shrink:0;width:var(--list-width,312px);min-height:0;padding:0 10px;background:var(--list) }
