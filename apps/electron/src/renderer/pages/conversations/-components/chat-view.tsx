@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 隐藏期间解除内容尺寸监听，恢复会话时沿用原阅读锚点或贴底意图。
  * [OUTPUT]: 会话仅在有待发送材料时向 Composer 提供附件区。
  * [OUTPUT]: 2026-11-24 第三阶段：已有补充入口支持 API Controller 活跃轮次，仍按当前配置和授权开放。
  * [OUTPUT]: 一条消息的正文与文件分别显示为可独立悬停的两行，共用原消息锚点和回执。
@@ -391,7 +392,7 @@ function ChatHistory({ historyHeader, api, onTasks, onEmployeeTask, onCreateTask
     return () => observer.disconnect()
   }, [pageActive, scrollToBottom])
   return (
-    <ScrollArea className="messages-scroll-area" contentProps={{ ref: contentRef, className: channel && !detail.messagePage.items.length ? 'flex flex-col' : undefined }} viewportProps={{ className: 'messages scroll-fade-y scroll-fade-6', ref: setScrollRef, 'aria-busy': paging, 'data-following-latest': following.current,
+    <ScrollArea className="messages-scroll-area" contentProps={{ ref: pageActive ? contentRef : undefined, className: channel && !detail.messagePage.items.length ? 'flex flex-col' : undefined }} viewportProps={{ className: 'messages scroll-fade-y scroll-fade-6', ref: setScrollRef, 'aria-busy': paging, 'data-following-latest': following.current,
       onScroll: () => {
         const el = scrollRef.current
         if (!el || el.clientHeight === 0) return
