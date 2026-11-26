@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Composer 模型选择用单个芯片图标触发，悬停提示显示当前模型。
  * [OUTPUT]: Codex明确网关来源固定Responses/原模型与连接revision，进程私有provider与凭据环境；原生来源选项和非模型能力保持。
  * [OUTPUT]: 当前员工的Magpie三协议目录沿保存版本读取，模型展示名与推理原值来自结构化目录。
  * [OUTPUT]: 操作/加载/校验错误统一Sonner，页面不插入报错DOM；重试/核对等操作保持独立可用。
@@ -13,7 +14,7 @@ import type { AgentRun, DigitalAgent, LaunchProfile, Snapshot } from '@boai/shar
 import type { DesktopApi } from '@boai/shared/ipc'
 import { sameBackendBinding } from '@boai/shared/domain/backends'
 import { errorText } from '@/components/common'
-import { ChevronDownIcon, RefreshCw, Settings } from '@/components/icons'
+import { Cpu, RefreshCw, Settings } from '@/components/icons'
 import { ChatComposerSelect } from '@/components/ui/chat-composer'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { composerEffortPatch, composerEfforts, composerModelPatch, effortNames, type ComposerModel, type ComposerModelPatch } from '../composer-model-state'
@@ -89,7 +90,9 @@ export function ComposerModelMenu({ api, agent, snapshot, locked, runs, onSave, 
     if (!trigger.current?.getClientRects().length) return
     trigger.current.focus({ preventScroll: true }); onConfigure(committed)
   }}>
-    <DropdownMenuTrigger render={<ChatComposerSelect ref={trigger} kind="model" aria-label="选择模型" title={effective || '本机默认模型'} />}><span>{effective || (native ? '本机默认模型' : '选择模型')}</span><ChevronDownIcon /></DropdownMenuTrigger>
+    <DropdownMenuTrigger render={<ChatComposerSelect ref={trigger} kind="model" size="icon-sm" round aria-label="选择模型" title={effective || (native ? '本机默认模型' : '选择模型')} />}>
+      <Cpu />
+    </DropdownMenuTrigger>
     <DropdownMenuContent side="top" align="end" sideOffset={8} className="chat-composer-menu w-[180px] max-w-[calc(100vw-32px)]" aria-label="选择模型">
       <DropdownMenuGroup>
         <DropdownMenuRadioGroup value={native ? committed.modelId : effective} onValueChange={value => { const model = options.find(item => item.value === value); if (model && value !== (native ? committed.modelId : effective)) void save(composerModelPatch(committed, model)) }} className="max-h-64 overflow-y-auto">
