@@ -4,7 +4,7 @@
  * [OUTPUT]: 列表夹具沿仅已发送消息的Props，不再向列表传入composer草稿。
  * [OUTPUT]: 员工配置与置顶共组、清理独立，导航仍沿明确员工身份。
  * [OUTPUT]: 本轮覆盖复制/员工入口、定时运行防连点、失败过程、严格私有判断及保留原预算的显式继续；实际范围以各用例为准。
- * [OUTPUT]: 员工行点击与折叠动作分离，展开后可进入独立话题，行尾编辑在更多操作之前。
+ * [OUTPUT]: 员工行点击与折叠动作分离，话题标题可通过右键和更多菜单编辑。
  * [OUTPUT]: 群组侧栏直达原会话，话题展开只出现在员工行。
  * [OUTPUT]: 收起所选话题时，归属提示留在员工行，返回主聊天时恢复主聊天选中状态。
  * [INPUT]: 生产ConversationList/清理确认弹窗、隔离快照与清理回调。
@@ -151,10 +151,11 @@ it('keeps main chat navigation and topic expansion independent for bobo and ordi
   await act(async () => employeeToggle.click())
   expect(employeeToggle.getAttribute('aria-expanded')).toBe('true')
   expect(props.onSelect).not.toHaveBeenCalled()
-  const edit = byName('编辑 天气话题 的标题')
   const more = byName('天气话题 的更多操作')
-  expect(edit.nextElementSibling).toBe(more)
-  await act(async () => edit.click())
+  expect(more.parentElement?.querySelectorAll('button')).toHaveLength(1)
+  expect(byName('编辑 天气话题 的标题')).toBeNull()
+  await act(async () => byName('天气话题').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 20, clientY: 20 })))
+  await choose('编辑标题')
   expect(props.onEditTitle).toHaveBeenCalledWith(expect.objectContaining({ id: '天气话题' }))
   await act(async () => more.click())
   expect(menuItem('删除会话')).toBeDefined()
