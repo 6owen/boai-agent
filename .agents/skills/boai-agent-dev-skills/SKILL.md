@@ -13,6 +13,7 @@ description: BOAI Agent 项目的开发与交付统一入口。处理 dev/build�
 [OUTPUT]: 2026-11-16开发检出需初始化固定版本avatar-motion子模块，之后沿原pnpm安装/构建。
 [OUTPUT]: 2026-11-13新增test:ui:behavior构建后三项UI行为入口，工程Test与预览完成度边界见Git/CI技能。
 [OUTPUT]: 2026-11-10macOS打包排除调试映射、类型声明及依赖测试文档；浏览器/桌面CLI按目标架构保留Mac程序、helper与校验文件。
+[OUTPUT]: macOS arm64打包只分发DuckDB的arm64切片；暂停的语音识别引擎排除在发布包外。
 [INPUT]: 本次用户请求、AGENTS.md、package.json、dev/build/release脚本和实际Git/运行进程状态。
 [OUTPUT]: 开发命令、默认身份与dist/.local分布；Node沿engines，Electron下载缓存/续传/重试。
 [POS]: BOAI项目开发技能统一入口，不是BOAI产品内的数字员工技能。
@@ -67,6 +68,8 @@ pnpm install --frozen-lockfile --prefer-offline
 ## 产物与本地文件
 
 macOS普通打包与release候选共用根`package.json.build`过滤：包内排除`.map`调试映射、`.d.ts/.d.mts/.d.cts`声明和依赖的test/tests/__tests__/docs/examples/coverage目录；浏览器/桌面CLI只保留目标`${arch}`的Mac二进制、helper及SHA256，排除Linux/Windows及另一Mac架构。保留启动脚本、运行依赖、WASM、字体、技能及许可证；本地开发源码、测试和依赖树不裁剪。`pnpm build`继续生成原调试产物，只在打包时过滤。
+
+普通 macOS arm64 包在签名前将 DuckDB 的 arm64 动态库放到原生绑定旁边。暂停期间，打包过滤 `sherpa-onnx-*`，开发和诊断依赖可继续使用。恢复语音注册时同步恢复引擎的随包解包规则，并验证安装包可以加载识别引擎。
 
 `pnpm build`保持只编译，应用产物位于`dist/`。`pnpm package`、`pnpm dist:mac`的默认输出改为`dist/releases/`；`release:build`的DMG、ZIP、展开应用和打包暂存位于`dist/releases/candidates/<候选ID>/`，正式更新资产位于其`updates/`。安装包目录从应用打包清单和构建身份哈希排除，避免旧安装包进入新包体；实际应用字节仍完整核验。`dist/`已在`.gitignore`中，旧`release/`忽略项保留。
 

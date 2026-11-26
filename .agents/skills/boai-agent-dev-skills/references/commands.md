@@ -7,6 +7,7 @@
 [OUTPUT]: 2026-11-16开发检出需初始化固定版本avatar-motion子模块，之后沿原pnpm安装/构建。
 [OUTPUT]: 2026-11-13 test:ui:behavior在构建后验证固定三项UI行为，输出报告/截图/trace并接入Test。
 [OUTPUT]: 2026-11-10macOS打包排除调试映射、类型声明及依赖测试文档；浏览器/桌面CLI按目标架构保留Mac程序、helper与校验文件。
+[OUTPUT]: arm64安装包签名前裁剪DuckDB，暂停的语音引擎只保留在开发依赖中。
 [INPUT]: 根package.json、scripts/dev*.mjs、build*.mjs、release*.mjs、Git脚本及现行workflow。
 [OUTPUT]: 当前命令、默认参数与dist/.local分布；Node沿engines，下载失败可续传/重试。
 [POS]: boai-agent-dev-skills的命令参考；仅供开发Agent，不随应用绑定给员工。
@@ -121,6 +122,8 @@ dist/releases/candidates/<候选ID>/
 ```
 
 macOS普通打包与release候选共用根`package.json.build`过滤：包内排除`.map`调试映射、`.d.ts/.d.mts/.d.cts`声明和依赖的test/tests/__tests__/docs/examples/coverage目录；浏览器/桌面CLI只保留目标`${arch}`的Mac二进制、helper及SHA256，排除Linux/Windows及另一Mac架构。保留启动脚本、运行依赖、WASM、字体、技能及许可证；本地开发源码、测试和依赖树不裁剪。`pnpm build`继续生成原调试产物，只在打包时过滤。
+
+双架构 `libduckdb.dylib` 在 macOS arm64 暂存应用内裁剪，和 `duckdb.node` 一起签名。暂停期间，安装包过滤 `sherpa-onnx-*`。这两项只改变打包过程中的文件清单和字节。
 
 `dist/`（含安装包）已加入`.gitignore`；旧`release/`忽略规则继续保留。新Electron下载缓存位于`dist/releases/cache/electron/`。`pnpm build`仍只编译，不生成DMG/ZIP；安装包由原打包命令生成。构建身份与打包文件清单均排除顶层`dist/releases/`，其余应用文件保持校验。旧候选缺少`artifactDirectory`时继续使用原`.local/.../assets`及`updates`，不自动搬移旧文件。
 
