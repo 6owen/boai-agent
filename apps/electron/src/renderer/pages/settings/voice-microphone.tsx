@@ -6,7 +6,7 @@
  * [PROTOCOL]: Update Header and settings/.folder.md when changed.
  */
 import { useEffect, useRef, useState } from 'react'
-import { toast } from 'sonner'
+import { notify as toast } from '@boai/ui/sonner'
 import type { VoiceApi } from '@boai/shared/plugins/voice-input'
 import { openVoiceMicrophone } from '@boai/voice-input-plugin/capture'
 import { Button } from '@/components/ui/button'

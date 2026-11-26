@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button'
 import { SelectField } from '@/components/ui/select-field'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { pluginUsage, useFileExplorerEnabled } from '@/stores/plugins'
-import { toast } from 'sonner'
+import { notify as toast } from '@boai/ui/sonner'
 
 export function WorkspaceFiles({ api, active, agent, conversationId, location, onHome }: {
   api: DesktopApi; active: boolean; agent: DigitalAgent; conversationId?: string; location: 'workspace' | 'authorized'; onHome?(): void

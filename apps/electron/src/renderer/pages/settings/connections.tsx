@@ -14,7 +14,7 @@
  */
 import { SettingsLayout, SettingsSection } from './settings-layout'
 import { showErrorToast } from '@/components/common/error-feedback'
-import { toast } from 'sonner'
+import { notify as toast } from '@boai/ui/sonner'
 import { useContext, useId, useRef, useState, type RefObject } from 'react'
 import openaiIcon from '@lobehub/icons-static-svg/icons/openai.svg'
 import anthropicIcon from '@lobehub/icons-static-svg/icons/anthropic.svg'

@@ -10,7 +10,7 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { InfoIcon } from '@/components/icons'
-import { toast } from 'sonner'
+import { notify as toast } from '@boai/ui/sonner'
 import type { DesktopApi } from '@boai/shared/ipc'
 import type { DigitalAgent, Snapshot } from '@boai/shared/domain'
 import { normalizeAgentProfile, primaryPersonalityRoom, promptScenes, type PromptScene, type AgentSourceName, type AgentProfile, type AgentProfileConfig, type AgentStateView, type AgentPersonalityState, type AgentBehaviorRun } from '@boai/shared/domain/agent-profile'

@@ -5,7 +5,7 @@
  * [PROTOCOL]: Update Header and settings/.folder.md when changing confirmation or recovery behavior.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { toast } from 'sonner'
+import { notify as toast } from '@boai/ui/sonner'
 import type { DesktopApi } from '@boai/shared/ipc'
 import type { GatewayImportConfirmation, GatewayImportReceipt, GatewayImportView } from '@boai/shared/domain/gateway-import'
 import { Dialog } from '@/components/ui/dialog'

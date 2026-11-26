@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Desktop event receipts, installed Agent checks and explicit user actions.
- * [OUTPUT]: Profile-local inbox, persisted read state and update progress. Profile changes only invalidate cached offers.
+ * [OUTPUT]: Profile-local notice history, current-process delivery and update progress. Profile changes only invalidate cached offers.
  * [POS]: Electron main owns storage and the desktop-only update ticket.
  * [PROTOCOL]: Update Header and .folder.md when changed.
  */
@@ -19,7 +19,7 @@ const target = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('app-update') }),
 ])
 const saved = z.object({ version: z.literal(1), items: z.array(z.object({
-  id: key, title: z.string(), detail: z.string().optional(), createdAt: z.iso.datetime(), read: z.boolean(), target,
+  id: key, title: z.string(), detail: z.string().optional(), level: z.enum(['success', 'info', 'warning']).optional(), createdAt: z.iso.datetime(), read: z.boolean(), target,
 })).max(limit) })
 
 type UpdatePort = {
@@ -29,7 +29,8 @@ type UpdatePort = {
 const updateId = (profileId: string, version: string) => `agent:${profileId}:${version}`
 
 export class DesktopNotifications {
-  private readonly state: NotificationSnapshot = { revision: 0, items: [], agentUpdates: [], checking: false }
+  private readonly state: Omit<NotificationSnapshot, 'pendingIds'> = { revision: 0, items: [], agentUpdates: [], checking: false }
+  private readonly pending = new Set<string>()
   private writes: Promise<unknown> = Promise.resolve()
   private checking?: Promise<void>
   private installing?: Promise<void>
@@ -48,12 +49,18 @@ export class DesktopNotifications {
     }
   }
 
-  snapshot() { return structuredClone(this.state) }
+  snapshot(): NotificationSnapshot { return structuredClone({ ...this.state, pendingIds: [...this.pending] }) }
   private publish() { this.state.revision++; this.changed(this.snapshot()) }
   private persist(change: (items: DesktopNotice[]) => DesktopNotice[]) {
     const work = this.writes.then(async () => {
       const items = change(this.state.items)
       if (items === this.state.items) return
+      const previousIds = new Set(this.state.items.map(item => item.id))
+      const unreadIds = new Set(items.filter(item => !item.read).map(item => item.id))
+      for (const id of this.pending) if (!unreadIds.has(id)) this.pending.delete(id)
+      for (const id of unreadIds) if (!previousIds.has(id)) this.pending.add(id)
+      this.state.items = items
+      this.publish()
       if (!this.unreadable) {
         const temp = `${this.path}.${randomUUID()}.tmp`
         try {
@@ -61,15 +68,13 @@ export class DesktopNotifications {
           await rename(temp, this.path)
         } finally { await rm(temp, { force: true }) }
       }
-      this.state.items = items
-      this.publish()
     })
     this.writes = work.catch(this.log)
     return work
   }
-  private append(items: DesktopNotice[], value: Omit<DesktopNotice, 'createdAt' | 'read'>) {
+  private append(items: DesktopNotice[], value: Omit<DesktopNotice, 'createdAt' | 'read'>, read = false) {
     if (items.some(item => item.id === value.id)) return items
-    return [{ ...value, createdAt: new Date().toISOString(), read: false }, ...items].slice(0, limit)
+    return [{ ...value, createdAt: new Date().toISOString(), read }, ...items].slice(0, limit)
   }
   record(value: Omit<DesktopNotice, 'createdAt' | 'read'>) {
     return this.persist(items => this.append(items, value))
@@ -84,7 +89,7 @@ export class DesktopNotifications {
       const item = this.state.agentUpdates.find(update => update.profileId === event.profileId && update.phase === 'installing')
       if (item) { item.phase = 'verifying'; this.publish() }
     } else if (event.type === 'employee-task:result') {
-      void this.record({ id: `task:${event.occurrenceId}`, title: `${event.employeeName} 的任务${event.status === 'in_review' ? '待确认' : '有新结果'}`, detail: event.title,
+      void this.record({ id: `task:${event.occurrenceId}`, title: `${event.employeeName} 的任务${event.status === 'in_review' ? '待确认' : '有新结果'}`, level: 'success',
         target: { kind: 'employee-task', employeeId: event.employeeId, taskId: event.taskId } }).catch(() => {})
     } else if (event.type === 'automation:history-deleted') {
       void this.persist(items => items.some(item => item.target.kind === 'automation' && item.target.occurrenceId === event.occurrenceId)
@@ -168,7 +173,7 @@ export class DesktopNotifications {
     await this.persist(items => this.append(items.filter(value => value.id !== updateId(item.profileId, input.version)), {
       id: `agent-installed:${item.profileId}:${input.version}`, title: `${item.name} 已更新`, detail: `v${verified.currentVersion}`,
       target: { kind: 'agent-update', profileId: item.profileId },
-    })).catch(() => {})
+    }, true)).catch(() => {})
   }
 
   async flush() { await this.installing?.catch(() => {}); await this.writes }

@@ -14,7 +14,7 @@ import { Card } from '@/components/ui/card'
 import { SelectField } from '@/components/ui/select-field'
 import { ContactProfileSection } from '@/components/employee/profile-card'
 import { errorText } from '@/components/common'
-import { toast } from 'sonner'
+import { notify as toast } from '@boai/ui/sonner'
 import { EMPLOYEE_TASK_BOARD_ENABLED } from './employee-tasks-panel'
 
 export function WorkspaceHome({ api, snapshot, active, conversationId, employeeId, onTasks, onKnowledge, onTerminal }: {

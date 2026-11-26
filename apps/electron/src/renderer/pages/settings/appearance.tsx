@@ -34,7 +34,7 @@ import lightPreview from '@/assets/mode-light.webp'
 import darkPreview from '@/assets/mode-dark.webp'
 import systemPreview from '@/assets/mode-system.webp'
 import { getDesktopClient } from '@/services/request/desktop-client'
-import { toast } from 'sonner'
+import { notify as toast } from '@boai/ui/sonner'
 
 const appIconImages = import.meta.glob('../../../../../../resources/app-icons/*.png', { eager: true, query: '?url', import: 'default' }) as Record<string, string>
 

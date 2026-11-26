@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 宿主通知经全局 Sonner 展示，查看动作沿原员工任务、定时结果与更新导航。
  * [OUTPUT]: 2026-11-25 任务面板暂时隐藏并清除残留标签；新定时结果定位原话题，旧任务链接仅兼容打开原会话。
  * [OUTPUT]: 全局通知入口紧随检索按钮，复用员工任务、定时记录及设置导航。
  * [OUTPUT]: 技能全局检查、单项和批量更新由 Shell 共享 CLI 运行状态，目录工具栏和技能详情各使用终端浮层。
@@ -164,7 +165,7 @@ import { ARTIFACT_PENDING_KEY, restoreArtifactPending, updateArtifactPending, ty
 import { useChatMaterials } from './use-chat-materials'
 import { getDesktopClient } from '@/services/request/desktop-client'
 import { DesktopToolbar } from './desktop-toolbar'
-import { DesktopNotificationProvider, NotificationCenter } from './notification-center'
+import { DesktopNotificationProvider } from './notification-center'
 import type { NotificationTarget } from '@boai/shared/ipc/notifications'
 import { PanelResize } from '@/components/common/panel-resize'
 import { HeaderBrowser } from './header-browser'
@@ -213,7 +214,6 @@ import { SkillMarketplaceDetail } from '@/pages/library/skill-marketplace'
 import { useLocalSkillUpdates } from '@/pages/library/local-skill-cli'
 import { ResourceDetail } from '@/pages/library/resource-detail'
 import { ScheduleNavigationContext } from '@/pages/schedules/owner-automations'
-import { subscribeEmployeeTaskResults } from './employee-task-notifications'
 import { isEmployeeTaskHost, resolveEmployeeTaskDestination, type EmployeeTaskTarget } from './employee-task-navigation'
 import { EmployeeTasksPanel, EmployeeTasksNavigation, EMPLOYEE_TASK_BOARD_ENABLED } from '@/components/detail-panel/employee-tasks-panel'
 import { ScheduleDetail, SchedulePage, type ScheduleLocation } from '@/pages/schedules'
@@ -224,7 +224,7 @@ import { SettingsPage, type SettingsTab } from '@/pages/settings'
 import { personalSettingsShortcuts, configurationSettingsShortcuts } from '@/pages/settings/settings-navigation'
 import type { LocalAgentTarget } from '@/pages/settings/local-agents'
 import { Avatar, Banner, errorText, GuardContext, Loading } from '@/components/common/index'
-import { toast } from 'sonner'
+import { notify as toast } from '@boai/ui/sonner'
 import { initializeSettingsQueries } from '@/stores/settings-query'
 
 const CanvasWorkspace = lazy(() => import('../canvas/workspace').then(module => ({ default: module.CanvasWorkspace })))
@@ -515,28 +515,9 @@ export function AppShell() {
     const report = (e: unknown) => { if (mounted.current) { toast.error(errorText(e)); setLoading(false); setDetailLoading(false) } }
     void refreshSnapshot().catch(report)
     const schedule = () => { if (refreshTimer.current) return; refreshTimer.current = setTimeout(() => { refreshTimer.current = null; void refreshSnapshot().catch(report); if (selectedRef.current && routeRef.current.page === 'conversations') void refreshDetail(selectedRef.current, detailRef.current?.messagePage) }, 100) }
-    const openAutomationNotice = () => { void api.request('getPendingAutomationNavigation', undefined).then(async target => {
-      if (!target || !mounted.current) return
-      const origin = routeRef.current, current = () => mounted.current && routeRef.current === origin
-      const occurrence = await api.request('getAutomationOccurrence', { id: target.occurrenceId })
-      if (!current()) return
-      if (occurrence.taskId && occurrence.runIds[0]) {
-        const location = await api.request('resolveExecutionMessage', { conversationId: occurrence.conversationId, runId: occurrence.runIds[0] })
-        if (!current()) return
-        if (location.employeeTask) {
-          await openEmployeeTask({ type: 'employee-tasks', id: location.employeeTask.employeeId, taskId: location.employeeTask.taskId, requestId: crypto.randomUUID(), focusMessage: { id: target.messageId ?? location.messageId, requestId: crypto.randomUUID() } }, current)
-          return
-        }
-      }
-      navigate(() => {
-        if (!current()) return
-        if (target.conversationId && target.messageId) applyRoute({ page: 'conversations', conversationId: target.conversationId, focusMessage: { id: target.messageId, requestId: crypto.randomUUID() } })
-        else { setScheduleLocation({ kind: 'occurrence', id: target.occurrenceId, requestId: crypto.randomUUID() }); applyRoute({ ...routeRef.current, page: 'schedules' }) }
-      })
+    const openAutomationNotice = () => { void api.request('getPendingAutomationNavigation', undefined).then(target => {
+      if (target) return openAutomationResult(target)
     }).catch(report) }
-    const unsubscribeTaskResults = subscribeEmployeeTaskResults(api, target => {
-      void Promise.resolve(openEmployeeTask(target, () => mounted.current)).catch(report)
-    })
     const unsubscribe = api.subscribe((event: AppEvent) => {
       if (event.type === 'desktop:lifecycle') { if (event.state.power === 'awake' && !event.state.locked) schedule(); return }
       if (event.type === 'workspace:show') { if (event.view !== 'preview') return; dispatchDetails({ type: 'open', target: { type: 'workspace', id: event.conversationId, employeeId: event.employeeId, view: event.view } }, 'conversations'); return }
@@ -572,7 +553,7 @@ export function AppShell() {
       }
     })
     openAutomationNotice()
-    return () => { mounted.current = false; liveMessages.current.clear(); unsubscribe(); unsubscribeTaskResults(); if (refreshTimer.current) clearTimeout(refreshTimer.current); refreshTimer.current = null }
+    return () => { mounted.current = false; liveMessages.current.clear(); unsubscribe(); if (refreshTimer.current) clearTimeout(refreshTimer.current); refreshTimer.current = null }
   }, [api, refreshSnapshot, refreshDetail, materialDrafts.invalidate, clearArtifactPending, clearConversationLocation])
   useEffect(() => {
     selectedRef.current = selectedId
@@ -1283,22 +1264,40 @@ export function AppShell() {
       onRemoveMaterial={item => { void materialDrafts.remove(id, item) }} onRetryMaterial={item => { void materialDrafts.retry(id, item) }} onPreviewMaterial={(material, line) => previewMaterial(material, line, scope, undefined, undefined, withinKey)} onKnowledgePreview={(citation, reference, agentId) => dispatchDetails({ type: 'open', withinKey, target: { type: 'resource', id: reference.resourceId, agentId, citation: { ...citation, requestId: crypto.randomUUID() } } }, scope)} onDiscardSubmission={() => clearUnacceptedSubmission(id)} /></FloatingLayerScope>
   }
   if (!api) return <div className="unavailable-page"><MessageCircle size={34}/><h1>请在桌面应用打开</h1><p>当前浏览器没有本地运行接口，无法访问员工、文件或模型。</p></div>
+  const openAutomationResult = async (target: { occurrenceId: string; conversationId?: string; messageId?: string }) => {
+    if (!mounted.current) return
+    const origin = routeRef.current, current = () => mounted.current && routeRef.current === origin
+    const occurrence = await api.request('getAutomationOccurrence', { id: target.occurrenceId })
+    if (!current()) return
+    const conversationId = target.conversationId ?? occurrence.conversationId
+    const messageId = target.messageId ?? occurrence.messageId
+    if (occurrence.taskId && occurrence.runIds[0]) {
+      const location = await api.request('resolveExecutionMessage', { conversationId: occurrence.conversationId, runId: occurrence.runIds[0] })
+      if (!current()) return
+      if (location.employeeTask) {
+        await openEmployeeTask({ type: 'employee-tasks', id: location.employeeTask.employeeId, taskId: location.employeeTask.taskId, requestId: crypto.randomUUID(), focusMessage: { id: messageId ?? location.messageId, requestId: crypto.randomUUID() } }, current)
+        return
+      }
+    }
+    navigate(() => {
+      if (!current()) return
+      if (conversationId && messageId) applyRoute({ page: 'conversations', conversationId, focusMessage: { id: messageId, requestId: crypto.randomUUID() } })
+      else { setScheduleLocation({ kind: 'occurrence', id: target.occurrenceId, requestId: crypto.randomUUID() }); applyRoute({ ...routeRef.current, page: 'schedules' }) }
+    })
+  }
   const openNotification = (target: NotificationTarget) => {
     if (target.kind === 'app-update') openSettings('desktop')
     else if (target.kind === 'agent-update') openSettings('connections')
     else if (target.kind === 'employee-task') void Promise.resolve(openEmployeeTask({
       type: 'employee-tasks', id: target.employeeId, taskId: target.taskId, requestId: crypto.randomUUID(),
     })).catch(error => toast.error(errorText(error)))
-    else navigate(() => {
-      setScheduleLocation({ kind: 'occurrence', id: target.occurrenceId, requestId: crypto.randomUUID() })
-      applyRoute({ ...routeRef.current, page: 'schedules' })
-    })
+    else void openAutomationResult(target).catch(error => toast.error(errorText(error)))
   }
   const headerActions = <>{canvasEnabled && route.page === 'conversations' && conversation?.agentIds.length === 1 && <CanvasMenu key={`${conversation.agentIds[0]}:${conversation.id}`} api={api} scope={{ employeeId: conversation.agentIds[0]!, conversationId: conversation.id }} onOpen={target => openPanel(target, 'conversations')} />}{route.page === 'conversations' && <HeaderBrowser api={api} />}<Dialog open={conversationSearchOpen} onOpenChange={setConversationSearchOpen}>
     <Tooltip><TooltipTrigger delay={500} render={<DialogTrigger render={<Button className="titlebar-no-drag" variant="ghost" size="icon-sm" aria-label="搜索会话内容" />} onClick={openSearch} />}><Search /></TooltipTrigger><TooltipContent side="bottom">搜索会话内容</TooltipContent></Tooltip>
     <ConversationSearch api={api} active={conversationSearchOpen} snapshot={snapshot} selectedId={selectedId} request={searchRequest} onOpen={(result, current) => openSearchResult(result, current, () => setConversationSearchOpen(false))} onUnavailable={searchSourceUnavailable} />
-  </Dialog><NotificationCenter onOpen={openNotification} /></>
-  return <DesktopNotificationProvider api={api}><GuardContext.Provider value={guard}><ScheduleNavigationContext.Provider value={id => { setScheduleLocation({ kind: 'definition', id }); applyRoute({ ...routeRef.current, page: 'schedules' }) }}><EmployeeResourceNavigation.Provider value={target => target.kind === 'web-search-settings' ? (() => { setSettingsSection('web-search'); applyRoute({ ...routeRef.current, page: 'settings' }) })() : target.kind === 'knowledge-files' ? openPanel({ type: 'knowledge', id: target.id }) : openCatalogResult(target.kind, target.id, target.name)}><EmployeeTasksNavigation.Provider value={id => openPanel({ type: 'employee-tasks', id, requestId: crypto.randomUUID() })}><EmployeeExecutionNavigation.Provider value={target => openPanel({ type: 'trace', id: target.conversationId, agentId: target.agentId, runId: target.runId, title: target.title })}><Tabs value={detailTabs.activeKey} onValueChange={value => { if (typeof value === 'string') { const task = detailTabs.tabs.find(tab => tab.key === value)?.target; if (task?.type === 'employee-tasks') void openEmployeeTask(task); else dispatchDetails({ type: 'select', key: value }) } }} className={`app-shell gap-0${effectiveList ? ' list-open' : ''}${skillsNavigation ? ' skills-navigation' : ''}`} data-page={route.page} data-panel-resizing={listResizing || detailLayout.resizing} style={{'--list-width':`${listWidth}px`,'--detail-width':`${detailLayout.width}px`} as CSSProperties}>
+  </Dialog></>
+  return <DesktopNotificationProvider api={api} onOpen={openNotification}><GuardContext.Provider value={guard}><ScheduleNavigationContext.Provider value={id => { setScheduleLocation({ kind: 'definition', id }); applyRoute({ ...routeRef.current, page: 'schedules' }) }}><EmployeeResourceNavigation.Provider value={target => target.kind === 'web-search-settings' ? (() => { setSettingsSection('web-search'); applyRoute({ ...routeRef.current, page: 'settings' }) })() : target.kind === 'knowledge-files' ? openPanel({ type: 'knowledge', id: target.id }) : openCatalogResult(target.kind, target.id, target.name)}><EmployeeTasksNavigation.Provider value={id => openPanel({ type: 'employee-tasks', id, requestId: crypto.randomUUID() })}><EmployeeExecutionNavigation.Provider value={target => openPanel({ type: 'trace', id: target.conversationId, agentId: target.agentId, runId: target.runId, title: target.title })}><Tabs value={detailTabs.activeKey} onValueChange={value => { if (typeof value === 'string') { const task = detailTabs.tabs.find(tab => tab.key === value)?.target; if (task?.type === 'employee-tasks') void openEmployeeTask(task); else dispatchDetails({ type: 'select', key: value }) } }} className={`app-shell gap-0${effectiveList ? ' list-open' : ''}${skillsNavigation ? ' skills-navigation' : ''}`} data-page={route.page} data-panel-resizing={listResizing || detailLayout.resizing} style={{'--list-width':`${listWidth}px`,'--detail-width':`${detailLayout.width}px`} as CSSProperties}>
     <DesktopToolbar title={title} browserAction={headerActions} detailHeader={panel && <DetailPanelHeader focusOnMount={!route.focusMessage && !route.focusApproval} tabs={detailTabs.tabs.map(tab => ({ key: tab.key, ...describePanel(tab.target), dirty: Boolean(tabDirty[tab.key]) }))} activeKey={detailTabs.activeKey} onClose={requestCloseTab} onOpenStart={WORKSPACE_UI_ENABLED && route.page === 'conversations' && conversation ? () => openPanel({ type: 'user-workspace', id: conversation.id, view: 'start' }, 'conversations') : undefined} onMove={(key, targetKey, placement) => dispatchDetails({ type: 'move', key, targetKey, placement })} />} showListToggle={route.page === 'conversations' || route.page === 'contacts' || route.page === 'schedules'} listLabel={route.page === 'conversations' ? '显示或隐藏会话列表' : route.page === 'contacts' ? '显示或隐藏通讯录列表' : '显示或隐藏定时任务列表'} listShown={listShown} detailOpen={Boolean(panel)} canBack={historyIndex.current > 0} canForward={historyIndex.current < history.current.length - 1} detailDisabled={!detailTabs.tabs.length && !(conversation && route.page === 'conversations') && route.page !== 'schedules'} onBack={goBack} onForward={goForward} onToggleList={toggleList} onToggleDetails={toggleDetails} />
     <div className="app-body"><nav className="navigation-rail" aria-label="主导航"><div className="rail-top">{([
       {page:'conversations',icon:Home,label:'会话'},

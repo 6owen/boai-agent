@@ -8,7 +8,7 @@
 import { SettingsLayout, SettingsSection } from './settings-layout'
 import { useContext, useEffect, useId, useRef, useState } from 'react'
 import deepseekIcon from '@lobehub/icons-static-svg/icons/deepseek.svg'
-import { toast } from 'sonner'
+import { notify as toast } from '@boai/ui/sonner'
 import type { DesktopApi } from '@boai/shared/ipc'
 import { searchProviderPresets, type SearchProviderId, type WebSearchServiceConfig } from '@boai/shared/domain/web-search'
 import { useWebSearchSettings } from '@/hooks/use-web-search'

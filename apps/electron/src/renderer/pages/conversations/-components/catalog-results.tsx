@@ -13,7 +13,7 @@ import { CORE_AGENT_ID } from '@boai/shared/domain/core-agent'
 import { Button } from '@/components/ui/button'
 import { Database, Zap } from '@/components/icons'
 import { Avatar, errorText } from '@/components/common'
-import { toast } from 'sonner'
+import { notify as toast } from '@boai/ui/sonner'
 
 export function useCatalogResults(api: DesktopApi, conversationId: string, active: boolean) {
   const [view, setView] = useState<{ conversationId: string; items: CatalogResult[] }>({ conversationId, items: [] })

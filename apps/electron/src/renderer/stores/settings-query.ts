@@ -7,7 +7,7 @@
 import { useEffect } from 'react'
 import { useStore } from 'zustand'
 import { createStore } from 'zustand/vanilla'
-import { toast } from 'sonner'
+import { notify as toast } from '@boai/ui/sonner'
 import type { AppEvent, DesktopApi } from '@boai/shared/ipc'
 
 export interface SettingsQueryState<T> { data?: T; loading: boolean; error?: string; updatedAt: number }

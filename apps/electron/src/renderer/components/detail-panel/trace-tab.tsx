@@ -38,7 +38,7 @@ import { ExecutionContentCache } from './execution-content-cache'
 import { ExecutionMessageButton, type ExecutionMessageNavigation } from './execution-message-button'
 import { ExecutionStopButton } from './execution-stop-button'
 import { ActivityTab } from './activity-tab'
-import { toast } from 'sonner'
+import { notify as toast } from '@boai/ui/sonner'
 
 const labels: Record<AgentRun['status'], string> = { queued: '排队中', running: '执行中', completed: '已完成', failed: '失败', cancelled: '已停止', interrupted: '已中断', waiting_approval: '等待批准' }
 const RETAINED_RUN_CONTENT_LIMIT = 8

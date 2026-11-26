@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Trusted desktop notifications and explicit Agent upgrade actions.
- * [OUTPUT]: Inbox records and exact saved-profile/version update requests.
+ * [OUTPUT]: Notice history, pending in-app deliveries and exact saved-profile/version update requests.
  * [POS]: Private desktop IPC; no public runtime or employee operation.
  * [PROTOCOL]: Update Header and .folder.md when changed.
  */
@@ -30,6 +30,7 @@ export interface DesktopNotice {
   id: string
   title: string
   detail?: string
+  level?: 'success' | 'info' | 'warning'
   createdAt: string
   read: boolean
   target: NotificationTarget
@@ -38,6 +39,7 @@ export interface DesktopNotice {
 export interface NotificationSnapshot {
   revision: number
   items: DesktopNotice[]
+  pendingIds: string[]
   agentUpdates: AgentUpdate[]
   checking: boolean
 }

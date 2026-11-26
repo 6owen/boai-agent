@@ -8,7 +8,7 @@
  * [PROTOCOL]: Update Header and .folder.md when changed.
  */
 import { useEffect, useRef, useState, type RefObject } from 'react'
-import { toast } from 'sonner'
+import { notify as toast } from '@boai/ui/sonner'
 import { Mic, Square, X, Undo2 } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { applicationPlugins } from '@boai/shared/plugins/catalog'

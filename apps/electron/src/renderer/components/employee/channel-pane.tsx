@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 渠道绑定保存和核对结果通过全局 Sonner 反馈。
  * [OUTPUT]: 渠道绑定/添加操作放在分区标题右侧并统一ghost/sm；平台发送结果复用后台活动两行列表及悬停详情Popover，原回执保持。
  * [OUTPUT]: 已有渠道绑定在系统文件同款独立Dialog编辑，局部草稿确认、保存/未知禁关和原请求核对保持；添加仍在渠道页。
  * [OUTPUT]: 渠道说明、现有绑定及发送结果共用资料Card；添加/编辑使用基础配置同款字段Card，原请求核对及连接操作保持。
@@ -21,6 +22,7 @@ import { SelectField } from '@/components/ui/select-field'
 import { Dialog, DialogContent, DialogFooter, DialogTitle } from '@/components/ui/dialog'
 import { Clock, Eye, X } from '@/components/icons'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
+import { notify as toast } from '@boai/ui/sonner'
 import { Banner, GuardContext, errorText } from '@/components/common/index'
 import { useEditorGuard } from '@/components/common/use-editor-guard'
 import { ConnectionSettingRow as Field } from '@/pages/settings/connection-layout'
@@ -33,7 +35,7 @@ const empty = (agent: DigitalAgent) => ({ platform: 'feishu' as ChannelPlatform,
 export function EmployeeChannelPane({ api, agent, active }: { api: DesktopApi; agent: DigitalAgent; active: boolean }) {
   const [bindings, setBindings] = useState<ChannelBindingState[]>([]), [deliveries, setDeliveries] = useState<ChannelDelivery[]>([])
   const [draft, setDraft] = useState(() => empty(agent)), [baseline, setBaseline] = useState(() => empty(agent))
-  const [editing, setEditing] = useState<ChannelBindingState>(), [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('')
+  const [editing, setEditing] = useState<ChannelBindingState>(), [busy, setBusy] = useState(false), [error, setError] = useState('')
   const [unconfirmed, setUnconfirmed] = useState(false)
   const requestId = useRef(crypto.randomUUID()), frozen = useRef<ChannelBindingInput | undefined>(undefined)
   const generation = useRef(0)
@@ -58,7 +60,7 @@ export function EmployeeChannelPane({ api, agent, active }: { api: DesktopApi; a
   }, [api, agent.id, active])
   const reset = () => { const value = empty(agent); setDraft(value); setBaseline(value); setEditing(undefined); requestId.current = crypto.randomUUID(); frozen.current = undefined; setUnconfirmed(false) }
   const closeEditor = () => { if (!busy && !unconfirmed) editingGuard.navigate(() => { reset(); editingGuard.saved() }, { resetOnDiscard: false }) }
-  const committed = async () => { reset(); setNotice('渠道绑定已保存。点击连接后开始接收消息。'); guard.saved(); await load() }
+  const committed = async () => { reset(); toast.success('渠道绑定已保存。点击连接后开始接收消息。'); guard.saved(); await load() }
   const act = async (binding: ChannelBindingState, method: 'connectChannelBinding' | 'disconnectChannelBinding' | 'removeChannelBinding') => {
     setBusy(true); setError('')
     try { await api.request(method, { id: binding.id, expectedRevision: binding.revision }); await load() }
@@ -66,7 +68,7 @@ export function EmployeeChannelPane({ api, agent, active }: { api: DesktopApi; a
     finally { setBusy(false) }
   }
   return <div className="detail-section employee-form-sections">
-    {error && <Banner>{error}</Banner>}{notice && <Banner kind="notice">{notice}</Banner>}
+    {error && <Banner>{error}</Banner>}
     {bindings.map(binding => <ContactProfileSection key={binding.id} title={binding.name} hint={channelHint} actions={<div className="flex shrink-0 flex-wrap items-center gap-2">
           <Button variant="ghost" size="sm" disabled={busy || unconfirmed || binding.status === 'connecting'} onClick={() => { void act(binding, binding.enabled ? 'disconnectChannelBinding' : 'connectChannelBinding') }}>{binding.enabled ? '停止连接' : '连接'}</Button>
           <Button variant="ghost" size="sm" disabled={busy || binding.enabled || unconfirmed || dirty} onClick={() => { const value = { platform: binding.platform, appId: binding.appId, name: binding.name, credential: '', users: binding.allowedUserIds.join('\n'), ownerUserId: binding.ownerUserId ?? '', chats: binding.allowedChatIds.join('\n'), botUserId: binding.botUserId ?? '', robotCode: binding.robotCode ?? '' }; setDraft(value); setBaseline(value); setEditing(binding); requestId.current = crypto.randomUUID(); frozen.current = undefined }}>编辑绑定</Button>
@@ -101,7 +103,7 @@ export function EmployeeChannelPane({ api, agent, active }: { api: DesktopApi; a
       </fieldset>
       {unconfirmed && <><p className="field-hint">保存结果尚未确认，原请求和草稿已保留。先核对，不重复创建。</p><Button type="button" variant="secondary" disabled={busy} onClick={() => {
         setBusy(true)
-        void api.request('getChannelBindingReceipt', { agentId: agent.id, requestId: frozen.current!.requestId }).then(async receipt => { if (receipt) await committed(); else { setUnconfirmed(false); setNotice('已核对没有保存回执，可用原请求再次保存。') } }, reason => setError(errorText(reason))).finally(() => setBusy(false))
+        void api.request('getChannelBindingReceipt', { agentId: agent.id, requestId: frozen.current!.requestId }).then(async receipt => { if (receipt) await committed(); else { setUnconfirmed(false); toast.info('已核对没有保存回执，可用原请求再次保存。') } }, reason => setError(errorText(reason))).finally(() => setBusy(false))
       }}>核对保存结果</Button></>}
     </form></GuardContext.Provider></ChannelBindingEditorLayout>}
     {confirmation}

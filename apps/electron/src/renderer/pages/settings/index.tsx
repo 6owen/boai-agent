@@ -42,7 +42,6 @@ export type SettingsTab = 'profile' | 'connections' | 'data' | 'appearance' | 's
 export function SettingsPage({ api, snapshot, refresh, divider, tab: requestedTab, setTab, active, onOpenSkills, localAgentTarget }: { api: DesktopApi; snapshot: Snapshot; refresh: () => Promise<void>; divider: ReactNode; tab: SettingsTab; setTab: (tab: SettingsTab) => void; active: boolean; onOpenSkills: () => void; localAgentTarget?: LocalAgentTarget }) {
   const tab = requestedTab === 'voice-input' ? 'connections' : requestedTab
   const [search, setSearch] = useState('')
-  const [notice, setNotice] = useState('')
   const guard = useContext(GuardContext)
   const { busy, error, run } = useMutation()
   const content = useRef<HTMLDivElement>(null), previousTab = useRef(tab)
@@ -82,7 +81,7 @@ export function SettingsPage({ api, snapshot, refresh, divider, tab: requestedTa
     {!matches.length && <p className="settings-search-empty">没有匹配的设置</p>}</div>
   </nav>{divider}<div className="settings-content page-scroll settings-document-content">
     <div ref={content} className="settings-page-transition t-panel-slide" data-open="true" data-settled="true">
-    {error && <Banner>{error}</Banner>}{notice && <Banner kind="notice" onClose={() => setNotice('')}>{notice}</Banner>}
+    {error && <Banner>{error}</Banner>}
     {tab === 'profile' && <ProfileSettings api={api} profile={snapshot.userProfile} active={active} refresh={refresh} onOpenSkills={onOpenSkills} />}
     {tab === 'connections' && <ConnectionSettings connections={snapshot.connections} api={api} refresh={refresh} active={active} localAgentTarget={localAgentTarget} />}
     {tab === 'appearance' && <AppearanceSettings active={active} />}
@@ -92,7 +91,7 @@ export function SettingsPage({ api, snapshot, refresh, divider, tab: requestedTa
     {tab === 'web-search' && <WebSearchSettingsPage api={api} active={active} />}
     {/* 暂缓开发：{tab === 'voice-input' && <VoiceInputSettingsPage active={active} connections={snapshot.connections} onOpenShortcuts={() => guard.navigate(() => setTab('shortcuts'))} />} */}
     {tab === 'plugins' && <PluginSettingsPage api={api} active={active} />}
-    {tab === 'data' && <DataSettings api={api} snapshot={snapshot} busy={busy} run={run} onNotice={setNotice} />}
+    {tab === 'data' && <DataSettings api={api} snapshot={snapshot} busy={busy} run={run} />}
     {busy && <p className="inline-loading"><LoaderCircle className="spinner" size={16} />正在处理…</p>}
   </div></div></div>
 }

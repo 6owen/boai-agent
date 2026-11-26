@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { InfoIcon } from '@/components/icons'
-import { toast } from 'sonner'
+import { notify as toast } from '@boai/ui/sonner'
 function ActivityHelp({ label, children }: { label: string; children: ReactNode }) {
   return <Tooltip><TooltipTrigger render={<Button type="button" variant="ghost" size="icon-xs" aria-label={`${label}说明`} />}><InfoIcon /></TooltipTrigger><TooltipContent align="start" className="max-w-80 break-words">{children}</TooltipContent></Tooltip>
 }

@@ -7,7 +7,7 @@
  */
 import { createStore } from 'zustand/vanilla'
 import { useStore } from 'zustand'
-import { toast } from 'sonner'
+import { notify as toast } from '@boai/ui/sonner'
 import type { DesktopApi } from '@boai/shared/ipc'
 import { validateVoiceLanguage, type VoiceSettings, type VoiceSnapshot } from '@boai/shared/plugins/voice-input'
 

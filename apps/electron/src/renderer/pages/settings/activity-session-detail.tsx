@@ -20,7 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ChevronRight, Clock, InfoIcon } from '@/components/icons'
-import { toast } from 'sonner'
+import { notify as toast } from '@boai/ui/sonner'
 
 export function RecentActivityRow({ api, active, session }: { api: DesktopApi; active: boolean; session: ActivitySession }) {
   const [open, setOpen] = useState(false), [loading, setLoading] = useState(false), [failed, setFailed] = useState(false), [page, setPage] = useState<ActivitySessionPage>()

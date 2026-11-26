@@ -23,7 +23,7 @@ import { useMutation } from '@/components/common'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
-import { toast } from 'sonner'
+import { notify as toast } from '@boai/ui/sonner'
 import { getDesktopClient } from '@/services/request/desktop-client'
 
 const REACTION_USAGE_KEY = 'boai.message-reaction-usage'

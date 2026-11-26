@@ -1,14 +1,28 @@
 /*
  * [INPUT]: Sonner、body Portal与调用者指定的主题/图标。
- * [OUTPUT]: 通用Soft通知呈现，不读取宿主服务；仅支持浏览器挂载。
+ * [OUTPUT]: 统一通知发布 API 与 Soft Sonner 呈现。发布方不设置展示位置。
  * [POS]: @boai/ui/sonner，原桌面图标通过适配传入。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
 import type { CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
-import { Toaster as Sonner, type ToasterProps } from 'sonner'
+import { Toaster as Sonner, toast, type ExternalToast, type ToasterProps } from 'sonner'
 import { cn } from 'cn'
 import { buttonVariants } from './button'
+
+type NotificationOptions = Omit<ExternalToast, 'position' | 'toasterId'>
+type NotificationArgs = [message: Parameters<typeof toast.message>[0], options?: NotificationOptions]
+
+export const notify = {
+  success: (...args: NotificationArgs) => toast.success(...args),
+  error: (...args: NotificationArgs) => toast.error(...args),
+  warning: (...args: NotificationArgs) => toast.warning(...args),
+  info: (...args: NotificationArgs) => toast.info(...args),
+  message: (...args: NotificationArgs) => toast.message(...args),
+  loading: (...args: NotificationArgs) => toast.loading(...args),
+  dismiss: (id?: string | number) => toast.dismiss(id),
+  getToasts: () => toast.getToasts(),
+}
 
 export function Toaster({ className, style, icons, toastOptions, ...props }: ToasterProps) {
   return createPortal(<Sonner

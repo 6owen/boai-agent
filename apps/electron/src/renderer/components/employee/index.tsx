@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工资源导入与文件保存结果通过全局 Sonner 反馈。
  * [OUTPUT]: 2026-11-25 隐藏员工详情的旧任务入口；定时任务配置保持。
  * [OUTPUT]: 工作区的默认项目字段对API/native员工均可编辑，目录授权仍仅API处理。
  * [OUTPUT]: 员工弹窗的自动化分类显示为定时任务，原分类标识及导航保持。
@@ -44,6 +45,7 @@ import { ArrowLeft, AtSign, BookOpen, CalendarClock, Clock, FolderOpen, Plus, Re
 import type { AgentFileContent, AgentHome, Conversation, DigitalAgent, MemoryQuery, Snapshot } from '@boai/shared/domain'
 import type { DesktopApi } from '@boai/shared/ipc'
 import { AgentEditor } from '@/components/employee/editors'
+import { notify as toast } from '@boai/ui/sonner'
 import { Banner, errorText, Field, GuardContext, Loading, useDirty, useMutation } from '@/components/common/index'
 import { useEditorGuard } from '@/components/common/use-editor-guard'
 import { ContactProfileCard, ContactProfileSection } from './profile-card'
@@ -144,7 +146,6 @@ export function EmployeeDetail({ api, agent, snapshot, conversationId, configura
 
 function WorkspaceView({ api, snapshot, agent, home, active, conversation, onConfigure, onRefresh, onBusyChange }: { api: DesktopApi; snapshot: Snapshot; agent: DigitalAgent; home: AgentHome | null; active: boolean; conversation?: Conversation; onConfigure(): void; onRefresh: () => Promise<void>; onBusyChange?(busy: boolean): void }) {
   const { busy, error, run } = useMutation()
-  const [notice, setNotice] = useState('')
   const [skillId, setSkillId] = useState<string>()
   const [directoryEpoch, setDirectoryEpoch] = useState(0)
   useEffect(() => { if (!active) setSkillId(undefined) }, [active])
@@ -152,7 +153,7 @@ function WorkspaceView({ api, snapshot, agent, home, active, conversation, onCon
   const unsharedKnowledge = conversation?.kind === 'group' ? agent.knowledgeIds.filter(id => !conversation.sharedKnowledgeIds.includes(id)) : []
   if (!home) return <Loading />
   return <div className="detail-section employee-form-sections">
-    {error && <Banner>{error}</Banner>}{notice && <Banner kind="notice">{notice}</Banner>}
+    {error && <Banner>{error}</Banner>}
     <ContactProfileSection title="独立工作区" hint={`这里属于 ${agent.name}。系统文件和会话内容在这里保存。${(agent.executionBackend?.kind ?? 'mastra-model') === 'mastra-model' ? '业务目录另行授权，群聊中沿用这位员工自己的许可。' : '本机 Agent 按自身配置访问业务目录，保留原生能力。'}`} actions={<Button variant="ghost" size="sm" disabled={busy} onClick={() => { void run(async () => { await api.request('openPath', { path: home.workspacePath }) }) }}><FolderOpen />打开员工工作区</Button>}><ContactProfileCard label="独立工作区" fields={false}>
       <p className="resource-path m-0 break-all">{home.workspacePath}</p>
     </ContactProfileCard></ContactProfileSection>
@@ -166,7 +167,7 @@ function WorkspaceView({ api, snapshot, agent, home, active, conversation, onCon
       </div>) : <p className="field-hint">尚未绑定技能，可在“配置”中从本机技能选择。</p>}</div>
       {unsharedKnowledge.length > 0 && <p className="scope-note">资料未共享：{unsharedKnowledge.length} 项已绑定知识未在群“{conversation?.title}”中共享，请到该群配置核对。技能沿员工现有绑定使用。</p>}
     </ContactProfileSection>
-    <ContactProfileSection title="员工专属技能" hint="导入到该员工自己的空间。技能的实际启用情况可在员工配置中查看。" actions={<Button variant="ghost" size="sm" disabled={busy} onClick={() => { void run(async () => { const path = await api.request('choosePath', { kind: 'skill' }); if (!path) return; const resource = await api.request('importResource', { kind: 'skill', path, ownerAgentId: agent.id }); await onRefresh(); setNotice(`已导入专属 Skill「${resource.name}」，请核对员工的启用绑定。`) }) }}><Plus />导入专属 Skill</Button>}>{null}</ContactProfileSection>
+    <ContactProfileSection title="员工专属技能" hint="导入到该员工自己的空间。技能的实际启用情况可在员工配置中查看。" actions={<Button variant="ghost" size="sm" disabled={busy} onClick={() => { void run(async () => { const path = await api.request('choosePath', { kind: 'skill' }); if (!path) return; const resource = await api.request('importResource', { kind: 'skill', path, ownerAgentId: agent.id }); await onRefresh(); toast.success(`已导入专属 Skill「${resource.name}」，请核对员工的启用绑定。`) }) }}><Plus />导入专属 Skill</Button>}>{null}</ContactProfileSection>
     <ContactProfileSection title="记忆命名空间" hint="工作目录不是系统安全沙箱。已授权的主机命令仍使用应用进程权限。"><ContactProfileCard label="记忆命名空间" fields={false}>
       <p className="resource-path m-0 break-all">{home.memoryNamespace}</p>
     </ContactProfileCard></ContactProfileSection>
@@ -190,7 +191,7 @@ function SystemFileEditor({ api, agent, home, name, title, conversationId, onBac
   </GuardContext.Provider>
 }
 function FileForm({ api, file, home, agent, title, conversationId, onUpdated, onReload, onMemory, onClose, onBusyChange }: { api: DesktopApi; file: AgentFileContent; title?: string; home: AgentHome | null; agent: DigitalAgent; conversationId?: string; onUpdated: (home: AgentHome) => Promise<void>; onReload: (file: AgentFileContent) => void; onMemory: () => void; onClose(): void; onBusyChange(busy: boolean): void }) {
-  const [content, setContent] = useState(file.content), [notice, setNotice] = useState('')
+  const [content, setContent] = useState(file.content)
   const [importing, setImporting] = useState(false)
   const expectedVersion = useRef(home?.configVersion ?? agent.configVersion)
   const { busy, error, run } = useMutation()
@@ -198,9 +199,9 @@ function FileForm({ api, file, home, agent, title, conversationId, onUpdated, on
   const guard = useContext(GuardContext)
   const clean = useDirty(content)
   const editable = file.kind === 'source' && isAgentSourceName(file.name)
-  if (importing) return <GeneratedMemoryImport api={api} agent={agent} file={file} conversationId={conversationId} onBusyChange={onBusyChange} onBack={() => guard.navigate(() => setImporting(false))} onImported={() => { setImporting(false); setNotice('选定片段已作为新记忆保存，原文件没有被当作权威数据加载。') }} />
-  return <form data-edit-form={editable ? true : undefined} onSubmit={event => { event.preventDefault(); if (!editable) return; void run(async () => { const result = await api.request('saveAgentFile', { agentId: agent.id, name: file.name as AgentSourceName, content, expectedHash: file.hash, expectedConfigVersion: expectedVersion.current }); await onUpdated(result); clean(); setNotice('已保存，下次执行将使用新版本。'); const updated = await api.request('readAgentFile', { agentId: agent.id, name: file.name, conversationId }); onReload(updated); guard.saved() }) }}>
-    {error && <Banner>{error}</Banner>}{notice && <Banner kind="notice">{notice}</Banner>}<p className="field-hint">{file.purpose}</p>{!title && <span className="pill">{editable ? '可编辑源文件' : '只读生成视图'}</span>}{file.status !== 'current' && <Banner>{file.error || `文件状态：${file.status}。请核对后再保存或重新生成。`}</Banner>}<label className="field file-editor"><span className="field-label">{title ? '正文' : '文件内容'}</span><Textarea aria-label={`${title ?? file.name} 内容`} spellCheck={false} rows={16} readOnly={!editable} value={content} disabled={busy} onChange={event => setContent(event.target.value)} /></label><p className="field-hint">{editable ? (title ? '保存后，下次执行将使用这份正文。' : '保存会校验文件 hash 和配置版本；源文件变化不会扩大工具权限。') : '该文件由产品数据生成。编辑基础配置或对应范围的记忆后再重新生成。'}</p><DialogFooter variant="plain" className="flex-wrap"><Button type="button" variant="ghost" disabled={busy} onClick={onClose}>取消</Button>{editable ? <Button type="submit" disabled={busy || content === file.content}>{title ? '保存正文' : '保存文件'}</Button> : <div className="button-row"><Button type="button" variant="secondary" disabled={busy} onClick={onMemory}>查看记忆</Button><Button type="button" variant="secondary" disabled={busy} onClick={() => setImporting(true)}>导入为记忆</Button><Button type="button" variant="secondary" disabled={busy} onClick={() => { void run(async () => { const result = await api.request('regenerateAgentViews', { agentId: agent.id, conversationId }); await onUpdated(result); onReload(await api.request('readAgentFile', { agentId: agent.id, name: file.name, conversationId })); setNotice('已从权威数据重新生成视图。') }) }}><RefreshCw size={14} />重新生成视图</Button></div>}</DialogFooter></form>
+  if (importing) return <GeneratedMemoryImport api={api} agent={agent} file={file} conversationId={conversationId} onBusyChange={onBusyChange} onBack={() => guard.navigate(() => setImporting(false))} onImported={() => { setImporting(false); toast.success('选定片段已作为新记忆保存，原文件没有被当作权威数据加载。') }} />
+  return <form data-edit-form={editable ? true : undefined} onSubmit={event => { event.preventDefault(); if (!editable) return; void run(async () => { const result = await api.request('saveAgentFile', { agentId: agent.id, name: file.name as AgentSourceName, content, expectedHash: file.hash, expectedConfigVersion: expectedVersion.current }); await onUpdated(result); clean(); toast.success('已保存，下次执行将使用新版本。'); const updated = await api.request('readAgentFile', { agentId: agent.id, name: file.name, conversationId }); onReload(updated); guard.saved() }) }}>
+    {error && <Banner>{error}</Banner>}<p className="field-hint">{file.purpose}</p>{!title && <span className="pill">{editable ? '可编辑源文件' : '只读生成视图'}</span>}{file.status !== 'current' && <Banner>{file.error || `文件状态：${file.status}。请核对后再保存或重新生成。`}</Banner>}<label className="field file-editor"><span className="field-label">{title ? '正文' : '文件内容'}</span><Textarea aria-label={`${title ?? file.name} 内容`} spellCheck={false} rows={16} readOnly={!editable} value={content} disabled={busy} onChange={event => setContent(event.target.value)} /></label><p className="field-hint">{editable ? (title ? '保存后，下次执行将使用这份正文。' : '保存会校验文件 hash 和配置版本；源文件变化不会扩大工具权限。') : '该文件由产品数据生成。编辑基础配置或对应范围的记忆后再重新生成。'}</p><DialogFooter variant="plain" className="flex-wrap"><Button type="button" variant="ghost" disabled={busy} onClick={onClose}>取消</Button>{editable ? <Button type="submit" disabled={busy || content === file.content}>{title ? '保存正文' : '保存文件'}</Button> : <div className="button-row"><Button type="button" variant="secondary" disabled={busy} onClick={onMemory}>查看记忆</Button><Button type="button" variant="secondary" disabled={busy} onClick={() => setImporting(true)}>导入为记忆</Button><Button type="button" variant="secondary" disabled={busy} onClick={() => { void run(async () => { const result = await api.request('regenerateAgentViews', { agentId: agent.id, conversationId }); await onUpdated(result); onReload(await api.request('readAgentFile', { agentId: agent.id, name: file.name, conversationId })); toast.success('已从权威数据重新生成视图。') }) }}><RefreshCw size={14} />重新生成视图</Button></div>}</DialogFooter></form>
 }
 
 function GeneratedMemoryImport({ api, agent, file, conversationId, onBack, onImported, onBusyChange }: { api: DesktopApi; agent: DigitalAgent; file: AgentFileContent; conversationId?: string; onBack: () => void; onImported: () => void; onBusyChange(busy: boolean): void }) {

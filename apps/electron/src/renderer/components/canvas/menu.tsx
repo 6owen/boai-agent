@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { errorText } from '@/components/common'
-import { toast } from 'sonner'
+import { notify as toast } from '@boai/ui/sonner'
 import { requestCanvas } from './bridge'
 import { createCanvasImportIntent } from './import-intent'
 

@@ -11,7 +11,7 @@ import { applicationCall } from '@/components/common/application-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { RefreshCw } from '@/components/icons'
-import { toast } from 'sonner'
+import { notify as toast } from '@boai/ui/sonner'
 
 export function WorkspacePanel({ api, scope, active }: { api: DesktopApi; scope: TerminalScope; active: boolean }) {
   const [previews, setPreviews] = useState<PreviewInfo[]>([]), [busy, setBusy] = useState(false), [command, setCommand] = useState(''), [directory, setDirectory] = useState(''), [reload, setReload] = useState(0)

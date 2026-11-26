@@ -18,7 +18,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, D
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useAppearance } from '@/stores/appearance'
 import { pluginUsage } from '@/stores/plugins'
-import { toast } from 'sonner'
+import { notify as toast } from '@boai/ui/sonner'
 import { downloadCanvasFile, requestCanvas } from './bridge'
 import type { CanvasWorkspaceHandle } from './host-barrier'
 import './workspace.css'

@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { errorText } from '@/components/common'
 import { LoaderCircle } from '@/components/icons'
-import { toast } from 'sonner'
+import { notify as toast } from '@boai/ui/sonner'
 
 export function HeaderBrowser({ api }: { api: DesktopApi | undefined }) {
   const flight = useRef(false)

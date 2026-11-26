@@ -9,7 +9,7 @@
  * [POS]: settings 内嵌本机 Agent 分区，替代独立外部 Agent 页面。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { toast } from 'sonner'
+import { notify as toast } from '@boai/ui/sonner'
 import { showErrorToast } from '@/components/common/error-feedback'
 import { useEffect, useRef, useState } from 'react'
 import type { LaunchProfile } from '@boai/shared/domain'
