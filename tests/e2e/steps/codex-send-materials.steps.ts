@@ -42,7 +42,7 @@ Then('三附件消息在{string}失联后重启只核对原请求且清理不重
     for (const [index, path] of files.entries()) {
       await nextMaterialDialog(runtime, { path })
       await runtime.page.getByRole('button', { name: '添加或更多操作', exact: true }).click()
-      await runtime.page.getByRole('menuitem', { name: '添加文件', exact: true }).click()
+      await runtime.page.getByRole('menuitem', { name: '插入图片或文件', exact: true }).click()
       await expect(runtime.page.locator('[data-material-status="ready"]')).toHaveCount(index + 1)
     }
   }

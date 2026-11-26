@@ -1,5 +1,6 @@
 /*
- * [OUTPUT]: 恢复原有$按钮/键入菜单的技能、会话文件和提示词；知识资料不加入候选，继续由右侧文件菜单添加到输入框。
+ * [OUTPUT]: 首发和既有会话使用共享单行 Composer，按正文折行、附件及语音预览切换布局。
+ * [OUTPUT]: 加号子菜单与键入候选共用技能、提示词、命令和原草稿插入动作。
  * [OUTPUT]: 拖入文件时整个输入器覆盖模糊层，提示居中且不占布局空间。
  * [OUTPUT]: 当前轮次补充与普通发送共用录音取消，防止迟到转写写回已发送草稿。
  * [OUTPUT]: 2026-10-27 默认关闭语音插件接线、可信主窗口与原草稿/生命周期边界。
@@ -26,10 +27,11 @@ import { draftMentions, insertDraftMention } from '../inline-mentions'
 import { Avatar, errorText } from '@/components/common'
 import { Check, FileText, Zap, LoaderCircle } from '@/components/icons'
 import { Button } from '@/components/ui/button'
-import { ChatComposer } from '@/components/ui/chat-composer'
+import { AdaptiveChatComposer } from '@/components/ui/chat-composer'
 import { Popover, PopoverContent, PopoverTitle } from '@/components/ui/popover'
 import { MentionInput, type MentionInputHandle } from './mention-input'
 import { composerCommands as commands, managementSkillReference } from '../composer-commands'
+import type { ComposerMenuChoices } from './composer-toolbar'
 
 type Menu = 'at' | 'dollar' | 'slash'
 interface Token { kind: Menu; query: string; start: number; end: number }
@@ -38,14 +40,14 @@ function tokenAt(text: string, start: number, end: number): Token | null {
   const match = /(^|\s)([@/$])([^\s@/$]*)$/u.exec(text.slice(0, start))
   return match ? { kind: match[2] === '@' ? 'at' : match[2] === '$' ? 'dollar' : 'slash', query: match[3].toLocaleLowerCase(), start: match.index + match[1].length, end } : null
 }
-type Row = { id: string; name: string; description: string; member?: DigitalAgent; resource?: ComposerReference; prompt?: PromptTemplate; file?: ConversationFileItem; command?: typeof commands[number] }
+type Row = { id: string; name: string; description: string; keywords?: string; member?: DigitalAgent; resource?: ComposerReference; prompt?: PromptTemplate; file?: ConversationFileItem; command?: typeof commands[number] }
 export interface PromptBarHandle { mention(id: string): void; focus(): void }
 interface Props {
   ref?: Ref<PromptBarHandle>; api?: DesktopApi; resources?: Resource[]; conversationId?: string
   draft: ChatDraft; setDraft(value: ChatDraft): void; members: DigitalAgent[]; group: boolean; external: boolean; placeholder: string
   draggingFiles?: boolean; pageActive?: boolean; conversationReady?: boolean; mentionsAllowed?: boolean; disabled?: boolean
   onSend(): void; onActivity(): void; onOpenWorkspace(): void; onPasteMaterials?(files?: File[]): void
-  attachments?: ReactNode; children(openMenu: (kind: Menu) => void, menu: Menu | null, reference: (value: ComposerReference) => void, voice: { controls: ReactNode; onSend(): void; cancel(): void }): ReactNode
+  attachments?: ReactNode; children(choices: ComposerMenuChoices, voice: { controls: ReactNode; onSend(): void; cancel(): void }): ReactNode
 }
 export function PromptBar({ ref, api, resources = [], conversationId, draft, setDraft, members, group, external, placeholder, draggingFiles = false, pageActive = true, conversationReady = true, mentionsAllowed = true, disabled = false, onSend: submit, onActivity, onOpenWorkspace, onPasteMaterials, attachments, children }: Props) {
   const anchor = useRef<HTMLDivElement>(null), list = useRef<HTMLDivElement>(null), richInput = useRef<MentionInputHandle>(null)
@@ -57,7 +59,7 @@ export function PromptBar({ ref, api, resources = [], conversationId, draft, set
   const pickGeneration = useRef(0)
   const mentions = draftMentions(draft)
   const [selection, setSelection] = useState({ start: draft.text.length, end: draft.text.length })
-  const [manual, setManual] = useState<Menu | null>(null), [dismissed, setDismissed] = useState(false), [composing, setComposing] = useState(false)
+  const [promptMenuOpen, setPromptMenuOpen] = useState(false), [dismissed, setDismissed] = useState(false), [composing, setComposing] = useState(false)
   const [active, setActive] = useState(0), [files, setFiles] = useState<ConversationFileItem[]>([]), [loading, setLoading] = useState(false), [picking, setPicking] = useState(false), [error, setError] = useState('')
   const [nextCursor, setNextCursor] = useState<string>(), [cursor, setCursor] = useState<string>()
   const [prompts, setPrompts] = useState<PromptTemplate[]>([]), [loadingPrompts, setLoadingPrompts] = useState(false)
@@ -66,17 +68,17 @@ export function PromptBar({ ref, api, resources = [], conversationId, draft, set
   useLayoutEffect(() => {
     if (previousScope.current === scope) return
     previousScope.current = scope
-    setManual(null); setDismissed(false); setComposing(false); setActive(0); setSelection({ start: draft.text.length, end: draft.text.length })
+    setPromptMenuOpen(false); setDismissed(false); setComposing(false); setActive(0); setSelection({ start: draft.text.length, end: draft.text.length })
   }, [scope])
   let searchable = draft.text
   for (const mention of [...mentions].reverse()) searchable = searchable.slice(0, mention.start) + ' '.repeat(mention.end - mention.start) + searchable.slice(mention.end)
   const token = !dismissed && !composing ? tokenAt(searchable, selection.start, selection.end) : null
-  const requested = manual ?? token?.kind ?? null
+  const requested = token?.kind ?? null
   const menu = disabled || (requested === 'at' || requested === 'dollar') && (!mentionsAllowed || external) ? null : requested
   const lastMenu = useRef<Menu>('slash')
   if (menu) lastMenu.current = menu
   const displayedMenu = menu ?? lastMenu.current
-  const query = manual ? '' : token?.query ?? ''
+  const query = token?.query ?? ''
   useEffect(() => { setCursor(undefined); setFiles([]); setNextCursor(undefined); setError('') }, [scope, query, menu])
   useEffect(() => {
     if (menu !== 'dollar' || !primary || !conversationId || !api) { setLoading(false); return }
@@ -92,8 +94,9 @@ export function PromptBar({ ref, api, resources = [], conversationId, draft, set
     }, 120)
     return () => { alive = false; clearTimeout(timer) }
   }, [api, menu, scope, query, cursor, primary?.id])
+  const showPrompts = pageActive && (menu === 'dollar' || promptMenuOpen)
   useEffect(() => {
-    if (menu !== 'dollar' || !api) { setLoadingPrompts(false); return }
+    if (!showPrompts || !api) { setLoadingPrompts(false); return }
     let live = true, generation = 0
     const load = async () => {
       const token = ++generation
@@ -105,10 +108,16 @@ export function PromptBar({ ref, api, resources = [], conversationId, draft, set
     void load()
     const unsubscribe = api.subscribe(event => { if (event.type === 'changed' && !event.conversationId) void load() })
     return () => { live = false; unsubscribe() }
-  }, [api, menu])
-  const skillRows: Row[] = primary ? resources.filter(resource => resource.kind === 'skill' && primary.skillIds.includes(resource.id) && (!resource.ownerAgentId || resource.ownerAgentId === primary.id) && `${resource.name} ${resource.description}`.toLocaleLowerCase().includes(query)).map(resource => ({ id: `skill:${resource.id}`, name: resource.name, description: '技能', resource: { kind: 'skill', id: resource.id, name: resource.name, agentId: primary.id, configVersion: primary.configVersion } })) : []
+  }, [api, showPrompts])
+  const skillRows: Row[] = primary ? resources.filter(resource => resource.kind === 'skill' && primary.skillIds.includes(resource.id) && (!resource.ownerAgentId || resource.ownerAgentId === primary.id)).map(resource => ({ id: `skill:${resource.id}`, name: resource.name, description: '技能', keywords: resource.description, resource: { kind: 'skill', id: resource.id, name: resource.name, agentId: primary.id, configVersion: primary.configVersion } })) : []
   const fileRows: Row[] = primary && conversationId ? files.map(file => ({ id: `${file.kind}:${file.id}`, name: file.name, description: '文件', file, resource: file.kind === 'material' ? { kind: 'material', id: file.id, agentId: primary.id, name: file.name, conversationId, contentHash: file.contentHash!, revision: file.revision! } : { kind: 'artifact', id: file.id, agentId: primary.id, name: file.name, conversationId, contentHash: file.contentHash! } })) : []
-  const rows: Row[] = displayedMenu === 'at' ? members.filter(member => member.active && `${member.name} ${member.role}`.toLocaleLowerCase().includes(query)).map(member => ({ id: member.id, name: member.name, description: '员工', member })) : displayedMenu === 'dollar' ? [...skillRows, ...fileRows, ...prompts.filter(prompt => `${prompt.name} ${prompt.description}`.toLocaleLowerCase().includes(query)).map(prompt => ({ id: `prompt:${prompt.id}`, name: prompt.name, description: '提示词', prompt }))] : commands.filter(command => (command.managementSkill ? !group && !external && primary && isCoreAgent(primary) : conversationReady || command.prompt) && `${command.id} ${command.name} ${command.description}`.toLocaleLowerCase().includes(query)).map(command => ({ id: command.id, name: command.name, description: command.description, command }))
+  const promptRows: Row[] = prompts.map(prompt => ({ id: `prompt:${prompt.id}`, name: prompt.name, description: '提示词', keywords: prompt.description, prompt }))
+  const commandRows: Row[] = commands.filter(command => command.managementSkill ? !group && !external && primary && isCoreAgent(primary) : conversationReady || command.prompt)
+    .map(command => ({ id: command.id, name: command.name, description: command.description, command }))
+  const matches = (row: Row) => `${row.id} ${row.name} ${row.keywords ?? row.description}`.toLocaleLowerCase().includes(query)
+  const rows: Row[] = displayedMenu === 'at'
+    ? members.filter(member => member.active && `${member.name} ${member.role}`.toLocaleLowerCase().includes(query)).map(member => ({ id: member.id, name: member.name, description: '员工', member }))
+    : displayedMenu === 'dollar' ? [...skillRows.filter(matches), ...fileRows, ...promptRows.filter(matches)] : commandRows.filter(matches)
   const selected = Math.min(active, Math.max(0, rows.length - 1))
   useLayoutEffect(() => { setActive(0) }, [menu, query])
   useLayoutEffect(() => { list.current?.querySelector('[aria-selected=true]')?.scrollIntoView({ block: 'nearest' }) }, [menu, selected])
@@ -119,18 +128,16 @@ export function PromptBar({ ref, api, resources = [], conversationId, draft, set
       setDraft(next)
     }
   }, [draft, group, disabled, members, setDraft])
-  const close = () => { pickGeneration.current++; setPicking(false); setManual(null); setDismissed(true) }
+  const close = () => { pickGeneration.current++; setPicking(false); setDismissed(true) }
   const focus = () => richInput.current?.focus()
   useImperativeHandle(ref, () => ({ focus, mention: id => {
     if (disabled || !mentionsAllowed) return
     const member = members.find(member => member.id === id && member.active)
     if (member) { richInput.current?.replace(richInput.current.selection(), '', member); close() }
   } }))
-  const pick = async (id: string) => {
-    if (disabled || picking || !pageActive) return
-    const row = rows.find(item => item.id === id)
-    if (!row) return
-    const range = token?.kind === menu ? token : richInput.current?.selection() ?? selection
+  const pickRow = async (row: Row, kind: Menu) => {
+    if (current.current.disabled || picking || !current.current.pageActive) return
+    const range = token?.kind === kind ? token : richInput.current?.selection() ?? selection
     if (row.file && api && row.resource && (row.resource.kind === 'artifact' || row.resource.kind === 'material')) {
       const expected = current.current, generation = ++pickGeneration.current
       setPicking(true); setError('')
@@ -153,10 +160,31 @@ export function PromptBar({ ref, api, resources = [], conversationId, draft, set
     }
     close()
   }
-  const openMenu = (kind: Menu) => {
-    if (disabled || (kind === 'at' || kind === 'dollar') && (!mentionsAllowed || external)) return
-    if (menu === kind) { close(); focus(); return }
-    setManual(kind); setDismissed(false); setActive(0); focus()
+  const pick = (id: string) => {
+    const row = rows.find(item => item.id === id)
+    if (row && menu) void pickRow(row, menu)
+  }
+  const toChoice = (row: Row, kind: Menu) => ({
+    id: row.id,
+    name: kind === 'slash' ? `/${row.id} · ${row.name}` : row.name,
+    select: () => { void pickRow(row, kind) },
+  })
+  const referencesBlocked = disabled || !mentionsAllowed || external
+  const choices: ComposerMenuChoices = {
+    skills: referencesBlocked ? [] : skillRows.map(row => toChoice(row, 'dollar')),
+    prompts: referencesBlocked || loadingPrompts ? [] : promptRows.map(row => toChoice(row, 'dollar')),
+    commands: disabled ? [] : commandRows.map(row => toChoice(row, 'slash')),
+    referencesBlocked,
+    loadingPrompts,
+    onPromptsOpenChange: open => {
+      const next = open && !referencesBlocked
+      if (next && !showPrompts && api) setLoadingPrompts(true)
+      setPromptMenuOpen(next)
+    },
+    onSelectSource: reference => {
+      if (referencesBlocked || !primary || reference.agentId !== primary.id) return
+      void pickRow({ id: `${reference.kind}:${reference.id}`, name: reference.name, description: '数据源', resource: reference }, 'dollar')
+    },
   }
   const keyDown = (event: KeyboardEvent) => {
     if (disabled || composing || event.isComposing || event.keyCode === 229) return
@@ -177,16 +205,12 @@ export function PromptBar({ ref, api, resources = [], conversationId, draft, set
     event.preventDefault(); if (!disabled) onPasteMaterials(files.length ? files : undefined); return true
   }
   return <Popover open={Boolean(menu)} modal={false} onOpenChange={value => { if (!value) close() }}>
-    <ChatComposer ref={anchor} className="relative">{attachments}
-      <MentionInput scope={scope} ref={richInput} disabled={disabled} draft={draft} placeholder={placeholder} listId={menu ? listId : undefined} activeId={menu && rows.length ? `${listId}-${selected}` : undefined} onChange={value => { setDraft(value); setManual(null); setDismissed(false) }} onSelection={setSelection} onKeyDown={keyDown} onPaste={paste} onComposing={setComposing} />
-      {voice.preview}
-      {children(openMenu, menu, reference => {
-        if (disabled || !mentionsAllowed || external || !primary || reference.agentId !== primary.id) return
-        richInput.current?.replace(richInput.current.selection(), '', { id: `${reference.kind}:${reference.id}`, name: reference.name, resource: reference })
-        close()
-      }, { controls: voice.controls, onSend, cancel: voice.cancel })}
+    <AdaptiveChatComposer ref={anchor} className="relative" value={draft.text} beforeInput={attachments} afterInput={voice.preview} input={
+      <MentionInput scope={scope} ref={richInput} disabled={disabled} draft={draft} placeholder={placeholder} listId={menu ? listId : undefined} activeId={menu && rows.length ? `${listId}-${selected}` : undefined} onChange={value => { setDraft(value); setDismissed(false) }} onSelection={setSelection} onKeyDown={keyDown} onPaste={paste} onComposing={setComposing} />
+    }>
+      {children(choices, { controls: voice.controls, onSend, cancel: voice.cancel })}
       {draggingFiles && <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-[inherit] bg-background/60 px-4 text-center text-sm text-foreground backdrop-blur-sm" role="status">松开文件，添加到当前会话</div>}
-    </ChatComposer>
+    </AdaptiveChatComposer>
     <PopoverContent anchor={anchor} side="top" align="start" sideOffset={8} initialFocus={false} finalFocus={false} className="prompt-bar-menu w-[320px] max-w-[calc(100vw-24px)] gap-1.5 p-2">
       <PopoverTitle>{displayedMenu === 'at' ? '提及员工' : displayedMenu === 'dollar' ? '引用技能、文件和提示词' : '命令'}</PopoverTitle>
       <div ref={list} role="listbox" id={listId} aria-label={displayedMenu === 'at' ? group ? '群聊成员' : '会话员工' : displayedMenu === 'dollar' ? '技能、文件和提示词' : '快捷命令'} className="prompt-bar-options">
@@ -199,9 +223,9 @@ export function PromptBar({ ref, api, resources = [], conversationId, draft, set
         {!rows.length && !loading && !loadingPrompts && <p role="status">{displayedMenu === 'at' ? '没有匹配的员工' : displayedMenu === 'dollar' ? '没有匹配的技能、文件或提示词' : '没有匹配的命令'}</p>}
       </div>
       {(loading || loadingPrompts || picking) && <p role="status" className="flex items-center gap-2 text-xs text-muted-foreground"><LoaderCircle className="size-3 spinner" />{picking ? '核对文件来源…' : '读取引用…'}</p>}
-      {error && <ErrorToast>{error}</ErrorToast>}
       {menu === 'dollar' && nextCursor && <Button variant="ghost" size="xs" disabled={loading} onClick={() => setCursor(nextCursor)}>更多文件</Button>}
       <p className="prompt-bar-hint">{displayedMenu === 'slash' ? '使用 @ 提及员工，$ 引用技能、文件和提示词' : '↑ ↓ 选择 · Enter / Tab 确认 · Esc 收起'}</p>
     </PopoverContent>
+    {error && <ErrorToast>{error}</ErrorToast>}
   </Popover>
 }

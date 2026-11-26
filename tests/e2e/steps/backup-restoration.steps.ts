@@ -51,7 +51,7 @@ Given('隔离聊天已有真实材料成果记忆规则和未来计划', async (
   await selectChat(runtime, f.group.title)
   await nextMaterialDialog(runtime, { path: f.source })
   await runtime.page.getByRole('button', { name: '添加或更多操作', exact: true }).click()
-  await runtime.page.getByRole('menuitem', { name: '添加文件', exact: true }).click()
+  await runtime.page.getByRole('menuitem', { name: '插入图片或文件', exact: true }).click()
   await expect(runtime.page.locator('[data-material-draft-id]')).toHaveAttribute('data-material-status', 'ready')
   await runtime.page.getByRole('textbox', { name: '消息内容', exact: true }).fill(FILE_REQUEST)
   await runtime.page.getByRole('button', { name: '发送消息', exact: true }).click()

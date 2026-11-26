@@ -641,7 +641,7 @@ Then('用户给本机员工绑定技能知识并发送材料完成真实交付',
   for (const path of [files.material, files.image]) {
     await nextMaterialDialog(runtime, { path })
     await page.getByRole('button', { name: '添加或更多操作', exact: true }).click()
-    await page.getByRole('menuitem', { name: '添加文件', exact: true }).click()
+    await page.getByRole('menuitem', { name: '插入图片或文件', exact: true }).click()
   }
   await expect(page.locator('[data-material-status="ready"]')).toHaveCount(2)
   await runtime.reviewCheckpoint('本机员工原输入框中的文本与图片附件')

@@ -15,6 +15,7 @@
  * [POS]: 单聊/群聊共享交互 E2E；不改写生产 DOM 或模拟业务响应。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { openComposerMentions, openComposerSubmenu } from '../support/composer'
 import { expect, type Locator, type Page } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 import { access, readFile, realpath } from 'node:fs/promises'
@@ -108,7 +109,7 @@ Then('引用点名草稿在切换会话后保留', async ({ runtime }) => {
   await page.locator('#message-history-research').hover()
   await page.locator('#message-history-research').hover()
   await page.getByRole('button', { name: '引用 研究员 的消息', exact: true }).click()
-  await page.getByRole('button', { name: '提及群聊成员', exact: true }).click()
+  await openComposerMentions(page)
   await page.getByRole('option', { name: '@写手', exact: true }).click()
   await input.pressSequentially('请补充产品比较'); await input.press('Shift+Enter'); await input.press('x')
   const draft = await inputText(input); expect(draft).toContain('\n')
@@ -167,7 +168,7 @@ Then('明暗与窄窗群聊均可阅读和操作', async ({ runtime, groupDesign
   expect(runtime.errors).toEqual([]); expect(groupDesign.fixture!.state.errors).toEqual([])
 })
 When('用户点名设计师检查排版', async ({ runtime }) => {
-  await runtime.page.getByRole('button', { name: '提及群聊成员', exact: true }).click()
+  await openComposerMentions(runtime.page)
   await runtime.page.getByRole('option', { name: '@设计师', exact: true }).click()
   await runtime.page.getByRole('textbox', { name: '消息内容' }).pressSequentially('请检查排版目录')
   await runtime.page.getByRole('textbox', { name: '消息内容' }).press('Enter')
@@ -202,7 +203,7 @@ Then('审批显示命令目录且拒绝后没有执行文件', async ({ runtime,
 })
 When('用户再次点名设计师并允许这次执行', async ({ runtime, groupDesign }) => {
   const page = runtime.page
-  await page.getByRole('button', { name: '提及群聊成员', exact: true }).click()
+  await openComposerMentions(page)
   await page.getByRole('option', { name: '@设计师', exact: true }).click()
   await page.getByRole('textbox', { name: '消息内容' }).pressSequentially('再次检查排版目录')
   await page.getByRole('button', { name: '发送消息', exact: true }).click()
@@ -304,7 +305,7 @@ When('用户引用研究结论并点名写手发送确认', async ({ runtime }) 
   await expect(page.locator('.reply-preview')).toContainText('回复 研究员')
   const close = await page.getByRole('button', { name: '取消引用', exact: true }).boundingBox(), text = await page.locator('.reply-preview>span').boundingBox()
   expect(close!.x + close!.width).toBeLessThan(text!.x)
-  await page.getByRole('button', { name: '提及群聊成员', exact: true }).click()
+  await openComposerMentions(page)
   await page.getByRole('option', { name: '@写手', exact: true }).click()
   await page.getByRole('textbox', { name: '消息内容' }).pressSequentially('这条结论我收到了。')
   await page.screenshot({ path: 'test-results/group-chat-reply-preview.png', scale: 'css', animations: 'disabled' })
@@ -463,9 +464,10 @@ Then('快捷命令只填草稿或打开已有功能', async ({ runtime, groupDes
   await input.fill('/workspace'); await input.press('Enter')
   await expect.poll(() => runtime.app.evaluate(() => (globalThis as unknown as { groupOpened: string }).groupOpened)).toBe(await realpath(groupDesign.fixture!.group.workspacePath))
   await expect.poll(() => inputText(input)).toBe('')
-  await page.getByRole('button', { name: '快捷命令', exact: true }).click()
-  await expect(page.getByRole('listbox', { name: '快捷命令' })).toBeVisible()
-  await input.press('Escape')
+  const commands = await openComposerSubmenu(page, '快捷命令')
+  await expect(commands.getByRole('menuitem')).toHaveCount(4)
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('Escape')
   await page.getByRole('button', { name: /与研究员对话/ }).click()
   await input.fill('/')
   await expect(page.getByRole('option', { name: '/summarize', exact: true })).toBeVisible()

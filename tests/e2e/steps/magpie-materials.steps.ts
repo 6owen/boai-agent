@@ -124,7 +124,7 @@ When('用户选择无思考并从附件菜单添加原图片', async ({ runtime,
   await runtime.page.keyboard.press('Escape')
   await nextMaterialDialog(runtime, { path: state.file! })
   await runtime.page.getByRole('button', { name: '添加或更多操作', exact: true }).click()
-  await runtime.page.getByRole('menuitem', { name: '添加文件', exact: true }).click()
+  await runtime.page.getByRole('menuitem', { name: '插入图片或文件', exact: true }).click()
   await expect(runtime.page.locator('[data-material-draft-id]')).toHaveAttribute('data-material-status', 'ready')
 })
 Then('图片准备和预览没有触发模型或业务消息', async ({ runtime, magpieMaterialState: state }) => {

@@ -5,6 +5,7 @@
  * [POS]: Composer BDD步骤；HTTP只提供目录并保持任务等待，不调用真实供应商。
  * [PROTOCOL]: 变化同步Header与所属.folder.md。
  */
+import { openComposerMentions, openComposerSubmenu } from '../support/composer'
 import { expect } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 import { createServer } from 'node:http'
@@ -203,7 +204,7 @@ Then('资源引用随消息受理且群聊成员提及仍可用', async ({ runti
   await page.evaluate(id => window.boai.request('cancelRun', { conversationId: id }), scenario.direct!.id)
   await page.locator('.conversation-item[aria-label="菜单协作"]').click()
   await expect(page.getByRole('button', { name: '选择模型', exact: true })).toHaveCount(0)
-  await page.getByRole('button', { name: '提及群聊成员', exact: true }).click()
+  await openComposerMentions(page)
   await page.getByRole('option', { name: '@' + scenario.writer!.name, exact: true }).click()
   await expect(page.locator('.chat-composer .composer-mention-tag')).toHaveText('@' + scenario.writer!.name)
   expect(runtime.errors).toEqual([])
@@ -237,7 +238,7 @@ Then('推理设置重启后仍保留且模型连接未变化', async ({ runtime,
 })
 
 
-When('在输入框搜索并指定员工已绑定的数据源', async ({ runtime, scenario }) => {
+When('在输入框数据源子菜单选择员工已绑定的数据源', async ({ runtime, scenario }) => {
   const page = runtime.page, root = await realpath(runtime.root)
   const setup = await page.evaluate(async path => {
     const appearance = await window.boai.request('getAppearance', undefined)
@@ -252,21 +253,14 @@ When('在输入框搜索并指定员工已绑定的数据源', async ({ runtime,
     return { source, version: saved.configVersion }
   }, root)
   scenario.source = setup.source; scenario.sourceAgentVersion = setup.version
-  const input = page.getByRole('textbox', { name: '消息内容' }), trigger = page.getByRole('button', { name: '指定数据源', exact: true })
+  const input = page.getByRole('textbox', { name: '消息内容' })
   await input.fill('请从指定资料核对 ')
-  await trigger.click()
-  const popup = page.getByRole('dialog', { name: '指定数据源' })
-  await expect(popup.getByRole('option')).toHaveCount(1)
-  await expect(popup.getByRole('option', { name: setup.source.name, exact: true })).toBeVisible()
-  await expect(popup).not.toContainText('未绑定资料')
-  await expect(popup).not.toContainText('已停用资料')
-  await runtime.reviewNativeCheckpoint('数据源指定浅色搜索浮层')
-  const search = popup.getByPlaceholder('搜索数据源…')
-  await search.fill('不存在的资料')
-  await expect(popup.getByRole('option')).toHaveCount(0)
-  await expect(popup).toContainText('没有匹配的可用数据源')
-  await search.fill('Obsidian')
-  await expect(popup.getByRole('option')).toHaveCount(1)
+  const popup = await openComposerSubmenu(page, '数据源')
+  const option = popup.getByRole('menuitem', { name: setup.source.name, exact: true })
+  await expect(option).toBeVisible()
+  await expect(popup.getByRole('menuitem', { name: '未绑定资料', exact: true })).toHaveCount(0)
+  await expect(popup.getByRole('menuitem', { name: '已停用资料', exact: true })).toHaveCount(0)
+  await runtime.reviewNativeCheckpoint('数据源二级菜单浅色')
   await page.evaluate(async () => {
     const appearance = await window.boai.request('getAppearance', undefined)
     await window.boai.request('updateAppearance', { patch: { mode: 'dark' }, expectedRevision: appearance.revision })
@@ -277,15 +271,15 @@ When('在输入框搜索并指定员工已绑定的数据源', async ({ runtime,
     await new Promise(requestAnimationFrame)
     await new Promise(requestAnimationFrame)
   })
-  await runtime.reviewNativeCheckpoint('数据源指定深色搜索浮层')
-  await search.press('ArrowDown'); await search.press('Enter')
+  await runtime.reviewNativeCheckpoint('数据源二级菜单深色')
+  await option.press('Enter')
   await expect(popup).toBeHidden()
   await expect(input).toBeFocused()
-  await expect(page.locator('.chat-composer .composer-mention-tag')).toHaveText('@' + setup.source.name)
+  await expect(page.locator('.chat-composer .composer-mention-tag')).toHaveText('$' + setup.source.name)
   await input.press('Backspace')
   await expect(page.locator('.chat-composer .composer-mention-tag')).toHaveCount(0)
   await input.press('ControlOrMeta+z')
-  await expect(page.locator('.chat-composer .composer-mention-tag')).toHaveText('@' + setup.source.name)
+  await expect(page.locator('.chat-composer .composer-mention-tag')).toHaveText('$' + setup.source.name)
   await runtime.app.evaluate(({ ipcMain }) => {
     const original = (ipcMain as unknown as { _invokeHandlers: Map<string, (...args: any[]) => Promise<unknown>> })._invokeHandlers.get('boai:request')!
     let held = false
@@ -299,14 +293,18 @@ When('在输入框搜索并指定员工已绑定的数据源', async ({ runtime,
       return result
     })
   })
-  await trigger.click()
+  await openComposerSubmenu(page, '数据源')
   await expect(popup).toContainText('正在读取数据源')
   await page.locator('.conversation-item[aria-label="菜单协作"]').click()
   await runtime.app.evaluate(() => (globalThis as unknown as { releaseComposerSources: () => void }).releaseComposerSources())
   await expect(popup).toBeHidden()
-  await expect(trigger).toHaveCount(0)
+  const groupSources = await openComposerSubmenu(page, '数据源')
+  await expect(groupSources.getByRole('menuitem', { name: '没有可用数据源', exact: true })).toBeDisabled()
+  await expect(groupSources.getByRole('menuitem', { name: setup.source.name, exact: true })).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('Escape')
   await page.locator('.conversation-item[aria-label="研究员"]').click()
-  await expect(page.locator('.chat-composer .composer-mention-tag')).toHaveText('@' + setup.source.name)
+  await expect(page.locator('.chat-composer .composer-mention-tag')).toHaveText('$' + setup.source.name)
   await runtime.reviewNativeCheckpoint('数据源指定标签与原草稿')
   await page.getByRole('button', { name: '发送消息', exact: true }).click()
 })

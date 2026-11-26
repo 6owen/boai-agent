@@ -63,7 +63,7 @@ Then('Claude员工通过原附件入口接收图片文本和通用文件', async
       await runtime.reviewFile('Claude本场输入原件', path)
       await nextMaterialDialog(runtime, { path })
       await page.getByRole('button', { name: '添加或更多操作', exact: true }).click()
-      await page.getByRole('menuitem', { name: '添加文件', exact: true }).click()
+      await page.getByRole('menuitem', { name: '插入图片或文件', exact: true }).click()
     }
     await expect(page.getByRole('region', { name: '待发送材料', exact: true }).locator('[data-material-draft-id]')).toHaveCount(3)
     expect((await read()).messages).toEqual([])

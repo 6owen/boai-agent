@@ -46,7 +46,7 @@ Then('用户从聊天底部准确配置本机员工并保留原草稿与成果�
   const file = join(await realpath(runtime.root), '导航草稿.txt'); await writeFile(file, '只准备、不发送的导航材料')
   await nextMaterialDialog(runtime, { path: file })
   await page.getByRole('button', { name: '添加或更多操作', exact: true }).click()
-  await page.getByRole('menuitem', { name: '添加文件', exact: true }).click()
+  await page.getByRole('menuitem', { name: '插入图片或文件', exact: true }).click()
   const material = page.locator('[data-material-draft-id][data-material-status="ready"]:visible')
   await expect(material).toHaveCount(1)
   const materialId = await material.getAttribute('data-material-draft-id')

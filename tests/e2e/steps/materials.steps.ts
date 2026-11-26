@@ -54,7 +54,7 @@ async function selectConversation(page: Page, title: string) {
 async function addMaterial(runtime: Desktop, path: string) {
   await nextMaterialDialog(runtime, { path })
   await runtime.page.getByRole('button', { name: '添加或更多操作', exact: true }).click()
-  await runtime.page.getByRole('menuitem', { name: '添加文件', exact: true }).click()
+  await runtime.page.getByRole('menuitem', { name: '插入图片或文件', exact: true }).click()
 }
 async function idle(runtime: Desktop, conversationId: string) {
   await expect.poll(async () => {
@@ -291,7 +291,7 @@ When('用户在原生选择失败后添加材料但导入回复失联', async ({
   const fixture = materialsState.fixture!, page = runtime.page
   await selectConversation(page, fixture.direct.title)
   await nextMaterialDialog(runtime, { error: '验收：原生选择失败' })
-  await page.getByRole('button', { name: '添加或更多操作', exact: true }).click(); await page.getByRole('menuitem', { name: '添加文件', exact: true }).click()
+  await page.getByRole('button', { name: '添加或更多操作', exact: true }).click(); await page.getByRole('menuitem', { name: '插入图片或文件', exact: true }).click()
   await expect(page.getByText(/原生选择失败/)).toBeVisible(); await expect(drafts(page)).toHaveCount(0)
   expect((await detail(runtime, fixture.direct.id)).materials).toEqual([]); expect(fixture.endpoint.requests).toHaveLength(0)
   materialsState.fault = await materialReplyFault(runtime)

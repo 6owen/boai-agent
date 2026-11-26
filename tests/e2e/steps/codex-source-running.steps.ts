@@ -39,7 +39,7 @@ Then('本机命令实际开始后材料出现{string}阻止后续交付且恢复
   await runtime.reviewFile('任务原始材料', source.path)
   await nextMaterialDialog(runtime, { path: source.path })
   await page.getByRole('button', { name: '添加或更多操作', exact: true }).click()
-  await page.getByRole('menuitem', { name: '添加文件', exact: true }).click()
+  await page.getByRole('menuitem', { name: '插入图片或文件', exact: true }).click()
   await expect(page.locator('[data-material-status="ready"]')).toHaveCount(1)
   const request = (codexEmployee.real ? '' : 'NATIVE_FILE_TASK NATIVE_SOURCE_COMMAND：') +
     '这是明确工作，请读取本条附件。我选择 BoAI 为本次任务分配的默认运行目录，即 execute_command 工具说明中的 cwd，不另选目录。先通过 execute_command 提交下面命令的原聊天审批卡片，等我在卡片中批准后原样执行一次。验收控制器稍后会在该目录创建 command-release 标记，使命令自然结束；不要自行创建该标记或改写命令。命令成功后，在本次获准 runs 目录创建并正式发布 codex-proof.md，正文写附件中的完整暗号，以真实文件证据报告交付。如果任一工具或来源核对失败，停止，不重跑命令、不更换工具绕过。不要执行其他命令。\n\n' + command

@@ -78,7 +78,7 @@ async function prepareFileEmployee(d: Desktop, s: State, backend: string, format
   await d.page.getByRole('navigation', { name: '会话列表', exact: true }).getByRole('button', { name: /^文件修改验收/ }).click()
   await nextMaterialDialog(d, { path })
   await d.page.getByRole('button', { name: '添加或更多操作', exact: true }).click()
-  await d.page.getByRole('menuitem', { name: '添加文件', exact: true }).click()
+  await d.page.getByRole('menuitem', { name: '插入图片或文件', exact: true }).click()
   await expect(d.page.locator('[data-material-draft-id]')).toHaveAttribute('data-material-status', 'ready')
   s.material = (await d.page.evaluate(id => window.boai.request('getConversation', { id }), s.chat.id)).materials![0]
   await d.page.getByRole('textbox', { name: '消息内容', exact: true }).fill('收到这份原始计划后简短确认即可，等我下一条要求再修改和交付文件。')

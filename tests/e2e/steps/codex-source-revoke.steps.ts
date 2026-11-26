@@ -47,7 +47,7 @@ Then('本机任务在{string}撤回旧材料授权后实际退出且恢复不续
   await runtime.reviewFile('旧授权材料实际原件', source.path)
   await nextMaterialDialog(runtime, { path: source.path })
   await runtime.page.getByRole('button', { name: '添加或更多操作', exact: true }).click()
-  await runtime.page.getByRole('menuitem', { name: '添加文件', exact: true }).click()
+  await runtime.page.getByRole('menuitem', { name: '插入图片或文件', exact: true }).click()
   await expect(runtime.page.locator('[data-material-draft-id][data-material-status="ready"]')).toHaveCount(1)
   await runtime.page.getByRole('textbox', { name: '消息内容', exact: true }).fill('这是普通聊天，不执行工具。请读取本条附件，只回复原文中的完整暗号。')
   await runtime.page.getByRole('button', { name: '发送消息', exact: true }).click()

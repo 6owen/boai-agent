@@ -9,6 +9,7 @@
  * [POS]: 第14组复杂内容协作 BDD；不合成模型输出，不修改产品用户数据。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { openComposerMentions } from '../support/composer'
 import { expect } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 import { join } from 'node:path'
@@ -39,7 +40,7 @@ const terminal = new Set(['completed', 'failed', 'cancelled', 'budget_exhausted'
 async function send(runtime: Desktop, state: State, content: string, mention?: string) {
   state.stage++
   if (mention) {
-    await runtime.page.getByRole('button', { name: '提及群聊成员', exact: true }).click()
+    await openComposerMentions(runtime.page)
     await runtime.page.getByRole('option', { name: `@${mention}`, exact: true }).click()
   }
   const composer = runtime.page.getByRole('textbox', { name: '消息内容', exact: true })
