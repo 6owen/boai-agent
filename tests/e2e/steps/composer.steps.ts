@@ -57,7 +57,7 @@ Given('输入框具备当前连接的模型目录和独立员工', async ({ runt
 When('连续切换和刷新模型时保持菜单稳定', async ({ runtime, scenario }) => {
   const page = runtime.page, trigger = page.getByRole('button', { name: '选择模型', exact: true }), menu = page.getByRole('menu', { name: '选择模型', exact: true })
   await expect(trigger).toHaveText('')
-  await expect(trigger.locator('.i-carbon-chip')).toHaveCount(1)
+  await expect(trigger.locator('.i-carbon-model-alt')).toHaveCount(1)
   await trigger.click()
   const options = menu.getByRole('menuitemradio')
   await expect(options).toHaveText(['research-v1', 'research-v2'])

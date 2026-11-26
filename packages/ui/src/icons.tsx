@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 共享离线 Carbon Model Alt 图标。
  * [OUTPUT]: 共享通知中心图标。
  * [OUTPUT]: 设置语义图标：调色盘、键盘、电源、显示器、插件，继续使用离线Carbon与统一尺寸。
  * [OUTPUT]: 2026-10-27 语音录入/还原所需本地图标，沿原主题和公共图标入口。
@@ -52,6 +53,7 @@ const classes = {
   ChevronRight: 'i-carbon-chevron-right',
   CircleHelp: 'i-carbon-help',
   Cpu: 'i-carbon-chip',
+  ModelAlt: 'i-carbon-model-alt',
   Eye: 'i-carbon-view',
   EyeOff: 'i-carbon-view-off',
   FileText: 'i-carbon-document',
@@ -123,6 +125,7 @@ export const ChevronLeft = component('ChevronLeft')
 export const ChevronRight = component('ChevronRight')
 export const CircleHelp = component('CircleHelp')
 export const Cpu = component('Cpu')
+export const ModelAlt = component('ModelAlt')
 export const Eye = component('Eye')
 export const EyeOff = component('EyeOff')
 export const FileText = component('FileText')
