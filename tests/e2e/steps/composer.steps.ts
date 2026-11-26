@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 模型触发按钮仅显示图标，悬停提示和菜单选中项反映已保存模型。
  * [OUTPUT]: 固定真实会话/消息加载和可编辑状态后填草稿；原保存暂停、菜单高度/顺序/无冗余文案及管理跳转断言保持。
  * [INPUT]: 当前模型目录、隔离Electron真实IPC与本地技能/文件。
  * [OUTPUT]: 当前连接内保存/重启/失败、隐藏权限、斜线命令、资源精确身份与群点名真实UI验收；数据源搜索/绑定过滤/原子删除撤销/迟到目录隔离/发送与重启。
@@ -55,6 +56,8 @@ Given('输入框具备当前连接的模型目录和独立员工', async ({ runt
 })
 When('连续切换和刷新模型时保持菜单稳定', async ({ runtime, scenario }) => {
   const page = runtime.page, trigger = page.getByRole('button', { name: '选择模型', exact: true }), menu = page.getByRole('menu', { name: '选择模型', exact: true })
+  await expect(trigger).toHaveText('')
+  await expect(trigger.locator('.i-carbon-model-alt')).toHaveCount(1)
   await trigger.click()
   const options = menu.getByRole('menuitemradio')
   await expect(options).toHaveText(['research-v1', 'research-v2'])
@@ -79,14 +82,15 @@ When('连续切换和刷新模型时保持菜单稳定', async ({ runtime, scena
   expect(await menu.evaluate(element => element.getBoundingClientRect().height)).toBeCloseTo(height, 0)
   await runtime.app.evaluate(() => (globalThis as unknown as { releaseComposerSave: () => void }).releaseComposerSave())
   await expect(menu).toBeHidden()
-  await expect(trigger).toHaveText('research-v2')
+  await expect(trigger).toHaveAttribute('title', 'research-v2')
   const requests = scenario.catalogRequests
   await trigger.click()
   await expect(options).toHaveText(['research-v1', 'research-v2'])
+  await expect(menu.getByRole('menuitemradio', { name: 'research-v2', exact: true })).toBeChecked()
   expect(scenario.catalogRequests).toBe(requests)
   await menu.getByRole('menuitemradio', { name: 'research-v1', exact: true }).click()
   await expect(menu).toBeHidden()
-  await expect(trigger).toHaveText('research-v1')
+  await expect(trigger).toHaveAttribute('title', 'research-v1')
   await trigger.click()
   scenario.holdCatalog = true
   await menu.getByRole('menuitem', { name: '刷新模型', exact: true }).click()
@@ -116,10 +120,11 @@ When('切换当前连接内模型并检查窄窗口', async ({ runtime, scenario
   await expect(page.getByRole('menuitemradio', { name: 'other-model', exact: true })).toHaveCount(0)
   await expect(page.getByRole('combobox')).toHaveCount(0)
   await page.getByRole('menuitemradio', { name: 'research-v2', exact: true }).click()
-  await expect(model).toHaveText('research-v2')
+  await expect(model).toHaveAttribute('title', 'research-v2')
   await expect.poll(() => messageDraft(page.getByRole('textbox', { name: '消息内容' }))).toBe('未发送的草稿')
   await runtime.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(760, 640))
   await model.click()
+  await expect(page.getByRole('menuitemradio', { name: 'research-v2', exact: true })).toBeChecked()
   expect(await page.getByRole('menu', { name: '选择模型', exact: true }).evaluate(element => { const r = element.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight })).toBe(true)
   await page.keyboard.press('Escape'); await expect(model).toBeFocused()
   await page.getByRole('textbox', { name: '消息内容' }).fill('保持执行，检查锁定')
@@ -153,7 +158,8 @@ When('下一次模型保存失败', async ({ runtime }) => {
 })
 Then('模型显示仍与已保存配置一致且需核对配置', async ({ runtime }) => {
   const page = runtime.page
-  await expect(page.getByRole('button', { name: '选择模型', exact: true })).toHaveText('research-v1')
+  await expect(page.getByRole('button', { name: '选择模型', exact: true })).toHaveAttribute('title', 'research-v1')
+  await expect(page.getByRole('menuitemradio', { name: 'research-v1', exact: true })).toBeChecked()
   await expect(page.getByRole('menuitem', { name: '核对员工配置', exact: true })).toBeVisible()
   await expect(page.getByRole('menuitemradio', { name: 'research-v2', exact: true })).toBeDisabled()
   expect((await page.evaluate(() => window.boai.request('snapshot', undefined))).agents.find(agent => agent.id === 'researcher')?.modelId).toBe('research-v1')
