@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 记录行定位原消息，运行详情按钮独立核对检索、显示方式和本次执行隔离。
  * [OUTPUT]: 核心bobo可选为执行员工，单次新增日期/时间控件；原六种配置覆盖扩展为七种，本轮未运行。
  * [OUTPUT]: 对话创建转普通会话并预选管理标签，按原业务协议实际保存/编辑/重启零重放；本次未运行E2E。
  * [OUTPUT]: 手动新建/编辑保持Dialog；bobo对话创建进入会话页，原实际保存/重启零重放断言保持；本次不运行E2E。
@@ -344,7 +345,7 @@ Then('创建报错只显示Sonner且保留草稿供重试', async ({ runtime, sc
   expect(runtime.errors).toEqual([])
 })
 
-Then('执行记录保持主区并只展示选中运行的过程', async ({ runtime, schedule }) => {
+Then('执行记录定位原消息且详情只展示选中的运行', async ({ runtime, schedule }) => {
   const { seedAutomationProcesses } = await import('../support/automation-history')
   let page = runtime.page
   const root = (await page.evaluate(() => window.boai.request('snapshot', undefined))).dataPath
@@ -360,33 +361,35 @@ Then('执行记录保持主区并只展示选中运行的过程', async ({ runti
   await main.getByRole('button', { name: '搜索执行记录', exact: true }).click()
   await main.getByRole('textbox', { name: '搜索执行记录', exact: true }).fill('天气记录 1')
   await expect(rows).toHaveCount(1)
-  await rows.first().click()
-  const panel = page.locator('.detail-panel .automation-occurrence-panel:visible')
+  const details = (name: string) => main.locator('.automation-history-row').filter({ hasText: name })
+    .getByRole('button', { name: `查看运行详情 ${name}`, exact: true })
+  const dialog = page.getByRole('dialog', { name: '执行记录', exact: true })
+  const panel = dialog.locator('[data-occurrence-detail-id]')
+  await details('天气记录 1').click()
   await expect(panel).toContainText('南京天气结果 1')
   await expect(panel).not.toContainText('南京天气结果 2')
   await expect(panel).not.toContainText('南京天气结果 3')
   await expect(panel.locator('[data-execution-run-id]')).toHaveCount(1)
-  await expect(main.getByRole('heading', { name: '暂停的旧日报', exact: true })).toBeVisible()
-  await expect(main.getByRole('textbox', { name: '搜索执行记录', exact: true })).toHaveValue('天气记录 1')
   await panel.getByRole('button', { name: '显示原生记录', exact: true }).click()
   await expect(panel.locator('[data-execution-view=raw]')).toBeVisible()
   await panel.getByRole('button', { name: '显示过程视图', exact: true }).click()
   await expect(panel.locator('[data-execution-run-id]')).toContainText('南京天气结果 1')
+  await dialog.getByRole('button', { name: '关闭执行记录', exact: true }).click()
+  await expect(main.getByRole('textbox', { name: '搜索执行记录', exact: true })).toHaveValue('天气记录 1')
   await rows.first().click()
-  await expect(page.getByRole('tab', { name: '执行过程', exact: true })).toHaveCount(1)
-  await runtime.reviewNativeCheckpoint('任务执行列表检索与右侧本次过程')
-  await page.getByRole('button', { name: '会话', exact: true }).first().click()
-  await expect(panel).toHaveCount(0)
+  const trigger = page.locator(`[id="message-${schedule.fixture!.pausedId}-process-0-request"]`)
+  await expect(trigger).toHaveClass(/message-target/)
+  await expect(page.locator('.detail-panel:visible [data-occurrence-detail-id]')).toHaveCount(0)
+  await runtime.reviewNativeCheckpoint('执行记录定位原聊天消息')
+
   await page.getByRole('button', { name: '定时任务', exact: true }).click()
-  await expect(panel).toContainText('南京天气结果 1')
-  await page.getByRole('button', { name: '关闭详情', exact: true }).click()
-  await expect(panel).toHaveCount(0)
+  await expect(main.getByRole('heading', { name: '暂停的旧日报', exact: true })).toBeVisible()
   await main.getByRole('textbox', { name: '搜索执行记录', exact: true }).fill('天气记录')
   await expect(rows).toHaveCount(3)
-  await rows.filter({ hasText: '天气记录 2' }).click()
+  await details('天气记录 2').click()
   await expect(panel).toContainText('南京天气结果 2')
   await expect(panel).not.toContainText('南京天气结果 1')
-  await runtime.reviewNativeCheckpoint('切换另一条执行记录')
+  await runtime.reviewNativeCheckpoint('独立查看另一条执行记录的运行详情')
   expect(schedule.fixture!.calls()).toBe(0)
   expect(runtime.errors).toEqual([])
 })
