@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 真实 IPC/SQLite 核对核心及普通员工置顶、分组排序、兼容旧偏好及重启。
  * [OUTPUT]: 删除员工同时清理其定时话题，保留其他员工群历史。
  * [OUTPUT]: 自动化等待按现行无默认期限/调用上限核对，员工删除后原预算计数与触发身份保持。
  * [INPUT]: 真实 AppService/SQLite 与隔离通讯录数据。
@@ -87,6 +88,31 @@ async function sendAndFinish(api: ContactApi, conversationId: string, requestId:
   await new Promise(resolve => setTimeout(resolve, 20))
   return message
 }
+
+test('pins Bobo and ordinary employees in a separate persisted order', async () => {
+  const { api, change, close, start } = await setup()
+  const before = await api('getContactList', undefined)
+  expect(before.pinnedAgentIds ?? []).toEqual([])
+  const ordinary = await change({ kind: 'move', itemKind: 'agent', id: 'bobo', targetId: 'writer', placement: 'after' })
+  const first = await change({ kind: 'pin-agent', agentId: 'researcher', pinned: true })
+  const second = await change({ kind: 'pin-agent', agentId: 'bobo', pinned: true })
+  expect(second.pinnedAgentIds).toEqual(['bobo', 'researcher'])
+  expect(second.agentOrder).toEqual(ordinary.agentOrder)
+  expect(second.categories).toEqual(before.categories)
+  await expect(api('updateContactList', { expectedRevision: first.revision, action: { kind: 'pin-agent', agentId: 'bobo', pinned: false } })).rejects.toThrow('其他窗口')
+  await expect(change({ kind: 'pin-agent', agentId: 'missing', pinned: true })).rejects.toThrow('员工不存在')
+  await expect(change({ kind: 'move', itemKind: 'agent', id: 'bobo', targetId: 'writer', placement: 'before' })).rejects.toThrow('同一通讯录分组')
+  const moved = await change({ kind: 'move', itemKind: 'agent', id: 'researcher', targetId: 'bobo', placement: 'before' })
+  expect(moved.pinnedAgentIds).toEqual(['researcher', 'bobo'])
+  const ordinaryMoved = await change({ kind: 'move', itemKind: 'agent', id: 'reviewer', targetId: 'writer', placement: 'before' })
+  expect(ordinaryMoved.pinnedAgentIds).toEqual(moved.pinnedAgentIds)
+  await close()
+  const restarted = await start()
+  expect(await restarted.api('getContactList', undefined)).toEqual(ordinaryMoved)
+  const unpinned = await restarted.change({ kind: 'pin-agent', agentId: 'bobo', pinned: false })
+  expect(unpinned.pinnedAgentIds).toEqual(['researcher'])
+  expect(unpinned.agentOrder).toEqual(ordinaryMoved.agentOrder)
+})
 
 test('employee classification survives restart without changing employee configuration; deleting a category only ungroups', async () => {
   const { api, change, close, start } = await setup()
@@ -211,7 +237,7 @@ test('batch tag changes validate every employee and tag before committing and re
   }
   await expect(change({ kind: 'set-agent-tags', agentIds: ['researcher', 'writer'], tagIds: [tagId, 'missing'], mode: 'replace' })).rejects.toThrow('标签不存在')
   await expect(change({ kind: 'set-agent-tags', agentIds: [], tagIds: [tagId], mode: 'add' })).rejects.toThrow()
-  await expect(change({ kind: 'move', itemKind: 'agent', id: 'bobo', targetId: 'researcher', placement: 'before' })).rejects.toThrow()
+  await expect(change({ kind: 'move', itemKind: 'agent', id: 'missing', targetId: 'researcher', placement: 'before' })).rejects.toThrow('同一类型')
   expect(await api('getContactList', undefined)).toEqual(before)
   const writes = await Promise.allSettled(['researcher', 'writer'].map(agentId => api('updateContactList', { expectedRevision: before.revision, action: { kind: 'set-agent-tags', agentIds: [agentId], tagIds: [tagId], mode: 'add' } })))
   expect(writes.filter(item => item.status === 'fulfilled')).toHaveLength(1)

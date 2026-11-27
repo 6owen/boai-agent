@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 长话题标题可换至两行，弹层适应窗口宽度并仅纵向滚动。
  * [OUTPUT]: 标题栏话题 Popover 只显示当前员工可见的话题，沿正常会话导航。
  * [OUTPUT]: 首句占位标题在生成期间复用 shadcn shimmer。
  * [OUTPUT]: 2026-11-09任务移入标题DropdownMenu，沿原关闭动画完成后导航，不再显示独立任务按钮。
@@ -66,14 +67,14 @@ export function ConversationTopics({ conversation, conversations, messageTimes, 
   if (!topics.length) return null
   return <Popover open={open} onOpenChange={setOpen}>
     <PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label="话题列表" title="话题列表" />}><List /></PopoverTrigger>
-    <PopoverContent align="end" className="max-h-[min(22rem,var(--available-height))] overflow-auto">
+    <PopoverContent align="end" className="w-[min(24rem,calc(100vw-1.5rem))] max-h-[min(22rem,var(--available-height))] overflow-x-hidden overflow-y-auto">
       <PopoverTitle>话题</PopoverTitle>
-      <div className="grid min-w-0 gap-0.5">
-        {topics.map(topic => <Button key={topic.id} variant="ghost" size="content" className="w-full min-w-0 px-2 py-1.5"
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-0.5">
+        {topics.map(topic => <Button key={topic.id} variant="ghost" size="content" className="w-full min-w-0 px-2 py-1.5 aria-[current=page]:bg-muted"
           aria-current={topic.id === conversation.id ? 'page' : undefined} title={topic.title} onClick={() => {
             setOpen(false)
             if (topic.id !== conversation.id) onSelect(topic.id)
-          }}><span className={cn('w-full truncate text-left', topic.titleGenerating && 'shimmer')}>{topic.title}</span></Button>)}
+          }}><span className={cn('min-w-0 flex-1 line-clamp-2 whitespace-normal [overflow-wrap:anywhere] text-left', topic.titleGenerating && 'shimmer')}>{topic.title}</span></Button>)}
       </div>
     </PopoverContent>
   </Popover>
