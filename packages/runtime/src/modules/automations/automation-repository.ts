@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 定时计划的不同手动请求分别受理，遇到原执行槽占用进入持久队列。
+ * [OUTPUT]: 员工定时触发和新话题消息同事务提交，只留会话记录；旧任务和监控保留原运行账本。
  * [OUTPUT]: 同任务等待补充/工作时新消息进入持久队列；显式立即发送才中断原等待并优先处理。
  * [OUTPUT]: 单次日程消费与原Occurrence/投递同事务，保留计划和未来回调围栏；创建指纹绑定原请求。
  * [OUTPUT]: 主聊天计划仅投影本次独立任务上下文，原计划授权与队列实际退出屏障保持。
@@ -277,7 +277,7 @@ export class AutomationRepository {
     })
   }
 
-  claim(trigger: AutomationTrigger, validate: (definition: AutomationDefinition) => string | { reason: string; attention: 'authorization' } | undefined | Promise<string | { reason: string; attention: 'authorization' } | undefined>, prepareConversation?: (definition: AutomationDefinition, occurrence: AutomationOccurrence) => Promise<StoredRecord[]>, busy: (conversationId: string, employeeIds?: string[]) => boolean = () => false, executionDefinition?: (definition: AutomationDefinition) => Promise<AutomationDefinition>) {
+  claim(trigger: AutomationTrigger, validate: (definition: AutomationDefinition) => string | { reason: string; attention: 'authorization' } | undefined | Promise<string | { reason: string; attention: 'authorization' } | undefined>, prepareConversation?: (definition: AutomationDefinition, occurrence: AutomationOccurrence) => Promise<StoredRecord[]>, busy: (conversationId: string, employeeIds?: string[]) => boolean = () => false, executionDefinition?: (definition: AutomationDefinition) => Promise<AutomationDefinition>, directEmployeeSessions = false) {
     if (!trigger.key || trigger.key.length > 300) throw new Error('无效触发身份')
     if (!Number.isSafeInteger(trigger.scheduledAt) || !Number.isFinite(new Date(trigger.scheduledAt).getTime())) throw new Error('无法验证调度触发时间')
     return this.store.transaction(async tx => {
@@ -308,27 +308,58 @@ export class AutomationRepository {
       if (!reason) { const block = await validate(d); reason = typeof block === 'string' ? block : block?.reason; if (block && typeof block !== 'string') o.attentionReason = block.attention }
       const execution = !reason && executionDefinition ? await executionDefinition(d) : d
       if (execution !== d) o.conversationId = execution.conversationPolicy === 'new-conversation' ? randomUUID() : execution.conversationId!
-      const priorOccurrences = await tx.list<AutomationOccurrence>('automationOccurrences')
-      const running = priorOccurrences.filter(item => pendingOccurrence.has(item.status))
-      if (!reason && (scheduled || d.purpose === 'employee-task') && running.some(item => item.automationId === d.id)) reason = '并发或等待上次处理，本次已跳过'
-      o.queueOrder = 1 + Math.max(0, ...priorOccurrences.map(item => item.queueOrder ?? 0))
-      if (!reason && (busy(o.conversationId, o.plan?.employeeIds) || running.some(item => (activeOccurrence.has(item.status) || item.status === 'queued' || d.employeeTask?.id === item.taskId && ['waiting_user', 'waiting_work'].includes(item.status)) && sharesTaskExecutor(item, o)) || running.filter(item => activeOccurrence.has(item.status)).length >= MAX_ACTIVE_AUTOMATIONS)) o.status = 'queued'
+      const directSession = directEmployeeSessions && !d.purpose && d.owner?.kind === 'employee' &&
+        d.taskKind !== 'monitor' && execution.conversationPolicy === 'new-conversation'
+      const saveTrigger = async (transaction: RecordTransaction, occurrence: AutomationOccurrence) => {
+        await transaction.put(row('automationOccurrences', occurrence))
+        await this.alias(transaction, id, id)
+        if (scheduled) await this.alias(transaction, nativeAlias(trigger.key), id)
+        if (scheduled && d.frequency === 'once' && !stale && d.enabled && !d.deletedAt && !d.onceConsumedAt && matchesSchedule(d, trigger.scheduledAt)) {
+          await transaction.put(row('automations', { ...d, onceConsumedAt: now, onceOccurrenceId: id, sync: 'pending' }))
+        }
+      }
+      if (!directSession) {
+        const priorOccurrences = await tx.list<AutomationOccurrence>('automationOccurrences')
+        const running = priorOccurrences.filter(item => pendingOccurrence.has(item.status))
+        if (!reason && (scheduled || d.purpose === 'employee-task') && running.some(item => item.automationId === d.id)) reason = '并发或等待上次处理，本次已跳过'
+        o.queueOrder = 1 + Math.max(0, ...priorOccurrences.map(item => item.queueOrder ?? 0))
+        if (!reason && (busy(o.conversationId, o.plan?.employeeIds) || running.some(item => (activeOccurrence.has(item.status) || item.status === 'queued' || d.employeeTask?.id === item.taskId && ['waiting_user', 'waiting_work'].includes(item.status)) && sharesTaskExecutor(item, o)) || running.filter(item => activeOccurrence.has(item.status)).length >= MAX_ACTIVE_AUTOMATIONS)) o.status = 'queued'
+      }
       if (reason) { o.status = 'skipped'; o.deliveryStatus = 'unknown'; o.reason = reason; o.finishedAt = now }
       if (!reason && execution.conversationPolicy === 'new-conversation') {
         let records: StoredRecord[] = []
+        let conversation: Conversation | undefined
         try {
           if (!prepareConversation) throw new Error('独立任务聊天初始化不可用')
           records = await prepareConversation(execution, o)
-          const conversation = records.find(record => record.collection === 'conversations' && record.id === o.conversationId)
+          conversation = records.find(record => record.collection === 'conversations' && record.id === o.conversationId)?.value as Conversation | undefined
           if (!conversation) throw new Error('初始化未返回对应任务聊天')
         } catch (error) { reason = `任务聊天初始化失败：${String(error)}`; o.status = 'failed'; o.deliveryStatus = 'unknown'; o.reason = reason; o.finishedAt = now }
-        // Database faults still roll back the whole admission, never commit half an initialized chat.
+        if (!reason && directSession && conversation) {
+          const commit = (message: Message | undefined, messages: StoredRecord[], failure?: string) => this.store.transaction(async transaction => {
+            if (await this.existing(transaction, aliases)) throw new Error('定时触发已经提交')
+            const current = await transaction.get<AutomationDefinition>('automations', d.id)
+            if (!current || current.deletedAt || current.revision !== d.revision) throw new Error('定时计划已变更，请重新发起')
+            if (message && (message.conversationId !== o.conversationId || message.origin || !message.turnId)) throw new Error('定时消息与会话不匹配')
+            // The legacy history schema treats a successful handoff as terminal at submission.
+            const receipt: AutomationOccurrence = {
+              ...o, conversationId: message ? o.conversationId : '',
+              status: message ? 'completed' : 'failed', deliveryStatus: 'unknown', finishedAt: timestamp(),
+              ...(message ? { messageId: message.id } : { reason: failure }),
+            }
+            for (const value of [...records.filter(record => record.collection !== 'conversations'), ...messages]) await transaction.put(value)
+            await saveTrigger(transaction, receipt)
+            if (!message) await queueAutomationNotice(transaction, d, receipt)
+            return receipt
+          })
+          return { created: true, occurrence: o, session: { definition: execution, conversation, commit } }
+        }
+        // Legacy task preparation remains transactional with admission.
         if (!reason) for (const record of records) await tx.put(record)
       }
+      if (directSession) o.conversationId = ''
       if (!reason) await linkEmployeeTask(tx, d, o)
-      await syncEmployeeTask(tx, o); await tx.put(row('automationOccurrences', o))
-      await this.alias(tx, id, o.id)
-      if (scheduled) await this.alias(tx, nativeAlias(trigger.key), o.id)
+      await syncEmployeeTask(tx, o); await saveTrigger(tx, o)
       let dispatch: AutomationDispatch | undefined
       if (!reason) {
         dispatch = { schemaVersion: 1, id, requestId: `automation-${id}`, status: 'pending', definition: structuredClone(execution), ...(execution !== d ? { sourceAuthorizedFingerprint: d.authorizedFingerprint } : {}), origin: { kind: 'automation', automationId: d.id, occurrenceId: id, name: d.name, authorizedFingerprint: execution.authorizedFingerprint } }
@@ -341,10 +372,6 @@ export class AutomationRepository {
         await tx.put(row('automationDispatches', dispatch))
       }
       await queueAutomationNotice(tx, d, o)
-      // Consumption must survive queueing, dispatch failures and history cleanup. It never gates this occurrence's execution.
-      if (scheduled && d.frequency === 'once' && !stale && d.enabled && !d.deletedAt && !d.onceConsumedAt && matchesSchedule(d, trigger.scheduledAt)) {
-        await tx.put(row('automations', { ...d, onceConsumedAt: now, onceOccurrenceId: o.id, sync: 'pending' }))
-      }
       return { created: true, occurrence: o, dispatch }
     })
   }

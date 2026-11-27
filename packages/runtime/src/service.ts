@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工定时触发提交普通消息，与话题和历史记录原子写入。
  * [OUTPUT]: bobo 发送首条消息或打开 CLI 主会话只考虑未删除主聊，保留旧清理回执。
  * [OUTPUT]: 手动定时任务进入队列后立即公开已提交的员工话题，执行记录可原位定位。
  * [OUTPUT]: 普通回复预览仅驻留在活跃运行内存中，公开消息仍沿原发布事务。
@@ -314,7 +315,7 @@ import { TeamRepository, teamVersionSchema } from './modules/teams/team-reposito
 import { ProfileRepository } from './modules/profile/profile-repository'
 import { readMonitorArtifact } from './modules/automations/monitor-source'
 import { reactionEmojis, type ReactionEmoji } from '@boai/shared/domain/message-reactions'
-import { AutomationNotifications } from './modules/automations/automation-notifications'
+import { AutomationNotifications, queueAutomationNotice } from './modules/automations/automation-notifications'
 import type { AutomationNoticeReceipt } from '@boai/shared/domain/automations'
 import type { StoredTraceSpan } from '@boai/shared/domain/traces'
 import { CONVERSATION_TITLE_MAX_LENGTH, conversationListUpdates, isChannelConversation, isEmployeeMainChat, type ConversationListChange } from '@boai/shared/domain/conversation-list'
@@ -950,7 +951,10 @@ export class AppService {
       contextOnly: (turn, event, delivery) => this.contextOnlyPeerDelivery(turn, event, delivery),
       decide: (turn, event, delivery, signal, progress) => this.executeDecision(turn, event, delivery, signal, progress),
       speak: (turn, event, decision, signal, publish, progress) => this.executeResponse(turn, event, decision, signal, publish, progress),
-      settled: (turn, participants, signal) => this.updateMemories(turn, participants, signal),
+      settled: async (turn, participants, signal) => {
+        await this.notifyScheduledReply(turn).catch(error => this.emit({ type: 'runtime-error', error: this.errorMessage(error) }))
+        await this.updateMemories(turn, participants, signal)
+      },
       queueBlocked: conversationId => [...this.activeAdapters].some(id => {
         const run = this.runs.get(id)
         // Cancelled memory reads cannot hold up chat; invokeModel retains their capacity until actual exit.
@@ -991,6 +995,21 @@ export class AppService {
           if (this.closing || this.backingUp || await this.automationFingerprint(definition) !== definition.authorizedFingerprint) fail('监控当前授权不可用')
           await this.store.transaction(tx => this.materials.validateRefsInTransaction(tx, artifact.materialSources ?? [], undefined, scope.conversation.id))
         }))
+      },
+      dispatchSession: async (definition, occurrence, conversation, commit) => {
+        this.conversations.set(conversation.id, conversation)
+        let committed = false
+        try {
+          if (await this.automationFingerprint(conversation.id) !== definition.authorizedFingerprint) fail('定时任务执行员工配置已变更')
+          return await this.sendMessage(sendSchema.parse({
+            conversationId: conversation.id, content: definition.prompt, mentionIds: [], requestId: 'automation-' + occurrence.id,
+          }), undefined, async (message, records) => {
+            await commit(message, records)
+            committed = true
+          })
+        } finally {
+          if (!committed) this.conversations.delete(conversation.id)
+        }
       },
       dispatch: (definition, occurrence, origin, commit) => this.serialize(async () => {
         if (this.closing || this.backingUp) fail('服务正在退出或备份')
@@ -6047,6 +6066,21 @@ export class AppService {
       }
     }
   }
+  private async notifyScheduledReply(turn: DiscussionTurn) {
+    if (turn.origin || turn.status !== 'completed') return
+    const room = this.conversations.get(turn.conversationId)
+    if (!room || !isScheduledEmployeeTopic(room)) return
+    const reply = this.conversationMessages(room.id).filter(message =>
+      message.turnId === turn.id && message.senderType === 'agent' && message.status === 'completed').at(-1)
+    if (!reply) return
+    const queued = await this.store.transaction(async tx => {
+      const receipt = await tx.get<AutomationOccurrence>('automationOccurrences', room.occurrenceId!)
+      if (!receipt || receipt.deletedAt || receipt.messageId !== turn.triggerMessageId) return
+      return queueAutomationNotice(tx, await tx.get<AutomationDefinition>('automations', receipt.automationId), receipt, reply.id)
+    })
+    if (queued) this.emit({ type: 'automation:notice' })
+  }
+
   private async updateMemories(turn: DiscussionTurn, participants: string[], signal: AbortSignal) {
     if (this.closing || this.options.engine.memoryOwner === 'mastra') return
     const workContinuation = this.messages.get(turn.triggerMessageId)?.inboxReply?.workId

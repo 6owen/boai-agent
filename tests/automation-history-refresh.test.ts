@@ -27,7 +27,7 @@ let host: HTMLDivElement, root: Root
 let pending: Array<(page: AutomationHistoryPage) => void>
 let listeners: Set<Parameters<DesktopApi['subscribe']>[0]>
 let api: DesktopApi
-const record = { id: 'occurrence', name: '每日天气预报', startedAt: '2026-10-17T05:29:06Z', source: 'manual', status: 'running', deliveryStatus: 'pending', conversationId: 'task-chat' } as AutomationHistoryPage['occurrences'][number]
+const record = { id: 'occurrence', name: '每日天气预报', startedAt: '2026-10-17T05:29:06Z', scheduledFor: '2026-10-17T05:28:00Z', source: 'manual', status: 'running', deliveryStatus: 'pending', conversationId: 'task-chat' } as AutomationHistoryPage['occurrences'][number]
 
 const historySnapshot = {
   agents: [{ id: 'researcher', name: '研究员' }, { id: 'prior-employee', name: '原执行员工' }],
@@ -74,8 +74,8 @@ test('running updates refresh existing rows without inserting a loading row into
     await resolve({ occurrences: [{ ...record, status: count === 2 ? 'completed' : 'running' }] })
     expect(host.querySelector('[data-occurrence-id]')).toBe(row)
   }
-  expect(row!.textContent).toBe(`研究员${new Date(record.startedAt).toLocaleString('zh-CN', { hour12: false })}`)
-  expect(row!.querySelector('time')?.dateTime).toBe(record.startedAt)
+  expect(row!.textContent).toBe(`研究员${new Date(record.scheduledFor).toLocaleString('zh-CN', { hour12: false })}`)
+  expect(row!.querySelector('time')?.dateTime).toBe(record.scheduledFor)
   await render(false)
   await change()
   expect(pending).toHaveLength(0)
@@ -109,10 +109,10 @@ test('shows just the employee and time and opens the original conversation', asy
       plan: { owner: { kind: 'employee', employeeId: 'prior-employee' }, employeeIds: ['prior-employee'] } },
     { ...record, id: 'skipped', conversationId: 'task-chat', status: 'skipped', reason: '任务已暂停' },
   ] })
-  const date = new Date(record.startedAt).toLocaleString('zh-CN', { hour12: false })
+  const date = new Date(record.scheduledFor).toLocaleString('zh-CN', { hour12: false })
   const linked = host.querySelector<HTMLButtonElement>(`button[data-occurrence-id="${record.id}"]`)!
   expect(linked.textContent).toBe(`原执行员工${date}`)
-  expect(linked.querySelector('time')?.dateTime).toBe(record.startedAt)
+  expect(linked.querySelector('time')?.dateTime).toBe(record.scheduledFor)
   expect(host.querySelector('[data-occurrence-id="skipped"]')?.textContent).toBe(`研究员${date}`)
   expect(host.querySelector('button[data-occurrence-id="skipped"]')).toBeNull()
   expect(host.querySelector('.automation-record-detail')).toBeNull()
@@ -181,8 +181,8 @@ test('clear all freezes every page before deletion, skips ongoing records and do
   await act(async () => { const confirm = button('确认清空'); confirm.click(); confirm.click() })
   expect(request.mock.calls.filter(([method]) => method === 'deleteAutomationOccurrence')).toHaveLength(0)
   expect(request.mock.calls.filter(([method, input]) => method === 'listAutomationHistory' && (input as { limit?: number }).limit === 100)).toEqual([
-    ['listAutomationHistory', { automationId: 'plan', status: 'all', limit: 100, before: undefined }],
-    ['listAutomationHistory', { automationId: 'plan', status: 'all', limit: 100, before: cursor }],
+    ['listAutomationHistory', { automationId: 'plan', limit: 100, before: undefined }],
+    ['listAutomationHistory', { automationId: 'plan', limit: 100, before: cursor }],
   ])
   await act(async () => finishSecondPage({ occurrences: [older] }))
   expect(request.mock.calls.filter(([method]) => method === 'deleteAutomationOccurrence')).toEqual([
@@ -238,15 +238,15 @@ test('hiding the task during a clear stops unsent deletion requests', async () =
   expect(vi.mocked(api.request).mock.calls.filter(([method]) => method === 'deleteAutomationOccurrence')).toHaveLength(0)
 })
 
-test('the history dialog keeps collapsed groups on the left and opens the selected run on the right', async () => {
-  const done = { ...record, id: 'done', status: 'completed' as const, runIds: [], conversationId: 'task-chat' }
+test('the split history dialog keeps its list collapsed and opens the linked session', async () => {
+  const done = { ...record, id: 'done', status: 'completed' as const, runIds: [], conversationId: 'task-chat', messageId: 'trigger' }
   const failed = { ...done, id: 'failed', status: 'failed' as const }
   const request = vi.mocked(api.request)
   const list = request.getMockImplementation()!
   request.mockImplementation(async (method, input) => method === 'getAutomationOccurrence' ? done as never : list(method, input))
   const navigateMessage = vi.fn()
   await act(async () => root.render(createElement(AutomationHistoryDialog, {
-    api, active: true, snapshot: historySnapshot as Snapshot, onClose() {}, onNavigateMessage: navigateMessage,
+    api, active: true, snapshot: historySnapshot as Snapshot, onClose() {}, onConversation: navigateMessage,
   })))
   await resolve({ occurrences: [record, done, failed] })
   const dialog = document.querySelector('[role="dialog"][aria-label="执行记录"]')!
@@ -263,24 +263,23 @@ test('the history dialog keeps collapsed groups on the left and opens the select
   expect(request.mock.calls.every(([method]) => method === 'listAutomationHistory')).toBe(true)
 
   const headings = [...sidebar.querySelectorAll<HTMLButtonElement>('.contact-manager-filter-heading')]
-  expect(headings.map(item => item.textContent)).toEqual(['进行中1', '已完成1', '需处理1'])
+  expect(headings.map(item => item.textContent)).toEqual(['全部记录3'])
   expect(headings.every(item => item.getAttribute('aria-expanded') === 'false')).toBe(true)
-  await act(async () => headings[1].click())
+  await act(async () => headings[0].click())
   const row = sidebar.querySelector<HTMLButtonElement>('button[data-occurrence-id=done]')!
   expect(row.querySelector('.skill-list-icon')).toBeNull()
   expect(row.querySelector('.conversation-title')?.textContent).toBe('研究员')
-  expect(row.querySelector('.conversation-preview')?.textContent).toBe(new Date(record.startedAt).toLocaleString('zh-CN', { hour12: false }))
-  expect(row.querySelector('time')?.getAttribute('datetime')).toBe(record.startedAt)
-  await act(async () => headings[2].click())
+  expect(row.querySelector('.conversation-preview')?.textContent).toBe(new Date(record.scheduledFor).toLocaleString('zh-CN', { hour12: false }))
+  expect(row.querySelector('time')?.getAttribute('datetime')).toBe(record.scheduledFor)
   expect(sidebar.querySelector('button[data-occurrence-id=failed]')).not.toBeNull()
-  await act(async () => headings[2].click())
-  expect(headings[2].getAttribute('aria-expanded')).toBe('false')
 
   await act(async () => row.click())
   expect(row.getAttribute('aria-pressed')).toBe('true')
   expect(request).toHaveBeenCalledWith('getAutomationOccurrence', { id: done.id })
-  expect(details.querySelector('[data-occurrence-detail-id="done"]')?.textContent).toContain(done.name)
-  expect(navigateMessage).not.toHaveBeenCalled()
+  expect(details.querySelector('[data-occurrence-detail-id="done"]')?.textContent).toContain('研究员')
+  expect(details.textContent).not.toMatch(/尚待交付|运行结果|停止本次执行/)
+  await act(async () => [...details.querySelectorAll('button')].find(button => button.textContent === '打开会话')!.click())
+  expect(navigateMessage).toHaveBeenCalledWith('task-chat', 'trigger', expect.any(Function))
   await act(async () => {
     for (const listener of listeners) listener({ type: 'automation:history-deleted', occurrenceId: done.id })
   })
@@ -300,7 +299,7 @@ test('Dialog search remains server-backed and clear freezes all history pages in
     input.dispatchEvent(new Event('input', { bubbles: true }))
   })
   const request = vi.mocked(api.request)
-  expect(request).toHaveBeenLastCalledWith('listAutomationHistory', expect.objectContaining({ search: '天气', status: 'all', limit: 30 }))
+  expect(request).toHaveBeenLastCalledWith('listAutomationHistory', expect.objectContaining({ search: '天气', limit: 30 }))
   await resolve({ occurrences: [first] })
   const clear = () => host.querySelector<HTMLButtonElement>('[aria-label="清空记录"]')!.click()
   await act(async () => clear())
@@ -320,8 +319,8 @@ test('Dialog search remains server-backed and clear freezes all history pages in
   await act(async () => button('确认清空').click())
   expect(request.mock.calls.filter(([method]) => method === 'deleteAutomationOccurrence')).toHaveLength(0)
   expect(request.mock.calls.filter(([method, query]) => method === 'listAutomationHistory' && (query as { limit?: number }).limit === 100)).toEqual([
-    ['listAutomationHistory', { status: 'all', limit: 100, before: undefined }],
-    ['listAutomationHistory', { status: 'all', limit: 100, before: cursor }],
+    ['listAutomationHistory', { automationId: undefined, limit: 100, before: undefined }],
+    ['listAutomationHistory', { automationId: undefined, limit: 100, before: cursor }],
   ])
   await act(async () => finishSecondPage({ occurrences: [older] }))
   expect(request.mock.calls.filter(([method]) => method === 'deleteAutomationOccurrence')).toEqual([

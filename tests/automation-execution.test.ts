@@ -427,7 +427,8 @@ it('stops only this occurrence, stays cancelling until the adapter exits, and re
   expect(humanWork.status).toBe('running')
   expect(humanWork.origin).toBeUndefined()
   const overlap = await f.service.handle('runAutomation', { id: f.plan.id, requestId: 'while-adapter-lives' }) as AutomationOccurrence
-  expect(overlap.status).toBe('skipped')
+  expect(overlap.status).toBe('queued')
+  await f.service.handle('stopAutomation', { id: overlap.id })
   child.release()
   await until(async () => (await f.view()).occurrences.find(item => item.id === o.id)?.status === 'cancelled')
   expect(lateArtifactRejected).toBe(true)

@@ -177,7 +177,7 @@ test('toggles the saved plan in the toolbar and runs from the primary button', a
   } as DesktopApi
   await act(async () => root.render(h(SchedulePage, {
     api, snapshot, active: true, sidebarShown: true, divider: null, location: { kind: 'definition', id: plan.id },
-    onLocation() {}, onCreateConversation() {}, onConversation() {}, onNavigateMessage() {},
+    onLocation() {}, onCreateConversation() {}, onConversation() {},
   })))
   const toolbar = host.querySelector('[aria-label="定时任务操作"]')!
   for (const name of ['编辑', '删除']) {
@@ -262,7 +262,7 @@ test('conversation creation delegates to the ordinary chat without creating a di
   const openConversation = vi.fn()
   function Page() {
     const [location, setLocation] = useState<ScheduleLocation>({ kind: 'overview' })
-    return h(SchedulePage, { api, snapshot, active: true, sidebarShown: true, divider: null, location, onLocation: setLocation, onCreateConversation: openConversation, onConversation() {}, onNavigateMessage() {} })
+    return h(SchedulePage, { api, snapshot, active: true, sidebarShown: true, divider: null, location, onLocation: setLocation, onCreateConversation: openConversation, onConversation() {} })
   }
   await act(async () => root.render(h(Page)))
   await act(async () => button('新建定时任务').click())

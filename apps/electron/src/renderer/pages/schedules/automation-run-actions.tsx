@@ -22,9 +22,10 @@ export function AutomationRunActions({ api, automationId, active, busy = false }
     setSubmitting(true)
     requestId.current ??= crypto.randomUUID()
     try {
-      await api.request('runAutomation', { id: automationId, requestId: requestId.current })
+      const receipt = await api.request('runAutomation', { id: automationId, requestId: requestId.current })
       requestId.current = undefined
       setUnknown(false)
+      if (receipt.status === 'skipped' || receipt.status === 'failed') showErrorToast(errorText(receipt.reason ?? '定时指令未能发送'))
     } catch (error) {
       setUnknown(true)
       showErrorToast(errorText(error))

@@ -724,11 +724,12 @@ it('uses retained employee knowledge across automation conversations and restart
     const accepted = await current.handle('runAutomation', { id: plan.id, requestId }) as AutomationOccurrence
     await vi.waitFor(async () => {
       if (failure) throw failure
-      expect((await current.handle('getAutomationOccurrence', { id: accepted.id }) as AutomationOccurrence).status).toBe('completed')
+      expect((await current.handle('getConversation', { id: accepted.conversationId }) as ConversationDetail).turns?.[0]?.status).toBe('completed')
     }, { timeout: 10000 })
     const view = await current.handle('getConversation', { id: accepted.conversationId }) as ConversationDetail
     expect(view.workItems).toEqual([])
-    expect(view.runs.every(run => run.origin?.occurrenceId === accepted.id && run.status === 'completed')).toBe(true)
+    expect(view.runs.length).toBeGreaterThan(0)
+    expect(view.runs.every(run => !run.origin && run.status === 'completed')).toBe(true)
     expect((await current.handle('runAutomation', { id: plan.id, requestId }) as AutomationOccurrence).id).toBe(accepted.id)
     return { accepted, view }
   }

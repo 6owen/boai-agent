@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 普通定时话题的回复可直接附入提醒，触发日志不随会话更新。
  * [INPUT]: 自动化当前结果/通知偏好、ProductStore 事务与主进程提交回执。
  * [OUTPUT]: 监控按重要性/冷却与显式每次结果偏好提醒；未交付/部分结果与页面共用待处理语义；与结果同事务的通知意图、语义去重、原子领取及 submitted/failed/unknown；中断不盲目重发。
  * [POS]: 自动化通知账本；只记录提醒，不改变业务交付或执行预算。
@@ -28,12 +29,13 @@ export function automationNoticeIdentity(o: AutomationOccurrence) {
   return createHash('sha256').update(JSON.stringify(identity)).digest('hex')
 }
 /** Must run inside the same write transaction as the occurrence state. */
-export async function queueAutomationNotice(tx: RecordTransaction, d: AutomationDefinition | undefined, o: AutomationOccurrence) {
+export async function queueAutomationNotice(tx: RecordTransaction, d: AutomationDefinition | undefined, o: AutomationOccurrence, messageId = o.resultMessageIds.at(-1)) {
   if (!d || !wanted(d, o) || o.notificationDelivered) return
   const id = automationNoticeIdentity(o)
   if (await tx.get('automationNotices', id)) return
-  await tx.put(row({ id, automationId: o.automationId, occurrenceId: o.id, conversationId: o.conversationId || undefined, messageId: o.resultMessageIds.at(-1),
+  await tx.put(row({ id, automationId: o.automationId, occurrenceId: o.id, conversationId: o.conversationId || undefined, messageId,
     kind: noticeKind(o)!, occurrenceStatus: o.status, deliveryStatus: o.deliveryStatus, status: 'pending', createdAt: new Date().toISOString() }))
+  return true
 }
 export async function recoverAutomationNotices(tx: RecordTransaction, restored: boolean) {
   for (const notice of await tx.list<AutomationNotice>('automationNotices')) {

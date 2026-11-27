@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 同计划连续手动触发分别创建可导航的员工话题，忙时排队再执行。
+ * [OUTPUT]: 手动和定点触发直接提交到独立话题，历史删改与聊天运行独立。
  * [OUTPUT]: 2026-11-27 日志删除保留会话、执行和文件；UI或Session删除会话时关联日志同步消失。
  * [OUTPUT]: 2026-11-25 定时运行直接关联话题；定位、流式、旧记录迁移、独立上下文及原删除合同回归。
  * [OUTPUT]: 定时执行删除在旧独占会话与共享会话两条路径均不压缩整库，原文件/回执/恢复保护保持。
@@ -36,6 +36,7 @@ import type { AgentEngine, EngineContext } from '../packages/runtime/src/contrac
 import type { AutomationDefinition, AutomationHistoryPage, AutomationInput, AutomationOccurrence, AutomationsView, Connection, Conversation, ConversationDetail, Snapshot } from '../packages/shared/src/domain'
 import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
 import { AppService } from '../packages/runtime/src/service'
+import type { AutomationService } from '../packages/runtime/src/modules/automations/automation-service'
 import { automationCron, matchesSchedule, nextTimes } from '../packages/runtime/src/modules/automations/schedule-policy'
 import { automationNeedsAttention } from '../packages/shared/src/domain/automations'
 import type { AppEvent } from '../packages/shared/src/ipc'
@@ -65,6 +66,13 @@ async function setup({ allowCommands = false, engine: customEngine, browserHost 
   const view = () => service.handle('listAutomations', undefined) as Promise<AutomationsView>
   const detail = (id: string) => service.handle('getConversation', { id }) as Promise<ConversationDetail>
   return { root, service, make, input, view, detail, contexts, events }
+}
+
+async function waitForTopic(f: Awaited<ReturnType<typeof setup>>, occurrence: AutomationOccurrence) {
+  await until(async () => {
+    const detail = await f.detail(occurrence.conversationId)
+    return detail.turns?.length === 1 && detail.turns[0].status === 'completed'
+  })
 }
 
 async function stagedDownload(f: Awaited<ReturnType<typeof setup>>, conversationId: string, runId: string) {
@@ -107,11 +115,11 @@ it('retrieves public web facts in an automation with the executing employee bind
     await f.service.handle('saveAgent', { ...agent, expectedConfigVersion: configVersion, expectedDirectoryRevision: directoryRevision, sourceIds: [source.id] })
     const plan = await f.service.handle('saveAutomation', { ...f.input, prompt: '通过本人搜索源查证公开资料', notify: false }) as AutomationDefinition
     const occurrence = await f.service.handle('runAutomation', { id: plan.id, requestId: 'search-once' }) as AutomationOccurrence
-    await vi.waitFor(async () => { if (error) throw error; expect((await f.view()).occurrences.find(row => row.id === occurrence.id)?.status).toBe('completed') }, { timeout: 10000 })
+    await vi.waitFor(async () => { if (error) throw error; expect((await f.detail(occurrence.conversationId)).turns?.[0]?.status).toBe('completed') }, { timeout: 10000 })
     expect(executed).toBe(1); expect(decisionDenied).toBe(1); expect(server.calls.map(call => call.name)).toEqual(['tavily_search', 'tavily_extract'])
     const detail = await f.detail(occurrence.conversationId)
     expect(detail.messages.some(message => message.senderType === 'agent' && message.content === pageText + ' ' + resultUrl)).toBe(true)
-    expect(detail.runs.every(run => run.origin?.occurrenceId === occurrence.id)).toBe(true)
+    expect(detail.runs.every(run => !run.origin)).toBe(true)
     expect((await f.service.handle('runAutomation', { id: plan.id, requestId: 'search-once' }) as AutomationOccurrence).id).toBe(occurrence.id)
     await f.service.close(); const restored = await f.make()
     expect((await restored.handle('getConversation', { id: occurrence.conversationId }) as ConversationDetail).messages).toEqual(detail.messages)
@@ -124,7 +132,7 @@ it.each(['researcher', 'bobo'])('keeps the %s topic, messages and files usable a
   const f = await setup()
   const plan = await f.service.handle('saveAutomation', { ...f.input, employeeIds: [employeeId] }) as AutomationDefinition
   const occurrence = await f.service.handle('runAutomation', { id: plan.id, requestId: 'retained-topic' }) as AutomationOccurrence
-  await until(async () => (await f.view()).occurrences[0]?.status === 'completed')
+  await waitForTopic(f, occurrence)
   const before = await f.detail(occurrence.conversationId)
   expect(before.conversation).toMatchObject({ employeeChat: 'topic', purpose: employeeId === 'bobo' ? 'core' : 'personal', agentIds: [employeeId] })
   expect(before.conversation.employeeTaskId).toBeUndefined()
@@ -158,9 +166,9 @@ it('deletes only the legacy private log while preserving the conversation, files
   await until(async () => (await f.detail(main.id)).turns?.every(turn => turn.status === 'completed') === true)
   const plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
   const first = await f.service.handle('runAutomation', { id: plan.id, requestId: 'delete-first' }) as AutomationOccurrence
-  await until(async () => (await f.view()).occurrences.find(o => o.id === first.id)?.status === 'completed')
+  await waitForTopic(f, first)
   const second = await f.service.handle('runAutomation', { id: plan.id, requestId: 'keep-second' }) as AutomationOccurrence
-  await until(async () => (await f.view()).occurrences.find(o => o.id === second.id)?.status === 'completed')
+  await waitForTopic(f, second)
   const source = await f.detail(first.conversationId), other = await f.detail(second.conversationId)
   const published = (await f.detail(main.id)).messages
   const run = source.runs.find(run => run.phase === 'execution')!
@@ -172,7 +180,7 @@ it('deletes only the legacy private log while preserving the conversation, files
   // Model a private execution from before durable employee tasks existed.
   await legacyStore.write([{ collection: 'conversations', id: source.conversation.id, value: { ...source.conversation, purpose: 'automation', employeeChat: undefined, employeeTaskId: undefined } }])
   const current = await f.service.handle('getAutomationOccurrence', { id: first.id }) as AutomationOccurrence
-  await expect(f.service.handle('deleteAutomationOccurrence', { id: first.id, expectedVersion: current.stateVersion - 1 })).rejects.toThrow('已更新')
+  await expect(f.service.handle('deleteAutomationOccurrence', { id: first.id, expectedVersion: current.stateVersion + 1 })).rejects.toThrow('已更新')
   await f.service.handle('deleteAutomationOccurrence', { id: first.id, expectedVersion: current.stateVersion })
   expect(compact).not.toHaveBeenCalled()
   compact.mockRestore()
@@ -199,7 +207,7 @@ it('deletes only the legacy private log while preserving the conversation, files
 it('finishes a legacy pending log cleanup on restart without touching its session or replaying', async () => {
   const f = await setup(), plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
   const occurrence = await f.service.handle('runAutomation', { id: plan.id, requestId: 'cleanup-recovery' }) as AutomationOccurrence
-  await until(async () => (await f.view()).occurrences[0]?.status === 'completed')
+  await waitForTopic(f, occurrence)
   const store = (f.service as unknown as { store: ProductStore }).store
   const session = await f.detail(occurrence.conversationId)
   const file = join(session.conversation.workspacePath, 'retained.txt')
@@ -219,9 +227,9 @@ it('deletes shared-chat execution logs without removing the original messages, f
   const ordinary = (await f.detail(room.id)).runs.map(run => run.id)
   const plan = await f.service.handle('saveAutomation', { ...f.input, conversationPolicy: 'existing-conversation', conversationId: room.id, employeeIds: undefined }) as AutomationDefinition
   const occurrence = await f.service.handle('runAutomation', { id: plan.id, requestId: 'shared-delete' }) as AutomationOccurrence
-  await until(async () => (await f.view()).occurrences[0]?.status === 'completed')
+  await waitForTopic(f, occurrence)
   const before = await f.detail(room.id)
-  const taskRun = (await f.detail(occurrence.conversationId)).runs.find(run => run.origin?.occurrenceId === occurrence.id)!
+  const taskRun = (await f.detail(occurrence.conversationId)).runs.find(run => run.triggerMessageId === occurrence.messageId)!
   const ownDownload = await stagedDownload(f, occurrence.conversationId, taskRun.id), otherDownload = await stagedDownload(f, room.id, ordinary[0])
   const compact = vi.spyOn((f.service as unknown as { store: ProductStore }).store, 'compact')
   await writeFile(join(room.workspacePath, 'shared.txt'), 'shared user file')
@@ -240,7 +248,7 @@ it('deletes shared-chat execution logs without removing the original messages, f
 it('deletes only the schedule log when a session download was externally changed', async () => {
   const f = await setup(), plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
   const occurrence = await f.service.handle('runAutomation', { id: plan.id, requestId: 'download-conflict' }) as AutomationOccurrence
-  await until(async () => (await f.view()).occurrences[0]?.status === 'completed')
+  await waitForTopic(f, occurrence)
   const source = await f.detail(occurrence.conversationId), run = source.runs[0]
   const download = await stagedDownload(f, occurrence.conversationId, run.id)
   await writeFile(download.path, 'external changes must survive')
@@ -254,9 +262,9 @@ it('deletes only the schedule log when a session download was externally changed
 it.each(['ui', 'session'] as const)('deleting a scheduled topic via %s removes only its linked logs and survives restart', async path => {
   const f = await setup(), plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
   const first = await f.service.handle('runAutomation', { id: plan.id, requestId: 'delete-topic' }) as AutomationOccurrence
-  await until(async () => (await f.view()).occurrences.find(o => o.id === first.id)?.status === 'completed')
+  await waitForTopic(f, first)
   const second = await f.service.handle('runAutomation', { id: plan.id, requestId: 'keep-topic' }) as AutomationOccurrence
-  await until(async () => (await f.view()).occurrences.find(o => o.id === second.id)?.status === 'completed')
+  await waitForTopic(f, second)
   if (path === 'ui') await f.service.handle('clearConversationHistory', { id: first.conversationId, hide: true })
   else await f.service.handle('deleteSession', { conversationId: first.conversationId, requestId: 'delete-original-session' })
   expect((await f.view()).occurrences.map(o => o.id)).toEqual([second.id])
@@ -268,19 +276,22 @@ it.each(['ui', 'session'] as const)('deleting a scheduled topic via %s removes o
   expect(f.contexts).toHaveLength(2)
 })
 
-it('rejects deleting an executing occurrence without beginning file cleanup', async () => {
+it('deletes only the log while the scheduled session is still running', async () => {
   let release!: () => void, started = false
   const gate = new Promise<void>(resolve => { release = resolve })
-  const f = await setup({ engine: { test: async () => '', decide: async ctx => ({ action: 'reply', responseKind: 'chat', observedThroughSequence: Math.max(...ctx.messages.map(m => m.sequence)) }), run: async () => { started = true; await gate } } })
+  const f = await setup({ engine: { test: async () => '', decide: async ctx => ({ action: ctx.participation?.hasRespondedInTurn ? 'pass' : 'reply', responseKind: 'chat', observedThroughSequence: Math.max(...ctx.messages.map(m => m.sequence)) }), run: async ctx => { started = true; await gate; await ctx.onDelta('会话继续完成') } } })
   disposers.push(async () => release())
   const plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
   const occurrence = await f.service.handle('runAutomation', { id: plan.id, requestId: 'active-delete' }) as AutomationOccurrence
   await until(async () => started)
-  await expect(f.service.handle('deleteAutomationOccurrence', { id: occurrence.id, expectedVersion: occurrence.stateVersion })).rejects.toThrow(/停止|结束/)
+  await f.service.handle('deleteAutomationOccurrence', { id: occurrence.id, expectedVersion: occurrence.stateVersion })
+  expect((await f.view()).occurrences).toEqual([])
+  expect((await f.detail(occurrence.conversationId)).runs.some(run => run.status === 'running')).toBe(true)
   const store = (f.service as unknown as { store: ProductStore }).store
   expect(await store.get('automationHistoryCleanups', occurrence.id)).toBeUndefined()
   await expect(access(join(f.root, 'workspaces', occurrence.conversationId))).resolves.toBeUndefined()
   release()
+  await waitForTopic(f, occurrence)
 })
 it('runs after clearing the employee chat without scheduling archived conversation aliases', async () => {
   const f = await setup(), personal = await f.service.handle('createConversation', { kind: 'direct', title: '员工主私聊', agentIds: ['researcher'] }) as Conversation
@@ -290,7 +301,7 @@ it('runs after clearing the employee chat without scheduling archived conversati
   await f.service.handle('clearConversationHistory', { id: personal.id, hide: true })
   const plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
   const run = await f.service.handle('runAutomation', { id: plan.id, requestId: 'after-clear' }) as AutomationOccurrence
-  await until(async () => (await f.view()).occurrences.find(o => o.id === run.id)?.status === 'completed')
+  await waitForTopic(f, run)
   await until(async () => { await host.mutations; return host.workTimers.size === 0 })
   expect((await f.detail(run.conversationId)).messages.some(message => message.senderType === 'agent')).toBe(true)
   expect(f.events.filter(event => event.type === 'runtime-error')).toEqual([])
@@ -304,7 +315,7 @@ it('keeps scheduled task messages and execution navigation independent of cleari
   await f.service.handle('clearConversationHistory', { id: personal.id, hide: true })
   const plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
   const first = await f.service.handle('runAutomation', { id: plan.id, requestId: 'visible-task' }) as AutomationOccurrence
-  await until(async () => (await f.view()).occurrences.find(o => o.id === first.id)?.status === 'completed')
+  await waitForTopic(f, first)
   const source = await f.detail(first.conversationId), messages = source.messages
   const execution = source.runs.find(run => run.phase === 'execution')!
   const request = { conversationId: first.conversationId, runId: execution.id }
@@ -327,7 +338,7 @@ it('keeps scheduled task messages and execution navigation independent of cleari
   await restarted.close(); const restored = await f.make()
   expect((await restored.handle('getConversation', { id: personal.id }) as ConversationDetail).messages).toEqual([])
   const second = await restored.handle('runAutomation', { id: plan.id, requestId: 'new-visible-task' }) as AutomationOccurrence
-  await until(async () => (await restored.handle('getAutomationOccurrence', { id: second.id }) as AutomationOccurrence).status === 'completed')
+  await until(async () => (await restored.handle('getConversation', { id: second.conversationId }) as ConversationDetail).turns?.[0]?.status === 'completed')
   const next = await restored.handle('getConversation', { id: second.conversationId }) as ConversationDetail
   expect(next.messages.map(message => message.content)).toEqual([f.input.prompt, '当前聊天的回复'])
   expect((await restored.handle('getConversation', { id: personal.id }) as ConversationDetail).messages).toEqual([])
@@ -387,7 +398,7 @@ it('commits the instruction to the visible employee task before the employee sta
   const occurrence = await f.service.handle('runAutomation', { id: plan.id, requestId: 'receive-before-reply' }) as AutomationOccurrence
   await until(async () => started)
   const messages = (await f.detail(occurrence.conversationId)).messages
-  expect(messages.find(message => message.senderType === 'user')).toMatchObject({ content: f.input.prompt, origin: { occurrenceId: occurrence.id } })
+  expect(messages.find(message => message.senderType === 'user')).toMatchObject({ content: f.input.prompt, senderId: 'user', id: occurrence.messageId })
   expect(messages.some(message => message.senderType === 'agent' && message.status === 'completed')).toBe(false)
   expect(occurrence.taskId).toBeUndefined()
   expect(await f.service.handle('listEmployeeTasks', { employeeId: 'researcher' })).toMatchObject({ items: [] })
@@ -399,7 +410,7 @@ it('adopts legacy isolated tasks on startup without publishing into main chat or
   const f = await setup({}), main = await f.service.handle('createConversation', { kind: 'direct', title: '主聊天', agentIds: ['researcher'] }) as Conversation
   const plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
   const occurrence = await f.service.handle('runAutomation', { id: plan.id, requestId: 'old-isolated-task' }) as AutomationOccurrence
-  await until(async () => (await f.view()).occurrences[0]?.status === 'completed')
+  await waitForTopic(f, occurrence)
   const source = await f.detail(occurrence.conversationId)
   await f.service.close()
   const store = new ProductStore(join(f.root, 'boai.sqlite')); await store.init()
@@ -428,14 +439,14 @@ it('creates two isolated task chats for one employee and still reuses the ordina
   await until(async () => (await f.detail(personal.id)).turns?.every(t => t.status === 'completed') === true)
   const plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
   const first = await f.service.handle('runAutomation', { id: plan.id, requestId: 'first' }) as AutomationOccurrence
-  await until(async () => (await f.view()).occurrences.find(o => o.id === first.id)?.status === 'completed')
+  await waitForTopic(f, first)
   const second = await f.service.handle('runAutomation', { id: plan.id, requestId: 'second' }) as AutomationOccurrence
-  await until(async () => (await f.view()).occurrences.find(o => o.id === second.id)?.status === 'completed')
+  await waitForTopic(f, second)
   expect(new Set([personal.id, first.conversationId, second.conversationId]).size).toBe(3)
   const one = await f.detail(first.conversationId), two = await f.detail(second.conversationId)
   expect(one.conversation).toMatchObject({ purpose: 'personal', employeeChat: 'topic', automationId: plan.id, occurrenceId: first.id, agentIds: ['researcher'], sharedKnowledgeIds: [] })
   expect(two.conversation.workspacePath).not.toBe(one.conversation.workspacePath)
-  expect(one.workBudgets![0].id).not.toBe(two.workBudgets![0].id)
+  expect([one, two].flatMap(detail => detail.workBudgets ?? []).filter(budget => budget.origin)).toEqual([])
   for (const id of [first.conversationId, second.conversationId]) {
     const ctx = f.contexts.find(ctx => ctx.conversation.id === id)!
     expect(ctx.messages.map(m => m.content)).toEqual([f.input.prompt])
@@ -451,42 +462,43 @@ it('creates two isolated task chats for one employee and still reuses the ordina
   expect(restored.occurrences.map(o => o.conversationId).sort()).toEqual([first.conversationId, second.conversationId].sort())
   expect(f.contexts.filter(ctx => ctx.conversation.employeeChat === 'topic')).toHaveLength(2)
 })
-it('accepts a second manual run into its own visible topic while the first still runs', async () => {
+it('submits repeated manual and clock triggers directly to independent employee topics', async () => {
   let release!: () => void
   const gate = new Promise<void>(resolve => { release = resolve })
-  const executed: string[] = []
   const f = await setup({ engine: {
     test: async () => '',
     decide: async ctx => ({ action: ctx.participation?.hasRespondedInTurn ? 'pass' : 'reply', responseKind: 'chat', observedThroughSequence: Math.max(...ctx.messages.map(m => m.sequence)) }),
-    run: async ctx => { executed.push(ctx.conversation.id); await gate; await ctx.onDelta('本次整理完成') },
+    run: async ctx => { await gate; await ctx.onDelta('本次整理完成') },
   } })
   disposers.push(async () => release())
-  const plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
+  const scheduledAt = Math.floor(Date.now() / 60_000) * 60_000 + 60_000
+  const plan = await f.service.handle('saveAutomation', { ...f.input, enabled: true, timezone: 'UTC', time: new Date(scheduledAt).toISOString().slice(11, 16) }) as AutomationDefinition
   const first = await f.service.handle('runAutomation', { id: plan.id, requestId: 'manual-first' }) as AutomationOccurrence
-  expect(first.status).toBe('running')
+  await until(async () => (await f.detail(first.conversationId)).runs.some(run => run.status === 'running'))
   const input = { id: plan.id, requestId: 'manual-second' }
   const second = await f.service.handle('runAutomation', input) as AutomationOccurrence
-  expect(second.status).toBe('queued')
-  expect(second.id).not.toBe(first.id)
-  expect(second.conversationId).not.toBe(first.conversationId)
-  const snapshot = await f.service.handle('snapshot', undefined) as Snapshot
-  expect(snapshot.conversations.find(room => room.id === second.conversationId)).toMatchObject({
-    employeeChat: 'topic', automationId: plan.id, occurrenceId: second.id, agentIds: ['researcher'],
-  })
-  expect((await f.detail(second.conversationId)).messages).toEqual([])
-  expect(await f.service.handle('runAutomation', input)).toMatchObject({ id: second.id, conversationId: second.conversationId })
+  const { automations, store } = f.service as unknown as { automations: AutomationService; store: ProductStore }
+  const scheduled = await automations.admit(plan.id, plan.revision, 'schedule', 'native-slot', scheduledAt)
+  expect(new Set([first, second, scheduled].map(o => o.conversationId)).size).toBe(3)
+  for (const o of [first, second, scheduled]) {
+    const detail = await f.detail(o.conversationId)
+    expect(detail.conversation).toMatchObject({ employeeChat: 'topic', automationId: plan.id, occurrenceId: o.id })
+    expect(detail.messages.find(message => message.id === o.messageId)).toMatchObject({ senderId: 'user', content: plan.prompt })
+    expect(detail.messages.find(message => message.id === o.messageId)?.origin).toBeUndefined()
+    expect(o.budgetId).toBeUndefined()
+    expect(await store.get('automationDispatches', o.id)).toBeUndefined()
+  }
+  expect(await f.service.handle('runAutomation', input)).toMatchObject({ id: second.id })
+  expect(await automations.admit(plan.id, plan.revision, 'schedule', 'same-native-slot', scheduledAt)).toMatchObject({ id: scheduled.id })
   release()
-  await until(async () => {
-    const { occurrences } = await f.view()
-    return [first.id, second.id].every(id => occurrences.find(o => o.id === id)?.status === 'completed')
-  })
-  expect(executed).toEqual([first.conversationId, second.conversationId])
+  for (const o of [first, second, scheduled]) await waitForTopic(f, o)
+  expect((await f.view()).occurrences).toEqual(expect.arrayContaining([first, second, scheduled]))
 })
 it('does not initialize another task chat for a repeated manual trigger, including after history cleanup', async () => {
   const f = await setup(), plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
   const [a, b] = await Promise.all(['same', 'same'].map(requestId => f.service.handle('runAutomation', { id: plan.id, requestId }) as Promise<AutomationOccurrence>))
   expect(a.id).toBe(b.id); expect(a.conversationId).toBe(b.conversationId)
-  await until(async () => (await f.view()).occurrences[0]?.status === 'completed')
+  await waitForTopic(f, a)
   const before = (await f.service.handle('snapshot', undefined) as Snapshot).conversations.length
   await f.service.handle('clearConversationHistory', { id: a.conversationId, hide: false })
   expect(await f.service.handle('runAutomation', { id: plan.id, requestId: 'same' })).toMatchObject({ id: a.id, conversationId: a.conversationId })
@@ -514,7 +526,7 @@ it('retains old plan configuration while isolating new tasks and rejects missing
   const old = await f.service.handle('saveAutomation', { ...legacy, conversationId: personal.id }) as AutomationDefinition
   expect(old).toMatchObject({ conversationPolicy: 'existing-conversation', conversationId: personal.id })
   const run = await f.service.handle('runAutomation', { id: old.id, requestId: 'old-plan' }) as AutomationOccurrence
-  await until(async () => (await f.view()).occurrences[0]?.status === 'completed')
+  await waitForTopic(f, run)
   expect(run.conversationId).not.toBe(personal.id)
   await expect(f.service.handle('saveAutomation', { ...f.input, employeeIds: [] })).rejects.toThrow()
   await expect(f.service.handle('saveAutomation', { ...f.input, conversationId: personal.id })).rejects.toThrow()
@@ -529,12 +541,12 @@ it.each([false, true])('saves and runs a scheduled employee independently of com
   const f = await setup({ allowCommands })
   const plan = await f.service.handle('saveAutomation', { ...f.input, frequency: 'manual' }) as AutomationDefinition
   const occurrence = await f.service.handle('runAutomation', { id: plan.id, requestId: 'permission-independent' }) as AutomationOccurrence
-  await until(async () => (await f.view()).occurrences.find(o => o.id === occurrence.id)?.status === 'completed')
+  await waitForTopic(f, occurrence)
   expect(f.contexts).toHaveLength(1)
   expect(f.contexts[0].agent.allowCommands).toBe(allowCommands)
   expect((await f.detail(occurrence.conversationId)).messages.some(message => message.content === '当前聊天的回复')).toBe(true)
 })
-it('runs a scheduled browser call through the real host context, task tool and original occurrence Work receipt', async () => {
+it('runs a scheduled browser call through the ordinary topic’s Work and host context', async () => {
   const available: boolean[] = [], calls: BrowserActionEnvelope[] = [], leases: BrowserLease[] = []
   let repository!: BrowserRepository
   const browserHost: BrowserHostBridge = { request: (async (method: string, input: unknown) => {
@@ -555,7 +567,7 @@ it('runs a scheduled browser call through the real host context, task tool and o
     run: async ctx => {
       const runtime = await createTaskRuntime(ctx)
       try {
-        expect(ctx.work?.origin?.occurrenceId).toBeTruthy()
+        expect(ctx.work?.origin).toBeUndefined()
         await runtime.tools.browser_tool!.execute!({ command: 'navigate https://weather.example.test/nanjing' }, { requestContext: new RequestContext(), observe: noopObserve, agent: { agentId: ctx.agent.id, toolCallId: 'weather-call', messages: [], suspend: async () => {} } })
         await ctx.onDelta('南京天气页面已读取')
         await ctx.onWorkOutcome!({ disposition: 'delivered', summary: '南京天气页面已读取', evidence: [{ kind: 'answer', reference: '南京天气页面已读取' }] })
@@ -566,9 +578,9 @@ it('runs a scheduled browser call through the real host context, task tool and o
   repository = (f.service as unknown as { browser: BrowserRepository }).browser
   const plan = await f.service.handle('saveAutomation', { ...f.input, frequency: 'manual', prompt: '用BOAI浏览器查询南京天气' }) as AutomationDefinition
   const occurrence = await f.service.handle('runAutomation', { id: plan.id, requestId: 'scheduled-browser' }) as AutomationOccurrence
-  await until(async () => !!(await f.view()).occurrences.find(item => item.id === occurrence.id)?.finishedAt)
+  await waitForTopic(f, occurrence)
   expect(available.length).toBeGreaterThan(0); expect(available.every(Boolean)).toBe(true)
-  expect((await f.view()).occurrences.find(item => item.id === occurrence.id)).toMatchObject({ status: 'completed', deliveryStatus: 'delivered' })
+  expect((await f.detail(occurrence.conversationId)).workItems?.some(work => work.status === 'delivered')).toBe(true)
   expect(calls).toHaveLength(1); expect(leases).toHaveLength(1)
   expect(leases[0]).toMatchObject({ conversationId: occurrence.conversationId, workId: expect.any(String) })
   expect(await repository.get(calls[0].actionId)).toMatchObject({ status: 'completed', lease: { workId: leases[0].workId } })
@@ -599,7 +611,7 @@ it.each([false, true])('uses the same approval for scheduled shell commands and 
   expect(approval.conversationId).toBe(occurrence.conversationId)
   await expect(readFile(proof, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' })
   await f.service.handle('approve', { id: approval.id, approved })
-  await until(async () => (await f.view()).occurrences.find(o => o.id === occurrence.id)?.status === 'completed')
+  await waitForTopic(f, occurrence)
   expect(result).toMatchObject({ approved })
   if (approved) expect(await readFile(proof, 'utf8')).toBe('scheduled-ok')
   else await expect(readFile(proof, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' })
@@ -634,7 +646,7 @@ it('reauthorizes an existing task by explicitly saving it after its employee con
   const saved = await f.service.handle('saveAutomation', { ...f.input, id: plan.id, expectedRevision: plan.revision }) as AutomationDefinition
   expect(saved.authorizedFingerprint).not.toBe(plan.authorizedFingerprint)
   const executed = await f.service.handle('runAutomation', { id: plan.id, requestId: 'explicit-new-run' }) as AutomationOccurrence
-  await until(async () => (await f.view()).occurrences.find(o => o.id === executed.id)?.status === 'completed')
+  await waitForTopic(f, executed)
   expect(f.contexts).toHaveLength(1)
   expect(await f.service.handle('runAutomation', request)).toMatchObject({ id: skipped.id, status: 'skipped' })
   expect(f.contexts).toHaveLength(1)
@@ -643,14 +655,14 @@ it('reauthorizes an existing task by explicitly saving it after its employee con
 it('changes an existing task employee for future runs while preserving the previous execution assignment', async () => {
   const f = await setup(), plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
   const first = await f.service.handle('runAutomation', { id: plan.id, requestId: 'original-employee' }) as AutomationOccurrence
-  await until(async () => (await f.view()).occurrences.find(o => o.id === first.id)?.status === 'completed')
+  await waitForTopic(f, first)
   const before = await f.service.handle('snapshot', undefined) as Snapshot
   const { configVersion, workspaceRef, memoryNamespace, policyVersion, ...writer } = before.agents.find(a => a.id === 'writer')!
   await f.service.handle('saveAgent', { ...writer, connectionId: before.agents.find(a => a.id === 'researcher')!.connectionId })
   const saved = await f.service.handle('saveAutomation', { ...f.input, id: plan.id, expectedRevision: plan.revision, owner: { kind: 'employee', employeeId: 'writer' }, employeeIds: ['writer'] }) as AutomationDefinition
   expect(saved.executionRevision).toBe(plan.executionRevision + 1)
   const second = await f.service.handle('runAutomation', { id: plan.id, requestId: 'replacement-employee' }) as AutomationOccurrence
-  await until(async () => (await f.view()).occurrences.find(o => o.id === second.id)?.status === 'completed')
+  await waitForTopic(f, second)
   expect(f.contexts.map(ctx => ctx.agent.id)).toEqual(['researcher', 'writer'])
   expect(await f.service.handle('getAutomationOccurrence', { id: first.id })).toMatchObject({ plan: { owner: { kind: 'employee', employeeId: 'researcher' }, employeeIds: ['researcher'] } })
   expect(await f.service.handle('getAutomationOccurrence', { id: second.id })).toMatchObject({ plan: { owner: { kind: 'employee', employeeId: 'writer' }, employeeIds: ['writer'] } })
@@ -704,16 +716,18 @@ it('paginates all persisted history past the summary cap with stable ties, filte
   expect(f.contexts).toEqual([])
 })
 
-it('persists real result notification intents and host receipts without changing delivery or model usage', async () => {
+it('uses the ordinary reply for a scheduled notification without updating the trigger log', async () => {
   const f = await setup(), plan = await f.service.handle('saveAutomation', { ...f.input, notificationPolicy: 'all_results' }) as AutomationDefinition
   const o = await f.service.handle('runAutomation', { id: plan.id, requestId: 'notification' }) as AutomationOccurrence
-  await until(async () => (await f.view()).occurrences.find(item => item.id === o.id)?.status === 'completed')
-  const before = (await f.view()).occurrences[0], notice = await f.service.takeAutomationNotice()
-  expect(notice).toMatchObject({ occurrenceId: o.id, conversationId: o.conversationId, messageId: before.resultMessageIds.at(-1), status: 'submitting' })
+  await waitForTopic(f, o)
+  const reply = (await f.detail(o.conversationId)).messages.find(message => message.senderType === 'agent')!
+  let notice: Awaited<ReturnType<AppService['takeAutomationNotice']>>
+  await until(async () => Boolean(notice = await f.service.takeAutomationNotice()))
+  expect(notice!).toMatchObject({ occurrenceId: o.id, conversationId: o.conversationId, messageId: reply.id, status: 'submitting' })
   await f.service.settleAutomationNotice({ id: notice!.id, attemptId: notice!.attemptId!, status: 'submitted' })
-  const result = await f.service.handle('getAutomationOccurrence', { id: o.id }) as AutomationHistoryPage['occurrences'][number]
-  expect(result.notices).toMatchObject([{ status: 'submitted' }])
-  expect(result).toMatchObject({ deliveryStatus: 'unknown', budgetId: before.budgetId, modelCalls: before.modelCalls })
+  const { notices, ...record } = await f.service.handle('getAutomationOccurrence', { id: o.id }) as AutomationHistoryPage['occurrences'][number]
+  expect(notices).toMatchObject([{ status: 'submitted' }])
+  expect(record).toEqual(o)
   expect(await f.service.takeAutomationNotice()).toBeNull()
   expect(f.contexts).toHaveLength(1)
   await expect(f.service.handle('__takeAutomationNotice' as never, undefined)).rejects.toThrow()
@@ -789,7 +803,7 @@ it('keeps manual plans timer-free and previews hourly/monthly rules across local
   expect(changed.executionRevision).toBe(daily.executionRevision)
   expect(f.contexts).toEqual([])
   const occurrence = await f.service.handle('runAutomation', { id: manual.id, requestId: 'manual-run' }) as AutomationOccurrence
-  await until(async () => (await f.view()).occurrences.find(o => o.id === occurrence.id)?.status === 'completed')
+  await waitForTopic(f, occurrence)
   expect(f.contexts).toHaveLength(1)
   expect(await f.service.handle('runAutomation', { id: manual.id, requestId: 'manual-run' })).toMatchObject({ id: occurrence.id })
   expect(f.contexts).toHaveLength(1)
@@ -801,8 +815,8 @@ it('keeps a failed decision readable and retains the occurrence when its old con
   const f = await setup({ engine: { test: async () => '', decide: async () => { throw new Error('getaddrinfo ENOTFOUND api.deepseek.com') }, run: execute } })
   const plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
   const occurrence = await f.service.handle('runAutomation', { id: plan.id, requestId: 'failed-before-execution' }) as AutomationOccurrence
-  await until(async () => (await f.view()).occurrences.find(item => item.id === occurrence.id)?.status === 'failed')
-  const history = await f.service.handle('listExecutionHistory', { conversationId: occurrence.conversationId, occurrenceId: occurrence.id }) as import('../packages/shared/src/domain/execution').ExecutionHistoryPage
+  await until(async () => (await f.detail(occurrence.conversationId)).runs.some(run => run.status === 'failed'))
+  const history = await f.service.handle('listExecutionHistory', { conversationId: occurrence.conversationId }) as import('../packages/shared/src/domain/execution').ExecutionHistoryPage
   expect(history.items).toHaveLength(1)
   expect(history.items[0].run).toMatchObject({ phase: 'decision', status: 'failed', conversationId: occurrence.conversationId })
   expect(history.items[0].run.error).toContain('getaddrinfo ENOTFOUND api.deepseek.com')
@@ -811,7 +825,7 @@ it('keeps a failed decision readable and retains the occurrence when its old con
   const store = new ProductStore(join(f.root, 'boai.sqlite')); await store.init()
   await store.write([], [{ collection: 'conversations', id: occurrence.conversationId }]); await store.close()
   const restarted = await f.make()
-  expect(await restarted.handle('getAutomationOccurrence', { id: occurrence.id })).toMatchObject({ id: occurrence.id, status: 'failed' })
+  expect(await restarted.handle('getAutomationOccurrence', { id: occurrence.id })).toMatchObject({ id: occurrence.id, messageId: occurrence.messageId })
   expect(await restarted.handle('listExecutionHistory', { conversationId: occurrence.conversationId, occurrenceId: occurrence.id })).toEqual({ items: [] })
   await expect(restarted.handle('listExecutionHistory', { conversationId: 'unrelated-missing-room', occurrenceId: occurrence.id })).rejects.toThrow()
   await expect(restarted.handle('listExecutionHistory', { conversationId: occurrence.conversationId, occurrenceId: 'unrelated-occurrence' })).rejects.toThrow()

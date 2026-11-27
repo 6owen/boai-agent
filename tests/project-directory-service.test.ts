@@ -102,8 +102,8 @@ it('snapshots each scheduled occurrence default and keeps the original topic loc
   const plan = await f.service.handle('saveAutomation', { name: '每日项目检查', prompt: '检查项目文件', conversationPolicy: 'new-conversation', employeeIds: [agent.id], frequency: 'daily', time: '09:00', weekday: 1, timezone: 'UTC', enabled: false, notify: false }) as AutomationDefinition
   const originalInput = { id: plan.id, requestId: 'scheduled-original' }
   const first = await f.service.handle('runAutomation', originalInput) as AutomationOccurrence
-  await f.taskIdle(first)
   const firstRoom = (await f.service.handle('getConversation', { id: first.conversationId }) as ConversationDetail).conversation
+  await f.idle(firstRoom)
   expect(first.taskId).toBeUndefined()
   expect(firstRoom).toMatchObject({ employeeChat: 'topic', projectSelection: { directory: f.a, source: 'employee-default' } })
   expect((await detail(f.service, firstRoom)).messages.filter(message => message.senderType === 'user')).toEqual(expect.arrayContaining([expect.objectContaining({ workingDirectory: f.a, projectSelection: firstRoom.projectSelection })]))
@@ -120,9 +120,10 @@ it('snapshots each scheduled occurrence default and keeps the original topic loc
   expect(f.contexts.at(-1)?.workingDirectory).toBe(f.a)
   const next = await restarted.handle('runAutomation', { id: plan.id, requestId: 'scheduled-next' }) as AutomationOccurrence
   expect(next.status, next.reason).not.toBe('skipped')
-  await f.taskIdle(next, restarted)
+  const nextRoom = (await restarted.handle('getConversation', { id: next.conversationId }) as ConversationDetail).conversation
+  await f.idle(nextRoom, restarted)
   expect(next.taskId).toBeUndefined(); expect(next.conversationId).not.toBe(firstRoom.id)
-  expect((await restarted.handle('getConversation', { id: next.conversationId }) as ConversationDetail).conversation.projectSelection).toMatchObject({ directory: f.b, source: 'employee-default' })
+  expect(nextRoom.projectSelection).toMatchObject({ directory: f.b, source: 'employee-default' })
   expect(f.contexts.at(-1)?.workingDirectory).toBe(f.b)
   expect(f.contexts).toHaveLength(count + 2)
   const current = (await snapshot(restarted)).agents.find(value => value.id === agent.id)!

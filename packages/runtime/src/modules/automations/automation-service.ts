@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工定时只将消息提交给普通会话；会话状态由聊天运行时负责。
  * [OUTPUT]: 2026-11-27 会话删除后的定时日志墓碑不进入可见历史或活动状态。
  * [OUTPUT]: 2026-11-25 定时历史不再回填或更新旧看板；旧人工记录兼容尊重删除墓碑。
  * [OUTPUT]: 已提交任务结果发一次瞬时通知；恢复只校正状态，不重放通知或执行。
@@ -63,6 +64,7 @@ export const automationSchema = automationInputSchema.transform(value => {
   } else if (value.owner?.kind === 'group' && value.conversationPolicy === 'new-conversation') ctx.addIssue({ code: 'custom', path: ['collaboration'], message: '请选择群内参与员工及汇总负责人，保存明确分工' })
 })
 interface Hooks {
+  dispatchSession?(definition: AutomationDefinition, occurrence: AutomationOccurrence, conversation: Conversation, commit: (message: Message, records: StoredRecord[]) => Promise<void>): Promise<Message>
   behaviors?: Pick<import('./agent-behaviors').AgentBehaviorService, 'dispatch' | 'synchronize' | 'hasSchedules'>
   critical<T>(operation: () => Promise<T>): Promise<T>
   validate(target: string | AutomationInput): string | Promise<string>
@@ -327,21 +329,40 @@ export class AutomationService {
     return this.serialize(() => this.admitNow(id, revision, source, key, time, version, authorize))
   }
   private async admitNow(id: string, revision: number | undefined, source: 'manual' | 'schedule', key: string, time: number, version?: NativeAutomationVersion, authorize?: () => Promise<void>) {
-      const result = await this.hooks.critical(async () => { await authorize?.(); return this.repository.claim({ automationId: id, revision, source, key, scheduledAt: time, ...version }, async d => {
+    const dispatchSession = this.hooks.dispatchSession
+    const result = await this.hooks.critical(async () => {
+      await authorize?.()
+      const claimed = await this.repository.claim({ automationId: id, revision, source, key, scheduledAt: time, ...version }, async d => {
         if (this.closing || this.backingUp) return '应用正在退出或备份'
         try { if (await this.hooks.validate(d) !== d.authorizedFingerprint) return { reason: '员工或会话权限已变更，请编辑保存任务后重新启用', attention: 'authorization' as const } } catch (error) { return { reason: String(error), attention: 'authorization' as const } }
-      }, this.hooks.prepareConversation, this.hooks.busy, this.hooks.executionDefinition) })
-      let o = result.occurrence
-      if (o.deletedAt) {
-        if (source === 'manual') throw new Error('本次执行记录已删除，请发起新的运行')
-        return structuredClone(o)
+      }, this.hooks.prepareConversation, this.hooks.busy, this.hooks.executionDefinition, Boolean(dispatchSession))
+      if (!claimed.session || !dispatchSession) return claimed
+      const { definition, conversation, commit } = claimed.session
+      let receipt: AutomationOccurrence | undefined
+      let committing = false
+      try {
+        await dispatchSession(definition, claimed.occurrence, conversation, async (message, records) => {
+          committing = true
+          receipt = await commit(message, records)
+        })
+        if (!receipt) throw new Error('定时消息未提交')
+      } catch (error) {
+        if (committing) throw error
+        receipt = await commit(undefined, [], error instanceof Error ? error.message : String(error))
       }
-      this.occurrences.set(o.id, o)
-      const current = await this.store.get<AutomationDefinition>('automations', id)
-      if (current?.onceConsumedAt) { await this.sync(current); if (this.definitions.get(id)?.sync !== 'synced') this.scheduleRetry() }
-      if (!result.created) return structuredClone(o)
-      o = await this.dispatchOccurrence(o, result.dispatch)
-      this.hooks.changed(); this.hooks.notify(); this.observe(); return structuredClone(o)
+      return { created: true, occurrence: receipt, dispatch: undefined }
+    })
+    let o = result.occurrence
+    if (o.deletedAt) {
+      if (source === 'manual') throw new Error('本次执行记录已删除，请发起新的运行')
+      return structuredClone(o)
+    }
+    this.occurrences.set(o.id, o)
+    const current = await this.store.get<AutomationDefinition>('automations', id)
+    if (current?.onceConsumedAt) { await this.sync(current); if (this.definitions.get(id)?.sync !== 'synced') this.scheduleRetry() }
+    if (!result.created) return structuredClone(o)
+    if (result.dispatch) o = await this.dispatchOccurrence(o, result.dispatch)
+    this.hooks.changed(); this.hooks.notify(); this.observe(); return structuredClone(o)
   }
   /** Existing startup/observation events share admission with the native clock; no second timer or business replay. */
   private async recoverDueOnce() {
