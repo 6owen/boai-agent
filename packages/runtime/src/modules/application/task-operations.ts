@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 任务面板、主聊天和应用操作共用 tasks/read-model 的受权分页和活动读取。
  * [OUTPUT]: 状态是协作提示，员工按实际工作和用户明确验收更新，完成/关闭不锁住后续对话；任务范围保持。
  * [OUTPUT]: tasks.update可沿当前人工任务补全要求正文，事务后同步会话标题缓存，保留revision和当前任务权限。
  * [OUTPUT]: tasks.create只登记内部progress，不创建看板委派；tasks.get/update按原身份维护当前委派或内部进度。
@@ -10,8 +11,8 @@
  */
 import { randomUUID } from 'node:crypto'
 import type { TrackedTask } from '@boai/shared/domain/tracked-tasks'
-import { isEmployeeTaskAssignment } from '@boai/shared/domain/tracked-tasks'
-import { taskPageOperation } from './task-page'
+import { EMPLOYEE_TASK_STATUSES, isEmployeeTaskAssignment } from '@boai/shared/domain/tracked-tasks'
+import { readTaskPage, readTaskActivity, taskPageQuery, taskActivityQuery, type TaskOutputs } from '../tasks/read-model'
 import { z } from 'zod'
 import type { DigitalAgent, Conversation } from '@boai/shared/domain'
 import type { ApplicationActor } from '@boai/shared/domain/application-protocol'
@@ -19,13 +20,17 @@ import type { ProductStore, RecordTransaction } from '../../adapters/storage/pro
 import { ApplicationValidationError, type ApplicationOperation } from '../../application-operation'
 export type { TrackedTask } from '@boai/shared/domain/tracked-tasks'
 
-const id = z.string().min(1).max(200), status = z.enum(['pending', 'in_progress', 'in_review', 'done', 'closed'])
+const id = z.string().min(1).max(200), status = z.enum(EMPLOYEE_TASK_STATUSES)
 const step = z.object({ title: z.string().trim().min(1).max(300), done: z.boolean().default(false) }).strict()
 const fields = { title: z.string().trim().min(1).max(300), steps: z.array(step).max(50), status, note: z.string().max(4000) }
 const owner = z.object({ agentId: id }).strict()
 const create = owner.extend({ conversationId: id.optional(), title: fields.title, steps: fields.steps.default([]), note: fields.note.default('') }).strict()
 const update = z.object({ id, expectedRevision: z.number().int().positive(), title: fields.title.optional(), description: z.string().trim().min(1).max(40000).optional(), steps: fields.steps.optional(), status: status.optional(), note: fields.note.optional() }).strict()
 const collection = 'agentTasks'
+
+export function taskActivityOperation(store: ProductStore, outputs: TaskOutputs): ApplicationOperation {
+  return { name: 'tasks.activity', description: '查询自己任务面板的真实任务、在途执行、最近执行和获准结果原文。includeDone=true包含已完成/关闭；activeOnly按真实执行筛选，taskId读取指定任务；nextCursor继续分页。只读，不运行任务。', effect: 'read', input: taskActivityQuery, resultType: 'EmployeeTaskActivity', execute: (input, _, actor) => readTaskActivity(store, input, actor, outputs) }
+}
 
 export function taskOperations(store: ProductStore, conversationUpdated?: (conversation: Conversation) => void): ApplicationOperation[] {
   async function allowed(tx: RecordTransaction, task: Pick<TrackedTask, 'id' | 'agentId' | 'conversationId'>, actor: ApplicationActor) {
@@ -46,7 +51,7 @@ export function taskOperations(store: ProductStore, conversationUpdated?: (conve
     return task
   }
   return [
-    taskPageOperation(store),
+    { name: 'tasks.page', description: '分页读取明确登记的任务进度与来源；仅列表摘录，done不证明执行或成果验收。不会运行任务。', effect: 'read', input: taskPageQuery, resultType: 'TrackedTaskPage', execute: (input, _, actor) => readTaskPage(store, input, actor, 'all-records') },
     { name: 'tasks.list', description: '列出员工持久多步任务；默认未完成，跨会话仍核对来源。不会运行任务。', effect: 'read', input: owner.extend({ status: status.optional(), includeDone: z.boolean().default(false) }).strict(), resultType: 'TrackedTask[]', execute: (input, _, actor) => store.transaction(async tx => {
       const result: TrackedTask[] = []
       for (const task of await tx.list<TrackedTask>(collection)) if (task.agentId === input.agentId && (input.status ? task.status === input.status : input.includeDone || !['done', 'closed'].includes(task.status)) && await allowed(tx, task, actor)) result.push(task)

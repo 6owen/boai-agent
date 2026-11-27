@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 任务面板、主聊天和应用操作共用 tasks/read-model 的受权分页和活动读取。
  * [OUTPUT]: 执行状态沿 shared/domain/automations 的完整状态或在途判断读取。
  * [OUTPUT]: 持久标识的 JSON 字节摘要使用共用编码，字段及顺序由本业务传入。
  * [INPUT]: Runtime operation contract and Original task, occurrence, Work, Run, source identity and bounded read-only evidence.
@@ -14,7 +15,7 @@ import type { ApplicationActor } from '@boai/shared/domain/application-protocol'
 import { AUTOMATION_OCCURRENCE_STATUSES, type AutomationOccurrence } from '@boai/shared/domain/automations'
 import { publishedWorkQuestionMatches } from '@boai/shared/domain/inbox'
 import type { WorkItem } from '@boai/shared/domain/work'
-import type { TrackedTask } from '@boai/shared/domain/tracked-tasks'
+import { EMPLOYEE_TASK_STATUSES, type TrackedTask } from '@boai/shared/domain/tracked-tasks'
 import type { ExecutionEvidence } from '@boai/shared/domain/execution'
 import { taskDiagnosisQuerySchema, taskDiagnosisTargetSchema, TASK_DIAGNOSIS_LIMITS, type DiagnosisFact, type DiagnosisTiming, type TaskDiagnosisTarget, type TaskDiagnosisSnapshot } from '@boai/shared/domain/task-diagnosis'
 import { desktopDiagnosticsSnapshotSchema } from '@boai/shared/ipc/desktop-diagnostics'
@@ -92,12 +93,12 @@ export async function readTaskDiagnosis(store: ProductStore, raw: unknown, actor
   if (target.kind === 'task' && (!task || task.agentId !== target.employeeId)) fail('NOT_FOUND', '原任务已不存在或不属于指定员工')
   const result: TaskDiagnosisSnapshot = {
     schemaVersion: 1, target: { ...target, runIds: [], workIds: [], ...(task ? { taskRevision: task.revision } : {}) }, observedAt, sourceObservedAt: { runtime: observedAt }, snapshotChanged: false, selectionRequired: false, candidates: [],
-    state: { ...(task ? { task: { status: knownStatus(task.status, ['pending', 'in_progress', 'in_review', 'done', 'closed']), ...(task.statusSource ? { statusSource: knownStatus(task.statusSource, ['manual', 'employee', 'execution']) } : {}) } } : {}), runs: [], works: [], waiting: { approval: false, input: false, dependency: false, queue: false, tool: false } }, facts: [],
+    state: { ...(task ? { task: { status: knownStatus(task.status, EMPLOYEE_TASK_STATUSES), ...(task.statusSource ? { statusSource: knownStatus(task.statusSource, ['manual', 'employee', 'execution']) } : {}) } } : {}), runs: [], works: [], waiting: { approval: false, input: false, dependency: false, queue: false, tool: false } }, facts: [],
     assessment: { certainty: 'unknown', findings: [], evidenceIds: [], missingEvidence: [], suggestedNextSteps: [] }, timing: diagnosisTiming([]),
     coverage: { runsTruncated: false, evidenceTruncated: false, recordsTruncated: false, sourceUnavailable: 0, receipts: 'source-message-only', nativeActions: 'available', host: 'not-requested', reasons: ['非原子全局快照；人工任务标签不等于执行完成或用户验收。', '回执仅核对原消息身份，不推定属于该消息的某个重试运行。'], totalFacts: 0 },
   }
   const add = (kind: DiagnosisFact['kind'], id: string, status: string, collection: string, sourceId: string, extra: Partial<DiagnosisFact> = {}) => facts.push({ id, kind, status, evidence: { collection, id: sourceId }, visibility: 'diagnostic-metadata', relation: 'target', ...extra })
-  if (task) add('task', `task:${task.id}`, knownStatus(task.status, ['pending', 'in_progress', 'in_review', 'done', 'closed']), 'agentTasks', task.id, { ...at(task.updatedAt), evidence: { collection: 'agentTasks', id: task.id, revision: task.revision } })
+  if (task) add('task', `task:${task.id}`, knownStatus(task.status, EMPLOYEE_TASK_STATUSES), 'agentTasks', task.id, { ...at(task.updatedAt), evidence: { collection: 'agentTasks', id: task.id, revision: task.revision } })
   let occurrence: AutomationOccurrence | undefined, runIds: string[] = [], conversationId: string | undefined
   if (target.kind === 'run') { conversationId = target.conversationId; runIds = [target.runId] }
   else {

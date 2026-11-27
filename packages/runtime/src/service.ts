@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 任务面板、主聊天和应用操作共用 tasks/read-model 的受权分页和活动读取。
  * [OUTPUT]: 会话清理受理按本次父子会话 ID 核对已有日志。
  * [OUTPUT]: 持久标识的 JSON 字节摘要使用共用编码，字段及顺序由本业务传入。
  * [OUTPUT]: 原生公开问题的聊天呈现与审批账本共享脱敏后的同一份记录。
@@ -271,8 +272,8 @@ import { isApplicationHostMethod, type ApplicationHostPort } from '@boai/shared/
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { ApplicationService } from './modules/application/application-service'
 import { rememberMemorySchema } from './modules/memory/memory-tools'
-import { taskActivityOperation, type TaskOutputs } from './modules/application/task-activity'
-import { taskOperations } from './modules/application/task-operations'
+import type { TaskOutputs } from './modules/tasks/read-model'
+import { taskActivityOperation, taskOperations } from './modules/application/task-operations'
 import { planningOperations, readPlanningState, planningInstructions } from './modules/application/planning-operations'
 import { planOperations, activePlanInstructions } from './modules/application/plan-operations'
 import { referenceOperations, referenceScope, referenceInstructions, type LoadReferences } from './modules/application/reference-operations'
