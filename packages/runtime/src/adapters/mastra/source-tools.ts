@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 普通聊天的工具事件按本阶段实际注册的操作与官方 Memory 工具身份核对。
  * [OUTPUT]: 检索选择与服务共用 Mastra 操作绑定，来源集合仍按当前会话筛选。
  * [OUTPUT]: 2026-11-09 项目目录的运行授权与显式目录授权共用数据源访问边界。
  * [OUTPUT]: 2026-10-20 Alma技能接线：普通聊天按需读绑定技能/有来源记忆，独立任务协议与MCP媒体保持实际授权；本轮证据归独立Agent架构§11.21。
@@ -13,7 +14,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步Header与所属.folder.md。
  */
 import { mcpModelOutput } from '../../modules/sources/mcp-media'
-import { createWebSearchOperations, hasWebSearchTools, webSearchToolNames } from './web-search-tools'
+import { createWebSearchOperations, hasWebSearchTools } from './web-search-tools'
 import { z } from 'zod'
 import { createTool } from '@mastra/core/tools'
 import { bindMastraOperation, bindMastraOperations } from './operation-tools'
@@ -23,7 +24,6 @@ import { currentSourceReferences } from '@boai/shared/domain/composer-references
 import type { EngineContext } from '../../contracts'
 import { selectWebSearchSchema } from '../../modules/sources/search-selection'
 
-export const sourceToolNames = ['inspect_data_source', 'call_data_source', 'select_web_search', ...webSearchToolNames] as const
 export function createWebSearchSelectionOperation(context: EngineContext) {
   if (!context.selectWebSearch || context.work?.organization || !(context.webSearchServices ?? context.dataSources)?.some(source => source.webSearchProvider) || !context.messages.some(message => message.id === context.triggerMessageId && message.senderType === 'user')) return undefined
   return {

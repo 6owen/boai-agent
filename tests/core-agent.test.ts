@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 普通聊天的工具事件按本阶段实际注册的操作与官方 Memory 工具身份核对。
  * [OUTPUT]: 2026-10-30 回归更新为Mastra官方记忆/原生归属合同；保留来源、调用预算和业务发布断言。
  * [OUTPUT]: 2026-10-19核心默认完全访问及可显式限制取代旧强制禁命令；固定身份/后端限制保持。
  * [OUTPUT]: API专用夹具保留明确connection前提，兼容运行时上下文的可选API连接。
@@ -11,6 +12,7 @@ import { afterEach, expect, test, vi } from 'vitest'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
+import { Memory } from '@mastra/memory'
 import { noopObserve, type ToolExecutionContext } from '@mastra/core/tools'
 import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
 import { WorkspaceService } from '../packages/runtime/src/modules/workspaces/workspace-service'
@@ -104,6 +106,28 @@ test('only a host-authorized core task has create_team; private and ordinary cha
     expect(stage.agent.listTools()).not.toHaveProperty('create_team')
   }
 })
+test('ordinary event names follow this stage and the configured SDK memory tools', async () => {
+  const ctx = { ...await context(), manageSkills: vi.fn(), manageDataSources: vi.fn(), memoryOwner: 'mastra' as const }
+  const memory = new Memory({ options: { workingMemory: { enabled: true } } })
+  const stage = await createStageAgent('chat', ctx, undefined, memory)
+  cleanup.push(stage.dispose)
+  const registered = Object.keys(await stage.agent.listTools())
+  const sdk = Object.entries(memory.listTools()).flatMap(([name, tool]) => [name, tool.id])
+  expect(stage.chatToolNames).toEqual(new Set([...registered, ...sdk]))
+  expect(stage.chatToolNames).toContain('manage_skills')
+  expect(stage.chatToolNames).toContain('updateWorkingMemory')
+  expect(stage.chatToolNames).toContain('update-working-memory')
+  expect(stage.chatToolNames).not.toContain('recall')
+  expect(stage.chatToolNames).not.toContain('inspect_data_source')
+
+  const ordered = await createStageAgent('chat', { ...ctx, groupCoordination: {
+    mode: 'ordered', instruction: '按顺序发言', agentIds: [ctx.agent.id],
+    memberConfigVersions: { [ctx.agent.id]: 1 }, sourceRunId: ctx.runId, revision: 1, completed: [],
+  } }, undefined, memory)
+  cleanup.push(ordered.dispose)
+  expect(ordered.chatToolNames).toEqual(new Set())
+})
+
 test('team tool supplies the real SDK invocation identity and a failed or cancelled operation cannot clear the effect marker', async () => {
   const ctx = await context(), effects: string[] = []
   ctx.beforeEffect = async () => { effects.push('before') }

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 普通聊天的工具事件按本阶段实际注册的操作与官方 Memory 工具身份核对。
  * [OUTPUT]: Independent web-search operations implement the runtime tool contract.
  * [INPUT]: Host-authorized search services, resolved preference and callbacks.
  * [OUTPUT]: Independent search inspection/call operations shared by API and native agents.
@@ -9,7 +10,6 @@ import { z } from 'zod'
 import type { EngineContext, RuntimeToolOperation } from '../../contracts'
 import { searchSelectionInstructions } from '../../modules/sources/search-selection'
 
-export const webSearchToolNames = ['inspect_web_search', 'call_web_search'] as const
 export function hasWebSearchTools(context: EngineContext) {
   return context.agent.webSearch?.mode !== 'disabled' && !!context.webSearchServices?.length && !!context.inspectWebSearch && !!context.callWebSearch && !context.work?.organization
 }
