@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 中断状态按原回执核对，列表核对记录时间。
  * [OUTPUT]: 新增真实自然分钟时钟触发/原生身份/双次重启不重放；仅新场景180秒容纳最多70秒自然等待与三次原启动窗口，原场景期限不变。
  * [INPUT]: 自动化中断恢复场景、真实 Electron/IPC/文件工具和隔离模型响应。
  * [OUTPUT]: 从新版总览进入指定计划，保留中断无重放断言；工具完成后进程退出的可见故障、同数据重启中断记录与无重复模型/文件副作用验证。
@@ -55,7 +56,7 @@ Then('原运行保持中断且已执行的文件操作没有重放', async ({ ru
   expect(state.detail.workItems?.every(work => work.status === 'interrupted')).toBe(true)
   await runtime.page.getByRole('button', { name: '定时任务', exact: true }).click()
   await openSchedule(runtime.page, '写文件后中断')
-  await expect(runtime.page.locator(`[data-occurrence-id="${before.id}"]`)).toContainText('已中断')
+  await expect(runtime.page.locator(`[data-occurrence-id="${before.id}"] time`)).toHaveAttribute('datetime', before.startedAt)
   expect(recovery.fixture!.calls()).toBe(recovery.calls)
   expect((await stat(recovery.file!)).mtimeMs).toBe(recovery.modifiedAt)
   expect(await readFile(recovery.file!, 'utf8')).toBe('实际工具已写入；运行中断后不得自动重做。')
@@ -121,7 +122,7 @@ Then('原自然触发保持中断且两次重启没有重做文件', async ({ ru
   }
   await runtime.page.getByRole('button', { name: '定时任务', exact: true }).click()
   await openSchedule(runtime.page, '自然到期写文件后中断')
-  await expect(runtime.page.locator(`[data-occurrence-id="${before.id}"]`)).toContainText('已中断')
+  await expect(runtime.page.locator(`[data-occurrence-id="${before.id}"] time`)).toHaveAttribute('datetime', before.startedAt)
   expect(recovery.fixture!.errors).toEqual([])
   expect(runtime.errors).toEqual([])
 })

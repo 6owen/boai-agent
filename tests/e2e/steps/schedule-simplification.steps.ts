@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 定时记录列表使用员工和时间展示，检索仍按原记录身份定位。
  * [OUTPUT]: 2026-11-27 核对启用开关、标题操作、只读配置卡片和执行记录检索后会话定位。
  * [OUTPUT]: 记录行定位原消息，运行详情按钮独立核对检索、显示方式和本次执行隔离。
  * [OUTPUT]: 核心bobo可选为执行员工，单次新增日期/时间控件；原六种配置覆盖扩展为七种，本轮未运行。
@@ -262,7 +263,7 @@ When('我搜索最近三百条之外的已结束执行', async ({ runtime, sched
   await page.getByRole('textbox', { name: '搜索执行记录', exact: true }).fill('过往记录 0')
   await page.getByRole('button', { name: '已完成', exact: true }).click()
   await expect(page.locator('[data-occurrence-id]:visible')).toHaveCount(1)
-  await expect(page.locator('[data-occurrence-id]:visible')).toContainText('交付待核对')
+  await expect(page.locator('[data-occurrence-id]:visible time')).toHaveAttribute('datetime', '2025-01-01T00:00:00.000Z')
   await page.locator('.automation-record-row:visible').click()
   await expect(page.locator('.detail-panel [data-occurrence-detail-id]:visible')).toHaveAttribute('data-occurrence-detail-id', `${schedule.fixture!.pausedId}-0000`)
 })
@@ -276,7 +277,7 @@ Then('旧计划删除后仍能定位该次结果', async ({ runtime, schedule })
   await expect(page.getByRole('textbox', { name: '搜索执行记录', exact: true })).toHaveValue('过往记录 0')
   await expect(page.locator('[data-occurrence-id]:visible')).toHaveCount(1)
   await page.locator('.automation-record-row:visible').click()
-  await expect(page.locator('[data-occurrence-id]:visible')).toContainText('过往记录 0')
+  await expect(page.locator('[data-occurrence-id]:visible')).toHaveAttribute('data-occurrence-id', `${schedule.fixture!.pausedId}-0000`)
   expect(await page.locator('.detail-panel [data-occurrence-detail-id]:visible').getAttribute('data-occurrence-detail-id')).toBe(`${schedule.fixture!.pausedId}-0000`)
   await expect(page.locator('.schedule-list').getByText('还没有定时任务', { exact: true })).toHaveCount(0)
   await expect(page.getByRole('group', { name: '全部定时任务', exact: true }).locator('.schedule-item')).toHaveCount(0)
@@ -362,7 +363,9 @@ Then('执行记录检索后只定位对应的聊天消息', async ({ runtime, sc
   const main = page.locator('.schedule-content'), rows = main.locator('.automation-record-row')
   await expect(rows).toHaveCount(3)
   await expect(main.getByRole('heading', { name: '最新结果', exact: true })).toHaveCount(0)
-  expect(await rows.first().locator('.conversation-title').innerText()).toBe('天气记录 3')
+  await expect(rows.first().locator('.conversation-title')).toHaveText('研究员')
+  await expect(rows.first().locator('time')).toHaveAttribute('datetime', '2026-10-13T01:00:00.000Z')
+  await expect(rows.first()).not.toContainText(/天气记录|运行结束|已交付/)
   await main.getByRole('button', { name: '搜索执行记录', exact: true }).click()
   await main.getByRole('textbox', { name: '搜索执行记录', exact: true }).fill('天气记录 1')
   await expect(rows).toHaveCount(1)
@@ -377,7 +380,7 @@ Then('执行记录检索后只定位对应的聊天消息', async ({ runtime, sc
   await expect(main.getByRole('heading', { name: '暂停的旧日报', exact: true })).toBeVisible()
   await main.getByRole('textbox', { name: '搜索执行记录', exact: true }).fill('天气记录')
   await expect(rows).toHaveCount(3)
-  await rows.filter({ hasText: '天气记录 2' }).click()
+  await main.locator(`[data-occurrence-id="${schedule.fixture!.pausedId}-process-1"]`).click()
   await expect(page.locator(`[id="message-${schedule.fixture!.pausedId}-process-1-request"]`)).toHaveClass(/message-target/)
   await expect(page.getByRole('dialog', { name: '执行记录', exact: true })).toHaveCount(0)
   await runtime.reviewNativeCheckpoint('另一条执行记录定位对应消息')

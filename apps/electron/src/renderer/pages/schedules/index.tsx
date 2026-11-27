@@ -1,4 +1,5 @@
 /*
+ * [INPUT]: 执行记录使用员工及会话快照解析本次执行员工。
  * [OUTPUT]: 启停单独提交，操作栏 Tooltip 延迟 500ms，编辑弹窗直接使用当前任务配置。
  * [OUTPUT]: 标题栏依次显示启用开关、编辑、删除与主色立即运行，记录行只负责定位会话。
  * [OUTPUT]: 2026-11-27 定时页任务下方点击执行记录打开原话题，左上角菜单沿原双栏弹窗查看运行详情。
@@ -111,9 +112,9 @@ export function SchedulePage({ api, snapshot, active, sidebarShown, divider, loc
         </div>
         <AutomationDetails definition={definition} snapshot={snapshot} />
         {definition.syncError && <Banner>{definition.syncError}</Banner>}
-        <AutomationHistory key={definition.id} api={api} active={active} automationId={definition.id} conversations={snapshot.conversations} onConversation={onConversation} />
+        <AutomationHistory key={definition.id} api={api} active={active} automationId={definition.id} snapshot={snapshot} onConversation={onConversation} />
       </div> : !loading && <Banner>此任务已删除或不可用，留存结果仍可在执行记录中查看。</Banner>)}
-      {<div ref={location.kind === 'history' ? content : undefined} hidden={location.kind !== 'history'} className="schedule-document schedule-content-transition t-panel-slide" data-open="true" data-settled="true"><AutomationHistory api={api} active={active && location.kind === 'history'} attentionOnly={location.kind === 'history' && location.attention} conversations={snapshot.conversations} onConversation={onConversation} /></div>}
+      {<div ref={location.kind === 'history' ? content : undefined} hidden={location.kind !== 'history'} className="schedule-document schedule-content-transition t-panel-slide" data-open="true" data-settled="true"><AutomationHistory api={api} active={active && location.kind === 'history'} attentionOnly={location.kind === 'history' && location.attention} snapshot={snapshot} onConversation={onConversation} /></div>}
     </main>
     <AlertDialog open={active && Boolean(deleting)} onOpenChange={open => { if (!open && !busy) setDeleting(null) }}>
       <AlertDialogContent>

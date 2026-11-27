@@ -1,4 +1,5 @@
 /*
+ * [INPUT]: 左栏执行记录读取当前员工与会话快照。
  * [OUTPUT]: 左上角执行记录沿用可调整宽度的双栏 Dialog，左侧选记录，右侧展示运行详情。
  * [INPUT]: Fixed occurrence identity, current snapshot and existing history/detail readers.
  * [OUTPUT]: Resizable history dialog with manager titles, fixed inset controls and an edge-to-edge scrolling sidebar; hidden readers stop.
@@ -32,7 +33,7 @@ export function AutomationHistoryDialog({ api, snapshot, active, initialId, atte
         <ResizablePanel defaultSize="190px" minSize="180px" maxSize="45%">
           <aside className="contact-manager-sidebar flex h-full min-w-0 flex-col overflow-hidden p-0" style={{ width: '100%' }} aria-label="执行记录列表">
             <div className="shrink-0 px-[12px] pt-[22px]"><div className="contact-manager-sidebar-heading"><Clock /><span>执行记录</span></div></div>
-            <AutomationHistory api={api} active={active} attentionOnly={attentionOnly} selectedId={selected} onOccurrence={setSelected} grouped />
+            <AutomationHistory api={api} snapshot={snapshot} active={active} attentionOnly={attentionOnly} selectedId={selected} onOccurrence={setSelected} grouped />
           </aside>
         </ResizablePanel>
         <ResizableHandle className="resize-handle bg-transparent hover:bg-ring data-[separator=hover]:bg-ring data-[separator=active]:bg-ring" aria-label="调整执行记录列表宽度" />

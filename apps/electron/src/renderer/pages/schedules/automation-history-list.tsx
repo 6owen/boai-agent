@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 执行记录行仅显示执行员工和运行时间，优先按本次记录保存的员工归属。
  * [OUTPUT]: 当前任务执行记录的清空入口用与搜索同尺寸的 carbon:erase 图标，保留悬停提示和确认。
  * [OUTPUT]: 2026-11-27 任务详情下方的记录行直达原消息，无会话原因直接显示；双栏弹窗在左栏选中记录。
  * [OUTPUT]: 2026-11-27 有关联会话的日志行直接定位；独立按钮查看详情；清空和删除提示只指日志。
@@ -30,12 +31,11 @@ import { Popover, PopoverContent, PopoverDescription, PopoverTitle, PopoverTrigg
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { notify as toast } from '@boai/ui/sonner'
 import { AUTOMATION_ONGOING_STATUSES } from '@boai/shared/domain/automations'
-import { occurrenceStatusLabels, deliveries } from './automation-history'
 
 const historyFilters = [{ value: 'all', label: '全部' }, { value: 'active', label: '进行中' }, { value: 'completed', label: '已完成' }, { value: 'attention', label: '需处理' }] as const
 
-export function AutomationHistory({ api, active, automationId, employeeId, attentionOnly = false, grouped = false, conversations, onConversation, selectedId, onOccurrence }: {
-  conversations?: Snapshot['conversations']; onConversation?(id: string, messageId?: string): void
+export function AutomationHistory({ api, active, automationId, employeeId, attentionOnly = false, grouped = false, snapshot, onConversation, selectedId, onOccurrence }: {
+  snapshot: Pick<Snapshot, 'agents' | 'conversations'>; onConversation?(id: string, messageId?: string): void
   selectedId?: string; onOccurrence?(id: string): void
   api: DesktopApi; active: boolean; automationId?: string; employeeId?: string; attentionOnly?: boolean; grouped?: boolean
 }) {
@@ -79,23 +79,21 @@ export function AutomationHistory({ api, active, automationId, employeeId, atten
   const listReveal = usePanelReveal(`${status}:${search}:${attentionOnly}`, active && loaded)
   const renderRecord = (o: AutomationHistoryPage['occurrences'][number]) => {
     const date = new Date(o.startedAt).toLocaleString('zh-CN', { hour12: false })
-    const locate = o.status !== 'skipped' && o.taskKind !== 'monitor' && onConversation && conversations?.some(room => room.id === o.conversationId && !room.list?.hidden && !room.mergedInto)
-    const reason = !onOccurrence && !locate && o.reason ? errorText(o.reason) : undefined
+    const room = snapshot.conversations.find(conversation => conversation.id === o.conversationId)
+    const owner = o.plan?.owner
+    const assigned = o.plan?.employeeIds
+    const employeeIds = assigned?.length ? assigned
+      : owner?.kind === 'employee' ? [owner.employeeId] : room?.agentIds ?? []
+    const employees = employeeIds.map(id => snapshot.agents.find(agent => agent.id === id)?.name ?? '员工已不可用').join('、') || '执行员工未知'
+    const locate = o.status !== 'skipped' && o.taskKind !== 'monitor' && onConversation && room && !room.list?.hidden && !room.mergedInto
     const openRecord = onOccurrence ? () => onOccurrence(o.id) : locate ? () => onConversation(o.conversationId, o.messageId) : undefined
     const selected = selectedId === o.id
-    const subtitle = [
-      date,
-      ...(!grouped ? [o.source === 'manual' ? '手动触发' : '定时触发', occurrenceStatusLabels[o.status], deliveries[o.deliveryStatus]] : []),
-      reason,
-    ].filter(Boolean).join(' · ')
     const row = { className: `conversation-item automation-record-row${selected ? ' selected' : ''}`, style: { paddingRight: 44 }, 'data-occurrence-id': o.id }
     const content = <>
       {!grouped && <span className="skill-list-icon"><Clock /></span>}
       <span className="conversation-copy">
-        <strong className={`conversation-title${grouped ? ' block truncate' : ''}`} title={o.name}>{o.name}</strong>
-        <small className="conversation-preview" title={subtitle}>
-          {grouped ? <><time dateTime={o.startedAt}>{date}</time>{reason ? ` · ${reason}` : ''}</> : subtitle}
-        </small>
+        <strong className={`conversation-title${grouped ? ' block truncate' : ''}`} title={employees}>{employees}</strong>
+        <small className="conversation-preview" title={date}><time dateTime={o.startedAt}>{date}</time></small>
       </span>
     </>
     return <div key={o.id} className="automation-history-row relative min-w-0">
