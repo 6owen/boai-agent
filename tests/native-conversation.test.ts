@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 内置浏览器命令沿 browser 模块的实现与类型，桌面、本机和 API 共用原合同。
  * [OUTPUT]: Codex明确最终答复在原生活动轮次即时预览，沿同一标识正式发布。
  * [OUTPUT]: 显式cwd仅固定当前消息；后续空闲主聊沿员工默认，原生权限回归读取该轮实际工作区日志并核对外部目录零追加。
  * [OUTPUT]: WT3显式项目目录跨后续消息保持；原生权限回归在当前项目核对真实新调用。
@@ -32,7 +33,7 @@ import { createHash } from 'node:crypto'
 import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
 import type { AutomationDefinition, AutomationOccurrence, Conversation, ConversationDetail, DigitalAgent, LaunchProfile, Message, Snapshot } from '../packages/shared/src/domain'
 import type { BrowserActionEnvelope, BrowserHostBridge, BrowserLease } from '../packages/shared/src/ipc/browser'
-import { parseBrowserSingleCommand } from '../packages/runtime/src/adapters/mastra/browser-tool-runtime'
+import { parseBrowserSingleCommand } from '../packages/runtime/src/modules/browser/commands'
 import type { ExecutionEvidence, ExecutionEvidencePage, NativeAction } from '../packages/shared/src/domain/execution'
 import type { ConversationView } from '../packages/shared/src/domain/reading'
 const disposals: (()=>Promise<void>)[]=[]

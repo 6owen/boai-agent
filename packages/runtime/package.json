@@ -15,15 +15,20 @@
       "development": "./src/adapters/claude/policy.ts",
       "default": "./src/adapters/claude/policy.ts"
     },
+    "./browser": {
+      "types": "./src/modules/browser/index.ts",
+      "development": "./src/modules/browser/index.ts",
+      "default": "./src/modules/browser/index.ts"
+    },
     "./adapters/mastra/browser-tool-runtime": {
-      "types": "./src/adapters/mastra/browser-tool-runtime.ts",
-      "development": "./src/adapters/mastra/browser-tool-runtime.ts",
-      "default": "./src/adapters/mastra/browser-tool-runtime.ts"
+      "types": "./src/modules/browser/commands.ts",
+      "development": "./src/modules/browser/commands.ts",
+      "default": "./src/modules/browser/commands.ts"
     },
     "./adapters/mastra/browser-tool-types": {
-      "types": "./src/adapters/mastra/browser-tool-types.ts",
-      "development": "./src/adapters/mastra/browser-tool-types.ts",
-      "default": "./src/adapters/mastra/browser-tool-types.ts"
+      "types": "./src/modules/browser/pane-types.ts",
+      "development": "./src/modules/browser/pane-types.ts",
+      "default": "./src/modules/browser/pane-types.ts"
     },
     "./adapters/mastra/engine": {
       "types": "./src/adapters/mastra/engine.ts",

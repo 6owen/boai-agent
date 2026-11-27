@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 内置浏览器命令沿 browser 模块的实现与类型，桌面、本机和 API 共用原合同。
  * [OUTPUT]: capturePage与JavaScript共用真实destroyed退出边界，迟到截图不回传。
  * [OUTPUT]: Cookie来源/导入及菜单覆盖只接真实工具栏主frame；菜单关闭/失焦/导航恢复48px，不改变页面边界。
  * [OUTPUT]: 页面实际destroyed结束原JavaScript查询等待；仅请求关闭或超时不代替退出，正常/失败回执均清理监听器。
@@ -845,7 +846,7 @@ export class BrowserPaneManager {
     id: string,
     ref: string,
     options?: { waitFor?: 'none' | 'navigation' | 'network-idle'; timeoutMs?: number }
-  ): Promise<import('@boai/runtime/adapters/mastra/browser-tool-types').BrowserClickResult> {
+  ): Promise<import('@boai/runtime/browser').BrowserClickResult> {
     const instance = this.requireAliveInstance(id)
 
     try {

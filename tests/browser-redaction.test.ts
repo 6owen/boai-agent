@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 内置浏览器命令沿 browser 模块的实现与类型，桌面、本机和 API 共用原合同。
  * [OUTPUT]: 浏览器参数可读性覆盖导航/快照/检索与填写脱敏，不修改真实调用。
  * [INPUT]: Directly migrated Craft command redactor and BOAI durable media/audit projection.
  * [OUTPUT]: Successful, rejected, serialized and repeated browser inputs keep values out of durable records without mutating execution arguments.
@@ -6,7 +7,7 @@
  * [PROTOCOL]: Update Header and parent .folder.md on change.
  */
 import { expect, it } from 'vitest'
-import { browserToolObservation, redactBrowserCommand, redactBrowserToolInput } from '../packages/runtime/src/adapters/mastra/browser-tool-redaction'
+import { browserToolObservation, redactBrowserCommand, redactBrowserToolInput } from '../packages/runtime/src/modules/browser/command-redaction'
 import { summarizeMedia } from '../packages/runtime/src/modules/browser/media'
 
 it('keeps readable browser operations without persisting field values or malformed payloads', () => {

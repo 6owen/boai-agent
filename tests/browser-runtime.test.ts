@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 内置浏览器命令沿 browser 模块的实现与类型，桌面、本机和 API 共用原合同。
  * [OUTPUT]: 已准备浏览器动作在单独默认目录变更后仍可开始和结算，其他员工配置变化继续阻止新动作。
  * [OUTPUT]: 原生产品桥保留导航命令和填写脱敏，原执行参数仍完整传递。
  * [OUTPUT]: 256KiB实际SDK截图在明确64K窗口内以媒体发送，不被base64或SDK元数据副本误计为超大文本。
@@ -38,8 +39,10 @@ import { createNativeProducts } from '../packages/runtime/src/adapters/native-pr
 import { AppService } from '../packages/runtime/src/service'
 import type { EngineContext } from '../packages/runtime/src/contracts'
 import type { TraceSpan } from '../packages/shared/src/domain/traces'
-import { executeBrowserSingleCommand,parseBrowserSingleCommand,getBrowserToolHelp } from '../packages/runtime/src/adapters/mastra/browser-tool-runtime'
-import type { BrowserPaneFns } from '../packages/runtime/src/adapters/mastra/browser-tool-types'
+import * as hostBrowser from '@boai/runtime/browser'
+import * as previousBrowser from '@boai/runtime/adapters/mastra/browser-tool-runtime'
+import { executeBrowserSingleCommand,parseBrowserSingleCommand,getBrowserToolHelp } from '../packages/runtime/src/modules/browser/commands'
+import type { BrowserPaneFns } from '../packages/runtime/src/modules/browser/pane-types'
 import { APPLICATION_BROWSER_SCOPE } from '../packages/shared/src/ipc/browser'
 import type { BrowserActionEnvelope,BrowserActionReply,BrowserHostBridge,BrowserHostMethods,BrowserLease } from '../packages/shared/src/ipc/browser'
 import type { DigitalAgent,Conversation,WorkExecution } from '../packages/shared/src/domain'
@@ -61,6 +64,13 @@ async function fixture() {
 function deferred<T>() { let resolve!:(value:T)=>void; const promise=new Promise<T>(done=>{resolve=done});return {promise,resolve} }
 function host(handler:(method:keyof BrowserHostMethods,input:unknown)=>Promise<unknown>):BrowserHostBridge {return {request:handler as BrowserHostBridge['request']}}
 const page={scopeKey:'scope',generation:'generation',pageVersion:'page1',url:'https://example.test/',title:'可信来源',obtainedAt:'2026-10-02T00:00:00.000Z'}
+it('exposes only the host browser runtime functions and keeps the previous public entry on the same implementation', () => {
+  expect(Object.keys(hostBrowser).sort()).toEqual(['BROWSER_PAGE_METRICS_EXPRESSION', 'executeBrowserSingleCommand', 'parseBrowserSingleCommand'])
+  expect(hostBrowser.parseBrowserSingleCommand).toBe(previousBrowser.parseBrowserSingleCommand)
+  expect(hostBrowser.executeBrowserSingleCommand).toBe(previousBrowser.executeBrowserSingleCommand)
+  expect(hostBrowser.BROWSER_PAGE_METRICS_EXPRESSION).toBe(previousBrowser.BROWSER_PAGE_METRICS_EXPRESSION)
+})
+
 describe('strict original browser command entry',()=>{
   it.each(['snapshot; navigate https://x.test','snapshot;','snapshot\nnavigate https://x.test','["snapshot"]','evaluate document.cookie','upload @e1 /tmp/file','get-clipboard','set-clipboard secret','paste secret','console','network','windows all','close all','focus instance-other','navigate https://user:password@x.test','navigate file:///tmp/file','snapshot extra','click @e0','click @e1 bogus','select @e1 x --unknown y','screenshot --png --png','screenshot-region --selector body','key v meta','key Control+v','downloads invalid','wait text x 60000','scroll down Infinity'])('rejects %s before any host callback',async command=>{
     const call=vi.fn(async()=>undefined)

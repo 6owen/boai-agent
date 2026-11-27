@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 内置浏览器命令沿 browser 模块的实现与类型，桌面、本机和 API 共用原合同。
  * [OUTPUT]: 执行详情保留实际浏览命令，fill/type/select仅隐藏输入值；无效参数不泄漏正文。
  * [INPUT]: Craft 2e3ba53 browser-tool-redaction.ts (Apache-2.0), original parser.
  * [OUTPUT]: Direct password redaction migration; BOAI additionally masks all fill/type values before durable audit and approvals, including rejected calls.
@@ -16,7 +17,7 @@
  */
 
 const isCanonicalBrowserToolName = (name: string) => /(^|__)browser_tool$/.test(name);
-import { splitBatchCommands, tokenizeCommand, parseBrowserSingleCommand } from './browser-tool-runtime';
+import { splitBatchCommands, tokenizeCommand, parseBrowserSingleCommand } from './commands';
 const PASSWORD_FILL_MARKER = 'Filled password field';
 const PASSWORD_TEXT_MARKER = 'Entered text into a password field';
 

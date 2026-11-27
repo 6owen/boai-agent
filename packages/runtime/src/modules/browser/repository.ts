@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 内置浏览器命令沿 browser 模块的实现与类型，桌面、本机和 API 共用原合同。
  * [OUTPUT]: 浏览器租约按执行配置版本核验；单独修改默认项目保持原动作授权，职责/权限等变更仍失效。
  * [OUTPUT]: 待核对写入只阻止新写入/控制操作；新snapshot/截图/find可观察，原unknown与副作用不变。
  * [OUTPUT]: 自动化浏览器沿原Work holder/occurrence/预算和动作事务核验，取消后不能取得新执行权。
@@ -18,8 +19,8 @@ import { APPLICATION_BROWSER_SCOPE } from '@boai/shared/ipc/browser'
 import type { BrowserActionEnvelope, BrowserActionReply, BrowserLease, BrowserTaskAuthorization } from '@boai/shared/ipc/browser'
 import { ProductStore } from '../../adapters/storage/product-store'
 import { WorkRepository } from '../collaboration/work-repository'
-import { parseBrowserSingleCommand } from '../../adapters/mastra/browser-tool-runtime'
-import { redactBrowserCommand } from '../../adapters/mastra/browser-tool-redaction'
+import { parseBrowserSingleCommand } from './commands'
+import { redactBrowserCommand } from './command-redaction'
 import { summarizeMedia } from './media'
 export interface BrowserActionRecord extends BrowserActionEnvelope { id: string; status: 'prepared'|'started'|'completed'|'failed'|'cancelled_before_start'|'unknown'; mutating: boolean; startedAt?:string; createdAt: string; reply?: BrowserActionReply }
 export const browserCommandHash = (parts: string[]) => createHash('sha256').update(JSON.stringify(parts)).digest('hex')

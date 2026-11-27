@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 内置浏览器命令沿 browser 模块的实现与类型，桌面、本机和 API 共用原合同。
  * [OUTPUT]: Automation tools bind the authorized runtime operations through the shared Mastra adapter.
  * [OUTPUT]: 普通回复的正文可先预览，出现工具调用时撤回该步预览；任务和限字回复仍等待校验。
  * [OUTPUT]: 2026-11-24 第三阶段：官方 Durable Agent/Session.steer、Workspace 文件工具、LocalSandbox 进程和原生 Trace；授权及发布保留业务适配。
@@ -87,7 +88,7 @@ import { groupInterpretationSchema, replyCharacterCount, validateGroupInterpreta
 import type { GroupInterpretation } from '@boai/shared/domain/group-coordination'
 import { prepareMemoryExtraction } from '../../modules/employees/memory-extraction'
 import { summarizeMedia } from '../../modules/browser/media'
-import { browserToolObservation } from './browser-tool-redaction'
+import { browserToolObservation } from '../../modules/browser/command-redaction'
 import { automationDraftCandidateSchema } from '../../modules/automations/automation-draft'
 import { Agent } from '@mastra/core/agent'
 import type { MastraModelOutput } from '@mastra/core/stream'

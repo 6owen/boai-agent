@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 内置浏览器命令沿 browser 模块的实现与类型，桌面、本机和 API 共用原合同。
  * [OUTPUT]: 已注册的领域操作直接执行对应回调；原生观察、消息和惰性 Work 仍由本桥负责。
  * [OUTPUT]: Native employees share scoped canvas operations and real PNG parts; observations omit binary payloads.
  * [OUTPUT]: 当前显式项目文件经固定目录/源身份核验后复制到受管区发布；项目原件与原生权限保持。
@@ -68,8 +69,8 @@ import { assertDirectoryTargetCurrent, resolveDirectoryTarget } from '../modules
 import { imageToolRequestSchema } from '../modules/media/image-service'
 import { selfieRequestSchema } from '../modules/media/selfie-service'
 import { browserToolSchema, browserToolDescription } from './mastra/browser-tool'
-import { parseBrowserSingleCommand } from './mastra/browser-tool-runtime'
-import { browserToolObservation } from './mastra/browser-tool-redaction'
+import { parseBrowserSingleCommand } from '../modules/browser/commands'
+import { browserToolObservation } from '../modules/browser/command-redaction'
 import { summarizeMedia } from '../modules/browser/media'
 import { automationCommandSchema, automationCommandToolSchema, automationToolDescription } from '../modules/automations/automation-commands'
 

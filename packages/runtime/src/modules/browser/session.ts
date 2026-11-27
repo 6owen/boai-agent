@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 内置浏览器命令沿 browser 模块的实现与类型，桌面、本机和 API 共用原合同。
  * [OUTPUT]: 公开只读hostInUse，宿主离开时只取消实际依赖浏览器的运行。
  * [OUTPUT]: 明确整体权限在新网页交互派发前核对；只读导航/观察和旧回执核对保持，审批隐藏输入正文。
  * [OUTPUT]: BOAI内置浏览器默认授权全部员工使用，不发起网页审批；页面版本/引用身份/真实调用及未知不重放保持。
@@ -15,7 +16,7 @@ import { createHash } from 'node:crypto'
 import { lstat, readFile, realpath, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import type { BrowserActionEnvelope,BrowserActionReply,BrowserHostBridge,BrowserLease } from '@boai/shared/ipc/browser'
-import { parseBrowserSingleCommand } from '../../adapters/mastra/browser-tool-runtime'
+import { parseBrowserSingleCommand } from './commands'
 import { browserCommandHash,BrowserRepository } from './repository'
 import { restrictedPath } from '../workspaces/file-access'
 export function browserRequestOrigins(content:string) {
