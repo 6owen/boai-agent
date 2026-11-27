@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工主聊天和独立话题在标题栏共用现有会话导航，支持从置顶员工进入话题。
  * [OUTPUT]: 会话列表写入返回快照刷新的完成回执，支持置顶落点连续呈现。
  * [OUTPUT]: 会话列表用共用员工主聊与话题入口，渠道列表沿独立投影。
  * [OUTPUT]: 2026-11-27 定时日志行复用会话定位，跳转原消息，无需先打开过程。
@@ -183,7 +184,7 @@ import { SkillsNavigation } from './skills-navigation'
 import { DetailPanel, DetailPanelHeader, useDetailPanelLayout } from '../detail-panel/index'
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState, type ReactNode, type CSSProperties, type PointerEvent, type KeyboardEvent } from 'react'
 import { ArrowLeft, Clock, Home, Contact, MessageCircle, Users, FileText, Workflow, Search, Sliders, Plus } from '@/components/icons/index'
-import { channelConversations, isEmployeeMainChat, isChannelConversation, type ConversationListChange } from '@boai/shared/domain/conversation-list'
+import { channelConversations, conversationSection, isEmployeeMainChat, isChannelConversation, type ConversationListChange } from '@boai/shared/domain/conversation-list'
 import type { AppEvent, Methods } from '@boai/shared/ipc'
 import type { Artifact, DigitalAgent, Conversation, Message, Snapshot } from '@boai/shared/domain'
 import { READING_LIMITS, type ConversationReadingState, type ConversationSearchResult, type ConversationSearchTarget, type ConversationView } from '@boai/shared/domain/reading'
@@ -202,6 +203,7 @@ import { useChatQuestionReplies } from '@/pages/conversations/question-reply'
 import { CoreChatStart } from '@/pages/conversations/-components/core-chat-start'
 import type { ComposerAgentPatch, ComposerAgentSaveResult } from '@/pages/conversations/-components/composer-toolbar'
 import { ConversationList } from '@/pages/conversations/-components/conversation-list'
+import { ConversationTopics } from '@/pages/conversations/-components/conversation-header'
 import { ConversationTitleDialog } from '@/pages/conversations/-components/conversation-title-dialog'
 import { MESSAGE_SEND_PENDING_KEY, pendingMessageRequests, restorePendingMessageDrafts, draftFingerprint } from '@/pages/conversations/message-send-state'
 import type { ChatDraft } from '@/pages/conversations/presentation'
@@ -1235,10 +1237,15 @@ export function AppShell() {
     const id = room.id, channel = isChannelConversation(room), internal = room.purpose === 'channel-internal'
     const owner = room.kind === 'group' || !room.agentIds[0] ? 'conversation' as const : 'employee' as const
     const ownerId = owner === 'employee' ? room.agentIds[0]! : id
-    const employee = !withinKey && !taskTrace && !channel && !internal && !room.employeeTaskId && room.kind === 'direct' &&
-      (isEmployeeMainChat(room, ownerId) || room.employeeChat === 'topic') ? snapshot.agents.find(agent => agent.id === ownerId && agent.active && agent.executionBackend?.kind !== 'acp-local') : undefined
+    const employeeChat = !withinKey && !taskTrace && !channel && !internal && !room.employeeTaskId && room.kind === 'direct'
+    const mainChat = employeeChat && isEmployeeMainChat(room, ownerId)
+    const employee = employeeChat && (mainChat || room.employeeChat === 'topic')
+      ? snapshot.agents.find(agent => agent.id === ownerId && agent.active && agent.executionBackend?.kind !== 'acp-local')
+      : undefined
+    const topicList = employeeChat && (mainChat || conversationSection(room) === 'topic') &&
+      <ConversationTopics key={id} conversation={room} conversations={snapshot.conversations} messageTimes={messageTimes} onSelect={selectConversation} />
     const topicAction = employee && <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-sm" aria-label="新话题" onClick={() => openEmployeeTopic(employee)} />}><Plus /></TooltipTrigger><TooltipContent>新话题</TooltipContent></Tooltip>
-    return <FloatingLayerScope active={window.pageActive}><ChatView {...window} conversation={room} hideHeader={!!taskTrace} historyHeader={historyHeader} headerActions={headerActions ?? topicAction} api={api!} snapshot={snapshot}
+    return <FloatingLayerScope active={window.pageActive}><ChatView {...window} conversation={room} hideHeader={!!taskTrace} historyHeader={historyHeader} headerActions={headerActions ?? <>{topicList}{topicAction}</>} api={api!} snapshot={snapshot}
       onPublish={channel ? message => {
         if (!message) return
         void action(async () => {

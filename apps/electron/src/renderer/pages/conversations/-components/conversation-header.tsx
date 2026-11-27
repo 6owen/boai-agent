@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 标题栏话题 Popover 只显示当前员工可见的话题，沿正常会话导航。
  * [OUTPUT]: 首句占位标题在生成期间复用 shadcn shimmer。
  * [OUTPUT]: 2026-11-09任务移入标题DropdownMenu，沿原关闭动画完成后导航，不再显示独立任务按钮。
  * [OUTPUT]: 2026-11-06 标题菜单拆分会话文件/知识资料，移除执行过程菜单项。
@@ -22,14 +23,15 @@
  * [POS]: 会话标题交互；清空确认复用 ConversationHistoryDialog，持久操作交给宿主。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { cn } from 'cn'
 import type { Conversation, DigitalAgent, Resource } from '@boai/shared/domain'
-import { isChannelConversation } from '@boai/shared/domain/conversation-list'
+import { conversationSection, isChannelConversation, sortedConversations } from '@boai/shared/domain/conversation-list'
 import { isCoreConversation } from '@boai/shared/domain/core-agent'
-import { BookOpen, FolderOpen, MessageCircle, MoreHorizontal, Pencil, Settings, Trash2 } from '@/components/icons'
+import { BookOpen, FolderOpen, List, MessageCircle, MoreHorizontal, Pencil, Settings, Trash2 } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
 import { ConversationHistoryDialog } from './conversation-history-dialog'
 import { AgentInfoPopover } from './agent-info-popover'
 
@@ -52,6 +54,29 @@ export function ConversationHeaderLayout({ title, titleGenerating, description, 
     <div className="chat-header-main"><div className="chat-heading"><h2 className={cn('chat-title', titleGenerating && 'w-fit shimmer')} aria-busy={titleGenerating || undefined}>{title}</h2>{description && <span className="field-hint">{description}</span>}</div></div>
     <div className="chat-header-actions">{children}</div>
   </header>
+}
+
+export function ConversationTopics({ conversation, conversations, messageTimes, onSelect }: {
+  conversation: Conversation; conversations: Conversation[]; messageTimes: Record<string, string>; onSelect(id: string): void
+}) {
+  const [open, setOpen] = useState(false)
+  const employeeId = conversation.agentIds[0]
+  const topics = useMemo(() => sortedConversations(conversations.filter(room =>
+    room.agentIds[0] === employeeId && conversationSection(room) === 'topic'), messageTimes), [conversations, employeeId, messageTimes])
+  if (!topics.length) return null
+  return <Popover open={open} onOpenChange={setOpen}>
+    <PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label="话题列表" title="话题列表" />}><List /></PopoverTrigger>
+    <PopoverContent align="end" className="max-h-[min(22rem,var(--available-height))] overflow-auto">
+      <PopoverTitle>话题</PopoverTitle>
+      <div className="grid min-w-0 gap-0.5">
+        {topics.map(topic => <Button key={topic.id} variant="ghost" size="content" className="w-full min-w-0 px-2 py-1.5"
+          aria-current={topic.id === conversation.id ? 'page' : undefined} title={topic.title} onClick={() => {
+            setOpen(false)
+            if (topic.id !== conversation.id) onSelect(topic.id)
+          }}><span className={cn('w-full truncate text-left', topic.titleGenerating && 'shimmer')}>{topic.title}</span></Button>)}
+      </div>
+    </PopoverContent>
+  </Popover>
 }
 
 export function ConversationHeader({ conversation, members, resources, busy, onDetails, onConfigureAgent, onEditTitle, onClear, onChannels, headerActions, onFiles, onKnowledge, onTasks }: Props) {
