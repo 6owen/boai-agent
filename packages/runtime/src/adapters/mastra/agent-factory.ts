@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 各阶段依据原有范围装配领域操作，共用 Mastra 绑定与显式媒体转换。
  * [OUTPUT]: 2026-11-24 第三阶段：官方 Durable Agent/Session.steer、Workspace 文件工具、LocalSandbox 进程和原生 Trace；授权及发布保留业务适配。
  * [OUTPUT]: 2026-11-24 Controller 工具接原生审批策略，所有阶段共用官方 Metrics。
  * [OUTPUT]: Controller 主阶段使用官方自动记忆与错误恢复，不再叠加宿主逐步骤摘要。
@@ -48,8 +49,8 @@ import { createReactionOperations } from '../../modules/conversations/reaction-t
 import { createBoundSkillOperations, boundSkillInstructions } from '../../modules/resources/bound-skill-tools'
 import { createMemoryOperations } from '../../modules/memory/memory-tools'
 import { createHistorySearchOperations } from './history-tools'
-import { createKnowledgeTools } from './knowledge-tools'
-import { hasKnowledge, knowledgeInstructions } from '../../modules/resources/knowledge-tools'
+import { bindMastraOperations } from './operation-tools'
+import { createKnowledgeOperations, hasKnowledge, knowledgeInstructions } from '../../modules/resources/knowledge-tools'
 import { createSourceTools, hasChatSourceTools, webSearchInstructions } from './source-tools'
 import { searchSelectionInstructions } from '../../modules/sources/search-selection'
 import { createStateTools, stateToolInstructions } from '../../modules/agent-state/state-tools'
@@ -144,10 +145,34 @@ async function createStageInstance(phase: AgentPhase, context: EngineContext, co
   let releaseCliTools: (() => Promise<void>) | undefined
   try {
     assertApiContext(context)
-  context.signal.throwIfAborted()
-      const tools = !task && ctx.groupCoordination?.mode === 'ordered' ? {} : ctx.work?.organization ? { ...taskRuntime?.tools } : { ...contextHistoryTools(ctx), ...Object.fromEntries([...createBrowserPluginOperations(ctx), ...createDesktopPluginOperations(ctx), ...createCanvasOperations(ctx)].map(operation => [operation.name, createTool({ id: operation.name, description: operation.description, inputSchema: operation.schema, toModelOutput: mcpModelOutput, execute: input => operation.execute(input) })])), ...taskRuntime?.tools, ...Object.fromEntries([...createApplicationTools(ctx), ...createStateTools(ctx), ...createHistorySearchOperations(ctx), ...createBoundSkillOperations(ctx), ...(ctx.memoryOwner === 'mastra' ? [] : createMemoryOperations(ctx)), ...createReactionOperations(ctx), ...createSelfieOperations(ctx)].map(operation => [operation.name, createTool({ id: operation.name, description: operation.description, inputSchema: operation.schema, execute: input => operation.execute(input) })])), ...(!task && ctx.decision?.action !== 'ask' && ctx.decision?.action !== 'request_handoff' ? createKnowledgeTools(ctx) : {}), ...(!task && hasChatSourceTools(ctx) ? createSourceTools(ctx, !ctx.manageDataSources) : {}), ...(setupBrowser ? { browser_tool: createBrowserTool(setupBrowser) } : {}), ...(ctx.manageSkills ? { manage_skills: createTool({ id: 'manage_skills', description: manageSkillsDescription, inputSchema: manageSkillsSchema, execute: input => ctx.manageSkills!(input) }) } : {}), ...(ctx.manageDataSources ? { manage_data_sources: createTool({ id: 'manage_data_sources', description: manageSourcesDescription, inputSchema: manageSourcesSchema, execute: input => ctx.manageDataSources!(input) }) } : {}), ...(ctx.createDataSource ? { create_data_source: createTool({ id: 'create_data_source', description: sourceCreationDescription, inputSchema: sourceCreationSchema, execute: input => ctx.createDataSource!(input) }) } : {}), ...(ctx.manageAutomation ? { manage_automation: createTool({ id: 'manage_automation', description: automationToolDescription, inputSchema: automationCommandToolSchema, execute: input => ctx.manageAutomation!(automationCommandSchema.parse(input)) }) } : {}) }
-      const permissions = controller ? new ControllerPermissions(ctx) : undefined
-      const agent = new Agent({
+    context.signal.throwIfAborted()
+    const tools = !task && ctx.groupCoordination?.mode === 'ordered' ? {} : ctx.work?.organization ? { ...taskRuntime?.tools } : {
+      ...contextHistoryTools(ctx),
+      ...bindMastraOperations([
+        ...createBrowserPluginOperations(ctx),
+        ...createDesktopPluginOperations(ctx),
+        ...createCanvasOperations(ctx),
+      ], mcpModelOutput),
+      ...taskRuntime?.tools,
+      ...bindMastraOperations([
+        ...createApplicationTools(ctx),
+        ...createStateTools(ctx),
+        ...createHistorySearchOperations(ctx),
+        ...createBoundSkillOperations(ctx),
+        ...(ctx.memoryOwner === 'mastra' ? [] : createMemoryOperations(ctx)),
+        ...createReactionOperations(ctx),
+        ...createSelfieOperations(ctx),
+      ]),
+      ...(!task && ctx.decision?.action !== 'ask' && ctx.decision?.action !== 'request_handoff' ? bindMastraOperations(createKnowledgeOperations(ctx)) : {}),
+      ...(!task && hasChatSourceTools(ctx) ? createSourceTools(ctx, !ctx.manageDataSources) : {}),
+      ...(setupBrowser ? { browser_tool: createBrowserTool(setupBrowser) } : {}),
+      ...(ctx.manageSkills ? { manage_skills: createTool({ id: 'manage_skills', description: manageSkillsDescription, inputSchema: manageSkillsSchema, execute: input => ctx.manageSkills!(input) }) } : {}),
+      ...(ctx.manageDataSources ? { manage_data_sources: createTool({ id: 'manage_data_sources', description: manageSourcesDescription, inputSchema: manageSourcesSchema, execute: input => ctx.manageDataSources!(input) }) } : {}),
+      ...(ctx.createDataSource ? { create_data_source: createTool({ id: 'create_data_source', description: sourceCreationDescription, inputSchema: sourceCreationSchema, execute: input => ctx.createDataSource!(input) }) } : {}),
+      ...(ctx.manageAutomation ? { manage_automation: createTool({ id: 'manage_automation', description: automationToolDescription, inputSchema: automationCommandToolSchema, execute: input => ctx.manageAutomation!(automationCommandSchema.parse(input)) }) } : {}),
+    }
+    const permissions = controller ? new ControllerPermissions(ctx) : undefined
+    const agent = new Agent({
       inputProcessors,
         ...(memory ? { memory } : {}),
         ...(controller ? { defaultOptions: controller.options, errorProcessors: [new StreamErrorRetryProcessor({ maxRetries: 2 })], maxProcessorRetries: 2 } : {}),

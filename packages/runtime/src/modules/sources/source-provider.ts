@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 数据源会话约束与脱敏规则归 source-session。
  * [OUTPUT]: 2026-11-24 第三阶段：MCPClient 接管连接/目录/执行/关闭；固定版本兼容层阻止未知副作用重放及重复目录。
  * [OUTPUT]: 2026-11-09 员工项目运行许可纳入本地源与MCP进程目录隔离。
  * [OUTPUT]: 2026-10-20 Alma技能接线：普通聊天按需读绑定技能/有来源记忆，独立任务协议与MCP媒体保持实际授权；本轮证据归独立Agent架构§11.21。
@@ -40,28 +41,16 @@ import { fileContentHash, readFilePage } from '../workspaces/file-editing'
 import { assertNativeProcessGuard } from '../../adapters/native-process-guard'
 import { assertWebSearchResult, isTavilySearchEndpoint, verifiedWebCapability } from './web-search-profile'
 
+import { redactSourceValue, SOURCE_TIMEOUT, type SourceSession } from './source-session'
 import { openJinaSearchSession } from './jina-search'
 import { openDeepSeekSearchSession } from './deepseek-search'
 
 const execute = promisify(execFile)
-export const SOURCE_TIMEOUT = 30_000
-const MAX_RESULT_CHARACTERS = 128_000
-export interface SourceSession { tools: SourceTool[]; call(name: string, args: Record<string, unknown>, signal: AbortSignal): Promise<unknown>; close(): Promise<void> }
 export async function recoverSourceProcesses(dataPath: string) {
   if (process.platform !== 'darwin') return
   const ledger = join(dataPath, 'source-processes')
   try { await lstat(ledger) } catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return; throw error }
   await execute(await assertNativeProcessGuard(), ['--recover', ledger], { timeout: 15_000, maxBuffer: 65536 })
-}
-export function redactSourceValue(value: unknown, credential: string): unknown {
-  let text = JSON.stringify(value) ?? 'null'
-  const secrets = [credential]
-  try { const parsed = JSON.parse(credential); if (parsed && typeof parsed === 'object') { secrets.push(...Object.values(parsed).filter((v): v is string => typeof v === 'string')); if (typeof parsed.username === 'string' && typeof parsed.password === 'string') secrets.push(`${parsed.username}:${parsed.password}`) } } catch { /* Plain token. */ }
-  for (const secret of secrets.filter(value => value.length > 2).sort((a, b) => b.length - a.length)) {
-    for (const encoded of [secret, encodeURIComponent(secret), Buffer.from(secret).toString('base64')]) text = text.split(JSON.stringify(encoded).slice(1, -1)).join('[redacted]')
-  }
-  if (text.length > MAX_RESULT_CHARACTERS) return { truncated: true, characters: text.length, excerpt: text.slice(0, MAX_RESULT_CHARACTERS) }
-  return JSON.parse(text)
 }
 export async function sourceFolder(path: string) {
   if (!isAbsolute(path)) throw new Error('请选择本地文件夹的绝对路径')

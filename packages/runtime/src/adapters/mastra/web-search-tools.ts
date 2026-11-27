@@ -1,18 +1,19 @@
 /*
+ * [OUTPUT]: Independent web-search operations implement the runtime tool contract.
  * [INPUT]: Host-authorized search services, resolved preference and callbacks.
  * [OUTPUT]: Independent search inspection/call operations shared by API and native agents.
  * [POS]: Capability tools; business data-source bindings are not consulted.
  * [PROTOCOL]: Update Header and parent .folder.md on change.
  */
 import { z } from 'zod'
-import type { EngineContext } from '../../contracts'
+import type { EngineContext, RuntimeToolOperation } from '../../contracts'
 import { searchSelectionInstructions } from '../../modules/sources/search-selection'
 
 export const webSearchToolNames = ['inspect_web_search', 'call_web_search'] as const
 export function hasWebSearchTools(context: EngineContext) {
   return context.agent.webSearch?.mode !== 'disabled' && !!context.webSearchServices?.length && !!context.inspectWebSearch && !!context.callWebSearch && !context.work?.organization
 }
-export function createWebSearchOperations(context: EngineContext): { name: string; schema: z.ZodType; description: string; execute(input: unknown): Promise<unknown> }[] {
+export function createWebSearchOperations(context: EngineContext): RuntimeToolOperation[] {
   if (!hasWebSearchTools(context)) return []
   return [
     { name: 'inspect_web_search', schema: z.object({ serviceId: z.string().uuid() }).strict(),

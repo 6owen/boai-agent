@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Local RPC observation is shared across execution and cancellation commands.
  * [OUTPUT]: 显式CLI权限仅核对员工已保存模式，受理后继续沿原审批和当前授权，不临时改权。
  * [OUTPUT]: 员工/核心首发接收固定附件摘要及短期上传选择，重复核对不依赖临时token。
  * [OUTPUT]: 附件独立身份随原send受理，明确附件可发送空正文。
@@ -20,6 +21,7 @@ import type { MessageExecution } from '@boai/shared/domain/message-execution'
 import type { AgentRunExecutionBlockChanges } from '@boai/shared/rovai/contracts'
 import { CliError, PROTOCOL_VERSION } from '@boai/shared/cli/protocol'
 import type { CliRpcClient } from '@boai/transport/client'
+import { observeRpc } from './rpc-observation'
 import type { ComposerReference } from '@boai/shared/domain/composer-references'
 import { executionRecovery, outputProjection } from './output'
 
@@ -49,16 +51,7 @@ export interface ObserveOptions { requestId: string; signal?: AbortSignal; waitT
 export async function executeMessage(client: CliRpcClient, operation: { expectedExecutionPermission?: import('@boai/shared/domain/execution').ExecutionPermission; apiModel?: import('@boai/shared/domain/model-source').ApiModelOverride; workingDirectory?: string; composerReferences?: ComposerReference[]; kind: 'send'; materialSelections?: import('@boai/shared/domain/materials').MaterialSelection[]; conversationId: string; content: string; mentionIds: string[]; replyToMessageId?: string } | { expectedExecutionPermission?: import('@boai/shared/domain/execution').ExecutionPermission; apiModel?: import('@boai/shared/domain/model-source').ApiModelOverride; workingDirectory?: string; composerReferences?: ComposerReference[]; kind: 'employee'; materialUploads?: import('@boai/shared/domain/material-upload').SubmittedMaterial[]; materialSelections?: import('@boai/shared/domain/materials').MaterialSelection[]; employeeId: string; content: string } | { kind: 'cancel' | 'observe' }, options: ObserveOptions): Promise<number> {
   const identity: { requestId: string; conversationId?: string; messageId?: string } = { requestId: options.requestId, ...('conversationId' in operation ? { conversationId: operation.conversationId } : {}) }
   const emit = (type: string, payload: Record<string, unknown> = {}) => options.emit({ protocolVersion: PROTOCOL_VERSION, type, ...identity, ...payload })
-  const timeout = new AbortController()
-  const signal = options.signal ? AbortSignal.any([options.signal, timeout.signal]) : timeout.signal
-  const timer = options.waitTimeout ? setTimeout(() => timeout.abort(new CliError('REQUEST_TIMEOUT', '终端等待超时；原执行未取消，请按 requestId 查询')), options.waitTimeout) : undefined
-  const invoke = async <T>(channel: string, input: unknown): Promise<T> => {
-    signal.throwIfAborted()
-    let abort!: () => void
-    const interrupted = new Promise<never>((_, reject) => { abort = () => reject(signal.reason); signal.addEventListener('abort', abort, { once: true }) })
-    try { return await Promise.race([client.invoke(channel, input) as Promise<T>, interrupted]) }
-    finally { signal.removeEventListener('abort', abort) }
-  }
+  const { signal, invoke, dispose } = observeRpc(client, options, '终端等待超时；原执行未取消，请按 requestId 查询')
   let dirty = true, wake: (() => void) | undefined, subscribed = false
   const unsubscribe = client.on('app', () => { dirty = true; wake?.() })
   const disconnect = client.onDisconnect(() => { dirty = true; wake?.() })
@@ -147,7 +140,7 @@ export async function executeMessage(client: CliRpcClient, operation: { expected
     emit('result', { state: interrupted ? 'detached' : code === 1 || code === 2 ? 'failed' : 'unknown', exitCode: code, error: error instanceof Error ? error.message : '执行结果待核对', recovery: executionRecovery(options.requestId, latestStatus) })
     return code
   } finally {
-    if (timer) clearTimeout(timer)
+    dispose()
     unsubscribe(); disconnect()
     if (subscribed && client.isConnected) await client.invoke('events:unsubscribe', { channel: 'app' }).catch(() => {})
   }

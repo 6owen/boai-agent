@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 数据源会话约束与脱敏规则归 source-session。
  * [OUTPUT]: 插件配置共用v1/v2解析；DeepSeek草稿测试有界、脱敏并复核插件状态，不写连接或密钥。
  * [INPUT]: ProductStore, vault, application plugin settings and explicit search settings.
  * [OUTPUT]: Independent search connections/default, atomic legacy migration and verified read-only calls.
@@ -16,7 +17,7 @@ import type { SecretStore } from '../../contracts'
 import type { ProductStore } from '../../adapters/storage/product-store'
 import { SourceService } from './source-service'
 import { openDeepSeekSearchSession } from './deepseek-search'
-import { redactSourceValue, SOURCE_TIMEOUT } from './source-provider'
+import { redactSourceValue, SOURCE_TIMEOUT } from './source-session'
 
 const collection = 'webSearchServices'
 type Defaults = Pick<WebSearchSettings, 'revision' | 'default'>

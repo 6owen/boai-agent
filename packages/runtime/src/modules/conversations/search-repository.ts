@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 搜索类型来自共享目标协议。
  * [INPUT]: ProductStore 固定 SQL、当前会话及来源验证 hooks；有界个人搜索和稳定历史目标。
  * [OUTPUT]: 本地多词 AND/固定相关性、已核验正文片段与覆盖进度、绑定索引版本的分页；来源身份和来源 hooks 在查询/点击复核，失效不返回旧摘录；有界回填不创建 Work/模型；原明确历史窗口/完成事实和隐藏/清理门禁保留。
  * [POS]: conversations 的 D6 个人浏览读模型，独立于 getConversation/模型上下文窗口；不读取任意路径或制造业务动作。
@@ -7,7 +8,7 @@
 import { createHash } from 'node:crypto'
 import type { Artifact, Conversation, Message } from '@boai/shared/domain'
 import type { ConversationMaterial } from '@boai/shared/domain/materials'
-import { READING_LIMITS, type ConversationCompletion, type ConversationCompletionIdentity, type ConversationMessageCursor, type ConversationMessageItem, type ConversationMessagePage, type ConversationMessagePageQuery, type ConversationSearchKind, type ConversationSearchPage, type ConversationSearchQuery, type ConversationSearchResult, type ConversationSearchTarget } from '@boai/shared/domain/reading'
+import { READING_LIMITS, conversationSearchKinds, type ConversationCompletion, type ConversationCompletionIdentity, type ConversationMessageCursor, type ConversationMessageItem, type ConversationMessagePage, type ConversationMessagePageQuery, type ConversationSearchKind, type ConversationSearchPage, type ConversationSearchQuery, type ConversationSearchResult, type ConversationSearchTarget } from '@boai/shared/domain/reading'
 import { ProductStore } from '../../adapters/storage/product-store'
 import type { ConversationMessageSqlRow, ConversationSearchSqlRow } from './reading-sql'
 import { completionHash, readingIdentifier } from './reading-repository'
@@ -19,7 +20,6 @@ export interface ConversationSourceHooks extends SearchBodyHooks {
   validateMaterial(material: ConversationMaterial, conversation: Conversation): Promise<void>
   validateArtifact(artifact: Artifact & { id: string; conversationId: string }, conversation: Conversation): Promise<void>
 }
-const kinds: ConversationSearchKind[] = ['conversation', 'message', 'material', 'artifact']
 const limitOf = (value: number | undefined) => { const limit = value ?? READING_LIMITS.page; if (!Number.isSafeInteger(limit) || limit < 1 || limit > READING_LIMITS.maxPage) throw new Error('浏览页大小须为 1 至 80'); return limit }
 const reasonOf = (error: unknown) => (error instanceof Error ? error.message : '这条内容已被清理或不可用').slice(0, 500)
 const cursorOf = (message: Pick<Message, 'id' | 'sequence'>): ConversationMessageCursor => ({ id: message.id, sequence: message.sequence })
@@ -85,9 +85,9 @@ export class ConversationSearchRepository {
     const from = date(query.from), to = date(query.to)
     if (from && to && from > to) throw new Error('搜索开始时间不能晚于结束时间')
     const selected = query.kinds ? [...new Set(query.kinds)].sort() : undefined
-    if (selected && (!selected.length || selected.some(kind => !kinds.includes(kind)))) throw new Error('无效搜索类型')
+    if (selected && (!selected.length || selected.some(kind => !conversationSearchKinds.includes(kind)))) throw new Error('无效搜索类型')
     const normalized = { keyword, scope: query.scope, ...(query.conversationId ? { conversationId: query.conversationId } : {}), ...(query.agentId ? { agentId: query.agentId } : {}), ...(from ? { from } : {}), ...(to ? { to } : {}), ...(selected ? { kinds: selected } : {}) }, queryKey = createHash('sha256').update(JSON.stringify({ ...normalized, ranking: 'and-fields-v1' })).digest('hex')
-    if (query.before) { readingIdentifier(query.before.id); if (query.before.queryKey !== queryKey || !kinds.includes(query.before.kind) || typeof query.before.time !== 'string' || query.before.time.length > 100 || !Number.isSafeInteger(query.before.score) || query.before.score! < 0 || !Number.isSafeInteger(query.before.indexRevision) || query.before.indexRevision! < 0) throw new Error('搜索游标与当前条件不一致') }
+    if (query.before) { readingIdentifier(query.before.id); if (query.before.queryKey !== queryKey || !conversationSearchKinds.includes(query.before.kind) || typeof query.before.time !== 'string' || query.before.time.length > 100 || !Number.isSafeInteger(query.before.score) || query.before.score! < 0 || !Number.isSafeInteger(query.before.indexRevision) || query.before.indexRevision! < 0) throw new Error('搜索游标与当前条件不一致') }
     return { normalized, queryKey, limit }
   }
   async search(query: ConversationSearchQuery): Promise<ConversationSearchPage> {
@@ -122,7 +122,7 @@ export class ConversationSearchRepository {
   }
   async resolve(target: ConversationSearchTarget): Promise<ConversationSearchResult> {
     readingIdentifier(target.conversationId); readingIdentifier(this.targetId(target))
-    if (!kinds.includes(target.kind)) throw new Error('无效搜索目标类型')
+    if (!conversationSearchKinds.includes(target.kind)) throw new Error('无效搜索目标类型')
     const row = await this.store.conversationSearchTarget({ kind: target.kind, id: this.targetId(target), conversationId: target.conversationId })
     if (!row) throw new Error('这条内容已被清理或不可用')
     if ((target.kind === 'material' || target.kind === 'artifact') && fileIdentity(this.target(row)) !== fileIdentity(target)) return { ...this.result(row, '', '所见文件版本或内容身份已更新'), target: structuredClone(target) }

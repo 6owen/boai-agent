@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: skills CLI 的包内路径由实际构建回传给 Main，测试核对两端使用同一归档。
  * [OUTPUT]: 主窗聚合任务、应用和 Agent 更新；Agent 版本只在应用启动时检查一次，安装由用户确认。
  * [OUTPUT]: 为本地技能检查和更新提供开发版及安装版可读的 CLI 归档。
  * [OUTPUT]: 本机技能页的检查、指定技能更新与明确全局更新由可信主窗交给 npx skills，更新前重核目录身份，命令进度只发回原窗口页面。
@@ -144,6 +145,7 @@ import { DesktopNotifications } from './notifications'
 import type { AgentUpdate, AgentUpdateRequest } from '@boai/shared/ipc/notifications'
 import { setBrowserDiagnostic } from './browser/logger'
 
+declare const __BOAI_SKILLS_ARCHIVE__: string
 declare const __BOAI_APPLICATION_BUILD__: { version: string; inputHash: string }
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'boai-asset', privileges: { standard: true, secure: true, supportFetchAPI: true } }])
@@ -314,7 +316,7 @@ const userTerminals = new WorkspaceTerminalService(dataPath, {
   },
 })
 const skillInstallationTerminal = new SkillInstallationTerminal(dataPath)
-const localSkillCli = new LocalSkillCli(join(__dirname, '../skills-cli/skills-1.9.0-boai.1.tgz').replace(/app\.asar(?=[/\\])/, 'app.asar.unpacked'))
+const localSkillCli = new LocalSkillCli(join(__dirname, '..', __BOAI_SKILLS_ARCHIVE__).replace(/app\.asar(?=[/\\])/, 'app.asar.unpacked'))
 let userTerminalsReady: Promise<void> | undefined
 let workspaceDocumentEpoch = 0
 let userTerminalShutdownInterrupted = false

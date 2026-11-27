@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 共享模块只通过公开包入口解析。
  * [OUTPUT]: 2026-11-09桌面开发依赖使用独立renderer缓存，启动即预构建xterm及fit，避免终端首次打开时依赖缓存缺失。
  * [OUTPUT]: Workspace源码路径迁至apps/packages，保留既有输出与业务合同。
  * [OUTPUT]: 共享UI/token按当前worktree的公开导出解析，避免共享node_modules链接读到另一目录；token编辑重新生成默认CSS。
@@ -24,7 +25,7 @@ export default defineConfig({
   base: './',
   cacheDir: resolve('apps/electron/node_modules/.vite/renderer'),
   optimizeDeps: { include: ['@xterm/xterm', '@xterm/addon-fit'], exclude: ['@tldraw/assets/imports.vite'] },
-  resolve: { alias: [...workspaceAliases, { find: '@', replacement: resolve('apps/electron/src/renderer') }, { find: '@shared', replacement: resolve('packages/shared/src') }] },
+  resolve: { alias: [...workspaceAliases, { find: '@', replacement: resolve('apps/electron/src/renderer') }] },
   plugins: [react(), tailwindcss(), designTokensPlugin(), {
     name: 'development-refresh-policy',
     apply: 'serve',

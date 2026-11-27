@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Automation tools bind the authorized runtime operations through the shared Mastra adapter.
  * [OUTPUT]: 普通回复的正文可先预览，出现工具调用时撤回该步预览；任务和限字回复仍等待校验。
  * [OUTPUT]: 2026-11-24 第三阶段：官方 Durable Agent/Session.steer、Workspace 文件工具、LocalSandbox 进程和原生 Trace；授权及发布保留业务适配。
  * [OUTPUT]: 2026-11-24 会话/OM/标题/判断/行为/草稿/连接测试/团队/PPT统一官方观测，显式预算沿原归属。
@@ -76,7 +77,7 @@ import { stateToolNames } from '../../modules/agent-state/state-tools'
 import { agentBehaviorResultSchema } from '@boai/shared/domain/agent-profile'
 import { createApplicationTools } from '../../modules/application/application-tools'
 import { createWebSearchOperations } from './web-search-tools'
-import { createTool } from '@mastra/core/tools'
+import { bindMastraOperations } from './operation-tools'
 import { hasKnowledge, knowledgeToolNames } from '../../modules/resources/knowledge-tools'
 import { hasChatSourceTools, sourceToolNames } from './source-tools'
 import { applicationToolNames, applicationObservation } from '../../modules/application/application-tools'
@@ -227,7 +228,7 @@ export class MastraEngine implements AgentEngine {
     if (reserveReview && input.maxModelCalls < 2) throw new Error('反思需要生成与事实复核两次调用；当前行为调用上限不足')
     const instructions = `${context.bootstrap?.instructions ?? context.agent.instructions}\n\n${context.bootstrap?.dynamicInstructions ?? ''}\n\nThis is an explicitly configured employee behavior, not a new message from the owner. Use only supplied context and actual tools. ${input.instruction}\n\n${behaviorContext.instructions}\nReturn exactly one JSON object matching this contract, without Markdown: ${JSON.stringify(z.toJSONSchema(agentBehaviorResultSchema))}. Choose skip when there is nothing useful to do. sourceMessageIds must come from supplied messages. Never report a draft as delivered.`
     const agent = new Agent({ id: context.agent.id, name: context.agent.name, model: modelConfig(context.connection, context.apiKey, context.agent.modelId), maxRetries: 0, instructions,
-      tools: Object.fromEntries([...createApplicationTools(context), ...createWebSearchOperations(context)].map(operation => [operation.name, createTool({ id: operation.name, description: operation.description, inputSchema: operation.schema, execute: input => operation.execute(input) })])) })
+      tools: bindMastraOperations([...createApplicationTools(context), ...createWebSearchOperations(context)]) })
     const flush = await observeAgent(agent, context, 'behavior')
     try {
     let calls = 0

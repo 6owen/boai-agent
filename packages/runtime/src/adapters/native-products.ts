@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 已注册的领域操作直接执行对应回调；原生观察、消息和惰性 Work 仍由本桥负责。
  * [OUTPUT]: Native employees share scoped canvas operations and real PNG parts; observations omit binary payloads.
  * [OUTPUT]: 当前显式项目文件经固定目录/源身份核验后复制到受管区发布；项目原件与原生权限保持。
  * [OUTPUT]: Agent Desktop 可选插件接线；默认关闭、独立于旧computer-use，调用沿员工权限及真实图片。
@@ -49,7 +50,7 @@ import { sourceCallSchema } from '@boai/shared/domain/sources'
 import { sourceInspectSchema, sourceInspectDescription, sourceCallDescription, hasSourceTools, createWebSearchSelectionOperation } from './mastra/source-tools'
 import path from 'node:path'
 import { realpath } from 'node:fs/promises'
-import type { EngineContext } from '../contracts'
+import type { EngineContext, RuntimeToolOperation } from '../contracts'
 import type { NativeTool } from './native-task'
 import { createTaskRuntime } from './mastra/task-runtime'
 import { describePresentationTools } from './mastra/presentation-tools'
@@ -77,11 +78,9 @@ export function createNativeProducts(context: EngineContext) {
   let runtime: Promise<Awaited<ReturnType<typeof createTaskRuntime>>> | undefined
   const organization = isCoreAgent(context.agent) && context.conversation.purpose === 'core' && !context.legacyTeamName
   const reportShape = Object.fromEntries(Object.entries(modelWorkOutcomeSchema({ organization }).shape).filter(([key]) => key !== 'userQuestion'))
-  const knowledgeOperations = createKnowledgeOperations(context)
   const directoryRequest = createDirectoryRequestOperation(context)
   const searchChoice = createWebSearchSelectionOperation(context)
-  const webSearchOperations = [...createWebSearchOperations(context), ...createBrowserPluginOperations(context), ...createDesktopPluginOperations(context), ...createCanvasOperations(context)]
-  const definitions: { name: string; description: string; schema: z.ZodType }[] = [
+  const definitions: (Omit<RuntimeToolOperation, 'execute'> & { execute?: RuntimeToolOperation['execute'] })[] = [
     { name: 'send_message', description: 'Publish an ordinary public message in this employee conversation now, for example a clarification or progress update. No Work is created. Repeating the same final reply will not create a duplicate. Use delegate_work to assign an actionable task to a colleague.', schema: z.object({ content: z.string().trim().min(1) }).strict() },
     { name: 'read_messages', description: 'Read a page from this turn’s authorized conversation snapshot. beforeSequence reads older history. Later user messages are queued for the next turn. This does not read private conversations of other employees.', schema: z.object({ beforeSequence: z.number().int().positive().optional(), limit: z.number().int().min(1).max(100).default(50) }).strict() },
     { name: 'publish_artifact', description: 'Deliver an existing file from your employee conversation workspace or the selected project directory as a BOAI chat attachment. Project originals stay in place; BOAI publishes a verified managed copy. path may be absolute or relative to cwd. When the current user asks to revise a previously delivered file, pass its actual replacesArtifactId to publish the next immutable version. Do not use replacement for unrelated new files. No separate report is required.', schema: z.object({ path: z.string(), name: z.string().max(150).optional(), replacesArtifactId: z.string().optional(), revisionRequestId: z.string().optional() }) },
@@ -89,7 +88,6 @@ export function createNativeProducts(context: EngineContext) {
     { name: 'wait_for_work', description: 'Wait for actual delegated work IDs/results; finish this turn after calling. BOAI resumes your native session once the specified results are ready.', schema: workWaitSchema },
     { name: 'report_work', description: 'Optionally record the disposition of a real BOAI work item. Unnecessary for ordinary chat, clarification, or after publishing a file. For answer evidence, reference MUST be a short exact substring of your final public reply: include that same text verbatim in the reply. Do not place separate prose, URLs or timestamps in reference unless they also appear verbatim in the reply. A receipt only records your declaration; delivery is checked after the final reply. After wait_for_work, finish the turn without another report. Ask users as ordinary chat messages; there is no userQuestion workflow.', schema: z.object(reportShape).strict() },
   ]
-  const applicationTools = [...createApplicationTools(context), ...createStateTools(context), ...createBoundSkillOperations(context), ...createReactionOperations(context), ...createSelfieOperations(context)]
   definitions.push(...describePresentationTools(context))
   if (context.selfies) definitions.push(
     { name: 'save_selfie', description: 'Save an actual owner-approved image as your private persistent appearance reference. Owner private chat only; never auto-save or invent approval. path is an existing self:/ or authorized shared:/ PNG/JPEG/WebP, max 8 MiB. The host records the current owner message; native external inputs must first be copied into this employee workspace.', schema: z.object({ path: z.string().min(1), label: z.string().trim().max(100).default('') }).strict() },
@@ -100,7 +98,18 @@ export function createNativeProducts(context: EngineContext) {
     { name: 'inspect_image_generation', description: 'Read the independently configured image provider/model and readiness without generating or creating Work. No credentials or chat-model fallback.', schema: z.object({}).strict() },
     { name: 'generate_image', description: 'Generate one actual image, or edit up to four authorized PNG/JPEG/WebP references, using the configured image model. Uses the existing task runtime and lazily claims Work. path must be a NEW self:/runs/<actual-run-id>/image.png; references use self:/ or authorized shared:/ paths (copy external native files into the current workspace first). File output is not delivery: publish_artifact sends it to this conversation. No automatic retry or model fallback; inspect the original result if the outcome is unknown.', schema: imageToolRequestSchema },
   )
-  definitions.push(...knowledgeOperations, ...webSearchOperations, ...applicationTools)
+  definitions.push(
+    ...createKnowledgeOperations(context),
+    ...createWebSearchOperations(context),
+    ...createBrowserPluginOperations(context),
+    ...createDesktopPluginOperations(context),
+    ...createCanvasOperations(context),
+    ...createApplicationTools(context),
+    ...createStateTools(context),
+    ...createBoundSkillOperations(context),
+    ...createReactionOperations(context),
+    ...createSelfieOperations(context),
+  )
   if (searchChoice) definitions.push(searchChoice)
   if (directoryRequest) definitions.push(directoryRequest)
   if (hasSourceTools(context)) definitions.push(
@@ -120,7 +129,7 @@ export function createNativeProducts(context: EngineContext) {
   )
   // Every product tool accepts an object. Discriminated unions emit only `oneOf`;
   // MCP requires an explicit root type or rejects the entire tools/list response.
-  const tools: NativeTool[] = definitions.map(({ name, description, schema }) => ({ name, description, inputSchema: { ...z.toJSONSchema(schema, { io: 'input' }), type: 'object' },
+  const tools: NativeTool[] = definitions.map(({ name, description, schema, execute: runOperation }) => ({ name, description, inputSchema: { ...z.toJSONSchema(schema, { io: 'input' }), type: 'object' },
     ...(['call_data_source', 'call_browser_plugin', 'call_desktop_plugin', 'call_canvas'].includes(name) ? {toModelContent:mcpModelContent} : {}),
     ...(name==='browser_tool' ? {toModelContent:(value:unknown)=>{
       const result=value as {output?:string;source?:unknown;image?:{data:string;mimeType:string}}
@@ -144,14 +153,11 @@ export function createNativeProducts(context: EngineContext) {
           await context.presentations!.verify(); await emit(true, result); return result
         }
         if (name === 'inspect_image_generation') { context.signal.throwIfAborted(); const result = await context.images!.settings(); await emit(true, result); return result }
-        const applicationTool = applicationTools.find(operation => operation.name === name)
-        if (applicationTool) { const result = await applicationTool.execute(parsed); await emit(true, result); return result }
-        if (name === searchChoice?.name) { const result = await searchChoice.execute(parsed); await emit(true, result); return result }
-        if (name === directoryRequest?.name) { const result = await directoryRequest.execute(parsed); await emit(true, result); return result }
-        const search = webSearchOperations.find(operation => operation.name === name)
-        if (search) { const result = await search.execute(parsed); await emit(true, result); return result }
-        const knowledge = knowledgeOperations.find(operation => operation.name === name)
-        if (knowledge) { const result = await knowledge.execute(parsed); await emit(true, result); return result }
+        if (runOperation) {
+          const result = await runOperation(parsed)
+          await emit(true, result)
+          return result
+        }
         if (name === 'inspect_data_source' || name === 'call_data_source') {
           const result = name === 'inspect_data_source' ? await context.inspectDataSource!(String(parsed.sourceId)) : await context.callDataSource!(sourceCallSchema.parse(parsed))
           await emit(true, result); return result

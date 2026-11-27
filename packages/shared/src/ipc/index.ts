@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 阅读、搜索和锚点 IPC 共用 domain/reading 的输入校验与推导类型。
  * [OUTPUT]: 主窗通知收件箱及私有 Agent 更新进度。
  * [OUTPUT]: localSkillCli 定义主窗专用的本机技能检查、单项/全局更新及停止检查，回传可更新技能与实时终端进度。
  * [OUTPUT]: 员工明确新话题的首发沿消息请求与原受理回执。
@@ -263,11 +264,11 @@ export interface Methods extends EmployeeTaskMethods, MessageQueueMethods, Conte
   listConversationMessages: { input: import('../domain/reading').ConversationMessagePageQuery; output: import('../domain/reading').ConversationMessagePage }
   searchConversations: { input: import('../domain/reading').ConversationSearchQuery; output: import('../domain/reading').ConversationSearchPage }
   resolveConversationSearchTarget: { input: import('../domain/reading').ConversationSearchTarget; output: import('../domain/reading').ConversationSearchResult }
-  getConversationReading: { input: { conversationId: string }; output: import('../domain/reading').ConversationReadingState }
+  getConversationReading: { input: import('../domain/reading').ConversationReadingLookup; output: import('../domain/reading').ConversationReadingState }
   observeConversationReading: { input: import('../domain/reading').ConversationObserveInput; output: import('../domain/reading').ConversationReadingState }
   saveConversationAnchor: { input: import('../domain/reading').ConversationAnchorInput; output: import('../domain/reading').ConversationReadingState }
   getConversationView: { input: import('../domain/reading').ConversationMessagePageQuery; output: import('../domain/reading').ConversationView }
-  getConversationMetadata: { input: { id: string; includeTriggerSummaries?: boolean }; output: ConversationDetail }
+  getConversationMetadata: { input: import('../domain/reading').ConversationMetadataQuery; output: ConversationDetail }
   listInbox: { input: import('../domain/inbox').InboxQuery; output: import('../domain/inbox').InboxPage }
   getInboxItem: { input: { id: string }; output: import('../domain/inbox').InboxItem | null }
   replyInboxQuestion: { input: import('../domain/inbox').InboxQuestionReply; output: Message }

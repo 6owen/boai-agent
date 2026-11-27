@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 共享模块只通过公开包入口解析。
  * [INPUT]: Real canvas/BOAI view fixture, isolated CAS transport and hidden Chromium.
  * [OUTPUT]: Targeted screenshots and machine-readable checks for B-V02/03/04 and failed save lifecycle.
  * [POS]: WT4 view-only acceptance; does not run models, full E2E, personal Electron or host persistence tests.
@@ -27,7 +28,7 @@ const waitForView = view => expect.poll(() => page.evaluate(view => Boolean(wind
 const readShape = async (view, id) => page.evaluate(({ view, id }) => window.canvasFixture.view(view).shapes.find(shape => shape.id === id), { view, id })
 
 try {
-  server = await createServer({ configFile: false, root: process.cwd(), cacheDir: resolve('.local/canvas-view-vite-cache'), resolve: { alias: [...workspaceViteAliases(), { find: '@', replacement: resolve('apps/electron/src/renderer') }, { find: '@shared', replacement: resolve('packages/shared/src') }] }, plugins: [react(), tailwindcss(), designTokensPlugin()], server: { host: '127.0.0.1', port: 0, strictPort: false }, optimizeDeps: { include: ['react', 'react-dom/client'], exclude: ['@tldraw/assets/imports.vite'] }, logLevel: 'warn' })
+  server = await createServer({ configFile: false, root: process.cwd(), cacheDir: resolve('.local/canvas-view-vite-cache'), resolve: { alias: [...workspaceViteAliases(), { find: '@', replacement: resolve('apps/electron/src/renderer') }] }, plugins: [react(), tailwindcss(), designTokensPlugin()], server: { host: '127.0.0.1', port: 0, strictPort: false }, optimizeDeps: { include: ['react', 'react-dom/client'], exclude: ['@tldraw/assets/imports.vite'] }, logLevel: 'warn' })
   await server.listen()
   const address = server.httpServer.address(), base = `http://127.0.0.1:${address.port}`
   browser = await chromium.launch({ headless: true })

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: CLI observation detaches from one pending RPC and releases its listeners without replay.
  * [OUTPUT]: Raw sockets cannot bypass principal-filtered catalogs, impersonate owners or receive owner events; delayed authentication closes safely.
  * [INPUT]: Actual ws/wss sockets, Craft-derived client/codec and isolated certificates/handlers.
  * [OUTPUT]: Authentication, correlation, no replay, limits, subscriptions, TLS and shutdown evidence.
@@ -8,13 +9,14 @@
 import { afterEach, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import { randomBytes, randomUUID } from 'node:crypto'
-import { once } from 'node:events'
+import { getEventListeners, once } from 'node:events'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import WebSocket from 'ws'
+import { observeRpc } from '../apps/cli/src/rpc-observation'
 import { CliRpcClient } from '../packages/transport/src/client'
 import { startRpcServer, type RpcChannel } from '../packages/transport/src/server'
 import { deserializeEnvelope, serializeEnvelope } from '../packages/shared/src/cli/codec'
@@ -48,6 +50,33 @@ it('correlates concurrent out-of-order replies without replay or a second servic
   expect(await Promise.all([client.invoke('work', 1), client.invoke('work', 2)])).toEqual([1, 2])
   expect(calls).toEqual([1, 2])
   await expect(client.invoke('__backup', {})).rejects.toMatchObject({ code: 'CHANNEL_NOT_FOUND' })
+})
+
+it('releases local RPC observers while the original host call finishes once', async () => {
+  let finish!: () => void
+  const pending = new Promise<void>(resolve => { finish = resolve })
+  const work = vi.fn(async () => { await pending; return true })
+  const { client } = await fixture(new Map<string, RpcChannel>([
+    ['work', { input: z.unknown(), effect: 'write', handle: work }],
+    ['echo', { input: z.unknown(), effect: 'read', handle: input => input }],
+  ]))
+  const controller = new AbortController()
+  const observer = observeRpc(client, { signal: controller.signal }, 'wait expired')
+  try {
+    await expect(observer.invoke('echo', 'ready')).resolves.toBe('ready')
+    expect(getEventListeners(observer.signal, 'abort')).toHaveLength(0)
+    const waiting = observer.invoke('work', {})
+    await vi.waitFor(() => expect(work).toHaveBeenCalledTimes(1))
+    expect(getEventListeners(observer.signal, 'abort')).toHaveLength(1)
+    const reason = new Error('detached')
+    controller.abort(reason)
+    await expect(waiting).rejects.toBe(reason)
+    expect(getEventListeners(observer.signal, 'abort')).toHaveLength(0)
+    await expect(observer.invoke('work', {})).rejects.toBe(reason)
+    finish()
+    await expect(client.invoke('echo', 'still connected')).resolves.toBe('still connected')
+    expect(work).toHaveBeenCalledTimes(1)
+  } finally { finish(); observer.dispose() }
 })
 
 it('enforces run identity on raw requests even when a client ignores the advertised catalog', async () => {

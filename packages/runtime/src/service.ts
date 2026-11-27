@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 阅读、搜索和锚点 IPC 共用 domain/reading 的输入校验与推导类型。
  * [OUTPUT]: 员工定时触发提交普通消息，与话题和历史记录原子写入。
  * [OUTPUT]: bobo 发送首条消息或打开 CLI 主会话只考虑未删除主聊，保留旧清理回执。
  * [OUTPUT]: 手动定时任务进入队列后立即公开已提交的员工话题，执行记录可原位定位。
@@ -424,7 +425,11 @@ import { WorkViewRepository } from './modules/collaboration/work-view-repository
 import { workViewQuerySchema, conversationFileQuerySchema, workViewTargetSchema, conversationFileTargetSchema } from './modules/collaboration/work-view-sql'
 import { ConversationReadingRepository } from './modules/conversations/reading-repository'
 import { ConversationSearchRepository } from './modules/conversations/search-repository'
-import { READING_LIMITS, type ConversationMessagePageQuery, type ConversationView } from '@boai/shared/domain/reading'
+import {
+  READING_LIMITS, conversationMetadataSchema, messagePageSchema, observeReadingSchema,
+  readingLookupSchema, saveAnchorSchema, searchSchema, searchTargetSchema,
+  type ConversationMessagePageQuery, type ConversationView,
+} from '@boai/shared/domain/reading'
 import { GroupScheduler, type PublishReply } from './group-scheduler'
 import { WorkspaceService } from './modules/workspaces/workspace-service'
 import { EmployeeService, agentSchema } from './modules/employees/employee-service'
@@ -464,15 +469,6 @@ import type { WorkOutcome, ModelUsage } from '@boai/shared/domain'
 
 const id = z.string().trim().min(1).max(200)
 const ids = z.array(id).max(100).refine(value => new Set(value).size === value.length, '不能包含重复 ID')
-const messageCursorSchema = z.object({ id, sequence: z.number().int().nonnegative() }).strict()
-const messagePageSchema = z.object({ conversationId: id, limit: z.number().int().min(1).max(READING_LIMITS.maxPage).optional(), before: messageCursorSchema.optional(), after: messageCursorSchema.optional(), aroundMessageId: id.optional() }).strict()
-const searchKindSchema = z.enum(['conversation', 'message', 'material', 'artifact'])
-const searchSchema = z.object({ keyword: z.string().trim().min(1).max(800), scope: z.enum(['all', 'current']), conversationId: id.optional(), agentId: id.optional(), from: z.string().max(100).optional(), to: z.string().max(100).optional(), kinds: z.array(searchKindSchema).max(4).optional(), limit: z.number().int().min(1).max(READING_LIMITS.maxPage).optional(), before: z.object({ time: z.string().max(100), id, kind: searchKindSchema, queryKey: z.string().min(1).max(200), score: z.number().int().nonnegative().optional(), indexRevision: z.number().int().nonnegative().optional() }).strict().optional() }).strict()
-const searchTargetSchema = z.discriminatedUnion('kind', [z.object({ kind: z.literal('conversation'), conversationId: id }).strict(), z.object({ kind: z.literal('message'), conversationId: id, messageId: id }).strict(), z.object({ kind: z.literal('material'), conversationId: id, materialId: id, revision: z.number().int().positive(), contentHash: z.string().regex(/^[a-f0-9]{64}$/).optional() }).strict(), z.object({ kind: z.literal('artifact'), conversationId: id, artifactId: id, logicalArtifactId: id.optional(), contentVersion: z.number().int().positive().optional(), contentHash: z.string().regex(/^[a-f0-9]{64}$/).optional() }).strict()])
-const readingLookupSchema = z.object({ conversationId: id }).strict()
-const conversationMetadataSchema = z.object({ id, includeTriggerSummaries: z.boolean().optional() }).strict()
-const observeReadingSchema = z.object({ conversationId: id, epoch: z.number().int().positive(), expectedRevision: z.number().int().nonnegative(), completions: z.array(z.object({ messageId: id, ordinal: z.number().int().positive(), epoch: z.number().int().positive(), contentHash: z.string().regex(/^[a-f0-9]{64}$/) }).strict()).max(READING_LIMITS.observedCompletions) }).strict()
-const saveAnchorSchema = z.object({ conversationId: id, epoch: z.number().int().positive(), expectedAnchorRevision: z.number().int().nonnegative(), messageId: id, offset: z.number().int().nonnegative().max(READING_LIMITS.anchorOffset) }).strict()
 const text = (max: number) => z.string().trim().min(1).max(max)
 const gatewaySchema = z.object({ kind: z.literal('magpie'), protocol: z.enum(['chat', 'responses', 'messages']), auth: z.enum(['local', 'key']) }).strict()
 export const connectionSchema = z.object({ id: id.optional(), expectedRevision: z.number().int().positive().optional(), gateway: gatewaySchema.optional(), name: text(100), provider: z.enum(['openai', 'anthropic', 'openai-compatible']), api: z.enum(['chat', 'responses']).optional(), localConfigId: z.string().regex(/^[a-f0-9]{64}$/).optional(), baseUrl: z.string().max(2000), defaultModel: text(MODEL_ID_MAX_LENGTH).refine(value => validModelId(value), '无效的模型 ID'), apiKey: z.string().max(12000).optional() }).strict()

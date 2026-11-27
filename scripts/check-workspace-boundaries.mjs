@@ -1,10 +1,12 @@
 /*
+ * [OUTPUT]: 构建与边界检查共用显式开发导出解析；检查包含所有命名空间的工作区成员。
  * [OUTPUT]: 独立avatar-motion子模块可由Electron单向引用，无BOAI业务依赖。
  * [OUTPUT]: Canvas package stays independent; shared imports only its platform-neutral protocol.
  * [OUTPUT]: Agent Desktop 可选插件接线；默认关闭、独立于旧computer-use，调用沿员工权限及真实图片。
  * [OUTPUT]: 独立浏览器包只依赖上游，由runtime调用公开host入口。
  * [OUTPUT]: 2026-10-29 包边界纳入file-explorer-plugin；build分发固定来源和MIT许可。
  * [OUTPUT]: 2026-10-27 语音包分发、工作区依赖或静音诊断候选；不代表产品验收。
+ * [OUTPUT]: CI 拒绝静态 ES 模块值导入环，报告闭环路径。
  * [INPUT]: Workspace manifests, public exports and TS/JS source imports.
  * [OUTPUT]: Reject app/package dependency reversals, source path escapes and unresolved public entries.
  * [POS]: Lightweight static workspace contract; does not build or execute product code.
@@ -14,6 +16,7 @@ import { builtinModules } from 'node:module'
 import { readFile, readdir, stat } from 'node:fs/promises'
 import { dirname, extname, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { workspaceSourceAliases } from './workspace-packages.mjs'
 import { parse } from '@babel/parser'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -56,7 +59,7 @@ for (const group of ['apps', 'packages']) {
     if (!await exists(manifestFile)) { fail(directory, 'missing workspace package.json'); continue }
     const manifest = JSON.parse(await readFile(manifestFile, 'utf8'))
     if (!allowed[manifest.name]) fail(manifestFile, `no dependency contract for ${manifest.name}`)
-    const workspace = { directory, manifest, name: manifest.name }
+    const workspace = { directory, manifest, name: manifest.name, aliases: workspaceSourceAliases(directory, manifest) }
     workspaces.push(workspace)
     await walk(resolve(directory, 'src'), path => {
       if (sourceExtensions.has(extname(path))) files.push({ path, workspace })
@@ -72,42 +75,25 @@ async function resolveFile(path) {
   if (/\.m?js$/.test(path)) candidates.push(path.replace(/\.m?js$/, '.ts'), path.replace(/\.m?js$/, '.tsx'))
   for (const candidate of candidates) if (await exists(candidate)) return candidate
 }
-function exportEntries(manifest) {
-  if (!manifest.exports) return []
-  if (typeof manifest.exports === 'string' || Array.isArray(manifest.exports)) return [['.', manifest.exports]]
-  return Object.keys(manifest.exports).some(key => key.startsWith('.')) ? Object.entries(manifest.exports) : [['.', manifest.exports]]
-}
 function sourceTargets(value) {
   if (typeof value === 'string') return [value]
   if (Array.isArray(value)) return value.flatMap(sourceTargets)
   if (!value || typeof value !== 'object') return []
   return [...new Set(['development', 'source', 'types', 'default', 'node', 'import', 'require'].flatMap(key => sourceTargets(value[key])))]
 }
-function exported(workspace, subpath) {
-  const entries = exportEntries(workspace.manifest)
-  const exact = entries.find(([key]) => key === subpath)
-  if (exact) return sourceTargets(exact[1])
-  for (const [key, value] of entries) {
-    if (!key.includes('*')) continue
-    const [start, end] = key.split('*')
-    if (subpath.startsWith(start) && subpath.endsWith(end)) {
-      const match = subpath.slice(start.length, subpath.length - end.length || undefined)
-      return sourceTargets(value).map(target => target.replaceAll('*', match))
-    }
-  }
-  return []
-}
-async function resolvePublic(workspace, subpath) {
-  const targets = exported(workspace, subpath)
-  for (const target of targets) {
-    if (!target.startsWith('./')) continue
-    const file = await resolveFile(resolve(workspace.directory, target))
-    if (file && !display(file).includes('/dist/')) return file
-  }
+async function resolvePublic(workspace, specifier) {
+  const target = workspace.aliases[specifier]
+  if (target && !display(target).includes('/dist/')) return resolveFile(target)
 }
 // Source export targets must exist before a build; generated dist/types outputs are checked by packaging.
 for (const workspace of workspaces) {
-  for (const [entry, target] of exportEntries(workspace.manifest)) {
+  const { dependencies, peerDependencies, optionalDependencies } = workspace.manifest
+  for (const name of Object.keys({ ...dependencies, ...peerDependencies, ...optionalDependencies })) {
+    if (byName.has(name) && !allowed[workspace.name]?.includes(name)) {
+      fail(resolve(workspace.directory, 'package.json'), `forbidden dependency ${workspace.name} -> ${name}`)
+    }
+  }
+  for (const [entry, target] of Object.entries(workspace.manifest.exports ?? {})) {
     for (const value of sourceTargets(target)) {
       if (!value.startsWith('./src/') || value.includes('*')) continue
       if (!await resolveFile(resolve(workspace.directory, value))) fail(resolve(workspace.directory, 'package.json'), `export ${entry} source target missing: ${value}`)
@@ -123,7 +109,12 @@ function importedSpecifiers(ast) {
     if (['ImportDeclaration', 'ExportNamedDeclaration', 'ExportAllDeclaration', 'ImportExpression'].includes(node.type)) source = node.source
     else if (node.type === 'TSImportType') source = node.argument
     else if (node.type === 'CallExpression' && (node.callee?.type === 'Import' || (node.callee?.type === 'Identifier' && node.callee.name === 'require'))) source = node.arguments?.[0]
-    if (source?.type === 'StringLiteral') result.push({ value: source.value, line: source.loc?.start.line ?? 0, typeOnly: node.importKind === 'type' || node.exportKind === 'type' || node.type === 'TSImportType' })
+    if (source?.type === 'StringLiteral') {
+      const staticImport = ['ImportDeclaration', 'ExportNamedDeclaration', 'ExportAllDeclaration'].includes(node.type)
+      const onlyTypeSpecifiers = node.specifiers?.length > 0 && node.specifiers.every(spec => spec.importKind === 'type' || spec.exportKind === 'type')
+      const typeOnly = node.importKind === 'type' || node.exportKind === 'type' || node.type === 'TSImportType' || onlyTypeSpecifiers
+      result.push({ value: source.value, line: source.loc?.start.line ?? 0, typeOnly, staticImport })
+    }
     for (const [key, value] of Object.entries(node)) if (!['loc', 'start', 'end', 'comments', 'tokens', 'extra'].includes(key)) visit(value)
   }
   visit(ast)
@@ -151,30 +142,55 @@ for (const { path, workspace } of files) {
       if (!target) fail(path, `${at} unresolved renderer alias ${value}`)
     } else if (value.startsWith('@shared/')) {
       fail(path, `${at} legacy shared alias ${value}; use @boai/shared exports`)
-    } else if (value.startsWith('@boai/')) {
+    } else if (value.startsWith('@boai/') || byName.has(packageName(value))) {
       const name = packageName(value), dependency = byName.get(name)
       if (!dependency) { fail(path, `${at} missing workspace ${name}`); continue }
       if (name !== workspace.name && !allowed[workspace.name]?.includes(name)) fail(path, `${at} forbidden dependency ${workspace.name} -> ${name}`)
-      if (name !== workspace.name && !workspace.manifest.dependencies?.[name] && !workspace.manifest.peerDependencies?.[name]) fail(path, `${at} undeclared workspace dependency ${name}`)
-      const subpath = value === name ? '.' : '.' + value.slice(name.length)
-      target = await resolvePublic(dependency, subpath)
+      if (name !== workspace.name && !workspace.manifest.dependencies?.[name] && !workspace.manifest.peerDependencies?.[name] && !workspace.manifest.optionalDependencies?.[name]) fail(path, `${at} undeclared workspace dependency ${name}`)
+      target = await resolvePublic(dependency, value)
       if (!target) fail(path, `${at} unresolved public export ${value}`)
     }
-    if (!imported.typeOnly && target) edges.push(target)
+    if (!imported.typeOnly && target) {
+      // Vite raw/url imports load asset data, not the target module's imports.
+      const asset = /[?&](?:raw|url)(?:&|$)/.test(imported.value)
+      if (!asset) edges.push({ target, staticImport: imported.staticImport })
+    }
     if (['@boai/ui', '@boai/tokens', '@boai/runtime-plugin-sdk'].includes(workspace.name) && (builtins.has(value) || value === 'electron')) fail(path, `${at} platform import in portable package: ${value}`)
-    if (!imported.typeOnly && (builtins.has(value) || value === 'electron')) edges.push(value)
+    if (!imported.typeOnly && (builtins.has(value) || value === 'electron')) edges.push({ target: value, staticImport: false })
   }
 }
+// Only synchronous ES module imports and re-exports impose initialization order.
+const inspected = new Set()
+const trail = []
+const visiting = new Set()
+function inspectImports(path) {
+  if (inspected.has(path)) return
+  visiting.add(path)
+  trail.push(path)
+  for (const { target, staticImport } of graph.get(path) ?? []) {
+    if (!staticImport) continue
+    if (visiting.has(target)) {
+      const cycle = [...trail.slice(trail.indexOf(target)), target]
+      fail(path, `static import cycle: ${cycle.map(display).join(' -> ')}`)
+    } else {
+      inspectImports(target)
+    }
+  }
+  trail.pop()
+  visiting.delete(path)
+  inspected.add(path)
+}
+for (const path of graph.keys()) inspectImports(path)
 // A browser consumer of the shared root must not pull platform code through a barrel.
 const shared = byName.get('@boai/shared')
 if (shared) {
-  const entry = await resolvePublic(shared, '.')
+  const entry = await resolvePublic(shared, shared.name)
   if (entry) {
     const visited = new Set()
     function inspect(path, trail) {
       if (visited.has(path)) return
       visited.add(path)
-      for (const next of graph.get(path) ?? []) {
+      for (const { target: next } of graph.get(path) ?? []) {
         if (builtins.has(next) || next === 'electron') fail(entry, `portable shared root reaches ${next} through ${[...trail, display(path)].join(' -> ')}`)
         else inspect(next, [...trail, display(path)])
       }

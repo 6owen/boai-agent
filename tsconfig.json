@@ -22,9 +22,6 @@
       "@/*": [
         "./apps/electron/src/renderer/*"
       ],
-      "@shared/*": [
-        "./packages/shared/src/*"
-      ],
       "@boai/ui": [
         "./packages/ui/src/index.ts"
       ],
@@ -38,42 +35,6 @@
       "@boai/tokens/*": [
         "./packages/tokens/src/*",
         "./packages/tokens/dist/*"
-      ],
-      "@boai/shared": [
-        "./packages/shared/src/domain/index.ts"
-      ],
-      "@boai/shared/*": [
-        "./packages/shared/src/*"
-      ],
-      "@boai/runtime": [
-        "./packages/runtime/src/index.ts"
-      ],
-      "@boai/runtime/*": [
-        "./packages/runtime/src/*"
-      ],
-      "@boai/transport": [
-        "./packages/transport/src/index.ts"
-      ],
-      "@boai/transport/*": [
-        "./packages/transport/src/*"
-      ],
-      "@boai/runtime-plugin-sdk": [
-        "./packages/runtime-plugin-sdk/src/runtime-api.ts"
-      ],
-      "@boai/runtime-plugin-sdk/manifest": [
-        "./packages/runtime-plugin-sdk/src/manifest.ts"
-      ],
-      "@boai/runtime-plugins/pi": [
-        "./packages/runtime-plugins/src/pi.ts"
-      ],
-      "@boai/runtime-plugins/opencode": [
-        "./packages/runtime-plugins/src/opencode.ts"
-      ],
-      "@boai/runtime-plugins/acp": [
-        "./packages/runtime-plugins/src/acp.ts"
-      ],
-      "@boai/voice-input-plugin/*": [
-        "./packages/voice-input-plugin/src/*"
       ]
     }
   },

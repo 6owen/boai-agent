@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 构建与边界检查共用显式开发导出解析；检查包含所有命名空间的工作区成员。
  * [INPUT]: Current worktree package manifests and their explicit public exports.
  * [OUTPUT]: Source aliases for app/test builds; workspace packages stay local even when third-party packages are external.
  * [POS]: Shared workspace resolution; importing this module does not compile or start an application.
@@ -16,6 +17,22 @@ function sourceTarget(value) {
   return sourceTarget(value.development ?? value.import ?? value.default)
 }
 
+/** Resolve the same explicit development exports for bundles and the workspace audit. */
+export function workspaceSourceAliases(packageRoot, manifest) {
+  const aliases = {}
+  for (const [subpath, value] of Object.entries(manifest.exports ?? {})) {
+    if (subpath !== '.' && !subpath.startsWith('./')) throw new Error(`Invalid export in ${manifest.name}: ${subpath}`)
+    if (subpath.includes('*')) throw new Error(`Workspace exports must be explicit: ${manifest.name}/${subpath}`)
+    const target = sourceTarget(value)
+    if (!target.startsWith('./')) throw new Error(`Workspace export must be local: ${manifest.name}/${subpath}`)
+    const destination = resolve(packageRoot, target)
+    const child = relative(packageRoot, destination)
+    if (child === '..' || child.startsWith(`..${sep}`) || isAbsolute(child)) throw new Error(`Workspace export escapes package: ${manifest.name}/${subpath}`)
+    aliases[manifest.name + subpath.slice(1)] = destination
+  }
+  return aliases
+}
+
 /** Follow package exports, never a node_modules symlink into another worktree. */
 export function workspaceAliases(root = workspaceRoot) {
   const aliases = {}
@@ -27,16 +44,7 @@ export function workspaceAliases(root = workspaceRoot) {
     if (!existsSync(manifestPath)) continue
     const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
     if (!manifest.name?.startsWith('@boai/')) continue
-    for (const [subpath, value] of Object.entries(manifest.exports ?? {})) {
-      if (subpath !== '.' && !subpath.startsWith('./')) throw new Error(`Invalid export in ${manifest.name}: ${subpath}`)
-      if (subpath.includes('*')) throw new Error(`Workspace exports must be explicit: ${manifest.name}/${subpath}`)
-      const target = sourceTarget(value)
-      if (!target.startsWith('./')) throw new Error(`Workspace export must be local: ${manifest.name}/${subpath}`)
-      const destination = resolve(packageRoot, target)
-      const child = relative(packageRoot, destination)
-      if (child === '..' || child.startsWith(`..${sep}`) || isAbsolute(child)) throw new Error(`Workspace export escapes package: ${manifest.name}/${subpath}`)
-      aliases[manifest.name + subpath.slice(1)] = destination
-    }
+    Object.assign(aliases, workspaceSourceAliases(packageRoot, manifest))
   }
   return Object.fromEntries(Object.entries(aliases).sort(([a], [b]) => b.length - a.length))
 }
