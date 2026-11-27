@@ -1,10 +1,12 @@
 /*
+ * [OUTPUT]: OSC 程序色解析及重置沿共享协议，渲染端负责应用默认主题及消费查询。
  * [INPUT]: BOAI当前应用主题/代码字号/行高/详情表面与终端OSC颜色指令。
  * [OUTPUT]: 应用主题/全局代码字号与字体，xterm原生1倍单元行高避免光标拉长；ANSI和程序OSC覆写保持。
  * [POS]: 工作区终端外观适配，不修改用户shell主题。
  * [PROTOCOL]: 变化同步Header及所属.folder.md。
  */
 import type { ITheme, Terminal } from '@xterm/xterm'
+import { TerminalProgramColors } from '@boai/shared/appearance/terminal-osc'
 
 import { terminalAnsiNames as names, terminalAnsiPalette } from '@boai/shared/appearance'
 
@@ -34,73 +36,23 @@ export function terminalAppearance(element: HTMLElement): { theme: ITheme; fontF
   }
 }
 
-/** xterm's OSC syntax uses X11 channel widths, rather than CSS short hashes. */
-export function parseTerminalColor(value: string): string | undefined {
-  const scaled = /^rgb:([\da-f]{1,4})\/([\da-f]{1,4})\/([\da-f]{1,4})$/iu.exec(value)
-  let channels: string[]
-  if (scaled) channels = scaled.slice(1)
-  else {
-    if (!/^#(?:[\da-f]{3}){1,4}$/iu.test(value)) return
-    const width = (value.length - 1) / 3
-    channels = Array.from({ length: 3 }, (_, index) => value.slice(1 + index * width, 1 + (index + 1) * width))
-  }
-  return '#' + channels.map(channel => {
-    const number = scaled ? Math.round(parseInt(channel, 16) * 255 / (16 ** channel.length - 1)) : parseInt(channel.padEnd(2, '0').slice(0, 2), 16)
-    return number.toString(16).padStart(2, '0')
-  }).join('')
-}
-
-const specialColors = ['foreground', 'background', 'cursor'] as const
 export class WorkspaceTerminalTheme {
   private defaults: ITheme = {}
-  private overrides = new Map<number | (typeof specialColors)[number], string>()
-  private handlers: Array<{ dispose(): void }> = []
+  private readonly colors: TerminalProgramColors
+
   constructor(private readonly terminal: Pick<Terminal, 'options' | 'parser'>) {
-    const register = (code: number, handle: (value: string) => void) => {
-      this.handlers.push(terminal.parser.registerOscHandler(code, data => {
-        handle(data)
-        this.apply()
-        // The host headless terminal answers queries once. Consuming renderer
-        // OSC also prevents a replayed snapshot from injecting a second reply.
-        return true
-      }))
-    }
-    register(4, value => {
-      const parts = value.split(';')
-      for (let index = 0; index + 1 < parts.length; index += 2) {
-        const entry = this.paletteIndex(parts[index]!)
-        const color = parseTerminalColor(parts[index + 1]!)
-        if (entry !== undefined && color) this.overrides.set(entry, color)
-      }
-    })
-    register(104, value => {
-      if (!value) { for (const key of this.overrides.keys()) if (typeof key === 'number') this.overrides.delete(key) }
-      else for (const part of value.split(';')) {
-        const entry = this.paletteIndex(part)
-        if (entry !== undefined) this.overrides.delete(entry)
-      }
-    })
-    specialColors.forEach((key, offset) => {
-      register(10 + offset, value => {
-        value.split(';').forEach((part, index) => {
-          const target = specialColors[offset + index], color = parseTerminalColor(part)
-          if (target && color) this.overrides.set(target, color)
-        })
-      })
-      register(110 + offset, () => this.overrides.delete(key))
-    })
-    this.handlers.push(terminal.parser.registerEscHandler({ final: 'c' }, () => { this.overrides.clear(); this.apply(); return false }))
+    // The headless host answers queries. A snapshot replay must not send a second reply.
+    this.colors = new TerminalProgramColors(terminal.parser, { consumeOsc: true, changed: () => this.apply() })
   }
   update(theme: ITheme): void {
     if (Object.keys(theme).length === Object.keys(this.defaults).length && Object.entries(theme).every(([key, value]) => this.defaults[key as keyof ITheme] === value)) return
     this.defaults = theme
     this.apply()
   }
-  dispose(): void { this.handlers.forEach(handler => handler.dispose()) }
-  private paletteIndex(value: string): number | undefined { return /^\d{1,3}$/u.test(value) && Number(value) < 256 ? Number(value) : undefined }
+  dispose(): void { this.colors.dispose() }
   private apply(): void {
     const theme: ITheme = { ...this.defaults }
-    for (const [key, color] of this.overrides) {
+    for (const [key, { css: color }] of this.colors.entries()) {
       if (typeof key === 'string') theme[key] = color
       else if (key < 16) theme[names[key]!] = color
       else {

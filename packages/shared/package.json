@@ -481,6 +481,7 @@
     "./domain/capability-packages": "./src/domain/capability-packages.ts",
     "./domain/resource-catalog": "./src/domain/resource-catalog.ts",
     "./domain/project-directory": "./src/domain/project-directory.ts",
+    "./appearance/terminal-osc": "./src/appearance/terminal-osc.ts",
     "./appearance/commands": "./src/appearance/commands.ts",
     "./appearance/options": "./src/appearance/options.ts",
     "./ipc/desktop-diagnostics": "./src/ipc/desktop-diagnostics.ts",
