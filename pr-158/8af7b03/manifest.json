@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "sourceSha": "8af7b0387cfc01617565ad1c58fd4ec9302e6a7e",
+  "summary": "该 PR 调整执行记录弹窗左侧栏：清空按钮移到搜索框外右侧，搜索框缩至28px、搜索/清空图标改为12px/10px 并保留危险色悬停；侧栏外层 padding 归零，标题/工具栏和滚动内容各自留白，使滚动区域及滚动条贴住侧栏右边缘。",
+  "plannedScenes": 1,
+  "scenes": [
+    {
+      "title": "执行记录弹窗的紧凑检索与清空",
+      "start": "schedules",
+      "plannedSteps": 8,
+      "completedSteps": 8,
+      "failedSteps": 0,
+      "status": "complete",
+      "shots": [
+        {
+          "file": "01-schedule-detail.png",
+          "caption": "定时任务详情，执行记录入口所在位置",
+          "width": 1280
+        },
+        {
+          "file": "02-after-open-task.png",
+          "caption": "任务详情打开后的界面",
+          "width": 1280
+        }
+      ]
+    }
+  ],
+  "video": "preview.mp4",
+  "poster": "poster.png",
+  "errors": [],
+  "leak": false,
+  "skipped": null,
+  "status": "complete",
+  "mismatch": "",
+  "unseen": "沙盒内定时任务的执行记录弹窗需有已生成的历史记录才能看到分组列表、滚动条与贴边效果；若隔离夹具无历史数据，只能看到空状态。",
+  "interactive": true,
+  "pages": 1
+}
