@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 独立任务队列按任务和会话读取原派发；历史通知按文本记录身份与既有顺序关联。
  * [OUTPUT]: 日志清理可按主键读完整或指定 ID 集，不反序列化员工和回执正文。
  * [OUTPUT]: 启动恢复按清理日志排序，实时读取所属讨论和浏览器屏障，不展开无关会话。
  * [OUTPUT]: 会话工作、引用预算及接续从一个只读 SQLite 快照取得。
@@ -48,7 +49,7 @@ import { randomUUID } from 'node:crypto'
 import { advanceCandidateClock, candidateCursor, employeeCandidatesSql, readCandidateCursor } from '../../modules/bobo-collaboration/candidate-sql'
 import type { BoboCollaborationReceipt, EmployeeCandidate, EmployeeCandidatePage, EmployeeCandidateQuery } from '@boai/shared/domain/bobo-collaboration'
 import type { BrowserArtifactSource } from '@boai/shared/domain/artifacts'
-import type { AutomationDefinition, AutomationHistoryPage, AutomationHistoryQuery, AutomationListQuery, AutomationListPage } from '@boai/shared/domain/automations'
+import type { AutomationDefinition, AutomationDispatch, AutomationOccurrence, AutomationHistoryPage, AutomationHistoryQuery, AutomationListQuery, AutomationListPage } from '@boai/shared/domain/automations'
 import { AUTOMATION_ATTENTION_STATUSES, AUTOMATION_ONGOING_STATUSES } from '@boai/shared/domain/automations'
 import { inboxSql, type InboxSqlRow } from '../../modules/inbox/inbox-sql'
 import type { InboxQuery } from '@boai/shared/domain/inbox'
@@ -182,6 +183,8 @@ export class ProductStore {
       { sql: "CREATE INDEX IF NOT EXISTS work_view_parent ON records(json_extract(value,'$.parentWorkId'),json_extract(value,'$.conversationId')) WHERE collection='workItems'", args: [] },
       { sql: "CREATE INDEX IF NOT EXISTS work_view_parent_text ON records(CAST(json_extract(value,'$.parentWorkId') AS TEXT),json_extract(value,'$.conversationId')) WHERE collection='workItems'", args: [] },
       { sql: `CREATE INDEX IF NOT EXISTS conversation_file_scope ON records(collection,json_extract(value,'$.conversationId'),json_extract(value,'$.logicalArtifactId')) WHERE ${conversationFilePredicate}`, args: [] },
+      { sql: "CREATE INDEX IF NOT EXISTS automation_occurrence_task ON records(json_extract(value,'$.taskId'),json_extract(value,'$.startedAt') DESC,id DESC) WHERE collection='automationOccurrences'", args: [] },
+      { sql: "CREATE INDEX IF NOT EXISTS automation_notice_occurrence ON records(CAST(json_extract(value,'$.occurrenceId') AS TEXT),id) WHERE collection='automationNotices'", args: [] },
       { sql: "CREATE INDEX IF NOT EXISTS agent_task_page ON records(json_extract(value,'$.updatedAt') DESC,id DESC) WHERE collection='agentTasks'", args: [] },
       { sql: "CREATE INDEX IF NOT EXISTS agent_task_owner_page ON records(json_extract(value,'$.agentId'),json_extract(value,'$.updatedAt') DESC,id DESC) WHERE collection='agentTasks'", args: [] },
       { sql: "CREATE INDEX IF NOT EXISTS employee_execution_scope ON records(json_extract(value,'$.agentId'),json_extract(value,'$.createdAt') DESC,id DESC) WHERE collection='runs'", args: [] },
@@ -459,6 +462,20 @@ export class ProductStore {
     })
   }
   /** Stable keyset pagination: new inserts and removals cannot shift an older page's boundary. */
+  queuedTaskDispatches(conversationId: string, taskId: string): Promise<{ occurrence: AutomationOccurrence; dispatch: AutomationDispatch }[]> {
+    return this.enqueue(async () => {
+      const result = await this.client.execute({
+        sql: `SELECT o.value AS occurrence, d.value AS dispatch FROM records o
+          JOIN records d ON d.collection='automationDispatches' AND d.id=json_extract(o.value,'$.id')
+          WHERE o.collection='automationOccurrences' AND json_extract(o.value,'$.taskId')=?
+            AND json_extract(o.value,'$.conversationId')=? AND json_extract(o.value,'$.status')='queued'
+            AND json_extract(d.value,'$.status')='pending'
+          ORDER BY o.rowid`,
+        args: [taskId, conversationId],
+      })
+      return result.rows.map(row => ({ occurrence: JSON.parse(String(row.occurrence)), dispatch: JSON.parse(String(row.dispatch)) }))
+    })
+  }
   automationHistory(query: AutomationHistoryQuery & { limit: number; id?: string }): Promise<AutomationHistoryPage> {
     return this.enqueue(async () => {
       const where = ["collection = 'automationOccurrences'", "json_extract(value, '$.deletedAt') IS NULL"], args: (string | number)[] = []
@@ -480,7 +497,10 @@ export class ProductStore {
         args.push(query.before.startedAt, query.before.id)
       }
       args.push(query.limit + 1)
-      const result = await this.client.execute({ sql: `SELECT value, (SELECT json_group_array(json(n.value)) FROM records n WHERE n.collection = 'automationNotices' AND json_extract(n.value, '$.occurrenceId') = o.id) AS notices FROM records o WHERE ${where.join(' AND ')} ORDER BY json_extract(value, '$.startedAt') DESC, id DESC LIMIT ?`, args })
+      const result = await this.client.execute({ sql: `SELECT value, (SELECT json_group_array(json(notice.value)) FROM (
+        SELECT n.value FROM records n WHERE n.collection='automationNotices'
+          AND CAST(json_extract(n.value,'$.occurrenceId') AS TEXT)=o.id ORDER BY n.id
+      ) notice) AS notices FROM records o WHERE ${where.join(' AND ')} ORDER BY json_extract(value, '$.startedAt') DESC, id DESC LIMIT ?`, args })
       const rows = result.rows.map(row => ({ ...JSON.parse(String(row.value)), notices: JSON.parse(String(row.notices)) })) as AutomationHistoryPage['occurrences']
       const occurrences = rows.slice(0, query.limit), last = occurrences.at(-1)
       return { occurrences, ...(rows.length > query.limit && last ? { nextCursor: { startedAt: last.startedAt, id: last.id } } : {}) }

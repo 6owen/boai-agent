@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 真实 SQLite 验证旧数字通知身份、顺序、索引定位和队列单语句快照。
  * [OUTPUT]: 任务面板、主聊天和应用操作共用 tasks/read-model 的受权分页和活动读取。
  * [OUTPUT]: 会话队列和调度准入使用同一持久顺序；执行器容量单独判断。
  * [OUTPUT]: 历史 SQLite 全部执行状态与共享在途判断使用同一七项业务集合。
@@ -9,7 +10,10 @@
  * [POS]: Task-entry data contract integration; no models, GUI or personal profile.
  * [PROTOCOL]: Update Header and tests/.folder.md on change.
  */
-import { afterEach, expect, it } from 'vitest'
+import { afterEach, expect, it, vi } from 'vitest'
+import type { Client, InArgs, InStatement } from '@libsql/client'
+import type { Conversation } from '@boai/shared/domain'
+import { listConversationQueue } from '../packages/runtime/src/modules/conversations/message-queue'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -55,6 +59,43 @@ async function fixture() {
   }
   return { get store() { return store }, app, call, page, reopen: async () => { await app.drain(); await store.close(); store = new ProductStore(join(root, 'data.sqlite')); await store.init(); app = new ApplicationService(store, taskOperations(store), async () => {}) } }
 }
+
+it('uses indexed task and notice identities and reads the queue in a single SQLite snapshot', async () => {
+  const f = await fixture()
+  const occurrence = { id: '7', conversationId: 'direct', taskId: 't', status: 'queued', startedAt: time, stateVersion: 2, plan: { employeeIds: ['a'] } }
+  const pending = { id: '7', status: 'pending', definition: { prompt: 'original prompt' } }
+  const linked = (id: string, occurrenceId: unknown) => ({ id, occurrenceId })
+  const unrelated = { ...occurrence, id: 'other', conversationId: 'other', startedAt: undefined }
+  const deleted = { ...occurrence, id: 'deleted', startedAt: undefined, deletedAt: time }
+  await f.store.write([
+    ...[occurrence, unrelated, deleted].map(value => record('automationOccurrences', value)),
+    ...[pending, { ...pending, id: 'deleted' }, { ...pending, id: 'other' }].map(value => record('automationDispatches', value)),
+    ...[linked('z', '7'), linked('a', 7), linked('b', '07'), linked('c', null)].map(value => record('automationNotices', value)),
+  ])
+  const client = (f.store as unknown as { client: Client }).client
+  const execute = client.execute.bind(client)
+  const plans: string[][] = []
+  const inspection = vi.spyOn(client, 'execute').mockImplementation(async (statement: InStatement, args?: InArgs) => {
+    if (typeof statement !== 'string' && statement.sql.trimStart().startsWith('SELECT')) {
+      const plan = await execute({ ...statement, sql: `EXPLAIN QUERY PLAN ${statement.sql}` })
+      plans.push(plan.rows.map(row => String(row.detail)))
+    }
+    return typeof statement === 'string' ? execute(statement, args) : execute(statement)
+  })
+  try {
+    const page = await f.store.automationHistory({ taskId: 't', employeeId: 'a', limit: 5 })
+    expect(page.occurrences.find(row => row.id === '7')?.notices?.map(notice => notice.id)).toEqual(['a', 'z'])
+    expect(plans[0]?.join(' ')).toMatch(/automation_occurrence_task .*<expr>=\?/)
+    expect(plans[0]?.join(' ')).toMatch(/automation_notice_occurrence .*<expr>=\?/)
+    plans.length = 0
+    const queue = await listConversationQueue(f.store, { id: 'direct', employeeTaskId: 't' } as Conversation)
+    expect(queue.items).toEqual([{ id: '7', conversationId: 'direct', revision: 2, content: 'original prompt', createdAt: time, attachmentCount: 0 }])
+    expect(plans).toHaveLength(1)
+    expect(plans[0]?.join(' ')).toMatch(/automation_occurrence_task .*<expr>=\?/)
+  } finally {
+    inspection.mockRestore()
+  }
+})
 
 it('reads persisted active history with the same occurrence states used by the task controls', async () => {
   const f = await fixture()
