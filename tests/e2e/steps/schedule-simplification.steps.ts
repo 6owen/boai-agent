@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 2026-11-27 核对标题操作、只读配置卡片和执行记录检索后会话定位。
+ * [OUTPUT]: 2026-11-27 核对启用开关、标题操作、只读配置卡片和执行记录检索后会话定位。
  * [OUTPUT]: 记录行定位原消息，运行详情按钮独立核对检索、显示方式和本次执行隔离。
  * [OUTPUT]: 核心bobo可选为执行员工，单次新增日期/时间控件；原六种配置覆盖扩展为七种，本轮未运行。
  * [OUTPUT]: 对话创建转普通会话并预选管理标签，按原业务协议实际保存/编辑/重启零重放；本次未运行E2E。
@@ -60,10 +60,10 @@ Then('两行列表和详情按钮保存编辑暂停恢复状态', async ({ runti
   await expect(item).not.toContainText('研究员')
   await item.click()
   const actions = page.getByRole('group', { name: '定时任务操作', exact: true })
-  const run = actions.getByRole('button', { name: '立即运行一次', exact: true })
+  const run = actions.getByRole('button', { name: '立即运行', exact: true })
   await expect(run).toBeVisible()
-  await expect(run).toHaveAttribute('data-variant', 'ink')
-  for (const action of ['编辑', '恢复', '删除']) {
+  await expect(run).toHaveAttribute('data-variant', 'default')
+  for (const action of ['编辑', '删除']) {
     const icon = actions.getByRole('button', { name: action, exact: true })
     await expect(icon).toHaveAttribute('data-size', 'icon')
     await expect(icon).toHaveText('')
@@ -72,8 +72,10 @@ Then('两行列表和详情按钮保存编辑暂停恢复状态', async ({ runti
   await editor(page).getByLabel('名称', { exact: true }).fill('每日天气预报')
   await editor(page).getByRole('button', { name: '保存修改', exact: true }).click()
   await expect(page.getByRole('heading', { name: '每日天气预报', exact: true })).toBeVisible()
-  await actions.getByRole('button', { name: '恢复', exact: true }).click()
-  await expect(actions.getByRole('button', { name: '暂停', exact: true })).toBeEnabled()
+  const toggle = actions.getByRole('switch', { name: '启用定时任务', exact: true })
+  await expect(toggle).toHaveAttribute('aria-checked', 'false')
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-checked', 'true')
   await expect(item).not.toContainText('已暂停')
   expect(await page.evaluate(id => window.boai.request('getAutomation', { id }), schedule.fixture!.pausedId)).toMatchObject({ name: '每日天气预报', enabled: true })
   await expect(page.getByRole('region', { name: '计划摘要', exact: true })).toContainText('每日天气预报')
@@ -86,13 +88,13 @@ Then('两行列表和详情按钮保存编辑暂停恢复状态', async ({ runti
   await page.evaluate(async () => { await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))); await Promise.all(document.getAnimations().filter(animation => animation.effect?.getTiming().iterations !== Infinity).map(animation => animation.finished.catch(() => {}))) })
   await runtime.reviewNativeCheckpoint('深色窄窗定时任务配置卡片')
   await runtime.app.evaluate(({ BrowserWindow }) => { const w = BrowserWindow.getAllWindows()[0]; w.setSize(1340, 900); w.webContents.setZoomFactor(1) })
-  await actions.getByRole('button', { name: '暂停', exact: true }).click()
-  await expect(actions.getByRole('button', { name: '恢复', exact: true })).toBeEnabled()
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-checked', 'false')
   await expect(item).toContainText('已暂停')
   await runtime.restart(); page = runtime.page
   await page.getByRole('button', { name: '定时任务', exact: true }).click()
   await page.locator('.schedule-item').click()
-  await expect(page.getByRole('group', { name: '定时任务操作', exact: true }).getByRole('button', { name: '恢复', exact: true })).toBeEnabled()
+  await expect(page.getByRole('group', { name: '定时任务操作', exact: true }).getByRole('switch', { name: '启用定时任务', exact: true })).toHaveAttribute('aria-checked', 'false')
   const saved = await page.evaluate(id => window.boai.request('getAutomation', { id }), schedule.fixture!.pausedId)
   expect(saved).toMatchObject({ name: '每日天气预报', enabled: false })
   expect((await page.evaluate(() => window.boai.request('listAutomations', undefined))).occurrences).toHaveLength(0)

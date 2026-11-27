@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 2026-11-27 标题右侧复用全局图标按钮及立即运行操作，记录行只负责定位会话。
+ * [OUTPUT]: 标题栏依次显示启用开关、编辑、删除与主色立即运行，记录行只负责定位会话。
  * [OUTPUT]: 2026-11-27 定时页点击执行记录直接打开原话题；跳过等无会话记录仍可查看原因。
  * [OUTPUT]: 执行记录入口及单次定位打开统一左右Dialog；任务内历史列表沿原查询。
  * [OUTPUT]: 列表右键删除固定所选任务，经统一AlertDialog确认后沿原删除接口提交；取消不提交，成功同步移除并退出已删任务详情。
@@ -18,9 +18,10 @@ import { useEffect, useLayoutEffect, useRef, useState, useContext, type ReactNod
 import type { AutomationsView, Snapshot } from '@boai/shared/domain'
 import type { DesktopApi } from '@boai/shared/ipc'
 import { Banner, GuardContext, useMutation } from '@/components/common'
-import { Plus, MessageCircle, Pause, Pencil, Play, Trash2 } from '@/components/icons'
+import { Plus, MessageCircle, Pencil, Trash2 } from '@/components/icons'
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
@@ -100,11 +101,20 @@ export function SchedulePage({ api, snapshot, active, sidebarShown, divider, loc
       {location.kind === 'definition' && (definition ? <div ref={content} className="schedule-document schedule-content-transition t-panel-slide" data-open="true" data-settled="true">
         <div className="page-heading">
           <h2 className="min-w-0 break-words">{definition.name}</h2>
-          <div className="flex flex-wrap items-center justify-end gap-1" role="group" aria-label="定时任务操作">
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-1" role="group" aria-label="定时任务操作">
+            <div className="mx-3 flex items-center">
+              <Tooltip>
+                <TooltipTrigger render={<Switch aria-label="启用定时任务" checked={definition.enabled} disabled={busy}
+                  onCheckedChange={enabled => void run(async () => {
+                    if (enabled) await api.request('resumeAutomation', { id: definition.id })
+                    else await api.request('pauseAutomation', { id: definition.id })
+                  })} />} />
+                <TooltipContent>{definition.enabled ? '暂停计划' : '启用计划'}</TooltipContent>
+              </Tooltip>
+            </div>
             <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon" aria-label="编辑" disabled={busy} onClick={() => openDialog({ kind: 'manual', id: definition.id, key: crypto.randomUUID() })} />}><Pencil /></TooltipTrigger><TooltipContent>编辑</TooltipContent></Tooltip>
-            <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon" aria-label={definition.enabled ? '暂停' : '恢复'} disabled={busy} onClick={() => void run(async () => { await api.request(definition.enabled ? 'pauseAutomation' : 'resumeAutomation', { id: definition.id }) })} />}>{definition.enabled ? <Pause /> : <Play />}</TooltipTrigger><TooltipContent>{definition.enabled ? '暂停' : '恢复'}</TooltipContent></Tooltip>
-            <DeleteAutomationButton key={definition.id} name={definition.name} busy={busy} onConfirm={() => void run(async () => { await api.request('deleteAutomation', { id: definition.id }); onLocation({ kind: 'overview' }) })} />
-            <AutomationRunActions key={definition.id} api={api} automationId={definition.id} occurrences={view.occurrences} active={active} busy={busy} onNavigateMessage={onNavigateMessage} />
+            <DeleteAutomationButton key={`delete:${definition.id}`} name={definition.name} busy={busy} onConfirm={() => void run(async () => { await api.request('deleteAutomation', { id: definition.id }); onLocation({ kind: 'overview' }) })} />
+            <AutomationRunActions key={`run:${definition.id}`} api={api} automationId={definition.id} occurrences={view.occurrences} active={active} busy={busy} onNavigateMessage={onNavigateMessage} />
           </div>
         </div>
         <AutomationDetails definition={definition} snapshot={snapshot} />

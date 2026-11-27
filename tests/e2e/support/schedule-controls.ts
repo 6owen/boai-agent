@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 计划启停通过共享开关，立即运行沿新按钮文案。
  * [OUTPUT]: 新员工计划通过明确归属选择；已有聊天/监控沿原目标设置。
  * [INPUT]: 定时任务生产页面与 Base UI 选择/浮层控件。
  * [OUTPUT]: 计划从现行定时任务列表按精确名称打开并核对选中/标题；其余原语义选择与操作保持。
@@ -22,8 +23,17 @@ export async function openSchedule(page: Page, name: string) {
   await expect(page.getByRole('main').getByRole('heading', { name, exact: true })).toBeVisible()
 }
 export async function scheduleAction(page: Page, action: string) {
-  const names: Record<string, string> = { 暂停计划: '暂停', 恢复计划: '恢复', 删除计划: '删除' }
-  await page.locator('.schedule-content').getByRole('button', { name: names[action] ?? action, exact: true }).click()
+  const content = page.locator('.schedule-content')
+  if (action === '暂停计划' || action === '恢复计划') {
+    const toggle = content.getByRole('switch', { name: '启用定时任务', exact: true })
+    const enabled = action === '恢复计划'
+    await expect(toggle).toHaveAttribute('aria-checked', String(!enabled))
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-checked', String(enabled))
+    return
+  }
+  const names: Record<string, string> = { 立即运行一次: '立即运行', 删除计划: '删除' }
+  await content.getByRole('button', { name: names[action] ?? action, exact: true }).click()
 }
 export async function previewSchedule(page: Page) {
   await page.getByRole('button', { name: '时间', exact: true }).click()

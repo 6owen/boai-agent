@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 2026-11-27 新增全局 Carbon 播放和暂停图标。
+ * [OUTPUT]: 2026-11-27 新增全局 Carbon 播放图标。
  * [OUTPUT]: 共享离线 Carbon Model Alt 图标。
  * [OUTPUT]: 共享通知中心图标。
  * [OUTPUT]: 设置语义图标：调色盘、键盘、电源、显示器、插件，继续使用离线Carbon与统一尺寸。
@@ -83,7 +83,6 @@ const classes = {
   Sparkles: 'i-carbon-magic-wand',
   Square: 'i-carbon-stop-outline',
   Play: 'i-carbon-play',
-  Pause: 'i-carbon-pause',
   Terminal: 'i-carbon-terminal',
   Workflow: 'i-carbon-flow',
   Trash2: 'i-carbon-trash-can',
@@ -157,7 +156,6 @@ export const ShieldCheck = component('ShieldCheck')
 export const Sparkles = component('Sparkles')
 export const Square = component('Square')
 export const Play = component('Play')
-export const Pause = component('Pause')
 export const Terminal = component('Terminal')
 export const Workflow = component('Workflow')
 export const Trash2 = component('Trash2')

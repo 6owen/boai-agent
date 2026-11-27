@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 2026-11-27 立即运行移至标题栏，采用共享深色按钮和播放图标。
+ * [OUTPUT]: 2026-11-27 立即运行移至标题栏，采用共享主色按钮和播放图标。
  * [OUTPUT]: 定位聊天同时携带本次occurrence，右侧保留同一次执行过程。
  * [INPUT]: 已保存任务、本次真实记录和主聊天导航。
  * [OUTPUT]: 隐藏查看本次执行过程按钮；定位聊天仅跟随本组件手动发起且尚未结束的occurrence，结束后清除本次身份。
@@ -45,9 +45,9 @@ export function AutomationRunActions({ api, automationId, occurrences, active, b
     } catch (error) { setUnknown(true); showErrorToast(errorText(error)) }
     finally { locked.current = false; setSubmitting(false) }
   }
-  const label = submitting ? '正在提交…' : ongoing ? '本次运行中' : unknown ? '核对本次运行' : '立即运行一次'
+  const label = submitting ? '正在提交…' : ongoing ? '本次运行中' : unknown ? '核对本次运行' : '立即运行'
   return <div className="flex items-center gap-1">
     {occurrence && <ExecutionMessageButton api={api} run={{ id: occurrence.runIds[0] ?? '', conversationId: occurrence.conversationId }} occurrenceId={occurrence.id} active={active && Boolean(occurrence.runIds.length)} onNavigate={onNavigateMessage} />}
-    <Button variant="ink" disabled={!active || busy || running} aria-busy={running} onClick={() => void start()}>{running ? <LoaderCircle className="animate-spin" /> : <Play />}{label}</Button>
+    <Button variant="default" disabled={!active || busy || running} aria-busy={running} onClick={() => void start()}>{running ? <LoaderCircle className="animate-spin" /> : <Play />}{label}</Button>
   </div>
 }
