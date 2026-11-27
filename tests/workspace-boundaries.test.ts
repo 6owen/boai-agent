@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 机器依赖图沿真实解析目标区分类型、静态/延迟、CommonJS 和公开重导出。
  * [OUTPUT]: 浏览器宿主入口经间接/延迟导入执行器或 Electron 也会在构建前被拒绝。
  * [INPUT]: A minimal workspace using real package names, the build resolver and CI checker.
  * [OUTPUT]: Runtime cycles, manifest direction and private imports fail while type and lazy edges work.
@@ -21,7 +22,7 @@ it('checks package manifests and actual module initialization against the same d
     name: '@6owen/avatar-motion',
     exports: { '.': { types: './src/index.d.ts', default: './src/index.js' } },
   }
-  const check = () => execFileSync(process.execPath, ['scripts/check-workspace-boundaries.mjs'], {
+  const check = (...options: string[]) => execFileSync(process.execPath, ['scripts/check-workspace-boundaries.mjs', ...options], {
     cwd: root, stdio: 'pipe', encoding: 'utf8',
   })
   try {
@@ -41,6 +42,22 @@ it('checks package manifests and actual module initialization against the same d
     const view = join(app, 'src/view.ts')
     await writeFile(view, "import { type State } from './main'; export const load = () => import('./main')")
     expect(check()).toContain('passed')
+    const graph = () => JSON.parse(check('--graph')) as {
+      packages: { name: string; dependencies: string[]; exports: Record<string, string> }[]
+      files: { path: string; workspace: string; imports: { line: number; kind: string; specifier: string; target?: string }[] }[]
+    }
+    const report = graph()
+    expect(report.packages.find(item => item.name === '@boai/electron')?.dependencies).toEqual(['@6owen/avatar-motion'])
+    expect(report.packages.find(item => item.name === '@6owen/avatar-motion')?.exports['@6owen/avatar-motion']).toBe('packages/avatar-motion/src/index.js')
+    expect(report.files.find(item => item.path === 'apps/electron/src/view.ts')?.imports).toEqual([
+      { line: 1, kind: 'type', specifier: './main', target: 'apps/electron/src/main.ts' },
+      { line: 1, kind: 'dynamic', specifier: './main', target: 'apps/electron/src/main.ts' },
+    ])
+    await writeFile(view, "export * from '@6owen/avatar-motion'\nconst fs = require('node:fs')")
+    expect(graph().files.find(item => item.path === 'apps/electron/src/view.ts')?.imports).toEqual([
+      { line: 1, kind: 'reexport', specifier: '@6owen/avatar-motion', target: 'packages/avatar-motion/src/index.js' },
+      { line: 2, kind: 'require', specifier: 'node:fs' },
+    ])
     await writeFile(view, "export * from './main'")
     expect(check).toThrow(/static import cycle: .*main\.ts -> .*view\.ts -> .*main\.ts/)
     await writeFile(view, "import '@6owen/avatar-motion/src/index.js'")

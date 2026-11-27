@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: --graph 从同一次 AST 检查输出工作区公开入口、真实源码和逐条依赖的类型、位置与目标。
  * [OUTPUT]: 桌面浏览器命令公开入口的传递值依赖不得引入 Electron、执行器适配层或 Mastra SDK。
  * [OUTPUT]: 构建与边界检查共用显式开发导出解析；检查包含所有命名空间的工作区成员。
  * [OUTPUT]: 独立avatar-motion子模块可由Electron单向引用，无BOAI业务依赖。
@@ -42,6 +43,7 @@ const allowed = {
   '@boai/design-docs': ['@boai/ui', '@boai/tokens'],
 }
 const errors = [], workspaces = [], files = [], graph = new Map()
+const reportFiles = process.argv.includes('--graph') ? [] : undefined
 const display = path => relative(root, path).split(sep).join('/')
 const exists = async path => stat(path).then(value => value.isFile(), () => false)
 function fail(file, message) { errors.push(`${display(file)}: ${message}`) }
@@ -111,10 +113,14 @@ function importedSpecifiers(ast) {
     else if (node.type === 'TSImportType') source = node.argument
     else if (node.type === 'CallExpression' && (node.callee?.type === 'Import' || (node.callee?.type === 'Identifier' && node.callee.name === 'require'))) source = node.arguments?.[0]
     if (source?.type === 'StringLiteral') {
-      const staticImport = ['ImportDeclaration', 'ExportNamedDeclaration', 'ExportAllDeclaration'].includes(node.type)
       const onlyTypeSpecifiers = node.specifiers?.length > 0 && node.specifiers.every(spec => spec.importKind === 'type' || spec.exportKind === 'type')
       const typeOnly = node.importKind === 'type' || node.exportKind === 'type' || node.type === 'TSImportType' || onlyTypeSpecifiers
-      result.push({ value: source.value, line: source.loc?.start.line ?? 0, typeOnly, staticImport })
+      let kind = 'dynamic'
+      if (typeOnly) kind = 'type'
+      else if (node.type === 'ImportDeclaration') kind = 'import'
+      else if (node.type === 'ExportNamedDeclaration' || node.type === 'ExportAllDeclaration') kind = 'reexport'
+      else if (node.callee?.name === 'require') kind = 'require'
+      result.push({ value: source.value, line: source.loc?.start.line ?? 0, kind })
     }
     for (const [key, value] of Object.entries(node)) if (!['loc', 'start', 'end', 'comments', 'tokens', 'extra'].includes(key)) visit(value)
   }
@@ -127,6 +133,8 @@ for (const { path, workspace } of files) {
   catch (error) { fail(path, `syntax: ${error.message}`); continue }
   const imports = importedSpecifiers(ast), edges = []
   graph.set(path, edges)
+  const report = reportFiles && { path: display(path), workspace: workspace.name, imports: [] }
+  if (report) reportFiles.push(report)
   for (const imported of imports) {
     const value = cleanSpecifier(imported.value), at = `line ${imported.line}`
     let target
@@ -151,13 +159,19 @@ for (const { path, workspace } of files) {
       target = await resolvePublic(dependency, value)
       if (!target) fail(path, `${at} unresolved public export ${value}`)
     }
-    if (!imported.typeOnly && target) {
+    if (report) {
+      report.imports.push({
+        line: imported.line, kind: imported.kind, specifier: imported.value,
+        ...(target ? { target: display(target) } : {}),
+      })
+    }
+    if (imported.kind !== 'type' && target) {
       // Vite raw/url imports load asset data, not the target module's imports.
       const asset = /[?&](?:raw|url)(?:&|$)/.test(imported.value)
-      if (!asset) edges.push({ target, staticImport: imported.staticImport })
+      if (!asset) edges.push({ target, staticImport: imported.kind === 'import' || imported.kind === 'reexport' })
     }
     if (['@boai/ui', '@boai/tokens', '@boai/runtime-plugin-sdk'].includes(workspace.name) && (builtins.has(value) || value === 'electron')) fail(path, `${at} platform import in portable package: ${value}`)
-    if (!imported.typeOnly && (builtins.has(value) || value === 'electron' || value.startsWith('electron/') || value.startsWith('@mastra/'))) edges.push({ target: value, staticImport: false })
+    if (imported.kind !== 'type' && (builtins.has(value) || value === 'electron' || value.startsWith('electron/') || value.startsWith('@mastra/'))) edges.push({ target: value, staticImport: false })
   }
 }
 // Only synchronous ES module imports and re-exports impose initialization order.
@@ -209,6 +223,15 @@ await checkReachableImports('@boai/runtime', '@boai/runtime/browser', 'browser h
 if (errors.length) {
   process.stderr.write(`Workspace static check failed (${errors.length}):\n${errors.join('\n')}\n`)
   process.exitCode = 1
+} else if (reportFiles) {
+  const packages = workspaces.map(({ name, manifest, aliases }) => ({
+    name,
+    dependencies: Object.keys({ ...manifest.dependencies, ...manifest.peerDependencies, ...manifest.optionalDependencies }).filter(dependency => byName.has(dependency)).sort(),
+    exports: Object.fromEntries(Object.entries(aliases).map(([specifier, target]) => [specifier, display(target)])),
+  }))
+  packages.sort((a, b) => a.name.localeCompare(b.name))
+  reportFiles.sort((a, b) => a.path.localeCompare(b.path))
+  process.stdout.write(JSON.stringify({ packages, files: reportFiles }) + '\n')
 } else {
   process.stdout.write(`Workspace static check passed: ${workspaces.length} packages, ${files.length} source files; imports, public entries and dependency directions checked.\n`)
 }
