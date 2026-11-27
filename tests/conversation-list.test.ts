@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 快照按活动优先级、消息序号和渠道持久页生成；标题与隐藏操作不读消息时间。
  * [OUTPUT]: 核心主聊与普通会话共用置顶及排序，兼容旧核心话题。
  * [OUTPUT]: 2026-10-14现行分离合同：主列表一员工一项、员工渠道私聊/群范围隔离及原排序分类回归。
  * [OUTPUT]: 渠道/普通/核心分别排序置顶，本人主私聊仍归普通分类。
@@ -8,8 +9,9 @@
  * [POS]: 会话展示偏好的模块测试；真实 IPC/重启由 Electron BDD 验证。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { describe, expect, it } from 'vitest'
-import type { Conversation } from '../packages/shared/src/domain'
+import { describe, expect, it, vi } from 'vitest'
+import { conversationOverviews } from '../packages/runtime/src/modules/conversations/list-overview'
+import type { AgentRun, Conversation, DiscussionTurn, Message } from '../packages/shared/src/domain'
 import { channelConversations, mainConversations, CONVERSATION_TITLE_MAX_LENGTH, conversationListUpdates, sortedConversations, type ConversationListChange } from '../packages/shared/src/domain/conversation-list'
 const conversation = (id: string, time: string): Conversation => ({ id, kind: 'group', title: id, agentIds: ['researcher'], mode: 'natural', workspacePath: `/work/${id}`, sharedKnowledgeIds: [], createdAt: time, updatedAt: time, configVersion: 3 })
 const names = (items: Conversation[]) => sortedConversations(items).map(item => item.id)
@@ -124,4 +126,49 @@ it('sorts and pins the existing core main chat alongside ordinary employees and 
   expect(names(rows)).toEqual([group.id, core.id])
   expect(rows.map(row => row.list?.pinned)).toEqual([true, true])
   expect(rows[0]).toMatchObject({ purpose: 'core', employeeChat: 'main', agentIds: ['bobo'] })
+})
+
+it('only reads transcript times for a list change that orders conversations', () => {
+  const room = { ...conversation('topic', '2026-01-01'), employeeChat: 'topic' as const }
+  const times = vi.fn(() => ({}))
+  for (const command of [{ action: 'rename', title: 'new' }, { action: 'hide' }, { action: 'show' }] as const) {
+    conversationListUpdates([room], { id: room.id, ...command }, times)
+  }
+  expect(times).not.toHaveBeenCalled()
+  conversationListUpdates([room], { id: room.id, action: 'pin', pinned: true }, times)
+  expect(times).toHaveBeenCalledTimes(1)
+})
+
+it('projects streaming and completed heads separately and uses only the persisted channel page', () => {
+  const rooms = ['ordinary','channel','empty-channel'].map(id => conversation(id, '2026-01-01'))
+  const row = (id: string, seq: number, text: string, status: Message['status'] = 'completed'): Message => ({
+    id: text, conversationId: id, sequence: seq, content: text, status,
+    senderName: 'User', senderType: 'user', senderId: 'user', createdAt: 'time-' + text,
+  })
+  const messages = [
+    row('ordinary', 7, 'first'), row('ordinary', 8, 'partial', 'streaming'), row('ordinary', 4, 'earlier'),
+    row('ordinary', 7, 'last-equal'), row('channel', 100, 'evicted'), row('empty-channel', 8, 'stale'),
+  ]
+  const rows = conversationOverviews({ rooms, messages, runs: [], turns: [],
+    channelMessages: new Map([['channel', [row('channel', 9, 'saved')]], ['empty-channel', []]]),
+    channelUnread: new Map([['channel', 2]]),
+  })
+  expect(rows.find(r => r.id === 'ordinary')).toMatchObject({ lastMessageAt: 'time-partial', lastMessagePreview: 'last-equal' })
+  expect(rows.find(r => r.id === 'channel')).toMatchObject({ lastMessageAt: 'time-saved', lastMessagePreview: 'saved', channelUnreadCount: 2 })
+  expect(rows.find(r => r.id === 'empty-channel')).toMatchObject({ lastMessageAt: undefined, lastMessagePreview: '', channelUnreadCount: 0 })
+})
+
+it('prioritizes active runs and considers the latest run and turn independently after they settle', () => {
+  const room = conversation('r', '')
+  const run = (status: AgentRun['status'], createdAt: string) => ({ status, createdAt, conversationId: room.id } as AgentRun)
+  const turn = (status: DiscussionTurn['status'], createdAt: string) => ({ status, createdAt, conversationId: room.id } as DiscussionTurn)
+  function activity(runs: AgentRun[], turns: DiscussionTurn[]) {
+    return conversationOverviews({ rooms: [room], messages: [], runs, turns, channelMessages: new Map(), channelUnread: new Map() })[0].activity
+  }
+  expect(activity([run('running', '1'), run('waiting_approval', '0')], [turn('queued', '2')])).toBe('waiting_approval')
+  expect(activity([run('running', '1')], [turn('queued', '2')])).toBe('running')
+  expect(activity([run('failed', '3')], [turn('queued', '1')])).toBe('queued')
+  expect(activity([run('failed', '3'), run('completed', '2')], [turn('completed', '4')])).toBe('failed')
+  expect(activity([run('completed', '3')], [turn('failed', '1')])).toBe('failed')
+  expect(activity([run('failed', '3'), run('completed', '3')], [turn('completed', '1')])).toBe('idle')
 })

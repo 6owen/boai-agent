@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 只有实际排序的操作读取消息时间，原记录输入继续可用。
  * [OUTPUT]: 核心主聊与普通会话共用置顶和排序，旧核心会话按同员工话题排序。
  * [OUTPUT]: 用户手动改名同时撤销待生成标题。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
@@ -65,14 +66,14 @@ export function channelConversations(conversations: Conversation[], agentId: str
   return sortedConversations(conversations, messageTimes).filter(item => isChannelConversation(item) && item.agentIds.includes(agentId))
 }
 
-export function conversationListUpdates(conversations: Conversation[], change: ConversationListChange, messageTimes: Record<string, string> = {}): Conversation[] {
+export function conversationListUpdates(conversations: Conversation[], change: ConversationListChange, messageTimes: Record<string, string> | (() => Record<string, string>) = {}): Conversation[] {
   const item = conversations.find(item => item.id === change.id)
   if (!item) throw new Error('会话不存在')
-  const visible = sortedConversations(conversations, messageTimes)
+  const orderedVisible = () => sortedConversations(conversations, typeof messageTimes === 'function' ? messageTimes() : messageTimes)
   const section = conversationSection(item)
   const sameSection = (other: Conversation) => conversationSection(other) === section &&
     (section !== 'topic' || other.agentIds[0] === item.agentIds[0])
-  const putFirst = (pinned: boolean) => [item, ...visible.filter(other => other.id !== item.id && sameSection(other) && Boolean(other.list?.pinned) === pinned)]
+  const putFirst = (pinned: boolean) => [item, ...orderedVisible().filter(other => other.id !== item.id && sameSection(other) && Boolean(other.list?.pinned) === pinned)]
     .map((item, order) => ({ ...item, list: { ...item.list, hidden: false, pinned, order } }))
   if (change.action === 'hide') return [{ ...item, list: { hidden: true, pinned: false } }]
   if (change.action === 'show') return item.list?.hidden ? putFirst(false) : []
@@ -85,6 +86,7 @@ export function conversationListUpdates(conversations: Conversation[], change: C
     return [{ ...current, title }]
   }
   if (change.action === 'pin') return putFirst(change.pinned)
+  const visible = orderedVisible()
   const target = visible.find(item => item.id === change.targetId)
   if (!target) throw new Error('目标会话不存在')
   if (!sameSection(target)) throw new Error('请在同一会话分类内排序')

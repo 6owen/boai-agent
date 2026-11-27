@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 用户手动改名在写入成功时使待生成标题的原请求失效，失败保留原状态和显式重试。
+ * [OUTPUT]: 真实快照每次只扫描一次已加载消息，保留现有会话排序和已完成预览。
  * [OUTPUT]: 使用私有配置凭据的执行事件保持 JSON 类型和历史遮蔽文字。
  * [OUTPUT]: 连续成功聊天/任务与暂缓路径释放运行上下文，持久历史可查且清空后不残留活跃引用。
  * [OUTPUT]: 新消息在已取消的后台记忆适配器实际退出前开始；原优先级断言保持，测试失败也释放挂起调用。
@@ -1627,8 +1629,13 @@ describe('local product service', () => {
     expect(state.conversations[1].lastMessageAt).toBe(oldMessage.createdAt)
     expect(state.conversations[2].lastMessageAt).toBeUndefined()
     const latest = await send(service, older, '现在的新消息', 'latest-message', []); await idle(service, older, 0)
-    state = await snapshot(service)
-    expect(state.conversations[0]).toMatchObject({ id: older.id, lastMessageAt: latest.createdAt, lastMessagePreview: '现在的新消息' })
+    const messages = (service as unknown as { messages: Map<string, Message> }).messages
+    const reads = vi.spyOn(messages, 'values')
+    try {
+      state = await snapshot(service)
+      expect(reads).toHaveBeenCalledTimes(1)
+      expect(state.conversations[0]).toMatchObject({ id: older.id, lastMessageAt: latest.createdAt, lastMessagePreview: '现在的新消息' })
+    } finally { reads.mockRestore() }
   })
 
   it('keeps past greetings as history without counting them as a response in a new turn', async () => {
@@ -2345,7 +2352,7 @@ describe('local product service', () => {
 })
 
 describe('core conversation title editing', () => {
-  it('persists only the core title and update time across restart while preserving history, work, memory and authorization', async () => {
+  it('persists the manual core title and retires its pending generation across restart while preserving history, work, memory and authorization', async () => {
     const { service, root, engine, secrets } = await fixture(); await configure(service, ['bobo'])
     const ordinary = await conversation(service)
     const core = await service.handle('startCoreConversation', { requestId: 'core-title-first', content: '核对现有订单' }) as Conversation
@@ -2369,7 +2376,9 @@ describe('core conversation title editing', () => {
       expect(write).toHaveBeenCalledTimes(1)
     } finally { write.mockRestore() }
     const renamed = await detail(service, core)
-    expect(renamed.conversation).toEqual({ ...before.conversation, title: '订单处理记录', updatedAt: renamed.conversation.updatedAt })
+    const { pendingTitleMessageId, ...priorFields } = before.conversation
+    expect(before.messages.find(message => message.id === pendingTitleMessageId)?.senderType).toBe('user')
+    expect(renamed.conversation).toEqual({ ...priorFields, title: '订单处理记录', updatedAt: renamed.conversation.updatedAt })
     expect(Date.parse(renamed.conversation.updatedAt)).toBeGreaterThan(Date.parse(before.conversation.updatedAt))
     expect(renamed).toEqual({ ...before, conversation: renamed.conversation })
     expect((await snapshot(service)).agents).toEqual(initial.agents)
@@ -2402,7 +2411,9 @@ describe('core conversation title editing', () => {
     expect(await detail(service, core)).toEqual(before)
     expect((await store.load<Conversation>('conversations')).find(item => item.id === core.id)).toEqual(before.conversation)
     await service.handle('updateConversationList', { id: core.id, action: 'rename', title: '新标题' })
-    expect((await detail(service, core)).conversation).toEqual({ ...before.conversation, title: '新标题', updatedAt: expect.any(String) })
+    const { pendingTitleMessageId, ...priorFields } = before.conversation
+    expect(before.messages.find(message => message.id === pendingTitleMessageId)?.senderType).toBe('user')
+    expect((await detail(service, core)).conversation).toEqual({ ...priorFields, title: '新标题', updatedAt: expect.any(String) })
     expect(engine.contexts).toHaveLength(calls)
   })
 })
