@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 团队规划接口归宿主合同；普通网关请求身份由共享的模型选择和调用记录生成。
  * [OUTPUT]: 2026-11-24 第三阶段：官方 Durable Agent/Session.steer、Workspace 文件工具、LocalSandbox 进程和原生 Trace；授权及发布保留业务适配。
  * [OUTPUT]: 2026-11-24 团队方案独立调用接官方 Metrics；不制造员工工作或会话。
  * [OUTPUT]: 一次性模型请求同样核对最终prompt容量，不创建持续Session或调用额外摘要模型。
@@ -14,20 +15,12 @@ import { bindMetrics, type MastraMetrics } from './metrics'
 import { observeAgent } from './trace'
 import { Agent } from '@mastra/core/agent'
 import { z } from 'zod'
-import type { Connection } from '@boai/shared/domain'
-import { TEAM_LIMITS, TEAM_PLANNER_VERSION, teamPlannerOutputSchema, type TeamGeneration } from '@boai/shared/domain/team-creation'
+import { TEAM_LIMITS, TEAM_PLANNER_VERSION, teamPlannerOutputSchema } from '@boai/shared/domain/team-creation'
 import { modelConfig, thinkingProviderOptions } from './model-config'
 import { gatewayRouteObserver } from './gateway-route'
 import { assertStreamCompleted } from './stream-completion'
-import type { ModelCallObservation } from '../../contracts'
+import { TeamPlanFormatError, type TeamPlannerCall } from '../../contracts'
 
-export type TeamUsage = TeamGeneration['attempts'][number]['usage']
-export interface TeamPlannerCall extends ModelCallObservation {
-  connection: Connection; modelId: string; apiKey: string; prompt: string; repair?: string; signal: AbortSignal
-  usage(value: TeamUsage): Promise<void>
-}
-export type TeamPlanner = (call: TeamPlannerCall) => Promise<unknown>
-export class TeamPlanFormatError extends Error {}
 export const teamPlannerInstructions = `你是 BoAI 内置团队创建助手。输出只是待用户确认的方案，不能声称员工、群聊或任务已创建。
 仅根据本次需求设计 1–12 名互补成员；简单助手可以一人。明确人数需遵守，超出人数返回 needs_adjustment，不能静默截断。含糊需求如“写作”直接设计小组并列出假设，不编造用户已确认的偏好。
 只返回符合 schema 的 JSON。成员名字互不相同，职责具体且互补，工作规则与职责一致；个性可区分但不能损害目标。不要把四人写作模板强加给所有需求。

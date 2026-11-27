@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 团队规划接口归宿主合同；普通网关请求身份由共享的模型选择和调用记录生成。
  * [OUTPUT]: 普通聊天的工具事件按本阶段实际注册的操作与官方 Memory 工具身份核对。
  * [OUTPUT]: 已授权会话消息的窗口、当前轮及身份投影归 conversations；模型角色/图片装配归 API 适配器。
  * [OUTPUT]: 内置浏览器命令沿 browser 模块的实现与类型，桌面、本机和 API 共用原合同。
@@ -92,7 +93,7 @@ import type { MastraModelOutput } from '@mastra/core/stream'
 import { z } from 'zod'
 import type { Connection, MemoryCandidate, ModelUsage, ParticipationDecision, ToolEvent, WorkDraft, WorkReport } from '@boai/shared/domain'
 import { isBrowserCapableAgent } from '@boai/shared/domain'
-import type { AgentEngine, EngineContext, AutomationDraftContext } from '../../contracts'
+import type { AgentEngine, EngineContext, AutomationDraftContext, TeamPlannerCall } from '../../contracts'
 import { assertApiContext, PARTICIPATION_TIMEOUT_MS } from '../../contracts'
 import { thinkingProviderOptions, decisionProviderOptions, modelConfig, sessionModelSettings } from './model-config'
 import { gatewayRouteModel, gatewayRouteObserver } from './gateway-route'
@@ -150,7 +151,7 @@ function check(signal: AbortSignal) { signal.throwIfAborted() }
 import { randomUUID } from 'node:crypto'
 import { MastraMetrics, bindMetrics } from './metrics'
 import { observeAgent } from './trace'
-import { planTeam, type TeamPlannerCall } from './team-planner'
+import { planTeam } from './team-planner'
 import { generatePresentationReview } from './presentation-review-model'
 import type { PresentationModelInput } from '../../modules/presentations/presentation-service'
 import { SpanType } from '@mastra/core/observability'

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 团队规划接口归宿主合同；普通网关请求身份由共享的模型选择和调用记录生成。
  * [OUTPUT]: 模型调用可标识专用PPT审阅；真实来源仍归同一Run，原生调用数不冒充API审阅数。
  * [OUTPUT]: 无Run的连接测试/团队规划/自动化草稿沿原操作身份保存逐请求网关路由；不制造Work或更改原预算。
  * [INPUT]: Explicit gateway root, protocol and authentication mode; ordinary provider connections retain their API-root convention.
@@ -6,6 +7,9 @@
  * [POS]: Model-source contract shared by settings, API and native adapters; no credentials are persisted here.
  * [PROTOCOL]: Update Header and domain/.folder.md when changing this contract.
  */
+import type { Connection } from './index'
+import { effectiveModelId } from './model-id'
+
 export type ModelProtocol = 'chat' | 'responses' | 'messages'
 export interface ModelGateway { kind: 'magpie'; protocol: ModelProtocol; auth: 'local' | 'key' }
 export interface ModelCatalogEntry {
@@ -39,6 +43,15 @@ export interface GatewayModelCall {
   selectedModelId: string
   startedAt: string
   route?: GatewayRouteEvidence
+}
+
+export function gatewayModelCall(connection: Connection, callId: string, phase: GatewayModelCall['phase'], override?: string): GatewayModelCall | undefined {
+  if (!connection.gateway) return undefined
+  return {
+    callId, connectionId: connection.id, connectionRevision: connection.revision ?? 1,
+    phase, protocol: connection.gateway.protocol, selectedModelId: effectiveModelId(override, connection.defaultModel),
+    startedAt: new Date().toISOString(),
+  }
 }
 
 export const MAGPIE_DEFAULT_URL = 'http://127.0.0.1:3425'

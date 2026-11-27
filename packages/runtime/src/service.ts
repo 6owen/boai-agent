@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 团队规划接口归宿主合同；普通网关请求身份由共享的模型选择和调用记录生成。
  * [OUTPUT]: 宿主执行与工具批准归 authorization；旧命令授权沿原事务与配置撤销。
  * [OUTPUT]: 工作额度与结果证据沿 shared/domain/work 的业务规则判断；预留、核权和结算由宿主事务负责。
  * [OUTPUT]: contexts 按共享场景表编译员工来源与状态；默认通信场景由工作区装配统一选择。
@@ -326,7 +327,7 @@ import { isConversationMaterialVisible, MATERIAL_LIMITS, type ConversationMateri
 import { contextWindow } from './modules/conversations/message-context'
 import type { TeamFileCheckpoint } from './modules/teams/team-files'
 import { TeamGenerationService } from './modules/teams/team-generation'
-import { planTeam, type TeamPlanner } from './adapters/mastra/team-planner'
+import { planTeam } from './adapters/mastra/team-planner'
 import { TeamRepository, teamVersionSchema } from './modules/teams/team-repository'
 import { ProfileRepository } from './modules/profile/profile-repository'
 import { readMonitorArtifact } from './modules/automations/monitor-source'
@@ -373,10 +374,9 @@ import { mergeRooms } from './modules/conversations/room-migration'
 import { listCodexModels, listCodexModelCatalog, testCodexConnection } from './adapters/codex/turn'
 import { EMPLOYEE_EXECUTION_LIMITS, type EmployeeExecutionDetail, type EmployeeExecutionSummary } from '@boai/shared/domain/employee-executions'
 import { listModelCatalog, modelCatalogUrl, probeMagpie } from './adapters/mastra/model-catalog'
-import { gatewayModelCall, gatewaySelectedModel } from './adapters/mastra/gateway-route'
 import { ConnectionCredentials } from './modules/backends/connection-credentials'
 import { GatewayCatalogStore, gatewayCatalogSource } from './modules/backends/gateway-catalog-store'
-import { gatewayApiKey, gatewayEndpoint, gatewayRoot, isLoopbackGateway } from '@boai/shared/domain/model-gateway'
+import { gatewayApiKey, gatewayEndpoint, gatewayModelCall, gatewayRoot, isLoopbackGateway } from '@boai/shared/domain/model-gateway'
 import { readMaterialSource } from '@boai/shared/node/material-files'
 import { authorizedResources, resourceVersion } from './modules/workspaces/environment-plan'
 import { KnowledgeManagement, saveKnowledgeSchema, type KnowledgeRevocation } from './modules/resources/knowledge-management'
@@ -403,7 +403,7 @@ import { readPromptCollections, updatePromptCollections } from './modules/resour
 import type { AgentInput, AgentRun, Approval, Connection, Conversation, ConversationDetail, DigitalAgent, Message, Resource, Snapshot, DiscussionTurn, ConversationEvent, AgentDelivery, DecisionRecord, WorkItem, WorkBudget, MemoryQuery, MemoryView, MemoryEntry, Artifact } from '@boai/shared/domain'
 import { isBrowserCapableAgent } from '@boai/shared/domain'
 import type { AppEvent, Method, Methods } from '@boai/shared/ipc'
-import type { AgentEngine, EngineContext, SecretStore } from './contracts'
+import type { AgentEngine, EngineContext, SecretStore, TeamPlanner } from './contracts'
 import { PARTICIPATION_TIMEOUT_MS, reportTraceError } from './contracts'
 import { sourceCreationCommands } from './modules/sources/source-commands'
 import { mergeCatalogResults, type CatalogActivity, type CatalogResult } from '@boai/shared/domain/catalog-management'
@@ -4945,10 +4945,11 @@ export class AppService {
         if (run.phase === 'execution') this.organizationModelCalls.set(run.id, callId)
         if (isNativeBackend(run.backend)) { run.backend.externalInvocations++; await this.store.write([record('runs', run)]); return }
         const selectedConnection = selection ? this.getConnection(selection.connectionId) : context.connection
-        if (selectedConnection?.gateway) await this.observeActivity(run, async () => {
+        if (selectedConnection) await this.observeActivity(run, async () => {
           if (run.modelCalls?.some(call => call.callId === callId)) return
-          const source = selectedConnection!
-          const modelCalls = [...(run.modelCalls ?? []), { callId, connectionId: source.id, connectionRevision: source.revision ?? 1, phase, protocol: source.gateway!.protocol, selectedModelId: gatewaySelectedModel(source, selection?.modelId ?? context.agent.modelId), startedAt: now() }]
+          const call = gatewayModelCall(selectedConnection, callId, phase, selection?.modelId ?? context.agent.modelId)
+          if (!call) return
+          const modelCalls = [...(run.modelCalls ?? []), call]
           await this.store.write([{ collection: 'runs', id: run.id, value: { ...run, modelCalls } }]); run.modelCalls = modelCalls; this.changed(run.conversationId)
         })
         await this.observeActivity(run, () => this.userProfile.start({ ...(runtimeProfile ? { callUnit: 'external-turn' as const } : {}), id: callId, runId: run.id, conversationId: run.conversationId, phase, startedAt: now(), budgetOwned: Boolean(run.origin || run.collaborationRequestId || context.workBudget?.sourceMessageId && run.workId), thinking }))

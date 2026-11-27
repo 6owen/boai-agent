@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 团队规划接口归宿主合同；普通网关请求身份由共享的模型选择和调用记录生成。
  * [OUTPUT]: 独立团队生成通过官方 Metrics 计入 utility，保持无工具与预算合同。
  * [INPUT]: 真实 Mastra SDK、本地 SSE、团队生成宿主与 SQLite。
  * [OUTPUT]: 模型或编辑不得改写 T2 统一记忆/T3 未支持能力事实；无工具调用、结构修复预算、版本去重、停止/放弃的迟到用量与重启不重发验收。
@@ -13,7 +14,7 @@ import { AppService } from '../packages/runtime/src/service'
 import type { Method, Methods } from '../packages/shared/src/ipc'
 import { TEAM_LIMITS, type TeamDraftView } from '../packages/shared/src/domain/team-creation'
 import { teamEndpoint, sendTeamOutput, writingPlan } from './fixtures/team-planner'
-import type { TeamPlanner } from '../packages/runtime/src/adapters/mastra/team-planner'
+import type { TeamPlanner } from '../packages/runtime/src/contracts'
 import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
 import { TeamRepository } from '../packages/runtime/src/modules/teams/team-repository'
 const cleanup: (() => Promise<unknown>)[] = []

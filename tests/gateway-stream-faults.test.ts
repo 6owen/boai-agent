@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 团队规划接口归宿主合同；普通网关请求身份由共享的模型选择和调用记录生成。
  * [INPUT]: Production MastraEngine/team planner/SDK and controlled three-protocol HTTP streams.
  * [OUTPUT]: Confirmed completion versus EOF across public/private stages, no format retry, retained file side effects and actual cancellation.
  * [POS]: Gateway stream integrity regression; real local HTTP/tools shared with the product fault suite, no supplier inference.
@@ -10,7 +11,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, expect, test } from 'vitest'
 import { MastraEngine } from '../packages/runtime/src/adapters/mastra/engine'
-import { planTeam, TeamPlanFormatError } from '../packages/runtime/src/adapters/mastra/team-planner'
+import { TeamPlanFormatError } from '../packages/runtime/src/contracts'
+import { planTeam } from '../packages/runtime/src/adapters/mastra/team-planner'
 import type { EngineContext } from '../packages/runtime/src/contracts'
 import type { ModelProtocol } from '../packages/shared/src/domain/model-gateway'
 import type { ToolEvent } from '../packages/shared/src/domain'
