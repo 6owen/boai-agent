@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 服务凭据变量名由 EnvironmentSecrets 定义；启动只读取符合绑定规则的环境值。
  * [OUTPUT]: 环境绑定在原连接 CAS 内准备私有槽并原子切换，外部状态沿业务连接 ID。
  * [OUTPUT]: 同profile共享访问覆盖原服务排空、宿主/RPC退出与发现文件删除，维护锁不在中途释放。
  * [OUTPUT]: 独立服务与桌面共用随包技能源及首次绑定；可显式注入受信分发根。
@@ -23,7 +24,7 @@ import { startOwnedRuntime } from './bootstrap'
 import { RuntimeOwnedError } from './owner'
 import { acquireRuntimeProfileAccess, ProfileAccessBusyError } from './profile-access'
 import { MastraEngine } from './adapters/mastra/engine'
-import { EnvironmentSecrets } from './environment-secrets'
+import { credentialEnvironmentName, EnvironmentSecrets } from './environment-secrets'
 import { connectionSchema, conversationSchema } from './service'
 import { agentSchema } from './modules/employees/employee-service'
 import type { AgentEngine } from './contracts'
@@ -91,7 +92,7 @@ export async function startHeadlessServer(options: HeadlessOptions) {
   // Trusted owner configuration uses exactly the original service schemas and CAS checks.
   for (const [name, schema] of [['saveConnection', connectionSchema], ['saveAgent', agentSchema], ['createConversation', conversationSchema]] as const) register(name, schema, 'write', input => port.request(name, input))
   register('credentials:status', z.undefined(), 'read', () => secrets.status(owned.service.connectionCredentialSlots()))
-  register('credentials:bind', z.object({ id: z.string().min(1).max(200), expectedRevision: z.number().int().positive(), environmentVariable: z.string().regex(/^BOAI_SECRET_[A-Z0-9_]+$/).max(200) }).strict(), 'write', input => {
+  register('credentials:bind', z.object({ id: z.string().min(1).max(200), expectedRevision: z.number().int().positive(), environmentVariable: credentialEnvironmentName }).strict(), 'write', input => {
     if (state !== 'ready') throw new CliError('SERVER_BUSY', '服务正在退出')
     const operation = (async () => {
       const { id, environmentVariable, expectedRevision } = input as { id: string; environmentVariable: string; expectedRevision: number }

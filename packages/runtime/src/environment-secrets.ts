@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 服务凭据变量名由 EnvironmentSecrets 定义；启动只读取符合绑定规则的环境值。
  * [OUTPUT]: 连接环境引用先写入候选槽；绑定与清理不会覆盖生效版本。
  * [INPUT]: Explicit BOAI_SECRET_* values, a private environment-reference map and optional desktop vault metadata.
  * [OUTPUT]: Environment/session secrets plus authenticated desktop vault fallback; explicit desktop edits use that vault.
@@ -12,9 +13,18 @@ import { z } from 'zod'
 import { AsyncLocalStorage } from 'node:async_hooks'
 import type { SecretStore } from './contracts'
 
-const variable = z.string().regex(/^BOAI_SECRET_[A-Z0-9_]+$/).max(200)
+export const credentialEnvironmentName = z.string().regex(/^BOAI_SECRET_[A-Z0-9_]+$/).max(200)
 const credentialId = z.string().min(1).max(200).refine(value => !['__proto__', 'constructor', 'prototype'].includes(value))
-const references = z.record(credentialId, variable.nullable())
+const references = z.record(credentialId, credentialEnvironmentName.nullable())
+/** Capture only bindable values before the service clears the inherited process environment. */
+export function captureCredentialEnvironment(environment: Readonly<NodeJS.ProcessEnv>): NodeJS.ProcessEnv {
+  const selected: NodeJS.ProcessEnv = {}
+  for (const name of Object.keys(environment)) {
+    if (credentialEnvironmentName.safeParse(name).success) selected[name] = environment[name]
+  }
+  return selected
+}
+
 export class EnvironmentSecrets implements SecretStore {
   private refs: Record<string, string | null> = {}
   private session = new Map<string, string>()
@@ -62,11 +72,11 @@ export class EnvironmentSecrets implements SecretStore {
   }
   bind(id: string, environmentVariable: string) {
     credentialId.parse(id)
-    variable.parse(environmentVariable)
+    credentialEnvironmentName.parse(environmentVariable)
     if (!this.environment[environmentVariable]) throw new Error('指定的服务端凭据变量不可用')
     return this.mutate(refs => { refs[id] = environmentVariable }, () => { this.session.delete(id) })
   }
-  environmentValue(name: string) { variable.parse(name); return this.environment[name] || (() => { throw new Error('指定的服务端凭据变量不可用') })() }
+  environmentValue(name: string) { credentialEnvironmentName.parse(name); return this.environment[name] || (() => { throw new Error('指定的服务端凭据变量不可用') })() }
   async set(id: string, value: string, previousKey = id) {
     credentialId.parse(id)
     if (this.desktopContext.getStore() && this.host?.connected()) {

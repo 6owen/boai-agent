@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 服务凭据变量名由 EnvironmentSecrets 定义；启动只读取符合绑定规则的环境值。
  * [OUTPUT]: 2026-10-20原生Node加载的package.json导入标注JSON类型，独立服务入口语义保持。
  * Copyright 2026 Craft Docs Ltd. Licensed under Apache-2.0; see ../shared/cli/LICENSE.txt and NOTICE.txt.
  * Modified for BOAI: Node foreground entry, private token discovery and reference-only credentials.
@@ -10,6 +11,7 @@
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { resolve } from 'node:path'
+import { captureCredentialEnvironment } from './environment-secrets'
 import { startHeadlessServer } from './headless'
 import { CliError } from '@boai/shared/cli/protocol'
 import appPackage from '../../../package.json' with { type: 'json' }
@@ -23,7 +25,7 @@ export async function serve(options: { dataPath: string; host?: string; port?: s
   if (!!cert !== !!key || ca && !cert) throw new CliError('INVALID_REQUEST', 'TLS证书和私钥必须成对提供，CA须与TLS一起配置')
   const tls = cert && key ? { cert: await readFile(cert), key: await readFile(key), ...(ca ? { ca: await readFile(ca) } : {}) } : undefined
   const token = process.env.BOAI_SERVER_TOKEN
-  const secretEnvironment = Object.fromEntries(Object.entries(process.env).filter(([key]) => /^BOAI_SECRET_[A-Z0-9_]+$/.test(key)))
+  const secretEnvironment = captureCredentialEnvironment(process.env)
   // Employee subprocesses must not inherit owner tokens or service model credentials.
   for (const key of Object.keys(process.env)) if (!/^(PATH|HOME|USER|SHELL|LANG|LC_.*|TMPDIR|TEMP|TMP|SystemRoot|APPDATA|LOCALAPPDATA|USERPROFILE|HTTPS?_PROXY|ALL_PROXY|NO_PROXY)$/i.test(key)) delete process.env[key]
   process.env.BOAI_RUNTIME_PLUGIN_BUNDLE = fileURLToPath(new URL('./plugins/', import.meta.url)).replace(/app\.asar(?=[/\\])/, 'app.asar.unpacked')

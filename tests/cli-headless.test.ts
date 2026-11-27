@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 凭据名长度、启动取值及 RPC 绑定使用同一边界，未选中的环境值不读取。
  * [OUTPUT]: 环境变量绑定失败保留原配置及引用，重启继续使用固定连接身份。
  * [OUTPUT]: 员工私聊/核心首发去重及空闲release拒绝其他客户端和实际活动。
  * [INPUT]: Real standalone assembly, SQLite owner/credential files and controlled original employee engine.
@@ -14,7 +15,7 @@ import { randomUUID } from 'node:crypto'
 import { acquireRuntimeOwner, RuntimeOwnedError } from '../packages/runtime/src/owner'
 import { startOwnedRuntime } from '../packages/runtime/src/bootstrap'
 import { startHeadlessServer } from '../packages/runtime/src/headless'
-import { EnvironmentSecrets } from '../packages/runtime/src/environment-secrets'
+import { captureCredentialEnvironment, EnvironmentSecrets } from '../packages/runtime/src/environment-secrets'
 import { CliRpcClient } from '../packages/transport/src/client'
 import { readLocalConnection } from '../packages/transport/src/discovery'
 import { executeMessage, type ExecutionEvent } from '../apps/cli/src/execution'
@@ -67,12 +68,22 @@ it('starts no second runtime, while the first serves original employee configura
   expect(await client.invoke('getMessageExecution', { requestId })).toMatchObject({ state: 'completed', activeRunIds: [] })
 })
 
+it('captures only environment values that can be bound to a credential reference', () => {
+  const longest = 'BOAI_SECRET_'.padEnd(200, 'A')
+  const environment: NodeJS.ProcessEnv = { BOAI_SECRET_TEST_123: 'synthetic', [longest]: 'at-limit' }
+  for (const name of [longest + 'A', 'BOAI_SERVER_TOKEN', 'BOAI_SECRET_lowercase', 'BOAI_SECRET_']) {
+    Object.defineProperty(environment, name, { enumerable: true, get() { throw new Error('unexpected environment read') } })
+  }
+  expect(captureCredentialEnvironment(environment)).toEqual({ BOAI_SECRET_TEST_123: 'synthetic', [longest]: 'at-limit' })
+})
+
 it('binds only environment references via original connection CAS and never persists credential values', async () => {
   const f = await fixture(), { connection } = await configure(f.client)
   const bound = await f.client.invoke('credentials:bind', { id: connection.id, expectedRevision: connection.revision, environmentVariable: 'BOAI_SECRET_FIXTURE' }) as { revision: number }
   expect(bound.revision).toBe(connection.revision! + 1)
   await expect(f.client.invoke('credentials:bind', { id: connection.id, expectedRevision: connection.revision, environmentVariable: 'BOAI_SECRET_FIXTURE' })).rejects.toThrow('连接已被修改')
   await expect(f.client.invoke('credentials:bind', { id: connection.id, expectedRevision: bound.revision, environmentVariable: 'BOAI_SERVER_TOKEN' })).rejects.toMatchObject({ code: 'INVALID_REQUEST' })
+  await expect(f.client.invoke('credentials:bind', { id: connection.id, expectedRevision: bound.revision, environmentVariable: 'BOAI_SECRET_'.padEnd(201, 'A') })).rejects.toMatchObject({ code: 'INVALID_REQUEST' })
   const references = await readFile(join(f.path, '.cli/credential-refs.json'), 'utf8')
   expect(references).toContain('BOAI_SECRET_FIXTURE'); expect(references).not.toContain('only-service-secret')
   expect(JSON.stringify(await f.client.invoke('connections'))).not.toContain('only-service-secret')
