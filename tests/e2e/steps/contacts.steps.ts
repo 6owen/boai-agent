@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 原生拖放进入或离开通讯录置顶区，重启核对保存顺序。
  * [OUTPUT]: 核心和普通成员可右键置顶，横向行持久排序，置顶组无标题。
  * [OUTPUT]: 群配置解散按标题定位Popover确认；原取消保留草稿、清理范围及终态断言保持。
  * [OUTPUT]: 原会话草稿使用共享messageDraft精确读富文本正文，兼容当前群/单聊编辑器而不降低内容断言。
@@ -104,26 +105,56 @@ When('在通讯录置顶员工后重启并取消置顶', async ({ runtime }) => 
   let list = await openList()
   const people = () => list.getByRole('group', { name: '联系人', exact: true })
   const pinned = () => list.getByRole('group', { name: '置顶联系人', exact: true })
-  await expect(people().getByRole('button', { name: 'bobo', exact: true })).toBeVisible()
-  await expect(pinned()).toHaveCount(0)
-  for (const name of ['bobo', '研究员']) {
-    await people().getByRole('button', { name, exact: true }).click({ button: 'right' })
-    await runtime.page.getByRole('menuitem', { name: '置顶', exact: true }).click()
-    await expect(pinned().getByRole('button', { name, exact: true })).toBeVisible()
-    await expect(people().getByRole('button', { name, exact: true })).toHaveCount(0)
+  const beginDrag = async (source: Locator) => {
+    await expect(source).toHaveAttribute('draggable', 'true')
+    await source.scrollIntoViewIfNeeded()
+    const { x, y, height } = (await source.boundingBox())!
+    await runtime.page.mouse.move(x + 40, y + height / 2)
+    await runtime.page.mouse.down()
+    await runtime.page.mouse.move(x + 56, y + height / 2, { steps: 5 })
   }
+  const dropAt = async (target: Locator, area = target) => {
+    const { x, y, width, height } = (await target.boundingBox())!
+    await runtime.page.mouse.move(x + width / 2, y + height / 2, { steps: 10 })
+    await runtime.page.mouse.move(x + width / 2 + 1, y + height / 2)
+    await expect(area).toHaveAttribute('data-drop', 'inside')
+    await runtime.page.mouse.up()
+  }
+  const bobo = people().getByRole('button', { name: 'bobo', exact: true })
+  const top = list.locator('.contacts-pin-drop')
+  await expect(bobo).toBeVisible()
+  await expect(top).toHaveCount(0)
+  await beginDrag(bobo)
+  await expect(top).toHaveText('拖到此处置顶')
+  await expect(top).toHaveCSS('height', '55px')
+  await dropAt(top)
+  await expect(pinned().getByRole('button', { name: 'bobo', exact: true })).toBeVisible()
+  await expect(bobo).toHaveCount(0)
+  await expect.poll(async () => (await contactPreferences(runtime)).pinnedAgentIds).toEqual(['bobo'])
+
+  await people().getByRole('button', { name: '研究员', exact: true }).click({ button: 'right' })
+  await runtime.page.getByRole('menuitem', { name: '置顶', exact: true }).click()
+  await expect(pinned().getByRole('button', { name: '研究员', exact: true })).toBeVisible()
+  await expect.poll(async () => (await contactPreferences(runtime)).pinnedAgentIds).toEqual(['researcher', 'bobo'])
   await expect(pinned().getByText('置顶', { exact: true })).toHaveCount(0)
-  await expect(pinned().getByRole('button', { name: 'bobo', exact: true })).toHaveCSS('flex-direction', 'row')
-  await pinned().getByRole('button', { name: 'bobo', exact: true }).press('Alt+ArrowUp')
+  const pinnedBobo = pinned().getByRole('button', { name: 'bobo', exact: true })
+  await expect(pinnedBobo).toHaveCSS('flex-direction', 'row')
+  await expect(pinnedBobo).toHaveAttribute('draggable', 'true')
+  await pinnedBobo.press('Alt+ArrowUp')
   await expect.poll(async () => (await contactPreferences(runtime)).pinnedAgentIds).toEqual(['bobo', 'researcher'])
   await runtime.restart()
   list = await openList()
   await expect(pinned().getByRole('button').first()).toHaveAttribute('aria-label', 'bobo')
   await pinned().getByRole('button', { name: 'bobo', exact: true }).click({ button: 'right' })
   await expect(runtime.page.getByRole('menuitem', { name: '删除员工', exact: true })).toHaveCount(0)
-  await runtime.page.getByRole('menuitem', { name: '取消置顶', exact: true }).click()
+  await expect(runtime.page.getByRole('menuitem', { name: '取消置顶', exact: true })).toBeVisible()
+  await runtime.page.keyboard.press('Escape')
+  await beginDrag(pinned().getByRole('button', { name: 'bobo', exact: true }))
+  const lower = list.locator('.contacts-regular-drop')
+  await dropAt(lower.locator('.contacts-section-heading'), lower)
   await expect(people().getByRole('button', { name: 'bobo', exact: true })).toBeVisible()
   await expect(pinned().getByRole('button', { name: '研究员', exact: true })).toBeVisible()
+  await expect.poll(async () => (await contactPreferences(runtime)).pinnedAgentIds).toEqual(['researcher'])
 })
 
 async function filterContacts(previous: Awaited<ReturnType<typeof openContacts>>) {

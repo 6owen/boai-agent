@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 拖放置顶提示与通讯录复用同一套落点皮肤。
  * [OUTPUT]: 删除核心会话后不重新展示旧主聊或空白占位；仍可见的话题保留员工入口。
  * [OUTPUT]: 员工主聊的拖放落点覆盖整行，包括行尾话题按钮。
  * [OUTPUT]: 置顶卡片和原生拖影只显示头像与员工名称，等待保存时保持落点，置顶员工的话题通过聊天标题栏查阅。
@@ -270,7 +271,7 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
       {!channelAgent && <>
         <DragListGroupTarget id={pinTarget} className="conversation-pin-shelf">{eligible => pinned.length
           ? <div className="conversation-pin-grid" role="group" aria-label="置顶会话">{pinned.map(room => renderConversation(room, true))}</div>
-          : eligible ? <div className="conversation-pin-empty">拖到此处置顶</div> : null}
+          : eligible ? <div className="list-pin-placeholder">拖到此处置顶</div> : null}
         </DragListGroupTarget>
         <DragListGroupTarget id={regularTarget} className="conversation-regular-drop"><Collapsible className="conversation-regular-list" open={Boolean(search) || regularOpen} onOpenChange={open => { if (!search) setRegularOpen(open) }}>
           {(regular.length > 0 || showCoreStart) && <CollapsibleTrigger render={<Button variant="ghost" size="content" className="conversation-section-heading" />}>会话<ChevronRight /></CollapsibleTrigger>}

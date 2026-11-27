@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 拖入顶部或下方联系人区即可置顶或取消，保存期间保持横向行的落点。
  * [OUTPUT]: 员工和群聊右键菜单统一使用高级配置，基础配置在资料页就地编辑。
  * [INPUT]: 员工/群聊快照、独立通讯录偏好与资料/编辑/发消息回调。
  * [OUTPUT]: 通讯录群聊只列BOAI群，外部渠道在会话页管理查看，不提供本地群成员编辑。
@@ -15,7 +16,7 @@ import { isChannelConversation } from '@boai/shared/domain/conversation-list'
 import type { DesktopApi } from '@boai/shared/ipc'
 import { Avatar, Banner, useMutation } from '@/components/common'
 import { AddContactMenu } from '@/components/common/add-contact-menu'
-import { DragList, DragListItem } from '@/components/common/drag-list'
+import { DragList, DragListGroupTarget, DragListItem } from '@/components/common/drag-list'
 import { GroupAvatar } from '@/components/common/group-avatar'
 import { ChevronRight, Contact, MessageCircle, Pin, Search, Settings, Trash2 } from '@/components/icons'
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
@@ -55,15 +56,24 @@ export function ContactList({ api, snapshot, selected, busy, onSelect, onMessage
   const [listState, setListState] = useState(readListState)
   const [deleting, setDeleting] = useState<{ selection: ContactSelection; name: string } | null>(null)
   const [managerOpen, setManagerOpen] = useState(false)
+  const [pendingPin, setPendingPin] = useState<{ agentId: string; pinned: boolean } | null>(null)
   const mutation = useMutation()
   useEffect(() => { try { localStorage.setItem(LIST_STATE_KEY, JSON.stringify(listState)) } catch { /* Optional presentation preferences. */ } }, [listState])
   const preferences = useContactList(api), value = preferences.value
-  const disabled = busy || preferences.busy || mutation.busy || !value
+  const disabled = busy || preferences.busy || mutation.busy || Boolean(pendingPin) || !value
   const sortingDisabled = disabled || Boolean(deleting || managerOpen)
   const search = query.trim().toLocaleLowerCase()
   const groups = sortedContacts(snapshot.conversations.filter(item => item.kind === 'group' && !item.mergedInto && !isChannelConversation(item)), value?.groupOrder ?? [], item => item.title).filter(item => item.title.toLocaleLowerCase().includes(search))
-  const pinnedOrder = value?.pinnedAgentIds ?? []
+  const savedPinnedOrder = value?.pinnedAgentIds ?? []
+  const pinnedOrder = pendingPin && savedPinnedOrder.includes(pendingPin.agentId) !== pendingPin.pinned
+    ? (pendingPin.pinned ? [pendingPin.agentId, ...savedPinnedOrder] : savedPinnedOrder.filter(id => id !== pendingPin.agentId))
+    : savedPinnedOrder
   const pinnedIds = new Set(pinnedOrder)
+  const pinContact = async (agentId: string, pinned: boolean) => {
+    if (disabled) return
+    setPendingPin({ agentId, pinned })
+    try { await preferences.change({ kind: 'pin-agent', agentId, pinned }) } finally { setPendingPin(null) }
+  }
   const matchingAgents = snapshot.agents.filter(agent => `${agent.name} ${agent.role}`.toLocaleLowerCase().includes(search))
   const pinnedContacts = sortedContacts(matchingAgents.filter(agent => pinnedIds.has(agent.id)), pinnedOrder, agent => agent.name)
   const contacts = sortedContacts(matchingAgents.filter(agent => !pinnedIds.has(agent.id)), value?.agentOrder ?? [], agent => agent.name)
@@ -82,16 +92,15 @@ export function ContactList({ api, snapshot, selected, busy, onSelect, onMessage
         <ContextMenuItem disabled={busy} onClick={() => onMessage(item)}><MessageCircle />发消息</ContextMenuItem>
         <ContextMenuItem onClick={() => onSelect(item)}><Contact />查看资料</ContextMenuItem>
         <ContextMenuItem onClick={() => onSelect(item, true)}><Settings />高级配置</ContextMenuItem>
-        {employee && <ContextMenuItem disabled={disabled} onClick={() => { void preferences.change({ kind: 'pin-agent', agentId: item.id, pinned: !pinned }) }}><Pin />{pinned ? '取消置顶' : '置顶'}</ContextMenuItem>}
+        {employee && <ContextMenuItem disabled={disabled} onClick={() => { void pinContact(item.id, !pinned) }}><Pin />{pinned ? '取消置顶' : '置顶'}</ContextMenuItem>}
       </ContextMenuGroup>
         {!core && <><ContextMenuSeparator /><ContextMenuItem variant="destructive" disabled={disabled} onClick={() => { mutation.setError(''); setDeleting({ selection: item, name }) }}><Trash2 />{item.kind === 'group' ? '解散群聊' : '删除员工'}</ContextMenuItem></>}
       </ContextMenuContent>
     </ContextMenu>}</DragListItem>
   }
   const renderAgents = (agents: DigitalAgent[]) => agents.map(agent => row({ kind: 'agent', id: agent.id }, agent.name, agent.role || '数字员工', <Avatar name={agent.name} seed={agent.id} avatar={agent.avatar} color={agent.color} />))
-  const renderContactGroup = (agents: DigitalAgent[]) => <DragList ids={agents.map(agent => agent.id)} disabled={sortingDisabled} onMove={move => { void preferences.change({ ...move, kind: 'move', itemKind: 'agent' }) }}>
-    {renderAgents(agents)}
-  </DragList>
+  const pinnedTarget = 'contacts-pinned'
+  const regularTarget = 'contacts-regular'
   return <aside className="contacts-list" aria-label="通讯录列表">
     <div className="list-heading"><h2>通讯录</h2><div className="list-heading-actions">
       <AddContactMenu onCreate={onCreate} onCreateTeam={onCreateTeam}>
@@ -103,17 +112,31 @@ export function ContactList({ api, snapshot, selected, busy, onSelect, onMessage
     {preferences.error && <Banner>{preferences.error}</Banner>}
     {mutation.error && !deleting && <Banner>{mutation.error}</Banner>}
     <div className="contacts-sections">
-      {pinnedContacts.length > 0 && <div role="group" aria-label="置顶联系人" className="contacts-pinned">{renderContactGroup(pinnedContacts)}</div>}
-      <Collapsible open={Boolean(search) || listState.groupsOpen} onOpenChange={open => { if (!search) setListState(previous => ({ ...previous, groupsOpen: open })) }}>
-        <CollapsibleTrigger render={<Button variant="ghost" size="content" className="conversation-section-heading contacts-section-heading" />}><span>群聊</span><ChevronRight /><span className="contacts-count">{groups.length}</span></CollapsibleTrigger>
-        <CollapsibleContent><div role="group" aria-label="群聊"><DragList ids={groups.map(group => group.id)} disabled={sortingDisabled} onMove={move => { void preferences.change({ ...move, kind: 'move', itemKind: 'group' }) }}>
-          {groups.map(group => row({ kind: 'group', id: group.id }, group.title, `${group.agentIds.length} 位数字员工`, <GroupAvatar members={group.agentIds.map(id => snapshot.agents.find(agent => agent.id === id)).filter((agent): agent is DigitalAgent => Boolean(agent))} />))}
-        </DragList>{!groups.length && <p className="contacts-list-empty">{search ? '没有匹配的群聊' : '暂无群聊'}</p>}</div></CollapsibleContent>
-      </Collapsible>
-      <Collapsible open={Boolean(search) || listState.contactsOpen} onOpenChange={open => { if (!search) setListState(previous => ({ ...previous, contactsOpen: open })) }}>
-        <CollapsibleTrigger render={<Button variant="ghost" size="content" className="conversation-section-heading contacts-section-heading" />}><span>联系人</span><ChevronRight /><span className="contacts-count">{contacts.length}</span></CollapsibleTrigger>
-        <CollapsibleContent><div role="group" aria-label="联系人">{renderContactGroup(contacts)}{!contacts.length && !pinnedContacts.length && <p className="contacts-list-empty">{search ? '没有匹配的联系人' : '暂无联系人'}</p>}</div></CollapsibleContent>
-      </Collapsible>
+      <DragList ids={[...pinnedContacts, ...contacts].map(agent => agent.id)} disabled={sortingDisabled}
+        canMove={(id, target) => pinnedIds.has(id) === pinnedIds.has(target)}
+        canGroupDrop={(id, target) => target === pinnedTarget ? !pinnedIds.has(id) : target === regularTarget && pinnedIds.has(id)}
+        onMove={move => { void preferences.change({ ...move, kind: 'move', itemKind: 'agent' }) }}
+        onGroupDrop={(id, target) => {
+          if (target === regularTarget && !search) setListState(previous => ({ ...previous, contactsOpen: true }))
+          void pinContact(id, target === pinnedTarget)
+        }}>
+        <DragListGroupTarget id={pinnedTarget} className="contacts-pin-drop">{eligible => pinnedContacts.length > 0
+          ? <div role="group" aria-label="置顶联系人" className="contacts-pinned">{renderAgents(pinnedContacts)}</div>
+          : eligible ? <div className="list-pin-placeholder">拖到此处置顶</div> : null}
+        </DragListGroupTarget>
+        <Collapsible open={Boolean(search) || listState.groupsOpen} onOpenChange={open => { if (!search) setListState(previous => ({ ...previous, groupsOpen: open })) }}>
+          <CollapsibleTrigger render={<Button variant="ghost" size="content" className="conversation-section-heading contacts-section-heading" />}><span>群聊</span><ChevronRight /><span className="contacts-count">{groups.length}</span></CollapsibleTrigger>
+          <CollapsibleContent><div role="group" aria-label="群聊"><DragList ids={groups.map(group => group.id)} disabled={sortingDisabled} onMove={move => { void preferences.change({ ...move, kind: 'move', itemKind: 'group' }) }}>
+            {groups.map(group => row({ kind: 'group', id: group.id }, group.title, `${group.agentIds.length} 位数字员工`, <GroupAvatar members={group.agentIds.map(id => snapshot.agents.find(agent => agent.id === id)).filter((agent): agent is DigitalAgent => Boolean(agent))} />))}
+          </DragList>{!groups.length && <p className="contacts-list-empty">{search ? '没有匹配的群聊' : '暂无群聊'}</p>}</div></CollapsibleContent>
+        </Collapsible>
+        <DragListGroupTarget id={regularTarget} className="contacts-regular-drop">
+          <Collapsible className="contacts-regular-list" open={Boolean(search) || listState.contactsOpen} onOpenChange={open => { if (!search) setListState(previous => ({ ...previous, contactsOpen: open })) }}>
+            <CollapsibleTrigger render={<Button variant="ghost" size="content" className="conversation-section-heading contacts-section-heading" />}><span>联系人</span><ChevronRight /><span className="contacts-count">{contacts.length}</span></CollapsibleTrigger>
+            <CollapsibleContent><div role="group" aria-label="联系人">{renderAgents(contacts)}{!contacts.length && !pinnedContacts.length && <p className="contacts-list-empty">{search ? '没有匹配的联系人' : '暂无联系人'}</p>}</div></CollapsibleContent>
+          </Collapsible>
+        </DragListGroupTarget>
+      </DragList>
     </div>
     <AlertDialog open={Boolean(deleting)} onOpenChange={open => { if (!open && !mutation.busy) { mutation.setError(''); setDeleting(null) } }}>
       <AlertDialogContent>
