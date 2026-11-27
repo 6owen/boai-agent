@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 桌面技能以稳定资源 ID 路由并按需加载；绑定描述按实际 YAML 读取并兼容旧文件。
  * [INPUT]: Explicit agent-desktop plugin enablement and upstream CLI arguments.
  * [OUTPUT]: Versioned desktop preferences, plugin-owned skill metadata and bounded calls; lifecycle flags stay host-owned.
  * [POS]: Optional desktop tool contract, independent of the legacy computer-use MCP.
@@ -7,6 +8,7 @@
 import { z } from 'zod'
 
 export const DESKTOP_PLUGIN_ID = 'boai.desktop.agent-desktop'
+export const DESKTOP_PLUGIN_SKILL_ID = `plugin:${DESKTOP_PLUGIN_ID}:boai-agent-desktop`
 export interface DesktopPluginSkill {
   resourceId: string; name: string; description: string; content: string; contentHash: string
   source: 'plugin'; pluginId: typeof DESKTOP_PLUGIN_ID

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 插件指南的固定身份、正文来源与按需加载沿实际服务验证。
  * [OUTPUT]: 本地 HTTP 与官方观测存储核对两路 Trace 的凭据遮蔽、完整调用树和一次业务请求。
  * [OUTPUT]: 已授权会话消息的窗口、当前轮及身份投影归 conversations；模型角色/图片装配归 API 适配器。
  * [OUTPUT]: 指标初始化和诊断回写同时失败时，真实 SDK 仍办理本轮一次；持久 Trace 与宿主 Trace 分别核对。
@@ -2269,7 +2270,8 @@ it('discovers and calls an independent browser through the actual SDK and native
 })
 
 it('calls Agent Desktop through the actual SDK and native bridge without routing to legacy sources', async () => {
-  const { desktopPluginSkill } = await import('../packages/runtime/src/modules/desktop-plugin/skill')
+  const { loadDesktopPluginSkill } = await import('../packages/runtime/src/modules/desktop-plugin/skill')
+  const desktopPluginSkill = await loadDesktopPluginSkill()
   const readDesktopPluginSkill = vi.fn(async () => ({ ...desktopPluginSkill }))
   const input = { command: 'snapshot', args: ['--app', 'Notes', '-i'], headed: false }
   const server = await endpoint([{ name: 'list_skills', args: {} }, { name: 'read_skill', args: { resourceId: desktopPluginSkill.resourceId } }, { name: 'inspect_desktop_plugin', args: {} }, { name: 'call_desktop_plugin', args: input }, '已读取桌面插件。'])

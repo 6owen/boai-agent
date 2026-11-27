@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 插件指南的固定身份、正文来源与按需加载沿实际服务验证。
  * [OUTPUT]: 覆盖插件拥有的动态技能、旧员工零副本、停用后旧读取拒绝及取消，读指南零进程。
  * [INPUT]: Real plugin settings/SQLite and controlled upstream process results.
  * [OUTPUT]: Default desktop provider, explicit opt-out, authority, namespace, cancellation and image boundary checks.
@@ -13,12 +14,12 @@ import type { EngineContext } from '../packages/runtime/src/contracts'
 import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
 import { PluginSettingsStore } from '../apps/electron/src/main/plugin-settings'
 import { DesktopPluginService } from '../packages/runtime/src/modules/desktop-plugin/service'
-import { DESKTOP_PLUGIN_ID, desktopPluginCallSchema, validateDesktopPluginCall } from '../packages/shared/src/plugins/desktop-tools'
+import { DESKTOP_PLUGIN_ID, DESKTOP_PLUGIN_SKILL_ID, desktopPluginCallSchema, validateDesktopPluginCall } from '../packages/shared/src/plugins/desktop-tools'
 import { createDesktopPluginOperations } from '../packages/runtime/src/adapters/mastra/desktop-plugin-tools'
 import { mcpModelContent } from '../packages/runtime/src/modules/sources/mcp-media'
 import { summarizeMedia } from '../packages/runtime/src/modules/browser/media'
 import { createBoundSkillOperations } from '../packages/runtime/src/modules/resources/bound-skill-tools'
-import { desktopPluginSkill } from '../packages/runtime/src/modules/desktop-plugin/skill'
+import { createHash } from 'node:crypto'
 
 const upstream = vi.hoisted(() => ({ prepare: vi.fn(), run: vi.fn() }))
 vi.mock('@boai/desktop-plugin/host', async importOriginal => ({ ...await importOriginal<object>(), prepareDesktopExecutable: upstream.prepare, runDesktopCommand: upstream.run }))
@@ -59,16 +60,18 @@ it('supplies the live plugin skill to an existing employee without binding copie
   const operations = createBoundSkillOperations(context)
   const list = operations.find(value => value.name === 'list_skills')!, read = operations.find(value => value.name === 'read_skill')!
   expect(await list.execute({})).toMatchObject({ skills: [{ name: 'boai-agent-desktop', source: 'plugin', pluginId: DESKTOP_PLUGIN_ID }] })
-  const guide = await read.execute({ resourceId: desktopPluginSkill.resourceId })
-  expect(guide).toMatchObject({ content: expect.stringContaining('inspect_desktop_plugin'), contentHash: desktopPluginSkill.contentHash })
+  const guide = await read.execute({ resourceId: DESKTOP_PLUGIN_SKILL_ID })
+  expect(guide).toMatchObject({ content: expect.stringContaining('inspect_desktop_plugin') })
+  const { content, contentHash } = guide as { content: string; contentHash: string }
+  expect(contentHash).toBe(createHash('sha256').update(content).digest('hex'))
   expect(guide).not.toHaveProperty('directory')
   expect(JSON.stringify(await list.execute({}))).not.toContain('# BOAI Agent Desktop')
   await f.enable(false)
   expect(await list.execute({})).toEqual({ skills: [] })
-  await expect(read.execute({ resourceId: desktopPluginSkill.resourceId })).rejects.toThrow('不可用')
+  await expect(read.execute({ resourceId: DESKTOP_PLUGIN_SKILL_ID })).rejects.toThrow('不可用')
   expect(createBoundSkillOperations({ ...context, desktopPluginEnabled: false })).toEqual([])
   await f.enable()
-  expect(await list.execute({})).toMatchObject({ skills: [{ resourceId: desktopPluginSkill.resourceId }] })
+  expect(await list.execute({})).toMatchObject({ skills: [{ resourceId: DESKTOP_PLUGIN_SKILL_ID }] })
   expect(context.agent.skillIds).toEqual([])
   expect(upstream.prepare).not.toHaveBeenCalled(); expect(upstream.run).not.toHaveBeenCalled()
 })
@@ -79,7 +82,7 @@ it('keeps plugin skill loading out of organization/private phases and stops canc
   expect(createBoundSkillOperations({ ...context, decision: { action: 'ask' } } as EngineContext)).toEqual([])
   const read = createBoundSkillOperations(context).find(value => value.name === 'read_skill')!
   f.controller.abort(new Error('cancelled guide read'))
-  await expect(read.execute({ resourceId: desktopPluginSkill.resourceId })).rejects.toThrow('cancelled guide read')
+  await expect(read.execute({ resourceId: DESKTOP_PLUGIN_SKILL_ID })).rejects.toThrow('cancelled guide read')
   expect(upstream.prepare).not.toHaveBeenCalled()
 })
 it('allows observation but refuses read-only writes and declined approval before dispatch', async () => {
