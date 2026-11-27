@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 宿主执行与工具批准归 authorization；旧命令授权沿原事务与配置撤销。
  * [OUTPUT]: 与官方 Controller 共用插件读写判定，宿主仍执行能力/路径/来源验证。
  * [OUTPUT]: 配置保存前CAS/退出门禁和关闭失败返回确定拒绝，保存事件沿原宿主广播；单次前台参数不写回配置。
  * [OUTPUT]: 关闭失败保留会话并允许重试，关闭请求后禁止新工具；实际关闭和在途调用结束后才解除登记。
@@ -15,7 +16,7 @@ import { browserPluginWrites, BrowserPluginSettingsError, browserPluginProviderS
 import { readPluginSettingsSchema } from '@boai/shared/plugins/types'
 import type { ProductStore } from '../../adapters/storage/product-store'
 import type { EngineContext } from '../../contracts'
-import { authorizeExecution } from '../employees/execution-permissions'
+import { authorizeExecution } from '../authorization/execution'
 import { executeCommand } from '../../adapters/mastra/host-command'
 import { employeeCommandScope } from '../workspaces/directory-command'
 

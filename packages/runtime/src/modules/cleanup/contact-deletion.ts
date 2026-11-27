@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 宿主执行与工具批准归 authorization；旧命令授权沿原事务与配置撤销。
  * [OUTPUT]: 批量核实日志中的员工主键；身份仍存在时报告停止清理及真实原因。
  * [OUTPUT]: 删除员工时同事务清理其通讯录置顶归属。
  * [OUTPUT]: 启动时逐条恢复并上报已登记的清理失败，账本读写失败仍向上传播。
@@ -18,6 +19,7 @@
  * [POS]: cleanup 的跨领域用例，负责员工删除、所拥有的关联状态与后续工作区恢复。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { commandPermissionCollection } from '../authorization/command-grants'
 import { assertCleanupPath } from './path'
 import { clearApplicationReceipts } from '../application/application-service'
 import { clearContextHandoffs } from '../contexts/context-handoff'
@@ -82,7 +84,7 @@ export class ContactDeletionService {
       await clearSelfieAlbums(tx, ids)
       const removals: { collection: string; id: string }[] = []
       const remove = async (collection: string, id: string) => { await tx.remove(collection, id); removals.push({ collection, id }) }
-      for (const collection of ['employeeCommandPermissions', 'employeeMemorySettings', 'historySearchSettings', 'memory', 'memoryObservations', 'memoryForgets', 'profileModelCalls', 'profileSkillActivations', 'profileExecutions']) {
+      for (const collection of [commandPermissionCollection, 'employeeMemorySettings', 'historySearchSettings', 'memory', 'memoryObservations', 'memoryForgets', 'profileModelCalls', 'profileSkillActivations', 'profileExecutions']) {
         for (const item of await tx.list<OwnedRecord>(collection)) if (ids.has(item.ownerAgentId ?? item.agentId ?? '')) await remove(collection, item.id ?? item.agentId!)
       }
       for (const collection of ['memoryEpochs', 'memoryReceipts']) {

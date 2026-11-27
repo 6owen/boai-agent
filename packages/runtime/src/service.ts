@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 宿主执行与工具批准归 authorization；旧命令授权沿原事务与配置撤销。
  * [OUTPUT]: 工作额度与结果证据沿 shared/domain/work 的业务规则判断；预留、核权和结算由宿主事务负责。
  * [OUTPUT]: contexts 按共享场景表编译员工来源与状态；默认通信场景由工作区装配统一选择。
  * [OUTPUT]: 任务面板、主聊天和应用操作共用 tasks/read-model 的受权分页和活动读取。
@@ -269,7 +270,7 @@ import { defaultAgentProfile, normalizeAgentProfile, agentBehaviorResultSchema, 
 import { AgentProfileService } from './modules/employees/agent-profile-service'
 import { AgentStateService } from './modules/agent-state/state-service'
 import { agentSourceNameSchema } from '@boai/shared/domain/agent-profile'
-import { authorizeExecution } from './modules/employees/execution-permissions'
+import { authorizeExecution, assertExpectedExecutionPermission, hasToolAuthorization } from './modules/authorization/execution'
 import { GatewayImports } from './modules/backends/gateway-imports'
 import { isApplicationHostMethod, type ApplicationHostPort } from '@boai/shared/ipc/application-host'
 import { AsyncLocalStorage } from 'node:async_hooks'
@@ -317,7 +318,6 @@ import { TeamCreationService } from './modules/teams/team-creation'
 import { MaterialUploads } from './modules/materials/material-upload'
 import { prepareUploadedMaterialSchema, submittedMaterialsSchema, type SubmittedMaterial } from '@boai/shared/domain/material-upload'
 import { executionPermissionSchema, type ExecutionPermission } from '@boai/shared/domain/execution'
-import { assertExpectedExecutionPermission } from './modules/employees/execution-permissions'
 import { submissionIdentity } from './modules/conversations/submission-identity'
 import { MaterialRepository } from './modules/materials/material-repository'
 import { ArtifactRepository } from './modules/workspaces/artifact-repository'
@@ -449,8 +449,7 @@ import {
 import { GroupScheduler, type PublishReply } from './group-scheduler'
 import { WorkspaceService } from './modules/workspaces/workspace-service'
 import { EmployeeService, agentSchema } from './modules/employees/employee-service'
-import { CommandPermissions, canRememberCommands } from './modules/employees/command-permissions'
-import { hasToolAuthorization } from './modules/employees/tool-authorization'
+import { CommandPermissions, canRememberCommands } from './modules/authorization/command-grants'
 import { memoryEvidenceMessages } from './modules/employees/memory-extraction'
 import { ScheduleListRepository } from './modules/automations/schedule-list'
 import { scheduleListChangeSchema } from '@boai/shared/domain/schedule-list'

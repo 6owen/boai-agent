@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 宿主执行与工具批准归 authorization；旧命令授权沿原事务与配置撤销。
  * [OUTPUT]: 内置浏览器命令沿 browser 模块的实现与类型，桌面、本机和 API 共用原合同。
  * [OUTPUT]: 浏览器租约按执行配置版本核验；单独修改默认项目保持原动作授权，职责/权限等变更仍失效。
  * [OUTPUT]: 待核对写入只阻止新写入/控制操作；新snapshot/截图/find可观察，原unknown与副作用不变。
@@ -17,15 +18,18 @@ import { isBrowserCapableAgent, isNativeBackend } from '@boai/shared/domain'
 import type { RecordTransaction } from '../../adapters/storage/product-store'
 import { APPLICATION_BROWSER_SCOPE } from '@boai/shared/ipc/browser'
 import type { BrowserActionEnvelope, BrowserActionReply, BrowserLease, BrowserTaskAuthorization } from '@boai/shared/ipc/browser'
-import { ProductStore } from '../../adapters/storage/product-store'
-import { WorkRepository } from '../collaboration/work-repository'
+import type { ProductStore } from '../../adapters/storage/product-store'
+import type { WorkRepository } from '../collaboration/work-repository'
 import { parseBrowserSingleCommand } from './commands'
 import { redactBrowserCommand } from './command-redaction'
 import { summarizeMedia } from './media'
 export interface BrowserActionRecord extends BrowserActionEnvelope { id: string; status: 'prepared'|'started'|'completed'|'failed'|'cancelled_before_start'|'unknown'; mutating: boolean; startedAt?:string; createdAt: string; reply?: BrowserActionReply }
 export const browserCommandHash = (parts: string[]) => createHash('sha256').update(JSON.stringify(parts)).digest('hex')
 export class BrowserRepository {
-  constructor(private store: ProductStore,private works: WorkRepository) {}
+  constructor(
+    private store: ProductStore,
+    private works: Pick<WorkRepository, 'browserTransaction'>,
+  ) {}
   async recover() {
     await this.store.transaction(async tx => {
       for (const action of await tx.list<BrowserActionRecord>('browserActions')) {

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 宿主执行与工具批准归 authorization；旧命令授权沿原事务与配置撤销。
  * [OUTPUT]: 桌面技能以稳定资源 ID 路由并按需加载；绑定描述按实际 YAML 读取并兼容旧文件。
  * [OUTPUT]: 读取插件技能不启动进程，停用/退出/配置变化不返回正文。
  * [INPUT]: Explicit application plugin enablement, employee permission and pinned upstream CLI.
@@ -15,7 +16,7 @@ import { pluginAvailability, readPluginSettingsSchema } from '@boai/shared/plugi
 import { applicationPlugins } from '@boai/shared/plugins/catalog'
 import type { ProductStore } from '../../adapters/storage/product-store'
 import type { EngineContext } from '../../contracts'
-import { authorizeExecution } from '../employees/execution-permissions'
+import { authorizeExecution } from '../authorization/execution'
 import { TaskAdmission } from '../collaboration/task-admission'
 import { loadDesktopPluginSkill } from './skill'
 

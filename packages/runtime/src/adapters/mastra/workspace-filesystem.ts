@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 宿主执行与工具批准归 authorization；旧命令授权沿原事务与配置撤销。
  * [OUTPUT]: 2026-11-24 第三阶段：官方 Durable Agent/Session.steer、Workspace 文件工具、LocalSandbox 进程和原生 Trace；授权及发布保留业务适配。
  * [INPUT]: BOAI logical paths, frozen source readers and current employee directory grants.
  * [OUTPUT]: Authorized LocalFilesystem provider for official Workspace tools.
@@ -11,7 +12,7 @@ import { FileNotFoundError } from '@mastra/core/workspace'
 import type { EngineContext } from '../../contracts'
 import { assertTaskPathAccess, taskPathAllowed, workspaceTarget, RESERVED_SYSTEM_FILES } from '../../modules/workspaces/file-access'
 import { assertDirectoryTargetCurrent, type DirectoryTarget } from '../../modules/workspaces/directory-access'
-import { authorizeExecution } from '../../modules/employees/execution-permissions'
+import { authorizeExecution } from '../../modules/authorization/execution'
 
 type Location = { root: string; relative: string; mount: string; business?: DirectoryTarget }
 export function employeeFilesystem(context: EngineContext, root: string, locate: (file: string, write?: boolean) => Promise<Location>): WorkspaceFilesystem {

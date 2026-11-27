@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 宿主执行与工具批准归 authorization；旧命令授权沿原事务与配置撤销。
  * [OUTPUT]: 内置浏览器命令沿 browser 模块的实现与类型，桌面、本机和 API 共用原合同。
  * [OUTPUT]: 已准备浏览器动作在单独默认目录变更后仍可开始和结算，其他员工配置变化继续阻止新动作。
  * [OUTPUT]: 原生产品桥保留导航命令和填写脱敏，原执行参数仍完整传递。
@@ -18,7 +19,7 @@
  * [POS]: tests/browser-runtime.test.ts；Electron 真实页面由 browser-migration BDD 验证。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { authorizeExecution } from '../packages/runtime/src/modules/employees/execution-permissions'
+import { authorizeExecution } from '../packages/runtime/src/modules/authorization/execution'
 import { afterEach,describe,expect,it,vi } from 'vitest'
 import { createHash } from 'node:crypto'
 import { createServer } from 'node:http'

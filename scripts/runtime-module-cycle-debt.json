@@ -1,10 +1,1 @@
-{
-  "automations": ["conversations"],
-  "browser": ["collaboration", "employees"],
-  "collaboration": ["automations"],
-  "conversations": ["browser"],
-  "employees": ["collaboration", "conversations", "resources", "sources"],
-  "media": ["employees"],
-  "resources": ["media", "sources"],
-  "sources": ["browser"]
-}
+{}
