@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /*
- * [OUTPUT]: 流式正文沿用最终消息卡节点，阶段切换不重复正文，停止与等待批准可用。
+ * [OUTPUT]: 流式正文沿用最终消息卡节点；执行阶段可停止和等待批准，回复正文阶段无额外状态行。
  * [OUTPUT]: 聊天折叠仍可读两行真实思考，展开状态与证据节点保持。
  * [OUTPUT]: 临时卡及内部思考/工具组默认收起，当前动作随原Run更新；手动展开选择跨正文/工具增量保持。
  * [OUTPUT]: 所有终态执行卡不再挂查看/继续/任务结果；执行与普通消息共用可打开的员工资料头像及rounded-md。
@@ -107,7 +107,7 @@ test.each([false, true])('mirrors scheduled reasoning and tools from the origina
   await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="展开处理过程"]')!.click())
   await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="思考过程"]')!.click())
   expect(host.textContent).toContain('核对天气来源')
-  expect(host.querySelector('[data-slot="streaming-reply"]')).toBeNull()
+  expect(host.querySelector('[data-reading-message-id="published-answer"]')).toBeNull()
   expect(fixture.source).toBe('task-chat')
   fixture.evidence = [...fixture.evidence, { ...textEvent('', 1), ...nativeActivity('browser', { type: 'mcpToolCall', server: 'boai', tool: 'browser_tool', arguments: { action: 'snapshot' }, status: 'completed' }, true), sequence: 2 } as ExecutionEvidence]
   await render()
@@ -270,11 +270,12 @@ test.each(['message', 'api-preview', 'native-preview'] as const)('continues %s i
     await render()
   }
   await update('')
-  expect(host.querySelector('[data-chat-execution-run]')).not.toBeNull()
+  expect(host.querySelector('[data-chat-execution-run] [aria-label="停止本次执行"]')).not.toBeNull()
   await update('最终答复')
   const card = host.querySelector('.message-card')!
   expect(card.querySelector('.message-bubble')?.textContent).toBe('最终答复')
-  expect(card.querySelector('[aria-label="停止本次执行"]')).not.toBeNull()
+  expect(card.textContent).toBe('最终答复')
+  expect(card.querySelector('[aria-label="停止本次执行"]')).toBeNull()
   expect(host.querySelector('[data-chat-execution-run]')).toBeNull()
   expect(host.querySelector('[data-reading-message-id="answer"]') !== null).toBe(source === 'message')
   await update('最终答复继续增加')
@@ -282,7 +283,7 @@ test.each(['message', 'api-preview', 'native-preview'] as const)('continues %s i
   expect(card.querySelector('.message-bubble')?.textContent).toBe('最终答复继续增加')
   await update('最终答复继续增加', true)
   expect(host.querySelector('.message-card')).toBe(card)
-  expect(card.querySelector('[data-slot="streaming-reply"]')).toBeNull()
+  expect(card.textContent).toBe('最终答复继续增加')
   expect(host.querySelectorAll('[data-reading-message-id="answer"]')).toHaveLength(1)
   expect(host.querySelectorAll('.message-bubble')).toHaveLength(1)
 })
