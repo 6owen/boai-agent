@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 原生公开问题的聊天呈现与审批账本共享脱敏后的同一份记录。
  * [OUTPUT]: 会话快照按单次消息、运行与轮次遍历生成；渠道末页继续取自 SQLite。
  * [OUTPUT]: 宿主 Trace、官方存储 Trace 与执行事件通过统一的结构化观测序列化保留 JSON 字段类型。
  * [OUTPUT]: 已授权会话消息的窗口、当前轮及身份投影归 conversations；模型角色/图片装配归 API 适配器。
@@ -353,7 +354,7 @@ import { agentUpdateProvider, installedAgentVersion, isNewerAgentVersion, latest
 import type { LaunchProfile } from '@boai/shared/domain/backends'
 import type { AgentUpdate, AgentUpdateRequest } from '@boai/shared/ipc/notifications'
 import { runAcp } from './adapters/acp/client'
-import { persistentObservation } from './modules/conversations/observation-payload'
+import { persistentObservation, publicNativeRecord } from './modules/conversations/observation-payload'
 import { nativeActivity } from './adapters/native-events'
 import { CodexEmployeeEngine } from './adapters/codex/engine'
 import { ClaudeEmployeeEngine } from './adapters/claude/engine'
@@ -5065,12 +5066,13 @@ export class AppService {
         fail: error => this.runControllers.get(run.id)?.abort(error),
       })
       context.requestNativeAction = async (action, localSignal) => {
+        const publicAction = publicNativeRecord(action, apiKey)
         try {
-          return await this.executions.request(run, JSON.parse(this.redact(JSON.stringify(action), apiKey)), localSignal ? AbortSignal.any([signal, localSignal]) : signal, () => this.serialize(async () => {
+          return await this.executions.request(run, publicAction, localSignal ? AbortSignal.any([signal, localSignal]) : signal, () => this.serialize(async () => {
             signal.throwIfAborted()
             if (action.kind === 'approval') run.status = 'waiting_approval'
-            if (action.kind === 'input' && action.questions?.length && !action.questions.some(question => question.isSecret)) {
-              const content = action.questions.map(question => [question.question, ...(question.options ?? []).map(option => `${option.label}${option.description ? `：${option.description}` : ''}`)].join('\n')).join('\n\n')
+            if (action.kind === 'input' && publicAction.questions?.length && !action.questions?.some(question => question.isSecret)) {
+              const content = publicAction.questions.map(question => [question.question, ...(question.options ?? []).map(option => `${option.label}${option.description ? `：${option.description}` : ''}`)].join('\n')).join('\n\n')
               const message = this.nextMessage(conversation.id, { senderType: 'agent', senderId: agent.id, senderName: agent.name, content, status: 'completed', runId: run.id })
               message.turnId = run.turnId
               this.messages.set(message.id, message); await this.store.write([record('messages', message)]); this.emit({ type: 'message', message })
@@ -5097,7 +5099,7 @@ export class AppService {
       context.onNativeExecution = receipt => this.serialize(async () => {
         signal.throwIfAborted()
         if (!isNativeBackend(run.backend) || terminal.has(run.status)) fail('此执行已退出，不再接收本机回执')
-        Object.assign(run.backend!, receipt, ...(receipt.nativeInfo ? [{ nativeInfo: JSON.parse(this.redact(JSON.stringify(receipt.nativeInfo), apiKey)) }] : []))
+        Object.assign(run.backend!, receipt, ...(receipt.nativeInfo ? [{ nativeInfo: publicNativeRecord(receipt.nativeInfo, apiKey) }] : []))
         await this.store.write([record('runs', run)])
         this.changed(run.conversationId)
       })
