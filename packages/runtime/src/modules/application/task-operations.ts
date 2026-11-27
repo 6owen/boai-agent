@@ -3,7 +3,7 @@
  * [OUTPUT]: tasks.update可沿当前人工任务补全要求正文，事务后同步会话标题缓存，保留revision和当前任务权限。
  * [OUTPUT]: tasks.create只登记内部progress，不创建看板委派；tasks.get/update按原身份维护当前委派或内部进度。
  * [OUTPUT]: Provides employee task records and SQL-bounded tasks.page; original mutations/list and receipt semantics remain compatible.
- * [INPUT]: Original ProductStore, authenticated application actor and explicit task tracking intent.
+ * [INPUT]: Runtime operation contract and Original ProductStore, authenticated application actor and explicit task tracking intent.
  * [OUTPUT]: Durable per-employee multi-step tracking with revision checks; no scheduler or Work execution.
  * [POS]: Application tasks domain, separate from model Work/budget and employee automation plans.
  * [PROTOCOL]: Update Header and parent .folder.md on change.
@@ -16,7 +16,7 @@ import { z } from 'zod'
 import type { DigitalAgent, Conversation } from '@boai/shared/domain'
 import type { ApplicationActor } from '@boai/shared/domain/application-protocol'
 import type { ProductStore, RecordTransaction } from '../../adapters/storage/product-store'
-import { ApplicationValidationError, type ApplicationOperation } from './application-service'
+import { ApplicationValidationError, type ApplicationOperation } from '../../application-operation'
 export type { TrackedTask } from '@boai/shared/domain/tracked-tasks'
 
 const id = z.string().min(1).max(200), status = z.enum(['pending', 'in_progress', 'in_review', 'done', 'closed'])

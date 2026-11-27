@@ -1,12 +1,12 @@
 /*
- * [INPUT]: Original application authority, Source revision and explicit OAuth intent.
+ * [INPUT]: Runtime operation contract and Original application authority, Source revision and explicit OAuth intent.
  * [OUTPUT]: Source authorization/status/cancel/disconnect adapters without tokens in receipts.
  * [POS]: WT2 application factory, aggregated only by WT1; SourceService owns lifecycle.
  * [PROTOCOL]: 一旦本文件变化，必须同步Header并上浮检查所属目录.folder.md。
  */
 import { z } from 'zod'
 import { dataSourceIdentitySchema } from '@boai/shared/domain/sources'
-import type { ApplicationOperation } from '../application/application-service'
+import type { ApplicationOperation } from '../../application-operation'
 import type { SourceService } from './source-service'
 const authorization = z.object({ authorizationId: z.string().regex(/^[a-f0-9]{64}$/) }).strict()
 export function sourceOAuthOperations(service: SourceService): ApplicationOperation[] {

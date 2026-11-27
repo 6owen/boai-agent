@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Schedule facade and host-authenticated application actor.
+ * [INPUT]: Runtime operation contract and Schedule facade and host-authenticated application actor.
  * [OUTPUT]: Thin automations CRUD/preview adapters with one public schema, explicit contract version and original domain receipt recovery.
  * [POS]: Application protocol adapter; business defaults, validation and persistence stay in the schedule module.
  * [PROTOCOL]: Update Header and owning .folder.md when changed.
@@ -8,7 +8,7 @@ import { z } from 'zod'
 import type { Method, Methods } from '@boai/shared/ipc'
 import { createScheduleSchema, listSchedulesSchema, previewScheduleSchema, scheduleMutationSchema, updateScheduleSchema } from '@boai/shared/domain/schedules'
 import type { ScheduleApi, ScheduleContext } from '../automations/schedule-api'
-import { ApplicationValidationError, type ApplicationOperation } from './application-service'
+import { ApplicationValidationError, type ApplicationOperation } from '../../application-operation'
 import { automationInputSchema } from '../automations/automation-service'
 import { automationListSchema } from '../automations/automation-commands'
 import { scheduleSchema } from '../automations/schedule-policy'

@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Original SQLite store, saved connection/vault callbacks and authorized task image bytes.
+ * [INPUT]: Runtime operation contract and Original SQLite store, saved connection/vault callbacks and authorized task image bytes.
  * [OUTPUT]: Explicit revisioned image model selection, bounded single-request generation/editing; no fallback or URL fetch.
  * [POS]: Host media capability. Task runtime owns source access, file writes and publication.
  * [PROTOCOL]: Update Header and media/.folder.md on change.
@@ -8,7 +8,7 @@ import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import type { Connection } from '@boai/shared/domain'
 import type { ProductStore } from '../../adapters/storage/product-store'
-import { ApplicationValidationError, type ApplicationOperation } from '../application/application-service'
+import { ApplicationValidationError, type ApplicationOperation } from '../../application-operation'
 import { materialImageMimeType } from '@boai/shared/node/material-files'
 
 const size = z.string().regex(/^(auto|[1-9]\d{1,3}x[1-9]\d{1,3})$/)

@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Authenticated application actor, original employee/conversation and ProductStore.
+ * [INPUT]: Runtime operation contract and Authenticated application actor, original employee/conversation and ProductStore.
  * [OUTPUT]: plans.* protocol with atomic CAS/claim transitions, lifecycle cleanup and resumable context.
  * [POS]: Alma Plan Weave adapter; same API/native/CLI contract, separate from planning mode and Work execution.
  * [PROTOCOL]: Update Header and application/.folder.md on change.
@@ -9,7 +9,8 @@ import { z } from 'zod'
 import type { Conversation, DigitalAgent } from '@boai/shared/domain'
 import type { ApplicationActor } from '@boai/shared/domain/application-protocol'
 import type { ProductStore, RecordTransaction } from '../../adapters/storage/product-store'
-import { ApplicationValidationError, clearPlanReceipts, type ApplicationOperation } from './application-service'
+import { clearPlanReceipts } from './application-service'
+import { ApplicationValidationError, type ApplicationOperation } from '../../application-operation'
 import { claimPacket, claimPlan, findBlock, initializePlan, invalid, planCollection, planManifestSchema, planSnapshot, resolveFeedback, reviewPlan, showBlock, submitPlan, type PlanRecord } from './plan-weave'
 
 const id = z.string().min(1).max(200), ref = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]*:[A-Za-z0-9][A-Za-z0-9_-]*$/).max(161)

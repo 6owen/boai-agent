@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Original task, occurrence, Work, Run, source identity and bounded read-only evidence.
+ * [INPUT]: Runtime operation contract and Original task, occurrence, Work, Run, source identity and bounded read-only evidence.
  * [OUTPUT]: Deterministic diagnosis metadata, unknown coverage and observed duration; zero recover or repair.
  * [POS]: Application read projection; does not change task labels, execution state or permissions.
  * [PROTOCOL]: Update Header and application/.folder.md when this file changes.
@@ -19,7 +19,7 @@ import { desktopDiagnosticsSnapshotSchema } from '@boai/shared/ipc/desktop-diagn
 import type { ApplicationHostPort } from '@boai/shared/ipc/application-host'
 import type { TaskDiagnosisRecordScope } from '../../adapters/storage/task-diagnosis-records'
 import type { ProductStore } from '../../adapters/storage/product-store'
-import { ApplicationValidationError, type ApplicationOperation } from './application-service'
+import { ApplicationValidationError, type ApplicationOperation } from '../../application-operation'
 
 const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex')
 const stamp = z.object({ version: z.literal(1), key: z.string().length(64), revision: z.string().length(64), offset: z.number().int().nonnegative() }).strict()

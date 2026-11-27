@@ -1,13 +1,12 @@
 /*
- * [INPUT]: Existing application request/receipt authority and the capability domain services.
+ * [INPUT]: Runtime operation contract and Existing application request/receipt authority and the capability domain services.
  * [OUTPUT]: Discoverable package operations; only settled domain receipts recover application results, preserving request identity and credential omission.
  * [POS]: Thin application adapter for WT1 aggregation; no new IPC or management authority.
  * [PROTOCOL]: 一旦本文件变化，必须同步Header并上浮检查所属目录.folder.md。
  */
 import { z } from 'zod'
 import { bindCapabilityPackageSchema, capabilityPackageIdentitySchema, inspectCapabilityPackageSchema, installCapabilityPackageSchema, setCapabilityPackageEnabledSchema, unbindCapabilityPackageSchema, updateCapabilityPackageSchema } from '@boai/shared/domain/capability-packages'
-import type { ApplicationOperation } from '../application/application-service'
-import { ApplicationValidationError } from '../application/application-service'
+import { ApplicationValidationError, type ApplicationOperation } from '../../application-operation'
 import type { CapabilityPackageServices } from './capability-package-services'
 
 const id = z.string().min(1).max(200)

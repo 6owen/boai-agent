@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Existing employee assignments, their actual executions and host-authorized output evidence.
+ * [INPUT]: Runtime operation contract and Existing employee assignments, their actual executions and host-authorized output evidence.
  * [OUTPUT]: Bounded live task activity shared by employee main-chat context and application tools.
  * [POS]: Read model only; no task creation, scheduling or memory duplication.
  * [PROTOCOL]: Update Header and application/.folder.md on change.
@@ -10,7 +10,7 @@ import type { ApplicationActor } from '@boai/shared/domain/application-protocol'
 import type { AutomationOccurrence } from '@boai/shared/domain/automations'
 import type { TrackedTaskListItem, TrackedTaskPage } from '@boai/shared/domain/tracked-tasks'
 import type { ProductStore } from '../../adapters/storage/product-store'
-import { ApplicationValidationError, type ApplicationOperation } from './application-service'
+import { ApplicationValidationError, type ApplicationOperation } from '../../application-operation'
 import { taskPageOperation, taskPageQuery } from './task-page'
 
 export type TaskOutputs = (tasks: TrackedTaskListItem[], actor: ApplicationActor) => Promise<Map<string, Pick<Message, 'id' | 'conversationId' | 'content' | 'createdAt'>>>

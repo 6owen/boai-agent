@@ -1,5 +1,5 @@
 /*
- * [INPUT]: ProductStore, owner vault and optional local Memmy Memory service.
+ * [INPUT]: Runtime operation contract and ProductStore, owner vault and optional local Memmy Memory service.
  * [OUTPUT]: Internal CAS provider selection, bounded recall and a transactional public-turn outbox with explicit unknown receipts; persisted external mode suspends on restart.
  * [POS]: Global user-memory provider staging; public Memmy enablement waits for source-level forgetting support.
  * [PROTOCOL]: Update Header, owning .folder.md and Memory spec 15 when changed.
@@ -9,7 +9,7 @@ import type { ProductStore } from '../../adapters/storage/product-store'
 import type { SecretStore } from '../../contracts'
 import type { UserMemorySettings, UserMemoryStatus } from '@boai/shared/domain/global-memory'
 import type { Message } from '@boai/shared/domain'
-import { ApplicationValidationError, type ApplicationOperation } from '../application/application-service'
+import { ApplicationValidationError, type ApplicationOperation } from '../../application-operation'
 import { MemmyRestClient } from './providers/memmy-client'
 
 const collection = 'userMemoryProvider'

@@ -11,7 +11,7 @@
  * [OUTPUT]: 人格活动单条删除/截止时间清空沿写回执；运行记录前置拒绝，最小去重身份保留。
  * [OUTPUT]: 人格协议保存简单偏好；旧计划只读，后台检查沿内置策略和静默门槛。
  * [OUTPUT]: 新增七项人格/状态/行为操作，配置与状态CAs前置核对；源文件登记范围一致。
- * [INPUT]: Original typed service port and its existing employee/connection/conversation schemas.
+ * [INPUT]: Runtime operation contract and Original typed service port and its existing employee/connection/conversation schemas.
  * [OUTPUT]: Explicit application use cases with discoverable schemas; create and execute stay separate.
  * [POS]: Registry adapter, no alternate employee, schedule, source or conversation service.
  * [PROTOCOL]: Changes must update this Header and the owning .folder.md.
@@ -39,7 +39,7 @@ import { scanSkillSchema, installSkillsSchema, prepareLocalSkillBindingSchema, b
 import { updateSkillSchema } from '../resources/skill-updates'
 import { marketplaceListSchema, marketplaceDetailSchema } from '../resources/skill-marketplace'
 import { collectionChangeSchema } from '../resources/skill-collections'
-import { ApplicationValidationError, type ApplicationOperation } from './application-service'
+import { ApplicationValidationError, type ApplicationOperation } from '../../application-operation'
 import { savePromptTemplateSchema, removePromptTemplateSchema } from '@boai/shared/domain/prompt-templates'
 import { appearanceOperations } from './appearance-operations'
 import { pluginConfigurationOperations } from './plugin-configuration'

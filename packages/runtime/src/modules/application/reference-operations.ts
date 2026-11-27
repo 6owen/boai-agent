@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Host-filtered real object snapshots, authenticated actor and original ProductStore.
+ * [INPUT]: Runtime operation contract and Host-filtered real object snapshots, authenticated actor and original ProductStore.
  * [OUTPUT]: Scoped refs discovery/resolve, live body backlinks, manual relations and bounded graph.
  * [POS]: Application reference protocol; no content copies, filesystem access or implicit execution.
  * [PROTOCOL]: Update Header and application/.folder.md on change.
@@ -10,7 +10,7 @@ import type { Conversation, DigitalAgent } from '@boai/shared/domain'
 import type { ApplicationActor } from '@boai/shared/domain/application-protocol'
 import { parseReferenceUri, referenceCard, referenceKinds, referenceUris, type ReferenceKind, type ReferenceObject, type ReferenceScope } from '@boai/shared/domain/references'
 import type { ProductStore, RecordTransaction } from '../../adapters/storage/product-store'
-import { ApplicationValidationError, type ApplicationOperation } from './application-service'
+import { ApplicationValidationError, type ApplicationOperation } from '../../application-operation'
 
 export interface ReferenceSnapshot { scope: ReferenceScope; objects: ReferenceObject[]; coverage: { scope: 'employee-conversation'; complete: boolean; omitted: number; unavailableSkills: number } }
 export type LoadReferences = (scope: Partial<ReferenceScope>, actor: ApplicationActor, kinds?: readonly ReferenceKind[]) => Promise<ReferenceSnapshot>

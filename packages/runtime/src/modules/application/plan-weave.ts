@@ -1,12 +1,12 @@
 /*
- * [INPUT]: Alma Plan Weave manifest/claim/review semantics and BOAI scoped ProductStore transactions.
+ * [INPUT]: Runtime operation contract and Alma Plan Weave manifest/claim/review semantics and BOAI scoped ProductStore transactions.
  * [OUTPUT]: Validated task/block DAG, persistent claims, reports, review/rework gates and honest completion status.
  * [POS]: Plan state machine; does not execute work, delegate, schedule, or grant permissions.
  * [PROTOCOL]: Update Header and application/.folder.md on change.
  */
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
-import { ApplicationValidationError } from './application-service'
+import { ApplicationValidationError } from '../../application-operation'
 
 const label = z.string().trim().min(1).max(300)
 const key = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]*$/).max(80)
