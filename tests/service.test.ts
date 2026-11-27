@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 使用私有配置凭据的执行事件保持 JSON 类型和历史遮蔽文字。
  * [OUTPUT]: 连续成功聊天/任务与暂缓路径释放运行上下文，持久历史可查且清空后不残留活跃引用。
  * [OUTPUT]: 新消息在已取消的后台记忆适配器实际退出前开始；原优先级断言保持，测试失败也释放挂起调用。
  * [OUTPUT]: 等待同事期间私有汇报的schema错误保持原依赖、预算和一次性副作用；无效正文不发布。
@@ -2462,10 +2463,12 @@ describe('conversation history cleanup', () => {
 })
 
 it('stores streamed API narration once, independently from the final message and legacy task summary', async () => {
- const { service, engine } = await fixture(); await configure(service)
+ const { service, engine } = await fixture()
+ const connection = await configure(service)
+ await service.handle('saveConnection', { id: connection.id, expectedRevision: connection.revision, name: connection.name, provider: connection.provider, baseUrl: connection.baseUrl, defaultModel: connection.defaultModel, apiKey: 'true' })
  const chat = await conversation(service)
  engine.handler = async context => {
-  await context.onExecutionEvent?.({ id: 'live-text', eventType: 'agent.text.block', payload: { text: '' }, appendText: '正在读取' })
+  await context.onExecutionEvent?.({ id: 'live-text', eventType: 'agent.text.block', payload: { text: '', enabled: true, detail: 'key=true' }, appendText: '正在读取' })
   await context.onExecutionEvent?.({ id: 'live-text', eventType: 'agent.text.block', payload: { text: '' }, appendText: '文件' })
   await context.onTool({ id: 'step', name: 'task_step', status: 'completed', detail: '正在读取文件', createdAt: new Date().toISOString() })
   await context.onDelta('最终答复')
@@ -2473,7 +2476,7 @@ it('stores streamed API narration once, independently from the final message and
  await send(service, chat, '处理文件', 'stream-once'); await idle(service, chat, 1)
  const state = await detail(service, chat), run = state.runs.find(run => run.phase === 'execution')!
  const evidence = await service.handle('listExecutionEvidence', { conversationId: chat.id, runId: run.id }) as import('../packages/shared/src/domain/execution').ExecutionEvidencePage
- expect(evidence.items.map(event => event.payload)).toEqual([{ text: '正在读取文件' }])
+ expect(evidence.items.map(event => event.payload)).toEqual([{ text: '正在读取文件', enabled: true, detail: 'key=[已隐藏凭据]' }])
  expect(state.messages.filter(message => message.senderType === 'agent').map(message => message.content)).toEqual(['最终答复'])
 })
 

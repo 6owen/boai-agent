@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 本地 HTTP 与官方观测存储核对两路 Trace 的凭据遮蔽、完整调用树和一次业务请求。
  * [OUTPUT]: 已授权会话消息的窗口、当前轮及身份投影归 conversations；模型角色/图片装配归 API 适配器。
  * [OUTPUT]: 指标初始化和诊断回写同时失败时，真实 SDK 仍办理本轮一次；持久 Trace 与宿主 Trace 分别核对。
  * [OUTPUT]: 普通工具问答覆盖流式预览、撤回工具前置文字及正式回复顺序。
@@ -2708,6 +2709,33 @@ it('persists native approval snapshots without credentials and clears them with 
     expect((await workflows.listWorkflowRuns({ perPage: false })).runs).toEqual([])
     expect(model.requests).toHaveLength(2)
   } finally { f.controller.abort(); approve?.(false); await running.catch(() => {}) }
+})
+
+it.each(['true', 'key"part\\tail'])('retains redacted request spans in both stores for a JSON-sensitive credential %s', async apiKey => {
+  const server = await endpoint(['Local observation accepted.'])
+  const host = new Map<string, TraceSpan>(), errors: string[] = []
+  const f = await context(server.url, {
+    responseKind: 'chat', apiKey, messages: [message('diagnostic=' + apiKey + '; end.')],
+    onTrace: async span => { host.set(span.id, span) },
+    onTraceError: async error => { errors.push(error) },
+  })
+  const engine = new MastraEngine()
+  try {
+    await engine.run(f.ctx)
+    expect(server.requests).toHaveLength(1)
+    expect(f.deltas.join('')).toBe('Local observation accepted.')
+    expect(errors).toEqual([])
+    const stored = await engine.modelTraces(f.ctx.conversation.id, [f.ctx.runId])
+    for (const spans of [[...host.values()], stored]) {
+      const request = spans.find(span => span.name === '模型请求' && span.endedAt)
+      expect(request).toBeDefined()
+      expect(JSON.stringify(request!.input)).toContain('diagnostic=[redacted]; end.')
+      const body = (request!.output as { providerRequestBody: string }).providerRequestBody
+      const provider = typeof body === 'string' ? JSON.parse(body) : body
+      expect(provider.stream).toBe(true)
+      expect(JSON.stringify(provider.messages)).toContain('diagnostic=[redacted]; end.')
+    }
+  } finally { await engine.closeMemory() }
 })
 
 it('queries and deletes traces through official observability storage with product identity and redaction', async () => {
