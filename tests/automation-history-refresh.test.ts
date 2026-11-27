@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 2026-11-27 验证列表只做会话定位，跳过记录静态展示原因。
  * [OUTPUT]: 2026-11-27 验证记录行定位原会话、无会话详情及独立日志删除。
  * [OUTPUT]: 2026-11-17固定检索/全局清空工具栏与ScrollArea；记录无前置图标且仅时间，全局清空冻结全部分页并保留在途记录。
  * [OUTPUT]: 2026-11-17Dialog分组默认收起且不渲染搜索/Tabs，展开选择/再次收起仍固定原记录身份。
@@ -42,7 +43,7 @@ beforeEach(() => {
 })
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.useRealTimers(); vi.unstubAllGlobals() })
 
-async function render(active = true) { await act(async () => root.render(createElement(AutomationHistory, { api, active, automationId: 'plan', onOccurrence() {} }))) }
+async function render(active = true) { await act(async () => root.render(createElement(AutomationHistory, { api, active, automationId: 'plan' }))) }
 async function resolve(page: AutomationHistoryPage) { await act(async () => pending.shift()!(page)) }
 async function change() {
   await act(async () => {
@@ -88,22 +89,21 @@ test('an already loaded empty list does not alternate between empty and loading 
 })
 
 const button = (label: string) => [...document.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === label)!
-test('opens the bound conversation from the row while keeping details available for skipped records', async () => {
-  const onConversation = vi.fn(), onOccurrence = vi.fn()
+test('opens the bound conversation while skipped records only show their reason', async () => {
+  const onConversation = vi.fn()
   await act(async () => root.render(createElement(AutomationHistory, {
-    api, active: true, onConversation, onOccurrence,
+    api, active: true, onConversation,
     conversations: [{ id: 'task-chat' }] as import('../packages/shared/src/domain').Conversation[],
   })))
   await resolve({ occurrences: [
     { ...record, conversationId: 'task-chat', messageId: 'original-trigger' },
-    { ...record, id: 'skipped', conversationId: 'task-chat', status: 'skipped' },
+    { ...record, id: 'skipped', conversationId: 'task-chat', status: 'skipped', reason: '任务已暂停' },
   ] })
+  expect(host.querySelector('.automation-record-detail')).toBeNull()
+  expect(host.querySelector('[data-occurrence-id="skipped"]')?.textContent).toContain('任务已暂停')
+  expect(host.querySelector('button[data-occurrence-id="skipped"]')).toBeNull()
   await act(async () => host.querySelector<HTMLButtonElement>(`[data-occurrence-id="${record.id}"]`)!.click())
   expect(onConversation).toHaveBeenCalledExactlyOnceWith('task-chat', 'original-trigger')
-  expect(onOccurrence).not.toHaveBeenCalled()
-  await act(async () => host.querySelector<HTMLButtonElement>('.automation-record-detail')!.click())
-  await act(async () => host.querySelector<HTMLButtonElement>('[data-occurrence-id="skipped"]')!.click())
-  expect(onOccurrence.mock.calls).toEqual([[record.id], ['skipped']])
 })
 
 test('requires confirmation, sends the frozen record version and removes a deleted row', async () => {
@@ -221,9 +221,8 @@ test('hiding the task during a clear stops unsent deletion requests', async () =
   expect(vi.mocked(api.request).mock.calls.filter(([method]) => method === 'deleteAutomationOccurrence')).toHaveLength(0)
 })
 
-test('Dialog分组中的所选记录保持固定身份，折叠后不会触发其他记录或执行任务', async () => {
-  const onOccurrence = vi.fn()
-  await act(async () => root.render(createElement(AutomationHistory, { api, active: true, grouped: true, selectedId: 'done', onOccurrence })))
+test('Dialog分组保留固定记录和时间，折叠及静态记录不触发执行', async () => {
+  await act(async () => root.render(createElement(AutomationHistory, { api, active: true, grouped: true })))
   await resolve({ occurrences: [record, { ...record, id: 'done', status: 'completed' }, { ...record, id: 'failed', status: 'failed' }] })
   expect(host.querySelector('input[aria-label="搜索执行记录"]')).not.toBeNull()
   expect(host.querySelector('[aria-label="清空记录"]')).not.toBeNull()
@@ -235,17 +234,15 @@ test('Dialog分组中的所选记录保持固定身份，折叠后不会触发�
   expect(headings.map(item => item.textContent)).toEqual(['进行中1', '已完成1', '需处理1'])
   expect(headings.every(item => item.getAttribute('aria-expanded') === 'false')).toBe(true)
   await act(async () => headings[1].click())
-  expect(host.querySelector('[data-occurrence-id=done]')?.getAttribute('aria-pressed')).toBe('true')
   const done = host.querySelector('[data-occurrence-id=done]')!
   expect(done.querySelector('.skill-list-icon')).toBeNull()
   expect(done.querySelector('.conversation-preview')?.textContent).toBe(new Date(record.startedAt).toLocaleString('zh-CN', { hour12: false }))
   expect(done.querySelector('time')?.getAttribute('datetime')).toBe(record.startedAt)
   await act(async () => headings[2].click())
-  await act(async () => (host.querySelector('[data-occurrence-id=failed]') as HTMLButtonElement).click())
-  expect(onOccurrence).toHaveBeenCalledExactlyOnceWith('failed')
+  expect(host.querySelector('[data-occurrence-id=failed]')).not.toBeNull()
+  expect(host.querySelector('button[data-occurrence-id=failed]')).toBeNull()
   await act(async () => headings[2].click())
   expect(headings[2].getAttribute('aria-expanded')).toBe('false')
-  expect(onOccurrence).toHaveBeenCalledTimes(1)
   expect(vi.mocked(api.request).mock.calls.every(([method]) => method === 'listAutomationHistory')).toBe(true)
 })
 
@@ -253,7 +250,7 @@ test('Dialog search remains server-backed and clear freezes all history pages in
   const first = { ...record, status: 'completed' as const, automationId: 'plan-a', stateVersion: 7 }
   const older = { ...first, id: 'other-plan', automationId: 'plan-b', stateVersion: 3 }
   const running = { ...record, id: 'running' }
-  await act(async () => root.render(createElement(AutomationHistory, { api, active: true, grouped: true, onOccurrence() {} })))
+  await act(async () => root.render(createElement(AutomationHistory, { api, active: true, grouped: true })))
   await resolve({ occurrences: [first, running] })
   const input = host.querySelector<HTMLInputElement>('input[aria-label="搜索执行记录"]')!
   await act(async () => {
