@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 当前任务执行记录的清空入口用与搜索同尺寸的垃圾桶图标，保留悬停提示和确认。
+ * [OUTPUT]: 当前任务执行记录的清空入口用与搜索同尺寸的 carbon:erase 图标，保留悬停提示和确认。
  * [OUTPUT]: 2026-11-27 任务详情下方的记录行直达原消息，无会话原因直接显示；双栏弹窗在左栏选中记录。
  * [OUTPUT]: 2026-11-27 有关联会话的日志行直接定位；独立按钮查看详情；清空和删除提示只指日志。
  * [OUTPUT]: Dialog检索缩至28px/12px图标，10px清空图标在输入框外且悬停危险色；ScrollArea贴侧栏边缘，留白仅在内容层，原查询/分页/删除保持。
@@ -172,7 +172,7 @@ function ClearHistoryRecords({ api, automationId, employeeId, attentionOnly = fa
   const label = compact ? '清空记录' : '全部清空'
   const trigger = <PopoverTrigger render={<Button variant="ghost" size={compact ? 'icon-xs' : 'icon-sm'}
     className="text-muted-foreground hover:text-destructive" aria-label={label} title={compact ? label : undefined} disabled={!active || busy} />}>
-    <Trash2 className={compact ? 'size-[10px]' : undefined} />
+    {compact ? <Trash2 className="size-[10px]" /> : <i aria-hidden className="app-icon i-carbon-erase" />}
   </PopoverTrigger>
   return <Popover open={open} onOpenChange={value => { if (!locked.current) setOpen(value) }}>
     {compact ? trigger : <Tooltip><TooltipTrigger delay={500} render={trigger} /><TooltipContent>{label}</TooltipContent></Tooltip>}

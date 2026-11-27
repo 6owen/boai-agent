@@ -152,7 +152,7 @@ test('clear all freezes every page before deletion, skips ongoing records and do
   const request = vi.mocked(api.request), success = vi.spyOn(toast, 'success').mockImplementation(() => 'success')
   expect(clearAllButton().textContent).toBe('')
   expect(clearAllButton().dataset.size).toBe('icon-sm')
-  expect(clearAllButton().querySelector('.i-carbon-trash-can')).not.toBeNull()
+  expect(clearAllButton().querySelector('.i-carbon-erase')).not.toBeNull()
   await act(async () => clearAllButton().click())
   expect(document.body.textContent).toContain('清空当前任务的执行记录？')
   await act(async () => button('取消').click())
