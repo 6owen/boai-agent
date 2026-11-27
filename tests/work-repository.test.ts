@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 会话工作视图保留本地无工作预算、跨会话与旧缺会话预算，以及各集合原顺序。
  * [OUTPUT]: 2026-10-27 本轮相关回归合同/源码更新；执行状态另行记录，不以源码存在判通过。
  * [OUTPUT]: 验证默认无执行配额、旧默认精确迁移、显式预算仍执行以及用户取消；不调用真实供应商。
  * [OUTPUT]: 覆盖增大任务额度、真实继续消息或本次运行同类批准；各文件以具体用例限定验证范围。
@@ -35,6 +36,33 @@ const request = (runId: string, agentId = 'researcher', key = 'main') => ({
 const receipt = { messageId: 'answer-1', content: '计算结果为 42。', artifactIds: [] as string[] }
 
 describe('durable work ownership', () => {
+  it('returns only the conversation work and wakes, including all owned and referenced budgets in insertion order', async () => {
+    const { works, store } = await fixture()
+    const records = [
+      ['workBudgets', 'z-shared', { conversationId: 'elsewhere' }],
+      ['workBudgets', 'unrelated', { conversationId: 'elsewhere' }],
+      ['workBudgets', 'old', {}],
+      ['workBudgets', 'a-orphan', { conversationId: 'room' }],
+      ['workItems', 'z', { conversationId: 'room', budgetId: 'old' }],
+      ['workItems', 'other', { conversationId: 'elsewhere', budgetId: 'unrelated' }],
+      ['workItems', 'a', { conversationId: 'room', budgetId: 'z-shared' }],
+      ['workWakes', 'wake-2', { conversationId: 'room' }],
+      ['workWakes', 'other-wake', { conversationId: 'elsewhere' }],
+      ['workWakes', 'wake-1', { conversationId: 'room' }],
+    ] as const
+    await store.write(records.map(([collection, id, value]) => ({ collection, id, value: { id, ...value } })))
+    expect((await works.listInConversation('room')).map(item => item.id)).toEqual(['z', 'a'])
+    expect((await works.findInConversation('room', 'a'))?.id).toBe('a')
+    expect(await works.findInConversation('room', 'other')).toBeUndefined()
+    expect(await works.findInConversation('room', 'a', 'other-owner')).toBeUndefined()
+    expect(await works.findInConversation('room', undefined)).toBeUndefined()
+    const view = await works.view('room')
+    expect(view.workItems.map(item => item.id)).toEqual(['z', 'a'])
+    expect(view.workBudgets.map(item => item.id)).toEqual(['z-shared', 'old', 'a-orphan'])
+    expect(view.workWakes.map(item => item.id)).toEqual(['wake-2', 'wake-1'])
+    expect(await works.view('absent')).toEqual({ workItems: [], workBudgets: [], workWakes: [] })
+  })
+
   it.each(['legacy', 'v1', 'custom', 'organization', 'organization48', 'renewed'] as const)('preserves unverified historical limits at startup without inferring intent from matching numbers (%s)', async mode => {
     const { works, store } = await fixture()
     await works.claim(request('legacy-run'))

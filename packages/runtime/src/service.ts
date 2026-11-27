@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 宿主单个工作与列表读取沿原会话归属；完整预算视图仅用于需要关联记录的操作。
  * [OUTPUT]: 打开会话及监控来源时直接按会话读取成果记录。
  * [OUTPUT]: 阅读、搜索和锚点 IPC 共用 domain/reading 的输入校验与推导类型。
  * [OUTPUT]: 员工定时触发提交普通消息，与话题和历史记录原子写入。
@@ -3288,7 +3289,7 @@ export class AppService {
       const revoked = previous.sharedKnowledgeIds.filter(id => !conversation.sharedKnowledgeIds.includes(id))
       await this.cancelWhere(run => run.conversationId === conversation.id && (removed.includes(run.agentId) || !!this.snapshots.get(run.id)?.resources.some(resource => revoked.includes(resource.id)) || (run.phase === 'coordination' && (removed.length > 0 || revoked.length > 0))), '群成员或共享资料权限已变更')
       if (removed.length || revoked.length) {
-        for (const work of (await this.works.view(conversation.id)).workItems) if (removed.includes(work.ownerAgentId) || revoked.length) await this.works.cancelTree(work.id, '群成员或共享资料权限已变更')
+        for (const work of await this.works.listInConversation(conversation.id)) if (removed.includes(work.ownerAgentId) || revoked.length) await this.works.cancelTree(work.id, '群成员或共享资料权限已变更')
         await this.scheduler.cancel(conversation.id, '群成员或共享资料权限已变更')
       }
       if (previous.memoryScope !== 'conversation' && conversation.memoryScope === 'conversation') for (const member of previous.agentIds) await this.memory.restrictConversation(member, conversation.id)
@@ -3531,7 +3532,7 @@ export class AppService {
     for (const turn of this.scheduler.turns.values()) if (turn.conversationId === conversationId && turn.status === 'waiting_user') {
       for (const decision of this.scheduler.decisions.values()) if (decision.turnId === turn.id && decision.userQuestion && !targets.some(target => target.turnId === turn.id && target.agentId === decision.agentId)) targets.push({ kind: 'participant', turnId: turn.id, agentId: decision.agentId, status: 'waiting_input', requestId: [...this.requests.values()].find(request => request.messageId === turn.triggerMessageId)?.id })
     }
-    for (const work of (await this.works.view(conversationId)).workItems) if (['ready', 'running', 'waiting', 'blocked'].includes(work.status) && !runs.some(run => run.workId === work.id)) targets.push({ kind: 'work', workId: work.id, agentId: work.ownerAgentId, status: work.status, requestId: [...this.requests.values()].find(request => request.messageId === work.sourceMessageId)?.id })
+    for (const work of await this.works.listInConversation(conversationId)) if (['ready', 'running', 'waiting', 'blocked'].includes(work.status) && !runs.some(run => run.workId === work.id)) targets.push({ kind: 'work', workId: work.id, agentId: work.ownerAgentId, status: work.status, requestId: [...this.requests.values()].find(request => request.messageId === work.sourceMessageId)?.id })
     return targets
   }
   private async runCancellation(conversationId: string, runId: string): Promise<import('@boai/shared/domain/run-cancellation').RunCancellation> {
@@ -3546,7 +3547,7 @@ export class AppService {
     const before = await this.runCancellation(conversationId, runId), run = this.runs.get(runId)!
     // Historical anchors are never translated into a newer run or resumed Work.
     if (run.cancellation || terminal.has(run.status)) return before
-    const works = (await this.works.view(conversationId)).workItems, workIds = new Set<string>()
+    const works = await this.works.listInConversation(conversationId), workIds = new Set<string>()
     if (run.workId) {
       if (!works.some(work => work.id === run.workId)) fail('原工作不存在，无法确认停止范围')
       workIds.add(run.workId)
@@ -3587,7 +3588,7 @@ export class AppService {
     const nativeActions = await this.store.load<import('@boai/shared/domain/execution').NativeAction>('nativeActions', { conversationId: message.conversationId })
     const scope = messageExecutionScope(message, {
       runs: [...this.runs.values()], turns: [...this.scheduler.turns.values()],
-      works: (await this.works.view(message.conversationId)).workItems, nativeActions,
+      works: await this.works.listInConversation(message.conversationId), nativeActions,
     })
     return { message, scope, nativeActions }
   }
@@ -3948,7 +3949,7 @@ export class AppService {
   }
   /** The occurrence cancellation fence is committed before this runs under the host critical section. */
   private async cancelAutomation(o: AutomationOccurrence, endWaiting = false) {
-    const owned = (await this.works.view(o.conversationId)).workItems.filter(work => belongsToOccurrence(work.origin, o))
+    const owned = (await this.works.listInConversation(o.conversationId)).filter(work => belongsToOccurrence(work.origin, o))
     const ids = new Set(owned.map(work => work.id)), reason = o.reason ?? '用户停止本次执行'
     for (const root of owned.filter(work => !work.parentWorkId || !ids.has(work.parentWorkId))) for (const id of await this.works.cancelTree(root.id, reason, o.cancellationCause ?? 'user')) ids.add(id)
     const turnIds = new Set([...this.scheduler.turns.values()].filter(turn => turn.conversationId === o.conversationId && (belongsToOccurrence(turn.origin, o) || turn.id === o.turnId || !!turn.workId && ids.has(turn.workId))).map(turn => turn.id))
@@ -4223,7 +4224,7 @@ export class AppService {
   }
   private async artifactRevisionContext(run: AgentRun, turn: DiscussionTurn, agent: DigitalAgent) {
     const workId = run.workId ?? turn.workId
-    const work = workId ? (await this.works.view(turn.conversationId)).workItems.find(value => value.id === workId) : undefined
+    const work = workId ? await this.works.findInConversation(turn.conversationId, workId) : undefined
     const requestId = work?.revisionRequestId ?? this.messages.get(turn.triggerMessageId)?.artifactRevisionRequestId
     if (!requestId || work?.parentWorkId) return
     const request = await this.artifactRepository.revisionReceipt(requestId)
@@ -4232,7 +4233,7 @@ export class AppService {
   }
   private async authorizedWorkItems(conversation: Conversation, agentId: string, visible: Set<string>) {
     const selected: import('@boai/shared/domain').WorkItem[] = []
-    for (const work of (await this.works.view(conversation.id)).workItems) {
+    for (const work of await this.works.listInConversation(conversation.id)) {
       if (!visible.has(work.sourceMessageId) || !work.resultMessageIds.every(id => visible.has(id))) continue
       try { await this.materials.validateRefs(work.materialSources ?? [], agentId, conversation.id) } catch { continue }
       selected.push(work)
@@ -4644,7 +4645,7 @@ export class AppService {
     }
     if (!origin && this.messages.get(turn.triggerMessageId)?.inboxReply) {
       const reply = this.messages.get(turn.triggerMessageId)!.inboxReply!
-      const question = this.messages.get(reply.questionMessageId), work = turn.workId && (await this.works.view(conversation.id)).workItems.find(work => work.id === turn.workId)
+      const question = this.messages.get(reply.questionMessageId), work = turn.workId && await this.works.findInConversation(conversation.id, turn.workId)
       const originalRequestId = work ? work.sourceMessageId : question?.turnId && this.scheduler.turns.get(question.turnId)?.triggerMessageId
       if (!originalRequestId || !visibleMessageIds.has(originalRequestId) || !visibleMessageIds.has(reply.questionMessageId)) fail('原补充问题或原请求不在当前获准上下文')
       continuation = { originalRequestId: originalRequestId!, replyToTurnIds: [...(turn.replyToTurnIds ?? [])] }
@@ -5098,7 +5099,7 @@ export class AppService {
       const latestUserSequence = Math.max(0, ...this.conversationMessages(conversation.id).filter(message => message.senderType === 'user' && message.status === 'completed').map(message => message.sequence))
       if (latestUserSequence !== observedUserSequence) return false
       if (context.work) {
-        const current = (await this.works.view(conversation.id)).workItems.find(item => item.id === context.work!.id)
+        const current = await this.works.findInConversation(conversation.id, context.work!.id)
         if (!current || current.version !== context.work.version || current.ownerAgentId !== agent.id) return false
       }
       return true
@@ -5114,7 +5115,7 @@ export class AppService {
         await this.materials.validateRefs(snapshot.materialRefs ?? [], agent.id, conversation.id)
         previous.push(candidate)
       }
-      const work = context.work ? (await this.works.view(conversation.id)).workItems.find(item => item.id === context.work!.id && item.ownerAgentId === agent.id) : undefined
+      const work = context.work ? await this.works.findInConversation(conversation.id, context.work!.id, agent.id) : undefined
       const files = [...this.artifacts.values()].filter(file => file.ownerAgentId === agent.id && file.conversationId === conversation.id && !!file.id && !!work?.artifactIds.includes(file.id))
       for (const file of files) await this.materials.validateRefs(file.materialSources ?? [], agent.id, conversation.id)
       const executions = await this.store.transaction(async tx => (await tx.list<import('@boai/shared/domain').WorkExecution>('workExecutions')).filter(item => previous.some(run => run.id === item.id)))
@@ -5396,7 +5397,7 @@ export class AppService {
     signal.throwIfAborted()
     if (turn.workId && this.messages.get(turn.triggerMessageId)?.inboxReply?.workId === turn.workId) {
       signal.throwIfAborted()
-      const work = (await this.works.view(turn.conversationId)).workItems.find(work => work.id === turn.workId) ?? fail('补充关联的原工作不存在')
+      const work = await this.works.findInConversation(turn.conversationId, turn.workId) ?? fail('补充关联的原工作不存在')
       if (work.ownerAgentId !== delivery.agentId || work.status !== 'ready' || work.requiresReview) fail('原工作已变化，不能开始补充接续')
       return { action: 'reply' as const, responseKind: 'task' as const, work: { key: work.key, scope: work.scope, deliverable: work.deliverable, workId: work.id, expectedVersion: work.version }, observedThroughSequence: delivery.observedThroughSequence }
     }
@@ -5469,7 +5470,7 @@ export class AppService {
       if (turn.wakeId) await this.serialize(async () => {
         effective.throwIfAborted()
         const messages = this.conversationContextMessages(conversation.id).filter(message => message.status === 'completed')
-        const wakeWork = turn.workId ? (await this.works.view(conversation.id)).workItems.find(work => work.id === turn.workId) : undefined
+        const wakeWork = turn.workId ? await this.works.findInConversation(conversation.id, turn.workId) : undefined
         const latestUser = this.latestConversationUserMessage(conversation.id) ?? this.messages.get(wakeWork?.sourceMessageId ?? turn.triggerMessageId) ?? fail('原工作触发消息已失效')
         turn.triggerMessageId = latestUser.id; run.triggerMessageId = latestUser.id
         decision = { ...decision, observedThroughSequence: messages.at(-1)!.sequence, replyToMessageId: latestUser.id }
@@ -5598,7 +5599,7 @@ export class AppService {
             let intent = requested ?? decision.work ?? { key: native ? `native-${run.agentId}` : 'main', scope: this.messages.get(context.continuation?.originalRequestId ?? turn.triggerMessageId)!.content, deliverable: decision.purpose ?? '完成用户原始请求中的交付目标' }
             if (context.artifactRevision && !turn.workId) intent = { key: 'artifact-revision', scope: context.artifactRevision.content.slice(0, 2000), deliverable: '根据本次明确修改要求发布指定原版的新版本' }
             if (turn.workId) {
-              const retryWork = (await this.works.view(conversation.id)).workItems.find(work => work.id === turn.workId) ?? fail('重试的原工作不存在')
+              const retryWork = await this.works.findInConversation(conversation.id, turn.workId) ?? fail('重试的原工作不存在')
               if (retryWork.ownerAgentId === run.agentId) intent = { key: retryWork.key, scope: retryWork.scope, deliverable: retryWork.deliverable, workId: retryWork.id, expectedVersion: retryWork.version, ...(retryWork.organization ? { organization: { mode: retryWork.organization.mode, goal: retryWork.organization.goal } } : {}) }
             }
             if (intent.workId) {
@@ -5606,7 +5607,7 @@ export class AppService {
               const existing = (await this.authorizedWorkItems(context.conversation, run.agentId, visible)).find(work => work.id === intent.workId)
               if (!existing || !visible.has(existing.sourceMessageId) || !existing.resultMessageIds.every(id => visible.has(id))) fail('当前授权上下文不能引用该工作')
             }
-            const referenced = intent.workId ? (await this.works.view(conversation.id)).workItems.find(work => work.id === intent.workId) : undefined
+            const referenced = intent.workId ? await this.works.findInConversation(conversation.id, intent.workId) : undefined
             const sourceMessageId = referenced?.collaborationRequestId ? referenced.sourceMessageId : turn.triggerMessageId
             const organization = intent.organization ? { ...intent.organization, requestId: `bobo-collaboration:${sourceMessageId}` } : undefined
             if (organization) {
@@ -5962,7 +5963,7 @@ export class AppService {
             const latestUser = this.latestConversationUserMessage(conversation.id) ?? this.messages.get(context.work?.sourceMessageId ?? turn.triggerMessageId) ?? fail('原工作触发消息已失效')
             const current = (await this.materialMessages(this.getConversation(conversation.id), latestUser.id, run.agentId)).messages
             const latest = current.at(-1)?.sequence ?? 0
-            const { workItems } = await this.works.view(conversation.id)
+            const workItems = await this.works.listInConversation(conversation.id)
             const own = workItems.find(work => work.id === run.workId)!
             const dependencies = new Set([...own.dependsOnWorkIds, ...own.requiredResults.map(result => result.workId), ...(context.pendingWorkWait?.dependencies.map(result => result.workId) ?? [])])
             const changed = current.some(message => {
@@ -6468,7 +6469,7 @@ export class AppService {
     await this.agentBehaviors.cancelScope({ agentId, conversationId })
     await this.cancelWhere(run => run.agentId === agentId && (!conversationId || run.conversationId === conversationId), reason)
     for (const conversation of this.conversations.values()) if (!conversationId || conversation.id === conversationId) {
-      for (const work of (await this.works.view(conversation.id)).workItems.filter(work => work.ownerAgentId === agentId)) await this.works.cancelTree(work.id, reason)
+      for (const work of (await this.works.listInConversation(conversation.id)).filter(work => work.ownerAgentId === agentId)) await this.works.cancelTree(work.id, reason)
     }
     await Promise.all([...this.browserSessions.values()].filter(({session}) => session.lease.agentId===agentId && (!conversationId || session.lease.conversationId===conversationId)).map(({session}) => session.drain()))
     // A completed decision may still hold a speaking candidate after its Run ended.
@@ -6517,7 +6518,7 @@ export class AppService {
     }).catch(error => this.emit({ type: 'runtime-error', error: this.errorMessage(error) }))
   }
   private async cancelWork(conversationId: string, workId: string) {
-    const work = (await this.works.view(conversationId)).workItems.find(work => work.id === workId) ?? fail('工作不属于当前会话')
+    const work = await this.works.findInConversation(conversationId, workId) ?? fail('工作不属于当前会话')
     const ids = new Set(await this.works.cancelTree(work.id, '用户停止此工作及其子工作'))
     for (const run of this.runs.values()) if (run.workId && ids.has(run.workId) && !terminal.has(run.status)) {
       this.runControllers.get(run.id)?.abort(new Error('用户停止此工作'))
@@ -6533,7 +6534,7 @@ export class AppService {
     return room
   }
   private async cancelConversation(conversationId: string) {
-    if (!this.closing) for (const work of (await this.works.view(conversationId)).workItems.filter(work => !work.parentWorkId)) await this.works.cancelTree(work.id, '用户停止本轮讨论')
+    if (!this.closing) for (const work of (await this.works.listInConversation(conversationId)).filter(work => !work.parentWorkId)) await this.works.cancelTree(work.id, '用户停止本轮讨论')
     await this.scheduler.cancel(conversationId, '用户停止本轮讨论', this.closing)
     await this.cancelWhere(run => run.conversationId === conversationId)
     this.changed(conversationId)
@@ -6548,8 +6549,8 @@ export class AppService {
     for (const conversation of this.conversations.values()) {
       if (!conversation.agentIds.some(id => bound.has(id))) continue
       if (this.conversationBusy(conversation.id)) fail('已绑定员工仍有活动轮次，请结束后重试')
-      const view = await this.works.view(conversation.id)
-      if (view.workItems.some(work => bound.has(work.ownerAgentId) && ['ready', 'running', 'waiting', 'blocked'].includes(work.status))) fail('已绑定员工仍有活动或等待中的工作，请结束后重试')
+      const workItems = await this.works.listInConversation(conversation.id)
+      if (workItems.some(work => bound.has(work.ownerAgentId) && ['ready', 'running', 'waiting', 'blocked'].includes(work.status))) fail('已绑定员工仍有活动或等待中的工作，请结束后重试')
     }
   }
   private async removeResource(id: string) {
@@ -6592,7 +6593,7 @@ export class AppService {
     prepared.turn.origin = original.origin ? clone(original.origin) : undefined
     prepared.turn.resumesRunIds = [original.id]
     if (original.workId) {
-      const work = (await this.works.view(conversation.id)).workItems.find(work => work.id === original.workId)
+      const work = await this.works.findInConversation(conversation.id, original.workId)
       if (!work || work.ownerAgentId !== original.agentId) fail('原工作归属已变化，不能重试')
       prepared.turn.workId = original.workId
       prepared.turn.collaborationRequestId = work!.collaborationRequestId
