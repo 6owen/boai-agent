@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 已授权会话消息的窗口、当前轮及身份投影归 conversations；模型角色/图片装配归 API 适配器。
  * [INPUT]: 当前员工获准消息、记忆版本、资源元信息与模型候选。
  * [OUTPUT]: API和本机员工共享的增量记忆输入与来源校验；当前轮及本轮本人已交付Work的精确原用户来源作证据，其他历史不扩权，写入仍归MemoryRepository。
  * [POS]: employees私有记忆协议准备；不调用模型、不保存候选。
@@ -6,7 +7,7 @@
  */
 import type { MemoryCandidate } from '@boai/shared/domain'
 import type { EngineContext } from '../../contracts'
-import { messageData, partitionTurn, visibleMessages } from '../../adapters/mastra/message-projection'
+import { messageData, partitionTurn, visibleMessages } from '../conversations/message-context'
 import { bootstrapInstructions } from './phase-instructions'
 
 /** One evidence scope for model preparation and the host's persistence checks. */

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 已授权会话消息的窗口、当前轮及身份投影归 conversations；模型角色/图片装配归 API 适配器。
  * [OUTPUT]: 指标初始化和诊断回写同时失败时，真实 SDK 仍办理本轮一次；持久 Trace 与宿主 Trace 分别核对。
  * [OUTPUT]: 普通工具问答覆盖流式预览、撤回工具前置文字及正式回复顺序。
  * [OUTPUT]: 2026-11-24 第三阶段：Mastra 第三阶段回归覆盖原生文件/MCP/快照/Trace、实时补充、断流及 OM 致命失败退出；完整结果见实施记录。
@@ -69,7 +70,8 @@ import { MastraMetrics } from '../packages/runtime/src/adapters/mastra/metrics'
 import { MastraEngine } from '../packages/runtime/src/adapters/mastra/engine'
 import { createTaskRuntime } from '../packages/runtime/src/adapters/mastra/task-runtime'
 import { thinkingProviderOptions, decisionProviderOptions } from '../packages/runtime/src/adapters/mastra/model-config'
-import { projectMessages, messageData, decisionMessageData } from '../packages/runtime/src/adapters/mastra/message-projection'
+import { projectMessages } from '../packages/runtime/src/adapters/mastra/message-projection'
+import { messageData, decisionMessageData } from '../packages/runtime/src/modules/conversations/message-context'
 import type { Connection, DigitalAgent, Artifact, Message, ModelUsage, ToolEvent, WorkItem } from '../packages/shared/src/domain'
 import type { TraceSpan } from '../packages/shared/src/domain/traces'
 import type { EngineContext } from '../packages/runtime/src/contracts'

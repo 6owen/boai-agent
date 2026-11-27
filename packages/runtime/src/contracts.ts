@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 画板命令的类型与输入校验沿插件公开协议，宿主和执行适配器直接使用。
  * [OUTPUT]: 诊断回调失败由 reportTraceError 隔离，业务提交与观察失败各自保留原语义。
  * [OUTPUT]: RuntimeToolOperation 描述两种执行后端可绑定的宿主操作。
  * [OUTPUT]: 执行适配器可提供只面向当前会话窗口的回复预览。
@@ -158,7 +159,7 @@ export interface EngineContext {
   modelCatalog?: import('@boai/shared/domain/model-gateway').ModelCatalog
   canvasEnabled?: boolean
   /** Host fixes employee/conversation, verifies the active run and drains actual canvas operations on cancellation. */
-  callCanvas?(input: import('./adapters/mastra/canvas-tools').CanvasAgentRequest): Promise<unknown>
+  callCanvas?(input: import('@boai/canvas-plugin/tools').CanvasAgentRequest): Promise<unknown>
   desktopPluginEnabled?: boolean
   /** Live plugin guide availability; reading never starts a desktop process or grants permission. */
   readDesktopPluginSkill?(): Promise<import('@boai/shared/plugins/desktop-tools').DesktopPluginSkill | undefined>

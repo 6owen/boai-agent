@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Codex/Claude首轮来源摘要逐字节兼容已发布的原生会话。
  * [OUTPUT]: 2026-11-24 第三阶段：Mastra 第三阶段回归覆盖原生文件/MCP/快照/Trace、实时补充、断流及 OM 致命失败退出；完整结果见实施记录。
  * [OUTPUT]: 普通聊天与两次员工任务沿兼容原生session续接，仅追加新输入。
  * [OUTPUT]: 已退出且确认接收的取消轮次只投递新消息；投递未知拒绝重建且保留原映射，已确定退出的失效来源仍重建。
@@ -50,6 +51,8 @@ it('appends only new authorized messages across multiple published turns and a n
   const f = await fixture(), firstContext = context([message('first', 1)])
   const first = await f.publish(firstContext)
   expect(first.messages.map(value => value.id)).toEqual(['first'])
+  // Existing SQLite sessions depend on the exact serialized source, including field order.
+  expect(first.session.sources).toEqual([{ id: 'first', hash: 'ba4d79d54a731318af7694591e319ddf0610452408687cf86cba1efa72bb7bf5' }])
   const secondContext = context([...firstContext.messages, first.reply, message('second', 3)], { runId: 'run-2' })
   const second = await f.publish(secondContext)
   expect(second.threadId).toBe('native-run-1')
