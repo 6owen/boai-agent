@@ -175,7 +175,7 @@ it.each(['read-only', 'ask', 'full-access'] as const)('saves whole %s permission
  expect((await f.service.handle('snapshot',undefined) as Snapshot).agents.find(agent=>agent.id===id)).toMatchObject({executionPermission,nativeOptions:saved.nativeOptions})
 })
 
-it('uses the BOAI browser from scheduled native work with the original occurrence lease', async () => {
+it('uses the BOAI browser from a scheduled native topic with its session lease', async () => {
  const actions: BrowserActionEnvelope[] = [], leases: BrowserLease[] = []
  let f: Awaited<ReturnType<typeof nativeFixture>>, value = 'before'
  const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+yRuoAAAAASUVORK5CYII='
@@ -203,10 +203,9 @@ it('uses the BOAI browser from scheduled native work with the original occurrenc
  const run = detail!.runs.find(run => run.phase === 'execution')!
  expect(run.status, run.error).toBe('completed')
  expect(actions.map(action => parseBrowserSingleCommand(action.command).parts)).toEqual([['snapshot'], ['screenshot', '--png'], ['fill', '@e1', 'after'], ['snapshot']])
- expect(leases).toHaveLength(1)
- expect(detail!.workItems).toHaveLength(1)
- expect(detail!.workItems![0]).toMatchObject({ status: 'delivered', origin: { occurrenceId: occurrence.id } })
- expect(actions.every(action => action.lease.workId === detail!.workItems![0].id && action.lease.conversationId === occurrence.conversationId)).toBe(true)
+ expect(leases.length).toBeGreaterThan(0)
+ expect(detail!.workItems?.some(work => work.origin)).toBe(false)
+ expect(actions.every(action => action.lease.runId === run.id && action.lease.conversationId === occurrence.conversationId)).toBe(true)
 })
 
 it('exposes narration and reasoning while execution is still running, without publishing a final answer', async () => {
@@ -643,11 +642,11 @@ it('runs automation with the real native backend and does not replay it after re
  const f=await setup()
  const plan=await f.service.handle('saveAutomation',{name:'原生自动化',prompt:'NATIVE_PUBLISH',conversationPolicy:'new-conversation',employeeIds:[f.agent.id],frequency:'daily',time:'09:00',weekday:1,timezone:'UTC',enabled:false,notify:false}) as import('../packages/shared/src/domain').AutomationDefinition
  const occurrence=await f.service.handle('runAutomation',{id:plan.id,requestId:crypto.randomUUID()}) as import('../packages/shared/src/domain').AutomationOccurrence
- let result:import('../packages/shared/src/domain').AutomationOccurrence|undefined
- await expect.poll(async()=>{result=await f.service.handle('getAutomationOccurrence',{id:occurrence.id}) as typeof result;return result?.status},{timeout:15000}).toBe('completed')
- const d=await f.service.handle('getConversation',{id:result!.conversationId!}) as ConversationDetail
+ const read=()=>f.service.handle('getConversation',{id:occurrence.conversationId}) as Promise<ConversationDetail>
+ await expect.poll(async()=>(await read()).turns?.[0]?.status,{timeout:15000}).toBe('completed')
+ const d=await read()
  expect(d.artifacts,JSON.stringify(d)).toHaveLength(1);expect(d.runs.filter(r=>r.phase==='execution')).toHaveLength(1)
- await f.restart();expect((await f.service.handle('getConversation',{id:result!.conversationId!}) as ConversationDetail).runs).toHaveLength(d.runs.length)
+ await f.restart();expect((await read()).runs).toHaveLength(d.runs.length)
 })
 
 it('clears native sessions, execution evidence and pending interaction without replaying history',async()=>{

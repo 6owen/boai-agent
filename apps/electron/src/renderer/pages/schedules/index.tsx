@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 执行记录只关联会话，历史入口统一走双栏弹窗。
  * [INPUT]: 执行记录使用员工及会话快照解析本次执行员工。
  * [OUTPUT]: 启停单独提交，操作栏 Tooltip 延迟 500ms，编辑弹窗直接使用当前任务配置。
  * [OUTPUT]: 标题栏依次显示启用开关、编辑、删除与主色立即运行，记录行只负责定位会话。
@@ -32,23 +33,20 @@ import { AutomationHistory } from './automation-history-list'
 import { IllustratedEmpty } from '@/components/common/illustrated-empty'
 import { PanelResize } from '@/components/common/panel-resize'
 import { AutomationRunActions } from './automation-run-actions'
-import type { ExecutionMessageNavigation } from '@/components/detail-panel/execution-message-button'
 import { AutomationDetails } from './automation-details'
 import { AutomationDialog, type AutomationDialogTarget } from './automation-dialog'
 import { ScheduleList } from './schedule-list'
 import { useScheduleList } from './use-schedule-list'
-export type ScheduleLocation = { kind: 'overview' } | { kind: 'definition'; id: string } | { kind: 'history'; attention?: boolean } | { kind: 'occurrence'; id: string; requestId: string }
-export function SchedulePage({ api, snapshot, active, sidebarShown, divider, location, onLocation, onCreateConversation, onNavigateMessage, onConversation }: {
+export type ScheduleLocation = { kind: 'overview' } | { kind: 'definition'; id: string } | { kind: 'occurrence'; id: string; requestId: string }
+export function SchedulePage({ api, snapshot, active, sidebarShown, divider, location, onLocation, onCreateConversation, onConversation }: {
   api: DesktopApi; snapshot: Snapshot; active: boolean; sidebarShown: boolean; divider: ReactNode; location: ScheduleLocation; onLocation(value: ScheduleLocation): void
-  onNavigateMessage: ExecutionMessageNavigation
   onConversation(id: string, messageId?: string, navigated?: () => void): void
   onCreateConversation(): void
 }) {
   useEffect(() => {
     if (active && location.kind === 'occurrence') { setHistoryDialog({ id: location.id }); onLocation({ kind: 'overview' }) }
-    else if (active && location.kind === 'history') { setHistoryDialog({ attention: location.attention }); onLocation({ kind: 'overview' }) }
   }, [active, location, onLocation])
-  const [historyDialog, setHistoryDialog] = useState<{ id?: string; attention?: boolean }>()
+  const [historyDialog, setHistoryDialog] = useState<{ id?: string }>()
   const [view, setView] = useState<AutomationsView>({ definitions: [], occurrences: [], available: true })
   const [loading, setLoading] = useState(true), [loadError, setLoadError] = useState('')
   const [dialog, setDialog] = useState<AutomationDialogTarget>()
@@ -114,7 +112,6 @@ export function SchedulePage({ api, snapshot, active, sidebarShown, divider, loc
         {definition.syncError && <Banner>{definition.syncError}</Banner>}
         <AutomationHistory key={definition.id} api={api} active={active} automationId={definition.id} snapshot={snapshot} onConversation={onConversation} />
       </div> : !loading && <Banner>此任务已删除或不可用，留存结果仍可在执行记录中查看。</Banner>)}
-      {<div ref={location.kind === 'history' ? content : undefined} hidden={location.kind !== 'history'} className="schedule-document schedule-content-transition t-panel-slide" data-open="true" data-settled="true"><AutomationHistory api={api} active={active && location.kind === 'history'} attentionOnly={location.kind === 'history' && location.attention} snapshot={snapshot} onConversation={onConversation} /></div>}
     </main>
     <AlertDialog open={active && Boolean(deleting)} onOpenChange={open => { if (!open && !busy) setDeleting(null) }}>
       <AlertDialogContent>
@@ -131,7 +128,7 @@ export function SchedulePage({ api, snapshot, active, sidebarShown, divider, loc
         }}>确认删除</Button></AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-    {historyDialog && <AutomationHistoryDialog api={api} snapshot={snapshot} active={active} initialId={historyDialog.id} attentionOnly={historyDialog.attention} onClose={() => setHistoryDialog(undefined)} onNavigateMessage={(...args) => { setHistoryDialog(undefined); onNavigateMessage(...args) }} />}
+    {historyDialog && <AutomationHistoryDialog api={api} snapshot={snapshot} active={active} initialId={historyDialog.id} onClose={() => setHistoryDialog(undefined)} onConversation={onConversation} />}
     {dialog && <AutomationDialog key={dialog.key} api={api} snapshot={snapshot} active={active} target={dialog} onClose={() => setDialog(undefined)} onSaved={value => {
       setView(current => ({ ...current, definitions: [{ ...value, nextTimes: [] }, ...current.definitions.filter(d => d.id !== value.id)] }))
       setDialog(undefined); onLocation({ kind: 'definition', id: value.id })

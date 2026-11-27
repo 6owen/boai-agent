@@ -214,14 +214,11 @@ it('keeps the pointer unchanged on an unfinished summary stream and does not ret
   expect((await f.store.load<{ revision: number }>('contextStreams'))[0]?.revision).toBe(0)
 })
 it('connects the actual host authorization port for private, group and Bobo execution with their existing bootstrap', async () => {
-  const model = await endpoint((body, response, index) => {
-    if (textOf(body).includes('AUTOMATION_CONTEXT_CHECK') && JSON.stringify(body.tools).includes('report_work') && !body.messages.some(message => message.role === 'tool')) return send(response, { tool: 'report_work', args: { disposition: 'delivered', summary: 'Host context checked.', evidence: [{ kind: 'answer', reference: 'Host context checked.' }] } }, index)
-    send(response, 'Host context checked.', index)
-  })
+  const model = await endpoint((_body, response, index) => send(response, 'Host context checked.', index))
   const root = await mkdtemp(join(tmpdir(), 'boai-context-host-'))
   cleanup.push(() => rm(root, { recursive: true, force: true }))
   const sdk = new MastraEngine({ memoryPath: join(root, 'bobo.sqlite') }), contexts: EngineContext[] = []
-  const engine: AgentEngine = { test: async () => 'ok', decide: async context => ({ action: context.messages.some(message => message.turnId === context.turnId && message.senderId === context.agent.id) ? 'pass' : 'reply', responseKind: context.messages.find(message => message.id === context.triggerMessageId)?.origin ? 'task' : 'chat', ...(context.messages.find(message => message.id === context.triggerMessageId)?.origin ? { work: { key: 'auto-context', scope: 'Check context once', deliverable: 'Host context checked.' } } : {}), observedThroughSequence: context.participation!.observedThroughSequence }), run: async context => { expect(context.continuity).toBeDefined(); contexts.push(context); await sdk.run(context) } }
+  const engine: AgentEngine = { test: async () => 'ok', decide: async context => ({ action: context.messages.some(message => message.turnId === context.turnId && message.senderId === context.agent.id) ? 'pass' : 'reply', responseKind: 'chat', observedThroughSequence: context.participation!.observedThroughSequence }), run: async context => { expect(context.continuity).toBeDefined(); contexts.push(context); await sdk.run(context) } }
   const service = new AppService({ dataPath: root, engine, secrets: { get: async () => 'fixture', set: async () => {}, delete: async () => {} }, emit: () => {} })
   await service.init(); cleanup.push(() => service.close())
   const connection = await service.handle('saveConnection', { name: 'Fixture', provider: 'openai-compatible', baseUrl: model.url, defaultModel: 'fixture' }) as Connection
@@ -245,13 +242,13 @@ it('connects the actual host authorization port for private, group and Bobo exec
   expect(new Set(contexts.map(context => context.conversation.id)).size).toBe(3)
   const plan = await service.handle('saveAutomation', { owner: { kind: 'employee', employeeId: 'researcher' }, name: 'Context check', prompt: 'AUTOMATION_CONTEXT_CHECK', frequency: 'manual', time: '09:00', weekday: 1, timezone: 'UTC', enabled: false, notify: false }) as AutomationDefinition
   const occurrence = await service.handle('runAutomation', { id: plan.id, requestId: 'auto-context-once' }) as AutomationOccurrence
-  await expect.poll(async () => (await service.handle('getAutomationOccurrence', { id: occurrence.id }) as AutomationOccurrence).status, { timeout: 10000 }).toBe('completed').catch(async error => {
+  await expect.poll(async () => (await service.handle('getConversation', { id: occurrence.conversationId }) as ConversationDetail).turns?.[0]?.status, { timeout: 10000 }).toBe('completed').catch(async error => {
     const current = await service.handle('getAutomationOccurrence', { id: occurrence.id }) as AutomationOccurrence
     const detail = await service.handle('getConversation', { id: current.conversationId! }) as ConversationDetail
     throw new Error(JSON.stringify({ current, runs: detail.runs.map(run => ({ phase: run.phase, status: run.status, error: run.error })) }), { cause: error })
   })
   expect((await service.handle('runAutomation', { id: plan.id, requestId: 'auto-context-once' }) as AutomationOccurrence).id).toBe(occurrence.id)
-  expect(contexts.some(context => context.work?.origin?.occurrenceId === occurrence.id && !!context.continuity)).toBe(true)
+  expect(contexts.some(context => context.conversation.id === occurrence.conversationId && !!context.continuity)).toBe(true)
 
   expect(model.requests.length).toBeGreaterThanOrEqual(3)
   await expect(contexts[0]!.continuity!.read()).rejects.toThrow('访问权限')

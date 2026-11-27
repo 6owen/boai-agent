@@ -134,24 +134,24 @@ describe('目录许可跨原业务生命周期', () => {
   })
 
   it('原自动化目录批准接续同一次执行，持久许可在新触发使用且重启不重复触发', async () => {
-    const f = await fixture(), observed: { runId: string; occurrenceId: string; content: string }[] = []
+    const f = await fixture(), observed: { runId: string; conversationId: string; content: string }[] = []
     const plan = await f.service.handle('saveAutomation', { name: '目录定时核对', prompt: '读取报告目录原件', conversationPolicy: 'new-conversation', employeeIds: [f.agent.id], frequency: 'daily', time: '09:00', weekday: 1, timezone: 'Asia/Singapore', enabled: false, notify: false }) as AutomationDefinition
     f.engine.handler = context => task(context, async call => {
       const result = await call('read_file', { path: join(f.b, 'original.txt') })
-      observed.push({ runId: context.runId, occurrenceId: context.work!.origin!.occurrenceId, content: workspaceFileText(result) })
+      observed.push({ runId: context.runId, conversationId: context.conversation.id, content: workspaceFileText(result) })
       await context.onWorkOutcome!({ disposition: 'delivered', summary: '已完成目录操作', evidence: [{ kind: 'answer', reference: '已完成目录操作' }] })
     })
     const first = await f.service.handle('runAutomation', { id: plan.id, requestId: 'directory-auto-first' }) as AutomationOccurrence
     const approval = await f.pending(); expect(observed).toEqual([])
     await f.approve(approval, true, true)
-    await until(async () => (await f.service.handle('getAutomationOccurrence', { id: first.id }) as AutomationOccurrence).status === 'completed')
-    expect(observed).toEqual([{ runId: approval.runId, occurrenceId: first.id, content: 'B' }])
+    await until(async () => (await f.service.handle('getConversation', { id: first.conversationId }) as ConversationDetail).turns?.[0]?.status === 'completed')
+    expect(observed).toEqual([{ runId: approval.runId, conversationId: first.conversationId, content: 'B' }])
     await f.service.close(); const restarted = await f.open()
     expect((await restarted.handle('runAutomation', { id: plan.id, requestId: 'directory-auto-first' }) as AutomationOccurrence).id).toBe(first.id)
     expect(observed).toHaveLength(1)
     const second = await restarted.handle('runAutomation', { id: plan.id, requestId: 'directory-auto-second' }) as AutomationOccurrence
-    await until(async () => (await restarted.handle('getAutomationOccurrence', { id: second.id }) as AutomationOccurrence).status === 'completed')
-    expect(observed).toHaveLength(2); expect(observed[1]).toMatchObject({ occurrenceId: second.id, content: 'B' })
+    await until(async () => (await restarted.handle('getConversation', { id: second.conversationId }) as ConversationDetail).turns?.[0]?.status === 'completed')
+    expect(observed).toHaveLength(2); expect(observed[1]).toMatchObject({ conversationId: second.conversationId, content: 'B' })
     expect((await snapshot(restarted)).approvals).toEqual([]); expect(f.engine.errors).toEqual([])
     await evidence('automation', f, { first, second, observed, state: await snapshot(restarted) })
   })

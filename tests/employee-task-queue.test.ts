@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 定时话题按会话轮次验证，旧任务队列仍按旧任务回执验证。
  * [OUTPUT]: 2026-11-25 新定时运行和普通续聊脱离旧看板；旧人工任务使用明确 legacy 夹具验证兼容。
  * [OUTPUT]: 覆盖无Agent状态调用的本轮结果待确认/事件、重复执行、旧记录修复及人工状态/失败保护。
  * [OUTPUT]: 主聊天查询自己的定时/人工任务与真实输出；在途不受手动done影响，禁止越权及删除后回填。
@@ -52,7 +53,9 @@ async function setup(run: AgentEngine['run'], decide?: AgentEngine['decide']) {
   const createLegacy = (name: string, employeeId = 'researcher') => service.handle('saveAutomation', { purpose: 'employee-task', owner: { kind: 'employee', employeeId }, name, prompt: name, conversationPolicy: 'new-conversation', employeeIds: [employeeId], frequency: 'manual', time: '09:00', weekday: 1, timezone: 'UTC', enabled: true, notify: false }) as Promise<AutomationDefinition>
   const start = (d: AutomationDefinition, key = d.id) => service.handle('runAutomation', { id: d.id, requestId: key }) as Promise<AutomationOccurrence>
   const read = (id: string) => service.handle('getAutomationOccurrence', { id }) as Promise<AutomationOccurrence>
-  return { service, create, createLegacy, start, read, events, root, restart: async () => { const next = new AppService(options); cleanup.push(() => next.close()); await next.init(); return next } }
+  const topic = (occurrence: AutomationOccurrence) => service.handle('getConversation', { id: occurrence.conversationId }) as Promise<ConversationDetail>
+  const waitForTopic = (occurrence: AutomationOccurrence) => vi.waitFor(async () => expect((await topic(occurrence)).turns?.[0]?.status).toBe('completed'), { timeout: 10000 })
+  return { service, create, createLegacy, start, read, topic, waitForTopic, events, root, restart: async () => { const next = new AppService(options); cleanup.push(() => next.close()); await next.init(); return next } }
 }
 it('finishes explicit task runs in review and emits one result per round without Agent state calls', async () => {
   const hold = gate(), f = await setup(async ctx => { await hold.promise; await ctx.onDelta('天气结果，交给用户确认') }); cleanup.push(hold.release)
@@ -134,7 +137,7 @@ it('runs schedules in employee topics and continues through ordinary messages wi
     await ctx.onDelta('scheduled topic output')
   })
   const plan = await f.create('scheduled topic'), first = await f.start(plan)
-  await vi.waitFor(async () => expect((await f.read(first.id)).status).toBe('completed'), { timeout: 10000 })
+  await f.waitForTopic(first)
   expect(first.taskId).toBeUndefined()
   const topic = (await f.service.handle('getConversation', { id: first.conversationId }) as ConversationDetail).conversation
   expect(topic).toMatchObject({ employeeChat: 'topic', purpose: 'personal', agentIds: ['researcher'] })
@@ -142,11 +145,11 @@ it('runs schedules in employee topics and continues through ordinary messages wi
   await f.service.handle('sendMessage', { conversationId: topic.id, content: 'revise the result', mentionIds: [], requestId: 'scheduled-topic-revision' })
   await vi.waitFor(async () => expect((await f.service.handle('getConversation', { id: topic.id }) as ConversationDetail).messages.filter(m => m.senderType === 'agent' && m.status === 'completed')).toHaveLength(2), { timeout: 10000 })
   const second = await f.start(plan, 'separate-trigger')
-  await vi.waitFor(async () => expect((await f.read(second.id)).status).toBe('completed'), { timeout: 10000 })
+  await f.waitForTopic(second)
   expect(second.taskId).toBeUndefined(); expect(second.conversationId).not.toBe(first.conversationId)
   const old = await f.service.handle('saveAutomation', { owner: { kind: 'employee', employeeId: 'researcher' }, conversationPolicy: 'existing-conversation', conversationId: first.conversationId, name: 'old chat target', prompt: 'separate scheduled goal', frequency: 'manual', time: '09:00', weekday: 1, timezone: 'UTC', enabled: true, notify: false }) as AutomationDefinition
   const isolated = await f.start(old)
-  await vi.waitFor(async () => expect((await f.read(isolated.id)).status).toBe('completed'), { timeout: 10000 })
+  await f.waitForTopic(isolated)
   expect(isolated.taskId).toBeUndefined(); expect(isolated.conversationId).not.toBe(first.conversationId)
   expect(await f.service.handle('listEmployeeTasks', { employeeId: 'researcher', includeDone: true })).toMatchObject({ items: [] })
   const store = (f.service as unknown as { store: ProductStore }).store
@@ -159,7 +162,7 @@ it('runs schedules in employee topics and continues through ordinary messages wi
 it('detaches legacy scheduled cards without changing history, native identity or saved acceptance', async () => {
   const invoked = vi.fn(async (ctx: EngineContext) => { await ctx.onDelta('legacy scheduled output') })
   const f = await setup(invoked), occurrence = await f.start(await f.create('legacy scheduled task'))
-  await vi.waitFor(async () => expect((await f.read(occurrence.id)).status).toBe('completed'), { timeout: 10000 })
+  await f.waitForTopic(occurrence)
   const dataPath = (await f.service.handle('snapshot', undefined) as Snapshot).dataPath
   const original = await f.service.handle('getConversation', { id: occurrence.conversationId }) as ConversationDetail
   await f.service.close()
@@ -182,7 +185,7 @@ it('detaches legacy scheduled cards without changing history, native identity or
   }
 })
 
-it('keeps queued scheduled input independent of an edited legacy board brief', async () => {
+it('keeps the submitted scheduled input independent of an edited legacy board brief', async () => {
   const hold = gate(), contexts: EngineContext[] = []
   const f = await setup(async ctx => {
     contexts.push(ctx)
@@ -195,13 +198,13 @@ it('keeps queued scheduled input independent of an edited legacy board brief', a
   await vi.waitFor(() => expect(contexts).toHaveLength(1))
   await f.start(await f.create('busy employee two'))
   await vi.waitFor(() => expect(contexts).toHaveLength(2))
-  const queued = await f.start(await f.create('frozen scheduled instruction'))
-  expect(queued.status).toBe('queued'); expect(queued.taskId).toBeUndefined()
+  const submitted = await f.start(await f.create('frozen scheduled instruction'))
+  expect((await f.topic(submitted)).messages[0]?.content).toBe('frozen scheduled instruction'); expect(submitted.taskId).toBeUndefined()
   const task = await f.service.handle('createEmployeeTask', { employeeId: 'researcher', requestId: 'unrelated-legacy-card', description: 'unrelated legacy brief' }) as TrackedTask
   await f.service.handle('updateEmployeeTask', { employeeId: task.agentId, id: task.id, expectedRevision: task.revision, description: 'new saved brief' })
   hold.release()
-  await vi.waitFor(async () => expect((await f.read(queued.id)).status).toBe('completed'), { timeout: 10000 })
-  expect((await f.read(first.id)).status).toBe('completed')
+  await f.waitForTopic(submitted)
+  await f.waitForTopic(first)
   expect((await f.service.handle('getEmployeeTask', { employeeId: task.agentId, id: task.id }) as import('../packages/shared/src/domain/employee-tasks').EmployeeTaskDetail).task).toMatchObject({ description: 'new saved brief', status: 'pending' })
 })
 
@@ -447,7 +450,7 @@ it('admits separate tasks FIFO up to capacity, cancels a queued task without inv
     if (prompt === 'second') throw new Error('controlled task failure')
     await ctx.onDelta('result: ' + prompt)
   }); cleanup.push(hold.release)
-  const defs = await Promise.all(['first', 'concurrent', 'cancel me', 'second', 'last'].map(name => f.create(name)))
+  const defs = await Promise.all(['first', 'concurrent', 'cancel me', 'second', 'last'].map(name => f.createLegacy(name)))
   const first = await f.start(defs[0]); await vi.waitFor(() => expect(calls).toEqual(['first']))
   await f.start(defs[1]); await vi.waitFor(() => expect(calls).toEqual(['first', 'concurrent']))
   const cancelled = await f.start(defs[2]), second = await f.start(defs[3]), last = await f.start(defs[4])
@@ -507,7 +510,7 @@ it('recovers only never-started queue entries, fences changed permissions and re
   expect((await store.get<AutomationOccurrence>('automationOccurrences', again.occurrence.id))?.status).toBe('interrupted')
 })
 
-it('lets a different employee execute while the first employee queue is occupied', async () => {
+it('lets a different employee execute while the first employee session is still running', async () => {
   const hold = gate(), entered: string[] = []
   const f = await setup(async ctx => { entered.push(ctx.agent.id); await hold.promise; await ctx.onDelta('done') }); cleanup.push(hold.release)
   const snapshot = await f.service.handle('snapshot', undefined) as Snapshot
@@ -517,9 +520,9 @@ it('lets a different employee execute while the first employee queue is occupied
   await vi.waitFor(() => expect(entered).toEqual(['researcher']))
   const second = await f.start(await f.create('write', 'writer'))
   await vi.waitFor(() => expect(entered).toEqual(['researcher', 'writer']))
-  expect((await f.read(first.id)).status).toBe('running'); expect(second.status).toBe('running')
-  const queued = await f.start(await f.create('research later')); expect(queued.status).toBe('queued')
-  hold.release(); await vi.waitFor(async () => expect((await f.read(queued.id)).status).toBe('completed'), { timeout: 10000 })
+  for (const occurrence of [first, second]) expect((await f.topic(occurrence)).runs.some(run => run.status === 'running')).toBe(true)
+  const next = await f.start(await f.create('research later')); expect((await f.topic(next)).messages[0]?.content).toBe('research later')
+  hold.release(); await f.waitForTopic(next)
 })
 
 it('starts the durable queued task after an application restart without replaying the previous execution', async () => {
@@ -566,9 +569,9 @@ it('isolates scheduled employee tasks and their delivered results from the main 
   const plan = await f.service.handle('saveAutomation', input) as AutomationDefinition
   expect(plan.conversationPolicy).toBe('new-conversation')
   const first = await f.start(plan)
-  await vi.waitFor(async () => expect((await f.read(first.id)).status).toBe('completed'), { timeout: 10000 })
+  await f.waitForTopic(first)
   const second = await f.start(plan, 'next-day')
-  await vi.waitFor(async () => expect((await f.read(second.id)).status).toBe('completed'), { timeout: 10000 })
+  await f.waitForTopic(second)
   expect(new Set(contexts.map(c => c.id)).size).toBe(3)
   expect(contexts[2].inputs).not.toContain('Main-chat-only context')
   expect(contexts[2].inputs).not.toContain('reply: Summarize today')
@@ -1033,7 +1036,7 @@ it('runs two independent sessions of one employee concurrently while its main ch
   const main = (await f.service.handle('snapshot', undefined) as Snapshot).conversations.find(room => room.mainPrivate && room.agentIds[0] === 'researcher')!
   await f.service.handle('sendMessage', { conversationId: main.id, content: 'hello while working', mentionIds: [], requestId: 'independent-chat' })
   await vi.waitFor(async () => expect((await f.service.handle('getConversation', { id: main.id }) as ConversationDetail).messages.some(message => message.content === 'done: hello while working')).toBe(true))
-  expect((await f.read(first.id)).status).toBe('running'); expect((await f.read(second.id)).status).toBe('running')
+  for (const occurrence of [first, second]) expect((await f.topic(occurrence)).runs.some(run => run.status === 'running')).toBe(true)
   expect(calls.map(call => call.prompt)).toEqual(['background one', 'background two', 'hello while working'])
   hold.release()
 })

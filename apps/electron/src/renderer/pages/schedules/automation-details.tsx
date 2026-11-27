@@ -7,7 +7,7 @@
  */
 import type { ReactNode } from 'react'
 import type { AutomationDefinition, Snapshot } from '@boai/shared/domain'
-import { CalendarClock, Clock, Contact, FileText, InfoIcon, MessageCircle, Pencil } from '@/components/icons'
+import { CalendarClock, Clock, Contact, FileText, MessageCircle, Pencil } from '@/components/icons'
 import { Card } from '@/components/ui/card'
 import { automationOwnerLabel } from './automation-owner'
 import { scheduleSummary } from './schedule-presentation'
@@ -17,7 +17,6 @@ function DetailRow({ icon, title, children }: { icon: ReactNode; title: string; 
 }
 
 export function AutomationDetails({ definition, snapshot }: { definition: AutomationDefinition; snapshot: Snapshot }) {
-  const status = !definition.enabled ? '已暂停' : definition.sync === 'error' ? '同步失败' : definition.sync === 'pending' ? '等待同步' : definition.frequency === 'manual' ? '随时运行' : '已开启'
   return <Card className="automation-details gap-0 bg-muted p-0" role="region" aria-label="计划摘要">
     <dl className="automation-detail-fields soft-divide-y">
       <DetailRow icon={<Pencil />} title="名称">{definition.name}</DetailRow>
@@ -26,7 +25,6 @@ export function AutomationDetails({ definition, snapshot }: { definition: Automa
       <DetailRow icon={<Clock />} title="频率">{scheduleSummary(definition)}</DetailRow>
       {definition.frequency === 'monthly' && definition.startsOn && <DetailRow icon={<CalendarClock />} title="开始日期">{definition.startsOn}</DetailRow>}
       <DetailRow icon={<Contact />} title="执行员工">{automationOwnerLabel(definition.owner, snapshot)}</DetailRow>
-      <DetailRow icon={<InfoIcon />} title="状态">{status}</DetailRow>
     </dl>
   </Card>
 }
