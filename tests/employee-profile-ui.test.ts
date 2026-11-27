@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 联系人排序在保存回执前更新，保存失败恢复原顺序。
  * [OUTPUT]: 2026-11-09夹具移除已退役的通讯录工作区回调；本轮按用户要求未运行测试。
  * [OUTPUT]: 定时任务分类沿新显示名定位，保留原员工计划及切换检查。
  * [OUTPUT]: 高级设置按用户要求保留五项分类，暂不显示执行详情与任务入口。
@@ -30,6 +31,8 @@ import { AgentEditor } from '../apps/electron/src/renderer/components/employee/e
 import { ApprovalCard } from '../apps/electron/src/renderer/pages/conversations/-components/chat-view'
 import { EmployeeProfile } from '../apps/electron/src/renderer/pages/contacts/employee-profile'
 import { ContactsPage } from '../apps/electron/src/renderer/pages/contacts'
+import { ContactList } from '../apps/electron/src/renderer/pages/contacts/contact-list'
+import { emptyContactList } from '../packages/shared/src/domain/contact-list'
 import { webSourceConfig } from './fixtures/web-search-server'
 import { SourcePicker } from '../apps/electron/src/renderer/pages/sources/source-picker'
 
@@ -104,6 +107,34 @@ async function fixture(fullPage = false) {
   await act(async () => root.render(h(Page)))
   return { refresh, onMessage, identitySaved, updateSnapshot: () => updateSnapshot() }
 }
+
+test('reorders the contact rows before persistence acknowledges the move and restores them on failure', async () => {
+  const second = { ...agent, id: 'bob', name: 'Bob' }
+  const original = { ...emptyContactList(), revision: 1, agentOrder: [agent.id, second.id] }
+  let rejectSave!: (error: Error) => void
+  const save = new Promise<unknown>((_, reject) => { rejectSave = reject })
+  request.mockImplementation(async method => {
+    if (method === 'getContactList') return original
+    if (method === 'updateContactList') return save
+    throw new Error(`Unexpected request: ${method}`)
+  })
+  await act(async () => root.render(h(ContactList, {
+    api, snapshot: { ...snapshot(), agents: [agent, second] }, selected: null, busy: false,
+    onSelect() {}, onMessage() {}, onCreate() {}, onCreateTeam() {}, onRemoved() {}, refresh: async () => {},
+  })))
+  const order = () => [...host.querySelectorAll('[aria-label="联系人"] button')].map(row => row.getAttribute('aria-label'))
+  const bob = host.querySelector<HTMLButtonElement>('button[aria-label="Bob"]')!
+  expect(order()).toEqual(['Alice', 'Bob'])
+  await act(async () => bob.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', altKey: true, bubbles: true })))
+  expect(order()).toEqual(['Bob', 'Alice'])
+  expect(bob.draggable).toBe(false)
+  expect(request).toHaveBeenCalledWith('updateContactList', {
+    expectedRevision: 1, action: { kind: 'move', itemKind: 'agent', id: 'bob', targetId: 'alice', placement: 'before' },
+  })
+  await act(async () => rejectSave(new Error('保存失败')))
+  expect(order()).toEqual(['Alice', 'Bob'])
+  expect(bob.draggable).toBe(true)
+})
 
 test('independent search preference lists usable presets and saves without changing business source bindings', async () => {
   const id = 'bb3c6b67-463a-4d82-b630-c3c5c1af23ef'
