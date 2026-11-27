@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 固定历史快照哈希、键与数组顺序，以及超出整个目录预算时的部分结果。
  * [INPUT]: Real bounded skill trees and controlled replies shaped like installed Codex 0.167.0.
  * [OUTPUT]: Effective inventory never mistakes unsupported, malformed, stale or plugin-only evidence for an empty native surface.
  * [POS]: Codex/package pre-turn collector regression; no model, personal configuration or native capabilities are altered.
@@ -9,10 +10,10 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, expect, test, vi } from 'vitest'
 import { collectCodexCapabilityInventory, readCodexCapabilityConfig, readCodexCapabilitySkills } from '../packages/runtime/src/adapters/codex/capability-inventory'
-import { inspectResourceTree } from '../packages/runtime/src/modules/resources/local-resources'
+import * as resources from '../packages/runtime/src/modules/resources/local-resources'
 
 const roots: string[] = []
-afterEach(async () => { for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }) })
+afterEach(async () => { for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }); vi.restoreAllMocks() })
 async function fixture() {
   const cwd = await realpath(await mkdtemp(join(tmpdir(), 'boai-native-inventory-'))); roots.push(cwd)
   const input = { cwd, threadId: 'actual-thread', signal: new AbortController().signal }
@@ -46,8 +47,8 @@ test('hashes actual enabled skill trees, canonicalizes native root links and pre
   const result = await f.collect()
   expect(result.skills.complete).toBe(true)
   expect(result.skills.items).toEqual([
-    { name: 'native-skill', path: first.root, contentHash: (await inspectResourceTree(first.root)).hash },
-    { name: 'native-skill', path: second.root, contentHash: (await inspectResourceTree(second.root)).hash },
+    { name: 'native-skill', path: first.root, contentHash: (await resources.inspectResourceTree(first.root)).hash },
+    { name: 'native-skill', path: second.root, contentHash: (await resources.inspectResourceTree(second.root)).hash },
   ])
   expect(f.request.mock.calls.find(([method]) => method === 'skills/list')?.[1]).toEqual({ cwds: [f.input.cwd], forceReload: true })
   expect(new Set(f.request.mock.calls.map(([method]) => method))).toEqual(new Set(['skills/list', 'config/read']))
@@ -144,4 +145,31 @@ test('cancellation is propagated instead of converted to an empty inventory', as
   controller.abort(new Error('stopped'))
   await expect(collectCodexCapabilityInventory({ request: f.request }, { ...f.input, signal: controller.signal })).rejects.toThrow('stopped')
   expect(f.request).not.toHaveBeenCalled()
+})
+
+test('preserves the historical fingerprint across object key reordering while detecting array reordering', async () => {
+  const f = await fixture()
+  f.config.skills = ['b', 'a']
+  f.config.mcp_servers = { service: { env: { ZETA: 'no', ALPHA: 'yes' }, args: ['one', 'two'] } }
+  const before = await readCodexCapabilityConfig({ request: f.request }, f.input)
+  expect(before).toEqual({ fingerprint: '94330debaeef33fb481dbea02a6825c94d7e7ece3af61e403d072ed2687e8c6e' })
+  f.config.mcp_servers = { service: { args: ['one', 'two'], env: { ALPHA: 'yes', ZETA: 'no' } } }
+  expect(await readCodexCapabilityConfig({ request: f.request }, f.input)).toEqual(before)
+  f.config.skills = ['a', 'b']
+  expect(await readCodexCapabilityConfig({ request: f.request }, f.input)).not.toEqual(before)
+})
+
+test('the aggregate tree budget stops scanning after the first over-budget Codex skill', async () => {
+  const f = await fixture()
+  const first = await f.addSkill('first')
+  const second = await f.addSkill('second')
+  await f.addSkill('third')
+  const tree = await resources.inspectResourceTree(first.root)
+  const inspect = vi.spyOn(resources, 'inspectResourceTree').mockResolvedValue({ ...tree, entries: resources.RESOURCE_LIMITS.entries })
+  const result = await readCodexCapabilitySkills({ request: f.request }, f.input)
+  expect(inspect).toHaveBeenCalledTimes(2)
+  expect(result).toEqual({ complete: false, items: [
+    { name: 'first', path: first.root, contentHash: tree.hash },
+    { name: 'second', path: second.item.path },
+  ] })
 })

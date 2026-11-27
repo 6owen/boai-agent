@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 多个合法技能树累计越限时保留 Claude 原有不完整且空的结果。
  * [INPUT]: Claude 2.1.318 control shapes, actual isolated skill trees and production conversation admission with a controlled transport.
  * [OUTPUT]: Complete/opaque ownership evidence, bridge authentication, manual-only/unknown rejection, correlated replies and cancellation before prompt.
  * [POS]: Offline Claude package boundary; no model, personal configuration, real account or GUI.
@@ -8,6 +9,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { chmod, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
+import * as resources from '../packages/runtime/src/modules/resources/local-resources'
 import { collectClaudeCapabilityInventory, createClaudeCapabilityControl, type ClaudeCapabilityBridgeIdentity, type ClaudeCapabilityRequest } from '../packages/runtime/src/adapters/claude/capability-inventory'
 import { nativeCapabilityTargetIdentity } from '../packages/runtime/src/modules/resources/capability-native-ownership'
 import { runClaudeConversation } from '../packages/runtime/src/adapters/claude/conversation'
@@ -224,4 +226,18 @@ it('rejects a replaced config file identity using the bridge authority held at c
   const actual = await conversation('replaced-config')
   expect(actual.sent.filter(frame => frame.type === 'user')).toEqual([])
   expect(actual.onSubmitted).not.toHaveBeenCalled()
+})
+
+it('refuses the whole Claude skill result when valid trees together exceed the byte budget', async () => {
+  const first = await root(), second = await root()
+  for (const path of [first, second]) await writeFile(join(path, 'SKILL.md'), 'inventory fixture')
+  const tree = await resources.inspectResourceTree(first)
+  const inspect = vi.spyOn(resources, 'inspectResourceTree').mockResolvedValue({ ...tree, bytes: resources.RESOURCE_LIMITS.bytes })
+  try {
+    const skills = [first, second].map((path, index) => ({ name: String(index), path: join(path, 'SKILL.md'), source: 'userSettings' }))
+    const request = read([], { skills: { totalSkills: 2, includedSkills: 2, skillFrontmatter: skills } })
+    const result = await collectClaudeCapabilityInventory(request, { initialization, bridge, signal: signal() })
+    expect(inspect).toHaveBeenCalledTimes(2)
+    expect(result.skills).toEqual({ complete: false, items: [] })
+  } finally { inspect.mockRestore() }
 })
