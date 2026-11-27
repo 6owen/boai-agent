@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 执行记录回归仅显示本次员工和时间，覆盖原执行员工和旧会话补足的两种来源。
  * [OUTPUT]: 左上角双栏弹窗恢复默认折叠、选择详情及删除后清空右侧。
  * [OUTPUT]: 2026-11-27 验证列表只做会话定位，跳过记录静态展示原因。
  * [OUTPUT]: 2026-11-27 验证记录行定位原会话、无会话详情及独立日志删除。
@@ -26,7 +27,12 @@ let host: HTMLDivElement, root: Root
 let pending: Array<(page: AutomationHistoryPage) => void>
 let listeners: Set<Parameters<DesktopApi['subscribe']>[0]>
 let api: DesktopApi
-const record = { id: 'occurrence', name: '每日天气预报', startedAt: '2026-10-17T05:29:06Z', source: 'manual', status: 'running', deliveryStatus: 'pending' } as AutomationHistoryPage['occurrences'][number]
+const record = { id: 'occurrence', name: '每日天气预报', startedAt: '2026-10-17T05:29:06Z', source: 'manual', status: 'running', deliveryStatus: 'pending', conversationId: 'task-chat' } as AutomationHistoryPage['occurrences'][number]
+
+const historySnapshot = {
+  agents: [{ id: 'researcher', name: '研究员' }, { id: 'prior-employee', name: '原执行员工' }],
+  conversations: [{ id: 'task-chat', agentIds: ['researcher'] }],
+} as Pick<Snapshot, 'agents' | 'conversations'>
 
 beforeEach(() => {
   vi.useFakeTimers()
@@ -45,7 +51,7 @@ beforeEach(() => {
 })
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.useRealTimers(); vi.unstubAllGlobals() })
 
-async function render(active = true) { await act(async () => root.render(createElement(AutomationHistory, { api, active, automationId: 'plan' }))) }
+async function render(active = true) { await act(async () => root.render(createElement(AutomationHistory, { api, snapshot: historySnapshot, active, automationId: 'plan' }))) }
 async function resolve(page: AutomationHistoryPage) { await act(async () => pending.shift()!(page)) }
 async function change() {
   await act(async () => {
@@ -68,7 +74,8 @@ test('running updates refresh existing rows without inserting a loading row into
     await resolve({ occurrences: [{ ...record, status: count === 2 ? 'completed' : 'running' }] })
     expect(host.querySelector('[data-occurrence-id]')).toBe(row)
   }
-  expect(row!.textContent).toContain('运行结束')
+  expect(row!.textContent).toBe(`研究员${new Date(record.startedAt).toLocaleString('zh-CN', { hour12: false })}`)
+  expect(row!.querySelector('time')?.dateTime).toBe(record.startedAt)
   await render(false)
   await change()
   expect(pending).toHaveLength(0)
@@ -92,20 +99,24 @@ test('an already loaded empty list does not alternate between empty and loading 
 
 const button = (label: string) => [...document.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === label)!
 const clearAllButton = () => host.querySelector<HTMLButtonElement>('button[aria-label="全部清空"]')!
-test('opens the bound conversation while skipped records only show their reason', async () => {
+test('shows just the employee and time and opens the original conversation', async () => {
   const onConversation = vi.fn()
   await act(async () => root.render(createElement(AutomationHistory, {
-    api, active: true, onConversation,
-    conversations: [{ id: 'task-chat' }] as import('../packages/shared/src/domain').Conversation[],
+    api, active: true, snapshot: historySnapshot, onConversation,
   })))
   await resolve({ occurrences: [
-    { ...record, conversationId: 'task-chat', messageId: 'original-trigger' },
+    { ...record, conversationId: 'task-chat', messageId: 'original-trigger', status: 'queued',
+      plan: { owner: { kind: 'employee', employeeId: 'prior-employee' }, employeeIds: ['prior-employee'] } },
     { ...record, id: 'skipped', conversationId: 'task-chat', status: 'skipped', reason: '任务已暂停' },
   ] })
-  expect(host.querySelector('.automation-record-detail')).toBeNull()
-  expect(host.querySelector('[data-occurrence-id="skipped"]')?.textContent).toContain('任务已暂停')
+  const date = new Date(record.startedAt).toLocaleString('zh-CN', { hour12: false })
+  const linked = host.querySelector<HTMLButtonElement>(`button[data-occurrence-id="${record.id}"]`)!
+  expect(linked.textContent).toBe(`原执行员工${date}`)
+  expect(linked.querySelector('time')?.dateTime).toBe(record.startedAt)
+  expect(host.querySelector('[data-occurrence-id="skipped"]')?.textContent).toBe(`研究员${date}`)
   expect(host.querySelector('button[data-occurrence-id="skipped"]')).toBeNull()
-  await act(async () => host.querySelector<HTMLButtonElement>(`[data-occurrence-id="${record.id}"]`)!.click())
+  expect(host.querySelector('.automation-record-detail')).toBeNull()
+  await act(async () => linked.click())
   expect(onConversation).toHaveBeenCalledExactlyOnceWith('task-chat', 'original-trigger')
 })
 
@@ -235,7 +246,7 @@ test('the history dialog keeps collapsed groups on the left and opens the select
   request.mockImplementation(async (method, input) => method === 'getAutomationOccurrence' ? done as never : list(method, input))
   const navigateMessage = vi.fn()
   await act(async () => root.render(createElement(AutomationHistoryDialog, {
-    api, active: true, snapshot: { conversations: [{ id: 'task-chat' }] } as Snapshot, onClose() {}, onNavigateMessage: navigateMessage,
+    api, active: true, snapshot: historySnapshot as Snapshot, onClose() {}, onNavigateMessage: navigateMessage,
   })))
   await resolve({ occurrences: [record, done, failed] })
   const dialog = document.querySelector('[role="dialog"][aria-label="执行记录"]')!
@@ -257,6 +268,7 @@ test('the history dialog keeps collapsed groups on the left and opens the select
   await act(async () => headings[1].click())
   const row = sidebar.querySelector<HTMLButtonElement>('button[data-occurrence-id=done]')!
   expect(row.querySelector('.skill-list-icon')).toBeNull()
+  expect(row.querySelector('.conversation-title')?.textContent).toBe('研究员')
   expect(row.querySelector('.conversation-preview')?.textContent).toBe(new Date(record.startedAt).toLocaleString('zh-CN', { hour12: false }))
   expect(row.querySelector('time')?.getAttribute('datetime')).toBe(record.startedAt)
   await act(async () => headings[2].click())
@@ -280,7 +292,7 @@ test('Dialog search remains server-backed and clear freezes all history pages in
   const first = { ...record, status: 'completed' as const, automationId: 'plan-a', stateVersion: 7 }
   const older = { ...first, id: 'other-plan', automationId: 'plan-b', stateVersion: 3 }
   const running = { ...record, id: 'running' }
-  await act(async () => root.render(createElement(AutomationHistory, { api, active: true, grouped: true })))
+  await act(async () => root.render(createElement(AutomationHistory, { api, snapshot: historySnapshot, active: true, grouped: true })))
   await resolve({ occurrences: [first, running] })
   const input = host.querySelector<HTMLInputElement>('input[aria-label="搜索执行记录"]')!
   await act(async () => {
