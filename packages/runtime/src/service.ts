@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 手动定时任务进入队列后立即公开已提交的员工话题，执行记录可原位定位。
  * [OUTPUT]: 普通回复预览仅驻留在活跃运行内存中，公开消息仍沿原发布事务。
  * [OUTPUT]: 2026-11-27 会话删除发出关联日志移除事件；定时日志独立原子删除，原话题及执行数据保留。
  * [OUTPUT]: 2026-11-25 定时执行创建普通员工话题，原会话身份迁移与授权指纹保持；不派生看板任务。
@@ -1612,7 +1613,19 @@ export class AppService {
     if(method==='previewAutomation')return this.automations.preview(input)
     if(method==='pauseAutomation'||method==='deleteAutomation')return this.automations.pause(lookupSchema.parse(input).id,method==='deleteAutomation')
     if(method==='stopAutomation')return this.automations.stop(lookupSchema.parse(input).id)
-    if(method==='runAutomation'){const value=z.object({id,requestId:id}).strict().parse(input);return this.automations.run(value.id,value.requestId)}
+    if (method === 'runAutomation') {
+      const value = z.object({ id, requestId: id }).strict().parse(input)
+      const occurrence = await this.automations.run(value.id, value.requestId)
+      if (occurrence.status === 'queued') await this.serialize(async () => {
+        if (this.conversations.has(occurrence.conversationId)) return
+        const room = await this.store.get<Conversation>('conversations', occurrence.conversationId)
+        if (room && isScheduledEmployeeTopic(room) && room.occurrenceId === occurrence.id) {
+          this.conversations.set(room.id, room)
+          this.changed(room.id)
+        }
+      })
+      return occurrence
+    }
     if (method === 'listLaunchProfileModels' || method === 'getLaunchProfileModelCatalog') {
       const profile = await this.serialize(async () => this.profiles.get(lookupSchema.parse(input).id))
       if (profile.protocol !== 'codex-app-server') fail('此启动项不提供 Codex 模型目录')

@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 满容量或同上下文改为持久排队，重复同计划等待仍保留去重。
+ * [OUTPUT]: 满容量或同上下文持久排队，不同手动请求分别受理，相同请求仍归并。
  * [OUTPUT]: 本轮覆盖复制/员工入口、定时运行防连点、失败过程、严格私有判断及保留原预算的显式继续；实际范围以各用例为准。
  * [INPUT]: 真实 SQLite、自动化事务账本、原生调度和固定时间策略。
  * [OUTPUT]: 系统时钟跳变不延长已启动预算、数日漏跑不补执行；独立连接的新任务聊天单次绑定与提交故障整体回滚；跨实例受理、版本/恢复/迁移、投递回滚、同步与 DST 不变量验证。
@@ -116,13 +116,15 @@ it('reuses a manual request after edits and records archive/pause races without 
   await expect(repository.save(editing(d), 'allowed')).rejects.toThrow('不存在')
 })
 
-it('claims global and conversation capacity atomically and keeps waiting plans blocked while freeing their slot', async () => {
+it('claims global and conversation capacity atomically and accepts new manual requests while waiting plans release the global slot', async () => {
   const { repository } = await fixture()
   const plans = await Promise.all(['a', 'b', 'c'].map(conversationId => repository.save(input({ conversationId }), 'allowed')))
   const first = await repository.claim(manual(plans[0]), () => undefined)
   await repository.updateOccurrence(first.occurrence.id, 1, { status: 'waiting_user' })
   const waiting = await repository.claim(manual(plans[0], 'new-period'), () => undefined)
-  expect(waiting.occurrence.reason).toContain('等待上次处理')
+  expect(waiting).toMatchObject({ created: true, occurrence: { status: 'queued', manualRequestId: 'new-period' }, dispatch: { status: 'pending' } })
+  expect(waiting.occurrence.id).not.toBe(first.occurrence.id)
+  expect((await repository.claim(manual(plans[0], 'new-period'), () => undefined))).toMatchObject({ created: false, occurrence: { id: waiting.occurrence.id } })
   const allowed = await Promise.all(plans.slice(1).map(d => repository.claim(manual(d), () => undefined)))
   expect(allowed.every(result => result.occurrence.status === 'admitted')).toBe(true)
   const fourth = await repository.save(input({ conversationId: 'd' }), 'allowed')
