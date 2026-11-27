@@ -174,9 +174,12 @@
       "!**/*.map",
       "!**/*.d.{ts,mts,cts}",
       "!**/node_modules/**/{test,tests,__tests__,docs,examples,coverage}{,/**/*}",
+      "!**/node_modules/sherpa-onnx-*{,/**/*}",
+      "!**/node_modules/@duckdb/node-bindings-darwin-arm64/libduckdb.dylib",
       "!**/node_modules/agent-{browser,desktop}/bin/*-{linux,win32}-*",
       "!**/node_modules/agent-{browser,desktop}/bin/*-darwin-!(${arch}|${arch}.sha256)"
     ],
+    "afterPack": "./scripts/build-mac-runtime.mjs",
     "asar": true,
     "asarUnpack": [
       "node_modules/@duckdb/**/*",
@@ -188,7 +191,6 @@
       "dist/skills-cli/**/*",
       "dist/main/app-icons/**/*",
       "dist/runtime/plugins/**/*",
-      "node_modules/sherpa-onnx*/**/*",
       "dist/voice-input/**/*",
       "node_modules/agent-browser/**/*",
       "node_modules/agent-desktop/**/*",
