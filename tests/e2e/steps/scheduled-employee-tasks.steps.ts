@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 定时定位后仅显示原话题，不自动挂载会话侧执行过程。
  * [OUTPUT]: 2026-11-25 定时自然触发、历史定位和通知直达员工话题；普通消息续改、原计划删除及重启不重放。
  * [INPUT]: Natural-minute schedules, actual session-scoped SDK tools and isolated Electron UI.
  * [OUTPUT]: Bobo once creation/recovery, real clock and trial isolation, topic navigation/revision, cleanup and restart checks.
@@ -121,6 +122,7 @@ Then('我能从定时记录定位员工话题并继续修改', async ({ runtime,
   await process.getByRole('button', { name: '定位聊天记录', exact: true }).last().click()
   const chat = page.locator(`.conversation-stage [data-conversation-id="${state.occurrence!.conversationId}"]`)
   await expect(chat).toBeVisible(); await expect(chat).toContainText('SCHEDULE_PANEL_DELIVERED')
+  await expect(page.locator('.detail-panel:visible [data-occurrence-detail-id], .detail-panel:visible #agent-execution-drawer')).toHaveCount(0)
   await expect(page.locator('[data-employee-tasks], [data-employee-task-dialog]')).toHaveCount(0)
   expect((await page.evaluate(() => window.boai.request('snapshot', undefined))).conversations.map(c => c.id).sort()).toEqual(conversations)
   expect(state.fixture!.requests.length).toBe(calls)

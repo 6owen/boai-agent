@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-26 定时执行定位仅打开原聊天消息，不自动打开右侧执行过程。
  * [OUTPUT]: 侧栏切换恢复右侧详情的显隐和标签，跳过恢复时的宽度及内容过渡。
  * [OUTPUT]: 首发草稿通过既有传输协议随首条消息提交图片或文件，选取不创建会话。
  * [OUTPUT]: 宿主通知经全局 Sonner 展示，查看动作沿原员工任务、定时结果与更新导航。
@@ -743,8 +744,9 @@ export function AppShell() {
   }
   const navigateExecutionMessage: import('@/components/detail-panel/execution-message-button').ExecutionMessageNavigation = (id, messageId, current, execution) => {
     if (execution.employeeTask) return openEmployeeTask({ type: 'employee-tasks', id: execution.employeeTask.employeeId, taskId: execution.employeeTask.taskId, requestId: crypto.randomUUID(), focusMessage: { id: messageId, requestId: crypto.randomUUID() } }, current)
+    if (execution.occurrenceId) return selectConversation(id, true, messageId, current)
     return selectConversation(id, true, messageId, current, () => {
-      openPanel(execution.occurrenceId ? { type: 'automation-occurrence', id: execution.occurrenceId } : { type: 'trace', id: execution.conversationId, runId: execution.runId, agentId: execution.agentId, requestId: crypto.randomUUID() }, 'conversations', current)
+      openPanel({ type: 'trace', id: execution.conversationId, runId: execution.runId, agentId: execution.agentId, requestId: crypto.randomUUID() }, 'conversations', current)
     })
   }
   const openLocalSkill = (id: string) => navigate(() => {

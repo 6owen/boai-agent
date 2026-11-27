@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 隔离预览为已有单聊消息配套静态执行历史，零模型调用，支持折叠状态截图。
  * [OUTPUT]: 设置导航经过二级菜单；隔离预览员工使用首批支持的小牛角色，真实默认值及共享行为夹具保持。
  * [INPUT]: Built BOAI application and existing isolated conversation/schedule fixtures.
  * [OUTPUT]: A real Electron page, demo data and native recording lifecycle.
@@ -11,7 +12,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { prepareGroupChat } from '../../tests/e2e/support/group-chat'
 import { seedScheduleUi } from '../../tests/e2e/support/schedule-ui'
-import type { DigitalAgent } from '../../packages/shared/src/domain'
+import type { AgentRun, DigitalAgent, Message } from '../../packages/shared/src/domain'
 import type { Desktop } from '../../tests/e2e/support/desktop'
 
 export async function createApp() {
@@ -73,6 +74,13 @@ export async function createApp() {
       seedBeforeLaunch: true, emulateViewport: false,
       seedAdditional: async (store, setup) => {
         await seedScheduleUi(store, setup.direct.id)
+        const messages = (await store.load<Message>('messages')).filter(message => message.conversationId === setup.direct.id).sort((a, b) => a.sequence - b.sequence)
+        const history: AgentRun[] = messages.filter(message => message.senderType === 'agent').slice(-3).map(message => ({
+          id: `ui-preview-${message.id}`, conversationId: setup.direct.id, agentId: message.senderId, agentName: message.senderName,
+          triggerMessageId: messages.filter(item => item.senderType === 'user' && item.sequence < message.sequence).at(-1)!.id,
+          messageId: message.id, status: 'completed', phase: 'execution', createdAt: message.createdAt, finishedAt: message.createdAt, toolEvents: [],
+        }))
+        await store.write(history.map(value => ({ collection: 'runs', id: value.id, value })))
         // This preview deliberately demonstrates the supported ox preset. Shared
         // behavior fixtures and real employee defaults remain unchanged.
         const researcher = (await store.load<DigitalAgent>('agents')).find(agent => agent.id === 'researcher')
