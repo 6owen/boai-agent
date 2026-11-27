@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 会话队列和调度准入使用同一持久顺序；执行器容量单独判断。
  * [OUTPUT]: 执行状态沿 shared/domain/automations 的完整状态或在途判断读取。
  * [OUTPUT]: 单次日程持久保存唯一UTC时间点与消费身份，计划保留历史且手动试运行不消费未来预约。
  * [OUTPUT]: 人工任务私有元数据冻结本次要求，复用原dispatch快照；任务编辑不改写已受理执行。
@@ -151,6 +152,14 @@ export type OccurrenceStatus = typeof AUTOMATION_OCCURRENCE_STATUSES[number]
 export function isOngoingOccurrence(status: OccurrenceStatus | undefined): status is typeof AUTOMATION_ONGOING_STATUSES[number] {
   return AUTOMATION_ONGOING_STATUSES.some(ongoing => ongoing === status)
 }
+type QueuedOccurrence = Pick<AutomationOccurrence, 'queueOrder' | 'admittedAt' | 'startedAt' | 'id'>
+
+export function compareQueuedOccurrences(a: QueuedOccurrence, b: QueuedOccurrence): number {
+  return (a.queueOrder ?? 0) - (b.queueOrder ?? 0)
+    || (a.admittedAt ?? a.startedAt).localeCompare(b.admittedAt ?? b.startedAt)
+    || a.id.localeCompare(b.id)
+}
+
 export type AutomationDeliveryStatus = 'pending' | 'delivered' | 'no_change' | 'partial' | 'blocked' | 'unknown'
 export interface AutomationOccurrence {
   taskId?: string

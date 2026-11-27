@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 会话队列和调度准入使用同一持久顺序；执行器容量单独判断。
  * [OUTPUT]: 执行状态沿 shared/domain/automations 的完整状态或在途判断读取。
  * [OUTPUT]: 员工定时只将消息提交给普通会话；会话状态由聊天运行时负责。
  * [OUTPUT]: 2026-11-27 会话删除后的定时日志墓碑不进入可见历史或活动状态。
@@ -34,7 +35,7 @@ import { z } from 'zod'
 import { parseSchedule, ScheduleError } from '@boai/shared/domain/schedules'
 import { isEmployeeTaskAssignment } from '@boai/shared/domain/tracked-tasks'
 import type { AutomationCreationSource, AutomationDefinition, AutomationInput, AutomationListQuery, AutomationOccurrence, AutomationsView, AutomationOrigin, AutomationMonitorRead } from '@boai/shared/domain/automations'
-import { automationNeedsAttention, isOngoingOccurrence } from '@boai/shared/domain/automations'
+import { automationNeedsAttention, isOngoingOccurrence, compareQueuedOccurrences } from '@boai/shared/domain/automations'
 import type { Message } from '@boai/shared/domain'
 import { ProductStore, type RecordTransaction, type StoredRecord } from '../../adapters/storage/product-store'
 import { NativeSchedules, AUTOMATION_WORKFLOW, nativeScheduleCron, type NativeAutomationVersion } from './native-schedules'
@@ -42,7 +43,7 @@ import { monitorPolicySchema } from './automation-monitor'
 import { linkEmployeeTask, syncEmployeeTask, taskIdentity, hasEmployeeTaskResult } from './employee-task-records'
 import { AutomationRepository } from './automation-repository'
 import { automationCollaborationSchema, automationOwnerSchema } from './automation-plan'
-import { activeOccurrence, pendingOccurrence, queuedOrder, sharesTaskExecutor, MAX_ACTIVE_AUTOMATIONS, nextTimes, scheduleSchema, automationCron, normalizeSchedule } from './schedule-policy'
+import { activeOccurrence, sharesTaskExecutor, MAX_ACTIVE_AUTOMATIONS, nextTimes, scheduleSchema, automationCron, normalizeSchedule } from './schedule-policy'
 export { calendarSlot, automationCron, nextTimes } from './schedule-policy'
 
 export const automationInputSchema = scheduleSchema.extend({ employeeTask: z.object({ id: z.string().min(1).max(200), expectedRevision: z.number().int().positive(), requirements: z.string().max(40000).optional(), message: z.custom<import('@boai/shared/ipc').Methods['sendMessage']['input']>().optional() }).strict().optional(), purpose: z.literal('employee-task').optional(), owner: automationOwnerSchema.optional(), collaboration: automationCollaborationSchema.optional(), requestId: z.string().min(1).max(200).optional(), id: z.string().max(200).optional(), expectedRevision: z.number().int().positive().optional(), name: z.string().trim().min(1).max(100), description: z.string().trim().max(1000).optional(), prompt: z.string().trim().min(1).max(40000), conversationPolicy: z.enum(['existing-conversation', 'new-conversation']).optional(), conversationId: z.string().min(1).max(200).optional(), employeeIds: z.array(z.string().min(1).max(200)).min(1).max(12).optional(), enabled: z.boolean(), notify: z.boolean(), notificationPolicy: z.enum(['all_results', 'important_only', 'muted']).optional(), taskKind: z.enum(['report', 'monitor']).optional(), monitor: monitorPolicySchema.optional() }).strict()
@@ -288,7 +289,7 @@ export class AutomationService {
     const view = await this.repository.view()
     const affected = view.definitions.filter(d => !d.deletedAt && (d.employeeIds?.some(id => agentIds.includes(id)) || conversationIds.includes(d.conversationId ?? '') || d.owner?.kind === 'employee' && agentIds.includes(d.owner.employeeId) || d.owner?.kind === 'group' && conversationIds.includes(d.owner.conversationId)))
     const definitionIds = new Set(affected.map(d => d.id))
-    const waiting = view.occurrences.filter(o => pendingOccurrence.has(o.status) && (definitionIds.has(o.automationId) || conversationIds.includes(o.conversationId)))
+    const waiting = view.occurrences.filter(o => isOngoingOccurrence(o.status) && (definitionIds.has(o.automationId) || conversationIds.includes(o.conversationId)))
     if (waiting.some(o => activeOccurrence.has(o.status) || this.monitors.has(o.id))) throw new Error('关联自动化仍在执行或收尾，请先停止并等待结束后再删除')
     for (const definition of affected.filter(d => d.enabled)) await this.repository.pause(definition.id)
     for (const occurrence of waiting) {
@@ -402,7 +403,7 @@ export class AutomationService {
   }
   private async drainQueue() {
     if (this.closing || this.backingUp) return
-    for (const queued of [...this.occurrences.values()].filter(o => o.status === 'queued').sort(queuedOrder)) {
+    for (const queued of [...this.occurrences.values()].filter(o => o.status === 'queued').sort(compareQueuedOccurrences)) {
       if (this.closing || this.backingUp) break
       const active = [...this.occurrences.values()].filter(o => activeOccurrence.has(o.status))
       if (active.length >= MAX_ACTIVE_AUTOMATIONS) break
@@ -426,7 +427,7 @@ export class AutomationService {
       this.monitors.delete(started.id)
       await this.refresh()
       const current = this.occurrences.get(started.id)
-      if (!current || !pendingOccurrence.has(current.status)) return
+      if (!current || !isOngoingOccurrence(current.status)) return
       let saved: AutomationOccurrence | undefined
       try {
         if (current.cancellationRequestedAt || this.closing) saved = await this.repository.updateOccurrence(current.id, current.stateVersion, { status: current.cancellationRequestedAt ? 'cancelled' : 'interrupted', deliveryStatus: 'unknown', reason: current.reason ?? '应用退出；监控不会自动重放', finishedAt: new Date().toISOString(), modelCalls: 0, usageIncomplete: false })
@@ -454,12 +455,12 @@ export class AutomationService {
     for (const o of this.occurrences.values()) {
         if (o.status === 'queued') continue
         if (o.taskKind === 'monitor') {
-          if (!pendingOccurrence.has(o.status) || this.monitors.has(o.id)) continue
+          if (!isOngoingOccurrence(o.status) || this.monitors.has(o.id)) continue
           const saved = await this.repository.updateOccurrence(o.id, o.stateVersion, { status: o.cancellationRequestedAt ? 'cancelled' : 'needs_review', deliveryStatus: 'unknown', reason: o.reason ?? '监控读取已退出但结果未完成提交；需核对，不会自动重读', finishedAt: new Date().toISOString(), modelCalls: 0, usageIncomplete: false })
           if (saved) { this.occurrences.set(o.id, saved); this.hooks.changed(); this.hooks.notify(); this.hooks.capacityAvailable?.() }
           continue
         }
-        if (!pendingOccurrence.has(o.status) && !(recovery && o.status === 'interrupted')) continue
+        if (!isOngoingOccurrence(o.status) && !(recovery && o.status === 'interrupted')) continue
         const update = await this.hooks.inspect(o)
         if (!update) continue
         // Only already committed, fully settled results can close a crash window. Never restart work here.
@@ -468,7 +469,7 @@ export class AutomationService {
           if (update.deliveryStatus === 'pending') update.deliveryStatus = 'unknown'
         }
         const next = { ...o, ...update }
-        if (!pendingOccurrence.has(next.status) && next.deliveryStatus === 'pending') next.deliveryStatus = 'unknown'
+        if (!isOngoingOccurrence(next.status) && next.deliveryStatus === 'pending') next.deliveryStatus = 'unknown'
         if (JSON.stringify(next) === JSON.stringify(o)) continue
         const saved = await this.repository.updateOccurrence(o.id, o.stateVersion, next)
         if (!saved) continue
@@ -491,7 +492,7 @@ export class AutomationService {
             const dispatch = await tx.get<import('@boai/shared/domain/automations').AutomationDispatch>('automationDispatches', input.id)
             if (!o || o.deletedAt || o.conversationId !== room.id || o.taskId !== room.employeeTaskId || o.status !== 'queued' || o.stateVersion !== input.expectedRevision || dispatch?.status !== 'pending') throw new Error('消息已开始执行或队列已变化，请刷新后操作')
             const all = await tx.list<AutomationOccurrence>('automationOccurrences')
-            const targets = input.action === 'send-now' ? all.filter(other => other.id !== o.id && other.conversationId === room.id && !other.deletedAt && other.status !== 'queued' && pendingOccurrence.has(other.status)).map(other => other.id) : []
+            const targets = input.action === 'send-now' ? all.filter(other => other.id !== o.id && other.conversationId === room.id && !other.deletedAt && other.status !== 'queued' && isOngoingOccurrence(other.status)).map(other => other.id) : []
             const next = input.action === 'remove' ? { ...o, stateVersion: o.stateVersion + 1, status: 'cancelled' as const, cancellationCause: 'user' as const, cancellationRequestedAt: new Date().toISOString(), finishedAt: new Date().toISOString(), reason: '用户移除排队消息' } : { ...o, stateVersion: o.stateVersion + 1, queueOrder: Math.min(0, ...all.filter(other => other.status === 'queued').map(other => other.queueOrder ?? 0)) - 1 }
             if (input.action === 'remove') {
               await tx.put({ collection: 'automationDispatches', id: o.id, value: { ...dispatch, status: 'failed' } })
@@ -505,7 +506,7 @@ export class AutomationService {
         await this.refresh()
         for (const target of receipt.targets) {
           const o = this.occurrences.get(target)
-          if (!o || !pendingOccurrence.has(o.status) || o.status === 'queued') continue
+          if (!o || !isOngoingOccurrence(o.status) || o.status === 'queued') continue
           const stopped = await this.repository.updateOccurrence(o.id, o.stateVersion, { status: 'cancelling', cancellationCause: 'user', cancellationRequestedAt: o.cancellationRequestedAt ?? new Date().toISOString(), reason: '用户立即发送另一条排队消息' })
           if (!stopped) throw new Error('当前执行已变化，请重试核对原操作')
           this.occurrences.set(stopped.id, stopped)
@@ -524,7 +525,7 @@ export class AutomationService {
       await this.hooks.critical(async () => {
         await request?.authorize()
         await this.refresh(); const o = this.occurrences.get(id)
-        if (!o || !pendingOccurrence.has(o.status) || cause === 'budget' && o.budgetScope) return
+        if (!o || !isOngoingOccurrence(o.status) || cause === 'budget' && o.budgetScope) return
         if (request && o.status !== 'cancelling' && o.stateVersion !== request.expectedStateVersion) throw new Error('本次执行已变化，请读取最新记录后停止')
         // Late callbacks from the retired elapsed-time limit cannot stop a run.
         if (expectedDeadline !== undefined) return

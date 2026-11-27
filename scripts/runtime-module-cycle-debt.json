@@ -4,7 +4,7 @@
   "automations": ["application", "collaboration", "conversations", "workspaces"],
   "browser": ["collaboration", "employees", "workspaces"],
   "collaboration": ["automations"],
-  "conversations": ["automations", "browser", "workspaces"],
+  "conversations": [ "browser", "workspaces"],
   "desktop-plugin": ["collaboration", "employees", "resources"],
   "employees": ["agent-state", "application", "collaboration", "conversations", "resources", "sources", "workspaces"],
   "media": ["employees", "workspaces"],
