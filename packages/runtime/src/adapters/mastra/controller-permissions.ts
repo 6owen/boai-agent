@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 内置浏览器命令沿 browser 模块的实现与类型，桌面、本机和 API 共用原合同。
  * [INPUT]: Official tool approval events, BOAI tool contracts and saved employee permissions.
  * [OUTPUT]: Native Session approval/resumption with existing approval UI and exact-call receipts.
  * [POS]: Permission-policy adapter; Session owns the approval gate and cancellation.
@@ -11,7 +12,7 @@ import type { ExecutionOperation } from '@boai/shared/domain/execution'
 import { withToolAuthorization } from '../../modules/employees/tool-authorization'
 import { desktopPluginCallSchema, desktopPluginWrites } from '@boai/shared/plugins/desktop-tools'
 import { browserPluginCallSchema, browserPluginWrites } from '@boai/shared/plugins/browser-tools'
-import { parseBrowserSingleCommand } from './browser-tool-runtime'
+import { parseBrowserSingleCommand } from '../../modules/browser/commands'
 import { summarizeMedia } from '../../modules/browser/media'
 
 type Kind = ExecutionOperation['kind']

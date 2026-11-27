@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 内置浏览器命令沿 browser 模块的实现与类型，桌面、本机和 API 共用原合同。
  * [OUTPUT]: 固定Craft v0.15.1的坐标点击/拖拽画布指引供工具目录与help共用，避免已迁入能力未告知员工。
  * [OUTPUT]: 共享原tokenizer供Craft脱敏迁入使用，执行仍只受单命令入口授权。
  * [OUTPUT]: Craft点击回退原因随工具结果返回，脚本命中不伪装成真实鼠标输入。
@@ -15,7 +16,7 @@ import type {
   BrowserPaneFns,
   BrowserScreenshotRegionArgs,
   BrowserWaitArgs,
-} from './browser-tool-types';
+} from './pane-types';
 
 import type { BrowserCommandImage, BrowserCommandResult } from '@boai/shared/ipc/browser'
 export type { BrowserCommandImage, BrowserCommandResult } from '@boai/shared/ipc/browser'

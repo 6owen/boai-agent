@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 内置浏览器命令沿 browser 模块的实现与类型，桌面、本机和 API 共用原合同。
  * [OUTPUT]: Craft原ClickResult保留真实mouse/script回退及原因，完整传递到模型回执。
  * [INPUT]: 原 boai-app 的 provider-neutral 浏览器合同与宿主受限 BrowserPaneFns。
  * [OUTPUT]: 保留原 tokenize/转义/AX refs/截图算法；严格单命令入口在任何宿主调用前拒绝批处理和未授权能力。

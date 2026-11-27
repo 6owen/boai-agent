@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 浏览器宿主入口经间接/延迟导入执行器或 Electron 也会在构建前被拒绝。
  * [INPUT]: A minimal workspace using real package names, the build resolver and CI checker.
  * [OUTPUT]: Runtime cycles, manifest direction and private imports fail while type and lazy edges work.
  * [POS]: Contract tests for pnpm check:workspace without the application build.
@@ -45,6 +46,21 @@ it('checks package manifests and actual module initialization against the same d
     await writeFile(view, "import '@6owen/avatar-motion/src/index.js'")
     expect(check).toThrow(/unresolved public export @6owen\/avatar-motion\/src\/index.js/)
     await writeFile(view, '')
+    const runtime = join(root, 'packages/runtime')
+    await mkdir(join(runtime, 'src/adapters'), { recursive: true })
+    await writeFile(join(runtime, 'package.json'), JSON.stringify({ name: '@boai/runtime', exports: { './browser': './src/browser.ts' } }))
+    await writeFile(join(runtime, 'src/browser.ts'), "export * from './commands'")
+    await writeFile(join(runtime, 'src/adapters/example.ts'), 'export const adapter = true')
+    const commands = join(runtime, 'src/commands.ts')
+    await writeFile(commands, "export const load = () => import('./adapters/example')")
+    expect(check).toThrow(/browser host entry reaches packages\/runtime\/src\/adapters\/example/)
+    await writeFile(commands, "import '@mastra/core/agent'")
+    expect(check).toThrow(/browser host entry reaches @mastra\/core\/agent/)
+    await writeFile(commands, "import 'electron/main'")
+    expect(check).toThrow(/browser host entry reaches electron\/main/)
+    await writeFile(commands, "import type { BrowserWindow } from 'electron'; export const parse = () => 1")
+    expect(check()).toContain('passed')
+
     await writeFile(join(avatar, 'package.json'), JSON.stringify({
       ...manifest, dependencies: { '@boai/electron': 'workspace:*' },
     }))

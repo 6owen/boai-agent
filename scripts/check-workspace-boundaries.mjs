@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 桌面浏览器命令公开入口的传递值依赖不得引入 Electron、执行器适配层或 Mastra SDK。
  * [OUTPUT]: 构建与边界检查共用显式开发导出解析；检查包含所有命名空间的工作区成员。
  * [OUTPUT]: 独立avatar-motion子模块可由Electron单向引用，无BOAI业务依赖。
  * [OUTPUT]: Canvas package stays independent; shared imports only its platform-neutral protocol.
@@ -156,7 +157,7 @@ for (const { path, workspace } of files) {
       if (!asset) edges.push({ target, staticImport: imported.staticImport })
     }
     if (['@boai/ui', '@boai/tokens', '@boai/runtime-plugin-sdk'].includes(workspace.name) && (builtins.has(value) || value === 'electron')) fail(path, `${at} platform import in portable package: ${value}`)
-    if (!imported.typeOnly && (builtins.has(value) || value === 'electron')) edges.push({ target: value, staticImport: false })
+    if (!imported.typeOnly && (builtins.has(value) || value === 'electron' || value.startsWith('electron/') || value.startsWith('@mastra/'))) edges.push({ target: value, staticImport: false })
   }
 }
 // Only synchronous ES module imports and re-exports impose initialization order.
@@ -181,23 +182,30 @@ function inspectImports(path) {
   inspected.add(path)
 }
 for (const path of graph.keys()) inspectImports(path)
-// A browser consumer of the shared root must not pull platform code through a barrel.
-const shared = byName.get('@boai/shared')
-if (shared) {
-  const entry = await resolvePublic(shared, shared.name)
-  if (entry) {
-    const visited = new Set()
-    function inspect(path, trail) {
-      if (visited.has(path)) return
-      visited.add(path)
-      for (const { target: next } of graph.get(path) ?? []) {
-        if (builtins.has(next) || next === 'electron') fail(entry, `portable shared root reaches ${next} through ${[...trail, display(path)].join(' -> ')}`)
-        else inspect(next, [...trail, display(path)])
-      }
+async function checkReachableImports(name, specifier, label, forbidden) {
+  const workspace = byName.get(name)
+  if (!workspace) return
+  const entry = await resolvePublic(workspace, specifier)
+  if (!entry) return
+  const visited = new Set()
+  function inspect(path, trail) {
+    if (visited.has(path)) return
+    visited.add(path)
+    for (const { target } of graph.get(path) ?? []) {
+      const chain = [...trail, display(path)]
+      if (forbidden(target)) fail(entry, `${label} reaches ${graph.has(target) ? display(target) : target} through ${chain.join(' -> ')}`)
+      else if (graph.has(target)) inspect(target, chain)
     }
-    inspect(entry, [])
   }
+  inspect(entry, [])
 }
+
+const electron = target => target === 'electron' || target.startsWith('electron/')
+await checkReachableImports('@boai/shared', '@boai/shared', 'portable shared root', target => builtins.has(target) || electron(target))
+const adapterRoot = resolve(root, 'packages/runtime/src/adapters') + sep
+await checkReachableImports('@boai/runtime', '@boai/runtime/browser', 'browser host entry', target =>
+  electron(target) || target.startsWith('@mastra/') || target.startsWith(adapterRoot))
+
 if (errors.length) {
   process.stderr.write(`Workspace static check failed (${errors.length}):\n${errors.join('\n')}\n`)
   process.exitCode = 1

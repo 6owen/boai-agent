@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 内置浏览器命令沿 browser 模块的实现与类型，桌面、本机和 API 共用原合同。
  * [OUTPUT]: Agent Desktop 可选插件接线；默认关闭、独立于旧computer-use，调用沿员工权限及真实图片。
  * [OUTPUT]: 独立浏览器插件参数在持久Trace/历史中隐藏，原始内存调用与工具名称保持。
  * [OUTPUT]: 持久观测同时脱敏网页fill/type命令，包括JSON嵌套和拒绝请求；模型内存参数不变。
@@ -7,7 +8,7 @@
  * [POS]: 浏览器截图持久化边界，不修改交给模型的内存媒体。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { redactBrowserCommand } from '../../adapters/mastra/browser-tool-redaction'
+import { redactBrowserCommand } from './command-redaction'
 import { createHash } from 'node:crypto'
 export function mediaSummary(value: string | Uint8Array, mimeType = 'application/octet-stream') {
   const data = typeof value === 'string' ? /^data:([^;,]+);base64,([\s\S]+)$/.exec(value) : null

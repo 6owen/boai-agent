@@ -119,8 +119,9 @@
     "apps/electron/src/renderer/components/browser/BrowserTabBadge.tsx": "src/renderer/components/browser/BrowserTabBadge.tsx",
     "apps/electron/src/renderer/components/browser/BrowserTabStrip.tsx": "src/renderer/components/browser/BrowserTabStrip.tsx",
     "apps/electron/src/renderer/components/browser/utils.ts": "src/renderer/components/browser/utils.ts",
-    "packages/shared/src/agent/browser-tool-types.ts": "src/runtime/adapters/mastra/browser-tool-types.ts",
-    "packages/shared/src/agent/browser-tool-runtime.ts": "src/runtime/adapters/mastra/browser-tool-runtime.ts"
+    "packages/shared/src/agent/browser-tool-types.ts": "packages/runtime/src/modules/browser/pane-types.ts",
+    "packages/shared/src/agent/browser-tool-runtime.ts": "packages/runtime/src/modules/browser/commands.ts",
+    "packages/shared/src/agent/browser-tool-redaction.ts": "packages/runtime/src/modules/browser/command-redaction.ts"
   },
   "adaptations": [
     "private employee/conversation/epoch persistent partitions",

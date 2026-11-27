@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 内置浏览器命令沿 browser 模块的实现与类型，桌面、本机和 API 共用原合同。
  * [OUTPUT]: 独立浏览器插件输入及截图沿原生媒体脱敏边界。
  * [OUTPUT]: Codex公开summary增量进入思考块；原始reasoning正文仍不暴露。
  * [OUTPUT]: 网页工具事件保留实际命令并隐藏填写值，截图仅存媒体摘要；完成事件不覆盖已记录参数，模型内存结果保持完整媒体。
@@ -8,7 +9,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
 import { summarizeMedia } from '../modules/browser/media'
-import { browserToolObservation } from './mastra/browser-tool-redaction'
+import { browserToolObservation } from '../modules/browser/command-redaction'
 import type { ExecutionEvent } from '@boai/shared/domain/execution'
 import type { CanonicalRuntimeActivityView } from '@boai/shared/rovai/contracts'
 import { createHash } from 'node:crypto'

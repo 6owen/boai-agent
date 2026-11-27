@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 内置浏览器命令沿 browser 模块的实现与类型，桌面、本机和 API 共用原合同。
  * [OUTPUT]: 宿主严格比较Runtime的有效执行版本；默认目录等价租约不重建窗口/refs，其他版本仍拒绝且升级不继承旧refs。
  * [OUTPUT]: 截图/快照无回执及截图后状态查询挂起均在实际页面退出后解除，后续任务新开窗、迟到回执不污染。
  * [OUTPUT]: 失效ref经真实CDP拒绝后可重新观察，未知写入仍保留核对。
@@ -21,7 +22,7 @@ import { createHash } from 'node:crypto'
 import { EventEmitter } from 'node:events'
 import { BrowserService } from '../apps/electron/src/main/browser/browser-service'
 import { BrowserPaneManager } from '../apps/electron/src/main/browser/browser-pane-manager'
-import { parseBrowserSingleCommand } from '../packages/runtime/src/adapters/mastra/browser-tool-runtime'
+import { parseBrowserSingleCommand } from '../packages/runtime/src/modules/browser/commands'
 import { APPLICATION_BROWSER_SCOPE } from '../packages/shared/src/ipc/browser'
 import type { BrowserLease, BrowserActionEnvelope } from '../packages/shared/src/ipc/browser'
 import { BrowserCDP } from '../apps/electron/src/main/browser/browser-cdp'
