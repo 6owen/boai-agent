@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 有上限的渠道读取沿先入先出保留最新正文，读取结束后释放。
  * [INPUT]: 生产聊天读取缓冲、连续消息与读取交错。
  * [OUTPUT]: 已结束读取和背景会话不保留正文；迟到旧读取不清除当前增量。
  * [POS]: 长时常驻聊天的内存所有权回归，不调用模型。
@@ -45,4 +46,17 @@ test('replacement releases the old read immediately and its late finally cannot 
   expect([...next.messages.values()]).toEqual([message('new', 'next')])
   buffer.clear()
   expect(next.messages.size).toBe(0)
+})
+
+test('a bounded read evicts the earliest distinct message and keeps the latest body for each id', () => {
+  const buffer = new LiveMessageBuffer(2)
+  const capture = buffer.begin('chat')
+  buffer.add(message('first'))
+  buffer.add(message('second'))
+  buffer.add(message('first', 'chat', 'revision'))
+  buffer.add(message('third'))
+  buffer.add(message('second', 'chat', 'revision'))
+  expect([...capture.messages.values()]).toEqual([message('second', 'chat', 'revision'), message('third')])
+  buffer.finish(capture)
+  expect(capture.messages.size).toBe(0)
 })

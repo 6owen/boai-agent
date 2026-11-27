@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 主聊天的刷新、实时事件和翻页统一从分页结果投影可见消息。
  * [OUTPUT]: 打开核心助手时仅续接可见主聊，已隐藏的旧会话通过空白首发入口重新开始。
  * [OUTPUT]: 群设置面板使用基础配置表单。
  * [OUTPUT]: 员工主聊天和独立话题在标题栏共用现有会话导航，支持从置顶员工进入话题。
@@ -190,7 +191,7 @@ import { channelConversations, conversationSection, isEmployeeMainChat, isChanne
 import type { AppEvent, Methods } from '@boai/shared/ipc'
 import type { Artifact, DigitalAgent, Conversation, Message, Snapshot } from '@boai/shared/domain'
 import { READING_LIMITS, type ConversationReadingState, type ConversationSearchResult, type ConversationSearchTarget, type ConversationView } from '@boai/shared/domain/reading'
-import { mergeMessagePages, mergeReadingState, readingSourceKey, sameSearchTarget, updateLiveMessage } from '@/pages/conversations/reading-state'
+import { mergeMessagePages, mergeReadingState, readingSourceKey, sameSearchTarget, updateLiveMessage, withMessagePage } from '@/pages/conversations/reading-state'
 import { LiveMessageBuffer } from '@/pages/conversations/live-message-buffer'
 import { ConversationSearch, type ConversationSearchRequest } from '@/pages/conversations/-components/conversation-search'
 import { MATERIAL_LIMITS, type ConversationMaterial } from '@boai/shared/domain/materials'
@@ -478,9 +479,9 @@ export function AppShell() {
       if (anchor && anchor !== aroundMessageId && !result.messagePage.items.some(item => item.messageId === anchor)) return
       let messagePage = result.messagePage
       for (const message of capture.messages.values()) messagePage = updateLiveMessage(messagePage, message, !location.messageId)
-      const updated: ConversationView = { ...result, messagePage, messages: messagePage.items.flatMap(item => item.message ? [item.message] : []) }
       const previous = detailRef.current
-      if (previous?.conversation.id === id) updated.reading = mergeReadingState(previous.reading, updated.reading)
+      const reading = previous?.conversation.id === id ? mergeReadingState(previous.reading, result.reading) : result.reading
+      const updated = withMessagePage(result, messagePage, reading)
       materialDrafts.reconcile(id, result.materials ?? [])
       setDetail(updated); setDetailLoading(false); setPageEdges({ before: true, after: true })
       const last = updated.messages.filter(message => message.status === 'completed').at(-1)
@@ -567,7 +568,7 @@ export function AppShell() {
       if (event.type !== 'message') return
       setMessageTimes(previous => { const id = event.message.conversationId, time = event.message.createdAt; return previous[id] && previous[id] >= time ? previous : { ...previous, [id]: time } })
       liveMessages.current.add(event.message)
-      if (event.message.conversationId === selectedRef.current && routeRef.current.page === 'conversations') setDetail(previous => { if (!previous || previous.conversation.id !== event.message.conversationId) return previous; const messagePage = updateLiveMessage(previous.messagePage, event.message, !viewLocations.current.get(event.message.conversationId)?.messageId); return { ...previous, messagePage, messages: messagePage.items.flatMap(item => item.message ? [item.message] : []) } })
+      if (event.message.conversationId === selectedRef.current && routeRef.current.page === 'conversations') setDetail(previous => { if (!previous || previous.conversation.id !== event.message.conversationId) return previous; const messagePage = updateLiveMessage(previous.messagePage, event.message, !viewLocations.current.get(event.message.conversationId)?.messageId); return withMessagePage(previous, messagePage) })
       if (event.message.status !== 'streaming') {
         if (event.message.status === 'completed') setPreviews(previous => ({ ...previous, [event.message.conversationId]: `${event.message.senderName}：${event.message.content.slice(0,90)}` }))
         schedule()
@@ -653,7 +654,7 @@ export function AppShell() {
       if (anchorId && !messagePage.items.some(item => item.messageId === anchorId)) return
       const latestReading = detailRef.current?.conversation.id === id ? detailRef.current.reading : previous.reading
       refreshedWindow = messagePage
-      setDetail({ ...next, reading: mergeReadingState(latestReading, next.reading), messagePage, messages: messagePage.items.flatMap(item => item.message ? [item.message] : []) }); setPageEdges({ before: true, after: true })
+      setDetail(withMessagePage(next, messagePage, mergeReadingState(latestReading, next.reading))); setPageEdges({ before: true, after: true })
     } catch (failure) { if (mounted.current && token === detailRequest.current && selectedRef.current === id && routeRef.current.page === 'conversations' && !clearingConversations.current.has(id) && !cleanupRequests.current.has(id)) toast.error(errorText(failure)) }
     finally {
       liveMessages.current.finish(capture)

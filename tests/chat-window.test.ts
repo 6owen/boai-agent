@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 渠道读尾页期间只接受本会话实时正文；迟到旧页和手动取消仍有独立保护。
  * [OUTPUT]: 恢复已挂载的同一会话时跳过消息入场，新会话就绪仍有过渡。
  * [OUTPUT]: 单聊预置角色的动画画布与预览入口已下线，静态头像与会话操作仍可用。
  * [OUTPUT]: 2026-11-16聊天窗口夹具补完整matchMedia订阅和独立WebGL播放器替身，原聊天/减少动态断言保持。
@@ -294,9 +295,14 @@ it.each([false, true])('loads the channel tail without an old focus and rejects 
     if (input.aroundMessageId) return view('A', 50)
     return tail.promise
   })
+  const listeners = new Set<Parameters<DesktopApi['subscribe']>[0]>()
+  const subscribe: DesktopApi['subscribe'] = listener => {
+    listeners.add(listener)
+    return () => { listeners.delete(listener) }
+  }
   let chat!: ChannelChatWindow
   await act(async () => root.render(h(ChannelsTab, {
-    api: { request, subscribe: () => noop } as unknown as DesktopApi,
+    api: { request, subscribe } as unknown as DesktopApi,
     agent: props.snapshot.agents[0]!, active: true, chatActive: true, internal: true, onMaterials: noop,
     target: { type: 'channels', id: 'employee', conversationId: 'A', requestId: 'panel', focusMessage: { id: 'A-50', requestId: 'focus' } },
     listProps: { snapshot: { ...props.snapshot, conversations: [{ ...room('A'), purpose: 'channel-internal' }] } } as ComponentProps<typeof ChannelsTab>['listProps'],
@@ -309,10 +315,18 @@ it.each([false, true])('loads the channel tail without an old focus and rejects 
   await act(async () => { loading = chat.onLatest(() => current) })
   expect(chat.paging).toBe(false)
   expect(request.mock.calls.at(-1)?.[1]).toEqual({ conversationId: 'A', limit: 80, aroundMessageId: undefined })
+  await act(async () => {
+    for (const listener of listeners) {
+      listener({ type: 'message', message: { ...view('A', 1000).messages[0]!, content: '实时正文', status: 'streaming' } })
+      listener({ type: 'message', message: { ...view('B', 1000).messages[0]!, content: '其他会话正文', status: 'streaming' } })
+    }
+  })
   if (cancel) { current = false; chat.onLocation('A-50', false, 350) }
   await act(async () => { tail.resolve(view('A', 1000)); expect(await loading).toBe(!cancel) })
   await act(async () => older.resolve(view('A', 10)))
   expect(chat.detail.messages[0]!.id).toBe(cancel ? 'A-50' : 'A-1000')
+  expect(chat.detail.messages[0]!.content).toBe(cancel ? '正文A-50' : '实时正文')
+  expect(chat.detail.messages.every(message => message.conversationId === 'A')).toBe(true)
   expect(chat.paging).toBe(false)
 })
 

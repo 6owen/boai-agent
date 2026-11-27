@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 主聊天与渠道面板从当前分页原件统一投影消息列表。
  * [OUTPUT]: 历史预取边缘240px与跟随/已到边缘80px分别定义，分页保持有界窗口，不把预取范围当作最新跟随。
  * [INPUT]: 有界个人历史页、已捕获完成身份、当前阅读/锚点 CAS 与明确搜索目标。
  * [OUTPUT]: 流式更新不继承旧完成快照、可见完成去重、有界历史合并与独立版本合并；统一历史滚动边界距离；会话/消息/文件导航固定身份不漂移；搜索分页保持索引代际与最新覆盖回执，关键词摘录按多个原词有界高亮。
@@ -6,7 +7,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import type { Message } from '@boai/shared/domain'
-import { READING_LIMITS, type ConversationCompletionIdentity, type ConversationMessageItem, type ConversationMessagePage, type ConversationReadingState, type ConversationSearchPage, type ConversationSearchQuery, type ConversationSearchResult, type ConversationSearchTarget } from '@boai/shared/domain/reading'
+import { READING_LIMITS, type ConversationCompletionIdentity, type ConversationMessageItem, type ConversationMessagePage, type ConversationReadingState, type ConversationView, type ConversationSearchPage, type ConversationSearchQuery, type ConversationSearchResult, type ConversationSearchTarget } from '@boai/shared/domain/reading'
 
 export const READING_UI_LIMITS = { searchPages: 10, debounce: 200, observeDelay: 250, anchorDelay: 500, historyEdgeDistance: 80, historyPrefetchDistance: 240 } as const
 const sameContent = (a: Message, b: Message) => a.id === b.id && a.conversationId === b.conversationId && a.senderType === b.senderType && a.senderId === b.senderId && a.content === b.content && JSON.stringify(a.materialIds ?? []) === JSON.stringify(b.materialIds ?? []) && JSON.stringify(a.materialSources ?? []) === JSON.stringify(b.materialSources ?? [])
@@ -24,6 +25,10 @@ export function updateLiveMessage(page: ConversationMessagePage, message: Messag
   const items = [...page.items.filter(item => item.messageId !== message.id), item].sort((a, b) => a.sequence - b.sequence || a.messageId.localeCompare(b.messageId)).slice(-READING_LIMITS.maxPage)
   return pageWithItems(page, items)
 }
+export function withMessagePage(view: ConversationView, messagePage: ConversationMessagePage, reading = view.reading): ConversationView {
+  return { ...view, reading, messagePage, messages: messagePage.items.flatMap(item => item.message ? [item.message] : []) }
+}
+
 export function pageWithItems(page: ConversationMessagePage, items: ConversationMessageItem[]): ConversationMessagePage {
   const first = items.at(0), last = items.at(-1)
   return { ...page, items, beforeCursor: first ? { id: first.messageId, sequence: first.sequence } : undefined, afterCursor: last ? { id: last.messageId, sequence: last.sequence } : undefined }
