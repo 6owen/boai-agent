@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 持久标识的 JSON 字节摘要使用共用编码，字段及顺序由本业务传入。
  * [OUTPUT]: 2026-11-24 第三阶段：Mastra 第三阶段回归覆盖原生文件/MCP/快照/Trace、实时补充、断流及 OM 致命失败退出；完整结果见实施记录。
  * [OUTPUT]: 2026-10-11 第13组原生生产合同回归与旧阶段兼容分开；夹具成功不冒充真实模型验收。
  * [OUTPUT]: policy10完整聊天映射夹具在两次recover中零调用且原记录不改；明确新消息按当前策略重建，无resume，新会话实际完成后才允许后续增量；不代替旧应用升级证据。
@@ -13,6 +14,7 @@
  * [POS]: Claude员工引擎模块验收。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
+import { jsonSha256 as digest } from '../packages/runtime/src/json-digest'
 import { afterEach, expect, it } from 'vitest'
 import { chmod, copyFile, mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -24,7 +26,6 @@ import { LegacyClaudeEmployeeEngine as ClaudeEmployeeEngine } from '../packages/
 import { claudeProvider } from '../packages/runtime/src/adapters/claude/provider'
 import { type ClaudePhaseDiagnostic, verifyClaudeProgram } from '../packages/runtime/src/adapters/claude/turn'
 import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
-import { digest } from '../packages/runtime/src/adapters/native-sessions'
 import { prepareMemoryExtraction } from '../packages/runtime/src/modules/employees/memory-extraction'
 
 const cleanup:(()=>Promise<unknown>)[]=[]

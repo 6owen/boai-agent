@@ -1,16 +1,18 @@
 /*
+ * [OUTPUT]: 持久标识的 JSON 字节摘要使用共用编码，字段及顺序由本业务传入。
  * [INPUT]: Explicit owner preparation, completed Work/Run source facts and original authorization hooks.
  * [OUTPUT]: Target-bound handoffs consumed only by a later explicit native run, with exact provider receipts.
  * [POS]: H2 host bridge; cross-employee sources are restricted to shared-group public results.
  * [PROTOCOL]: Update Header and contexts/.folder.md when changed.
  */
+import { jsonSha256 } from '../../json-digest'
 import type { AgentRun, Conversation, DigitalAgent, Message, WorkItem } from '@boai/shared/domain'
 import type { ArtifactVersion } from '@boai/shared/domain/artifacts'
 import type { NativeAction } from '@boai/shared/domain/execution'
 import { handoffPrepareSchema, handoffQuerySchema, handoffCancelSchema, type HandoffPrepareInput, type HandoffQuery, type HandoffCancelInput, type HandoffSummary } from '@boai/shared/domain/context-handoff'
 import type { EngineContext } from '../../contracts'
 import type { ProductStore, RecordTransaction } from '../../adapters/storage/product-store'
-import { ContextHandoffRepository, HANDOFF_COLLECTION, HandoffConflictError, handoffHash, handoffMessage, type ContextHandoff, type HandoffTarget } from './context-handoff'
+import { ContextHandoffRepository, HANDOFF_COLLECTION, HandoffConflictError, handoffMessage, type ContextHandoff, type HandoffTarget } from './context-handoff'
 import { handoffBudget, type HandoffBudgetInput } from './handoff-budget'
 
 export interface HandoffHostHooks {
@@ -22,7 +24,7 @@ export interface HandoffHostHooks {
   run(tx: RecordTransaction, run: AgentRun, targetAgentId: string): Promise<void>
   artifact(tx: RecordTransaction, artifact: ArtifactVersion, targetAgentId: string): Promise<void>
 }
-const sourceVersion = (work: WorkItem, run: AgentRun) => handoffHash([work.version, work.resultVersion, run.id, run.status, run.messageId])
+const sourceVersion = (work: WorkItem, run: AgentRun) => jsonSha256([work.version, work.resultVersion, run.id, run.status, run.messageId])
 const summary = (transfer: ContextHandoff, unavailableReason?: string): HandoffSummary => ({ id: transfer.id, revision: transfer.revision, source: transfer.source, target: transfer.target, reason: transfer.reason,
   status: transfer.status, coverage: transfer.coverage, payloadHash: transfer.payloadHash, attemptId: transfer.attempts.at(-1)?.id, available: !transfer.invalidated && !unavailableReason,
   unavailableReason: unavailableReason ?? transfer.invalidated, createdAt: transfer.createdAt, updatedAt: transfer.updatedAt })
@@ -71,7 +73,7 @@ export class ContextHandoffService {
     for (const entry of transfer.sourceMessages) {
       const message = await tx.get<Message>('messages', entry.id)
       if (!message || !work.resultMessageIds.includes(message.id) && !(target.agentId === source.agentId && message.id === work.sourceMessageId)) throw new HandoffConflictError('消息不属于获准交接的任务结果')
-      if (message.conversationId !== source.conversationId || handoffHash(message) !== entry.hash) throw new HandoffConflictError('交接原消息已删除或变化')
+      if (message.conversationId !== source.conversationId || jsonSha256(message) !== entry.hash) throw new HandoffConflictError('交接原消息已删除或变化')
       if (message.id !== work.sourceMessageId && (message.senderType !== 'agent' || message.senderId !== source.agentId)) throw new HandoffConflictError('结果消息并非原负责员工交付')
       await this.hooks.message(tx, message, target.agentId)
     }
@@ -102,7 +104,7 @@ export class ContextHandoffService {
       const configured = await this.target(tx, input.targetAgentId, input.targetConversationId)
       const { work, run, conversation } = await this.source(tx, input.sourceWorkId, input.sourceRunId, input.targetAgentId, input.targetConversationId)
       await this.hooks.assertIdle(work.conversationId)
-      const requestHash = handoffHash([work.ownerAgentId, input.requestId])
+      const requestHash = jsonSha256([work.ownerAgentId, input.requestId])
       const outstanding = (await this.scoped(tx, { agentId: input.targetAgentId, conversationId: input.targetConversationId })).find(transfer => !transfer.invalidated && !['delivered', 'cancelled'].includes(transfer.status) && transfer.id !== requestHash)
       if (outstanding) throw new HandoffConflictError('目标已有待交接或未知投递，请先核对原交接')
       const ids = [...new Set([...(work.ownerAgentId === input.targetAgentId ? [work.sourceMessageId] : []), ...work.resultMessageIds])]

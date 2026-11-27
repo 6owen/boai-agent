@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 持久标识的 JSON 字节摘要使用共用编码，字段及顺序由本业务传入。
  * [OUTPUT]: 表情回应共用输出队列与channelDeliveries原回执，未知和重启均不重发。
  * [OUTPUT]: 2026-10-19应用业务协议：导出原渠道绑定与动作schema供公共业务协议复用。
  * [OUTPUT]: 绑定变更在原串行边界通知执行来源失效；实时核对原请求者与员工，停用不撤销历史接收者权限。
@@ -13,7 +14,8 @@
  * [POS]: 第16组业务接线；不自建平台协议或员工执行循环。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
-import { createHash, randomUUID } from 'node:crypto'
+import { jsonSha256 as key } from '../../json-digest'
+import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import type { DigitalAgent, Message, Conversation, MaterialSelection, AgentRun, WorkItem, WorkBudget } from '@boai/shared/domain'
 import { CHANNEL_PLATFORMS, type ChannelBinding, type ChannelBindingAction, type ChannelBindingInput, type ChannelBindingState, type ChannelConversationSource, type ChannelDelivery, type ChannelMessageSource } from '@boai/shared/domain/channels'
@@ -52,7 +54,6 @@ interface ChannelHooks {
 const id = z.string().trim().min(1).max(512)
 export const channelBindingInputSchema = z.object({ id: id.optional(), agentId: id, platform: z.enum(CHANNEL_PLATFORMS), appId: id, robotCode: id.optional(), name: z.string().trim().min(1).max(100), credential: z.string().min(1).max(8000).optional(), allowedUserIds: z.array(id).min(1).max(100), allowedChatIds: z.array(id).max(100), ownerUserId: id.nullable().optional(), expectedRevision: z.number().int().positive().optional(), botUserId: id.optional(), requestId: id }).strict()
 export const channelBindingActionSchema = z.object({ id, expectedRevision: z.number().int().positive() }).strict()
-const key = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex')
 const record = <T extends { id: string }>(collection: string, value: T) => ({ collection, id: value.id, value })
 const time = () => new Date().toISOString()
 function connectionFailureDetail(error: unknown) {

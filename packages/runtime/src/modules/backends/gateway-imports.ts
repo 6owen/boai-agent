@@ -1,11 +1,13 @@
 /*
+ * [OUTPUT]: 持久标识的 JSON 字节摘要使用共用编码，字段及顺序由本业务传入。
  * [OUTPUT]: 网关目录归连接领域；在途刷新用独立引用，结束或删除后回收且不接受迟到回执。
  * [INPUT]: Validated OS import deliveries, product SQLite transactions and explicit confirmation identities.
  * [OUTPUT]: Persistent bounded drafts, source conflicts and atomic connection/receipt commits without model calls.
  * [POS]: Model gateway import repository; the host installs committed connections and cancels affected runs.
  * [PROTOCOL]: Update Header and backends/.folder.md when changing import or receipt semantics.
  */
-import { createHash, randomUUID } from 'node:crypto'
+import { jsonSha256 as hash } from '../../json-digest'
+import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import type { Connection } from '@boai/shared/domain'
 import { GATEWAY_IMPORT_LIMIT, parseGatewayImport, sameGatewayImportSource, type GatewayImportConfirmation, type GatewayImportDraft, type GatewayImportReceipt, type GatewayImportView } from '@boai/shared/domain/gateway-import'
@@ -13,7 +15,6 @@ import type { ProductStore } from '../../adapters/storage/product-store'
 import { GATEWAY_CATALOG_COLLECTION } from './gateway-catalog-store'
 
 const DRAFTS = 'gatewayImportDrafts', PAYLOADS = 'gatewayImportPayloads', DELIVERIES = 'gatewayImportDeliveries', RECEIPTS = 'gatewayImportReceipts'
-const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex')
 const id = z.string().uuid()
 const confirmationSchema = z.object({ draftId: id, requestId: id, target: z.object({ id: z.string().min(1).max(200), revision: z.number().int().positive() }).strict().optional() }).strict()
 interface StoredReceipt { inputHash: string; receipt: GatewayImportReceipt }

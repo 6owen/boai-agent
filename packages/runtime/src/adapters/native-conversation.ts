@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 持久标识的 JSON 字节摘要使用共用编码，字段及顺序由本业务传入。
  * [OUTPUT]: 已授权会话消息的窗口、当前轮及身份投影归 conversations；模型角色/图片装配归 API 适配器。
  * [OUTPUT]: 当前获准包/贡献身份参与原生session续用；无包保留原指纹，启停/解绑或版本变化不续用旧能力上下文。
  * [OUTPUT]: 原生受理身份仅核对投递，不覆盖onSession提供的续用引用；Pi持久文件与公共sessionId分别保留。
@@ -37,6 +38,7 @@
  * [POS]: 本机员工共同生产入口；旧native-employee仅保留旧阶段兼容代码。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
+import { jsonSha256 as digest } from '../json-digest'
 import { launchProfileConfiguration } from '@boai/shared/domain/backends'
 import type { ModelUsage } from '@boai/shared/domain'
 import { behaviorModelContext, needsReflectionReview, reflectionReviewInstructions, reflectionReviewPrompt } from '../modules/employees/behavior-context'
@@ -51,7 +53,7 @@ import type { EngineContext } from '../contracts'
 import type { ProductStore } from './storage/product-store'
 import type { NativeTool } from './native-task'
 import { workingDirectoryTarget } from '../modules/workspaces/working-directory'
-import { NativeSessions, digest } from './native-sessions'
+import { NativeSessions } from './native-sessions'
 import { decisionMessageData } from '../modules/conversations/message-context'
 import { boboResponseInstructions } from '../modules/employees/phase-instructions'
 import { createNativeProducts } from './native-products'

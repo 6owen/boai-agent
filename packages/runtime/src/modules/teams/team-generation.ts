@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 持久标识的 JSON 字节摘要使用共用编码，字段及顺序由本业务传入。
  * [OUTPUT]: 活动团队生成按connectionId取消并等待实际planner退出，连接换源/删除不采用迟到方案。
  * [OUTPUT]: 无Run的连接测试/团队规划/自动化草稿沿原操作身份保存逐请求网关路由；不制造Work或更改原预算。
  * [INPUT]: 团队草稿事务、同连接容量、一次模型适配器与密钥读取。
@@ -6,6 +7,8 @@
  * [POS]: 内置助手用例；不创建员工、会话或 Work。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { resolveConnectionModel } from '../backends/model-binding'
+import { jsonSha256 } from '../../json-digest'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import type { Connection } from '@boai/shared/domain'
@@ -15,14 +18,14 @@ import { TeamPlanFormatError, type TeamPlanner, type TeamUsage } from '../../ada
 import { gatewayModelCall } from '../../adapters/mastra/gateway-route'
 import type { GatewayRouteEvidence } from '@boai/shared/domain/model-gateway'
 import { ModelCapacity } from '../collaboration/model-capacity'
-import { TeamRepository, editableTeamDraft, readTeamDraft, resolveTeamModel, teamError, teamHash, teamInputHash, teamNow, teamRecord, teamVersionSchema, validateTeamDraft } from './team-repository'
+import { TeamRepository, editableTeamDraft, readTeamDraft, teamError, teamInputHash, teamNow, teamRecord, teamVersionSchema, validateTeamDraft } from './team-repository'
 
 const requestSchema = teamVersionSchema.extend({ requestId: teamId }).strict()
 export class TeamGenerationService {
   private running = new Map<string, { connectionId: string; controller: AbortController; task: Promise<void> }>()
   constructor(private readonly repo: TeamRepository, private readonly capacity: ModelCapacity, private readonly planner: TeamPlanner, private readonly hooks: { key(id: string): Promise<string | undefined>; changed(): void }) {}
   async generate(input: unknown) {
-    const request = requestSchema.parse(input), requestHash = teamHash(request)
+    const request = requestSchema.parse(input), requestHash = jsonSha256(request)
     const accepted = await this.repo.store.transaction(async tx => {
       const existing = (await tx.list<TeamGeneration>('teamGenerations')).find(value => value.requestId === request.requestId)
       if (existing) { if (existing.requestHash !== requestHash) teamError('REQUEST_CONFLICT', '请求身份已用于另一份输入'); return { generation: existing } }
@@ -30,7 +33,7 @@ export class TeamGenerationService {
       if (draft.generationStatus === 'running' || [...this.running.values()].some(value => !value.controller.signal.aborted) && this.running.has(draft.generationId ?? '')) teamError('DRAFT_CONFLICT', '方案正在生成')
       if (draft.generationId && this.running.has(draft.generationId)) teamError('DRAFT_CONFLICT', '上次生成仍在退出，请稍后重试')
       if (!draft.prompt) teamError('VALIDATION', '请先填写团队需求')
-      const connection = await tx.get<Connection>('connections', draft.selectedConnectionId), model = resolveTeamModel(connection, draft.selectedModelId)
+      const connection = await tx.get<Connection>('connections', draft.selectedConnectionId), model = resolveConnectionModel(connection, draft.selectedModelId)
       draft.resolvedModelId = model.modelId; draft.connectionFingerprint = model.fingerprint
       draft.version++; draft.generationId = randomUUID(); draft.generationStatus = 'running'; draft.updatedAt = teamNow()
       const generation: TeamGeneration = { id: draft.generationId, requestId: request.requestId, requestHash, draftId: draft.id, draftVersion: draft.version, inputHash: teamInputHash(draft), plannerVersion: TEAM_PLANNER_VERSION, schemaVersion: 1, connectionId: draft.selectedConnectionId, modelId: model.modelId, connectionFingerprint: model.fingerprint, status: 'running', deadline: new Date(Date.now() + TEAM_LIMITS.deadlineMs).toISOString(), startedAt: teamNow(), attempts: [] }

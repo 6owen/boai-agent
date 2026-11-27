@@ -1,17 +1,18 @@
 /*
+ * [OUTPUT]: 持久标识的 JSON 字节摘要使用共用编码，字段及顺序由本业务传入。
  * [INPUT]: Host-authorized source/target identities, public messages and original ProductStore transactions.
  * [OUTPUT]: Durable immutable handoffs, CAS delivery receipts, source invalidation and crash recovery without replay.
  * [POS]: Product context transfer; provider/private state and work acceptance remain separate.
  * [PROTOCOL]: Update Header and contexts/.folder.md when changed.
  */
-import { createHash, randomUUID } from 'node:crypto'
+import { jsonSha256 } from '../../json-digest'
+import { randomUUID } from 'node:crypto'
 import type { Message } from '@boai/shared/domain'
 import type { ArtifactVersion } from '@boai/shared/domain/artifacts'
 import type { ProductStore, RecordTransaction } from '../../adapters/storage/product-store'
 import { selectHandoffMaterial, type HandoffBudgetInput, type HandoffCoverage, type HandoffMaterial } from './handoff-budget'
 
 export const HANDOFF_COLLECTION = 'contextHandoffs'
-export const handoffHash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex')
 export interface HandoffIdentity { agentId: string; conversationId: string; taskId?: string; assignmentId?: string; runId?: string }
 export interface HandoffTarget extends HandoffIdentity { providerId: string; configurationVersion: string; workspace: string; nativeSessionId?: string }
 export interface HandoffSource extends HandoffIdentity { version: string }
@@ -95,7 +96,7 @@ export async function clearContextHandoffs(tx: RecordTransaction, scope: Handoff
 }
 export function handoffMessage(message: Message) {
   if (message.status !== 'completed' || !['user', 'agent'].includes(message.senderType)) throw new HandoffConflictError('交接只接受已完成的公开用户/员工消息')
-  return { id: message.id, role: message.senderType === 'user' ? 'user' as const : 'assistant' as const, text: message.content, sequence: message.sequence, hash: handoffHash(message) }
+  return { id: message.id, role: message.senderType === 'user' ? 'user' as const : 'assistant' as const, text: message.content, sequence: message.sequence, hash: jsonSha256(message) }
 }
 const sameTarget = (left: HandoffTarget, right: HandoffTarget, bindNative = false) =>
   left.agentId === right.agentId && left.conversationId === right.conversationId && left.taskId === right.taskId && left.assignmentId === right.assignmentId
@@ -111,15 +112,15 @@ export class ContextHandoffRepository {
     return transfer
   }
   private async validate(tx: RecordTransaction, transfer: ContextHandoff, target: HandoffTarget) {
-    if (transfer.invalidated || !transfer.material || !transfer.payload || handoffHash(transfer.payload) !== transfer.payloadHash) throw new HandoffConflictError('交接材料已失效')
+    if (transfer.invalidated || !transfer.material || !transfer.payload || jsonSha256(transfer.payload) !== transfer.payloadHash) throw new HandoffConflictError('交接材料已失效')
     if (await tx.get('conversationCleanup', transfer.source.conversationId) || await tx.get('conversationCleanup', target.conversationId)) throw new HandoffConflictError('交接会话已清理')
     for (const ref of transfer.sourceMessages) {
       const message = await tx.get<Message>('messages', ref.id)
-      if (!message || message.conversationId !== transfer.source.conversationId || handoffHash(message) !== ref.hash) throw new HandoffConflictError('交接原消息已删除或变化')
+      if (!message || message.conversationId !== transfer.source.conversationId || jsonSha256(message) !== ref.hash) throw new HandoffConflictError('交接原消息已删除或变化')
     }
     for (const entry of transfer.material.entries) {
       const message = await tx.get<Message>('messages', entry.id)
-      if (!message || message.conversationId !== transfer.source.conversationId || handoffHash(message) !== entry.hash || handoffHash(handoffMessage(message)) !== handoffHash(entry)) throw new HandoffConflictError('交接原消息已删除或变化')
+      if (!message || message.conversationId !== transfer.source.conversationId || jsonSha256(message) !== entry.hash || jsonSha256(handoffMessage(message)) !== jsonSha256(entry)) throw new HandoffConflictError('交接原消息已删除或变化')
     }
     for (const ref of transfer.material.artifactRefs) {
       const artifact = await tx.get<ArtifactVersion>('artifacts', ref.id)
@@ -130,8 +131,8 @@ export class ContextHandoffRepository {
   }
   async prepare(input: PrepareHandoff): Promise<ContextHandoff> {
     if (!input.requestId.trim() || input.requestId.length > 256) throw new HandoffConflictError('交接请求身份无效')
-    const requestHash = handoffHash([input.source.agentId, input.requestId]), id = requestHash
-    const inputHash = handoffHash(input)
+    const requestHash = jsonSha256([input.source.agentId, input.requestId]), id = requestHash
+    const inputHash = jsonSha256(input)
     return this.store.transaction(async tx => {
       const previous = await tx.get<ContextHandoff>(HANDOFF_COLLECTION, id)
       if (previous) {
@@ -150,7 +151,7 @@ export class ContextHandoffRepository {
         source: { agentId: input.source.agentId, conversationId: input.source.conversationId, taskId: input.source.taskId, runId: input.source.runId },
         target: { agentId: input.target.agentId, conversationId: input.target.conversationId, taskId: input.target.taskId } }
       const selected = selectHandoffMaterial(material, input.budget), now = new Date().toISOString()
-      const transfer: ContextHandoff = { id, conversationId: input.target.conversationId, requestHash, inputHash, revision: 1, source: input.source, target: input.target, reason: input.reason, status: 'prepared', ...selected, sourceMessages: input.material.entries.map(({ id, hash }) => ({ id, hash })), payloadHash: handoffHash(selected.payload), attempts: [], createdAt: now, updatedAt: now }
+      const transfer: ContextHandoff = { id, conversationId: input.target.conversationId, requestHash, inputHash, revision: 1, source: input.source, target: input.target, reason: input.reason, status: 'prepared', ...selected, sourceMessages: input.material.entries.map(({ id, hash }) => ({ id, hash })), payloadHash: jsonSha256(selected.payload), attempts: [], createdAt: now, updatedAt: now }
       // Even omitted input is checked at preparation; it must not leak unauthorized source identities.
       await this.validate(tx, { ...transfer, material: input.material }, input.target)
       await this.put(tx, transfer)

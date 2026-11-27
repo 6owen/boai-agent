@@ -1,20 +1,21 @@
 /*
+ * [OUTPUT]: 持久标识的 JSON 字节摘要使用共用编码，字段及顺序由本业务传入。
  * [INPUT]: Host-authorized public source cuts and the original ProductStore transaction authority.
  * [OUTPUT]: CAS context streams, checkpoints, sealed segments and durable maintenance receipts; no message consumption or tool replay.
  * [POS]: Mastra working-context persistence; summaries are derived, product conversations and work remain authoritative.
  * [PROTOCOL]: Update Header and contexts/.folder.md when changed.
  */
-import { createHash, randomUUID } from 'node:crypto'
+import { jsonSha256 } from '../../json-digest'
+import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import type { Message } from '@boai/shared/domain'
 import { ProductStore, type RecordTransaction } from '../../adapters/storage/product-store'
 
 export const CONTEXT_VERSION = 1
 export const contextCollections = ['contextStreams', 'contextSessions', 'contextCheckpoints', 'contextMaintenance', 'contextStepCheckpoints'] as const
-export const contextHash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex')
 export interface ContextMetrics { basis: 'public-source' | 'provider-prompt'; estimatedInputTokens: number; estimatedRemainingTokens: number; windowSource: 'service-declared' | 'unknown-policy'; modelId: string; inputLimit: number; contextWindow?: number }
 export interface ContextSource { id: string; conversationId: string; sequence: number; hash: string }
-export const contextSource = (message: Message): ContextSource => ({ id: message.id, conversationId: message.conversationId, sequence: message.sequence, hash: contextHash(message) })
+export const contextSource = (message: Message): ContextSource => ({ id: message.id, conversationId: message.conversationId, sequence: message.sequence, hash: jsonSha256(message) })
 export interface ContextOwner { agentId: string; conversationId: string; scopeVersion: string }
 export interface ContextStream extends ContextOwner { id: string; activeSessionId: string; revision: number; checkpointId?: string; maintenanceId?: string; version: number }
 export interface ContextCheckpoint extends ContextOwner { id: string; streamId: string; sessionId: string; runId: string; summary: string; sources: ContextSource[]; previousCheckpointId?: string; version: number; createdAt: string }
@@ -35,14 +36,14 @@ export class StaleContextError extends Error { constructor() { super('上下文�
 
 export class ContextRepository {
   constructor(private readonly store: ProductStore) {}
-  private key(owner: ContextOwner) { return contextHash([owner.agentId, owner.conversationId]) }
+  private key(owner: ContextOwner) { return jsonSha256([owner.agentId, owner.conversationId]) }
   private async valid(tx: RecordTransaction, owner: ContextOwner, sources: ContextSource[], allowed: Message[]) {
     if (await tx.get('conversationCleanup', owner.conversationId)) throw new StaleContextError()
     const current = new Map(allowed.map(message => [message.id, contextSource(message)]))
     for (const source of sources) {
       if (source.conversationId !== owner.conversationId || current.get(source.id)?.hash !== source.hash) throw new StaleContextError()
       const row = await tx.get<Message>('messages', source.id)
-      if (!row || contextHash(row) !== source.hash) throw new StaleContextError()
+      if (!row || jsonSha256(row) !== source.hash) throw new StaleContextError()
     }
   }
   private async checkpoint(tx: RecordTransaction, owner: ContextOwner, id: string | undefined, messages: Message[], sessionId?: string): Promise<ContextCheckpoint | undefined> {
@@ -144,7 +145,7 @@ export class ContextRepository {
       const sources = messages.filter(message => !covered.has(message.id)).map(contextSource)
       await this.valid(tx, owner, sources, messages)
       guard?.()
-      const id = contextHash([stream.id, runId])
+      const id = jsonSha256([stream.id, runId])
       // A run checkpoint is never loaded as a public-history prefix in another run.
       await tx.put({ collection: 'contextStepCheckpoints', id, value: { ...owner, id, runId, streamId: stream.id, sessionId: stream.activeSessionId, version: CONTEXT_VERSION, summary, sources, previousCheckpointId: parent?.id, tools, ...metrics, updatedAt: new Date().toISOString() } })
       guard?.()
@@ -154,7 +155,7 @@ export class ContextRepository {
     return this.store.transaction(async tx => {
       const results: { runId: string; summary: string }[] = []
       for (const entry of completed) {
-        const parsed = stepCheckpointSchema.safeParse(await tx.get('contextStepCheckpoints', contextHash([this.key(owner), entry.runId])))
+        const parsed = stepCheckpointSchema.safeParse(await tx.get('contextStepCheckpoints', jsonSha256([this.key(owner), entry.runId])))
         if (!parsed.success) continue
         const row = parsed.data
         if (row.runId !== entry.runId || row.streamId !== this.key(owner) || row.agentId !== owner.agentId || row.conversationId !== owner.conversationId || row.scopeVersion !== owner.scopeVersion || !row.tools.every(tool => entry.toolIds.includes(tool.toolCallId))) continue

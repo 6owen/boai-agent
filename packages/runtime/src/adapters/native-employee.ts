@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 持久标识的 JSON 字节摘要使用共用编码，字段及顺序由本业务传入。
  * [OUTPUT]: 已授权会话消息的窗口、当前轮及身份投影归 conversations；模型角色/图片装配归 API 适配器。
  * [OUTPUT]: 仅改默认项目不推进原生执行配置版本，已建立工作保持原生session；其他配置变化仍重建。
  * [OUTPUT]: 2026-10-10 任务允许简短可观察commentary，未发布草稿和私有分析不进入进度；正式交付沿原Work。
@@ -7,6 +8,7 @@
  * [POS]: 本机员工共同流程；认证、原生生命周期和用量由各运行时适配。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
+import { jsonSha256 as digest } from '../json-digest'
 import { z } from 'zod'
 import type { MemoryCandidate, ParticipationDecision, WorkDraft, WorkReport } from '@boai/shared/domain'
 import type { EngineContext } from '../contracts'
@@ -16,7 +18,7 @@ import { prepareMemoryExtraction } from '../modules/employees/memory-extraction'
 import { workIntentSchema, modelWorkReportSchema, workEvidenceError } from '../modules/collaboration/work-protocol'
 import { decisionMessageData, partitionTurn, visibleMessages } from '../modules/conversations/message-context'
 import { createNativeTask, type NativeTool } from './native-task'
-import { NativeSessions, digest } from './native-sessions'
+import { NativeSessions } from './native-sessions'
 import type { ProductStore } from './storage/product-store'
 
 export type NativePhase = 'chat' | 'decision' | 'task' | 'report' | 'memory'

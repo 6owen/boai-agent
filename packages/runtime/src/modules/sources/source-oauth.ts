@@ -1,10 +1,12 @@
 /*
+ * [OUTPUT]: 持久标识的 JSON 字节摘要使用共用编码，字段及顺序由本业务传入。
  * [INPUT]: Explicit source/revision authorization intents, the original SecretStore and MCP SDK OAuth 1.30.1.
  * [OUTPUT]: Source-scoped PKCE/loopback consent, encrypted credentials, noninteractive refresh, post-commit cleanup and queue-safe shutdown; no browser launch or account import.
  * [POS]: Source OAuth adapter; SourceService owns source configuration and actual tool authorization.
  * [PROTOCOL]: Changes must update this Header and the owning .folder.md.
  */
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
+import { jsonSha256 as digest } from '../../json-digest'
+import { randomBytes, timingSafeEqual } from 'node:crypto'
 import { createServer, type Server } from 'node:http'
 import { auth, type OAuthClientProvider, type OAuthDiscoveryState } from '@modelcontextprotocol/sdk/client/auth.js'
 import { OAuthTokensSchema, type OAuthClientInformationMixed, type OAuthTokens } from '@modelcontextprotocol/sdk/shared/auth.js'
@@ -31,7 +33,6 @@ export interface SourceOAuthOptions {
   clientMetadataUrl?: string
   clientInformation?: OAuthClientInformationMixed
 }
-const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex')
 const credentialKey = (sourceId: string) => `source-oauth:credential:${digest(sourceId)}`
 const requestKey = (id: string) => `source-oauth:request:${id}`
 const activeState = (state: SourceOAuthState) => state === 'pending' || state === 'authorizing'
