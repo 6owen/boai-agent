@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: bobo 空白主聊入口可拖拽排序和置顶；实际主聊出现后接续列表位置。
  * [OUTPUT]: 拖放置顶提示与通讯录复用同一套落点皮肤。
  * [OUTPUT]: 删除核心会话后不重新展示旧主聊或空白占位；仍可见的话题保留员工入口。
  * [OUTPUT]: 员工主聊的拖放落点覆盖整行，包括行尾话题按钮。
@@ -27,7 +28,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { useEffect, useRef, useState, type ComponentProps, type DragEvent } from 'react'
-import { DragList, DragListGroupTarget, DragListItem } from '@/components/common/drag-list'
+import { DragList, DragListGroupTarget, DragListItem, type ListMove } from '@/components/common/drag-list'
 import { cn } from 'cn'
 import { Button } from '@/components/ui/button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
@@ -72,6 +73,25 @@ function setPinDragImage(event: DragEvent<HTMLElement>, name: string) {
 }
 
 type PinChange = Extract<ConversationListChange, { action: 'pin' }>
+type CoreMainPlacement = { pinned: boolean; nextTo?: Pick<ListMove, 'targetId' | 'placement'> }
+const CORE_MAIN_ENTRY = 'draft:bobo:main'
+const CORE_MAIN_PLACEMENT_KEY = 'boai.conversations.core-main-placement'
+
+function readCoreMainPlacement(): CoreMainPlacement | null {
+  try {
+    const saved = JSON.parse(localStorage.getItem(CORE_MAIN_PLACEMENT_KEY) ?? 'null')
+    if (typeof saved?.pinned === 'boolean') {
+      const anchor = saved.nextTo
+      return { pinned: saved.pinned, ...(typeof anchor?.targetId === 'string' && (anchor.placement === 'before' || anchor.placement === 'after') ? { nextTo: anchor } : {}) }
+    }
+  } catch { /* Optional presentation preference. */ }
+  return null
+}
+
+function placeRelative(ids: string[], id: string, nextTo?: CoreMainPlacement['nextTo'], fallback = 0) {
+  const index = nextTo ? ids.indexOf(nextTo.targetId) : -1
+  ids.splice(index < 0 ? fallback : index + Number(nextTo?.placement === 'after'), 0, id)
+}
 
 interface Props {
   snapshot: Snapshot; selectedId: string | null
@@ -91,6 +111,8 @@ interface Props {
 export function ConversationList({ snapshot, selectedId, previews, messageTimes, onSelect, onCreate, onOpenMain, onCreateTopic, mainDraftEmployeeId, onConfigureAgent, onEditTitle, onChange, onClear, busy, channelAgent, onBack, onOpenChannels, selectionRequest, showHeading = true }: Props) {
   const [query, setQuery] = useState('')
   const [pendingPin, setPendingPin] = useState<PinChange | null>(null)
+  const [coreMainPlacement, setCoreMainPlacement] = useState(readCoreMainPlacement)
+  const transferringCorePlacement = useRef(false)
   const [openEmployeeTopics, setOpenEmployeeTopics] = useState<Record<string, boolean>>({ [CORE_AGENT_ID]: true })
   const [coreHistoryMenuId, setCoreHistoryMenuId] = useState<string | null>(null)
   const [regularOpen, setRegularOpen] = useState(true)
@@ -139,7 +161,6 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
   const title = (item: Conversation) => isCoreConversation(item) && item.employeeChat === 'main' ? coreAgent?.name ?? item.title : item.title
   const matches = (item: Conversation) => title(item).toLocaleLowerCase().includes(search)
   const visibleConversations = channelAgent ? (channelsByAgent.get(channelAgent.id) ?? []) : mainConversations(conversations, messageTimes)
-  const listEmpty = !visibleConversations.length && (Boolean(channelAgent) || !topicsByAgent.size)
   const confirm = (conversation: Conversation, hide: boolean) => setConfirmation({ conversation: { ...conversation, title: title(conversation) }, hide })
   const allCore = coreAgent ? visible.filter(room => isCoreConversation(room) && !isChannelConversation(room)) : []
   const ordinary = channelAgent ? [] : [...visibleConversations]
@@ -152,12 +173,45 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
   const ordinaryMatches = ordinary.filter(room => matches(room) || Boolean(room.list?.pinned && pinName(room).toLocaleLowerCase().includes(search)) ||
     room.kind === 'direct' && topicsByAgent.get(room.agentIds[0])?.some(matches))
   const hiddenCoreHistory = snapshot.conversations.some(room => isCoreConversation(room) && !isChannelConversation(room) && room.list?.hidden)
-  const showCoreStart = coreAgent && !ordinary.some(room => isEmployeeMainChat(room, CORE_AGENT_ID)) &&
+  const coreMain = coreAgent && ordinary.find(room => isEmployeeMainChat(room, CORE_AGENT_ID))
+  const showCoreStart = coreAgent && !coreMain &&
     (topicsByAgent.has(coreAgent.id) || !hiddenCoreHistory) &&
     (!search || coreAgent.name.toLocaleLowerCase().includes(search) || topicsByAgent.get(coreAgent.id)?.some(matches))
+  const listEmpty = !visibleConversations.length && (Boolean(channelAgent) || !topicsByAgent.size && !(showCoreStart && coreMainPlacement?.pinned))
+  const saveCoreMainPlacement = (placement: CoreMainPlacement | null) => {
+    setCoreMainPlacement(placement)
+    try {
+      if (placement) localStorage.setItem(CORE_MAIN_PLACEMENT_KEY, JSON.stringify(placement))
+      else localStorage.removeItem(CORE_MAIN_PLACEMENT_KEY)
+    } catch { /* Optional presentation preference. */ }
+  }
+  // The draft only owns a sidebar position. Use the existing list actions once a real main chat exists.
+  useEffect(() => {
+    if (!coreMain || !coreMainPlacement || transferringCorePlacement.current || busy || pendingPin) return
+    transferringCorePlacement.current = true
+    void (async () => {
+      try {
+        if (Boolean(coreMain.list?.pinned) !== coreMainPlacement.pinned) {
+          await onChange({ id: coreMain.id, action: 'pin', pinned: coreMainPlacement.pinned })
+        }
+        const anchor = coreMainPlacement.nextTo
+        const target = anchor && mainConversations(snapshot.conversations).find(room => room.id === anchor.targetId)
+        if (anchor && target && Boolean(target.list?.pinned) === coreMainPlacement.pinned) {
+          await onChange({ id: coreMain.id, action: 'move', ...anchor })
+        }
+      } finally {
+        saveCoreMainPlacement(null)
+        transferringCorePlacement.current = false
+      }
+    })()
+  }, [coreMain, coreMainPlacement, busy, pendingPin, snapshot.conversations, onChange])
   const confirmAllCore = (hide: boolean) => { if (coreAgent) setConfirmation({ conversations: allCore, agentName: coreAgent.name, hide }) }
   const pin = async (id: string, pinned: boolean) => {
-    if (busy || pendingPin) return
+    if (busy || pendingPin || transferringCorePlacement.current) return
+    if (id === CORE_MAIN_ENTRY) {
+      saveCoreMainPlacement({ pinned })
+      return
+    }
     const change: PinChange = { id, action: 'pin', pinned }
     setPendingPin(change)
     try { await onChange(change) } finally { setPendingPin(null) }
@@ -242,53 +296,97 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
     </Collapsible>
   }
   const channel = (channelAgent ? visibleConversations : []).filter(matches)
-  const pinned = ordinaryMatches.filter(item => !item.list?.hidden && item.list?.pinned)
-  const regular = ordinaryMatches.filter(item => item.list?.hidden || !item.list?.pinned)
+  const placedCoreId = showCoreStart ? CORE_MAIN_ENTRY : coreMainPlacement && ordinaryMatches.find(room => room.id === coreMain?.id)?.id
+  const pinned = ordinaryMatches.filter(item => item.id !== placedCoreId && !item.list?.hidden && item.list?.pinned)
+  const regular = ordinaryMatches.filter(item => item.id !== placedCoreId && (item.list?.hidden || !item.list?.pinned))
+  const pinnedIds = pinned.map(item => item.id)
+  const regularIds = regular.map(item => item.id)
+  const corePinned = Boolean(coreMainPlacement?.pinned)
+  if (placedCoreId) {
+    const ids = corePinned ? pinnedIds : regularIds
+    placeRelative(ids, placedCoreId, coreMainPlacement?.nextTo, coreMainPlacement ? 0 : ids.length)
+  }
   const pinnedEmployees = new Set(pinned.filter(room => room.kind === 'direct').map(room => room.agentIds[0]))
-  const displayed = [...pinned, ...regular.filter(room => !room.list?.hidden), ...channel,
+  if (placedCoreId && corePinned) pinnedEmployees.add(CORE_AGENT_ID)
+  const otherRows = [...channel,
     ...(!channelAgent ? visible.filter(room => conversationSection(room) === 'topic' && !pinnedEmployees.has(room.agentIds[0]) && matches(room)) : [])]
-  const byId = new Map(displayed.map(room => [room.id, room]))
+  const byId = new Map([...ordinaryMatches, ...otherRows].map(room => [room.id, room]))
+  const dragIds = [...pinnedIds, ...regularIds, ...otherRows.map(room => room.id)].filter(id => !byId.get(id)?.list?.hidden)
+  const isPinned = (id: string) => id === placedCoreId ? corePinned : Boolean(byId.get(id)?.list?.pinned)
+  const groupOf = (id: string) => {
+    if (id === CORE_MAIN_ENTRY) return 'ordinary'
+    const room = byId.get(id)
+    return room && conversationSection(room)
+  }
   const pinTarget = 'conversation-pin-target'
   const regularTarget = 'conversation-regular-target'
+  const sortingBusy = busy || Boolean(pendingPin || coreMain && coreMainPlacement)
+  const move = async (move: ListMove) => {
+    const { id, targetId, placement } = move
+    if (id === CORE_MAIN_ENTRY) {
+      saveCoreMainPlacement({ pinned: corePinned, nextTo: { targetId, placement } })
+    } else if (targetId === CORE_MAIN_ENTRY) {
+      const group = corePinned ? pinnedIds : regularIds
+      const original = group.filter(id => id !== CORE_MAIN_ENTRY && !byId.get(id)?.list?.hidden)
+      const order = group.filter(value => value !== id && (value === CORE_MAIN_ENTRY || !byId.get(value)?.list?.hidden))
+      placeRelative(order, id, move)
+      const realOrder = order.filter(value => value !== CORE_MAIN_ENTRY)
+      const index = realOrder.indexOf(id)
+      if (index !== original.indexOf(id)) {
+        const previous = realOrder[index - 1]
+        await onChange({ id, action: 'move', targetId: previous ?? realOrder[index + 1], placement: previous ? 'after' : 'before' })
+      }
+      saveCoreMainPlacement({ pinned: corePinned, nextTo: { targetId: id, placement: placement === 'before' ? 'after' : 'before' } })
+    } else await onChange({ ...move, action: 'move' })
+  }
+  const renderCoreStart = (agent: DigitalAgent, tile = false) => {
+    const topics = shownTopics(agent.id)
+    const row = <DragListItem key={CORE_MAIN_ENTRY} id={CORE_MAIN_ENTRY} horizontal={tile} className={cn('conversation-row relative', tile && 'conversation-pin-item')}>{({ dragging, dragProps }) => {
+      const entry = <ContextMenu>
+        <ContextMenuTrigger render={<Button variant="ghost" size="content" className={cn('conversation-item', { selected: mainDraftEmployeeId === agent.id, 'drag-list-dragging': dragging }, tile && 'conversation-pin-tile')} data-main-placeholder="" />}
+          {...dragProps} aria-label={`${agent.name} 的主聊天`} aria-current={mainDraftEmployeeId === agent.id ? 'page' : undefined}
+          aria-description={`${tile ? '已置顶。' : ''}可拖拽排序，或按 Alt 加上下方向键移动。右键打开菜单。`}
+          data-active-topic={selectedTopic?.agentIds[0] === agent.id || undefined}
+          onDragStart={event => { dragProps.onDragStart?.(event); if (!event.defaultPrevented) setPinDragImage(event, agent.name) }}
+          onClick={() => { if (!dragging) onOpenMain?.(agent) }}>
+          <Avatar name={agent.name} seed={agent.id} avatar={agent.avatar} color={agent.color} />
+          {tile ? <span className="conversation-pin-name">{agent.name}</span> : <span className="conversation-copy"><span className="conversation-title">{agent.name}</span><span className="conversation-preview">{agent.role}</span></span>}
+        </ContextMenuTrigger>
+        <ContextMenuContent className="w-40">{renderEmployeeActions(agent)}<ContextMenuItem disabled={sortingBusy} onClick={() => { void pin(CORE_MAIN_ENTRY, !tile) }}><Pin />{tile ? '取消置顶' : '置顶'}</ContextMenuItem>{renderCoreHistoryActions()}</ContextMenuContent>
+      </ContextMenu>
+      return tile ? entry : <EmployeeConversationRow topicOwner={topics.length ? agent.name : undefined}>{entry}</EmployeeConversationRow>
+    }}</DragListItem>
+    return tile || !topics.length ? row : <Collapsible key={CORE_MAIN_ENTRY} open={topicsOpen(agent.id)} onOpenChange={open => setTopicsOpen(agent.id, open)}>
+      {row}
+      <CollapsibleContent><div className="conversation-core-history" role="group" aria-label={`${agent.name} 的会话`}>{topics.map(topic => renderConversation(topic))}</div></CollapsibleContent>
+    </Collapsible>
+  }
   return <div className="conversation-list-panel">
     {showHeading && <div className="list-heading"><h2>{channelAgent ? `${channelAgent.name}的渠道` : '会话'}</h2><div className="list-heading-actions">{channelAgent ? onBack && <Button variant="ghost" size="icon-sm" aria-label="返回员工主聊天" onClick={onBack}><ChevronLeft /></Button> : <AddContactMenu onCreate={onCreate} />}</div></div>}
     <InputGroup><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput aria-label="搜索会话" placeholder="搜索会话名称" value={query} onChange={event => setQuery(event.target.value)} /></InputGroup>
     <div className={cn("conversation-list", !channelAgent && "conversation-sidebar-list")} role="navigation" aria-label="会话列表">
-      <DragList ids={displayed.map(item => item.id)} disabled={busy || Boolean(pendingPin || search)} canMove={(id, targetId) => {
+      <DragList ids={dragIds} disabled={sortingBusy || Boolean(search)} canMove={(id, targetId) => {
+        if (id === CORE_MAIN_ENTRY || targetId === CORE_MAIN_ENTRY) return groupOf(id) === groupOf(targetId) && isPinned(id) === isPinned(targetId)
         const source = byId.get(id), target = byId.get(targetId)
         if (!source || !target) return false
         const section = conversationSection(source)
         return section === conversationSection(target) && (section !== 'topic' || source.agentIds[0] === target.agentIds[0]) &&
           (!channelAgent || source.kind === target.kind) && Boolean(source.list?.pinned) === Boolean(target.list?.pinned)
-      }} onMove={move => onChange({ ...move, action: 'move' })} canGroupDrop={(id, target) => {
-        const source = byId.get(id)
-        return Boolean(source && conversationSection(source) === 'ordinary' &&
-          (source.list?.pinned ? target === regularTarget : target === pinTarget))
+      }} onMove={move} canGroupDrop={(id, target) => {
+        return groupOf(id) === 'ordinary' && (isPinned(id) ? target === regularTarget : target === pinTarget)
       }} onGroupDrop={(id, target) => {
         if (target === regularTarget) setRegularOpen(true)
         void pin(id, target === pinTarget)
       }}>
       {!channelAgent && <>
-        <DragListGroupTarget id={pinTarget} className="conversation-pin-shelf">{eligible => pinned.length
-          ? <div className="conversation-pin-grid" role="group" aria-label="置顶会话">{pinned.map(room => renderConversation(room, true))}</div>
+        <DragListGroupTarget id={pinTarget} className="conversation-pin-shelf">{eligible => pinnedIds.length
+          ? <div className="conversation-pin-grid" role="group" aria-label="置顶会话">{pinnedIds.map(id => id === CORE_MAIN_ENTRY && coreAgent ? renderCoreStart(coreAgent, true) : renderConversation(byId.get(id)!, true))}</div>
           : eligible ? <div className="list-pin-placeholder">拖到此处置顶</div> : null}
         </DragListGroupTarget>
         <DragListGroupTarget id={regularTarget} className="conversation-regular-drop"><Collapsible className="conversation-regular-list" open={Boolean(search) || regularOpen} onOpenChange={open => { if (!search) setRegularOpen(open) }}>
-          {(regular.length > 0 || showCoreStart) && <CollapsibleTrigger render={<Button variant="ghost" size="content" className="conversation-section-heading" />}>会话<ChevronRight /></CollapsibleTrigger>}
+          {regularIds.length > 0 && <CollapsibleTrigger render={<Button variant="ghost" size="content" className="conversation-section-heading" />}>会话<ChevronRight /></CollapsibleTrigger>}
           <CollapsibleContent><div role="group" aria-label="普通会话">
-            {regular.map(renderEmployee)}
-            {showCoreStart && <Collapsible open={topicsOpen(coreAgent.id)} onOpenChange={open => setTopicsOpen(coreAgent.id, open)}>
-              <EmployeeConversationRow topicOwner={shownTopics(coreAgent.id).length ? coreAgent.name : undefined}>
-                <ContextMenu>
-                  <ContextMenuTrigger render={<Button variant="ghost" size="content" className={cn('conversation-item', { selected: mainDraftEmployeeId === coreAgent.id })} data-main-placeholder="" />} aria-label={`${coreAgent.name} 的主聊天`} aria-current={mainDraftEmployeeId === coreAgent.id ? 'page' : undefined} data-active-topic={selectedTopic?.agentIds[0] === coreAgent.id || undefined} onClick={() => onOpenMain?.(coreAgent)}>
-                    <Avatar name={coreAgent.name} seed={coreAgent.id} avatar={coreAgent.avatar} color={coreAgent.color} />
-                    <span className="conversation-copy"><span className="conversation-title">{coreAgent.name}</span><span className="conversation-preview">{coreAgent.role}</span></span>
-                  </ContextMenuTrigger>
-                  <ContextMenuContent className="w-40"><ContextMenuGroup>{renderEmployeeActions(coreAgent)}</ContextMenuGroup>{renderCoreHistoryActions()}</ContextMenuContent>
-                </ContextMenu>
-              </EmployeeConversationRow>
-              <CollapsibleContent><div className="conversation-core-history" role="group" aria-label={`${coreAgent.name} 的会话`}>{shownTopics(coreAgent.id).map(topic => renderConversation(topic))}</div></CollapsibleContent>
-            </Collapsible>}
+            {regularIds.map(id => id === CORE_MAIN_ENTRY && coreAgent ? renderCoreStart(coreAgent) : renderEmployee(byId.get(id)!))}
           </div></CollapsibleContent>
         </Collapsible></DragListGroupTarget>
       </>}

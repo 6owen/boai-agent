@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 空白 bobo 主聊排序、拖放置顶、重载及首条消息后的实际主聊接续。
  * [OUTPUT]: 核对核心主聊使用员工名称，最后一个核心会话删除后只保留列表空态。
  * [OUTPUT]: 核对置顶员工话题只在标题栏 Popover 查阅，侧栏余白可取消置顶。
  * [OUTPUT]: 核对拖影和置顶卡片使用员工名、等待 IPC 时的落点。
@@ -34,6 +35,7 @@ beforeEach(() => {
   vi.stubGlobal('PointerEvent', MouseEvent)
   vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
   Element.prototype.getAnimations = () => []
+  localStorage.clear()
   const conversations = [room('A'), room('B'), room('hidden', { list: { hidden: true } }), room('employee', { purpose: undefined, agentIds: ['employee'], mainPrivate: true }), room('group', { purpose: undefined, kind: 'group', agentIds: ['employee'] }), room('channel', { channel: { platform: 'feishu', tenantId: 'tenant', chatId: 'p2p', kind: 'direct', bindingId: 'bot' } })]
   props = { snapshot: { agents: [coreAgent], conversations, resources: [], connections: [] } as unknown as Snapshot, selectedId: null, previews: {}, messageTimes: {}, busy: false, onSelect: vi.fn(), onCreate: vi.fn(), onOpenMain: vi.fn(), onCreateTopic: vi.fn(), onConfigureAgent: vi.fn(), onEditTitle: vi.fn(), onChange: vi.fn(), onClear: vi.fn(async () => {}), onOpenChannels: vi.fn() }
   host = document.createElement('div'); document.body.append(host); root = createRoot(host)
@@ -78,7 +80,7 @@ it('opens new topics and settings from the Bobo context menu without an inline c
   await render()
   expect(host.querySelector('button[aria-label="与 Bobo 新建会话"]')).toBeNull()
   await openMenu()
-  expect([...document.querySelectorAll('[role="menuitem"]')].map(item => item.textContent)).toEqual(['新话题', '助手设置', '清空所有记录', '删除所有会话'])
+  expect([...document.querySelectorAll('[role="menuitem"]')].map(item => item.textContent)).toEqual(['新话题', '助手设置', '置顶', '清空所有记录', '删除所有会话'])
   expect(host.querySelector('[aria-label="普通会话"] button[aria-label="Bobo 的主聊天"]')).not.toBeNull()
   await choose('新话题')
   expect(props.onCreateTopic).toHaveBeenCalledWith(coreAgent)
@@ -230,6 +232,73 @@ it('hides a deleted Bobo main chat and only keeps an entry when another topic is
   await act(async () => entry.click())
   expect(props.onOpenMain).toHaveBeenCalledWith(coreAgent)
   expect(props.onSelect).not.toHaveBeenCalled()
+})
+
+it('sorts and pins the visible Bobo draft entry without reopening a deleted main chat', async () => {
+  const topic = room('weather', { employeeChat: 'topic', title: '天气话题' })
+  const group = room('group', { kind: 'group', purpose: undefined, agentIds: ['other'] })
+  const hiddenMain = room('deleted', { employeeChat: 'main', list: { hidden: true } })
+  props.snapshot.conversations = [group, hiddenMain, topic]
+  const entry = () => host.querySelector<HTMLButtonElement>('button[data-main-placeholder]')!
+  const transfer = { setData: vi.fn(), setDragImage: vi.fn(), effectAllowed: '', dropEffect: '' }
+  const drag = (element: Element, type: string) => act(async () => {
+    const event = new MouseEvent(type, { bubbles: true, cancelable: true })
+    Object.defineProperty(event, 'dataTransfer', { value: transfer })
+    element.dispatchEvent(event)
+  })
+  const shelf = () => host.querySelector('.conversation-pin-shelf')!
+  const ordinary = () => host.querySelector('[aria-label="普通会话"]')!
+  await render()
+  expect(entry().draggable).toBe(true)
+  await act(async () => entry().dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', altKey: true, bubbles: true })))
+  expect(ordinary().querySelector('button')).toBe(entry())
+  await drag(entry(), 'dragstart')
+  await drag(shelf(), 'dragover')
+  await drag(shelf(), 'drop')
+  expect(entry().closest('[aria-label="置顶会话"]')).not.toBeNull()
+  expect(entry().textContent).toBe('Bobo')
+  expect(host.querySelector('[aria-label="天气话题"]')).toBeNull()
+  expect(props.onChange).not.toHaveBeenCalled()
+  await act(async () => entry().click())
+  expect(props.onOpenMain).toHaveBeenCalledExactlyOnceWith(coreAgent)
+  expect(props.onSelect).not.toHaveBeenCalled()
+
+  await act(async () => root.unmount())
+  root = createRoot(host)
+  await render()
+  expect(entry().closest('[aria-label="置顶会话"]')).not.toBeNull()
+  await drag(entry(), 'dragstart')
+  const lower = host.querySelector('.conversation-regular-drop')!
+  await drag(lower, 'dragover')
+  await drag(lower, 'drop')
+  expect(entry().closest('[aria-label="普通会话"]')).not.toBeNull()
+  expect(host.querySelector('[aria-label="天气话题"]')).not.toBeNull()
+  expect(props.onChange).not.toHaveBeenCalled()
+})
+
+it('keeps the pinned Bobo entry in place and persists the pin on the newly created main chat', async () => {
+  const removed = room('deleted', { employeeChat: 'main', list: { hidden: true } })
+  props.snapshot.conversations = [removed, room('weather', { employeeChat: 'topic', title: '天气话题' })]
+  let acknowledgePin!: () => void
+  props.onChange = vi.fn(() => new Promise<void>(resolve => { acknowledgePin = resolve }))
+  await render()
+  await openMenu()
+  await choose('置顶')
+  expect(host.querySelector('[aria-label="置顶会话"] button[data-main-placeholder]')).not.toBeNull()
+  expect(props.onChange).not.toHaveBeenCalled()
+
+  const actual = room('new-bobo-main', { employeeChat: 'main' })
+  props.snapshot = { ...props.snapshot, conversations: [...props.snapshot.conversations, actual] }
+  await render()
+  expect(props.onChange).toHaveBeenCalledExactlyOnceWith({ id: actual.id, action: 'pin', pinned: true })
+  expect(host.querySelectorAll('button[aria-label="Bobo 的主聊天"]')).toHaveLength(1)
+  expect(host.querySelector('[aria-label="置顶会话"] button[aria-label="Bobo 的主聊天"]')?.hasAttribute('data-main-placeholder')).toBe(false)
+
+  props.snapshot = { ...props.snapshot, conversations: [...props.snapshot.conversations.slice(0, -1), { ...actual, list: { pinned: true } }] }
+  await render()
+  await act(async () => acknowledgePin())
+  expect(host.querySelector('[aria-label="置顶会话"] button[aria-label="Bobo 的主聊天"]')).not.toBeNull()
+  expect(props.onChange).toHaveBeenCalledTimes(1)
 })
 
 it('moves an actual Bobo main chat into and out of the avatar shelf via drag', async () => {
