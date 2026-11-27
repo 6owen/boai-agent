@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 资料页群成员宫格点击导航对应员工，原成员编辑入口仍提交完整成员集。
  * [OUTPUT]: 未知保存回执时验证真实不可编辑状态和零自动重试，显式核对后恢复已提交版本及可编辑状态。
  * [INPUT]: 群聊资料页/高级配置/共用双栏成员选择器与受控IPC。
  * [OUTPUT]: 名称局部保存/并发草稿、成员回填/取消/版本提交、选择人数限制和高级配置草稿隔离的前端回归。
@@ -51,17 +52,17 @@ async function toggle(name: string) {
   await act(async () => label.querySelector<HTMLButtonElement>('[role=checkbox]')!.click())
 }
 async function fixture() {
-  const refresh = vi.fn(), onMessage = vi.fn(), saved = vi.fn()
+  const refresh = vi.fn(), onMessage = vi.fn(), saved = vi.fn(), onOpenAgent = vi.fn()
   function Page() {
     const [data, setData] = useState(snapshot), [advanced, setAdvanced] = useState(false), [key, setKey] = useState(0)
     const { guard, confirmation } = useEditorGuard({ reset: () => setKey(value => value + 1) })
     return h(GuardContext.Provider, { value: guard }, h(GroupProfile, { key, api, snapshot: data, group: data.conversations[0]!, active: true, busy: false,
       onGroupSaved: result => { saved(result); setData(previous => ({ ...previous, conversations: [result] })) }, refresh: async () => { refresh(); setData(snapshot()) },
-      onMessage, advancedOpen: advanced, onAdvancedChange: setAdvanced, onOpenAgent() {}, onConversation() {},
+      onMessage, advancedOpen: advanced, onAdvancedChange: setAdvanced, onOpenAgent,
     }), confirmation)
   }
   await act(async () => root.render(h(Page)))
-  return { refresh, saved, onMessage }
+  return { refresh, saved, onMessage, onOpenAgent }
 }
 
 test('group title keeps its original heading and saves locally without refreshing or losing newer typing', async () => {
@@ -100,7 +101,14 @@ test('title autosave preserves knowledge draft and its next versioned section sa
 })
 
 test('group avatar opens preselected members and only Done saves the full selected set', async () => {
-  const f = await fixture(); await click('配置群成员')
+  const f = await fixture()
+  const members = host.querySelector('[aria-label="群成员"] .group-member-grid')!
+  expect([...members.querySelectorAll('.group-member-profile')].map(item => item.textContent)).toEqual(['Alice', 'Bob'])
+  expect(members.querySelectorAll('.avatar')).toHaveLength(2)
+  await click('查看 Bob 的资料')
+  expect(f.onOpenAgent).toHaveBeenCalledExactlyOnceWith('a1')
+  expect(document.querySelector('[role=dialog]')).toBeNull()
+  await click('配置群成员')
   expect(document.querySelectorAll('[role=checkbox][aria-checked=true]')).toHaveLength(2)
   expect(document.querySelector('[aria-label="已选成员"]')?.textContent).toContain('Alice')
   await toggle('Alice'); await toggle('Carol')

@@ -3,7 +3,7 @@
  * [OUTPUT]: 记忆新增/编辑独立Dialog保留原列表，取消确认仅丢弃局部草稿；保存禁关、原epoch提交一次及冲突草稿保持。
  * [OUTPUT]: 新建员工完整展开模型/工作方式，无高级折叠或人格输入，模型由用户明确选择；原公共创建回执及会话接续保持。
  * [OUTPUT]: 数据源目录夹具符合完整DataSource合同（含MCP transport）；知识入口核对当前员工文件区，原菜单/草稿/关闭顺序和零写断言保持。
- * [OUTPUT]: 员工组编辑共用员工左右布局与贴边渐隐滚动；基础配置/自动化切换保护草稿，群版本化保存期间关闭和菜单禁用，新建群布局保持。
+ * [OUTPUT]: 员工组编辑共用员工左右布局与贴边渐隐滚动；群组仅基本配置，关闭仍保护草稿，版本化保存期间关闭和菜单禁用，新建群布局保持。
  * [OUTPUT]: 渠道编辑独立Dialog保留原列表；局部取消/退出、保存禁关及原版本请求保持，未知保存仅核对冻结回执，不重复提交。
  * [OUTPUT]: 技能添加入口位于分区标题且空态无Card；数据源普通绑定行纯文字菜单、Popover取消/确认、重新添加及版本化保存，不删除全局资源。
  * [OUTPUT]: 人格页直接展示配置源文件，通过行右侧编辑/查看按钮打开原Dialog；取消草稿、保存禁关及hash/版本校验保持。
@@ -69,7 +69,7 @@ async function fixture(kind: 'employee' | 'group', data = snapshot) {
     const [open, setOpen] = useState(true)
     return h(EmployeeResourceNavigation.Provider, { value: openResource }, h(EmployeeExecutionNavigation.Provider, { value: openExecution }, h('main', null, h('form', { 'data-background': true, onSubmit: backgroundSubmit }, '原通讯录资料'), open && h(ContactEditorDialog, {
       api, snapshot: data, active: true, ...(kind === 'employee' ? { agent: data.agents[0] } : { group }), refresh,
-      onClose() { closed(); setOpen(false) }, onOpenAgent() {}, onConversation() {},
+      onClose() { closed(); setOpen(false) }, onConversation() {},
     }))))
   }
   await act(async () => root.render(h(Page)))
@@ -107,7 +107,7 @@ test.each(['employee', 'group'] as const)('%s editing uses the shared sidebar di
   expect(viewport.classList.contains('scroll-fade-6')).toBe(true)
   const navLabel = kind === 'employee' ? '员工设置' : '员工组设置'
   expect(dialog.querySelector(`nav[aria-label="${navLabel}"] [role=tablist]`)?.getAttribute('aria-orientation')).toBe('vertical')
-  expect(dialog.querySelectorAll(`nav[aria-label="${navLabel}"] [role=tab]`)).toHaveLength(kind === 'employee' ? 7 : 2)
+  expect(dialog.querySelectorAll(`nav[aria-label="${navLabel}"] [role=tab]`)).toHaveLength(kind === 'employee' ? 7 : 1)
   expect(dialog.querySelector('[role=tab][aria-label="基础配置"]')?.getAttribute('aria-selected')).toBe('true')
   expect(dialog.querySelector('.employee-tabs-bar')).toBeNull()
   expect(dialog.querySelector('.connection-dialog-top')).toBeNull()
@@ -168,9 +168,8 @@ test('group edits retain members and the versioned save contract while closing a
   await act(async () => button('保存设置').click())
   expect(request).toHaveBeenCalledWith('createConversation', expect.objectContaining({ id: group.id, title: '研究小组', expectedConfigVersion: 4, agentIds: [agent.id] }))
   expect(document.querySelector<HTMLButtonElement>('[aria-label="关闭编辑员工组"]')!.disabled).toBe(true)
-  expect(button('自动化').getAttribute('aria-disabled')).toBe('true')
+  expect(button('自动化')).toBeUndefined()
   await act(async () => {
-    button('自动化').click()
     document.querySelector('[role=dialog]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
   })
   expect(document.querySelector('[role=tab][aria-label="基础配置"]')?.getAttribute('aria-selected')).toBe('true')
@@ -182,26 +181,22 @@ test('group edits retain members and the versioned save contract while closing a
   expect(f.closed).toHaveBeenCalledOnce()
 })
 
-test('group sidebar keeps an unsaved draft on cancel and opens only the group automations after explicit discard', async () => {
-  const original = request.getMockImplementation()!
-  request.mockImplementation(async (method, input) => method === 'listOwnerAutomations' ? { definitions: [] } : original(method, input))
+test('group sidebar only shows basic configuration and protects an unsaved draft on close', async () => {
   const f = await fixture('group')
-  await change(document.querySelector<HTMLInputElement>('input[aria-label="群聊名称"]')!, '未保存的小组')
-  await act(async () => button('自动化').click())
+  const tabs = [...document.querySelectorAll('[role=tab]')]
+  expect(tabs.map(tab => tab.getAttribute('aria-label'))).toEqual(['基础配置'])
+  const name = document.querySelector<HTMLInputElement>('input[aria-label="群聊名称"]')!
+  const close = document.querySelector<HTMLButtonElement>('[aria-label="关闭编辑员工组"]')!
+  await change(name, '未保存的小组')
+  await act(async () => close.click())
   expect(document.querySelector('[role=alertdialog]')?.textContent).toContain('有未保存的修改')
-  expect(request.mock.calls.some(([method]) => method === 'listOwnerAutomations')).toBe(false)
   await act(async () => document.querySelector<HTMLButtonElement>('[role=alertdialog] [data-slot=alert-dialog-cancel]')!.click())
-  expect(document.querySelector<HTMLInputElement>('input[aria-label="群聊名称"]')!.value).toBe('未保存的小组')
-  expect(document.querySelector('[role=tab][aria-label="基础配置"]')?.getAttribute('aria-selected')).toBe('true')
-  await act(async () => button('自动化').click())
-  await act(async () => button('退出').click())
-  expect(document.querySelector('[role=tab][aria-label="自动化"]')?.getAttribute('aria-selected')).toBe('true')
-  expect(request).toHaveBeenCalledWith('listOwnerAutomations', { owner: { kind: 'group', conversationId: group.id }, limit: 30 })
-  expect(document.querySelector('[role=tabpanel]:not([inert])')?.textContent).toContain('暂无定时任务')
-  await act(async () => button('基础配置').click())
-  expect(document.querySelector<HTMLInputElement>('input[aria-label="群聊名称"]')!.value).toBe(group.title)
-  expect(request.mock.calls.some(([method]) => method === 'createConversation')).toBe(false)
+  expect(name.value).toBe('未保存的小组')
   expect(f.closed).not.toHaveBeenCalled()
+  await act(async () => close.click())
+  await act(async () => button('退出').click())
+  expect(request.mock.calls.some(([method]) => method === 'createConversation' || method === 'listOwnerAutomations')).toBe(false)
+  expect(f.closed).toHaveBeenCalledOnce()
 })
 
 test.each(['employee', 'group'] as const)('%s creation preserves its layout without creating on open', async kind => {

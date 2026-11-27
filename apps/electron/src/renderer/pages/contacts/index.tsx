@@ -9,7 +9,7 @@
  * [OUTPUT]: 员工/群资料复用紧凑配置Card与两行列表；执行记录统一从编辑弹窗进入，底页不重复展示；滚动预留/同设置Panel reveal。
  * [OUTPUT]: 移除员工资料的旧工作看板导航，保留配置、自动化及执行详情。
  * [OUTPUT]: 通讯录侧栏通过共用 PanelResize 收缩，保留列表状态并在关闭时隔离交互。
- * [OUTPUT]: 通讯录员工/群配置共用归属自动化和原结果聊天定位。
+ * [OUTPUT]: 通讯录员工配置使用归属自动化及原结果聊天定位，群组显示基础配置。
  * [OUTPUT]: 2026-10-10 通讯录资料透传员工执行详情的固定原聊天导航，不复制员工/聊天，原配置保存与返回守卫保持。
  * [INPUT]: 员工/群聊快照、独立选中项、会话导航、现有配置编辑器与统一 UI 组件。
  * [OUTPUT]: 旧偏好选中的渠道房间仅显示渠道信息，不再进入BOAI群编辑器。
@@ -78,6 +78,6 @@ function ContactDetail({ api, snapshot, selected, refresh, onAgentSaved, onGroup
   const group = selected?.kind === 'group' ? snapshot.conversations.find(item => item.id === selected.id && item.kind === 'group') : undefined
   if (!selected || (!agent && !group)) return <IllustratedEmpty kind="contacts" />
   if (group && isChannelConversation(group)) return <ChannelConversationInfo conversation={group} snapshot={snapshot} onOpenAgent={id => onSelect({ kind: 'agent', id })} />
-  if (agent) return <EmployeeProfile api={api} snapshot={snapshot} agent={agent} active={active} busy={busy} refresh={refresh} onAgentSaved={onAgentSaved} onMessage={() => onMessage(selected)} advancedOpen={editing} onAdvancedChange={setEditing} onOpenAgent={id => onSelect({ kind: 'agent', id })} onConversation={onConversation} />
-  return <GroupProfile api={api} snapshot={snapshot} group={group!} active={active} busy={busy} refresh={refresh} onGroupSaved={onGroupSaved} onMessage={() => onMessage(selected)} advancedOpen={editing} onAdvancedChange={setEditing} onOpenAgent={id => onSelect({ kind: 'agent', id })} onConversation={onConversation} />
+  if (agent) return <EmployeeProfile api={api} snapshot={snapshot} agent={agent} active={active} busy={busy} refresh={refresh} onAgentSaved={onAgentSaved} onMessage={() => onMessage(selected)} advancedOpen={editing} onAdvancedChange={setEditing} onConversation={onConversation} />
+  return <GroupProfile api={api} snapshot={snapshot} group={group!} active={active} busy={busy} refresh={refresh} onGroupSaved={onGroupSaved} onMessage={() => onMessage(selected)} advancedOpen={editing} onAdvancedChange={setEditing} onOpenAgent={id => onSelect({ kind: 'agent', id })} />
 }
