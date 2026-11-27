@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 打开会话及监控来源时直接按会话读取成果记录。
  * [OUTPUT]: 阅读、搜索和锚点 IPC 共用 domain/reading 的输入校验与推导类型。
  * [OUTPUT]: 员工定时触发提交普通消息，与话题和历史记录原子写入。
  * [OUTPUT]: bobo 发送首条消息或打开 CLI 主会话只考虑未删除主聊，保留旧清理回执。
@@ -984,7 +985,7 @@ export class AppService {
         const source = definition.monitor?.source ?? fail('监控来源缺失')
         const scope = await this.serialize(async () => {
           if (this.closing || this.backingUp || await this.automationFingerprint(definition) !== definition.authorizedFingerprint) fail('监控当前授权不可用')
-          return { conversation: clone(this.getConversation(source.conversationId)), artifacts: (await this.store.load<Artifact & { id: string; conversationId: string }>('artifacts')).filter(a => a.conversationId === source.conversationId) }
+          return { conversation: clone(this.getConversation(source.conversationId)), artifacts: await this.store.load<Artifact & { id: string; conversationId: string }>('artifacts', { conversationId: source.conversationId }) }
         })
         return readMonitorArtifact(this.dataPath, scope.conversation, scope.artifacts, source, signal, artifact => this.serialize(async () => {
           signal.throwIfAborted()
@@ -2243,7 +2244,7 @@ export class AppService {
     return { ...detail, messagePage, reading, ...(Object.keys(replyPreviews).length ? { replyPreviews } : {}) }
   }
   private async conversationArtifacts(conversation: Conversation, discoverLegacy = false): Promise<Artifact[]> {
-    const saved = (await this.store.load<Artifact & { id: string; conversationId: string }>('artifacts')).filter(value => value.conversationId === conversation.id)
+    const saved = await this.store.load<Artifact & { id: string; conversationId: string }>('artifacts', { conversationId: conversation.id })
     for (const artifact of saved) if (!artifact.logicalArtifactId || !artifact.contentStatus) {
       const registered = await this.store.transaction(tx => this.artifactRepository.registerLegacy(tx, artifact, conversation.id))
       this.artifacts.set(registered.id, registered)

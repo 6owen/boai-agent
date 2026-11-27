@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 普通与事务内读取同序按会话筛选；资料和成果共用现有 SQLite 部分索引。
  * [OUTPUT]: 任务诊断只读SQL投影按原run/source限制回执、审批和输入，不取正文、不recover或写事务。
  * [OUTPUT]: 关闭前同步停止受理，等待已受理操作退出且原生client只关闭一次。
  * [OUTPUT]: 清理按固定会话/运行/轮次引用在SQL中筛选，Trace三项索引与UNION只处理ID，不排序或反序列化历史正文。
@@ -91,6 +92,26 @@ function invalidateSearchBodies(collection: string, id: string, value?: string) 
   return [{ sql: `DELETE FROM records WHERE collection='${SEARCH_INDEX_COLLECTION}' AND (${predicate})`, args }, { sql: advanceSearchClockSql, args: [] }]
 }
 
+const conversationFileCollections = ['materials', 'artifacts']
+// SQLite uses this partial index only when the query also includes its predicate.
+const conversationFilePredicate = `collection IN (${conversationFileCollections.map(name => `'${name}'`).join(',')})`
+type RecordFilter = { conversationId: string } | { status: string }
+
+async function listRecords<T>(reader: Pick<Client, 'execute'>, collection: string, filter?: RecordFilter): Promise<T[]> {
+  const conditions = ['collection=?']
+  const args = [collection]
+  if (filter && 'conversationId' in filter) {
+    if (conversationFileCollections.includes(collection)) conditions.push(conversationFilePredicate)
+    conditions.push("json_extract(value,'$.conversationId')=?")
+    args.push(filter.conversationId)
+  } else if (filter) {
+    conditions.push("json_extract(value,'$.status')=?")
+    args.push(filter.status)
+  }
+  const result = await reader.execute({ sql: `SELECT value FROM records WHERE ${conditions.join(' AND ')} ORDER BY rowid`, args })
+  return result.rows.map(row => JSON.parse(String(row.value)) as T)
+}
+
 export interface StoredRecord { collection: string; id: string; value: unknown }
 export interface MessageCommit { message: import('@boai/shared/domain').Message; inserted: boolean }
 /** Match any supplied identity; an empty scope matches nothing. */
@@ -107,7 +128,7 @@ export interface RecordTransaction {
   conversationRecords(ids: string[]): Promise<StoredRecord[]>
   relatedIds(collection: string, scope: RecordIdentityScope): Promise<string[]>
   get<T>(collection: string, id: string): Promise<T | undefined>
-  list<T>(collection: string, filter?: { status: string }): Promise<T[]>
+  list<T>(collection: string, filter?: RecordFilter): Promise<T[]>
   unreadCompletionCount(query: FirstUnreadCompletionSqlQuery): Promise<number>
   firstUnreadCompletion(query: FirstUnreadCompletionSqlQuery): Promise<ConversationCompletion | undefined>
   put(record: StoredRecord): Promise<void>
@@ -150,7 +171,7 @@ export class ProductStore {
       { sql: "CREATE INDEX IF NOT EXISTS work_view_owner ON records(json_extract(value,'$.ownerAgentId'),json_extract(value,'$.status'),json_extract(value,'$.createdAt') DESC,id DESC) WHERE collection='workItems'", args: [] },
       { sql: "CREATE INDEX IF NOT EXISTS work_view_parent ON records(json_extract(value,'$.parentWorkId'),json_extract(value,'$.conversationId')) WHERE collection='workItems'", args: [] },
       { sql: "CREATE INDEX IF NOT EXISTS work_view_parent_text ON records(CAST(json_extract(value,'$.parentWorkId') AS TEXT),json_extract(value,'$.conversationId')) WHERE collection='workItems'", args: [] },
-      { sql: "CREATE INDEX IF NOT EXISTS conversation_file_scope ON records(collection,json_extract(value,'$.conversationId'),json_extract(value,'$.logicalArtifactId')) WHERE collection IN ('materials','artifacts')", args: [] },
+      { sql: `CREATE INDEX IF NOT EXISTS conversation_file_scope ON records(collection,json_extract(value,'$.conversationId'),json_extract(value,'$.logicalArtifactId')) WHERE ${conversationFilePredicate}`, args: [] },
       { sql: "CREATE INDEX IF NOT EXISTS agent_task_page ON records(json_extract(value,'$.updatedAt') DESC,id DESC) WHERE collection='agentTasks'", args: [] },
       { sql: "CREATE INDEX IF NOT EXISTS agent_task_owner_page ON records(json_extract(value,'$.agentId'),json_extract(value,'$.updatedAt') DESC,id DESC) WHERE collection='agentTasks'", args: [] },
       { sql: "CREATE INDEX IF NOT EXISTS employee_execution_scope ON records(json_extract(value,'$.agentId'),json_extract(value,'$.createdAt') DESC,id DESC) WHERE collection='runs'", args: [] },
@@ -163,10 +184,7 @@ export class ProductStore {
     await this.client.batch([{ sql: `UPDATE records SET value=json_remove(json_set(value,'$.status','pending'),'$.text') WHERE collection='${SEARCH_INDEX_COLLECTION}' AND json_extract(value,'$.status')='indexed'`, args: [] }, { sql: advanceSearchClockSql, args: [] }], 'write')
   }
   async load<T>(collection: string, scope?: { conversationId: string }): Promise<T[]> {
-    return this.enqueue(async () => {
-      const result = await this.client.execute({ sql: `SELECT value FROM records WHERE collection = ?${scope ? " AND json_extract(value, '$.conversationId') = ?" : ''} ORDER BY rowid`, args: scope ? [collection, scope.conversationId] : [collection] })
-      return result.rows.map(row => JSON.parse(String(row.value)) as T)
-    })
+    return this.enqueue(() => listRecords<T>(this.client, collection, scope))
   }
   get<T>(collection: string, id: string): Promise<T | undefined> {
     return this.enqueue(async () => {
@@ -513,10 +531,7 @@ export class ProductStore {
             const result = await transaction.execute({ sql: queries.join(' UNION '), args })
             return result.rows.map(row => String(row.id))
           },
-          list: async <R>(collection: string, filter?: { status: string }) => {
-            const result = await transaction.execute({ sql: `SELECT value FROM records WHERE collection=?${filter ? " AND json_extract(value,'$.status')=?" : ''} ORDER BY rowid`, args: filter ? [collection, filter.status] : [collection] })
-            return result.rows.map(row => JSON.parse(String(row.value)) as R)
-          },
+          list: <R>(collection: string, filter?: RecordFilter) => listRecords<R>(transaction, collection, filter),
           unreadCompletionCount: async query => Number((await transaction.execute(unreadCompletionCountSql(query))).rows[0].count),
           firstUnreadCompletion: async query => {
             const result = await transaction.execute(firstUnreadCompletionSql(query))

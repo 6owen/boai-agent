@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 资料列表、失效与清理从原事务或连接直接读取当前会话记录。
  * [OUTPUT]: 新会话在私有准备阶段使用宿主提供的会话身份，发布后仍沿原材料关联/授权及恢复清理。
  * [OUTPUT]: 明确材料授权变化可组合知识资料失效事务，保留时返回实际材料来源身份；历史清理不触发该撤权。
  * [OUTPUT]: 明确知识保留沿当前员工/材料版本与原件hash返回字节，不推导源目录权限。
@@ -113,7 +114,7 @@ export class MaterialRepository {
     id(conversationId)
     return this.store.transaction(async tx => {
       await this.conversation(tx, conversationId)
-      return (await tx.list<ConversationMaterial>('materials')).filter(material => material.conversationId === conversationId).map(clone)
+      return (await tx.list<ConversationMaterial>('materials', { conversationId })).map(clone)
     })
   }
 
@@ -455,7 +456,7 @@ export class MaterialRepository {
   async invalidateConversation(tx: RecordTransaction, conversationId: string): Promise<void> {
     if (this.backingUp) throw new Error('材料正在备份，不能同时清理聊天')
     id(conversationId)
-    for (const material of (await tx.list<ConversationMaterial>('materials')).filter(material => material.conversationId === conversationId)) {
+    for (const material of await tx.list<ConversationMaterial>('materials', { conversationId })) {
       if (material.status === 'removed' && material.error === '聊天记录已清理' && !material.authorizedAgentIds.length) continue
       material.status = 'removed'; material.revision++; material.authorizedAgentIds = []; material.error = '聊天记录已清理'
       await tx.put(record('materials', material)); await this.logCleanup(tx, material)
@@ -484,11 +485,11 @@ export class MaterialRepository {
     if (this.backingUp) throw new Error('材料正在备份，不能同时清理聊天')
     await this.cleanupNativeCopies()
     id(conversationId)
-    const materials = (await this.store.load<ConversationMaterial>('materials')).filter(material => material.conversationId === conversationId)
+    const materials = await this.store.load<ConversationMaterial>('materials', { conversationId })
     const running = materials.map(material => this.active.get(material.id)).filter((value): value is NonNullable<typeof value> => !!value)
     for (const active of running) active.controller.abort(new Error('聊天材料已清理'))
     await Promise.all(running.map(active => active.result))
-    const cleanups = (await this.store.load<Cleanup>('materialCleanups')).filter(cleanup => cleanup.conversationId === conversationId)
+    const cleanups = await this.store.load<Cleanup>('materialCleanups', { conversationId })
     const failures: string[] = []
     for (const cleanup of cleanups) { try { await this.cleanup(cleanup.id) } catch (error) { failures.push(materialFileError(error)) } }
     if (failures.length) throw new Error(`材料清理未完成：${failures.join('；')}`)

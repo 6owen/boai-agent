@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 成果列表、失效清理与恢复错误归属在原事务或连接内按会话选取。
  * [OUTPUT]: 任务结果使用相同原文件/hash/来源校验但不写回路径或状态。
  * [OUTPUT]: 模型图片读取复用原成果核源/hash及同次字节快照，不增加路径或预览权限。
  * [OUTPUT]: 知识保留返回已核验成果的材料来源，支持后续明确材料撤权向独立知识副本传播。
@@ -303,7 +304,7 @@ export class ArtifactRepository {
   async list(conversationId: string): Promise<ArtifactVersion[]> {
     return this.store.transaction(async tx => {
       await this.conversation(tx, conversationId)
-      const artifacts = (await tx.list<ArtifactVersion>('artifacts')).filter(value => value.conversationId === conversationId && known(value))
+      const artifacts = (await tx.list<ArtifactVersion>('artifacts', { conversationId })).filter(known)
       for (const artifact of artifacts) {
         try {
           const verified = await this.checked(tx, artifact, undefined, undefined, true, false, true); Object.assign(artifact, verified.artifact)
@@ -573,16 +574,16 @@ export class ArtifactRepository {
 
   async invalidateConversation(tx: RecordTransaction, conversationId: string): Promise<void> {
     identifier(conversationId)
-    for (const intent of (await tx.list<PublicationIntent>('artifactPublicationIntents')).filter(value => value.conversationId === conversationId)) {
+    for (const intent of await tx.list<PublicationIntent>('artifactPublicationIntents', { conversationId })) {
       await tx.put(record('artifactCleanups', { id: intent.id, conversationId, storageConversationId: intent.storageConversationId, managedRelativePath: intent.managedRelativePath, contentHash: intent.contentHash, status: 'pending' } satisfies Cleanup))
       await tx.remove('artifactPublicationIntents', intent.id)
     }
-    for (const artifact of (await tx.list<ArtifactVersion>('artifacts')).filter(value => value.conversationId === conversationId)) {
+    for (const artifact of await tx.list<ArtifactVersion>('artifacts', { conversationId })) {
       if (known(artifact) && artifact.contentHash && artifact.managedRelativePath) await tx.put(record('artifactCleanups', { id: artifact.id, conversationId, storageConversationId: artifact.storageConversationId, managedRelativePath: artifact.managedRelativePath, contentHash: artifact.contentHash, status: 'pending' } satisfies Cleanup))
       await tx.remove('artifacts', artifact.id)
     }
-    for (const collection of ['artifactRevisionRequests', 'artifactAdoptionEvents', 'artifactAdoptionCurrent', 'artifactAcceptances']) for (const value of await tx.list<{ id: string; conversationId: string }>(collection)) if (value.conversationId === conversationId) await tx.remove(collection, value.id)
-    for (const collection of ['artifactRevisionReceipts', 'artifactAdoptionReceipts', 'artifactAcceptanceReceipts']) for (const value of await tx.list<Tombstone>(collection)) if (value.conversationId === conversationId && !value.cleared) await tx.put(record(collection, { id: value.id, conversationId, fingerprint: value.fingerprint, cleared: true } satisfies Tombstone))
+    for (const collection of ['artifactRevisionRequests', 'artifactAdoptionEvents', 'artifactAdoptionCurrent', 'artifactAcceptances']) for (const value of await tx.list<{ id: string }>(collection, { conversationId })) await tx.remove(collection, value.id)
+    for (const collection of ['artifactRevisionReceipts', 'artifactAdoptionReceipts', 'artifactAcceptanceReceipts']) for (const value of await tx.list<Tombstone>(collection, { conversationId })) if (!value.cleared) await tx.put(record(collection, { id: value.id, conversationId, fingerprint: value.fingerprint, cleared: true } satisfies Tombstone))
   }
   async cleanupConversation(conversationId: string): Promise<void> {
     const cleanups = (await this.store.load<Cleanup>('artifactCleanups')).filter(value => value.conversationId === identifier(conversationId)), errors: string[] = []
@@ -610,7 +611,7 @@ export class ArtifactRepository {
     const conversationIds = [...new Set((await this.store.load<ArtifactVersion>('artifacts')).filter(known).map(value => value.conversationId))]
     for (const conversationId of conversationIds) {
       try { await this.list(conversationId) }
-      catch (error) { for (const artifact of (await this.store.load<ArtifactVersion>('artifacts')).filter(value => value.conversationId === conversationId && known(value))) await this.unavailable(artifact.id, error) }
+      catch (error) { for (const artifact of (await this.store.load<ArtifactVersion>('artifacts', { conversationId })).filter(known)) await this.unavailable(artifact.id, error) }
     }
     for (const conversationId of [...new Set((await this.store.load<Cleanup>('artifactCleanups')).map(value => value.conversationId))]) { try { await this.cleanupConversation(conversationId) } catch { /* Persistent conflict retains the externally modified original. */ } }
   }
