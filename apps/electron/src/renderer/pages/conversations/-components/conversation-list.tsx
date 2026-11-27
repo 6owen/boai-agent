@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工主聊的拖放落点覆盖整行，包括行尾话题按钮。
  * [OUTPUT]: 置顶卡片和原生拖影只显示头像与员工名称，等待保存时保持落点，置顶员工的话题通过聊天标题栏查阅。
  * [OUTPUT]: 主聊统一进入普通列表或头像置顶区，复用持久置顶与排序；话题沿所属员工展开。
  * [OUTPUT]: 侧栏话题标题在生成期间复用 shadcn shimmer。
@@ -169,7 +170,7 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
     <ContextMenuItem disabled={busy || !allCore.length} onClick={() => confirmAllCore(false)}><Trash2 />清空所有记录</ContextMenuItem>
     <ContextMenuItem variant="destructive" disabled={busy || !allCore.length} onClick={() => confirmAllCore(true)}><Trash2 />删除所有会话</ContextMenuItem>
   </ContextMenuGroup></>
-  const renderConversation = (conversation: Conversation, tile = false) => {
+  const renderConversation = (conversation: Conversation, tile = false, topicOwner?: string) => {
         const coreConversation = isCoreConversation(conversation)
         const section = conversationSection(conversation)
         const compact = section === 'topic'
@@ -185,8 +186,8 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
         const employee = !compact && conversation.kind === 'direct' ? agent : undefined
         const avatar = conversation.kind === 'group' && !isChannel ? <GroupAvatar members={members} /> : <Avatar name={agent?.name ?? conversation.title} seed={agent?.id} avatar={agent?.avatar} color={agent?.color} />
         const name = coreConversation && !compact && agent ? `${agent.name} 的主聊天` : tile ? pinName(conversation) : title(conversation)
-        return <DragListItem id={conversation.id} className={cn('conversation-row relative', tile && 'conversation-pin-item')} key={conversation.id} horizontal={tile}>{({ dragging, dragProps }) =>
-          <><ContextMenu onOpenChange={open => { if (compact) setCoreHistoryMenuId(open ? conversation.id : null) }}>
+        return <DragListItem id={conversation.id} className={cn('conversation-row relative', tile && 'conversation-pin-item')} key={conversation.id} horizontal={tile}>{({ dragging, dragProps }) => {
+          const row = <><ContextMenu onOpenChange={open => { if (compact) setCoreHistoryMenuId(open ? conversation.id : null) }}>
             {compact ? <ContextMenuTrigger render={<div className={cn('conversation-item conversation-core-item', { selected: selectedId === conversation.id, 'drag-list-dragging': dragging })} data-menu-open={coreHistoryMenuId === conversation.id || undefined} />} aria-label={conversation.title}>
               <Button variant="ghost" size="content" className="conversation-core-title" aria-label={conversation.title} {...dragProps} aria-current={selectedId === conversation.id ? 'page' : undefined} onClick={() => { if (!dragging) onSelect(conversation.id) }}><span className={cn('truncate', conversation.titleGenerating && 'shimmer')} aria-busy={conversation.titleGenerating || undefined}>{conversation.title}</span>{messageTime && <time dateTime={messageTime}>{timeText(messageTime)}</time>}</Button>
               <div className="conversation-core-actions">
@@ -220,7 +221,10 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
           </ContextMenu>
           {!tile && notification && agent && <Button variant="ghost" size="content" className="absolute bottom-2 right-3 text-xs text-primary" aria-label={`${agent.name}的渠道有${unread}条新回复`} onClick={() => onOpenChannels?.(agent, notification.id)}>{CHANNEL_NAMES[notification.channel!.platform]} · 新回复 {unread}</Button>}
           </>
-        }</DragListItem>
+          return topicOwner === undefined ? row : <EmployeeConversationRow topicOwner={topicOwner}>
+            <div className="conversation-row relative">{row}</div>
+          </EmployeeConversationRow>
+        }}</DragListItem>
   }
   const renderEmployee = (conversation: Conversation) => {
     const employeeId = conversation.agentIds[0]
@@ -228,7 +232,7 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
     const topicOwner = isCoreConversation(conversation) ? coreAgent?.name ?? conversation.title : conversation.title
     if (!topics.length) return renderConversation(conversation)
     return <Collapsible key={conversation.id} open={topicsOpen(employeeId)} onOpenChange={value => setTopicsOpen(employeeId, value)}>
-      <EmployeeConversationRow topicOwner={topicOwner}>{renderConversation(conversation)}</EmployeeConversationRow>
+      {renderConversation(conversation, false, topicOwner)}
       <CollapsibleContent><div className="conversation-core-history" role="group" aria-label={isCoreConversation(conversation) ? `${topicOwner} 的会话` : `${topicOwner} 的话题列表`}>{topics.map(topic => renderConversation(topic))}</div></CollapsibleContent>
     </Collapsible>
   }
