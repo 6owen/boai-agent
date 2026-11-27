@@ -1,9 +1,11 @@
 /*
+ * [OUTPUT]: CI截图与录屏共用已有消息的静态执行历史，支持收起状态截图，不调用模型或触发计划。
  * [INPUT]: 固定时间、隔离SQLite和原会话身份。
  * [OUTPUT]: 预置暂停计划及已结束历史，仅供UI场景；零模型/零计划执行。
  * [POS]: 版本化定时任务UI场景的数据准备。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header 与所属目录 .folder.md。
  */
+import type { AgentRun, Message } from '../../../packages/shared/src/domain'
 import type { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
 import type { AutomationDefinition, AutomationOccurrence } from '../../../packages/shared/src/domain/automations'
 export async function seedScheduleUi(store: ProductStore, conversationId: string) {
@@ -20,5 +22,14 @@ export async function seedScheduleUi(store: ProductStore, conversationId: string
     scheduledFor: at, startedAt: at, finishedAt: at, status: index === 0 ? 'completed' : index === 1 ? 'failed' : 'skipped',
     deliveryStatus: index === 0 ? 'no_change' : 'blocked', conversationId, runIds: [], resultMessageIds: [], usageIncomplete: false,
   }))
-  await store.write([...tasks.map(value => ({ collection: 'automations', id: value.id, value })), ...occurrences.map(value => ({ collection: 'automationOccurrences', id: value.id, value }))])
+  const messages = (await store.load<Message>('messages')).filter(message => message.conversationId === conversationId).sort((a, b) => a.sequence - b.sequence)
+  const history: AgentRun[] = messages.filter(message => message.senderType === 'agent').slice(-3).flatMap(message => {
+    const trigger = messages.filter(item => item.senderType === 'user' && item.sequence < message.sequence).at(-1)
+    return trigger ? [{
+      id: `ui-preview-${message.id}`, conversationId, agentId: message.senderId, agentName: message.senderName,
+      triggerMessageId: trigger.id, messageId: message.id, status: 'completed', phase: 'execution',
+      createdAt: message.createdAt, finishedAt: message.createdAt, toolEvents: [],
+    }] : []
+  })
+  await store.write([...history.map(value => ({ collection: 'runs', id: value.id, value })), ...tasks.map(value => ({ collection: 'automations', id: value.id, value })), ...occurrences.map(value => ({ collection: 'automationOccurrences', id: value.id, value }))])
 }
