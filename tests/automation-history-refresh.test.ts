@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 左上角双栏弹窗恢复默认折叠、选择详情及删除后清空右侧。
  * [OUTPUT]: 2026-11-27 验证列表只做会话定位，跳过记录静态展示原因。
  * [OUTPUT]: 2026-11-27 验证记录行定位原会话、无会话详情及独立日志删除。
  * [OUTPUT]: 2026-11-17固定检索/全局清空工具栏与ScrollArea；记录无前置图标且仅时间，全局清空冻结全部分页并保留在途记录。
@@ -15,9 +16,10 @@
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import type { AutomationHistoryPage } from '../packages/shared/src/domain'
+import type { AutomationHistoryPage, Snapshot } from '../packages/shared/src/domain'
 import type { DesktopApi } from '../packages/shared/src/ipc'
 import { AutomationHistory } from '../apps/electron/src/renderer/pages/schedules/automation-history-list'
+import { AutomationHistoryDialog } from '../apps/electron/src/renderer/pages/schedules/automation-history-dialog'
 import { toast } from 'sonner'
 
 let host: HTMLDivElement, root: Root
@@ -225,29 +227,53 @@ test('hiding the task during a clear stops unsent deletion requests', async () =
   expect(vi.mocked(api.request).mock.calls.filter(([method]) => method === 'deleteAutomationOccurrence')).toHaveLength(0)
 })
 
-test('Dialog分组保留固定记录和时间，折叠及静态记录不触发执行', async () => {
-  await act(async () => root.render(createElement(AutomationHistory, { api, active: true, grouped: true })))
-  await resolve({ occurrences: [record, { ...record, id: 'done', status: 'completed' }, { ...record, id: 'failed', status: 'failed' }] })
-  expect(host.querySelector('input[aria-label="搜索执行记录"]')).not.toBeNull()
-  expect(host.querySelector('[aria-label="清空记录"]')).not.toBeNull()
-  expect(host.querySelector('[data-slot="scroll-area-viewport"]')).not.toBeNull()
-  expect(host.querySelector('[aria-label="执行记录筛选"]')).toBeNull()
-  expect(host.querySelector('[role=tablist]')).toBeNull()
-  expect(host.querySelectorAll('.automation-record-list [data-occurrence-id]')).toHaveLength(0)
-  const headings = [...host.querySelectorAll<HTMLButtonElement>('.contact-manager-filter-heading')]
+test('the history dialog keeps collapsed groups on the left and opens the selected run on the right', async () => {
+  const done = { ...record, id: 'done', status: 'completed' as const, runIds: [], conversationId: 'task-chat' }
+  const failed = { ...done, id: 'failed', status: 'failed' as const }
+  const request = vi.mocked(api.request)
+  const list = request.getMockImplementation()!
+  request.mockImplementation(async (method, input) => method === 'getAutomationOccurrence' ? done as never : list(method, input))
+  const navigateMessage = vi.fn()
+  await act(async () => root.render(createElement(AutomationHistoryDialog, {
+    api, active: true, snapshot: { conversations: [{ id: 'task-chat' }] } as Snapshot, onClose() {}, onNavigateMessage: navigateMessage,
+  })))
+  await resolve({ occurrences: [record, done, failed] })
+  const dialog = document.querySelector('[role="dialog"][aria-label="执行记录"]')!
+  const sidebar = dialog.querySelector('[aria-label="执行记录列表"]')!
+  const details = dialog.querySelector('.contact-manager-main')!
+  expect(dialog.querySelector('[role="separator"][aria-label="调整执行记录列表宽度"]')).not.toBeNull()
+  expect(sidebar.querySelector('input[aria-label="搜索执行记录"]')).not.toBeNull()
+  expect(sidebar.querySelector('[aria-label="清空记录"]')).not.toBeNull()
+  expect(sidebar.querySelector('[data-slot="scroll-area-viewport"]')).not.toBeNull()
+  expect(sidebar.querySelector('[aria-label="执行记录筛选"]')).toBeNull()
+  expect(sidebar.querySelector('[role=tablist]')).toBeNull()
+  expect(sidebar.querySelectorAll('[data-occurrence-id]')).toHaveLength(0)
+  expect(details.textContent).toContain('选择一条执行记录')
+  expect(request.mock.calls.every(([method]) => method === 'listAutomationHistory')).toBe(true)
+
+  const headings = [...sidebar.querySelectorAll<HTMLButtonElement>('.contact-manager-filter-heading')]
   expect(headings.map(item => item.textContent)).toEqual(['进行中1', '已完成1', '需处理1'])
   expect(headings.every(item => item.getAttribute('aria-expanded') === 'false')).toBe(true)
   await act(async () => headings[1].click())
-  const done = host.querySelector('[data-occurrence-id=done]')!
-  expect(done.querySelector('.skill-list-icon')).toBeNull()
-  expect(done.querySelector('.conversation-preview')?.textContent).toBe(new Date(record.startedAt).toLocaleString('zh-CN', { hour12: false }))
-  expect(done.querySelector('time')?.getAttribute('datetime')).toBe(record.startedAt)
+  const row = sidebar.querySelector<HTMLButtonElement>('button[data-occurrence-id=done]')!
+  expect(row.querySelector('.skill-list-icon')).toBeNull()
+  expect(row.querySelector('.conversation-preview')?.textContent).toBe(new Date(record.startedAt).toLocaleString('zh-CN', { hour12: false }))
+  expect(row.querySelector('time')?.getAttribute('datetime')).toBe(record.startedAt)
   await act(async () => headings[2].click())
-  expect(host.querySelector('[data-occurrence-id=failed]')).not.toBeNull()
-  expect(host.querySelector('button[data-occurrence-id=failed]')).toBeNull()
+  expect(sidebar.querySelector('button[data-occurrence-id=failed]')).not.toBeNull()
   await act(async () => headings[2].click())
   expect(headings[2].getAttribute('aria-expanded')).toBe('false')
-  expect(vi.mocked(api.request).mock.calls.every(([method]) => method === 'listAutomationHistory')).toBe(true)
+
+  await act(async () => row.click())
+  expect(row.getAttribute('aria-pressed')).toBe('true')
+  expect(request).toHaveBeenCalledWith('getAutomationOccurrence', { id: done.id })
+  expect(details.querySelector('[data-occurrence-detail-id="done"]')?.textContent).toContain(done.name)
+  expect(navigateMessage).not.toHaveBeenCalled()
+  await act(async () => {
+    for (const listener of listeners) listener({ type: 'automation:history-deleted', occurrenceId: done.id })
+  })
+  expect(sidebar.querySelector('[data-occurrence-id="done"]')).toBeNull()
+  expect(details.textContent).toContain('选择一条执行记录')
 })
 
 test('Dialog search remains server-backed and clear freezes all history pages independently of the visible search', async () => {

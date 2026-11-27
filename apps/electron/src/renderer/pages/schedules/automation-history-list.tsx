@@ -1,6 +1,6 @@
 /*
  * [OUTPUT]: 当前任务执行记录的清空入口用与搜索同尺寸的垃圾桶图标，保留悬停提示和确认。
- * [OUTPUT]: 2026-11-27 移除查看运行详情入口；有会话的记录行直达原消息，无会话原因直接显示。
+ * [OUTPUT]: 2026-11-27 任务详情下方的记录行直达原消息，无会话原因直接显示；双栏弹窗在左栏选中记录。
  * [OUTPUT]: 2026-11-27 有关联会话的日志行直接定位；独立按钮查看详情；清空和删除提示只指日志。
  * [OUTPUT]: Dialog检索缩至28px/12px图标，10px清空图标在输入框外且悬停危险色；ScrollArea贴侧栏边缘，留白仅在内容层，原查询/分页/删除保持。
  * [OUTPUT]: 确认全部清空后立即按原动画关闭Popover，后台清理期间保留提交锁及Sonner结果反馈。
@@ -34,8 +34,9 @@ import { occurrenceStatusLabels, deliveries } from './automation-history'
 
 const historyFilters = [{ value: 'all', label: '全部' }, { value: 'active', label: '进行中' }, { value: 'completed', label: '已完成' }, { value: 'attention', label: '需处理' }] as const
 
-export function AutomationHistory({ api, active, automationId, employeeId, attentionOnly = false, grouped = false, conversations, onConversation }: {
+export function AutomationHistory({ api, active, automationId, employeeId, attentionOnly = false, grouped = false, conversations, onConversation, selectedId, onOccurrence }: {
   conversations?: Snapshot['conversations']; onConversation?(id: string, messageId?: string): void
+  selectedId?: string; onOccurrence?(id: string): void
   api: DesktopApi; active: boolean; automationId?: string; employeeId?: string; attentionOnly?: boolean; grouped?: boolean
 }) {
   const [search, setSearch] = useState(''), [status, setStatus] = useState<NonNullable<AutomationHistoryQuery['status']>>('all')
@@ -79,13 +80,15 @@ export function AutomationHistory({ api, active, automationId, employeeId, atten
   const renderRecord = (o: AutomationHistoryPage['occurrences'][number]) => {
     const date = new Date(o.startedAt).toLocaleString('zh-CN', { hour12: false })
     const locate = o.status !== 'skipped' && o.taskKind !== 'monitor' && onConversation && conversations?.some(room => room.id === o.conversationId && !room.list?.hidden && !room.mergedInto)
-    const reason = !locate && o.reason ? errorText(o.reason) : undefined
+    const reason = !onOccurrence && !locate && o.reason ? errorText(o.reason) : undefined
+    const openRecord = onOccurrence ? () => onOccurrence(o.id) : locate ? () => onConversation(o.conversationId, o.messageId) : undefined
+    const selected = selectedId === o.id
     const subtitle = [
       date,
       ...(!grouped ? [o.source === 'manual' ? '手动触发' : '定时触发', occurrenceStatusLabels[o.status], deliveries[o.deliveryStatus]] : []),
       reason,
     ].filter(Boolean).join(' · ')
-    const row = { className: 'conversation-item automation-record-row', style: { paddingRight: 44 }, 'data-occurrence-id': o.id }
+    const row = { className: `conversation-item automation-record-row${selected ? ' selected' : ''}`, style: { paddingRight: 44 }, 'data-occurrence-id': o.id }
     const content = <>
       {!grouped && <span className="skill-list-icon"><Clock /></span>}
       <span className="conversation-copy">
@@ -96,8 +99,8 @@ export function AutomationHistory({ api, active, automationId, employeeId, atten
       </span>
     </>
     return <div key={o.id} className="automation-history-row relative min-w-0">
-      {locate
-        ? <Button {...row} variant="ghost" size="content" title="定位聊天记录" onClick={() => onConversation(o.conversationId, o.messageId)}>{content}</Button>
+      {openRecord
+        ? <Button {...row} variant="ghost" size="content" aria-pressed={onOccurrence ? selected : undefined} title={onOccurrence ? undefined : '定位聊天记录'} onClick={openRecord}>{content}</Button>
         : <div {...row}>{content}</div>}
       <DeleteHistoryRecord api={api} occurrence={o} active={active && !clearing} onDeleted={() => removeRows([o.id])} />
     </div>

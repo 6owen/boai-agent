@@ -1,7 +1,7 @@
 /*
  * [OUTPUT]: 启停单独提交，操作栏 Tooltip 延迟 500ms，编辑弹窗直接使用当前任务配置。
  * [OUTPUT]: 标题栏依次显示启用开关、编辑、删除与主色立即运行，记录行只负责定位会话。
- * [OUTPUT]: 2026-11-27 定时页点击执行记录直接打开原话题；跳过等无会话记录仍可查看原因。
+ * [OUTPUT]: 2026-11-27 定时页任务下方点击执行记录打开原话题，左上角菜单沿原双栏弹窗查看运行详情。
  * [OUTPUT]: 执行记录入口及单次定位打开统一左右Dialog；任务内历史列表沿原查询。
  * [OUTPUT]: 列表右键删除固定所选任务，经统一AlertDialog确认后沿原删除接口提交；取消不提交，成功同步移除并退出已删任务详情。
  * [OUTPUT]: 定时任务侧栏委托独立标签/排序管理；说明移至标题Tooltip，原执行与详情行为保持。
@@ -130,7 +130,7 @@ export function SchedulePage({ api, snapshot, active, sidebarShown, divider, loc
         }}>确认删除</Button></AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-    {historyDialog && <AutomationHistoryDialog api={api} snapshot={snapshot} active={active} initialId={historyDialog.id} attentionOnly={historyDialog.attention} onClose={() => setHistoryDialog(undefined)} onConversation={(id, messageId) => onConversation(id, messageId, () => setHistoryDialog(undefined))} onNavigateMessage={(...args) => { setHistoryDialog(undefined); onNavigateMessage(...args) }} />}
+    {historyDialog && <AutomationHistoryDialog api={api} snapshot={snapshot} active={active} initialId={historyDialog.id} attentionOnly={historyDialog.attention} onClose={() => setHistoryDialog(undefined)} onNavigateMessage={(...args) => { setHistoryDialog(undefined); onNavigateMessage(...args) }} />}
     {dialog && <AutomationDialog key={dialog.key} api={api} snapshot={snapshot} active={active} target={dialog} onClose={() => setDialog(undefined)} onSaved={value => {
       setView(current => ({ ...current, definitions: [{ ...value, nextTimes: [] }, ...current.definitions.filter(d => d.id !== value.id)] }))
       setDialog(undefined); onLocation({ kind: 'definition', id: value.id })
