@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 两条新团队方案路径共用宿主持久成员身份、头像、颜色和后端能力说明。
  * [OUTPUT]: 持久标识的 JSON 字节摘要使用共用编码，字段及顺序由本业务传入。
  * [OUTPUT]: Magpie网关协议/认证及revision进入模型来源指纹，旧直连hash语义保持。
  * [OUTPUT]: 团队允许插件原生默认模型，成员仍按独立员工身份和配置创建。
@@ -13,7 +14,9 @@ import { jsonSha256 } from '../../json-digest'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import type { Connection } from '@boai/shared/domain'
-import { teamCapabilityNotes, teamEditableSchema, teamId, type TeamDraft, type TeamDraftView, type TeamCreationOperation, type TeamGeneration } from '@boai/shared/domain/team-creation'
+import { avatarPresets } from '@boai/shared/domain/avatars'
+import type { ExecutionBackend } from '@boai/shared/domain/backends'
+import { TEAM_PLANNER_VERSION, teamCapabilityNotes, teamColors, teamEditableSchema, teamId, type TeamPlan, type TeamPlannerOutput, type TeamDraft, type TeamDraftView, type TeamCreationOperation, type TeamGeneration } from '@boai/shared/domain/team-creation'
 import { ProductStore, type RecordTransaction } from '../../adapters/storage/product-store'
 
 export const teamNow = () => new Date().toISOString()
@@ -22,6 +25,21 @@ export const teamRecord = (collection: string, value: { id: string }) => ({ coll
 export const teamVersionSchema = z.object({ draftId: teamId, expectedVersion: z.number().int().positive() }).strict()
 export const teamSaveSchema = teamVersionSchema.extend({ editableFields: teamEditableSchema }).strict()
 export const teamInputHash = (draft: TeamDraft) => jsonSha256({ ...(draft.executionBackend ? { executionBackend: draft.executionBackend } : {}), prompt: draft.prompt, connectionId: draft.selectedConnectionId, modelId: draft.resolvedModelId, fingerprint: draft.connectionFingerprint })
+export function createDraftPlan(plan: Extract<TeamPlannerOutput, { kind: 'plan' }>, generationId: string, backend?: ExecutionBackend['kind']): TeamPlan {
+  return {
+    ...plan,
+    capabilityNotes: teamCapabilityNotes(plan.scenarioKind, backend),
+    plannerVersion: TEAM_PLANNER_VERSION,
+    generationId,
+    members: plan.members.map((member, index) => ({
+      ...member,
+      memberKey: randomUUID(),
+      avatarId: avatarPresets[index % avatarPresets.length].id,
+      color: teamColors[index % teamColors.length],
+    })),
+  }
+}
+
 export function validateTeamDraft(draft: TeamDraft) {
   draft.validationErrors = []
   if (!draft.prompt) draft.validationErrors.push('请描述团队需求')

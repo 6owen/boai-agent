@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 两条新团队方案路径共用宿主持久成员身份、头像、颜色和后端能力说明。
  * [OUTPUT]: 持久标识的 JSON 字节摘要使用共用编码，字段及顺序由本业务传入。
  * [OUTPUT]: 新团队群在受理事务冻结各成员项目选择，发布/重启/重复请求沿同一快照，不追随后续员工默认目录。
  * [OUTPUT]: 模型ID共用1000字符/无控制符边界，完整供应商前缀及原生模型名不截断。
@@ -16,14 +17,13 @@ import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { z } from 'zod'
 import type { Conversation, DigitalAgent } from '@boai/shared/domain'
-import { avatarPresets } from '@boai/shared/domain/avatars'
-import { TEAM_PLANNER_VERSION, teamCapabilityNotes, teamColors, teamId, teamModelPlanSchema, teamPlanSchema, type TeamCreationOperation, type TeamDraft, type TeamGeneration } from '@boai/shared/domain/team-creation'
+import { teamId, teamModelPlanSchema, teamPlanSchema, type TeamCreationOperation, type TeamDraft, type TeamGeneration } from '@boai/shared/domain/team-creation'
 import { agentSchema, backendSchema } from '../employees/employee-service'
 import { createTeamContactCategory } from '../employees/contact-list'
 import { WorkspaceService } from '../workspaces/workspace-service'
 import { initialProjectSelection } from '../workspaces/project-directory'
 import { TeamFiles, teamFileLog, type TeamFileCheckpoint } from './team-files'
-import { TeamRepository, editableTeamDraft, readTeamDraft, teamError, teamInputHash, teamNow, teamRecord, teamVersionSchema, validateTeamDraft } from './team-repository'
+import { TeamRepository, createDraftPlan, editableTeamDraft, readTeamDraft, teamError, teamInputHash, teamNow, teamRecord, teamVersionSchema, validateTeamDraft } from './team-repository'
 import { resolveEmployeeRuntime } from '../backends/runtime-config'
 import type { RecordTransaction } from '../../adapters/storage/product-store'
 
@@ -76,8 +76,7 @@ export class TeamCreationService {
         prompt: request.plan.purpose, selectedConnectionId: request.connectionId, selectedModelId: request.modelId,
         ...(model.executionBackend.kind !== 'mastra-model' ? { executionBackend: model.executionBackend } : {}), nativeOptions: model.nativeOptions, resolvedModelId: model.modelId, connectionFingerprint: model.fingerprint, createGroup: true, groupTitle: request.plan.name,
         generationId, generationStatus: 'succeeded', manuallyEdited: false, validationErrors: [],
-        plan: { ...request.plan, capabilityNotes: teamCapabilityNotes(request.plan.scenarioKind, model.executionBackend.kind), plannerVersion: TEAM_PLANNER_VERSION, generationId,
-          members: request.plan.members.map((member, index) => ({ ...member, memberKey: randomUUID(), avatarId: avatarPresets[index % avatarPresets.length].id, color: teamColors[index % teamColors.length] })) },
+        plan: createDraftPlan(request.plan, generationId, model.executionBackend.kind),
       }
       draft.planInputHash = teamInputHash(draft); validateTeamDraft(draft)
       return { operation: await this.freeze(tx, draft, request.requestId, requestHash), start: true }
