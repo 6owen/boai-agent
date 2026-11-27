@@ -1,16 +1,17 @@
 /*
+ * [OUTPUT]: 启停单独提交，操作栏 Tooltip 延迟 500ms，编辑弹窗直接使用当前任务配置。
  * [OUTPUT]: 标题栏依次显示启用开关、编辑、删除与主色立即运行，记录行只负责定位会话。
- * [OUTPUT]: 2026-11-27 定时页点击执行记录直接打开原话题；跳过等无会话记录仍可查看原因。
+ * [OUTPUT]: 2026-11-27 定时页任务下方点击执行记录打开原话题，左上角菜单沿原双栏弹窗查看运行详情。
  * [OUTPUT]: 执行记录入口及单次定位打开统一左右Dialog；任务内历史列表沿原查询。
  * [OUTPUT]: 列表右键删除固定所选任务，经统一AlertDialog确认后沿原删除接口提交；取消不提交，成功同步移除并退出已删任务详情。
  * [OUTPUT]: 定时任务侧栏委托独立标签/排序管理；说明移至标题Tooltip，原执行与详情行为保持。
- * [OUTPUT]: 立即运行只提交并全程loading防重复，仅保留定位聊天图标；执行记录仍可沿原入口打开。
+ * [OUTPUT]: 立即运行只在提交期间显示忙态；收到受理回执即恢复，定位聊天沿执行记录行。
  * [OUTPUT]: 重回定时任务页及首次异步载入详情也播放Panel reveal，后台数据刷新不重播。
  * [OUTPUT]: 对话创建转到会话页并预选管理定时任务技能；本页只保留手动创建/编辑Dialog及任务详情/历史。
  * [OUTPUT]: 详情/历史内容切换沿设置页Panel reveal，后台刷新不重播；滚动条占位由真实滚动区保持。
  * [OUTPUT]: 编辑主色/暂停中性/删除危险色；删除Popover只保留确认标题与按钮，取消不提交，失败保留确认入口。
  * [INPUT]: 计划投影、Shell页面状态、单员工编辑器与普通bobo会话导航。
- * [OUTPUT]: 40px操作行下统一执行记录列表，检索和分页留在主区，点击记录或查看图标打开Shell执行面板，运行按钮只受理并显示loading。
+ * [OUTPUT]: 40px操作行下统一执行记录列表，检索和分页留在主区，有会话的记录可定位到话题。
  * [POS]: 定时任务唯一管理页；员工入口只跳转至本页，隐藏停止读取。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -102,19 +103,10 @@ export function SchedulePage({ api, snapshot, active, sidebarShown, divider, loc
         <div className="page-heading">
           <h2 className="min-w-0 break-words">{definition.name}</h2>
           <div className="ml-auto flex flex-wrap items-center justify-end gap-1" role="group" aria-label="定时任务操作">
-            <div className="mx-3 flex items-center">
-              <Tooltip>
-                <TooltipTrigger render={<Switch aria-label="启用定时任务" checked={definition.enabled} disabled={busy}
-                  onCheckedChange={enabled => void run(async () => {
-                    if (enabled) await api.request('resumeAutomation', { id: definition.id })
-                    else await api.request('pauseAutomation', { id: definition.id })
-                  })} />} />
-                <TooltipContent>{definition.enabled ? '暂停计划' : '启用计划'}</TooltipContent>
-              </Tooltip>
-            </div>
-            <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon" aria-label="编辑" disabled={busy} onClick={() => openDialog({ kind: 'manual', id: definition.id, key: crypto.randomUUID() })} />}><Pencil /></TooltipTrigger><TooltipContent>编辑</TooltipContent></Tooltip>
+            <ScheduleEnabledSwitch key={definition.id} api={api} id={definition.id} enabled={definition.enabled} disabled={busy} />
+            <Tooltip><TooltipTrigger delay={500} render={<Button variant="ghost" size="icon" aria-label="编辑" disabled={busy} onClick={() => openDialog({ kind: 'manual', id: definition.id, initialDefinition: definition, key: crypto.randomUUID() })} />}><Pencil /></TooltipTrigger><TooltipContent>编辑</TooltipContent></Tooltip>
             <DeleteAutomationButton key={`delete:${definition.id}`} name={definition.name} busy={busy} onConfirm={() => void run(async () => { await api.request('deleteAutomation', { id: definition.id }); onLocation({ kind: 'overview' }) })} />
-            <AutomationRunActions key={`run:${definition.id}`} api={api} automationId={definition.id} occurrences={view.occurrences} active={active} busy={busy} onNavigateMessage={onNavigateMessage} />
+            <AutomationRunActions key={`run:${definition.id}`} api={api} automationId={definition.id} active={active} busy={busy} />
           </div>
         </div>
         <AutomationDetails definition={definition} snapshot={snapshot} />
@@ -138,17 +130,33 @@ export function SchedulePage({ api, snapshot, active, sidebarShown, divider, loc
         }}>确认删除</Button></AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-    {historyDialog && <AutomationHistoryDialog api={api} snapshot={snapshot} active={active} initialId={historyDialog.id} attentionOnly={historyDialog.attention} onClose={() => setHistoryDialog(undefined)} onConversation={(id, messageId) => onConversation(id, messageId, () => setHistoryDialog(undefined))} onNavigateMessage={(...args) => { setHistoryDialog(undefined); onNavigateMessage(...args) }} />}
+    {historyDialog && <AutomationHistoryDialog api={api} snapshot={snapshot} active={active} initialId={historyDialog.id} attentionOnly={historyDialog.attention} onClose={() => setHistoryDialog(undefined)} onNavigateMessage={(...args) => { setHistoryDialog(undefined); onNavigateMessage(...args) }} />}
     {dialog && <AutomationDialog key={dialog.key} api={api} snapshot={snapshot} active={active} target={dialog} onClose={() => setDialog(undefined)} onSaved={value => {
       setView(current => ({ ...current, definitions: [{ ...value, nextTimes: [] }, ...current.definitions.filter(d => d.id !== value.id)] }))
       setDialog(undefined); onLocation({ kind: 'definition', id: value.id })
     }} />}
   </div>
 }
+function ScheduleEnabledSwitch({ api, id, enabled, disabled }: { api: DesktopApi; id: string; enabled: boolean; disabled: boolean }) {
+  const { busy, run } = useMutation()
+  return <div className="mx-3 flex items-center">
+    <Tooltip>
+      <TooltipTrigger delay={500} render={<Switch aria-label="启用定时任务" checked={enabled} disabled={disabled} aria-busy={busy}
+        onCheckedChange={checked => void run(async () => {
+          if (checked) await api.request('resumeAutomation', { id })
+          else await api.request('pauseAutomation', { id })
+        })} />} />
+      <TooltipContent>{enabled ? '暂停定时任务' : '启用定时任务'}</TooltipContent>
+    </Tooltip>
+  </div>
+}
 function DeleteAutomationButton({ name, busy, onConfirm }: { name: string; busy: boolean; onConfirm(): void }) {
   const [open, setOpen] = useState(false)
   return <Popover open={open} onOpenChange={value => { if (!busy) setOpen(value) }}>
-    <PopoverTrigger render={<Button variant="ghost" size="icon" aria-label="删除" title="删除" className="hover:text-destructive" disabled={busy} />}><Trash2 /></PopoverTrigger>
+    <Tooltip>
+      <TooltipTrigger delay={500} render={<PopoverTrigger render={<Button variant="ghost" size="icon" aria-label="删除" className="hover:text-destructive" disabled={busy} />} />}><Trash2 /></TooltipTrigger>
+      <TooltipContent>删除</TooltipContent>
+    </Tooltip>
     <PopoverContent align="end">
       <PopoverTitle className="break-words">删除“{name}”？</PopoverTitle>
       <div className="button-row justify-end"><Button variant="secondary" size="sm" disabled={busy} onClick={() => setOpen(false)}>取消</Button><Button variant="destructive" size="sm" disabled={busy} onClick={onConfirm}>{busy ? '正在删除…' : '确认删除'}</Button></div>
