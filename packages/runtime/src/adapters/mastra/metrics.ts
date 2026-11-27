@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 官方存储导出器继承宿主安装的日志器，CLI stdout 保留服务协议。
  * [OUTPUT]: 宿主 Trace、官方存储 Trace 与执行事件通过统一的结构化观测序列化保留 JSON 字段类型。
  * [OUTPUT]: 2026-11-24 第三阶段：官方 Durable Agent/Session.steer、Workspace 文件工具、LocalSandbox 进程和原生 Trace；授权及发布保留业务适配。
  * [INPUT]: Mastra's native metric events and BOAI run/conversation identities.
@@ -45,6 +46,7 @@ export class MastraMetrics {
     this.exporters.add(native)
     return {
       name: 'boai-native-metrics',
+      __setLogger: logger => native.__setLogger(logger),
       init: options => native.init(options),
       exportTracingEvent: async event => {
         const span = event.exportedSpan
