@@ -18,11 +18,11 @@ import { MessageCircle, Settings } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { ContactEditorDialog } from './contact-editor-layout'
 
-export function EmployeeProfile({ api, snapshot, agent, active, busy, refresh, onAgentSaved, onMessage, advancedOpen, onAdvancedChange, onOpenAgent, onConversation }: {
+export function EmployeeProfile({ api, snapshot, agent, active, busy, refresh, onAgentSaved, onMessage, advancedOpen, onAdvancedChange, onConversation }: {
   api: DesktopApi; snapshot: Snapshot; agent: DigitalAgent; active: boolean; busy: boolean
   refresh(): Promise<void>; onMessage(): void; advancedOpen: boolean; onAdvancedChange(open: boolean): void
   onAgentSaved(agent: DigitalAgent): void
-  onOpenAgent(id: string): void; onConversation(id: string, messageId?: string): void
+  onConversation(id: string, messageId?: string): void
 }) {
   const [section, setSection] = useState<AgentConfigurationSection | null>(null)
   const [saving, setSaving] = useState(false)
@@ -49,6 +49,6 @@ export function EmployeeProfile({ api, snapshot, agent, active, busy, refresh, o
       <div className="contact-profile-actions mb-6 flex flex-wrap gap-3"><Button disabled={locked} onClick={() => navigate(onMessage)}><MessageCircle />发消息</Button><Button variant="secondary" disabled={locked} onClick={() => navigate(() => onAdvancedChange(true))}><Settings />高级配置</Button></div>
       <div className="employee-form-sections"><EmployeeOverview api={api} snapshot={snapshot} agent={agent} active={active} editing={editing} /></div>
     </div>
-    {advancedOpen && <ContactEditorDialog api={api} snapshot={snapshot} agent={agent} active={active} advancedOnly refresh={refresh} onClose={() => onAdvancedChange(false)} onConfigure={() => { onAdvancedChange(false); setSection('model') }} onConversation={onConversation} onOpenAgent={onOpenAgent} />}
+    {advancedOpen && <ContactEditorDialog api={api} snapshot={snapshot} agent={agent} active={active} advancedOnly refresh={refresh} onClose={() => onAdvancedChange(false)} onConfigure={() => { onAdvancedChange(false); setSection('model') }} onConversation={onConversation} />}
   </>
 }

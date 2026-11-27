@@ -98,7 +98,7 @@ async function fixture(fullPage = false) {
       api, snapshot: data, selected: { kind: 'agent', id: agent.id }, active: true, sidebarShown: true, divider: null, generation: epoch, busy: false,
       refresh: reload, onAgentSaved, onGroupSaved() {}, onMessage, onSelect() {}, onCreate() {}, onCreateTeam() {}, onConversation() {},
     }) : h(EmployeeProfile, { key: epoch, api, snapshot: data, agent: data.agents[0]!, active: true, busy: false,
-      refresh: reload, onAgentSaved, onMessage, advancedOpen: advanced, onAdvancedChange: setAdvanced, onConversation() {}, onOpenAgent() {},
+      refresh: reload, onAgentSaved, onMessage, advancedOpen: advanced, onAdvancedChange: setAdvanced, onConversation() {},
     }), confirmation)
   }
   await act(async () => root.render(h(Page)))

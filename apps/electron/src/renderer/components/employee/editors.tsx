@@ -20,7 +20,7 @@
  * [OUTPUT]: 资料页身份输入失焦/头像选择自动保存，共用单个版本化草稿；仅提交身份字段，保留其他分区及保存期间新输入，失败沿原未知核对。
  * [OUTPUT]: 员工基础配置支持资料页按分区就地编辑，标题右侧保存/取消复用原版本化提交、技能回执及未知核对；非模型分区保存保留原权限。
  * [OUTPUT]: 群成员下方配置复用员工分区Card与横向设置行，群聊设置/团队背景/共享知识独立分区，说明沿Tooltip及原保存载荷保持。
- * [OUTPUT]: 员工组配置支持与员工一致的左侧基础配置/自动化菜单及右侧渐隐滚动，保存忙时禁切分类；默认顶部导航及原草稿、成员和解散边界保持。
+ * [OUTPUT]: 员工组高级配置左侧显示基础配置，沿原渐隐滚动和版本化保存。
  * [OUTPUT]: 技能/数据源添加入口固定在分区标题右侧，Card仅承载已有绑定；技能无绑定时不显示空Card。
  * [OUTPUT]: 技能更多菜单红色移除经Popover确认；选择器关闭/重选已有技能更新原草稿，新增绑定更新基线/版本并保留草稿，不插入状态提示DOM。
  * [OUTPUT]: API/Codex/Claude同一整体权限保存实际策略，原生审批和访问范围同步调整，旧原生配置未选择时保留。
@@ -54,7 +54,6 @@
 import { EmployeeWebSearchFields, employeeWebSearchHint } from './web-search'
 import { SourcePicker } from '@/pages/sources/source-picker'
 import { ConnectionSettingRow } from '@/pages/settings/connection-layout'
-import { OwnerAutomations } from '@/pages/schedules/owner-automations'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
@@ -64,7 +63,7 @@ import { Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverDescriptio
 import type { LaunchProfile } from '@boai/shared/domain'
 import { useCallback, useContext, useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { CalendarClock, LoaderCircle, Settings } from '@/components/icons/index'
+import { LoaderCircle, Settings } from '@/components/icons/index'
 import type { AgentInput, Conversation, DigitalAgent, Resource, Snapshot } from '@boai/shared/domain'
 import type { BindLocalSkillInput, SkillBindingReceipt } from '@boai/shared/domain/skills'
 import { isCoreAgent } from '@boai/shared/domain/core-agent'
@@ -268,28 +267,21 @@ export function AgentEditor({ api, snapshot, agent, template, onClose, onSaved, 
   return <>{identityTarget && createPortal(identity, identityTarget)}{actionsTarget && createPortal(saveAction, actionsTarget)}{actions && !configurationVisible && footerTarget && (dirty || busy || uploading) && createPortal(<footer className="editor-footer">{actions}</footer>, footerTarget)}{inlineIdentity ? section === 'identity' && !saveUnconfirmed ? null : sectionTarget ? createPortal(content, sectionTarget) : content : <EditorFrame leading={visible('identity') && identityTarget === undefined ? section ? <ContactProfileSection title="基本信息" actions={inlineActions}>{identity}</ContactProfileSection> : <div className="employee-identity">{identity}</div> : undefined} footer={section ? undefined : actions}>{content}</EditorFrame>}</>
 }
 
-type GroupEditorProps = { navigation?: 'top' | 'sidebar'; active?: boolean; onConversation?(id: string, messageId?: string): void; onOpenAgent?(id: string): void; api: DesktopApi; snapshot: Snapshot; conversation?: Conversation; onClose: () => void; onSaved: (conversation: Conversation) => Promise<void>; onDeleted?: () => Promise<void>; actionsTarget?: HTMLElement | null; onBusyChange?(busy: boolean): void }
+type GroupEditorProps = { navigation?: 'sidebar'; api: DesktopApi; snapshot: Snapshot; conversation?: Conversation; onClose: () => void; onSaved: (conversation: Conversation) => Promise<void>; onDeleted?: () => Promise<void>; actionsTarget?: HTMLElement | null; onBusyChange?(busy: boolean): void }
 export function GroupEditor(props: GroupEditorProps) {
-  const [tab, setTab] = useState('profile'), guard = useContext(GuardContext)
   const [busy, setBusy] = useState(false)
   const { onBusyChange } = props
   const configurationBusyChanged = useCallback((value: boolean) => { setBusy(value); onBusyChange?.(value) }, [onBusyChange])
-  const group = props.conversation
-  const sidebar = props.navigation === 'sidebar'
-  const canAutomate = group && !group.channel && (!group.purpose || group.purpose === 'personal') && props.onConversation
-  if (!sidebar && !canAutomate) return <GroupConfiguration {...props} />
-  const menu = <TabsList className={sidebar ? 'employee-menu w-full gap-1 p-0' : undefined} aria-label="群聊详情分类">
-    <TabsTrigger value="profile" aria-label={sidebar ? '基础配置' : '配置'} disabled={busy} className={sidebar ? 'group-data-vertical/tabs:h-[32px] text-[length:var(--text-ui-secondary)]' : undefined}>{sidebar && <Settings size={14} />}<span className={sidebar ? 'employee-menu-label' : undefined}>{sidebar ? '基础配置' : '配置'}</span></TabsTrigger>
-    {canAutomate && <TabsTrigger value="automations" aria-label="自动化" disabled={busy} className={sidebar ? 'group-data-vertical/tabs:h-[32px] text-[length:var(--text-ui-secondary)]' : undefined}>{sidebar && <CalendarClock size={14} />}<span className={sidebar ? 'employee-menu-label' : undefined}>自动化</span></TabsTrigger>}
-  </TabsList>
-  const configuration = <GroupConfiguration {...props} onBusyChange={configurationBusyChanged} />
-  const panels = <>
-    {/* Discard the draft immediately after guarded navigation, without waiting for the panel exit animation. */}
-    <TabsContent value="profile">{tab === 'profile' && configuration}</TabsContent>
-    {canAutomate && <TabsContent value="automations"><OwnerAutomations api={props.api} snapshot={props.snapshot} owner={{ kind: 'group', conversationId: group.id }} active={props.active !== false && tab === 'automations'} onConversation={props.onConversation} /></TabsContent>}
-  </>
-  return <Tabs className={sidebar ? 'employee-detail employee-detail-sidebar h-full gap-0' : undefined} orientation={sidebar ? 'vertical' : 'horizontal'} value={tab} onValueChange={value => { if (!busy && value !== tab) guard.navigate(() => setTab(value), { resetOnDiscard: false }) }}>
-    {sidebar ? <><nav className="employee-menu-nav" aria-label="员工组设置">{menu}</nav><ScrollArea className="employee-detail-main" viewportProps={{ className: 'overscroll-contain scroll-fade-t scroll-fade-6' }} contentProps={{ className: 'employee-detail-main-content' }}>{panels}</ScrollArea></> : <>{menu}{panels}</>}
+  if (props.navigation !== 'sidebar') return <GroupConfiguration {...props} />
+  return <Tabs className="employee-detail employee-detail-sidebar h-full gap-0" orientation="vertical" value="profile">
+    <nav className="employee-menu-nav" aria-label="员工组设置">
+      <TabsList className="employee-menu w-full gap-1 p-0" aria-label="群聊详情分类">
+        <TabsTrigger value="profile" aria-label="基础配置" disabled={busy} className="group-data-vertical/tabs:h-[32px] text-[length:var(--text-ui-secondary)]"><Settings size={14} /><span className="employee-menu-label">基础配置</span></TabsTrigger>
+      </TabsList>
+    </nav>
+    <ScrollArea className="employee-detail-main" viewportProps={{ className: 'overscroll-contain scroll-fade-t scroll-fade-6' }} contentProps={{ className: 'employee-detail-main-content' }}>
+      <TabsContent value="profile"><GroupConfiguration {...props} onBusyChange={configurationBusyChanged} /></TabsContent>
+    </ScrollArea>
   </Tabs>
 }
 function GroupConfiguration({ api, snapshot, conversation, onClose, onSaved, onDeleted, actionsTarget, onBusyChange }: GroupEditorProps) {

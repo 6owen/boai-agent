@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 群成员使用基础配置同款头像宫格，点击打开对应员工配置。
  * [OUTPUT]: 就地编辑的fieldset清零默认外边距，标题和Card与只读分区保持相同宽度及左右边缘。
  * [INPUT]: 当前群聊/员工快照、版本化群配置IPC及页面草稿守卫。
  * [OUTPUT]: 原排版群名失焦局部保存，分区悬停编辑，群头像打开已选成员双栏弹窗；高级配置仍保留基础配置。
@@ -9,9 +10,10 @@ import { useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Conversation, DigitalAgent, Snapshot } from '@boai/shared/domain'
 import { isCoreAgent } from '@boai/shared/domain/core-agent'
 import type { DesktopApi } from '@boai/shared/ipc'
-import { Avatar, GuardContext, showErrorToast, useMutation } from '@/components/common'
+import { GuardContext, showErrorToast, useMutation } from '@/components/common'
 import { GroupAvatar } from '@/components/common/group-avatar'
 import { GroupConfigurationFields, groupConfigurationDraft, groupConfigurationInput, type GroupConfigurationDraft, type GroupSection } from '@/components/employee/group-configuration-fields'
+import { GroupMemberGrid } from '@/components/employee/group-members'
 import { GroupMemberDialog } from '@/components/employee/group-member-selection'
 import { ContactProfileCard, ContactProfileRow, ContactProfileSection } from '@/components/employee/profile-card'
 import { ProfileText } from '@/components/employee/profile-text'
@@ -22,10 +24,10 @@ import { ContactEditorDialog } from './contact-editor-layout'
 
 const sectionKeys: Record<GroupSection | 'title' | 'members', (keyof GroupConfigurationDraft)[]> = { title: ['title'], members: ['ids'], settings: ['memoryScope', 'memoryContextId'], team: ['teamSetup'], knowledge: ['knowledge'] }
 const equal = (left: unknown, right: unknown) => JSON.stringify(left) === JSON.stringify(right)
-export function GroupProfile({ api, snapshot, group, active, busy: externalBusy, refresh, onGroupSaved, onMessage, advancedOpen, onAdvancedChange, onOpenAgent, onConversation }: {
+export function GroupProfile({ api, snapshot, group, active, busy: externalBusy, refresh, onGroupSaved, onMessage, advancedOpen, onAdvancedChange, onOpenAgent }: {
   api: DesktopApi; snapshot: Snapshot; group: Conversation; active: boolean; busy: boolean; refresh(): Promise<void>
   onGroupSaved(group: Conversation): void; onMessage(): void; advancedOpen: boolean; onAdvancedChange(open: boolean): void
-  onOpenAgent(id: string): void; onConversation(id: string, messageId?: string): void
+  onOpenAgent(id: string): void
 }) {
   const baseline = useRef(group)
   const [form, setForm] = useState(() => groupConfigurationDraft(group))
@@ -97,10 +99,10 @@ export function GroupProfile({ api, snapshot, group, active, busy: externalBusy,
         {renderSection('settings', '群聊设置', <><ContactProfileRow icon={null} title="新交流的记忆范围">{group.memoryScope === 'conversation' ? '仅在此聊天使用' : '各员工在相关聊天中使用'}</ContactProfileRow><ContactProfileRow icon={null} title="关联事项">{group.memoryContextRef?.kind === 'conversation' ? snapshot.conversations.find(item => item.id === group.memoryContextRef?.id)?.title ?? '聊天已移除' : group.memoryContextRef ? '已关联任务' : '不关联'}</ContactProfileRow></>)}
         {(group.teamSetup || section === 'team') && renderSection('team', '团队背景', <><ContactProfileRow icon={null} title="团队目的">{group.teamSetup?.purpose}</ContactProfileRow><ContactProfileRow icon={null} title="协作建议">{group.teamSetup?.collaborationGuide || '未设置'}</ContactProfileRow>{group.teamSetup?.scenarioKind === 'roleplay' && <ContactProfileRow icon={null} title="角色互动">玩家群不包含正式游戏规则、隐藏身份或胜负裁定。</ContactProfileRow>}</>)}
         {renderSection('knowledge', '群内共享知识', group.sharedKnowledgeIds.length ? group.sharedKnowledgeIds.map(id => <div className="contact-resource-row" key={id}><span className="contact-resource-copy"><strong>{snapshot.resources.find(resource => resource.id === id)?.name ?? '资料已移除'}</strong><span className="contact-resource-description">{snapshot.resources.find(resource => resource.id === id)?.description}</span></span></div>) : <p className="contact-card-empty">还没有共享的知识资料。</p>, false)}
-        <ContactProfileSection title={`群成员 ${group.agentIds.length}`} actions={editButton('群成员', () => setMembersOpen(true))}><ContactProfileCard label="群成员" fields={false}>{members.map(member => <Button key={member.id} variant="ghost" size="content" className="conversation-item" aria-label={`查看 ${member.name} 的资料`} disabled={locked} onClick={() => navigate(() => onOpenAgent(member.id))}><Avatar name={member.name} seed={member.id} avatar={member.avatar} color={member.color} /><span className="conversation-copy"><strong className="conversation-title">{member.name}</strong><small className="conversation-preview">{member.role || '数字员工'}</small></span></Button>)}</ContactProfileCard></ContactProfileSection>
+        <ContactProfileSection title={`群成员 ${group.agentIds.length}`} actions={editButton('群成员', () => setMembersOpen(true))}><ContactProfileCard label="群成员" fields={false}><GroupMemberGrid members={members} disabled={locked} memberLabel={name => `查看 ${name} 的资料`} onMemberClick={id => navigate(() => onOpenAgent(id))} /></ContactProfileCard></ContactProfileSection>
       </div>
     </div>
     {membersOpen && <GroupMemberDialog agents={candidates} ids={form.ids} busy={busy} locked={locked || unconfirmed} onClose={() => setMembersOpen(false)} onConfirm={ids => { void save('members', ids) }} />}
-    {advancedOpen && <ContactEditorDialog api={api} snapshot={snapshot} group={group} active={active} refresh={refresh} onClose={() => onAdvancedChange(false)} onConversation={onConversation} onOpenAgent={onOpenAgent} />}
+    {advancedOpen && <ContactEditorDialog api={api} snapshot={snapshot} group={group} active={active} refresh={refresh} onClose={() => onAdvancedChange(false)} />}
   </>
 }
