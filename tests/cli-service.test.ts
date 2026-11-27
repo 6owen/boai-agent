@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: CLI 首发附件进入员工固定主聊天，名称取员工定义，附件保留原文件名。
  * [OUTPUT]: CLI超时后等待原任务实际启动；补判断排队跨超时场景，保持同requestId完成与零重复发送。
  * [OUTPUT]: 按现行 Bobo 高权限预设区分核心明确权限与普通员工缺省，CLI 仅核对不改权。
  * [OUTPUT]: 实际owner RPC取消上传等待原准备，同时无关会话创建继续；零模型。
@@ -854,11 +855,13 @@ it('publishes the first core conversation and uploaded originals together, with 
   expect(await executeMessage(f.client, { kind: 'employee', employeeId: 'bobo', content: '', materialUploads: uploaded.materialUploads }, { requestId, emit: () => {} })).toBe(0)
   const message = await f.client.invoke('getMessageReceipt', { requestId }) as Message
   const detail = await f.app.handle('getConversation', { id: message.conversationId }) as ConversationDetail
-  expect(detail.conversation).toMatchObject({ purpose: 'core', title: '首次资料.md', agentIds: ['bobo'] })
+  const snapshot = await f.app.handle('snapshot', undefined) as Snapshot
+  const employee = snapshot.agents.find(agent => agent.id === 'bobo')!
+  expect(detail.conversation).toMatchObject({ purpose: 'core', employeeChat: 'main', title: employee.name, agentIds: [employee.id] })
   expect(message.content).toBe(''); expect(message.materialIds).toHaveLength(1)
   expect(message.attachmentInputs).toEqual(uploaded.materialUploads!.map(({ selectionId: _id, ...file }) => file))
   expect(JSON.stringify(message)).not.toContain(uploaded.materialUploads![0].selectionId!)
-  expect(await f.app.handle('getMaterialPreview', { id: message.materialIds![0] })).toMatchObject({ text: 'FIRST_CORE_MATERIAL_7701', material: { messageId: message.id, deliveryScope: 'conversation' } })
+  expect(await f.app.handle('getMaterialPreview', { id: message.materialIds![0] })).toMatchObject({ text: 'FIRST_CORE_MATERIAL_7701', material: { name: '首次资料.md', messageId: message.id, deliveryScope: 'conversation' } })
   const spy = vi.spyOn(f.client, 'invoke'), repeated = await uploadEmployeeAttachments(f.client, [file], requestId)
   expect(spy.mock.calls.some(([channel]) => channel === 'transferMaterial')).toBe(false); spy.mockRestore()
   expect(await executeMessage(f.client, { kind: 'employee', employeeId: 'bobo', content: '', materialUploads: repeated.materialUploads }, { requestId, emit: () => {} })).toBe(0)
