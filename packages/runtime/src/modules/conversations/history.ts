@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 启动仅恢复有日志的会话；父会话前在线复核讨论和浏览器屏障。
  * [OUTPUT]: 2026-11-27 删除会话同步清除关联定时日志和通知，清空聊天保留日志摘要，触发去重继续生效。
  * [OUTPUT]: 清空会话时移除旧首条消息的标题候选。
  * [OUTPUT]: 画板源清理沿原conversationCleanup固定身份重试，外改冲突保留来源屏障与可见恢复错误。
@@ -48,15 +49,17 @@ export class ConversationHistory {
   constructor(private store: ProductStore, private dataPath: string, private materials?: MaterialRepository, private artifacts?: ArtifactRepository, private reading?: ConversationReadingRepository, private cleanupCanvas?: (filter: CanvasScopeFilter, cleanupId: string) => Promise<void>) {}
   async recover() {
     const conflicts: { conversationId: string; error: string }[] = []
-    const conversations = await this.store.load<Conversation>('conversations')
-    const cleanups = await this.store.load<Cleanup>('conversationCleanup')
-    cleanups.sort((a, b) => Number(!!conversations.find(room => room.id === b.id)?.channelDiscussion) - Number(!!conversations.find(room => room.id === a.id)?.channelDiscussion))
+    const cleanups = await this.store.pendingConversationCleanups<Cleanup>()
     for (const pending of cleanups) {
-      const conversation = conversations.find(item => item.id === pending.id)
-      if ((await this.store.load<Cleanup>('conversationCleanup')).some(item => conversations.some(room => room.id === item.id && room.channelDiscussion?.conversationId === pending.id))) { conflicts.push({ conversationId: pending.id, error: '关联讨论清理尚未完成' }); continue }
-      if ((await this.store.load<{conversationId:string}>('browserCleanups')).some(item=>item.conversationId===pending.id)) { conflicts.push({conversationId:pending.id,error:'浏览器存储尚未实际清理'}); continue }
+      const blocker = await this.store.conversationCleanupBlocker(pending.id)
+      if (blocker) {
+        conflicts.push({ conversationId: pending.id, error: blocker === 'discussion' ? '关联讨论清理尚未完成' : '浏览器存储尚未实际清理' })
+        continue
+      }
+      const conversation = await this.store.get<Conversation>('conversations', pending.id)
       if (conversation) try { await this.clear(conversation, pending.hide, pending.remove) } catch (error) {
-        const sourceConflicts = [...await this.store.load<{ conversationId: string; status: string }>('materialCleanups'), ...await this.store.load<{ conversationId: string; status: string }>('artifactCleanups')].some(item => item.conversationId === conversation.id && item.status === 'conflict')
+        const scope = { conversationId: pending.id }
+        const sourceConflicts = [...await this.store.load<{ status: string }>('materialCleanups', scope), ...await this.store.load<{ status: string }>('artifactCleanups', scope)].some(item => item.status === 'conflict')
         const canvasConflict = (await this.store.get<Cleanup>('conversationCleanup', conversation.id))?.canvasCleanupError
         if (!sourceConflicts && !canvasConflict) throw error
         conflicts.push({ conversationId: conversation.id, error: error instanceof Error ? error.message : '材料或成果清理未完成' })
