@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 会话队列和调度准入使用同一持久顺序；执行器容量单独判断。
  * [OUTPUT]: 历史 SQLite 全部执行状态与共享在途判断使用同一七项业务集合。
  * [OUTPUT]: 真实在途任务在LIMIT前筛选，不被新卡或手动done遮蔽；同任务多次执行及重启身份保持。
  * [OUTPUT]: 人工委派看板在分页前隔离内部/旧进度，工具不能伪造或晋升委派；原只读分页与回执保持。
@@ -12,7 +13,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
-import { AUTOMATION_OCCURRENCE_STATUSES, isOngoingOccurrence } from '@boai/shared/domain/automations'
+import { AUTOMATION_OCCURRENCE_STATUSES, compareQueuedOccurrences, isOngoingOccurrence } from '@boai/shared/domain/automations'
 import type { ApplicationActor } from '../packages/shared/src/domain/application-protocol'
 import { TASK_PAGE_LIMITS, isEmployeeTaskAssignment, type TrackedTask, type TrackedTaskPage } from '../packages/shared/src/domain/tracked-tasks'
 import { taskPageOperation } from '../packages/runtime/src/modules/application/task-page'
@@ -21,6 +22,17 @@ import { ProductStore, type StoredRecord } from '../packages/runtime/src/adapter
 import { ApplicationService } from '../packages/runtime/src/modules/application/application-service'
 import { taskOperations } from '../packages/runtime/src/modules/application/task-operations'
 import { planCollection } from '../packages/runtime/src/modules/application/plan-weave'
+
+it('orders queued occurrences by persisted priority, legacy time fallback and stable ID', () => {
+  const rows = [
+    { id: 'late', queueOrder: 2, startedAt: '01' },
+    { id: 'b', admittedAt: '02', startedAt: '01' },
+    { id: 'early', queueOrder: -1, startedAt: '03' },
+    { id: 'a', startedAt: '02' },
+    { id: 'first', startedAt: '01' },
+  ]
+  expect(rows.sort(compareQueuedOccurrences).map(row => row.id)).toEqual(['early', 'first', 'a', 'b', 'late'])
+})
 
 const time = '2026-10-22T00:00:00.000Z'
 const cleanup: (() => Promise<unknown>)[] = []

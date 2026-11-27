@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 会话队列和调度准入使用同一持久顺序；执行器容量单独判断。
  * [OUTPUT]: 员工定时触发和新话题消息同事务提交，只留会话记录；旧任务和监控保留原运行账本。
  * [OUTPUT]: 同任务等待补充/工作时新消息进入持久队列；显式立即发送才中断原等待并优先处理。
  * [OUTPUT]: 单次日程消费与原Occurrence/投递同事务，保留计划和未来回调围栏；创建指纹绑定原请求。
@@ -20,6 +21,7 @@
  * [POS]: 自动化产品账本；内存与 Mastra 日程均为投影，不是认领权威。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { compareQueuedOccurrences, isOngoingOccurrence } from '@boai/shared/domain/automations'
 import { linkEmployeeTask, syncEmployeeTask } from './employee-task-records'
 import { isNativeBackend } from '@boai/shared/domain/backends'
 import { randomUUID } from 'node:crypto'
@@ -33,7 +35,7 @@ import { compareMonitorObservation, monitorPolicyFingerprint, monitorPolicySchem
 import { inferAutomationOwner } from './automation-plan'
 import { automationQuestionStates, belongsToOccurrence, unansweredAutomationTurns } from './automation-results'
 import { notificationPolicy, queueAutomationNotice, recoverAutomationNotices } from './automation-notifications'
-import { activeOccurrence, AUTOMATION_MISFIRE_MS, automationCron, calendarSlot, historicalSlotAlias, manualIdentity, matchesSchedule, MAX_ACTIVE_AUTOMATIONS, nativeAlias, pendingOccurrence, queuedOrder, sharesTaskExecutor, scheduleIdentity, scheduleDays } from './schedule-policy'
+import { activeOccurrence, AUTOMATION_MISFIRE_MS, automationCron, calendarSlot, historicalSlotAlias, manualIdentity, matchesSchedule, MAX_ACTIVE_AUTOMATIONS, nativeAlias, sharesTaskExecutor, scheduleIdentity, scheduleDays } from './schedule-policy'
 
 const row = <T extends { id: string }>(collection: string, value: T): StoredRecord => ({ collection, id: value.id, value })
 const timestamp = () => new Date().toISOString()
@@ -79,7 +81,7 @@ export async function resumeAutomationExecution(tx: RecordTransaction, origin: A
   const budget = o.budgetId && await tx.get<WorkBudget>('workBudgets', o.budgetId)
   if (!budget || budget.accounting !== 'model-calls-v1') throw new Error('旧自动化没有可信的原始调用预算，请明确发起新一轮')
   if (!o.budgetScope) checkWorkBudget(budget)
-  const others = (await tx.list<AutomationOccurrence>('automationOccurrences')).filter(item => item.id !== o.id && pendingOccurrence.has(item.status))
+  const others = (await tx.list<AutomationOccurrence>('automationOccurrences')).filter(item => item.id !== o.id && isOngoingOccurrence(item.status))
   if (others.some(item => activeOccurrence.has(item.status) && sharesTaskExecutor(item, o)) || others.filter(item => activeOccurrence.has(item.status)).length >= MAX_ACTIVE_AUTOMATIONS) throw new Error('其他自动化正在执行或等待，不能继续本次运行')
   if (elapsedLimit) { delete o.cancellationRequestedAt; delete o.cancellationCause }
   o.status = 'running'; o.stateVersion++; o.deliveryStatus = o.resultEvidence?.length ? 'partial' : 'pending'
@@ -320,7 +322,7 @@ export class AutomationRepository {
       }
       if (!directSession) {
         const priorOccurrences = await tx.list<AutomationOccurrence>('automationOccurrences')
-        const running = priorOccurrences.filter(item => pendingOccurrence.has(item.status))
+        const running = priorOccurrences.filter(item => isOngoingOccurrence(item.status))
         if (!reason && (scheduled || d.purpose === 'employee-task') && running.some(item => item.automationId === d.id)) reason = '并发或等待上次处理，本次已跳过'
         o.queueOrder = 1 + Math.max(0, ...priorOccurrences.map(item => item.queueOrder ?? 0))
         if (!reason && (busy(o.conversationId, o.plan?.employeeIds) || running.some(item => (activeOccurrence.has(item.status) || item.status === 'queued' || d.employeeTask?.id === item.taskId && ['waiting_user', 'waiting_work'].includes(item.status)) && sharesTaskExecutor(item, o)) || running.filter(item => activeOccurrence.has(item.status)).length >= MAX_ACTIVE_AUTOMATIONS)) o.status = 'queued'
@@ -396,7 +398,7 @@ export class AutomationRepository {
       const others = (await tx.list<AutomationOccurrence>('automationOccurrences')).filter(item => item.id !== id)
       const active = others.filter(item => activeOccurrence.has(item.status))
       if (o.taskId && others.some(item => item.taskId === o.taskId && ['waiting_user', 'waiting_work'].includes(item.status))) return
-      if (busy(o.conversationId, o.plan?.employeeIds) || active.length >= MAX_ACTIVE_AUTOMATIONS || active.some(item => sharesTaskExecutor(item, o)) || others.some(item => item.status === 'queued' && queuedOrder(item, o) < 0 && sharesTaskExecutor(item, o))) return
+      if (busy(o.conversationId, o.plan?.employeeIds) || active.length >= MAX_ACTIVE_AUTOMATIONS || active.some(item => sharesTaskExecutor(item, o)) || others.some(item => item.status === 'queued' && compareQueuedOccurrences(item, o) < 0 && sharesTaskExecutor(item, o))) return
       o.status = 'admitted'; o.startedAt = timestamp(); o.stateVersion++
       await syncEmployeeTask(tx, o); await tx.put(row('automationOccurrences', o))
       return { occurrence: o, dispatch: intent }
@@ -488,7 +490,7 @@ export class AutomationRepository {
       const meta = await tx.get<{ id: string; root: string; restorePending?: boolean }>('automationRuntime', 'installation')
       const restored = !!meta && (meta.root !== this.dataPath || meta.restorePending)
       await recoverAutomationNotices(tx, !!restored)
-      for (const o of await tx.list<AutomationOccurrence>('automationOccurrences')) if (pendingOccurrence.has(o.status)) {
+      for (const o of await tx.list<AutomationOccurrence>('automationOccurrences')) if (isOngoingOccurrence(o.status)) {
         const dispatch = await tx.get<AutomationDispatch>('automationDispatches', o.id)
         if (!restored && o.status === 'queued' && dispatch?.status === 'pending') continue
         o.reason = o.status === 'admitted' ? '产品已受理但未完成投递；需明确继续，不会自动重发任务' : '应用重启；原任务不会自动重放'

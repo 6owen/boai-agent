@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 会话队列和调度准入使用同一持久顺序；执行器容量单独判断。
  * [OUTPUT]: 员工工作区、记忆代际与清理路径只读取员工主键。
  * [OUTPUT]: 启动仅恢复有日志的会话；父会话前在线复核讨论和浏览器屏障。
  * [OUTPUT]: 2026-11-27 删除会话同步清除关联定时日志和通知，清空聊天保留日志摘要，触发去重继续生效。
@@ -23,6 +24,7 @@
  * [POS]: cleanup 的跨领域用例，负责会话历史清理、关联状态及原受理身份的恢复。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { isOngoingOccurrence } from '@boai/shared/domain/automations'
 import { assertCleanupPath } from './path'
 import { contextCollections } from '../contexts/context-repository'
 import { clearContextHandoffs } from '../contexts/context-handoff'
@@ -40,7 +42,6 @@ import type { MaterialRepository } from '../materials/material-repository'
 import type { ArtifactRepository } from '../workspaces/artifact-repository'
 import type { ConversationReadingRepository } from '../conversations/reading-repository'
 import { deletedAutomationHistory } from '../automations/history-deletion'
-import { pendingOccurrence } from '../automations/schedule-policy'
 import { MemoryRepository } from '../memory/memory-repository'
 import type { SessionOperationRecord } from '../conversations/session-operations'
 
@@ -229,7 +230,7 @@ export class ConversationHistory {
       const occurrences = (await tx.list<AutomationOccurrence>('automationOccurrences')).filter(item => !item.deletedAt && item.conversationId === id).map(item => {
         if (sessionDeleted) return deletedAutomationHistory(item)
         const { messageId: _message, turnId: _turn, reason: _reason, turnIds: _turns, waitingTurnIds: _waitingTurns, workIds: _works, rootWorkIds: _roots, resultEvidence: _evidence, budgetId: _budgetId, budget: _budget, monitor: _monitor, ...rest } = item
-        return { ...rest, ...(item.schemaVersion ? { stateVersion: item.stateVersion + 1, deliveryStatus: 'unknown' as const, ...(pendingOccurrence.has(item.status) ? { status: 'interrupted' as const, finishedAt: new Date().toISOString() } : {}) } : {}), runIds: [], resultMessageIds: [], reason: '聊天记录已清空' }
+        return { ...rest, ...(item.schemaVersion ? { stateVersion: item.stateVersion + 1, deliveryStatus: 'unknown' as const, ...(isOngoingOccurrence(item.status) ? { status: 'interrupted' as const, finishedAt: new Date().toISOString() } : {}) } : {}), runIds: [], resultMessageIds: [], reason: '聊天记录已清空' }
       })
       for (const value of occurrences) await tx.put({ collection: 'automationOccurrences', id: value.id, value })
       for (const checkpoint of await tx.list<AutomationMonitorCheckpoint>('automationMonitorCheckpoints')) if (checkpoint.conversationId === id) await tx.remove('automationMonitorCheckpoints', checkpoint.id)

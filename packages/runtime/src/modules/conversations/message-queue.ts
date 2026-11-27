@@ -1,15 +1,16 @@
 /*
+ * [OUTPUT]: 会话队列和调度准入使用同一持久顺序；执行器容量单独判断。
  * [INPUT]: Persisted task dispatches, exact conversation and action identity.
  * [OUTPUT]: Task-session composer queue projection and durable fixed-target action receipts; IM messages are already sent.
  * [POS]: Existing scheduler/automation queue adapter; no second execution loop.
  * [PROTOCOL]: Update Header and owning .folder.md on change.
  */
+import { compareQueuedOccurrences } from '@boai/shared/domain/automations'
 import { z } from 'zod'
 import type { Conversation } from '@boai/shared/domain'
 import type { AutomationDispatch, AutomationOccurrence } from '@boai/shared/domain/automations'
 import type { ConversationQueueAction, ConversationQueueItem } from '@boai/shared/domain/message-queue'
 import type { ProductStore, RecordTransaction } from '../../adapters/storage/product-store'
-import { queuedOrder } from '../automations/schedule-policy'
 
 const id = z.string().min(1).max(500)
 export const queueActionSchema = z.object({ conversationId: id, id, expectedRevision: z.number().int().nonnegative(), action: z.enum(['remove', 'send-now']), requestId: id }).strict()
@@ -32,7 +33,7 @@ export async function finishQueueAction(store: ProductStore, input: Conversation
 export async function listConversationQueue(store: ProductStore, room: Conversation): Promise<{ items: ConversationQueueItem[] }> {
   if (room.employeeTaskId) return store.transaction(async tx => {
     const items: ConversationQueueItem[] = []
-    const occurrences = (await tx.list<AutomationOccurrence>('automationOccurrences')).filter(o => o.conversationId === room.id && o.taskId === room.employeeTaskId && !o.deletedAt && o.status === 'queued').sort(queuedOrder)
+    const occurrences = (await tx.list<AutomationOccurrence>('automationOccurrences')).filter(o => o.conversationId === room.id && o.taskId === room.employeeTaskId && !o.deletedAt && o.status === 'queued').sort(compareQueuedOccurrences)
     for (const o of occurrences) {
       const dispatch = await tx.get<AutomationDispatch>('automationDispatches', o.id)
       if (dispatch?.status !== 'pending' || !dispatch.definition) continue
