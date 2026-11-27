@@ -1,19 +1,28 @@
 /*
+ * [OUTPUT]: 原生问题和能力回执保留协议 JSON；聊天消息只采用已遮蔽的公开问题。
  * [INPUT]: Execution evidence, media or SDK span fields and the configured connection credential.
  * [OUTPUT]: JSON suitable for persistent observation, with media summaries and credentials removed from text.
  * [POS]: Shared by the execution ledger, the host trace sink and the SDK storage exporter.
  * [PROTOCOL]: Update this header and the conversations directory map when changing persistence.
  */
-import type { ExecutionEvent } from '@boai/shared/domain/execution'
+import type { ExecutionEvent, NativeActionInput, NativeAgentInfo } from '@boai/shared/domain/execution'
 import type { TraceSpan } from '@boai/shared/domain/traces'
 import { summarizeMedia } from '../browser/media'
 
 type SpanFields = { input: unknown; output: unknown; attributes: unknown; metadata: unknown; errorInfo: unknown; requestContext: unknown }
 
-/** Preserve JSON types and handle request bodies that a provider has already serialized. */
+/** Media-bearing events strip image bytes and private command arguments before persistence. */
 export function persistentObservation<T extends ExecutionEvent | TraceSpan | SpanFields>(payload: T, credential: string, replacement = '[redacted]'): T {
-  const summary = summarizeMedia(payload)
-  if (!credential) return JSON.parse(JSON.stringify(summary))
+  return redactJson(summarizeMedia(payload), credential, replacement)
+}
+
+/** Native interaction detail carries protocol data used to answer a pending request. */
+export function publicNativeRecord<T extends NativeActionInput | NativeAgentInfo>(payload: T, credential: string): T {
+  return redactJson(payload, credential, '[已隐藏凭据]')
+}
+
+function redactJson(payload: unknown, credential: string, replacement: string) {
+  if (!credential) return JSON.parse(JSON.stringify(payload))
   const escaped = JSON.stringify(credential).slice(1, -1)
 
   function redactText(text: string): string {
@@ -29,7 +38,7 @@ export function persistentObservation<T extends ExecutionEvent | TraceSpan | Spa
       }
       return redactText(value)
     }
-    if (value !== summary && value && typeof value === 'object' && !Array.isArray(value)) {
+    if (value !== payload && value && typeof value === 'object' && !Array.isArray(value)) {
       const entries = Object.entries(value)
       if (entries.some(([key]) => key.includes(credential) || key.includes(escaped))) {
         return Object.fromEntries(entries.map(([key, field]) => [redactText(key), field]))
@@ -38,5 +47,5 @@ export function persistentObservation<T extends ExecutionEvent | TraceSpan | Spa
     return value
   }
 
-  return JSON.parse(JSON.stringify(summary, redact))
+  return JSON.parse(JSON.stringify(payload, redact))
 }

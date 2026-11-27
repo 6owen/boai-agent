@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 受管原生来源经私有合成凭据办理含布尔值的问题，保持原回复归属。
  * [INPUT]: Gateway source/credential contracts and production AppService with an isolated native Codex fixture.
  * [OUTPUT]: Explicit Responses/source contracts using a version-file fixture, with confirmed gateway version and no replay.
  * [POS]: G2 Codex source integration; offline fixture does not certify real CLI or supplier quality.
@@ -53,7 +54,7 @@ test('UI keeps native configuration available, allows only supported explicit ga
   expect(agentModelConnections(selection, [connection, { ...connection, id: 'direct', gateway: undefined }])).toEqual([connection])
 })
 
-test('production Codex binds default model/provider, rejects source mismatch before turn submission and preserves historical receipts after source change', async () => {
+async function managedCodex(credential?: string) {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'boai-codex-gateway-')))
   disposals.push(() => rm(root, { recursive: true, force: true }))
   const executable = join(root, 'codex.mjs'), observations = join(root, 'source-observations.jsonl')
@@ -61,20 +62,30 @@ test('production Codex binds default model/provider, rejects source mismatch bef
   cli = cli.replace("model:'fixture'}})", "model:params.model??'fixture',modelProvider:params.model==='mismatch'?'wrong-provider':params.modelProvider}})")
   cli = cli.replace("await appendFile('native-thread-requests.jsonl'", `await appendFile(${JSON.stringify(observations)},JSON.stringify({method,model:params.model,provider:params.modelProvider,threadId:params.threadId,keyIsPublic:process.env.BOAI_CODEX_GATEWAY_API_KEY==='magpie-boai'})+'\\n'); await appendFile('native-thread-requests.jsonl'`)
   cli = cli.replace("await appendFile('native-turn-requests.jsonl'", `await appendFile(${JSON.stringify(observations)},JSON.stringify({method,threadId:params.threadId})+'\\n'); await appendFile('native-turn-requests.jsonl'`)
+  if (credential) cli = cli.replace("itemId:'question',questions:", "itemId:'question',fixtureFlag:true,questions:")
+    .replace("question:'这个文档针对什么产品？'", "question:'诊断依据 key=true',isSecret:false")
   await writeFile(executable, cli); await chmod(executable, 0o700)
   await writeFile(join(root, 'native-version.txt'), '0.162.1')
   await copyFile(resolve('tests/fixtures/native-business.mjs'), join(root, 'native-business.mjs'))
   let apiCalls = 0
-  const options = { dataPath: root, engine: { run: async () => { apiCalls++; throw new Error('No API parent') }, test: async () => '' }, secrets: { get: async () => undefined, set: async () => {}, delete: async () => {} }, emit: () => {} }
+  const keys = new Map<string, string>()
+  const options = { dataPath: root, engine: { run: async () => { apiCalls++; throw new Error('No API parent') }, test: async () => '' }, secrets: { get: async (id: string) => keys.get(id), set: async (id: string, value: string) => { keys.set(id, value) }, delete: async (id: string) => { keys.delete(id) } }, emit: () => {} }
   let service = new AppService(options); await service.init(); disposals.push(() => service.close())
   const draft = { name: 'Managed Codex', executable, args: [], protocol: 'codex-app-server', useExistingLogin: false, hostAccessAcknowledged: true }
   await service.handle('testLaunchProfileDraft', draft)
   const profile = await service.handle('saveLaunchProfile', draft) as LaunchProfile
   expect(profile.verified?.version).toBe('0.162.1')
-  const input = { name: 'Magpie', provider: 'openai-compatible', baseUrl: 'http://127.0.0.1:3425/relay', defaultModel: 'group/work', gateway: source().gateway }
+  const input = { name: 'Magpie', provider: 'openai-compatible', baseUrl: 'http://127.0.0.1:3425/relay', defaultModel: 'group/work', gateway: credential ? { ...source().gateway!, auth: 'key' as const } : source().gateway, ...(credential ? { apiKey: credential } : {}) }
   const connection = await service.handle('saveConnection', input) as Connection
   const agent = await service.handle('saveAgent', { name: '网关员工', role: '写作', instructions: '按消息回答', color: '#00AABB', connectionId: connection.id, modelId: '', executionBackend: { kind: 'codex-local', profileId: profile.id }, skillIds: [], knowledgeIds: [], allowCommands: true, active: true }) as DigitalAgent
   const chat = await service.handle('createConversation', { kind: 'direct', title: 'Magpie', agentIds: [agent.id] }) as Conversation
+  return { service, chat, observations, connection, input, apiCalls: () => apiCalls,
+    restart: async () => { await service.close(); service = new AppService(options); await service.init(); return service } }
+}
+
+test('production Codex binds default model/provider, rejects source mismatch before turn submission and preserves historical receipts after source change', async () => {
+  const f = await managedCodex(), { chat, observations, connection, input } = f
+  let service = f.service
   const send = async () => {
     const message = await service.handle('sendMessage', { conversationId: chat.id, content: '请回答你好', mentionIds: [], requestId: crypto.randomUUID() }) as Message
     let detail!: ConversationDetail
@@ -92,9 +103,33 @@ test('production Codex binds default model/provider, rejects source mismatch bef
   const rejected = await send(); expect(rejected.status).toBe('failed'); expect(rejected.error).toContain('来源')
   const lines = (await readFile(observations, 'utf8')).trim().split('\n'), rows = lines.map(line => JSON.parse(line))
   expect(rows.filter(row => row.method === 'turn/start')).toHaveLength(3)
-  expect(rows.filter(row => row.keyIsPublic)).toHaveLength(4); expect(apiCalls).toBe(0)
-  await service.close(); service = new AppService(options); await service.init()
+  expect(rows.filter(row => row.keyIsPublic)).toHaveLength(4); expect(f.apiCalls()).toBe(0)
+  service = await f.restart()
   expect((await readFile(observations, 'utf8')).trim().split('\n')).toEqual(lines)
   const retained = await service.handle('getConversation', { id: chat.id }) as ConversationDetail
   expect(retained.runs.find(run => run.id === first.id)?.backend?.modelSource).toEqual(first.backend?.modelSource)
 }, 30000)
+
+test('delivers a private-source native question with structural flags and a redacted transcript', async () => {
+  const { service, chat, apiCalls } = await managedCodex('true')
+  const trigger = await service.handle('sendMessage', { conversationId: chat.id, content: 'NATIVE_QUESTION', mentionIds: [], requestId: crypto.randomUUID() }) as Message
+  let action: import('../packages/shared/src/domain/execution').NativeAction | undefined
+  await expect.poll(async () => {
+    const detail = await service.handle('getConversation', { id: chat.id }) as ConversationDetail
+    const run = detail.runs.find(value => value.triggerMessageId === trigger.id)
+    if (!run) return 'starting'
+    const actions = await service.handle('listNativeActions', { conversationId: chat.id, runId: run.id }) as import('../packages/shared/src/domain/execution').NativeAction[]
+    action = actions[0]
+    return action?.status ?? run.status
+  }, { timeout: 10000 }).toBe('pending')
+  expect(action!.detail).toMatchObject({ fixtureFlag: true })
+  expect(action!.questions).toMatchObject([{ id: 'product', isSecret: false, question: '诊断依据 key=[已隐藏凭据]' }])
+  const detail = await service.handle('getConversation', { id: chat.id }) as ConversationDetail
+  expect(detail.messages.filter(m => m.senderType === 'agent').map(m => m.content)).toContain('诊断依据 key=[已隐藏凭据]')
+  await service.handle('respondNativeAction', { conversationId: chat.id, runId: action!.runId, actionId: action!.id, response: { answers: { product: ['合成答案'] } } })
+  await expect.poll(async () => {
+    const result = await service.handle('getConversation', { id: chat.id }) as ConversationDetail
+    return result.messages.some(m => m.senderType === 'agent' && m.content === '收到普通聊天回复：合成答案')
+  }, { timeout: 10000 }).toBe(true)
+  expect(apiCalls()).toBe(0)
+})
