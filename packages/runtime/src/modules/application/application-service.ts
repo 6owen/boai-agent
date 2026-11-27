@@ -6,7 +6,7 @@
  * [OUTPUT]: 规划状态与回执随员工/源会话原清理事务清除，保留请求去重。
  * [OUTPUT]: 2026-10-20 Alma技能接线：普通聊天按需读绑定技能/有来源记忆，独立任务协议与MCP媒体保持实际授权；本轮证据归独立Agent架构§11.21。
  * [OUTPUT]: 行为调用使用独立宿主principal及原持久业务回执；来源清理后不返回已清除正文。
- * [INPUT]: Explicit operation registry, original ProductStore and host-authenticated actor.
+ * [INPUT]: Host operation contract, explicit registry, original ProductStore and host-authenticated actor.
  * [OUTPUT]: Domain precondition failures include explicit FORBIDDEN for scoped read operations.
  * [OUTPUT]: Stable business request identity, discovery, validated calls and durable receipts.
  * [POS]: Application facade; no model invocation, new Work or parallel business persistence.
@@ -16,27 +16,10 @@ import { createHash, randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { parseSchedule, ScheduleError } from '@boai/shared/domain/schedules'
 import { APPLICATION_PROTOCOL_VERSION, applicationResultSchema, applicationReceiptQuerySchema, type ApplicationReceiptQuery, applicationCatalogQuerySchema, applicationRequestSchema, type ApplicationActor, type ApplicationCatalogQuery, type ApplicationRequest, type ApplicationResult } from '@boai/shared/domain/application-protocol'
+import { ApplicationValidationError, type ApplicationOperation } from '../../application-operation'
 import type { ProductStore, RecordTransaction } from '../../adapters/storage/product-store'
 
-export interface ApplicationOperation {
-  contractVersion?: number
-  exclusiveSource?: boolean
-  recover?(requestId: string, actor: ApplicationActor): Promise<unknown | undefined>
-  legacy?: { input: z.ZodType; execute: ApplicationOperation['execute']; recover?: ApplicationOperation['recover'] }
-  name: string
-  description: string
-  effect: 'read' | 'write'
-  ownerOnly?: boolean
-  input: z.ZodType
-  resultType: string
-  available?(): boolean
-  unavailableReason?: string
-  validate?(input: any, actor: ApplicationActor): Promise<void>
-  execute(input: any, requestId: string | undefined, actor: ApplicationActor): Promise<unknown>
-}
 interface OperationReceipt { contractVersion?: number; ownerAgentId?: string; runtimeId?: string; id: string; actor: ApplicationActor; fingerprint: string; result: ApplicationResult }
-/** Only throw before any effect, or from an atomic transaction that rolls back on failure. */
-export class ApplicationValidationError extends Error { constructor(readonly code: NonNullable<ApplicationResult['error']>['code'], message: string, readonly fields?: string[]) { super(message) } }
 const businessError = (error: unknown): ApplicationResult['error'] | undefined => error instanceof ApplicationValidationError || error instanceof ScheduleError ? { code: error.code, message: error.message, ...(error.fields ? { fields: error.fields } : {}) } : undefined
 const collection = 'applicationOperations'
 const canonical = (value: unknown): string => {

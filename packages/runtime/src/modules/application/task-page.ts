@@ -2,7 +2,7 @@
  * [OUTPUT]: 任务活动支持指定taskId与真实在途筛选；游标绑定同一员工/筛选范围。
  * [OUTPUT]: 看板使用可信assignmentsOnly范围，SQL分页前排除内部进度；工具分页仍可读取原进度记录。
  * [OUTPUT]: 任务分页兼容等待补充状态，普通读取不启动执行。
- * [INPUT]: Original task records, fixed SQL read model and trusted application actor.
+ * [INPUT]: Runtime operation contract and Original task records, fixed SQL read model and trusted application actor.
  * [OUTPUT]: Read-only task pages with query-bound cursors and honest progress/list fields.
  * [POS]: Employee task record queries; does not turn plans, Work or ordinary chat into tasks.
  * [PROTOCOL]: Update Header and application/.folder.md on change.
@@ -12,7 +12,7 @@ import { z } from 'zod'
 import { TASK_PAGE_LIMITS, type TrackedTaskPage } from '@boai/shared/domain/tracked-tasks'
 import type { ApplicationActor } from '@boai/shared/domain/application-protocol'
 import type { ProductStore } from '../../adapters/storage/product-store'
-import { ApplicationValidationError, type ApplicationOperation } from './application-service'
+import { ApplicationValidationError, type ApplicationOperation } from '../../application-operation'
 
 const id = z.string().min(1).max(200)
 export const taskPageQuery = z.object({ taskId: id.optional(), activeOnly: z.boolean().default(false), agentId: id.optional(), conversationId: id.optional(), status: z.enum(['pending', 'in_progress', 'in_review', 'done', 'closed']).optional(), includeDone: z.boolean().default(false), limit: z.number().int().min(1).max(TASK_PAGE_LIMITS.maxPage).default(TASK_PAGE_LIMITS.page), cursor: z.string().min(1).max(2048).regex(/^[A-Za-z0-9_-]+$/).optional() }).strict()

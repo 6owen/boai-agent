@@ -1,6 +1,6 @@
 /*
  * [OUTPUT]: 新配置发现和写入要求真实本人来源，后台behavior即使原有manage权限也不能调用。
- * [INPUT]: Shared appearance command contract and the same-profile desktop host.
+ * [INPUT]: Runtime operation contract and Shared appearance command contract and the same-profile desktop host.
  * [OUTPUT]: Versioned appearance commands, dynamic options and independent icon status through the original facade.
  * [POS]: Thin configuration adapter; Main remains the only preference writer.
  * [PROTOCOL]: Changes must update this Header and application/.folder.md.
@@ -10,7 +10,7 @@ import { appearancePatchSchema } from '@boai/shared/appearance/schema'
 import { appearanceOptions } from '@boai/shared/appearance/options'
 import { availableThemes } from '@boai/shared/appearance'
 import { ApplicationHostError, type ApplicationHostPort } from '@boai/shared/ipc/application-host'
-import { ApplicationValidationError, type ApplicationOperation } from './application-service'
+import { ApplicationValidationError, type ApplicationOperation } from '../../application-operation'
 import type { ApplicationPort } from './operations'
 
 const empty = z.object({}).strict(), revision = z.number().int().nonnegative()

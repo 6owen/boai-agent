@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Original ProductStore, real employee/conversation identity and authenticated application actor.
+ * [INPUT]: Runtime operation contract and Original ProductStore, real employee/conversation identity and authenticated application actor.
  * [OUTPUT]: Persistent scoped planning mode, CAS transitions and runtime context; no execution or extra authority.
  * [POS]: Application planning domain, distinct from tasks, execution Work and a dependency plan graph.
  * [PROTOCOL]: Update Header and owning .folder.md when changed.
@@ -9,7 +9,7 @@ import { z } from 'zod'
 import type { Conversation, DigitalAgent } from '@boai/shared/domain'
 import type { ApplicationActor } from '@boai/shared/domain/application-protocol'
 import type { ProductStore, RecordTransaction } from '../../adapters/storage/product-store'
-import { ApplicationValidationError, type ApplicationOperation } from './application-service'
+import { ApplicationValidationError, type ApplicationOperation } from '../../application-operation'
 
 const id = z.string().min(1).max(200)
 const scope = z.object({ agentId: id, conversationId: id }).strict()

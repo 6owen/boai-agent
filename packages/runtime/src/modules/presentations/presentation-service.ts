@@ -1,6 +1,6 @@
 /*
  * [OUTPUT]: 2026-11-24 向视觉观测传递原任务归属；调用预约与结算不变。
- * [INPUT]: Original settings store, selected connection/vault, explicit renderer and host request accounting.
+ * [INPUT]: Runtime operation contract and Original settings store, selected connection/vault, explicit renderer and host request accounting.
  * [OUTPUT]: Revisioned presentation settings and revocable renderer/vision leases; no implicit chat-model fallback.
  * [POS]: Presentation capability service; employee tools must supply their own live authorization and request ledger.
  * [PROTOCOL]: Update Header and presentations/.folder.md when changed.
@@ -13,7 +13,7 @@ import { z } from 'zod'
 import type { Connection, ModelUsage } from '@boai/shared/domain'
 import type { GatewayRouteEvidence, ModelProtocol } from '@boai/shared/domain/model-gateway'
 import type { ProductStore } from '../../adapters/storage/product-store'
-import { ApplicationValidationError, type ApplicationOperation } from '../application/application-service'
+import { ApplicationValidationError, type ApplicationOperation } from '../../application-operation'
 import type { RenderedSlide, VisionReviewer } from './visual-review'
 
 const visionSchema = z.object({ connectionId: z.string().min(1).max(200), connectionRevision: z.number().int().positive(), model: z.string().trim().min(1).max(1000).regex(/^[^\x00-\x1f\x7f]+$/), maxOutputTokens: z.number().int().min(1).max(65536).optional() }).strict()

@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Original employee/conversation/message identity, approved raster bytes and selected image provider.
+ * [INPUT]: Runtime operation contract and Original employee/conversation/message identity, approved raster bytes and selected image provider.
  * [OUTPUT]: Durable private per-employee selfie references, explicit save/delete/export and fresh reference-based portraits.
  * [POS]: Host-owned album; image bytes stay out of model metadata and application receipts.
  * [PROTOCOL]: Update Header and media/.folder.md on change.
@@ -11,7 +11,7 @@ import { z } from 'zod'
 import type { Conversation, DigitalAgent, Message } from '@boai/shared/domain'
 import type { ApplicationActor } from '@boai/shared/domain/application-protocol'
 import type { ProductStore, RecordTransaction } from '../../adapters/storage/product-store'
-import { ApplicationValidationError, type ApplicationOperation } from '../application/application-service'
+import { ApplicationValidationError, type ApplicationOperation } from '../../application-operation'
 import { materialImageMimeType, readMaterialSource } from '@boai/shared/node/material-files'
 import { workspaceTarget, writeWorkspaceFile } from '../workspaces/file-access'
 import type { ImageBytes, ImageRequest, ImageResult, ImageService } from './image-service'

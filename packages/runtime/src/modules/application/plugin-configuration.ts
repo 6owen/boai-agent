@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Existing browser settings service, application plugin catalog and authenticated facade.
+ * [INPUT]: Runtime operation contract and Existing browser settings service, application plugin catalog and authenticated facade.
  * [OUTPUT]: Foreground configuration requires a real owner intent, preserves provider CAS and never starts a browser.
  * [POS]: Thin application adapter; all persistence and session cleanup stay in BrowserPluginService.
  * [PROTOCOL]: Changes must update this Header and application/.folder.md.
@@ -9,7 +9,7 @@ import { applicationPlugins } from '@boai/shared/plugins/catalog'
 import { pluginAvailability } from '@boai/shared/plugins/types'
 import type { ApplicationHostPort } from '@boai/shared/ipc/application-host'
 import { applyBrowserConfigurationPatch, browserDefaultForeground, BrowserPluginSettingsError, browserPluginConfigSchema, browserPluginConfigurationPatchSchema, browserPluginId, browserPluginProviderSchema, type BrowserPluginProvider } from '@boai/shared/plugins/browser-tools'
-import { ApplicationValidationError, type ApplicationOperation } from './application-service'
+import { ApplicationValidationError, type ApplicationOperation } from '../../application-operation'
 import type { ApplicationPort } from './operations'
 
 const lookup = z.object({ id: z.string().min(1).max(200) }).strict()

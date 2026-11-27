@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Host scope authorization, real terminal/preview services and application actor.
+ * [INPUT]: Runtime operation contract and Host scope authorization, real terminal/preview services and application actor.
  * [OUTPUT]: Preview operations remain available; terminal schemas retain old receipts but reject all new calls before execution.
  * [POS]: Application protocol adapter; does not grant command permission.
  * [PROTOCOL]: Update Header and owning .folder.md when changed.
@@ -7,7 +7,7 @@
 import { z } from 'zod'
 import type { ApplicationActor } from '@boai/shared/domain/application-protocol'
 import type { TerminalScope } from '@boai/shared/domain/workspace-tools'
-import { ApplicationValidationError, type ApplicationOperation } from '../application/application-service'
+import { ApplicationValidationError, type ApplicationOperation } from '../../application-operation'
 import type { TerminalService } from './terminal-service'
 import type { PreviewService } from './preview-service'
 

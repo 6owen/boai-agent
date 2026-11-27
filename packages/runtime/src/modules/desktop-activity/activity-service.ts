@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Opted-in host OCR samples, original ProductStore and explicitly generated report text.
+ * [INPUT]: Runtime operation contract and Opted-in host OCR samples, original ProductStore and explicitly generated report text.
  * [OUTPUT]: Independent capture/OCR capabilities and fallback records, paginated exact-session sources/themes and source-bound report cache.
  * [POS]: Desktop activity domain; never substitutes chat history or generates fictional activity.
  * [PROTOCOL]: Update Header and owning .folder.md when changed.
@@ -7,7 +7,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import type { ProductStore } from '../../adapters/storage/product-store'
-import { ApplicationValidationError, type ApplicationOperation } from '../application/application-service'
+import { ApplicationValidationError, type ApplicationOperation } from '../../application-operation'
 import type { ActivityCaptureResult, ActivitySettings, ActivitySample, ActivityReport, ActivityEvidence, ActivityStatus, ActivityMemoryHit, ActivityMemoryPage, ActivityAnalysis, ActivityCaptureAction, ActivityCaptureOptions, ActivityInputEvent, ActivitySessionPage } from '@boai/shared/domain/desktop-activity'
 import { activityDefaults as defaults, restoreActivitySettings, activityPatch, type ActivityPatch } from './activity-settings'
 import { ActivityStorage } from './activity-storage'

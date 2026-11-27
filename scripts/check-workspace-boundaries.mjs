@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 业务模块环按逐方向历史清单核对；新增或已退出的环内依赖均在 CI 报出。
  * [OUTPUT]: --graph 从同一次 AST 检查输出工作区公开入口、真实源码和逐条依赖的类型、位置与目标。
  * [OUTPUT]: 桌面浏览器命令公开入口的传递值依赖不得引入 Electron、执行器适配层或 Mastra SDK。
  * [OUTPUT]: 构建与边界检查共用显式开发导出解析；检查包含所有命名空间的工作区成员。
@@ -19,6 +20,7 @@ import { readFile, readdir, stat } from 'node:fs/promises'
 import { dirname, extname, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { workspaceSourceAliases } from './workspace-packages.mjs'
+import { inspectRuntimeModules } from './runtime-module-dependencies.mjs'
 import { parse } from '@babel/parser'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -168,7 +170,7 @@ for (const { path, workspace } of files) {
     if (imported.kind !== 'type' && target) {
       // Vite raw/url imports load asset data, not the target module's imports.
       const asset = /[?&](?:raw|url)(?:&|$)/.test(imported.value)
-      if (!asset) edges.push({ target, staticImport: imported.kind === 'import' || imported.kind === 'reexport' })
+      if (!asset) edges.push({ target, kind: imported.kind, line: imported.line, staticImport: imported.kind === 'import' || imported.kind === 'reexport' })
     }
     if (['@boai/ui', '@boai/tokens', '@boai/runtime-plugin-sdk'].includes(workspace.name) && (builtins.has(value) || value === 'electron')) fail(path, `${at} platform import in portable package: ${value}`)
     if (imported.kind !== 'type' && (builtins.has(value) || value === 'electron' || value.startsWith('electron/') || value.startsWith('@mastra/'))) edges.push({ target: value, staticImport: false })
@@ -220,6 +222,11 @@ const adapterRoot = resolve(root, 'packages/runtime/src/adapters') + sep
 await checkReachableImports('@boai/runtime', '@boai/runtime/browser', 'browser host entry', target =>
   electron(target) || target.startsWith('@mastra/') || target.startsWith(adapterRoot))
 
+const cycleDebtFile = resolve(root, 'scripts/runtime-module-cycle-debt.json')
+const cycleDebt = JSON.parse(await readFile(cycleDebtFile, 'utf8'))
+const runtimeModules = inspectRuntimeModules(graph, resolve(root, 'packages/runtime/src/modules'), cycleDebt)
+for (const error of runtimeModules.errors) fail(error.file ?? cycleDebtFile, error.message)
+
 if (errors.length) {
   process.stderr.write(`Workspace static check failed (${errors.length}):\n${errors.join('\n')}\n`)
   process.exitCode = 1
@@ -231,7 +238,7 @@ if (errors.length) {
   }))
   packages.sort((a, b) => a.name.localeCompare(b.name))
   reportFiles.sort((a, b) => a.path.localeCompare(b.path))
-  process.stdout.write(JSON.stringify({ packages, files: reportFiles }) + '\n')
+  process.stdout.write(JSON.stringify({ packages, files: reportFiles, runtimeModules: { dependencies: runtimeModules.dependencies, cycleGroups: runtimeModules.cycleGroups } }) + '\n')
 } else {
   process.stdout.write(`Workspace static check passed: ${workspaces.length} packages, ${files.length} source files; imports, public entries and dependency directions checked.\n`)
 }
