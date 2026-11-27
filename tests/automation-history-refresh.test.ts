@@ -5,7 +5,7 @@
  * [OUTPUT]: 2026-11-17固定检索/全局清空工具栏与ScrollArea；记录无前置图标且仅时间，全局清空冻结全部分页并保留在途记录。
  * [OUTPUT]: 2026-11-17Dialog分组默认收起且不渲染搜索/Tabs，展开选择/再次收起仍固定原记录身份。
  * [OUTPUT]: 覆盖Dialog左侧状态分组、折叠与固定记录选择，无执行副作用。
- * [OUTPUT]: 全部清空覆盖分页冻结/确认取消/重复提交、活动保留、部分失败及隐藏停发；不删除用户数据。
+ * [OUTPUT]: 从具备可访问名称的图标触发全部清空，覆盖分页冻结/确认取消/重复提交、活动保留、部分失败及隐藏停发；不删除用户数据。
  * [OUTPUT]: 删除Popover须明确确认，取消不提交；运行中禁删、失败仅Sonner、迟到列表不能恢复已删行。
  * [INPUT]: 生产AutomationHistory、可控历史请求与连续changed事件。
  * [OUTPUT]: 执行期间后台刷新不增删加载/空态行、不卸载已有记录；首次加载及隐藏停读保持。
@@ -89,6 +89,7 @@ test('an already loaded empty list does not alternate between empty and loading 
 })
 
 const button = (label: string) => [...document.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === label)!
+const clearAllButton = () => host.querySelector<HTMLButtonElement>('button[aria-label="全部清空"]')!
 test('opens the bound conversation while skipped records only show their reason', async () => {
   const onConversation = vi.fn()
   await act(async () => root.render(createElement(AutomationHistory, {
@@ -147,7 +148,10 @@ test('clear all freezes every page before deletion, skips ongoing records and do
   const running = { ...record, id: 'running' }, arriving = { ...first, id: 'new' }
   await render(); await resolve({ occurrences: [first, running] })
   const request = vi.mocked(api.request), success = vi.spyOn(toast, 'success').mockImplementation(() => 'success')
-  await act(async () => button('全部清空').click())
+  expect(clearAllButton().textContent).toBe('')
+  expect(clearAllButton().dataset.size).toBe('icon-sm')
+  expect(clearAllButton().querySelector('.i-carbon-trash-can')).not.toBeNull()
+  await act(async () => clearAllButton().click())
   expect(document.body.textContent).toContain('清空当前任务的执行记录？')
   await act(async () => button('取消').click())
   expect(request.mock.calls.filter(([method]) => method === 'deleteAutomationOccurrence')).toHaveLength(0)
@@ -160,7 +164,7 @@ test('clear all freezes every page before deletion, skips ongoing records and do
     if (!query.before) return { occurrences: [first, running], nextCursor: cursor } as never
     return new Promise<AutomationHistoryPage>(resolve => { finishSecondPage = resolve }) as never
   })
-  await act(async () => button('全部清空').click())
+  await act(async () => clearAllButton().click())
   await act(async () => { const confirm = button('确认清空'); confirm.click(); confirm.click() })
   expect(request.mock.calls.filter(([method]) => method === 'deleteAutomationOccurrence')).toHaveLength(0)
   expect(request.mock.calls.filter(([method, input]) => method === 'listAutomationHistory' && (input as { limit?: number }).limit === 100)).toEqual([
@@ -188,7 +192,7 @@ test('clear all preserves failed rows and reports partial cleanup through Sonner
     }
     return { occurrences: rows } as never
   })
-  await act(async () => button('全部清空').click())
+  await act(async () => clearAllButton().click())
   await act(async () => button('确认清空').click())
   expect([...host.querySelectorAll('[data-occurrence-id]')].map(row => row.getAttribute('data-occurrence-id'))).toEqual([record.id])
   expect(error).toHaveBeenCalledWith('已删除 1 条，1 条未能删除：文件已外部修改')
@@ -203,7 +207,7 @@ test('clear all does not mutate any record when a later history page fails', asy
     if ((input as { before?: unknown }).before) throw new Error('历史读取失败')
     return { occurrences: [{ ...record, status: 'completed', stateVersion: 7 }], nextCursor: { startedAt: record.startedAt, id: record.id } } as never
   })
-  await act(async () => button('全部清空').click())
+  await act(async () => clearAllButton().click())
   await act(async () => button('确认清空').click())
   expect(request.mock.calls.filter(([method]) => method === 'deleteAutomationOccurrence')).toHaveLength(0)
   expect(host.querySelector('[data-occurrence-id]')).not.toBeNull()
@@ -213,7 +217,7 @@ test('clear all does not mutate any record when a later history page fails', asy
 
 test('hiding the task during a clear stops unsent deletion requests', async () => {
   await render(); await resolve({ occurrences: [{ ...record, status: 'completed', stateVersion: 7 }] })
-  await act(async () => button('全部清空').click())
+  await act(async () => clearAllButton().click())
   await act(async () => button('确认清空').click())
   expect(pending).toHaveLength(1)
   await render(false)
