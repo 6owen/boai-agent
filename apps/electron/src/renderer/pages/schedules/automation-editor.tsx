@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 打开已有任务时按保存版本初始化，未改的日程可直接保存，新日程仍核对预览。
  * [OUTPUT]: 单次日期/时间沿原编辑器保存和预览，已保存时区保持；bobo可作为执行员工，消费后的计划仍可编辑说明。
  * [OUTPUT]: 普通任务固定员工和手动模式，定时编辑保持原表单。
  * [OUTPUT]: 普通任务默认手动执行、独立草稿回执；保存后由用户加入员工队列。
@@ -10,7 +11,7 @@
  * [POS]: 定时任务共用编辑表单，Dialog与旧详情入口共用EditorFrame/草稿守卫和唯一自动化服务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
-import { useContext, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { AutomationDefinition, AutomationInput, AutomationOwner, LaunchProfile, Snapshot } from '@boai/shared/domain'
 import { isCoreAgent } from '@boai/shared/domain/core-agent'
 import { backendProtocol, isNativeBackend } from '@boai/shared/domain/backends'
@@ -25,7 +26,7 @@ import { automationOwnerKey, automationOwnerLabel } from './automation-owner'
 
 export type AutomationEditorMode = 'manual' | 'assistant' | 'monitor' | 'task'
 type Form = Omit<AutomationInput, 'id' | 'expectedRevision' | 'requestId'> & Required<Pick<AutomationInput, 'taskKind' | 'conversationPolicy' | 'notificationPolicy'>>
-type Props = { api: DesktopApi; snapshot: Snapshot; id?: string; owner?: AutomationOwner; mode?: AutomationEditorMode; hideTitle?: boolean; onBusyChange?(busy: boolean): void; onClose(): void; onSaved(value: AutomationDefinition, created: boolean): void }
+type Props = { api: DesktopApi; snapshot: Snapshot; id?: string; initialDefinition?: AutomationDefinition; owner?: AutomationOwner; mode?: AutomationEditorMode; hideTitle?: boolean; onBusyChange?(busy: boolean): void; onClose(): void; onSaved(value: AutomationDefinition, created: boolean): void }
 const pendingPrefix = 'boai:automation:pending-creation'
 const dateValue = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 // Older plans may store a lower bound separately from their monthly day. Display
@@ -44,16 +45,18 @@ function pendingCreation(pendingKey: string): { requestId: string; form: Form } 
   try { const value = JSON.parse(localStorage.getItem(pendingKey) ?? 'null'); return value?.requestId && value.form ? value : undefined } catch { return undefined }
 }
 export function AutomationEditorTab(props: Props) {
-  const [loaded, setLoaded] = useState<{ definition?: AutomationDefinition; error?: string } | null>(props.id ? null : {})
+  const { api, id, initialDefinition } = props
+  const [loaded, setLoaded] = useState<{ definition?: AutomationDefinition; error?: string } | null>(id ? null : {})
   useEffect(() => {
-    if (!props.id) return
+    if (!id || initialDefinition) return
     let live = true
-    void props.api.request('getAutomation', { id: props.id! }).then(definition => {
+    void api.request('getAutomation', { id }).then(definition => {
       if (!live) return
       setLoaded(definition ? { definition } : { error: '此计划已删除或不可用，当前标签不会切换到其他计划。' })
     }).catch(error => { if (live) setLoaded({ error: errorText(error) }) })
     return () => { live = false }
-  }, [props.id, props.api])
+  }, [id, api, initialDefinition])
+  if (initialDefinition) return <AutomationEditor {...props} definition={initialDefinition} />
   if (!loaded) return <Loading>正在读取计划…</Loading>
   if (loaded.error) return <div className="detail-section"><Banner>{loaded.error}</Banner><Button variant="secondary" onClick={props.onClose}>关闭</Button></div>
   return <AutomationEditor {...props} definition={loaded.definition} />
@@ -73,12 +76,12 @@ function AutomationEditor({ api, snapshot, definition, owner, mode = 'manual', h
     timezone: definition?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone, enabled: definition?.enabled ?? true, notify: definition?.notify ?? true, notificationPolicy: definition?.notificationPolicy ?? (definition ? definition.notify ? 'all_results' : 'muted' : 'all_results') }))
   const [monitorOpen, setMonitorOpen] = useState(mode === 'monitor')
   const [unknown, setUnknown] = useState(!!pending)
-  const [profiles, setProfiles] = useState<LaunchProfile[]>([])
+  const [profiles, setProfiles] = useState<LaunchProfile[]>()
   const [profileError, setProfileError] = useState('')
   const nativeBindings = snapshot.agents.filter(a => isNativeBackend(a.executionBackend)).map(a => `${a.id}:${a.configVersion}:${isNativeBackend(a.executionBackend) ? a.executionBackend.profileId : ''}`).join(',')
   useEffect(() => {
     let live = true
-    setProfiles([]); setProfileError('')
+    setProfiles(undefined); setProfileError('')
     if (nativeBindings) void api.request('listLaunchProfiles', undefined)
       .then(value => { if (live) setProfiles(value) })
       .catch(error => { if (live) setProfileError(errorText(error)) })
@@ -87,25 +90,32 @@ function AutomationEditor({ api, snapshot, definition, owner, mode = 'manual', h
   const { busy, error, run } = useMutation(), guard = useContext(GuardContext), clean = useDirty(form)
   useLayoutEffect(() => { onBusyChange?.(busy) }, [busy, onBusyChange])
   const rule = form.frequency === 'weekly' && JSON.stringify(form.daysOfWeek) === '[1,2,3,4,5]' ? 'workdays' : form.frequency
-  const [preview, setPreview] = useState<{ nextTimes: string[]; timezone?: string; error?: string; pending: boolean }>({ nextTimes: [], pending: true })
+  const { frequency, time, weekday, daysOfWeek, timezone, startsOn, dayOfMonth } = form
+  const schedule = useMemo(() => ({ frequency, time, weekday, daysOfWeek, timezone, startsOn, dayOfMonth }),
+    [frequency, time, weekday, daysOfWeek, timezone, startsOn, dayOfMonth])
+  const [savedSchedule] = useState(() => definition ? JSON.stringify(schedule) : undefined)
+  const unchangedSchedule = savedSchedule === JSON.stringify(schedule)
+  const [preview, setPreview] = useState<{ schedule: typeof schedule; nextTimes: string[]; error?: string }>()
+  const schedulePreview = preview?.schedule === schedule && !unchangedSchedule ? preview : undefined
   const change = (patch: Partial<Form>) => { setForm(current => ({ ...current, ...patch })) }
-  const daysKey = JSON.stringify(form.daysOfWeek)
   useEffect(() => { title.current?.focus() }, [])
   useEffect(() => {
+    if (unchangedSchedule) return
     let live = true
-    setPreview({ nextTimes: [], pending: true })
     const timer = setTimeout(() => {
-      void api.request('previewAutomation', { frequency: form.frequency, time: form.time, weekday: form.weekday, daysOfWeek: form.daysOfWeek, timezone: form.timezone, startsOn: form.startsOn, dayOfMonth: form.dayOfMonth })
-        .then(value => { if (live) setPreview({ ...value, timezone: form.timezone, pending: false }) })
-        .catch(error => { if (live) setPreview({ nextTimes: [], error: errorText(error), pending: false }) })
+      void api.request('previewAutomation', schedule)
+        .then(value => { if (live) setPreview({ ...value, schedule }) })
+        .catch(error => { if (live) setPreview({ nextTimes: [], error: errorText(error), schedule }) })
     }, 150)
     return () => { live = false; clearTimeout(timer) }
-  }, [api, form.frequency, form.time, form.weekday, daysKey, form.timezone, form.startsOn, form.dayOfMonth])
-  const eligible = (id: string) => {
+  }, [api, schedule, unchangedSchedule])
+  const eligible = (id: string, savedMember = false) => {
     const a = snapshot.agents.find(a => a.id === id), c = snapshot.connections.find(c => c.id === a?.connectionId) ?? (isCoreAgent(a) ? snapshot.connections.find(c => c.defaultModel.trim() && (c.provider !== 'openai-compatible' || c.baseUrl.trim())) : undefined)
     if (!a?.active || a.executionBackend?.kind === 'acp-local') return false
     if (isNativeBackend(a.executionBackend)) {
       const { profileId, kind } = a.executionBackend
+      // The save service revalidates the existing binding while its profile is being read.
+      if (!profiles) return savedMember
       return profiles.some(profile => profile.id === profileId && profile.protocol === backendProtocol(kind) && profile.verified
         && (kind !== 'claude-local' || profile.useExistingLogin || !!(c?.hasApiKey && (a.modelId || c.defaultModel))))
     }
@@ -113,9 +123,12 @@ function AutomationEditor({ api, snapshot, definition, owner, mode = 'manual', h
   }
   const conversation = snapshot.conversations.find(c => c.id === form.conversationId)
   const memberIds = form.conversationPolicy === 'new-conversation' ? form.employeeIds ?? [] : conversation?.agentIds ?? []
-  const validTarget = memberIds.length > 0 && memberIds.every(eligible) && (!form.collaboration || form.collaboration.assignments.length >= 2 && form.collaboration.assignments.every(a => a.instruction.trim() && a.deliverable.trim()))
-  const unchangedOnce = definition?.frequency === 'once' && form.frequency === 'once' && definition.startsOn === form.startsOn && definition.time === form.time && definition.timezone === form.timezone
-  const valid = !!form.name.trim() && !!form.prompt.trim() && validTarget && (form.taskKind !== 'monitor' || validMonitorPolicy(form.monitor)) && (form.frequency === 'manual' || unchangedOnce || preview.nextTimes.length > 0) && !preview.error && preview.timezone === form.timezone && !preview.pending
+  const savedMembers = definition?.conversationPolicy === 'new-conversation' ? definition.employeeIds
+    : snapshot.conversations.find(c => c.id === definition?.conversationId)?.agentIds
+  const validTarget = memberIds.length > 0 && memberIds.every(id => eligible(id, savedMembers?.includes(id)))
+    && (!form.collaboration || form.collaboration.assignments.length >= 2 && form.collaboration.assignments.every(a => a.instruction.trim() && a.deliverable.trim()))
+  const validSchedule = unchangedSchedule || !!schedulePreview && !schedulePreview.error && (frequency === 'manual' || schedulePreview.nextTimes.length > 0)
+  const valid = !!form.name.trim() && !!form.prompt.trim() && validTarget && (form.taskKind !== 'monitor' || validMonitorPolicy(form.monitor)) && validSchedule
   const finish = (value: AutomationDefinition) => { if (!definition) localStorage.removeItem(pendingKey); setUnknown(false); version.current = value.revision; clean(); onSaved(value, !definition); guard.saved() }
   const queryReceipt = async () => { const receipt = await api.request('getAutomationCreation', { requestId: draftId }); if (receipt) finish(receipt); else { setUnknown(false); localStorage.removeItem(pendingKey) } }
   const targetLabel = form.owner ? `${automationOwnerLabel(form.owner, snapshot)} · ${form.conversationPolicy === 'new-conversation' ? '独立任务上下文' : '原聊天'}` : form.conversationPolicy === 'new-conversation' ? `任务上下文 · ${snapshot.agents.find(a => a.id === form.employeeIds?.[0])?.name ?? '选择员工'}` : conversation?.title ?? (form.conversationId ? '聊天已不可用' : '指定聊天')
@@ -159,7 +172,7 @@ function AutomationEditor({ api, snapshot, definition, owner, mode = 'manual', h
             <SelectField className="schedule-employee-select h-(--control-height)" aria-label="执行员工" value={form.employeeIds?.[0] ?? ''} disabled={!!owner} onValueChange={value => change({ owner: value ? { kind: 'employee', employeeId: value } : undefined, employeeIds: value ? [value] : undefined })} placeholder="从通讯录选择员工" options={snapshot.agents.map(a => ({ value: a.id, label: a.name, disabled: !eligible(a.id) }))} />
           </div>}
         </div>
-        {preview.error && <Banner>{preview.error}</Banner>}
+        {schedulePreview?.error && <Banner>{schedulePreview.error}</Banner>}
         {profileError && <Banner>本机连接读取失败：{profileError}</Banner>}
         {!singleEmployeeTarget && <div className="automation-setting"><span>运行于</span><span>{targetLabel}</span></div>}
       </fieldset>

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 启停单独提交，操作栏 Tooltip 延迟 500ms，编辑弹窗直接使用当前任务配置。
  * [OUTPUT]: 标题栏依次显示启用开关、编辑、删除与主色立即运行，记录行只负责定位会话。
  * [OUTPUT]: 2026-11-27 定时页点击执行记录直接打开原话题；跳过等无会话记录仍可查看原因。
  * [OUTPUT]: 执行记录入口及单次定位打开统一左右Dialog；任务内历史列表沿原查询。
@@ -102,17 +103,8 @@ export function SchedulePage({ api, snapshot, active, sidebarShown, divider, loc
         <div className="page-heading">
           <h2 className="min-w-0 break-words">{definition.name}</h2>
           <div className="ml-auto flex flex-wrap items-center justify-end gap-1" role="group" aria-label="定时任务操作">
-            <div className="mx-3 flex items-center">
-              <Tooltip>
-                <TooltipTrigger render={<Switch aria-label="启用定时任务" checked={definition.enabled} disabled={busy}
-                  onCheckedChange={enabled => void run(async () => {
-                    if (enabled) await api.request('resumeAutomation', { id: definition.id })
-                    else await api.request('pauseAutomation', { id: definition.id })
-                  })} />} />
-                <TooltipContent>{definition.enabled ? '暂停计划' : '启用计划'}</TooltipContent>
-              </Tooltip>
-            </div>
-            <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon" aria-label="编辑" disabled={busy} onClick={() => openDialog({ kind: 'manual', id: definition.id, key: crypto.randomUUID() })} />}><Pencil /></TooltipTrigger><TooltipContent>编辑</TooltipContent></Tooltip>
+            <ScheduleEnabledSwitch key={definition.id} api={api} id={definition.id} enabled={definition.enabled} disabled={busy} />
+            <Tooltip><TooltipTrigger delay={500} render={<Button variant="ghost" size="icon" aria-label="编辑" disabled={busy} onClick={() => openDialog({ kind: 'manual', id: definition.id, initialDefinition: definition, key: crypto.randomUUID() })} />}><Pencil /></TooltipTrigger><TooltipContent>编辑</TooltipContent></Tooltip>
             <DeleteAutomationButton key={`delete:${definition.id}`} name={definition.name} busy={busy} onConfirm={() => void run(async () => { await api.request('deleteAutomation', { id: definition.id }); onLocation({ kind: 'overview' }) })} />
             <AutomationRunActions key={`run:${definition.id}`} api={api} automationId={definition.id} occurrences={view.occurrences} active={active} busy={busy} onNavigateMessage={onNavigateMessage} />
           </div>
@@ -145,10 +137,26 @@ export function SchedulePage({ api, snapshot, active, sidebarShown, divider, loc
     }} />}
   </div>
 }
+function ScheduleEnabledSwitch({ api, id, enabled, disabled }: { api: DesktopApi; id: string; enabled: boolean; disabled: boolean }) {
+  const { busy, run } = useMutation()
+  return <div className="mx-3 flex items-center">
+    <Tooltip>
+      <TooltipTrigger delay={500} render={<Switch aria-label="启用定时任务" checked={enabled} disabled={disabled} aria-busy={busy}
+        onCheckedChange={checked => void run(async () => {
+          if (checked) await api.request('resumeAutomation', { id })
+          else await api.request('pauseAutomation', { id })
+        })} />} />
+      <TooltipContent>{enabled ? '暂停定时任务' : '启用定时任务'}</TooltipContent>
+    </Tooltip>
+  </div>
+}
 function DeleteAutomationButton({ name, busy, onConfirm }: { name: string; busy: boolean; onConfirm(): void }) {
   const [open, setOpen] = useState(false)
   return <Popover open={open} onOpenChange={value => { if (!busy) setOpen(value) }}>
-    <PopoverTrigger render={<Button variant="ghost" size="icon" aria-label="删除" title="删除" className="hover:text-destructive" disabled={busy} />}><Trash2 /></PopoverTrigger>
+    <Tooltip>
+      <TooltipTrigger delay={500} render={<PopoverTrigger render={<Button variant="ghost" size="icon" aria-label="删除" className="hover:text-destructive" disabled={busy} />} />}><Trash2 /></TooltipTrigger>
+      <TooltipContent>删除</TooltipContent>
+    </Tooltip>
     <PopoverContent align="end">
       <PopoverTitle className="break-words">删除“{name}”？</PopoverTitle>
       <div className="button-row justify-end"><Button variant="secondary" size="sm" disabled={busy} onClick={() => setOpen(false)}>取消</Button><Button variant="destructive" size="sm" disabled={busy} onClick={onConfirm}>{busy ? '正在删除…' : '确认删除'}</Button></div>

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 检查启停待决时操作栏保持可用，以及已有日程首次打开直接可保存。
  * [OUTPUT]: 2026-11-27 验证标题开关、图标顺序、主色运行提交及计划摘要只读。
  * [OUTPUT]: 2026-11-27 定时页夹具使用新会话定位回调。
  * [OUTPUT]: 手动运行queued/running均隐藏查看本次执行过程；定位聊天、原运行提交锁及终态清理保持。
@@ -157,12 +158,15 @@ test('exiting a dirty schedule discards without saving', async () => {
 
 test('toggles the saved plan in the toolbar and runs from the primary button', async () => {
   let enabled = false
+  let finishPause!: () => void
+  const savedPlan = { ...plan, frequency: 'daily' as const, nextTimes: [] }
   const listeners = new Set<Parameters<DesktopApi['subscribe']>[0]>()
   const request = vi.fn(async (method: string, _input?: unknown) => {
     if (method === 'getScheduleList') return { revision: 0, tags: [], tagIdsByAutomationId: {}, order: [] }
-    if (method === 'listAutomations') return { definitions: [{ ...plan, enabled }], occurrences: [], available: true }
+    if (method === 'listAutomations') return { definitions: [{ ...savedPlan, enabled }], occurrences: [], available: true }
     if (method === 'listAutomationHistory') return { occurrences: [] }
     if (method === 'resumeAutomation' || method === 'pauseAutomation') {
+      if (method === 'pauseAutomation') await new Promise<void>(resolve => { finishPause = resolve })
       enabled = method === 'resumeAutomation'
       for (const listener of listeners) listener({ type: 'changed' })
       return enabled ? { ...plan, enabled } : undefined
@@ -187,6 +191,7 @@ test('toggles the saved plan in the toolbar and runs from the primary button', a
   expect(host.querySelector('[aria-label="计划摘要"] button')).toBeNull()
   const run = button('立即运行')
   expect(run.getAttribute('data-variant')).toBe('default')
+  expect(run.classList.contains('ml-2')).toBe(true)
   const controls = [...toolbar.querySelectorAll<HTMLElement>('button, [role="switch"]')]
   expect(controls.map(element => element.getAttribute('aria-label') ?? element.textContent)).toEqual(['启用定时任务', '编辑', '删除', '立即运行'])
   const toggle = controls[0]
@@ -194,11 +199,60 @@ test('toggles the saved plan in the toolbar and runs from the primary button', a
   await act(async () => toggle.click())
   expect(request).toHaveBeenCalledWith('resumeAutomation', { id: plan.id })
   expect(toggle.getAttribute('aria-checked')).toBe('true')
-  await act(async () => toggle.click())
-  expect(request).toHaveBeenCalledWith('pauseAutomation', { id: plan.id })
+  const edit = toolbar.querySelector<HTMLButtonElement>('[aria-label="编辑"]')!
+  const remove = toolbar.querySelector<HTMLButtonElement>('[aria-label="删除"]')!
+  await act(async () => { toggle.click(); toggle.click() })
+  expect(request.mock.calls.filter(([method]) => method === 'pauseAutomation')).toEqual([['pauseAutomation', { id: plan.id }]])
+  expect(toggle.getAttribute('aria-busy')).toBe('true')
+  expect(toggle.getAttribute('aria-checked')).toBe('true')
+  expect([edit, remove, run].every(action => !action.disabled)).toBe(true)
+  await act(async () => finishPause())
   expect(toggle.getAttribute('aria-checked')).toBe('false')
+  expect(toolbar.querySelector('[aria-label="编辑"]')).toBe(edit)
+  expect(toolbar.querySelector('[aria-label="删除"]')).toBe(remove)
+  expect(button('立即运行')).toBe(run)
+  await act(async () => remove.click())
+  expect(button('确认删除').disabled).toBe(false)
+  await act(async () => button('取消').click())
+  await act(async () => edit.click())
+  expect(button('关闭').disabled).toBe(false)
+  expect(button('保存修改').disabled).toBe(false)
+  expect(request.mock.calls.some(([method]) => method === 'getAutomation' || method === 'previewAutomation')).toBe(false)
+  await act(async () => button('关闭').click())
   await act(async () => run.click())
   expect(request.mock.calls.filter(([method]) => method === 'runAutomation')).toEqual([['runAutomation', { id: plan.id, requestId: expect.any(String) }]])
+})
+
+test('an edited schedule waits for its own validation and ignores an outdated preview', async () => {
+  const daily = { ...plan, frequency: 'daily' as const, time: '09:00' }
+  const nativeSnapshot: Snapshot = { ...snapshot, agents: snapshot.agents.map(agent => ({
+    ...agent, executionBackend: { kind: 'codex-local', profileId: 'profile' },
+  })) }
+  const profiles = [{ id: 'profile', protocol: 'codex-app-server', verified: { checkedAt: '2026-11-27T09:00:00Z' } }]
+  let finishProfiles!: (value: typeof profiles) => void
+  let finishPreview!: (value: { nextTimes: string[] }) => void
+  const request = vi.fn(async (method: string) => {
+    if (method === 'listLaunchProfiles') return new Promise<typeof profiles>(resolve => { finishProfiles = resolve })
+    if (method === 'previewAutomation') return new Promise<{ nextTimes: string[] }>(resolve => { finishPreview = resolve })
+    throw new Error(`Unexpected request: ${method}`)
+  })
+  const api = { request, subscribe: () => () => {} } as unknown as DesktopApi
+  await act(async () => root.render(h(AutomationDialog, { api, snapshot: nativeSnapshot, active: true,
+    target: { kind: 'manual', id: daily.id, initialDefinition: daily, key: 'daily' }, onClose() {}, onSaved() {},
+  })))
+  const time = document.querySelector<HTMLInputElement>('input[aria-label="执行时间"]')!
+  expect(button('保存修改').disabled).toBe(false)
+  await act(async () => finishProfiles(profiles))
+  expect(button('保存修改').disabled).toBe(false)
+  await change(time, '10:00')
+  expect(button('保存修改').disabled).toBe(true)
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 180)) })
+  await change(time, '11:00')
+  await act(async () => finishPreview({ nextTimes: ['2026-11-27T10:00:00Z'] }))
+  expect(button('保存修改').disabled).toBe(true)
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 180)) })
+  await act(async () => finishPreview({ nextTimes: ['2026-11-27T11:00:00Z'] }))
+  expect(button('保存修改').disabled).toBe(false)
 })
 
 test('conversation creation delegates to the ordinary chat without creating a dialog or submitting', async () => {
