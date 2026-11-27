@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 日期与时区计算沿 shared/domain/calendar。
  * [OUTPUT]: 活动数据与加载状态未变时复用图表，避免隐藏资料页在其他页面导航时重建全年日期/Tooltip树。
  * [INPUT]: 同一时区的日聚合 DTO 与项目 Chart/Tooltip 原语。
  * [OUTPUT]: 页面/分享共用日期范围、色阶与周偏移；精简的七行年度热力图、每周柱图和区间累计曲线；日期/缺口保留在图格 tooltip 和可访问名称。
@@ -6,6 +7,7 @@
  * [POS]: 个人资料只读活动展示；粒度切换不重新请求模型或历史正文。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { localCalendarDate, shiftCalendarDate } from '@boai/shared/domain/calendar'
 import { memo, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Bar, BarChart, Line, LineChart, XAxis, YAxis } from 'recharts'
 import type { ActivityDay, ProfileActivity } from '@boai/shared/domain/profile'
@@ -16,12 +18,10 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 export const tokenText = (value: number | null) => value === null ? '暂无记录' : value.toLocaleString('zh-CN')
 export function profileActivityRange() {
-  const now = new Date(), date = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now)
-  const to = ['year', 'month', 'day'].map(type => date.find(part => part.type === type)!.value).join('-')
+  const now = new Date(), to = localCalendarDate(now)
   const from = new Date(Date.UTC(now.getFullYear(), now.getMonth() - 11, 1)).toISOString().slice(0, 10)
   return { from, to, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }
 }
-const dateOffset = (date: string, n: number) => new Date(Date.parse(`${date}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10)
 export const mondayOffset = (date: string) => (new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7
 export function activityThresholds(days: ActivityDay[]) {
   const positives = days.flatMap(day => day.tokens !== null && day.tokens > 0 ? [day.tokens] : []).sort((a, b) => a - b)
@@ -34,7 +34,7 @@ export const ActivityChart = memo(function ActivityChart({ activity, loading = f
   const placeholderDays = useMemo(() => {
     const { from, to } = profileActivityRange()
     const count = Math.floor((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400000) + 1
-    return Array.from({ length: count }, (_, index): ActivityDay => ({ date: dateOffset(from, index), tokens: null, unknownCalls: 0, calls: 0 }))
+    return Array.from({ length: count }, (_, index): ActivityDay => ({ date: shiftCalendarDate(from, index), tokens: null, unknownCalls: 0, calls: 0 }))
   }, [])
   const days = activity?.days ?? placeholderDays, start = days[0]?.date
   const { thresholds, weeks, cumulative } = useMemo(() => {
@@ -42,7 +42,7 @@ export const ActivityChart = memo(function ActivityChart({ activity, loading = f
     const buckets = new Map<string, { date: string; end: string; tokens: number | null; unknown: boolean }>()
     let total: number | null = null, unknown = false
     const cumulative = days.map(day => {
-      const monday = dateOffset(day.date, -mondayOffset(day.date)), week = buckets.get(monday) ?? { date: day.date, end: day.date, tokens: null, unknown: false }
+      const monday = shiftCalendarDate(day.date, -mondayOffset(day.date)), week = buckets.get(monday) ?? { date: day.date, end: day.date, tokens: null, unknown: false }
       week.end = day.date; if (day.tokens !== null) { week.tokens = (week.tokens ?? 0) + day.tokens; total = (total ?? 0) + day.tokens }
       week.unknown ||= !!day.unknownCalls; unknown ||= !!day.unknownCalls; buckets.set(monday, week)
       return { date: day.date, tokens: total, label: `${day.date} · 区间累计${unknown ? '（部分已知）' : ''}` }

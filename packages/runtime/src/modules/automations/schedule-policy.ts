@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 日期与时区计算沿 shared/domain/calendar。
  * [OUTPUT]: 会话队列和调度准入使用同一持久顺序；执行器容量单独判断。
  * [OUTPUT]: 单次日程共用确定性本地时间解析、预览和目标时刻匹配；cron仅为唯一原生时钟的内部映射。
  * [OUTPUT]: 只按同一任务session或同一定时计划互斥；同员工独立任务可并发，原总容量和原生循环保持。
@@ -9,6 +10,7 @@
  * [POS]: 自动化时间和身份的确定性策略；不启动周期时钟。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { createZonedMinuteFormatter, isValidTimeZone } from '@boai/shared/domain/calendar'
 import { createHash } from 'node:crypto'
 import { Cron } from 'croner'
 import { z } from 'zod'
@@ -24,7 +26,7 @@ export function sharesTaskExecutor(a: AutomationOccurrence, b: AutomationOccurre
 }
 const hash = (...parts: (string | number)[]) => createHash('sha256').update(JSON.stringify(parts)).digest('hex')
 
-export const scheduleSchema = z.object({ frequency: z.enum(['manual', 'once', 'hourly', 'daily', 'weekly', 'monthly']), onceAt: z.iso.datetime().optional(), startsOn: z.iso.date().optional(), dayOfMonth: z.number().int().min(1).max(31).optional(), time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, '请填写有效的执行时间'), weekday: z.number().int().min(0).max(6), daysOfWeek: z.array(z.number().int().min(0).max(6)).min(1, '请至少选择一个星期').max(7).optional(), timezone: z.string().min(1).max(100).refine(t => { try { new Intl.DateTimeFormat('en', { timeZone: t }); return true } catch { return false } }, '无效 IANA 时区') }).strict()
+export const scheduleSchema = z.object({ frequency: z.enum(['manual', 'once', 'hourly', 'daily', 'weekly', 'monthly']), onceAt: z.iso.datetime().optional(), startsOn: z.iso.date().optional(), dayOfMonth: z.number().int().min(1).max(31).optional(), time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, '请填写有效的执行时间'), weekday: z.number().int().min(0).max(6), daysOfWeek: z.array(z.number().int().min(0).max(6)).min(1, '请至少选择一个星期').max(7).optional(), timezone: z.string().min(1).max(100).refine(isValidTimeZone, '无效 IANA 时区') }).strict()
 type Schedule = Pick<AutomationInput, 'time' | 'frequency' | 'weekday' | 'daysOfWeek' | 'timezone' | 'startsOn' | 'dayOfMonth' | 'onceAt'>
 export function normalizeSchedule<T extends Schedule>(input: T): T {
   if (input.frequency !== 'once') return { ...input, onceAt: undefined }
@@ -49,14 +51,16 @@ export function automationCron(input: Pick<Schedule, 'time' | 'frequency' | 'wee
 
 export function calendarSlot(time: number, timezone: string) {
   if (!Number.isSafeInteger(time) || !Number.isFinite(new Date(time).getTime())) throw new Error('无法验证调度触发时间')
-  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(time)).map(part => [part.type, part.value]))
-  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`
+  return createZonedMinuteFormatter(timezone)(time)
 }
 
 export function matchesSchedule(d: Schedule, time: number) {
   if (d.frequency === 'manual') return false
   if (d.frequency === 'once') return Date.parse(d.onceAt ?? '') === time
-  const slot = calendarSlot(time, d.timezone)
+  return matchesRecurringSlot(d, calendarSlot(time, d.timezone))
+}
+
+function matchesRecurringSlot(d: Schedule, slot: string) {
   if (d.startsOn && slot.slice(0, 10) < d.startsOn) return false
   if (d.frequency === 'hourly') return slot.slice(-2) === d.time.slice(-2)
   if (d.frequency === 'monthly') return slot.endsWith(d.time) && Number(slot.slice(8, 10)) === (d.dayOfMonth ?? Number(d.startsOn?.slice(8) ?? 1))
@@ -70,6 +74,8 @@ export function nextTimes(d: Schedule & Pick<AutomationDefinition, 'cron'> & { o
     return !d.onceConsumedAt && at > after.getTime() && count > 0 ? [new Date(at).toISOString()] : []
   }
   const cron = new Cron(d.cron, { timezone: d.timezone, paused: true }), slots = new Set<string>(), result: string[] = []
+  if (!(count > 0)) return result
+  const formatSlot = createZonedMinuteFormatter(d.timezone)
   // Start at a safe UTC lower bound for the requested local date, including UTC+14.
   let previous = d.startsOn ? new Date(Math.max(after.getTime(), Date.parse(d.startsOn + 'T00:00:00Z') - 14 * 3600_000 - 1)) : after
   // A DST gap can be returned by the clock as a shifted local time. Admission and preview both reject it.
@@ -77,8 +83,8 @@ export function nextTimes(d: Schedule & Pick<AutomationDefinition, 'cron'> & { o
     const date = cron.nextRun(previous)
     if (!date) break
     previous = date
-    const slot = calendarSlot(date.getTime(), d.timezone)
-    if (!matchesSchedule(d, date.getTime()) || slots.has(slot)) continue
+    const slot = formatSlot(date.getTime())
+    if (!matchesRecurringSlot(d, slot) || slots.has(slot)) continue
     slots.add(slot); result.push(date.toISOString())
   }
   return result

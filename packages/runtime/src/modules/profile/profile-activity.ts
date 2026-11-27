@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 日期与时区计算沿 shared/domain/calendar。
  * [OUTPUT]: 个人活动按查询时区复用日期格式器，并按工作、执行和技能身份关联证据。
  * [OUTPUT]: 2026-11-24 官方生成指标替换同运行旧显示回执，费用仅加总官方总量，原生用量与已删运行排除。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
@@ -8,6 +9,7 @@
  * [POS]: 个人活动的确定性聚合；不从模型/预算汇总推测使用量。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { shiftCalendarDate } from '@boai/shared/domain/calendar'
 import { isNativeBackend } from '@boai/shared/domain/backends'
 import { createHash } from 'node:crypto'
 import type { AgentRun, BudgetModelCall, Message, ModelUsage, Resource, WorkItem } from '@boai/shared/domain'
@@ -30,7 +32,6 @@ function dateInTimezone(timezone: string) {
     return ['year', 'month', 'day'].map(type => parts.find(part => part.type === type)!.value).join('-')
   }
 }
-export const shiftDay = (day: string, count: number) => new Date(Date.parse(`${day}T00:00:00Z`) + count * 86_400_000).toISOString().slice(0, 10)
 export function knownTotal(usage?: ModelUsage): number | null {
   const count = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n) && n >= 0
   if (count(usage?.totalTokens)) return usage.totalTokens
@@ -122,9 +123,9 @@ export function aggregateActivity(evidence: ActivityEvidence, range: ProfileActi
     if (!date || date > today) unknownDates = true; else active.add(date)
   }
   let longest = 0, streak = 0, previous = ''
-  for (const day of [...active].sort()) { streak = previous && shiftDay(previous, 1) === day ? streak + 1 : 1; longest = Math.max(longest, streak); previous = day }
-  let current = 0, day = active.has(today) ? today : shiftDay(today, -1)
-  while (active.has(day)) { current++; day = shiftDay(day, -1) }
+  for (const day of [...active].sort()) { streak = previous && shiftCalendarDate(previous, 1) === day ? streak + 1 : 1; longest = Math.max(longest, streak); previous = day }
+  let current = 0, day = active.has(today) ? today : shiftCalendarDate(today, -1)
+  while (active.has(day)) { current++; day = shiftCalendarDate(day, -1) }
   let peak: ProfileActivity['peak'] = null
   for (const [date, value] of [...buckets].sort()) if (value.known && (!peak || value.tokens >= peak.tokens)) peak = { date, tokens: value.tokens }
   const { longestTaskMs, missingIntervals } = taskDurations(evidence)
@@ -139,7 +140,7 @@ export function aggregateActivity(evidence: ActivityEvidence, range: ProfileActi
   }
   const ranked = [...skills.values()].sort((a, b) => b.count - a.count || a.id.localeCompare(b.id)), thinking = [...thinkingCounts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]
   const days: ProfileActivity['days'] = []
-  for (let date = range.from; date <= range.to && date <= today; date = shiftDay(date, 1)) {
+  for (let date = range.from; date <= range.to && date <= today; date = shiftCalendarDate(date, 1)) {
     const value = buckets.get(date)
     days.push({ date, tokens: value ? value.known ? value.tokens : null : null, unknownCalls: value?.unknownCalls ?? 0, calls: value?.calls ?? 0 })
   }

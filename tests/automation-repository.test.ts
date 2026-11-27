@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 每次周期预览只创建一个时区分钟格式器，并保留闰日、半小时和午夜边界。
  * [OUTPUT]: 满容量或同上下文持久排队，不同手动请求分别受理，相同请求仍归并。
  * [OUTPUT]: 本轮覆盖复制/员工入口、定时运行防连点、失败过程、严格私有判断及保留原预算的显式继续；实际范围以各用例为准。
  * [INPUT]: 真实 SQLite、自动化事务账本、原生调度和固定时间策略。
@@ -222,6 +223,15 @@ it('only labels unaccounted native evidence as needing review and does not stamp
   expect(o).toMatchObject({ nativeRunId: 'native-without-product', nativeTriggerId: 'trigger-1', status: 'needs_review', deliveryStatus: 'unknown' })
   expect(o?.revision).toBeUndefined(); expect(o?.executionRevision).toBeUndefined(); expect(o?.scheduleGeneration).toBeUndefined()
   expect((await repository.claim(scheduled(d, 'native-without-product'), () => undefined)).created).toBe(false)
+})
+
+it('constructs one zoned minute formatter for a recurring preview', () => {
+  const schedule = { ...input({ time: '09:15', timezone: 'Asia/Kathmandu' }), cron: '15 9 * * *' }
+  const formats = vi.spyOn(Intl, 'DateTimeFormat')
+  const times = nextTimes(schedule, 42, new Date('2028-02-28T00:00Z'))
+  expect(times).toHaveLength(42)
+  expect(times.slice(0, 2)).toEqual(['2028-02-28T03:30:00.000Z', '2028-02-29T03:30:00.000Z'])
+  expect(formats.mock.calls.filter(([locale, options]) => locale === 'en-CA' && options?.hourCycle === 'h23')).toHaveLength(1)
 })
 
 it('uses one calendar rule for missing/repeated DST hours and future previews', () => {

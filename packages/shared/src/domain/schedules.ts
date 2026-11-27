@@ -1,14 +1,16 @@
 /*
  * [INPUT]: Public schedule commands and trusted employee/timezone context.
+ * [OUTPUT]: 日期与时区计算沿 shared/domain/calendar。
  * [OUTPUT]: Strict business schemas, actionable domain validation messages and unambiguous local-time resolution; no runtime or transport dependency.
  * [POS]: Shared schedule API contract, independent of internal automation/employee-task storage.
  * [PROTOCOL]: Update Header and owning .folder.md when changed.
  */
+import { createZonedMinuteFormatter, isValidTimeZone } from './calendar'
 import { z } from 'zod'
 
 const id = z.string().min(1).max(200)
 const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, '请填写 HH:mm 格式的时间')
-const timezone = z.string().min(1).max(100).refine(value => { try { new Intl.DateTimeFormat('en', { timeZone: value }); return true } catch { return false } }, '无效 IANA 时区')
+const timezone = z.string().min(1).max(100).refine(isValidTimeZone, '无效 IANA 时区')
 const calendar = { timezone: timezone.optional(), startsOn: z.iso.date().optional() }
 export const scheduleTriggerSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('once'), date: z.iso.date(), time, timezone: timezone.optional() }).strict(),
@@ -56,16 +58,15 @@ export function parseSchedule<T>(schema: z.ZodType<T>, value: unknown): T {
 export function scheduleInstant(date: string, clock: string, zone: string): number {
   const parsed = z.object({ date: z.iso.date(), clock: time, zone: timezone }).safeParse({ date, clock, zone })
   if (!parsed.success) throw new ScheduleError('INVALID_INPUT', '请填写有效日期、时间和时区。', ['trigger'])
-  const format = new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
-  const parts = (at: number) => Object.fromEntries(format.formatToParts(new Date(at)).map(part => [part.type, part.value]))
+  const format = createZonedMinuteFormatter(zone)
   const wall = Date.parse(`${date}T${clock}:00Z`), offsets = new Set<number>(), candidates = new Set<number>()
   for (let hours = -48; hours <= 48; hours += 6) {
-    const at = wall + hours * 3600000, p = parts(at)
-    offsets.add(Date.parse(`${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:00Z`) - at)
+    const at = wall + hours * 3600000
+    offsets.add(Date.parse(format(at).replace(' ', 'T') + ':00Z') - at)
   }
   for (const offset of offsets) {
-    const at = wall - offset, p = parts(at)
-    if (`${p.year}-${p.month}-${p.day}` === date && `${p.hour}:${p.minute}` === clock) candidates.add(at)
+    const at = wall - offset
+    if (format(at) === `${date} ${clock}`) candidates.add(at)
   }
   if (!candidates.size) throw new ScheduleError('INVALID_INPUT', '该时区不存在这个本地时刻，请选择其他时间。', ['trigger.time'])
   if (candidates.size !== 1) throw new ScheduleError('AMBIGUOUS_LOCAL_TIME', '该时刻在夏令时切换中重复，请选择无歧义的时间。', ['trigger.time'])

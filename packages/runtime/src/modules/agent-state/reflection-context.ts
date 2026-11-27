@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 日期与时区计算沿 shared/domain/calendar。
  * [OUTPUT]: 仅笔记日期可反思；沿真实版本化笔记来源保存日记/成长/心情，删除失效且不伪造聊天。
  * [OUTPUT]: 情绪更新保留实际时间与来源，反思沿原记忆权限读取及失效；独立候选评估不修改预设。
  * [INPUT]: A fixed local date, employee-owned chat history and the original memory access policy.
@@ -6,10 +7,10 @@
  * [POS]: Private reflection context selection; no new conversation, identity, memory store or tool authority.
  * [PROTOCOL]: Update this Header and owning .folder.md when changed.
  */
+import { localCalendarDate } from '@boai/shared/domain/calendar'
 import type { Conversation, MemoryEntry, Message } from '@boai/shared/domain'
 import type { AgentEmotionHistory } from '@boai/shared/domain/agent-profile'
 import { memoryAllowed, type MemoryAccess } from '../memory/memory-policy'
-import { personalityDate } from '../automations/personality-policy'
 
 export function reflectionContext(input: {
   day: string
@@ -37,7 +38,7 @@ export function reflectionContext(input: {
   const notes: MemoryEntry[] = [], noteSources = new Map<string, MemoryEntry>()
   const emotions: AgentEmotionHistory[] = [], emotionMessageIds = new Set<string>(), emotionConversationIds = new Set<string>()
   for (const event of input.emotions ?? []) {
-    if (event.agentId !== input.access.agentId || !event.sourceMessageIds.length && !event.sourceMemories.length || !Number.isFinite(Date.parse(event.emotion.updatedAt)) || personalityDate(Date.parse(event.emotion.updatedAt)) !== input.day) continue
+    if (event.agentId !== input.access.agentId || !event.sourceMessageIds.length && !event.sourceMemories.length || !Number.isFinite(Date.parse(event.emotion.updatedAt)) || localCalendarDate(Date.parse(event.emotion.updatedAt)) !== input.day) continue
     const room = event.conversationId ? input.rooms.find(room => room.id === event.conversationId) : undefined
     if (event.conversationId && !room || input.entries.some(entry => entry.sourceMessageIds.some(id => event.sourceMessageIds.includes(id)) && !memoryAllowed(entry, input.access))) continue
     const evidence: MemoryEntry = { id: 'emotion:' + event.id, ownerAgentId: event.agentId, scope: 'employee',
@@ -53,14 +54,14 @@ export function reflectionContext(input: {
     for (const parent of parents.slice(1)) { versions.set(parent.id, { id: parent.id, version: parent.version }); noteSources.set(parent.id, parent) }
   }
   for (const entry of input.entries) {
-    if (entry.diary || !Number.isFinite(Date.parse(entry.createdAt)) || personalityDate(Date.parse(entry.createdAt)) !== input.day) continue
+    if (entry.diary || !Number.isFinite(Date.parse(entry.createdAt)) || localCalendarDate(Date.parse(entry.createdAt)) !== input.day) continue
     const parents = noteParents(entry)
     if (!parents) continue
     notes.push(entry)
     for (const parent of parents) { versions.set(parent.id, { id: parent.id, version: parent.version }); noteSources.set(parent.id, parent) }
   }
   for (const message of input.messages) {
-    if (message.status !== 'completed' || input.forgotten.has(message.id) || !Number.isFinite(Date.parse(message.createdAt)) || personalityDate(Date.parse(message.createdAt)) !== input.day) continue
+    if (message.status !== 'completed' || input.forgotten.has(message.id) || !Number.isFinite(Date.parse(message.createdAt)) || localCalendarDate(Date.parse(message.createdAt)) !== input.day) continue
     const room = input.rooms.find(room => room.id === message.conversationId)
     if (!room || !room.agentIds.includes(input.access.agentId)) continue
     const source = input.provenance(message)
