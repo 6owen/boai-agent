@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 核心主聊与普通会话共用置顶和排序，旧核心会话按同员工话题排序。
  * [OUTPUT]: 用户手动改名同时撤销待生成标题。
  * [OUTPUT]: 2026-10-15渠道镜像/独立内部讨论与明确外发按16组03 §14；源码与实际检查归02 §7.21。
  * [OUTPUT]: 内部讨论不加入主列表或渠道列表，员工和原外部房间身份保持。
@@ -7,7 +8,7 @@
  * [OUTPUT]: 渠道会话与核心/普通会话分别排序；本人主私聊仍为普通会话。
  * [OUTPUT]: 固定员工主聊天与独立话题分组，支持话题标题更新。
  * [INPUT]: 会话记录、列表操作与最近消息时间。
- * [OUTPUT]: 兼容旧记录的置顶/手动顺序及仅隐藏会话的纯更新规则；核心助手与普通会话独立排序；可见核心会话的有界标题更新仅改标题，保留身份、偏好与授权配置。
+ * [OUTPUT]: 兼容旧记录的置顶/手动顺序及仅隐藏会话的纯更新规则；话题在所属员工内排序；可见核心会话的有界标题更新仅改标题，保留身份、偏好与授权配置。
  * [POS]: 会话列表的跨进程排序真源，不改变聊天历史或群配置。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
@@ -30,8 +31,9 @@ export function isEmployeeMainChat(conversation: Conversation, employeeId: strin
 }
 
 export function conversationSection(conversation: Conversation) {
-  if (conversation.employeeChat === 'topic') return 'topic'
-  return isCoreConversation(conversation) ? 'core' : isChannelConversation(conversation) ? 'channel' : 'ordinary'
+  if (isChannelConversation(conversation)) return 'channel'
+  if (conversation.employeeChat === 'topic' || isCoreConversation(conversation) && conversation.employeeChat !== 'main') return 'topic'
+  return 'ordinary'
 }
 
 export type ConversationListChange =
@@ -52,7 +54,7 @@ export function sortedConversations(conversations: Conversation[], messageTimes:
 export function mainConversations(conversations: Conversation[], messageTimes: Record<string, string> = {}) {
   const employees = new Set<string>()
   return sortedConversations(conversations, messageTimes).filter(item => {
-    if (isChannelConversation(item) || item.employeeChat === 'topic') return false
+    if (conversationSection(item) !== 'ordinary') return false
     if (item.kind !== 'direct' || isCoreConversation(item)) return true
     if (employees.has(item.agentIds[0])) return false
     employees.add(item.agentIds[0]); return true
@@ -67,8 +69,9 @@ export function conversationListUpdates(conversations: Conversation[], change: C
   const item = conversations.find(item => item.id === change.id)
   if (!item) throw new Error('会话不存在')
   const visible = sortedConversations(conversations, messageTimes)
-  const sameSection = (other: Conversation) => conversationSection(other) === conversationSection(item) &&
-    (item.employeeChat !== 'topic' || other.agentIds[0] === item.agentIds[0])
+  const section = conversationSection(item)
+  const sameSection = (other: Conversation) => conversationSection(other) === section &&
+    (section !== 'topic' || other.agentIds[0] === item.agentIds[0])
   const putFirst = (pinned: boolean) => [item, ...visible.filter(other => other.id !== item.id && sameSection(other) && Boolean(other.list?.pinned) === pinned)]
     .map((item, order) => ({ ...item, list: { ...item.list, hidden: false, pinned, order } }))
   if (change.action === 'hide') return [{ ...item, list: { hidden: true, pinned: false } }]

@@ -1,6 +1,7 @@
 /*
  * [OUTPUT]: bobo主聊天按钮用于打开默认聊天，话题箭头独立控制折叠。
  * [OUTPUT]: 核对行尾箭头原位显现，按钮单独悬停时有底色。
+ * [OUTPUT]: 核对核心助手改名和首聊在普通会话分组中可见。
  * [INPUT]: 真实 Electron、明确主导航作用域、模态菜单打开前实测的外部鼠标坐标、核心工具协议和稳定会话/员工身份。
  * [OUTPUT]: 常驻唯一核心头像/名称分组标题折叠展开，右键新话题打开空白页；无历史/清空/删除/重载仍保留标题且首发才保存历史；核心历史仅标题、行尾更多按钮随悬停/聚焦/菜单显示且菜单无置顶；紧凑父子缩进/间距、整行背景和标题按钮透明的实际布局，右键和更多菜单改名/取消零写入/空白禁用/消息身份及重启保持，操作默认隐藏/悬停显示/移开隐藏/键盘与菜单保留及空白/历史默认与悬停截图；首发回复失联只读核对、未知团队请求跨关闭/设置保持和清理 tombstone 重启拒绝重放；两字段弹窗、用户指定群名和真实工具创建；改名后标题联动真实配置头像/名称、分层记忆/重启与失败、标题图标悬停/聚焦/菜单保留与同色、整行12px折叠及等待实际主题的窄窗键盘截图验收。
  * [POS]: bobo 团队创建 BDD；文件原子性/清理冲突保留 teams 模块与恢复测试。
@@ -81,9 +82,9 @@ When('从通讯录把核心助手改名为波波', async ({ runtime }) => {
   await expect(core.getByRole('button', { name: '波波', exact: true })).toBeVisible()
   const avatar = await core.getByRole('button', { name: '波波', exact: true }).locator('.avatar img').getAttribute('src')
   await runtime.page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).click()
-  await expect(runtime.page.locator('.conversation-core-heading')).toHaveAttribute('aria-label', '波波 的会话分组')
-  await expect(runtime.page.locator('.conversation-core-heading')).toHaveText('波波')
-  await expect(runtime.page.locator('.conversation-core-heading .avatar img')).toHaveAttribute('src', avatar!)
+  const row = runtime.page.getByRole('group', { name: '普通会话', exact: true }).getByRole('button', { name: '波波 的主聊天', exact: true })
+  await expect(row.locator('.conversation-title')).toHaveText('波波')
+  await expect(row.locator('.avatar img')).toHaveAttribute('src', avatar!)
 })
 Then('波波的新会话独立且已有团队身份保留', async ({ runtime, team }) => {
   await runtime.page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '会话', exact: true }).click()
@@ -231,11 +232,10 @@ Then('只保存一个核心会话和一条初始用户消息', async ({ runtime,
   expect(detail.messages.filter(message => message.senderType === 'user')).toHaveLength(1)
   expect(detail.messages[0].content).toBe('你好，保留这条未发送消息')
   expect(detail.workItems).toEqual([])
-  await expect(runtime.page.locator('.conversation-list-panel .conversation-item')).toHaveCount(1)
+  await expect(runtime.page.locator('.conversation-list-panel .conversation-item:not([data-main-placeholder])')).toHaveCount(1)
   await expect(runtime.page.getByRole('textbox', { name: '消息内容', exact: true })).toHaveValue('')
   const page = runtime.page
-  const heading = page.getByRole('button', { name: 'bobo 的主聊天', exact: true })
-  await expect(page.locator('.conversation-core-heading')).toHaveCount(1)
+  const heading = page.getByRole('group', { name: '普通会话', exact: true }).getByRole('button', { name: 'bobo 的主聊天', exact: true })
   await expect(heading.locator('.conversation-title')).toHaveText('bobo')
   await expect(heading.locator('.avatar.small img')).toHaveCount(1)
   const item = page.getByRole('navigation', { name: '会话列表' }).getByRole('button', { name: conversation.title, exact: true })
