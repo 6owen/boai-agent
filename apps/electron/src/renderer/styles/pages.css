@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 执行记录由整行指针或键盘状态决定悬停背景，移动到行尾按钮时背景保持。
  * [OUTPUT]: 选中员工下的话题时持续显示员工行尾箭头，员工行仅在悬停或主聊天选中时显示背景。
  * [OUTPUT]: 2026-11-27 移除定时计划卡片操作行样式；无会话记录显示为静态行。
  * [OUTPUT]: 话题行显示更多操作时暂藏时间，避免时间被按钮遮断。
@@ -284,7 +285,8 @@
 .automation-record-actions { display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:0 }
 .automation-record-list { display:flex;flex-direction:column;min-width:0 }
 .automation-record-row { width:100%;font-weight:400 }
-.automation-record-row:not([data-slot=button]) { cursor:default;background:transparent }
+.automation-record-row:not([data-slot=button]) { cursor:default }
+.automation-history-row:is(:hover,:focus-within)>.automation-record-row.conversation-item:not(.selected) { background:var(--accent) }
 .automation-history-row :is(.automation-record-delete,.automation-record-detail) { opacity:0;pointer-events:none;transition:opacity .15s }
 .automation-history-row:is(:hover,:focus-within) :is(.automation-record-delete,.automation-record-detail),.automation-history-row :is(.automation-record-delete,.automation-record-detail)[aria-expanded=true] { opacity:1;pointer-events:auto }
 @media (hover:none) {

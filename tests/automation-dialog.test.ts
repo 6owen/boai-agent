@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 立即运行提交、受理和回执核对共用原按钮文字和布局。
  * [OUTPUT]: 检查启停待决时操作栏保持可用，以及已有日程首次打开直接可保存。
  * [OUTPUT]: 2026-11-27 验证标题开关、图标顺序、主色运行提交及计划摘要只读。
  * [OUTPUT]: 2026-11-27 定时页夹具使用新会话定位回调。
@@ -45,7 +46,9 @@ test.each(['queued', 'running'] as const)('manual run resets as soon as a %s rec
   const run = button('立即运行')
   await act(async () => { run.click(); run.click() })
   expect(request).toHaveBeenCalledOnce()
-  expect(button('正在提交…')).toBe(run)
+  expect(button('立即运行')).toBe(run)
+  expect(run.getAttribute('aria-busy')).toBe('true')
+  expect(run.getAttribute('aria-label')).toBe('正在提交…')
   expect(run.disabled).toBe(true)
   await act(async () => resolve(occurrence))
   expect(button('立即运行')).toBe(run)
@@ -64,7 +67,8 @@ test('a missing run receipt can be checked with the original request ID', async 
   const api = { request } as unknown as DesktopApi
   await act(async () => root.render(h(AutomationRunActions, { api, automationId: plan.id, active: true })))
   await act(async () => button('立即运行').click())
-  await act(async () => button('核对本次运行').click())
+  expect(button('立即运行').title).toBe('核对本次运行')
+  await act(async () => button('立即运行').click())
   expect(request).toHaveBeenCalledTimes(2)
   expect(request.mock.calls[1]).toEqual(request.mock.calls[0])
   expect(button('立即运行').disabled).toBe(false)
