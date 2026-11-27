@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 日志清理可按主键读完整或指定 ID 集，不反序列化员工和回执正文。
  * [OUTPUT]: 启动恢复按清理日志排序，实时读取所属讨论和浏览器屏障，不展开无关会话。
  * [OUTPUT]: 会话工作、引用预算及接续从一个只读 SQLite 快照取得。
  * [OUTPUT]: 普通与事务内读取同序按会话筛选；资料和成果共用现有 SQLite 部分索引。
@@ -218,6 +219,15 @@ export class ProductStore {
       })
       const blocker = result.rows[0]?.blocker
       return blocker === 'discussion' || blocker === 'browser' ? blocker : undefined
+    })
+  }
+  recordIds(collection: string, candidates?: readonly string[]): Promise<string[]> {
+    return this.enqueue(async () => {
+      const result = await this.client.execute({
+        sql: `SELECT id FROM records WHERE collection=?${candidates ? ' AND id IN (SELECT value FROM json_each(?))' : ''} ORDER BY rowid`,
+        args: candidates ? [collection, JSON.stringify(candidates)] : [collection],
+      })
+      return result.rows.map(row => String(row.id))
     })
   }
   get<T>(collection: string, id: string): Promise<T | undefined> {

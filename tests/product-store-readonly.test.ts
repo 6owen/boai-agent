@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 清理所用主键投影保留写入顺序和空范围，限定到实际集合。
  * [OUTPUT]: 资料及成果按会话保留写入顺序、事务可见性与旧记录隔离。
  * [OUTPUT]: 关闭期间拒绝迟到读写并等待原事务完成，重复关闭幂等且已提交内容仍可只读核对。
  * [INPUT]: 真实SQLite、持有中的写事务、已核验正文索引和独立取证连接。
@@ -18,6 +19,16 @@ const roots: string[] = [], stores: Pick<ProductStore, 'close'>[] = []
 afterEach(async () => {
   await Promise.all(stores.splice(0).map(store => store.close()))
   await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true })))
+})
+
+test('returns only stored primary keys in insertion order for full or restricted cleanup scopes', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'boai-record-ids-')); roots.push(root)
+  const store = new ProductStore(join(root, 'data.sqlite')); await store.init(); stores.push(store)
+  const ids = ['second', 'first', 'third']
+  await store.write([...ids.map(id => ({ collection: 'agents', id, value: { id, instructions: 'private instructions' } })), { collection: 'other', id: 'absent', value: { id: 'absent' } }])
+  expect(await store.recordIds('agents')).toEqual(ids)
+  expect(await store.recordIds('agents', ['first', 'absent', 'second', 'first'])).toEqual(ids.slice(0, 2))
+  expect(await store.recordIds('agents', [])).toEqual([])
 })
 
 test.each(['artifacts', 'materials'])('scopes %s to the same records and order inside and outside a write transaction', async collection => {

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工工作区、记忆代际与清理路径只读取员工主键。
  * [OUTPUT]: 启动仅恢复有日志的会话；父会话前在线复核讨论和浏览器屏障。
  * [OUTPUT]: 2026-11-27 删除会话同步清除关联定时日志和通知，清空聊天保留日志摘要，触发去重继续生效。
  * [OUTPUT]: 清空会话时移除旧首条消息的标题候选。
@@ -94,11 +95,11 @@ export class ConversationHistory {
     const id = conversation.id
     if (!/^[a-zA-Z0-9_-]{1,200}$/.test(id)) throw new Error('无效会话标识')
     const runs = await this.store.load<HistoryRecord>('runs', { conversationId: id })
-    const agents = await this.store.load<{ id: string }>('agents')
+    const agentIds = await this.store.recordIds('agents')
     const paths = [join(this.dataPath, 'workspaces', id)]
-    for (const agent of agents) {
-      if (!/^[a-zA-Z0-9_-]{1,200}$/.test(agent.id)) throw new Error('无效员工标识')
-      paths.push(join(this.dataPath, 'agents', agent.id, 'workspace', 'sessions', id), join(this.dataPath, 'external-workspaces', agent.id, id))
+    for (const agentId of agentIds) {
+      if (!/^[a-zA-Z0-9_-]{1,200}$/.test(agentId)) throw new Error('无效员工标识')
+      paths.push(join(this.dataPath, 'agents', agentId, 'workspace', 'sessions', id), join(this.dataPath, 'external-workspaces', agentId, id))
     }
     for (const run of runs) {
       if (!/^[a-zA-Z0-9_-]{1,200}$/.test(run.id)) throw new Error('无效运行标识')
@@ -122,7 +123,7 @@ export class ConversationHistory {
     })
     // Revoke derived memory even if a later hash conflict preserves a private original.
     const memoryRepository = new MemoryRepository(this.store)
-    for (const agent of agents) await memoryRepository.invalidateConversation(agent.id, id)
+    for (const agentId of agentIds) await memoryRepository.invalidateConversation(agentId, id)
     if (this.cleanupCanvas) {
       try {
         await this.cleanupCanvas({ conversationId: id }, canvasCleanupId)
@@ -150,8 +151,8 @@ export class ConversationHistory {
     }
     // The durable source fence precedes file removal and is repeated by recovery.
     for (const path of paths) await rm(path, { recursive: true, force: true })
-    for (const agent of agents) {
-      const state = join(this.dataPath, 'agents', agent.id, 'state'), manifestPath = join(state, 'bootstrap-manifest.json')
+    for (const agentId of agentIds) {
+      const state = join(this.dataPath, 'agents', agentId, 'state'), manifestPath = join(state, 'bootstrap-manifest.json')
       await this.safe(manifestPath)
       let source: string
       try { source = await readFile(manifestPath, 'utf8') } catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') continue; throw error }
@@ -220,7 +221,7 @@ export class ConversationHistory {
       for (const receipt of (await tx.list<HistoryRecord>('messageReceipts')).filter(owned)) {
         await tx.put({ collection: 'messageReceipts', id: receipt.id, value: { id: receipt.id, fingerprint: receipt.fingerprint, conversationId: id, cleared: true } })
       }
-      const epochs = new Map(agents.map(agent => [`employee:${agent.id}:conversation:${id}`, 0]))
+      const epochs = new Map(agentIds.map(agentId => [`employee:${agentId}:conversation:${id}`, 0]))
       const memory = (await tx.list<MemoryEntry>('memory')).filter(entry => entry.conversationId === id)
       for (const entry of memory) {
         removals.push({ collection: 'memory', id: entry.id })

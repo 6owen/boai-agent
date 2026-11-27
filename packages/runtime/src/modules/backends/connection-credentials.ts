@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 凭据退役恢复按原日志主键读取待处理项。
  * [OUTPUT]: 网关目录归连接领域；在途刷新用独立引用，结束或删除后回收且不接受迟到回执。
  * [INPUT]: 序列化的连接配置变更、私有凭据存储和 SQLite。
  * [OUTPUT]: 配置和生效凭据引用共同提交；中断后按账本回收未生效或退役的凭据。
@@ -22,7 +23,7 @@ export class ConnectionCredentials {
 
   async init() {
     for (const row of await this.store.load<Reference>(refs)) this.keys.set(row.id, row.key)
-    for (const row of await this.store.load<{ id: string }>(pending)) await this.cleanup(row.id)
+    for (const id of await this.store.recordIds(pending)) await this.cleanup(id)
   }
   key(id: string) {
     const key = this.keys.get(id)

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 批量核实日志中的员工主键；身份仍存在时报告停止清理及真实原因。
  * [OUTPUT]: 删除员工时同事务清理其通讯录置顶归属。
  * [OUTPUT]: 启动时逐条恢复并上报已登记的清理失败，账本读写失败仍向上传播。
  * [OUTPUT]: 员工删除沿原持久日志派生固定画板清理身份，先确认员工已移除，失败重启继续而不扩大清单。
@@ -155,9 +156,9 @@ export class ContactDeletionService {
     return result
   }
   private async finish(cleanup: Cleanup) {
-    const existing = await this.store.load<DigitalAgent>('agents')
+    const surviving = await this.store.recordIds('agents', cleanup.agentIds)
     try {
-      if (existing.some(agent => cleanup.agentIds.includes(agent.id))) throw new Error('员工身份仍存在，清理已停止')
+      if (surviving.length) throw new Error('员工身份仍存在，清理已停止')
       const paths = this.paths(cleanup.agentIds)
       for (const path of paths) await this.safe(path)
       for (const employeeId of cleanup.agentIds) await this.cleanupCanvas?.({ employeeId }, `employee:${cleanup.id}:${createHash('sha256').update(employeeId).digest('hex')}`)
@@ -171,7 +172,7 @@ export class ContactDeletionService {
     } catch (error) {
       cleanup.status = 'failed'; cleanup.error = error instanceof Error ? error.message : String(error)
       await this.store.write([{ collection: 'contactDeletions', id: cleanup.id, value: cleanup }])
-      return '员工及关联数据已删除，但工作区清理未完成；重启后将继续清理。' + cleanup.error
+      return surviving.length ? cleanup.error : '员工及关联数据已删除，但工作区清理未完成；重启后将继续清理。' + cleanup.error
     }
   }
   async recover() {
