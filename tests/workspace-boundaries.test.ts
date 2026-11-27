@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Every new cross-directory value cycle fails, including when an obsolete migration file is present.
  * [OUTPUT]: 跨目录但不形成文件环的业务依赖按逐方向清单核对，延迟和类型引用不计。
  * [OUTPUT]: 机器依赖图沿真实解析目标区分类型、静态/延迟、CommonJS 和公开重导出。
  * [OUTPUT]: 浏览器宿主入口经间接/延迟导入执行器或 Electron 也会在构建前被拒绝。
@@ -33,8 +34,6 @@ it('checks package manifests and actual module initialization against the same d
     for (const script of ['workspace-packages.mjs', 'runtime-module-dependencies.mjs', 'check-workspace-boundaries.mjs']) {
       await copyFile(resolve('scripts', script), join(root, 'scripts', script))
     }
-    const debt = join(root, 'scripts/runtime-module-cycle-debt.json')
-    await writeFile(debt, '{}')
     await writeFile(join(app, 'package.json'), JSON.stringify({
       name: '@boai/electron', dependencies: { '@6owen/avatar-motion': 'workspace:*' },
     }))
@@ -93,14 +92,14 @@ it('checks package manifests and actual module initialization against the same d
     await writeFile(third, "export type T = typeof import('../one/value'); export const later = () => import('../one/value')")
     expect(graph().runtimeModules.cycleGroups).toEqual([])
     await writeFile(third, "const value = require('../one/value')")
-    expect(check).toThrow(/three.use\.ts: line 1 unrecorded runtime module cycle edge: three -> one/)
-    await writeFile(debt, JSON.stringify({ one: ['two'], two: ['three'], three: ['one'] }))
-    expect(graph().runtimeModules).toEqual({ dependencies: { one: ['two'], three: ['one'], two: ['three'] }, cycleGroups: [['one', 'three', 'two']] })
+    expect(check).toThrow(/three.use\.ts: line 1 runtime module cycle edge: three -> one/)
+    // A legacy migration file must never permit a cycle, even when it lists every edge.
+    await writeFile(join(root, 'scripts/runtime-module-cycle-debt.json'), JSON.stringify({ one: ['two'], two: ['three'], three: ['one'] }))
+    expect(check).toThrow(/runtime module cycle edge: three -> one; group: one, three, two/)
     await writeFile(third, "import '../one/value'; import '../two/value'")
-    expect(check).toThrow(/unrecorded runtime module cycle edge: three -> two/)
+    expect(check).toThrow(/runtime module cycle edge: three -> two/)
     await writeFile(third, '')
-    expect(check).toThrow(/remove retired runtime module cycle edge: three -> one/)
-    await writeFile(debt, '{}')
+    expect(graph().runtimeModules).toEqual({ dependencies: { one: ['two'], three: [], two: ['three'] }, cycleGroups: [] })
 
     await writeFile(join(avatar, 'package.json'), JSON.stringify({
       ...manifest, dependencies: { '@boai/electron': 'workspace:*' },

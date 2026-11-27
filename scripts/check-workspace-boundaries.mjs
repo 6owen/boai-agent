@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Runtime business directories reject every static value cycle without a migration exception.
  * [OUTPUT]: 业务模块环按逐方向历史清单核对；新增或已退出的环内依赖均在 CI 报出。
  * [OUTPUT]: --graph 从同一次 AST 检查输出工作区公开入口、真实源码和逐条依赖的类型、位置与目标。
  * [OUTPUT]: 桌面浏览器命令公开入口的传递值依赖不得引入 Electron、执行器适配层或 Mastra SDK。
@@ -222,10 +223,8 @@ const adapterRoot = resolve(root, 'packages/runtime/src/adapters') + sep
 await checkReachableImports('@boai/runtime', '@boai/runtime/browser', 'browser host entry', target =>
   electron(target) || target.startsWith('@mastra/') || target.startsWith(adapterRoot))
 
-const cycleDebtFile = resolve(root, 'scripts/runtime-module-cycle-debt.json')
-const cycleDebt = JSON.parse(await readFile(cycleDebtFile, 'utf8'))
-const runtimeModules = inspectRuntimeModules(graph, resolve(root, 'packages/runtime/src/modules'), cycleDebt)
-for (const error of runtimeModules.errors) fail(error.file ?? cycleDebtFile, error.message)
+const runtimeModules = inspectRuntimeModules(graph, resolve(root, 'packages/runtime/src/modules'))
+for (const error of runtimeModules.errors) fail(error.file, error.message)
 
 if (errors.length) {
   process.stderr.write(`Workspace static check failed (${errors.length}):\n${errors.join('\n')}\n`)
