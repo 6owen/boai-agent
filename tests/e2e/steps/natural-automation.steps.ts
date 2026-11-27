@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-27 通过独立运行详情按钮停止，避免把记录行的会话定位当成查看详情。
  * [OUTPUT]: 396877两场通过但停止后原图仍为旧待批帧；补原面板终态/按钮移除后截取，不变期限或后端断言。
  * [OUTPUT]: 追加待批停止/迟到审批拒绝和断流恢复后UI明确新运行；新恢复场景210秒含四次冷启动，原四场180秒保持。
  * [OUTPUT]: 首轮四场因会话同名按钮严格定位失败、未到自然触发；仅限定主导航复验，原副作用/终态断言保持。
@@ -121,7 +122,7 @@ When('我在原聊天拒绝本次命令', async ({ runtime }) => {
 When('我从定时执行记录停止本次运行', async ({ runtime, natural: state }) => {
   await runtime.page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '定时任务', exact: true }).click()
   await openSchedule(runtime.page, `自然处理-${state.mode}`)
-  await runtime.page.locator(`[data-occurrence-id="${state.occurrence!.id}"]`).click()
+  await runtime.page.locator(`.automation-history-row:has([data-occurrence-id="${state.occurrence!.id}"])`).getByRole('button', { name: /^查看运行详情/ }).click()
   const panel = runtime.page.locator(`[data-occurrence-detail-id="${state.occurrence!.id}"]`)
   await expect(panel).toBeVisible()
   await panel.getByRole('button', { name: '停止本次执行', exact: true }).click()

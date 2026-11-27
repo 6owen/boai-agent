@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-27 点击执行记录行直接定位原话题，无需打开运行详情。
  * [OUTPUT]: 定时定位后仅显示原话题，不自动挂载会话侧执行过程。
  * [OUTPUT]: 2026-11-25 定时自然触发、历史定位和通知直达员工话题；普通消息续改、原计划删除及重启不重放。
  * [INPUT]: Natural-minute schedules, actual session-scoped SDK tools and isolated Electron UI.
@@ -117,9 +118,6 @@ Then('我能从定时记录定位员工话题并继续修改', async ({ runtime,
   await page.getByRole('button', { name: '定时任务', exact: true }).click()
   await page.locator('.schedule-item').filter({ hasText: '面板中的定时任务' }).click()
   await page.locator(`[data-occurrence-id="${state.occurrence!.id}"]`).click()
-  const process = page.locator(`[data-occurrence-detail-id="${state.occurrence!.id}"]`)
-  await expect(process).toBeVisible()
-  await process.getByRole('button', { name: '定位聊天记录', exact: true }).last().click()
   const chat = page.locator(`.conversation-stage [data-conversation-id="${state.occurrence!.conversationId}"]`)
   await expect(chat).toBeVisible(); await expect(chat).toContainText('SCHEDULE_PANEL_DELIVERED')
   await expect(page.locator('.detail-panel:visible [data-occurrence-detail-id], .detail-panel:visible #agent-execution-drawer')).toHaveCount(0)

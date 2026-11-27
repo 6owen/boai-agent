@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-27 删除会话同步清除关联定时日志和通知，清空聊天保留日志摘要，触发去重继续生效。
  * [OUTPUT]: 清空会话时移除旧首条消息的标题候选。
  * [OUTPUT]: 画板源清理沿原conversationCleanup固定身份重试，外改冲突保留来源屏障与可见恢复错误。
  * [OUTPUT]: 交接材料在原会话清理屏障/运行删除事务内撤销正文，离线恢复沿同一逻辑且保留防重放身份。
@@ -35,6 +36,7 @@ import { ProductStore, type RecordIdentityScope } from '../../adapters/storage/p
 import type { MaterialRepository } from '../materials/material-repository'
 import type { ArtifactRepository } from '../workspaces/artifact-repository'
 import type { ConversationReadingRepository } from './reading-repository'
+import { deletedAutomationHistory } from '../automations/history-deletion'
 import { pendingOccurrence } from '../automations/schedule-policy'
 import { MemoryRepository } from '../memory/memory-repository'
 import type { SessionOperationRecord } from './session-operations'
@@ -225,7 +227,9 @@ export class ConversationHistory {
       const memoryEpochs = [...epochs].map(([id, epoch]) => ({ id, epoch: epoch + 1 }))
       for (const value of memoryEpochs) await tx.put({ collection: 'memoryEpochs', id: value.id, value })
       // Retain trigger identities to prevent native automation triggers from being replayed.
-      const occurrences = (await tx.list<AutomationOccurrence>('automationOccurrences')).filter(item => item.conversationId === id).map(item => {
+      const sessionDeleted = hide || remove
+      const occurrences = (await tx.list<AutomationOccurrence>('automationOccurrences')).filter(item => !item.deletedAt && item.conversationId === id).map(item => {
+        if (sessionDeleted) return deletedAutomationHistory(item)
         const { messageId: _message, turnId: _turn, reason: _reason, turnIds: _turns, waitingTurnIds: _waitingTurns, workIds: _works, rootWorkIds: _roots, resultEvidence: _evidence, budgetId: _budgetId, budget: _budget, monitor: _monitor, ...rest } = item
         return { ...rest, ...(item.schemaVersion ? { stateVersion: item.stateVersion + 1, deliveryStatus: 'unknown' as const, ...(pendingOccurrence.has(item.status) ? { status: 'interrupted' as const, finishedAt: new Date().toISOString() } : {}) } : {}), runIds: [], resultMessageIds: [], reason: '聊天记录已清空' }
       })
@@ -233,14 +237,21 @@ export class ConversationHistory {
       for (const checkpoint of await tx.list<AutomationMonitorCheckpoint>('automationMonitorCheckpoints')) if (checkpoint.conversationId === id) await tx.remove('automationMonitorCheckpoints', checkpoint.id)
       const occurrenceIds = new Set(occurrences.map(item => item.id))
       for (const notice of await tx.list<AutomationNotice>('automationNotices')) if (occurrenceIds.has(notice.occurrenceId)) {
+        if (sessionDeleted) { await tx.remove('automationNotices', notice.id); continue }
         delete notice.messageId; delete notice.conversationId
         if (notice.status === 'pending') notice.status = 'suppressed'
         else if (notice.status === 'submitting') notice.status = 'unknown'
         notice.error = '聊天记录已清理'; notice.finishedAt = new Date().toISOString()
         await tx.put({ collection: 'automationNotices', id: notice.id, value: notice })
       }
-      for (const intent of await tx.list<AutomationDispatch>('automationDispatches')) if (occurrenceIds.has(intent.id)) {
-        await tx.put({ collection: 'automationDispatches', id: intent.id, value: { schemaVersion: 1, id: intent.id, requestId: intent.requestId, status: 'cleared' } })
+      for (const occurrenceId of occurrenceIds) {
+        if (sessionDeleted) {
+          await tx.remove('automationDispatches', occurrenceId)
+          await tx.remove('automationHistoryCleanups', occurrenceId)
+        } else {
+          const intent = await tx.get<AutomationDispatch>('automationDispatches', occurrenceId)
+          if (intent) await tx.put({ collection: 'automationDispatches', id: intent.id, value: { schemaVersion: 1, id: intent.id, requestId: intent.requestId, status: 'cleared' } })
+        }
       }
       const cleared = { ...conversation, pendingTitleMessageId: undefined, workspacePath: join(this.dataPath, 'workspaces', id), lastMessageAt: undefined, lastMessagePreview: undefined, activity: 'idle' as const, ...(hide ? { list: { hidden: true, pinned: false } } : {}) }
       if (remove) {

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-27 日志删除保留会话、执行和文件；UI或Session删除会话时关联日志同步消失。
  * [OUTPUT]: 2026-11-25 定时运行直接关联话题；定位、流式、旧记录迁移、独立上下文及原删除合同回归。
  * [OUTPUT]: 定时执行删除在旧独占会话与共享会话两条路径均不压缩整库，原文件/回执/恢复保护保持。
  * [OUTPUT]: 2026-11-04执行定位返回真实员工/任务归属，主聊天清理与重启后保持原任务身份。
@@ -150,7 +151,7 @@ it.each(['researcher', 'bobo'])('keeps the %s topic, messages and files usable a
   await expect(restarted.handle('runAutomation', { id: plan.id, requestId: 'retained-topic' })).rejects.toThrow('已删除')
 })
 
-it('deletes one legacy private execution and its files while preserving the plan, other runs and IM messages', async () => {
+it('deletes only the legacy private log while preserving the conversation, files, plan and other runs', async () => {
   const f = await setup({}), main = await f.service.handle('createConversation', { kind: 'direct', title: '保留的主聊天', agentIds: ['researcher'] }) as Conversation
   await f.service.handle('sendMessage', { conversationId: main.id, content: '保留普通消息', mentionIds: [], requestId: 'preserved-main-message' })
   await until(async () => (await f.detail(main.id)).turns?.every(turn => turn.status === 'completed') === true)
@@ -174,7 +175,7 @@ it('deletes one legacy private execution and its files while preserving the plan
   await f.service.handle('deleteAutomationOccurrence', { id: first.id, expectedVersion: current.stateVersion })
   expect(compact).not.toHaveBeenCalled()
   compact.mockRestore()
-  for (const path of paths) await expect(access(path)).rejects.toMatchObject({ code: 'ENOENT' })
+  for (const path of paths) expect(await readFile(join(path, 'temporary.txt'), 'utf8')).toBe('task temporary data')
   expect(await readFile(join(other.conversation.workspacePath, 'keep.txt'), 'utf8')).toBe('keep')
   expect((await f.detail(main.id)).messages).toEqual(published)
   expect((await f.view()).occurrences.map(o => o.id)).toEqual([second.id])
@@ -182,8 +183,8 @@ it('deletes one legacy private execution and its files while preserving the plan
   expect((await f.service.handle('listAutomationHistory', { automationId: plan.id }) as AutomationHistoryPage).occurrences.map(o => o.id)).toEqual([second.id])
   await expect(f.service.handle('getAutomationOccurrence', { id: first.id })).rejects.toThrow('不存在')
   const store = (f.service as unknown as { store: ProductStore }).store
-  expect(await store.get('runs', run.id)).toBeUndefined()
-  expect(await store.get('snapshots', run.id)).toBeUndefined()
+  expect(await store.get('runs', run.id)).toMatchObject({ id: run.id, conversationId: first.conversationId })
+  expect((await f.detail(first.conversationId)).messages).toEqual(source.messages)
   expect(await store.get('automationOccurrences', first.id)).toMatchObject({ name: '', runIds: [], resultMessageIds: [], deletedAt: expect.any(String) })
   expect(f.events).toContainEqual({ type: 'automation:history-deleted', occurrenceId: first.id })
   const calls = f.contexts.length
@@ -194,20 +195,19 @@ it('deletes one legacy private execution and its files while preserving the plan
   expect((await restarted.handle('listAutomationHistory', {}) as AutomationHistoryPage).occurrences.map(o => o.id)).toEqual([second.id])
 })
 
-it('resumes a failed history cleanup after restart without executing the task again', async () => {
+it('finishes a legacy pending log cleanup on restart without touching its session or replaying', async () => {
   const f = await setup(), plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
   const occurrence = await f.service.handle('runAutomation', { id: plan.id, requestId: 'cleanup-recovery' }) as AutomationOccurrence
   await until(async () => (await f.view()).occurrences[0]?.status === 'completed')
-  const current = (await f.view()).occurrences[0]
-  const host = f.service as unknown as { history: { remove(...args: unknown[]): Promise<unknown> }; store: ProductStore }
-  const legacy = (await f.detail(occurrence.conversationId)).conversation
-  await host.store.write([{ collection: 'conversations', id: legacy.id, value: { ...legacy, purpose: 'automation', employeeChat: undefined, employeeTaskId: undefined } }])
-  vi.spyOn(host.history, 'remove').mockRejectedValueOnce(new Error('fixture filesystem failure'))
-  await expect(f.service.handle('deleteAutomationOccurrence', { id: occurrence.id, expectedVersion: current.stateVersion })).rejects.toThrow('fixture filesystem failure')
-  expect(await host.store.get('automationHistoryCleanups', occurrence.id)).toBeDefined()
+  const store = (f.service as unknown as { store: ProductStore }).store
+  const session = await f.detail(occurrence.conversationId)
+  const file = join(session.conversation.workspacePath, 'retained.txt')
+  await writeFile(file, 'keep')
+  await store.write([{ collection: 'automationHistoryCleanups', id: occurrence.id, value: { id: occurrence.id, conversationId: occurrence.conversationId, runIds: session.runs.map(run => run.id), exclusiveConversation: true } }])
   await f.service.close(); const restored = await f.make()
   expect((await restored.handle('listAutomationHistory', {}) as AutomationHistoryPage).occurrences).toEqual([])
-  await expect(access(join(f.root, 'workspaces', occurrence.conversationId))).rejects.toMatchObject({ code: 'ENOENT' })
+  expect(await readFile(file, 'utf8')).toBe('keep')
+  expect((await restored.handle('getConversation', { id: occurrence.conversationId }) as ConversationDetail).messages).toEqual(session.messages)
   expect(f.contexts).toHaveLength(1)
 })
 
@@ -229,14 +229,14 @@ it('deletes shared-chat execution logs without removing the original messages, f
   compact.mockRestore()
   const after = await f.detail(room.id)
   expect(after.messages).toEqual(before.messages)
-  expect(after.runs.map(run => run.id)).toEqual(ordinary)
+  expect(after.runs).toEqual(before.runs)
   expect(await readFile(join(room.workspacePath, 'shared.txt'), 'utf8')).toBe('shared user file')
-  await expect(access(ownDownload.directory)).rejects.toMatchObject({ code: 'ENOENT' })
+  expect(await readFile(ownDownload.path, 'utf8')).toBe(ownDownload.bytes)
   expect(await readFile(otherDownload.path, 'utf8')).toBe(otherDownload.bytes)
   expect(f.contexts).toHaveLength(2)
 })
 
-it('retains externally changed download files and the execution until cleanup can be retried', async () => {
+it('deletes only the schedule log when a session download was externally changed', async () => {
   const f = await setup(), plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
   const occurrence = await f.service.handle('runAutomation', { id: plan.id, requestId: 'download-conflict' }) as AutomationOccurrence
   await until(async () => (await f.view()).occurrences[0]?.status === 'completed')
@@ -244,14 +244,27 @@ it('retains externally changed download files and the execution until cleanup ca
   const download = await stagedDownload(f, occurrence.conversationId, run.id)
   await writeFile(download.path, 'external changes must survive')
   const request = { id: occurrence.id, expectedVersion: (await f.view()).occurrences[0].stateVersion }
-  await expect(f.service.handle('deleteAutomationOccurrence', request)).rejects.toThrow('外部修改')
-  expect(await readFile(download.path, 'utf8')).toBe('external changes must survive')
-  expect((await f.view()).occurrences.map(o => o.id)).toContain(occurrence.id)
-  expect(f.events).not.toContainEqual({ type: 'automation:history-deleted', occurrenceId: occurrence.id })
-  await writeFile(download.path, download.bytes)
   await f.service.handle('deleteAutomationOccurrence', request)
-  await expect(access(download.directory)).rejects.toMatchObject({ code: 'ENOENT' })
+  expect(await readFile(download.path, 'utf8')).toBe('external changes must survive')
+  expect((await f.detail(occurrence.conversationId)).runs).toEqual(source.runs)
   expect((await f.view()).occurrences).toEqual([])
+})
+
+it.each(['ui', 'session'] as const)('deleting a scheduled topic via %s removes only its linked logs and survives restart', async path => {
+  const f = await setup(), plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
+  const first = await f.service.handle('runAutomation', { id: plan.id, requestId: 'delete-topic' }) as AutomationOccurrence
+  await until(async () => (await f.view()).occurrences.find(o => o.id === first.id)?.status === 'completed')
+  const second = await f.service.handle('runAutomation', { id: plan.id, requestId: 'keep-topic' }) as AutomationOccurrence
+  await until(async () => (await f.view()).occurrences.find(o => o.id === second.id)?.status === 'completed')
+  if (path === 'ui') await f.service.handle('clearConversationHistory', { id: first.conversationId, hide: true })
+  else await f.service.handle('deleteSession', { conversationId: first.conversationId, requestId: 'delete-original-session' })
+  expect((await f.view()).occurrences.map(o => o.id)).toEqual([second.id])
+  expect(f.events).toContainEqual({ type: 'automation:history-deleted', occurrenceId: first.id })
+  await f.service.close()
+  const restarted = await f.make()
+  expect((await restarted.handle('listAutomationHistory', { automationId: plan.id }) as AutomationHistoryPage).occurrences.map(o => o.id)).toEqual([second.id])
+  await expect(restarted.handle('runAutomation', { id: plan.id, requestId: 'delete-topic' })).rejects.toThrow('已删除')
+  expect(f.contexts).toHaveLength(2)
 })
 
 it('rejects deleting an executing occurrence without beginning file cleanup', async () => {

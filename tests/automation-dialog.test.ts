@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 2026-11-27 定时页夹具使用新会话定位回调。
  * [OUTPUT]: 手动运行queued/running均隐藏查看本次执行过程；定位聊天、原运行提交锁及终态清理保持。
  * [OUTPUT]: 手动运行聊天导航核对原conversation/run/occurrence身份，四种终态仍移除查看按钮。
  * [OUTPUT]: 对话创建允许独立读取列表偏好，仍不写入或执行计划。
@@ -162,7 +163,7 @@ test('conversation creation delegates to the ordinary chat without creating a di
   const openConversation = vi.fn()
   function Page() {
     const [location, setLocation] = useState<ScheduleLocation>({ kind: 'overview' })
-    return h(SchedulePage, { api, snapshot, active: true, sidebarShown: true, divider: null, location, onLocation: setLocation, onCreateConversation: openConversation, onOccurrence() {}, onNavigateMessage() {} })
+    return h(SchedulePage, { api, snapshot, active: true, sidebarShown: true, divider: null, location, onLocation: setLocation, onCreateConversation: openConversation, onConversation() {}, onNavigateMessage() {} })
   }
   await act(async () => root.render(h(Page)))
   await act(async () => button('新建定时任务').click())

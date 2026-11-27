@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-27 会话删除发出关联日志移除事件；定时日志独立原子删除，原话题及执行数据保留。
  * [OUTPUT]: 2026-11-25 定时执行创建普通员工话题，原会话身份迁移与授权指纹保持；不派生看板任务。
  * [OUTPUT]: 可信桌面检查第三方 Agent 版本，隔离安装并在连接核验和退出检查后切换原配置。
  * [OUTPUT]: 2026-11-24 第三阶段：API 执行补充交给 Session.steer；Trace 从官方存储查询，兼容既有业务历史。
@@ -329,7 +330,7 @@ import { automationDispatchPrompt } from './modules/automations/automation-plan'
 import { automationPublicationIdentity, receiveConversationMessages } from './modules/conversations/message-reception'
 import { messageExecutionScope, projectMessageExecution } from './modules/conversations/message-execution'
 import { sessionOperation, sessionFingerprint, publicSessionReceipt, prepareSessionDeletion, type SessionOperationRecord } from './modules/conversations/session-operations'
-import { prepareHistoryDeletion, finishHistoryDeletion, type AutomationHistoryDeletion } from './modules/automations/history-deletion'
+import { deleteHistoryRecord, recoverHistoryDeletions } from './modules/automations/history-deletion'
 import { automationCommands, automationListSchema } from './modules/automations/automation-commands'
 import { aggregateAutomation, belongsToOccurrence } from './modules/automations/automation-results'
 import type { AutomationInput, AutomationDefinition, AutomationOrigin, AutomationOccurrence, AutomationBudgetRenewalInput } from '@boai/shared/domain/automations'
@@ -1260,11 +1261,8 @@ export class AppService {
     this.initialized = true
     await this.agentBehaviors.init()
     this.employeeTasks = new EmployeeTaskService(this.store, this.automations, message => { if (message && this.messages.has(message.id)) this.messages.set(message.id, message); this.changed(message?.conversationId) }, this.dataPath, room => { this.conversations.set(room.id, room); this.emit({ type: 'changed' }) }, async employeeId => { if (employeeId === CORE_AGENT_ID) await this.ensureCoreConnection() })
+    await recoverHistoryDeletions(this.store)
     await this.automations.init()
-    for (const pending of await this.store.load<AutomationHistoryDeletion>('automationHistoryCleanups')) {
-      try { await this.serialize(() => this.deleteAutomationOccurrence(pending.id, 0)) }
-      catch (error) { this.emit({ type: 'runtime-error', error: `执行记录清理未完成：${this.errorMessage(error)}` }) }
-    }
     // Backfill retained isolated history through the same reception rules, without executing it.
     for (const conversation of [...this.conversations.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt))) {
       if (conversation.purpose !== 'automation' && !isScheduledEmployeeTopic(conversation)) continue
@@ -2879,6 +2877,9 @@ export class AppService {
     // Raw input identities also need rechecking after the history deletion commits.
     await this.invalidateMemoryRuns()
     this.automations.replaceHistory(result.occurrences)
+    for (const occurrence of result.occurrences) {
+      if (occurrence.deletedAt) this.emit({ type: 'automation:history-deleted', occurrenceId: occurrence.id })
+    }
     if (!remove) this.conversations.set(id, result.conversation)
     this.clearingConversations.delete(id)
     this.emit(remove ? { type: 'conversation:deleted', conversationId: id } : { type: 'conversation:cleared', conversationId: id, hidden: hide })
@@ -2889,26 +2890,10 @@ export class AppService {
   }
 
   private async deleteAutomationOccurrence(id: string, expectedVersion: number) {
-    const occurrence = await this.store.get<import('@boai/shared/domain').AutomationOccurrence>('automationOccurrences', id)
-    if (occurrence?.deletedAt) { this.emit({ type: 'automation:history-deleted', occurrenceId: id }); return }
-    if (occurrence && this.conversations.has(occurrence.conversationId)) this.assertConversationIdle(occurrence.conversationId)
-    const deletion = await prepareHistoryDeletion(this.store, id, expectedVersion)
-    if (!deletion) return
-    if (deletion.exclusiveConversation && this.conversations.has(deletion.conversationId)) {
-      await this.clearConversationHistory(deletion.conversationId, false, true)
-    } else {
-      await this.clearBrowserTaskRecords(scope => Boolean(scope.runId && deletion.runIds.includes(scope.runId)))
-      const removals = await this.history.removeExecutionRecords(deletion.runIds)
-      for (const item of removals) {
-        if (item.collection === 'runs') { this.runs.delete(item.id); this.runDirectories.delete(item.id) }
-        if (item.collection === 'snapshots') this.snapshots.delete(item.id)
-      }
-    }
-    await finishHistoryDeletion(this.store, deletion)
+    const conversationId = await deleteHistoryRecord(this.store, id, expectedVersion)
     this.automations.forgetHistory(id)
     this.emit({ type: 'automation:history-deleted', occurrenceId: id })
-    this.changed(deletion.conversationId)
-    // SQLite reuses freed pages; do not rewrite the whole database for each history item.
+    this.changed(conversationId)
   }
 
   private async ensureCoreConnection() {

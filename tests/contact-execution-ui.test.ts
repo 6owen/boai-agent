@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 2026-11-27 删除定时日志不移除会话执行条目，删除原会话才撤下。
  * [OUTPUT]: 执行历史默认全部收起；含匹配消息/运行中记录，手动展开后刷新保持，正文只在展开后读取。
  * [OUTPUT]: 后台jsdom验证群工作树按需读取、原workId停止、防连点及隐藏停读。
  * [OUTPUT]: 执行历史替换共享正文预算，已折叠正文最多八项且淘汰后可重新打开。
@@ -185,6 +186,8 @@ it('shows the scheduled source in main-chat history, stops its occurrence and fo
   expect(host.querySelector('[aria-label="停止本次执行"]')).toBeNull()
   items = []
   await act(async () => { listeners.forEach(listener => listener({ type: 'automation:history-deleted', occurrenceId: 'original-occurrence' })) })
+  expect(host.querySelector('[data-feed-run="scheduled-run"]')).not.toBeNull()
+  await act(async () => { listeners.forEach(listener => listener({ type: 'conversation:deleted', conversationId: 'private-automation' })) })
   expect(host.querySelector('[data-feed-run="scheduled-run"]')).toBeNull()
 })
 
