@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 网关目录归连接领域；在途刷新用独立引用，结束或删除后回收且不接受迟到回执。
  * [INPUT]: 序列化的连接配置变更、私有凭据存储和 SQLite。
  * [OUTPUT]: 配置和生效凭据引用共同提交；中断后按账本回收未生效或退役的凭据。
  * [POS]: 模型连接的私有持久化边界，旧记录沿用连接 ID 查询。
@@ -8,7 +9,7 @@ import { randomUUID } from 'node:crypto'
 import type { Connection } from '@boai/shared/domain'
 import type { SecretStore } from '../../contracts'
 import type { ProductStore, StoredRecord } from '../../adapters/storage/product-store'
-import { GATEWAY_CATALOG_COLLECTION } from '../../adapters/mastra/gateway-catalog-store'
+import { GATEWAY_CATALOG_COLLECTION } from './gateway-catalog-store'
 
 const refs = 'connectionCredentialRefs'
 const pending = 'connectionCredentialCleanup'

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 网关目录归连接领域；在途刷新用独立引用，结束或删除后回收且不接受迟到回执。
  * [OUTPUT]: 进度写入失败沿共用诊断回调隔离并投递原运行错误通知。
  * [OUTPUT]: 宿主单个工作与列表读取沿原会话归属；完整预算视图仅用于需要关联记录的操作。
  * [OUTPUT]: 打开会话及监控来源时直接按会话读取成果记录。
@@ -362,7 +363,7 @@ import { EMPLOYEE_EXECUTION_LIMITS, type EmployeeExecutionDetail, type EmployeeE
 import { listModelCatalog, modelCatalogUrl, probeMagpie } from './adapters/mastra/model-catalog'
 import { gatewayModelCall, gatewaySelectedModel } from './adapters/mastra/gateway-route'
 import { ConnectionCredentials } from './modules/backends/connection-credentials'
-import { GatewayCatalogStore, gatewayCatalogSource } from './adapters/mastra/gateway-catalog-store'
+import { GatewayCatalogStore, gatewayCatalogSource } from './modules/backends/gateway-catalog-store'
 import { gatewayApiKey, gatewayEndpoint, gatewayRoot, isLoopbackGateway } from '@boai/shared/domain/model-gateway'
 import { readMaterialSource } from '@boai/shared/node/material-files'
 import { authorizedResources, resourceVersion } from './modules/workspaces/environment-plan'
@@ -1712,11 +1713,15 @@ export class AppService {
           gatewayCatalogSource({ ...draft, revision: connection.revision }) === gatewayCatalogSource(connection)
         return { key: await this.draftApiKey({ ...draft, provider: draft.gateway?.protocol === 'messages' ? 'anthropic' : 'openai-compatible' }), ticket: matching ? this.gatewayCatalogs.begin(connection) : undefined }
       })
-      const catalog = await listModelCatalog(baseUrl, key)
-      if (ticket) await this.serialize(async () => {
-        if (this.closing || this.backingUp || !await this.gatewayCatalogs.commit(ticket, this.connections.get(ticket.id), catalog)) fail('模型目录读取期间连接或目录已变化，请重新刷新')
-      })
-      return method === 'listConnectionModels' ? catalog.models.map(model => model.id) : catalog
+      try {
+        const catalog = await listModelCatalog(baseUrl, key)
+        if (ticket) await this.serialize(async () => {
+          if (this.closing || this.backingUp || !await this.gatewayCatalogs.commit(ticket, this.connections.get(ticket.id), catalog)) fail('模型目录读取期间连接或目录已变化，请重新刷新')
+        })
+        return method === 'listConnectionModels' ? catalog.models.map(model => model.id) : catalog
+      } finally {
+        if (ticket) this.gatewayCatalogs.finish(ticket)
+      }
     }
     if (method === 'testConnection' || method === 'testConnectionDraft') {
       const { connection, key, boundSource } = await this.serialize(async () => {

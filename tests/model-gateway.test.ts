@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 网关目录归连接领域；在途刷新用独立引用，结束或删除后回收且不接受迟到回执。
  * [OUTPUT]: 旧SQLite连接缺省字段保持；旧员工沿原备份/API后端迁移一次，另加网关不改绑定/协议/密钥或触发推理。
  * [OUTPUT]: 无Run连接换源等待实际适配器退出；即使适配器忽略abort并返回成功，也不采用迟到结果。
  * [OUTPUT]: 无Run路由按原连接测试/团队attempt/草稿身份留证，正常关闭等待实际退出。
@@ -24,6 +25,7 @@ import { assertThinkingPreference } from '../packages/shared/src/domain/model-pr
 import type { ModelCatalog } from '../packages/shared/src/domain/model-gateway'
 import { gatewayApiKey, gatewayEndpoint, type ModelGateway, type ModelProtocol } from '../packages/shared/src/domain/model-gateway'
 import type { AgentInput, Connection, ConnectionInput, Snapshot } from '../packages/shared/src/domain'
+import { GatewayCatalogStore } from '../packages/runtime/src/modules/backends/gateway-catalog-store'
 import { listModelCatalog, probeMagpie } from '../packages/runtime/src/adapters/mastra/model-catalog'
 import { MastraEngine } from '../packages/runtime/src/adapters/mastra/engine'
 import type { AgentEngine } from '../packages/runtime/src/contracts'
@@ -269,6 +271,29 @@ test('out-of-order or changed-source catalog responses never replace the current
   await service.handle('saveConnection', { ...input, id: connection.id, expectedRevision: 1, gateway: gateway('responses') })
   reply(2, 'medium'); await thirdRejected
   await expect(service.handle('saveAgent', { ...agent, thinkingLevel: 'medium' })).rejects.toThrow('推理目录')
+})
+
+test('retiring a refresh releases its ticket without reviving an older result or clearing a replacement', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'boai-catalog-refresh-'))
+  const store = new ProductStore(join(directory, 'catalog.sqlite'))
+  try {
+    await store.init()
+    const cache = new GatewayCatalogStore(store)
+    const connection: Connection = { id: 'saved', name: 'Gateway', provider: 'openai-compatible', baseUrl: 'http://127.0.0.1:3425', defaultModel: 'model', hasApiKey: false, gateway: gateway() }
+    const catalog: ModelCatalog = { source: 'service-declared', fetchedAt: new Date().toISOString(), models: [{ id: 'model' }] }
+    const old = cache.begin(connection)
+    cache.forget(connection.id)
+    const current = cache.begin(connection)
+    cache.finish(old)
+    expect(await cache.commit(old, connection, catalog)).toBe(false)
+    expect(await cache.commit(current, connection, catalog)).toBe(true)
+    cache.finish(current)
+    expect(await cache.commit(current, connection, catalog)).toBe(false)
+    expect(cache.get(connection)).toEqual(catalog)
+  } finally {
+    await store.close()
+    await rm(directory, { recursive: true, force: true })
+  }
 })
 
 test('gateway reasoning requires current metadata, default adds no effort, and Messages never maps off to low', () => {
