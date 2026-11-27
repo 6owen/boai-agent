@@ -10,7 +10,7 @@
  * [OUTPUT]: 覆盖增大任务额度、真实继续消息或本次运行同类批准；各文件以具体用例限定验证范围。
  * [OUTPUT]: 本轮覆盖复制/员工入口、定时运行防连点、失败过程、严格私有判断及保留原预算的显式继续；实际范围以各用例为准。
  * [OUTPUT]: 已载入执行流夹具显式限定非空ConversationView，保留共享ChatView新增加载态的类型边界。
- * [OUTPUT]: 自动化头像沿真实默认个人资料夹具，原任务执行镜像与定时角标共存。
+ * [OUTPUT]: 定时触发与手动消息使用同一个个人资料头像，原任务执行镜像继续覆盖。
  * [OUTPUT]: 定时任务聊天镜像沿原Run读取思考/工具，固定消息定位仍展示，完成后仅保留公开答复。
  * [OUTPUT]: 任务/文件迁入右侧后移除旧互斥view夹具，保留主聊天页面隐藏/恢复时执行读取生命周期检查。
  * [OUTPUT]: 流式消息先于Run快照时不闪现空回复泡；已有正文持续显示。
@@ -75,6 +75,28 @@ test.each(['failed', 'cancelled', 'interrupted'] as const)('retains %s execution
   expect(host.querySelector('[data-chat-execution-run] .button-row')).toBeNull()
   for (const label of ['继续', '查看', '任务结果']) expect([...host.querySelectorAll('button')].map(button => button.textContent)).not.toContain(label)
   expect(request.mock.calls.filter(([method]) => method === 'sendMessage' || method === 'getTaskResult')).toHaveLength(0)
+})
+
+test('renders a scheduled message with the ordinary profile avatar and no schedule badge', async () => {
+  const manual = { id: 'manual', conversationId: 'chat', senderType: 'user' as const, senderId: 'user', senderName: '我', content: '查天气', status: 'completed' as const, sequence: 1, createdAt: run.createdAt }
+  const scheduled = {
+    ...manual, id: 'scheduled', senderId: 'automation', senderName: '定时任务', sequence: 2,
+    origin: { kind: 'automation' as const, automationId: 'plan', occurrenceId: 'occurrence', name: '每日天气', authorizedFingerprint: 'fixture' },
+  }
+  props.detail = {
+    ...props.detail,
+    messages: [manual, scheduled],
+    messagePage: { ...props.detail.messagePage, items: [manual, scheduled].map(message => ({ messageId: message.id, sequence: message.sequence, status: 'available', message })) },
+  }
+
+  await render()
+
+  const manualAvatar = host.querySelector('#message-manual .message-avatar')
+  const scheduledAvatar = host.querySelector('#message-scheduled .message-avatar')
+  const profileLabel = `查看 ${defaultUserProfile.displayName} 的个人资料`
+  expect(manualAvatar?.querySelector('button')?.getAttribute('aria-label')).toBe(profileLabel)
+  expect(scheduledAvatar?.querySelector('button')?.getAttribute('aria-label')).toBe(profileLabel)
+  expect(scheduledAvatar?.querySelector('[aria-label="定时任务"]')).toBeNull()
 })
 
 test('retains failed automation mirrors at a located public trigger', async () => {

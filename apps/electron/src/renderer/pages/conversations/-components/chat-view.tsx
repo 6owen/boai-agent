@@ -32,7 +32,7 @@
  * [OUTPUT]: 主聊天固定header/composer，仅消息历史按会话身份换载；骨架复用消息布局、通讯录同款Panel reveal、240px边缘预取/游标去重和有界窗口，原锚点/跟随/执行镜像保持。
  * [OUTPUT]: 传递同会话终端与预览入口。
  * [OUTPUT]: Composer以@提及员工、$引用技能/文件/提示词，沿原消息正文与引用发送。
- * [OUTPUT]: 定时任务指令沿本人原头像与资料入口，仅在头像右下角添加小尺寸“定”角标；消息来源身份保持。
+ * [OUTPUT]: 定时任务指令与手动消息共用本人头像和资料入口。
  * [OUTPUT]: 已发布知识引用按宿主实际读取身份打开原全局预览；明确重开更新定位，失效不跳到新内容。
  * [OUTPUT]: 命令与多目录同卡审批，明确一次命令与本次/持久目录范围，沿原三选项交互。
  * [OUTPUT]: 目录访问审批展示真实目标、只读/读写范围与本次运行/持久授权选择，复用原审批操作入口。
@@ -462,6 +462,7 @@ function ChatHistory({ historyHeader, api, onTasks, onEmployeeTask, onCreateTask
         const attachedApprovals = approvalGroups.byMessage.get(message.id) ?? []
         const continued = continuesMessage(previous, message, Boolean(attachedApprovals.length || previous && approvalGroups.byMessage.has(previous.id)))
         const sender = message.channel?.owner ? snapshot.userProfile?.displayName ?? '我' : messageDisplayName(message, snapshot.userProfile)
+        const showUserAvatar = message.channel ? isPersonalMessage(message) || message.channel.owner : message.senderType === 'user'
         const useCard = message.senderType !== 'system'
         const canMention = !replyMode && !sendingLocked && group && message.senderType === 'agent' && agent?.active && members.some(member => member.id === agent.id)
         const mentioned = members.filter(member => message.mentionIds?.includes(member.id))
@@ -485,7 +486,7 @@ function ChatHistory({ historyHeader, api, onTasks, onEmployeeTask, onCreateTask
             {message.status !== 'streaming' && message.status !== 'completed' && <small className={`message-status ${message.status}`}>{message.status === 'cancelled' ? '已取消 · 已有内容保留' : message.status === 'interrupted' ? '执行中断，可在执行过程中查看' : '回复失败，请查看执行过程'}</small>}
         </>
         return <Fragment key={message.id}><article className={`message-row ${message.senderType}${continued ? ' message-continuation' : ''}${focusMessage?.id === message.id ? ' message-target' : ''}`} aria-label={`${sender} ${timeText(message.createdAt)}`} tabIndex={-1} key={message.id} id={preview ? undefined : `message-${message.id}`} data-reading-message-id={preview ? undefined : message.id}>
-          <div className="message-avatar">{isPersonalMessage(message) || message.channel?.owner ? <UserInfoPopover profile={snapshot.userProfile} onProfile={onProfile} /> : message.channel ? <Avatar name={message.senderName} seed={message.senderId} />: message.senderType === 'user' ? <span className="relative inline-flex"><UserInfoPopover profile={snapshot.userProfile} onProfile={onProfile} />{message.origin?.kind === 'automation' && <span aria-label="定时任务" className="pointer-events-none absolute -right-1 -bottom-1 flex size-3.5 items-center justify-center rounded-sm bg-background text-[length:var(--text-ui-micro)] leading-none font-medium text-muted-foreground ring-1 ring-border">定</span>}</span> : message.senderType === 'system' ? <span className="avatar system-avatar" aria-hidden="true">·</span> : agent ? <AgentInfoPopover agent={agent} resources={snapshot.resources} onConfigure={() => onConfigureAgent(agent)} /> : <Avatar name={message.senderName || '系统'} seed={message.senderId} />}</div>
+          <div className="message-avatar">{showUserAvatar ? <UserInfoPopover profile={snapshot.userProfile} onProfile={onProfile} /> : message.channel ? <Avatar name={message.senderName} seed={message.senderId} /> : message.senderType === 'system' ? <span className="avatar system-avatar" aria-hidden="true">·</span> : agent ? <AgentInfoPopover agent={agent} resources={snapshot.resources} onConfigure={() => onConfigureAgent(agent)} /> : <Avatar name={message.senderName || '系统'} seed={message.senderId} />}</div>
           <div className="message-main">
             <div className={`message-meta${!group ? ' message-meta-direct' : ''}`}>
               {group && <>
