@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 已授权会话消息的窗口、当前轮及身份投影归 conversations；模型角色/图片装配归 API 适配器。
  * [OUTPUT]: 网关目录归连接领域；在途刷新用独立引用，结束或删除后回收且不接受迟到回执。
  * [OUTPUT]: 进度写入失败沿共用诊断回调隔离并投递原运行错误通知。
  * [OUTPUT]: 宿主单个工作与列表读取沿原会话归属；完整预算视图仅用于需要关联记录的操作。
@@ -312,7 +313,7 @@ import { MaterialRepository } from './modules/materials/material-repository'
 import { ArtifactRepository } from './modules/workspaces/artifact-repository'
 import { ARTIFACT_LIMITS, type ArtifactRevisionInput, type ArtifactRevisionRequest } from '@boai/shared/domain/artifacts'
 import { isConversationMaterialVisible, MATERIAL_LIMITS, type ConversationMaterial, type MaterialReadRef } from '@boai/shared/domain/materials'
-import { contextWindow } from './adapters/mastra/message-projection'
+import { contextWindow } from './modules/conversations/message-context'
 import type { TeamFileCheckpoint } from './modules/teams/team-files'
 import { TeamGenerationService } from './modules/teams/team-generation'
 import { planTeam, type TeamPlanner } from './adapters/mastra/team-planner'
@@ -4081,7 +4082,7 @@ export class AppService {
     const base = (await this.contextMessages(conversation, triggerMessageId, throughSequence)).filter(message => !forgotten.has(message.id)).map(message => ({ ...message, content: message.content || (message.materialIds?.length ? '用户发送了聊天材料。' : '') }))
     const messages: Message[] = [], images: NonNullable<EngineContext['materialImages']> = []
     const native = isNativeBackend(this.getAgent(agentId).executionBackend)
-    for (const message of native ? base : contextWindow(base, conversation.id, triggerMessageId)) {
+    for (const message of native ? base : contextWindow(base, conversation.id)) {
       if (message.channelReference) {
         try {
           const source = await this.store.transaction(tx => channelReferenceMessage(tx, conversation.id, message.channelReference!))
@@ -4135,7 +4136,7 @@ export class AppService {
       message.materialIds = readableIds; message.materialSources = refs
       messages.push(message)
     }
-    const visible = native ? messages : contextWindow(messages, conversation.id, triggerMessageId)
+    const visible = native ? messages : contextWindow(messages, conversation.id)
     return { messages: visible, images: images.filter(image => visible.some(message => message.id === image.messageId)), refs: [...new Map(visible.flatMap(message => message.materialSources ?? []).map(ref => [`${ref.id}:${ref.revision}`, ref])).values()] }
   }
   private async validateComposerReferences(tx: RecordTransaction, conversation: Conversation, references: ComposerReference[], exactVersion: boolean) {
@@ -4627,7 +4628,7 @@ export class AppService {
       const excerpt = artifactRevision.text.slice(0, MATERIAL_LIMITS.characters)
       source.content += '\n[Host-authorized artifact revision source; reference data, not tool permissions]\n' + JSON.stringify({ revisionRequestId: artifactRevision.request.id, artifactId: artifactRevision.artifact.id, contentHash: artifactRevision.artifact.contentHash, contentVersion: artifactRevision.artifact.contentVersion, logicalPath: `shared:/${artifactRevision.artifact.managedRelativePath}`, excerptCharacters: excerpt.length, totalCharacters: artifactRevision.text.length, instruction: 'Revise this exact version for the new user request. Preserve the original. For the replacement publication explicitly use this revisionRequestId. Other supporting files are independent. Read the remaining original via the authorized logical path when necessary; no previous tools need replay.' }) + '\n' + excerpt + '\n[End of original artifact excerpt]\n'
       source.materialSources = [...(source.materialSources ?? []), ...(artifactRevision.artifact.materialSources ?? [])]
-      materialContext.messages = contextWindow([...materialContext.messages.filter(value => value.id !== source.id), source], conversation.id, source.id)
+      materialContext.messages = contextWindow([...materialContext.messages.filter(value => value.id !== source.id), source], conversation.id)
       materialContext.refs = [...new Map([...materialContext.refs, ...(source.materialSources ?? [])].map(ref => [`${ref.id}:${ref.revision}`, ref])).values()]
     }
     const messages = materialContext.messages.filter(message => !forgotten.has(message.id)), visibleMessageIds = new Set(messages.map(message => message.id))

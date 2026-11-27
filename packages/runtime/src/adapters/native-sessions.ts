@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 已授权会话消息的窗口、当前轮及身份投影归 conversations；模型角色/图片装配归 API 适配器。
  * [OUTPUT]: 目录/配置/显式交接重建保留最小原生映射和原因；未知投递阻止新线程绕过，源核验保持。
  * [OUTPUT]: 会话准备完成时可原子登记经适配器核验的来源指纹，保持pending/完成状态及原请求身份检查。
  * [OUTPUT]: 插件provider采用独立命名空间，复用原会话/来源/材料/退出边界。
@@ -15,7 +16,7 @@ import { createHash } from 'node:crypto'
 import type { EngineContext } from '../contracts'
 import type { ProductStore } from './storage/product-store'
 import type { RecordTransaction } from './storage/product-store'
-import { decisionMessageData, visibleMessages } from './mastra/message-projection'
+import { decisionMessageData, visibleMessages } from '../modules/conversations/message-context'
 import type { Message, ConversationMaterial, MaterialReadRef } from '@boai/shared/domain'
 import { isMaterialReadRevisionValid, isConversationMaterialVisible } from '@boai/shared/domain/materials'
 

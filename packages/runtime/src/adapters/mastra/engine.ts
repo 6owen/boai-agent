@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 已授权会话消息的窗口、当前轮及身份投影归 conversations；模型角色/图片装配归 API 适配器。
  * [OUTPUT]: 内置浏览器命令沿 browser 模块的实现与类型，桌面、本机和 API 共用原合同。
  * [OUTPUT]: Automation tools bind the authorized runtime operations through the shared Mastra adapter.
  * [OUTPUT]: 普通回复的正文可先预览，出现工具调用时撤回该步预览；任务和限字回复仍等待校验。
@@ -108,7 +109,8 @@ import { createStageAgent, bootstrapInstructions, organizationDecisionAllowed, t
 import { EmployeeConversationMemory, memoryMessageId } from './conversation-memory'
 import { contextHandoff } from './context-maintenance'
 import { isCoreAgent } from '@boai/shared/domain/core-agent'
-import { projectMessages, visibleMessages, partitionTurn, messageData, decisionMessageData } from './message-projection'
+import { projectMessages } from './message-projection'
+import { visibleMessages, partitionTurn, messageData, decisionMessageData } from '../../modules/conversations/message-context'
 import { deepseekReasoningHistory } from './deepseek-reasoning-model'
 const MEMORY_OUTPUT_TOKENS = 6000
 

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 已授权会话消息的窗口、当前轮及身份投影归 conversations；模型角色/图片装配归 API 适配器。
  * [OUTPUT]: 当前获准包/贡献身份参与原生session续用；无包保留原指纹，启停/解绑或版本变化不续用旧能力上下文。
  * [OUTPUT]: 原生受理身份仅核对投递，不覆盖onSession提供的续用引用；Pi持久文件与公共sessionId分别保留。
  * [OUTPUT]: 仅改默认项目不推进原生执行配置版本，已建立工作保持原生session；其他配置变化仍重建。
@@ -51,7 +52,7 @@ import type { ProductStore } from './storage/product-store'
 import type { NativeTool } from './native-task'
 import { workingDirectoryTarget } from '../modules/workspaces/working-directory'
 import { NativeSessions, digest } from './native-sessions'
-import { decisionMessageData } from './mastra/message-projection'
+import { decisionMessageData } from '../modules/conversations/message-context'
 import { boboResponseInstructions } from '../modules/employees/phase-instructions'
 import { createNativeProducts } from './native-products'
 

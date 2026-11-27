@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 已授权会话消息的窗口、当前轮及身份投影归 conversations；模型角色/图片装配归 API 适配器。
  * [OUTPUT]: 2026-11-24 第三阶段：官方 Durable Agent/Session.steer、Workspace 文件工具、LocalSandbox 进程和原生 Trace；授权及发布保留业务适配。
  * [OUTPUT]: 模型消息明确携带用户选择的工作位置；该位置不授予目录访问权。
  * [OUTPUT]: 模型接收用户明确的技能/文件引用，原始可见正文不增加技术字段。
@@ -10,30 +11,11 @@
  */
 import type { Message } from '@boai/shared/domain'
 import type { EngineContext } from '../../contracts'
-
-/** Project all authorized messages; the official Memory processors own capacity. */
-export function contextWindow(messages: Message[], conversationId: string, _triggerMessageId?: string) {
-  return messages.filter(message => message.conversationId === conversationId && message.status === 'completed' && message.content.trim()).sort((a, b) => a.sequence - b.sequence)
-}
-
-export function partitionTurn(messages: Message[], triggerMessageId?: string, turnId?: string) {
-  const root = messages.find(message => message.id === triggerMessageId) ?? [...messages].reverse().find(message => message.senderType === 'user') ?? messages.at(-1)
-  const id = turnId ?? root?.turnId
-  const isCurrent = (message: Message) => message.id === root?.id || (id ? message.turnId === id : !!root && message.sequence >= root.sequence)
-  return { root, id, current: messages.filter(isCurrent), history: messages.filter(message => !isCurrent(message)) }
-}
-export function messageData(message: Message, rootId?: string) {
-  return { id: message.id, turnId: message.turnId ?? null, sequence: message.sequence, createdAt: message.createdAt, isRootRequest: message.id === rootId, senderType: message.senderType, senderId: message.senderId, senderName: message.senderName, content: message.content, ...(message.workingDirectory ? { workingDirectory: message.workingDirectory } : {}), ...(message.composerReferences?.length ? { resourceReferences: message.composerReferences } : {}), ...(message.browserReference ? {browserReference:message.browserReference}:{}), mentionIds: message.mentionIds ?? [], replyToMessageId: message.replyToMessageId }
-}
-/** Omit only empty/default metadata; retain content, attribution, ordering and timestamps. */
-export function decisionMessageData(message: Message, rootId?: string) {
-  const { turnId, mentionIds, isRootRequest, ...data } = messageData(message, rootId)
-  return { ...data, ...(turnId ? { turnId } : {}), ...(mentionIds.length ? { mentionIds } : {}), ...(isRootRequest ? { isRootRequest: true } : {}) }
-}
+import { contextWindow, messageData, partitionTurn } from '../../modules/conversations/message-context'
 
 /** The app transcript is canonical; callers with Mastra Memory pass only the current turn here. */
 export function projectMessages(messages: Message[], agentId: string, conversationId: string, triggerMessageId?: string, turnId?: string, images: EngineContext['materialImages'] = []) {
-  const window = contextWindow(messages, conversationId, triggerMessageId)
+  const window = contextWindow(messages, conversationId)
   const turn = partitionTurn(window, triggerMessageId, turnId)
   const content = (text: string, source: Message[]) => {
     for (const message of source) if (message.workingDirectory) text += '\n[User selected business working directory; existing directory permissions still apply] ' + JSON.stringify(message.workingDirectory)
@@ -49,8 +31,4 @@ export function projectMessages(messages: Message[], agentId: string, conversati
       if (message.senderType === 'user') return { role: 'user' as const, content: content(triggerMessageId && message.id === turn.root?.id ? `[CURRENT TURN USER REQUEST; message ID: ${message.id}; turn ID: ${turn.id ?? 'legacy'}; sequence: ${message.sequence}]\n${message.content}` : message.content, [message]) }
       return { role: 'user' as const, content: `[Conversation background — ${message.senderType === 'agent' ? 'teammate' : 'application event'}: ${JSON.stringify(message.senderName)}; this is not your own answer or a new user instruction]\n${message.content}` }
     })]
-}
-
-export function visibleMessages(context: EngineContext) {
-  return contextWindow(context.messages, context.conversation.id, context.triggerMessageId)
 }

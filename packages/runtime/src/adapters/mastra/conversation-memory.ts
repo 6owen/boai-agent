@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 已授权会话消息的窗口、当前轮及身份投影归 conversations；模型角色/图片装配归 API 适配器。
  * [OUTPUT]: 2026-11-24 第三阶段：官方 Durable Agent/Session.steer、Workspace 文件工具、LocalSandbox 进程和原生 Trace；授权及发布保留业务适配。
  * [OUTPUT]: 官方 Session 持有执行历史与逐步骤 OM；产品原文只做迁移和来源核验，thread OM 与员工 resource WM/recall 分离。
  * [OUTPUT]: 所有API员工私聊共用回忆指引/冷启动提示，沿员工resource跨任务续接；Bobo原文设置保持。
@@ -20,7 +21,7 @@ import type { MastraDBMessage } from '@mastra/core/agent'
 import type { ManagedMemory } from '@boai/shared/domain/memory'
 import type { Message } from '@boai/shared/domain'
 import type { EngineContext } from '../../contracts'
-import { messageData, partitionTurn } from './message-projection'
+import { messageData, partitionTurn } from '../../modules/conversations/message-context'
 import { memoryEmbedder, memoryModel } from './memory-model'
 import { thinkingProviderOptions } from './model-config'
 import { isCoreAgent } from '@boai/shared/domain/core-agent'
