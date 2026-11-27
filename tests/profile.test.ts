@@ -19,7 +19,7 @@ import { aggregateActivity, unionDuration, type ActivityEvidence, type ProfileMo
 import { validateAvatarImage } from '../packages/runtime/src/modules/profile/avatar-image'
 import { defaultUserProfile, isPersonalMessage, messageDisplayName, profileInitials } from '../packages/shared/src/domain/profile'
 import type { AgentRun, BudgetModelCall, Conversation, Message, WorkItem } from '../packages/shared/src/domain'
-import { ConversationHistory } from '../packages/runtime/src/modules/conversations/history'
+import { ConversationHistory } from '../packages/runtime/src/modules/cleanup/conversation-history'
 
 const stores = new Set<ProductStore>(), roots: string[] = []
 afterEach(async () => { vi.restoreAllMocks(); for (const store of stores) await store.close(); stores.clear(); for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }) })

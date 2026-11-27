@@ -20,28 +20,29 @@
  * [INPUT]: 空闲会话、产品 SQLite 与受管数据根目录。
  * [OUTPUT]: 另一会话仍引用的协作预算保留累计计数/期限，已清理调用只保留 hash 去重；不删另一群或员工。浏览器来源/租约清理，旧动作仅保留 ID/hash/cleared 去重； D6 私人阅读状态和完成事实在原最终清理事务删除，保留并提升最小 clock epoch 拒绝旧观测/锚点，不把正文带入最小清理屏障。
  * [OUTPUT]: 成果先失效再 hash 安全清理，冲突阻止后续递归删除；修订/采用 cleared 回执与恢复门禁；清空/解散保留核心首发和普通消息最小 cleared 回执；撤销材料及派生记忆后只清理 hash 匹配的私有原件，冲突聊天保持门禁并在恢复时显性返回；清空保留配置，解散删除会话配置/通讯录顺序且不重建工作区，两者共用重启续清日志；清除会话关联模型调用/技能激活/执行区间、监控检查点、Trace、自动化私有正文和跨工作证据，终结失去上下文的等待；通知待提交抑制/提交中未知，保留个人资料、共享资源及自动化触发去重身份。
- * [POS]: conversations 的破坏性历史清理用例；宿主负责阻止执行中的会话进入。
+ * [POS]: cleanup 的跨领域用例，负责会话历史清理、关联状态及原受理身份的恢复。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { assertCleanupPath } from './path'
 import { contextCollections } from '../contexts/context-repository'
 import { clearContextHandoffs } from '../contexts/context-handoff'
 import { clearApplicationReceipts } from '../application/application-service'
 import { clearAgentPersonality } from '../agent-state/lifecycle'
-import { lstat, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { createHash, randomUUID } from 'node:crypto'
 import type { CanvasScopeFilter } from '@boai/canvas-plugin/protocol'
-import { join, relative, sep } from 'node:path'
+import { join } from 'node:path'
 import type { BudgetModelCall, ClearedBudgetModelCall, Conversation, MemoryEntry, WorkBudget, WorkItem } from '@boai/shared/domain'
 import type { ContactListPreferences } from '@boai/shared/domain/contact-list'
 import type { AutomationDispatch, AutomationNotice, AutomationOccurrence, AutomationMonitorCheckpoint } from '@boai/shared/domain/automations'
 import { ProductStore, type RecordIdentityScope } from '../../adapters/storage/product-store'
 import type { MaterialRepository } from '../materials/material-repository'
 import type { ArtifactRepository } from '../workspaces/artifact-repository'
-import type { ConversationReadingRepository } from './reading-repository'
+import type { ConversationReadingRepository } from '../conversations/reading-repository'
 import { deletedAutomationHistory } from '../automations/history-deletion'
 import { pendingOccurrence } from '../automations/schedule-policy'
 import { MemoryRepository } from '../memory/memory-repository'
-import type { SessionOperationRecord } from './session-operations'
+import type { SessionOperationRecord } from '../conversations/session-operations'
 
 interface HistoryRecord { id: string; conversationId?: string; turnId?: string; runId?: string; workId?: string; budgetId?: string; messageId?: string; conversation?: { id: string }; fingerprint?: string }
 interface Cleanup { id: string; hide: boolean; remove?: boolean; sessionRequestId?: string; canvasCleanupId?: string; canvasCleanupError?: string }
@@ -68,15 +69,8 @@ export class ConversationHistory {
     }
     return conflicts
   }
-  private async safe(path: string) {
-    const parts = relative(this.dataPath, path).split(sep)
-    if (parts.some(part => part === '..')) throw new Error('清理路径超出应用数据目录')
-    let current = this.dataPath
-    for (const part of parts) {
-      current = join(current, part)
-      try { if ((await lstat(current)).isSymbolicLink()) throw new Error('会话目录含符号链接，请移除链接后重试清理') }
-      catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error }
-    }
+  private safe(path: string) {
+    return assertCleanupPath(this.dataPath, path, '会话目录含符号链接，请移除链接后重试清理')
   }
   remove(conversation: Conversation) { return this.clear(conversation, false, true) }
   async removeExecutionRecords(runIds: string[]) {

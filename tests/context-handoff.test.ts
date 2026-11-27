@@ -12,8 +12,8 @@ import type { Conversation, DigitalAgent, Message } from '../packages/shared/src
 import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
 import { ContextHandoffRepository, HANDOFF_COLLECTION, clearContextHandoffs, handoffMessage, type ContextHandoff, type HandoffChecks, type HandoffTarget, type PrepareHandoff } from '../packages/runtime/src/modules/contexts/context-handoff'
 import { handoffBudget, handoffCost, selectHandoffMaterial } from '../packages/runtime/src/modules/contexts/handoff-budget'
-import { ConversationHistory } from '../packages/runtime/src/modules/conversations/history'
-import { ContactDeletionService } from '../packages/runtime/src/modules/employees/contact-deletion'
+import { ConversationHistory } from '../packages/runtime/src/modules/cleanup/conversation-history'
+import { ContactDeletionService } from '../packages/runtime/src/modules/cleanup/contact-deletion'
 
 const cleanups: (() => Promise<void>)[] = []
 afterEach(async () => { vi.restoreAllMocks(); for (const cleanup of cleanups.splice(0).reverse()) await cleanup() })

@@ -15,8 +15,8 @@ import { CanvasDocumentRepository, canvasScopeKey } from '../packages/canvas-plu
 import { canvasHostEnvelopeSchema, type CanvasDocument, type CanvasScope, type CanvasScopeFilter } from '../packages/canvas-plugin/src/protocol'
 import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
 import { CanvasService } from '../packages/runtime/src/modules/canvas/service'
-import { ConversationHistory } from '../packages/runtime/src/modules/conversations/history'
-import { ContactDeletionService } from '../packages/runtime/src/modules/employees/contact-deletion'
+import { ConversationHistory } from '../packages/runtime/src/modules/cleanup/conversation-history'
+import { ContactDeletionService } from '../packages/runtime/src/modules/cleanup/contact-deletion'
 import { prepareSessionDeletion, sessionFingerprint, type SessionOperationRecord } from '../packages/runtime/src/modules/conversations/session-operations'
 
 const requireCanvas = createRequire(new URL('../packages/canvas-plugin/package.json', import.meta.url))
