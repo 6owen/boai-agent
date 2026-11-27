@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 2026-11-27 验证标题开关、图标顺序、主色运行提交及计划摘要只读。
  * [OUTPUT]: 2026-11-27 定时页夹具使用新会话定位回调。
  * [OUTPUT]: 手动运行queued/running均隐藏查看本次执行过程；定位聊天、原运行提交锁及终态清理保持。
  * [OUTPUT]: 手动运行聊天导航核对原conversation/run/occurrence身份，四种终态仍移除查看按钮。
@@ -27,6 +28,7 @@ const plan = { id: 'plan', name: '每日天气预报', prompt: '查询南京天�
 let host: HTMLDivElement, root: Root
 beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
+  vi.stubGlobal('PointerEvent', MouseEvent)
   vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
   vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener() {}, removeEventListener() {} }))
   localStorage.clear(); host = document.createElement('div'); document.body.append(host); root = createRoot(host)
@@ -50,7 +52,7 @@ test.each((['queued', 'running'] as const).flatMap(initial => (['completed', 'fa
   expect(host.querySelector('[aria-label="查看本次执行过程"]')).toBeNull()
   expect(host.querySelector('[aria-label="定位聊天记录"]')).toBeNull()
   await render([historical])
-  await act(async () => { button('立即运行一次').click(); button('正在提交…')?.click() })
+  await act(async () => { button('立即运行').click(); button('正在提交…')?.click() })
   expect(request).toHaveBeenCalledOnce()
   expect(button('正在提交…').disabled).toBe(true)
   await act(async () => resolve(occurrence))
@@ -67,12 +69,12 @@ test.each((['queued', 'running'] as const).flatMap(initial => (['completed', 'fa
   await render([{ ...occurrence, status: terminalStatus, stateVersion: 2 }])
   expect(host.querySelector('[aria-label="查看本次执行过程"]')).toBeNull()
   expect(host.querySelector('[aria-label="定位聊天记录"]')).toBeNull()
-  expect(button('立即运行一次').disabled).toBe(false)
+  expect(button('立即运行').disabled).toBe(false)
   await render([{ ...historical, status: 'running' }])
   expect(host.querySelector('[aria-label="查看本次执行过程"]')).toBeNull()
   expect(host.querySelector('[aria-label="定位聊天记录"]')).toBeNull()
   await render([]) // History cleanup/eviction must not revive the accepted running receipt.
-  expect(button('立即运行一次').disabled).toBe(false)
+  expect(button('立即运行').disabled).toBe(false)
 })
 async function change(element: HTMLInputElement | HTMLTextAreaElement, value: string) {
   await act(async () => {
@@ -151,6 +153,52 @@ test('exiting a dirty schedule discards without saving', async () => {
   expect(f.saved).not.toHaveBeenCalled()
   expect(f.request.mock.calls.some(([method]) => method === 'saveAutomation')).toBe(false)
   expect(f.backgroundSubmit).not.toHaveBeenCalled()
+})
+
+test('toggles the saved plan in the toolbar and runs from the primary button', async () => {
+  let enabled = false
+  const listeners = new Set<Parameters<DesktopApi['subscribe']>[0]>()
+  const request = vi.fn(async (method: string, _input?: unknown) => {
+    if (method === 'getScheduleList') return { revision: 0, tags: [], tagIdsByAutomationId: {}, order: [] }
+    if (method === 'listAutomations') return { definitions: [{ ...plan, enabled }], occurrences: [], available: true }
+    if (method === 'listAutomationHistory') return { occurrences: [] }
+    if (method === 'resumeAutomation' || method === 'pauseAutomation') {
+      enabled = method === 'resumeAutomation'
+      for (const listener of listeners) listener({ type: 'changed' })
+      return enabled ? { ...plan, enabled } : undefined
+    }
+    if (method === 'runAutomation') return { id: 'once', automationId: plan.id, status: 'completed', runIds: [] }
+    throw new Error(`Unexpected request: ${method}`)
+  })
+  const api = {
+    request,
+    subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener) } },
+  } as DesktopApi
+  await act(async () => root.render(h(SchedulePage, {
+    api, snapshot, active: true, sidebarShown: true, divider: null, location: { kind: 'definition', id: plan.id },
+    onLocation() {}, onCreateConversation() {}, onConversation() {}, onNavigateMessage() {},
+  })))
+  const toolbar = host.querySelector('[aria-label="定时任务操作"]')!
+  for (const name of ['编辑', '删除']) {
+    const action = toolbar.querySelector(`button[aria-label="${name}"]`)
+    expect(action?.getAttribute('data-size')).toBe('icon')
+    expect(action?.textContent).toBe('')
+  }
+  expect(host.querySelector('[aria-label="计划摘要"] button')).toBeNull()
+  const run = button('立即运行')
+  expect(run.getAttribute('data-variant')).toBe('default')
+  const controls = [...toolbar.querySelectorAll<HTMLElement>('button, [role="switch"]')]
+  expect(controls.map(element => element.getAttribute('aria-label') ?? element.textContent)).toEqual(['启用定时任务', '编辑', '删除', '立即运行'])
+  const toggle = controls[0]
+  expect(toggle.getAttribute('aria-checked')).toBe('false')
+  await act(async () => toggle.click())
+  expect(request).toHaveBeenCalledWith('resumeAutomation', { id: plan.id })
+  expect(toggle.getAttribute('aria-checked')).toBe('true')
+  await act(async () => toggle.click())
+  expect(request).toHaveBeenCalledWith('pauseAutomation', { id: plan.id })
+  expect(toggle.getAttribute('aria-checked')).toBe('false')
+  await act(async () => run.click())
+  expect(request.mock.calls.filter(([method]) => method === 'runAutomation')).toEqual([['runAutomation', { id: plan.id, requestId: expect.any(String) }]])
 })
 
 test('conversation creation delegates to the ordinary chat without creating a dialog or submitting', async () => {

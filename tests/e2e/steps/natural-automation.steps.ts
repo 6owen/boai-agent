@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-27 从定时记录定位到聊天后停止同一次运行，手动再次触发使用立即运行。
  * [OUTPUT]: 2026-11-27 通过独立运行详情按钮停止，避免把记录行的会话定位当成查看详情。
  * [OUTPUT]: 396877两场通过但停止后原图仍为旧待批帧；补原面板终态/按钮移除后截取，不变期限或后端断言。
  * [OUTPUT]: 追加待批停止/迟到审批拒绝和断流恢复后UI明确新运行；新恢复场景210秒含四次冷启动，原四场180秒保持。
@@ -122,10 +123,10 @@ When('我在原聊天拒绝本次命令', async ({ runtime }) => {
 When('我从定时执行记录停止本次运行', async ({ runtime, natural: state }) => {
   await runtime.page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '定时任务', exact: true }).click()
   await openSchedule(runtime.page, `自然处理-${state.mode}`)
-  await runtime.page.locator(`.automation-history-row:has([data-occurrence-id="${state.occurrence!.id}"])`).getByRole('button', { name: /^查看运行详情/ }).click()
-  const panel = runtime.page.locator(`[data-occurrence-detail-id="${state.occurrence!.id}"]`)
-  await expect(panel).toBeVisible()
-  await panel.getByRole('button', { name: '停止本次执行', exact: true }).click()
+  await runtime.page.locator(`[data-occurrence-id="${state.occurrence!.id}"]`).click()
+  const chat = runtime.page.locator(`.conversation-stage [data-conversation-id="${state.occurrence!.conversationId}"]`)
+  await expect(chat).toBeVisible()
+  await chat.getByRole('button', { name: '停止本次执行', exact: true }).first().click()
   await expect.poll(() => state.fixture!.held()).toBe(0)
 })
 When('实际模型连接在文件工具完成后断开', async ({ natural: state }) => {
@@ -222,7 +223,7 @@ When('连接恢复重启后我明确运行同一计划一次', async ({ runtime,
   await runtime.reviewData('真实连接恢复后被动重启未接续旧失败', { original, calls: beforeCalls, fileMtime: state.mtime })
   await runtime.page.getByRole('navigation', { name: '主导航', exact: true }).getByRole('button', { name: '定时任务', exact: true }).click()
   await openSchedule(runtime.page, '自然处理-disconnect')
-  await runtime.page.getByRole('button', { name: '立即运行一次', exact: true }).click()
+  await runtime.page.getByRole('button', { name: '立即运行', exact: true }).click()
   const occurrences = async () => runtime.page.evaluate(async id => (await window.boai.request('listAutomations', undefined)).occurrences.filter(o => o.automationId === id), state.planId!)
   await expect.poll(async () => (await occurrences()).length).toBe(2)
   const next = (await occurrences()).find(o => o.id !== original.id)!

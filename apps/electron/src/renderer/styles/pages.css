@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-27 移除定时计划卡片操作行样式；无会话记录显示为静态行。
  * [OUTPUT]: 话题行显示更多操作时暂藏时间，避免时间被按钮遮断。
  * [OUTPUT]: 员工主聊天独立选中，行尾箭头展开话题，原聊天行组件与主题表面继续共用。
  * [OUTPUT]: 项目目录控件纳入员工select/input统一尺寸，使用网页检索同一select-trigger皮肤；移除rem高度差异。
@@ -266,7 +267,6 @@
 }
 .schedule-document>h3 { margin:28px 0 16px;font-size:var(--text-ui-heading);font-weight:600 }
 .automation-details { margin-bottom:16px;container-type:inline-size;font-size:var(--text-ui-body);line-height:var(--leading-ui-body) }
-.automation-detail-actions { display:flex;align-items:center;justify-content:flex-end;gap:8px;height:40px;box-sizing:border-box;padding:0 12px }
 .automation-records { display:flex;flex-direction:column;gap:12px;min-width:0 }
 .automation-records-heading { display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:32px }
 .automation-records-heading h3 { margin:0;font-size:var(--text-ui-heading);font-weight:600 }
@@ -282,7 +282,8 @@
 }
 .automation-record-actions { display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:0 }
 .automation-record-list { display:flex;flex-direction:column;min-width:0 }
-.automation-record-row[data-slot=button] { width:100%;font-weight:400 }
+.automation-record-row { width:100%;font-weight:400 }
+.automation-record-row:not([data-slot=button]) { cursor:default;background:transparent }
 .automation-history-row :is(.automation-record-delete,.automation-record-detail) { opacity:0;pointer-events:none;transition:opacity .15s }
 .automation-history-row:is(:hover,:focus-within) :is(.automation-record-delete,.automation-record-detail),.automation-history-row :is(.automation-record-delete,.automation-record-detail)[aria-expanded=true] { opacity:1;pointer-events:auto }
 @media (hover:none) {

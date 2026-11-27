@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 标题栏依次显示启用开关、编辑、删除与主色立即运行，记录行只负责定位会话。
  * [OUTPUT]: 2026-11-27 定时页点击执行记录直接打开原话题；跳过等无会话记录仍可查看原因。
  * [OUTPUT]: 执行记录入口及单次定位打开统一左右Dialog；任务内历史列表沿原查询。
  * [OUTPUT]: 列表右键删除固定所选任务，经统一AlertDialog确认后沿原删除接口提交；取消不提交，成功同步移除并退出已删任务详情。
@@ -17,9 +18,11 @@ import { useEffect, useLayoutEffect, useRef, useState, useContext, type ReactNod
 import type { AutomationsView, Snapshot } from '@boai/shared/domain'
 import type { DesktopApi } from '@boai/shared/ipc'
 import { Banner, GuardContext, useMutation } from '@/components/common'
-import { Plus, MessageCircle, Pencil } from '@/components/icons'
+import { Plus, MessageCircle, Pencil, Trash2 } from '@/components/icons'
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
 import { AutomationHistoryDialog } from './automation-history-dialog'
@@ -86,7 +89,6 @@ export function SchedulePage({ api, snapshot, active, sidebarShown, divider, loc
   const preferences = useScheduleList(api, active)
   const navigate = (value: ScheduleLocation) => guard.navigate(() => onLocation(value), { resetOnDiscard: false })
   const openDialog = (target: AutomationDialogTarget) => guard.navigate(() => setDialog(target), { resetOnDiscard: false })
-  const openOccurrence = (id: string) => setHistoryDialog({ id })
   return <div className="schedule-page" style={active ? undefined : { display: 'none' }}>
     <PanelResize open={sidebarShown} side="left" divider={divider}><aside className="schedule-list conversation-list-panel" aria-label="定时任务列表">
       <ScheduleList definitions={view.definitions} preferences={preferences} loading={loading} busy={busy} selectedId={location.kind === 'definition' ? location.id : undefined} onSelect={id => navigate({ kind: 'definition', id })} onHistory={() => guard.navigate(() => setHistoryDialog({}))} onDelete={setDeleting} create={
@@ -97,16 +99,29 @@ export function SchedulePage({ api, snapshot, active, sidebarShown, divider, loc
       {(error || loadError || view.error) && <Banner>{error || loadError || view.error}</Banner>}
       {location.kind === 'overview' && <IllustratedEmpty kind="schedules" />}
       {location.kind === 'definition' && (definition ? <div ref={content} className="schedule-document schedule-content-transition t-panel-slide" data-open="true" data-settled="true">
-        <div className="page-heading"><h2>{definition.name}</h2><div className="button-row" role="group" aria-label="定时任务操作">
-          <Button disabled={busy} onClick={() => openDialog({ kind: 'manual', id: definition.id, key: crypto.randomUUID() })}>编辑</Button>
-          <Button variant="secondary" disabled={busy} onClick={() => void run(async () => { await api.request(definition.enabled ? 'pauseAutomation' : 'resumeAutomation', { id: definition.id }) })}>{definition.enabled ? '暂停' : '恢复'}</Button>
-          <DeleteAutomationButton key={definition.id} name={definition.name} busy={busy} onConfirm={() => void run(async () => { await api.request('deleteAutomation', { id: definition.id }); onLocation({ kind: 'overview' }) })} />
-        </div></div>
-        <AutomationDetails definition={definition} snapshot={snapshot} action={<AutomationRunActions key={definition.id} api={api} automationId={definition.id} occurrences={view.occurrences} active={active} onNavigateMessage={onNavigateMessage} />} />
+        <div className="page-heading">
+          <h2 className="min-w-0 break-words">{definition.name}</h2>
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-1" role="group" aria-label="定时任务操作">
+            <div className="mx-3 flex items-center">
+              <Tooltip>
+                <TooltipTrigger render={<Switch aria-label="启用定时任务" checked={definition.enabled} disabled={busy}
+                  onCheckedChange={enabled => void run(async () => {
+                    if (enabled) await api.request('resumeAutomation', { id: definition.id })
+                    else await api.request('pauseAutomation', { id: definition.id })
+                  })} />} />
+                <TooltipContent>{definition.enabled ? '暂停计划' : '启用计划'}</TooltipContent>
+              </Tooltip>
+            </div>
+            <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon" aria-label="编辑" disabled={busy} onClick={() => openDialog({ kind: 'manual', id: definition.id, key: crypto.randomUUID() })} />}><Pencil /></TooltipTrigger><TooltipContent>编辑</TooltipContent></Tooltip>
+            <DeleteAutomationButton key={`delete:${definition.id}`} name={definition.name} busy={busy} onConfirm={() => void run(async () => { await api.request('deleteAutomation', { id: definition.id }); onLocation({ kind: 'overview' }) })} />
+            <AutomationRunActions key={`run:${definition.id}`} api={api} automationId={definition.id} occurrences={view.occurrences} active={active} busy={busy} onNavigateMessage={onNavigateMessage} />
+          </div>
+        </div>
+        <AutomationDetails definition={definition} snapshot={snapshot} />
         {definition.syncError && <Banner>{definition.syncError}</Banner>}
-        <AutomationHistory key={definition.id} api={api} active={active} automationId={definition.id} conversations={snapshot.conversations} onConversation={onConversation} onOccurrence={openOccurrence} />
+        <AutomationHistory key={definition.id} api={api} active={active} automationId={definition.id} conversations={snapshot.conversations} onConversation={onConversation} />
       </div> : !loading && <Banner>此任务已删除或不可用，留存结果仍可在执行记录中查看。</Banner>)}
-      {<div ref={location.kind === 'history' ? content : undefined} hidden={location.kind !== 'history'} className="schedule-document schedule-content-transition t-panel-slide" data-open="true" data-settled="true"><AutomationHistory api={api} active={active && location.kind === 'history'} attentionOnly={location.kind === 'history' && location.attention} conversations={snapshot.conversations} onConversation={onConversation} onOccurrence={openOccurrence} /></div>}
+      {<div ref={location.kind === 'history' ? content : undefined} hidden={location.kind !== 'history'} className="schedule-document schedule-content-transition t-panel-slide" data-open="true" data-settled="true"><AutomationHistory api={api} active={active && location.kind === 'history'} attentionOnly={location.kind === 'history' && location.attention} conversations={snapshot.conversations} onConversation={onConversation} /></div>}
     </main>
     <AlertDialog open={active && Boolean(deleting)} onOpenChange={open => { if (!open && !busy) setDeleting(null) }}>
       <AlertDialogContent>
@@ -133,7 +148,7 @@ export function SchedulePage({ api, snapshot, active, sidebarShown, divider, loc
 function DeleteAutomationButton({ name, busy, onConfirm }: { name: string; busy: boolean; onConfirm(): void }) {
   const [open, setOpen] = useState(false)
   return <Popover open={open} onOpenChange={value => { if (!busy) setOpen(value) }}>
-    <PopoverTrigger render={<Button variant="destructive" disabled={busy} />}>删除</PopoverTrigger>
+    <PopoverTrigger render={<Button variant="ghost" size="icon" aria-label="删除" title="删除" className="hover:text-destructive" disabled={busy} />}><Trash2 /></PopoverTrigger>
     <PopoverContent align="end">
       <PopoverTitle className="break-words">删除“{name}”？</PopoverTitle>
       <div className="button-row justify-end"><Button variant="secondary" size="sm" disabled={busy} onClick={() => setOpen(false)}>取消</Button><Button variant="destructive" size="sm" disabled={busy} onClick={onConfirm}>{busy ? '正在删除…' : '确认删除'}</Button></div>
