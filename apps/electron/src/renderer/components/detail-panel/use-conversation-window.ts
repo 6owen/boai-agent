@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 窗口读取按请求持有实时消息，替换、隐藏、清理和卸载时释放。
  * [INPUT]: Fixed conversation identity, visible reading scope and material reconciliation.
  * [OUTPUT]: Shared bounded history, streaming, paging and stale-response protection for channels and task sessions.
  * [POS]: Conversation reader; never starts or copies employee execution.
@@ -6,9 +7,9 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import type { DesktopApi } from '@boai/shared/ipc'
-import type { Message } from '@boai/shared/domain'
 import { READING_LIMITS, type ConversationView } from '@boai/shared/domain/reading'
-import { mergeMessagePages, mergeReadingState, updateLiveMessage } from '@/pages/conversations/reading-state'
+import { mergeMessagePages, mergeReadingState, updateLiveMessage, withMessagePage } from '@/pages/conversations/reading-state'
+import { LiveMessageBuffer } from '@/pages/conversations/live-message-buffer'
 import { errorText } from '@/components/common'
 import type { ChannelChatWindow } from './channels-tab'
 type Location = { initialized: boolean; messageId?: string; offset?: number; focusRequestId?: string; scrollPosition?: number }
@@ -22,12 +23,12 @@ export function useConversationWindow({ api, id, active, chatActive, available, 
   const locations = useRef(new Map<string, Location>()), request = useRef(0), flight = useRef(0)
   const detailRef = useRef(detail); detailRef.current = detail
   const state = useRef({ id, active, chatActive, available, target, onMaterials }); state.current = { id, active, chatActive, available, target, onMaterials }
-  const incoming = useRef(new Map<string, { revision: number; message: Message }>()), revision = useRef(0)
+  const liveMessages = useRef(new LiveMessageBuffer(READING_LIMITS.maxPage))
   const location = () => id ? locations.current.get(id) : undefined
   const refresh = async (isCurrent: () => boolean = () => true) => {
     const currentState = state.current, conversationId = currentState.id
     if (!conversationId || !currentState.active || !currentState.available || !currentState.chatActive && detailRef.current?.conversation.id === conversationId) return
-    const token = ++request.current, started = revision.current
+    const token = ++request.current, capture = liveMessages.current.begin(conversationId)
     const valid = () => request.current === token && state.current.active && state.current.available && state.current.id === conversationId && isCurrent()
     try {
       let position = locations.current.get(conversationId) ?? { initialized: false }
@@ -44,13 +45,14 @@ export function useConversationWindow({ api, id, active, chatActive, available, 
       const anchor = locations.current.get(conversationId)?.messageId
       if (anchor && anchor !== position.messageId && !result.messagePage.items.some(item => item.messageId === anchor)) return
       let messagePage = result.messagePage
-      for (const entry of incoming.current.values()) if (entry.revision > started) messagePage = updateLiveMessage(messagePage, entry.message, !position.messageId)
+      for (const message of capture.messages.values()) messagePage = updateLiveMessage(messagePage, message, !position.messageId)
       const previous = detailRef.current
-      setDetail({ ...result, messagePage, messages: messagePage.items.flatMap(item => item.message ? [item.message] : []), reading: previous?.conversation.id === conversationId ? mergeReadingState(previous.reading, result.reading) : result.reading })
+      setDetail(withMessagePage(result, messagePage, previous?.conversation.id === conversationId ? mergeReadingState(previous.reading, result.reading) : result.reading))
       state.current.onMaterials(conversationId, result.materials ?? [])
       setError(''); setPageEdges({ before: true, after: true })
       return true
     } catch (reason) { if (valid()) { setDetail(null); setError(errorText(reason)) } }
+    finally { liveMessages.current.finish(capture) }
   }
   const showLatest = async (isCurrent: () => boolean) => {
     if (!id || !active || !chatActive || !available || !isCurrent()) return false
@@ -59,10 +61,11 @@ export function useConversationWindow({ api, id, active, chatActive, available, 
     return Boolean(await refresh(isCurrent))
   }
   useEffect(() => {
+    const buffer = liveMessages.current
     request.current++; flight.current = 0; setPaging(false); setError('')
     if (!available) setDetail(null)
     if (active) void refresh()
-    return () => { request.current++ }
+    return () => { request.current++; buffer.clear() }
   }, [api, id, active, chatActive, available, target.requestId])
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined
@@ -73,16 +76,15 @@ export function useConversationWindow({ api, id, active, chatActive, available, 
     const unsubscribe = api.subscribe(event => {
       if (event.type === 'conversation:cleared' || event.type === 'conversation:deleted') {
         locations.current.delete(event.conversationId)
-        for (const [key, entry] of incoming.current) if (entry.message.conversationId === event.conversationId) incoming.current.delete(key)
+        liveMessages.current.clear(event.conversationId)
         if (event.conversationId === state.current.id) { request.current++; setDetail(null); schedule() }
       } else if (event.type === 'changed') schedule()
       else if (event.type === 'message' && state.current.active && state.current.chatActive && event.message.conversationId === state.current.id) {
-        incoming.current.set(event.message.id, { revision: ++revision.current, message: event.message })
-        if (incoming.current.size > READING_LIMITS.maxPage) incoming.current.delete(incoming.current.keys().next().value!)
+        liveMessages.current.add(event.message)
         setDetail(previous => {
           if (!previous || previous.conversation.id !== event.message.conversationId) return previous
           const messagePage = updateLiveMessage(previous.messagePage, event.message, !locations.current.get(event.message.conversationId)?.messageId)
-          return { ...previous, messagePage, messages: messagePage.items.flatMap(item => item.message ? [item.message] : []) }
+          return withMessagePage(previous, messagePage)
         })
         if (event.message.status !== 'streaming') schedule()
       }
@@ -94,19 +96,22 @@ export function useConversationWindow({ api, id, active, chatActive, available, 
     if (!active || !chatActive || !available || !id || flight.current || previous?.conversation.id !== id) return
     const cursor = direction === 'before' ? previous.messagePage.beforeCursor : previous.messagePage.afterCursor
     if (!cursor) return
-    const token = ++request.current, started = revision.current; flight.current = token; setPaging(true)
+    const token = ++request.current, capture = liveMessages.current.begin(id); flight.current = token; setPaging(true)
     const valid = () => token === request.current && state.current.id === id && state.current.active && state.current.chatActive && state.current.available
     try {
       const next = await api.request('getConversationView', { conversationId: id, limit: READING_LIMITS.page, [direction]: cursor })
       if (!valid()) return
       if (!next.messagePage.items.length) { setPageEdges(value => ({ ...value, [direction]: false })); return }
       let messagePage = mergeMessagePages(previous.messagePage, next.messagePage, direction)
-      for (const entry of incoming.current.values()) if (entry.revision > started) messagePage = updateLiveMessage(messagePage, entry.message, false)
+      for (const message of capture.messages.values()) messagePage = updateLiveMessage(messagePage, message, false)
       const anchor = locations.current.get(id)?.messageId
       if (anchor && !messagePage.items.some(item => item.messageId === anchor)) return
-      setDetail({ ...next, reading: mergeReadingState(detailRef.current?.reading ?? previous.reading, next.reading), messagePage, messages: messagePage.items.flatMap(item => item.message ? [item.message] : []) }); setPageEdges({ before: true, after: true })
+      setDetail(withMessagePage(next, messagePage, mergeReadingState(detailRef.current?.reading ?? previous.reading, next.reading))); setPageEdges({ before: true, after: true })
     } catch (reason) { if (valid()) setError(errorText(reason)) }
-    finally { if (flight.current === token) { flight.current = 0; setPaging(false) } }
+    finally {
+      liveMessages.current.finish(capture)
+      if (flight.current === token) { flight.current = 0; setPaging(false) }
+    }
   }
   const current = available && detail?.conversation.id === id ? detail : null
   const window: ChannelChatWindow | undefined = current ? { detail: current, pageActive: active && chatActive, focusMessage: target.focusMessage, focusApproval: target.focusApproval, paging, pageEdges,
