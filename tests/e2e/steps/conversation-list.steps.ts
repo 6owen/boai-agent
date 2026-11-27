@@ -1,6 +1,6 @@
 /*
  * [INPUT]: 会话管理中文场景、普通检索 Dialog、隔离 Electron fixture 与产品 IPC。
- * [OUTPUT]: 原生拖放时目标高度与落定后的头像区连续。
+ * [OUTPUT]: 原生拖放时目标高度与落定后的头像区连续，列表余白可直接取消置顶。
  * [OUTPUT]: 会话检索、分组折叠、原生鼠标排序及拖入头像置顶区、重启保留顺序、历史清理与空页回归。
  * [POS]: 会话列表 BDD 步骤；进程生命周期复用 Desktop。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -183,8 +183,20 @@ Then('重启后手动顺序和置顶状态仍然保留', async ({ runtime, listS
   await expect(regular).toBeHidden()
   await heading.click()
   await expect(regular).toBeVisible()
-  await context(runtime, listScenario.order[0], '取消置顶')
+  const tile = pinned.getByRole('button', { name: listScenario.order[0], exact: true })
+  const from = (await tile.boundingBox())!
+  const lowerArea = list(runtime).locator('.conversation-regular-drop')
+  const lower = (await lowerArea.boundingBox())!
+  const y = lower.y + lower.height - 16
+  await runtime.page.mouse.move(from.x + from.width / 2, from.y + from.height / 2)
+  await runtime.page.mouse.down()
+  await runtime.page.mouse.move(lower.x + lower.width / 2, y, { steps: 10 })
+  await runtime.page.mouse.move(lower.x + lower.width / 2 + 1, y)
+  await expect(lowerArea).toHaveAttribute('data-drop', 'inside')
+  await expect(lowerArea.getByText('拖到此处取消置顶', { exact: true })).toHaveCount(0)
+  await runtime.page.mouse.up()
   await expect(pinned).toHaveCount(0)
+  await expect(regular.getByRole('button', { name: listScenario.order[0], exact: true })).toBeVisible()
 })
 When('检索定位会话后排序并从右键菜单删除当前会话', async ({ runtime, listScenario }) => {
   const page = runtime.page

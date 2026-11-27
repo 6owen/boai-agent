@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 /*
- * [OUTPUT]: 核对拖影和置顶卡片使用员工名、等待 IPC 时的落点与话题菜单。
+ * [OUTPUT]: 核对置顶员工话题只在标题栏 Popover 查阅，侧栏余白可取消置顶。
+ * [OUTPUT]: 核对拖影和置顶卡片使用员工名、等待 IPC 时的落点。
  * [OUTPUT]: 核对 bobo 主聊统一展示、拖拽置顶与取消、置顶话题归属及空区回收。
  * [OUTPUT]: 聊天顶部和侧栏只让真正等待标题的首句闪烁。
  * [OUTPUT]: 列表夹具沿仅已发送消息的Props，不再向列表传入composer草稿。
@@ -19,7 +20,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import type { Conversation, DigitalAgent, Snapshot } from '../packages/shared/src/domain'
 import { ConversationList } from '../apps/electron/src/renderer/pages/conversations/-components/conversation-list'
-import { ConversationHeader } from '../apps/electron/src/renderer/pages/conversations/-components/conversation-header'
+import { ConversationHeader, ConversationTopics } from '../apps/electron/src/renderer/pages/conversations/-components/conversation-header'
 import { showErrorToast } from '../apps/electron/src/renderer/components/common/error-feedback'
 
 vi.mock('../apps/electron/src/renderer/components/common/error-feedback', () => ({ ErrorToast: () => null, showErrorToast: vi.fn() }))
@@ -203,7 +204,7 @@ it.each([
 it('moves an actual Bobo main chat into and out of the avatar shelf via drag', async () => {
   const main = room('bobo-main', { employeeChat: 'main', title: 'hi' })
   const topic = room('weather', { employeeChat: 'topic', title: '天气话题' })
-  props.snapshot.conversations.push(main, topic)
+  props.snapshot.conversations = [main, topic]
   let settlePin!: () => void
   props.onChange = vi.fn(() => new Promise<void>(resolve => { settlePin = resolve }))
   const transfer = { effectAllowed: '', dropEffect: '', setData: vi.fn(), setDragImage: vi.fn() }
@@ -235,17 +236,40 @@ it('moves an actual Bobo main chat into and out of the avatar shelf via drag', a
   await render()
   expect(entry().closest('[aria-label="置顶会话"]')).not.toBeNull()
   expect(entry().getAttribute('data-active-topic')).toBe('true')
-  expect(host.querySelector('#conversation-pin-topics-bobo-main button[aria-label="天气话题"]')?.getAttribute('aria-current')).toBe('page')
+  expect(host.querySelector('button[aria-label="天气话题"]')).toBeNull()
   await act(async () => settlePin())
   await openMenu()
-  await choose('收起话题')
-  expect(host.querySelector('#conversation-pin-topics-bobo-main')?.hasAttribute('hidden')).toBe(true)
+  expect(menuItem('收起话题')).toBeUndefined()
+  expect(menuItem('展开话题')).toBeUndefined()
+  await act(async () => document.querySelector('[role="menu"]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
   await drag(entry(), 'dragstart')
-  await drag(host.querySelector('[aria-label="普通会话"]')!, 'drop')
+  const ordinaryArea = host.querySelector('.conversation-regular-drop')!
+  expect(ordinaryArea.textContent).toBe('')
+  await drag(ordinaryArea, 'dragover')
+  expect(ordinaryArea.getAttribute('data-drop')).toBe('inside')
+  await drag(ordinaryArea, 'drop')
   expect(props.onChange).toHaveBeenLastCalledWith({ id: main.id, action: 'pin', pinned: false })
   expect(entry().closest('[aria-label="普通会话"]')).not.toBeNull()
+  expect(host.querySelector('button[aria-label="天气话题"]')?.getAttribute('aria-current')).toBe('page')
   await act(async () => settlePin())
   expect(entry().closest('[aria-label="置顶会话"]')).not.toBeNull()
+})
+
+it('opens visible topics for only the current employee from the chat header', async () => {
+  const current = room('current', { employeeChat: 'topic', title: '当前话题' })
+  const legacy = room('legacy', { title: '旧核心话题' })
+  const hidden = room('hidden-topic', { title: '已经删除', employeeChat: 'topic', list: { hidden: true } })
+  const other = room('other-topic', { title: '其他员工的话题', purpose: 'personal', employeeChat: 'topic', agentIds: ['other'] })
+  const onSelect = vi.fn()
+  await act(async () => root.render(h(ConversationTopics, {
+    conversation: current, conversations: [current, legacy, hidden, other], messageTimes: {}, onSelect,
+  })))
+  await act(async () => host.querySelector<HTMLButtonElement>('button[aria-label="话题列表"]')!.click())
+  const popover = document.querySelector('[data-slot="popover-content"]')!
+  expect([...popover.querySelectorAll('button')].map(item => item.textContent)).toEqual(['当前话题', '旧核心话题'])
+  expect(popover.querySelector('[aria-current="page"]')?.textContent).toBe('当前话题')
+  await act(async () => button('旧核心话题').click())
+  expect(onSelect).toHaveBeenCalledWith(legacy.id)
 })
 
 it('saves the same pin command from the ordinary employee menu', async () => {

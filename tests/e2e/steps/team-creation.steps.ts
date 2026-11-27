@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 核心话题可从聊天标题栏 Popover 核对当前会话。
  * [OUTPUT]: bobo主聊天按钮用于打开默认聊天，话题箭头独立控制折叠。
  * [OUTPUT]: 核对行尾箭头原位显现，按钮单独悬停时有底色。
  * [OUTPUT]: 核对核心助手改名和首聊在普通会话分组中可见。
@@ -240,6 +241,12 @@ Then('只保存一个核心会话和一条初始用户消息', async ({ runtime,
   await expect(heading.locator('.avatar.small img')).toHaveCount(1)
   const item = page.getByRole('navigation', { name: '会话列表' }).getByRole('button', { name: conversation.title, exact: true })
   await expect(item).toHaveText(conversation.title)
+  const topicListTrigger = page.getByRole('button', { name: '话题列表', exact: true })
+  await topicListTrigger.click()
+  const topicPopover = page.locator('[data-slot="popover-content"]').filter({ has: page.getByText('话题', { exact: true }) })
+  await expect(topicPopover.getByRole('button', { name: conversation.title, exact: true })).toHaveAttribute('aria-current', 'page')
+  await page.keyboard.press('Escape')
+  await expect(topicPopover).toBeHidden()
   const historyRow = item.locator('..')
   await expect(historyRow.locator('.avatar, .conversation-preview, .list-activity')).toHaveCount(0)
   expect((await historyRow.boundingBox())!.height).toBeLessThanOrEqual(34)
