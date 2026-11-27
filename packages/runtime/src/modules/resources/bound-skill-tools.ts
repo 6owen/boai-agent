@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 桌面技能以稳定资源 ID 路由并按需加载；绑定描述按实际 YAML 读取并兼容旧文件。
  * [OUTPUT]: 已装载核心指引的能力可直接调用，复杂流程再读配套Skill。
  * [OUTPUT]: 技能读取返回获准副本目录/完整文件版本，伴随脚本变更也拒绝旧读取；不执行脚本或授予命令权限。
  * [OUTPUT]: 绑定twitter-media时提供只读公共推文工具；调用前后沿原版本/绑定核权，无命令权限扩张。
@@ -12,7 +13,8 @@ import { readTwitterPost, twitterPostSchema } from '../media/twitter-post'
 import { join, relative, sep } from 'node:path'
 import type { EngineContext } from '../../contracts'
 import { authorizedResources, resourceVersion, readVersionedText, type ResourceVersion } from '../workspaces/environment-plan'
-import { desktopPluginSkill } from '../desktop-plugin/skill'
+import { DESKTOP_PLUGIN_SKILL_ID } from '@boai/shared/plugins/desktop-tools'
+import { boundSkillDescription } from './local-resources'
 
 export function createBoundSkillOperations(context: EngineContext) {
   const resources = authorizedResources(context.agent, context.conversation, context.resources).filter(item => item.kind === 'skill')
@@ -41,7 +43,7 @@ export function createBoundSkillOperations(context: EngineContext) {
       const items = await versions()
       const skills = await Promise.all(items.map(async version => {
         const content = await readVersionedText(join(version.resource.path, 'SKILL.md'), [version])
-        return { resourceId: version.resource.id, name: version.resource.name, description: /^description:\s*(.*)$/m.exec(content)?.[1] ?? '', contentHash: version.hash }
+        return { resourceId: version.resource.id, name: version.resource.name, description: boundSkillDescription(content), contentHash: version.hash }
       }))
       const plugin = await pluginSkill()
       await context.assertSkillAccess?.(resources.map(item => item.id)); context.signal.throwIfAborted()
@@ -49,7 +51,7 @@ export function createBoundSkillOperations(context: EngineContext) {
     } },
     { name: 'read_skill', description: 'Read the complete SKILL.md using resourceId from list_skills. Bound skills return their actual directory/file manifest and are checked against binding and file versions. Plugin-owned guides return source/pluginId and are available only while their plugin is enabled; they have no employee directory. Reading does not execute scripts or grant permission.', schema: z.object({ resourceId: z.string().min(1) }).strict(), execute: async (input: unknown) => {
       const { resourceId } = z.object({ resourceId: z.string() }).parse(input)
-      if (resourceId === desktopPluginSkill.resourceId) {
+      if (resourceId === DESKTOP_PLUGIN_SKILL_ID) {
         const skill = await pluginSkill()
         if (!skill) throw new Error('Agent Desktop 插件技能当前不可用；插件已停用或本轮未提供')
         return skill

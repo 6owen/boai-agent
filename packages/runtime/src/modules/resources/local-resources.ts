@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 桌面技能以稳定资源 ID 路由并按需加载；绑定描述按实际 YAML 读取并兼容旧文件。
  * [INPUT]: 本地资源目录、SKILL.md YAML 与受管数据根。
  * [OUTPUT]: 历史/活动成果枚举排除宿主团队文件归属标记，不进入用户列表或启动历史登记；本机展示兼容名称与受管导入严格名称规则分离；有界普通文件树/hash、统一技能元数据解析、复制导入和产物列表。
  * [POS]: resources 的文件校验与复制边界。
@@ -74,6 +75,15 @@ export function parseSkillDocument(text: string, { strictName = true }: { strict
   const warnings = Object.keys(fields).filter(key => !['name', 'description', 'license', 'compatibility', 'metadata'].includes(key)).map(key => `声明 ${key} 仅保留为说明，不自动改变员工权限或工具。`)
   if (!description) warnings.push('此 Skill 未填写 description。')
   return { name, description, warnings }
+}
+
+/** Older bound files can predate the structured SKILL.md importer. */
+export function boundSkillDescription(content: string): string {
+  try {
+    return parseSkillDocument(content, { strictName: false }).description
+  } catch {
+    return /^description:\s*(.*)$/m.exec(content)?.[1] ?? ''
+  }
 }
 
 export async function importLocalResource(dataPath: string, kind: Resource['kind'], source: string, resourceId: string = randomUUID()): Promise<Resource> {

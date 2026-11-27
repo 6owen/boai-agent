@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 桌面技能以稳定资源 ID 路由并按需加载；绑定描述按实际 YAML 读取并兼容旧文件。
  * [OUTPUT]: 绑定快照仍隔离新技能，启用插件的系统技能源独立可读；退役旧电脑技能不再分发。
  * [OUTPUT]: 2026-10-30 回归更新为Mastra官方记忆/原生归属合同；保留来源、调用预算和业务发布断言。
  * [OUTPUT]: 真实绑定脚本目录/相对文件清单与伴随文件变化、撤权检查，读取不执行脚本。
@@ -168,6 +169,26 @@ it('ordinary skill reading remains bound, detects changed bytes and rechecks liv
   await expect(read.execute({ resourceId: 's' })).rejects.toThrow('变更')
   permitted = false; await expect(list.execute({})).rejects.toThrow('revoked')
 })
+it('lists YAML descriptions and keeps already-bound legacy documents readable', async () => {
+  const root = await temporary()
+  const samples = [
+    { id: 'folded', content: '---\nname: folded\ndescription: >-\n  First line\n  second line\n---\nBody', description: 'First line second line' },
+    { id: 'quoted', content: '---\nname: quoted\ndescription: "text: with punctuation"\n---\nBody', description: 'text: with punctuation' },
+    { id: 'body', content: '---\nname: body\n---\nExample\ndescription: example only', description: '' },
+    { id: 'legacy', content: 'Historic guide\ndescription: original label\nBody', description: 'original label' },
+  ]
+  const resources = await Promise.all(samples.map(async ({ id, content }) => {
+    const path = join(root, id)
+    await mkdir(path)
+    await writeFile(join(path, 'SKILL.md'), content)
+    return { id, name: id, kind: 'skill', path }
+  }))
+  const context = { agent: { skillIds: resources.map(item => item.id), knowledgeIds: [] },
+    conversation: { kind: 'direct' }, resources, signal: new AbortController().signal } as unknown as EngineContext
+  const list = createBoundSkillOperations(context).find(tool => tool.name === 'list_skills')!
+  expect(await list.execute({})).toMatchObject({ skills: samples.map(({ id, description }) => ({ resourceId: id, description })) })
+})
+
 it('native ordinary conversations expose the same bound skill loader without creating Work', async () => {
   const root = await temporary(), skill = join(root, 'skill'); await mkdir(skill)
   await writeFile(join(skill, 'SKILL.md'), '---\nname: sample\ndescription: sample\n---\nRead before acting.')

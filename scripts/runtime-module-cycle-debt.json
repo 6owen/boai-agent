@@ -4,10 +4,9 @@
   "browser": ["collaboration", "employees", "workspaces"],
   "collaboration": ["automations"],
   "conversations": ["browser", "workspaces"],
-  "desktop-plugin": ["collaboration", "employees", "resources"],
   "employees": ["agent-state", "collaboration", "conversations", "resources", "sources", "workspaces"],
   "media": ["employees", "workspaces"],
-  "resources": ["desktop-plugin", "media", "sources", "workspaces"],
+  "resources": ["media", "sources", "workspaces"],
   "sources": ["browser", "workspaces"],
   "workspaces": ["employees"]
 }
