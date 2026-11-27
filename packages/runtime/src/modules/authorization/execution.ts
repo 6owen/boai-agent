@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 宿主执行与工具批准归 authorization；旧命令授权沿原事务与配置撤销。
  * [OUTPUT]: 2026-11-24 消费当前工具的短期原生批准凭据，保留只读与真实资源授权。
  * [OUTPUT]: 显式CLI权限仅核对员工已保存模式，受理后继续沿原审批和当前授权，不临时改权。
  * [INPUT]: 已冻结员工执行权限、具体操作和宿主审批/取消信号。
@@ -9,7 +10,19 @@
 import type { EngineContext } from '../../contracts'
 import type { DigitalAgent } from '@boai/shared/domain'
 import type { ExecutionPermission, ExecutionOperation } from '@boai/shared/domain/execution'
-import { hasToolAuthorization } from './tool-authorization'
+import { AsyncLocalStorage } from 'node:async_hooks'
+
+type Receipt = { runId: string; toolCallId: string; kind: ExecutionOperation['kind'] }
+const receipts = new AsyncLocalStorage<Receipt & { active: boolean }>()
+export async function withToolAuthorization<T>(receipt: Receipt, execute: () => Promise<T>): Promise<T> {
+  const lease = { ...receipt, active: true }
+  try { return await receipts.run(lease, execute) }
+  finally { lease.active = false }
+}
+export function hasToolAuthorization(runId: string, kind: ExecutionOperation['kind']) {
+  const receipt = receipts.getStore()
+  return receipt?.active === true && receipt.runId === runId && receipt.kind === kind
+}
 
 export async function authorizeExecution(context: Pick<EngineContext, 'agent' | 'signal' | 'approveOperation'> & Partial<Pick<EngineContext, 'runId'>>, operation: ExecutionOperation) {
   context.signal.throwIfAborted()

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 宿主执行与工具批准归 authorization；旧命令授权沿原事务与配置撤销。
  * [INPUT]: Host-bound employee selfie capability and original execution permissions.
  * [OUTPUT]: Shared private album metadata/removal tools for chat, tasks and native conversations.
  * [POS]: Thin self-identity tool adapter; host owns private-chat authorization and actual bytes.
@@ -6,7 +7,7 @@
  */
 import { z } from 'zod'
 import type { EngineContext } from '../../contracts'
-import { authorizeExecution } from '../employees/execution-permissions'
+import { authorizeExecution } from '../authorization/execution'
 import { selfieRemoveSchema } from './selfie-service'
 
 export function createSelfieOperations(context: EngineContext) {

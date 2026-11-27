@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 宿主执行与工具批准归 authorization；旧命令授权沿原事务与配置撤销。
  * [OUTPUT]: 任务知识操作以当前冻结环境绑定至 Mastra 工具。
  * [OUTPUT]: 2026-11-24 第三阶段：官方 Durable Agent/Session.steer、Workspace 文件工具、LocalSandbox 进程和原生 Trace；授权及发布保留业务适配。
  * [OUTPUT]: 官方 Workspace 文件工具与读取记录替代自建编辑/分页/搜索；BOAI仅提供路径授权和成果发布。
@@ -59,8 +60,7 @@ import { knowledgeInstructions } from '../../modules/resources/knowledge-tools'
 import { BoundSkillSource } from './bound-skill-source'
 import { createPresentationTools } from './presentation-tools'
 import { abortable, executeCommand } from './host-command'
-import { authorizeExecution } from '../../modules/employees/execution-permissions'
-import { hasToolAuthorization } from '../../modules/employees/tool-authorization'
+import { authorizeExecution, hasToolAuthorization } from '../../modules/authorization/execution'
 import { toolPermission } from './controller-permissions'
 import { employeeCommandScope } from '../../modules/workspaces/directory-command'
 import { workingDirectoryTarget, workingFilePath } from '../../modules/workspaces/working-directory'

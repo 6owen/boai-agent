@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 宿主执行与工具批准归 authorization；旧命令授权沿原事务与配置撤销。
  * [OUTPUT]: 内置浏览器命令沿 browser 模块的实现与类型，桌面、本机和 API 共用原合同。
  * [INPUT]: Official tool approval events, BOAI tool contracts and saved employee permissions.
  * [OUTPUT]: Native Session approval/resumption with existing approval UI and exact-call receipts.
@@ -9,7 +10,7 @@ import { createTool, type Tool } from '@mastra/core/tools'
 import type { Session } from '@mastra/core/agent-controller'
 import type { EngineContext } from '../../contracts'
 import type { ExecutionOperation } from '@boai/shared/domain/execution'
-import { withToolAuthorization } from '../../modules/employees/tool-authorization'
+import { withToolAuthorization } from '../../modules/authorization/execution'
 import { desktopPluginCallSchema, desktopPluginWrites } from '@boai/shared/plugins/desktop-tools'
 import { browserPluginCallSchema, browserPluginWrites } from '@boai/shared/plugins/browser-tools'
 import { parseBrowserSingleCommand } from '../../modules/browser/commands'

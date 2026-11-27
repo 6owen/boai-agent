@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 宿主执行与工具批准归 authorization；旧命令授权沿原事务与配置撤销。
  * [OUTPUT]: 用户手动改名在写入成功时使待生成标题的原请求失效，失败保留原状态和显式重试。
  * [OUTPUT]: 真实快照每次只扫描一次已加载消息，保留现有会话排序和已完成预览。
  * [OUTPUT]: 使用私有配置凭据的执行事件保持 JSON 类型和历史遮蔽文字。
@@ -390,7 +391,7 @@ describe('local product service', () => {
     expect(approval.rememberAllowed).toBe(true)
     await expect(service.handle('approve', { id: approval.id, approved: false, always: true })).rejects.toThrow('不能保存')
     expect((await snapshot(service)).commandPermissions).toEqual([])
-    const permissions = (service as unknown as { commandPermissions: import('../packages/runtime/src/modules/employees/command-permissions').CommandPermissions }).commandPermissions
+    const permissions = (service as unknown as { commandPermissions: import('../packages/runtime/src/modules/authorization/command-grants').CommandPermissions }).commandPermissions
     const grant = permissions.grant.bind(permissions)
     const failure = vi.spyOn(permissions, 'grant').mockImplementationOnce(async (tx, employee) => { await grant(tx, employee); throw new Error('授权事务提交失败') })
     await expect(service.handle('approve', { id: approval.id, approved: true, always: true })).rejects.toThrow('授权事务提交失败')

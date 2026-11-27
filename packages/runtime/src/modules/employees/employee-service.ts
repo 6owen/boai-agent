@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 宿主执行与工具批准归 authorization；旧命令授权沿原事务与配置撤销。
  * [OUTPUT]: 2026-11-09 bobo忽略项目配置；旧API员工从项目之外的明确批准可初始化授权目录列表。
  * [OUTPUT]: 模板ID/版本首次创建由宿主核验；模板来源与版本化默认项目目录分别保留。
  * [OUTPUT]: 默认项目沿配置版本核验保存，单独改变默认值不取消既有工作。
@@ -45,7 +46,7 @@ import { workingDirectoryTarget } from '../workspaces/working-directory'
 import { isDeepStrictEqual } from 'node:util'
 import { z } from 'zod'
 import type { AgentInput, DigitalAgent, Connection, Resource, MemoryEntry } from '@boai/shared/domain'
-import { commandPermissionCollection, canRememberCommands } from './command-permissions'
+import { commandPermissionCollection, canRememberCommands } from '../authorization/command-grants'
 import { ProductStore, type StoredRecord, type RecordTransaction } from '../../adapters/storage/product-store'
 import { WorkspaceService } from '../workspaces/workspace-service'
 import { avatarPresets, AVATAR_IMAGE_MAX_LENGTH } from '@boai/shared/domain/avatars'

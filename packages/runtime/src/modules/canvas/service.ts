@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 宿主执行与工具批准归 authorization；旧命令授权沿原事务与配置撤销。
  * [OUTPUT]: 画板命令的类型与输入校验沿插件公开协议，宿主和执行适配器直接使用。
  * [INPUT]: Enabled canvas plugin, a trusted employee execution and the same-profile desktop host bridge.
  * [OUTPUT]: Scope-bound calls, cancellation/draining, original workspace exports and durable source cleanup with offline managed-file fallback.
@@ -15,7 +16,7 @@ import { pluginAvailability, readPluginSettingsSchema } from '@boai/shared/plugi
 import { applicationPlugins } from '@boai/shared/plugins/catalog'
 import type { EngineContext } from '../../contracts'
 import { canvasAgentRequestSchema, type CanvasAgentRequest } from '@boai/canvas-plugin/tools'
-import { authorizeExecution } from '../employees/execution-permissions'
+import { authorizeExecution } from '../authorization/execution'
 import { assertTaskPathAccess, initializeWorkspace, workspaceTarget, writeWorkspaceFile } from '../workspaces/file-access'
 
 export type CanvasHostRequest = (input: CanvasHostEnvelope) => Promise<CanvasHostResponse>

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 宿主执行与工具批准归 authorization；旧命令授权沿原事务与配置撤销。
  * [OUTPUT]: 2026-11-24 第三阶段：Mastra 第三阶段回归覆盖原生文件/MCP/快照/Trace、实时补充、断流及 OM 致命失败退出；完整结果见实施记录。
  * [INPUT]: Official metric records and historical activity receipts.
  * [OUTPUT]: Cache/reasoning cost deduplication, provider totals, unknown/partial pricing and legacy/native isolation.
@@ -51,7 +52,7 @@ it('reads every official metrics page and deletes only the requested conversatio
 })
 
 it('expires an exact-call approval receipt before detached work can reuse it', async () => {
-  const { withToolAuthorization, hasToolAuthorization } = await import('../packages/runtime/src/modules/employees/tool-authorization')
+  const { withToolAuthorization, hasToolAuthorization } = await import('../packages/runtime/src/modules/authorization/execution')
   let release!: () => void, late!: Promise<boolean>
   const pending = new Promise<void>(resolve => { release = resolve })
   await withToolAuthorization({ runId: 'run', toolCallId: 'tool-1', kind: 'file' }, async () => {
