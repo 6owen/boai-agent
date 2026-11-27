@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 画板插件协议统一精确来源身份与清理筛选，各宿主按原生命周期中止并等待。
  * [INPUT]: Scoped canvas intents, SDK documents and conditional local record changes.
  * [OUTPUT]: Atomic document/receipt commits and frozen source cleanup with retryable preserved-file checks.
  * [POS]: Node canvas repository; neither renderer state nor remote resources are authoritative.
@@ -12,7 +13,7 @@ import { createTLSchema, type TLRecord } from '@tldraw/tlschema'
 import type { SerializedSchema, SerializedStore } from 'tldraw'
 import {
   CANVAS_LIMITS, CANVAS_SDK_VERSION, CanvasError, canvasBoardIdSchema, canvasChangesSchema,
-  canvasOperationIdSchema, canvasScopeSchema, canvasScopeFilterSchema, validateCanvasDocument, validateCanvasJson,
+  canvasOperationIdSchema, canvasScopeSchema, canvasScopeFilterSchema, canvasScopeMatchesFilter, sameCanvasScope, validateCanvasDocument, validateCanvasJson,
   type CanvasBoard, type CanvasBoardSummary, type CanvasChanges, type CanvasDocument,
   type CanvasDiscardResult, type CanvasMutationResult, type CanvasReadResult, type CanvasReceipt, type CanvasRecord, type CanvasScope, type CanvasScopeFilter,
 } from './protocol'
@@ -63,7 +64,6 @@ export function canvasSummary(board: CanvasBoard): CanvasBoardSummary {
 function assertNotAborted(signal?: AbortSignal) {
   if (signal?.aborted) throw new CanvasError('CANCELLED', '画板操作已取消，已提交结果可通过原操作编号核对')
 }
-function sameScope(left: CanvasScope, right: CanvasScope) { return left.employeeId === right.employeeId && left.conversationId === right.conversationId }
 
 /** Validate with the pinned SDK in Node; no Editor, DOM or renderer is needed for hand gestures. */
 export function validateCanvasSdkDocument(input: unknown): CanvasDocument {
@@ -178,7 +178,7 @@ export class CanvasDocumentRepository {
         let saved: { schemaVersion: number; owner: CanvasScope }
         try { saved = JSON.parse(metadata.toString()) as typeof saved }
         catch { throw new CanvasError('INVALID_DOCUMENT', '画板工作范围信息损坏') }
-        if (saved.schemaVersion !== 1 || !sameScope(canvasScopeSchema.parse(saved.owner), scope)) throw new CanvasError('FORBIDDEN', '画板目录归属不匹配')
+        if (saved.schemaVersion !== 1 || !sameCanvasScope(canvasScopeSchema.parse(saved.owner), scope)) throw new CanvasError('FORBIDDEN', '画板目录归属不匹配')
       } else {
         const handle = await open(metadataPath, 'wx', 0o600)
         try { await handle.writeFile(JSON.stringify({ schemaVersion: 1, owner: canvasScopeSchema.parse(scope) })); await handle.sync() }
@@ -217,7 +217,7 @@ export class CanvasDocumentRepository {
       this.assertIntegrity(stored)
       if ('kind' in stored && stored.kind === 'deleted') throw new CanvasError('NOT_FOUND', '画板来源已清理，原操作编号不能重建此画板')
       if (stored.schemaVersion !== 1 || !stored.board || !Array.isArray(stored.receipts) || stored.receipts.length > CANVAS_LIMITS.receipts) throw new Error('invalid envelope')
-      if (stored.board.boardId !== boardId || !sameScope(canvasScopeSchema.parse(stored.board.owner), scope)) throw new CanvasError('FORBIDDEN', '画板不属于当前工作范围')
+      if (stored.board.boardId !== boardId || !sameCanvasScope(canvasScopeSchema.parse(stored.board.owner), scope)) throw new CanvasError('FORBIDDEN', '画板不属于当前工作范围')
       if (!Number.isSafeInteger(stored.board.revision) || stored.board.revision < 0 || typeof stored.board.title !== 'string' || typeof stored.board.createdAt !== 'string' || typeof stored.board.updatedAt !== 'string') throw new Error('invalid identity')
       if (canvasHash(stored.board.document) !== stored.board.documentHash) throw new CanvasError('EXTERNAL_CHANGE', '画板文档校验值不符；原文件保持不变')
       const document = validateCanvasSdkDocument(stored.board.document)
@@ -393,7 +393,7 @@ export class CanvasDocumentRepository {
         const value = JSON.parse(metadata.toString()) as { schemaVersion: number; owner: CanvasScope }
         const owner = canvasScopeSchema.parse(value.owner)
         if (value.schemaVersion !== 1 || canvasScopeKey(owner) !== name) { preserved.push(name); continue }
-        if ((!scope.employeeId || owner.employeeId === scope.employeeId) && (!scope.conversationId || owner.conversationId === scope.conversationId)) result.push(owner)
+        if (canvasScopeMatchesFilter(owner, scope)) result.push(owner)
       } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') preserved.push(name) }
     }
     return { scopes: result, preserved }
@@ -415,7 +415,7 @@ export class CanvasDocumentRepository {
       }
       for (const target of plan.targets) {
         canvasScopeSchema.parse(target.scope); canvasBoardIdSchema.parse(target.boardId)
-        if (!/^[a-f0-9]{64}$/.test(target.fileHash) || filter.employeeId && target.scope.employeeId !== filter.employeeId || filter.conversationId && target.scope.conversationId !== filter.conversationId) throw new CanvasError('INVALID_DOCUMENT', '画板清理目标归属不匹配')
+        if (!/^[a-f0-9]{64}$/.test(target.fileHash) || !canvasScopeMatchesFilter(target.scope, filter)) throw new CanvasError('INVALID_DOCUMENT', '画板清理目标归属不匹配')
       }
       return plan
     }
@@ -474,7 +474,7 @@ export class CanvasDocumentRepository {
             const value = JSON.parse(bytes.toString()) as StoredBoard | CanvasTombstone
             this.assertIntegrity(value)
             if ('kind' in value && value.kind === 'deleted') {
-              if (value.schemaVersion !== 1 || value.boardId !== boardId || !sameScope(value.owner, owner) || value.cleanupId !== cleanupId && canvasBytesHash(bytes) !== target.fileHash) throw new Error('invalid tombstone')
+              if (value.schemaVersion !== 1 || value.boardId !== boardId || !sameCanvasScope(value.owner, owner) || value.cleanupId !== cleanupId && canvasBytesHash(bytes) !== target.fileHash) throw new Error('invalid tombstone')
               result.deletedBoards.push({ scope: owner, boardId })
               return
             }
