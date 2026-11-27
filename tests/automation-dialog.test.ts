@@ -3,10 +3,8 @@
  * [OUTPUT]: 检查启停待决时操作栏保持可用，以及已有日程首次打开直接可保存。
  * [OUTPUT]: 2026-11-27 验证标题开关、图标顺序、主色运行提交及计划摘要只读。
  * [OUTPUT]: 2026-11-27 定时页夹具使用新会话定位回调。
- * [OUTPUT]: 手动运行queued/running均隐藏查看本次执行过程；定位聊天、原运行提交锁及终态清理保持。
- * [OUTPUT]: 手动运行聊天导航核对原conversation/run/occurrence身份，四种终态仍移除查看按钮。
+ * [OUTPUT]: 手动运行收到排队或运行回执即恢复立即运行，工具栏无聊天定位，未知回执复用原请求。
  * [OUTPUT]: 对话创建允许独立读取列表偏好，仍不写入或执行计划。
- * [OUTPUT]: 手动本次查看按钮仅运行期间显示；历史/自动执行及完成/失败/取消/中断后的按钮均隐藏。
  * [OUTPUT]: 本轮覆盖复制/员工入口、定时运行防连点、失败过程、严格私有判断及保留原预算的显式继续；实际范围以各用例为准。
  * [OUTPUT]: 对话创建仅委托普通会话导航、无弹窗/自动提交；手动创建编辑原Portal、草稿和关闭保护保持。
  * [INPUT]: 生产任务页面/Dialog/表单/草稿守卫、React Portal与可控保存回执。
@@ -37,46 +35,41 @@ beforeEach(() => {
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); localStorage.clear(); toast.dismiss(); vi.unstubAllGlobals() })
 const button = (text: string) => [...document.querySelectorAll<HTMLButtonElement>('button')].find(value => value.textContent === text)!
 
-test.each((['queued', 'running'] as const).flatMap(initial => (['completed', 'failed', 'cancelled', 'interrupted'] as const).map(terminal => ({ initial, terminal }))))('manual $initial hides the process action and keeps chat navigation until $terminal', async ({ initial, terminal: terminalStatus }) => {
-  let resolve!: (o: AutomationOccurrence) => void
-  const occurrence = { id: 'once', automationId: plan.id, conversationId: 'task-chat', startedAt: new Date().toISOString(), status: initial, stateVersion: 1, runIds: [] } as unknown as AutomationOccurrence
-  const request = vi.fn(async (method: string) => method === 'runAutomation' ? new Promise<AutomationOccurrence>(done => { resolve = done }) : { conversationId: 'employee-chat', messageId: 'published-trigger' })
-  const api = { request, subscribe: () => () => {} } as unknown as DesktopApi
-  const navigate = vi.fn()
-  const render = async (occurrences: AutomationOccurrence[]) => act(async () => root.render(h(AutomationRunActions, { api, automationId: plan.id, occurrences, active: true, onNavigateMessage: navigate })))
-  const historical = { ...occurrence, id: 'historical', status: 'completed', runIds: ['old-run'] } as AutomationOccurrence
-  await render([historical])
-  expect(host.querySelector('[aria-label="查看本次执行过程"]')).toBeNull()
-  expect(host.querySelector('[aria-label="定位聊天记录"]')).toBeNull()
-  await render([{ ...historical, status: 'running' }])
-  expect(button('本次运行中').disabled).toBe(true)
-  expect(host.querySelector('[aria-label="查看本次执行过程"]')).toBeNull()
-  expect(host.querySelector('[aria-label="定位聊天记录"]')).toBeNull()
-  await render([historical])
-  await act(async () => { button('立即运行').click(); button('正在提交…')?.click() })
+test.each(['queued', 'running'] as const)('manual run resets as soon as a %s receipt arrives', async status => {
+  let resolve!: (value: AutomationOccurrence) => void
+  const occurrence = { id: 'once', automationId: plan.id, conversationId: 'task-chat', status, runIds: ['run'] } as AutomationOccurrence
+  const request = vi.fn((_method: string, _input: unknown) => new Promise<AutomationOccurrence>(done => { resolve = done }))
+  const api = { request } as unknown as DesktopApi
+  await act(async () => root.render(h(AutomationRunActions, { api, automationId: plan.id, active: true })))
+
+  const run = button('立即运行')
+  await act(async () => { run.click(); run.click() })
   expect(request).toHaveBeenCalledOnce()
-  expect(button('正在提交…').disabled).toBe(true)
+  expect(button('正在提交…')).toBe(run)
+  expect(run.disabled).toBe(true)
   await act(async () => resolve(occurrence))
-  expect(navigate).not.toHaveBeenCalled()
-  expect(button('本次运行中').disabled).toBe(true)
-  expect(host.querySelector('[aria-label="查看本次执行过程"]')).toBeNull()
-  expect(host.querySelector<HTMLButtonElement>('[aria-label="定位聊天记录"]')!.disabled).toBe(true)
-  await render([{ ...occurrence, status: 'running', runIds: ['run'] }])
-  expect(host.querySelector('[aria-label="查看本次执行过程"]')).toBeNull()
-  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="定位聊天记录"]')!.click())
-  expect(navigate).toHaveBeenCalledWith('employee-chat', 'published-trigger', expect.any(Function), {
-    conversationId: 'task-chat', runId: 'run', agentId: undefined, occurrenceId: 'once',
-  })
-  await render([{ ...occurrence, status: terminalStatus, stateVersion: 2 }])
-  expect(host.querySelector('[aria-label="查看本次执行过程"]')).toBeNull()
-  expect(host.querySelector('[aria-label="定位聊天记录"]')).toBeNull()
-  expect(button('立即运行').disabled).toBe(false)
-  await render([{ ...historical, status: 'running' }])
-  expect(host.querySelector('[aria-label="查看本次执行过程"]')).toBeNull()
-  expect(host.querySelector('[aria-label="定位聊天记录"]')).toBeNull()
-  await render([]) // History cleanup/eviction must not revive the accepted running receipt.
+  expect(button('立即运行')).toBe(run)
+  expect(run.disabled).toBe(false)
+  expect([...host.querySelectorAll('button')]).toEqual([run])
+
+  await act(async () => run.click())
+  expect(request).toHaveBeenCalledTimes(2)
+  expect(request.mock.calls[1][1]).not.toEqual(request.mock.calls[0][1])
+  await act(async () => resolve({ ...occurrence, id: 'next' }))
+})
+
+test('a missing run receipt can be checked with the original request ID', async () => {
+  const request = vi.fn((_method: string, _input: unknown) => Promise.resolve({ status: 'queued' }))
+    .mockRejectedValueOnce(new Error('回执未返回'))
+  const api = { request } as unknown as DesktopApi
+  await act(async () => root.render(h(AutomationRunActions, { api, automationId: plan.id, active: true })))
+  await act(async () => button('立即运行').click())
+  await act(async () => button('核对本次运行').click())
+  expect(request).toHaveBeenCalledTimes(2)
+  expect(request.mock.calls[1]).toEqual(request.mock.calls[0])
   expect(button('立即运行').disabled).toBe(false)
 })
+
 async function change(element: HTMLInputElement | HTMLTextAreaElement, value: string) {
   await act(async () => {
     const prototype = element instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype

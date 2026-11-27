@@ -5,13 +5,13 @@
  * [OUTPUT]: 执行记录入口及单次定位打开统一左右Dialog；任务内历史列表沿原查询。
  * [OUTPUT]: 列表右键删除固定所选任务，经统一AlertDialog确认后沿原删除接口提交；取消不提交，成功同步移除并退出已删任务详情。
  * [OUTPUT]: 定时任务侧栏委托独立标签/排序管理；说明移至标题Tooltip，原执行与详情行为保持。
- * [OUTPUT]: 立即运行只提交并全程loading防重复，仅保留定位聊天图标；执行记录仍可沿原入口打开。
+ * [OUTPUT]: 立即运行只在提交期间显示忙态；收到受理回执即恢复，定位聊天沿执行记录行。
  * [OUTPUT]: 重回定时任务页及首次异步载入详情也播放Panel reveal，后台数据刷新不重播。
  * [OUTPUT]: 对话创建转到会话页并预选管理定时任务技能；本页只保留手动创建/编辑Dialog及任务详情/历史。
  * [OUTPUT]: 详情/历史内容切换沿设置页Panel reveal，后台刷新不重播；滚动条占位由真实滚动区保持。
  * [OUTPUT]: 编辑主色/暂停中性/删除危险色；删除Popover只保留确认标题与按钮，取消不提交，失败保留确认入口。
  * [INPUT]: 计划投影、Shell页面状态、单员工编辑器与普通bobo会话导航。
- * [OUTPUT]: 40px操作行下统一执行记录列表，检索和分页留在主区，点击记录或查看图标打开Shell执行面板，运行按钮只受理并显示loading。
+ * [OUTPUT]: 40px操作行下统一执行记录列表，检索和分页留在主区，有会话的记录可定位到话题。
  * [POS]: 定时任务唯一管理页；员工入口只跳转至本页，隐藏停止读取。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
@@ -106,7 +106,7 @@ export function SchedulePage({ api, snapshot, active, sidebarShown, divider, loc
             <ScheduleEnabledSwitch key={definition.id} api={api} id={definition.id} enabled={definition.enabled} disabled={busy} />
             <Tooltip><TooltipTrigger delay={500} render={<Button variant="ghost" size="icon" aria-label="编辑" disabled={busy} onClick={() => openDialog({ kind: 'manual', id: definition.id, initialDefinition: definition, key: crypto.randomUUID() })} />}><Pencil /></TooltipTrigger><TooltipContent>编辑</TooltipContent></Tooltip>
             <DeleteAutomationButton key={`delete:${definition.id}`} name={definition.name} busy={busy} onConfirm={() => void run(async () => { await api.request('deleteAutomation', { id: definition.id }); onLocation({ kind: 'overview' }) })} />
-            <AutomationRunActions key={`run:${definition.id}`} api={api} automationId={definition.id} occurrences={view.occurrences} active={active} busy={busy} onNavigateMessage={onNavigateMessage} />
+            <AutomationRunActions key={`run:${definition.id}`} api={api} automationId={definition.id} active={active} busy={busy} />
           </div>
         </div>
         <AutomationDetails definition={definition} snapshot={snapshot} />

@@ -1,53 +1,40 @@
 /*
- * [OUTPUT]: 2026-11-27 立即运行移至标题栏，采用共享主色按钮和播放图标，按钮左侧留出 ml-2。
- * [OUTPUT]: 定位聊天同时携带本次occurrence，右侧保留同一次执行过程。
- * [INPUT]: 已保存任务、本次真实记录和主聊天导航。
- * [OUTPUT]: 隐藏查看本次执行过程按钮；定位聊天仅跟随本组件手动发起且尚未结束的occurrence，结束后清除本次身份。
- * [OUTPUT]: 单次提交锁与整个运行期间loading；定位聊天由用户点击，未知回执复用请求ID。
- * [POS]: 定时任务标题栏的运行操作。
+ * [INPUT]: 已保存任务身份和手动运行请求。
+ * [OUTPUT]: 请求提交期间防重复，收到受理回执后恢复立即运行；未知回执复用请求 ID。
+ * [POS]: 定时任务标题栏的运行按钮，聊天定位入口归执行记录。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
-import { useEffect, useRef, useState } from 'react'
-import type { AutomationOccurrence } from '@boai/shared/domain'
-import { AUTOMATION_ONGOING_STATUSES } from '@boai/shared/domain/automations'
+import { useRef, useState } from 'react'
 import type { DesktopApi } from '@boai/shared/ipc'
 import { errorText, showErrorToast } from '@/components/common'
 import { LoaderCircle, Play } from '@/components/icons'
 import { Button } from '@/components/ui/button'
-import { ExecutionMessageButton, type ExecutionMessageNavigation } from '@/components/detail-panel/execution-message-button'
 
-export function AutomationRunActions({ api, automationId, occurrences, active, busy = false, onNavigateMessage }: {
-  api: DesktopApi; automationId: string; occurrences: AutomationOccurrence[]; active: boolean; busy?: boolean
-  onNavigateMessage: ExecutionMessageNavigation
+export function AutomationRunActions({ api, automationId, active, busy = false }: {
+  api: DesktopApi; automationId: string; active: boolean; busy?: boolean
 }) {
-  const [accepted, setAccepted] = useState<AutomationOccurrence>(), [submitting, setSubmitting] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [unknown, setUnknown] = useState(false)
-  const [manualOccurrenceId, setManualOccurrenceId] = useState<string>()
   const locked = useRef(false), requestId = useRef<string | undefined>(undefined)
-  useEffect(() => {
-    // The live list owns the accepted occurrence once observed; an evicted or
-    // deleted history row must not revive an old running receipt indefinitely.
-    if (accepted && occurrences.some(item => item.id === accepted.id)) setAccepted(undefined)
-    if (manualOccurrenceId && occurrences.some(item => item.id === manualOccurrenceId && !(AUTOMATION_ONGOING_STATUSES as readonly string[]).includes(item.status))) setManualOccurrenceId(undefined)
-  }, [accepted, manualOccurrenceId, occurrences])
-  const candidates = occurrences.filter(item => item.automationId === automationId)
-  if (accepted && !candidates.some(item => item.id === accepted.id)) candidates.push(accepted)
-  const ongoing = candidates.find(item => (AUTOMATION_ONGOING_STATUSES as readonly string[]).includes(item.status))
-  const occurrence = candidates.find(item => item.id === manualOccurrenceId && (AUTOMATION_ONGOING_STATUSES as readonly string[]).includes(item.status))
-  const running = submitting || Boolean(ongoing)
   const start = async () => {
-    if (!active || busy || locked.current || ongoing) return
-    locked.current = true; setSubmitting(true)
+    if (!active || busy || locked.current) return
+    locked.current = true
+    setSubmitting(true)
     requestId.current ??= crypto.randomUUID()
     try {
-      const value = await api.request('runAutomation', { id: automationId, requestId: requestId.current })
-      setManualOccurrenceId(value.id); setAccepted(value); setUnknown(false); requestId.current = undefined
-    } catch (error) { setUnknown(true); showErrorToast(errorText(error)) }
-    finally { locked.current = false; setSubmitting(false) }
+      await api.request('runAutomation', { id: automationId, requestId: requestId.current })
+      requestId.current = undefined
+      setUnknown(false)
+    } catch (error) {
+      setUnknown(true)
+      showErrorToast(errorText(error))
+    } finally {
+      locked.current = false
+      setSubmitting(false)
+    }
   }
-  const label = submitting ? '正在提交…' : ongoing ? '本次运行中' : unknown ? '核对本次运行' : '立即运行'
-  return <div className="flex items-center gap-1">
-    {occurrence && <ExecutionMessageButton api={api} run={{ id: occurrence.runIds[0] ?? '', conversationId: occurrence.conversationId }} occurrenceId={occurrence.id} active={active && Boolean(occurrence.runIds.length)} onNavigate={onNavigateMessage} />}
-    <Button variant="default" className="ml-2" disabled={!active || busy || running} aria-busy={running} onClick={() => void start()}>{running ? <LoaderCircle className="animate-spin" /> : <Play />}{label}</Button>
-  </div>
+  const label = submitting ? '正在提交…' : unknown ? '核对本次运行' : '立即运行'
+  return <Button variant="default" className="ml-2" disabled={!active || busy || submitting} aria-busy={submitting} onClick={() => void start()}>
+    {submitting ? <LoaderCircle className="animate-spin" /> : <Play />}{label}
+  </Button>
 }
