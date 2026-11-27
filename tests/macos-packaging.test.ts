@@ -1,6 +1,7 @@
 /*
  * [INPUT]: Actual package/candidate configuration and electron-builder's dependency file matcher.
  * [OUTPUT]: Mac ARM/Intel retain their launchers, helpers, checksums and runtime assets while excluding debug/development files and foreign binaries.
+ * [OUTPUT]: Keep the DuckDB binding, stage its ARM dylib outside the ASAR list, and omit the paused voice engine.
  * [POS]: Packaging filter regression; no Electron launch, external model or personal data.
  * [PROTOCOL]: Update Header and tests/.folder.md when this file changes.
  */
@@ -48,14 +49,19 @@ it.each(['arm64', 'x64'])('Mac %s package and candidate filters preserve runnabl
     for (const path of [
       'node_modules/agent-browser/bin/agent-browser.js', 'node_modules/agent-browser/skills/agent-browser/SKILL.md',
       'node_modules/@mastra/core/dist/index.js', 'node_modules/@libsql/darwin-' + arch + '/index.node',
-      'node_modules/sherpa-onnx-darwin-' + arch + '/libonnxruntime.dylib', 'node_modules/playwright-core/lib/coreBundle.js',
+      'node_modules/@duckdb/node-bindings-darwin-arm64/duckdb.node', 'node_modules/@duckdb/node-bindings-darwin-x64/libduckdb.dylib',
+      'node_modules/playwright-core/lib/coreBundle.js',
       'node_modules/@extend-ai/react-xlsx/dist/duke_sheets_wasm_bg.wasm', 'node_modules/example/LICENSE', 'node_modules/example/NOTICE.md',
     ]) expect(accepts(path), path).toBe(true)
     for (const path of [
       'node_modules/@mastra/core/dist/index.js.map', 'node_modules/example/index.d.ts', 'node_modules/example/index.d.mts', 'node_modules/example/index.d.cts',
+      'node_modules/@duckdb/node-bindings-darwin-arm64/libduckdb.dylib',
+      'node_modules/sherpa-onnx-node/index.js', 'node_modules/sherpa-onnx-darwin-' + arch + '/libonnxruntime.dylib',
+      'node_modules/@boai/voice-input-plugin/node_modules/sherpa-onnx-node/addon.js',
       ...['test', 'tests', '__tests__', 'docs', 'examples', 'coverage'].map(name => `node_modules/parent/node_modules/example/${name}/fixture.js`),
     ]) expect(accepts(path), path).toBe(false)
     expect(filter(join(root, 'node_modules/example/docs'), directoryStat)).toBe(false)
+    expect(filter(join(root, 'node_modules/sherpa-onnx-node'), directoryStat)).toBe(false)
 
     const info = { config, projectDir: root, buildResourcesDir: 'resources', debugLogger: { isEnabled: false } }
     const appFilters = getMainFileMatchers(root, '/fixture/output', macro, config.mac, { info }, '/fixture/output', false).map((matcher: { createFilter: () => (path: string, info: typeof fileStat) => boolean }) => matcher.createFilter())

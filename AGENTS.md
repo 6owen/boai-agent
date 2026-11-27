@@ -1,4 +1,5 @@
 <!--
+[OUTPUT]: 2026-11-26 macOS arm64签名前裁剪DuckDB架构，安装包过滤暂停的语音引擎；实际对照归22组03。
 [OUTPUT]: 2026-11-25定时执行直达员工话题，与旧看板后台解耦；看板入口隐藏、前端保留，定时页面布局保持。
 [OUTPUT]: 应用内通知统一从右上角 Sonner 显示，含会话清理、任务与更新；通知中心管理分发。模型连接保存后静默刷新，Agent 版本仅在启动时检查。
 [OUTPUT]: 2026-11-24 Session原生工具审批/取消、官方Metrics与DuckDB费用估算接入；宿主路径/来源授权及显式预算保留，验证和预览版本见ai-docs/implementation/2026-11-24-mastra-agent-controller.md。
