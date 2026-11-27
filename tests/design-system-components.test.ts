@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 计时跨分钟、停止更新与卸载由公开计时组件保证。
  * [OUTPUT]: 基础和Tabs/Popover/Composer均保持桌面与网站同源；禁用/标签合同保持。
  * [INPUT]: 共享React组件与原Renderer兼容入口。
  * [OUTPUT]: 同一实现、真实禁用与原生标签/输入关联回归。
@@ -9,6 +10,7 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
+import { ElapsedTime } from '@boai/ui/loading-state'
 import { Button, Field, FieldLabel, Input, Card, Skeleton } from '@boai/ui'
 import { Button as HostButton } from '../apps/electron/src/renderer/components/ui/button'
 import { Input as HostInput } from '../apps/electron/src/renderer/components/ui/input'
@@ -47,4 +49,27 @@ it('field labels and native input attributes survive the public package boundary
   expect(input.value).toBe('草稿')
   expect(input.readOnly).toBe(true)
   expect(input.getAttribute('aria-describedby')).toBe('description')
+})
+
+it('updates elapsed text at tenths of seconds and releases the timer when hidden or removed', async () => {
+  vi.useFakeTimers()
+  try {
+    const startedAt = '2026-01-01T00:00:00.000Z'
+    vi.setSystemTime(new Date('2026-01-01T00:00:59.900Z'))
+    const render = (active: boolean) => act(async () => root.render(createElement(ElapsedTime, { startedAt, active })))
+    await render(true)
+    expect(host.textContent).toBe('59.9s')
+    await act(async () => { vi.advanceTimersByTime(100) })
+    expect(host.textContent).toBe('1m 0.0s')
+    await render(false)
+    expect(vi.getTimerCount()).toBe(0)
+    await act(async () => { vi.advanceTimersByTime(200) })
+    expect(host.textContent).toBe('1m 0.0s')
+    await render(true)
+    expect(host.textContent).toBe('1m 0.2s')
+    await act(async () => root.render(null))
+    expect(vi.getTimerCount()).toBe(0)
+  } finally {
+    vi.useRealTimers()
+  }
 })
