@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 会话快照按单次消息、运行与轮次遍历生成；渠道末页继续取自 SQLite。
  * [OUTPUT]: 宿主 Trace、官方存储 Trace 与执行事件通过统一的结构化观测序列化保留 JSON 字段类型。
  * [OUTPUT]: 已授权会话消息的窗口、当前轮及身份投影归 conversations；模型角色/图片装配归 API 适配器。
  * [OUTPUT]: 网关目录归连接领域；在途刷新用独立引用，结束或删除后回收且不接受迟到回执。
@@ -325,6 +326,7 @@ import { reactionEmojis, type ReactionEmoji } from '@boai/shared/domain/message-
 import { AutomationNotifications, queueAutomationNotice } from './modules/automations/automation-notifications'
 import type { AutomationNoticeReceipt } from '@boai/shared/domain/automations'
 import type { StoredTraceSpan } from '@boai/shared/domain/traces'
+import { conversationOverviews, conversationMessageTimes } from './modules/conversations/list-overview'
 import { CONVERSATION_TITLE_MAX_LENGTH, conversationListUpdates, isChannelConversation, isEmployeeMainChat, type ConversationListChange } from '@boai/shared/domain/conversation-list'
 import { contactTagIds } from '@boai/shared/domain/contact-list'
 import { ConversationHistory } from './modules/conversations/history'
@@ -2073,13 +2075,17 @@ export class AppService {
 
   private async snapshot(): Promise<Snapshot> {
     const connections = await Promise.all([...this.connections.values()].map(async connection => ({ ...connection, hasApiKey: await this.connectionCredentials.has(connection.id) })))
-    const channelUnread = [...this.conversations.values()].some(isChannelConversation) ? await this.reading.unreadCounts([...this.conversations.values()].filter(isChannelConversation).map(room => room.id)) : new Map<string, number>()
-    const conversations = (await Promise.all([...this.conversations.values()].map(async conversation => {
-      const runs = [...this.runs.values()].filter(run => run.conversationId === conversation.id).sort((a, b) => a.createdAt.localeCompare(b.createdAt)), turns = [...this.scheduler.turns.values()].filter(turn => turn.conversationId === conversation.id).sort((a, b) => a.createdAt.localeCompare(b.createdAt))
-      const messages = isChannelConversation(conversation) ? (await this.store.conversationMessageRows({ conversationId: conversation.id, limit: 2 })).map(row => JSON.parse(row.source) as Message).sort((a, b) => a.sequence - b.sequence) : this.conversationMessages(conversation.id)
-      const activity: Conversation['activity'] = runs.some(run => run.status === 'waiting_approval') ? 'waiting_approval' : runs.some(run => run.status === 'running') ? 'running' : runs.some(run => run.status === 'queued') || turns.some(turn => turn.status === 'queued') ? 'queued' : turns.at(-1)?.status === 'failed' || runs.at(-1)?.status === 'failed' ? 'failed' : 'idle'
-      return { ...this.withConversationTitleState(conversation), ...(isChannelConversation(conversation) ? { channelUnreadCount: channelUnread.get(conversation.id) ?? 0 } : {}), activity, lastMessageAt: messages.at(-1)?.createdAt, lastMessagePreview: messages.filter(message => message.status === 'completed').at(-1)?.content.slice(0, 120) ?? '' }
-    }))).sort((a, b) => (b.lastMessageAt ?? '').localeCompare(a.lastMessageAt ?? '') || b.createdAt.localeCompare(a.createdAt))
+    const rooms = [...this.conversations.values()]
+    const channelIds = rooms.filter(isChannelConversation).map(room => room.id)
+    const channelUnread = channelIds.length ? await this.reading.unreadCounts(channelIds) : new Map<string, number>()
+    const channelMessages = new Map(await Promise.all(channelIds.map(async id => {
+      const rows = await this.store.conversationMessageRows({ conversationId: id, limit: 2 })
+      return [id, rows.map(row => JSON.parse(row.source) as Message)] as const
+    })))
+    const conversations = conversationOverviews({
+      rooms: rooms.map(room => this.withConversationTitleState(room)), messages: this.messages.values(),
+      runs: this.runs.values(), turns: this.scheduler.turns.values(), channelMessages, channelUnread,
+    })
     return clone({ userProfile: await this.userProfile.get(), agents: [...this.employees.values()], commandPermissions: await this.commandPermissions.list(), conversations, connections, resources: [...this.resources.values()], approvals: [...this.approvals.values()], dataPath: this.dataPath })
   }
   private async detail(id: string, pageMessages?: Message[]): Promise<ConversationDetail> {
@@ -2739,7 +2745,7 @@ export class AppService {
 
   private async updateConversationList(change: ConversationListChange) {
     this.getConversation(change.id)
-    const times = Object.fromEntries([...this.conversations.keys()].map(id => [id, this.conversationMessages(id).at(-1)?.createdAt ?? '']))
+    const times = () => conversationMessageTimes(this.messages.values())
     const updates = conversationListUpdates([...this.conversations.values()], change, times).map(item => change.action === 'rename' ? { ...item, updatedAt: now() } : item)
     await this.store.write(updates.map(item => record('conversations', item)))
     for (const item of updates) this.conversations.set(item.id, item)
