@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 日期与时区计算沿 shared/domain/calendar。
  * [OUTPUT]: 持久标识的 JSON 字节摘要使用共用编码，字段及顺序由本业务传入。
  * [OUTPUT]: 仅笔记日期可反思；沿真实版本化笔记来源保存日记/成长/心情，删除失效且不伪造聊天。
  * [OUTPUT]: 情绪更新保留实际时间与来源，反思沿原记忆权限读取及失效；独立候选评估不修改预设。
@@ -9,6 +10,7 @@
  * [POS]: State in ProductStore; state revisions never mutate employee configVersion.
  * [PROTOCOL]: Update Header and owning .folder.md when changed.
  */
+import { localCalendarDate } from '@boai/shared/domain/calendar'
 import { jsonSha256 as digest } from '../../json-digest'
 import { updateAgentStateSchema, type AgentEmotion, type AgentPersonalityState, type AgentStateView, type AgentTravel } from '@boai/shared/domain/agent-profile'
 import type { Conversation, DigitalAgent, Message, MemoryEntry, MemoryView } from '@boai/shared/domain'
@@ -22,7 +24,6 @@ const collection = 'agentPersonalityStates'
 const key = (agentId: string, conversationId?: string) => digest([agentId, conversationId ?? null])
 const empty = (agentId: string, conversationId?: string): AgentPersonalityState => ({ id: key(agentId, conversationId), agentId, ...(conversationId ? { conversationId } : {}), revision: 0, updatedAt: '' })
 const elapsed = (at: number, from: string) => Math.max(0, at - Date.parse(from)) || 0
-const localDay = (at: number | string) => { const date = new Date(at); return [date.getFullYear(), date.getMonth(), date.getDate()].join('-') }
 function decay(emotion: AgentEmotion | undefined, hours: number, at: number) {
   if (!emotion) return { mood: 'cheerful', valence: 7, energy: 7 }
   const weight = Math.max(0, 1 - elapsed(at, emotion.updatedAt) / (hours * 3600_000))
@@ -199,8 +200,8 @@ export class AgentStateService {
       for (const parent of sourceMemories) { const row = await tx.get<MemoryEntry>('memory', parent.id); if (!row || row.ownerAgentId !== agentId || row.version !== parent.version || memoryStatus(row) !== 'active') throw new Error('成长记忆来源已失效') }
       if ((await tx.list<MemoryForget>('memoryForgets')).some(row => row.ownerAgentId === agentId && (row.sourceMessageIds.some(id => messageIds.includes(id)) || row.sourceMemoryIds.some(id => sourceMemories.some(parent => parent.id === id))))) throw new Error('成长来源已被忘记')
       const state = await tx.get<AgentPersonalityState>(collection, key(agentId)) ?? empty(agentId)
-      const timestamp = new Date(at).toISOString(), day = localDay(at)
-      if (state.traits?.some(item => localDay(item.createdAt) === day || item.text === text.trim())) return
+      const timestamp = new Date(at).toISOString(), day = localCalendarDate(at)
+      if (state.traits?.some(item => localCalendarDate(item.createdAt) === day || item.text === text.trim())) return
       state.traits = [...(state.traits ?? []), { id: digest([agentId, conversationId, messageIds, text]), text: text.trim(), createdAt: timestamp, sourceConversationId: conversationId, sourceConversationIds, sourceMessageIds: messageIds, sourceMemories, ...(memory ? { memory } : {}) }].slice(-15)
       state.revision++; state.updatedAt = timestamp
       await tx.put({ collection, id: state.id, value: state })

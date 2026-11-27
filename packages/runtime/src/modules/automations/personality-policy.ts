@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 日期与时区计算沿 shared/domain/calendar。
  * [OUTPUT]: 仅笔记日期可反思；沿真实版本化笔记来源保存日记/成长/心情，删除失效且不伪造聊天。
  * [OUTPUT]: 旅行按员工/来源日去重，返程两周后可重新考虑；不混入员工自动化。
  * [OUTPUT]: 员工全日反思以实际来源日期去重；旧来源/失败/换主聊天不重放。
@@ -8,14 +9,13 @@
  * [POS]: Pure personality policy for the shared Mastra heartbeat; not employee business automation.
  * [PROTOCOL]: Update Header and owning .folder.md when changed.
  */
+import { localCalendarDate } from '@boai/shared/domain/calendar'
 import type { Conversation, MemoryEntry, Message } from '@boai/shared/domain'
 import { normalizeAgentProfile, type AgentProfile, type AgentBehaviorDefinition, type AgentBehaviorRun, type AgentPersonalityState } from '@boai/shared/domain/agent-profile'
 
 export const PERSONALITY_HEARTBEAT = 'personality-heartbeat'
 export const personalityKinds = ['reflection', 'travel', 'emotion', 'greeting'] as const
 export const hasPersonalityActivity = (profile: AgentProfile) => profile.features.emotions || profile.features.growth || profile.features.travel || normalizeAgentProfile(profile).proactive.enabled
-export const personalityDate = (at: number) => { const d = new Date(at); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
-const localDay = personalityDate
 const normalizeDay = (value?: string) => { const parts = value?.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/); return parts ? `${parts[1]}-${parts[2].padStart(2, '0')}-${parts[3].padStart(2, '0')}` : undefined }
 /** Admission only. Actual message/material/memory authority is checked by the host before reading. */
 export function reflectionRooms(agentId: string, target: Conversation, rooms: Conversation[]) {
@@ -40,24 +40,24 @@ export function personalityBehavior(profile: AgentProfile, room: Conversation, i
 export function personalityDue(profile: AgentProfile, behavior: AgentBehaviorDefinition, messages: Message[], runs: AgentBehaviorRun[], state: AgentPersonalityState | undefined, at: number, reflectedDays: readonly string[] = [], notes: readonly MemoryEntry[] = []): { sourceMessageId?: string; sourceMemoryId?: string; periodKey?: string; reflectionDay?: string } | undefined {
   const completed = messages.filter(message => (behavior.kind === 'reflection' || message.conversationId === behavior.conversationId) && message.status === 'completed').sort((a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? ''))
   if (behavior.kind === 'reflection') {
-    const hour = new Date(at).getHours(), today = localDay(at)
+    const hour = new Date(at).getHours(), today = localCalendarDate(at)
     if (hour < 10) return
-    const eligible = completed.filter(message => Number.isFinite(Date.parse(message.createdAt)) && (hour >= 23 ? localDay(Date.parse(message.createdAt)) <= today : localDay(Date.parse(message.createdAt)) < today))
+    const eligible = completed.filter(message => Number.isFinite(Date.parse(message.createdAt)) && (hour >= 23 ? localCalendarDate(Date.parse(message.createdAt)) <= today : localCalendarDate(Date.parse(message.createdAt)) < today))
     const relevant = runs.filter(run => run.kind === 'reflection' || run.behaviorId === 'builtin-reflection')
     const consumed = new Set(reflectedDays)
     // One employee diary per actual source day, including failed/interrupted attempts. Legacy guards remain consumed.
     for (const run of relevant) {
       const legacySource = !run.reflectionDay && completed.find(message => message.id === run.sourceMessageId)
-      const day = run.reflectionDay ?? (legacySource ? localDay(Date.parse(legacySource.createdAt)) : normalizeDay(run.periodKey))
+      const day = run.reflectionDay ?? (legacySource ? localCalendarDate(Date.parse(legacySource.createdAt)) : normalizeDay(run.periodKey))
       if (day) consumed.add(day)
     }
     const sources = [
       ...eligible.filter(message => !relevant.some(run => run.sourceMessageId === message.id)).map(message => ({ at: message.createdAt, sourceMessageId: message.id })),
-      ...notes.filter(note => !note.diary && Number.isFinite(Date.parse(note.createdAt)) && (hour >= 23 ? localDay(Date.parse(note.createdAt)) <= today : localDay(Date.parse(note.createdAt)) < today)).map(note => ({ at: note.createdAt, sourceMemoryId: note.id })),
+      ...notes.filter(note => !note.diary && Number.isFinite(Date.parse(note.createdAt)) && (hour >= 23 ? localCalendarDate(Date.parse(note.createdAt)) <= today : localCalendarDate(Date.parse(note.createdAt)) < today)).map(note => ({ at: note.createdAt, sourceMemoryId: note.id })),
     ].sort((a, b) => b.at.localeCompare(a.at))
-    const last = sources.find(source => !consumed.has(localDay(Date.parse(source.at))))
+    const last = sources.find(source => !consumed.has(localCalendarDate(Date.parse(source.at))))
     if (!last) return
-    const reflectionDay = localDay(Date.parse(last.at)), { at: _at, ...source } = last
+    const reflectionDay = localCalendarDate(Date.parse(last.at)), { at: _at, ...source } = last
     return { ...source, periodKey: reflectionDay, reflectionDay }
   }
   const lastUser = completed.filter(message => message.senderType === 'user').at(-1)
@@ -65,14 +65,14 @@ export function personalityDue(profile: AgentProfile, behavior: AgentBehaviorDef
   const relevant = runs.filter(run => run.behaviorId === behavior.id && (behavior.kind === 'travel' || run.conversationId === behavior.conversationId))
   // An attempted decision consumes its input/day, including failed or interrupted outcomes. Never replay on restart.
   if (behavior.kind === 'emotion' && relevant.some(run => run.sourceMessageId === lastUser.id)) return
-  const hour = new Date(at).getHours(), day = localDay(at)
+  const hour = new Date(at).getHours(), day = localCalendarDate(at)
   let periodKey: string | undefined
   if (behavior.kind === 'travel') {
     if (hour < 10) return
     if (!state?.travel?.active && relevant.some(run => run.sourceMessageId === lastUser.id) && (!state?.travel?.returnedAt || at - Date.parse(state.travel.returnedAt) < 14 * 24 * 3600_000)) return
-    if (state?.travel?.active && localDay(Date.parse(state.travel.startedAt)) === day && !state.travel.events.length) return
+    if (state?.travel?.active && localCalendarDate(Date.parse(state.travel.startedAt)) === day && !state.travel.events.length) return
     const lastEvent = state?.travel?.events.at(-1)
-    if (lastEvent && localDay(Date.parse(lastEvent.at)) === day) return
+    if (lastEvent && localCalendarDate(Date.parse(lastEvent.at)) === day) return
     periodKey = day
   }
   if (periodKey && relevant.some(run => normalizeDay(run.periodKey) === periodKey)) return

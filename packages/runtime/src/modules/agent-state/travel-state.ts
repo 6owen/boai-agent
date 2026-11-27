@@ -1,14 +1,15 @@
 /*
  * [INPUT]: Persisted virtual journey and validated state action, host clock and source room.
+ * [OUTPUT]: 日期与时区计算沿 shared/domain/calendar。
  * [OUTPUT]: Atomic day/event/budget/mood/journal transitions and retained trip history.
  * [POS]: Pure travel state rules; virtual expenses never perform payments or alter work.
  * [PROTOCOL]: Update Header and owning .folder.md when changed.
  */
+import { localCalendarDate } from '@boai/shared/domain/calendar'
 import type { z } from 'zod'
 import type { AgentPersonalityState, AgentTravel, agentStateActionSchema } from '@boai/shared/domain/agent-profile'
 
 export const DEFAULT_TRAVEL_BUDGET = 1000
-const date = (at: string) => { const d = new Date(at); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
 export function travelTransition(state: AgentPersonalityState, change: z.infer<typeof agentStateActionSchema>, timestamp: string, conversationId?: string): Pick<AgentPersonalityState, 'travel' | 'travelHistory'> {
   let travel = state.travel, history = state.travelHistory ?? []
   const archive = (trip: AgentTravel) => { history = [...history.filter(item => item.startedAt !== trip.startedAt), trip].slice(-50) }
@@ -26,7 +27,7 @@ export function travelTransition(state: AgentPersonalityState, change: z.infer<t
     travel = { ...travel, initialBudget: travel.initialBudget ?? budget, budget: Math.round((budget - spend) * 100) / 100,
       day: Math.min(7, travel.day + 1), mood: change.mood ?? travel.mood ?? 'curious',
       events: [...travel.events, { at: timestamp, text: change.text, ...scope }].slice(-30),
-      journals: [...(travel.journals ?? []), ...(change.journal ? [{ at: timestamp, date: date(timestamp), text: change.journal.text, sources: change.journal.sources, ...scope }] : [])].slice(-30) }
+      journals: [...(travel.journals ?? []), ...(change.journal ? [{ at: timestamp, date: localCalendarDate(timestamp), text: change.journal.text, sources: change.journal.sources, ...scope }] : [])].slice(-30) }
     if (change.returnHome || travel.day >= 7 || travel.budget! < 100) travel = { ...travel, active: false, returnedAt: timestamp }
   } else if (change.action === 'travel-mood') {
     if (!travel?.active) throw new Error('尚未开始旅行')

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 日期与时区计算沿 shared/domain/calendar。
  * [OUTPUT]: 2026-11-24 活动读取保留运行与官方指标，旧回执兼容且不双计。
  * [OUTPUT]: 实际外部阶段退出补齐普通调用结束时间；缺少终态计量保持未知，已知部分不清空，完整回执/预算归属/API观测不改。
  * [INPUT]: ProductStore、资料草稿与宿主调用/技能/执行观测。
@@ -6,6 +7,7 @@
  * [POS]: 本机资料用例；预算权威仍在 WorkRepository。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { isValidTimeZone } from '@boai/shared/domain/calendar'
 import { z } from 'zod'
 import type { AgentRun, BudgetModelCall, Message, ModelUsage, Resource, WorkItem } from '@boai/shared/domain'
 import { avatarPresets, AVATAR_IMAGE_MAX_LENGTH } from '@boai/shared/domain/avatars'
@@ -17,7 +19,7 @@ import { aggregateActivity, type ExecutionIntervals, type ProfileModelCall, type
 const avatarSchema = z.discriminatedUnion('kind', [z.object({ kind: z.literal('text') }).strict(), z.object({ kind: z.literal('preset'), id: z.enum(avatarPresets.map(item => item.id)) }).strict(), z.object({ kind: z.literal('image'), dataUrl: z.string().max(AVATAR_IMAGE_MAX_LENGTH) }).strict()])
 export const userProfileSchema = z.object({ expectedRevision: z.number().int().nonnegative(), displayName: z.string().trim().refine(value => [...value].length >= 1 && [...value].length <= 40, '显示名称需要 1–40 个字符'), username: z.string().trim().nullable().transform(value => value || null).refine(value => value === null || /^[a-zA-Z0-9_-]{3,32}$/.test(value), '用户名需要 3–32 位字母、数字、下划线或连字符'), avatar: avatarSchema }).strict()
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value, '无效日期')
-export const activityQuerySchema = z.object({ from: date, to: date, timezone: z.string().max(100).refine(value => { try { new Intl.DateTimeFormat('en', { timeZone: value }); return true } catch { return false } }, '无效时区') }).strict().refine(value => value.to >= value.from && Date.parse(value.to) - Date.parse(value.from) <= 366 * 86_400_000, '日期范围最多 367 天')
+export const activityQuerySchema = z.object({ from: date, to: date, timezone: z.string().max(100).refine(isValidTimeZone, '无效时区') }).strict().refine(value => value.to >= value.from && Date.parse(value.to) - Date.parse(value.from) <= 366 * 86_400_000, '日期范围最多 367 天')
 export class ProfileRepository {
   constructor(private readonly store: ProductStore, private readonly modelMetrics?: (runIds: string[]) => Promise<ModelMetricCall[]>) {}
   async get(): Promise<LocalUserProfile> {

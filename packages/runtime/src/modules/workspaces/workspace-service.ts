@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 日期与时区计算沿 shared/domain/calendar。
  * [OUTPUT]: contexts 按共享场景表编译员工来源与状态；默认通信场景由工作区装配统一选择。
  * [OUTPUT]: 将真实会话kind/channel交给共享人格编译器，工作执行保留对应聊天表达规则。
  * [OUTPUT]: 获准记忆明确保存时间与事件时间不同，记录归属不等于内容主体；不改原记忆正文/权限。
@@ -12,6 +13,7 @@
  * [POS]: 工作区文件格式唯一来源，初始人格及记忆行为保持不变。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { localCalendarDate } from '@boai/shared/domain/calendar'
 import { BOBO_SOUL, DEFAULT_EMPLOYEE_SOUL } from '@boai/shared/domain/agent-presets'
 import { promptSourceNames, isAgentSourceName, defaultAgentProfile, type AgentSourceName, type AgentProfile, type AgentStateView, type PromptScene } from '@boai/shared/domain/agent-profile'
 import { promptSourceDefaults } from '@boai/shared/domain/agent-prompts'
@@ -36,7 +38,7 @@ function memoryDate(entry: MemoryEntry) {
   if (entry.diary?.date && /^\d{4}-\d{2}-\d{2}$/.test(entry.diary.date)) return entry.diary.date
   const date = new Date(entry.createdAt)
   if (!Number.isFinite(date.getTime())) return undefined
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+  return localCalendarDate(date)
 }
 function memoryBody(entries: MemoryEntry[], daily = false) {
   const projected: string[] = []; let bytes = 0

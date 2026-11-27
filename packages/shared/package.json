@@ -486,6 +486,7 @@
     "./appearance/options": "./src/appearance/options.ts",
     "./ipc/desktop-diagnostics": "./src/ipc/desktop-diagnostics.ts",
     "./domain/task-diagnosis": "./src/domain/task-diagnosis.ts",
+    "./domain/calendar": "./src/domain/calendar.ts",
     "./domain/context-handoff": "./src/domain/context-handoff.ts"
   },
   "dependencies": {

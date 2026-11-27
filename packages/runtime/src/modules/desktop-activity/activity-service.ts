@@ -1,10 +1,12 @@
 /*
+ * [OUTPUT]: 日期与时区计算沿 shared/domain/calendar。
  * [OUTPUT]: 持久标识的 JSON 字节摘要使用共用编码，字段及顺序由本业务传入。
  * [INPUT]: Runtime operation contract and Opted-in host OCR samples, original ProductStore and explicitly generated report text.
  * [OUTPUT]: Independent capture/OCR capabilities and fallback records, paginated exact-session sources/themes and source-bound report cache.
  * [POS]: Desktop activity domain; never substitutes chat history or generates fictional activity.
  * [PROTOCOL]: Update Header and owning .folder.md when changed.
  */
+import { localCalendarDate } from '@boai/shared/domain/calendar'
 import { jsonSha256 as hash } from '../../json-digest'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
@@ -19,7 +21,7 @@ import { clusterActivityAnalyses } from './activity-analysis'
 
 const settingsCollection = 'desktopActivitySettings', samplesCollection = 'desktopActivitySamples', reportsCollection = 'desktopActivityReports', analysesCollection = 'desktopActivityAnalyses'
 const eventsCollection = 'desktopActivityInputEvents'
-const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(s => { const d = new Date(`${s}T00:00:00`); return Number.isFinite(+d) && localDay(d) === s }, '日期无效')
+const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(s => { const d = new Date(`${s}T00:00:00`); return Number.isFinite(+d) && localCalendarDate(d) === s }, '日期无效')
 const range = z.object({ from: day, to: day, search: z.string().max(200).optional(), offset: z.number().int().nonnegative().optional(), limit: z.number().int().min(1).max(200).optional() }).strict()
 const memoryRange = z.object({ from: day.optional(), to: day.optional(), search: z.string().max(200).optional(), offset: z.number().int().nonnegative().optional(), limit: z.number().int().min(1).max(50).optional() }).strict().refine(value => !!value.from === !!value.to, '日期范围需要同时提供起止日期')
 const sampleIds = z.array(z.string().uuid()).min(1).max(160)
@@ -41,7 +43,6 @@ const analysisSave = z.object({ from: day, to: day, items: z.array(analysisItem)
 const hasCurrentSources = (record: Pick<ActivityReport | ActivityAnalysis, 'sampleIds' | 'sourceHash'>, samples: Map<string, ActivitySample>) => record.sampleIds.length > 0
   && record.sampleIds.every(id => samples.has(id))
   && record.sourceHash === hash(record.sampleIds.map(id => [id, samples.get(id)!.hash]))
-function localDay(date: Date) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` }
 function bounds(from: string, to: string) {
   const start = new Date(`${from}T00:00:00`), end = new Date(`${to}T00:00:00`); end.setDate(end.getDate() + 1)
   if (+end <= +start || +end - +start > 32 * 86400000) throw new ApplicationValidationError('INVALID_INPUT', '日期范围需要为 1 至 31 天')

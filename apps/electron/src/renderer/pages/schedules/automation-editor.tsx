@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 日期与时区计算沿 shared/domain/calendar。
  * [OUTPUT]: 打开已有任务时按保存版本初始化，未改的日程可直接保存，新日程仍核对预览。
  * [OUTPUT]: 单次日期/时间沿原编辑器保存和预览，已保存时区保持；bobo可作为执行员工，消费后的计划仍可编辑说明。
  * [OUTPUT]: 普通任务固定员工和手动模式，定时编辑保持原表单。
@@ -11,6 +12,7 @@
  * [POS]: 定时任务共用编辑表单，Dialog与旧详情入口共用EditorFrame/草稿守卫和唯一自动化服务。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
+import { localCalendarDate } from '@boai/shared/domain/calendar'
 import { useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { AutomationDefinition, AutomationInput, AutomationOwner, LaunchProfile, Snapshot } from '@boai/shared/domain'
 import { isCoreAgent } from '@boai/shared/domain/core-agent'
@@ -28,15 +30,14 @@ export type AutomationEditorMode = 'manual' | 'assistant' | 'monitor' | 'task'
 type Form = Omit<AutomationInput, 'id' | 'expectedRevision' | 'requestId'> & Required<Pick<AutomationInput, 'taskKind' | 'conversationPolicy' | 'notificationPolicy'>>
 type Props = { api: DesktopApi; snapshot: Snapshot; id?: string; initialDefinition?: AutomationDefinition; owner?: AutomationOwner; mode?: AutomationEditorMode; hideTitle?: boolean; onBusyChange?(busy: boolean): void; onClose(): void; onSaved(value: AutomationDefinition, created: boolean): void }
 const pendingPrefix = 'boai:automation:pending-creation'
-const dateValue = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 // Older plans may store a lower bound separately from their monthly day. Display
 // the first matching date without rewriting either saved field on a name edit.
 function monthlyDate(form: Form) {
-  const start = form.startsOn ?? dateValue(new Date()), day = form.dayOfMonth ?? Number(start.slice(8))
+  const start = form.startsOn ?? localCalendarDate(new Date()), day = form.dayOfMonth ?? Number(start.slice(8))
   let date = new Date(`${start}T12:00:00`)
   for (let month = 0; month < 12; month++) {
     const candidate = new Date(date.getFullYear(), date.getMonth(), day, 12)
-    if (candidate.getMonth() === date.getMonth() && dateValue(candidate) >= start) return dateValue(candidate)
+    if (candidate.getMonth() === date.getMonth() && localCalendarDate(candidate) >= start) return localCalendarDate(candidate)
     date = new Date(date.getFullYear(), date.getMonth() + 1, 1, 12)
   }
   return start
@@ -155,7 +156,7 @@ function AutomationEditor({ api, snapshot, definition, owner, mode = 'manual', h
             <span className="schedule-frequency-title">频率</span>
             <div className="schedule-frequency-controls">
               <SelectField className="schedule-frequency-select h-(--control-height)" aria-label="频率" value={rule} onValueChange={value => {
-                const startsOn = value === 'monthly' || value === 'once' ? form.startsOn ?? dateValue(new Date()) : undefined
+                const startsOn = value === 'monthly' || value === 'once' ? form.startsOn ?? localCalendarDate(new Date()) : undefined
                 change({ frequency: value === 'workdays' ? 'weekly' : value as Form['frequency'], startsOn,
                   ...(value === 'monthly' ? { dayOfMonth: Number(startsOn!.slice(8)) } : {}),
                   time: value === 'hourly' ? '00:00' : form.frequency === 'hourly' ? '09:00' : form.time,

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 日期与时区计算沿 shared/domain/calendar。
  * [OUTPUT]: 团队规划接口归宿主合同；普通网关请求身份由共享的模型选择和调用记录生成。
  * [OUTPUT]: 宿主执行与工具批准归 authorization；旧命令授权沿原事务与配置撤销。
  * [OUTPUT]: 工作额度与结果证据沿 shared/domain/work 的业务规则判断；预留、核权和结算由宿主事务负责。
@@ -250,6 +251,7 @@
  * [POS]: packages/runtime/src/service.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { localCalendarDate } from '@boai/shared/domain/calendar'
 import { WorkUnavailableError, workBudgetDeadline, workLimitReached, workEvidenceError } from '@boai/shared/domain/work'
 import { jsonSha256 } from './json-digest'
 import { asEmployeeTopic, isScheduledEmployeeTopic, migrateScheduledEmployeeTopics } from './modules/automations/employee-topics'
@@ -265,7 +267,7 @@ import { initializeBundledSkills } from './modules/resources/bundled-skills'
 import { retireComputerUse } from './modules/resources/retire-computer-use'
 import { availableReactionEmojis, reactionInputSchema, type ReactionInput, type ReactionResult } from './modules/conversations/reaction-tools'
 import { AgentBehaviorService } from './modules/automations/agent-behaviors'
-import { quietTime, reflectionRooms, personalityDate } from './modules/automations/personality-policy'
+import { quietTime, reflectionRooms } from './modules/automations/personality-policy'
 import { reflectionContext } from './modules/agent-state/reflection-context'
 import { defaultAgentProfile, normalizeAgentProfile, agentBehaviorResultSchema, type AgentBehaviorDefinition, type AgentBehaviorRun } from '@boai/shared/domain/agent-profile'
 import { AgentProfileService } from './modules/employees/agent-profile-service'
@@ -2361,7 +2363,7 @@ export class AppService {
         if (backend?.kind === 'acp-local') fail('此运行方式不支持员工行为')
         const apiKey = connection ? await this.apiKey(connection) : ''; key = apiKey
         const lastMessage = this.conversationContextMessages(conversation.id).filter(message => message.status === 'completed').at(-1)
-        if (behavior.kind === 'reflection') reflection = await this.reflectionInput(agent, conversation, run.reflectionDay ?? personalityDate(Date.parse(run.sourceMessageId ? this.messages.get(run.sourceMessageId)?.createdAt ?? run.startedAt : run.startedAt)))
+        if (behavior.kind === 'reflection') reflection = await this.reflectionInput(agent, conversation, run.reflectionDay ?? localCalendarDate(Date.parse(run.sourceMessageId ? this.messages.get(run.sourceMessageId)?.createdAt ?? run.startedAt : run.startedAt)))
         const material = reflection ? { messages: reflection.messages, refs: reflection.messages.flatMap(message => message.materialSources ?? this.snapshots.get(message.runId ?? '')?.materialRefs ?? []) } : lastMessage ? await this.materialMessages(conversation, lastMessage.id, agent.id) : { messages: [], refs: [] }
         const messages = reflection ? material.messages : material.messages.filter(message => message.status === 'completed').slice(-30)
         if (reflection && !messages.length && !reflection.notes.length) return undefined
@@ -4399,7 +4401,7 @@ export class AppService {
       const last = this.conversationMessages(room.id).filter(message => message.status === 'completed').at(-1)
       if (!last) continue
       for (const message of await this.contextMessages(room, last.id)) {
-        if (personalityDate(Date.parse(message.createdAt)) !== day) continue
+        if (localCalendarDate(Date.parse(message.createdAt)) !== day) continue
         const recalled = this.snapshots.get(message.runId ?? '')?.memoryRecall
         if (recalled && !await this.memory.recallValid({ ...recalled, entries: [] })) continue
         messages.push(message)

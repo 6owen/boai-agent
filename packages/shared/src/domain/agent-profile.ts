@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 日期与时区计算沿 shared/domain/calendar。
  * [OUTPUT]: 仅笔记日期可反思；沿真实版本化笔记来源保存日记/成长/心情，删除失效且不伪造聊天。
  * [OUTPUT]: 情绪更新保留实际时间与来源，反思沿原记忆权限读取及失效；独立候选评估不修改预设。
  * [OUTPUT]: 虚拟旅行新增预算/心情/日记/历史及宿主来源；旧状态可读，模型不能指定来源身份。
@@ -9,6 +10,7 @@
  * [POS]: Employee extension of the original DigitalAgent, not a second identity or model registry.
  * [PROTOCOL]: Update Header and owning .folder.md when changed.
  */
+import { isValidTimeZone } from './calendar'
 import { z } from 'zod'
 import type { Conversation } from './index'
 
@@ -25,7 +27,7 @@ const behaviorBase = {
   kind: z.enum(['emotion', 'reflection', 'greeting', 'travel', 'follow-up']),
   enabled: z.boolean(),
   cron: z.string().min(1).max(120),
-  timezone: z.string().min(1).max(100).refine(value => { try { new Intl.DateTimeFormat('en', { timeZone: value }); return true } catch { return false } }, '无效时区'),
+  timezone: z.string().min(1).max(100).refine(isValidTimeZone, '无效时区'),
   conversationId: id,
   instruction: z.string().max(4000),
   cooldownMinutes: z.number().int().min(1).max(10080),
