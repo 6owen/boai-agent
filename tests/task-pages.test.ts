@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 任务面板、主聊天和应用操作共用 tasks/read-model 的受权分页和活动读取。
  * [OUTPUT]: 会话队列和调度准入使用同一持久顺序；执行器容量单独判断。
  * [OUTPUT]: 历史 SQLite 全部执行状态与共享在途判断使用同一七项业务集合。
  * [OUTPUT]: 真实在途任务在LIMIT前筛选，不被新卡或手动done遮蔽；同任务多次执行及重启身份保持。
@@ -16,8 +17,7 @@ import { randomUUID } from 'node:crypto'
 import { AUTOMATION_OCCURRENCE_STATUSES, compareQueuedOccurrences, isOngoingOccurrence } from '@boai/shared/domain/automations'
 import type { ApplicationActor } from '../packages/shared/src/domain/application-protocol'
 import { TASK_PAGE_LIMITS, isEmployeeTaskAssignment, type TrackedTask, type TrackedTaskPage } from '../packages/shared/src/domain/tracked-tasks'
-import { taskPageOperation } from '../packages/runtime/src/modules/application/task-page'
-import { readTaskActivity } from '../packages/runtime/src/modules/application/task-activity'
+import { readTaskPage, readTaskActivity } from '../packages/runtime/src/modules/tasks/read-model'
 import { ProductStore, type StoredRecord } from '../packages/runtime/src/adapters/storage/product-store'
 import { ApplicationService } from '../packages/runtime/src/modules/application/application-service'
 import { taskOperations } from '../packages/runtime/src/modules/application/task-operations'
@@ -92,19 +92,23 @@ it('filters internal progress before Kanban pagination and binds cursors to that
   const internal = Array.from({ length: 45 }, (_, index) => task(`z-progress-${index}`, { kind: 'progress' }))
   const legacy = [task('z-legacy'), task('z-fake-source', { kind: 'progress', sourceKind: 'manual' }), task('z-schedule', { sourceKind: 'schedule' })]
   await f.store.write([...assignments, ...internal, ...legacy].map(value => record('agentTasks', value)))
-  const operation = taskPageOperation(f.store, true)
-  const board = (cursor?: string) => operation.execute({ agentId: 'a', limit: 2, cursor }, undefined, { kind: 'owner' }) as Promise<TrackedTaskPage>
+  const board = (cursor?: string) => readTaskPage(f.store, { agentId: 'a', limit: 2, cursor }, { kind: 'owner' }, 'assignments')
   const first = await board()
   expect(first.items.map(item => item.id)).toEqual(['c-message', 'b-manual'])
-  expect(first.nextCursor).toBeTruthy()
-  const second = await board(first.nextCursor)
+  // Captured before the task read model moved out of application operations.
+  const legacyCursor = Buffer.from(JSON.stringify({
+    version: 1, key: '7b99d93e68a40bcbf6294428aec7f4ce17cfccf33a6f24856ed7270a880c188e',
+    updatedAt: time, id: 'b-manual',
+  })).toString('base64url')
+  expect(first.nextCursor).toBe(legacyCursor)
+  const second = await board(legacyCursor)
   expect(second.items.map(item => item.id)).toEqual(['a-explicit'])
   expect(second.nextCursor).toBeUndefined()
   expect((await f.page({ includeDone: true, limit: 100 })).items).toHaveLength(51)
   expect(await f.call('tasks.page', { agentId: 'a', limit: 2, cursor: first.nextCursor })).toMatchObject({ status: 'rejected', error: { code: 'INVALID_INPUT' } })
   expect(isEmployeeTaskAssignment(legacy[1])).toBe(false)
   await f.reopen()
-  expect((await taskPageOperation(f.store, true).execute({ agentId: 'a', limit: 100 }, undefined, { kind: 'owner' }) as TrackedTaskPage).items).toHaveLength(3)
+  expect((await readTaskPage(f.store, { agentId: 'a', limit: 100 }, { kind: 'owner' }, 'assignments')).items).toHaveLength(3)
 })
 
 it('marks agent-created records as internal progress and rejects assignment promotion', async () => {
@@ -117,7 +121,7 @@ it('marks agent-created records as internal progress and rejects assignment prom
   expect(await f.call('tasks.update', { id: progress.id, expectedRevision: progress.revision, kind: 'assignment' }, actor)).toMatchObject({ status: 'rejected', error: { code: 'INVALID_INPUT' } })
   expect(await f.call('tasks.create', { agentId: 'a', title: '伪造委派', kind: 'assignment', sourceKind: 'manual' }, actor)).toMatchObject({ status: 'rejected', error: { code: 'INVALID_INPUT' } })
   expect(await f.call('tasks.update', { id: progress.id, expectedRevision: progress.revision, status: 'done' }, actor)).toMatchObject({ status: 'succeeded', data: { kind: 'progress', status: 'done' } })
-  expect((await taskPageOperation(f.store, true).execute({ agentId: 'a', includeDone: true }, undefined, { kind: 'owner' }) as TrackedTaskPage).items).toEqual([])
+  expect((await readTaskPage(f.store, { agentId: 'a', includeDone: true }, { kind: 'owner' }, 'assignments')).items).toEqual([])
   expect(await f.call('tasks.get', { id: progress.id }, actor)).toMatchObject({ status: 'succeeded', data: { id: progress.id, kind: 'progress' } })
 })
 

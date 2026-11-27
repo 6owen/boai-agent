@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 任务面板、主聊天和应用操作共用 tasks/read-model 的受权分页和活动读取。
  * [OUTPUT]: 执行状态沿 shared/domain/automations 的完整状态或在途判断读取。
  * [OUTPUT]: 新任务复制员工默认项目，任务会话固定同一选择且不继承后续默认变化。
  * [OUTPUT]: 任意任务状态均可快捷执行；已有执行时同任务新要求进入原持久FIFO。
@@ -18,18 +19,18 @@ import { mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { Methods } from '@boai/shared/ipc'
 import type { Conversation, DigitalAgent, Message } from '@boai/shared/domain'
-import type { TrackedTask, TrackedTaskPage } from '@boai/shared/domain/tracked-tasks'
+import { EMPLOYEE_TASK_STATUSES, type TrackedTask } from '@boai/shared/domain/tracked-tasks'
 import { isEmployeeTaskAssignment } from '@boai/shared/domain/tracked-tasks'
 import { isOngoingOccurrence, type AutomationOccurrence } from '@boai/shared/domain/automations'
 import type { EmployeeTaskMethods } from '@boai/shared/domain/employee-tasks'
 import type { ProductStore, RecordTransaction } from '../../adapters/storage/product-store'
-import { taskPageOperation } from '../application/task-page'
+import { readTaskPage } from '../tasks/read-model'
 import { clearContextHandoffs } from '../contexts/context-handoff'
 import { initialProjectSelection, legacyProjectSelection } from '../workspaces/project-directory'
 import { taskIdentity } from './employee-task-records'
 import type { AutomationService } from './automation-service'
 const id = z.string().min(1).max(200)
-const status = z.enum(['pending', 'in_progress', 'in_review', 'done', 'closed'])
+const status = z.enum(EMPLOYEE_TASK_STATUSES)
 const owner = z.object({ employeeId: id })
 const create = owner.extend({ requestId: id, title: z.string().trim().min(1).max(300).optional(), description: z.string().trim().min(1).max(40000).optional(), status: status.optional(), conversation: z.boolean().optional(), source: z.object({ conversationId: id, messageId: id }).strict().optional() }).strict().refine(value => !value.conversation || !value.source, '会话创建请直接填写任务要求')
 const get = owner.extend({ id: id.optional(), occurrenceId: id.optional(), before: z.object({ startedAt: z.string().datetime(), id: z.string().min(1).max(500) }).strict().optional() }).strict().refine(v => !!v.id !== !!v.occurrenceId, '请选择一个任务')
@@ -131,8 +132,7 @@ export class EmployeeTaskService {
     if (method === 'listEmployeeTasks') {
       const v = owner.extend({ status: status.optional(), includeDone: z.boolean().optional(), cursor: z.string().optional(), limit: z.number().int().min(1).max(100).optional() }).strict().parse(raw)
       if (!await this.store.get('agents', v.employeeId)) throw new Error('员工不存在')
-      const operation = taskPageOperation(this.store, true)
-      return await operation.execute({ agentId: v.employeeId, status: v.status, includeDone: v.includeDone, cursor: v.cursor, limit: v.limit }, undefined, { kind: 'owner' }) as TrackedTaskPage
+      return readTaskPage(this.store, { agentId: v.employeeId, status: v.status, includeDone: v.includeDone, cursor: v.cursor, limit: v.limit }, { kind: 'owner' }, 'assignments')
     }
     if (method === 'getEmployeeTask') {
       const v = get.parse(raw)

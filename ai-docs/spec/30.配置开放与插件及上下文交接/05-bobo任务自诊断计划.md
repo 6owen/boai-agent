@@ -30,7 +30,7 @@
 | 诊断导出 | `boai:export-diagnostics` 为本人保存文件入口，包含宿主与runtime快照 | 当前核对未见bobo读取桥；需新增ApplicationHost白名单方法，不能让Agent直接读私有JSONL |
 | 用量/时长 | 已有API用量去重、未知标记、执行区间并集合并 | 首版只解释有证据的阶段耗时；本机Agent内部调用及BOAI预算边界保持 |
 
-源码入口：`packages/runtime/src/modules/application/task-activity.ts`、`task-page.ts`、`application-service.ts:95`；`packages/shared/src/domain/work.ts`、`execution.ts`；`apps/electron/src/main/diagnostics.ts`、`main.ts:534`；`packages/runtime/src/modules/profile/profile-activity.ts`。原权限接线位于 `packages/runtime/src/service.ts:623`、`:4993`。这些是源码证据，本轮未读取个人日志或复现故障。
+源码入口：`packages/runtime/src/modules/tasks/read-model.ts`、`packages/runtime/src/modules/application/task-operations.ts`、`application-service.ts:95`；`packages/shared/src/domain/work.ts`、`execution.ts`；`apps/electron/src/main/diagnostics.ts`、`main.ts:534`；`packages/runtime/src/modules/profile/profile-activity.ts`。原权限接线位于 `packages/runtime/src/service.ts:623`、`:4993`。这些是源码证据，本轮未读取个人日志或复现故障。
 
 ## 3. 对外读取合同
 

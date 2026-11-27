@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 任务面板、主聊天和应用操作共用 tasks/read-model 的受权分页和活动读取。
  * [OUTPUT]: 2026-11-25 独立话题不注入旧看板活动和任务状态指令。
  * [OUTPUT]: 待确认可由宿主按本轮回复兜底更新，仅作通知，不等于人工验收或Work交付认证。
  * [OUTPUT]: 主聊天按员工读取实时任务活动；独立任务仍使用原要求和续聊上下文。
@@ -10,7 +11,7 @@
 import type { Conversation } from '@boai/shared/domain'
 import type { AutomationDispatch } from '@boai/shared/domain/automations'
 import { isEmployeeTaskAssignment, type TrackedTask } from '@boai/shared/domain/tracked-tasks'
-import { readTaskActivity } from '../application/task-activity'
+import { readTaskActivity } from '../tasks/read-model'
 import type { ProductStore } from '../../adapters/storage/product-store'
 
 export const employeeTaskReadOperations = new Set(['tasks.list', 'tasks.get', 'tasks.page', 'tasks.activity'])
