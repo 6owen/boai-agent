@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: contexts 按共享场景表编译员工来源与状态；默认通信场景由工作区装配统一选择。
  * [OUTPUT]: 将真实会话kind/channel交给共享人格编译器，工作执行保留对应聊天表达规则。
  * [OUTPUT]: 获准记忆明确保存时间与事件时间不同，记录归属不等于内容主体；不改原记忆正文/权限。
  * [OUTPUT]: 日期记忆文件按来源日展示日记与当日笔记；补写不改真实创建时间，外改/清理仍沿原hash边界。
@@ -14,7 +15,7 @@
 import { BOBO_SOUL, DEFAULT_EMPLOYEE_SOUL } from '@boai/shared/domain/agent-presets'
 import { promptSourceNames, isAgentSourceName, defaultAgentProfile, type AgentSourceName, type AgentProfile, type AgentStateView, type PromptScene } from '@boai/shared/domain/agent-profile'
 import { promptSourceDefaults } from '@boai/shared/domain/agent-prompts'
-import { compileAgentContext } from '../employees/context-compiler'
+import { compileAgentContext } from '../contexts/context-compiler'
 import { isCoreAgent } from '@boai/shared/domain/core-agent'
 import { prepareEnvironment, describeEnvironment } from './environment-plan'
 import { createHash, randomUUID } from 'node:crypto'
@@ -256,9 +257,11 @@ export class WorkspaceService {
     await this.atomic(join(this.state(agentId), 'bootstrap-manifest.json'), JSON.stringify(manifest, null, 2))
     return conflicts
   }
-  async load(agent: DigitalAgent, conversation: Conversation, memory: MemoryView, runId: string, options?: { profile: AgentProfile; state?: AgentStateView; scene: PromptScene }): Promise<{ bootstrap: BootstrapSnapshot; workspace: SessionWorkspace }> {
+  async load(agent: DigitalAgent, conversation: Conversation, memory: MemoryView, runId: string, options?: { profile: AgentProfile; state?: AgentStateView; scene?: PromptScene }): Promise<{ bootstrap: BootstrapSnapshot; workspace: SessionWorkspace }> {
     const sources = Object.fromEntries(await Promise.all(sourceNames.map(async name => [name, await this.source(agent.id, name)])))
-    const compiled = compileAgentContext(options?.profile ?? defaultAgentProfile(agent.id, isCoreAgent(agent)), options?.scene ?? (conversation.channel ? 'channel' : conversation.kind === 'group' ? 'group' : 'direct'), sources, options?.state, { kind: conversation.kind, channel: !!conversation.channel })
+    const scene = options?.scene ?? (conversation.channel ? 'channel' : conversation.kind === 'group' ? 'group' : 'direct')
+    const profile = options?.profile ?? defaultAgentProfile(agent.id, isCoreAgent(agent))
+    const compiled = compileAgentContext(profile, scene, sources, options?.state, { kind: conversation.kind, channel: !!conversation.channel })
     const allowed = memory.entries.filter(entry => entry.ownerAgentId === agent.id && memoryStatus(entry) === 'active' && (validRecallProjection(memory, agent.id, conversation.id) || entry.scope === 'profile' || entry.conversationId === conversation.id))
     const text = allowed.map(memoryText).join('\n')
     const root = this.session(agent.id, conversation.id), runPath = join(root, 'runs', safeId(runId)), workPath = join(root, 'work')

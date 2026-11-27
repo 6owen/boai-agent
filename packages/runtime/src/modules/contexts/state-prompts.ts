@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: contexts 按共享场景表编译员工来源与状态；默认通信场景由工作区装配统一选择。
  * [OUTPUT]: 旅行动态上下文沿实际保存目的地/日期/预算/心情，明确虚拟身份。
  * [INPUT]: Actual effective state and enabled features; fixed Alma emotion/fatigue source IDs.
  * [OUTPUT]: Verbatim Alma emotion/fatigue expression, with commands mapped to actual BOAI state/collaboration tools.

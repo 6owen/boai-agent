@@ -1,12 +1,10 @@
 {
-  "agent-state": ["automations"],
-  "automations": ["collaboration", "conversations", "workspaces"],
-  "browser": ["collaboration", "employees", "workspaces"],
+  "automations": ["collaboration", "conversations"],
+  "browser": ["collaboration", "employees"],
   "collaboration": ["automations"],
-  "conversations": ["browser", "workspaces"],
-  "employees": ["agent-state", "collaboration", "conversations", "resources", "sources", "workspaces"],
-  "media": ["employees", "workspaces"],
-  "resources": ["media", "sources", "workspaces"],
-  "sources": ["browser", "workspaces"],
-  "workspaces": ["employees"]
+  "conversations": ["browser"],
+  "employees": ["collaboration", "conversations", "resources", "sources"],
+  "media": ["employees"],
+  "resources": ["media", "sources"],
+  "sources": ["browser"]
 }
