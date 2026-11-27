@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 跨目录但不形成文件环的业务依赖按逐方向清单核对，延迟和类型引用不计。
  * [OUTPUT]: 机器依赖图沿真实解析目标区分类型、静态/延迟、CommonJS 和公开重导出。
  * [OUTPUT]: 浏览器宿主入口经间接/延迟导入执行器或 Electron 也会在构建前被拒绝。
  * [INPUT]: A minimal workspace using real package names, the build resolver and CI checker.
@@ -29,9 +30,11 @@ it('checks package manifests and actual module initialization against the same d
     for (const directory of [join(root, 'scripts'), join(app, 'src'), join(avatar, 'src')]) {
       await mkdir(directory, { recursive: true })
     }
-    for (const script of ['workspace-packages.mjs', 'check-workspace-boundaries.mjs']) {
+    for (const script of ['workspace-packages.mjs', 'runtime-module-dependencies.mjs', 'check-workspace-boundaries.mjs']) {
       await copyFile(resolve('scripts', script), join(root, 'scripts', script))
     }
+    const debt = join(root, 'scripts/runtime-module-cycle-debt.json')
+    await writeFile(debt, '{}')
     await writeFile(join(app, 'package.json'), JSON.stringify({
       name: '@boai/electron', dependencies: { '@6owen/avatar-motion': 'workspace:*' },
     }))
@@ -43,6 +46,7 @@ it('checks package manifests and actual module initialization against the same d
     await writeFile(view, "import { type State } from './main'; export const load = () => import('./main')")
     expect(check()).toContain('passed')
     const graph = () => JSON.parse(check('--graph')) as {
+      runtimeModules: { dependencies: Record<string, string[]>; cycleGroups: string[][] }
       packages: { name: string; dependencies: string[]; exports: Record<string, string> }[]
       files: { path: string; workspace: string; imports: { line: number; kind: string; specifier: string; target?: string }[] }[]
     }
@@ -77,6 +81,26 @@ it('checks package manifests and actual module initialization against the same d
     expect(check).toThrow(/browser host entry reaches electron\/main/)
     await writeFile(commands, "import type { BrowserWindow } from 'electron'; export const parse = () => 1")
     expect(check()).toContain('passed')
+
+    const modules = join(runtime, 'src/modules')
+    for (const domain of ['one', 'two', 'three']) {
+      await mkdir(join(modules, domain), { recursive: true })
+      await writeFile(join(modules, domain, 'value.ts'), 'export const value = 1')
+    }
+    await writeFile(join(modules, 'one/use.ts'), "import '../two/value'")
+    await writeFile(join(modules, 'two/use.ts'), "export * from '../three/value'")
+    const third = join(modules, 'three/use.ts')
+    await writeFile(third, "export type T = typeof import('../one/value'); export const later = () => import('../one/value')")
+    expect(graph().runtimeModules.cycleGroups).toEqual([])
+    await writeFile(third, "const value = require('../one/value')")
+    expect(check).toThrow(/three.use\.ts: line 1 unrecorded runtime module cycle edge: three -> one/)
+    await writeFile(debt, JSON.stringify({ one: ['two'], two: ['three'], three: ['one'] }))
+    expect(graph().runtimeModules).toEqual({ dependencies: { one: ['two'], three: ['one'], two: ['three'] }, cycleGroups: [['one', 'three', 'two']] })
+    await writeFile(third, "import '../one/value'; import '../two/value'")
+    expect(check).toThrow(/unrecorded runtime module cycle edge: three -> two/)
+    await writeFile(third, '')
+    expect(check).toThrow(/remove retired runtime module cycle edge: three -> one/)
+    await writeFile(debt, '{}')
 
     await writeFile(join(avatar, 'package.json'), JSON.stringify({
       ...manifest, dependencies: { '@boai/electron': 'workspace:*' },
