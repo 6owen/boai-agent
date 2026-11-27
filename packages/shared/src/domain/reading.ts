@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 会话窗口携带按运行标识的实时回复预览，发布及阅读身份继续来自消息页。
  * [INPUT]: 真实已提交员工完成事件、当前获准历史及本人可见快照。
  * [OUTPUT]: 本地多词 AND/确定性相关性、固定版本正文命中与有界覆盖进度/失败、绑定索引版本的稳定游标；执行轮次摘要最多80项/每项60字符；独立个人浏览与固定目标、阅读边界/缺口和独立锚点 CAS，不改变模型上下文或业务状态。
  * [POS]: shared/domain 的 D6 搜索与阅读合同；完成身份只由宿主发布事务产生。
@@ -31,7 +32,7 @@ export interface ConversationMessageCursor { sequence: number; id: string }
 export interface ConversationMessagePageQuery { conversationId: string; limit?: number; before?: ConversationMessageCursor; after?: ConversationMessageCursor; aroundMessageId?: string }
 export interface ConversationMessageItem { messageId: string; sequence: number; status: 'available' | 'unavailable'; message?: Message; reason?: string; completion?: ConversationCompletionIdentity }
 export interface ConversationMessagePage { conversationId: string; items: ConversationMessageItem[]; beforeCursor?: ConversationMessageCursor; afterCursor?: ConversationMessageCursor; targetMessageId?: string }
-export interface ConversationView extends Omit<ConversationDetail, 'messages'> { messages: Message[]; messagePage: ConversationMessagePage; reading: ConversationReadingState }
+export interface ConversationView extends Omit<ConversationDetail, 'messages'> { messages: Message[]; messagePage: ConversationMessagePage; reading: ConversationReadingState; replyPreviews?: Record<string, string> }
 export type ConversationSearchKind = 'conversation' | 'message' | 'material' | 'artifact'
 export interface ConversationSearchCursor { time: string; id: string; kind: ConversationSearchKind; queryKey: string; score?: number; indexRevision?: number }
 export interface ConversationSearchQuery { keyword: string; scope: 'all' | 'current'; conversationId?: string; agentId?: string; from?: string; to?: string; kinds?: ConversationSearchKind[]; limit?: number; before?: ConversationSearchCursor }

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 普通回复预览仅驻留在活跃运行内存中，公开消息仍沿原发布事务。
  * [OUTPUT]: 2026-11-27 会话删除发出关联日志移除事件；定时日志独立原子删除，原话题及执行数据保留。
  * [OUTPUT]: 2026-11-25 定时执行创建普通员工话题，原会话身份迁移与授权指纹保持；不派生看板任务。
  * [OUTPUT]: 可信桌面检查第三方 Agent 版本，隔离安装并在连接核验和退出检查后切换原配置。
@@ -621,6 +622,7 @@ export class AppService {
   private resources = new Map<string, Resource>()
   private messages = new Map<string, Message>()
   private runs = new Map<string, AgentRun>()
+  private readonly replyPreviews = new WeakMap<AgentRun, string>()
   private requests = new Map<string, RequestRecord>()
   private snapshots = new Map<string, RunSnapshot>()
   private activeEngineContexts = new Map<string, { context: EngineContext; definition: DigitalAgent }>()
@@ -2202,7 +2204,14 @@ export class AppService {
     this.getConversation(query.conversationId)
     const messagePage = await this.conversationBrowsing.messagePage(query)
     const messages = messagePage.items.flatMap(item => item.status === 'available' && item.message ? [item.message] : [])
-    return { ...await this.detail(query.conversationId, messages), messagePage, reading: await this.reading.readState(query.conversationId) }
+    const detail = await this.detail(query.conversationId, messages)
+    const reading = await this.reading.readState(query.conversationId)
+    const replyPreviews = Object.fromEntries(detail.runs.flatMap(({ id }) => {
+      const run = this.runs.get(id)
+      const text = run?.status === 'running' && !run.workId ? this.replyPreviews.get(run) : undefined
+      return text ? [[id, text]] : []
+    }))
+    return { ...detail, messagePage, reading, ...(Object.keys(replyPreviews).length ? { replyPreviews } : {}) }
   }
   private async conversationArtifacts(conversation: Conversation, discoverLegacy = false): Promise<Artifact[]> {
     const saved = (await this.store.load<Artifact & { id: string; conversationId: string }>('artifacts')).filter(value => value.conversationId === conversation.id)
@@ -5772,9 +5781,15 @@ export class AppService {
         if (context.materialRefs?.length) posted.materialSources = clone(context.materialRefs)
         if (knowledgeReads.length) posted.knowledgeSources = clone(knowledgeReads)
         await this.store.transaction(async tx => { await tx.put(record('messages', posted)); await this.reading.recordCompletion(tx, posted) })
-        this.messages.set(id, posted); publicMessages.set(id, posted); this.emit({ type: 'message', message: posted }); this.changed(conversation.id)
+        this.messages.set(id, posted); publicMessages.set(id, posted); this.replyPreviews.delete(run); this.emit({ type: 'message', message: posted }); this.changed(conversation.id)
         return { messageId: id, content }
       })
+      if (run.responseKind === 'chat' && !context.work) context.onReplyPreview = text => {
+        if (!alive() || run.workId || publicMessages.size || (!text && !this.replyPreviews.has(run))) return
+        if (text) this.replyPreviews.set(run, this.redact(text, key))
+        else this.replyPreviews.delete(run)
+        this.emit({ type: 'changed', conversationId: conversation.id })
+      }
       const recordExecution = context.onExecutionEvent
       let hasStreamedText = false
       context.onExecutionEvent = async event => {
@@ -6009,6 +6024,7 @@ export class AppService {
       if (error instanceof ProgressStalledError) throw error
       throw new Error(this.redact(this.errorMessage(error), key))
     } finally {
+      this.replyPreviews.delete(run)
       this.activeEngineContexts.delete(run.id)
       try { await Promise.all([this.dataSources.closeRun(run.id), this.webSearch.connections.closeRun(run.id), this.desktopPlugin.closeRun(run.id), this.canvas.closeRun(run.id)]) } finally {
         try { await this.browserPlugins.closeRun(run.id) } finally { try { await this.browserSessions.get(run.id)?.session.drain(); this.browserSessions.delete(run.id) } finally {

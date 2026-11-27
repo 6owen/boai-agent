@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 五位并行回复使用普通消息卡展示增量，并可按各自运行停止。
  * [OUTPUT]: 并行前导正文沿真实执行证据确认，五路未结束前不要求正式消息；群工作树沿执行历史核对。
  * [OUTPUT]: 第14组API群请求解释与持久顺序接续；保留独立并行、原Work和本机旧路径，实际验收归第14组05。
  * [INPUT]: 中文协作场景、真实 Electron/Mastra 与隔离的本地模型协议。
@@ -111,7 +112,10 @@ Then('五名员工的回复同时处于流式生成中', async ({ runtime, colla
       const evidence = await Promise.all(running.map(run => runtime.page.evaluate(({ conversationId, runId }) => window.boai.request('listExecutionEvidence', { conversationId, runId }), { conversationId: state.conversation!.id, runId: run.id })))
       return evidence.filter(page => page.items.some(event => event.eventType === 'agent.text.block' && JSON.stringify(event.payload).includes('：'))).length
     }).toBe(5)
-    await expect(runtime.page.locator('[data-chat-execution-run]')).toHaveCount(5)
+    const replies = runtime.page.locator('.message-row.agent .message-card:has([data-slot="streaming-reply"])')
+    await expect(replies).toHaveCount(5)
+    await expect(replies.getByRole('button', { name: '停止本次执行', exact: true })).toHaveCount(5)
+    await expect(runtime.page.locator('[data-chat-execution-run]')).toHaveCount(0)
     expect(state.streams).toHaveLength(5)
     await expect(runtime.page.locator('.message-row.agent .quoted-message')).toHaveCount(0)
     expect(state.errors).toEqual([])

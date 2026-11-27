@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 主轮次按原生 final_answer 阶段流式提供回复预览。
  * [OUTPUT]: 有包绑定时在thread start/resume后、turn/start前核对完整原生能力归属；重复或未知不提交输入，原生开关保持。
  * [OUTPUT]: 握手及原生线程成功后、用户输入前回传实际程序版本；网关最低版本按实际握手核对。
  * [OUTPUT]: 原生turn/steer固定expectedTurnId与用户消息ID，仅当前活动轮次注册，结束与退出撤销。
@@ -48,6 +49,7 @@ export async function runCodexConversation(context: EngineContext, input: Native
   let releaseSteering: (() => void) | undefined, turnEnded = false
   const steeringCalls = new Set<Promise<void>>()
   let threadId = input.threadId ?? '', turnId = '', finalText = '', completedTurn: Record<string, unknown> | undefined
+  let replyItemId: string | undefined, replyPreview = ''
   let resolveDone!: () => void, rejectDone!: (error: Error) => void
   const done = new Promise<void>((resolve, reject) => { resolveDone = resolve; rejectDone = reject }); void done.catch(() => {})
   let releaseReady!: () => void
@@ -124,9 +126,18 @@ export async function runCodexConversation(context: EngineContext, input: Native
       }
       if (event) await context.onExecutionEvent?.(event)
       if (child) return
-      if (method === 'item/completed') {
-        const item = recordValue(params.item)
-        if (item.type === 'agentMessage' && item.phase !== 'commentary' && typeof item.text === 'string') finalText = item.text
+      if (method === 'item/started' && nativeItem.type === 'agentMessage' && nativeItem.phase === 'final_answer' && typeof nativeItem.id === 'string') {
+        replyItemId = nativeItem.id
+        replyPreview = typeof nativeItem.text === 'string' ? nativeItem.text : ''
+        context.onReplyPreview?.(replyPreview)
+      }
+      if (method === 'item/agentMessage/delta' && replyItemId && replyItemId === params.itemId && typeof params.delta === 'string') {
+        replyPreview += params.delta
+        context.onReplyPreview?.(replyPreview)
+      }
+      if (method === 'item/completed' && nativeItem.type === 'agentMessage' && nativeItem.phase !== 'commentary' && typeof nativeItem.text === 'string') {
+        finalText = nativeItem.text
+        if (nativeItem.phase === 'final_answer') { replyItemId = undefined; context.onReplyPreview?.(finalText) }
       }
       if (method === 'thread/tokenUsage/updated') {
         const tokens = recordValue(params.tokenUsage)

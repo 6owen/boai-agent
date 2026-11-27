@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 /*
- * [OUTPUT]: 聊天折叠仍可读两行真实思考，展开状态与证据节点保持，最终答复替换不变。
+ * [OUTPUT]: 流式正文沿用最终消息卡节点，阶段切换不重复正文，停止与等待批准可用。
+ * [OUTPUT]: 聊天折叠仍可读两行真实思考，展开状态与证据节点保持。
  * [OUTPUT]: 临时卡及内部思考/工具组默认收起，当前动作随原Run更新；手动展开选择跨正文/工具增量保持。
  * [OUTPUT]: 所有终态执行卡不再挂查看/继续/任务结果；执行与普通消息共用可打开的员工资料头像及rounded-md。
  * [OUTPUT]: 历史预取期间保留当前窗口的实时执行卡，窗口移出后才卸载；不以最新页标记提前清空思考。
@@ -12,7 +13,7 @@
  * [OUTPUT]: 自动化头像沿真实默认个人资料夹具，原任务执行镜像与定时角标共存。
  * [OUTPUT]: 定时任务聊天镜像沿原Run读取思考/工具，固定消息定位仍展示，完成后仅保留公开答复。
  * [OUTPUT]: 任务/文件迁入右侧后移除旧互斥view夹具，保留主聊天页面隐藏/恢复时执行读取生命周期检查。
- * [OUTPUT]: 流式消息先于Run快照时不闪现空回复泡；已有正文仍可见，Run到达后由单一执行卡接管。
+ * [OUTPUT]: 流式消息先于Run快照时不闪现空回复泡；已有正文持续显示。
  * [OUTPUT]: 思考增量在受控轨迹内更新，收起后新增内容可读，工具接续不丢思考；空态无伪造思考。
  * [INPUT]: 生产 ChatView 与 ExecutionFeed、执行中事件窗口。
  * [OUTPUT]: 最终消息发布前出现员工卡片，文本增量实时可见；结束与隐藏时不重复挂载过程。
@@ -94,7 +95,7 @@ test('retains failed automation mirrors at a located public trigger', async () =
 test.each([false, true])('mirrors scheduled reasoning and tools from the original run, including located messages (%s)', async located => {
   const publication = { automationId: 'plan', occurrenceId: 'occurrence', sourceConversationId: 'task-chat', sourceMessageId: 'question' }
   const trigger = { id: 'published-question', conversationId: 'chat', senderType: 'user' as const, senderId: 'automation', senderName: '定时任务', content: '查天气', status: 'completed' as const, sequence: 1, createdAt: run.createdAt, automationPublication: publication }
-  const answer = { ...trigger, id: 'published-answer', senderType: 'agent' as const, senderId: 'employee', content: '正在查询', status: 'streaming' as const, sequence: 2, automationPublication: { ...publication, sourceMessageId: 'answer' } }
+  const answer = { ...trigger, id: 'published-answer', senderType: 'agent' as const, senderId: 'employee', content: '', status: 'streaming' as const, sequence: 2, automationPublication: { ...publication, sourceMessageId: 'answer' } }
   const mirroredRun = { ...run, conversationId: 'task-chat' }
   const onTrace = vi.fn()
   // A live answer may arrive before the next metadata refresh supplies its public message id.
@@ -106,7 +107,7 @@ test.each([false, true])('mirrors scheduled reasoning and tools from the origina
   await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="展开处理过程"]')!.click())
   await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="思考过程"]')!.click())
   expect(host.textContent).toContain('核对天气来源')
-  expect(host.textContent).not.toContain('正在查询')
+  expect(host.querySelector('[data-slot="streaming-reply"]')).toBeNull()
   expect(fixture.source).toBe('task-chat')
   fixture.evidence = [...fixture.evidence, { ...textEvent('', 1), ...nativeActivity('browser', { type: 'mcpToolCall', server: 'boai', tool: 'browser_tool', arguments: { action: 'snapshot' }, status: 'completed' }, true), sequence: 2 } as ExecutionEvidence]
   await render()
@@ -119,11 +120,18 @@ test.each([false, true])('mirrors scheduled reasoning and tools from the origina
   props = { ...props, pageActive: true, detail: { ...props.detail, executionMirrors: [{ run: { ...mirroredRun, status: 'waiting_approval' }, triggerMessage: trigger }] } }; await render()
   expect(fixture.active).toBe(true)
   expect(host.textContent).toContain('等待批准')
+  const streaming = { ...answer, content: '天气查询已' }
+  props = { ...props, detail: { ...props.detail, executionMirrors: [{ run: mirroredRun, triggerMessage: trigger }], messages: [trigger, streaming] } }
+  await render()
+  const replyCard = host.querySelector('[data-reading-message-id="published-answer"] .message-card')
+  expect(replyCard?.textContent).toContain('天气查询已')
+  expect(host.querySelector('[data-chat-execution-run]')).toBeNull()
   const final = { ...answer, status: 'completed' as const, content: '天气查询完成' }
   props = { ...props, detail: { ...props.detail, executionMirrors: [], messages: [trigger, final], messagePage: { ...props.detail.messagePage, items: [trigger, final].map(message => ({ messageId: message.id, sequence: message.sequence, status: 'available' as const, message })) } } }
   await render()
   expect(host.querySelector('[data-chat-execution-run]')).toBeNull()
   expect(host.textContent).toContain('天气查询完成')
+  expect(host.querySelector('[data-reading-message-id="published-answer"] .message-card')).toBe(replyCard)
 })
 
 test('shows the employee execution card immediately and streams updates before a final message exists', async () => {
@@ -250,19 +258,43 @@ test('keeps already returned text visible when run metadata has not arrived yet'
   expect(host.textContent).toContain('已经收到的正文')
 })
 
-test('replaces the existing API streaming bubble with one execution card and restores the final reply', async () => {
-  const message = { id: 'answer', conversationId: 'chat', senderType: 'agent' as const, senderId: 'employee', senderName: '员工', runId: run.id, content: '最终答复', status: 'streaming' as const, sequence: 2, createdAt: run.createdAt }
-  props = { ...props, detail: { ...props.detail, messages: [message], messagePage: { ...props.detail.messagePage, items: [{ messageId: message.id, sequence: 2, status: 'available', message }] } } }
-  fixture.evidence = [textEvent(message.content, 1)]
-  await render()
-  expect(host.querySelectorAll('[data-chat-execution-run]')).toHaveLength(1)
-  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="展开处理过程"]')!.click())
-  expect(host.textContent?.split('最终答复')).toHaveLength(2)
-  const final = { ...message, status: 'completed' as const }
-  props = { ...props, detail: { ...props.detail, runs: [{ ...run, status: 'completed' }], messages: [final], messagePage: { ...props.detail.messagePage, items: [{ messageId: final.id, sequence: 2, status: 'available', message: final }] } } }
-  await render()
+test.each(['message', 'api-preview', 'native-preview'] as const)('continues %s in the same message card through completion', async source => {
+  const message = { id: 'answer', conversationId: 'chat', senderType: 'agent' as const, senderId: 'employee', senderName: '员工', runId: run.id, content: '', status: 'streaming' as const, sequence: 2, createdAt: run.createdAt }
+  const update = async (text: string, complete = false) => {
+    const preview = !complete && source !== 'message'
+    const answer = { ...message, content: preview ? '' : text, status: complete ? 'completed' as const : 'streaming' as const }
+    const messages = preview && source === 'native-preview' ? [] : [answer]
+    props = { ...props, detail: { ...props.detail, runs: [complete ? { ...run, status: 'completed' } : run], replyPreviews: preview ? { [run.id]: text } : undefined, messages,
+      messagePage: { ...props.detail.messagePage, items: messages.map(value => ({ messageId: value.id, sequence: value.sequence, status: 'available', message: value })) } } }
+    fixture.evidence = [textEvent(text, text.length)]
+    await render()
+  }
+  await update('')
+  expect(host.querySelector('[data-chat-execution-run]')).not.toBeNull()
+  await update('最终答复')
+  const card = host.querySelector('.message-card')!
+  expect(card.querySelector('.message-bubble')?.textContent).toBe('最终答复')
+  expect(card.querySelector('[aria-label="停止本次执行"]')).not.toBeNull()
   expect(host.querySelector('[data-chat-execution-run]')).toBeNull()
-  expect(host.textContent).toContain('最终答复')
+  expect(host.querySelector('[data-reading-message-id="answer"]') !== null).toBe(source === 'message')
+  await update('最终答复继续增加')
+  expect(host.querySelector('.message-card')).toBe(card)
+  expect(card.querySelector('.message-bubble')?.textContent).toBe('最终答复继续增加')
+  await update('最终答复继续增加', true)
+  expect(host.querySelector('.message-card')).toBe(card)
+  expect(card.querySelector('[data-slot="streaming-reply"]')).toBeNull()
+  expect(host.querySelectorAll('[data-reading-message-id="answer"]')).toHaveLength(1)
+  expect(host.querySelectorAll('.message-bubble')).toHaveLength(1)
+})
+
+test('defers the provisional reply to the execution card while the run waits for approval', async () => {
+  props = { ...props, detail: { ...props.detail, replyPreviews: { [run.id]: '正在开始回复' } } }
+  await render()
+  expect(host.querySelector('.message-bubble')?.textContent).toBe('正在开始回复')
+  props = { ...props, detail: { ...props.detail, runs: [{ ...run, status: 'waiting_approval' }] } }
+  await render()
+  expect(host.querySelector('.message-bubble')).toBeNull()
+  expect(host.querySelector('[data-chat-execution-run]')?.textContent).toContain('等待批准')
 })
 
 test('pauses execution reads only while the chat page is hidden and resumes when visible', async () => {
