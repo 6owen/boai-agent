@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 宿主标题辅助请求由独立无工具 JSON 应答处理；组织工具和恢复调用账本仍按实际请求核验。
  * [OUTPUT]: 2026-10-30 回归更新为Mastra官方记忆/原生归属合同；保留来源、调用预算和业务发布断言。
  * [INPUT]: 真实AppService/Mastra SDK/本地HTTP及固定组织阶段三工具、SQLite和受管员工文件准备故障。
  * [OUTPUT]: 原组织失败后的真实文件核对/新 holder 共原预算、零模型/零伪回复续完、原公告来源/效果确认和强幂等；忘记/过期旧快照与外改原件拒绝发布。
@@ -37,6 +38,17 @@ async function fixture(options: { memory?: boolean; expiresAt?: string; checkpoi
   const endpoint = await teamEndpoint((body, response, index) => {
     try {
       const messages = body.messages as ModelMessage[], system = messages.filter(message => message.role === 'system').map(message => message.content).join('\n')
+      if (system.startsWith('给这段对话生成易于识别的简短标题。')) {
+        expect(body.tools ?? []).toEqual([])
+        expect(body.stream ?? false).toBe(false)
+        response.writeHead(200, { 'Content-Type': 'application/json' })
+        response.end(JSON.stringify({
+          id: 'fixture-title', object: 'chat.completion', model: body.model, created: 1,
+          choices: [{ index: 0, message: { role: 'assistant', content: '编辑团队安排' }, finish_reason: 'stop' }],
+          usage: { prompt_tokens: 20, completion_tokens: 5, total_tokens: 25 },
+        }))
+        return
+      }
       if (system.includes('Private memory maintenance')) { sendTeamOutput(response, { candidates: [] }); return }
       if (system.includes('Read the actual new conversation facts. Publish a relevant, updated report')) { const input = JSON.parse(messages.at(-1)!.content); sendTeamOutput(response, { action: 'publish', text: input.data.draft.text, outcome: input.data.draft.outcome }); return }
       if (system.includes('Private participation decision')) {

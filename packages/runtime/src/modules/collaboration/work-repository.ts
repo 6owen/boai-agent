@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 单项工作按固定 ID 核会话和可选负责人，列表与完整工作视图各自使用对应读取。
  * [OUTPUT]: 2026-10-28组织判断承接沿用户原绝对期限计入耗时，不追加固定五分钟上限或续期。
  * [OUTPUT]: 2026-10-27 默认持续执行、来源校验及工作现场/复核接线；沿原权限和账本。
  * [OUTPUT]: 提取原继续只读preflight供结果视图，prepareRetry在原事务仍完整重核并写入。
@@ -152,12 +153,18 @@ export class WorkRepository {
     })
   }
 
-  async view(conversationId: string) {
-    const workItems = (await this.store.load<WorkItem>('workItems')).filter(work => work.conversationId === conversationId)
-    const ids = new Set(workItems.map(work => work.budgetId))
-    const workBudgets = (await this.store.load<WorkBudget>('workBudgets')).filter(budget => ids.has(budget.id) || budget.conversationId === conversationId)
-    const workWakes = (await this.store.load<WorkWake>('workWakes')).filter(wake => wake.conversationId === conversationId)
-    return { workItems, workBudgets, workWakes }
+  view(conversationId: string) {
+    return this.store.conversationWork(conversationId)
+  }
+
+  listInConversation(conversationId: string) {
+    return this.store.load<WorkItem>('workItems', { conversationId })
+  }
+
+  async findInConversation(conversationId: string, workId: string | undefined, ownerAgentId?: string) {
+    if (workId === undefined) return
+    const work = await this.store.get<WorkItem>('workItems', workId)
+    if (work?.id === workId && work.conversationId === conversationId && (ownerAgentId === undefined || work.ownerAgentId === ownerAgentId)) return work
   }
 
   private async revisionScope(tx: RecordTransaction, requestId: string, conversationId: string, agentId: string) {

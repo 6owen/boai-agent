@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 会话工作、引用预算及接续从一个只读 SQLite 快照取得。
  * [OUTPUT]: 普通与事务内读取同序按会话筛选；资料和成果共用现有 SQLite 部分索引。
  * [OUTPUT]: 任务诊断只读SQL投影按原run/source限制回执、审批和输入，不取正文、不recover或写事务。
  * [OUTPUT]: 关闭前同步停止受理，等待已受理操作退出且原生client只关闭一次。
@@ -31,7 +32,7 @@
  * [POS]: 产品持久化边界；事务回调不得再调用外层存储方法；只读取证连接不执行迁移、索引失效或建表写入。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { createClient, type Client } from '@libsql/client'
+import { createClient, type Client, type ResultSet } from '@libsql/client'
 import { RawHistoryIndex } from './raw-history-index'
 import { queryTaskDiagnosisRecords, type TaskDiagnosisRecordScope } from './task-diagnosis-records'
 import type { HistorySearchQuery } from '@boai/shared/domain/history-search'
@@ -54,7 +55,7 @@ import { conversationMessagesSql, conversationSearchSql, conversationSearchTarge
 import { SEARCH_INDEX_CLOCK_COLLECTION, SEARCH_INDEX_CLOCK_ID, SEARCH_INDEX_COLLECTION, searchBodyCandidatesSql, searchBodyCoverageSql, searchBodyFailuresSql, type SearchBodyCandidate } from '../../modules/conversations/search-index-sql'
 import { advanceWorkViewClock, conversationFilesSql, conversationFileQuerySchema, readWorkViewCursor, workViewQuerySchema, workViewsSql, workViewCursor, workViewTargetSql } from '../../modules/collaboration/work-view-sql'
 import { WORK_VIEW_LIMITS, type WorkViewQuery, type WorkViewPage, type WorkViewItem, type ConversationFileQuery, type ConversationFilePage, type ConversationFileItem } from '@boai/shared/domain/work-views'
-import type { WorkItem } from '@boai/shared/domain/work'
+import type { WorkBudget, WorkItem, WorkWake } from '@boai/shared/domain/work'
 import type { EmployeeExecutionQuery, EmployeeExecutionSummary, ExecutionConfiguration } from '@boai/shared/domain/employee-executions'
 import { EMPLOYEE_EXECUTION_LIMITS } from '@boai/shared/domain/employee-executions'
 import type { AgentRun } from '@boai/shared/domain'
@@ -97,7 +98,7 @@ const conversationFileCollections = ['materials', 'artifacts']
 const conversationFilePredicate = `collection IN (${conversationFileCollections.map(name => `'${name}'`).join(',')})`
 type RecordFilter = { conversationId: string } | { status: string }
 
-async function listRecords<T>(reader: Pick<Client, 'execute'>, collection: string, filter?: RecordFilter): Promise<T[]> {
+function recordListQuery(collection: string, filter?: RecordFilter) {
   const conditions = ['collection=?']
   const args = [collection]
   if (filter && 'conversationId' in filter) {
@@ -108,8 +109,15 @@ async function listRecords<T>(reader: Pick<Client, 'execute'>, collection: strin
     conditions.push("json_extract(value,'$.status')=?")
     args.push(filter.status)
   }
-  const result = await reader.execute({ sql: `SELECT value FROM records WHERE ${conditions.join(' AND ')} ORDER BY rowid`, args })
+  return { sql: `SELECT value FROM records WHERE ${conditions.join(' AND ')} ORDER BY rowid`, args }
+}
+
+function recordValues<T>(result: ResultSet): T[] {
   return result.rows.map(row => JSON.parse(String(row.value)) as T)
+}
+
+async function listRecords<T>(reader: Pick<Client, 'execute'>, collection: string, filter?: RecordFilter) {
+  return recordValues<T>(await reader.execute(recordListQuery(collection, filter)))
 }
 
 export interface StoredRecord { collection: string; id: string; value: unknown }
@@ -340,6 +348,23 @@ export class ProductStore {
     return this.enqueue(async () => {
       const result = await this.client.execute({ sql: "SELECT value FROM records WHERE collection='traceSpans' AND json_extract(value,'$.runId')=? AND json_extract(value,'$.agentId')=? AND json_extract(value,'$.conversationId')=? ORDER BY rowid LIMIT ?", args: [runId, agentId, conversationId, EMPLOYEE_EXECUTION_LIMITS.traceSpans + 1] })
       return { spans: result.rows.slice(0, EMPLOYEE_EXECUTION_LIMITS.traceSpans).map(row => JSON.parse(String(row.value)) as StoredTraceSpan), truncated: result.rows.length > EMPLOYEE_EXECUTION_LIMITS.traceSpans }
+    })
+  }
+  conversationWork(conversationId: string) {
+    const scope = { conversationId }
+    return this.enqueue(async () => {
+      // A group can share the originating conversation's budget. Older budgets
+      // can also lack a conversationId and remain reachable through their work.
+      const [items, budgets, wakes] = await this.client.batch([
+        recordListQuery('workItems', scope),
+        { sql: `SELECT value FROM records WHERE collection='workBudgets'
+            AND (json_extract(value,'$.conversationId')=? OR json_extract(value,'$.id') IN (
+              SELECT json_extract(value,'$.budgetId') FROM records
+              WHERE collection='workItems' AND json_extract(value,'$.conversationId')=?
+            )) ORDER BY rowid`, args: [conversationId, conversationId] },
+        recordListQuery('workWakes', scope),
+      ], 'read')
+      return { workItems: recordValues<WorkItem>(items), workBudgets: recordValues<WorkBudget>(budgets), workWakes: recordValues<WorkWake>(wakes) }
     })
   }
   queryWorkViews(query: WorkViewQuery): Promise<WorkViewPage> {
