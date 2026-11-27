@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 检索选择与服务共用 Mastra 操作绑定，来源集合仍按当前会话筛选。
  * [OUTPUT]: 2026-11-09 项目目录的运行授权与显式目录授权共用数据源访问边界。
  * [OUTPUT]: 2026-10-20 Alma技能接线：普通聊天按需读绑定技能/有来源记忆，独立任务协议与MCP媒体保持实际授权；本轮证据归独立Agent架构§11.21。
  * [OUTPUT]: 2026-10-19 独立检索工具与业务数据源工具分别装配；无 sourceIds 仍可用获准检索。
@@ -15,6 +16,7 @@ import { mcpModelOutput } from '../../modules/sources/mcp-media'
 import { createWebSearchOperations, hasWebSearchTools, webSearchToolNames } from './web-search-tools'
 import { z } from 'zod'
 import { createTool } from '@mastra/core/tools'
+import { bindMastraOperation, bindMastraOperations } from './operation-tools'
 import { sourceCallSchema } from '@boai/shared/domain/sources'
 import { isCoreAgent } from '@boai/shared/domain/core-agent'
 import { currentSourceReferences } from '@boai/shared/domain/composer-references'
@@ -49,10 +51,10 @@ export function createSourceTools(context: EngineContext, webReadOnly = false) {
   const available = hasSourceTools(context) && (!webReadOnly || !!context.manageDataSources || !!chatSources(context).length)
   const selection = createWebSearchSelectionOperation(context)
   const tools = {
-    ...(selection ? { select_web_search: createTool({ id: selection.name, description: selection.description, inputSchema: selection.schema, execute: input => selection.execute(input) }) } : {}),
+    ...(selection ? { select_web_search: bindMastraOperation(selection) } : {}),
     inspect_data_source: createTool({ id: 'inspect_data_source', description: sourceInspectDescription(context, webReadOnly), inputSchema: sourceInspectSchema, execute: input => context.inspectDataSource!(input.sourceId) }),
     call_data_source: createTool({ id: 'call_data_source', toModelOutput: mcpModelOutput, description: sourceCallDescription + (webReadOnly ? ' Web candidates accept only verified read-only search/URL tools; other explicitly selected sources retain original employee permissions.' : ''), inputSchema: sourceCallSchema, execute: input => context.callDataSource!(sourceCallSchema.parse(input)) }),
   }
-  const searchTools = Object.fromEntries(createWebSearchOperations(context).map(operation => [operation.name, createTool({ id: operation.name, description: operation.description, inputSchema: operation.schema, execute: input => operation.execute(input) })]))
+  const searchTools = bindMastraOperations(createWebSearchOperations(context))
   return { ...(available ? tools : {}), ...searchTools, ...(selection && (available || hasWebSearchTools(context)) ? { select_web_search: tools.select_web_search } : {}) } as typeof tools & typeof searchTools
 }

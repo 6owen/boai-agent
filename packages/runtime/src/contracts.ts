@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: RuntimeToolOperation 描述两种执行后端可绑定的宿主操作。
  * [OUTPUT]: 执行适配器可提供只面向当前会话窗口的回复预览。
  * [OUTPUT]: 2026-11-24 第三阶段：API 执行补充交给 Session.steer；Trace 从官方存储查询，兼容既有业务历史。
  * [OUTPUT]: 2026-11-24 提供官方指标投影及团队/PPT辅助模型端口，原生后端不强制实现。
@@ -89,6 +90,13 @@ export interface SecretStore {
   retire?(connectionId: string): Promise<void>
   delete(connectionId: string): Promise<void>
 }
+export interface RuntimeToolOperation {
+  name: string
+  description: string
+  schema: import('zod').ZodType
+  execute(input: unknown): Promise<unknown>
+}
+
 export interface EngineContext {
   /** Fresh effective native inventory, checked before any user/behavior input is submitted. */
   assertNativeCapabilities?(inventory: import('./modules/resources/capability-native-ownership').NativeCapabilityInventory): Promise<void>

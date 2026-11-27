@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 任务知识操作以当前冻结环境绑定至 Mastra 工具。
  * [OUTPUT]: 2026-11-24 第三阶段：官方 Durable Agent/Session.steer、Workspace 文件工具、LocalSandbox 进程和原生 Trace；授权及发布保留业务适配。
  * [OUTPUT]: 官方 Workspace 文件工具与读取记录替代自建编辑/分页/搜索；BOAI仅提供路径授权和成果发布。
  * [OUTPUT]: 2026-11-24 文件与命令的原权限预检接 Session 审批；批准后重验来源/路径且不重复询问。
@@ -51,7 +52,8 @@ import { isBrowserCapableAgent } from '@boai/shared/domain'
 import { isCoreAgent } from '@boai/shared/domain/core-agent'
 import { teamModelPlanSchema } from '@boai/shared/domain/team-creation'
 import { logicalPath, workspaceTarget, writeWorkspaceFile, publishArtifact, restrictedPath, assertTaskPathAccess } from '../../modules/workspaces/file-access'
-import { createKnowledgeTools } from './knowledge-tools'
+import { bindMastraOperations } from './operation-tools'
+import { createKnowledgeOperations } from '../../modules/resources/knowledge-tools'
 import { createDirectoryRequestOperation } from '../../modules/workspaces/directory-tool'
 import { knowledgeInstructions } from '../../modules/resources/knowledge-tools'
 import { BoundSkillSource } from './bound-skill-source'
@@ -352,7 +354,7 @@ export async function createTaskRuntime(ctx: EngineContext, commandTimeoutMs = 0
           return result
         }),
       }),
-      ...createKnowledgeTools({ ...ctx, environment: plan }),
+      ...bindMastraOperations(createKnowledgeOperations({ ...ctx, environment: plan })),
       ...(ctx.delegateWork ? {
         delegate_work: createTool({
           id: 'delegate_work', description: 'Assign a bounded part of the claimed work to a current group member using a stable key. Retries with the same key return the same child. All children share the original budget. Parenthood alone does not make the parent wait or complete it. Optional dependencies reference actual registered work IDs and explicit minimum result versions. Target version 1 may wait for that work’s first delivery; it does not claim delivery already happened. Never fabricate IDs or delivered evidence. The host starts dependent work only when the required versions are actually delivered.' + (apiContext ? ' For a dependent chain, first delegate the prerequisite alone, then use its actual returned work ID in a later call for the dependent task. Never guess IDs/versions or substitute this active parent work ID. A child cannot depend on the active work delegating it. Do not rename a stable key or add v2 to bypass an existing-work conflict.' : ''),
