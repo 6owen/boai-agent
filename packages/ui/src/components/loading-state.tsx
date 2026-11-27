@@ -1,11 +1,12 @@
 /*
+ * [OUTPUT]: ElapsedTime 管理活动计时、格式与停表；加载和聊天共用，计时仅刷新文字。
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
  * [INPUT]: Beautiful UI loading-state.json / foundation.json（2026-10-16）与宿主真实开始时间、活动状态。
  * [OUTPUT]: 紧凑浅色3×3像素波/环绕、12px常规shimmer标签/11px计时并居中对齐；隐藏停表，无模拟进度。
  * [POS]: @boai/ui共享实现；原归属： 共享LoadingState展示原语，颜色沿BOAI主题；上游 https://www.beautifului.dev/r/loading-state.json。
  * [PROTOCOL]: 变化同步Header和所属.folder.md。
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ComponentPropsWithoutRef } from 'react'
 
 
 const chevron = Array.from({ length: 9 }, (_, i) => (i % 3 + Math.abs(Math.floor(i / 3) - 1)) * 90)
@@ -16,9 +17,9 @@ const patterns = {
   Orbit: { delays: Array.from({ length: 9 }, (_, i) => orbitOrder.includes(i) ? orbitOrder.indexOf(i) * 110 : null), duration: 950, round: false },
 }
 
-export function LoadingState({ label = '正在处理', variant = 'Drive', startedAt, active = true, working = true }: {
-  label?: string; variant?: keyof typeof patterns; startedAt?: string; active?: boolean; working?: boolean
-}) {
+export function ElapsedTime({ startedAt, finishedAt, active, ...spanProps }: {
+  startedAt?: string; finishedAt?: string; active: boolean
+} & Omit<ComponentPropsWithoutRef<'span'>, 'children'>) {
   const [now, setNow] = useState(Date.now)
   const start = startedAt ? Date.parse(startedAt) : NaN
   useEffect(() => {
@@ -27,8 +28,16 @@ export function LoadingState({ label = '正在处理', variant = 'Drive', starte
     const timer = setInterval(() => setNow(Date.now()), 100)
     return () => clearInterval(timer)
   }, [active, start])
-  const total = Math.max(0, (now - start) / 1000)
+  if (!Number.isFinite(start)) return null
+  const end = finishedAt ? Date.parse(finishedAt) : now
+  const total = Math.max(0, (end - start) / 1000)
   const elapsed = total < 60 ? `${total.toFixed(1)}s` : `${Math.floor(total / 60)}m ${(total % 60).toFixed(1)}s`
+  return <span {...spanProps}>{elapsed}</span>
+}
+
+export function LoadingState({ label = '正在处理', variant = 'Drive', startedAt, active = true, working = true }: {
+  label?: string; variant?: keyof typeof patterns; startedAt?: string; active?: boolean; working?: boolean
+}) {
   const { delays, duration, round } = patterns[variant]
   return <div data-slot="loading-state" className="flex min-w-0 items-center gap-2 leading-5" data-working={working && active}>
     <span aria-hidden="true" className="grid shrink-0 grid-cols-[repeat(3,2.5px)] gap-px">
@@ -36,6 +45,6 @@ export function LoadingState({ label = '正在处理', variant = 'Drive', starte
         style={{ opacity: delay === null ? 0.07 : 0.15, animation: delay === null ? 'none' : `execution-pixel-on ${duration}ms ease-in-out ${delay}ms infinite` }} />)}
     </span>
     <span role="status" className="execution-state-label min-w-0 truncate text-[length:var(--text-ui-secondary)] font-normal text-muted-foreground">{label}</span>
-    {Number.isFinite(start) && <span aria-hidden="true" className="shrink-0 font-mono text-[length:var(--text-ui-caption)] text-muted-foreground/70 tabular-nums">{elapsed}</span>}
+    <ElapsedTime startedAt={startedAt} active={active} aria-hidden="true" className="shrink-0 font-mono text-[length:var(--text-ui-caption)] text-muted-foreground/70 tabular-nums" />
   </div>
 }

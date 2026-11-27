@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 在原执行操作区使用共享 ElapsedTime，保留停止后的结束时间。
  * [OUTPUT]: 收起处理过程保留两行思考预览，完整工具明细按需展开，最终回复替换沿原消息逻辑。
  * [OUTPUT]: 聊天处理卡默认单行：原logo及当前动作在左，计时/停止/展开在右；Motion过渡完整正文高度，收起后无正文残片。
  * [OUTPUT]: 顶部图标统一ghost样式；聊天内部思考/工具组默认收起，停止仅更新状态与计时，保留用户展开选择和展开入口。
@@ -20,9 +21,9 @@ import type { AgentRun } from '@boai/shared/domain'
 import { MarkdownContent } from '@/components/common/markdown'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Icon, Clock } from '@/components/icons'
-import { LoadingState } from '@/components/ui/loading-state'
+import { ElapsedTime, LoadingState } from '@/components/ui/loading-state'
 import { Button } from '@/components/ui/button'
-import { useEffect, useId, useState } from 'react'
+import { useId, useState } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
 import type { DesktopApi } from '@boai/shared/ipc'
 import { failureSummary } from '../presentation'
@@ -60,22 +61,6 @@ function currentAction(run: AgentRun) {
   return progress?.text.trim().replace(/\s+/g, ' ') || '正在处理'
 }
 
-function ExecutionElapsed({ startedAt, finishedAt, active }: { startedAt: string; finishedAt?: string; active: boolean }) {
-  const [now, setNow] = useState(Date.now)
-  const start = Date.parse(startedAt)
-  useEffect(() => {
-    if (!active || !Number.isFinite(start)) return
-    setNow(Date.now())
-    const timer = setInterval(() => setNow(Date.now()), 100)
-    return () => clearInterval(timer)
-  }, [active, start])
-  if (!Number.isFinite(start)) return null
-  const seconds = Math.max(0, ((finishedAt ? Date.parse(finishedAt) : now) - start) / 1000)
-  return <span data-slot="execution-elapsed" className="mr-1 shrink-0 font-mono text-[length:var(--text-ui-caption)] text-muted-foreground/70 tabular-nums">
-    {seconds < 60 ? `${seconds.toFixed(1)}s` : `${Math.floor(seconds / 60)}m ${(seconds % 60).toFixed(1)}s`}
-  </span>
-}
-
 /** A live view of the run, never a new message in model/channel history. */
 export function ChatExecutionCard({ api, run, active }: { api: DesktopApi; run: AgentRun; active: boolean }) {
   const [cache] = useState(() => new ExecutionContentCache())
@@ -89,7 +74,7 @@ export function ChatExecutionCard({ api, run, active }: { api: DesktopApi; run: 
       <header className="relative z-10 flex min-h-6 min-w-0 items-center justify-between gap-2">
         <LoadingState label={currentAction(run)} active={active} working={run.status === 'running'} />
         <div className="flex shrink-0 items-center gap-1" data-slot="execution-header-actions">
-          <ExecutionElapsed startedAt={run.createdAt} finishedAt={run.finishedAt} active={active && live} />
+          <ElapsedTime data-slot="execution-elapsed" className="mr-1 shrink-0 font-mono text-[length:var(--text-ui-caption)] text-muted-foreground/70 tabular-nums" startedAt={run.createdAt} finishedAt={run.finishedAt} active={active && live} />
           <ExecutionStopButton key={run.id} api={api} run={run} active={active} compact />
           <Button type="button" variant="ghost" size="icon-xs" title={expanded ? '收起处理过程' : '展开处理过程'} aria-label={expanded ? '收起处理过程' : '展开处理过程'} aria-controls={contentId} aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>
             <Icon name={expanded ? 'ChevronUp' : 'ChevronDown'} />
