@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 工作额度与结果证据沿 shared/domain/work 的业务规则判断；预留、核权和结算由宿主事务负责。
  * [OUTPUT]: 2026-10-28承接API判断保留默认无限与用户原绝对期限，判断耗时自然计入，不追加固定期限或续期。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: Codex/Claude共用外部阶段计量，承接判断时保留明确的未知完整性；回执比较具体kind与profile，不跨运行时借用身份。
@@ -7,11 +8,12 @@
  * [POS]: WorkRepository的交互请求账本授权，执行权仍由原holder核对。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
+import { WorkUnavailableError } from '@boai/shared/domain/work'
 import type { AgentRun, BudgetModelCall, Conversation, DigitalAgent, Message, WorkBudget, WorkItem } from '@boai/shared/domain'
 import { isNativeBackend, sameBackendBinding } from '@boai/shared/domain/backends'
 import type { RecordTransaction } from '../../adapters/storage/product-store'
 import type { ProfileModelCall } from '../profile/profile-activity'
-import { reserveBudgetCall, settleBudgetCall, WorkUnavailableError } from './work-budget'
+import { reserveBudgetCall, settleBudgetCall } from './work-budget'
 
 export async function adoptInteractiveDecision(tx: RecordTransaction, work: WorkItem, budget: WorkBudget, sourceMessageId: string, prior: { runId: string; callIds: string[] }) {
   const run = await tx.get<AgentRun>('runs', prior.runId)

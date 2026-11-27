@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 工作额度与结果证据沿 shared/domain/work 的业务规则判断；预留、核权和结算由宿主事务负责。
  * [OUTPUT]: 2026-10-28组织判断承接保留用户明确1/10分钟原绝对期限与授权，已耗判断时间不重置、不追加隐式上限。
  * [OUTPUT]: 验证默认无执行配额、旧默认精确迁移、显式预算仍执行以及用户取消；不调用真实供应商。
  * [OUTPUT]: 覆盖增大任务额度、真实继续消息或本次运行同类批准；各文件以具体用例限定验证范围。
@@ -10,6 +11,7 @@
  * [POS]: BC3 模块合同；真实模型/桌面群协作由 Electron BDD 验证。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { newWorkBudget } from '@boai/shared/domain/work'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -17,7 +19,7 @@ import { join } from 'node:path'
 import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
 import { WorkRepository } from '../packages/runtime/src/modules/collaboration/work-repository'
 import { collaborationMessageHash } from '../packages/runtime/src/modules/collaboration/work-collaboration'
-import { newWorkBudget, reserveBudgetCall } from '../packages/runtime/src/modules/collaboration/work-budget'
+import { reserveBudgetCall } from '../packages/runtime/src/modules/collaboration/work-budget'
 import { workIntentSchema } from '../packages/runtime/src/modules/collaboration/work-protocol'
 import { GroupScheduler, type SchedulerHooks } from '../packages/runtime/src/group-scheduler'
 import { ConversationHistory } from '../packages/runtime/src/modules/cleanup/conversation-history'
@@ -88,7 +90,7 @@ describe('bobo fixed organization authority and genuine delivery', () => {
     const f = await fixture('organize_only', false)
     const ordinary = await f.works.claim({ ...f.claim, sourceMessageId: 'ordinary-user', runId: 'ordinary-run', organization: undefined })
     expect((await f.works.view(f.core.id)).workBudgets.find(budget => budget.id === ordinary.budgetId)).toMatchObject({ executionAllowanceVersion: 2, maxModelCalls: null, maxOutputTokens: null, maxRuns: null })
-    const automation = newWorkBudget('automation-budget', { conversationId: f.core.id, origin: { kind: 'automation', automationId: 'automation', occurrenceId: 'occurrence', name: '定时任务', authorizedFingerprint: 'explicit-source' } }, 'organize_and_execute')
+    const automation = newWorkBudget('automation-budget', { conversationId: f.core.id, origin: { kind: 'automation', automationId: 'automation', occurrenceId: 'occurrence', name: '定时任务', authorizedFingerprint: 'explicit-source' } })
     expect(automation).toMatchObject({ executionAllowanceVersion: 2, maxModelCalls: null, maxOutputTokens: null, maxRuns: null })
   })
   it('retains an explicit user twenty-four-call full organization budget through restart and explicit reclaim', async () => {

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 工作额度与结果证据沿 shared/domain/work 的业务规则判断；预留、核权和结算由宿主事务负责。
  * [OUTPUT]: 取消自动化固定执行时限；旧时间预算取消仅由本人显式继续恢复，原occurrence、预算计账、容量与人工停止门禁保持。
  * [OUTPUT]: 固定群分工需全部真实交付才算整体完成；只回复文本或漏分工不能提升为成功。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
@@ -12,10 +13,9 @@
  * [POS]: 自动化结果的纯投影；不调用模型、不执行或恢复工具。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { workBudgetExhausted, workEvidenceError } from '@boai/shared/domain/work'
 import { isNativeBackend } from '@boai/shared/domain/backends'
 import type { AgentRun, Artifact, AutomationOccurrence, AutomationOrigin, DiscussionTurn, DecisionRecord, Message, WorkBudget, WorkItem, WorkWake } from '@boai/shared/domain'
-import { workBudgetExhausted } from '../collaboration/work-budget'
-import { workEvidenceError } from '../collaboration/work-protocol'
 import { publishedWorkQuestionMatches } from '@boai/shared/domain/inbox'
 
 const endedRun = new Set(['completed', 'failed', 'cancelled', 'interrupted'])

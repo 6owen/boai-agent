@@ -1,10 +1,12 @@
 /*
+ * [OUTPUT]: 工作额度与结果证据沿 shared/domain/work 的业务规则判断；预留、核权和结算由宿主事务负责。
  * [OUTPUT]: 桌面任务结果Dialog已退役，保留只读服务/CLI数据及原文件核验回归。
  * [INPUT]: Real ProductStore/managed files, original Work continuation preflight and owner transport catalog.
  * [OUTPUT]: Result identity, revocation, file bytes, bounded history and zero business writes regression sources.
  * [POS]: Workspace task-result increment; no provider or GUI.
  * [PROTOCOL]: Update Header and tests/.folder.md on change.
  */
+import { newWorkBudget } from '@boai/shared/domain/work'
 import { afterEach, expect, it } from 'vitest'
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -16,7 +18,6 @@ import { ProductStore } from '../packages/runtime/src/adapters/storage/product-s
 import { TaskResultRepository, projectRunCancellation } from '../packages/runtime/src/modules/collaboration/task-result-repository'
 import { ArtifactRepository } from '../packages/runtime/src/modules/workspaces/artifact-repository'
 import { WorkRepository } from '../packages/runtime/src/modules/collaboration/work-repository'
-import { newWorkBudget } from '../packages/runtime/src/modules/collaboration/work-budget'
 import { TASK_RESULT_LIMITS } from '../packages/shared/src/domain/task-results'
 const cleanups: (() => Promise<void>)[] = []
 afterEach(async () => { for (const close of cleanups.splice(0).reverse()) await close() })

@@ -1,16 +1,17 @@
 /*
+ * [OUTPUT]: 工作额度与结果证据沿 shared/domain/work 的业务规则判断；预留、核权和结算由宿主事务负责。
  * [INPUT]: A test-owned Desktop with an isolated temporary profile.
  * [OUTPUT]: Real persisted Work/Run/message/artifact fixture with canonical temporary-path guard for task-result UI/CLI; zero model calls or mocked API responses.
  * [POS]: Optional focused desktop verification support; never accepts a personal data path.
  * [PROTOCOL]: Update Header and support/.folder.md on change.
  */
+import { newWorkBudget } from '@boai/shared/domain/work'
 import { isAbsolute, join, relative, sep } from 'node:path'
 import { mkdir, realpath, writeFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
 import type { AgentRun, Conversation, DigitalAgent, Message, WorkItem } from '../../../packages/shared/src/domain'
 import { ProductStore } from '../../../packages/runtime/src/adapters/storage/product-store'
 import { ArtifactRepository } from '../../../packages/runtime/src/modules/workspaces/artifact-repository'
-import { newWorkBudget } from '../../../packages/runtime/src/modules/collaboration/work-budget'
 import type { Desktop } from './desktop'
 
 export async function prepareTaskResults(runtime: Desktop) {

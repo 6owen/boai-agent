@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 工作额度与结果证据沿 shared/domain/work 的业务规则判断；预留、核权和结算由宿主事务负责。
  * [OUTPUT]: 组织执行/恢复授权忽略只影响新会话的默认目录修改，其他配置版本仍严格核验。
  * [OUTPUT]: 默认执行不按累计调用、工具步骤、用量或墙钟截断；保留真实用量、取消/权限和明确指定的预算。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
@@ -10,13 +11,13 @@
  * [POS]: WorkRepository 的 bobo 协作事务规则，群是员工的组织形式，不取得员工生命周期。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { workLimitReached, checkWorkBudget, WorkUnavailableError } from '@boai/shared/domain/work'
 import { createHash } from 'node:crypto'
 import type { AgentRun, CollaborationStartIntent, Conversation, DiscussionTurn, DigitalAgent, Message, WorkBudget, WorkExecution, WorkItem, WorkOrganization, WorkOutcome } from '@boai/shared/domain'
 import type { BoboCollaborationOperation, BoboOrganizationAuthority } from '@boai/shared/domain/bobo-collaboration'
 import { isCoreAgent, isCoreConversation } from '@boai/shared/domain/core-agent'
 import { isNativeBackend, sameBackendBinding } from '@boai/shared/domain/backends'
 import type { RecordTransaction } from '../../adapters/storage/product-store'
-import { workLimitReached, checkWorkBudget, WorkUnavailableError } from './work-budget'
 
 const put = <T extends { id: string }>(collection: string, value: T) => ({ collection, id: value.id, value })
 const identity = (...parts: string[]) => createHash('sha256').update(JSON.stringify(parts)).digest('hex')

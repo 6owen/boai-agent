@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 工作额度与结果证据沿 shared/domain/work 的业务规则判断；预留、核权和结算由宿主事务负责。
  * [OUTPUT]: 插件指南的固定身份、正文来源与按需加载沿实际服务验证。
  * [OUTPUT]: 本地 HTTP 与官方观测存储核对两路 Trace 的凭据遮蔽、完整调用树和一次业务请求。
  * [OUTPUT]: 已授权会话消息的窗口、当前轮及身份投影归 conversations；模型角色/图片装配归 API 适配器。
@@ -58,7 +59,7 @@
  * [POS]: tests/mastra-engine.test.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { workEvidenceError } from '../packages/runtime/src/modules/collaboration/work-protocol'
+import { workEvidenceError } from '@boai/shared/domain/work'
 import { createServer, type ServerResponse } from 'node:http'
 import { createHash, randomUUID } from 'node:crypto'
 import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises'

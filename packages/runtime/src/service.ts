@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 工作额度与结果证据沿 shared/domain/work 的业务规则判断；预留、核权和结算由宿主事务负责。
  * [OUTPUT]: contexts 按共享场景表编译员工来源与状态；默认通信场景由工作区装配统一选择。
  * [OUTPUT]: 任务面板、主聊天和应用操作共用 tasks/read-model 的受权分页和活动读取。
  * [OUTPUT]: 会话清理受理按本次父子会话 ID 核对已有日志。
@@ -247,6 +248,7 @@
  * [POS]: packages/runtime/src/service.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { WorkUnavailableError, workBudgetDeadline, workLimitReached, workEvidenceError } from '@boai/shared/domain/work'
 import { jsonSha256 } from './json-digest'
 import { asEmployeeTopic, isScheduledEmployeeTopic, migrateScheduledEmployeeTopics } from './modules/automations/employee-topics'
 import { EmployeeTaskService } from './modules/automations/employee-task-service'
@@ -467,8 +469,7 @@ import { APPLICATION_BROWSER_SCOPE } from '@boai/shared/ipc/browser'
 import type { BrowserHostBridge, BrowserLease, BrowserControlInput, BrowserManualOpenInput, BrowserTaskAuthorization } from '@boai/shared/ipc/browser'
 import { BrowserRepository } from './modules/browser/repository'
 import { BrowserSession } from './modules/browser/session'
-import { WorkRepository, WorkUnavailableError } from './modules/collaboration/work-repository'
-import { workBudgetDeadline, workLimitReached } from './modules/collaboration/work-budget'
+import { WorkRepository } from './modules/collaboration/work-repository'
 import { BoboCollaborationService, type BoboCollaborationHooks } from './modules/bobo-collaboration/service'
 import type { BoboCollaborationOperation, BoboOrganizationAuthority } from '@boai/shared/domain/bobo-collaboration'
 import { Inbox } from './modules/inbox/inbox'
@@ -477,7 +478,7 @@ import { ExecutionRepository } from './modules/conversations/execution'
 import { automationQuestionSource, questionSource, validateQuestionReply, answerQuestion, type QuestionSource } from './modules/inbox/user-question'
 import type { InboxItem, InboxQuestionReply, InboxReplyRelation } from '@boai/shared/domain/inbox'
 import { TaskAdmission } from './modules/collaboration/task-admission'
-import { workOutcomeSchema, workDelegationSchema, workWaitSchema, workEvidenceError } from './modules/collaboration/work-protocol'
+import { workOutcomeSchema, workDelegationSchema, workWaitSchema } from './modules/collaboration/work-protocol'
 import { assertCollaborationEvidence } from './modules/collaboration/work-collaboration'
 import type { WorkOutcome, ModelUsage } from '@boai/shared/domain'
 

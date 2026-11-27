@@ -1,21 +1,11 @@
 /*
+ * [OUTPUT]: 工作额度与结果证据沿 shared/domain/work 的业务规则判断；预留、核权和结算由宿主事务负责。
  * [INPUT]: 员工提出的共享工作意图与结果声明。
  * [OUTPUT]: 模型输入按组织/业务、真实登记 ID 和已声明等待收窄；仅组织提供协作回执，依赖等待不能改为用户问题或业务交付；权威结果 schema/宿主证据检查保持独立；模型仅判断组织模式/目标，真实组织证据由宿主核验。
  * [POS]: collaboration 工作协议；声明不替代权限和证据检查。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { z } from 'zod'
-import type { WorkOutcome } from '@boai/shared/domain'
-
-export function workEvidenceError(outcome: WorkOutcome, receipt: { content: string; artifactIds: string[] }, waiting = false): string | undefined {
-  if (outcome.userQuestion && (outcome.disposition !== 'waiting' || waiting || !receipt.content.includes(outcome.userQuestion))) return '用户补充问题必须明确为 waiting、出现在本次公开正文且不能解除工作依赖等待'
-  if (waiting && outcome.disposition !== 'waiting') return '已声明依赖等待，本次结果必须为 waiting'
-  for (const evidence of outcome.evidence ?? []) {
-    if (evidence.kind === 'artifact' && !receipt.artifactIds.includes(evidence.reference)) return '交付证据未引用本次已登记产物'
-    if (evidence.kind === 'answer' && (!evidence.reference.trim() || !receipt.content.includes(evidence.reference))) return '答复证据不在本次结果中'
-  }
-  if (outcome.disposition === 'delivered' && !outcome.evidence?.length) return '已交付状态必须有可检查的结果证据'
-}
 
 export const workIntentSchema = z.object({
   key: z.string().trim().min(1).max(100),

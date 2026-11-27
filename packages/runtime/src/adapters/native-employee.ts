@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 工作额度与结果证据沿 shared/domain/work 的业务规则判断；预留、核权和结算由宿主事务负责。
  * [OUTPUT]: 持久标识的 JSON 字节摘要使用共用编码，字段及顺序由本业务传入。
  * [OUTPUT]: 已授权会话消息的窗口、当前轮及身份投影归 conversations；模型角色/图片装配归 API 适配器。
  * [OUTPUT]: 仅改默认项目不推进原生执行配置版本，已建立工作保持原生session；其他配置变化仍重建。
@@ -8,6 +9,7 @@
  * [POS]: 本机员工共同流程；认证、原生生命周期和用量由各运行时适配。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
+import { workEvidenceError } from '@boai/shared/domain/work'
 import { jsonSha256 as digest } from '../json-digest'
 import { z } from 'zod'
 import type { MemoryCandidate, ParticipationDecision, WorkDraft, WorkReport } from '@boai/shared/domain'
@@ -15,7 +17,7 @@ import type { EngineContext } from '../contracts'
 import { bootstrapInstructions, decisionInstructions, memoryInstructions, organizationDecisionAllowed, boboResponseInstructions, collaborationResponseInstructions } from '../modules/employees/phase-instructions'
 import { decisionJsonSchema, decisionModelSchema, decisionPromptSchema, memorySchema, parseJson } from '../modules/employees/phase-protocol'
 import { prepareMemoryExtraction } from '../modules/employees/memory-extraction'
-import { workIntentSchema, modelWorkReportSchema, workEvidenceError } from '../modules/collaboration/work-protocol'
+import { workIntentSchema, modelWorkReportSchema } from '../modules/collaboration/work-protocol'
 import { decisionMessageData, partitionTurn, visibleMessages } from '../modules/conversations/message-context'
 import { createNativeTask, type NativeTool } from './native-task'
 import { NativeSessions } from './native-sessions'
