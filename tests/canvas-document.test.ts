@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 画板插件协议统一精确来源身份与清理筛选，各宿主按原生命周期中止并等待。
  * [INPUT]: Isolated files, actual pinned SDK schema and competing conditional canvas intents.
  * [OUTPUT]: Persistence/CAS, bounded raster signatures and safe frozen-cleanup retries after manual conflict removal.
  * [POS]: Canvas repository contracts; no personal files, model or desktop is used.
@@ -10,13 +11,24 @@ import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { CanvasDocumentRepository, canvasScopeKey, validateCanvasSdkDocument } from '../packages/canvas-plugin/src/document'
-import { validateCanvasAssetSource, validateCanvasDocument, type CanvasChanges, type CanvasDocument, type CanvasRecord } from '../packages/canvas-plugin/src/protocol'
+import { canvasScopeMatchesFilter, sameCanvasScope, validateCanvasAssetSource, validateCanvasDocument, type CanvasChanges, type CanvasDocument, type CanvasRecord } from '../packages/canvas-plugin/src/protocol'
 
 const requireCanvas = createRequire(new URL('../packages/canvas-plugin/package.json', import.meta.url))
 const { createTLSchema } = requireCanvas('@tldraw/tlschema') as { createTLSchema(): { serialize(): Record<string, unknown> } }
 const roots: string[] = []
 const scope = { employeeId: 'employee-a', conversationId: 'conversation-a' }
 const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aK1cAAAAASUVORK5CYII='
+it('distinguishes an exact employee board from an employee or conversation cleanup filter', () => {
+  const employee = { employeeId: scope.employeeId }
+  const peer = { ...scope, employeeId: 'employee-b' }
+  const owners = [employee, scope, peer]
+  expect(owners.filter(owner => sameCanvasScope(owner, employee))).toEqual([employee])
+  expect(owners.filter(owner => canvasScopeMatchesFilter(owner, employee))).toEqual([employee, scope])
+  expect(owners.filter(owner => canvasScopeMatchesFilter(owner, { conversationId: scope.conversationId }))).toEqual([scope, peer])
+  expect(owners.filter(owner => canvasScopeMatchesFilter(owner, scope))).toEqual([scope])
+  expect(owners.filter(owner => canvasScopeMatchesFilter(owner, {}))).toEqual([])
+})
+
 function document(): CanvasDocument {
   return { schema: createTLSchema().serialize(), store: {
     'document:document': { id: 'document:document', typeName: 'document', name: '', gridSize: 10, meta: {} },

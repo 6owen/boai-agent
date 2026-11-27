@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 画板插件协议统一精确来源身份与清理筛选，各宿主按原生命周期中止并等待。
  * [INPUT]: Current plugin availability, authenticated scope and a fixed renderer executor.
  * [OUTPUT]: Managed canvas CRUD and durable revision-bound exports; .tldr always represents the whole board.
  * [POS]: Canvas application host; visible containers and employees share this single writer.
@@ -9,7 +10,7 @@ import { constants } from 'node:fs'
 import { lstat, mkdir, open, readdir, rename, rm, rmdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import {
-  CANVAS_LIMITS, CanvasError, canvasRequestSchema, canvasScopeSchema, canvasScopeFilterSchema, validateCanvasJson,
+  CANVAS_LIMITS, CanvasError, canvasRequestSchema, canvasScopeSchema, canvasScopeFilterSchema, canvasScopeMatchesFilter, validateCanvasJson,
   type CanvasDiscardResult, type CanvasDocument, type CanvasExecution, type CanvasExecutor, type CanvasExportResult,
   type CanvasRequest, type CanvasRequestInput, type CanvasResponse, type CanvasResponseMap, type CanvasScope, type CanvasScopeFilter,
 } from './protocol'
@@ -223,7 +224,7 @@ export class CanvasHost {
   async refresh() { if (!this.options.enabled()) { for (const entry of this.active) entry.abort.abort(); await this.drain() } }
   async closeScope(scopeInput: CanvasScopeFilter) {
     const scope = canvasScopeFilterSchema.parse(scopeInput)
-    const matches = [...this.active].filter(entry => (!scope.employeeId || entry.scope.employeeId === scope.employeeId) && (!scope.conversationId || entry.scope.conversationId === scope.conversationId))
+    const matches = [...this.active].filter(entry => canvasScopeMatchesFilter(entry.scope, scope))
     for (const entry of matches) entry.abort.abort()
     await Promise.allSettled(matches.map(entry => entry.done))
   }

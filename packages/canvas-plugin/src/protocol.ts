@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 画板插件协议统一精确来源身份与清理筛选，各宿主按原生命周期中止并等待。
  * [INPUT]: Authenticated employee/work scope, bounded document changes and explicit editor operations.
  * [OUTPUT]: Shared canvas contracts with bounded embedded raster signatures and persisted operation receipts.
  * [POS]: Platform-neutral canvas protocol; document data never becomes executable code.
@@ -19,6 +20,9 @@ export const CANVAS_LIMITS = Object.freeze({
 const identity = z.string().min(1).max(256).refine(value => !value.includes('\0'))
 export const canvasScopeSchema = z.object({ employeeId: identity, conversationId: identity.optional() }).strict()
 export type CanvasScope = z.infer<typeof canvasScopeSchema>
+export function sameCanvasScope(left: CanvasScope, right: CanvasScope): boolean {
+  return left.employeeId === right.employeeId && left.conversationId === right.conversationId
+}
 export const canvasBoardIdSchema = z.string().regex(/^[a-z0-9][a-z0-9-]{0,100}$/)
 export const canvasRecordIdSchema = z.string().min(1).max(256).regex(/^[A-Za-z0-9_:-]+$/)
 export const canvasOperationIdSchema = z.string().min(1).max(200).regex(/^[A-Za-z0-9_.:-]+$/)
@@ -217,6 +221,11 @@ export function validateCanvasDocument(value: unknown): CanvasDocument {
 export const canvasScopeFilterSchema = z.object({ employeeId: identity.optional(), conversationId: identity.optional() }).strict()
   .refine(value => !!value.employeeId || !!value.conversationId, 'Canvas cleanup requires an employee or conversation')
 export type CanvasScopeFilter = z.infer<typeof canvasScopeFilterSchema>
+export function canvasScopeMatchesFilter(scope: CanvasScope, { employeeId, conversationId }: CanvasScopeFilter): boolean {
+  return (employeeId !== undefined || conversationId !== undefined)
+    && (employeeId === undefined || scope.employeeId === employeeId)
+    && (conversationId === undefined || scope.conversationId === conversationId)
+}
 
 /** Same-profile runtime bridge. Cancellation and durable source cleanup retain their original identity. */
 export const canvasHostEnvelopeSchema = z.discriminatedUnion('type', [

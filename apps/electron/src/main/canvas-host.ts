@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 画板插件协议统一精确来源身份与清理筛选，各宿主按原生命周期中止并等待。
  * [INPUT]: Trusted desktop/runtime canvas calls, plugin availability and managed storage root.
  * [OUTPUT]: One document host plus bounded hidden renderers, UI flush barriers and cancellation fences.
  * [POS]: Electron canvas adapter; never shows/focuses a window or evaluates caller code.
@@ -7,7 +8,7 @@
 import { BrowserWindow, ipcMain } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { CanvasHost } from '@boai/canvas-plugin/host'
-import { CANVAS_LIMITS, CanvasError, canvasHostEnvelopeSchema, canvasRequestSchema, canvasScopeSchema, validateCanvasJson, type CanvasExecution, type CanvasExecutionResult, type CanvasHostEnvelope, type CanvasHostResponse, type CanvasRequest, type CanvasScope, type CanvasScopeFilter } from '@boai/canvas-plugin/protocol'
+import { CANVAS_LIMITS, CanvasError, canvasHostEnvelopeSchema, canvasRequestSchema, canvasScopeFilterSchema, canvasScopeMatchesFilter, canvasScopeSchema, sameCanvasScope, validateCanvasJson, type CanvasExecution, type CanvasExecutionResult, type CanvasHostEnvelope, type CanvasHostResponse, type CanvasRequest, type CanvasScope, type CanvasScopeFilter } from '@boai/canvas-plugin/protocol'
 
 export interface ElectronCanvasHostOptions {
   rootDirectory: string
@@ -18,7 +19,6 @@ export interface ElectronCanvasHostOptions {
   authorize(scope: CanvasScope): Promise<void>
   mainWindow(): BrowserWindow | null | undefined
 }
-const sameScope = (a: CanvasScope, b: CanvasScope) => a.employeeId === b.employeeId && a.conversationId === b.conversationId
 const READY = 'boai:canvas-renderer-ready', RESULT = 'boai:canvas-renderer-result'
 
 export class ElectronCanvasHost {
@@ -67,7 +67,7 @@ export class ElectronCanvasHost {
     }
     if (input.type === 'cancel') {
       const entry = this.calls.get(input.executionId)
-      if (entry && !sameScope(entry.scope, input.scope)) throw new CanvasError('FORBIDDEN', '画板调用来源不匹配')
+      if (entry && !sameCanvasScope(entry.scope, input.scope)) throw new CanvasError('FORBIDDEN', '画板调用来源不匹配')
       if (entry) { entry.controller.abort(); await entry.done.catch(() => undefined) }
       return { cancelled: true }
     }
@@ -149,8 +149,9 @@ export class ElectronCanvasHost {
     await this.host.refresh()
     if (!this.options.enabled()) await Promise.allSettled([...this.calls.values()].map(entry => entry.done))
   }
-  async closeScope(scope: CanvasScopeFilter) {
-    const entries = [...this.calls.values()].filter(entry => (!scope.employeeId || entry.scope.employeeId === scope.employeeId) && (!scope.conversationId || entry.scope.conversationId === scope.conversationId))
+  async closeScope(scopeInput: CanvasScopeFilter) {
+    const scope = canvasScopeFilterSchema.parse(scopeInput)
+    const entries = [...this.calls.values()].filter(entry => canvasScopeMatchesFilter(entry.scope, scope))
     for (const entry of entries) entry.controller.abort()
     await this.host.closeScope(scope)
     await Promise.allSettled(entries.map(entry => entry.done))
