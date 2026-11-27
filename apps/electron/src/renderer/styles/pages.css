@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 通讯录置顶沿会话的拖放皮肤和空态展开，保留横向行高度。
  * [OUTPUT]: 空列表插画跟在搜索栏和实际列表项之后，剩余拖放空间不会把插画推到底部。
  * [OUTPUT]: 会话列表下方空白可直接取消置顶，拖拽落点共用 md 圆角。
  * [OUTPUT]: 置顶沿通讯录拖拽主题，头像拖影与落点高度相同。
@@ -371,31 +372,33 @@
 .conversation-topic-toggle[aria-expanded=true]>.app-icon { transform:rotate(90deg) }
 @media (prefers-reduced-motion: reduce) { .conversation-topic-toggle>.app-icon { transition:none } }
 .conversation-list-panel .conversation-list { --conversation-pin-width:clamp(62px,calc((100cqi - 27px) / 4),72px);margin-top:8px;min-width:0;overflow-x:hidden;container-type:inline-size }
-.conversation-sidebar-list { --conversation-drop-radius:var(--radius-md,calc(var(--radius) * .75));display:flex;flex-direction:column }
-.conversation-pin-shelf { flex:none;margin-bottom:8px }
-.conversation-regular-drop { flex:1 0 auto;min-height:32px }
+.conversation-sidebar-list,.contacts-sections { --list-drop-radius:var(--radius-md,calc(var(--radius) * .75));display:flex;flex-direction:column }
+.conversation-pin-shelf { --list-pin-height:90px;flex:none;margin-bottom:8px }
+.contacts-pin-drop { --list-pin-height:55px;flex:none }
+.contacts-sections>[data-slot=collapsible] { flex:none }
+.conversation-regular-drop,.contacts-regular-drop { flex:1 0 auto;min-height:32px }
 .conversation-sidebar-list:has(>.conversation-list-empty)>.conversation-regular-drop { flex:none;min-height:0 }
-.drag-list-group-target.conversation-regular-drop[data-drop=inside] { background:transparent }
-.drag-list-group-target.conversation-regular-drop[data-drop=inside]::after { content:none }
-.conversation-regular-drop[data-drop=inside]>.conversation-regular-list:has(.conversation-section-heading) { position:relative;border-radius:var(--conversation-drop-radius);background:var(--muted) }
-.conversation-regular-drop[data-drop=inside]>.conversation-regular-list:has(.conversation-section-heading)::after { content:"";position:absolute;inset:0;border:1px dashed var(--border);border-radius:inherit;pointer-events:none }
-.drag-list-group-target.conversation-pin-shelf[data-drop=inside] { background:var(--muted);border-radius:var(--conversation-drop-radius) }
-.drag-list-group-target.conversation-pin-shelf[data-drop=inside]::after { box-shadow:none;border:1px dashed var(--border) }
-.conversation-pin-shelf[data-drop=inside] .conversation-pin-empty { border-color:transparent }
+.drag-list-group-target:is(.conversation-regular-drop,.contacts-regular-drop)[data-drop=inside] { background:transparent }
+.drag-list-group-target:is(.conversation-regular-drop,.contacts-regular-drop)[data-drop=inside]::after { content:none }
+:is(.conversation-regular-drop,.contacts-regular-drop)[data-drop=inside]>:is(.conversation-regular-list,.contacts-regular-list):has(.conversation-section-heading) { position:relative;border-radius:var(--list-drop-radius);background:var(--muted) }
+:is(.conversation-regular-drop,.contacts-regular-drop)[data-drop=inside]>:is(.conversation-regular-list,.contacts-regular-list):has(.conversation-section-heading)::after { content:"";position:absolute;inset:0;border:1px dashed var(--border);border-radius:inherit;pointer-events:none }
+.drag-list-group-target:is(.conversation-pin-shelf,.contacts-pin-drop)[data-drop=inside] { background:var(--muted);border-radius:var(--list-drop-radius) }
+.drag-list-group-target:is(.conversation-pin-shelf,.contacts-pin-drop)[data-drop=inside]::after { box-shadow:none;border:1px dashed var(--border) }
+:is(.conversation-pin-shelf,.contacts-pin-drop)[data-drop=inside]>.list-pin-placeholder { border-color:transparent }
 /* Keep the source row in place while Chromium starts the native drag. */
-.conversation-pin-shelf:has(.conversation-pin-empty) { height:90px;overflow:hidden;animation:conversation-pin-reveal .14s ease-out both }
-@keyframes conversation-pin-reveal {
+:is(.conversation-pin-shelf,.contacts-pin-drop):has(>.list-pin-placeholder) { height:var(--list-pin-height);overflow:hidden;animation:list-pin-reveal .14s ease-out both }
+@keyframes list-pin-reveal {
   from { height:0;margin-bottom:0;opacity:0 }
 }
 @media (prefers-reduced-motion: reduce) {
-  .conversation-pin-shelf:has(.conversation-pin-empty) { animation:conversation-pin-reveal 32ms steps(1,end) both }
+  :is(.conversation-pin-shelf,.contacts-pin-drop):has(>.list-pin-placeholder) { animation:list-pin-reveal 32ms steps(1,end) both }
 }
 .conversation-pin-grid { display:flex;flex-wrap:wrap;justify-content:center;gap:6px;padding:4px }
 .conversation-pin-item { flex:0 0 var(--conversation-pin-width);min-width:0;max-width:100% }
 .conversation-pin-tile.conversation-item { flex-direction:column;justify-content:center;gap:4px;min-height:82px;padding:6px 3px;margin:0;text-align:center }
 .conversation-pin-tile .avatar,.conversation-pin-tile .group-avatar { width:44px;height:44px;flex:none }
 .conversation-pin-name { width:100%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--text-ui-caption) }
-.conversation-pin-empty { display:grid;min-height:90px;place-items:center;border:1px dashed var(--border);border-radius:var(--conversation-drop-radius);color:var(--muted-foreground);font-size:var(--text-ui-secondary) }
+.list-pin-placeholder { display:grid;min-height:var(--list-pin-height);place-items:center;border:1px dashed var(--border);border-radius:var(--list-drop-radius);color:var(--muted-foreground);font-size:var(--text-ui-secondary) }
 .conversation-pin-drag-image.conversation-item { position:fixed;top:0;left:-10000px;width:var(--conversation-pin-width);pointer-events:none }
 .conversation-pin-grid .conversation-pin-item[data-drop]::before { inset-block:5px;width:2px;height:auto }
 .conversation-pin-grid .conversation-pin-item[data-drop]::after { inset-block:0 auto }
