@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 执行状态沿 shared/domain/automations 的完整状态或在途判断读取。
  * [OUTPUT]: 持久标识的 JSON 字节摘要使用共用编码，字段及顺序由本业务传入。
  * [INPUT]: Runtime operation contract and Original task, occurrence, Work, Run, source identity and bounded read-only evidence.
  * [OUTPUT]: Deterministic diagnosis metadata, unknown coverage and observed duration; zero recover or repair.
@@ -10,7 +11,7 @@ import { z } from 'zod'
 import type { AgentRun, Conversation, DigitalAgent, Message } from '@boai/shared/domain'
 import { isCoreAgent } from '@boai/shared/domain/core-agent'
 import type { ApplicationActor } from '@boai/shared/domain/application-protocol'
-import type { AutomationOccurrence } from '@boai/shared/domain/automations'
+import { AUTOMATION_OCCURRENCE_STATUSES, type AutomationOccurrence } from '@boai/shared/domain/automations'
 import { publishedWorkQuestionMatches } from '@boai/shared/domain/inbox'
 import type { WorkItem } from '@boai/shared/domain/work'
 import type { TrackedTask } from '@boai/shared/domain/tracked-tasks'
@@ -24,9 +25,8 @@ import { ApplicationValidationError, type ApplicationOperation } from '../../app
 
 const stamp = z.object({ version: z.literal(1), key: z.string().length(64), revision: z.string().length(64), offset: z.number().int().nonnegative() }).strict()
 const fail = (code: 'FORBIDDEN' | 'NOT_FOUND' | 'REVISION_CONFLICT' | 'INVALID_INPUT', message: string): never => { throw new ApplicationValidationError(code, message) }
-const knownStatus = (value: unknown, choices: string[]) => typeof value === 'string' && choices.includes(value) ? value : 'unknown'
+const knownStatus = (value: unknown, choices: readonly string[]) => typeof value === 'string' && choices.includes(value) ? value : 'unknown'
 const runStatuses = ['queued', 'running', 'waiting_approval', 'completed', 'failed', 'cancelled', 'interrupted']
-const occurrenceStatuses = ['queued', 'admitted', 'running', 'waiting_approval', 'waiting_user', 'waiting_work', 'cancelling', 'completed', 'failed', 'cancelled', 'interrupted', 'needs_review', 'skipped']
 const receiptStatuses = ['running', 'succeeded', 'rejected', 'unknown', 'cleared']
 const safeError = (value: unknown) => typeof value === 'string' && ['INVALID_INPUT', 'FORBIDDEN', 'NOT_FOUND', 'REVISION_CONFLICT', 'REQUEST_CONFLICT', 'CAPABILITY_UNAVAILABLE', 'OUTCOME_UNKNOWN', 'UNRESOLVED_WRITE', 'NO_PROGRESS', 'UNKNOWN_OPERATION', 'UNSUPPORTED_CONTRACT_VERSION'].includes(value) ? value : value ? 'OTHER' : undefined
 const validDate = (value: unknown): value is string => typeof value === 'string' && Number.isFinite(Date.parse(value))
@@ -112,7 +112,7 @@ export async function readTaskDiagnosis(store: ProductStore, raw: unknown, actor
       const occurrenceRuns = new Set(page.occurrences.flatMap(value => value.runIds))
       const sourceRuns = (source?.runs ?? []).filter(value => !occurrenceRuns.has(value.id))
       result.candidates = [
-        ...page.occurrences.map(value => ({ kind: 'occurrence' as const, id: value.id, status: knownStatus(value.status, occurrenceStatuses), at: validDate(value.startedAt) ? value.startedAt : 'unknown' })),
+        ...page.occurrences.map(value => ({ kind: 'occurrence' as const, id: value.id, status: knownStatus(value.status, AUTOMATION_OCCURRENCE_STATUSES), at: validDate(value.startedAt) ? value.startedAt : 'unknown' })),
         ...sourceRuns.map(value => ({ kind: 'run' as const, id: value.id, status: knownStatus(value.status, runStatuses), at: validDate(value.createdAt) ? value.createdAt : 'unknown' })),
       ]
       result.coverage.runsTruncated = !!page.nextCursor || source?.runs.length === 30
@@ -129,7 +129,7 @@ export async function readTaskDiagnosis(store: ProductStore, raw: unknown, actor
       conversationId = occurrence.conversationId
       runIds = occurrence.runIds
       result.target.occurrenceId = occurrence.id; result.target.occurrenceVersion = occurrence.stateVersion
-      result.state.occurrence = { status: knownStatus(occurrence.status, occurrenceStatuses), deliveryStatus: knownStatus(occurrence.deliveryStatus, ['pending', 'delivered', 'no_change', 'partial', 'blocked', 'unknown']) }
+      result.state.occurrence = { status: knownStatus(occurrence.status, AUTOMATION_OCCURRENCE_STATUSES), deliveryStatus: knownStatus(occurrence.deliveryStatus, ['pending', 'delivered', 'no_change', 'partial', 'blocked', 'unknown']) }
       add('occurrence', `occurrence:${occurrence.id}`, result.state.occurrence.status, 'automationOccurrences', occurrence.id, { ...at(occurrence.finishedAt ?? occurrence.startedAt), evidence: { collection: 'automationOccurrences', id: occurrence.id, revision: occurrence.stateVersion } })
       result.state.waiting.approval = occurrence.status === 'waiting_approval'; result.state.waiting.input = occurrence.status === 'waiting_user'; result.state.waiting.dependency = occurrence.status === 'waiting_work'; result.state.waiting.queue = occurrence.status === 'queued'
     }

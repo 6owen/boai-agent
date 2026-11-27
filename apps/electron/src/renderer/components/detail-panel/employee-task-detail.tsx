@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 执行状态沿 shared/domain/automations 的完整状态或在途判断读取。
  * [OUTPUT]: 2026-11-09 任务详情不再提供项目切换；项目配置统一归员工，已有任务沿原目录续接。
  * [OUTPUT]: 任务属性显示独立项目目录，沿同会话CAS保存；执行中禁切换，保存回执更新原任务会话。
  * [OUTPUT]: 属性操作区按需读取诊断；显式让bobo解释沿稳定请求及原消息导航，不轮询或修复任务。
@@ -16,7 +17,7 @@ import type { Conversation, Message, Snapshot } from '@boai/shared/domain'
 import type { EmployeeTaskDetail as TaskDetail } from '@boai/shared/domain/employee-tasks'
 import type { TrackedTaskStatus } from '@boai/shared/domain/tracked-tasks'
 import type { ConversationView } from '@boai/shared/domain/reading'
-import { AUTOMATION_ONGOING_STATUSES } from '@boai/shared/domain/automations'
+import { isOngoingOccurrence } from '@boai/shared/domain/automations'
 import type { DesktopApi } from '@boai/shared/ipc'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -69,7 +70,7 @@ export function EmployeeTaskDetail({ api, snapshot, id, occurrenceId, employeeId
     locked.current = true; setBusy(true)
     try { await operation(); setRevision(v => v + 1) } catch (error) { showErrorToast(errorText(error)); setRevision(v => v + 1) } finally { locked.current = false; setBusy(false) }
   }
-  const task = record?.task, employee = snapshot.agents.find(a => a.id === employeeId), ongoing = record?.executions.occurrences.find(o => (AUTOMATION_ONGOING_STATUSES as readonly string[]).includes(o.status))
+  const task = record?.task, employee = snapshot.agents.find(a => a.id === employeeId), ongoing = record?.executions.occurrences.find(o => isOngoingOccurrence(o.status))
   const status = (value: TrackedTaskStatus) => task && void act(() => api.request('updateEmployeeTask', { employeeId, id: task.id, expectedRevision: task.revision, status: value }))
   const start = () => task && void act(async () => {
     if (!startRequest.current) { const current = (await api.request('getEmployeeTask', { employeeId, id: task.id })).task; startRequest.current = { employeeId, id: task.id, expectedRevision: current.revision, requestId: crypto.randomUUID() } }

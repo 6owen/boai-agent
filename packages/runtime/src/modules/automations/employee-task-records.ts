@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 执行状态沿 shared/domain/automations 的完整状态或在途判断读取。
  * [OUTPUT]: 2026-11-25 仅兼容 purpose=employee-task 的旧人工任务；定时运行不读写看板、不发任务结果事件。
  * [OUTPUT]: 定时新任务在受理事务复制默认项目；旧历史不套用今天的默认值。
  * [OUTPUT]: 本轮结束并有回复时兜底显示待确认；保留人工状态、后续排队和业务交付账本，启动仅校正旧显示。
@@ -12,7 +13,7 @@
  */
 import { createHash } from 'node:crypto'
 import type { AutomationDefinition, AutomationOccurrence, AutomationDispatch } from '@boai/shared/domain/automations'
-import { AUTOMATION_ONGOING_STATUSES } from '@boai/shared/domain/automations'
+import { isOngoingOccurrence } from '@boai/shared/domain/automations'
 import { initialProjectSelection, legacyProjectSelection } from '../workspaces/project-directory'
 import type { DigitalAgent, Message } from '@boai/shared/domain'
 import type { TrackedTask } from '@boai/shared/domain/tracked-tasks'
@@ -20,7 +21,6 @@ import { isEmployeeTaskAssignment } from '@boai/shared/domain/tracked-tasks'
 import type { RecordTransaction } from '../../adapters/storage/product-store'
 
 export const taskIdentity = (source: string) => `task-${createHash('sha256').update(source).digest('hex').slice(0, 40)}`
-export const ongoingTaskExecution = (o?: AutomationOccurrence) => !!o && (AUTOMATION_ONGOING_STATUSES as readonly string[]).includes(o.status)
 
 /** A finished reply is ready for human review, not proof of acceptance or Work delivery. */
 export function hasEmployeeTaskResult(o: AutomationOccurrence) {
@@ -88,7 +88,7 @@ async function executionTaskStatus(tx: RecordTransaction, o: AutomationOccurrenc
   if (isEmployeeTaskAssignment(task)) {
     // Review is a display hint for the latest finished reply. Human acceptance stays separate.
     const latest = executions.find(item => item.id === task.latestOccurrenceId)
-    if (task.status === 'in_progress' && latest && !executions.some(ongoingTaskExecution)) {
+    if (task.status === 'in_progress' && latest && !executions.some(item => isOngoingOccurrence(item.status))) {
       if (hasEmployeeTaskResult(latest)) return 'in_review'
       if (['failed', 'cancelled', 'interrupted', 'skipped'].includes(latest.status)) return 'pending'
     }

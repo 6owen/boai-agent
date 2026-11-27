@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 执行状态沿 shared/domain/automations 的完整状态或在途判断读取。
  * [OUTPUT]: 任务排队状态及未开始取消入口。
  * [OUTPUT]: 查看历史不自动弹出当时失败原因；未启动/过程不可读时保留名称、时间、状态与历史原因。
  * [OUTPUT]: 立即运行只提交并全程loading防重复，两个图标分别打开过程和定位聊天；准备阶段保留等待提示。
@@ -12,7 +13,7 @@
  */
 import { useContext, useEffect, useRef, useState } from 'react'
 import type { AutomationHistoryPage, AutomationOccurrence, Snapshot } from '@boai/shared/domain'
-import { AUTOMATION_ONGOING_STATUSES } from '@boai/shared/domain/automations'
+import { isOngoingOccurrence } from '@boai/shared/domain/automations'
 import type { DesktopApi } from '@boai/shared/ipc'
 import { ErrorToast, errorText, GuardContext, Loading, showErrorToast } from '@/components/common'
 import { TraceTab } from '@/components/detail-panel/trace-tab'
@@ -38,7 +39,7 @@ export function AutomationOccurrenceView({ api, id, active, snapshot, onNavigate
   }, [api, id, active, revision])
   const o = record?.id === id ? record : undefined
   const hasExecution = o && (!!o.messageId || o.runIds.length > 0)
-  const canStop = o && (AUTOMATION_ONGOING_STATUSES as readonly string[]).includes(o.status)
+  const canStop = isOngoingOccurrence(o?.status)
   const stop = async (occurrenceId: string) => {
     if (stopLocked.current) return
     stopLocked.current = true; setStopping(true)

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 执行状态沿 shared/domain/automations 的完整状态或在途判断读取。
  * [OUTPUT]: 定时记录只读时间、员工及会话，双栏列表默认整体收起。
  * [OUTPUT]: 执行记录行仅显示执行员工和运行时间，优先按本次记录保存的员工归属。
  * [OUTPUT]: 当前任务执行记录的清空入口用与搜索同尺寸的 carbon:erase 图标，保留悬停提示和确认。
@@ -30,7 +31,7 @@ import { Clock, Trash2, ChevronRight, Search } from '@/components/icons'
 import { Popover, PopoverContent, PopoverDescription, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { notify as toast } from '@boai/ui/sonner'
-import { AUTOMATION_ONGOING_STATUSES } from '@boai/shared/domain/automations'
+import { isOngoingOccurrence } from '@boai/shared/domain/automations'
 
 export function automationRecordConversation(record: AutomationOccurrence, conversations: Snapshot['conversations']) {
   if (record.taskKind === 'monitor' || record.status === 'skipped') return undefined
@@ -152,7 +153,7 @@ function ClearHistoryRecords({ api, automationId, active, onBusyChange, onDelete
         const page = await api.request('listAutomationHistory', { automationId, limit: 100, before })
         if (generation.current !== current) return
         for (const record of page.occurrences) {
-          if (!(AUTOMATION_ONGOING_STATUSES as readonly string[]).includes(record.status) && !records.has(record.id)) records.set(record.id, record.stateVersion)
+          if (!isOngoingOccurrence(record.status) && !records.has(record.id)) records.set(record.id, record.stateVersion)
         }
         before = page.nextCursor
         if (before) {
@@ -187,7 +188,7 @@ function ClearHistoryRecords({ api, automationId, active, onBusyChange, onDelete
 function DeleteHistoryRecord({ api, occurrence, active, onDeleted }: { api: DesktopApi; occurrence: AutomationHistoryPage['occurrences'][number]; active: boolean; onDeleted(): void }) {
   const [open, setOpen] = useState(false), [busy, setBusy] = useState(false)
   const confirmedVersion = useRef(occurrence.stateVersion)
-  const ongoing = (AUTOMATION_ONGOING_STATUSES as readonly string[]).includes(occurrence.status)
+  const ongoing = isOngoingOccurrence(occurrence.status)
   useEffect(() => { if (!active) setOpen(false) }, [active])
   const remove = async () => {
     if (busy || ongoing || !active) return

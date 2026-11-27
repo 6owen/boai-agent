@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 执行状态沿 shared/domain/automations 的完整状态或在途判断读取。
  * [OUTPUT]: 各状态列菜单支持带二次确认的全列清空，与列表共用操作。
  * [OUTPUT]: Mouse dragging board space pans the viewport; portaled menu events cannot start panning or steal item clicks.
  * [OUTPUT]: 任务卡片不展示创建方式/来源分类tag，所有人工任务使用同一种任务卡片。
@@ -12,7 +13,7 @@
 import { memo, useCallback, useMemo, useRef, useState, type PointerEvent } from 'react'
 import { useReducedMotion } from 'motion/react'
 import type { DigitalAgent } from '@boai/shared/domain'
-import { AUTOMATION_ONGOING_STATUSES } from '@boai/shared/domain/automations'
+import { isOngoingOccurrence } from '@boai/shared/domain/automations'
 import { EMPLOYEE_TASK_STATUSES, type TrackedTaskListItem, type TrackedTaskPage, type TrackedTaskStatus } from '@boai/shared/domain/tracked-tasks'
 import { relativeTime } from '@boai/shared/rovai'
 import { Avatar, errorText, showErrorToast } from '@/components/common'
@@ -127,7 +128,7 @@ function TaskCard({ task, employee, disabled, overlay, reducedMotion, onOpen, on
 }
 const TaskCardBody = memo(function TaskCardBody({ task, employee, disabled, overlay, onStatus }: Pick<TaskCardProps, 'task' | 'employee' | 'disabled' | 'overlay' | 'onStatus'>) {
   const summary = task.noteExcerpt || task.nextStepTitle
-  const working = task.executionStatus && (AUTOMATION_ONGOING_STATUSES as readonly string[]).includes(task.executionStatus)
+  const working = isOngoingOccurrence(task.executionStatus)
   return <CardContent className="pointer-events-none relative py-3">
       <div className="flex min-w-0 items-center justify-between gap-2 text-xs text-muted-foreground">
         <div className="flex min-w-0 items-center gap-1.5">
