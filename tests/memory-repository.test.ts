@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 定向约束多根、逆序、共享与循环来源的闭包及读取次数。
  * [OUTPUT]: 仅笔记日期可反思；沿真实版本化笔记来源保存日记/成长/心情，删除失效且不伪造聊天。
  * [OUTPUT]: 纠正同源条目的召回过滤与显式用户笔记保护。
  * [OUTPUT]: 员工知识解绑仅撤回该员工及其派生来源，其他员工独立的同资料记忆保持。
@@ -15,11 +16,23 @@ import { join } from 'node:path'
 import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
 import { WorkspaceService } from '../packages/runtime/src/modules/workspaces/workspace-service'
 import { MemoryRepository, type ExtractionPolicy } from '../packages/runtime/src/modules/memory/memory-repository'
-import { memoryAllowed, memoryStatus } from '../packages/runtime/src/modules/memory/memory-policy'
+import { affectedMemoryIds, memoryAllowed, memoryStatus } from '../packages/runtime/src/modules/memory/memory-policy'
 import { recallMemory } from '../packages/runtime/src/modules/memory/memory-recall'
 import type { DigitalAgent, MemoryEntry, MemoryQuery, MemoryView, Message } from '../packages/shared/src/domain'
 const roots: string[] = [], stores: ProductStore[] = []
 afterEach(async () => { vi.restoreAllMocks(); for (const store of stores.splice(0)) await store.close(); for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true }) })
+it('propagates invalidation once across reversed chains, shared parents, cycles and absent roots', () => {
+  let reads = 0
+  const node = (id: string, parents: string[]) => ({ id, get sourceMemoryIds() { reads++; return parents } })
+  const chain = Array.from({ length: 256 }, (_, i) => node(String(i), [i ? String(i - 1) : 'absent']))
+  const entries = [...chain.reverse(), node('loop', ['255', 'peer']), node('peer', ['loop', 'absent']), node('outside', ['other'])]
+  expect(affectedMemoryIds(entries, [])).toEqual(new Set())
+  expect(reads).toBe(0)
+  const affected = affectedMemoryIds(entries, ['absent', 'absent'])
+  expect(affected).toEqual(new Set(['absent', ...chain.map(entry => entry.id), 'loop', 'peer']))
+  expect(reads).toBe(entries.length)
+})
+
 async function fixture() {
   const root = await mkdtemp(join(tmpdir(), 'boai-memory-')); roots.push(root)
   const store = new ProductStore(join(root, 'memory.sqlite')); stores.push(store); await store.init()

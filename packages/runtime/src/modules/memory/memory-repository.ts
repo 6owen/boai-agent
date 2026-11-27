@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 删除、纠正、替代与来源失效共用 memory-policy 的派生闭包。
  * [OUTPUT]: 仅笔记日期可反思；沿真实版本化笔记来源保存日记/成长/心情，删除失效且不伪造聊天。
  * [OUTPUT]: 召回选择与发布共用忘记屏障，同一被纠正消息的其他条目在输入前过滤。
  * [OUTPUT]: 宿主反思日记保留来源日/活动身份；相同日记文字按日期去重，真实写入时间与原来源链保持。
@@ -12,7 +13,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import type { MemoryCandidate, MemoryEntry, MemoryForget, MemoryInput, MemoryObservation, MemoryQuery, MemoryView } from '@boai/shared/domain'
 import { MEMORY_ARCHIVE_DAYS, MEMORY_MAX_CANDIDATES, MEMORY_MAX_CONTENT, MEMORY_PAGE_SIZE } from '@boai/shared/domain/memory'
 import type { ProductStore, RecordTransaction } from '../../adapters/storage/product-store'
-import { memoryAllowed, memoryStatus, memoryUseScope } from './memory-policy'
+import { affectedMemoryIds, memoryAllowed, memoryStatus, memoryUseScope } from './memory-policy'
 import { observationAuthorityFingerprint } from './memory-recall'
 
 const stamp = () => new Date().toISOString()
@@ -133,16 +134,8 @@ export class MemoryRepository {
       return new Set((await tx.list<MemoryEntry>('memory')).filter(entry => entry.ownerAgentId === agentId && this.blockedBy(forgets, agentId, entry.origin === 'user' ? [] : entry.sourceMessageIds, entry.sourceMemoryIds ?? [], entry.origin === 'user' ? undefined : entry.content)).map(entry => entry.id))
     })
   }
-  private descendants(entries: MemoryEntry[], roots: string[]) {
-    const affected = new Set(roots)
-    for (let changed = true; changed;) {
-      changed = false
-      for (const entry of entries) if (!affected.has(entry.id) && entry.sourceMemoryIds?.some(id => affected.has(id))) { affected.add(entry.id); changed = true }
-    }
-    return affected
-  }
   private expiredDescendants(entries: MemoryEntry[], roots: string[]) {
-    const affected = this.descendants(entries, roots), original = new Set(roots)
+    const affected = affectedMemoryIds(entries, roots), original = new Set(roots)
     return entries.filter(entry => !original.has(entry.id) && affected.has(entry.id) && memoryStatus(entry) === 'active')
       .map(entry => ({ ...entry, status: 'expired' as const, version: entry.version + 1, updatedAt: stamp() }))
   }
@@ -190,8 +183,7 @@ export class MemoryRepository {
       const previous = await tx.get<MemoryEntry>('memory', id)
       if (!previous || !belongs(previous, query) || previous.deletedAt) throw new Error('记忆条目不存在或已删除')
       const all = (await tx.list<MemoryEntry>('memory')).filter(entry => entry.ownerAgentId === query.agentId)
-      const targets = new Set([id])
-      for (let changed = true; changed;) { changed = false; for (const entry of all) if (!targets.has(entry.id) && entry.sourceMemoryIds?.some(id => targets.has(id))) { targets.add(entry.id); changed = true } }
+      const targets = affectedMemoryIds(all, [id])
       const removed = all.filter(entry => targets.has(entry.id))
       for (const entry of removed) await this.rememberForget(tx, entry)
       return this.put(tx, query, removed.map(entry => ({ ...entry, content: '', deletedAt: stamp(), status: 'deleted', version: entry.version + 1, updatedAt: stamp() })), true)
@@ -223,7 +215,7 @@ export class MemoryRepository {
       for (const item of candidates) {
         if (!item || typeof item.content !== 'string' || !item.content.trim() || item.content.length > MEMORY_MAX_CONTENT || !Array.isArray(item.sourceMessageIds) || !item.sourceMessageIds.length && !policy?.reflectionSources?.length || item.sourceMessageIds.some(id => !messages.has(id)) || (item.sourceResourceIds ?? []).some(id => !resources.has(id))) throw new Error('记忆提取包含无效内容或未授权来源')
         const content = item.content.trim()
-        const replaced = this.descendants(view.entries, (item.supersedes ?? []).map(target => target.id))
+        const replaced = affectedMemoryIds(view.entries, (item.supersedes ?? []).map(target => target.id))
         const parents = [...new Set([...(policy?.sourceMemoryIds ?? []), ...(policy?.reflectionSources ?? []).map(source => source.id), ...item.sourceMessageIds.flatMap(id => policy?.messageMemoryIds?.[id] ?? [])])].filter(id => !replaced.has(id))
         const parentEntries: MemoryEntry[] = []
         for (const id of parents) {
@@ -360,8 +352,8 @@ export class MemoryRepository {
   }
   private invalidate(matches: (entry: MemoryEntry) => boolean, observationMatches: (item: MemoryObservation) => boolean) {
     return this.store.transaction(async tx => {
-      const all = await tx.list<MemoryEntry>('memory'), ids = new Set(all.filter(matches).map(entry => entry.id))
-      for (let changed = true; changed;) { changed = false; for (const item of all) if (!ids.has(item.id) && item.sourceMemoryIds?.some(id => ids.has(id))) { ids.add(item.id); changed = true } }
+      const all = await tx.list<MemoryEntry>('memory')
+      const ids = affectedMemoryIds(all, all.filter(matches).map(entry => entry.id))
       const byAgent = new Map<string, MemoryEntry[]>()
       for (const entry of all) if (ids.has(entry.id) && !entry.deletedAt) {
         const updated: MemoryEntry = { ...entry, content: '', status: 'deleted', deletedAt: stamp(), updatedAt: stamp(), version: entry.version + 1 }

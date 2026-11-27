@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 记忆文件复用记忆域派生闭包；按实际日期分组保留旧投影与外部修改。
  * [OUTPUT]: 日期与时区计算沿 shared/domain/calendar。
  * [OUTPUT]: contexts 按共享场景表编译员工来源与状态；默认通信场景由工作区装配统一选择。
  * [OUTPUT]: 将真实会话kind/channel交给共享人格编译器，工作执行保留对应聊天表达规则。
@@ -24,7 +25,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { copyFile, lstat, mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname, join, relative, sep } from 'node:path'
 import { validRecallProjection } from '../memory/memory-recall'
-import { memoryStatus, memoryText, memoryUseScope } from '../memory/memory-policy'
+import { affectedMemoryIds, memoryStatus, memoryText, memoryUseScope } from '../memory/memory-policy'
 import type { AgentFile, AgentFileContent, AgentHome, BootstrapSnapshot, Conversation, DigitalAgent, MemoryEntry, MemoryView, SessionWorkspace } from '@boai/shared/domain'
 
 const digest = (text: string) => createHash('sha256').update(text).digest('hex')
@@ -202,11 +203,8 @@ export class WorkspaceService {
     return { agentId: agent.id, workspacePath: this.root(agent.id), ...(conversationId ? { sessionPath: this.session(agent.id, conversationId) } : {}), memoryNamespace: agent.memoryNamespace ?? `employee:${agent.id}`, configVersion: agent.configVersion, files }
   }
   async regenerate(agent: DigitalAgent, memory: MemoryView, conversationId?: string, force = false) {
-    const unavailable = new Set(memory.entries.filter(entry => memoryStatus(entry) !== 'active').map(entry => entry.id))
-    for (let changed = true; changed;) {
-      changed = false
-      for (const entry of memory.entries) if (!unavailable.has(entry.id) && entry.sourceMemoryIds?.some(id => unavailable.has(id))) { unavailable.add(entry.id); changed = true }
-    }
+    const roots = memory.entries.filter(entry => memoryStatus(entry) !== 'active').map(entry => entry.id)
+    const unavailable = affectedMemoryIds(memory.entries, roots)
     memory = { ...memory, entries: memory.entries.filter(entry => entry.ownerAgentId === agent.id && memoryStatus(entry) === 'active' && !unavailable.has(entry.id) && (conversationId || memoryUseScope(entry) === 'employee')) }
     const manifest = await this.manifest(agent.id), root = conversationId ? this.session(agent.id, conversationId) : this.root(agent.id)
     const body = memoryBody(memory.entries)
@@ -219,9 +217,18 @@ export class WorkspaceService {
     // Rebuild each actual day from authority; a catch-up diary belongs to its source day.
     // Existing host-owned snapshots are regenerated too, so deleted facts cannot survive there.
     const logNames = await readdir(join(root, 'memory')).catch(() => [] as string[])
-    const dates = new Set([...memory.entries.map(memoryDate).filter((date): date is string => !!date), ...logNames.filter(name => /^\d{4}-\d{2}-\d{2}\.md$/.test(name)).map(name => name.slice(0, -3))])
-    for (const date of [...dates].sort()) {
-      const entries = memory.entries.filter(entry => memoryDate(entry) === date).sort((a, b) => Number(!!b.diary) - Number(!!a.diary) || a.createdAt.localeCompare(b.createdAt))
+    const byDate = new Map<string, MemoryEntry[]>()
+    for (const entry of memory.entries) {
+      const day = memoryDate(entry)
+      if (!day) continue
+      const entries = byDate.get(day)
+      if (entries) entries.push(entry)
+      else byDate.set(day, [entry])
+    }
+    const priorDates = logNames.filter(name => /^\d{4}-\d{2}-\d{2}\.md$/.test(name)).map(name => name.slice(0, -3))
+    for (const date of [...new Set([...byDate.keys(), ...priorDates])].sort()) {
+      const entries = byDate.get(date) ?? []
+      entries.sort((a, b) => Number(!!b.diary) - Number(!!a.diary) || a.createdAt.localeCompare(b.createdAt))
       files.push([join(root, 'memory', `${date}.md`), header + `# ${date}\n\n` + (memoryBody(entries, true) || '当前范围在这一天已无有效日记或笔记。\n')])
     }
     for (const [path, content] of files) {

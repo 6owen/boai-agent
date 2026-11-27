@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 来源记忆的传递失效按父 ID 索引；调用方拥有员工范围与事务。
  * [OUTPUT]: 记忆创建/更新时间只标为保存时间，区分用户提供/模型整理/导入及消息/父记忆来源，不能冒充发生时间或员工亲历。
  * [INPUT]: 有来源的员工记忆、当前会话/事项、宿主获准来源和时间。
  * [OUTPUT]: 单一范围/有效期过滤、中文相关性排序与保守 token 预算；管理视图不冒充召回。
@@ -16,6 +17,25 @@ export function memoryStatus(entry: MemoryEntry, time = Date.now()): MemoryStatu
   if (entry.expiresAt && Date.parse(entry.expiresAt) <= time) return 'expired'
   return entry.status ?? 'active'
 }
+/** Membership includes the roots themselves, including legacy IDs missing from the supplied records. */
+export function affectedMemoryIds(entries: readonly Pick<MemoryEntry, 'id' | 'sourceMemoryIds'>[], roots: Iterable<string>): ReadonlySet<string> {
+  const affected = new Set(roots)
+  if (!affected.size) return affected
+  const children = new Map<string, string[]>()
+  for (const entry of entries) {
+    for (const parent of entry.sourceMemoryIds ?? []) {
+      const siblings = children.get(parent)
+      if (siblings) siblings.push(entry.id)
+      else children.set(parent, [entry.id])
+    }
+  }
+  // Set iteration includes newly added IDs and visits cyclic or shared descendants once.
+  for (const parent of affected) {
+    for (const child of children.get(parent) ?? []) affected.add(child)
+  }
+  return affected
+}
+
 export function sameMemoryContext(a?: MemoryContextRef, b?: MemoryContextRef) { return !!a && !!b && a.kind === b.kind && a.id === b.id }
 export interface MemoryAccess {
   agentId: string
