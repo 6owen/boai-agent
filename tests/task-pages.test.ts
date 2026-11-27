@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 历史 SQLite 全部执行状态与共享在途判断使用同一七项业务集合。
  * [OUTPUT]: 真实在途任务在LIMIT前筛选，不被新卡或手动done遮蔽；同任务多次执行及重启身份保持。
  * [OUTPUT]: 人工委派看板在分页前隔离内部/旧进度，工具不能伪造或晋升委派；原只读分页与回执保持。
  * [INPUT]: Real SQLite/ProductStore, original task mutations and authenticated application actors.
@@ -11,6 +12,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
+import { AUTOMATION_OCCURRENCE_STATUSES, isOngoingOccurrence } from '@boai/shared/domain/automations'
 import type { ApplicationActor } from '../packages/shared/src/domain/application-protocol'
 import { TASK_PAGE_LIMITS, isEmployeeTaskAssignment, type TrackedTask, type TrackedTaskPage } from '../packages/shared/src/domain/tracked-tasks'
 import { taskPageOperation } from '../packages/runtime/src/modules/application/task-page'
@@ -41,6 +43,17 @@ async function fixture() {
   }
   return { get store() { return store }, app, call, page, reopen: async () => { await app.drain(); await store.close(); store = new ProductStore(join(root, 'data.sqlite')); await store.init(); app = new ApplicationService(store, taskOperations(store), async () => {}) } }
 }
+
+it('reads persisted active history with the same occurrence states used by the task controls', async () => {
+  const f = await fixture()
+  const rows = AUTOMATION_OCCURRENCE_STATUSES.map(status => ({ id: status, status, startedAt: time }))
+  await f.store.write(rows.map(row => record('automationOccurrences', row)))
+  const page = await f.store.automationHistory({ status: 'active', limit: rows.length })
+  const expected = ['admitted', 'cancelling', 'queued', 'running', 'waiting_approval', 'waiting_user', 'waiting_work']
+  expect(rows.filter(row => isOngoingOccurrence(row.status)).map(row => row.id).sort()).toEqual(expected)
+  expect(page.occurrences.map(row => row.id).sort()).toEqual(expected)
+  expect(isOngoingOccurrence(undefined)).toBe(false)
+})
 
 it('finds older live executions before LIMIT and independently of the card display status after restart', async () => {
   const f = await fixture(), actor: ApplicationActor = { kind: 'employee', employeeId: 'a', conversationId: 'direct', messageId: 'question' }

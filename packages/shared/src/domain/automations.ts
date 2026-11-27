@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 执行状态沿 shared/domain/automations 的完整状态或在途判断读取。
  * [OUTPUT]: 单次日程持久保存唯一UTC时间点与消费身份，计划保留历史且手动试运行不消费未来预约。
  * [OUTPUT]: 人工任务私有元数据冻结本次要求，复用原dispatch快照；任务编辑不改写已受理执行。
  * [OUTPUT]: 内部任务消息保持原输入，执行快照携带原计划授权指纹。
@@ -141,7 +142,15 @@ export interface AutomationDefinition extends Omit<AutomationInput, 'id' | 'expe
   updatedAt: string
 }
 
-export type OccurrenceStatus = 'queued' | 'admitted' | 'running' | 'waiting_approval' | 'waiting_user' | 'waiting_work' | 'cancelling' | 'completed' | 'failed' | 'skipped' | 'interrupted' | 'needs_review' | 'cancelled'
+export const AUTOMATION_ONGOING_STATUSES = ['queued', 'admitted', 'running', 'waiting_approval', 'waiting_user', 'waiting_work', 'cancelling'] as const
+export const AUTOMATION_OCCURRENCE_STATUSES = [
+  ...AUTOMATION_ONGOING_STATUSES, 'completed', 'failed', 'skipped', 'interrupted', 'needs_review', 'cancelled',
+] as const
+export type OccurrenceStatus = typeof AUTOMATION_OCCURRENCE_STATUSES[number]
+
+export function isOngoingOccurrence(status: OccurrenceStatus | undefined): status is typeof AUTOMATION_ONGOING_STATUSES[number] {
+  return AUTOMATION_ONGOING_STATUSES.some(ongoing => ongoing === status)
+}
 export type AutomationDeliveryStatus = 'pending' | 'delivered' | 'no_change' | 'partial' | 'blocked' | 'unknown'
 export interface AutomationOccurrence {
   taskId?: string
@@ -241,8 +250,6 @@ export interface AutomationHistoryQuery {
   before?: { startedAt: string; id: string }
   limit?: number
 }
-
-export const AUTOMATION_ONGOING_STATUSES = ['queued', 'admitted', 'running', 'waiting_approval', 'waiting_user', 'waiting_work', 'cancelling'] as const
 
 export interface AutomationDraftRequest {
   draftId: string

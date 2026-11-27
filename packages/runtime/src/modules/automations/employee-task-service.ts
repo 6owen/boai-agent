@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 执行状态沿 shared/domain/automations 的完整状态或在途判断读取。
  * [OUTPUT]: 新任务复制员工默认项目，任务会话固定同一选择且不继承后续默认变化。
  * [OUTPUT]: 任意任务状态均可快捷执行；已有执行时同任务新要求进入原持久FIFO。
  * [OUTPUT]: 列清空在原事务内覆盖全部分页，仅移除指定员工/状态的委派任务；在途任务保留，删除墓碑和稳定回执同事务保存。
@@ -19,13 +20,13 @@ import type { Methods } from '@boai/shared/ipc'
 import type { Conversation, DigitalAgent, Message } from '@boai/shared/domain'
 import type { TrackedTask, TrackedTaskPage } from '@boai/shared/domain/tracked-tasks'
 import { isEmployeeTaskAssignment } from '@boai/shared/domain/tracked-tasks'
-import type { AutomationOccurrence } from '@boai/shared/domain/automations'
+import { isOngoingOccurrence, type AutomationOccurrence } from '@boai/shared/domain/automations'
 import type { EmployeeTaskMethods } from '@boai/shared/domain/employee-tasks'
 import type { ProductStore, RecordTransaction } from '../../adapters/storage/product-store'
 import { taskPageOperation } from '../application/task-page'
 import { clearContextHandoffs } from '../contexts/context-handoff'
 import { initialProjectSelection, legacyProjectSelection } from '../workspaces/project-directory'
-import { taskIdentity, ongoingTaskExecution } from './employee-task-records'
+import { taskIdentity } from './employee-task-records'
 import type { AutomationService } from './automation-service'
 const id = z.string().min(1).max(200)
 const status = z.enum(['pending', 'in_progress', 'in_review', 'done', 'closed'])
@@ -153,7 +154,7 @@ export class EmployeeTaskService {
             return { deletedIds: receipt.deletedIds, skippedIds: receipt.skippedIds }
           }
           const tasks = (await tx.list<TrackedTask>('agentTasks')).filter(task => task.agentId === v.employeeId && task.status === v.status && isEmployeeTaskAssignment(task))
-          const ongoingIds = new Set((await tx.list<AutomationOccurrence>('automationOccurrences')).filter(o => !o.deletedAt && ongoingTaskExecution(o)).map(o => o.taskId))
+          const ongoingIds = new Set((await tx.list<AutomationOccurrence>('automationOccurrences')).filter(o => !o.deletedAt && isOngoingOccurrence(o.status)).map(o => o.taskId))
           const deletedIds: string[] = [], skippedIds: string[] = [], deletedAt = new Date().toISOString()
           for (const task of tasks) {
             if (ongoingIds.has(task.id)) { skippedIds.push(task.id); continue }
@@ -226,7 +227,7 @@ export class EmployeeTaskService {
           if (deleted?.agentId === v.employeeId && deleted.revision === v.expectedRevision) return
           const task = await read(tx, v.employeeId, v.id)
           if (task.revision !== v.expectedRevision) throw new Error('任务已经改变，请刷新后操作')
-          if ((await tx.list<AutomationOccurrence>('automationOccurrences')).some(o => o.taskId === task.id && !o.deletedAt && ongoingTaskExecution(o))) throw new Error('请先停止当前任务的执行，再删除任务')
+          if ((await tx.list<AutomationOccurrence>('automationOccurrences')).some(o => o.taskId === task.id && !o.deletedAt && isOngoingOccurrence(o.status))) throw new Error('请先停止当前任务的执行，再删除任务')
           // Keep the historical occurrence/session intact. A tombstone prevents adoption on restart.
           await tx.put({ collection: 'deletedEmployeeTasks', id: task.id, value: { agentId: task.agentId, revision: task.revision, deletedAt: new Date().toISOString() } })
           await clearContextHandoffs(tx, { assignmentId: task.id })

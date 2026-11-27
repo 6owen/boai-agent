@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 执行状态沿 shared/domain/automations 的完整状态或在途判断读取。
  * [INPUT]: One employee, original task pages and durable batch admission IPC.
  * [OUTPUT]: Select tasks in click order and dispatch once; partial failures retain only failed selections.
  * [POS]: Task-panel batch action; cards, drag gestures and execution queue remain unchanged.
@@ -7,7 +8,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { DesktopApi, Methods } from '@boai/shared/ipc'
 import type { TrackedTaskListItem } from '@boai/shared/domain/tracked-tasks'
-import { AUTOMATION_ONGOING_STATUSES } from '@boai/shared/domain/automations'
+import { isOngoingOccurrence } from '@boai/shared/domain/automations'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
@@ -32,7 +33,7 @@ export function EmployeeTaskBatch({ api, employeeId, open, active, onClose, onDi
     }).catch(error => { if (live) showErrorToast(errorText(error)) }).finally(() => { if (live) setLoading(false) })
     return () => { live = false }
   }, [api, employeeId, open, active])
-  const working = (task: TrackedTaskListItem) => !!task.executionStatus && (AUTOMATION_ONGOING_STATUSES as readonly string[]).includes(task.executionStatus)
+  const working = (task: TrackedTaskListItem) => isOngoingOccurrence(task.executionStatus)
   const available = items.filter(task => !working(task)).slice(0, 100), all = available.length > 0 && available.every(task => selected.includes(task.id))
   const execute = async () => {
     if (!active || locked.current || !selected.length) return

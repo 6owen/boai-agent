@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 执行状态沿 shared/domain/automations 的完整状态或在途判断读取。
  * [OUTPUT]: 员工定时只将消息提交给普通会话；会话状态由聊天运行时负责。
  * [OUTPUT]: 2026-11-27 会话删除后的定时日志墓碑不进入可见历史或活动状态。
  * [OUTPUT]: 2026-11-25 定时历史不再回填或更新旧看板；旧人工记录兼容尊重删除墓碑。
@@ -33,12 +34,12 @@ import { z } from 'zod'
 import { parseSchedule, ScheduleError } from '@boai/shared/domain/schedules'
 import { isEmployeeTaskAssignment } from '@boai/shared/domain/tracked-tasks'
 import type { AutomationCreationSource, AutomationDefinition, AutomationInput, AutomationListQuery, AutomationOccurrence, AutomationsView, AutomationOrigin, AutomationMonitorRead } from '@boai/shared/domain/automations'
-import { automationNeedsAttention } from '@boai/shared/domain/automations'
+import { automationNeedsAttention, isOngoingOccurrence } from '@boai/shared/domain/automations'
 import type { Message } from '@boai/shared/domain'
 import { ProductStore, type RecordTransaction, type StoredRecord } from '../../adapters/storage/product-store'
 import { NativeSchedules, AUTOMATION_WORKFLOW, nativeScheduleCron, type NativeAutomationVersion } from './native-schedules'
 import { monitorPolicySchema } from './automation-monitor'
-import { linkEmployeeTask, syncEmployeeTask, ongoingTaskExecution, taskIdentity, hasEmployeeTaskResult } from './employee-task-records'
+import { linkEmployeeTask, syncEmployeeTask, taskIdentity, hasEmployeeTaskResult } from './employee-task-records'
 import { AutomationRepository } from './automation-repository'
 import { automationCollaborationSchema, automationOwnerSchema } from './automation-plan'
 import { activeOccurrence, pendingOccurrence, queuedOrder, sharesTaskExecutor, MAX_ACTIVE_AUTOMATIONS, nextTimes, scheduleSchema, automationCron, normalizeSchedule } from './schedule-policy'
@@ -129,7 +130,7 @@ export class AutomationService {
           else if (task.status === 'in_progress' && latest) await syncEmployeeTask(tx, latest, true)
           continue
         }
-        if (['blocked', 'waiting_input'].includes(task.status) || task.status === 'in_progress' && task.statusSource !== 'manual' && latest && !['queued', 'admitted', 'running', 'waiting_user', 'waiting_work', 'waiting_approval', 'cancelling'].includes(latest.status)) await tx.put({ collection: 'agentTasks', id: task.id, value: { ...task, status: 'in_review', revision: task.revision + 1 } })
+        if (['blocked', 'waiting_input'].includes(task.status) || task.status === 'in_progress' && task.statusSource !== 'manual' && latest && !isOngoingOccurrence(latest.status)) await tx.put({ collection: 'agentTasks', id: task.id, value: { ...task, status: 'in_review', revision: task.revision + 1 } })
       }
       for (const d of await tx.list<AutomationDefinition>('automations')) {
         if (d.purpose !== 'employee-task' || d.employeeTask || d.deletedAt || d.owner?.kind !== 'employee') continue

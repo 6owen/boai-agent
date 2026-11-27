@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 执行状态沿 shared/domain/automations 的完整状态或在途判断读取。
  * [OUTPUT]: 2026-11-09 无显式目录/版本的空闲主聊和群消息沿当前员工配置；已有任务、待决工作及历史消息保持原目录。
  * [INPUT]: Original conversations, assignments, messages and live execution fences.
  * [OUTPUT]: Versioned project changes and immutable per-message execution locations.
@@ -8,9 +9,8 @@
 import { realpath } from 'node:fs/promises'
 import type { Conversation, DigitalAgent, Message, ProjectChoice, ProjectSelection } from '@boai/shared/domain'
 import type { TrackedTask } from '@boai/shared/domain/tracked-tasks'
-import type { AutomationOccurrence } from '@boai/shared/domain/automations'
+import { isOngoingOccurrence, type AutomationOccurrence } from '@boai/shared/domain/automations'
 import type { ProductStore, RecordTransaction } from '../../adapters/storage/product-store'
-import { ongoingTaskExecution } from '../automations/employee-task-records'
 import { chooseProject, initialProjectSelection, legacyProjectSelection, validateProjectSelection } from './project-directory'
 
 export class ProjectDirectoryService {
@@ -35,7 +35,7 @@ export class ProjectDirectoryService {
   private async busyReason(tx: RecordTransaction, room: Conversation) {
     if (this.hooks.busy(room.id) || room.employeeTaskId && this.hooks.preparing(room.employeeTaskId)) return '当前工作仍在执行或等待接续，请结束后再切换项目目录'
     const occurrences = await tx.list<AutomationOccurrence>('automationOccurrences')
-    if (occurrences.some(item => !item.deletedAt && (item.conversationId === room.id || !!room.employeeTaskId && item.taskId === room.employeeTaskId) && ongoingTaskExecution(item))) return '任务仍有待决执行，不能切换项目目录'
+    if (occurrences.some(item => !item.deletedAt && (item.conversationId === room.id || !!room.employeeTaskId && item.taskId === room.employeeTaskId) && isOngoingOccurrence(item.status))) return '任务仍有待决执行，不能切换项目目录'
     const works = await tx.list<{ conversationId: string; requiresReview?: boolean; status: string }>('workItems')
     if (works.some(work => work.conversationId === room.id && (work.requiresReview || !['delivered', 'cancelled'].includes(work.status)))) return '原工作尚未结束或结果待核对，不能切换项目目录'
     const transfers = await tx.list<{ source: { conversationId: string }; target: { conversationId: string }; status: string }>('contextHandoffs')

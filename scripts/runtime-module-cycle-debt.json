@@ -10,5 +10,5 @@
   "media": ["employees", "workspaces"],
   "resources": ["desktop-plugin", "media", "sources", "workspaces"],
   "sources": ["browser", "workspaces"],
-  "workspaces": ["automations", "employees"]
+  "workspaces": ["employees"]
 }
