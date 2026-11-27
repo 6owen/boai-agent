@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 空恢复与被子讨论、浏览器阻挡的父会话均不读取其他会话正文。
  * [OUTPUT]: 2026-11-27 会话删除只保留定时触发去重墓碑，撤销原日志会话关系。
  * [OUTPUT]: 大Trace清理只传ID，关联/嵌套快照/空范围/大批运行ID及共享会话保留回归。
  * [OUTPUT]: 原清理恢复先处理关联讨论，保留其独立待决回执，最后完成父会话删除并保持共享资料。
@@ -8,7 +9,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { afterEach, expect, it, vi } from 'vitest'
-import type { Client } from '@libsql/client'
+import type { Client, InArgs, InStatement } from '@libsql/client'
 import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -93,6 +94,43 @@ it('clears only selected execution identities, including large ID batches and an
   expect(await store.load('traceSpans')).toEqual([{ id: 'keep', conversationId: 'c', runId: 'keep' }])
   expect(await store.load('messages')).toEqual([{ id: 'keep', conversationId: 'c' }])
   expect(await store.get('conversations', 'c')).toEqual(conversation)
+})
+
+it('reads only pending recovery targets and rechecks discussion and browser barriers before the parent', async () => {
+  const { store, conversation, history } = await setup()
+  const client = (store as unknown as { client: Client }).client
+  const execute = client.execute.bind(client)
+  let blockerPlan: string[] = []
+  vi.spyOn(client, 'execute').mockImplementation(async (statement: InStatement, args?: InArgs) => {
+    if (!blockerPlan.length && typeof statement !== 'string' && statement.sql.includes('END AS blocker')) {
+      const plan = await execute({ ...statement, sql: `EXPLAIN QUERY PLAN ${statement.sql}` })
+      blockerPlan = plan.rows.map(row => String(row.detail))
+    }
+    return typeof statement === 'string' ? execute(statement, args) : execute(statement)
+  })
+  const unrelated = 'unrelated-history-content-marker'
+  await store.write([row('conversations', 'other-room', { title: unrelated })])
+  const original = JSON.parse
+  const parsedBodies: string[] = []
+  vi.spyOn(JSON, 'parse').mockImplementation((input, reviver) => {
+    if (typeof input === 'string' && input.includes(unrelated)) parsedBodies.push(input)
+    return original(input, reviver)
+  })
+  expect(await history.recover()).toEqual([])
+  const child = { ...conversation, id: 'child', channelDiscussion: { conversationId: conversation.id, epoch: 1 } }
+  await store.write([
+    row('conversations', child.id, child), row('conversationCleanup', conversation.id, { hide: true }),
+    row('conversationCleanup', child.id, { remove: true }), row('browserCleanups', 'child-run', { conversationId: child.id }),
+    row('browserCleanups', 'parent-run', { conversationId: conversation.id }),
+  ])
+  expect(await history.recover()).toEqual([
+    { conversationId: child.id, error: '浏览器存储尚未实际清理' },
+    { conversationId: conversation.id, error: '关联讨论清理尚未完成' },
+  ])
+  await store.write([], [{ collection: 'conversationCleanup', id: child.id }])
+  expect(await history.recover()).toEqual([{ conversationId: conversation.id, error: '浏览器存储尚未实际清理' }])
+  expect(parsedBodies).toEqual([])
+  expect(blockerPlan).toContainEqual(expect.stringMatching(/SEARCH room .*collection=\? AND id=\?/))
 })
 
 it('recovers dependent discussion cleanup before completing the parent session receipt', async () => {

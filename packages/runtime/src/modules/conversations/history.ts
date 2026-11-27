@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 员工工作区、记忆代际与清理路径只读取员工主键。
+ * [OUTPUT]: 启动仅恢复有日志的会话；父会话前在线复核讨论和浏览器屏障。
  * [OUTPUT]: 2026-11-27 删除会话同步清除关联定时日志和通知，清空聊天保留日志摘要，触发去重继续生效。
  * [OUTPUT]: 清空会话时移除旧首条消息的标题候选。
  * [OUTPUT]: 画板源清理沿原conversationCleanup固定身份重试，外改冲突保留来源屏障与可见恢复错误。
@@ -48,15 +50,17 @@ export class ConversationHistory {
   constructor(private store: ProductStore, private dataPath: string, private materials?: MaterialRepository, private artifacts?: ArtifactRepository, private reading?: ConversationReadingRepository, private cleanupCanvas?: (filter: CanvasScopeFilter, cleanupId: string) => Promise<void>) {}
   async recover() {
     const conflicts: { conversationId: string; error: string }[] = []
-    const conversations = await this.store.load<Conversation>('conversations')
-    const cleanups = await this.store.load<Cleanup>('conversationCleanup')
-    cleanups.sort((a, b) => Number(!!conversations.find(room => room.id === b.id)?.channelDiscussion) - Number(!!conversations.find(room => room.id === a.id)?.channelDiscussion))
+    const cleanups = await this.store.pendingConversationCleanups<Cleanup>()
     for (const pending of cleanups) {
-      const conversation = conversations.find(item => item.id === pending.id)
-      if ((await this.store.load<Cleanup>('conversationCleanup')).some(item => conversations.some(room => room.id === item.id && room.channelDiscussion?.conversationId === pending.id))) { conflicts.push({ conversationId: pending.id, error: '关联讨论清理尚未完成' }); continue }
-      if ((await this.store.load<{conversationId:string}>('browserCleanups')).some(item=>item.conversationId===pending.id)) { conflicts.push({conversationId:pending.id,error:'浏览器存储尚未实际清理'}); continue }
+      const blocker = await this.store.conversationCleanupBlocker(pending.id)
+      if (blocker) {
+        conflicts.push({ conversationId: pending.id, error: blocker === 'discussion' ? '关联讨论清理尚未完成' : '浏览器存储尚未实际清理' })
+        continue
+      }
+      const conversation = await this.store.get<Conversation>('conversations', pending.id)
       if (conversation) try { await this.clear(conversation, pending.hide, pending.remove) } catch (error) {
-        const sourceConflicts = [...await this.store.load<{ conversationId: string; status: string }>('materialCleanups'), ...await this.store.load<{ conversationId: string; status: string }>('artifactCleanups')].some(item => item.conversationId === conversation.id && item.status === 'conflict')
+        const scope = { conversationId: pending.id }
+        const sourceConflicts = [...await this.store.load<{ status: string }>('materialCleanups', scope), ...await this.store.load<{ status: string }>('artifactCleanups', scope)].some(item => item.status === 'conflict')
         const canvasConflict = (await this.store.get<Cleanup>('conversationCleanup', conversation.id))?.canvasCleanupError
         if (!sourceConflicts && !canvasConflict) throw error
         conflicts.push({ conversationId: conversation.id, error: error instanceof Error ? error.message : '材料或成果清理未完成' })
@@ -91,11 +95,11 @@ export class ConversationHistory {
     const id = conversation.id
     if (!/^[a-zA-Z0-9_-]{1,200}$/.test(id)) throw new Error('无效会话标识')
     const runs = await this.store.load<HistoryRecord>('runs', { conversationId: id })
-    const agents = await this.store.load<{ id: string }>('agents')
+    const agentIds = await this.store.recordIds('agents')
     const paths = [join(this.dataPath, 'workspaces', id)]
-    for (const agent of agents) {
-      if (!/^[a-zA-Z0-9_-]{1,200}$/.test(agent.id)) throw new Error('无效员工标识')
-      paths.push(join(this.dataPath, 'agents', agent.id, 'workspace', 'sessions', id), join(this.dataPath, 'external-workspaces', agent.id, id))
+    for (const agentId of agentIds) {
+      if (!/^[a-zA-Z0-9_-]{1,200}$/.test(agentId)) throw new Error('无效员工标识')
+      paths.push(join(this.dataPath, 'agents', agentId, 'workspace', 'sessions', id), join(this.dataPath, 'external-workspaces', agentId, id))
     }
     for (const run of runs) {
       if (!/^[a-zA-Z0-9_-]{1,200}$/.test(run.id)) throw new Error('无效运行标识')
@@ -119,7 +123,7 @@ export class ConversationHistory {
     })
     // Revoke derived memory even if a later hash conflict preserves a private original.
     const memoryRepository = new MemoryRepository(this.store)
-    for (const agent of agents) await memoryRepository.invalidateConversation(agent.id, id)
+    for (const agentId of agentIds) await memoryRepository.invalidateConversation(agentId, id)
     if (this.cleanupCanvas) {
       try {
         await this.cleanupCanvas({ conversationId: id }, canvasCleanupId)
@@ -147,8 +151,8 @@ export class ConversationHistory {
     }
     // The durable source fence precedes file removal and is repeated by recovery.
     for (const path of paths) await rm(path, { recursive: true, force: true })
-    for (const agent of agents) {
-      const state = join(this.dataPath, 'agents', agent.id, 'state'), manifestPath = join(state, 'bootstrap-manifest.json')
+    for (const agentId of agentIds) {
+      const state = join(this.dataPath, 'agents', agentId, 'state'), manifestPath = join(state, 'bootstrap-manifest.json')
       await this.safe(manifestPath)
       let source: string
       try { source = await readFile(manifestPath, 'utf8') } catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') continue; throw error }
@@ -217,7 +221,7 @@ export class ConversationHistory {
       for (const receipt of (await tx.list<HistoryRecord>('messageReceipts')).filter(owned)) {
         await tx.put({ collection: 'messageReceipts', id: receipt.id, value: { id: receipt.id, fingerprint: receipt.fingerprint, conversationId: id, cleared: true } })
       }
-      const epochs = new Map(agents.map(agent => [`employee:${agent.id}:conversation:${id}`, 0]))
+      const epochs = new Map(agentIds.map(agentId => [`employee:${agentId}:conversation:${id}`, 0]))
       const memory = (await tx.list<MemoryEntry>('memory')).filter(entry => entry.conversationId === id)
       for (const entry of memory) {
         removals.push({ collection: 'memory', id: entry.id })

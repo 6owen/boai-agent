@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 会话清理受理按本次父子会话 ID 核对已有日志。
  * [OUTPUT]: 持久标识的 JSON 字节摘要使用共用编码，字段及顺序由本业务传入。
  * [OUTPUT]: 原生公开问题的聊天呈现与审批账本共享脱敏后的同一份记录。
  * [OUTPUT]: 会话快照按单次消息、运行与轮次遍历生成；渠道末页继续取自 SQLite。
@@ -2890,16 +2891,17 @@ export class AppService {
     const discussions = [...this.conversations.values()].filter(room => room.channelDiscussion?.conversationId === id)
     for (const room of discussions) this.assertConversationIdle(room.id)
     if (sessionReceipt) {
-      const pending = new Set((await this.store.load<{ id: string }>('conversationCleanup')).map(item => item.id))
-      for (const room of [conversation, ...discussions]) if (!pending.has(room.id)) await this.conversationArtifacts(room)
-      for (const room of [conversation, ...discussions]) {
+      const affected = [conversation, ...discussions]
+      const pending = new Set(await this.store.recordIds('conversationCleanup', affected.map(room => room.id)))
+      for (const room of affected) if (!pending.has(room.id)) await this.conversationArtifacts(room)
+      for (const room of affected) {
         this.clearingConversations.add(room.id)
         this.emit({ type: 'conversation:clearing', conversationId: room.id })
       }
       await prepareSessionDeletion(this.store, conversation, discussions, sessionReceipt)
     }
     for (const room of discussions) await this.clearConversationHistory(room.id, false, true)
-    if (!(await this.store.load<{ id: string }>('conversationCleanup')).some(value => value.id === id)) await this.conversationArtifacts(conversation)
+    if (!await this.store.get('conversationCleanup', id)) await this.conversationArtifacts(conversation)
     this.clearingConversations.add(id)
     this.emit({ type: 'conversation:clearing', conversationId: id })
     this.changed(id)

@@ -1,4 +1,6 @@
 /*
+ * [OUTPUT]: 日志清理可按主键读完整或指定 ID 集，不反序列化员工和回执正文。
+ * [OUTPUT]: 启动恢复按清理日志排序，实时读取所属讨论和浏览器屏障，不展开无关会话。
  * [OUTPUT]: 会话工作、引用预算及接续从一个只读 SQLite 快照取得。
  * [OUTPUT]: 普通与事务内读取同序按会话筛选；资料和成果共用现有 SQLite 部分索引。
  * [OUTPUT]: 任务诊断只读SQL投影按原run/source限制回执、审批和输入，不取正文、不recover或写事务。
@@ -193,6 +195,40 @@ export class ProductStore {
   }
   async load<T>(collection: string, scope?: { conversationId: string }): Promise<T[]> {
     return this.enqueue(() => listRecords<T>(this.client, collection, scope))
+  }
+  pendingConversationCleanups<T>(): Promise<T[]> {
+    return this.enqueue(async () => recordValues<T>(await this.client.execute({
+      sql: `SELECT pending.value FROM records pending
+        LEFT JOIN records room ON room.collection='conversations' AND room.id=pending.id
+        WHERE pending.collection='conversationCleanup'
+        ORDER BY CASE WHEN json_type(room.value,'$.channelDiscussion')='object' THEN 0 ELSE 1 END, pending.rowid`,
+      args: [],
+    })))
+  }
+  // Drive the dependency check from the small pending journal, then look up each room by primary key.
+  conversationCleanupBlocker(conversationId: string): Promise<'discussion' | 'browser' | undefined> {
+    return this.enqueue(async () => {
+      const result = await this.client.execute({
+        sql: `SELECT CASE
+          WHEN EXISTS (SELECT 1 FROM records pending CROSS JOIN records room
+            ON room.collection='conversations' AND room.id=pending.id
+            WHERE pending.collection='conversationCleanup' AND json_extract(room.value,'$.channelDiscussion.conversationId')=?) THEN 'discussion'
+          WHEN EXISTS (SELECT 1 FROM records WHERE collection='browserCleanups' AND json_extract(value,'$.conversationId')=?) THEN 'browser'
+          END AS blocker`,
+        args: [conversationId, conversationId],
+      })
+      const blocker = result.rows[0]?.blocker
+      return blocker === 'discussion' || blocker === 'browser' ? blocker : undefined
+    })
+  }
+  recordIds(collection: string, candidates?: readonly string[]): Promise<string[]> {
+    return this.enqueue(async () => {
+      const result = await this.client.execute({
+        sql: `SELECT id FROM records WHERE collection=?${candidates ? ' AND id IN (SELECT value FROM json_each(?))' : ''} ORDER BY rowid`,
+        args: candidates ? [collection, JSON.stringify(candidates)] : [collection],
+      })
+      return result.rows.map(row => String(row.id))
+    })
   }
   get<T>(collection: string, id: string): Promise<T | undefined> {
     return this.enqueue(async () => {

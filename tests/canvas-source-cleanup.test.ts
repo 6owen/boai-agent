@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 存活员工阻止清理，按日志返回失败原因且保留原员工。
  * [INPUT]: Real isolated SQLite source journals and managed canvas documents, without desktop or model calls.
  * [OUTPUT]: Durable cleanup identity, lost-reply recovery, offline deletion, external-change preservation and source isolation.
  * [POS]: WT4 source lifecycle integration tests for conversation and employee cleanup.
@@ -136,7 +137,8 @@ it('derives stable per-employee cleanup identities after batch deletion and resu
 it('refuses employee cleanup while the source identity still exists', async () => {
   const f = await setup(), cleanup = vi.fn(async () => {})
   await f.store.write([row('contactDeletions', 'pending', { agentIds: ['employee-a'], status: 'pending' })])
-  await expect(new ContactDeletionService(f.store, f.dataPath, undefined, cleanup).recover()).rejects.toThrow('身份仍存在')
+  expect(await new ContactDeletionService(f.store, f.dataPath, undefined, cleanup).recover()).toEqual(['员工清理 pending：员工身份仍存在，清理已停止'])
+  expect(await f.store.get('agents', 'employee-a')).toBeDefined()
   expect(cleanup).not.toHaveBeenCalled()
   expect(await f.store.get('contactDeletions', 'pending')).toMatchObject({ status: 'failed' })
 })
