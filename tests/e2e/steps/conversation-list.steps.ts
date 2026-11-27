@@ -1,5 +1,6 @@
 /*
  * [INPUT]: 会话管理中文场景、普通检索 Dialog、隔离 Electron fixture 与产品 IPC。
+ * [OUTPUT]: 原生拖放时目标高度与落定后的头像区连续。
  * [OUTPUT]: 会话检索、分组折叠、原生鼠标排序及拖入头像置顶区、重启保留顺序、历史清理与空页回归。
  * [POS]: 会话列表 BDD 步骤；进程生命周期复用 Desktop。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
@@ -132,12 +133,14 @@ When('把最后一个会话拖到首位并置顶另一个会话', async ({ runti
   await runtime.page.mouse.move(pinFrom.x + 96, pinFrom.y + pinFrom.height / 2, { steps: 5 })
   const dropArea = list(runtime).locator('.conversation-pin-shelf')
   await expect(dropArea).toHaveText('拖到此处置顶')
-  await expect(dropArea).toHaveCSS('height', '82px')
+  await expect(dropArea).toHaveCSS('height', '90px')
   const drop = (await dropArea.boundingBox())!
   await runtime.page.mouse.move(drop.x + drop.width / 2, drop.y + drop.height / 2, { steps: 10 })
   await runtime.page.mouse.move(drop.x + drop.width / 2 + 1, drop.y + drop.height / 2)
   await expect(dropArea).toHaveAttribute('data-drop', 'inside')
   await runtime.page.mouse.up()
+  await expect(dropArea.locator('.conversation-pin-tile')).toHaveText(before[0])
+  await expect(dropArea).toHaveCSS('height', '90px')
   listScenario.order = [before[0], before[2], before[1]]
   await expect.poll(() => titles(runtime)).toEqual(listScenario.order)
   await list(runtime).getByRole('button', { name: before[0], exact: true }).click({ button: 'right' })

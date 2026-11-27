@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 会话列表写入返回快照刷新的完成回执，支持置顶落点连续呈现。
  * [OUTPUT]: 会话列表用共用员工主聊与话题入口，渠道列表沿独立投影。
  * [OUTPUT]: 2026-11-27 定时日志行复用会话定位，跳转原消息，无需先打开过程。
  * [OUTPUT]: 2026-11-26 定时执行定位仅打开原聊天消息，不自动打开右侧执行过程。
@@ -664,7 +665,7 @@ export function AppShell() {
     await refreshSnapshot()
   }
   const changeConversationList = (change: ConversationListChange) => {
-    const update = () => { if (!api) return; void action(async () => {
+    const update = () => { if (!api) return; return action(async () => {
       if (change.action === 'hide') sourceNavigationEpochs.current.set(change.id, (sourceNavigationEpochs.current.get(change.id) ?? 0) + 1)
       await api.request('updateConversationList', change)
       if (change.action === 'hide') {
@@ -675,7 +676,7 @@ export function AppShell() {
       }
       await refreshSnapshot()
     }) }
-    if (change.action === 'hide') navigate(update); else update()
+    if (change.action === 'hide') navigate(() => { void update() }); else return update()
   }
   const clearConversationHistory = async (id: string, hide: boolean) => {
     if (!api) throw new Error('桌面服务尚未就绪')
