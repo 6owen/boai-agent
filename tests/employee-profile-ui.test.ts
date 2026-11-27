@@ -111,10 +111,11 @@ async function fixture(fullPage = false) {
 test('reorders the contact rows before persistence acknowledges the move and restores them on failure', async () => {
   const second = { ...agent, id: 'bob', name: 'Bob' }
   const original = { ...emptyContactList(), revision: 1, agentOrder: [agent.id, second.id] }
-  const save = Promise.withResolvers<unknown>()
+  let rejectSave!: (error: Error) => void
+  const save = new Promise<unknown>((_, reject) => { rejectSave = reject })
   request.mockImplementation(async method => {
     if (method === 'getContactList') return original
-    if (method === 'updateContactList') return save.promise
+    if (method === 'updateContactList') return save
     throw new Error(`Unexpected request: ${method}`)
   })
   await act(async () => root.render(h(ContactList, {
@@ -130,7 +131,7 @@ test('reorders the contact rows before persistence acknowledges the move and res
   expect(request).toHaveBeenCalledWith('updateContactList', {
     expectedRevision: 1, action: { kind: 'move', itemKind: 'agent', id: 'bob', targetId: 'alice', placement: 'before' },
   })
-  await act(async () => save.reject(new Error('保存失败')))
+  await act(async () => rejectSave(new Error('保存失败')))
   expect(order()).toEqual(['Alice', 'Bob'])
   expect(bob.draggable).toBe(true)
 })
