@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 普通聊天的工具事件按本阶段实际注册的操作与官方 Memory 工具身份核对。
  * [OUTPUT]: 已授权会话消息的窗口、当前轮及身份投影归 conversations；模型角色/图片装配归 API 适配器。
  * [OUTPUT]: 内置浏览器命令沿 browser 模块的实现与类型，桌面、本机和 API 共用原合同。
  * [OUTPUT]: Automation tools bind the authorized runtime operations through the shared Mastra adapter.
@@ -70,19 +71,14 @@ import type { AgentExecutionOptions } from '@mastra/core/agent'
 import type { ChunkType, LLMStepResult } from '@mastra/core/stream'
 import { createEmployeeSession, sessionInput } from './controller-session'
 import { behaviorModelContext, needsReflectionReview, reflectionReviewInstructions, reflectionReviewPrompt } from '../../modules/employees/behavior-context'
-import { createSelfieOperations } from '../../modules/media/selfie-tools'
-import { createReactionOperations } from '../../modules/conversations/reaction-tools'
 import { createBoundSkillOperations } from '../../modules/resources/bound-skill-tools'
-import { createMemoryOperations } from '../../modules/memory/memory-tools'
 import { createHistorySearchOperations } from './history-tools'
-import { stateToolNames } from '../../modules/agent-state/state-tools'
 import { agentBehaviorResultSchema } from '@boai/shared/domain/agent-profile'
-import { createApplicationTools } from '../../modules/application/application-tools'
+import { createApplicationTools, applicationObservation } from '../../modules/application/application-tools'
 import { createWebSearchOperations } from './web-search-tools'
 import { bindMastraOperations } from './operation-tools'
-import { hasKnowledge, knowledgeToolNames } from '../../modules/resources/knowledge-tools'
-import { hasChatSourceTools, sourceToolNames } from './source-tools'
-import { applicationToolNames, applicationObservation } from '../../modules/application/application-tools'
+import { hasKnowledge } from '../../modules/resources/knowledge-tools'
+import { hasChatSourceTools } from './source-tools'
 import { catalogObservation } from '../../modules/resources/catalog-commands'
 import { sourceCreationObservation } from '../../modules/sources/source-commands'
 import { groupInterpretationSchema, replyCharacterCount, validateGroupInterpretation } from '../../modules/collaboration/group-coordination'
@@ -102,9 +98,6 @@ import { thinkingProviderOptions, decisionProviderOptions, modelConfig, sessionM
 import { gatewayRouteModel, gatewayRouteObserver } from './gateway-route'
 import { assertStreamCompleted } from './stream-completion'
 import { supportsThinkingControl } from '@boai/shared/domain/model-preferences'
-import { createDesktopPluginOperations } from './desktop-plugin-tools'
-import { createCanvasOperations } from './canvas-tools'
-import { createBrowserPluginOperations } from './browser-plugin-tools'
 import { createStageAgent, bootstrapInstructions, organizationDecisionAllowed, type StageInstance } from './agent-factory'
 import { EmployeeConversationMemory, memoryMessageId } from './conversation-memory'
 import { contextHandoff } from './context-maintenance'
@@ -297,7 +290,7 @@ export class MastraEngine implements AgentEngine {
       const maxCharacters = !task && ctx.groupCoordination?.mode === 'ordered' ? ctx.groupCoordination.maxReplyCharacters : undefined
       const usage = new UsageRecorder()
       const outputContext = maxCharacters ? { ...ctx, onReplyPreview: undefined, onDelta: async () => {}, onExecutionEvent: async (event: import('@boai/shared/domain/execution').ExecutionEvent) => { if (event.eventType !== 'agent.text.block') await ctx.onExecutionEvent?.(event) } } : ctx
-      const projection = this.responseProjection(outputContext, task, callIds, () => stage?.skills, usage)
+      const projection = this.responseProjection(outputContext, task, callIds, () => stage, usage)
       let finishReason: string | undefined
       let previousFinish: string | undefined
       const options: AgentExecutionOptions<undefined> = {
@@ -371,7 +364,7 @@ export class MastraEngine implements AgentEngine {
     } finally { try { await stage?.dispose() } finally { await prepared?.dispose() } }
   }
 
-  private responseProjection(ctx: EngineContext, task: boolean, callIds: (string | undefined)[], skills: () => StageInstance['skills'], usage: UsageRecorder) {
+  private responseProjection(ctx: EngineContext, task: boolean, callIds: (string | undefined)[], stage: () => StageInstance | undefined, usage: UsageRecorder) {
     const seenChunks = new WeakSet<object>()
     const activations = new Map<string, { id: string; name: string }>()
     const events = new Map<string, ToolEvent>()
@@ -408,11 +401,12 @@ export class MastraEngine implements AgentEngine {
           stepHasToolInput = true
           if (!task && buffered) ctx.onReplyPreview?.('')
           if (chunk.type !== 'tool-call') return
-          if (!task && !((ctx.memoryOwner === 'mastra' && ['recall', 'updateWorkingMemory', 'update-working-memory'].includes(chunk.payload.toolName)) || (ctx.continuity && chunk.payload.toolName === 'read_context_history') || ([...createCanvasOperations(ctx), ...createDesktopPluginOperations(ctx), ...createBrowserPluginOperations(ctx), ...createBoundSkillOperations(ctx), ...createMemoryOperations(ctx), ...createHistorySearchOperations(ctx), ...createReactionOperations(ctx), ...createSelfieOperations(ctx)].some(operation => operation.name === chunk.payload.toolName)) || (hasKnowledge(ctx) && ctx.decision?.action !== 'ask' && ctx.decision?.action !== 'request_handoff' && knowledgeToolNames.some(name => name === chunk.payload.toolName)) || (hasChatSourceTools(ctx) && sourceToolNames.some(name => name === chunk.payload.toolName)) || (ctx.personality && stateToolNames.some(name => name === chunk.payload.toolName)) || (ctx.application && applicationToolNames.some(name => name === chunk.payload.toolName)) || (ctx.manageSkills && chunk.payload.toolName === 'manage_skills') || (ctx.manageDataSources && (['manage_data_sources', 'inspect_data_source', 'call_data_source'].includes(chunk.payload.toolName) || (ctx.browserSession && chunk.payload.toolName === 'browser_tool'))) || (ctx.manageAutomation && chunk.payload.toolName === 'manage_automation') || (ctx.createDataSource && chunk.payload.toolName === 'create_data_source'))) throw new Error('普通聊天不允许调用此业务工具')
+          const currentStage = stage()
+          if (!task && !currentStage?.chatToolNames?.has(chunk.payload.toolName)) throw new Error('普通聊天不允许调用此业务工具')
           stepHasTools = true
           if (chunk.payload.toolName === 'skill') {
             const name = (chunk.payload.args as { name?: string })?.name
-            const skill = skills()?.find(item => item.name === name || item.path === name)
+            const skill = currentStage?.skills?.find(item => item.name === name || item.path === name)
             if (skill) activations.set(chunk.payload.toolCallId, skill)
           }
           await report(chunk.payload.toolCallId, chunk.payload.toolName, 'running', chunk.payload.toolName === 'boai_call' ? applicationObservation(chunk.payload.args) : ['manage_skills', 'manage_data_sources'].includes(chunk.payload.toolName) ? catalogObservation(chunk.payload.args) : chunk.payload.toolName === 'create_data_source' ? sourceCreationObservation(chunk.payload.args) : chunk.payload.args)

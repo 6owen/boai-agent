@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 普通聊天的工具事件按本阶段实际注册的操作与官方 Memory 工具身份核对。
  * [OUTPUT]: 自我状态按需读取旅行历史/日期游记；常规读写只返回短状态且宿主限定当前会话。
  * [INPUT]: Host-scoped employee state callbacks, never caller-selected employee identity.
  * [OUTPUT]: Common API/native self-state tools with expected-revision writes.
@@ -8,7 +9,6 @@
 import { z } from 'zod'
 import { agentStateActionSchema, type AgentTravel, type AgentPersonalityState } from '@boai/shared/domain/agent-profile'
 import type { EngineContext } from '../../contracts'
-export const stateToolNames = ['agent_state', 'update_agent_state'] as const
 export const stateToolInstructions = 'Your persisted emotion, fatigue and virtual journey are available through agent_state. When the conversation meaningfully changes your own mood, you may update_agent_state using the current revision. Scope context keeps the feeling in this chat; base affects your general state. Do not update on every greeting. State changes are not work completion or permanent factual memory. Disabled features must remain disabled.'
 const readSchema = z.object({ travel: z.enum(['history', 'journal']).optional(), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() }).strict()
 const tripSummary = (trip: AgentTravel) => { const { events: _events, journals: _journals, sourceMessageIds: _messages, sourceMemories: _memories, ...value } = trip; return value }
