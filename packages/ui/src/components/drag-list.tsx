@@ -1,14 +1,15 @@
 /*
+ * [OUTPUT]: 原生指针移动直接更新命中的落点，重复经过同一位置不触发列表渲染。
  * [INPUT]: 有序条目身份、可移动边界、受控保存回调与自定义行内容。
  * [OUTPUT]: 归组目标可随可接受的拖拽显示，头像网格按横向落点排序。
  * [OUTPUT]: 会话式原生拖拽、前后落点/归组提示；有效行内排序优先，无效排序保留来源并冒泡至分类目标；按条目身份校验归组目标、拖动态、取消清理和 Alt 方向键排序。
  * [POS]: 跨页面列表拖拽组件；只管理手势，不保存业务数据。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { createContext, useContext, useRef, useState, type DragEvent, type HTMLAttributes, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type DragEvent, type HTMLAttributes, type ReactNode } from 'react'
 
 export type ListMove = { id: string; targetId: string; placement: 'before' | 'after' }
-type Target = { id: string; placement: ListMove['placement'] | 'inside' }
+type Target = { element: HTMLElement; placement: ListMove['placement'] | 'inside' }
 interface DragListProps {
   ids: string[]; disabled?: boolean; children: ReactNode
   onMove(move: ListMove): void
@@ -17,9 +18,12 @@ interface DragListProps {
   onGroupDrop?(id: string, groupId: string): void
 }
 type DragContextValue = DragListProps & {
-  dragged: string | null; target: Target | null
+  dragged: string | null
   source: React.RefObject<string | null>
-  setDragged(id: string | null): void; setTarget(target: Target | null): void; finish(): void
+  setDragged(id: string | null): void
+  setTarget(element: HTMLElement, placement: Target['placement']): void
+  leaveTarget(element: HTMLElement): void
+  finish(): void
 }
 const DragContext = createContext<DragContextValue | null>(null)
 function useDragList() {
@@ -28,10 +32,27 @@ function useDragList() {
   return context
 }
 export function DragList(props: DragListProps) {
-  const [dragged, setDragged] = useState<string | null>(null), [target, setTarget] = useState<Target | null>(null)
+  const [dragged, setDragged] = useState<string | null>(null)
   const source = useRef<string | null>(null)
-  const finish = () => { source.current = null; setDragged(null); setTarget(null) }
-  return <DragContext.Provider value={{ ...props, source, dragged, target, setDragged, setTarget, finish }}>{props.children}</DragContext.Provider>
+  const target = useRef<Target | null>(null)
+  const clearTarget = useCallback(() => {
+    if (target.current) delete target.current.element.dataset.drop
+    target.current = null
+  }, [])
+  const setTarget = (element: HTMLElement, placement: Target['placement']) => {
+    if (target.current?.element === element && target.current.placement === placement) return
+    if (target.current?.element !== element) clearTarget()
+    target.current = { element, placement }
+    element.dataset.drop = placement
+  }
+  const leaveTarget = (element: HTMLElement) => {
+    if (target.current?.element === element) clearTarget()
+  }
+  const finish = useCallback(() => { source.current = null; setDragged(null); clearTarget() }, [clearTarget])
+  useEffect(() => {
+    if (props.disabled) finish()
+  }, [props.disabled, finish])
+  return <DragContext.Provider value={{ ...props, source, dragged, setDragged, setTarget, leaveTarget, finish }}>{props.children}</DragContext.Provider>
 }
 
 export function DragListItem({ id, className = '', horizontal = false, children }: { id: string; className?: string; horizontal?: boolean; children: (props: { dragging: boolean; dragProps: HTMLAttributes<HTMLElement> }) => ReactNode }) {
@@ -62,9 +83,14 @@ export function DragListItem({ id, className = '', horizontal = false, children 
     },
     'aria-description': '可拖拽排序，或按 Alt 加上下方向键移动。',
   }
-  return <div className={`drag-list-row ${className}`} data-drop={drag.target?.id === id && drag.target.placement !== 'inside' ? drag.target.placement : undefined}
-    onDragOver={event => { const next = target(event); drag.setTarget(next ? { id, placement: next.placement } : null); if (next) { event.stopPropagation(); event.preventDefault(); event.dataTransfer.dropEffect = 'move' } }}
-    onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) drag.setTarget(null) }}
+  return <div className={`drag-list-row ${className}`}
+    onDragOver={event => {
+      const next = target(event)
+      if (!next) { drag.leaveTarget(event.currentTarget); return }
+      event.stopPropagation(); event.preventDefault(); event.dataTransfer.dropEffect = 'move'
+      drag.setTarget(event.currentTarget, next.placement)
+    }}
+    onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) drag.leaveTarget(event.currentTarget) }}
     onDrop={event => { const next = target(event); if (next) { event.stopPropagation(); event.preventDefault(); drag.onMove(next); drag.finish() } }}>
     {children({ dragging: drag.dragged === id, dragProps })}
   </div>
@@ -75,9 +101,13 @@ export function DragListGroupTarget({ id, className, children }: { id: string; c
   const source = () => !drag.disabled && drag.onGroupDrop && drag.source.current && drag.ids.includes(drag.source.current) && (!drag.canGroupDrop || drag.canGroupDrop(drag.source.current, id)) ? drag.source.current : null
   const content = typeof children === 'function' ? children(Boolean(drag.dragged && source())) : children
   if (content == null) return null
-  return <div className={['drag-list-group-target', className].filter(Boolean).join(' ')} data-drop={drag.target?.id === id && drag.target.placement === 'inside' ? 'inside' : undefined}
-    onDragOver={event => { if (!source()) return; event.stopPropagation(); event.preventDefault(); event.dataTransfer.dropEffect = 'move'; drag.setTarget({ id, placement: 'inside' }) }}
-    onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) drag.setTarget(null) }}
+  return <div className={['drag-list-group-target', className].filter(Boolean).join(' ')}
+    onDragOver={event => {
+      if (!source()) { drag.leaveTarget(event.currentTarget); return }
+      event.stopPropagation(); event.preventDefault(); event.dataTransfer.dropEffect = 'move'
+      drag.setTarget(event.currentTarget, 'inside')
+    }}
+    onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) drag.leaveTarget(event.currentTarget) }}
     onDrop={event => { const idToMove = source(); if (idToMove) { event.stopPropagation(); event.preventDefault(); drag.onGroupDrop!(idToMove, id); drag.finish() } }}>
     {content}
   </div>

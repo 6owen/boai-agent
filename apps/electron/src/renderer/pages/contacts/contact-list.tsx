@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 松手立即更新联系人顺序，以短位移动画落位；保存失败恢复实际顺序。
  * [OUTPUT]: 拖入顶部或下方联系人区即可置顶或取消，保存期间保持横向行的落点。
  * [OUTPUT]: 员工和群聊右键菜单统一使用高级配置，基础配置在资料页就地编辑。
  * [INPUT]: 员工/群聊快照、独立通讯录偏好与资料/编辑/发消息回调。
@@ -7,16 +8,16 @@
  * [POS]: contacts 左侧列表；界面操作通过类型化 IPC 持久化，不修改会话顺序。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { cn } from 'cn'
 import type { DigitalAgent, Snapshot } from '@boai/shared/domain'
 import { isCoreAgent } from '@boai/shared/domain/core-agent'
-import { sortedContacts } from '@boai/shared/domain/contact-list'
+import { sortedContacts, type ContactListAction, type ContactListPreferences } from '@boai/shared/domain/contact-list'
 import { isChannelConversation } from '@boai/shared/domain/conversation-list'
 import type { DesktopApi } from '@boai/shared/ipc'
 import { Avatar, Banner, useMutation } from '@/components/common'
 import { AddContactMenu } from '@/components/common/add-contact-menu'
-import { DragList, DragListGroupTarget, DragListItem } from '@/components/common/drag-list'
+import { DragList, DragListGroupTarget, DragListItem, type ListMove } from '@/components/common/drag-list'
 import { GroupAvatar } from '@/components/common/group-avatar'
 import { ChevronRight, Contact, MessageCircle, Pin, Search, Settings, Trash2 } from '@/components/icons'
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
@@ -29,6 +30,9 @@ import { ContactManagerDialog } from './contact-manager'
 import { useContactList } from './use-contact-list'
 
 const LIST_STATE_KEY = 'boai.contacts.list-state'
+const CONTACT_LAYOUT_ITEMS = '[data-contact-layout]'
+type ContactOrder = Pick<ContactListPreferences, 'groupOrder' | 'agentOrder' | 'pinnedAgentIds'>
+type ContactOrderAction = Extract<ContactListAction, { kind: 'move' | 'pin-agent' }>
 interface ContactListState { groupsOpen: boolean; contactsOpen: boolean }
 function readListState(): ContactListState {
   try {
@@ -56,27 +60,65 @@ export function ContactList({ api, snapshot, selected, busy, onSelect, onMessage
   const [listState, setListState] = useState(readListState)
   const [deleting, setDeleting] = useState<{ selection: ContactSelection; name: string } | null>(null)
   const [managerOpen, setManagerOpen] = useState(false)
-  const [pendingPin, setPendingPin] = useState<{ agentId: string; pinned: boolean } | null>(null)
+  const [pendingOrder, setPendingOrder] = useState<Partial<ContactOrder> | null>(null)
+  const sections = useRef<HTMLDivElement>(null)
+  const dropLayout = useRef<{ id: string; tops: Map<string, number> } | null>(null)
   const mutation = useMutation()
   useEffect(() => { try { localStorage.setItem(LIST_STATE_KEY, JSON.stringify(listState)) } catch { /* Optional presentation preferences. */ } }, [listState])
   const preferences = useContactList(api), value = preferences.value
-  const disabled = busy || preferences.busy || mutation.busy || Boolean(pendingPin) || !value
+  const disabled = busy || preferences.busy || mutation.busy || Boolean(pendingOrder) || !value
   const sortingDisabled = disabled || Boolean(deleting || managerOpen)
   const search = query.trim().toLocaleLowerCase()
-  const groups = sortedContacts(snapshot.conversations.filter(item => item.kind === 'group' && !item.mergedInto && !isChannelConversation(item)), value?.groupOrder ?? [], item => item.title).filter(item => item.title.toLocaleLowerCase().includes(search))
-  const savedPinnedOrder = value?.pinnedAgentIds ?? []
-  const pinnedOrder = pendingPin && savedPinnedOrder.includes(pendingPin.agentId) !== pendingPin.pinned
-    ? (pendingPin.pinned ? [pendingPin.agentId, ...savedPinnedOrder] : savedPinnedOrder.filter(id => id !== pendingPin.agentId))
-    : savedPinnedOrder
+  const orderedGroups = sortedContacts(snapshot.conversations.filter(item => item.kind === 'group' && !item.mergedInto && !isChannelConversation(item)), pendingOrder?.groupOrder ?? value?.groupOrder ?? [], item => item.title)
+  const pinnedOrder = pendingOrder?.pinnedAgentIds ?? value?.pinnedAgentIds ?? []
   const pinnedIds = new Set(pinnedOrder)
-  const pinContact = async (agentId: string, pinned: boolean) => {
+  const orderedPinned = sortedContacts(snapshot.agents.filter(agent => pinnedIds.has(agent.id)), pinnedOrder, agent => agent.name)
+  const orderedContacts = sortedContacts(snapshot.agents.filter(agent => !pinnedIds.has(agent.id)), pendingOrder?.agentOrder ?? value?.agentOrder ?? [], agent => agent.name)
+  const matchesAgent = (agent: DigitalAgent) => `${agent.name} ${agent.role}`.toLocaleLowerCase().includes(search)
+  const groups = orderedGroups.filter(group => group.title.toLocaleLowerCase().includes(search))
+  const pinnedContacts = orderedPinned.filter(matchesAgent)
+  const contacts = orderedContacts.filter(matchesAgent)
+
+  useLayoutEffect(() => {
+    const previous = dropLayout.current
+    dropLayout.current = null
+    if (!previous || !sections.current) return
+    const positions = [...sections.current.querySelectorAll<HTMLElement>(CONTACT_LAYOUT_ITEMS)].map(element => (
+      { element, key: element.dataset.contactLayout!, top: element.getBoundingClientRect().top }
+    ))
+    for (const { element, key, top } of positions) {
+      // The dropped contact starts at its new slot so it cannot fly back toward the source.
+      const offset = key === previous.id ? -5 : (previous.tops.get(key) ?? top) - top
+      if (Math.abs(offset) < 1) continue
+      element.animate([{ translate: `0 ${offset}px` }, { translate: '0 0' }],
+        { duration: 145, easing: 'cubic-bezier(.22,.8,.24,1)' })
+    }
+  }, [pendingOrder])
+
+  const saveOrder = async (action: ContactOrderAction, order: Partial<ContactOrder>, rowKey: string) => {
     if (disabled) return
-    setPendingPin({ agentId, pinned })
-    try { await preferences.change({ kind: 'pin-agent', agentId, pinned }) } finally { setPendingPin(null) }
+    if (sections.current && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      const tops = new Map<string, number>()
+      for (const row of sections.current.querySelectorAll<HTMLElement>(CONTACT_LAYOUT_ITEMS)) {
+        const { top, height } = row.getBoundingClientRect()
+        if (height) tops.set(row.dataset.contactLayout!, top)
+      }
+      dropLayout.current = { id: rowKey, tops }
+    }
+    setPendingOrder(order)
+    try { await preferences.change(action) } finally { setPendingOrder(null) }
   }
-  const matchingAgents = snapshot.agents.filter(agent => `${agent.name} ${agent.role}`.toLocaleLowerCase().includes(search))
-  const pinnedContacts = sortedContacts(matchingAgents.filter(agent => pinnedIds.has(agent.id)), pinnedOrder, agent => agent.name)
-  const contacts = sortedContacts(matchingAgents.filter(agent => !pinnedIds.has(agent.id)), value?.agentOrder ?? [], agent => agent.name)
+  const pinContact = (agentId: string, pinned: boolean) => {
+    const remaining = pinnedOrder.filter(id => id !== agentId)
+    return saveOrder({ kind: 'pin-agent', agentId, pinned }, { pinnedAgentIds: pinned ? [agentId, ...remaining] : remaining }, `agent:${agentId}`)
+  }
+  const moveContact = (move: ListMove, itemKind: 'agent' | 'group') => {
+    const key = itemKind === 'group' ? 'groupOrder' : pinnedIds.has(move.id) ? 'pinnedAgentIds' : 'agentOrder'
+    const items = key === 'groupOrder' ? orderedGroups : key === 'pinnedAgentIds' ? orderedPinned : orderedContacts
+    const order = items.map(item => item.id).filter(id => id !== move.id)
+    order.splice(order.indexOf(move.targetId) + (move.placement === 'after' ? 1 : 0), 0, move.id)
+    void saveOrder({ kind: 'move', itemKind, ...move }, { [key]: order }, `${itemKind}:${move.id}`)
+  }
   const removedGroups = (agentIds: string[]) => snapshot.conversations.filter(group => group.kind === 'group' && group.agentIds.length > 0 && group.agentIds.every(id => agentIds.includes(id))).map(group => group.id)
   const row = (item: ContactSelection, name: string, description: string, avatar: ReactNode) => {
     const employee = item.kind === 'agent'
@@ -84,7 +126,7 @@ export function ContactList({ api, snapshot, selected, busy, onSelect, onMessage
     const pinned = employee && pinnedIds.has(item.id)
     return <DragListItem key={item.id} id={item.id} className="conversation-row">{({ dragging, dragProps }) => <ContextMenu>
       <ContextMenuTrigger render={<Button variant="ghost" size="content" className={cn('conversation-item', { selected: selected?.kind === item.kind && selected.id === item.id, 'drag-list-dragging': dragging })} />}
-        {...dragProps} aria-label={name} aria-current={selected?.kind === item.kind && selected.id === item.id ? 'true' : undefined}
+        {...dragProps} data-contact-layout={`${item.kind}:${item.id}`} aria-label={name} aria-current={selected?.kind === item.kind && selected.id === item.id ? 'true' : undefined}
         aria-description={`${core ? '系统助手。' : ''}${pinned ? '已置顶。' : ''}可拖拽排序，或按 Alt 加上下方向键移动。右键打开菜单。`} onClick={() => { if (!dragging) onSelect(item) }}>
         {avatar}<span className="conversation-copy"><span className="conversation-title">{name}</span><span className="conversation-preview">{description}</span></span>
       </ContextMenuTrigger>
@@ -111,11 +153,11 @@ export function ContactList({ api, snapshot, selected, busy, onSelect, onMessage
     <InputGroup><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput aria-label="搜索通讯录" placeholder="搜索联系人或群聊" value={query} onChange={event => setQuery(event.target.value)} /></InputGroup>
     {preferences.error && <Banner>{preferences.error}</Banner>}
     {mutation.error && !deleting && <Banner>{mutation.error}</Banner>}
-    <div className="contacts-sections">
+    <div className="contacts-sections" ref={sections}>
       <DragList ids={[...pinnedContacts, ...contacts].map(agent => agent.id)} disabled={sortingDisabled}
         canMove={(id, target) => pinnedIds.has(id) === pinnedIds.has(target)}
         canGroupDrop={(id, target) => target === pinnedTarget ? !pinnedIds.has(id) : target === regularTarget && pinnedIds.has(id)}
-        onMove={move => { void preferences.change({ ...move, kind: 'move', itemKind: 'agent' }) }}
+        onMove={move => moveContact(move, 'agent')}
         onGroupDrop={(id, target) => {
           if (target === regularTarget && !search) setListState(previous => ({ ...previous, contactsOpen: true }))
           void pinContact(id, target === pinnedTarget)
@@ -125,14 +167,14 @@ export function ContactList({ api, snapshot, selected, busy, onSelect, onMessage
           : eligible ? <div className="list-pin-placeholder">拖到此处置顶</div> : null}
         </DragListGroupTarget>
         <Collapsible open={Boolean(search) || listState.groupsOpen} onOpenChange={open => { if (!search) setListState(previous => ({ ...previous, groupsOpen: open })) }}>
-          <CollapsibleTrigger render={<Button variant="ghost" size="content" className="conversation-section-heading contacts-section-heading" />}><span>群聊</span><ChevronRight /><span className="contacts-count">{groups.length}</span></CollapsibleTrigger>
-          <CollapsibleContent><div role="group" aria-label="群聊"><DragList ids={groups.map(group => group.id)} disabled={sortingDisabled} onMove={move => { void preferences.change({ ...move, kind: 'move', itemKind: 'group' }) }}>
+          <CollapsibleTrigger data-contact-layout="section:groups" render={<Button variant="ghost" size="content" className="conversation-section-heading contacts-section-heading" />}><span>群聊</span><ChevronRight /><span className="contacts-count">{groups.length}</span></CollapsibleTrigger>
+          <CollapsibleContent><div role="group" aria-label="群聊"><DragList ids={groups.map(group => group.id)} disabled={sortingDisabled} onMove={move => moveContact(move, 'group')}>
             {groups.map(group => row({ kind: 'group', id: group.id }, group.title, `${group.agentIds.length} 位数字员工`, <GroupAvatar members={group.agentIds.map(id => snapshot.agents.find(agent => agent.id === id)).filter((agent): agent is DigitalAgent => Boolean(agent))} />))}
           </DragList>{!groups.length && <p className="contacts-list-empty">{search ? '没有匹配的群聊' : '暂无群聊'}</p>}</div></CollapsibleContent>
         </Collapsible>
         <DragListGroupTarget id={regularTarget} className="contacts-regular-drop">
           <Collapsible className="contacts-regular-list" open={Boolean(search) || listState.contactsOpen} onOpenChange={open => { if (!search) setListState(previous => ({ ...previous, contactsOpen: open })) }}>
-            <CollapsibleTrigger render={<Button variant="ghost" size="content" className="conversation-section-heading contacts-section-heading" />}><span>联系人</span><ChevronRight /><span className="contacts-count">{contacts.length}</span></CollapsibleTrigger>
+            <CollapsibleTrigger data-contact-layout="section:agents" render={<Button variant="ghost" size="content" className="conversation-section-heading contacts-section-heading" />}><span>联系人</span><ChevronRight /><span className="contacts-count">{contacts.length}</span></CollapsibleTrigger>
             <CollapsibleContent><div role="group" aria-label="联系人">{renderAgents(contacts)}{!contacts.length && !pinnedContacts.length && <p className="contacts-list-empty">{search ? '没有匹配的联系人' : '暂无联系人'}</p>}</div></CollapsibleContent>
           </Collapsible>
         </DragListGroupTarget>
