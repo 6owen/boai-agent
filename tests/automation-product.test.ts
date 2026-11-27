@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 同计划连续手动触发分别创建可导航的员工话题，忙时排队再执行。
  * [OUTPUT]: 2026-11-27 日志删除保留会话、执行和文件；UI或Session删除会话时关联日志同步消失。
  * [OUTPUT]: 2026-11-25 定时运行直接关联话题；定位、流式、旧记录迁移、独立上下文及原删除合同回归。
  * [OUTPUT]: 定时执行删除在旧独占会话与共享会话两条路径均不压缩整库，原文件/回执/恢复保护保持。
@@ -449,6 +450,37 @@ it('creates two isolated task chats for one employee and still reuses the ordina
   const restored = await restarted.handle('listAutomations', undefined) as AutomationsView
   expect(restored.occurrences.map(o => o.conversationId).sort()).toEqual([first.conversationId, second.conversationId].sort())
   expect(f.contexts.filter(ctx => ctx.conversation.employeeChat === 'topic')).toHaveLength(2)
+})
+it('accepts a second manual run into its own visible topic while the first still runs', async () => {
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  const executed: string[] = []
+  const f = await setup({ engine: {
+    test: async () => '',
+    decide: async ctx => ({ action: ctx.participation?.hasRespondedInTurn ? 'pass' : 'reply', responseKind: 'chat', observedThroughSequence: Math.max(...ctx.messages.map(m => m.sequence)) }),
+    run: async ctx => { executed.push(ctx.conversation.id); await gate; await ctx.onDelta('本次整理完成') },
+  } })
+  disposers.push(async () => release())
+  const plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
+  const first = await f.service.handle('runAutomation', { id: plan.id, requestId: 'manual-first' }) as AutomationOccurrence
+  expect(first.status).toBe('running')
+  const input = { id: plan.id, requestId: 'manual-second' }
+  const second = await f.service.handle('runAutomation', input) as AutomationOccurrence
+  expect(second.status).toBe('queued')
+  expect(second.id).not.toBe(first.id)
+  expect(second.conversationId).not.toBe(first.conversationId)
+  const snapshot = await f.service.handle('snapshot', undefined) as Snapshot
+  expect(snapshot.conversations.find(room => room.id === second.conversationId)).toMatchObject({
+    employeeChat: 'topic', automationId: plan.id, occurrenceId: second.id, agentIds: ['researcher'],
+  })
+  expect((await f.detail(second.conversationId)).messages).toEqual([])
+  expect(await f.service.handle('runAutomation', input)).toMatchObject({ id: second.id, conversationId: second.conversationId })
+  release()
+  await until(async () => {
+    const { occurrences } = await f.view()
+    return [first.id, second.id].every(id => occurrences.find(o => o.id === id)?.status === 'completed')
+  })
+  expect(executed).toEqual([first.conversationId, second.conversationId])
 })
 it('does not initialize another task chat for a repeated manual trigger, including after history cleanup', async () => {
   const f = await setup(), plan = await f.service.handle('saveAutomation', f.input) as AutomationDefinition
