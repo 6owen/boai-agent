@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 选中员工下的话题时持续显示员工行尾箭头，员工行仅在悬停或主聊天选中时显示背景。
  * [OUTPUT]: 2026-11-27 移除定时计划卡片操作行样式；无会话记录显示为静态行。
  * [OUTPUT]: 话题行显示更多操作时暂藏时间，避免时间被按钮遮断。
  * [OUTPUT]: 员工主聊天独立选中，行尾箭头展开话题，原聊天行组件与主题表面继续共用。
@@ -353,12 +354,11 @@
 .conversation-employee-row>:is(.conversation-row,.conversation-core-heading) { flex:1;min-width:0 }
 .conversation-employee-row .conversation-item { margin-bottom:0 }
 .conversation-employee-row .conversation-item.soft-button-ghost:not(:disabled):not([aria-disabled=true]) { background:transparent }
-.conversation-item.soft-button-ghost[data-active-topic=true],
-.conversation-employee-row:is(:hover,:has(.conversation-item[data-active-topic=true])) { background:var(--muted) }
+.conversation-employee-row:hover { background:var(--muted) }
 .conversation-employee-row:has(.conversation-item.selected) { background:var(--selection) }
 .conversation-topic-toggle { flex:none;margin-right:4px;color:var(--muted-foreground) }
 @media (hover:hover) {
-  .conversation-employee-row:not(:hover)>.conversation-topic-toggle:not(:focus-visible) { opacity:0;pointer-events:none }
+  .conversation-employee-row:not(:hover,:has(.conversation-item[data-active-topic=true]))>.conversation-topic-toggle:not(:focus-visible) { opacity:0;pointer-events:none }
 }
 .conversation-topic-toggle.soft-button-ghost[aria-expanded]:not(:hover):not(:focus-visible) { background:transparent }
 .conversation-topic-toggle.soft-button-ghost:is(:hover,:focus-visible):not(:disabled):not([aria-disabled=true]) { background:color-mix(in srgb,var(--foreground) 12%,transparent) }
