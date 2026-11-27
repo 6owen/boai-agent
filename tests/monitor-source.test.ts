@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 监控停止后的占位期间第二个手动请求持久排队，可独立取消且不发起读取。
  * [INPUT]: 隔离已发布文件/可信根别名、真实 AppService/SQLite、内容身份和可控读取/授权退出信号。
  * [OUTPUT]: 已登记 hash 外改拒绝/检查点不变、canonical/逻辑根兼容且子路径拒绝链接、唯一最新来源前后复核；保留来源权限/版本/文件边界、生产 IPC 无模型监控、清理/重启及停止待实际退出验证。
  * [POS]: 监控数据入口与宿主集成验收；不使用真实用户资料或在线模型。
@@ -156,22 +157,30 @@ it('runs the real product monitoring IPC without model calls or chat spam and cl
 
 it('commits stop before signalling the reader and retains its slot until actual exit', async () => {
   const path = await root(), store = new ProductStore(join(path, 'boai.sqlite')); await store.init(); disposers.push(() => store.close())
-  let release!: (value: AutomationMonitorRead) => void, started = false, aborted = false, cancelledModel = 0
+  let release!: (value: AutomationMonitorRead) => void, reads = 0, aborted = false, cancelledModel = 0
   const wait = new Promise<AutomationMonitorRead>(resolve => { release = resolve })
-  const service = new AutomationService(store, path, { critical: fn => fn(), validate: () => 'authorized', busy: () => false, changed: () => {}, notify: () => {}, inspect: () => { throw new Error('monitor must not aggregate model work') }, cancel: async () => { cancelledModel++ }, dispatch: async () => { throw new Error('monitor must not dispatch a model') }, readMonitor: async (_d, signal) => { started = true; signal.addEventListener('abort', () => { aborted = true }); return wait } })
+  const service = new AutomationService(store, path, { critical: fn => fn(), validate: () => 'authorized', busy: () => false, changed: () => {}, notify: () => {}, inspect: () => { throw new Error('monitor must not aggregate model work') }, cancel: async () => { cancelledModel++ }, dispatch: async () => { throw new Error('monitor must not dispatch a model') }, readMonitor: async (_d, signal) => { reads++; signal.addEventListener('abort', () => { aborted = true }); return wait } })
   disposers.push(() => service.close()); await service.init()
   const d = await service.save(input('chat')), o = await service.run(d.id, 'one')
   try {
-    await until(async () => started)
+    await until(async () => reads === 1)
     await service.stop(o.id)
     expect(aborted).toBe(true); expect(cancelledModel).toBe(0)
     expect(service.hasActiveConversation('chat')).toBe(true)
     await expect(service.beforeBackup()).rejects.toThrow('自动化正在执行')
-    expect(await service.run(d.id, 'two')).toMatchObject({ status: 'skipped' })
+    const queued = await service.run(d.id, 'two')
+    expect(queued.status).toBe('queued')
+    expect(queued.id).not.toBe(o.id)
+    expect((await service.occurrence(queued.id)).status).toBe('queued')
+    expect(reads).toBe(1)
+    await service.stop(queued.id)
+    expect((await service.occurrence(queued.id)).status).toBe('cancelled')
+    expect(service.hasActiveConversation('chat')).toBe(true)
   } finally { release({ observation: data(500), evidence: { artifactId: 'late', name: 'metrics.json', publishedAt: new Date().toISOString(), fileHash: 'a'.repeat(64) } }) }
   await until(async () => (await service.occurrence(o.id)).status === 'cancelled')
   expect(await store.load('automationMonitorCheckpoints')).toEqual([])
   expect(service.hasActiveConversation('chat')).toBe(false)
+  expect(reads).toBe(1)
 })
 
 it('rejects a read completed after permission changes and never creates a comparison baseline', async () => {
