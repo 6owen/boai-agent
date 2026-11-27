@@ -5,6 +5,7 @@
  * [OUTPUT]: 独立浏览器包只依赖上游，由runtime调用公开host入口。
  * [OUTPUT]: 2026-10-29 包边界纳入file-explorer-plugin；build分发固定来源和MIT许可。
  * [OUTPUT]: 2026-10-27 语音包分发、工作区依赖或静音诊断候选；不代表产品验收。
+ * [OUTPUT]: CI 拒绝静态 ES 模块值导入环，报告闭环路径。
  * [INPUT]: Workspace manifests, public exports and TS/JS source imports.
  * [OUTPUT]: Reject app/package dependency reversals, source path escapes and unresolved public entries.
  * [POS]: Lightweight static workspace contract; does not build or execute product code.
@@ -123,7 +124,12 @@ function importedSpecifiers(ast) {
     if (['ImportDeclaration', 'ExportNamedDeclaration', 'ExportAllDeclaration', 'ImportExpression'].includes(node.type)) source = node.source
     else if (node.type === 'TSImportType') source = node.argument
     else if (node.type === 'CallExpression' && (node.callee?.type === 'Import' || (node.callee?.type === 'Identifier' && node.callee.name === 'require'))) source = node.arguments?.[0]
-    if (source?.type === 'StringLiteral') result.push({ value: source.value, line: source.loc?.start.line ?? 0, typeOnly: node.importKind === 'type' || node.exportKind === 'type' || node.type === 'TSImportType' })
+    if (source?.type === 'StringLiteral') {
+      const staticImport = ['ImportDeclaration', 'ExportNamedDeclaration', 'ExportAllDeclaration'].includes(node.type)
+      const onlyTypeSpecifiers = node.specifiers?.length > 0 && node.specifiers.every(spec => spec.importKind === 'type' || spec.exportKind === 'type')
+      const typeOnly = node.importKind === 'type' || node.exportKind === 'type' || node.type === 'TSImportType' || onlyTypeSpecifiers
+      result.push({ value: source.value, line: source.loc?.start.line ?? 0, typeOnly, staticImport })
+    }
     for (const [key, value] of Object.entries(node)) if (!['loc', 'start', 'end', 'comments', 'tokens', 'extra'].includes(key)) visit(value)
   }
   visit(ast)
@@ -160,11 +166,37 @@ for (const { path, workspace } of files) {
       target = await resolvePublic(dependency, subpath)
       if (!target) fail(path, `${at} unresolved public export ${value}`)
     }
-    if (!imported.typeOnly && target) edges.push(target)
+    if (!imported.typeOnly && target) {
+      // Vite raw/url imports load asset data, not the target module's imports.
+      const asset = /[?&](?:raw|url)(?:&|$)/.test(imported.value)
+      if (!asset) edges.push({ target, staticImport: imported.staticImport })
+    }
     if (['@boai/ui', '@boai/tokens', '@boai/runtime-plugin-sdk'].includes(workspace.name) && (builtins.has(value) || value === 'electron')) fail(path, `${at} platform import in portable package: ${value}`)
-    if (!imported.typeOnly && (builtins.has(value) || value === 'electron')) edges.push(value)
+    if (!imported.typeOnly && (builtins.has(value) || value === 'electron')) edges.push({ target: value, staticImport: false })
   }
 }
+// Only synchronous ES module imports and re-exports impose initialization order.
+const inspected = new Set()
+const trail = []
+const visiting = new Set()
+function inspectImports(path) {
+  if (inspected.has(path)) return
+  visiting.add(path)
+  trail.push(path)
+  for (const { target, staticImport } of graph.get(path) ?? []) {
+    if (!staticImport) continue
+    if (visiting.has(target)) {
+      const cycle = [...trail.slice(trail.indexOf(target)), target]
+      fail(path, `static import cycle: ${cycle.map(display).join(' -> ')}`)
+    } else {
+      inspectImports(target)
+    }
+  }
+  trail.pop()
+  visiting.delete(path)
+  inspected.add(path)
+}
+for (const path of graph.keys()) inspectImports(path)
 // A browser consumer of the shared root must not pull platform code through a barrel.
 const shared = byName.get('@boai/shared')
 if (shared) {
@@ -174,7 +206,7 @@ if (shared) {
     function inspect(path, trail) {
       if (visited.has(path)) return
       visited.add(path)
-      for (const next of graph.get(path) ?? []) {
+      for (const { target: next } of graph.get(path) ?? []) {
         if (builtins.has(next) || next === 'electron') fail(entry, `portable shared root reaches ${next} through ${[...trail, display(path)].join(' -> ')}`)
         else inspect(next, [...trail, display(path)])
       }

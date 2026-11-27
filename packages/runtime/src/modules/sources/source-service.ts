@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 数据源会话约束与脱敏规则归 source-session。
  * [OUTPUT]: 2026-10-19 支持独立连接集合，检索实例不修改业务源员工绑定；Jina 测试一次实际查询。
  * [OUTPUT]: 员工目录上下文传给本地源/MCP；stdio许可改变先排空旧进程再为新调用建会话，不重放旧工具。
  * [OUTPUT]: DeepSeek自定义GET测试端点保持原语义；默认测试才执行一次明确查询。
@@ -26,7 +27,8 @@ import type { DigitalAgent } from '@boai/shared/domain'
 import { dataSourceConfigSchema, saveDataSourceSchema, dataSourceIdentitySchema, dataSourceBindingsSchema, supportsDataSources, webSearchProvider, type DataSource, type DataSourceCreationSource, type SourceCall, type SourceSummary, type SourceTool } from '@boai/shared/domain/sources'
 import type { SecretStore } from '../../contracts'
 import { ProductStore, type RecordTransaction } from '../../adapters/storage/product-store'
-import { openSourceSession, recoverSourceProcesses, sourceFolder, redactSourceValue, SOURCE_TIMEOUT, type SourceSession } from './source-provider'
+import { openSourceSession, recoverSourceProcesses, sourceFolder } from './source-provider'
+import { redactSourceValue, SOURCE_TIMEOUT, type SourceSession } from './source-session'
 import { isCoreAgent } from '@boai/shared/domain/core-agent'
 import type { WebSearchPreference } from '@boai/shared/domain/sources'
 import type { RunDirectoryAccess } from '../workspaces/directory-run'

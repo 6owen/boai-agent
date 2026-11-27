@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 页面按示例目录直接装配 Preview。
  * [OUTPUT]: 展示实际共享设置Card、全量组件/API、Token目录及BOAI MDX表格/分割适配。
  * [INPUT]: 白名单Fumadocs编译文档、共享组件和真实交互示例。
  * [OUTPUT]: 直接展示标题/说明与Fumadocs正文、目录和BOAI预览，移除重复父类别及版本标记。
@@ -11,7 +12,7 @@ import { Badge, Button, Card, CardDescription, CardHeader, CardTitle, Separator 
 import type { DesignPage as Page } from 'virtual:boai-design-content'
 import { documents } from 'virtual:boai-design-content'
 import { CodeSample, Preview } from './preview'
-import { ComponentExample } from './examples'
+import { hasExample } from './examples'
 import { TokenBrowser } from './token-browser'
 import { ComponentReference } from './component-reference'
 import { ComponentCatalog } from './component-catalog'
@@ -49,7 +50,7 @@ export function DesignPage({ page }: { page: Page }) {
     </header>
     {overview && <Overview />}
     <Foundations kind={page.example} />
-    <ComponentExample name={page.example} title={page.title} />
+    {hasExample(page.example) && <Preview name={page.example} label={page.title} />}
     <ComponentReference slug={page.slug} />
     <DocsBody className="docs-prose"><MDX components={mdxComponents} /></DocsBody>
     {page.example === 'installation' && <CodeSample label="终端 · 仓库根目录" code="pnpm install --frozen-lockfile\npnpm dev:design" />}

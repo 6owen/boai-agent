@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 数据源会话约束与脱敏规则归 source-session。
  * [INPUT]: Official Jina Reader/Search HTTP contract and vault-only bearer key.
  * [OUTPUT]: Bounded search/URL-reading tools with actual URLs and explicit failures.
  * [POS]: Built-in Jina search plugin adapter over the shared HTTP transport.
@@ -7,7 +8,7 @@
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import { executeApiRequest } from './craft/api-request'
-import { redactSourceValue, type SourceSession } from './source-provider'
+import { redactSourceValue, type SourceSession } from './source-session'
 import type { SourceTool } from '@boai/shared/domain/sources'
 
 const urlSchema = z.string().max(8192).refine(value => { try { const url = new URL(value); return ['http:', 'https:'].includes(url.protocol) && !!url.hostname && !url.username && !url.password } catch { return false } }, '请输入 HTTP(S) 网页地址')

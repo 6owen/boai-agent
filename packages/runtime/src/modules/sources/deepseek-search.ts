@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 数据源会话约束与脱敏规则归 source-session。
  * [OUTPUT]: Fetch独立90秒上限且不自动重试；maxCharacters仅限制宿主返回摘录，不传入上游API。
  * [INPUT]: Official DeepSeek Search/Fetch contracts checked 2026-10-18 and vault-only Bearer credential.
  * [OUTPUT]: Fixed read-only POST tools, validated sources and bounded structured text; empty search differs from failed fetch.
@@ -9,7 +10,7 @@ import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import type { SourceTool } from '@boai/shared/domain/sources'
 import { executeApiRequest } from './craft/api-request'
-import { redactSourceValue, SOURCE_TIMEOUT, type SourceSession } from './source-provider'
+import { redactSourceValue, SOURCE_TIMEOUT, type SourceSession } from './source-session'
 
 const question = z.string().min(1).max(256).refine(value => value.trim().length > 0 && [...value].length <= 128, '请输入 1–128 个 Unicode 字符')
 const webUrl = z.string().min(1).max(8192).refine(value => {

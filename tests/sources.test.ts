@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 数据源会话约束与脱敏规则归 source-session。
  * [OUTPUT]: 2026-11-24 第三阶段：Mastra 第三阶段回归覆盖原生文件/MCP/快照/Trace、实时补充、断流及 OM 致命失败退出；完整结果见实施记录。
  * [OUTPUT]: 普通问答仅核准搜索/正文，拒绝本地/未知工具；目录变化阻止旧工具及迟到响应。
  * [OUTPUT]: 未核准MCP提示不放宽权限；实际HTTP协议重放官方额度响应，核准搜索按只读门禁且业务失败不冒充成功。
@@ -18,7 +19,8 @@ import { randomUUID } from 'node:crypto'
 import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
 import { sourceCreationCommands } from '../packages/runtime/src/modules/sources/source-commands'
 import { SourceService } from '../packages/runtime/src/modules/sources/source-service'
-import { openSourceSession, redactSourceValue } from '../packages/runtime/src/modules/sources/source-provider'
+import { openSourceSession } from '../packages/runtime/src/modules/sources/source-provider'
+import { redactSourceValue } from '../packages/runtime/src/modules/sources/source-session'
 import { type DataSource, type DataSourceConfig } from '../packages/shared/src/domain/sources'
 import type { DigitalAgent } from '../packages/shared/src/domain'
 import { webSearchServer, webSourceConfig, webResult, pageText, resultUrl } from './fixtures/web-search-server'
