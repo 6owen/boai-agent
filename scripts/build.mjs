@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: skills CLI 的包内路径由实际构建回传给 Main，测试核对两端使用同一归档。
  * [OUTPUT]: Electron 分发带本地清点优化的上游 skills CLI，供系统 npx 运行。
  * [OUTPUT]: Build the narrow hidden-canvas preload and preserve tldraw license/notice in distribution.
  * [OUTPUT]: Copy the avatar and logo Dock/tray assets listed in the shared icon manifest.
@@ -36,7 +37,7 @@ async function context(inputHash) {
   const inputs = inputHash ?? await buildInputHash(workspaceRoot)
   const { version } = JSON.parse(await readFile('package.json', 'utf8'))
   const define = { __BOAI_APPLICATION_BUILD__: JSON.stringify({ version, inputHash: inputs }) }
-  return { inputs, compile: options => build({ ...options, define }) }
+  return { inputs, compile: options => build({ ...options, define: { ...options.define, ...define } }) }
 }
 async function assertUnchanged(inputs) {
   if (await buildInputHash(workspaceRoot) !== inputs) throw new Error('应用构建期间源码或资源变化，请重新构建后启动')
@@ -75,20 +76,22 @@ async function buildRuntime(compile) {
 export async function buildSkillsCli() {
   const { create } = await import('tar')
   const source = dirname(fileURLToPath(import.meta.resolve('skills/package.json')))
-  const { files } = JSON.parse(await readFile(resolve(source, 'package.json'), 'utf8'))
+  const { files, version } = JSON.parse(await readFile(resolve(source, 'package.json'), 'utf8'))
+  const archive = `skills-cli/skills-${version}-boai.1.tgz`
   await mkdir('dist/skills-cli', { recursive: true })
   await create({
-    cwd: source, prefix: 'package', file: 'dist/skills-cli/skills-1.9.0-boai.1.tgz',
+    cwd: source, prefix: 'package', file: `dist/${archive}`,
     gzip: true, portable: true, noMtime: true,
   }, ['package.json', 'LICENSE', ...files])
+  return archive
 }
 
 async function buildElectronHost(compile) {
   await buildDesktopActivity()
   await buildAppIcon()
+  const skillsArchive = await buildSkillsCli()
   await Promise.all([
-    buildSkillsCli(),
-    compile({ entryPoints: ['apps/electron/src/main/main.ts'], outfile: 'dist/main/main.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron', '@libsql/client', 'electron-sparkle-updater'], sourcemap: true }),
+    compile({ entryPoints: ['apps/electron/src/main/main.ts'], outfile: 'dist/main/main.cjs', define: { __BOAI_SKILLS_ARCHIVE__: JSON.stringify(skillsArchive) }, bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron', '@libsql/client', 'electron-sparkle-updater'], sourcemap: true }),
     compile({ entryPoints: ['apps/electron/src/preload/canvas-renderer.ts'], outfile: 'dist/main/canvas-renderer-preload.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron'] }),
     compile({ entryPoints: ['apps/electron/src/preload/browser-toolbar.ts'], outfile: 'dist/main/browser-toolbar-preload.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron'] }),
     compile({ entryPoints: ['apps/electron/src/preload/index.ts'], outfile: 'dist/main/preload.cjs', bundle: true, platform: 'node', format: 'cjs', target: 'node22', external: ['electron'] }),

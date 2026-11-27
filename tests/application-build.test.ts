@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: skills CLI 的包内路径由实际构建回传给 Main，测试核对两端使用同一归档。
  * [OUTPUT]: 画板隐藏执行preload及上游许可纳入完整Electron构建闭包。
  * [INPUT]: 真实应用编排与受控编译/资源复制边界。
  * [OUTPUT]: 客户端隔离、完整CLI资源闭包、Electron兼容输出和失败身份回归；不启动产品。
@@ -8,7 +9,7 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 const steps = vi.hoisted(() => ({
-  compile: vi.fn(), plugins: vi.fn(), guard: vi.fn(), desktop: vi.fn(), icon: vi.fn(), design: vi.fn(), renderer: vi.fn(),
+  archive: vi.fn(), compile: vi.fn(), plugins: vi.fn(), guard: vi.fn(), desktop: vi.fn(), icon: vi.fn(), design: vi.fn(), renderer: vi.fn(),
   copyFile: vi.fn(), cp: vi.fn(), mkdir: vi.fn(), rm: vi.fn(), readFile: vi.fn(), hash: vi.fn(), invalidate: vi.fn(), record: vi.fn(),
 }))
 vi.mock('../scripts/workspace-packages.mjs', () => ({ buildWorkspace: steps.compile, workspaceRoot: '/fixture/workspace' }))
@@ -17,6 +18,7 @@ vi.mock('../scripts/build-process-guard.mjs', () => ({ default: steps.guard }))
 vi.mock('../scripts/build-desktop-activity.mjs', () => ({ default: steps.desktop }))
 vi.mock('../scripts/build-app-icon.mjs', () => ({ default: steps.icon }))
 vi.mock('../scripts/design-packages.mjs', () => ({ buildDesign: steps.design }))
+vi.mock('tar', () => ({ create: steps.archive }))
 vi.mock('vite', () => ({ build: steps.renderer }))
 vi.mock('node:fs/promises', () => ({ copyFile: steps.copyFile, cp: steps.cp, mkdir: steps.mkdir, rm: steps.rm, readFile: steps.readFile }))
 vi.mock('../scripts/build-identity.mjs', () => ({ buildInputHash: steps.hash, invalidateBuildIdentity: steps.invalidate, recordBuildIdentity: steps.record }))
@@ -29,6 +31,7 @@ beforeEach(() => {
   steps.hash.mockResolvedValue('same-input')
   steps.readFile.mockImplementation(async (path: string) => {
     if (path === 'package.json') return JSON.stringify({ version: '0.2.4' })
+    if (path.endsWith('/skills/package.json')) return JSON.stringify({ version: '3.2.1', files: ['bin', 'dist'] })
     if (path === 'resources/agent-skills/manifest.json') return JSON.stringify({ skills: ['fixture-skill'] })
     if (path.endsWith('app-icon-manifest.json')) return JSON.stringify({ icons: [{ id: 'avatar-blue', tray: { oneX: 'tray/avatar-blueTemplate.png', twoX: 'tray/avatar-blueTemplate@2x.png' } }] })
     if (path.endsWith('/SKILL.md')) return '# Fixture skill'
@@ -43,7 +46,7 @@ it('轻客户端仅生成客户端和员工工具及原来源许可，不调用�
   await buildApplication('cli-client')
   expect(outputs()).toEqual(['dist/cli/employee-tools.mjs', 'dist/cli/index.mjs'])
   expect(copied()).toEqual(['dist/cli/LICENSE.txt', 'dist/cli/NOTICE.txt', 'dist/cli/source-manifest.json'])
-  for (const step of [steps.guard, steps.plugins, steps.desktop, steps.icon, steps.design, steps.renderer, steps.record]) expect(step).not.toHaveBeenCalled()
+  for (const step of [steps.guard, steps.plugins, steps.desktop, steps.icon, steps.design, steps.renderer, steps.record, steps.archive]) expect(step).not.toHaveBeenCalled()
   expect(steps.invalidate).toHaveBeenCalledWith('/fixture/workspace')
   expect(process.chdir).toHaveBeenCalledWith('/fixture/workspace')
   for (const [options] of steps.compile.mock.calls) expect(JSON.parse(options.define.__BOAI_APPLICATION_BUILD__)).toEqual({ version: '0.2.4', inputHash: 'same-input' })
@@ -60,7 +63,7 @@ it('完整CLI包含serve与插件/guard/PPT/技能/语音/许可闭包，不依�
     'dist/runtime/hermes-file-tools-LICENSE.txt', 'dist/runtime/hermes-file-tools-source-manifest.json',
     'dist/cli/LICENSE.txt', 'dist/cli/NOTICE.txt', 'dist/cli/source-manifest.json',
   ]))
-  for (const step of [steps.desktop, steps.icon, steps.design, steps.renderer, steps.record]) expect(step).not.toHaveBeenCalled()
+  for (const step of [steps.desktop, steps.icon, steps.design, steps.renderer, steps.record, steps.archive]) expect(step).not.toHaveBeenCalled()
   const runtime = steps.compile.mock.calls.find(([options]) => options.outfile === 'dist/runtime/serve.mjs')?.[0]
   expect(runtime).toMatchObject({ packages: 'external', entryPoints: ['packages/runtime/src/serve.ts'] })
 })
@@ -71,6 +74,13 @@ it('默认Electron构建保留完整闭包、原路径、许可与最终全量�
     'dist/cli/employee-tools.mjs', 'dist/cli/index.mjs', 'dist/main/browser-toolbar-preload.cjs', 'dist/main/canvas-renderer-preload.cjs', 'dist/main/main.cjs', 'dist/main/preload.cjs', 'dist/runtime/serve.mjs', 'dist/runtime/worker.mjs',
   ])
   for (const step of [steps.guard, steps.plugins, steps.desktop, steps.icon, steps.design, steps.renderer]) expect(step).toHaveBeenCalledOnce()
+  const main = steps.compile.mock.calls.find(([options]) => options.outfile === 'dist/main/main.cjs')![0]
+  const archive = JSON.parse(main.define.__BOAI_SKILLS_ARCHIVE__)
+  expect(archive).toBe('skills-cli/skills-3.2.1-boai.1.tgz')
+  expect(steps.archive).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({ file: `dist/${archive}`, prefix: 'package' }),
+    ['package.json', 'LICENSE', 'bin', 'dist'],
+  )
   expect(steps.renderer).toHaveBeenCalledWith({ configFile: '/fixture/workspace/vite.config.ts' })
   expect(copied()).toEqual(expect.arrayContaining([
     'dist/main/app-icons/avatar-blue.png', 'dist/main/app-icons/tray/avatar-blueTemplate.png', 'dist/main/app-icons/tray/avatar-blueTemplate@2x.png',
