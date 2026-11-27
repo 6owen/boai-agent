@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 核心和普通员工可在通讯录置顶，置顶组独立排序，员工标签权限保持。
  * [INPUT]: 产品事务、现存员工/群聊、版本化通讯录操作及团队发布身份和成员。
  * [OUTPUT]: 兼容旧分类的多标签和统一员工顺序原子持久化；批量标签全部校验后更新，员工删除由宿主清理用例处理；标签错误文案与未分类/无标签保留名统一；团队同事务新建唯一名称标签并绑定成员。
  * [POS]: employees 的通讯录展示偏好，不写员工定义或会话列表偏好。
@@ -30,6 +31,7 @@ export const contactListChangeSchema = z.object({
     z.object({ kind: z.literal('assign-category'), agentId: id, categoryId: id.optional() }).strict(),
     z.object({ kind: z.literal('set-agent-tags'), agentIds, tagIds, mode: z.enum(['replace', 'add', 'remove']) }).strict(),
     z.object({ kind: z.literal('delete-agents'), agentIds }).strict(),
+    z.object({ kind: z.literal('pin-agent'), agentId: id, pinned: z.boolean() }).strict(),
     z.object({ kind: z.literal('move'), itemKind: z.enum(['agent', 'group']), id, targetId: id, placement: z.enum(['before', 'after']) }).strict(),
   ]),
 }).strict()
@@ -48,10 +50,15 @@ function setAgentTags(value: ContactListPreferences, agentId: string, tags: stri
   else delete value.categoryByAgentId[agentId]
 }
 
-async function requireOrdinaryAgent(tx: RecordTransaction, agentId: string) {
+async function requireContactAgent(tx: RecordTransaction, agentId: string) {
   const agent = await tx.get<DigitalAgent>('agents', agentId)
   if (!agent) throw new Error('员工不存在')
-  if (isCoreAgent(agent)) throw new Error('核心助手不参与员工标签或排序')
+  return agent
+}
+
+async function requireOrdinaryAgent(tx: RecordTransaction, agentId: string) {
+  const agent = await requireContactAgent(tx, agentId)
+  if (isCoreAgent(agent)) throw new Error('核心助手不参与员工标签')
   return agent
 }
 
@@ -83,6 +90,7 @@ export class ContactListRepository {
       if (value.revision !== expectedRevision) throw new Error('通讯录已在其他窗口修改，请重试')
       if ('categoryId' in action && action.categoryId && !value.categories.some(category => category.id === action.categoryId)) throw new Error('员工标签不存在')
       value.tagIdsByAgentId = tagAssignments(value)
+      const pinnedOrder = value.pinnedAgentIds ?? []
       if (action.kind === 'create-category' || action.kind === 'rename-category') {
         const categoryName = action.name.trim().replace(/\s+/g, ' ')
         if (!categoryName || categoryName.length > CATEGORY_NAME_LIMIT) throw new Error('标签名称需要 1–40 个字符')
@@ -113,14 +121,22 @@ export class ContactListRepository {
           const current = contactTagIds(value, agentId)
           setAgentTags(value, agentId, action.mode === 'replace' ? tags : action.mode === 'add' ? [...new Set([...current, ...tags])] : current.filter(tagId => !tags.includes(tagId)))
         }
+      } else if (action.kind === 'pin-agent') {
+        await requireContactAgent(tx, action.agentId)
+        if (pinnedOrder.includes(action.agentId) !== action.pinned) {
+          const remaining = pinnedOrder.filter(agentId => agentId !== action.agentId)
+          value.pinnedAgentIds = action.pinned ? [action.agentId, ...remaining] : remaining
+        }
       } else {
         const agents = action.itemKind === 'agent'
+        const pinned = agents && pinnedOrder.includes(action.id)
+        if (agents && pinned !== pinnedOrder.includes(action.targetId)) throw new Error('请在同一通讯录分组内排序')
         const items = agents
-          ? (await tx.list<DigitalAgent>('agents')).filter(agent => !isCoreAgent(agent)).map(agent => ({ id: agent.id, name: agent.name }))
+          ? (await tx.list<DigitalAgent>('agents')).filter(agent => !pinned || pinnedOrder.includes(agent.id))
           : (await tx.list<Conversation>('conversations')).filter(conversation => conversation.kind === 'group').map(group => ({ id: group.id, name: group.title }))
         if (!items.some(item => item.id === action.id) || !items.some(item => item.id === action.targetId)) throw new Error('只能在同一类型的通讯录条目之间排序')
-        const key = agents ? 'agentOrder' : 'groupOrder'
-        const order = sortedContacts(items, value[key], item => item.name).map(item => item.id)
+        const key = agents ? (pinned ? 'pinnedAgentIds' : 'agentOrder') : 'groupOrder'
+        const order = sortedContacts(items, value[key] ?? [], item => item.name).map(item => item.id)
         if (action.id !== action.targetId) {
           order.splice(order.indexOf(action.id), 1)
           order.splice(order.indexOf(action.targetId) + (action.placement === 'after' ? 1 : 0), 0, action.id)

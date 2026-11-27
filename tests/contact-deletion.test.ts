@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 批量删除移除已删员工的置顶归属并保留其余顺序。
  * [OUTPUT]: 持续清理冲突不会阻断真实 AppService 重启、健康员工访问或后续记录。
  * [INPUT]: 真实 SQLite 员工删除用例及隔离受管/外部文件目录。
  * [OUTPUT]: 选中员工/多标签完整成员及记忆/专属资源原子删除、共享群历史保留、偏好版本/成员变化与未知身份整批拒绝、符号链接边界和本地清理日志重启恢复验证。
@@ -23,7 +24,7 @@ async function setup() {
   fixtures.push({ root, store }); await store.init()
   await store.write([
     row('agents', 'a', agent('a')), row('agents', 'b', agent('b')), row('agents', 'c', agent('c')),
-    row('contactList', 'contacts', { revision: 4, categories: [{ id: 'team', name: '团队' }, { id: 'other', name: '保留' }], categoryByAgentId: { a: 'team', b: 'team', c: 'other' }, agentOrder: ['a', 'c', 'b'], groupOrder: ['group'] }),
+    row('contactList', 'contacts', { revision: 4, categories: [{ id: 'team', name: '团队' }, { id: 'other', name: '保留' }], categoryByAgentId: { a: 'team', b: 'team', c: 'other' }, agentOrder: ['a', 'c', 'b'], pinnedAgentIds: ['a', 'c'], groupOrder: ['group'] }),
   ])
   return { root, store, deletion: new ContactDeletionService(store, root) }
 }
@@ -50,7 +51,7 @@ it('deletes the entire category and private employee data while keeping group hi
     row('profileModelCalls', 'old-call', { agentId: 'a', conversationId: 'group' }),
   ])
   const result = await deletion.delete({ agentIds: ['a', 'b'], category: { id: 'team', expectedRevision: 4 } })
-  expect(result.preferences).toEqual({ id: 'contacts', revision: 5, categories: [{ id: 'other', name: '保留' }], categoryByAgentId: { c: 'other' }, agentOrder: ['c'], groupOrder: ['group'] })
+  expect(result.preferences).toEqual({ id: 'contacts', revision: 5, categories: [{ id: 'other', name: '保留' }], categoryByAgentId: { c: 'other' }, agentOrder: ['c'], pinnedAgentIds: ['c'], groupOrder: ['group'] })
   expect(await store.load('agents')).toEqual([{ ...agent('c'), configVersion: 2, skillIds: ['shared'] }])
   expect(await store.load('resources')).toEqual([expect.objectContaining({ id: 'shared' })])
   expect(await store.load('skillCollections')).toEqual([expect.objectContaining({ favoriteResourceIds: ['shared'] })])

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 核心和普通成员可右键置顶，横向行持久排序，置顶组无标题。
  * [OUTPUT]: 群配置解散按标题定位Popover确认；原取消保留草稿、清理范围及终态断言保持。
  * [OUTPUT]: 原会话草稿使用共享messageDraft精确读富文本正文，兼容当前群/单聊编辑器而不降低内容断言。
  * [OUTPUT]: 所有已选详情按指定员工/群名精确核验，保留身份边界，不以通用名称控件可见代替。
@@ -70,7 +71,7 @@ async function openContacts(runtime: Desktop) {
   await expect(groups.getByRole('button', { name: '内容协作群' })).toBeVisible()
   expect((await page.evaluate(() => window.boai.request('getContactList', undefined))).categories).toEqual([])
   await expectFlatContacts(list)
-  await expect(people.locator('.conversation-item')).toHaveCount(3)
+  await expect(people.locator('.conversation-item')).toHaveCount(4)
   await people.getByRole('button', { name: '研究员', exact: true }).click()
   await expect(detail.getByRole('textbox', { name: '员工名称', exact: true })).toHaveText('研究员')
   const original = (await snapshot()).agents.find(agent => agent.id === 'researcher')!
@@ -93,6 +94,37 @@ async function openContacts(runtime: Desktop) {
   expect((await snapshot()).conversations).toHaveLength(1)
   return { app, page, errors, snapshot, group, nav, contacts, list, detail, people, groups }
 }
+
+When('在通讯录置顶员工后重启并取消置顶', async ({ runtime }) => {
+  await runtime.start()
+  const openList = async () => {
+    await runtime.page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '通讯录', exact: true }).click()
+    return removalList(runtime)
+  }
+  let list = await openList()
+  const people = () => list.getByRole('group', { name: '联系人', exact: true })
+  const pinned = () => list.getByRole('group', { name: '置顶联系人', exact: true })
+  await expect(people().getByRole('button', { name: 'bobo', exact: true })).toBeVisible()
+  await expect(pinned()).toHaveCount(0)
+  for (const name of ['bobo', '研究员']) {
+    await people().getByRole('button', { name, exact: true }).click({ button: 'right' })
+    await runtime.page.getByRole('menuitem', { name: '置顶', exact: true }).click()
+    await expect(pinned().getByRole('button', { name, exact: true })).toBeVisible()
+    await expect(people().getByRole('button', { name, exact: true })).toHaveCount(0)
+  }
+  await expect(pinned().getByText('置顶', { exact: true })).toHaveCount(0)
+  await expect(pinned().getByRole('button', { name: 'bobo', exact: true })).toHaveCSS('flex-direction', 'row')
+  await pinned().getByRole('button', { name: 'bobo', exact: true }).press('Alt+ArrowUp')
+  await expect.poll(async () => (await contactPreferences(runtime)).pinnedAgentIds).toEqual(['bobo', 'researcher'])
+  await runtime.restart()
+  list = await openList()
+  await expect(pinned().getByRole('button').first()).toHaveAttribute('aria-label', 'bobo')
+  await pinned().getByRole('button', { name: 'bobo', exact: true }).click({ button: 'right' })
+  await expect(runtime.page.getByRole('menuitem', { name: '删除员工', exact: true })).toHaveCount(0)
+  await runtime.page.getByRole('menuitem', { name: '取消置顶', exact: true }).click()
+  await expect(people().getByRole('button', { name: 'bobo', exact: true })).toBeVisible()
+  await expect(pinned().getByRole('button', { name: '研究员', exact: true })).toBeVisible()
+})
 
 async function filterContacts(previous: Awaited<ReturnType<typeof openContacts>>) {
   let { app, page, errors, snapshot, group, nav, contacts, list, detail, people, groups } = previous
@@ -704,7 +736,7 @@ Then('旧分类作为标签恢复且主列表排序跨标签统一', async ({ ru
     for (const id of ['researcher', 'writer']) expect(contactTagIds(value, id)).toEqual([tagId])
     expect(contactTagIds(value, 'reviewer')).toEqual([])
     await expectFlatContacts(list)
-    await expect(people.locator('.conversation-item')).toHaveCount(3)
+    await expect(people.locator('.conversation-item')).toHaveCount(4)
     await openContactManager(runtime)
     await expect(managerTag(runtime, '原内容团队').locator('.contacts-count')).toHaveText('2')
     await expect(managerFilter(runtime, '无标签').locator('.contacts-count')).toHaveText('1')

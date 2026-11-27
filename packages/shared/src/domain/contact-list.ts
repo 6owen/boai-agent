@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工置顶通过独立的有序成员列表持久化，旧偏好可直接读取。
  * [INPUT]: 通讯录员工/群聊身份、兼容旧分类的标签及排序操作。
  * [OUTPUT]: 多标签、原子批量标签/员工删除和统一员工排序合同；旧分类 ID、名称及单归属可无损读取。
  * [POS]: shared/domain 的通讯录展示合同，不改变员工配置或聊天状态。
@@ -10,6 +11,7 @@ export interface ContactListPreferences {
   categoryByAgentId: Record<string, string>
   tagIdsByAgentId?: Record<string, string[]>
   agentOrder: string[]
+  pinnedAgentIds?: string[]
   groupOrder: string[]
 }
 
@@ -22,6 +24,7 @@ export type ContactListAction =
   | { kind: 'assign-category'; agentId: string; categoryId?: string }
   | { kind: 'set-agent-tags'; agentIds: string[]; tagIds: string[]; mode: 'replace' | 'add' | 'remove' }
   | { kind: 'delete-agents'; agentIds: string[] }
+  | { kind: 'pin-agent'; agentId: string; pinned: boolean }
   | { kind: 'move'; itemKind: 'agent' | 'group'; id: string; targetId: string; placement: 'before' | 'after' }
 
 export const emptyContactList = (): ContactListPreferences => ({ revision: 0, categories: [], categoryByAgentId: {}, agentOrder: [], groupOrder: [] })

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 删除员工时同事务清理其通讯录置顶归属。
  * [OUTPUT]: 启动时逐条恢复并上报已登记的清理失败，账本读写失败仍向上传播。
  * [OUTPUT]: 员工删除沿原持久日志派生固定画板清理身份，先确认员工已移除，失败重启继续而不扩大清单。
  * [OUTPUT]: 员工删除同事务清除其作为来源或目标的交接正文，保留请求和投递防重放身份。
@@ -133,6 +134,7 @@ export class ContactDeletionService {
       }
       for (const id of ids) { await remove('agents', id); await remove('memoryCleanup', id) }
       preferences.agentOrder = preferences.agentOrder.filter(id => !ids.has(id))
+      if (preferences.pinnedAgentIds) preferences.pinnedAgentIds = preferences.pinnedAgentIds.filter(id => !ids.has(id))
       preferences.categoryByAgentId = Object.fromEntries(Object.entries(preferences.categoryByAgentId).filter(([id, categoryId]) => !ids.has(id) && categoryId !== input.category?.id))
       if (preferences.tagIdsByAgentId) {
         preferences.tagIdsByAgentId = Object.fromEntries(Object.entries(preferences.tagIdsByAgentId).filter(([id]) => !ids.has(id)).map(([id, tags]) => [id, tags.filter(tagId => tagId !== input.category?.id)]))
