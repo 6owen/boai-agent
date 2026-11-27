@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 普通工具问答覆盖流式预览、撤回工具前置文字及正式回复顺序。
  * [OUTPUT]: 2026-11-24 第三阶段：Mastra 第三阶段回归覆盖原生文件/MCP/快照/Trace、实时补充、断流及 OM 致命失败退出；完整结果见实施记录。
  * [OUTPUT]: 真实 SDK 审批等待/拒绝/取消/只读、官方用量持久化/清理与辅助调用验证。
  * [OUTPUT]: 2026-11-24 按官方Controller/Session历史与自动OM验证，保留业务权限、来源、取消、真实工具和用量断言。
@@ -1383,7 +1384,8 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
       } else if (index === 2) send(response, { name: 'read_knowledge', args: { ...reference, offset: 12 } }, index)
       else send(response, `周五发布。${citation}`, index)
     })
-    const fixture = await context(mock.url, { responseKind: 'chat' }), { ctx } = fixture
+    const previews: string[] = []
+    const fixture = await context(mock.url, { responseKind: 'chat', onReplyPreview: text => { previews.push(text) } }), { ctx } = fixture
     file = path.join(fixture.directory, 'facts.md'); await writeFile(file, source)
     ctx.agent.knowledgeIds = ['facts']; ctx.conversation.sharedKnowledgeIds = ['facts']
     ctx.resources = [{ id: 'facts', name: 'Orion', kind: 'knowledge', description: '', path: file, createdAt: '' }]
@@ -1395,6 +1397,10 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     expect(toolResultText(mock.requests[1])).toContain('Launch is Friday')
     expect(toolResultText(mock.requests[2])).toContain('nextOffset')
     expect(toolResultText(mock.requests[3])).toContain('负责员工：小波')
+    expect(previews).toContain('正在查阅资料。')
+    expect(previews.slice(previews.indexOf('正在查阅资料。') + 1)).toContain('')
+    expect(previews).toContain('周五')
+    expect(previews.at(-1)).toBe(`周五发布。${citation}`)
     expect(fixture.deltas.join('')).toBe(`周五发布。${citation}`)
     expect(checks.every(ids => ids.join() === 'facts')).toBe(true); expect(checks.length).toBeGreaterThanOrEqual(6)
     expect(ctx.work).toBeUndefined(); expect(fixture.approvals).toEqual([]); expect(fixture.artifacts).toEqual([])

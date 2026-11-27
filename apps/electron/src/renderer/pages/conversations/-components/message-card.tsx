@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 回复预览复用正文卡布局，发布后开放消息工具条。
  * [OUTPUT]: 正文与文件分别按自身宽度定位操作栏，共用消息身份，回执和表情汇总显示一次。
  * [OUTPUT]: 消息工具栏提供设为员工任务或查看关联任务，原执行过程按钮保持。
  * [OUTPUT]: 任务消息提供关联任务入口，与原执行过程工具并存。
@@ -46,6 +47,7 @@ type MessageCardProps = {
   children?: ReactNode
   attachments?: ReactNode
   receipt?: ReactNode
+  provisional?: boolean
   onReply(): void
   onTrace(): void
   onTask?(): void
@@ -63,7 +65,7 @@ export function MessageCard({ separateAttachments, children, attachments, receip
   </div>
 }
 
-function MessageCardPart({ message, profile = defaultUserProfile, children, attachments, receipt, showReactions = true, onReply, onTrace, onTask, onCreateTask, onPublish, publishDisabled, publishDescription }: MessageCardProps & { showReactions?: boolean }) {
+function MessageCardPart({ message, provisional, profile = defaultUserProfile, children, attachments, receipt, showReactions = true, onReply, onTrace, onTask, onCreateTask, onPublish, publishDisabled, publishDescription }: MessageCardProps & { showReactions?: boolean }) {
   const sender = messageDisplayName(message, profile)
   const space = useRef<HTMLDivElement>(null), content = useRef<HTMLDivElement>(null), toolbar = useRef<HTMLDivElement>(null)
   const reactionTrigger = useRef<HTMLButtonElement>(null)
@@ -121,7 +123,7 @@ function MessageCardPart({ message, profile = defaultUserProfile, children, atta
       {attachments}
       {attachments && reactionsBar}
       {receipt}
-      <div className="message-tools soft-card" ref={toolbar} role="toolbar" aria-label={`${sender} 的消息操作`}>
+      {!provisional && <div className="message-tools soft-card" ref={toolbar} role="toolbar" aria-label={`${sender} 的消息操作`}>
         <Popover open={open} onOpenChange={value => { setOpen(value); if (value) setUsage(reactionUsage()) }}>
           <PopoverTrigger render={<Button ref={reactionTrigger} variant="ghost" size="icon-sm" className="reaction-action" aria-label={`回应 ${sender} 的消息`} title="表情回应" disabled={message.status === 'streaming'} />}><ThumbsUp /></PopoverTrigger>
           <PopoverContent side="top" align={message.senderType === 'user' ? 'end' : 'start'} className="message-emoji-picker" aria-busy={busy} style={{ width: 360, maxWidth: 'calc(100vw - 24px)', padding: 0, gap: 0 }}>
@@ -136,7 +138,7 @@ function MessageCardPart({ message, profile = defaultUserProfile, children, atta
         {onCreateTask && <Button variant="ghost" size="icon-sm" aria-label="设为员工任务" title="设为员工任务" onClick={onCreateTask}><Clock /></Button>}
         {onTask && <Button variant="ghost" size="icon-sm" aria-label="查看关联任务" title="查看关联任务" onClick={onTask}><Clock /></Button>}
         {message.senderType === 'agent' && <Button variant="ghost" size="icon-sm" className="trace-action" aria-label={`查看 ${sender} 的执行过程`} title="查看执行过程" onClick={onTrace}><Workflow /></Button>}
-      </div>
+      </div>}
     </div>
   </div>
 }

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 普通回复的正文可先预览，出现工具调用时撤回该步预览；任务和限字回复仍等待校验。
  * [OUTPUT]: 2026-11-24 第三阶段：官方 Durable Agent/Session.steer、Workspace 文件工具、LocalSandbox 进程和原生 Trace；授权及发布保留业务适配。
  * [OUTPUT]: 2026-11-24 会话/OM/标题/判断/行为/草稿/连接测试/团队/PPT统一官方观测，显式预算沿原归属。
  * [OUTPUT]: API 主聊天/任务交由官方 AgentController Session 驱动；宿主只投影事件、授权与用量。
@@ -291,7 +292,7 @@ export class MastraEngine implements AgentEngine {
       let admittedSteps = 0
       const maxCharacters = !task && ctx.groupCoordination?.mode === 'ordered' ? ctx.groupCoordination.maxReplyCharacters : undefined
       const usage = new UsageRecorder()
-      const outputContext = maxCharacters ? { ...ctx, onDelta: async () => {}, onExecutionEvent: async (event: import('@boai/shared/domain/execution').ExecutionEvent) => { if (event.eventType !== 'agent.text.block') await ctx.onExecutionEvent?.(event) } } : ctx
+      const outputContext = maxCharacters ? { ...ctx, onReplyPreview: undefined, onDelta: async () => {}, onExecutionEvent: async (event: import('@boai/shared/domain/execution').ExecutionEvent) => { if (event.eventType !== 'agent.text.block') await ctx.onExecutionEvent?.(event) } } : ctx
       const projection = this.responseProjection(outputContext, task, callIds, () => stage?.skills, usage)
       let finishReason: string | undefined
       let previousFinish: string | undefined
@@ -378,11 +379,12 @@ export class MastraEngine implements AgentEngine {
       await ctx.onTool(event)
     }
     const buffered = !!ctx.canvasEnabled || !!ctx.desktopPluginEnabled || !!ctx.browserPluginProviders?.length || task || !!ctx.continuity || ctx.agent.skillIds.length > 0 || !!ctx.recallMemory || !!ctx.application || hasKnowledge(ctx) || hasChatSourceTools(ctx) || !!ctx.manageSkills || !!ctx.manageDataSources || !!ctx.manageAutomation || !!ctx.createDataSource
-    let stepNumber = 0, stepText = '', stepHasTools = false, finalText = '', stepId = '', textBlocks = new Set<string>()
+    let stepNumber = 0, stepText = '', stepHasTools = false, stepHasToolInput = false, finalText = '', stepId = '', textBlocks = new Set<string>()
     return {
       startStep() {
+        if (!task && buffered) ctx.onReplyPreview?.('')
         stepNumber++; stepId = `step-${stepNumber}`
-        stepText = ''; stepHasTools = false; finalText = ''; textBlocks = new Set()
+        stepText = ''; stepHasTools = false; stepHasToolInput = false; finalText = ''; textBlocks = new Set()
       },
       async chunk(chunk: ChunkType) {
         if (seenChunks.has(chunk)) return
@@ -391,11 +393,17 @@ export class MastraEngine implements AgentEngine {
         if (chunk.type === 'text-delta') {
           textBlocks.add(chunk.payload.id)
           await ctx.onExecutionEvent?.({ id: `text:${stepId}:${chunk.payload.id}`, eventType: 'agent.text.block', payload: { text: '' }, appendText: chunk.payload.text })
-          if (buffered) stepText += chunk.payload.text
+          if (buffered) {
+            stepText += chunk.payload.text
+            if (!task && !stepHasToolInput) ctx.onReplyPreview?.(stepText)
+          }
           else { finalText += chunk.payload.text; await ctx.onDelta(chunk.payload.text) }
         } else if (chunk.type === 'reasoning-delta') {
           await ctx.onExecutionEvent?.({ id: `reasoning:${stepId}:${chunk.payload.id}`, eventType: 'agent.reasoning.block', payload: { text: '' }, appendText: chunk.payload.text })
-        } else if (chunk.type === 'tool-call') {
+        } else if (chunk.type === 'tool-call-input-streaming-start' || chunk.type === 'tool-call') {
+          stepHasToolInput = true
+          if (!task && buffered) ctx.onReplyPreview?.('')
+          if (chunk.type !== 'tool-call') return
           if (!task && !((ctx.memoryOwner === 'mastra' && ['recall', 'updateWorkingMemory', 'update-working-memory'].includes(chunk.payload.toolName)) || (ctx.continuity && chunk.payload.toolName === 'read_context_history') || ([...createCanvasOperations(ctx), ...createDesktopPluginOperations(ctx), ...createBrowserPluginOperations(ctx), ...createBoundSkillOperations(ctx), ...createMemoryOperations(ctx), ...createHistorySearchOperations(ctx), ...createReactionOperations(ctx), ...createSelfieOperations(ctx)].some(operation => operation.name === chunk.payload.toolName)) || (hasKnowledge(ctx) && ctx.decision?.action !== 'ask' && ctx.decision?.action !== 'request_handoff' && knowledgeToolNames.some(name => name === chunk.payload.toolName)) || (hasChatSourceTools(ctx) && sourceToolNames.some(name => name === chunk.payload.toolName)) || (ctx.personality && stateToolNames.some(name => name === chunk.payload.toolName)) || (ctx.application && applicationToolNames.some(name => name === chunk.payload.toolName)) || (ctx.manageSkills && chunk.payload.toolName === 'manage_skills') || (ctx.manageDataSources && (['manage_data_sources', 'inspect_data_source', 'call_data_source'].includes(chunk.payload.toolName) || (ctx.browserSession && chunk.payload.toolName === 'browser_tool'))) || (ctx.manageAutomation && chunk.payload.toolName === 'manage_automation') || (ctx.createDataSource && chunk.payload.toolName === 'create_data_source'))) throw new Error('普通聊天不允许调用此业务工具')
           stepHasTools = true
           if (chunk.payload.toolName === 'skill') {
@@ -420,6 +428,7 @@ export class MastraEngine implements AgentEngine {
         await usage.report(ctx.onUsage); check(ctx.signal)
         const hasTools = stepHasTools || event.toolCalls.length > 0 || event.finishReason === 'tool-calls'
         if (hasTools) {
+          if (!task && buffered) ctx.onReplyPreview?.('')
           if (stepText.trim()) await report(`activity:${stepId}`, 'task_step', 'completed', { step: stepNumber, contentBlocks: [...textBlocks], text: stepText })
         } else if (buffered) finalText = stepText
       },
