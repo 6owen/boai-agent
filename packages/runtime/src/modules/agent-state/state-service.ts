@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 持久标识的 JSON 字节摘要使用共用编码，字段及顺序由本业务传入。
  * [OUTPUT]: 仅笔记日期可反思；沿真实版本化笔记来源保存日记/成长/心情，删除失效且不伪造聊天。
  * [OUTPUT]: 情绪更新保留实际时间与来源，反思沿原记忆权限读取及失效；独立候选评估不修改预设。
  * [OUTPUT]: 旅行日进度、预算/日记/返程同次保存；历史按会话投影，忘记/失效来源不再返回。
@@ -8,7 +9,7 @@
  * [POS]: State in ProductStore; state revisions never mutate employee configVersion.
  * [PROTOCOL]: Update Header and owning .folder.md when changed.
  */
-import { createHash } from 'node:crypto'
+import { jsonSha256 as digest } from '../../json-digest'
 import { updateAgentStateSchema, type AgentEmotion, type AgentPersonalityState, type AgentStateView, type AgentTravel } from '@boai/shared/domain/agent-profile'
 import type { Conversation, DigitalAgent, Message, MemoryEntry, MemoryView } from '@boai/shared/domain'
 import type { MemoryForget } from '@boai/shared/domain/memory'
@@ -18,7 +19,6 @@ import type { ProductStore, RecordTransaction } from '../../adapters/storage/pro
 import { projectTravel, travelTransition } from './travel-state'
 
 const collection = 'agentPersonalityStates'
-const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex')
 const key = (agentId: string, conversationId?: string) => digest([agentId, conversationId ?? null])
 const empty = (agentId: string, conversationId?: string): AgentPersonalityState => ({ id: key(agentId, conversationId), agentId, ...(conversationId ? { conversationId } : {}), revision: 0, updatedAt: '' })
 const elapsed = (at: number, from: string) => Math.max(0, at - Date.parse(from)) || 0

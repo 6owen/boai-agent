@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 持久标识的 JSON 字节摘要使用共用编码，字段及顺序由本业务传入。
  * [OUTPUT]: 原生公开问题的聊天呈现与审批账本共享脱敏后的同一份记录。
  * [OUTPUT]: 会话快照按单次消息、运行与轮次遍历生成；渠道末页继续取自 SQLite。
  * [OUTPUT]: 宿主 Trace、官方存储 Trace 与执行事件通过统一的结构化观测序列化保留 JSON 字段类型。
@@ -243,6 +244,7 @@
  * [POS]: packages/runtime/src/service.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { jsonSha256 } from './json-digest'
 import { asEmployeeTopic, isScheduledEmployeeTopic, migrateScheduledEmployeeTopics } from './modules/automations/employee-topics'
 import { EmployeeTaskService } from './modules/automations/employee-task-service'
 import { ScheduleApi } from './modules/automations/schedule-api'
@@ -289,7 +291,7 @@ import { DesktopActivityService } from './modules/desktop-activity/activity-serv
 import { UserMemoryProvider } from './modules/memory/user-memory-provider'
 import { PresentationService } from './modules/presentations/presentation-service'
 import { RunModelUsage } from './modules/profile/run-model-usage'
-import { ContextRepository, contextHash, type ContextPort } from './modules/contexts/context-repository'
+import { ContextRepository, type ContextPort } from './modules/contexts/context-repository'
 import { generatePresentationReview } from './adapters/mastra/presentation-review-model'
 import { SelfieService } from './modules/media/selfie-service'
 import { MODEL_ID_MAX_LENGTH, validModelId } from '@boai/shared/domain/model-id'
@@ -5248,7 +5250,7 @@ export class AppService {
   }
   private contextContinuity(context: EngineContext, throughSequence: number): ContextPort {
     const bound = Math.min(throughSequence, Math.max(...context.messages.map(message => message.sequence), 0))
-    const owner = { agentId: context.agent.id, conversationId: context.conversation.id, scopeVersion: contextHash([context.agent.configVersion, context.conversation.configVersion, context.memory?.invalidationEpoch, context.resources, context.materialRefs]) }
+    const owner = { agentId: context.agent.id, conversationId: context.conversation.id, scopeVersion: jsonSha256([context.agent.configVersion, context.conversation.configVersion, context.memory?.invalidationEpoch, context.resources, context.materialRefs]) }
     const enriched = new Map(context.messages.map(message => [message.id, message]))
     const sources = async () => {
       await this.assertExecutionAccess(context)
@@ -5289,7 +5291,7 @@ export class AppService {
         const ids = new Set(memory.recall!.inputMessageIds ?? [])
         for (const message of messages) {
           const current = await tx.get<Message>('messages', message.id)
-          if (!current || current.conversationId !== context.conversation.id || contextHash(current) !== contextHash(message)) fail('历史输入来源已变化')
+          if (!current || current.conversationId !== context.conversation.id || jsonSha256(current) !== jsonSha256(message)) fail('历史输入来源已变化')
           ids.add(message.id)
           if (message.channelReference) ids.add((await channelReferenceMessage(tx, context.conversation.id, message.channelReference)).id)
         }

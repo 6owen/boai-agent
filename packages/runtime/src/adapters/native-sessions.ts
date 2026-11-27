@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 持久标识的 JSON 字节摘要使用共用编码，字段及顺序由本业务传入。
  * [OUTPUT]: 已授权会话消息的窗口、当前轮及身份投影归 conversations；模型角色/图片装配归 API 适配器。
  * [OUTPUT]: 目录/配置/显式交接重建保留最小原生映射和原因；未知投递阻止新线程绕过，源核验保持。
  * [OUTPUT]: 会话准备完成时可原子登记经适配器核验的来源指纹，保持pending/完成状态及原请求身份检查。
@@ -12,7 +13,7 @@
  * [POS]: 本机员工共同会话仓库；Codex/Claude分集合，原生turn和宿主完成身份分开。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { createHash } from 'node:crypto'
+import { jsonSha256 as digest } from '../json-digest'
 import type { EngineContext } from '../contracts'
 import type { ProductStore } from './storage/product-store'
 import type { RecordTransaction } from './storage/product-store'
@@ -20,7 +21,6 @@ import { decisionMessageData, visibleMessages } from '../modules/conversations/m
 import type { Message, ConversationMaterial, MaterialReadRef } from '@boai/shared/domain'
 import { isMaterialReadRevisionValid, isConversationMaterialVisible } from '@boai/shared/domain/materials'
 
-export const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex')
 const sourceHash = (message: Message | undefined) => digest(message ? { ...decisionMessageData(message), status: message.status, materialIds: message.materialIds, materialSources: message.materialSources } : null)
 interface Session {
   id: string; conversationId: string; agentId: string; fingerprint: string; runId: string

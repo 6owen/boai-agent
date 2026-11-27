@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 持久标识的 JSON 字节摘要使用共用编码，字段及顺序由本业务传入。
  * [OUTPUT]: 能力包撤回按员工取消并等待实际行为退出，终态记录不替代任务Promise。
  * [OUTPUT]: 仅笔记日期可反思；沿真实版本化笔记来源保存日记/成长/心情，删除失效且不伪造聊天。
  * [OUTPUT]: 反思较早漏日/当日笔记与来源失效、十技能绑定；实际与撤回候选归架构§11.22。
@@ -8,7 +9,7 @@
  * [POS]: Employee behavior extension of automations; no timer loop or fake user messages.
  * [PROTOCOL]: Update Header and owning .folder.md when changed.
  */
-import { createHash } from 'node:crypto'
+import { jsonSha256 as digest } from '../../json-digest'
 import { defaultAgentProfile, normalizeAgentProfile, primaryPersonalityRoom, deleteAgentBehaviorHistorySchema, clearAgentBehaviorHistorySchema, type AgentBehaviorHistoryCleanup, type AgentBehaviorDefinition, type AgentBehaviorRun, type AgentProfile, type AgentPersonalityState } from '@boai/shared/domain/agent-profile'
 import type { DigitalAgent, Conversation, Message } from '@boai/shared/domain'
 import type { ProductStore } from '../../adapters/storage/product-store'
@@ -16,7 +17,6 @@ import { BEHAVIOR_WORKFLOW, type NativeSchedules } from './native-schedules'
 import { memoryStatus, memoryUseScope } from '../memory/memory-policy'
 import { isCoreAgent } from '@boai/shared/domain/core-agent'
 import { PERSONALITY_HEARTBEAT, hasPersonalityActivity, personalityKinds, personalityBehavior, personalityDue, reflectionRooms } from './personality-policy'
-const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex')
 const scheduleId = (agentId: string, behaviorId: string) => 'schedule_boai-behavior-' + digest([agentId, behaviorId]).slice(0, 32)
 export class AgentBehaviorService {
   private active = new Map<string, { controller: AbortController; task: Promise<void>; agentId: string; conversationId: string }>()

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 持久标识的 JSON 字节摘要使用共用编码，字段及顺序由本业务传入。
  * [OUTPUT]: 核心组织授权使用执行配置版本；单独默认项目修改不废弃原组织持有者，其他配置变更仍阻止发布。
  * [OUTPUT]: 新组织群与首条公告在原受理事务复制成员各自默认项目，后继群工作沿同一来源快照执行。
  * [OUTPUT]: 2026-10-11 第13组员工执行来源/本机登录和运行选项沿原产品身份接线；持续原生合同见13组10/11，实际成绩唯一归06 §122。
@@ -9,6 +10,7 @@
  * [POS]: bobo 发起群协作的组织模块；不调用成员模型、不复制私人聊天或材料、不负责群执行调度。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { jsonSha256 as hash } from '../../json-digest'
 import { createHash, randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { z } from 'zod'
@@ -29,7 +31,6 @@ import { collaborationReceipt } from './receipt'
 
 const collection = 'boboCollaborations'
 const now = () => new Date().toISOString()
-const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex')
 const sourceHash = (message: Message) => createHash('sha256').update(message.content).digest('hex')
 const opId = (requestId: string) => `bobo-collaboration-${hash(requestId)}`
 const record = (value: BoboCollaborationOperation) => ({ collection, id: value.id, value })

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 持久标识的 JSON 字节摘要使用共用编码，字段及顺序由本业务传入。
  * [OUTPUT]: Magpie网关协议/认证及revision进入模型来源指纹，旧直连hash语义保持。
  * [OUTPUT]: 团队允许插件原生默认模型，成员仍按独立员工身份和配置创建。
  * [OUTPUT]: bobo可选择API或本机Codex；组织/具名团队按原运行配置创建独立员工，混合成员共原预算；本机自动化沿原时钟/预算接入，实际验证归第13组06。
@@ -7,25 +8,20 @@
  * [POS]: 团队创建 SQLite 权威状态；不在事务内调用模型或文件系统。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { createHash, randomUUID } from 'node:crypto'
+import { resolveConnectionModel } from '../backends/model-binding'
+import { jsonSha256 } from '../../json-digest'
+import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import type { Connection } from '@boai/shared/domain'
 import { teamCapabilityNotes, teamEditableSchema, teamId, type TeamDraft, type TeamDraftView, type TeamCreationOperation, type TeamGeneration } from '@boai/shared/domain/team-creation'
 import { ProductStore, type RecordTransaction } from '../../adapters/storage/product-store'
 
-export const teamHash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex')
 export const teamNow = () => new Date().toISOString()
 export const teamError = (code: string, message: string): never => { throw new Error(`${code}: ${message}`) }
 export const teamRecord = (collection: string, value: { id: string }) => ({ collection, id: value.id, value })
 export const teamVersionSchema = z.object({ draftId: teamId, expectedVersion: z.number().int().positive() }).strict()
 export const teamSaveSchema = teamVersionSchema.extend({ editableFields: teamEditableSchema }).strict()
-export function resolveTeamModel(connection: Connection | undefined, selectedModelId: string) {
-  if (!connection) return teamError('MODEL_UNAVAILABLE', '请选择已有模型连接')
-  const modelId = selectedModelId || connection.defaultModel.trim()
-  if (!modelId) return teamError('MODEL_UNAVAILABLE', '请先配置有效模型')
-  return { modelId, fingerprint: teamHash({ id: connection.id, provider: connection.provider, baseUrl: connection.baseUrl, api: connection.api ?? 'chat', ...(connection.gateway ? { gateway: connection.gateway, revision: connection.revision } : {}), defaultModel: connection.defaultModel, modelId }) }
-}
-export const teamInputHash = (draft: TeamDraft) => teamHash({ ...(draft.executionBackend ? { executionBackend: draft.executionBackend } : {}), prompt: draft.prompt, connectionId: draft.selectedConnectionId, modelId: draft.resolvedModelId, fingerprint: draft.connectionFingerprint })
+export const teamInputHash = (draft: TeamDraft) => jsonSha256({ ...(draft.executionBackend ? { executionBackend: draft.executionBackend } : {}), prompt: draft.prompt, connectionId: draft.selectedConnectionId, modelId: draft.resolvedModelId, fingerprint: draft.connectionFingerprint })
 export function validateTeamDraft(draft: TeamDraft) {
   draft.validationErrors = []
   if (!draft.prompt) draft.validationErrors.push('请描述团队需求')
@@ -33,7 +29,7 @@ export function validateTeamDraft(draft: TeamDraft) {
   if (!draft.plan) draft.validationErrors.push('请先生成方案')
   if (draft.plan && draft.planInputHash !== teamInputHash(draft)) draft.validationErrors.push('需求或模型已变化，请重新生成方案')
   if (draft.createGroup && draft.plan && !draft.groupTitle) draft.validationErrors.push('请填写群名称')
-  draft.planHash = draft.plan && !draft.validationErrors.length ? teamHash({ ...(draft.executionBackend ? { executionBackend: draft.executionBackend } : {}), plan: draft.plan, connectionId: draft.selectedConnectionId, modelId: draft.resolvedModelId, fingerprint: draft.connectionFingerprint, createGroup: draft.createGroup, groupTitle: draft.createGroup ? draft.groupTitle : '' }) : undefined
+  draft.planHash = draft.plan && !draft.validationErrors.length ? jsonSha256({ ...(draft.executionBackend ? { executionBackend: draft.executionBackend } : {}), plan: draft.plan, connectionId: draft.selectedConnectionId, modelId: draft.resolvedModelId, fingerprint: draft.connectionFingerprint, createGroup: draft.createGroup, groupTitle: draft.createGroup ? draft.groupTitle : '' }) : undefined
 }
 export async function readTeamDraft(tx: RecordTransaction, id: string) {
   return await tx.get<TeamDraft>('teamDrafts', id) ?? teamError('VALIDATION', '团队草稿不存在')
@@ -74,10 +70,10 @@ export class TeamRepository {
       }
       if (draft.selectedConnectionId) {
         const connection = await tx.get<Connection>('connections', draft.selectedConnectionId)
-        if (connection) { const resolved = resolveTeamModel(connection, draft.selectedModelId); draft.resolvedModelId = resolved.modelId; draft.connectionFingerprint = resolved.fingerprint }
+        if (connection) { const resolved = resolveConnectionModel(connection, draft.selectedModelId); draft.resolvedModelId = resolved.modelId; draft.connectionFingerprint = resolved.fingerprint }
         else { draft.resolvedModelId = undefined; draft.connectionFingerprint = undefined }
       } else { draft.resolvedModelId = undefined; draft.connectionFingerprint = undefined }
-      if (draft.plan && teamHash(previous) !== teamHash(draft.plan)) draft.manuallyEdited = true
+      if (draft.plan && jsonSha256(previous) !== jsonSha256(draft.plan)) draft.manuallyEdited = true
       draft.version++; draft.updatedAt = teamNow(); validateTeamDraft(draft)
       await tx.put(teamRecord('teamDrafts', draft)); return draft
     })

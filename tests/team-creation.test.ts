@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 工作区模型与团队草稿复用历史 API 指纹，包括空模型拒绝及默认值。
  * [INPUT]: 真实 SQLite/AppService、隔离目录和团队严格合同。
  * [OUTPUT]: 草稿单实例、独立连接竞争、旧数据/重启、取消墓碑与零实体副作用验收。
  * [POS]: T1 团队创建存储及服务回归。
@@ -9,6 +10,8 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
+import { resolveConnectionModel } from '../packages/runtime/src/modules/backends/model-binding'
+import type { Connection } from '@boai/shared/domain'
 import { TeamRepository } from '../packages/runtime/src/modules/teams/team-repository'
 import { teamPlannerOutputSchema, type TeamDraft, type TeamEditable } from '../packages/shared/src/domain/team-creation'
 import { AppService } from '../packages/runtime/src/service'
@@ -20,6 +23,13 @@ const fields = (draft: TeamDraft): TeamEditable => ({ prompt: draft.prompt, sele
 async function root() { const path = await mkdtemp(join(tmpdir(), 'boai-team-')); roots.push(path); return path }
 async function repository(path: string) { const store = new ProductStore(join(path, 'boai.sqlite')); await store.init(); cleanup.push(() => store.close()); return { store, repo: new TeamRepository(store) } }
 export const modelPlan = { kind: 'plan', schemaVersion: 1, name: '写作组', purpose: '编辑用户提供的文章', scenarioKind: 'work', assumptions: ['材料由用户提供'], collaborationGuide: '先讨论提纲，再撰写和审校', capabilityNotes: [], members: [{ name: '写手', role: '撰写文章', instructions: '自然简洁；不编造事实' }] }
+
+test('preserves the historical connection fingerprint for reopened team drafts', () => {
+  const connection: Connection = { id: 'fixture', name: 'Local', provider: 'openai-compatible', baseUrl: 'http://127.0.0.1/v1', defaultModel: ' demo ', hasApiKey: false }
+  expect(resolveConnectionModel(connection, '')).toEqual({ modelId: 'demo', fingerprint: 'bffa948d16d93121d927593eb0fff6b9c1002a376f4f0b298263266291e0d328' })
+  expect(resolveConnectionModel({ ...connection, defaultModel: '' }, 'custom').fingerprint).toBe('8a10139d63f8b13e5e23dd3908bfc4ad2afc7b3499a38eb78d797b1c382c4404')
+  expect(() => resolveConnectionModel({ ...connection, defaultModel: '' }, '')).toThrow('MODEL_UNAVAILABLE: 请先配置有效模型')
+})
 
 test('strict model schema rejects capabilities, paths, duplicate names and member limits without truncating', () => {
   expect(teamPlannerOutputSchema.parse(modelPlan)).toEqual(modelPlan)

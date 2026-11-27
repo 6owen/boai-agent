@@ -1,10 +1,12 @@
 /*
+ * [OUTPUT]: 持久标识的 JSON 字节摘要使用共用编码，字段及顺序由本业务传入。
  * [INPUT]: Runtime operation contract and Opted-in host OCR samples, original ProductStore and explicitly generated report text.
  * [OUTPUT]: Independent capture/OCR capabilities and fallback records, paginated exact-session sources/themes and source-bound report cache.
  * [POS]: Desktop activity domain; never substitutes chat history or generates fictional activity.
  * [PROTOCOL]: Update Header and owning .folder.md when changed.
  */
-import { createHash, randomUUID } from 'node:crypto'
+import { jsonSha256 as hash } from '../../json-digest'
+import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import type { ProductStore } from '../../adapters/storage/product-store'
 import { ApplicationValidationError, type ApplicationOperation } from '../../application-operation'
@@ -36,7 +38,6 @@ const analysisItem = z.object({ sampleIds, sourceHash: z.string().regex(/^[a-f0-
   entities, memoryCandidates: z.array(z.object({ type: z.enum(['project', 'feedback', 'reference', 'user']), content: short(200).min(1), why: short(160).min(1) }).strict()).max(3).default([]),
 }).strict()
 const analysisSave = z.object({ from: day, to: day, items: z.array(analysisItem).min(1).max(40) }).strict()
-const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex')
 const hasCurrentSources = (record: Pick<ActivityReport | ActivityAnalysis, 'sampleIds' | 'sourceHash'>, samples: Map<string, ActivitySample>) => record.sampleIds.length > 0
   && record.sampleIds.every(id => samples.has(id))
   && record.sourceHash === hash(record.sampleIds.map(id => [id, samples.get(id)!.hash]))

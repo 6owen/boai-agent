@@ -1,10 +1,11 @@
 /*
+ * [OUTPUT]: 持久标识的 JSON 字节摘要使用共用编码，字段及顺序由本业务传入。
  * [INPUT]: Runtime operation contract and Original task, occurrence, Work, Run, source identity and bounded read-only evidence.
  * [OUTPUT]: Deterministic diagnosis metadata, unknown coverage and observed duration; zero recover or repair.
  * [POS]: Application read projection; does not change task labels, execution state or permissions.
  * [PROTOCOL]: Update Header and application/.folder.md when this file changes.
  */
-import { createHash } from 'node:crypto'
+import { jsonSha256 as hash } from '../../json-digest'
 import { z } from 'zod'
 import type { AgentRun, Conversation, DigitalAgent, Message } from '@boai/shared/domain'
 import { isCoreAgent } from '@boai/shared/domain/core-agent'
@@ -21,7 +22,6 @@ import type { TaskDiagnosisRecordScope } from '../../adapters/storage/task-diagn
 import type { ProductStore } from '../../adapters/storage/product-store'
 import { ApplicationValidationError, type ApplicationOperation } from '../../application-operation'
 
-const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex')
 const stamp = z.object({ version: z.literal(1), key: z.string().length(64), revision: z.string().length(64), offset: z.number().int().nonnegative() }).strict()
 const fail = (code: 'FORBIDDEN' | 'NOT_FOUND' | 'REVISION_CONFLICT' | 'INVALID_INPUT', message: string): never => { throw new ApplicationValidationError(code, message) }
 const knownStatus = (value: unknown, choices: string[]) => typeof value === 'string' && choices.includes(value) ? value : 'unknown'

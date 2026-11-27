@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 持久标识的 JSON 字节摘要使用共用编码，字段及顺序由本业务传入。
  * [OUTPUT]: 新团队群在受理事务冻结各成员项目选择，发布/重启/重复请求沿同一快照，不追随后续员工默认目录。
  * [OUTPUT]: 模型ID共用1000字符/无控制符边界，完整供应商前缀及原生模型名不截断。
  * [OUTPUT]: 2026-10-11 第13组员工执行来源/本机登录和运行选项沿原产品身份接线；持续原生合同见13组10/11，实际成绩唯一归06 §122。
@@ -9,6 +10,7 @@
  * [POS]: 团队原子发布用例；内部准备记录不承载产品草稿，不调用成员模型、不发送消息或创建 Work。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { jsonSha256 } from '../../json-digest'
 import { MODEL_ID_MAX_LENGTH, validModelId } from '@boai/shared/domain/model-id'
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
@@ -21,7 +23,7 @@ import { createTeamContactCategory } from '../employees/contact-list'
 import { WorkspaceService } from '../workspaces/workspace-service'
 import { initialProjectSelection } from '../workspaces/project-directory'
 import { TeamFiles, teamFileLog, type TeamFileCheckpoint } from './team-files'
-import { TeamRepository, editableTeamDraft, readTeamDraft, teamError, teamHash, teamInputHash, teamNow, teamRecord, teamVersionSchema, validateTeamDraft } from './team-repository'
+import { TeamRepository, editableTeamDraft, readTeamDraft, teamError, teamInputHash, teamNow, teamRecord, teamVersionSchema, validateTeamDraft } from './team-repository'
 import { resolveEmployeeRuntime } from '../backends/runtime-config'
 import type { RecordTransaction } from '../../adapters/storage/product-store'
 
@@ -48,7 +50,7 @@ export class TeamCreationService {
     if (resolved.fingerprint !== operation.connectionFingerprint) teamError('CONFIG_CHANGED', '模型配置已变化，请恢复原配置后继续，或放弃并重新生成')
   }
   async accept(input: unknown) {
-    const request = acceptSchema.parse(input), requestHash = teamHash(request)
+    const request = acceptSchema.parse(input), requestHash = jsonSha256(request)
     const result = await this.repo.store.transaction(async tx => {
       const old = (await tx.list<TeamCreationOperation>('teamCreations')).find(value => value.requestId === request.requestId)
       if (old) { if (old.requestHash !== requestHash) teamError('REQUEST_CONFLICT', '请求身份已用于不同版本或内容'); return { operation: old, start: false } }
@@ -63,7 +65,7 @@ export class TeamCreationService {
     this.hooks.changed(); return result.operation
   }
   async acceptAgentPlan(input: unknown) {
-    const request = agentPlanSchema.parse(input), requestHash = teamHash({ source: 'core-agent', ...request })
+    const request = agentPlanSchema.parse(input), requestHash = jsonSha256({ source: 'core-agent', ...request })
     const result = await this.repo.store.transaction(async tx => {
       const old = (await tx.list<TeamCreationOperation>('teamCreations')).find(value => value.requestId === request.requestId)
       if (old) { if (old.requestHash !== requestHash) teamError('REQUEST_CONFLICT', '请求身份已用于不同团队方案'); return { operation: old, start: false } }
