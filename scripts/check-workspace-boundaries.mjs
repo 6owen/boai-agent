@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 构建与边界检查共用显式开发导出解析；检查包含所有命名空间的工作区成员。
  * [OUTPUT]: 独立avatar-motion子模块可由Electron单向引用，无BOAI业务依赖。
  * [OUTPUT]: Canvas package stays independent; shared imports only its platform-neutral protocol.
  * [OUTPUT]: Agent Desktop 可选插件接线；默认关闭、独立于旧computer-use，调用沿员工权限及真实图片。
@@ -15,6 +16,7 @@ import { builtinModules } from 'node:module'
 import { readFile, readdir, stat } from 'node:fs/promises'
 import { dirname, extname, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { workspaceSourceAliases } from './workspace-packages.mjs'
 import { parse } from '@babel/parser'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -57,7 +59,7 @@ for (const group of ['apps', 'packages']) {
     if (!await exists(manifestFile)) { fail(directory, 'missing workspace package.json'); continue }
     const manifest = JSON.parse(await readFile(manifestFile, 'utf8'))
     if (!allowed[manifest.name]) fail(manifestFile, `no dependency contract for ${manifest.name}`)
-    const workspace = { directory, manifest, name: manifest.name }
+    const workspace = { directory, manifest, name: manifest.name, aliases: workspaceSourceAliases(directory, manifest) }
     workspaces.push(workspace)
     await walk(resolve(directory, 'src'), path => {
       if (sourceExtensions.has(extname(path))) files.push({ path, workspace })
@@ -73,42 +75,25 @@ async function resolveFile(path) {
   if (/\.m?js$/.test(path)) candidates.push(path.replace(/\.m?js$/, '.ts'), path.replace(/\.m?js$/, '.tsx'))
   for (const candidate of candidates) if (await exists(candidate)) return candidate
 }
-function exportEntries(manifest) {
-  if (!manifest.exports) return []
-  if (typeof manifest.exports === 'string' || Array.isArray(manifest.exports)) return [['.', manifest.exports]]
-  return Object.keys(manifest.exports).some(key => key.startsWith('.')) ? Object.entries(manifest.exports) : [['.', manifest.exports]]
-}
 function sourceTargets(value) {
   if (typeof value === 'string') return [value]
   if (Array.isArray(value)) return value.flatMap(sourceTargets)
   if (!value || typeof value !== 'object') return []
   return [...new Set(['development', 'source', 'types', 'default', 'node', 'import', 'require'].flatMap(key => sourceTargets(value[key])))]
 }
-function exported(workspace, subpath) {
-  const entries = exportEntries(workspace.manifest)
-  const exact = entries.find(([key]) => key === subpath)
-  if (exact) return sourceTargets(exact[1])
-  for (const [key, value] of entries) {
-    if (!key.includes('*')) continue
-    const [start, end] = key.split('*')
-    if (subpath.startsWith(start) && subpath.endsWith(end)) {
-      const match = subpath.slice(start.length, subpath.length - end.length || undefined)
-      return sourceTargets(value).map(target => target.replaceAll('*', match))
-    }
-  }
-  return []
-}
-async function resolvePublic(workspace, subpath) {
-  const targets = exported(workspace, subpath)
-  for (const target of targets) {
-    if (!target.startsWith('./')) continue
-    const file = await resolveFile(resolve(workspace.directory, target))
-    if (file && !display(file).includes('/dist/')) return file
-  }
+async function resolvePublic(workspace, specifier) {
+  const target = workspace.aliases[specifier]
+  if (target && !display(target).includes('/dist/')) return resolveFile(target)
 }
 // Source export targets must exist before a build; generated dist/types outputs are checked by packaging.
 for (const workspace of workspaces) {
-  for (const [entry, target] of exportEntries(workspace.manifest)) {
+  const { dependencies, peerDependencies, optionalDependencies } = workspace.manifest
+  for (const name of Object.keys({ ...dependencies, ...peerDependencies, ...optionalDependencies })) {
+    if (byName.has(name) && !allowed[workspace.name]?.includes(name)) {
+      fail(resolve(workspace.directory, 'package.json'), `forbidden dependency ${workspace.name} -> ${name}`)
+    }
+  }
+  for (const [entry, target] of Object.entries(workspace.manifest.exports ?? {})) {
     for (const value of sourceTargets(target)) {
       if (!value.startsWith('./src/') || value.includes('*')) continue
       if (!await resolveFile(resolve(workspace.directory, value))) fail(resolve(workspace.directory, 'package.json'), `export ${entry} source target missing: ${value}`)
@@ -157,13 +142,12 @@ for (const { path, workspace } of files) {
       if (!target) fail(path, `${at} unresolved renderer alias ${value}`)
     } else if (value.startsWith('@shared/')) {
       fail(path, `${at} legacy shared alias ${value}; use @boai/shared exports`)
-    } else if (value.startsWith('@boai/')) {
+    } else if (value.startsWith('@boai/') || byName.has(packageName(value))) {
       const name = packageName(value), dependency = byName.get(name)
       if (!dependency) { fail(path, `${at} missing workspace ${name}`); continue }
       if (name !== workspace.name && !allowed[workspace.name]?.includes(name)) fail(path, `${at} forbidden dependency ${workspace.name} -> ${name}`)
-      if (name !== workspace.name && !workspace.manifest.dependencies?.[name] && !workspace.manifest.peerDependencies?.[name]) fail(path, `${at} undeclared workspace dependency ${name}`)
-      const subpath = value === name ? '.' : '.' + value.slice(name.length)
-      target = await resolvePublic(dependency, subpath)
+      if (name !== workspace.name && !workspace.manifest.dependencies?.[name] && !workspace.manifest.peerDependencies?.[name] && !workspace.manifest.optionalDependencies?.[name]) fail(path, `${at} undeclared workspace dependency ${name}`)
+      target = await resolvePublic(dependency, value)
       if (!target) fail(path, `${at} unresolved public export ${value}`)
     }
     if (!imported.typeOnly && target) {
@@ -200,7 +184,7 @@ for (const path of graph.keys()) inspectImports(path)
 // A browser consumer of the shared root must not pull platform code through a barrel.
 const shared = byName.get('@boai/shared')
 if (shared) {
-  const entry = await resolvePublic(shared, '.')
+  const entry = await resolvePublic(shared, shared.name)
   if (entry) {
     const visited = new Set()
     function inspect(path, trail) {
