@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 终端颜色的原始 OSC 回放与渲染归同一协议，宿主继续作为唯一查询响应方。
  * [OUTPUT]: 宿主固定命令复用有界xterm会话和原生进程退出协议。
  * [INPUT]: Trusted workspace resolver, isolated native PTY transport and desktop client identity.
  * [OUTPUT]: Coalesced screens/acks, cancellable output waits, scope-safe ordered input and confirmed shutdown.
@@ -8,7 +9,7 @@
 import { randomUUID } from 'node:crypto'
 import { Terminal } from '@xterm/headless'
 import { SerializeAddon } from '@xterm/addon-serialize'
-import { TerminalPalette } from './palette'
+import { TerminalProgramColors } from '@boai/shared/appearance/terminal-osc'
 import { TerminalService, type TerminalServiceOptions } from '@boai/runtime/modules/workspace-tools/terminal-service'
 import type { TerminalInfo, TerminalScope } from '@boai/shared/domain/workspace-tools'
 import type { WorkspaceTerminalFrame, WorkspaceTerminalRequest, WorkspaceTerminalResponse } from '@boai/shared/ipc/workspace-terminal'
@@ -39,7 +40,7 @@ interface Screen {
   info: TerminalInfo
   terminal: Terminal
   serialize: SerializeAddon
-  palette: TerminalPalette
+  palette: TerminalProgramColors
   queue: Promise<void>
   batch?: { chunks: string[]; bytes: number }
   pendingBytes: number
@@ -110,7 +111,7 @@ export class WorkspaceTerminalService {
     const terminal = new Terminal({ cols: 100, rows: 30, scrollback: SCROLLBACK, allowProposedApi: true })
     const serialize = new SerializeAddon()
     terminal.loadAddon(serialize)
-    const screen: Screen = { info: { ...info }, terminal, serialize, palette: new TerminalPalette(terminal), queue: Promise.resolve(), pendingBytes: 0, paused: false, replies: '', sequence: 0, historyBytes: 0, history: [] }
+    const screen: Screen = { info: { ...info }, terminal, serialize, palette: new TerminalProgramColors(terminal.parser, { consumeOsc: false }), queue: Promise.resolve(), pendingBytes: 0, paused: false, replies: '', sequence: 0, historyBytes: 0, history: [] }
     // Answer terminal device/cursor queries even while the view is detached. The renderer
     // suppresses these same query handlers, so protocol replies are emitted only once.
     terminal.onData(data => {

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 共享 OSC 颜色归一、程序覆盖与应用主题接线。
  * [OUTPUT]: 终端撤销顶部工具栏，字号仍取全局但单元行高回到xterm原生1倍；原关闭/恢复回归保持。
  * [OUTPUT]: 导入配色/Base46/VS Code Plus跟随应用主题及明暗回退、关闭前停读解除附着和失败重连回归；不运行E2E。
  * [INPUT]: 真实React终端组件、异步IPC夹具与可观测xterm适配器。
@@ -14,7 +15,8 @@ import type { Terminal, ITheme } from '@xterm/xterm'
 import type { DesktopApi } from '../packages/shared/src/ipc/index'
 import type { WorkspaceTerminalRequest, WorkspaceTerminalResponse } from '../packages/shared/src/ipc/workspace-terminal'
 import { WorkspaceTerminal } from '../apps/electron/src/renderer/components/detail-panel/workspace-terminal'
-import { WorkspaceTerminalTheme, parseTerminalColor, terminalAppearance } from '../apps/electron/src/renderer/components/detail-panel/workspace-terminal-theme'
+import { TerminalProgramColors, parseTerminalColor } from '@boai/shared/appearance/terminal-osc'
+import { WorkspaceTerminalTheme, terminalAppearance } from '../apps/electron/src/renderer/components/detail-panel/workspace-terminal-theme'
 import { closeWorkspaceTerminal } from '../apps/electron/src/renderer/components/detail-panel/workspace-terminal-sessions'
 import { toast } from 'sonner'
 
@@ -206,4 +208,34 @@ test('X11 colors use correct channel width and reject malformed payloads', () =>
   expect(parseTerminalColor('#123456789')).toBe('#124578')
   expect(parseTerminalColor('rgb:ffff/8000/0000')).toBe('#ff8000')
   for (const value of ['?', '#xx0000', 'red', 'rgb:fffff/0/0', '#1234']) expect(parseTerminalColor(value)).toBeUndefined()
+})
+
+test('only the host answers OSC queries and both parsers retire all color hooks on disposal', () => {
+  function parser() {
+    const osc = new Map<number, (data: string) => boolean>()
+    const esc = new Map<string, () => boolean>()
+    return { osc, esc,
+      registerOscHandler(code: number, handle: (data: string) => boolean) {
+        osc.set(code, handle); return { dispose: () => { osc.delete(code) } }
+      },
+      registerEscHandler(key: { final: string }, handle: () => boolean) {
+        esc.set(key.final, handle); return { dispose: () => { esc.delete(key.final) } }
+      },
+    }
+  }
+  const hostParser = parser(), viewParser = parser()
+  const host = new TerminalProgramColors(hostParser, { consumeOsc: false })
+  const display = { options: {} as { theme?: ITheme }, parser: viewParser }
+  const view = new WorkspaceTerminalTheme(display as unknown as Pick<Terminal, 'options' | 'parser'>)
+  expect(hostParser.osc.get(10)!('?')).toBe(false)
+  expect(viewParser.osc.get(10)!('?')).toBe(true)
+  hostParser.osc.get(4)!('1;rgb:f/0/f')
+  hostParser.osc.get(11)!('#0a0')
+  for (const packet of host.serialize().matchAll(/\x1b\](\d+);([^\x07]*)\x07/g)) viewParser.osc.get(Number(packet[1]))!(packet[2])
+  expect(display.options.theme).toMatchObject({ red: '#ff00ff', background: '#00a000' })
+  expect(hostParser.esc.get('c')!()).toBe(false)
+  expect(viewParser.esc.get('c')!()).toBe(false)
+  expect(display.options.theme?.red).toBeUndefined()
+  host.dispose(); view.dispose()
+  expect([hostParser.osc.size, hostParser.esc.size, viewParser.osc.size, viewParser.esc.size]).toEqual([0, 0, 0, 0])
 })
