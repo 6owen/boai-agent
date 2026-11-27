@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 个人活动按查询时区复用日期格式器，并按工作、执行和技能身份关联证据。
  * [OUTPUT]: 2026-10-13本机不展示/计入BOAI用量与预算；API独立受限，原生停止/身份/成果与未知不重放保持，实际验证归13组06 §147。
  * [OUTPUT]: 实际本机阶段退出时完成普通聊天观测，保留已知部分/未知用量、已完整终态及原预算归属，不创建缺失调用或改API记录。
  * [OUTPUT]: 本机流式三个计数字段齐全仍须最终回执；中途计量保留但活动未知，最终字段缺失不继承旧值。
@@ -158,6 +159,17 @@ test('natural dates honor UTC, year boundaries and DST; yesterday keeps the stre
   expect(result.days.at(-1)?.date).toBe('2026-03-10')
   expect(aggregateActivity(e, range, '2026-03-11T20:00:00Z').currentStreak).toBe(0)
   e.messages.push(message('unknown', 'invalid')); expect(aggregateActivity(e, range, now).currentStreak).toBeNull()
+})
+
+test('formats all dated records in an activity report with one timezone formatter', () => {
+  const e = empty()
+  e.messages = Array.from({ length: 50 }, (_, i) => message(String(i), now))
+  const formatter = vi.spyOn(Intl, 'DateTimeFormat')
+  try {
+    const result = aggregateActivity(e, range, now)
+    expect(result.chats).toBe(1)
+    expect(formatter).toHaveBeenCalledTimes(1)
+  } finally { formatter.mockRestore() }
 })
 
 test('ended root task durations union child executions and exclude waits; absent reliable evidence stays unknown', () => {
