@@ -1,12 +1,12 @@
 /*
- * [INPUT]: Resolved workspace value imports and recorded runtime module cycle edges.
- * [OUTPUT]: Direct module dependencies, strongly connected groups and changes to their recorded edges.
+ * [INPUT]: Resolved workspace value imports, re-exports and literal CommonJS requires.
+ * [OUTPUT]: Direct business-module dependencies and source locations for each edge participating in a cycle.
  * [POS]: Business-module ownership check used by check-workspace-boundaries.
  * [PROTOCOL]: Keep scripts/.folder.md and the architecture inventory in sync.
  */
 import { sep } from 'node:path'
 
-export function inspectRuntimeModules(graph, modulesRoot, recorded) {
+export function inspectRuntimeModules(graph, modulesRoot) {
   const prefix = modulesRoot + sep
   const owner = path => {
     if (!path.startsWith(prefix)) return undefined
@@ -38,16 +38,9 @@ export function inspectRuntimeModules(graph, modulesRoot, recorded) {
     const group = [...closure].filter(other => reachable.get(other).has(name)).sort()
     if (group.length > 1 && group[0] === name) cycleGroups.push(group)
     for (const next of dependencies[name]) {
-      if (!reachable.get(next).has(name) || recorded[name]?.includes(next)) continue
+      if (!reachable.get(next).has(name)) continue
       const { file, line } = imports.get(name).get(next)
-      errors.push({ file, message: `line ${line} unrecorded runtime module cycle edge: ${name} -> ${next}; group: ${group.join(', ')}` })
-    }
-  }
-  for (const [from, names] of Object.entries(recorded)) {
-    for (const to of names) {
-      if (!(imports.get(from)?.has(to) && reachable.get(to)?.has(from))) {
-        errors.push({ message: `remove retired runtime module cycle edge: ${from} -> ${to}` })
-      }
+      errors.push({ file, message: `line ${line} runtime module cycle edge: ${name} -> ${next}; group: ${group.join(', ')}` })
     }
   }
   return { dependencies, cycleGroups, errors }
