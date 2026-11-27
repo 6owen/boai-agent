@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 核对拖影和置顶卡片使用员工名、等待 IPC 时的落点与话题菜单。
  * [OUTPUT]: 核对 bobo 主聊统一展示、拖拽置顶与取消、置顶话题归属及空区回收。
  * [OUTPUT]: 聊天顶部和侧栏只让真正等待标题的首句闪烁。
  * [OUTPUT]: 列表夹具沿仅已发送消息的Props，不再向列表传入composer草稿。
@@ -200,10 +201,12 @@ it.each([
 
 
 it('moves an actual Bobo main chat into and out of the avatar shelf via drag', async () => {
-  const main = room('bobo-main', { employeeChat: 'main', title: 'Bobo' })
+  const main = room('bobo-main', { employeeChat: 'main', title: 'hi' })
   const topic = room('weather', { employeeChat: 'topic', title: '天气话题' })
   props.snapshot.conversations.push(main, topic)
-  const transfer = { effectAllowed: '', dropEffect: '', setData: vi.fn() }
+  let settlePin!: () => void
+  props.onChange = vi.fn(() => new Promise<void>(resolve => { settlePin = resolve }))
+  const transfer = { effectAllowed: '', dropEffect: '', setData: vi.fn(), setDragImage: vi.fn() }
   const drag = (element: Element, type: string) => act(async () => {
     const event = new MouseEvent(type, { bubbles: true, cancelable: true })
     Object.defineProperty(event, 'dataTransfer', { value: transfer })
@@ -215,23 +218,34 @@ it('moves an actual Bobo main chat into and out of the avatar shelf via drag', a
   expect(entry().closest('[aria-label="普通会话"]')).not.toBeNull()
   expect(shelf()).toBeNull()
   await drag(entry(), 'dragstart')
+  const dragImage = transfer.setDragImage.mock.calls[0][0] as HTMLElement
+  expect(dragImage.textContent).toBe('Bobo')
+  expect(dragImage.querySelector('.avatar img')).not.toBeNull()
+  expect(dragImage.querySelector('time, .conversation-preview, svg')).toBeNull()
   expect(shelf().textContent).toBe('拖到此处置顶')
   await drag(shelf(), 'dragover')
   expect(shelf().getAttribute('data-drop')).toBe('inside')
   await drag(shelf(), 'drop')
   expect(props.onChange).toHaveBeenLastCalledWith({ id: main.id, action: 'pin', pinned: true })
-  expect(shelf()).toBeNull()
+  expect(entry().closest('[aria-label="置顶会话"]')).not.toBeNull()
+  expect(entry().textContent).toBe('Bobo')
+  expect(entry().parentElement?.querySelector('svg, .conversation-topic-toggle')).toBeNull()
 
   props = { ...props, selectedId: topic.id, snapshot: { ...props.snapshot, conversations: props.snapshot.conversations.map(value => value.id === main.id ? { ...value, list: { pinned: true } } : value) } }
   await render()
   expect(entry().closest('[aria-label="置顶会话"]')).not.toBeNull()
   expect(entry().getAttribute('data-active-topic')).toBe('true')
   expect(host.querySelector('#conversation-pin-topics-bobo-main button[aria-label="天气话题"]')?.getAttribute('aria-current')).toBe('page')
-  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Bobo 的话题"]')!.click())
+  await act(async () => settlePin())
+  await openMenu()
+  await choose('收起话题')
   expect(host.querySelector('#conversation-pin-topics-bobo-main')?.hasAttribute('hidden')).toBe(true)
   await drag(entry(), 'dragstart')
   await drag(host.querySelector('[aria-label="普通会话"]')!, 'drop')
   expect(props.onChange).toHaveBeenLastCalledWith({ id: main.id, action: 'pin', pinned: false })
+  expect(entry().closest('[aria-label="普通会话"]')).not.toBeNull()
+  await act(async () => settlePin())
+  expect(entry().closest('[aria-label="置顶会话"]')).not.toBeNull()
 })
 
 it('saves the same pin command from the ordinary employee menu', async () => {
