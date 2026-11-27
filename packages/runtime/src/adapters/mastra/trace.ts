@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 指标打开、Trace 导出或关闭出错时，二次诊断失败也不会阻断业务。
  * [OUTPUT]: 2026-11-24 官方 Metrics 与脱敏 Trace 共用观测；仅指标时不导出逐步全文，存储失败不重放任务。
  * [OUTPUT]: Controller 和单次阶段共享官方 observability 配置与宿主脱敏导出，不重复注册 Agent。
  * [INPUT]: 阶段 Agent、Mastra 原生追踪事件与宿主持久化回调。
@@ -6,6 +7,7 @@
  * [POS]: Mastra 阶段观测适配器，不改变工具权限或工作交付状态。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { reportTraceError } from '../../contracts'
 import { summarizeMedia } from '../../modules/browser/media'
 import { Mastra } from '@mastra/core/mastra'
 import type { Agent } from '@mastra/core/agent'
@@ -48,7 +50,7 @@ export async function createAgentObservation(context: MetricContext, phase: stri
   let metrics = contextMetrics(context), storage = fallback
   try { storage = await metrics?.storage(fallback) ?? fallback }
   catch (error) {
-    await context.onTraceError?.(`模型指标存储不可用：${error instanceof Error ? error.message : String(error)}`)
+    await reportTraceError(context, `模型指标存储不可用：${error instanceof Error ? error.message : String(error)}`)
     metrics = undefined
   }
   const exporter: ObservabilityExporter = {
@@ -66,7 +68,7 @@ export async function createAgentObservation(context: MetricContext, phase: stri
         const serialized = JSON.stringify(summarizeMedia(value))
         const clean = context.apiKey ? serialized.split(JSON.stringify(context.apiKey).slice(1, -1)).join('[redacted]') : serialized
         await context.onTrace?.(JSON.parse(clean))
-      } catch (error) { await context.onTraceError?.(error instanceof Error ? error.message : String(error)) }
+      } catch (error) { await reportTraceError(context, error instanceof Error ? error.message : String(error)) }
     },
     async flush() {},
     async shutdown() {},
@@ -78,7 +80,7 @@ export async function createAgentObservation(context: MetricContext, phase: stri
   } } })
   return { observability, storage, flush: async () => {
     try { await observability.shutdown() }
-    catch (error) { await context.onTraceError?.(error instanceof Error ? error.message : String(error)) }
+    catch (error) { await reportTraceError(context, error instanceof Error ? error.message : String(error)) }
   } }
 }
 
