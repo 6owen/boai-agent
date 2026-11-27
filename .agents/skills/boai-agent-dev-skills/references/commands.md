@@ -1,7 +1,7 @@
 <!--
 [OUTPUT]: 2026-11-24补官方 Mastra 基础设施接线验证及个人进程生效边界。
 [OUTPUT]: 2026-11-24新增AgentController审批和官方Metrics改动的定向验证入口、独立数据及PR截图目标。
-[OUTPUT]: 开发默认提 PR；先看截图时保存实际文件并返回绝对路径。
+[OUTPUT]: 开发默认提 PR 并开启自动合并；先看截图时保存实际文件并返回绝对路径。
 [OUTPUT]: 本地按 Git 变更运行 Vitest，UI PR 回填目标状态和全局主界面截图。
 [OUTPUT]: 2026-11-17本地按影响验证；PR Test分文档/前端/完整，普通交付不等待CI。
 [OUTPUT]: 2026-11-16开发检出需初始化固定版本avatar-motion子模块，之后沿原pnpm安装/构建。
@@ -86,7 +86,7 @@ renderer由Vite处理热更新；`dev.mjs`在启动时构建宿主，没有主�
 
 AgentController审批/计量变更可补跑`pnpm exec vitest run tests/mastra-engine.test.ts tests/mastra-context-continuity.test.ts tests/mastra-metrics.test.ts`，工具交付或辅助模型接线还需对应的skills-delivery、team-planner、presentation-capability、gateway-product-faults场景。仍先用`test:changed`确定范围，不能把这条补验命令当作全部业务验收。测试使用临时数据及受控HTTP模型，不指向个人memory或metrics数据库。费用界面PR目标使用“我的菜单 → 个人资料 → 模型估算费用”；本地GUI仍按用户明确范围执行。
 
-开发完成后默认提交、推送并创建或更新 PR。用户要求先看截图时，在隔离预览截取实际改动状态，保存到主检出下 `.local/review-screenshots/<任务>/` 等持久目录，交付图片绝对路径。用户确认后再推送或更新 PR。[交付细则](../../boai-dev-workflow/SKILL.md#用户要求先看截图)。
+开发完成后默认提交、推送、创建或更新 PR 并开启自动合并。用户要求先看截图时，在隔离预览截取实际改动状态，保存到主检出下 `.local/review-screenshots/<任务>/` 等持久目录，交付图片绝对路径。用户确认后再推送或更新 PR。[交付细则](../../boai-dev-workflow/SKILL.md#用户要求先看截图)。
 
 ## 5. 自用安装包
 
@@ -162,8 +162,8 @@ pnpm release:version patch    # 也支持minor、major、明确稳定X.Y.Z
 | 用户请求 | 行为 |
 | --- | --- |
 | 只修改、只解释或只验证 | 完成对应范围，不推导发布或安装授权 |
-| `git cp` | 检查status/branch/remote/worktrees，显式暂存任务路径、commit/push并创建或更新PR；按本次合并范围处理 |
-| 普通允许合并的交付 | 使用正常PR自动合并及精确head核对，不使用管理员例外 |
+| `git cp` | 检查status/branch/remote/worktrees，显式暂存任务路径、commit/push、创建或更新 PR，并为当前 head 开启自动合并 |
+| 普通开发交付 | 用 `gh pr merge <PR> --auto --merge --match-head-commit <SHA>` 开启自动合并并读回。用户明确要求先审阅、只开 PR 或暂不合并时按本次范围执行 |
 | `git cpf` / 明确跳过CI直接合并 | 使用 `scripts/git-cpf.mjs`，只提交已暂存内容；精确head合并并恢复/读回临时管理员保护，不等待CI |
 | 同步main | 仅实际合并后在干净main中fetch并ff-only同步 |
 | 清理worktree | 确认提交已合入main或完成最终提交/archive标签存档，迁出数据/证据并核对进程、CWD、ignored文件及共享依赖后回收 |

@@ -1,10 +1,10 @@
-<!-- [OUTPUT]: 本地按 Git 变更选测、默认 PR 交付、优先截图确认和完整发布检查。 -->
+<!-- [OUTPUT]: 本地按 Git 变更选测、默认 PR 交付与自动合并、优先截图确认和完整发布检查。 -->
 # BOAI 开发与 CI
 
 | 事件 | Agent / GitHub 执行 | 等待条件 |
 | --- | --- | --- |
 | 本地开发 | 在独立 worktree 改动。需要 Vitest 时用 `pnpm test:changed` 跑改动关联的测试，按实际影响补测 | 提交本次文件 |
-| 创建或更新 PR | Agent push 后创建 PR，后续 push 更新同一 PR。Test 执行 diff 检查，代码 PR 加 typecheck 和 lint | 合并门禁为 Required checks |
+| 创建或更新 PR | Agent push 后创建或更新同一 PR，并对当前 head 开启自动合并。Test 执行 diff 检查，代码 PR 加 typecheck 和 lint | 合并门禁为 Required checks |
 | UI PR 预览 | GitHub 自动构建该 PR 的 Electron，在同一 macOS job 运行两个隔离的 Playwright-BDD 场景。PR 正文展示改动页面和全局主界面各一张 PNG | 异步。若先合并，仍向同一提交的 PR 补图 |
 | 合并 main | GitHub 按分支保护合并 | main push 不重复启动 Test |
 | 正式 release | 版本提交合入后，Agent 运行 `gh workflow run test.yml --ref main`。macOS 执行类型/lint、构建、角色包和全量 Vitest；全局 BDD 打开应用、确认主导航可见并截一张图 | 完整 Test 成功，全局截图失败单独报告，不做像素比较 |
@@ -30,7 +30,7 @@ CI 从 PR 获取改动文件。资源库目录自动打开资源库，已识别�
 
 ## Git交付与回收
 
-完成开发和相关验证后，默认提交、推送并创建或更新 PR，读回一次 PR 状态后报告。合并按本次授权执行。明确要求验收 CI 改造时，核对新的真实运行。
+完成开发和相关验证后，默认提交、推送、创建或更新 PR，并对当前 head 执行 `gh pr merge <PR> --auto --merge --match-head-commit <SHA>`。读回是否启用或已合并。用户明确要求先审阅、只开 PR 或暂不合并时，按本次范围交付。明确要求验收 CI 改造时，核对新的真实运行。
 
 用户要求先看截图时，先截取当前改动的实际界面状态。将 PNG 保存到任务 worktree 外，核实图片并返回绝对路径，等用户确认后再推送或更新 PR。普通 UI PR 的云端截图随 PR 自动回填。
 
