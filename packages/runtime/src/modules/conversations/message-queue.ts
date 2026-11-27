@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 独立任务队列按任务和会话读取原派发；历史通知按文本记录身份与既有顺序关联。
  * [OUTPUT]: 会话队列和调度准入使用同一持久顺序；执行器容量单独判断。
  * [INPUT]: Persisted task dispatches, exact conversation and action identity.
  * [OUTPUT]: Task-session composer queue projection and durable fixed-target action receipts; IM messages are already sent.
@@ -8,7 +9,6 @@
 import { compareQueuedOccurrences } from '@boai/shared/domain/automations'
 import { z } from 'zod'
 import type { Conversation } from '@boai/shared/domain'
-import type { AutomationDispatch, AutomationOccurrence } from '@boai/shared/domain/automations'
 import type { ConversationQueueAction, ConversationQueueItem } from '@boai/shared/domain/message-queue'
 import type { ProductStore, RecordTransaction } from '../../adapters/storage/product-store'
 
@@ -31,16 +31,18 @@ export async function finishQueueAction(store: ProductStore, input: Conversation
   await store.write([{ collection: 'messageQueueActions', id: queueActionKey(input.requestId), value: { ...receipt, applied: true } }])
 }
 export async function listConversationQueue(store: ProductStore, room: Conversation): Promise<{ items: ConversationQueueItem[] }> {
-  if (room.employeeTaskId) return store.transaction(async tx => {
-    const items: ConversationQueueItem[] = []
-    const occurrences = (await tx.list<AutomationOccurrence>('automationOccurrences')).filter(o => o.conversationId === room.id && o.taskId === room.employeeTaskId && !o.deletedAt && o.status === 'queued').sort(compareQueuedOccurrences)
-    for (const o of occurrences) {
-      const dispatch = await tx.get<AutomationDispatch>('automationDispatches', o.id)
-      if (dispatch?.status !== 'pending' || !dispatch.definition) continue
-      const message = dispatch.definition.employeeTask?.message
-      items.push({ id: o.id, conversationId: room.id, revision: o.stateVersion, content: message?.content || dispatch.definition.prompt, createdAt: o.admittedAt ?? o.startedAt, attachmentCount: message?.materialUploads?.length || message?.materialSelections?.length || 0 })
-    }
-    return { items }
-  })
-  throw new Error('消息队列仅用于独立任务会话')
+  if (!room.employeeTaskId) throw new Error('消息队列仅用于独立任务会话')
+  const rows = (await store.queuedTaskDispatches(room.id, room.employeeTaskId)).filter(row => !row.occurrence.deletedAt)
+  rows.sort((a, b) => compareQueuedOccurrences(a.occurrence, b.occurrence))
+  const items: ConversationQueueItem[] = []
+  for (const { occurrence, dispatch } of rows) {
+    if (!dispatch.definition) continue
+    const message = dispatch.definition.employeeTask?.message
+    items.push({
+      id: occurrence.id, conversationId: room.id, revision: occurrence.stateVersion,
+      content: message?.content || dispatch.definition.prompt, createdAt: occurrence.admittedAt ?? occurrence.startedAt,
+      attachmentCount: message?.materialUploads?.length || message?.materialSelections?.length || 0,
+    })
+  }
+  return { items }
 }
