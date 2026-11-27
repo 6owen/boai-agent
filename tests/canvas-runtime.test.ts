@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 画板命令的类型与输入校验沿插件公开协议，宿主和执行适配器直接使用。
  * [INPUT]: Isolated plugin settings/workspaces, scoped employee contexts and controlled host replies.
  * [OUTPUT]: Permissions, scope, cancellation/draining, export integrity and shared API/native media evidence.
  * [POS]: WT4 directed runtime tests; no model, personal profile or visible desktop calls.
@@ -14,7 +15,8 @@ import { noopObserve, type Tool } from '@mastra/core/tools'
 import { createStageAgent } from '../packages/runtime/src/adapters/mastra/agent-factory'
 import type { EngineContext } from '../packages/runtime/src/contracts'
 import { CanvasService } from '../packages/runtime/src/modules/canvas/service'
-import { createCanvasOperations, canvasAgentRequestSchema } from '../packages/runtime/src/adapters/mastra/canvas-tools'
+import { canvasAgentRequestSchema } from '@boai/canvas-plugin/tools'
+import { createCanvasOperations } from '../packages/runtime/src/adapters/mastra/canvas-tools'
 import { createNativeProducts } from '../packages/runtime/src/adapters/native-products'
 import { PluginSettingsStore } from '../apps/electron/src/main/plugin-settings'
 import { CANVAS_PLUGIN_ID, type CanvasExportResult, type CanvasHostEnvelope, type CanvasHostResponse, type CanvasMutationResult } from '../packages/canvas-plugin/src/protocol'
@@ -171,6 +173,7 @@ it('uses the same strict tool schema for API/native, returns PNG separately and 
   f.context.canvasEnabled = true; f.context.callCanvas = input => f.service.call(input, f.context)
   const operations = createCanvasOperations(f.context)
   expect(operations.map(value => value.name)).toEqual(['call_canvas'])
+  expect(operations[0]!.schema).toBe(canvasAgentRequestSchema)
   expect(createCanvasOperations({ ...f.context, canvasEnabled: false })).toEqual([])
   expect(createCanvasOperations({ ...f.context, work: { organization: {} } } as EngineContext)).toEqual([])
   const native = createNativeProducts(f.context), tool = native.tools.find(value => value.name === 'call_canvas')!
