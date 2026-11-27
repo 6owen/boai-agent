@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 本机协议与宿主命令复用进程组实际退出屏障，独立原生传输可单独装载。
  * [OUTPUT]: 员工进程使用原run短期环境租约，剥离owner/服务密钥变量，实际退出后撤回；不可用时禁止CLI用户配置回退。
  * [OUTPUT]: 2026-10-11 持续原生Claude生产驱动支持本机登录/显式API、原生工具与公开过程；旧私有阶段仅作兼容回归。
  * [OUTPUT]: 原生会话支持双向stdio交互、按选择的原生权限批准；不以累计输出大小或隐式期限截断长任务。
@@ -14,9 +15,8 @@ import { assertNativeProcessGuard } from '../native-process-guard'
 import { join } from 'node:path'
 import { spawn } from 'node:child_process'
 import { StringDecoder } from 'node:string_decoder'
-import { waitForProcessGroupExit } from '../mastra/host-command'
+import { NATIVE_PROCESS_SUPERVISOR, waitForProcessGroupExit } from '../native-process-supervisor'
 import { CLAUDE_INPUT_LIMIT } from './policy'
-import { CLAUDE_SUPERVISOR } from './supervisor'
 import { employeeEnvironment } from '@boai/shared/cli/employee-environment'
 import type { RunCliEnvironment } from '@boai/shared/cli/run-access'
 
@@ -43,7 +43,7 @@ export async function runClaudeProcess(input: {
   const lineLimit = input.native ? NATIVE_LINE_LIMIT : LINE_LIMIT
   if (input.timeoutMs !== undefined && (!Number.isFinite(input.timeoutMs) || input.timeoutMs <= 0)) throw new Error('Claude缺少有效执行期限')
   if (Buffer.byteLength(input.stdin ?? '') > CLAUDE_INPUT_LIMIT) throw new Error('Claude输入超过受管传输限制')
-  const child = spawn(process.execPath, ['--input-type=commonjs', '-e', CLAUDE_SUPERVISOR],
+  const child = spawn(process.execPath, ['--input-type=commonjs', '-e', NATIVE_PROCESS_SUPERVISOR],
     { cwd: input.cwd, env: { ...employeeEnvironment(input.env, input.cliEnvironment), ELECTRON_RUN_AS_NODE: '1' },
       shell: false, detached: true, stdio: ['pipe', 'pipe', 'pipe', 'ipc'] })
   let cliExitReceived = false

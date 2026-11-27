@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 本机协议与宿主命令复用进程组实际退出屏障，独立原生传输可单独装载。
  * [OUTPUT]: Every new cross-directory value cycle fails, including when an obsolete migration file is present.
  * [OUTPUT]: 跨目录但不形成文件环的业务依赖按逐方向清单核对，延迟和类型引用不计。
  * [OUTPUT]: 机器依赖图沿真实解析目标区分类型、静态/延迟、CommonJS 和公开重导出。
@@ -8,6 +9,7 @@
  * [POS]: Contract tests for pnpm check:workspace without the application build.
  * [PROTOCOL]: Update this header and tests/.folder.md when changing this contract.
  */
+import { build } from 'esbuild'
 import { execFileSync } from 'node:child_process'
 import { copyFile, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
@@ -108,4 +110,16 @@ it('checks package manifests and actual module initialization against the same d
   } finally {
     await rm(root, { recursive: true, force: true })
   }
+})
+
+it.each([
+  'adapters/codex/client',
+  'adapters/claude/process',
+])('keeps the model SDK out of the standalone %s bundle', async entry => {
+  const result = await build({
+    entryPoints: [`packages/runtime/src/${entry}.ts`], bundle: true, platform: 'node',
+    format: 'esm', target: 'node22', packages: 'external', write: false, metafile: true,
+  })
+  const imports = Object.values(result.metafile.outputs).flatMap(output => output.imports)
+  expect(imports.filter(item => item.path.startsWith('@mastra/'))).toEqual([])
 })
