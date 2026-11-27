@@ -330,7 +330,7 @@ execution: runId或内部作业ID、取消信号、当前有效版本
 | 人格与模块 | AGENTS、SOUL及`prompts/{direct,group,channel,task,emotion,reflection,greeting,travel}.md`十个登记源；每文件64 KiB，取消原两文件合计12000字符上限 | 人格/场景编辑与页内配置源文件共用原Dialog、`employees.readFile/writeFile` |
 | 基础人格 | 按固定`T-c30259259edee3`与`T-cba8851d2a6bb0`原文适配，保留具体语气、例子、禁用客服开场、观点、幽默和语言规则 | [bobo-persona.ts](../packages/shared/src/domain/bobo-persona.ts)；`agent-presets.ts`引用 |
 | 自定义保留 | 只升级内容精确匹配旧出厂默认的bobo人格；自定义SOUL不覆盖。八个新模块首次补齐，已登记后丢失的文件显示缺失并阻止错误加载 | 原员工初始化/manifest/hash保存流程 |
-| 共享装配 | API/native都按实际场景选择模块；静态规则、动态状态分开。普通Run的bootstrap保留模块文件、hash、来源ID、选择原因和版本；行为记录保留同样证据 | [context-compiler.ts](../packages/runtime/src/modules/employees/context-compiler.ts)、原WorkspaceService |
+| 共享装配 | API/native都按实际场景选择模块；静态规则、动态状态分开。普通Run的bootstrap保留模块文件、hash、来源ID、选择原因和版本；行为记录保留同样证据 | [context-compiler.ts](../packages/runtime/src/modules/contexts/context-compiler.ts)、原WorkspaceService |
 | 原生续聊 | 情绪/疲劳变化只进当轮数据，不改变会话静态指纹；人格文件或功能工具开关变化才刷新相应会话 | Codex/Claude实际stdio协议测试已核对 |
 | 高权限bobo | 新核心API预设为完全访问；旧核心未设置整体权限时迁移，已明确设置的只读/审批保留。本机现有权限不强改。本人当前消息中的群/工作管理沿原业务工具 | 原员工权限入口；真实核心身份和来源由宿主确定 |
 | 持久状态 | 原SQLite保存全局/会话情绪、疲劳、虚拟旅行和小幅成长；CAs更新、情绪衰减、每消息只计一次疲劳。成长保留来源消息及父记忆版本，忘记/删除后不再注入 | [agent-state/](../src/runtime/modules/agent-state/)；`employees.state/updateState`与固定身份自我工具 |

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: contexts 按共享场景表编译员工来源与状态；默认通信场景由工作区装配统一选择。
  * [OUTPUT]: 实际工作区装配验证任务/问候叠加会话规则、独立关闭/修改hash与私有后台隔离。
  * [OUTPUT]: 仅笔记父版本可支撑真实情绪历史，来源删除后不可再用于反思。
  * [OUTPUT]: 情绪更新保留实际时间与来源，反思沿原记忆权限读取及失效；独立候选评估不修改预设。
@@ -21,7 +22,7 @@ import { AgentStateService, effectiveAgentState } from '../packages/runtime/src/
 import { clearAgentPersonality } from '../packages/runtime/src/modules/agent-state/lifecycle'
 import { AgentBehaviorService } from '../packages/runtime/src/modules/automations/agent-behaviors'
 import { NativeSchedules, BEHAVIOR_WORKFLOW } from '../packages/runtime/src/modules/automations/native-schedules'
-import { compileAgentContext } from '../packages/runtime/src/modules/employees/context-compiler'
+import { compileAgentContext } from '../packages/runtime/src/modules/contexts/context-compiler'
 import { defaultAgentProfile, primaryPersonalityRoom, type AgentBehaviorRun, type AgentBehaviorDefinition } from '../packages/shared/src/domain/agent-profile'
 import { PERSONALITY_HEARTBEAT, personalityBehavior, personalityDue, reflectionRooms } from '../packages/runtime/src/modules/automations/personality-policy'
 import { reflectionContext } from '../packages/runtime/src/modules/agent-state/reflection-context'
@@ -466,6 +467,9 @@ it('counts sleep from the actual sleep action and does not reset the clock on in
 })
 
 it.each([
+  ['direct', false, undefined, ['direct']],
+  ['group', false, undefined, ['group']],
+  ['group', true, undefined, ['group', 'channel']],
   ['direct', false, 'task', ['direct', 'task']],
   ['group', false, 'task', ['group', 'task']],
   ['direct', true, 'task', ['direct', 'channel', 'task']],
@@ -478,7 +482,7 @@ it.each([
   const conversation: Conversation = { ...f.room, kind, ...(channel ? { channel: { platform: 'telegram', tenantId: 'tenant', chatId: 'external', kind } as const } : {}) }
   const loaded = await homes.load(f.agent, conversation, { entries: [], epoch: 0, namespace: 'employee:bobo' }, 'surface-run', { profile: defaultAgentProfile('bobo', true), scene })
   const evidence = loaded.bootstrap.promptEvidence!
-  expect(evidence.scene).toBe(scene)
+  expect(evidence.scene).toBe(scene ?? (channel ? 'channel' : kind))
   expect(evidence.modules.map(item => item.id)).toEqual(['employee.rules', 'employee.personality', ...selected])
   expect(new Set(evidence.modules.map(item => item.id)).size).toBe(evidence.modules.length)
   for (const id of selected) {
