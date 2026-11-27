@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 /*
+ * [OUTPUT]: 提供明确最终阶段及分段文本用于核验回复预览。
  * [OUTPUT]: 支持同一启动文件的版本升级及initialize/thread故障注入，用于零模型版本刷新回归。
  * [OUTPUT]: turn/steer确定性夹具保留原turn，记录单次输入并覆盖拒绝/断流。
  * [OUTPUT]: 当前轮次补充严格校验expectedTurnId，覆盖同轮生效、拒绝与效果后断流，零真实模型。
@@ -108,6 +109,12 @@ createInterface({input:process.stdin}).on('line',async line=>{
   ev('item/commandExecution/outputDelta',{itemId:'shell',delta:'完整输出🌱'.repeat(30000)})
   ev('item/completed',{item:{id:'shell',type:'commandExecution',command:'fixture long-output',status:'completed',exitCode:0}})
   ev('plugin/newOperation',{itemId:'extension',title:'原生插件事件',result:'full extension'})
+ }
+ if(text.includes('NATIVE_FINAL_STREAM')){
+  ev('item/started',{item:{id:'answer',type:'agentMessage',phase:'final_answer',text:''}})
+  ev('item/agentMessage/delta',{itemId:'answer',delta:reply.slice(0,2)})
+  await new Promise(resolve=>setTimeout(resolve,1000))
+  ev('item/agentMessage/delta',{itemId:'answer',delta:reply.slice(2)})
  }
  ev('item/completed',{item:{id:'answer',type:'agentMessage',phase:'final_answer',text:reply}})
  const outputTokens=text.includes('NATIVE_HIGH_USAGE')?29653:5

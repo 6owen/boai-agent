@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Codex明确最终答复在原生活动轮次即时预览，沿同一标识正式发布。
  * [OUTPUT]: 显式cwd仅固定当前消息；后续空闲主聊沿员工默认，原生权限回归读取该轮实际工作区日志并核对外部目录零追加。
  * [OUTPUT]: WT3显式项目目录跨后续消息保持；原生权限回归在当前项目核对真实新调用。
  * [OUTPUT]: 双待决输入先等待原请求真实消息就绪，保持原数量/目标/接续断言及总期限；追加延迟第二员工和缺问题终态负例。
@@ -33,6 +34,7 @@ import type { AutomationDefinition, AutomationOccurrence, Conversation, Conversa
 import type { BrowserActionEnvelope, BrowserHostBridge, BrowserLease } from '../packages/shared/src/ipc/browser'
 import { parseBrowserSingleCommand } from '../packages/runtime/src/adapters/mastra/browser-tool-runtime'
 import type { ExecutionEvidence, ExecutionEvidencePage, NativeAction } from '../packages/shared/src/domain/execution'
+import type { ConversationView } from '../packages/shared/src/domain/reading'
 const disposals: (()=>Promise<void>)[]=[]
 afterEach(async()=>{for(const close of disposals.splice(0).reverse())await close()})
 describe.each(['codex', 'claude'] as const)('%s 原生员工', runtime => {
@@ -221,6 +223,23 @@ it('exposes narration and reasoning while execution is still running, without pu
  expect(live.messages.filter(message => message.senderType === 'agent')).toHaveLength(0)
  expect(page!.items.some(event => event.eventType === 'agent.text.block' && (event.payload as {text?:string}).text === '正在处理原生请求。')).toBe(true)
  expect(JSON.stringify(page)).not.toContain('private-reasoning')
+})
+
+it.runIf(runtime === 'codex')('previews the declared final answer before publishing the same message', async () => {
+ const f = await setup(), trigger = await f.send('NATIVE_FINAL_STREAM')
+ const view = async () => await f.service.handle('getConversationView', { conversationId: f.chat.id, limit: 10 }) as ConversationView
+ let current: ConversationView | undefined
+ await expect.poll(async () => {
+  current = await view()
+  const run = current.runs.find(run => run.triggerMessageId === trigger.id)
+  return run && current.replyPreviews?.[run.id]
+ }, { timeout: 5000, interval: 50 }).toBe('普通')
+ const run = current!.runs.find(run => run.triggerMessageId === trigger.id)!
+ expect(run.status).toBe('running')
+ expect(current!.messages.filter(message => message.senderType === 'agent')).toEqual([])
+ const final = await f.wait(trigger)
+ expect(final.messages.filter(message => message.senderType === 'agent')).toEqual([expect.objectContaining({ id: run.messageId, content: '普通回复', status: 'completed' })])
+ expect((await view()).replyPreviews).toBeUndefined()
 })
 
 it('reads images through the native browser tool without Work, then lazily claims a real write and preserves read receipts',async()=>{

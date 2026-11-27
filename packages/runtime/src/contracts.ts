@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 执行适配器可提供只面向当前会话窗口的回复预览。
  * [OUTPUT]: 2026-11-24 第三阶段：API 执行补充交给 Session.steer；Trace 从官方存储查询，兼容既有业务历史。
  * [OUTPUT]: 2026-11-24 提供官方指标投影及团队/PPT辅助模型端口，原生后端不强制实现。
  * [OUTPUT]: API 引擎可为当前会话的首轮文本生成标题。
@@ -282,6 +283,8 @@ export interface EngineContext {
   onProgress?(event: Pick<import('@boai/shared/domain').ExecutionProgressEvent, 'id' | 'kind' | 'text'>): Promise<void>
   onTrace?(span: TraceSpan): Promise<void>
   onTraceError?(error: string): Promise<void>
+  /** Replace or clear the current reply preview without publishing a message. */
+  onReplyPreview?(text: string): void
   onDelta(text: string): Promise<void>
   onTool(event: ToolEvent): Promise<void>
   approveCommand(command: string, cwd: string): Promise<boolean>

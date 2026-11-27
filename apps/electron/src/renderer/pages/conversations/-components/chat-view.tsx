@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 回复正文在普通消息卡内逐步增长，沿原消息标识接收最终发布；活动回复可停止。
  * [OUTPUT]: 隐藏期间解除内容尺寸监听，恢复会话时沿用原阅读锚点或贴底意图。
  * [OUTPUT]: 会话仅在有待发送材料时向 Composer 提供附件区。
  * [OUTPUT]: 2026-11-24 第三阶段：已有补充入口支持 API Controller 活跃轮次，仍按当前配置和授权开放。
@@ -111,7 +112,7 @@ import { ComposerToolbar, type ComposerAgentPatch, type ComposerAgentSaveResult 
 import { ConversationHeader } from './conversation-header'
 import { Fragment, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { LoaderCircle, Reply, ShieldCheck, X } from '@/components/icons/index'
-import type { Approval, Artifact, Conversation, ConversationDetail, DigitalAgent, Snapshot } from '@boai/shared/domain'
+import type { Approval, Artifact, Conversation, ConversationDetail, DigitalAgent, Message, Snapshot } from '@boai/shared/domain'
 import { MATERIAL_LIMITS, type ConversationMaterial } from '@boai/shared/domain/materials'
 import { isChannelConversation } from '@boai/shared/domain/conversation-list'
 import { Avatar, timeText } from '@/components/common/index'
@@ -127,6 +128,7 @@ import { SelectField } from '@/components/ui/select-field'
 import type { ArtifactRevisionInput } from '@boai/shared/domain/artifacts'
 import { MessageCard } from './message-card'
 import { ChatExecutionCard, MessageReceipt } from './execution-progress'
+import { ExecutionStopButton } from '@/components/detail-panel/execution-stop-button'
 import { AgentInfoPopover } from './agent-info-popover'
 import { draftContent } from '../inline-mentions'
 import { MaterialDraftBar, SentMaterialList, type MaterialDraftItem } from './material-list'
@@ -227,7 +229,6 @@ function ChatHistory({ historyHeader, api, onTasks, onEmployeeTask, onCreateTask
   const messages = groupMessages(detail)
   const messagesById = new Map(messages.map(message => [message.id, message]))
   const queuedIds = new Set((detail.turns ?? []).filter(turn => turn.queueRemoved || conversation.employeeTaskId && turn.status === 'queued' && !turn.origin && !turn.wakeId).map(turn => turn.triggerMessageId))
-  const messageRows = detail.messagePage.items.filter(item => !queuedIds.has(item.messageId)).map(item => ({ item, message: messagesById.get(item.messageId) }))
   const catalogItems = useCatalogResults(api, conversation.id, pageActive && isCoreConversation(conversation) && !!onOpenCatalog)
   const catalogByMessage = catalogResultsByMessage(catalogItems, detail)
   const files = artifactsByMessage(detail)
@@ -255,12 +256,40 @@ function ChatHistory({ historyHeader, api, onTasks, onEmployeeTask, onCreateTask
   const failedAnchor = (run: typeof failedRuns[number]) => detail.messages.some(message => message.id === run.triggerMessageId) ? run.triggerMessageId : run.messageId
   const failedRunsFor = (messageId: string) => failedRuns.filter(run => failedAnchor(run) === messageId)
   const inWindow = (run: typeof activeRuns[number]) => detail.messagePage.items.some(item => item.messageId === run.triggerMessageId || item.messageId === run.messageId)
-  const executionRuns = [...activeRuns.filter(run => run.phase === 'execution' && (latestPage.current || !pageEdges.after || inWindow(run))), ...failedRuns.filter(run => (latestPage.current || !pageEdges.after) && displayedLiveRuns.current.has(run.id) && !detail.messages.some(message => message.id === failedAnchor(run)))]
-  const streamingRunIds = new Set(executionRuns.map(run => run.id))
+  const visibleRuns = [...activeRuns.filter(run => run.phase === 'execution' && (latestPage.current || !pageEdges.after || inWindow(run))), ...failedRuns.filter(run => (latestPage.current || !pageEdges.after) && displayedLiveRuns.current.has(run.id) && !detail.messages.some(message => message.id === failedAnchor(run)))]
   const mirrors = (detail.executionMirrors ?? []).map(mirror => ({ ...mirror, messageId: detail.messages.find(message => message.automationPublication?.sourceConversationId === mirror.run.conversationId && message.automationPublication.sourceMessageId === mirror.run.messageId)?.id ?? mirror.messageId })).filter(({ run, triggerMessage, messageId }) =>
     run.status !== 'completed' && ((['queued', 'running', 'waiting_approval'].includes(run.status) && (latestPage.current || !pageEdges.after)) || detail.messages.some(message => message.id === triggerMessage.id || message.id === messageId)))
   const mirrorAnchor = (mirror: typeof mirrors[number]) => detail.messages.some(message => message.id === mirror.triggerMessage.id) ? mirror.triggerMessage.id : mirror.messageId
-  const mirroredMessageIds = new Set(mirrors.map(mirror => mirror.messageId).filter(Boolean))
+  const mirrorByMessage = new Map(mirrors.map(mirror => [mirror.messageId, mirror]))
+  const previewsByMessage = new Map(visibleRuns.flatMap(run => {
+    const text = detail.replyPreviews?.[run.id]
+    return run.status === 'running' && run.messageId && text?.trim() ? [[run.messageId, { run, text }] as const] : []
+  }))
+  const messageRows = detail.messagePage.items.filter(item => !queuedIds.has(item.messageId)).map(item => {
+    const message = messagesById.get(item.messageId)
+    const preview = previewsByMessage.get(item.messageId)
+    if (preview && message?.senderType === 'agent' && message.status === 'streaming' && !message.content) {
+      return { item, message: { ...message, content: preview.text }, preview: true }
+    }
+    return { item, message, preview: false }
+  })
+  if (latestPage.current || !pageEdges.after) for (const [messageId, { run, text }] of previewsByMessage) {
+    if (messagesById.has(messageId) || detail.messagePage.items.some(item => item.messageId === messageId)) continue
+    const sequence = detail.messagePage.items.at(-1)?.sequence ?? 0
+    const message: Message = { id: messageId, conversationId: run.conversationId, runId: run.id, turnId: run.turnId, senderType: 'agent', senderId: run.agentId, senderName: run.agentName, content: text, status: 'streaming', sequence, createdAt: run.createdAt, origin: run.origin }
+    messageRows.push({ item: { messageId, sequence, status: 'available' }, message, preview: true })
+  }
+  const visibleReplies = new Set(messageRows.flatMap(({ message }) =>
+    message?.senderType === 'agent' && message.content.trim() && (message.status === 'streaming' || message.status === 'completed') ? [message.id] : [],
+  ))
+  const executionRuns = visibleRuns.filter(run =>
+    (run.status !== 'running' && run.status !== 'queued') || !visibleReplies.has(run.messageId),
+  )
+  const executionRunIds = new Set(executionRuns.map(run => run.id))
+  const processMirrors = mirrors.filter(mirror =>
+    (mirror.run.status !== 'running' && mirror.run.status !== 'queued') || !mirror.messageId || !visibleReplies.has(mirror.messageId),
+  )
+  const runningReplies = new Map(visibleRuns.map(run => [run.messageId, run]))
   const executionCard = (run: typeof activeRuns[number]) => {
     const agent = snapshot.agents.find(member => member.id === run.agentId)
     return <article key={run.id} className="message-row agent">
@@ -414,22 +443,23 @@ function ChatHistory({ historyHeader, api, onTasks, onEmployeeTask, onCreateTask
       {paging && <div className="chat-history-page-loading" role="status"><span><LoaderCircle size={12} className="spinner" />正在载入更多消息…</span></div>}
       {reading.error && <><Banner>{reading.error}</Banner><Button variant="link" size="sm" onClick={() => void reading.check()}>核对阅读状态</Button></>}
       {historyHeader}
-      {!historyHeader && !detail.messagePage.items.length && !executionRuns.length && !mirrors.length && (channel ? <IllustratedEmpty kind="conversations" title="暂无渠道消息" /> : <div className="chat-empty"><div className="avatar-stack">{members.map(a => <Avatar key={a.id} name={a.name} seed={a.id} avatar={a.avatar} color={a.color} />)}</div><h2>{conversation.kind === 'group' ? '同事们已在这里' : `与${members[0]?.name ?? '数字员工'}聊一聊`}</h2><p>{conversation.kind === 'group' ? '直接开始交流。每位员工会根据自己的角色判断是否回应。' : '从日常交流到具体工作，都可以直接提出。'}</p></div>)}
-      {messageRows.map(({ item, message }, index) => {
+      {!historyHeader && !messageRows.length && !executionRuns.length && !mirrors.length && (channel ? <IllustratedEmpty kind="conversations" title="暂无渠道消息" /> : <div className="chat-empty"><div className="avatar-stack">{members.map(a => <Avatar key={a.id} name={a.name} seed={a.id} avatar={a.avatar} color={a.color} />)}</div><h2>{conversation.kind === 'group' ? '同事们已在这里' : `与${members[0]?.name ?? '数字员工'}聊一聊`}</h2><p>{conversation.kind === 'group' ? '直接开始交流。每位员工会根据自己的角色判断是否回应。' : '从日常交流到具体工作，都可以直接提出。'}</p></div>)}
+      {messageRows.map(({ item, message, preview }, index) => {
         if (!message) return <article key={item.messageId} id={`message-${item.messageId}`} data-reading-message-id={item.messageId} className={focusMessage?.id === item.messageId ? 'message-target' : undefined} tabIndex={-1}>
           <Banner>{item.reason ?? '这条内容已被清理或不可用。'}</Banner>
           {(detail.materials ?? []).filter(material => material.messageId === item.messageId && ['ready', 'unavailable'].includes(material.status)).map(material => <Button key={material.id} variant="link" size="sm" aria-label={`核对材料 ${materialDisplayName(material.name)}`} onClick={() => onPreviewMaterial(material)}>核对材料：{materialDisplayName(material.name)}</Button>)}
         </article>
-        const attachedMirrors = mirrors.filter(mirror => mirrorAnchor(mirror) === message.id)
-        if (message.status === 'streaming' && mirroredMessageIds.has(message.id)) return <Fragment key={message.id}>{attachedMirrors.map(mirror => executionCard(mirror.run))}</Fragment>
-        if (message.status === 'streaming' && message.automationPublication && message.senderType === 'agent' && !message.content) return null
-        // Message events can arrive before the run snapshot; do not flash the old empty typing bubble.
-        if (message.status === 'streaming' && message.runId) {
-          if (streamingRunIds.has(message.runId)) return null
-          if ((latestPage.current || !pageEdges.after) && message.senderType === 'agent' && !message.content
+        const attachedMirrors = processMirrors.filter(mirror => mirrorAnchor(mirror) === message.id)
+        const mirror = mirrorByMessage.get(message.id)
+        if (message.status === 'streaming' && !message.content.trim()) {
+          if (mirror) return <Fragment key={message.id}>{attachedMirrors.map(mirror => executionCard(mirror.run))}</Fragment>
+          if (message.automationPublication && message.senderType === 'agent') return null
+          // Message events can arrive before the run snapshot; skip the empty typing bubble.
+          if (message.runId && (executionRunIds.has(message.runId) || (latestPage.current || !pageEdges.after) && message.senderType === 'agent'
             && !message.materialIds?.length && !files.get(message.id)?.length && !message.channelPublication?.artifacts.length
-            && !detail.runs.some(run => run.id === message.runId)) return null
+            && !detail.runs.some(run => run.id === message.runId))) return null
         }
+        const replyRun = message.status === 'streaming' ? runningReplies.get(message.id) ?? mirror?.run : undefined
         const agent = snapshot.agents.find(value => value.id === message.senderId)
         const quoted = message.replyToMessageId ? messagesById.get(message.replyToMessageId) : undefined
         const previous = messageRows[index - 1]?.message
@@ -456,9 +486,12 @@ function ChatHistory({ historyHeader, api, onTasks, onEmployeeTask, onCreateTask
             {message.channelPublication?.artifacts.filter(ref => !files.get(message.id)?.some(artifact => artifact.id === ref.id)).map(ref => <Button key={ref.id} size="sm" variant="secondary" onClick={() => onPreviewArtifact({ ...ref, path: '', size: 0 })}>{ref.name}</Button>)}
             {artifactRequests.filter(value => files.get(message.id)?.some(artifact => artifact.id === pendingArtifactId(value))).map(value => <PendingArtifactActions key={JSON.stringify([value.scope, value.logicalArtifactId])} pending={value} artifacts={detail.artifacts} actions={artifactActions} active={pageActive} onRestoreRevision={restoreRevision} />)}
             {message.status === 'completed' && message.runId && detail.runs.find(run => run.id === message.runId)?.backend?.kind === 'acp-local' && <ExternalFiles runId={message.runId} />}
-            {message.status !== 'completed' && <small className={`message-status ${message.status}`}>{message.status === 'streaming' ? '正在回复' : message.status === 'cancelled' ? '已取消 · 已有内容保留' : message.status === 'interrupted' ? '执行中断，可在执行过程中查看' : '回复失败，请查看执行过程'}</small>}
+            {message.status === 'streaming' ? <div className="mt-2 flex items-center gap-2" data-slot="streaming-reply">
+              <small className="text-[length:var(--text-ui-caption)] leading-relaxed text-muted-foreground">正在回复</small>
+              {replyRun && (replyRun.status === 'running' || replyRun.status === 'queued') && <ExecutionStopButton api={api} run={replyRun} active={pageActive} compact />}
+            </div> : message.status !== 'completed' && <small className={`message-status ${message.status}`}>{message.status === 'cancelled' ? '已取消 · 已有内容保留' : message.status === 'interrupted' ? '执行中断，可在执行过程中查看' : '回复失败，请查看执行过程'}</small>}
         </>
-        return <Fragment key={message.id}><article className={`message-row ${message.senderType}${continued ? ' message-continuation' : ''}${focusMessage?.id === message.id ? ' message-target' : ''}`} aria-label={`${sender} ${timeText(message.createdAt)}`} tabIndex={-1} key={message.id} id={`message-${message.id}`} data-reading-message-id={message.id}>
+        return <Fragment key={message.id}><article className={`message-row ${message.senderType}${continued ? ' message-continuation' : ''}${focusMessage?.id === message.id ? ' message-target' : ''}`} aria-label={`${sender} ${timeText(message.createdAt)}`} tabIndex={-1} key={message.id} id={preview ? undefined : `message-${message.id}`} data-reading-message-id={preview ? undefined : message.id}>
           <div className="message-avatar">{isPersonalMessage(message) || message.channel?.owner ? <UserInfoPopover profile={snapshot.userProfile} onProfile={onProfile} /> : message.channel ? <Avatar name={message.senderName} seed={message.senderId} />: message.senderType === 'user' ? <span className="relative inline-flex"><UserInfoPopover profile={snapshot.userProfile} onProfile={onProfile} />{message.origin?.kind === 'automation' && <span aria-label="定时任务" className="pointer-events-none absolute -right-1 -bottom-1 flex size-3.5 items-center justify-center rounded-sm bg-background text-[length:var(--text-ui-micro)] leading-none font-medium text-muted-foreground ring-1 ring-border">定</span>}</span> : message.senderType === 'system' ? <span className="avatar system-avatar" aria-hidden="true">·</span> : agent ? <AgentInfoPopover agent={agent} resources={snapshot.resources} onConfigure={() => onConfigureAgent(agent)} /> : <Avatar name={message.senderName || '系统'} seed={message.senderId} />}</div>
           <div className="message-main">
             <div className={`message-meta${!group ? ' message-meta-direct' : ''}`}>
@@ -468,7 +501,7 @@ function ChatHistory({ historyHeader, api, onTasks, onEmployeeTask, onCreateTask
               <time dateTime={message.createdAt}>{timeText(message.createdAt)}</time>
               {!useCard && <Button variant="ghost" size="icon-sm" className="reply-action" aria-label={`引用 ${messageDisplayName(message, snapshot.userProfile)} 的消息`} disabled={sendingLocked} onClick={() => quote(message.id)}><Reply size={14} /></Button>}
             </div>
-            {useCard ? <MessageCard message={message} attachments={hasFile && attachments} separateAttachments={Boolean(showBubble || message.replyToMessageId)} profile={snapshot.userProfile} receipt={!group && isPersonalMessage(message) ? <MessageReceipt runs={sourceRuns} steering={message.nativeSteering} /> : undefined} onReply={() => quote(message.id)} onTrace={() => onTrace(message)} onCreateTask={onCreateTask && message.senderType === 'user' && !message.employeeTaskId && !message.automationPublication && !message.origin ? () => onCreateTask(message) : undefined} onTask={message.employeeTaskId && onEmployeeTask ? () => onEmployeeTask(message.employeeTaskId!) : onTasks && (message.automationPublication || message.origin?.kind === 'automation') ? () => onTasks(message.automationPublication?.occurrenceId ?? (message.origin?.kind === 'automation' ? message.origin.occurrenceId : undefined)) : undefined} onPublish={channel && !historicalChannel && message.senderType === 'agent' && message.status === 'completed' && onPublish ? () => onPublish(message) : undefined} publishDisabled={busy || receipts.some(delivery => ['sent', 'sending'].includes(delivery.status))} publishDescription={channelDeliveryDescription(receipts)}>{body}</MessageCard> : <>{body}{hasFile && attachments}</>}
+            {useCard ? <MessageCard message={message} provisional={preview} attachments={hasFile && attachments} separateAttachments={Boolean(showBubble || message.replyToMessageId)} profile={snapshot.userProfile} receipt={!group && isPersonalMessage(message) ? <MessageReceipt runs={sourceRuns} steering={message.nativeSteering} /> : undefined} onReply={() => quote(message.id)} onTrace={() => onTrace(message)} onCreateTask={onCreateTask && message.senderType === 'user' && !message.employeeTaskId && !message.automationPublication && !message.origin ? () => onCreateTask(message) : undefined} onTask={message.employeeTaskId && onEmployeeTask ? () => onEmployeeTask(message.employeeTaskId!) : onTasks && (message.automationPublication || message.origin?.kind === 'automation') ? () => onTasks(message.automationPublication?.occurrenceId ?? (message.origin?.kind === 'automation' ? message.origin.occurrenceId : undefined)) : undefined} onPublish={channel && !historicalChannel && message.senderType === 'agent' && message.status === 'completed' && onPublish ? () => onPublish(message) : undefined} publishDisabled={busy || receipts.some(delivery => ['sent', 'sending'].includes(delivery.status))} publishDescription={channelDeliveryDescription(receipts)}>{body}</MessageCard> : <>{body}{hasFile && attachments}</>}
 
             {interruptedTurn && <div role="status" className="field-hint" data-interrupted-turn-id={interruptedTurn.id}><span>该轮处理已中断，已有回复和成果保留；未自动重新执行。</span><Button variant="link" size="sm" onClick={() => onTrace(message)}>查看执行过程</Button></div>}
             {!interruptedTurn && message.senderType === 'user' && detail.runs.filter(run => run.triggerMessageId === message.id && run.phase === 'decision' && ['failed', 'interrupted'].includes(run.status) && !detail.runs.some(next => next.triggerMessageId === message.id && next.agentId === run.agentId && next.phase === run.phase && next.createdAt > run.createdAt)).map(run => <div key={run.id} role="status" className="field-hint"><span>{run.agentName}：{run.error ? failureSummary(run.error) : '处理已中断，请查看执行过程。'}</span></div>)}
@@ -483,7 +516,7 @@ function ChatHistory({ historyHeader, api, onTasks, onEmployeeTask, onCreateTask
       {isCoreConversation(conversation) && <CoreTeamResults api={api} detail={detail} snapshot={snapshot} active={pageActive} busy={busy} onGroup={onTeamGroup} />}
       {isCoreConversation(conversation) && <CoreCollaborationResults api={api} conversationId={conversation.id} snapshot={snapshot} active={pageActive} busy={busy} onGroup={onTeamGroup} onAgent={onConfigureAgent} />}
       {executionRuns.map(run => executionCard(run))}
-      {mirrors.filter(mirror => !detail.messages.some(message => message.id === mirrorAnchor(mirror))).map(mirror => executionCard(mirror.run))}
+      {processMirrors.filter(mirror => !detail.messages.some(message => message.id === mirrorAnchor(mirror))).map(mirror => executionCard(mirror.run))}
       {approvalGroups.pending.map(approval => <article key={approval.id} className="message-row agent"><div className="message-avatar"><Avatar name={approval.agentName} seed={detail.runs.find(run => run.id === approval.runId)?.agentId ?? approval.id} avatar={snapshot.agents.find(agent => agent.id === detail.runs.find(run => run.id === approval.runId)?.agentId)?.avatar} color={snapshot.agents.find(agent => agent.id === detail.runs.find(run => run.id === approval.runId)?.agentId)?.color} /></div><div className="message-main">{group && <div className="message-meta"><strong>{approval.agentName}</strong></div>}<ApprovalCard approval={approval} busy={busy || !pageActive} onApprove={onApprove} /></div></article>)}
       {artifactRequests.filter(value => !visibleArtifactIds.has(pendingArtifactId(value))).map(value => <PendingArtifactActions key={JSON.stringify([value.scope, value.logicalArtifactId])} pending={value} artifacts={detail.artifacts} actions={artifactActions} active={pageActive} onRestoreRevision={restoreRevision} />)}
     </ScrollArea>
