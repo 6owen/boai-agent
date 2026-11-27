@@ -20,7 +20,7 @@ import { collaborationMessageHash } from '../packages/runtime/src/modules/collab
 import { newWorkBudget, reserveBudgetCall } from '../packages/runtime/src/modules/collaboration/work-budget'
 import { workIntentSchema } from '../packages/runtime/src/modules/collaboration/work-protocol'
 import { GroupScheduler, type SchedulerHooks } from '../packages/runtime/src/group-scheduler'
-import { ConversationHistory } from '../packages/runtime/src/modules/conversations/history'
+import { ConversationHistory } from '../packages/runtime/src/modules/cleanup/conversation-history'
 import type { AgentRun, BudgetModelCall, ClearedBudgetModelCall, CollaborationStartIntent, Conversation, DigitalAgent, DiscussionTurn, Message, WorkBudget, WorkItem, WorkOrganization } from '../packages/shared/src/domain'
 import type { BoboCollaborationOperation } from '../packages/shared/src/domain/bobo-collaboration'
 

@@ -13,8 +13,8 @@ import { join } from 'node:path'
 import { AppService } from '../packages/runtime/src/service'
 import type { DigitalAgent, Snapshot } from '../packages/shared/src/domain'
 import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
-import { ContactDeletionService } from '../packages/runtime/src/modules/employees/contact-deletion'
-import { ConversationHistory } from '../packages/runtime/src/modules/conversations/history'
+import { ContactDeletionService } from '../packages/runtime/src/modules/cleanup/contact-deletion'
+import { ConversationHistory } from '../packages/runtime/src/modules/cleanup/conversation-history'
 
 const fixtures: { root: string; store: ProductStore }[] = []
 const row = (collection: string, id: string, value: object) => ({ collection, id, value: { id, ...value } })

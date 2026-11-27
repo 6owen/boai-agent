@@ -16,7 +16,7 @@ import { ApplicationService } from '../packages/runtime/src/modules/application/
 import { ImageService } from '../packages/runtime/src/modules/media/image-service'
 import { SelfieService, type SelfiePhoto } from '../packages/runtime/src/modules/media/selfie-service'
 import { createSelfieOperations } from '../packages/runtime/src/modules/media/selfie-tools'
-import { ContactDeletionService } from '../packages/runtime/src/modules/employees/contact-deletion'
+import { ContactDeletionService } from '../packages/runtime/src/modules/cleanup/contact-deletion'
 import { createTaskRuntime } from '../packages/runtime/src/adapters/mastra/task-runtime'
 import { createNativeProducts } from '../packages/runtime/src/adapters/native-products'
 import type { ApplicationActor } from '../packages/shared/src/domain/application-protocol'

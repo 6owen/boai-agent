@@ -38,7 +38,7 @@
 | [product-store.ts](../../../packages/runtime/src/adapters/storage/product-store.ts) | JSON records + 复合主键，提供读/比较/写一体事务；外层 write 是 upsert，不是条件认领 |
 | [schedules/index.tsx](../../../apps/electron/src/renderer/pages/schedules/index.tsx) | 已有列表、搜索/筛选、新建编辑、立即运行、暂停删除、预览、历史、通知开关 |
 | [main.ts](../../../apps/electron/src/main/main.ts) | 单实例锁、utility process 生命周期、系统通知、点击打开目标聊天 |
-| [history.ts](../../../packages/runtime/src/modules/conversations/history.ts) | 清理会话内容时更新 occurrence 引用，保留触发身份 |
+| [history.ts](../../../packages/runtime/src/modules/cleanup/conversation-history.ts) | 清理会话内容时更新 occurrence 引用，保留触发身份 |
 
 原生 workflow 的输出是 `dispatched: true`；它没有等待任务交付。因此“Mastra workflow 成功”和“自动化任务交付”本来就是两个阶段，后续 UI 与存储应显式区分。
 

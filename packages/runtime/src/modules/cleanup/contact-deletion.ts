@@ -15,17 +15,18 @@
  * [INPUT]: 宿主已检查空闲的整批员工身份、可选偏好/标签版本、SQLite 和应用数据目录。
  * [OUTPUT]: D4 专属 UUID 副本在删除事务保存真实 hash 清理授权，沿资源清理器失败/重启续清；旧员工目录合同保持原边界。
  * [OUTPUT]: 选中或标签整批员工/记忆/专属资源/多标签关系/展示偏好与剩余群成员同事务删除并保存本地清理日志；固定员工目录安全清理，失败及重启不重新创建员工或执行模型工具。
- * [POS]: employees 的删除一致性边界；宿主先处理单聊/空群，并保留其他群聊历史。
+ * [POS]: cleanup 的跨领域用例，负责员工删除、所拥有的关联状态与后续工作区恢复。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { assertCleanupPath } from './path'
 import { clearApplicationReceipts } from '../application/application-service'
 import { clearContextHandoffs } from '../contexts/context-handoff'
 import { clearAgentPersonality } from '../agent-state/lifecycle'
 import { clearSelfieAlbums } from '../media/selfie-service'
 import { createHash, randomUUID } from 'node:crypto'
 import type { CanvasScopeFilter } from '@boai/canvas-plugin/protocol'
-import { lstat, rm } from 'node:fs/promises'
-import { join, relative, sep } from 'node:path'
+import { rm } from 'node:fs/promises'
+import { join } from 'node:path'
 import type { DigitalAgent, Resource, Conversation } from '@boai/shared/domain'
 import { contactTagIds, emptyContactList, type ContactListPreferences } from '@boai/shared/domain/contact-list'
 import { isCoreAgent } from '@boai/shared/domain/core-agent'
@@ -47,15 +48,8 @@ export class ContactDeletionService {
     if (new Set(agentIds).size !== agentIds.length || agentIds.some(id => !/^[a-zA-Z0-9_-]{1,200}$/.test(id))) throw new Error('无效或重复员工标识')
     return agentIds.flatMap(id => [join(this.dataPath, 'agents', id), join(this.dataPath, 'external-workspaces', id)])
   }
-  private async safe(path: string) {
-    const parts = relative(this.dataPath, path).split(sep)
-    if (parts.some(part => part === '..')) throw new Error('清理路径超出应用数据目录')
-    let current = this.dataPath
-    for (const part of parts) {
-      current = join(current, part)
-      try { if ((await lstat(current)).isSymbolicLink()) throw new Error('员工目录含符号链接，请移除链接后重试删除') }
-      catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error }
-    }
+  private safe(path: string) {
+    return assertCleanupPath(this.dataPath, path, '员工目录含符号链接，请移除链接后重试删除')
   }
   private async validate(tx: RecordTransaction, input: ContactDeletionInput) {
     const preferences = await tx.get<ContactListPreferences>('contactList', 'contacts') ?? emptyContactList()
