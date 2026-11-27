@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 删除 bobo 主聊后重启仍保留清理回执，下一条发往新主聊。
  * [OUTPUT]: 标题后台请求可在首轮仍执行时完成，超时后快照和详情停止闪烁。
  * [OUTPUT]: 新 API 话题标题异步保存并可重启读回，手动改名拦截迟到结果。
  * [OUTPUT]: 旧库管理技能夹具预先绑定模型，版本断言仅检查管理标签不改员工配置。
@@ -306,6 +307,29 @@ test('bobo 和普通员工按固定主聊天收信，显式话题独立首发并
     const first = await restarted.service.handle('getMessageReceipt', { requestId: `${employeeId}-main-start` }) as Message
     expect(await restarted.service.handle('sendEmployeeMessage', { employeeId, requestId: `${employeeId}-after-restart`, content: '重启后继续主聊天' })).toMatchObject({ conversationId: first.conversationId })
   }
+})
+
+test('删除 bobo 主聊后保留清理回执，重启后的新首发建立新主聊', async () => {
+  const { service, root } = await setup()
+  const firstInput = { employeeId: 'bobo', requestId: 'deleted-main-first', content: 'hi' }
+  const first = await service.handle('sendEmployeeMessage', firstInput) as Message
+  const old = (await snapshot(service)).conversations.find(room => room.id === first.conversationId)!
+  await settled(service, old)
+  await service.handle('updateConversationList', { id: old.id, action: 'rename', title: 'hi' })
+  await service.handle('clearConversationHistory', { id: old.id, hide: true })
+  expect(await detail(service, old)).toMatchObject({ conversation: { list: { hidden: true } }, messages: [] })
+  await service.close()
+
+  const reopened = (await open(root)).service
+  await expect(reopened.handle('sendEmployeeMessage', firstInput)).rejects.toThrow('已清理')
+  await expect(reopened.handle('createEmployeeSession', { employeeId: 'bobo', requestId: 'open-deleted-main' })).rejects.toThrow('请先向核心助手发送首条消息')
+  const newInput = { employeeId: 'bobo', requestId: 'new-main-first', content: '从空白主聊重新开始' }
+  const fresh = await reopened.handle('sendEmployeeMessage', newInput) as Message
+  expect(fresh.conversationId).not.toBe(old.id)
+  expect(await reopened.handle('sendEmployeeMessage', newInput)).toMatchObject({ id: fresh.id })
+  const rooms = (await snapshot(reopened)).conversations
+  expect(rooms.filter(room => !room.list?.hidden)).toEqual([expect.objectContaining({ id: fresh.conversationId, title: 'bobo', employeeChat: 'main' })])
+  expect(await detail(reopened, old)).toMatchObject({ conversation: { list: { hidden: true } }, messages: [] })
 })
 
 test('旧 bobo 普通对话按实际发言选定主聊天，有历史的专用流程独立保留', async () => {

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 删除最后一条核心会话后，通讯录发消息从空白主聊重新开始。
  * [OUTPUT]: 核心话题可从聊天标题栏 Popover 核对当前会话。
  * [OUTPUT]: bobo主聊天按钮用于打开默认聊天，话题箭头独立控制折叠。
  * [OUTPUT]: 核对行尾箭头原位显现，按钮单独悬停时有底色。
@@ -533,16 +534,15 @@ When('删除最后一个核心会话', async ({ runtime, team }) => {
   await expect(runtime.page.locator('[data-sonner-toaster][data-x-position=right] [data-sonner-toast][data-type=success]').filter({ hasText: '会话已删除' })).toBeVisible()
   await expect(runtime.page.getByRole('alertdialog')).toBeHidden()
   await expect(runtime.page.locator('.conversation-list-panel .conversation-item')).toHaveCount(0)
-  await expect(runtime.page.getByRole('button', { name: 'bobo 的主聊天', exact: true })).toHaveCount(1)
+  await expect(runtime.page.getByRole('button', { name: 'bobo 的主聊天', exact: true })).toHaveCount(0)
   await expect(runtime.page.getByRole('group', { name: 'bobo 的会话', exact: true }).locator('.conversation-item')).toHaveCount(0)
 })
-Then('重启后助手没有历史且右键仍可新开话题', async ({ runtime, team }) => {
+Then('重启后助手没有历史且可从通讯录重新开始', async ({ runtime, team }) => {
   await runtime.restart(); await expect(runtime.page.locator('.app-shell')).toBeVisible()
   const list = runtime.page.getByRole('navigation', { name: '会话列表' })
   await expect(list.locator('.conversation-item')).toHaveCount(0)
-  await expect(runtime.page.getByRole('button', { name: 'bobo 的主聊天', exact: true })).toHaveCount(1)
+  await expect(runtime.page.getByRole('button', { name: 'bobo 的主聊天', exact: true })).toHaveCount(0)
   await expect(list.getByRole('group', { name: 'bobo 的会话', exact: true }).locator('.conversation-item')).toHaveCount(0)
-  await expect(runtime.page.locator('.conversation-core-section-row').getByRole('button')).toHaveCount(1)
   const stage = runtime.page.locator('.conversation-stage')
   await expect(stage.locator('img.empty-illustration')).toBeVisible()
   await expect(stage).toHaveText('')
@@ -552,7 +552,10 @@ Then('重启后助手没有历史且右键仍可新开话题', async ({ runtime,
   await expect(runtime.page.getByRole('menuitem')).toHaveCount(2)
   await expect(runtime.page.getByRole('menuitem', { name: '新话题', exact: true })).toHaveCount(0)
   await runtime.page.keyboard.press('Escape')
-  await openCoreDraft(runtime.page)
+  await runtime.page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '通讯录', exact: true }).click()
+  await runtime.page.getByRole('complementary', { name: '通讯录列表' }).getByRole('button', { name: 'bobo', exact: true }).click({ button: 'right' })
+  await runtime.page.getByRole('menuitem', { name: '发消息', exact: true }).click()
+  await expect(runtime.page.locator('.core-chat-start')).toBeVisible()
   await expect(runtime.page.getByRole('textbox', { name: '消息内容', exact: true })).toHaveValue('')
   const snapshot = await runtime.page.evaluate(() => window.boai.request('snapshot', undefined))
   expect(snapshot.conversations).toEqual([expect.objectContaining({ id: team.coreId, purpose: 'core', list: expect.objectContaining({ hidden: true }) })])

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 删除核心会话后不重新展示旧主聊或空白占位；仍可见的话题保留员工入口。
  * [OUTPUT]: 员工主聊的拖放落点覆盖整行，包括行尾话题按钮。
  * [OUTPUT]: 置顶卡片和原生拖影只显示头像与员工名称，等待保存时保持落点，置顶员工的话题通过聊天标题栏查阅。
  * [OUTPUT]: 主聊统一进入普通列表或头像置顶区，复用持久置顶与排序；话题沿所属员工展开。
@@ -110,7 +111,6 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
     setQuery(value => room.title.toLocaleLowerCase().includes(value.trim().toLocaleLowerCase()) ? value : '')
   }, [selectedId, selection, channelAgent, snapshot.conversations])
   const [confirmation, setConfirmation] = useState<ConversationHistoryTarget | null>(null)
-  const confirm = (conversation: Conversation, hide: boolean) => setConfirmation({ conversation, hide })
   const pendingRoom = pendingPin && snapshot.conversations.find(room => room.id === pendingPin.id)
   const pinUpdates = pendingPin && pendingRoom && !pendingRoom.list?.hidden && Boolean(pendingRoom.list?.pinned) !== pendingPin.pinned
     ? new Map(conversationListUpdates(snapshot.conversations, pendingPin, messageTimes).map(room => [room.id, room]))
@@ -134,21 +134,25 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
     }
   }
   const search = query.trim().toLocaleLowerCase()
-  const title = (item: Conversation) => item.title
+  const coreAgent = channelAgent ? undefined : snapshot.agents.find(isCoreAgent)
+  const title = (item: Conversation) => isCoreConversation(item) && item.employeeChat === 'main' ? coreAgent?.name ?? item.title : item.title
   const matches = (item: Conversation) => title(item).toLocaleLowerCase().includes(search)
   const visibleConversations = channelAgent ? (channelsByAgent.get(channelAgent.id) ?? []) : mainConversations(conversations, messageTimes)
-  const coreAgent = channelAgent ? undefined : snapshot.agents.find(isCoreAgent)
+  const listEmpty = !visibleConversations.length && (Boolean(channelAgent) || !topicsByAgent.size)
+  const confirm = (conversation: Conversation, hide: boolean) => setConfirmation({ conversation: { ...conversation, title: title(conversation) }, hide })
   const allCore = coreAgent ? visible.filter(room => isCoreConversation(room) && !isChannelConversation(room)) : []
   const ordinary = channelAgent ? [] : [...visibleConversations]
   for (const id of topicsByAgent.keys()) {
-    if (ordinary.some(room => isEmployeeMainChat(room, id))) continue
+    if (id === CORE_AGENT_ID || ordinary.some(room => isEmployeeMainChat(room, id))) continue
     const main = snapshot.conversations.find(room => isEmployeeMainChat(room, id))
     if (main) ordinary.push(main)
   }
   const pinName = (room: Conversation) => room.kind === 'direct' ? snapshot.agents.find(agent => agent.id === room.agentIds[0])?.name ?? room.title : room.title
   const ordinaryMatches = ordinary.filter(room => matches(room) || Boolean(room.list?.pinned && pinName(room).toLocaleLowerCase().includes(search)) ||
     room.kind === 'direct' && topicsByAgent.get(room.agentIds[0])?.some(matches))
+  const hiddenCoreHistory = snapshot.conversations.some(room => isCoreConversation(room) && !isChannelConversation(room) && room.list?.hidden)
   const showCoreStart = coreAgent && !ordinary.some(room => isEmployeeMainChat(room, CORE_AGENT_ID)) &&
+    (topicsByAgent.has(coreAgent.id) || !hiddenCoreHistory) &&
     (!search || coreAgent.name.toLocaleLowerCase().includes(search) || topicsByAgent.get(coreAgent.id)?.some(matches))
   const confirmAllCore = (hide: boolean) => { if (coreAgent) setConfirmation({ conversations: allCore, agentName: coreAgent.name, hide }) }
   const pin = async (id: string, pinned: boolean) => {
@@ -211,7 +215,7 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
             </ContextMenuTrigger>}
             <ContextMenuContent className="w-40">{(!isChannel || employee && onConfigureAgent) && <><ContextMenuGroup>
               {employee && (isChannel ? onConfigureAgent && <ContextMenuItem onClick={() => onConfigureAgent(employee)}><Settings />员工配置</ContextMenuItem> : renderEmployeeActions(employee))}
-              {!isChannel && (compact || coreConversation) && <ContextMenuItem disabled={busy || conversation.list?.hidden} onClick={() => onEditTitle(conversation)}><Pencil />编辑标题</ContextMenuItem>}
+              {!isChannel && compact && <ContextMenuItem disabled={busy || conversation.list?.hidden} onClick={() => onEditTitle(conversation)}><Pencil />编辑标题</ContextMenuItem>}
               {tile && notification && agent && <ContextMenuItem onClick={() => onOpenChannels?.(agent, notification.id)}>{CHANNEL_NAMES[notification.channel!.platform]} · 新回复 {unread}</ContextMenuItem>}
               {canPin && <ContextMenuItem disabled={busy || Boolean(pendingPin)} onClick={() => { void pin(conversation.id, !conversation.list?.pinned) }}><Pin />{conversation.list?.pinned ? '取消置顶' : '置顶'}</ContextMenuItem>}
             </ContextMenuGroup><ContextMenuSeparator /></>}<ContextMenuGroup>
@@ -296,7 +300,7 @@ export function ConversationList({ snapshot, selectedId, previews, messageTimes,
         </Collapsible>
       })}</div>}
       </DragList>
-      {!visibleConversations.length && <Empty className="conversation-list-empty px-3 py-8">
+      {listEmpty && <Empty className="conversation-list-empty flex-none px-3 py-8">
         <EmptyHeader><EmptyMedia><img src={conversationCompanions} className="select-none" draggable={false} width={144} height={110} alt="等你开聊的小伙伴" /></EmptyMedia>
           <EmptyDescription className="text-xs leading-relaxed">{channelAgent ? '机器人收到的私聊和群消息会出现在这里。' : '找个小伙伴，聊聊新想法吧。'}</EmptyDescription>
         </EmptyHeader>

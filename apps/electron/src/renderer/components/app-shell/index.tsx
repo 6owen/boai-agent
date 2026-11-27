@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 打开核心助手时仅续接可见主聊，已隐藏的旧会话通过空白首发入口重新开始。
  * [OUTPUT]: 群设置面板使用基础配置表单。
  * [OUTPUT]: 员工主聊天和独立话题在标题栏共用现有会话导航，支持从置顶员工进入话题。
  * [OUTPUT]: 会话列表写入返回快照刷新的完成回执，支持置顶落点连续呈现。
@@ -844,9 +845,10 @@ export function AppShell() {
     })
   }
   const openDirect = (agent: DigitalAgent) => {
-    const existing = snapshotRef.current.conversations.find(room => isEmployeeMainChat(room, agent.id))
+    const core = isCoreAgent(agent)
+    const existing = snapshotRef.current.conversations.find(room => (!core || !room.list?.hidden) && isEmployeeMainChat(room, agent.id))
     if (existing) { selectConversation(existing.id); return }
-    if (isCoreAgent(agent)) { openEmployeeChatDraft(agent.id, 'main'); return }
+    if (core) { openEmployeeChatDraft(agent.id, 'main'); return }
     navigate(() => {
       if (!api) return
       const origin = routeRef.current
