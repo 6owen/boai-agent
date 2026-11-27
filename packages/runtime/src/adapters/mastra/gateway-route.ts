@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 团队规划接口归宿主合同；普通网关请求身份由共享的模型选择和调用记录生成。
  * [OUTPUT]: 2026-11-24 第三阶段：官方 Durable Agent/Session.steer、Workspace 文件工具、LocalSandbox 进程和原生 Trace；授权及发布保留业务适配。
  * [OUTPUT]: 无Run的连接测试/团队规划/自动化草稿沿原操作身份保存逐请求网关路由；不制造Work或更改原预算。
  * [INPUT]: One SDK step's response headers/model metadata, selected gateway and private credential.
@@ -6,8 +7,7 @@
  * [POS]: Mastra gateway observation; never polls global routing state or retries a request.
  * [PROTOCOL]: Update Header and mastra/.folder.md when changing this module.
  */
-import type { Connection } from '@boai/shared/domain'
-import type { GatewayModelCall, GatewayRouteEvidence } from '@boai/shared/domain/model-gateway'
+import type { GatewayRouteEvidence } from '@boai/shared/domain/model-gateway'
 import type { EngineContext } from '../../contracts'
 import type { ProcessInputStepArgs } from '@mastra/core/processors'
 
@@ -45,9 +45,4 @@ export function gatewayRouteModel(model: ProcessInputStepArgs['model'], context:
       return result
     }
   } })
-}
-export function gatewaySelectedModel(connection: Connection, override?: string) { return (override || connection.defaultModel).trim() }
-/** The caller owns this identity; observation never creates a business Run or Work. */
-export function gatewayModelCall(connection: Connection, callId: string, phase: GatewayModelCall['phase'], override?: string): GatewayModelCall | undefined {
-  return connection.gateway ? { callId, connectionId: connection.id, connectionRevision: connection.revision ?? 1, phase, protocol: connection.gateway.protocol, selectedModelId: gatewaySelectedModel(connection, override), startedAt: new Date().toISOString() } : undefined
 }

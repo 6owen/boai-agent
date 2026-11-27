@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 团队规划接口归宿主合同；普通网关请求身份由共享的模型选择和调用记录生成。
  * [OUTPUT]: 本机协议与宿主命令复用进程组实际退出屏障，独立原生传输可单独装载。
  * [OUTPUT]: Every new cross-directory value cycle fails, including when an obsolete migration file is present.
  * [OUTPUT]: 跨目录但不形成文件环的业务依赖按逐方向清单核对，延迟和类型引用不计。
@@ -115,6 +116,7 @@ it('checks package manifests and actual module initialization against the same d
 it.each([
   'adapters/codex/client',
   'adapters/claude/process',
+  'modules/teams/team-generation',
 ])('keeps the model SDK out of the standalone %s bundle', async entry => {
   const result = await build({
     entryPoints: [`packages/runtime/src/${entry}.ts`], bundle: true, platform: 'node',

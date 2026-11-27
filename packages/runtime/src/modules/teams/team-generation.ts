@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 团队规划接口归宿主合同；普通网关请求身份由共享的模型选择和调用记录生成。
  * [OUTPUT]: 持久标识的 JSON 字节摘要使用共用编码，字段及顺序由本业务传入。
  * [OUTPUT]: 活动团队生成按connectionId取消并等待实际planner退出，连接换源/删除不采用迟到方案。
  * [OUTPUT]: 无Run的连接测试/团队规划/自动化草稿沿原操作身份保存逐请求网关路由；不制造Work或更改原预算。
@@ -14,9 +15,8 @@ import { z } from 'zod'
 import type { Connection } from '@boai/shared/domain'
 import { avatarPresets } from '@boai/shared/domain/avatars'
 import { TEAM_LIMITS, TEAM_PLANNER_VERSION, teamCapabilityNotes, teamColors, teamId, teamPlannerOutputSchema, type TeamDraft, type TeamGeneration } from '@boai/shared/domain/team-creation'
-import { TeamPlanFormatError, type TeamPlanner, type TeamUsage } from '../../adapters/mastra/team-planner'
-import { gatewayModelCall } from '../../adapters/mastra/gateway-route'
-import type { GatewayRouteEvidence } from '@boai/shared/domain/model-gateway'
+import { TeamPlanFormatError, type TeamPlanner, type TeamUsage } from '../../contracts'
+import { gatewayModelCall, type GatewayRouteEvidence } from '@boai/shared/domain/model-gateway'
 import { ModelCapacity } from '../collaboration/model-capacity'
 import { TeamRepository, editableTeamDraft, readTeamDraft, teamError, teamInputHash, teamNow, teamRecord, teamVersionSchema, validateTeamDraft } from './team-repository'
 

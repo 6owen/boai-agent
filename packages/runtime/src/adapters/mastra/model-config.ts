@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 团队规划接口归宿主合同；普通网关请求身份由共享的模型选择和调用记录生成。
  * [OUTPUT]: Session 主执行只采用当前模型声明的输出能力，不加聊天/任务默认硬上限。
  * [OUTPUT]: DeepSeek私有JSON判断自动档关闭思考，格式修复明确关闭思考；自动化执行不设引擎整体时限，调用计量与严格JSON校验保持。
  * [OUTPUT]: DeepSeek私有判断自动档使用非思考JSON；格式修复关闭思考，保留单对象严格校验、原预算与真实参数观测。
@@ -10,7 +11,7 @@
  * [POS]: runtime/adapters/mastra 的统一模型配置适配器。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
-import { validModelId } from '@boai/shared/domain/model-id'
+import { effectiveModelId, validModelId } from '@boai/shared/domain/model-id'
 import { createAnthropic } from '@ai-sdk/anthropic'
 import type { Connection } from '@boai/shared/domain'
 import { gatewayApiKey, gatewayEndpoint, type ModelCatalog } from '@boai/shared/domain/model-gateway'
@@ -20,14 +21,14 @@ import type { EngineContext } from '../../contracts'
 
 export function responseOutputTokens(context: Pick<EngineContext, 'agent' | 'connection' | 'modelCatalog' | 'materialRefs' | 'materialImages'>, task: boolean): number {
   const desired = task || context.materialRefs?.length || context.materialImages?.length ? 8192 : 2500
-  const modelId = (context.agent.modelId || context.connection?.defaultModel || '').trim()
+  const modelId = effectiveModelId(context.agent.modelId, context.connection?.defaultModel ?? '')
   const maximum = context.modelCatalog?.models.find(model => model.id === modelId)?.maxOutputTokens
   return typeof maximum === 'number' && Number.isSafeInteger(maximum) && maximum > 0 ? Math.min(desired, maximum) : desired
 }
 
 /** Use the selected provider's declared capability; no BOAI chat/task output ceiling. */
 export function sessionModelSettings(context: Pick<EngineContext, 'agent' | 'connection' | 'modelCatalog'>) {
-  const modelId = (context.agent.modelId || context.connection?.defaultModel || '').trim()
+  const modelId = effectiveModelId(context.agent.modelId, context.connection?.defaultModel ?? '')
   const maxOutputTokens = context.modelCatalog?.models.find(model => model.id === modelId)?.maxOutputTokens
   return typeof maxOutputTokens === 'number' && Number.isSafeInteger(maxOutputTokens) && maxOutputTokens > 0 ? { maxOutputTokens } : {}
 }
@@ -68,16 +69,14 @@ export function decisionProviderOptions(connection: Connection, override: string
 }
 
 export function modelConfig(connection: Connection, apiKey: string, override?: string) {
+  const key = connection.gateway ? gatewayApiKey(connection, apiKey) : apiKey
+  const modelId = effectiveModelId(override, connection.defaultModel)
+  if (!validModelId(modelId)) throw new Error('请配置有效的模型 ID')
   if (connection.gateway) {
-    const key = gatewayApiKey(connection, apiKey)
-    const modelId = (override || connection.defaultModel).trim()
-    if (!validModelId(modelId)) throw new Error('请配置有效的模型 ID')
     const baseURL = gatewayEndpoint(connection.baseUrl, 'v1')
     if (connection.gateway.protocol === 'messages') return gatewayMessagesModel(baseURL, key, modelId)
     return { id: `openai/${modelId}` as const, url: baseURL, apiKey: key, api: connection.gateway.protocol, headers: { 'User-Agent': 'BOAI' } }
   }
-  const modelId = (override || connection.defaultModel).trim()
-  if (!validModelId(modelId)) throw new Error('请配置有效的模型 ID')
   if (connection.provider !== 'openai-compatible' && !apiKey.trim()) throw new Error('请先保存模型连接的 API Key')
   if (connection.provider === 'openai-compatible' && !connection.baseUrl.trim()) throw new Error('请配置兼容模型服务的 API 地址')
   const baseUrl = connection.baseUrl.trim().replace(/\/+$/, '') || (connection.provider === 'anthropic' ? 'https://api.anthropic.com/v1' : 'https://api.openai.com/v1')

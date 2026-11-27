@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 团队规划接口归宿主合同；普通网关请求身份由共享的模型选择和调用记录生成。
  * [OUTPUT]: 画板命令的类型与输入校验沿插件公开协议，宿主和执行适配器直接使用。
  * [OUTPUT]: 诊断回调失败由 reportTraceError 隔离，业务提交与观察失败各自保留原语义。
  * [OUTPUT]: RuntimeToolOperation 描述两种执行后端可绑定的宿主操作。
@@ -73,7 +74,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import type { RunEnvironmentPlan } from './modules/workspaces/environment-plan'
-import type { TeamPlannerOutput } from '@boai/shared/domain/team-creation'
+import type { TeamGeneration, TeamPlannerOutput } from '@boai/shared/domain/team-creation'
 import type { TraceSpan } from '@boai/shared/domain/traces'
 import type { Artifact, DigitalAgent, Connection, Conversation, Message, Resource, BootstrapSnapshot, MemoryEntry, MemoryView, SessionWorkspace, ParticipationDecision, Contribution, ConversationEvent, ModelUsage, ToolEvent, MemoryCandidate, WorkItem, WorkOutcome, WorkDraft, WorkReport, WorkDelegation, WorkWait, WorkBudget } from '@boai/shared/domain'
 
@@ -304,6 +305,14 @@ export interface ModelCallObservation {
   modelCallId?: string
   onModelCallRoute?: EngineContext['onModelCallRoute']
 }
+export type TeamUsage = TeamGeneration['attempts'][number]['usage']
+export interface TeamPlannerCall extends ModelCallObservation {
+  connection: Connection; modelId: string; apiKey: string; prompt: string; repair?: string; signal: AbortSignal
+  usage(value: TeamUsage): Promise<void>
+}
+export type TeamPlanner = (call: TeamPlannerCall) => Promise<unknown>
+export class TeamPlanFormatError extends Error {}
+
 export interface AutomationDraftContext extends ModelCallObservation {
   connection: Connection
   apiKey: string
@@ -314,7 +323,7 @@ export interface AutomationDraftContext extends ModelCallObservation {
   onUsage(usage: ModelUsage): Promise<void>
 }
 export interface AgentEngine {
-  planTeam?: import('./adapters/mastra/team-planner').TeamPlanner
+  planTeam?: TeamPlanner
   reviewPresentation?(input: import('./modules/presentations/presentation-service').PresentationModelInput): Promise<string>
   modelTraces?(conversationId: string, runIds: string[]): Promise<import('@boai/shared/domain/traces').StoredTraceSpan[]>
   modelMetrics?(runIds?: string[]): Promise<import('@boai/shared/domain/profile').ModelMetricCall[]>
