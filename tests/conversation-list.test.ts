@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 核心主聊与普通会话共用置顶及排序，兼容旧核心话题。
  * [OUTPUT]: 2026-10-14现行分离合同：主列表一员工一项、员工渠道私聊/群范围隔离及原排序分类回归。
  * [OUTPUT]: 渠道/普通/核心分别排序置顶，本人主私聊仍归普通分类。
  * [OUTPUT]: 2026-10-14 归档及自动化聊天退出主列表，员工主私聊与多个群保持可见。
@@ -93,13 +94,14 @@ describe('conversation list preferences', () => {
     expect(restored[0]).toMatchObject({ ...original, list: { pinned: false, hidden: false } })
     expect(() => change(restored, { id: 'A', action: 'move', targetId: 'missing', placement: 'after' })).toThrow('目标会话不存在')
   })
-  it('keeps core assistant ordering and pinning independent of ordinary conversations', () => {
+  it('keeps legacy core topics outside the ordinary pin and sort order', () => {
     const regular = { ...conversation('ordinary', '2026-01-01'), list: { pinned: false, order: 7 } }
     const core = ['core-A', 'core-B'].map(id => ({ ...conversation(id, '2026-01-01'), kind: 'direct' as const, purpose: 'core' as const, agentIds: ['bobo'] }))
     const original = [regular, ...core]
     expect(() => change(original, { id: 'core-A', action: 'move', targetId: 'ordinary', placement: 'before' })).toThrow('同一会话分类')
     const moved = change(original, { id: 'core-B', action: 'move', targetId: 'core-A', placement: 'before' })
-    expect(names(moved).filter(id => id.startsWith('core'))).toEqual(['core-B', 'core-A'])
+    expect(sortedConversations(moved).filter(item => item.purpose === 'core').map(item => item.id)).toEqual(['core-B', 'core-A'])
+    expect(mainConversations(moved).map(item => item.id)).toEqual(['ordinary'])
     expect(moved[0]).toBe(regular)
     const pinned = change(moved, { id: 'core-A', action: 'pin', pinned: true })
     expect(pinned[0]).toBe(regular)
@@ -108,4 +110,18 @@ describe('conversation list preferences', () => {
     expect(restored[0]).toBe(regular)
     expect(restored.find(item => item.id === 'core-A')?.purpose).toBe('core')
   })
+})
+
+it('sorts and pins the existing core main chat alongside ordinary employees and groups', () => {
+  const core: Conversation = { ...conversation('core-main', '2026-01-01'), kind: 'direct', purpose: 'core', employeeChat: 'main', agentIds: ['bobo'] }
+  const group = conversation('group', '2026-01-02')
+  const original = [core, group]
+  let rows = change(original, { id: core.id, action: 'move', targetId: group.id, placement: 'before' })
+  expect(names(rows)).toEqual([core.id, group.id])
+  rows = change(rows, { id: group.id, action: 'pin', pinned: true })
+  rows = change(rows, { id: core.id, action: 'pin', pinned: true })
+  rows = change(rows, { id: core.id, action: 'move', targetId: group.id, placement: 'after' })
+  expect(names(rows)).toEqual([group.id, core.id])
+  expect(rows.map(row => row.list?.pinned)).toEqual([true, true])
+  expect(rows[0]).toMatchObject({ purpose: 'core', employeeChat: 'main', agentIds: ['bobo'] })
 })

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 会话置顶区用自适应头像网格与拖入落点，普通员工与核心主聊共用行样式。
  * [OUTPUT]: 执行记录由整行指针或键盘状态决定悬停背景，移动到行尾按钮时背景保持。
  * [OUTPUT]: 选中员工下的话题时持续显示员工行尾箭头，员工行仅在悬停或主聊天选中时显示背景。
  * [OUTPUT]: 2026-11-27 移除定时计划卡片操作行样式；无会话记录显示为静态行。
@@ -352,8 +353,7 @@
 .conversation-list-empty { min-height:240px;user-select:none }
 .conversation-list-empty img { display:block;max-width:100%;height:auto }
 .conversation-employee-row { display:flex;align-items:center;margin-bottom:3px;border-radius:var(--radius-control) }
-.conversation-core-section-row { flex-shrink:0;margin-top:10px }
-.conversation-employee-row>:is(.conversation-row,.conversation-core-heading) { flex:1;min-width:0 }
+.conversation-employee-row>.conversation-row, .conversation-employee-row>.conversation-item { flex:1;min-width:0 }
 .conversation-employee-row .conversation-item { margin-bottom:0 }
 .conversation-employee-row .conversation-item.soft-button-ghost:not(:disabled):not([aria-disabled=true]) { background:transparent }
 .conversation-employee-row:hover { background:var(--muted) }
@@ -367,7 +367,27 @@
 .conversation-topic-toggle>.app-icon { transition:transform .2s ease }
 .conversation-topic-toggle[aria-expanded=true]>.app-icon { transform:rotate(90deg) }
 @media (prefers-reduced-motion: reduce) { .conversation-topic-toggle>.app-icon { transition:none } }
-.conversation-list-panel .conversation-list { margin-top:0 }
+.conversation-list-panel .conversation-list { margin-top:8px;min-width:0;overflow-x:hidden;container-type:inline-size }
+.conversation-pin-shelf { margin-bottom:8px }
+/* Keep the source row in place while Chromium starts the native drag. */
+.conversation-pin-shelf:has(.conversation-pin-empty) { height:82px;overflow:hidden;animation:conversation-pin-reveal .14s ease-out both }
+@keyframes conversation-pin-reveal {
+  from { height:0;margin-bottom:0;opacity:0 }
+}
+@media (prefers-reduced-motion: reduce) {
+  .conversation-pin-shelf:has(.conversation-pin-empty) { animation:conversation-pin-reveal 32ms steps(1,end) both }
+}
+.conversation-pin-grid { display:flex;flex-wrap:wrap;justify-content:center;gap:6px;padding:4px }
+.conversation-pin-item { flex:0 0 clamp(62px,calc((100cqi - 27px) / 4),72px);min-width:0;max-width:100% }
+.conversation-pin-tile.conversation-item { flex-direction:column;justify-content:center;gap:4px;min-height:82px;padding:6px 3px;margin:0;text-align:center }
+.conversation-pin-tile .avatar,.conversation-pin-tile .group-avatar { width:44px;height:44px;flex:none }
+.conversation-pin-name { width:100%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--text-ui-caption) }
+.conversation-pin-empty { display:grid;min-height:82px;place-items:center;border:1px dashed var(--border);border-radius:var(--radius-control);color:var(--muted-foreground);font-size:var(--text-ui-secondary) }
+.conversation-pin-topic-toggle { position:absolute;inset-inline-end:0;bottom:22px;margin:0 }
+.conversation-pin-item[data-drop]::before { top:5px;bottom:5px;inset-inline-end:auto;width:2px;height:auto }
+.conversation-pin-item[data-drop]::after { display:none }
+.conversation-pin-item[data-drop=before]::before { inset-inline-start:-3px }
+.conversation-pin-item[data-drop=after]::before { inset-inline-start:auto;inset-inline-end:-3px }
 .conversation-list .conversation-section-heading { margin-top:4px }
 .conversation-core-history { padding-left:12px }
 .conversation-item.conversation-core-item { --core-action-surface:var(--list);position:relative;min-height:32px;gap:2px;margin-bottom:0;padding:2px 4px 2px 8px }

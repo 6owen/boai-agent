@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 核对 bobo 主聊统一展示、拖拽置顶与取消、置顶话题归属及空区回收。
  * [OUTPUT]: 聊天顶部和侧栏只让真正等待标题的首句闪烁。
  * [OUTPUT]: 列表夹具沿仅已发送消息的Props，不再向列表传入composer草稿。
  * [OUTPUT]: 员工配置与置顶共组、清理独立，导航仍沿明确员工身份。
@@ -31,14 +32,14 @@ beforeEach(() => {
   vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
   Element.prototype.getAnimations = () => []
   const conversations = [room('A'), room('B'), room('hidden', { list: { hidden: true } }), room('employee', { purpose: undefined, agentIds: ['employee'], mainPrivate: true }), room('group', { purpose: undefined, kind: 'group', agentIds: ['employee'] }), room('channel', { channel: { platform: 'feishu', tenantId: 'tenant', chatId: 'p2p', kind: 'direct', bindingId: 'bot' } })]
-  props = { snapshot: { agents: [coreAgent], conversations, resources: [], connections: [] } as unknown as Snapshot, selectedId: null, previews: {}, messageTimes: {}, busy: false, onSelect: vi.fn(), onCreate: vi.fn(), onOpenCore: vi.fn(), onCreateCore: vi.fn(), onConfigureCore: vi.fn(), onEditTitle: vi.fn(), onChange: vi.fn(), onClear: vi.fn(async () => {}), onOpenChannels: vi.fn() }
+  props = { snapshot: { agents: [coreAgent], conversations, resources: [], connections: [] } as unknown as Snapshot, selectedId: null, previews: {}, messageTimes: {}, busy: false, onSelect: vi.fn(), onCreate: vi.fn(), onOpenMain: vi.fn(), onCreateTopic: vi.fn(), onConfigureAgent: vi.fn(), onEditTitle: vi.fn(), onChange: vi.fn(), onClear: vi.fn(async () => {}), onOpenChannels: vi.fn() }
   host = document.createElement('div'); document.body.append(host); root = createRoot(host)
 })
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.unstubAllGlobals(); vi.restoreAllMocks(); vi.clearAllMocks() })
 const render = () => act(async () => root.render(h(ConversationList, props)))
 const menuItem = (label: string) => [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(item => item.textContent === label)!
 const button = (label: string) => [...document.querySelectorAll<HTMLButtonElement>('button')].find(item => item.textContent === label)!
-const openMenu = () => act(async () => host.querySelector('.conversation-core-section-row')!.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 20, clientY: 20 })))
+const openMenu = () => act(async () => host.querySelector('button[aria-label="Bobo 的主聊天"]')!.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 20, clientY: 20 })))
 const choose = (label: string) => act(async () => menuItem(label).click())
 const confirm = (label: string) => act(async () => button(label).click())
 
@@ -75,10 +76,11 @@ it('opens new topics and settings from the Bobo context menu without an inline c
   expect(host.querySelector('button[aria-label="与 Bobo 新建会话"]')).toBeNull()
   await openMenu()
   expect([...document.querySelectorAll('[role="menuitem"]')].map(item => item.textContent)).toEqual(['新话题', '助手设置', '清空所有记录', '删除所有会话'])
+  expect(host.querySelector('[aria-label="普通会话"] button[aria-label="Bobo 的主聊天"]')).not.toBeNull()
   await choose('新话题')
-  expect(props.onCreateCore).toHaveBeenCalledTimes(1)
+  expect(props.onCreateTopic).toHaveBeenCalledWith(coreAgent)
   await openMenu(); await choose('助手设置')
-  expect(props.onConfigureCore).toHaveBeenCalledTimes(1)
+  expect(props.onConfigureAgent).toHaveBeenCalledWith(coreAgent)
   expect(props.onOpenChannels).not.toHaveBeenCalled()
 })
 
@@ -139,18 +141,18 @@ it('keeps main chat navigation and topic expansion independent for bobo and ordi
   await render()
   const byName = (name: string) => host.querySelector<HTMLButtonElement>(`button[aria-label="${name}"]`)!
   await act(async () => byName('Bobo 的主聊天').click())
-  expect(props.onOpenCore).toHaveBeenCalledOnce()
+  expect(props.onSelect).toHaveBeenCalledWith('bobo-main')
   const boboToggle = byName('Bobo 的话题')
   expect(boboToggle.getAttribute('aria-expanded')).toBe('true')
   await act(async () => boboToggle.click())
   expect(boboToggle.getAttribute('aria-expanded')).toBe('false')
-  expect(props.onOpenCore).toHaveBeenCalledOnce()
-  expect(props.onSelect).not.toHaveBeenCalled()
+  expect(props.onSelect).toHaveBeenCalledWith('bobo-main')
+  expect(props.onSelect).toHaveBeenCalledTimes(1)
   const employeeToggle = byName('employee 的话题')
   expect(employeeToggle.getAttribute('aria-expanded')).toBe('false')
   await act(async () => employeeToggle.click())
   expect(employeeToggle.getAttribute('aria-expanded')).toBe('true')
-  expect(props.onSelect).not.toHaveBeenCalled()
+  expect(props.onSelect).toHaveBeenCalledTimes(1)
   const more = byName('天气话题 的更多操作')
   expect(more.parentElement?.querySelectorAll('button')).toHaveLength(1)
   expect(byName('编辑 天气话题 的标题')).toBeNull()
@@ -165,7 +167,7 @@ it('keeps main chat navigation and topic expansion independent for bobo and ordi
   await act(async () => byName('employee').click())
   expect(host.querySelector('button[aria-label="group 的话题"]')).toBeNull()
   await act(async () => byName('group').click())
-  expect(vi.mocked(props.onSelect).mock.calls).toEqual([['天气话题'], ['employee'], ['group']])
+  expect(vi.mocked(props.onSelect).mock.calls).toEqual([['bobo-main'], ['天气话题'], ['employee'], ['group']])
 })
 
 
@@ -194,4 +196,48 @@ it.each([
   await render()
   expect(buttonByName(employeeLabel)?.getAttribute('data-active-topic')).toBeNull()
   expect(buttonByName(employeeLabel)?.getAttribute('aria-current')).toBe('page')
+})
+
+
+it('moves an actual Bobo main chat into and out of the avatar shelf via drag', async () => {
+  const main = room('bobo-main', { employeeChat: 'main', title: 'Bobo' })
+  const topic = room('weather', { employeeChat: 'topic', title: '天气话题' })
+  props.snapshot.conversations.push(main, topic)
+  const transfer = { effectAllowed: '', dropEffect: '', setData: vi.fn() }
+  const drag = (element: Element, type: string) => act(async () => {
+    const event = new MouseEvent(type, { bubbles: true, cancelable: true })
+    Object.defineProperty(event, 'dataTransfer', { value: transfer })
+    element.dispatchEvent(event)
+  })
+  const entry = () => host.querySelector<HTMLButtonElement>('[aria-label="Bobo 的主聊天"]')!
+  const shelf = () => host.querySelector('.conversation-pin-shelf')!
+  await render()
+  expect(entry().closest('[aria-label="普通会话"]')).not.toBeNull()
+  expect(shelf()).toBeNull()
+  await drag(entry(), 'dragstart')
+  expect(shelf().textContent).toBe('拖到此处置顶')
+  await drag(shelf(), 'dragover')
+  expect(shelf().getAttribute('data-drop')).toBe('inside')
+  await drag(shelf(), 'drop')
+  expect(props.onChange).toHaveBeenLastCalledWith({ id: main.id, action: 'pin', pinned: true })
+  expect(shelf()).toBeNull()
+
+  props = { ...props, selectedId: topic.id, snapshot: { ...props.snapshot, conversations: props.snapshot.conversations.map(value => value.id === main.id ? { ...value, list: { pinned: true } } : value) } }
+  await render()
+  expect(entry().closest('[aria-label="置顶会话"]')).not.toBeNull()
+  expect(entry().getAttribute('data-active-topic')).toBe('true')
+  expect(host.querySelector('#conversation-pin-topics-bobo-main button[aria-label="天气话题"]')?.getAttribute('aria-current')).toBe('page')
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="Bobo 的话题"]')!.click())
+  expect(host.querySelector('#conversation-pin-topics-bobo-main')?.hasAttribute('hidden')).toBe(true)
+  await drag(entry(), 'dragstart')
+  await drag(host.querySelector('[aria-label="普通会话"]')!, 'drop')
+  expect(props.onChange).toHaveBeenLastCalledWith({ id: main.id, action: 'pin', pinned: false })
+})
+
+it('saves the same pin command from the ordinary employee menu', async () => {
+  await render()
+  const row = host.querySelector('[aria-label="employee"]')!
+  await act(async () => row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 20, clientY: 20 })))
+  await choose('置顶')
+  expect(props.onChange).toHaveBeenCalledWith({ id: 'employee', action: 'pin', pinned: true })
 })
