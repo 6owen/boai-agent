@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 空白 bobo 主聊拖放、重载及回到普通列表时零会话写入。
  * [INPUT]: 会话管理中文场景、普通检索 Dialog、隔离 Electron fixture 与产品 IPC。
  * [OUTPUT]: 原生拖放时目标高度与落定后的头像区连续，列表余白可直接取消置顶。
  * [OUTPUT]: 会话检索、分组折叠、原生鼠标排序及拖入头像置顶区、重启保留顺序、历史清理与空页回归。
@@ -7,7 +8,7 @@
  */
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { expect } from '@playwright/test'
+import { expect, type Locator } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 import { messageDraft } from '../support/editor-controls'
 import { test as base } from '../support/test'
@@ -105,6 +106,37 @@ When('常驻名称输入筛选会话且清除恢复折叠', async ({ runtime }) 
   await input.fill(''); await expect(group).toBeHidden()
   await heading.click(); await expect(group).toBeVisible()
   await expect.poll(() => titles(runtime)).toEqual(before)
+})
+When('拖动 bobo 空白主聊置顶和取消期间不创建会话', async ({ runtime }) => {
+  const entry = list(runtime).locator('button[data-main-placeholder]')
+  const shelf = list(runtime).locator('.conversation-pin-shelf')
+  const ordinary = list(runtime).locator('.conversation-regular-drop')
+  const start = async () => {
+    await expect(entry).toHaveAttribute('draggable', 'true')
+    const { x, y, width, height } = (await entry.boundingBox())!
+    await runtime.page.mouse.move(x + width / 2, y + height / 2)
+    await runtime.page.mouse.down()
+    await runtime.page.mouse.move(x + width / 2 + 16, y + height / 2, { steps: 5 })
+  }
+  const drop = async (target: Locator) => {
+    const { x, y, width, height } = (await target.boundingBox())!
+    await runtime.page.mouse.move(x + width / 2, y + height / 2, { steps: 10 })
+    await runtime.page.mouse.move(x + width / 2 + 1, y + height / 2)
+    await expect(target).toHaveAttribute('data-drop', 'inside')
+    await runtime.page.mouse.up()
+  }
+  const before = (await snapshot(runtime)).conversations.map(room => room.id).sort()
+  await start()
+  await expect(shelf).toHaveText('拖到此处置顶')
+  await expect(shelf).toHaveCSS('height', '90px')
+  await drop(shelf)
+  await expect(shelf.locator('button[data-main-placeholder]')).toBeVisible()
+  await runtime.page.reload()
+  await expect(shelf.locator('button[data-main-placeholder]')).toBeVisible()
+  await start()
+  await drop(ordinary)
+  await expect(ordinary.locator('button[data-main-placeholder]')).toBeVisible()
+  expect((await snapshot(runtime)).conversations.map(room => room.id).sort()).toEqual(before)
 })
 When('把最后一个会话拖到首位并置顶另一个会话', async ({ runtime, listScenario }) => {
   const before = await titles(runtime)
