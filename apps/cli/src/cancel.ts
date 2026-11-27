@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: Local RPC observation is shared across execution and cancellation commands.
  * [INPUT]: Owner-selected original run and read-only service stop projection.
  * [OUTPUT]: One cancellation submission; unique-target selection, actual-exit waiting and unknown reconciliation.
  * [POS]: CLI cancel command, retaining original message cancellation separately.
@@ -6,20 +7,13 @@
  */
 import { setTimeout as delay } from 'node:timers/promises'
 import type { CliRpcClient } from '@boai/transport/client'
+import { observeRpc } from './rpc-observation'
 import { CliError, PROTOCOL_VERSION } from '@boai/shared/cli/protocol'
 import type { CancellationTarget, RunCancellation } from '@boai/shared/domain/run-cancellation'
 
 export async function executeRunCancellation(client: CliRpcClient, conversationId: string, runId: string | undefined, options: { signal?: AbortSignal; waitTimeout?: number; emit(value: Record<string, unknown>): void }): Promise<number> {
-  const timeout = new AbortController(), signal = options.signal ? AbortSignal.any([options.signal, timeout.signal]) : timeout.signal
-  const timer = options.waitTimeout ? setTimeout(() => timeout.abort(new CliError('REQUEST_TIMEOUT', '等待停止超时')), options.waitTimeout) : undefined
+  const { signal, invoke, dispose } = observeRpc(client, options, '等待停止超时')
   const emit = (type: string, value: Record<string, unknown>) => options.emit({ protocolVersion: PROTOCOL_VERSION, type, conversationId, runId, ...value })
-  const invoke = async <T>(channel: string, input: unknown): Promise<T> => {
-    signal.throwIfAborted()
-    let abort!: () => void
-    const interrupted = new Promise<never>((_, reject) => { abort = () => reject(signal.reason); signal.addEventListener('abort', abort, { once: true }) })
-    try { return await Promise.race([client.invoke(channel, input) as Promise<T>, interrupted]) }
-    finally { signal.removeEventListener('abort', abort) }
-  }
   try {
     if (!runId) {
       const targets = await invoke<CancellationTarget[]>('getCancellationTargets', { conversationId })
@@ -55,5 +49,5 @@ export async function executeRunCancellation(client: CliRpcClient, conversationI
     const exitCode = options.signal?.aborted ? 130 : 4
     emit('result', { state: 'unknown', exitCode, query: runId ? { channel: 'getRunCancellation', input: { conversationId, runId } } : undefined })
     return exitCode
-  } finally { if (timer) clearTimeout(timer) }
+  } finally { dispose() }
 }
