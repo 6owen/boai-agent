@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 宿主 Trace、官方存储 Trace 与执行事件通过统一的结构化观测序列化保留 JSON 字段类型。
  * [OUTPUT]: 已授权会话消息的窗口、当前轮及身份投影归 conversations；模型角色/图片装配归 API 适配器。
  * [OUTPUT]: 网关目录归连接领域；在途刷新用独立引用，结束或删除后回收且不接受迟到回执。
  * [OUTPUT]: 进度写入失败沿共用诊断回调隔离并投递原运行错误通知。
@@ -350,7 +351,7 @@ import { agentUpdateProvider, installedAgentVersion, isNewerAgentVersion, latest
 import type { LaunchProfile } from '@boai/shared/domain/backends'
 import type { AgentUpdate, AgentUpdateRequest } from '@boai/shared/ipc/notifications'
 import { runAcp } from './adapters/acp/client'
-import { summarizeMedia } from './modules/browser/media'
+import { persistentObservation } from './modules/conversations/observation-payload'
 import { nativeActivity } from './adapters/native-events'
 import { CodexEmployeeEngine } from './adapters/codex/engine'
 import { ClaudeEmployeeEngine } from './adapters/claude/engine'
@@ -4980,7 +4981,7 @@ export class AppService {
     context.onExecutionEvent = async event => {
       signal.throwIfAborted()
       if (terminal.has(run.status) || this.clearingConversations.has(run.conversationId)) return
-      await this.executions.append(run, JSON.parse(this.redact(JSON.stringify(summarizeMedia(event)), apiKey)))
+      await this.executions.append(run, persistentObservation(event, apiKey, '[已隐藏凭据]'))
     }
     if (run.phase === 'execution' && !isNativeBackend(run.backend)) {
       const projectMessage = this.messages.get(context.work?.sourceMessageId ?? continuation?.originalRequestId ?? turn.triggerMessageId)

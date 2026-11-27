@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 宿主 Trace、官方存储 Trace 与执行事件通过统一的结构化观测序列化保留 JSON 字段类型。
  * [OUTPUT]: 2026-11-24 第三阶段：官方 Durable Agent/Session.steer、Workspace 文件工具、LocalSandbox 进程和原生 Trace；授权及发布保留业务适配。
  * [INPUT]: Mastra's native metric events and BOAI run/conversation identities.
  * [OUTPUT]: Official metric storage/query, provider cost estimates and product-facing projections.
@@ -11,7 +12,7 @@ import { InMemoryStore, MastraCompositeStore, type MetricRecord, type MetricsFil
 import { MastraStorageExporter } from '@mastra/observability'
 import type { ObservabilityExporter } from '@mastra/core/observability'
 import type { EngineContext } from '../../contracts'
-import { summarizeMedia } from '../../modules/browser/media'
+import { persistentObservation } from '../../modules/conversations/observation-payload'
 import type { StoredTraceSpan } from '@boai/shared/domain/traces'
 import type { ModelMetricCall } from '@boai/shared/domain/profile'
 
@@ -47,8 +48,10 @@ export class MastraMetrics {
       init: options => native.init(options),
       exportTracingEvent: async event => {
         const span = event.exportedSpan
-        const serialized = JSON.stringify(summarizeMedia({ input: span.input, output: span.output, attributes: span.attributes, metadata: span.metadata, errorInfo: span.errorInfo, requestContext: span.requestContext }))
-        const clean = JSON.parse(context.apiKey ? serialized.split(JSON.stringify(context.apiKey).slice(1, -1)).join('[redacted]') : serialized)
+        const clean = persistentObservation({
+          input: span.input, output: span.output, attributes: span.attributes,
+          metadata: span.metadata, errorInfo: span.errorInfo, requestContext: span.requestContext,
+        }, context.apiKey)
         await native.exportTracingEvent({ ...event, exportedSpan: { ...span, ...clean,
           metadata: { ...clean.metadata, phase, runId: context.runId, threadId: context.conversation.id, resourceId: context.agent.id, boaiTurnId: context.turnId },
         } })

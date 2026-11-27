@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 宿主 Trace、官方存储 Trace 与执行事件通过统一的结构化观测序列化保留 JSON 字段类型。
  * [OUTPUT]: 指标打开、Trace 导出或关闭出错时，二次诊断失败也不会阻断业务。
  * [OUTPUT]: 2026-11-24 官方 Metrics 与脱敏 Trace 共用观测；仅指标时不导出逐步全文，存储失败不重放任务。
  * [OUTPUT]: Controller 和单次阶段共享官方 observability 配置与宿主脱敏导出，不重复注册 Agent。
@@ -8,6 +9,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
 import { reportTraceError } from '../../contracts'
+import { persistentObservation } from '../../modules/conversations/observation-payload'
 import { summarizeMedia } from '../../modules/browser/media'
 import { Mastra } from '@mastra/core/mastra'
 import type { Agent } from '@mastra/core/agent'
@@ -63,11 +65,7 @@ export async function createAgentObservation(context: MetricContext, phase: stri
           name: span.name, spanType: span.type, startedAt: span.startTime.toISOString(), endedAt: span.endTime?.toISOString(),
           input: span.input, output: span.output, attributes: span.attributes, metadata: { ...span.metadata, phase }, error: span.errorInfo,
         }
-        // The native filter handles named credentials; also redact the configured key
-        // when a provider includes it inside an error or serialized request body.
-        const serialized = JSON.stringify(summarizeMedia(value))
-        const clean = context.apiKey ? serialized.split(JSON.stringify(context.apiKey).slice(1, -1)).join('[redacted]') : serialized
-        await context.onTrace?.(JSON.parse(clean))
+        await context.onTrace(persistentObservation(value, context.apiKey))
       } catch (error) { await reportTraceError(context, error instanceof Error ? error.message : String(error)) }
     },
     async flush() {},
