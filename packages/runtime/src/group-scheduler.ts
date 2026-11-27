@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 工作额度与结果证据沿 shared/domain/work 的业务规则判断；预留、核权和结算由宿主事务负责。
  * [OUTPUT]: 主聊天新消息沿IM接收并交接后续处理；任务会话按原轮次串行，取消后仍等真实执行退出。
  * [OUTPUT]: 2026-10-27 移除判断/发言/接续代数上限，保留真实完成、等待与局部重复暂停。
  * [OUTPUT]: 群判断、主动发言和事件接续只累计计数，不按次数或代数截断；保留取消、来源/成员校验及真实依赖。
@@ -14,6 +15,7 @@
  * [POS]: packages/runtime/src/group-scheduler.ts。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { checkWorkBudget } from '@boai/shared/domain/work'
 import { ProgressMonitor, ProgressStalledError } from './modules/contexts/progress-monitor'
 import { isNativeBackend } from '@boai/shared/domain/backends'
 import { createHash, randomUUID } from 'node:crypto'
@@ -21,7 +23,6 @@ import { z } from 'zod'
 import type { AgentDelivery, AgentRun, CollaborationStartIntent, Conversation, ConversationEvent, Contribution, DecisionRecord, DigitalAgent, DiscussionTurn, Message, ParticipationDecision, WorkItem } from '@boai/shared/domain'
 import { ProductStore, type RecordTransaction, type StoredRecord } from './adapters/storage/product-store'
 import { collaborationStartAuthority } from './modules/collaboration/work-collaboration'
-import { checkWorkBudget } from './modules/collaboration/work-budget'
 import { workIntentSchema } from './modules/collaboration/work-protocol'
 import { MAX_INDEPENDENT_TASKS } from './modules/collaboration/task-admission'
 import { publishedWorkQuestionMatches } from '@boai/shared/domain/inbox'

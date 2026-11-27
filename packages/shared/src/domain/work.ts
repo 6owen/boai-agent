@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 工作额度与结果证据沿 shared/domain/work 的业务规则判断；预留、核权和结算由宿主事务负责。
  * [OUTPUT]: 2026-10-27 语音插件与显式执行额度的公共合同；不依赖可执行插件。
  * [OUTPUT]: 默认执行不按累计调用、工具步骤、用量或墙钟截断；保留真实用量、取消/权限和明确指定的预算。
  * [OUTPUT]: 自动化预算没有执行截止时间，旧持久账本保留兼容；普通工作期限合同不变。
@@ -42,6 +43,16 @@ export interface WorkOutcome {
   summary: string
   evidence?: { kind: 'answer' | 'artifact' | 'collaboration'; reference: string }[]
 }
+export function workEvidenceError(outcome: WorkOutcome, receipt: { content: string; artifactIds: string[] }, waiting = false): string | undefined {
+  if (outcome.userQuestion && (outcome.disposition !== 'waiting' || waiting || !receipt.content.includes(outcome.userQuestion))) return '用户补充问题必须明确为 waiting、出现在本次公开正文且不能解除工作依赖等待'
+  if (waiting && outcome.disposition !== 'waiting') return '已声明依赖等待，本次结果必须为 waiting'
+  for (const evidence of outcome.evidence ?? []) {
+    if (evidence.kind === 'artifact' && !receipt.artifactIds.includes(evidence.reference)) return '交付证据未引用本次已登记产物'
+    if (evidence.kind === 'answer' && (!evidence.reference.trim() || !receipt.content.includes(evidence.reference))) return '答复证据不在本次结果中'
+  }
+  if (outcome.disposition === 'delivered' && !outcome.evidence?.length) return '已交付状态必须有可检查的结果证据'
+}
+
 export interface WorkDraft {
   text: string
   observedThroughSequence: number
@@ -163,6 +174,40 @@ export const WORK_EXECUTION_LIMITS = { steps: Number.POSITIVE_INFINITY, modelCal
 export const WORK_BUDGET_ALLOWANCE = { durationMs: 5 * 60_000, modelCalls: 24, runs: 8, outputTokens: 16000, workItems: 8, retries: 3, reportRefreshes: 4, noProgress: 3 } as const
 /** Historical organization default, used only to recognize legacy budgets during migration. */
 export const BOBO_COLLABORATION_INITIAL_MODEL_CALLS = 48
+export const WORK_BUDGET_ACTIVITY_DEFAULTS = { workItems: 0, retries: 0, reportRefreshes: 0, noProgress: 0, maxWorkItems: null, maxRetries: null, maxReportRefreshes: null, maxNoProgress: null } as const
+export class WorkUnavailableError extends Error {}
+
+export function newWorkBudget(id: string, source?: { origin: AutomationOrigin; conversationId: string } | { collaborationRequestId: string; conversationId: string } | { sourceMessageId: string; conversationId: string; callUnit: 'external-turn' | 'mixed' }): WorkBudget {
+  return { ...WORK_BUDGET_ACTIVITY_DEFAULTS, id, schemaVersion: 1, executionAllowanceVersion: 2, limitAuthority: { kind: 'default' }, modelCalls: 0, runs: 0,
+    maxModelCalls: WORK_EXECUTION_LIMITS.modelCalls, maxRuns: null, maxOutputTokens: WORK_EXECUTION_LIMITS.outputTokens,
+    deadlineAt: '', usage: {}, usageIncomplete: false,
+    ...(source ? { ...source, accounting: 'model-calls-v1', unknownCalls: 0 } : {}) }
+}
+/** A null ceiling means unlimited. Explicit zero limits still reject immediately. */
+export function workLimitReached(used: number, limit: number | null) { return limit !== null && used >= limit }
+/** Existing automation ledgers keep their counters, but no longer expire by wall clock. */
+export function workBudgetDeadline(budget: Pick<WorkBudget, 'origin' | 'deadlineAt'>): number | undefined {
+  if (budget.origin || budget.deadlineAt === '') return undefined
+  const deadline = Date.parse(budget.deadlineAt ?? '')
+  return Number.isFinite(deadline) ? deadline : 0
+}
+export function workBudgetExhausted(budget: WorkBudget) {
+  return Date.now() >= (workBudgetDeadline(budget) ?? Infinity)
+    || workLimitReached(budget.modelCalls, budget.maxModelCalls)
+    || workLimitReached(budget.runs, budget.maxRuns)
+    || workLimitReached(budget.usage.outputTokens ?? 0, budget.maxOutputTokens)
+    || workLimitReached(budget.workItems, budget.maxWorkItems)
+    || workLimitReached(budget.retries, budget.maxRetries)
+    || workLimitReached(budget.reportRefreshes, budget.maxReportRefreshes)
+    || workLimitReached(budget.noProgress, budget.maxNoProgress)
+}
+export function checkWorkBudget(budget: WorkBudget, policy?: 'native') {
+  if (policy === 'native') return
+  if (workLimitReached(budget.noProgress, budget.maxNoProgress)) throw new WorkUnavailableError('达到原始工作的无进展接续上限')
+  if (workLimitReached(budget.modelCalls, budget.maxModelCalls)
+    || workLimitReached(budget.usage.outputTokens ?? 0, budget.maxOutputTokens) || Date.now() >= (workBudgetDeadline(budget) ?? Infinity)) throw new WorkUnavailableError('达到原始工作的调用、用量或时间上限')
+}
+
 export type WorkBudgetLimits = Pick<WorkBudget, 'maxModelCalls' | 'maxRuns' | 'maxOutputTokens' | 'maxWorkItems' | 'maxRetries' | 'maxReportRefreshes' | 'maxNoProgress' | 'deadlineAt'>
 export interface BudgetRenewal {
   id: string

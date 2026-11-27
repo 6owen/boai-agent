@@ -1,13 +1,14 @@
 /*
+ * [OUTPUT]: 工作额度与结果证据沿 shared/domain/work 的业务规则判断；预留、核权和结算由宿主事务负责。
  * [INPUT]: 单次自动化冻结分工、当前Work持有者与SQLite事务。
  * [OUTPUT]: 固定子任务身份/职责、同次真实依赖与汇总交付门禁；不创建第二套调度器。
  * [POS]: WorkRepository复用的自动化分工规则，旧无分工计划保持原行为。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
+import { WorkUnavailableError } from '@boai/shared/domain/work'
 import { createHash } from 'node:crypto'
 import type { AutomationOccurrence, WorkDelegation, WorkItem } from '@boai/shared/domain'
 import type { RecordTransaction } from '../../adapters/storage/product-store'
-import { WorkUnavailableError } from '../collaboration/work-budget'
 
 export const AUTOMATION_ROOT_KEY = 'automation-root'
 export const automationAssignmentKey = (employeeId: string) => 'automation-assignment-' + createHash('sha256').update(employeeId).digest('hex').slice(0, 32)

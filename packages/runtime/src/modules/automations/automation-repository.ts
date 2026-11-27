@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 工作额度与结果证据沿 shared/domain/work 的业务规则判断；预留、核权和结算由宿主事务负责。
  * [OUTPUT]: 会话队列和调度准入使用同一持久顺序；执行器容量单独判断。
  * [OUTPUT]: 员工定时触发和新话题消息同事务提交，只留会话记录；旧任务和监控保留原运行账本。
  * [OUTPUT]: 同任务等待补充/工作时新消息进入持久队列；显式立即发送才中断原等待并优先处理。
@@ -21,6 +22,7 @@
  * [POS]: 自动化产品账本；内存与 Mastra 日程均为投影，不是认领权威。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { checkWorkBudget, newWorkBudget, WorkUnavailableError } from '@boai/shared/domain/work'
 import { compareQueuedOccurrences, isOngoingOccurrence } from '@boai/shared/domain/automations'
 import { linkEmployeeTask, syncEmployeeTask } from './employee-task-records'
 import { isNativeBackend } from '@boai/shared/domain/backends'
@@ -30,7 +32,6 @@ import { join } from 'node:path'
 import type { DigitalAgent, Conversation, AgentRun, DiscussionTurn, DecisionRecord, Message, WorkItem, WorkBudget } from '@boai/shared/domain'
 import type { AutomationCreationSource, AutomationDefinition, AutomationDispatch, AutomationInput, AutomationOccurrence, AutomationOrigin, AutomationMonitorCheckpoint, AutomationMonitorRead } from '@boai/shared/domain/automations'
 import { ProductStore, type RecordTransaction, type StoredRecord } from '../../adapters/storage/product-store'
-import { checkWorkBudget, newWorkBudget, WorkUnavailableError } from '../collaboration/work-budget'
 import { compareMonitorObservation, monitorPolicyFingerprint, monitorPolicySchema } from './automation-monitor'
 import { inferAutomationOwner } from './automation-plan'
 import { automationQuestionStates, belongsToOccurrence, unansweredAutomationTurns } from './automation-results'

@@ -1,5 +1,5 @@
 {
-  "automations": ["collaboration", "conversations"],
+  "automations": ["conversations"],
   "browser": ["collaboration", "employees"],
   "collaboration": ["automations"],
   "conversations": ["browser"],

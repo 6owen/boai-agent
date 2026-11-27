@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 工作额度与结果证据沿 shared/domain/work 的业务规则判断；预留、核权和结算由宿主事务负责。
  * [OUTPUT]: 验证默认无执行配额、旧默认精确迁移、显式预算仍执行以及用户取消；不调用真实供应商。
  * [OUTPUT]: 覆盖增大任务额度、真实继续消息或本次运行同类批准；各文件以具体用例限定验证范围。
  * [OUTPUT]: 覆盖系统复制回执、员工配置入口、定时运行防连点、失败过程保留、严格私有判断修复及保留原预算的显式继续。
@@ -10,6 +11,7 @@
  * [POS]: 自动化预算与执行容量的持久事务回归；不调用真实模型。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { workBudgetDeadline } from '@boai/shared/domain/work'
 import { afterEach, expect, it } from 'vitest'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -19,7 +21,6 @@ import { ProductStore } from '../packages/runtime/src/adapters/storage/product-s
 import { activateAutomationExecution, AutomationRepository } from '../packages/runtime/src/modules/automations/automation-repository'
 import { AutomationService } from '../packages/runtime/src/modules/automations/automation-service'
 import { WorkRepository } from '../packages/runtime/src/modules/collaboration/work-repository'
-import { workBudgetDeadline } from '../packages/runtime/src/modules/collaboration/work-budget'
 
 const cleanups: (() => Promise<void>)[] = []
 afterEach(async () => { for (const cleanup of cleanups.splice(0).reverse()) await cleanup() })

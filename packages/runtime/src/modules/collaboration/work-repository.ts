@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 工作额度与结果证据沿 shared/domain/work 的业务规则判断；预留、核权和结算由宿主事务负责。
  * [OUTPUT]: 单项工作按固定 ID 核会话和可选负责人，列表与完整工作视图各自使用对应读取。
  * [OUTPUT]: 2026-10-28组织判断承接沿用户原绝对期限计入耗时，不追加固定五分钟上限或续期。
  * [OUTPUT]: 2026-10-27 默认持续执行、来源校验及工作现场/复核接线；沿原权限和账本。
@@ -29,6 +30,7 @@
  * [POS]: collaboration 的持久工作控制；不选举发言人、不重放工具。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { workLimitReached, checkWorkBudget, workBudgetDeadline, newWorkBudget, workBudgetExhausted, WORK_BUDGET_ACTIVITY_DEFAULTS, WorkUnavailableError, workEvidenceError } from '@boai/shared/domain/work'
 import { isNativeBackend, sameBackendBinding } from '@boai/shared/domain/backends'
 import { assertChannelSourceAccess } from '../channels/channel-workspace'
 import { createHash } from 'node:crypto'
@@ -43,10 +45,9 @@ import { AUTOMATION_ROOT_KEY, automationDelegation, assertAutomationDelivery } f
 import { ProductStore, type RecordTransaction, type StoredRecord } from '../../adapters/storage/product-store'
 
 import { queueWorkWake, refreshWaiters, validateDependencies } from './work-dependencies'
-import { workLimitReached, checkWorkBudget, workBudgetDeadline, upgradeWorkExecutionAllowance, newWorkBudget, reserveBudgetCall, settleBudgetCall, workBudgetExhausted, workLimits, WorkUnavailableError } from './work-budget'
-export { WorkUnavailableError } from './work-budget'
+import { upgradeWorkExecutionAllowance, reserveBudgetCall, settleBudgetCall } from './work-budget'
 
-import { workDelegationSchema, workWaitSchema, workEvidenceError } from './work-protocol'
+import { workDelegationSchema, workWaitSchema } from './work-protocol'
 import { adoptInteractiveDecision, interactiveCallAuthority } from './work-interactive-budget'
 import { assertOrganizationSource, assertOrganizationHolder as organizationHolder, bindGroupStart as bindCollaborationGroup, resumeCollaborationStart as resumeGroupStart, claimOrganizationRecovery as claimOrganizationFiles, confirmOrganizationRecovery, collaborationCallAuthority, assertCollaborationEvidence } from './work-collaboration'
 
@@ -133,7 +134,7 @@ export class WorkRepository {
       }
       for (const budget of await tx.list<WorkBudget>('workBudgets')) {
         if (budget.schemaVersion !== 1) throw new Error('不能读取未知版本的工作预算')
-        const migrated = { ...workLimits, ...budget }
+        const migrated = { ...WORK_BUDGET_ACTIVITY_DEFAULTS, ...budget }
         upgradeWorkExecutionAllowance(migrated)
         const retainedItems = (await tx.list<WorkItem>('workItems')).filter(work => work.budgetId === budget.id && work.budgetPolicy !== 'native').length
         migrated.workItems = budget.collaborationRequestId ? Math.max(budget.workItems, retainedItems) : retainedItems
@@ -303,7 +304,7 @@ export class WorkRepository {
       if (native && work.origin && (!budget?.origin || budget.accounting !== 'model-calls-v1' || JSON.stringify(budget.origin) !== JSON.stringify(work.origin))) throw new WorkUnavailableError('本机自动化必须沿本次触发的原始请求账本')
       if (interactive && budget && (!['external-turn', 'mixed'].includes(budget.callUnit ?? '') || budget.accounting !== 'model-calls-v1' || budget.sourceMessageId !== work.sourceMessageId)) throw new WorkUnavailableError('旧本机工作缺少可信请求账本，不能隐式续用预算')
       if (!budget && (work.collaborationRequestId || interactive) && !isNew) throw new WorkUnavailableError('原工作预算缺失，不能重建默认额度')
-      budget ??= newWorkBudget(work.budgetId, input.organization ? { collaborationRequestId: input.organization.requestId, conversationId: input.conversationId } : interactive ? { sourceMessageId: work.sourceMessageId, conversationId: input.conversationId, callUnit: mixedGroup || !native ? 'mixed' : 'external-turn' } : undefined, input.organization?.mode)
+      budget ??= newWorkBudget(work.budgetId, input.organization ? { collaborationRequestId: input.organization.requestId, conversationId: input.conversationId } : interactive ? { sourceMessageId: work.sourceMessageId, conversationId: input.conversationId, callUnit: mixedGroup || !native ? 'mixed' : 'external-turn' } : undefined)
       if (interactive && (!native || mixedGroup) || native && (work.collaborationRequestId || work.origin)) budget.callUnit = 'mixed'
       if (work.collaborationRequestId && (budget.accounting !== 'model-calls-v1' || budget.collaborationRequestId !== work.collaborationRequestId || budget.origin)) throw new WorkUnavailableError('不能改绑或复用另一工作的预算')
       if (interactive && input.priorDecision) await adoptInteractiveDecision(tx, work, budget, input.sourceMessageId, input.priorDecision)

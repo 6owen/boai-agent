@@ -1,13 +1,15 @@
 /*
+ * [OUTPUT]: 工作额度与结果证据沿 shared/domain/work 的业务规则判断；预留、核权和结算由宿主事务负责。
  * [OUTPUT]: 2026-10-27 持续进展、配对/轮转/等待降级、旧额度来源与恢复现场回归源码。
  * [INPUT]: Complete/incomplete tool trajectories, current source ownership and historical budget ledgers.
  * [OUTPUT]: Repeat detection without count ceilings; unknown evidence, waiting and explicit limits keep their semantics.
  * [POS]: Targeted runtime regressions, no external model or Electron launch.
  * [PROTOCOL]: Update Header and tests/.folder.md when changed.
  */
+import { newWorkBudget, workBudgetExhausted } from '@boai/shared/domain/work'
 import { expect, it } from 'vitest'
 import { ProgressMonitor } from '../packages/runtime/src/modules/contexts/progress-monitor'
-import { newWorkBudget, upgradeWorkExecutionAllowance, workBudgetExhausted } from '../packages/runtime/src/modules/collaboration/work-budget'
+import { upgradeWorkExecutionAllowance } from '../packages/runtime/src/modules/collaboration/work-budget'
 import { workingScene } from '../packages/runtime/src/modules/contexts/working-scene'
 import type { AgentRun, Artifact, Message, WorkExecution, WorkItem } from '../packages/shared/src/domain'
 const step = (monitor: ProgressMonitor, id: string, result: unknown = 'same', name = 'read_file') => { monitor.start(id, name, { path: '/authorized/a' }); monitor.finish(id, name, result) }

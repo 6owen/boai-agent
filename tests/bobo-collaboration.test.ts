@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 工作额度与结果证据沿 shared/domain/work 的业务规则判断；预留、核权和结算由宿主事务负责。
  * [OUTPUT]: bobo忽略遗留默认项目并使用工作区，普通员工的默认项目仍随新群公告固定。
  * [OUTPUT]: 组织发布期间核心默认目录单改保留原持有者和启动身份，职责变化仍原子阻止员工/群/公告发布。
  * [OUTPUT]: 组织新群与真实公告持久化各成员的独立项目快照，默认未设的新员工沿明确受管模式。
@@ -10,6 +11,7 @@
  * [POS]: bobo 组织模块验收；不使用模型或伪造群运行。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { newWorkBudget } from '@boai/shared/domain/work'
 import { chmod, copyFile, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { inspectProgram } from '../packages/runtime/src/modules/backends/program'
@@ -24,7 +26,6 @@ import { BoboCollaborationService, type BoboCollaborationHooks } from '../packag
 import { WorkspaceService } from '../packages/runtime/src/modules/workspaces/workspace-service'
 import { assertOrganizationHolder, bindGroupStart } from '../packages/runtime/src/modules/collaboration/work-collaboration'
 import { listArtifacts } from '../packages/runtime/src/modules/resources/local-resources'
-import { newWorkBudget } from '../packages/runtime/src/modules/collaboration/work-budget'
 
 const cleanups: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const cleanup of cleanups.splice(0).reverse()) await cleanup() })

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 工作额度与结果证据沿 shared/domain/work 的业务规则判断；预留、核权和结算由宿主事务负责。
  * [OUTPUT]: 2026-10-27 默认持续执行、来源校验及工作现场/复核接线；沿原权限和账本。
  * [OUTPUT]: 默认执行不按累计调用、工具步骤、用量或墙钟截断；保留真实用量、取消/权限和明确指定的预算。
  * [OUTPUT]: 自动化预算不按墙钟到期；本人明确继续保留原工作和累计用量，普通工作仅重开时间窗口，未知操作仍阻止重放。
@@ -11,10 +12,9 @@
  */
 import { randomUUID } from 'node:crypto'
 import type { AgentRun, AutomationBudgetRenewalInput, AutomationOccurrence, AutomationOrigin, BudgetRenewal, DiscussionTurn, DecisionRecord, Message, WorkBudget, WorkBudgetLimits, WorkExecution, WorkItem, WorkWake } from '@boai/shared/domain'
-import { WORK_BUDGET_ALLOWANCE as allowance } from '@boai/shared/domain/work'
+import { WORK_BUDGET_ALLOWANCE as allowance, workBudgetExhausted } from '@boai/shared/domain/work'
 import type { RecordTransaction, StoredRecord } from '../../adapters/storage/product-store'
 import { belongsToOccurrence, unansweredAutomationTurns } from '../automations/automation-results'
-import { workBudgetExhausted } from './work-budget'
 import { queueWorkWake, refreshWaiters } from './work-dependencies'
 
 const row = <T extends { id: string }>(collection: string, value: T) => ({ collection, id: value.id, value })

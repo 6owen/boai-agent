@@ -1,12 +1,14 @@
 /*
+ * [OUTPUT]: 工作额度与结果证据沿 shared/domain/work 的业务规则判断；预留、核权和结算由宿主事务负责。
  * [INPUT]: 当前 SQLite 问题/消息/轮次/运行/员工、自动化等待与原 Work 仓库。
  * [OUTPUT]: 普通/自动化原问题的版本、来源与独立负责人复核；task只沿公开消息的原运行/Work，旧完成/同伴失败轮次仅凭确切已提交任务问题只读兼容，chat保守兼容旧缺记录；回答归原事务。
  * [POS]: D5 原问题补充的宿主事务边界，来源核对只读且不创建预算或独立待办。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新 Header，并上浮检查所属目录 .folder.md。
  */
+import { WorkUnavailableError } from '@boai/shared/domain/work'
 import type { AgentRun, AutomationOccurrence, AutomationOrigin, Conversation, DecisionRecord, DigitalAgent, DiscussionTurn, Message, PublishedUserQuestion, WorkItem } from '@boai/shared/domain'
 import type { RecordTransaction } from '../../adapters/storage/product-store'
-import { WorkRepository, WorkUnavailableError } from '../collaboration/work-repository'
+import { WorkRepository } from '../collaboration/work-repository'
 import { publishedWorkQuestionMatches } from '@boai/shared/domain/inbox'
 
 export interface QuestionSource { question: PublishedUserQuestion; message: Message; turn: DiscussionTurn; agentId: string; conversation: Conversation; decision?: DecisionRecord; work?: WorkItem }
