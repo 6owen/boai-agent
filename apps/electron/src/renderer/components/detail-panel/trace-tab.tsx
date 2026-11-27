@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-27 删除定时日志只撤对应单次日志详情，原会话的执行历史依旧可读。
  * [OUTPUT]: 2026-11-26 执行历史所有记录默认收起，刷新不覆盖手动选择；明确打开的单次执行详情保持原默认。
  * [OUTPUT]: 群执行历史提供原协作工作树及停止入口，保留父子关系/依赖/状态，不另开任务页面。
  * [OUTPUT]: 整份历史共享8MiB正文缓存；最多保留八个已折叠正文，移出列表/范围变化及卸载释放旧状态。
@@ -97,7 +98,7 @@ export function TraceTab({ api, conversationId, messageId, agentId, active, snap
     const unsubscribe = api.subscribe(event => {
       if ((event.type === 'conversation:cleared' || event.type === 'conversation:deleted') && event.conversationId === conversationId) { disposed = true; cache.clear(); setItems([]); setNext(undefined); setLoaded(true); return }
       if ((event.type === 'conversation:cleared' || event.type === 'conversation:deleted') && sourceRooms.current.has(event.conversationId)) { setItems(previous => previous.filter(item => item.run.conversationId !== event.conversationId)); cache.clear() }
-      if (event.type === 'automation:history-deleted') { setItems(previous => previous.filter(item => item.run.origin?.occurrenceId !== event.occurrenceId)); cache.clear() }
+      if (event.type === 'automation:history-deleted' && occurrenceId === event.occurrenceId) { disposed = true; clearTimeout(timer); setItems([]); setNext(undefined); cache.clear() }
       if (event.type === 'changed' && (!event.conversationId || event.conversationId === conversationId || sourceRooms.current.has(event.conversationId)) && !timer) timer = setTimeout(() => { timer = undefined; void load() }, 180)
     })
     return () => { disposed = true; unsubscribe(); clearTimeout(timer) }

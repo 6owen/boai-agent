@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-27 会话删除只保留定时触发去重墓碑，撤销原日志会话关系。
  * [OUTPUT]: 大Trace清理只传ID，关联/嵌套快照/空范围/大批运行ID及共享会话保留回归。
  * [OUTPUT]: 原清理恢复先处理关联讨论，保留其独立待决回执，最后完成父会话删除并保持共享资料。
  * [INPUT]: SQLite 清理用例与独立本地数据目录。
@@ -138,8 +139,8 @@ it('removes linked content while preserving other conversations, contacts, share
   expect(await store.load('memory')).toEqual([{ id: 'profile', ownerAgentId: 'a', scope: 'profile', sourceMessageIds: [] }])
   expect(result.memoryEpochs).toContainEqual({ id: 'employee:a:conversation:c', epoch: 11 })
   expect(result.conversation).toMatchObject({ id: 'c', agentIds: ['a'], sharedKnowledgeIds: ['shared'], list: { hidden: true } })
-  expect(await store.load('automationOccurrences')).toEqual([{ id: 'occurrence', conversationId: 'c', status: 'completed', nativeRunId: 'native-id', reason: '聊天记录已清空', runIds: [], resultMessageIds: [] }])
-  expect(await store.load('automationDispatches')).toEqual([{ schemaVersion: 1, id: 'occurrence', requestId: 'automatic-request', status: 'cleared' }])
+  expect(await store.load('automationOccurrences')).toEqual([expect.objectContaining({ id: 'occurrence', conversationId: '', deletedAt: expect.any(String), nativeRunId: 'native-id', runIds: [], resultMessageIds: [] })])
+  expect(await store.load('automationDispatches')).toEqual([])
   expect(await store.load('automationTriggerAliases')).toEqual([{ id: 'native-alias', occurrenceId: 'occurrence' }])
   expect(await store.load('agents')).toHaveLength(1); expect(await store.load('resources')).toHaveLength(1)
   expect(await readFile(join(root, 'knowledge/shared.txt'), 'utf8')).toBe('keep')

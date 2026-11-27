@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 2026-11-27 验证记录行定位原会话、无会话详情及独立日志删除。
  * [OUTPUT]: 2026-11-17固定检索/全局清空工具栏与ScrollArea；记录无前置图标且仅时间，全局清空冻结全部分页并保留在途记录。
  * [OUTPUT]: 2026-11-17Dialog分组默认收起且不渲染搜索/Tabs，展开选择/再次收起仍固定原记录身份。
  * [OUTPUT]: 覆盖Dialog左侧状态分组、折叠与固定记录选择，无执行副作用。
@@ -87,13 +88,31 @@ test('an already loaded empty list does not alternate between empty and loading 
 })
 
 const button = (label: string) => [...document.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent === label)!
+test('opens the bound conversation from the row while keeping details available for skipped records', async () => {
+  const onConversation = vi.fn(), onOccurrence = vi.fn()
+  await act(async () => root.render(createElement(AutomationHistory, {
+    api, active: true, onConversation, onOccurrence,
+    conversations: [{ id: 'task-chat' }] as import('../packages/shared/src/domain').Conversation[],
+  })))
+  await resolve({ occurrences: [
+    { ...record, conversationId: 'task-chat', messageId: 'original-trigger' },
+    { ...record, id: 'skipped', conversationId: 'task-chat', status: 'skipped' },
+  ] })
+  await act(async () => host.querySelector<HTMLButtonElement>(`[data-occurrence-id="${record.id}"]`)!.click())
+  expect(onConversation).toHaveBeenCalledExactlyOnceWith('task-chat', 'original-trigger')
+  expect(onOccurrence).not.toHaveBeenCalled()
+  await act(async () => host.querySelector<HTMLButtonElement>('.automation-record-detail')!.click())
+  await act(async () => host.querySelector<HTMLButtonElement>('[data-occurrence-id="skipped"]')!.click())
+  expect(onOccurrence.mock.calls).toEqual([[record.id], ['skipped']])
+})
+
 test('requires confirmation, sends the frozen record version and removes a deleted row', async () => {
   await render(); await resolve({ occurrences: [{ ...record, status: 'completed', stateVersion: 7 }] })
   const request = vi.mocked(api.request)
   request.mockImplementation(async method => { if (method === 'deleteAutomationOccurrence') return undefined; return { occurrences: [{ ...record, status: 'completed', stateVersion: 7 }] } as never })
   const open = () => host.querySelector<HTMLButtonElement>('[aria-label="删除执行记录 每日天气预报"]')!
   await act(async () => open().click())
-  expect(document.body.textContent).toContain('删除这条执行记录及其文件？')
+  expect(document.body.textContent).toContain('删除这条执行记录？')
   expect(request).not.toHaveBeenCalledWith('deleteAutomationOccurrence', expect.anything())
   await act(async () => button('取消').click())
   expect(request).not.toHaveBeenCalledWith('deleteAutomationOccurrence', expect.anything())
@@ -129,7 +148,7 @@ test('clear all freezes every page before deletion, skips ongoing records and do
   await render(); await resolve({ occurrences: [first, running] })
   const request = vi.mocked(api.request), success = vi.spyOn(toast, 'success').mockImplementation(() => 'success')
   await act(async () => button('全部清空').click())
-  expect(document.body.textContent).toContain('清空当前任务的执行记录及文件？')
+  expect(document.body.textContent).toContain('清空当前任务的执行记录？')
   await act(async () => button('取消').click())
   expect(request.mock.calls.filter(([method]) => method === 'deleteAutomationOccurrence')).toHaveLength(0)
   let finishSecondPage!: (page: AutomationHistoryPage) => void
@@ -246,7 +265,7 @@ test('Dialog search remains server-backed and clear freezes all history pages in
   await resolve({ occurrences: [first] })
   const clear = () => host.querySelector<HTMLButtonElement>('[aria-label="清空记录"]')!.click()
   await act(async () => clear())
-  expect(document.body.textContent).toContain('清空全部执行记录及文件？')
+  expect(document.body.textContent).toContain('清空全部执行记录？')
   await act(async () => button('取消').click())
   expect(request.mock.calls.some(([method]) => method === 'deleteAutomationOccurrence')).toBe(false)
   const cursor = { startedAt: first.startedAt, id: first.id }

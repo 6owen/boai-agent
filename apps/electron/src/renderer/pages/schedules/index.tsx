@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-27 定时页点击执行记录直接打开原话题；跳过等无会话记录仍可查看原因。
  * [OUTPUT]: 执行记录入口及单次定位打开统一左右Dialog；任务内历史列表沿原查询。
  * [OUTPUT]: 列表右键删除固定所选任务，经统一AlertDialog确认后沿原删除接口提交；取消不提交，成功同步移除并退出已删任务详情。
  * [OUTPUT]: 定时任务侧栏委托独立标签/排序管理；说明移至标题Tooltip，原执行与详情行为保持。
@@ -32,15 +33,16 @@ import { AutomationDialog, type AutomationDialogTarget } from './automation-dial
 import { ScheduleList } from './schedule-list'
 import { useScheduleList } from './use-schedule-list'
 export type ScheduleLocation = { kind: 'overview' } | { kind: 'definition'; id: string } | { kind: 'history'; attention?: boolean } | { kind: 'occurrence'; id: string; requestId: string }
-export function SchedulePage({ api, snapshot, active, sidebarShown, divider, location, onLocation, onOccurrence, onCreateConversation, selectedOccurrenceId, onNavigateMessage }: {
+export function SchedulePage({ api, snapshot, active, sidebarShown, divider, location, onLocation, onCreateConversation, onNavigateMessage, onConversation }: {
   api: DesktopApi; snapshot: Snapshot; active: boolean; sidebarShown: boolean; divider: ReactNode; location: ScheduleLocation; onLocation(value: ScheduleLocation): void
   onNavigateMessage: ExecutionMessageNavigation
-  onOccurrence(id: string): void; onCreateConversation(): void; selectedOccurrenceId?: string
+  onConversation(id: string, messageId?: string, navigated?: () => void): void
+  onCreateConversation(): void
 }) {
   useEffect(() => {
     if (active && location.kind === 'occurrence') { setHistoryDialog({ id: location.id }); onLocation({ kind: 'overview' }) }
     else if (active && location.kind === 'history') { setHistoryDialog({ attention: location.attention }); onLocation({ kind: 'overview' }) }
-  }, [active, location, onOccurrence, onLocation])
+  }, [active, location, onLocation])
   const [historyDialog, setHistoryDialog] = useState<{ id?: string; attention?: boolean }>()
   const [view, setView] = useState<AutomationsView>({ definitions: [], occurrences: [], available: true })
   const [loading, setLoading] = useState(true), [loadError, setLoadError] = useState('')
@@ -102,9 +104,9 @@ export function SchedulePage({ api, snapshot, active, sidebarShown, divider, loc
         </div></div>
         <AutomationDetails definition={definition} snapshot={snapshot} action={<AutomationRunActions key={definition.id} api={api} automationId={definition.id} occurrences={view.occurrences} active={active} onNavigateMessage={onNavigateMessage} />} />
         {definition.syncError && <Banner>{definition.syncError}</Banner>}
-        <AutomationHistory key={definition.id} api={api} active={active} automationId={definition.id} selectedId={selectedOccurrenceId} onOccurrence={openOccurrence} />
+        <AutomationHistory key={definition.id} api={api} active={active} automationId={definition.id} conversations={snapshot.conversations} onConversation={onConversation} onOccurrence={openOccurrence} />
       </div> : !loading && <Banner>此任务已删除或不可用，留存结果仍可在执行记录中查看。</Banner>)}
-      {<div ref={location.kind === 'history' ? content : undefined} hidden={location.kind !== 'history'} className="schedule-document schedule-content-transition t-panel-slide" data-open="true" data-settled="true"><AutomationHistory api={api} active={active && location.kind === 'history'} attentionOnly={location.kind === 'history' && location.attention} selectedId={selectedOccurrenceId} onOccurrence={openOccurrence} /></div>}
+      {<div ref={location.kind === 'history' ? content : undefined} hidden={location.kind !== 'history'} className="schedule-document schedule-content-transition t-panel-slide" data-open="true" data-settled="true"><AutomationHistory api={api} active={active && location.kind === 'history'} attentionOnly={location.kind === 'history' && location.attention} conversations={snapshot.conversations} onConversation={onConversation} onOccurrence={openOccurrence} /></div>}
     </main>
     <AlertDialog open={active && Boolean(deleting)} onOpenChange={open => { if (!open && !busy) setDeleting(null) }}>
       <AlertDialogContent>
@@ -121,7 +123,7 @@ export function SchedulePage({ api, snapshot, active, sidebarShown, divider, loc
         }}>确认删除</Button></AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-    {historyDialog && <AutomationHistoryDialog api={api} snapshot={snapshot} active={active} initialId={historyDialog.id} attentionOnly={historyDialog.attention} onClose={() => setHistoryDialog(undefined)} onNavigateMessage={(...args) => { setHistoryDialog(undefined); onNavigateMessage(...args) }} />}
+    {historyDialog && <AutomationHistoryDialog api={api} snapshot={snapshot} active={active} initialId={historyDialog.id} attentionOnly={historyDialog.attention} onClose={() => setHistoryDialog(undefined)} onConversation={(id, messageId) => onConversation(id, messageId, () => setHistoryDialog(undefined))} onNavigateMessage={(...args) => { setHistoryDialog(undefined); onNavigateMessage(...args) }} />}
     {dialog && <AutomationDialog key={dialog.key} api={api} snapshot={snapshot} active={active} target={dialog} onClose={() => setDialog(undefined)} onSaved={value => {
       setView(current => ({ ...current, definitions: [{ ...value, nextTimes: [] }, ...current.definitions.filter(d => d.id !== value.id)] }))
       setDialog(undefined); onLocation({ kind: 'definition', id: value.id })

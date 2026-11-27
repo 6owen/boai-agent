@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 2026-11-27 会话删除后的定时日志墓碑不进入可见历史或活动状态。
  * [OUTPUT]: 2026-11-25 定时历史不再回填或更新旧看板；旧人工记录兼容尊重删除墓碑。
  * [OUTPUT]: 已提交任务结果发一次瞬时通知；恢复只校正状态，不重放通知或执行。
  * [OUTPUT]: 任务消息队列支持按版本移除和优先执行；固定当前会话的中断目标，保留其他队列并等待实际退出。
@@ -98,7 +99,12 @@ export class AutomationService {
   constructor(private store: ProductStore, private dataPath: string, private hooks: Hooks) { this.repository = new AutomationRepository(store, dataPath) }
   hasActiveConversation(id: string) { return [...this.occurrences.values()].some(item => item.conversationId === id && activeOccurrence.has(item.status)) }
   forgetHistory(id: string) { this.occurrences.delete(id) }
-  replaceHistory(occurrences: AutomationOccurrence[]) { for (const item of occurrences) this.occurrences.set(item.id, item) }
+  replaceHistory(occurrences: AutomationOccurrence[]) {
+    for (const item of occurrences) {
+      if (item.deletedAt) this.forgetHistory(item.id)
+      else this.occurrences.set(item.id, item)
+    }
+  }
   private serialize<T>(fn: () => Promise<T>) { const next = this.tail.then(fn); this.tail = next.catch(() => {}); return next }
   private async refresh() {
     const view = await this.repository.view()
