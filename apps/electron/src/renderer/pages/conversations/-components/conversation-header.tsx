@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 核心主聊标题显示员工名，只有话题等实际使用生成标题的聊天显示生成状态。
  * [OUTPUT]: 长话题标题可换至两行，弹层适应窗口宽度并仅纵向滚动。
  * [OUTPUT]: 标题栏话题 Popover 只显示当前员工可见的话题，沿正常会话导航。
  * [OUTPUT]: 首句占位标题在生成期间复用 shadcn shimmer。
@@ -96,9 +97,10 @@ export function ConversationHeader({ conversation, members, resources, busy, onD
     trigger.current.focus({ preventScroll: true })
     action()
   }
-  const title = isCoreConversation(conversation) && conversation.employeeChat === 'main' ? members[0]?.name ?? conversation.title : conversation.title
+  const coreMain = isCoreConversation(conversation) && conversation.employeeChat === 'main'
+  const title = coreMain ? members[0]?.name ?? conversation.title : conversation.title
   return <>
-    <ConversationHeaderLayout title={title} titleGenerating={conversation.titleGenerating}>
+    <ConversationHeaderLayout title={title} titleGenerating={!coreMain && conversation.titleGenerating}>
         {headerActions}
         {(conversation.kind === 'group' || channel) && <>
           <div className="chat-members" aria-label={channel ? '接入员工' : '群聊成员'}>

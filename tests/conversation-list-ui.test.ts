@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 /*
+ * [OUTPUT]: 核对核心主聊使用员工名称，最后一个核心会话删除后只保留列表空态。
  * [OUTPUT]: 核对置顶员工话题只在标题栏 Popover 查阅，侧栏余白可取消置顶。
  * [OUTPUT]: 核对拖影和置顶卡片使用员工名、等待 IPC 时的落点。
  * [OUTPUT]: 核对 bobo 主聊统一展示、拖拽置顶与取消、置顶话题归属及空区回收。
@@ -200,6 +201,36 @@ it.each([
   expect(buttonByName(employeeLabel)?.getAttribute('aria-current')).toBe('page')
 })
 
+
+it('hides a deleted Bobo main chat and only keeps an entry when another topic is visible', async () => {
+  const main = room('bobo-main', { employeeChat: 'main', title: 'hi' })
+  props.snapshot.conversations = [main]
+  await render()
+  const selector = 'button[aria-label="Bobo 的主聊天"]'
+  expect(host.querySelector(selector)?.querySelector('.conversation-title')?.textContent).toBe('Bobo')
+  await openMenu()
+  expect(menuItem('编辑标题')).toBeUndefined()
+  await choose('删除会话')
+  expect(document.querySelector('[role=alertdialog]')?.textContent).toContain('“Bobo”')
+  await confirm('删除会话及记录')
+  expect(props.onClear).toHaveBeenCalledWith(main.id, true)
+
+  const hidden = { ...main, list: { hidden: true } }
+  props.snapshot.conversations = [hidden]
+  await render()
+  expect(host.querySelector(selector)).toBeNull()
+  expect(host.querySelector('.conversation-list-empty img')).not.toBeNull()
+
+  props.snapshot.conversations = [hidden, room('weather', { employeeChat: 'topic', title: '仍保留的话题' })]
+  await render()
+  expect(host.querySelector('.conversation-list-empty')).toBeNull()
+  expect(host.querySelector('[aria-label="仍保留的话题"]')).not.toBeNull()
+  const entry = host.querySelector<HTMLButtonElement>(selector)!
+  expect(entry.hasAttribute('data-main-placeholder')).toBe(true)
+  await act(async () => entry.click())
+  expect(props.onOpenMain).toHaveBeenCalledWith(coreAgent)
+  expect(props.onSelect).not.toHaveBeenCalled()
+})
 
 it('moves an actual Bobo main chat into and out of the avatar shelf via drag', async () => {
   const main = room('bobo-main', { employeeChat: 'main', title: 'hi' })

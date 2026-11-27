@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 空列表插画跟在搜索栏和实际列表项之后，剩余拖放空间不会把插画推到底部。
  * [OUTPUT]: 会话列表下方空白可直接取消置顶，拖拽落点共用 md 圆角。
  * [OUTPUT]: 置顶沿通讯录拖拽主题，头像拖影与落点高度相同。
  * [OUTPUT]: 会话置顶区用自适应头像网格与拖入落点，普通员工与核心主聊共用行样式。
@@ -373,6 +374,7 @@
 .conversation-sidebar-list { --conversation-drop-radius:var(--radius-md,calc(var(--radius) * .75));display:flex;flex-direction:column }
 .conversation-pin-shelf { flex:none;margin-bottom:8px }
 .conversation-regular-drop { flex:1 0 auto;min-height:32px }
+.conversation-sidebar-list:has(>.conversation-list-empty)>.conversation-regular-drop { flex:none;min-height:0 }
 .drag-list-group-target.conversation-regular-drop[data-drop=inside] { background:transparent }
 .drag-list-group-target.conversation-regular-drop[data-drop=inside]::after { content:none }
 .conversation-regular-drop[data-drop=inside]>.conversation-regular-list:has(.conversation-section-heading) { position:relative;border-radius:var(--conversation-drop-radius);background:var(--muted) }

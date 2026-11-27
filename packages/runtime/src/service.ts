@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: bobo 发送首条消息或打开 CLI 主会话只考虑未删除主聊，保留旧清理回执。
  * [OUTPUT]: 手动定时任务进入队列后立即公开已提交的员工话题，执行记录可原位定位。
  * [OUTPUT]: 普通回复预览仅驻留在活跃运行内存中，公开消息仍沿原发布事务。
  * [OUTPUT]: 2026-11-27 会话删除发出关联日志移除事件；定时日志独立原子删除，原话题及执行数据保留。
@@ -3190,7 +3191,7 @@ export class AppService {
     }
     try {
       if (isCoreAgent(agent)) {
-        const existing = [...this.conversations.values()].find(room => isEmployeeMainChat(room, agent.id))
+        const existing = [...this.conversations.values()].find(room => !room.list?.hidden && isEmployeeMainChat(room, agent.id))
         if (!existing) fail('请先向核心助手发送首条消息建立会话；session create 不创建空的核心会话')
         await commit(this.getConversation(existing!.id), false)
       } else await this.saveConversation(conversationSchema.parse({ kind: 'direct', title: input.name ?? agent.name, agentIds: [agent.id] }), commit)
@@ -3489,7 +3490,7 @@ export class AppService {
     let room = prior ? this.getConversation(prior.conversationId) : undefined
     if (room && (room.kind !== 'direct' || room.agentIds.length !== 1 || room.agentIds[0] !== agent.id)) fail('原请求属于其他员工或群聊')
     if (!room && isCoreAgent(agent)) {
-      room = [...this.conversations.values()].find(room => isEmployeeMainChat(room, agent.id))
+      room = [...this.conversations.values()].find(room => !room.list?.hidden && isEmployeeMainChat(room, agent.id))
       if (!room) {
         if (input.materialSelections?.length) fail('请先创建核心会话再发送附件')
         await this.startCoreConversation({ requestId: input.requestId, content: input.content, ...(input.expectedExecutionPermission ? { expectedExecutionPermission: input.expectedExecutionPermission } : {}), ...(input.materialUploads ? { materialUploads: input.materialUploads } : {}), ...(input.composerReferences ? { composerReferences: input.composerReferences } : {}), ...(input.expectedProjectRevision !== undefined ? { expectedProjectRevision: input.expectedProjectRevision } : {}), ...(input.workingDirectory ? { workingDirectory: input.workingDirectory } : {}), ...(input.apiModel ? { apiModel: input.apiModel } : {}) }, undefined, 'main')
