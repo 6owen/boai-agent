@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 普通收发消息按内容适宽，宽面板上限80%，聊天面板至480px时上限90%。
  * [OUTPUT]: 带文件的消息分行排列，独立文件行与侧边操作栏顶对齐。
  * [OUTPUT]: 独立权限卡移除额外上下外边距，与消息头像顶部对齐；附在正文后的权限卡保留内容间距。
  * [OUTPUT]: 2026-10-20文字尺寸与行高接入共享字体角色，随外观设置即时缩放。
@@ -97,8 +98,11 @@
 .chat-panel .message-row.user .quoted-message { flex-direction:row-reverse;border-left:0;border-right:2px solid var(--border);padding:0 8px 0 0 }
 .chat-panel .message-parts { display:grid;gap:8px;min-width:0;grid-template-columns:minmax(0,1fr) }
 .chat-panel .message-content-space { min-width:0;width:100% }
-.chat-panel .message-content { position:relative;width:fit-content;max-width:100%;text-align:left }
-.chat-panel .message-row.user .message-content { margin-left:auto;max-width:85% }
+.chat-panel .message-content { position:relative;width:fit-content;max-width:80%;text-align:left }
+.chat-panel .message-row.user .message-content { margin-left:auto }
+@container chat (max-width:480px) {
+  .chat-panel .message-content { max-width:90% }
+}
 .chat-panel .message-card { min-width:0;max-width:100%;padding:10px 12px }
 .chat-panel .message-content[data-with-files] { display:flex;flex-direction:column;align-items:flex-start;gap:8px }
 .chat-panel .message-row.user .message-content[data-with-files] { align-items:flex-end }
