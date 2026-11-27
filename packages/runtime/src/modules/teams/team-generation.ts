@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 两条新团队方案路径共用宿主持久成员身份、头像、颜色和后端能力说明。
  * [OUTPUT]: 团队规划接口归宿主合同；普通网关请求身份由共享的模型选择和调用记录生成。
  * [OUTPUT]: 持久标识的 JSON 字节摘要使用共用编码，字段及顺序由本业务传入。
  * [OUTPUT]: 活动团队生成按connectionId取消并等待实际planner退出，连接换源/删除不采用迟到方案。
@@ -13,12 +14,11 @@ import { jsonSha256 } from '../../json-digest'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import type { Connection } from '@boai/shared/domain'
-import { avatarPresets } from '@boai/shared/domain/avatars'
-import { TEAM_LIMITS, TEAM_PLANNER_VERSION, teamCapabilityNotes, teamColors, teamId, teamPlannerOutputSchema, type TeamDraft, type TeamGeneration } from '@boai/shared/domain/team-creation'
+import { TEAM_LIMITS, TEAM_PLANNER_VERSION, teamId, teamPlannerOutputSchema, type TeamDraft, type TeamGeneration } from '@boai/shared/domain/team-creation'
 import { TeamPlanFormatError, type TeamPlanner, type TeamUsage } from '../../contracts'
 import { gatewayModelCall, type GatewayRouteEvidence } from '@boai/shared/domain/model-gateway'
 import { ModelCapacity } from '../collaboration/model-capacity'
-import { TeamRepository, editableTeamDraft, readTeamDraft, teamError, teamInputHash, teamNow, teamRecord, teamVersionSchema, validateTeamDraft } from './team-repository'
+import { TeamRepository, createDraftPlan, editableTeamDraft, readTeamDraft, teamError, teamInputHash, teamNow, teamRecord, teamVersionSchema, validateTeamDraft } from './team-repository'
 
 const requestSchema = teamVersionSchema.extend({ requestId: teamId }).strict()
 export class TeamGenerationService {
@@ -81,7 +81,7 @@ export class TeamGenerationService {
           const result = teamPlannerOutputSchema.parse(output)
           if (result.kind === 'needs_adjustment') value.adjustment = { reason: result.reason, suggestedPrompt: result.suggestedPrompt }
           else {
-            draft.plan = { ...result, capabilityNotes: teamCapabilityNotes(result.scenarioKind), plannerVersion: TEAM_PLANNER_VERSION, generationId: generation.id, members: result.members.map((member, index) => ({ ...member, memberKey: randomUUID(), avatarId: avatarPresets[index % avatarPresets.length].id, color: teamColors[index % teamColors.length] })) }
+            draft.plan = createDraftPlan(result, generation.id)
             draft.planInputHash = generation.inputHash; draft.manuallyEdited = false
             if (!draft.groupTitle) draft.groupTitle = result.name
           }

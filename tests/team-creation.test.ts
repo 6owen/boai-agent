@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 两条新团队方案路径共用宿主持久成员身份、头像、颜色和后端能力说明。
  * [OUTPUT]: 工作区模型与团队草稿复用历史 API 指纹，包括空模型拒绝及默认值。
  * [INPUT]: 真实 SQLite/AppService、隔离目录和团队严格合同。
  * [OUTPUT]: 草稿单实例、独立连接竞争、旧数据/重启、取消墓碑与零实体副作用验收。
@@ -12,8 +13,9 @@ import { join } from 'node:path'
 import { ProductStore } from '../packages/runtime/src/adapters/storage/product-store'
 import { resolveConnectionModel } from '../packages/runtime/src/modules/backends/model-binding'
 import type { Connection } from '@boai/shared/domain'
-import { TeamRepository } from '../packages/runtime/src/modules/teams/team-repository'
-import { teamPlannerOutputSchema, type TeamDraft, type TeamEditable } from '../packages/shared/src/domain/team-creation'
+import { TeamRepository, createDraftPlan } from '../packages/runtime/src/modules/teams/team-repository'
+import { avatarPresets } from '@boai/shared/domain/avatars'
+import { TEAM_PLANNER_VERSION, teamColors, teamCapabilityNotes, teamModelPlanSchema, teamPlannerOutputSchema, type TeamDraft, type TeamEditable } from '../packages/shared/src/domain/team-creation'
 import { AppService } from '../packages/runtime/src/service'
 import type { Method, Methods } from '../packages/shared/src/ipc'
 
@@ -23,6 +25,21 @@ const fields = (draft: TeamDraft): TeamEditable => ({ prompt: draft.prompt, sele
 async function root() { const path = await mkdtemp(join(tmpdir(), 'boai-team-')); roots.push(path); return path }
 async function repository(path: string) { const store = new ProductStore(join(path, 'boai.sqlite')); await store.init(); cleanup.push(() => store.close()); return { store, repo: new TeamRepository(store) } }
 export const modelPlan = { kind: 'plan', schemaVersion: 1, name: '写作组', purpose: '编辑用户提供的文章', scenarioKind: 'work', assumptions: ['材料由用户提供'], collaborationGuide: '先讨论提纲，再撰写和审校', capabilityNotes: [], members: [{ name: '写手', role: '撰写文章', instructions: '自然简洁；不编造事实' }] }
+
+test('assigns fresh draft member identities, ordered presets and the selected backend capability notes', () => {
+  const plan = teamModelPlanSchema.parse({
+    ...modelPlan, capabilityNotes: ['模型自身说明'],
+    members: Array.from({ length: 12 }, (_, i) => ({ ...modelPlan.members[0], name: `员工${i}` })),
+  })
+  const api = createDraftPlan(plan, 'first')
+  const native = createDraftPlan(plan, 'second', 'codex-local')
+  expect(api).toMatchObject({ generationId: 'first', plannerVersion: TEAM_PLANNER_VERSION, capabilityNotes: teamCapabilityNotes('work') })
+  expect(native).toMatchObject({ generationId: 'second', capabilityNotes: teamCapabilityNotes('work', 'codex-local') })
+  expect(new Set([...api.members, ...native.members].map(member => member.memberKey)).size).toBe(24)
+  expect(api.members.map(({ name, avatarId, color }) => [name, avatarId, color])).toEqual(
+    plan.members.map((member, index) => [member.name, avatarPresets[index % avatarPresets.length].id, teamColors[index % teamColors.length]]),
+  )
+})
 
 test('preserves the historical connection fingerprint for reopened team drafts', () => {
   const connection: Connection = { id: 'fixture', name: 'Local', provider: 'openai-compatible', baseUrl: 'http://127.0.0.1/v1', defaultModel: ' demo ', hasApiKey: false }
