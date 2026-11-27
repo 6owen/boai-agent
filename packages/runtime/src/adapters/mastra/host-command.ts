@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 本机协议与宿主命令复用进程组实际退出屏障，独立原生传输可单独装载。
  * [OUTPUT]: 2026-11-24 第三阶段：官方 Durable Agent/Session.steer、Workspace 文件工具、LocalSandbox 进程和原生 Trace；授权及发布保留业务适配。
  * [OUTPUT]: 宿主命令仅在批准后到实际进程组退出期间互斥；排队支持取消，启动前重核副作用授权。
  * [OUTPUT]: 员工进程使用原run短期环境租约，剥离owner/服务密钥变量，实际退出后撤回；不可用时禁止CLI用户配置回退。
@@ -10,6 +11,7 @@
  * [POS]: API与本机员工共用的宿主命令执行器；可选员工目录隔离，其他宿主能力仍沿原授权。
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
+import { waitForProcessGroupExit } from '../native-process-supervisor'
 import { LocalSandbox } from '@mastra/core/workspace'
 import { directoryCommandBoundary, type CommandDirectoryScope } from '../../modules/workspaces/directory-command'
 import { employeeEnvironment } from '@boai/shared/cli/employee-environment'
@@ -20,22 +22,7 @@ export async function withHostCommandAdmission<T>(signal: AbortSignal, operation
   const release = await hostCommands.acquire(true, signal)
   try { signal.throwIfAborted(); return await operation() } finally { release() }
 }
-const EXIT_CHECK_INTERVAL_MS = 10
 const check = (signal: AbortSignal) => signal.throwIfAborted()
-
-export async function waitForProcessGroupExit(pid: number) {
-  for (;;) {
-    try { process.kill(-pid, 0) }
-    catch (error) {
-      const code = (error as NodeJS.ErrnoException).code
-      if (code === 'ESRCH') return
-      if (code !== 'EPERM') throw error
-    }
-    // A delivered signal or the shell's close event is not an exit receipt for
-    // descendants which closed their output pipes. Keep the caller's lease.
-    await new Promise(resolve => setTimeout(resolve, EXIT_CHECK_INTERVAL_MS))
-  }
-}
 
 export function abortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
   check(signal)

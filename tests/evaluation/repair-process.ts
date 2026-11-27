@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 本机协议与宿主命令复用进程组实际退出屏障，独立原生传输可单独装载。
  * [OUTPUT]: 个人打包可显式继承网络代理；不因此继承Codex/API凭据，其他调用默认保持。
  * [INPUT]: 固定程序/参数、隔离目录、超时/取消、有界stdin及可选实时capture；本机Codex登录。
  * [OUTPUT]: 有界进程、退出前原始日志及Codex结构化补丁；保存回执核对实时原字节，模型建议不承担业务评分。
@@ -9,7 +10,7 @@ import { spawn } from 'node:child_process'
 import { readFile, writeFile } from 'node:fs/promises'
 import { closeSync, openSync, writeSync } from 'node:fs'
 import { join } from 'node:path'
-import { waitForProcessGroupExit } from '../../packages/runtime/src/adapters/mastra/host-command'
+import { waitForProcessGroupExit } from '../../packages/runtime/src/adapters/native-process-supervisor'
 import { proposalJsonSchema, proposalSchema, REPAIR_LIMITS, type RepairConfig, type RepairProposal } from './repair-contract'
 
 export interface ProcessReceipt { exitCode: number | null; stdout: string; stderr: string; failure?: string; elapsedMs: number }

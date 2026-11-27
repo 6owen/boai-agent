@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 本机协议与宿主命令复用进程组实际退出屏障，独立原生传输可单独装载。
  * [OUTPUT]: 原生握手接受已核准程序的实际版本变化；精确旧版本限制只留旧阶段入口，协议与文件身份仍核对。
  * [OUTPUT]: 诊断识别turn/steer请求，沿原超时/失联规则且不重发。
  * [OUTPUT]: 2026-10-19本机目录限制按用户要求退役；原生配置/工具保持，显式权限可返回本机配置；API目录授权及产品资源核验保持。
@@ -26,10 +27,9 @@ import { StringDecoder } from 'node:string_decoder'
 import type { LaunchProfile } from '@boai/shared/domain/backends'
 import { inspectProgram } from '../../modules/backends/program'
 import { CODEX_SUPPORTED_VERSIONS, codexStartupArgs } from './policy'
-import { waitForProcessGroupExit } from '../mastra/host-command'
 import { assertNativeProcessGuard, nativeProcessGuard } from '../native-process-guard'
 import { join } from 'node:path'
-import { NATIVE_PROCESS_SUPERVISOR } from '../native-process-supervisor'
+import { NATIVE_PROCESS_SUPERVISOR, waitForProcessGroupExit } from '../native-process-supervisor'
 import type { codexGatewaySource } from './gateway-source'
 
 type JsonRecord = Record<string, unknown>

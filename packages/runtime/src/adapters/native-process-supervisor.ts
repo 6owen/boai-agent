@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 本机协议与宿主命令复用进程组实际退出屏障，独立原生传输可单独装载。
  * [OUTPUT]: 原生运行由Rovai身份绑定进程树监督；守护确认后代退出后才退出，旧阶段仍兼容进程组。
  * [INPUT]: 宿主独占IPC、已核验程序/参数/输入与继承的明确环境。
  * [OUTPUT]: 同一POSIX进程组运行CLI；宿主IPC消失立即终止整组，CLI退出只报告实际退出码，由宿主等整组退出。
@@ -7,7 +8,7 @@
  */
 // A fixed script avoids a second executable resource path in source and packaged builds.
 // The private request travels over inherited IPC, never through the supervisor command line.
-export const NATIVE_PROCESS_SUPERVISOR = String.raw`
+export const NATIVE_PROCESS_SUPERVISOR = `
 const { spawn } = require('node:child_process')
 let guarded = false, stopping = false, childExited = false
 const finish = () => { try { process.kill(-process.pid, 'SIGKILL') } finally { process.exit(1) } }
@@ -40,3 +41,19 @@ process.on('message', request => {
 })
 if (!process.connected) stop()
 `
+
+const EXIT_CHECK_INTERVAL_MS = 10
+
+export async function waitForProcessGroupExit(pid: number) {
+  for (;;) {
+    try { process.kill(-pid, 0) }
+    catch (error) {
+      const code = (error as NodeJS.ErrnoException).code
+      if (code === 'ESRCH') return
+      if (code !== 'EPERM') throw error
+    }
+    // A delivered signal or the shell's close event is not an exit receipt for
+    // descendants which closed their output pipes. Keep the caller's lease.
+    await new Promise(resolve => setTimeout(resolve, EXIT_CHECK_INTERVAL_MS))
+  }
+}
