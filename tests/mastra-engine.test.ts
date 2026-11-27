@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 指标初始化和诊断回写同时失败时，真实 SDK 仍办理本轮一次；持久 Trace 与宿主 Trace 分别核对。
  * [OUTPUT]: 普通工具问答覆盖流式预览、撤回工具前置文字及正式回复顺序。
  * [OUTPUT]: 2026-11-24 第三阶段：Mastra 第三阶段回归覆盖原生文件/MCP/快照/Trace、实时补充、断流及 OM 致命失败退出；完整结果见实施记录。
  * [OUTPUT]: 真实 SDK 审批等待/拒绝/取消/只读、官方用量持久化/清理与辅助调用验证。
@@ -64,6 +65,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { RequestContext } from '@mastra/core/request-context'
 import { noopObserve } from '@mastra/core/tools'
 import { memoryResourceId } from '../packages/runtime/src/adapters/mastra/conversation-memory'
+import { MastraMetrics } from '../packages/runtime/src/adapters/mastra/metrics'
 import { MastraEngine } from '../packages/runtime/src/adapters/mastra/engine'
 import { createTaskRuntime } from '../packages/runtime/src/adapters/mastra/task-runtime'
 import { thinkingProviderOptions, decisionProviderOptions } from '../packages/runtime/src/adapters/mastra/model-config'
@@ -711,6 +713,18 @@ describe('MastraEngine with real Mastra and a local model HTTP endpoint', () => 
     expect(run.deltas.join('')).toBe('你好')
     expect(errors).toContain('storage unavailable')
     expect(server.requests).toHaveLength(3)
+  })
+
+  it('completes one user request when metrics initialization and diagnostic reporting both fail', async () => {
+    const server = await endpoint(['业务回复'])
+    const report = vi.fn(async () => { throw new Error('diagnostic store unavailable') })
+    const f = await context(server.url, { responseKind: 'chat', onTraceError: report })
+    const engine = new MastraEngine()
+    vi.spyOn(MastraMetrics.prototype, 'storage').mockRejectedValue(new Error('metric store unavailable'))
+    await engine.run(f.ctx)
+    expect(f.deltas.join('')).toBe('业务回复')
+    expect(server.requests).toHaveLength(1)
+    expect(report).toHaveBeenCalledWith('模型指标存储不可用：metric store unavailable')
   })
 
   it('reduces empty decision metadata without dropping message text, attribution, references or turn boundaries', () => {

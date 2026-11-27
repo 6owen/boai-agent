@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 诊断回调失败由 reportTraceError 隔离，业务提交与观察失败各自保留原语义。
  * [OUTPUT]: RuntimeToolOperation 描述两种执行后端可绑定的宿主操作。
  * [OUTPUT]: 执行适配器可提供只面向当前会话窗口的回复预览。
  * [OUTPUT]: 2026-11-24 第三阶段：API 执行补充交给 Session.steer；Trace 从官方存储查询，兼容既有业务历史。
@@ -346,6 +347,12 @@ export interface AgentEngine {
   extractMemory?(context: EngineContext): Promise<MemoryCandidate[]>
   plan?(context: Omit<EngineContext, 'onDelta' | 'onTool' | 'approveCommand'>, members: DigitalAgent[]): Promise<string[]>
   test(connection: Connection, apiKey: string, observation?: ModelCallObservation & { signal?: AbortSignal }): Promise<string>
+}
+
+/** Reporting an observation failure has no authority to fail the observed operation. */
+export async function reportTraceError(context: Pick<EngineContext, 'onTraceError'>, message: string): Promise<void> {
+  try { await context.onTraceError?.(message) }
+  catch { /* Losing the diagnostic must not fail or repeat business work. */ }
 }
 
 /** API adapters reject local runtime contexts before constructing a model. */

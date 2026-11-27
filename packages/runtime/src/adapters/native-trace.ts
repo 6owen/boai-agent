@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 原生诊断回写沿宿主共用失败隔离，保留具名且不含底层异常的提示。
  * [OUTPUT]: Claude与Codex分别传递实际外部诊断；只观察运行，不以外部结束或协议计数代替业务交付或内部模型步骤。
  * [INPUT]: 当前员工运行归属和具名原生阶段回执。
  * [OUTPUT]: 单次外部阶段Trace及可选私有格式器协议计数；观测失败独立记录、不改变或重发业务，不保存模型正文或凭据、不推算内部模型调用。
@@ -6,7 +7,7 @@
  * [PROTOCOL]: 一旦本文件变化，必须同步更新Header，并上浮检查所属目录.folder.md。
  */
 import { randomUUID } from 'node:crypto'
-import type { EngineContext } from '../contracts'
+import { reportTraceError, type EngineContext } from '../contracts'
 import type { TraceSpan } from '@boai/shared/domain/traces'
 
 export async function observeNativePhase(context: Pick<EngineContext, 'runId' | 'onTrace' | 'onTraceError'>, phase: string, name: 'Codex' | 'Claude', runtime: 'codex-app-server' | 'claude-cli') {
@@ -15,7 +16,7 @@ export async function observeNativePhase(context: Pick<EngineContext, 'runId' | 
     attributes: { runtime, phase, accounting: 'external-turn', internalModelSteps: 'unknown' } }
   const save = async (value: TraceSpan) => {
     try { await context.onTrace?.(value) }
-    catch { try { await context.onTraceError?.(`本机 ${name} 执行诊断未能保存`) } catch { /* Observation cannot change or retry execution. */ } }
+    catch { await reportTraceError(context, `本机 ${name} 执行诊断未能保存`) }
   }
   await save(span)
   return async (diagnostic: { outcome: 'completed' | 'failed' | 'cancelled'; stage: string; protocolCounts?: { formatterCalls: number; formatterRejections: number; formatReminders: number } }) => save({ ...span, endedAt: new Date().toISOString(), output: diagnostic,

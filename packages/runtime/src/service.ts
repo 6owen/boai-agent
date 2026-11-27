@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 进度写入失败沿共用诊断回调隔离并投递原运行错误通知。
  * [OUTPUT]: 宿主单个工作与列表读取沿原会话归属；完整预算视图仅用于需要关联记录的操作。
  * [OUTPUT]: 打开会话及监控来源时直接按会话读取成果记录。
  * [OUTPUT]: 阅读、搜索和锚点 IPC 共用 domain/reading 的输入校验与推导类型。
@@ -390,7 +391,7 @@ import type { AgentInput, AgentRun, Approval, Connection, Conversation, Conversa
 import { isBrowserCapableAgent } from '@boai/shared/domain'
 import type { AppEvent, Method, Methods } from '@boai/shared/ipc'
 import type { AgentEngine, EngineContext, SecretStore } from './contracts'
-import { PARTICIPATION_TIMEOUT_MS } from './contracts'
+import { PARTICIPATION_TIMEOUT_MS, reportTraceError } from './contracts'
 import { sourceCreationCommands } from './modules/sources/source-commands'
 import { mergeCatalogResults, type CatalogActivity, type CatalogResult } from '@boai/shared/domain/catalog-management'
 import { catalogCommands } from './modules/resources/catalog-commands'
@@ -4888,7 +4889,7 @@ export class AppService {
         } catch {
           if (!this.runs.has(run.id) || this.clearingConversations.has(run.conversationId)) return
           const error = '执行进度未能保存，业务处理继续；请查看最终结果。'
-          try { await context.onTraceError?.(error) } catch { /* Observation failure never replays business. */ }
+          await reportTraceError(context, error)
           this.emit({ type: 'runtime-error', error })
         }
       },
