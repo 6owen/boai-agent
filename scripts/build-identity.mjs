@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 子模块身份包含固定HEAD与当前源码字节，未初始化拒绝构建。
+ * [OUTPUT]: 构建与发布源码复用文件和子模块的字节哈希，各自选择输入范围。
  * [OUTPUT]: apps/packages及开发/构建编排纳入身份；任何部分构建先清旧全量身份，只有完整产物可登记通过。
  * [INPUT]: 实际源码/资源/构建配置和dist应用字节，顶层releases保留给安装包。
  * [OUTPUT]: 构建前后同源/应用哈希核对；仅排除顶层安装包目录，异常文件/链接拒绝。
@@ -13,11 +13,15 @@ import { join, resolve } from 'node:path'
 import { releaseOutputName } from './build-output-paths.mjs'
 
 export async function buildInputHash(root = process.cwd()) {
-  const paths = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', 'apps', 'resources', 'packages', 'scripts/build.mjs', 'scripts/build-*.mjs', 'scripts/dev.mjs', 'scripts/dev-*.mjs', 'scripts/workspace-packages.mjs', 'scripts/workspace-packages.d.mts', 'scripts/design-packages.mjs', '.gitmodules', 'package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', 'vite.config.ts', 'tailwind.config.ts', 'tsconfig.json'], { cwd: root, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }).split('\0').filter(path => path && !path.endsWith('/.folder.md')).sort()
+  const paths = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', 'apps', 'resources', 'packages', 'scripts/build.mjs', 'scripts/build-*.mjs', 'scripts/dev.mjs', 'scripts/dev-*.mjs', 'scripts/workspace-packages.mjs', 'scripts/workspace-packages.d.mts', 'scripts/design-packages.mjs', '.gitmodules', 'package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', 'vite.config.ts', 'tailwind.config.ts', 'tsconfig.json'], { cwd: root, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }).split('\0').filter(Boolean).sort()
+  return hashSourceFiles(root, paths, key => !key.endsWith('/.folder.md'))
+}
+
+export async function hashSourceFiles(root, paths, include = () => true) {
   const digest = createHash('sha256')
   const hashEntry = async (base, path, prefix = '') => {
     const key = prefix + path
-    if (key.endsWith('/.folder.md')) return
+    if (!include(key)) return
     digest.update(key + '\0')
     try {
       const absolute = join(base, path)

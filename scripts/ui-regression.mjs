@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 发布、冒烟和界面来源身份通过共享指纹计算读取子模块。
  * [OUTPUT]: 2026-10-28保留旧截图工具及其回归，已退出自动PR工作流；现行Test/UI preview见第22组06。
  * [OUTPUT]: 官方候选仅完整采集一次并离线生成差异；明确不授普通比较资格。
  * [OUTPUT]: 官方只读比较支持固定两片，记录完整合同hash；候选/接受仍全量协议。
@@ -16,7 +17,7 @@ import { arch, platform, release } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
-import { verifyBuildIdentity } from './build-identity.mjs'
+import { hashSourceFiles, verifyBuildIdentity } from './build-identity.mjs'
 import { acquireResourceLock } from './resource-lock.mjs'
 import { createBaselineReview, verifyBaselineReview } from './ui-baseline-review.mjs'
 import { uiProfile, assertCaptureMode, assertProfileCommand } from './ui-profiles.mjs'
@@ -61,9 +62,8 @@ export function validateReport(report, caseIds) {
 export async function sourceIdentity(workspace = root) {
   const readGit = (...args) => execFileSync('git', args, { cwd: workspace, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 }).trim()
   const names = readGit('ls-files', '-z', '--cached', '--others', '--exclude-standard').split('\0').filter(Boolean).filter(path => /^(apps\/|packages\/|resources\/|scripts\/|tests\/|package.json$|pnpm-lock.yaml$|pnpm-workspace.yaml$|playwright.config.ts$|vite.config.ts$|tailwind.config.ts$|tsconfig.json$)/.test(path) && !/^tests\/e2e\/baselines\/(?:.*\/)?(?:manifest\.json|[^/]+\.png)$/.test(path)).sort()
-  const digest = createHash('sha256')
-  for (const name of names) { digest.update(name + '\0'); try { digest.update(await readFile(join(workspace, name))) } catch (error) { if (error.code !== 'ENOENT') throw error; digest.update('<deleted>') } }
-  return { commit: readGit('rev-parse', 'HEAD'), sourceHash: digest.digest('hex'), dirty: Boolean(readGit('status', '--porcelain')) }
+  const sourceHash = await hashSourceFiles(workspace, names)
+  return { commit: readGit('rev-parse', 'HEAD'), sourceHash, dirty: Boolean(readGit('status', '--porcelain')) }
 }
 
 export async function renderEnvironment() {
