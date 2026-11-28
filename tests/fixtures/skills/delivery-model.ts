@@ -24,7 +24,7 @@ export async function startSkillDeliveryModel(skillName: string, options: { repo
         content = JSON.stringify(replied ? { action: 'pass' } : { action: 'reply', responseKind: chat ? 'chat' : 'task', purpose: '读取明确授权的技能并发布依据' })
       } else if (system.includes('Private memory maintenance')) content = '{"candidates":[]}'
       else if (input.tools?.some(t => t.function.name === 'skill')) {
-        const turnStart = input.messages.findLastIndex(m => m.role === 'user' && JSON.stringify(m.content).includes('[CURRENT TURN USER REQUEST;'))
+        const turnStart = input.messages.map(m => m.role === 'user' && JSON.stringify(m.content).includes('[CURRENT TURN USER REQUEST;')).lastIndexOf(true)
         const results = input.messages.slice(Math.max(0, turnStart)).filter(m => m.role === 'tool')
         const runDirectory = system.match(/self:\/runs\/[a-zA-Z0-9_-]+\//)?.[0]
         if (!runDirectory) throw new Error('模型输入缺少当前运行的交付目录')
