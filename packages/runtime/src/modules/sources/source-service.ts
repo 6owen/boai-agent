@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 实际调用与 Session 审批共用数据源读写判断。
  * [OUTPUT]: 数据源会话约束与脱敏规则归 source-session。
  * [OUTPUT]: 2026-10-19 支持独立连接集合，检索实例不修改业务源员工绑定；Jina 测试一次实际查询。
  * [OUTPUT]: 员工目录上下文传给本地源/MCP；stdio许可改变先排空旧进程再为新调用建会话，不重放旧工具。
@@ -24,7 +25,7 @@ import type { SourceOAuthStatus } from '@boai/shared/domain/sources'
 import { applicationPreset } from '@boai/shared/domain/resource-catalog'
 import type { SourcePackageOrigin } from '@boai/shared/domain/sources'
 import type { DigitalAgent } from '@boai/shared/domain'
-import { dataSourceConfigSchema, saveDataSourceSchema, dataSourceIdentitySchema, dataSourceBindingsSchema, supportsDataSources, webSearchProvider, type DataSource, type DataSourceCreationSource, type SourceCall, type SourceSummary, type SourceTool } from '@boai/shared/domain/sources'
+import { dataSourceConfigSchema, saveDataSourceSchema, dataSourceIdentitySchema, dataSourceBindingsSchema, supportsDataSources, webSearchProvider, sourceCallIsReadOnly, type DataSource, type DataSourceCreationSource, type SourceCall, type SourceSummary, type SourceTool } from '@boai/shared/domain/sources'
 import type { SecretStore } from '../../contracts'
 import { ProductStore, type RecordTransaction } from '../../adapters/storage/product-store'
 import { openSourceSession, recoverSourceProcesses, sourceFolder } from './source-provider'
@@ -401,7 +402,7 @@ export class SourceService {
       if (!tool) throw new Error('数据源不提供此工具，请先读取工具目录')
       if (mode === 'web-read' && (!tool.readOnly || !tool.webCapability)) throw new Error('普通问答不能调用未核准的搜索工具或写入操作')
       const source = this.stored(ref.id)
-      const mutating = tool.readOnly && tool.webCapability ? false : source.type === 'api' ? request.arguments.method !== undefined && request.arguments.method !== 'GET' : source.type === 'local' ? request.arguments.operation === 'write' : !tool.readOnly
+      const mutating = !sourceCallIsReadOnly(source.type, tool.name, request.arguments, tool.readOnly === true)
       await beforeCall?.(mutating, tool)
       signal.throwIfAborted(); lease.controller.signal.throwIfAborted(); this.assertCurrent([ref]); this.assertPackage(ref, employeeId)
       const result = await session.call(request.tool, request.arguments, AbortSignal.any([signal, lease.controller.signal]))

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 工作区统一从项目目录区域保存或取消目录授权草稿。
  * [OUTPUT]: API目录Card添加/只读/取消/确认移除与重启持久，未运行模型或改动用户业务原件。
  * [OUTPUT]: 本机配置优先：旧API目录保留、原生权限恢复、明确cwd和重启零重放。
  * [INPUT]: 原Desktop/BDD、真实组合审批卡、IPC回执和隔离业务文件。
@@ -96,23 +97,24 @@ When('在工作区卡片添加只读目录并核对取消和确认移除', async
   await page.getByRole('button', { name: '高级配置', exact: true }).click()
   await page.getByRole('tab', { name: '工作区', exact: true }).click()
   const card = page.getByRole('region', { name: '授权目录', exact: true })
+  const settings = page.getByRole('region', { name: '项目目录', exact: true })
   await runtime.app.evaluate(({ dialog }, directory) => { const old = dialog.showOpenDialog; dialog.showOpenDialog = (async () => { dialog.showOpenDialog = old; return { canceled: false, filePaths: [directory] } }) as typeof dialog.showOpenDialog }, f.reports)
   await card.getByRole('button', { name: '添加授权目录', exact: true }).click()
   await card.getByRole('combobox', { name: `目录权限 ${f.reports}`, exact: true }).click()
   await page.getByRole('option', { name: '只读', exact: true }).click()
   expect((await page.evaluate(() => window.boai.request('snapshot', undefined))).agents.find(agent => agent.id === f.agent.id)?.directoryGrants).toEqual(f.agent.directoryGrants)
   await runtime.reviewNativeCheckpoint('目录选择与只读设置尚未保存')
-  await card.getByRole('button', { name: '保存', exact: true }).click()
+  await settings.getByRole('button', { name: '保存', exact: true }).click()
   await expect.poll(async () => (await page.evaluate(() => window.boai.request('snapshot', undefined))).agents.find(agent => agent.id === f.agent.id)?.directoryGrants).toEqual([...f.agent.directoryGrants!, { path: f.reports, access: 'read-only' }])
   await card.getByRole('button', { name: `移除目录授权 ${f.coding}`, exact: true }).click()
   await page.getByRole('button', { name: '确认移除', exact: true }).click()
-  await card.getByRole('button', { name: '取消', exact: true }).click()
+  await settings.getByRole('button', { name: '取消', exact: true }).click()
   await page.getByRole('alertdialog', { name: '有未保存的修改', exact: true }).getByRole('button', { name: '退出', exact: true }).click()
   await expect(card.getByRole('combobox', { name: `目录权限 ${f.coding}`, exact: true })).toBeVisible()
   await card.getByRole('button', { name: `移除目录授权 ${f.coding}`, exact: true }).click()
   await runtime.reviewNativeCheckpoint('移除授权确认保留目录与原文件')
   await page.getByRole('button', { name: '确认移除', exact: true }).click()
-  await card.getByRole('button', { name: '保存', exact: true }).click()
+  await settings.getByRole('button', { name: '保存', exact: true }).click()
   await expect.poll(async () => (await page.evaluate(() => window.boai.request('snapshot', undefined))).agents.find(agent => agent.id === f.agent.id)?.directoryGrants).toEqual([{ path: f.reports, access: 'read-only' }])
   await runtime.reviewNativeCheckpoint('保存仅保留报告目录只读授权')
   await page.getByRole('button', { name: '关闭高级配置', exact: true }).click()

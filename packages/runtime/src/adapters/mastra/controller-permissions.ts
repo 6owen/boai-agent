@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 数据源审批按已发现的工具及实际参数区分读写，目录读取仍需对应的目录许可。
  * [OUTPUT]: 宿主执行与工具批准归 authorization；旧命令授权沿原事务与配置撤销。
  * [OUTPUT]: 内置浏览器命令沿 browser 模块的实现与类型，桌面、本机和 API 共用原合同。
  * [INPUT]: Official tool approval events, BOAI tool contracts and saved employee permissions.
@@ -9,6 +10,7 @@
 import { createTool, type Tool } from '@mastra/core/tools'
 import type { Session } from '@mastra/core/agent-controller'
 import type { EngineContext } from '../../contracts'
+import { sourceCallIsReadOnly } from '@boai/shared/domain/sources'
 import type { ExecutionOperation } from '@boai/shared/domain/execution'
 import { withToolAuthorization } from '../../modules/authorization/execution'
 import { desktopPluginCallSchema, desktopPluginWrites } from '@boai/shared/plugins/desktop-tools'
@@ -56,7 +58,9 @@ export class ControllerPermissions {
     if (name === 'call_data_source') {
       const catalog = record(await this.context.inspectDataSource?.(String(args.sourceId)))
       const tools = Array.isArray(catalog.tools) ? catalog.tools : []
-      return { kind: 'source', readOnly: tools.some(tool => record(tool).name === args.tool && record(tool).readOnly === true) }
+      const tool = tools.map(record).find(tool => tool.name === args.tool)
+      const readOnly = !!tool && typeof args.tool === 'string' && sourceCallIsReadOnly(record(catalog.source).type, args.tool, record(args.arguments), tool.readOnly === true)
+      return { kind: 'source', readOnly }
     }
     if (name === 'request_directory') return { kind: 'file', readOnly: true } // The actual path grant uses its own validated approval.
     if (name === 'manage_automation') return { kind: 'configuration', readOnly: ['list', 'get', 'preview', 'history'].includes(String(record(args.command).action ?? args.action)) }

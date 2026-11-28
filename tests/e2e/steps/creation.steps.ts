@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 员工创建表单核对项目目录及原有三个文本输入。
  * [OUTPUT]: 创建前显式准备仅本机模型目录并从界面选择；群名按现行就地保存核对同ID，旧详情保存入口退役。
  * [OUTPUT]: 创建表单沿当前“工作方式”字段核验原规则保存，员工/群与草稿断言保持。
  * [OUTPUT]: 未保存确认使用取消/退出；需保存时取消确认并操作原表单，不通过确认提交。
@@ -49,7 +50,8 @@ async function createEmployee(previous: Awaited<ReturnType<typeof prepareCreatio
   let { app, page, errors, snapshot, create } = previous
   await create('新建员工')
   const employee = page.getByRole('dialog', { name: '新建数字员工', exact: true })
-  await expect(employee.getByRole('textbox')).toHaveCount(3)
+  await expect(employee.getByRole('textbox')).toHaveCount(4)
+  await expect(employee.getByRole('textbox', { name: '项目目录', exact: true })).toBeVisible()
   await employee.getByRole('textbox', { name: '名称', exact: true }).fill('交互设计师')
   await employee.getByRole('textbox', { name: '角色', exact: true }).fill('打磨交互与界面')
   const prompt = employee.getByRole('textbox', { name: '工作方式', exact: true })

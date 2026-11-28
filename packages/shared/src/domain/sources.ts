@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 本地文件、HTTP 端点及其余数据源工具按实际调用统一判定读写。
  * [OUTPUT]: 2026-10-19 检索偏好合同转至独立领域并保留历史读取；提供方识别增加官方 Jina。
  * [OUTPUT]: 官方DeepSeek API Bearer配置可发现搜索/读取候选；固定POST工具由宿主独立核准。
  * [OUTPUT]: Tavily/Exa官方固定端点可作为搜索候选，真实工具身份仍由宿主版本/schema核准。
@@ -69,6 +70,11 @@ export function webSearchPreferenceLabel(preference: WebSearchPreference | undef
   return source ? `${source.name}${!source.enabled ? '（已停用）' : !webSearchProvider(source) ? '（搜索不可用）' : ''}` : '原搜索源已不可用'
 }
 export type SourceTool = { name: string; description?: string; inputSchema: Record<string, unknown>; readOnly?: boolean; webCapability?: { provider: NonNullable<SourceSummary['webSearchProvider']>; kind: 'search' | 'read-url'; serverVersion: string; schemaHash: string } }
+export function sourceCallIsReadOnly(sourceType: unknown, toolName: string, args: Record<string, unknown>, catalogReadOnly: boolean) {
+  if (sourceType === 'local' && toolName === 'files') return args.operation === 'list' || args.operation === 'read'
+  if (sourceType === 'api' && toolName === 'request') return args.method === undefined || args.method === 'GET'
+  return catalogReadOnly
+}
 export const apiSourceRequestSchema = z.object({ path: z.string().max(4000), method: z.enum(['GET', 'POST', 'PUT', 'DELETE', 'PATCH']).default('GET'), params: z.record(z.string(), z.unknown()).optional() }).strict()
 export const localSourceRequestSchema = z.object({ operation: z.enum(['list', 'read', 'write']), path: z.string().max(8000).default('.'), content: z.string().max(1024 * 1024).optional(), offset: z.number().int().nonnegative().default(0), limit: z.number().int().min(1).max(48000).default(48000), expectedHash: z.string().regex(/^[a-f0-9]{64}$/).nullable().optional() }).strict()
 export const DATA_SOURCE_LABELS = { api: 'API', mcp: 'MCP', local: '本地文件夹' } as const
