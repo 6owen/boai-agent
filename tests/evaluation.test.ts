@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 两套真实多员工评估共用集成场景的总时限，业务用例运行和请求上限保持。
  * [INPUT]: 完整/缺损/失败评估证据、原始文件、外部评审和跨批次预算。
  * [OUTPUT]: 防止假通过的评分回归、离线重评分/HTML安全、留出冻结与独立校准门禁；预留、实际 fetch 尝试和 HTTP 到达逐项核对，取消失败仍计额度。
  * [POS]: tests/evaluation.test.ts。
@@ -139,7 +140,7 @@ it('keeps 16 independent frozen holdout clusters and validates every matrix entr
   const manifest = datasetManifest(); expect(manifest.matrix).toHaveLength(32)
   for (const row of manifest.matrix) { expect(row.protocol.length + row.desktop.length + row.realCases.length).toBeGreaterThan(0); for (const file of [...row.protocol, ...row.desktop]) await access(file) }
 })
-it('runs actual AppService and Mastra through the harness, retaining real artifacts, event input and every charged fetch attempt', async () => {
+it('runs actual AppService and Mastra through the harness, retaining real artifacts, event input and every charged fetch attempt', { timeout: 90_000 }, async () => {
   const root = await temporary(); let calls = 0
   const errors: string[] = []
   const attempts: { id: number; url: string; body: string; received: boolean; status?: number; error?: string; aborted?: boolean }[] = []

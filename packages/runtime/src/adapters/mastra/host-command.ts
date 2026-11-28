@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: macOS 在终止期间返回 EPERM 时再次核对整组消失，仍存活则上报权限错误。
  * [OUTPUT]: 本机协议与宿主命令复用进程组实际退出屏障，独立原生传输可单独装载。
  * [OUTPUT]: 2026-11-24 第三阶段：官方 Durable Agent/Session.steer、Workspace 文件工具、LocalSandbox 进程和原生 Trace；授权及发布保留业务适配。
  * [OUTPUT]: 宿主命令仅在批准后到实际进程组退出期间互斥；排队支持取消，启动前重核副作用授权。
@@ -34,6 +35,20 @@ export function abortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<
 }
 
 /** Optional employee filesystem policy; lifetime, output and process-group ownership stay shared. */
+async function stopRemainingProcessGroup(pid: number) {
+  try { process.kill(-pid, 'SIGKILL') }
+  catch (error) {
+    const code = (error as NodeJS.ErrnoException).code
+    if (code === 'ESRCH') return
+    if (code !== 'EPERM') throw error
+    // Darwin may deny another kill while the SDK's terminated group is being reaped.
+    // Recover only on confirmed disappearance. A surviving group retains the permission failure.
+    await waitForProcessGroupExit(pid, AbortSignal.timeout(1000)).catch(() => { throw error })
+    return
+  }
+  await waitForProcessGroupExit(pid)
+}
+
 export async function executeCommand(command: string, cwd: string, signal: AbortSignal, timeoutMs = 0, directories?: CommandDirectoryScope, cli?: RunCliEnvironment, beforeStart?: () => Promise<void>) {
   return withHostCommandAdmission(signal, async () => {
     await beforeStart?.(); check(signal)
@@ -69,9 +84,7 @@ async function executeAdmittedCommand(command: string, cwd: string, signal: Abor
       // barrier for pipe-free descendants after the parent has already exited.
       const pid = Number(handle.pid)
       if (process.platform !== 'win32' && Number.isSafeInteger(pid) && pid > 0) {
-        try { process.kill(-pid, 'SIGKILL') }
-        catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error }
-        await waitForProcessGroupExit(pid)
+        await stopRemainingProcessGroup(pid)
       }
     }
   } finally { await sandbox.destroy() }
