@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 退出观察支持调用方在权限错误仍持续时恢复原错误。
  * [OUTPUT]: 本机协议与宿主命令复用进程组实际退出屏障，独立原生传输可单独装载。
  * [OUTPUT]: 原生运行由Rovai身份绑定进程树监督；守护确认后代退出后才退出，旧阶段仍兼容进程组。
  * [INPUT]: 宿主独占IPC、已核验程序/参数/输入与继承的明确环境。
@@ -44,7 +45,7 @@ if (!process.connected) stop()
 
 const EXIT_CHECK_INTERVAL_MS = 10
 
-export async function waitForProcessGroupExit(pid: number) {
+export async function waitForProcessGroupExit(pid: number, signal?: AbortSignal) {
   for (;;) {
     try { process.kill(-pid, 0) }
     catch (error) {
@@ -52,6 +53,7 @@ export async function waitForProcessGroupExit(pid: number) {
       if (code === 'ESRCH') return
       if (code !== 'EPERM') throw error
     }
+    signal?.throwIfAborted()
     // A delivered signal or the shell's close event is not an exit receipt for
     // descendants which closed their output pipes. Keep the caller's lease.
     await new Promise(resolve => setTimeout(resolve, EXIT_CHECK_INTERVAL_MS))

@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 重启后的设置入口经键盘展开子菜单，避免鼠标越过菜单间距导致自动关闭。
  * [OUTPUT]: bobo 新话题沿会话行右键菜单打开。
  * [OUTPUT]: 设置入口沿本人菜单的其他配置二级菜单选择模型连接，原业务断言保持。
  * [OUTPUT]: 模型连接从本人菜单“其他配置”进入，原行为断言保持。
@@ -51,8 +52,8 @@ async function prepareAppearance(runtime: Desktop) {
   }
   const open = async () => {
     await runtime.page.getByRole('button', { name: '我的菜单', exact: true }).click()
-    await runtime.page.getByRole('menuitem', { name: '其他配置', exact: true }).click()
-    await runtime.page.getByRole('menuitem', { name: '模型连接', exact: true }).click()
+    await runtime.page.getByRole('menuitem', { name: '其他配置', exact: true }).press('ArrowRight')
+    await runtime.page.getByRole('menuitem', { name: '模型连接', exact: true }).press('Enter')
     await runtime.page.getByRole('button', { name: '外观', exact: true }).click()
   }
   const zoom = () => runtime.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.getZoomFactor())

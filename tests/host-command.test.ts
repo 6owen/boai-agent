@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 模拟最终 SIGKILL 的 EPERM，分别验证整组已退出及权限错误持续。
  * [OUTPUT]: 实际命令串行/排队取消/启动前核验覆盖，互斥不再扩展到整轮任务。
  * [OUTPUT]: 真实进程逐字节输出中文/emoji，分别验证 stdout/stderr 跨包 UTF-8 保真。
  * [INPUT]: 隔离目录、真实POSIX后台子进程和确定性的终止信号屏障。
@@ -65,6 +66,25 @@ it.skipIf(process.platform === 'win32')('retains the command until a pipe-free b
     if (requestedGroup && alive(requestedGroup)) { try { kill(requestedGroup, 'SIGKILL') } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error } }
     controller.abort(); await result.catch(() => undefined)
   }
+})
+
+it.skipIf(process.platform === 'win32').each(['gone', 'still present'] as const)('checks whether a group denied a final kill is %s', async state => {
+  const root = await directory()
+  const kill = process.kill.bind(process)
+  const denied = Object.assign(new Error('kill EPERM'), { code: 'EPERM' })
+  let group: number | undefined
+  vi.spyOn(process, 'kill').mockImplementation((pid, signal) => {
+    if (pid < 0 && signal === 'SIGKILL') {
+      group = pid
+      throw denied
+    }
+    if (pid === group && signal === 0 && state === 'still present') throw denied
+    return kill(pid, signal)
+  })
+  const command = executeCommand('exit 7', root, new AbortController().signal)
+  if (state === 'gone') await expect(command).resolves.toMatchObject({ exitCode: 7 })
+  else await expect(command).rejects.toBe(denied)
+  expect(group).toBeLessThan(-1)
 })
 
 it.skipIf(process.platform === 'win32').each(['cancel', 'timeout'] as const)('waits for parent and child exit on %s and keeps the original failure', async mode => {

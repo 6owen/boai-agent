@@ -1,3 +1,4 @@
+# [OUTPUT]: 完整安装缓存也按 Electron 主进程的依赖补丁文件失效。
 # [INPUT]: 固定Node、完整workspace依赖清单/锁/补丁及macOS runner身份。
 # [OUTPUT]: 普通UI只恢复/安装/验证；仅独立预热任务保存完整缓存，压缩不串行阻塞UI。
 # [POS]: 普通UI与官方候选共用的依赖准备，不缓存产品dist或业务数据。
@@ -31,7 +32,7 @@ runs:
           node_modules
           apps/*/node_modules
           packages/*/node_modules
-        key: ui-installed-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.node.outputs.node-version }}-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml', '.npmrc', 'package.json', 'apps/*/package.json', 'packages/*/package.json', 'apps/electron/src/renderer/components/common/lody/*.patch', 'apps/electron/src/renderer/components/ui/*.patch', '.github/actions/setup-ui-dependencies/action.yml') }}
+        key: ui-installed-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.node.outputs.node-version }}-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml', '.npmrc', 'package.json', 'apps/*/package.json', 'packages/*/package.json', 'apps/electron/src/main/*.patch', 'apps/electron/src/renderer/components/common/lody/*.patch', 'apps/electron/src/renderer/components/ui/*.patch', '.github/actions/setup-ui-dependencies/action.yml') }}
     - name: Locate pnpm store
       id: store
       if: steps.modules.outputs.cache-hit != 'true'
