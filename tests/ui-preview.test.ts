@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: PR 预览夹具固定事件来源，手动全量发布测试通过时仍验证真实 PR 的行为。
  * [OUTPUT]: Automatic UI detection and same-head post-merge publication keep PR screenshots available.
  * [OUTPUT]: Changed resource library paths select a visible catalog or display menu, with explicit targets taking priority.
  * [INPUT]: Real UI detector, preview entry and Actions definitions.
@@ -86,6 +87,7 @@ it('uploads only the recorded file, refusing paths and symlinks from a PR artifa
 
 async function publisher() {
   vi.resetModules()
+  vi.stubEnv('GITHUB_EVENT_NAME', 'pull_request_target')
   vi.stubEnv('GITHUB_REPOSITORY', '6owen/boai-agent')
   vi.stubEnv('PR', '60')
   vi.stubEnv('GITHUB_TOKEN', 'actions-fixture')

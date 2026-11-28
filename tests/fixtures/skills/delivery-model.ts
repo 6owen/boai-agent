@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 只使用本轮工具回执和当前运行的报告路径，重启后重新交付技能依据。
  * [INPUT]: 固定技能名、真实 Mastra SDK 的本地模型请求与工具返回。
  * [OUTPUT]: 可检查的阶段/工具请求记录；产物内容只能取自实际 skill_read 返回；可选业务交付模式在真实发布后引用原成果回执 report_work。
  * [POS]: Skills 模块与桌面交付验收共用的离线协议服务，不代替生产技能工具。
@@ -23,13 +24,17 @@ export async function startSkillDeliveryModel(skillName: string, options: { repo
         content = JSON.stringify(replied ? { action: 'pass' } : { action: 'reply', responseKind: chat ? 'chat' : 'task', purpose: '读取明确授权的技能并发布依据' })
       } else if (system.includes('Private memory maintenance')) content = '{"candidates":[]}'
       else if (input.tools?.some(t => t.function.name === 'skill')) {
-        const results = input.messages.filter(m => m.role === 'tool')
+        const turnStart = input.messages.map(m => m.role === 'user' && JSON.stringify(m.content).includes('[CURRENT TURN USER REQUEST;')).lastIndexOf(true)
+        const results = input.messages.slice(Math.max(0, turnStart)).filter(m => m.role === 'tool')
+        const runDirectory = system.match(/self:\/runs\/[a-zA-Z0-9_-]+\//)?.[0]
+        if (!runDirectory) throw new Error('模型输入缺少当前运行的交付目录')
+        const reportPath = runDirectory + 'skill-report.md'
         const proof = results.map(m => JSON.stringify(m.content)).join('\n').match(/SKILL_EVIDENCE_[a-z0-9]+/)?.[0] ?? 'MISSING_SKILL_EVIDENCE'
         const operations = [
           { name: 'skill', arguments: JSON.stringify({ name: skillName }) },
           { name: 'skill_read', arguments: JSON.stringify({ skillName, path: 'references/evidence.md' }) },
-          { name: 'write_file', arguments: JSON.stringify({ path: 'self:/work/skill-report.md', content: `# 技能依据\n${proof}` }) },
-          { name: 'publish_artifact', arguments: JSON.stringify({ path: 'self:/work/skill-report.md', name: 'skill-report.md' }) },
+          { name: 'write_file', arguments: JSON.stringify({ path: reportPath, content: `# 技能依据\n${proof}` }) },
+          { name: 'publish_artifact', arguments: JSON.stringify({ path: reportPath, name: 'skill-report.md' }) },
         ]
         if (options.reportWork && results.length >= operations.length) {
           const artifactId = results.map(result => { try { return JSON.parse(String(result.content))?.artifact?.id as string | undefined } catch { return undefined } }).find(Boolean)

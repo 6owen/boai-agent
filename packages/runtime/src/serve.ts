@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 完成关闭后等待 stopped 回执写出，再交还专用进程。
  * [OUTPUT]: 服务凭据变量名由 EnvironmentSecrets 定义；启动只读取符合绑定规则的环境值。
  * [OUTPUT]: 2026-10-20原生Node加载的package.json导入标注JSON类型，独立服务入口语义保持。
  * Copyright 2026 Craft Docs Ltd. Licensed under Apache-2.0; see ../shared/cli/LICENSE.txt and NOTICE.txt.
@@ -42,6 +43,6 @@ export async function serve(options: { dataPath: string; host?: string; port?: s
       if (process.connected) process.send?.(ready, () => {})
     }
     await server.finished
-    process.stdout.write(`${JSON.stringify({ type: 'stopped', serverId: server.serverId })}\n`)
+    await new Promise<void>((resolve, reject) => process.stdout.write(`${JSON.stringify({ type: 'stopped', serverId: server.serverId })}\n`, error => error ? reject(error) : resolve()))
   } finally { process.off('SIGINT', stop); process.off('SIGTERM', stop) }
 }

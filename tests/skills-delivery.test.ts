@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 按原消息和每个真实工具的完成状态核验备份前后的独立交付。
  * [INPUT]: 商店元数据/ZIP fixture、真实 AppService/Mastra 工具链与隔离备份目录。
  * [OUTPUT]: 安装保留原员工权限/绑定、明确绑定后真实读取/发布；等待后台收尾后备份恢复，不假定核心员工初始无权限。
  * [POS]: Skills 管理到业务任务交付的集成验收；网络只使用本地协议服务。
@@ -17,7 +18,7 @@ import { startSkillDeliveryModel } from './fixtures/skills/delivery-model'
 
 const cleanup: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const close of cleanup.splice(0).reverse()) await close() })
-it('delivers evidence from a marketplace installation only after binding and preserves it in a relocated full backup', async () => {
+it('delivers evidence from a marketplace installation only after binding and preserves it in a relocated full backup', { timeout: 90_000 }, async () => {
   const root = await mkdtemp(join(tmpdir(), 'boai-skill-delivery-')); cleanup.push(() => rm(root, { recursive: true, force: true }))
   const model = await startSkillDeliveryModel('market-reader'); cleanup.push(model.close)
   const marker = `SKILL_EVIDENCE_${crypto.randomUUID().replaceAll('-', '')}`
@@ -47,10 +48,20 @@ it('delivers evidence from a marketplace installation only after binding and pre
     return api('saveAgent', { ...input, connectionId: connection.id, skillIds, expectedConfigVersion: configVersion })
   }
   await configure([])
-  const run = async (target: typeof api, id: string, content: string, agentId = 'researcher') => {
+  const run = async (target: typeof api, id: string, content: string, agentId = 'researcher', expectedTools: string[] = []) => {
     const chat = await target('createConversation', { kind: 'direct', title: id, agentIds: [agentId] })
-    await target('sendMessage', { conversationId: chat.id, content, mentionIds: [], requestId: id })
-    await vi.waitFor(async () => expect((await target('getConversation', { id: chat.id })).turns?.at(-1)?.status).toBe('completed'), { timeout: 10000 })
+    const message = await target('sendMessage', { conversationId: chat.id, content, mentionIds: [], requestId: id })
+    for (const name of expectedTools) {
+      await vi.waitFor(async () => {
+        const { runs } = await target('getConversation', { id: chat.id })
+        const execution = runs.find(run => run.triggerMessageId === message.id && run.phase === 'execution')
+        expect(execution?.toolEvents.filter(tool => tool.status === 'completed').map(tool => tool.name), `${id}: ${name}`).toContain(name)
+      }, { timeout: 10000 })
+    }
+    await vi.waitFor(async () => {
+      const { turns } = await target('getConversation', { id: chat.id })
+      expect(turns?.find(turn => turn.triggerMessageId === message.id)?.status).toBe('completed')
+    }, { timeout: 10000 })
     return target('getConversation', { id: chat.id })
   }
   const unbound = await run(api, 'unbound', '请使用技能读取依据并生成报告')
@@ -61,11 +72,12 @@ it('delivers evidence from a marketplace installation only after binding and pre
   await run(api, 'chat', '闲聊一下，不执行任务')
   expect(model.requests.slice(chatOffset).every(r => !r.tools?.some(t => t.function.name.startsWith('skill')))).toBe(true)
   const taskOffset = model.requests.length
-  const detail = await run(api, 'bound-task', '请使用技能读取依据并生成报告')
+  const deliveryTools = ['skill', 'skill_read', 'write_file', 'publish_artifact']
+  const detail = await run(api, 'bound-task', '请使用技能读取依据并生成报告', 'researcher', deliveryTools)
   const task = detail.runs.filter(r => r.phase === 'execution').at(-1)!
   expect(task.status).toBe('completed')
   expect(task.environment).toMatchObject({ resourceVersions: [expect.objectContaining({ id: resource.id })], commandMode: 'disabled' })
-  expect(task.toolEvents.filter(t => t.status === 'completed').map(t => t.name)).toEqual(['skill', 'skill_read', 'write_file', 'publish_artifact'])
+  expect(task.toolEvents.filter(t => t.status === 'completed').map(t => t.name)).toEqual(deliveryTools)
   expect(detail.artifacts).toHaveLength(1)
   expect(await readFile(detail.artifacts[0].path, 'utf8')).toBe(`# 技能依据\n${marker}`)
   for (const request of model.requests.slice(taskOffset)) {
@@ -103,7 +115,7 @@ it('delivers evidence from a marketplace installation only after binding and pre
   expect(recovered.installation).toEqual(installed.installation)
   await first.service.close()
   await rm(sourcePath, { recursive: true, force: true })
-  const resumed = await run(restored.api, 'after-restore', '请使用恢复的技能读取依据并生成报告')
+  const resumed = await run(restored.api, 'after-restore', '请使用恢复的技能读取依据并生成报告', 'researcher', deliveryTools)
   expect(await readFile(resumed.artifacts.at(-1)!.path, 'utf8')).toBe(`# 技能依据\n${marker}`)
   expect(download).toHaveBeenCalledOnce()
   expect(metadata).toHaveBeenCalledOnce()
