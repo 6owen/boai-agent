@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 按实际工具名与当前运行路径核对写入、发布的独立审批。
  * [OUTPUT]: 写入/发布各用实际审批按钮的聚焦与Enter确认，精确身份/消失/单次许可断言保持；避免补页期间指针坐标漂移，不走IPC代批。
  * [OUTPUT]: [DEBUG-approval-265]独立诊断记录真实pointer目标/矩形/补页状态，原批准和消失断言不改；本分支不授完整CI资格。
  * [OUTPUT]: 同一run的write_file和publish_artifact分别批准，固定路径/不同审批身份并保留原件；不隐式扩大权限。
@@ -58,14 +59,15 @@ async function approveReportWrite(runtime: Desktop) {
     }, true)
   })
   let runId: string | undefined
-  for (const operation of ['写入', '发布']) {
+  for (const operation of ['write_file', 'publish_artifact']) {
     const approval = runtime.page.getByRole('region', { name: `${MAINLINE_EMPLOYEE} 的修改或发布文件审批`, exact: true })
     await expect(approval).toBeVisible()
     const pending = (await runtime.page.evaluate(() => window.boai.request('snapshot', undefined))).approvals
     expect(pending).toHaveLength(1)
     runId ??= pending[0].runId
     expect(pending[0].runId).toBe(runId)
-    await expect(approval).toContainText(`${operation}文件 self:/runs/${runId}/report.md`)
+    await expect(approval).toContainText(operation)
+    await expect(approval).toContainText(`self:/runs/${runId}/report.md`)
     const original = runtime.page.locator(`[data-approval-id="${pending[0].id}"]`)
     await expect(original).toBeVisible()
     const allow = original.getByRole('button', { name: '允许这次执行', exact: true })

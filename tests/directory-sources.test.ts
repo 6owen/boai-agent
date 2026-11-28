@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 覆盖本地文件和 HTTP 的只读/写入参数，以及其他工具同名参数的隔离。
  * [INPUT]: 实际SourceService/SQLite、MCP stdio与macOS子进程、隔离目录和原RunDirectoryAccess。
  * [OUTPUT]: 启动/工具/子进程不越过目录许可；追加许可排空旧会话，完全权限/旧路径及撤销真实退出。
  * [POS]: API托管MCP文件边界验证；不代替本机Agent或真实远程供应商认证。
@@ -15,7 +16,19 @@ import { RunDirectoryAccess } from '../packages/runtime/src/modules/workspaces/d
 import { AppService } from '../packages/runtime/src/service'
 import type { AgentEngine, EngineContext } from '../packages/runtime/src/contracts'
 import type { Connection, Conversation, ConversationDetail, DigitalAgent, Snapshot } from '../packages/shared/src/domain'
-import type { DataSource } from '../packages/shared/src/domain/sources'
+import { sourceCallIsReadOnly, type DataSource } from '../packages/shared/src/domain/sources'
+
+it('classifies actual local and HTTP operations without trusting arguments from unrelated tools', () => {
+  expect(sourceCallIsReadOnly('local', 'files', { operation: 'read' }, false)).toBe(true)
+  expect(sourceCallIsReadOnly('local', 'files', { operation: 'list' }, false)).toBe(true)
+  expect(sourceCallIsReadOnly('local', 'files', { operation: 'write' }, false)).toBe(false)
+  expect(sourceCallIsReadOnly('local', 'files', {}, false)).toBe(false)
+  expect(sourceCallIsReadOnly('api', 'request', {}, false)).toBe(true)
+  expect(sourceCallIsReadOnly('api', 'request', { method: 'GET' }, false)).toBe(true)
+  expect(sourceCallIsReadOnly('api', 'request', { method: 'POST' }, false)).toBe(false)
+  expect(sourceCallIsReadOnly('mcp', 'files', { operation: 'read' }, false)).toBe(false)
+  expect(sourceCallIsReadOnly('mcp', 'search', {}, true)).toBe(true)
+})
 
 const cleanups: (() => Promise<unknown>)[] = []
 afterEach(async () => { for (const cleanup of cleanups.splice(0).reverse()) await cleanup() })

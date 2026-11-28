@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 从模型实际收到的工具说明与系统指令读取本次运行目录。
  * [OUTPUT]: 明确聊天夹具识别宿主追加的材料参考数据，不误选为成果任务。
  * [OUTPUT]: 可选明确revisionContent与隔离原样本生成命令；命令经原聊天逐次批准/真实执行后才publish，默认原交付与修订保持。
  * [OUTPUT]: 第14组API群请求解释与持久顺序接续；保留独立并行、原Work和本机旧路径，实际验收归第14组05。
@@ -58,17 +59,18 @@ export async function prepareArtifactProtocol(runtime: Desktop, options: Artifac
       }
       const tools = body.tools as ModelTool[] | undefined, writer = tools?.find(value => value.function.name === 'write_file')
       const currentRequest = [...messages].reverse().find(value => value.role === 'user' && contentText(value.content).includes('[CURRENT TURN USER REQUEST;'))
+      const currentMessages = currentRequest ? messages.slice(messages.lastIndexOf(currentRequest)) : messages
       const chatReply = currentRequest && Object.entries(options.chatReplies ?? {}).find(([request]) => contentText(currentRequest.content).includes(request))?.[1]
       if (chatReply) { sendTeamOutput(response, chatReply); return }
       if (!tools?.length && currentRequest && contentText(currentRequest.content).includes('这条是日常问候，请不要作为文件任务补充。')) { sendTeamOutput(response, '收到问候，原文件任务仍等待明确关联的补充。'); return }
       if (options.askForSupplement && !tools?.length) { sendTeamOutput(response, '请明确报告交付给谁？'); return }
       if (!writer) throw new Error('成果任务没有获得真实 write_file 工具')
-      const runId = writer.function.description?.match(/self:\/runs\/([a-zA-Z0-9_-]+)\//)?.[1]
+      const runId = (system + '\n' + (writer.function.description ?? '')).match(/self:\/runs\/([a-zA-Z0-9_-]+)\//)?.[1]
       if (!runId) throw new Error('宿主工具描述没有当前 run 的私有写入路径')
       if (options.askDuringExecution && !executionQuestions.length) executionQuestions.push({ runId, path: `self:/runs/${runId}/waiting-draft.md`, content: 'EXECUTION_QUESTION_DRAFT：提问前已经执行，补充不能重放此原草稿写入。\n', writeRequests: 0 })
       const executionQuestion = executionQuestions.find(value => value.runId === runId)
       if (executionQuestion) {
-        const called = messages.flatMap(value => value.tool_calls ?? []).map(value => value.function.name)
+        const called = currentMessages.flatMap(value => value.tool_calls ?? []).map(value => value.function.name)
         if (!called.includes('write_file')) { executionQuestion.writeRequests++; sendTool(response, 'write_file', { path: executionQuestion.path, content: executionQuestion.content }, index); return }
         if (!called.includes('report_work')) { sendTool(response, 'report_work', { disposition: 'waiting', summary: '已完成原草稿，仍需明确交付对象。', userQuestion: '请明确报告交付给谁？' }, index); return }
         sendTeamOutput(response, '请明确报告交付给谁？'); return
@@ -76,16 +78,15 @@ export async function prepareArtifactProtocol(runtime: Desktop, options: Artifac
       if (!runs.has(runId)) runs.set(runId, runs.size + 1)
       const publish = tools!.find(value => value.function.name === 'publish_artifact')!, revisionRequestId = publish.function.description?.match(/revisionRequestId=([a-zA-Z0-9_-]+)/)?.[1]
       if (revisionRequestId && !replacements.some(value => value.runId === runId)) replacements.push({ runId, revisionRequestId })
-      const current = [...messages].reverse().find(value => value.role === 'user' && contentText(value.content).includes('[CURRENT TURN USER REQUEST;'))
-      const source = current ? contentText(current.content) : ''
+      const source = currentRequest ? contentText(currentRequest.content) : ''
       const materialIds = [...new Set([...source.matchAll(/"materialId":"([0-9a-f-]{36})"/g), ...source.matchAll(/material:([0-9a-f-]{36}):text-v1:L2/g)].map(value => value[1]))]
       const version = revisionRequestId ? 'ARTIFACT_V2' : 'ARTIFACT_V1', text = `# 交付报告\n\n版本标记：${version}\n独立原件：REPORT_${runs.get(runId)}\n验收：逐项检查原件和来源。\n${materialIds.map(id => `材料依据：material:${id}:text-v1:L2`).join('\n')}\n`
-      const path = `self:/runs/${runId}/${options.file?.fileName ?? 'report.md'}`, called = messages.flatMap(value => value.tool_calls ?? []).map(value => value.function.name)
+      const path = `self:/runs/${runId}/${options.file?.fileName ?? 'report.md'}`, called = currentMessages.flatMap(value => value.tool_calls ?? []).map(value => value.function.name)
       if (options.file?.command) {
         if (!called.includes('execute_command')) { sendTool(response, 'execute_command', { command: options.file.command }, index); return }
       } else if (!called.includes('write_file')) { sendTool(response, 'write_file', { path, content: (revisionRequestId ? options.file?.revisionContent ?? options.file?.content : options.file?.content) ?? text }, index); return }
       if (!called.includes('publish_artifact')) { sendTool(response, 'publish_artifact', { path, name: options.file?.name ?? '交付报告.md', ...(revisionRequestId ? { revisionRequestId } : {}) }, index); return }
-      const artifactId = messages.filter(value => value.role === 'tool').map(value => { try { return JSON.parse(contentText(value.content))?.artifact?.id as string | undefined } catch { return undefined } }).find(Boolean)
+      const artifactId = currentMessages.filter(value => value.role === 'tool').map(value => { try { return JSON.parse(contentText(value.content))?.artifact?.id as string | undefined } catch { return undefined } }).find(Boolean)
       if (!artifactId) throw new Error('真实 publish_artifact 没有返回可检查成果身份')
       if (!called.includes('report_work')) { sendTool(response, 'report_work', { disposition: 'delivered', summary: '报告已发布，原件和来源可检查。', evidence: [{ kind: 'artifact', reference: artifactId }] }, index); return }
       sendTeamOutput(response, '交付报告已发布，可以打开原文检查内容和来源。')

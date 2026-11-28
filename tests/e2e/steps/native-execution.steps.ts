@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 从交付消息的执行过程进入对应运行，核对原生工具参数与结果。
  * [OUTPUT]: 定时原生任务沿负责员工任务面板打开原独立会话，重启核对原调用/产物不重放。
  * [OUTPUT]: 执行分组先等实际加载后再展开，避免空all快照略过工具；原publish参数/结果与交付/重启断言保持。
  * [OUTPUT]: 聊天执行流沿Beautiful UI像素加载/真实计时与思考轨迹展示，验证折叠重开和原最终替换。
@@ -81,10 +82,15 @@ When('通过普通聊天让该原生员工交付并修订文件',async({runtime,
  for(const artifact of state.detail.artifacts)await runtime.reviewFile(`第${artifact.contentVersion}版原件`,artifact.path,{required:true,expectedSha256:artifact.contentHash})
 })
 Then('执行面板保留真实步骤而聊天没有流程卡片',async({runtime,nativeState:state})=>{
- await runtime.page.getByRole('button',{name:'会话操作',exact:true}).click()
- await runtime.page.getByRole('menuitem',{name:'执行过程',exact:true}).click()
+ const reply = state.detail.messages.filter(message => message.senderId === state.agent.id).at(-1)!
+ const row = runtime.page.locator(`#message-${reply.id}`)
+ await row.hover()
+ await row.getByRole('button', { name: `查看 ${state.agent.name} 的执行过程`, exact: true }).click()
  const panel=runtime.page.locator('#agent-execution-drawer')
- await expect(panel.getByText('执行历史',{exact:true})).toBeVisible()
+ const run = panel.locator(`[data-execution-run-id="${reply.runId}"]`)
+ await expect(run).toBeVisible()
+ const expand = run.getByRole('button', { name: /^展开执行：/ })
+ if (await expand.count()) await expand.click()
  await expect(panel.getByRole('button',{name:/已完成 \d+ 个步骤/}).first()).toBeVisible()
  for(const group of await panel.getByRole('button',{name:/已完成 \d+ 个步骤/}).all())if(await group.getAttribute('aria-expanded')==='false')await group.click()
  await expect(panel.getByRole('button',{name:/publish_artifact/}).first()).toBeVisible()
