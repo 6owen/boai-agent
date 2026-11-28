@@ -173,7 +173,7 @@
       "!dist/releases/**/*",
       "!**/*.map",
       "!**/*.d.{ts,mts,cts}",
-      "!**/node_modules/**/{test,tests,__tests__,docs,examples,coverage}{,/**/*}",
+      "!**/node_modules/{[!@]*,@*/*}/{test,tests,__tests__,docs,examples,coverage}{,/**/*}",
       "!**/node_modules/sherpa-onnx-*{,/**/*}",
       "!**/node_modules/@duckdb/node-bindings-darwin-arm64/libduckdb.dylib",
       "!**/node_modules/agent-{browser,desktop}/bin/*-{linux,win32}-*",
