@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 专用子进程在 serve 完成资源清理并写完退出回执后结束。
  * [OUTPUT]: Startup abort stops waiting before business submission, preserves child/log identity and never kills an unconfirmed owner.
  * [OUTPUT]: Explicit local serve module and safe per-child log lifecycle; failed/background/unknown logs remain, successful cleanup checks original file identity.
  * Copyright 2026 Craft Docs Ltd. Licensed under Apache-2.0; see ../shared/cli/LICENSE.txt and NOTICE.txt.
@@ -61,7 +62,20 @@ export async function connectRunServer(options: Options): Promise<RunServer> {
   for (const key of ['BOAI_SERVER_URL', 'BOAI_RPC_TLS_CERT', 'BOAI_RPC_TLS_KEY', 'BOAI_RPC_TLS_CA', 'BOAI_TLS_CA']) delete env[key]
   // No pipe to the terminal: handoff must survive terminal exit without EPIPE or an inherited owner token.
   const identity = await log.stat()
-  const bootstrap = `import { pathToFileURL } from 'node:url';try { const entry = await import(pathToFileURL(process.argv[1]).href); if (typeof entry.serve !== 'function') throw new Error('missing serve'); await entry.serve({ dataPath: process.argv[2], host: '127.0.0.1', port: '0' }); } catch (error) { process.stderr.write(JSON.stringify({ code: error?.code === 'SERVER_BUSY' ? 'SERVER_BUSY' : 'CAPABILITY_UNAVAILABLE', message: '服务启动或退出失败，请核对服务模块' })+String.fromCharCode(10)); process.exitCode = 1; }`
+  // This child owns only the service. serve() drains it and flushes its shutdown receipt first.
+  const bootstrap = `
+    import { pathToFileURL } from 'node:url'
+    try {
+      const entry = await import(pathToFileURL(process.argv[1]).href)
+      if (typeof entry.serve !== 'function') throw new Error('missing serve')
+      await entry.serve({ dataPath: process.argv[2], host: '127.0.0.1', port: '0' })
+      process.exit(process.exitCode ?? 0)
+    } catch (error) {
+      const code = error?.code === 'SERVER_BUSY' ? 'SERVER_BUSY' : 'CAPABILITY_UNAVAILABLE'
+      process.stderr.write(JSON.stringify({ code, message: '服务启动或退出失败，请核对服务模块' }) + String.fromCharCode(10))
+      process.exitCode = 1
+    }
+  `
   const child = spawn(process.execPath, ['--input-type=module', '-e', bootstrap, entry, options.dataPath], { env, detached: true, stdio: ['ignore', log.fd, log.fd, 'ipc'] })
   let exited = false, exitCode: number | null | undefined
   const retainedLog = async (keep: boolean) => {

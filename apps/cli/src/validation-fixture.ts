@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 隔离自检读取兼容文本与 JSON 的实际文件工具回执。
  * [INPUT]: Explicit isolated CLI validation and its unique expected file bytes.
  * [OUTPUT]: Loopback-only controlled Chat SSE provider, bounded requests and actual tool receipts.
  * [POS]: Product self-test fixture; never replaces the regular runtime or a real provider.
@@ -32,7 +33,11 @@ export async function openValidationFixture(content: string) {
       const calls = body.messages.flatMap(message => message.tool_calls ?? [])
       for (const message of body.messages.filter(message => message.role === 'tool')) {
         const name = calls.find(call => call.id === message.tool_call_id)?.function.name
-        if (name) receipts.push({ name, result: JSON.parse(message.content) })
+        if (name) {
+          let result: unknown = message.content
+          try { result = JSON.parse(message.content) } catch { /* The provider also returns plain-text tool output. */ }
+          receipts.push({ name, result })
+        }
       }
       const called = new Set(calls.map(call => call.function.name))
       const next = !called.has('write_file') ? { name: 'write_file', input: { path: 'self:/work/boai-validation.txt', content } } : !called.has('read_file') ? { name: 'read_file', input: { path: 'self:/work/boai-validation.txt' } } : !called.has('report_work') ? { name: 'report_work', input: { disposition: 'delivered', summary: content, evidence: [{ kind: 'answer', reference: content }] } } : undefined

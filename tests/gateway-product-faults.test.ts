@@ -1,4 +1,5 @@
 /*
+ * [OUTPUT]: 按每次模型请求的到达核对报告流的故障注入点。
  * [OUTPUT]: 2026-10-30 回归更新为Mastra官方记忆/原生归属合同；保留来源、调用预算和业务发布断言。
  * [INPUT]: Production AppService/Mastra/planner/SQLite and three-protocol HTTP fault injection.
  * [OUTPUT]: Durable EOF/cancel failures including naturally triggered report/group interpretation, positive publication controls, retained tools and restart zero replay.
@@ -215,7 +216,10 @@ for (const mode of ['complete', 'eof', 'cancel'] as const) test.each(protocols)(
     else streamText(response, protocol, '{"candidates":[]}', 'complete')
   })
   const chat = await employee(fixture)
-  await expect.poll(() => fixture.requests.length, { timeout: 5000, interval: 10 }).toBeGreaterThanOrEqual(5)
+  // Each real step must reach the provider. Observe its individual deadline before testing the report stream.
+  for (let count = 1; count <= 5; count++) {
+    await expect.poll(() => fixture.requests.length, { timeout: 5000, interval: 10 }).toBeGreaterThanOrEqual(count)
+  }
   expect(fixture.requests[4]).toMatchObject({ privateProtocol: 'private-work-report-v1', tools: [] })
   const files = (await readdir(join(fixture.root, 'data'), { recursive: true })).filter(path => path.endsWith('/effect.txt'))
   expect(files).toHaveLength(1)
