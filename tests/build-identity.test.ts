@@ -1,5 +1,5 @@
 /*
- * [OUTPUT]: 真实嵌套Git仓库覆盖子模块HEAD及未提交源码的身份变化。
+ * [OUTPUT]: 已登记 gitlink 的 HEAD 与未提交源码同时影响构建和发布源码身份。
  * [OUTPUT]: 应用/开发编排外改使来源身份失效；部分构建清除旧全量资格且保留产物。
  * [INPUT]: 独立Git工作目录、源码/技能源和实际构建文件。
  * [OUTPUT]: 应用外改拒绝；顶层安装包不影响身份，其他同名/近似目录仍校验，保留路径拒绝链接/文件。
@@ -137,11 +137,17 @@ it('子模块提交和未提交源码均影响构建身份，目录不会作为�
   await writeFile(join(sub, 'index.js'), 'export const value = 1')
   execFileSync('git', ['add', '--', 'index.js'], { cwd: sub })
   execFileSync('git', ['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'initial'], { cwd: sub })
+  execFileSync('git', ['-c', 'advice.addEmbeddedRepo=false', 'add', '--', 'packages/avatar-motion'], { cwd: root })
+  execFileSync('git', ['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'pin submodule'], { cwd: root })
+  const firstSource = await sourceIdentity(root)
   const first = await buildInputHash(root)
   await writeFile(join(sub, 'index.js'), 'export const value = 2')
   const dirty = await buildInputHash(root)
   expect(dirty).not.toBe(first)
+  const dirtySource = await sourceIdentity(root)
+  expect(dirtySource.sourceHash).not.toBe(firstSource.sourceHash)
   execFileSync('git', ['add', '--', 'index.js'], { cwd: sub })
   execFileSync('git', ['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'updated'], { cwd: sub })
   expect(await buildInputHash(root)).not.toBe(dirty)
+  expect((await sourceIdentity(root)).sourceHash).not.toBe(dirtySource.sourceHash)
 })
